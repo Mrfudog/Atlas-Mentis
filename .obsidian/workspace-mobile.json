@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Obsidian/Requirements_by_Area.md",
+                "file": "Obsidian/Requirements by Area.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Requirements_by_Area"
+              "title": "Requirements by Area"
             }
           }
         ]
@@ -173,7 +173,7 @@
       "bases:Create new base": false
     }
   },
-  "active": "0f563dc26f82184d",
+  "active": "a7ff897337674dcb",
   "lastOpenFiles": [
     "Obsidian/Decision Log.md",
     "Obsidian/Backbone Concept.md",
