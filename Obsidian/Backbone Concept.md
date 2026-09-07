@@ -4,7 +4,6 @@ status: draft
 version: 0.3
 updated: 2026-09-05
 ---
-
 # Backbone Concept
 
 The contract every area builds on. Complements [[30_Data_Architecture]] (tiers, vocabulary) and [[Data Definitions]] (living registry); this note explains the *mechanisms* and why they exist. Vocabulary follows [[Glossary]]. Requirements: [[Requirements by Area#Content Backbone]].
