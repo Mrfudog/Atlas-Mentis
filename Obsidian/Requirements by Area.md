@@ -211,7 +211,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 
 ## Live Play
 
-39 requirements · 147 points · area definition: [[40_Areas#Live Play]]
+39 requirements · 147 points · area definition: [[Areas#Live Play]]
 
 | ID | Requirement | Prio | Effort | Phase | Prep cost | Status |
 |---|---|---|---|---|---|---|
@@ -257,7 +257,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 
 ## Maps
 
-15 requirements · 86 points · area definition: [[40_Areas#Maps]]
+15 requirements · 86 points · area definition: [[Areas#Maps]]
 
 | ID | Requirement | Prio | Effort | Phase | Prep cost | Status |
 |---|---|---|---|---|---|---|
