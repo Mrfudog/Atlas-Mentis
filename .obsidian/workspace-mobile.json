@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Ideen/Richtung.md",
+                "file": "Obsidian/34_Schemas_v1.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Richtung"
+              "title": "34_Schemas_v1"
             }
           }
         ]
@@ -175,8 +175,8 @@
   },
   "active": "0f563dc26f82184d",
   "lastOpenFiles": [
-    "README.md",
     "Ideen/Richtung.md",
+    "README.md",
     "Ideen"
   ]
 }
