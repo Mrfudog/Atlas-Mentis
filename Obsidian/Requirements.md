@@ -9,7 +9,7 @@ updated: 2026-09-05
 
 Single source of truth for all requirements. **IDs are immutable**: sequential, never reused, never renumbered, carrying no meaning (areas may move; IDs never do). Dropped requirements stay with status `dropped`.
 
-Per-area views are derived: see [[Requirements by Area]]. Definitions of the areas: [[40_Areas]]. Terms: [[Glossary]].
+Per-area views are derived: see [[Requirements by Area]]. Definitions of the areas: [[Areas]]. Terms: [[Glossary]].
 
 ## Scales
 - **Priority** 1 backbone-critical · 2 first table use · 3 full v1.0 · 4 expansion · 5 idea parking
