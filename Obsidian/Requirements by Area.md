@@ -137,7 +137,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 
 ## Campaign & Sessions
 
-17 requirements · 62 points · area definition: [[40_Areas#Campaign & Sessions]]
+17 requirements · 62 points · area definition: [[Areas#Campaign & Sessions]]
 
 | ID | Requirement | Prio | Effort | Phase | Prep cost | Status |
 |---|---|---|---|---|---|---|
@@ -161,7 +161,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 
 ## World & Lore
 
-20 requirements · 81 points · area definition: [[40_Areas#World & Lore]]
+20 requirements · 81 points · area definition: [[Areas#World & Lore]]
 
 | ID | Requirement | Prio | Effort | Phase | Prep cost | Status |
 |---|---|---|---|---|---|---|
