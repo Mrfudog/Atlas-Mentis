@@ -11,14 +11,12 @@
             "id": "0f563dc26f82184d",
             "type": "leaf",
             "state": {
-              "type": "markdown",
+              "type": "html-view",
               "state": {
-                "file": "Obsidian/Glossary.md",
-                "mode": "preview",
-                "source": true
+                "file": "Obsidian/35_Data_Architecture_Overview.html"
               },
-              "icon": "lucide-file",
-              "title": "Glossary"
+              "icon": "code-glyph",
+              "title": "35_Data_Architecture_Overview"
             }
           }
         ]
@@ -117,7 +115,7 @@
         "state": {
           "type": "backlink",
           "state": {
-            "file": "Obsidian/Glossary.md",
+            "file": "Obsidian/35_Data_Architecture_Overview.html",
             "collapseAll": false,
             "extraContext": false,
             "sortOrder": "alphabetical",
@@ -175,14 +173,14 @@
       "table-editor-obsidian:Advanced Tables Toolbar": false
     }
   },
-  "active": "a7ff897337674dcb",
+  "active": "0f563dc26f82184d",
   "lastOpenFiles": [
+    "Obsidian/Glossary.md",
     "Obsidian/Schemas.md",
     "20_Decision_Log.md",
     "Obsidian/Start.md",
     "broken links output.md",
     "Obsidian/Requirements by Area.md",
-    "Obsidian/Glossary.md",
     "Obsidian/Requirements.md",
     "Obsidian/Areas.md",
     "Obsidian/Backbone Concept.md",
