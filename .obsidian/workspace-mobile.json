@@ -173,8 +173,10 @@
       "bases:Create new base": false
     }
   },
-  "active": "a7ff897337674dcb",
+  "active": "0f563dc26f82184d",
   "lastOpenFiles": [
+    "Obsidian/Areas.md",
+    "Obsidian/Requirements by Area.md",
     "Obsidian/Decision Log.md",
     "Obsidian/Backbone Concept.md",
     "Obsidian/Data Definitions.md",

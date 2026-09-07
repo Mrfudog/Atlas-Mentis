@@ -10,56 +10,56 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 
 ## Content Backbone
 
-42 requirements · 167 points · area definition: [[40_Areas#Content Backbone]]
+42 requirements · 167 points · area definition: [[Areas#Content Backbone]]
 
-| ID | Requirement | Prio | Effort | Phase | Prep cost | Status |
-|---|---|---|---|---|---|---|
-| **REQ-163** | Opaque IDs: no semantics in peg IDs; provenance via source metadata; copying only as explicit fork (`forkedFrom`) | 1 | 1 | both | none | defined |
-| **REQ-002** | Successor chain: successorId, resolution to head so old links stay valid | 1 | 2 | both | none | defined |
-| **REQ-008** | Variant mechanism: copy with variantOf link | 1 | 2 | prep | none | defined |
-| **REQ-018** | Rule effects format: effects[] with grants/constraints, open type list, consumers ignore unknown types | 1 | 2 | both | none | defined |
-| **REQ-019** | RawContent coexistence: every import keeps its raw form (markdown, OCR, JSON) next to structured data | 1 | 2 | prep | none | defined |
-| **REQ-020** | SourceRef provenance: publication, page, optional file + page anchor | 1 | 2 | both | none | defined |
-| **REQ-024** | WorldDate property type: canonical sortable value + display string + CalendarSystem reference | 1 | 2 | both | none | defined |
-| **REQ-089** | RuleElement reference objects: structured text, tags, optional effects/constraints, rawContent | 1 | 2 | both | none | defined |
-| **REQ-003** | Change chain: every change as entry (who/when/what) along the version chain, git-log style | 1 | 3 | both | none | defined |
-| **REQ-004** | Layer entity: types system/expansion/world/pack/campaign/override-set, dependsOn, nesting by link with priority | 1 | 3 | prep | none | defined |
-| **REQ-005** | Entry relation: entity→layer with mode adds/overrides/removes, addedAt/addedBy, optional version pin | 1 | 3 | prep | none | defined |
-| **REQ-010** | Dimensions: optional, sparsely stored property bundles (Visibility, TemporalValidity, KnowledgeRequirement, Reputation…) | 1 | 3 | both | none | defined |
-| **REQ-016** | Term / translation layer: pseudoname key, LocalizedText, fallback chain DE → EN → key | 1 | 3 | both | none | defined |
-| **REQ-021** | Asset entity contract: backend app/nas/external, consumers resolve URLs via asset service | 1 | 3 | both | none | defined |
-| **REQ-026** | View config format: mode raw/structured/hybrid, field list, resolution priority per view | 1 | 3 | both | none | defined |
-| **REQ-001** | Core entity model: entity types, shared property types, typed relations, immutable IDs | 1 | 5 | both | none | defined |
-| **REQ-006** | Stack resolution: campaign-activated ordered layers, specificity precedence (campaign > pack > world > system) | 1 | 5 | both | none | defined |
-| **REQ-011** | ContentBlock primitive: text + visibility + knowledge requirement + scope + temporal validity + pack membership | 1 | 5 | both | none | defined |
-| **REQ-013** | Reference registry & auto-linking: ID-based links, alias matching, auto-link when unambiguous, suggest when ambiguous | 1 | 5 | prep | none | defined |
-| **REQ-023** | Status dimension: idea / planned / used / discarded | 2 | 1 | prep | none | defined |
-| **REQ-030** | Reputation hooks: weighted tags on relations, propagation rule slot reserved | 2 | 1 | play | none | defined |
-| **REQ-012** | Block types: paragraph, readaloud, fact, secret, poem/song/review… extensible list | 2 | 2 | prep | none | defined |
-| **REQ-156** | Visibility inheritance container → children: `inherit: true` on Visibility, evaluated by Resolution | 2 | 2 | both | none | defined |
-| **REQ-164** | Facets (Darstellungsstufen): system-wide short/description/full/image/token/map/link; `renderer_def` analogous to `projection_def` | 2 | 3 | both | none | defined |
-| **REQ-009** | Override mechanism: explicit overrides relation with scope | 2 | 3 | prep | none | defined |
-| **REQ-085** | Encounter entity: links notes, maps, NPCs, loot tables; attachable to any container level; dice-table semantics | 2 | 3 | prep | none | defined |
-| **REQ-094** | Entity ↔ rule attachment as layer-scoped relation | 2 | 3 | prep | none | defined |
-| **REQ-044** | Scope inspector sidebar, slim: effective source layer per block/property | 2 | 5 | both | none | defined |
-| **REQ-102** | Contextual article rendering per stack: knowledge, time, scope resolved at read time | 2 | 5 | both | none | defined |
-| **REQ-116** | Session state objects (initiative, now-playing, active scene, party note) + realtime channel per session | 2 | 8 | play | none | defined |
-| **REQ-014** | Backlinks view | 3 | 2 | both | none | defined |
-| **REQ-028** | Full-text search across content | 3 | 3 | both | none | defined |
-| **REQ-029** | Serializable schema / export (future file or git backing) | 3 | 3 | prep | none | defined |
-| **REQ-007** | Stack expert settings: layer priority, per-entry pick, disable single override, flatten into independent layer | 3 | 5 | prep | none | defined |
-| **REQ-161** | Display resolution as priority system: entity profile proposes, board rules decide, user overrides | 2 | 5 | both | none | defined |
-| **REQ-167** | Print & export outputs: facet-based item/creature cards, character sheets (PDF), maps (image/print); card-sheet assembly as export config | 3 | 5 | prep | low | defined |
-| **REQ-045** | Scope inspector sidebar, full: layer actions (override here, create variant, move to pack, pick entry) | 3 | 8 | prep | none | defined |
-| **REQ-015** | Graph view | 4 | 5 | prep | none | defined |
-| **REQ-017** | Term engine bindings: system-specific semantic evaluation of rule terms | 4 | 5 | play | none | defined |
-| **REQ-027** | Generic template engine & Template Manager UI (generalize hardcoded types) | 4 | 13 | prep | none | defined |
-| **REQ-062** | Multi-system statblock extension point (system reference on composition) | 5 | 8 | prep | none | idea |
-| **REQ-093** | Rule engine per system evaluating rules against entity data (constraints, terms) | 5 | 13 | play | none | idea |
+| ID          | Requirement                                                                                                                               | Prio | Effort | Phase | Prep cost | Status  |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---- | ------ | ----- | --------- | ------- |
+| **REQ-163** | Opaque IDs: no semantics in peg IDs; provenance via source metadata; copying only as explicit fork (`forkedFrom`)                         | 1    | 1      | both  | none      | defined |
+| **REQ-002** | Successor chain: successorId, resolution to head so old links stay valid                                                                  | 1    | 2      | both  | none      | defined |
+| **REQ-008** | Variant mechanism: copy with variantOf link                                                                                               | 1    | 2      | prep  | none      | defined |
+| **REQ-018** | Rule effects format: effects[] with grants/constraints, open type list, consumers ignore unknown types                                    | 1    | 2      | both  | none      | defined |
+| **REQ-019** | RawContent coexistence: every import keeps its raw form (markdown, OCR, JSON) next to structured data                                     | 1    | 2      | prep  | none      | defined |
+| **REQ-020** | SourceRef provenance: publication, page, optional file + page anchor                                                                      | 1    | 2      | both  | none      | defined |
+| **REQ-024** | WorldDate property type: canonical sortable value + display string + CalendarSystem reference                                             | 1    | 2      | both  | none      | defined |
+| **REQ-089** | RuleElement reference objects: structured text, tags, optional effects/constraints, rawContent                                            | 1    | 2      | both  | none      | defined |
+| **REQ-003** | Change chain: every change as entry (who/when/what) along the version chain, git-log style                                                | 1    | 3      | both  | none      | defined |
+| **REQ-004** | Layer entity: types system/expansion/world/pack/campaign/override-set, dependsOn, nesting by link with priority                           | 1    | 3      | prep  | none      | defined |
+| **REQ-005** | Entry relation: entity→layer with mode adds/overrides/removes, addedAt/addedBy, optional version pin                                      | 1    | 3      | prep  | none      | defined |
+| **REQ-010** | Dimensions: optional, sparsely stored property bundles (Visibility, TemporalValidity, KnowledgeRequirement, Reputation…)                  | 1    | 3      | both  | none      | defined |
+| **REQ-016** | Term / translation layer: pseudoname key, LocalizedText, fallback chain DE → EN → key                                                     | 1    | 3      | both  | none      | defined |
+| **REQ-021** | Asset entity contract: backend app/nas/external, consumers resolve URLs via asset service                                                 | 1    | 3      | both  | none      | defined |
+| **REQ-026** | View config format: mode raw/structured/hybrid, field list, resolution priority per view                                                  | 1    | 3      | both  | none      | defined |
+| **REQ-001** | Core entity model: entity types, shared property types, typed relations, immutable IDs                                                    | 1    | 5      | both  | none      | defined |
+| **REQ-006** | Stack resolution: campaign-activated ordered layers, specificity precedence (campaign > pack > world > system)                            | 1    | 5      | both  | none      | defined |
+| **REQ-011** | ContentBlock primitive: text + visibility + knowledge requirement + scope + temporal validity + pack membership                           | 1    | 5      | both  | none      | defined |
+| **REQ-013** | Reference registry & auto-linking: ID-based links, alias matching, auto-link when unambiguous, suggest when ambiguous                     | 1    | 5      | prep  | none      | defined |
+| **REQ-023** | Status dimension: idea / planned / used / discarded                                                                                       | 2    | 1      | prep  | none      | defined |
+| **REQ-030** | Reputation hooks: weighted tags on relations, propagation rule slot reserved                                                              | 2    | 1      | play  | none      | defined |
+| **REQ-012** | Block types: paragraph, readaloud, fact, secret, poem/song/review… extensible list                                                        | 2    | 2      | prep  | none      | defined |
+| **REQ-156** | Visibility inheritance container → children: `inherit: true` on Visibility, evaluated by Resolution                                       | 2    | 2      | both  | none      | defined |
+| **REQ-164** | Facets (Darstellungsstufen): system-wide short/description/full/image/token/map/link; `renderer_def` analogous to `projection_def`        | 2    | 3      | both  | none      | defined |
+| **REQ-009** | Override mechanism: explicit overrides relation with scope                                                                                | 2    | 3      | prep  | none      | defined |
+| **REQ-085** | Encounter entity: links notes, maps, NPCs, loot tables; attachable to any container level; dice-table semantics                           | 2    | 3      | prep  | none      | defined |
+| **REQ-094** | Entity ↔ rule attachment as layer-scoped relation                                                                                         | 2    | 3      | prep  | none      | defined |
+| **REQ-044** | Scope inspector sidebar, slim: effective source layer per block/property                                                                  | 2    | 5      | both  | none      | defined |
+| **REQ-102** | Contextual article rendering per stack: knowledge, time, scope resolved at read time                                                      | 2    | 5      | both  | none      | defined |
+| **REQ-116** | Session state objects (initiative, now-playing, active scene, party note) + realtime channel per session                                  | 2    | 8      | play  | none      | defined |
+| **REQ-014** | Backlinks view                                                                                                                            | 3    | 2      | both  | none      | defined |
+| **REQ-028** | Full-text search across content                                                                                                           | 3    | 3      | both  | none      | defined |
+| **REQ-029** | Serializable schema / export (future file or git backing)                                                                                 | 3    | 3      | prep  | none      | defined |
+| **REQ-007** | Stack expert settings: layer priority, per-entry pick, disable single override, flatten into independent layer                            | 3    | 5      | prep  | none      | defined |
+| **REQ-161** | Display resolution as priority system: entity profile proposes, board rules decide, user overrides                                        | 2    | 5      | both  | none      | defined |
+| **REQ-167** | Print & export outputs: facet-based item/creature cards, character sheets (PDF), maps (image/print); card-sheet assembly as export config | 3    | 5      | prep  | low       | defined |
+| **REQ-045** | Scope inspector sidebar, full: layer actions (override here, create variant, move to pack, pick entry)                                    | 3    | 8      | prep  | none      | defined |
+| **REQ-015** | Graph view                                                                                                                                | 4    | 5      | prep  | none      | defined |
+| **REQ-017** | Term engine bindings: system-specific semantic evaluation of rule terms                                                                   | 4    | 5      | play  | none      | defined |
+| **REQ-027** | Generic template engine & Template Manager UI (generalize hardcoded types)                                                                | 4    | 13     | prep  | none      | defined |
+| **REQ-062** | Multi-system statblock extension point (system reference on composition)                                                                  | 5    | 8      | prep  | none      | idea    |
+| **REQ-093** | Rule engine per system evaluating rules against entity data (constraints, terms)                                                          | 5    | 13     | play  | none      | idea    |
 
 ## Platform & Access
 
-20 requirements · 66 points · area definition: [[40_Areas#Platform & Access]]
+20 requirements · 66 points · area definition: [[Areas#Platform & Access]]
 
 | ID | Requirement | Prio | Effort | Phase | Prep cost | Status |
 |---|---|---|---|---|---|---|
@@ -86,7 +86,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 
 ## Creatures & Characters
 
-20 requirements · 89 points · area definition: [[40_Areas#Creatures & Characters]]
+20 requirements · 89 points · area definition: [[Areas#Creatures & Characters]]
 
 | ID | Requirement | Prio | Effort | Phase | Prep cost | Status |
 |---|---|---|---|---|---|---|
