@@ -3,7 +3,7 @@ tags: [vtt, data, schema]
 status: living
 version: 1.2
 updated: 2026-09-05
-related: [[32_Data_Definitions]], [[35_Data_Architecture_Overview]], [[20_Decision_Log]]
+related: [[[32_Data_Definitions]], [[35_Data_Architecture_Overview]], [[20_Decision_Log]]]
 ---
 
 # Schemas

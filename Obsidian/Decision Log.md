@@ -99,7 +99,7 @@ Merged into AD-04.
 ## AD-19 · Board-first v1
 **Context.** AD-18 deferred boards entirely; v1's entry surface was a fixed GM page. Decision of 2026-09-05: the board canvas is the better spine for v1 — a DM creates a board, creates entities directly on it, chooses their facet and places them; everything else (viewers, sheets, trackers) hangs off that surface.
 **Decision.** v1 starts with the board UI after the walking skeleton. Pulled into v1 at reduced depth: REQ-111 (one board per user, no pages), REQ-157 (canvas), REQ-158 (placement rendering), REQ-161 (resolution as stub: placement override + renderer default only), REQ-164 (facets short/full/image/token), REQ-165 (asset + basic shape placements; tool placements later), REQ-166 (create-on-canvas). Still post-v1: anchors/quick navigation (REQ-159/160), semantic zoom (REQ-162), board typeRules and entity DisplayProfiles (full REQ-161), realtime (REQ-116), widget set REQ-112–114.
-**Status.** decided (amends AD-18; [[Scope_v1]] v0.3)
+**Status.** decided (amends AD-18; [[Scope v1]] v0.3)
 
 ## Data-model decisions (D-series)
 

@@ -7,7 +7,7 @@ updated: 2026-09-05
 
 # v1 Scope
 
-Derived from [[10_Requirements]] (columns *v1* / *v1 pts*, AD-18). v1 = the smallest system that runs a real session from the platform while every backbone contract already has its final shape. Depth levels: **full** as specified · **minimal** reduced shape, same contract · **stub** shape exists, trivial implementation · **later** excluded.
+Derived from [[Requirements]] (columns *v1* / *v1 pts*, AD-18). v1 = the smallest system that runs a real session from the platform while every backbone contract already has its final shape. Depth levels: **full** as specified · **minimal** reduced shape, same contract · **stub** shape exists, trivial implementation · **later** excluded.
 
 Goal test for v1: create a board, create session notes, a map and house rules directly on the canvas and place them with a chosen facet; import a monster library and your PCs; run one session with the initiative tracker, players use their phone sheet, the DM grants knowledge and players read the unlocked lore afterwards.
 
@@ -78,16 +78,16 @@ Goal test for v1: create a board, create session notes, a map and house rules di
 ### Creatures & Characters
 8 items · 19 points
 
-| ID | Requirement | Depth | Pts | v1 note |
-|---|---|---|---|---|
-| **REQ-046** | Creature / Statblock split with PC and NPC specializations | full | 3 |  |
-| **REQ-047** | Import-first entry: 5e.tools JSON, Improved Initiative JSON, markdown paste from Obsidian | minimal | 3 | 5e.tools JSON + markdown paste |
-| **REQ-048** | Minimal edit form for core creature fields | full | 3 |  |
-| **REQ-050** | Simple creature viewer: social / description / combat sections | full | 3 |  |
-| **REQ-051** | Quick changes: HP, temp HP, conditions, rest, inspiration | full | 3 |  |
-| **REQ-049** | Quick add: name-only NPC or statblock-only mob in one field | full | 2 |  |
-| **REQ-054** | Fightingtype field (MCDM roles) on statblock | full | 1 |  |
-| **REQ-061** | Creature relations (creature ↔ creature / faction) with relation type | minimal | 1 | free relation type text |
+| ID          | Requirement                                                                               | Depth   | Pts | v1 note                        |
+| ----------- | ----------------------------------------------------------------------------------------- | ------- | --- | ------------------------------ |
+| **REQ-046** | Creature / Statblock split with PC and NPC specializations                                | full    | 3   |                                |
+| **REQ-047** | Import-first entry: 5e.tools JSON, Improved Initiative JSON, markdown paste from Obsidian | minimal | 3   | 5e.tools JSON + markdown paste |
+| **REQ-048** | Minimal edit form for core creature fields                                                | full    | 3   |                                |
+| **REQ-050** | Simple creature viewer: social / description / combat sections                            | full    | 3   |                                |
+| **REQ-051** | Quick changes: HP, temp HP, conditions, rest, inspiration                                 | full    | 3   |                                |
+| **REQ-049** | Quick add: name-only NPC or statblock-only mob in one field                               | full    | 2   |                                |
+| **REQ-054** | Fightingtype field (MCDM roles) on statblock                                              | full    | 1   |                                |
+| **REQ-061** | Creature relations (creature ↔ creature / faction) with relation type                     | minimal | 1   | free relation type text        |
 
 ### Player Experience
 6 items · 18 points

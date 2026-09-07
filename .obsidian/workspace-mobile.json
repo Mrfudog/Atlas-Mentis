@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Obsidian/Requirements by Area.md",
+                "file": "Obsidian/Schemas.md",
                 "mode": "source",
-                "source": false
+                "source": true
               },
               "icon": "lucide-file",
-              "title": "Requirements by Area"
+              "title": "Schemas"
             }
           }
         ]
@@ -175,12 +175,16 @@
   },
   "active": "0f563dc26f82184d",
   "lastOpenFiles": [
-    "Obsidian/Areas.md",
     "Obsidian/Requirements by Area.md",
-    "Obsidian/Decision Log.md",
+    "Obsidian/Areas.md",
     "Obsidian/Backbone Concept.md",
     "Obsidian/Data Definitions.md",
+    "Obsidian/Decision Log.md",
+    "Obsidian/Glossary.md",
+    "Obsidian/Project Plan.md",
+    "Obsidian/Requirements.md",
     "Obsidian/Schemas.md",
+    "Obsidian/Scope v1.md",
     "Ideen/Richtung.md",
     "README.md",
     "Ideen"

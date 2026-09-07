@@ -279,7 +279,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 
 ## Media & Assets
 
-16 requirements · 77 points · area definition: [[40_Areas#Media & Assets]]
+16 requirements · 77 points · area definition: [[Areas#Media & Assets]]
 
 | ID | Requirement | Prio | Effort | Phase | Prep cost | Status |
 |---|---|---|---|---|---|---|
@@ -302,7 +302,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 
 ## Cross-cutting
 
-4 requirements · 10 points · area definition: [[40_Areas#Cross-cutting]]
+4 requirements · 10 points · area definition: [[Areas#Cross-cutting]]
 
 | ID | Requirement | Prio | Effort | Phase | Prep cost | Status |
 |---|---|---|---|---|---|---|
