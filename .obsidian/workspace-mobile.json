@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Obsidian/Decision Log.md",
+                "file": "Obsidian/Requirements_by_Area.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Decision Log"
+              "title": "Requirements_by_Area"
             }
           }
         ]
@@ -175,6 +175,7 @@
   },
   "active": "0f563dc26f82184d",
   "lastOpenFiles": [
+    "Obsidian/Decision Log.md",
     "Obsidian/Backbone Concept.md",
     "Obsidian/Data Definitions.md",
     "Obsidian/Schemas.md",
