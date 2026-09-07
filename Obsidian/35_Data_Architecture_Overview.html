@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>VTT Data Architecture — Overview</title>
+<style>
+  :root{--paper:#F2F4F6;--dot:#C9CFD6;--ink:#1E242C;--ink-2:#5B646F;--line:#D5DAE0;--panel:#fff;
+    --c-input:#C08A2E;--c-registry:#8C5A9E;--c-storage:#2E7D8C;--c-engine:#4B4F58;--c-read:#D26A8A;
+    --display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;--ui:"Avenir Next","Segoe UI",system-ui,sans-serif;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:var(--ui);font-size:14px}
+  body{display:flex;flex-direction:column;height:100dvh}
+  header{display:flex;align-items:baseline;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel);flex:none}
+  header h1{margin:0;font:400 20px/1 var(--display)}
+  header .sub{font:11px var(--mono);color:var(--ink-2)}
+  #cases{display:flex;gap:6px;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line);overflow-x:auto;flex:none;-webkit-overflow-scrolling:touch}
+  #cases button{flex:none;font:12px var(--ui);padding:7px 11px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);cursor:pointer}
+  #cases button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  #graph{flex:1;position:relative;overflow:hidden;min-height:0;background-image:radial-gradient(var(--dot) 1px,transparent 1px);background-size:22px 22px;touch-action:none}
+  svg{width:100%;height:100%;display:block}
+  .tier text{font:600 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;fill:var(--ink-2)}
+  .tier rect{fill:none;stroke:var(--line);stroke-dasharray:6 4}
+  .n rect{fill:#fff;stroke-width:1.5}
+  .n.dashed rect{stroke-dasharray:5 3}
+  .n text{pointer-events:none}
+  .n .t{font:500 12px var(--ui);fill:var(--ink)}
+  .n .s{font:10px var(--mono);fill:var(--ink-2)}
+  .n.dim{opacity:.18}.n.sel rect{stroke-width:3}
+  .n .badge{font:600 10px var(--mono);fill:#fff}
+  .e{fill:none;stroke:#8D96A0;stroke-width:1.2;stroke-opacity:.5}
+  .e.dim{stroke-opacity:.05}.e.hot{stroke-opacity:1;stroke-width:2.4}
+  #sheet{flex:none;background:var(--panel);border-top:1px solid var(--line);max-height:42dvh;overflow:auto;padding:12px 14px 20px;-webkit-overflow-scrolling:touch}
+  #sheet h3{font:400 18px var(--display);margin:0 0 4px}
+  #sheet .tag{display:inline-block;font:10px var(--mono);padding:2px 7px;border-radius:3px;color:#fff;margin:0 4px 8px 0}
+  #sheet p{font-size:13px;line-height:1.5;margin:6px 0}
+  #sheet h4{font:600 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);margin:12px 0 5px}
+  #sheet pre{font:11.5px/1.5 var(--mono);background:#F7F8FA;border:1px solid var(--line);border-radius:4px;padding:8px;white-space:pre-wrap;margin:0;overflow-x:auto}
+  #sheet ul{margin:0;padding:0;list-style:none;font-size:13px}
+  #sheet li{padding:4px 0;border-bottom:1px dotted var(--line)}
+  #sheet li a{color:var(--ink);text-decoration:underline dotted;cursor:pointer}
+  .empty{color:var(--ink-2);font-size:13px;line-height:1.5}
+  .steps{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .steps button{font:13px var(--ui);padding:6px 12px;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer;min-width:44px}
+  .steps .pos{font:11px var(--mono);color:var(--ink-2);flex:1;text-align:center}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;font:11px var(--mono);color:var(--ink-2);margin-top:10px}
+  .legend span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;background:var(--c);vertical-align:-1px}
+  @media(min-width:900px){body{display:grid;grid-template-rows:auto auto 1fr;grid-template-columns:1fr 340px;grid-template-areas:"head head" "cases cases" "graph sheet"}header{grid-area:head}#cases{grid-area:cases}#graph{grid-area:graph}#sheet{grid-area:sheet;max-height:none;border-top:0;border-left:1px solid var(--line)}}
+</style>
+</head>
+<body>
+<header><h1>Data architecture</h1><span class="sub">v0.4 · tap a box · pinch or scroll to zoom</span></header>
+<div id="cases"><button data-case="-1" class="on">Overview</button><button data-case="0">1 · Rina enters the world</button><button data-case="1">2 · Session night</button><button data-case="2">3 · Between sessions</button></div>
+<div id="graph"><svg id="svg"></svg></div>
+<div id="sheet"></div>
+<script>
+const T={input:"var(--c-input)",registry:"var(--c-registry)",storage:"var(--c-storage)",engine:"var(--c-engine)",read:"var(--c-read)"};
+const TIERS=[{id:"input",label:"Inputs"},{id:"registry",label:"Registry — metamodel as rows"},{id:"storage",label:"Storage — Postgres"},{id:"engine",label:"Engines"},{id:"read",label:"Read side"}];
+const N=[
+ {id:"obsidian",tier:"input",label:"Obsidian vault",sub:"md + frontmatter",body:"Frontmatter maps to components, the body to Description.raw and ContentBlocks. Goes through Validation like any write."},
+ {id:"editor",tier:"input",label:"Angular editor",sub:"forms from schemas",body:"Forms are generated from component_def schemas; writes go to the generic API."},
+ {id:"packs",tier:"input",label:"Content packs",sub:"system, expansion layers",body:"SRD, expansions, homebrew packs. Every entity enters with a partOf relation to its layer."},
+ {id:"files",tier:"input",label:"Files",sub:"images, pdf, audio",body:"Object storage on the host; referenced by Asset entities."},
+ {id:"component_def",tier:"registry",label:"component_def",sub:"name · engine · schema",pre:"name    text pk\nengine  text  -- owning engine or null\nschema  jsonb -- JSON Schema 2020-12"},
+ {id:"interface",tier:"registry",label:"interface",sub:"requires · allows",pre:"name        text pk\nextends     text[]\nrequires    text[]\nallows      text[]\nblock_types text[]\nrelations   jsonb"},
+ {id:"relation_def",tier:"registry",label:"relation_def",sub:"global relations",pre:"name        text pk\nfrom_ifaces text[]  -- '*' ok\nto_ifaces   text[]\nowned       bool\nprops       jsonb"},
+ {id:"projection_def",tier:"registry",label:"projection_def",sub:"reads · view config",pre:"name        text pk\nreads       jsonb\nview_config jsonb -- sectionLayout…"},
+ {id:"renderer_def",tier:"registry",label:"renderer_def",sub:"facets · drawing (D11)",pre:"name             text pk\napplies_to       text[] -- interfaces\nreads            text[] -- components\nfacets           jsonb  -- short/full/token/map…\ndefault_priority int",dashed:true},
+ {id:"event_def",tier:"registry",label:"event_def",sub:"payload schemas",pre:"name    text pk\nschema  jsonb",dashed:true},
+ {id:"entity",tier:"storage",label:"entity",sub:"id only",pre:"id          uuid pk (v7)\ncreated_at  timestamptz"},
+ {id:"component",tier:"storage",label:"component",sub:"(entity, type) → payload",pre:"entity_id  uuid fk\ntype       text fk\npayload    jsonb\npk (entity_id, type)"},
+ {id:"relation",tier:"storage",label:"relation",sub:"from → to, typed",pre:"id       uuid pk\nfrom_id  uuid fk\nto_id    uuid fk\ntype     text\nprops    jsonb\nord      int"},
+ {id:"event_log",tier:"storage",label:"event_log",sub:"append-only",pre:"id       uuid pk (v7)\nname     text\nactor    uuid\nsubject  uuid\npayload  jsonb\nat       timestamptz"},
+ {id:"views",tier:"storage",label:"sql views",sub:"per interface (opt. C)",body:"Generated from the interface table; read-only convenience, added when needed.",dashed:true},
+ {id:"session_state",tier:"storage",label:"session state",sub:"memory + events",body:"Live HP, initiative, tokens. Held by Realtime, persisted as event_log rows, rebuilt on restart.",dashed:true},
+ {id:"validation",tier:"engine",label:"Validation",sub:"schema + interface",body:"On write: interface from Typed → required present, allowed only, each payload valid against its schema, relation props valid."},
+ {id:"resolution",tier:"engine",label:"Resolution",sub:"stack · language · successor",body:"Orders active layers, picks the winning entity per key, follows successorId, applies the language fallback chain."},
+ {id:"access",tier:"engine",label:"Access",sub:"visibility · roles",body:"Visibility.audience vs membership triples; inheritance flag. v1: gm / campaign."},
+ {id:"knowledge",tier:"engine",label:"Knowledge",sub:"tags · time · reveals",body:"Grants tags, evaluates KnowledgeRequirement and TemporalValidity, emits block.revealed."},
+ {id:"calc",tier:"engine",label:"Calculation",sub:"derived values",body:"Modifiers, proficiency, carried weight, effective Effects."},
+ {id:"linking",tier:"engine",label:"Linking",sub:"name → id, backlinks",body:"Matches names and aliases in text, writes linksTo, serves backlinks and the graph."},
+ {id:"logging",tier:"engine",label:"Logging",sub:"events → log",body:"Subscribes to everything; appends event_log; builds ChangeEntry chain and SessionLog."},
+ {id:"realtime",tier:"engine",label:"Realtime",sub:"websocket fan-out",body:"Holds session state, enforces stewardship, broadcasts state.changed.",dashed:true},
+ {id:"asset",tier:"engine",label:"Asset",sub:"files → urls",body:"Uploads, thumbnails, signed URLs."},
+ {id:"rendering",tier:"engine",label:"Rendering",sub:"projection → view model",body:"Loads projection_def, gathers components via Resolution, Access, Knowledge; applies sectionLayout; returns a view model."},
+ {id:"rules",tier:"engine",label:"Rules (per system)",sub:"future",dashed:true},
+ {id:"p_sheet",tier:"read",label:"CharacterSheet",sub:"player, phone"},
+ {id:"p_creature",tier:"read",label:"Kreaturansicht",sub:"DM, everything"},
+ {id:"p_combat",tier:"read",label:"CombatView",sub:"statblock + tactics"},
+ {id:"p_prep",tier:"read",label:"SessionPrep",sub:"planning filter"},
+ {id:"p_wiki",tier:"read",label:"WikiArticle",sub:"lore-first"},
+ {id:"p_scope",tier:"read",label:"ScopeInspector",sub:"layer stack"},
+ {id:"api",tier:"read",label:"Generic API",sub:"3 tables + /view/{p}",body:"Three tables make CRUD generic and registry-driven. Projections are served as /view/{name}/{id} with the campaign as read context."},
+ {id:"frontend",tier:"read",label:"Angular frontend",sub:"renders view models"},
+];
+const E=[["obsidian","validation"],["editor","validation"],["packs","validation"],["files","asset"],["component_def","validation"],["interface","validation"],["relation_def","validation"],["component_def","rendering"],["projection_def","rendering"],["interface","views"],["event_def","logging"],["validation","entity"],["validation","component"],["validation","relation"],["entity","component"],["entity","relation"],["component","views"],["relation","resolution"],["component","resolution"],["component","access"],["component","knowledge"],["logging","event_log"],["realtime","session_state"],["session_state","event_log"],["component","calc"],["component","linking"],["linking","relation"],["resolution","rendering"],["access","rendering"],["knowledge","rendering"],["calc","rendering"],["asset","rendering"],["rendering","p_sheet"],["rendering","p_creature"],["rendering","p_combat"],["rendering","p_prep"],["rendering","p_wiki"],["rendering","p_scope"],["realtime","p_combat"],["p_sheet","api"],["p_creature","api"],["p_combat","api"],["p_prep","api"],["p_wiki","api"],["p_scope","api"],["api","frontend"]];
+const CASES=[
+ {title:"Rina enters the world",steps:[
+  {t:"Basil drops the note 'Rina von Immerwald.md' into the import folder. Frontmatter carries type, key, hp, ac; the body has a ## Taktik and a ## Geheimnis section.",n:["obsidian"],d:"---\ntype: creature\nkey: creature/rina-von-immerwald\nac: 15\nhp: 27\nvisibility: campaign\n---\n## Taktik\nHält Abstand, wirkt zuerst Nebel …\n## Geheimnis\nIst die verschollene Tochter von …"},
+  {t:"Validation loads the Creature interface and the schemas for every component the import produced. Name is required and present; Statblock and Visibility are allowed; nothing unknown was attached.",n:["validation","interface","component_def"],d:"interface Creature\n  requires [Name]\n  allows   [Description, Statblock, Owner, Portrait]\n  blockTypes [tactics, secret, lore, …]\ncomponent_def Statblock.schema → ok\ncomponent_def Visibility.schema → ok"},
+  {t:"Four kinds of rows are written: one entity, five components, two ContentBlock entities for the sections, and relations that hang everything together — including the Entry into the campaign layer.",n:["entity","component","relation"],d:"entity 7a3f\ncomponent 7a3f Typed      {interfaces:[Creature]}\ncomponent 7a3f Identity   {key:creature/rina-von-immerwald}\ncomponent 7a3f Name       {text:{de:Rina von Immerwald}}\ncomponent 7a3f Statblock  {system:dnd5e-2014, ac:15, hp:{average:27}}\ncomponent 7a3f Visibility {audience:campaign}\nentity 9c11  + Block {blockType:tactics, body:{raw:…}}\nentity 9c12  + Block {blockType:secret, …} + Visibility {audience:gm}\nrelation 7a3f hasBlock 9c11 {order:1}\nrelation 7a3f hasBlock 9c12 {order:2}\nrelation 7a3f partOf   1f00 {mode:adds, addedBy:basil}"},
+  {t:"Logging appends entity.written for each new entity. Linking scans the text, finds 'Immerwald' as an alias of the Location and writes a linksTo relation — the wiki backlink exists before anyone opened a page.",n:["logging","event_log","linking","relation"],d:"event_log entity.written {subject:7a3f, actor:basil}\nrelation 9c12 linksTo 3e88 {matched:'Immerwald', via:alias}"}]},
+ {title:"Session night",steps:[
+  {t:"Basil opens the EncounterRunner. Rendering loads projection_def CombatView: statblock full, tactics primary, lore hidden.",n:["frontend","api","p_combat","rendering","projection_def"],d:"projection_def CombatView\n  reads: [Name, Statblock], hasBlock\n  view_config.sectionLayout:\n    tactics: primary\n    appearance: collapsed\n    lore: hidden\n    secret: hidden"},
+  {t:"Resolution builds the stack for the campaign: SRD → homebrew pack → campaign layer. Rina exists only in the campaign layer, so she wins by default; the goblin statblock comes from the SRD unless the homebrew pack overrides it.",n:["resolution","relation","component"],d:"stack(campaign 1f00)\n  1f00 campaign      priority 30\n  2a00 homebrew pack priority 20\n  0001 SRD           priority 10\nkey creature/goblin → entry in 2a00 (overrides) wins"},
+  {t:"Access strips what the player's session view may not see: the secret block is gm-only, the tactics block is not part of the player projection at all.",n:["access","component"],d:"Visibility 9c12 {audience:gm} → dropped for player role\nsectionLayout(player CombatView): tactics hidden"},
+  {t:"Rina takes 8 damage. Realtime updates the in-memory session state, broadcasts state.changed to every connected client and Logging persists it as an event row.",n:["realtime","session_state","event_log","logging","p_combat"],d:"state.changed {session:5b21, target:7a3f, hp:27→19, actor:basil}\nevent_log ← same payload"},
+  {t:"Basil reveals the secret. gm.revealBlock lets Knowledge grant the tag; KnowledgeState now holds it and block.revealed fires. No content moved — only the gate opened.",n:["knowledge","component","relation","event_log"],d:"gm.revealBlock {block:9c12, to:party}\nrelation KnowledgeState holds tag/rina-herkunft {holder:party}\nevent_log block.revealed {block:9c12}"}]},
+ {title:"Between sessions",steps:[
+  {t:"A player opens the wiki page for Immerwald on the phone. Rendering asks Resolution for the stack and Access for the role, then Knowledge for which gated blocks are open.",n:["frontend","api","p_wiki","rendering","resolution","access","knowledge"],d:"GET /view/WikiArticle/3e88?campaign=1f00\nrole: player · stack: [1f00, 2a00, 0001]\nopen tags: [rina-herkunft]"},
+  {t:"The page shows the lore paragraphs, the newly revealed secret about Rina (its KnowledgeRequirement is now met), and backlinks from Linking — Rina's secret block links here.",n:["p_wiki","linking","relation","component"],d:"blocks: paragraph ×3, secret 9c12 (met)\nbacklinks: 9c12 ← Rina von Immerwald"},
+  {t:"The player writes a poem about the place. PC interface whitelists poem for player-authored blocks; Validation accepts it, Owner is the player, Visibility defaults to campaign.",n:["editor","validation","interface","entity","component","relation"],d:"entity c4d1\ncomponent c4d1 Block {blockType:poem, body:{raw:…}}\ncomponent c4d1 Owner {userId:lea}\ncomponent c4d1 Visibility {audience:campaign}\nrelation 3e88 hasBlock c4d1 {order:9}"},
+  {t:"Meanwhile Basil sketches next week's encounter and marks it idea. SessionPrep hides it behind the planning filter; IdeaInbox lists it. Status is just a component — no separate 'draft' table.",n:["editor","component","p_prep","rendering"],d:"component e120 Status {value:idea}\nSessionPrep statusFilter: planned+used\nIdeaInbox  statusFilter: idea"}]}
+];
+const svg=document.getElementById("svg"),NS="http://www.w3.org/2000/svg";const root=document.createElementNS(NS,"g");svg.appendChild(root);
+const byId={};N.forEach(n=>byId[n.id]=n);let tx=0,ty=0,sc=1;function applyT(){root.setAttribute("transform",`translate(${tx},${ty}) scale(${sc})`)}
+let edges=[],W=0;
+function layout(){root.innerHTML="";W=Math.max(340,svg.clientWidth);const pad=12,gap=10,cols=W<520?2:W<760?3:W<1000?4:6,nw=(W-pad*2-gap*(cols-1))/cols,nh=44;let y=14;
+ const gT=document.createElementNS(NS,"g"),gE=document.createElementNS(NS,"g"),gN=document.createElementNS(NS,"g");root.append(gT,gE,gN);
+ TIERS.forEach(t=>{const ns=N.filter(n=>n.tier===t.id),rows=Math.ceil(ns.length/cols),h=24+rows*(nh+gap);const r=document.createElementNS(NS,"rect");r.setAttribute("x",6);r.setAttribute("y",y);r.setAttribute("width",W-12);r.setAttribute("height",h);r.setAttribute("rx",8);const x=document.createElementNS(NS,"text");x.setAttribute("x",pad);x.setAttribute("y",y+14);x.textContent=t.label;const g=document.createElementNS(NS,"g");g.classList.add("tier");g.append(r,x);gT.appendChild(g);
+  ns.forEach((n,i)=>{n.x=pad+(i%cols)*(nw+gap);n.y=y+22+Math.floor(i/cols)*(nh+gap);n.w=nw;n.h=nh});y+=h+16});
+ edges=E.map(([s,t])=>{const a=byId[s],b=byId[t],p=document.createElementNS(NS,"path");p.classList.add("e");let sx=a.x+a.w/2,sy=a.y+a.h,ex=b.x+b.w/2,ey=b.y;if(b.y<a.y){sy=a.y;ey=b.y+b.h}if(Math.abs(b.y-a.y)<1){sx=a.x+a.w;sy=a.y+a.h/2;ex=b.x;ey=sy}const my=(sy+ey)/2;p.setAttribute("d",`M${sx},${sy} C${sx},${my} ${ex},${my} ${ex},${ey}`);gE.appendChild(p);return{a,b,p}});
+ N.forEach((n,i)=>{const g=document.createElementNS(NS,"g");g.classList.add("n");if(n.dashed)g.classList.add("dashed");const r=document.createElementNS(NS,"rect");r.setAttribute("x",n.x);r.setAttribute("y",n.y);r.setAttribute("width",n.w);r.setAttribute("height",n.h);r.setAttribute("rx",6);r.setAttribute("stroke",T[n.tier]);const t=document.createElementNS(NS,"text");t.classList.add("t");t.setAttribute("x",n.x+9);t.setAttribute("y",n.y+18);t.textContent=n.label;const s=document.createElementNS(NS,"text");s.classList.add("s");s.setAttribute("x",n.x+9);s.setAttribute("y",n.y+33);s.textContent=n.sub||"";g.append(r,t,s);
+  const bc=document.createElementNS(NS,"circle");bc.setAttribute("cx",n.x+n.w-12);bc.setAttribute("cy",n.y+12);bc.setAttribute("r",8);bc.setAttribute("fill",T[n.tier]);bc.style.display="none";const bt=document.createElementNS(NS,"text");bt.classList.add("badge");bt.setAttribute("x",n.x+n.w-12);bt.setAttribute("y",n.y+15.5);bt.setAttribute("text-anchor","middle");bt.style.display="none";g.append(bc,bt);n.bc=bc;n.bt=bt;
+  g.addEventListener("click",ev=>{ev.stopPropagation();selectNode(n)});n.el=g;gN.appendChild(g)});
+ svg.setAttribute("viewBox",`0 0 ${W} ${y}`);svg.style.height=y*Math.min(1,svg.clientWidth/W)+"px";tx=0;ty=0;sc=1;applyT();refresh()}
+let sel=null,curCase=-1,step=0;
+function highlight(ids,order){const set=new Set(ids);N.forEach(m=>{m.el.classList.toggle("dim",ids&&!set.has(m.id));m.el.classList.toggle("sel",sel===m);const k=order?order.indexOf(m.id):-1;m.bc.style.display=k>=0?"":"none";m.bt.style.display=k>=0?"":"none";if(k>=0)m.bt.textContent=k+1});
+ edges.forEach(e=>{const hot=ids&&set.has(e.a.id)&&set.has(e.b.id);e.p.classList.toggle("dim",!!ids&&!hot);e.p.classList.toggle("hot",!!hot)})}
+function refresh(){if(curCase>=0){const c=CASES[curCase],s=c.steps[step];sel=null;highlight(s.n,s.n);
+ document.getElementById("sheet").innerHTML=`<div class="steps"><button id="prev">‹</button><span class="pos">${c.title} · step ${step+1} of ${c.steps.length}</span><button id="next">›</button></div><p>${s.t}</p><h4>Data</h4><pre>${s.d}</pre>`;
+ document.getElementById("prev").onclick=()=>{step=(step-1+c.steps.length)%c.steps.length;refresh()};document.getElementById("next").onclick=()=>{step=(step+1)%c.steps.length;refresh()}}
+ else if(sel){const n=sel;highlight([n.id,...edges.filter(e=>e.a===n||e.b===n).map(e=>e.a===n?e.b.id:e.a.id)]);const ins=edges.filter(e=>e.b===n),outs=edges.filter(e=>e.a===n);
+ document.getElementById("sheet").innerHTML=`<h3>${n.label}</h3><span class="tag" style="background:${T[n.tier]}">${n.tier}</span>${n.dashed?'<span class="tag" style="background:var(--ink-2)">optional / deferred</span>':''}${n.body?`<p>${n.body}</p>`:""}${n.pre?`<h4>Definition</h4><pre>${n.pre}</pre>`:""}${ins.length?`<h4>Reads from</h4><ul>${ins.map(e=>`<li><a data-id="${e.a.id}">${e.a.label}</a></li>`).join("")}</ul>`:""}${outs.length?`<h4>Feeds</h4><ul>${outs.map(e=>`<li><a data-id="${e.b.id}">${e.b.label}</a></li>`).join("")}</ul>`:""}`;
+ document.querySelectorAll("#sheet a[data-id]").forEach(a=>a.onclick=()=>selectNode(byId[a.dataset.id]))}
+ else{highlight(null);document.getElementById("sheet").innerHTML=`<div class="empty">Tap a box for its columns or responsibilities, or pick a use case above to follow real data through the system step by step.<div class="legend"><span style="--c:var(--c-input)">inputs</span><span style="--c:var(--c-registry)">registry</span><span style="--c:var(--c-storage)">storage</span><span style="--c:var(--c-engine)">engines</span><span style="--c:var(--c-read)">read side</span></div></div>`}}
+function selectNode(n){curCase=-1;document.querySelectorAll("#cases button").forEach(b=>b.classList.toggle("on",b.dataset.case==="-1"));sel=n;refresh()}
+document.getElementById("cases").addEventListener("click",ev=>{const b=ev.target.closest("button");if(!b)return;document.querySelectorAll("#cases button").forEach(x=>x.classList.remove("on"));b.classList.add("on");curCase=+b.dataset.case;step=0;sel=null;refresh()});
+svg.addEventListener("click",()=>{if(curCase<0){sel=null;refresh()}});
+let ptrs=new Map(),last=null;const g=document.getElementById("graph");
+g.addEventListener("pointerdown",ev=>{ptrs.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});g.setPointerCapture(ev.pointerId);last=null});
+g.addEventListener("pointermove",ev=>{if(!ptrs.has(ev.pointerId))return;ptrs.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});const ps=[...ptrs.values()];
+ if(ps.length===1){if(last){tx+=ev.clientX-last.x;ty+=ev.clientY-last.y;applyT()}last={x:ev.clientX,y:ev.clientY}}
+ else if(ps.length===2){const d=Math.hypot(ps[0].x-ps[1].x,ps[0].y-ps[1].y),cx=(ps[0].x+ps[1].x)/2,cy=(ps[0].y+ps[1].y)/2;if(last&&last.d){const k=d/last.d;const r=svg.getBoundingClientRect(),mx=cx-r.left,my=cy-r.top;tx=mx-(mx-tx)*k;ty=my-(my-ty)*k;sc*=k;applyT()}last={d,x:cx,y:cy}}});
+g.addEventListener("pointerup",ev=>{ptrs.delete(ev.pointerId);last=null});g.addEventListener("pointercancel",ev=>{ptrs.delete(ev.pointerId);last=null});
+g.addEventListener("wheel",ev=>{ev.preventDefault();const r=svg.getBoundingClientRect(),mx=ev.clientX-r.left,my=ev.clientY-r.top,k=ev.deltaY<0?1.1:0.9;tx=mx-(mx-tx)*k;ty=my-(my-ty)*k;sc*=k;applyT()},{passive:false});
+layout();let rt;window.addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(layout,150)});
+</script>
+</body>
+</html>
