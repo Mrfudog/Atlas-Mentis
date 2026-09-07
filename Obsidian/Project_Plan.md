@@ -31,7 +31,7 @@ Goal: a self-hosted, web-based platform (working title **TTRPG Platform**) for w
 | [[30_Data_Architecture]] | Tiers and vocabulary (from the data-architecture session) | draft |
 | [[31_Data_Model_Graph]] | Interactive entity graph (HTML) | draft |
 | [[Data Definitions]] | Living registry v0.5 — compound model (pegs/cards/strings, interfaces), components, relations, entities, compositions, projections, renderers, engines, events | living |
-| [[34_Schemas_v1]] | Complete schemas v1.1: all components, interfaces, global relations, projections, renderers/facets/canvas, decisions D0–D16 | living |
+| [[Schemas]] | Complete schemas v1.1: all components, interfaces, global relations, projections, renderers/facets/canvas, decisions D0–D16 | living |
 | [[35_Data_Architecture_Overview]] | Mobile interactive architecture overview (HTML) with three use-case walkthroughs; registry tier incl. renderer_def | present |
 | [[33_Backbone_Concept]] | Mechanisms of the backbone and why | draft |
 | [[40_Areas]] | Area definitions | draft |

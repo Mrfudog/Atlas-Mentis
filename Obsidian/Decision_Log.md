@@ -103,7 +103,7 @@ Merged into AD-04.
 
 ## Data-model decisions (D-series)
 
-Fine-grained decisions of the compound data model. Source and schemas: [[34_Schemas_v1]] (decisions table D0–D10); walkthrough of 2026-09-02; boards/display session of 2026-09-04. Same rules as AD entries: IDs immutable, superseded entries get a note.
+Fine-grained decisions of the compound data model. Source and schemas: [[Schemas]] (decisions table D0–D10); walkthrough of 2026-09-02; boards/display session of 2026-09-04. Same rules as AD entries: IDs immutable, superseded entries get a note.
 
 | # | Question | Decision / current proposal | Status |
 |---|---|---|---|
@@ -129,7 +129,7 @@ Fine-grained decisions of the compound data model. Source and schemas: [[34_Sche
 
 ## Changelog
 - **0.5** (2026-09-05): AD-19 board-first v1; D16 placement kinds; D17 print & export via facets/media.
-- **0.4** (2026-09-04): AD-01 tech confirmed via D0. New D-series section consolidating the data-model decisions D0–D10 ([[34_Schemas_v1]]) with post-walkthrough statuses (D1/D3/D4/D6 decided) and D11–D15 from the boards/display session.
+- **0.4** (2026-09-04): AD-01 tech confirmed via D0. New D-series section consolidating the data-model decisions D0–D10 ([[Schemas]]) with post-walkthrough statuses (D1/D3/D4/D6 decided) and D11–D15 from the boards/display session.
 - **0.3** (2026-08-31): AD-16 decided, AD-18 added.
 - **0.2** (2026-08-31): Resolved AD-01/02/06/08/09/10/11, merged AD-07, added AD-00, AD-13 … AD-17.
 - **0.1** (2026-08-28): Initial twelve questions.

@@ -23,7 +23,7 @@ The storage model of v0.4 (typed `entity` rows with a JSONB props bag per entity
 - **Entry carries `pinned: true`** instead of a version id (D6): unpinned = "this peg and whatever succeeds it", pinned = "exactly this peg". Resolution: collect the peg and its successors; the peg whose best Entry has the highest layer priority wins; tie within one layer → newest successor. Direct placement into a higher-priority layer replaces pin mechanics; per-entity priority is ruled out; bulk-placing a layer's content is a UI operation writing ordinary Entries. Override vs successor is a user choice at write time.
 - **IDs stay opaque** (D15, REQ-163): no pack/type/version in the identifier; provenance via `source_pack` / `source_version` metadata; copying only as explicit fork (`forkedFrom`).
 
-Full schemas (all components, 40 interfaces, projections, events, decisions D0–D10): [[34_Schemas_v1]]. The v0.4 sections below remain the content inventory (which components, relations, interfaces, projections exist); read their storage vocabulary through this section.
+Full schemas (all components, 40 interfaces, projections, events, decisions D0–D10): [[Schemas]]. The v0.4 sections below remain the content inventory (which components, relations, interfaces, projections exist); read their storage vocabulary through this section.
 
 ## 0. Terminology
 
@@ -58,7 +58,7 @@ Ownership rule: an entity *owned* by a composition is deleted with it; a *refere
 
 ## 1. Component definitions (former property types)
 
-Each row is (or maps onto) a `component_def` in the compound model; "structured" shapes are the JSON Schemas in [[34_Schemas_v1]].
+Each row is (or maps onto) a `component_def` in the compound model; "structured" shapes are the JSON Schemas in [[Schemas]].
 
 | Property Type | O | Kind | Shape / values | Constraints / notes |
 |---|---|---|---|---|
@@ -269,7 +269,7 @@ How a selected entity is *drawn* in a context. Requirements REQ-157 … REQ-164;
 **Facets (D14, REQ-164).** System-wide open enum `short` · `description` · `full` · `image` · `token` · `map` · `link`. Contexts request a facet; the same `description` of a Location appears on a board, a character sheet or a session note; `short` of a weapon inside a statblock. Semantic zoom (REQ-162): the current zoom depth or active anchor maps onto a facet.
 
 **Board canvas (REQ-157, D12).** Part of the board ViewConfig, not the layer system:
-- `placements[]` — **kind** `entity` | `asset` | `shape` | `widget` (D16): peg reference, file reference, inline geometry/icon primitive (no peg), or an interactive tool instance (creature creator, generators, forms — the existing Widget mechanism embedded on the canvas); plus geometry (x, y, w, h, rotation?, zIndex?), optional `facetOverride` / `rendererOverride` / `priorityOverride`, optional `anchorRef`. Schema: [[34_Schemas_v1]] `component/CanvasConfig`
+- `placements[]` — **kind** `entity` | `asset` | `shape` | `widget` (D16): peg reference, file reference, inline geometry/icon primitive (no peg), or an interactive tool instance (creature creator, generators, forms — the existing Widget mechanism embedded on the canvas); plus geometry (x, y, w, h, rotation?, zIndex?), optional `facetOverride` / `rendererOverride` / `priorityOverride`, optional `anchorRef`. Schema: [[Schemas]] `component/CanvasConfig`
 - `typeRules[]` — selector (interface or component attribute value) → facet/renderer + priority, e.g. "all maps as link/popup"
 - `anchors[]` — id, name, position, zoom, optional target facet and visible layers (REQ-159); quick navigation between anchors (REQ-160)
 
@@ -393,7 +393,7 @@ How it behaves:
 
 ## 9. Still to define
 
-What the data architecture needs before it is "good for now". Status 2026-09-04: items 1 (D0), 2, 3, 8 and 9 are covered by [[34_Schemas_v1]] (complete schemas, 40 interfaces, event payloads, decisions D0–D10); item 4 is fixed conceptually by D6; item 10 is proposed in D10. Remaining open: 5, 6, 7 and confirming the D-proposals.
+What the data architecture needs before it is "good for now". Status 2026-09-04: items 1 (D0), 2, 3, 8 and 9 are covered by [[Schemas]] (complete schemas, 40 interfaces, event payloads, decisions D0–D10); item 4 is fixed conceptually by D6; item 10 is proposed in D10. Remaining open: 5, 6, 7 and confirming the D-proposals.
 
 | # | Gap | Why it blocks | Size |
 |---|---|---|---|
@@ -412,7 +412,7 @@ Not needed now: CalendarSystem internals, Reputation propagation, Board/Widget s
 
 ## 10. Changelog
 - **0.7** (2026-09-05): Print & export via facets/media (D17, REQ-167): medium parameter on renderers, Export engine.
-- **0.6** (2026-09-05): Placement kinds entity/asset/shape/widget (D16, REQ-165); board-first v1 (AD-19). [[34_Schemas_v1]] recovered and updated to v1.1 (`meta/renderer`, `value/Facet`, `component/DisplayProfile`, `component/CanvasConfig`).
+- **0.6** (2026-09-05): Placement kinds entity/asset/shape/widget (D16, REQ-165); board-first v1 (AD-19). [[Schemas]] recovered and updated to v1.1 (`meta/renderer`, `value/Facet`, `component/DisplayProfile`, `component/CanvasConfig`).
 - **0.5** (2026-09-04): Compound model merged (§0a; entity = peg, components as cards, interfaces replace entity types, registry rows; D0–D6 outcomes of 2026-09-02): Statblock back to entity (D4), Entry `pinned` flag (D6), `forkedFrom` relation and opaque IDs (D15/REQ-163). §7 rewritten to the three-table model incl. `renderer_def` (D0/D11). New §5a Renderers & display: facets, board canvas (placements, typeRules, anchors), priority-based resolution (D11–D14, REQ-157…164). ViewConfig gains selection fields (three-level configuration). Open questions updated (Q4 → REQ-156, Q7 decided).
 - **0.4** (2026-08-31): Merged v0.3 (requirements chat, AD-16) as base. Added `BlockType` property type and accepted-block-types column per entity type; tactics live on Statblock. `hasBlock` generalizes hasFact/hasSecret. `ViewConfig.sectionLayout` + `statblockProminence`; projections CombatView and CreatureWiki/NPCDirectory with explicit section layouts. §7 rewritten as a concrete relational + JSONB storage model with type registry tables. §9 "Still to define" added. Open question 7.
 - **0.3** (2026-08-31): Naming reconciliation (AD-16): Tier; Layer/Entry/Stack; Asset; WorldDate/CalendarSystem; SourceRef; ChangeEntry; dimensions; new entities, relations, engines, projections.
