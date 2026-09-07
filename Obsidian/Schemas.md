@@ -8,7 +8,7 @@ related: [[[Data Definitions]], [[35_Data_Architecture_Overview]], [[Decision Lo
 
 # Schemas
 
-Machine-readable counterpart to [[32_Data_Definitions]]. Every component, interface, relation, projection and event has one entry here; change this file when the registry changes and log it in [[#8. Changelog]]. Format: JSON Schema draft 2020-12; `$id` values are the registry keys (`component/…`, `value/…`, `iface/…`, `rel/…`, `event/…`).
+Machine-readable counterpart to [[Data Definitions]]. Every component, interface, relation, projection and event has one entry here; change this file when the registry changes and log it in [[#8. Changelog]]. Format: JSON Schema draft 2020-12; `$id` values are the registry keys (`component/…`, `value/…`, `iface/…`, `rel/…`, `event/…`).
 
 Model in one line: **entity = ID · component = one typed payload per entity · interface = required/optional components + block types + relations · relation = typed edge with props.**
 
