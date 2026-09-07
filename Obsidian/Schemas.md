@@ -6,7 +6,7 @@ updated: 2026-09-05
 related: [[32_Data_Definitions]], [[35_Data_Architecture_Overview]], [[20_Decision_Log]]
 ---
 
-# Schemas v1
+# Schemas
 
 Machine-readable counterpart to [[32_Data_Definitions]]. Every component, interface, relation, projection and event has one entry here; change this file when the registry changes and log it in [[#8. Changelog]]. Format: JSON Schema draft 2020-12; `$id` values are the registry keys (`component/…`, `value/…`, `iface/…`, `rel/…`, `event/…`).
 
