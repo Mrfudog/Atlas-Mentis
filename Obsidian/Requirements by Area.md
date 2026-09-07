@@ -6,7 +6,7 @@ updated: 2026-09-05
 
 # Requirements by Area
 
-Derived view over [[10_Requirements]] — regenerate rather than edit. Sorted by priority, then effort. Jump: [[#Content Backbone]] · [[#Platform & Access]] · [[#Creatures & Characters]] · [[#Player Experience]] · [[#Campaign & Sessions]] · [[#World & Lore]] · [[#Rules & Reference]] · [[#Live Play]] · [[#Maps]] · [[#Media & Assets]] · [[#Cross-cutting]]
+Derived view over [[Requirements]] — regenerate rather than edit. Sorted by priority, then effort. Jump: [[#Content Backbone]] · [[#Platform & Access]] · [[#Creatures & Characters]] · [[#Player Experience]] · [[#Campaign & Sessions]] · [[#World & Lore]] · [[#Rules & Reference]] · [[#Live Play]] · [[#Maps]] · [[#Media & Assets]] · [[#Cross-cutting]]
 
 ## Content Backbone
 
