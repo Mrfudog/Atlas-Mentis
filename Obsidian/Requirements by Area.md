@@ -113,7 +113,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 
 ## Player Experience
 
-17 requirements · 57 points · area definition: [[40_Areas#Player Experience]]
+17 requirements · 57 points · area definition: [[Areas#Player Experience]]
 
 | ID | Requirement | Prio | Effort | Phase | Prep cost | Status |
 |---|---|---|---|---|---|---|
