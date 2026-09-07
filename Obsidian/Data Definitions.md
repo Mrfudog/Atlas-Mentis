@@ -389,7 +389,7 @@ How it behaves:
 6. Split of the CampaignComposition container subtree.
 7. ~~Single entity table vs one table per root type~~ → **decided** (D0: three tables + optional views).
 8. D2: `allows` strict vs open (leading: strict + `expertMode` per layer + `universal` per component).
-9. D5 / D7 / D8 / D9 / D10 as listed in [[Decision_Log#Data-model decisions (D-series)]].
+9. D5 / D7 / D8 / D9 / D10 as listed in [[Decision Log#Data-model decisions (D-series)]].
 
 ## 9. Still to define
 
