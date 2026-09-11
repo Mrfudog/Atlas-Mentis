@@ -11,12 +11,14 @@
             "id": "0f563dc26f82184d",
             "type": "leaf",
             "state": {
-              "type": "html-view",
+              "type": "markdown",
               "state": {
-                "file": "Obsidian/35_Data_Architecture_Overview.html"
+                "file": "Obsidian/Requirements by Area.md",
+                "mode": "source",
+                "source": false
               },
-              "icon": "code-glyph",
-              "title": "35_Data_Architecture_Overview"
+              "icon": "lucide-file",
+              "title": "Requirements by Area"
             }
           }
         ]
@@ -175,13 +177,14 @@
   },
   "active": "0f563dc26f82184d",
   "lastOpenFiles": [
+    "Obsidian/Requirements.md",
+    "Obsidian/35_Data_Architecture_Overview.html",
     "Obsidian/Glossary.md",
     "Obsidian/Schemas.md",
     "20_Decision_Log.md",
     "Obsidian/Start.md",
     "broken links output.md",
     "Obsidian/Requirements by Area.md",
-    "Obsidian/Requirements.md",
     "Obsidian/Areas.md",
     "Obsidian/Backbone Concept.md",
     "Obsidian/Data Definitions.md",
