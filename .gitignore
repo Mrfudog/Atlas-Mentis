@@ -7,3 +7,7 @@ daten
 .env
 .env.*
 !.env.example
+
+# Prototyp-Prüfaufbau: echte Kampagnendaten, gehören nicht ins öffentliche Repo
+prototype/test/dbdump/
+prototype/test/harness/

@@ -137,6 +137,7 @@ export const components: Record<string, ComponentDef> = {
         art: { type: 'string', title: 'Art' },
         gesinnung: { type: 'string', title: 'Gesinnung' },
         ac: { type: 'number', title: 'Rüstungsklasse' },
+        acNotiz: { type: 'string', title: 'RK-Herkunft' },
         tp: { type: 'number', title: 'Trefferpunkte' },
         tpFormel: { type: 'string', title: 'TP-Formel' },
         tempo: { type: 'string', title: 'Tempo' },
@@ -159,7 +160,10 @@ export const components: Record<string, ComponentDef> = {
         passivWahr: { type: 'number', title: 'Passive Wahrnehmung', derived: '10+mod(wis)' },
         sinne: { type: 'string', title: 'Sinne' },
         sprachen: { type: 'string', title: 'Sprachen' },
+        rettungswuerfe: { type: 'string', title: 'Rettungswürfe' },
+        fertigkeiten: { type: 'string', title: 'Fertigkeiten' },
         resistenzen: { type: 'string', title: 'Resistenzen' },
+        verwundbarkeiten: { type: 'string', title: 'Verwundbarkeiten' },
         immunitaeten: { type: 'string', title: 'Immunitäten' },
       },
     },
@@ -210,6 +214,83 @@ export const components: Record<string, ComponentDef> = {
       properties: {
         art: { type: 'string', title: 'Fraktionsart' },
         farbe: { type: 'string', title: 'Farbe' },
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------- items
+
+  ItemInfo: {
+    name: 'ItemInfo',
+    label: 'Gegenstand',
+    engine: null,
+    schema: {
+      type: 'object',
+      properties: {
+        gegenstandstyp: { type: 'string', title: 'Gegenstandstyp' },
+        // Two different scales, deliberately kept apart: `raritaet` is the 5e
+        // magic-item rarity, `kaufraritaet` is how hard the thing is to buy.
+        raritaet: { type: 'string', title: 'Raritaet',
+          enum: ['gewöhnlich', 'ungewöhnlich', 'selten', 'sehr selten', 'legendär', 'artefakt'] },
+        kaufraritaet: { type: 'string', title: 'Kaufrarität' },
+        kupferpreis: { type: 'number', title: 'Kupferpreis' },
+        stapel: { type: 'number', title: 'Stapelgrösse' },
+      },
+    },
+  },
+
+  /** The grid-inventory shape. Its dimensions are derived, never stored. */
+  Formfaktor: {
+    name: 'Formfaktor',
+    label: 'Formfaktor',
+    engine: 'Calculation',
+    schema: {
+      type: 'object',
+      properties: {
+        rows: { type: 'array', title: 'Raster', items: { type: 'string' } },
+        breite: { type: 'number', title: 'Breite', derived: 'breite(rows)' },
+        hoehe: { type: 'number', title: 'Höhe', derived: 'zeilen(rows)' },
+        felder: { type: 'number', title: 'Felder', derived: 'felder(rows)' },
+      },
+    },
+  },
+
+  WaffenInfo: {
+    name: 'WaffenInfo',
+    label: 'Waffe',
+    engine: null,
+    schema: {
+      type: 'object',
+      properties: {
+        schaden: { type: 'string', title: 'Schaden' },
+        schadenstyp: { type: 'string', title: 'Schadenstyp' },
+        reichweite: { type: 'string', title: 'Reichweite' },
+      },
+    },
+  },
+
+  RuestungsInfo: {
+    name: 'RuestungsInfo',
+    label: 'Rüstung',
+    engine: null,
+    schema: {
+      type: 'object',
+      properties: {
+        rk: { type: 'number', title: 'Rüstungsklasse' },
+        ruestungstyp: { type: 'string', title: 'Rüstungstyp' },
+      },
+    },
+  },
+
+  MaterialInfo: {
+    name: 'MaterialInfo',
+    label: 'Material',
+    engine: null,
+    schema: {
+      type: 'object',
+      properties: {
+        materialtyp: { type: 'string', title: 'Materialtyp' },
+        berufe: { type: 'array', title: 'Berufe', items: { type: 'string' } },
       },
     },
   },

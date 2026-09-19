@@ -118,6 +118,10 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 .pruef li{margin:1px 0}
 .rail h3 .btn,.aside h3 .btn{float:right;margin-top:-2px;padding:0 6px;font-size:14px;line-height:1.2}
 .warn{color:var(--accent);font-family:var(--ff-mono);font-size:11px}
+.bericht{font-size:13px;margin:10px 0}
+.bericht ul{margin:4px 0;padding-left:18px}
+.bericht li{margin:1px 0}
+.warnzeile{color:var(--warn);font-size:12.5px;margin:6px 0}
 .pic{margin:14px 0}
 .pic img{display:block;width:100%;max-width:100%;border:1px solid var(--line);border-radius:var(--r)}
 .pic figcaption{font-size:12px;color:var(--dim);margin-top:4px;font-style:italic}
@@ -197,7 +201,7 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
     <div class="sub">Artikelwerk</div>
     <div class="grow"></div>
     <input id="q" class="search" type="search" placeholder="Suchen…" aria-label="Artikel suchen">
-    <select id="view" class="vw" aria-label="Darstellungsstufe"></select>
+    <select id="facet" class="vw" aria-label="Darstellungsstufe"></select>
     <button id="new" class="btn pri" type="button">+ Neu</button>
   </header>
 
@@ -228,6 +232,17 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 
 var db=null, me={write:true}, ready=false;
 var ENT=new Map();                       // id -> entity body
+
+/* Ein Schnappschuss liefert eingefrorene Objekte („Delivered snapshots and
+   their data() are frozen"). Unter "use strict" wirft schon `b.id=b.id` auf
+   so einem Objekt — und zwar mitten im Snapshot-Callback, wo niemand es
+   auffängt. Deshalb kommt alles, was die Seite später bearbeitet, als
+   eigene Kopie herein. */
+function frisch(o){
+  if(o==null) return o;
+  try{ return structuredClone(o); }catch(x){}
+  try{ return JSON.parse(JSON.stringify(o)); }catch(x){ return o; }
+}
 var REG={interfaces:{},components:{},relations:{},vars:{},views:{}};
 var UI={route:{k:"list"}, view:"schnell", iface:"", tag:"", q:"", offen:false, pane:"main", regtab:"interfaces", err:""};
 
@@ -432,7 +447,9 @@ function inline(text,into){
     } else if(m[3]!==undefined){
       into.appendChild(el("span",{class:"vr"},m[3]));
     } else {
-      into.appendChild(el("strong",null,m[4]));
+      // Auszeichnung schachtelt: **{NAME}.** ist eine fette *Variable*.
+      // Ohne Rekursion landet der Platzhalter als Rohtext im <strong>.
+      into.appendChild(inline(m[4],el("strong")));
     }
     last=re.lastIndex;
   }
@@ -470,8 +487,22 @@ function fail(x){
 function go(r){ UI.route=r; UI.err=""; UI.pane="main"; render();
   var m=document.getElementById("main"); if(m)m.scrollTop=0; }
 
+/* Jeder Abschnitt für sich. Vorher konnte eine Ausnahme in renderRail()
+   renderMain() verhindern — die Seite blieb dann auf „Lädt…" stehen und
+   sagte nicht, warum. Ein sichtbarer Fehler ist besser als eine leere Seite. */
 function render(){
-  renderViewSelect(); renderRail(); renderMain(); renderAside(); renderPanes();
+  var kaputt=[];
+  [["Auswahl",renderViewSelect],["Seitenleiste",renderRail],["Inhalt",renderMain],
+   ["Bezüge",renderAside],["Bereiche",renderPanes]].forEach(function(t){
+    try{ t[1](); }catch(x){ kaputt.push(t[0]+": "+(x&&x.message||x)); }
+  });
+  if(kaputt.length){
+    try{
+      var v=document.getElementById("view");
+      if(v) v.insertBefore(el("div",{class:"banner",text:"Anzeigefehler — "+kaputt.join(" · ")}),v.firstChild);
+      if(window.console) console.error("Nebelwacht:",kaputt);
+    }catch(y){}
+  }
 }
 function renderPanes(){
   var narrow=window.matchMedia("(max-width:900px)").matches;
@@ -520,6 +551,8 @@ function renderRail(){
     onclick:function(){go({k:"reg"});}},[el("b",{text:"Register"}),el("em",{text:"def"})]));
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="graph"),
     onclick:function(){go({k:"graph"});}},[el("b",{text:"Geflecht"}),el("em",{text:"↔"})]));
+  if(me.write) s3.appendChild(el("button",{class:"navrow",type:"button",
+    onclick:function(){importDialog();}},[el("b",{text:"Importieren"}),el("em",{text:"md"})]));
   var offenZahl=0; ENT.forEach(function(x){ if(pruefeArtikel(x).length) offenZahl++; });
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.offen),
     onclick:function(){UI.offen=!UI.offen;go({k:"list"});}},
@@ -713,7 +746,10 @@ function renderArticle(v,id){
         box.appendChild(tn);
         var body=(t.components&&t.components.Description&&t.components.Description.raw)||
                  ((t.blocks||[])[0]&&t.blocks[0].body)||"";
-        box.appendChild(para(fillVars(body,(r.props&&r.props.vars)||null,t),"cb"));
+        // Reihenfolge nach REQ-174: Bindung an der Kante → der *nutzende*
+        // Artikel → Kampagnenregister. Der Statblock trägt DC=12, nicht die
+        // Regel — gegen die Regel aufzulösen lässt {DC} stehen.
+        box.appendChild(para(fillVars(body,(r.props&&r.props.vars)||null,e),"cb"));
         var vb=(r.props&&r.props.vars)||{}, ks=Object.keys(vb);
         if(ks.length&&vw.bindungen)
           box.appendChild(el("span",{class:"bind",text:ks.map(function(k){return k+"="+vb[k];}).join("  ·  ")}));
@@ -1070,13 +1106,334 @@ function addAdhoc(e){
   });
 }
 
+
+/* ============================================================
+   Obsidian-Import. Dieselben Regeln wie @nw/import im Repo,
+   dort gegen echte Vault-Dateien getestet:
+   - Schlüssel case-insensitiv (der Vault schreibt Rarität, aber
+     rüstungsklasse — Dataview kleinschreibt Eigenschaften)
+   - U+2212 MINUS in Attributtabellen, kein Bindestrich
+   - Eintragstexte laufen über mehrere >-Zeilen weiter
+   - cr kann ein Bruch sein (1/8), also Text, keine Zahl
+   - „—" heisst nichts, nicht "—"
+   ============================================================ */
+
+function parseFM(text){
+  var src=String(text||"").replace(/^﻿/,"");
+  var m=/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(src);
+  if(!m) return {raw:{},index:{},body:src};
+  var raw={},cur=null;
+  (m[1]||"").split(/\r?\n/).forEach(function(line){
+    var li=/^\s*-\s+(.*)$/.exec(line);
+    if(li&&cur){ if(!Array.isArray(raw[cur]))raw[cur]=[]; raw[cur].push(unquote(li[1])); return; }
+    var kv=/^([^\s:][^:]*):\s*(.*)$/.exec(line);
+    if(!kv)return;
+    cur=kv[1].trim();
+    var v=unquote(kv[2]);
+    raw[cur]= v===""?[]:v;
+  });
+  Object.keys(raw).forEach(function(k){ if(Array.isArray(raw[k])&&!raw[k].length) raw[k]=""; });
+  var index={}; Object.keys(raw).forEach(function(k){ index[k.toLowerCase()]=k; });
+  return {raw:raw,index:index,body:src.slice(m[0].length)};
+}
+function unquote(v){ var t=String(v||"").trim();
+  return (t.length>=2&&/^(".*"|'.*')$/.test(t))?t.slice(1,-1):t; }
+function fmStr(fm,k){ var o=fm.index[String(k).toLowerCase()]; if(!o)return "";
+  var v=fm.raw[o]; return Array.isArray(v)?v.join(", "):String(v==null?"":v).trim(); }
+function fmList(fm,k){ var o=fm.index[String(k).toLowerCase()]; if(!o)return [];
+  var v=fm.raw[o]; if(Array.isArray(v))return v.filter(function(x){return x!=="";});
+  var s=String(v==null?"":v).trim(); return s?[s]:[]; }
+function fmNum(fm,k){ var t=fmStr(fm,k); if(t==="")return undefined;
+  var n=Number(t.replace(/[^\d.,-]/g,"").replace(",",".")); return isFinite(n)?n:undefined; }
+function linkZiel(raw){ var m=/\[\[([^\]]+)\]\]/.exec(String(raw||""));
+  var t=m?m[1]:String(raw||""); return (t.split("|")[0]||"").split("#")[0].trim(); }
+function stripDataview(b){ return String(b||"")
+  .replace(/#+\s*Inventar\s*\r?\n+```dataviewjs[\s\S]*?```/gi,"")
+  .replace(/```dataviewjs[\s\S]*?```/gi,"").trim(); }
+function sinnvoll(v){ var t=String(v||"").trim(); return t!==""&&!/^[—–-]+$/.test(t); }
+
+/* welche Art Datei ist das? */
+function erkenne(text){
+  var fm=parseFM(text);
+  if(fmStr(fm,"typ").toLowerCase()==="statblock") return "statblock";
+  if(fmStr(fm,"Gegenstandstyp")) return "gegenstand";
+  var t=fmStr(fm,"typ").toLowerCase();
+  if(["siedlung","region","kontinent","ort","gebäude","raum"].indexOf(t)>=0) return "ort";
+  return null;
+}
+
+var IF_TYP={waffe:"Waffe","ausrüstung":"Ruestung",ausruestung:"Ruestung","rüstung":"Ruestung",
+  material:"Material",verbrauchsgut:"Verbrauchsgut"};
+
+function impGegenstand(text,datei){
+  var fm=parseFM(text), name=datei.replace(/\.md$/i,"").trim();
+  var typ=fmStr(fm,"Gegenstandstyp").toLowerCase(), ifn=IF_TYP[typ]||"Gegenstand";
+  var body=stripDataview(fm.body), bilder=[];
+  (body.match(/!\[\[[^\]|#]+\.(?:png|jpe?g|webp|gif)(?:\|[^\]]*)?\]\]/gi)||[]).forEach(function(x){
+    bilder.push(linkZiel(x)); });
+
+  var c={ Name:{text:name},
+    Identity:{key:slug(ifn)+"/"+slug(name),aliases:fmList(fm,"aliases")},
+    Status:{value:"used"},
+    RawContent:{raw:text,format:"obsidian",importedAt:new Date().toISOString().slice(0,10)} };
+
+  var info={}, r=fmStr(fm,"Rarität"), kr=fmStr(fm,"Kaufrarität"),
+      kp=fmNum(fm,"Kupferpreis"), st=fmNum(fm,"Stapelgrösse");
+  if(fmStr(fm,"Gegenstandstyp")) info.gegenstandstyp=fmStr(fm,"Gegenstandstyp");
+  if(r&&r!=="-") info.raritaet=r;            // „-" heisst: kein magischer Gegenstand
+  if(kr&&kr!=="-") info.kaufraritaet=kr;     // andere Skala als raritaet
+  if(kp!==undefined) info.kupferpreis=kp;
+  if(st!==undefined) info.stapel=st;
+  if(Object.keys(info).length) c.ItemInfo=info;
+
+  var rows=fmList(fm,"Formfaktor"); if(rows.length) c.Formfaktor={rows:rows};
+  if(ifn==="Waffe"){ var w={};
+    if(fmStr(fm,"Schaden"))w.schaden=fmStr(fm,"Schaden");
+    if(fmStr(fm,"Schadenstyp"))w.schadenstyp=fmStr(fm,"Schadenstyp");
+    if(fmStr(fm,"Reichweite"))w.reichweite=fmStr(fm,"Reichweite");
+    if(Object.keys(w).length)c.WaffenInfo=w; }
+  if(ifn==="Ruestung"){ var ru={}, rk=fmNum(fm,"rüstungsklasse");
+    if(rk!==undefined)ru.rk=rk;
+    if(fmStr(fm,"rüstungstyp"))ru.ruestungstyp=fmStr(fm,"rüstungstyp");
+    if(Object.keys(ru).length)c.RuestungsInfo=ru; }
+  if(ifn==="Material"){ var ma={};
+    if(fmStr(fm,"Materialtyp"))ma.materialtyp=fmStr(fm,"Materialtyp");
+    var be=fmList(fm,"Berufe"); if(be.length)ma.berufe=be;
+    if(Object.keys(ma).length)c.MaterialInfo=ma; }
+  if(bilder[0]) c.Bild={url:bilder[0],bu:""};
+
+  var prosa=body.replace(/!\[\[[^\]]+\]\]/g,"").replace(/^#+\s*Eigenschaften[\s\S]*$/im,"").trim();
+  var bl=[]; if(prosa) bl.push({id:uid("b"),blockType:"paragraph",body:prosa,order:0});
+
+  var offen=[];
+  fmList(fm,"Eigenschaften").forEach(function(x){
+    var z=linkZiel(x); if(z) offen.push({type:"hatEigenschaft",ziel:z}); });
+
+  return { e:{ id:uid("g"), interfaces:[ifn], name:name,
+      tags:fmList(fm,"tags").filter(function(t){return t!=="gegenstand";}),
+      components:c, adhoc:[], blocks:bl, relations:[], createdAt:new Date().toISOString() },
+    offen:offen, bilder:bilder };
+}
+
+var SB_LABEL={"rüstungsklasse":"_skip","trefferpunkte":"_skip","geschwindigkeit":"tempo",
+  "saving throws":"rettungswuerfe",skills:"fertigkeiten","damage resistances":"resistenzen",
+  immunities:"immunitaeten",vulnerabilities:"verwundbarkeiten",senses:"sinne",
+  languages:"sprachen","proficiency bonus":"prof"};
+var ATTR=["str","dex","con","int","wis","cha"];
+
+function impStatblock(text,datei){
+  var fm=parseFM(text), name=fmStr(fm,"name")||datei.replace(/\.md$/i,"").trim();
+  var zeilen=String(fm.body).replace(/−/g,"-").split(/\r?\n/)
+    .filter(function(l){return l.trimStart().indexOf(">")===0;})
+    .map(function(l){return l.replace(/^\s*>\s?/,"");});
+
+  var info={system:"dnd5e-2014"}, g=fmStr(fm,"grösse");
+  if(g){ var p=/^([^(]+?)\s*(?:\(([^)]*)\))?$/.exec(g.trim());
+    if(p&&p[1])info.groesse=p[1].trim(); if(p&&p[2])info.art=p[2].trim(); }
+  if(fmStr(fm,"ausrichtung"))info.gesinnung=fmStr(fm,"ausrichtung");
+  if(fmStr(fm,"cr"))info.cr=fmStr(fm,"cr");            // kann 1/8 sein
+  if(fmStr(fm,"rolle"))info.kampfrolle=fmStr(fm,"rolle");
+  var ac=fmStr(fm,"ac");
+  if(ac){ var an=/(-?\d+)/.exec(ac); if(an)info.ac=Number(an[1]);
+    var aq=/\(([^)]*)\)/.exec(ac); if(aq)info.acNotiz=aq[1].trim(); }
+  var tp=fmNum(fm,"leben"); if(tp!==undefined)info.tp=tp;
+  if(fmStr(fm,"lebenswürfel"))info.tpFormel=fmStr(fm,"lebenswürfel");
+  var sp=fmList(fm,"geschwindigkeit"); if(sp.length)info.tempo=sp.join(", ");
+
+  zeilen.forEach(function(l){
+    var m=/^\*\*([^*]+?):?\*\*\s*(.*)$/.exec(l); if(!m)return;   // Doppelpunkt erlaubt
+    var k=SB_LABEL[m[1].trim().toLowerCase()], v=m[2].trim();
+    if(!k||k==="_skip"||!sinnvoll(v))return;
+    if(k==="prof"){ var n=Number(v.replace("+","")); if(isFinite(n))info.prof=n; return; }
+    if(k==="tempo"&&info.tempo)return;
+    info[k]=v;
+  });
+
+  var hi=-1; zeilen.forEach(function(l,i){ if(hi<0&&/^\|\s*STR\s*\|/i.test(l))hi=i; });
+  if(hi>=0){ for(var i=hi+1;i<zeilen.length;i++){ var l=zeilen[i];
+      if(!/^\|/.test(l))continue; if(/^\|\s*-/.test(l))continue;
+      var cells=l.split("|").slice(1,-1).map(function(c){return c.trim();});
+      ATTR.forEach(function(a,j){ var s=/(-?\d+)/.exec(cells[j]||""); if(s)info[a]=Number(s[1]); });
+      break; } }
+
+  var abschnitte=[],akt=null,eintrag=null;
+  function schliess(){ if(akt&&eintrag&&eintrag.name){ eintrag.text=eintrag.text.trim();
+      akt.eintraege.push(eintrag); } eintrag=null; }
+  zeilen.forEach(function(l){
+    var h=/^#+\s*(.+?)\s*$/.exec(l);
+    if(h){ schliess(); if(akt)abschnitte.push(akt); akt={name:h[1].trim(),eintraege:[]}; return; }
+    if(!akt)return;
+    var s=/^\*\*([^*]+?)\.?\*\*\s*(.*)$/.exec(l);
+    if(s){ schliess(); eintrag={name:s[1].trim(),text:s[2].trim()}; return; }
+    if(eintrag){ if(!l.trim()||/^-{3,}$/.test(l.trim()))return; eintrag.text+=" "+l.trim(); }
+  });
+  schliess(); if(akt)abschnitte.push(akt);
+
+  return { e:{ id:uid("sb"), interfaces:["Statblock"], name:name, tags:[],
+      components:{ Name:{text:name},
+        Identity:{key:"statblock/"+slug(name),aliases:fmList(fm,"aliases")},
+        Status:{value:"used"}, StatblockInfo:info,
+        RawContent:{raw:text,format:"obsidian",importedAt:new Date().toISOString().slice(0,10)} },
+      adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() },
+    abschnitte:abschnitte, kreatur:linkZiel(fmStr(fm,"kreatur"))||null };
+}
+
+function impOrt(text,datei){
+  var fm=parseFM(text), name=datei.replace(/\.md$/i,"").trim();
+  // Der leaflet-Block bleibt unangetastet: er wird später die Kartenansicht.
+  // Hier nur aus der Prosa genommen, im RawContent liegt er unverändert.
+  var body=String(fm.body)
+    .replace(/```leaflet[\s\S]*?```/gi,"")
+    .replace(new RegExp("^#\\s*"+name.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*$","im"),"")
+    .trim();
+
+  var enthaelt=[];
+  (body.match(/!\[\[[^\]]+\]\]/g)||[]).forEach(function(x){
+    var z=linkZiel(x); if(z&&!/\.(png|jpe?g|webp|gif)$/i.test(z)) enthaelt.push(z); });
+  var li={}; if(fmStr(fm,"typ"))li.art=fmStr(fm,"typ");
+  if(fmStr(fm,"biom"))li.umwelt=fmStr(fm,"biom");
+  if(fmStr(fm,"siedlungstyp"))li.siedlungstyp=fmStr(fm,"siedlungstyp");
+
+  var c={ Name:{text:name},
+    Identity:{key:"ort/"+slug(name),aliases:fmList(fm,"aliases")},
+    Status:{value:"used"}, LocationInfo:li,
+    RawContent:{raw:text,format:"obsidian",importedAt:new Date().toISOString().slice(0,10)} };
+
+  var prosa=body.replace(/!\[\[[^\]]+\]\]/g,"").replace(/^#+\s.*$/gm,"").trim();
+  var bl=[]; if(prosa) bl.push({id:uid("b"),blockType:"paragraph",body:prosa,order:0});
+
+  return { e:{ id:uid("o"), interfaces:["Ort"], name:name, tags:fmList(fm,"tags"),
+      components:c, adhoc:[], blocks:bl, relations:[], createdAt:new Date().toISOString() },
+    offen:enthaelt.map(function(z){return {type:"enthaelt",ziel:z};}) };
+}
+
+/* ---------- Stapelimport: Verweise innerhalb des Stapels auflösen ---------- */
+function importiere(dateien){
+  var ergebnis={gegenstand:[],statblock:[],ort:[],regeln:[],offen:[],unbekannt:[],bilder:[]};
+  var roh=[];
+  dateien.forEach(function(f){
+    var art=erkenne(f.text);
+    if(!art){ ergebnis.unbekannt.push(f.name); return; }
+    if(art==="gegenstand"){ var g=impGegenstand(f.text,f.name); roh.push({art:art,r:g}); ergebnis.gegenstand.push(g.e); }
+    if(art==="ort"){ var o=impOrt(f.text,f.name); roh.push({art:art,r:o}); ergebnis.ort.push(o.e); }
+    if(art==="statblock"){ var s=impStatblock(f.text,f.name); roh.push({art:art,r:s}); ergebnis.statblock.push(s.e); }
+  });
+
+  /* Abschnittseinträge werden je eine eigene Regel, die der Statblock
+     referenziert. Gleicher Name und Text heisst gleiche Regel, keine Kopie. */
+  var regelNach={};
+  roh.forEach(function(x){ if(x.art!=="statblock")return;
+    x.r.abschnitte.forEach(function(ab){ ab.eintraege.forEach(function(en){
+      var k=en.name+"\u0000"+en.text, id=regelNach[k];
+      if(!id){ id=uid("r"); regelNach[k]=id;
+        var kind=/^bonus/i.test(ab.name)?"bonus":/^reaction/i.test(ab.name)?"reaction"
+                :/^(villain|legendary)/i.test(ab.name)?"legendary":/^action/i.test(ab.name)?"action":"trait";
+        ergebnis.regeln.push({ id:id, interfaces:["Regel"], name:en.name, tags:[],
+          components:{ Name:{text:en.name}, Identity:{key:"regel/"+slug(en.name),aliases:[]},
+            Status:{value:"used"}, RuleInfo:{kind:kind}, Description:{raw:en.text} },
+          adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() }); }
+      x.r.e.relations.push({id:uid("rel"),type:"composedOf",to:id,props:{abschnitt:ab.name}});
+    });});
+  });
+
+  var alle=ergebnis.gegenstand.concat(ergebnis.ort,ergebnis.statblock,ergebnis.regeln);
+  var nachName={};
+  ENT.forEach(function(e){ if((e.interfaces||[])[0]!=="Statblock") nachName[nameOf(e).toLowerCase()]=e.id;
+    ((e.components&&e.components.Identity&&e.components.Identity.aliases)||[]).forEach(function(a){
+      nachName[String(a).toLowerCase()]=e.id; }); });
+  alle.forEach(function(e){ if((e.interfaces||[])[0]==="Statblock")return;
+    nachName[e.name.toLowerCase()]=e.id;
+    ((e.components.Identity&&e.components.Identity.aliases)||[]).forEach(function(a){
+      nachName[String(a).toLowerCase()]=e.id; }); });
+
+  roh.forEach(function(x){
+    if(x.art==="gegenstand"){ (x.r.offen||[]).forEach(function(v){
+      var id=nachName[v.ziel.toLowerCase()];
+      if(id) x.r.e.relations.push({id:uid("rel"),type:v.type,to:id});
+      else ergebnis.offen.push({von:x.r.e.name,art:v.type,ziel:v.ziel}); });
+      (x.r.bilder||[]).forEach(function(b){ ergebnis.bilder.push({von:x.r.e.name,datei:b}); }); }
+
+    /* Der Vault drückt die Hierarchie als Transklusion im Elternteil aus:
+       ![[Rubinrot]] in Vallehy heisst „Vallehy enthält Rubinrot". Gespeichert
+       wird die Kante aber am Kind als teilVon — eine Kante, eine Richtung. */
+    if(x.art==="ort"){ (x.r.offen||[]).forEach(function(v){
+      var id=nachName[v.ziel.toLowerCase()], kind=null;
+      alle.forEach(function(e){ if(e.id===id) kind=e; });
+      if(kind) kind.relations.push({id:uid("rel"),type:"teilVon",to:x.r.e.id});
+      else ergebnis.offen.push({von:x.r.e.name,art:"enthält",ziel:v.ziel}); }); }
+
+    if(x.art==="statblock"&&x.r.kreatur){
+      var id=nachName[x.r.kreatur.toLowerCase()];
+      if(id) x.r.e.relations.push({id:uid("rel"),type:"gehoertZu",to:id});
+      else ergebnis.offen.push({von:x.r.e.name,art:"gehört zu",ziel:x.r.kreatur}); }
+  });
+
+  ergebnis.alle=alle;
+  return ergebnis;
+}
+
+function importDialog(){
+  dialog("Aus Obsidian importieren",function(host,close){
+    host.appendChild(el("p",{class:"hint",text:
+      "Markdown-Dateien aus dem Vault wählen. Gegenstände, Statblöcke und Orte "+
+      "werden an ihrem Frontmatter erkannt. Verweise innerhalb des Stapels lösen sich "+
+      "gegenseitig auf; was offen bleibt, steht danach als toter Verweis da und lässt "+
+      "sich mit einem Klick anlegen."}));
+    var inp=el("input",{class:"i",type:"file",multiple:"multiple",accept:".md,text/markdown"});
+    host.appendChild(field("Dateien",inp));
+    var bericht=el("div",{class:"bericht"});
+    host.appendChild(bericht);
+    var erg=null;
+
+    inp.addEventListener("change",function(){
+      var fs=Array.prototype.slice.call(inp.files||[]);
+      if(!fs.length)return;
+      bericht.textContent="Lese "+fs.length+" Datei(en)…";
+      window.__GELESEN__=fs.map(function(f){return f.name;});
+      Promise.all(fs.map(function(f){ return f.text().then(function(t){return {name:f.name,text:t};}); }))
+        .then(function(dateien){
+          erg=importiere(dateien);
+          bericht.textContent="";
+          var z=el("ul");
+          [["Gegenstände",erg.gegenstand.length],["Statblöcke",erg.statblock.length],
+           ["Orte",erg.ort.length],["Regeln aus Abschnitten",erg.regeln.length]]
+            .forEach(function(p){ if(p[1]) z.appendChild(el("li",{text:p[1]+" "+p[0]})); });
+          bericht.appendChild(z);
+          if(erg.unbekannt.length) bericht.appendChild(el("p",{class:"warnzeile",
+            text:"Nicht erkannt: "+erg.unbekannt.join(", ")}));
+          if(erg.offen.length){
+            bericht.appendChild(el("p",{class:"hint",text:"Offene Verweise — danach als toter Verweis anklickbar:"}));
+            var ul=el("ul");
+            erg.offen.slice(0,12).forEach(function(o){
+              ul.appendChild(el("li",{text:o.von+" → "+o.art+" → "+o.ziel})); });
+            if(erg.offen.length>12) ul.appendChild(el("li",{text:"… und "+(erg.offen.length-12)+" weitere"}));
+            bericht.appendChild(ul);
+          }
+          if(erg.bilder.length) bericht.appendChild(el("p",{class:"hint",
+            text:"Bilder werden benannt, aber nicht übertragen: "+
+              erg.bilder.map(function(b){return b.datei;}).join(", ")}));
+        })
+        .catch(function(x){ bericht.textContent="Lesen fehlgeschlagen: "+x.message; });
+    });
+
+    actions(host,close,function(){
+      if(!erg||!erg.alle.length) return false;
+      erg.alle.forEach(function(e){ ENT.set(e.id,e); });
+      render();
+      if(db) erg.alle.forEach(function(e){ db.doc("entities/"+e.id).set(e).catch(fail); });
+      UI.err=erg.alle.length+" Artikel importiert.";
+      go({k:"list"});
+    },"Importieren");
+  });
+}
+
 /* ============================================================
    BOOT
    ============================================================ */
 document.getElementById("new").addEventListener("click",function(){ if(me.write)newEntity(); });
 document.getElementById("q").addEventListener("input",function(ev){
   UI.q=ev.target.value; if(UI.route.k!=="list")UI.route={k:"list"}; render(); });
-var viewSel=document.getElementById("view");
+var viewSel=document.getElementById("facet");
 viewSel.addEventListener("change",function(){ UI.view=viewSel.value; render(); });
 function renderViewSelect(){
   var vs=Object.keys(REG.views).length?REG.views:VIEWS_FALLBACK, keys=viewKeys();
@@ -1096,32 +1453,69 @@ window.addEventListener("resize",renderPanes);
 render();
 
 (async function boot(){
-  try{
-    var user=await (window.claude&&claude.use?claude.use("user"):null);
-    if(user){ var w=await user.can("data.write"); if(w===false) me.write=false; }
-  }catch(x){}
-  try{
-    db=await (window.claude&&claude.use?claude.use("db"):null);
-  }catch(x){ db=null; }
+  // Beide Fähigkeiten nebeneinander anfordern. Nacheinander hiesse: wenn die
+  // eine nicht antwortet, wartet die andere ihre volle Frist mit ab.
+  var hat=window.claude&&claude.use;
+  var erg=await Promise.all([
+    hat?claude.use("db").catch(function(){return null;}):null,
+    hat?claude.use("user").catch(function(){return null;}):null
+  ]);
+  db=erg[0];
+  try{ if(erg[1]){ var w=await erg[1].can("data.write"); if(w===false) me.write=false; } }catch(x){}
 
   if(!db){
     ready=true;
-    UI.err="Kein Datenspeicher in dieser Ansicht — es wird nichts gespeichert.";
+    UI.err="Kein Datenspeicher erreichbar — nichts wird gespeichert. "+
+           "Meist hilft ein vollständiges Neuladen der Seite.";
     render(); return;
   }
 
-  ["interfaces","components","relations","views","vars"].forEach(function(part){
-    db.doc("registry/"+part).onSnapshot(function(s){
-      REG[part]=(s.exists&&s.data())||REG[part]||{};
+  var TEILE=["interfaces","components","relations","views","vars"];
+  var kamAn={register:{},artikel:false};
+
+  /* Wirft ein Snapshot-Callback, endet die Zustellung still: `ready` bliebe
+     false und die Seite stünde auf „Lädt…". Darum fängt jeder Callback
+     seinen eigenen Fehler und sagt, woran es lag. */
+  function sicher(was,fn){
+    return function(arg){
+      try{ fn(arg); }
+      catch(x){ ready=true; UI.err=was+": "+((x&&x.message)||x); render(); }
+    };
+  }
+
+  TEILE.forEach(function(part){
+    db.doc("registry/"+part).onSnapshot(sicher("Register "+part,function(s){
+      kamAn.register[part]=true;
+      REG[part]=frisch(s.exists&&s.data())||REG[part]||{};
       render();
-    },function(e){ UI.err="Register: "+e.code; render(); });
+    }),function(e){ UI.err="Register: "+e.code; render(); });
   });
 
-  db.collection("entities").limit(1000).onSnapshot(function(snap){
-    ENT=new Map();
-    snap.docs.forEach(function(d){ var b=d.data()||{}; b.id=b.id||d.id; ENT.set(b.id,b); });
-    ready=true; render();
-  },function(e){ UI.err="Artikel: "+e.code; ready=true; render(); });
+  db.collection("entities").limit(1000).onSnapshot(sicher("Artikel",function(snap){
+    kamAn.artikel=true;
+    var neu=new Map();
+    (snap.docs||[]).forEach(function(d){
+      var b=frisch(d.data())||{};
+      if(!b.id) b.id=d.id;
+      neu.set(b.id,b);
+    });
+    ENT=neu;
+    ready=true;
+    UI.err="";   // eine frühere Wachmeldung ist mit den Daten erledigt
+    render();
+  }),function(e){ UI.err="Artikel: "+e.code; ready=true; render(); });
+
+  /* Kommt binnen zehn Sekunden nichts, sagt die Seite, was ausblieb —
+     statt schweigend auf „Lädt…" zu stehen. */
+  setTimeout(function(){
+    if(ready) return;
+    ready=true;
+    UI.err="Keine Daten empfangen: "+Object.keys(kamAn.register).length+" von "+
+           TEILE.length+" Registerteilen, "+
+           (kamAn.artikel?"Artikel ja":"Artikel nein")+". "+
+           "Die Seite vollständig neu laden; bleibt es dabei, ist es ein Fehler in der Seite.";
+    render();
+  },10000);
 })();
 
 })();

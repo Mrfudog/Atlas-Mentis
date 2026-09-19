@@ -8,6 +8,7 @@ export default defineConfig({
     alias: {
       '@nw/model': p('./packages/model/src/index.ts'),
       '@nw/registry': p('./packages/registry/src/index.ts'),
+      '@nw/import': p('./packages/import/src/index.ts'),
     },
   },
   test: {
