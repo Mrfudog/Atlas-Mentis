@@ -1,3 +1,9 @@
 node_modules
 dist
+.angular
+coverage
 daten
+*.tsbuildinfo
+.env
+.env.*
+!.env.example

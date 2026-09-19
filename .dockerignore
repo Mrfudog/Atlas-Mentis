@@ -1,4 +1,8 @@
 node_modules
-dist
-daten
+**/node_modules
+**/dist
+.angular
 .git
+legacy
+prototype
+docs

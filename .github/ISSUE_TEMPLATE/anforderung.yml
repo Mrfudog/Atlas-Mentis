@@ -1,0 +1,23 @@
+name: Anforderung in Arbeit
+description: Eine Anforderung aus dem Vault, die jetzt gebaut wird
+labels: ["anforderung"]
+body:
+  - type: input
+    id: req
+    attributes:
+      label: REQ-Nummer
+      description: Die unveränderliche ID aus Requirements.md. Ohne sie gehört es hier nicht hin.
+      placeholder: REQ-174
+    validations:
+      required: true
+  - type: textarea
+    id: umfang
+    attributes:
+      label: Umfang für diesen Durchgang
+      description: Die Anforderung steht im Vault. Hier steht, was davon jetzt gebaut wird.
+    validations:
+      required: true
+  - type: textarea
+    id: fertig
+    attributes:
+      label: Woran man merkt, dass es fertig ist

@@ -1,0 +1,24 @@
+name: Fehler
+description: Etwas funktioniert nicht wie erwartet
+labels: ["fehler"]
+body:
+  - type: textarea
+    id: was
+    attributes:
+      label: Was passiert
+      description: Und was du stattdessen erwartet hast.
+    validations:
+      required: true
+  - type: textarea
+    id: schritte
+    attributes:
+      label: Schritte
+      placeholder: |
+        1. Artikel „Kanalschleim" öffnen
+        2. Darstellungsstufe auf Kampf
+        3. …
+  - type: input
+    id: wo
+    attributes:
+      label: Wo
+      placeholder: main / preprod / lokal
