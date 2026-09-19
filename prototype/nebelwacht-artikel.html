@@ -179,6 +179,46 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 .rowbtns{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}
 .mob{display:none}
 
+/* ---------- registry editor ---------- */
+.reg2{display:grid;grid-template-columns:200px minmax(0,1fr);border:1px solid var(--line);
+  border-radius:var(--r);overflow:hidden}
+.regtree{background:var(--surface2);border-right:1px solid var(--line);padding:8px 6px;
+  overflow-y:auto;max-height:72vh}
+.regtree button{display:block;width:100%;text-align:left;padding:4px 7px;background:none;border:0;
+  border-radius:var(--r);cursor:pointer;font:inherit;font-size:13px;color:inherit}
+.regtree button:hover{background:var(--surface)}
+.regtree button[aria-current="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.regtree .ab{color:var(--dim);font-style:italic}
+.regtree em{font-style:normal;font-family:var(--ff-mono);font-size:10.5px;color:var(--dim);float:right}
+.regbody{padding:14px 16px;overflow-y:auto;max-height:72vh;background:var(--surface)}
+.regbody h3{font-family:var(--ff-disp);font-size:19px;margin:0 0 2px}
+.rsec{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--accent);
+  border-bottom:1px solid var(--line);padding-bottom:3px;margin:20px 0 8px}
+.crow{display:flex;gap:9px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
+.crow:first-of-type{border-top:0}
+.crow .cl{flex:1;min-width:0}
+.crow .cl b{font-weight:600}
+.crow .co{display:block;font-size:11px;color:var(--dim)}
+.crow select{width:auto;padding:3px 6px;font-size:12px}
+.fbox{background:var(--bg);border:1px solid var(--line);border-radius:var(--r);
+  padding:9px 11px;margin:2px 0 10px}
+.frow{display:grid;grid-template-columns:minmax(90px,150px) minmax(0,1fr) 108px auto auto;
+  gap:6px;align-items:center;padding:3px 0}
+.frow .fk{font-family:var(--ff-mono);font-size:12px;color:var(--dim);overflow-wrap:anywhere}
+.frow input.i,.frow select.i{padding:3px 6px;font-size:12.5px}
+.fmore{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+  gap:6px;padding:4px 0 8px 0;border-bottom:1px dashed var(--line)}
+.fmore label.f{margin-bottom:0}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;font-size:12px;
+  background:var(--surface2);border:1px solid var(--line);border-radius:999px}
+.chip.inh{color:var(--dim);font-style:italic}
+.chip button{background:none;border:0;cursor:pointer;color:var(--dim);font:inherit;
+  padding:0;line-height:1}
+.chip button:hover{color:var(--warn)}
+.addbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.addbar select.i,.addbar input.i{width:auto;min-width:150px;flex:0 1 auto}
+
 @media (max-width:900px){
   .body{grid-template-columns:minmax(0,1fr)}
   .rail,.aside{display:none}
@@ -191,6 +231,9 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
     font-size:12px;color:var(--dim);cursor:pointer}
   .mob button[aria-current="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
   .search{flex:1 1 auto}
+  .reg2{grid-template-columns:minmax(0,1fr)}
+  .regtree{border-right:0;border-bottom:1px solid var(--line);max-height:30vh}
+  .frow{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   .arthead h2{font-size:25px}
 }
 </style>
@@ -244,7 +287,8 @@ function frisch(o){
   try{ return JSON.parse(JSON.stringify(o)); }catch(x){ return o; }
 }
 var REG={interfaces:{},components:{},relations:{},vars:{},views:{}};
-var UI={route:{k:"list"}, view:"schnell", iface:"", tag:"", q:"", offen:false, pane:"main", regtab:"interfaces", err:""};
+var UI={route:{k:"list"}, view:"schnell", iface:"", tag:"", q:"", offen:false, pane:"main",
+        regtab:"interfaces", regiface:"", regcomp:"", regprop:"", regjson:false, err:""};
 
 /* Darstellungsstufen (Facets, REQ-164) — registry rows, not code.
    Fallback only; the live set lives in registry/views. */
@@ -364,6 +408,56 @@ function blockTypesFor(name){
   out=out.filter(function(b,i){return out.indexOf(b)===i;});
   return out.length?out:["paragraph"];
 }
+/* ---------- registry: hierarchy and provenance ---------- */
+/* Subtypen sind keine eigene Sorte Zeile: eine Schnittstelle, die eine andere
+   erweitert, ist deren Subtyp. Material erweitert Gegenstand, mehr steht da
+   nicht. Damit bleibt „Subtyp anlegen" eine eingefügte Zeile. */
+function parentOf(n){ var p=((REG.interfaces[n]||{}).extends||[])[0]; return REG.interfaces[p]?p:""; }
+function kindsOf(n){
+  return Object.keys(REG.interfaces).filter(function(k){ return parentOf(k)===n; })
+    .sort(function(a,b){return a.localeCompare(b,"de");});
+}
+function ifaceRoots(){
+  return Object.keys(REG.interfaces).filter(function(n){ return !parentOf(n); })
+    .sort(function(a,b){return a.localeCompare(b,"de");});
+}
+/* Würde `kind` unter `ganz oben` hängen, entstünde ein Ring — dann fände
+   compsFor() kein Ende. `seen` in compsFor fängt das ab, aber ein Register,
+   das sich im Kreis dreht, ist trotzdem kaputt. Hier wird es verhindert. */
+function wouldCycle(n,parent){
+  var at=parent, guard=0;
+  while(at && guard++<64){ if(at===n) return true; at=parentOf(at); }
+  return false;
+}
+/* Woher eine Komponente an dieser Schnittstelle kommt, und wie sie dort steht. */
+function compOrigin(ifn,comp){
+  var at=ifn, guard=0;
+  while(at && guard++<64){
+    var d=REG.interfaces[at]||{};
+    if((d.requires||[]).indexOf(comp)>=0) return {iface:at,mode:"requires"};
+    if((d.allows||[]).indexOf(comp)>=0)   return {iface:at,mode:"allows"};
+    at=parentOf(at);
+  }
+  return null;
+}
+/* Welche Schnittstellen eine Komponente nutzen — ein Feld zu ändern ändert es
+   bei allen. Das gehört hingeschrieben, bevor jemand es herausfindet. */
+function ifacesUsing(comp){
+  return Object.keys(REG.interfaces).filter(function(n){
+    var d=REG.interfaces[n];
+    return (d.requires||[]).indexOf(comp)>=0||(d.allows||[]).indexOf(comp)>=0;
+  }).sort();
+}
+function countIface(n){
+  var c=0; ENT.forEach(function(e){ if(((e.interfaces||[])[0])===n) c++; }); return c;
+}
+function techName(label,taken){
+  var base=slug(label).replace(/-([a-z])/g,function(_,c){return c.toUpperCase();})
+    .replace(/^[a-z]/,function(c){return c.toUpperCase();})||"Neu";
+  var n=base, i=2; while(taken[n]){ n=base+i; i++; }
+  return n;
+}
+
 function relsFrom(ifn){
   var out=[];
   for(var k in REG.relations){ var r=REG.relations[k];
@@ -854,6 +948,18 @@ function renderRegistry(v){
   });
   v.appendChild(tabs);
 
+  /* Schnittstellen bekommen eine Maske: Komponenten, Felder, Blockarten und
+     Subtypen an einer Stelle. Das JSON bleibt daneben stehen — für Massen-
+     änderungen ist ein Textfeld schneller als jedes Formular. */
+  if(UI.regtab==="interfaces"&&!UI.regjson){
+    regIfaceEditor(v);
+    var bar0=el("div",{class:"rowbtns"});
+    bar0.appendChild(el("button",{class:"btn sm gh",type:"button",onclick:function(){
+      UI.regjson=true; UI.err=""; render(); }},"Als JSON bearbeiten"));
+    v.appendChild(bar0);
+    return;
+  }
+
   if(UI.regtab==="views") v.appendChild(el("p",{class:"hint",
     text:"Kompendium — die Darstellungsstufen im Auswahlfeld oben rechts. felder: \"keine\" | \"alle\" | Liste von Komponenten · bloecke: \"alle\" | Liste von Blockarten · beschreibung, bausteine, bezuege, bindungen, bild: true/false · order bestimmt die Reihenfolge."}));
   var ta=el("textarea",{class:"i code",spellcheck:"false",id:"regbox"});
@@ -870,7 +976,387 @@ function renderRegistry(v){
   }},"Übernehmen"));
   bar.appendChild(el("button",{class:"btn",type:"button",onclick:function(){
     ta.value=JSON.stringify(REG[UI.regtab],null,2); msg.textContent="";}},"Zurücksetzen"));
+  if(UI.regtab==="interfaces") bar.appendChild(el("button",{class:"btn gh",type:"button",
+    onclick:function(){ UI.regjson=false; UI.err=""; render(); }},"Zurück zur Maske"));
   v.appendChild(bar);
+}
+
+/* Der Baum links, die gewählte Schnittstelle rechts. */
+function regIfaceEditor(v){
+  var namen=Object.keys(REG.interfaces);
+  if(!namen.length){
+    v.appendChild(el("div",{class:"empty",text:"Noch keine Schnittstellen."}));
+    if(me.write) v.appendChild(neueIfaceBar(""));
+    return;
+  }
+  if(!REG.interfaces[UI.regiface]) UI.regiface=ifaceRoots()[0]||namen.sort()[0];
+
+  var grid=el("div",{class:"reg2"});
+  var tree=el("div",{class:"regtree"});
+  (function walk(list,tiefe){
+    list.forEach(function(n){
+      var d=REG.interfaces[n], c=countIface(n);
+      var b=el("button",{type:"button","aria-current":String(UI.regiface===n),
+        style:"padding-left:"+(7+tiefe*13)+"px",
+        onclick:function(){ UI.regiface=n; UI.regcomp=""; UI.regprop=""; render(); }});
+      if(c) b.appendChild(el("em",{text:String(c)}));
+      b.appendChild(el("span",{class:d.abstract?"ab":"",text:d.label||n}));
+      tree.appendChild(b);
+      walk(kindsOf(n),tiefe+1);
+    });
+  })(ifaceRoots(),0);
+  grid.appendChild(tree);
+  grid.appendChild(regIfaceBody(UI.regiface));
+  v.appendChild(grid);
+  if(me.write) v.appendChild(neueIfaceBar(""));
+}
+
+function neueIfaceBar(unter){
+  var i=el("input",{class:"i",type:"text",placeholder:"Bezeichnung, z. B. Fahrzeug"});
+  var bar=el("div",{class:"addbar",style:"margin-top:10px"});
+  bar.appendChild(i);
+  bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+    var label=i.value.trim(); if(!label) return;
+    var n=techName(label,REG.interfaces);
+    REG.interfaces[n]={name:n,label:label,requires:[],allows:[],blockTypes:[]};
+    if(unter) REG.interfaces[n].extends=[unter];
+    UI.regiface=n; UI.regcomp=""; saveReg("interfaces"); render();
+  }},"Schnittstelle anlegen"));
+  return bar;
+}
+
+function regIfaceBody(ifn){
+  var d=REG.interfaces[ifn], w=me.write;
+  var box=el("div",{class:"regbody"});
+  function save(){ saveReg("interfaces"); render(); }
+  function saveC(){ saveReg("components"); render(); }
+  function setMode(cn,mode){
+    d.requires=(d.requires||[]).filter(function(x){return x!==cn;});
+    d.allows=(d.allows||[]).filter(function(x){return x!==cn;});
+    if(mode==="requires") d.requires.push(cn);
+    else if(mode==="allows") d.allows.push(cn);
+  }
+
+  /* ---- Kopf ---- */
+  box.appendChild(el("h3",{text:d.label||ifn}));
+  var anz=countIface(ifn);
+  box.appendChild(el("div",{class:"key",
+    text:ifn+" · "+(anz?anz+(anz===1?" Artikel":" Artikel"):"kein Artikel")}));
+
+  var kopf=el("div",{class:"fmore",style:"border-bottom:0;padding-top:10px"});
+  var lab=el("input",{class:"i",type:"text",value:d.label||""});
+  if(!w) lab.disabled=true;
+  lab.addEventListener("change",function(){ d.label=lab.value.trim()||ifn; save(); });
+  kopf.appendChild(field("Bezeichnung",lab));
+
+  var par=el("select",{class:"i"}); if(!w) par.disabled=true;
+  par.appendChild(el("option",{value:""},"— keine —"));
+  Object.keys(REG.interfaces).sort().forEach(function(n){
+    if(n===ifn||wouldCycle(ifn,n))return;
+    par.appendChild(el("option",{value:n},REG.interfaces[n].label||n)); });
+  par.value=parentOf(ifn);
+  par.addEventListener("change",function(){
+    if(par.value) d.extends=[par.value]; else delete d.extends;
+    save(); });
+  kopf.appendChild(field("Erweitert",par));
+
+  var ab=el("select",{class:"i"}); if(!w) ab.disabled=true;
+  ab.appendChild(el("option",{value:""},"anlegbar"));
+  ab.appendChild(el("option",{value:"1"},"nur Oberbegriff"));
+  ab.value=d.abstract?"1":"";
+  ab.addEventListener("change",function(){
+    if(ab.value) d.abstract=true; else delete d.abstract;
+    save(); });
+  kopf.appendChild(field("Art",ab));
+  box.appendChild(kopf);
+
+  /* ---- Komponenten und Felder ---- */
+  box.appendChild(el("div",{class:"rsec",text:"Komponenten und Felder"}));
+  box.appendChild(el("p",{class:"hint",
+    text:"Pflicht heisst: ohne sie beanstandet die Prüfung den Artikel. Geerbtes steht weiter oben im Baum — dort geändert, gilt es für alle Subtypen."}));
+
+  /* Was requires/allows nennen, das Register aber nicht kennt, wäre sonst
+     unsichtbar — und die Prüfung beanstandet es bei jedem Artikel. */
+  var fehlend=[];
+  (d.requires||[]).concat(d.allows||[]).forEach(function(cn){
+    if(!REG.components[cn]&&fehlend.indexOf(cn)<0) fehlend.push(cn); });
+  if(fehlend.length) box.appendChild(el("p",{class:"warnzeile",
+    text:"Nicht im Register: "+fehlend.join(", ")+" — hier genannt, aber nirgends beschrieben."}));
+
+  compsFor(ifn).forEach(function(cn){ box.appendChild(compRow(cn)); });
+
+  if(w){
+    var sel=el("select",{class:"i"});
+    sel.appendChild(el("option",{value:""},"— vorhandene Komponente —"));
+    Object.keys(REG.components).sort().forEach(function(cn){
+      if(compOrigin(ifn,cn))return;
+      sel.appendChild(el("option",{value:cn},(REG.components[cn].label||cn)+"  ("+cn+")")); });
+    var cbar=el("div",{class:"addbar",style:"margin-top:10px"});
+    cbar.appendChild(sel);
+    cbar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+      if(!sel.value)return;
+      setMode(sel.value,"allows"); UI.regcomp=sel.value; save(); }},"Hinzufügen"));
+    cbar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+      neueKomponente(ifn); }},"Neue Komponente…"));
+    box.appendChild(cbar);
+  }
+
+  /* ---- Blockarten ---- */
+  box.appendChild(el("div",{class:"rsec",text:"Blockarten"}));
+  box.appendChild(el("p",{class:"hint",
+    text:"Textblöcke, die ein Artikel dieser Art führen darf. Geerbte kommen dazu, sie ersetzen sich nicht."}));
+  var ohnePlus=function(b){ return b.charAt(0)==="+"?b.slice(1):b; };
+  var eigen=(d.blockTypes||[]).map(ohnePlus);
+  var geerbt=parentOf(ifn)?blockTypesFor(parentOf(ifn)):[];
+  var chips=el("div",{class:"chips"});
+  geerbt.forEach(function(b){ if(eigen.indexOf(b)<0)
+    chips.appendChild(el("span",{class:"chip inh",text:b})); });
+  eigen.forEach(function(b){
+    var c=el("span",{class:"chip"});
+    c.appendChild(el("span",{text:b}));
+    if(w) c.appendChild(el("button",{type:"button",title:"entfernen",onclick:function(){
+      d.blockTypes=(d.blockTypes||[]).filter(function(x){ return ohnePlus(x)!==b; });
+      save(); }},"×"));
+    chips.appendChild(c);
+  });
+  if(!eigen.length&&!geerbt.length) chips.appendChild(el("span",{class:"gone",text:"keine"}));
+  box.appendChild(chips);
+  if(w){
+    var bi=el("input",{class:"i",type:"text",placeholder:"z. B. tactics"});
+    var bbar=el("div",{class:"addbar"});
+    bbar.appendChild(bi);
+    bbar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+      var b=bi.value.trim().replace(/^\+/,"").replace(/[^A-Za-z0-9_-]/g,"");
+      if(!b) return;
+      d.blockTypes=d.blockTypes||[];
+      if(d.blockTypes.map(ohnePlus).indexOf(b)<0) d.blockTypes.push(parentOf(ifn)?"+"+b:b);
+      save(); }},"Blockart hinzufügen"));
+    box.appendChild(bbar);
+  }
+
+  /* ---- Subtypen ---- */
+  box.appendChild(el("div",{class:"rsec",text:"Subtypen"}));
+  var kinder=kindsOf(ifn);
+  if(!kinder.length) box.appendChild(el("p",{class:"hint",
+    text:"Keine. Ein Subtyp erbt alles von hier und ergänzt eigene Komponenten, Felder und Blockarten."}));
+  else{
+    var kc=el("div",{class:"chips"});
+    kinder.forEach(function(n){
+      var c=el("span",{class:"chip"});
+      c.appendChild(el("button",{type:"button",class:"ref",onclick:function(){
+        UI.regiface=n; UI.regcomp=""; UI.regprop=""; render(); }},REG.interfaces[n].label||n));
+      var z=countIface(n);
+      if(z) c.appendChild(el("span",{class:"co",text:String(z)}));
+      kc.appendChild(c);
+    });
+    box.appendChild(kc);
+  }
+  if(w) box.appendChild(neueIfaceBar(ifn));
+
+  /* ---- Entfernen ---- */
+  if(w){
+    var grund=anz?anz+" Artikel nutzen sie":(kinder.length?"hat Subtypen":"");
+    var del=el("button",{class:"btn sm dngr",type:"button",onclick:function(){
+      if(grund) return;
+      if(!window.confirm("Schnittstelle „"+(d.label||ifn)+"“ entfernen?")) return;
+      delete REG.interfaces[ifn]; UI.regiface=""; save(); }},"Schnittstelle entfernen");
+    if(grund){ del.disabled=true; del.title=grund; }
+    var fbar=el("div",{class:"rowbtns"}); fbar.appendChild(del);
+    if(grund) fbar.appendChild(el("span",{class:"co",style:"align-self:center",text:grund}));
+    box.appendChild(fbar);
+  }
+
+  return box;
+
+  /* ---------- eine Komponentenzeile, aufklappbar ---------- */
+  function compRow(cn){
+    var cd=REG.components[cn]||{};
+    var props=((cd.schema||{}).properties)||{};
+    var n=Object.keys(props).length;
+
+    /* Wo die Komponente steht, hier oder weiter oben — und was daraus folgt.
+       Ein Subtyp darf verschärfen (Optional → Pflicht), aber nicht lockern:
+       reqFor() läuft die Kette hoch und fände die Pflicht trotzdem. Eine
+       Auswahl, die nichts bewirkt, wäre eine Lüge im Formular. */
+    var lokal=(d.requires||[]).indexOf(cn)>=0?"requires"
+             :((d.allows||[]).indexOf(cn)>=0?"allows":"");
+    var oben=parentOf(ifn)?compOrigin(parentOf(ifn),cn):null;
+    var obenName=oben?((REG.interfaces[oben.iface]||{}).label||oben.iface):"";
+
+    var row=el("div",{class:"crow"});
+    var lft=el("div",{class:"cl"});
+    lft.appendChild(el("b",{text:cd.label||cn}));
+    var herkunft=lokal?(oben?" · hier verschärft, geerbt von "+obenName:"")
+                      :(oben?" · geerbt von "+obenName:"");
+    lft.appendChild(el("span",{class:"co",
+      text:cn+" · "+n+(n===1?" Feld":" Felder")+herkunft}));
+    row.appendChild(lft);
+
+    var md=el("select");
+    md.appendChild(el("option",{value:"requires"},"Pflicht"));
+    if(!oben||oben.mode!=="requires") md.appendChild(el("option",{value:"allows"},"Optional"));
+    md.appendChild(el("option",{value:""},
+      oben?("geerbt: "+(oben.mode==="requires"?"Pflicht":"Optional")):"nicht genutzt"));
+    md.value=lokal;
+    if(!w) md.disabled=true;
+    md.addEventListener("change",function(){ setMode(cn,md.value); save(); });
+    row.appendChild(md);
+
+    row.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+      UI.regcomp=(UI.regcomp===cn?"":cn); UI.regprop=""; render(); }},
+      UI.regcomp===cn?"Felder ▴":"Felder ▾"));
+
+    var wrap=el("div");
+    wrap.appendChild(row);
+    if(UI.regcomp===cn) wrap.appendChild(feldKasten(cn));
+    return wrap;
+  }
+
+  /* ---------- die Felder einer Komponente ---------- */
+  function feldKasten(cn){
+    var cd=REG.components[cn];
+    if(!cd) return el("div",{class:"fbox"},el("span",{class:"warnzeile",text:"Komponente fehlt im Register."}));
+    cd.schema=cd.schema||{type:"object",properties:{}};
+    var schema=cd.schema;
+    schema.properties=schema.properties||{};
+    var props=schema.properties;
+    var kasten=el("div",{class:"fbox"});
+
+    /* Komponenten sind geteilt. Wer hier ein Feld ändert, ändert es überall —
+       das ist der Sinn des Pools und trotzdem eine Überraschung, wenn es
+       nirgends steht. */
+    var nutzer=ifacesUsing(cn);
+    if(nutzer.length>1) kasten.appendChild(el("p",{class:"hint",style:"margin-bottom:9px",
+      text:"Geteilt mit "+(nutzer.length-1)+" weiteren Schnittstellen ("+
+        nutzer.filter(function(n){return n!==ifn;})
+          .map(function(n){return REG.interfaces[n].label||n;}).join(", ")+
+        "). Eine Änderung hier gilt für alle."}));
+
+    var keys=Object.keys(props);
+    keys.forEach(function(k){ kasten.appendChild(feldZeile(cn,k)); });
+    if(!keys.length) kasten.appendChild(el("p",{class:"hint",text:"Noch keine Felder."}));
+
+    if(w){
+      var nk=el("input",{class:"i",type:"text",placeholder:"Feldname, z. B. gewicht"});
+      var nt=el("input",{class:"i",type:"text",placeholder:"Beschriftung"});
+      var bar=el("div",{class:"addbar",style:"margin-top:9px"});
+      bar.appendChild(nk); bar.appendChild(nt);
+      bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+        var k=nk.value.trim().replace(/[^A-Za-z0-9_]/g,"");
+        if(!k) return;
+        if(props[k]){ UI.err="Das Feld "+k+" gibt es in "+(cd.label||cn)+" schon."; render(); return; }
+        props[k]={type:"string",title:nt.value.trim()||k};
+        UI.regprop=cn+"."+k;
+        saveC();
+      }},"Feld hinzufügen"));
+      kasten.appendChild(bar);
+    }
+    return kasten;
+  }
+
+  function feldZeile(cn,k){
+    var cd=REG.components[cn], schema=cd.schema, props=schema.properties, p=props[k];
+    var row=el("div",{class:"frow"});
+    row.appendChild(el("span",{class:"fk",text:k}));
+
+    var ti=el("input",{class:"i",type:"text",value:p.title||""});
+    if(!w) ti.disabled=true;
+    ti.addEventListener("change",function(){ p.title=ti.value.trim()||k; saveC(); });
+    row.appendChild(ti);
+
+    var ty=el("select",{class:"i"}); if(!w) ty.disabled=true;
+    [["string","Text"],["number","Zahl"],["boolean","Ja/Nein"],["array","Liste"],["object","Objekt"]]
+      .forEach(function(t){ ty.appendChild(el("option",{value:t[0]},t[1])); });
+    ty.value=p.type||"string";
+    ty.addEventListener("change",function(){ p.type=ty.value; saveC(); });
+    row.appendChild(ty);
+
+    var id=cn+"."+k;
+    row.appendChild(el("button",{class:"btn sm gh",type:"button",title:"Mehr",onclick:function(){
+      UI.regprop=(UI.regprop===id?"":id); render(); }},UI.regprop===id?"▴":"⋯"));
+
+    if(w) row.appendChild(el("button",{class:"btn sm gh dngr",type:"button",title:"Feld entfernen",
+      onclick:function(){
+        if(!window.confirm("Feld „"+(p.title||k)+"“ entfernen? In Artikeln bleiben die Werte stehen, werden aber nicht mehr angezeigt.")) return;
+        delete props[k];
+        if(schema.required){
+          schema.required=schema.required.filter(function(x){return x!==k;});
+          if(!schema.required.length) delete schema.required;
+        }
+        if(UI.regprop===id) UI.regprop="";
+        saveC(); }},"×"));
+    else row.appendChild(el("span"));
+
+    var wrap=el("div");
+    wrap.appendChild(row);
+    if(UI.regprop===id) wrap.appendChild(feldMehr(cn,k));
+    return wrap;
+  }
+
+  function feldMehr(cn,k){
+    var cd=REG.components[cn], schema=cd.schema, p=schema.properties[k];
+    var kasten=el("div",{class:"fmore"});
+    function text(label,wert,setzen,ph){
+      var i=el("input",{class:"i",type:"text",value:wert==null?"":wert,placeholder:ph||""});
+      if(!w) i.disabled=true;
+      i.addEventListener("change",function(){ setzen(i.value.trim()); saveC(); });
+      kasten.appendChild(field(label,i));
+    }
+
+    var req=el("select",{class:"i"}); if(!w) req.disabled=true;
+    req.appendChild(el("option",{value:""},"nein"));
+    req.appendChild(el("option",{value:"1"},"ja"));
+    req.value=((schema.required||[]).indexOf(k)>=0)?"1":"";
+    req.addEventListener("change",function(){
+      var r=(schema.required||[]).filter(function(x){return x!==k;});
+      if(req.value) r.push(k);
+      if(r.length) schema.required=r; else delete schema.required;
+      saveC(); });
+    kasten.appendChild(field("Pflichtfeld",req));
+
+    var fm=el("select",{class:"i"}); if(!w) fm.disabled=true;
+    [["","—"],["long","langer Text"],["signed","mit Vorzeichen"]].forEach(function(f){
+      fm.appendChild(el("option",{value:f[0]},f[1])); });
+    fm.value=p.format||"";
+    fm.addEventListener("change",function(){
+      if(fm.value)p.format=fm.value; else delete p.format; saveC(); });
+    kasten.appendChild(field("Darstellung",fm));
+
+    text("Auswahlwerte (Komma)",(p["enum"]||[]).join(", "),function(v){
+      var xs=v.split(",").map(function(x){return x.trim();}).filter(Boolean);
+      if(xs.length)p["enum"]=xs; else delete p["enum"];
+    },"gewöhnlich, selten");
+
+    text("Berechnet aus",p.derived||"",function(v){
+      if(v)p.derived=v; else delete p.derived;
+    },"10+mod(wis)");
+
+    text("gehört zu Feld",p.of||"",function(v){
+      if(v)p.of=v; else delete p.of;
+    },"wis");
+
+    if(p.derived) kasten.appendChild(el("p",{class:"hint",style:"grid-column:1/-1;margin:0",
+      text:"Berechnete Felder werden beim Lesen ermittelt und nie gespeichert. Sie bekommen kein Eingabefeld."}));
+    return kasten;
+  }
+}
+
+function neueKomponente(ifn){
+  dialog("Neue Komponente",function(host,close){
+    var lb=el("input",{class:"i",type:"text",placeholder:"z. B. Handelsinfo"});
+    host.appendChild(field("Bezeichnung",lb));
+    host.appendChild(el("p",{class:"hint",
+      text:"Die Komponente entsteht leer und wird dieser Schnittstelle als optional zugeordnet. Die Felder legst du danach darin an."}));
+    actions(host,close,function(){
+      var label=lb.value.trim(); if(!label) return false;
+      var cn=techName(label,REG.components);
+      REG.components[cn]={label:label,engine:null,schema:{type:"object",properties:{}}};
+      var d=REG.interfaces[ifn];
+      d.allows=(d.allows||[]).concat([cn]);
+      UI.regcomp=cn; UI.regprop="";
+      saveReg("components"); saveReg("interfaces"); render();
+    },"Anlegen");
+  });
 }
 
 /* ============================================================
