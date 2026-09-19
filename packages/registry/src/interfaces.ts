@@ -8,48 +8,48 @@ import type { InterfaceDef } from '@nw/model';
 export const interfaces: Record<string, InterfaceDef> = {
   Base: {
     name: 'Base',
-    label: 'Basis',
+    label: 'Base',
     abstract: true,
     requires: ['Name', 'Identity'],
-    allows: ['Status', 'Description', 'Visibility', 'Bild', 'RawContent'],
+    allows: ['Status', 'Description', 'Visibility', 'Image', 'RawContent'],
     blockTypes: ['paragraph', 'note'],
   },
 
   NPC: {
     name: 'NPC',
-    label: 'Geschöpf',
+    label: 'Creature',
     extends: ['Base'],
     allows: ['CreatureInfo', 'Vars'],
     blockTypes: ['+appearance', '+personality', '+lore', '+fact', '+secret', '+readaloud'],
   },
 
-  Ort: {
-    name: 'Ort',
-    label: 'Ort',
+  Place: {
+    name: 'Place',
+    label: 'Place',
     extends: ['Base'],
     allows: ['LocationInfo'],
     blockTypes: ['+lore', '+readaloud', '+secret'],
   },
 
-  Fraktion: {
-    name: 'Fraktion',
-    label: 'Fraktion',
+  Faction: {
+    name: 'Faction',
+    label: 'Faction',
     extends: ['Base'],
     allows: ['FactionInfo'],
     blockTypes: ['+lore', '+secret'],
   },
 
-  Artikel: {
-    name: 'Artikel',
-    label: 'Wissensartikel',
+  Article: {
+    name: 'Article',
+    label: 'Article',
     extends: ['Base'],
     blockTypes: ['+lore', '+secret', '+poem', '+song'],
   },
 
   /** The reuse pool: traits, actions, conditions, feats — all one interface. */
-  Regel: {
-    name: 'Regel',
-    label: 'Regelbaustein',
+  Rule: {
+    name: 'Rule',
+    label: 'Rule Element',
     extends: ['Base'],
     requires: ['RuleInfo'],
     allows: ['Vars'],
@@ -70,38 +70,38 @@ export const interfaces: Record<string, InterfaceDef> = {
    * and a material differ by which component they carry, which is exactly
    * what interfaces are for.
    */
-  Gegenstand: {
-    name: 'Gegenstand',
-    label: 'Gegenstand',
+  Item: {
+    name: 'Item',
+    label: 'Item',
     extends: ['Base'],
-    allows: ['ItemInfo', 'Formfaktor'],
+    allows: ['ItemInfo', 'Footprint'],
     blockTypes: ['+lore', '+secret', '+fact'],
   },
 
-  Waffe: {
-    name: 'Waffe',
-    label: 'Waffe',
-    extends: ['Gegenstand'],
-    allows: ['WaffenInfo'],
+  Weapon: {
+    name: 'Weapon',
+    label: 'Weapon',
+    extends: ['Item'],
+    allows: ['WeaponInfo'],
   },
 
-  Ruestung: {
-    name: 'Ruestung',
-    label: 'Rüstung',
-    extends: ['Gegenstand'],
-    allows: ['RuestungsInfo'],
+  Armor: {
+    name: 'Armor',
+    label: 'Armor',
+    extends: ['Item'],
+    allows: ['ArmorInfo'],
   },
 
   Material: {
     name: 'Material',
     label: 'Material',
-    extends: ['Gegenstand'],
+    extends: ['Item'],
     allows: ['MaterialInfo'],
   },
 
-  Verbrauchsgut: {
-    name: 'Verbrauchsgut',
-    label: 'Verbrauchsgut',
-    extends: ['Gegenstand'],
+  Consumable: {
+    name: 'Consumable',
+    label: 'Consumable',
+    extends: ['Item'],
   },
 };

@@ -11,14 +11,14 @@ import type { RelationDef } from '@nw/model';
 export const relations: Record<string, RelationDef> = {
   composedOf: {
     type: 'composedOf',
-    label: 'besteht aus',
-    inverseLabel: 'verwendet in',
+    label: 'composed of',
+    inverseLabel: 'used in',
     from: ['Statblock'],
-    to: ['Regel'],
-    section: 'Aktionen & Merkmale',
+    to: ['Rule'],
+    section: 'Actions & traits',
     props: {
       type: 'object',
-      properties: { vars: { type: 'object', title: 'Variablenbindung' } },
+      properties: { vars: { type: 'object', title: 'Variable bindings' } },
     },
   },
 
@@ -30,69 +30,69 @@ export const relations: Record<string, RelationDef> = {
    * where the edge exists in the data we actually have. One edge, one
    * direction; the creature reads it through `inverseLabel`.
    */
-  gehoertZu: {
-    type: 'gehoertZu',
-    label: 'gehört zu',
-    inverseLabel: 'Statblock',
+  belongsTo: {
+    type: 'belongsTo',
+    label: 'belongs to',
+    inverseLabel: 'statblock of',
     from: ['Statblock'],
     to: ['NPC'],
     cardinality: 'one',
   },
 
   /** Weapon properties are pooled rules, referenced rather than copied. */
-  hatEigenschaft: {
-    type: 'hatEigenschaft',
-    label: 'Eigenschaft',
-    inverseLabel: 'Eigenschaft von',
-    from: ['Waffe', 'Gegenstand', 'Ruestung'],
-    to: ['Regel'],
+  hasProperty: {
+    type: 'hasProperty',
+    label: 'has property',
+    inverseLabel: 'property of',
+    from: ['Weapon', 'Item', 'Armor'],
+    to: ['Rule'],
   },
 
-  schuldet: {
-    type: 'schuldet',
-    label: 'schuldet',
-    inverseLabel: 'Gläubiger von',
+  owes: {
+    type: 'owes',
+    label: 'owes',
+    inverseLabel: 'creditor of',
     from: ['NPC'],
     to: ['NPC'],
   },
 
-  mitgliedVon: {
-    type: 'mitgliedVon',
-    label: 'Mitglied von',
-    inverseLabel: 'Mitglieder',
+  memberOf: {
+    type: 'memberOf',
+    label: 'member of',
+    inverseLabel: 'members',
     from: ['NPC'],
-    to: ['Fraktion'],
+    to: ['Faction'],
   },
 
-  wohntIn: {
-    type: 'wohntIn',
-    label: 'wohnt in',
-    inverseLabel: 'Bewohner',
+  livesIn: {
+    type: 'livesIn',
+    label: 'lives in',
+    inverseLabel: 'residents',
     from: ['NPC'],
-    to: ['Ort'],
+    to: ['Place'],
   },
 
-  teilVon: {
-    type: 'teilVon',
-    label: 'Teil von',
-    inverseLabel: 'enthält',
-    from: ['Ort'],
-    to: ['Ort'],
+  partOf: {
+    type: 'partOf',
+    label: 'part of',
+    inverseLabel: 'contains',
+    from: ['Place'],
+    to: ['Place'],
   },
 
-  herrschtUeber: {
-    type: 'herrschtUeber',
-    label: 'herrscht über',
-    inverseLabel: 'beherrscht von',
-    from: ['Fraktion'],
-    to: ['Ort'],
+  controls: {
+    type: 'controls',
+    label: 'controls',
+    inverseLabel: 'controlled by',
+    from: ['Faction'],
+    to: ['Place'],
   },
 
-  beschriebenIn: {
-    type: 'beschriebenIn',
-    label: 'beschrieben in',
-    inverseLabel: 'beschreibt',
+  describedIn: {
+    type: 'describedIn',
+    label: 'described in',
+    inverseLabel: 'describes',
     from: ['*'],
-    to: ['Artikel'],
+    to: ['Article'],
   },
 };

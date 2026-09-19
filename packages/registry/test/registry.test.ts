@@ -116,13 +116,13 @@ describe('interface inheritance', () => {
     const forNpc = blockTypesFor(seedRegistry, 'NPC');
     expect(forNpc).toContain('paragraph'); // inherited from Base
     expect(forNpc).toContain('secret'); // added with +secret
-    expect(blockTypesFor(seedRegistry, 'Regel')).toEqual(['paragraph', 'note']);
+    expect(blockTypesFor(seedRegistry, 'Rule')).toEqual(['paragraph', 'note']);
   });
 
   it('offers only the relations whose source matches', () => {
     const fromStatblock = relationsFrom(seedRegistry, 'Statblock').map((r) => r.type);
     expect(fromStatblock).toContain('composedOf');
-    expect(fromStatblock).toContain('beschriebenIn'); // from: ['*']
-    expect(fromStatblock).not.toContain('wohntIn');
+    expect(fromStatblock).toContain('describedIn'); // from: ['*']
+    expect(fromStatblock).not.toContain('livesIn');
   });
 });

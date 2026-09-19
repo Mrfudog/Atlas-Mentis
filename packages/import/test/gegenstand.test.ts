@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { importGegenstaende, parseGegenstand, stripDataview } from '../src/gegenstand.js';
+import { importItems, parseItem, stripDataview } from '../src/gegenstand.js';
 import { list, num, parseFrontmatter, str } from '../src/frontmatter.js';
 
 /**
@@ -55,40 +55,40 @@ describe('stripDataview', () => {
   });
 });
 
-describe('parseGegenstand', () => {
+describe('parseItem', () => {
   it('routes Gegenstandstyp to an interface', () => {
-    expect(parseGegenstand(read('Bastardschwert.md').text, 'Bastardschwert.md').entity.interfaces)
-      .toEqual(['Waffe']);
-    expect(parseGegenstand(read('Kettenrüstung.md').text, 'Kettenrüstung.md').entity.interfaces)
-      .toEqual(['Ruestung']);
-    expect(parseGegenstand(read('Holzbalken.md').text, 'Holzbalken.md').entity.interfaces)
+    expect(parseItem(read('Bastardschwert.md').text, 'Bastardschwert.md').entity.interfaces)
+      .toEqual(['Weapon']);
+    expect(parseItem(read('Kettenrüstung.md').text, 'Kettenrüstung.md').entity.interfaces)
+      .toEqual(['Armor']);
+    expect(parseItem(read('Holzbalken.md').text, 'Holzbalken.md').entity.interfaces)
       .toEqual(['Material']);
   });
 
   it('keeps Rarität and Kaufrarität apart — they are different scales', () => {
-    const schwert = parseGegenstand(read('Bastardschwert.md').text, 'Bastardschwert.md');
+    const schwert = parseItem(read('Bastardschwert.md').text, 'Bastardschwert.md');
     const info = schwert.entity.components['ItemInfo'] as Record<string, unknown>;
     // `-` means "not a magic item", which is not a rarity value.
-    expect(info['raritaet']).toBeUndefined();
-    expect(info['kaufraritaet']).toBe('Ungewöhnlich');
+    expect(info['rarity']).toBeUndefined();
+    expect(info['availability']).toBe('Ungewöhnlich');
 
-    const essenz = parseGegenstand(read('Arkane Essenz (gewöhnlich).md').text, 'Arkane Essenz (gewöhnlich).md');
+    const essenz = parseItem(read('Arkane Essenz (gewöhnlich).md').text, 'Arkane Essenz (gewöhnlich).md');
     const essenzInfo = essenz.entity.components['ItemInfo'] as Record<string, unknown>;
-    expect(essenzInfo['raritaet']).toBe('gewöhnlich');
-    expect(essenzInfo['kaufraritaet']).toBeUndefined();
+    expect(essenzInfo['rarity']).toBe('gewöhnlich');
+    expect(essenzInfo['availability']).toBeUndefined();
   });
 
   it('reads the armour class that only lowercase lookup finds', () => {
-    const kette = parseGegenstand(read('Kettenrüstung.md').text, 'Kettenrüstung.md');
-    expect(kette.entity.components['RuestungsInfo']).toEqual({
-      rk: 16,
-      ruestungstyp: 'Schwere Rüstung',
+    const kette = parseItem(read('Kettenrüstung.md').text, 'Kettenrüstung.md');
+    expect(kette.entity.components['ArmorInfo']).toEqual({
+      ac: 16,
+      armorType: 'Schwere Rüstung',
     });
   });
 
   it('keeps the grid as rows', () => {
-    const balken = parseGegenstand(read('Holzbalken.md').text, 'Holzbalken.md');
-    const grid = balken.entity.components['Formfaktor'] as { rows: string[] };
+    const balken = parseItem(read('Holzbalken.md').text, 'Holzbalken.md');
+    const grid = balken.entity.components['Footprint'] as { rows: string[] };
     expect(grid.rows).toHaveLength(4);
     expect(grid.rows[0]).toHaveLength(16);
   });
@@ -96,27 +96,27 @@ describe('parseGegenstand', () => {
   it('turns Eigenschaften into references, not text', () => {
     // A weapon property is a pooled rule. Copying its text into every weapon
     // is exactly the reuse the backbone exists to avoid.
-    const schwert = parseGegenstand(read('Bastardschwert.md').text, 'Bastardschwert.md');
-    expect(schwert.pending).toEqual([{ relation: 'hatEigenschaft', target: 'Versatil' }]);
+    const schwert = parseItem(read('Bastardschwert.md').text, 'Bastardschwert.md');
+    expect(schwert.pending).toEqual([{ relation: 'hasProperty', target: 'Versatil' }]);
   });
 
-  it('takes the image embed as the Bild component', () => {
-    const kette = parseGegenstand(read('Kettenrüstung.md').text, 'Kettenrüstung.md');
-    expect(kette.entity.components['Bild']).toEqual({ url: 'Kettenrüstung.png', bu: '' });
+  it('takes the image embed as the Image component', () => {
+    const kette = parseItem(read('Kettenrüstung.md').text, 'Kettenrüstung.md');
+    expect(kette.entity.components['Image']).toEqual({ url: 'Kettenrüstung.png', caption: '' });
     expect(kette.images).toEqual(['Kettenrüstung.png']);
   });
 
   it('drops the `gegenstand` tag every file carries and keeps the rest', () => {
-    const schwert = parseGegenstand(read('Bastardschwert.md').text, 'Bastardschwert.md');
+    const schwert = parseItem(read('Bastardschwert.md').text, 'Bastardschwert.md');
     expect(schwert.entity.tags).toEqual(['waffe']);
     // Kettenrüstung carries only `gegenstand` — the vault is inconsistent here.
-    const kette = parseGegenstand(read('Kettenrüstung.md').text, 'Kettenrüstung.md');
+    const kette = parseItem(read('Kettenrüstung.md').text, 'Kettenrüstung.md');
     expect(kette.entity.tags).toEqual([]);
   });
 
   it('keeps the original file verbatim (REQ-019)', () => {
     for (const file of files) {
-      const parsed = parseGegenstand(read(file).text, file);
+      const parsed = parseItem(read(file).text, file);
       const raw = parsed.entity.components['RawContent'] as Record<string, unknown>;
       expect(raw['raw']).toBe(read(file).text);
       expect(raw['format']).toBe('obsidian');
@@ -125,53 +125,53 @@ describe('parseGegenstand', () => {
 
   it('loses nothing silently — every carried key is placed or reported', () => {
     for (const file of files) {
-      const parsed = parseGegenstand(read(file).text, file);
+      const parsed = parseItem(read(file).text, file);
       expect(parsed.unplaced, `${file}: unplaced keys`).toEqual([]);
     }
   });
 
   it('names the article after the file, not the frontmatter', () => {
     // These notes carry no `name:` key; the filename is the name.
-    const essenz = parseGegenstand(read('Arkane Essenz (gewöhnlich).md').text, 'Arkane Essenz (gewöhnlich).md');
+    const essenz = parseItem(read('Arkane Essenz (gewöhnlich).md').text, 'Arkane Essenz (gewöhnlich).md');
     expect(essenz.entity.name).toBe('Arkane Essenz (gewöhnlich)');
   });
 });
 
-describe('importGegenstaende', () => {
+describe('importItems', () => {
   it('imports the whole batch and reports what did not resolve', () => {
-    const report = importGegenstaende(files.map(read));
+    const report = importItems(files.map(read));
     expect(report.entities).toHaveLength(files.length);
     // `Versatil` is not among these five files, so it is a to-do, not a loss.
     expect(report.unresolved).toEqual([
-      { from: 'Bastardschwert', relation: 'hatEigenschaft', target: 'Versatil' },
+      { from: 'Bastardschwert', relation: 'hasProperty', target: 'Versatil' },
     ]);
   });
 
   it('resolves a reference when the target is already there', () => {
     const versatil = {
       id: 'r_versatil',
-      interfaces: ['Regel'],
+      interfaces: ['Rule'],
       name: 'Versatil',
       tags: [],
       components: { Name: { text: 'Versatil' } },
     };
-    const report = importGegenstaende(files.map(read), [versatil]);
+    const report = importItems(files.map(read), [versatil]);
     expect(report.unresolved).toEqual([]);
     const schwert = report.entities.find((e) => e.name === 'Bastardschwert');
     expect(schwert?.relations).toEqual([
-      expect.objectContaining({ type: 'hatEigenschaft', to: 'r_versatil' }),
+      expect.objectContaining({ type: 'hasProperty', to: 'r_versatil' }),
     ]);
   });
 
   it('matches on aliases as well as names', () => {
     const byAlias = {
       id: 'r_versatile',
-      interfaces: ['Regel'],
+      interfaces: ['Rule'],
       name: 'Vielseitig',
       tags: [],
       components: { Name: { text: 'Vielseitig' }, Identity: { aliases: ['Versatil'] } },
     };
-    const report = importGegenstaende(files.map(read), [byAlias]);
+    const report = importItems(files.map(read), [byAlias]);
     expect(report.unresolved).toEqual([]);
   });
 });

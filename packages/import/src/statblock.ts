@@ -37,15 +37,15 @@ export const SECTIONS = [
 /** Label line → component field. */
 const LABELS: Record<string, string> = {
   rüstungsklasse: 'acText',
-  trefferpunkte: 'tpText',
-  geschwindigkeit: 'tempo',
-  'saving throws': 'rettungswuerfe',
-  skills: 'fertigkeiten',
-  'damage resistances': 'resistenzen',
-  immunities: 'immunitaeten',
-  vulnerabilities: 'verwundbarkeiten',
-  senses: 'sinne',
-  languages: 'sprachen',
+  trefferpunkte: 'hpText',
+  geschwindigkeit: 'speed',
+  'saving throws': 'saves',
+  skills: 'skills',
+  'damage resistances': 'resistances',
+  immunities: 'immunities',
+  vulnerabilities: 'vulnerabilities',
+  senses: 'senses',
+  languages: 'languages',
   'proficiency bonus': 'prof',
 };
 
@@ -101,15 +101,15 @@ export function parseStatblock(text: string, filename: string): ImportedStatbloc
   const info: Record<string, unknown> = { system: 'dnd5e-2014' };
 
   // `grösse: Klein (Ankheg)` carries both the size and the creature type.
-  const groesse = str(fm, 'grösse');
-  if (groesse) {
-    const parts = /^([^(]+?)\s*(?:\(([^)]*)\))?$/.exec(groesse.trim());
-    if (parts?.[1]) info['groesse'] = parts[1].trim();
-    if (parts?.[2]) info['art'] = parts[2].trim();
+  const sizeRaw = str(fm, 'grösse');
+  if (sizeRaw) {
+    const parts = /^([^(]+?)\s*(?:\(([^)]*)\))?$/.exec(sizeRaw.trim());
+    if (parts?.[1]) info['size'] = parts[1].trim();
+    if (parts?.[2]) info['kind'] = parts[2].trim();
   }
-  if (str(fm, 'ausrichtung')) info['gesinnung'] = str(fm, 'ausrichtung');
+  if (str(fm, 'ausrichtung')) info['alignment'] = str(fm, 'ausrichtung');
   if (str(fm, 'cr')) info['cr'] = str(fm, 'cr'); // may be `1/8`
-  if (str(fm, 'rolle')) info['kampfrolle'] = str(fm, 'rolle');
+  if (str(fm, 'rolle')) info['combatRole'] = str(fm, 'rolle');
 
   // `ac: 12 (Natürlicher Panzer)` — the number is the value, the rest a note.
   const acRaw = str(fm, 'ac');
@@ -117,13 +117,13 @@ export function parseStatblock(text: string, filename: string): ImportedStatbloc
     const acNum = /(-?\d+)/.exec(acRaw);
     if (acNum?.[1]) info['ac'] = Number(acNum[1]);
     const acNote = /\(([^)]*)\)/.exec(acRaw);
-    if (acNote?.[1]) info['acNotiz'] = acNote[1].trim();
+    if (acNote?.[1]) info['acNote'] = acNote[1].trim();
   }
-  const leben = num(fm, 'leben');
-  if (leben !== undefined) info['tp'] = leben;
-  if (str(fm, 'lebenswürfel')) info['tpFormel'] = str(fm, 'lebenswürfel');
-  const tempo = list(fm, 'geschwindigkeit');
-  if (tempo.length) info['tempo'] = tempo.join(', ');
+  const hp = num(fm, 'leben');
+  if (hp !== undefined) info['hp'] = hp;
+  if (str(fm, 'lebenswürfel')) info['hpFormula'] = str(fm, 'lebenswürfel');
+  const speed = list(fm, 'geschwindigkeit');
+  if (speed.length) info['speed'] = speed.join(', ');
 
   // Label lines from the callout. A trailing colon inside the bold is allowed.
   for (const line of lines) {
@@ -139,8 +139,8 @@ export function parseStatblock(text: string, filename: string): ImportedStatbloc
     }
     // The callout repeats AC, HP and speed from the frontmatter; the
     // frontmatter is the structured one, so only take what it lacks.
-    if (key === 'acText' || key === 'tpText') continue;
-    if (key === 'tempo' && info['tempo']) continue;
+    if (key === 'acText' || key === 'hpText') continue;
+    if (key === 'speed' && info['speed']) continue;
     info[key] = value;
   }
 
@@ -241,12 +241,12 @@ export interface StatblockReport {
 }
 
 /**
- * Import a batch. Every section entry becomes a `Regel` article of its own,
+ * Import a batch. Every section entry becomes a `Rule` article of its own,
  * referenced by the statblock through `composedOf` — so a trait shared by two
  * creatures is one article, not two copies. Identical name and text are
  * treated as the same rule.
  */
-export function importStatbloecke(
+export function importStatblocks(
   files: { name: string; text: string }[],
   existing: Entity[] = [],
 ): StatblockReport {
@@ -273,12 +273,12 @@ export function importStatbloecke(
           ruleByKey.set(key, ruleId);
           rules.push({
             id: ruleId,
-            interfaces: ['Regel'],
+            interfaces: ['Rule'],
             name: entry.name,
             tags: [],
             components: {
               Name: { text: entry.name },
-              Identity: { key: `regel/${slug(entry.name)}`, aliases: [] },
+              Identity: { key: `rule/${slug(entry.name)}`, aliases: [] },
               Status: { value: 'used' },
               RuleInfo: { kind: kindOf(group.section) },
               Description: { raw: entry.text },
@@ -294,7 +294,7 @@ export function importStatbloecke(
           id: newId('rel'),
           type: 'composedOf',
           to: ruleId,
-          props: { abschnitt: group.section },
+          props: { section: group.section },
         });
       }
     }
@@ -316,7 +316,7 @@ export function importStatbloecke(
     const targetId = byName.get(item.creature.toLowerCase());
     if (targetId) {
       item.entity.relations = item.entity.relations ?? [];
-      item.entity.relations.push({ id: newId('rel'), type: 'gehoertZu', to: targetId });
+      item.entity.relations.push({ id: newId('rel'), type: 'belongsTo', to: targetId });
     } else {
       unresolved.push({ from: item.entity.name, target: item.creature });
     }
