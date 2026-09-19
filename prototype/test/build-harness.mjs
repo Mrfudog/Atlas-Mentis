@@ -14,6 +14,7 @@ const STUB_LIVE = `
 window.__REG__ = ${JSON.stringify(reg)};
 window.__ENT__ = ${JSON.stringify(ent)};
 window.__WROTE__ = [];
+window.__DELETED__ = [];
 function tiefKalt(o){
   if(o && typeof o==='object' && !Object.isFrozen(o)){
     Object.freeze(o);
@@ -32,7 +33,8 @@ window.claude = { use: async function(n){
           data:function(){return window.__REG__[part];}})); },0);
         return function(){}; },
       set: async function(){ window.__WROTE__.push(path); },
-      delete: async function(){} }; },
+      delete: async function(){ window.__DELETED__.push(path);
+        window.__ENT__ = window.__ENT__.filter(function(d){ return 'entities/'+d.id !== path; }); } }; },
     collection: function(){ return { limit:function(){return this;},
       onSnapshot:function(next){
         setTimeout(function(){ next(tiefKalt({docs: window.__ENT__.map(function(d){
