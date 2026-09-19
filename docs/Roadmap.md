@@ -189,21 +189,34 @@ Beschreibung unter `.claude/agents/`.
 
 ---
 
-## Offene Entscheidungen
+## Entschieden (2026-09-19)
 
-1. **Wo endet der Prototyp?** Mein Vorschlag: nach Etappe B. Board, Karten und
-   Initiative im echten Stapel. Einverstanden, oder willst du davon etwas
-   früher sehen?
-2. **Welches SSO** läuft vor dem Reverse Proxy? Blockiert C2 seit Anfang.
-3. **Bearbeiten in der Ansicht (A7):** Klick auf ein Feld macht genau dieses
-   Feld änderbar — oder ein Schalter „Bearbeiten" macht den ganzen Artikel
-   änderbar und einer speichert?
-4. **Ansicht „Wissen" (A6):** geht es um Gruppierung der Felder, oder um
-   Wissensstände (was die Gruppe weiss, was ein Charakter weiss, was noch
-   verborgen ist)? Ich lese es als beides und baue die Gruppierung zuerst.
-5. **Massenbearbeitung (A9):** welche Vorgänge? Tags setzen und entfernen,
-   Stand ändern, Schnittstelle wechseln, ein Feld auf denselben Wert setzen,
-   löschen. Fehlt etwas, ist etwas davon zu viel?
-6. **Session als Behälter oder als Artikel mit Kanten?** Ich schlage Kanten vor
-   (`partOf`), wie überall sonst — ein Behälterkonstrukt wäre das erste
-   Element, das nicht dem Rückgrat folgt.
+1. **Der Prototyp bleibt Artefakt, so lange es geht.** Damit verschiebt sich
+   der Schnitt aus dem Abschnitt oben: Board, Karten und Initiative werden
+   erst dann im echten Stapel gebaut, wenn das Artefakt sie nicht mehr trägt —
+   nicht vorsorglich. Was sie an Grenzen stossen lässt, ist absehbar
+   (gleichzeitige Zuschauer, Live-Zustand, Bildmengen); bis dahin gilt:
+   weiterbauen, wo es schneller geht.
+2. **Zugang: ein Passwort je Nutzer**, so einfach wie möglich. Kein SSO.
+   Festgelegt wird es, wenn die Basis des Prototyps steht.
+   *Offen bleibt dabei:* Passwörter gehören gehasht abgelegt (Argon2id) und
+   nie ins öffentliche Repo; die Anwendung hat heute gar keine
+   Authentifizierung und bindet auf `127.0.0.1`.
+3. **Bearbeiten: Klick aufs Feld**, plus ein Schalter, der die Bearbeitung
+   aller Felder auf einmal einschaltet.
+4. **Wissen: selbst festlegen, über ein Seitenpanel in der Artikelansicht.**
+   Dort wird bestimmt, welche Felder zu welcher Information gehören, und
+   diese Informationen werden dann Charakteren oder Wissensständen
+   zugeteilt. Die Information ist damit eine eigene Einheit zwischen Feld
+   und Empfänger — kein Feldattribut.
+5. **Massenbearbeitung** wie vorgeschlagen: Tags setzen und entfernen, Stand
+   ändern, Schnittstelle wechseln, ein Feld auf denselben Wert, löschen.
+6. **Session als Artikel mit Kanten**, dem Rückgrat entsprechend — kein
+   eigenes Behälterkonstrukt.
+
+## Als Nächstes
+
+Alle Basis-Bausteine für Artikel selbst definierbar machen: Basisfelder,
+Ansichten, Artikeltypen und die Felder darin. Das ist A3, A4 und A5
+zusammengezogen — jeder Registerreiter bekommt eine Maske, Ansichten werden
+ein Werkzeugkasten, und Ansichten lassen sich pro Typ festlegen.
