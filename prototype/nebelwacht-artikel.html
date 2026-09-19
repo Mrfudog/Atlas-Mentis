@@ -1,4 +1,4 @@
-<title>Nebelwacht Artikelwerk</title>
+<title>Nebelwacht Article Engine</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -219,6 +219,22 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 .addbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .addbar select.i,.addbar input.i{width:auto;min-width:150px;flex:0 1 auto}
 
+.swatch{display:inline-block;width:11px;height:11px;border-radius:2px;
+  border:1px solid var(--line2);vertical-align:baseline}
+.linkbox{position:relative}
+.sugg{position:absolute;left:0;right:0;top:100%;z-index:70;background:var(--surface);
+  border:1px solid var(--line2);border-top:0;border-radius:0 0 var(--r) var(--r);
+  max-height:210px;overflow-y:auto;box-shadow:0 6px 18px rgba(0,0,0,.14)}
+.sugg button{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  width:100%;text-align:left;padding:5px 9px;background:none;border:0;cursor:pointer;font:inherit}
+.sugg button:hover{background:var(--accent-soft)}
+.sugg em{font-style:normal;font-family:var(--ff-mono);font-size:10.5px;color:var(--dim)}
+.tgt{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;
+  grid-column:1/-1;padding:7px 9px;margin-top:4px;background:var(--surface2);
+  border:1px solid var(--line);border-radius:var(--r)}
+.tgt .tt{grid-column:1/-1;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--accent)}
+
 @media (max-width:900px){
   .body{grid-template-columns:minmax(0,1fr)}
   .rail,.aside{display:none}
@@ -241,11 +257,11 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 <div class="app">
   <header class="top">
     <div class="brand">Nebel<span>wacht</span></div>
-    <div class="sub">Artikelwerk</div>
+    <div class="sub">Article Engine</div>
     <div class="grow"></div>
-    <input id="q" class="search" type="search" placeholder="Suchen…" aria-label="Artikel suchen">
-    <select id="facet" class="vw" aria-label="Darstellungsstufe"></select>
-    <button id="new" class="btn pri" type="button">+ Neu</button>
+    <input id="q" class="search" type="search" placeholder="Search…" aria-label="Search articles">
+    <select id="facet" class="vw" aria-label="View"></select>
+    <button id="new" class="btn pri" type="button">+ New</button>
   </header>
 
   <div class="body">
@@ -255,9 +271,9 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
   </div>
 
   <nav class="mob" id="mob">
-    <button type="button" data-p="rail">Register</button>
-    <button type="button" data-p="main" aria-current="true">Artikel</button>
-    <button type="button" data-p="aside">Bezüge</button>
+    <button type="button" data-p="rail">Registry</button>
+    <button type="button" data-p="main" aria-current="true">Articles</button>
+    <button type="button" data-p="aside">Relations</button>
   </nav>
 </div>
 
@@ -266,7 +282,7 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 "use strict";
 
 /* ============================================================
-   Nebelwacht Artikelwerk — Artikel-Engine v0
+   Nebelwacht Article Engine v0
    Compound backbone at prototype depth:
      entity (peg) + components (cards) + relations (strings)
      interfaces / component_defs / relation_defs as registry ROWS
@@ -281,40 +297,40 @@ var ENT=new Map();                       // id -> entity body
    so einem Objekt — und zwar mitten im Snapshot-Callback, wo niemand es
    auffängt. Deshalb kommt alles, was die Seite später bearbeitet, als
    eigene Kopie herein. */
-function frisch(o){
+function thawed(o){
   if(o==null) return o;
   try{ return structuredClone(o); }catch(x){}
   try{ return JSON.parse(JSON.stringify(o)); }catch(x){ return o; }
 }
 var REG={interfaces:{},components:{},relations:{},vars:{},views:{}};
-var UI={route:{k:"list"}, view:"schnell", iface:"", tag:"", q:"", offen:false, pane:"main",
+var UI={route:{k:"list"}, view:"quick", iface:"", tag:"", q:"", offen:false, pane:"main",
         regtab:"interfaces", regiface:"", regcomp:"", regprop:"", regjson:false, err:""};
 
 /* Darstellungsstufen (Facets, REQ-164) — registry rows, not code.
    Fallback only; the live set lives in registry/views. */
 var VIEWS_FALLBACK={
-  schnell:{label:"Schnell",order:1,felder:"keine",bloecke:["paragraph","readaloud"],
-           beschreibung:true,bezuege:false,bindungen:false},
-  voll:   {label:"Voll",order:2,felder:"alle",bloecke:"alle",
-           beschreibung:true,bezuege:true,bindungen:true}
+  quick:{label:"Quick",order:1,fields:"none",blocks:["paragraph","readaloud"],
+           description:true,relations:false,bindings:false},
+  full:   {label:"Full",order:2,fields:"all",blocks:"all",
+           description:true,relations:true,bindings:true}
 };
 function viewDef(){
   var vs=Object.keys(REG.views).length?REG.views:VIEWS_FALLBACK;
   return vs[UI.view]||vs[Object.keys(vs).sort(function(a,b){
-    return (vs[a].order||99)-(vs[b].order||99);})[0]]||VIEWS_FALLBACK.voll;
+    return (vs[a].order||99)-(vs[b].order||99);})[0]]||VIEWS_FALLBACK.full;
 }
 function viewKeys(){
   var vs=Object.keys(REG.views).length?REG.views:VIEWS_FALLBACK;
   return Object.keys(vs).sort(function(a,b){return (vs[a].order||99)-(vs[b].order||99);});
 }
 /* Which fields does this view show?
-   felder: "keine" | "alle" | ["StatblockInfo", "StatblockInfo.ac", …]
+   fields: "none" | "all" | ["StatblockInfo", "StatblockInfo.ac", …]
    A bare component name takes all of its fields; "Komponente.feld" takes one. */
 function showField(v,cn,p){
-  if(v.felder==="alle")return true;
-  if(v.felder==="keine"||!v.felder)return false;
-  if(!Array.isArray(v.felder))return false;
-  return v.felder.indexOf(cn)>=0 || v.felder.indexOf(cn+"."+p)>=0;
+  if(v.fields==="all")return true;
+  if(v.fields==="none"||!v.fields)return false;
+  if(!Array.isArray(v.fields))return false;
+  return v.fields.indexOf(cn)>=0 || v.fields.indexOf(cn+"."+p)>=0;
 }
 function compShown(v,cn,props){
   return Object.keys(props).some(function(p){return showField(v,cn,p);});
@@ -359,10 +375,151 @@ function fmtVal(pd,x){
   if(typeof x==="object")return Array.isArray(x)?x.join(", "):JSON.stringify(x);
   return String(x);
 }
-/* does this view show this block type? bloecke: "alle" | [Blockarten] */
+/* does this view show this block type? blocks: "all" | [Blockarten] */
 function showBlock(v,bt){
-  if(v.bloecke==="alle")return true;
-  return Array.isArray(v.bloecke)&&v.bloecke.indexOf(bt)>=0;
+  if(v.blocks==="all")return true;
+  return Array.isArray(v.blocks)&&v.blocks.indexOf(bt)>=0;
+}
+
+/* ---------- field kinds ----------
+   A schema property carries a JSON-Schema `type`, but the page needs a finer
+   distinction: a colour, a fixed choice and a link to another article are all
+   strings on the wire and nothing alike in a form. `format` and the presence
+   of `enum` carry that; fieldKind() reads it back out so the registry stays
+   plain JSON Schema instead of growing a private type system. */
+var FIELD_KINDS=[
+  ["text","Text"],["number","Number"],["boolean","Yes/No"],
+  ["choice","Choice"],["color","Colour"],["link","Link to article"],
+  ["list","List"],["object","Object"]
+];
+function fieldKind(p){
+  if(!p) return "text";
+  if(p.format==="color") return "color";
+  if(p.format==="link") return "link";
+  if(Array.isArray(p["enum"])) return "choice";
+  if(p.type==="number"||p.type==="integer") return "number";
+  if(p.type==="boolean") return "boolean";
+  if(p.type==="array") return "list";
+  if(p.type==="object") return "object";
+  return "text";
+}
+/* Setting a kind rewrites exactly the keys that define it and leaves the rest
+   alone — title, derived and required survive a change of mind. */
+function setFieldKind(p,kind){
+  delete p["enum"];
+  if(p.format==="color"||p.format==="link") delete p.format;
+  delete p.target;
+  switch(kind){
+    case "number":  p.type="number"; break;
+    case "boolean": p.type="boolean"; break;
+    case "list":    p.type="array"; break;
+    case "object":  p.type="object"; break;
+    case "choice":  p.type="string"; p["enum"]=[]; break;
+    case "color":   p.type="string"; p.format="color"; break;
+    case "link":    p.type="string"; p.format="link"; p.target={}; break;
+    default:        p.type="string";
+  }
+}
+
+/* ---------- link targets ----------
+   Which articles may a link field point at. Three filters, all optional and
+   combined with AND: interface (subtypes included), tags (any of), and a
+   field value. Empty means "any article" — a link with no constraint is still
+   a link, not an error. */
+function ifaceAndKinds(name,seen){
+  seen=seen||{}; if(seen[name])return []; seen[name]=1;
+  var out=[name];
+  kindsOf(name).forEach(function(k){ out=out.concat(ifaceAndKinds(k,seen)); });
+  return out;
+}
+function targetMatches(target,e){
+  var t=target||{};
+  if(Array.isArray(t.interfaces)&&t.interfaces.length){
+    var erlaubt={};
+    t.interfaces.forEach(function(n){ ifaceAndKinds(n).forEach(function(k){ erlaubt[k]=1; }); });
+    if(!(e.interfaces||[]).some(function(n){ return erlaubt[n]; })) return false;
+  }
+  if(Array.isArray(t.tags)&&t.tags.length){
+    if(!(e.tags||[]).some(function(x){ return t.tags.indexOf(x)>=0; })) return false;
+  }
+  if(t.where&&t.where.component&&t.where.property){
+    var have=((e.components||{})[t.where.component]||{})[t.where.property];
+    if(String(have==null?"":have)!==String(t.where.value==null?"":t.where.value)) return false;
+  }
+  return true;
+}
+/* Candidates for a link field, newest-relevant first: name match before a
+   match anywhere else, so typing a name does not bury it under descriptions. */
+function linkCandidates(target,query,limit){
+  var q=String(query||"").toLowerCase().trim();
+  var vorn=[], hinten=[];
+  ENT.forEach(function(e){
+    if(!targetMatches(target,e))return;
+    var name=nameOf(e).toLowerCase();
+    var aliases=(((e.components||{}).Identity||{}).aliases||[]).join(" ").toLowerCase();
+    if(!q){ vorn.push(e); return; }
+    if(name.indexOf(q)===0) vorn.push(e);
+    else if(name.indexOf(q)>=0||aliases.indexOf(q)>=0) hinten.push(e);
+  });
+  var byName=function(a,b){ return nameOf(a).localeCompare(nameOf(b),"en"); };
+  return vorn.sort(byName).concat(hinten.sort(byName)).slice(0,limit||12);
+}
+
+/* A link field holds an article id but a person types a name. The input keeps
+   the id on the node (`data-id`) and shows the name; the suggestion list is
+   filtered through the field's own target constraint, so a Weapon field never
+   offers a Place. Typing a name that matches nothing leaves the id empty —
+   better than storing a name the resolver will not find later. */
+function linkInput(pd,cur){
+  var wrap=el("div",{class:"linkbox"});
+  var known=ENT.get(cur);
+  var inp=el("input",{class:"i",type:"text",autocomplete:"off",
+    placeholder:"Type to search…",value:known?nameOf(known):""});
+  inp.dataset.id=known?known.id:"";
+  var list=el("div",{class:"sugg"});
+  /* Beim Übernehmen eines Vorschlags läuft derselbe `input`, mit dem sonst
+     das Tippen die Id verwirft. Ohne diese Sperre löschte die Auswahl genau
+     das, was sie eben gesetzt hat — das Feld sah gefüllt aus und speicherte
+     nichts. */
+  var waehlt=false;
+  function hide(){ list.textContent=""; list.style.display="none"; }
+  function show(){
+    var treffer=linkCandidates(pd.target,inp.value,10);
+    list.textContent="";
+    if(!treffer.length){ hide(); return; }
+    treffer.forEach(function(t){
+      var b=el("button",{type:"button",onmousedown:function(ev){
+        ev.preventDefault();
+        waehlt=true;
+        inp.value=nameOf(t); inp.dataset.id=t.id; hide();
+        inp.dispatchEvent(new Event("input",{bubbles:true}));
+        waehlt=false;
+      }});
+      b.appendChild(el("b",{text:nameOf(t)}));
+      b.appendChild(el("em",{text:ifaceName(t)}));
+      list.appendChild(b);
+    });
+    list.style.display="block";
+  }
+  inp.addEventListener("focus",show);
+  inp.addEventListener("input",function(){
+    if(waehlt)return;
+    /* Was getippt wird, ist erst eine Absicht. Die Id fällt weg, bis wieder
+       ein Artikel gewählt ist — sonst zeigt das Feld einen Namen und speichert
+       einen anderen Artikel. */
+    inp.dataset.id="";
+    show();
+  });
+  inp.addEventListener("blur",function(){ setTimeout(hide,150); });
+  wrap.appendChild(inp); wrap.appendChild(list);
+  hide();
+  wrap.value="";
+  Object.defineProperty(wrap,"value",{
+    get:function(){ return inp.dataset.id||""; },
+    set:function(v){ var t=ENT.get(v); inp.value=t?nameOf(t):""; inp.dataset.id=t?v:""; }
+  });
+  wrap.addEventListener=function(t,f){ inp.addEventListener(t,f); };
+  return wrap;
 }
 
 /* ---------- small helpers ---------- */
@@ -377,9 +534,9 @@ function el(t,a,kids){var n=document.createElement(t);
 function uid(p){return (p||"e")+"_"+Math.random().toString(36).slice(2,9);}
 function slug(s){return String(s||"").toLowerCase()
   .replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss")
-  .replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,60)||"ohne-namen";}
+  .replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,60)||"unnamed";}
 function esc(s){return String(s==null?"":s);}
-function nameOf(e){return e&&(e.name||(e.components&&e.components.Name&&e.components.Name.text))||"Ohne Namen";}
+function nameOf(e){return e&&(e.name||(e.components&&e.components.Name&&e.components.Name.text))||"Unnamed";}
 function byName(){return Array.from(ENT.values()).sort(function(a,b){
   return nameOf(a).localeCompare(nameOf(b),"de");});}
 
@@ -421,9 +578,9 @@ function ifaceRoots(){
   return Object.keys(REG.interfaces).filter(function(n){ return !parentOf(n); })
     .sort(function(a,b){return a.localeCompare(b,"de");});
 }
-/* Würde `kind` unter `ganz oben` hängen, entstünde ein Ring — dann fände
+/* Würde `kind` unter `ganz above` hängen, entstünde ein Ring — dann fände
    compsFor() kein Ende. `seen` in compsFor fängt das ab, aber ein Register,
-   das sich im Kreis dreht, ist trotzdem kaputt. Hier wird es verhindert. */
+   das sich im Kreis dreht, ist trotzdem broken. Hier wird es verhindert. */
 function wouldCycle(n,parent){
   var at=parent, guard=0;
   while(at && guard++<64){ if(at===n) return true; at=parentOf(at); }
@@ -453,7 +610,7 @@ function countIface(n){
 }
 function techName(label,taken){
   var base=slug(label).replace(/-([a-z])/g,function(_,c){return c.toUpperCase();})
-    .replace(/^[a-z]/,function(c){return c.toUpperCase();})||"Neu";
+    .replace(/^[a-z]/,function(c){return c.toUpperCase();})||"New";
   var n=base, i=2; while(taken[n]){ n=base+i; i++; }
   return n;
 }
@@ -468,20 +625,20 @@ function relsFrom(ifn){
 function relDef(t){ var r=REG.relations[t]; return r?Object.assign({type:t},r):{type:t,label:t,inverseLabel:"← "+t,to:["*"]}; }
 
 /* ---------- Validation: dieselben Regeln wie validateEntity im Modellpaket ---------- */
-function pruefeArtikel(e){
-  var probleme=[], ifn=(e.interfaces||[])[0];
+function checkArticle(e){
+  var problems=[], ifn=(e.interfaces||[])[0];
   if(!ifn||!REG.interfaces[ifn]){
-    return [{t:"Unbekannte Schnittstelle: "+(ifn||"(keine)")}];
+    return [{t:"Unknown interface: "+(ifn||"(none)")}];
   }
   var erlaubt={}; compsFor(ifn).forEach(function(c){erlaubt[c]=1;});
 
   reqFor(ifn).forEach(function(c){
-    if(!(e.components||{})[c]) probleme.push({t:(REG.interfaces[ifn].label||ifn)+" verlangt die Komponente "+((REG.components[c]||{}).label||c)});
+    if(!(e.components||{})[c]) problems.push({t:(REG.interfaces[ifn].label||ifn)+" requires the component "+((REG.components[c]||{}).label||c)});
   });
 
   Object.keys(e.components||{}).forEach(function(c){
-    if(!REG.components[c]) probleme.push({t:"Komponente "+c+" steht nicht im Register"});
-    else if(!erlaubt[c]) probleme.push({t:(REG.interfaces[ifn].label||ifn)+" erlaubt die Komponente "+(REG.components[c].label||c)+" nicht"});
+    if(!REG.components[c]) problems.push({t:"Component "+c+" is not in the registry"});
+    else if(!erlaubt[c]) problems.push({t:(REG.interfaces[ifn].label||ifn)+" does not allow the component "+(REG.components[c].label||c)+""});
   });
 
   Object.keys(e.components||{}).forEach(function(c){
@@ -491,16 +648,16 @@ function pruefeArtikel(e){
       if(pd&&pd.derived)return;                       // abgeleitet wird nie gespeichert
       var val=(e.components[c]||{})[p];
       if(val===undefined||val===""||val===null)
-        probleme.push({t:(cd.label||c)+" · "+((pd&&pd.title)||p)+" ist erforderlich"});
+        problems.push({t:(cd.label||c)+" · "+((pd&&pd.title)||p)+" is required"});
     });
   });
 
   (e.relations||[]).forEach(function(r){
-    if(!REG.relations[r.type]) probleme.push({t:"Bezugsart "+r.type+" steht nicht im Register"});
-    if(!ENT.get(r.to)) probleme.push({t:relDef(r.type).label+" zeigt auf einen Artikel, den es nicht gibt",id:r.id});
+    if(!REG.relations[r.type]) problems.push({t:"Relation type "+r.type+" is not in the registry"});
+    if(!ENT.get(r.to)) problems.push({t:relDef(r.type).label+" points at an article that does not exist",id:r.id});
   });
 
-  return probleme;
+  return problems;
 }
 
 /* ---------- {VAR} resolution (REQ-174) ---------- */
@@ -536,7 +693,7 @@ function inline(text,into){
       if(id) into.appendChild(el("button",{class:"ref",type:"button",onclick:function(x){return function(){go({k:"art",id:x});};}(id)},show));
       // A dead link is an invitation, not an error: klicken legt den Artikel an.
       else   into.appendChild(el("button",{class:"ref dead",type:"button",
-               title:me.write?"Noch kein Artikel — anlegen":"Kein Artikel namens „"+target+"“",
+               title:me.write?"No article yet — create one":"No article named “"+target+"“",
                onclick:function(t){return function(){ if(me.write)newEntity(t); };}(target)},show));
     } else if(m[3]!==undefined){
       into.appendChild(el("span",{class:"vr"},m[3]));
@@ -570,8 +727,8 @@ function saveReg(part){
 }
 function fail(x){
   var c=(x&&x.code)||"";
-  if(c==="invalid_argument"){ me.write=false; UI.err="Schreiben abgelehnt — diese Ansicht ist nur lesend."; }
-  else UI.err="Speichern fehlgeschlagen ("+(c||"unbekannt")+")";
+  if(c==="invalid_argument"){ me.write=false; UI.err="Write refused — this view is read only."; }
+  else UI.err="Save failed ("+(c||"unknown")+")";
   render();
 }
 
@@ -585,16 +742,16 @@ function go(r){ UI.route=r; UI.err=""; UI.pane="main"; render();
    renderMain() verhindern — die Seite blieb dann auf „Lädt…" stehen und
    sagte nicht, warum. Ein sichtbarer Fehler ist besser als eine leere Seite. */
 function render(){
-  var kaputt=[];
-  [["Auswahl",renderViewSelect],["Seitenleiste",renderRail],["Inhalt",renderMain],
+  var broken=[];
+  [["Auswahl",renderViewSelect],["Seitenleiste",renderRail],["Content",renderMain],
    ["Bezüge",renderAside],["Bereiche",renderPanes]].forEach(function(t){
-    try{ t[1](); }catch(x){ kaputt.push(t[0]+": "+(x&&x.message||x)); }
+    try{ t[1](); }catch(x){ broken.push(t[0]+": "+(x&&x.message||x)); }
   });
-  if(kaputt.length){
+  if(broken.length){
     try{
       var v=document.getElementById("view");
-      if(v) v.insertBefore(el("div",{class:"banner",text:"Anzeigefehler — "+kaputt.join(" · ")}),v.firstChild);
-      if(window.console) console.error("Nebelwacht:",kaputt);
+      if(v) v.insertBefore(el("div",{class:"banner",text:"Anzeigefehler — "+broken.join(" · ")}),v.firstChild);
+      if(window.console) console.error("Nebelwacht:",broken);
     }catch(y){}
   }
 }
@@ -619,9 +776,9 @@ function renderRail(){
   });
 
   var s1=el("section");
-  s1.appendChild(el("h3",{text:"Schnittstellen"}));
+  s1.appendChild(el("h3",{text:"Interfaces"}));
   s1.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.iface===""&&UI.route.k==="list"),
-    onclick:function(){UI.iface="";go({k:"list"});}},[el("b",{text:"Alle Artikel"}),el("em",{text:String(ENT.size)})]));
+    onclick:function(){UI.iface="";go({k:"list"});}},[el("b",{text:"All articles"}),el("em",{text:String(ENT.size)})]));
   Object.keys(REG.interfaces).sort().forEach(function(n){
     var d=REG.interfaces[n]; if(d.abstract)return;
     s1.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.iface===n&&UI.route.k==="list"),
@@ -632,7 +789,7 @@ function renderRail(){
 
   var keys=Object.keys(tags).sort();
   if(keys.length){
-    var s2=el("section"); s2.appendChild(el("h3",{text:"Marken"}));
+    var s2=el("section"); s2.appendChild(el("h3",{text:"Tags"}));
     var box=el("div",{class:"tags"});
     keys.forEach(function(t){ box.appendChild(el("button",{class:"tag",type:"button",
       "aria-pressed":String(UI.tag===t),onclick:function(){UI.tag=(UI.tag===t?"":t);go({k:"list"});}},t)); });
@@ -642,15 +799,15 @@ function renderRail(){
   var s3=el("section");
   s3.appendChild(el("h3",{text:"System"}));
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="reg"),
-    onclick:function(){go({k:"reg"});}},[el("b",{text:"Register"}),el("em",{text:"def"})]));
+    onclick:function(){go({k:"reg"});}},[el("b",{text:"Registry"}),el("em",{text:"def"})]));
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="graph"),
-    onclick:function(){go({k:"graph"});}},[el("b",{text:"Geflecht"}),el("em",{text:"↔"})]));
+    onclick:function(){go({k:"graph"});}},[el("b",{text:"Graph"}),el("em",{text:"↔"})]));
   if(me.write) s3.appendChild(el("button",{class:"navrow",type:"button",
-    onclick:function(){importDialog();}},[el("b",{text:"Importieren"}),el("em",{text:"md"})]));
-  var offenZahl=0; ENT.forEach(function(x){ if(pruefeArtikel(x).length) offenZahl++; });
+    onclick:function(){importDialog();}},[el("b",{text:"Import"}),el("em",{text:"md"})]));
+  var openCount=0; ENT.forEach(function(x){ if(checkArticle(x).length) openCount++; });
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.offen),
     onclick:function(){UI.offen=!UI.offen;go({k:"list"});}},
-    [el("b",{text:"Offene Punkte"}),el("em",{text:String(offenZahl)})]));
+    [el("b",{text:"Open issues"}),el("em",{text:String(openCount)})]));
   r.appendChild(s3);
 }
 
@@ -658,7 +815,7 @@ function renderRail(){
 function renderMain(){
   var v=document.getElementById("view"); v.textContent="";
   if(UI.err) v.appendChild(el("div",{class:"banner",text:UI.err}));
-  if(!ready){ v.appendChild(el("div",{class:"empty",text:"Lädt…"})); return; }
+  if(!ready){ v.appendChild(el("div",{class:"empty",text:"Loading…"})); return; }
   if(UI.route.k==="art"){ renderArticle(v,UI.route.id); return; }
   if(UI.route.k==="reg"){ renderRegistry(v); return; }
   if(UI.route.k==="graph"){ renderGraph(v); return; }
@@ -666,7 +823,7 @@ function renderMain(){
 }
 
 function matches(e){
-  if(UI.offen && !pruefeArtikel(e).length) return false;
+  if(UI.offen && !checkArticle(e).length) return false;
   if(UI.iface && (e.interfaces||[]).indexOf(UI.iface)<0) return false;
   if(UI.tag && (e.tags||[]).indexOf(UI.tag)<0) return false;
   if(UI.q){
@@ -687,8 +844,8 @@ function summary(e){
 function renderList(v){
   var list=byName().filter(matches);
   var head=el("div",{class:"listhead"});
-  head.appendChild(el("h2",{text:UI.iface?(REG.interfaces[UI.iface]&&REG.interfaces[UI.iface].label||UI.iface):"Alle Artikel"}));
-  head.appendChild(el("span",{class:"count",text:list.length+" von "+ENT.size}));
+  head.appendChild(el("h2",{text:UI.iface?(REG.interfaces[UI.iface]&&REG.interfaces[UI.iface].label||UI.iface):"All articles"}));
+  head.appendChild(el("span",{class:"count",text:list.length+" of "+ENT.size}));
   if(UI.tag) head.appendChild(el("span",{class:"pill",text:"#"+UI.tag}));
   v.appendChild(head);
 
@@ -704,15 +861,15 @@ function renderList(v){
     var st=e.components&&e.components.Status&&e.components.Status.value;
     if(st) t.appendChild(el("span",{class:"pill q",text:st}));
     (e.tags||[]).slice(0,3).forEach(function(tg){ t.appendChild(el("span",{class:"pill q",text:"#"+tg})); });
-    var pr=pruefeArtikel(e);
+    var pr=checkArticle(e);
     if(pr.length) t.appendChild(el("span",{class:"warn",title:pr.map(function(x){return x.t;}).join("\n"),
       text:"\u25cf "+pr.length}));
     row.appendChild(t);
-    if(vw.bild){
+    if(vw.image){
       var b=e.components&&e.components.Bild&&e.components.Bild.url;
       if(b) row.appendChild(el("img",{class:"thumb",src:b,alt:"",loading:"lazy"}));
     }
-    if(vw.beschreibung!==false&&summary(e))
+    if(vw.description!==false&&summary(e))
       row.appendChild(el("div",{class:"rs",text:String(summary(e)).replace(/\[\[([^\]|]+)(\|[^\]]+)?\]\]/g,"$1").slice(0,220)}));
     rows.appendChild(row);
   });
@@ -722,7 +879,7 @@ function renderList(v){
 /* ---------- article ---------- */
 function renderArticle(v,id){
   var e=ENT.get(id);
-  if(!e){ v.appendChild(el("div",{class:"empty",text:"Artikel nicht gefunden."})); return; }
+  if(!e){ v.appendChild(el("div",{class:"empty",text:"Article not found."})); return; }
   var ifn=(e.interfaces||[])[0]||"", d=REG.interfaces[ifn], vw=viewDef();
 
   var head=el("div",{class:"arthead"});
@@ -740,37 +897,37 @@ function renderArticle(v,id){
 
   var bar=el("div",{class:"rowbtns"});
   if(me.write){
-    bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){editEntity(e);}},"Bearbeiten"));
+    bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){editEntity(e);}},"Edit"));
     bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addBlock(e);}},"+ Block"));
-    bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addRelation(e);}},"+ Verknüpfung"));
-    bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addAdhoc(e);}},"+ Eigenes Feld"));
+    bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addRelation(e);}},"+ Relation"));
+    bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addAdhoc(e);}},"+ Custom field"));
     bar.appendChild(el("button",{class:"btn sm dngr gh",type:"button",onclick:function(){
       confirmDialog("„"+nameOf(e)+"“ endgültig löschen?",function(){
-        drop(e.id); go({k:"list"}); });}},"Löschen"));
+        drop(e.id); go({k:"list"}); });}},"Delete"));
   }
   v.appendChild(bar);
 
   /* Was die Validierung beanstanden würde — hier, wo es zu beheben ist. */
-  var probleme=pruefeArtikel(e);
-  if(probleme.length){
+  var problems=checkArticle(e);
+  if(problems.length){
     var box=el("div",{class:"pruef"});
-    box.appendChild(el("div",{class:"pruefkopf",text:probleme.length===1?"Ein offener Punkt":probleme.length+" offene Punkte"}));
+    box.appendChild(el("div",{class:"pruefkopf",text:problems.length===1?"Ein offener Punkt":problems.length+" offene Punkte"}));
     var ul=el("ul");
-    probleme.forEach(function(p){ ul.appendChild(el("li",{text:p.t})); });
+    problems.forEach(function(p){ ul.appendChild(el("li",{text:p.t})); });
     box.appendChild(ul);
     v.appendChild(box);
   }
 
   /* image — the Bild facet leads with it */
   var pic=e.components&&e.components.Bild&&e.components.Bild.url;
-  if(pic&&vw.bild) v.appendChild(el("figure",{class:"pic"},[
+  if(pic&&vw.image) v.appendChild(el("figure",{class:"pic"},[
     el("img",{src:pic,alt:nameOf(e)}),
     (e.components.Bild.bu?el("figcaption",{text:e.components.Bild.bu}):null)]));
 
   /* fields — generated from the component schemas (D0: forms from the registry) */
   var flds=el("dl",{class:"fields"}), nf=0;
   compsFor(ifn).forEach(function(cn){
-    if(cn==="Name"||cn==="Description"||cn==="Identity"||cn==="Vars"||cn==="Bild")return;
+    if(cn==="Name"||cn==="Description"||cn==="Identity"||cn==="Vars"||cn==="Image")return;
     var cd=REG.components[cn]; if(!cd)return;
     var val=(e.components||{})[cn]; if(!val)return;
     var props=(cd.schema&&cd.schema.properties)||{};
@@ -791,11 +948,21 @@ function renderArticle(v,id){
         var dv=fmtVal(props[dp],derivedValue(props[dp],val));
         if(dv!=="") s+=" ("+dv+")";
       });
+      var dd=el("dd");
+      if(fieldKind(pd)==="color"){
+        dd.appendChild(el("span",{class:"swatch",style:"background:"+s}));
+        dd.appendChild(document.createTextNode(" "+s));
+      } else if(fieldKind(pd)==="link"){
+        var ziel=ENT.get(s);
+        if(ziel) dd.appendChild(el("button",{class:"ref",type:"button",
+          onclick:function(){ go({k:"art",id:ziel.id}); }},nameOf(ziel)));
+        else dd.appendChild(el("span",{class:"gone",text:"missing"}));
+      } else dd.textContent=s;
       flds.appendChild(el("div",{class:"fld"+(pd.derived?" drv":"")},[
-        el("dt",{text:pd.title||p}), el("dd",{text:s})])); nf++;
+        el("dt",{text:pd.title||p}), dd])); nf++;
     });
   });
-  if(vw.felder==="alle") (e.adhoc||[]).forEach(function(f){
+  if(vw.fields==="all") (e.adhoc||[]).forEach(function(f){
     if(f.value===""||f.value==null)return;
     flds.appendChild(el("div",{class:"fld adhoc"},[
       el("dt",{text:f.label}),el("dd",{text:String(f.value)})])); nf++;
@@ -803,7 +970,7 @@ function renderArticle(v,id){
   if(nf) v.appendChild(flds);
 
   var desc=e.components&&e.components.Description&&e.components.Description.raw;
-  if(desc&&vw.beschreibung!==false) v.appendChild(para(fillVars(desc,null,e)));
+  if(desc&&vw.description!==false) v.appendChild(para(fillVars(desc,null,e)));
 
   /* blocks */
   var blocks=(e.blocks||[]).slice().sort(function(a,b){return (a.order||0)-(b.order||0);});
@@ -813,11 +980,11 @@ function renderArticle(v,id){
       if(!showBlock(vw,b.blockType))return;
       var box=el("div",{class:"blk "+b.blockType});
       if(b.blockType!=="paragraph"){
-        var lab=el("div",{class:"bl"},[document.createTextNode(b.blockType)]);
-        if(me.write) lab.appendChild(el("button",{class:"btn gh sm",type:"button",
-          onclick:function(){ confirmDialog("Diesen Block löschen?",function(){
+        var blockLabel=el("div",{class:"bl"},[document.createTextNode(b.blockType)]);
+        if(me.write) blockLabel.appendChild(el("button",{class:"btn gh sm",type:"button",
+          onclick:function(){ confirmDialog("Delete this block?",function(){
             e.blocks=e.blocks.filter(function(x){return x.id!==b.id;}); persist(e); }); }},"×"));
-        box.appendChild(lab);
+        box.appendChild(blockLabel);
       }
       box.appendChild(para(fillVars(b.body,null,e)));
       bw.appendChild(box);
@@ -827,7 +994,7 @@ function renderArticle(v,id){
 
   /* compounding — composedOf sections resolved from the pool */
   var comp=(e.relations||[]).filter(function(r){ var rd=REG.relations[r.type]; return rd&&rd.section; });
-  if(comp.length&&vw.bausteine!==false){
+  if(comp.length&&vw.composed!==false){
     var groups={};
     comp.forEach(function(r){ var s=REG.relations[r.type].section; (groups[s]=groups[s]||[]).push(r); });
     Object.keys(groups).forEach(function(sec){
@@ -847,7 +1014,7 @@ function renderArticle(v,id){
         // Regel — gegen die Regel aufzulösen lässt {DC} stehen.
         box.appendChild(para(fillVars(body,(r.props&&r.props.vars)||null,e),"cb"));
         var vb=(r.props&&r.props.vars)||{}, ks=Object.keys(vb);
-        if(ks.length&&vw.bindungen)
+        if(ks.length&&vw.bindings)
           box.appendChild(el("span",{class:"bind",text:ks.map(function(k){return k+"="+vb[k];}).join("  ·  ")}));
         v.appendChild(box);
       });
@@ -859,22 +1026,22 @@ function renderArticle(v,id){
 function renderAside(){
   var a=document.getElementById("aside"); a.textContent="";
   if(UI.route.k!=="art"){
-    a.appendChild(el("h3",{text:"Verknüpfungen"}));
-    a.appendChild(el("p",{class:"hint",text:"Verknüpfungen sind die Kanten zwischen Artikeln — typisiert und gerichtet. Öffne einen Artikel: hier steht dann, worauf er zeigt und was auf ihn zeigt. Gespeichert wird nur eine Richtung; die Gegenrichtung ist immer abgeleitet."}));
+    a.appendChild(el("h3",{text:"Relations"}));
+    a.appendChild(el("p",{class:"hint",text:"Relations are the edges between articles — typed and directed. Open an article and this panel shows what it points at and what points back. Only one direction is stored; the reverse is always derived."}));
     return;
   }
   var e=ENT.get(UI.route.id); if(!e)return;
-  if(viewDef().bezuege===false){
-    a.appendChild(el("h3",{text:"Verknüpfungen"}));
+  if(viewDef().relations===false){
+    a.appendChild(el("h3",{text:"Relations"}));
     a.appendChild(el("p",{class:"hint",text:"In dieser Darstellungsstufe ausgeblendet."}));
     return;
   }
 
   var outs=(e.relations||[]).filter(function(r){ var rd=REG.relations[r.type]; return !(rd&&rd.section); });
-  var kopf=el("h3",{text:"Zeigt auf"});
-  if(me.write) kopf.appendChild(el("button",{class:"btn gh sm",type:"button",
+  var head=el("h3",{text:"Zeigt auf"});
+  if(me.write) head.appendChild(el("button",{class:"btn gh sm",type:"button",
     title:"Verknüpfung hinzufügen",onclick:function(){addRelation(e);}},"+"));
-  a.appendChild(kopf);
+  a.appendChild(head);
   if(!outs.length) a.appendChild(el("p",{class:"hint",text:"Keine."}));
   else{
     var box=el("div",{class:"rel"});
@@ -884,7 +1051,7 @@ function renderAside(){
       row.appendChild(el("span",{class:"rl",text:rd.label||r.type}));
       var rv=el("span",{class:"rv"});
       if(t) rv.appendChild(el("button",{class:"ref",type:"button",onclick:function(){go({k:"art",id:t.id});}},nameOf(t)));
-      else rv.appendChild(el("span",{class:"gone",text:"fehlt"}));
+      else rv.appendChild(el("span",{class:"gone",text:"missing"}));
       if(r.props&&r.props.note) rv.appendChild(el("span",{class:"bind",text:r.props.note}));
       if(me.write) rv.appendChild(el("button",{class:"btn gh sm",type:"button",onclick:function(){
         e.relations=e.relations.filter(function(x){return x.id!==r.id;}); persist(e); }},"×"));
@@ -916,8 +1083,8 @@ function renderAside(){
 
 /* ---------- graph ---------- */
 function renderGraph(v){
-  v.appendChild(el("h2",{text:"Geflecht"}));
-  v.appendChild(el("p",{class:"hint",text:"Jede gespeicherte Kante, einmal — die Gegenrichtung ist überall daraus abgeleitet."}));
+  v.appendChild(el("h2",{text:"Graph"}));
+  v.appendChild(el("p",{class:"hint",text:"Every stored edge, once — the reverse direction is derived from it everywhere."}));
   var rows=el("div",{class:"rows"});
   var n=0;
   byName().forEach(function(e){ (e.relations||[]).forEach(function(r){
@@ -927,23 +1094,23 @@ function renderGraph(v){
     line.appendChild(el("button",{class:"ref",type:"button",onclick:function(){go({k:"art",id:e.id});}},nameOf(e)));
     line.appendChild(el("span",{class:"pill",text:rd.label||r.type}));
     if(t) line.appendChild(el("button",{class:"ref",type:"button",onclick:function(){go({k:"art",id:t.id});}},nameOf(t)));
-    else line.appendChild(el("span",{class:"gone",text:"fehlt"}));
+    else line.appendChild(el("span",{class:"gone",text:"missing"}));
     row.appendChild(line);
     var vb=(r.props&&r.props.vars)||{}, ks=Object.keys(vb);
     if(ks.length) row.appendChild(el("span",{class:"bind",text:ks.map(function(k){return k+"="+vb[k];}).join("  ·  ")}));
     rows.appendChild(row);
   });});
-  if(!n) v.appendChild(el("div",{class:"empty",text:"Noch keine Bezüge."}));
+  if(!n) v.appendChild(el("div",{class:"empty",text:"No relations yet."}));
   else v.appendChild(rows);
 }
 
 /* ---------- registry ---------- */
 function renderRegistry(v){
-  v.appendChild(el("h2",{text:"Register"}));
-  v.appendChild(el("p",{class:"hint",text:"Das Register ist Daten, nicht Code. Eine neue Schnittstelle ist eine Zeile hier — Formulare und Ansichten entstehen daraus, ohne Codeänderung. Genau das ist hier die Probe."}));
+  v.appendChild(el("h2",{text:"Registry"}));
+  v.appendChild(el("p",{class:"hint",text:"The registry is data, not code. A new interface is one row here — forms and views follow from it without a code change. That is exactly what is under test."}));
   var tabs=el("div",{class:"tabs",role:"tablist"});
-  [["interfaces","Schnittstellen"],["components","Komponenten"],
-   ["relations","Verknüpfungsarten"],["views","Kompendium"],["vars","Variablen"]]
+  [["interfaces","Interfaces"],["components","Components"],
+   ["relations","Relation types"],["views","Compendium"],["vars","Variables"]]
   .forEach(function(t){
     tabs.appendChild(el("button",{type:"button",role:"tab","aria-selected":String(UI.regtab===t[0]),
       onclick:function(){UI.regtab=t[0];UI.err="";render();}},t[1]));
@@ -957,13 +1124,13 @@ function renderRegistry(v){
     regIfaceEditor(v);
     var bar0=el("div",{class:"rowbtns"});
     bar0.appendChild(el("button",{class:"btn sm gh",type:"button",onclick:function(){
-      UI.regjson=true; UI.err=""; render(); }},"Als JSON bearbeiten"));
+      UI.regjson=true; UI.err=""; render(); }},"Edit as JSON"));
     v.appendChild(bar0);
     return;
   }
 
   if(UI.regtab==="views") v.appendChild(el("p",{class:"hint",
-    text:"Kompendium — die Darstellungsstufen im Auswahlfeld oben rechts. felder: \"keine\" | \"alle\" | Liste von Komponenten · bloecke: \"alle\" | Liste von Blockarten · beschreibung, bausteine, bezuege, bindungen, bild: true/false · order bestimmt die Reihenfolge."}));
+    text:"Compendium — the views in the picker at the top right. fields: \"none\" | \"all\" | a list of components · blocks: \"all\" | a list of block types · description, composed, relations, bindings, image: true/false · order sets the sequence."}));
   var ta=el("textarea",{class:"i code",spellcheck:"false",id:"regbox"});
   ta.value=JSON.stringify(REG[UI.regtab],null,2);
   v.appendChild(ta);
@@ -973,13 +1140,13 @@ function renderRegistry(v){
   var bar=el("div",{class:"rowbtns"});
   if(me.write) bar.appendChild(el("button",{class:"btn pri",type:"button",onclick:function(){
     try{ var parsed=JSON.parse(ta.value); }
-    catch(x){ msg.textContent="Kein gültiges JSON: "+x.message; return; }
+    catch(x){ msg.textContent="Not valid JSON: "+x.message; return; }
     REG[UI.regtab]=parsed; saveReg(UI.regtab); msg.textContent=""; render();
-  }},"Übernehmen"));
+  }},"Apply"));
   bar.appendChild(el("button",{class:"btn",type:"button",onclick:function(){
-    ta.value=JSON.stringify(REG[UI.regtab],null,2); msg.textContent="";}},"Zurücksetzen"));
+    ta.value=JSON.stringify(REG[UI.regtab],null,2); msg.textContent="";}},"Reset"));
   if(UI.regtab==="interfaces") bar.appendChild(el("button",{class:"btn gh",type:"button",
-    onclick:function(){ UI.regjson=false; UI.err=""; render(); }},"Zurück zur Maske"));
+    onclick:function(){ UI.regjson=false; UI.err=""; render(); }},"Back to the form"));
   v.appendChild(bar);
 }
 
@@ -987,33 +1154,33 @@ function renderRegistry(v){
 function regIfaceEditor(v){
   var namen=Object.keys(REG.interfaces);
   if(!namen.length){
-    v.appendChild(el("div",{class:"empty",text:"Noch keine Schnittstellen."}));
-    if(me.write) v.appendChild(neueIfaceBar(""));
+    v.appendChild(el("div",{class:"empty",text:"No interfaces yet."}));
+    if(me.write) v.appendChild(newInterfaceBar(""));
     return;
   }
   if(!REG.interfaces[UI.regiface]) UI.regiface=ifaceRoots()[0]||namen.sort()[0];
 
   var grid=el("div",{class:"reg2"});
   var tree=el("div",{class:"regtree"});
-  (function walk(list,tiefe){
+  (function walk(list,depth){
     list.forEach(function(n){
       var d=REG.interfaces[n], c=countIface(n);
       var b=el("button",{type:"button","aria-current":String(UI.regiface===n),
-        style:"padding-left:"+(7+tiefe*13)+"px",
+        style:"padding-left:"+(7+depth*13)+"px",
         onclick:function(){ UI.regiface=n; UI.regcomp=""; UI.regprop=""; render(); }});
       if(c) b.appendChild(el("em",{text:String(c)}));
       b.appendChild(el("span",{class:d.abstract?"ab":"",text:d.label||n}));
       tree.appendChild(b);
-      walk(kindsOf(n),tiefe+1);
+      walk(kindsOf(n),depth+1);
     });
   })(ifaceRoots(),0);
   grid.appendChild(tree);
   grid.appendChild(regIfaceBody(UI.regiface));
   v.appendChild(grid);
-  if(me.write) v.appendChild(neueIfaceBar(""));
+  if(me.write) v.appendChild(newInterfaceBar(""));
 }
 
-function neueIfaceBar(unter){
+function newInterfaceBar(unter){
   var i=el("input",{class:"i",type:"text",placeholder:"Bezeichnung, z. B. Fahrzeug"});
   var bar=el("div",{class:"addbar",style:"margin-top:10px"});
   bar.appendChild(i);
@@ -1023,7 +1190,7 @@ function neueIfaceBar(unter){
     REG.interfaces[n]={name:n,label:label,requires:[],allows:[],blockTypes:[]};
     if(unter) REG.interfaces[n].extends=[unter];
     UI.regiface=n; UI.regcomp=""; saveReg("interfaces"); render();
-  }},"Schnittstelle anlegen"));
+  }},"Create interface"));
   return bar;
 }
 
@@ -1041,41 +1208,41 @@ function regIfaceBody(ifn){
 
   /* ---- Kopf ---- */
   box.appendChild(el("h3",{text:d.label||ifn}));
-  var anz=countIface(ifn);
+  var count=countIface(ifn);
   box.appendChild(el("div",{class:"key",
-    text:ifn+" · "+(anz?anz+(anz===1?" Artikel":" Artikel"):"kein Artikel")}));
+    text:ifn+" · "+(count?count+(count===1?" articles":" articles"):"no articles")}));
 
-  var kopf=el("div",{class:"fmore",style:"border-bottom:0;padding-top:10px"});
-  var lab=el("input",{class:"i",type:"text",value:d.label||""});
-  if(!w) lab.disabled=true;
-  lab.addEventListener("change",function(){ d.label=lab.value.trim()||ifn; save(); });
-  kopf.appendChild(field("Bezeichnung",lab));
+  var head=el("div",{class:"fmore",style:"border-bottom:0;padding-top:10px"});
+  var labelInput=el("input",{class:"i",type:"text",value:d.label||""});
+  if(!w) labelInput.disabled=true;
+  labelInput.addEventListener("change",function(){ d.label=labelInput.value.trim()||ifn; save(); });
+  head.appendChild(field("Label",labelInput));
 
-  var par=el("select",{class:"i"}); if(!w) par.disabled=true;
-  par.appendChild(el("option",{value:""},"— keine —"));
+  var parentSel=el("select",{class:"i"}); if(!w) parentSel.disabled=true;
+  parentSel.appendChild(el("option",{value:""},"— none —"));
   Object.keys(REG.interfaces).sort().forEach(function(n){
     if(n===ifn||wouldCycle(ifn,n))return;
-    par.appendChild(el("option",{value:n},REG.interfaces[n].label||n)); });
-  par.value=parentOf(ifn);
-  par.addEventListener("change",function(){
-    if(par.value) d.extends=[par.value]; else delete d.extends;
+    parentSel.appendChild(el("option",{value:n},REG.interfaces[n].label||n)); });
+  parentSel.value=parentOf(ifn);
+  parentSel.addEventListener("change",function(){
+    if(parentSel.value) d.extends=[parentSel.value]; else delete d.extends;
     save(); });
-  kopf.appendChild(field("Erweitert",par));
+  head.appendChild(field("Extends",parentSel));
 
   var ab=el("select",{class:"i"}); if(!w) ab.disabled=true;
-  ab.appendChild(el("option",{value:""},"anlegbar"));
-  ab.appendChild(el("option",{value:"1"},"nur Oberbegriff"));
+  ab.appendChild(el("option",{value:""},"instantiable"));
+  ab.appendChild(el("option",{value:"1"},"abstract only"));
   ab.value=d.abstract?"1":"";
   ab.addEventListener("change",function(){
     if(ab.value) d.abstract=true; else delete d.abstract;
     save(); });
-  kopf.appendChild(field("Art",ab));
-  box.appendChild(kopf);
+  head.appendChild(field("Kind",ab));
+  box.appendChild(head);
 
   /* ---- Komponenten und Felder ---- */
-  box.appendChild(el("div",{class:"rsec",text:"Komponenten und Felder"}));
+  box.appendChild(el("div",{class:"rsec",text:"Components and fields"}));
   box.appendChild(el("p",{class:"hint",
-    text:"Pflicht heisst: ohne sie beanstandet die Prüfung den Artikel. Geerbtes steht weiter oben im Baum — dort geändert, gilt es für alle Subtypen."}));
+    text:"Required means validation rejects the article without it. Inherited entries sit higher in the tree — change them there and it holds for every subtype."}));
 
   /* Was requires/allows nennen, das Register aber nicht kennt, wäre sonst
      unsichtbar — und die Prüfung beanstandet es bei jedem Artikel. */
@@ -1083,13 +1250,13 @@ function regIfaceBody(ifn){
   (d.requires||[]).concat(d.allows||[]).forEach(function(cn){
     if(!REG.components[cn]&&fehlend.indexOf(cn)<0) fehlend.push(cn); });
   if(fehlend.length) box.appendChild(el("p",{class:"warnzeile",
-    text:"Nicht im Register: "+fehlend.join(", ")+" — hier genannt, aber nirgends beschrieben."}));
+    text:"Not in the registry: "+fehlend.join(", ")+" — named here but described nowhere."}));
 
   compsFor(ifn).forEach(function(cn){ box.appendChild(compRow(cn)); });
 
   if(w){
     var sel=el("select",{class:"i"});
-    sel.appendChild(el("option",{value:""},"— vorhandene Komponente —"));
+    sel.appendChild(el("option",{value:""},"— existing component —"));
     Object.keys(REG.components).sort().forEach(function(cn){
       if(compOrigin(ifn,cn))return;
       sel.appendChild(el("option",{value:cn},(REG.components[cn].label||cn)+"  ("+cn+")")); });
@@ -1097,31 +1264,31 @@ function regIfaceBody(ifn){
     cbar.appendChild(sel);
     cbar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
       if(!sel.value)return;
-      setMode(sel.value,"allows"); UI.regcomp=sel.value; save(); }},"Hinzufügen"));
+      setMode(sel.value,"allows"); UI.regcomp=sel.value; save(); }},"Add"));
     cbar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
-      neueKomponente(ifn); }},"Neue Komponente…"));
+      newComponent(ifn); }},"New component…"));
     box.appendChild(cbar);
   }
 
   /* ---- Blockarten ---- */
-  box.appendChild(el("div",{class:"rsec",text:"Blockarten"}));
+  box.appendChild(el("div",{class:"rsec",text:"Block types"}));
   box.appendChild(el("p",{class:"hint",
-    text:"Textblöcke, die ein Artikel dieser Art führen darf. Geerbte kommen dazu, sie ersetzen sich nicht."}));
-  var ohnePlus=function(b){ return b.charAt(0)==="+"?b.slice(1):b; };
-  var eigen=(d.blockTypes||[]).map(ohnePlus);
-  var geerbt=parentOf(ifn)?blockTypesFor(parentOf(ifn)):[];
+    text:"Text blocks an article of this kind may carry. Inherited ones are added, not replaced."}));
+  var bare=function(b){ return b.charAt(0)==="+"?b.slice(1):b; };
+  var own=(d.blockTypes||[]).map(bare);
+  var inherited=parentOf(ifn)?blockTypesFor(parentOf(ifn)):[];
   var chips=el("div",{class:"chips"});
-  geerbt.forEach(function(b){ if(eigen.indexOf(b)<0)
+  inherited.forEach(function(b){ if(own.indexOf(b)<0)
     chips.appendChild(el("span",{class:"chip inh",text:b})); });
-  eigen.forEach(function(b){
+  own.forEach(function(b){
     var c=el("span",{class:"chip"});
     c.appendChild(el("span",{text:b}));
-    if(w) c.appendChild(el("button",{type:"button",title:"entfernen",onclick:function(){
-      d.blockTypes=(d.blockTypes||[]).filter(function(x){ return ohnePlus(x)!==b; });
+    if(w) c.appendChild(el("button",{type:"button",title:"remove",onclick:function(){
+      d.blockTypes=(d.blockTypes||[]).filter(function(x){ return bare(x)!==b; });
       save(); }},"×"));
     chips.appendChild(c);
   });
-  if(!eigen.length&&!geerbt.length) chips.appendChild(el("span",{class:"gone",text:"keine"}));
+  if(!own.length&&!inherited.length) chips.appendChild(el("span",{class:"gone",text:"none"}));
   box.appendChild(chips);
   if(w){
     var bi=el("input",{class:"i",type:"text",placeholder:"z. B. tactics"});
@@ -1131,19 +1298,19 @@ function regIfaceBody(ifn){
       var b=bi.value.trim().replace(/^\+/,"").replace(/[^A-Za-z0-9_-]/g,"");
       if(!b) return;
       d.blockTypes=d.blockTypes||[];
-      if(d.blockTypes.map(ohnePlus).indexOf(b)<0) d.blockTypes.push(parentOf(ifn)?"+"+b:b);
-      save(); }},"Blockart hinzufügen"));
+      if(d.blockTypes.map(bare).indexOf(b)<0) d.blockTypes.push(parentOf(ifn)?"+"+b:b);
+      save(); }},"Add block type"));
     box.appendChild(bbar);
   }
 
   /* ---- Subtypen ---- */
-  box.appendChild(el("div",{class:"rsec",text:"Subtypen"}));
-  var kinder=kindsOf(ifn);
-  if(!kinder.length) box.appendChild(el("p",{class:"hint",
-    text:"Keine. Ein Subtyp erbt alles von hier und ergänzt eigene Komponenten, Felder und Blockarten."}));
+  box.appendChild(el("div",{class:"rsec",text:"Subtypes"}));
+  var children=kindsOf(ifn);
+  if(!children.length) box.appendChild(el("p",{class:"hint",
+    text:"None. A subtype inherits everything from here and adds components, fields and block types of its own."}));
   else{
     var kc=el("div",{class:"chips"});
-    kinder.forEach(function(n){
+    children.forEach(function(n){
       var c=el("span",{class:"chip"});
       c.appendChild(el("button",{type:"button",class:"ref",onclick:function(){
         UI.regiface=n; UI.regcomp=""; UI.regprop=""; render(); }},REG.interfaces[n].label||n));
@@ -1153,18 +1320,18 @@ function regIfaceBody(ifn){
     });
     box.appendChild(kc);
   }
-  if(w) box.appendChild(neueIfaceBar(ifn));
+  if(w) box.appendChild(newInterfaceBar(ifn));
 
   /* ---- Entfernen ---- */
   if(w){
-    var grund=anz?anz+" Artikel nutzen sie":(kinder.length?"hat Subtypen":"");
+    var reason=count?count+" articles use it":(children.length?"has subtypes":"");
     var del=el("button",{class:"btn sm dngr",type:"button",onclick:function(){
-      if(grund) return;
+      if(reason) return;
       confirmDialog("Schnittstelle „"+(d.label||ifn)+"“ entfernen?",function(){
-        delete REG.interfaces[ifn]; UI.regiface=""; save(); },"Entfernen"); }},"Schnittstelle entfernen");
-    if(grund){ del.disabled=true; del.title=grund; }
+        delete REG.interfaces[ifn]; UI.regiface=""; save(); },"Remove"); }},"Remove interface");
+    if(reason){ del.disabled=true; del.title=reason; }
     var fbar=el("div",{class:"rowbtns"}); fbar.appendChild(del);
-    if(grund) fbar.appendChild(el("span",{class:"co",style:"align-self:center",text:grund}));
+    if(reason) fbar.appendChild(el("span",{class:"co",style:"align-self:center",text:reason}));
     box.appendChild(fbar);
   }
 
@@ -1176,87 +1343,87 @@ function regIfaceBody(ifn){
     var props=((cd.schema||{}).properties)||{};
     var n=Object.keys(props).length;
 
-    /* Wo die Komponente steht, hier oder weiter oben — und was daraus folgt.
+    /* Wo die Komponente steht, hier oder weiter above — und was daraus folgt.
        Ein Subtyp darf verschärfen (Optional → Pflicht), aber nicht lockern:
        reqFor() läuft die Kette hoch und fände die Pflicht trotzdem. Eine
        Auswahl, die nichts bewirkt, wäre eine Lüge im Formular. */
-    var lokal=(d.requires||[]).indexOf(cn)>=0?"requires"
+    var local=(d.requires||[]).indexOf(cn)>=0?"requires"
              :((d.allows||[]).indexOf(cn)>=0?"allows":"");
-    var oben=parentOf(ifn)?compOrigin(parentOf(ifn),cn):null;
-    var obenName=oben?((REG.interfaces[oben.iface]||{}).label||oben.iface):"";
+    var above=parentOf(ifn)?compOrigin(parentOf(ifn),cn):null;
+    var aboveName=above?((REG.interfaces[above.iface]||{}).label||above.iface):"";
 
     var row=el("div",{class:"crow"});
     var lft=el("div",{class:"cl"});
     lft.appendChild(el("b",{text:cd.label||cn}));
-    var herkunft=lokal?(oben?" · hier verschärft, geerbt von "+obenName:"")
-                      :(oben?" · geerbt von "+obenName:"");
+    var origin=local?(above?" · tightened here, inherited from "+aboveName:"")
+                      :(above?" · inherited from "+aboveName:"");
     lft.appendChild(el("span",{class:"co",
-      text:cn+" · "+n+(n===1?" Feld":" Felder")+herkunft}));
+      text:cn+" · "+n+(n===1?" field":" fields")+origin}));
     row.appendChild(lft);
 
     var md=el("select");
-    md.appendChild(el("option",{value:"requires"},"Pflicht"));
-    if(!oben||oben.mode!=="requires") md.appendChild(el("option",{value:"allows"},"Optional"));
+    md.appendChild(el("option",{value:"requires"},"Required"));
+    if(!above||above.mode!=="requires") md.appendChild(el("option",{value:"allows"},"Optional"));
     md.appendChild(el("option",{value:""},
-      oben?("geerbt: "+(oben.mode==="requires"?"Pflicht":"Optional")):"nicht genutzt"));
-    md.value=lokal;
+      above?("inherited: "+(above.mode==="requires"?"Required":"Optional")):"not used"));
+    md.value=local;
     if(!w) md.disabled=true;
     md.addEventListener("change",function(){ setMode(cn,md.value); save(); });
     row.appendChild(md);
 
     row.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
       UI.regcomp=(UI.regcomp===cn?"":cn); UI.regprop=""; render(); }},
-      UI.regcomp===cn?"Felder ▴":"Felder ▾"));
+      UI.regcomp===cn?"Fields ▴":"Fields ▾"));
 
     var wrap=el("div");
     wrap.appendChild(row);
-    if(UI.regcomp===cn) wrap.appendChild(feldKasten(cn));
+    if(UI.regcomp===cn) wrap.appendChild(fieldBox(cn));
     return wrap;
   }
 
   /* ---------- die Felder einer Komponente ---------- */
-  function feldKasten(cn){
+  function fieldBox(cn){
     var cd=REG.components[cn];
-    if(!cd) return el("div",{class:"fbox"},el("span",{class:"warnzeile",text:"Komponente fehlt im Register."}));
+    if(!cd) return el("div",{class:"fbox"},el("span",{class:"warnzeile",text:"Component missing from the registry."}));
     cd.schema=cd.schema||{type:"object",properties:{}};
     var schema=cd.schema;
     schema.properties=schema.properties||{};
     var props=schema.properties;
-    var kasten=el("div",{class:"fbox"});
+    var box=el("div",{class:"fbox"});
 
     /* Komponenten sind geteilt. Wer hier ein Feld ändert, ändert es überall —
        das ist der Sinn des Pools und trotzdem eine Überraschung, wenn es
        nirgends steht. */
-    var nutzer=ifacesUsing(cn);
-    if(nutzer.length>1) kasten.appendChild(el("p",{class:"hint",style:"margin-bottom:9px",
-      text:"Geteilt mit "+(nutzer.length-1)+" weiteren Schnittstellen ("+
-        nutzer.filter(function(n){return n!==ifn;})
+    var users=ifacesUsing(cn);
+    if(users.length>1) box.appendChild(el("p",{class:"hint",style:"margin-bottom:9px",
+      text:"Shared with "+(users.length-1)+" further interfaces ("+
+        users.filter(function(n){return n!==ifn;})
           .map(function(n){return REG.interfaces[n].label||n;}).join(", ")+
-        "). Eine Änderung hier gilt für alle."}));
+        "). A change here holds for all of them."}));
 
     var keys=Object.keys(props);
-    keys.forEach(function(k){ kasten.appendChild(feldZeile(cn,k)); });
-    if(!keys.length) kasten.appendChild(el("p",{class:"hint",text:"Noch keine Felder."}));
+    keys.forEach(function(k){ box.appendChild(fieldRow(cn,k)); });
+    if(!keys.length) box.appendChild(el("p",{class:"hint",text:"No fields yet."}));
 
     if(w){
       var nk=el("input",{class:"i",type:"text",placeholder:"Feldname, z. B. gewicht"});
-      var nt=el("input",{class:"i",type:"text",placeholder:"Beschriftung"});
+      var nt=el("input",{class:"i",type:"text",placeholder:"Label"});
       var bar=el("div",{class:"addbar",style:"margin-top:9px"});
       bar.appendChild(nk); bar.appendChild(nt);
       bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
         var k=nk.value.trim().replace(/[^A-Za-z0-9_]/g,"");
         if(!k) return;
-        if(props[k]){ UI.err="Das Feld "+k+" gibt es in "+(cd.label||cn)+" schon."; render(); return; }
+        if(props[k]){ UI.err="The field "+k+" already exists in "+(cd.label||cn)+"."; render(); return; }
         props[k]={type:"string",title:nt.value.trim()||k};
         UI.regprop=cn+"."+k;
         saveC();
-      }},"Feld hinzufügen"));
-      kasten.appendChild(bar);
+      }},"Add field"));
+      box.appendChild(bar);
     }
-    return kasten;
+    return box;
   }
 
-  function feldZeile(cn,k){
+  function fieldRow(cn,k){
     var cd=REG.components[cn], schema=cd.schema, props=schema.properties, p=props[k];
     var row=el("div",{class:"frow"});
     row.appendChild(el("span",{class:"fk",text:k}));
@@ -1267,17 +1434,22 @@ function regIfaceBody(ifn){
     row.appendChild(ti);
 
     var ty=el("select",{class:"i"}); if(!w) ty.disabled=true;
-    [["string","Text"],["number","Zahl"],["boolean","Ja/Nein"],["array","Liste"],["object","Objekt"]]
-      .forEach(function(t){ ty.appendChild(el("option",{value:t[0]},t[1])); });
-    ty.value=p.type||"string";
-    ty.addEventListener("change",function(){ p.type=ty.value; saveC(); });
+    FIELD_KINDS.forEach(function(t){ ty.appendChild(el("option",{value:t[0]},t[1])); });
+    ty.value=fieldKind(p);
+    ty.addEventListener("change",function(){
+      setFieldKind(p,ty.value);
+      /* Eine neue Art will fast immer gleich eingestellt werden — Auswahlwerte
+         bei „Choice", das Ziel bei „Link". Also aufklappen statt verstecken. */
+      UI.regprop=cn+"."+k;
+      saveC();
+    });
     row.appendChild(ty);
 
     var id=cn+"."+k;
-    row.appendChild(el("button",{class:"btn sm gh",type:"button",title:"Mehr",onclick:function(){
+    row.appendChild(el("button",{class:"btn sm gh",type:"button",title:"More",onclick:function(){
       UI.regprop=(UI.regprop===id?"":id); render(); }},UI.regprop===id?"▴":"⋯"));
 
-    if(w) row.appendChild(el("button",{class:"btn sm gh dngr",type:"button",title:"Feld entfernen",
+    if(w) row.appendChild(el("button",{class:"btn sm gh dngr",type:"button",title:"Remove field",
       onclick:function(){
         confirmDialog("Feld „"+(p.title||k)+"“ entfernen? In Artikeln bleiben die Werte stehen, werden aber nicht mehr angezeigt.",
           function(){
@@ -1288,69 +1460,203 @@ function regIfaceBody(ifn){
             }
             if(UI.regprop===id) UI.regprop="";
             saveC();
-          },"Entfernen"); }},"×"));
+          },"Remove"); }},"×"));
     else row.appendChild(el("span"));
 
     var wrap=el("div");
     wrap.appendChild(row);
-    if(UI.regprop===id) wrap.appendChild(feldMehr(cn,k));
+    if(UI.regprop===id) wrap.appendChild(fieldMore(cn,k));
     return wrap;
   }
 
-  function feldMehr(cn,k){
+  function fieldMore(cn,k){
     var cd=REG.components[cn], schema=cd.schema, p=schema.properties[k];
-    var kasten=el("div",{class:"fmore"});
-    function text(label,wert,setzen,ph){
+    var box=el("div",{class:"fmore"});
+    function text(label,wert,setValue,ph){
       var i=el("input",{class:"i",type:"text",value:wert==null?"":wert,placeholder:ph||""});
       if(!w) i.disabled=true;
-      i.addEventListener("change",function(){ setzen(i.value.trim()); saveC(); });
-      kasten.appendChild(field(label,i));
+      i.addEventListener("change",function(){ setValue(i.value.trim()); saveC(); });
+      box.appendChild(field(label,i));
     }
 
+    /* Den Schlüssel umbenennen heisst: Schema, Pflichtliste, Berechnungen der
+       Nachbarfelder, Ansichtsverweise und die Werte in jedem Artikel. Wer nur
+       das Schema ändert, lässt die Werte hinter einem Namen zurück, den
+       niemand mehr abfragt — sie sind dann still weg. */
+    var keyInput=el("input",{class:"i",type:"text",value:k});
+    if(!w) keyInput.disabled=true;
+    keyInput.addEventListener("change",function(){
+      var neuK=keyInput.value.trim().replace(/[^A-Za-z0-9_]/g,"");
+      if(!neuK||neuK===k){ keyInput.value=k; return; }
+      if(schema.properties[neuK]){
+        UI.err="The field "+neuK+" already exists in "+(cd.label||cn)+".";
+        keyInput.value=k; render(); return;
+      }
+      renameProperty(cn,k,neuK);
+    });
+    box.appendChild(field("Key",keyInput));
+
     var req=el("select",{class:"i"}); if(!w) req.disabled=true;
-    req.appendChild(el("option",{value:""},"nein"));
-    req.appendChild(el("option",{value:"1"},"ja"));
+    req.appendChild(el("option",{value:""},"no"));
+    req.appendChild(el("option",{value:"1"},"yes"));
     req.value=((schema.required||[]).indexOf(k)>=0)?"1":"";
     req.addEventListener("change",function(){
       var r=(schema.required||[]).filter(function(x){return x!==k;});
       if(req.value) r.push(k);
       if(r.length) schema.required=r; else delete schema.required;
       saveC(); });
-    kasten.appendChild(field("Pflichtfeld",req));
+    box.appendChild(field("Required field",req));
 
     var fm=el("select",{class:"i"}); if(!w) fm.disabled=true;
-    [["","—"],["long","langer Text"],["signed","mit Vorzeichen"]].forEach(function(f){
+    [["","—"],["long","long text"],["signed","signed"]].forEach(function(f){
       fm.appendChild(el("option",{value:f[0]},f[1])); });
     fm.value=p.format||"";
     fm.addEventListener("change",function(){
       if(fm.value)p.format=fm.value; else delete p.format; saveC(); });
-    kasten.appendChild(field("Darstellung",fm));
+    box.appendChild(field("Display",fm));
 
-    text("Auswahlwerte (Komma)",(p["enum"]||[]).join(", "),function(v){
+    if(fieldKind(p)==="choice") text("Choices (comma separated)",(p["enum"]||[]).join(", "),function(v){
       var xs=v.split(",").map(function(x){return x.trim();}).filter(Boolean);
-      if(xs.length)p["enum"]=xs; else delete p["enum"];
-    },"gewöhnlich, selten");
+      p["enum"]=xs;
+    },"common, rare");
 
-    text("Berechnet aus",p.derived||"",function(v){
+    if(fieldKind(p)==="link") box.appendChild(targetEditor(p,saveC,w));
+
+    text("Derived from",p.derived||"",function(v){
       if(v)p.derived=v; else delete p.derived;
     },"10+mod(wis)");
 
-    text("gehört zu Feld",p.of||"",function(v){
+    text("belongs to field",p.of||"",function(v){
       if(v)p.of=v; else delete p.of;
     },"wis");
 
-    if(p.derived) kasten.appendChild(el("p",{class:"hint",style:"grid-column:1/-1;margin:0",
-      text:"Berechnete Felder werden beim Lesen ermittelt und nie gespeichert. Sie bekommen kein Eingabefeld."}));
-    return kasten;
+    if(p.derived) box.appendChild(el("p",{class:"hint",style:"grid-column:1/-1;margin:0",
+      text:"Derived fields are computed on read and never stored. They get no input."}));
+    return box;
   }
 }
 
-function neueKomponente(ifn){
-  dialog("Neue Komponente",function(host,close){
+/* ---------- renaming a field key ----------
+   Five places know a field key: the schema, the component's `required` list,
+   the `derived` / `of` references of its siblings, the `fields` list of every
+   view, and the stored value in every article that carries the component.
+   Missing any one of them loses data quietly — the value stays under the old
+   key, where nothing reads it any more. */
+function renameProperty(cn,oldKey,newKey){
+  var cd=REG.components[cn]; if(!cd||!cd.schema)return;
+  var props=cd.schema.properties||{};
+  if(!props[oldKey]||props[newKey])return;
+
+  /* Die Reihenfolge der Felder ist Absicht — neu aufbauen statt anhängen. */
+  var neu={};
+  Object.keys(props).forEach(function(k){ neu[k===oldKey?newKey:k]=props[k]; });
+  cd.schema.properties=neu;
+
+  if(Array.isArray(cd.schema.required)){
+    cd.schema.required=cd.schema.required.map(function(x){ return x===oldKey?newKey:x; });
+  }
+  var karte={}; karte[oldKey]=newKey;
+  Object.keys(neu).forEach(function(k){
+    var pd=neu[k];
+    if(pd.of===oldKey) pd.of=newKey;
+    if(pd.derived) pd.derived=String(pd.derived).replace(
+      /[A-Za-z_][A-Za-z0-9_]*/g,function(word){ return karte[word]||word; });
+  });
+
+  var alterVerweis=cn+"."+oldKey, neuerVerweis=cn+"."+newKey;
+  var viewsTouched=false;
+  Object.keys(REG.views).forEach(function(vn){
+    var f=REG.views[vn].fields;
+    if(!Array.isArray(f))return;
+    var vorher=f.join("\u0000");
+    REG.views[vn].fields=f.map(function(x){ return x===alterVerweis?neuerVerweis:x; });
+    if(REG.views[vn].fields.join("\u0000")!==vorher) viewsTouched=true;
+  });
+
+  var betroffen=[];
+  ENT.forEach(function(e){
+    var card=(e.components||{})[cn];
+    if(!card||!Object.prototype.hasOwnProperty.call(card,oldKey))return;
+    var neuCard={};
+    Object.keys(card).forEach(function(k){ neuCard[k===oldKey?newKey:k]=card[k]; });
+    e.components[cn]=neuCard;
+    betroffen.push(e);
+  });
+
+  UI.regprop=cn+"."+newKey;
+  saveReg("components");
+  if(viewsTouched) saveReg("views");
+  betroffen.forEach(function(e){ persist(e); });
+  UI.err=betroffen.length
+    ? "Field renamed; "+betroffen.length+(betroffen.length===1?" article":" articles")+" rewritten."
+    : "Field renamed.";
+  render();
+}
+
+/* ---------- target constraint for a link field ---------- */
+function targetEditor(p,save,writable){
+  p.target=p.target||{};
+  var t=p.target;
+  var box=el("div",{class:"tgt"});
+  box.appendChild(el("div",{class:"tt",text:"May point at"}));
+
+  var ifs=el("select",{class:"i",multiple:"multiple",size:"4"});
+  if(!writable) ifs.disabled=true;
+  Object.keys(REG.interfaces).sort().forEach(function(n){
+    var o=el("option",{value:n},REG.interfaces[n].label||n);
+    if((t.interfaces||[]).indexOf(n)>=0) o.selected=true;
+    ifs.appendChild(o);
+  });
+  ifs.addEventListener("change",function(){
+    var picked=Array.prototype.filter.call(ifs.options,function(o){return o.selected;})
+      .map(function(o){return o.value;});
+    if(picked.length) t.interfaces=picked; else delete t.interfaces;
+    save();
+  });
+  box.appendChild(field("Interfaces (subtypes included)",ifs));
+
+  var tagBox=el("input",{class:"i",type:"text",value:(t.tags||[]).join(", "),
+    placeholder:"any of these"});
+  if(!writable) tagBox.disabled=true;
+  tagBox.addEventListener("change",function(){
+    var xs=tagBox.value.split(",").map(function(x){return x.trim();}).filter(Boolean);
+    if(xs.length) t.tags=xs; else delete t.tags;
+    save();
+  });
+  box.appendChild(field("Tags",tagBox));
+
+  var wo=t.where||{};
+  var feldBox=el("input",{class:"i",type:"text",
+    value:wo.component?wo.component+"."+(wo.property||""):"",
+    placeholder:"ItemInfo.rarity"});
+  var wertBox=el("input",{class:"i",type:"text",value:wo.value==null?"":String(wo.value),
+    placeholder:"rare"});
+  if(!writable){ feldBox.disabled=true; wertBox.disabled=true; }
+  function saveWhere(){
+    var teile=feldBox.value.trim().split(".");
+    if(teile.length===2&&teile[0]&&teile[1]){
+      t.where={component:teile[0],property:teile[1],value:wertBox.value};
+    } else delete t.where;
+    save();
+  }
+  feldBox.addEventListener("change",saveWhere);
+  wertBox.addEventListener("change",saveWhere);
+  box.appendChild(field("Field equals",feldBox));
+  box.appendChild(field("…this value",wertBox));
+
+  var n=linkCandidates(t,"",9999).length;
+  box.appendChild(el("p",{class:"hint",style:"grid-column:1/-1;margin:0",
+    text:n+(n===1?" article matches":" articles match")+
+      " right now. Leave everything empty to allow any article."}));
+  return box;
+}
+
+function newComponent(ifn){
+  dialog("New component",function(host,close){
     var lb=el("input",{class:"i",type:"text",placeholder:"z. B. Handelsinfo"});
-    host.appendChild(field("Bezeichnung",lb));
+    host.appendChild(field("Label",lb));
     host.appendChild(el("p",{class:"hint",
-      text:"Die Komponente entsteht leer und wird dieser Schnittstelle als optional zugeordnet. Die Felder legst du danach darin an."}));
+      text:"The component starts empty and is attached to this interface as optional. You add its fields afterwards."}));
     actions(host,close,function(){
       var label=lb.value.trim(); if(!label) return false;
       var cn=techName(label,REG.components);
@@ -1359,7 +1665,7 @@ function neueKomponente(ifn){
       d.allows=(d.allows||[]).concat([cn]);
       UI.regcomp=cn; UI.regprop="";
       saveReg("components"); saveReg("interfaces"); render();
-    },"Anlegen");
+    },"Create");
   });
 }
 
@@ -1384,36 +1690,36 @@ function field(label,node){ var l=el("label",{class:"f"}); l.appendChild(el("spa
    Jede Abfrage sagte damit stillschweigend Nein — die Löschknöpfe taten
    schlicht nichts. Die Seite fragt jetzt selbst. */
 function confirmDialog(question, onOk, okLabel){
-  dialog(okLabel||"Löschen",function(host,close){
+  dialog(okLabel||"Delete",function(host,close){
     host.appendChild(el("p",{text:question}));
     var bar=el("div",{class:"rowbtns"});
     bar.appendChild(el("button",{class:"btn pri dngr",type:"button",onclick:function(){
-      close(); onOk(); }},okLabel||"Löschen"));
-    bar.appendChild(el("button",{class:"btn",type:"button",onclick:close},"Abbrechen"));
+      close(); onOk(); }},okLabel||"Delete"));
+    bar.appendChild(el("button",{class:"btn",type:"button",onclick:close},"Cancel"));
     host.appendChild(bar);
   });
 }
 
 function actions(host,close,onOk,okLabel){
   var bar=el("div",{class:"rowbtns"});
-  bar.appendChild(el("button",{class:"btn pri",type:"button",onclick:function(){ if(onOk()!==false) close(); }},okLabel||"Speichern"));
-  bar.appendChild(el("button",{class:"btn",type:"button",onclick:close},"Abbrechen"));
+  bar.appendChild(el("button",{class:"btn pri",type:"button",onclick:function(){ if(onOk()!==false) close(); }},okLabel||"Save"));
+  bar.appendChild(el("button",{class:"btn",type:"button",onclick:close},"Cancel"));
   host.appendChild(bar);
 }
 
-/* new entity — `vorname` prefills from a dead [[link]] */
-function newEntity(vorname){
-  dialog(vorname?"„"+vorname+"“ anlegen":"Neuer Artikel",function(host,close){
+/* new entity — `presetName` prefills from a dead [[link]] */
+function newEntity(presetName){
+  dialog(presetName?"„"+presetName+"”":"New article",function(host,close){
     var sel=el("select",{class:"i"});
     Object.keys(REG.interfaces).sort().forEach(function(n){
       if(REG.interfaces[n].abstract)return;
       sel.appendChild(el("option",{value:n},REG.interfaces[n].label||n)); });
     if(UI.iface)sel.value=UI.iface;
-    var nm=el("input",{class:"i",type:"text",placeholder:"Name",value:vorname||""});
-    host.appendChild(field("Schnittstelle",sel));
+    var nm=el("input",{class:"i",type:"text",placeholder:"Name",value:presetName||""});
+    host.appendChild(field("Interface",sel));
     host.appendChild(field("Name",nm));
-    if(vorname) host.appendChild(el("p",{class:"hint",
-      text:"Der Verweis, der hierher geführt hat, findet den Artikel, sobald er den Namen trägt."}));
+    if(presetName) host.appendChild(el("p",{class:"hint",
+      text:"The link that led here finds the article as soon as it carries the name."}));
     actions(host,close,function(){
       var name=nm.value.trim(); if(!name){nm.focus();return false;}
       var ifn=sel.value;
@@ -1422,18 +1728,18 @@ function newEntity(vorname){
         adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
       reqFor(ifn).forEach(function(c){ if(!e.components[c]&&REG.components[c]) e.components[c]={}; });
       persist(e); go({k:"art",id:e.id});
-    },"Anlegen");
+    },"Create");
   });
 }
 
 /* edit entity: name, tags, and every component field from the schema */
 function editEntity(e){
-  dialog("Bearbeiten",function(host,close){
+  dialog("Edit",function(host,close){
     var ifn=(e.interfaces||[])[0]||"";
     var nm=el("input",{class:"i",type:"text",value:nameOf(e)});
     host.appendChild(field("Name",nm));
-    var tg=el("input",{class:"i",type:"text",value:(e.tags||[]).join(", "),placeholder:"komma, getrennt"});
-    host.appendChild(field("Marken",tg));
+    var tg=el("input",{class:"i",type:"text",value:(e.tags||[]).join(", "),placeholder:"comma, separated"});
+    host.appendChild(field("Tags",tg));
 
     var inputs=[], drvCells=[];
     function readInput(it){
@@ -1471,8 +1777,12 @@ function editEntity(e){
           drvCells.push({cn:cn,p:p,pd:pd,node:b});
           return;
         }
-        var node;
-        if(pd.enum){
+        var node, kind=fieldKind(pd);
+        if(kind==="color"){
+          node=el("input",{class:"i",type:"color",value:/^#[0-9a-fA-F]{6}$/.test(String(cur||""))?String(cur):"#888888"});
+        } else if(kind==="link"){
+          node=linkInput(pd,cur);
+        } else if(pd.enum){
           node=el("select",{class:"i"});
           node.appendChild(el("option",{value:""},"—"));
           pd.enum.forEach(function(o){ node.appendChild(el("option",{value:o},o)); });
@@ -1518,27 +1828,27 @@ function editEntity(e){
 }
 
 function addBlock(e){
-  dialog("Block hinzufügen",function(host,close){
+  dialog("Add block",function(host,close){
     var ifn=(e.interfaces||[])[0]||"";
     var sel=el("select",{class:"i"});
     blockTypesFor(ifn).forEach(function(b){ sel.appendChild(el("option",{value:b},b)); });
-    var ta=el("textarea",{class:"i",placeholder:"Text. [[Artikelname]] verlinkt, {VAR} wird ersetzt."});
-    host.appendChild(field("Blockart",sel));
+    var ta=el("textarea",{class:"i",placeholder:"Text. [[Article name]] links, {VAR} is substituted."});
+    host.appendChild(field("Block type",sel));
     host.appendChild(field("Text",ta));
     actions(host,close,function(){
       if(!ta.value.trim())return false;
       e.blocks=e.blocks||[];
       e.blocks.push({id:uid("b"),blockType:sel.value,body:ta.value.trim(),order:e.blocks.length});
       persist(e);
-    },"Hinzufügen");
+    },"Add");
   });
 }
 
 function addRelation(e){
-  dialog("Bezug hinzufügen",function(host,close){
+  dialog("Add relation",function(host,close){
     var ifn=(e.interfaces||[])[0]||"";
     var defs=relsFrom(ifn);
-    if(!defs.length){ host.appendChild(el("p",{class:"hint",text:"Für diese Schnittstelle ist keine Bezugsart definiert. Lege eine im Register an."}));
+    if(!defs.length){ host.appendChild(el("p",{class:"hint",text:"No relation type is defined for this interface. Add one in the registry."}));
       actions(host,close,function(){},"Schliessen"); return; }
     var rsel=el("select",{class:"i"});
     defs.forEach(function(d){ rsel.appendChild(el("option",{value:d.type},(d.label||d.type))); });
@@ -1556,12 +1866,12 @@ function addRelation(e){
         if(to.indexOf("*")<0 && to.indexOf((c.interfaces||[])[0])<0)return;
         tsel.appendChild(el("option",{value:c.id},nameOf(c)+" — "+ifaceName(c)));
       });
-      if(!tsel.childNodes.length) tsel.appendChild(el("option",{value:""},"— kein passender Artikel —"));
+      if(!tsel.childNodes.length) tsel.appendChild(el("option",{value:""},"— no matching article —"));
       vlab.style.display=relDef(rsel.value).section?"":"none";
     }
     rsel.addEventListener("change",fillTargets);
     host.appendChild(field("Bezugsart",rsel));
-    host.appendChild(field("Ziel",tsel));
+    host.appendChild(field("Target",tsel));
     host.appendChild(vlab);
     host.appendChild(field("Notiz",note));
     fillTargets();
@@ -1569,34 +1879,34 @@ function addRelation(e){
     actions(host,close,function(){
       if(!tsel.value)return false;
       var props={}; if(note.value.trim())props.note=note.value.trim();
-      if(vars.value.trim()){ try{props.vars=JSON.parse(vars.value);}catch(x){ alert("Variablen: kein gültiges JSON"); return false; } }
+      if(vars.value.trim()){ try{props.vars=JSON.parse(vars.value);}catch(x){ alert("Variables: not valid JSON"); return false; } }
       e.relations=e.relations||[];
       e.relations.push({id:uid("r"),type:rsel.value,to:tsel.value,props:props});
       persist(e);
-    },"Verknüpfen");
+    },"Link");
   });
 }
 
 /* ad-hoc field + promotion into the interface (REQ-181) */
 function addAdhoc(e){
-  dialog("Eigenes Feld",function(host,close){
+  dialog("Custom field",function(host,close){
     var lb=el("input",{class:"i",type:"text",placeholder:"z. B. Lieblingsfluch"});
     var vl=el("input",{class:"i",type:"text"});
     var pr=el("input",{type:"checkbox",id:"promote"});
-    host.appendChild(field("Bezeichnung",lb));
-    host.appendChild(field("Wert",vl));
+    host.appendChild(field("Label",lb));
+    host.appendChild(field("Value",vl));
     var pw=el("label",{class:"f"});
-    pw.appendChild(el("span",{text:"Ins Register übernehmen"}));
+    pw.appendChild(el("span",{text:"Promote into the registry"}));
     var line=el("div",{style:"display:flex;gap:8px;align-items:center"});
     line.appendChild(pr);
-    line.appendChild(el("span",{class:"hint",style:"margin:0",text:"Feld wird Teil der Schnittstelle — für alle Artikel dieser Art."}));
+    line.appendChild(el("span",{class:"hint",style:"margin:0",text:"The field becomes part of the interface — for every article of this kind."}));
     pw.appendChild(line); host.appendChild(pw);
     actions(host,close,function(){
       var label=lb.value.trim(); if(!label)return false;
       var key=slug(label).replace(/-/g,"_");
       if(pr.checked){
         var ifn=(e.interfaces||[])[0], cn=ifn+"Eigen";
-        REG.components[cn]=REG.components[cn]||{label:"Eigene Felder",engine:null,schema:{type:"object",properties:{}}};
+        REG.components[cn]=REG.components[cn]||{label:"Custom fields",engine:null,schema:{type:"object",properties:{}}};
         REG.components[cn].schema.properties[key]={type:"string",title:label};
         var d=REG.interfaces[ifn];
         d.allows=d.allows||[]; if(d.allows.indexOf(cn)<0)d.allows.push(cn);
@@ -1607,7 +1917,7 @@ function addAdhoc(e){
         e.adhoc.push({key:key,label:label,type:"text",value:vl.value});
       }
       persist(e);
-    },"Anlegen");
+    },"Create");
   });
 }
 
@@ -1620,7 +1930,7 @@ function addAdhoc(e){
    - U+2212 MINUS in Attributtabellen, kein Bindestrich
    - Eintragstexte laufen über mehrere >-Zeilen weiter
    - cr kann ein Bruch sein (1/8), also Text, keine Zahl
-   - „—" heisst nichts, nicht "—"
+   - „—"", not "—"
    ============================================================ */
 
 function parseFM(text){
@@ -1691,7 +2001,7 @@ function impGegenstand(text,datei){
   if(st!==undefined) info.stapel=st;
   if(Object.keys(info).length) c.ItemInfo=info;
 
-  var rows=fmList(fm,"Formfaktor"); if(rows.length) c.Formfaktor={rows:rows};
+  var rows=fmList(fm,"Footprint"); if(rows.length) c.Formfaktor={rows:rows};
   if(ifn==="Waffe"){ var w={};
     if(fmStr(fm,"Schaden"))w.schaden=fmStr(fm,"Schaden");
     if(fmStr(fm,"Schadenstyp"))w.schadenstyp=fmStr(fm,"Schadenstyp");
@@ -1813,15 +2123,15 @@ function impOrt(text,datei){
 }
 
 /* ---------- Stapelimport: Verweise innerhalb des Stapels auflösen ---------- */
-function importiere(dateien){
-  var ergebnis={gegenstand:[],statblock:[],ort:[],regeln:[],offen:[],unbekannt:[],bilder:[]};
+function runImport(files){
+  var result={gegenstand:[],statblock:[],ort:[],regeln:[],offen:[],unknown:[],bilder:[]};
   var roh=[];
-  dateien.forEach(function(f){
+  files.forEach(function(f){
     var art=erkenne(f.text);
-    if(!art){ ergebnis.unbekannt.push(f.name); return; }
-    if(art==="gegenstand"){ var g=impGegenstand(f.text,f.name); roh.push({art:art,r:g}); ergebnis.gegenstand.push(g.e); }
-    if(art==="ort"){ var o=impOrt(f.text,f.name); roh.push({art:art,r:o}); ergebnis.ort.push(o.e); }
-    if(art==="statblock"){ var s=impStatblock(f.text,f.name); roh.push({art:art,r:s}); ergebnis.statblock.push(s.e); }
+    if(!art){ result.unbekannt.push(f.name); return; }
+    if(art==="gegenstand"){ var g=impGegenstand(f.text,f.name); roh.push({art:art,r:g}); result.gegenstand.push(g.e); }
+    if(art==="ort"){ var o=impOrt(f.text,f.name); roh.push({art:art,r:o}); result.ort.push(o.e); }
+    if(art==="statblock"){ var s=impStatblock(f.text,f.name); roh.push({art:art,r:s}); result.statblock.push(s.e); }
   });
 
   /* Abschnittseinträge werden je eine eigene Regel, die der Statblock
@@ -1833,7 +2143,7 @@ function importiere(dateien){
       if(!id){ id=uid("r"); regelNach[k]=id;
         var kind=/^bonus/i.test(ab.name)?"bonus":/^reaction/i.test(ab.name)?"reaction"
                 :/^(villain|legendary)/i.test(ab.name)?"legendary":/^action/i.test(ab.name)?"action":"trait";
-        ergebnis.regeln.push({ id:id, interfaces:["Regel"], name:en.name, tags:[],
+        result.regeln.push({ id:id, interfaces:["Regel"], name:en.name, tags:[],
           components:{ Name:{text:en.name}, Identity:{key:"regel/"+slug(en.name),aliases:[]},
             Status:{value:"used"}, RuleInfo:{kind:kind}, Description:{raw:en.text} },
           adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() }); }
@@ -1841,7 +2151,7 @@ function importiere(dateien){
     });});
   });
 
-  var alle=ergebnis.gegenstand.concat(ergebnis.ort,ergebnis.statblock,ergebnis.regeln);
+  var alle=result.gegenstand.concat(result.ort,result.statblock,result.regeln);
   var nachName={};
   ENT.forEach(function(e){ if((e.interfaces||[])[0]!=="Statblock") nachName[nameOf(e).toLowerCase()]=e.id;
     ((e.components&&e.components.Identity&&e.components.Identity.aliases)||[]).forEach(function(a){
@@ -1855,8 +2165,8 @@ function importiere(dateien){
     if(x.art==="gegenstand"){ (x.r.offen||[]).forEach(function(v){
       var id=nachName[v.ziel.toLowerCase()];
       if(id) x.r.e.relations.push({id:uid("rel"),type:v.type,to:id});
-      else ergebnis.offen.push({von:x.r.e.name,art:v.type,ziel:v.ziel}); });
-      (x.r.bilder||[]).forEach(function(b){ ergebnis.bilder.push({von:x.r.e.name,datei:b}); }); }
+      else result.offen.push({von:x.r.e.name,art:v.type,ziel:v.ziel}); });
+      (x.r.bilder||[]).forEach(function(b){ result.bilder.push({von:x.r.e.name,datei:b}); }); }
 
     /* Der Vault drückt die Hierarchie als Transklusion im Elternteil aus:
        ![[Rubinrot]] in Vallehy heisst „Vallehy enthält Rubinrot". Gespeichert
@@ -1865,16 +2175,16 @@ function importiere(dateien){
       var id=nachName[v.ziel.toLowerCase()], kind=null;
       alle.forEach(function(e){ if(e.id===id) kind=e; });
       if(kind) kind.relations.push({id:uid("rel"),type:"teilVon",to:x.r.e.id});
-      else ergebnis.offen.push({von:x.r.e.name,art:"enthält",ziel:v.ziel}); }); }
+      else result.offen.push({von:x.r.e.name,art:"enthält",ziel:v.ziel}); }); }
 
     if(x.art==="statblock"&&x.r.kreatur){
       var id=nachName[x.r.kreatur.toLowerCase()];
       if(id) x.r.e.relations.push({id:uid("rel"),type:"gehoertZu",to:id});
-      else ergebnis.offen.push({von:x.r.e.name,art:"gehört zu",ziel:x.r.kreatur}); }
+      else result.offen.push({von:x.r.e.name,art:"gehört zu",ziel:x.r.kreatur}); }
   });
 
-  ergebnis.alle=alle;
-  return ergebnis;
+  result.alle=alle;
+  return result;
 }
 
 function importDialog(){
@@ -1886,39 +2196,39 @@ function importDialog(){
       "sich mit einem Klick anlegen."}));
     var inp=el("input",{class:"i",type:"file",multiple:"multiple",accept:".md,text/markdown"});
     host.appendChild(field("Dateien",inp));
-    var bericht=el("div",{class:"bericht"});
-    host.appendChild(bericht);
+    var report=el("div",{class:"bericht"});
+    host.appendChild(report);
     var erg=null;
 
     inp.addEventListener("change",function(){
       var fs=Array.prototype.slice.call(inp.files||[]);
       if(!fs.length)return;
-      bericht.textContent="Lese "+fs.length+" Datei(en)…";
+      report.textContent="Reading "+fs.length+" file(s)…";
       window.__GELESEN__=fs.map(function(f){return f.name;});
       Promise.all(fs.map(function(f){ return f.text().then(function(t){return {name:f.name,text:t};}); }))
-        .then(function(dateien){
-          erg=importiere(dateien);
-          bericht.textContent="";
+        .then(function(files){
+          erg=runImport(files);
+          report.textContent="";
           var z=el("ul");
-          [["Gegenstände",erg.gegenstand.length],["Statblöcke",erg.statblock.length],
-           ["Orte",erg.ort.length],["Regeln aus Abschnitten",erg.regeln.length]]
+          [["Items",erg.gegenstand.length],["Statblocks",erg.statblock.length],
+           ["Places",erg.ort.length],["Rules from sections",erg.regeln.length]]
             .forEach(function(p){ if(p[1]) z.appendChild(el("li",{text:p[1]+" "+p[0]})); });
-          bericht.appendChild(z);
-          if(erg.unbekannt.length) bericht.appendChild(el("p",{class:"warnzeile",
-            text:"Nicht erkannt: "+erg.unbekannt.join(", ")}));
+          report.appendChild(z);
+          if(erg.unbekannt.length) report.appendChild(el("p",{class:"warnzeile",
+            text:"Not recognised: "+erg.unbekannt.join(", ")}));
           if(erg.offen.length){
-            bericht.appendChild(el("p",{class:"hint",text:"Offene Verweise — danach als toter Verweis anklickbar:"}));
+            report.appendChild(el("p",{class:"hint",text:"Unresolved links — clickable afterwards as dead links:"}));
             var ul=el("ul");
             erg.offen.slice(0,12).forEach(function(o){
               ul.appendChild(el("li",{text:o.von+" → "+o.art+" → "+o.ziel})); });
-            if(erg.offen.length>12) ul.appendChild(el("li",{text:"… und "+(erg.offen.length-12)+" weitere"}));
-            bericht.appendChild(ul);
+            if(erg.offen.length>12) ul.appendChild(el("li",{text:"… and "+(erg.offen.length-12)+" more"}));
+            report.appendChild(ul);
           }
-          if(erg.bilder.length) bericht.appendChild(el("p",{class:"hint",
-            text:"Bilder werden benannt, aber nicht übertragen: "+
+          if(erg.bilder.length) report.appendChild(el("p",{class:"hint",
+            text:"Images are named but not transferred: "+
               erg.bilder.map(function(b){return b.datei;}).join(", ")}));
         })
-        .catch(function(x){ bericht.textContent="Lesen fehlgeschlagen: "+x.message; });
+        .catch(function(x){ report.textContent="Reading failed: "+x.message; });
     });
 
     actions(host,close,function(){
@@ -1926,9 +2236,9 @@ function importDialog(){
       erg.alle.forEach(function(e){ ENT.set(e.id,e); });
       render();
       if(db) erg.alle.forEach(function(e){ db.doc("entities/"+e.id).set(e).catch(fail); });
-      UI.err=erg.alle.length+" Artikel importiert.";
+      UI.err=erg.alle.length+" articles imported.";
       go({k:"list"});
-    },"Importieren");
+    },"Import");
   });
 }
 
@@ -1970,18 +2280,18 @@ render();
 
   if(!db){
     ready=true;
-    UI.err="Kein Datenspeicher erreichbar — nichts wird gespeichert. "+
-           "Meist hilft ein vollständiges Neuladen der Seite.";
+    UI.err="No data store reachable — nothing will be saved. "+
+           "A full page reload usually helps.";
     render(); return;
   }
 
   var TEILE=["interfaces","components","relations","views","vars"];
-  var kamAn={register:{},artikel:false};
+  var arrived={register:{},artikel:false};
 
   /* Wirft ein Snapshot-Callback, endet die Zustellung still: `ready` bliebe
      false und die Seite stünde auf „Lädt…". Darum fängt jeder Callback
      seinen eigenen Fehler und sagt, woran es lag. */
-  function sicher(was,fn){
+  function guarded(was,fn){
     return function(arg){
       try{ fn(arg); }
       catch(x){ ready=true; UI.err=was+": "+((x&&x.message)||x); render(); }
@@ -1989,18 +2299,18 @@ render();
   }
 
   TEILE.forEach(function(part){
-    db.doc("registry/"+part).onSnapshot(sicher("Register "+part,function(s){
-      kamAn.register[part]=true;
-      REG[part]=frisch(s.exists&&s.data())||REG[part]||{};
+    db.doc("registry/"+part).onSnapshot(guarded("Registry "+part,function(s){
+      arrived.register[part]=true;
+      REG[part]=thawed(s.exists&&s.data())||REG[part]||{};
       render();
-    }),function(e){ UI.err="Register: "+e.code; render(); });
+    }),function(e){ UI.err="Registry: "+e.code; render(); });
   });
 
-  db.collection("entities").limit(1000).onSnapshot(sicher("Artikel",function(snap){
-    kamAn.artikel=true;
+  db.collection("entities").limit(1000).onSnapshot(guarded("Artikel",function(snap){
+    arrived.artikel=true;
     var neu=new Map();
     (snap.docs||[]).forEach(function(d){
-      var b=frisch(d.data())||{};
+      var b=thawed(d.data())||{};
       if(!b.id) b.id=d.id;
       neu.set(b.id,b);
     });
@@ -2008,17 +2318,17 @@ render();
     ready=true;
     UI.err="";   // eine frühere Wachmeldung ist mit den Daten erledigt
     render();
-  }),function(e){ UI.err="Artikel: "+e.code; ready=true; render(); });
+  }),function(e){ UI.err="Articles: "+e.code; ready=true; render(); });
 
   /* Kommt binnen zehn Sekunden nichts, sagt die Seite, was ausblieb —
      statt schweigend auf „Lädt…" zu stehen. */
   setTimeout(function(){
     if(ready) return;
     ready=true;
-    UI.err="Keine Daten empfangen: "+Object.keys(kamAn.register).length+" von "+
-           TEILE.length+" Registerteilen, "+
-           (kamAn.artikel?"Artikel ja":"Artikel nein")+". "+
-           "Die Seite vollständig neu laden; bleibt es dabei, ist es ein Fehler in der Seite.";
+    UI.err="No data received: "+Object.keys(arrived.register).length+" of "+
+           TEILE.length+" registry parts, "+
+           (arrived.artikel?"articles yes":"articles no")+". "+
+           "Reload the page fully; if it persists, it is a bug in the page.";
     render();
   },10000);
 })();
