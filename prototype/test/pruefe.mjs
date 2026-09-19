@@ -292,6 +292,75 @@ async function seite(datei, warten) {
   pruefe('statblock sections become pooled rules', imp.zahlen.rules > 20, imp.zahlen);
 
   pruefe('field kinds and import raised no exception', errs.length === 0, errs);
+
+  /* 6 — Ansichten als Werkzeugkasten, und ein Layout je Typ */
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].find((x) => /Registry/.test(x.textContent)).click());
+  await p.waitForTimeout(200);
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.tabs button')].find((x) => /Compendium/.test(x.textContent)).click());
+  await p.waitForTimeout(250);
+  const werkzeuge = await p.evaluate(() =>
+    [...document.querySelectorAll('.tools button')].map((b) => b.textContent));
+  pruefe('the toolbox offers every element', werkzeuge.length === 8 && werkzeuge.some((t) => /Field table/.test(t)), werkzeuge);
+
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.regtree button')].find((b) => b.textContent === 'Full').click());
+  await p.waitForTimeout(200);
+  const umgewandelt = await p.evaluate(() =>
+    [...document.querySelectorAll('.regbody .crow .cl b')].map((c) => c.textContent));
+  /* Die alten Ansichten waren eine Sammlung von Schaltern. Sie müssen beim
+     Lesen zu Elementen werden, sonst stünde hier eine leere Liste und die
+     Ansicht sähe aus, als zeige sie nichts. */
+  pruefe('an older view converts into elements', umgewandelt.includes('Description') && umgewandelt.includes('Field table'), umgewandelt);
+
+  await p.evaluate(() => {
+    const s = document.querySelector('.regbody select');
+    [...s.options].forEach((o) => { if (/Statblock/.test(o.textContent)) s.value = o.value; });
+    s.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await p.waitForTimeout(250);
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.tools button')].find((b) => /Heading/.test(b.textContent)).click());
+  await p.waitForTimeout(300);
+  await p.evaluate(() => {
+    const t = document.querySelector('.fbox input');
+    t.value = 'Statblocks only';
+    t.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await p.waitForTimeout(300);
+  for (let i = 0; i < 6; i++) {
+    await p.evaluate(() => {
+      const r = [...document.querySelectorAll('.regbody .crow')].find((x) => /Heading/.test(x.textContent));
+      const up = [...r.querySelectorAll('button')].find((b) => b.textContent === '↑');
+      if (up && !up.disabled) up.click();
+    });
+    await p.waitForTimeout(140);
+  }
+  const reihe = await p.evaluate(() =>
+    [...document.querySelectorAll('.regbody .crow .cl b')].map((c) => c.textContent));
+  pruefe('elements can be reordered', reihe[0] === 'Heading', reihe);
+
+  const zeig = async (name) => {
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
+    await p.waitForTimeout(200);
+    await p.evaluate((n) =>
+      [...document.querySelectorAll('#view .row')].find((r) => r.textContent.includes(n)).click(), name);
+    await p.waitForTimeout(200);
+    await p.evaluate(() => {
+      const f = document.querySelector('#facet');
+      f.value = 'full';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(250);
+    return p.evaluate(() => [...document.querySelectorAll('#view .sec')].map((x) => x.textContent));
+  };
+  const sb = await zeig('Kanalschleim');
+  const npc = await zeig('Volo');
+  pruefe('a per-type layout reaches that type', sb.includes('Statblocks only'), sb);
+  pruefe('and leaves the other types alone', !npc.includes('Statblocks only'), npc);
+  pruefe('views raised no exception', errs.length === 0, errs);
   await p.close();
 }
 
