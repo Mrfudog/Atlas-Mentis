@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main, preprod]
+  pull_request:
+    branches: [main, preprod]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # No `version:` here on purpose — the action reads `packageManager`
+      # from package.json, and specifying both is an error.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Build order matters: the apps compile against @nw/model's emitted types.
+      - run: pnpm --filter @nw/model build
+      - run: pnpm --filter @nw/registry build
+
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm --filter @nw/server build
+      - run: pnpm --filter web build
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker build -t nebelwacht:ci .
