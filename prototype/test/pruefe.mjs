@@ -292,6 +292,107 @@ async function seite(datei, warten) {
   pruefe('statblock sections become pooled rules', imp.zahlen.rules > 20, imp.zahlen);
 
   pruefe('field kinds and import raised no exception', errs.length === 0, errs);
+
+  /* 6 — Ansichten als Werkzeugkasten, und ein Layout je Typ */
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].find((x) => /Registry/.test(x.textContent)).click());
+  await p.waitForTimeout(200);
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.tabs button')].find((x) => /Compendium/.test(x.textContent)).click());
+  await p.waitForTimeout(250);
+  const werkzeuge = await p.evaluate(() =>
+    [...document.querySelectorAll('.tools button')].map((b) => b.textContent));
+  pruefe('the toolbox offers every element', werkzeuge.length === 8 && werkzeuge.some((t) => /Field table/.test(t)), werkzeuge);
+
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.regtree button')].find((b) => b.textContent === 'Full').click());
+  await p.waitForTimeout(200);
+  const umgewandelt = await p.evaluate(() =>
+    [...document.querySelectorAll('.regbody .crow .cl b')].map((c) => c.textContent));
+  /* Die alten Ansichten waren eine Sammlung von Schaltern. Sie müssen beim
+     Lesen zu Elementen werden, sonst stünde hier eine leere Liste und die
+     Ansicht sähe aus, als zeige sie nichts. */
+  pruefe('an older view converts into elements', umgewandelt.includes('Description') && umgewandelt.includes('Field table'), umgewandelt);
+
+  await p.evaluate(() => {
+    const s = document.querySelector('.regbody select');
+    [...s.options].forEach((o) => { if (/Statblock/.test(o.textContent)) s.value = o.value; });
+    s.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await p.waitForTimeout(250);
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.tools button')].find((b) => /Heading/.test(b.textContent)).click());
+  await p.waitForTimeout(300);
+  await p.evaluate(() => {
+    const t = document.querySelector('.fbox input');
+    t.value = 'Statblocks only';
+    t.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await p.waitForTimeout(300);
+  for (let i = 0; i < 6; i++) {
+    await p.evaluate(() => {
+      const r = [...document.querySelectorAll('.regbody .crow')].find((x) => /Heading/.test(x.textContent));
+      const up = [...r.querySelectorAll('button')].find((b) => b.textContent === '↑');
+      if (up && !up.disabled) up.click();
+    });
+    await p.waitForTimeout(140);
+  }
+  const reihe = await p.evaluate(() =>
+    [...document.querySelectorAll('.regbody .crow .cl b')].map((c) => c.textContent));
+  pruefe('elements can be reordered', reihe[0] === 'Heading', reihe);
+
+  const zeig = async (name) => {
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
+    await p.waitForTimeout(200);
+    await p.evaluate((n) =>
+      [...document.querySelectorAll('#view .row')].find((r) => r.textContent.includes(n)).click(), name);
+    await p.waitForTimeout(200);
+    await p.evaluate(() => {
+      const f = document.querySelector('#facet');
+      f.value = 'full';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(250);
+    return p.evaluate(() => [...document.querySelectorAll('#view .sec')].map((x) => x.textContent));
+  };
+  const sb = await zeig('Kanalschleim');
+  const npc = await zeig('Volo');
+  pruefe('a per-type layout reaches that type', sb.includes('Statblocks only'), sb);
+  pruefe('and leaves the other types alone', !npc.includes('Statblocks only'), npc);
+  pruefe('views raised no exception', errs.length === 0, errs);
+
+  /* 7 — jeder Registerreiter hat eine Maske, keiner nur ein JSON-Textfeld */
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].find((x) => /Registry/.test(x.textContent)).click());
+  await p.waitForTimeout(200);
+  const masken = {};
+  for (const name of ['Interfaces', 'Components', 'Relation types', 'Compendium', 'Variables']) {
+    await p.evaluate((n) =>
+      [...document.querySelectorAll('.tabs button')].find((x) => x.textContent === n).click(), name);
+    await p.waitForTimeout(280);
+    masken[name] = await p.evaluate(() => ({
+      maske: !!document.querySelector('.regbody'),
+      felder: document.querySelectorAll('.regbody label.f, .regbody input.i').length,
+      roh: !!document.getElementById('regbox'),
+      ausgang: !![...document.querySelectorAll('button')].find((b) => /Edit as JSON/.test(b.textContent)),
+    }));
+  }
+  const ohneMaske = Object.keys(masken).filter((n) => !masken[n].maske || masken[n].roh);
+  pruefe('every registry tab opens as a form', ohneMaske.length === 0, masken);
+  pruefe('and every one keeps the JSON way out',
+    Object.keys(masken).every((n) => masken[n].ausgang), masken);
+
+  /* Der Notausgang muss zurückführen, sonst ist er eine Sackgasse. */
+  await p.evaluate(() =>
+    [...document.querySelectorAll('button')].find((b) => /Edit as JSON/.test(b.textContent)).click());
+  await p.waitForTimeout(250);
+  const imJson = await p.evaluate(() => ({
+    roh: !!document.getElementById('regbox'),
+    zurueck: !![...document.querySelectorAll('button')].find((b) => /Back to the form/.test(b.textContent)),
+  }));
+  pruefe('the JSON way out leads back', imJson.roh && imJson.zurueck, imJson);
+  pruefe('registry tabs raised no exception', errs.length === 0, errs);
   await p.close();
 }
 
