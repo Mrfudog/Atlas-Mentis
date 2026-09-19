@@ -311,7 +311,7 @@ function thawed(o){
 var REG={interfaces:{},components:{},relations:{},vars:{},views:{}};
 var UI={route:{k:"list"}, view:"quick", iface:"", tag:"", q:"", offen:false, pane:"main",
         regtab:"interfaces", regiface:"", regcomp:"", regprop:"", regjson:false,
-        regview:"", regscope:"", regel:"", err:""};
+        regview:"", regscope:"", regel:"", regcomp2:"", regrel:"", err:""};
 
 /* Darstellungsstufen (Facets, REQ-164) — registry rows, not code.
    Fallback only; the live set lives in registry/views. */
@@ -1248,6 +1248,11 @@ function renderRegistry(v){
   /* Schnittstellen bekommen eine Maske: Komponenten, Felder, Blockarten und
      Subtypen an einer Stelle. Das JSON bleibt daneben stehen — für Massen-
      änderungen ist ein Textfeld schneller als jedes Formular. */
+  if(UI.regtab==="components"&&!UI.regjson){ maskeMitJson(v,renderComponentEditor,
+    "A component is one typed fact about an article — at most one per kind, absent when unused. Its fields are edited here and hold wherever the component is used."); return; }
+  if(UI.regtab==="relations"&&!UI.regjson){ maskeMitJson(v,renderRelationEditor,null); return; }
+  if(UI.regtab==="vars"&&!UI.regjson){ maskeMitJson(v,renderVarEditor,null); return; }
+
   if(UI.regtab==="views"&&!UI.regjson){
     v.appendChild(el("p",{class:"hint",
       text:"A view is an ordered list of elements. Pick a type under “Applies to” to give that type — and its subtypes — a layout of its own."}));
@@ -1284,7 +1289,7 @@ function renderRegistry(v){
   }},"Apply"));
   bar.appendChild(el("button",{class:"btn",type:"button",onclick:function(){
     ta.value=JSON.stringify(REG[UI.regtab],null,2); msg.textContent="";}},"Reset"));
-  if(UI.regtab==="interfaces"||UI.regtab==="views") bar.appendChild(el("button",{class:"btn gh",type:"button",
+  bar.appendChild(el("button",{class:"btn gh",type:"button",
     onclick:function(){ UI.regjson=false; UI.err=""; render(); }},"Back to the form"));
   v.appendChild(bar);
 }
@@ -1331,6 +1336,262 @@ function newInterfaceBar(unter){
     UI.regiface=n; UI.regcomp=""; saveReg("interfaces"); render();
   }},"Create interface"));
   return bar;
+}
+
+/* ---------- components tab ----------
+   Dieselbe Feldmaske wie in der Schnittstelle, aber hier ist die Komponente
+   selbst das Thema: was sie an Feldern trägt und wer sie nutzt. */
+function renderComponentEditor(v){
+  var names=Object.keys(REG.components).sort();
+  if(!names.length){
+    v.appendChild(el("div",{class:"empty",text:"No components yet."}));
+    if(me.write) v.appendChild(newComponentBar());
+    return;
+  }
+  if(names.indexOf(UI.regcomp2)<0) UI.regcomp2=names[0];
+
+  var grid=el("div",{class:"reg2"});
+  var list=el("div",{class:"regtree"});
+  names.forEach(function(cn){
+    var cd=REG.components[cn];
+    var n=Object.keys((cd.schema&&cd.schema.properties)||{}).length;
+    var b=el("button",{type:"button","aria-current":String(UI.regcomp2===cn),
+      onclick:function(){ UI.regcomp2=cn; UI.regprop=""; render(); }});
+    if(n) b.appendChild(el("em",{text:String(n)}));
+    b.appendChild(el("span",{text:cd.label||cn}));
+    list.appendChild(b);
+  });
+  grid.appendChild(list);
+  grid.appendChild(componentBody(UI.regcomp2));
+  v.appendChild(grid);
+  if(me.write) v.appendChild(newComponentBar());
+}
+
+function newComponentBar(){
+  var i=el("input",{class:"i",type:"text",placeholder:"Label, e.g. Trade info"});
+  var bar=el("div",{class:"addbar",style:"margin-top:10px"});
+  bar.appendChild(i);
+  bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+    var label=i.value.trim(); if(!label) return;
+    var cn=techName(label,REG.components);
+    REG.components[cn]={label:label,engine:null,schema:{type:"object",properties:{}}};
+    UI.regcomp2=cn; UI.regprop=""; saveReg("components"); render();
+  }},"Create component"));
+  return bar;
+}
+
+function componentBody(cn){
+  var cd=REG.components[cn], w=me.write;
+  var box=el("div",{class:"regbody"});
+  function save(){ saveReg("components"); render(); }
+
+  box.appendChild(el("h3",{text:cd.label||cn}));
+  box.appendChild(el("div",{class:"key",text:cn}));
+
+  var head=el("div",{class:"fmore",style:"border-bottom:0;padding-top:10px"});
+  var labelInput=el("input",{class:"i",type:"text",value:cd.label||""});
+  if(!w) labelInput.disabled=true;
+  labelInput.addEventListener("change",function(){ cd.label=labelInput.value.trim()||cn; save(); });
+  head.appendChild(field("Label",labelInput));
+  var eng=el("input",{class:"i",type:"text",value:cd.engine||"",placeholder:"none"});
+  if(!w) eng.disabled=true;
+  eng.addEventListener("change",function(){
+    var val=eng.value.trim(); if(val) cd.engine=val; else cd.engine=null; save(); });
+  head.appendChild(field("Engine",eng));
+  box.appendChild(head);
+
+  box.appendChild(el("div",{class:"rsec",text:"Fields"}));
+  box.appendChild(fieldBox(cn,"",w,save));
+
+  var users=ifacesUsing(cn);
+  box.appendChild(el("div",{class:"rsec",text:"Used by"}));
+  if(!users.length) box.appendChild(el("p",{class:"hint",
+    text:"No interface lists this component yet. Add it under an interface, or it stays unreachable."}));
+  else{
+    var chips=el("div",{class:"chips"});
+    users.forEach(function(n){
+      var c=el("span",{class:"chip"});
+      c.appendChild(el("button",{type:"button",class:"ref",onclick:function(){
+        UI.regtab="interfaces"; UI.regiface=n; UI.regcomp=cn; render(); }},
+        REG.interfaces[n].label||n));
+      chips.appendChild(c);
+    });
+    box.appendChild(chips);
+  }
+
+  if(w){
+    /* Eine Komponente zu entfernen, die noch jemand nennt, hinterliesse eine
+       Schnittstelle, die auf nichts zeigt — die Prüfung beanstandet dann
+       jeden Artikel dieser Art. */
+    var traeger=[]; ENT.forEach(function(e){ if((e.components||{})[cn]) traeger.push(e); });
+    var reason=users.length?users.length+" interfaces list it"
+              :(traeger.length?traeger.length+" articles carry it":"");
+    var del=el("button",{class:"btn sm dngr",type:"button",onclick:function(){
+      if(reason)return;
+      confirmDialog("Remove the component “"+(cd.label||cn)+"”?",function(){
+        delete REG.components[cn]; UI.regcomp2=""; save(); },"Remove"); }},"Remove component");
+    if(reason){ del.disabled=true; del.title=reason; }
+    var fbar=el("div",{class:"rowbtns"}); fbar.appendChild(del);
+    if(reason) fbar.appendChild(el("span",{class:"co",style:"align-self:center",text:reason}));
+    box.appendChild(fbar);
+  }
+  return box;
+}
+
+/* ---------- relation types tab ---------- */
+function renderRelationEditor(v){
+  var names=Object.keys(REG.relations).sort();
+  if(!names.length){
+    v.appendChild(el("div",{class:"empty",text:"No relation types yet."}));
+    if(me.write) v.appendChild(newRelationBar());
+    return;
+  }
+  if(names.indexOf(UI.regrel)<0) UI.regrel=names[0];
+
+  var grid=el("div",{class:"reg2"});
+  var list=el("div",{class:"regtree"});
+  names.forEach(function(rt){
+    var rd=REG.relations[rt];
+    var n=0; ENT.forEach(function(e){ (e.relations||[]).forEach(function(r){ if(r.type===rt)n++; }); });
+    var b=el("button",{type:"button","aria-current":String(UI.regrel===rt),
+      onclick:function(){ UI.regrel=rt; render(); }});
+    if(n) b.appendChild(el("em",{text:String(n)}));
+    b.appendChild(el("span",{text:rd.label||rt}));
+    list.appendChild(b);
+  });
+  grid.appendChild(list);
+  grid.appendChild(relationBody(UI.regrel));
+  v.appendChild(grid);
+  if(me.write) v.appendChild(newRelationBar());
+}
+
+function newRelationBar(){
+  var i=el("input",{class:"i",type:"text",placeholder:"Label, e.g. owes a favour to"});
+  var bar=el("div",{class:"addbar",style:"margin-top:10px"});
+  bar.appendChild(i);
+  bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+    var label=i.value.trim(); if(!label) return;
+    var base=slug(label).replace(/-([a-z])/g,function(_,c){return c.toUpperCase();})||"relates";
+    var n=base,c=2; while(REG.relations[n]){ n=base+c; c++; }
+    REG.relations[n]={label:label,inverseLabel:"← "+label,from:["*"],to:["*"]};
+    UI.regrel=n; saveReg("relations"); render();
+  }},"Create relation type"));
+  return bar;
+}
+
+function relationBody(rt){
+  var rd=REG.relations[rt], w=me.write;
+  var box=el("div",{class:"regbody"});
+  function save(){ saveReg("relations"); render(); }
+
+  box.appendChild(el("h3",{text:rd.label||rt}));
+  box.appendChild(el("div",{class:"key",text:rt}));
+
+  box.appendChild(el("p",{class:"hint",style:"margin-top:8px",
+    text:"One edge, stored in one direction. The reverse is never stored — it is a query, and the inverse label is what it reads as from the other end."}));
+
+  var head=el("div",{class:"fmore",style:"border-bottom:0"});
+  function text(label,val,set,ph){
+    var i=el("input",{class:"i",type:"text",value:val==null?"":val,placeholder:ph||""});
+    if(!w) i.disabled=true;
+    i.addEventListener("change",function(){ set(i.value.trim()); save(); });
+    head.appendChild(field(label,i));
+  }
+  text("Label (forwards)",rd.label||"",function(x){ rd.label=x||rt; },"lives in");
+  text("Label (backwards)",rd.inverseLabel||"",function(x){ rd.inverseLabel=x||("← "+rt); },"residents");
+  text("Section heading",rd.section||"",function(x){ if(x)rd.section=x; else delete rd.section; },
+       "set to compose the target into the article");
+  var card=el("select",{class:"i"}); if(!w) card.disabled=true;
+  [["","many"],["one","at most one"]].forEach(function(c){
+    card.appendChild(el("option",{value:c[0]},c[1])); });
+  card.value=rd.cardinality||"";
+  card.addEventListener("change",function(){
+    if(card.value) rd.cardinality=card.value; else delete rd.cardinality; save(); });
+  head.appendChild(field("How many",card));
+  box.appendChild(head);
+
+  box.appendChild(el("div",{class:"rsec",text:"From and to"}));
+  box.appendChild(el("p",{class:"hint",
+    text:"Nothing picked means any type. Picking a type includes its subtypes."}));
+  [["from","May start at"],["to","May point at"]].forEach(function(side){
+    var sel=el("select",{class:"i",multiple:"multiple",size:"5",style:"max-width:280px"});
+    if(!w) sel.disabled=true;
+    var cur=(rd[side[0]]||[]).filter(function(x){return x!=="*";});
+    Object.keys(REG.interfaces).sort().forEach(function(n){
+      var o=el("option",{value:n},REG.interfaces[n].label||n);
+      if(cur.indexOf(n)>=0) o.selected=true;
+      sel.appendChild(o);
+    });
+    sel.addEventListener("change",function(){
+      var picked=Array.prototype.filter.call(sel.options,function(o){return o.selected;})
+        .map(function(o){return o.value;});
+      rd[side[0]]=picked.length?picked:["*"];
+      save();
+    });
+    box.appendChild(field(side[1],sel));
+  });
+
+  if(w){
+    var n=0; ENT.forEach(function(e){ (e.relations||[]).forEach(function(r){ if(r.type===rt)n++; }); });
+    var del=el("button",{class:"btn sm dngr",type:"button",onclick:function(){
+      if(n)return;
+      confirmDialog("Remove the relation type “"+(rd.label||rt)+"”?",function(){
+        delete REG.relations[rt]; UI.regrel=""; save(); },"Remove"); }},"Remove relation type");
+    if(n){ del.disabled=true; del.title=n+" edges use it"; }
+    var fbar=el("div",{class:"rowbtns"}); fbar.appendChild(del);
+    if(n) fbar.appendChild(el("span",{class:"co",style:"align-self:center",text:n+" edges use it"}));
+    box.appendChild(fbar);
+  }
+  return box;
+}
+
+/* ---------- variables tab ----------
+   Kampagnenvariablen: die dritte und letzte Stufe, auf der {VAR} auflöst.
+   Kante → nutzender Artikel → hier. */
+function renderVarEditor(v){
+  var w=me.write;
+  v.appendChild(el("p",{class:"hint",
+    text:"Campaign-wide values for {VAR}. A binding on an edge wins, then the article using it, then these."}));
+  var keys=Object.keys(REG.vars||{}).sort();
+  var box=el("div",{class:"regbody",style:"max-height:none;border:1px solid var(--line);border-radius:var(--r)"});
+  if(!keys.length) box.appendChild(el("p",{class:"hint",text:"None yet."}));
+  keys.forEach(function(k){
+    var row=el("div",{class:"crow"});
+    row.appendChild(el("span",{class:"fk",style:"flex:0 0 150px",text:"{"+k+"}"}));
+    var inp=el("input",{class:"i",type:"text",value:String(REG.vars[k])});
+    if(!w) inp.disabled=true;
+    inp.addEventListener("change",function(){ REG.vars[k]=inp.value; saveReg("vars"); render(); });
+    row.appendChild(inp);
+    if(w) row.appendChild(el("button",{class:"btn sm gh dngr",type:"button",title:"Remove",
+      onclick:function(){ confirmDialog("Remove {"+k+"}?",function(){
+        delete REG.vars[k]; saveReg("vars"); render(); },"Remove"); }},"×"));
+    box.appendChild(row);
+  });
+  v.appendChild(box);
+  if(w){
+    var nk=el("input",{class:"i",type:"text",placeholder:"NAME"});
+    var nv=el("input",{class:"i",type:"text",placeholder:"value"});
+    var bar=el("div",{class:"addbar",style:"margin-top:10px"});
+    bar.appendChild(nk); bar.appendChild(nv);
+    bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+      var k=nk.value.trim().replace(/[^A-Za-z0-9_]/g,"").toUpperCase();
+      if(!k)return;
+      REG.vars=REG.vars||{}; REG.vars[k]=nv.value;
+      saveReg("vars"); render();
+    }},"Add variable"));
+    v.appendChild(bar);
+  }
+}
+
+/* Jede Maske trägt denselben Notausgang: für Massenänderungen ist ein
+   Textfeld schneller als jedes Formular. */
+function maskeMitJson(v,renderer,hint){
+  if(hint) v.appendChild(el("p",{class:"hint",text:hint}));
+  renderer(v);
+  var bar=el("div",{class:"rowbtns"});
+  bar.appendChild(el("button",{class:"btn sm gh",type:"button",onclick:function(){
+    UI.regjson=true; UI.err=""; render(); }},"Edit as JSON"));
+  v.appendChild(bar);
 }
 
 /* ---------- compendium: views as an ordered toolbox ---------- */
@@ -1799,163 +2060,170 @@ function regIfaceBody(ifn){
 
     var wrap=el("div");
     wrap.appendChild(row);
-    if(UI.regcomp===cn) wrap.appendChild(fieldBox(cn));
+    if(UI.regcomp===cn) wrap.appendChild(fieldBox(cn,ifn,w,saveC));
     return wrap;
   }
+}
 
-  /* ---------- die Felder einer Komponente ---------- */
-  function fieldBox(cn){
-    var cd=REG.components[cn];
-    if(!cd) return el("div",{class:"fbox"},el("span",{class:"warnzeile",text:"Component missing from the registry."}));
-    cd.schema=cd.schema||{type:"object",properties:{}};
-    var schema=cd.schema;
-    schema.properties=schema.properties||{};
-    var props=schema.properties;
-    var box=el("div",{class:"fbox"});
+/* ---------- the fields of a component ----------
+ Used from two places: inside an interface, where it says which *other*
+ interfaces share the component, and in the components tab, where the
+ component is the subject. `within` may be empty — the sharing note then
+ names every user instead of "the others". */
+function fieldBox(cn,within,w,saveC){
+  var cd=REG.components[cn];
+  if(!cd) return el("div",{class:"fbox"},el("span",{class:"warnzeile",text:"Component missing from the registry."}));
+  cd.schema=cd.schema||{type:"object",properties:{}};
+  var schema=cd.schema;
+  schema.properties=schema.properties||{};
+  var props=schema.properties;
+  var box=el("div",{class:"fbox"});
 
-    /* Komponenten sind geteilt. Wer hier ein Feld ändert, ändert es überall —
-       das ist der Sinn des Pools und trotzdem eine Überraschung, wenn es
-       nirgends steht. */
-    var users=ifacesUsing(cn);
-    if(users.length>1) box.appendChild(el("p",{class:"hint",style:"margin-bottom:9px",
-      text:"Shared with "+(users.length-1)+" further interfaces ("+
-        users.filter(function(n){return n!==ifn;})
-          .map(function(n){return REG.interfaces[n].label||n;}).join(", ")+
-        "). A change here holds for all of them."}));
+  /* Komponenten sind geteilt. Wer hier ein Feld ändert, ändert es überall —
+     das ist der Sinn des Pools und trotzdem eine Überraschung, wenn es
+     nirgends steht. */
+  /* Komponenten sind geteilt. Wer hier ein Feld ändert, ändert es überall —
+     das ist der Sinn des Pools und trotzdem eine Überraschung, wenn es
+     nirgends steht. */
+  var users=ifacesUsing(cn).filter(function(n){ return n!==within; });
+  if(users.length) box.appendChild(el("p",{class:"hint",style:"margin-bottom:9px",
+    text:(within?"Shared with ":"Used by ")+users.length+
+      (users.length===1?" interface (":" interfaces (")+
+      users.map(function(n){return REG.interfaces[n].label||n;}).join(", ")+
+      "). A change here holds for all of them."}));
 
-    var keys=Object.keys(props);
-    keys.forEach(function(k){ box.appendChild(fieldRow(cn,k)); });
-    if(!keys.length) box.appendChild(el("p",{class:"hint",text:"No fields yet."}));
+  var keys=Object.keys(props);
+  keys.forEach(function(k){ box.appendChild(fieldRow(cn,k,within,w,saveC)); });
+  if(!keys.length) box.appendChild(el("p",{class:"hint",text:"No fields yet."}));
 
-    if(w){
-      var nk=el("input",{class:"i",type:"text",placeholder:"Feldname, z. B. gewicht"});
-      var nt=el("input",{class:"i",type:"text",placeholder:"Label"});
-      var bar=el("div",{class:"addbar",style:"margin-top:9px"});
-      bar.appendChild(nk); bar.appendChild(nt);
-      bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
-        var k=nk.value.trim().replace(/[^A-Za-z0-9_]/g,"");
-        if(!k) return;
-        if(props[k]){ UI.err="The field "+k+" already exists in "+(cd.label||cn)+"."; render(); return; }
-        props[k]={type:"string",title:nt.value.trim()||k};
-        UI.regprop=cn+"."+k;
-        saveC();
-      }},"Add field"));
-      box.appendChild(bar);
-    }
-    return box;
-  }
-
-  function fieldRow(cn,k){
-    var cd=REG.components[cn], schema=cd.schema, props=schema.properties, p=props[k];
-    var row=el("div",{class:"frow"});
-    row.appendChild(el("span",{class:"fk",text:k}));
-
-    var ti=el("input",{class:"i",type:"text",value:p.title||""});
-    if(!w) ti.disabled=true;
-    ti.addEventListener("change",function(){ p.title=ti.value.trim()||k; saveC(); });
-    row.appendChild(ti);
-
-    var ty=el("select",{class:"i"}); if(!w) ty.disabled=true;
-    FIELD_KINDS.forEach(function(t){ ty.appendChild(el("option",{value:t[0]},t[1])); });
-    ty.value=fieldKind(p);
-    ty.addEventListener("change",function(){
-      setFieldKind(p,ty.value);
-      /* Eine neue Art will fast immer gleich eingestellt werden — Auswahlwerte
-         bei „Choice", das Ziel bei „Link". Also aufklappen statt verstecken. */
+  if(w){
+    var nk=el("input",{class:"i",type:"text",placeholder:"Feldname, z. B. gewicht"});
+    var nt=el("input",{class:"i",type:"text",placeholder:"Label"});
+    var bar=el("div",{class:"addbar",style:"margin-top:9px"});
+    bar.appendChild(nk); bar.appendChild(nt);
+    bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+      var k=nk.value.trim().replace(/[^A-Za-z0-9_]/g,"");
+      if(!k) return;
+      if(props[k]){ UI.err="The field "+k+" already exists in "+(cd.label||cn)+"."; render(); return; }
+      props[k]={type:"string",title:nt.value.trim()||k};
       UI.regprop=cn+"."+k;
       saveC();
-    });
-    row.appendChild(ty);
+    }},"Add field"));
+    box.appendChild(bar);
+  }
+  return box;
+}
 
-    var id=cn+"."+k;
-    row.appendChild(el("button",{class:"btn sm gh",type:"button",title:"More",onclick:function(){
-      UI.regprop=(UI.regprop===id?"":id); render(); }},UI.regprop===id?"▴":"⋯"));
+function fieldRow(cn,k,within,w,saveC){
+  var cd=REG.components[cn], schema=cd.schema, props=schema.properties, p=props[k];
+  var row=el("div",{class:"frow"});
+  row.appendChild(el("span",{class:"fk",text:k}));
 
-    if(w) row.appendChild(el("button",{class:"btn sm gh dngr",type:"button",title:"Remove field",
-      onclick:function(){
-        confirmDialog("Feld „"+(p.title||k)+"”? Values stay in the articles but are no longer shown.",
-          function(){
-            delete props[k];
-            if(schema.required){
-              schema.required=schema.required.filter(function(x){return x!==k;});
-              if(!schema.required.length) delete schema.required;
-            }
-            if(UI.regprop===id) UI.regprop="";
-            saveC();
-          },"Remove"); }},"×"));
-    else row.appendChild(el("span"));
+  var ti=el("input",{class:"i",type:"text",value:p.title||""});
+  if(!w) ti.disabled=true;
+  ti.addEventListener("change",function(){ p.title=ti.value.trim()||k; saveC(); });
+  row.appendChild(ti);
 
-    var wrap=el("div");
-    wrap.appendChild(row);
-    if(UI.regprop===id) wrap.appendChild(fieldMore(cn,k));
-    return wrap;
+  var ty=el("select",{class:"i"}); if(!w) ty.disabled=true;
+  FIELD_KINDS.forEach(function(t){ ty.appendChild(el("option",{value:t[0]},t[1])); });
+  ty.value=fieldKind(p);
+  ty.addEventListener("change",function(){
+    setFieldKind(p,ty.value);
+    /* Eine neue Art will fast immer gleich eingestellt werden — Auswahlwerte
+       bei „Choice", das Ziel bei „Link". Also aufklappen statt verstecken. */
+    UI.regprop=cn+"."+k;
+    saveC();
+  });
+  row.appendChild(ty);
+
+  var id=cn+"."+k;
+  row.appendChild(el("button",{class:"btn sm gh",type:"button",title:"More",onclick:function(){
+    UI.regprop=(UI.regprop===id?"":id); render(); }},UI.regprop===id?"▴":"⋯"));
+
+  if(w) row.appendChild(el("button",{class:"btn sm gh dngr",type:"button",title:"Remove field",
+    onclick:function(){
+      confirmDialog("Feld „"+(p.title||k)+"”? Values stay in the articles but are no longer shown.",
+        function(){
+          delete props[k];
+          if(schema.required){
+            schema.required=schema.required.filter(function(x){return x!==k;});
+            if(!schema.required.length) delete schema.required;
+          }
+          if(UI.regprop===id) UI.regprop="";
+          saveC();
+        },"Remove"); }},"×"));
+  else row.appendChild(el("span"));
+
+  var wrap=el("div");
+  wrap.appendChild(row);
+  if(UI.regprop===id) wrap.appendChild(fieldMore(cn,k,within,w,saveC));
+  return wrap;
+}
+
+function fieldMore(cn,k,within,w,saveC){
+  var cd=REG.components[cn], schema=cd.schema, p=schema.properties[k];
+  var box=el("div",{class:"fmore"});
+  function text(label,wert,setValue,ph){
+    var i=el("input",{class:"i",type:"text",value:wert==null?"":wert,placeholder:ph||""});
+    if(!w) i.disabled=true;
+    i.addEventListener("change",function(){ setValue(i.value.trim()); saveC(); });
+    box.appendChild(field(label,i));
   }
 
-  function fieldMore(cn,k){
-    var cd=REG.components[cn], schema=cd.schema, p=schema.properties[k];
-    var box=el("div",{class:"fmore"});
-    function text(label,wert,setValue,ph){
-      var i=el("input",{class:"i",type:"text",value:wert==null?"":wert,placeholder:ph||""});
-      if(!w) i.disabled=true;
-      i.addEventListener("change",function(){ setValue(i.value.trim()); saveC(); });
-      box.appendChild(field(label,i));
+  /* Den Schlüssel umbenennen heisst: Schema, Pflichtliste, Berechnungen der
+     Nachbarfelder, Ansichtsverweise und die Werte in jedem Artikel. Wer nur
+     das Schema ändert, lässt die Werte hinter einem Namen zurück, den
+     niemand mehr abfragt — sie sind dann still weg. */
+  var keyInput=el("input",{class:"i",type:"text",value:k});
+  if(!w) keyInput.disabled=true;
+  keyInput.addEventListener("change",function(){
+    var neuK=keyInput.value.trim().replace(/[^A-Za-z0-9_]/g,"");
+    if(!neuK||neuK===k){ keyInput.value=k; return; }
+    if(schema.properties[neuK]){
+      UI.err="The field "+neuK+" already exists in "+(cd.label||cn)+".";
+      keyInput.value=k; render(); return;
     }
+    renameProperty(cn,k,neuK);
+  });
+  box.appendChild(field("Key",keyInput));
 
-    /* Den Schlüssel umbenennen heisst: Schema, Pflichtliste, Berechnungen der
-       Nachbarfelder, Ansichtsverweise und die Werte in jedem Artikel. Wer nur
-       das Schema ändert, lässt die Werte hinter einem Namen zurück, den
-       niemand mehr abfragt — sie sind dann still weg. */
-    var keyInput=el("input",{class:"i",type:"text",value:k});
-    if(!w) keyInput.disabled=true;
-    keyInput.addEventListener("change",function(){
-      var neuK=keyInput.value.trim().replace(/[^A-Za-z0-9_]/g,"");
-      if(!neuK||neuK===k){ keyInput.value=k; return; }
-      if(schema.properties[neuK]){
-        UI.err="The field "+neuK+" already exists in "+(cd.label||cn)+".";
-        keyInput.value=k; render(); return;
-      }
-      renameProperty(cn,k,neuK);
-    });
-    box.appendChild(field("Key",keyInput));
+  var req=el("select",{class:"i"}); if(!w) req.disabled=true;
+  req.appendChild(el("option",{value:""},"no"));
+  req.appendChild(el("option",{value:"1"},"yes"));
+  req.value=((schema.required||[]).indexOf(k)>=0)?"1":"";
+  req.addEventListener("change",function(){
+    var r=(schema.required||[]).filter(function(x){return x!==k;});
+    if(req.value) r.push(k);
+    if(r.length) schema.required=r; else delete schema.required;
+    saveC(); });
+  box.appendChild(field("Required field",req));
 
-    var req=el("select",{class:"i"}); if(!w) req.disabled=true;
-    req.appendChild(el("option",{value:""},"no"));
-    req.appendChild(el("option",{value:"1"},"yes"));
-    req.value=((schema.required||[]).indexOf(k)>=0)?"1":"";
-    req.addEventListener("change",function(){
-      var r=(schema.required||[]).filter(function(x){return x!==k;});
-      if(req.value) r.push(k);
-      if(r.length) schema.required=r; else delete schema.required;
-      saveC(); });
-    box.appendChild(field("Required field",req));
+  var fm=el("select",{class:"i"}); if(!w) fm.disabled=true;
+  [["","—"],["long","long text"],["signed","signed"]].forEach(function(f){
+    fm.appendChild(el("option",{value:f[0]},f[1])); });
+  fm.value=p.format||"";
+  fm.addEventListener("change",function(){
+    if(fm.value)p.format=fm.value; else delete p.format; saveC(); });
+  box.appendChild(field("Display",fm));
 
-    var fm=el("select",{class:"i"}); if(!w) fm.disabled=true;
-    [["","—"],["long","long text"],["signed","signed"]].forEach(function(f){
-      fm.appendChild(el("option",{value:f[0]},f[1])); });
-    fm.value=p.format||"";
-    fm.addEventListener("change",function(){
-      if(fm.value)p.format=fm.value; else delete p.format; saveC(); });
-    box.appendChild(field("Display",fm));
+  if(fieldKind(p)==="choice") text("Choices (comma separated)",(p["enum"]||[]).join(", "),function(v){
+    var xs=v.split(",").map(function(x){return x.trim();}).filter(Boolean);
+    p["enum"]=xs;
+  },"common, rare");
 
-    if(fieldKind(p)==="choice") text("Choices (comma separated)",(p["enum"]||[]).join(", "),function(v){
-      var xs=v.split(",").map(function(x){return x.trim();}).filter(Boolean);
-      p["enum"]=xs;
-    },"common, rare");
+  if(fieldKind(p)==="link") box.appendChild(targetEditor(p,saveC,w));
 
-    if(fieldKind(p)==="link") box.appendChild(targetEditor(p,saveC,w));
+  text("Derived from",p.derived||"",function(v){
+    if(v)p.derived=v; else delete p.derived;
+  },"10+mod(wis)");
 
-    text("Derived from",p.derived||"",function(v){
-      if(v)p.derived=v; else delete p.derived;
-    },"10+mod(wis)");
+  text("belongs to field",p.of||"",function(v){
+    if(v)p.of=v; else delete p.of;
+  },"wis");
 
-    text("belongs to field",p.of||"",function(v){
-      if(v)p.of=v; else delete p.of;
-    },"wis");
-
-    if(p.derived) box.appendChild(el("p",{class:"hint",style:"grid-column:1/-1;margin:0",
-      text:"Derived fields are computed on read and never stored. They get no input."}));
-    return box;
-  }
+  if(p.derived) box.appendChild(el("p",{class:"hint",style:"grid-column:1/-1;margin:0",
+    text:"Derived fields are computed on read and never stored. They get no input."}));
+  return box;
 }
 
 /* ---------- renaming a field key ----------

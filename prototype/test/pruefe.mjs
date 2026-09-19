@@ -361,6 +361,38 @@ async function seite(datei, warten) {
   pruefe('a per-type layout reaches that type', sb.includes('Statblocks only'), sb);
   pruefe('and leaves the other types alone', !npc.includes('Statblocks only'), npc);
   pruefe('views raised no exception', errs.length === 0, errs);
+
+  /* 7 — jeder Registerreiter hat eine Maske, keiner nur ein JSON-Textfeld */
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].find((x) => /Registry/.test(x.textContent)).click());
+  await p.waitForTimeout(200);
+  const masken = {};
+  for (const name of ['Interfaces', 'Components', 'Relation types', 'Compendium', 'Variables']) {
+    await p.evaluate((n) =>
+      [...document.querySelectorAll('.tabs button')].find((x) => x.textContent === n).click(), name);
+    await p.waitForTimeout(280);
+    masken[name] = await p.evaluate(() => ({
+      maske: !!document.querySelector('.regbody'),
+      felder: document.querySelectorAll('.regbody label.f, .regbody input.i').length,
+      roh: !!document.getElementById('regbox'),
+      ausgang: !![...document.querySelectorAll('button')].find((b) => /Edit as JSON/.test(b.textContent)),
+    }));
+  }
+  const ohneMaske = Object.keys(masken).filter((n) => !masken[n].maske || masken[n].roh);
+  pruefe('every registry tab opens as a form', ohneMaske.length === 0, masken);
+  pruefe('and every one keeps the JSON way out',
+    Object.keys(masken).every((n) => masken[n].ausgang), masken);
+
+  /* Der Notausgang muss zurückführen, sonst ist er eine Sackgasse. */
+  await p.evaluate(() =>
+    [...document.querySelectorAll('button')].find((b) => /Edit as JSON/.test(b.textContent)).click());
+  await p.waitForTimeout(250);
+  const imJson = await p.evaluate(() => ({
+    roh: !!document.getElementById('regbox'),
+    zurueck: !![...document.querySelectorAll('button')].find((b) => /Back to the form/.test(b.textContent)),
+  }));
+  pruefe('the JSON way out leads back', imJson.roh && imJson.zurueck, imJson);
+  pruefe('registry tabs raised no exception', errs.length === 0, errs);
   await p.close();
 }
 
