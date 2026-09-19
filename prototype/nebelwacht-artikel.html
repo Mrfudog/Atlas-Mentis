@@ -337,35 +337,70 @@ function compShown(v,cn,props){
 }
 
 /* ---------- Calculation: derived values, computed on read (D8) ---------- */
+/* Shunting-Yard, kein eval: Registerzeilen sind Daten, die jemand bearbeiten
+   kann. Bei Unsinn kommt null, nicht eine irreführende 0.
+   `u` ist das unäre Minus. Es muss enger binden als jeder Rechenoperator,
+   sonst wird aus `2*-3` ein `(2*0)-3` — das ergab -3 statt -6 und sah wie
+   eine plausible Zahl aus. */
 function evalArith(s){
   var toks=String(s).match(/\d+\.?\d*|[+\-*/()]/g); if(!toks)return null;
-  var out=[],ops=[],prec={"+":1,"-":1,"*":2,"/":2},prev=null;
+  var out=[],ops=[],prec={"+":1,"-":1,"*":2,"/":2,u:3},prev=null;
   for(var i=0;i<toks.length;i++){
     var t=toks[i];
     if(/^\d/.test(t)){ out.push(parseFloat(t)); prev="n"; continue; }
     if(t==="("){ ops.push(t); prev="("; continue; }
-    if(t===")"){ while(ops.length&&ops[ops.length-1]!=="(")out.push(ops.pop()); ops.pop(); prev="n"; continue; }
-    if(t==="-"&&(prev===null||prev==="op"||prev==="(")) out.push(0);   // unary minus
-    while(ops.length&&ops[ops.length-1]!=="("&&prec[ops[ops.length-1]]>=prec[t]) out.push(ops.pop());
-    ops.push(t); prev="op";
+    if(t===")"){
+      while(ops.length&&ops[ops.length-1]!=="(")out.push(ops.pop());
+      if(!ops.length)return null;            // unbalanciert
+      ops.pop(); prev="n"; continue;
+    }
+    var op=(t==="-"&&(prev===null||prev==="op"||prev==="("))?"u":t;
+    /* unäre Negation ist rechtsassoziativ, gleiche Stufe stösst also nicht ab */
+    while(ops.length&&ops[ops.length-1]!=="("&&prec[ops[ops.length-1]]>=prec[op]
+          &&!(op==="u"&&ops[ops.length-1]==="u")) out.push(ops.pop());
+    ops.push(op); prev="op";
   }
-  while(ops.length)out.push(ops.pop());
+  while(ops.length){ var last=ops.pop(); if(last==="(")return null; out.push(last); }
   var st=[];
   for(i=0;i<out.length;i++){
     var o=out[i];
     if(typeof o==="number"){st.push(o);continue;}
+    if(o==="u"){ var only=st.pop(); if(only===undefined)return null; st.push(-only); continue; }
     var b=st.pop(),a=st.pop(); if(a===undefined||b===undefined)return null;
     st.push(o==="+"?a+b:o==="-"?a-b:o==="*"?a*b:(b?a/b:0));
   }
   return st.length===1?st[0]:null;
 }
 // "mod(str)", "mod(dex)+prof", "2+prof" — names resolve against sibling fields
+/* A grid is a list of rows of glyphs; anything but these counts as occupied. */
+var EMPTY_CELL={"0":1,".":1," ":1,"_":1};
+function asRows(raw){
+  if(Array.isArray(raw))return raw.map(String);
+  if(typeof raw==="string")return raw.split("\n");
+  return [];
+}
+/* Unary functions over one sibling field. Extending the Calculation engine is
+   adding an entry here — no consumer changes, the same promise the registry
+   makes for data. The names avoid the property keys they are used on
+   (`width`, `height`, `cells`): a function and a field of the same name read
+   as the same thing and are not. */
+var DERIVED_FN={
+  mod:function(raw){ var n=Number(raw); return isFinite(n)?Math.floor((n-10)/2):0; },
+  rowCount:function(raw){ return asRows(raw).length; },
+  colCount:function(raw){ return asRows(raw).reduce(function(m,r){return Math.max(m,r.length);},0); },
+  cellCount:function(raw){ return asRows(raw).reduce(function(sum,r){
+    return sum+r.split("").filter(function(g){return !EMPTY_CELL[g];}).length; },0); }
+};
 function derivedValue(pd,val){
   if(!pd||!pd.derived)return undefined;
-  var expr=String(pd.derived).replace(/mod\(\s*([A-Za-z0-9_]+)\s*\)/g,function(m,k){
-    var n=Number((val||{})[k]); return isFinite(n)?"("+Math.floor((n-10)/2)+")":"(0)"; });
+  var siblings=val||{};
+  /* Funktionen zuerst: ihr Argument ist ein Feldname, kein Ausdruck. */
+  var expr=String(pd.derived).replace(/([A-Za-z_][A-Za-z0-9_]*)\(\s*([A-Za-z0-9_]+)\s*\)/g,
+    function(whole,fn,key){
+      return DERIVED_FN[fn]?"("+DERIVED_FN[fn](siblings[key])+")":whole;
+    });
   expr=expr.replace(/[A-Za-z_][A-Za-z0-9_]*/g,function(k){
-    var n=Number((val||{})[k]); return isFinite(n)?"("+n+")":"(0)"; });
+    var n=Number(siblings[k]); return isFinite(n)?"("+n+")":"(0)"; });
   var r=evalArith(expr);
   return r==null?undefined:Math.trunc(r);
 }
@@ -866,7 +901,7 @@ function renderList(v){
       text:"\u25cf "+pr.length}));
     row.appendChild(t);
     if(vw.image){
-      var b=e.components&&e.components.Bild&&e.components.Bild.url;
+      var b=e.components&&e.components.Image&&e.components.Image.url;
       if(b) row.appendChild(el("img",{class:"thumb",src:b,alt:"",loading:"lazy"}));
     }
     if(vw.description!==false&&summary(e))
@@ -902,7 +937,7 @@ function renderArticle(v,id){
     bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addRelation(e);}},"+ Relation"));
     bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addAdhoc(e);}},"+ Custom field"));
     bar.appendChild(el("button",{class:"btn sm dngr gh",type:"button",onclick:function(){
-      confirmDialog("„"+nameOf(e)+"“ endgültig löschen?",function(){
+      confirmDialog("Delete “"+nameOf(e)+"” for good?",function(){
         drop(e.id); go({k:"list"}); });}},"Delete"));
   }
   v.appendChild(bar);
@@ -911,7 +946,7 @@ function renderArticle(v,id){
   var problems=checkArticle(e);
   if(problems.length){
     var box=el("div",{class:"pruef"});
-    box.appendChild(el("div",{class:"pruefkopf",text:problems.length===1?"Ein offener Punkt":problems.length+" offene Punkte"}));
+    box.appendChild(el("div",{class:"pruefkopf",text:problems.length===1?"One open issue":problems.length+" open issues"}));
     var ul=el("ul");
     problems.forEach(function(p){ ul.appendChild(el("li",{text:p.t})); });
     box.appendChild(ul);
@@ -919,10 +954,10 @@ function renderArticle(v,id){
   }
 
   /* image — the Bild facet leads with it */
-  var pic=e.components&&e.components.Bild&&e.components.Bild.url;
+  var pic=e.components&&e.components.Image&&e.components.Image.url;
   if(pic&&vw.image) v.appendChild(el("figure",{class:"pic"},[
     el("img",{src:pic,alt:nameOf(e)}),
-    (e.components.Bild.bu?el("figcaption",{text:e.components.Bild.bu}):null)]));
+    (e.components.Image.bu?el("figcaption",{text:e.components.Image.bu}):null)]));
 
   /* fields — generated from the component schemas (D0: forms from the registry) */
   var flds=el("dl",{class:"fields"}), nf=0;
@@ -1040,7 +1075,7 @@ function renderAside(){
   var outs=(e.relations||[]).filter(function(r){ var rd=REG.relations[r.type]; return !(rd&&rd.section); });
   var head=el("h3",{text:"Zeigt auf"});
   if(me.write) head.appendChild(el("button",{class:"btn gh sm",type:"button",
-    title:"Verknüpfung hinzufügen",onclick:function(){addRelation(e);}},"+"));
+    title:"Add relation",onclick:function(){addRelation(e);}},"+"));
   a.appendChild(head);
   if(!outs.length) a.appendChild(el("p",{class:"hint",text:"Keine."}));
   else{
@@ -1327,7 +1362,7 @@ function regIfaceBody(ifn){
     var reason=count?count+" articles use it":(children.length?"has subtypes":"");
     var del=el("button",{class:"btn sm dngr",type:"button",onclick:function(){
       if(reason) return;
-      confirmDialog("Schnittstelle „"+(d.label||ifn)+"“ entfernen?",function(){
+      confirmDialog("Schnittstelle „"+(d.label||ifn)+"”?",function(){
         delete REG.interfaces[ifn]; UI.regiface=""; save(); },"Remove"); }},"Remove interface");
     if(reason){ del.disabled=true; del.title=reason; }
     var fbar=el("div",{class:"rowbtns"}); fbar.appendChild(del);
@@ -1451,7 +1486,7 @@ function regIfaceBody(ifn){
 
     if(w) row.appendChild(el("button",{class:"btn sm gh dngr",type:"button",title:"Remove field",
       onclick:function(){
-        confirmDialog("Feld „"+(p.title||k)+"“ entfernen? In Artikeln bleiben die Werte stehen, werden aber nicht mehr angezeigt.",
+        confirmDialog("Feld „"+(p.title||k)+"”? Values stay in the articles but are no longer shown.",
           function(){
             delete props[k];
             if(schema.required){
@@ -1968,21 +2003,23 @@ function stripDataview(b){ return String(b||"")
 function sinnvoll(v){ var t=String(v||"").trim(); return t!==""&&!/^[—–-]+$/.test(t); }
 
 /* welche Art Datei ist das? */
+/* Die Vault-Werte links bleiben deutsch — sie stehen so in den Notizen.
+   Zurück kommt die Sorte, unter der der Import sie führt. */
 function erkenne(text){
   var fm=parseFM(text);
   if(fmStr(fm,"typ").toLowerCase()==="statblock") return "statblock";
-  if(fmStr(fm,"Gegenstandstyp")) return "gegenstand";
+  if(fmStr(fm,"Gegenstandstyp")) return "item";
   var t=fmStr(fm,"typ").toLowerCase();
-  if(["siedlung","region","kontinent","ort","gebäude","raum"].indexOf(t)>=0) return "ort";
+  if(["siedlung","region","kontinent","ort","gebäude","raum"].indexOf(t)>=0) return "place";
   return null;
 }
 
-var IF_TYP={waffe:"Waffe","ausrüstung":"Ruestung",ausruestung:"Ruestung","rüstung":"Ruestung",
-  material:"Material",verbrauchsgut:"Verbrauchsgut"};
+var IF_TYP={waffe:"Weapon","ausrüstung":"Armor",ausruestung:"Armor","rüstung":"Armor",
+  material:"Material",verbrauchsgut:"Consumable"};
 
 function impGegenstand(text,datei){
   var fm=parseFM(text), name=datei.replace(/\.md$/i,"").trim();
-  var typ=fmStr(fm,"Gegenstandstyp").toLowerCase(), ifn=IF_TYP[typ]||"Gegenstand";
+  var typ=fmStr(fm,"Gegenstandstyp").toLowerCase(), ifn=IF_TYP[typ]||"Item";
   var body=stripDataview(fm.body), bilder=[];
   (body.match(/!\[\[[^\]|#]+\.(?:png|jpe?g|webp|gif)(?:\|[^\]]*)?\]\]/gi)||[]).forEach(function(x){
     bilder.push(linkZiel(x)); });
@@ -1994,46 +2031,49 @@ function impGegenstand(text,datei){
 
   var info={}, r=fmStr(fm,"Rarität"), kr=fmStr(fm,"Kaufrarität"),
       kp=fmNum(fm,"Kupferpreis"), st=fmNum(fm,"Stapelgrösse");
-  if(fmStr(fm,"Gegenstandstyp")) info.gegenstandstyp=fmStr(fm,"Gegenstandstyp");
-  if(r&&r!=="-") info.raritaet=r;            // „-" heisst: kein magischer Gegenstand
-  if(kr&&kr!=="-") info.kaufraritaet=kr;     // andere Skala als raritaet
-  if(kp!==undefined) info.kupferpreis=kp;
-  if(st!==undefined) info.stapel=st;
+  if(fmStr(fm,"Gegenstandstyp")) info.itemType=fmStr(fm,"Gegenstandstyp");
+  if(r&&r!=="-") info.rarity=r;            // „-" heisst: kein magischer Gegenstand
+  if(kr&&kr!=="-") info.availability=kr;     // andere Skala als raritaet
+  if(kp!==undefined) info.copperPrice=kp;
+  if(st!==undefined) info.stackSize=st;
   if(Object.keys(info).length) c.ItemInfo=info;
 
-  var rows=fmList(fm,"Footprint"); if(rows.length) c.Formfaktor={rows:rows};
-  if(ifn==="Waffe"){ var w={};
-    if(fmStr(fm,"Schaden"))w.schaden=fmStr(fm,"Schaden");
-    if(fmStr(fm,"Schadenstyp"))w.schadenstyp=fmStr(fm,"Schadenstyp");
-    if(fmStr(fm,"Reichweite"))w.reichweite=fmStr(fm,"Reichweite");
-    if(Object.keys(w).length)c.WaffenInfo=w; }
-  if(ifn==="Ruestung"){ var ru={}, rk=fmNum(fm,"rüstungsklasse");
-    if(rk!==undefined)ru.rk=rk;
-    if(fmStr(fm,"rüstungstyp"))ru.ruestungstyp=fmStr(fm,"rüstungstyp");
-    if(Object.keys(ru).length)c.RuestungsInfo=ru; }
+  var rows=fmList(fm,"Formfaktor"); if(rows.length) c.Footprint={rows:rows};
+  if(ifn==="Weapon"){ var w={};
+    if(fmStr(fm,"Schaden"))w.damage=fmStr(fm,"Schaden");
+    if(fmStr(fm,"Schadenstyp"))w.damageType=fmStr(fm,"Schadenstyp");
+    if(fmStr(fm,"Reichweite"))w.range=fmStr(fm,"Reichweite");
+    if(Object.keys(w).length)c.WeaponInfo=w; }
+  if(ifn==="Armor"){ var ru={}, rk=fmNum(fm,"rüstungsklasse");
+    if(rk!==undefined)ru.ac=rk;
+    if(fmStr(fm,"rüstungstyp"))ru.armorType=fmStr(fm,"rüstungstyp");
+    if(Object.keys(ru).length)c.ArmorInfo=ru; }
   if(ifn==="Material"){ var ma={};
-    if(fmStr(fm,"Materialtyp"))ma.materialtyp=fmStr(fm,"Materialtyp");
-    var be=fmList(fm,"Berufe"); if(be.length)ma.berufe=be;
+    if(fmStr(fm,"Materialtyp"))ma.materialType=fmStr(fm,"Materialtyp");
+    var be=fmList(fm,"Berufe"); if(be.length)ma.trades=be;
     if(Object.keys(ma).length)c.MaterialInfo=ma; }
-  if(bilder[0]) c.Bild={url:bilder[0],bu:""};
+  if(bilder[0]) c.Image={url:bilder[0],caption:""};
 
   var prosa=body.replace(/!\[\[[^\]]+\]\]/g,"").replace(/^#+\s*Eigenschaften[\s\S]*$/im,"").trim();
   var bl=[]; if(prosa) bl.push({id:uid("b"),blockType:"paragraph",body:prosa,order:0});
 
-  var offen=[];
+  var unresolved=[];
   fmList(fm,"Eigenschaften").forEach(function(x){
-    var z=linkZiel(x); if(z) offen.push({type:"hatEigenschaft",ziel:z}); });
+    var z=linkZiel(x); if(z) unresolved.push({type:"hasProperty",target:z}); });
 
   return { e:{ id:uid("g"), interfaces:[ifn], name:name,
       tags:fmList(fm,"tags").filter(function(t){return t!=="gegenstand";}),
       components:c, adhoc:[], blocks:bl, relations:[], createdAt:new Date().toISOString() },
-    offen:offen, bilder:bilder };
+    unresolved:unresolved, bilder:bilder };
 }
 
-var SB_LABEL={"rüstungsklasse":"_skip","trefferpunkte":"_skip","geschwindigkeit":"tempo",
-  "saving throws":"rettungswuerfe",skills:"fertigkeiten","damage resistances":"resistenzen",
-  immunities:"immunitaeten",vulnerabilities:"verwundbarkeiten",senses:"sinne",
-  languages:"sprachen","proficiency bonus":"prof"};
+/* Links steht, wie der Vault die Zeile beschriftet — rechts, wie das Feld im
+   Register heisst. Nur die rechte Seite ist englisch geworden; die linke zu
+   übersetzen hiesse, die Notizen nicht mehr zu erkennen. */
+var SB_LABEL={"rüstungsklasse":"_skip","trefferpunkte":"_skip","geschwindigkeit":"speed",
+  "saving throws":"saves",skills:"skills","damage resistances":"resistances",
+  immunities:"immunities",vulnerabilities:"vulnerabilities",senses:"senses",
+  languages:"languages","proficiency bonus":"prof"};
 var ATTR=["str","dex","con","int","wis","cha"];
 
 function impStatblock(text,datei){
@@ -2044,23 +2084,23 @@ function impStatblock(text,datei){
 
   var info={system:"dnd5e-2014"}, g=fmStr(fm,"grösse");
   if(g){ var p=/^([^(]+?)\s*(?:\(([^)]*)\))?$/.exec(g.trim());
-    if(p&&p[1])info.groesse=p[1].trim(); if(p&&p[2])info.art=p[2].trim(); }
-  if(fmStr(fm,"ausrichtung"))info.gesinnung=fmStr(fm,"ausrichtung");
+    if(p&&p[1])info.size=p[1].trim(); if(p&&p[2])info.kind=p[2].trim(); }
+  if(fmStr(fm,"ausrichtung"))info.alignment=fmStr(fm,"ausrichtung");
   if(fmStr(fm,"cr"))info.cr=fmStr(fm,"cr");            // kann 1/8 sein
-  if(fmStr(fm,"rolle"))info.kampfrolle=fmStr(fm,"rolle");
+  if(fmStr(fm,"rolle"))info.combatRole=fmStr(fm,"rolle");
   var ac=fmStr(fm,"ac");
   if(ac){ var an=/(-?\d+)/.exec(ac); if(an)info.ac=Number(an[1]);
-    var aq=/\(([^)]*)\)/.exec(ac); if(aq)info.acNotiz=aq[1].trim(); }
-  var tp=fmNum(fm,"leben"); if(tp!==undefined)info.tp=tp;
-  if(fmStr(fm,"lebenswürfel"))info.tpFormel=fmStr(fm,"lebenswürfel");
-  var sp=fmList(fm,"geschwindigkeit"); if(sp.length)info.tempo=sp.join(", ");
+    var aq=/\(([^)]*)\)/.exec(ac); if(aq)info.acNote=aq[1].trim(); }
+  var tp=fmNum(fm,"leben"); if(tp!==undefined)info.hp=tp;
+  if(fmStr(fm,"lebenswürfel"))info.hpFormula=fmStr(fm,"lebenswürfel");
+  var sp=fmList(fm,"geschwindigkeit"); if(sp.length)info.speed=sp.join(", ");
 
   zeilen.forEach(function(l){
     var m=/^\*\*([^*]+?):?\*\*\s*(.*)$/.exec(l); if(!m)return;   // Doppelpunkt erlaubt
     var k=SB_LABEL[m[1].trim().toLowerCase()], v=m[2].trim();
     if(!k||k==="_skip"||!sinnvoll(v))return;
     if(k==="prof"){ var n=Number(v.replace("+","")); if(isFinite(n))info.prof=n; return; }
-    if(k==="tempo"&&info.tempo)return;
+    if(k==="speed"&&info.speed)return;
     info[k]=v;
   });
 
@@ -2105,7 +2145,7 @@ function impOrt(text,datei){
   var enthaelt=[];
   (body.match(/!\[\[[^\]]+\]\]/g)||[]).forEach(function(x){
     var z=linkZiel(x); if(z&&!/\.(png|jpe?g|webp|gif)$/i.test(z)) enthaelt.push(z); });
-  var li={}; if(fmStr(fm,"typ"))li.art=fmStr(fm,"typ");
+  var li={}; if(fmStr(fm,"typ"))li.kind=fmStr(fm,"typ");
   if(fmStr(fm,"biom"))li.umwelt=fmStr(fm,"biom");
   if(fmStr(fm,"siedlungstyp"))li.siedlungstyp=fmStr(fm,"siedlungstyp");
 
@@ -2117,41 +2157,41 @@ function impOrt(text,datei){
   var prosa=body.replace(/!\[\[[^\]]+\]\]/g,"").replace(/^#+\s.*$/gm,"").trim();
   var bl=[]; if(prosa) bl.push({id:uid("b"),blockType:"paragraph",body:prosa,order:0});
 
-  return { e:{ id:uid("o"), interfaces:["Ort"], name:name, tags:fmList(fm,"tags"),
+  return { e:{ id:uid("o"), interfaces:["Place"], name:name, tags:fmList(fm,"tags"),
       components:c, adhoc:[], blocks:bl, relations:[], createdAt:new Date().toISOString() },
-    offen:enthaelt.map(function(z){return {type:"enthaelt",ziel:z};}) };
+    unresolved:enthaelt.map(function(z){return {type:"contains",target:z};}) };
 }
 
 /* ---------- Stapelimport: Verweise innerhalb des Stapels auflösen ---------- */
 function runImport(files){
-  var result={gegenstand:[],statblock:[],ort:[],regeln:[],offen:[],unknown:[],bilder:[]};
+  var result={item:[],statblock:[],place:[],rules:[],unresolved:[],unknown:[],images:[]};
   var roh=[];
   files.forEach(function(f){
-    var art=erkenne(f.text);
-    if(!art){ result.unbekannt.push(f.name); return; }
-    if(art==="gegenstand"){ var g=impGegenstand(f.text,f.name); roh.push({art:art,r:g}); result.gegenstand.push(g.e); }
-    if(art==="ort"){ var o=impOrt(f.text,f.name); roh.push({art:art,r:o}); result.ort.push(o.e); }
-    if(art==="statblock"){ var s=impStatblock(f.text,f.name); roh.push({art:art,r:s}); result.statblock.push(s.e); }
+    var kind=erkenne(f.text);
+    if(!kind){ result.unknown.push(f.name); return; }
+    if(kind==="item"){ var g=impGegenstand(f.text,f.name); roh.push({kind:kind,r:g}); result.item.push(g.e); }
+    if(kind==="place"){ var o=impOrt(f.text,f.name); roh.push({kind:kind,r:o}); result.place.push(o.e); }
+    if(kind==="statblock"){ var s=impStatblock(f.text,f.name); roh.push({kind:kind,r:s}); result.statblock.push(s.e); }
   });
 
   /* Abschnittseinträge werden je eine eigene Regel, die der Statblock
      referenziert. Gleicher Name und Text heisst gleiche Regel, keine Kopie. */
   var regelNach={};
-  roh.forEach(function(x){ if(x.art!=="statblock")return;
+  roh.forEach(function(x){ if(x.kind!=="statblock")return;
     x.r.abschnitte.forEach(function(ab){ ab.eintraege.forEach(function(en){
       var k=en.name+"\u0000"+en.text, id=regelNach[k];
       if(!id){ id=uid("r"); regelNach[k]=id;
         var kind=/^bonus/i.test(ab.name)?"bonus":/^reaction/i.test(ab.name)?"reaction"
                 :/^(villain|legendary)/i.test(ab.name)?"legendary":/^action/i.test(ab.name)?"action":"trait";
-        result.regeln.push({ id:id, interfaces:["Regel"], name:en.name, tags:[],
+        result.rules.push({ id:id, interfaces:["Rule"], name:en.name, tags:[],
           components:{ Name:{text:en.name}, Identity:{key:"regel/"+slug(en.name),aliases:[]},
             Status:{value:"used"}, RuleInfo:{kind:kind}, Description:{raw:en.text} },
           adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() }); }
-      x.r.e.relations.push({id:uid("rel"),type:"composedOf",to:id,props:{abschnitt:ab.name}});
+      x.r.e.relations.push({id:uid("rel"),type:"composedOf",to:id,props:{section:ab.name}});
     });});
   });
 
-  var alle=result.gegenstand.concat(result.ort,result.statblock,result.regeln);
+  var alle=result.item.concat(result.place,result.statblock,result.rules);
   var nachName={};
   ENT.forEach(function(e){ if((e.interfaces||[])[0]!=="Statblock") nachName[nameOf(e).toLowerCase()]=e.id;
     ((e.components&&e.components.Identity&&e.components.Identity.aliases)||[]).forEach(function(a){
@@ -2162,28 +2202,28 @@ function runImport(files){
       nachName[String(a).toLowerCase()]=e.id; }); });
 
   roh.forEach(function(x){
-    if(x.art==="gegenstand"){ (x.r.offen||[]).forEach(function(v){
-      var id=nachName[v.ziel.toLowerCase()];
+    if(x.kind==="item"){ (x.r.unresolved||[]).forEach(function(v){
+      var id=nachName[v.target.toLowerCase()];
       if(id) x.r.e.relations.push({id:uid("rel"),type:v.type,to:id});
-      else result.offen.push({von:x.r.e.name,art:v.type,ziel:v.ziel}); });
-      (x.r.bilder||[]).forEach(function(b){ result.bilder.push({von:x.r.e.name,datei:b}); }); }
+      else result.unresolved.push({from:x.r.e.name,kind:v.type,target:v.target}); });
+      (x.r.bilder||[]).forEach(function(b){ result.images.push({from:x.r.e.name,datei:b}); }); }
 
     /* Der Vault drückt die Hierarchie als Transklusion im Elternteil aus:
        ![[Rubinrot]] in Vallehy heisst „Vallehy enthält Rubinrot". Gespeichert
        wird die Kante aber am Kind als teilVon — eine Kante, eine Richtung. */
-    if(x.art==="ort"){ (x.r.offen||[]).forEach(function(v){
-      var id=nachName[v.ziel.toLowerCase()], kind=null;
+    if(x.kind==="place"){ (x.r.unresolved||[]).forEach(function(v){
+      var id=nachName[v.target.toLowerCase()], kind=null;
       alle.forEach(function(e){ if(e.id===id) kind=e; });
-      if(kind) kind.relations.push({id:uid("rel"),type:"teilVon",to:x.r.e.id});
-      else result.offen.push({von:x.r.e.name,art:"enthält",ziel:v.ziel}); }); }
+      if(kind) kind.relations.push({id:uid("rel"),type:"partOf",to:x.r.e.id});
+      else result.unresolved.push({from:x.r.e.name,kind:"contains",target:v.target}); }); }
 
-    if(x.art==="statblock"&&x.r.kreatur){
+    if(x.kind==="statblock"&&x.r.kreatur){
       var id=nachName[x.r.kreatur.toLowerCase()];
-      if(id) x.r.e.relations.push({id:uid("rel"),type:"gehoertZu",to:id});
-      else result.offen.push({von:x.r.e.name,art:"gehört zu",ziel:x.r.kreatur}); }
+      if(id) x.r.e.relations.push({id:uid("rel"),type:"belongsTo",to:id});
+      else result.unresolved.push({from:x.r.e.name,kind:"belongs to",target:x.r.kreatur}); }
   });
 
-  result.alle=alle;
+  result.all=alle;
   return result;
 }
 
@@ -2210,33 +2250,33 @@ function importDialog(){
           erg=runImport(files);
           report.textContent="";
           var z=el("ul");
-          [["Items",erg.gegenstand.length],["Statblocks",erg.statblock.length],
-           ["Places",erg.ort.length],["Rules from sections",erg.regeln.length]]
+          [["Items",erg.item.length],["Statblocks",erg.statblock.length],
+           ["Places",erg.place.length],["Rules from sections",erg.rules.length]]
             .forEach(function(p){ if(p[1]) z.appendChild(el("li",{text:p[1]+" "+p[0]})); });
           report.appendChild(z);
-          if(erg.unbekannt.length) report.appendChild(el("p",{class:"warnzeile",
-            text:"Not recognised: "+erg.unbekannt.join(", ")}));
-          if(erg.offen.length){
+          if(erg.unknown.length) report.appendChild(el("p",{class:"warnzeile",
+            text:"Not recognised: "+erg.unknown.join(", ")}));
+          if(erg.unresolved.length){
             report.appendChild(el("p",{class:"hint",text:"Unresolved links — clickable afterwards as dead links:"}));
             var ul=el("ul");
-            erg.offen.slice(0,12).forEach(function(o){
-              ul.appendChild(el("li",{text:o.von+" → "+o.art+" → "+o.ziel})); });
-            if(erg.offen.length>12) ul.appendChild(el("li",{text:"… and "+(erg.offen.length-12)+" more"}));
+            erg.unresolved.slice(0,12).forEach(function(o){
+              ul.appendChild(el("li",{text:o.from+" → "+o.kind+" → "+o.target})); });
+            if(erg.unresolved.length>12) ul.appendChild(el("li",{text:"… and "+(erg.unresolved.length-12)+" more"}));
             report.appendChild(ul);
           }
-          if(erg.bilder.length) report.appendChild(el("p",{class:"hint",
+          if(erg.images.length) report.appendChild(el("p",{class:"hint",
             text:"Images are named but not transferred: "+
-              erg.bilder.map(function(b){return b.datei;}).join(", ")}));
+              erg.images.map(function(b){return b.datei;}).join(", ")}));
         })
         .catch(function(x){ report.textContent="Reading failed: "+x.message; });
     });
 
     actions(host,close,function(){
-      if(!erg||!erg.alle.length) return false;
-      erg.alle.forEach(function(e){ ENT.set(e.id,e); });
+      if(!erg||!erg.all.length) return false;
+      erg.all.forEach(function(e){ ENT.set(e.id,e); });
       render();
-      if(db) erg.alle.forEach(function(e){ db.doc("entities/"+e.id).set(e).catch(fail); });
-      UI.err=erg.alle.length+" articles imported.";
+      if(db) erg.all.forEach(function(e){ db.doc("entities/"+e.id).set(e).catch(fail); });
+      UI.err=erg.all.length+" articles imported.";
       go({k:"list"});
     },"Import");
   });

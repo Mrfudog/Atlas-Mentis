@@ -107,6 +107,12 @@ function asRows(raw: unknown): string[] {
 
 /**
  * Unary functions over a sibling field, each returning a number.
+ *
+ * The names deliberately avoid the property keys they are used on (`width`,
+ * `height`, `cells`): `derivedValue` resolves functions before bare field
+ * names, so a function sharing a field's name still works — but reading
+ * `width(rows)` as "the field width" is a mistake waiting to be made, and
+ * renaming a field to match one would silently rewrite the call.
  * Extending the Calculation engine is adding an entry here — no consumer
  * changes, which is the same promise the registry makes for data.
  */
@@ -117,11 +123,11 @@ const FUNCTIONS: Record<string, (raw: unknown) => number> = {
     return Number.isFinite(n) ? abilityMod(n) : 0;
   },
   /** Row count of a grid. */
-  zeilen: (raw) => asRows(raw).length,
+  rowCount: (raw) => asRows(raw).length,
   /** Widest row of a grid. */
-  breite: (raw) => asRows(raw).reduce((max, row) => Math.max(max, row.length), 0),
+  colCount: (raw) => asRows(raw).reduce((max, row) => Math.max(max, row.length), 0),
   /** Occupied cells of a grid. */
-  felder: (raw) =>
+  cellCount: (raw) =>
     asRows(raw).reduce(
       (sum, row) => sum + [...row].filter((glyph) => !EMPTY_CELL.has(glyph)).length,
       0,

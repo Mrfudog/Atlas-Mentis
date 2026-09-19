@@ -51,8 +51,16 @@ window.claude = { use: async function(n){
       onSnapshot:function(){ return function(){}; } }; } }; } };
 `;
 
+/* Die Seite kapselt alles in eine IIFE — richtig so, aber dann kommt der
+   Prüflauf an nichts heran ausser dem DOM. Nur im Prüfaufbau wird ein Griff
+   nach draussen gereicht, unmittelbar vor dem Schliessen der IIFE. Die
+   veröffentlichte Seite hat ihn nicht. */
+const GRIFF = `\nwindow.__T__={runImport:runImport,REG:REG,ENT:ENT,derivedValue:derivedValue};\n`;
+const mitGriff = page.replace(/\n\}\)\(\);\n<\/script>\s*$/, `${GRIFF}})();\n<\/script>\n`);
+if (mitGriff === page) throw new Error('IIFE-Ende nicht gefunden — Seite umgebaut?');
+
 const wrap = (stub) =>
-  `<!doctype html><html><head><meta charset='utf-8'></head><body>\n<script>${stub}<\/script>\n${page}`;
+  `<!doctype html><html><head><meta charset='utf-8'></head><body>\n<script>${stub}<\/script>\n${mitGriff}`;
 
 writeFileSync('harness/index.html', wrap(STUB_LIVE));
 writeFileSync('harness/stumm.html', wrap(STUB_STUMM));

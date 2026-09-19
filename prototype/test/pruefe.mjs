@@ -2,6 +2,8 @@
    Der Stub friert die Snapshot-Objekte ein wie die echte Laufzeit — siehe
    README.md; ein grosszügigerer Aufbau prüft nichts. */
 import { chromium } from 'playwright';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 const browser = await chromium.launch();
 let fehler = 0;
@@ -243,7 +245,53 @@ async function seite(datei, warten) {
   });
   pruefe('a picked link is stored and renders as a jump', verweis?.klickbar === true && /Kerzengasse/.test(verweis?.wert ?? ''), verweis);
 
-  pruefe('field kinds raised no exception', errs.length === 0, errs);
+
+  /* 5 — Import: englische Namen in der Ausgabe, deutsche Vault-Schlüssel beim Lesen.
+     Diese beiden Seiten einmal zu verwechseln bricht den Import still: die
+     Notiz wird nicht mehr erkannt, oder der Artikel trägt eine Komponente,
+     die das Register nicht kennt. */
+  const FX = '/home/user/Nebelwacht/packages/import/test/fixtures';
+  const lade = (d) => readdirSync(d).filter((f) => f.endsWith('.md'))
+    .map((f) => ({ name: f, text: readFileSync(join(d, f), 'utf8') }));
+  const fixtures = [...lade(FX), ...lade(join(FX, 'statblock'))];
+
+  const imp = await p.evaluate((dn) => {
+    const T = window.__T__;
+    const r = T.runImport(dn);
+    const ifs = new Set(Object.keys(T.REG.interfaces));
+    const comps = new Set(Object.keys(T.REG.components));
+    const rels = new Set(Object.keys(T.REG.relations));
+    const fremd = [];
+    r.all.forEach((e) => {
+      (e.interfaces || []).forEach((i) => { if (!ifs.has(i)) fremd.push(`${e.name}: interface ${i}`); });
+      Object.keys(e.components || {}).forEach((c) => { if (!comps.has(c)) fremd.push(`${e.name}: component ${c}`); });
+      (e.relations || []).forEach((x) => { if (!rels.has(x.type)) fremd.push(`${e.name}: relation ${x.type}`); });
+    });
+    const schwert = r.all.find((e) => e.name === 'Bastardschwert');
+    const kette = r.all.find((e) => /Kettenr/.test(e.name));
+    const grimm = r.all.find((e) => e.name === 'Grimmhauer' && e.interfaces[0] === 'Statblock');
+    return {
+      zahlen: { item: r.item.length, statblock: r.statblock.length, rules: r.rules.length },
+      fremd,
+      unknown: r.unknown,
+      schwert: schwert && { iface: schwert.interfaces[0], type: schwert.components.ItemInfo?.itemType,
+                            dmg: schwert.components.WeaponInfo?.damage, fp: !!schwert.components.Footprint },
+      kette: kette && { iface: kette.interfaces[0], ac: kette.components.ArmorInfo?.ac,
+                        bild: !!kette.components.Image?.url },
+      grimm: grimm && { size: grimm.components.StatblockInfo?.size, hp: grimm.components.StatblockInfo?.hp,
+                        speed: grimm.components.StatblockInfo?.speed },
+    };
+  }, fixtures);
+
+  pruefe('every vault note is recognised', imp.unknown.length === 0, imp.unknown);
+  pruefe('the import emits only names the registry knows', imp.fremd.length === 0, imp.fremd);
+  pruefe('items import as their subtype', imp.schwert?.iface === 'Weapon' && imp.kette?.iface === 'Armor', { s: imp.schwert, k: imp.kette });
+  pruefe('item fields land under the English keys', imp.schwert?.dmg === '1d8 / 1d10' && imp.kette?.ac === 16, { s: imp.schwert, k: imp.kette });
+  pruefe('the grid and the image survive', imp.schwert?.fp === true && imp.kette?.bild === true, { s: imp.schwert, k: imp.kette });
+  pruefe('statblock label lines land under the English keys', imp.grimm?.hp === 45 && /40ft/.test(imp.grimm?.speed ?? ''), imp.grimm);
+  pruefe('statblock sections become pooled rules', imp.zahlen.rules > 20, imp.zahlen);
+
+  pruefe('field kinds and import raised no exception', errs.length === 0, errs);
   await p.close();
 }
 

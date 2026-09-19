@@ -241,7 +241,7 @@ export const components: Record<string, ComponentDef> = {
 
   /**
    * The grid-inventory shape. Its dimensions are derived, never stored.
-   * `breite` / `zeilen` / `felder` are Calculation-engine function names
+   * `colCount` / `rowCount` / `cellCount` are Calculation-engine function names
    * (see `calc.ts`), not field names — they stay as the engine spells them.
    */
   Footprint: {
@@ -252,9 +252,9 @@ export const components: Record<string, ComponentDef> = {
       type: 'object',
       properties: {
         rows: { type: 'array', title: 'Grid', items: { type: 'string' } },
-        width: { type: 'number', title: 'Width', derived: 'breite(rows)' },
-        height: { type: 'number', title: 'Height', derived: 'zeilen(rows)' },
-        cells: { type: 'number', title: 'Cells', derived: 'felder(rows)' },
+        width: { type: 'number', title: 'Width', derived: 'colCount(rows)' },
+        height: { type: 'number', title: 'Height', derived: 'rowCount(rows)' },
+        cells: { type: 'number', title: 'Cells', derived: 'cellCount(rows)' },
       },
     },
   },
