@@ -1101,17 +1101,20 @@ window.addEventListener("resize",renderPanes);
 render();
 
 (async function boot(){
-  try{
-    var user=await (window.claude&&claude.use?claude.use("user"):null);
-    if(user){ var w=await user.can("data.write"); if(w===false) me.write=false; }
-  }catch(x){}
-  try{
-    db=await (window.claude&&claude.use?claude.use("db"):null);
-  }catch(x){ db=null; }
+  // Beide Fähigkeiten nebeneinander anfordern. Nacheinander hiesse: wenn die
+  // eine nicht antwortet, wartet die andere ihre volle Frist mit ab.
+  var hat=window.claude&&claude.use;
+  var erg=await Promise.all([
+    hat?claude.use("db").catch(function(){return null;}):null,
+    hat?claude.use("user").catch(function(){return null;}):null
+  ]);
+  db=erg[0];
+  try{ if(erg[1]){ var w=await erg[1].can("data.write"); if(w===false) me.write=false; } }catch(x){}
 
   if(!db){
     ready=true;
-    UI.err="Kein Datenspeicher in dieser Ansicht — es wird nichts gespeichert.";
+    UI.err="Kein Datenspeicher erreichbar — nichts wird gespeichert. "+
+           "Meist hilft ein vollständiges Neuladen der Seite.";
     render(); return;
   }
 

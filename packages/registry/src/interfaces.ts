@@ -64,4 +64,44 @@ export const interfaces: Record<string, InterfaceDef> = {
     allows: ['Vars'],
     blockTypes: ['+tactics'],
   },
+
+  /**
+   * Items. `Gegenstandstyp` in the vault maps onto these: a weapon, armour
+   * and a material differ by which component they carry, which is exactly
+   * what interfaces are for.
+   */
+  Gegenstand: {
+    name: 'Gegenstand',
+    label: 'Gegenstand',
+    extends: ['Base'],
+    allows: ['ItemInfo', 'Formfaktor'],
+    blockTypes: ['+lore', '+secret', '+fact'],
+  },
+
+  Waffe: {
+    name: 'Waffe',
+    label: 'Waffe',
+    extends: ['Gegenstand'],
+    allows: ['WaffenInfo'],
+  },
+
+  Ruestung: {
+    name: 'Ruestung',
+    label: 'Rüstung',
+    extends: ['Gegenstand'],
+    allows: ['RuestungsInfo'],
+  },
+
+  Material: {
+    name: 'Material',
+    label: 'Material',
+    extends: ['Gegenstand'],
+    allows: ['MaterialInfo'],
+  },
+
+  Verbrauchsgut: {
+    name: 'Verbrauchsgut',
+    label: 'Verbrauchsgut',
+    extends: ['Gegenstand'],
+  },
 };
