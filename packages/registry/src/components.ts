@@ -14,33 +14,33 @@ export const components: Record<string, ComponentDef> = {
 
   Identity: {
     name: 'Identity',
-    label: 'Identität',
+    label: 'Identity',
     engine: 'Resolution',
     schema: {
       type: 'object',
       required: ['key'],
       properties: {
-        key: { type: 'string', title: 'Schlüssel' },
-        aliases: { type: 'array', title: 'Aliasse', items: { type: 'string' } },
+        key: { type: 'string', title: 'Key' },
+        aliases: { type: 'array', title: 'Aliases', items: { type: 'string' } },
       },
     },
   },
 
   Description: {
     name: 'Description',
-    label: 'Beschreibung',
+    label: 'Description',
     engine: null,
     schema: { type: 'object', properties: { raw: { type: 'string', format: 'long', title: 'Text' } } },
   },
 
   Status: {
     name: 'Status',
-    label: 'Stand',
+    label: 'Status',
     engine: 'Status',
     schema: {
       type: 'object',
       properties: {
-        value: { type: 'string', title: 'Stand', enum: ['idea', 'planned', 'used', 'discarded'] },
+        value: { type: 'string', title: 'Status', enum: ['idea', 'planned', 'used', 'discarded'] },
       },
     },
   },
@@ -51,17 +51,17 @@ export const components: Record<string, ComponentDef> = {
    */
   Visibility: {
     name: 'Visibility',
-    label: 'Sichtbarkeit',
+    label: 'Visibility',
     engine: 'Access',
     schema: {
       type: 'object',
       properties: {
-        audience: { type: 'string', title: 'Publikum', enum: ['gm', 'campaign', 'players', 'public'] },
-        scope: { type: 'string', title: 'Geltungsbereich' },
-        revealedTo: { type: 'array', title: 'Freigegeben an', items: { type: 'string' } },
-        hiddenFrom: { type: 'array', title: 'Verborgen vor', items: { type: 'string' } },
-        sharedUsers: { type: 'array', title: 'Geteilt mit', items: { type: 'string' } },
-        inherit: { type: 'boolean', title: 'An Kinder vererben', default: true },
+        audience: { type: 'string', title: 'Audience', enum: ['gm', 'campaign', 'players', 'public'] },
+        scope: { type: 'string', title: 'Scope' },
+        revealedTo: { type: 'array', title: 'Revealed to', items: { type: 'string' } },
+        hiddenFrom: { type: 'array', title: 'Hidden from', items: { type: 'string' } },
+        sharedUsers: { type: 'array', title: 'Shared with', items: { type: 'string' } },
+        inherit: { type: 'boolean', title: 'Inherit to children', default: true },
       },
     },
   },
@@ -69,27 +69,27 @@ export const components: Record<string, ComponentDef> = {
   /** REQ-019: an import keeps its original form beside the structured result. */
   RawContent: {
     name: 'RawContent',
-    label: 'Rohfassung',
+    label: 'Raw content',
     engine: null,
     schema: {
       type: 'object',
       properties: {
         raw: { type: 'string', format: 'long', title: 'Original' },
         format: { type: 'string', title: 'Format', enum: ['obsidian', 'markdown', 'json', 'plain'] },
-        importedAt: { type: 'string', title: 'Importiert am' },
+        importedAt: { type: 'string', title: 'Imported at' },
       },
     },
   },
 
-  Bild: {
-    name: 'Bild',
-    label: 'Bild',
+  Image: {
+    name: 'Image',
+    label: 'Image',
     engine: 'Asset',
     schema: {
       type: 'object',
       properties: {
-        url: { type: 'string', title: 'Bildquelle' },
-        bu: { type: 'string', title: 'Bildunterschrift' },
+        url: { type: 'string', title: 'Source' },
+        caption: { type: 'string', title: 'Caption' },
       },
     },
   },
@@ -97,23 +97,23 @@ export const components: Record<string, ComponentDef> = {
   /** Entity-level defaults for {VAR} placeholders (REQ-174). */
   Vars: {
     name: 'Vars',
-    label: 'Variablen',
+    label: 'Variables',
     engine: null,
-    schema: { type: 'object', properties: { bindings: { type: 'object', title: 'Vorgaben' } } },
+    schema: { type: 'object', properties: { bindings: { type: 'object', title: 'Bindings' } } },
   },
 
   CreatureInfo: {
     name: 'CreatureInfo',
-    label: 'Geschöpf',
+    label: 'Creature',
     engine: null,
     schema: {
       type: 'object',
       properties: {
-        spezies: { type: 'string', title: 'Spezies' },
-        rolle: { type: 'string', title: 'Rolle' },
-        haltung: {
+        species: { type: 'string', title: 'Species' },
+        role: { type: 'string', title: 'Role' },
+        attitude: {
           type: 'string',
-          title: 'Haltung',
+          title: 'Attitude',
           enum: ['freundlich', 'neutral', 'feindlich', 'unbekannt'],
         },
       },
@@ -122,56 +122,56 @@ export const components: Record<string, ComponentDef> = {
 
   StatblockInfo: {
     name: 'StatblockInfo',
-    label: 'Werte',
+    label: 'Stats',
     engine: 'Calculation',
     schema: {
       type: 'object',
       required: ['system'],
       properties: {
         system: { type: 'string', title: 'System' },
-        groesse: {
+        size: {
           type: 'string',
-          title: 'Grösse',
+          title: 'Size',
           enum: ['winzig', 'klein', 'mittel', 'gross', 'riesig', 'gewaltig'],
         },
-        art: { type: 'string', title: 'Art' },
-        gesinnung: { type: 'string', title: 'Gesinnung' },
-        ac: { type: 'number', title: 'Rüstungsklasse' },
-        acNotiz: { type: 'string', title: 'RK-Herkunft' },
-        tp: { type: 'number', title: 'Trefferpunkte' },
-        tpFormel: { type: 'string', title: 'TP-Formel' },
-        tempo: { type: 'string', title: 'Tempo' },
-        cr: { type: 'string', title: 'Herausforderungsgrad' },
-        prof: { type: 'number', title: 'Übungsbonus' },
-        kampfrolle: { type: 'string', title: 'Kampfrolle' },
-        str: { type: 'number', title: 'STÄ' },
-        strMod: { type: 'number', title: 'STÄ-Mod', derived: 'mod(str)', of: 'str', format: 'signed' },
-        dex: { type: 'number', title: 'GES' },
-        dexMod: { type: 'number', title: 'GES-Mod', derived: 'mod(dex)', of: 'dex', format: 'signed' },
-        con: { type: 'number', title: 'KON' },
-        conMod: { type: 'number', title: 'KON-Mod', derived: 'mod(con)', of: 'con', format: 'signed' },
+        kind: { type: 'string', title: 'Kind' },
+        alignment: { type: 'string', title: 'Alignment' },
+        ac: { type: 'number', title: 'Armour class' },
+        acNote: { type: 'string', title: 'AC source' },
+        hp: { type: 'number', title: 'Hit points' },
+        hpFormula: { type: 'string', title: 'Hit dice' },
+        speed: { type: 'string', title: 'Speed' },
+        cr: { type: 'string', title: 'Challenge rating' },
+        prof: { type: 'number', title: 'Proficiency bonus' },
+        combatRole: { type: 'string', title: 'Combat role' },
+        str: { type: 'number', title: 'STR' },
+        strMod: { type: 'number', title: 'STR mod', derived: 'mod(str)', of: 'str', format: 'signed' },
+        dex: { type: 'number', title: 'DEX' },
+        dexMod: { type: 'number', title: 'DEX mod', derived: 'mod(dex)', of: 'dex', format: 'signed' },
+        con: { type: 'number', title: 'CON' },
+        conMod: { type: 'number', title: 'CON mod', derived: 'mod(con)', of: 'con', format: 'signed' },
         int: { type: 'number', title: 'INT' },
-        intMod: { type: 'number', title: 'INT-Mod', derived: 'mod(int)', of: 'int', format: 'signed' },
-        wis: { type: 'number', title: 'WEI' },
-        wisMod: { type: 'number', title: 'WEI-Mod', derived: 'mod(wis)', of: 'wis', format: 'signed' },
+        intMod: { type: 'number', title: 'INT mod', derived: 'mod(int)', of: 'int', format: 'signed' },
+        wis: { type: 'number', title: 'WIS' },
+        wisMod: { type: 'number', title: 'WIS mod', derived: 'mod(wis)', of: 'wis', format: 'signed' },
         cha: { type: 'number', title: 'CHA' },
-        chaMod: { type: 'number', title: 'CHA-Mod', derived: 'mod(cha)', of: 'cha', format: 'signed' },
+        chaMod: { type: 'number', title: 'CHA mod', derived: 'mod(cha)', of: 'cha', format: 'signed' },
         initiative: { type: 'number', title: 'Initiative', derived: 'mod(dex)', format: 'signed' },
-        passivWahr: { type: 'number', title: 'Passive Wahrnehmung', derived: '10+mod(wis)' },
-        sinne: { type: 'string', title: 'Sinne' },
-        sprachen: { type: 'string', title: 'Sprachen' },
-        rettungswuerfe: { type: 'string', title: 'Rettungswürfe' },
-        fertigkeiten: { type: 'string', title: 'Fertigkeiten' },
-        resistenzen: { type: 'string', title: 'Resistenzen' },
-        verwundbarkeiten: { type: 'string', title: 'Verwundbarkeiten' },
-        immunitaeten: { type: 'string', title: 'Immunitäten' },
+        passivePerception: { type: 'number', title: 'Passive perception', derived: '10+mod(wis)' },
+        senses: { type: 'string', title: 'Senses' },
+        languages: { type: 'string', title: 'Languages' },
+        saves: { type: 'string', title: 'Saving throws' },
+        skills: { type: 'string', title: 'Skills' },
+        resistances: { type: 'string', title: 'Resistances' },
+        vulnerabilities: { type: 'string', title: 'Vulnerabilities' },
+        immunities: { type: 'string', title: 'Immunities' },
       },
     },
   },
 
   RuleInfo: {
     name: 'RuleInfo',
-    label: 'Regel',
+    label: 'Rule',
     engine: null,
     schema: {
       type: 'object',
@@ -179,41 +179,41 @@ export const components: Record<string, ComponentDef> = {
       properties: {
         kind: {
           type: 'string',
-          title: 'Regelart',
+          title: 'Rule kind',
           enum: ['action', 'bonus', 'reaction', 'feature', 'trait', 'condition', 'legendary', 'lair'],
         },
-        uses: { type: 'string', title: 'Einsätze' },
-        recharge: { type: 'string', title: 'Aufladung' },
+        uses: { type: 'string', title: 'Uses' },
+        recharge: { type: 'string', title: 'Recharge' },
       },
     },
   },
 
   LocationInfo: {
     name: 'LocationInfo',
-    label: 'Ort',
+    label: 'Place',
     engine: null,
     schema: {
       type: 'object',
       properties: {
-        art: {
+        kind: {
           type: 'string',
-          title: 'Ortsart',
+          title: 'Place type',
           enum: ['Reich', 'Stadt', 'Distrikt', 'Gasse', 'Gebäude', 'Raum', 'Wildnis'],
         },
-        umwelt: { type: 'string', title: 'Umgebung' },
+        environment: { type: 'string', title: 'Environment' },
       },
     },
   },
 
   FactionInfo: {
     name: 'FactionInfo',
-    label: 'Fraktion',
+    label: 'Faction',
     engine: null,
     schema: {
       type: 'object',
       properties: {
-        art: { type: 'string', title: 'Fraktionsart' },
-        farbe: { type: 'string', title: 'Farbe' },
+        kind: { type: 'string', title: 'Kind' },
+        color: { type: 'string', title: 'Colour' },
       },
     },
   },
@@ -222,62 +222,66 @@ export const components: Record<string, ComponentDef> = {
 
   ItemInfo: {
     name: 'ItemInfo',
-    label: 'Gegenstand',
+    label: 'Item',
     engine: null,
     schema: {
       type: 'object',
       properties: {
-        gegenstandstyp: { type: 'string', title: 'Gegenstandstyp' },
-        // Two different scales, deliberately kept apart: `raritaet` is the 5e
-        // magic-item rarity, `kaufraritaet` is how hard the thing is to buy.
-        raritaet: { type: 'string', title: 'Raritaet',
+        itemType: { type: 'string', title: 'Item type' },
+        // Two different scales, deliberately kept apart: `rarity` is the 5e
+        // magic-item rarity, `availability` is how hard the thing is to buy.
+        rarity: { type: 'string', title: 'Rarity',
           enum: ['gewöhnlich', 'ungewöhnlich', 'selten', 'sehr selten', 'legendär', 'artefakt'] },
-        kaufraritaet: { type: 'string', title: 'Kaufrarität' },
-        kupferpreis: { type: 'number', title: 'Kupferpreis' },
-        stapel: { type: 'number', title: 'Stapelgrösse' },
+        availability: { type: 'string', title: 'Availability' },
+        copperPrice: { type: 'number', title: 'Price in copper' },
+        stackSize: { type: 'number', title: 'Stack size' },
       },
     },
   },
 
-  /** The grid-inventory shape. Its dimensions are derived, never stored. */
-  Formfaktor: {
-    name: 'Formfaktor',
-    label: 'Formfaktor',
+  /**
+   * The grid-inventory shape. Its dimensions are derived, never stored.
+   * `colCount` / `rowCount` / `cellCount` are Calculation-engine function names
+   * (see `calc.ts`), not field names — they stay as the engine spells them.
+   */
+  Footprint: {
+    name: 'Footprint',
+    label: 'Footprint',
     engine: 'Calculation',
     schema: {
       type: 'object',
       properties: {
-        rows: { type: 'array', title: 'Raster', items: { type: 'string' } },
-        breite: { type: 'number', title: 'Breite', derived: 'breite(rows)' },
-        hoehe: { type: 'number', title: 'Höhe', derived: 'zeilen(rows)' },
-        felder: { type: 'number', title: 'Felder', derived: 'felder(rows)' },
+        rows: { type: 'array', title: 'Grid', items: { type: 'string' } },
+        width: { type: 'number', title: 'Width', derived: 'colCount(rows)' },
+        height: { type: 'number', title: 'Height', derived: 'rowCount(rows)' },
+        cells: { type: 'number', title: 'Cells', derived: 'cellCount(rows)' },
       },
     },
   },
 
-  WaffenInfo: {
-    name: 'WaffenInfo',
-    label: 'Waffe',
+  WeaponInfo: {
+    name: 'WeaponInfo',
+    label: 'Weapon',
     engine: null,
     schema: {
       type: 'object',
       properties: {
-        schaden: { type: 'string', title: 'Schaden' },
-        schadenstyp: { type: 'string', title: 'Schadenstyp' },
-        reichweite: { type: 'string', title: 'Reichweite' },
+        damage: { type: 'string', title: 'Damage' },
+        damageType: { type: 'string', title: 'Damage type' },
+        range: { type: 'string', title: 'Range' },
       },
     },
   },
 
-  RuestungsInfo: {
-    name: 'RuestungsInfo',
-    label: 'Rüstung',
+  ArmorInfo: {
+    name: 'ArmorInfo',
+    label: 'Armor',
     engine: null,
     schema: {
       type: 'object',
       properties: {
-        rk: { type: 'number', title: 'Rüstungsklasse' },
-        ruestungstyp: { type: 'string', title: 'Rüstungstyp' },
+        ac: { type: 'number', title: 'Armour class' },
+        armorType: { type: 'string', title: 'Armour type' },
       },
     },
   },
@@ -289,8 +293,8 @@ export const components: Record<string, ComponentDef> = {
     schema: {
       type: 'object',
       properties: {
-        materialtyp: { type: 'string', title: 'Materialtyp' },
-        berufe: { type: 'array', title: 'Berufe', items: { type: 'string' } },
+        materialType: { type: 'string', title: 'Material type' },
+        trades: { type: 'array', title: 'Trades', items: { type: 'string' } },
       },
     },
   },

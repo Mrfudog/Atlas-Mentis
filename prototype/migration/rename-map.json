@@ -55,6 +55,7 @@
     "CreatureInfo":  {"haltung": "attitude", "rolle": "role", "spezies": "species"},
     "FactionInfo":   {"art": "kind", "farbe": "color"},
     "Footprint":     {"breite": "width", "hoehe": "height", "felder": "cells"},
+    "_note_Footprint": "Achtung: `breite`/`zeilen`/`felder` sind auch Namen von Rechenfunktionen (calc.ts). In `derived` dürfen sie NICHT über diese Tabelle umbenannt werden — die Funktionen heissen jetzt colCount/rowCount/cellCount.",
     "ItemInfo":      {"gegenstandstyp": "itemType", "kaufraritaet": "availability",
                       "kupferpreis": "copperPrice", "raritaet": "rarity", "stapel": "stackSize"},
     "LocationInfo":  {"art": "kind", "siedlungstyp": "settlementType", "umwelt": "environment"},
