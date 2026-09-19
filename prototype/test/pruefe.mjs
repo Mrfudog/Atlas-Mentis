@@ -13,16 +13,21 @@ const pruefe = (name, ok, was) => {
 async function seite(datei, warten) {
   const p = await browser.newPage({ viewport: { width: 1280, height: 950 } });
   const errs = [];
+  const modale = [];
   p.on('pageerror', (e) => errs.push(String(e).split('\n')[0]));
-  p.on('dialog', (d) => d.accept());
+  /* Ein Browser-Modal ist hier ein Fehler, kein Ereignis: die Seite läuft im
+     Artefakt in einem sandboxed iframe, wo confirm() verworfen wird und false
+     liefert. Wer sich darauf verlässt, dessen Knopf tut stillschweigend
+     nichts. Darum wird abgewiesen und gezählt, nicht bestätigt. */
+  p.on('dialog', (d) => { modale.push(d.message()); d.dismiss(); });
   await p.goto(`file://${process.cwd()}/harness/${datei}`);
   await p.waitForTimeout(warten);
-  return { p, errs };
+  return { p, errs, modale };
 }
 
 /* 1 — mit Daten: die Liste steht, keine Meldung, keine Ausnahme */
 {
-  const { p, errs } = await seite('index.html', 1200);
+  const { p, errs, modale } = await seite('index.html', 1200);
   const s = await p.evaluate(() => ({
     rows: document.querySelectorAll('#view .row').length,
     banner: document.querySelector('#view .banner')?.textContent ?? null,
@@ -72,6 +77,42 @@ async function seite(datei, warten) {
   pruefe('der Subtyp erbt die Komponenten', nachher.geerbt, nachher);
   pruefe('der Subtyp wird gespeichert', nachher.geschrieben, nachher);
   pruefe('Register ohne Ausnahme', errs.length === 0, errs);
+
+  /* 3 — Löschen: eigener Dialog, kein window.confirm */
+  await p.evaluate(() =>
+    [...document.querySelectorAll('button')].find((b) => /Alle Artikel/.test(b.textContent))?.click());
+  await p.waitForTimeout(250);
+  const vorherZeilen = await p.evaluate(() => document.querySelectorAll('#view .row').length);
+  await p.evaluate(() => document.querySelector('#view .row').click());
+  await p.waitForTimeout(200);
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rowbtns button')].find((b) => b.textContent === 'Löschen').click());
+  await p.waitForTimeout(200);
+  const gefragt = await p.evaluate(() => ({
+    dlg: !!document.querySelector('.dlg'),
+    knoepfe: [...document.querySelectorAll('.dlgbox .rowbtns button')].map((b) => b.textContent),
+  }));
+  pruefe('Löschen fragt in der Seite nach', gefragt.dlg, gefragt);
+
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.dlgbox .rowbtns button')].find((b) => /Abbrechen/.test(b.textContent)).click());
+  await p.waitForTimeout(200);
+  const abgebrochen = await p.evaluate(() => window.__DELETED__.length);
+  pruefe('Abbrechen löscht nichts', abgebrochen === 0, abgebrochen);
+
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rowbtns button')].find((b) => b.textContent === 'Löschen').click());
+  await p.waitForTimeout(150);
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.dlgbox .rowbtns button')].find((b) => /Löschen/.test(b.textContent)).click());
+  await p.waitForTimeout(300);
+  const geloescht = await p.evaluate(() => ({
+    weg: window.__DELETED__,
+    zeilen: document.querySelectorAll('#view .row').length,
+  }));
+  pruefe('Löschen entfernt den Artikel', geloescht.weg.length === 1, geloescht);
+  pruefe('die Liste wird kürzer', geloescht.zeilen === vorherZeilen - 1, { vorherZeilen, ...geloescht });
+  pruefe('kein Browser-Modal — im iframe verworfen', modale.length === 0, modale);
   await p.close();
 }
 

@@ -745,7 +745,8 @@ function renderArticle(v,id){
     bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addRelation(e);}},"+ Verknüpfung"));
     bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addAdhoc(e);}},"+ Eigenes Feld"));
     bar.appendChild(el("button",{class:"btn sm dngr gh",type:"button",onclick:function(){
-      if(confirm("„"+nameOf(e)+"“ löschen?")){drop(e.id);go({k:"list"});}}},"Löschen"));
+      confirmDialog("„"+nameOf(e)+"“ endgültig löschen?",function(){
+        drop(e.id); go({k:"list"}); });}},"Löschen"));
   }
   v.appendChild(bar);
 
@@ -814,7 +815,8 @@ function renderArticle(v,id){
       if(b.blockType!=="paragraph"){
         var lab=el("div",{class:"bl"},[document.createTextNode(b.blockType)]);
         if(me.write) lab.appendChild(el("button",{class:"btn gh sm",type:"button",
-          onclick:function(){ if(confirm("Block löschen?")){ e.blocks=e.blocks.filter(function(x){return x.id!==b.id;}); persist(e);} }},"×"));
+          onclick:function(){ confirmDialog("Diesen Block löschen?",function(){
+            e.blocks=e.blocks.filter(function(x){return x.id!==b.id;}); persist(e); }); }},"×"));
         box.appendChild(lab);
       }
       box.appendChild(para(fillVars(b.body,null,e)));
@@ -1158,8 +1160,8 @@ function regIfaceBody(ifn){
     var grund=anz?anz+" Artikel nutzen sie":(kinder.length?"hat Subtypen":"");
     var del=el("button",{class:"btn sm dngr",type:"button",onclick:function(){
       if(grund) return;
-      if(!window.confirm("Schnittstelle „"+(d.label||ifn)+"“ entfernen?")) return;
-      delete REG.interfaces[ifn]; UI.regiface=""; save(); }},"Schnittstelle entfernen");
+      confirmDialog("Schnittstelle „"+(d.label||ifn)+"“ entfernen?",function(){
+        delete REG.interfaces[ifn]; UI.regiface=""; save(); },"Entfernen"); }},"Schnittstelle entfernen");
     if(grund){ del.disabled=true; del.title=grund; }
     var fbar=el("div",{class:"rowbtns"}); fbar.appendChild(del);
     if(grund) fbar.appendChild(el("span",{class:"co",style:"align-self:center",text:grund}));
@@ -1277,14 +1279,16 @@ function regIfaceBody(ifn){
 
     if(w) row.appendChild(el("button",{class:"btn sm gh dngr",type:"button",title:"Feld entfernen",
       onclick:function(){
-        if(!window.confirm("Feld „"+(p.title||k)+"“ entfernen? In Artikeln bleiben die Werte stehen, werden aber nicht mehr angezeigt.")) return;
-        delete props[k];
-        if(schema.required){
-          schema.required=schema.required.filter(function(x){return x!==k;});
-          if(!schema.required.length) delete schema.required;
-        }
-        if(UI.regprop===id) UI.regprop="";
-        saveC(); }},"×"));
+        confirmDialog("Feld „"+(p.title||k)+"“ entfernen? In Artikeln bleiben die Werte stehen, werden aber nicht mehr angezeigt.",
+          function(){
+            delete props[k];
+            if(schema.required){
+              schema.required=schema.required.filter(function(x){return x!==k;});
+              if(!schema.required.length) delete schema.required;
+            }
+            if(UI.regprop===id) UI.regprop="";
+            saveC();
+          },"Entfernen"); }},"×"));
     else row.appendChild(el("span"));
 
     var wrap=el("div");
@@ -1375,6 +1379,21 @@ function dialog(title,build){
   return close;
 }
 function field(label,node){ var l=el("label",{class:"f"}); l.appendChild(el("span",{text:label})); l.appendChild(node); return l; }
+/* Kein window.confirm: die Seite läuft in einem sandboxed iframe, und ohne
+   `allow-modals` verwirft der Browser den Aufruf und liefert false zurück.
+   Jede Abfrage sagte damit stillschweigend Nein — die Löschknöpfe taten
+   schlicht nichts. Die Seite fragt jetzt selbst. */
+function confirmDialog(question, onOk, okLabel){
+  dialog(okLabel||"Löschen",function(host,close){
+    host.appendChild(el("p",{text:question}));
+    var bar=el("div",{class:"rowbtns"});
+    bar.appendChild(el("button",{class:"btn pri dngr",type:"button",onclick:function(){
+      close(); onOk(); }},okLabel||"Löschen"));
+    bar.appendChild(el("button",{class:"btn",type:"button",onclick:close},"Abbrechen"));
+    host.appendChild(bar);
+  });
+}
+
 function actions(host,close,onOk,okLabel){
   var bar=el("div",{class:"rowbtns"});
   bar.appendChild(el("button",{class:"btn pri",type:"button",onclick:function(){ if(onOk()!==false) close(); }},okLabel||"Speichern"));
