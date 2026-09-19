@@ -110,6 +110,14 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 .fgrp{grid-column:1/-1;background:var(--surface2);padding:3px 10px;font-size:10.5px;
   text-transform:uppercase;letter-spacing:.09em;color:var(--dim);font-weight:600}
 .drvnote{font-size:11px;color:var(--link);margin:-4px 0 8px;font-family:var(--ff-mono)}
+.pruef{margin:14px 0;padding:9px 12px;border:1px solid var(--amber,var(--accent));
+  border-left-width:3px;border-radius:var(--r);background:var(--accent-soft)}
+.pruefkopf{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--accent);font-weight:600;margin-bottom:4px}
+.pruef ul{margin:0;padding-left:18px;font-size:13px}
+.pruef li{margin:1px 0}
+.rail h3 .btn,.aside h3 .btn{float:right;margin-top:-2px;padding:0 6px;font-size:14px;line-height:1.2}
+.warn{color:var(--accent);font-family:var(--ff-mono);font-size:11px}
 .pic{margin:14px 0}
 .pic img{display:block;width:100%;max-width:100%;border:1px solid var(--line);border-radius:var(--r)}
 .pic figcaption{font-size:12px;color:var(--dim);margin-top:4px;font-style:italic}
@@ -221,7 +229,7 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 var db=null, me={write:true}, ready=false;
 var ENT=new Map();                       // id -> entity body
 var REG={interfaces:{},components:{},relations:{},vars:{},views:{}};
-var UI={route:{k:"list"}, view:"schnell", iface:"", tag:"", q:"", pane:"main", regtab:"interfaces", err:""};
+var UI={route:{k:"list"}, view:"schnell", iface:"", tag:"", q:"", offen:false, pane:"main", regtab:"interfaces", err:""};
 
 /* Darstellungsstufen (Facets, REQ-164) — registry rows, not code.
    Fallback only; the live set lives in registry/views. */
@@ -350,6 +358,42 @@ function relsFrom(ifn){
 }
 function relDef(t){ var r=REG.relations[t]; return r?Object.assign({type:t},r):{type:t,label:t,inverseLabel:"← "+t,to:["*"]}; }
 
+/* ---------- Validation: dieselben Regeln wie validateEntity im Modellpaket ---------- */
+function pruefeArtikel(e){
+  var probleme=[], ifn=(e.interfaces||[])[0];
+  if(!ifn||!REG.interfaces[ifn]){
+    return [{t:"Unbekannte Schnittstelle: "+(ifn||"(keine)")}];
+  }
+  var erlaubt={}; compsFor(ifn).forEach(function(c){erlaubt[c]=1;});
+
+  reqFor(ifn).forEach(function(c){
+    if(!(e.components||{})[c]) probleme.push({t:(REG.interfaces[ifn].label||ifn)+" verlangt die Komponente "+((REG.components[c]||{}).label||c)});
+  });
+
+  Object.keys(e.components||{}).forEach(function(c){
+    if(!REG.components[c]) probleme.push({t:"Komponente "+c+" steht nicht im Register"});
+    else if(!erlaubt[c]) probleme.push({t:(REG.interfaces[ifn].label||ifn)+" erlaubt die Komponente "+(REG.components[c].label||c)+" nicht"});
+  });
+
+  Object.keys(e.components||{}).forEach(function(c){
+    var cd=REG.components[c]; if(!cd)return;
+    ((cd.schema||{}).required||[]).forEach(function(p){
+      var pd=(cd.schema.properties||{})[p];
+      if(pd&&pd.derived)return;                       // abgeleitet wird nie gespeichert
+      var val=(e.components[c]||{})[p];
+      if(val===undefined||val===""||val===null)
+        probleme.push({t:(cd.label||c)+" · "+((pd&&pd.title)||p)+" ist erforderlich"});
+    });
+  });
+
+  (e.relations||[]).forEach(function(r){
+    if(!REG.relations[r.type]) probleme.push({t:"Bezugsart "+r.type+" steht nicht im Register"});
+    if(!ENT.get(r.to)) probleme.push({t:relDef(r.type).label+" zeigt auf einen Artikel, den es nicht gibt",id:r.id});
+  });
+
+  return probleme;
+}
+
 /* ---------- {VAR} resolution (REQ-174) ---------- */
 // order: per-reference bindings → entity defaults → campaign register
 function fillVars(text,refVars,ent){
@@ -381,7 +425,10 @@ function inline(text,into){
     if(m[1]!==undefined){
       var target=m[1].trim(), show=(m[2]||m[1]).trim(), id=findByName(target);
       if(id) into.appendChild(el("button",{class:"ref",type:"button",onclick:function(x){return function(){go({k:"art",id:x});};}(id)},show));
-      else   into.appendChild(el("span",{class:"ref dead",title:"Kein Artikel namens „"+target+"“"},show));
+      // A dead link is an invitation, not an error: klicken legt den Artikel an.
+      else   into.appendChild(el("button",{class:"ref dead",type:"button",
+               title:me.write?"Noch kein Artikel — anlegen":"Kein Artikel namens „"+target+"“",
+               onclick:function(t){return function(){ if(me.write)newEntity(t); };}(target)},show));
     } else if(m[3]!==undefined){
       into.appendChild(el("span",{class:"vr"},m[3]));
     } else {
@@ -473,6 +520,10 @@ function renderRail(){
     onclick:function(){go({k:"reg"});}},[el("b",{text:"Register"}),el("em",{text:"def"})]));
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="graph"),
     onclick:function(){go({k:"graph"});}},[el("b",{text:"Geflecht"}),el("em",{text:"↔"})]));
+  var offenZahl=0; ENT.forEach(function(x){ if(pruefeArtikel(x).length) offenZahl++; });
+  s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.offen),
+    onclick:function(){UI.offen=!UI.offen;go({k:"list"});}},
+    [el("b",{text:"Offene Punkte"}),el("em",{text:String(offenZahl)})]));
   r.appendChild(s3);
 }
 
@@ -488,6 +539,7 @@ function renderMain(){
 }
 
 function matches(e){
+  if(UI.offen && !pruefeArtikel(e).length) return false;
   if(UI.iface && (e.interfaces||[]).indexOf(UI.iface)<0) return false;
   if(UI.tag && (e.tags||[]).indexOf(UI.tag)<0) return false;
   if(UI.q){
@@ -525,6 +577,9 @@ function renderList(v){
     var st=e.components&&e.components.Status&&e.components.Status.value;
     if(st) t.appendChild(el("span",{class:"pill q",text:st}));
     (e.tags||[]).slice(0,3).forEach(function(tg){ t.appendChild(el("span",{class:"pill q",text:"#"+tg})); });
+    var pr=pruefeArtikel(e);
+    if(pr.length) t.appendChild(el("span",{class:"warn",title:pr.map(function(x){return x.t;}).join("\n"),
+      text:"\u25cf "+pr.length}));
     row.appendChild(t);
     if(vw.bild){
       var b=e.components&&e.components.Bild&&e.components.Bild.url;
@@ -560,12 +615,23 @@ function renderArticle(v,id){
   if(me.write){
     bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){editEntity(e);}},"Bearbeiten"));
     bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addBlock(e);}},"+ Block"));
-    bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addRelation(e);}},"+ Bezug"));
+    bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addRelation(e);}},"+ Verknüpfung"));
     bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addAdhoc(e);}},"+ Eigenes Feld"));
     bar.appendChild(el("button",{class:"btn sm dngr gh",type:"button",onclick:function(){
       if(confirm("„"+nameOf(e)+"“ löschen?")){drop(e.id);go({k:"list"});}}},"Löschen"));
   }
   v.appendChild(bar);
+
+  /* Was die Validierung beanstanden würde — hier, wo es zu beheben ist. */
+  var probleme=pruefeArtikel(e);
+  if(probleme.length){
+    var box=el("div",{class:"pruef"});
+    box.appendChild(el("div",{class:"pruefkopf",text:probleme.length===1?"Ein offener Punkt":probleme.length+" offene Punkte"}));
+    var ul=el("ul");
+    probleme.forEach(function(p){ ul.appendChild(el("li",{text:p.t})); });
+    box.appendChild(ul);
+    v.appendChild(box);
+  }
 
   /* image — the Bild facet leads with it */
   var pic=e.components&&e.components.Bild&&e.components.Bild.url;
@@ -673,7 +739,10 @@ function renderAside(){
   }
 
   var outs=(e.relations||[]).filter(function(r){ var rd=REG.relations[r.type]; return !(rd&&rd.section); });
-  a.appendChild(el("h3",{text:"Zeigt auf"}));
+  var kopf=el("h3",{text:"Zeigt auf"});
+  if(me.write) kopf.appendChild(el("button",{class:"btn gh sm",type:"button",
+    title:"Verknüpfung hinzufügen",onclick:function(){addRelation(e);}},"+"));
+  a.appendChild(kopf);
   if(!outs.length) a.appendChild(el("p",{class:"hint",text:"Keine."}));
   else{
     var box=el("div",{class:"rel"});
@@ -791,17 +860,19 @@ function actions(host,close,onOk,okLabel){
   host.appendChild(bar);
 }
 
-/* new entity */
-function newEntity(){
-  dialog("Neuer Artikel",function(host,close){
+/* new entity — `vorname` prefills from a dead [[link]] */
+function newEntity(vorname){
+  dialog(vorname?"„"+vorname+"“ anlegen":"Neuer Artikel",function(host,close){
     var sel=el("select",{class:"i"});
     Object.keys(REG.interfaces).sort().forEach(function(n){
       if(REG.interfaces[n].abstract)return;
       sel.appendChild(el("option",{value:n},REG.interfaces[n].label||n)); });
     if(UI.iface)sel.value=UI.iface;
-    var nm=el("input",{class:"i",type:"text",placeholder:"Name"});
+    var nm=el("input",{class:"i",type:"text",placeholder:"Name",value:vorname||""});
     host.appendChild(field("Schnittstelle",sel));
     host.appendChild(field("Name",nm));
+    if(vorname) host.appendChild(el("p",{class:"hint",
+      text:"Der Verweis, der hierher geführt hat, findet den Artikel, sobald er den Namen trägt."}));
     actions(host,close,function(){
       var name=nm.value.trim(); if(!name){nm.focus();return false;}
       var ifn=sel.value;
