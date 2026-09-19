@@ -58,9 +58,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .btn.gh{background:transparent;border-color:transparent;color:var(--dim)}
 .btn.gh:hover{color:var(--accent)}
 .btn.dngr:hover{border-color:var(--warn);color:var(--warn)}
-.seg{display:inline-flex;border:1px solid var(--line2);border-radius:var(--r);overflow:hidden}
-.seg button{padding:4px 10px;background:transparent;border:0;cursor:pointer;font-size:12px;color:var(--dim)}
-.seg button[aria-pressed="true"]{background:var(--accent);color:var(--bg);font-weight:600}
+.vw{padding:5px 8px;background:var(--bg);border:1px solid var(--line2);border-radius:var(--r);
+  font-size:13px;max-width:140px}
 label.f{display:block;margin-bottom:10px}
 label.f > span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin-bottom:3px}
 input.i,select.i,textarea.i{width:100%;padding:6px 8px;background:var(--bg);border:1px solid var(--line);border-radius:var(--r)}
@@ -107,6 +106,10 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 .fld dt{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
 .fld dd{margin:1px 0 0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .fld.adhoc{border-left:2px solid var(--accent)}
+.pic{margin:14px 0}
+.pic img{display:block;width:100%;max-width:100%;border:1px solid var(--line);border-radius:var(--r)}
+.pic figcaption{font-size:12px;color:var(--dim);margin-top:4px;font-style:italic}
+.thumb{display:block;max-width:100%;max-height:150px;margin-top:8px;border:1px solid var(--line);border-radius:var(--r)}
 .blocks{margin:18px 0;display:flex;flex-direction:column;gap:12px}
 .blk{position:relative}
 .blk p{margin:0}
@@ -176,10 +179,7 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
     <div class="sub">Artikelwerk</div>
     <div class="grow"></div>
     <input id="q" class="search" type="search" placeholder="Suchen…" aria-label="Artikel suchen">
-    <div class="seg" role="group" aria-label="Darstellungsstufe">
-      <button id="fs" type="button" aria-pressed="true">kurz</button>
-      <button id="ff" type="button" aria-pressed="false">voll</button>
-    </div>
+    <select id="view" class="vw" aria-label="Darstellungsstufe"></select>
     <button id="new" class="btn pri" type="button">+ Neu</button>
   </header>
 
@@ -210,8 +210,37 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 
 var db=null, me={write:true}, ready=false;
 var ENT=new Map();                       // id -> entity body
-var REG={interfaces:{},components:{},relations:{},vars:{}};
-var UI={route:{k:"list"}, facet:"short", iface:"", tag:"", q:"", pane:"main", regtab:"interfaces", err:""};
+var REG={interfaces:{},components:{},relations:{},vars:{},views:{}};
+var UI={route:{k:"list"}, view:"schnell", iface:"", tag:"", q:"", pane:"main", regtab:"interfaces", err:""};
+
+/* Darstellungsstufen (Facets, REQ-164) — registry rows, not code.
+   Fallback only; the live set lives in registry/views. */
+var VIEWS_FALLBACK={
+  schnell:{label:"Schnell",order:1,felder:"keine",bloecke:["paragraph","readaloud"],
+           beschreibung:true,bezuege:false,bindungen:false},
+  voll:   {label:"Voll",order:2,felder:"alle",bloecke:"alle",
+           beschreibung:true,bezuege:true,bindungen:true}
+};
+function viewDef(){
+  var vs=Object.keys(REG.views).length?REG.views:VIEWS_FALLBACK;
+  return vs[UI.view]||vs[Object.keys(vs).sort(function(a,b){
+    return (vs[a].order||99)-(vs[b].order||99);})[0]]||VIEWS_FALLBACK.voll;
+}
+function viewKeys(){
+  var vs=Object.keys(REG.views).length?REG.views:VIEWS_FALLBACK;
+  return Object.keys(vs).sort(function(a,b){return (vs[a].order||99)-(vs[b].order||99);});
+}
+/* does this view show this component? felder: "keine" | "alle" | [Komponentennamen] */
+function showComp(v,cn){
+  if(v.felder==="keine"||!v.felder)return false;
+  if(v.felder==="alle")return true;
+  return Array.isArray(v.felder)&&v.felder.indexOf(cn)>=0;
+}
+/* does this view show this block type? bloecke: "alle" | [Blockarten] */
+function showBlock(v,bt){
+  if(v.bloecke==="alle")return true;
+  return Array.isArray(v.bloecke)&&v.bloecke.indexOf(bt)>=0;
+}
 
 /* ---------- small helpers ---------- */
 function el(t,a,kids){var n=document.createElement(t);
@@ -339,7 +368,7 @@ function go(r){ UI.route=r; UI.err=""; UI.pane="main"; render();
   var m=document.getElementById("main"); if(m)m.scrollTop=0; }
 
 function render(){
-  renderRail(); renderMain(); renderAside(); renderPanes();
+  renderViewSelect(); renderRail(); renderMain(); renderAside(); renderPanes();
 }
 function renderPanes(){
   var narrow=window.matchMedia("(max-width:900px)").matches;
@@ -423,13 +452,14 @@ function summary(e){
 function renderList(v){
   var list=byName().filter(matches);
   var head=el("div",{class:"listhead"});
-  head.appendChild(el("h2",{text:UI.iface?(REG.interfaces[UI.iface]&&REG.interfaces[UI.iface].label||UI.iface):"Kompendium"}));
+  head.appendChild(el("h2",{text:UI.iface?(REG.interfaces[UI.iface]&&REG.interfaces[UI.iface].label||UI.iface):"Alle Artikel"}));
   head.appendChild(el("span",{class:"count",text:list.length+" von "+ENT.size}));
   if(UI.tag) head.appendChild(el("span",{class:"pill",text:"#"+UI.tag}));
   v.appendChild(head);
 
   if(!list.length){ v.appendChild(el("div",{class:"empty",text:"Nichts gefunden."})); return; }
 
+  var vw=viewDef();
   var rows=el("div",{class:"rows"});
   list.forEach(function(e){
     var row=el("button",{class:"row",type:"button",onclick:function(){go({k:"art",id:e.id});}});
@@ -440,7 +470,12 @@ function renderList(v){
     if(st) t.appendChild(el("span",{class:"pill q",text:st}));
     (e.tags||[]).slice(0,3).forEach(function(tg){ t.appendChild(el("span",{class:"pill q",text:"#"+tg})); });
     row.appendChild(t);
-    if(UI.facet==="full"||summary(e)) row.appendChild(el("div",{class:"rs",text:String(summary(e)).replace(/\[\[([^\]|]+)(\|[^\]]+)?\]\]/g,"$1").slice(0,220)}));
+    if(vw.bild){
+      var b=e.components&&e.components.Bild&&e.components.Bild.url;
+      if(b) row.appendChild(el("img",{class:"thumb",src:b,alt:"",loading:"lazy"}));
+    }
+    if(vw.beschreibung!==false&&summary(e))
+      row.appendChild(el("div",{class:"rs",text:String(summary(e)).replace(/\[\[([^\]|]+)(\|[^\]]+)?\]\]/g,"$1").slice(0,220)}));
     rows.appendChild(row);
   });
   v.appendChild(rows);
@@ -450,7 +485,7 @@ function renderList(v){
 function renderArticle(v,id){
   var e=ENT.get(id);
   if(!e){ v.appendChild(el("div",{class:"empty",text:"Artikel nicht gefunden."})); return; }
-  var ifn=(e.interfaces||[])[0]||"", d=REG.interfaces[ifn];
+  var ifn=(e.interfaces||[])[0]||"", d=REG.interfaces[ifn], vw=viewDef();
 
   var head=el("div",{class:"arthead"});
   var kick=el("div",{class:"kicker"});
@@ -476,10 +511,17 @@ function renderArticle(v,id){
   }
   v.appendChild(bar);
 
+  /* image — the Bild facet leads with it */
+  var pic=e.components&&e.components.Bild&&e.components.Bild.url;
+  if(pic&&vw.bild) v.appendChild(el("figure",{class:"pic"},[
+    el("img",{src:pic,alt:nameOf(e)}),
+    (e.components.Bild.bu?el("figcaption",{text:e.components.Bild.bu}):null)]));
+
   /* fields — generated from the component schemas (D0: forms from the registry) */
   var flds=el("dl",{class:"fields"}), nf=0;
   compsFor(ifn).forEach(function(cn){
-    if(cn==="Name"||cn==="Description"||cn==="Identity"||cn==="Vars")return;
+    if(cn==="Name"||cn==="Description"||cn==="Identity"||cn==="Vars"||cn==="Bild")return;
+    if(!showComp(vw,cn))return;
     var cd=REG.components[cn], val=(e.components||{})[cn]; if(!cd||!val)return;
     var props=(cd.schema&&cd.schema.properties)||{};
     Object.keys(props).forEach(function(p){
@@ -489,7 +531,7 @@ function renderArticle(v,id){
         el("dt",{text:props[p].title||p}), el("dd",{text:String(x)})])); nf++;
     });
   });
-  (e.adhoc||[]).forEach(function(f){
+  if(vw.felder==="alle") (e.adhoc||[]).forEach(function(f){
     if(f.value===""||f.value==null)return;
     flds.appendChild(el("div",{class:"fld adhoc"},[
       el("dt",{text:f.label}),el("dd",{text:String(f.value)})])); nf++;
@@ -497,14 +539,14 @@ function renderArticle(v,id){
   if(nf) v.appendChild(flds);
 
   var desc=e.components&&e.components.Description&&e.components.Description.raw;
-  if(desc) v.appendChild(para(fillVars(desc,null,e)));
+  if(desc&&vw.beschreibung!==false) v.appendChild(para(fillVars(desc,null,e)));
 
   /* blocks */
   var blocks=(e.blocks||[]).slice().sort(function(a,b){return (a.order||0)-(b.order||0);});
   if(blocks.length){
     var bw=el("div",{class:"blocks"});
     blocks.forEach(function(b){
-      if(UI.facet==="short"&&b.blockType!=="paragraph"&&b.blockType!=="readaloud")return;
+      if(!showBlock(vw,b.blockType))return;
       var box=el("div",{class:"blk "+b.blockType});
       if(b.blockType!=="paragraph"){
         var lab=el("div",{class:"bl"},[document.createTextNode(b.blockType)]);
@@ -520,7 +562,7 @@ function renderArticle(v,id){
 
   /* compounding — composedOf sections resolved from the pool */
   var comp=(e.relations||[]).filter(function(r){ var rd=REG.relations[r.type]; return rd&&rd.section; });
-  if(comp.length){
+  if(comp.length&&vw.bausteine!==false){
     var groups={};
     comp.forEach(function(r){ var s=REG.relations[r.type].section; (groups[s]=groups[s]||[]).push(r); });
     Object.keys(groups).forEach(function(sec){
@@ -537,7 +579,7 @@ function renderArticle(v,id){
                  ((t.blocks||[])[0]&&t.blocks[0].body)||"";
         box.appendChild(para(fillVars(body,(r.props&&r.props.vars)||null,t),"cb"));
         var vb=(r.props&&r.props.vars)||{}, ks=Object.keys(vb);
-        if(ks.length&&UI.facet==="full")
+        if(ks.length&&vw.bindungen)
           box.appendChild(el("span",{class:"bind",text:ks.map(function(k){return k+"="+vb[k];}).join("  ·  ")}));
         v.appendChild(box);
       });
@@ -549,14 +591,19 @@ function renderArticle(v,id){
 function renderAside(){
   var a=document.getElementById("aside"); a.textContent="";
   if(UI.route.k!=="art"){
-    a.appendChild(el("h3",{text:"Hinweis"}));
-    a.appendChild(el("p",{class:"hint",text:"Ein Artikel zeigt hier seine Bezüge und alles, was auf ihn zeigt. Bezüge werden nur in eine Richtung gespeichert; die Gegenrichtung ist eine Abfrage."}));
+    a.appendChild(el("h3",{text:"Verknüpfungen"}));
+    a.appendChild(el("p",{class:"hint",text:"Verknüpfungen sind die Kanten zwischen Artikeln — typisiert und gerichtet. Öffne einen Artikel: hier steht dann, worauf er zeigt und was auf ihn zeigt. Gespeichert wird nur eine Richtung; die Gegenrichtung ist immer abgeleitet."}));
     return;
   }
   var e=ENT.get(UI.route.id); if(!e)return;
+  if(viewDef().bezuege===false){
+    a.appendChild(el("h3",{text:"Verknüpfungen"}));
+    a.appendChild(el("p",{class:"hint",text:"In dieser Darstellungsstufe ausgeblendet."}));
+    return;
+  }
 
   var outs=(e.relations||[]).filter(function(r){ var rd=REG.relations[r.type]; return !(rd&&rd.section); });
-  a.appendChild(el("h3",{text:"Bezüge"}));
+  a.appendChild(el("h3",{text:"Zeigt auf"}));
   if(!outs.length) a.appendChild(el("p",{class:"hint",text:"Keine."}));
   else{
     var box=el("div",{class:"rel"});
@@ -579,7 +626,7 @@ function renderAside(){
   var backs=[];
   ENT.forEach(function(o){ (o.relations||[]).forEach(function(r){
     if(r.to===e.id) backs.push({from:o,rel:r}); }); });
-  a.appendChild(el("h3",{text:"Rückbezüge"}));
+  a.appendChild(el("h3",{text:"Zeigt hierher"}));
   if(!backs.length) a.appendChild(el("p",{class:"hint",text:"Nichts zeigt hierher."}));
   else{
     var bx=el("div",{class:"rel"});
@@ -624,13 +671,16 @@ function renderRegistry(v){
   v.appendChild(el("h2",{text:"Register"}));
   v.appendChild(el("p",{class:"hint",text:"Das Register ist Daten, nicht Code. Eine neue Schnittstelle ist eine Zeile hier — Formulare und Ansichten entstehen daraus, ohne Codeänderung. Genau das ist hier die Probe."}));
   var tabs=el("div",{class:"tabs",role:"tablist"});
-  [["interfaces","Schnittstellen"],["components","Komponenten"],["relations","Bezugsarten"],["vars","Variablen"]]
+  [["interfaces","Schnittstellen"],["components","Komponenten"],
+   ["relations","Verknüpfungsarten"],["views","Kompendium"],["vars","Variablen"]]
   .forEach(function(t){
     tabs.appendChild(el("button",{type:"button",role:"tab","aria-selected":String(UI.regtab===t[0]),
       onclick:function(){UI.regtab=t[0];UI.err="";render();}},t[1]));
   });
   v.appendChild(tabs);
 
+  if(UI.regtab==="views") v.appendChild(el("p",{class:"hint",
+    text:"Kompendium — die Darstellungsstufen im Auswahlfeld oben rechts. felder: \"keine\" | \"alle\" | Liste von Komponenten · bloecke: \"alle\" | Liste von Blockarten · beschreibung, bausteine, bezuege, bindungen, bild: true/false · order bestimmt die Reihenfolge."}));
   var ta=el("textarea",{class:"i code",spellcheck:"false",id:"regbox"});
   ta.value=JSON.stringify(REG[UI.regtab],null,2);
   v.appendChild(ta);
@@ -859,12 +909,19 @@ function addAdhoc(e){
 document.getElementById("new").addEventListener("click",function(){ if(me.write)newEntity(); });
 document.getElementById("q").addEventListener("input",function(ev){
   UI.q=ev.target.value; if(UI.route.k!=="list")UI.route={k:"list"}; render(); });
-document.getElementById("fs").addEventListener("click",function(){ setFacet("short"); });
-document.getElementById("ff").addEventListener("click",function(){ setFacet("full"); });
-function setFacet(f){ UI.facet=f;
-  document.getElementById("fs").setAttribute("aria-pressed",String(f==="short"));
-  document.getElementById("ff").setAttribute("aria-pressed",String(f==="full"));
-  render(); }
+var viewSel=document.getElementById("view");
+viewSel.addEventListener("change",function(){ UI.view=viewSel.value; render(); });
+function renderViewSelect(){
+  var vs=Object.keys(REG.views).length?REG.views:VIEWS_FALLBACK, keys=viewKeys();
+  if(keys.indexOf(UI.view)<0) UI.view=keys[0];
+  var sig=keys.map(function(k){return k+":"+(vs[k].label||k);}).join("|");
+  if(viewSel.getAttribute("data-sig")!==sig){
+    viewSel.textContent="";
+    keys.forEach(function(k){ viewSel.appendChild(el("option",{value:k},vs[k].label||k)); });
+    viewSel.setAttribute("data-sig",sig);
+  }
+  viewSel.value=UI.view;
+}
 Array.prototype.forEach.call(document.querySelectorAll("#mob button"),function(b){
   b.addEventListener("click",function(){ UI.pane=b.dataset.p; renderPanes(); }); });
 window.addEventListener("resize",renderPanes);
@@ -886,7 +943,7 @@ render();
     render(); return;
   }
 
-  ["interfaces","components","relations","vars"].forEach(function(part){
+  ["interfaces","components","relations","views","vars"].forEach(function(part){
     db.doc("registry/"+part).onSnapshot(function(s){
       REG[part]=(s.exists&&s.data())||REG[part]||{};
       render();
