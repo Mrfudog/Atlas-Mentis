@@ -232,6 +232,17 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 
 var db=null, me={write:true}, ready=false;
 var ENT=new Map();                       // id -> entity body
+
+/* Ein Schnappschuss liefert eingefrorene Objekte („Delivered snapshots and
+   their data() are frozen"). Unter "use strict" wirft schon `b.id=b.id` auf
+   so einem Objekt — und zwar mitten im Snapshot-Callback, wo niemand es
+   auffängt. Deshalb kommt alles, was die Seite später bearbeitet, als
+   eigene Kopie herein. */
+function frisch(o){
+  if(o==null) return o;
+  try{ return structuredClone(o); }catch(x){}
+  try{ return JSON.parse(JSON.stringify(o)); }catch(x){ return o; }
+}
 var REG={interfaces:{},components:{},relations:{},vars:{},views:{}};
 var UI={route:{k:"list"}, view:"schnell", iface:"", tag:"", q:"", offen:false, pane:"main", regtab:"interfaces", err:""};
 
@@ -476,8 +487,22 @@ function fail(x){
 function go(r){ UI.route=r; UI.err=""; UI.pane="main"; render();
   var m=document.getElementById("main"); if(m)m.scrollTop=0; }
 
+/* Jeder Abschnitt für sich. Vorher konnte eine Ausnahme in renderRail()
+   renderMain() verhindern — die Seite blieb dann auf „Lädt…" stehen und
+   sagte nicht, warum. Ein sichtbarer Fehler ist besser als eine leere Seite. */
 function render(){
-  renderViewSelect(); renderRail(); renderMain(); renderAside(); renderPanes();
+  var kaputt=[];
+  [["Auswahl",renderViewSelect],["Seitenleiste",renderRail],["Inhalt",renderMain],
+   ["Bezüge",renderAside],["Bereiche",renderPanes]].forEach(function(t){
+    try{ t[1](); }catch(x){ kaputt.push(t[0]+": "+(x&&x.message||x)); }
+  });
+  if(kaputt.length){
+    try{
+      var v=document.getElementById("view");
+      if(v) v.insertBefore(el("div",{class:"banner",text:"Anzeigefehler — "+kaputt.join(" · ")}),v.firstChild);
+      if(window.console) console.error("Nebelwacht:",kaputt);
+    }catch(y){}
+  }
 }
 function renderPanes(){
   var narrow=window.matchMedia("(max-width:900px)").matches;
@@ -1445,18 +1470,52 @@ render();
     render(); return;
   }
 
-  ["interfaces","components","relations","views","vars"].forEach(function(part){
-    db.doc("registry/"+part).onSnapshot(function(s){
-      REG[part]=(s.exists&&s.data())||REG[part]||{};
+  var TEILE=["interfaces","components","relations","views","vars"];
+  var kamAn={register:{},artikel:false};
+
+  /* Wirft ein Snapshot-Callback, endet die Zustellung still: `ready` bliebe
+     false und die Seite stünde auf „Lädt…". Darum fängt jeder Callback
+     seinen eigenen Fehler und sagt, woran es lag. */
+  function sicher(was,fn){
+    return function(arg){
+      try{ fn(arg); }
+      catch(x){ ready=true; UI.err=was+": "+((x&&x.message)||x); render(); }
+    };
+  }
+
+  TEILE.forEach(function(part){
+    db.doc("registry/"+part).onSnapshot(sicher("Register "+part,function(s){
+      kamAn.register[part]=true;
+      REG[part]=frisch(s.exists&&s.data())||REG[part]||{};
       render();
-    },function(e){ UI.err="Register: "+e.code; render(); });
+    }),function(e){ UI.err="Register: "+e.code; render(); });
   });
 
-  db.collection("entities").limit(1000).onSnapshot(function(snap){
-    ENT=new Map();
-    snap.docs.forEach(function(d){ var b=d.data()||{}; b.id=b.id||d.id; ENT.set(b.id,b); });
-    ready=true; render();
-  },function(e){ UI.err="Artikel: "+e.code; ready=true; render(); });
+  db.collection("entities").limit(1000).onSnapshot(sicher("Artikel",function(snap){
+    kamAn.artikel=true;
+    var neu=new Map();
+    (snap.docs||[]).forEach(function(d){
+      var b=frisch(d.data())||{};
+      if(!b.id) b.id=d.id;
+      neu.set(b.id,b);
+    });
+    ENT=neu;
+    ready=true;
+    UI.err="";   // eine frühere Wachmeldung ist mit den Daten erledigt
+    render();
+  }),function(e){ UI.err="Artikel: "+e.code; ready=true; render(); });
+
+  /* Kommt binnen zehn Sekunden nichts, sagt die Seite, was ausblieb —
+     statt schweigend auf „Lädt…" zu stehen. */
+  setTimeout(function(){
+    if(ready) return;
+    ready=true;
+    UI.err="Keine Daten empfangen: "+Object.keys(kamAn.register).length+" von "+
+           TEILE.length+" Registerteilen, "+
+           (kamAn.artikel?"Artikel ja":"Artikel nein")+". "+
+           "Die Seite vollständig neu laden; bleibt es dabei, ist es ein Fehler in der Seite.";
+    render();
+  },10000);
 })();
 
 })();
