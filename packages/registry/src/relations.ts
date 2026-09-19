@@ -22,13 +22,30 @@ export const relations: Record<string, RelationDef> = {
     },
   },
 
-  hatStatblock: {
-    type: 'hatStatblock',
-    label: 'Statblock',
-    inverseLabel: 'verwendet von',
-    from: ['NPC'],
-    to: ['Statblock'],
+  /**
+   * The creature link, stored on the STATBLOCK side.
+   *
+   * `Schemas.md` puts it the other way round (`Creature.hasStatblock`), but
+   * the vault writes `kreatur:` in the statblock's frontmatter, so that is
+   * where the edge exists in the data we actually have. One edge, one
+   * direction; the creature reads it through `inverseLabel`.
+   */
+  gehoertZu: {
+    type: 'gehoertZu',
+    label: 'gehört zu',
+    inverseLabel: 'Statblock',
+    from: ['Statblock'],
+    to: ['NPC'],
     cardinality: 'one',
+  },
+
+  /** Weapon properties are pooled rules, referenced rather than copied. */
+  hatEigenschaft: {
+    type: 'hatEigenschaft',
+    label: 'Eigenschaft',
+    inverseLabel: 'Eigenschaft von',
+    from: ['Waffe', 'Gegenstand', 'Ruestung'],
+    to: ['Regel'],
   },
 
   schuldet: {

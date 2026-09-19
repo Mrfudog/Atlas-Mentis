@@ -96,6 +96,38 @@ export function evalArith(expr: string): number | null {
   return stack.length === 1 ? (stack[0] as number) : null;
 }
 
+/** A grid is a list of rows of glyphs; anything but these counts as occupied. */
+const EMPTY_CELL = new Set(['0', '.', ' ', '_']);
+
+function asRows(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.map((r) => String(r));
+  if (typeof raw === 'string') return raw.split('\n');
+  return [];
+}
+
+/**
+ * Unary functions over a sibling field, each returning a number.
+ * Extending the Calculation engine is adding an entry here — no consumer
+ * changes, which is the same promise the registry makes for data.
+ */
+const FUNCTIONS: Record<string, (raw: unknown) => number> = {
+  /** 5e ability modifier from a score. */
+  mod: (raw) => {
+    const n = Number(raw);
+    return Number.isFinite(n) ? abilityMod(n) : 0;
+  },
+  /** Row count of a grid. */
+  zeilen: (raw) => asRows(raw).length,
+  /** Widest row of a grid. */
+  breite: (raw) => asRows(raw).reduce((max, row) => Math.max(max, row.length), 0),
+  /** Occupied cells of a grid. */
+  felder: (raw) =>
+    asRows(raw).reduce(
+      (sum, row) => sum + [...row].filter((glyph) => !EMPTY_CELL.has(glyph)).length,
+      0,
+    ),
+};
+
 /**
  * Resolve a property's `derived` expression against its sibling fields.
  * An unknown or non-numeric name contributes 0 rather than failing the whole
@@ -105,16 +137,22 @@ export function derivedValue(prop: PropertySchema, value: ComponentValue | undef
   if (!prop?.derived) return undefined;
   const siblings = value ?? {};
 
-  const numeric = (key: string): string => {
+  let expr = String(prop.derived);
+
+  // Functions first: their argument is a field name, not an expression.
+  expr = expr.replace(
+    /([A-Za-z_][A-Za-z0-9_]*)\(\s*([A-Za-z0-9_]+)\s*\)/g,
+    (whole, fn: string, key: string) => {
+      const apply = FUNCTIONS[fn];
+      return apply ? `(${apply(siblings[key])})` : whole;
+    },
+  );
+
+  // Then bare field names as numbers.
+  expr = expr.replace(/[A-Za-z_][A-Za-z0-9_]*/g, (key) => {
     const n = Number(siblings[key]);
     return Number.isFinite(n) ? `(${n})` : '(0)';
-  };
-
-  let expr = String(prop.derived).replace(/mod\(\s*([A-Za-z0-9_]+)\s*\)/g, (_m, key: string) => {
-    const n = Number(siblings[key]);
-    return Number.isFinite(n) ? `(${abilityMod(n)})` : '(0)';
   });
-  expr = expr.replace(/[A-Za-z_][A-Za-z0-9_]*/g, numeric);
 
   const result = evalArith(expr);
   return result === null ? undefined : Math.trunc(result);
