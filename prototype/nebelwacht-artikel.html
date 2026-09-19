@@ -106,6 +106,10 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 .fld dt{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
 .fld dd{margin:1px 0 0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .fld.adhoc{border-left:2px solid var(--accent)}
+.fld.drv dd{color:var(--link)}
+.fgrp{grid-column:1/-1;background:var(--surface2);padding:3px 10px;font-size:10.5px;
+  text-transform:uppercase;letter-spacing:.09em;color:var(--dim);font-weight:600}
+.drvnote{font-size:11px;color:var(--link);margin:-4px 0 8px;font-family:var(--ff-mono)}
 .pic{margin:14px 0}
 .pic img{display:block;width:100%;max-width:100%;border:1px solid var(--line);border-radius:var(--r)}
 .pic figcaption{font-size:12px;color:var(--dim);margin-top:4px;font-style:italic}
@@ -154,6 +158,12 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 .dlgbox{background:var(--surface);border:1px solid var(--line2);border-radius:var(--r);
   padding:18px;width:100%;max-width:440px;max-height:85vh;overflow-y:auto}
 .dlgbox h3{font-family:var(--ff-disp);font-size:20px;margin-bottom:12px}
+.dgrp{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--accent);
+  font-weight:600;margin:16px 0 7px;padding-bottom:3px;border-bottom:1px solid var(--line)}
+.dgrp:first-child{margin-top:0}
+.drvrow{display:flex;align-items:baseline;gap:7px;margin-bottom:10px;font-size:13px;color:var(--dim)}
+.drvval{font-family:var(--ff-mono);color:var(--link);font-size:14px;font-variant-numeric:tabular-nums}
+.drvexp{font-family:var(--ff-mono);font-size:11px;color:var(--dim);margin-left:auto;opacity:.75}
 .rowbtns{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}
 .mob{display:none}
 
@@ -230,11 +240,57 @@ function viewKeys(){
   var vs=Object.keys(REG.views).length?REG.views:VIEWS_FALLBACK;
   return Object.keys(vs).sort(function(a,b){return (vs[a].order||99)-(vs[b].order||99);});
 }
-/* does this view show this component? felder: "keine" | "alle" | [Komponentennamen] */
-function showComp(v,cn){
-  if(v.felder==="keine"||!v.felder)return false;
+/* Which fields does this view show?
+   felder: "keine" | "alle" | ["StatblockInfo", "StatblockInfo.ac", …]
+   A bare component name takes all of its fields; "Komponente.feld" takes one. */
+function showField(v,cn,p){
   if(v.felder==="alle")return true;
-  return Array.isArray(v.felder)&&v.felder.indexOf(cn)>=0;
+  if(v.felder==="keine"||!v.felder)return false;
+  if(!Array.isArray(v.felder))return false;
+  return v.felder.indexOf(cn)>=0 || v.felder.indexOf(cn+"."+p)>=0;
+}
+function compShown(v,cn,props){
+  return Object.keys(props).some(function(p){return showField(v,cn,p);});
+}
+
+/* ---------- Calculation: derived values, computed on read (D8) ---------- */
+function evalArith(s){
+  var toks=String(s).match(/\d+\.?\d*|[+\-*/()]/g); if(!toks)return null;
+  var out=[],ops=[],prec={"+":1,"-":1,"*":2,"/":2},prev=null;
+  for(var i=0;i<toks.length;i++){
+    var t=toks[i];
+    if(/^\d/.test(t)){ out.push(parseFloat(t)); prev="n"; continue; }
+    if(t==="("){ ops.push(t); prev="("; continue; }
+    if(t===")"){ while(ops.length&&ops[ops.length-1]!=="(")out.push(ops.pop()); ops.pop(); prev="n"; continue; }
+    if(t==="-"&&(prev===null||prev==="op"||prev==="(")) out.push(0);   // unary minus
+    while(ops.length&&ops[ops.length-1]!=="("&&prec[ops[ops.length-1]]>=prec[t]) out.push(ops.pop());
+    ops.push(t); prev="op";
+  }
+  while(ops.length)out.push(ops.pop());
+  var st=[];
+  for(i=0;i<out.length;i++){
+    var o=out[i];
+    if(typeof o==="number"){st.push(o);continue;}
+    var b=st.pop(),a=st.pop(); if(a===undefined||b===undefined)return null;
+    st.push(o==="+"?a+b:o==="-"?a-b:o==="*"?a*b:(b?a/b:0));
+  }
+  return st.length===1?st[0]:null;
+}
+// "mod(str)", "mod(dex)+prof", "2+prof" — names resolve against sibling fields
+function derivedValue(pd,val){
+  if(!pd||!pd.derived)return undefined;
+  var expr=String(pd.derived).replace(/mod\(\s*([A-Za-z0-9_]+)\s*\)/g,function(m,k){
+    var n=Number((val||{})[k]); return isFinite(n)?"("+Math.floor((n-10)/2)+")":"(0)"; });
+  expr=expr.replace(/[A-Za-z_][A-Za-z0-9_]*/g,function(k){
+    var n=Number((val||{})[k]); return isFinite(n)?"("+n+")":"(0)"; });
+  var r=evalArith(expr);
+  return r==null?undefined:Math.trunc(r);
+}
+function fmtVal(pd,x){
+  if(x===undefined||x===null||x==="")return "";
+  if(pd&&pd.format==="signed"&&typeof x==="number")return (x>=0?"+":"")+x;
+  if(typeof x==="object")return Array.isArray(x)?x.join(", "):JSON.stringify(x);
+  return String(x);
 }
 /* does this view show this block type? bloecke: "alle" | [Blockarten] */
 function showBlock(v,bt){
@@ -521,14 +577,28 @@ function renderArticle(v,id){
   var flds=el("dl",{class:"fields"}), nf=0;
   compsFor(ifn).forEach(function(cn){
     if(cn==="Name"||cn==="Description"||cn==="Identity"||cn==="Vars"||cn==="Bild")return;
-    if(!showComp(vw,cn))return;
-    var cd=REG.components[cn], val=(e.components||{})[cn]; if(!cd||!val)return;
+    var cd=REG.components[cn]; if(!cd)return;
+    var val=(e.components||{})[cn]; if(!val)return;
     var props=(cd.schema&&cd.schema.properties)||{};
+    if(!compShown(vw,cn,props))return;
+    /* a derived field with `of` rides in its base field's cell: 16 (+3) */
+    var attach={};
     Object.keys(props).forEach(function(p){
-      var x=val[p]; if(x===undefined||x===""||x===null)return;
-      if(typeof x==="object") x=Array.isArray(x)?x.join(", "):JSON.stringify(x);
-      flds.appendChild(el("div",{class:"fld"},[
-        el("dt",{text:props[p].title||p}), el("dd",{text:String(x)})])); nf++;
+      var pd=props[p];
+      if(pd.derived&&pd.of&&!showField(vw,cn,p)) (attach[pd.of]=attach[pd.of]||[]).push(p);
+    });
+    Object.keys(props).forEach(function(p){
+      var pd=props[p];
+      if(!showField(vw,cn,p))return;
+      if(pd.derived&&pd.of)return;
+      var s=fmtVal(pd, pd.derived?derivedValue(pd,val):val[p]);
+      if(s==="")return;
+      (attach[p]||[]).forEach(function(dp){
+        var dv=fmtVal(props[dp],derivedValue(props[dp],val));
+        if(dv!=="") s+=" ("+dv+")";
+      });
+      flds.appendChild(el("div",{class:"fld"+(pd.derived?" drv":"")},[
+        el("dt",{text:pd.title||p}), el("dd",{text:s})])); nf++;
     });
   });
   if(vw.felder==="alle") (e.adhoc||[]).forEach(function(f){
@@ -753,13 +823,42 @@ function editEntity(e){
     var tg=el("input",{class:"i",type:"text",value:(e.tags||[]).join(", "),placeholder:"komma, getrennt"});
     host.appendChild(field("Marken",tg));
 
-    var inputs=[];
+    var inputs=[], drvCells=[];
+    function readInput(it){
+      var raw=it.node.value;
+      if(raw==="")return undefined;
+      if(it.pd.type==="number"||it.pd.type==="integer")return Number(raw);
+      if(it.pd.type==="array")return raw.split(",").map(function(s){return s.trim();}).filter(Boolean);
+      if(it.pd.type==="object"){ try{return JSON.parse(raw);}catch(x){return undefined;} }
+      return raw;
+    }
+    function recalc(){
+      var live={};
+      inputs.forEach(function(it){
+        if(it.adhoc!==undefined)return;
+        live[it.cn]=live[it.cn]||{};
+        var v=readInput(it); if(v!==undefined) live[it.cn][it.p]=v;
+      });
+      drvCells.forEach(function(c){
+        c.node.textContent=fmtVal(c.pd,derivedValue(c.pd,live[c.cn]||{}))||"—";
+      });
+    }
     compsFor(ifn).forEach(function(cn){
       var cd=REG.components[cn]; if(!cd)return;
       var props=(cd.schema&&cd.schema.properties)||{};
-      Object.keys(props).forEach(function(p){
-        if(cn==="Name"&&p==="text")return;
+      var keys=Object.keys(props).filter(function(p){return !(cn==="Name"&&p==="text");});
+      if(!keys.length)return;
+      host.appendChild(el("div",{class:"dgrp",text:cd.label||cn}));
+      keys.forEach(function(p){
         var pd=props[p], cur=((e.components||{})[cn]||{})[p];
+        if(pd.derived){
+          var b=el("b",{class:"drvval",text:"—"});
+          host.appendChild(el("div",{class:"drvrow"},[
+            el("span",{text:(pd.title||p)+" "}), b,
+            el("span",{class:"drvexp",text:pd.derived})]));
+          drvCells.push({cn:cn,p:p,pd:pd,node:b});
+          return;
+        }
         var node;
         if(pd.enum){
           node=el("select",{class:"i"});
@@ -777,7 +876,8 @@ function editEntity(e){
         } else {
           node=el("input",{class:"i",type:"text",value:cur==null?"":String(cur)});
         }
-        host.appendChild(field((cd.label||cn)+" · "+(pd.title||p),node));
+        host.appendChild(field(pd.title||p,node));
+        node.addEventListener("input",recalc);
         inputs.push({cn:cn,p:p,pd:pd,node:node});
       });
     });
@@ -787,6 +887,7 @@ function editEntity(e){
       host.appendChild(field("Eigenes · "+f.label,node));
       inputs.push({adhoc:i,node:node});
     });
+    recalc();
 
     actions(host,close,function(){
       e.name=nm.value.trim()||e.name;
@@ -795,12 +896,7 @@ function editEntity(e){
       e.components.Name={text:e.name};
       inputs.forEach(function(it){
         if(it.adhoc!==undefined){ e.adhoc[it.adhoc].value=it.node.value; return; }
-        var raw=it.node.value, val;
-        if(raw==="") val=undefined;
-        else if(it.pd.type==="number"||it.pd.type==="integer") val=Number(raw);
-        else if(it.pd.type==="array") val=raw.split(",").map(function(s){return s.trim();}).filter(Boolean);
-        else if(it.pd.type==="object"){ try{val=JSON.parse(raw);}catch(x){val=undefined;} }
-        else val=raw;
+        var val=readInput(it);
         e.components[it.cn]=e.components[it.cn]||{};
         if(val===undefined) delete e.components[it.cn][it.p]; else e.components[it.cn][it.p]=val;
       });
