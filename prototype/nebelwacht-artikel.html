@@ -1,0 +1,904 @@
+<title>Nebelwacht Artikelwerk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#e8e9e4; --surface:#f5f5f1; --surface2:#dcdfd8; --line:#c3c8bd; --line2:#aab2a4;
+  --ink:#1a201d; --dim:#5c6660; --accent:#8a5d0e; --accent-soft:#f0e2c2;
+  --link:#1a675e; --warn:#9c3626; --ok:#2f6b46;
+  --r:3px; --gut:16px;
+  --ff-disp:"Alegreya",Georgia,serif;
+  --ff-body:"IBM Plex Sans",system-ui,sans-serif;
+  --ff-mono:"IBM Plex Mono",ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --bg:#0e1412; --surface:#161e1b; --surface2:#1f2825; --line:#2e3a35; --line2:#3e4b45;
+  --ink:#e6e3d8; --dim:#8c9690; --accent:#e0a83f; --accent-soft:#33290f;
+  --link:#57c3b0; --warn:#e0705c; --ok:#6fc08e;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0e1412; --surface:#161e1b; --surface2:#1f2825; --line:#2e3a35; --line2:#3e4b45;
+  --ink:#e6e3d8; --dim:#8c9690; --accent:#e0a83f; --accent-soft:#33290f;
+  --link:#57c3b0; --warn:#e0705c; --ok:#6fc08e;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--ff-body);font-size:15px;line-height:1.55;-webkit-text-size-adjust:100%}
+h1,h2,h3,h4{font-family:var(--ff-disp);font-weight:700;margin:0;text-wrap:balance;line-height:1.2}
+a{color:var(--link)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- shell ---------- */
+.app{display:flex;flex-direction:column;height:100%}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;gap:10px;align-items:center;
+  padding:10px var(--gut);background:var(--surface);border-bottom:1px solid var(--line)}
+.brand{font-family:var(--ff-disp);font-weight:700;font-size:18px;letter-spacing:.01em;white-space:nowrap}
+.brand span{color:var(--accent)}
+.sub{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.09em;white-space:nowrap}
+.grow{flex:1}
+.search{flex:0 1 260px;min-width:0;padding:6px 9px;background:var(--bg);border:1px solid var(--line);border-radius:var(--r)}
+.body{flex:1;display:grid;grid-template-columns:210px minmax(0,1fr) 260px;gap:0;min-height:0}
+.rail,.aside{overflow-y:auto;padding:14px var(--gut);border-right:1px solid var(--line);background:var(--surface)}
+.aside{border-right:0;border-left:1px solid var(--line)}
+.main{overflow-y:auto;padding:20px var(--gut) 60px}
+.wrap{max-width:760px;margin:0 auto}
+
+/* ---------- controls ---------- */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;background:var(--surface2);
+  color:var(--ink);border:1px solid var(--line2);border-radius:var(--r);cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600}
+.btn.sm{padding:2px 8px;font-size:12px}
+.btn.gh{background:transparent;border-color:transparent;color:var(--dim)}
+.btn.gh:hover{color:var(--accent)}
+.btn.dngr:hover{border-color:var(--warn);color:var(--warn)}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:var(--r);overflow:hidden}
+.seg button{padding:4px 10px;background:transparent;border:0;cursor:pointer;font-size:12px;color:var(--dim)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--bg);font-weight:600}
+label.f{display:block;margin-bottom:10px}
+label.f > span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin-bottom:3px}
+input.i,select.i,textarea.i{width:100%;padding:6px 8px;background:var(--bg);border:1px solid var(--line);border-radius:var(--r)}
+textarea.i{min-height:76px;resize:vertical;font-family:var(--ff-body)}
+textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-height:1.5}
+
+/* ---------- rail ---------- */
+.rail h3,.aside h3{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);
+  font-family:var(--ff-body);font-weight:600;margin:0 0 7px}
+.rail section{margin-bottom:22px}
+.navrow{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;
+  padding:4px 7px;background:transparent;border:0;border-radius:var(--r);cursor:pointer;text-align:left}
+.navrow:hover{background:var(--surface2)}
+.navrow[aria-current="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.navrow b{font-weight:inherit}
+.navrow em{font-style:normal;font-family:var(--ff-mono);font-size:11px;color:var(--dim)}
+.tags{display:flex;flex-wrap:wrap;gap:5px}
+.tag{padding:1px 7px;font-size:11.5px;background:var(--surface2);border:1px solid var(--line);
+  border-radius:99px;cursor:pointer;color:var(--dim);font-family:var(--ff-mono)}
+.tag[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+
+/* ---------- list ---------- */
+.listhead{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.listhead h2{font-size:24px}
+.count{font-family:var(--ff-mono);font-size:12px;color:var(--dim)}
+.rows{display:flex;flex-direction:column;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.row{display:block;width:100%;text-align:left;padding:10px 12px;background:var(--surface);border:0;cursor:pointer}
+.row:hover{background:var(--surface2)}
+.row .rt{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.row .rn{font-family:var(--ff-disp);font-size:17px;font-weight:700}
+.row .rs{font-size:12px;color:var(--dim);margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pill{font-size:10.5px;font-family:var(--ff-mono);text-transform:uppercase;letter-spacing:.06em;
+  padding:1px 6px;border-radius:2px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+.pill.q{background:var(--surface2);color:var(--dim)}
+
+/* ---------- article ---------- */
+.arthead{border-bottom:2px solid var(--accent);padding-bottom:10px;margin-bottom:6px}
+.arthead h2{font-size:30px}
+.kicker{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:5px}
+.key{font-family:var(--ff-mono);font-size:11.5px;color:var(--dim)}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:2px;
+  background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin:14px 0}
+.fld{background:var(--surface);padding:7px 10px;min-width:0}
+.fld dt{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
+.fld dd{margin:1px 0 0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.fld.adhoc{border-left:2px solid var(--accent)}
+.blocks{margin:18px 0;display:flex;flex-direction:column;gap:12px}
+.blk{position:relative}
+.blk p{margin:0}
+.blk .bl{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim);
+  font-weight:600;margin-bottom:2px;display:flex;gap:8px;align-items:center}
+.blk.readaloud{border-left:3px solid var(--link);padding:6px 0 6px 13px;font-family:var(--ff-disp);font-size:17px;font-style:italic}
+.blk.secret{border:1px dashed var(--accent);background:var(--accent-soft);padding:9px 11px;border-radius:var(--r)}
+.blk.fact{border-left:3px solid var(--line2);padding-left:13px}
+.blk.note{color:var(--dim);font-size:13.5px}
+.sec{font-family:var(--ff-disp);font-size:20px;font-weight:700;margin:24px 0 8px;
+  border-bottom:1px solid var(--line);padding-bottom:4px}
+.comp{border-left:3px solid var(--accent);padding:8px 0 8px 13px;margin-bottom:12px}
+.comp .cn{font-family:var(--ff-disp);font-weight:700;font-style:italic;font-size:17px}
+.comp .cb{margin-top:2px}
+.vr{color:var(--accent);font-weight:600;border-bottom:1px dotted var(--accent);font-variant-numeric:tabular-nums}
+.ref{color:var(--link);text-decoration:underline;text-underline-offset:2px;cursor:pointer;background:none;border:0;padding:0;font:inherit}
+.ref.dead{color:var(--warn);text-decoration-style:wavy;cursor:help}
+.gone{color:var(--dim);font-style:italic}
+
+/* ---------- relations ---------- */
+.rel{display:flex;flex-direction:column;gap:7px;margin-bottom:18px}
+.relrow{display:flex;gap:7px;align-items:baseline;font-size:13.5px}
+.relrow .rl{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);
+  flex:0 0 auto;min-width:76px;padding-top:2px}
+.relrow .rv{flex:1;min-width:0}
+.bind{font-family:var(--ff-mono);font-size:11px;color:var(--dim);display:block;margin-top:1px}
+
+/* ---------- registry ---------- */
+.tabs{display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tabs button{padding:6px 13px;background:transparent;border:0;border-bottom:2px solid transparent;
+  cursor:pointer;color:var(--dim);font-size:13px}
+.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.hint{font-size:12.5px;color:var(--dim);margin:0 0 12px;max-width:62ch}
+.err{color:var(--warn);font-family:var(--ff-mono);font-size:12px;margin-top:6px;white-space:pre-wrap}
+
+/* ---------- misc ---------- */
+.banner{padding:9px 12px;background:var(--accent-soft);border:1px solid var(--accent);
+  border-radius:var(--r);font-size:13px;margin-bottom:16px}
+.empty{padding:40px 0;text-align:center;color:var(--dim)}
+.dlg{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:var(--gut);
+  background:rgba(0,0,0,.55)}
+.dlgbox{background:var(--surface);border:1px solid var(--line2);border-radius:var(--r);
+  padding:18px;width:100%;max-width:440px;max-height:85vh;overflow-y:auto}
+.dlgbox h3{font-family:var(--ff-disp);font-size:20px;margin-bottom:12px}
+.rowbtns{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}
+.mob{display:none}
+
+@media (max-width:900px){
+  .body{grid-template-columns:minmax(0,1fr)}
+  .rail,.aside{display:none}
+  .rail.on,.aside.on{display:block;border:0}
+  .main{padding-bottom:78px}
+  .mob{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);
+    border-top:1px solid var(--line);padding:6px var(--gut);
+    padding-bottom:calc(6px + env(safe-area-inset-bottom,0px));gap:4px}
+  .mob button{flex:1;padding:8px 2px;background:transparent;border:0;border-radius:var(--r);
+    font-size:12px;color:var(--dim);cursor:pointer}
+  .mob button[aria-current="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+  .search{flex:1 1 auto}
+  .arthead h2{font-size:25px}
+}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">Nebel<span>wacht</span></div>
+    <div class="sub">Artikelwerk</div>
+    <div class="grow"></div>
+    <input id="q" class="search" type="search" placeholder="Suchen…" aria-label="Artikel suchen">
+    <div class="seg" role="group" aria-label="Darstellungsstufe">
+      <button id="fs" type="button" aria-pressed="true">kurz</button>
+      <button id="ff" type="button" aria-pressed="false">voll</button>
+    </div>
+    <button id="new" class="btn pri" type="button">+ Neu</button>
+  </header>
+
+  <div class="body">
+    <nav class="rail" id="rail"></nav>
+    <main class="main" id="main"><div class="wrap" id="view"></div></main>
+    <aside class="aside" id="aside"></aside>
+  </div>
+
+  <nav class="mob" id="mob">
+    <button type="button" data-p="rail">Register</button>
+    <button type="button" data-p="main" aria-current="true">Artikel</button>
+    <button type="button" data-p="aside">Bezüge</button>
+  </nav>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   Nebelwacht Artikelwerk — Artikel-Engine v0
+   Compound backbone at prototype depth:
+     entity (peg) + components (cards) + relations (strings)
+     interfaces / component_defs / relation_defs as registry ROWS
+   Adding a kind of thing = one interface row. No code change.
+   ============================================================ */
+
+var db=null, me={write:true}, ready=false;
+var ENT=new Map();                       // id -> entity body
+var REG={interfaces:{},components:{},relations:{},vars:{}};
+var UI={route:{k:"list"}, facet:"short", iface:"", tag:"", q:"", pane:"main", regtab:"interfaces", err:""};
+
+/* ---------- small helpers ---------- */
+function el(t,a,kids){var n=document.createElement(t);
+  if(a)for(var k in a){ if(k==="class")n.className=a[k];
+    else if(k==="text")n.textContent=a[k];
+    else if(k.slice(0,2)==="on")n.addEventListener(k.slice(2),a[k]);
+    else if(a[k]!==null&&a[k]!==false&&a[k]!==undefined)n.setAttribute(k,a[k]); }
+  if(kids)(Array.isArray(kids)?kids:[kids]).forEach(function(c){ if(c==null)return;
+    n.appendChild(typeof c==="string"?document.createTextNode(c):c); });
+  return n;}
+function uid(p){return (p||"e")+"_"+Math.random().toString(36).slice(2,9);}
+function slug(s){return String(s||"").toLowerCase()
+  .replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss")
+  .replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,60)||"ohne-namen";}
+function esc(s){return String(s==null?"":s);}
+function nameOf(e){return e&&(e.name||(e.components&&e.components.Name&&e.components.Name.text))||"Ohne Namen";}
+function byName(){return Array.from(ENT.values()).sort(function(a,b){
+  return nameOf(a).localeCompare(nameOf(b),"de");});}
+
+/* ---------- registry access ---------- */
+function ifaceOf(e){ var n=(e.interfaces&&e.interfaces[0])||""; return REG.interfaces[n]||null; }
+function ifaceName(e){ var d=ifaceOf(e); return d?(d.label||d.name):((e.interfaces&&e.interfaces[0])||"—"); }
+// requires ∪ allows, walking `extends`
+function compsFor(name,seen){
+  var d=REG.interfaces[name]; if(!d)return [];
+  seen=seen||{}; if(seen[name])return []; seen[name]=1;
+  var out=[];
+  (d.extends||[]).forEach(function(p){ out=out.concat(compsFor(p,seen)); });
+  out=out.concat(d.requires||[],d.allows||[]);
+  return out.filter(function(c,i){return out.indexOf(c)===i && REG.components[c];});
+}
+function reqFor(name,seen){
+  var d=REG.interfaces[name]; if(!d)return [];
+  seen=seen||{}; if(seen[name])return []; seen[name]=1;
+  var out=[]; (d.extends||[]).forEach(function(p){out=out.concat(reqFor(p,seen));});
+  return out.concat(d.requires||[]);
+}
+function blockTypesFor(name){
+  var d=REG.interfaces[name]; if(!d)return ["paragraph"];
+  var out=[]; (d.extends||[]).forEach(function(p){out=out.concat(blockTypesFor(p));});
+  (d.blockTypes||[]).forEach(function(b){ out.push(b.charAt(0)==="+"?b.slice(1):b); });
+  out=out.filter(function(b,i){return out.indexOf(b)===i;});
+  return out.length?out:["paragraph"];
+}
+function relsFrom(ifn){
+  var out=[];
+  for(var k in REG.relations){ var r=REG.relations[k];
+    var from=r.from||["*"];
+    if(from.indexOf("*")>=0||from.indexOf(ifn)>=0) out.push(Object.assign({type:k},r)); }
+  return out;
+}
+function relDef(t){ var r=REG.relations[t]; return r?Object.assign({type:t},r):{type:t,label:t,inverseLabel:"← "+t,to:["*"]}; }
+
+/* ---------- {VAR} resolution (REQ-174) ---------- */
+// order: per-reference bindings → entity defaults → campaign register
+function fillVars(text,refVars,ent){
+  var entVars=(ent&&ent.components&&ent.components.Vars&&ent.components.Vars.bindings)||{};
+  return String(text==null?"":text).replace(/\{([A-Z0-9_ÄÖÜ]+)\}/g,function(m,k){
+    var v=(refVars&&refVars[k])!=null?refVars[k]
+         :(entVars[k]!=null?entVars[k]
+         :(REG.vars[k]!=null?REG.vars[k]:null));
+    return v==null?m:"\u0001"+v+"\u0002";   // sentinels -> <span class=vr> at render
+  });
+}
+
+/* ---------- inline rendering: [[links]] + resolved vars ---------- */
+function findByName(n){
+  var t=String(n||"").trim().toLowerCase();
+  var hit=null;
+  ENT.forEach(function(e,id){ if(hit)return;
+    if(nameOf(e).toLowerCase()===t){hit=id;return;}
+    var al=(e.components&&e.components.Identity&&e.components.Identity.aliases)||[];
+    for(var i=0;i<al.length;i++) if(String(al[i]).toLowerCase()===t){hit=id;return;} });
+  return hit;
+}
+function inline(text,into){
+  var s=String(text==null?"":text);
+  var re=/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|\u0001([^\u0002]*)\u0002|\*\*([^*]+)\*\*/g;
+  var last=0,m;
+  while((m=re.exec(s))){
+    if(m.index>last) into.appendChild(document.createTextNode(s.slice(last,m.index)));
+    if(m[1]!==undefined){
+      var target=m[1].trim(), show=(m[2]||m[1]).trim(), id=findByName(target);
+      if(id) into.appendChild(el("button",{class:"ref",type:"button",onclick:function(x){return function(){go({k:"art",id:x});};}(id)},show));
+      else   into.appendChild(el("span",{class:"ref dead",title:"Kein Artikel namens „"+target+"“"},show));
+    } else if(m[3]!==undefined){
+      into.appendChild(el("span",{class:"vr"},m[3]));
+    } else {
+      into.appendChild(el("strong",null,m[4]));
+    }
+    last=re.lastIndex;
+  }
+  if(last<s.length) into.appendChild(document.createTextNode(s.slice(last)));
+  return into;
+}
+function para(text,cls){ return inline(text,el("p",cls?{class:cls}:null)); }
+
+/* ---------- db wiring ---------- */
+function persist(e){
+  e.updatedAt=new Date().toISOString();
+  ENT.set(e.id,e);
+  render();
+  if(!db){return Promise.resolve();}
+  return db.doc("entities/"+e.id).set(e).catch(function(x){ fail(x); });
+}
+function drop(id){
+  ENT.delete(id); render();
+  if(db) db.doc("entities/"+id).delete().catch(fail);
+}
+function saveReg(part){
+  if(!db)return Promise.resolve();
+  return db.doc("registry/"+part).set(REG[part]).catch(fail);
+}
+function fail(x){
+  var c=(x&&x.code)||"";
+  if(c==="invalid_argument"){ me.write=false; UI.err="Schreiben abgelehnt — diese Ansicht ist nur lesend."; }
+  else UI.err="Speichern fehlgeschlagen ("+(c||"unbekannt")+")";
+  render();
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function go(r){ UI.route=r; UI.err=""; UI.pane="main"; render();
+  var m=document.getElementById("main"); if(m)m.scrollTop=0; }
+
+function render(){
+  renderRail(); renderMain(); renderAside(); renderPanes();
+}
+function renderPanes(){
+  var narrow=window.matchMedia("(max-width:900px)").matches;
+  ["rail","main","aside"].forEach(function(p){
+    var n=document.getElementById(p); if(!n)return;
+    if(narrow){ n.classList.toggle("on",UI.pane===p); n.style.display=(UI.pane===p)?"":"none"; }
+    else { n.classList.remove("on"); n.style.display=""; }
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("#mob button"),function(b){
+    b.setAttribute("aria-current",String(b.dataset.p===UI.pane)); });
+}
+
+/* ---------- left rail ---------- */
+function renderRail(){
+  var r=document.getElementById("rail"); r.textContent="";
+  var counts={},tags={};
+  ENT.forEach(function(e){
+    var i=(e.interfaces&&e.interfaces[0])||"—"; counts[i]=(counts[i]||0)+1;
+    (e.tags||[]).forEach(function(t){tags[t]=(tags[t]||0)+1;});
+  });
+
+  var s1=el("section");
+  s1.appendChild(el("h3",{text:"Schnittstellen"}));
+  s1.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.iface===""&&UI.route.k==="list"),
+    onclick:function(){UI.iface="";go({k:"list"});}},[el("b",{text:"Alle Artikel"}),el("em",{text:String(ENT.size)})]));
+  Object.keys(REG.interfaces).sort().forEach(function(n){
+    var d=REG.interfaces[n]; if(d.abstract)return;
+    s1.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.iface===n&&UI.route.k==="list"),
+      onclick:function(){UI.iface=n;go({k:"list"});}},
+      [el("b",{text:d.label||n}),el("em",{text:String(counts[n]||0)})]));
+  });
+  r.appendChild(s1);
+
+  var keys=Object.keys(tags).sort();
+  if(keys.length){
+    var s2=el("section"); s2.appendChild(el("h3",{text:"Marken"}));
+    var box=el("div",{class:"tags"});
+    keys.forEach(function(t){ box.appendChild(el("button",{class:"tag",type:"button",
+      "aria-pressed":String(UI.tag===t),onclick:function(){UI.tag=(UI.tag===t?"":t);go({k:"list"});}},t)); });
+    s2.appendChild(box); r.appendChild(s2);
+  }
+
+  var s3=el("section");
+  s3.appendChild(el("h3",{text:"System"}));
+  s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="reg"),
+    onclick:function(){go({k:"reg"});}},[el("b",{text:"Register"}),el("em",{text:"def"})]));
+  s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="graph"),
+    onclick:function(){go({k:"graph"});}},[el("b",{text:"Geflecht"}),el("em",{text:"↔"})]));
+  r.appendChild(s3);
+}
+
+/* ---------- main ---------- */
+function renderMain(){
+  var v=document.getElementById("view"); v.textContent="";
+  if(UI.err) v.appendChild(el("div",{class:"banner",text:UI.err}));
+  if(!ready){ v.appendChild(el("div",{class:"empty",text:"Lädt…"})); return; }
+  if(UI.route.k==="art"){ renderArticle(v,UI.route.id); return; }
+  if(UI.route.k==="reg"){ renderRegistry(v); return; }
+  if(UI.route.k==="graph"){ renderGraph(v); return; }
+  renderList(v);
+}
+
+function matches(e){
+  if(UI.iface && (e.interfaces||[]).indexOf(UI.iface)<0) return false;
+  if(UI.tag && (e.tags||[]).indexOf(UI.tag)<0) return false;
+  if(UI.q){
+    var hay=(nameOf(e)+" "+(e.tags||[]).join(" ")+" "+
+      (e.blocks||[]).map(function(b){return b.body;}).join(" ")+" "+
+      JSON.stringify(e.components||{})).toLowerCase();
+    if(hay.indexOf(UI.q.toLowerCase())<0) return false;
+  }
+  return true;
+}
+function summary(e){
+  var d=e.components&&e.components.Description&&e.components.Description.raw;
+  if(d)return d;
+  var b=(e.blocks||[]).filter(function(x){return x.blockType!=="secret";})[0];
+  return b?b.body:"";
+}
+
+function renderList(v){
+  var list=byName().filter(matches);
+  var head=el("div",{class:"listhead"});
+  head.appendChild(el("h2",{text:UI.iface?(REG.interfaces[UI.iface]&&REG.interfaces[UI.iface].label||UI.iface):"Kompendium"}));
+  head.appendChild(el("span",{class:"count",text:list.length+" von "+ENT.size}));
+  if(UI.tag) head.appendChild(el("span",{class:"pill",text:"#"+UI.tag}));
+  v.appendChild(head);
+
+  if(!list.length){ v.appendChild(el("div",{class:"empty",text:"Nichts gefunden."})); return; }
+
+  var rows=el("div",{class:"rows"});
+  list.forEach(function(e){
+    var row=el("button",{class:"row",type:"button",onclick:function(){go({k:"art",id:e.id});}});
+    var t=el("div",{class:"rt"});
+    t.appendChild(el("span",{class:"rn",text:nameOf(e)}));
+    t.appendChild(el("span",{class:"pill",text:ifaceName(e)}));
+    var st=e.components&&e.components.Status&&e.components.Status.value;
+    if(st) t.appendChild(el("span",{class:"pill q",text:st}));
+    (e.tags||[]).slice(0,3).forEach(function(tg){ t.appendChild(el("span",{class:"pill q",text:"#"+tg})); });
+    row.appendChild(t);
+    if(UI.facet==="full"||summary(e)) row.appendChild(el("div",{class:"rs",text:String(summary(e)).replace(/\[\[([^\]|]+)(\|[^\]]+)?\]\]/g,"$1").slice(0,220)}));
+    rows.appendChild(row);
+  });
+  v.appendChild(rows);
+}
+
+/* ---------- article ---------- */
+function renderArticle(v,id){
+  var e=ENT.get(id);
+  if(!e){ v.appendChild(el("div",{class:"empty",text:"Artikel nicht gefunden."})); return; }
+  var ifn=(e.interfaces||[])[0]||"", d=REG.interfaces[ifn];
+
+  var head=el("div",{class:"arthead"});
+  var kick=el("div",{class:"kicker"});
+  kick.appendChild(el("span",{class:"pill",text:ifaceName(e)}));
+  var st=e.components&&e.components.Status&&e.components.Status.value;
+  if(st) kick.appendChild(el("span",{class:"pill q",text:st}));
+  (e.tags||[]).forEach(function(t){ kick.appendChild(el("button",{class:"tag",type:"button",
+    onclick:function(){UI.tag=t;UI.iface="";go({k:"list"});}},"#"+t)); });
+  head.appendChild(kick);
+  head.appendChild(el("h2",{text:nameOf(e)}));
+  var ik=e.components&&e.components.Identity&&e.components.Identity.key;
+  if(ik) head.appendChild(el("div",{class:"key",text:ik}));
+  v.appendChild(head);
+
+  var bar=el("div",{class:"rowbtns"});
+  if(me.write){
+    bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){editEntity(e);}},"Bearbeiten"));
+    bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addBlock(e);}},"+ Block"));
+    bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addRelation(e);}},"+ Bezug"));
+    bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addAdhoc(e);}},"+ Eigenes Feld"));
+    bar.appendChild(el("button",{class:"btn sm dngr gh",type:"button",onclick:function(){
+      if(confirm("„"+nameOf(e)+"“ löschen?")){drop(e.id);go({k:"list"});}}},"Löschen"));
+  }
+  v.appendChild(bar);
+
+  /* fields — generated from the component schemas (D0: forms from the registry) */
+  var flds=el("dl",{class:"fields"}), nf=0;
+  compsFor(ifn).forEach(function(cn){
+    if(cn==="Name"||cn==="Description"||cn==="Identity"||cn==="Vars")return;
+    var cd=REG.components[cn], val=(e.components||{})[cn]; if(!cd||!val)return;
+    var props=(cd.schema&&cd.schema.properties)||{};
+    Object.keys(props).forEach(function(p){
+      var x=val[p]; if(x===undefined||x===""||x===null)return;
+      if(typeof x==="object") x=Array.isArray(x)?x.join(", "):JSON.stringify(x);
+      flds.appendChild(el("div",{class:"fld"},[
+        el("dt",{text:props[p].title||p}), el("dd",{text:String(x)})])); nf++;
+    });
+  });
+  (e.adhoc||[]).forEach(function(f){
+    if(f.value===""||f.value==null)return;
+    flds.appendChild(el("div",{class:"fld adhoc"},[
+      el("dt",{text:f.label}),el("dd",{text:String(f.value)})])); nf++;
+  });
+  if(nf) v.appendChild(flds);
+
+  var desc=e.components&&e.components.Description&&e.components.Description.raw;
+  if(desc) v.appendChild(para(fillVars(desc,null,e)));
+
+  /* blocks */
+  var blocks=(e.blocks||[]).slice().sort(function(a,b){return (a.order||0)-(b.order||0);});
+  if(blocks.length){
+    var bw=el("div",{class:"blocks"});
+    blocks.forEach(function(b){
+      if(UI.facet==="short"&&b.blockType!=="paragraph"&&b.blockType!=="readaloud")return;
+      var box=el("div",{class:"blk "+b.blockType});
+      if(b.blockType!=="paragraph"){
+        var lab=el("div",{class:"bl"},[document.createTextNode(b.blockType)]);
+        if(me.write) lab.appendChild(el("button",{class:"btn gh sm",type:"button",
+          onclick:function(){ if(confirm("Block löschen?")){ e.blocks=e.blocks.filter(function(x){return x.id!==b.id;}); persist(e);} }},"×"));
+        box.appendChild(lab);
+      }
+      box.appendChild(para(fillVars(b.body,null,e)));
+      bw.appendChild(box);
+    });
+    if(bw.childNodes.length) v.appendChild(bw);
+  }
+
+  /* compounding — composedOf sections resolved from the pool */
+  var comp=(e.relations||[]).filter(function(r){ var rd=REG.relations[r.type]; return rd&&rd.section; });
+  if(comp.length){
+    var groups={};
+    comp.forEach(function(r){ var s=REG.relations[r.type].section; (groups[s]=groups[s]||[]).push(r); });
+    Object.keys(groups).forEach(function(sec){
+      v.appendChild(el("div",{class:"sec",text:sec}));
+      groups[sec].forEach(function(r){
+        var t=ENT.get(r.to);
+        var box=el("div",{class:"comp"});
+        if(!t){ box.appendChild(el("div",{class:"gone",text:"Fehlender Bezug ("+r.to+")"})); v.appendChild(box); return; }
+        var tn=el("div",{class:"cn"});
+        tn.appendChild(el("button",{class:"ref",type:"button",onclick:function(){go({k:"art",id:t.id});}},
+          (r.props&&r.props.vars&&r.props.vars.NAME)||nameOf(t)));
+        box.appendChild(tn);
+        var body=(t.components&&t.components.Description&&t.components.Description.raw)||
+                 ((t.blocks||[])[0]&&t.blocks[0].body)||"";
+        box.appendChild(para(fillVars(body,(r.props&&r.props.vars)||null,t),"cb"));
+        var vb=(r.props&&r.props.vars)||{}, ks=Object.keys(vb);
+        if(ks.length&&UI.facet==="full")
+          box.appendChild(el("span",{class:"bind",text:ks.map(function(k){return k+"="+vb[k];}).join("  ·  ")}));
+        v.appendChild(box);
+      });
+    });
+  }
+}
+
+/* ---------- aside: relations + backlinks ---------- */
+function renderAside(){
+  var a=document.getElementById("aside"); a.textContent="";
+  if(UI.route.k!=="art"){
+    a.appendChild(el("h3",{text:"Hinweis"}));
+    a.appendChild(el("p",{class:"hint",text:"Ein Artikel zeigt hier seine Bezüge und alles, was auf ihn zeigt. Bezüge werden nur in eine Richtung gespeichert; die Gegenrichtung ist eine Abfrage."}));
+    return;
+  }
+  var e=ENT.get(UI.route.id); if(!e)return;
+
+  var outs=(e.relations||[]).filter(function(r){ var rd=REG.relations[r.type]; return !(rd&&rd.section); });
+  a.appendChild(el("h3",{text:"Bezüge"}));
+  if(!outs.length) a.appendChild(el("p",{class:"hint",text:"Keine."}));
+  else{
+    var box=el("div",{class:"rel"});
+    outs.forEach(function(r){
+      var rd=relDef(r.type), t=ENT.get(r.to);
+      var row=el("div",{class:"relrow"});
+      row.appendChild(el("span",{class:"rl",text:rd.label||r.type}));
+      var rv=el("span",{class:"rv"});
+      if(t) rv.appendChild(el("button",{class:"ref",type:"button",onclick:function(){go({k:"art",id:t.id});}},nameOf(t)));
+      else rv.appendChild(el("span",{class:"gone",text:"fehlt"}));
+      if(r.props&&r.props.note) rv.appendChild(el("span",{class:"bind",text:r.props.note}));
+      if(me.write) rv.appendChild(el("button",{class:"btn gh sm",type:"button",onclick:function(){
+        e.relations=e.relations.filter(function(x){return x.id!==r.id;}); persist(e); }},"×"));
+      row.appendChild(rv); box.appendChild(row);
+    });
+    a.appendChild(box);
+  }
+
+  /* backlinks — the reverse is a query, with the inverse label (REQ-182) */
+  var backs=[];
+  ENT.forEach(function(o){ (o.relations||[]).forEach(function(r){
+    if(r.to===e.id) backs.push({from:o,rel:r}); }); });
+  a.appendChild(el("h3",{text:"Rückbezüge"}));
+  if(!backs.length) a.appendChild(el("p",{class:"hint",text:"Nichts zeigt hierher."}));
+  else{
+    var bx=el("div",{class:"rel"});
+    backs.forEach(function(b){
+      var rd=relDef(b.rel.type);
+      var row=el("div",{class:"relrow"});
+      row.appendChild(el("span",{class:"rl",text:rd.inverseLabel||("← "+rd.label)}));
+      var rv=el("span",{class:"rv"});
+      rv.appendChild(el("button",{class:"ref",type:"button",onclick:function(){go({k:"art",id:b.from.id});}},nameOf(b.from)));
+      if(b.rel.props&&b.rel.props.note) rv.appendChild(el("span",{class:"bind",text:b.rel.props.note}));
+      row.appendChild(rv); bx.appendChild(row);
+    });
+    a.appendChild(bx);
+  }
+}
+
+/* ---------- graph ---------- */
+function renderGraph(v){
+  v.appendChild(el("h2",{text:"Geflecht"}));
+  v.appendChild(el("p",{class:"hint",text:"Jede gespeicherte Kante, einmal — die Gegenrichtung ist überall daraus abgeleitet."}));
+  var rows=el("div",{class:"rows"});
+  var n=0;
+  byName().forEach(function(e){ (e.relations||[]).forEach(function(r){
+    var rd=relDef(r.type), t=ENT.get(r.to); n++;
+    var row=el("div",{class:"row"});
+    var line=el("div",{class:"rt"});
+    line.appendChild(el("button",{class:"ref",type:"button",onclick:function(){go({k:"art",id:e.id});}},nameOf(e)));
+    line.appendChild(el("span",{class:"pill",text:rd.label||r.type}));
+    if(t) line.appendChild(el("button",{class:"ref",type:"button",onclick:function(){go({k:"art",id:t.id});}},nameOf(t)));
+    else line.appendChild(el("span",{class:"gone",text:"fehlt"}));
+    row.appendChild(line);
+    var vb=(r.props&&r.props.vars)||{}, ks=Object.keys(vb);
+    if(ks.length) row.appendChild(el("span",{class:"bind",text:ks.map(function(k){return k+"="+vb[k];}).join("  ·  ")}));
+    rows.appendChild(row);
+  });});
+  if(!n) v.appendChild(el("div",{class:"empty",text:"Noch keine Bezüge."}));
+  else v.appendChild(rows);
+}
+
+/* ---------- registry ---------- */
+function renderRegistry(v){
+  v.appendChild(el("h2",{text:"Register"}));
+  v.appendChild(el("p",{class:"hint",text:"Das Register ist Daten, nicht Code. Eine neue Schnittstelle ist eine Zeile hier — Formulare und Ansichten entstehen daraus, ohne Codeänderung. Genau das ist hier die Probe."}));
+  var tabs=el("div",{class:"tabs",role:"tablist"});
+  [["interfaces","Schnittstellen"],["components","Komponenten"],["relations","Bezugsarten"],["vars","Variablen"]]
+  .forEach(function(t){
+    tabs.appendChild(el("button",{type:"button",role:"tab","aria-selected":String(UI.regtab===t[0]),
+      onclick:function(){UI.regtab=t[0];UI.err="";render();}},t[1]));
+  });
+  v.appendChild(tabs);
+
+  var ta=el("textarea",{class:"i code",spellcheck:"false",id:"regbox"});
+  ta.value=JSON.stringify(REG[UI.regtab],null,2);
+  v.appendChild(ta);
+  var msg=el("div",{class:"err"});
+  v.appendChild(msg);
+
+  var bar=el("div",{class:"rowbtns"});
+  if(me.write) bar.appendChild(el("button",{class:"btn pri",type:"button",onclick:function(){
+    try{ var parsed=JSON.parse(ta.value); }
+    catch(x){ msg.textContent="Kein gültiges JSON: "+x.message; return; }
+    REG[UI.regtab]=parsed; saveReg(UI.regtab); msg.textContent=""; render();
+  }},"Übernehmen"));
+  bar.appendChild(el("button",{class:"btn",type:"button",onclick:function(){
+    ta.value=JSON.stringify(REG[UI.regtab],null,2); msg.textContent="";}},"Zurücksetzen"));
+  v.appendChild(bar);
+}
+
+/* ============================================================
+   DIALOGS
+   ============================================================ */
+function dialog(title,build){
+  var box=el("div",{class:"dlgbox"});
+  box.appendChild(el("h3",{text:title}));
+  var host=el("div"); box.appendChild(host);
+  var back=el("div",{class:"dlg",onclick:function(ev){ if(ev.target===back) close(); }});
+  back.appendChild(box); document.body.appendChild(back);
+  function close(){ back.remove(); }
+  build(host,close,box);
+  var first=box.querySelector("input,select,textarea"); if(first)first.focus();
+  document.addEventListener("keydown",function k(ev){ if(ev.key==="Escape"){close();document.removeEventListener("keydown",k);} });
+  return close;
+}
+function field(label,node){ var l=el("label",{class:"f"}); l.appendChild(el("span",{text:label})); l.appendChild(node); return l; }
+function actions(host,close,onOk,okLabel){
+  var bar=el("div",{class:"rowbtns"});
+  bar.appendChild(el("button",{class:"btn pri",type:"button",onclick:function(){ if(onOk()!==false) close(); }},okLabel||"Speichern"));
+  bar.appendChild(el("button",{class:"btn",type:"button",onclick:close},"Abbrechen"));
+  host.appendChild(bar);
+}
+
+/* new entity */
+function newEntity(){
+  dialog("Neuer Artikel",function(host,close){
+    var sel=el("select",{class:"i"});
+    Object.keys(REG.interfaces).sort().forEach(function(n){
+      if(REG.interfaces[n].abstract)return;
+      sel.appendChild(el("option",{value:n},REG.interfaces[n].label||n)); });
+    if(UI.iface)sel.value=UI.iface;
+    var nm=el("input",{class:"i",type:"text",placeholder:"Name"});
+    host.appendChild(field("Schnittstelle",sel));
+    host.appendChild(field("Name",nm));
+    actions(host,close,function(){
+      var name=nm.value.trim(); if(!name){nm.focus();return false;}
+      var ifn=sel.value;
+      var e={ id:uid("e"), interfaces:[ifn], name:name, tags:[],
+        components:{ Name:{text:name}, Identity:{key:slug(ifn)+"/"+slug(name),aliases:[]}, Status:{value:"idea"} },
+        adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
+      reqFor(ifn).forEach(function(c){ if(!e.components[c]&&REG.components[c]) e.components[c]={}; });
+      persist(e); go({k:"art",id:e.id});
+    },"Anlegen");
+  });
+}
+
+/* edit entity: name, tags, and every component field from the schema */
+function editEntity(e){
+  dialog("Bearbeiten",function(host,close){
+    var ifn=(e.interfaces||[])[0]||"";
+    var nm=el("input",{class:"i",type:"text",value:nameOf(e)});
+    host.appendChild(field("Name",nm));
+    var tg=el("input",{class:"i",type:"text",value:(e.tags||[]).join(", "),placeholder:"komma, getrennt"});
+    host.appendChild(field("Marken",tg));
+
+    var inputs=[];
+    compsFor(ifn).forEach(function(cn){
+      var cd=REG.components[cn]; if(!cd)return;
+      var props=(cd.schema&&cd.schema.properties)||{};
+      Object.keys(props).forEach(function(p){
+        if(cn==="Name"&&p==="text")return;
+        var pd=props[p], cur=((e.components||{})[cn]||{})[p];
+        var node;
+        if(pd.enum){
+          node=el("select",{class:"i"});
+          node.appendChild(el("option",{value:""},"—"));
+          pd.enum.forEach(function(o){ node.appendChild(el("option",{value:o},o)); });
+          node.value=cur==null?"":String(cur);
+        } else if(pd.type==="number"||pd.type==="integer"){
+          node=el("input",{class:"i",type:"number",value:cur==null?"":String(cur)});
+        } else if(pd.format==="long"){
+          node=el("textarea",{class:"i"}); node.value=cur==null?"":String(cur);
+        } else if(pd.type==="array"){
+          node=el("input",{class:"i",type:"text",value:Array.isArray(cur)?cur.join(", "):""});
+        } else if(pd.type==="object"){
+          node=el("textarea",{class:"i code"}); node.value=JSON.stringify(cur||{},null,1);
+        } else {
+          node=el("input",{class:"i",type:"text",value:cur==null?"":String(cur)});
+        }
+        host.appendChild(field((cd.label||cn)+" · "+(pd.title||p),node));
+        inputs.push({cn:cn,p:p,pd:pd,node:node});
+      });
+    });
+
+    (e.adhoc||[]).forEach(function(f,i){
+      var node=el("input",{class:"i",type:"text",value:f.value==null?"":String(f.value)});
+      host.appendChild(field("Eigenes · "+f.label,node));
+      inputs.push({adhoc:i,node:node});
+    });
+
+    actions(host,close,function(){
+      e.name=nm.value.trim()||e.name;
+      e.tags=tg.value.split(",").map(function(s){return s.trim();}).filter(Boolean);
+      e.components=e.components||{};
+      e.components.Name={text:e.name};
+      inputs.forEach(function(it){
+        if(it.adhoc!==undefined){ e.adhoc[it.adhoc].value=it.node.value; return; }
+        var raw=it.node.value, val;
+        if(raw==="") val=undefined;
+        else if(it.pd.type==="number"||it.pd.type==="integer") val=Number(raw);
+        else if(it.pd.type==="array") val=raw.split(",").map(function(s){return s.trim();}).filter(Boolean);
+        else if(it.pd.type==="object"){ try{val=JSON.parse(raw);}catch(x){val=undefined;} }
+        else val=raw;
+        e.components[it.cn]=e.components[it.cn]||{};
+        if(val===undefined) delete e.components[it.cn][it.p]; else e.components[it.cn][it.p]=val;
+      });
+      persist(e);
+    });
+  });
+}
+
+function addBlock(e){
+  dialog("Block hinzufügen",function(host,close){
+    var ifn=(e.interfaces||[])[0]||"";
+    var sel=el("select",{class:"i"});
+    blockTypesFor(ifn).forEach(function(b){ sel.appendChild(el("option",{value:b},b)); });
+    var ta=el("textarea",{class:"i",placeholder:"Text. [[Artikelname]] verlinkt, {VAR} wird ersetzt."});
+    host.appendChild(field("Blockart",sel));
+    host.appendChild(field("Text",ta));
+    actions(host,close,function(){
+      if(!ta.value.trim())return false;
+      e.blocks=e.blocks||[];
+      e.blocks.push({id:uid("b"),blockType:sel.value,body:ta.value.trim(),order:e.blocks.length});
+      persist(e);
+    },"Hinzufügen");
+  });
+}
+
+function addRelation(e){
+  dialog("Bezug hinzufügen",function(host,close){
+    var ifn=(e.interfaces||[])[0]||"";
+    var defs=relsFrom(ifn);
+    if(!defs.length){ host.appendChild(el("p",{class:"hint",text:"Für diese Schnittstelle ist keine Bezugsart definiert. Lege eine im Register an."}));
+      actions(host,close,function(){},"Schliessen"); return; }
+    var rsel=el("select",{class:"i"});
+    defs.forEach(function(d){ rsel.appendChild(el("option",{value:d.type},(d.label||d.type))); });
+    var tsel=el("select",{class:"i"});
+    var note=el("input",{class:"i",type:"text",placeholder:"optional"});
+    var vars=el("textarea",{class:"i code",placeholder:'{"NAME":"Pseudopod","DMG":"2d6 + 3"}'});
+    vars.style.minHeight="72px";
+    var vlab=field("Variablenbindung (JSON)",vars);
+
+    function fillTargets(){
+      tsel.textContent="";
+      var d=relDef(rsel.value), to=d.to||["*"];
+      byName().forEach(function(c){
+        if(c.id===e.id)return;
+        if(to.indexOf("*")<0 && to.indexOf((c.interfaces||[])[0])<0)return;
+        tsel.appendChild(el("option",{value:c.id},nameOf(c)+" — "+ifaceName(c)));
+      });
+      if(!tsel.childNodes.length) tsel.appendChild(el("option",{value:""},"— kein passender Artikel —"));
+      vlab.style.display=relDef(rsel.value).section?"":"none";
+    }
+    rsel.addEventListener("change",fillTargets);
+    host.appendChild(field("Bezugsart",rsel));
+    host.appendChild(field("Ziel",tsel));
+    host.appendChild(vlab);
+    host.appendChild(field("Notiz",note));
+    fillTargets();
+
+    actions(host,close,function(){
+      if(!tsel.value)return false;
+      var props={}; if(note.value.trim())props.note=note.value.trim();
+      if(vars.value.trim()){ try{props.vars=JSON.parse(vars.value);}catch(x){ alert("Variablen: kein gültiges JSON"); return false; } }
+      e.relations=e.relations||[];
+      e.relations.push({id:uid("r"),type:rsel.value,to:tsel.value,props:props});
+      persist(e);
+    },"Verknüpfen");
+  });
+}
+
+/* ad-hoc field + promotion into the interface (REQ-181) */
+function addAdhoc(e){
+  dialog("Eigenes Feld",function(host,close){
+    var lb=el("input",{class:"i",type:"text",placeholder:"z. B. Lieblingsfluch"});
+    var vl=el("input",{class:"i",type:"text"});
+    var pr=el("input",{type:"checkbox",id:"promote"});
+    host.appendChild(field("Bezeichnung",lb));
+    host.appendChild(field("Wert",vl));
+    var pw=el("label",{class:"f"});
+    pw.appendChild(el("span",{text:"Ins Register übernehmen"}));
+    var line=el("div",{style:"display:flex;gap:8px;align-items:center"});
+    line.appendChild(pr);
+    line.appendChild(el("span",{class:"hint",style:"margin:0",text:"Feld wird Teil der Schnittstelle — für alle Artikel dieser Art."}));
+    pw.appendChild(line); host.appendChild(pw);
+    actions(host,close,function(){
+      var label=lb.value.trim(); if(!label)return false;
+      var key=slug(label).replace(/-/g,"_");
+      if(pr.checked){
+        var ifn=(e.interfaces||[])[0], cn=ifn+"Eigen";
+        REG.components[cn]=REG.components[cn]||{label:"Eigene Felder",engine:null,schema:{type:"object",properties:{}}};
+        REG.components[cn].schema.properties[key]={type:"string",title:label};
+        var d=REG.interfaces[ifn];
+        d.allows=d.allows||[]; if(d.allows.indexOf(cn)<0)d.allows.push(cn);
+        saveReg("components"); saveReg("interfaces");
+        e.components[cn]=e.components[cn]||{}; e.components[cn][key]=vl.value;
+      } else {
+        e.adhoc=e.adhoc||[];
+        e.adhoc.push({key:key,label:label,type:"text",value:vl.value});
+      }
+      persist(e);
+    },"Anlegen");
+  });
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+document.getElementById("new").addEventListener("click",function(){ if(me.write)newEntity(); });
+document.getElementById("q").addEventListener("input",function(ev){
+  UI.q=ev.target.value; if(UI.route.k!=="list")UI.route={k:"list"}; render(); });
+document.getElementById("fs").addEventListener("click",function(){ setFacet("short"); });
+document.getElementById("ff").addEventListener("click",function(){ setFacet("full"); });
+function setFacet(f){ UI.facet=f;
+  document.getElementById("fs").setAttribute("aria-pressed",String(f==="short"));
+  document.getElementById("ff").setAttribute("aria-pressed",String(f==="full"));
+  render(); }
+Array.prototype.forEach.call(document.querySelectorAll("#mob button"),function(b){
+  b.addEventListener("click",function(){ UI.pane=b.dataset.p; renderPanes(); }); });
+window.addEventListener("resize",renderPanes);
+
+render();
+
+(async function boot(){
+  try{
+    var user=await (window.claude&&claude.use?claude.use("user"):null);
+    if(user){ var w=await user.can("data.write"); if(w===false) me.write=false; }
+  }catch(x){}
+  try{
+    db=await (window.claude&&claude.use?claude.use("db"):null);
+  }catch(x){ db=null; }
+
+  if(!db){
+    ready=true;
+    UI.err="Kein Datenspeicher in dieser Ansicht — es wird nichts gespeichert.";
+    render(); return;
+  }
+
+  ["interfaces","components","relations","vars"].forEach(function(part){
+    db.doc("registry/"+part).onSnapshot(function(s){
+      REG[part]=(s.exists&&s.data())||REG[part]||{};
+      render();
+    },function(e){ UI.err="Register: "+e.code; render(); });
+  });
+
+  db.collection("entities").limit(1000).onSnapshot(function(snap){
+    ENT=new Map();
+    snap.docs.forEach(function(d){ var b=d.data()||{}; b.id=b.id||d.id; ENT.set(b.id,b); });
+    ready=true; render();
+  },function(e){ UI.err="Artikel: "+e.code; ready=true; render(); });
+})();
+
+})();
+</script>
