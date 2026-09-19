@@ -1,74 +1,78 @@
-# Kanalgang — Selbst-Hosting
+# Nebelwacht
 
-SL-Werkzeug für das Kanalnetz von Wasserfeste: Stadtkarte mit Hexraster,
-Kanal-Graph, Encounter-Engine, Monster-Statblocks (Import/Export im
-Obsidian-Statblock-Format) und persistentem Zustand.
+Kampagnenplattform für **„Aus Nebel wacht“** — Wasserfeste, Nebeldistrikt, Unterwacht.
 
-## Komponenten
+Ein Artikel ist die Grundform für alles in der Welt: Geschöpfe, Orte, Fraktionen,
+Regeln, Statblöcke, Wissensartikel. Er besteht aus **Komponenten** (typisierte
+Felder), **Blöcken** (Fliesstext mit eigener Sichtbarkeit) und **Verknüpfungen**
+(typisierte, gerichtete Kanten zu anderen Artikeln). Welche Artikelarten es gibt,
+welche Felder sie tragen und wie sie dargestellt werden, steht im **Register** —
+als Daten, nicht als Code. Eine neue Artikelart ist eine Zeile, keine Migration.
 
-| Komponente | Zweck |
+Die Architektur dahinter ist in [`Mrfudog/atlas-mentis`](https://github.com/Mrfudog/atlas-mentis)
+ausgearbeitet: `Backbone Concept.md`, `Schemas.md`, `Data Definitions.md` und die
+Anforderungen mit unveränderlichen REQ-Nummern. Dieses Repo setzt sie um.
+
+## Aufbau
+
+| Pfad | Was |
 | --- | --- |
-| **Vite + React** (nur Build-Zeit) | bündelt `src/` zu statischen Dateien in `dist/` |
-| **Node/Express** (`server.js`) | liefert `dist/` aus **und** stellt die Mini-API `/api/state` bereit |
-| **Volume `/data`** | `state.json` — der komplette Spielstand als Key-Value-Ablage |
-| **`src/storage.js`** | Polyfill für die claude.ai-Storage-API: spricht die Server-API, fällt auf localStorage zurück |
-| **Reverse Proxy + SSO** (bestehend) | Zugriffsschutz — die App selbst hat **kein** Auth |
+| `packages/model` | Das Rückgrat als TypeScript: Typen, Validierung, Rechenwerk, Ansichtsauflösung. Kein Framework. Wird von Front und Back geteilt. |
+| `packages/registry` | Die Startzeilen des Registers: Komponenten, Schnittstellen, Verknüpfungsarten, Darstellungsstufen. |
+| `apps/server` | Fastify + Postgres. Drei generische Tabellen plus Register (D0). |
+| `apps/web` | Angular. |
+| `legacy/` | Die alte React-App (Kanalgang). Eingefroren, weiter lauffähig, wird nicht mehr weiterentwickelt. |
+| `prototype/` | Die Artikel-Engine v0 als eigenständige HTML-Seite — zum Ausprobieren des Modells. |
+| `docs/` | Aus der alten App geerntete Anforderungen, für den Vault. |
 
-Ein einziger Container genügt; das Build läuft als Multi-Stage im Dockerfile.
-
-## Start
-
-```bash
-docker compose up -d --build
-# → http://<host>:8080
-```
-
-Der Stand liegt danach in `./daten/state.json` (Bind-Mount) — ins Backup aufnehmen.
-
-## Stand aus dem claude.ai-Artefakt übernehmen
-
-Im Artefakt: Tab **Daten → Export erzeugen → kopieren**.
-In der gehosteten Instanz: Tab **Daten → einfügen → Importieren**.
-Die eingebaute Migration ergänzt fehlende Felder automatisch.
-
-## Wichtig: Rechte & Spieler-Ansicht
-
-Die Spieler-Ansicht ist **nur ein UI-Schalter** — wer die URL erreicht, sieht mit
-einem Klick alles (Fraktionsgebiete, Verstecke, verdeckte Knoten). Also:
-
-- Instanz hinter den Reverse Proxy + SSO legen (nur SL-Zugriff), **oder**
-- den Spielern nie die URL geben, sondern die Spieler-Ansicht am Tisch zeigen
-  (Beamer/Tablet mit eigener, eingeloggter Sitzung).
-
-## Mehrgeräte-Betrieb
-
-Alle Geräte teilen denselben Server-Stand (`state.json`). Änderungen werden beim
-Speichern übertragen; ein zweites Gerät sieht sie nach einem **Reload**
-(kein Live-Sync — letzter Schreiber gewinnt). Für den Tisch reicht das:
-SL-Gerät bearbeitet, Anzeige-Gerät lädt vor dem Aufdecken neu.
-
-## Ausbaustufen (bei Bedarf)
-
-- Live-Sync über Server-Sent Events oder ein kurzes Polling in `storage.js`
-- Mehrere Kampagnen: `STORAGE_KEY` in `src/App.jsx` pro Instanz/Query-Parameter variieren
-- Basic-Auth direkt im Express, falls kein SSO davor hängt
-
-## Entwicklung ohne Docker
+## Entwickeln
 
 ```bash
-npm install
-npm run dev      # Vite-Devserver (Storage fällt auf localStorage zurück)
-npm run build && npm start   # Produktionslauf lokal
+pnpm install
+pnpm --filter @nw/model build      # die Apps übersetzen gegen die erzeugten Typen
+pnpm --filter @nw/registry build
+
+pnpm test                          # Vitest über model, registry und die API
+pnpm lint
+pnpm dev:web                       # Angular auf :4200
+pnpm dev:server                    # Fastify auf :8080
 ```
 
-## Auf GitHub veröffentlichen
+Node 22.12 oder neuer, pnpm 10.
+
+## Betrieb
+
+Ein Container, ein Postgres daneben:
 
 ```bash
-cd kanalgang-selfhost
-git init && git add . && git commit -m "Kanalgang: initial"
-git branch -M main
-git remote add origin git@github.com:<dein-user>/kanalgang.git
-git push -u origin main
+cp .env.example .env               # Passwort setzen
+docker compose up -d --build       # → 127.0.0.1:8080
 ```
 
-`daten/` (Spielstand) und `node_modules/` bleiben via `.gitignore` draussen. Für einen automatischen Container-Build kann später eine GitHub Action `docker build` ausführen und ins GitHub Container Registry pushen.
+Der Server bindet bewusst auf **loopback**. Davor gehört der Reverse Proxy mit
+SSO — die Anwendung selbst hat noch keine Authentifizierung, und ohne Proxy wäre
+sie offen. Migrationen laufen beim Start, vorwärts und je einmal.
+
+Die Testinstanz liegt daneben, mit eigener Datenbank und eigenem Port:
+
+```bash
+docker compose -f docker-compose.preprod.yml up -d --build   # → 127.0.0.1:8081
+```
+
+## Zweige
+
+| Zweig | Rolle |
+| --- | --- |
+| `main` | Woran der Tisch spielt. Wird nur aus einem grünen `preprod` vorgespult. |
+| `preprod` | Integration und Test, eigene Instanz, eigene Datenbank. |
+| `feature/*` | Ein Anliegen je Zweig → Pull Request nach `preprod`. |
+
+Siehe [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Stand
+
+Das Rückgrat steht und ist geprüft: Modell, Register, Validierung, Rechenwerk,
+Ansichtsauflösung, die HTTP-Oberfläche und das Datenbankschema. Die Angular-App
+ist bisher ein Gerüst — das Kompendium darüber ist der nächste Schritt.
+
+Karte, Initiative und Begegnungen laufen bis auf Weiteres in `legacy/`.

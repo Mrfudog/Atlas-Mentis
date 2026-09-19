@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, harvest, kanalgang]
 status: draft
-version: 0.1
+version: 0.2
 updated: 2026-09-19
 related: "[[Requirements]], [[Requirements by Area]], [[Scope v1]], [[Decision Log]]"
 ---
@@ -14,7 +14,7 @@ IDs continue the immutable numbering from REQ-167 ("add with the next free ID, n
 
 Scales follow [[Requirements]]: **Prio** 1 backbone-critical · 2 first table use · 3 full v1.0 · 4 expansion · 5 idea parking. **Effort** Fibonacci, 1 point ≈ one evening.
 
-**Totals if fully adopted: 28 requirements · 66 points.** Priority 1–2 subset: 7 requirements · 18 points.
+**Totals if fully adopted: 31 requirements · 84 points.** Priority 1–2 subset: 7 requirements · 18 points. (28 geerntet, 3 im Gespräch entstanden.)
 
 ## Reuse and composition
 
@@ -83,6 +83,24 @@ No requirement in [[Requirements]] covers a point-crawl. The Maps area (REQ-130�
 | REQ-185 | Non-coin economies: barter and alternative currency ladders per region | 5 | 2 | World & Lore | play | enables | — | idea | Unterwacht trades salt → hardtack → salted meat rather than coin |
 | REQ-195 | Statblock export back to Obsidian markdown, preserving `{VAR}` placeholders unresolved | 4 | 2 | Rules & Reference, Media & Assets | prep | efficiency | REQ-174, REQ-029 | idea | Optional — sits against the decision that Obsidian is import-only. Listed because the old app's export resolves variables into literals, and that loss is permanent |
 
+## Nicht geerntet — im Gespräch entstanden
+
+Nicht aus der alten App, sondern neu. Hier festgehalten, damit die Nummern
+weiterlaufen und nichts doppelt vergeben wird.
+
+| ID | Requirement | Prio | Eff | Areas | Phase | Value | Prep | Depends on | Status | Notes |
+|---|---|---|---|---|---|---|---|---|---|---|
+| REQ-196 | Sitzungsmitschnitt: Audio einer Sitzung aufnehmen oder eine fertige Aufnahme anhängen, als Asset am Sitzungs-Container, mit Startzeit und Kapitelmarken | 4 | 5 | Campaign & Sessions, Media & Assets | play | efficiency | none | REQ-021, REQ-077, REQ-145 | idea | Aufnahme im Browser oder Upload aus einem Recorder. Grosse Dateien gehören auf den NAS-Backend (REQ-146), nicht in die App-Ablage |
+| REQ-197 | Transkription und Recap-Entwurf: Mitschnitt transkribieren, am Sitzungsverlauf ausrichten und daraus einen Recap-Entwurf erzeugen, den die SL bearbeitet | 4 | 8 | Campaign & Sessions | prep | efficiency | none | REQ-196, REQ-077 | idea | Der Entwurf ist nie das Ergebnis — die SL kürzt und färbt. Passagen sollen sich als ContentBlock herauslösen lassen (readaloud für Vorlesetext, fact für Festgestelltes), damit der Recap gleich Wissen freigeben kann (REQ-080) |
+| REQ-198 | Sprecherzuordnung im Transkript: Abschnitte einer Figur oder der SL zuordnen, damit „was hat meine Figur mitbekommen“ beantwortbar wird | 5 | 5 | Campaign & Sessions | prep | efficiency | low | REQ-197, REQ-040 | idea | Erst sinnvoll, wenn die Wissensfreigabe steht — dann aber die eigentliche Auszahlung: der Recap weiss, wer dabei war |
+
+Offene Fragen dazu, bevor das geplant werden kann: wo transkribiert wird (lokal
+auf dem NAS gegen ein Modell, oder ausser Haus — bei einer Aufnahme, auf der
+fünf Leute zu hören sind, ist das keine reine Technikfrage), wie lange
+Mitschnitte aufbewahrt werden, und ob die Gruppe dem überhaupt zustimmt.
+Aufnahme ohne Einverständnis aller am Tisch wäre in der Schweiz nicht bloss
+unhöflich.
+
 ## Evidence for requirements that already exist
 
 The old app does not add these; it argues for their depth.
@@ -107,4 +125,5 @@ Unrelated to the harvest, but worth fixing regardless — each is a contradictio
 
 ## Changelog
 
+- **0.2** (2026-09-19): REQ-196–198 ergänzt (Sitzungsmitschnitt, Transkription, Sprecherzuordnung) — nicht geerntet, im Gespräch entstanden.
 - **0.1** (2026-09-19): Initial harvest from the Kanalgang session tracker. 28 requirements (REQ-168…195, 66 points), evidence notes for five existing requirements, seven schema gaps.
