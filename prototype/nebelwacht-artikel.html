@@ -197,7 +197,7 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
     <div class="sub">Artikelwerk</div>
     <div class="grow"></div>
     <input id="q" class="search" type="search" placeholder="Suchen…" aria-label="Artikel suchen">
-    <select id="view" class="vw" aria-label="Darstellungsstufe"></select>
+    <select id="facet" class="vw" aria-label="Darstellungsstufe"></select>
     <button id="new" class="btn pri" type="button">+ Neu</button>
   </header>
 
@@ -432,7 +432,9 @@ function inline(text,into){
     } else if(m[3]!==undefined){
       into.appendChild(el("span",{class:"vr"},m[3]));
     } else {
-      into.appendChild(el("strong",null,m[4]));
+      // Auszeichnung schachtelt: **{NAME}.** ist eine fette *Variable*.
+      // Ohne Rekursion landet der Platzhalter als Rohtext im <strong>.
+      into.appendChild(inline(m[4],el("strong")));
     }
     last=re.lastIndex;
   }
@@ -713,7 +715,10 @@ function renderArticle(v,id){
         box.appendChild(tn);
         var body=(t.components&&t.components.Description&&t.components.Description.raw)||
                  ((t.blocks||[])[0]&&t.blocks[0].body)||"";
-        box.appendChild(para(fillVars(body,(r.props&&r.props.vars)||null,t),"cb"));
+        // Reihenfolge nach REQ-174: Bindung an der Kante → der *nutzende*
+        // Artikel → Kampagnenregister. Der Statblock trägt DC=12, nicht die
+        // Regel — gegen die Regel aufzulösen lässt {DC} stehen.
+        box.appendChild(para(fillVars(body,(r.props&&r.props.vars)||null,e),"cb"));
         var vb=(r.props&&r.props.vars)||{}, ks=Object.keys(vb);
         if(ks.length&&vw.bindungen)
           box.appendChild(el("span",{class:"bind",text:ks.map(function(k){return k+"="+vb[k];}).join("  ·  ")}));
@@ -1076,7 +1081,7 @@ function addAdhoc(e){
 document.getElementById("new").addEventListener("click",function(){ if(me.write)newEntity(); });
 document.getElementById("q").addEventListener("input",function(ev){
   UI.q=ev.target.value; if(UI.route.k!=="list")UI.route={k:"list"}; render(); });
-var viewSel=document.getElementById("view");
+var viewSel=document.getElementById("facet");
 viewSel.addEventListener("change",function(){ UI.view=viewSel.value; render(); });
 function renderViewSelect(){
   var vs=Object.keys(REG.views).length?REG.views:VIEWS_FALLBACK, keys=viewKeys();
