@@ -1878,6 +1878,60 @@ async function seite(datei, warten) {
   pruefe('the selector at the top right picks which view the template shows',
     engere.length > 0 && !engere.includes('sheet'), engere);
   pruefe('the template raised no exception', errs.length === 0, errs);
+
+  /* ---- Mehrfachvererbung ----
+     `extends` ist ein Array, und war es immer. Der Code las überall `[0]`:
+     die **Felder** erbten über alle Obertypen (`compsFor` läuft `forEach`),
+     Kanten, Bereich und Anordnung nur über den ersten. Zwei Antworten auf
+     dieselbe Frage, und die eine war still falsch — man hätte es erst
+     gemerkt, wenn eine Art von zweien erbt. Die Prüfung legt genau so eine
+     an. */
+  const zweiEltern = await p.evaluate(async () => {
+    const T = window.__T__;
+    /* Ein Obertyp im Bereich `game` mit einer eigenen Komponente und einer
+       eigenen Blockart — damit sich alle drei Vererbungswege prüfen lassen. */
+    T.REG.components.ProbeInfo = {
+      name: 'ProbeInfo', label: 'Probe', engine: null,
+      schema: { type: 'object', properties: { probefeld: { type: 'string', title: 'Probe' } } },
+    };
+    T.REG.interfaces.ProbeOben = {
+      name: 'ProbeOben', label: 'Probe oben', area: 'game', abstract: true,
+      extends: ['Base'], allows: ['ProbeInfo'], blockTypes: ['+probeblock'],
+    };
+    /* Erbt von **zwei** Ästen: Item (Bereich world) und ProbeOben (game). */
+    T.REG.interfaces.ProbeZwei = {
+      name: 'ProbeZwei', label: 'Probe zwei', extends: ['Item', 'ProbeOben'],
+    };
+    const antwort = {
+      /* Felder: liefen schon über alle. */
+      felder: T.compsFor('ProbeZwei'),
+      /* Bereich: der erste Ast gewinnt — Item steht vorn, also `world`. */
+      bereich: T.areaOf('ProbeZwei'),
+      /* Blockarten: die des zweiten Astes müssen dabei sein. */
+      bloecke: T.blockTypesFor('ProbeZwei'),
+      /* Kanten: eine Kante, die an `Item` hängt, und eine an `Base`. */
+      kanten: T.relsFrom('ProbeZwei').map((r) => r.type),
+      /* Und woher ein Feld kommt, muss über beide Äste gefunden werden. */
+      herkunft: T.compOrigin('ProbeZwei', 'ProbeInfo'),
+    };
+    delete T.REG.interfaces.ProbeZwei;
+    delete T.REG.interfaces.ProbeOben;
+    delete T.REG.components.ProbeInfo;
+    return antwort;
+  });
+  pruefe('a kind may inherit from two branches, and gets both their fields',
+    zweiEltern.felder.includes('ProbeInfo') && zweiEltern.felder.includes('ItemInfo'),
+    zweiEltern.felder);
+  pruefe('block kinds come from every branch, not just the first',
+    zweiEltern.bloecke.includes('probeblock') && zweiEltern.bloecke.includes('lore'),
+    zweiEltern.bloecke);
+  /* Der Bereich kann nur einer sein: der erste genannte Ast gewinnt. Eine
+     Reihenfolge, nach der man eine Aufzählung liest. */
+  pruefe('the area comes from the branch named first',
+    zweiEltern.bereich === 'world', zweiEltern.bereich);
+  pruefe('and where a component comes from is found across branches',
+    zweiEltern.herkunft && zweiEltern.herkunft.iface === 'ProbeOben', zweiEltern.herkunft);
+  pruefe('multiple inheritance raised no exception', errs.length === 0, errs);
   pruefe('the type overview raised no exception', errs.length === 0, errs);
 
   /* ---- Blockanker und Kampagnenwerte (B3) ----

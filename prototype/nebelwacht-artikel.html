@@ -1415,7 +1415,36 @@ function blockTypesFor(name){
 /* Subtypen sind keine eigene Sorte Zeile: eine Schnittstelle, die eine andere
    erweitert, ist deren Subtyp. Material erweitert Gegenstand, mehr steht da
    nicht. Damit bleibt „Subtyp anlegen" eine eingefügte Zeile. */
-function parentOf(n){ var p=((REG.interfaces[n]||{}).extends||[])[0]; return REG.interfaces[p]?p:""; }
+/* `extends` ist ein **Array**: eine Art darf von mehreren erben. Das stand
+   immer schon im Schema, und der Code las überall nur `[0]` — für die
+   Felder lief die Vererbung über alle (`compsFor` geht `forEach`), für
+   Kanten, Bereich und Anordnung nur über den ersten. Zwei Antworten auf
+   dieselbe Frage, und die eine war still falsch.
+
+   Getrennt wird jetzt sauber: **`parentOf` ist fürs Zeichnen** — ein Baum
+   hat einen Ast je Knoten, und das ist der erste Obertyp. **`ancestorsOf`
+   ist für die Bedeutung** und läuft alle ab. */
+function parentsOf(n){
+  return ((REG.interfaces[n]||{}).extends||[]).filter(function(p){ return REG.interfaces[p]; });
+}
+function parentOf(n){ return parentsOf(n)[0]||""; }
+/* Breitenweise, der erste Obertyp zuerst: die Reihenfolge entscheidet,
+   welche Antwort gewinnt, wenn zwei Äste etwas sagen. Der näher stehende
+   und weiter vorn genannte gewinnt — dieselbe Regel, nach der man eine
+   Aufzählung liest. */
+function ancestorsOf(n){
+  var out=[], seen={}, q=parentsOf(n).slice(), g=0;
+  while(q.length&&g++<256){
+    var a=q.shift();
+    if(!a||seen[a])continue;
+    seen[a]=1; out.push(a);
+    parentsOf(a).forEach(function(x){ q.push(x); });
+  }
+  return out;
+}
+/* Die Art selbst und alles darüber — die Kette, in der eine Frage nach
+   oben gestellt wird. */
+function selfAndAncestors(n){ return [n].concat(ancestorsOf(n)); }
 function kindsOf(n){
   return Object.keys(REG.interfaces).filter(function(k){ return parentOf(k)===n; })
     .sort(function(a,b){return a.localeCompare(b,"de");});
@@ -1436,11 +1465,10 @@ function ifaceRoots(){
    Welt gehören. */
 var AREAS=[["story","Story"],["world","World"],["game","Game"],["play","Play"]];
 function areaOf(n){
-  var at=n, guard=0;
-  while(at&&guard++<64){
-    var a=(REG.interfaces[at]||{}).area;
+  var kette=selfAndAncestors(n);
+  for(var i=0;i<kette.length;i++){
+    var a=(REG.interfaces[kette[i]]||{}).area;
     if(a)return a;
-    at=parentOf(at);
   }
   return "";
 }
@@ -1450,8 +1478,8 @@ function areaOf(n){
 function areaRoots(area){
   return Object.keys(REG.interfaces).filter(function(n){
     if(areaOf(n)!==area)return false;
-    var p=parentOf(n);
-    return !p||areaOf(p)!==area;
+    var ps=parentsOf(n);
+    return !ps.length||ps.every(function(p){ return areaOf(p)!==area; });
   }).sort(function(a,b){
     var da=REG.interfaces[a], db=REG.interfaces[b];
     return String(da.label||a).localeCompare(String(db.label||b),"de");
@@ -1461,18 +1489,16 @@ function areaRoots(area){
    compsFor() kein Ende. `seen` in compsFor fängt das ab, aber ein Register,
    das sich im Kreis dreht, ist trotzdem broken. Hier wird es verhindert. */
 function wouldCycle(n,parent){
-  var at=parent, guard=0;
-  while(at && guard++<64){ if(at===n) return true; at=parentOf(at); }
-  return false;
+  if(parent===n)return true;
+  return ancestorsOf(parent).indexOf(n)>=0;
 }
 /* Woher eine Komponente an dieser Schnittstelle kommt, und wie sie dort steht. */
 function compOrigin(ifn,comp){
-  var at=ifn, guard=0;
-  while(at && guard++<64){
-    var d=REG.interfaces[at]||{};
-    if((d.requires||[]).indexOf(comp)>=0) return {iface:at,mode:"requires"};
-    if((d.allows||[]).indexOf(comp)>=0)   return {iface:at,mode:"allows"};
-    at=parentOf(at);
+  var kette=selfAndAncestors(ifn);
+  for(var i=0;i<kette.length;i++){
+    var d=REG.interfaces[kette[i]]||{};
+    if((d.requires||[]).indexOf(comp)>=0) return {iface:kette[i],mode:"requires"};
+    if((d.allows||[]).indexOf(comp)>=0)   return {iface:kette[i],mode:"allows"};
   }
   return null;
 }
@@ -1501,9 +1527,7 @@ function techName(label,taken){
    alles, was Geschöpf ist. */
 function ifaceInList(list,ifn){
   if(!list||!list.length||list.indexOf("*")>=0)return true;
-  var at=ifn, guard=0;
-  while(at&&guard++<64){ if(list.indexOf(at)>=0)return true; at=parentOf(at); }
-  return false;
+  return selfAndAncestors(ifn).some(function(a){ return list.indexOf(a)>=0; });
 }
 function relsFrom(ifn){
   var out=[];
@@ -1692,8 +1716,7 @@ function renderRail(){
   /* Dieselbe Regel wie der Filter: ein Obertyp zählt seine Subtypen mit. */
   var zaehle=function(e){
     var n=(e.interfaces||[])[0]; if(!n)return;
-    var at=n, guard=0;
-    while(at&&guard++<64){ counts[at]=(counts[at]||0)+1; at=parentOf(at); }
+    selfAndAncestors(n).forEach(function(a){ counts[a]=(counts[a]||0)+1; });
   };
   ENT.forEach(function(e){
     zaehle(e);
@@ -2568,10 +2591,9 @@ var LAYOUT_ELEMENTS=[
 ];
 function layoutOf(vw,ifn){
   var by=vw.byInterface||{};
-  var at=ifn, guard=0;
-  while(at&&guard++<64){
-    if(Array.isArray(by[at])&&by[at].length) return by[at];
-    at=parentOf(at);
+  var kette=selfAndAncestors(ifn);
+  for(var i=0;i<kette.length;i++){
+    if(Array.isArray(by[kette[i]])&&by[kette[i]].length) return by[kette[i]];
   }
   if(Array.isArray(vw.layout)) return vw.layout;
   return legacyLayout(vw);
@@ -5104,8 +5126,9 @@ function placementView(board,rel,target){
   var pr=rel.props||{};
   if(pr.view&&REG.views[pr.view])return pr.view;
   var regeln=boardCard(board).rules||{};
-  var at=(target.interfaces||[])[0], guard=0;
-  while(at&&guard++<64){ if(regeln[at]&&REG.views[regeln[at]])return regeln[at]; at=parentOf(at); }
+  var kette=selfAndAncestors((target.interfaces||[])[0]);
+  for(var i=0;i<kette.length;i++)
+    if(regeln[kette[i]]&&REG.views[regeln[kette[i]]]) return regeln[kette[i]];
   return viewKeys()[0];
 }
 /* Eine Platzierung zeichnen: dieselben Elemente wie die Artikelseite.
@@ -8780,10 +8803,10 @@ function gmBlockTypes(){
    `REG.types`, das es nicht gibt, und die Arbeit wäre still weg. */
 function regPart(){ return UI.regtab==="types"?"interfaces":UI.regtab; }
 function layoutSource(vw,ifn){
-  var by=vw.byInterface||{}, at=ifn, guard=0;
-  while(at&&guard++<64){
-    if(Array.isArray(by[at])&&by[at].length) return {wo:"iface",iface:at,layout:by[at]};
-    at=parentOf(at);
+  var by=vw.byInterface||{}, kette=selfAndAncestors(ifn);
+  for(var i=0;i<kette.length;i++){
+    if(Array.isArray(by[kette[i]])&&by[kette[i]].length)
+      return {wo:"iface",iface:kette[i],layout:by[kette[i]]};
   }
   if(Array.isArray(vw.layout)) return {wo:"view",layout:vw.layout};
   return {wo:"legacy",layout:legacyLayout(vw)};
@@ -9009,9 +9032,7 @@ function renderTypes(v){
   if(areaOf(wahl)) marken.appendChild(el("span",{class:"pill",text:areaOf(wahl)}));
   if(d.abstract) marken.appendChild(el("span",{class:"pill q",
     title:"No article carries this one directly — it is an umbrella",text:"abstract"}));
-  var erbe=[], at=parentOf(wahl), guard=0;
-  while(at&&guard++<64){ erbe.push(at); at=parentOf(at); }
-  erbe.forEach(function(p){
+  ancestorsOf(wahl).forEach(function(p){
     marken.appendChild(el("button",{class:"chip",type:"button",
       onclick:function(){ UI.typePick=p; render(); }},"↑ "+(REG.interfaces[p].label||p)));
   });
@@ -9093,9 +9114,7 @@ function renderTypes(v){
   /* Wie sie gezeichnet wird — und aus welcher Zeile das kommt. */
   var vw=REG.views&&REG.views.full;
   if(vw){
-    var von=wahl, gefunden="";
-    var by=vw.byInterface||{}, g2=0;
-    while(von&&g2++<64){ if(Array.isArray(by[von])&&by[von].length){ gefunden=von; break; } von=parentOf(von); }
+    var gefunden=layoutSource(vw,wahl).iface||"";
     doc.appendChild(el("div",{class:"sec",
       text:"Drawn as"+(gefunden?" — from "+(REG.interfaces[gefunden].label||gefunden):" — the default")}));
     var ul2=el("ul",{class:"tlayout"});
@@ -9742,10 +9761,9 @@ function viewBody(key){
   var eigen=ifn?((vd.byInterface||{})[ifn]||[]):(vd.layout||null);
   var geerbtVon="";
   if(ifn&&!eigen.length){
-    var at=parentOf(ifn), guard=0;
-    while(at&&guard++<64){
-      if(((vd.byInterface||{})[at]||[]).length){ geerbtVon=at; break; }
-      at=parentOf(at);
+    var kette=ancestorsOf(ifn);
+    for(var ai=0;ai<kette.length;ai++){
+      if(((vd.byInterface||{})[kette[ai]]||[]).length){ geerbtVon=kette[ai]; break; }
     }
   }
 
@@ -9976,9 +9994,43 @@ function regIfaceBody(ifn){
     parentSel.appendChild(el("option",{value:n},REG.interfaces[n].label||n)); });
   parentSel.value=parentOf(ifn);
   parentSel.addEventListener("change",function(){
-    if(parentSel.value) d.extends=[parentSel.value]; else delete d.extends;
+    /* Nur den **ersten** Obertyp ändern. `d.extends=[wert]` hätte einen
+       zweiten still weggeworfen — und niemand hätte es gemerkt, weil die
+       Felder danach einfach fehlen. */
+    var rest=parentsOf(ifn).slice(1);
+    if(parentSel.value) d.extends=[parentSel.value].concat(rest);
+    else if(rest.length) d.extends=rest;
+    else delete d.extends;
     save(); });
   head.appendChild(field("Extends",parentSel));
+
+  /* Weitere Obertypen. `extends` ist ein Array — eine Art darf von
+     mehreren erben, und dann gilt, was beide mitbringen. Sie stehen
+     daneben, weil ein Wähler mit einem Wert sie sonst verschwiegen und der
+     nächste Klick sie gelöscht hätte. */
+  var weitere=el("div",{class:"chips"});
+  parentsOf(ifn).slice(1).forEach(function(p2){
+    var c=el("span",{class:"chip"});
+    c.appendChild(el("span",{text:REG.interfaces[p2].label||p2}));
+    if(w) c.appendChild(el("button",{type:"button",title:"remove",onclick:function(){
+      d.extends=parentsOf(ifn).filter(function(x){ return x!==p2; });
+      if(!d.extends.length) delete d.extends;
+      save(); }},"\u00d7"));
+    weitere.appendChild(c);
+  });
+  if(w){
+    var mehr=el("select",{class:"i",style:"width:auto"});
+    mehr.appendChild(el("option",{value:""},"+ also inherits\u2026"));
+    Object.keys(REG.interfaces).sort().forEach(function(n2){
+      if(n2===ifn||wouldCycle(ifn,n2)||parentsOf(ifn).indexOf(n2)>=0)return;
+      mehr.appendChild(el("option",{value:n2},REG.interfaces[n2].label||n2)); });
+    mehr.addEventListener("change",function(){
+      if(!mehr.value)return;
+      d.extends=parentsOf(ifn).concat([mehr.value]);
+      save(); });
+    weitere.appendChild(mehr);
+  }
+  if(parentsOf(ifn).length>1||w) head.appendChild(field("Also inherits",weitere));
 
   var ab=el("select",{class:"i"}); if(!w) ab.disabled=true;
   ab.appendChild(el("option",{value:""},"instantiable"));
@@ -10027,7 +10079,10 @@ function regIfaceBody(ifn){
     text:"Text blocks an article of this kind may carry. Inherited ones are added, not replaced."}));
   var bare=function(b){ return b.charAt(0)==="+"?b.slice(1):b; };
   var own=(d.blockTypes||[]).map(bare);
-  var inherited=parentOf(ifn)?blockTypesFor(parentOf(ifn)):[];
+  var inherited=[];
+  parentsOf(ifn).forEach(function(p){
+    blockTypesFor(p).forEach(function(b){ if(inherited.indexOf(b)<0) inherited.push(b); });
+  });
   var chips=el("div",{class:"chips"});
   inherited.forEach(function(b){ if(own.indexOf(b)<0)
     chips.appendChild(el("span",{class:"chip inh",text:b})); });
@@ -10049,7 +10104,7 @@ function regIfaceBody(ifn){
       var b=bi.value.trim().replace(/^\+/,"").replace(/[^A-Za-z0-9_-]/g,"");
       if(!b) return;
       d.blockTypes=d.blockTypes||[];
-      if(d.blockTypes.map(bare).indexOf(b)<0) d.blockTypes.push(parentOf(ifn)?"+"+b:b);
+      if(d.blockTypes.map(bare).indexOf(b)<0) d.blockTypes.push(parentsOf(ifn).length?"+"+b:b);
       save(); }},"Add block type"));
     box.appendChild(bbar);
   }
@@ -10100,7 +10155,8 @@ function regIfaceBody(ifn){
        Auswahl, die nichts bewirkt, wäre eine Lüge im Formular. */
     var local=(d.requires||[]).indexOf(cn)>=0?"requires"
              :((d.allows||[]).indexOf(cn)>=0?"allows":"");
-    var above=parentOf(ifn)?compOrigin(parentOf(ifn),cn):null;
+    var above=null;
+    parentsOf(ifn).some(function(p){ above=compOrigin(p,cn); return !!above; });
     var aboveName=above?((REG.interfaces[above.iface]||{}).label||above.iface):"";
 
     var row=el("div",{class:"crow"});

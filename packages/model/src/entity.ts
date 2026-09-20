@@ -86,12 +86,19 @@ function interfaceInList(
   interfaceName: string,
 ): boolean {
   if (!list || list.length === 0 || list.includes('*')) return true;
+  /* **Alle** Obertypen, nicht nur der erste. `extends` ist ein Array, und
+     eine Art, die von zweien erbt, erbt von beiden — dass der Code bisher
+     nur `[0]` las, hiess: die zweite Herkunft galt für die Felder (dort
+     wird schon `flatMap` gelaufen), aber nicht für die Kanten. Zwei
+     Antworten auf dieselbe Frage, und die eine war still falsch. */
   const seen = new Set<string>();
-  let at: string | undefined = interfaceName;
-  while (at && !seen.has(at)) {
+  const offen: string[] = [interfaceName];
+  while (offen.length) {
+    const at = offen.pop() as string;
+    if (seen.has(at)) continue;
     if (list.includes(at)) return true;
     seen.add(at);
-    at = registry.interfaces[at]?.extends?.[0];
+    for (const p of registry.interfaces[at]?.extends ?? []) offen.push(p);
   }
   return false;
 }
