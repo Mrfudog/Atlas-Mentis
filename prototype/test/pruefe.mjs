@@ -197,6 +197,32 @@ async function seite(datei, warten) {
   const farbe = await p.evaluate(() => document.querySelector('.fld .swatch')?.getAttribute('style') ?? null);
   pruefe('a colour field renders as a swatch', /#8b5cf6/.test(farbe ?? ''), farbe);
 
+  /* ---- Das Bild wird gezeichnet ----
+     Das Element las `Image.ref`, das Register erklärt `Image.image`. Solange
+     beides auseinanderlief, zeichnete es nie etwas — und weil ein Artikel
+     ohne Bild genauso aussieht wie einer, dessen Bild nicht ankommt, fiel
+     es niemandem auf. Deshalb steht die Prüfung hier. */
+  const bild = await p.evaluate(() => {
+    const T = window.__T__;
+    /* Ein Asset, das es gibt, und irgendein Artikel, der keins hat. */
+    let asset = null;
+    T.ENT.forEach((x) => { if (!asset && (x.interfaces || [])[0] === 'Asset') asset = x; });
+    let ziel = null;
+    T.ENT.forEach((x) => {
+      if (!ziel && (x.interfaces || [])[0] === 'Place') ziel = x;
+    });
+    if (!asset || !ziel) return { fehlt: true };
+    ziel.components.Image = { image: asset.id, caption: 'Vom Lampenplatz aus' };
+    T.go({ k: 'art', id: ziel.id });
+    return new Promise((r) => setTimeout(() => r({
+      quelle: document.querySelector('#view .pic img')?.getAttribute('src') ?? null,
+      unterschrift: document.querySelector('#view .pic figcaption')?.textContent ?? null,
+    }), 400));
+  });
+  await p.waitForTimeout(300);
+  pruefe('an image field actually draws its picture',
+    !bild.fehlt && !!bild.quelle && bild.unterschrift === 'Vom Lampenplatz aus', bild);
+
   /* Umbenennen muss Schema, Ansichten UND die Werte in den Artikeln treffen —
      wer nur das Schema ändert, lässt die Werte still hinter dem alten Namen. */
   await zumFeld('StatblockInfo', 'hp');
@@ -1845,10 +1871,14 @@ async function seite(datei, warten) {
     const ebenen = await p.evaluate((id) => {
       const e = window.__T__.ENT.get(id);
       const c = e.components.Map;
+      /* Das Bild der Karte steht an `Image.image` und nicht an `Map`: eine
+         Karte hat ein Bild wie jeder andere Artikel, und genau dieses ist
+         ihr Hintergrund. */
+      const bild = window.__T__.mapImage(e);
       c.sheets = [
-        { id: 's1', name: 'Terrain', image: c.image, opacity: 0.5, visible: true },
-        { id: 's2', name: 'Secrets', image: c.image, opacity: 1, visible: true, gmOnly: true },
-        { id: 's3', name: 'Off', image: c.image, opacity: 1, visible: false },
+        { id: 's1', name: 'Terrain', image: bild, opacity: 0.5, visible: true },
+        { id: 's2', name: 'Secrets', image: bild, opacity: 1, visible: true, gmOnly: true },
+        { id: 's3', name: 'Off', image: bild, opacity: 1, visible: false },
       ];
       window.__T__.render();
       return {

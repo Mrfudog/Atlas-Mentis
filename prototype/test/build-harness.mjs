@@ -108,7 +108,7 @@ window.__T__={runImport:runImport,derivedValue:derivedValue,assetSrc:assetSrc,UI
   gmFields:gmFields,summary:summary,
   campaignVars:campaignVars,fillVars:fillVars,
   visibleRefs:visibleRefs,areaOf:areaOf,render:render,
-  mapWalls:mapWalls,mapBarriers:mapBarriers,mapSheets:mapSheets,
+  mapWalls:mapWalls,mapBarriers:mapBarriers,mapSheets:mapSheets,mapImage:mapImage,
   drawnSheets:drawnSheets,blocksSight:blocksSight,blocksMove:blocksMove,
   applyMapTool:applyMapTool,frameAt:frameAt,areaShare:areaShare,
   compsFor:compsFor,relsFrom:relsFrom,

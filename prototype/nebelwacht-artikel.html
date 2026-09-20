@@ -1481,7 +1481,7 @@ function applyDefaults(e,ifn){
 
    Die Id ist der haltbare Zeiger, nicht die Adresse: die Ablage-Adresse gilt
    je Ansicht, die Id für immer. Gespeichert wird deshalb die Id. */
-var ASSET_IFACE="Asset", ASSET_COMP="Asset";
+var ASSET_IFACE="Asset", ASSET_COMP="Asset", IMAGE_COMP="Image";
 function assetSrc(ref,tiefe){
   var t=String(ref==null?"":ref).trim();
   if(!t)return "";
@@ -3226,9 +3226,13 @@ function renderLayoutItem(item,e,ifn,vw){
 }
 
 function elImage(e){
-  var img=(e.components||{}).Image;
+  var img=(e.components||{})[IMAGE_COMP];
   if(!img)return null;
-  var src=assetSrc(img.ref||img.url);
+  /* `img.image` und nicht `img.ref`: das Feld heisst im Register `image`,
+     und `ref` hat es nie gegeben. Solange hier `ref` stand, zeichnete das
+     Element nie etwas — und weil ein Artikel ohne Bild genauso aussieht,
+     fiel es niemandem auf. */
+  var src=assetSrc(img.image||img.url);
   if(!src)return null;
   var fig=el("figure",{class:"pic"});
   fig.appendChild(el("img",{src:src,alt:img.caption||nameOf(e),loading:"lazy"}));
@@ -7350,6 +7354,18 @@ var TOKEN_KINDS=[
 ];
 function tokenKind(r){ return (r.props&&r.props.kind)||"static"; }
 function mapCard(e){ return (e.components||{})[MAP_COMP]||{}; }
+/* **Das Bild der Karte ist `Image.image`** und steht nicht noch einmal an
+   `Map`. Eine Karte *hat* ein Bild wie jeder andere Artikel, und genau
+   dieses Bild ist ihr Hintergrund. Zwei Felder dafür hiessen, dass eines
+   gefüllt wird und der Zeichner das andere liest — und man sähe dem
+   leeren Schirm nicht an, welches. */
+function mapImage(e){ return ((e.components||{})[IMAGE_COMP]||{}).image||""; }
+function setMapImage(e,ref){
+  e.components=e.components||{};
+  var karte=e.components[IMAGE_COMP]=Object.assign({},e.components[IMAGE_COMP]||{});
+  if(ref) karte.image=ref; else delete karte.image;
+  if(!Object.keys(karte).length) delete e.components[IMAGE_COMP];
+}
 
 /* Die Karten, die in dieser hier liegen — die Gegenrichtung von `insideMap`.
    Gespeichert wird nur vorwärts; das Kind nennt sein Elternteil. */
@@ -7436,8 +7452,9 @@ function natOf(src){ return mapNat[src]||null; }
 /* Zuerst gefragt wird das Register: ein Asset trägt seine Masse als Feld,
    und ein Wert, der da steht, muss nicht gemessen werden. Gemessen wird nur,
    was von aussen kommt — eine Adresse, die niemand beschrieben hat. */
-function natFor(card,src){
-  var a=card&&card.image&&ENT.get(card.image);
+function natFor(card,src,e){
+  var ref=e?mapImage(e):(card&&card.image);
+  var a=ref&&ENT.get(ref);
   var ai=a&&(a.components||{})[ASSET_COMP];
   if(ai&&Number(ai.width)>0&&Number(ai.height)>0)
     return {w:Number(ai.width),h:Number(ai.height)};
@@ -7623,7 +7640,7 @@ function wallLines(card,ar){
    also die Liste rückwärts. Eine Reihenfolge, die im Feld anders herum
    steht als auf dem Schirm, sortiert früher oder später jemand falsch. */
 function mapSheets(e,card){
-  var out=[{id:"__base",name:"Base map",image:card.image,opacity:1,
+  var out=[{id:"__base",name:"Base map",image:mapImage(e),opacity:1,
             visible:!card.baseHidden,gmOnly:!!card.baseGmOnly,base:true}];
   (card.sheets||[]).forEach(function(s){
     out.push({id:s.id,name:s.name||"Layer",image:s.image,
@@ -7945,7 +7962,7 @@ function setSheet(e,card,sh,patch){
        Was an ihm einstellbar ist, steht deshalb an der Karte. */
     if(patch.visible!=null) card.baseHidden=!patch.visible;
     if(patch.gmOnly!=null) card.baseGmOnly=!!patch.gmOnly;
-    if(patch.image!==undefined) card.image=patch.image;
+    if(patch.image!==undefined) setMapImage(e,patch.image);
   } else {
     card.sheets=(card.sheets||[]).map(function(x){
       return x.id===sh.id?Object.assign({},x,patch):x; });
@@ -8194,7 +8211,7 @@ function mapZoomBy(schritt,e,nat){
 
 function elMap(e,ifn,item){
   var card=mapCard(e);
-  var src=assetSrc(card.image);
+  var src=assetSrc(mapImage(e));
   var wrap=el("div",{class:"mapbox"});
   /* Die beiden werden weiter unten gefüllt; die Leiste braucht sie nur,
      wenn jemand klickt, und dann stehen sie. */
@@ -8289,7 +8306,7 @@ function elMap(e,ifn,item){
   var raster=gridOverlay(card,UI.mapZoom);
   if(raster) inner.appendChild(raster);
 
-  nat=kacheln?kacheln.nat:natFor(card,src);
+  nat=kacheln?kacheln.nat:natFor(card,src,e);
   var sicht=nat?visionOverlay(e,card,nat):null;
   if(sicht) inner.appendChild(sicht);
   else if(!nat&&(card.fog||(card.lighting&&card.lighting!=="bright")))

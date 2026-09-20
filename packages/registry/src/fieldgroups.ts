@@ -676,7 +676,10 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        image: { type: 'string', format: 'asset', title: 'Image' },
+        /* Das Bild der Karte ist `Image.image` und steht nicht noch einmal
+           hier: eine Karte *hat* ein Bild wie jeder andere Artikel, und
+           genau dieses Bild ist ihr Hintergrund. Zwei Felder dafür hiessen,
+           dass eines gefüllt wird und der Zeichner das andere liest. */
         /* **Zeichenebenen** (REQ-130). Nicht zu verwechseln mit den
            Inhaltsebenen (`Layer`, der Stapel): das hier sind Bilder
            übereinander auf *einer* Karte — Gelände, Beschriftung, Ruinen,
@@ -685,9 +688,9 @@ export const fieldGroups = {
            „Ebene" für die Inhaltsebenen frei bleibt; in der Kartenleiste
            steht „Layers", weil dort nichts zu verwechseln ist.
 
-           `image` bleibt das unterste Blatt: es ist die Karte selbst, und
-           an ihm hängt ihre natürliche Grösse. Was in `sheets` steht, liegt
-           darüber. */
+           `Image.image` bleibt das unterste Blatt: es ist die Karte selbst,
+           und an ihm hängt ihre natürliche Grösse. Was in `sheets` steht,
+           liegt darüber. */
         sheets: { type: 'array', title: 'Drawing layers', items: { type: 'object' } },
         /* Was am untersten Blatt einstellbar ist, steht an der Karte — es
            hat keinen eigenen Eintrag in `sheets`, weil es die Karte *ist*. */
@@ -920,13 +923,14 @@ export const fieldGroups = {
       type: 'object',
       properties: {
         userIds: { type: 'array', title: 'User ids', items: { type: 'string' } },
-        role: {
-          type: 'string',
-          title: 'Role',
-          enum: ['player', 'co-gm', 'spectator'],
-          default: 'player',
-        },
-        note: { type: 'string', title: 'Note' },
+        /* „Account role" und nicht „Role": eine Kreatur trägt schon ein
+           `role` — das ist ihre Rolle in der Welt (Händler), nicht die des
+           Kontos am Tisch. Zwei Felder namens „Role" untereinander sind
+           die Sorte Liste, bei der man das falsche erwischt. */
+        role: { type: 'string', title: 'Account role', enum: ['player', 'co-gm', 'spectator'], default: 'player' },
+        /* Eine Notiz zum Zugang ist eine Notiz. `Notes.note` gibt es, und
+           es kann mehrere und lange — ein zweites Feld daneben heisst nur,
+           dass man beide durchsuchen muss. */
       },
     },
   },
@@ -985,7 +989,9 @@ export const fieldGroups = {
         },
         die: { type: 'string', title: 'Die', default: '1d100' },
         rows: { type: 'array', title: 'Plain entries', items: { type: 'object' } },
-        note: { type: 'string', title: 'Note' },
+        /* Eine Notiz zur Tabelle ist eine Notiz — `Notes.note` kann mehrere
+           und lange. Zwei Felder namens „Note" untereinander hiesse, beide
+           durchsuchen zu müssen. */
       },
     },
   },

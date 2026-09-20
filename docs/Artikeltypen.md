@@ -735,7 +735,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Eigene Felder**
 
-- `image` *asset*, `sheets` *array*, `baseHidden` *boolean*, `baseGmOnly` *boolean*, `kind` *world | region | settlement | district | building | battle*, `gridShape` *none | square | hex*, `gridSize` *number*, `gridOffsetX` *number*, `gridOffsetY` *number*, `scale` *measure*, `lighting` *bright | dim | dark*, `fog` *boolean*, `reveal` *array*, `walls` *array*, `tiles` *string*, `tileCols` *number*, `tileRows` *number*, `tileSize` *number*
+- `sheets` *array*, `baseHidden` *boolean*, `baseGmOnly` *boolean*, `kind` *world | region | settlement | district | building | battle*, `gridShape` *none | square | hex*, `gridSize` *number*, `gridOffsetX` *number*, `gridOffsetY` *number*, `scale` *measure*, `lighting` *bright | dim | dark*, `fog` *boolean*, `reveal` *array*, `walls` *array*, `tiles` *string*, `tileCols` *number*, `tileRows` *number*, `tileSize` *number*
 
 **Geerbte Felder**
 
@@ -781,7 +781,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Eigene Felder**
 
-- `userIds` *array*, `role` *player | co-gm | spectator*, `note` *string*
+- `userIds` *array*, `role` *player | co-gm | spectator*
 
 **Kanten von hier**
 
