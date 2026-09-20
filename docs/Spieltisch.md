@@ -239,9 +239,17 @@ Tragestufe im Inventar und beim Lichtradius auf der Karte. Kein Artikel: ein
 Gang ist vorbei, wenn er vorbei ist, und ein Artikel, den man anschliessend
 löscht, war keiner.
 
-**Das Material geht am Anfang hinein.** Das ist die Zeile `put` an der Kante,
-und an ihr hängt alles Weitere: nur deshalb kann ein Gang scheitern und etwas
-kosten, und nur deshalb ist `onFailure` mehr als eine Zeile im Register.
+**Das Material wird angehängt, während der Gang läuft** (seit 2026-09-20; es
+ging einmal am Anfang hinein). Das ist die Zeile `put` an der Kante, und an
+ihr hängt alles Weitere: nur deshalb kann ein Gang scheitern und etwas kosten,
+und nur deshalb ist `onFailure` mehr als eine Zeile im Register.
+
+Anfangen darf, wer das **Werkzeug** hat — ohne Kessel fängt niemand an. Das
+Material nicht: am Tisch fängt man an, weil man etwas vorhat, und sammelt
+dabei. Tage lassen sich von Anfang an arbeiten; **fertig wird es nicht, bevor
+alles drin ist**, denn der letzte Tag ist der Wurf, und ein Wurf auf halbes
+Material wäre ein Wurf auf nichts. Der Knopf für den letzten Tag bleibt
+deshalb zu und sagt, was fehlt.
 
 Gewürfelt wird **einmal am Ende**, mit demselben Würfelwerk wie alles andere,
 gegen den Schwierigkeitsgrad des Rezepts. Der Übungsbonus kommt aus

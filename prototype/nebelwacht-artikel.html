@@ -339,6 +339,14 @@ body.asplayer .brand span{color:var(--link)}
   background:var(--surface2);margin-bottom:6px}
 .jbar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin:6px 0}
 .jbar i{display:block;height:100%;background:var(--accent)}
+/* Was im Kessel liegt und was fehlt. Der Knopf steht neben der Zutat, die
+   er hineinlegt — eine Liste, die nur zählt, schickt einen zum Inventar
+   und wieder zurück. */
+ul.jmat{margin:4px 0 0;padding-left:0;list-style:none;display:flex;
+  flex-direction:column;gap:3px}
+ul.jmat li{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px}
+ul.jmat li.short .co{color:var(--warn)}
+ul.jmat li.ok .co{color:var(--ok)}
 .mtiles{display:grid;gap:0;line-height:0}
 .mtiles img{width:100%;height:auto;display:block}
 
@@ -5141,10 +5149,19 @@ function craftStatus(rec,traeger){
    ein Gang ist vorbei, wenn er vorbei ist, und ein Artikel, den man
    anschliessend löscht, war keiner.
 
-   **Das Material geht am Anfang hinein.** Deshalb kann ein Gang scheitern
-   und etwas kosten — und deshalb ist `onFailure` mehr als eine Zeile im
-   Register. Was bei einem Fehlschlag übrig bleibt, wandert zurück ins
-   Inventar; was verloren ist, ist verloren.
+   **Das Material wird angehängt, während der Gang läuft.** Es ging einmal
+   am Anfang hinein, und das hiess: anfangen konnte nur, wer schon alles
+   hatte. Am Tisch ist es andersherum — man fängt an, weil man etwas
+   vorhat, und sammelt dabei. Der Gang trägt deshalb, was schon drin ist
+   (`put`), und man legt jederzeit nach.
+
+   Tage lassen sich von Anfang an arbeiten. **Fertig wird es nicht, bevor
+   alles drin ist**: der letzte Tag ist der Wurf, und ein Wurf auf halbes
+   Material wäre ein Wurf auf nichts.
+
+   Weil etwas drin liegt, kann ein Gang scheitern und etwas kosten — und
+   deshalb ist `onFailure` mehr als eine Zeile im Register. Was übrig
+   bleibt, wandert zurück ins Inventar; was verloren ist, ist verloren.
 
    Gewürfelt wird **einmal am Ende**, mit demselben Würfelwerk wie alles
    andere, und der Wurf bleibt an der Kante stehen. Ein Ergebnis, das nicht
@@ -5196,33 +5213,62 @@ function hasTool(traeger,info){
   });
 }
 
-/* Anfangen: Material hinein, Kante anlegen. Erst hier wird verbraucht —
-   vorher hat niemand angefangen. */
+/* Was dieser Gang noch braucht. Drei Zahlen je Zutat: wie viel das Rezept
+   verlangt, wie viel schon drin liegt, wie viel der Arbeiter dabei hat. */
+function jobNeeds(traeger,job){
+  var drin={};
+  ((job.rel.props||{}).put||[]).forEach(function(p){
+    drin[p.item]=(drin[p.item]||0)+(Number(p.qty)||0); });
+  return recipeNeeds(job.recipe).map(function(n){
+    return {item:n.item,need:n.qty,consumed:n.consumed,
+      put:drin[n.item.id]||0,held:amountHeld(traeger,n.item.id)};
+  });
+}
+/* Fertig werden kann nur, was vollständig ist — Material und Werkzeug.
+   Was nicht verbraucht wird, muss dabei sein und nicht hinein. */
+function jobReady(traeger,job){
+  var info=(job.recipe.components||{})[RECIPE_COMP]||{};
+  var fehlt=jobNeeds(traeger,job).filter(function(n){
+    return n.consumed?n.put<n.need:n.held<n.need; });
+  var werkzeug=!info.tool||hasTool(traeger,info);
+  return {ok:!fehlt.length&&werkzeug,missing:fehlt,tool:werkzeug?"":info.tool};
+}
+/* Nachlegen. Was hineingeht, ist aus dem Inventar weg — sonst läge dieselbe
+   Zutat zweimal da, einmal im Beutel und einmal im Kessel. */
+function craftPut(traeger,job,itemId,menge){
+  var inv=inventoryOf(traeger);
+  if(!inv)return;
+  var genommen=takeFromInventory(inv,traeger,itemId,menge);
+  if(genommen<=0){ UI.err="Nothing of that in the pack."; render(); return; }
+  var put=((job.rel.props||{}).put||[]).slice();
+  var da=put.filter(function(p){return p.item===itemId;})[0];
+  if(da) da.qty=(Number(da.qty)||0)+genommen;
+  else put.push({item:itemId,qty:genommen});
+  job.rel.props=Object.assign({},job.rel.props,{put:put});
+  persist(inv);
+  if(inv.id!==traeger.id) persist(traeger);
+}
+
+/* Anfangen: die Kante anlegen, und sonst nichts. Das Werkzeug muss dabei
+   sein — ohne Kessel fängt niemand an —, das Material nicht: es wird
+   angehängt, während der Gang läuft. */
 function craftStart(rec,traeger){
   var inv=inventoryOf(traeger);
   if(!inv){ UI.err="No inventory to take from."; render(); return; }
-  var st=craftStatus(rec,traeger);
-  if(!st.ok){ UI.err="Missing: "+st.missing.map(function(m){
-    return nameOf(m.item)+" ("+m.have+"/"+m.need+")"; })
-    .concat(st.tool?[st.tool]:[]).join(", "); render(); return; }
   var info=(rec.components||{})[RECIPE_COMP]||{};
+  if(info.tool&&!hasTool(traeger,info)){
+    UI.err="Needs "+info.tool+" to work with."; render(); return; }
   if(jobFor(traeger,rec.id)){ UI.err="Already working on that one."; render(); return; }
   var tage=recipeDays(info);
-  var eingelegt=[];
-  confirmDialog("Start “"+nameOf(rec)+"”? The materials go in now — "+
-    tage+" day"+(tage===1?"":"s")+" of work, then a "+
-    (info.ability||"int").toUpperCase()+" check against DC "+(info.dc||12)+".",
+  confirmDialog("Start “"+nameOf(rec)+"”? Nothing goes in yet — put the "+
+    "materials in as you get them. "+tage+" day"+(tage===1?"":"s")+" of work, "+
+    "then a "+(info.ability||"int").toUpperCase()+" check against DC "+
+    (info.dc||12)+".",
     function(){
-      recipeNeeds(rec).forEach(function(n){
-        if(!n.consumed)return;
-        takeFromInventory(inv,traeger,n.item.id,n.qty);
-        eingelegt.push({item:n.item.id,qty:n.qty});
-      });
       traeger.relations=traeger.relations||[];
       traeger.relations.push({id:uid("r"),type:REL_CRAFTING,to:rec.id,
-        props:{day:0,days:tage,rolls:[],put:eingelegt}});
-      persist(inv);
-      if(inv.id!==traeger.id) persist(traeger);
+        props:{day:0,days:tage,rolls:[],put:[]}});
+      persist(traeger);
     },"Start");
 }
 /* Material abtragen. Von hinten: was eingelagert ist, geht zuerst, was in
@@ -5255,6 +5301,18 @@ function putIntoInventory(inv,itemId,menge,stufe){
 function craftDay(traeger,job){
   var info=(job.recipe.components||{})[RECIPE_COMP]||{};
   var tag=job.day+1;
+  /* Arbeiten geht immer, fertig werden nicht. Ein Wurf auf halbes Material
+     wäre ein Wurf auf nichts — und der Tag wäre weg. */
+  if(tag>=job.days){
+    var bereit=jobReady(traeger,job);
+    if(!bereit.ok){
+      UI.err="Not finished yet — still missing: "+
+        bereit.missing.map(function(m){
+          return nameOf(m.item)+" ("+(m.consumed?m.put:m.held)+"/"+m.need+")"; })
+        .concat(bereit.tool?[bereit.tool]:[]).join(", ");
+      render(); return;
+    }
+  }
   if(tag<job.days){
     job.rel.props=Object.assign({},job.rel.props,{day:tag});
     persist(traeger);
@@ -5333,11 +5391,60 @@ function craftBench(traeger){
     var bar=el("div",{class:"jbar"});
     var fill=el("i"); fill.style.width=Math.min(100,(j.day/j.days)*100)+"%";
     bar.appendChild(fill); row.appendChild(bar);
+
+    /* Was drin ist und was fehlt — je Zutat eine Zeile, und der Knopf, der
+       sie hineinlegt, steht daneben. Eine Liste, die nur zählt, schickt
+       einen zum Inventar und wieder zurück. */
+    var bedarf=jobNeeds(traeger,j);
+    var bereit=jobReady(traeger,j);
+    if(bedarf.length){
+      var liste=el("ul",{class:"jmat"});
+      bedarf.forEach(function(n){
+        var voll=n.consumed?n.put>=n.need:n.held>=n.need;
+        var li=el("li",{class:voll?"ok":"short"});
+        li.appendChild(el("button",{class:"ref",type:"button",
+          onclick:function(){go({k:"art",id:n.item.id});}},nameOf(n.item)));
+        li.appendChild(el("span",{class:"co",
+          text:n.consumed?(n.put+"/"+n.need+" in"):(n.held+"/"+n.need+" to hand")}));
+        if(!voll&&n.consumed){
+          var kann=Math.min(n.need-n.put,n.held);
+          if(kann>0&&canWrite()) li.appendChild(el("button",{class:"btn sm",type:"button",
+            title:"Take it out of the pack and put it in",
+            onclick:function(){ craftPut(traeger,j,n.item.id,kann); }},
+            "put in "+kann));
+          else li.appendChild(el("span",{class:"gone",
+            text:n.held?"":"none in the pack"}));
+        }
+        liste.appendChild(li);
+      });
+      row.appendChild(liste);
+    }
+    if(bereit.tool) row.appendChild(el("p",{class:"hint warnzeile",style:"margin:2px 0",
+      text:"Needs "+bereit.tool+" — it is not in the pack."}));
+
     if(canWrite()){
       var btns=el("div",{class:"rowbtns"});
-      btns.appendChild(el("button",{class:"btn sm pri",type:"button",
+      var letzter=j.day+1>=j.days;
+      var knopf=el("button",{class:"btn sm pri",type:"button",
         onclick:function(){ craftDay(traeger,j); }},
-        j.day+1>=j.days?"Last day — roll it":"Work a day"));
+        letzter?"Last day — roll it":"Work a day");
+      /* Der letzte Tag bleibt zu, solange etwas fehlt, und sagt warum.
+         Ein Knopf, der nichts tut und nichts sagt, wird zweimal gedrückt. */
+      if(letzter&&!bereit.ok){
+        knopf.disabled=true;
+        knopf.title="Still missing: "+bereit.missing.map(function(m){
+          return nameOf(m.item); }).concat(bereit.tool?[bereit.tool]:[]).join(", ");
+      }
+      btns.appendChild(knopf);
+      if(bedarf.some(function(n){ return n.consumed&&n.put<n.need&&n.held>0; }))
+        btns.appendChild(el("button",{class:"btn sm",type:"button",
+          onclick:function(){
+            bedarf.forEach(function(n){
+              if(!n.consumed||n.put>=n.need)return;
+              var kann=Math.min(n.need-n.put,n.held);
+              if(kann>0) craftPut(traeger,j,n.item.id,kann);
+            });
+          }},"Put everything in"));
       btns.appendChild(el("button",{class:"btn sm gh",type:"button",
         onclick:function(){ craftAbort(traeger,j); }},"Stop"));
       row.appendChild(btns);
@@ -5416,13 +5523,23 @@ function elCrafting(e,ifn,item){
       var foot=el("tr",{class:"crfoot"});
       foot.appendChild(el("td",{text:"Craftable"}));
       foot.appendChild(el("td",{text:""}));
+      var rinfo=(e.components||{})[RECIPE_COMP]||{};
       traeger.forEach(function(t){
         var st=craftStatus(e,t);
         var cell=el("td");
-        if(st.ok&&canWrite()) cell.appendChild(el("button",{class:"btn sm pri",type:"button",
-          onclick:function(){ craftStart(e,t); }},
-          jobFor(t,e.id)?"On the bench":"Start"));
-        else cell.appendChild(el("span",{class:st.ok?"ok":"gone",text:st.ok?"yes":"no"}));
+        /* Anfangen darf, wer das Werkzeug hat — das Material wird
+           angehängt. Die Zeile darüber sagt weiter, wer genug hat: das ist
+           die Frage „können wir das jetzt durchziehen?", und sie bleibt
+           eine andere als „dürfen wir anfangen?". */
+        var laeuft=!!jobFor(t,e.id);
+        var werkzeug=!rinfo.tool||hasTool(t,rinfo);
+        if(canWrite()&&werkzeug) cell.appendChild(el("button",
+          {class:"btn sm"+(st.ok?" pri":""),type:"button",
+           title:st.ok?"":"Start now and add the materials as you get them",
+           onclick:function(){ if(!laeuft) craftStart(e,t); }},
+          laeuft?"on the bench":"start"));
+        else cell.appendChild(el("span",{class:st.ok?"ok":"gone",
+          title:werkzeug?"":"No "+rinfo.tool,text:st.ok?"yes":"no"}));
         foot.appendChild(cell);
       });
       tb.appendChild(foot);

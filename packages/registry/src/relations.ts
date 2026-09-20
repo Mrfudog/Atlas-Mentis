@@ -637,8 +637,16 @@ export const relations: Record<string, RelationDef> = {
    * dem, der arbeitet, und an dem Rezept — also steht er an einer Kante,
    * wie die Tragestufe im Inventar. Kein Artikel: ein Gang ist vorbei, wenn
    * er vorbei ist, und ein Artikel, den man anschliessend löscht, war
-   * keiner. `put` merkt sich, was schon drin ist — nur deshalb kann ein
-   * Fehlschlag etwas kosten und `onFailure` mehr sein als eine Zeile.
+   * keiner.
+   *
+   * `put` ist das Stück, an dem alles hängt: **das Material wird
+   * angehängt, während der Gang läuft**, nicht am Anfang hineingelegt. Es
+   * ging einmal am Anfang hinein, und das hiess, dass anfangen nur konnte,
+   * wer schon alles hatte — am Tisch ist es andersherum. Tage lassen sich
+   * von Anfang an arbeiten; fertig wird es nicht, bevor alles drin ist.
+   *
+   * Und nur weil etwas drin liegt, kann ein Fehlschlag etwas kosten und
+   * `onFailure` mehr sein als eine Zeile.
    */
   crafting: {
     type: 'crafting',
@@ -651,7 +659,7 @@ export const relations: Record<string, RelationDef> = {
       properties: {
         day: { type: 'number', title: 'Days done', default: 0 },
         days: { type: 'number', title: 'Days needed', default: 1 },
-        put: { type: 'array', title: 'Materials already in it' },
+        put: { type: 'array', title: 'Materials put in so far' },
         rolls: { type: 'array', title: 'Rolls' },
       },
     },

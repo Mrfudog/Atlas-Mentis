@@ -1717,8 +1717,16 @@ async function seite(datei, warten) {
     const zustand = () => p.evaluate(() => ({
       jobs: [...document.querySelectorAll('.job')].map((j) => ({
         text: j.querySelector('.co')?.textContent ?? '',
-        knopf: j.querySelector('.btn')?.textContent ?? '',
+        knopf: j.querySelector('.rowbtns .btn')?.textContent ?? '',
+        zu: !!j.querySelector('.rowbtns .btn')?.disabled,
         balken: j.querySelector('.jbar i')?.style.width ?? '',
+        /* Was im Kessel liegt: je Zutat eine Zeile mit „x/y in". */
+        material: [...j.querySelectorAll('ul.jmat li')].map((li) => ({
+          offen: li.classList.contains('short'),
+          text: li.querySelector('.co')?.textContent ?? '',
+        })),
+        nachlegen: [...j.querySelectorAll('.rowbtns .btn')]
+          .some((b) => /Put everything in/.test(b.textContent)),
       })),
       log: [...document.querySelectorAll('.bench p.hint')].map((x) => x.textContent),
     }));
@@ -1750,19 +1758,31 @@ async function seite(datei, warten) {
       await p.waitForTimeout(450);
     };
     const arbeiten = async () => {
-      await p.evaluate(() => document.querySelector('.job .btn').click());
+      await p.evaluate(() => document.querySelector('.job .rowbtns .btn').click());
       await p.waitForTimeout(400);
+    };
+    /* Alles nachlegen, was da ist — derselbe Knopf, den man am Tisch
+       drückt, und nicht ein Griff an die Daten daneben. */
+    const nachlegen = async () => {
+      await p.evaluate(() => [...document.querySelectorAll('.job .rowbtns .btn')]
+        .find((b) => /Put everything in/.test(b.textContent)).click());
+      await p.waitForTimeout(450);
     };
 
     const vorStart = await vorrat();
     await starten(1);
     const nachStart = await vorrat();
-    pruefe('starting a craft takes the materials in right away',
-      Object.keys(vorStart).some((k) => (nachStart[k] ?? 0) < vorStart[k]),
+    /* **Nichts geht am Anfang hinein.** Am Tisch fängt man an, weil man
+       etwas vorhat, und sammelt dabei. */
+    pruefe('starting a craft takes nothing out of the pack yet',
+      Object.keys(vorStart).every((k) => (nachStart[k] ?? 0) === vorStart[k]),
       { vorStart, nachStart });
     const tag0 = await zustand();
     pruefe('a running craft shows how far along it is',
       tag0.jobs.length === 1 && /0\/2 days/.test(tag0.jobs[0].text), tag0.jobs);
+    pruefe('and it lists what is still to go in',
+      tag0.jobs[0].material.length > 0 && tag0.jobs[0].material.every((m) => m.offen)
+      && /^0\//.test(tag0.jobs[0].material[0].text), tag0.jobs[0].material);
     pruefe('nothing is yielded before the work is done',
       !Object.keys(nachStart).some((k) => (vorStart[k] ?? 0) < nachStart[k]),
       { vorStart, nachStart });
@@ -1772,6 +1792,20 @@ async function seite(datei, warten) {
     pruefe('a day of work moves it on without rolling anything',
       tag1.jobs.length === 1 && /1\/2 days/.test(tag1.jobs[0].text)
       && /Last day/.test(tag1.jobs[0].knopf) && tag1.log.length === 0, tag1);
+    /* Arbeiten geht immer, fertig werden nicht: ein Wurf auf halbes
+       Material wäre ein Wurf auf nichts, und der Tag wäre weg. */
+    pruefe('the last day stays shut while something is still missing',
+      tag1.jobs[0].zu === true && tag1.jobs[0].nachlegen === true, tag1.jobs[0]);
+
+    await nachlegen();
+    const gefuellt = await zustand();
+    const nachFuellen = await vorrat();
+    pruefe('putting the materials in takes them out of the pack',
+      Object.keys(vorStart).some((k) => (nachFuellen[k] ?? 0) < vorStart[k]),
+      { vorStart, nachFuellen });
+    pruefe('and now the last day is open',
+      gefuellt.jobs[0].material.every((m) => !m.offen) && gefuellt.jobs[0].zu === false,
+      gefuellt.jobs[0]);
 
     await arbeiten();
     const fertig = await zustand();
@@ -1780,13 +1814,14 @@ async function seite(datei, warten) {
       fertig.jobs.length === 0 && fertig.log.length === 1
       && /vs DC 1 — made it/.test(fertig.log[0]), fertig.log);
     pruefe('a success puts the result in the pack',
-      Object.keys(nachFertig).some((k) => (nachStart[k] ?? 0) < nachFertig[k]),
-      { nachStart, nachFertig });
+      Object.keys(nachFertig).some((k) => (nachFuellen[k] ?? 0) < nachFertig[k]),
+      { nachFuellen, nachFertig });
 
     /* Und der andere Zweig: gescheitert, und `onFailure` entscheidet, was
        zurückkommt. Ohne diesen Zweig wäre die Zeile im Register Zierrat. */
     const vorFehl = await vorrat();
     await starten(99);
+    await nachlegen();
     await arbeiten();
     await arbeiten();
     const gescheitert = await zustand();

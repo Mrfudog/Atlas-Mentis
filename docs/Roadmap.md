@@ -253,8 +253,9 @@ in [Spieltisch.md](Spieltisch.md).
   zwei Kanten, und eine Tat, von der niemand wusste, änderte nichts.
   **Von D20 abgelöst.**
 - **D12 · Handwerk, das läuft** — REQ-184 zu Ende. Ein Gang steht an einer
-  Kante, das Material geht am Anfang hinein, und am letzten Tag wird
-  wirklich gewürfelt.
+  Kante, und am letzten Tag wird wirklich gewürfelt. Das Material ging
+  anfangs am Anfang hinein; **seit D21 wird es angehängt, während der Gang
+  läuft.**
 - **D13 · Blockanker und Kampagnenwerte** — B3. Ein Anker aus dem Inhalt
   statt aus einer Id; Gruppenstufe und Aufenthaltsort gerechnet statt
   eingetippt.
@@ -287,6 +288,10 @@ in [Spieltisch.md](Spieltisch.md).
   Marken und einer Zeile. Es war richtig gebaut und trotzdem zu viel: am
   Tisch fragt niemand nach einer Zahl. Siehe
   [Beziehungen.md](Beziehungen.md).
+- **D21 · Material während des Gangs** — REQ-184. Anfangen braucht nur das
+  Werkzeug; das Material wird angehängt, während gearbeitet wird, und der
+  letzte Tag bleibt zu, bis alles drin ist. Vorher konnte anfangen nur, wer
+  schon alles hatte — am Tisch ist es andersherum.
 
 ---
 
