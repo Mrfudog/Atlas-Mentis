@@ -146,9 +146,8 @@ ihn niemand, der später dazukommt — und das merkte man erst am Tisch.
    bleiben unverändert.
 2. **Nebel des Krieges, Licht und Sicht** (REQ-139, 140). Braucht eine
    Zeichenfläche statt Bildpunkten.
-3. **Ebenen und Stapelauflösung** (REQ-004 bis 007). Der Prototyp kennt eine
-   Kampagne; die Ebenen sind der grösste Brocken, den das Rückgrat noch
-   nicht trägt.
+3. ~~**Ebenen und Stapelauflösung** (REQ-004 bis 007).~~ Steht seit
+   2026-09-20 — siehe [Ebenen.md](Ebenen.md).
 4. **Blockanker.** Wissen an Blöcken hängt an der Block-Id; `Block.anchor`
    ist vorgesehen, wird aber nicht vergeben.
 5. **Gebietsraster auf der Karte** (REQ-193) und **Kartenkacheln**

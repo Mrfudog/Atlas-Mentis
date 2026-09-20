@@ -243,6 +243,9 @@ in [Spieltisch.md](Spieltisch.md).
   Kante je Teilnehmer; Zustände mit Dauer; der Zeiger auf der Karte.
 - **D8 · Aufträge und Zeitleiste** — REQ-082, 083, 106. Aufgaben zum
   Abhaken, ein Brett nach Stand gruppiert, Ereignisse nach Weltdatum.
+- **D9 · Ebenen und Stapelauflösung** — REQ-004 bis 009, 044. Was gilt, ist
+  eine Abfrage; Überschreiben und Herausnehmen statt Löschen. Siehe
+  [Ebenen.md](Ebenen.md).
 
 ---
 
@@ -260,8 +263,9 @@ A, B und D stehen. Was bleibt, in der Reihenfolge, in der es sich lohnt:
 3. **Globale Variablen** (B3): Gruppenstufe und Gruppen-Aufenthaltsort haben
    im Register eine Zeile, aber noch keine Maske und keine Verwendung in den
    Ansichten.
-4. **Ebenen und Stapelauflösung** (REQ-004 bis 007): der grösste Brocken,
-   den das Rückgrat noch nicht trägt. Der Prototyp kennt eine Kampagne.
+4. **Nebel des Krieges, Licht und Sicht** (REQ-139, 140) und
+   **Gebietsraster** (REQ-193): der Rest der Karte. Alles drei braucht eine
+   Zeichenfläche statt Bildpunkten.
 5. **Die Nachzügler** (C4): Ortsimporter als TypeScript, und das Register
    des Prototyps mit `packages/registry` zusammenführen — die laufen derzeit
    von Hand nebeneinander her, und das hält nicht ewig.
