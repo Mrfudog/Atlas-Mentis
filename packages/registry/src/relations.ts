@@ -72,12 +72,18 @@ export const relations: Record<string, RelationDef> = {
     to: ['Place'],
   },
 
+  /**
+   * One containment edge for everything that nests, rather than a second
+   * hierarchy beside it: a chapter sits in an arc the way a room sits in a
+   * building, and a quest hangs off the story it belongs to. Widening the
+   * ends of an existing edge keeps one set of backlinks, one `contains`.
+   */
   partOf: {
     type: 'partOf',
     label: 'part of',
     inverseLabel: 'contains',
-    from: ['Place'],
-    to: ['Place'],
+    from: ['Place', 'Story', 'Quest'],
+    to: ['Place', 'Story'],
   },
 
   controls: {
@@ -94,5 +100,85 @@ export const relations: Record<string, RelationDef> = {
     inverseLabel: 'describes',
     from: ['*'],
     to: ['Article'],
+  },
+
+  // ------------------------------------------------------ players & party
+
+  /** The one edge that leaves the fiction: who at the table runs this one. */
+  playedBy: {
+    type: 'playedBy',
+    label: 'played by',
+    inverseLabel: 'plays',
+    from: ['PlayerCharacter'],
+    to: ['*'],
+    cardinality: 'one',
+  },
+
+  memberOfParty: {
+    type: 'memberOfParty',
+    label: 'in the party',
+    inverseLabel: 'members',
+    from: ['Creature'],
+    to: ['Party'],
+  },
+
+  carries: {
+    type: 'carries',
+    label: 'carries',
+    inverseLabel: 'carried by',
+    from: ['Creature', 'Party'],
+    to: ['Inventory'],
+    cardinality: 'one',
+  },
+
+  holds: {
+    type: 'holds',
+    label: 'holds',
+    inverseLabel: 'held in',
+    from: ['Inventory'],
+    to: ['Item'],
+  },
+
+  // ---------------------------------------------------------------- story
+
+  followsFrom: {
+    type: 'followsFrom',
+    label: 'follows',
+    inverseLabel: 'followed by',
+    from: ['Story'],
+    to: ['Story'],
+    cardinality: 'one',
+  },
+
+  questGiver: {
+    type: 'questGiver',
+    label: 'given by',
+    inverseLabel: 'gives',
+    from: ['Quest'],
+    to: ['Creature', 'Faction'],
+  },
+
+  questAbout: {
+    type: 'questAbout',
+    label: 'concerns',
+    inverseLabel: 'concerned by',
+    from: ['Quest'],
+    to: ['*'],
+  },
+
+  happensAt: {
+    type: 'happensAt',
+    label: 'happens at',
+    inverseLabel: 'scenes here',
+    from: ['Story'],
+    to: ['Place'],
+  },
+
+  features: {
+    type: 'features',
+    label: 'features',
+    inverseLabel: 'appears in',
+    from: ['Story'],
+    to: ['Creature', 'NPC', 'Statblock', 'Faction'],
   },
 };

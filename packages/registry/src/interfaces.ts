@@ -10,17 +10,51 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Base',
     label: 'Base',
     abstract: true,
-    requires: ['Name', 'Identity'],
-    allows: ['Status', 'Description', 'Visibility', 'Image', 'RawContent'],
+    /* `Status` is required, not allowed: every article has a standing, and
+       leaving it optional made it a card that half the articles lacked. */
+    requires: ['Name', 'Identity', 'Status'],
+    allows: ['Description', 'Visibility', 'Image', 'RawContent'],
     blockTypes: ['paragraph', 'note'],
+  },
+
+  /**
+   * Abstract, and the reason the rows below are short: everything that walks
+   * shares the same components, block types and edges, so they are declared
+   * once here and every creature under it inherits them unchanged.
+   */
+  Creature: {
+    name: 'Creature',
+    label: 'Creature',
+    abstract: true,
+    extends: ['Base'],
+    allows: ['CreatureInfo', 'Vars'],
+    blockTypes: ['+appearance', '+personality', '+lore', '+fact', '+secret', '+readaloud'],
   },
 
   NPC: {
     name: 'NPC',
-    label: 'Creature',
-    extends: ['Base'],
-    allows: ['CreatureInfo', 'Vars'],
-    blockTypes: ['+appearance', '+personality', '+lore', '+fact', '+secret', '+readaloud'],
+    label: 'NPC',
+    extends: ['Creature'],
+  },
+
+  PlayerCharacter: {
+    name: 'PlayerCharacter',
+    label: 'Player character',
+    extends: ['Creature'],
+    requires: ['CharacterInfo'],
+    blockTypes: ['+backstory'],
+  },
+
+  Companion: {
+    name: 'Companion',
+    label: 'Companion',
+    extends: ['Creature'],
+  },
+
+  Retainer: {
+    name: 'Retainer',
+    label: 'Retainer',
+    extends: ['Creature'],
   },
 
   Place: {
@@ -103,5 +137,80 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Consumable',
     label: 'Consumable',
     extends: ['Item'],
+  },
+
+  Party: {
+    name: 'Party',
+    label: 'Party',
+    extends: ['Base'],
+    allows: ['PartyInfo'],
+    blockTypes: ['+lore', '+note'],
+  },
+
+  Inventory: {
+    name: 'Inventory',
+    label: 'Inventory',
+    extends: ['Base'],
+    allows: ['InventoryInfo'],
+    blockTypes: ['+note'],
+  },
+
+  /**
+   * Abstract for the same reason as `Creature`: campaign, arc, chapter,
+   * session and scene differ in grain, not in kind. Declaring the edges and
+   * the shown fields once here keeps every rung of the ladder in step.
+   */
+  Story: {
+    name: 'Story',
+    label: 'Story',
+    abstract: true,
+    extends: ['Base'],
+    allows: ['StoryInfo'],
+    blockTypes: ['+lore', '+secret', '+readaloud', '+note'],
+  },
+
+  Campaign: {
+    name: 'Campaign',
+    label: 'Campaign',
+    extends: ['Story'],
+  },
+
+  Arc: {
+    name: 'Arc',
+    label: 'Arc',
+    extends: ['Story'],
+  },
+
+  Chapter: {
+    name: 'Chapter',
+    label: 'Chapter',
+    extends: ['Story'],
+  },
+
+  Session: {
+    name: 'Session',
+    label: 'Session',
+    extends: ['Story'],
+    blockTypes: ['+recap'],
+  },
+
+  Scene: {
+    name: 'Scene',
+    label: 'Scene / Encounter',
+    extends: ['Story'],
+    allows: ['SceneInfo'],
+    blockTypes: ['+tactics'],
+  },
+
+  /**
+   * Its own thing, not a rung of the story ladder: a quest outlives the
+   * session it was handed out in, and nests through `partOf` like the rest.
+   */
+  Quest: {
+    name: 'Quest',
+    label: 'Quest',
+    extends: ['Base'],
+    requires: ['QuestInfo'],
+    blockTypes: ['+lore', '+secret'],
   },
 };

@@ -277,6 +277,7 @@ export const components: Record<string, ComponentDef> = {
         damage: { type: 'string', title: 'Damage' },
         damageType: { type: 'string', title: 'Damage type' },
         range: { type: 'string', title: 'Range' },
+        Properties: { type: 'string', title: 'Properties' },
       },
     },
   },
@@ -303,6 +304,123 @@ export const components: Record<string, ComponentDef> = {
       properties: {
         materialType: { type: 'string', title: 'Material type' },
         trades: { type: 'array', title: 'Trades', items: { type: 'string' } },
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------- story
+
+  StoryInfo: {
+    name: 'StoryInfo',
+    label: 'Story',
+    engine: null,
+    schema: {
+      type: 'object',
+      properties: {
+        kind: {
+          type: 'string',
+          title: 'Kind',
+          enum: ['campaign', 'arc', 'chapter', 'session', 'scene'],
+        },
+        played: { type: 'string', title: 'Played on' },
+        /* Where the telling stands, which is not where the article stands:
+           `Status` tracks the writing, `state` tracks the play. */
+        state: {
+          type: 'string',
+          title: 'State',
+          enum: ['planned', 'running', 'played', 'dropped'],
+          default: 'planned',
+        },
+        summary: { type: 'string', format: 'long', title: 'Recap' },
+      },
+    },
+  },
+
+  SceneInfo: {
+    name: 'SceneInfo',
+    label: 'Scene',
+    engine: null,
+    schema: {
+      type: 'object',
+      properties: {
+        mode: {
+          type: 'string',
+          title: 'Mode',
+          enum: ['roleplay', 'encounter', 'exploration', 'downtime'],
+          default: 'roleplay',
+        },
+        difficulty: { type: 'string', title: 'Difficulty' },
+        readaloud: { type: 'string', format: 'long', title: 'Read aloud' },
+      },
+    },
+  },
+
+  QuestInfo: {
+    name: 'QuestInfo',
+    label: 'Quest',
+    engine: null,
+    schema: {
+      type: 'object',
+      properties: {
+        state: {
+          type: 'string',
+          title: 'State',
+          enum: ['rumoured', 'offered', 'accepted', 'done', 'failed', 'abandoned'],
+          default: 'rumoured',
+        },
+        reward: { type: 'string', title: 'Reward' },
+        deadline: { type: 'string', title: 'Deadline' },
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------- party
+
+  CharacterInfo: {
+    name: 'CharacterInfo',
+    label: 'Character',
+    engine: null,
+    schema: {
+      type: 'object',
+      properties: {
+        player: { type: 'string', title: 'Player' },
+        ancestry: { type: 'string', title: 'Ancestry' },
+        class: { type: 'string', title: 'Class' },
+        level: { type: 'number', title: 'Level', default: 1 },
+        /* The 5e proficiency bonus follows from the level, so it is computed
+           on read (D8) and never stored — truncated, like every derived value. */
+        proficiency: {
+          type: 'number',
+          title: 'Proficiency',
+          derived: '2+(level-1)/4',
+          format: 'signed',
+        },
+      },
+    },
+  },
+
+  PartyInfo: {
+    name: 'PartyInfo',
+    label: 'Party',
+    engine: null,
+    schema: {
+      type: 'object',
+      properties: {
+        level: { type: 'number', title: 'Party level' },
+        motto: { type: 'string', title: 'Motto' },
+      },
+    },
+  },
+
+  InventoryInfo: {
+    name: 'InventoryInfo',
+    label: 'Inventory',
+    engine: null,
+    schema: {
+      type: 'object',
+      properties: {
+        capacity: { type: 'number', title: 'Slots' },
+        copper: { type: 'number', title: 'Purse in copper' },
       },
     },
   },
