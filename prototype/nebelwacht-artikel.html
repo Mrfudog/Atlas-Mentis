@@ -440,6 +440,18 @@ ul.jmat li.ok .co{color:var(--ok)}
 .strow .ck.back{margin-top:4px;font-size:13px;opacity:.85}
 .rtags{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center}
 .tagtab{display:flex;flex-direction:column;gap:2px}
+/* Der Baum auf „How it works": eine Zeile je Knoten, eingerückt nach Tiefe.
+   Kein Liniengeflecht — die Einrückung sagt dasselbe und überlebt ein
+   Handydisplay. */
+.tree{border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;
+  background:var(--surface);margin:6px 0}
+.tnode{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;padding:2px 0}
+.tnode .tw{font-family:var(--ff-mono);font-size:10px;text-transform:uppercase;
+  letter-spacing:.08em;color:var(--dim);min-width:62px}
+.tnode.tart .ref{font-family:var(--ff-disp);font-size:18px}
+.tnode.ttyp .ref{font-family:var(--ff-disp);font-size:16px}
+.pill.tfield{opacity:.5}
+.pill.tfield.on{opacity:1;background:var(--accent-soft);color:var(--accent);font-weight:600}
 .tagrow{display:flex;align-items:center;gap:10px;text-align:left;width:100%}
 .tagrow .count{min-width:2.5em}
 .tagkinds{display:flex;flex-wrap:wrap;gap:4px;margin-left:auto}
@@ -770,12 +782,6 @@ table.craftm tr.crrow.unknown td{color:var(--dim);font-style:italic}
 .filters select.i{width:auto;padding:4px 8px;font-size:13px}
 .navrow b.ab{font-style:italic;color:var(--dim)}
 
-.konzept{margin-bottom:14px;border:1px solid var(--line);border-radius:var(--r);
-  background:var(--surface);overflow:hidden}
-.konzept summary{cursor:pointer;padding:8px 12px;font-size:11px;text-transform:uppercase;
-  letter-spacing:.09em;color:var(--accent);background:var(--surface2);user-select:none}
-.konzept .kbody{padding:12px 14px;font-size:13.5px;max-width:74ch}
-.konzept .kbody p{margin:0 0 10px}
 .kdl{margin:0}
 .kdl dt{font-family:var(--ff-disp);font-weight:700;font-size:15px;margin-top:10px}
 .kdl dd{margin:2px 0 0;color:var(--dim)}
@@ -900,7 +906,7 @@ var UI={route:{k:"list"}, view:"quick", area:"", iface:"", tag:"", q:"", offen:f
         boardZoom:1, boardPick:"", boardTool:"",
         turnActor:"", rollLog:[], asActor:"", peers:[], pings:[],
         ruleQ:"", ruleKind:"",
-        konzept:false, err:""};
+        howto:"", err:""};
 
 /* Darstellungsstufen (Facets, REQ-164) — registry rows, not code.
    Fallback only; the live set lives in registry/views. */
@@ -1925,6 +1931,8 @@ function renderRail(){
       onclick:function(){ UI.regtab=tab; UI.regjson=false; go({k:"reg"}); }},
       [el("b",{text:label}),el("em",{text:zusatz})]));
   }
+  regZeile("howto","How it works","?",
+    "The seven words, and one article followed from its type down to its fields");
   regZeile("types","Types",String(Object.keys(REG.interfaces).length),
     "What each kind records, inherits, connects to and looks like");
   regZeile("views","Views",String(Object.keys(REG.views).length));
@@ -9338,17 +9346,11 @@ function renderTypes(v){
 
 function renderRegistry(v){
   v.appendChild(el("h2",{text:"Registry"}));
-  v.appendChild(konzept());
-  var tabs=el("div",{class:"tabs",role:"tablist"});
-  /* Kein Reiter „Components" mehr: eine Art trägt ihre Felder selbst, und
-     zwei Stellen für dieselbe Sache waren genau das, was hier weg sollte. */
-  [["types","Types"],["views","Views"],["relations","Relations"],
-   ["vars","Variables"],["settings","Settings"],["backup","Backup"]]
-  .forEach(function(t){
-    tabs.appendChild(el("button",{type:"button",role:"tab","aria-selected":String(UI.regtab===t[0]),
-      onclick:function(){UI.regtab=t[0];UI.err="";render();}},t[1]));
-  });
-  v.appendChild(tabs);
+  /* Keine Reiterzeile mehr. Sie sagte dasselbe wie die Leiste links —
+     dieselben sechs Wörter, zwei Handbreit voneinander entfernt, und wer
+     einen Reiter suchte, suchte ihn an beiden Stellen. Die Leiste ist die
+     Navigation, hier steht der Inhalt. */
+  if(UI.regtab==="howto"){ renderHowto(v); return; }
 
   /* Schnittstellen bekommen eine Maske: Komponenten, Felder, Blockarten und
      Subtypen an einer Stelle. Das JSON bleibt daneben stehen — für Massen-
@@ -9655,96 +9657,200 @@ function renderSettingsEditor(v){
    Die Mechanik steht hier, weil sie sonst nur in Commit-Nachrichten und im
    Kopf steht. Wer eine Zeile ändert, soll daneben lesen können, was sie
    auslöst. Aufklappbar, damit sie nicht jedes Mal im Weg ist. */
-function konzept(){
-  var box=el("details",{class:"konzept"});
-  if(UI.konzept) box.setAttribute("open","open");
-  box.addEventListener("toggle",function(){ UI.konzept=box.hasAttribute("open"); });
-  box.appendChild(el("summary",{text:"How this works"}));
+/* ---------- „How it works" ----------
+   Die Begriffe standen bis hierher in einer Ausklappzeile über jedem
+   Registerreiter — also überall ein bisschen und nirgends ganz. Sie haben
+   jetzt eine eigene Seite, und die zeigt nicht nur Worte: ein Artikel wird
+   von seinem Typ bis zu seinen Feldern durchgezogen, aus dem laufenden
+   Register. Eine Erklärung, die eine Liste abtippt, stimmt am Tag ihrer
+   Entstehung und danach nie wieder.
 
-  var d=el("div",{class:"kbody"});
-  d.appendChild(el("p",{},"An article is an id and nothing else. Every fact about it sits in a "+
-    "component, every connection in an edge, and what kinds of article exist is a row in here — "+
-    "not a line of code. Adding a kind of thing is an insert, not a migration. That claim is what "+
-    "this prototype is testing."));
+   Die sieben Wörter stehen ausführlich in docs/Begriffe.md; hier steht, was
+   man beim Arbeiten braucht. */
+var BEGRIFFE=[
+  ["Type",
+   "A registry row: what a thing can be. Either a base type — it declares "+
+   "fields and inherits nothing — or a composite, made of other types. A "+
+   "composite may be made of composites. Abstract means no article is one "+
+   "directly: nobody writes an article called “Identity”."],
+  ["Part",
+   "A type another type is made of. The first one named draws the tree and "+
+   "decides the area; the rest only bring their fields and edges along. You "+
+   "drop a field by dropping the part that brings it — an exception list "+
+   "would be incomplete the day the next field arrives, and nobody would "+
+   "notice."],
+  ["Field",
+   "One fact a type records: a key, a label, a kind, required or optional, "+
+   "maybe a default, maybe a calculation. A calculated field takes no input "+
+   "and is never stored. Values are kept one card per type, named after the "+
+   "type that declares the field — that is what keeps hp at the creature "+
+   "apart from hp at the statblock."],
+  ["Article",
+   "A thing in the campaign: an id, the types it is, the cards with its "+
+   "values, and its edges. What it records is said by its type, never by "+
+   "code."],
+  ["View",
+   "How an article is drawn. Three of them, and where you are decides which: "+
+   "Overview for a reference in the text, Quick for a card, Full for the "+
+   "article page. There is no picker. The arrangement lives at the type, and "+
+   "subtypes inherit it."],
+  ["Block",
+   "One piece of a view — and the same piece in the type definition: the "+
+   "fields of one part, a single field, the image, the edges. Definition and "+
+   "view show the same blocks, so you do not have to hold two pictures of "+
+   "one thing in your head."],
+  ["Edge",
+   "A typed, directed connection between two articles, which may carry "+
+   "properties of its own. Stored forward only; the other direction is "+
+   "always a query. An edge with a section heading writes the target into "+
+   "the article instead of linking to it."]
+];
 
-  var t=el("dl",{class:"kdl"});
-  [["Types",
-    "The only row for a kind of thing: the fields it records, what it extends, and which text "+
-    "blocks it allows. Resolution walks extends upward, so Weapon gets everything Item and Identity "+
-    "have. There is no second list of components — a type carries its fields itself, and what "+
-    "several types share is a parent type."],
-   ["Fields",
-    "Each type's schema is JSON Schema: fields with a type, a title, and optionally a format, "+
-    "choices, a derived expression, or a link target. The values of an article are stored one "+
-    "card per type, named after the type that declares them — that is what keeps hp at the "+
-    "creature apart from hp at the statblock without renaming either."],
-   ["Relation types",
-    "A typed, directed edge with its own properties. Stored in one direction only; the reverse is "+
-    "a query, and the inverse label is what it reads as from the other end. A relation with a "+
-    "section heading composes the target into the article instead of listing it."],
-   ["Views",
-    "An ordered list of layout elements — headings, paragraphs, field tables, blocks, composed "+
-    "rules, relations, images. A type may carry its own layout, inherited by its subtypes, so "+
-    "Item: Full and Statblock: Full differ without being two views."],
-   ["Variables",
-    "Campaign-wide values for {VAR}. Resolution order: the binding on the edge, then the article "+
-    "using it, then these."]
-  ].forEach(function(r){
-    t.appendChild(el("dt",{text:r[0]}));
-    t.appendChild(el("dd",{text:r[1]}));
+/** Ein Artikel, an dem sich das Ganze zeigen lässt: einer mit möglichst
+ *  vielen Karten. Fest einen zu nennen hiesse, dass die Seite leer ist,
+ *  sobald jemand ihn löscht. */
+function howtoBeispiel(){
+  if(UI.howto&&ENT.get(UI.howto)) return ENT.get(UI.howto);
+  /* Die Karten zählen, nicht die Kanten: ein Inventar mit vierzig `holds`
+     ist kein gutes Beispiel, ein NPC mit acht Bestandteilen schon. Ein
+     Artikel mit verschiedenen Kantenarten gewinnt trotzdem — deshalb die
+     Arten und nicht deren Zahl. */
+  var best=null,score=-1;
+  ENT.forEach(function(e){
+    if(!articleVisible(e))return;
+    var arten={}; (e.relations||[]).forEach(function(r){ arten[r.type]=1; });
+    var n=Object.keys(e.components||{}).length*2+Object.keys(arten).length;
+    if(n>score){ score=n; best=e; }
   });
-  d.appendChild(t);
+  return best;
+}
 
-  d.appendChild(el("p",{class:"hint",style:"margin:10px 0 0"},
-    "Two things are never stored: a derived value, which is computed on read, and the reverse of "+
-    "an edge. Storing either means having two places that can disagree."));
+function renderHowto(v){
+  v.appendChild(el("p",{class:"hint"},
+    "Seven words, and one article followed from its type down to the fields "+
+    "it records. Everything below is read from the registry as it stands "+
+    "right now — nothing here is typed out."));
 
-  /* Ein durchgezogenes Beispiel schlägt fünf Definitionen. Es nennt echte
-     Zeilen aus diesem Register, damit man es nachklicken kann statt es zu
-     glauben. */
-  d.appendChild(el("div",{class:"rsec",style:"margin-top:18px",text:"Following one article through"}));
-  var bsp=el("ol",{class:"bsp"});
-  [["The row that says what a statblock is",
-    "Types › Statblock. It is made of Identity, Status, Description, Visibility, Source, "+
-    "Imported, StatblockInfo and Vars. That is the whole "+
-    "definition — everything below follows from it."],
-   ["What it may carry",
-    "Each part brings its own fields: Identity the name and key, Source the book and page, "+
-    "and the imported original. Open Statblock and you see them listed as inherited, with the "+
-    "type they come from."],
-   ["Where the fields come from",
-    "StatblockInfo holds ac, hp, speed, str … and their titles. Nothing about statblocks is "+
-    "written in code: the form, the field table and the validation all read this one schema."],
-   ["A value nobody typed",
-    "StatblockInfo.passivePerception carries derived: 10+mod(wis). It has no input and is "+
-    "never stored — it is computed each time the article is read. Change wis and it follows."],
-   ["How the actions get in",
-    "Relation types › composed of has a section heading. That makes it compose instead of "+
-    "list: open Kanalschleim and its three pooled rules are written into the article under "+
-    "“Actions & traits”, not shown as links. The rules themselves are ordinary articles of "+
-    "type Rule Element, shared by every statblock that uses them."],
-   ["The same rule, said differently",
-    "“Weapon attack” is one article. Kanalschleim binds NAME=Pseudopod, AB=+5, DMG=2d6 + 3 "+
-    "on the edge, so {VAR} in the rule text reads as its own attack. Another statblock binds "+
-    "other values against the same rule. Resolution order: the edge, then the article using "+
-    "it, then Variables."],
-   ["What you actually see",
-    "Views › Full lists the elements in order. Under “Applies to” a type may carry its own "+
-    "layout, so Statblock: Full can lead with the stat table where Item: Full leads with the "+
-    "image — one view, two layouts."],
-   ["Add a kind of thing",
-    "Types › Create interface. Give it a parent, add the fields it needs, and it "+
-    "appears in the compendium, in the new-article picker and in validation. No code changed; "+
-    "that is the claim this prototype exists to test."]
+  /* ---- Der Baum: von einem Artikel bis zu den Feldern ---- */
+  var e=howtoBeispiel();
+  v.appendChild(el("div",{class:"rsec",text:"One article, all the way down"}));
+  if(!e){ v.appendChild(el("div",{class:"empty",text:"No article to follow yet."})); }
+  else{
+    var waehl=el("div",{class:"addbar"});
+    var sel=el("select",{class:"i"});
+    byName().forEach(function(x){
+      if(!articleVisible(x))return;
+      sel.appendChild(el("option",{value:x.id},nameOf(x)));
+    });
+    sel.value=e.id;
+    sel.addEventListener("change",function(){ UI.howto=sel.value; render(); });
+    waehl.appendChild(el("span",{class:"co",text:"Follow"}));
+    waehl.appendChild(sel);
+    v.appendChild(waehl);
+    v.appendChild(howtoBaum(e));
+  }
+
+  /* ---- Die Begriffe ---- */
+  v.appendChild(el("div",{class:"rsec",text:"The seven words"}));
+  var dl=el("dl",{class:"kdl"});
+  BEGRIFFE.forEach(function(r){
+    dl.appendChild(el("dt",{text:r[0]}));
+    dl.appendChild(el("dd",{text:r[1]}));
+  });
+  v.appendChild(dl);
+
+  /* ---- Was nie gespeichert wird ---- */
+  v.appendChild(el("div",{class:"rsec",text:"What is never stored"}));
+  var nie=el("ul",{class:"bsp"});
+  [["A calculated value",
+    "It is worked out each time the article is read. Two places that can "+
+    "disagree are worse than one place that has to think."],
+   ["The other direction of an edge",
+    "It is a query. A mirrored counterpart goes stale the moment one side "+
+    "is deleted."],
+   ["Which kinds of article exist",
+    "That is a registry row, not a line of code. Adding one is an insert, "+
+    "not a migration — the claim this prototype exists to test."]
   ].forEach(function(r){
     var li=el("li");
     li.appendChild(el("b",{text:r[0]}));
     li.appendChild(el("span",{text:" — "+r[1]}));
-    bsp.appendChild(li);
+    nie.appendChild(li);
   });
-  d.appendChild(bsp);
+  v.appendChild(nie);
+}
 
-  box.appendChild(d);
+/** Der Baum. Oben der Artikel, darunter sein Artikeltyp, darunter die
+ *  Bestandteile bis ganz hinunter zu den Feldern. Ein Feld, das der Artikel
+ *  wirklich trägt, ist markiert — sonst läse man eine Möglichkeit und
+ *  hielte sie für den Bestand. */
+function howtoBaum(e){
+  var box=el("div",{class:"tree"});
+  var art=(e.interfaces||[])[0]||"";
+  var karten=e.components||{};
+
+  var kopf=el("div",{class:"tnode tart"});
+  kopf.appendChild(el("span",{class:"tw",text:"article"}));
+  kopf.appendChild(el("button",{class:"ref",type:"button",
+    onclick:function(){ go({k:"art",id:e.id}); }},nameOf(e)));
+  box.appendChild(kopf);
+
+  var gesehen={};
+  function ast(n,tiefe){
+    if(gesehen[n]||tiefe>8)return;
+    gesehen[n]=1;
+    var d=REG.interfaces[n]||{};
+    var eigen=Object.keys((d.schema||{}).properties||{});
+    var pflicht=((d.schema||{}).required)||[];
+    var row=el("div",{class:"tnode"+(tiefe?"":" ttyp"),
+      style:"margin-left:"+(tiefe*18)+"px"});
+    row.appendChild(el("span",{class:"tw",
+      text:tiefe?(eigen.length?"part":"part, empty"):"its type"}));
+    row.appendChild(el("button",{class:"ref",type:"button",
+      onclick:function(){ UI.regtab="types"; UI.typePick=n; go({k:"reg"}); }},
+      d.label||n));
+    if(d.abstract) row.appendChild(el("span",{class:"pill q",text:"abstract"}));
+    box.appendChild(row);
+
+    if(eigen.length){
+      var fb=el("div",{class:"tfields",style:"margin-left:"+(tiefe*18+18)+"px"});
+      eigen.forEach(function(k){
+        var belegt=karten[n]&&karten[n][k]!==undefined&&karten[n][k]!==""&&
+          !(Array.isArray(karten[n][k])&&!karten[n][k].length);
+        var p2=((d.schema||{}).properties||{})[k]||{};
+        fb.appendChild(el("span",{
+          class:"pill q tfield"+(belegt?" on":"")+(p2.derived?" der":""),
+          title:(p2.title||k)+(pflicht.indexOf(k)>=0?" · required":" · optional")+
+            (p2.derived?" · calculated: "+p2.derived:"")+
+            (belegt?"":" · this article carries none"),
+          text:k+(pflicht.indexOf(k)>=0?"*":"")}));
+      });
+      box.appendChild(fb);
+    }
+    parentsOf(n).forEach(function(p2){ ast(p2,tiefe+1); });
+  }
+  if(art) ast(art,0);
+
+  /* Die Kantenarten, nicht die Kanten: „holds, holds, holds …" sagt über
+     das Modell nichts, „holds ×12" schon. */
+  var zahl={};
+  (e.relations||[]).forEach(function(r){ zahl[r.type]=(zahl[r.type]||0)+1; });
+  var kArten=Object.keys(zahl).sort();
+  if(kArten.length){
+    var kn=el("div",{class:"tnode"});
+    kn.appendChild(el("span",{class:"tw",text:"edges"}));
+    kArten.forEach(function(t){
+      var d2=REG.relations[t]||{};
+      kn.appendChild(el("span",{class:"pill q",
+        title:d2.label?("„"+d2.label+"“"):"",
+        text:t+(zahl[t]>1?" \u00d7"+zahl[t]:"")}));
+    });
+    box.appendChild(kn);
+  }
+  box.appendChild(el("p",{class:"hint",style:"margin:10px 0 0"},
+    "A field in bold is one this article carries; the rest the type allows "+
+    "and this article leaves empty. A star means required, a dashed outline "+
+    "means calculated — no input, never stored."));
   return box;
 }
 

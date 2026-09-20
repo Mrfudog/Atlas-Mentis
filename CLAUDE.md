@@ -71,10 +71,16 @@ die Entscheidungen D0–D17, `Requirements.md` die REQ-Nummern.
   Kreatur zeigt ihren Bogen, ein Rezept seine Werkbank, ohne dass jemand
   etwas auswählt. Eine Stufe für genau einen Typ ist ein Sonderfall mit
   einem Dropdown davor.
-- **Vier Bereiche: Story, World, Game, Play.** Wohin eine Artikelart gehört,
-  steht als `area` an ihrer Schnittstelle und wird wie alles andere geerbt.
-  Im Code steht keine Liste davon — sonst bräuchte eine neue Artikelart eine
-  Codeänderung, um auffindbar zu sein.
+- **Wie die Dinge heissen, steht in [docs/Begriffe.md](docs/Begriffe.md):**
+  Typ, Bestandteil, Feld, Artikel, Ansicht, Block, Kante — sieben Wörter,
+  mehr nicht. Wer zwei Namen für eine Sache hat, hat bald zwei Sachen; im
+  Prototyp steht dasselbe unter Registry › How it works, aus dem laufenden
+  Register gezogen.
+- **Sechs Seiten, vier davon Bereiche.** Register und Kompendium sind
+  Seiten; `world`, `history`, `rules` und `play` sind Bereiche. Wohin eine
+  Artikelart gehört, steht als `area` an ihrem Typ und wird wie alles andere
+  geerbt. Im Code steht keine Liste davon — sonst bräuchte eine neue
+  Artikelart eine Codeänderung, um auffindbar zu sein.
 - **Play ist ein Schirm und keine Liste.** Karte, Initiative und Boards sind
   das, worauf man während der Sitzung schaut; sie über die Artikelliste zu
   erreichen hiesse, mitten im Kampf suchen zu gehen. **Was gerade läuft,

@@ -32,6 +32,17 @@ const zurSeite = async (p, name) => {
   await p.waitForTimeout(400);
 };
 
+/** Auf einen Teil des Registers. Es gab einmal eine Reiterzeile daneben,
+ *  die dasselbe sagte wie die Leiste — jetzt sagt es die Leiste allein. */
+const zumRegister = async (p, name) => {
+  await zurSeite(p, 'Registry');
+  await p.evaluate((n) => {
+    const b = [...document.querySelectorAll('.rail button')].find((x) => x.textContent.startsWith(n));
+    if (b) b.click();
+  }, name);
+  await p.waitForTimeout(350);
+};
+
 async function seite(datei, warten) {
   const p = await browser.newPage({ viewport: { width: 1280, height: 950 } });
   const errs = [];
@@ -341,13 +352,7 @@ async function seite(datei, warten) {
   pruefe('field kinds and import raised no exception', errs.length === 0, errs);
 
   /* 6 — Ansichten als Werkzeugkasten, und ein Layout je Typ */
-  await zurSeite(p, 'Registry');
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((x) => /^Types/.test(x.textContent)).click());
-  await p.waitForTimeout(200);
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.tabs button')].find((x) => /^Views$/.test(x.textContent)).click());
-  await p.waitForTimeout(250);
+  await zumRegister(p, 'Views');
   const werkzeuge = await p.evaluate(() =>
     [...document.querySelectorAll('.tools button')].map((b) => b.textContent));
   /* „Jedes" heisst: jedes, das die Seite kennt — nicht eine Zahl, die bei
@@ -430,15 +435,9 @@ async function seite(datei, warten) {
   pruefe('views raised no exception', errs.length === 0, errs);
 
   /* 7 — jeder Registerreiter hat eine Maske, keiner nur ein JSON-Textfeld */
-  await zurSeite(p, 'Registry');
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((x) => /^Types/.test(x.textContent)).click());
-  await p.waitForTimeout(200);
   const masken = {};
   for (const name of ['Types', 'Relations', 'Views', 'Variables']) {
-    await p.evaluate((n) =>
-      [...document.querySelectorAll('.tabs button')].find((x) => x.textContent === n).click(), name);
-    await p.waitForTimeout(280);
+    await zumRegister(p, name);
     masken[name] = await p.evaluate(() => ({
       maske: !!document.querySelector('.regbody'),
       felder: document.querySelectorAll('.regbody label.f, .regbody input.i').length,
@@ -447,7 +446,7 @@ async function seite(datei, warten) {
     }));
   }
   const ohneMaske = Object.keys(masken).filter((n) => !masken[n].maske || masken[n].roh);
-  pruefe('every registry tab opens as a form', ohneMaske.length === 0, masken);
+  pruefe('every registry part opens as a form', ohneMaske.length === 0, masken);
   pruefe('and every one keeps the JSON way out',
     Object.keys(masken).every((n) => masken[n].ausgang), masken);
 
@@ -893,19 +892,29 @@ async function seite(datei, warten) {
   const geleert = await p.evaluate(() => document.querySelectorAll('#view .row').length);
   pruefe('clearing the filters brings everything back', geleert === vorFilter, { geleert, vorFilter });
 
-  await zurSeite(p, 'Registry');
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((x) => /^Types/.test(x.textContent)).click());
-  await p.waitForTimeout(300);
+  await zumRegister(p, 'How it works');
   const dm = await p.evaluate(() => ({
     titel: document.querySelector('#view h2')?.textContent,
-    konzept: [...document.querySelectorAll('.kdl dt')].map((x) => x.textContent),
-    reiter: [...document.querySelectorAll('.tabs button')].map((x) => x.textContent),
+    begriffe: [...document.querySelectorAll('.kdl dt')].map((x) => x.textContent),
+    /* Die Reiterzeile gibt es nicht mehr: sie sagte dasselbe wie die
+       Leiste, zwei Handbreit daneben. */
+    reiter: document.querySelectorAll('.tabs button').length,
+    knoten: [...document.querySelectorAll('.tree .tnode .tw')].map((x) => x.textContent),
+    felder: document.querySelectorAll('.tree .tfield').length,
+    belegt: document.querySelectorAll('.tree .tfield.on').length,
   }));
   /* Die Mechanik gehört auf die Seite, die sie bearbeitet — sonst steht sie
-     nur in Commit-Nachrichten. */
-  pruefe('the data model explains itself',
-    dm.titel === 'Registry' && dm.konzept.length === 5 && dm.reiter.includes('Views'), dm);
+     nur in Commit-Nachrichten. Und sie wird aus dem Register gezogen: eine
+     Erklärung, die eine Liste abtippt, stimmt am Tag ihrer Entstehung. */
+  pruefe('the registry explains its own words',
+    dm.titel === 'Registry' && dm.reiter === 0
+    && ['Type', 'Part', 'Field', 'Article', 'View', 'Block', 'Edge']
+      .every((w, i) => dm.begriffe[i] === w), dm.begriffe);
+  pruefe('and follows one article from its type down to its fields',
+    dm.knoten[0] === 'article' && dm.knoten[1] === 'its type'
+    && dm.knoten.filter((x) => /^part/.test(x)).length > 3
+    && dm.felder > 20 && dm.belegt > 0 && dm.belegt < dm.felder,
+    { knoten: dm.knoten.slice(0, 4), felder: dm.felder, belegt: dm.belegt });
   pruefe('the page structure raised no exception', errs.length === 0, errs);
 
   /* 11 — Standardwerte stehen im Feld, nicht im Code */
@@ -1162,7 +1171,7 @@ async function seite(datei, warten) {
     [...document.querySelectorAll('.rail button')].find((b) => /^Types/.test(b.textContent))?.click());
   await p.waitForTimeout(300);
   await p.evaluate(() =>
-    [...document.querySelectorAll('.tabs button')].find((b) => /^Settings$/.test(b.textContent)).click());
+    [...document.querySelectorAll('.rail button')].find((b) => /^Settings/.test(b.textContent)).click());
   await p.waitForTimeout(300);
   const einst = await p.evaluate(() => ({
     zeilen: [...document.querySelectorAll('.regbody .crow .cl b')].map((x) => x.textContent),
@@ -3129,7 +3138,7 @@ async function seite(datei, warten) {
     [...document.querySelectorAll('.rail button')].find((b) => /^Types/.test(b.textContent)).click());
   await p.waitForTimeout(300);
   await p.evaluate(() =>
-    [...document.querySelectorAll('.tabs button')].find((b) => /^Backup$/.test(b.textContent)).click());
+    [...document.querySelectorAll('.rail button')].find((b) => /^Backup/.test(b.textContent)).click());
   await p.waitForTimeout(400);
   await p.evaluate(() => { window.__SAVED__.length = 0; });
   await p.evaluate(() =>
@@ -3206,7 +3215,7 @@ async function seite(datei, warten) {
     [...document.querySelectorAll('.rail button')].find((b) => /^Types/.test(b.textContent)).click());
   await p.waitForTimeout(300);
   await p.evaluate(() =>
-    [...document.querySelectorAll('.tabs button')].find((b) => /^Backup$/.test(b.textContent)).click());
+    [...document.querySelectorAll('.rail button')].find((b) => /^Backup/.test(b.textContent)).click());
   await p.waitForTimeout(350);
   await p.evaluate(() => { window.__SAVED__.length = 0; });
   await p.evaluate(() =>
