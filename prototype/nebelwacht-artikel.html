@@ -261,6 +261,20 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 .row.picked{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
 .row .tick{font-family:var(--ff-mono);color:var(--accent);width:11px;display:inline-block}
 
+.filters{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:12px}
+.filters select.i{width:auto;padding:4px 8px;font-size:13px}
+.navrow b.ab{font-style:italic;color:var(--dim)}
+
+.konzept{margin-bottom:14px;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--surface);overflow:hidden}
+.konzept summary{cursor:pointer;padding:8px 12px;font-size:11px;text-transform:uppercase;
+  letter-spacing:.09em;color:var(--accent);background:var(--surface2);user-select:none}
+.konzept .kbody{padding:12px 14px;font-size:13.5px;max-width:74ch}
+.konzept .kbody p{margin:0 0 10px}
+.kdl{margin:0}
+.kdl dt{font-family:var(--ff-disp);font-weight:700;font-size:15px;margin-top:10px}
+.kdl dd{margin:2px 0 0;color:var(--dim)}
+
 @media (max-width:900px){
   .body{grid-template-columns:minmax(0,1fr)}
   .rail,.aside{display:none}
@@ -297,7 +311,7 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
   </div>
 
   <nav class="mob" id="mob">
-    <button type="button" data-p="rail">Registry</button>
+    <button type="button" data-p="rail">Compendium</button>
     <button type="button" data-p="main" aria-current="true">Articles</button>
     <button type="button" data-p="aside">Relations</button>
   </nav>
@@ -332,7 +346,8 @@ var REG={interfaces:{},components:{},relations:{},vars:{},views:{}};
 var UI={route:{k:"list"}, view:"quick", iface:"", tag:"", q:"", offen:false, pane:"main",
         regtab:"interfaces", regiface:"", regcomp:"", regprop:"", regjson:false,
         regview:"", regscope:"", regel:"", regcomp2:"", regrel:"",
-        trail:[], inline:false, editField:"", pick:false, picked:{}, err:""};
+        trail:[], inline:false, editField:"", pick:false, picked:{}, status:"",
+        konzept:false, err:""};
 
 /* Darstellungsstufen (Facets, REQ-164) — registry rows, not code.
    Fallback only; the live set lives in registry/views. */
@@ -881,21 +896,36 @@ function renderPanes(){
 function renderRail(){
   var r=document.getElementById("rail"); r.textContent="";
   var counts={},tags={};
+  /* Dieselbe Regel wie der Filter: ein Obertyp zählt seine Subtypen mit. */
+  var zaehle=function(e){
+    var n=(e.interfaces||[])[0]; if(!n)return;
+    var at=n, guard=0;
+    while(at&&guard++<64){ counts[at]=(counts[at]||0)+1; at=parentOf(at); }
+  };
   ENT.forEach(function(e){
-    var i=(e.interfaces&&e.interfaces[0])||"—"; counts[i]=(counts[i]||0)+1;
+    zaehle(e);
     (e.tags||[]).forEach(function(t){tags[t]=(tags[t]||0)+1;});
   });
 
   var s1=el("section");
-  s1.appendChild(el("h3",{text:"Interfaces"}));
+  s1.appendChild(el("h3",{text:"Compendium"}));
   s1.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.iface===""&&UI.route.k==="list"),
     onclick:function(){UI.iface="";go({k:"list"});}},[el("b",{text:"All articles"}),el("em",{text:String(ENT.size)})]));
-  Object.keys(REG.interfaces).sort().forEach(function(n){
-    var d=REG.interfaces[n]; if(d.abstract)return;
-    s1.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.iface===n&&UI.route.k==="list"),
-      onclick:function(){UI.iface=n;go({k:"list"});}},
-      [el("b",{text:d.label||n}),el("em",{text:String(counts[n]||0)})]));
-  });
+  /* Der Baum wie im Datenmodell: ein Obertyp steht über seinen Subtypen und
+     zählt sie mit. Eine flache, alphabetische Liste verbirgt genau die
+     Verwandtschaft, die den Filter erklärt. */
+  (function walk(list,depth){
+    list.forEach(function(n){
+      var d=REG.interfaces[n];
+      var b=el("button",{class:"navrow",type:"button",
+        "aria-current":String(UI.iface===n&&UI.route.k==="list"),
+        style:depth?"padding-left:"+(10+depth*11)+"px":null,
+        onclick:function(){UI.iface=n;go({k:"list"});}},
+        [el("b",{class:d.abstract?"ab":"",text:d.label||n}),el("em",{text:String(counts[n]||0)})]);
+      s1.appendChild(b);
+      walk(kindsOf(n),depth+1);
+    });
+  })(ifaceRoots(),0);
   r.appendChild(s1);
 
   var keys=Object.keys(tags).sort();
@@ -910,7 +940,7 @@ function renderRail(){
   var s3=el("section");
   s3.appendChild(el("h3",{text:"System"}));
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="reg"),
-    onclick:function(){go({k:"reg"});}},[el("b",{text:"Registry"}),el("em",{text:"def"})]));
+    onclick:function(){go({k:"reg"});}},[el("b",{text:"Data model"}),el("em",{text:"def"})]));
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="graph"),
     onclick:function(){go({k:"graph"});}},[el("b",{text:"Graph"}),el("em",{text:"↔"})]));
   if(me.write) s3.appendChild(el("button",{class:"navrow",type:"button",
@@ -935,8 +965,14 @@ function renderMain(){
 
 function matches(e){
   if(UI.offen && !checkArticle(e).length) return false;
-  if(UI.iface && (e.interfaces||[]).indexOf(UI.iface)<0) return false;
+  if(UI.iface){
+    /* Ein Obertyp meint seine Subtypen mit. Exakt zu vergleichen hiesse:
+       „Item" zeigt nichts, obwohl jede Waffe eins ist. */
+    var erlaubt=ifaceAndKinds(UI.iface);
+    if(!(e.interfaces||[]).some(function(n){ return erlaubt.indexOf(n)>=0; })) return false;
+  }
   if(UI.tag && (e.tags||[]).indexOf(UI.tag)<0) return false;
+  if(UI.status && (((e.components||{}).Status||{}).value)!==UI.status) return false;
   if(UI.q){
     var hay=(nameOf(e)+" "+(e.tags||[]).join(" ")+" "+
       (e.blocks||[]).map(function(b){return b.body;}).join(" ")+" "+
@@ -962,6 +998,7 @@ function renderList(v){
     onclick:function(){ UI.pick=!UI.pick; UI.picked={}; render(); }},
     UI.pick?"Done selecting":"Select"));
   v.appendChild(head);
+  v.appendChild(filterBar());
 
   /* Die Auswahl gilt für das, was gerade in der Liste steht — ausnahmslos,
      also vor dem Ausstieg bei null Treffern. Sonst überlebte eine Auswahl
@@ -1097,6 +1134,57 @@ function renderArticle(v,id){
     var node=renderLayoutItem(item,e,ifn,vw);
     if(node) v.appendChild(node);
   });
+}
+
+/* ---------- compendium filters ----------
+   Dieselben Regeln, die matches() anwendet, hier sichtbar und abstellbar.
+   In der Seitenleiste allein sah man nie, *dass* gefiltert wird — nur, dass
+   weniger da war als erwartet. */
+function filterBar(){
+  var bar=el("div",{class:"filters"});
+
+  var typ=el("select",{class:"i"});
+  typ.appendChild(el("option",{value:""},"any type"));
+  (function walk(list,depth){
+    list.forEach(function(n){
+      var d=REG.interfaces[n];
+      typ.appendChild(el("option",{value:n},
+        new Array(depth+1).join("\u2007\u2007")+(d.label||n)+(d.abstract?" (and below)":"")));
+      walk(kindsOf(n),depth+1);
+    });
+  })(ifaceRoots(),0);
+  typ.value=UI.iface||"";
+  typ.addEventListener("change",function(){ UI.iface=typ.value; UI.route={k:"list"}; render(); });
+  bar.appendChild(typ);
+
+  var tagNames={};
+  ENT.forEach(function(e){ (e.tags||[]).forEach(function(t){ tagNames[t]=1; }); });
+  var tag=el("select",{class:"i"});
+  tag.appendChild(el("option",{value:""},"any tag"));
+  Object.keys(tagNames).sort().forEach(function(t){ tag.appendChild(el("option",{value:t},"#"+t)); });
+  tag.value=UI.tag||"";
+  tag.addEventListener("change",function(){ UI.tag=tag.value; UI.route={k:"list"}; render(); });
+  bar.appendChild(tag);
+
+  var stProp=(((REG.components.Status||{}).schema||{}).properties||{}).value;
+  var st=el("select",{class:"i"});
+  st.appendChild(el("option",{value:""},"any status"));
+  ((stProp&&stProp["enum"])||["idea","planned","used","discarded"]).forEach(function(o){
+    st.appendChild(el("option",{value:o},o)); });
+  st.value=UI.status||"";
+  st.addEventListener("change",function(){ UI.status=st.value; UI.route={k:"list"}; render(); });
+  bar.appendChild(st);
+
+  bar.appendChild(el("button",{class:"chip pick"+(UI.offen?" on":""),type:"button",
+    onclick:function(){ UI.offen=!UI.offen; UI.route={k:"list"}; render(); }},"only open issues"));
+
+  var aktiv=UI.iface||UI.tag||UI.status||UI.offen||UI.q;
+  if(aktiv) bar.appendChild(el("button",{class:"btn sm gh",type:"button",onclick:function(){
+    UI.iface=""; UI.tag=""; UI.status=""; UI.offen=false; UI.q="";
+    var q=document.getElementById("q"); if(q)q.value="";
+    UI.route={k:"list"}; render();
+  }},"Clear filters"));
+  return bar;
 }
 
 /* ---------- editing many at once ----------
@@ -1574,7 +1662,7 @@ function renderAside(){
   ENT.forEach(function(o){ (o.relations||[]).forEach(function(r){
     if(r.to===e.id) backs.push({from:o,rel:r}); }); });
   a.appendChild(el("h3",{text:"Zeigt hierher"}));
-  if(!backs.length) a.appendChild(el("p",{class:"hint",text:"Nichts zeigt hierher."}));
+  if(!backs.length) a.appendChild(el("p",{class:"hint",text:"Nothing points here."}));
   else{
     var bx=el("div",{class:"rel"});
     backs.forEach(function(b){
@@ -1615,11 +1703,11 @@ function renderGraph(v){
 
 /* ---------- registry ---------- */
 function renderRegistry(v){
-  v.appendChild(el("h2",{text:"Registry"}));
-  v.appendChild(el("p",{class:"hint",text:"The registry is data, not code. A new interface is one row here — forms and views follow from it without a code change. That is exactly what is under test."}));
+  v.appendChild(el("h2",{text:"Data model"}));
+  v.appendChild(konzept());
   var tabs=el("div",{class:"tabs",role:"tablist"});
   [["interfaces","Interfaces"],["components","Components"],
-   ["relations","Relation types"],["views","Compendium"],["vars","Variables"]]
+   ["relations","Relation types"],["views","Views"],["vars","Variables"]]
   .forEach(function(t){
     tabs.appendChild(el("button",{type:"button",role:"tab","aria-selected":String(UI.regtab===t[0]),
       onclick:function(){UI.regtab=t[0];UI.err="";render();}},t[1]));
@@ -1706,7 +1794,7 @@ function regIfaceEditor(v){
 }
 
 function newInterfaceBar(unter){
-  var i=el("input",{class:"i",type:"text",placeholder:"Bezeichnung, z. B. Fahrzeug"});
+  var i=el("input",{class:"i",type:"text",placeholder:"Label, e.g. Vehicle"});
   var bar=el("div",{class:"addbar",style:"margin-top:10px"});
   bar.appendChild(i);
   bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
@@ -1962,6 +2050,60 @@ function renderVarEditor(v){
     }},"Add variable"));
     v.appendChild(bar);
   }
+}
+
+/* ---------- how the registry works, on the page that edits it ----------
+   Die Mechanik steht hier, weil sie sonst nur in Commit-Nachrichten und im
+   Kopf steht. Wer eine Zeile ändert, soll daneben lesen können, was sie
+   auslöst. Aufklappbar, damit sie nicht jedes Mal im Weg ist. */
+function konzept(){
+  var box=el("details",{class:"konzept"});
+  if(UI.konzept) box.setAttribute("open","open");
+  box.addEventListener("toggle",function(){ UI.konzept=box.hasAttribute("open"); });
+  box.appendChild(el("summary",{text:"How this works"}));
+
+  var d=el("div",{class:"kbody"});
+  d.appendChild(el("p",{},"An article is an id and nothing else. Every fact about it sits in a "+
+    "component, every connection in an edge, and what kinds of article exist is a row in here — "+
+    "not a line of code. Adding a kind of thing is an insert, not a migration. That claim is what "+
+    "this prototype is testing."));
+
+  var t=el("dl",{class:"kdl"});
+  [["Interfaces",
+    "What an article of this kind must carry (requires) and may carry (allows), what it extends, "+
+    "and which text blocks it allows. Resolution walks extends upward, so Weapon gets everything "+
+    "Item and Base have. A subtype may tighten optional into required, never the other way — "+
+    "validation walks the same chain and would find the requirement anyway."],
+   ["Components",
+    "One typed fact, at most one per article, absent when unused. Each is a JSON Schema: fields "+
+    "with a type, a title, and optionally a format, choices, a derived expression, or a link "+
+    "target. Components are shared — changing a field here changes it everywhere the component "+
+    "is used, which is the point of the pool."],
+   ["Relation types",
+    "A typed, directed edge with its own properties. Stored in one direction only; the reverse is "+
+    "a query, and the inverse label is what it reads as from the other end. A relation with a "+
+    "section heading composes the target into the article instead of listing it."],
+   ["Views",
+    "An ordered list of layout elements — headings, paragraphs, field tables, blocks, composed "+
+    "rules, relations, images. A type may carry its own layout, inherited by its subtypes, so "+
+    "Item: Full and Statblock: Full differ without being two views."],
+   ["Variables",
+    "Campaign-wide values for {VAR}. Resolution order: the binding on the edge, then the article "+
+    "using it, then these."]
+  ].forEach(function(r){
+    t.appendChild(el("dt",{text:r[0]}));
+    t.appendChild(el("dd",{text:r[1]}));
+  });
+  d.appendChild(t);
+
+  d.appendChild(el("p",{class:"hint",style:"margin:10px 0 0"},
+    "Two things are never stored: a derived value, which is computed on read, and the reverse of "+
+    "an edge. Storing either means having two places that can disagree."));
+  d.appendChild(el("p",{class:"hint",style:"margin:6px 0 0"},
+    "`engine` on a component names the machinery that will own it in the real stack "+
+    "(Calculation, Resolution, Access …). The prototype records it and does not act on it yet."));
+  box.appendChild(d);
+  return box;
 }
 
 /* Jede Maske trägt denselben Notausgang: für Massenänderungen ist ein
@@ -2355,7 +2497,7 @@ function regIfaceBody(ifn){
   if(!own.length&&!inherited.length) chips.appendChild(el("span",{class:"gone",text:"none"}));
   box.appendChild(chips);
   if(w){
-    var bi=el("input",{class:"i",type:"text",placeholder:"z. B. tactics"});
+    var bi=el("input",{class:"i",type:"text",placeholder:"e.g. tactics"});
     var bbar=el("div",{class:"addbar"});
     bbar.appendChild(bi);
     bbar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
@@ -2478,7 +2620,7 @@ function fieldBox(cn,within,w,saveC){
   if(!keys.length) box.appendChild(el("p",{class:"hint",text:"No fields yet."}));
 
   if(w){
-    var nk=el("input",{class:"i",type:"text",placeholder:"Feldname, z. B. gewicht"});
+    var nk=el("input",{class:"i",type:"text",placeholder:"Field name, e.g. weight"});
     var nt=el("input",{class:"i",type:"text",placeholder:"Label"});
     var bar=el("div",{class:"addbar",style:"margin-top:9px"});
     bar.appendChild(nk); bar.appendChild(nt);
@@ -2724,7 +2866,7 @@ function targetEditor(p,save,writable){
 
 function newComponent(ifn){
   dialog("New component",function(host,close){
-    var lb=el("input",{class:"i",type:"text",placeholder:"z. B. Handelsinfo"});
+    var lb=el("input",{class:"i",type:"text",placeholder:"e.g. Trade info"});
     host.appendChild(field("Label",lb));
     host.appendChild(el("p",{class:"hint",
       text:"The component starts empty and is attached to this interface as optional. You add its fields afterwards."}));
@@ -2938,7 +3080,7 @@ function addRelation(e){
 /* ad-hoc field + promotion into the interface (REQ-181) */
 function addAdhoc(e){
   dialog("Custom field",function(host,close){
-    var lb=el("input",{class:"i",type:"text",placeholder:"z. B. Lieblingsfluch"});
+    var lb=el("input",{class:"i",type:"text",placeholder:"e.g. Favourite oath"});
     var vl=el("input",{class:"i",type:"text"});
     var pr=el("input",{type:"checkbox",id:"promote"});
     host.appendChild(field("Label",lb));
