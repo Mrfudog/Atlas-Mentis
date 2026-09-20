@@ -179,6 +179,13 @@ describe('interface inheritance', () => {
     const marker = seedRegistry.relations.marker.props?.properties ?? {};
     expect(marker.light?.type).toBe('number');
     expect(marker.dim?.type).toBe('number');
+    /* Drehung und Seitenverhältnis stehen an der Kante und nicht am Asset:
+       dasselbe Fass steht auf einer Karte quer und auf der nächsten längs,
+       und ein gedrehtes Bild als eigenes Asset wäre ein zweites Fass. */
+    expect(marker.rot?.type).toBe('number');
+    expect(marker.ratio?.type).toBe('number');
+    expect(seedRegistry.components.AssetInfo.schema.properties ?? {})
+      .not.toHaveProperty('rot');
 
     const terr = seedRegistry.relations.territory;
     expect(terr.from).toEqual(['Map']);

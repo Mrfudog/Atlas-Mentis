@@ -1115,6 +1115,98 @@ async function seite(datei, warten) {
     });
     await p.waitForTimeout(200);
     pruefe('a sub-map shows as a region to zoom into', mk.bereiche.length > 0, mk.bereiche);
+
+    /* ---- Hineinzoomen statt hineinspringen (REQ-131, 160) ----
+       Das Rad zoomt, und wenn ein Unterkartenrahmen den Blick füllt, ist
+       der nächste Schritt der Schritt hinein. Eine Schwelle allein wäre
+       ein Sprung, den niemand kommen sieht — geprüft wird deshalb beides:
+       dass der Rahmen es vorher ansagt, und dass er erst danach betritt. */
+    const zoomStufen = await p.evaluate(async () => {
+      const stage = document.querySelector('.mapstage');
+      const raus = [];
+      for (let i = 0; i < 12; i++) {
+        stage.dispatchEvent(new WheelEvent('wheel',
+          { deltaY: -100, bubbles: true, cancelable: true }));
+        await new Promise((r) => setTimeout(r, 90));
+        const nah = document.querySelector('.maparea.near');
+        raus.push({
+          zoom: window.__T__.UI.mapZoom,
+          nah: !!nah,
+          sagt: nah ? nah.textContent : '',
+          /* Sobald eine andere Karte offen ist, ist der Schritt getan. */
+          route: window.__T__.UI.route.id || '',
+        });
+        if (!document.querySelector('.mapstage')) break;
+      }
+      return raus;
+    });
+    const angesagt = zoomStufen.findIndex((x) => x.nah);
+    const drin = zoomStufen.findIndex((x, i) =>
+      i > 0 && x.route !== zoomStufen[0].route);
+    pruefe('the wheel zooms the map in',
+      zoomStufen.length > 1 && zoomStufen[1].zoom > zoomStufen[0].zoom, zoomStufen[0]);
+    pruefe('a frame that fills the view says so before it is entered',
+      angesagt >= 0 && /zoom in to enter/.test(zoomStufen[angesagt].sagt),
+      zoomStufen[angesagt]);
+    pruefe('and the next step in is the step into it',
+      drin > angesagt && angesagt >= 0, { angesagt, drin });
+
+    /* Und zurück: wer ganz hinauszoomt, landet auf der Karte darüber. Ohne
+       das wäre das Hineinzoomen eine Einbahnstrasse. */
+    const zurueck = await p.evaluate(async () => {
+      const T = window.__T__;
+      const drinId = T.UI.route.id;
+      for (let i = 0; i < 12; i++) {
+        const stage = document.querySelector('.mapstage');
+        if (!stage) break;
+        stage.dispatchEvent(new WheelEvent('wheel',
+          { deltaY: 100, bubbles: true, cancelable: true }));
+        await new Promise((r) => setTimeout(r, 90));
+        if (T.UI.route.id !== drinId) return { raus: true, id: T.UI.route.id };
+      }
+      return { raus: false, id: T.UI.route.id };
+    });
+    pruefe('zooming all the way out goes up to the map above',
+      zurueck.raus === true, zurueck);
+
+    /* ---- Möbel statt Tokens ----
+       Ein Möbel liegt auf der Karte, statt auf ihr zu stehen: kein Kreis,
+       eine Drehung, und ein Seitenverhältnis, weil ein Tisch kein Quadrat
+       ist. Alles drei an der Kante — dasselbe Fass steht auf der nächsten
+       Karte längs. */
+    await oeffne(kartenName);
+    await p.waitForTimeout(400);
+    const moebel = await p.evaluate((id) => {
+      const T = window.__T__;
+      const e = T.ENT.get(id);
+      const tok = (e.relations || []).find((r) => r.type === 'marker');
+      const merk = Object.assign({}, tok.props);
+      tok.props = Object.assign({}, merk,
+        { kind: 'scenery', rot: 30, ratio: 0.5, size: 2 });
+      T.render();
+      return { id: tok.id, merk };
+    }, karte);
+    await p.waitForTimeout(400);
+    const gezeichnet = await p.evaluate(() => {
+      const t = document.querySelector('.mtoken.asset');
+      if (!t) return null;
+      return { klasse: t.className, dreh: t.style.transform,
+        breit: t.style.width, hoch: t.style.height };
+    });
+    pruefe('scenery is drawn as a rotated image, not as a round token',
+      !!gezeichnet && /rotate\(30deg\)/.test(gezeichnet.dreh)
+      && /translate\(-50%,\s*-50%\)/.test(gezeichnet.dreh), gezeichnet);
+    pruefe('and it may be a rectangle — a table is not a square',
+      !!gezeichnet && parseFloat(gezeichnet.hoch) < parseFloat(gezeichnet.breit) * 0.6,
+      gezeichnet);
+    await p.evaluate((x) => {
+      const T = window.__T__;
+      const e = T.ENT.get(x.karte);
+      const tok = (e.relations || []).find((r) => r.id === x.id);
+      tok.props = x.merk;
+      T.render();
+    }, { karte, id: moebel.id, merk: moebel.merk });
+    await p.waitForTimeout(300);
   } else {
     pruefe('a map with tokens exists in the data', false, 'keine Karte gefunden');
   }

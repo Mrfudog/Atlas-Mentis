@@ -310,6 +310,19 @@ body.asplayer .brand span{color:var(--link)}
 .mtoken.k-play{border-color:var(--warn);border-style:double;border-width:4px}
 .mtoken.k-play span{color:var(--warn)}
 .mtoken.k-scenery{border-style:dotted;opacity:.85}
+/* Ein Möbel ist kein Token. Es hat keinen Rand, keinen Kreis und keinen
+   Schatten — es liegt auf der Karte, statt auf ihr zu stehen. Erst beim
+   Darüberfahren zeigt es, dass man es anfassen kann. */
+.mtoken.asset{border-radius:0;border-color:transparent;background:transparent;
+  box-shadow:none;overflow:visible}
+.mtoken.asset img{object-fit:contain}
+.mtoken.asset:hover{border-color:var(--accent);border-style:dashed}
+/* Der Rahmen einer Unterkarte, wenn man weit genug hineingezoomt ist:
+   dann ist er nicht mehr ein Kästchen am Rand, sondern das, was man
+   gleich betritt. */
+.maparea.near{border-style:solid;border-width:3px;background:transparent}
+.maparea.near span{font-size:14px;font-family:var(--ff-disp);
+  transform:none;padding:3px 8px}
 
 /* Nebel, Licht und Gebiete. Die Überlagerung liegt über dem Bild und unter
    den Tokens — man muss sehen, wo eine Figur steht, auch wenn es dort
@@ -1589,6 +1602,10 @@ function render(){
       if(window.console) console.error("Nebelwacht:",broken);
     }catch(y){}
   }
+  /* Nach dem Zeichnen, weil es erst jetzt im Baum hängt. Die Grösse des
+     Sichtfensters ändert sich mit dem Fenster und nicht mit dem Zoom —
+     einmal gemerkt hält sie, bis jemand die Seite anders gross macht. */
+  try{ noteMapBox(); }catch(z){}
 }
 function renderPanes(){
   var narrow=window.matchMedia("(max-width:900px)").matches;
@@ -7127,19 +7144,150 @@ function tileGrid(card){
   return {node:box,nat:{w:cols*px,h:rows*px}};
 }
 
+/* Ein Token einstellen: Art, Grösse, Drehung, Notiz — und der Weg hinaus.
+   Es steht alles an der Kante, weil alles davon an **beiden** Enden hängt:
+   dasselbe Fass steht auf einer Karte quer und auf der nächsten längs, und
+   dieselbe Laterne leuchtet auf einer Stadtkarte anders weit als auf einer
+   Kampfkarte. */
+function tokenSetup(e,r,art){
+  dialog("On the map — "+(art?nameOf(art):"token"),function(host,close){
+    var pr=r.props||{};
+    var artSel=el("select",{class:"i"});
+    TOKEN_KINDS.forEach(function(k){ artSel.appendChild(el("option",{value:k[0]},k[1])); });
+    artSel.value=tokenKind(r);
+    var size=el("input",{class:"i",type:"number",min:"0.25",step:"0.25",
+      value:String(Number(pr.size)||1)});
+    var rot=el("input",{class:"i",type:"number",min:"-180",max:"360",step:"15",
+      value:String(Number(pr.rot)||0)});
+    var ratio=el("input",{class:"i",type:"number",min:"0.1",step:"0.1",
+      value:String(Number(pr.ratio)>0?Number(pr.ratio):1)});
+    var note=el("input",{class:"i",type:"text",value:pr.note||"",placeholder:"optional"});
+    var hell=el("input",{class:"i",type:"number",min:"0",step:"1",
+      value:pr.light==null?"":String(pr.light)});
+    var matt=el("input",{class:"i",type:"number",min:"0",step:"1",
+      value:pr.dim==null?"":String(pr.dim)});
+
+    host.appendChild(field("Kind",artSel));
+    host.appendChild(field("Width in squares",size));
+    /* Seitenverhältnis nur beim Möbel: eine Kreatur belegt Felder und kein
+       Rechteck, und ein Feld, das für sie nichts heisst, fragt nach einer
+       Antwort, die es nicht gibt. */
+    var vz=field("Height ÷ width",ratio);
+    host.appendChild(vz);
+    host.appendChild(field("Rotation in degrees",rot));
+    host.appendChild(field("Note",note));
+    host.appendChild(field("Bright light in squares",hell));
+    host.appendChild(field("Dim light in squares",matt));
+    function zeig(){ vz.style.display=artSel.value==="scenery"?"":"none"; }
+    artSel.addEventListener("change",zeig); zeig();
+
+    var weg=el("div",{class:"rowbtns"});
+    weg.appendChild(el("button",{class:"btn sm gh",type:"button",onclick:function(){
+      close();
+      confirmDialog("Take “"+(art?nameOf(art):"?")+"” off this map?",function(){
+        e.relations=e.relations.filter(function(x){return x.id!==r.id;}); persist(e); });
+    }},"Take it off"));
+    host.appendChild(weg);
+
+    actions(host,close,function(){
+      var neu=Object.assign({},pr,{
+        kind:artSel.value,
+        size:Number(size.value)||1,
+        rot:Number(rot.value)||undefined,
+        ratio:artSel.value==="scenery"&&Number(ratio.value)>0&&Number(ratio.value)!==1
+          ?Number(ratio.value):undefined,
+        note:note.value.trim()||undefined,
+        light:hell.value===""?undefined:Number(hell.value),
+        dim:matt.value===""?undefined:Number(matt.value)});
+      r.props=neu;
+      persist(e);
+    },"Save");
+  });
+}
+
+/* ---- Hineinzoomen statt hineinspringen (REQ-131, 160) ----
+   Eine Unterkarte ist ein Rahmen auf der grossen Karte. Ihn anzuklicken
+   ging schon; was fehlte, war das, was man tatsächlich tut: **näher
+   herangehen.** Das Rad zoomt auf den Zeiger zu, und wenn ein Rahmen den
+   Blick füllt, ist der nächste Zoomschritt der Schritt hinein.
+
+   Eine Schwelle allein wäre ein Sprung, den niemand kommen sieht. Deshalb
+   zwei Stufen: ab `NAH` wird der Rahmen aufdringlich — durchgezogen,
+   beschriftet, „zoom in to enter" —, und erst der Schritt danach betritt
+   ihn. Und zurück geht es genauso: wer auf einer Unterkarte hinauszoomt
+   und schon ganz draussen ist, landet beim Elternteil. */
+var MAP_NAH=0.55, mapBox={w:0,h:0};
+function noteMapBox(){
+  var st=document.querySelector(".mapstage");
+  if(st&&st.clientWidth) mapBox={w:st.clientWidth,h:st.clientHeight||mapBox.h};
+}
+/* Wie viel vom Sichtfenster ein Rahmen füllt. Gemessen am Fenster und
+   nicht am Bild: „füllt den Blick" ist eine Aussage über den Blick.
+
+   Die Höhe kommt aus der natürlichen Grösse und nicht aus `offsetHeight`.
+   Solange das Bild lädt, ist die gemessene Höhe 0 — und dann wäre jeder
+   Rahmen winzig, obwohl er den halben Schirm füllt. Dieselbe Regel wie
+   beim Nebel: das Register zuerst, die Messung danach. */
+function areaShare(pr,nat,zoom){
+  /* Gemessen wird das Sichtfenster, gerechnet das Bild. Beim Zeichnen hängt
+     das neue Bild noch nicht im Baum — es zu messen ergäbe null, und dann
+     wäre jeder Rahmen winzig, obwohl er den halben Schirm füllt. Die
+     Breite des Bildes ist ohnehin der Zoom mal das Fenster; sie
+     auszurechnen ist genauer als sie abzulesen. */
+  /* Beim Zeichnen ist das alte Sichtfenster schon weg und das neue noch
+     nicht da. Darum wird es nach jedem Zeichnen gemerkt: die Grösse des
+     Fensters ändert sich mit dem Fenster und nicht mit dem Zoom. */
+  var st=document.querySelector(".mapstage");
+  var sw=(st&&st.clientWidth)||mapBox.w, sh=(st&&st.clientHeight)||mapBox.h;
+  if(!sw||!sh||!nat||!(Number(nat.w)>0))return 0;
+  var bw=sw*(zoom||1), bh=bw*(Number(nat.h)/Number(nat.w));
+  /* Beide Seiten müssen voll sein. Ein Rahmen, der nur quer den Blick
+     füllt, ist ein Streifen und kein Ziel. */
+  return Math.min(((Number(pr.w)||0.12)*bw)/sw,((Number(pr.h)||0.12)*bh)/sh);
+}
+function mapZoomBy(schritt,e,nat){
+  var alt=UI.mapZoom;
+  var neu=Math.min(8,Math.max(0.25,alt*(schritt>0?1.25:0.8)));
+  if(neu===alt&&schritt<0){
+    /* Ganz draussen und noch weiter hinaus: das ist die Frage nach der
+       Karte darüber. */
+    var oben=parentMap(e);
+    if(oben){ UI.mapZoom=1; go({k:"art",id:oben.id}); return; }
+  }
+  if(schritt>0){
+    /* Was den Blick schon füllt, wird jetzt betreten. Geprüft wird vor dem
+       Zoomen, damit der Schritt hinein und der Schritt näher nicht
+       derselbe sind. */
+    var rein=null;
+    childMaps(e).forEach(function(k){
+      var pr=k.rel.props||{};
+      if(pr.x==null||pr.y==null)return;
+      if(areaShare(pr,nat,UI.mapZoom)>=MAP_NAH) rein=k.map;
+    });
+    if(rein){ UI.mapZoom=1; go({k:"art",id:rein.id}); return; }
+  }
+  UI.mapZoom=neu;
+  render();
+}
+
 function elMap(e,ifn,item){
   var card=mapCard(e);
   var src=assetSrc(card.image);
   var wrap=el("div",{class:"mapbox"});
+  /* Die beiden werden weiter unten gefüllt; die Leiste braucht sie nur,
+     wenn jemand klickt, und dann stehen sie. */
+  var stage=null, img=null, nat=null;   /* erst weiter unten gefüllt */
 
   /* Werkzeugleiste: Zoom, Gitter, Tokenfilter. Der Filter ist kein Zierrat —
      eine vorbereitete Karte und eine im Spiel laufende sind dieselbe Karte,
      und man will die Vorbereitung sehen können, ohne die Spielzüge. */
   var bar=el("div",{class:"maptools"});
   if(inPlacement) bar.style.display="none";
-  [["−",-0.25],["+",0.25]].forEach(function(z){
+  /* Dieselbe Funktion wie das Rad: zwei Wege, die verschieden zoomen, sind
+     zwei Wege, auf denen man verschieden tief landet. */
+  [["−",-1],["+",1]].forEach(function(z){
     bar.appendChild(el("button",{class:"btn sm",type:"button",title:"Zoom",
-      onclick:function(){ UI.mapZoom=Math.min(4,Math.max(0.25,UI.mapZoom+z[1])); render(); }},z[0]));
+      onclick:function(){ mapZoomBy(z[1],e,nat); }},z[0]));
   });
   bar.appendChild(el("span",{class:"hint",style:"margin:0",
     text:Math.round(UI.mapZoom*100)+"%"+(card.scale?" · 1 square = "+card.scale:"")}));
@@ -7169,8 +7317,15 @@ function elMap(e,ifn,item){
     wrap.appendChild(fogTools(e,card));
   }
 
-  var stage=el("div",{class:"mapstage"});
+  stage=el("div",{class:"mapstage"});
   var inner=el("div",{class:"mapinner"});
+  /* Das Rad zoomt und rollt nicht. Ohne `passive:false` liesse sich das
+     Scrollen nicht abbestellen, und die Seite führe unter der Karte weg. */
+  stage.addEventListener("wheel",function(ev){
+    if(ev.ctrlKey)return;                 /* der Browserzoom gehört dem Browser */
+    ev.preventDefault();
+    mapZoomBy(ev.deltaY<0?1:-1,e,nat);
+  },{passive:false});
   /* Alt-Klick zeigt auf eine Stelle. Das ist der einzige Grund, warum es den
      Echtzeitkanal überhaupt braucht: „da" lässt sich nicht speichern. */
   inner.addEventListener("click",function(ev){
@@ -7179,7 +7334,6 @@ function elMap(e,ifn,item){
     if(!rect.width)return;
     pingMap(e.id,(ev.clientX-rect.left)/rect.width,(ev.clientY-rect.top)/rect.height);
   });
-  var img;
   if(kacheln){
     img=kacheln.node;
     img.style.width=(UI.mapZoom*100)+"%";
@@ -7213,7 +7367,7 @@ function elMap(e,ifn,item){
   var raster=gridOverlay(card,UI.mapZoom);
   if(raster) inner.appendChild(raster);
 
-  var nat=kacheln?kacheln.nat:natFor(card,src);
+  nat=kacheln?kacheln.nat:natFor(card,src);
   var sicht=nat?visionOverlay(e,card,nat):null;
   if(sicht) inner.appendChild(sicht);
   else if(!nat&&(card.fog||(card.lighting&&card.lighting!=="bright")))
@@ -7224,11 +7378,16 @@ function elMap(e,ifn,item){
   childMaps(e).forEach(function(k){
     var pr=k.rel.props||{};
     if(pr.x==null||pr.y==null)return;
-    var box=el("button",{class:"maparea",type:"button",title:"Zoom into "+nameOf(k.map),
-      onclick:function(){ go({k:"art",id:k.map.id}); }});
+    /* Füllt der Rahmen den Blick, ist der nächste Zoomschritt der Schritt
+       hinein. Er sagt das vorher — ein Sprung, den niemand kommen sieht,
+       ist keine Navigation, sondern ein Versehen. */
+    var nah=areaShare(pr,nat,UI.mapZoom)>=MAP_NAH;
+    var box=el("button",{class:"maparea"+(nah?" near":""),type:"button",
+      title:nah?"Zoom in once more to enter "+nameOf(k.map):"Enter "+nameOf(k.map),
+      onclick:function(){ UI.mapZoom=1; go({k:"art",id:k.map.id}); }});
     box.style.left=(pr.x*100)+"%"; box.style.top=(pr.y*100)+"%";
     box.style.width=((pr.w||0.12)*100)+"%"; box.style.height=((pr.h||0.12)*100)+"%";
-    box.appendChild(el("span",{text:nameOf(k.map)}));
+    box.appendChild(el("span",{text:nah?nameOf(k.map)+" — zoom in to enter":nameOf(k.map)}));
     inner.appendChild(box);
   });
 
@@ -7241,12 +7400,23 @@ function elMap(e,ifn,item){
     /* Der Zeiger auf dem, der dran ist (REQ-144): derselbe Zeichner, nur
        ein Ring mehr. */
     var dran=UI.turnActor&&art&&art.id===UI.turnActor;
-    var t=el("button",{class:"mtoken k-"+kind+(dran?" now":""),type:"button",
-      title:(art?nameOf(art):"(missing)")+(pr.note?" — "+pr.note:"")});
+    /* Ein Möbel ist kein Token: es liegt auf der Karte, statt auf ihr zu
+       stehen. Deshalb ohne Kreis, mit Drehung und mit einem Seitenverhältnis
+       — ein Tisch ist kein Quadrat. */
+    var moebel=kind==="scenery";
+    var t=el("button",{class:"mtoken k-"+kind+(dran?" now":"")+(moebel?" asset":""),
+      type:"button",
+      title:(art?nameOf(art):"(missing)")+(pr.note?" — "+pr.note:"")+
+        (canWrite()?" · right-click to set it up":"")});
     t.style.left=((pr.x||0.5)*100)+"%";
     t.style.top=((pr.y||0.5)*100)+"%";
     var d=Math.max(14,(Number(card.gridSize)||70)*(Number(pr.size)||1)*UI.mapZoom);
-    t.style.width=d+"px"; t.style.height=d+"px";
+    var hoch=moebel?d*(Number(pr.ratio)>0?Number(pr.ratio):1):d;
+    t.style.width=d+"px"; t.style.height=hoch+"px";
+    /* Die Drehung kommt hinter die Zentrierung, sonst dreht sich der Punkt
+       mit und das Möbel wandert beim Drehen aus. */
+    var dreh=Number(pr.rot)||0;
+    if(dreh) t.style.transform="translate(-50%,-50%) rotate("+dreh+"deg)";
     var bild=art&&assetSrc(((art.components||{}).Image||{}).ref||((art.components||{}).Image||{}).url);
     if(bild) t.appendChild(el("img",{src:bild,alt:""}));
     else t.appendChild(el("span",{text:(art?nameOf(art):"?").slice(0,2)}));
@@ -7279,11 +7449,13 @@ function elMap(e,ifn,item){
       r.props=Object.assign({},r.props,{x:war.nx,y:war.ny});
       persist(e);
     });
+    /* Rechtsklick stellt ein und löscht nicht sofort. Ein Rechtsklick, der
+       ohne Rückfrage etwas wegnimmt, ist der Klick, den man auf einem
+       Laptop-Touchpad aus Versehen macht. */
     t.addEventListener("contextmenu",function(ev){
       ev.preventDefault();
       if(!canWrite())return;
-      confirmDialog("Remove the token “"+(art?nameOf(art):"?")+"” from this map?",function(){
-        e.relations=e.relations.filter(function(x){return x.id!==r.id;}); persist(e); });
+      tokenSetup(e,r,art);
     });
     inner.appendChild(t);
   });
@@ -7304,7 +7476,7 @@ function elMap(e,ifn,item){
   var zahl=marker.length;
   wrap.appendChild(el("p",{class:"hint",
     text:zahl?(zahl+" token"+(zahl===1?"":"s")+
-      (canWrite()?" · drag to move, right-click to remove":"")+
+      (canWrite()?" · drag to move, right-click to set up":"")+
       (roomNS?" · alt-click points at a spot for everyone":"")):
       (roomNS?"No tokens yet — alt-click points at a spot for everyone.":"No tokens yet.")}));
   return wrap;

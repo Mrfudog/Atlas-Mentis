@@ -314,6 +314,14 @@ export const relations: Record<string, RelationDef> = {
           default: 'static',
         },
         size: { type: 'number', title: 'Size in squares', default: 1 },
+        /* Gedreht wird an der Kante und nicht am Bild: dasselbe Fass steht
+           auf einer Karte quer und auf der nächsten längs, und ein
+           gedrehtes Bild als eigenes Asset wäre ein zweites Fass. */
+        rot: { type: 'number', title: 'Rotation in degrees', default: 0 },
+        /* Ein Möbel ist nicht rund. `ratio` ist Höhe geteilt durch Breite;
+           ohne es wäre jeder Tisch ein Quadrat. Nur `scenery` braucht es —
+           eine Kreatur belegt Felder, kein Rechteck. */
+        ratio: { type: 'number', title: 'Height ÷ width', default: 1 },
         note: { type: 'string', title: 'Note' },
         // Licht hängt an beiden Enden: dieselbe Laterne leuchtet auf einer
         // Stadtkarte anders weit als auf einer Kampfkarte, weil das Quadrat

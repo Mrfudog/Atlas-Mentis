@@ -297,6 +297,12 @@ in [Spieltisch.md](Spieltisch.md).
   Boards. Was läuft, kommt aus `SessionState` und wird hier nur gezeigt —
   und gezeichnet wird mit denselben Elementen wie die Artikelseite, damit
   es keinen zweiten Kartenzeichner „für den Tisch" gibt.
+- **D23 · Hineinzoomen und Möbel** — REQ-131, 160. Das Rad zoomt; füllt ein
+  Unterkartenrahmen den Blick, sagt er es an, und der Schritt danach
+  betritt ihn. Ganz hinauszoomen führt zur Karte darüber. Möbel sind
+  gedrehte Bilder mit Seitenverhältnis statt runder Tokens — beides an der
+  Kante, weil dasselbe Fass auf der nächsten Karte längs steht. Siehe
+  [Karten.md](Karten.md).
 
 ---
 

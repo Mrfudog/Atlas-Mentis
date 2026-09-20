@@ -103,10 +103,56 @@ Rahmen.
 
 ---
 
+## Hineinzoomen statt hineinspringen
+
+Das Rad zoomt. Füllt ein Unterkartenrahmen den Blick — mehr als 55 % in
+**beiden** Richtungen; ein Rahmen, der nur quer voll ist, ist ein Streifen
+und kein Ziel —, dann wird er aufdringlich: durchgezogen, beschriftet,
+„zoom in to enter". **Erst der Schritt danach betritt ihn.**
+
+Zwei Stufen, weil eine Schwelle allein ein Sprung wäre, den niemand kommen
+sieht. Und zurück geht es genauso: wer auf einer Unterkarte ganz
+hinauszoomt, landet auf der Karte darüber. Ohne das wäre das Hineinzoomen
+eine Einbahnstrasse.
+
+Gemessen wird das Sichtfenster, **gerechnet** das Bild. Beim Zeichnen hängt
+das neue Bild noch nicht im Baum — es zu messen ergäbe null, und dann wäre
+jeder Rahmen winzig, obwohl er den halben Schirm füllt. Die Breite des
+Bildes ist ohnehin Zoom mal Fenster; sie auszurechnen ist genauer, als sie
+abzulesen. Die Fenstergrösse wird nach jedem Zeichnen gemerkt: sie ändert
+sich mit dem Fenster und nicht mit dem Zoom.
+
+---
+
+## Möbel statt Tokens
+
+Ein Token ist ein Kreis mit einem Rand: jemand steht auf der Karte. Ein
+Möbel liegt auf ihr. Die Tokenart `scenery` wird deshalb ohne Kreis,
+ohne Rand und ohne Schatten gezeichnet — erst beim Darüberfahren zeigt
+es, dass man es anfassen kann.
+
+Dazu zwei Angaben an der Kante:
+
+- `rot` — die Drehung in Grad.
+- `ratio` — Höhe geteilt durch Breite. Ohne sie wäre jeder Tisch ein
+  Quadrat. Nur `scenery` braucht es; eine Kreatur belegt Felder, kein
+  Rechteck.
+
+Beide stehen **an der Kante** und nicht am Asset: dasselbe Fass steht auf
+einer Karte quer und auf der nächsten längs, und ein gedrehtes Bild als
+eigenes Asset wäre ein zweites Fass. Dieselbe Regel wie beim Lichtradius.
+
+Rechtsklick auf ein Token stellt es ein — Art, Grösse, Drehung,
+Seitenverhältnis, Notiz, Licht — und nimmt es nicht mehr sofort weg. Ein
+Rechtsklick, der ohne Rückfrage etwas löscht, ist der Klick, den man auf
+einem Laptop-Touchpad aus Versehen macht. Der Weg hinaus steht im selben
+Dialog, mit Rückfrage.
+
+---
+
 ## Was noch fehlt
 
-- **Stufenloses Zoomen** in den Rahmen hinein statt eines Sprungs auf den
-  Artikel der Unterkarte.
-- **Assets platzieren**: Möbel, Bäume, Türen als Bilder mit Drehung und
-  Grösse, statt nur Tokens, die auf Artikel zeigen.
 - **Bewegung**, die `mapBarriers` auch auswertet.
+- **Rahmen nachträglich ändern**: ein Unterkartenrahmen wird aufgezogen,
+  aber noch nicht verschoben oder grösser gemacht.
+- **Mehrere Tokens auf einmal** verschieben.
