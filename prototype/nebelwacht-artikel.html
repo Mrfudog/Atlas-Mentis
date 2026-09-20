@@ -770,6 +770,11 @@ table.craftm tr.crrow.unknown td{color:var(--dim);font-style:italic}
 .rulepop .rt{display:block}
 
 .fld.withheld{background:var(--surface2);border-left:2px dashed var(--line2)}
+/* Was die Art noch trüge. Unauffällig: es ist ein Angebot und keine Lücke. */
+.addfield{margin:-8px 0 14px}
+.addfield select.i{width:auto;max-width:100%;padding:3px 8px;font-size:12.5px;
+  color:var(--dim);background:transparent;border-style:dashed}
+.addfield select.i:hover{color:var(--accent);border-color:var(--accent)}
 .fld.withheld dt{color:var(--dim)}
 .fld.withheld dd{color:var(--dim);font-style:italic}
 .kgrp.withheldgrp{border-style:dashed;opacity:.8}
@@ -3001,10 +3006,15 @@ function fieldPlan(e,ifn,want,ausser){
     return want.indexOf(cn)>=0||want.indexOf(cn+"."+p)>=0;
   };
   var cells=[];
+  /* Was diese Art **tragen könnte** und dieser Artikel leer lässt. Ein
+     leeres Feld anzuzeigen hiesse, jede Seite mit dreissig Strichen zu
+     füllen; es wegzulassen hiesse, dass man es nie findet. Also steht es
+     nicht da, aber es ist zu haben. */
+  var frei=[];
   compsFor(ifn).forEach(function(cn){
     if(cn==="Name"||cn==="Identity"||cn==="Vars")return;
     var cd=REG.interfaces[cn]; if(!cd)return;
-    var val=(e.components||{})[cn]; if(!val)return;
+    var val=(e.components||{})[cn]||{};
     var props=(cd.schema&&cd.schema.properties)||{};
     /* a derived field with `of` rides in its base field's cell: 16 (+3) */
     var attach={};
@@ -3017,7 +3027,15 @@ function fieldPlan(e,ifn,want,ausser){
       if(!zeig(cn,p))return;
       if(pd.derived&&pd.of)return;
       var txt=fmtVal(pd, pd.derived?derivedValue(pd,val):val[p]);
-      if(txt===""&&!(UI.inline&&canWrite()&&!pd.derived))return;
+      if(txt===""){
+        if(!pd.derived) frei.push({cn:cn,p:p,pd:pd,ref:cn+"."+p,
+          label:(REG.interfaces[cn].label||cn)+" · "+(pd.title||p)});
+        /* Ein leeres Feld steht nur da, wenn man gerade alles bearbeitet —
+           oder wenn man **dieses** angefordert hat. Ohne den zweiten Fall
+           wäre „+ field" ein Knopf, der nichts tut. */
+        var gewaehlt=canWrite()&&!pd.derived&&UI.editField===cn+"."+p;
+        if(!gewaehlt&&!(UI.inline&&canWrite()&&!pd.derived))return;
+      }
       (attach[p]||[]).forEach(function(dp){
         var dv=fmtVal(props[dp],derivedValue(props[dp],val));
         if(dv!=="") txt+=" ("+dv+")";
@@ -3030,12 +3048,18 @@ function fieldPlan(e,ifn,want,ausser){
      Feldtabelle, Wissensansicht und Board-Kachel gehen alle durch diese
      Funktion, also filtert sie einmal für alle drei. */
   cells.withheld=0;
+  cells.frei=frei;
   if(!isGM()){
     var erlaubt={};
     visibleRefs(e,cells.map(function(c){return c.ref;})).forEach(function(r){ erlaubt[r]=1; });
     var vorher=cells.length;
     var gefiltert=cells.filter(function(c){ return erlaubt[c.ref]; });
     gefiltert.withheld=vorher-gefiltert.length;
+    /* Ein leeres Feld anzubieten, das dieser Betrachter gar nicht sehen
+       dürfte, verriete, dass es existiert. */
+    var erlaubtFrei={};
+    visibleRefs(e,frei.map(function(c){return c.ref;})).forEach(function(r){ erlaubtFrei[r]=1; });
+    gefiltert.frei=frei.filter(function(c){ return erlaubtFrei[c.ref]; });
     cells=gefiltert;
   }
   return cells;
@@ -3062,6 +3086,33 @@ function elFields(e,ifn,item){
     el("dt",{text:"Not yours yet"}),
     el("dd",{text:"…and "+plan.withheld+" more thing"+(plan.withheld===1?"":"s")+
       " about this that you have not learned"})]));
+
+  /* **Was leer ist, steht nicht da — aber es ist zu haben.** Eine Seite,
+     die jedes mögliche Feld als Strich zeigt, liest sich wie ein Formular;
+     eine, die es verschweigt, lässt es nie jemand ausfüllen. Also eine
+     Zeile darunter, die aufzählt, was die Art noch trüge. */
+  var frei=(plan.frei||[]).filter(function(c){ return !(UI.inline&&canWrite()); });
+  if(canWrite()&&frei.length&&!inPlacement){
+    var bar=el("div",{class:"addfield"});
+    var sel=el("select",{class:"i"});
+    sel.appendChild(el("option",{value:""},
+      "+ field  ("+frei.length+" this kind can carry)"));
+    frei.forEach(function(c){ sel.appendChild(el("option",{value:c.ref},c.label)); });
+    sel.addEventListener("change",function(){
+      if(!sel.value)return;
+      /* Die Karte anlegen, falls es sie noch nicht gibt — sonst hätte das
+         Feld keinen Ort, an dem es stehen könnte. */
+      var teil=sel.value.split(".")[0];
+      e.components=e.components||{};
+      e.components[teil]=e.components[teil]||{};
+      UI.editField=sel.value; render();
+    });
+    bar.appendChild(sel);
+    var host=el("div");
+    host.appendChild(nf?flds:el("div"));
+    host.appendChild(bar);
+    return host;
+  }
   return nf?flds:null;
 }
 

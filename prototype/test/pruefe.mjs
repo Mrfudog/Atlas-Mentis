@@ -313,6 +313,40 @@ async function seite(datei, warten) {
       text: (pop?.textContent ?? '').length,
     };
   });
+  /* **Was leer ist, steht nicht da — aber es ist zu haben.** Eine Seite,
+     die jedes mögliche Feld als Strich zeigt, liest sich wie ein Formular;
+     eine, die es verschweigt, lässt es nie jemand ausfüllen. Also eine
+     Zeile darunter, die aufzählt, was die Art noch trüge — und ein Griff
+     hinein macht daraus ein offenes Feld. */
+  const angebot = await p.evaluate(async () => {
+    const T = window.__T__;
+    const npc = [...T.ENT.values()].find((x) => (x.interfaces || [])[0] === 'NPC');
+    T.go({ k: 'art', id: npc.id });
+    await new Promise((r) => setTimeout(r, 400));
+    const sel = document.querySelector('.addfield select');
+    if (!sel) return { keins: true };
+    const vorher = document.querySelectorAll('.fields .fld').length;
+    const wahl = sel.options[1].value;
+    /* Leer heisst leer: kein Feld der Tabelle darf schon so heissen. */
+    const schon = [...document.querySelectorAll('.fields .fld dt')].map((x) => x.textContent);
+    sel.value = wahl;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 400));
+    return {
+      angeboten: sel.options.length - 1,
+      vorher,
+      schon,
+      wahl,
+      nachher: document.querySelectorAll('.fields .fld').length,
+      offen: !!document.querySelector('.fld dd.editing'),
+    };
+  });
+  pruefe('an empty field is not shown, but it is on offer',
+    angebot.keins !== true && angebot.angeboten > 5
+    && !angebot.schon.includes('Audience'), angebot);
+  pruefe('and picking one opens it right there',
+    angebot.nachher === angebot.vorher + 1 && angebot.offen === true, angebot);
+
   pruefe('a reference shows its overview before you follow it',
     blick.keiner !== true && blick.vorher === 0 && blick.da === true
     && blick.name.length > 0 && blick.felder === 0 && blick.text > blick.name.length,
