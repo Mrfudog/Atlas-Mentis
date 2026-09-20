@@ -5,7 +5,7 @@ import {
   blockTypesFor,
   typeChain,
   relationsFrom,
-  showField,
+  layoutFor,
   viewKeys,
 } from '@nw/model';
 import { seedRegistry } from '../src/index.js';
@@ -92,30 +92,31 @@ describe('seed registry', () => {
     expect(bad).toEqual([]);
   });
 
-  /* Die Spielerstufe hält **Blöcke** zurück, keine Felder mehr.
-     Zurückgehalten wird, was einer Information gehört, die dieser Spieler
-     nicht hat — das entscheidet `redactEntity` an den Daten und nicht eine
-     Feldliste an der Ansicht. Eine Feldliste hier hiesse: ein Spieler sieht
-     die Rüstungsklasse **seiner eigenen Figur** nicht, und das war der
-     Fehler, den die Stufe hatte. */
-  it('the player view withholds the GM block types, not the fields', () => {
-    const player = seedRegistry.views['player'];
-    expect(player).toBeDefined();
-    expect(Array.isArray(player!.blocks) && player!.blocks.includes('secret')).toBe(false);
-    expect(Array.isArray(player!.blocks) && player!.blocks.includes('tactics')).toBe(false);
-    // Die eigene Figur muss lesbar bleiben, sonst ist das Blatt wertlos.
-    expect(showField(player!, 'StatblockInfo', 'ac')).toBe(true);
+  /* **Es gibt keine Spieleransicht mehr.** Sie war die zweite Stelle, an
+     der stand, was ein Spieler nicht sehen darf — und sie hielt einmal
+     Felder zurück, sodass ein Spieler die Rüstungsklasse seiner eigenen
+     Figur nicht sah. Zurückgehalten wird am Server (`redactEntity`) an den
+     Daten, nicht an einer Feldliste; wer weniger sehen darf, sieht dieselbe
+     Ansicht mit weniger darin. */
+  it('has no player view — what is withheld is withheld at the server', () => {
+    expect(seedRegistry.views['player']).toBeUndefined();
   });
 
-  /* Drei Stufen, nicht einundzwanzig. Vierzehn der alten gab es für genau
-     eine Artikelart — das ist keine Auswahl, sondern eine Liste von
-     Sonderfällen mit einem Dropdown davor. Was für eine Artikelart eigen
-     ist, steht seither in `byInterface`. */
-  it('keeps the facets to how much and for whom', () => {
-    expect(Object.keys(seedRegistry.views).sort()).toEqual(['full', 'player', 'quick']);
-    const proTyp = seedRegistry.views['full']?.byInterface ?? {};
-    expect(Object.keys(proTyp)).toContain('Creature');
-    expect(Object.keys(proTyp)).toContain('Map');
+  /* Drei Ansichten, nicht einundzwanzig. Vierzehn der alten gab es für
+     genau eine Artikelart — das ist keine Auswahl, sondern eine Liste von
+     Sonderfällen mit einem Dropdown davor. Und **die Anordnung wohnt am
+     Typ**: was für eine Artikelart eigen ist, steht bei ihr. */
+  it('keeps the views to how much, and the arrangement at the type', () => {
+    expect(Object.keys(seedRegistry.views).sort()).toEqual(['full', 'overview', 'quick']);
+    const mitEigener = Object.keys(seedRegistry.interfaces)
+      .filter((n) => seedRegistry.interfaces[n]?.views?.['full']?.length);
+    expect(mitEigener).toContain('Creature');
+    expect(mitEigener).toContain('Map');
+    /* Und nichts liegt mehr an der Ansicht: eine Anordnung dort wäre die
+       zweite Stelle, an der stünde, wie eine Art gezeichnet wird. */
+    for (const v of Object.values(seedRegistry.views)) {
+      expect((v as unknown as Record<string, unknown>)['byInterface']).toBeUndefined();
+    }
   });
 
   /* Die Liste der Ansichten wächst mit jedem Bereich. Fest einzutragen,
@@ -123,10 +124,25 @@ describe('seed registry', () => {
      und sagt dabei nichts über das, was er prüfen soll. Geprüft wird die
      Reihenfolge, denn die ist die Zusage: `order` bestimmt sie, nicht der
      Zufall der Einfügereihenfolge. */
+  /* Die Anordnung wird die `extends`-Kette hoch gesucht. Eine an `Creature`
+     deckt damit NSC, Spielerfigur, Begleiter und Gefolge ab, ohne dass eine
+     davon sie wiederholt — und wer sie ändert, ändert sie für alle, was der
+     Sinn ist und trotzdem dastehen muss. */
+  it('resolves a layout up the chain, and says where it came from', () => {
+    const npc = layoutFor(seedRegistry, 'full', 'NPC');
+    expect(npc.from).toBe('Creature');
+    expect(npc.layout[0]?.el).toBe('sheet');
+    /* Sagt niemand in der Kette etwas, gilt die Grundanordnung der Ansicht
+       — eine neu angelegte Art fängt nicht mit einer leeren Seite an. */
+    const artikel = layoutFor(seedRegistry, 'full', 'Article');
+    expect(artikel.from).toBe(null);
+    expect(artikel.layout.length).toBeGreaterThan(0);
+  });
+
   it('orders the facets by their order field', () => {
     const keys = viewKeys(seedRegistry);
     expect(new Set(keys)).toEqual(new Set(Object.keys(seedRegistry.views)));
-    expect(keys[0]).toBe('quick');
+    expect(keys[0]).toBe('overview');
     const orders = keys.map((k) => seedRegistry.views[k]?.order ?? 99);
     expect(orders).toEqual([...orders].sort((a, b) => a - b));
   });
@@ -369,7 +385,7 @@ describe('seed registry, referential integrity', () => {
    dasselbe), und die Zahlen im Reiter statt darüber (dann muss man am Tisch
    umschalten, um die Trefferpunkte zu sehen). */
 describe('the character sheet has tabs', () => {
-  const creature = seedRegistry.views.full?.byInterface?.['Creature'] ?? [];
+  const creature = seedRegistry.interfaces['Creature']?.views?.['full'] ?? [];
   const tabsEl = creature.find((x) => x.el === 'tabs');
 
   it('keeps the sheet above the tabs, not inside one', () => {

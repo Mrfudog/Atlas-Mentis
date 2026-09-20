@@ -81,6 +81,17 @@ export interface InterfaceDef {
    * Zeilen, das andere alle Artikel ohne Rücksicht darauf, wo sie hingehören.
    */
   area?: 'world' | 'history' | 'rules' | 'play';
+  /**
+   * **Die Anordnung wohnt am Typ**, nicht an der Ansicht: eine Kreatur
+   * ordnet ihre `full` anders als ein Rezept, und das steht bei der
+   * Kreatur. Untertypen erben sie, bis einer etwas Eigenes sagt; sagt
+   * niemand in der Kette etwas, gilt die Grundanordnung der Ansicht.
+   *
+   * Sie stand einmal an der Ansicht (`ViewDef.byInterface`). Wer wissen
+   * wollte, wie eine Art gezeichnet wird, musste dafür drei Ansichten
+   * aufmachen und in jeder nach ihr suchen.
+   */
+  views?: Record<string, LayoutElement[]>;
 }
 
 /** A row of `relation_def`. */
@@ -205,11 +216,13 @@ export interface ViewDef {
   /** Per-reference variable bindings. */
   bindings?: boolean;
   image?: boolean;
-  /** The ordered layout. Views written before layouts existed carry none;
-   *  readers derive one from the flags above rather than migrating data. */
+  /**
+   * Was diese Ansicht zeichnet, **solange keine Artikelart etwas Eigenes
+   * sagt.** Die eigene Anordnung einer Art steht an der Art
+   * (`InterfaceDef.views`); hier steht der Rückfall, damit eine neu
+   * angelegte Art nicht mit einer leeren Seite anfängt.
+   */
   layout?: LayoutElement[];
-  /** A type — and its subtypes — may carry a layout of its own. */
-  byInterface?: Record<string, LayoutElement[]>;
 }
 
 export interface Registry {

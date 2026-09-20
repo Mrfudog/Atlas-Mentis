@@ -186,6 +186,69 @@ export const interfaces: Record<string, InterfaceDef> = {
        `belongsTo`. Der Bogen liest beides — erst die eigene Karte, dann die
        geborgte — statt eine der beiden Formen zu verbieten. */
     blockTypes: ['+appearance', '+personality', '+lore', '+fact', '+secret', '+readaloud'],
+    /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
+       Untertypen erben sie, bis einer etwas Eigenes sagt. */
+    /**
+   * **Eine Kreatur ist ihr Bogen, und ein Bogen hat Reiter.**
+   *
+   * Untereinander war alles da und nichts zu finden: der Kampf oben,
+   * das Inventar in der Mitte, die Geschichte unten, und am Tisch
+   * scrollt man zwischen zweien hin und her. Nach Reitern getrennt
+   * schaut man auf einen — so, wie Rooks Bogen es vormacht.
+   *
+   * **Der Bogen steht über den Reitern**, nicht in einem: Trefferpunkte
+   * und Rüstungsklasse braucht man, ohne umzuschalten. Dieselbe Regel
+   * wie bei der Initiative am Spieltisch.
+   */
+    views: {
+      full: [
+        { id: 'c-sheet', el: 'sheet' },
+        {
+          id: 'c-tabs',
+          el: 'tabs',
+          tabs: [
+            /* **Die Übersicht ist der erste Reiter und trägt die Felder.**
+               Man öffnet einen Artikel, um zu wissen, wen man vor sich hat —
+               und wer etwas ändern will, soll nicht erst umschalten. Ein
+               eigener Reiter „More" für die Feldtabelle sah aufgeräumt aus
+               und versteckte das Bearbeiten.
+
+               `except` statt einer Aufzählung: ein neues Feld an
+               CreatureInfo stünde sonst nirgends, bis es jemand von Hand
+               nachträgt. */
+            {
+              id: 'about',
+              label: 'Overview',
+              layout: [
+                { id: 'c-img', el: 'image' },
+                { id: 'c-desc', el: 'description' },
+                {
+                  id: 'c-f',
+                  el: 'fields',
+                  fields: 'all',
+                  except: ['StatblockInfo', 'Vitals', 'Skills'],
+                },
+                { id: 'c-b', el: 'blocks', blocks: 'all' },
+              ],
+            },
+            /* Was im Kampf zählt. Die Zahlen stehen oben im Bogen; hier
+               steht, was man mit ihnen tut. */
+            { id: 'combat', label: 'Combat', layout: [{ id: 'c-c', el: 'composed' }] },
+            { id: 'gear', label: 'Gear', layout: [{ id: 'c-inv', el: 'inventory' }] },
+            { id: 'craft', label: 'Craft', layout: [{ id: 'c-craft', el: 'crafting' }] },
+            /* Wer wie zu wem steht, und woran sie sonst hängt. */
+            {
+              id: 'ties',
+              label: 'Ties',
+              layout: [
+                { id: 'c-stand', el: 'standing' },
+                { id: 'c-r', el: 'relations' },
+              ],
+            },
+          ],
+        },
+      ],
+    },
   },
 
   NPC: {
@@ -225,6 +288,23 @@ export const interfaces: Record<string, InterfaceDef> = {
     extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Imported'],
     schema: merge(g.LocationInfo, g.Explored),
     blockTypes: ['+lore', '+readaloud', '+secret'],
+    /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
+       Untertypen erben sie, bis einer etwas Eigenes sagt. */
+    /* Ein Ort trägt seine Punktreise selbst — sie ist kein eigener Ort,
+     sondern wie dieser hier von innen aussieht. */
+    views: {
+      full: [
+        { id: 'o-img', el: 'image' },
+        { id: 'o-desc', el: 'description' },
+        { id: 'o-f', el: 'fields', fields: 'all' },
+        { id: 'o-b', el: 'blocks', blocks: 'all' },
+        { id: 'o-crawl', el: 'crawl' },
+        /* Worauf man hier würfelt. Die Tabelle gehört nicht dem Ort — sie
+           gilt für ihn, und das steht an der Kante `tableFor`. */
+        { id: 'o-table', el: 'table' },
+        { id: 'o-r', el: 'relations' },
+      ],
+    },
   },
 
   Faction: {
@@ -282,6 +362,16 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Statblock',
     extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Imported', 'StatblockInfo', 'Vars'],
     blockTypes: ['+tactics'],
+    /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
+       Untertypen erben sie, bis einer etwas Eigenes sagt. */
+    views: {
+      full: [
+        { id: 's-f', el: 'fields', fields: 'all' },
+        { id: 's-c', el: 'composed' },
+        { id: 's-b', el: 'blocks', blocks: 'all' },
+        { id: 's-r', el: 'relations' },
+      ],
+    },
   },
 
   /**
@@ -336,6 +426,19 @@ export const interfaces: Record<string, InterfaceDef> = {
     extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Access'],
     schema: merge(g.PartyInfo, g.TravelInfo),
     blockTypes: ['+lore', '+note'],
+    /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
+       Untertypen erben sie, bis einer etwas Eigenes sagt. */
+    /* Eine Gruppe hat kein eigenes Blatt, aber denselben Beutel und
+     dieselben Beziehungen wie eine Figur. */
+    views: {
+      full: [
+        { id: 'p-desc', el: 'description' },
+        { id: 'p-f', el: 'fields', fields: 'all' },
+        { id: 'p-inv', el: 'inventory' },
+        { id: 'p-craft', el: 'crafting' },
+        { id: 'p-r', el: 'relations' },
+      ],
+    },
   },
 
   Inventory: {
@@ -345,6 +448,16 @@ export const interfaces: Record<string, InterfaceDef> = {
     extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags'],
     schema: merge(g.InventoryInfo),
     blockTypes: ['+note'],
+    /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
+       Untertypen erben sie, bis einer etwas Eigenes sagt. */
+    views: {
+      full: [
+        { id: 'i-inv', el: 'inventory' },
+        { id: 'i-desc', el: 'description' },
+        { id: 'i-f', el: 'fields', fields: 'all', except: ['Inventory'] },
+        { id: 'i-r', el: 'relations' },
+      ],
+    },
   },
 
   /**
@@ -367,6 +480,23 @@ export const interfaces: Record<string, InterfaceDef> = {
     area: 'history',
     label: 'Campaign',
     extends: ['Story'],
+    /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
+       Untertypen erben sie, bis einer etwas Eigenes sagt. */
+    /* Die Kampagne trägt, was über ihr Ganzes geht: welche Ebenen laufen,
+     was offen ist, was wann geschah. Das sind keine eigenen
+     Artikelarten — es sind Fragen an die Kampagne. */
+    views: {
+      full: [
+        { id: 'k-desc', el: 'description' },
+        { id: 'k-f', el: 'fields', fields: 'all' },
+        { id: 'k-stack', el: 'stack' },
+        { id: 'k-q', el: 'quests' },
+        { id: 'k-time', el: 'timeline' },
+        { id: 'k-prep', el: 'prep' },
+        { id: 'k-b', el: 'blocks', blocks: 'all' },
+        { id: 'k-r', el: 'relations' },
+      ],
+    },
   },
 
   Arc: {
@@ -390,6 +520,20 @@ export const interfaces: Record<string, InterfaceDef> = {
     extends: ['Story'],
     schema: merge(g.SessionState),
     blockTypes: ['+recap'],
+    /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
+       Untertypen erben sie, bis einer etwas Eigenes sagt. */
+    /* Eine Sitzung ist der Abend selbst: was läuft, und was noch zu tun
+     war, bevor er anfing. */
+    views: {
+      full: [
+        { id: 'se-live', el: 'live' },
+        { id: 'se-prep', el: 'prep' },
+        { id: 'se-desc', el: 'description' },
+        { id: 'se-f', el: 'fields', fields: 'all' },
+        { id: 'se-b', el: 'blocks', blocks: 'all' },
+        { id: 'se-r', el: 'relations' },
+      ],
+    },
   },
 
   Scene: {
@@ -412,6 +556,20 @@ export const interfaces: Record<string, InterfaceDef> = {
     extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time'],
     schema: merge(g.QuestInfo),
     blockTypes: ['+lore', '+secret'],
+    /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
+       Untertypen erben sie, bis einer etwas Eigenes sagt. */
+    /* Ein Auftrag trägt seine Aufgaben selbst — sie sind Felder an ihm
+     und keine eigene Artikelart. Das Element zeichnet auf dem Auftrag
+     genau ihn; auf der Kampagne das ganze Brett. */
+    views: {
+      full: [
+        { id: 'qu-q', el: 'quests' },
+        { id: 'qu-desc', el: 'description' },
+        { id: 'qu-f', el: 'fields', fields: 'all', except: ['Quest.tasks'] },
+        { id: 'qu-b', el: 'blocks', blocks: 'all' },
+        { id: 'qu-r', el: 'relations' },
+      ],
+    },
   },
 
   /**
@@ -468,6 +626,19 @@ export const interfaces: Record<string, InterfaceDef> = {
     extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image'],
     schema: merge(g.MapInfo),
     blockTypes: ['+note', '+secret', '+readaloud'],
+    /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
+       Untertypen erben sie, bis einer etwas Eigenes sagt. */
+    /* Karte, Board und Begegnung gehören in den Bereich **Play** und
+     werden dort gezeichnet. Landet jemand trotzdem auf dem Artikel,
+     soll er nicht vor einer leeren Seite stehen — deshalb steht das
+     Element auch hier. */
+    views: {
+      full: [
+        { id: 'm-map', el: 'map' },
+        { id: 'm-desc', el: 'description' },
+        { id: 'm-f', el: 'fields', fields: 'all' },
+      ],
+    },
   },
 
   /**
@@ -485,6 +656,17 @@ export const interfaces: Record<string, InterfaceDef> = {
     extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Imported'],
     schema: merge(g.RecipeInfo),
     blockTypes: ['+note', '+secret', '+lore'],
+    /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
+       Untertypen erben sie, bis einer etwas Eigenes sagt. */
+    views: {
+      full: [
+        { id: 'rz-craft', el: 'crafting' },
+        { id: 'rz-desc', el: 'description' },
+        { id: 'rz-f', el: 'fields', fields: 'all' },
+        { id: 'rz-b', el: 'blocks', blocks: 'all' },
+        { id: 'rz-r', el: 'relations' },
+      ],
+    },
   },
 
   /**
@@ -500,6 +682,14 @@ export const interfaces: Record<string, InterfaceDef> = {
     extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags'],
     schema: merge(g.BoardInfo),
     blockTypes: ['+note'],
+    /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
+       Untertypen erben sie, bis einer etwas Eigenes sagt. */
+    views: {
+      full: [
+        { id: 'b-board', el: 'board' },
+        { id: 'b-f', el: 'fields', fields: 'all', except: ['Board.shapes', 'Board.anchors'] },
+      ],
+    },
   },
 
   /**
@@ -515,6 +705,16 @@ export const interfaces: Record<string, InterfaceDef> = {
     extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Todos'],
     schema: merge(g.EncounterInfo),
     blockTypes: ['+tactics', '+readaloud', '+note', '+secret'],
+    /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
+       Untertypen erben sie, bis einer etwas Eigenes sagt. */
+    views: {
+      full: [
+        { id: 'e-init', el: 'initiative' },
+        { id: 'e-desc', el: 'description' },
+        { id: 'e-f', el: 'fields', fields: 'all' },
+        { id: 'e-b', el: 'blocks', blocks: 'all' },
+      ],
+    },
   },
 
   /**
@@ -570,6 +770,16 @@ export const interfaces: Record<string, InterfaceDef> = {
     extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Source'],
     schema: merge(g.TableInfo),
     blockTypes: ['+note', '+secret'],
+    /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
+       Untertypen erben sie, bis einer etwas Eigenes sagt. */
+    views: {
+      full: [
+        { id: 't-table', el: 'table' },
+        { id: 't-desc', el: 'description' },
+        { id: 't-f', el: 'fields', fields: 'all', except: ['Table.rows'] },
+        { id: 't-b', el: 'blocks', blocks: 'all' },
+      ],
+    },
   },
 
   /**

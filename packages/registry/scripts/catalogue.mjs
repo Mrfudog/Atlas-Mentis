@@ -72,13 +72,14 @@ function kantenVon(name) {
     rein: alle.filter((r) => passt(r.to)),
   };
 }
+/* Die Anordnung wohnt am Typ. Gesucht wird die `extends`-Kette hoch — eine
+   an `Creature` deckt NSC, Spielerfigur, Begleiter und Gefolge mit ab. */
 function sichtVon(name) {
-  const v = R.views.full;
-  const by = v?.byInterface ?? {};
   for (const at of [name, ...kette(name)]) {
-    if (by[at]?.length) return { von: at, layout: by[at] };
+    const eigen = R.interfaces[at]?.views?.full;
+    if (eigen?.length) return { von: at, layout: eigen };
   }
-  return { von: '(Vorgabe)', layout: v?.layout ?? [] };
+  return { von: '(Vorgabe)', layout: R.views.full?.layout ?? [] };
 }
 function layoutText(layout, tiefe = 0) {
   return layout

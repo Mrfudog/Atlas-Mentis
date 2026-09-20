@@ -34,28 +34,6 @@ const objectSchema = z.object({
   additionalProperties: z.boolean().optional(),
 });
 
-export const InterfaceDefSchema = z.object({
-  name: z.string(),
-  label: z.string().optional(),
-  abstract: z.boolean().optional(),
-  extends: z.array(z.string()).optional(),
-  schema: objectSchema.optional(),
-  blockTypes: z.array(z.string()).optional(),
-  area: z.enum(['world', 'history', 'rules', 'play']).optional(),
-});
-
-export const RelationDefSchema = z.object({
-  type: z.string(),
-  label: z.string(),
-  inverseLabel: z.string(),
-  from: z.array(z.string()).optional(),
-  to: z.array(z.string()).optional(),
-  owned: z.boolean().optional(),
-  cardinality: z.enum(['one', 'many']).optional(),
-  section: z.string().optional(),
-  props: objectSchema.optional(),
-});
-
 /* Ein Reiter enthält ein Layout, und ein Layout kann Reiter enthalten —
    also ist das Schema rekursiv. `z.lazy` ist dafür da; die Tiefe begrenzt
    niemand, weil Reiter in Reitern niemand baut und eine Grenze, die nie
@@ -81,6 +59,29 @@ const LayoutElementSchema: z.ZodType<LayoutElement> = z.lazy(() =>
   }),
 );
 
+export const InterfaceDefSchema = z.object({
+  name: z.string(),
+  label: z.string().optional(),
+  abstract: z.boolean().optional(),
+  extends: z.array(z.string()).optional(),
+  schema: objectSchema.optional(),
+  blockTypes: z.array(z.string()).optional(),
+  area: z.enum(['world', 'history', 'rules', 'play']).optional(),
+  views: z.record(z.string(), z.array(LayoutElementSchema)).optional(),
+});
+
+export const RelationDefSchema = z.object({
+  type: z.string(),
+  label: z.string(),
+  inverseLabel: z.string(),
+  from: z.array(z.string()).optional(),
+  to: z.array(z.string()).optional(),
+  owned: z.boolean().optional(),
+  cardinality: z.enum(['one', 'many']).optional(),
+  section: z.string().optional(),
+  props: objectSchema.optional(),
+});
+
 export const ViewDefSchema = z.object({
   label: z.string(),
   order: z.number().optional(),
@@ -92,7 +93,6 @@ export const ViewDefSchema = z.object({
   bindings: z.boolean().optional(),
   image: z.boolean().optional(),
   layout: z.array(LayoutElementSchema).optional(),
-  byInterface: z.record(z.string(), z.array(LayoutElementSchema)).optional(),
 });
 
 export const RegistrySchema = z.object({

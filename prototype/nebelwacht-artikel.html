@@ -152,6 +152,18 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 .comp .cb{margin-top:2px}
 .vr{color:var(--accent);font-weight:600;border-bottom:1px dotted var(--accent);font-variant-numeric:tabular-nums}
 .ref{color:var(--link);text-decoration:underline;text-underline-offset:2px;cursor:pointer;background:none;border:0;padding:0;font:inherit}
+/* Der Blick auf einen Verweis: die Übersicht, ohne die Seite zu verlassen.
+   Er steht über dem Text und schiebt nichts — sonst sprängen beim
+   Hinfahren die Zeilen. */
+.refw{position:relative}
+.refpop{display:none}
+.refw:hover > .refpop,.refw:focus-within > .refpop{display:block;position:absolute;
+  left:0;top:calc(100% + 4px);z-index:80;width:min(320px,80vw);
+  background:var(--surface);border:1px solid var(--line2);border-radius:var(--r);
+  box-shadow:0 6px 18px rgba(0,0,0,.2);padding:8px 10px;font-size:13px;
+  text-align:left;white-space:normal}
+.refpop > b{font-family:var(--ff-disp);font-size:15px;margin-right:6px}
+.refpop .pbody{padding:4px 0 0}
 .ref.dead{color:var(--warn);text-decoration-style:wavy;cursor:help}
 .gone{color:var(--dim);font-style:italic}
 
@@ -818,7 +830,6 @@ table.craftm tr.crrow.unknown td{color:var(--dim);font-style:italic}
     <div class="grow"></div>
     <input id="q" class="search" type="search" placeholder="Search…" aria-label="Search articles">
     <span id="asbox"></span>
-    <select id="facet" class="vw" aria-label="View"></select>
     <button id="new" class="btn pri" type="button">+ New</button>
   </header>
 
@@ -907,21 +918,35 @@ var UI={route:{k:"list"}, view:"quick", area:"", iface:"", tag:"", q:"", offen:f
         boardZoom:1, boardPick:"", boardTool:"",
         turnActor:"", rollLog:[], asActor:"", peers:[], pings:[],
         ruleQ:"", ruleKind:"",
-        howto:"", err:""};
+        howto:"", typeView:"full", err:""};
 
 /* Darstellungsstufen (Facets, REQ-164) — registry rows, not code.
    Fallback only; the live set lives in registry/views. */
 var VIEWS_FALLBACK={
-  quick:{label:"Quick",order:1,fields:"none",blocks:["paragraph","readaloud"],
+  overview:{label:"Overview",order:1,fields:"none",blocks:[],
+           description:true,relations:false,bindings:false,
+           layout:[{id:"ov-desc",el:"description"}]},
+  quick:{label:"Quick",order:2,fields:"none",blocks:["paragraph","readaloud"],
            description:true,relations:false,bindings:false},
-  full:   {label:"Full",order:2,fields:"all",blocks:"all",
+  full:   {label:"Full",order:3,fields:"all",blocks:"all",
            description:true,relations:true,bindings:true}
 };
-function viewDef(){
+/* **Der Ort wählt die Ansicht, nicht ein Schalter.** Ein Verweis im Text
+   ist ein Verweis, eine Karte auf dem Board ist eine Karte, und die
+   Artikelseite ist die Artikelseite — wer das jedes Mal sagen muss, sagt es
+   irgendwann falsch. Oben rechts stand ein Dropdown dafür; es ist weg.
+
+   Die einzige Stelle, an der noch gewählt wird, ist die Kachel auf dem
+   Board: dort liegen Dinge nebeneinander, und wie gross eines davon sein
+   soll, ist eine Frage an die Kachel. */
+var VIEW_OVERVIEW="overview", VIEW_QUICK="quick", VIEW_FULL="full";
+function viewByKey(k){
   var vs=Object.keys(REG.views).length?REG.views:VIEWS_FALLBACK;
-  return vs[UI.view]||vs[Object.keys(vs).sort(function(a,b){
+  return vs[k]||vs[Object.keys(vs).sort(function(a,b){
     return (vs[a].order||99)-(vs[b].order||99);})[0]]||VIEWS_FALLBACK.full;
 }
+/* Die Artikelseite. Sie ist der einzige Ort, der alles zeigt. */
+function viewDef(){ return viewByKey(VIEW_FULL); }
 function viewKeys(){
   var vs=Object.keys(REG.views).length?REG.views:VIEWS_FALLBACK;
   return Object.keys(vs).sort(function(a,b){return (vs[a].order||99)-(vs[b].order||99);});
@@ -1660,6 +1685,34 @@ function findByName(n){
     for(var i=0;i<al.length;i++) if(String(al[i]).toLowerCase()===t){hit=id;return;} });
   return hit;
 }
+/* Ein Verweis im Text führt zum Artikel — und zeigt vorher, worauf er
+   zeigt. **Immer die Übersicht**: Name und Beschreibung, wie ein Hover.
+   Mehr hat neben einem Satz keinen Platz, und wer mehr will, klickt.
+
+   Gebaut wird der Blick erst beim Hinfahren: eine Seite mit vierzig
+   Verweisen zeichnete sonst vierzig Artikel mit, von denen man keinen
+   anschaut. */
+function refWithPeek(id,show){
+  var w=el("span",{class:"refw"});
+  var b=el("button",{class:"ref",type:"button",
+    onclick:function(){ go({k:"art",id:id}); }},show);
+  w.appendChild(b);
+  var gebaut=false;
+  function zeig(){
+    if(gebaut)return; gebaut=true;
+    var t=ENT.get(id);
+    if(!t||!articleVisible(t))return;
+    var pop=el("span",{class:"refpop"});
+    pop.appendChild(el("b",{text:nameOf(t)}));
+    pop.appendChild(el("span",{class:"pill q",text:ifaceName(t)}));
+    pop.appendChild(renderPlacement(t,VIEW_OVERVIEW,2));
+    w.appendChild(pop);
+  }
+  b.addEventListener("mouseenter",zeig);
+  b.addEventListener("focus",zeig);
+  return w;
+}
+
 function inline(text,into){
   var s=String(text==null?"":text);
   var re=/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|\u0001([^\u0002]*)\u0002|\*\*([^*]+)\*\*/g;
@@ -1668,7 +1721,7 @@ function inline(text,into){
     if(m.index>last) into.appendChild(document.createTextNode(s.slice(last,m.index)));
     if(m[1]!==undefined){
       var target=m[1].trim(), show=(m[2]||m[1]).trim(), id=findByName(target);
-      if(id) into.appendChild(el("button",{class:"ref",type:"button",onclick:function(x){return function(){go({k:"art",id:x});};}(id)},show));
+      if(id) into.appendChild(refWithPeek(id,show));
       // A dead link is an invitation, not an error: klicken legt den Artikel an.
       else   into.appendChild(el("button",{class:"ref dead",type:"button",
                title:canWrite()?"No article yet — create one":"No article named “"+target+"“",
@@ -1738,7 +1791,7 @@ function go(r){
    sagte nicht, warum. Ein sichtbarer Fehler ist besser als eine leere Seite. */
 function render(){
   var broken=[];
-  [["Auswahl",renderViewSelect],["Betrachter",renderAsSelect],
+  [["Betrachter",renderAsSelect],
    ["Seiten",renderPages],["Seitenleiste",renderRail],["Content",renderMain],
    ["Bezüge",renderAside],["Bereiche",renderPanes]].forEach(function(t){
     try{ t[1](); }catch(x){ broken.push(t[0]+": "+(x&&x.message||x)); }
@@ -2348,7 +2401,10 @@ function renderList(v){
 
   if(UI.pick) v.appendChild(bulkBar(list));
 
-  var vw=viewDef();
+  /* Eine Zeile ist eine Übersicht: Name, Art, ein Satz. Sie richtete sich
+     nach dem Wähler oben rechts, und der ist weg — der Ort weiss, wie viel
+     hier hingehört. */
+  var vw=viewByKey(VIEW_OVERVIEW);
   var rows=el("div",{class:"rows"});
   list.forEach(function(e){
     var row=el("button",{class:"row"+(UI.pick&&UI.picked[e.id]?" picked":""),type:"button",
@@ -2806,12 +2862,13 @@ function renderTrail(){
   return bar;
 }
 
-/* ---------- view layout ----------
-   A view carries `layout`, and optionally `byInterface` for types that need
-   a different one. Resolution walks `extends` upward, like components do:
-   Weapon with no layout of its own takes Item's. Views written before
-   layouts existed are converted on read, so nothing has to be migrated
-   before it is edited. */
+/* ---------- Anordnung ----------
+   **Eine Ansicht sagt, wie viel; die Artikelart sagt, in welcher Reihenfolge.**
+   Die Anordnung steht an der Art (`interfaces[T].views[k]`), und gesucht
+   wird die `extends`-Kette hoch: eine Waffe ohne eigene nimmt die von
+   `Item`. Sagt keiner etwas, gilt die Grundanordnung der Ansicht. Alte
+   Ansichten in Schalterform werden beim Lesen übersetzt, damit nichts
+   migriert werden muss, bevor es jemand anfasst. */
 var LAYOUT_ELEMENTS=[
   ["heading","Heading"],["text","Paragraph"],["fields","Field table"],
   ["description","Description"],["blocks","Text blocks"],
@@ -2820,14 +2877,18 @@ var LAYOUT_ELEMENTS=[
   ["quests","Quest board"],["timeline","Timeline"],["live","Live"],["table","Table"],["prep","Prep board"],["crawl","Point-crawl"],["stack","Layer stack"],["standing","Standing"],
   ["tabs","Tabs"]
 ];
-function layoutOf(vw,ifn){
-  var by=vw.byInterface||{};
-  var kette=selfAndAncestors(ifn);
-  for(var i=0;i<kette.length;i++){
-    if(Array.isArray(by[kette[i]])&&by[kette[i]].length) return by[kette[i]];
-  }
-  if(Array.isArray(vw.layout)) return vw.layout;
-  return legacyLayout(vw);
+/* **Die Anordnung wohnt am Typ.** Gesucht wird die `extends`-Kette hoch:
+   die Art selbst, dann ihre Bestandteile in der Reihenfolge, in der sie
+   dastehen. Damit deckt eine Anordnung an `Creature` auch NSC,
+   Spielerfigur, Begleiter und Gefolge ab, ohne dass eine davon sie
+   wiederholt. Sagt keiner in der Kette etwas, gilt die Grundanordnung der
+   Ansicht.
+
+   Sie stand einmal an der Ansicht (`byInterface`), und das hiess: wer
+   wissen wollte, wie eine Art gezeichnet wird, musste drei Ansichten
+   aufmachen und in jeder nach ihr suchen. */
+function layoutOf(vw,ifn,key){
+  return layoutSource(vw,ifn,key).layout;
 }
 /* Die alte Schalterform in Elemente übersetzen. Sie bleibt lesbar, bis
    jemand die Ansicht anfasst — eine Zwangsmigration bräuchte es nicht. */
@@ -4794,7 +4855,8 @@ function pushPresence(){
     at:UI.route.k,
     article:e?e.id:null,
     title:e?nameOf(e).slice(0,60):null,
-    view:UI.view||null,
+    /* Welche Ansicht jemand sieht, sagt der Ort und nicht er selbst — was
+       hier hingehört, ist wo er ist, und das steht schon oben. */
     actor:viewerActor()||null,
     gm:isGM()?true:false
   })["catch"](function(){});
@@ -5369,7 +5431,11 @@ function placementView(board,rel,target){
   var kette=selfAndAncestors((target.interfaces||[])[0]);
   for(var i=0;i<kette.length;i++)
     if(regeln[kette[i]]&&REG.views[regeln[kette[i]]]) return regeln[kette[i]];
-  return viewKeys()[0];
+  /* Ohne Regel eine Karte: eine Kachel auf dem Board zeigt, was man
+     braucht, um zu wissen, was da liegt. Vorher stand hier „die erste
+     Ansicht in der Reihenfolge", und seit `overview` dazugekommen ist,
+     wäre das eine Zeile gewesen. */
+  return REG.views[VIEW_QUICK]?VIEW_QUICK:viewKeys()[0];
 }
 /* Eine Platzierung zeichnen: dieselben Elemente wie die Artikelseite.
    `tiefe` bricht ab, wenn ein Board auf einem Board auf einem Board liegt —
@@ -9022,23 +9088,31 @@ function gmBlockTypes(){
    `interfaces`. Ohne diese Zuordnung schriebe die JSON-Fassung in ein
    `REG.types`, das es nicht gibt, und die Arbeit wäre still weg. */
 function regPart(){ return UI.regtab==="types"?"interfaces":UI.regtab; }
-function layoutSource(vw,ifn){
-  var by=vw.byInterface||{}, kette=selfAndAncestors(ifn);
+function viewKeyOf(vw){
+  var vs=Object.keys(REG.views).length?REG.views:VIEWS_FALLBACK;
+  var treffer="";
+  Object.keys(vs).forEach(function(k){ if(vs[k]===vw) treffer=k; });
+  return treffer;
+}
+function layoutSource(vw,ifn,key){
+  var k=key||viewKeyOf(vw), kette=selfAndAncestors(ifn);
   for(var i=0;i<kette.length;i++){
-    if(Array.isArray(by[kette[i]])&&by[kette[i]].length)
-      return {wo:"iface",iface:kette[i],layout:by[kette[i]]};
+    var eigen=((REG.interfaces[kette[i]]||{}).views||{})[k];
+    if(Array.isArray(eigen)&&eigen.length)
+      return {wo:"iface",iface:kette[i],layout:eigen,key:k};
   }
-  if(Array.isArray(vw.layout)) return {wo:"view",layout:vw.layout};
-  return {wo:"legacy",layout:legacyLayout(vw)};
+  if(Array.isArray(vw.layout)) return {wo:"view",layout:vw.layout,key:k};
+  return {wo:"legacy",layout:legacyLayout(vw),key:k};
 }
 /* Eine eigene Anordnung für diese Art: die geerbte kopieren und unter
    ihrem Namen ablegen. Ab da gilt sie nur hier — und die Unterarten dieser
    Art erben sie weiter. */
-function ownLayout(vw,ifn){
-  var q=layoutSource(vw,ifn);
-  vw.byInterface=vw.byInterface||{};
-  vw.byInterface[ifn]=JSON.parse(JSON.stringify(q.layout));
-  saveReg("views");
+function ownLayout(vw,ifn,key){
+  var q=layoutSource(vw,ifn,key);
+  var d=REG.interfaces[ifn]; if(!d)return;
+  d.views=d.views||{};
+  d.views[q.key]=JSON.parse(JSON.stringify(q.layout));
+  saveReg("interfaces");
 }
 
 /* Alle Felder, die eine Art überhaupt tragen kann — als `Comp.key`. Das ist
@@ -9168,13 +9242,16 @@ function templateFor(v,ifn,vw,src){
       :(src.wo==="view"?"The view's default arrangement":"Derived from the view's old switches")}));
   if(canWrite()&&!w) bar.appendChild(el("button",{class:"btn sm",type:"button",
     title:"Copy it here so changes stay with this kind",
-    onclick:function(){ ownLayout(vw,ifn); render(); }},"Give it its own"));
-  if(w&&Object.keys(vw.byInterface||{}).indexOf(ifn)>=0)
+    onclick:function(){ ownLayout(vw,ifn,src.key); render(); }},"Give it its own"));
+  if(w&&(((REG.interfaces[ifn]||{}).views||{})[src.key]||[]).length)
     bar.appendChild(el("button",{class:"btn sm gh",type:"button",
       title:"Drop it and inherit again",
       onclick:function(){
         confirmDialog("Drop this kind’s own arrangement and inherit again?",function(){
-          delete vw.byInterface[ifn]; saveReg("views"); render(); });
+          var d2=REG.interfaces[ifn];
+          delete d2.views[src.key];
+          if(!Object.keys(d2.views).length) delete d2.views;
+          saveReg("interfaces"); render(); });
       }},"Inherit again"));
   wrap.appendChild(bar);
 
@@ -9224,24 +9301,33 @@ function renderTypes(v){
   doc.appendChild(regIfaceBody(wahl));
 
   /* ---- Die Vorlage ----
-     **Das ist, wofür man die Seite öffnet**: was diese Ansicht von dieser
-     Artikelart zeigt. Der Wähler oben rechts bestimmt welche — `full` ist
-     die Grundlage, in der alles steht, und die engeren Stufen lassen etwas
-     davon weg.
+     **Das ist, wofür man die Seite öffnet**: was diese Artikelart in einer
+     Ansicht zeigt. Welche Ansicht, wird **hier** gewählt und nicht oben
+     rechts für die ganze Seite: die Anordnung gehört der Art, also gehört
+     die Wahl dorthin, wo die Art steht.
 
      Kein Beispielartikel, sondern die Form. Ein Beispiel führte dazu, dass
      man seine Lücken für Fehler der Vorlage hält. */
   var vws=Object.keys(REG.views).length?REG.views:VIEWS_FALLBACK;
-  var vwKey=vws[UI.view]?UI.view:viewKeys()[0];
+  var vwKey=vws[UI.typeView]?UI.typeView:viewKeys()[0];
   var vw=vws[vwKey];
   if(vw){
-    var src=layoutSource(vw,wahl);
+    var src=layoutSource(vw,wahl,vwKey);
     var vk=el("div",{class:"sec"});
-    vk.appendChild(el("span",{text:"Template"}));
-    vk.appendChild(el("span",{class:"co",text:"view: "+(vw.label||vwKey)}));
+    vk.appendChild(el("span",{text:"Views"}));
     doc.appendChild(vk);
     doc.appendChild(el("p",{class:"hint",style:"margin:0 0 8px",
-      text:"What this view draws for this kind. Click a field or a block kind to take it out of the view or put it back — the selector at the top right picks which view you are looking at."}));
+      text:"Three views, and where you are decides which: Overview for a reference in the text, Quick for a card, Full for the article page. A dot means this kind arranges that view itself; without one it inherits. Click a field or a block kind to take it out of the view or put it back."}));
+    var vbar=el("div",{class:"chips"});
+    viewKeys().forEach(function(k){
+      var eigen=((REG.interfaces[wahl]||{}).views||{})[k];
+      vbar.appendChild(el("button",{class:"chip pick"+(k===vwKey?" on":""),type:"button",
+        "data-vk":k,
+        title:(eigen&&eigen.length)?"This kind arranges it itself":"Inherited",
+        onclick:function(){ UI.typeView=k; UI.regel=""; render(); }},
+        (vws[k].label||k)+((eigen&&eigen.length)?" \u25cf":"")));
+    });
+    doc.appendChild(vbar);
     templateFor(doc,wahl,vw,src);
   }
 
@@ -9879,7 +9965,7 @@ function viewBody(key){
   var scope=el("select",{class:"i",style:"max-width:280px"});
   scope.appendChild(el("option",{value:""},"Every type (the default layout)"));
   Object.keys(REG.interfaces).sort().forEach(function(n){
-    var eigen=((vd.byInterface||{})[n]||[]).length;
+    var eigen=(((REG.interfaces[n]||{}).views||{})[key]||[]).length;
     scope.appendChild(el("option",{value:n},
       (REG.interfaces[n].label||n)+(eigen?"  · own layout":"")));
   });
@@ -9888,12 +9974,12 @@ function viewBody(key){
   box.appendChild(scope);
 
   var ifn=UI.regscope;
-  var eigen=ifn?((vd.byInterface||{})[ifn]||[]):(vd.layout||null);
+  var eigen=ifn?(((REG.interfaces[ifn]||{}).views||{})[key]||[]):(vd.layout||null);
   var geerbtVon="";
   if(ifn&&!eigen.length){
     var kette=ancestorsOf(ifn);
     for(var ai=0;ai<kette.length;ai++){
-      if(((vd.byInterface||{})[kette[ai]]||[]).length){ geerbtVon=kette[ai]; break; }
+      if((((REG.interfaces[kette[ai]]||{}).views||{})[key]||[]).length){ geerbtVon=kette[ai]; break; }
     }
   }
 
@@ -9908,18 +9994,24 @@ function viewBody(key){
 
   /* Das gezeigte Layout ist das, was ein Artikel dieses Typs wirklich
      bekäme — nicht die leere Liste, auf der man sonst stünde. */
-  var wirksam=ifn?layoutOf(vd,ifn):(vd.layout||legacyLayout(vd));
+  var wirksam=ifn?layoutOf(vd,ifn,key):(vd.layout||legacyLayout(vd));
   var eigenes=ifn?(eigen&&eigen.length?eigen:null):(Array.isArray(vd.layout)?vd.layout:null);
 
   box.appendChild(el("div",{class:"rsec",text:"Layout"}));
   if(!eigenes&&!ifn) box.appendChild(el("p",{class:"hint",
     text:"Converted from the older switch form on read. The first change writes it out as elements."}));
 
+  /* Die Anordnung einer Art steht **an der Art**. Nur die Grundanordnung —
+     die ohne Art — steht an der Ansicht. */
   function schreibe(liste){
-    if(ifn){ vd.byInterface=vd.byInterface||{}; 
-      if(liste.length) vd.byInterface[ifn]=liste; else delete vd.byInterface[ifn];
-      if(!Object.keys(vd.byInterface).length) delete vd.byInterface;
-    } else vd.layout=liste;
+    if(ifn){
+      var d2=REG.interfaces[ifn]; if(!d2)return;
+      d2.views=d2.views||{};
+      if(liste.length) d2.views[key]=liste; else delete d2.views[key];
+      if(!Object.keys(d2.views).length) delete d2.views;
+      saveReg("interfaces"); render(); return;
+    }
+    vd.layout=liste;
     save();
   }
   /* Beim ersten Eingriff wird aus dem abgeleiteten Layout ein echtes —
@@ -11249,19 +11341,6 @@ function importDialog(){
 document.getElementById("new").addEventListener("click",function(){ if(canWrite())newEntity(); });
 document.getElementById("q").addEventListener("input",function(ev){
   UI.q=ev.target.value; if(UI.route.k!=="list")UI.route={k:"list"}; render(); });
-var viewSel=document.getElementById("facet");
-viewSel.addEventListener("change",function(){ UI.view=viewSel.value; render(); });
-function renderViewSelect(){
-  var vs=Object.keys(REG.views).length?REG.views:VIEWS_FALLBACK, keys=viewKeys();
-  if(keys.indexOf(UI.view)<0) UI.view=keys[0];
-  var sig=keys.map(function(k){return k+":"+(vs[k].label||k);}).join("|");
-  if(viewSel.getAttribute("data-sig")!==sig){
-    viewSel.textContent="";
-    keys.forEach(function(k){ viewSel.appendChild(el("option",{value:k},vs[k].label||k)); });
-    viewSel.setAttribute("data-sig",sig);
-  }
-  viewSel.value=UI.view;
-}
 Array.prototype.forEach.call(document.querySelectorAll("#mob button"),function(b){
   b.addEventListener("click",function(){ UI.pane=b.dataset.p; renderPanes(); }); });
 window.addEventListener("resize",renderPanes);

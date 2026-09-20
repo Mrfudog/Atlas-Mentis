@@ -35,6 +35,9 @@ export class PgRepository implements Repository {
         schema: (r['schema'] as InterfaceDef['schema']) ?? undefined,
         blockTypes: (r['block_types'] as string[]) ?? [],
         area: (r['area'] as InterfaceDef['area']) ?? undefined,
+        /* Die Anordnung wohnt am Typ (D28): eine Kreatur ordnet ihre `full`
+           anders als ein Rezept, und das steht bei der Kreatur. */
+        views: (r['views'] as InterfaceDef['views']) ?? undefined,
       };
     }
     for (const r of relations.rows) {
@@ -69,11 +72,11 @@ export class PgRepository implements Repository {
         await client.query('delete from interface_def');
         for (const [name, def] of Object.entries(value as Registry['interfaces'])) {
           await client.query(
-            `insert into interface_def(name,label,abstract,extends,schema,block_types,area)
-             values ($1,$2,$3,$4,$5,$6,$7)`,
+            `insert into interface_def(name,label,abstract,extends,schema,block_types,area,views)
+             values ($1,$2,$3,$4,$5,$6,$7,$8)`,
             [name, def.label ?? null, def.abstract ?? false, def.extends ?? [],
              def.schema ? JSON.stringify(def.schema) : null, def.blockTypes ?? [],
-             def.area ?? null],
+             def.area ?? null, def.views ? JSON.stringify(def.views) : null],
           );
         }
       } else if (part === 'relations') {

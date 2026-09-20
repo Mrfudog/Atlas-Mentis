@@ -11,7 +11,8 @@
  * registry is edited.
  */
 
-import type { ObjectSchema, Registry, ViewDef } from './types.js';
+import type { LayoutElement, ObjectSchema, Registry, ViewDef } from './types.js';
+import { typeChain } from './entity.js';
 
 export const FALLBACK_VIEW: ViewDef = {
   label: 'Full',
@@ -81,4 +82,30 @@ export function attachedDerived(
     (attached[prop.of] ??= []).push(key);
   }
   return attached;
+}
+
+/**
+ * Welche Anordnung diese Ansicht für diese Artikelart zeichnet — **und aus
+ * welcher Zeile sie kommt.**
+ *
+ * Gesucht wird die `extends`-Kette hoch: die Art selbst, dann ihre
+ * Bestandteile in der Reihenfolge, in der sie dastehen. Sagt keiner etwas,
+ * gilt die Grundanordnung der Ansicht. Damit deckt eine Anordnung an
+ * `Creature` auch NSC, Spielerfigur, Begleiter und Gefolge ab, ohne dass
+ * eine davon sie wiederholt.
+ *
+ * Die Herkunft steht mit dabei, weil sie beim Bearbeiten der Unterschied
+ * ist: wer die geerbte Anordnung ändert, ändert sie für alle — und das ist
+ * der Sinn, aber eine Überraschung, wenn es nirgends steht.
+ */
+export function layoutFor(
+  registry: Pick<Registry, 'interfaces' | 'views'>,
+  viewKey: string,
+  type: string,
+): { layout: LayoutElement[]; from: string | null } {
+  for (const name of typeChain(registry, type)) {
+    const eigen = registry.interfaces[name]?.views?.[viewKey];
+    if (Array.isArray(eigen) && eigen.length) return { layout: eigen, from: name };
+  }
+  return { layout: registry.views[viewKey]?.layout ?? [], from: null };
 }

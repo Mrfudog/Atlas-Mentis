@@ -64,7 +64,7 @@ describe('registry', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(Object.keys(body.interfaces)).toContain('Statblock');
-    expect(body.views.player.label).toBe('Player');
+    expect(body.views.full.label).toBe('Full');
   });
 
   it('accepts a new interface row — adding an article kind is data, not code', async () => {

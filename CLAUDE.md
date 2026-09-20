@@ -65,12 +65,20 @@ die Entscheidungen D0–D17, `Requirements.md` die REQ-Nummern.
   verloren, und der Verlust war endgültig.
 - **Kanten nur vorwärts speichern.** Ein gespiegeltes Gegenstück verwaist.
 - **Schreiben geht durch `validateEntity`**, auch wenn es umständlich scheint.
-- **Drei Darstellungsstufen, nicht einundzwanzig.** Eine Stufe sagt, **wie
-  viel** und **für wen** — `quick`, `full`, `player`. Was für eine Artikelart
-  eigen ist, steht in `byInterface` und nicht in einer eigenen Stufe: eine
-  Kreatur zeigt ihren Bogen, ein Rezept seine Werkbank, ohne dass jemand
-  etwas auswählt. Eine Stufe für genau einen Typ ist ein Sonderfall mit
-  einem Dropdown davor.
+- **Drei Ansichten, und der Ort wählt sie.** `overview` steht in einem
+  Verweis oder einer Listenzeile, `quick` auf einer Karte, `full` auf der
+  Artikelseite. Einen Wähler gibt es nicht — ein Verweis ist ein Verweis,
+  und wer das jedes Mal sagen muss, sagt es irgendwann falsch; nur die
+  Kachel auf dem Board wählt, weil dort die Grösse eine Frage an die Kachel
+  ist. **Es gibt keine Spieleransicht:** zurückgehalten wird am Server
+  (`redactEntity`), und wer weniger sehen darf, sieht dieselbe Ansicht mit
+  weniger darin.
+- **Die Anordnung wohnt am Typ** (`InterfaceDef.views`), nicht an der
+  Ansicht: eine Kreatur zeigt ihren Bogen, ein Rezept seine Werkbank, ohne
+  dass jemand etwas auswählt. Untertypen erben sie (`layoutFor` läuft die
+  `extends`-Kette hoch); sagt keiner etwas, gilt die Grundanordnung der
+  Ansicht. Eine Stufe für genau einen Typ wäre ein Sonderfall mit einem
+  Dropdown davor.
 - **Wie die Dinge heissen, steht in [docs/Begriffe.md](docs/Begriffe.md):**
   Typ, Bestandteil, Feld, Artikel, Ansicht, Block, Kante — sieben Wörter,
   mehr nicht. Wer zwei Namen für eine Sache hat, hat bald zwei Sachen; im

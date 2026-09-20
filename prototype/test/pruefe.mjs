@@ -193,10 +193,6 @@ async function seite(datei, warten) {
   await p.waitForTimeout(200);
   await p.evaluate(() => [...document.querySelectorAll('#view .row')].find((r) => /Auge/.test(r.textContent)).click());
   await p.waitForTimeout(200);
-  await p.evaluate(() => {
-    document.querySelector('#facet').value = 'full';
-    document.querySelector('#facet').dispatchEvent(new Event('change', { bubbles: true }));
-  });
   await p.waitForTimeout(250);
   const farbe = await p.evaluate(() => document.querySelector('.fld .swatch')?.getAttribute('style') ?? null);
   pruefe('a colour field renders as a swatch', /#8b5cf6/.test(farbe ?? ''), farbe);
@@ -270,11 +266,6 @@ async function seite(datei, warten) {
   await p.evaluate(() => [...document.querySelectorAll('#view .row')]
     .find((r) => /^Volothamp/.test(r.textContent.trim())).click());
   await p.waitForTimeout(200);
-  await p.evaluate(() => {
-    const f = document.querySelector('#facet');
-    f.value = 'full';
-    f.dispatchEvent(new Event('change', { bubbles: true }));
-  });
   await p.waitForTimeout(250);
   await p.evaluate(() =>
     [...document.querySelectorAll('.rowbtns button')].find((b) => /Edit all fields/.test(b.textContent)).click());
@@ -299,6 +290,33 @@ async function seite(datei, warten) {
     return dt ? { wert: dt.nextElementSibling.textContent, klickbar: !!dt.nextElementSibling.querySelector('button.ref') } : null;
   });
   pruefe('a picked link is stored and renders as a jump', verweis?.klickbar === true && /Kerzengasse/.test(verweis?.wert ?? ''), verweis);
+
+  /* **Ein Verweis zeigt seine Übersicht, bevor man ihm folgt.** Name,
+     Artikelart und der eine Satz — mehr hat neben einem Verweis im Satz
+     keinen Platz, und wer mehr will, klickt. Gebaut wird der Blick erst
+     beim Hinfahren: eine Seite mit vierzig Verweisen zeichnete sonst
+     vierzig Artikel mit, von denen man keinen anschaut. */
+  const blick = await p.evaluate(async () => {
+    const ref = [...document.querySelectorAll('.blk .refw > button.ref, .fld .refw > button.ref')][0]
+      || document.querySelector('.refw > button.ref');
+    if (!ref) return { keiner: true };
+    const vorher = document.querySelectorAll('.refpop').length;
+    ref.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
+    await new Promise((r) => setTimeout(r, 200));
+    const pop = ref.parentElement.querySelector('.refpop');
+    return {
+      vorher,
+      da: !!pop,
+      name: pop?.querySelector('b')?.textContent ?? '',
+      /* Eine Übersicht ist ein Satz und keine Feldtabelle. */
+      felder: pop ? pop.querySelectorAll('.fields').length : -1,
+      text: (pop?.textContent ?? '').length,
+    };
+  });
+  pruefe('a reference shows its overview before you follow it',
+    blick.keiner !== true && blick.vorher === 0 && blick.da === true
+    && blick.name.length > 0 && blick.felder === 0 && blick.text > blick.name.length,
+    blick);
 
 
   /* 5 — Import: englische Namen in der Ausgabe, deutsche Vault-Schlüssel beim Lesen.
@@ -419,11 +437,6 @@ async function seite(datei, warten) {
     await p.evaluate((n) =>
       [...document.querySelectorAll('#view .row')].find((r) => r.textContent.includes(n)).click(), name);
     await p.waitForTimeout(200);
-    await p.evaluate(() => {
-      const f = document.querySelector('#facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(250);
     return p.evaluate(() => [...document.querySelectorAll('#view .sec')].map((x) => x.textContent));
   };
@@ -479,11 +492,6 @@ async function seite(datei, warten) {
     await p.evaluate((n) =>
       [...document.querySelectorAll('#view .row')].find((r) => r.textContent.includes(n)).click(), name);
     await p.waitForTimeout(200);
-    await p.evaluate(() => {
-      const f = document.querySelector('#facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(250);
   };
 
@@ -1031,11 +1039,6 @@ async function seite(datei, warten) {
   pruefe('they validate clean on creation',
     kampagne.probleme.length === 0 && pc.probleme.length === 0, { kampagne, pc });
 
-  await p.evaluate(() => {
-    const f = document.querySelector('#facet');
-    f.value = 'full';
-    f.dispatchEvent(new Event('change', { bubbles: true }));
-  });
   await p.waitForTimeout(300);
   const pcFelder = await p.evaluate(() => {
     const o = {};
@@ -1099,11 +1102,6 @@ async function seite(datei, warten) {
      danach nicht mehr in der offenen Gruppe steht. */
   await neuerArtikel('Knowledge level', 'Probe lore');
   await oeffne('Probe hero');
-  await p.evaluate(() => {
-    const f = document.getElementById('facet');
-    f.value = 'full';
-    f.dispatchEvent(new Event('change', { bubbles: true }));
-  });
   await p.waitForTimeout(350);
 
   /* Zugeteilt wird im Seitenpanel — dort, wo die Arbeit passiert. Die
@@ -1247,11 +1245,6 @@ async function seite(datei, warten) {
     }, karte);
     await oeffne(kartenName);
     await p.waitForTimeout(250);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(400);
     const mk = await p.evaluate(() => ({
       bild: document.querySelector('.mapimg')?.getAttribute('src') ?? null,
@@ -1437,11 +1430,6 @@ async function seite(datei, warten) {
   });
   if (nebelKarte) {
     await oeffneId(nebelKarte);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(600);
 
     const sicht = await p.evaluate(() => {
@@ -1512,8 +1500,7 @@ async function seite(datei, warten) {
       const e = window.__T__.ENT.get(id);
       e.components.Map.lighting = 'bright';
     }, nebelKarte);
-    await p.evaluate(() => { document.getElementById('facet')
-      .dispatchEvent(new Event('change', { bubbles: true })); });
+    await p.evaluate(() => window.__T__.render());
     await p.waitForTimeout(400);
     const hell = await p.evaluate(() => ({
       polygone: document.querySelectorAll('.mvis mask polygon').length,
@@ -1632,8 +1619,7 @@ async function seite(datei, warten) {
       const e = window.__T__.ENT.get(id);
       e.components.Map.lighting = 'dark';
     }, nebelKarte);
-    await p.evaluate(() => { document.getElementById('facet')
-      .dispatchEvent(new Event('change', { bubbles: true })); });
+    await p.evaluate(() => window.__T__.render());
     await p.waitForTimeout(300);
   } else {
     pruefe('a map with fog and walls exists in the data', false, 'keine Nebelkarte gefunden');
@@ -1697,11 +1683,6 @@ async function seite(datei, warten) {
   });
   if (auge) {
     await oeffneId(auge);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(400);
     const lesen = () => p.evaluate(() =>
       [...document.querySelectorAll('.strow')].map((r) => ({
@@ -1902,7 +1883,7 @@ async function seite(datei, warten) {
     && eine.abschnitte.some((x) => /^Made of/.test(x))
     && eine.abschnitte.some((x) => /^Fields/.test(x))
     && eine.abschnitte.some((x) => /^Edges from here/.test(x))
-    && eine.abschnitte.some((x) => /^Template/.test(x)), eine.abschnitte);
+    && eine.abschnitte.some((x) => /^Views/.test(x)), eine.abschnitte);
   /* Jede Frage einmal. Eine Seite, die alles zweimal zeigt, hat eine Hälfte,
      die nur so aussieht, als könnte man sie bedienen. */
   pruefe('and says each of them exactly once',
@@ -2005,14 +1986,13 @@ async function seite(datei, warten) {
     const name = erste()?.dataset.ref ?? '';
     erste().click();
     await new Promise((r) => setTimeout(r, 300));
-    const vw = T.REG.views.full;
-    const eigen = (vw.byInterface || {}).PlayerCharacter || [];
+    const eigen = (T.REG.interfaces.PlayerCharacter.views || {}).full || [];
     const feldEl = eigen.find((x) => x.el === 'fields')
       || (eigen.find((x) => x.el === 'tabs')?.tabs || [])
         .flatMap((t) => t.layout).find((x) => x.el === 'fields');
     const aus = document.querySelectorAll('.tmplfields .tgl:not(.on)').length;
     return { name, aus, except: feldEl?.except ?? null, fields: feldEl?.fields ?? null,
-      geschrieben: window.__WROTE__.includes('registry/views') };
+      geschrieben: window.__WROTE__.includes('registry/interfaces') };
   });
   pruefe('clicking a field takes it out of the view',
     geklickt.aus >= 1 && (geklickt.except || []).includes(geklickt.name),
@@ -2028,8 +2008,7 @@ async function seite(datei, warten) {
     knopf.click();
     await new Promise((r) => setTimeout(r, 300));
     const nun = document.querySelector(`.tmplfields .tgl[data-ref="${ref}"]`);
-    const vw = window.__T__.REG.views.full;
-    const eigen = (vw.byInterface || {}).PlayerCharacter || [];
+    const eigen = (window.__T__.REG.interfaces.PlayerCharacter.views || {}).full || [];
     const feldEl = eigen.find((x) => x.el === 'fields')
       || (eigen.find((x) => x.el === 'tabs')?.tabs || [])
         .flatMap((t) => t.layout).find((x) => x.el === 'fields');
@@ -2057,22 +2036,58 @@ async function seite(datei, warten) {
     /Inherited from/.test(geerbt2.sagt) && geerbt2.zu
     && geerbt2.knopf.some((x) => /Give it its own/.test(x)), geerbt2);
 
-  /* Und der Wähler oben rechts bestimmt, welche Ansicht die Vorlage zeigt.
-     `full` ist die Grundlage, in der alles steht; die engeren lassen weg. */
+  /* Welche Ansicht die Vorlage zeigt, wird **an der Art** gewählt und nicht
+     oben rechts für die ganze Seite: die Anordnung gehört der Art, also
+     gehört die Wahl dorthin, wo die Art steht. `full` ist die Grundlage, in
+     der alles steht; die engeren lassen weg. */
   const engere = await p.evaluate(async () => {
     const T = window.__T__;
     T.UI.typePick = 'PlayerCharacter';
-    T.UI.view = 'quick';
     T.render();
     await new Promise((r) => setTimeout(r, 300));
+    const chips = [...document.querySelectorAll('.chip.pick[data-vk]')].map((c) => c.dataset.vk);
+    document.querySelector('.chip.pick[data-vk="quick"]').click();
+    await new Promise((r) => setTimeout(r, 350));
     const nun = [...document.querySelectorAll('.tmplel > .ck > code')].map((x) => x.textContent);
-    T.UI.view = 'full';
-    T.render();
-    await new Promise((r) => setTimeout(r, 300));
-    return nun;
+    document.querySelector('.chip.pick[data-vk="full"]').click();
+    await new Promise((r) => setTimeout(r, 350));
+    return { chips, nun };
   });
-  pruefe('the selector at the top right picks which view the template shows',
-    engere.length > 0 && !engere.includes('sheet'), engere);
+  /* **Der Ort wählt die Ansicht.** Oben rechts stand ein Dropdown, und wer
+     es jedes Mal bedienen muss, bedient es irgendwann falsch. Ein Verweis
+     ist ein Verweis, eine Listenzeile ist eine Zeile, und die Artikelseite
+     zeigt alles. */
+  const ortWaehlt = await p.evaluate(() => {
+    const T = window.__T__;
+    const pc = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'PlayerCharacter');
+    return {
+      waehler: !document.getElementById('facet'),
+      ansichten: Object.keys(T.REG.views),
+      /* Eine Übersicht ist ein Satz und keine Feldtabelle. */
+      ueber: [...T.layoutOf(T.REG.views.overview, 'PlayerCharacter', 'overview')].map((x) => x.el),
+      voll: [...T.layoutOf(T.REG.views.full, 'PlayerCharacter', 'full')].map((x) => x.el),
+      /* Und die volle Anordnung eines NSC kommt von `Creature` — geerbt,
+         nicht wiederholt. (Die Spielerfigur hat weiter oben eine eigene
+         bekommen; ein Prüflauf, der seine eigenen Spuren übersieht, prüft
+         am Ende nur noch sich selbst.) */
+      woher: T.layoutSource(T.REG.views.full, 'NPC', 'full').iface,
+      pc: pc ? pc.id : null,
+    };
+  });
+  pruefe('the picker at the top right is gone — the place decides',
+    ortWaehlt.waehler === true
+    && ortWaehlt.ansichten.join() === 'overview,quick,full', ortWaehlt.ansichten);
+  pruefe('an overview is a sentence, the article page is everything',
+    ortWaehlt.ueber.join() === 'description'
+    && ortWaehlt.voll.includes('sheet') && ortWaehlt.voll.length > 1,
+    { ueber: ortWaehlt.ueber, voll: ortWaehlt.voll });
+  pruefe('and a kind inherits its arrangement instead of repeating it',
+    ortWaehlt.woher === 'Creature', ortWaehlt.woher);
+
+  pruefe('the three views are picked at the kind, not at a switch for the whole page',
+    engere.chips.join() === 'overview,quick,full', engere.chips);
+  pruefe('and a narrower one leaves things out',
+    engere.nun.length > 0 && !engere.nun.includes('sheet'), engere.nun);
   pruefe('the template raised no exception', errs.length === 0, errs);
 
   /* ---- Mehrfachvererbung ----
@@ -2219,11 +2234,6 @@ async function seite(datei, warten) {
   });
   if (held) {
     await oeffne(held);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(400);
     const bogen = await p.evaluate(() => {
       const ab = {};
@@ -2269,11 +2279,6 @@ async function seite(datei, warten) {
     /* Das Inventar: drei Darstellungen, dieselben Daten. Seit der Bogen
        Reiter hat, liegt es hinter „Gear" — der Vitalstreifen bleibt oben,
        alles andere schaltet um. */
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(400);
     pruefe('a character sheet has tabs, and the vitals stay above them',
       await p.evaluate(() => ({
@@ -2357,11 +2362,6 @@ async function seite(datei, warten) {
   });
   if (werkbank.rezept && werkbank.kenner) {
     await oeffne(werkbank.rezept);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(400);
     const rez = await p.evaluate(() => ({
       kopf: [...document.querySelectorAll('.crhead .pill')].map((x) => x.textContent),
@@ -2382,11 +2382,6 @@ async function seite(datei, warten) {
     /* Die Werkbank an der Figur: bekannt, teilweise, unbekannt — und was
        fehlt, steht als Zahl da, nicht als „nein". */
     await oeffne(werkbank.kenner);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(400);
     const bank = await p.evaluate(() => ({
       zeilen: [...document.querySelectorAll('table.craftm tr.crrow')]
@@ -2450,8 +2445,7 @@ async function seite(datei, warten) {
         traeger.relations = (traeger.relations || []).filter((r) => r.type !== 'crafting');
         window.__T__.UI.craftLog = [];
       }, dc);
-      await p.evaluate(() => { document.getElementById('facet')
-        .dispatchEvent(new Event('change', { bubbles: true })); });
+      await p.evaluate(() => window.__T__.render());
       await p.waitForTimeout(300);
       await p.evaluate(() =>
         [...document.querySelectorAll('table.craftm tr.crrow.ready .btn')][0].click());
@@ -2548,7 +2542,7 @@ async function seite(datei, warten) {
         return it && /werkzeug|form/i.test(it.name || '');
       });
       inv.relations = inv.relations.filter((r) => weg.indexOf(r) < 0);
-      document.getElementById('facet').dispatchEvent(new Event('change', { bubbles: true }));
+      window.__T__.render();
       return weg.length;
     });
     await p.waitForTimeout(400);
@@ -2593,11 +2587,6 @@ async function seite(datei, warten) {
   });
   if (boardName) {
     await oeffne(boardName);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(700);
     const brd = await p.evaluate(() => ({
       karten: [...document.querySelectorAll('.bcard')].map((c) => ({
@@ -2663,11 +2652,6 @@ async function seite(datei, warten) {
   });
   if (kampf) {
     await oeffne(kampf);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(600);
     const lies = () => p.evaluate(() => ({
       zeilen: [...document.querySelectorAll('.initt tr')].slice(1).map((r) => ({
@@ -2758,11 +2742,6 @@ async function seite(datei, warten) {
   });
   if (auftrag.q && auftrag.p) {
     await oeffne(auftrag.q);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(450);
     const qs = await p.evaluate(() => ({
       kopf: [...document.querySelectorAll('.crhead .pill')].map((x) => x.textContent),
@@ -2789,11 +2768,6 @@ async function seite(datei, warten) {
     pruefe('ticking a task is stored', danach === zahl - 1, { zahl, danach });
 
     await oeffne(auftrag.p);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(450);
     const brett = await p.evaluate(() => ({
       abschnitte: [...document.querySelectorAll('.quests .sec')].map((x) => x.textContent),
@@ -2804,11 +2778,6 @@ async function seite(datei, warten) {
     pruefe('the board counts the tasks per quest',
       brett.zeilen.some((z) => /\d+\/\d+ tasks/.test(z)), brett.zeilen);
 
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(450);
     const zeit = await p.evaluate(() => ({
       zeilen: [...document.querySelectorAll('.tl')].map((r) => ({
@@ -2852,11 +2821,6 @@ async function seite(datei, warten) {
   });
   if (paar2.rec && paar2.kennerId && paar2.fremdId) {
     await oeffne(paar2.rec);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(400);
     const sicht = async (id) => {
       await p.evaluate((v) => {
@@ -2934,11 +2898,6 @@ async function seite(datei, warten) {
   });
   if (sitzung) {
     await oeffne(sitzung);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(450);
     const lv = await p.evaluate(() => ({
       abschnitte: [...document.querySelectorAll('.live .sec')].map((x) => x.textContent),
@@ -2985,11 +2944,6 @@ async function seite(datei, warten) {
       { id: 'pg_test', map: 'mp_kerzengasse', x: 0.5, y: 0.5, who: 'Sela' }));
     await p.waitForTimeout(300);
     await oeffne('Karte: Kerzengasse');
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(450);
     const zeiger = await p.evaluate(() =>
       [...document.querySelectorAll('.mping')].map((n) => n.textContent));
@@ -3022,11 +2976,6 @@ async function seite(datei, warten) {
   });
   if (tabelle.t && tabelle.ort) {
     await oeffneId(tabelle.t);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(450);
     const tb = await p.evaluate(() => ({
       zeilen: [...document.querySelectorAll('.tablebox table tr')].slice(1)
@@ -3051,11 +3000,6 @@ async function seite(datei, warten) {
     /* Auf dem Ort gilt der Zusammenhang: ein Eintrag mit Marke kommt nur
        dort in den Topf — und eine verschachtelte Tabelle würfelt weiter. */
     await oeffneId(tabelle.ort);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(450);
     const knopf = await p.evaluate(() =>
       [...document.querySelectorAll('.tablebox .btn')].map((b) => b.textContent));
@@ -3119,11 +3063,6 @@ async function seite(datei, warten) {
   });
   if (vorbereitung) {
     await oeffneId(vorbereitung);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(500);
     const pv = await p.evaluate(() => ({
       abschnitte: [...document.querySelectorAll('.prep .sec')].map((x) => x.textContent),
@@ -3294,11 +3233,6 @@ async function seite(datei, warten) {
       await p.waitForTimeout(400);
       await p.evaluate((i) => window.__T__.go({ k: 'art', id: i }), deck.id);
       await p.waitForTimeout(300);
-      await p.evaluate(() => {
-        const f = document.getElementById('facet');
-        f.value = 'full';
-        f.dispatchEvent(new Event('change', { bubbles: true }));
-      });
       await p.waitForTimeout(400);
       return p.evaluate(() => ({
         titel: document.querySelector('.arthead h2')?.textContent ?? null,
@@ -3450,11 +3384,6 @@ async function seite(datei, warten) {
     });
     if (mitProsa) {
       await oeffneId(mitProsa);
-      await p.evaluate(() => {
-        const f = document.getElementById('facet');
-        f.value = 'full';
-        f.dispatchEvent(new Event('change', { bubbles: true }));
-      });
       await p.waitForTimeout(450);
       const inline2 = await p.evaluate(() =>
         [...document.querySelectorAll('.rulew')].map((x) => x.textContent));
@@ -3493,11 +3422,6 @@ async function seite(datei, warten) {
   });
   if (reise) {
     await oeffneId(reise);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(550);
     const lies2 = () => p.evaluate(() => ({
       kopf: [...document.querySelectorAll('.crawl .maptools .pill')].map((x) => x.textContent),
@@ -3571,11 +3495,6 @@ async function seite(datei, warten) {
   });
   if (stapel.camp && stapel.neu) {
     await oeffneId(stapel.camp);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(550);
     const st3 = await p.evaluate(() => ({
       ebenen: [...document.querySelectorAll('.layer .ck .ref')].map((x) => x.textContent),
@@ -3625,11 +3544,6 @@ async function seite(datei, warten) {
           return !!e && window.__T__.articleVisible(e);
         }, wegName);
         await oeffneId(stapel.camp);
-        await p.evaluate(() => {
-          const f = document.getElementById('facet');
-          f.value = 'full';
-          f.dispatchEvent(new Event('change', { bubbles: true }));
-        });
         await p.waitForTimeout(500);
         await p.evaluate((lid) => {
           const sel = [...document.querySelectorAll('.stackbox select')][0];
@@ -3669,11 +3583,6 @@ async function seite(datei, warten) {
 
   /* Die Ansicht wieder auf Schnell — eine Prüfung, die etwas aufmacht,
      räumt es auch weg. */
-  await p.evaluate(() => {
-    const f = document.getElementById('facet');
-    f.value = 'quick';
-    f.dispatchEvent(new Event('change', { bubbles: true }));
-  });
   await p.waitForTimeout(200);
   await p.close();
 }
