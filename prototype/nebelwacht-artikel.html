@@ -313,7 +313,16 @@ body.asplayer .brand span{color:var(--link)}
 @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .mfog{fill:#05060a} }
 :root[data-theme="dark"] .mfog{fill:#05060a}
 .mfogflat{position:absolute;inset:0;background:#11131a;pointer-events:none;z-index:2}
-.mwall{stroke:var(--warn);stroke-width:.004;stroke-linecap:round;opacity:.8}
+.mwall{stroke:var(--warn);stroke-width:.004;stroke-linecap:round;opacity:.85}
+.msheet{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;
+  display:block}
+.msheets{display:flex;flex-direction:column;gap:4px}
+.msheetrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  padding:3px 6px;border:1px solid var(--line);border-radius:var(--r)}
+.msheetrow.base{border-style:dashed;opacity:.9}
+.msname{flex:1 1 120px;text-align:left;min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.msopacity{width:80px}
 .mterr{pointer-events:none}
 .mtoken{z-index:3}
 .mdraw{position:absolute;inset:0;z-index:5;touch-action:none;cursor:crosshair}
@@ -321,6 +330,7 @@ body.asplayer .brand span{color:var(--link)}
 .mprev{position:absolute;border:2px dashed var(--accent);background:var(--accent-soft);
   pointer-events:none}
 .mprev.line{height:0;border:none;border-top:3px solid var(--warn);transform-origin:0 0}
+.mprev.area{border-style:solid;border-width:2px}
 .maptools.sub{padding-top:2px;border-top:1px dashed var(--line);margin-top:-2px}
 
 /* Die Werkbank: ein laufender Gang ist ein Balken und zwei Knöpfe. */
@@ -788,6 +798,7 @@ var UI={route:{k:"list"}, view:"quick", area:"", iface:"", tag:"", q:"", offen:f
         trail:[], inline:false, editField:"", pick:false, picked:{}, status:"",
         aside:"rel", info:"", assetBusy:"",
         mapZoom:1, mapLock:false, mapKind:"", mapDrag:null, mapTool:"",
+        wallKind:"wall",
         invView:"tiers", invPick:"", craftOnly:false, craftLog:[],
         boardZoom:1, boardPick:"", boardTool:"",
         turnActor:"", rollLog:[], asActor:"", peers:[], pings:[],
@@ -6350,10 +6361,90 @@ function mapLights(e,card,nat){
   });
   return out;
 }
+/* ---- Sperren: Wand, Tür, Fenster, Abgrund ----
+   Eine Sperre hält Blick, Schritt, beides oder — bei einer offenen Tür —
+   nichts. Das steht an der Sperre selbst und nicht in vier Listen, die
+   dasselbe meinen: wer eine Tür zur Wand macht, ändert ein Feld und nicht
+   den Ort des Eintrags.
+
+   Die Bewegung wertet noch niemand aus — es gibt keine Zugrechnung. Sie
+   steht trotzdem hier, weil eine Tür, die man erst beim Bewegungssystem
+   als Tür erfasst, bis dahin als Wand gezeichnet wird und die Karte
+   zweimal gebaut werden muss. */
+/* Schlüssel, Name, Farbe, durchsichtig, hält den Schritt. */
+var WALL_KINDS=[
+  ["wall",  "Wall",   "#e2554a", false, true],
+  ["door",  "Door",   "#d99a2b", false, true],
+  ["window","Window", "#4aa3e2", true,  true],
+  ["chasm", "Chasm",  "#8a6bd1", true,  true]
+];
+function wallKind(w){
+  var k=(w&&w.kind)||"wall";
+  for(var i=0;i<WALL_KINDS.length;i++) if(WALL_KINDS[i][0]===k)return WALL_KINDS[i];
+  return WALL_KINDS[0];
+}
+/* Eine offene Tür ist keine Sperre. Alles andere kennt `open` nicht — ein
+   offenes Fenster bleibt ein Fenster, und ein Abgrund lässt sich nicht
+   aufklappen. */
+function wallOpen(w){ return (w&&w.kind)==="door"&&!!w.open; }
+function blocksSight(w){ return !wallOpen(w)&&!wallKind(w)[3]; }
+function blocksMove(w){ return !wallOpen(w)&&!!wallKind(w)[4]; }
+
+/* Was das Sichtbarkeitspolygon kennt: nur, was den Blick hält. Ein Fenster
+   steht auf der Karte und im Weg, aber nicht im Licht. */
 function mapWalls(card,ar){
-  return (card.walls||[]).filter(function(w){ return !w.open; }).map(function(w){
+  return (card.walls||[]).filter(blocksSight).map(function(w){
     return {id:w.id,x1:Number(w.x1)||0,y1:(Number(w.y1)||0)*ar,
             x2:Number(w.x2)||0,y2:(Number(w.y2)||0)*ar};
+  });
+}
+/* Was den Schritt hält. Noch wertet es niemand aus; die Abfrage steht, damit
+   das Bewegungssystem sie nicht erfinden muss. */
+function mapBarriers(card,ar){
+  return (card.walls||[]).filter(blocksMove).map(function(w){
+    return {id:w.id,kind:wallKind(w)[0],x1:Number(w.x1)||0,y1:(Number(w.y1)||0)*ar,
+            x2:Number(w.x2)||0,y2:(Number(w.y2)||0)*ar};
+  });
+}
+/* Gezeichnet wird jede Sperre, auch die offene Tür — die Spielleitung baut
+   die Karte und muss sehen, was sie gebaut hat. Wer nur mitspielt, sieht
+   keine: für ihn ist die Wand der Grund, warum es dahinter dunkel ist. */
+function wallLines(card,ar){
+  return (card.walls||[]).map(function(w){
+    var k=wallKind(w);
+    return {id:w.id,kind:k[0],label:k[1],color:k[2],open:wallOpen(w),
+            x1:Number(w.x1)||0,y1:(Number(w.y1)||0)*ar,
+            x2:Number(w.x2)||0,y2:(Number(w.y2)||0)*ar};
+  });
+}
+
+/* ---- Zeichenebenen ----
+   Ein Kartenblatt je Ebene, das unterste ist das Kartenbild selbst. Es
+   steht in `image` und nicht als erster Eintrag in `sheets`, weil die
+   natürliche Grösse an ihm hängt und eine Karte ohne unterstes Blatt keine
+   Karte ist. Die Leiste zeigt trotzdem beides in einer Liste — dort ist es
+   eine Ebene wie jede andere.
+
+   Oben in der Liste heisst obenauf: gezeichnet wird von hinten nach vorn,
+   also die Liste rückwärts. Eine Reihenfolge, die im Feld anders herum
+   steht als auf dem Schirm, sortiert früher oder später jemand falsch. */
+function mapSheets(e,card){
+  var out=[{id:"__base",name:"Base map",image:card.image,opacity:1,
+            visible:!card.baseHidden,gmOnly:!!card.baseGmOnly,base:true}];
+  (card.sheets||[]).forEach(function(s){
+    out.push({id:s.id,name:s.name||"Layer",image:s.image,
+      opacity:s.opacity==null?1:Number(s.opacity),
+      visible:s.visible!==false,gmOnly:!!s.gmOnly,base:false});
+  });
+  return out;
+}
+/* Was gezeichnet wird: sichtbar, mit Bild, und für Spieler ohne die Blätter,
+   die der Spielleitung gehören. Zurückgehalten wird hier in der Seite, weil
+   die Seite keinen Server hat — im echten Stapel tut es `redactEntity`. */
+function drawnSheets(e,card){
+  var gm=isGM();
+  return mapSheets(e,card).filter(function(s){
+    return s.visible&&s.image&&(gm||!s.gmOnly);
   });
 }
 
@@ -6362,7 +6453,11 @@ function visionOverlay(e,card,nat){
   var ar=nat.h/nat.w;
   var nebel=!!card.fog, licht=card.lighting||"bright";
   var terr=(e.relations||[]).filter(function(r){ return r.type===REL_TERRITORY; });
-  if(!nebel&&licht==="bright"&&!terr.length)return null;
+  /* Die Sperren sieht nur, wer sie setzen darf. Sie sind aber auch bei
+     Tageslicht zu zeichnen — wer eine Battlemap baut, baut sie am hellen
+     Tag und will sehen, wo die Wände stehen. */
+  var bau=isGM()&&canWrite()&&(card.walls||[]).length>0;
+  if(!nebel&&licht==="bright"&&!terr.length&&!bau)return null;
 
   var svg=sv("svg",{"class":"mvis",viewBox:"0 0 1 "+ar,preserveAspectRatio:"none"});
   var defs=sv("defs"); svg.appendChild(defs);
@@ -6419,11 +6514,6 @@ function visionOverlay(e,card,nat){
       fill:licht==="dark"?"#05070d":"#0b1020",
       "fill-opacity":gm?0.42:(licht==="dark"?0.94:0.6),
       mask:"url(#"+mid+")"}));
-    /* Die Wände sieht nur, wer sie gesetzt hat. Für alle anderen sind sie
-       der Grund, warum es dahinter dunkel ist, und sonst nichts. */
-    if(gm&&canWrite()) walls.forEach(function(w){
-      svg.appendChild(sv("line",{"class":"mwall",x1:w.x1,y1:w.y1,x2:w.x2,y2:w.y2}));
-    });
   }
 
   /* Nebel: zugedeckt ist alles, was keine aufgedeckte Form berührt. */
@@ -6436,11 +6526,24 @@ function visionOverlay(e,card,nat){
     svg.appendChild(sv("rect",{x:0,y:0,width:1,height:ar,"class":"mfog",
       "fill-opacity":gm?0.5:1,mask:"url(#"+fid+")"}));
   }
+
+  /* Die Sperren zuletzt und damit obenauf: für alle anderen sind sie der
+     Grund, warum es dahinter dunkel ist, und sonst nichts. Eine offene Tür
+     wird gestrichelt — sie steht da, hält aber nichts. */
+  if(bau) wallLines(card,ar).forEach(function(w){
+    var n=sv("line",{"class":"mwall k-"+w.kind,x1:w.x1,y1:w.y1,x2:w.x2,y2:w.y2,
+      stroke:w.color});
+    if(w.open||w.kind==="window") n.setAttribute("stroke-dasharray","0.012 0.008");
+    var tt=sv("title"); tt.textContent=w.label+(w.open?" (open)":"");
+    n.appendChild(tt);
+    svg.appendChild(n);
+  });
   return svg;
 }
 
 /* ---- Zeichnen: was die Spielleitung aufdeckt und zumauert ---- */
-var MAP_TOOLS=[["reveal","Reveal"],["hide","Hide"],["wall","Wall"],["erase","Erase"]];
+var MAP_TOOLS=[["reveal","Reveal"],["hide","Hide"],["wall","Barrier"],
+               ["area","Sub-map"],["erase","Erase"]];
 function mapToolLayer(e,card,img){
   var lay=el("div",{class:"mdraw t-"+UI.mapTool});
   var von=null, vorschau=null;
@@ -6454,7 +6557,8 @@ function mapToolLayer(e,card,img){
     var p=punkt(ev); if(!p)return;
     von=p; ev.preventDefault();
     try{ lay.setPointerCapture(ev.pointerId); }catch(x){}
-    vorschau=el("div",{class:"mprev"+(UI.mapTool==="wall"?" line":"")});
+    vorschau=el("div",{class:"mprev"+(UI.mapTool==="wall"?" line":"")+
+      (UI.mapTool==="area"?" area":"")});
     lay.appendChild(vorschau);
   });
   lay.addEventListener("pointermove",function(ev){
@@ -6486,8 +6590,30 @@ function mapToolLayer(e,card,img){
 function applyMapTool(e,card,a,b){
   var t=UI.mapTool, winzig=Math.abs(b.x-a.x)<0.005&&Math.abs(b.y-a.y)<0.005;
   if(t==="wall"){
+    /* Ziehen baut, ein Klick schaltet. Eine Tür, die man nur über ein Menü
+       aufbekommt, bleibt am Tisch zu. */
+    if(winzig){
+      var tuer=null, nah=0.02;
+      (card.walls||[]).forEach(function(w){
+        if((w.kind||"wall")!=="door")return;
+        var d=segDist(a.x,a.y,{x1:w.x1,y1:w.y1,x2:w.x2,y2:w.y2});
+        if(d<nah){ nah=d; tuer=w; }
+      });
+      if(!tuer)return;
+      card.walls=(card.walls||[]).map(function(w){
+        return w.id===tuer.id?Object.assign({},w,{open:!w.open}):w; });
+    } else {
+      card.walls=(card.walls||[]).concat([{id:uid("w"),kind:UI.wallKind||"wall",
+        x1:a.x,y1:a.y,x2:b.x,y2:b.y}]);
+    }
+  } else if(t==="area"){
+    /* Der Rahmen einer Unterkarte wird aufgezogen und nicht in die Mitte
+       gelegt: eine Karte, die zeigt, *wo* sie liegt, ist der halbe Zweck
+       der Verschachtelung. */
     if(winzig)return;
-    card.walls=(card.walls||[]).concat([{id:uid("w"),x1:a.x,y1:a.y,x2:b.x,y2:b.y}]);
+    addSubmap(e,{x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),
+      w:Math.abs(b.x-a.x),h:Math.abs(b.y-a.y)});
+    return;
   } else if(t==="reveal"){
     if(winzig)return;
     card.reveal=(card.reveal||[]).concat([{id:uid("s"),kind:"rect",
@@ -6523,6 +6649,116 @@ function applyMapTool(e,card,a,b){
   persist(e);
 }
 
+/* Die Ebenenleiste. Eine Zeile je Zeichenebene, oben ist obenauf.
+
+   Das unterste Blatt ist das Kartenbild selbst und lässt sich weder
+   entfernen noch verschieben — an ihm hängt die Grösse. Es lässt sich
+   ausblenden: wer ein Gelände über eine Skizze legt, will die Skizze
+   danach weghaben, ohne sie zu verlieren. */
+function sheetRow(e,card,sh,i,n){
+  var zeile=el("div",{class:"msheetrow"+(sh.base?" base":"")});
+
+  var auge=el("input",{type:"checkbox",title:"Visible"});
+  auge.checked=sh.visible;
+  auge.addEventListener("change",function(){ setSheet(e,card,sh,{visible:auge.checked}); });
+  zeile.appendChild(auge);
+
+  var name=el("button",{class:"btn sm gh msname",type:"button",
+    title:sh.base?"The map image":"Rename this layer",
+    onclick:function(){
+      if(sh.base){ setSheetImage(e,card,sh); return; }
+      prompt1("Layer name",sh.name,function(v){ setSheet(e,card,sh,{name:v||"Layer"}); });
+    }},sh.name);
+  zeile.appendChild(name);
+
+  zeile.appendChild(el("button",{class:"btn sm gh",type:"button",title:"Background image",
+    onclick:function(){ setSheetImage(e,card,sh); }},sh.image?"image":"no image"));
+
+  /* Deckkraft nur, wo sie etwas heisst: das unterste Blatt hat nichts, durch
+     das es scheinen könnte. */
+  if(!sh.base){
+    var sl=el("input",{type:"range",min:"0",max:"1",step:"0.05",
+      class:"msopacity",title:"Opacity"});
+    sl.value=String(sh.opacity);
+    sl.addEventListener("change",function(){ setSheet(e,card,sh,{opacity:Number(sl.value)}); });
+    zeile.appendChild(sl);
+  }
+
+  var gm=el("button",{class:"btn sm"+(sh.gmOnly?" pri":" gh"),type:"button",
+    title:sh.gmOnly?"Only the GM sees this layer":"Everyone sees this layer",
+    onclick:function(){ setSheet(e,card,sh,{gmOnly:!sh.gmOnly}); }},sh.gmOnly?"GM":"all");
+  zeile.appendChild(gm);
+
+  if(!sh.base){
+    zeile.appendChild(el("button",{class:"btn sm gh",type:"button",title:"Further up",
+      disabled:i<=1,onclick:function(){ moveSheet(e,card,sh,-1); }},"\u2191"));
+    zeile.appendChild(el("button",{class:"btn sm gh",type:"button",title:"Further down",
+      disabled:i>=n-1,onclick:function(){ moveSheet(e,card,sh,1); }},"\u2193"));
+    zeile.appendChild(el("button",{class:"btn sm gh",type:"button",title:"Remove this layer",
+      onclick:function(){
+        confirmDialog("Remove the layer \u201c"+sh.name+"\u201d? Its image stays an asset.",
+          function(){
+            card.sheets=(card.sheets||[]).filter(function(x){return x.id!==sh.id;});
+            e.components[MAP_COMP]=card; persist(e);
+          });
+      }},"\u00d7"));
+  }
+  return zeile;
+}
+function setSheet(e,card,sh,patch){
+  if(sh.base){
+    /* Das unterste Blatt hat keinen eigenen Eintrag — es *ist* die Karte.
+       Was an ihm einstellbar ist, steht deshalb an der Karte. */
+    if(patch.visible!=null) card.baseHidden=!patch.visible;
+    if(patch.gmOnly!=null) card.baseGmOnly=!!patch.gmOnly;
+    if(patch.image!==undefined) card.image=patch.image;
+  } else {
+    card.sheets=(card.sheets||[]).map(function(x){
+      return x.id===sh.id?Object.assign({},x,patch):x; });
+  }
+  e.components=e.components||{}; e.components[MAP_COMP]=card; persist(e);
+}
+function moveSheet(e,card,sh,d){
+  var l=(card.sheets||[]).slice();
+  var i=l.findIndex(function(x){return x.id===sh.id;});
+  /* Die Liste wird rückwärts gezeichnet, also ist „hoch" in der Liste
+     „später" im Feld. Ein Vorzeichen, das an einer Stelle steht statt an
+     zweien. */
+  var j=i-d;
+  if(i<0||j<0||j>=l.length)return;
+  var t=l[i]; l[i]=l[j]; l[j]=t;
+  card.sheets=l; e.components[MAP_COMP]=card; persist(e);
+}
+function setSheetImage(e,card,sh){
+  dialog("Background image \u2014 "+sh.name,function(host,close){
+    var w=assetInput({},sh.image||"");
+    host.appendChild(field("Image",w));
+    actions(host,close,function(){ setSheet(e,card,sh,{image:w.value||undefined}); },"Set");
+  });
+}
+function addSheet(e,card){
+  prompt1("New layer","Layer "+((card.sheets||[]).length+1),function(v){
+    card.sheets=(card.sheets||[]).concat([
+      {id:uid("sh"),name:v||"Layer",opacity:1,visible:true,gmOnly:false}]);
+    e.components=e.components||{}; e.components[MAP_COMP]=card; persist(e);
+  });
+}
+function sheetTools(e,card){
+  var box=el("div",{class:"msheets sub"});
+  var kopf=el("div",{class:"maptools"});
+  kopf.appendChild(el("strong",{class:"hint",style:"margin:0;align-self:center",text:"Layers"}));
+  kopf.appendChild(el("button",{class:"btn sm",type:"button",
+    onclick:function(){ addSheet(e,card); }},"+ Layer"));
+  box.appendChild(kopf);
+  var liste=mapSheets(e,card);
+  /* Oben ist obenauf: gezeichnet wird von hinten nach vorn, also die Liste
+     rückwärts. Wer sie vorwärts zeigte, müsste jedes Mal umdenken. */
+  liste.slice().reverse().forEach(function(sh,i){
+    box.appendChild(sheetRow(e,card,sh,i,liste.length));
+  });
+  return box;
+}
+
 /* Die Leiste dafür. Sie steht nur der Spielleitung offen und nur, wenn die
    Karte ein Bild hat — ein Nebelwerkzeug über einer leeren Fläche wäre
    ein Knopf, der nichts tut. */
@@ -6547,6 +6783,16 @@ function fogTools(e,card){
   MAP_TOOLS.forEach(function(t){
     bar.appendChild(el("button",{class:"btn sm"+(UI.mapTool===t[0]?" pri":""),type:"button",
       onclick:function(){ UI.mapTool=UI.mapTool===t[0]?"":t[0]; render(); }},t[1]));
+    /* Die Art steht neben dem Werkzeug, das sie braucht, und nur dann.
+       Eine Auswahl, die immer dasteht, fragt nach einer Antwort, die
+       gerade niemand hat. */
+    if(t[0]==="wall"&&UI.mapTool==="wall"){
+      var art=el("select",{class:"i",style:"width:auto",title:"What kind of barrier"});
+      WALL_KINDS.forEach(function(k){ art.appendChild(el("option",{value:k[0]},k[1])); });
+      art.value=UI.wallKind||"wall";
+      art.addEventListener("change",function(){ UI.wallKind=art.value; render(); });
+      bar.appendChild(art);
+    }
   });
   bar.appendChild(el("button",{class:"btn sm gh",type:"button",
     title:"Reveal the whole map",
@@ -6560,9 +6806,13 @@ function fogTools(e,card){
         function(){ card.reveal=[]; card.fog=true; e.components[MAP_COMP]=card; persist(e); });
     }},"none"));
   var n=(card.reveal||[]).length, w=(card.walls||[]).length;
+  var tuer=(card.walls||[]).filter(function(x){return (x.kind||"wall")==="door";}).length;
+  var wie=UI.mapTool==="wall"?" · drag to build, click a door to open or shut it":
+          UI.mapTool==="area"?" · drag the frame the sub-map covers":
+          UI.mapTool?" · drag on the map":"";
   bar.appendChild(el("span",{class:"hint",style:"margin:0;align-self:center",
-    text:n+" uncovered · "+w+" wall"+(w===1?"":"s")+
-      (UI.mapTool?" · drag on the map":"")}));
+    text:n+" uncovered · "+w+" barrier"+(w===1?"":"s")+
+      (tuer?" ("+tuer+" door"+(tuer===1?"":"s")+")":"")+wie}));
   return bar;
 }
 
@@ -6607,7 +6857,7 @@ function elMap(e,ifn,item){
   if(canWrite()) bar.appendChild(el("button",{class:"btn sm",type:"button",
     onclick:function(){ addMarker(e); }},"+ Token"));
   if(canWrite()) bar.appendChild(el("button",{class:"btn sm",type:"button",
-    onclick:function(){ addSubmap(e); }},"+ Sub-map"));
+    onclick:function(){ addSubmap(e,null); }},"+ Sub-map"));
   var eltern=parentMap(e);
   if(eltern) bar.appendChild(el("button",{class:"btn sm gh",type:"button",
     onclick:function(){ go({k:"art",id:eltern.id}); }},"↑ "+nameOf(eltern)));
@@ -6619,7 +6869,10 @@ function elMap(e,ifn,item){
       text:canWrite()?"This map has no image yet — set MapInfo · Image.":"No image."}));
     return wrap;
   }
-  if(canWrite()&&!inPlacement) wrap.appendChild(fogTools(e,card));
+  if(canWrite()&&!inPlacement){
+    wrap.appendChild(sheetTools(e,card));
+    wrap.appendChild(fogTools(e,card));
+  }
 
   var stage=el("div",{class:"mapstage"});
   var inner=el("div",{class:"mapinner"});
@@ -6645,6 +6898,22 @@ function elMap(e,ifn,item){
     if(img.complete&&img.naturalWidth) noteNat(src,img.naturalWidth,img.naturalHeight);
   }
   inner.appendChild(img);
+
+  /* Die Zeichenebenen darüber. Das unterste Blatt bleibt im Fluss — es
+     bestimmt, wie gross die Karte ist —, auch wenn es ausgeblendet ist;
+     ausgeblendet heisst dann durchsichtig und nicht weg. Alle weiteren
+     liegen darüber und fangen keine Maus. */
+  if(!kacheln){
+    var basis=mapSheets(e,card)[0];
+    if(!(basis.visible&&(isGM()||!basis.gmOnly))) img.style.opacity="0";
+    drawnSheets(e,card).forEach(function(sh){
+      if(sh.base)return;
+      var u=assetSrc(sh.image); if(!u)return;
+      var lage=el("img",{class:"msheet",src:u,alt:"",title:sh.name});
+      lage.style.opacity=String(Math.max(0,Math.min(1,sh.opacity)));
+      inner.appendChild(lage);
+    });
+  }
 
   var raster=gridOverlay(card,UI.mapZoom);
   if(raster) inner.appendChild(raster);
@@ -6788,7 +7057,7 @@ function addMarker(e){
 /* Eine Unterkarte: entweder eine vorhandene hineinhängen oder eine neue
    anlegen. Der Ankerbereich sitzt zuerst in der Mitte und wird dort
    zurechtgezogen — dieselbe Regel wie beim Token. */
-function addSubmap(e){
+function addSubmap(e,rahmen){
   dialog("Sub-map",function(host,close){
     var sel=el("select",{class:"i"});
     sel.appendChild(el("option",{value:""},"— create a new map —"));
@@ -6801,7 +7070,8 @@ function addSubmap(e){
     host.appendChild(field("Map",sel));
     host.appendChild(field("New name",nm));
     host.appendChild(el("p",{class:"hint",
-      text:"The anchor starts in the middle of this map. Drag its corner handle to fit it over the region it shows."}));
+      text:rahmen?"The frame you dragged is where it sits on this map.":
+        "No frame drawn — it lands in the middle. Use the Sub-map tool to draw where it sits."}));
     actions(host,close,function(){
       var kind=sel.value?ENT.get(sel.value):null;
       if(!kind){
@@ -6815,7 +7085,8 @@ function addSubmap(e){
       }
       kind.relations=(kind.relations||[]).filter(function(r){return r.type!==REL_INSIDE;});
       kind.relations.push({id:uid("r"),type:REL_INSIDE,to:e.id,
-        props:{x:0.4,y:0.4,w:0.2,h:0.2}});
+        props:rahmen?{x:rahmen.x,y:rahmen.y,w:rahmen.w,h:rahmen.h}
+                    :{x:0.4,y:0.4,w:0.2,h:0.2}});
       persist(kind);
       render();
     },"Attach");
@@ -9165,6 +9436,16 @@ function confirmDialog(question, onOk, okLabel){
   });
 }
 
+/* Eine Zeile abfragen. `window.prompt` gibt es in der Artefakt-Umgebung
+   nicht zuverlässig, und ein Dialog, der manchmal erscheint, ist keiner. */
+function prompt1(title,value,onOk,okLabel){
+  dialog(title,function(host,close){
+    var inp=el("input",{class:"i",type:"text",value:value==null?"":String(value)});
+    host.appendChild(field(title,inp));
+    setTimeout(function(){ try{ inp.focus(); inp.select(); }catch(x){} },0);
+    actions(host,close,function(){ onOk(inp.value.trim()); },okLabel||"Save");
+  });
+}
 function actions(host,close,onOk,okLabel){
   var bar=el("div",{class:"rowbtns"});
   bar.appendChild(el("button",{class:"btn pri",type:"button",onclick:function(){ if(onOk()!==false) close(); }},okLabel||"Save"));

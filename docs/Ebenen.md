@@ -5,6 +5,11 @@ Stand 2026-09-20. REQ-004 bis 009 und REQ-044 aus
 
 ---
 
+> **Nicht zu verwechseln mit den Zeichenebenen einer Karte.** Die hier
+> sagen, *welche Artikel es überhaupt gibt*; die auf einer Karte sagen,
+> *was auf dem Bild liegt*. Sie heissen im Schema `sheets` und sind in
+> [Karten.md](Karten.md) beschrieben.
+
 ## Die Frage, die dahintersteht
 
 Eine Kampagne besteht selten nur aus dem, was ihre Leitung geschrieben hat.

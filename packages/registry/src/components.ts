@@ -568,6 +568,22 @@ export const components: Record<string, ComponentDef> = {
       type: 'object',
       properties: {
         image: { type: 'string', format: 'asset', title: 'Image' },
+        /* **Zeichenebenen** (REQ-130). Nicht zu verwechseln mit den
+           Inhaltsebenen (`Layer`, der Stapel): das hier sind Bilder
+           übereinander auf *einer* Karte — Gelände, Beschriftung, Ruinen,
+           Schnee —, und nur die Spielleitung entscheidet, welche liegen.
+           Sie heissen im Schema `sheets` (Kartenblätter), damit das Wort
+           „Ebene" für die Inhaltsebenen frei bleibt; in der Kartenleiste
+           steht „Layers", weil dort nichts zu verwechseln ist.
+
+           `image` bleibt das unterste Blatt: es ist die Karte selbst, und
+           an ihm hängt ihre natürliche Grösse. Was in `sheets` steht, liegt
+           darüber. */
+        sheets: { type: 'array', title: 'Drawing layers', items: { type: 'object' } },
+        /* Was am untersten Blatt einstellbar ist, steht an der Karte — es
+           hat keinen eigenen Eintrag in `sheets`, weil es die Karte *ist*. */
+        baseHidden: { type: 'boolean', title: 'Hide the base image' },
+        baseGmOnly: { type: 'boolean', title: 'Base image is GM only' },
         kind: {
           type: 'string',
           title: 'Map kind',
@@ -594,7 +610,12 @@ export const components: Record<string, ComponentDef> = {
         },
         fog: { type: 'boolean', title: 'Fog of war', default: false },
         reveal: { type: 'array', title: 'Uncovered areas', items: { type: 'object' } },
-        walls: { type: 'array', title: 'Sight blockers', items: { type: 'object' } },
+        /* Sperren, nicht nur Sichtblocker: eine Wand hält Blick und Schritt,
+           ein Fenster nur den Schritt, ein Abgrund auch nur den Schritt, und
+           eine Tür hält beides, solange sie zu ist. Was welche Sorte ist,
+           steht an der Sperre (`kind`) — eine zweite Liste je Sorte hiesse,
+           vier Listen zu pflegen, die dasselbe meinen. */
+        walls: { type: 'array', title: 'Walls, doors, windows, chasms', items: { type: 'object' } },
         // Kacheln (REQ-138) für Scans, die als ein Stück niemand lädt.
         tiles: { type: 'string', title: 'Tile pattern ({x}, {y})' },
         tileCols: { type: 'number', title: 'Tile columns' },

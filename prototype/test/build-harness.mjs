@@ -95,7 +95,9 @@ window.__T__={runImport:runImport,derivedValue:derivedValue,assetSrc:assetSrc,UI
   visionPoly:visionPoly,rayHit:rayHit,inShape:inShape,mapLights:mapLights,
   noteNat:noteNat,craftMod:craftMod,recipeDays:recipeDays,craftStatus:craftStatus,
   anchorFor:anchorFor,campaignVars:campaignVars,fillVars:fillVars,
-  visibleRefs:visibleRefs,areaOf:areaOf,render:render};
+  visibleRefs:visibleRefs,areaOf:areaOf,render:render,
+  mapWalls:mapWalls,mapBarriers:mapBarriers,mapSheets:mapSheets,
+  drawnSheets:drawnSheets,blocksSight:blocksSight,blocksMove:blocksMove};
 Object.defineProperty(window.__T__,'REG',{get:function(){return REG;}});
 Object.defineProperty(window.__T__,'ENT',{get:function(){return ENT;}});
 `;

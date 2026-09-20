@@ -1212,9 +1212,116 @@ async function seite(datei, warten) {
     const hell = await p.evaluate(() => ({
       polygone: document.querySelectorAll('.mvis mask polygon').length,
       fog: !!document.querySelector('.mvis .mfog'),
+      waende: document.querySelectorAll('.mvis .mwall').length,
     }));
     pruefe('daylight takes the darkness away and leaves the fog',
       hell.polygone === 0 && hell.fog === true, hell);
+    /* Wer eine Battlemap baut, baut sie am hellen Tag. Wären die Sperren
+       nur im Dunkeln zu sehen, müsste man zum Bauen das Licht ausmachen. */
+    pruefe('barriers stay visible to the builder in daylight',
+      hell.waende >= 4, hell.waende);
+
+    /* ---- Sperren: Wand, Tür, Fenster, Abgrund ----
+       Eine Liste, zwei Fragen. Was hier durcheinanderkommt, kommt leise
+       durcheinander: ein Fenster, das den Blick hält, macht den Raum
+       dahinter dunkel, und niemand sieht dem Bild an, warum. */
+    const sperren = await p.evaluate((id) => {
+      const e = window.__T__.ENT.get(id);
+      const c = e.components.MapInfo;
+      const alt = c.walls;
+      c.walls = [
+        { id: 'tw', kind: 'wall', x1: 0.1, y1: 0.1, x2: 0.1, y2: 0.9 },
+        { id: 'tf', kind: 'window', x1: 0.3, y1: 0.1, x2: 0.3, y2: 0.9 },
+        { id: 'ta', kind: 'chasm', x1: 0.5, y1: 0.1, x2: 0.5, y2: 0.9 },
+        { id: 'tz', kind: 'door', x1: 0.7, y1: 0.1, x2: 0.7, y2: 0.9, open: false },
+        { id: 'to', kind: 'door', x1: 0.9, y1: 0.1, x2: 0.9, y2: 0.9, open: true },
+        /* Ohne Art: was vor den Sorten gezeichnet wurde, bleibt eine Wand. */
+        { id: 'tx', x1: 0.95, y1: 0.1, x2: 0.95, y2: 0.9 },
+      ];
+      const r = {
+        sicht: window.__T__.mapWalls(c, 1).map((w) => w.id).sort().join(),
+        schritt: window.__T__.mapBarriers(c, 1).map((w) => w.id).sort().join(),
+      };
+      c.walls = alt;
+      return r;
+    }, nebelKarte);
+    pruefe('a window and a chasm stop the step, not the look',
+      sperren.sicht === 'tw,tx,tz', sperren);
+    pruefe('an open door stops neither, a closed one stops both',
+      sperren.schritt === 'ta,tf,tw,tx,tz', sperren);
+
+    /* ---- Zeichenebenen ----
+       Nicht die Inhaltsebenen des Stapels — Bilder übereinander auf einer
+       Karte. Dass die beiden dasselbe Wort tragen, ist der Grund, warum
+       hier steht, welche gemeint ist. */
+    const ebenen = await p.evaluate((id) => {
+      const e = window.__T__.ENT.get(id);
+      const c = e.components.MapInfo;
+      c.sheets = [
+        { id: 's1', name: 'Terrain', image: c.image, opacity: 0.5, visible: true },
+        { id: 's2', name: 'Secrets', image: c.image, opacity: 1, visible: true, gmOnly: true },
+        { id: 's3', name: 'Off', image: c.image, opacity: 1, visible: false },
+      ];
+      window.__T__.render();
+      return {
+        alle: window.__T__.mapSheets(e, c).map((sh) => sh.name).join(),
+        gezeichnet: window.__T__.drawnSheets(e, c).map((sh) => sh.name).join(),
+      };
+    }, nebelKarte);
+    await p.waitForTimeout(400);
+    pruefe('the base image is the bottom layer and the sheets sit on it',
+      ebenen.alle === 'Base map,Terrain,Secrets,Off', ebenen.alle);
+    pruefe('a layer switched off is not drawn',
+      ebenen.gezeichnet === 'Base map,Terrain,Secrets', ebenen.gezeichnet);
+
+    const gemalt = await p.evaluate(() => {
+      const basis = document.querySelector('.mapinner .mapimg');
+      return {
+        blaetter: [...document.querySelectorAll('.mapinner .msheet')]
+          .map((n) => n.style.opacity).join(),
+        basis: basis ? basis.style.opacity : null,
+        /* Die Leiste zeigt das unterste Blatt mit, sonst liesse es sich
+           nicht ausblenden. Vier Einträge für drei Blätter. */
+        zeilen: document.querySelectorAll('.msheetrow').length,
+      };
+    });
+    pruefe('each drawn layer carries its own opacity',
+      gemalt.blaetter === '0.5,1', gemalt);
+    pruefe('the layer panel lists the base map and every sheet',
+      gemalt.zeilen === 4, gemalt.zeilen);
+
+    await p.evaluate((id) => {
+      window.__T__.ENT.get(id).components.MapInfo.baseHidden = true;
+      window.__T__.render();
+    }, nebelKarte);
+    await p.waitForTimeout(300);
+    const ohneBasis = await p.evaluate(() => {
+      const b = document.querySelector('.mapinner .mapimg');
+      return b ? b.style.opacity : null;
+    });
+    /* Ausgeblendet heisst durchsichtig und nicht weg: an dem Bild hängt die
+       Grösse der Karte, und eine Karte ohne Grösse hat keine Koordinaten. */
+    pruefe('hiding the base image leaves it in place, only invisible',
+      ohneBasis === '0', ohneBasis);
+
+    /* Was der Spielleitung gehört, sieht ein Spieler nicht. Hier in der
+       Seite, weil die Seite keinen Server hat — im echten Stapel hält
+       `redactEntity` es zurück, bevor es losgeschickt wird. */
+    const alsSpieler = await p.evaluate((id) => {
+      const e = window.__T__.ENT.get(id);
+      const c = e.components.MapInfo;
+      c.baseHidden = false;
+      const vorher = window.__T__.UI.asActor;
+      window.__T__.UI.asActor = 'pc_rook';
+      const sicht = window.__T__.drawnSheets(e, c).map((sh) => sh.name).join();
+      window.__T__.UI.asActor = vorher;
+      c.sheets = [];
+      window.__T__.render();
+      return sicht;
+    }, nebelKarte);
+    pruefe('a GM-only layer stays with the GM',
+      alsSpieler === 'Base map,Terrain', alsSpieler);
+    await p.waitForTimeout(300);
     await p.evaluate((id) => {
       const e = window.__T__.ENT.get(id);
       e.components.MapInfo.lighting = 'dark';

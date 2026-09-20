@@ -272,6 +272,16 @@ in [Spieltisch.md](Spieltisch.md).
   geschrieben wird der ganze Artikel, und der Server sagt, wer darf. Kanten
   werden nur vorwärts bearbeitet — die Gegenrichtung ist eine Abfrage und
   hat kein Feld.
+- **D18 · Vier Bereiche, drei Stufen** — Story, World, Game und Play stehen
+  an der Schnittstelle (`area`) und nicht in einer Liste neben dem Register.
+  Die einundzwanzig Darstellungsstufen sind drei: `quick`, `full`, `player`.
+  Was für eine Artikelart eigen ist, steht in `byInterface` und nicht in
+  einer eigenen Stufe — eine Kreatur zeigt ihren Bogen, ohne dass jemand
+  etwas auswählt.
+- **D19 · Karten: Blätter, Sperren, Rahmen** — REQ-130 bis 140. Ein
+  Hintergrundbild je Zeichenebene; Wände, Türen, Fenster und Abgründe mit
+  je eigener Wirkung auf Blick und Schritt; der Rahmen einer Unterkarte wird
+  aufgezogen statt in die Mitte gelegt. Siehe [Karten.md](Karten.md).
 
 ---
 
