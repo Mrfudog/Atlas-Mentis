@@ -262,6 +262,9 @@ in [Spieltisch.md](Spieltisch.md).
   Registerzeilen des Prototyps aus `packages/registry`; dazu acht Prüfungen
   der Bezugstreue, weil eine einzige Quelle nur so viel wert ist, wie sie
   geprüft ist.
+- **D15 · Zugang am Server** — REQ-031, 032, 035, 036. Ein Passwort je
+  Nutzer (Argon2id), Sitzungen beim Server, und gelesen wird gesiebt. Siehe
+  [Zugang.md](Zugang.md).
 
 ---
 
@@ -279,10 +282,10 @@ A, B und D stehen. Was bleibt, in der Reihenfolge, in der es sich lohnt:
 3. **Globale Variablen** (B3): Gruppenstufe und Gruppen-Aufenthaltsort haben
    im Register eine Zeile, aber noch keine Maske und keine Verwendung in den
    Ansichten.
-4. **Der Zugang** (REQ-031, 032): ein Passwort je Nutzer. Die Identität kommt
-   heute von der Laufzeit des Artefakts; ein Passwort im Browser wäre keines.
-   Das ist der letzte Punkt, der wirklich auf den echten Stapel wartet — die
-   Abfragen darunter bleiben unverändert.
+4. **Die Oberfläche zum Zugang.** Der Server kann seit 2026-09-20 Konten,
+   Sitzungen und Rechte (siehe [Zugang.md](Zugang.md)); `apps/web` ist ein
+   Gerüst und hat noch keine Anmeldemaske. Damit wird aus dem Prototyp eine
+   Anwendung, die zwei Leute gleichzeitig benutzen können.
 5. **Der Ortsimporter als TypeScript** (C4, Rest). Das Register steht seit
    2026-09-20 nur noch einmal: `pnpm --filter @nw/registry emit-seed`
    erzeugt die Zeilen des Prototyps aus `packages/registry`.

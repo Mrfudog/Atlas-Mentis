@@ -187,3 +187,99 @@ export function visibleFields(
   }
   return allFields.filter((f) => allowed.has(f));
 }
+
+/**
+ * Den Artikel so, wie dieser Betrachter ihn sehen darf (REQ-035, 036).
+ *
+ * Bis hierher machte das Zurückhalten nur die Oberfläche. Das reicht genau
+ * so lange, wie niemand die Schnittstelle direkt aufruft — und ein Server,
+ * der einem Spieler die Geheimnisse der Spielleitung schickt und darauf
+ * baut, dass sein Browser sie nicht anzeigt, hält gar nichts zurück.
+ *
+ * Deshalb steht es hier und nicht dort: was hier liegt, gilt für Server und
+ * Oberfläche gleichermassen, und es gibt es nur einmal.
+ *
+ * Drei Sachen gehen weg:
+ * - **Felder**, die eine Information beansprucht, die er nicht kennt.
+ * - **Blöcke**, ebenso — plus die Blockarten, die nie an einen Spieler
+ *   gehen (`gmBlockTypes`), sofern kein bekanntes Wissen sie ausdrücklich
+ *   freigibt. Ein Block, den jemand geschenkt bekommen hat, bleibt sein
+ *   Block, auch wenn er „secret" heisst.
+ * - **Der Name**, wenn er beansprucht und ungewusst ist: dann steht der
+ *   Deckname da (REQ-178).
+ *
+ * Die Kanten bleiben: eine Verbindung zu verbergen hiesse, den Rückbezug am
+ * anderen Ende mitzuverbergen, und das ist eine andere Frage als diese.
+ * Was ein Betrachter überhaupt sehen darf, entscheidet weiterhin die
+ * Sichtbarkeit — nicht dieses Sieb.
+ */
+export function redactEntity(
+  registry: Pick<Registry, 'interfaces'>,
+  entities: Map<EntityId, Entity>,
+  article: Entity,
+  viewerId?: EntityId,
+  gmBlockTypes: string[] = ['secret', 'tactics'],
+): Entity {
+  if (!viewerId) return article;
+
+  const allFields: FieldRef[] = [];
+  for (const [component, card] of Object.entries(article.components ?? {})) {
+    for (const property of Object.keys((card ?? {}) as Record<string, unknown>)) {
+      allFields.push(`${component}.${property}`);
+    }
+  }
+  const groups = knowledgeGroups(registry, entities, article, allFields, viewerId);
+  const erlaubtF = new Set<FieldRef>();
+  const erlaubtB = new Set<string>();
+  const beanspruchtB = new Set<string>();
+  for (const g of groups) {
+    if (!g.info) continue; /* die offene Restgruppe beansprucht nichts */
+    g.blocks.forEach((b) => beanspruchtB.add(b));
+    if (!g.known) continue;
+    g.fields.forEach((f) => erlaubtF.add(f));
+    /* Nur ein Block, den eine **bekannte Information** ausdrücklich
+       freigibt, schlägt die Blockart. Die offene Restgruppe darf das nicht:
+       sonst wäre jeder unbeanspruchte `secret`-Block offen, und die
+       Blockart hiesse gar nichts mehr. */
+    g.blocks.forEach((b) => erlaubtB.add(b));
+  }
+  /* Was keine Information beansprucht, ist offen — das ist die Restgruppe,
+     und ihre Felder gelten ohne weiteres. */
+  const rest = groups.find((g) => !g.info);
+  rest?.fields.forEach((f) => erlaubtF.add(f));
+
+  const components: Record<string, Record<string, unknown>> = {};
+  for (const [component, card] of Object.entries(article.components ?? {})) {
+    const behalten: Record<string, unknown> = {};
+    for (const [property, value] of Object.entries((card ?? {}) as Record<string, unknown>)) {
+      if (erlaubtF.has(`${component}.${property}`)) behalten[property] = value;
+    }
+    /* Eine Karte, von der nichts übrig bleibt, wird weggelassen und nicht
+       leer mitgeschickt: „da ist eine Karte, aber sie ist leer" wäre eine
+       Auskunft, die niemand geben wollte. */
+    if (Object.keys(behalten).length) components[component] = behalten;
+  }
+
+  /* Der Deckname. Er ist die einzige Stelle, an der etwas eingesetzt und
+     nicht weggelassen wird — ein Artikel ohne Namen wäre unbrauchbar, und
+     „jemand" ist ehrlicher als nichts. */
+  const identity = (article.components ?? {})['Identity'] as { cover?: string } | undefined;
+  if (!erlaubtF.has('Name.text')) {
+    const cover = identity?.cover;
+    components['Name'] = { ...(components['Name'] ?? {}), text: cover || 'jemand' };
+  }
+
+  const blocks = (article.blocks ?? []).filter((b) => {
+    const anchor = b.anchor || b.id;
+    if (erlaubtB.has(anchor)) return true;
+    if (beanspruchtB.has(anchor)) return false;
+    return !gmBlockTypes.includes(b.blockType);
+  });
+
+  /* Auch der bequeme Name oben am Artikel. Ihn stehen zu lassen wäre die
+     Art Lücke, die niemand sucht: die Karte ist gesiebt, und daneben steht
+     der Name im Klartext. */
+  const name = (components['Name']?.['text'] as string | undefined) ?? article.name;
+
+  return { ...article, name, components, blocks } as Entity;
+}

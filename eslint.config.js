@@ -13,7 +13,12 @@ export default ts.config(
   },
   {
     rules: {
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      /* `ignoreRestSiblings`: `const { passwordHash: _hash, ...rest } = user`
+         ist die Art, ein Feld wegzulassen, und kein vergessener Wert. */
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true },
+      ],
       '@typescript-eslint/consistent-type-imports': 'error',
     },
   },

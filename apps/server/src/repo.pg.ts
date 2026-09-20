@@ -8,7 +8,8 @@
 
 import type { Pool } from 'pg';
 import type { Entity, Registry, Relation } from '@nw/model';
-import type { Repository } from './repo.js';
+import type { Repository, SessionRow, StoredUser } from './repo.js';
+import type { User } from './auth.js';
 
 type Row = Record<string, unknown>;
 
@@ -235,5 +236,128 @@ export class PgRepository implements Repository {
       'insert into event_log(id,name,subject,payload) values (gen_random_uuid(),$1,$2,$3)',
       [name, subject ?? null, JSON.stringify(payload ?? {})],
     );
+  }
+
+  // ------------------------------------------------------------- Zugang
+
+  private static toUser(row: Row): StoredUser {
+    return {
+      id: String(row['id']),
+      name: String(row['name']),
+      passwordHash: String(row['password_hash']),
+      isGm: row['is_gm'] === true,
+      actorId: (row['actor_id'] as string | null) ?? undefined,
+      disabledAt: row['disabled_at'] ? new Date(row['disabled_at'] as string).toISOString() : undefined,
+    };
+  }
+
+  async countUsers(): Promise<number> {
+    const { rows } = await this.pool.query<Row>('select count(*)::int as n from app_user');
+    return Number(rows[0]?.['n'] ?? 0);
+  }
+
+  async findUserByName(nameFold: string): Promise<StoredUser | undefined> {
+    const { rows } = await this.pool.query<Row>('select * from app_user where name_fold = $1', [
+      nameFold,
+    ]);
+    return rows[0] ? PgRepository.toUser(rows[0]) : undefined;
+  }
+
+  async getUser(id: string): Promise<StoredUser | undefined> {
+    const { rows } = await this.pool.query<Row>('select * from app_user where id = $1', [id]);
+    return rows[0] ? PgRepository.toUser(rows[0]) : undefined;
+  }
+
+  async listUsers(): Promise<User[]> {
+    const { rows } = await this.pool.query<Row>('select * from app_user order by name');
+    return rows.map((r) => {
+      const { passwordHash: _hash, ...rest } = PgRepository.toUser(r);
+      return rest;
+    });
+  }
+
+  async putUser(user: StoredUser): Promise<void> {
+    await this.pool.query(
+      `insert into app_user(id,name,name_fold,password_hash,is_gm,actor_id,disabled_at,updated_at)
+       values ($1,$2,$3,$4,$5,$6,$7,now())
+       on conflict (id) do update set
+         name = excluded.name, name_fold = excluded.name_fold,
+         password_hash = excluded.password_hash, is_gm = excluded.is_gm,
+         actor_id = excluded.actor_id, disabled_at = excluded.disabled_at,
+         updated_at = now()`,
+      [
+        user.id,
+        user.name,
+        user.name.trim().toLocaleLowerCase('de'),
+        user.passwordHash,
+        user.isGm,
+        user.actorId ?? null,
+        user.disabledAt ?? null,
+      ],
+    );
+  }
+
+  async createSession(row: SessionRow & { agent?: string | undefined }): Promise<void> {
+    await this.pool.query(
+      `insert into app_session(token_hash,user_id,expires_at,agent) values ($1,$2,$3,$4)
+       on conflict (token_hash) do nothing`,
+      [row.tokenHash, row.userId, row.expiresAt, row.agent ?? null],
+    );
+  }
+
+  async touchSession(tokenHash: string, until: string): Promise<StoredUser | undefined> {
+    /* Nachschieben und lesen in einem Schritt: zwei Abfragen liessen ein
+       Zeitfenster, in dem eine gerade abgemeldete Sitzung noch gilt. */
+    const { rows } = await this.pool.query<Row>(
+      `update app_session set seen_at = now(), expires_at = $2
+         where token_hash = $1 and expires_at > now()
+       returning user_id`,
+      [tokenHash, until],
+    );
+    const userId = rows[0]?.['user_id'];
+    if (!userId) {
+      await this.pool.query('delete from app_session where token_hash = $1 and expires_at <= now()', [
+        tokenHash,
+      ]);
+      return undefined;
+    }
+    return this.getUser(String(userId));
+  }
+
+  async dropSession(tokenHash: string): Promise<void> {
+    await this.pool.query('delete from app_session where token_hash = $1', [tokenHash]);
+  }
+
+  async dropSessionsOf(userId: string): Promise<number> {
+    const { rowCount } = await this.pool.query('delete from app_session where user_id = $1', [
+      userId,
+    ]);
+    return rowCount ?? 0;
+  }
+
+  async countAttempts(nameFold: string, origin: string, since: string): Promise<number> {
+    const { rows } = await this.pool.query<Row>(
+      `select count(*)::int as n from login_attempt
+         where name_fold = $1 and origin = $2 and at >= $3`,
+      [nameFold, origin, since],
+    );
+    return Number(rows[0]?.['n'] ?? 0);
+  }
+
+  async noteAttempt(nameFold: string, origin: string): Promise<void> {
+    await this.pool.query('insert into login_attempt(name_fold,origin) values ($1,$2)', [
+      nameFold,
+      origin,
+    ]);
+    /* Alte Versuche wegräumen, damit die Tabelle nicht das Einzige ist, was
+       in dieser Datenbank unbegrenzt wächst. */
+    await this.pool.query("delete from login_attempt where at < now() - interval '1 day'");
+  }
+
+  async clearAttempts(nameFold: string, origin: string): Promise<void> {
+    await this.pool.query('delete from login_attempt where name_fold = $1 and origin = $2', [
+      nameFold,
+      origin,
+    ]);
   }
 }
