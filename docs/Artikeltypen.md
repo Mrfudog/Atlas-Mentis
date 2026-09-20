@@ -228,7 +228,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Eigene Felder**
 
-- `kind` *string*, `color` *string*
+- `kind` *string*, `color` *color*
 
 **Geerbte Felder**
 

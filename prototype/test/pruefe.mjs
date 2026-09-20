@@ -197,6 +197,18 @@ async function seite(datei, warten) {
   const farbe = await p.evaluate(() => document.querySelector('.fld .swatch')?.getAttribute('style') ?? null);
   pruefe('a colour field renders as a swatch', /#8b5cf6/.test(farbe ?? ''), farbe);
 
+  /* Und die Zeile im Register trägt die Form auch schon. Die Prüfung oben
+     setzt sie selbst und sagt darum nur, dass der Editor sie setzen kann —
+     `Faction.color` stand deshalb lange als blosser String da und zeigte im
+     echten Register nie eine Farbe. */
+  const formen = await p.evaluate(() => {
+    const P = (t, k) => (window.__T__.REG.interfaces[t]?.schema?.properties || {})[k] || {};
+    return { faction: P('Faction', 'color').format, bild: P('Image', 'image').format,
+             ort: P('Party', 'at').format };
+  });
+  pruefe('and the registry row already says so',
+    formen.faction === 'color' && formen.bild === 'asset' && formen.ort === 'link', formen);
+
   /* ---- Das Bild wird gezeichnet ----
      Das Element las `Image.ref`, das Register erklärt `Image.image`. Solange
      beides auseinanderlief, zeichnete es nie etwas — und weil ein Artikel

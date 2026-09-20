@@ -367,7 +367,12 @@ export const fieldGroups = {
       type: 'object',
       properties: {
         kind: { type: 'string', title: 'Kind' },
-        color: { type: 'string', title: 'Colour' },
+        /* `format: 'color'` und nicht bloss ein String: sonst steht in der
+           Feldtabelle `#8b5cf6` als Text, und das Feld heisst „Colour",
+           ohne je eine zu zeigen. Die Prüfung hat es nicht gesehen, weil
+           sie die Feldart selbst setzt — sie prüfte den Editor, nicht die
+           Zeile. */
+        color: { type: 'string', format: 'color', title: 'Colour' },
       },
     },
   },
