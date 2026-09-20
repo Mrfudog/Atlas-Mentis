@@ -389,6 +389,30 @@ table.atk tr.stowed td,table.atk tr.buried td{color:var(--dim)}
   display:block}
 .gitem i.off{background:transparent;border-color:transparent}
 .gitem.selected i.on{background:var(--accent);border-color:var(--accent)}
+/* Aufträge und Zeitleiste. */
+.tasks{display:flex;flex-direction:column;gap:2px}
+.task{display:flex;gap:8px;align-items:baseline;padding:3px 0;
+  border-bottom:1px solid var(--line);font-size:13.5px;cursor:pointer}
+.task.done span{text-decoration:line-through;color:var(--dim)}
+.task .co{margin-left:auto;font-size:11px;color:var(--dim)}
+.qlist{display:flex;flex-direction:column;gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.qrow{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;justify-content:space-between;
+  background:var(--surface);padding:6px 10px}
+.qrow.unknown{color:var(--dim);font-style:italic}
+.qrow .qt{display:flex;gap:8px;align-items:baseline;min-width:0}
+.qrow .qmeta{font-family:var(--ff-mono);font-size:11.5px;color:var(--dim);white-space:nowrap}
+.tline{display:flex;flex-direction:column;gap:0;border-left:2px solid var(--line);
+  margin:10px 0 10px 4px;padding-left:0}
+.tl{display:flex;gap:12px;padding:7px 0 7px 14px;position:relative}
+.tl::before{content:"";position:absolute;left:-6px;top:13px;width:9px;height:9px;
+  border-radius:50%;background:var(--surface);border:2px solid var(--line2)}
+.tl.here::before{border-color:var(--accent);background:var(--accent)}
+.tl .tdate{font-family:var(--ff-mono);font-size:11.5px;color:var(--accent);
+  flex:0 0 120px;padding-top:2px}
+.tl .tbody{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px;align-items:baseline}
+.tl .tbody p{flex-basis:100%;margin:2px 0 0;font-size:12.5px;color:var(--dim)}
+
 /* Kampf: die Reihe, der Zeiger, die Würfel. */
 .initt{width:100%;border-collapse:collapse;font-size:13.5px;margin:8px 0}
 .initt th{text-align:left;font-family:var(--ff-mono);font-size:10px;text-transform:uppercase;
@@ -1885,7 +1909,8 @@ var LAYOUT_ELEMENTS=[
   ["heading","Heading"],["text","Paragraph"],["fields","Field table"],
   ["description","Description"],["blocks","Text blocks"],
   ["composed","Composed rules"],["relations","Relations"],["image","Image"],
-  ["knowledge","Knowledge groups"],["map","Map"],["sheet","Character sheet"],["inventory","Inventory"],["crafting","Crafting"],["board","Board"],["initiative","Initiative"]
+  ["knowledge","Knowledge groups"],["map","Map"],["sheet","Character sheet"],["inventory","Inventory"],["crafting","Crafting"],["board","Board"],["initiative","Initiative"],
+  ["quests","Quest board"],["timeline","Timeline"]
 ];
 function layoutOf(vw,ifn){
   var by=vw.byInterface||{};
@@ -1925,6 +1950,8 @@ function renderLayoutItem(item,e,ifn,vw){
     case "crafting":    return elCrafting(e,ifn,item);
     case "board":       return elBoard(e,ifn,item);
     case "initiative":  return elInitiative(e,ifn,item);
+    case "quests":      return elQuests(e,ifn,item);
+    case "timeline":    return elTimeline(e,ifn,item);
     default:            return null;
   }
 }
@@ -2064,6 +2091,180 @@ function elRelations(e){
       onclick:function(){go({k:"art",id:t.id});}},nameOf(t)));
     else rv.appendChild(el("span",{class:"gone",text:"missing"}));
     row.appendChild(rv);
+    wrap.appendChild(row);
+  });
+  return wrap;
+}
+
+/* ---------- Aufträge und Zeitleiste (REQ-082, 083, 106) ----------
+   Aufgaben liegen als Feld am Auftrag, nicht als Kanten: „bring das Fass
+   zurück" zeigt auf nichts, was eine eigene ID verdiente. Zeigt eine Aufgabe
+   doch auf etwas, steht das im Text als [[Verweis]] — und der löst sich auf
+   wie jeder andere. Dieselbe Trennlinie wie bei den Formen auf dem Board.
+
+   Was auf dem Brett *steht*, entscheidet das Wissen: ein Auftrag, dessen
+   Informationen du nicht kennst, steht als Gerücht da, nicht als Zeile mit
+   Belohnung. Das Wissensmodell aus A6 trägt auch hier. */
+var QUEST_IFACE="Quest", QUEST_COMP="QuestInfo";
+var QUEST_STATES=[
+  ["rumoured","Rumoured"],["offered","Offered"],["accepted","Running"],
+  ["done","Done"],["failed","Failed"],["abandoned","Dropped"]
+];
+
+function questCard(q){ return (q.components||{})[QUEST_COMP]||{}; }
+function questTasks(q){
+  var t=questCard(q).tasks;
+  return Array.isArray(t)?t:[];
+}
+/* Wie viel weiss dieser Betrachter vom Auftrag? Dieselben drei Zustände wie
+   beim Rezept — offen, teilweise, verborgen. */
+function questKnowledge(q,viewerId){
+  var infos=infosOf(q);
+  if(!infos.length)return "open";
+  var n=infos.filter(function(i){ return knowsInfo(i,viewerId); }).length;
+  return n===infos.length?"known":(n?"partial":"hidden");
+}
+
+function elQuests(e,ifn,item){
+  var wrap=el("div",{class:"quests"});
+
+  /* Auf dem Auftrag selbst: die Aufgaben zum Abhaken. */
+  if(ifn===QUEST_IFACE||((e.components||{})[QUEST_COMP])){
+    var card=questCard(e);
+    var kopf=el("div",{class:"crhead"});
+    var lab=QUEST_STATES.filter(function(x){return x[0]===card.state;})[0];
+    kopf.appendChild(el("span",{class:"pill",text:lab?lab[1]:(card.state||"—")}));
+    if(card.deadline) kopf.appendChild(el("span",{class:"pill q",text:"by "+card.deadline}));
+    if(card.reward) kopf.appendChild(el("span",{class:"pill q",text:card.reward}));
+    if(card.restriction) kopf.appendChild(el("span",{class:"pill q",text:card.restriction}));
+    if(me.write){
+      var sel=el("select",{class:"bsel"});
+      QUEST_STATES.forEach(function(x){ sel.appendChild(el("option",{value:x[0]},x[1])); });
+      sel.value=card.state||"rumoured";
+      sel.addEventListener("change",function(){
+        e.components[QUEST_COMP]=Object.assign({},card,{state:sel.value}); persist(e); });
+      kopf.appendChild(sel);
+    }
+    wrap.appendChild(kopf);
+
+    var aufgaben=questTasks(e);
+    wrap.appendChild(el("div",{class:"sec",text:"Tasks"}));
+    if(!aufgaben.length) wrap.appendChild(el("p",{class:"hint",text:"None yet."}));
+    var liste=el("div",{class:"tasks"});
+    aufgaben.forEach(function(t){
+      var row=el("label",{class:"task"+(t.done?" done":"")});
+      var cb=el("input",{type:"checkbox"});
+      cb.checked=!!t.done; cb.disabled=!me.write;
+      cb.addEventListener("change",function(){
+        var neu=aufgaben.map(function(x){
+          return x===t?Object.assign({},x,{done:cb.checked}):x; });
+        e.components[QUEST_COMP]=Object.assign({},card,{tasks:neu}); persist(e);
+      });
+      row.appendChild(cb);
+      row.appendChild(inline(t.text||"",el("span")));
+      if(t.optional) row.appendChild(el("span",{class:"co",text:"optional"}));
+      if(me.write) row.appendChild(el("button",{class:"btn gh sm",type:"button",
+        onclick:function(ev){ ev.preventDefault();
+          var neu=aufgaben.filter(function(x){return x!==t;});
+          e.components[QUEST_COMP]=Object.assign({},card,{tasks:neu}); persist(e); }},"×"));
+      liste.appendChild(row);
+    });
+    wrap.appendChild(liste);
+    if(me.write){
+      var neu2=el("input",{class:"i",type:"text",placeholder:"A task — [[links]] work here"});
+      var bar=el("div",{class:"addbar",style:"margin-top:8px"});
+      bar.appendChild(neu2);
+      bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+        var txt=neu2.value.trim(); if(!txt)return;
+        e.components[QUEST_COMP]=Object.assign({},card,
+          {tasks:aufgaben.concat([{id:uid("t"),text:txt,done:false}])});
+        persist(e);
+      }},"Add task"));
+      wrap.appendChild(bar);
+    }
+    /* Fortschritt: die Zahl, nach der am Tisch gefragt wird. */
+    var fertig=aufgaben.filter(function(t){return t.done;}).length;
+    if(aufgaben.length) wrap.appendChild(el("p",{class:"hint",
+      text:fertig+" of "+aufgaben.length+" done"}));
+    return wrap;
+  }
+
+  /* Sonst: das Brett. Gruppiert nach Stand, gefiltert durchs Wissen. */
+  var alle=[];
+  ENT.forEach(function(o){ if(((o.interfaces||[])[0])===QUEST_IFACE) alle.push(o); });
+  if(!alle.length){ wrap.appendChild(el("p",{class:"hint",text:"No quests yet."}));
+    return wrap; }
+  alle.sort(function(a,b){return nameOf(a).localeCompare(nameOf(b),"de");});
+
+  QUEST_STATES.forEach(function(st){
+    var drin=alle.filter(function(q){ return (questCard(q).state||"rumoured")===st[0]; });
+    if(!drin.length)return;
+    wrap.appendChild(el("div",{class:"sec",text:st[1]}));
+    var box=el("div",{class:"qlist"});
+    drin.forEach(function(q){
+      var w=questKnowledge(q,e.id);
+      var row=el("div",{class:"qrow "+(w==="hidden"?"unknown":"")});
+      var c=questCard(q);
+      var t2=el("div",{class:"qt"});
+      t2.appendChild(el("button",{class:"ref",type:"button",
+        onclick:function(){go({k:"art",id:q.id});}},
+        w==="hidden"?"(a rumour you have not chased)":nameOf(q)));
+      if(w==="partial") t2.appendChild(el("span",{class:"co",text:"partly known"}));
+      row.appendChild(t2);
+      if(w!=="hidden"){
+        var auf=questTasks(q);
+        var fert=auf.filter(function(x){return x.done;}).length;
+        row.appendChild(el("span",{class:"qmeta",
+          text:(auf.length?fert+"/"+auf.length+" tasks":"")+
+            (c.deadline?"  ·  "+c.deadline:"")+(c.reward?"  ·  "+c.reward:"")}));
+      }
+      box.appendChild(row);
+    });
+    wrap.appendChild(box);
+  });
+  return wrap;
+}
+
+/* ---------- Zeitleiste (REQ-106) ----------
+   Jeder Artikel mit einem Weltdatum steht darauf, nicht nur Ereignisse:
+   eine Sitzung, ein Vertrag, ein Todesfall sind dasselbe für die Zeitleiste.
+   Sortiert nach `sort`, gelesen `display` — deshalb stehen beide im Schema. */
+function worldDated(){
+  var out=[];
+  ENT.forEach(function(o){
+    var wd=(o.components||{}).WorldDate;
+    if(!wd)return;
+    if(wd.sort===undefined&&!wd.display)return;
+    out.push({e:o,wd:wd,sort:Number(wd.sort)});
+  });
+  out.sort(function(a,b){
+    var as=isFinite(a.sort)?a.sort:Infinity, bs=isFinite(b.sort)?b.sort:Infinity;
+    if(as!==bs)return as-bs;
+    return nameOf(a.e).localeCompare(nameOf(b.e),"de");
+  });
+  return out;
+}
+function elTimeline(e,ifn,item){
+  var wrap=el("div",{class:"tline"});
+  var alle=worldDated();
+  if(!alle.length){
+    wrap.appendChild(el("p",{class:"hint",
+      text:"Nothing carries a world date yet. Give an article a WorldDate card — `sort` orders it, `display` is what gets read out."}));
+    return wrap;
+  }
+  var kal=setting("calendar","");
+  if(kal) wrap.appendChild(el("p",{class:"hint",text:"Calendar: "+kal}));
+  alle.forEach(function(x){
+    var row=el("div",{class:"tl"+(x.e.id===e.id?" here":"")});
+    row.appendChild(el("span",{class:"tdate",text:x.wd.display||String(x.wd.sort||"")}));
+    var b=el("div",{class:"tbody"});
+    b.appendChild(el("button",{class:"ref",type:"button",
+      onclick:function(){go({k:"art",id:x.e.id});}},nameOf(x.e)));
+    b.appendChild(el("span",{class:"pill q",text:ifaceName(x.e)}));
+    var d=((x.e.components||{}).Description||{}).raw;
+    if(d) b.appendChild(para(fillVars(d,null,x.e),"co"));
+    if(x.wd.duration) b.appendChild(el("span",{class:"co",text:x.wd.duration}));
+    row.appendChild(b);
     wrap.appendChild(row);
   });
   return wrap;

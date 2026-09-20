@@ -315,4 +315,17 @@ export const interfaces: Record<string, InterfaceDef> = {
     requires: ['EncounterInfo'],
     blockTypes: ['+tactics', '+readaloud', '+note', '+secret'],
   },
+
+  /**
+   * Ein Ereignis in der Weltzeit (REQ-106). Es verlangt ein Weltdatum —
+   * ohne das ist es kein Ereignis, sondern eine Notiz. Sortiert wird nach
+   * `WorldDate.sort`, gelesen wird `WorldDate.display`.
+   */
+  Event: {
+    name: 'Event',
+    label: 'Event',
+    extends: ['Base'],
+    requires: ['WorldDate'],
+    blockTypes: ['+lore', '+secret', '+readaloud'],
+  },
 };

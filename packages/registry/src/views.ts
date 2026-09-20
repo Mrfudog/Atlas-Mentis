@@ -223,4 +223,39 @@ export const views: Record<string, ViewDef> = {
       { id: 'f-b', el: 'blocks', blocks: ['readaloud', 'tactics', 'note'] },
     ],
   },
+
+  /** Das Questbrett: was offen ist, was läuft, was erledigt ist. */
+  quests: {
+    label: 'Quests',
+    order: 14,
+    fields: ['QuestInfo'],
+    blocks: ['lore', 'secret'],
+    description: true,
+    composed: false,
+    relations: true,
+    bindings: false,
+    image: false,
+    layout: [
+      { id: 'q-board', el: 'quests' },
+      { id: 'q-desc', el: 'description' },
+      { id: 'q-b', el: 'blocks', blocks: ['lore', 'secret'] },
+    ],
+  },
+
+  /** Die Zeitleiste, nach Weltdatum sortiert. */
+  timeline: {
+    label: 'Timeline',
+    order: 15,
+    fields: ['WorldDate'],
+    blocks: ['lore'],
+    description: true,
+    composed: false,
+    relations: true,
+    bindings: false,
+    image: false,
+    layout: [
+      { id: 't-line', el: 'timeline' },
+      { id: 't-desc', el: 'description' },
+    ],
+  },
 };

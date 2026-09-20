@@ -377,6 +377,12 @@ export const components: Record<string, ComponentDef> = {
         },
         reward: { type: 'string', title: 'Reward' },
         deadline: { type: 'string', title: 'Deadline' },
+        restriction: { type: 'string', title: 'Restriction' },
+        /* Aufgaben liegen als Feld am Auftrag, nicht als Kanten: „bring das
+           Fass zurück" zeigt auf nichts, was eine eigene ID verdiente.
+           Zeigt eine Aufgabe doch auf etwas, steht das im Text als
+           [[Verweis]] — und der löst sich auf wie jeder andere. */
+        tasks: { type: 'array', title: 'Tasks', items: { type: 'object' } },
       },
     },
   },

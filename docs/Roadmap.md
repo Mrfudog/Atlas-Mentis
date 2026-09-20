@@ -216,20 +216,52 @@ Beschreibung unter `.claude/agents/`.
 6. **Session als Artikel mit Kanten**, dem Rückgrat entsprechend — kein
    eigenes Behälterkonstrukt.
 
+---
+
+## Etappe D — der Spieltisch (Prototyp) — **steht**
+
+Nach Entscheidung 1 im Artefakt gebaut, nicht im echten Stapel. Ausführlich
+in [Spieltisch.md](Spieltisch.md).
+
+- **D1 · Assets, Quellen, Weltdaten, Einstellungen** — REQ-020, 021, 024,
+  043, 145, 147, 148. Ein Asset ist ein Artikel; Verbraucher fragen nie,
+  welche Art Verweis ein Bild trägt. Sechster Registerteil für die
+  Kampagneneinstellungen.
+- **D2 · Karten** — REQ-130 bis 136. Tokens sind Kanten mit Koordinaten in
+  Anteilen; Unterkarten über `insideMap`; Quadrat- und Hexgitter.
+- **D3 · Charakterbogen** — REQ-051, 063, 066. `Vitals` getrennt von
+  `StatblockInfo`; alles ein Tipp, kein Formular.
+- **D4 · Inventar** — REQ-064, 065. Griffabstand, Körperslots und
+  Kachelraster über denselben Daten; die Formangaben lagen schon im
+  Register.
+- **D5 · Handwerk** — REQ-184. Ein Rezept, das jemand kennt, ist eine
+  Information — das Wissensmodell aus A6 trägt auch hier.
+- **D6 · Boards** — REQ-111, 157 bis 166. Jede Platzierung wird mit
+  denselben Elementen gezeichnet wie die Artikelseite; die
+  Darstellungsauflösung hat drei Stufen.
+- **D7 · Begegnung, Initiative, Würfel** — REQ-070, 085, 115, 144. Eine
+  Kante je Teilnehmer; Zustände mit Dauer; der Zeiger auf der Karte.
+- **D8 · Aufträge und Zeitleiste** — REQ-082, 083, 106. Aufgaben zum
+  Abhaken, ein Brett nach Stand gruppiert, Ereignisse nach Weltdatum.
+
+---
+
 ## Als Nächstes
 
-Etappe A steht damit ganz, Etappe B auch. Offen sind vier Dinge, und welches
-zuerst kommt, hängt davon ab, was du am Tisch zuerst brauchst:
+A, B und D stehen. Was bleibt, in der Reihenfolge, in der es sich lohnt:
 
-1. **Der Zugang** (Entscheidung 2): ein Passwort je Nutzer. Erst damit wird
-   aus `visibleFields` eine Spieleransicht statt einer geprüften Funktion —
-   heute liegt die Auflösung bereit und niemand benutzt sie.
-2. **Globale Variablen** (B3): Gruppenstufe und Gruppen-Aufenthaltsort haben
+1. **Der Zugang** (Entscheidung 2, REQ-031 bis 038): ein Passwort je Nutzer.
+   Erst damit wird aus `visibleFields` eine Spieleransicht statt einer
+   geprüften Funktion — und erst damit haben Wissen, Rezeptgeheimnisse und
+   das Questbrett einen Empfänger, der nicht die Spielleitung ist.
+2. **Sitzungszustände und Echtzeit** (REQ-116, 117). Runde und Zug liegen
+   heute an der Begegnung. Die Artefakt-Fähigkeit `room` liefert genau den
+   Kanal, den das braucht — mehrere Geräte, die dieselbe Initiative sehen.
+3. **Globale Variablen** (B3): Gruppenstufe und Gruppen-Aufenthaltsort haben
    im Register eine Zeile, aber noch keine Maske und keine Verwendung in den
    Ansichten.
-3. **Der Spieltisch** (C3): Board, Karten, Initiative, Spiel- und
-   Vorbereitungsmodus. Nach Entscheidung 1 wird das im Artefakt versucht,
-   solange es trägt.
-4. **Die Nachzügler** (C4): Ortsimporter als TypeScript, und das Register des
-   Prototyps mit `packages/registry` zusammenführen — die laufen derzeit von
-   Hand nebeneinander her, und das hält nicht ewig.
+4. **Ebenen und Stapelauflösung** (REQ-004 bis 007): der grösste Brocken,
+   den das Rückgrat noch nicht trägt. Der Prototyp kennt eine Kampagne.
+5. **Die Nachzügler** (C4): Ortsimporter als TypeScript, und das Register
+   des Prototyps mit `packages/registry` zusammenführen — die laufen derzeit
+   von Hand nebeneinander her, und das hält nicht ewig.

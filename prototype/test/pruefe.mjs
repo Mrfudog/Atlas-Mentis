@@ -1409,6 +1409,93 @@ async function seite(datei, warten) {
     pruefe('an encounter exists in the data', false, 'keine gefunden');
   }
 
+  /* ---- Aufträge und Zeitleiste (REQ-082, 083, 106) ---- */
+  const auftrag = await p.evaluate(() => {
+    const q = [...window.__T__.ENT.values()].find((e) =>
+      (e.interfaces || [])[0] === 'Quest'
+      && Array.isArray(((e.components || {}).QuestInfo || {}).tasks)
+      && e.components.QuestInfo.tasks.length > 2);
+    const traeger = [...window.__T__.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Party');
+    return {
+      q: q ? (q.name || q.components.Name.text) : null,
+      p: traeger ? (traeger.name || traeger.components.Name.text) : null,
+    };
+  });
+  if (auftrag.q && auftrag.p) {
+    await oeffne(auftrag.q);
+    await p.evaluate(() => {
+      const f = document.getElementById('facet');
+      f.value = 'quests';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(450);
+    const qs = await p.evaluate(() => ({
+      kopf: [...document.querySelectorAll('.crhead .pill')].map((x) => x.textContent),
+      offen: [...document.querySelectorAll('.task')].filter((t) => !t.querySelector('input').checked).length,
+      erledigt: [...document.querySelectorAll('.task.done')].length,
+      /* [[Verweise]] in einer Aufgabe lösen sich auf wie überall sonst —
+         eine Aufgabe, die auf etwas zeigt, soll dorthin führen. */
+      refs: document.querySelectorAll('.task .ref').length,
+      probleme: [...document.querySelectorAll('.pruef li')].map((x) => x.textContent),
+    }));
+    pruefe('a quest shows state, reward and deadline', qs.kopf.length >= 3, qs.kopf);
+    pruefe('tasks tick off and links inside them resolve',
+      qs.offen > 0 && qs.erledigt > 0 && qs.refs > 0, qs);
+    pruefe('the quest validates clean', qs.probleme.length === 0, qs.probleme);
+
+    const zahl = await p.evaluate(() =>
+      [...document.querySelectorAll('.task')].filter((t) => !t.querySelector('input').checked).length);
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.task')].find((t) => !t.querySelector('input').checked)
+        .querySelector('input').click());
+    await p.waitForTimeout(450);
+    const danach = await p.evaluate(() =>
+      [...document.querySelectorAll('.task')].filter((t) => !t.querySelector('input').checked).length);
+    pruefe('ticking a task is stored', danach === zahl - 1, { zahl, danach });
+
+    await oeffne(auftrag.p);
+    await p.evaluate(() => {
+      const f = document.getElementById('facet');
+      f.value = 'quests';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(450);
+    const brett = await p.evaluate(() => ({
+      abschnitte: [...document.querySelectorAll('.quests .sec')].map((x) => x.textContent),
+      zeilen: [...document.querySelectorAll('.qrow')].map((r) => r.textContent),
+    }));
+    pruefe('the quest board groups by state',
+      brett.abschnitte.length >= 2 && brett.zeilen.length >= 2, brett.abschnitte);
+    pruefe('the board counts the tasks per quest',
+      brett.zeilen.some((z) => /\d+\/\d+ tasks/.test(z)), brett.zeilen);
+
+    await p.evaluate(() => {
+      const f = document.getElementById('facet');
+      f.value = 'timeline';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(450);
+    const zeit = await p.evaluate(() => ({
+      zeilen: [...document.querySelectorAll('.tl')].map((r) => ({
+        d: r.querySelector('.tdate').textContent,
+        n: r.querySelector('.ref').textContent })),
+      sortiert: [...window.__T__.ENT.values()]
+        .filter((e) => (e.components || {}).WorldDate)
+        .map((e) => Number(e.components.WorldDate.sort)),
+    }));
+    pruefe('the timeline lists everything that carries a world date',
+      zeit.zeilen.length >= 4, zeit.zeilen.length);
+    /* Sortiert wird nach `sort`, gelesen `display` — deshalb stehen beide im
+       Schema. „Mirtul 12, 1492 TZ" lässt sich nicht vergleichen. */
+    const gelesen = zeit.zeilen.map((z) => z.d);
+    pruefe('the timeline reads the display date and orders by the sortable one',
+      gelesen.some((d) => /[A-Za-z]/.test(d))
+      && gelesen[0] !== gelesen[gelesen.length - 1], gelesen);
+    pruefe('quests and timeline raised no exception', errs.length === 0, errs);
+  } else {
+    pruefe('a quest with tasks and a party exist in the data', false, auftrag);
+  }
+
   pruefe('knowledge needed no browser modal', modale.length === 0, modale);
   pruefe('no exception through the knowledge panel', errs.length === 0, errs);
 

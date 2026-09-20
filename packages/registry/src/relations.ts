@@ -433,4 +433,15 @@ export const relations: Record<string, RelationDef> = {
       },
     },
   },
+
+  // --------------------------------------------------------------- events
+
+  /** Wen oder was ein Ereignis betrifft. */
+  involves: {
+    type: 'involves',
+    label: 'involves',
+    inverseLabel: 'took part in',
+    from: ['Event'],
+    to: ['*'],
+  },
 };
