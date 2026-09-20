@@ -95,7 +95,8 @@ export type LayoutElementKind =
   | 'composed'
   | 'relations'
   | 'image'
-  | 'knowledge';
+  | 'knowledge'
+  | 'map';
 
 /**
  * One element of a view's layout. A view is an ordered list of these, so the

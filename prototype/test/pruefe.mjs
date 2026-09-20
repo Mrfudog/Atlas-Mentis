@@ -313,7 +313,7 @@ async function seite(datei, warten) {
   await p.waitForTimeout(250);
   const werkzeuge = await p.evaluate(() =>
     [...document.querySelectorAll('.tools button')].map((b) => b.textContent));
-  pruefe('the toolbox offers every element', werkzeuge.length === 9 && werkzeuge.some((t) => /Field table/.test(t)), werkzeuge);
+  pruefe('the toolbox offers every element', werkzeuge.length === 10 && werkzeuge.some((t) => /Field table/.test(t)), werkzeuge);
 
   await p.evaluate(() =>
     [...document.querySelectorAll('.regtree button')].find((b) => b.textContent === 'Full').click());
@@ -430,6 +430,24 @@ async function seite(datei, warten) {
     });
     await p.waitForTimeout(250);
   };
+
+  const neuerArtikel = async (typ, name) => {
+    await p.evaluate(() => document.getElementById('new').click());
+    await p.waitForTimeout(250);
+    await p.evaluate((t) => {
+      const s = [...document.querySelectorAll('.dlgbox select')][0];
+      [...s.options].forEach((o) => { if (o.textContent === t) s.value = o.value; });
+    }, typ);
+    await p.evaluate((n) => { [...document.querySelectorAll('.dlgbox input')][0].value = n; }, name);
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.dlgbox .rowbtns button')].find((b) => /Create/.test(b.textContent)).click());
+    await p.waitForTimeout(400);
+    return p.evaluate(() => ({
+      titel: document.querySelector('.arthead h2')?.textContent,
+      typ: document.querySelector('.kicker .pill')?.textContent,
+      probleme: [...document.querySelectorAll('.pruef li')].map((x) => x.textContent),
+    }));
+  };
   await oeffne('Volo');
 
   await p.evaluate(() => {
@@ -504,8 +522,11 @@ async function seite(datei, warten) {
 
 
   /* Name und Tags gehören mit in die Ansicht — sonst wäre der Dialog der
-     einzige Weg dorthin, und der ist aus der Artikelleiste verschwunden. */
-  await oeffne('Nebeldistrikt');
+     einzige Weg dorthin, und der ist aus der Artikelleiste verschwunden.
+     Umbenannt wird ein eigener Artikel: eine Prüfung, die Kampagnendaten
+     ändert, bricht die nächste, und der Fehler steht dann weit weg. */
+  await neuerArtikel('Place', 'Probe quarter');
+  const eigeneId = await p.evaluate(() => window.__T__.UI.route.id);
   await p.evaluate(() => document.querySelector('.arthead h2').click());
   await p.waitForTimeout(250);
   const nameOffen = await p.evaluate(() => document.querySelector('.arthead input')?.value ?? null);
@@ -515,12 +536,12 @@ async function seite(datei, warten) {
     i.dispatchEvent(new Event('change', { bubbles: true }));
   });
   await p.waitForTimeout(350);
-  const nameNeu = await p.evaluate(() => ({
+  const nameNeu = await p.evaluate((id) => ({
     titel: document.querySelector('.arthead h2')?.textContent,
-    geschrieben: window.__WROTE__.filter((x) => /o_nebeldistrikt/.test(x)).length,
-  }));
+    geschrieben: window.__WROTE__.filter((x) => x.includes(id)).length,
+  }), eigeneId);
   pruefe('the name is editable in place',
-    nameOffen === 'Nebeldistrikt' && nameNeu.titel === 'Mist District' && nameNeu.geschrieben > 0,
+    nameOffen === 'Probe quarter' && nameNeu.titel === 'Mist District' && nameNeu.geschrieben > 0,
     { nameOffen, nameNeu });
 
   await p.evaluate(() => [...document.querySelectorAll('.kicker button.tag')].pop().click());
@@ -754,23 +775,6 @@ async function seite(datei, warten) {
   /* 12 — Etappe B: Geschichts- und Spielerartikel sind Registerzeilen.
      Diese Prüfung ist die Probe aufs Rückgrat. Geht sie kaputt, weil jemand
      Code für einen Artikeltyp geschrieben hat, war die Behauptung falsch. */
-  const neuerArtikel = async (typ, name) => {
-    await p.evaluate(() => document.getElementById('new').click());
-    await p.waitForTimeout(250);
-    await p.evaluate((t) => {
-      const s = [...document.querySelectorAll('.dlgbox select')][0];
-      [...s.options].forEach((o) => { if (o.textContent === t) s.value = o.value; });
-    }, typ);
-    await p.evaluate((n) => { [...document.querySelectorAll('.dlgbox input')][0].value = n; }, name);
-    await p.evaluate(() =>
-      [...document.querySelectorAll('.dlgbox .rowbtns button')].find((b) => /Create/.test(b.textContent)).click());
-    await p.waitForTimeout(400);
-    return p.evaluate(() => ({
-      titel: document.querySelector('.arthead h2')?.textContent,
-      typ: document.querySelector('.kicker .pill')?.textContent,
-      probleme: [...document.querySelectorAll('.pruef li')].map((x) => x.textContent),
-    }));
-  };
 
   const auswahl = await p.evaluate(() => {
     document.getElementById('new').click();
@@ -974,6 +978,74 @@ async function seite(datei, warten) {
   });
   pruefe('a field can be an image reference',
     bildfeld.hatAsset && bildfeld.felder.includes('ref'), bildfeld);
+
+  /* ---- Karten (REQ-130 bis 136) ----
+     Koordinaten stehen in Anteilen, nicht in Bildpunkten. Prüfbar ist das
+     daran, dass die Prozentwerte am Token stehen und nicht Pixel — sonst
+     wandert jeder Marker, sobald das Bild ersetzt wird. */
+  /* Eine Karte mit Tokens *und* einer Unterkarte — sonst prüft der Lauf die
+     Verschachtelung an einer Karte, die gar keine hat, und meldet einen
+     Fehler über die Daten statt über den Code. */
+  const karte = await p.evaluate(() => {
+    const alle = [...window.__T__.ENT.values()];
+    const kinder = new Set(alle.flatMap((e) =>
+      (e.relations || []).filter((r) => r.type === 'insideMap').map((r) => r.to)));
+    const hatToken = (e) => (e.relations || []).some((r) => r.type === 'marker');
+    const karten = alle.filter((e) => (e.interfaces || [])[0] === 'Map' && hatToken(e));
+    const m = karten.find((e) => kinder.has(e.id)) || karten[0];
+    return m ? m.id : null;
+  });
+  if (karte) {
+    const kartenName = await p.evaluate((id) => {
+      const e = window.__T__.ENT.get(id);
+      return (e && (e.name || (e.components.Name || {}).text)) || '';
+    }, karte);
+    await oeffne(kartenName);
+    await p.waitForTimeout(250);
+    await p.evaluate(() => {
+      const f = document.getElementById('facet');
+      f.value = 'map';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(400);
+    const mk = await p.evaluate(() => ({
+      bild: document.querySelector('.mapimg')?.getAttribute('src') ?? null,
+      gitter: !!document.querySelector('.mgrid'),
+      tokens: [...document.querySelectorAll('.mtoken')].map((t) => ({
+        k: t.className, l: t.style.left, o: t.style.top })),
+      bereiche: [...document.querySelectorAll('.maparea')].map((a) => a.textContent),
+      probleme: [...document.querySelectorAll('.pruef li')].map((x) => x.textContent),
+    }));
+    pruefe('the map renders its image and grid', !!mk.bild && mk.gitter, mk.bild);
+    pruefe('tokens sit at fractions of the image, not pixels',
+      mk.tokens.length > 0 && mk.tokens.every((t) => /%$/.test(t.l) && /%$/.test(t.o)), mk.tokens);
+    pruefe('a play token is told apart from a prepared one',
+      mk.tokens.some((t) => /k-play/.test(t.k)) && mk.tokens.some((t) => /k-static/.test(t.k)),
+      mk.tokens.map((t) => t.k));
+    pruefe('the map validates clean', mk.probleme.length === 0, mk.probleme);
+
+    /* Der Tokenfilter: eine vorbereitete Karte und eine laufende sind
+       dieselbe Karte, und man will die Vorbereitung ohne die Spielzüge sehen. */
+    await p.evaluate(() => {
+      const s = [...document.querySelectorAll('.maptools select')][0];
+      s.value = 'play';
+      s.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(300);
+    const nurSpiel = await p.evaluate(() =>
+      [...document.querySelectorAll('.mtoken')].map((t) => t.className));
+    pruefe('the token filter keeps only its kind',
+      nurSpiel.length > 0 && nurSpiel.every((c) => /k-play/.test(c)), nurSpiel);
+    await p.evaluate(() => {
+      const s = [...document.querySelectorAll('.maptools select')][0];
+      s.value = '';
+      s.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(200);
+    pruefe('a sub-map shows as a region to zoom into', mk.bereiche.length > 0, mk.bereiche);
+  } else {
+    pruefe('a map with tokens exists in the data', false, 'keine Karte gefunden');
+  }
 
   pruefe('knowledge needed no browser modal', modale.length === 0, modale);
   pruefe('no exception through the knowledge panel', errs.length === 0, errs);

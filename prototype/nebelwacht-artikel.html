@@ -265,6 +265,39 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
   background:var(--surface2);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
 .aprev img{max-height:150px;max-width:100%;display:block}
 .assetbox .addbar select.i{min-width:120px}
+
+/* Karten: Bild, Gitter und Tokens liegen im selben Koordinatenraum, damit
+   ein Anteil von 0 bis 1 überall dasselbe meint. */
+:root{--gridline:rgba(30,40,36,.35)}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){--gridline:rgba(230,227,216,.22)} }
+:root[data-theme="dark"]{--gridline:rgba(230,227,216,.22)}
+.maptools{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+.mapstage{overflow:auto;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--surface2);max-height:70vh}
+.mapinner{position:relative;display:inline-block;min-width:100%;line-height:0}
+.mapimg{display:block;max-width:none;height:auto}
+.mgrid{position:absolute;inset:0;pointer-events:none}
+.maparea{position:absolute;border:2px dashed var(--accent);background:var(--accent-soft);
+  opacity:.65;border-radius:var(--r);cursor:zoom-in;padding:0;display:flex;
+  align-items:flex-start;justify-content:center}
+.maparea:hover{opacity:1}
+.maparea span{font-size:11px;font-family:var(--ff-mono);color:var(--accent);
+  background:var(--surface);padding:0 4px;border-radius:2px;line-height:1.4;
+  white-space:nowrap;transform:translateY(-100%)}
+.mtoken{position:absolute;transform:translate(-50%,-50%);border-radius:50%;
+  border:2px solid var(--accent);background:var(--surface);padding:0;cursor:grab;
+  overflow:hidden;display:flex;align-items:center;justify-content:center;
+  touch-action:none;box-shadow:0 1px 4px rgba(0,0,0,.35);line-height:1}
+.mtoken:active{cursor:grabbing}
+.mtoken img{width:100%;height:100%;object-fit:cover}
+.mtoken span{font-family:var(--ff-mono);font-size:11px;color:var(--accent);font-weight:600}
+.mtoken.k-party{border-color:var(--ok)}
+.mtoken.k-party span{color:var(--ok)}
+.mtoken.k-quest{border-color:var(--link)}
+.mtoken.k-quest span{color:var(--link)}
+.mtoken.k-play{border-color:var(--warn);border-style:double;border-width:4px}
+.mtoken.k-play span{color:var(--warn)}
+.mtoken.k-scenery{border-style:dotted;opacity:.85}
 .fld dd.editable{cursor:text;border-radius:2px;margin:1px -3px 0;padding:0 3px}
 .fld dd.editable:hover{background:var(--accent-soft);box-shadow:inset 0 -1px 0 var(--accent)}
 .fld dd.editing{margin-top:2px}
@@ -377,6 +410,7 @@ var UI={route:{k:"list"}, view:"quick", iface:"", tag:"", q:"", offen:false, pan
         regview:"", regscope:"", regel:"", regcomp2:"", regrel:"",
         trail:[], inline:false, editField:"", pick:false, picked:{}, status:"",
         aside:"rel", info:"", assetBusy:"",
+        mapZoom:1, mapLock:false, mapKind:"", mapDrag:null,
         konzept:false, err:""};
 
 /* Darstellungsstufen (Facets, REQ-164) — registry rows, not code.
@@ -1669,7 +1703,7 @@ var LAYOUT_ELEMENTS=[
   ["heading","Heading"],["text","Paragraph"],["fields","Field table"],
   ["description","Description"],["blocks","Text blocks"],
   ["composed","Composed rules"],["relations","Relations"],["image","Image"],
-  ["knowledge","Knowledge groups"]
+  ["knowledge","Knowledge groups"],["map","Map"]
 ];
 function layoutOf(vw,ifn){
   var by=vw.byInterface||{};
@@ -1703,6 +1737,7 @@ function renderLayoutItem(item,e,ifn,vw){
     case "composed":    return elComposed(e);
     case "relations":   return elRelations(e);
     case "knowledge":   return elKnowledge(e,ifn,item);
+    case "map":         return elMap(e,ifn,item);
     default:            return null;
   }
 }
@@ -1845,6 +1880,273 @@ function elRelations(e){
     wrap.appendChild(row);
   });
   return wrap;
+}
+
+/* ---------- Karten (REQ-130 bis 136) ----------
+   Eine Karte ist ein Bild plus ein Gitter plus das, was darauf liegt. Das
+   Darauf sind Kanten mit Koordinaten, keine Felder: ein Token zeigt auf
+   einen Artikel, also öffnet ein Klick den Artikel, und „auf welchen Karten
+   kommt der Baron vor?" ist ein Rückbezug wie jeder andere.
+
+   Koordinaten stehen in Anteilen von 0 bis 1, nicht in Bildpunkten. Ein Bild
+   darf dadurch ersetzt, verkleinert oder neu ausgeschnitten werden, ohne
+   dass jeder Marker wandert — und dieselbe Karte trägt auf dem Telefon und
+   am Bildschirm dieselben Stellen. */
+var MAP_IFACE="Map", MAP_COMP="MapInfo",
+    REL_MARKER="marker", REL_MAPOF="mapOf", REL_INSIDE="insideMap";
+
+var TOKEN_KINDS=[
+  ["static","Marker"],["scenery","Scenery"],["party","Party"],
+  ["quest","Quest"],["play","In play"]
+];
+function tokenKind(r){ return (r.props&&r.props.kind)||"static"; }
+function mapCard(e){ return (e.components||{})[MAP_COMP]||{}; }
+
+/* Die Karten, die in dieser hier liegen — die Gegenrichtung von `insideMap`.
+   Gespeichert wird nur vorwärts; das Kind nennt sein Elternteil. */
+function childMaps(e){
+  var out=[];
+  ENT.forEach(function(o){
+    (o.relations||[]).forEach(function(r){
+      if(r.type===REL_INSIDE&&r.to===e.id) out.push({map:o,rel:r});
+    });
+  });
+  return out;
+}
+function parentMap(e){
+  var r=(e.relations||[]).filter(function(x){return x.type===REL_INSIDE;})[0];
+  return r?ENT.get(r.to):null;
+}
+
+/* Das Gitter als Überlagerung. Quadrate zeichnet ein Verlauf, Hexfelder ein
+   SVG-Muster — beides über dem Bild und ohne Mausfang, damit ein Klick auf
+   das Gitter die Karte trifft und nicht das Gitter. */
+function gridOverlay(card,zoom){
+  var form=card.gridShape||"none";
+  if(form==="none")return null;
+  var g=Math.max(4,Number(card.gridSize)||70)*zoom;
+  var ox=(Number(card.gridOffsetX)||0)*zoom, oy=(Number(card.gridOffsetY)||0)*zoom;
+  var lay=el("div",{class:"mgrid"});
+  if(form==="square"){
+    lay.style.backgroundImage=
+      "linear-gradient(to right,var(--gridline) 1px,transparent 1px),"+
+      "linear-gradient(to bottom,var(--gridline) 1px,transparent 1px)";
+    lay.style.backgroundSize=g+"px "+g+"px";
+    lay.style.backgroundPosition=ox+"px "+oy+"px";
+  } else {
+    /* Hex: Breite w, Höhe h = w*2/sqrt(3); die Kachel wiederholt sich nach
+       drei Halbreihen. Ein Muster statt gezeichneter Felder — sonst hinge
+       die Anzahl Knoten an der Bildgrösse. */
+    var w=g, h=g*1.1547;
+    var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+(h*1.5)+'" '+
+      'viewBox="0 0 100 173.2">'+
+      '<path d="M50 0 L100 28.9 L100 86.6 L50 115.5 L0 86.6 L0 28.9 Z" fill="none" '+
+      'stroke="rgba(128,128,128,0.45)" stroke-width="3"/>'+
+      '<path d="M100 86.6 L100 144.3 M0 86.6 L0 144.3 M50 115.5 L50 173.2" '+
+      'fill="none" stroke="rgba(128,128,128,0.45)" stroke-width="3"/></svg>';
+    lay.style.backgroundImage="url(\"data:image/svg+xml;utf8,"+encodeURIComponent(svg)+"\")";
+    lay.style.backgroundSize=w+"px "+(h*1.5)+"px";
+    lay.style.backgroundPosition=ox+"px "+oy+"px";
+  }
+  return lay;
+}
+
+function elMap(e,ifn,item){
+  var card=mapCard(e);
+  var src=assetSrc(card.image);
+  var wrap=el("div",{class:"mapbox"});
+
+  /* Werkzeugleiste: Zoom, Gitter, Tokenfilter. Der Filter ist kein Zierrat —
+     eine vorbereitete Karte und eine im Spiel laufende sind dieselbe Karte,
+     und man will die Vorbereitung sehen können, ohne die Spielzüge. */
+  var bar=el("div",{class:"maptools"});
+  [["−",-0.25],["+",0.25]].forEach(function(z){
+    bar.appendChild(el("button",{class:"btn sm",type:"button",title:"Zoom",
+      onclick:function(){ UI.mapZoom=Math.min(4,Math.max(0.25,UI.mapZoom+z[1])); render(); }},z[0]));
+  });
+  bar.appendChild(el("span",{class:"hint",style:"margin:0",
+    text:Math.round(UI.mapZoom*100)+"%"+(card.scale?" · 1 square = "+card.scale:"")}));
+  var filt=el("select",{class:"i",style:"width:auto"});
+  filt.appendChild(el("option",{value:""},"all tokens"));
+  TOKEN_KINDS.forEach(function(k){ filt.appendChild(el("option",{value:k[0]},k[1])); });
+  filt.value=UI.mapKind;
+  filt.addEventListener("change",function(){ UI.mapKind=filt.value; render(); });
+  bar.appendChild(filt);
+  if(me.write) bar.appendChild(el("button",{class:"btn sm",type:"button",
+    onclick:function(){ addMarker(e); }},"+ Token"));
+  if(me.write) bar.appendChild(el("button",{class:"btn sm",type:"button",
+    onclick:function(){ addSubmap(e); }},"+ Sub-map"));
+  var eltern=parentMap(e);
+  if(eltern) bar.appendChild(el("button",{class:"btn sm gh",type:"button",
+    onclick:function(){ go({k:"art",id:eltern.id}); }},"↑ "+nameOf(eltern)));
+  wrap.appendChild(bar);
+
+  if(!src){
+    wrap.appendChild(el("div",{class:"empty",
+      text:me.write?"This map has no image yet — set MapInfo · Image.":"No image."}));
+    return wrap;
+  }
+
+  var stage=el("div",{class:"mapstage"});
+  var inner=el("div",{class:"mapinner"});
+  var img=el("img",{class:"mapimg",src:src,alt:nameOf(e)});
+  img.style.width=(UI.mapZoom*100)+"%";
+  inner.appendChild(img);
+
+  var raster=gridOverlay(card,UI.mapZoom);
+  if(raster) inner.appendChild(raster);
+
+  /* Untergliederungen als Rechtecke: ein Klick springt hinein, und die
+     Breadcrumbs merken sich den Weg zurück (REQ-131, REQ-160). */
+  childMaps(e).forEach(function(k){
+    var pr=k.rel.props||{};
+    if(pr.x==null||pr.y==null)return;
+    var box=el("button",{class:"maparea",type:"button",title:"Zoom into "+nameOf(k.map),
+      onclick:function(){ go({k:"art",id:k.map.id}); }});
+    box.style.left=(pr.x*100)+"%"; box.style.top=(pr.y*100)+"%";
+    box.style.width=((pr.w||0.12)*100)+"%"; box.style.height=((pr.h||0.12)*100)+"%";
+    box.appendChild(el("span",{text:nameOf(k.map)}));
+    inner.appendChild(box);
+  });
+
+  var marker=(e.relations||[]).filter(function(r){ return r.type===REL_MARKER; });
+  marker.forEach(function(r){
+    var art=r.to?ENT.get(r.to):null;
+    var kind=tokenKind(r);
+    if(UI.mapKind&&kind!==UI.mapKind)return;
+    var pr=r.props||{};
+    var t=el("button",{class:"mtoken k-"+kind,type:"button",
+      title:(art?nameOf(art):"(missing)")+(pr.note?" — "+pr.note:"")});
+    t.style.left=((pr.x||0.5)*100)+"%";
+    t.style.top=((pr.y||0.5)*100)+"%";
+    var d=Math.max(14,(Number(card.gridSize)||70)*(Number(pr.size)||1)*UI.mapZoom);
+    t.style.width=d+"px"; t.style.height=d+"px";
+    var bild=art&&assetSrc(((art.components||{}).Image||{}).ref||((art.components||{}).Image||{}).url);
+    if(bild) t.appendChild(el("img",{src:bild,alt:""}));
+    else t.appendChild(el("span",{text:(art?nameOf(art):"?").slice(0,2)}));
+
+    /* Ziehen verschiebt, ein Klick ohne Ziehen öffnet. Beides am selben
+       Knopf: ein Token, das sich nur über ein Menü bewegen liesse, bewegt
+       niemand mitten im Kampf. */
+    var von=null;
+    t.addEventListener("pointerdown",function(ev){
+      if(!me.write)return;
+      von={x:ev.clientX,y:ev.clientY,moved:false};
+      try{ t.setPointerCapture(ev.pointerId); }catch(x){}
+    });
+    t.addEventListener("pointermove",function(ev){
+      if(!von)return;
+      if(Math.abs(ev.clientX-von.x)+Math.abs(ev.clientY-von.y)>4) von.moved=true;
+      if(!von.moved)return;
+      var rect=img.getBoundingClientRect();
+      if(!rect.width||!rect.height)return;
+      var nx=Math.min(1,Math.max(0,(ev.clientX-rect.left)/rect.width));
+      var ny=Math.min(1,Math.max(0,(ev.clientY-rect.top)/rect.height));
+      t.style.left=(nx*100)+"%"; t.style.top=(ny*100)+"%";
+      von.nx=nx; von.ny=ny;
+    });
+    t.addEventListener("pointerup",function(ev){
+      if(!von){ if(art) go({k:"art",id:art.id}); return; }
+      var war=von; von=null;
+      try{ t.releasePointerCapture(ev.pointerId); }catch(x){}
+      if(!war.moved){ if(art) go({k:"art",id:art.id}); return; }
+      r.props=Object.assign({},r.props,{x:war.nx,y:war.ny});
+      persist(e);
+    });
+    t.addEventListener("contextmenu",function(ev){
+      ev.preventDefault();
+      if(!me.write)return;
+      confirmDialog("Remove the token “"+(art?nameOf(art):"?")+"” from this map?",function(){
+        e.relations=e.relations.filter(function(x){return x.id!==r.id;}); persist(e); });
+    });
+    inner.appendChild(t);
+  });
+
+  stage.appendChild(inner);
+  wrap.appendChild(stage);
+
+  var zahl=marker.length;
+  wrap.appendChild(el("p",{class:"hint",
+    text:zahl?(zahl+" token"+(zahl===1?"":"s")+
+      (me.write?" · drag to move, right-click to remove":"")):
+      "No tokens yet."}));
+  return wrap;
+}
+
+/* Ein Token anlegen: Artikel wählen, Art wählen, fertig. Es landet in der
+   Mitte und wird von dort gezogen — eine Eingabemaske für Koordinaten wäre
+   genau der Umweg, den niemand am Tisch geht. */
+function addMarker(e){
+  dialog("Put a token on the map",function(host,close){
+    var suche=el("input",{class:"i",type:"text",placeholder:"Search articles…"});
+    var sel=el("select",{class:"i",size:"8",style:"height:auto"});
+    function fuelle(){
+      var q=suche.value.toLowerCase().trim();
+      sel.textContent="";
+      byName().forEach(function(c){
+        if(c.id===e.id)return;
+        if(q&&nameOf(c).toLowerCase().indexOf(q)<0)return;
+        sel.appendChild(el("option",{value:c.id},nameOf(c)+" — "+ifaceName(c)));
+      });
+      if(!sel.childNodes.length) sel.appendChild(el("option",{value:""},"— nothing matches —"));
+    }
+    suche.addEventListener("input",fuelle);
+    var art=el("select",{class:"i"});
+    TOKEN_KINDS.forEach(function(k){ art.appendChild(el("option",{value:k[0]},k[1])); });
+    var note=el("input",{class:"i",type:"text",placeholder:"optional"});
+    var size=el("input",{class:"i",type:"number",value:"1",min:"0.25",step:"0.25"});
+    host.appendChild(field("Article",suche));
+    host.appendChild(sel);
+    host.appendChild(field("Kind",art));
+    host.appendChild(field("Size in squares",size));
+    host.appendChild(field("Note",note));
+    fuelle();
+    actions(host,close,function(){
+      if(!sel.value)return false;
+      e.relations=e.relations||[];
+      e.relations.push({id:uid("r"),type:REL_MARKER,to:sel.value,props:{
+        x:0.5,y:0.5,kind:art.value,size:Number(size.value)||1,
+        note:note.value.trim()||undefined}});
+      persist(e);
+    },"Place");
+  });
+}
+
+/* Eine Unterkarte: entweder eine vorhandene hineinhängen oder eine neue
+   anlegen. Der Ankerbereich sitzt zuerst in der Mitte und wird dort
+   zurechtgezogen — dieselbe Regel wie beim Token. */
+function addSubmap(e){
+  dialog("Sub-map",function(host,close){
+    var sel=el("select",{class:"i"});
+    sel.appendChild(el("option",{value:""},"— create a new map —"));
+    byName().forEach(function(c){
+      if(c.id===e.id)return;
+      if(((c.interfaces||[])[0])!==MAP_IFACE)return;
+      sel.appendChild(el("option",{value:c.id},nameOf(c)));
+    });
+    var nm=el("input",{class:"i",type:"text",placeholder:"Name of the new map"});
+    host.appendChild(field("Map",sel));
+    host.appendChild(field("New name",nm));
+    host.appendChild(el("p",{class:"hint",
+      text:"The anchor starts in the middle of this map. Drag its corner handle to fit it over the region it shows."}));
+    actions(host,close,function(){
+      var kind=sel.value?ENT.get(sel.value):null;
+      if(!kind){
+        var name=nm.value.trim(); if(!name){nm.focus();return false;}
+        kind={ id:uid("mp"), interfaces:[MAP_IFACE], name:name, tags:[],
+          components:{ Name:{text:name}, Identity:{key:"map/"+slug(name),aliases:[]} },
+          adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
+        reqFor(MAP_IFACE).forEach(function(c){ if(!kind.components[c]&&REG.components[c]) kind.components[c]={}; });
+        applyDefaults(kind,MAP_IFACE);
+        ENT.set(kind.id,kind);
+      }
+      kind.relations=(kind.relations||[]).filter(function(r){return r.type!==REL_INSIDE;});
+      kind.relations.push({id:uid("r"),type:REL_INSIDE,to:e.id,
+        props:{x:0.4,y:0.4,w:0.2,h:0.2}});
+      persist(kind);
+      render();
+    },"Attach");
+  });
 }
 
 /* ---------- Wissen (A6) ----------

@@ -217,4 +217,70 @@ export const relations: Record<string, RelationDef> = {
     from: ['Creature', 'Party'],
     to: ['KnowledgeLevel'],
   },
+
+  // ------------------------------------------------------------------ maps
+
+  mapOf: {
+    type: 'mapOf',
+    label: 'map of',
+    inverseLabel: 'maps',
+    from: ['Map'],
+    to: ['Place', 'Story'],
+  },
+
+  /**
+   * Verschachtelte Karten (REQ-131). Der Ankerbereich steht an der Kante, in
+   * Anteilen der Elternkarte — nicht in Bildpunkten, denn ein Bild darf
+   * ersetzt werden, ohne dass jede Untergliederung wandert.
+   */
+  insideMap: {
+    type: 'insideMap',
+    label: 'inside',
+    inverseLabel: 'zoom into',
+    from: ['Map'],
+    to: ['Map'],
+    cardinality: 'one',
+    props: {
+      type: 'object',
+      properties: {
+        x: { type: 'number', title: 'X (0–1)' },
+        y: { type: 'number', title: 'Y (0–1)' },
+        w: { type: 'number', title: 'Width (0–1)' },
+        h: { type: 'number', title: 'Height (0–1)' },
+      },
+    },
+  },
+
+  /**
+   * Ein Token ist eine Kante mit Koordinaten (REQ-133 bis 136). Es zeigt auf
+   * einen Artikel, also öffnet ein Klick darauf den Artikel — ein Marker, der
+   * nur einen Namen trüge, wäre eine zweite Wahrheit neben dem Artikel.
+   *
+   * `kind` trennt, was vorbereitet ist (`static`, `scenery`) von dem, was im
+   * Spiel entsteht (`play`, `party`, `quest`). Solange es keine Sitzungs-
+   * zustände gibt, liegen auch die letzteren an der Karte; das ist die
+   * Stelle, die sich ändert, wenn REQ-116 kommt.
+   */
+  marker: {
+    type: 'marker',
+    label: 'marker',
+    inverseLabel: 'on the map',
+    from: ['Map'],
+    to: ['*'],
+    props: {
+      type: 'object',
+      properties: {
+        x: { type: 'number', title: 'X (0–1)' },
+        y: { type: 'number', title: 'Y (0–1)' },
+        kind: {
+          type: 'string',
+          title: 'Token kind',
+          enum: ['static', 'scenery', 'party', 'quest', 'play'],
+          default: 'static',
+        },
+        size: { type: 'number', title: 'Size in squares', default: 1 },
+        note: { type: 'string', title: 'Note' },
+      },
+    },
+  },
 };

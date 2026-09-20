@@ -252,4 +252,19 @@ export const interfaces: Record<string, InterfaceDef> = {
     requires: ['AssetInfo'],
     allows: ['SourceRef'],
   },
+
+  /**
+   * Eine Karte ist ein Artikel wie jeder andere — sie trägt Marken, einen
+   * Stand und Wissen. Was sie darstellt, sagt die Kante `mapOf`; was auf ihr
+   * liegt, sagen die `marker`-Kanten. Eine Karte, die ihre Marken als Feld
+   * trüge, könnte keinen Rückbezug beantworten: „auf welchen Karten kommt
+   * der Baron vor?" ist so eine Abfrage wie jede andere.
+   */
+  Map: {
+    name: 'Map',
+    label: 'Map',
+    extends: ['Base'],
+    requires: ['MapInfo'],
+    blockTypes: ['+note', '+secret', '+readaloud'],
+  },
 };

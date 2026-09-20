@@ -114,4 +114,23 @@ export const views: Record<string, ViewDef> = {
       { id: 'k-know', el: 'knowledge', fields: 'all', blocks: 'all' },
     ],
   },
+
+  /** Die Karte gross, und darunter, was auf ihr liegt. */
+  map: {
+    label: 'Map',
+    order: 8,
+    fields: ['MapInfo'],
+    blocks: ['note', 'readaloud'],
+    description: true,
+    composed: false,
+    relations: true,
+    bindings: false,
+    image: false,
+    layout: [
+      { id: 'm-map', el: 'map' },
+      { id: 'm-desc', el: 'description' },
+      { id: 'm-f', el: 'fields', fields: ['MapInfo'], columns: 3 },
+      { id: 'm-b', el: 'blocks', blocks: ['note', 'readaloud'] },
+    ],
+  },
 };

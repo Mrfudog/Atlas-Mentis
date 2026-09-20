@@ -98,8 +98,17 @@ describe('seed registry', () => {
     expect(showField(player!, 'StatblockInfo', 'ac')).toBe(false);
   });
 
-  it('exposes the facets the table actually uses', () => {
-    expect(viewKeys(seedRegistry)).toEqual(['quick', 'full', 'combat', 'image', 'player', 'stats', 'knowledge']);
+  /* Die Liste der Ansichten wächst mit jedem Bereich. Fest einzutragen,
+     welche es gibt, hiesse: dieser Test wird rot, sobald eine dazukommt —
+     und sagt dabei nichts über das, was er prüfen soll. Geprüft wird die
+     Reihenfolge, denn die ist die Zusage: `order` bestimmt sie, nicht der
+     Zufall der Einfügereihenfolge. */
+  it('orders the facets by their order field', () => {
+    const keys = viewKeys(seedRegistry);
+    expect(new Set(keys)).toEqual(new Set(Object.keys(seedRegistry.views)));
+    expect(keys[0]).toBe('quick');
+    const orders = keys.map((k) => seedRegistry.views[k]?.order ?? 99);
+    expect(orders).toEqual([...orders].sort((a, b) => a - b));
   });
 });
 

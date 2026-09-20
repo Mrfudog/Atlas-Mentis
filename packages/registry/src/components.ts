@@ -538,4 +538,38 @@ export const components: Record<string, ComponentDef> = {
       },
     },
   },
+
+  /**
+   * Karten (REQ-130). Das Gitter steht in Bildpunkten, nicht in Feldern: eine
+   * Karte wird fotografiert oder gezeichnet, und was darauf ein Feld ist,
+   * misst man am Bild. `scale` sagt, was ein Feld in der Welt bedeutet —
+   * ohne das ist ein Gitter Dekoration.
+   */
+  MapInfo: {
+    name: 'MapInfo',
+    label: 'Map',
+    engine: 'Map',
+    schema: {
+      type: 'object',
+      properties: {
+        image: { type: 'string', format: 'asset', title: 'Image' },
+        kind: {
+          type: 'string',
+          title: 'Map kind',
+          enum: ['world', 'region', 'settlement', 'district', 'building', 'battle'],
+          default: 'region',
+        },
+        gridShape: {
+          type: 'string',
+          title: 'Grid',
+          enum: ['none', 'square', 'hex'],
+          default: 'none',
+        },
+        gridSize: { type: 'number', title: 'Grid size in px', default: 70 },
+        gridOffsetX: { type: 'number', title: 'Grid offset X', default: 0 },
+        gridOffsetY: { type: 'number', title: 'Grid offset Y', default: 0 },
+        scale: { type: 'string', title: 'One square is', default: '1,5 m' },
+      },
+    },
+  },
 };
