@@ -193,28 +193,20 @@ export const fieldGroups = {
     },
   },
 
-  /** REQ-019: an import keeps its original form beside the structured result. */
-  Imported: {
-    schema: {
-      type: 'object',
-      properties: {
-        text: { type: 'string', format: 'long', title: 'Original' },
-        format: { type: 'string', title: 'Format', enum: ['obsidian', 'markdown', 'json', 'plain'] },
-        at: { type: 'string', title: 'Imported at' },
-      },
-    },
-  },
 
   Image: {
     schema: {
       type: 'object',
       properties: {
         /* `image` zeigt auf ein Asset, eine Ablage-Id oder eine fremde
-           Adresse und wird vom Auflöser gelesen. `url` bleibt daneben
-           stehen: die vorhandenen Artikel tragen es, und ein Zwangsumzug
-           brächte nichts, was ein Blick auf beide Felder nicht auch bringt. */
+           Adresse und wird vom Auflöser gelesen.
+
+           Daneben stand einmal `url`, „Source (legacy)": die Adresse des
+           Bildes aus der Zeit vor den Assets. **Woher ein Bild stammt,
+           gehört ans Asset** — das ist ein Artikel und erbt `Source`. Am
+           Artikel, der es zeigt, stünde dieselbe Herkunft noch einmal, und
+           zwar bei jedem der fünf Orte, die dasselbe Wappen zeigen. */
         image: { type: 'string', format: 'asset', title: 'Image' },
-        url: { type: 'string', title: 'Source (legacy)' },
         caption: { type: 'string', title: 'Caption' },
         alt: { type: 'string', title: 'Alt text' },
       },
@@ -586,16 +578,6 @@ export const fieldGroups = {
           enum: ['open', 'rumour', 'secret'],
           default: 'secret',
         },
-      },
-    },
-  },
-
-  /** Ein benannter Wissensstand, dem Figuren angehören: „Gildenwissen". */
-  KnowledgeInfo: {
-    schema: {
-      type: 'object',
-      properties: {
-        scope: { type: 'string', title: 'Scope', enum: ['common', 'group', 'personal'], default: 'group' },
       },
     },
   },

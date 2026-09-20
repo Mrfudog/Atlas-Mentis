@@ -158,11 +158,16 @@ describe('interface inheritance', () => {
     const wo = (k: string) => felder.find((f) => f.key === k)?.type;
     expect(wo('name')).toBe('Identity'); // von Identity
     expect(wo('species')).toBe('Creature'); // von Creature
-    /* Seit dem Charakterbogen darf ein Geschöpf seine Zahlen auch selbst
-       tragen: ein Spielercharakter tut das, ein NSC borgt sie meist über
-       `belongsTo`. Beides muss gehen — der Bogen liest erst die eigene
-       Karte, dann die geliehene. */
-    expect(typeChain(seedRegistry, 'NPC')).toContain('StatblockInfo');
+    /* **Die Zahlen wohnen am Statblock**, auch die eines
+       Spielercharakters. Eine Kreatur trägt sie nicht mehr selbst: das
+       waren zwei Formen für dasselbe, und wer eine Kreatur änderte, musste
+       wissen, in welcher der beiden ihre Zahlen gerade standen. */
+    expect(typeChain(seedRegistry, 'NPC')).not.toContain('StatblockInfo');
+    expect(typeChain(seedRegistry, 'PlayerCharacter')).not.toContain('StatblockInfo');
+    expect(typeChain(seedRegistry, 'Statblock')).toContain('StatblockInfo');
+    /* `Vitals` bleibt bei der Figur: das ist, was sich während der Sitzung
+       ändert, und es gehört ihr und nicht ihrem Bogen. */
+    expect(typeChain(seedRegistry, 'PlayerCharacter')).toContain('Vitals');
     /* Und die Vereinigung sammelt nicht alles ein: eine fremde Linie hat
        hier nichts verloren. */
     expect(typeChain(seedRegistry, 'NPC')).not.toContain('Map');
@@ -507,12 +512,21 @@ describe('one registry of types', () => {
   });
 
   /* Der Grund, weshalb die Werte nach Art gruppiert bleiben und nicht alle
-     in einen Topf wandern: `hp` heisst am Statblock die Trefferpunkte, die
-     dort stehen, und an der Kreatur die, die sie gerade noch hat. Beides
-     ohne Umbenennung, weil es zwei Karten sind. */
+     in einen Topf wandern: `hp` heisst am Statblock das Maximum und an der
+     Figur, was sie gerade noch hat. Beides ohne Umbenennung, weil es zwei
+     Karten an zwei Artikeln sind — und seit die Zahlen am Statblock wohnen,
+     ist die Namensgleichheit keine Falle mehr, sondern die Wahrheit. */
   it('keeps hp at the creature apart from hp at the statblock', () => {
-    const felder = fieldsOf(seedRegistry, 'PlayerCharacter').filter((f) => f.key === 'hp');
-    expect(felder.map((f) => f.type).sort()).toEqual(['StatblockInfo', 'Vitals']);
+    expect(fieldsOf(seedRegistry, 'PlayerCharacter').filter((f) => f.key === 'hp')
+      .map((f) => f.type)).toEqual(['Vitals']);
+    expect(fieldsOf(seedRegistry, 'Statblock').filter((f) => f.key === 'hp')
+      .map((f) => f.type)).toEqual(['StatblockInfo']);
+  });
+
+  /* Und die Kante reicht bis zum Spielercharakter. Solange sie nur auf
+     `NPC` zeigte, konnte er gar keinen Statblock haben. */
+  it('lets a statblock belong to any creature', () => {
+    expect(seedRegistry.relations['belongsTo']?.to).toEqual(['Creature']);
   });
 
   /* Kein Feldname darf zweimal in derselben Karte stehen — das kann nicht

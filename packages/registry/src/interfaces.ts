@@ -170,13 +170,6 @@ export const interfaces: Record<string, InterfaceDef> = {
     schema: g.Source.schema,
   },
 
-  /** Der Wortlaut, wie er aus dem Vault kam (REQ-019). */
-  Imported: {
-    name: 'Imported',
-    label: 'Imported',
-    abstract: true,
-    schema: g.Imported.schema,
-  },
 
   Todos: {
     name: 'Todos',
@@ -196,12 +189,18 @@ export const interfaces: Record<string, InterfaceDef> = {
     area: 'world',
     label: 'Creature',
     abstract: true,
-    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Imported', 'Source', 'Vars', 'StatblockInfo', 'Access', 'Vitals', 'Skills', 'Lore', 'Facts', 'Secrets', 'ReadAloud'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Vars', 'Access', 'Vitals', 'Skills', 'Lore', 'Facts', 'Secrets', 'ReadAloud'],
     schema: g.CreatureInfo.schema,
-    /* `StatblockInfo` darf hier direkt liegen: ein Spielercharakter trägt
-       seine Zahlen selbst, ein NSC borgt sie meist von einem Statblock über
-       `belongsTo`. Der Bogen liest beides — erst die eigene Karte, dann die
-       geborgte — statt eine der beiden Formen zu verbieten. */
+    /* **Die Zahlen wohnen am Statblock**, auch die eines Spielercharakters.
+       Er hat mehr darüber hinaus — Stufe, Klasse, Hintergrund —, aber AC,
+       HP-Maximum und die sechs Werte sind dieselbe Sache wie bei jedem
+       Monster, und `belongsTo` sagt, welcher Statblock es ist.
+
+       `StatblockInfo` lag hier einmal *auch*, „erst die eigene Karte, dann
+       die geborgte". Das waren zwei Formen für dasselbe, und wer eine
+       Kreatur änderte, musste wissen, in welcher der beiden ihre Zahlen
+       gerade standen. `Vitals` bleibt: das ist, was sich während der Sitzung
+       ändert, und es gehört der Figur und nicht ihrem Bogen. */
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     /**
@@ -242,7 +241,11 @@ export const interfaces: Record<string, InterfaceDef> = {
                   id: 'c-f',
                   el: 'fields',
                   fields: 'all',
-                  except: ['StatblockInfo', 'Vitals', 'Skills'],
+                  /* `StatblockInfo` steht hier nicht mehr: die Zahlen
+                     wohnen am Statblock, also hat die Kreatur sie gar
+                     nicht. Eine Ausnahme für etwas, das es nicht gibt,
+                     wird am Tag des Umzugs still falsch. */
+                  except: ['Vitals', 'Skills'],
                 },
                 { id: 'c-b', el: 'prose', fields: 'all' },
               ],
@@ -300,7 +303,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Place',
     area: 'world',
     label: 'Place',
-    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Imported', 'Lore', 'ReadAloud', 'Secrets'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Lore', 'ReadAloud', 'Secrets'],
     schema: merge(g.LocationInfo, g.Explored),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
@@ -333,7 +336,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Article',
     area: 'world',
     label: 'Article',
-    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Imported', 'Source', 'Todos', 'Lore', 'Secrets'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Todos', 'Lore', 'Secrets'],
     /* Ein Gedicht und ein Lied hat sonst keine Art. Einen Bestandteil für
        einen einzigen Nutzer anzulegen wäre der Umweg, den es hier schon
        achtunddreissigmal gab. */
@@ -351,7 +354,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Rule',
     area: 'rules',
     label: 'Rule Element',
-    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Imported', 'Vars'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Vars'],
     schema: merge(g.RuleInfo),
   },
 
@@ -382,7 +385,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Statblock',
     area: 'rules',
     label: 'Statblock',
-    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Imported', 'StatblockInfo', 'Vars', 'Tactics'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'StatblockInfo', 'Vars', 'Tactics'],
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {
@@ -404,7 +407,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Item',
     area: 'world',
     label: 'Item',
-    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Imported', 'Source', 'Lore', 'Secrets', 'Facts'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Lore', 'Secrets', 'Facts'],
     schema: merge(g.ItemInfo, g.Footprint),
   },
 
@@ -608,16 +611,24 @@ export const interfaces: Record<string, InterfaceDef> = {
   },
 
   /**
-   * Ein benannter Wissensstand — „Allgemeinwissen", „Gildenwissen". Figuren
-   * gehören ihm über `atLevel` an; eine Information an den Stand zu hängen
-   * erreicht damit alle darin, ohne dass jemand eine Liste pflegt.
+   * **Ein Bündel von Informationen** — „was ein Kanalgänger weiss", „die
+   * Gerüchte vom Lampenplatz". Es nennt sie über `includes` und wird wie
+   * eine einzelne Information zugeteilt: dieselbe Kante `knownBy`, dieselben
+   * Empfänger.
+   *
+   * Es hiess einmal `KnowledgeLevel` und war etwas anderes: ein *Stand*, dem
+   * Figuren über `atLevel` angehörten. Das war ein zweiter Weg zu „wer weiss
+   * das" — Party und Group konnten schon Empfänger sein — und in zwei Jahren
+   * hat ihn niemand benutzt: kein Artikel, keine Kante.
+   *
+   * Eigene Felder hat es keine. Was ein Bündel ist, sagen seine Kanten; ein
+   * Feld daneben wäre eine zweite Liste derselben Informationen.
    */
-  KnowledgeLevel: {
-    name: 'KnowledgeLevel',
+  Knowledge: {
+    name: 'Knowledge',
     area: 'rules',
-    label: 'Knowledge level',
+    label: 'Knowledge',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags'],
-    schema: merge(g.KnowledgeInfo),
   },
 
   /**
@@ -672,7 +683,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Recipe',
     area: 'rules',
     label: 'Recipe',
-    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Imported', 'Notes', 'Secrets', 'Lore'],
+    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Notes', 'Secrets', 'Lore'],
     schema: merge(g.RecipeInfo),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */

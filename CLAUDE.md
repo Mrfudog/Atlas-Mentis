@@ -56,10 +56,11 @@ die Entscheidungen D0–D17, `Requirements.md` die REQ-Nummern.
 - `legacy/` — die alte React-App. Nicht weiterentwickeln; sie läuft, bis die
   neue Karte und Initiative kann.
 
-Was es **nicht** mehr gibt: `packages/import`. Die Obsidian-Importer für
+Was es **nicht** mehr gibt: `packages/import` und der Importer im Prototyp. Die Obsidian-Importer für
 Gegenstände und Statblocks sind weg (2026-09-20); der Prototyp hat seinen
-eigenen, und die Vault-Beispiele liegen jetzt in `prototype/test/fixtures`.
-Wenn sie wiederkommen, werden sie neu geschrieben.
+Mit ihnen fiel der Bestandteil `Imported` weg — er trug den Wortlaut, wie er
+aus dem Vault kam, und füllt ihn jetzt niemand mehr. Wenn die Importer
+wiederkommen, werden sie neu geschrieben.
 
 ## Regeln, die hier gelten
 
@@ -98,6 +99,15 @@ Wenn sie wiederkommen, werden sie neu geschrieben.
   Umbenennen entweder mitwandern musste oder log. Gezählt wird, was dasteht
   (`nextId`); ein gespeicherter Zähler wäre die zweite Stelle, die nach dem
   ersten Import falsch steht.
+- **Wissen ist eine Information oder ein Bündel davon.** `Information` nennt
+  die Felder *eines* Artikels, `Knowledge` bündelt Informationen über
+  `includes`, und beide gehen über dieselbe `knownBy`-Kante an Creature,
+  Party, Faction oder Group. Ein Bündel in einem Bündel zählt nicht — ein
+  Schritt weit, sonst reicht eine Freigabe weiter, als jemand gemeint hat.
+- **Die Zahlen einer Kreatur wohnen am Statblock**, auch die eines
+  Spielercharakters; `belongsTo` sagt, welcher. `Vitals` bleibt bei der
+  Figur: das ist, was sich während der Sitzung ändert. Damit heisst `hp` am
+  Statblock das Maximum und an der Figur der Stand.
 - **Ein Textblock ist ein Feld.** Es gab einmal `blocks: [{blockType, body,
   anchor}]` neben den Karten, mit einer eigenen Liste erlaubter Blockarten je
   Artikelart — also eine zweite Frage, die jede Art zweimal beantworten

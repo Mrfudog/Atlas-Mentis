@@ -35,7 +35,11 @@ export const relations: Record<string, RelationDef> = {
     label: 'belongs to',
     inverseLabel: 'statblock of',
     from: ['Statblock'],
-    to: ['NPC'],
+    /* **Jede Kreatur**, nicht nur ein NSC: ein Spielercharakter hat
+       dieselben Zahlen wie ein Monster und mehr darüber hinaus. Solange
+       hier `NPC` stand, konnte er gar keinen Statblock haben und musste
+       seine Zahlen selbst tragen — die zweite Form für dieselbe Sache. */
+    to: ['Creature'],
     cardinality: 'one',
   },
 
@@ -239,7 +243,9 @@ export const relations: Record<string, RelationDef> = {
     type: 'knownBy',
     label: 'known by',
     inverseLabel: 'knows',
-    from: ['Information'],
+    /* Eine einzelne Information **oder ein Bündel**: dieselbe Kante, weil
+       es dieselbe Frage ist. Wer ein Bündel kennt, kennt alles darin. */
+    from: ['Information', 'Knowledge'],
     // Eine Fraktion kann etwas erfahren — „das Auge weiss es“ ist eine
     // Frage, die eine Kampagne stellt (REQ-040).
     //
@@ -247,15 +253,22 @@ export const relations: Record<string, RelationDef> = {
     // kein Figurengefüge, also keine Party. Sie dazuzunehmen ist eine
     // Zeile und keine zweite Mechanik — `knowledgeHolders` fragt ohnehin
     // nach Haltern und nicht nach Figuren.
-    to: ['Creature', 'Party', 'Faction', 'KnowledgeLevel', 'Group'],
+    to: ['Creature', 'Party', 'Faction', 'Group'],
   },
 
-  atLevel: {
-    type: 'atLevel',
-    label: 'knows as',
-    inverseLabel: 'known to',
-    from: ['Creature', 'Party'],
-    to: ['KnowledgeLevel'],
+  /**
+   * Was in einem Bündel steckt. Nur vorwärts gespeichert: „in welchen
+   * Bündeln steckt diese Information" ist ein Rückbezug wie jeder andere.
+   *
+   * Nicht `owned`: dieselbe Information darf in zwei Bündeln stehen, und
+   * ein Bündel zu löschen darf sie nicht mitnehmen.
+   */
+  includes: {
+    type: 'includes',
+    label: 'includes',
+    inverseLabel: 'part of',
+    from: ['Knowledge'],
+    to: ['Information'],
   },
 
   // ------------------------------------------------------------------ maps

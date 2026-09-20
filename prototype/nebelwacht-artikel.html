@@ -7068,9 +7068,22 @@ function humanKey(k){
 }
 
 /* Die ruhigen Zahlen: erst am Artikel, sonst am Statblock, der auf ihn zeigt. */
+/**
+ * Die Zahlen dieser Kreatur — **sie wohnen am Statblock**, auch die eines
+ * Spielercharakters. Er hat mehr darüber hinaus (Stufe, Klasse,
+ * Hintergrund), aber AC, HP-Maximum und die sechs Werte sind dieselbe Sache
+ * wie bei jedem Monster, und `belongsTo` sagt, welcher Statblock es ist.
+ *
+ * Nur der Statblock selbst liest seine eigene Karte. Vorher las jede
+ * Kreatur „erst die eigene, dann die geliehene" — zwei Formen für dasselbe,
+ * und wer eine Kreatur änderte, musste wissen, in welcher der beiden ihre
+ * Zahlen gerade standen.
+ */
 function statsOf(e){
-  var eigen=(e.components||{})[SB_COMP];
-  if(eigen&&Object.keys(eigen).length) return {card:eigen,from:e};
+  if(((e.interfaces||[])[0])==="Statblock"){
+    var eigen=(e.components||{})[SB_COMP];
+    if(eigen&&Object.keys(eigen).length) return {card:eigen,from:e};
+  }
   var geliehen=null;
   ENT.forEach(function(o){
     if(geliehen)return;
@@ -8607,15 +8620,16 @@ function renderAsSelect(){
    in ein Feldattribut, das ohnehin nur einen Empfänger fassen könnte.
 
      Artikel     --knowledge--> Information   (owned)
-     Information --knownBy-->   Creature | Party | KnowledgeLevel
-     Creature    --atLevel-->   KnowledgeLevel
+     Knowledge   --includes--> Information               (ein Bündel)
+     Information | Knowledge --knownBy--> Creature | Party | Faction | Group
 
    Ein Feld, das keine Information nennt, liegt offen. Die Umkehrung wäre
    sicherer, macht aber jede neue Zeile unsichtbar, bis jemand daran denkt.
    Deshalb steht „Offen" als eigene Gruppe zuoberst: man sieht dort immer,
    was gerade offen liegt. */
-var INFO_IFACE="Information", INFO_COMP="Information",
-    REL_KNOW="knowledge", REL_KNOWNBY="knownBy", REL_ATLEVEL="atLevel", REL_PARTY="memberOfParty";
+var INFO_IFACE="Information", INFO_COMP="Information", BUNDLE_IFACE="Knowledge",
+    REL_KNOW="knowledge", REL_KNOWNBY="knownBy", REL_INCLUDES="includes",
+    REL_PARTY="memberOfParty";
 
 function edgesOf(e,typ){
   return ((e&&e.relations)||[]).filter(function(r){return r.type===typ;});
@@ -8650,17 +8664,43 @@ function infoCovers(info,ref){
 function knowledgeHolders(viewerId){
   var holders={}; holders[viewerId]=true;
   var v=ENT.get(viewerId); if(!v)return holders;
-  edgesOf(v,REL_ATLEVEL).forEach(function(r){ holders[r.to]=true; });
-  edgesOf(v,REL_PARTY).forEach(function(r){
-    holders[r.to]=true;
-    edgesOf(ENT.get(r.to),REL_ATLEVEL).forEach(function(q){ holders[q.to]=true; });
-  });
+  edgesOf(v,REL_PARTY).forEach(function(r){ holders[r.to]=true; });
   return holders;
 }
+/* Die Bündel, die diese Information nennen — ein Rückbezug, weil
+   `includes` nur vorwärts gespeichert wird. */
+function bundlesWith(infoId){
+  var out=[];
+  ENT.forEach(function(e){
+    if(edgesOf(e,REL_INCLUDES).some(function(r){ return r.to===infoId; })) out.push(e);
+  });
+  return out;
+}
+/** Die Informationen in einem Bündel, in der Reihenfolge seiner Kanten. */
+function informationsIn(b){
+  var out=[];
+  edgesOf(b,REL_INCLUDES).forEach(function(r){ var i=ENT.get(r.to); if(i) out.push(i); });
+  return out;
+}
+/**
+ * Kennt dieser Betrachter die Information?
+ *
+ * Gefragt wird zweimal: hat er sie **selbst** bekommen, oder ein **Bündel**,
+ * in dem sie steckt. Ein Bündel ist ein Artikel wie sie und trägt dieselbe
+ * `knownBy`-Kante — wer „was ein Kanalgänger weiss" kennt, kennt alles
+ * darin, ohne dass jemand die Zuteilungen einzeln nachzieht.
+ *
+ * Ein Bündel in einem Bündel zählt nicht: ein Schritt weit, dieselbe Regel
+ * wie bei den Haltern. Eine Hierarchie von Wissen wäre die Stelle, an der
+ * eine Freigabe weiter reicht, als jemand gemeint hat.
+ */
 function knowsInfo(info,viewerId){
   if(!viewerId)return true;               /* ohne Betrachter: die Spielleitung */
   var holders=knowledgeHolders(viewerId);
-  return edgesOf(info,REL_KNOWNBY).some(function(r){ return !!holders[r.to]; });
+  var direkt=function(e){
+    return edgesOf(e,REL_KNOWNBY).some(function(r){ return !!holders[r.to]; }); };
+  if(direkt(info))return true;
+  return bundlesWith(info.id).some(direkt);
 }
 /* Der Artikel, nach Informationen geordnet. Die offene Restgruppe steht
    vorn und trägt keine Information — sie ist, was übrig bleibt. */
@@ -9803,20 +9843,16 @@ function renderTypes(v){
 var REGTABS=[["howto","How it works"],["types","Types"],["views","Views"],
   ["relations","Relations"],["units","Units"],["vars","Variables"],
   ["settings","Settings"],["backup","Backup"],["stack","Stack"],
-  ["graph","Graph"],["import","Import"]];
+  ["graph","Graph"]];
 
 function renderRegistry(v){
   v.appendChild(el("h2",{text:"Registry"}));
   var tabs=el("div",{class:"tabs",role:"tablist"});
   REGTABS.forEach(function(t){
-    if(t[0]==="import"&&!canWrite())return;
     tabs.appendChild(el("button",{type:"button",role:"tab",
       "aria-selected":String(UI.regtab===t[0]),
       onclick:function(){
         UI.err="";
-        /* Import ist kein Ort, sondern eine Handlung: er macht einen
-           Dialog auf und lässt die Seite, wo sie war. */
-        if(t[0]==="import"){ importDialog(); return; }
         UI.regtab=t[0]; UI.regjson=false; go({k:"reg"});
       }},t[1]));
   });
@@ -11535,348 +11571,6 @@ function addAdhoc(e){
   });
 }
 
-
-/* ============================================================
-   Obsidian-Import. Dieselben Regeln wie @nw/import im Repo,
-   dort gegen echte Vault-Dateien getestet:
-   - Schlüssel case-insensitiv (der Vault schreibt Rarität, aber
-     rüstungsklasse — Dataview kleinschreibt Eigenschaften)
-   - U+2212 MINUS in Attributtabellen, kein Bindestrich
-   - Eintragstexte laufen über mehrere >-Zeilen weiter
-   - cr kann ein Bruch sein (1/8), also Text, keine Zahl
-   - „—"", not "—"
-   ============================================================ */
-
-function parseFM(text){
-  var src=String(text||"").replace(/^﻿/,"");
-  var m=/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(src);
-  if(!m) return {raw:{},index:{},body:src};
-  var raw={},cur=null;
-  (m[1]||"").split(/\r?\n/).forEach(function(line){
-    var li=/^\s*-\s+(.*)$/.exec(line);
-    if(li&&cur){ if(!Array.isArray(raw[cur]))raw[cur]=[]; raw[cur].push(unquote(li[1])); return; }
-    var kv=/^([^\s:][^:]*):\s*(.*)$/.exec(line);
-    if(!kv)return;
-    cur=kv[1].trim();
-    var v=unquote(kv[2]);
-    raw[cur]= v===""?[]:v;
-  });
-  Object.keys(raw).forEach(function(k){ if(Array.isArray(raw[k])&&!raw[k].length) raw[k]=""; });
-  var index={}; Object.keys(raw).forEach(function(k){ index[k.toLowerCase()]=k; });
-  return {raw:raw,index:index,body:src.slice(m[0].length)};
-}
-function unquote(v){ var t=String(v||"").trim();
-  return (t.length>=2&&/^(".*"|'.*')$/.test(t))?t.slice(1,-1):t; }
-function fmStr(fm,k){ var o=fm.index[String(k).toLowerCase()]; if(!o)return "";
-  var v=fm.raw[o]; return Array.isArray(v)?v.join(", "):String(v==null?"":v).trim(); }
-function fmList(fm,k){ var o=fm.index[String(k).toLowerCase()]; if(!o)return [];
-  var v=fm.raw[o]; if(Array.isArray(v))return v.filter(function(x){return x!=="";});
-  var s=String(v==null?"":v).trim(); return s?[s]:[]; }
-function fmNum(fm,k){ var t=fmStr(fm,k); if(t==="")return undefined;
-  var n=Number(t.replace(/[^\d.,-]/g,"").replace(",",".")); return isFinite(n)?n:undefined; }
-function linkZiel(raw){ var m=/\[\[([^\]]+)\]\]/.exec(String(raw||""));
-  var t=m?m[1]:String(raw||""); return (t.split("|")[0]||"").split("#")[0].trim(); }
-function stripDataview(b){ return String(b||"")
-  .replace(/#+\s*Inventar\s*\r?\n+```dataviewjs[\s\S]*?```/gi,"")
-  .replace(/```dataviewjs[\s\S]*?```/gi,"").trim(); }
-function sinnvoll(v){ var t=String(v||"").trim(); return t!==""&&!/^[—–-]+$/.test(t); }
-
-/* welche Art Datei ist das? */
-/* Die Vault-Werte links bleiben deutsch — sie stehen so in den Notizen.
-   Zurück kommt die Sorte, unter der der Import sie führt. */
-function erkenne(text){
-  var fm=parseFM(text);
-  if(fmStr(fm,"typ").toLowerCase()==="statblock") return "statblock";
-  if(fmStr(fm,"Gegenstandstyp")) return "item";
-  var t=fmStr(fm,"typ").toLowerCase();
-  if(["siedlung","region","kontinent","ort","gebäude","raum"].indexOf(t)>=0) return "place";
-  return null;
-}
-
-var IF_TYP={waffe:"Weapon","ausrüstung":"Armor",ausruestung:"Armor","rüstung":"Armor",
-  material:"Material",verbrauchsgut:"Consumable"};
-
-function impGegenstand(text,datei){
-  var fm=parseFM(text), name=datei.replace(/\.md$/i,"").trim();
-  var typ=fmStr(fm,"Gegenstandstyp").toLowerCase(), ifn=IF_TYP[typ]||"Item";
-  var body=stripDataview(fm.body), bilder=[];
-  (body.match(/!\[\[[^\]|#]+\.(?:png|jpe?g|webp|gif)(?:\|[^\]]*)?\]\]/gi)||[]).forEach(function(x){
-    bilder.push(linkZiel(x)); });
-
-  /* Eine Karte je Bestandteil: was `Identity` erklärt, steht auf `Identity`. */
-  var c={ Identity:{name:name,aliases:fmList(fm,"aliases")},
-    Status:{status:"used"},
-    Imported:{text:text,format:"obsidian",at:new Date().toISOString().slice(0,10)} };
-
-  var info={}, r=fmStr(fm,"Rarität"), kr=fmStr(fm,"Kaufrarität"),
-      kp=fmNum(fm,"Kupferpreis"), st=fmNum(fm,"Stapelgrösse");
-  if(fmStr(fm,"Gegenstandstyp")) info.itemType=fmStr(fm,"Gegenstandstyp");
-  if(r&&r!=="-") info.rarity=r;            // „-" heisst: kein magischer Gegenstand
-  if(kr&&kr!=="-") info.availability=kr;     // andere Skala als raritaet
-  if(kp!==undefined) info.copperPrice=kp;
-  if(st!==undefined) info.stackSize=st;
-  if(Object.keys(info).length) c.Item=Object.assign({},c.Item||{},info);
-
-  var rows=fmList(fm,"Formfaktor"); if(rows.length) c.Item=Object.assign({},c.Item||{},{rows:rows});
-  if(ifn==="Weapon"){ var w={};
-    if(fmStr(fm,"Schaden"))w.damage=fmStr(fm,"Schaden");
-    if(fmStr(fm,"Schadenstyp"))w.damageType=fmStr(fm,"Schadenstyp");
-    if(fmStr(fm,"Reichweite"))w.range=fmStr(fm,"Reichweite");
-    if(Object.keys(w).length)c.Weapon=w; }
-  if(ifn==="Armor"){ var ru={}, rk=fmNum(fm,"rüstungsklasse");
-    if(rk!==undefined)ru.ac=rk;
-    if(fmStr(fm,"rüstungstyp"))ru.armorType=fmStr(fm,"rüstungstyp");
-    if(Object.keys(ru).length)c.Armor=ru; }
-  if(ifn==="Material"){ var ma={};
-    if(fmStr(fm,"Materialtyp"))ma.materialType=fmStr(fm,"Materialtyp");
-    var be=fmList(fm,"Berufe"); if(be.length)ma.trades=be;
-    if(Object.keys(ma).length)c.Material=ma; }
-  if(bilder[0]) c.Image={url:bilder[0],caption:""};
-
-  var prosa=body.replace(/!\[\[[^\]]+\]\]/g,"").replace(/^#+\s*Eigenschaften[\s\S]*$/im,"").trim();
-  if(prosa) c.Prose={paragraph:[{id:entryAnchor("paragraph",prosa,{}),value:prosa}]};
-
-  var unresolved=[];
-  fmList(fm,"Eigenschaften").forEach(function(x){
-    var z=linkZiel(x); if(z) unresolved.push({type:"hasProperty",target:z}); });
-
-  /* `tags` trägt immer `gegenstand` und, uneinheitlich, eine Artmarke. */
-  var marken=fmList(fm,"tags").filter(function(t){return t!=="gegenstand";});
-  if(marken.length) c.Tags={tags:marken};
-  return { e:{ id:uid("g"), interfaces:[ifn], name:name,
-      components:c, adhoc:[], relations:[], createdAt:new Date().toISOString() },
-    unresolved:unresolved, bilder:bilder };
-}
-
-/* Links steht, wie der Vault die Zeile beschriftet — rechts, wie das Feld im
-   Register heisst. Nur die rechte Seite ist englisch geworden; die linke zu
-   übersetzen hiesse, die Notizen nicht mehr zu erkennen. */
-var SB_LABEL={"rüstungsklasse":"_skip","trefferpunkte":"_skip","geschwindigkeit":"speed",
-  "saving throws":"saves",skills:"skills","damage resistances":"resistances",
-  immunities:"immunities",vulnerabilities:"vulnerabilities",senses:"senses",
-  languages:"languages","proficiency bonus":"prof"};
-var ATTR=["str","dex","con","int","wis","cha"];
-
-function impStatblock(text,datei){
-  var fm=parseFM(text), name=fmStr(fm,"name")||datei.replace(/\.md$/i,"").trim();
-  var zeilen=String(fm.body).replace(/−/g,"-").split(/\r?\n/)
-    .filter(function(l){return l.trimStart().indexOf(">")===0;})
-    .map(function(l){return l.replace(/^\s*>\s?/,"");});
-
-  var info={system:"dnd5e-2014"}, g=fmStr(fm,"grösse");
-  if(g){ var p=/^([^(]+?)\s*(?:\(([^)]*)\))?$/.exec(g.trim());
-    if(p&&p[1])info.size=p[1].trim(); if(p&&p[2])info.kind=p[2].trim(); }
-  if(fmStr(fm,"ausrichtung"))info.alignment=fmStr(fm,"ausrichtung");
-  if(fmStr(fm,"cr"))info.cr=fmStr(fm,"cr");            // kann 1/8 sein
-  if(fmStr(fm,"rolle"))info.combatRole=fmStr(fm,"rolle");
-  var ac=fmStr(fm,"ac");
-  if(ac){ var an=/(-?\d+)/.exec(ac); if(an)info.ac=Number(an[1]);
-    var aq=/\(([^)]*)\)/.exec(ac); if(aq)info.acNote=aq[1].trim(); }
-  var tp=fmNum(fm,"leben"); if(tp!==undefined)info.hp=tp;
-  if(fmStr(fm,"lebenswürfel"))info.hpFormula=fmStr(fm,"lebenswürfel");
-  var sp=fmList(fm,"geschwindigkeit"); if(sp.length)info.speed=sp.join(", ");
-
-  zeilen.forEach(function(l){
-    var m=/^\*\*([^*]+?):?\*\*\s*(.*)$/.exec(l); if(!m)return;   // Doppelpunkt erlaubt
-    var k=SB_LABEL[m[1].trim().toLowerCase()], v=m[2].trim();
-    if(!k||k==="_skip"||!sinnvoll(v))return;
-    if(k==="prof"){ var n=Number(v.replace("+","")); if(isFinite(n))info.prof=n; return; }
-    if(k==="speed"&&info.speed)return;
-    info[k]=v;
-  });
-
-  var hi=-1; zeilen.forEach(function(l,i){ if(hi<0&&/^\|\s*STR\s*\|/i.test(l))hi=i; });
-  if(hi>=0){ for(var i=hi+1;i<zeilen.length;i++){ var l=zeilen[i];
-      if(!/^\|/.test(l))continue; if(/^\|\s*-/.test(l))continue;
-      var cells=l.split("|").slice(1,-1).map(function(c){return c.trim();});
-      ATTR.forEach(function(a,j){ var s=/(-?\d+)/.exec(cells[j]||""); if(s)info[a]=Number(s[1]); });
-      break; } }
-
-  var abschnitte=[],akt=null,eintrag=null;
-  function schliess(){ if(akt&&eintrag&&eintrag.name){ eintrag.text=eintrag.text.trim();
-      akt.eintraege.push(eintrag); } eintrag=null; }
-  zeilen.forEach(function(l){
-    var h=/^#+\s*(.+?)\s*$/.exec(l);
-    if(h){ schliess(); if(akt)abschnitte.push(akt); akt={name:h[1].trim(),eintraege:[]}; return; }
-    if(!akt)return;
-    var s=/^\*\*([^*]+?)\.?\*\*\s*(.*)$/.exec(l);
-    if(s){ schliess(); eintrag={name:s[1].trim(),text:s[2].trim()}; return; }
-    if(eintrag){ if(!l.trim()||/^-{3,}$/.test(l.trim()))return; eintrag.text+=" "+l.trim(); }
-  });
-  schliess(); if(akt)abschnitte.push(akt);
-
-  return { e:{ id:uid("sb"), interfaces:["Statblock"], name:name,
-      components:{ Identity:{name:name,aliases:fmList(fm,"aliases")},
-        Status:{status:"used"},
-        Imported:{text:text,format:"obsidian",at:new Date().toISOString().slice(0,10)},
-        /* Die Zahlen bleiben ihre eigene Karte: `hp` heisst am Statblock
-           etwas anderes als an der Kreatur, die gerade Schaden nimmt. */
-        StatblockInfo:info },
-      adhoc:[], relations:[], createdAt:new Date().toISOString() },
-    abschnitte:abschnitte, kreatur:linkZiel(fmStr(fm,"kreatur"))||null };
-}
-
-function impOrt(text,datei){
-  var fm=parseFM(text), name=datei.replace(/\.md$/i,"").trim();
-  // Der leaflet-Block bleibt unangetastet: er wird später die Kartenansicht.
-  // Hier nur aus der Prosa genommen, im RawContent liegt er unverändert.
-  var body=String(fm.body)
-    .replace(/```leaflet[\s\S]*?```/gi,"")
-    .replace(new RegExp("^#\\s*"+name.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*$","im"),"")
-    .trim();
-
-  var enthaelt=[];
-  (body.match(/!\[\[[^\]]+\]\]/g)||[]).forEach(function(x){
-    var z=linkZiel(x); if(z&&!/\.(png|jpe?g|webp|gif)$/i.test(z)) enthaelt.push(z); });
-  var li={}; if(fmStr(fm,"typ"))li.kind=fmStr(fm,"typ");
-  if(fmStr(fm,"biom"))li.umwelt=fmStr(fm,"biom");
-  if(fmStr(fm,"siedlungstyp"))li.siedlungstyp=fmStr(fm,"siedlungstyp");
-
-  var c={ Identity:{name:name,aliases:fmList(fm,"aliases")},
-    Status:{status:"used"},
-    Imported:{text:text,format:"obsidian",at:new Date().toISOString().slice(0,10)}, Place:li };
-
-  var prosa=body.replace(/!\[\[[^\]]+\]\]/g,"").replace(/^#+\s.*$/gm,"").trim();
-  if(prosa) c.Prose={paragraph:[{id:entryAnchor("paragraph",prosa,{}),value:prosa}]};
-
-  if(fmList(fm,"tags").length) c.Tags={tags:fmList(fm,"tags")};
-  return { e:{ id:uid("o"), interfaces:["Place"], name:name,
-      components:c, adhoc:[], relations:[], createdAt:new Date().toISOString() },
-    unresolved:enthaelt.map(function(z){return {type:"contains",target:z};}) };
-}
-
-/* ---------- Stapelimport: Verweise innerhalb des Stapels auflösen ---------- */
-function runImport(files){
-  var result={item:[],statblock:[],place:[],rules:[],unresolved:[],unknown:[],images:[]};
-  var roh=[];
-  files.forEach(function(f){
-    var kind=erkenne(f.text);
-    if(!kind){ result.unknown.push(f.name); return; }
-    if(kind==="item"){ var g=impGegenstand(f.text,f.name); roh.push({kind:kind,r:g}); result.item.push(g.e); }
-    if(kind==="place"){ var o=impOrt(f.text,f.name); roh.push({kind:kind,r:o}); result.place.push(o.e); }
-    if(kind==="statblock"){ var s=impStatblock(f.text,f.name); roh.push({kind:kind,r:s}); result.statblock.push(s.e); }
-  });
-
-  /* Abschnittseinträge werden je eine eigene Regel, die der Statblock
-     referenziert. Gleicher Name und Text heisst gleiche Regel, keine Kopie. */
-  var regelNach={};
-  roh.forEach(function(x){ if(x.kind!=="statblock")return;
-    x.r.abschnitte.forEach(function(ab){ ab.eintraege.forEach(function(en){
-      var k=en.name+"\u0000"+en.text, id=regelNach[k];
-      if(!id){ id=uid("r"); regelNach[k]=id;
-        var kind=/^bonus/i.test(ab.name)?"bonus":/^reaction/i.test(ab.name)?"reaction"
-                :/^(villain|legendary)/i.test(ab.name)?"legendary":/^action/i.test(ab.name)?"action":"trait";
-        result.rules.push({ id:id, interfaces:["Rule"], name:en.name,
-          components:{ Identity:{name:en.name,aliases:[]},
-            Status:{status:"used"}, Description:{description:en.text},
-            Rule:{kind:kind} },
-          adhoc:[], relations:[], createdAt:new Date().toISOString() }); }
-      x.r.e.relations.push({id:uid("rel"),type:"composedOf",to:id,props:{section:ab.name}});
-    });});
-  });
-
-  var alle=result.item.concat(result.place,result.statblock,result.rules);
-
-  /* Die Nummern. Sie entstehen **hier** und nicht beim Lesen einer Notiz:
-     eine einzelne Datei weiss nicht, welche schon vergeben sind, und ohne
-     die Liste des laufenden Stapels bekämen zwanzig Artikel aus einem Lauf
-     dieselbe. */
-  var vergeben=[];
-  alle.forEach(function(e){
-    var id=nextId((e.interfaces||[])[0]||"Article",vergeben);
-    vergeben.push(id);
-    e.components=e.components||{};
-    e.components.Identity=Object.assign({},e.components.Identity||{},{id:id});
-  });
-  var nachName={};
-  ENT.forEach(function(e){ if((e.interfaces||[])[0]!=="Statblock") nachName[nameOf(e).toLowerCase()]=e.id;
-    ((e.components&&e.components.Identity&&e.components.Identity.aliases)||[]).forEach(function(a){
-      nachName[String(a).toLowerCase()]=e.id; }); });
-  alle.forEach(function(e){ if((e.interfaces||[])[0]==="Statblock")return;
-    nachName[e.name.toLowerCase()]=e.id;
-    ((e.components.Identity&&e.components.Identity.aliases)||[]).forEach(function(a){
-      nachName[String(a).toLowerCase()]=e.id; }); });
-
-  roh.forEach(function(x){
-    if(x.kind==="item"){ (x.r.unresolved||[]).forEach(function(v){
-      var id=nachName[v.target.toLowerCase()];
-      if(id) x.r.e.relations.push({id:uid("rel"),type:v.type,to:id});
-      else result.unresolved.push({from:x.r.e.name,kind:v.type,target:v.target}); });
-      (x.r.bilder||[]).forEach(function(b){ result.images.push({from:x.r.e.name,datei:b}); }); }
-
-    /* Der Vault drückt die Hierarchie als Transklusion im Elternteil aus:
-       ![[Rubinrot]] in Vallehy heisst „Vallehy enthält Rubinrot". Gespeichert
-       wird die Kante aber am Kind als teilVon — eine Kante, eine Richtung. */
-    if(x.kind==="place"){ (x.r.unresolved||[]).forEach(function(v){
-      var id=nachName[v.target.toLowerCase()], kind=null;
-      alle.forEach(function(e){ if(e.id===id) kind=e; });
-      if(kind) kind.relations.push({id:uid("rel"),type:"partOf",to:x.r.e.id});
-      else result.unresolved.push({from:x.r.e.name,kind:"contains",target:v.target}); }); }
-
-    if(x.kind==="statblock"&&x.r.kreatur){
-      var id=nachName[x.r.kreatur.toLowerCase()];
-      if(id) x.r.e.relations.push({id:uid("rel"),type:"belongsTo",to:id});
-      else result.unresolved.push({from:x.r.e.name,kind:"belongs to",target:x.r.kreatur}); }
-  });
-
-  result.all=alle;
-  return result;
-}
-
-function importDialog(){
-  dialog("Aus Obsidian importieren",function(host,close){
-    host.appendChild(el("p",{class:"hint",text:
-      "Markdown-Dateien aus dem Vault wählen. Gegenstände, Statblöcke und Orte "+
-      "werden an ihrem Frontmatter erkannt. Verweise innerhalb des Stapels lösen sich "+
-      "gegenseitig auf; was offen bleibt, steht danach als toter Verweis da und lässt "+
-      "sich mit einem Klick anlegen."}));
-    var inp=el("input",{class:"i",type:"file",multiple:"multiple",accept:".md,text/markdown"});
-    host.appendChild(field("Dateien",inp));
-    var report=el("div",{class:"bericht"});
-    host.appendChild(report);
-    var erg=null;
-
-    inp.addEventListener("change",function(){
-      var fs=Array.prototype.slice.call(inp.files||[]);
-      if(!fs.length)return;
-      report.textContent="Reading "+fs.length+" file(s)…";
-      window.__GELESEN__=fs.map(function(f){return f.name;});
-      Promise.all(fs.map(function(f){ return f.text().then(function(t){return {name:f.name,text:t};}); }))
-        .then(function(files){
-          erg=runImport(files);
-          report.textContent="";
-          var z=el("ul");
-          [["Items",erg.item.length],["Statblocks",erg.statblock.length],
-           ["Places",erg.place.length],["Rules from sections",erg.rules.length]]
-            .forEach(function(p){ if(p[1]) z.appendChild(el("li",{text:p[1]+" "+p[0]})); });
-          report.appendChild(z);
-          if(erg.unknown.length) report.appendChild(el("p",{class:"warnzeile",
-            text:"Not recognised: "+erg.unknown.join(", ")}));
-          if(erg.unresolved.length){
-            report.appendChild(el("p",{class:"hint",text:"Unresolved links — clickable afterwards as dead links:"}));
-            var ul=el("ul");
-            erg.unresolved.slice(0,12).forEach(function(o){
-              ul.appendChild(el("li",{text:o.from+" → "+o.kind+" → "+o.target})); });
-            if(erg.unresolved.length>12) ul.appendChild(el("li",{text:"… and "+(erg.unresolved.length-12)+" more"}));
-            report.appendChild(ul);
-          }
-          if(erg.images.length) report.appendChild(el("p",{class:"hint",
-            text:"Images are named but not transferred: "+
-              erg.images.map(function(b){return b.datei;}).join(", ")}));
-        })
-        .catch(function(x){ report.textContent="Reading failed: "+x.message; });
-    });
-
-    actions(host,close,function(){
-      if(!erg||!erg.all.length) return false;
-      erg.all.forEach(function(e){ ENT.set(e.id,e); });
-      render();
-      if(db) erg.all.forEach(function(e){ db.doc("entities/"+e.id).set(e).catch(fail); });
-      UI.err=erg.all.length+" articles imported.";
-      go({k:"list"});
-    },"Import");
-  });
-}
 
 /* ============================================================
    BOOT

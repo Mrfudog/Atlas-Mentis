@@ -11,8 +11,15 @@
  * Drei Kantenarten spannen das auf:
  *
  *   Artikel      --knowledge--> Information   (`owned`: stirbt mit dem Artikel)
- *   Information  --knownBy-->   Creature | Party | KnowledgeLevel
- *   Creature     --atLevel-->   KnowledgeLevel
+ *   Knowledge    --includes-->  Information   (ein Bündel)
+ *   Information | Knowledge --knownBy--> Creature | Party | Faction | Group
+ *
+ * Ein **Bündel** ist ein Artikel wie die Information selbst und wird über
+ * dieselbe Kante zugeteilt: wer „was ein Kanalgänger weiss" kennt, kennt
+ * jede Information darin. Es gab hier einmal einen *Wissensstand*, dem
+ * Figuren über `atLevel` angehörten — ein zweiter Weg zu „wer weiss das",
+ * obwohl Party und Group schon Empfänger sein konnten. In zwei Jahren hat
+ * ihn niemand benutzt.
  *
  * Ein Feld, das keine Information nennt, ist **offen**. Die Umkehrung wäre
  * sicherer, aber sie macht jede neue Zeile unsichtbar, bis jemand daran
@@ -31,8 +38,8 @@ import { entityName, entriesOf, entryRef } from './entity.js';
 export const KNOWLEDGE_RELATION = 'knowledge';
 /** Die Kantenart, die eine Information einem Empfänger zuteilt. */
 export const KNOWN_BY_RELATION = 'knownBy';
-/** Die Kantenart, die eine Figur einem Wissensstand zuordnet. */
-export const AT_LEVEL_RELATION = 'atLevel';
+/** Die Kantenart, die ein Bündel mit den Informationen darin verbindet. */
+export const INCLUDES_RELATION = 'includes';
 /** Party-Mitgliedschaft — wer in der Gruppe ist, erbt deren Wissen. */
 export const PARTY_RELATION = 'memberOfParty';
 
@@ -120,16 +127,25 @@ export function knowledgeHolders(
   for (const one of viewers) {
     const viewer = entities.get(one);
     if (!viewer) continue;
-    for (const id of edges(viewer, AT_LEVEL_RELATION)) holders.add(id);
-    for (const partyId of edges(viewer, PARTY_RELATION)) {
-      holders.add(partyId);
-      for (const id of edges(entities.get(partyId), AT_LEVEL_RELATION)) holders.add(id);
-    }
+    for (const partyId of edges(viewer, PARTY_RELATION)) holders.add(partyId);
   }
   return holders;
 }
 
-/** Kennt dieser Betrachter die Information? Ohne Betrachter: ja (Spielleitung). */
+/**
+ * Kennt dieser Betrachter die Information? Ohne Betrachter: ja
+ * (Spielleitung).
+ *
+ * Gefragt wird zweimal: hat er sie **selbst** bekommen, oder ein **Bündel**,
+ * in dem sie steckt. Ein Bündel ist ein Artikel wie sie und trägt dieselbe
+ * `knownBy`-Kante — wer „was ein Kanalgänger weiss" kennt, kennt alles
+ * darin, ohne dass jemand die Zuteilungen einzeln nachzieht.
+ *
+ * Ein Bündel in einem Bündel zählt nicht: ein Schritt weit, dieselbe Regel
+ * wie bei den Haltern. Eine Hierarchie von Wissen hat niemand verlangt, und
+ * sie wäre die Stelle, an der eine Freigabe weiter reicht, als jemand
+ * gemeint hat.
+ */
 export function knows(
   entities: Map<EntityId, Entity>,
   info: Entity,
@@ -137,7 +153,32 @@ export function knows(
 ): boolean {
   if (!viewerId) return true;
   const holders = knowledgeHolders(entities, viewerId);
-  return edges(info, KNOWN_BY_RELATION).some((id) => holders.has(id));
+  const direkt = (e: Entity): boolean =>
+    edges(e, KNOWN_BY_RELATION).some((id) => holders.has(id));
+  if (direkt(info)) return true;
+  for (const buendel of bundlesWith(entities, info.id)) if (direkt(buendel)) return true;
+  return false;
+}
+
+/**
+ * Die Bündel, die diese Information nennen — ein Rückbezug, weil `includes`
+ * nur vorwärts gespeichert wird.
+ */
+export function bundlesWith(entities: Map<EntityId, Entity>, infoId: EntityId): Entity[] {
+  const out: Entity[] = [];
+  for (const e of entities.values())
+    if (edges(e, INCLUDES_RELATION).includes(infoId)) out.push(e);
+  return out;
+}
+
+/** Die Informationen in einem Bündel, in der Reihenfolge seiner Kanten. */
+export function informationsIn(entities: Map<EntityId, Entity>, bundle: Entity): Entity[] {
+  const out: Entity[] = [];
+  for (const id of edges(bundle, INCLUDES_RELATION)) {
+    const info = entities.get(id);
+    if (info) out.push(info);
+  }
+  return out;
 }
 
 /**

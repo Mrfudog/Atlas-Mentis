@@ -222,6 +222,56 @@ daneben.
 
 ---
 
+## Wissen
+
+Eine **Information** ist eine Tatsache über *einen* Artikel: sie nennt seine
+Felder und Textstellen (`Information.fields`) und wird Empfängern zugeteilt.
+
+Ein **Knowledge** ist ein **Bündel** von Informationen. Es nennt sie über
+`includes` und wird über dieselbe Kante zugeteilt wie eine einzelne — wer
+„was ein Kanalgänger weiss" kennt, kennt alles darin, ohne dass jemand die
+Zuteilungen einzeln nachzieht.
+
+```
+Artikel     --knowledge--> Information        (owned: stirbt mit dem Artikel)
+Knowledge   --includes-->  Information
+Information | Knowledge --knownBy--> Creature | Party | Faction | Group
+```
+
+Ein Bündel in einem Bündel zählt nicht: ein Schritt weit, dieselbe Regel wie
+bei den Haltern. Sonst reichte eine Freigabe weiter, als jemand gemeint hat.
+
+> **Nicht mehr:** es gab einen `KnowledgeLevel` — einen *Stand*, dem Figuren
+> über `atLevel` angehörten. Das war ein zweiter Weg zu „wer weiss das",
+> obwohl `Party` und `Group` schon Empfänger sein konnten, und in zwei Jahren
+> hat ihn niemand benutzt: kein Artikel, keine Kante.
+
+---
+
+## Die Zahlen einer Kreatur
+
+**Sie wohnen am Statblock** — auch die eines Spielercharakters. Er hat mehr
+darüber hinaus (Stufe, Klasse, Hintergrund), aber AC, HP-Maximum und die
+sechs Werte sind dieselbe Sache wie bei jedem Monster. Welcher Statblock es
+ist, sagt `belongsTo`; gespeichert wird nur vorwärts, und „welchen Statblock
+hat Rook" ist der Rückbezug.
+
+`Vitals` bleibt bei der Figur: das ist, was sich **während** der Sitzung
+ändert — Trefferpunkte jetzt, Erschöpfung, Zustände, Todesretter. Es gehört
+ihr und nicht ihrem Bogen.
+
+Damit heisst `hp` am Statblock das Maximum und an der Figur, was sie gerade
+noch hat. Die Namensgleichheit ist keine Falle mehr, sondern die Wahrheit:
+zwei Karten an zwei Artikeln.
+
+> **Nicht mehr:** eine Kreatur trug ihre `StatblockInfo` auch selbst, und der
+> Bogen las „erst die eigene, dann die geliehene". Zwei Formen für dasselbe —
+> wer eine Kreatur änderte, musste wissen, in welcher der beiden ihre Zahlen
+> gerade standen. Und `belongsTo` reichte nur bis zum NSC, ein
+> Spielercharakter konnte also gar keinen haben.
+
+---
+
 ## Einheit
 
 Der Vault ist imperial, weil die Regeln es sind: vierzig Fuss Bewegung,

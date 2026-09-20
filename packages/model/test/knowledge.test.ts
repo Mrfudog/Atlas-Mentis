@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  bundlesWith,
   covers,
+  informationsIn,
   informationsOf,
   knowledgeGroups,
   knowledgeHolders,
@@ -25,7 +27,7 @@ const registry: Pick<Registry, 'interfaces'> = {
     NPC: { name: 'NPC', extends: ['Identity'] },
     PlayerCharacter: { name: 'PlayerCharacter', extends: ['Identity'] },
     Party: { name: 'Party', extends: ['Identity'] },
-    KnowledgeLevel: { name: 'KnowledgeLevel', extends: ['Identity'] },
+    Knowledge: { name: 'Knowledge', extends: ['Identity'] },
     Information: { name: 'Information', extends: ['Identity'] },
   },
 };
@@ -56,7 +58,9 @@ const rumour = entity('i_debt', 'Seine Schulden', {
     Identity: { name: 'Seine Schulden' },
     Information: { fields: ['Creature', 'Secrets.secret#b_secret'], tier: 'rumour' },
   },
-  relations: [{ id: 'r2', type: 'knownBy', to: 'kl_street' }],
+  /* Diese Information wird **nicht** einzeln zugeteilt: sie steckt in
+     einem Bündel, und das Bündel kennt jemand. */
+  relations: [],
 });
 
 const baron = entity('n_baron', 'Der Baron', {
@@ -81,10 +85,18 @@ const mara = entity('pc_mara', 'Mara', {
 });
 const torn = entity('pc_torn', 'Torn', {
   interfaces: ['PlayerCharacter'],
-  relations: [{ id: 'r6', type: 'atLevel', to: 'kl_street' }],
+  relations: [],
 });
 const party = entity('p_wacht', 'Die Wacht', { interfaces: ['Party'] });
-const street = entity('kl_street', 'Gassenwissen', { interfaces: ['KnowledgeLevel'] });
+/* Ein **Bündel**: es nennt seine Informationen über `includes` und wird
+   über dieselbe `knownBy`-Kante zugeteilt wie eine einzelne. */
+const street = entity('k_street', 'Gassenwissen', {
+  interfaces: ['Knowledge'],
+  relations: [
+    { id: 'r6', type: 'includes', to: 'i_debt' },
+    { id: 'r7', type: 'knownBy', to: 'pc_torn' },
+  ],
+});
 
 const entities = new Map<EntityId, Entity>(
   [baron, trueName, rumour, mara, torn, party, street].map((e) => [e.id, e]),
@@ -94,7 +106,7 @@ const ALL = [
   'Identity.key',
   'Identity.aliases',
   'Creature.attitude',
-  'StatblockInfo.ac',
+  'Vitals.hp',
   'Secrets.secret#b_open',
   'Secrets.secret#b_secret',
 ];
@@ -111,17 +123,43 @@ describe('knowledge', () => {
     expect(covers(rumour, 'Creature', 'attitude')).toBe(true);
   });
 
-  it('zählt Gruppe und Wissensstand zum Betrachter', () => {
+  it('zählt die Gruppe zum Betrachter', () => {
     expect([...knowledgeHolders(entities, 'pc_mara')].sort()).toEqual(['p_wacht', 'pc_mara']);
-    expect([...knowledgeHolders(entities, 'pc_torn')].sort()).toEqual(['kl_street', 'pc_torn']);
+    expect([...knowledgeHolders(entities, 'pc_torn')].sort()).toEqual(['pc_torn']);
   });
 
-  it('kennt direkt und über den Wissensstand', () => {
+  it('kennt direkt und über ein Bündel', () => {
+    /* Mara hat den wahren Namen über ihre Gruppe. */
     expect(knows(entities, trueName, 'pc_mara')).toBe(true);
     expect(knows(entities, trueName, 'pc_torn')).toBe(false);
+    /* Torn kennt die Schulden nur, weil er das Bündel kennt, in dem sie
+       stecken — die Information selbst ist ihm nie zugeteilt worden. */
     expect(knows(entities, rumour, 'pc_torn')).toBe(true);
+    expect(knows(entities, rumour, 'pc_mara')).toBe(false);
     /* Ohne Betrachter ist es die Spielleitung. */
     expect(knows(entities, trueName)).toBe(true);
+  });
+
+  it('findet die Bündel, in denen eine Information steckt', () => {
+    expect(bundlesWith(entities, 'i_debt').map((b) => b.id)).toEqual(['k_street']);
+    expect(bundlesWith(entities, 'i_name')).toEqual([]);
+    expect(informationsIn(entities, street).map((i) => i.id)).toEqual(['i_debt']);
+  });
+
+  /* Ein Bündel in einem Bündel zählt nicht: ein Schritt weit, dieselbe
+     Regel wie bei den Haltern. Sonst reichte eine Freigabe weiter, als
+     jemand gemeint hat. */
+  it('reicht nicht über ein zweites Bündel hinaus', () => {
+    const aussen = entity('k_alles', 'Alles', {
+      interfaces: ['Knowledge'],
+      relations: [
+        { id: 'r8', type: 'includes', to: 'k_street' },
+        { id: 'r9', type: 'knownBy', to: 'pc_mara' },
+      ],
+    });
+    const mehr = new Map(entities);
+    mehr.set(aussen.id, aussen);
+    expect(knows(mehr, rumour, 'pc_mara')).toBe(false);
   });
 
   it('stellt das Offene voran und beansprucht den Rest', () => {
@@ -129,7 +167,7 @@ describe('knowledge', () => {
     expect(groups[0]?.open).toBe(true);
     expect(groups[0]?.fields).toEqual([
       'Identity.key',
-      'StatblockInfo.ac',
+      'Vitals.hp',
       'Secrets.secret#b_open',
     ]);
     expect(groups.map((g) => g.label)).toEqual(['Open', 'Sein wahrer Name', 'Seine Schulden']);
@@ -143,21 +181,21 @@ describe('knowledge', () => {
     expect(visibleFields(registry, entities, baron, ALL, 'pc_mara')).toEqual([
       'Identity.key',
       'Identity.aliases',
-      'StatblockInfo.ac',
+      'Vitals.hp',
       'Secrets.secret#b_open',
     ]);
     /* Torn kennt das Gerücht — also auch den einen Eintrag, den es nennt. */
     expect(visibleFields(registry, entities, baron, ALL, 'pc_torn')).toEqual([
       'Identity.key',
       'Creature.attitude',
-      'StatblockInfo.ac',
+      'Vitals.hp',
       'Secrets.secret#b_open',
       'Secrets.secret#b_secret',
     ]);
     /* Ein Fremder sieht nur, was keine Information beansprucht. */
     expect(visibleFields(registry, entities, baron, ALL, 'pc_niemand')).toEqual([
       'Identity.key',
-      'StatblockInfo.ac',
+      'Vitals.hp',
       'Secrets.secret#b_open',
     ]);
     /* Und die Spielleitung alles. */

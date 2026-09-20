@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-09-20. 62 Schnittstellen, 41 Kantenarten.
+Stand 2026-09-20. 61 Schnittstellen, 41 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -106,7 +106,6 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - `memberOfParty` → Party — „in the party"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
-- `atLevel` → KnowledgeLevel — „knows as"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
@@ -115,11 +114,12 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Kanten hierher**
 
+- Statblock — `belongsTo` → „statblock of"
 - PlayerCharacter — `playedBy` → „plays"
 - Quest — `questGiver` → „gives"
 - Quest — `questAbout` → „concerned by"
 - Story — `features` → „appears in"
-- Information — `knownBy` → „knows"
+- Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
@@ -131,7 +131,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - Creature | NPC | PlayerCharacter | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
-  - **Overview** — `image`, `description`, `fields` (ohne StatblockInfo, Vitals, Skills), `prose`
+  - **Overview** — `image`, `description`, `fields` (ohne Vitals, Skills), `prose`
   - **Combat** — `composed`
   - **Gear** — `inventory`
   - **Craft** — `crafting`
@@ -191,7 +191,6 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - `memberOfParty` → Party — „in the party"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
-- `atLevel` → KnowledgeLevel — „knows as"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
@@ -200,11 +199,12 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Kanten hierher**
 
+- Statblock — `belongsTo` → „statblock of"
 - PlayerCharacter — `playedBy` → „plays"
 - Quest — `questGiver` → „gives"
 - Quest — `questAbout` → „concerned by"
 - Story — `features` → „appears in"
-- Information — `knownBy` → „knows"
+- Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
@@ -216,7 +216,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - Creature | NPC | PlayerCharacter | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
-  - **Overview** — `image`, `description`, `fields` (ohne StatblockInfo, Vitals, Skills), `prose`
+  - **Overview** — `image`, `description`, `fields` (ohne Vitals, Skills), `prose`
   - **Combat** — `composed`
   - **Gear** — `inventory`
   - **Craft** — `crafting`
@@ -251,7 +251,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - Quest — `questGiver` → „gives"
 - Quest — `questAbout` → „concerned by"
 - Story — `features` → „appears in"
-- Information — `knownBy` → „knows"
+- Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
@@ -360,7 +360,6 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - `memberOfParty` → Party — „in the party"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
-- `atLevel` → KnowledgeLevel — „knows as"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
@@ -375,7 +374,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - Quest — `questGiver` → „gives"
 - Quest — `questAbout` → „concerned by"
 - Story — `features` → „appears in"
-- Information — `knownBy` → „knows"
+- Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
@@ -387,7 +386,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - Creature | NPC | PlayerCharacter | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
-  - **Overview** — `image`, `description`, `fields` (ohne StatblockInfo, Vitals, Skills), `prose`
+  - **Overview** — `image`, `description`, `fields` (ohne Vitals, Skills), `prose`
   - **Combat** — `composed`
   - **Gear** — `inventory`
   - **Craft** — `crafting`
@@ -410,7 +409,6 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - `describedIn` → Article — „described in"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
-- `atLevel` → KnowledgeLevel — „knows as"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
@@ -422,7 +420,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - PlayerCharacter — `playedBy` → „plays"
 - Creature — `memberOfParty` → „members"
 - Quest — `questAbout` → „concerned by"
-- Information — `knownBy` → „knows"
+- Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
@@ -498,7 +496,6 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - `memberOfParty` → Party — „in the party"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
-- `atLevel` → KnowledgeLevel — „knows as"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
@@ -507,11 +504,12 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Kanten hierher**
 
+- Statblock — `belongsTo` → „statblock of"
 - PlayerCharacter — `playedBy` → „plays"
 - Quest — `questGiver` → „gives"
 - Quest — `questAbout` → „concerned by"
 - Story — `features` → „appears in"
-- Information — `knownBy` → „knows"
+- Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
@@ -523,7 +521,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - Creature | NPC | PlayerCharacter | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
-  - **Overview** — `image`, `description`, `fields` (ohne StatblockInfo, Vitals, Skills), `prose`
+  - **Overview** — `image`, `description`, `fields` (ohne Vitals, Skills), `prose`
   - **Combat** — `composed`
   - **Gear** — `inventory`
   - **Craft** — `crafting`
@@ -544,7 +542,6 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - `memberOfParty` → Party — „in the party"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
-- `atLevel` → KnowledgeLevel — „knows as"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
@@ -553,11 +550,12 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Kanten hierher**
 
+- Statblock — `belongsTo` → „statblock of"
 - PlayerCharacter — `playedBy` → „plays"
 - Quest — `questGiver` → „gives"
 - Quest — `questAbout` → „concerned by"
 - Story — `features` → „appears in"
-- Information — `knownBy` → „knows"
+- Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
@@ -569,7 +567,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - Creature | NPC | PlayerCharacter | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
-  - **Overview** — `image`, `description`, `fields` (ohne StatblockInfo, Vitals, Skills), `prose`
+  - **Overview** — `image`, `description`, `fields` (ohne Vitals, Skills), `prose`
   - **Combat** — `composed`
   - **Gear** — `inventory`
   - **Craft** — `crafting`
@@ -718,7 +716,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 - PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
-- Information — `knownBy` → „knows"
+- Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
@@ -773,7 +771,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ## Ohne Bereich
 
-*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 24 Arten.
+*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 23 Arten.
 
 ### Access — *abstrakt*
 
@@ -935,37 +933,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Eigene Felder**
 
-- `image` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- PlayerCharacter — `playedBy` → „plays"
-- Quest — `questAbout` → „concerned by"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
-
-### Imported — *abstrakt*
-
-`Imported`
-
-**Eigene Felder**
-
-- `text` *long*, `format` *obsidian | markdown | json | plain*, `at` *string*
+- `image` *asset*, `caption` *string*, `alt` *string*
 
 **Kanten von hier**
 

@@ -2,7 +2,7 @@
    Der Stub friert die Snapshot-Objekte ein wie die echte Laufzeit — siehe
    README.md; ein grosszügigerer Aufbau prüft nichts. */
 import { chromium } from 'playwright';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -445,54 +445,10 @@ async function seite(datei, warten) {
     blick);
 
 
-  /* 5 — Import: englische Namen in der Ausgabe, deutsche Vault-Schlüssel beim Lesen.
-     Diese beiden Seiten einmal zu verwechseln bricht den Import still: die
-     Notiz wird nicht mehr erkannt, oder der Artikel trägt eine Komponente,
-     die das Register nicht kennt. */
-  const FX = join(HIER, 'fixtures');
-  const lade = (d) => readdirSync(d).filter((f) => f.endsWith('.md'))
-    .map((f) => ({ name: f, text: readFileSync(join(d, f), 'utf8') }));
-  const fixtures = [...lade(FX), ...lade(join(FX, 'statblock'))];
-
-  const imp = await p.evaluate((dn) => {
-    const T = window.__T__;
-    const r = T.runImport(dn);
-    const ifs = new Set(Object.keys(T.REG.interfaces));
-    /* Karten heissen nach Arten — derselbe Namensraum, und genau das ist
-       der Punkt. */
-    const comps = ifs;
-    const rels = new Set(Object.keys(T.REG.relations));
-    const fremd = [];
-    r.all.forEach((e) => {
-      (e.interfaces || []).forEach((i) => { if (!ifs.has(i)) fremd.push(`${e.name}: interface ${i}`); });
-      Object.keys(e.components || {}).forEach((c) => { if (!comps.has(c)) fremd.push(`${e.name}: card ${c}`); });
-      (e.relations || []).forEach((x) => { if (!rels.has(x.type)) fremd.push(`${e.name}: relation ${x.type}`); });
-    });
-    const schwert = r.all.find((e) => e.name === 'Bastardschwert');
-    const kette = r.all.find((e) => /Kettenr/.test(e.name));
-    const grimm = r.all.find((e) => e.name === 'Grimmhauer' && e.interfaces[0] === 'Statblock');
-    return {
-      zahlen: { item: r.item.length, statblock: r.statblock.length, rules: r.rules.length },
-      fremd,
-      unknown: r.unknown,
-      schwert: schwert && { iface: schwert.interfaces[0], type: schwert.components.Item?.itemType,
-                            dmg: schwert.components.Weapon?.damage, fp: !!(schwert.components.Item||{}).rows },
-      kette: kette && { iface: kette.interfaces[0], ac: kette.components.Armor?.ac,
-                        bild: !!kette.components.Image?.url },
-      grimm: grimm && { size: grimm.components.StatblockInfo?.size, hp: grimm.components.StatblockInfo?.hp,
-                        speed: grimm.components.StatblockInfo?.speed },
-    };
-  }, fixtures);
-
-  pruefe('every vault note is recognised', imp.unknown.length === 0, imp.unknown);
-  pruefe('the import emits only names the registry knows', imp.fremd.length === 0, imp.fremd);
-  pruefe('items import as their subtype', imp.schwert?.iface === 'Weapon' && imp.kette?.iface === 'Armor', { s: imp.schwert, k: imp.kette });
-  pruefe('item fields land under the English keys', imp.schwert?.dmg === '1d8 / 1d10' && imp.kette?.ac === 16, { s: imp.schwert, k: imp.kette });
-  pruefe('the grid and the image survive', imp.schwert?.fp === true && imp.kette?.bild === true, { s: imp.schwert, k: imp.kette });
-  pruefe('statblock label lines land under the English keys', imp.grimm?.hp === 45 && /40ft/.test(imp.grimm?.speed ?? ''), imp.grimm);
-  pruefe('statblock sections become pooled rules', imp.zahlen.rules > 20, imp.zahlen);
-
-  pruefe('field kinds and import raised no exception', errs.length === 0, errs);
+  /* 5 — fiel weg: die Importer sind weg (2026-09-20). Was sie prüften —
+     englische Namen in der Ausgabe, deutsche Vault-Schlüssel beim Lesen —
+     gibt es nicht mehr zu prüfen, und ein Prüflauf gegen Code, den es nicht
+     gibt, sagt nur, dass er nicht da ist. */
 
   /* 6 — Ansichten als Werkzeugkasten, und ein Layout je Typ */
   await zumRegister(p, 'Views');
@@ -1421,7 +1377,10 @@ async function seite(datei, warten) {
      Die Information ist ein eigener Artikel. Geprüft wird die ganze Kette:
      anlegen, ein Feld zuteilen, einen Empfänger setzen — und dass das Feld
      danach nicht mehr in der offenen Gruppe steht. */
-  await neuerArtikel('Knowledge level', 'Probe lore');
+  /* Der Empfänger ist eine **Gruppe** — eine von vieren, die es sein
+     dürfen (Creature, Party, Faction, Group). Ein eigener „Wissensstand"
+     war ein zweiter Weg zu derselben Frage und ist weg. */
+  await neuerArtikel('Group', 'Probe lore');
   await oeffne('Probe hero');
   await p.waitForTimeout(350);
 
@@ -1500,6 +1459,52 @@ async function seite(datei, warten) {
   }));
   pruefe('the recipient shows in the panel',
     wEmpfaenger.panel.some((x) => /Probe lore/.test(x)), wEmpfaenger);
+
+  /* ---- Ein Bündel ----
+     Eine Information einzeln zuzuteilen ist die eine Hälfte; die andere
+     ist, mehrere als Ganzes zu übergeben. Ein Bündel ist ein Artikel wie
+     die Information und trägt dieselbe `knownBy`-Kante — wer es kennt,
+     kennt alles darin, ohne dass jemand die Zuteilungen einzeln nachzieht.
+
+     Vorher stand an der Stelle ein *Wissensstand*, dem Figuren über
+     `atLevel` angehörten: ein zweiter Weg zu derselben Frage, obwohl Party
+     und Group schon Empfänger sein konnten. Kein Artikel, keine Kante, in
+     zwei Jahren. */
+  const buendel = await p.evaluate(() => {
+    const T = window.__T__;
+    const info = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Information');
+    const wer = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'PlayerCharacter');
+    if (!info || !wer) return { fehlt: true };
+    /* Niemand kennt sie einzeln. */
+    const vorher = T.knowsInfo(info, wer.id);
+    const b = {
+      id: 'k_probe', interfaces: ['Knowledge'], name: 'Was man in der Gasse weiss',
+      components: { Identity: { name: 'Was man in der Gasse weiss', id: 'knowledge-9999', aliases: [] },
+                    Status: { status: 'used' } },
+      adhoc: [],
+      relations: [
+        { id: 'kb1', type: 'includes', to: info.id },
+        { id: 'kb2', type: 'knownBy', to: wer.id },
+      ],
+      createdAt: new Date().toISOString(),
+    };
+    T.ENT.set(b.id, b);
+    const antwort = {
+      vorher,
+      nachher: T.knowsInfo(info, wer.id),
+      drin: T.informationsIn(b).map((i) => i.id),
+      rueck: T.bundlesWith(info.id).map((x) => x.id),
+      /* Und jemand anderes kennt sie deshalb nicht. */
+      fremd: T.knowsInfo(info, 'gibt-es-nicht'),
+    };
+    T.ENT.delete(b.id);
+    return antwort;
+  });
+  pruefe('a bundle hands over every information in it',
+    !buendel.fehlt && buendel.vorher === false && buendel.nachher === true, buendel);
+  pruefe('and says what is in it, from both ends',
+    buendel.drin && buendel.drin.length === 1 && buendel.rueck.join() === 'k_probe', buendel);
+  pruefe('while everyone else still knows nothing', buendel.fremd === false, buendel);
 
   /* ---- C1/C2: Assets, Einstellungen ----
      Der Auflöser ist die einzige Stelle, die weiss, welche Sorte Verweis ein
@@ -2292,7 +2297,7 @@ async function seite(datei, warten) {
      beanstanden. */
   pruefe('every field is offered, and what is off is off on purpose',
     vorlage.felder > 10 && vorlage.an > 0
-    && vorlage.ausWoher.every((c) => ['StatblockInfo', 'Vitals', 'Skills'].includes(c)),
+    && vorlage.ausWoher.every((c) => ['Vitals', 'Skills'].includes(c)),
     { felder: vorlage.felder, an: vorlage.an, ausWoher: [...new Set(vorlage.ausWoher)] });
 
   /* Ein Klick nimmt ein Feld aus der Ansicht — und ein zweiter legt es
@@ -2559,10 +2564,14 @@ async function seite(datei, warten) {
      der Stand aus Vitals. Rechnet er falsch, steht am Tisch eine plausible
      Zahl da und niemand merkt es — deshalb gegen bekannte Werte geprüft. */
   const held = await p.evaluate(() => {
-    const m = [...window.__T__.ENT.values()].find((e) =>
-      (e.components || {}).Skills && (e.components || {}).StatblockInfo
+    const T = window.__T__;
+    /* Die Zahlen stehen am Statblock, nicht an der Figur: gesucht wird
+       eine, die einen hat — `statsOf` geht die Kante `belongsTo` zurück. */
+    const m = [...T.ENT.values()].find((e) =>
+      (e.components || {}).Skills
+      && Object.keys(T.statsOf(e).card).length
       && (e.relations || []).some((r) => r.type === 'carries'));
-    return m ? (m.name || (m.components.Imported || {}).text) : null;
+    return m ? m.name : null;
   });
   if (held) {
     await oeffne(held);
@@ -2672,6 +2681,36 @@ async function seite(datei, warten) {
     const jetzt = nachher.find((x) => /Diebeswerkzeug/.test(x.n));
     pruefe('an item can be picked up and put somewhere else',
       !!jetzt && jetzt.r !== vorher.r, { vorher, jetzt });
+
+    /* ---- Die Zahlen wohnen am Statblock ----
+     Auch die eines Spielercharakters: er hat mehr darüber hinaus, aber AC,
+     HP-Maximum und die sechs Werte sind dieselbe Sache wie bei jedem
+     Monster. Vorher trug er sie selbst, und der Bogen las „erst die eigene
+     Karte, dann die geliehene" — zwei Formen für dasselbe. */
+    const woher = await p.evaluate(() => {
+      const T = window.__T__;
+      const figuren = [...T.ENT.values()]
+        .filter((e) => ['PlayerCharacter', 'NPC'].includes((e.interfaces || [])[0]));
+      return {
+        eigene: figuren.filter((e) => (e.components || {}).StatblockInfo).map((e) => e.name),
+        /* Wer einen Statblock hat, liest ihn. Wer keinen hat, hat keine
+           Zahlen — und das ist richtig: der Händler am Lampenplatz kämpft
+           nicht, und eine frisch angelegte Figur hat noch nichts. Ihnen
+           einen Statblock zu geben, damit die Prüfung grün wird, hiesse
+           Daten für die Prüfung zu erfinden. */
+        mitKante: figuren.filter((e) => [...T.ENT.values()].some((o) =>
+          (o.relations || []).some((r) => r.type === 'belongsTo' && r.to === e.id)))
+          .map((e) => ({ n: e.name, liest: Object.keys(T.statsOf(e).card).length > 0 })),
+        /* Und der Statblock liest seine eigene Karte. */
+        amStatblock: [...T.ENT.values()]
+          .filter((e) => (e.interfaces || [])[0] === 'Statblock')
+          .every((e) => T.statsOf(e).from === e),
+      };
+    });
+    pruefe('no creature carries its own numbers any more', woher.eigene.length === 0, woher);
+    pruefe('and whoever has a statblock reads it — players included',
+      woher.mitKante.length >= 3 && woher.mitKante.every((x) => x.liest) && woher.amStatblock,
+      woher);
 
     pruefe('the sheet and the inventory raised no exception', errs.length === 0, errs);
   } else {

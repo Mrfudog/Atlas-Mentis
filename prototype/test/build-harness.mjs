@@ -92,7 +92,7 @@ window.claude = { use: async function(n){
    leere vom Seitenanfang — und eine Prüfung, die daraus liest, findet
    nichts und sagt nicht warum. Deshalb Zugriffsfunktionen statt Werte. */
 const GRIFF = `
-window.__T__={runImport:runImport,derivedValue:derivedValue,assetSrc:assetSrc,UI:UI,
+window.__T__={derivedValue:derivedValue,assetSrc:assetSrc,UI:UI,
   LAYOUT_ELEMENTS:LAYOUT_ELEMENTS,rollDice:rollDice,go:go,rollTable:rollTable,
   exportState:exportState,importReport:importReport,findByName:findByName,
   articleVisible:articleVisible,activeStack:activeStack,
@@ -102,6 +102,8 @@ window.__T__={runImport:runImport,derivedValue:derivedValue,assetSrc:assetSrc,UI
   entryAnchor:entryAnchor,ensureAnchors:ensureAnchors,
   anchorlessProse:anchorlessProse,backfillAnchors:backfillAnchors,
   proseFields:proseFields,proseOf:proseOf,allProse:allProse,
+  bundlesWith:bundlesWith,informationsIn:informationsIn,knowsInfo:knowsInfo,
+  statsOf:statsOf,
   fieldsOf:fieldsOf,fieldTitle:fieldTitle,titleSource:titleSource,
   nextId:nextId,idPrefix:idPrefix,articleId:articleId,
   entriesOf:entriesOf,entryRef:entryRef,putEntry:putEntry,dropEntry:dropEntry,
