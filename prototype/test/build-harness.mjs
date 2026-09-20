@@ -97,7 +97,8 @@ window.__T__={runImport:runImport,derivedValue:derivedValue,assetSrc:assetSrc,UI
   anchorFor:anchorFor,campaignVars:campaignVars,fillVars:fillVars,
   visibleRefs:visibleRefs,areaOf:areaOf,render:render,
   mapWalls:mapWalls,mapBarriers:mapBarriers,mapSheets:mapSheets,
-  drawnSheets:drawnSheets,blocksSight:blocksSight,blocksMove:blocksMove};
+  drawnSheets:drawnSheets,blocksSight:blocksSight,blocksMove:blocksMove,
+  applyMapTool:applyMapTool,frameAt:frameAt,areaShare:areaShare};
 Object.defineProperty(window.__T__,'REG',{get:function(){return REG;}});
 Object.defineProperty(window.__T__,'ENT',{get:function(){return ENT;}});
 `;

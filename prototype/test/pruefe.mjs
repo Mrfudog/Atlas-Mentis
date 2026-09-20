@@ -1169,6 +1169,47 @@ async function seite(datei, warten) {
     pruefe('zooming all the way out goes up to the map above',
       zurueck.raus === true, zurueck);
 
+    /* ---- Einen Rahmen verschieben ----
+       Ein Rahmen, den man nur neu aufziehen kann, wird beim ersten Vertun
+       neu aufgezogen — und die Unterkarte hängt danach zweimal. Geprüft
+       wird über `applyMapTool`, also über denselben Weg, den ein Zug auf
+       der Karte nimmt. */
+    await oeffne(kartenName);
+    await p.waitForTimeout(400);
+    const rahmen = await p.evaluate((id) => {
+      const T = window.__T__;
+      const e = T.ENT.get(id);
+      const kind = [...T.ENT.values()].find((o) =>
+        (o.relations || []).some((r) => r.type === 'insideMap' && r.to === id));
+      const rel = kind.relations.find((r) => r.type === 'insideMap');
+      rel.props = { x: 0.2, y: 0.2, w: 0.2, h: 0.2 };
+      const mitte = { x: 0.3, y: 0.3 };
+      const ecke = { x: 0.4, y: 0.4 };
+      T.UI.mapTool = 'area';
+      /* Aus der Mitte heraus: der Rahmen wandert mit. */
+      T.applyMapTool(e, (e.components || {}).MapInfo || {}, mitte, { x: 0.5, y: 0.45 });
+      const nachZug = Object.assign({}, kind.relations.find((r) => r.type === 'insideMap').props);
+      /* An der Ecke: er wird grösser, ohne den Ursprung zu bewegen. */
+      const r2 = kind.relations.find((r) => r.type === 'insideMap');
+      const jetzt = { x: r2.props.x + r2.props.w, y: r2.props.y + r2.props.h };
+      T.applyMapTool(e, (e.components || {}).MapInfo || {}, jetzt,
+        { x: jetzt.x + 0.15, y: jetzt.y + 0.15 });
+      const nachEcke = Object.assign({}, kind.relations.find((r) => r.type === 'insideMap').props);
+      /* Und daneben: das legt einen neuen an, nicht diesen um. Der Dialog
+         wird gleich wieder weggeklickt. */
+      T.UI.mapTool = '';
+      return { nachZug, nachEcke, ecke, kind: kind.id,
+        anzahl: [...T.ENT.values()].filter((o) =>
+          (o.relations || []).some((r) => r.type === 'insideMap' && r.to === id)).length };
+    }, karte);
+    await p.waitForTimeout(300);
+    pruefe('dragging inside a frame moves it, it does not make a new one',
+      Math.abs(rahmen.nachZug.x - 0.4) < 0.001 && Math.abs(rahmen.nachZug.y - 0.35) < 0.001
+      && Math.abs(rahmen.nachZug.w - 0.2) < 0.001, rahmen.nachZug);
+    pruefe('dragging its corner resizes it without moving its origin',
+      Math.abs(rahmen.nachEcke.x - rahmen.nachZug.x) < 0.001
+      && rahmen.nachEcke.w > rahmen.nachZug.w, rahmen.nachEcke);
+
     /* ---- Möbel statt Tokens ----
        Ein Möbel liegt auf der Karte, statt auf ihr zu stehen: kein Kreis,
        eine Drehung, und ein Seitenverhältnis, weil ein Tisch kein Quadrat

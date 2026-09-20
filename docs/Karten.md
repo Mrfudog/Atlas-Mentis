@@ -150,9 +150,19 @@ Dialog, mit Rückfrage.
 
 ---
 
+Mit dem Werkzeug *Sub-map* lässt sich ein gesetzter Rahmen auch wieder
+anfassen: aus der Mitte heraus ziehen verschiebt ihn, an seiner Ecke ändert
+die Grösse, und daneben entsteht ein neuer. Ein Rahmen, den man nur neu
+aufziehen kann, wird beim ersten Vertun neu aufgezogen — und die Unterkarte
+hängt danach zweimal.
+
+Die Ecke misst in Anteilen und nicht in Bildpunkten: auf einer
+herangezoomten Karte wäre eine Ecke von zwanzig Bildpunkten ein Fleck, auf
+einer herausgezoomten der halbe Rahmen.
+
+---
+
 ## Was noch fehlt
 
 - **Bewegung**, die `mapBarriers` auch auswertet.
-- **Rahmen nachträglich ändern**: ein Unterkartenrahmen wird aufgezogen,
-  aber noch nicht verschoben oder grösser gemacht.
 - **Mehrere Tokens auf einmal** verschieben.

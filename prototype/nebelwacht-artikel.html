@@ -6899,6 +6899,25 @@ function mapToolLayer(e,card,img){
   });
   return lay;
 }
+/* Welcher Unterkartenrahmen unter diesem Punkt liegt — und ob an seiner
+   Ecke. Die Ecke misst in Anteilen und nicht in Bildpunkten: auf einer
+   herangezoomten Karte wäre eine Ecke von zwanzig Bildpunkten ein Fleck,
+   auf einer herausgezoomten der halbe Rahmen. */
+var FRAME_ECKE=0.025;
+function frameAt(e,pt){
+  var treffer=null;
+  childMaps(e).forEach(function(k){
+    var pr=k.rel.props||{};
+    if(pr.x==null||pr.y==null)return;
+    var x=Number(pr.x)||0, y=Number(pr.y)||0;
+    var w=Number(pr.w)||0.12, h=Number(pr.h)||0.12;
+    if(pt.x<x||pt.x>x+w||pt.y<y||pt.y>y+h)return;
+    var ecke=Math.abs(pt.x-(x+w))<FRAME_ECKE&&Math.abs(pt.y-(y+h))<FRAME_ECKE;
+    /* Der zuletzt gezeichnete liegt obenauf, also gewinnt er. */
+    treffer={map:k.map,rel:k.rel,ecke:ecke};
+  });
+  return treffer;
+}
 function applyMapTool(e,card,a,b){
   var t=UI.mapTool, winzig=Math.abs(b.x-a.x)<0.005&&Math.abs(b.y-a.y)<0.005;
   if(t==="wall"){
@@ -6919,6 +6938,27 @@ function applyMapTool(e,card,a,b){
         x1:a.x,y1:a.y,x2:b.x,y2:b.y}]);
     }
   } else if(t==="area"){
+    /* Fängt der Zug an einem Rahmen an, gilt er dem Rahmen: an der Ecke
+       wird die Grösse geändert, sonst wird geschoben. Ein Rahmen, den man
+       nur neu aufziehen kann, wird beim ersten Vertun neu aufgezogen — und
+       die Unterkarte hängt danach zweimal. */
+    var fass=frameAt(e,a);
+    if(fass){
+      var pr=Object.assign({},fass.rel.props||{});
+      if(fass.ecke){
+        pr.w=Math.max(0.02,Math.min(1-(Number(pr.x)||0),b.x-(Number(pr.x)||0)));
+        pr.h=Math.max(0.02,Math.min(1-(Number(pr.y)||0),b.y-(Number(pr.y)||0)));
+      } else {
+        var bw=Number(pr.w)||0.12, bh=Number(pr.h)||0.12;
+        pr.x=Math.max(0,Math.min(1-bw,(Number(pr.x)||0)+(b.x-a.x)));
+        pr.y=Math.max(0,Math.min(1-bh,(Number(pr.y)||0)+(b.y-a.y)));
+      }
+      fass.rel.props=pr;
+      /* Der Rahmen steht am Kind — es nennt sein Elternteil, und nur
+         vorwärts. Also wird das Kind geschrieben und nicht diese Karte. */
+      persist(fass.map);
+      return;
+    }
     /* Der Rahmen einer Unterkarte wird aufgezogen und nicht in die Mitte
        gelegt: eine Karte, die zeigt, *wo* sie liegt, ist der halbe Zweck
        der Verschachtelung. */
@@ -7120,7 +7160,7 @@ function fogTools(e,card){
   var n=(card.reveal||[]).length, w=(card.walls||[]).length;
   var tuer=(card.walls||[]).filter(function(x){return (x.kind||"wall")==="door";}).length;
   var wie=UI.mapTool==="wall"?" · drag to build, click a door to open or shut it":
-          UI.mapTool==="area"?" · drag the frame the sub-map covers":
+          UI.mapTool==="area"?" · drag a new frame, or move one you have \u2014 its corner resizes it":
           UI.mapTool?" · drag on the map":"";
   bar.appendChild(el("span",{class:"hint",style:"margin:0;align-self:center",
     text:n+" uncovered · "+w+" barrier"+(w===1?"":"s")+
