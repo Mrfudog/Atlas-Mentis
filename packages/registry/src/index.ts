@@ -34,6 +34,13 @@ export const settings: Record<string, string> = {
   /* Blockarten, die ein Spieler nicht sieht. Als Einstellung, weil eine
      Kampagne das anders halten darf. */
   gmBlockTypes: 'secret,tactics',
+  /* Reisezehrung (REQ-170): alle wie viele Knoten eine Ration und ein
+     Licht fällig werden. Null schaltet die Zählung ab. */
+  travelRationEvery: '3',
+  travelLightEvery: '4',
+  travelWatchesPerDay: '3',
+  /* Was eine Figur an einem Knoten tun kann (REQ-171). */
+  travelActions: 'scout,forage,craft,rest,guard,tend the fire',
   conditions:
     'blinded,charmed,deafened,frightened,grappled,incapacitated,invisible,' +
     'paralysed,petrified,poisoned,prone,restrained,stunned,unconscious',

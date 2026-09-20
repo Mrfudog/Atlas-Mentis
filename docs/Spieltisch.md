@@ -36,6 +36,10 @@ Stelle, um Code zu schreiben.
 | Sitzung live | `SessionState` | `live` |
 | Tabellen | `TableInfo`, `Table`, `entry` / `tableFor` | `table` |
 | Vorbereitung | `Todos` | `prep` |
+| Sicherung | — (Register + Artikel als eine Datei) | — (Registerreiter) |
+| Regeln | `RuleInfo.autolink` | — (eigener Einstieg) |
+| Decknamen | `Identity.cover` | — (im Namen selbst) |
+| Punktreise | `Explored`, `TravelInfo`, `route` | `crawl` |
 
 ---
 
@@ -145,13 +149,14 @@ ihn niemand, der später dazukommt — und das merkte man erst am Tisch.
 3. **Ebenen und Stapelauflösung** (REQ-004 bis 007). Der Prototyp kennt eine
    Kampagne; die Ebenen sind der grösste Brocken, den das Rückgrat noch
    nicht trägt.
-4. **Regelbrowser und Regelverweise im Text** (REQ-091, 098, 175, 099).
-   `Rule` gibt es, `composedOf` löst auf — aber es gibt keine Suche, keine
-   Ablage und kein automatisches Erkennen im Fliesstext.
-5. **Blockanker.** Wissen an Blöcken hängt an der Block-Id; `Block.anchor`
+4. **Blockanker.** Wissen an Blöcken hängt an der Block-Id; `Block.anchor`
    ist vorgesehen, wird aber nicht vergeben.
-6. **Punktreise und Erkundung** (REQ-168 bis 171). Ein ganzer Bereich, für
-   den es noch keine Zeile gibt.
+5. **Gebietsraster auf der Karte** (REQ-193) und **Kartenkacheln**
+   (REQ-138). Beides braucht eine Zeichenfläche.
+6. **Ruf und Beziehungen** (REQ-030, 081). Die Kantenlast dafür steht, aber
+   nichts rechnet sie aus.
+7. **Handwerk mit Zeit** (REQ-184 zur Hälfte): Zeit und Probe stehen am
+   Rezept, aber niemand würfelt sie und niemand zählt Tage.
 
 ---
 
@@ -178,3 +183,5 @@ und zum Wegwerfen gedacht:
   der Kerzengasse vorkommt.
 - **Sitzung 12** mit laufendem Kampf, Karte auf dem Tisch und drei offenen
   Punkten.
+- **Unterwacht**, eine Punktreise aus fünf Knoten mit Sinneseindrücken an
+  den Wegen — einer davon muss erst gefunden werden.

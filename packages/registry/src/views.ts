@@ -312,4 +312,22 @@ export const views: Record<string, ViewDef> = {
       { id: 'p-b', el: 'blocks', blocks: ['note'] },
     ],
   },
+
+  /** Die Punktreise: wo die Gruppe steht und wohin es von dort geht. */
+  crawl: {
+    label: 'Travel',
+    order: 19,
+    fields: ['LocationInfo', 'Explored'],
+    blocks: ['readaloud', 'lore'],
+    description: true,
+    composed: false,
+    relations: true,
+    bindings: false,
+    image: false,
+    layout: [
+      { id: 'cr-crawl', el: 'crawl' },
+      { id: 'cr-desc', el: 'description' },
+      { id: 'cr-b', el: 'blocks', blocks: ['readaloud', 'lore'] },
+    ],
+  },
 };

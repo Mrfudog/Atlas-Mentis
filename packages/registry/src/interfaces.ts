@@ -65,7 +65,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Place',
     label: 'Place',
     extends: ['Base'],
-    allows: ['LocationInfo'],
+    allows: ['LocationInfo', 'Explored'],
     blockTypes: ['+lore', '+readaloud', '+secret'],
   },
 
@@ -147,7 +147,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Party',
     label: 'Party',
     extends: ['Base'],
-    allows: ['PartyInfo', 'Access'],
+    allows: ['PartyInfo', 'Access', 'TravelInfo'],
     blockTypes: ['+lore', '+note'],
   },
 

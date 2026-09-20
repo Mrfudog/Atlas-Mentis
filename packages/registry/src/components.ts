@@ -850,4 +850,60 @@ export const components: Record<string, ComponentDef> = {
       },
     },
   },
+
+  /**
+   * Erkundungsstand eines Ortes (REQ-169). Drei Stufen, nicht zwei:
+   * „verborgen" heisst, die Gruppe weiss nicht einmal, dass es ihn gibt;
+   * „entdeckt" heisst, sie weiss davon und war nicht dort; „erkundet"
+   * heisst, sie war da. Zwei Stufen könnten „wir haben davon gehört" nicht
+   * abbilden, und genau daraus entsteht das Reisen.
+   *
+   * Das ist nicht dasselbe wie Sichtbarkeit und nicht dasselbe wie Wissen:
+   * ein Ort kann bekannt und trotzdem unerkundet sein.
+   */
+  Explored: {
+    name: 'Explored',
+    label: 'Exploration',
+    engine: 'Travel',
+    schema: {
+      type: 'object',
+      properties: {
+        state: {
+          type: 'string',
+          title: 'State',
+          enum: ['hidden', 'discovered', 'explored'],
+          default: 'hidden',
+        },
+        since: { type: 'string', title: 'Since' },
+        /* Was beim Ankommen vorgelesen wird — an den Ort, nicht an die
+           Kante: man kommt auf mehreren Wegen an und sieht dasselbe. */
+        arrival: { type: 'string', format: 'long', title: 'On arrival' },
+      },
+    },
+  },
+
+  /**
+   * Wo die Gruppe gerade ist und was die Reise bisher gekostet hat
+   * (REQ-170). Die Zehrung zählt Knoten, nicht Stunden: ein Punktreise-Zug
+   * ist die Einheit, in der am Tisch gerechnet wird.
+   */
+  TravelInfo: {
+    name: 'TravelInfo',
+    label: 'Travel',
+    engine: 'Travel',
+    schema: {
+      type: 'object',
+      properties: {
+        at: { type: 'string', format: 'link', title: 'Currently at' },
+        day: { type: 'number', title: 'Day', default: 1 },
+        watch: { type: 'number', title: 'Watch', default: 1 },
+        sinceRation: { type: 'number', title: 'Nodes since rations', default: 0 },
+        sinceLight: { type: 'number', title: 'Nodes since light', default: 0 },
+        /* Was jede Figur an diesem Knoten tut (REQ-171): Figur → Handlung.
+           Wird beim Weiterziehen geleert, weil eine Handlung zum Knoten
+           gehört und nicht zur Figur. */
+        actions: { type: 'object', title: 'Actions at this node' },
+      },
+    },
+  },
 };

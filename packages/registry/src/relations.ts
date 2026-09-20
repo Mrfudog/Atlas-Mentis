@@ -481,4 +481,31 @@ export const relations: Record<string, RelationDef> = {
     from: ['Place', 'Story', 'Encounter'],
     to: ['Table'],
   },
+
+  // ---------------------------------------------------------------- travel
+
+  /**
+   * Ein Weg zwischen zwei Orten (REQ-168). Der Sinneseindruck steht an der
+   * Kante, nicht am Ziel: was man unterwegs hört und riecht, hängt vom Weg
+   * ab — dieselbe Lichtung riecht von der Sumpfseite anders als vom Grat.
+   * Genau das ist der Grund, warum eine Punktreise mehr ist als eine Liste
+   * von Orten.
+   */
+  route: {
+    type: 'route',
+    label: 'leads to',
+    inverseLabel: 'reached from',
+    from: ['Place'],
+    to: ['Place'],
+    props: {
+      type: 'object',
+      properties: {
+        hours: { type: 'number', title: 'Hours' },
+        terrain: { type: 'string', title: 'Terrain' },
+        signal: { type: 'string', format: 'long', title: 'What you sense on the way' },
+        hidden: { type: 'boolean', title: 'Has to be found' },
+        oneWay: { type: 'boolean', title: 'One way only' },
+      },
+    },
+  },
 };

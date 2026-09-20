@@ -106,7 +106,8 @@ export type LayoutElementKind =
   | 'timeline'
   | 'live'
   | 'table'
-  | 'prep';
+  | 'prep'
+  | 'crawl';
 
 /**
  * One element of a view's layout. A view is an ordered list of these, so the

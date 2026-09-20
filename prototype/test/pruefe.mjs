@@ -2128,6 +2128,81 @@ async function seite(datei, warten) {
     pruefe('rule elements exist in the data', false, hatRegeln);
   }
 
+  /* ---- Punktreise (REQ-168 bis 171) ----
+     Eine Punktreise ist ein Graph, keine Karte: von jedem Knoten geht es
+     nur dorthin, wohin jemand einen Weg gelegt hat. Prüfbar ist daran, dass
+     sich die Wege ändern, wenn die Gruppe weiterzieht — und dass Zeit und
+     Zehrung dabei laufen. */
+  const reise = await p.evaluate(() => {
+    const T = window.__T__;
+    const eltern = [...T.ENT.values()].find((e) => {
+      if ((e.interfaces || [])[0] !== 'Place') return false;
+      const kinder = [...T.ENT.values()].filter((o) =>
+        (o.relations || []).some((r) => r.type === 'partOf' && r.to === e.id));
+      return kinder.length >= 3
+        && kinder.some((k) => (k.relations || []).some((r) => r.type === 'route'));
+    });
+    return eltern ? eltern.id : null;
+  });
+  if (reise) {
+    await oeffneId(reise);
+    await p.evaluate(() => {
+      const f = document.getElementById('facet');
+      f.value = 'crawl';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(550);
+    const lies2 = () => p.evaluate(() => ({
+      kopf: [...document.querySelectorAll('.crawl .maptools .pill')].map((x) => x.textContent),
+      spalten: [...document.querySelectorAll('.crcol')].map((c) => ({
+        k: c.querySelector('.ck').textContent,
+        n: [...c.querySelectorAll('.crnode b')].map((b) => b.textContent) })),
+      hier: document.querySelector('.crnode.here b')?.textContent ?? null,
+      wege: [...document.querySelectorAll('.crway .ck .ref')].map((x) => x.textContent),
+      signale: [...document.querySelectorAll('.crway .cb')].length,
+      handlungen: [...document.querySelectorAll('.cractions .rl')].map((x) => x.textContent),
+      probleme: [...document.querySelectorAll('.pruef li')].map((x) => x.textContent),
+    }));
+    const vor2 = await lies2();
+    pruefe('the crawl orders its nodes by distance from where you stand',
+      vor2.spalten.length >= 2 && vor2.spalten[0].k === 'here'
+      && vor2.spalten[0].n.length === 1, vor2.spalten);
+    /* Der Sinneseindruck steht an der Kante: jeder Weg bringt seinen
+       eigenen mit, und das ist der Unterschied zu einer Liste von Orten. */
+    pruefe('every way carries its own sensory line',
+      vor2.wege.length >= 2 && vor2.signale === vor2.wege.length,
+      { wege: vor2.wege, signale: vor2.signale });
+    pruefe('the crawl validates clean', vor2.probleme.length === 0, vor2.probleme);
+    pruefe('each character gets one action at this node',
+      vor2.handlungen.length >= 1, vor2.handlungen);
+    /* Tag, Wache und Zehrung stehen da — sonst führt sie niemand nach. */
+    pruefe('day, watch and provisions are on the bar',
+      vor2.kopf.some((t) => /Day \d+, watch \d+/.test(t))
+      && vor2.kopf.some((t) => /rations in/.test(t)), vor2.kopf);
+
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.crway .btn')].find((b) => /Travel/.test(b.textContent)).click());
+    await p.waitForTimeout(650);
+    const nach2 = await lies2();
+    pruefe('travelling moves the party and re-draws the ways',
+      nach2.hier !== vor2.hier
+      && JSON.stringify(nach2.wege) !== JSON.stringify(vor2.wege), { vor2: vor2.hier, nach2: nach2.hier });
+    /* Ankommen deckt auf, wohin es weitergeht — sonst müsste die
+       Spielleitung jede Kante von Hand freischalten und vergisst die
+       halben. */
+    pruefe('arriving reveals where it goes on from there',
+      nach2.wege.length >= 2, nach2.wege);
+    const zahl = (t) => { const m = /in (\d+)/.exec(t || ''); return m ? Number(m[1]) : null; };
+    const vorR = zahl(vor2.kopf.find((t) => /rations in/.test(t)));
+    const nachR = zahl(nach2.kopf.find((t) => /rations in/.test(t)));
+    pruefe('a node of travel costs a watch and a step of provisions',
+      nachR !== null && vorR !== null && nachR === vorR - 1
+      && nach2.kopf.join() !== vor2.kopf.join(), { vorR, nachR });
+    pruefe('the crawl raised no exception', errs.length === 0, errs);
+  } else {
+    pruefe('a point-crawl exists in the data', false, 'keine gefunden');
+  }
+
   pruefe('knowledge needed no browser modal', modale.length === 0, modale);
   pruefe('no exception through the knowledge panel', errs.length === 0, errs);
 

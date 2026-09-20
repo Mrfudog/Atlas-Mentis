@@ -395,6 +395,26 @@ table.atk tr.stowed td,table.atk tr.buried td{color:var(--dim)}
   display:block}
 .gitem i.off{background:transparent;border-color:transparent}
 .gitem.selected i.on{background:var(--accent);border-color:var(--accent)}
+/* Punktreise: Knoten nach Abstand, Wege mit ihrem Eindruck. */
+.crgraph{display:flex;gap:14px;overflow-x:auto;padding:8px 0;margin:6px 0}
+.crcol{display:flex;flex-direction:column;gap:6px;min-width:150px}
+.crcol .ck{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
+.crnode{display:flex;flex-direction:column;align-items:flex-start;gap:1px;
+  border:1px solid var(--line);border-radius:var(--r);padding:6px 9px;
+  background:var(--surface);cursor:pointer;text-align:left}
+.crnode b{font-family:var(--ff-disp);font-size:14px;font-weight:700}
+.crnode em{font-style:normal;font-family:var(--ff-mono);font-size:10.5px;color:var(--dim)}
+.crnode.s-hidden{opacity:.5;border-style:dashed}
+.crnode.s-discovered{border-color:var(--line2)}
+.crnode.s-explored{border-color:var(--ok)}
+.crnode.here{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.crway{border-left:3px solid var(--line2);padding:6px 0 6px 12px;margin-bottom:8px}
+.crway .ck{display:flex;flex-wrap:wrap;gap:7px;align-items:baseline}
+.crway .ck .ref{font-family:var(--ff-disp);font-size:15px}
+.crway .cb{margin-top:3px;font-size:13.5px}
+.cractions{display:flex;flex-direction:column;gap:3px}
+.cractions .rl{font-size:12.5px;color:var(--ink);min-width:150px}
+
 /* Vorbereitung: vier Listen, die es ohne dieses Element auch gäbe. */
 .prep .addbar.quick{margin-bottom:12px}
 .prep .addbar.quick input.i{flex:1;min-width:180px}
@@ -2108,7 +2128,7 @@ var LAYOUT_ELEMENTS=[
   ["description","Description"],["blocks","Text blocks"],
   ["composed","Composed rules"],["relations","Relations"],["image","Image"],
   ["knowledge","Knowledge groups"],["map","Map"],["sheet","Character sheet"],["inventory","Inventory"],["crafting","Crafting"],["board","Board"],["initiative","Initiative"],
-  ["quests","Quest board"],["timeline","Timeline"],["live","Live"],["table","Table"],["prep","Prep board"]
+  ["quests","Quest board"],["timeline","Timeline"],["live","Live"],["table","Table"],["prep","Prep board"],["crawl","Point-crawl"]
 ];
 function layoutOf(vw,ifn){
   var by=vw.byInterface||{};
@@ -2153,6 +2173,7 @@ function renderLayoutItem(item,e,ifn,vw){
     case "live":        return elLive(e,ifn,item);
     case "table":       return elTable(e,ifn,item);
     case "prep":        return elPrep(e,ifn,item);
+    case "crawl":       return elCrawl(e,ifn,item);
     default:            return null;
   }
 }
@@ -2319,6 +2340,307 @@ function elRelations(e){
     row.appendChild(rv);
     wrap.appendChild(row);
   });
+  return wrap;
+}
+
+/* ---------- Punktreise und Erkundung (REQ-168 bis 171) ----------
+   Eine Punktreise ist kein Ausschnitt einer Karte, sondern ein Graph: Orte
+   und Wege dazwischen. Der Unterschied ist nicht Darstellung — auf einer
+   Karte ist jeder Punkt von jedem erreichbar, im Graph nur die, zwischen
+   denen jemand einen Weg gelegt hat. Genau das macht Reisen zu einer
+   Entscheidung.
+
+   **Der Sinneseindruck steht an der Kante, nicht am Ziel.** Was man
+   unterwegs hört und riecht, hängt vom Weg ab: dieselbe Lichtung riecht von
+   der Sumpfseite anders als vom Grat. Das ist der Grund, warum eine
+   Punktreise mehr ist als eine Liste von Orten.
+
+   **Drei Erkundungsstufen, nicht zwei.** „Verborgen" heisst, die Gruppe
+   weiss nicht einmal, dass es den Ort gibt; „entdeckt" heisst, sie weiss
+   davon und war nicht dort; „erkundet" heisst, sie war da. Zwei Stufen
+   könnten „wir haben davon gehört" nicht abbilden, und daraus entsteht das
+   halbe Spiel.
+
+   Angeordnet wird von selbst — nach Abstand vom Standort. Koordinaten je
+   Knoten zu speichern hiesse, sie bei jeder neuen Kante nachzuziehen. */
+var EXPL_COMP="Explored", TRAVEL_COMP="TravelInfo", REL_ROUTE="route";
+var EXPL_STATES=[["hidden","Hidden"],["discovered","Known of"],["explored","Been there"]];
+
+function explOf(e){ return ((e.components||{})[EXPL_COMP]||{}).state||"hidden"; }
+function setExpl(e,st){
+  e.components=e.components||{};
+  e.components[EXPL_COMP]=Object.assign({},e.components[EXPL_COMP]||{},
+    {state:st,since:new Date().toISOString().slice(0,10)});
+  persist(e);
+}
+function routesFrom(e){
+  var out=[];
+  (e.relations||[]).forEach(function(r){
+    if(r.type!==REL_ROUTE)return;
+    var t=ENT.get(r.to); if(!t)return;
+    out.push({rel:r,to:t,props:r.props||{},back:false});
+  });
+  /* Die Gegenrichtung ist eine Abfrage, keine zweite Kante — ausser der Weg
+     ist ausdrücklich einseitig. Ein gespiegeltes Gegenstück verwaist. */
+  ENT.forEach(function(o){
+    (o.relations||[]).forEach(function(r){
+      if(r.type!==REL_ROUTE||r.to!==e.id)return;
+      if((r.props||{}).oneWay)return;
+      out.push({rel:r,to:o,props:r.props||{},back:true});
+    });
+  });
+  return out;
+}
+/* Die Gruppe, die reist: die erste mit einer Reisekarte. Mehrere Gruppen
+   wären mehrere Karten — das trägt das Modell, die Oberfläche nimmt die
+   erste. */
+function travellingParty(){
+  var hit=null;
+  ENT.forEach(function(e){
+    if(hit)return;
+    if((e.components||{})[TRAVEL_COMP]) hit=e;
+  });
+  if(hit)return hit;
+  ENT.forEach(function(e){
+    if(hit)return;
+    if(((e.interfaces||[])[0])==="Party") hit=e;
+  });
+  return hit;
+}
+function travelCard(p2){ return ((p2&&p2.components)||{})[TRAVEL_COMP]||{}; }
+
+/* Abstand vom Standort, damit die Knoten sich von selbst ordnen. */
+function crawlLayers(start,knoten){
+  var idx={}; knoten.forEach(function(k){ idx[k.id]=k; });
+  var tiefe={}, rand=[start&&start.id].filter(Boolean), t=0;
+  if(rand.length) tiefe[rand[0]]=0;
+  while(rand.length&&t<12){
+    var naechste=[];
+    rand.forEach(function(id){
+      var e=ENT.get(id); if(!e)return;
+      routesFrom(e).forEach(function(w){
+        if(!idx[w.to.id]||tiefe[w.to.id]!==undefined)return;
+        tiefe[w.to.id]=t+1; naechste.push(w.to.id);
+      });
+    });
+    rand=naechste; t++;
+  }
+  var max=0;
+  Object.keys(tiefe).forEach(function(k){ max=Math.max(max,tiefe[k]); });
+  knoten.forEach(function(k){ if(tiefe[k.id]===undefined) tiefe[k.id]=max+1; });
+  var reihen={};
+  knoten.forEach(function(k){ (reihen[tiefe[k.id]]=reihen[tiefe[k.id]]||[]).push(k); });
+  return {tiefe:tiefe,reihen:reihen};
+}
+
+function elCrawl(e,ifn,item){
+  var wrap=el("div",{class:"crawl"});
+  /* Die Knoten sind die Orte unter diesem Ort — `partOf`, dieselbe Kante
+     wie überall. Ein eigenes „Punktreise"-Konstrukt wäre das erste Element,
+     das dem Rückgrat nicht folgt. */
+  var knoten=[];
+  ENT.forEach(function(o){
+    if(((o.interfaces||[])[0])!=="Place")return;
+    if(!(o.relations||[]).some(function(r){ return r.type==="partOf"&&r.to===e.id; }))return;
+    if(!articleVisible(o))return;
+    knoten.push(o);
+  });
+  if(!knoten.length){
+    wrap.appendChild(el("p",{class:"hint",
+      text:"No nodes here. A point-crawl is made of places that sit inside this one (partOf) with routes between them."}));
+    return wrap;
+  }
+  knoten.sort(function(a,b){return nameOf(a).localeCompare(nameOf(b),"de");});
+
+  var gruppe=travellingParty();
+  var karte=travelCard(gruppe);
+  var hier=karte.at&&ENT.get(karte.at);
+  if(hier&&knoten.indexOf(hier)<0) hier=null;
+  var lagen=crawlLayers(hier,knoten);
+
+  /* Kopfzeile: Tag, Wache, Zehrung. Die Zahlen, nach denen am Tisch gefragt
+     wird — und die niemand nachführt, wenn sie nicht dastehen. */
+  if(gruppe){
+    var bar=el("div",{class:"maptools"});
+    if(inPlacement) bar.style.display="none";
+    bar.appendChild(el("span",{class:"pill",text:nameOf(gruppe)}));
+    bar.appendChild(el("span",{class:"pill q",text:"Day "+(karte.day||1)+", watch "+(karte.watch||1)}));
+    var jeRation=settingNum("travelRationEvery",3);
+    var jeLicht=settingNum("travelLightEvery",4);
+    if(jeRation>0){
+      var offen=jeRation-((karte.sinceRation||0)%jeRation);
+      bar.appendChild(el("span",{class:"pill q"+(offen===jeRation?"":""),
+        text:"rations in "+(offen===jeRation?jeRation:offen)}));
+    }
+    if(jeLicht>0){
+      var offenL=jeLicht-((karte.sinceLight||0)%jeLicht);
+      bar.appendChild(el("span",{class:"pill q",
+        text:"light in "+(offenL===jeLicht?jeLicht:offenL)}));
+    }
+    if(canWrite()&&hier) bar.appendChild(el("button",{class:"btn sm gh",type:"button",
+      title:"A watch passes without moving",
+      onclick:function(){ zeitVergeht(gruppe,karte,0); }},"Wait a watch"));
+    wrap.appendChild(bar);
+  }
+
+  function zeitVergeht(g,k,knotenSchritt){
+    var wachen=Math.max(1,settingNum("travelWatchesPerDay",3));
+    var w=(Number(k.watch)||1)+1, d=Number(k.day)||1;
+    if(w>wachen){ w=1; d++; }
+    var patch={watch:w,day:d};
+    if(knotenSchritt){
+      patch.sinceRation=(Number(k.sinceRation)||0)+1;
+      patch.sinceLight=(Number(k.sinceLight)||0)+1;
+      patch.actions={};                    /* Handlungen gehören zum Knoten */
+    }
+    g.components=g.components||{};
+    g.components[TRAVEL_COMP]=Object.assign({},k,patch);
+    persist(g);
+  }
+  function zieheNach(g,k,ziel){
+    /* Ankommen heisst erkunden, und erkunden deckt auf, wohin es von dort
+       weitergeht (REQ-169) — sonst müsste die Spielleitung jede Kante von
+       Hand freischalten und vergisst die halben. */
+    setExpl(ziel,"explored");
+    routesFrom(ziel).forEach(function(w){
+      if((w.props||{}).hidden)return;
+      if(explOf(w.to)==="hidden") setExpl(w.to,"discovered");
+    });
+    g.components=g.components||{};
+    g.components[TRAVEL_COMP]=Object.assign({},k,{at:ziel.id});
+    persist(g);
+    zeitVergeht(g,Object.assign({},k,{at:ziel.id}),1);
+  }
+
+  /* Der Graph. Reihen nach Abstand vom Standort, Kanten als Linien. */
+  var reihenIdx=Object.keys(lagen.reihen).map(Number).sort(function(a,b){return a-b;});
+  var graph=el("div",{class:"crgraph"});
+  reihenIdx.forEach(function(t){
+    var sp=el("div",{class:"crcol"});
+    sp.appendChild(el("div",{class:"ck",text:t===0?"here":(t>99?"unlinked":t+" away")}));
+    lagen.reihen[t].forEach(function(k){
+      var st=explOf(k);
+      var b=el("button",{class:"crnode s-"+st+(hier&&k.id===hier.id?" here":""),type:"button",
+        onclick:function(){ go({k:"art",id:k.id}); }});
+      b.appendChild(el("b",{text:st==="hidden"&&!isGM()?"?":nameOf(k)}));
+      var wege=routesFrom(k).length;
+      b.appendChild(el("em",{text:wege+(wege===1?" way":" ways")}));
+      sp.appendChild(b);
+    });
+    graph.appendChild(sp);
+  });
+  wrap.appendChild(graph);
+
+  /* Von hier aus: die Wege mit ihrem Sinneseindruck. Das ist die Ansicht,
+     die am Tisch benutzt wird — alles andere ist Übersicht. */
+  if(hier){
+    wrap.appendChild(el("div",{class:"sec",text:"From "+nameOf(hier)}));
+    var ankunft=((hier.components||{})[EXPL_COMP]||{}).arrival;
+    if(ankunft) wrap.appendChild(el("div",{class:"blk readaloud"},[para(fillVars(ankunft,null,hier))]));
+    var wege=routesFrom(hier).filter(function(w){
+      if(!isGM()&&(w.props||{}).hidden&&explOf(w.to)==="hidden")return false;
+      return true;
+    });
+    if(!wege.length) wrap.appendChild(el("p",{class:"hint",text:"No way on from here."}));
+    wege.forEach(function(w){
+      var box=el("div",{class:"crway"});
+      var kopf=el("div",{class:"ck"});
+      kopf.appendChild(el("button",{class:"ref",type:"button",
+        onclick:function(){go({k:"art",id:w.to.id});}},
+        explOf(w.to)==="hidden"&&!isGM()?"somewhere unknown":nameOf(w.to)));
+      if(w.props.hours) kopf.appendChild(el("span",{class:"pill q",text:w.props.hours+" h"}));
+      if(w.props.terrain) kopf.appendChild(el("span",{class:"pill q",text:w.props.terrain}));
+      if(w.props.hidden) kopf.appendChild(el("span",{class:"pill q",text:"has to be found"}));
+      if(w.back) kopf.appendChild(el("span",{class:"co",text:"back the way you came"}));
+      if(gruppe&&canWrite()) kopf.appendChild(el("button",{class:"btn sm pri",type:"button",
+        onclick:function(){ zieheNach(gruppe,travelCard(gruppe),w.to); }},"Travel"));
+      box.appendChild(kopf);
+      if(w.props.signal) box.appendChild(para(fillVars(w.props.signal,null,hier),"cb"));
+      wrap.appendChild(box);
+    });
+
+    /* Handlungsbudget (REQ-171): eine Handlung je Figur und Knoten. */
+    if(gruppe){
+      var figuren=[];
+      ENT.forEach(function(o){
+        if(!(o.relations||[]).some(function(r){
+          return r.type==="memberOfParty"&&r.to===gruppe.id; }))return;
+        if(articleVisible(o)) figuren.push(o);
+      });
+      if(figuren.length){
+        wrap.appendChild(el("div",{class:"sec",text:"At this node"}));
+        var moeglich=String(setting("travelActions","scout,forage,rest"))
+          .split(",").map(function(x){return x.trim();}).filter(Boolean);
+        var tat=karte.actions||{};
+        var ab=el("div",{class:"cractions"});
+        figuren.forEach(function(f){
+          var row=el("div",{class:"crowlite"});
+          row.appendChild(el("span",{class:"rl",text:nameOf(f)}));
+          var sel=el("select",{class:"bsel"});
+          sel.appendChild(el("option",{value:""},"— nothing —"));
+          moeglich.forEach(function(a){ sel.appendChild(el("option",{value:a},a)); });
+          sel.value=tat[f.id]||"";
+          if(!canWrite()) sel.disabled=true;
+          sel.addEventListener("change",function(){
+            var neu=Object.assign({},tat);
+            if(sel.value) neu[f.id]=sel.value; else delete neu[f.id];
+            gruppe.components=gruppe.components||{};
+            gruppe.components[TRAVEL_COMP]=Object.assign({},karte,{actions:neu});
+            persist(gruppe);
+          });
+          row.appendChild(sel);
+          ab.appendChild(row);
+        });
+        wrap.appendChild(ab);
+        wrap.appendChild(el("p",{class:"hint",
+          text:"One action each per node. Moving on clears them — an action belongs to the node, not to the character."}));
+      }
+    }
+  } else if(gruppe){
+    wrap.appendChild(el("p",{class:"hint",
+      text:"The party is not on this crawl yet. Open a node and set it as where they are."}));
+    if(canWrite()){
+      var setz=el("select",{class:"i",style:"width:auto"});
+      setz.appendChild(el("option",{value:""},"— put the party at …"));
+      knoten.forEach(function(k){ setz.appendChild(el("option",{value:k.id},nameOf(k))); });
+      setz.addEventListener("change",function(){
+        if(!setz.value)return;
+        var ziel=ENT.get(setz.value);
+        gruppe.components=gruppe.components||{};
+        gruppe.components[TRAVEL_COMP]=Object.assign({},karte,{at:setz.value});
+        persist(gruppe);
+        if(ziel) setExpl(ziel,"explored");
+      });
+      wrap.appendChild(setz);
+    }
+  }
+
+  /* Die Spielleitung stellt die Stufen von Hand um — der Aufdeckschritt
+     beim Ankommen nimmt ihr die Regelfälle ab, nicht die Ausnahmen. */
+  if(isGM()&&canWrite()){
+    wrap.appendChild(el("div",{class:"sec",text:"What they know"}));
+    var tabelle=el("table",{class:"craftm"});
+    var hd=el("tr");
+    ["Node","State","Ways"].forEach(function(h){ hd.appendChild(el("th",{text:h})); });
+    tabelle.appendChild(hd);
+    knoten.forEach(function(k){
+      var row=el("tr");
+      var c1=el("td");
+      c1.appendChild(el("button",{class:"ref",type:"button",
+        onclick:function(){go({k:"art",id:k.id});}},nameOf(k)));
+      row.appendChild(c1);
+      var c2=el("td");
+      var sel2=el("select",{class:"bsel"});
+      EXPL_STATES.forEach(function(x){ sel2.appendChild(el("option",{value:x[0]},x[1])); });
+      sel2.value=explOf(k);
+      sel2.addEventListener("change",function(){ setExpl(k,sel2.value); });
+      c2.appendChild(sel2);
+      row.appendChild(c2);
+      row.appendChild(el("td",{class:"num",text:String(routesFrom(k).length)}));
+      tabelle.appendChild(row);
+    });
+    wrap.appendChild(tabelle);
+  }
   return wrap;
 }
 
