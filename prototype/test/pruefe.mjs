@@ -217,8 +217,15 @@ async function seite(datei, warten) {
   await p.waitForTimeout(200);
   await p.evaluate(() => [...document.querySelectorAll('#view .row')].find((r) => /Volo/.test(r.textContent)).click());
   await p.waitForTimeout(200);
-  await p.evaluate(() => [...document.querySelectorAll('.rowbtns button')].find((b) => b.textContent === 'Edit').click());
-  await p.waitForTimeout(300);
+  await p.evaluate(() => {
+    const f = document.querySelector('#facet');
+    f.value = 'full';
+    f.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await p.waitForTimeout(250);
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rowbtns button')].find((b) => /Edit all fields/.test(b.textContent)).click());
+  await p.waitForTimeout(350);
   await p.evaluate(() => {
     const inp = document.querySelector('.linkbox input');
     inp.value = 'kerz';
@@ -230,15 +237,10 @@ async function seite(datei, warten) {
 
   await p.evaluate(() =>
     document.querySelector('.sugg button').dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));
-  await p.waitForTimeout(150);
+  await p.waitForTimeout(200);
   await p.evaluate(() =>
-    [...document.querySelectorAll('.dlgbox .rowbtns button')].find((b) => /Save/.test(b.textContent)).click());
+    [...document.querySelectorAll('.rowbtns button')].find((b) => /Done editing/.test(b.textContent)).click());
   await p.waitForTimeout(400);
-  await p.evaluate(() => {
-    document.querySelector('#facet').value = 'full';
-    document.querySelector('#facet').dispatchEvent(new Event('change', { bubbles: true }));
-  });
-  await p.waitForTimeout(250);
   const verweis = await p.evaluate(() => {
     const dt = [...document.querySelectorAll('.fld dt')].find((d) => d.textContent === 'Home');
     return dt ? { wert: dt.nextElementSibling.textContent, klickbar: !!dt.nextElementSibling.querySelector('button.ref') } : null;
@@ -393,6 +395,188 @@ async function seite(datei, warten) {
   }));
   pruefe('the JSON way out leads back', imJson.roh && imJson.zurueck, imJson);
   pruefe('registry tabs raised no exception', errs.length === 0, errs);
+
+  /* 8 — Bearbeiten in der Ansicht, und die Spur zurück */
+  const oeffne = async (name) => {
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
+    await p.waitForTimeout(200);
+    await p.evaluate((n) =>
+      [...document.querySelectorAll('#view .row')].find((r) => r.textContent.includes(n)).click(), name);
+    await p.waitForTimeout(200);
+    await p.evaluate(() => {
+      const f = document.querySelector('#facet');
+      f.value = 'full';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(250);
+  };
+  await oeffne('Volo');
+
+  await p.evaluate(() => {
+    const dt = [...document.querySelectorAll('.fld dt')].find((d) => d.textContent === 'Role');
+    dt.nextElementSibling.click();
+  });
+  await p.waitForTimeout(250);
+  const einzeln = await p.evaluate(() => ({
+    offen: document.querySelectorAll('.fld dd.editing').length,
+    wert: document.querySelector('.fld dd.editing input')?.value ?? null,
+  }));
+  pruefe('a click opens exactly that one field', einzeln.offen === 1 && einzeln.wert === 'Händler', einzeln);
+
+  await p.evaluate(() => {
+    const i = document.querySelector('.fld dd.editing input');
+    i.value = 'Chronicler';
+    i.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await p.waitForTimeout(350);
+  const gespeichert = await p.evaluate(() => {
+    const dt = [...document.querySelectorAll('.fld dt')].find((d) => d.textContent === 'Role');
+    return { wert: dt?.nextElementSibling.textContent, geschrieben: window.__WROTE__.filter((x) => /n_volo/.test(x)).length,
+             nochOffen: document.querySelectorAll('.fld dd.editing').length };
+  });
+  pruefe('the edit is stored and the field closes',
+    gespeichert.wert === 'Chronicler' && gespeichert.geschrieben > 0 && gespeichert.nochOffen === 0, gespeichert);
+
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rowbtns button')].find((b) => /Edit all fields/.test(b.textContent)).click());
+  await p.waitForTimeout(300);
+  const alle = await p.evaluate(() => ({
+    offen: document.querySelectorAll('.fld dd.editing').length,
+    abgeleitet: [...document.querySelectorAll('.fld.drv dd')].filter((d) => d.classList.contains('editing')).length,
+  }));
+  /* Ein abgeleitetes Feld hat keinen gespeicherten Wert, in den man
+     zurückschreiben könnte. Ein Eingabefeld dafür verspräche eine
+     Änderung, die nicht stattfinden kann. */
+  pruefe('the switch opens every field but the derived ones',
+    alle.offen > 1 && alle.abgeleitet === 0, alle);
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rowbtns button')].find((b) => /Done editing/.test(b.textContent)).click());
+  await p.waitForTimeout(200);
+
+  const spring = async () => {
+    await p.evaluate(() => { const b = [...document.querySelectorAll('#aside button.ref')][0]; if (b) b.click(); });
+    await p.waitForTimeout(280);
+    return p.evaluate(() => ({
+      krumen: [...document.querySelectorAll('.crumbs button')].map((b) => b.textContent),
+      hier: document.querySelector('.arthead h2')?.textContent,
+    }));
+  };
+  const s1 = await spring();
+  const s2 = await spring();
+  const s3 = await spring();
+  pruefe('every jump leaves a crumb', s3.krumen.length === 3 && s1.krumen[0] === 'Volo Geddarm', { s1, s2, s3 });
+
+  /* Zurück auf etwas, das schon in der Spur steht, schneidet sie dort ab.
+     Sonst wüchse sie beim Hin und Her ins Endlose. */
+  await p.evaluate(() => [...document.querySelectorAll('.crumbs button')][1].click());
+  await p.waitForTimeout(250);
+  const zurueck = await p.evaluate(() => ({
+    krumen: [...document.querySelectorAll('.crumbs button')].map((b) => b.textContent),
+    hier: document.querySelector('.arthead h2')?.textContent,
+  }));
+  pruefe('a crumb truncates the trail instead of growing it',
+    zurueck.hier === s2.krumen[1] && zurueck.krumen.length === 1, { zurueck, s2 });
+
+
+  /* Name und Tags gehören mit in die Ansicht — sonst wäre der Dialog der
+     einzige Weg dorthin, und der ist aus der Artikelleiste verschwunden. */
+  await oeffne('Nebeldistrikt');
+  await p.evaluate(() => document.querySelector('.arthead h2').click());
+  await p.waitForTimeout(250);
+  const nameOffen = await p.evaluate(() => document.querySelector('.arthead input')?.value ?? null);
+  await p.evaluate(() => {
+    const i = document.querySelector('.arthead input');
+    i.value = 'Mist District';
+    i.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await p.waitForTimeout(350);
+  const nameNeu = await p.evaluate(() => ({
+    titel: document.querySelector('.arthead h2')?.textContent,
+    geschrieben: window.__WROTE__.filter((x) => /o_nebeldistrikt/.test(x)).length,
+  }));
+  pruefe('the name is editable in place',
+    nameOffen === 'Nebeldistrikt' && nameNeu.titel === 'Mist District' && nameNeu.geschrieben > 0,
+    { nameOffen, nameNeu });
+
+  await p.evaluate(() => [...document.querySelectorAll('.kicker button.tag')].pop().click());
+  await p.waitForTimeout(250);
+  await p.evaluate(() => {
+    const i = document.querySelector('.kicker input');
+    i.value = 'underwatch, fog';
+    i.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await p.waitForTimeout(350);
+  const tags = await p.evaluate(() =>
+    [...document.querySelectorAll('.kicker button.tag')].map((b) => b.textContent));
+  pruefe('the tags are editable in place',
+    tags.includes('#underwatch') && tags.includes('#fog'), tags);
+  pruefe('in-place editing raised no exception', errs.length === 0, errs);
+
+  /* 9 — Massenbearbeitung */
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
+  await p.waitForTimeout(250);
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.listhead button')].find((b) => /Select/.test(b.textContent)).click());
+  await p.waitForTimeout(250);
+  await p.evaluate(() => { [...document.querySelectorAll('#view .row')].slice(0, 3).forEach((r) => r.click()); });
+  await p.waitForTimeout(300);
+  const gewaehlt = await p.evaluate(() => ({
+    markiert: document.querySelectorAll('.row.picked').length,
+    zaehler: document.querySelector('.bulk .count')?.textContent ?? '',
+  }));
+  pruefe('rows can be picked', gewaehlt.markiert === 3 && /3 selected/.test(gewaehlt.zaehler), gewaehlt);
+
+  await p.evaluate(() => {
+    const i = document.querySelector('.bulk input');
+    i.value = 'bulktest';
+    [...document.querySelectorAll('.bulk button')].find((b) => /\+ tags/.test(b.textContent)).click();
+  });
+  await p.waitForTimeout(400);
+  const getaggt = await p.evaluate(() => ({
+    banner: document.querySelector('#view .banner')?.textContent ?? '',
+    mitTag: [...document.querySelectorAll('#view .row')].filter((r) => /bulktest/.test(r.textContent)).length,
+    geschrieben: window.__WROTE__.filter((x) => x.startsWith('entities/')).length,
+  }));
+  pruefe('a tag reaches every picked article',
+    getaggt.mitTag === 3 && /3 articles/.test(getaggt.banner) && getaggt.geschrieben >= 3, getaggt);
+
+  /* Die Auswahl gilt für das, was in der Liste steht. Sonst löschte eine
+     geänderte Suche Artikel, die nie auf dem Schirm waren. */
+  await p.evaluate(() => { [...document.querySelectorAll('#view .row')].slice(0, 3).forEach((r) => r.click()); });
+  await p.waitForTimeout(250);
+  await p.evaluate(() => {
+    const q = document.getElementById('q');
+    q.value = 'zzzzz-nichts';
+    q.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await p.waitForTimeout(300);
+  await p.evaluate(() => {
+    const q = document.getElementById('q');
+    q.value = '';
+    q.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await p.waitForTimeout(300);
+  const nachSuche = await p.evaluate(() => document.querySelectorAll('.row.picked').length);
+  pruefe('a search that hides a row drops it from the selection', nachSuche === 0, nachSuche);
+
+  /* Name und Identitätsschlüssel sind Identität, keine Eigenschaft — sie auf
+     allen gleich zu setzen machte Dubletten, die kein Verweis mehr trennt. */
+  await p.evaluate(() => { [...document.querySelectorAll('#view .row')].slice(0, 2).forEach((r) => r.click()); });
+  await p.waitForTimeout(250);
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.bulk button')].find((b) => /Set a field/.test(b.textContent)).click());
+  await p.waitForTimeout(300);
+  const feldWahl = await p.evaluate(() =>
+    [...(document.querySelector('.dlgbox select')?.options ?? [])].map((o) => o.textContent));
+  pruefe('bulk field setting offers no identity field',
+    feldWahl.length > 0 && !feldWahl.some((t) => /Name · Name|Identity · Key/.test(t)), feldWahl.slice(0, 6));
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.dlgbox .rowbtns button')].find((b) => /Cancel/.test(b.textContent)).click());
+  await p.waitForTimeout(200);
+
+  pruefe('bulk editing raised no exception', errs.length === 0, errs);
   await p.close();
 }
 
