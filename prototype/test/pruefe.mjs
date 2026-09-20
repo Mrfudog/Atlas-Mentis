@@ -1580,6 +1580,87 @@ async function seite(datei, warten) {
     pruefe('two characters and a guarded recipe exist in the data', false, paar2);
   }
 
+  /* ---- Der Tisch in Echtzeit (REQ-071, 116, 117) ----
+     Die Trennlinie ist das Prüfbare: was bleibt, geht in den Speicher; was
+     ein Augenblick ist, in den Kanal. Ginge der laufende Kampf über den
+     Kanal, sähe ihn niemand, der zehn Minuten später dazukommt — und das
+     merkte man erst am Tisch. */
+  const sitzung = await p.evaluate(() => {
+    const se = [...window.__T__.ENT.values()].find((e) => (e.components || {}).SessionState);
+    return se ? (se.name || se.components.Name.text) : null;
+  });
+  if (sitzung) {
+    await oeffne(sitzung);
+    await p.evaluate(() => {
+      const f = document.getElementById('facet');
+      f.value = 'live';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(450);
+    const lv = await p.evaluate(() => ({
+      abschnitte: [...document.querySelectorAll('.live .sec')].map((x) => x.textContent),
+      bezuege: [...document.querySelectorAll('.live .relrow .rl')].map((x) => x.textContent),
+      verweise: [...document.querySelectorAll('.live .relrow .ref')].map((x) => x.textContent),
+      anwesend: [...document.querySelectorAll('.live .chip.peer b')].map((x) => x.textContent),
+      probleme: [...document.querySelectorAll('.pruef li')].map((x) => x.textContent),
+    }));
+    pruefe('the live view shows what is in play',
+      lv.bezuege.includes('Fight') && lv.bezuege.includes('Map') && lv.verweise.length >= 2, lv);
+    pruefe('the session validates clean', lv.probleme.length === 0, lv.probleme);
+
+    /* Anwesenheit kommt vom Kanal und beschreibt nur den Absender. */
+    await p.evaluate(() => window.__ROOM__.setPeers([
+      { isMe: true, presence: { gm: true, title: 'Sitzung 12' } },
+      { isMe: false, presence: { actor: null, gm: false, title: 'Kerzengasse' } },
+    ]));
+    await p.waitForTimeout(350);
+    const wer = await p.evaluate(() =>
+      [...document.querySelectorAll('.live .chip.peer')].map((c) => c.textContent));
+    pruefe('who is at the table comes from the channel', wer.length === 2, wer);
+
+    /* Ein geteilter Wurf: gesendet und — als käme er von jemand anderem —
+       gehört. Nur eine Richtung zu prüfen hiesse, die halbe Leitung zu
+       prüfen. */
+    await p.evaluate(() => { window.__EMITS__.length = 0; });
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.live .btn.dice')][0].click());
+    await p.waitForTimeout(400);
+    const gesendet = await p.evaluate(() => window.__EMITS__.slice());
+    pruefe('a shared roll goes out on the channel',
+      gesendet.length === 1 && gesendet[0].t === 'roll' && !!gesendet[0].d.text, gesendet);
+
+    await p.evaluate(() => window.__ROOM__.fire('roll',
+      { who: 'Sela Kerzendocht', what: '1d20+2', total: 17, text: '17  (15 +2)' }));
+    await p.waitForTimeout(350);
+    const gehoert = await p.evaluate(() =>
+      [...document.querySelectorAll('.live .rollrow')].map((r) => r.textContent));
+    pruefe('a roll from someone else arrives with their name and their numbers',
+      gehoert.some((t) => /Sela/.test(t) && /17/.test(t) && /15 \+2/.test(t)), gehoert);
+
+    /* Das Zeigen auf die Karte: es steht nirgends und muss es auch nicht. */
+    await p.evaluate(() => window.__ROOM__.fire('ping',
+      { id: 'pg_test', map: 'mp_kerzengasse', x: 0.5, y: 0.5, who: 'Sela' }));
+    await p.waitForTimeout(300);
+    await oeffne('Karte: Kerzengasse');
+    await p.evaluate(() => {
+      const f = document.getElementById('facet');
+      f.value = 'map';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(450);
+    const zeiger = await p.evaluate(() =>
+      [...document.querySelectorAll('.mping')].map((n) => n.textContent));
+    pruefe('pointing at a spot shows up on the map', zeiger.length === 1 && /Sela/.test(zeiger[0]), zeiger);
+
+    /* Anwesenheit wird beim Wechsel gemeldet, nicht nur beim Start. */
+    const gemeldet = await p.evaluate(() => window.__PRESENCE__.slice(-1)[0] || null);
+    pruefe('presence says what this viewer is looking at',
+      gemeldet && gemeldet.at === 'art' && !!gemeldet.article, gemeldet);
+    pruefe('the live channel raised no exception', errs.length === 0, errs);
+  } else {
+    pruefe('a session with a live state exists in the data', false, 'keine gefunden');
+  }
+
   pruefe('knowledge needed no browser modal', modale.length === 0, modale);
   pruefe('no exception through the knowledge panel', errs.length === 0, errs);
 

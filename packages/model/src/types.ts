@@ -103,7 +103,8 @@ export type LayoutElementKind =
   | 'board'
   | 'initiative'
   | 'quests'
-  | 'timeline';
+  | 'timeline'
+  | 'live';
 
 /**
  * One element of a view's layout. A view is an ordered list of these, so the

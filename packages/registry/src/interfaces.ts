@@ -195,6 +195,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Session',
     label: 'Session',
     extends: ['Story'],
+    allows: ['SessionState'],
     blockTypes: ['+recap'],
   },
 

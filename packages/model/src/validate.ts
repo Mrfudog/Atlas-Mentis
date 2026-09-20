@@ -66,7 +66,7 @@ export const RelationDefSchema = z.object({
 
 const LayoutElementSchema = z.object({
   id: z.string(),
-  el: z.enum(['heading', 'text', 'fields', 'blocks', 'description', 'composed', 'relations', 'image', 'knowledge', 'map', 'sheet', 'inventory', 'crafting', 'board', 'initiative', 'quests', 'timeline']),
+  el: z.enum(['heading', 'text', 'fields', 'blocks', 'description', 'composed', 'relations', 'image', 'knowledge', 'map', 'sheet', 'inventory', 'crafting', 'board', 'initiative', 'quests', 'timeline', 'live']),
   text: z.string().optional(),
   fields: z.union([z.literal('all'), z.array(z.string())]).optional(),
   columns: z.number().optional(),

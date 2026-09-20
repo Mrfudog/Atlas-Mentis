@@ -258,4 +258,22 @@ export const views: Record<string, ViewDef> = {
       { id: 't-desc', el: 'description' },
     ],
   },
+
+  /** Was gerade läuft, und wer gerade zusieht. */
+  live: {
+    label: 'Live',
+    order: 16,
+    fields: ['SessionState'],
+    blocks: ['note', 'recap'],
+    description: true,
+    composed: false,
+    relations: true,
+    bindings: false,
+    image: false,
+    layout: [
+      { id: 'l-live', el: 'live' },
+      { id: 'l-desc', el: 'description' },
+      { id: 'l-b', el: 'blocks', blocks: ['note', 'recap'] },
+    ],
+  },
 };

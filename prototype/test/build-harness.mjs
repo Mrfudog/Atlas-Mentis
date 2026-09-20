@@ -30,8 +30,26 @@ function tiefKalt(o){
   return o;
 }
 tiefKalt(window.__REG__); tiefKalt(window.__ENT__);
+/* Ein Raum-Stub: er prüft die Verdrahtung, nicht das Netz. Gesendetes landet
+   in __EMITS__, und __ROOM__.fire() spielt ein Ereignis ein, als käme es von
+   jemand anderem — ohne das liesse sich nur prüfen, dass etwas rausgeht, und
+   nicht, was ankommt. */
+window.__EMITS__ = [];
+window.__PRESENCE__ = [];
+window.__ROOM__ = { handlers: {}, peers: [],
+  fire: function(topic, data){ (this.handlers[topic]||[]).forEach(function(h){ h({data:data}); }); },
+  setPeers: function(list){ this.peers = list; (this.handlers.__peers__||[]).forEach(function(h){ h(list); }); } };
 window.claude = { use: async function(n){
-  if(n==='user') return { can: async function(){ return true; } };
+  if(n==='user') return { can: async function(){ return true; },
+    isOwner: async function(){ return true; }, id: async function(){ return 'u_test'; } };
+  if(n==='room') return {
+    emit: async function(t,d){ window.__EMITS__.push({t:t,d:d}); },
+    on: function(t,h){ (window.__ROOM__.handlers[t]=window.__ROOM__.handlers[t]||[]).push(h);
+      return function(){}; },
+    presence: async function(p){ window.__PRESENCE__.push(p); },
+    onPeers: function(h){ (window.__ROOM__.handlers.__peers__=window.__ROOM__.handlers.__peers__||[]).push(h);
+      return function(){}; },
+    peers: function(){ return window.__ROOM__.peers; } };
   if(n!=='db') return null;
   return {
     doc: function(path){ return {

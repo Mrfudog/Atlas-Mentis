@@ -449,6 +449,20 @@ table.atk tr.stowed td,table.atk tr.buried td{color:var(--dim)}
   white-space:nowrap}
 .rollrow .rv{font-family:var(--ff-mono);font-variant-numeric:tabular-nums;color:var(--accent)}
 .mtoken.now{box-shadow:0 0 0 3px var(--accent),0 1px 4px rgba(0,0,0,.35);z-index:3}
+.mping{position:absolute;transform:translate(-50%,-50%);width:44px;height:44px;
+  border:3px solid var(--warn);border-radius:50%;pointer-events:none;z-index:5;
+  animation:pingpuls 1.1s ease-out infinite;display:flex;align-items:center;
+  justify-content:center}
+.mping span{position:absolute;top:100%;font-size:10.5px;font-family:var(--ff-mono);
+  color:var(--warn);background:var(--surface);padding:0 4px;border-radius:2px;
+  white-space:nowrap}
+@keyframes pingpuls{0%{transform:translate(-50%,-50%) scale(.6);opacity:1}
+  100%{transform:translate(-50%,-50%) scale(1.5);opacity:.15}}
+.chip.peer{gap:7px}
+.chip.peer.me{border-color:var(--accent)}
+.chip.peer.gm b{color:var(--accent)}
+.chip.peer .co{font-size:11px;color:var(--dim)}
+.live textarea.i{min-height:70px}
 
 /* Boards: die Leinwand scrollt, die Karten liegen darauf. */
 .boardbox{margin:8px 0}
@@ -653,7 +667,7 @@ var UI={route:{k:"list"}, view:"quick", iface:"", tag:"", q:"", offen:false, pan
         mapZoom:1, mapLock:false, mapKind:"", mapDrag:null,
         invView:"tiers", invPick:"", craftOnly:false,
         boardZoom:1, boardPick:"", boardTool:"",
-        turnActor:"", rollLog:[], asActor:"",
+        turnActor:"", rollLog:[], asActor:"", peers:[], pings:[],
         konzept:false, err:""};
 
 /* Darstellungsstufen (Facets, REQ-164) — registry rows, not code.
@@ -1348,6 +1362,7 @@ function go(r){
   if(r.k==="art"&&r.id!==UI.route.id) trailPush(UI.route);
   if(r.k!=="art") UI.trail=[];
   UI.route=r; UI.err=""; UI.pane="main"; UI.editField=""; render();
+  pushPresence();
   var m=document.getElementById("main"); if(m)m.scrollTop=0; }
 
 /* Jeder Abschnitt für sich. Vorher konnte eine Ausnahme in renderRail()
@@ -1981,7 +1996,7 @@ var LAYOUT_ELEMENTS=[
   ["description","Description"],["blocks","Text blocks"],
   ["composed","Composed rules"],["relations","Relations"],["image","Image"],
   ["knowledge","Knowledge groups"],["map","Map"],["sheet","Character sheet"],["inventory","Inventory"],["crafting","Crafting"],["board","Board"],["initiative","Initiative"],
-  ["quests","Quest board"],["timeline","Timeline"]
+  ["quests","Quest board"],["timeline","Timeline"],["live","Live"]
 ];
 function layoutOf(vw,ifn){
   var by=vw.byInterface||{};
@@ -2023,6 +2038,7 @@ function renderLayoutItem(item,e,ifn,vw){
     case "initiative":  return elInitiative(e,ifn,item);
     case "quests":      return elQuests(e,ifn,item);
     case "timeline":    return elTimeline(e,ifn,item);
+    case "live":        return elLive(e,ifn,item);
     default:            return null;
   }
 }
@@ -2353,6 +2369,189 @@ function elTimeline(e,ifn,item){
   return wrap;
 }
 
+/* ---------- Der Tisch in Echtzeit (REQ-071, 116, 117) ----------
+   Zwei Kanäle, und sie tragen Verschiedenes.
+
+   **Der Speicher ist der Kanal für alles, was bleibt.** `onSnapshot` liefert
+   jede Änderung an jedes offene Fenster — die Seite war also schon vor
+   diesem Abschnitt mehrgerätefähig, ohne dass es jemand gesagt hätte. Runde,
+   Zug, Trefferpunkte, die laufende Szene: alles das steht im Speicher und
+   kommt von dort bei allen an, auch bei dem, der zehn Minuten später
+   dazukommt.
+
+   **Der Raum ist der Kanal für Augenblicke.** Ein Wurf und ein Zeigen auf
+   die Karte sind nichts, was jemand später nachlesen muss; sie werden
+   gesendet, gehört und vergessen. Genau dafür ist er da — und genau deshalb
+   steht dort nichts, was ein Nachzügler braucht.
+
+   Wer gerade zusieht, ist Anwesenheit: sie beschreibt den Absender und
+   befiehlt niemandem, darum darf sie jeder setzen. */
+var roomNS=null, PING_MS=4000;
+
+function roomPeers(){ return UI.peers||[]; }
+/* Anwesenheit: woran ich gerade bin. Nur Kennungen und kurze Wörter — was
+   hier steht, sieht jeder im Raum. */
+function pushPresence(){
+  if(!roomNS)return;
+  var e=UI.route.k==="art"?ENT.get(UI.route.id):null;
+  roomNS.presence({
+    at:UI.route.k,
+    article:e?e.id:null,
+    title:e?nameOf(e).slice(0,60):null,
+    view:UI.view||null,
+    actor:viewerActor()||null,
+    gm:isGM()?true:false
+  })["catch"](function(){});
+}
+/* Ein Wurf, den alle sehen (REQ-071). Der Verlauf bleibt örtlich — er ist
+   eine Erinnerungsstütze, kein Protokoll; wer ein Protokoll will, schreibt
+   es in die Sitzung. */
+function whoAmI(){
+  var a=ENT.get(viewerActor());
+  return a?nameOf(a):(isGM()?"GM":"Someone");
+}
+function shareRoll(was,r){
+  logRoll(was,r,whoAmI());
+  if(roomNS) roomNS.emit("roll",{who:whoAmI(),what:was,total:r.total,text:rollText(r)})
+    ["catch"](function(){});
+}
+/* Auf die Karte zeigen. Das ist der Grund, warum es den Raum überhaupt
+   braucht: „da" lässt sich nicht speichern. */
+function pingMap(mapId,x,y){
+  var p={id:uid("pg"),map:mapId,x:x,y:y,at:Date.now(),who:whoAmI()};
+  addPing(p);
+  if(roomNS) roomNS.emit("ping",p)["catch"](function(){});
+}
+function addPing(p){
+  UI.pings=(UI.pings||[]).filter(function(x){ return Date.now()-x.at<PING_MS; }).concat([p]);
+  render();
+  setTimeout(function(){
+    UI.pings=(UI.pings||[]).filter(function(x){ return x.id!==p.id; });
+    render();
+  },PING_MS);
+}
+
+function elLive(e,ifn,item){
+  var card=(e.components||{}).SessionState||{};
+  var wrap=el("div",{class:"live"});
+  var darf=isGM()||card.stewardship==="table";
+
+  /* Wer gerade zusieht. Eine leere Liste heisst nicht „niemand" — sie heisst
+     „dieser Raum ist hier nicht erreichbar"; das steht auch so da. */
+  wrap.appendChild(el("div",{class:"sec",text:"At the table"}));
+  if(!roomNS) wrap.appendChild(el("p",{class:"hint",
+    text:"No live channel in this view — everything below still syncs through the store, just without the little dots."}));
+  var leute=roomPeers();
+  var pbox=el("div",{class:"chips"});
+  if(!leute.length) pbox.appendChild(el("span",{class:"hint",style:"margin:0",text:"Only you."}));
+  leute.forEach(function(pe){
+    var pr=pe.presence||{};
+    var wer=pr.actor&&ENT.get(pr.actor);
+    var chip=el("span",{class:"chip peer"+(pe.isMe?" me":"")+(pr.gm?" gm":"")});
+    chip.appendChild(el("b",{text:(wer?nameOf(wer):(pr.gm?"GM":"Someone"))+(pe.isMe?" (you)":"")}));
+    if(pr.title) chip.appendChild(el("span",{class:"co",text:pr.title}));
+    pbox.appendChild(chip);
+  });
+  wrap.appendChild(pbox);
+
+  /* Was läuft. Es steht im Speicher, nicht im Kanal — ein Nachzügler muss
+     es sehen, und der Kanal wiederholt nichts. */
+  wrap.appendChild(el("div",{class:"sec",text:"In play"}));
+  var felder=[["activeScene","Scene",["Story"]],
+              ["activeEncounter","Fight",["Encounter"]],
+              ["activeMap","Map",["Map"]]];
+  var box=el("div",{class:"rel"});
+  felder.forEach(function(f){
+    var row=el("div",{class:"relrow"});
+    row.appendChild(el("span",{class:"rl",text:f[1]}));
+    var rv=el("span",{class:"rv"});
+    var t=card[f[0]]&&ENT.get(card[f[0]]);
+    if(t) rv.appendChild(el("button",{class:"ref",type:"button",
+      onclick:function(){go({k:"art",id:t.id});}},nameOf(t)));
+    else rv.appendChild(el("span",{class:"hint",style:"margin:0",text:"—"}));
+    if(darf){
+      var sel=el("select",{class:"bsel"});
+      sel.appendChild(el("option",{value:""},"—"));
+      byName().forEach(function(c){
+        if(!ifaceInList(f[2],(c.interfaces||[])[0]))return;
+        sel.appendChild(el("option",{value:c.id},nameOf(c)));
+      });
+      sel.value=card[f[0]]||"";
+      sel.addEventListener("change",function(){
+        var patch={}; patch[f[0]]=sel.value||undefined;
+        e.components=e.components||{};
+        e.components.SessionState=Object.assign({},card,patch);
+        persist(e);
+      });
+      rv.appendChild(sel);
+    }
+    row.appendChild(rv);
+    box.appendChild(row);
+  });
+  wrap.appendChild(box);
+
+  var np=el("div",{class:"relrow"});
+  np.appendChild(el("span",{class:"rl",text:"Sound"}));
+  if(darf){
+    var npi=el("input",{class:"i",type:"text",value:card.nowPlaying||"",
+      placeholder:"What is playing — a link or a name"});
+    npi.addEventListener("change",function(){
+      e.components=e.components||{};
+      e.components.SessionState=Object.assign({},card,{nowPlaying:npi.value});
+      persist(e); });
+    np.appendChild(npi);
+  } else np.appendChild(el("span",{class:"rv",text:card.nowPlaying||"—"}));
+  wrap.appendChild(np);
+
+  wrap.appendChild(el("div",{class:"sec",text:"Note for the table"}));
+  if(darf){
+    var ta=el("textarea",{class:"i"});
+    ta.value=card.partyNote||"";
+    ta.addEventListener("change",function(){
+      e.components=e.components||{};
+      e.components.SessionState=Object.assign({},card,{partyNote:ta.value});
+      persist(e); });
+    wrap.appendChild(ta);
+  } else wrap.appendChild(para(card.partyNote||"—"));
+
+  if(isGM()){
+    var st=el("div",{class:"rowbtns"});
+    st.appendChild(el("span",{class:"hint",style:"margin:0;align-self:center",
+      text:"Who may write this:"}));
+    [["gm","GM only"],["table","the whole table"]].forEach(function(o){
+      st.appendChild(el("button",{class:"btn sm"+((card.stewardship||"gm")===o[0]?" pri":""),
+        type:"button",onclick:function(){
+          e.components=e.components||{};
+          e.components.SessionState=Object.assign({},card,{stewardship:o[0]});
+          persist(e); }},o[1]));
+    });
+    wrap.appendChild(st);
+  }
+
+  /* Die Würfel, die alle sehen. */
+  wrap.appendChild(el("div",{class:"sec",text:"Shared dice"}));
+  var wbar=el("div",{class:"rowbtns"});
+  ["1d20","1d20+5","2d6","1d100"].forEach(function(a){
+    wbar.appendChild(el("button",{class:"btn sm gh dice",type:"button",
+      onclick:function(){
+        var r=rollDice(a); if(!r)return;
+        shareRoll(a,r); render();
+      }},a));
+  });
+  wrap.appendChild(wbar);
+  if(UI.rollLog.length){
+    var log=el("div",{class:"rolllog"});
+    UI.rollLog.forEach(function(x){
+      var row=el("div",{class:"rollrow"});
+      row.appendChild(el("span",{class:"rl",text:(x.who?x.who+" · ":"")+x.t}));
+      row.appendChild(el("span",{class:"rv",text:rollText(x.r)}));
+      log.appendChild(row);
+    });
+    wrap.appendChild(log);
+  }
+  return wrap;
+}
+
 /* ---------- Würfel (REQ-070) ----------
    Ein Ausdruck, ein Ergebnis, und die Einzelwürfe daneben. Die Einzelwürfe
    sind nicht Zierde: „18" und „1+17" sind am Tisch zweierlei, und wer den
@@ -2389,6 +2588,10 @@ function rollDice(ausdruck){
 }
 function rollText(r){
   if(!r)return "?";
+  /* Ein Wurf aus dem Raum bringt seinen Text mit: die Einzelwürfe sind dort
+     schon geworfen, und sie hier nachzurechnen hiesse, andere Zahlen zu
+     zeigen als der, der gewürfelt hat. */
+  if(r.pretty)return r.pretty;
   /* `x.flat === undefined` und nicht `!x.flat`: ein Modifikator von 0 ist
      falsy, und mit `!x.flat` landete er in der Würfelliste und wurde dort
      als „undefined" gezeichnet. Ein Wurf, der undefined anzeigt, glaubt
@@ -2401,8 +2604,8 @@ function rollText(r){
 }
 /* Der Wurf landet im Verlauf — damit man am Ende der Runde noch sagen kann,
    was da eigentlich gefallen ist. */
-function logRoll(was,r){
-  UI.rollLog.unshift({t:was,r:r,at:Date.now()});
+function logRoll(was,r,wer){
+  UI.rollLog.unshift({t:was,r:r,at:Date.now(),who:wer||""});
   if(UI.rollLog.length>12) UI.rollLog.length=12;
 }
 function rollButton(label,ausdruck,titel){
@@ -4012,6 +4215,14 @@ function elMap(e,ifn,item){
 
   var stage=el("div",{class:"mapstage"});
   var inner=el("div",{class:"mapinner"});
+  /* Alt-Klick zeigt auf eine Stelle. Das ist der einzige Grund, warum es den
+     Echtzeitkanal überhaupt braucht: „da" lässt sich nicht speichern. */
+  inner.addEventListener("click",function(ev){
+    if(!ev.altKey)return;
+    var rect=img.getBoundingClientRect();
+    if(!rect.width)return;
+    pingMap(e.id,(ev.clientX-rect.left)/rect.width,(ev.clientY-rect.top)/rect.height);
+  });
   var img=el("img",{class:"mapimg",src:src,alt:nameOf(e)});
   img.style.width=(UI.mapZoom*100)+"%";
   inner.appendChild(img);
@@ -4088,14 +4299,23 @@ function elMap(e,ifn,item){
     inner.appendChild(t);
   });
 
+  (UI.pings||[]).forEach(function(pg){
+    if(pg.map!==e.id)return;
+    var n=el("div",{class:"mping"});
+    n.style.left=(pg.x*100)+"%"; n.style.top=(pg.y*100)+"%";
+    n.appendChild(el("span",{text:pg.who||""}));
+    inner.appendChild(n);
+  });
+
   stage.appendChild(inner);
   wrap.appendChild(stage);
 
   var zahl=marker.length;
   wrap.appendChild(el("p",{class:"hint",
     text:zahl?(zahl+" token"+(zahl===1?"":"s")+
-      (canWrite()?" · drag to move, right-click to remove":"")):
-      "No tokens yet."}));
+      (canWrite()?" · drag to move, right-click to remove":"")+
+      (roomNS?" · alt-click points at a spot for everyone":"")):
+      (roomNS?"No tokens yet — alt-click points at a spot for everyone.":"No tokens yet.")}));
   return wrap;
 }
 
@@ -6547,7 +6767,8 @@ render();
   var erg=await Promise.all([
     hat?claude.use("db").catch(function(){return null;}):null,
     hat?claude.use("user").catch(function(){return null;}):null,
-    hat?claude.use("assets").catch(function(){return null;}):null
+    hat?claude.use("assets").catch(function(){return null;}):null,
+    hat?claude.use("room").catch(function(){return null;}):null
   ]);
   db=erg[0];
   /* Nur Schreibberechtigte bekommen die Ablage; `null` heisst hier nicht
@@ -6566,7 +6787,28 @@ render();
       if(w===false) me.base=false;
     }
   }catch(x){}
-  try{ if(erg[1]){ var w=await erg[1].can("data.write"); if(w===false) canWrite()=false; } }catch(x){}
+
+  /* Der Raum ist die Zugabe, nicht die Grundlage: fehlt er, läuft alles
+     weiter — nur ohne Anwesenheit und ohne Zeigen. */
+  roomNS=erg[3];
+  if(roomNS){
+    try{
+      roomNS.onPeers(function(liste){ UI.peers=liste||[]; render(); });
+      roomNS.on("roll",function(ev){
+        var d=(ev&&ev.data)||{};
+        if(!d.text)return;
+        UI.rollLog.unshift({t:d.what||"roll",who:d.who||"",at:Date.now(),
+          r:{total:d.total,rolls:[],expr:d.what,pretty:d.text}});
+        if(UI.rollLog.length>12) UI.rollLog.length=12;
+        render();
+      });
+      roomNS.on("ping",function(ev){
+        var d=(ev&&ev.data)||{};
+        if(!d.map)return;
+        addPing({id:d.id||uid("pg"),map:d.map,x:d.x,y:d.y,at:Date.now(),who:d.who||""});
+      });
+    }catch(x){}
+  }
 
   if(!db){
     ready=true;

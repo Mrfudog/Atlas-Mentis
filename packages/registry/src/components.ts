@@ -758,4 +758,35 @@ export const components: Record<string, ComponentDef> = {
       },
     },
   },
+
+  /**
+   * Was gerade läuft (REQ-116). Es liegt an der Sitzung und im Speicher,
+   * nicht im Echtzeitkanal: wer zehn Minuten später dazukommt, muss es auch
+   * sehen, und der Kanal wiederholt nichts. Der Kanal trägt nur, was ein
+   * Augenblick ist — ein Wurf, ein Zeigen auf die Karte.
+   */
+  SessionState: {
+    name: 'SessionState',
+    label: 'Live',
+    engine: 'Play',
+    schema: {
+      type: 'object',
+      properties: {
+        activeScene: { type: 'string', format: 'link', title: 'Scene in play' },
+        activeEncounter: { type: 'string', format: 'link', title: 'Fight in play' },
+        activeMap: { type: 'string', format: 'link', title: 'Map on the table' },
+        nowPlaying: { type: 'string', title: 'Now playing' },
+        partyNote: { type: 'string', format: 'long', title: 'Note for the table' },
+        /* Wer schreiben darf (REQ-117). `gm` ist die Vorgabe; `table` heisst,
+           dass auch die Spieler die Notiz führen dürfen. Feiner wird es
+           erst, wenn jemand den Bedarf zeigt. */
+        stewardship: {
+          type: 'string',
+          title: 'Who may write',
+          enum: ['gm', 'table'],
+          default: 'gm',
+        },
+      },
+    },
+  },
 };
