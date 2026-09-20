@@ -121,6 +121,28 @@ Sonst bliebe genau das Gerät angemeldet, dessentwegen man es geändert hat.
 
 ---
 
+## In der Oberfläche
+
+`apps/web` hat seit 2026-09-20 eine Anmeldemaske, eine Wache vor den Routen
+und eine Artikelansicht. Drei Sachen daran sind Absicht:
+
+- **Die Sitzung hat drei Zustände**, nicht zwei: „noch nicht gefragt" ist ein
+  eigener. Wer ihn mit „nicht angemeldet" verwechselt, wirft den Nutzer beim
+  Neuladen für einen Wimpernschlag auf die Anmeldemaske — und wer das einmal
+  gesehen hat, traut der Anmeldung nicht mehr.
+- **Die Wache ist Bequemlichkeit, keine Sicherheit.** Die Rechte hängen am
+  Server; eine Route, die nur in der Maske bewacht wäre, wäre gar nicht
+  bewacht.
+- **Die Maske prüft nicht nach, was sie zeigen darf.** Der Server hat schon
+  gesiebt. Eine zweite Prüfung sähe nach Sorgfalt aus und wäre das Gegenteil:
+  sie lüde dazu ein, die erste wegzulassen.
+
+Eine Abmeldung, die der Server nicht bestätigt, meldet **lokal trotzdem ab**
+und sagt es. Beides andere wäre falsch: weiter so tun, als wäre jemand da —
+oder „abgemeldet" sagen, während die Sitzung dort weiterlebt.
+
+---
+
 ## Was nicht mitwandert
 
 **Zugänge sind keine Artikel.** Ein Artikel gehört der Kampagne und wandert
@@ -137,8 +159,9 @@ in der Sitzung aus.
 
 ## Was noch fehlt
 
-- **Die Oberfläche dazu.** `apps/web` ist ein Gerüst; eine Anmeldemaske gibt
-  es noch nicht.
+- **Mehr als Lesen in der Oberfläche.** Anmeldung, Liste und Artikelansicht
+  stehen; Bearbeiten, Karten, Bogen und Inventar sind im Prototyp und noch
+  nicht dort.
 - **Einladungen für Spieler** (REQ-034). Heute legt die Spielleitung das
   Konto an und sagt das Passwort; ein Einladungstoken wäre bequemer und ist
   eine eigene Entscheidung — auch weil ein Token je Figur nie ins öffentliche

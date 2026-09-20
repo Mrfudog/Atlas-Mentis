@@ -265,6 +265,9 @@ in [Spieltisch.md](Spieltisch.md).
 - **D15 · Zugang am Server** — REQ-031, 032, 035, 036. Ein Passwort je
   Nutzer (Argon2id), Sitzungen beim Server, und gelesen wird gesiebt. Siehe
   [Zugang.md](Zugang.md).
+- **D16 · Die Oberfläche fängt an** — `apps/web`. Anmeldung, Wache,
+  Artikelliste und Artikelansicht; gezeichnet aus dem Register über
+  `packages/model`, nicht aus einer Vorlage je Artikelart.
 
 ---
 
@@ -282,10 +285,10 @@ A, B und D stehen. Was bleibt, in der Reihenfolge, in der es sich lohnt:
 3. **Globale Variablen** (B3): Gruppenstufe und Gruppen-Aufenthaltsort haben
    im Register eine Zeile, aber noch keine Maske und keine Verwendung in den
    Ansichten.
-4. **Die Oberfläche zum Zugang.** Der Server kann seit 2026-09-20 Konten,
-   Sitzungen und Rechte (siehe [Zugang.md](Zugang.md)); `apps/web` ist ein
-   Gerüst und hat noch keine Anmeldemaske. Damit wird aus dem Prototyp eine
-   Anwendung, die zwei Leute gleichzeitig benutzen können.
+4. **Bearbeiten in der Oberfläche.** Anmelden, suchen und lesen geht seit
+   2026-09-20; schreiben noch nicht. Danach die Bereiche, die der Prototyp
+   schon kann — Karte, Bogen, Inventar —, in derselben Reihenfolge, in der
+   sie dort entstanden sind.
 5. **Der Ortsimporter als TypeScript** (C4, Rest). Das Register steht seit
    2026-09-20 nur noch einmal: `pnpm --filter @nw/registry emit-seed`
    erzeugt die Zeilen des Prototyps aus `packages/registry`.

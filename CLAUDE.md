@@ -42,7 +42,11 @@ die Entscheidungen D0–D17, `Requirements.md` die REQ-Nummern.
   Artikelart im Prototyp anzulegen ist der Sinn der Sache und kein Fehler.
 - `apps/server` — Fastify. Routen sprechen mit `Repository`, nie mit Postgres;
   deshalb sind sie ohne Datenbank testbar (`InMemoryRepository`).
-- `apps/web` — Angular, bisher nur ein Gerüst.
+- `apps/web` — Angular. Anmeldung, Artikelliste und Artikelansicht stehen;
+  gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
+  Vorlage je Artikelart. **Zurückgehalten wird am Server** (`redactEntity`) —
+  was hier ankommt, darf angezeigt werden, und eine zweite Prüfung in der
+  Maske lüde nur dazu ein, die erste wegzulassen.
 - `legacy/` — die alte React-App. Nicht weiterentwickeln; sie läuft, bis die
   neue Karte und Initiative kann.
 
@@ -63,8 +67,10 @@ die Entscheidungen D0–D17, `Requirements.md` die REQ-Nummern.
   zu pflegen hält genau so lange, wie jemand daran denkt — und als es hier
   zuletzt auseinanderlief, standen deutsche Variablen im Paket und englische
   im Prototyp, und gemerkt hat es niemand, weil beide für sich stimmten.
-- **Nicht auf `0.0.0.0` binden.** Die Anwendung hat keine Authentifizierung; der
-  Reverse Proxy ist das, was nach aussen zeigt.
+- **Nicht auf `0.0.0.0` binden.** Der Reverse Proxy ist das, was nach aussen
+  zeigt. Seit 2026-09-20 hat der Server einen Zugang (ein Passwort je Nutzer,
+  siehe [docs/Zugang.md](docs/Zugang.md)) — das ist ein Grund mehr für die
+  Bindung auf Loopback und keiner weniger.
 
 ## Bauen und prüfen
 
@@ -74,6 +80,15 @@ pnpm --filter @nw/model build && pnpm --filter @nw/registry build   # zuerst
 pnpm test && pnpm lint
 pnpm --filter @nw/registry emit-seed   # nach jeder Registeränderung
 ```
+
+`pnpm test` läuft in zwei Projekten: `node` für Modell, Register und Server,
+`web` mit jsdom und Angulars aufgesetzter Prüfumgebung. Eine gemeinsame
+Aufsetzdatei wäre der Weg, auf dem ein Node-Test plötzlich von einem
+Browser-Stub abhängt.
+
+Zum Entwickeln: `pnpm dev:server` und `pnpm dev:web` nebeneinander; die
+Oberfläche schickt `/api` über `apps/web/proxy.conf.json` an den Server.
+Das erste Konto legt `pnpm --filter @nw/server user add <name> --gm` an.
 
 Die Reihenfolge ist notwendig: die übrigen Pakete übersetzen gegen die von
 `model` erzeugten `.d.ts`, nicht gegen dessen Quelltext. In `tsconfig.json` der
