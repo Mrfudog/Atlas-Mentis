@@ -254,6 +254,13 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 .arthead h2.editable{cursor:text;border-radius:2px}
 .arthead h2.editable:hover{background:var(--accent-soft)}
 
+.bulk{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:12px;
+  padding:9px 11px;background:var(--surface2);border:1px solid var(--line);border-radius:var(--r)}
+.bulk .count{white-space:nowrap}
+.bulk input.i,.bulk select.i{width:auto;padding:4px 7px;font-size:13px}
+.row.picked{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.row .tick{font-family:var(--ff-mono);color:var(--accent);width:11px;display:inline-block}
+
 @media (max-width:900px){
   .body{grid-template-columns:minmax(0,1fr)}
   .rail,.aside{display:none}
@@ -325,7 +332,7 @@ var REG={interfaces:{},components:{},relations:{},vars:{},views:{}};
 var UI={route:{k:"list"}, view:"quick", iface:"", tag:"", q:"", offen:false, pane:"main",
         regtab:"interfaces", regiface:"", regcomp:"", regprop:"", regjson:false,
         regview:"", regscope:"", regel:"", regcomp2:"", regrel:"",
-        trail:[], inline:false, editField:"", err:""};
+        trail:[], inline:false, editField:"", pick:false, picked:{}, err:""};
 
 /* Darstellungsstufen (Facets, REQ-164) — registry rows, not code.
    Fallback only; the live set lives in registry/views. */
@@ -951,15 +958,35 @@ function renderList(v){
   head.appendChild(el("h2",{text:UI.iface?(REG.interfaces[UI.iface]&&REG.interfaces[UI.iface].label||UI.iface):"All articles"}));
   head.appendChild(el("span",{class:"count",text:list.length+" of "+ENT.size}));
   if(UI.tag) head.appendChild(el("span",{class:"pill",text:"#"+UI.tag}));
+  if(me.write) head.appendChild(el("button",{class:"btn sm"+(UI.pick?" pri":""),type:"button",
+    onclick:function(){ UI.pick=!UI.pick; UI.picked={}; render(); }},
+    UI.pick?"Done selecting":"Select"));
   v.appendChild(head);
 
-  if(!list.length){ v.appendChild(el("div",{class:"empty",text:"Nichts gefunden."})); return; }
+  /* Die Auswahl gilt für das, was gerade in der Liste steht — ausnahmslos,
+     also vor dem Ausstieg bei null Treffern. Sonst überlebte eine Auswahl
+     eine Suche, die sie versteckt hat, und man handelte an Artikeln, die
+     nie auf dem Schirm waren. Der Preis ist, dass eine Suche ohne Treffer
+     die Auswahl leert; das ist vorhersehbar, das andere nicht. */
+  if(UI.pick){
+    var sichtbar={}; list.forEach(function(e){ sichtbar[e.id]=1; });
+    Object.keys(UI.picked).forEach(function(id){ if(!sichtbar[id]) delete UI.picked[id]; });
+  }
+
+  if(!list.length){ v.appendChild(el("div",{class:"empty",text:"Nothing found."})); return; }
+
+  if(UI.pick) v.appendChild(bulkBar(list));
 
   var vw=viewDef();
   var rows=el("div",{class:"rows"});
   list.forEach(function(e){
-    var row=el("button",{class:"row",type:"button",onclick:function(){go({k:"art",id:e.id});}});
+    var row=el("button",{class:"row"+(UI.pick&&UI.picked[e.id]?" picked":""),type:"button",
+      onclick:function(){
+        if(UI.pick){ if(UI.picked[e.id]) delete UI.picked[e.id]; else UI.picked[e.id]=1; render(); return; }
+        go({k:"art",id:e.id});
+      }});
     var t=el("div",{class:"rt"});
+    if(UI.pick) t.appendChild(el("span",{class:"tick",text:UI.picked[e.id]?"\u2713":"\u00b7"}));
     t.appendChild(el("span",{class:"rn",text:nameOf(e)}));
     t.appendChild(el("span",{class:"pill",text:ifaceName(e)}));
     var st=e.components&&e.components.Status&&e.components.Status.value;
@@ -1069,6 +1096,188 @@ function renderArticle(v,id){
   layoutOf(vw,ifn).forEach(function(item){
     var node=renderLayoutItem(item,e,ifn,vw);
     if(node) v.appendChild(node);
+  });
+}
+
+/* ---------- editing many at once ----------
+   Everything here writes one article at a time through persist(); there is no
+   bulk path in the store and inventing one would skip the same checks a
+   single edit goes through. What it saves is the clicking, not the writing. */
+function bulkBar(list){
+  var ids=Object.keys(UI.picked);
+  var bar=el("div",{class:"bulk"});
+
+  var alle=ids.length===list.length&&list.length>0;
+  bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+    if(alle) UI.picked={};
+    else list.forEach(function(e){ UI.picked[e.id]=1; });
+    render();
+  }},alle?"Select none":"Select all "+list.length));
+
+  bar.appendChild(el("span",{class:"count",
+    text:ids.length?ids.length+(ids.length===1?" selected":" selected"):"none selected"}));
+
+  if(!ids.length){
+    bar.appendChild(el("span",{class:"hint",style:"margin:0",
+      text:"Click the rows you mean."}));
+    return bar;
+  }
+
+  var gewaehlt=function(){ return ids.map(function(id){return ENT.get(id);}).filter(Boolean); };
+  var durch=function(was,fn){
+    var betroffen=gewaehlt();
+    betroffen.forEach(fn);
+    betroffen.forEach(function(e){ persist(e); });
+    UI.picked={};
+    UI.err=was+" — "+betroffen.length+(betroffen.length===1?" article":" articles")+".";
+    render();
+  };
+
+  /* Tags */
+  var tagIn=el("input",{class:"i",type:"text",placeholder:"tag, tag",style:"min-width:140px"});
+  bar.appendChild(tagIn);
+  bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+    var xs=tagIn.value.split(",").map(function(x){return x.trim();}).filter(Boolean);
+    if(!xs.length)return;
+    durch("Tags added",function(e){
+      e.tags=e.tags||[];
+      xs.forEach(function(t){ if(e.tags.indexOf(t)<0) e.tags.push(t); });
+    });
+  }},"+ tags"));
+  bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+    var xs=tagIn.value.split(",").map(function(x){return x.trim();}).filter(Boolean);
+    if(!xs.length)return;
+    durch("Tags removed",function(e){
+      e.tags=(e.tags||[]).filter(function(t){ return xs.indexOf(t)<0; });
+    });
+  }},"− tags"));
+
+  /* Stand */
+  var stEnum=(((REG.components.Status||{}).schema||{}).properties||{}).value;
+  var stSel=el("select",{class:"i",style:"width:auto"});
+  stSel.appendChild(el("option",{value:""},"set status…"));
+  ((stEnum&&stEnum["enum"])||["idea","planned","used","discarded"]).forEach(function(o){
+    stSel.appendChild(el("option",{value:o},o)); });
+  stSel.addEventListener("change",function(){
+    if(!stSel.value)return;
+    var val=stSel.value; stSel.value="";
+    durch("Status set to “"+val+"”",function(e){
+      e.components=e.components||{}; e.components.Status={value:val}; });
+  });
+  bar.appendChild(stSel);
+
+  /* Schnittstelle wechseln */
+  var ifSel=el("select",{class:"i",style:"width:auto"});
+  ifSel.appendChild(el("option",{value:""},"change type…"));
+  Object.keys(REG.interfaces).sort().forEach(function(n){
+    if(REG.interfaces[n].abstract)return;
+    ifSel.appendChild(el("option",{value:n},REG.interfaces[n].label||n)); });
+  ifSel.addEventListener("change",function(){
+    if(!ifSel.value)return;
+    var ifn=ifSel.value; ifSel.value="";
+    /* Der Typwechsel nimmt nichts weg. Eine Komponente, die der neue Typ
+       nicht erlaubt, bleibt am Artikel stehen und wird von der Prüfung
+       beanstandet — sichtbar und behebbar, statt still gelöscht. */
+    var verliert=0;
+    gewaehlt().forEach(function(e){
+      Object.keys(e.components||{}).forEach(function(cn){
+        if(!compOrigin(ifn,cn)) verliert++;
+      });
+    });
+    var frage="Change "+ids.length+(ids.length===1?" article":" articles")+" to “"+
+      (REG.interfaces[ifn].label||ifn)+"”?";
+    if(verliert) frage+=" "+verliert+" component value(s) will no longer be allowed there; "+
+      "they stay on the articles and validation will flag them.";
+    confirmDialog(frage,function(){
+      durch("Type changed",function(e){
+        e.interfaces=[ifn];
+        reqFor(ifn).forEach(function(c){ if(!e.components[c]&&REG.components[c]) e.components[c]={}; });
+      });
+    },"Change");
+  });
+  bar.appendChild(ifSel);
+
+  /* Ein Feld auf denselben Wert */
+  bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+    bulkFieldDialog(gewaehlt(),durch);
+  }},"Set a field…"));
+
+  bar.appendChild(el("button",{class:"btn sm dngr",type:"button",onclick:function(){
+    confirmDialog("Delete "+ids.length+(ids.length===1?" article":" articles")+" for good?",function(){
+      var weg=gewaehlt();
+      weg.forEach(function(e){ drop(e.id); });
+      UI.picked={};
+      UI.err=weg.length+(weg.length===1?" article deleted.":" articles deleted.");
+      render();
+    });
+  }},"Delete"));
+
+  return bar;
+}
+
+var BULK_TABU={"Name.text":1,"Identity.key":1};
+/* Nur Felder anbieten, die alle Gewählten überhaupt führen können — sonst
+   stellt man etwas ein, das bei der Hälfte nirgends ankommt. */
+function bulkFieldDialog(betroffen,durch){
+  var gemeinsam=null;
+  betroffen.forEach(function(e){
+    var ifn=(e.interfaces||[])[0]||"";
+    var hier={};
+    compsFor(ifn).forEach(function(cn){
+      var props=((REG.components[cn]||{}).schema||{}).properties||{};
+      Object.keys(props).forEach(function(k){
+        if(props[k].derived)return;
+        /* Name und Identitätsschlüssel sind nicht Eigenschaft, sondern
+           Identität. Sie auf allen Gewählten gleich zu setzen macht
+           Dubletten, die danach kein Verweis mehr auseinanderhält. */
+        if(BULK_TABU[cn+"."+k])return;
+        hier[cn+"."+k]=1;
+      });
+    });
+    if(gemeinsam===null) gemeinsam=hier;
+    else Object.keys(gemeinsam).forEach(function(r){ if(!hier[r]) delete gemeinsam[r]; });
+  });
+  var refs=Object.keys(gemeinsam||{}).sort();
+
+  dialog("Set one field on "+betroffen.length+(betroffen.length===1?" article":" articles"),
+    function(host,close){
+    if(!refs.length){
+      host.appendChild(el("p",{class:"hint",
+        text:"These articles share no editable field. Narrow the selection to one type."}));
+      host.appendChild(el("div",{class:"rowbtns"},
+        el("button",{class:"btn",type:"button",onclick:close},"Close")));
+      return;
+    }
+    var sel=el("select",{class:"i"});
+    refs.forEach(function(r){
+      var teil=r.split("."), cd=REG.components[teil[0]]||{};
+      var pd=((cd.schema||{}).properties||{})[teil[1]]||{};
+      sel.appendChild(el("option",{value:r},(cd.label||teil[0])+" · "+(pd.title||teil[1])));
+    });
+    host.appendChild(field("Field",sel));
+    var halter=el("div");
+    host.appendChild(halter);
+    function zeigeEingang(){
+      halter.textContent="";
+      var teil=sel.value.split(".");
+      var pd=((REG.components[teil[0]].schema||{}).properties||{})[teil[1]];
+      var node=fieldInput(pd,undefined);
+      halter.appendChild(field("Value",node));
+      halter.__node=node; halter.__pd=pd; halter.__ref=teil;
+    }
+    sel.addEventListener("change",zeigeEingang);
+    zeigeEingang();
+    host.appendChild(el("p",{class:"hint",
+      text:"An empty value clears the field on every selected article."}));
+    actions(host,close,function(){
+      var pd=halter.__pd, teil=halter.__ref;
+      var val=fieldValue(pd,halter.__node);
+      durch("Field “"+(pd.title||teil[1])+"” set",function(e){
+        e.components=e.components||{};
+        var card=e.components[teil[0]]=e.components[teil[0]]||{};
+        if(val===undefined) delete card[teil[1]]; else card[teil[1]]=val;
+      });
+    },"Set");
   });
 }
 

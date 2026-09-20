@@ -512,6 +512,71 @@ async function seite(datei, warten) {
   pruefe('the tags are editable in place',
     tags.includes('#underwatch') && tags.includes('#fog'), tags);
   pruefe('in-place editing raised no exception', errs.length === 0, errs);
+
+  /* 9 — Massenbearbeitung */
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
+  await p.waitForTimeout(250);
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.listhead button')].find((b) => /Select/.test(b.textContent)).click());
+  await p.waitForTimeout(250);
+  await p.evaluate(() => { [...document.querySelectorAll('#view .row')].slice(0, 3).forEach((r) => r.click()); });
+  await p.waitForTimeout(300);
+  const gewaehlt = await p.evaluate(() => ({
+    markiert: document.querySelectorAll('.row.picked').length,
+    zaehler: document.querySelector('.bulk .count')?.textContent ?? '',
+  }));
+  pruefe('rows can be picked', gewaehlt.markiert === 3 && /3 selected/.test(gewaehlt.zaehler), gewaehlt);
+
+  await p.evaluate(() => {
+    const i = document.querySelector('.bulk input');
+    i.value = 'bulktest';
+    [...document.querySelectorAll('.bulk button')].find((b) => /\+ tags/.test(b.textContent)).click();
+  });
+  await p.waitForTimeout(400);
+  const getaggt = await p.evaluate(() => ({
+    banner: document.querySelector('#view .banner')?.textContent ?? '',
+    mitTag: [...document.querySelectorAll('#view .row')].filter((r) => /bulktest/.test(r.textContent)).length,
+    geschrieben: window.__WROTE__.filter((x) => x.startsWith('entities/')).length,
+  }));
+  pruefe('a tag reaches every picked article',
+    getaggt.mitTag === 3 && /3 articles/.test(getaggt.banner) && getaggt.geschrieben >= 3, getaggt);
+
+  /* Die Auswahl gilt für das, was in der Liste steht. Sonst löschte eine
+     geänderte Suche Artikel, die nie auf dem Schirm waren. */
+  await p.evaluate(() => { [...document.querySelectorAll('#view .row')].slice(0, 3).forEach((r) => r.click()); });
+  await p.waitForTimeout(250);
+  await p.evaluate(() => {
+    const q = document.getElementById('q');
+    q.value = 'zzzzz-nichts';
+    q.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await p.waitForTimeout(300);
+  await p.evaluate(() => {
+    const q = document.getElementById('q');
+    q.value = '';
+    q.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await p.waitForTimeout(300);
+  const nachSuche = await p.evaluate(() => document.querySelectorAll('.row.picked').length);
+  pruefe('a search that hides a row drops it from the selection', nachSuche === 0, nachSuche);
+
+  /* Name und Identitätsschlüssel sind Identität, keine Eigenschaft — sie auf
+     allen gleich zu setzen machte Dubletten, die kein Verweis mehr trennt. */
+  await p.evaluate(() => { [...document.querySelectorAll('#view .row')].slice(0, 2).forEach((r) => r.click()); });
+  await p.waitForTimeout(250);
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.bulk button')].find((b) => /Set a field/.test(b.textContent)).click());
+  await p.waitForTimeout(300);
+  const feldWahl = await p.evaluate(() =>
+    [...(document.querySelector('.dlgbox select')?.options ?? [])].map((o) => o.textContent));
+  pruefe('bulk field setting offers no identity field',
+    feldWahl.length > 0 && !feldWahl.some((t) => /Name · Name|Identity · Key/.test(t)), feldWahl.slice(0, 6));
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.dlgbox .rowbtns button')].find((b) => /Cancel/.test(b.textContent)).click());
+  await p.waitForTimeout(200);
+
+  pruefe('bulk editing raised no exception', errs.length === 0, errs);
   await p.close();
 }
 
