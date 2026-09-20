@@ -25,6 +25,13 @@ export class ApiError extends Error {
 
 export interface Me {
   user: { id: string; name: string; isGm: boolean; actorId?: string } | null;
+  /**
+   * Welche Artikel dieser Betrachter schreiben darf. **`null` heisst alles**
+   * (die Spielleitung), eine Liste heisst genau diese. Sie kommt vom Server,
+   * weil er die Regel ohnehin anwenden muss — sie hier nachzurechnen wäre
+   * die zweite Stelle, an der jemand eine Kante vergisst.
+   */
+  writable: string[] | null;
   /** Steht nur auf einem frischen Server: wie man das erste Konto anlegt. */
   setup: string | null;
 }
@@ -52,6 +59,12 @@ export class Api {
 
   me(): Promise<Me> {
     return this.call<Me>('/api/me');
+  }
+  putEntity(entity: Entity): Promise<Entity> {
+    return this.call<Entity>(`/api/entities/${encodeURIComponent(entity.id)}`, {
+      method: 'PUT',
+      body: JSON.stringify(entity),
+    });
   }
   login(name: string, password: string): Promise<{ user: Me['user'] }> {
     return this.call('/api/login', { method: 'POST', body: JSON.stringify({ name, password }) });

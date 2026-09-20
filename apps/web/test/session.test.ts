@@ -45,7 +45,7 @@ describe('Session', () => {
 
   it('holds what the server says about the viewer', async () => {
     stubFetch({
-      '/api/me': { status: 200, body: { user: { id: 'u', name: 'Basil', isGm: true }, setup: null } },
+      '/api/me': { status: 200, body: { user: { id: 'u', name: 'Basil', isGm: true }, writable: null, setup: null } },
     });
     const s = TestBed.inject(Session);
     await s.load();
@@ -59,7 +59,7 @@ describe('Session', () => {
      zeigt dann keinen Anmeldeschlitz, sondern den Satz. Ein Anmeldefeld
      ohne Konto ist eine Sackgasse mit Aufforderung. */
   it('carries the setup hint of a fresh server', async () => {
-    stubFetch({ '/api/me': { status: 200, body: { user: null, setup: 'user add <name> --gm' } } });
+    stubFetch({ '/api/me': { status: 200, body: { user: null, writable: null, setup: 'user add <name> --gm' } } });
     const s = TestBed.inject(Session);
     await s.load();
     expect(s.setupHint()).toMatch(/user add/);
@@ -68,7 +68,7 @@ describe('Session', () => {
 
   it('asks once even when several ask at the same time', async () => {
     const gesehen = stubFetch({
-      '/api/me': { status: 200, body: { user: null, setup: null } },
+      '/api/me': { status: 200, body: { user: null, writable: null, setup: null } },
     });
     const s = TestBed.inject(Session);
     await Promise.all([s.load(), s.load(), s.load()]);
@@ -96,21 +96,51 @@ describe('Session', () => {
     expect(s.angemeldet()).toBe(false);
   });
 
-  it('signs in and is ready right away, without asking again', async () => {
+  /* Nach dem Anmelden wird noch einmal gefragt: erst `/api/me` weiss, was
+     dieser Betrachter schreiben darf. Es aus der Anmeldung zu raten hiesse,
+     es zu raten. */
+  it('signs in and then asks what this viewer may write', async () => {
     const gesehen = stubFetch({
       '/api/login': { status: 200, body: { user: { id: 'u', name: 'Sela', isGm: false } } },
+      '/api/me': {
+        status: 200,
+        body: { user: { id: 'u', name: 'Sela', isGm: false }, writable: ['pc_rook'], setup: null },
+      },
     });
     const s = TestBed.inject(Session);
     expect(await s.login('Sela', 'nebel-wacht-am-tor')).toBeNull();
     expect(s.angemeldet()).toBe(true);
     expect(s.stand()).toBe('bereit');
-    expect(gesehen.some((g) => g.url === '/api/me')).toBe(false);
+    expect(gesehen.some((g) => g.url === '/api/me')).toBe(true);
+    expect(s.darfSchreiben()('pc_rook')).toBe(true);
+    expect(s.darfSchreiben()('n_volo')).toBe(false);
+  });
+
+  /* Und die Spielleitung bekommt keine Liste über den ganzen Bestand
+     geschickt: `null` heisst „alles". */
+  it('reads null as “everything”, not as “nothing”', async () => {
+    stubFetch({
+      '/api/me': {
+        status: 200,
+        body: { user: { id: 'u', name: 'Basil', isGm: true }, writable: null, setup: null },
+      },
+    });
+    const s = TestBed.inject(Session);
+    await s.load();
+    expect(s.darfSchreiben()('irgendwas')).toBe(true);
+  });
+
+  it('lets nobody write when nobody is signed in', async () => {
+    stubFetch({ '/api/me': { status: 200, body: { user: null, writable: null, setup: null } } });
+    const s = TestBed.inject(Session);
+    await s.load();
+    expect(s.darfSchreiben()('pc_rook')).toBe(false);
   });
 
   /* Der Keks ist httpOnly: die Anwendung sieht ihn nie. Sie muss ihn aber
      mitschicken lassen, und das ist genau eine Zeile, die man vergisst. */
   it('lets the browser send the session cookie', async () => {
-    const gesehen = stubFetch({ '/api/me': { status: 200, body: { user: null, setup: null } } });
+    const gesehen = stubFetch({ '/api/me': { status: 200, body: { user: null, writable: null, setup: null } } });
     await TestBed.inject(Session).load();
     expect(gesehen[0]?.init?.credentials).toBe('include');
   });
@@ -120,7 +150,7 @@ describe('Session', () => {
      Sitzung dort weiterlebt. Also lokal leeren **und** es hinschreiben. */
   it('signs out locally and says so when the server did not confirm', async () => {
     stubFetch({
-      '/api/me': { status: 200, body: { user: { id: 'u', name: 'Basil', isGm: true }, setup: null } },
+      '/api/me': { status: 200, body: { user: { id: 'u', name: 'Basil', isGm: true }, writable: null, setup: null } },
       '/api/logout': { status: 500, body: { error: 'kaputt' } },
     });
     const s = TestBed.inject(Session);
@@ -132,7 +162,7 @@ describe('Session', () => {
 
   it('says nothing when the sign-out went through', async () => {
     stubFetch({
-      '/api/me': { status: 200, body: { user: { id: 'u', name: 'Basil', isGm: true }, setup: null } },
+      '/api/me': { status: 200, body: { user: { id: 'u', name: 'Basil', isGm: true }, writable: null, setup: null } },
       '/api/logout': { status: 200, body: { ok: true } },
     });
     const s = TestBed.inject(Session);

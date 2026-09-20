@@ -112,3 +112,92 @@ input[type='search'] {
 a {
   color: var(--link);
 }
+
+/* Die Bearbeitungsmaske. Zwei Spalten, weil die Beschriftungen lang sind und
+   eine Zeile je Feld die Seite sonst doppelt so hoch macht. */
+.werkzeuge {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.werkzeuge button {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.werkzeuge button.pri {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+}
+.werkzeuge button[disabled] {
+  opacity: 0.6;
+  cursor: default;
+}
+.maske {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.6rem 1rem;
+  margin: 1rem 0;
+}
+.maske label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+}
+.maske label > span {
+  color: var(--dim);
+}
+.maske .pflicht {
+  color: var(--warn);
+  font-style: normal;
+  margin-left: 0.15rem;
+}
+.maske input[type='text'],
+.maske select,
+.maske textarea,
+.blockmaske textarea {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  width: 100%;
+}
+.maske input[type='checkbox'] {
+  align-self: flex-start;
+  width: 1rem;
+  height: 1rem;
+}
+.blockmaske {
+  margin: 0.5rem 0;
+}
+.bkopf {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+.bkopf .weg {
+  margin-left: auto;
+  border: none;
+  background: none;
+  color: var(--dim);
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.maengel {
+  margin: 0.5rem 0;
+  padding-left: 1.2rem;
+  color: var(--warn);
+  font-size: 0.85rem;
+}

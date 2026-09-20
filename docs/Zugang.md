@@ -136,6 +136,12 @@ und eine Artikelansicht. Drei Sachen daran sind Absicht:
 - **Die Maske prüft nicht nach, was sie zeigen darf.** Der Server hat schon
   gesiebt. Eine zweite Prüfung sähe nach Sorgfalt aus und wäre das Gegenteil:
   sie lüde dazu ein, die erste wegzulassen.
+- **Und sie rechnet nicht aus, was jemand schreiben darf.** `/api/me` gibt
+  `writable` mit — eine Liste von Ids, oder `null` für „alles" (die
+  Spielleitung bekommt keine Aufzählung über den ganzen Bestand). Der Server
+  wendet die Regel ohnehin an; sie in der Maske nachzurechnen wäre die zweite
+  Stelle, an der jemand eine Kante vergisst, und dann stünde dort ein Knopf,
+  den der Server danach abweist.
 
 Eine Abmeldung, die der Server nicht bestätigt, meldet **lokal trotzdem ab**
 und sagt es. Beides andere wäre falsch: weiter so tun, als wäre jemand da —
@@ -159,9 +165,9 @@ in der Sitzung aus.
 
 ## Was noch fehlt
 
-- **Mehr als Lesen in der Oberfläche.** Anmeldung, Liste und Artikelansicht
-  stehen; Bearbeiten, Karten, Bogen und Inventar sind im Prototyp und noch
-  nicht dort.
+- **Die Bereiche in der Oberfläche.** Anmeldung, Liste, Artikelansicht und
+  Bearbeiten stehen; Karten, Bogen, Inventar, Boards und Handwerk sind im
+  Prototyp und noch nicht dort.
 - **Einladungen für Spieler** (REQ-034). Heute legt die Spielleitung das
   Konto an und sagt das Passwort; ein Einladungstoken wäre bequemer und ist
   eine eigene Entscheidung — auch weil ein Token je Figur nie ins öffentliche

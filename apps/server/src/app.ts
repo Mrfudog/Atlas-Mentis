@@ -110,8 +110,17 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
   app.get('/api/me', async (request) => {
     const user = await viewerOf(request);
     const count = await repo.countUsers();
+    /* **Der Server sagt, was jemand schreiben darf** — die Oberfläche rechnet
+       es nicht zum zweiten Mal aus. Eine zweite Rechnung wäre die zweite
+       Stelle, an der jemand eine Kante vergisst, und dann zeigt die Maske
+       einen Knopf, den der Server danach abweist.
+
+       `null` heisst „alles" und nicht „nichts": die Spielleitung bekommt
+       keine Liste über den ganzen Bestand geschickt. */
+    const writable = user && !user.isGm ? [...(await ownedBy(user))] : null;
     return {
       user,
+      writable,
       /* Ein frischer Server sagt es geradeheraus. Das ist keine Auskunft,
          die jemandem nützt, den es nichts angeht: wer den Port erreicht,
          sieht ohnehin, dass nichts eingerichtet ist. */

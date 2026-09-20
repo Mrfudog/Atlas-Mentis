@@ -257,6 +257,29 @@ describe('who may write what', () => {
     expect(res.json().error).toMatch(/Spielleitung/);
   });
 
+  /**
+   * Der Server sagt der Oberfläche, was jemand schreiben darf — sie rechnet
+   * es nicht zum zweiten Mal aus. Eine zweite Rechnung wäre die zweite
+   * Stelle, an der jemand eine Kante vergisst, und dann zeigt die Maske
+   * einen Knopf, den der Server danach abweist.
+   */
+  it('tells the client what this viewer may write', async () => {
+    const keks = cookieOf(await login(app, 'Sela'));
+    const me = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie: keks } });
+    const writable: string[] = me.json().writable;
+    expect(writable).toContain('pc_rook'); // die eigene Figur
+    expect(writable).toContain('inv_rook'); // und was über `carries` daran hängt
+    expect(writable).not.toContain('n_volo');
+  });
+
+  /* „Alles" ist `null` und keine Liste: der Spielleitung den ganzen Bestand
+     aufzuzählen wäre eine Liste, die mit jeder Sitzung länger wird. */
+  it('says “everything” as null for the GM, not as a list', async () => {
+    const keks = cookieOf(await login(app, 'Basil'));
+    const me = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie: keks } });
+    expect(me.json().writable).toBeNull();
+  });
+
   it('still lets a player read', async () => {
     const keks = cookieOf(await login(app, 'Sela'));
     const res = await app.inject({

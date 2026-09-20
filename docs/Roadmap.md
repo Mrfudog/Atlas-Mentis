@@ -268,6 +268,8 @@ in [Spieltisch.md](Spieltisch.md).
 - **D16 · Die Oberfläche fängt an** — `apps/web`. Anmeldung, Wache,
   Artikelliste und Artikelansicht; gezeichnet aus dem Register über
   `packages/model`, nicht aus einer Vorlage je Artikelart.
+- **D17 · Bearbeiten** — `apps/web`. Die Eingabeart kommt aus dem Register;
+  geschrieben wird der ganze Artikel, und der Server sagt, wer darf.
 
 ---
 
@@ -285,10 +287,10 @@ A, B und D stehen. Was bleibt, in der Reihenfolge, in der es sich lohnt:
 3. **Globale Variablen** (B3): Gruppenstufe und Gruppen-Aufenthaltsort haben
    im Register eine Zeile, aber noch keine Maske und keine Verwendung in den
    Ansichten.
-4. **Bearbeiten in der Oberfläche.** Anmelden, suchen und lesen geht seit
-   2026-09-20; schreiben noch nicht. Danach die Bereiche, die der Prototyp
-   schon kann — Karte, Bogen, Inventar —, in derselben Reihenfolge, in der
-   sie dort entstanden sind.
+4. **Die Bereiche in der Oberfläche.** Anmelden, suchen, lesen und
+   bearbeiten geht seit 2026-09-20. Als Nächstes die Bereiche, die der
+   Prototyp schon kann — Karte, Bogen, Inventar —, in derselben Reihenfolge,
+   in der sie dort entstanden sind, und Kanten zu ändern.
 5. **Der Ortsimporter als TypeScript** (C4, Rest). Das Register steht seit
    2026-09-20 nur noch einmal: `pnpm --filter @nw/registry emit-seed`
    erzeugt die Zeilen des Prototyps aus `packages/registry`.

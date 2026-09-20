@@ -1,23 +1,42 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
+  allowedComponents,
   backlinks,
+  blockTypesFor,
   entityName,
   primaryInterface,
   relationDef,
+  requiredComponents,
   resolveView,
   showBlock,
   showField,
   viewKeys,
 } from '@nw/model';
-import type { Entity, Registry, ViewDef } from '@nw/model';
+import type { Entity, PropertySchema, Registry, ViewDef } from '@nw/model';
+import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
+import { ausEingabe, eingabeArt, inEingabe, type Eingabe } from './felder';
 
 interface Zelle {
   ref: string;
   label: string;
   wert: string;
+}
+
+interface Feld {
+  /** `Component.property` — eindeutig und zugleich der Name im Formular. */
+  ref: string;
+  comp: string;
+  prop: string;
+  label: string;
+  art: Eingabe;
+  schema: PropertySchema | undefined;
+  wert: string;
+  jaNein: boolean;
+  pflicht: boolean;
 }
 
 /**
@@ -36,7 +55,7 @@ interface Zelle {
  */
 @Component({
   selector: 'nw-artikel',
-  imports: [RouterLink],
+  imports: [RouterLink, FormsModule],
   template: `
     @if (artikel(); as e) {
       <article>
@@ -45,12 +64,91 @@ interface Zelle {
             <h2>{{ name(e) }}</h2>
             <span class="art">{{ art(e) }}</span>
           </div>
-          <select [value]="stufe()" (change)="waehle($any($event.target).value)">
-            @for (k of stufen(); track k) {
-              <option [value]="k">{{ label(k) }}</option>
+          <div class="werkzeuge">
+            @if (!bearbeitet()) {
+              <select [value]="stufe()" (change)="waehle($any($event.target).value)">
+                @for (k of stufen(); track k) {
+                  <option [value]="k">{{ label(k) }}</option>
+                }
+              </select>
             }
-          </select>
+            @if (darfSchreiben()) {
+              <button type="button" (click)="bearbeitet() ? abbrechen() : beginnen()">
+                {{ bearbeitet() ? 'Cancel' : 'Edit' }}
+              </button>
+            }
+            @if (bearbeitet()) {
+              <button type="button" class="pri" [disabled]="speichert()" (click)="speichern()">
+                {{ speichert() ? 'Saving…' : 'Save' }}
+              </button>
+            }
+          </div>
         </header>
+
+        @if (bearbeitet()) {
+          @if (problem(); as p) {
+            <p class="fehler" role="alert">{{ p }}</p>
+          }
+          @if (maengel().length) {
+            <ul class="maengel" role="alert">
+              @for (m of maengel(); track m) {
+                <li>{{ m }}</li>
+              }
+            </ul>
+          }
+
+          <div class="maske">
+            @for (f of felder(); track f.ref) {
+              <label>
+                <span>{{ f.label }}@if (f.pflicht) {<i class="pflicht" title="required">*</i>}</span>
+                @switch (f.art) {
+                  @case ('jaNein') {
+                    <input type="checkbox" [(ngModel)]="f.jaNein" [name]="f.ref" />
+                  }
+                  @case ('auswahl') {
+                    <select [(ngModel)]="f.wert" [name]="f.ref">
+                      <option value=""></option>
+                      @for (o of f.schema?.enum ?? []; track o) {
+                        <option [value]="o">{{ o }}</option>
+                      }
+                    </select>
+                  }
+                  @case ('lang') {
+                    <textarea rows="4" [(ngModel)]="f.wert" [name]="f.ref"></textarea>
+                  }
+                  @case ('zahl') {
+                    <input type="text" inputmode="decimal" [(ngModel)]="f.wert" [name]="f.ref" />
+                  }
+                  @case ('liste') {
+                    <input type="text" [(ngModel)]="f.wert" [name]="f.ref" placeholder="one, two, three" />
+                  }
+                  @default {
+                    <input type="text" [(ngModel)]="f.wert" [name]="f.ref" />
+                  }
+                }
+              </label>
+            }
+          </div>
+
+          <h3>Text blocks</h3>
+          @for (b of entwurfBloecke(); track b.id) {
+            <div class="blockmaske">
+              <div class="bkopf">
+                <span class="bl">{{ b.blockType }}</span>
+                <button type="button" class="weg" (click)="blockWeg(b.id)" title="Remove">×</button>
+              </div>
+              <textarea rows="3" [(ngModel)]="b.body" [name]="b.id"></textarea>
+            </div>
+          }
+          <div class="werkzeuge">
+            <select #neueArt>
+              @for (t of blockArten(); track t) {
+                <option [value]="t">{{ t }}</option>
+              }
+            </select>
+            <button type="button" (click)="blockDazu(neueArt.value)">+ Block</button>
+          </div>
+        } @else {
 
         @if (beschreibung(); as text) {
           <p class="beschreibung">{{ text }}</p>
@@ -100,6 +198,7 @@ interface Zelle {
               </li>
             }
           </ul>
+        }
         }
       </article>
     } @else if (bestand.geladen()) {
@@ -213,6 +312,148 @@ export class Artikel {
       };
     });
   });
+
+  // ------------------------------------------------------------ bearbeiten
+
+  protected readonly bearbeitet = signal(false);
+  protected readonly speichert = signal(false);
+  protected readonly problem = signal<string | null>(null);
+  protected readonly maengel = signal<string[]>([]);
+  protected readonly felder = signal<Feld[]>([]);
+  protected readonly entwurfBloecke = signal<{ id: string; blockType: string; body: string }[]>([]);
+
+  private readonly api = inject(Api);
+
+  protected readonly darfSchreiben = computed(() => {
+    const e = this.artikel();
+    return e ? this.session.darfSchreiben()(e.id) : false;
+  });
+
+  /**
+   * Die Maske zeigt **jedes erlaubte Feld**, nicht nur die ausgefüllten:
+   * ein Feld, das erst erscheint, wenn es einen Wert hat, kann niemand zum
+   * ersten Mal ausfüllen. Die Darstellungsstufe gilt hier nicht — sie sagt,
+   * was man *liest*, nicht was es gibt.
+   */
+  protected beginnen(): void {
+    const e = this.artikel();
+    const r = this.reg();
+    if (!e || !r) return;
+    const erlaubt = allowedComponents(r, primaryInterface(e));
+    const pflicht = new Set(requiredComponents(r, primaryInterface(e)));
+    const out: Feld[] = [];
+    for (const comp of erlaubt) {
+      const def = r.components[comp];
+      if (!def) continue;
+      const karte = (e.components?.[comp] ?? {}) as Record<string, unknown>;
+      for (const [prop, schema] of Object.entries(def.schema?.properties ?? {})) {
+        /* Abgeleitete Werte bekommen keine Eingabe (D8). Sie hier
+           anzubieten hiesse, jemanden etwas eintippen zu lassen, das beim
+           nächsten Lesen überschrieben wird. */
+        if (schema.derived) continue;
+        const art = eingabeArt(schema);
+        out.push({
+          ref: `${comp}.${prop}`,
+          comp,
+          prop,
+          label: `${def.label ?? comp} · ${schema.title ?? prop}`,
+          art,
+          schema,
+          wert: art === 'jaNein' ? '' : inEingabe(karte[prop]),
+          jaNein: karte[prop] === true,
+          pflicht: pflicht.has(comp) && (def.schema?.required ?? []).includes(prop),
+        });
+      }
+    }
+    this.felder.set(out);
+    this.entwurfBloecke.set(
+      [...(e.blocks ?? [])]
+        .sort((a2, b2) => (a2.order ?? 0) - (b2.order ?? 0))
+        .map((b) => ({ id: b.anchor || b.id, blockType: b.blockType, body: b.body ?? '' })),
+    );
+    this.problem.set(null);
+    this.maengel.set([]);
+    this.bearbeitet.set(true);
+  }
+
+  protected abbrechen(): void {
+    this.bearbeitet.set(false);
+    this.problem.set(null);
+    this.maengel.set([]);
+  }
+
+  protected blockArten(): string[] {
+    const e = this.artikel();
+    const r = this.reg();
+    return e && r ? blockTypesFor(r, primaryInterface(e)) : [];
+  }
+
+  protected blockDazu(art: string): void {
+    if (!art) return;
+    this.entwurfBloecke.update((bs) => [
+      ...bs,
+      { id: `neu-${bs.length}-${Date.now()}`, blockType: art, body: '' },
+    ]);
+  }
+  protected blockWeg(id: string): void {
+    this.entwurfBloecke.update((bs) => bs.filter((b) => b.id !== id));
+  }
+
+  /**
+   * Geschrieben wird der ganze Artikel, auf einer Kopie gebaut. Erst ein
+   * gelungenes Schreiben ersetzt ihn im Bestand — sonst stünde nach einem
+   * Fehlschlag ein Stand da, den der Server nie gesehen hat, und beim
+   * nächsten Laden wäre er lautlos weg.
+   */
+  protected async speichern(): Promise<void> {
+    const alt = this.artikel();
+    if (!alt || this.speichert()) return;
+    this.speichert.set(true);
+    this.problem.set(null);
+    this.maengel.set([]);
+
+    const components: Record<string, Record<string, unknown>> = {};
+    for (const f of this.felder()) {
+      const wert = ausEingabe(f.schema, f.art === 'jaNein' ? f.jaNein : f.wert);
+      if (wert === undefined) continue;
+      (components[f.comp] ??= {})[f.prop] = wert;
+    }
+    const blocks = this.entwurfBloecke()
+      .filter((b) => b.body.trim() !== '')
+      .map((b, i) => ({ id: b.id, anchor: b.id, blockType: b.blockType, body: b.body, order: i }));
+
+    const neu = { ...alt, components, blocks } as Entity;
+
+    try {
+      const gespeichert = await this.api.putEntity(neu);
+      await this.bestand.load(true);
+      this.bearbeitet.set(false);
+      /* Was der Server zurückgibt, gilt — er setzt `updatedAt` und darf
+         mehr ändern, als hier geschickt wurde. */
+      void gespeichert;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        this.problem.set(error.message);
+        /* Die Liste wird gezeigt und nicht zusammengefasst: „ungültig" ohne
+           Grund ist am Tisch keine Hilfe. */
+        const issues = error.issues;
+        if (Array.isArray(issues)) {
+          this.maengel.set(
+            issues.map((i) => {
+              const o = i as { t?: string; message?: string; path?: unknown[] };
+              if (o.t) return o.t;
+              const pfad = Array.isArray(o.path) ? o.path.join('.') : '';
+              return pfad ? `${pfad}: ${o.message ?? '?'}` : (o.message ?? JSON.stringify(i));
+            }),
+          );
+        }
+      } else {
+        this.problem.set('Could not reach the server.');
+      }
+    } finally {
+      this.speichert.set(false);
+    }
+  }
 
   protected readonly rueckbezuege = computed(() => {
     const e = this.artikel();
