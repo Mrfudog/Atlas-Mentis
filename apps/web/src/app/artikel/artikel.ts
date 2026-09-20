@@ -7,6 +7,7 @@ import {
   entityName,
   entriesOf,
   entryRef,
+  fieldTitle,
   proseFields,
   relationAccepts,
   relationsFrom,
@@ -367,7 +368,7 @@ export class Artikel {
         out.push({
           ref: entryRef(f.type, f.key, eintrag.id),
           key: f.key,
-          label: f.prop.title ?? f.key,
+          label: fieldTitle(r, primaryInterface(e), f),
           wert: eintrag.value,
         });
       }
@@ -444,7 +445,9 @@ export class Artikel {
           ref: `${comp}.${prop}`,
           comp,
           prop,
-          label: `${def.label ?? comp} · ${schema.title ?? prop}`,
+          /* Wie das Feld **an dieser Art** heisst: derselbe `Time.until`
+             ist an einem Auftrag die Frist und an einem Ereignis das Ende. */
+          label: `${def.label ?? comp} · ${fieldTitle(r, primaryInterface(e), { type: comp, key: prop, prop: schema })}`,
           art,
           schema,
           wert: art === 'jaNein' ? '' : inEingabe(karte[prop]),
@@ -486,7 +489,7 @@ export class Artikel {
     if (!e || !r) return [];
     return proseFields(r, primaryInterface(e)).map((f) => ({
       ref: `${f.type}.${f.key}`,
-      label: f.prop.title ?? f.key,
+      label: fieldTitle(r, primaryInterface(e), f),
     }));
   }
 

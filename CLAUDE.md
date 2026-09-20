@@ -56,6 +56,11 @@ die Entscheidungen D0–D17, `Requirements.md` die REQ-Nummern.
 - `legacy/` — die alte React-App. Nicht weiterentwickeln; sie läuft, bis die
   neue Karte und Initiative kann.
 
+Was es **nicht** mehr gibt: `packages/import`. Die Obsidian-Importer für
+Gegenstände und Statblocks sind weg (2026-09-20); der Prototyp hat seinen
+eigenen, und die Vault-Beispiele liegen jetzt in `prototype/test/fixtures`.
+Wenn sie wiederkommen, werden sie neu geschrieben.
+
 ## Regeln, die hier gelten
 
 - **Abgeleitete Werte werden beim Lesen berechnet, nie gespeichert** (D8). Eine
@@ -82,6 +87,17 @@ die Entscheidungen D0–D17, `Requirements.md` die REQ-Nummern.
   `extends`-Kette hoch); sagt keiner etwas, gilt die Grundanordnung der
   Ansicht. Eine Stufe für genau einen Typ wäre ein Sonderfall mit einem
   Dropdown davor.
+- **Ein Typ darf ein geerbtes Feld umbenennen** (`InterfaceDef.titles`,
+  `Typ.feld` → Beschriftung, die `extends`-Kette hoch geerbt wie `area`).
+  `Time.until` heisst an einem Auftrag „Deadline" und an einem Ereignis
+  „Until". Es ist **keine zweite Feldliste**: der Bestandteil bleibt einer,
+  und ein Feld, das morgen dazukommt, bringt seinen eigenen Namen mit.
+- **Der Bezeichner ist eine Nummer** (`Identity.id`, `npc-0042`):
+  ausgegeben beim Anlegen, `readOnly`, danach unverändert. Er hiess einmal
+  `key` und war ein Slug des Namens — also dieselbe Sache zweimal, die beim
+  Umbenennen entweder mitwandern musste oder log. Gezählt wird, was dasteht
+  (`nextId`); ein gespeicherter Zähler wäre die zweite Stelle, die nach dem
+  ersten Import falsch steht.
 - **Ein Textblock ist ein Feld.** Es gab einmal `blocks: [{blockType, body,
   anchor}]` neben den Karten, mit einer eigenen Liste erlaubter Blockarten je
   Artikelart — also eine zweite Frage, die jede Art zweimal beantworten
@@ -91,8 +107,8 @@ die Entscheidungen D0–D17, `Requirements.md` die REQ-Nummern.
   eine durchgezählte hält nur, solange die Reihenfolge hält. Ein Prosafeld
   steht **nicht** in der Feldtabelle — es gehört dem Element `prose`.
 - **Wie die Dinge heissen, steht in [docs/Begriffe.md](docs/Begriffe.md):**
-  Typ, Bestandteil, Feld, Artikel, Ansicht, Block, Kante, Einheit — acht
-  Wörter, mehr nicht. Wer zwei Namen für eine Sache hat, hat bald zwei Sachen; im
+  Typ, Bestandteil, Feld, Bezeichner, Artikel, Ansicht, Block, Kante,
+  Einheit — neun Wörter, mehr nicht. Wer zwei Namen für eine Sache hat, hat bald zwei Sachen; im
   Prototyp steht dasselbe unter Registry › How it works, aus dem laufenden
   Register gezogen.
 - **Sechs Seiten, vier davon Bereiche.** Register und Kompendium sind

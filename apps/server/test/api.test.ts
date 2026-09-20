@@ -12,7 +12,7 @@ const volo: Entity = {
   /* Eine Karte je Bestandteil. `name` und `key` sind Pflicht — ohne sie
      weist die Validierung den Artikel mit 422 ab, was sie soll. */
   components: {
-    Identity: { name: 'Volo Geddarm', key: 'npc/volo-geddarm', aliases: ['Der Dicke'] },
+    Identity: { name: 'Volo Geddarm', id: 'npc-0001', aliases: ['Der Dicke'] },
     Status: { status: 'used' },
     Tags: { tags: ['händler'] },
   },

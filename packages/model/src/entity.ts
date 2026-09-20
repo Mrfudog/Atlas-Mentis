@@ -92,6 +92,90 @@ export interface TypedField {
   prop: PropertySchema;
 }
 
+/* ---------- Die ausgegebene Nummer ----------
+   `Identity.id` ist `npc-0042`: die Artikelart und eine laufende Nummer
+   darin. Es hiess einmal `key` und stand als `npc/volo-geddarm` da — ein
+   Name, der ein zweites Mal derselbe Name war. Beim Umbenennen musste er
+   entweder mitwandern (dann war er kein fester Bezeichner) oder nicht
+   (dann log er). Eine Nummer sagt nichts und bleibt deshalb richtig.
+
+   Ausgegeben, nicht gerechnet: ein `derived` entstünde bei jedem Lesen neu
+   (D8), und dann hiesse derselbe Artikel morgen anders, sobald jemand vor
+   ihm einen anderen anlegt. */
+
+/** Das Feld, das die ausgegebene Nummer trägt. */
+export const ID_FIELD = 'Identity.id';
+
+/** Der Anfang einer Nummer: die Artikelart, klein und ohne Sonderzeichen. */
+export function idPrefix(type: string): string {
+  return String(type || 'article')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'article';
+}
+
+/** Die Nummer eines Artikels, sofern er eine trägt. */
+export function articleId(article: Pick<Entity, 'components'>): string {
+  const wert = (article.components?.['Identity'] as { id?: unknown } | undefined)?.id;
+  return typeof wert === 'string' ? wert : '';
+}
+
+/**
+ * Die nächste freie Nummer für diese Art.
+ *
+ * Gezählt wird, was schon dasteht: die höchste vergebene plus eins. Einen
+ * Zähler zu speichern wäre eine zweite Stelle, die sagt, wie weit man ist —
+ * und die nach dem ersten Import, der sie nicht mitzählt, falsch steht.
+ *
+ * `auch` nimmt Nummern dazu, die noch in keinem Bestand liegen: ein Import
+ * legt zwanzig Artikel auf einmal an, und ohne das bekämen alle zwanzig
+ * dieselbe.
+ */
+export function nextId(
+  entities: Iterable<Pick<Entity, 'components'>>,
+  type: string,
+  auch: Iterable<string> = [],
+): string {
+  const prefix = idPrefix(type);
+  const muster = new RegExp(`^${prefix}-(\\d+)$`);
+  let hoechste = 0;
+  const schauen = (wert: string): void => {
+    const treffer = muster.exec(wert);
+    if (treffer) hoechste = Math.max(hoechste, Number(treffer[1]));
+  };
+  for (const e of entities) schauen(articleId(e));
+  for (const wert of auch) schauen(wert);
+  return `${prefix}-${String(hoechste + 1).padStart(4, '0')}`;
+}
+
+/**
+ * Wie ein Feld **an dieser Art** heisst.
+ *
+ * Gesucht wird die `extends`-Kette hoch, wie bei `area` und `units`: die
+ * Art selbst zuerst, dann ihre Bestandteile in der Reihenfolge, in der sie
+ * dastehen. Der erste, der `Typ.feld` nennt, gewinnt; sagt keiner etwas,
+ * gilt der Name, den das Feld selbst trägt.
+ *
+ * Damit heisst `Time.duration` bei einem Rezept „Burn time" und bei einer
+ * Quest „Deadline", ohne dass es `Time` zweimal gäbe. Es ist eine
+ * Beschriftung und keine zweite Feldliste: ein Feld, das morgen dazukommt,
+ * bringt seinen eigenen Namen mit.
+ */
+export function fieldTitle(
+  registry: Pick<Registry, 'interfaces'>,
+  type: string | undefined,
+  field: Pick<TypedField, 'type' | 'key' | 'prop'>,
+): string {
+  const ref = `${field.type}.${field.key}`;
+  if (type) {
+    for (const t of typeChain(registry, type)) {
+      const eigen = registry.interfaces[t]?.titles?.[ref];
+      if (typeof eigen === 'string' && eigen.trim()) return eigen;
+    }
+  }
+  return field.prop.title ?? field.key;
+}
+
 /**
  * Every field an article of this type may carry, own ones first and the
  * inherited ones behind them, each with the type that declares it.

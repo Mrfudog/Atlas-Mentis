@@ -24,10 +24,16 @@ export const fieldGroups = {
   Identity: {
     schema: {
       type: 'object',
-      required: ['name', 'key'],
+      required: ['name', 'id'],
       properties: {
         name: { type: 'string', title: 'Name' },
-        key: { type: 'string', title: 'Key' },
+        /* **Ausgegeben, nicht eingetippt** (`npc-0042`): die Artikelart und
+           eine laufende Nummer darin. Es hiess einmal `key` und stand als
+           `npc/volo-geddarm` da — ein Name, der ein zweites Mal derselbe
+           Name war, und der beim Umbenennen entweder mitwandern musste oder
+           still falsch wurde. Eine Nummer sagt nichts und bleibt deshalb
+           richtig; wie der Artikel heisst, steht daneben. */
+        id: { type: 'string', title: 'ID', readOnly: true },
         aliases: { type: 'array', title: 'Aliases', items: { type: 'string' } },
         /* Der Deckname (REQ-178): was ein Spieler sieht, solange der echte
            Name von einer Information beansprucht wird, die er nicht kennt.

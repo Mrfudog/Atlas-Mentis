@@ -423,7 +423,7 @@ async function seite(datei, warten) {
      Diese beiden Seiten einmal zu verwechseln bricht den Import still: die
      Notiz wird nicht mehr erkannt, oder der Artikel trägt eine Komponente,
      die das Register nicht kennt. */
-  const FX = join(HIER, '../../packages/import/test/fixtures');
+  const FX = join(HIER, 'fixtures');
   const lade = (d) => readdirSync(d).filter((f) => f.endsWith('.md'))
     .map((f) => ({ name: f, text: readFileSync(join(d, f), 'utf8') }));
   const fixtures = [...lade(FX), ...lade(join(FX, 'statblock'))];
@@ -540,6 +540,184 @@ async function seite(datei, warten) {
     await p.waitForTimeout(250);
     return p.evaluate(() => [...document.querySelectorAll('#view .sec')].map((x) => x.textContent));
   };
+  /* ---- Eine Vorlage nur dort, wo gezeichnet wird ----
+     `Identity` ist ein Bestandteil und kein Artikel. „Overview" zeigte dort
+     die Beschreibung, die es an ihm gar nicht gibt — und lud dazu ein, eine
+     Anordnung an einer Stelle zu ändern, an der sie nichts tut. Ein
+     Obertyp, der eine Anordnung **selbst** trägt, behält sie: dort ist sie
+     zu ändern. */
+  const vorlageBei = async (name) => {
+    await zumTyp(p, name);
+    return p.evaluate(() => ({
+      knopf: [...document.querySelectorAll('.chips .chip.pick[data-vk]')].length,
+      elemente: [...document.querySelectorAll('.tmpl .tmplel')].length,
+      hinweis: [...document.querySelectorAll('.regbody .hint, #view .hint')]
+        .some((x) => /it is a part that other kinds take/.test(x.textContent)),
+    }));
+  };
+  const teil = await vorlageBei('Identity');
+  const artikelart = await vorlageBei('NPC');
+  const obertyp = await vorlageBei('Creature');
+  pruefe('a part that no article is shows no view template',
+    teil.knopf === 0 && teil.elemente === 0 && teil.hinweis, teil);
+  pruefe('an article kind shows one',
+    artikelart.knopf > 0 && artikelart.elemente > 0 && !artikelart.hinweis, artikelart);
+  /* Und der abstrakte Obertyp mit eigener Anordnung auch — sonst wäre der
+     Kreaturenbogen an keiner Stelle mehr zu erreichen. */
+  pruefe('an abstract kind that carries a layout itself keeps its template',
+    obertyp.knopf > 0 && obertyp.elemente > 0 && !obertyp.hinweis, obertyp);
+
+  /* `Prose` und `Notes` hingen einmal an `Identity`, weil das der einzige
+     Typ ist, den jede Art erbt. Dann stand unter „Identity" ein Feld
+     namens „Text". Ein Basistyp erbt nichts. */
+  const idFelder = await p.evaluate(() => {
+    const T = window.__T__;
+    return { eigen: Object.keys(T.REG.interfaces.Identity.schema.properties),
+             erbt: T.REG.interfaces.Identity.extends || [],
+             prosa: T.proseFields('Identity').map((f) => f.type + '.' + f.key),
+             beimNPC: T.proseFields('NPC').map((f) => f.type + '.' + f.key) };
+  });
+  pruefe('a base kind inherits nothing, so identity carries no prose',
+    idFelder.erbt.length === 0 && idFelder.prosa.length === 0, idFelder);
+  pruefe('the article kinds still have their prose',
+    idFelder.beimNPC.includes('Prose.paragraph') && idFelder.beimNPC.includes('Notes.note'),
+    idFelder.beimNPC);
+
+  /* ---- Ein Typ darf ein geerbtes Feld umbenennen ----
+     Derselbe `Time.until` ist an einem Ereignis, wann es aufhört, und an
+     einem Auftrag, wann es zu spät ist. Der Bestandteil bleibt einer — nur
+     die Beschriftung ist je Typ, und sie steht an dem Typ, der sie meint. */
+  const benannt = await p.evaluate(() => {
+    const T = window.__T__;
+    const von = (art) => T.fieldsOf(art)
+      .filter((f) => f.type === 'Time')
+      .map((f) => f.key + '=' + T.fieldTitle(art, f.type, f.key, f.prop));
+    return { quest: von('Quest'), ereignis: von('Event'),
+             woher: T.titleSource('Quest', 'Time', 'until'),
+             beiTime: T.titleSource('Time', 'Time', 'until') };
+  });
+  pruefe('a kind may rename a field it inherits',
+    benannt.quest.includes('until=Deadline'), benannt.quest);
+  pruefe('and every other kind keeps the name the part brings',
+    benannt.ereignis.includes('until=Until'), benannt.ereignis);
+  pruefe('the rename says which kind set it',
+    benannt.woher === 'Quest' && benannt.beiTime === '', benannt);
+
+  /* Und man ändert sie dort, wo man sie sieht: die Zeile des geerbten
+     Feldes trägt ein Eingabefeld, das in den offenen Typ schreibt. */
+  await zumTyp(p, 'Quest');
+  const umbenennen = await p.evaluate(() => {
+    const zeile = [...document.querySelectorAll('.fbox.part .frow.inh')]
+      .find((r) => r.querySelector('.fk')?.textContent.replace('*', '') === 'calendar');
+    const i = zeile?.querySelector('input');
+    if (!i) return { keinFeld: true };
+    i.value = 'Reckoning';
+    i.dispatchEvent(new Event('change', { bubbles: true }));
+    return { getippt: true };
+  });
+  await p.waitForTimeout(400);
+  const titelJetzt = await p.evaluate(() => {
+    const T = window.__T__;
+    const pd = T.REG.interfaces.Time.schema.properties.calendar;
+    return { quest: T.fieldTitle('Quest', 'Time', 'calendar', pd),
+             /* …und nur dort. Im Bestandteil steht weiter der eigene Name. */
+             teil: pd.title,
+             ereignis: T.fieldTitle('Event', 'Time', 'calendar', pd) };
+  });
+  pruefe('renaming from the type page writes to that type',
+    !umbenennen.keinFeld && titelJetzt.quest === 'Reckoning', { umbenennen, titelJetzt });
+  pruefe('and leaves the part and its other users alone',
+    titelJetzt.teil === 'Calendar' && titelJetzt.ereignis === 'Calendar', titelJetzt);
+
+  /* Zurück auf den eigenen Namen heisst: die Zeile fällt weg. Eine
+     Umbenennung, die dasselbe sagt wie das Feld, wird an dem Tag still
+     falsch, an dem jemand das Feld umbenennt. */
+  const titelZurueck = await p.evaluate(() => {
+    const zeile = [...document.querySelectorAll('.fbox.part .frow.inh')]
+      .find((r) => r.querySelector('.fk')?.textContent.replace('*', '') === 'calendar');
+    const i = zeile?.querySelector('input');
+    if (i) { i.value = 'Calendar'; i.dispatchEvent(new Event('change', { bubbles: true })); }
+    return true;
+  });
+  await p.waitForTimeout(400);
+  const titelWeg = await p.evaluate(() =>
+    ((window.__T__.REG.interfaces.Quest.titles) || {})['Time.calendar']);
+  pruefe('a rename that says the same as the field is not kept',
+    titelZurueck && titelWeg === undefined, titelWeg);
+
+  /* ---- Die ausgegebene Nummer ----
+     `Identity.id` ist `npc-0042` und hiess einmal `key`: `npc/volo-geddarm`,
+     also ein Name, der ein zweites Mal derselbe Name war. Beim Umbenennen
+     musste er entweder mitwandern — dann war er kein fester Bezeichner —
+     oder nicht, und dann log er. */
+  const nummern = await p.evaluate(() => {
+    const T = window.__T__;
+    const alle = [];
+    T.ENT.forEach((e) => alle.push({ art: (e.interfaces || [])[0] || '', id: T.articleId(e) }));
+    const doppelt = {};
+    const gesehen = {};
+    for (const x of alle) {
+      if (x.id && gesehen[x.id]) doppelt[x.id] = 1;
+      gesehen[x.id] = 1;
+    }
+    return {
+      ohne: alle.filter((x) => !x.id).length,
+      falscheForm: alle.filter((x) => x.id && !/^[a-z0-9-]+-\d{4}$/.test(x.id)).length,
+      /* Der Anfang ist die Artikelart — `npc-0003` und nicht `article-0003`. */
+      falscheArt: alle.filter((x) => x.id && x.art && x.id.indexOf(T.idPrefix(x.art) + '-') !== 0).length,
+      doppelt: Object.keys(doppelt),
+      naechste: T.nextId('NPC'),
+      keiner: alle.some((x) => /\//.test(x.id)),
+    };
+  });
+  pruefe('every article carries an issued number', nummern.ohne === 0, nummern);
+  pruefe('and it reads kind-runningNumber, not a second copy of the name',
+    nummern.falscheForm === 0 && nummern.falscheArt === 0 && !nummern.keiner, nummern);
+  pruefe('no two articles share one', nummern.doppelt.length === 0, nummern.doppelt);
+
+  /* Die nächste ist die höchste plus eins — gezählt wird, was dasteht. Ein
+     gespeicherter Zähler wäre eine zweite Stelle, die sagt, wie weit man
+     ist, und die nach dem ersten Import falsch steht. */
+  const weiter = await p.evaluate(() => {
+    const T = window.__T__;
+    const hoch = [];
+    T.ENT.forEach((e) => {
+      if ((e.interfaces || [])[0] === 'NPC') hoch.push(Number(T.articleId(e).split('-').pop()));
+    });
+    return { erwartet: Math.max(0, ...hoch) + 1, bekommen: T.nextId('NPC'),
+             imStapel: T.nextId('NPC', [T.nextId('NPC')]) };
+  });
+  pruefe('the next number is the highest plus one',
+    weiter.bekommen === 'npc-' + String(weiter.erwartet).padStart(4, '0'), weiter);
+  /* Und ein Stapel zählt weiter, statt zwanzigmal dieselbe zu vergeben. */
+  pruefe('and a batch counts on from what it has just issued',
+    weiter.imStapel === 'npc-' + String(weiter.erwartet + 1).padStart(4, '0'), weiter);
+
+  /* Sie steht am Kopf des Artikels — und bekommt auch beim „alles
+     bearbeiten" keine Eingabe: sie steht seit dem Anlegen und darf sich
+     nicht ändern, sonst hiesse derselbe Artikel morgen anders. */
+  await p.evaluate(() => window.__T__.go({ k: 'art', id: 'n_volo' }));
+  await p.waitForTimeout(400);
+  const tippbar = await p.evaluate(() => {
+    const T = window.__T__;
+    T.UI.inline = true;
+    T.render();
+    return new Promise((r) => setTimeout(() => {
+      const antwort = {
+        amKopf: document.querySelector('.arthead .key')?.textContent ?? '',
+        /* Nirgends eine Eingabe, die sie trägt. */
+        eingabe: [...document.querySelectorAll('#view input')]
+          .some((i) => /^[a-z0-9-]+-\d{4}$/.test(i.value || '')),
+      };
+      T.UI.inline = false;
+      T.render();
+      r(antwort);
+    }, 350));
+  });
+  await p.waitForTimeout(300);
+  pruefe('the number stands at the head and never becomes an input',
+    /^npc-\d{4}$/.test(tippbar.amKopf) && !tippbar.eingabe, tippbar);
+
   const sb = await zeig('Kanalschleim');
   const npc = await zeig('Volo');
   pruefe('a per-type layout reaches that type', sb.includes('Statblocks only'), sb);
@@ -1069,7 +1247,7 @@ async function seite(datei, warten) {
     dm.titel === 'Registry'
     && ['How it works', 'Types', 'Views', 'Relations', 'Variables', 'Settings',
       'Backup', 'Stack', 'Graph'].every((t) => dm.reiter.includes(t))
-    && ['Type', 'Part', 'Field', 'Article', 'View', 'Block', 'Edge', 'Unit']
+    && ['Type', 'Part', 'Field', 'Identifier', 'Article', 'View', 'Block', 'Edge', 'Unit']
       .every((w, i) => dm.begriffe[i] === w), { begriffe: dm.begriffe, reiter: dm.reiter });
   pruefe('and follows one article from its type down to its fields',
     dm.knoten[0] === 'article' && dm.knoten[1] === 'its type'

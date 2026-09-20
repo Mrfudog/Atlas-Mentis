@@ -26,6 +26,7 @@ const propertySchema = z.object({
   of: z.string().optional(),
   unit: z.string().optional(),
   many: z.boolean().optional(),
+  readOnly: z.boolean().optional(),
   default: z.unknown().optional(),
 });
 
@@ -69,6 +70,8 @@ export const InterfaceDefSchema = z.object({
   area: z.enum(['world', 'history', 'rules', 'play']).optional(),
   views: z.record(z.string(), z.array(LayoutElementSchema)).optional(),
   units: z.enum(['imperial', 'metric', 'both']).optional(),
+  /* `Typ.feld` → Beschriftung. Eine Beschriftung und keine Feldliste. */
+  titles: z.record(z.string(), z.string()).optional(),
 });
 
 export const UnitDefSchema = z.object({

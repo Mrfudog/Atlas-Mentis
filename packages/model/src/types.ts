@@ -58,6 +58,15 @@ export interface PropertySchema {
   /** Render this derived value inside the named sibling's cell: STÄ 16 (+3). */
   of?: string;
   default?: unknown;
+  /**
+   * **Ausgegeben, nicht eingetippt.** Das Feld bekommt keine Eingabe: es
+   * wird beim Anlegen gesetzt und ändert sich danach nicht mehr.
+   *
+   * Das ist nicht `derived`: ein gerechneter Wert entsteht bei jedem Lesen
+   * neu (D8), eine ausgegebene Nummer muss stehen bleiben — sonst hiesse
+   * derselbe Artikel morgen anders.
+   */
+  readOnly?: boolean;
 }
 
 export interface ObjectSchema {
@@ -119,6 +128,20 @@ export interface InterfaceDef {
    * Regelwerk kommen, während der Rest metrisch dasteht.
    */
   units?: 'imperial' | 'metric' | 'both';
+  /**
+   * **Wie ein geerbtes Feld hier heissen soll.** Eine Karte `Typ.feld` →
+   * Beschriftung, aufgelöst die `extends`-Kette hoch wie `area` und
+   * `units`: `Recipe` nennt `Time.duration` „Burn time", `Quest` nennt es
+   * „Deadline", und sonst heisst es „Duration".
+   *
+   * Es ist **keine** zweite Feldliste: der Bestandteil bleibt einer, und
+   * ein Feld, das morgen dazukommt, trägt seinen eigenen Namen, ohne dass
+   * hier jemand nachzieht. Es steht hier und nicht am Bestandteil, weil
+   * derselbe `Time.duration` bei einem Rezept etwas anderes meint als bei
+   * einer Quest — den Bestandteil dafür zu verdoppeln wäre der teurere
+   * Weg zum selben Satz.
+   */
+  titles?: Record<string, string>;
 }
 
 /**

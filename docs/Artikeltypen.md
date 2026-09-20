@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-09-20. 55 Schnittstellen, 41 Kantenarten.
+Stand 2026-09-20. 62 Schnittstellen, 41 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -27,7 +27,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 **Geerbte Felder**
 
 - *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
-- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -54,17 +54,19 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Article
 
 `Article` · erbt von `Identity`
 
+**Eigene Felder**
+
+- `poem` *long*, `song` *long*
+
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-
-**Blöcke** `+lore` `+secret` `+poem` `+song`
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -87,7 +89,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Companion
 
@@ -95,8 +97,8 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Creature`* — `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
-- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Creature`* — `appearance` *long*, `personality` *long*, `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -129,7 +131,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - Creature | NPC | PlayerCharacter | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
-  - **Overview** — `image`, `description`, `fields` (ohne StatblockInfo, Vitals, Skills), `blocks`
+  - **Overview** — `image`, `description`, `fields` (ohne StatblockInfo, Vitals, Skills), `prose`
   - **Combat** — `composed`
   - **Gear** — `inventory`
   - **Craft** — `crafting`
@@ -142,7 +144,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 **Geerbte Felder**
 
 - *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
-- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -169,7 +171,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Creature — *abstrakt*
 
@@ -177,13 +179,11 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Eigene Felder**
 
-- `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
+- `appearance` *long*, `personality` *long*, `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-
-**Blöcke** `+appearance` `+personality` `+lore` `+fact` `+secret` `+readaloud`
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -216,7 +216,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - Creature | NPC | PlayerCharacter | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
-  - **Overview** — `image`, `description`, `fields` (ohne StatblockInfo, Vitals, Skills), `blocks`
+  - **Overview** — `image`, `description`, `fields` (ohne StatblockInfo, Vitals, Skills), `prose`
   - **Combat** — `composed`
   - **Gear** — `inventory`
   - **Craft** — `crafting`
@@ -232,9 +232,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-
-**Blöcke** `+lore` `+secret`
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -263,7 +261,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `overrides` → „replaced by"
 - Creature | NPC | PlayerCharacter | Party | Faction — `regards` → „judged by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Item
 
@@ -275,9 +273,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-
-**Blöcke** `+lore` `+secret` `+fact`
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -304,7 +300,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Material
 
@@ -317,7 +313,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 **Geerbte Felder**
 
 - *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
-- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -344,7 +340,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### NPC
 
@@ -352,8 +348,8 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Creature`* — `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
-- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Creature`* — `appearance` *long*, `personality` *long*, `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -391,7 +387,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - Creature | NPC | PlayerCharacter | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
-  - **Overview** — `image`, `description`, `fields` (ohne StatblockInfo, Vitals, Skills), `blocks`
+  - **Overview** — `image`, `description`, `fields` (ohne StatblockInfo, Vitals, Skills), `prose`
   - **Combat** — `composed`
   - **Gear** — `inventory`
   - **Craft** — `crafting`
@@ -407,9 +403,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-
-**Blöcke** `+lore` `+note`
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -451,9 +445,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-
-**Blöcke** `+lore` `+readaloud` `+secret`
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -484,7 +476,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Place`): `image`, `description`, `fields`, `blocks`, `crawl`, `table`, `relations`
+**Gezeichnet** (aus `Place`): `image`, `description`, `fields`, `prose`, `crawl`, `table`, `relations`
 
 ### Player character
 
@@ -492,14 +484,12 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Eigene Felder**
 
-- `player` *string*, `ancestry` *string*, `class` *string*, `level` *number*, `proficiency` *gerechnet*
+- `backstory` *long*, `player` *string*, `ancestry` *string*, `class` *string*, `level` *number*, `proficiency` *gerechnet*
 
 **Geerbte Felder**
 
-- *`Creature`* — `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
-- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-
-**Blöcke** `+backstory`
+- *`Creature`* — `appearance` *long*, `personality` *long*, `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -533,7 +523,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - Creature | NPC | PlayerCharacter | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
-  - **Overview** — `image`, `description`, `fields` (ohne StatblockInfo, Vitals, Skills), `blocks`
+  - **Overview** — `image`, `description`, `fields` (ohne StatblockInfo, Vitals, Skills), `prose`
   - **Combat** — `composed`
   - **Gear** — `inventory`
   - **Craft** — `crafting`
@@ -545,8 +535,8 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Creature`* — `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
-- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Creature`* — `appearance` *long*, `personality` *long*, `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -579,7 +569,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - Creature | NPC | PlayerCharacter | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
-  - **Overview** — `image`, `description`, `fields` (ohne StatblockInfo, Vitals, Skills), `blocks`
+  - **Overview** — `image`, `description`, `fields` (ohne StatblockInfo, Vitals, Skills), `prose`
   - **Combat** — `composed`
   - **Gear** — `inventory`
   - **Craft** — `crafting`
@@ -596,7 +586,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 **Geerbte Felder**
 
 - *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
-- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -623,7 +613,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ---
 
@@ -641,9 +631,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-
-**Blöcke** `+note`
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -678,9 +666,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-
-**Blöcke** `+tactics` `+readaloud` `+note` `+secret`
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -706,7 +692,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Encounter`): `initiative`, `description`, `fields`, `blocks`
+**Gezeichnet** (aus `Encounter`): `initiative`, `description`, `fields`, `prose`
 
 ### Group
 
@@ -718,9 +704,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-
-**Blöcke** `+note`
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -743,7 +727,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Map
 
@@ -755,9 +739,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-
-**Blöcke** `+note` `+secret` `+readaloud`
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -791,7 +773,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ## Ohne Bereich
 
-*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 17 Arten.
+*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 24 Arten.
 
 ### Access — *abstrakt*
 
@@ -821,7 +803,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Asset
 
@@ -833,7 +815,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -855,7 +837,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Description — *abstrakt*
 
@@ -885,17 +867,15 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
-### Identity — *abstrakt*
+### Facts — *abstrakt*
 
-`Identity`
+`Facts`
 
 **Eigene Felder**
 
-- `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-
-**Blöcke** `paragraph` `note`
+- `fact` *long*
 
 **Kanten von hier**
 
@@ -917,7 +897,37 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+
+### Identity — *abstrakt*
+
+`Identity`
+
+**Eigene Felder**
+
+- `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Image — *abstrakt*
 
@@ -947,7 +957,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Imported — *abstrakt*
 
@@ -977,7 +987,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Layer
 
@@ -989,9 +999,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-
-**Blöcke** `+note`
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -1015,7 +1023,157 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+
+### Lore — *abstrakt*
+
+`Lore`
+
+**Eigene Felder**
+
+- `lore` *long*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+
+### Notes — *abstrakt*
+
+`Notes`
+
+**Eigene Felder**
+
+- `note` *long*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+
+### Text — *abstrakt*
+
+`Prose`
+
+**Eigene Felder**
+
+- `paragraph` *long*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+
+### Read aloud — *abstrakt*
+
+`ReadAloud`
+
+**Eigene Felder**
+
+- `readaloud` *long*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+
+### Secrets — *abstrakt*
+
+`Secrets`
+
+**Eigene Felder**
+
+- `secret` *long*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Skills — *abstrakt*
 
@@ -1045,7 +1203,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Source — *abstrakt*
 
@@ -1075,7 +1233,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Statblock numbers — *abstrakt*
 
@@ -1105,7 +1263,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Status — *abstrakt*
 
@@ -1135,7 +1293,37 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+
+### Tactics — *abstrakt*
+
+`Tactics`
+
+**Eigene Felder**
+
+- `tactics` *long*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Tags — *abstrakt*
 
@@ -1165,7 +1353,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Time — *abstrakt*
 
@@ -1195,7 +1383,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Todos — *abstrakt*
 
@@ -1225,7 +1413,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Variables — *abstrakt*
 
@@ -1255,7 +1443,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Visibility — *abstrakt*
 
@@ -1285,7 +1473,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Vitals — *abstrakt*
 
@@ -1315,5 +1503,5 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 

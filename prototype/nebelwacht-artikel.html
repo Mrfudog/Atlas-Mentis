@@ -1170,6 +1170,76 @@ function entriesOf(v){
 }
 function entryRef(t,k,id){ return t+"."+k+"#"+id; }
 
+/* ---------- Die ausgegebene Nummer ----------
+   `Identity.id` ist `npc-0042`: die Artikelart und eine laufende Nummer
+   darin. Es hiess einmal `key` und stand als `npc/volo-geddarm` da — ein
+   Name, der ein zweites Mal derselbe Name war. Beim Umbenennen musste er
+   entweder mitwandern (dann war er kein fester Bezeichner) oder nicht (dann
+   log er). Eine Nummer sagt nichts und bleibt deshalb richtig; wie der
+   Artikel heisst, steht daneben.
+
+   Ausgegeben, nicht gerechnet: ein `derived` entstünde bei jedem Lesen neu
+   (D8), und dann hiesse derselbe Artikel morgen anders, sobald jemand vor
+   ihm einen anderen anlegt. */
+function idPrefix(typ){
+  return String(typ||"article").toLowerCase()
+    .replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||"article";
+}
+function articleId(e){
+  var v=((e&&e.components)||{}).Identity;
+  return v&&typeof v.id==="string"?v.id:"";
+}
+/**
+ * Die nächste freie Nummer für diese Art.
+ *
+ * Gezählt wird, was schon dasteht: die höchste vergebene plus eins. Einen
+ * Zähler zu speichern wäre eine zweite Stelle, die sagt, wie weit man ist —
+ * und die nach dem ersten Import, der sie nicht mitzählt, falsch steht.
+ */
+function nextId(typ,auch){
+  var prefix=idPrefix(typ), muster=new RegExp("^"+prefix+"-(\\d+)$"), hoch=0;
+  var schau=function(w){ var m=muster.exec(String(w||"")); if(m) hoch=Math.max(hoch,Number(m[1])); };
+  ENT.forEach(function(e){ schau(articleId(e)); });
+  (auch||[]).forEach(schau);
+  return prefix+"-"+String(hoch+1).padStart(4,"0");
+}
+
+/**
+ * Wie ein Feld **an dieser Art** heisst.
+ *
+ * Gesucht wird die `extends`-Kette hoch, wie bei `area` und `units`: die
+ * Art selbst zuerst, dann ihre Bestandteile in der Reihenfolge, in der sie
+ * dastehen. Der erste, der `Typ.feld` nennt, gewinnt; sagt keiner etwas,
+ * gilt der Name, den das Feld selbst trägt.
+ *
+ * Damit heisst `Time.until` an einem Auftrag „Deadline" und an einem
+ * Ereignis weiter „Until", ohne dass es `Time` zweimal gäbe. Es ist eine
+ * Beschriftung und keine zweite Feldliste — ein Feld, das morgen dazukommt,
+ * bringt seinen eigenen Namen mit.
+ */
+function fieldTitle(ifn,cn,key,pd){
+  var ref=cn+"."+key;
+  if(ifn){
+    var kette=selfAndAncestors(ifn);
+    for(var i=0;i<kette.length;i++){
+      var t=((REG.interfaces[kette[i]]||{}).titles||{})[ref];
+      if(typeof t==="string"&&t.trim()) return t;
+    }
+  }
+  return (pd&&pd.title)||key;
+}
+/** Wo die Beschriftung herkommt — die Art selbst, ein Obertyp, oder das
+ *  Feld. Die Maske muss das sagen: eine geerbte Umbenennung zu ändern
+ *  änderte sie für jede Unterart mit. */
+function titleSource(ifn,cn,key){
+  var ref=cn+"."+key, kette=ifn?selfAndAncestors(ifn):[];
+  for(var i=0;i<kette.length;i++){
+    var t=((REG.interfaces[kette[i]]||{}).titles||{})[ref];
+    if(typeof t==="string"&&t.trim()) return kette[i];
+  }
+  return "";
+}
+
 /** Die Prosafelder einer Art: `many` und lange Eingabe. Wer sie sucht,
  *  fragt nach ihrer Form und nicht nach einer zweiten Liste. */
 function proseFields(ifn){
@@ -1194,6 +1264,7 @@ function proseOf(e,ifn,want,ausser){
     if(!karte)return;
     entriesOf(karte[f.key]).forEach(function(x){
       out.push({type:f.type,key:f.key,prop:f.prop,id:x.id,value:x.value,
+                titel:fieldTitle(ifn,f.type,f.key,f.prop),
                 ref:entryRef(f.type,f.key,x.id)});
     });
   });
@@ -1221,6 +1292,8 @@ function dropEntry(e,typ,key,id){
 function allProse(e){
   return proseOf(e,(e.interfaces||[])[0]||"","all",null);
 }
+/** Die Beschriftung einer Prosastelle, auch wenn sie aus `allProse` kommt. */
+function proseTitle(x){ return x.titel||x.prop.title||x.key; }
 
 /* ---------- field kinds ----------
    A schema property carries a JSON-Schema `type`, but the page needs a finer
@@ -1450,7 +1523,7 @@ function uploadAsset(file){
    zweimal dazuliegen. */
 function newAssetArticle(name,res){
   var e={ id:uid("as"), interfaces:[ASSET_IFACE], name:name,
-    components:{ Identity:{name:name,key:"asset/"+slug(name),aliases:[]} },
+    components:{ Identity:{name:name,id:nextId("Asset"),aliases:[]} },
     adhoc:[], relations:[], createdAt:new Date().toISOString() };
   reqFor(ASSET_IFACE).forEach(function(c){ if(!e.components[c]&&REG.interfaces[c]) e.components[c]={}; });
   applyDefaults(e,ASSET_IFACE);
@@ -2667,7 +2740,7 @@ function renderArticle(v,id){
       h2.addEventListener("click",function(){ UI.editField="__name"; render(); }); }
     head.appendChild(h2);
   }
-  var ik=e.components&&e.components.Identity&&e.components.Identity.key;
+  var ik=articleId(e);
   if(ik) head.appendChild(el("div",{class:"key",text:ik}));
   var herkunft=stackChip(e);
   if(herkunft) head.appendChild(herkunft);
@@ -2886,7 +2959,7 @@ function bulkBar(list){
   return bar;
 }
 
-var BULK_TABU={"Identity.name":1,"Identity.key":1};
+var BULK_TABU={"Identity.name":1,"Identity.id":1};
 /* Nur Felder anbieten, die alle Gewählten überhaupt führen können — sonst
    stellt man etwas ein, das bei der Hälfte nirgends ankommt. */
 function bulkFieldDialog(betroffen,durch){
@@ -2958,11 +3031,15 @@ function bulkFieldDialog(betroffen,durch){
    article from another one, where there is nothing to click yet.
    Derived fields never become inputs — they have no stored value to write
    back to, and offering one would promise an edit that cannot happen. */
-function fieldCell(e,cn,p,pd,val,txt){
+function fieldCell(e,cn,p,pd,val,txt,titel){
   var id=cn+"."+p;
   var cell=el("div",{class:"fld"+(pd.derived?" drv":"")});
-  cell.appendChild(el("dt",{text:pd.title||p}));
-  var editable=canWrite()&&!pd.derived;
+  cell.appendChild(el("dt",{text:titel||pd.title||p}));
+  /* Eine ausgegebene Nummer bekommt keine Eingabe: sie steht seit dem
+     Anlegen und darf sich nicht ändern — sonst hiesse derselbe Artikel
+     morgen anders. Ein gerechneter Wert bekommt aus dem anderen Grund
+     keine: ihn zu schreiben ginge ins Leere (D8). */
+  var editable=canWrite()&&!pd.derived&&!pd.readOnly;
   var open=editable&&(UI.inline||UI.editField===id);
 
   if(open){
@@ -3206,22 +3283,23 @@ function fieldPlan(e,ifn,want,ausser){
          dasselbe zu zeigen — oben als Zeile, unten als Absatz — war genau
          das, was an den Blöcken störte, und es käme mit ihnen zurück. */
       if(pd.many&&pd.format==="long")return;
+      var titel=fieldTitle(ifn,cn,p,pd);
       var txt=fmtVal(pd, pd.derived?derivedValue(pd,val):val[p], ifn);
       if(txt===""){
-        if(!pd.derived) frei.push({cn:cn,p:p,pd:pd,ref:cn+"."+p,
-          label:(REG.interfaces[cn].label||cn)+" · "+(pd.title||p)});
+        if(!pd.derived&&!pd.readOnly) frei.push({cn:cn,p:p,pd:pd,ref:cn+"."+p,titel:titel,
+          label:(REG.interfaces[cn].label||cn)+" · "+titel});
         /* Ein leeres Feld steht nur da, wenn man gerade alles bearbeitet —
            oder wenn man **dieses** angefordert hat. Ohne den zweiten Fall
            wäre „+ field" ein Knopf, der nichts tut. */
-        var gewaehlt=canWrite()&&!pd.derived&&UI.editField===cn+"."+p;
-        if(!gewaehlt&&!(UI.inline&&canWrite()&&!pd.derived))return;
+        var gewaehlt=canWrite()&&!pd.derived&&!pd.readOnly&&UI.editField===cn+"."+p;
+        if(!gewaehlt&&!(UI.inline&&canWrite()&&!pd.derived&&!pd.readOnly))return;
       }
       (attach[p]||[]).forEach(function(dp){
         var dv=fmtVal(props[dp],derivedValue(props[dp],val), ifn);
         if(dv!=="") txt+=" ("+dv+")";
       });
-      cells.push({cn:cn,p:p,pd:pd,val:val,txt:txt,ref:cn+"."+p,
-        label:(REG.interfaces[cn].label||cn)+" · "+(pd.title||p)});
+      cells.push({cn:cn,p:p,pd:pd,val:val,txt:txt,ref:cn+"."+p,titel:titel,
+        label:(REG.interfaces[cn].label||cn)+" · "+titel});
     });
   });
   /* Der Wissensfilter sitzt hier, weil hier die Feldauswahl entsteht:
@@ -3251,7 +3329,7 @@ function elFields(e,ifn,item){
   if(item.columns>0) flds.style.gridTemplateColumns="repeat("+item.columns+",minmax(0,1fr))";
   var plan=fieldPlan(e,ifn,item.fields,item.except);
   plan.forEach(function(c){
-    flds.appendChild(fieldCell(e,c.cn,c.p,c.pd,c.val,c.txt)); nf++;
+    flds.appendChild(fieldCell(e,c.cn,c.p,c.pd,c.val,c.txt,c.titel)); nf++;
   });
   if(item.fields==="all") (e.adhoc||[]).forEach(function(f){
     if(f.value===""||f.value==null)return;
@@ -3313,7 +3391,7 @@ function elProse(e,ifn,item){
     /* Der gewöhnliche Fliesstext trägt keine Überschrift — „Text" über
        einem Absatz sagt nichts. Alles andere sagt, was es ist. */
     if(x.key!=="paragraph"){
-      var kopf=el("div",{class:"bl"},[document.createTextNode(x.prop.title||x.key)]);
+      var kopf=el("div",{class:"bl"},[document.createTextNode(proseTitle(x))]);
       if(canWrite()) kopf.appendChild(el("button",{class:"btn gh sm",type:"button",
         onclick:function(){ confirmDialog("Delete this passage?",function(){
           dropEntry(e,x.type,x.key,x.id); persist(e); }); }},"×"));
@@ -3361,7 +3439,8 @@ function elProse(e,ifn,item){
       var sel=el("select",{class:"i"});
       sel.appendChild(el("option",{value:""},"+ passage"));
       moeglich.forEach(function(f){
-        sel.appendChild(el("option",{value:f.type+"."+f.key},f.prop.title||f.key)); });
+        sel.appendChild(el("option",{value:f.type+"."+f.key},
+          fieldTitle(ifn,f.type,f.key,f.prop))); });
       sel.addEventListener("change",function(){
         if(!sel.value)return;
         var teil=sel.value.split("."), id=uid("b");
@@ -4053,7 +4132,7 @@ function elPrep(e,ifn,item){
         var t=qi.value.trim(); if(!t)return;
         var neu={ id:uid("id"), interfaces:[REG.interfaces.Article?"Article":ifn],
           name:t.slice(0,60),
-          components:{ Identity:{name:t.slice(0,60),key:"idea/"+slug(t).slice(0,40),aliases:[]},
+          components:{ Identity:{name:t.slice(0,60),id:nextId("Idea"),aliases:[]},
             Status:{status:"idea"}, Description:{description:t}, Tags:{tags:["idee"]} },
           adhoc:[], relations:[], createdAt:new Date().toISOString() };
         reqFor(neu.interfaces[0]).forEach(function(c){
@@ -5978,7 +6057,7 @@ function newOnBoard(e){
       var name=nm.value.trim(); if(!name){nm.focus();return false;}
       var ifn2=sel.value;
       var neu={ id:uid("e"), interfaces:[ifn2], name:name,
-        components:{ Identity:{name:name,key:slug(ifn2)+"/"+slug(name),aliases:[]} },
+        components:{ Identity:{name:name,id:nextId(ifn2),aliases:[]} },
         adhoc:[], relations:[], createdAt:new Date().toISOString() };
       if(tx.value.trim()) neu.components.Description={description:tx.value.trim()};
       reqFor(ifn2).forEach(function(c){ if(!neu.components[c]&&REG.interfaces[c]) neu.components[c]={}; });
@@ -6903,7 +6982,7 @@ function elInventory(e,ifn,item){
 function newInventory(e){
   var name=nameOf(e)+" — gear";
   var inv={ id:uid("inv"), interfaces:[INV_IFACE], name:name,
-    components:{ Identity:{name:name,key:"inventory/"+slug(name),aliases:[]} },
+    components:{ Identity:{name:name,id:nextId("Inventory"),aliases:[]} },
     adhoc:[], relations:[], createdAt:new Date().toISOString() };
   reqFor(INV_IFACE).forEach(function(c){ if(!inv.components[c]&&REG.interfaces[c]) inv.components[c]={}; });
   applyDefaults(inv,INV_IFACE);
@@ -8387,7 +8466,7 @@ function addSubmap(e,rahmen){
       if(!kind){
         var name=nm.value.trim(); if(!name){nm.focus();return false;}
         kind={ id:uid("mp"), interfaces:[MAP_IFACE], name:name,
-          components:{ Identity:{name:name,key:"map/"+slug(name),aliases:[]} },
+          components:{ Identity:{name:name,id:nextId("Map"),aliases:[]} },
           adhoc:[], relations:[], createdAt:new Date().toISOString() };
         reqFor(MAP_IFACE).forEach(function(c){ if(!kind.components[c]&&REG.interfaces[c]) kind.components[c]={}; });
         applyDefaults(kind,MAP_IFACE);
@@ -8627,13 +8706,13 @@ function elKnowledge(e,ifn,item){
       if(felder.length){
         var dl=el("dl",{class:"fields"});
         felder.forEach(function(ref){ var c=byRef[ref];
-          dl.appendChild(fieldCell(e,c.cn,c.p,c.pd,c.val,c.txt)); });
+          dl.appendChild(fieldCell(e,c.cn,c.p,c.pd,c.val,c.txt,c.titel)); });
         box.appendChild(dl);
       }
       g.fields.forEach(function(ref){ var x=stuecke[ref]; if(!x)return;
         var blk=el("div",{class:"blk "+x.key});
         if(x.key!=="paragraph") blk.appendChild(el("div",{class:"bl",
-          text:x.prop.title||x.key}));
+          text:proseTitle(x)}));
         blk.appendChild(para(fillVars(x.value,null,e)));
         box.appendChild(blk);
       });
@@ -8663,7 +8742,7 @@ function newInformation(e){
       var name=nm.value.trim(); if(!name){nm.focus();return false;}
       if(!REG.interfaces[INFO_IFACE]){ alert("The interface “"+INFO_IFACE+"” is missing from the registry."); return; }
       var info={ id:uid("i"), interfaces:[INFO_IFACE], name:name,
-        components:{ Identity:{name:name,key:"information/"+slug(name),aliases:[]} },
+        components:{ Identity:{name:name,id:nextId(INFO_IFACE),aliases:[]} },
         adhoc:[], relations:[], createdAt:new Date().toISOString() };
       reqFor(INFO_IFACE).forEach(function(c){ if(!info.components[c]&&REG.interfaces[c]) info.components[c]={}; });
       applyDefaults(info,INFO_IFACE);
@@ -8747,7 +8826,7 @@ function renderKnowPanel(a,e){
         card.fields=l; persist(info);
       });
       bp.appendChild(el("label",null,[cb,
-        el("span",{text:(x.prop.title||x.key)+": "+String(x.value||"").slice(0,42)})]));
+        el("span",{text:proseTitle(x)+": "+String(x.value||"").slice(0,42)})]));
     });
     a.appendChild(bp);
   }
@@ -9514,7 +9593,7 @@ function templateFor(v,ifn,vw,src){
           title:sl?"Held back from players at the server":ref,
           onclick:function(){
             togglePick(item,"fields",ref,!zeigt); saveReg("views"); render();
-          }},(f.prop.title||f.key)+(sl?" ●":"")));
+          }},fieldTitle(ifn,f.type,f.key,f.prop)+(sl?" ●":"")));
       });
       box.appendChild(g2);
       return box;
@@ -9614,10 +9693,25 @@ function renderTypes(v){
 
      Kein Beispielartikel, sondern die Form. Ein Beispiel führte dazu, dass
      man seine Lücken für Fehler der Vorlage hält. */
+  /* **Nicht jede Art wird gezeichnet.** Ein Bestandteil wie `Identity` ist
+     kein Artikel: „Overview" zeigte dort die Beschreibung, die es an ihm gar
+     nicht gibt, und lud dazu ein, eine Anordnung an einer Stelle zu ändern,
+     an der sie nichts tut. Gezeigt wird die Vorlage deshalb für Artikelarten
+     — und für die Obertypen, die eine Anordnung **selbst** tragen, denn die
+     ist genau dort zu ändern, wo sie steht. */
   var vws=Object.keys(REG.views).length?REG.views:VIEWS_FALLBACK;
   var vwKey=vws[UI.typeView]?UI.typeView:viewKeys()[0];
   var vw=vws[vwKey];
-  if(vw){
+  var eigeneSicht=Object.keys(((REG.interfaces[wahl]||{}).views)||{}).length>0;
+  var gezeichnet=!d.abstract||eigeneSicht;
+  if(vw&&!gezeichnet){
+    doc.appendChild(el("div",{class:"sec",text:"Views"}));
+    doc.appendChild(el("p",{class:"hint",
+      text:"No article is a “"+(d.label||wahl)+"” — it is a part that other kinds take. "+
+        "How it is drawn is decided where it is used; open one of the kinds below, "+
+        "or give this one a layout of its own from there."}));
+  }
+  if(vw&&gezeichnet){
     var src=layoutSource(vw,wahl,vwKey);
     var vk=el("div",{class:"sec"});
     vk.appendChild(el("span",{text:"Views"}));
@@ -10133,7 +10227,17 @@ var BEGRIFFE=[
    "maybe a default, maybe a calculation. A calculated field takes no input "+
    "and is never stored. Values are kept one card per type, named after the "+
    "type that declares the field — that is what keeps hp at the creature "+
-   "apart from hp at the statblock."],
+   "apart from hp at the statblock. A type may rename a field it inherits: "+
+   "the same Time.until is when an event ends and when a quest is too late, "+
+   "so the quest calls it “Deadline”. That is a label, not a second field "+
+   "list — the part stays one, and a field added tomorrow brings its own "+
+   "name."],
+  ["Identifier",
+   "Issued, not typed: npc-0042, the kind and a running number inside it. "+
+   "It is set when the article is made and never changes. It used to be a "+
+   "slug of the name — the same thing said twice, which on a rename either "+
+   "had to move along or started lying. A number says nothing and stays "+
+   "right; what the article is called stands next to it."],
   ["Article",
    "A thing in the campaign: an id, the types it is, the cards with its "+
    "values, and its edges. What it records is said by its type, never by "+
@@ -10795,7 +10899,7 @@ function fieldTable(ifn,w,save){
         text:"via "+(REG.interfaces[ueber].label||ueber)}));
     }
     teil.appendChild(kopf);
-    ks.forEach(function(k){ teil.appendChild(erbRow(a,k)); geerbt++; });
+    ks.forEach(function(k){ teil.appendChild(erbRow(a,k,ifn,w,save)); geerbt++; });
     bloecke.push(teil);
   });
 
@@ -10826,17 +10930,57 @@ function fieldTable(ifn,w,save){
   return aussen;
 }
 
-/* Eine geerbte Zeile: lesen, nicht ändern. Wo es geht, sagt die Kopfzeile
-   des Blocks — an jeder Zeile stünde es dreiundachtzigmal. */
-function erbRow(art,k){
+/* Eine geerbte Zeile: das Feld gehört dem Bestandteil, und dort wird es
+   geändert — wo, sagt die Kopfzeile des Blocks; an jeder Zeile stünde es
+   dreiundachtzigmal.
+   
+   **Die Beschriftung ist die Ausnahme**, und zwar weil sie keine Tatsache
+   über das Feld ist, sondern eine über diese Art: derselbe `Time.until`
+   ist an einem Ereignis, wann es aufhört, und an einem Auftrag, wann es zu
+   spät ist. Also darf die Art ihn umbenennen, und das schreibt in ihre
+   `titles` und nicht in den Bestandteil. Eine Umbenennung, die ein
+   *Obertyp* gesetzt hat, bleibt hier lesbar: sie zu ändern änderte sie für
+   jede Unterart mit. */
+function erbRow(art,k,ifn,w,save){
   var p=propsOf(art)[k]||{};
   var pflicht=(schemaOf(art).required||[]).indexOf(k)>=0;
+  var eigenName=p.title||k;
+  var woher=titleSource(ifn,art,k);
+  var jetzt=fieldTitle(ifn,art,k,p);
   var row=el("div",{class:"frow inh"});
   row.appendChild(el("span",{class:"fk",text:k+(pflicht?"*":"")}));
-  row.appendChild(el("span",{class:"co",text:p.title||k}));
+
+  if(w&&(!woher||woher===ifn)){
+    var ti=el("input",{class:"i",type:"text",value:jetzt,placeholder:eigenName,
+      title:"What this field is called here. Empty means “"+eigenName+"”, the name it brings."});
+    ti.addEventListener("change",function(){
+      var neu=ti.value.trim();
+      var d=REG.interfaces[ifn]; if(!d)return;
+      var ref=art+"."+k;
+      var t=d.titles||{};
+      /* Gleich wie der eigene Name heisst: keine Umbenennung. Sie
+         stehenzulassen wäre eine Zeile, die nichts tut und beim nächsten
+         Umbenennen des Feldes still falsch wird. */
+      if(!neu||neu===eigenName) delete t[ref]; else t[ref]=neu;
+      if(Object.keys(t).length) d.titles=t; else delete d.titles;
+      save();
+    });
+    row.appendChild(ti);
+  } else {
+    row.appendChild(el("span",{class:"co",
+      title:woher?("Renamed at "+(REG.interfaces[woher].label||woher)+
+        " — change it there, it holds for every kind under it"):"",
+      text:jetzt+(woher&&woher!==ifn?" ← "+(REG.interfaces[woher].label||woher):"")}));
+  }
+
   row.appendChild(el("span",{class:"pill q"+(p.derived?" der":""),
     title:p.derived?"Computed on read — no input, no column (D8)":"",
     text:p.derived?"derived":fieldKind(p)}));
+  /* Dass hier umbenannt wurde, muss man sehen — sonst sucht jemand den
+     Namen im Bestandteil und findet ihn nicht. */
+  if(woher===ifn&&ifn) row.appendChild(el("span",{class:"pill",
+    title:"Renamed here; it is called “"+eigenName+"” where it is declared",
+    text:"renamed"}));
   return row;
 }
 
@@ -11203,7 +11347,7 @@ function newEntity(presetName){
       var name=nm.value.trim(); if(!name){nm.focus();return false;}
       var ifn=sel.value;
       var e={ id:uid("e"), interfaces:[ifn], name:name,
-        components:{ Identity:{name:name,key:slug(ifn)+"/"+slug(name),aliases:[]} },
+        components:{ Identity:{name:name,id:nextId(ifn),aliases:[]} },
         adhoc:[], relations:[], createdAt:new Date().toISOString() };
       reqFor(ifn).forEach(function(c){ if(!e.components[c]&&REG.interfaces[c]) e.components[c]={}; });
       applyDefaults(e,ifn);
@@ -11249,13 +11393,23 @@ function editEntity(e){
         if(pd.derived){
           var b=el("b",{class:"drvval",text:"—"});
           host.appendChild(el("div",{class:"drvrow"},[
-            el("span",{text:(pd.title||p)+" "}), b,
+            el("span",{text:fieldTitle(ifn,cn,p,pd)+" "}), b,
             el("span",{class:"drvexp",text:pd.derived})]));
           drvCells.push({cn:cn,p:p,pd:pd,node:b});
           return;
         }
+        if(pd.readOnly){
+          /* Sichtbar, aber ohne Eingabe: man will die Nummer lesen
+             können, und sie zu ändern wäre keine Korrektur, sondern ein
+             anderer Artikel. */
+          host.appendChild(el("div",{class:"drvrow"},[
+            el("span",{text:fieldTitle(ifn,cn,p,pd)+" "}),
+            el("b",{class:"drvval",text:String(cur==null?"—":cur)}),
+            el("span",{class:"drvexp",text:"issued once"})]));
+          return;
+        }
         var node=fieldInput(pd,cur);
-        host.appendChild(field(pd.title||p,node));
+        host.appendChild(field(fieldTitle(ifn,cn,p,pd),node));
         node.addEventListener("input",recalc);
         inputs.push({cn:cn,p:p,pd:pd,node:node});
       });
@@ -11433,7 +11587,7 @@ function impGegenstand(text,datei){
     bilder.push(linkZiel(x)); });
 
   /* Eine Karte je Bestandteil: was `Identity` erklärt, steht auf `Identity`. */
-  var c={ Identity:{name:name,key:slug(ifn)+"/"+slug(name),aliases:fmList(fm,"aliases")},
+  var c={ Identity:{name:name,aliases:fmList(fm,"aliases")},
     Status:{status:"used"},
     Imported:{text:text,format:"obsidian",at:new Date().toISOString().slice(0,10)} };
 
@@ -11535,7 +11689,7 @@ function impStatblock(text,datei){
   schliess(); if(akt)abschnitte.push(akt);
 
   return { e:{ id:uid("sb"), interfaces:["Statblock"], name:name,
-      components:{ Identity:{name:name,key:"statblock/"+slug(name),aliases:fmList(fm,"aliases")},
+      components:{ Identity:{name:name,aliases:fmList(fm,"aliases")},
         Status:{status:"used"},
         Imported:{text:text,format:"obsidian",at:new Date().toISOString().slice(0,10)},
         /* Die Zahlen bleiben ihre eigene Karte: `hp` heisst am Statblock
@@ -11561,7 +11715,7 @@ function impOrt(text,datei){
   if(fmStr(fm,"biom"))li.umwelt=fmStr(fm,"biom");
   if(fmStr(fm,"siedlungstyp"))li.siedlungstyp=fmStr(fm,"siedlungstyp");
 
-  var c={ Identity:{name:name,key:"ort/"+slug(name),aliases:fmList(fm,"aliases")},
+  var c={ Identity:{name:name,aliases:fmList(fm,"aliases")},
     Status:{status:"used"},
     Imported:{text:text,format:"obsidian",at:new Date().toISOString().slice(0,10)}, Place:li };
 
@@ -11596,7 +11750,7 @@ function runImport(files){
         var kind=/^bonus/i.test(ab.name)?"bonus":/^reaction/i.test(ab.name)?"reaction"
                 :/^(villain|legendary)/i.test(ab.name)?"legendary":/^action/i.test(ab.name)?"action":"trait";
         result.rules.push({ id:id, interfaces:["Rule"], name:en.name,
-          components:{ Identity:{name:en.name,key:"regel/"+slug(en.name),aliases:[]},
+          components:{ Identity:{name:en.name,aliases:[]},
             Status:{status:"used"}, Description:{description:en.text},
             Rule:{kind:kind} },
           adhoc:[], relations:[], createdAt:new Date().toISOString() }); }
@@ -11605,6 +11759,18 @@ function runImport(files){
   });
 
   var alle=result.item.concat(result.place,result.statblock,result.rules);
+
+  /* Die Nummern. Sie entstehen **hier** und nicht beim Lesen einer Notiz:
+     eine einzelne Datei weiss nicht, welche schon vergeben sind, und ohne
+     die Liste des laufenden Stapels bekämen zwanzig Artikel aus einem Lauf
+     dieselbe. */
+  var vergeben=[];
+  alle.forEach(function(e){
+    var id=nextId((e.interfaces||[])[0]||"Article",vergeben);
+    vergeben.push(id);
+    e.components=e.components||{};
+    e.components.Identity=Object.assign({},e.components.Identity||{},{id:id});
+  });
   var nachName={};
   ENT.forEach(function(e){ if((e.interfaces||[])[0]!=="Statblock") nachName[nameOf(e).toLowerCase()]=e.id;
     ((e.components&&e.components.Identity&&e.components.Identity.aliases)||[]).forEach(function(a){

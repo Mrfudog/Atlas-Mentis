@@ -102,6 +102,8 @@ window.__T__={runImport:runImport,derivedValue:derivedValue,assetSrc:assetSrc,UI
   entryAnchor:entryAnchor,ensureAnchors:ensureAnchors,
   anchorlessProse:anchorlessProse,backfillAnchors:backfillAnchors,
   proseFields:proseFields,proseOf:proseOf,allProse:allProse,
+  fieldsOf:fieldsOf,fieldTitle:fieldTitle,titleSource:titleSource,
+  nextId:nextId,idPrefix:idPrefix,articleId:articleId,
   entriesOf:entriesOf,entryRef:entryRef,putEntry:putEntry,dropEntry:dropEntry,
   gmFields:gmFields,summary:summary,
   campaignVars:campaignVars,fillVars:fillVars,

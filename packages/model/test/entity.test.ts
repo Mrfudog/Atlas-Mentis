@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  articleId,
   backlinks,
+  fieldTitle,
   findByName,
+  idPrefix,
+  nextId,
   relationAccepts,
   relationDef,
   setTags,
@@ -201,5 +205,129 @@ describe('tagsOf / setTags', () => {
     expect(e.components['Tags']).toEqual({ tags: ['händler', 'stadt'] });
     setTags(e, []);
     expect(e.components['Tags']).toBeUndefined();
+  });
+});
+
+/* ---- Wie ein Feld an dieser Art heisst ----
+   Derselbe `Time.until` ist an einem Ereignis, wann es aufhört, und an
+   einem Auftrag, wann es zu spät ist. `Time` dafür zu verdoppeln wäre der
+   teurere Weg zum selben Satz. */
+describe('fieldTitle', () => {
+  const reg: Pick<Registry, 'interfaces'> = {
+    interfaces: {
+      Time: {
+        name: 'Time',
+        abstract: true,
+        schema: {
+          type: 'object',
+          properties: {
+            until: { type: 'string', title: 'Until' },
+            display: { type: 'string', title: 'Date' },
+            bare: { type: 'string' },
+          },
+        },
+      },
+      Story: { name: 'Story', abstract: true, extends: ['Time'], titles: { 'Time.display': 'When' } },
+      Quest: { name: 'Quest', extends: ['Time'], titles: { 'Time.until': 'Deadline' } },
+      Event: { name: 'Event', extends: ['Time'] },
+      Session: { name: 'Session', extends: ['Story'] },
+      Recap: { name: 'Recap', extends: ['Story'], titles: { 'Time.display': 'Played on' } },
+    },
+  };
+  const feld = (key: string) => ({
+    type: 'Time',
+    key,
+    prop: reg.interfaces['Time']?.schema?.properties?.[key] ?? { type: 'string' as const },
+  });
+
+  it('takes the name the kind gives it', () => {
+    expect(fieldTitle(reg, 'Quest', feld('until'))).toBe('Deadline');
+  });
+
+  it('leaves every other kind alone', () => {
+    expect(fieldTitle(reg, 'Event', feld('until'))).toBe('Until');
+    expect(fieldTitle(reg, 'Quest', feld('display'))).toBe('Date');
+  });
+
+  it('inherits a rename from a supertype', () => {
+    expect(fieldTitle(reg, 'Session', feld('display'))).toBe('When');
+  });
+
+  /* Die nähere Art gewinnt — sonst hinge die Beschriftung davon ab, wie tief
+     der Baum gerade ist, und niemand könnte sie dort ändern, wo er sie sieht. */
+  it('and the nearer kind wins over the one further up', () => {
+    expect(fieldTitle(reg, 'Recap', feld('display'))).toBe('Played on');
+  });
+
+  it('falls back to the key when the field carries no title at all', () => {
+    expect(fieldTitle(reg, 'Event', feld('bare'))).toBe('bare');
+  });
+
+  /* Ohne Art gibt es keine Umbenennung: eine Feldliste im Register ist
+     nicht die eines Artikels. */
+  it('without a kind there is nothing to rename', () => {
+    expect(fieldTitle(reg, undefined, feld('until'))).toBe('Until');
+  });
+
+  /* Eine leere Beschriftung ist keine: sie stehenzulassen hiesse, ein Feld
+     ohne Namen zu zeigen, weil jemand das Eingabefeld geleert hat. */
+  it('an empty rename does not blank the field', () => {
+    const leer: Pick<Registry, 'interfaces'> = {
+      interfaces: { ...reg.interfaces, Quest: { name: 'Quest', extends: ['Time'], titles: { 'Time.until': '  ' } } },
+    };
+    expect(fieldTitle(leer, 'Quest', feld('until'))).toBe('Until');
+  });
+});
+
+/* ---- Die ausgegebene Nummer ----
+   `Identity.id` ist `npc-0042` und hiess einmal `key`: `npc/volo-geddarm`,
+   also ein Name, der ein zweites Mal derselbe Name war. Beim Umbenennen
+   musste er entweder mitwandern — dann war er kein fester Bezeichner — oder
+   nicht, und dann log er. */
+describe('nextId', () => {
+  const mit = (...ids: string[]): Pick<Entity, 'components'>[] =>
+    ids.map((id) => ({ components: { Identity: { id } } }));
+
+  it('starts at one when the kind has none yet', () => {
+    expect(nextId([], 'NPC')).toBe('npc-0001');
+  });
+
+  it('counts on from the highest that is already there', () => {
+    expect(nextId(mit('npc-0001', 'npc-0007', 'npc-0003'), 'NPC')).toBe('npc-0008');
+  });
+
+  /* Je Art gezählt: ein Gegenstand füllt keine Lücke bei den NSC. */
+  it('counts per kind', () => {
+    const bestand = mit('npc-0004', 'item-0011');
+    expect(nextId(bestand, 'NPC')).toBe('npc-0005');
+    expect(nextId(bestand, 'Item')).toBe('item-0012');
+  });
+
+  /* Ein Import legt zwanzig Artikel auf einmal an. Ohne die zweite Liste
+     bekämen alle zwanzig dieselbe Nummer. */
+  it('also counts what a batch has just issued', () => {
+    expect(nextId(mit('npc-0002'), 'NPC', ['npc-0003', 'npc-0004'])).toBe('npc-0005');
+  });
+
+  /* Eine Lücke bleibt eine Lücke: die höchste plus eins, nicht die erste
+     freie. Nummern nachzureichen hiesse, eine alte wiederzuverwenden, und
+     dann zeigte eine Freigabe auf den falschen Artikel. */
+  it('never fills a gap a deletion left', () => {
+    expect(nextId(mit('npc-0001', 'npc-0009'), 'NPC')).toBe('npc-0010');
+  });
+
+  it('ignores what does not look like one of its numbers', () => {
+    expect(nextId(mit('npc/volo-geddarm', 'npcx-0900', 'npc-0002'), 'NPC')).toBe('npc-0003');
+  });
+
+  it('folds a kind name down to something writable', () => {
+    expect(idPrefix('PlayerCharacter')).toBe('playercharacter');
+    expect(idPrefix('Statblock Info')).toBe('statblock-info');
+    expect(idPrefix('')).toBe('article');
+  });
+
+  it('reads the number back off an article', () => {
+    expect(articleId({ components: { Identity: { id: 'npc-0003' } } })).toBe('npc-0003');
+    expect(articleId({ components: {} })).toBe('');
   });
 });

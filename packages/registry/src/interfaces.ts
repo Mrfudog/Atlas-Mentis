@@ -91,11 +91,13 @@ export const interfaces: Record<string, InterfaceDef> = {
      Ein Ereignis schleppte Bildunterschrift, Alt-Text und Seitenzahl mit. */
 
   /** Wer der Artikel ist. Das erbt jede Artikelart. */
-  /* `Prose` und `Notes` hängen hier, weil `Identity` der einzige Typ ist,
-     den wirklich jede Art erbt: Fliesstext und Notizen darf jeder haben. */
+  /* Und sonst nichts: `Prose` und `Notes` hingen hier einmal, weil
+     `Identity` der einzige Typ ist, den wirklich jede Art erbt. Das war
+     bequem und falsch — auf der Typenseite stand unter „Identity" ein Feld
+     namens „Text", das mit Identität nichts zu tun hat. Ein Basistyp erbt
+     nichts; wer Fliesstext haben soll, nimmt ihn dazu. */
   Identity: {
     name: 'Identity',
-    extends: ['Prose', 'Notes'],
     label: 'Identity',
     abstract: true,
     schema: g.Identity.schema,
@@ -194,7 +196,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     area: 'world',
     label: 'Creature',
     abstract: true,
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Imported', 'Source', 'Vars', 'StatblockInfo', 'Access', 'Vitals', 'Skills', 'Lore', 'Facts', 'Secrets', 'ReadAloud'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Imported', 'Source', 'Vars', 'StatblockInfo', 'Access', 'Vitals', 'Skills', 'Lore', 'Facts', 'Secrets', 'ReadAloud'],
     schema: g.CreatureInfo.schema,
     /* `StatblockInfo` darf hier direkt liegen: ein Spielercharakter trägt
        seine Zahlen selbst, ein NSC borgt sie meist von einem Statblock über
@@ -298,7 +300,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Place',
     area: 'world',
     label: 'Place',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Imported', 'Lore', 'ReadAloud', 'Secrets'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Imported', 'Lore', 'ReadAloud', 'Secrets'],
     schema: merge(g.LocationInfo, g.Explored),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
@@ -323,7 +325,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Faction',
     area: 'world',
     label: 'Faction',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Lore', 'Secrets'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Lore', 'Secrets'],
     schema: merge(g.FactionInfo),
   },
 
@@ -331,7 +333,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Article',
     area: 'world',
     label: 'Article',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Imported', 'Source', 'Todos', 'Lore', 'Secrets'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Imported', 'Source', 'Todos', 'Lore', 'Secrets'],
     /* Ein Gedicht und ein Lied hat sonst keine Art. Einen Bestandteil für
        einen einzigen Nutzer anzulegen wäre der Umweg, den es hier schon
        achtunddreissigmal gab. */
@@ -349,7 +351,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Rule',
     area: 'rules',
     label: 'Rule Element',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Imported', 'Vars'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Imported', 'Vars'],
     schema: merge(g.RuleInfo),
   },
 
@@ -380,7 +382,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Statblock',
     area: 'rules',
     label: 'Statblock',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Imported', 'StatblockInfo', 'Vars', 'Tactics'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Imported', 'StatblockInfo', 'Vars', 'Tactics'],
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {
@@ -402,7 +404,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Item',
     area: 'world',
     label: 'Item',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Imported', 'Source', 'Lore', 'Secrets', 'Facts'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Imported', 'Source', 'Lore', 'Secrets', 'Facts'],
     schema: merge(g.ItemInfo, g.Footprint),
   },
 
@@ -441,7 +443,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Party',
     area: 'world',
     label: 'Party',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Access', 'Lore', 'Notes'],
+    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Access', 'Lore', 'Notes'],
     schema: merge(g.PartyInfo, g.TravelInfo),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
@@ -462,7 +464,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Inventory',
     area: 'rules',
     label: 'Inventory',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
+    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
     schema: merge(g.InventoryInfo),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
@@ -486,7 +488,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     area: 'history',
     label: 'Story',
     abstract: true,
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time', 'Lore', 'Secrets', 'ReadAloud', 'Notes'],
+    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time', 'Lore', 'Secrets', 'ReadAloud', 'Notes'],
     schema: merge(g.StoryInfo),
   },
 
@@ -534,6 +536,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Session',
     extends: ['Story'],
     schema: merge(g.SessionState),
+    /* Eine Sitzung hat kein Weltdatum, sondern einen Abend. */
+    titles: { 'Time.display': 'Played on', 'Time.duration': 'Ran for' },
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     /* Eine Sitzung ist der Abend selbst: was läuft, und was noch zu tun
@@ -566,8 +570,13 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Quest',
     area: 'history',
     label: 'Quest',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time', 'Lore', 'Secrets'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time', 'Lore', 'Secrets'],
     schema: merge(g.QuestInfo),
+    /* Derselbe `Time.until` heisst hier anders, weil er hier etwas anderes
+       ist: bei einem Ereignis ist es, wann es aufhört, bei einem Auftrag,
+       wann es zu spät ist. `Time` dafür zu verdoppeln wäre der teurere Weg
+       zum selben Satz. */
+    titles: { 'Time.until': 'Deadline', 'Time.display': 'Taken on' },
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     /* Ein Auftrag trägt seine Aufgaben selbst — sie sind Felder an ihm
@@ -594,7 +603,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Information',
     area: 'rules',
     label: 'Information',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Secrets', 'Facts'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Secrets', 'Facts'],
     schema: merge(g.Info),
   },
 
@@ -607,7 +616,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'KnowledgeLevel',
     area: 'rules',
     label: 'Knowledge level',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags'],
     schema: merge(g.KnowledgeInfo),
   },
 
@@ -619,7 +628,7 @@ export const interfaces: Record<string, InterfaceDef> = {
   Asset: {
     name: 'Asset',
     label: 'Asset',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source'],
     schema: merge(g.AssetInfo),
   },
 
@@ -634,7 +643,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Map',
     area: 'play',
     label: 'Map',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Notes', 'Secrets', 'ReadAloud'],
+    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Notes', 'Secrets', 'ReadAloud'],
     schema: merge(g.MapInfo),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
@@ -663,7 +672,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Recipe',
     area: 'rules',
     label: 'Recipe',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Imported', 'Notes', 'Secrets', 'Lore'],
+    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Imported', 'Notes', 'Secrets', 'Lore'],
     schema: merge(g.RecipeInfo),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
@@ -688,7 +697,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Board',
     area: 'play',
     label: 'Board',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
+    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
     schema: merge(g.BoardInfo),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
@@ -710,7 +719,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Encounter',
     area: 'play',
     label: 'Encounter',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Tactics', 'ReadAloud', 'Notes', 'Secrets'],
+    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Tactics', 'ReadAloud', 'Notes', 'Secrets'],
     schema: merge(g.EncounterInfo),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
@@ -733,7 +742,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Event',
     area: 'history',
     label: 'Event',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Time', 'Lore', 'Secrets', 'ReadAloud'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Time', 'Lore', 'Secrets', 'ReadAloud'],
   },
 
   /* ---------- Weltgeschichte ----------
@@ -773,7 +782,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Table',
     area: 'rules',
     label: 'Table',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Notes', 'Secrets'],
+    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Notes', 'Secrets'],
     schema: merge(g.TableInfo),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
@@ -796,7 +805,7 @@ export const interfaces: Record<string, InterfaceDef> = {
   Layer: {
     name: 'Layer',
     label: 'Layer',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
+    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
     schema: merge(g.LayerInfo),
   },
 
@@ -813,7 +822,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Group',
     area: 'play',
     label: 'Group',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
+    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
     schema: merge(g.GroupInfo),
   },
 };

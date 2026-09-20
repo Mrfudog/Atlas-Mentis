@@ -12,13 +12,14 @@ Prosa benutzt das deutsche Wort und nennt den englischen Bezeichner dazu.
 
 ---
 
-## Die acht Wörter
+## Die neun Wörter
 
 | Deutsch | Englisch | Was es ist |
 |---|---|---|
 | **Typ** | Type | Eine Registerzeile: was ein Ding sein kann. |
 | **Bestandteil** | Part | Ein Typ, aus dem ein anderer zusammengesetzt ist. |
 | **Feld** | Field | Eine Tatsache, die ein Typ festhält. |
+| **Bezeichner** | Identifier | Die ausgegebene Nummer eines Artikels. |
 | **Artikel** | Article | Ein Ding in der Kampagne. |
 | **Ansicht** | View | Wie ein Artikel gezeichnet wird. |
 | **Block** | Block | Ein Stück einer Ansicht. |
@@ -79,7 +80,8 @@ dazukommt, und gemerkt hätte es niemand.
 
 Eine Tatsache, die ein Typ festhält. Ein Feld hat
 
-- einen **Schlüssel** (`hp`) und eine **Beschriftung** (`Hit points`),
+- einen **Schlüssel** (`hp`) und eine **Beschriftung** (`Hit points`) —
+  die ein Typ für sich umbenennen darf, siehe unten,
 - eine **Art** — Text, langer Text, Zahl, Datum, Farbe, Auswahl, Verweis,
   Ablage —,
 - **Pflicht oder optional**,
@@ -90,6 +92,24 @@ Eine Tatsache, die ein Typ festhält. Ein Feld hat
 Gespeichert wird **eine Karte je Typ**, benannt nach dem Typ, der das Feld
 erklärt. Das hält `hp` an der Kreatur von `hp` am Statblock auseinander,
 ohne dass eines von beiden einen Namen bekommt, den niemand gewählt hätte.
+
+### Wie es an dieser Art heisst
+
+Ein Typ darf ein geerbtes Feld umbenennen: `InterfaceDef.titles` ist eine
+Karte `Typ.feld` → Beschriftung, aufgelöst die `extends`-Kette hoch wie
+`area` und `units`. Derselbe `Time.until` ist an einem Ereignis, wann es
+aufhört, und an einem Auftrag, wann es zu spät ist — also heisst er dort
+„Deadline".
+
+Es ist **keine zweite Feldliste**. Der Bestandteil bleibt einer, und ein
+Feld, das morgen dazukommt, bringt seinen eigenen Namen mit. `Time` dafür
+zu verdoppeln wäre der teurere Weg zum selben Satz, und die Kopie wäre am
+Tag des nächsten Feldes unvollständig.
+
+Geändert wird die Beschriftung auf der Typenseite, in der Zeile des
+geerbten Feldes — und sie schreibt in den Typ, den man gerade offen hat.
+Eine Umbenennung, die ein *Obertyp* gesetzt hat, steht dort lesbar und wird
+dort geändert, wo sie steht: sie gilt für jede Unterart mit.
 
 ### Eins oder mehrere
 
@@ -107,6 +127,29 @@ was von ihm übrig ist.
 Ein Prosafeld — `many` und lange Eingabe — steht **nicht** in der Feldtabelle.
 Es gehört dem Prosa-Element der Ansicht; zweimal dasselbe zu zeigen, oben als
 Zeile und unten als Absatz, war genau das, was an den Blöcken störte.
+
+---
+
+## Bezeichner
+
+`Identity.id` ist **ausgegeben, nicht eingetippt**: `npc-0042`, die
+Artikelart und eine laufende Nummer darin. Er bekommt keine Eingabe und
+ändert sich nach dem Anlegen nicht mehr.
+
+Er hiess einmal `key` und stand als `npc/volo-geddarm` da — ein Name, der
+ein zweites Mal derselbe Name war. Beim Umbenennen musste er entweder
+mitwandern, dann war er kein fester Bezeichner, oder nicht, dann log er.
+Eine Nummer sagt nichts und bleibt deshalb richtig; wie der Artikel heisst,
+steht daneben.
+
+Gezählt wird, was dasteht: die höchste vergebene plus eins. Ein
+gespeicherter Zähler wäre eine zweite Stelle, die sagt, wie weit man ist,
+und die nach dem ersten Import falsch steht. Eine Lücke, die ein Löschen
+hinterlässt, bleibt eine Lücke — eine Nummer wiederzuverwenden hiesse, eine
+Freigabe auf den falschen Artikel zeigen zu lassen.
+
+Das ist **nicht** `derived`: ein gerechneter Wert entsteht bei jedem Lesen
+neu (D8), eine ausgegebene Nummer muss stehen bleiben.
 
 ---
 
