@@ -91,7 +91,9 @@ window.__T__={runImport:runImport,derivedValue:derivedValue,assetSrc:assetSrc,UI
   LAYOUT_ELEMENTS:LAYOUT_ELEMENTS,rollDice:rollDice,go:go,rollTable:rollTable,
   exportState:exportState,importReport:importReport,findByName:findByName,
   articleVisible:articleVisible,activeStack:activeStack,
-  breakLoad:function(t){ loadFailed=t||'the articles failed (test).'; }};
+  breakLoad:function(t){ loadFailed=t||'the articles failed (test).'; },
+  visionPoly:visionPoly,rayHit:rayHit,inShape:inShape,mapLights:mapLights,
+  noteNat:noteNat};
 Object.defineProperty(window.__T__,'REG',{get:function(){return REG;}});
 Object.defineProperty(window.__T__,'ENT',{get:function(){return ENT;}});
 `;

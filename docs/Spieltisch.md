@@ -144,14 +144,14 @@ ihn niemand, der später dazukommt — und das merkte man erst am Tisch.
    Laufzeit des Artefakts; ein Passwort im Browser wäre keines. Wenn der
    echte Stapel kommt, tritt REQ-031 an diese Stelle — die Abfragen darunter
    bleiben unverändert.
-2. **Nebel des Krieges, Licht und Sicht** (REQ-139, 140). Braucht eine
-   Zeichenfläche statt Bildpunkten.
+2. ~~**Nebel des Krieges, Licht und Sicht** (REQ-139, 140).~~ Steht seit
+   2026-09-20 — siehe den Nachtrag unten.
 3. ~~**Ebenen und Stapelauflösung** (REQ-004 bis 007).~~ Steht seit
    2026-09-20 — siehe [Ebenen.md](Ebenen.md).
 4. **Blockanker.** Wissen an Blöcken hängt an der Block-Id; `Block.anchor`
    ist vorgesehen, wird aber nicht vergeben.
-5. **Gebietsraster auf der Karte** (REQ-193) und **Kartenkacheln**
-   (REQ-138). Beides braucht eine Zeichenfläche.
+5. ~~**Gebietsraster auf der Karte** (REQ-193) und **Kartenkacheln**
+   (REQ-138).~~ Stehen seit 2026-09-20 — siehe den Nachtrag unten.
 6. **Ruf und Beziehungen** (REQ-030, 081). Die Kantenlast dafür steht, aber
    nichts rechnet sie aus.
 7. **Handwerk mit Zeit** (REQ-184 zur Hälfte): Zeit und Probe stehen am
@@ -184,3 +184,42 @@ und zum Wegwerfen gedacht:
   Punkten.
 - **Unterwacht**, eine Punktreise aus fünf Knoten mit Sinneseindrücken an
   den Wegen — einer davon muss erst gefunden werden.
+
+---
+
+## Nachtrag 2026-09-20 — Nebel, Licht, Gebiete
+
+Drei Dinge, die gern verwechselt werden, weil sie alle etwas zudecken. Die
+Trennung steht schon im Register, und genau da muss sie halten:
+
+| | Was es ist | Wo es liegt | Warum dort |
+|---|---|---|---|
+| **Nebel** (REQ-139) | Was die Gruppe noch nie gesehen hat | `MapInfo.reveal` — ein Feld | Es zeigt auf nichts, und es bleibt |
+| **Licht** (REQ-140) | Was sie gerade sieht | `marker.light` / `marker.dim` — an der Kante | Derselbe Radius ist auf einer Stadtkarte eine Strasse und auf einer Kampfkarte ein Raum; er hängt an beiden Enden |
+| **Gebiet** (REQ-193) | Wem etwas gehört | Kantenart `territory` | Es zeigt auf einen Artikel |
+
+**Beleuchtetes wird nie gespeichert.** Es gibt kein Feld dafür — es wird bei
+jeder Zeichnung neu gerechnet, wie jeder abgeleitete Wert (D8). Aufgedecktes
+dagegen wird gespeichert, weil es bleibt. Das ist derselbe Schnitt wie
+zwischen `StatblockInfo` und `Vitals`, nur eine Etage höher.
+
+**Der Schatten wird gerechnet, nicht gemalt.** `visionPoly` schwenkt Strahlen
+zu jeder Wandecke — knapp daneben auf beiden Seiten, sonst hätte der Schatten
+keine Kante — und dazu einen Kranz für den runden Rand. Wände, die den
+Lichtkreis nicht berühren, werden gar nicht erst geprüft. Ein Schatten, der
+nur ungefähr stimmt, ist am Tisch eine Behauptung; deshalb misst der Prüflauf
+ihn nach, statt das Bild anzusehen.
+
+**Gezeichnet wird in Quadrateinheiten** (x von 0 bis 1, y von 0 bis
+Seitenverhältnis). Sonst wäre jeder Lichtkreis auf einer breiten Karte ein Ei.
+Die Bildgrösse kommt aus `AssetInfo.width`/`height` — ein Wert, der im
+Register steht, muss nicht gemessen werden; gemessen wird nur, was von aussen
+kommt. Solange sie unbekannt ist, deckt die Seite **alles** zu: ein Nebel, der
+zu spät kommt, ist kein Nebel.
+
+**Gerastert, nicht umrandet.** Ein Gebiet wird auf das Gitter gerundet —
+gefüllt wird, welches Feld mit seiner Mitte in der Form liegt. Am Tisch zählt,
+welche Quadrate unsere sind, nicht wo die Linie genau verläuft.
+
+Für die Spielleitung ist Zugedecktes durchscheinend: sie muss sehen, was sie
+zudeckt. Für alle anderen ist es zu.

@@ -584,6 +584,22 @@ export const components: Record<string, ComponentDef> = {
         gridOffsetX: { type: 'number', title: 'Grid offset X', default: 0 },
         gridOffsetY: { type: 'number', title: 'Grid offset Y', default: 0 },
         scale: { type: 'string', title: 'One square is', default: '1,5 m' },
+        // Nebel und Licht (REQ-139, 140). Aufgedecktes wird gespeichert, weil
+        // es bleibt; Beleuchtetes nie, weil es sich mit jedem Zug ändert.
+        lighting: {
+          type: 'string',
+          title: 'Lighting',
+          enum: ['bright', 'dim', 'dark'],
+          default: 'bright',
+        },
+        fog: { type: 'boolean', title: 'Fog of war', default: false },
+        reveal: { type: 'array', title: 'Uncovered areas', items: { type: 'object' } },
+        walls: { type: 'array', title: 'Sight blockers', items: { type: 'object' } },
+        // Kacheln (REQ-138) für Scans, die als ein Stück niemand lädt.
+        tiles: { type: 'string', title: 'Tile pattern ({x}, {y})' },
+        tileCols: { type: 'number', title: 'Tile columns' },
+        tileRows: { type: 'number', title: 'Tile rows' },
+        tileSize: { type: 'number', title: 'Tile size in px', default: 256 },
       },
     },
   },

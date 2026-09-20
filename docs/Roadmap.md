@@ -246,6 +246,9 @@ in [Spieltisch.md](Spieltisch.md).
 - **D9 · Ebenen und Stapelauflösung** — REQ-004 bis 009, 044. Was gilt, ist
   eine Abfrage; Überschreiben und Herausnehmen statt Löschen. Siehe
   [Ebenen.md](Ebenen.md).
+- **D10 · Nebel, Licht, Gebiete** — REQ-138, 139, 140, 193. Aufgedecktes ist
+  ein Feld, Beleuchtetes eine Rechnung, Gebiet eine Kante; der Schatten wird
+  gerechnet, nicht gemalt.
 
 ---
 
@@ -263,9 +266,10 @@ A, B und D stehen. Was bleibt, in der Reihenfolge, in der es sich lohnt:
 3. **Globale Variablen** (B3): Gruppenstufe und Gruppen-Aufenthaltsort haben
    im Register eine Zeile, aber noch keine Maske und keine Verwendung in den
    Ansichten.
-4. **Nebel des Krieges, Licht und Sicht** (REQ-139, 140) und
-   **Gebietsraster** (REQ-193): der Rest der Karte. Alles drei braucht eine
-   Zeichenfläche statt Bildpunkten.
+4. **Ruf und Beziehungen** (REQ-030, 081): die Kantenlast dafür steht, aber
+   nichts rechnet sie aus. Ohne sie bleibt „wie steht das Auge zu uns" eine
+   Notiz statt einer Zahl, die sich aus dem ergibt, was am Tisch passiert
+   ist.
 5. **Die Nachzügler** (C4): Ortsimporter als TypeScript, und das Register
    des Prototyps mit `packages/registry` zusammenführen — die laufen derzeit
    von Hand nebeneinander her, und das hält nicht ewig.

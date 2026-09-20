@@ -142,4 +142,37 @@ describe('interface inheritance', () => {
     expect(fromStatblock).toContain('describedIn'); // from: ['*']
     expect(fromStatblock).not.toContain('livesIn');
   });
+
+  /* Nebel, Licht und Gebiete trennen sich schon im Register, und genau da
+     muss die Trennung halten: was bleibt, ist ein Feld der Karte; was von
+     beiden Enden abhängt, steht an der Kante; was auf einen Artikel zeigt,
+     ist eine eigene Kantenart. Wandert eines davon an die falsche Stelle,
+     fällt es am Tisch niemandem auf — und im Modell ist es dann zu spät. */
+  it('keeps fog on the map, light on the edge, territory as its own edge', () => {
+    const karte = seedRegistry.components.MapInfo.schema.properties ?? {};
+    expect(karte.fog?.type).toBe('boolean');
+    expect(karte.reveal?.type).toBe('array'); // aufgedeckt bleibt aufgedeckt
+    expect(karte.walls?.type).toBe('array');
+    expect(karte.lighting?.enum).toEqual(['bright', 'dim', 'dark']);
+    // Beleuchtetes wird nie gespeichert — es gibt kein Feld dafür.
+    expect(Object.keys(karte)).not.toContain('lit');
+
+    const marker = seedRegistry.relations.marker.props?.properties ?? {};
+    expect(marker.light?.type).toBe('number');
+    expect(marker.dim?.type).toBe('number');
+
+    const terr = seedRegistry.relations.territory;
+    expect(terr.from).toEqual(['Map']);
+    expect(terr.props?.properties?.kind?.enum).toEqual(['rect', 'circle', 'poly']);
+    expect(relationsFrom(seedRegistry, 'Map').map((r) => r.type)).toContain('territory');
+  });
+
+  /* Kachelkarten (REQ-138): ohne Spalten und Zeilen ist ein Muster nur eine
+     Zeichenkette, und die Seite wüsste nicht, wie gross das Bild ist. */
+  it('describes a tiled map completely enough to draw it', () => {
+    const karte = seedRegistry.components.MapInfo.schema.properties ?? {};
+    ['tiles', 'tileCols', 'tileRows', 'tileSize'].forEach((k) => {
+      expect(Object.keys(karte)).toContain(k);
+    });
+  });
 });

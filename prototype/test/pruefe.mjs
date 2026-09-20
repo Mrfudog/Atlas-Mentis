@@ -1061,6 +1061,113 @@ async function seite(datei, warten) {
     pruefe('a map with tokens exists in the data', false, 'keine Karte gefunden');
   }
 
+  /* ---- Nebel, Licht und Sicht, Gebiete (REQ-138, 139, 140, 193) ----
+     Drei Dinge, die zusammen eine Falle sind: Nebel wird gespeichert, Licht
+     nie, und Gebiete zeigen auf einen Artikel. Was hier schiefgeht, geht
+     leise schief — eine Karte, die zu viel zeigt, sieht aus wie eine Karte. */
+  const nebelKarte = await p.evaluate(() => {
+    const m = [...window.__T__.ENT.values()].find((e) =>
+      ((e.components || {}).MapInfo || {}).fog
+      && ((e.components || {}).MapInfo || {}).walls);
+    return m ? m.id : null;
+  });
+  if (nebelKarte) {
+    await oeffneId(nebelKarte);
+    await p.evaluate(() => {
+      const f = document.getElementById('facet');
+      f.value = 'map';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(600);
+
+    const sicht = await p.evaluate(() => {
+      const svg = document.querySelector('.mvis');
+      const fog = document.querySelector('.mvis .mfog');
+      const masken = [...document.querySelectorAll('.mvis mask')];
+      return {
+        svg: !!svg,
+        viewBox: svg ? svg.getAttribute('viewBox') : '',
+        fogDeckung: fog ? fog.getAttribute('fill-opacity') : null,
+        /* Die Maske des Nebels: ein weisses Rechteck plus je eine schwarze
+           Form je aufgedecktem Stück. */
+        fogLoecher: masken.length
+          ? [...masken[masken.length - 1].children].filter(
+              (n) => n.getAttribute('fill') === '#000').length
+          : 0,
+        lichtpolygone: [...document.querySelectorAll('.mvis mask polygon')].length,
+        waende: document.querySelectorAll('.mvis .mwall').length,
+        gebietsfelder: [...document.querySelectorAll('.mvis .mterr')]
+          .map((g) => g.children.length),
+        flach: !!document.querySelector('.mfogflat'),
+      };
+    });
+    pruefe('the map draws a vision overlay in square units',
+      sicht.svg && /^0 0 1 [\d.]+$/.test(sicht.viewBox), sicht.viewBox);
+    pruefe('fog is punched through where the party has been',
+      sicht.fogLoecher >= 2, sicht.fogLoecher);
+    pruefe('each light carves its own visible shape out of the dark',
+      sicht.lichtpolygone >= 4, sicht.lichtpolygone);
+    pruefe('the GM sees through the fog, but sees that it is there',
+      sicht.fogDeckung !== null && Number(sicht.fogDeckung) > 0 && Number(sicht.fogDeckung) < 1,
+      sicht.fogDeckung);
+    pruefe('sight blockers are drawn for whoever set them', sicht.waende >= 4, sicht.waende);
+    pruefe('a territory is rasterised onto the grid, not drawn as one blob',
+      sicht.gebietsfelder.some((n) => n > 4), sicht.gebietsfelder);
+    pruefe('nothing falls back to the flat cover once the image is measured',
+      sicht.flach === false, sicht.flach);
+
+    /* Die Geometrie selbst. Ein Schatten, der im Bild ungefähr stimmt, ist
+       am Tisch eine Behauptung — hier wird er gerechnet und nachgemessen. */
+    const geo = await p.evaluate(() => {
+      const wand = [{ id: 'w', x1: 0.6, y1: 0.2, x2: 0.6, y2: 0.8 }];
+      const weit = (pts, ax, ay) => Math.max(...pts
+        .filter((q) => Math.abs(Math.atan2(q[1] - ay, q[0] - ax)) < 0.2)
+        .map((q) => Math.hypot(q[0] - ax, q[1] - ay)));
+      const ohne = window.__T__.visionPoly(0.3, 0.5, 0.5, []);
+      const mit = window.__T__.visionPoly(0.3, 0.5, 0.5, wand);
+      return {
+        ohne: weit(ohne, 0.3, 0.5),
+        mit: weit(mit, 0.3, 0.5),
+        /* Hinter der Wand ist nichts, davor alles: ein Strahl nach links
+           läuft bis zum Radius, einer nach rechts endet an der Wand. */
+        links: window.__T__.rayHit(0.3, 0.5, -1, 0, wand, 0.5),
+        rechts: window.__T__.rayHit(0.3, 0.5, 1, 0, wand, 0.5),
+        drin: window.__T__.inShape({ kind: 'circle', x: 0.5, y: 0.5, r: 0.1 }, 0.52, 0.5),
+        draussen: window.__T__.inShape({ kind: 'circle', x: 0.5, y: 0.5, r: 0.1 }, 0.7, 0.5),
+      };
+    });
+    pruefe('a ray stops at the wall in front and runs free behind',
+      Math.abs(geo.rechts - 0.3) < 0.01 && Math.abs(geo.links - 0.5) < 0.01, geo);
+    pruefe('a wall shortens the visible shape towards it',
+      geo.mit < geo.ohne - 0.1, geo);
+    pruefe('a point inside a circle is inside and one outside is not',
+      geo.drin === true && geo.draussen === false, geo);
+
+    /* Daylight schaltet die Dunkelheit ab — nicht die Lichter aus. */
+    await p.evaluate((id) => {
+      const e = window.__T__.ENT.get(id);
+      e.components.MapInfo.lighting = 'bright';
+    }, nebelKarte);
+    await p.evaluate(() => { document.getElementById('facet')
+      .dispatchEvent(new Event('change', { bubbles: true })); });
+    await p.waitForTimeout(400);
+    const hell = await p.evaluate(() => ({
+      polygone: document.querySelectorAll('.mvis mask polygon').length,
+      fog: !!document.querySelector('.mvis .mfog'),
+    }));
+    pruefe('daylight takes the darkness away and leaves the fog',
+      hell.polygone === 0 && hell.fog === true, hell);
+    await p.evaluate((id) => {
+      const e = window.__T__.ENT.get(id);
+      e.components.MapInfo.lighting = 'dark';
+    }, nebelKarte);
+    await p.evaluate(() => { document.getElementById('facet')
+      .dispatchEvent(new Event('change', { bubbles: true })); });
+    await p.waitForTimeout(300);
+  } else {
+    pruefe('a map with fog and walls exists in the data', false, 'keine Nebelkarte gefunden');
+  }
+
   /* ---- Charakterbogen und Inventar (REQ-051, 063, 064, 065) ----
      Der Bogen rechnet aus zwei Karten: die ruhigen Zahlen aus StatblockInfo,
      der Stand aus Vitals. Rechnet er falsch, steht am Tisch eine plausible

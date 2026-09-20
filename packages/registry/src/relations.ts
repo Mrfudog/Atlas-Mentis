@@ -313,6 +313,44 @@ export const relations: Record<string, RelationDef> = {
         },
         size: { type: 'number', title: 'Size in squares', default: 1 },
         note: { type: 'string', title: 'Note' },
+        // Licht hängt an beiden Enden: dieselbe Laterne leuchtet auf einer
+        // Stadtkarte anders weit als auf einer Kampfkarte, weil das Quadrat
+        // ein anderes ist. Also steht der Radius an der Kante (REQ-140).
+        light: { type: 'number', title: 'Bright light in squares' },
+        dim: { type: 'number', title: 'Dim light in squares' },
+      },
+    },
+  },
+
+  /**
+   * Wem ein Stück Karte gehört (REQ-193). Eine Form auf der Karte, die auf
+   * einen Artikel zeigt — und weil sie auf etwas zeigt, ist sie eine Kante
+   * und kein Feld. Gezeichnet wird sie aufs Gitter gerastert: am Tisch
+   * zählt, welche Quadrate unsere sind, nicht wo die Linie genau verläuft.
+   */
+  territory: {
+    type: 'territory',
+    label: 'territory',
+    inverseLabel: 'holds ground on',
+    from: ['Map'],
+    to: ['*'],
+    props: {
+      type: 'object',
+      properties: {
+        kind: {
+          type: 'string',
+          title: 'Shape',
+          enum: ['rect', 'circle', 'poly'],
+          default: 'rect',
+        },
+        x: { type: 'number', title: 'X (0–1)' },
+        y: { type: 'number', title: 'Y (0–1)' },
+        w: { type: 'number', title: 'Width (0–1)' },
+        h: { type: 'number', title: 'Height (0–1)' },
+        r: { type: 'number', title: 'Radius (0–1)' },
+        pts: { type: 'array', title: 'Points' },
+        color: { type: 'string', format: 'color', title: 'Colour' },
+        opacity: { type: 'number', title: 'Opacity', default: 0.18 },
       },
     },
   },

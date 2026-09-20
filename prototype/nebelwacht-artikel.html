@@ -305,6 +305,24 @@ body.asplayer .brand span{color:var(--link)}
 .mtoken.k-play span{color:var(--warn)}
 .mtoken.k-scenery{border-style:dotted;opacity:.85}
 
+/* Nebel, Licht und Gebiete. Die Überlagerung liegt über dem Bild und unter
+   den Tokens — man muss sehen, wo eine Figur steht, auch wenn es dort
+   dunkel ist; was dort sonst noch steht, sieht man nicht. */
+.mvis{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
+.mfog{fill:#11131a}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .mfog{fill:#05060a} }
+:root[data-theme="dark"] .mfog{fill:#05060a}
+.mfogflat{position:absolute;inset:0;background:#11131a;pointer-events:none;z-index:2}
+.mwall{stroke:var(--warn);stroke-width:.004;stroke-linecap:round;opacity:.8}
+.mterr{pointer-events:none}
+.mtoken{z-index:3}
+.mdraw{position:absolute;inset:0;z-index:5;touch-action:none;cursor:crosshair}
+.mdraw.t-erase{cursor:not-allowed}
+.mprev{position:absolute;border:2px dashed var(--accent);background:var(--accent-soft);
+  pointer-events:none}
+.mprev.line{height:0;border:none;border-top:3px solid var(--warn);transform-origin:0 0}
+.maptools.sub{padding-top:2px;border-top:1px dashed var(--line);margin-top:-2px}
+
 /* Charakterbogen: die Vitalleiste ist eine Zeile, die man antippt. */
 .vitals{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:1px;
   background:var(--line);border:1px solid var(--line);border-radius:var(--r);
@@ -736,7 +754,7 @@ var UI={route:{k:"list"}, view:"quick", iface:"", tag:"", q:"", offen:false, pan
         regview:"", regscope:"", regel:"", regcomp2:"", regrel:"",
         trail:[], inline:false, editField:"", pick:false, picked:{}, status:"",
         aside:"rel", info:"", assetBusy:"",
-        mapZoom:1, mapLock:false, mapKind:"", mapDrag:null,
+        mapZoom:1, mapLock:false, mapKind:"", mapDrag:null, mapTool:"",
         invView:"tiers", invPick:"", craftOnly:false,
         boardZoom:1, boardPick:"", boardTool:"",
         turnActor:"", rollLog:[], asActor:"", peers:[], pings:[],
@@ -5852,6 +5870,393 @@ function gridOverlay(card,zoom){
   return lay;
 }
 
+/* ---------- Nebel, Licht und Sicht, Gebiete (REQ-138, 139, 140, 193) ----------
+   Drei Dinge, die gern verwechselt werden, weil sie alle etwas zudecken:
+
+   **Nebel** ist, was die Gruppe noch nie gesehen hat. Er wird aufgedeckt und
+   bleibt aufgedeckt; er gehört zur Karte und wird gespeichert.
+   **Licht** ist, was sie gerade sieht. Es hängt an den Lichtern auf der Karte
+   und an den Wänden dazwischen, ändert sich mit jedem Zug und wird nie
+   gespeichert — es wird bei jeder Zeichnung neu gerechnet, wie jeder
+   abgeleitete Wert (D8).
+   **Gebiet** ist, wem etwas gehört. Es zeigt auf einen Artikel, also ist es
+   eine Kante; Nebel und Wände zeigen auf nichts, also sind sie Felder.
+
+   Alles in Anteilen, nie in Bildpunkten (dieselbe Entscheidung wie bei den
+   Tokens): eine Karte, die neu ausgeschnitten wird, verliert sonst jede
+   aufgedeckte Ecke.
+
+   Für die Spielleitung ist Zugedecktes durchscheinend — sie muss sehen, was
+   sie zudeckt. Für alle anderen ist es zu. Und solange die Seite die Grösse
+   des Bildes nicht kennt, deckt sie alles zu: ein Nebel, der zu spät kommt,
+   ist kein Nebel. */
+var REL_TERRITORY="territory", SVGNS="http://www.w3.org/2000/svg";
+function sv(t,a,kids){
+  var n=document.createElementNS(SVGNS,t);
+  if(a)for(var k in a){ if(a[k]!=null&&a[k]!==false) n.setAttribute(k,a[k]); }
+  if(kids)(Array.isArray(kids)?kids:[kids]).forEach(function(c){ if(c) n.appendChild(c); });
+  return n;
+}
+
+/* Die natürliche Grösse des Kartenbildes. Sie wird gebraucht, weil der
+   Lichtradius in Quadraten steht und die Gitterweite in Bildpunkten — ohne
+   die Breite des Bildes lässt sich das eine nicht ins andere rechnen. */
+var mapNat={};
+function natOf(src){ return mapNat[src]||null; }
+/* Zuerst gefragt wird das Register: ein Asset trägt seine Masse als Feld,
+   und ein Wert, der da steht, muss nicht gemessen werden. Gemessen wird nur,
+   was von aussen kommt — eine Adresse, die niemand beschrieben hat. */
+function natFor(card,src){
+  var a=card&&card.image&&ENT.get(card.image);
+  var ai=a&&(a.components||{}).AssetInfo;
+  if(ai&&Number(ai.width)>0&&Number(ai.height)>0)
+    return {w:Number(ai.width),h:Number(ai.height)};
+  return natOf(src);
+}
+function noteNat(src,w,h){
+  if(!src||!w||!h)return;
+  var alt=mapNat[src];
+  if(alt&&alt.w===w&&alt.h===h)return;
+  mapNat[src]={w:w,h:h};
+  render();
+}
+
+/* ---- Geometrie: ein Strahl, eine Wand ---- */
+function rayHit(ox,oy,dx,dy,walls,max){
+  var best=max;
+  for(var i=0;i<walls.length;i++){
+    var w=walls[i], rx=w.x2-w.x1, ry=w.y2-w.y1;
+    var den=dx*ry-dy*rx;
+    if(den>-1e-12&&den<1e-12)continue;              /* parallel */
+    var ax=w.x1-ox, ay=w.y1-oy;
+    var t1=(ax*ry-ay*rx)/den;                       /* entlang des Strahls */
+    var t2=(ax*dy-ay*dx)/den;                       /* entlang der Wand */
+    if(t1>=0&&t1<best&&t2>=0&&t2<=1) best=t1;
+  }
+  return best;
+}
+function segDist(px,py,w){
+  var rx=w.x2-w.x1, ry=w.y2-w.y1, l2=rx*rx+ry*ry;
+  if(l2<1e-12) return Math.sqrt((px-w.x1)*(px-w.x1)+(py-w.y1)*(py-w.y1));
+  var t=Math.max(0,Math.min(1,((px-w.x1)*rx+(py-w.y1)*ry)/l2));
+  var qx=w.x1+t*rx-px, qy=w.y1+t*ry-py;
+  return Math.sqrt(qx*qx+qy*qy);
+}
+/* Das Sichtbarkeitspolygon (REQ-140). Strahlen zu jeder Wandecke — knapp
+   daneben auf beiden Seiten, sonst hat der Schatten keine Kante — und dazu
+   ein Kranz, damit der Rand des Lichtkreises rund bleibt. Wände, die den
+   Kreis nicht berühren, werden gar nicht erst geprüft. */
+function visionPoly(lx,ly,rad,walls){
+  var nah=[], winkel=[];
+  for(var i=0;i<walls.length;i++){
+    if(segDist(lx,ly,walls[i])>rad)continue;
+    nah.push(walls[i]);
+    var ecken=[[walls[i].x1,walls[i].y1],[walls[i].x2,walls[i].y2]];
+    for(var j=0;j<2;j++){
+      var a=Math.atan2(ecken[j][1]-ly,ecken[j][0]-lx);
+      winkel.push(a-0.0007,a,a+0.0007);
+    }
+  }
+  var n=nah.length?48:24;
+  for(var k=0;k<n;k++) winkel.push(-Math.PI+k*2*Math.PI/n);
+  winkel.sort(function(a,b){return a-b;});
+  var pts=[];
+  for(var m=0;m<winkel.length;m++){
+    var dx=Math.cos(winkel[m]), dy=Math.sin(winkel[m]);
+    var t=rayHit(lx,ly,dx,dy,nah,rad);
+    pts.push([lx+dx*t,ly+dy*t]);
+  }
+  return pts;
+}
+function polyAttr(pts){
+  return pts.map(function(p){ return (Math.round(p[0]*10000)/10000)+","+(Math.round(p[1]*10000)/10000); }).join(" ");
+}
+
+/* ---- Formen: Anteile hinein, Quadrateinheiten heraus ---- */
+/* Gezeichnet wird in einem Raum, in dem ein Schritt nach rechts so lang ist
+   wie einer nach unten (x von 0 bis 1, y von 0 bis ar). Sonst wäre jeder
+   Lichtkreis auf einer breiten Karte ein Ei. */
+function shapeNode(s,ar,attrs){
+  var a=Object.assign({},attrs||{});
+  if(s.kind==="circle"){
+    a.cx=s.x; a.cy=(s.y||0)*ar; a.r=Math.max(0.001,Number(s.r)||0.05);
+    return sv("circle",a);
+  }
+  if(s.kind==="poly"&&(s.pts||[]).length>2){
+    a.points=(s.pts||[]).map(function(p){ return p[0]+","+(p[1]*ar); }).join(" ");
+    return sv("polygon",a);
+  }
+  a.x=Math.min(s.x,s.x+(s.w||0)); a.y=Math.min(s.y,s.y+(s.h||0))*ar;
+  a.width=Math.abs(s.w||0); a.height=Math.abs(s.h||0)*ar;
+  return sv("rect",a);
+}
+function inShape(s,x,y){
+  if(s.kind==="circle"){
+    var dx=x-s.x, dy=y-(s.y||0);
+    return dx*dx+dy*dy<=(Number(s.r)||0)*(Number(s.r)||0);
+  }
+  if(s.kind==="poly"){
+    var p=s.pts||[], drin=false;
+    for(var i=0,j=p.length-1;i<p.length;j=i++){
+      if(((p[i][1]>y)!==(p[j][1]>y))&&
+         (x<(p[j][0]-p[i][0])*(y-p[i][1])/(p[j][1]-p[i][1]+1e-12)+p[i][0])) drin=!drin;
+    }
+    return drin;
+  }
+  var x0=Math.min(s.x,s.x+(s.w||0)), x1=Math.max(s.x,s.x+(s.w||0));
+  var y0=Math.min(s.y,s.y+(s.h||0)), y1=Math.max(s.y,s.y+(s.h||0));
+  return x>=x0&&x<=x1&&y>=y0&&y<=y1;
+}
+
+/* ---- Was leuchtet ---- */
+/* Ein Licht ist keine eigene Artikelart: es ist ein Token, an dessen Kante
+   ein Radius steht. Eine Laterne auf der Karte ist eine Laterne auf der
+   Karte — und was sie beleuchtet, hängt an beiden Enden, also an der Kante
+   (dieselbe Regel wie bei der Tragestufe im Inventar). */
+function mapLights(e,card,nat){
+  var g=Math.max(4,Number(card.gridSize)||70), out=[];
+  (e.relations||[]).forEach(function(r){
+    if(r.type!==REL_MARKER)return;
+    var pr=r.props||{};
+    var hell=Number(pr.light)||0, matt=Number(pr.dim)||0;
+    if(hell<=0&&matt<=0)return;
+    out.push({x:Number(pr.x)||0.5,y:Number(pr.y)||0.5,
+      bright:hell*g/nat.w, dim:Math.max(matt,hell)*g/nat.w});
+  });
+  return out;
+}
+function mapWalls(card,ar){
+  return (card.walls||[]).filter(function(w){ return !w.open; }).map(function(w){
+    return {id:w.id,x1:Number(w.x1)||0,y1:(Number(w.y1)||0)*ar,
+            x2:Number(w.x2)||0,y2:(Number(w.y2)||0)*ar};
+  });
+}
+
+/* ---- Die Überlagerung ---- */
+function visionOverlay(e,card,nat){
+  var ar=nat.h/nat.w;
+  var nebel=!!card.fog, licht=card.lighting||"bright";
+  var terr=(e.relations||[]).filter(function(r){ return r.type===REL_TERRITORY; });
+  if(!nebel&&licht==="bright"&&!terr.length)return null;
+
+  var svg=sv("svg",{"class":"mvis",viewBox:"0 0 1 "+ar,preserveAspectRatio:"none"});
+  var defs=sv("defs"); svg.appendChild(defs);
+  var gm=isGM();
+
+  /* Gebiete zuerst, damit Nebel und Dunkelheit darüber liegen — wem ein Feld
+     gehört, ist eine Frage der Karte und keine des Augenblicks. */
+  if(terr.length){
+    var g=Math.max(4,Number(card.gridSize)||70);
+    var cols=Math.max(1,Math.round(nat.w/g)), rows=Math.max(1,Math.round(nat.h/g));
+    var deckel=cols*rows<=20000;
+    terr.forEach(function(r){
+      var ziel=ENT.get(r.to);
+      if(ziel&&!articleVisible(ziel))return;
+      var pr=r.props||{};
+      var farbe=pr.color||"#7a5cff";
+      var grp=sv("g",{"class":"mterr",fill:farbe,"fill-opacity":pr.opacity!=null?pr.opacity:0.18,
+        stroke:farbe,"stroke-opacity":0.5,"stroke-width":0.0015});
+      if(deckel&&(card.gridShape==="square")){
+        /* Gerastert (REQ-193): gefüllt wird, welches Feld mit seiner Mitte
+           in der Form liegt. Am Tisch zählt „welche Quadrate sind unsere",
+           nicht wo die Linie genau verläuft. */
+        for(var cy=0;cy<rows;cy++)for(var cx=0;cx<cols;cx++){
+          var mx=(cx+0.5)/cols, my=(cy+0.5)/rows;
+          if(!inShape(pr,mx,my))continue;
+          grp.appendChild(sv("rect",{x:cx/cols,y:(cy/rows)*ar,
+            width:1/cols,height:(1/rows)*ar}));
+        }
+      } else {
+        grp.appendChild(shapeNode(pr,ar,{}));
+      }
+      if(ziel){ var tt=sv("title"); tt.textContent=nameOf(ziel); grp.appendChild(tt); }
+      svg.appendChild(grp);
+    });
+  }
+
+  /* Dunkelheit: die Lichter stanzen ihr Sichtbarkeitspolygon heraus. Ohne
+     ein einziges Licht bleibt sie ganz — das ist keine Panne, sondern eine
+     dunkle Karte. */
+  if(licht!=="bright"){
+    var walls=mapWalls(card,ar), lichter=mapLights(e,card,nat);
+    var mid="dark_"+uid("m");
+    var maske=sv("mask",{id:mid});
+    maske.appendChild(sv("rect",{x:0,y:0,width:1,height:ar,fill:"#fff"}));
+    lichter.forEach(function(l){
+      var lx=l.x, ly=l.y*ar;
+      if(l.dim>0) maske.appendChild(sv("polygon",
+        {points:polyAttr(visionPoly(lx,ly,l.dim,walls)),fill:"#808080"}));
+      if(l.bright>0) maske.appendChild(sv("polygon",
+        {points:polyAttr(visionPoly(lx,ly,l.bright,walls)),fill:"#000"}));
+    });
+    defs.appendChild(maske);
+    svg.appendChild(sv("rect",{x:0,y:0,width:1,height:ar,
+      fill:licht==="dark"?"#05070d":"#0b1020",
+      "fill-opacity":gm?0.42:(licht==="dark"?0.94:0.6),
+      mask:"url(#"+mid+")"}));
+    /* Die Wände sieht nur, wer sie gesetzt hat. Für alle anderen sind sie
+       der Grund, warum es dahinter dunkel ist, und sonst nichts. */
+    if(gm&&canWrite()) walls.forEach(function(w){
+      svg.appendChild(sv("line",{"class":"mwall",x1:w.x1,y1:w.y1,x2:w.x2,y2:w.y2}));
+    });
+  }
+
+  /* Nebel: zugedeckt ist alles, was keine aufgedeckte Form berührt. */
+  if(nebel){
+    var fid="fog_"+uid("m");
+    var fm=sv("mask",{id:fid});
+    fm.appendChild(sv("rect",{x:0,y:0,width:1,height:ar,fill:"#fff"}));
+    (card.reveal||[]).forEach(function(s){ fm.appendChild(shapeNode(s,ar,{fill:"#000"})); });
+    defs.appendChild(fm);
+    svg.appendChild(sv("rect",{x:0,y:0,width:1,height:ar,"class":"mfog",
+      "fill-opacity":gm?0.5:1,mask:"url(#"+fid+")"}));
+  }
+  return svg;
+}
+
+/* ---- Zeichnen: was die Spielleitung aufdeckt und zumauert ---- */
+var MAP_TOOLS=[["reveal","Reveal"],["hide","Hide"],["wall","Wall"],["erase","Erase"]];
+function mapToolLayer(e,card,img){
+  var lay=el("div",{class:"mdraw t-"+UI.mapTool});
+  var von=null, vorschau=null;
+  function punkt(ev){
+    var rect=img.getBoundingClientRect();
+    if(!rect.width||!rect.height)return null;
+    return {x:Math.min(1,Math.max(0,(ev.clientX-rect.left)/rect.width)),
+            y:Math.min(1,Math.max(0,(ev.clientY-rect.top)/rect.height))};
+  }
+  lay.addEventListener("pointerdown",function(ev){
+    var p=punkt(ev); if(!p)return;
+    von=p; ev.preventDefault();
+    try{ lay.setPointerCapture(ev.pointerId); }catch(x){}
+    vorschau=el("div",{class:"mprev"+(UI.mapTool==="wall"?" line":"")});
+    lay.appendChild(vorschau);
+  });
+  lay.addEventListener("pointermove",function(ev){
+    if(!von||!vorschau)return;
+    var p=punkt(ev); if(!p)return;
+    if(UI.mapTool==="wall"){
+      var dx=(p.x-von.x), dy=(p.y-von.y);
+      var rect=img.getBoundingClientRect();
+      var lx=dx*rect.width, ly=dy*rect.height;
+      vorschau.style.left=(von.x*100)+"%"; vorschau.style.top=(von.y*100)+"%";
+      vorschau.style.width=Math.sqrt(lx*lx+ly*ly)+"px";
+      vorschau.style.transform="rotate("+Math.atan2(ly,lx)+"rad)";
+    } else {
+      vorschau.style.left=(Math.min(von.x,p.x)*100)+"%";
+      vorschau.style.top=(Math.min(von.y,p.y)*100)+"%";
+      vorschau.style.width=(Math.abs(p.x-von.x)*100)+"%";
+      vorschau.style.height=(Math.abs(p.y-von.y)*100)+"%";
+    }
+  });
+  lay.addEventListener("pointerup",function(ev){
+    var p=punkt(ev), a=von; von=null;
+    if(vorschau){ vorschau.remove(); vorschau=null; }
+    if(!a||!p)return;
+    try{ lay.releasePointerCapture(ev.pointerId); }catch(x){}
+    applyMapTool(e,card,a,p);
+  });
+  return lay;
+}
+function applyMapTool(e,card,a,b){
+  var t=UI.mapTool, winzig=Math.abs(b.x-a.x)<0.005&&Math.abs(b.y-a.y)<0.005;
+  if(t==="wall"){
+    if(winzig)return;
+    card.walls=(card.walls||[]).concat([{id:uid("w"),x1:a.x,y1:a.y,x2:b.x,y2:b.y}]);
+  } else if(t==="reveal"){
+    if(winzig)return;
+    card.reveal=(card.reveal||[]).concat([{id:uid("s"),kind:"rect",
+      x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),
+      w:Math.abs(b.x-a.x),h:Math.abs(b.y-a.y)}]);
+    card.fog=true;
+  } else if(t==="hide"){
+    if(winzig)return;
+    var kasten={kind:"rect",x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),
+      w:Math.abs(b.x-a.x),h:Math.abs(b.y-a.y)};
+    /* Zudecken heisst hier: was in diesem Kasten liegt, gilt nicht mehr als
+       aufgedeckt. Ein Loch in eine Form zu schneiden ginge auch, wäre aber
+       eine Form, die niemand mehr von Hand versteht. */
+    card.reveal=(card.reveal||[]).filter(function(s){
+      return !inShape(kasten,s.kind==="circle"?s.x:(s.x+(s.w||0)/2),
+                             s.kind==="circle"?s.y:(s.y+(s.h||0)/2));
+    });
+  } else if(t==="erase"){
+    var best=null, weit=0.02;
+    (card.walls||[]).forEach(function(w){
+      var d=segDist(a.x,a.y,{x1:w.x1,y1:w.y1,x2:w.x2,y2:w.y2});
+      if(d<weit){ weit=d; best={art:"wall",id:w.id}; }
+    });
+    if(!best) (card.reveal||[]).forEach(function(s){
+      if(inShape(s,a.x,a.y)) best={art:"reveal",id:s.id};
+    });
+    if(!best)return;
+    if(best.art==="wall") card.walls=(card.walls||[]).filter(function(w){return w.id!==best.id;});
+    else card.reveal=(card.reveal||[]).filter(function(s){return s.id!==best.id;});
+  } else return;
+  e.components=e.components||{};
+  e.components[MAP_COMP]=card;
+  persist(e);
+}
+
+/* Die Leiste dafür. Sie steht nur der Spielleitung offen und nur, wenn die
+   Karte ein Bild hat — ein Nebelwerkzeug über einer leeren Fläche wäre
+   ein Knopf, der nichts tut. */
+function fogTools(e,card){
+  var bar=el("div",{class:"maptools sub"});
+  var an=el("label",{class:"task"});
+  var cb=el("input",{type:"checkbox"});
+  cb.checked=!!card.fog;
+  cb.addEventListener("change",function(){
+    card.fog=cb.checked; e.components[MAP_COMP]=card; persist(e); });
+  an.appendChild(cb); an.appendChild(el("span",{text:"Fog"}));
+  bar.appendChild(an);
+
+  var sel=el("select",{class:"i",style:"width:auto",title:"Lighting"});
+  [["bright","Daylight"],["dim","Dim"],["dark","Dark"]].forEach(function(o){
+    sel.appendChild(el("option",{value:o[0]},o[1])); });
+  sel.value=card.lighting||"bright";
+  sel.addEventListener("change",function(){
+    card.lighting=sel.value; e.components[MAP_COMP]=card; persist(e); });
+  bar.appendChild(sel);
+
+  MAP_TOOLS.forEach(function(t){
+    bar.appendChild(el("button",{class:"btn sm"+(UI.mapTool===t[0]?" pri":""),type:"button",
+      onclick:function(){ UI.mapTool=UI.mapTool===t[0]?"":t[0]; render(); }},t[1]));
+  });
+  bar.appendChild(el("button",{class:"btn sm gh",type:"button",
+    title:"Reveal the whole map",
+    onclick:function(){
+      card.reveal=[{id:uid("s"),kind:"rect",x:0,y:0,w:1,h:1}];
+      card.fog=true; e.components[MAP_COMP]=card; persist(e); }},"all"));
+  bar.appendChild(el("button",{class:"btn sm gh",type:"button",
+    title:"Cover the whole map again",
+    onclick:function(){
+      confirmDialog("Cover the whole map again? Everything the party has uncovered goes back under.",
+        function(){ card.reveal=[]; card.fog=true; e.components[MAP_COMP]=card; persist(e); });
+    }},"none"));
+  var n=(card.reveal||[]).length, w=(card.walls||[]).length;
+  bar.appendChild(el("span",{class:"hint",style:"margin:0;align-self:center",
+    text:n+" uncovered · "+w+" wall"+(w===1?"":"s")+
+      (UI.mapTool?" · drag on the map":"")}));
+  return bar;
+}
+
+/* Kartenkacheln (REQ-138). Ein Muster mit {x} und {y} statt eines Bildes —
+   für Scans, die als ein Stück niemand lädt. Die natürliche Grösse steht
+   dann fest, statt vom Laden abzuhängen. */
+function tileGrid(card){
+  var m=card.tiles; if(!m)return null;
+  var cols=Math.max(1,Number(card.tileCols)||1), rows=Math.max(1,Number(card.tileRows)||1);
+  var px=Math.max(16,Number(card.tileSize)||256);
+  var box=el("div",{class:"mtiles"});
+  box.style.gridTemplateColumns="repeat("+cols+",1fr)";
+  for(var y=0;y<rows;y++)for(var x=0;x<cols;x++){
+    box.appendChild(el("img",{src:String(m).replace(/\{x\}/g,x).replace(/\{y\}/g,y),
+      alt:"",loading:"lazy"}));
+  }
+  return {node:box,nat:{w:cols*px,h:rows*px}};
+}
+
 function elMap(e,ifn,item){
   var card=mapCard(e);
   var src=assetSrc(card.image);
@@ -5883,11 +6288,13 @@ function elMap(e,ifn,item){
     onclick:function(){ go({k:"art",id:eltern.id}); }},"↑ "+nameOf(eltern)));
   wrap.appendChild(bar);
 
-  if(!src){
+  var kacheln=tileGrid(card);
+  if(!src&&!kacheln){
     wrap.appendChild(el("div",{class:"empty",
       text:canWrite()?"This map has no image yet — set MapInfo · Image.":"No image."}));
     return wrap;
   }
+  if(canWrite()&&!inPlacement) wrap.appendChild(fogTools(e,card));
 
   var stage=el("div",{class:"mapstage"});
   var inner=el("div",{class:"mapinner"});
@@ -5899,12 +6306,29 @@ function elMap(e,ifn,item){
     if(!rect.width)return;
     pingMap(e.id,(ev.clientX-rect.left)/rect.width,(ev.clientY-rect.top)/rect.height);
   });
-  var img=el("img",{class:"mapimg",src:src,alt:nameOf(e)});
-  img.style.width=(UI.mapZoom*100)+"%";
+  var img;
+  if(kacheln){
+    img=kacheln.node;
+    img.style.width=(UI.mapZoom*100)+"%";
+  } else {
+    img=el("img",{class:"mapimg",src:src,alt:nameOf(e)});
+    img.style.width=(UI.mapZoom*100)+"%";
+    /* Die natürliche Grösse kommt erst mit dem Bild. Bis dahin wird nichts
+       aufgedeckt — lieber ein Bild ohne Nebel gar nicht zeigen als einen
+       Nebel, der einen Wimpernschlag zu spät kommt. */
+    img.addEventListener("load",function(){ noteNat(src,img.naturalWidth,img.naturalHeight); });
+    if(img.complete&&img.naturalWidth) noteNat(src,img.naturalWidth,img.naturalHeight);
+  }
   inner.appendChild(img);
 
   var raster=gridOverlay(card,UI.mapZoom);
   if(raster) inner.appendChild(raster);
+
+  var nat=kacheln?kacheln.nat:natFor(card,src);
+  var sicht=nat?visionOverlay(e,card,nat):null;
+  if(sicht) inner.appendChild(sicht);
+  else if(!nat&&(card.fog||(card.lighting&&card.lighting!=="bright")))
+    inner.appendChild(el("div",{class:"mfogflat"}));
 
   /* Untergliederungen als Rechtecke: ein Klick springt hinein, und die
      Breadcrumbs merken sich den Weg zurück (REQ-131, REQ-160). */
@@ -5982,6 +6406,8 @@ function elMap(e,ifn,item){
     n.appendChild(el("span",{text:pg.who||""}));
     inner.appendChild(n);
   });
+
+  if(UI.mapTool&&canWrite()&&!inPlacement) inner.appendChild(mapToolLayer(e,card,img));
 
   stage.appendChild(inner);
   wrap.appendChild(stage);
