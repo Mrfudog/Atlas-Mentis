@@ -6,14 +6,17 @@
    Feld aussieht. Ein Ausdruck gehört gegen Zahlen geprüft, nicht gegen die
    Abwesenheit einer Fehlermeldung. */
 import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const seite = readFileSync(join(process.cwd(), 'nebelwacht-artikel.html'), 'utf8');
+/* Pfade hängen an dieser Datei, nicht am Arbeitsverzeichnis. */
+const HIER = dirname(fileURLToPath(import.meta.url));
+const seite = readFileSync(join(HIER, '..', 'nebelwacht-artikel.html'), 'utf8');
 const js = [...seite.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join('\n');
 const von = js.indexOf('function evalArith');
 const bis = js.indexOf('function fmtVal');
 if (von < 0 || bis < 0) throw new Error('evalArith/fmtVal nicht gefunden — Datei umgebaut?');
-const tmp = join(process.cwd(), '_calc.tmp.mjs');
+const tmp = join(HIER, '_calc.tmp.mjs');
 writeFileSync(tmp, `${js.slice(von, bis)}\nexport { derivedValue, evalArith };\n`);
 const { derivedValue, evalArith } = await import(`file://${tmp}`);
 unlinkSync(tmp);
@@ -32,7 +35,7 @@ ist('10+2*3 ist 16', evalArith('10+2*3'), 16);
 ist('Unsinn gibt null, nicht 0', evalArith('((1+'), null);
 
 /* Rasterfunktionen gegen die echte Startbelegung */
-const comps = JSON.parse(readFileSync(join(process.cwd(), 'dbdump/registry/components.json'), 'utf8'));
+const comps = JSON.parse(readFileSync(join(HIER, 'dbdump/registry/components.json'), 'utf8'));
 const fp = comps.Footprint.schema.properties;
 const kreuz = { rows: ['0X0', 'XXX', '0X0', '0X0', '0X0'] };
 const balken = { rows: Array(4).fill('X'.repeat(16)) };

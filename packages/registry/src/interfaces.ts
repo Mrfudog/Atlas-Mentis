@@ -213,4 +213,30 @@ export const interfaces: Record<string, InterfaceDef> = {
     requires: ['QuestInfo'],
     blockTypes: ['+lore', '+secret'],
   },
+
+  /**
+   * Wissen (A6). Eine Information ist ein eigener Artikel, kein Feldattribut:
+   * nur ein Peg trägt Kanten, und „wer weiss davon?" soll ein Rückbezug sein
+   * wie jeder andere. Sie hängt über `knowledge` am Artikel, den sie betrifft,
+   * und zeigt über `knownBy` auf ihre Empfänger.
+   */
+  Information: {
+    name: 'Information',
+    label: 'Information',
+    extends: ['Base'],
+    requires: ['Info'],
+    blockTypes: ['+secret', '+fact'],
+  },
+
+  /**
+   * Ein benannter Wissensstand — „Allgemeinwissen", „Gildenwissen". Figuren
+   * gehören ihm über `atLevel` an; eine Information an den Stand zu hängen
+   * erreicht damit alle darin, ohne dass jemand eine Liste pflegt.
+   */
+  KnowledgeLevel: {
+    name: 'KnowledgeLevel',
+    label: 'Knowledge level',
+    extends: ['Base'],
+    requires: ['KnowledgeInfo'],
+  },
 };

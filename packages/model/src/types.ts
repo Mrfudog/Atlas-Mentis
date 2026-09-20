@@ -93,7 +93,8 @@ export type LayoutElementKind =
   | 'description'
   | 'composed'
   | 'relations'
-  | 'image';
+  | 'image'
+  | 'knowledge';
 
 /**
  * One element of a view's layout. A view is an ordered list of these, so the
@@ -155,7 +156,7 @@ export interface Block {
   body: string;
   order: number;
   /** Stable handle for per-block knowledge grants later. */
-  anker?: string;
+  anchor?: string;
 }
 
 export interface RelationProps {

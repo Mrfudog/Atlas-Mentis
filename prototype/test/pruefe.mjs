@@ -2,10 +2,19 @@
    Der Stub friert die Snapshot-Objekte ein wie die echte Laufzeit — siehe
    README.md; ein grosszügigerer Aufbau prüft nichts. */
 import { chromium } from 'playwright';
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const browser = await chromium.launch();
+const HIER = dirname(fileURLToPath(import.meta.url));
+
+/* Der Prüfaufbau nimmt den Chromium, der im Bild schon liegt, wenn einer da
+   ist. Playwright bringt seine eigene Bauversion mit, und die passt nur zu
+   der Playwright-Version, die sie geladen hat — ein Upgrade der Bibliothek
+   liesse den Lauf sonst mit „Executable doesn't exist" stehen. */
+const AUS_DEM_BILD = '/opt/pw-browsers/chromium';
+const browser = await chromium.launch(
+  existsSync(AUS_DEM_BILD) ? { executablePath: AUS_DEM_BILD } : {});
 let fehler = 0;
 const pruefe = (name, ok, was) => {
   if (!ok) fehler++;
@@ -22,7 +31,7 @@ async function seite(datei, warten) {
      liefert. Wer sich darauf verlässt, dessen Knopf tut stillschweigend
      nichts. Darum wird abgewiesen und gezählt, nicht bestätigt. */
   p.on('dialog', (d) => { modale.push(d.message()); d.dismiss(); });
-  await p.goto(`file://${process.cwd()}/harness/${datei}`);
+  await p.goto(`file://${join(HIER, 'harness', datei)}`);
   await p.waitForTimeout(warten);
   return { p, errs, modale };
 }
@@ -252,7 +261,7 @@ async function seite(datei, warten) {
      Diese beiden Seiten einmal zu verwechseln bricht den Import still: die
      Notiz wird nicht mehr erkannt, oder der Artikel trägt eine Komponente,
      die das Register nicht kennt. */
-  const FX = '/home/user/Nebelwacht/packages/import/test/fixtures';
+  const FX = join(HIER, '../../packages/import/test/fixtures');
   const lade = (d) => readdirSync(d).filter((f) => f.endsWith('.md'))
     .map((f) => ({ name: f, text: readFileSync(join(d, f), 'utf8') }));
   const fixtures = [...lade(FX), ...lade(join(FX, 'statblock'))];
@@ -304,7 +313,7 @@ async function seite(datei, warten) {
   await p.waitForTimeout(250);
   const werkzeuge = await p.evaluate(() =>
     [...document.querySelectorAll('.tools button')].map((b) => b.textContent));
-  pruefe('the toolbox offers every element', werkzeuge.length === 8 && werkzeuge.some((t) => /Field table/.test(t)), werkzeuge);
+  pruefe('the toolbox offers every element', werkzeuge.length === 9 && werkzeuge.some((t) => /Field table/.test(t)), werkzeuge);
 
   await p.evaluate(() =>
     [...document.querySelectorAll('.regtree button')].find((b) => b.textContent === 'Full').click());
@@ -472,10 +481,15 @@ async function seite(datei, warten) {
       hier: document.querySelector('.arthead h2')?.textContent,
     }));
   };
+  /* Woher der Sprung ausging, steht am Artikel — nicht in dieser Datei.
+     Den Namen fest einzutragen hiess: die Prüfung wird rot, sobald jemand
+     den Artikel umbenennt, und sagt dabei nichts über die Spur. */
+  const start = await p.evaluate(() => document.querySelector('.arthead h2')?.textContent);
   const s1 = await spring();
   const s2 = await spring();
   const s3 = await spring();
-  pruefe('every jump leaves a crumb', s3.krumen.length === 3 && s1.krumen[0] === 'Volo Geddarm', { s1, s2, s3 });
+  pruefe('every jump leaves a crumb', s3.krumen.length === 3 && s1.krumen[0] === start,
+    { start, s1, s2, s3 });
 
   /* Zurück auf etwas, das schon in der Spur steht, schneidet sie dort ab.
      Sonst wüchse sie beim Hin und Her ins Endlose. */
@@ -586,6 +600,16 @@ async function seite(datei, warten) {
     [...document.querySelectorAll('.dlgbox .rowbtns button')].find((b) => /Cancel/.test(b.textContent)).click());
   await p.waitForTimeout(200);
 
+  /* Der Auswahlmodus bleibt sonst an, und der nächste Klick auf eine Zeile
+     wählt sie aus, statt den Artikel zu öffnen. Eine Prüfung, die etwas
+     aufmacht, räumt es auch weg. */
+  await p.evaluate(() =>
+    [...document.querySelectorAll('#view button')].find((b) => /Done selecting/.test(b.textContent))?.click());
+  await p.waitForTimeout(250);
+  const nochAuswahl = await p.evaluate(() =>
+    [...document.querySelectorAll('#view button')].some((b) => /Done selecting/.test(b.textContent)));
+  pruefe('selection mode is off again afterwards', nochAuswahl === false, nochAuswahl);
+
   pruefe('bulk editing raised no exception', errs.length === 0, errs);
 
   /* 10 — Seitenaufbau: Kompendium sind die Artikel, Datenmodell ist das Register */
@@ -606,19 +630,42 @@ async function seite(datei, warten) {
   /* Ein Obertyp meint seine Subtypen mit. Exakt zu vergleichen hiesse:
      „Item" zeigt nichts, obwohl jede Waffe eins ist. */
   const vorFilter = await p.evaluate(() => document.querySelectorAll('#view .row').length);
-  await p.evaluate(() => {
-    const s = document.querySelector('.filters select');
-    [...s.options].forEach((o) => { if (/^\s*Item/.test(o.textContent)) s.value = o.value; });
-    s.dispatchEvent(new Event('change', { bubbles: true }));
+  /* Welcher Obertyp geprüft wird, sagen die Daten: der erste, der einen
+     echten Subtyp trägt, auf dem Artikel liegen. „Item" fest zu verdrahten
+     hiess, dass die Prüfung rot wurde, sobald der letzte Gegenstand aus der
+     Kampagne verschwand — und das sagte nichts über den Filter. */
+  const paar = await p.evaluate(() => {
+    const R = window.__T__.REG.interfaces;
+    const parent = (n) => (R[n]?.extends || [])[0];
+    const treffer = {};
+    window.__T__.ENT.forEach((e) => {
+      let at = parent((e.interfaces || [])[0]);
+      const eigen = (e.interfaces || [])[0];
+      while (at) { (treffer[at] = treffer[at] || new Set()).add(eigen); at = parent(at); }
+    });
+    for (const [ober, unter] of Object.entries(treffer)) {
+      if (ober !== 'Base' && unter.size) {
+        const u = [...unter][0];
+        return { ober, unter: u, label: R[u]?.label || u };
+      }
+    }
+    return null;
   });
+  pruefe('the data offers a parent type with articles below it', paar !== null, paar);
+  await p.evaluate((ober) => {
+    const s = document.querySelector('.filters select');
+    s.value = ober;
+    s.dispatchEvent(new Event('change', { bubbles: true }));
+  }, paar.ober);
   await p.waitForTimeout(300);
   const nachFilter = await p.evaluate(() => ({
     zeilen: document.querySelectorAll('#view .row').length,
     typen: [...new Set([...document.querySelectorAll('#view .row .pill')].map((x) => x.textContent))],
   }));
   pruefe('a parent type filters its subtypes in',
-    nachFilter.zeilen > 0 && nachFilter.zeilen < vorFilter && nachFilter.typen.includes('Armor'),
-    { vorFilter, nachFilter });
+    nachFilter.zeilen > 0 && nachFilter.zeilen < vorFilter
+      && nachFilter.typen.includes(paar.label),
+    { paar, vorFilter, nachFilter });
 
   await p.evaluate(() =>
     [...document.querySelectorAll('.filters button')].find((b) => /Clear filters/.test(b.textContent))?.click());
@@ -805,6 +852,90 @@ async function seite(datei, warten) {
     ziele.some((z) => /Campaign/.test(z)), ziele.slice(0, 5));
 
   pruefe('stage B needed no code for its types', errs.length === 0, errs);
+
+  /* ---- A6: Wissen ----
+     Die Information ist ein eigener Artikel. Geprüft wird die ganze Kette:
+     anlegen, ein Feld zuteilen, einen Empfänger setzen — und dass das Feld
+     danach nicht mehr in der offenen Gruppe steht. */
+  await neuerArtikel('Knowledge level', 'Probe lore');
+  await oeffne('Probe hero');
+  await p.evaluate(() => {
+    const f = document.getElementById('facet');
+    f.value = 'knowledge';
+    f.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await p.waitForTimeout(350);
+
+  const wOffen = await p.evaluate(() => ({
+    gruppen: document.querySelectorAll('#view .kgrp').length,
+    ersteOffen: document.querySelector('#view .kgrp')?.classList.contains('open'),
+    felder: [...document.querySelectorAll('#view .kgrp.open .fld dt')].map((x) => x.textContent),
+  }));
+  pruefe('the knowledge view puts the open fields first',
+    wOffen.gruppen === 1 && wOffen.ersteOffen === true && wOffen.felder.includes('Level'), wOffen);
+
+  await p.evaluate(() =>
+    [...document.querySelectorAll('#aside .ktabs button')].find((b) => /Knowledge/.test(b.textContent)).click());
+  await p.waitForTimeout(250);
+  await p.evaluate(() =>
+    [...document.querySelectorAll('#aside h3 button')].find((b) => b.textContent === '+').click());
+  await p.waitForTimeout(250);
+  await p.evaluate(() => { [...document.querySelectorAll('.dlgbox input')][0].value = 'Probe secret'; });
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.dlgbox .rowbtns button')].find((b) => /Create/.test(b.textContent)).click());
+  await p.waitForTimeout(500);
+
+  const wAngelegt = await p.evaluate(() => ({
+    gruppen: [...document.querySelectorAll('#view .kgrp .kh b')].map((x) => x.textContent),
+    auswahl: [...document.querySelectorAll('#aside .kpick label span')].map((x) => x.textContent),
+  }));
+  pruefe('a new information shows up as its own group and offers the fields',
+    wAngelegt.gruppen.length === 2 && wAngelegt.gruppen[1] === 'Probe secret'
+      && wAngelegt.auswahl.some((x) => /Level/.test(x)), wAngelegt);
+
+  await p.evaluate(() => {
+    const lab = [...document.querySelectorAll('#aside .kpick label')]
+      .find((l) => /Level/.test(l.textContent));
+    const cb = lab.querySelector('input');
+    cb.checked = true;
+    cb.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await p.waitForTimeout(500);
+
+  const wZugeteilt = await p.evaluate(() => ({
+    wOffen: [...document.querySelectorAll('#view .kgrp.open .fld dt')].map((x) => x.textContent),
+    geheim: [...document.querySelectorAll('#view .kgrp:not(.open) .fld dt')].map((x) => x.textContent),
+  }));
+  pruefe('an assigned field leaves the open group',
+    !wZugeteilt.wOffen.includes('Level') && wZugeteilt.geheim.includes('Level'), wZugeteilt);
+
+  await p.evaluate(() => {
+    const sel = [...document.querySelectorAll('#aside select.i')]
+      .find((s) => [...s.options].some((o) => /assign to/.test(o.textContent)));
+    const hit = [...sel.options].find((o) => /Probe lore/.test(o.textContent));
+    sel.value = hit.value;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await p.waitForTimeout(500);
+
+  const wEmpfaenger = await p.evaluate(() => ({
+    kopf: document.querySelector('#view .kgrp:not(.open) .who')?.textContent ?? '',
+    panel: [...document.querySelectorAll('#aside .rel .relrow .rv')].map((x) => x.textContent),
+  }));
+  pruefe('the recipient shows on the group and in the panel',
+    /Probe lore/.test(wEmpfaenger.kopf) && wEmpfaenger.panel.some((x) => /Probe lore/.test(x)), wEmpfaenger);
+
+  pruefe('knowledge needed no browser modal', modale.length === 0, modale);
+  pruefe('no exception through the knowledge panel', errs.length === 0, errs);
+
+  /* Die Ansicht wieder auf Schnell — eine Prüfung, die etwas aufmacht,
+     räumt es auch weg. */
+  await p.evaluate(() => {
+    const f = document.getElementById('facet');
+    f.value = 'quick';
+    f.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await p.waitForTimeout(200);
   await p.close();
 }
 

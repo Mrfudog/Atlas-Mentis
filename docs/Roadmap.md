@@ -74,10 +74,12 @@ Die vorhandenen Ansichten werden umgewandelt.
 das Layout, der Typ füllt es. Ohne eigene Festlegung erbt ein Subtyp die
 Ansicht seines Obertyps — dieselbe Vererbung wie bei Komponenten.
 
-### A6 · Ansicht „Wissen"
-Felder gruppiert, und daneben was wer weiss: die Angaben zum Artikel getrennt
-nach dem, was offen liegt und dem, was noch nicht. Direkt dort änderbar.
-*Siehe offene Frage 4.*
+### A6 · Ansicht „Wissen" — **steht**
+Felder gruppiert, und daneben was wer weiss. Die Einheit dazwischen ist die
+**Information**: ein eigener Artikel, der Felder und Blöcke bündelt und über
+`knownBy` an Figuren, Gruppen und Wissensstände geht. Was keine Information
+nennt, liegt offen und steht zuoberst. Seitenpanel in der Artikelansicht.
+Ausführlich in [Wissen.md](Wissen.md).
 
 ### A7 · Bearbeiten in der Ansicht
 Artikel werden **in der Ansicht** geändert, nicht in einem Formular. Das
@@ -216,7 +218,18 @@ Beschreibung unter `.claude/agents/`.
 
 ## Als Nächstes
 
-Alle Basis-Bausteine für Artikel selbst definierbar machen: Basisfelder,
-Ansichten, Artikeltypen und die Felder darin. Das ist A3, A4 und A5
-zusammengezogen — jeder Registerreiter bekommt eine Maske, Ansichten werden
-ein Werkzeugkasten, und Ansichten lassen sich pro Typ festlegen.
+Etappe A steht damit ganz, Etappe B auch. Offen sind vier Dinge, und welches
+zuerst kommt, hängt davon ab, was du am Tisch zuerst brauchst:
+
+1. **Der Zugang** (Entscheidung 2): ein Passwort je Nutzer. Erst damit wird
+   aus `visibleFields` eine Spieleransicht statt einer geprüften Funktion —
+   heute liegt die Auflösung bereit und niemand benutzt sie.
+2. **Globale Variablen** (B3): Gruppenstufe und Gruppen-Aufenthaltsort haben
+   im Register eine Zeile, aber noch keine Maske und keine Verwendung in den
+   Ansichten.
+3. **Der Spieltisch** (C3): Board, Karten, Initiative, Spiel- und
+   Vorbereitungsmodus. Nach Entscheidung 1 wird das im Artefakt versucht,
+   solange es trägt.
+4. **Die Nachzügler** (C4): Ortsimporter als TypeScript, und das Register des
+   Prototyps mit `packages/registry` zusammenführen — die laufen derzeit von
+   Hand nebeneinander her, und das hält nicht ewig.

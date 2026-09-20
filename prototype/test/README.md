@@ -27,9 +27,18 @@ Repo ist öffentlich, die Daten sind Kampagneninhalt. `.gitignore` deckt
 
 ## Lauf
 
-    pnpm dlx playwright@1 install chromium   # einmalig, falls nötig
-    node build-harness.mjs
-    node pruefe.mjs
+    pnpm install                             # bringt Playwright mit
+    node prototype/test/build-harness.mjs
+    node prototype/test/pruefe.mjs
+
+Die Pfade hängen an den Dateien, nicht am Arbeitsverzeichnis — der Lauf geht
+von überall. Liegt unter `/opt/pw-browsers/chromium` ein Chromium (so in der
+Ausspielumgebung), nimmt der Lauf den; sonst den, den Playwright mitbringt.
+
+Der Griff nach innen (`window.__T__`) reicht `REG` und `ENT` als
+Zugriffsfunktionen heraus, nicht als Werte: `ENT` wird beim Schnappschuss
+neu gesetzt, und ein festgehaltener Wert zeigte für immer auf die leere Map
+vom Seitenanfang.
 
 Erwartet: `index` zeigt Zeilen und keine Meldung, `stumm` zeigt nach zehn
 Sekunden die Wachmeldung und bleibt nicht auf „Lädt…".

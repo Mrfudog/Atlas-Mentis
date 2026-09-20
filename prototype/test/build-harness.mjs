@@ -1,11 +1,18 @@
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
-const dir = (d) => readdirSync(d).filter((f) => f.endsWith('.json'));
+import { readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const page = readFileSync('nebelwacht-artikel.html', 'utf8');
+/* Pfade hängen an dieser Datei, nicht am Arbeitsverzeichnis. Vorher musste
+   man aus genau einem Verzeichnis starten, und aus welchem stand nirgends —
+   das kostete beim nächsten Anlauf eine Viertelstunde. */
+const HIER = dirname(fileURLToPath(import.meta.url));
+const dir = (d) => readdirSync(join(HIER, d)).filter((f) => f.endsWith('.json'));
+const lies = (...t) => readFileSync(join(HIER, ...t), 'utf8');
+
+const page = lies('..', 'nebelwacht-artikel.html');
 const reg  = Object.fromEntries(dir('dbdump/registry').map((f) =>
-  [f.replace(/\.json$/, ''), JSON.parse(readFileSync(`dbdump/registry/${f}`, 'utf8'))]));
-const ent  = dir('dbdump/entities').map((f) =>
-  JSON.parse(readFileSync(`dbdump/entities/${f}`, 'utf8')));
+  [f.replace(/\.json$/, ''), JSON.parse(lies('dbdump/registry', f))]));
+const ent  = dir('dbdump/entities').map((f) => JSON.parse(lies('dbdump/entities', f)));
 
 /* Der echte Speicher liefert eingefrorene Bodies ("Delivered snapshots and
    their data() are frozen"). Der Stub muss das nachbilden — sonst geht jede
@@ -55,13 +62,22 @@ window.claude = { use: async function(n){
    Prüflauf an nichts heran ausser dem DOM. Nur im Prüfaufbau wird ein Griff
    nach draussen gereicht, unmittelbar vor dem Schliessen der IIFE. Die
    veröffentlichte Seite hat ihn nicht. */
-const GRIFF = `\nwindow.__T__={runImport:runImport,REG:REG,ENT:ENT,derivedValue:derivedValue};\n`;
+/* `ENT` wird beim Schnappschuss neu gesetzt (`ENT=neu`), nicht befüllt.
+   Ein Griff, der die Map einmal festhält, zeigt darum für immer auf die
+   leere vom Seitenanfang — und eine Prüfung, die daraus liest, findet
+   nichts und sagt nicht warum. Deshalb Zugriffsfunktionen statt Werte. */
+const GRIFF = `
+window.__T__={runImport:runImport,derivedValue:derivedValue};
+Object.defineProperty(window.__T__,'REG',{get:function(){return REG;}});
+Object.defineProperty(window.__T__,'ENT',{get:function(){return ENT;}});
+`;
 const mitGriff = page.replace(/\n\}\)\(\);\n<\/script>\s*$/, `${GRIFF}})();\n<\/script>\n`);
 if (mitGriff === page) throw new Error('IIFE-Ende nicht gefunden — Seite umgebaut?');
 
 const wrap = (stub) =>
   `<!doctype html><html><head><meta charset='utf-8'></head><body>\n<script>${stub}<\/script>\n${mitGriff}`;
 
-writeFileSync('harness/index.html', wrap(STUB_LIVE));
-writeFileSync('harness/stumm.html', wrap(STUB_STUMM));
+mkdirSync(join(HIER, 'harness'), { recursive: true });
+writeFileSync(join(HIER, 'harness/index.html'), wrap(STUB_LIVE));
+writeFileSync(join(HIER, 'harness/stumm.html'), wrap(STUB_STUMM));
 console.log('harness rebuilt');

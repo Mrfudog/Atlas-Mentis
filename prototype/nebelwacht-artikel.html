@@ -244,6 +244,20 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 .crumbs{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px;margin-bottom:10px;
   font-size:12.5px;color:var(--dim)}
 .crumbs .sep{color:var(--line2)}
+
+/* Wissen (A6): Gruppen, deren Kopfzeile sagt, wer sie kennt. */
+.kgrp{border:1px solid var(--line);border-radius:var(--r);padding:9px 11px;margin:10px 0}
+.kgrp.open{border-style:dashed}
+.kgrp>.kh{display:flex;flex-wrap:wrap;gap:6px;align-items:baseline;margin-bottom:6px}
+.kgrp>.kh b{font-family:var(--ff-disp);font-size:15px}
+.kgrp .who{font-size:11.5px;color:var(--dim)}
+.kgrp .who .ref{font-size:11.5px}
+.kgrp .nothing{font-size:12.5px;color:var(--dim)}
+.ktabs{display:flex;gap:4px;margin-bottom:10px}
+.kpick{display:flex;flex-direction:column;gap:2px;max-height:230px;overflow:auto;
+  border:1px solid var(--line);border-radius:var(--r);padding:6px 8px;margin:4px 0}
+.kpick label{display:flex;gap:6px;align-items:baseline;font-size:12.5px;cursor:pointer}
+.kpick label.taken{color:var(--dim)}
 .fld dd.editable{cursor:text;border-radius:2px;margin:1px -3px 0;padding:0 3px}
 .fld dd.editable:hover{background:var(--accent-soft);box-shadow:inset 0 -1px 0 var(--accent)}
 .fld dd.editing{margin-top:2px}
@@ -352,6 +366,7 @@ var UI={route:{k:"list"}, view:"quick", iface:"", tag:"", q:"", offen:false, pan
         regtab:"interfaces", regiface:"", regcomp:"", regprop:"", regjson:false,
         regview:"", regscope:"", regel:"", regcomp2:"", regrel:"",
         trail:[], inline:false, editField:"", pick:false, picked:{}, status:"",
+        aside:"rel", info:"",
         konzept:false, err:""};
 
 /* Darstellungsstufen (Facets, REQ-164) — registry rows, not code.
@@ -1503,7 +1518,8 @@ function renderTrail(){
 var LAYOUT_ELEMENTS=[
   ["heading","Heading"],["text","Paragraph"],["fields","Field table"],
   ["description","Description"],["blocks","Text blocks"],
-  ["composed","Composed rules"],["relations","Relations"],["image","Image"]
+  ["composed","Composed rules"],["relations","Relations"],["image","Image"],
+  ["knowledge","Knowledge groups"]
 ];
 function layoutOf(vw,ifn){
   var by=vw.byInterface||{};
@@ -1536,6 +1552,7 @@ function renderLayoutItem(item,e,ifn,vw){
     case "blocks":      return elBlocks(e,item);
     case "composed":    return elComposed(e);
     case "relations":   return elRelations(e);
+    case "knowledge":   return elKnowledge(e,ifn,item);
     default:            return null;
   }
 }
@@ -1552,16 +1569,18 @@ function elDescription(e){
   return desc?para(fillVars(desc,null,e)):null;
 }
 
-/* `fields: "all"` or a list of "Comp" / "Comp.key"; `columns` 0 means "fit". */
-function elFields(e,ifn,item){
-  var want=item.fields;
+/* Welche Feldzellen zeigt diese Ansicht — einmal berechnet, damit die
+   Feldtabelle und die Wissensgruppen dieselbe Auswahl sehen. Berechnete sie
+   jede für sich, könnte die Wissensansicht etwas gruppieren, das die Tabelle
+   gar nicht zeigt, und es fiele erst am Tisch auf.
+   `want`: "all" oder eine Liste aus "Comp" / "Comp.key". */
+function fieldPlan(e,ifn,want){
   var zeig=function(cn,p){
     if(want==="all")return true;
     if(!Array.isArray(want))return false;
     return want.indexOf(cn)>=0||want.indexOf(cn+"."+p)>=0;
   };
-  var flds=el("dl",{class:"fields"}), nf=0;
-  if(item.columns>0) flds.style.gridTemplateColumns="repeat("+item.columns+",minmax(0,1fr))";
+  var cells=[];
   compsFor(ifn).forEach(function(cn){
     if(cn==="Name"||cn==="Identity"||cn==="Vars")return;
     var cd=REG.components[cn]; if(!cd)return;
@@ -1583,10 +1602,21 @@ function elFields(e,ifn,item){
         var dv=fmtVal(props[dp],derivedValue(props[dp],val));
         if(dv!=="") txt+=" ("+dv+")";
       });
-      flds.appendChild(fieldCell(e,cn,p,pd,val,txt)); nf++;
+      cells.push({cn:cn,p:p,pd:pd,val:val,txt:txt,ref:cn+"."+p,
+        label:(REG.components[cn].label||cn)+" · "+(pd.title||p)});
     });
   });
-  if(want==="all") (e.adhoc||[]).forEach(function(f){
+  return cells;
+}
+
+/* `fields: "all"` or a list of "Comp" / "Comp.key"; `columns` 0 means "fit". */
+function elFields(e,ifn,item){
+  var flds=el("dl",{class:"fields"}), nf=0;
+  if(item.columns>0) flds.style.gridTemplateColumns="repeat("+item.columns+",minmax(0,1fr))";
+  fieldPlan(e,ifn,item.fields).forEach(function(c){
+    flds.appendChild(fieldCell(e,c.cn,c.p,c.pd,c.val,c.txt)); nf++;
+  });
+  if(item.fields==="all") (e.adhoc||[]).forEach(function(f){
     if(f.value===""||f.value==null)return;
     flds.appendChild(el("div",{class:"fld adhoc"},[
       el("dt",{text:f.label}),el("dd",{text:String(f.value)})])); nf++;
@@ -1663,6 +1693,284 @@ function elRelations(e){
   return wrap;
 }
 
+/* ---------- Wissen (A6) ----------
+   Die Einheit zwischen Feld und Empfänger heisst Information und ist ein
+   eigener Artikel. Nur ein Peg trägt Kanten — und „wer weiss vom wahren
+   Namen des Barons?" soll ein Rückbezug sein wie jeder andere, kein Griff
+   in ein Feldattribut, das ohnehin nur einen Empfänger fassen könnte.
+
+     Artikel     --knowledge--> Information   (owned)
+     Information --knownBy-->   Creature | Party | KnowledgeLevel
+     Creature    --atLevel-->   KnowledgeLevel
+
+   Ein Feld, das keine Information nennt, liegt offen. Die Umkehrung wäre
+   sicherer, macht aber jede neue Zeile unsichtbar, bis jemand daran denkt.
+   Deshalb steht „Offen" als eigene Gruppe zuoberst: man sieht dort immer,
+   was gerade offen liegt. */
+var INFO_IFACE="Information", INFO_COMP="Info",
+    REL_KNOW="knowledge", REL_KNOWNBY="knownBy", REL_ATLEVEL="atLevel", REL_PARTY="memberOfParty";
+
+function edgesOf(e,typ){
+  return ((e&&e.relations)||[]).filter(function(r){return r.type===typ;});
+}
+function infosOf(e){
+  var out=[];
+  edgesOf(e,REL_KNOW).forEach(function(r){ var i=ENT.get(r.to); if(i) out.push(i); });
+  return out;
+}
+function infoList(info,key){
+  var raw=((info.components||{})[INFO_COMP]||{})[key];
+  return Array.isArray(raw)?raw.map(String):[];
+}
+function infoTier(info){
+  return ((info.components||{})[INFO_COMP]||{}).tier||"secret";
+}
+/* Dieselbe Regel wie bei den Ansichten: „Comp" nimmt die ganze Komponente,
+   „Comp.feld" genau eines. */
+function infoCovers(info,ref){
+  var f=infoList(info,"fields"), cn=ref.split(".")[0];
+  return f.indexOf(ref)>=0||f.indexOf(cn)>=0;
+}
+/* Wer zählt für diesen Betrachter als „ich": er selbst, seine Gruppen und
+   seine Wissensstände. Einen Schritt weit — ein Stand, der einem anderen
+   angehört, wäre eine Hierarchie, und die hat niemand verlangt. */
+function knowledgeHolders(viewerId){
+  var holders={}; holders[viewerId]=true;
+  var v=ENT.get(viewerId); if(!v)return holders;
+  edgesOf(v,REL_ATLEVEL).forEach(function(r){ holders[r.to]=true; });
+  edgesOf(v,REL_PARTY).forEach(function(r){
+    holders[r.to]=true;
+    edgesOf(ENT.get(r.to),REL_ATLEVEL).forEach(function(q){ holders[q.to]=true; });
+  });
+  return holders;
+}
+function knowsInfo(info,viewerId){
+  if(!viewerId)return true;               /* ohne Betrachter: die Spielleitung */
+  var holders=knowledgeHolders(viewerId);
+  return edgesOf(info,REL_KNOWNBY).some(function(r){ return !!holders[r.to]; });
+}
+/* Der Artikel, nach Informationen geordnet. Die offene Restgruppe steht
+   vorn und trägt keine Information — sie ist, was übrig bleibt. */
+function knowledgeGroups(e,refs,viewerId){
+  var blockIds=(e.blocks||[]).map(function(b){return b.anchor||b.id;});
+  var claimedF={}, claimedB={};
+  var groups=infosOf(e).map(function(info){
+    var fields=refs.filter(function(r){ return infoCovers(info,r); });
+    var blocks=infoList(info,"blocks").filter(function(a){ return blockIds.indexOf(a)>=0; });
+    fields.forEach(function(f){claimedF[f]=true;});
+    blocks.forEach(function(b){claimedB[b]=true;});
+    return {info:info,label:nameOf(info),fields:fields,blocks:blocks,open:false,
+            known:knowsInfo(info,viewerId)};
+  });
+  return [{info:null,label:"Open",open:true,known:true,
+           fields:refs.filter(function(f){return !claimedF[f];}),
+           blocks:blockIds.filter(function(b){return !claimedB[b];})}].concat(groups);
+}
+
+function elKnowledge(e,ifn,item){
+  var cells=fieldPlan(e,ifn,item.fields||"all");
+  var byRef={}; cells.forEach(function(c){ byRef[c.ref]=c; });
+  var blocks={}; (e.blocks||[]).forEach(function(b){ blocks[b.anchor||b.id]=b; });
+  var wrap=el("div",{class:"knowledge"});
+  knowledgeGroups(e,cells.map(function(c){return c.ref;})).forEach(function(g){
+    var box=el("div",{class:"kgrp"+(g.open?" open":"")});
+    var head=el("div",{class:"kh"});
+    head.appendChild(el("b",{text:g.label}));
+    if(g.info) head.appendChild(el("span",{class:"pill q",text:infoTier(g.info)}));
+    if(g.info){
+      var who=el("span",{class:"who"});
+      var recips=edgesOf(g.info,REL_KNOWNBY);
+      if(!recips.length) who.appendChild(document.createTextNode("nobody yet"));
+      recips.forEach(function(r,i){
+        var t=ENT.get(r.to);
+        if(i) who.appendChild(document.createTextNode(", "));
+        if(t) who.appendChild(el("button",{class:"ref",type:"button",
+          onclick:function(){go({k:"art",id:t.id});}},nameOf(t)));
+        else who.appendChild(el("span",{class:"gone",text:"missing"}));
+      });
+      head.appendChild(who);
+    }
+    if(me.write) head.appendChild(el("button",{class:"btn gh sm",type:"button",
+      title:g.open?"Turn the open fields into an Information":"Edit this Information",
+      onclick:function(){ UI.pane="aside"; UI.aside="know";
+        UI.info=g.info?g.info.id:""; if(!g.info) newInformation(e); else render(); }},
+      g.open?"+ Information":"Edit"));
+    box.appendChild(head);
+
+    if(!g.fields.length&&!g.blocks.length){
+      box.appendChild(el("div",{class:"nothing",text:"Nothing assigned."}));
+    } else {
+      if(g.fields.length){
+        var dl=el("dl",{class:"fields"});
+        g.fields.forEach(function(ref){ var c=byRef[ref];
+          if(c) dl.appendChild(fieldCell(e,c.cn,c.p,c.pd,c.val,c.txt)); });
+        box.appendChild(dl);
+      }
+      g.blocks.forEach(function(a){ var b=blocks[a]; if(!b)return;
+        var blk=el("div",{class:"blk "+b.blockType});
+        if(b.blockType!=="paragraph") blk.appendChild(el("div",{class:"bl",text:b.blockType}));
+        blk.appendChild(para(fillVars(b.body,null,e)));
+        box.appendChild(blk);
+      });
+    }
+    wrap.appendChild(box);
+  });
+  return wrap;
+}
+
+/* Eine Information anlegen. Sie ist ein Artikel wie jeder andere — deshalb
+   geht sie durch dieselben Schritte — und hängt danach über `knowledge` am
+   Artikel, von dem sie handelt. */
+function newInformation(e){
+  dialog("New information",function(host,close){
+    var nm=el("input",{class:"i",type:"text",placeholder:"e.g. His real name"});
+    var tier=el("select",{class:"i"});
+    ["secret","rumour","open"].forEach(function(t){ tier.appendChild(el("option",{value:t},t)); });
+    host.appendChild(field("Label",nm));
+    host.appendChild(field("Guardedness",tier));
+    host.appendChild(el("p",{class:"hint",
+      text:"A bundle of fields and blocks of this article, handed out as a whole. Assign its fields and its recipients in the side panel."}));
+    actions(host,close,function(){
+      var name=nm.value.trim(); if(!name){nm.focus();return false;}
+      if(!REG.interfaces[INFO_IFACE]){ alert("The interface “"+INFO_IFACE+"” is missing from the registry."); return; }
+      var info={ id:uid("i"), interfaces:[INFO_IFACE], name:name, tags:[],
+        components:{ Name:{text:name}, Identity:{key:"information/"+slug(name),aliases:[]} },
+        adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
+      reqFor(INFO_IFACE).forEach(function(c){ if(!info.components[c]&&REG.components[c]) info.components[c]={}; });
+      applyDefaults(info,INFO_IFACE);
+      info.components[INFO_COMP]=Object.assign({fields:[],blocks:[]},info.components[INFO_COMP]||{},{tier:tier.value});
+      ENT.set(info.id,info); persist(info);
+      e.relations=e.relations||[];
+      e.relations.push({id:uid("r"),type:REL_KNOW,to:info.id,props:{}});
+      UI.aside="know"; UI.info=info.id;
+      persist(e);
+    },"Create");
+  });
+}
+
+/* Das Seitenpanel: welche Felder zu welcher Information gehören, und wer sie
+   kennt. Beides sind Schreibvorgänge am Bündel, nicht am Artikel — der
+   Artikel selbst bleibt unverändert, wenn jemand etwas erfährt. */
+function renderKnowPanel(a,e){
+  var ifn=(e.interfaces||[])[0]||"";
+  var cells=fieldPlan(e,ifn,"all");
+  var infos=infosOf(e);
+
+  var head=el("h3",{text:"Knowledge"});
+  if(me.write) head.appendChild(el("button",{class:"btn gh sm",type:"button",
+    title:"New information",onclick:function(){newInformation(e);}},"+"));
+  a.appendChild(head);
+
+  if(!infos.length){
+    a.appendChild(el("p",{class:"hint",text:"Everything about this article is open. An information bundles some of its fields and blocks so they can be handed to a character, a party or a knowledge level — and stays hidden from everyone else."}));
+    return;
+  }
+
+  var sel=el("select",{class:"i"});
+  infos.forEach(function(i){ sel.appendChild(el("option",{value:i.id},nameOf(i))); });
+  if(!UI.info||!infos.some(function(i){return i.id===UI.info;})) UI.info=infos[0].id;
+  sel.value=UI.info;
+  sel.addEventListener("change",function(){ UI.info=sel.value; render(); });
+  a.appendChild(field("Information",sel));
+
+  var info=ENT.get(UI.info); if(!info)return;
+  var card=info.components[INFO_COMP]=info.components[INFO_COMP]||{};
+
+  var tier=el("select",{class:"i"});
+  ["secret","rumour","open"].forEach(function(t){ tier.appendChild(el("option",{value:t},t)); });
+  tier.value=infoTier(info);
+  tier.addEventListener("change",function(){ card.tier=tier.value; persist(info); });
+  a.appendChild(field("Guardedness",tier));
+
+  /* Felder. Ein Feld darf in mehreren Bündeln stehen; die Anzeige ordnet es
+     dem ersten zu, das es nennt — das steht hier dran, statt es zu verbieten. */
+  a.appendChild(el("h3",{text:"Fields"}));
+  var picks=el("div",{class:"kpick"});
+  cells.forEach(function(c){
+    var mine=infoCovers(info,c.ref);
+    var taken=!mine&&infos.some(function(o){ return o.id!==info.id&&infoCovers(o,c.ref); });
+    var cb=el("input",{type:"checkbox"}); cb.checked=mine; cb.disabled=!me.write;
+    cb.addEventListener("change",function(){
+      var f=infoList(info,"fields").filter(function(x){ return x!==c.ref&&x!==c.cn; });
+      if(cb.checked) f.push(c.ref);
+      card.fields=f; persist(info);
+    });
+    var lab=el("label",{class:taken?"taken":null},[cb,el("span",{text:c.label})]);
+    if(taken) lab.title="Already in another information";
+    picks.appendChild(lab);
+  });
+  if(!cells.length) picks.appendChild(el("span",{class:"hint",text:"This article carries no fields yet."}));
+  a.appendChild(picks);
+
+  if((e.blocks||[]).length){
+    a.appendChild(el("h3",{text:"Text blocks"}));
+    var bp=el("div",{class:"kpick"});
+    (e.blocks||[]).slice().sort(function(x,y){return (x.order||0)-(y.order||0);}).forEach(function(b){
+      var key=b.anchor||b.id, mine=infoList(info,"blocks").indexOf(key)>=0;
+      var cb=el("input",{type:"checkbox"}); cb.checked=mine; cb.disabled=!me.write;
+      cb.addEventListener("change",function(){
+        var l=infoList(info,"blocks").filter(function(x){return x!==key;});
+        if(cb.checked) l.push(key);
+        card.blocks=l; persist(info);
+      });
+      bp.appendChild(el("label",null,[cb,
+        el("span",{text:b.blockType+": "+String(b.body||"").slice(0,42)})]));
+    });
+    a.appendChild(bp);
+  }
+
+  /* Empfänger. Die Kante hängt an der Information, nicht am Empfänger —
+     sonst müsste jede Figur eine Liste pflegen, und Entziehen hiesse, sie
+     dort wiederzufinden. */
+  a.appendChild(el("h3",{text:"Known by"}));
+  var recips=edgesOf(info,REL_KNOWNBY);
+  if(!recips.length) a.appendChild(el("p",{class:"hint",text:"Nobody yet — the fields above stay with the GM."}));
+  else{
+    var box=el("div",{class:"rel"});
+    recips.forEach(function(r){
+      var t=ENT.get(r.to);
+      var row=el("div",{class:"relrow"});
+      row.appendChild(el("span",{class:"rl",text:t?ifaceName(t):"gone"}));
+      var rv=el("span",{class:"rv"});
+      if(t) rv.appendChild(el("button",{class:"ref",type:"button",
+        onclick:function(){go({k:"art",id:t.id});}},nameOf(t)));
+      else rv.appendChild(el("span",{class:"gone",text:"missing"}));
+      if(me.write) rv.appendChild(el("button",{class:"btn gh sm",type:"button",onclick:function(){
+        info.relations=(info.relations||[]).filter(function(x){return x.id!==r.id;});
+        persist(info); }},"×"));
+      row.appendChild(rv); box.appendChild(row);
+    });
+    a.appendChild(box);
+  }
+
+  if(me.write){
+    var to=relDef(REL_KNOWNBY).to||["*"];
+    var add=el("select",{class:"i"});
+    add.appendChild(el("option",{value:""},"— assign to …"));
+    byName().forEach(function(c){
+      if(!ifaceInList(to,(c.interfaces||[])[0]))return;
+      if(recips.some(function(r){return r.to===c.id;}))return;
+      add.appendChild(el("option",{value:c.id},nameOf(c)+" — "+ifaceName(c)));
+    });
+    add.addEventListener("change",function(){
+      if(!add.value)return;
+      info.relations=info.relations||[];
+      info.relations.push({id:uid("r"),type:REL_KNOWNBY,to:add.value,props:{}});
+      persist(info);
+    });
+    a.appendChild(add);
+    if(add.childNodes.length===1) a.appendChild(el("p",{class:"hint",
+      text:"No character, party or knowledge level exists yet to hand this to."}));
+
+    a.appendChild(el("button",{class:"btn sm dngr gh",type:"button",style:"margin-top:10px",
+      onclick:function(){ confirmDialog("Delete the information “"+nameOf(info)+"”? The fields become open again.",function(){
+        e.relations=(e.relations||[]).filter(function(x){return !(x.type===REL_KNOW&&x.to===info.id);});
+        UI.info="";
+        drop(info.id); persist(e);
+      }); }},"Delete information"));
+  }
+}
+
 /* ---------- aside: relations + backlinks ---------- */
 function renderAside(){
   var a=document.getElementById("aside"); a.textContent="";
@@ -1672,6 +1980,18 @@ function renderAside(){
     return;
   }
   var e=ENT.get(UI.route.id); if(!e)return;
+
+  /* Zwei Reiter statt zweier Panels: Bezüge und Wissen wollen beide die
+     ganze Breite der Spalte, und man braucht selten beide zugleich. */
+  var tabs=el("div",{class:"ktabs"});
+  [["rel","Relations"],["know","Knowledge"]].forEach(function(t){
+    tabs.appendChild(el("button",{class:"btn sm"+(UI.aside===t[0]?" pri":""),type:"button",
+      "aria-pressed":String(UI.aside===t[0]),
+      onclick:function(){ UI.aside=t[0]; render(); }},t[1]));
+  });
+  a.appendChild(tabs);
+  if(UI.aside==="know"){ renderKnowPanel(a,e); return; }
+
   if(viewDef().relations===false){
     a.appendChild(el("h3",{text:"Relations"}));
     a.appendChild(el("p",{class:"hint",text:"In dieser Darstellungsstufe ausgeblendet."}));
