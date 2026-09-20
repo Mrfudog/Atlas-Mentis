@@ -1,4 +1,4 @@
-<title>Nebelwacht Article Engine</title>
+<title>Atlas Mentis</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -833,7 +833,7 @@ table.craftm tr.crrow.unknown td{color:var(--dim);font-style:italic}
 
 <div class="app">
   <header class="top">
-    <div class="brand">Nebel<span>wacht</span></div>
+    <div class="brand">Atlas <span>Mentis</span></div>
     <div class="sub">Article Engine</div>
     <div class="grow"></div>
     <input id="q" class="search" type="search" placeholder="Search…" aria-label="Search articles">
@@ -862,7 +862,7 @@ table.craftm tr.crrow.unknown td{color:var(--dim);font-style:italic}
 "use strict";
 
 /* ============================================================
-   Nebelwacht Article Engine v0
+   Atlas Mentis — Article Engine v0
    Compound backbone at prototype depth:
      entity (peg) + components (cards) + relations (strings)
      interfaces / component_defs / relation_defs as registry ROWS
@@ -1905,7 +1905,7 @@ function render(){
     try{
       var v=document.getElementById("view");
       if(v) v.insertBefore(el("div",{class:"banner",text:"Anzeigefehler — "+broken.join(" · ")}),v.firstChild);
-      if(window.console) console.error("Nebelwacht:",broken);
+      if(window.console) console.error("Atlas Mentis:",broken);
     }catch(y){}
   }
   /* Nach dem Zeichnen, weil es erst jetzt im Baum hängt. Die Grösse des

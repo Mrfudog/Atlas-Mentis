@@ -1,7 +1,10 @@
-# Nebelwacht — Hinweise für Claude
+# Atlas Mentis — Hinweise für Claude
 
-Kampagnenplattform für „Aus Nebel wacht“. Schweizer Rechtschreibung
-(**ss statt ß**) in allem Deutschen.
+Kampagnenplattform, gebaut für „Aus Nebel wacht“. **Die Plattform heisst
+Atlas Mentis, die Kampagne heisst Nebelwacht** — das Repository und die
+Paketnamen (`@nw/*`) tragen noch den alten Namen; sichtbar heisst es überall
+Atlas Mentis. Schweizer Rechtschreibung (**ss statt ß**) in allem
+Deutschen.
 
 **Sprache:** Code, Bezeichner, Registerzeilen und sichtbare Texte auf Englisch.
 Kommentare und Commit-Nachrichten auf Deutsch. Die Oberfläche war bis

@@ -10,19 +10,19 @@ export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () => import('./login/login').then((m) => m.Login),
-    title: 'Sign in · Nebelwacht',
+    title: 'Sign in · Atlas Mentis',
   },
   {
     path: '',
     canActivate: [wache],
     loadComponent: () => import('./artikel/liste').then((m) => m.Liste),
-    title: 'Articles · Nebelwacht',
+    title: 'Articles · Atlas Mentis',
   },
   {
     path: 'artikel/:id',
     canActivate: [wache],
     loadComponent: () => import('./artikel/artikel').then((m) => m.Artikel),
-    title: 'Article · Nebelwacht',
+    title: 'Article · Atlas Mentis',
   },
   { path: '**', redirectTo: '' },
 ];

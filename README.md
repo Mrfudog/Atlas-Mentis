@@ -1,6 +1,11 @@
-# Nebelwacht
+# Atlas Mentis
 
-Kampagnenplattform für **„Aus Nebel wacht“** — Wasserfeste, Nebeldistrikt, Unterwacht.
+Kampagnenplattform. Gebaut für **„Aus Nebel wacht“** — Wasserfeste,
+Nebeldistrikt, Unterwacht —, aber nicht an sie gebunden: was es an
+Artikelarten gibt, ist eine Registerzeile und keine Codezeile.
+
+Die Kampagne heisst Nebelwacht, die Plattform heisst Atlas Mentis. Das
+Repository trägt noch den alten Namen.
 
 Ein Artikel ist die Grundform für alles in der Welt: Geschöpfe, Orte, Fraktionen,
 Regeln, Statblöcke, Wissensartikel. Er besteht aus **Komponenten** (typisierte
