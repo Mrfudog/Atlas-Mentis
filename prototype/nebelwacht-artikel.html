@@ -1428,10 +1428,16 @@ function checkArticle(e){
 // order: per-reference bindings → entity defaults → campaign register
 function fillVars(text,refVars,ent){
   var entVars=(ent&&ent.components&&ent.components.Vars&&ent.components.Vars.bindings)||{};
+  /* Die gerechneten Kampagnenwerte stehen zwischen dem Artikel und dem
+     Register — und sie gewinnen gegen eine gleichnamige Registerzeile.
+     Sonst überdeckte eine einmal eingetippte Gruppenstufe für immer die
+     richtige, und niemand bemerkte es (B3, D8). */
+  var rechnung=campaignVars();
   return String(text==null?"":text).replace(/\{([A-Z0-9_ÄÖÜ]+)\}/g,function(m,k){
     var v=(refVars&&refVars[k])!=null?refVars[k]
          :(entVars[k]!=null?entVars[k]
-         :(REG.vars[k]!=null?REG.vars[k]:null));
+         :(rechnung[k]!=null&&rechnung[k]!==""?rechnung[k]
+         :(REG.vars[k]!=null?REG.vars[k]:null)));
     return v==null?m:"\u0001"+v+"\u0002";   // sentinels -> <span class=vr> at render
   });
 }
@@ -1478,6 +1484,11 @@ function para(text,cls){ return markRules(inline(text,el("p",cls?{class:cls}:nul
 /* ---------- db wiring ---------- */
 function persist(e){
   if(blockedByLoad())return Promise.resolve();
+  /* Jeder Block bekommt beim Schreiben einen Anker, wenn er keinen hat.
+     Eine Stelle, nicht sechs: an jedem Anlegeweg einzeln daran zu denken
+     heisst, es an einem zu vergessen — und dort verliert der nächste Import
+     dann die Wissenszuteilungen (B3). */
+  ensureAnchors(e);
   e.updatedAt=new Date().toISOString();
   lastWroteAt[e.id]=e.updatedAt;
   ENT.set(e.id,e);
@@ -4070,6 +4081,26 @@ function renderBackupEditor(v){
   v.appendChild(opt);
   v.appendChild(bar2);
   v.appendChild(bericht);
+
+  /* Blockanker nachtragen. Steht hier, weil es dieselbe Sorte Arbeit ist
+     wie eine Sicherung: etwas, das man einmal tut, damit ein späterer
+     Import nichts verliert. */
+  v.appendChild(el("div",{class:"sec",text:"Block anchors"}));
+  var ohne=anchorlessBlocks();
+  v.appendChild(el("p",{class:"hint",
+    text:ohne?(ohne+" block"+(ohne===1?"":"s")+" still hang on a generated id. "+
+      "Re-import the same article and every knowledge grant on those blocks points at nothing — "+
+      "the block is still there, the text is still there, and the information has simply "+
+      "stopped guarding anything.")
+      :"Every block carries an anchor derived from its own text. A re-import keeps the knowledge grants."}));
+  if(ohne&&canWrite()){
+    var abar=el("div",{class:"rowbtns"});
+    abar.appendChild(el("button",{class:"btn",type:"button",onclick:function(){
+      confirmDialog("Give every block an anchor and move the knowledge grants over?",
+        function(){ backfillAnchors(function(t){ msg.textContent=t; }); },"Anchor them");
+    }},"Anchor every block"));
+    v.appendChild(abar);
+  }
 
   v.appendChild(el("div",{class:"sec",text:"When loading goes wrong"}));
   v.appendChild(el("p",{class:"hint",
@@ -7419,6 +7450,191 @@ function addDeed(e){
     });
 }
 
+/* ---------- Blockanker und Kampagnenwerte (B3) ----------
+   Zwei kleine Sachen, die beide daran hängen, dass ein Bezeichner hält.
+
+   **Der Blockanker.** Wissen an einem Block hängt an der Block-Id, und die
+   Id entsteht beim Anlegen (`uid("b")`). Wer denselben Artikel neu
+   einliest, bekommt neue Ids — und jede Wissenszuteilung an einem Block
+   zeigt danach ins Leere. Das fällt niemandem auf: der Block ist da, der
+   Text ist da, und die Information hat nur plötzlich nichts mehr zu
+   verbergen.
+
+   Ein Anker ist deshalb **aus dem Inhalt abgeleitet**: Blockart plus die
+   ersten Worte. Derselbe Text an derselben Stelle ergibt denselben Anker,
+   also übersteht die Zuteilung den Import. Kollidieren zwei, zählt der
+   zweite hoch — innerhalb eines Artikels, nicht global: ein Anker muss
+   nur dort eindeutig sein, wo er gelesen wird.
+
+   **Die Kampagnenwerte.** Gruppenstufe und Gruppen-Aufenthaltsort standen
+   als Einstellung zum Eintippen da. Eine eingetippte Gruppenstufe ist nach
+   der ersten Stufe falsch, und niemand merkt es, weil sie plausibel
+   aussieht. Also werden sie **gerechnet** — dieselbe Regel wie bei jedem
+   abgeleiteten Wert (D8) —, sie gewinnen gegen eine gleichnamige Zeile im
+   Register, und die Maske gibt ihnen kein Eingabefeld. */
+
+function blockStub(b){
+  var t=String(b.body||"").replace(/[\[\]{}*_#>`]/g,"").replace(/\s+/g," ").trim();
+  var worte=t.split(" ").slice(0,5).join(" ");
+  return slug(worte)||"block";
+}
+/* Der Anker eines Blocks, in der Reihenfolge, in der man ihm trauen darf:
+   was der Autor gesetzt hat, sonst was der Inhalt hergibt. */
+function anchorFor(e,b){
+  if(b.anchor)return b.anchor;
+  var roh=(b.blockType||"paragraph")+"-"+blockStub(b);
+  var belegt={};
+  (e.blocks||[]).forEach(function(x){ if(x!==b&&x.anchor) belegt[x.anchor]=true; });
+  var a=roh, n=2;
+  while(belegt[a]) a=roh+"-"+(n++);
+  return a;
+}
+/* Anker nachtragen. Gibt zurück, ob sich etwas geändert hat — nur dann
+   wird geschrieben, sonst schriebe jede Anzeige den Artikel neu. */
+function ensureAnchors(e){
+  var neu=false;
+  (e.blocks||[]).forEach(function(b){
+    if(b.anchor)return;
+    b.anchor=anchorFor(e,b);
+    neu=true;
+  });
+  return neu;
+}
+/* Wie viele Blöcke im Bestand noch ohne Anker sind — die Zahl, die sagt,
+   ob ein Import die Wissenszuteilungen gerade mitgenommen hätte. */
+function anchorlessBlocks(){
+  var n=0;
+  ENT.forEach(function(e){ (e.blocks||[]).forEach(function(b){ if(!b.anchor) n++; }); });
+  return n;
+}
+
+/* Nachtragen, was noch keinen hat — und die Wissenszuteilungen mitnehmen.
+   Ohne den zweiten Schritt zeigte danach jede Zuteilung ins Leere: der
+   Block hiesse plötzlich anders, und die Information hätte nichts mehr zu
+   verbergen. Genau die Sorte Verlust, die man erst Wochen später bemerkt. */
+function backfillAnchors(melde){
+  var geaendert={}, gesetzt=0, nachgezogen=0;
+  ENT.forEach(function(e){
+    /* Je Artikel eine eigene Zuordnung. Block-Ids sind nur innerhalb eines
+       Artikels eindeutig — im Bestand heissen sieben verschiedene Blöcke
+       „b1" —, und eine gemeinsame Tabelle zöge die Zuteilung des einen auf
+       den Block des anderen. Das wäre schlimmer als gar keine Wanderung. */
+    var karte={};
+    (e.blocks||[]).forEach(function(b){
+      if(b.anchor)return;
+      karte[b.id]=b.anchor=anchorFor(e,b);
+      gesetzt++;
+      geaendert[e.id]=true;
+    });
+    if(!Object.keys(karte).length)return;
+    /* Und nur die Informationen dieses Artikels — die Kante sagt, welche. */
+    infosOf(e).forEach(function(i){
+      var info=(i.components||{})[INFO_COMP];
+      if(!info||!Array.isArray(info.blocks))return;
+      var neu=info.blocks.map(function(a){
+        if(karte[a]){ nachgezogen++; return karte[a]; }
+        return a;
+      });
+      if(neu.join("\u0000")===info.blocks.join("\u0000"))return;
+      i.components[INFO_COMP]=Object.assign({},info,{blocks:neu});
+      geaendert[i.id]=true;
+    });
+  });
+  var ids=Object.keys(geaendert);
+  ids.forEach(function(id){ var e=ENT.get(id); if(e) persist(e); });
+  melde&&melde(gesetzt+" block"+(gesetzt===1?"":"s")+
+    " anchored, "+nachgezogen+" knowledge reference"+(nachgezogen===1?"":"s")+
+    " moved over, "+ids.length+" article"+(ids.length===1?"":"s")+" written.");
+  render();
+}
+
+/* ---- Kampagnenwerte, gerechnet ---- */
+function theParty(){
+  var beste=null;
+  ENT.forEach(function(e){
+    if(((e.interfaces||[])[0])!=="Party")return;
+    if(!inStack(e))return;
+    if(!beste) beste=e;
+  });
+  return beste;
+}
+function partyMembers(p){
+  if(!p)return [];
+  var out=[];
+  ENT.forEach(function(o){
+    (o.relations||[]).forEach(function(r){
+      if(r.type===REL_PARTY&&r.to===p.id) out.push(o);
+    });
+  });
+  return out;
+}
+/* Wo die Gruppe steht: da, wo ein Gruppen-Token auf der Karte sitzt. Die
+   Karte weiss, welchen Ort sie zeigt (`mapOf`) — also wird nicht ein
+   zweites Mal hingeschrieben, wo die Gruppe ist. */
+function partyPlace(p){
+  if(!p)return null;
+  var ids={}; ids[p.id]=true;
+  partyMembers(p).forEach(function(m){ ids[m.id]=true; });
+  var treffer=null;
+  ENT.forEach(function(k){
+    if(treffer)return;
+    if(((k.interfaces||[])[0])!=="Map")return;
+    var hat=(k.relations||[]).some(function(r){
+      return r.type===REL_MARKER&&((r.props||{}).kind)==="party"&&ids[r.to]; });
+    if(!hat)return;
+    var ort=(k.relations||[]).filter(function(r){return r.type===REL_MAPOF;})[0];
+    treffer=ort?ENT.get(ort.to):k;
+  });
+  return treffer;
+}
+/* Das jüngste benutzte Ereignis — der Tag, an dem die Kampagne steht, wenn
+   niemand ihn als Einstellung gesetzt hat. */
+function worldToday(){
+  var gesetzt=setting("today","");
+  if(gesetzt)return gesetzt;
+  var beste=null, rang=-Infinity;
+  ENT.forEach(function(e){
+    var wd=(e.components||{}).WorldDate;
+    if(!wd||!wd.display)return;
+    if((((e.components||{}).Status||{}).value)!=="used")return;
+    var s=Number(wd.sort);
+    if(!isFinite(s)||s<rang)return;
+    rang=s; beste=wd.display;
+  });
+  return beste||"";
+}
+var COMPUTED_VARS=[
+  ["PARTY","The party's name"],
+  ["PARTYSIZE","How many are in it"],
+  ["PARTYLEVEL","Average level of its members"],
+  ["PARTYTIER","1–4, for encounter budgeting"],
+  ["PARTYWHERE","Where its token stands on a map"],
+  ["TODAY","The world date the campaign stands at"],
+  ["CALENDAR","Name of the calendar"]
+];
+var computedSig="", computedCache=null;
+function campaignVars(){
+  var sig=ENT.size+"|"+JSON.stringify(REG.settings||{});
+  if(sig===computedSig&&computedCache)return computedCache;
+  var p=theParty(), mit=partyMembers(p);
+  var stufen=mit.map(function(m){
+    return Number(((m.components||{}).CharacterInfo||{}).level);
+  }).filter(function(n){ return isFinite(n)&&n>0; });
+  var mittel=stufen.length?Math.round(stufen.reduce(function(a,b){return a+b;},0)/stufen.length):0;
+  var ort=partyPlace(p);
+  var out={
+    PARTY:p?nameOf(p):"",
+    PARTYSIZE:mit.length?String(mit.length):"",
+    PARTYLEVEL:mittel?String(mittel):"",
+    PARTYTIER:mittel?String(mittel<5?1:(mittel<11?2:(mittel<17?3:4))):"",
+    PARTYWHERE:ort?nameOf(ort):"",
+    TODAY:worldToday(),
+    CALENDAR:setting("calendar","")
+  };
+  computedSig=sig; computedCache=out;
+  return out;
+}
+
 /* ---------- aside: relations + backlinks ---------- */
 function renderAside(){
   var a=document.getElementById("aside"); a.textContent="";
@@ -7837,6 +8053,30 @@ function renderVarEditor(v){
   var w=canWrite();
   v.appendChild(el("p",{class:"hint",
     text:"Campaign-wide values for {VAR}. A binding on an edge wins, then the article using it, then these."}));
+  /* Erst die gerechneten. Sie haben kein Eingabefeld — dieselbe Regel wie
+     bei jeder abgeleiteten Eigenschaft (D8), nur eine Etage höher: eine
+     eingetippte Gruppenstufe ist nach der ersten Stufe falsch, und niemand
+     merkt es, weil sie plausibel aussieht. */
+  var rechnung=campaignVars();
+  v.appendChild(el("div",{class:"sec",text:"Computed — no input, they follow the data"}));
+  var cbox=el("div",{class:"regbody",style:"max-height:none;border:1px solid var(--line);border-radius:var(--r)"});
+  COMPUTED_VARS.forEach(function(c){
+    var row=el("div",{class:"crow"});
+    row.appendChild(el("span",{class:"fk",style:"flex:0 0 150px",text:"{"+c[0]+"}"}));
+    var wert=rechnung[c[0]];
+    row.appendChild(el("span",{class:wert?"":"co",style:"flex:1",
+      text:wert||"— nothing to compute it from yet"}));
+    row.appendChild(el("span",{class:"co",style:"flex:0 0 200px",text:c[1]}));
+    cbox.appendChild(row);
+  });
+  v.appendChild(cbox);
+  var kollision=Object.keys(REG.vars||{}).filter(function(k){
+    return COMPUTED_VARS.some(function(c){return c[0]===k;}); });
+  if(kollision.length) v.appendChild(el("p",{class:"hint warnzeile",
+    text:kollision.map(function(k){return "{"+k+"}";}).join(", ")+
+      " also stand below as a typed value. The computed one wins — the typed one is never read."}));
+
+  v.appendChild(el("div",{class:"sec",text:"Typed"}));
   var keys=Object.keys(REG.vars||{}).sort();
   var box=el("div",{class:"regbody",style:"max-height:none;border:1px solid var(--line);border-radius:var(--r)"});
   if(!keys.length) box.appendChild(el("p",{class:"hint",text:"None yet."}));
@@ -7886,7 +8126,7 @@ var SETTING_HINTS={
   inventoryCols:"Columns of the tile inventory",
   inventoryRows:"Rows of the tile inventory",
   calendar:"Name of the calendar world dates are read in",
-  partyLevel:"Party level, for encounter budgeting"
+  today:"The world date the campaign stands at — empty means the newest used event"
 };
 function renderSettingsEditor(v){
   var w=canWrite();
@@ -8967,7 +9207,9 @@ function addBlock(e){
     actions(host,close,function(){
       if(!ta.value.trim())return false;
       e.blocks=e.blocks||[];
-      e.blocks.push({id:uid("b"),blockType:sel.value,body:ta.value.trim(),order:e.blocks.length});
+      var neuBlock={id:uid("b"),blockType:sel.value,body:ta.value.trim(),order:e.blocks.length};
+      neuBlock.anchor=anchorFor(e,neuBlock);
+      e.blocks.push(neuBlock);
       persist(e);
     },"Add");
   });
@@ -9149,7 +9391,9 @@ function impGegenstand(text,datei){
   if(bilder[0]) c.Image={url:bilder[0],caption:""};
 
   var prosa=body.replace(/!\[\[[^\]]+\]\]/g,"").replace(/^#+\s*Eigenschaften[\s\S]*$/im,"").trim();
-  var bl=[]; if(prosa) bl.push({id:uid("b"),blockType:"paragraph",body:prosa,order:0});
+  var bl=[];
+  if(prosa) bl.push({id:uid("b"),anchor:"paragraph-"+slug(String(prosa).split(/\s+/).slice(0,5).join(" ")),
+    blockType:"paragraph",body:prosa,order:0});
 
   var unresolved=[];
   fmList(fm,"Eigenschaften").forEach(function(x){
@@ -9249,7 +9493,9 @@ function impOrt(text,datei){
     RawContent:{raw:text,format:"obsidian",importedAt:new Date().toISOString().slice(0,10)} };
 
   var prosa=body.replace(/!\[\[[^\]]+\]\]/g,"").replace(/^#+\s.*$/gm,"").trim();
-  var bl=[]; if(prosa) bl.push({id:uid("b"),blockType:"paragraph",body:prosa,order:0});
+  var bl=[];
+  if(prosa) bl.push({id:uid("b"),anchor:"paragraph-"+slug(String(prosa).split(/\s+/).slice(0,5).join(" ")),
+    blockType:"paragraph",body:prosa,order:0});
 
   return { e:{ id:uid("o"), interfaces:["Place"], name:name, tags:fmList(fm,"tags"),
       components:c, adhoc:[], blocks:bl, relations:[], createdAt:new Date().toISOString() },

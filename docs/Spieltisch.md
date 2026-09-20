@@ -148,8 +148,7 @@ ihn niemand, der später dazukommt — und das merkte man erst am Tisch.
    2026-09-20 — siehe den Nachtrag unten.
 3. ~~**Ebenen und Stapelauflösung** (REQ-004 bis 007).~~ Steht seit
    2026-09-20 — siehe [Ebenen.md](Ebenen.md).
-4. **Blockanker.** Wissen an Blöcken hängt an der Block-Id; `Block.anchor`
-   ist vorgesehen, wird aber nicht vergeben.
+4. ~~**Blockanker.**~~ Steht seit 2026-09-20 — siehe den Nachtrag unten.
 5. ~~**Gebietsraster auf der Karte** (REQ-193) und **Kartenkacheln**
    (REQ-138).~~ Stehen seit 2026-09-20 — siehe den Nachtrag unten.
 6. ~~**Ruf und Beziehungen** (REQ-030, 081).~~ Steht seit 2026-09-20 — siehe
@@ -254,3 +253,61 @@ am Tisch der Software nicht mehr.
 Der Wurf bleibt stehen: „Rezept: Rauchbombe: 17 vs DC 12 — made it, Rauchbombe
 in the pack." Ein Ergebnis, das nicht nachlesbar ist, wird am Tisch neu
 gewürfelt.
+
+---
+
+## Nachtrag 2026-09-20 — Blockanker und Kampagnenwerte
+
+Zwei kleine Sachen, die beide daran hängen, dass ein Bezeichner hält.
+
+### Der Blockanker
+
+Wissen an einem Block hing an der Block-Id, und die entsteht beim Anlegen
+(`uid("b")`). Wer denselben Artikel neu einliest, bekommt neue Ids — und jede
+Wissenszuteilung an einem Block zeigt danach ins Leere. **Und das fällt
+niemandem auf:** der Block ist da, der Text ist da, und die Information hat nur
+plötzlich nichts mehr zu verbergen.
+
+Ein Anker ist deshalb **aus dem Inhalt abgeleitet** — Blockart plus die ersten
+Worte, `secret-die-essenz-muss-in-den`. Derselbe Text an derselben Stelle ergibt
+denselben Anker, also übersteht die Zuteilung den Import. Kollidieren zwei,
+zählt der zweite hoch; eindeutig muss ein Anker nur innerhalb seines Artikels
+sein.
+
+Vergeben wird er in **`persist`** — einer Stelle, nicht sechs. An jeden
+Anlegeweg einzeln zu denken heisst, es an einem zu vergessen, und dort verliert
+der nächste Import dann die Zuteilungen.
+
+Für den Bestand gibt es einen Knopf unter *Data model · Backup*, der zwei
+Dinge tut: Anker nachtragen **und die Wissenszuteilungen mitnehmen.** Ohne den
+zweiten Schritt wäre die Wanderung schlimmer als keine. Die Zuordnung läuft
+**je Artikel**, weil Block-Ids nur dort eindeutig sind — im Schaubestand heissen
+sieben verschiedene Blöcke „b1", und eine gemeinsame Tabelle zöge die Zuteilung
+des einen auf den Block des anderen.
+
+### Die Kampagnenwerte
+
+Gruppenstufe und Gruppen-Aufenthaltsort standen als Einstellung zum Eintippen
+da. **Eine eingetippte Gruppenstufe ist nach der ersten Stufe falsch, und
+niemand merkt es, weil sie plausibel aussieht.** Also werden sie gerechnet:
+
+| `{VAR}` | woraus |
+|---|---|
+| `{PARTY}` | der Name der Gruppe |
+| `{PARTYSIZE}` | ihre `memberOfParty`-Kanten |
+| `{PARTYLEVEL}` | Mittel der `CharacterInfo.level` ihrer Mitglieder |
+| `{PARTYTIER}` | 1–4, fürs Begegnungsbudget |
+| `{PARTYWHERE}` | der Ort der Karte, auf der ihr Gruppen-Token steht |
+| `{TODAY}` | die Einstellung `today`, sonst das jüngste benutzte Ereignis |
+| `{CALENDAR}` | die Einstellung `calendar` |
+
+Sie stehen in der Auflösungskette **zwischen dem Artikel und dem Register** und
+**schlagen eine gleichnamige Registerzeile** — sonst überdeckte eine einmal
+eingetippte Gruppenstufe für immer die richtige. Die Maske gibt ihnen kein
+Eingabefeld und sagt es, wenn eine getippte Zeile denselben Namen trägt:
+dieselbe Regel wie bei jeder abgeleiteten Eigenschaft (D8), nur eine Etage
+höher.
+
+`{PARTYWHERE}` liest die Karte, nicht ein zweites Feld: die Karte weiss über
+`mapOf` schon, welchen Ort sie zeigt. Wo die Gruppe ist, steht damit genau
+einmal in den Daten — als Token.

@@ -22,6 +22,11 @@ export const settings: Record<string, string> = {
   inventoryCols: '10',
   inventoryRows: '6',
   calendar: 'Harptos',
+  /* Der Tag, an dem die Kampagne steht. Leer heisst: das jüngste benutzte
+     Ereignis. Gruppenstufe und Gruppen-Aufenthaltsort stehen hier
+     ausdrücklich NICHT — sie werden gerechnet (B3, D8), und eine
+     eingetippte Gruppenstufe ist nach der ersten Stufe falsch. */
+  today: '',
   /* Fertigkeit zu Attribut. Steht hier und nicht im Code, damit eine
      Kampagne mit anderen Fertigkeiten eine Einstellung ist und kein
      Schemawechsel. Die Seite hat denselben Satz als Rückfall, damit sie

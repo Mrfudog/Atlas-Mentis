@@ -93,7 +93,8 @@ window.__T__={runImport:runImport,derivedValue:derivedValue,assetSrc:assetSrc,UI
   articleVisible:articleVisible,activeStack:activeStack,
   breakLoad:function(t){ loadFailed=t||'the articles failed (test).'; },
   visionPoly:visionPoly,rayHit:rayHit,inShape:inShape,mapLights:mapLights,
-  noteNat:noteNat,craftMod:craftMod,recipeDays:recipeDays,craftStatus:craftStatus};
+  noteNat:noteNat,craftMod:craftMod,recipeDays:recipeDays,craftStatus:craftStatus,
+  anchorFor:anchorFor,campaignVars:campaignVars,fillVars:fillVars};
 Object.defineProperty(window.__T__,'REG',{get:function(){return REG;}});
 Object.defineProperty(window.__T__,'ENT',{get:function(){return ENT;}});
 `;

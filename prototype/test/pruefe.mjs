@@ -1268,6 +1268,87 @@ async function seite(datei, warten) {
     pruefe('a starting attitude exists in the data', false, 'kein regards gefunden');
   }
 
+  /* ---- Blockanker und Kampagnenwerte (B3) ----
+     Beides hängt daran, dass ein Bezeichner hält. Ein Anker, der sich beim
+     Import ändert, nimmt jede Wissenszuteilung mit ins Leere — und das
+     fällt niemandem auf: der Block ist da, der Text ist da, und die
+     Information hat nur plötzlich nichts mehr zu verbergen. */
+  const anker = await p.evaluate(() => {
+    const T = window.__T__;
+    let blocks = 0, mit = 0, ausId = 0;
+    const doppelt = {};
+    T.ENT.forEach((e) => {
+      const hier = {};
+      (e.blocks || []).forEach((b) => {
+        blocks++;
+        if (b.anchor) mit++;
+        if (b.anchor === b.id) ausId++;
+        if (hier[b.anchor]) doppelt[e.id] = b.anchor;
+        hier[b.anchor] = 1;
+      });
+    });
+    return { blocks, mit, ausId, doppelt: Object.keys(doppelt) };
+  });
+  pruefe('every block carries an anchor, and none of them is just its id',
+    anker.blocks > 0 && anker.mit === anker.blocks && anker.ausId === 0, anker);
+  pruefe('anchors are unique inside their own article',
+    anker.doppelt.length === 0, anker.doppelt);
+
+  /* Der Anker kommt aus dem Text, also ergibt derselbe Text denselben
+     Anker — das ist die ganze Eigenschaft, um die es geht. */
+  const stabil = await p.evaluate(() => {
+    const T = window.__T__;
+    const e = [...T.ENT.values()].find((x) => (x.blocks || []).length > 1);
+    const b = e.blocks[0];
+    const kopie = { id: 'b_ganz_anders', blockType: b.blockType, body: b.body };
+    return { alt: b.anchor, neu: T.anchorFor({ blocks: [] }, kopie) };
+  });
+  pruefe('the same text yields the same anchor, whatever its id is',
+    stabil.alt === stabil.neu, stabil);
+
+  /* Und die Wissenszuteilungen zeigen auf Anker, nicht auf Ids. */
+  const zuteilung = await p.evaluate(() => {
+    const T = window.__T__;
+    const ids = {};
+    T.ENT.forEach((e) => (e.blocks || []).forEach((b) => { ids[b.id] = 1; }));
+    const schlecht = [];
+    T.ENT.forEach((i) => {
+      const info = (i.components || {}).Info;
+      if (!info || !Array.isArray(info.blocks)) return;
+      info.blocks.forEach((a) => {
+        const anker = [];
+        T.ENT.forEach((e) => (e.blocks || []).forEach((b) => { if (b.anchor === a) anker.push(1); }));
+        if (!anker.length && ids[a]) schlecht.push(i.id + ':' + a);
+      });
+    });
+    return schlecht;
+  });
+  pruefe('a knowledge grant on a block names its anchor, not its id',
+    zuteilung.length === 0, zuteilung);
+
+  /* Kampagnenwerte: gerechnet, und sie schlagen eine gleichnamige Zeile im
+     Register. Eine eingetippte Gruppenstufe ist nach der ersten Stufe
+     falsch, und niemand merkt es, weil sie plausibel aussieht. */
+  const werte = await p.evaluate(() => {
+    const T = window.__T__;
+    const vor = T.campaignVars();
+    T.REG.vars.PARTYLEVEL = '99';
+    T.REG.vars.EINGETIPPT = 'aus dem Register';
+    const text = T.fillVars('{PARTYLEVEL} · {PARTYSIZE} · {PARTY} · {EINGETIPPT} · {NICHTDA}', null, null)
+      .replace(/[\u0001\u0002]/g, '');
+    delete T.REG.vars.PARTYLEVEL;
+    delete T.REG.vars.EINGETIPPT;
+    return { vor, text };
+  });
+  pruefe('the party level is computed from its members, not typed in',
+    Number(werte.vor.PARTYLEVEL) > 0 && Number(werte.vor.PARTYSIZE) > 0, werte.vor);
+  pruefe('a computed value beats a typed one with the same name',
+    werte.text.indexOf('99') < 0 && werte.text.indexOf(werte.vor.PARTYLEVEL) === 0, werte.text);
+  pruefe('a typed variable still resolves, and an unknown one stays as it is',
+    /aus dem Register/.test(werte.text) && /\{NICHTDA\}/.test(werte.text), werte.text);
+  pruefe('where the party is comes from its token on a map, not a second field',
+    typeof werte.vor.PARTYWHERE === 'string', werte.vor.PARTYWHERE);
+
   /* ---- Charakterbogen und Inventar (REQ-051, 063, 064, 065) ----
      Der Bogen rechnet aus zwei Karten: die ruhigen Zahlen aus StatblockInfo,
      der Stand aus Vitals. Rechnet er falsch, steht am Tisch eine plausible
