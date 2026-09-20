@@ -7,7 +7,7 @@
  */
 
 import type { Pool } from 'pg';
-import type { Entity, Registry, Relation } from '@nw/model';
+import type { Entity, InterfaceDef, Registry, Relation } from '@nw/model';
 import type { Repository, SessionRow, StoredUser } from './repo.js';
 import type { Invite, User } from './auth.js';
 
@@ -46,6 +46,7 @@ export class PgRepository implements Repository {
         requires: (r['requires'] as string[]) ?? [],
         allows: (r['allows'] as string[]) ?? [],
         blockTypes: (r['block_types'] as string[]) ?? [],
+        area: (r['area'] as InterfaceDef['area']) ?? undefined,
       };
     }
     for (const r of relations.rows) {
@@ -88,10 +89,10 @@ export class PgRepository implements Repository {
         await client.query('delete from interface_def');
         for (const [name, def] of Object.entries(value as Registry['interfaces'])) {
           await client.query(
-            `insert into interface_def(name,label,abstract,extends,requires,allows,block_types)
-             values ($1,$2,$3,$4,$5,$6,$7)`,
+            `insert into interface_def(name,label,abstract,extends,requires,allows,block_types,area)
+             values ($1,$2,$3,$4,$5,$6,$7,$8)`,
             [name, def.label ?? null, def.abstract ?? false, def.extends ?? [], def.requires ?? [],
-             def.allows ?? [], def.blockTypes ?? []],
+             def.allows ?? [], def.blockTypes ?? [], def.area ?? null],
           );
         }
       } else if (part === 'relations') {
