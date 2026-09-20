@@ -84,21 +84,60 @@ export interface RelationDef {
  * A Darstellungsstufe (facet, REQ-164): what a view shows, not what it may read.
  * Selection can only narrow — Access and Knowledge filter before layout.
  */
+/** The kinds of element a view layout may hold. */
+export type LayoutElementKind =
+  | 'heading'
+  | 'text'
+  | 'fields'
+  | 'blocks'
+  | 'description'
+  | 'composed'
+  | 'relations'
+  | 'image';
+
+/**
+ * One element of a view's layout. A view is an ordered list of these, so the
+ * sequence is a statement in the registry rather than a side effect of
+ * whatever the renderer happens to do first.
+ *
+ * Deliberately one shape with optional settings rather than a discriminated
+ * union: these rows are hand-edited JSON, and a reader that has to cope with
+ * a half-filled element anyway gains nothing from a type that promises the
+ * element is complete.
+ */
+export interface LayoutElement {
+  id: string;
+  el: LayoutElementKind;
+  /** `heading` and `text`. */
+  text?: string;
+  /** `fields`: `all` or a list of `Component` / `Component.field`. */
+  fields?: 'all' | string[];
+  /** `fields`: 0 fits the width. */
+  columns?: number;
+  /** `blocks`: `all` or a list of block types. */
+  blocks?: 'all' | string[];
+}
+
 export interface ViewDef {
   label: string;
   order?: number;
-  /** `alle`, `keine`, or a list of `Komponente` / `Komponente.feld` entries. */
-  felder: 'alle' | 'keine' | string[];
-  /** `alle` or a list of block types. */
-  bloecke: 'alle' | string[];
-  beschreibung?: boolean;
+  /** `all`, `none`, or a list of `Component` / `Component.field` entries. */
+  fields: 'all' | 'none' | string[];
+  /** `all` or a list of block types. */
+  blocks: 'all' | string[];
+  description?: boolean;
   /** Composition sections built from `section` relations. */
-  bausteine?: boolean;
+  composed?: boolean;
   /** The relations panel. */
-  bezuege?: boolean;
+  relations?: boolean;
   /** Per-reference variable bindings. */
-  bindungen?: boolean;
-  bild?: boolean;
+  bindings?: boolean;
+  image?: boolean;
+  /** The ordered layout. Views written before layouts existed carry none;
+   *  readers derive one from the flags above rather than migrating data. */
+  layout?: LayoutElement[];
+  /** A type — and its subtypes — may carry a layout of its own. */
+  byInterface?: Record<string, LayoutElement[]>;
 }
 
 export interface Registry {

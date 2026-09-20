@@ -5,39 +5,39 @@ import type { ViewDef } from '@nw/model';
  * component or a single field, so Kampf can take the armour class without
  * dragging in the ability scores.
  *
- * `spieler` is the shape player access will take: it excludes `secret`
+ * `player` is the shape player access will take: it excludes `secret`
  * blocks and the DM-only components. It is not yet an access control —
  * that is enforced server-side when player links land.
  */
 export const views: Record<string, ViewDef> = {
-  schnell: {
-    label: 'Schnell',
+  quick: {
+    label: 'Quick',
     order: 1,
-    felder: 'keine',
-    bloecke: ['paragraph', 'readaloud'],
-    beschreibung: true,
-    bausteine: false,
-    bezuege: true,
-    bindungen: false,
-    bild: false,
+    fields: 'none',
+    blocks: ['paragraph', 'readaloud'],
+    description: true,
+    composed: false,
+    relations: true,
+    bindings: false,
+    image: false,
   },
 
-  voll: {
-    label: 'Voll',
+  full: {
+    label: 'Full',
     order: 2,
-    felder: 'alle',
-    bloecke: 'alle',
-    beschreibung: true,
-    bausteine: true,
-    bezuege: true,
-    bindungen: true,
-    bild: true,
+    fields: 'all',
+    blocks: 'all',
+    description: true,
+    composed: true,
+    relations: true,
+    bindings: true,
+    image: true,
   },
 
-  kampf: {
-    label: 'Kampf',
+  combat: {
+    label: 'Combat',
     order: 3,
-    felder: [
+    fields: [
       'StatblockInfo.ac',
       'StatblockInfo.hp',
       'StatblockInfo.speed',
@@ -50,47 +50,47 @@ export const views: Record<string, ViewDef> = {
       'CreatureInfo.attitude',
       'RuleInfo.kind',
     ],
-    bloecke: ['tactics'],
-    beschreibung: false,
-    bausteine: true,
-    bezuege: true,
-    bindungen: false,
-    bild: false,
+    blocks: ['tactics'],
+    description: false,
+    composed: true,
+    relations: true,
+    bindings: false,
+    image: false,
   },
 
-  bild: {
-    label: 'Bild',
+  image: {
+    label: 'Image',
     order: 4,
-    felder: 'keine',
-    bloecke: [],
-    beschreibung: false,
-    bausteine: false,
-    bezuege: false,
-    bindungen: false,
-    bild: true,
+    fields: 'none',
+    blocks: [],
+    description: false,
+    composed: false,
+    relations: false,
+    bindings: false,
+    image: true,
   },
 
-  spieler: {
-    label: 'Spieler',
+  player: {
+    label: 'Player',
     order: 5,
-    felder: ['CreatureInfo', 'LocationInfo', 'FactionInfo'],
-    bloecke: ['paragraph', 'readaloud', 'lore', 'appearance', 'fact'],
-    beschreibung: true,
-    bausteine: false,
-    bezuege: false,
-    bindungen: false,
-    bild: true,
+    fields: ['CreatureInfo', 'LocationInfo', 'FactionInfo'],
+    blocks: ['paragraph', 'readaloud', 'lore', 'appearance', 'fact'],
+    description: true,
+    composed: false,
+    relations: false,
+    bindings: false,
+    image: true,
   },
 
-  werte: {
-    label: 'Werte',
+  stats: {
+    label: 'Stats',
     order: 6,
-    felder: ['StatblockInfo'],
-    bloecke: [],
-    beschreibung: false,
-    bausteine: false,
-    bezuege: false,
-    bindungen: false,
-    bild: false,
+    fields: ['StatblockInfo'],
+    blocks: [],
+    description: false,
+    composed: false,
+    relations: false,
+    bindings: false,
+    image: false,
   },
 };

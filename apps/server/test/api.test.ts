@@ -12,6 +12,10 @@ const volo: Entity = {
   components: {
     Name: { text: 'Volo Geddarm' },
     Identity: { key: 'npc/volo-geddarm', aliases: ['Der Dicke'] },
+    /* `Base` verlangt Status. Ohne die Karte weist die Validierung den
+       Artikel mit 422 ab — was sie soll; die Vorlage war die veraltete
+       Seite, nicht die Regel. */
+    Status: { value: 'used' },
   },
   blocks: [],
   relations: [],
@@ -38,7 +42,7 @@ describe('registry', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(Object.keys(body.interfaces)).toContain('Statblock');
-    expect(body.views.spieler.label).toBe('Spieler');
+    expect(body.views.player.label).toBe('Player');
   });
 
   it('accepts a new interface row — adding an article kind is data, not code', async () => {

@@ -1,8 +1,18 @@
 # Nebelwacht — Hinweise für Claude
 
-Kampagnenplattform für „Aus Nebel wacht“. Deutschsprachige Oberfläche, Schweizer
-Rechtschreibung (**ss statt ß**). Code, Bezeichner und Kommentare auf Englisch,
-sichtbare Texte und Commits auf Deutsch.
+Kampagnenplattform für „Aus Nebel wacht“. Schweizer Rechtschreibung
+(**ss statt ß**) in allem Deutschen.
+
+**Sprache:** Code, Bezeichner, Registerzeilen und sichtbare Texte auf Englisch.
+Kommentare und Commit-Nachrichten auf Deutsch. Die Oberfläche war bis
+2026-09-19 deutsch; die Umstellung ist in `prototype/migration/rename-map.json`
+festgehalten und auf Daten wie Code angewandt.
+
+Zwei Ausnahmen, die bewusst deutsch bleiben: **Vault-Schlüssel**, die der
+Importer *liest* (`Gegenstandstyp`, `Rarität`, `rüstungsklasse`, `grösse`,
+`kreatur` …) — sie stehen so in den Notizen, und sie zu übersetzen hiesse, die
+Notizen nicht mehr zu erkennen. Und **Aufzählungswerte**, die Kampagneninhalt
+sind (`gewöhnlich`, `Gebäude`, `freundlich`): das sind Daten, keine Namen.
 
 ## Das Modell in fünf Sätzen
 
