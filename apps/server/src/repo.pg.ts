@@ -1,9 +1,9 @@
 /**
  * The Postgres adapter for the storage port.
  *
- * Entities are assembled from the three tables on read and written back
- * component by component, because that is what makes `sparse by default`
- * real: a component that is not set has no row at all.
+ * Entities are assembled from the three tables on read and written back one
+ * card per type, because that is what makes `sparse by default` real: a type
+ * whose fields are all empty has no row at all.
  */
 
 import type { Pool } from 'pg';
@@ -17,34 +17,22 @@ export class PgRepository implements Repository {
   constructor(private readonly pool: Pool) {}
 
   async getRegistry(): Promise<Registry> {
-    const [components, interfaces, relations, views, vars] = await Promise.all([
-      this.pool.query<Row>('select * from component_def'),
+    const [interfaces, relations, views, vars] = await Promise.all([
       this.pool.query<Row>('select * from interface_def'),
       this.pool.query<Row>('select * from relation_def'),
       this.pool.query<Row>('select * from view_def order by ord'),
       this.pool.query<Row>('select * from var_def'),
     ]);
 
-    const registry: Registry = {
-      components: {}, interfaces: {}, relations: {}, views: {}, vars: {},
-    };
+    const registry: Registry = { interfaces: {}, relations: {}, views: {}, vars: {} };
 
-    for (const r of components.rows) {
-      registry.components[r['name'] as string] = {
-        name: r['name'] as string,
-        label: (r['label'] as string) ?? undefined,
-        engine: (r['engine'] as string) ?? null,
-        schema: r['schema'] as Registry['components'][string]['schema'],
-      };
-    }
     for (const r of interfaces.rows) {
       registry.interfaces[r['name'] as string] = {
         name: r['name'] as string,
         label: (r['label'] as string) ?? undefined,
         abstract: Boolean(r['abstract']),
         extends: (r['extends'] as string[]) ?? [],
-        requires: (r['requires'] as string[]) ?? [],
-        allows: (r['allows'] as string[]) ?? [],
+        schema: (r['schema'] as InterfaceDef['schema']) ?? undefined,
         blockTypes: (r['block_types'] as string[]) ?? [],
         area: (r['area'] as InterfaceDef['area']) ?? undefined,
       };
@@ -77,22 +65,15 @@ export class PgRepository implements Repository {
     const client = await this.pool.connect();
     try {
       await client.query('begin');
-      if (part === 'components') {
-        await client.query('delete from component_def');
-        for (const [name, def] of Object.entries(value as Registry['components'])) {
-          await client.query(
-            'insert into component_def(name,label,engine,schema) values ($1,$2,$3,$4)',
-            [name, def.label ?? null, def.engine, JSON.stringify(def.schema)],
-          );
-        }
-      } else if (part === 'interfaces') {
+      if (part === 'interfaces') {
         await client.query('delete from interface_def');
         for (const [name, def] of Object.entries(value as Registry['interfaces'])) {
           await client.query(
-            `insert into interface_def(name,label,abstract,extends,requires,allows,block_types,area)
-             values ($1,$2,$3,$4,$5,$6,$7,$8)`,
-            [name, def.label ?? null, def.abstract ?? false, def.extends ?? [], def.requires ?? [],
-             def.allows ?? [], def.blockTypes ?? [], def.area ?? null],
+            `insert into interface_def(name,label,abstract,extends,schema,block_types,area)
+             values ($1,$2,$3,$4,$5,$6,$7)`,
+            [name, def.label ?? null, def.abstract ?? false, def.extends ?? [],
+             def.schema ? JSON.stringify(def.schema) : null, def.blockTypes ?? [],
+             def.area ?? null],
           );
         }
       } else if (part === 'relations') {

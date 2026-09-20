@@ -71,7 +71,7 @@ async function seite(datei, warten) {
   await p.waitForTimeout(200);
   const felder = await p.evaluate(() =>
     [...document.querySelectorAll('.fbox .frow .fk')].map((x) => x.textContent));
-  pruefe('a component expands to its fields', felder.includes('passivePerception'), felder.length);
+  pruefe('a card expands to its fields', felder.includes('passivePerception'), felder.length);
 
   const vorher = await p.evaluate(() => document.querySelectorAll('.tpnav .navrow').length);
   await p.evaluate(() => {
@@ -84,11 +84,11 @@ async function seite(datei, warten) {
   const nachher = await p.evaluate(() => ({
     anzahl: document.querySelectorAll('.tpnav .navrow').length,
     gewaehlt: document.querySelector('.regbody h3')?.textContent,
-    geerbt: [...document.querySelectorAll('.regbody .crow .co')].some((c) => /inherited from/.test(c.textContent)),
+    geerbt: [...document.querySelectorAll('.regbody .crow .co')].some((c) => /inherited$/.test(c.textContent.trim())),
     geschrieben: window.__WROTE__.includes('registry/interfaces'),
   }));
   pruefe('creating a subtype inserts a row', nachher.anzahl === vorher + 1, nachher);
-  pruefe('the subtype inherits its components', nachher.geerbt, nachher);
+  pruefe('the subtype inherits its fields', nachher.geerbt, nachher);
   pruefe('the subtype is saved', nachher.geschrieben, nachher);
   pruefe('registry raised no exception', errs.length === 0, errs);
 
@@ -149,7 +149,7 @@ async function seite(datei, warten) {
     await p.waitForTimeout(200);
   };
 
-  await zumFeld('Faction', 'FactionInfo', 'color');
+  await zumFeld('Faction', 'Faction', 'color');
   const arten = await p.evaluate(() => {
     const row = [...document.querySelectorAll('.fbox .frow')].find((r) => r.querySelector('.fk')?.textContent === 'color');
     return [...row.querySelector('select').options].map((o) => o.value);
@@ -201,14 +201,14 @@ async function seite(datei, warten) {
      stehen.** Das ist die Frage, um die es immer ging. */
   const keinRest = await p.evaluate(() => {
     const T = window.__T__;
-    const hay = JSON.stringify({ views: T.REG.views, components: T.REG.components });
+    const hay = JSON.stringify({ views: T.REG.views, components: T.REG.interfaces });
     return { alt: /StatblockInfo\.hp\b/.test(hay), neu: /hitPoints/.test(hay) };
   });
   pruefe('renaming a key leaves no stale reference behind',
     keinRest.alt === false && keinRest.neu === true, keinRest);
 
   /* Verweisfeld: Zielbeschränkung engt ein, Vorschlag speichert die Id */
-  await zumFeld('Creature', 'CreatureInfo', null);
+  await zumFeld('Creature', 'Creature', null);
   await p.evaluate(() => {
     const bar = [...document.querySelectorAll('.fbox .addbar')][0];
     const [k, t] = bar.querySelectorAll('input');
@@ -288,12 +288,14 @@ async function seite(datei, warten) {
     const T = window.__T__;
     const r = T.runImport(dn);
     const ifs = new Set(Object.keys(T.REG.interfaces));
-    const comps = new Set(Object.keys(T.REG.components));
+    /* Karten heissen nach Arten — derselbe Namensraum, und genau das ist
+       der Punkt. */
+    const comps = ifs;
     const rels = new Set(Object.keys(T.REG.relations));
     const fremd = [];
     r.all.forEach((e) => {
       (e.interfaces || []).forEach((i) => { if (!ifs.has(i)) fremd.push(`${e.name}: interface ${i}`); });
-      Object.keys(e.components || {}).forEach((c) => { if (!comps.has(c)) fremd.push(`${e.name}: component ${c}`); });
+      Object.keys(e.components || {}).forEach((c) => { if (!comps.has(c)) fremd.push(`${e.name}: card ${c}`); });
       (e.relations || []).forEach((x) => { if (!rels.has(x.type)) fremd.push(`${e.name}: relation ${x.type}`); });
     });
     const schwert = r.all.find((e) => e.name === 'Bastardschwert');
@@ -303,10 +305,10 @@ async function seite(datei, warten) {
       zahlen: { item: r.item.length, statblock: r.statblock.length, rules: r.rules.length },
       fremd,
       unknown: r.unknown,
-      schwert: schwert && { iface: schwert.interfaces[0], type: schwert.components.ItemInfo?.itemType,
-                            dmg: schwert.components.WeaponInfo?.damage, fp: !!schwert.components.Footprint },
-      kette: kette && { iface: kette.interfaces[0], ac: kette.components.ArmorInfo?.ac,
-                        bild: !!kette.components.Image?.url },
+      schwert: schwert && { iface: schwert.interfaces[0], type: schwert.components.Item?.itemType,
+                            dmg: schwert.components.Weapon?.damage, fp: !!(schwert.components.Item||{}).rows },
+      kette: kette && { iface: kette.interfaces[0], ac: kette.components.Armor?.ac,
+                        bild: !!kette.components.Base?.url },
       grimm: grimm && { size: grimm.components.StatblockInfo?.size, hp: grimm.components.StatblockInfo?.hp,
                         speed: grimm.components.StatblockInfo?.speed },
     };
@@ -349,9 +351,15 @@ async function seite(datei, warten) {
      Ansicht sähe aus, als zeige sie nichts. */
   pruefe('an older view converts into elements', umgewandelt.includes('Description') && umgewandelt.includes('Field table'), umgewandelt);
 
+  /* Genau diese Art, nicht „irgendeine mit Statblock drin". Seit
+     `StatblockInfo` eine eigene Art ist, stand sie in der Liste hinter
+     `Statblock` — und eine Schleife, die die letzte Übereinstimmung nimmt,
+     landete dort. Die Anordnung wäre dann an der richtigen Stelle gewesen
+     und die Prüfung hätte sie an der falschen gesucht. */
   await p.evaluate(() => {
-    const s = document.querySelector('.regbody select');
-    [...s.options].forEach((o) => { if (/Statblock/.test(o.textContent)) s.value = o.value; });
+    const s = [...document.querySelectorAll('.regbody select')]
+      .find((x) => [...x.options].some((o) => o.value === 'Statblock'));
+    s.value = 'Statblock';
     s.dispatchEvent(new Event('change', { bubbles: true }));
   });
   await p.waitForTimeout(250);
@@ -364,12 +372,18 @@ async function seite(datei, warten) {
     t.dispatchEvent(new Event('change', { bubbles: true }));
   });
   await p.waitForTimeout(300);
-  for (let i = 0; i < 6; i++) {
-    await p.evaluate(() => {
-      const r = [...document.querySelectorAll('.regbody .crow')].find((x) => /Heading/.test(x.textContent));
+  /* So oft nach oben, bis es oben ist — eine feste Zahl stimmt nur, solange
+     die Anordnung genau so lang bleibt. */
+  for (let i = 0; i < 12; i++) {
+    const oben = await p.evaluate(() => {
+      const rows = [...document.querySelectorAll('.regbody .crow')];
+      const r = rows.find((x) => /Heading/.test(x.textContent));
+      if (rows.indexOf(r) === 0) return true;
       const up = [...r.querySelectorAll('button')].find((b) => b.textContent === '↑');
       if (up && !up.disabled) up.click();
+      return false;
     });
+    if (oben) break;
     await p.waitForTimeout(140);
   }
   const reihe = await p.evaluate(() =>
@@ -402,7 +416,7 @@ async function seite(datei, warten) {
     [...document.querySelectorAll('.rail button')].find((x) => /Data model/.test(x.textContent)).click());
   await p.waitForTimeout(200);
   const masken = {};
-  for (const name of ['Types', 'Components', 'Relation types', 'Views', 'Variables']) {
+  for (const name of ['Types', 'Relation types', 'Views', 'Variables']) {
     await p.evaluate((n) =>
       [...document.querySelectorAll('.tabs button')].find((x) => x.textContent === n).click(), name);
     await p.waitForTimeout(280);
@@ -732,6 +746,8 @@ async function seite(datei, warten) {
      Kampagne verschwand — und das sagte nichts über den Filter. */
   const paar = await p.evaluate(() => {
     const R = window.__T__.REG.interfaces;
+    /* Der **erste** Eintrag ist der Obertyp, an dem der Baum zeichnet;
+       weitere sind Beimischungen und filtern quer durch alles. */
     const parent = (n) => (R[n]?.extends || [])[0];
     const treffer = {};
     window.__T__.ENT.forEach((e) => {
@@ -784,22 +800,43 @@ async function seite(datei, warten) {
   pruefe('the page structure raised no exception', errs.length === 0, errs);
 
   /* 11 — Standardwerte stehen im Feld, nicht im Code */
+  /* Den Stand gibt es nicht mehr als eigene Karte: er ist `Base.value`.
+     Der Weg dorthin geht deshalb über die Artikelarten und nicht über einen
+     Reiter „Components", den es nicht mehr gibt. */
   const zumStatusFeld = async () => {
     await p.evaluate(() =>
-      [...document.querySelectorAll('.rail button')].find((x) => /Data model/.test(x.textContent)).click());
-    await p.waitForTimeout(250);
-    const tabs = await p.evaluate(() => [...document.querySelectorAll('.tabs button')].map((x) => x.textContent));
-    if (!tabs.includes('Components')) throw new Error('Reiter fehlen: ' + JSON.stringify(tabs));
+      [...document.querySelectorAll('.rail button')].find((x) => /Article types/.test(x.textContent)).click());
+    await p.waitForTimeout(350);
+    /* Ein früherer Schritt kann die Seite im JSON-Modus zurückgelassen
+       haben. Dann gibt es keine Artenliste, und die Prüfung bräche an einer
+       Stelle, die nichts mit ihr zu tun hat. */
+    await p.evaluate(() => {
+      if (document.querySelector('.tpnav')) return;
+      const zurueck = [...document.querySelectorAll('#view button')]
+        .find((b) => /Back to the form|Zurück/.test(b.textContent));
+      if (zurueck) zurueck.click();
+    });
+    await p.waitForTimeout(350);
     await p.evaluate(() =>
-      [...document.querySelectorAll('.tabs button')].find((x) => x.textContent === 'Components').click());
-    await p.waitForTimeout(250);
-    const baum = await p.evaluate(() => [...document.querySelectorAll('.regtree button')].map((b) => b.textContent));
-    if (!baum.some((b) => /Status/.test(b))) throw new Error('Kein Status im Baum: ' + JSON.stringify(baum.slice(0, 8)));
-    await p.evaluate(() =>
-      [...document.querySelectorAll('.regtree button')].find((b) => /Status/.test(b.textContent)).click());
+      [...document.querySelectorAll('.tpnav .navrow')].find((b) => /\bBase\b/.test(b.textContent)).click());
+    await p.waitForTimeout(350);
+    /* Am Beschriftungselement suchen, nicht am ganzen Zeilentext: der
+       lautet „BaseBase · 28 fields …", und darin trifft `\bBase\b` nirgends. */
+    await p.evaluate(() => {
+      const row = [...document.querySelectorAll('.regbody .crow')]
+        .find((r) => r.querySelector('.cl b')?.textContent === 'Base');
+      /* Der Schalter klappt um. Ein früherer Schritt kann die Felder schon
+         offen gelassen haben — dann schlösse ein Klick sie. */
+      if (row.parentElement.querySelector('.fbox')) return;
+      [...row.querySelectorAll('button')].find((b) => /Fields/.test(b.textContent)).click();
+    });
     await p.waitForTimeout(250);
     await p.evaluate(() => {
-      const r = [...document.querySelectorAll('.fbox .frow')][0];
+      const rows = [...document.querySelectorAll('.fbox .frow')];
+      /* Der Schlüssel steht mit seinem Vorgabewert dort: „value ← idea". */
+      const r = rows.find((x) => /^value\b/.test(x.querySelector('.fk')?.textContent ?? ''));
+      if (!r) throw new Error('Kein Feld `value`: ' + JSON.stringify(rows.map((x) => x.querySelector('.fk')?.textContent)));
+      if (r.parentElement.querySelector('.fmore')) return;
       [...r.querySelectorAll('button')].find((b) => b.textContent === '⋯').click();
     });
     await p.waitForTimeout(250);
@@ -811,7 +848,8 @@ async function seite(datei, warten) {
 
   await zumStatusFeld();
   const stand = await p.evaluate(() => ({
-    zeile: document.querySelector('.fbox .frow .fk')?.textContent ?? '',
+    zeile: [...document.querySelectorAll('.fbox .frow')]
+      .find((x) => /^value\b/.test(x.querySelector('.fk')?.textContent ?? ''))?.textContent ?? '',
     wert: [...document.querySelectorAll('.fbox .fmore label.f')]
       .find((l) => /Default/.test(l.querySelector('span').textContent))
       ?.querySelector('select,input')?.value ?? null,
@@ -991,18 +1029,18 @@ async function seite(datei, warten) {
     const T = window.__T__;
     const held = [...T.ENT.values()].find((e) => (e.name || '') === 'Probe hero');
     const info = [...T.ENT.values()].find((e) => (e.name || '') === 'Probe secret');
-    const alsGm = T.visibleRefs(held, ['CharacterInfo.level']);
+    const alsGm = T.visibleRefs(held, ['PlayerCharacter.level']);
     T.UI.asActor = 'pc_sela';
-    const alsSpieler = T.visibleRefs(held, ['CharacterInfo.level']);
+    const alsSpieler = T.visibleRefs(held, ['PlayerCharacter.level']);
     T.UI.asActor = '';
     return {
-      gespeichert: (info.components.Info || {}).fields ?? [],
+      gespeichert: (info.components.Information || {}).fields ?? [],
       alsGm: alsGm.length,
       alsSpieler: alsSpieler.length,
     };
   });
   pruefe('an assigned field is stored on the information',
-    wZugeteilt.gespeichert.includes('CharacterInfo.level'), wZugeteilt);
+    wZugeteilt.gespeichert.includes('PlayerCharacter.level'), wZugeteilt);
   pruefe('and whoever does not have it does not see it',
     wZugeteilt.alsGm === 1 && wZugeteilt.alsSpieler === 0, wZugeteilt);
 
@@ -1056,11 +1094,26 @@ async function seite(datei, warten) {
 
   /* Ein Bildfeld bietet die Ablage an, wenn es eine gibt, und sonst die
      fremde Adresse — es verschwindet nie stillschweigend. */
+  /* Das Bildfeld sitzt an `Base` — die Bildangaben sind Felder jeder Art,
+     seit es keine Komponente `Image` mehr gibt. */
   await p.evaluate(() =>
-    [...document.querySelectorAll('.tabs button')].find((b) => /^Components$/.test(b.textContent)).click());
+    [...document.querySelectorAll('.rail button')].find((x) => /Article types/.test(x.textContent)).click());
+  await p.waitForTimeout(350);
+  await p.evaluate(() => {
+    if (document.querySelector('.tpnav')) return;
+    [...document.querySelectorAll('#view button')]
+      .find((b) => /Back to the form/.test(b.textContent))?.click();
+  });
   await p.waitForTimeout(300);
   await p.evaluate(() =>
-    [...document.querySelectorAll('.regtree button')].find((b) => /Image/.test(b.textContent))?.click());
+    [...document.querySelectorAll('.tpnav .navrow')].find((b) => /\bBase\b/.test(b.textContent)).click());
+  await p.waitForTimeout(350);
+  await p.evaluate(() => {
+    const row = [...document.querySelectorAll('.regbody .crow')]
+      .find((r) => r.querySelector('.cl b')?.textContent === 'Base');
+    if (row.parentElement.querySelector('.fbox')) return;
+    [...row.querySelectorAll('button')].find((b) => /Fields/.test(b.textContent)).click();
+  });
   await p.waitForTimeout(250);
   const bildfeld = await p.evaluate(() => {
     const arten = [...document.querySelectorAll('.frow select.i')]
@@ -1090,7 +1143,7 @@ async function seite(datei, warten) {
   if (karte) {
     const kartenName = await p.evaluate((id) => {
       const e = window.__T__.ENT.get(id);
-      return (e && (e.name || (e.components.Name || {}).text)) || '';
+      return (e && (e.name || (e.components.Base || {}).text)) || '';
     }, karte);
     await oeffne(kartenName);
     await p.waitForTimeout(250);
@@ -1207,12 +1260,12 @@ async function seite(datei, warten) {
       const ecke = { x: 0.4, y: 0.4 };
       T.UI.mapTool = 'area';
       /* Aus der Mitte heraus: der Rahmen wandert mit. */
-      T.applyMapTool(e, (e.components || {}).MapInfo || {}, mitte, { x: 0.5, y: 0.45 });
+      T.applyMapTool(e, (e.components || {}).Map || {}, mitte, { x: 0.5, y: 0.45 });
       const nachZug = Object.assign({}, kind.relations.find((r) => r.type === 'insideMap').props);
       /* An der Ecke: er wird grösser, ohne den Ursprung zu bewegen. */
       const r2 = kind.relations.find((r) => r.type === 'insideMap');
       const jetzt = { x: r2.props.x + r2.props.w, y: r2.props.y + r2.props.h };
-      T.applyMapTool(e, (e.components || {}).MapInfo || {}, jetzt,
+      T.applyMapTool(e, (e.components || {}).Map || {}, jetzt,
         { x: jetzt.x + 0.15, y: jetzt.y + 0.15 });
       const nachEcke = Object.assign({}, kind.relations.find((r) => r.type === 'insideMap').props);
       /* Und daneben: das legt einen neuen an, nicht diesen um. Der Dialog
@@ -1278,8 +1331,8 @@ async function seite(datei, warten) {
      leise schief — eine Karte, die zu viel zeigt, sieht aus wie eine Karte. */
   const nebelKarte = await p.evaluate(() => {
     const m = [...window.__T__.ENT.values()].find((e) =>
-      ((e.components || {}).MapInfo || {}).fog
-      && ((e.components || {}).MapInfo || {}).walls);
+      ((e.components || {}).Map || {}).fog
+      && ((e.components || {}).Map || {}).walls);
     return m ? m.id : null;
   });
   if (nebelKarte) {
@@ -1357,7 +1410,7 @@ async function seite(datei, warten) {
     /* Daylight schaltet die Dunkelheit ab — nicht die Lichter aus. */
     await p.evaluate((id) => {
       const e = window.__T__.ENT.get(id);
-      e.components.MapInfo.lighting = 'bright';
+      e.components.Map.lighting = 'bright';
     }, nebelKarte);
     await p.evaluate(() => { document.getElementById('facet')
       .dispatchEvent(new Event('change', { bubbles: true })); });
@@ -1380,7 +1433,7 @@ async function seite(datei, warten) {
        dahinter dunkel, und niemand sieht dem Bild an, warum. */
     const sperren = await p.evaluate((id) => {
       const e = window.__T__.ENT.get(id);
-      const c = e.components.MapInfo;
+      const c = e.components.Map;
       const alt = c.walls;
       c.walls = [
         { id: 'tw', kind: 'wall', x1: 0.1, y1: 0.1, x2: 0.1, y2: 0.9 },
@@ -1409,7 +1462,7 @@ async function seite(datei, warten) {
        hier steht, welche gemeint ist. */
     const ebenen = await p.evaluate((id) => {
       const e = window.__T__.ENT.get(id);
-      const c = e.components.MapInfo;
+      const c = e.components.Map;
       c.sheets = [
         { id: 's1', name: 'Terrain', image: c.image, opacity: 0.5, visible: true },
         { id: 's2', name: 'Secrets', image: c.image, opacity: 1, visible: true, gmOnly: true },
@@ -1444,7 +1497,7 @@ async function seite(datei, warten) {
       gemalt.zeilen === 4, gemalt.zeilen);
 
     await p.evaluate((id) => {
-      window.__T__.ENT.get(id).components.MapInfo.baseHidden = true;
+      window.__T__.ENT.get(id).components.Map.baseHidden = true;
       window.__T__.render();
     }, nebelKarte);
     await p.waitForTimeout(300);
@@ -1462,7 +1515,7 @@ async function seite(datei, warten) {
        `redactEntity` es zurück, bevor es losgeschickt wird. */
     const alsSpieler = await p.evaluate((id) => {
       const e = window.__T__.ENT.get(id);
-      const c = e.components.MapInfo;
+      const c = e.components.Map;
       c.baseHidden = false;
       const vorher = window.__T__.UI.asActor;
       window.__T__.UI.asActor = 'pc_rook';
@@ -1477,7 +1530,7 @@ async function seite(datei, warten) {
     await p.waitForTimeout(300);
     await p.evaluate((id) => {
       const e = window.__T__.ENT.get(id);
-      e.components.MapInfo.lighting = 'dark';
+      e.components.Map.lighting = 'dark';
     }, nebelKarte);
     await p.evaluate(() => { document.getElementById('facet')
       .dispatchEvent(new Event('change', { bubbles: true })); });
@@ -1492,14 +1545,14 @@ async function seite(datei, warten) {
      liegen könnte, und den Resten der Maschinerie, die hier einmal stand.
      Gäbe es sie, wäre „simpel" nur eine Behauptung.
 
-     `CreatureInfo.attitude` ist ausdrücklich keines davon: das ist die
+     `Creature.attitude` ist ausdrücklich keines davon: das ist die
      Grundhaltung gegenüber Fremden, ein Wort und kein Zähler. Sie zeigt auf
      niemanden, also ist sie ein Feld — richtig so. Was auf jemanden zeigt,
      ist die Kante `regards`. Damit die Trennung hält, wird sie hier beides
      geprüft. */
   const rufFeld = await p.evaluate(() => {
     const treffer = [];
-    Object.entries(window.__T__.REG.components).forEach(([k, c]) => {
+    Object.entries(window.__T__.REG.interfaces).forEach(([k, c]) => {
       Object.keys((c.schema || {}).properties || {}).forEach((f) => {
         if (/^(standing|reputation|favour|reknown)$/i.test(f)) treffer.push(k + '.' + f);
       });
@@ -1509,7 +1562,7 @@ async function seite(datei, warten) {
   pruefe('no component stores a standing — a relationship is words, not a score',
     rufFeld.length === 0, rufFeld);
   const haltung = await p.evaluate(() =>
-    ((window.__T__.REG.components.CreatureInfo.schema.properties || {}).attitude || {}));
+    ((window.__T__.REG.interfaces.Creature.schema.properties || {}).attitude || {}));
   pruefe('the default attitude stays a word about strangers, not a counter',
     haltung.type === 'string' && Array.isArray(haltung.enum), haltung);
 
@@ -1517,7 +1570,7 @@ async function seite(datei, warten) {
      als eine ganze: sie sieht aus, als liefe sie noch. */
   const reste = await p.evaluate(() => ({
     iface: !!window.__T__.REG.interfaces.Deed,
-    comp: !!window.__T__.REG.components.DeedInfo,
+    comp: !!window.__T__.REG.interfaces.DeedInfo,
     kanten: ['doneBy', 'regarding'].filter((k) => !!window.__T__.REG.relations[k]),
     artikel: [...window.__T__.ENT.values()]
       .filter((e) => (e.interfaces || [])[0] === 'Deed').length,
@@ -1635,6 +1688,10 @@ async function seite(datei, warten) {
     reiter: [...document.querySelectorAll('#view .ktabs .btn')].map((b) => b.textContent),
     /* Was läuft, steht an der Sitzung und wird hier nur gezeigt. */
     sitzung: !!document.querySelector('#view .listhead .ref'),
+    /* Welche Sitzung der Tisch nimmt — eine leere, eben angelegte darf ihn
+       nicht übernehmen. */
+    sitzungen: [...window.__T__.ENT.values()]
+      .filter((e) => (e.components || {}).Session).map((e) => e.id),
   }));
   pruefe('the play area opens the table, not a list of articles',
     tisch.kopf === 'At the table' && tisch.zeilen === 0, tisch);
@@ -1668,13 +1725,13 @@ async function seite(datei, warten) {
      Beamer etwas anderes zeigt als der Laptop. */
   const ausgeschaltet = await p.evaluate(() => {
     const T = window.__T__;
-    const ses = [...T.ENT.values()].find((e) => (e.components || {}).SessionState);
-    const merk = ses.components.SessionState.activeEncounter;
-    ses.components.SessionState = Object.assign({}, ses.components.SessionState,
+    const ses = [...T.ENT.values()].find((e) => (e.components || {}).Session);
+    const merk = ses.components.Session.activeEncounter;
+    ses.components.Session = Object.assign({}, ses.components.Session,
       { activeEncounter: undefined });
     T.render();
     const weg = !document.querySelector('.playpane .fight');
-    ses.components.SessionState.activeEncounter = merk;
+    ses.components.Session.activeEncounter = merk;
     T.render();
     return weg;
   });
@@ -1733,15 +1790,15 @@ async function seite(datei, warten) {
       layout: txt('.tlayout li'),
     };
   });
-  pruefe('a kind shows what it requires, carries, connects and looks like',
+  pruefe('a kind shows what it records, inherits, connects and looks like',
     eine.titel === 'Player character'
-    && eine.abschnitte.some((x) => /^Requires/.test(x))
-    && eine.abschnitte.some((x) => /^May carry/.test(x))
+    && eine.abschnitte.some((x) => /^Its own fields/.test(x))
+    && eine.abschnitte.some((x) => /^Inherited fields/.test(x))
     && eine.abschnitte.some((x) => /^Edges from here/.test(x))
     && eine.abschnitte.some((x) => /^Drawn as/.test(x)), eine.abschnitte);
-  pruefe('inherited components say where they come from',
+  pruefe('inherited fields say which type declares them',
     eine.geerbt.some((x) => /from Creature/.test(x))
-    && eine.komponenten.includes('CharacterInfo'), eine.geerbt.slice(0, 4));
+    && eine.komponenten.includes('PlayerCharacter'), eine.geerbt.slice(0, 4));
   /* Die Reiter des Bogens stehen eingerückt darunter — „tabs" allein zu
      lesen sagt nichts. */
   pruefe('the drawing shows the tabs by name, not just the word “tabs”',
@@ -1914,15 +1971,12 @@ async function seite(datei, warten) {
      an. */
   const zweiEltern = await p.evaluate(async () => {
     const T = window.__T__;
-    /* Ein Obertyp im Bereich `game` mit einer eigenen Komponente und einer
-       eigenen Blockart — damit sich alle drei Vererbungswege prüfen lassen. */
-    T.REG.components.ProbeInfo = {
-      name: 'ProbeInfo', label: 'Probe', engine: null,
-      schema: { type: 'object', properties: { probefeld: { type: 'string', title: 'Probe' } } },
-    };
+    /* Ein Obertyp im Bereich `game` mit eigenem Feld und eigener Blockart —
+       damit sich alle drei Vererbungswege prüfen lassen. */
     T.REG.interfaces.ProbeOben = {
       name: 'ProbeOben', label: 'Probe oben', area: 'game', abstract: true,
-      extends: ['Base'], allows: ['ProbeInfo'], blockTypes: ['+probeblock'],
+      extends: ['Base'], blockTypes: ['+probeblock'],
+      schema: { type: 'object', properties: { probefeld: { type: 'string', title: 'Probe' } } },
     };
     /* Erbt von **zwei** Ästen: Item (Bereich world) und ProbeOben (game). */
     T.REG.interfaces.ProbeZwei = {
@@ -1938,15 +1992,14 @@ async function seite(datei, warten) {
       /* Kanten: eine Kante, die an `Item` hängt, und eine an `Base`. */
       kanten: T.relsFrom('ProbeZwei').map((r) => r.type),
       /* Und woher ein Feld kommt, muss über beide Äste gefunden werden. */
-      herkunft: T.compOrigin('ProbeZwei', 'ProbeInfo'),
+      herkunft: T.compOrigin('ProbeZwei', 'ProbeOben'),
     };
     delete T.REG.interfaces.ProbeZwei;
     delete T.REG.interfaces.ProbeOben;
-    delete T.REG.components.ProbeInfo;
     return antwort;
   });
   pruefe('a kind may inherit from two branches, and gets both their fields',
-    zweiEltern.felder.includes('ProbeInfo') && zweiEltern.felder.includes('ItemInfo'),
+    zweiEltern.felder.includes('ProbeOben') && zweiEltern.felder.includes('Item'),
     zweiEltern.felder);
   pruefe('block kinds come from every branch, not just the first',
     zweiEltern.bloecke.includes('probeblock') && zweiEltern.bloecke.includes('lore'),
@@ -2005,7 +2058,7 @@ async function seite(datei, warten) {
     T.ENT.forEach((e) => (e.blocks || []).forEach((b) => { ids[b.id] = 1; }));
     const schlecht = [];
     T.ENT.forEach((i) => {
-      const info = (i.components || {}).Info;
+      const info = (i.components || {}).Information;
       if (!info || !Array.isArray(info.blocks)) return;
       info.blocks.forEach((a) => {
         const anker = [];
@@ -2049,7 +2102,7 @@ async function seite(datei, warten) {
     const m = [...window.__T__.ENT.values()].find((e) =>
       (e.components || {}).Skills && (e.components || {}).StatblockInfo
       && (e.relations || []).some((r) => r.type === 'carries'));
-    return m ? (m.name || m.components.Name.text) : null;
+    return m ? (m.name || m.components.Base.text) : null;
   });
   if (held) {
     await oeffne(held);
@@ -2185,8 +2238,8 @@ async function seite(datei, warten) {
       && (e.relations || []).some((r) => r.type === 'knowledge'));
     const kenner = alle.find((e) => (e.relations || []).some((r) => r.type === 'carries'));
     return {
-      rezept: rezept ? (rezept.name || rezept.components.Name.text) : null,
-      kenner: kenner ? (kenner.name || kenner.components.Name.text) : null,
+      rezept: rezept ? (rezept.name || rezept.components.Base.text) : null,
+      kenner: kenner ? (kenner.name || kenner.components.Base.text) : null,
     };
   });
   if (werkbank.rezept && werkbank.kenner) {
@@ -2248,7 +2301,7 @@ async function seite(datei, warten) {
       const m = {};
       (inv.relations || []).filter((r) => r.type === 'holds').forEach((r) => {
         const it = T.ENT.get(r.to);
-        if (it) m[it.name || it.components.Name.text] = (r.props || {}).qty || 1;
+        if (it) m[it.name || it.components.Base.text] = (r.props || {}).qty || 1;
       });
       return m;
     });
@@ -2278,9 +2331,9 @@ async function seite(datei, warten) {
         const zeile = document.querySelector('table.craftm tr.crrow.ready .ref');
         const rez = [...T.ENT.values()].find((e) =>
           (e.interfaces || [])[0] === 'Recipe'
-          && (e.name || e.components.Name.text) === zeile.textContent);
-        rez.components.RecipeInfo.dc = d;
-        rez.components.RecipeInfo.days = 2;
+          && (e.name || e.components.Base.text) === zeile.textContent);
+        rez.components.Recipe.dc = d;
+        rez.components.Recipe.days = 2;
         traeger.relations = (traeger.relations || []).filter((r) => r.type !== 'crafting');
         window.__T__.UI.craftLog = [];
       }, dc);
@@ -2399,8 +2452,8 @@ async function seite(datei, warten) {
     const boni = await p.evaluate(() => {
       const T = window.__T__;
       const rez = [...T.ENT.values()].find((e) =>
-        ((e.components || {}).RecipeInfo || {}).tool === 'Alchemistenwerkzeug');
-      const info = rez.components.RecipeInfo;
+        ((e.components || {}).Recipe || {}).tool === 'Alchemistenwerkzeug');
+      const info = rez.components.Recipe;
       const rook = [...T.ENT.values()].find((e) =>
         (((e.components || {}).Skills || {}).tools || []).indexOf('Alchemistenwerkzeug') >= 0);
       const andere = [...T.ENT.values()].find((e) =>
@@ -2423,7 +2476,7 @@ async function seite(datei, warten) {
      Board eigene Kacheln, wäre jedes neue Element zweimal zu bauen. */
   const boardName = await p.evaluate(() => {
     const b = [...window.__T__.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Board');
-    return b ? (b.name || b.components.Name.text) : null;
+    return b ? (b.name || b.components.Base.text) : null;
   });
   if (boardName) {
     await oeffne(boardName);
@@ -2493,7 +2546,7 @@ async function seite(datei, warten) {
   /* ---- Begegnung, Initiative, Würfel (REQ-070, 085, 115, 144) ---- */
   const kampf = await p.evaluate(() => {
     const k = [...window.__T__.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Encounter');
-    return k ? (k.name || k.components.Name.text) : null;
+    return k ? (k.name || k.components.Base.text) : null;
   });
   if (kampf) {
     await oeffne(kampf);
@@ -2579,15 +2632,15 @@ async function seite(datei, warten) {
   const auftrag = await p.evaluate(() => {
     const q = [...window.__T__.ENT.values()].find((e) =>
       (e.interfaces || [])[0] === 'Quest'
-      && Array.isArray(((e.components || {}).QuestInfo || {}).tasks)
-      && e.components.QuestInfo.tasks.length > 2);
+      && Array.isArray(((e.components || {}).Quest || {}).tasks)
+      && e.components.Quest.tasks.length > 2);
     /* Das Brett und die Zeitleiste gehören der **Kampagne**: beides sind
        Fragen an ihr Ganzes und keine Eigenschaft einer Gruppe. Vorher war
        der Träger beliebig, weil jede Ansicht auf jedem Artikel stand. */
     const traeger = [...window.__T__.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Campaign');
     return {
-      q: q ? (q.name || q.components.Name.text) : null,
-      p: traeger ? (traeger.name || traeger.components.Name.text) : null,
+      q: q ? (q.name || q.components.Base.text) : null,
+      p: traeger ? (traeger.name || traeger.components.Base.text) : null,
     };
   });
   if (auftrag.q && auftrag.p) {
@@ -2649,8 +2702,8 @@ async function seite(datei, warten) {
         d: r.querySelector('.tdate').textContent,
         n: r.querySelector('.ref').textContent })),
       sortiert: [...window.__T__.ENT.values()]
-        .filter((e) => (e.components || {}).WorldDate)
-        .map((e) => Number(e.components.WorldDate.sort)),
+        .filter((e) => ((e.components || {}).Base || {}).sort !== undefined)
+        .map((e) => Number(e.components.Base.sort)),
     }));
     pruefe('the timeline lists everything that carries a world date',
       zeit.zeilen.length >= 4, zeit.zeilen.length);
@@ -2679,7 +2732,7 @@ async function seite(datei, warten) {
     const pcs = alle.filter((e) => (e.interfaces || [])[0] === 'PlayerCharacter');
     const fremd = pcs.find((e) => !kenner || e.id !== kenner.to);
     return {
-      rec: rec ? (rec.name || rec.components.Name.text) : null,
+      rec: rec ? (rec.name || rec.components.Base.text) : null,
       kennerId: kenner ? kenner.to : null,
       fremdId: fremd ? fremd.id : null,
     };
@@ -2759,8 +2812,8 @@ async function seite(datei, warten) {
      Kanal, sähe ihn niemand, der zehn Minuten später dazukommt — und das
      merkte man erst am Tisch. */
   const sitzung = await p.evaluate(() => {
-    const se = [...window.__T__.ENT.values()].find((e) => (e.components || {}).SessionState);
-    return se ? (se.name || se.components.Name.text) : null;
+    const se = [...window.__T__.ENT.values()].find((e) => (e.components || {}).Session);
+    return se ? (se.name || se.components.Base.text) : null;
   });
   if (sitzung) {
     await oeffne(sitzung);
@@ -2933,7 +2986,7 @@ async function seite(datei, warten) {
      eigene Tabelle „Vorbereitung" wäre eine zweite Wahrheit. */
   const vorbereitung = await p.evaluate(() => {
     const e = [...window.__T__.ENT.values()].find((x) =>
-      (((x.components || {}).Todos || {}).items || []).length > 1
+      (((x.components || {}).Base || {}).items || []).length > 1
       && (x.relations || []).length > 1);
     return e ? e.id : null;
   });
@@ -3101,7 +3154,7 @@ async function seite(datei, warten) {
      einzelnen Ansicht sähe nichts. */
   const deck = await p.evaluate(() => {
     const alle = [...window.__T__.ENT.values()];
-    const e = alle.find((x) => ((x.components || {}).Identity || {}).cover
+    const e = alle.find((x) => ((x.components || {}).Base || {}).cover
       && (x.relations || []).some((r) => r.type === 'knowledge'));
     if (!e) return null;
     const info = window.__T__.ENT.get(
@@ -3109,8 +3162,8 @@ async function seite(datei, warten) {
     const kennt = info && (info.relations || []).find((r) => r.type === 'knownBy');
     const pcs = alle.filter((x) => (x.interfaces || [])[0] === 'PlayerCharacter');
     const fremd = pcs.find((x) => !kennt || x.id !== kennt.to);
-    return { id: e.id, echt: e.name || e.components.Name.text,
-      cover: e.components.Identity.cover,
+    return { id: e.id, echt: e.name || e.components.Base.text,
+      cover: e.components.Base.cover,
       kennerId: kennt ? kennt.to : null, fremdId: fremd ? fremd.id : null };
   });
   if (deck && deck.kennerId && deck.fremdId) {
@@ -3246,14 +3299,14 @@ async function seite(datei, warten) {
     const mitProsa = await p.evaluate(() => {
       const T = window.__T__;
       const regeln = [...T.ENT.values()].filter((e) => (e.interfaces || [])[0] === 'Rule');
-      const namen = regeln.map((e) => e.name || e.components.Name.text)
+      const namen = regeln.map((e) => e.name || e.components.Base.text)
         .filter((n) => n && n.length >= 4);
       /* Prosa ist die Beschreibung und die Textblöcke — nicht der ganze
          Artikel. Der Name selbst zählt nicht: ein Artikel, der „Verzicht:
          Verstrickt" heisst, nennt keine Regel im Text, und ein Treffer
          darauf prüfte die Suche statt das Erkennen. */
       const prosa = (x) => {
-        let t = ((x.components || {}).Description || {}).raw || '';
+        let t = ((x.components || {}).Base || {}).raw || '';
         (x.blocks || []).forEach((b) => { t += ' ' + (b.body || ''); });
         return t;
       };
@@ -3510,7 +3563,7 @@ async function seite(datei, warten) {
     laedt: document.getElementById('view').innerText.trim() === 'Loading…',
   }));
   pruefe('watchdog banner appears', /No data received/.test(s.banner ?? ''), s);
-  pruefe('counts registry parts correctly', /0 of 6 registry parts/.test(s.banner ?? ''), s);
+  pruefe('counts registry parts correctly', /0 of 5 registry parts/.test(s.banner ?? ''), s);
   pruefe('does not sit on Loading…', !s.laedt, s);
   pruefe('no exception without data', errs.length === 0, errs);
   await p.close();

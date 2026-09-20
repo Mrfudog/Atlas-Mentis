@@ -3,10 +3,10 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-09-20. 38 Schnittstellen, 45 Komponenten, 41 Kantenarten.
+Stand 2026-09-20. 43 Schnittstellen, 41 Kantenarten.
 
-Je Art vier Fragen: **was sie verlangt**, **was sie erlauben darf**,
-**welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
+Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
+erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
 steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 übersieht, dass sie über `Creature` die halbe Kampagne trägt.
 
@@ -20,22 +20,10 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Arc` · erbt von `Story` ← `Base`
 
-**Verlangt**
+**Geerbte Felder**
 
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
-
-**Erlaubt**
-
-- *`StoryInfo`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `state` *planned | running | played | dropped*, `summary` *long*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Story`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `state` *planned | running | played | dropped*, `summary` *long*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Kanten von hier**
 
@@ -73,22 +61,10 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Campaign` · erbt von `Story` ← `Base`
 
-**Verlangt**
+**Geerbte Felder**
 
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
-
-**Erlaubt**
-
-- *`StoryInfo`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `state` *planned | running | played | dropped*, `summary` *long*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Story`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `state` *planned | running | played | dropped*, `summary` *long*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Kanten von hier**
 
@@ -127,22 +103,10 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Chapter` · erbt von `Story` ← `Base`
 
-**Verlangt**
+**Geerbte Felder**
 
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
-
-**Erlaubt**
-
-- *`StoryInfo`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `state` *planned | running | played | dropped*, `summary` *long*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Story`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `state` *planned | running | played | dropped*, `summary` *long*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Kanten von hier**
 
@@ -180,22 +144,9 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Event` · erbt von `Base`
 
-**Verlangt**
+**Geerbte Felder**
 
-- `WorldDate` — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
-
-**Erlaubt**
-
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+lore` `+secret` `+readaloud`
 
@@ -226,22 +177,13 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Quest` · erbt von `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- `QuestInfo` — `state` *rumoured | offered | accepted | done | failed | abandoned*, `reward` *string*, `deadline` *string*, `restriction` *string*, `tasks` *array*
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `state` *rumoured | offered | accepted | done | failed | abandoned*, `reward` *string*, `deadline` *string*, `restriction` *string*, `tasks` *array*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+lore` `+secret`
 
@@ -269,29 +211,20 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Quest`): `quests`, `description`, `fields` (ohne QuestInfo.tasks), `blocks`, `relations`
+**Gezeichnet** (aus `Quest`): `quests`, `description`, `fields` (ohne Quest.tasks), `blocks`, `relations`
 
 ### Scene / Encounter
 
 `Scene` · erbt von `Story` ← `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `mode` *roleplay | encounter | exploration | downtime*, `difficulty` *string*, `readaloud` *long*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- `SceneInfo` — `mode` *roleplay | encounter | exploration | downtime*, `difficulty` *string*, `readaloud` *long*
-- *`StoryInfo`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `state` *planned | running | played | dropped*, `summary` *long*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Story`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `state` *planned | running | played | dropped*, `summary` *long*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+tactics`
 
@@ -331,23 +264,14 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Session` · erbt von `Story` ← `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `activeScene` *link*, `activeEncounter` *link*, `activeMap` *link*, `nowPlaying` *string*, `partyNote` *long*, `stewardship` *gm | table*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- `SessionState` — `activeScene` *link*, `activeEncounter` *link*, `activeMap` *link*, `nowPlaying` *string*, `partyNote` *long*, `stewardship` *gm | table*
-- *`StoryInfo`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `state` *planned | running | played | dropped*, `summary` *long*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Story`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `state` *planned | running | played | dropped*, `summary` *long*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+recap`
 
@@ -387,22 +311,13 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Story` · erbt von `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `state` *planned | running | played | dropped*, `summary` *long*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- `StoryInfo` — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `state` *planned | running | played | dropped*, `summary` *long*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+lore` `+secret` `+readaloud` `+note`
 
@@ -448,24 +363,14 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Armor` · erbt von `Item` ← `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `ac` *number*, `armorType` *string*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- `ArmorInfo` — `ac` *number*, `armorType` *string*
-- *`ItemInfo`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*
-- *`Footprint`* — `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Kanten von hier**
 
@@ -498,21 +403,9 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Article` · erbt von `Base`
 
-**Verlangt**
+**Geerbte Felder**
 
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
-
-**Erlaubt**
-
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+lore` `+secret` `+poem` `+song`
 
@@ -543,27 +436,10 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Companion` · erbt von `Creature` ← `Base`
 
-**Verlangt**
+**Geerbte Felder**
 
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
-
-**Erlaubt**
-
-- *`CreatureInfo`* — `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
-- *`Vars`* — `bindings` *object*
-- *`StatblockInfo`* — `system` *string*, `size` *winzig | klein | mittel | gross | riesig | gewaltig*, `kind` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *string*, `cr` *string*, `prof` *number*, `combatRole` *string*, `str` *number*, `strMod` *gerechnet*, `dex` *number*, `dexMod` *gerechnet*, `con` *number*, `conMod` *gerechnet*, `int` *number*, `intMod` *gerechnet*, `wis` *number*, `wisMod` *gerechnet*, `cha` *number*, `chaMod` *gerechnet*, `initiative` *gerechnet*, `passivePerception` *gerechnet*, `senses` *string*, `languages` *string*, `saves` *string*, `skills` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*
-- *`Vitals`* — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `exhaustion` *number*, `conditions` *array*, `nat1` *number*
-- *`Skills`* — `proficient` *array*, `expertise` *array*, `saves` *array*, `languages` *array*, `tools` *array*
-- *`Access`* — `userIds` *array*, `role` *player | co-gm | spectator*, `note` *string*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Creature`* — `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Kanten von hier**
 
@@ -606,23 +482,10 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Consumable` · erbt von `Item` ← `Base`
 
-**Verlangt**
+**Geerbte Felder**
 
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
-
-**Erlaubt**
-
-- *`ItemInfo`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*
-- *`Footprint`* — `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Kanten von hier**
 
@@ -655,27 +518,13 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Creature` · erbt von `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- `CreatureInfo` — `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
-- `Vars` — `bindings` *object*
-- `StatblockInfo` — `system` *string*, `size` *winzig | klein | mittel | gross | riesig | gewaltig*, `kind` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *string*, `cr` *string*, `prof` *number*, `combatRole` *string*, `str` *number*, `strMod` *gerechnet*, `dex` *number*, `dexMod` *gerechnet*, `con` *number*, `conMod` *gerechnet*, `int` *number*, `intMod` *gerechnet*, `wis` *number*, `wisMod` *gerechnet*, `cha` *number*, `chaMod` *gerechnet*, `initiative` *gerechnet*, `passivePerception` *gerechnet*, `senses` *string*, `languages` *string*, `saves` *string*, `skills` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*
-- `Vitals` — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `exhaustion` *number*, `conditions` *array*, `nat1` *number*
-- `Skills` — `proficient` *array*, `expertise` *array*, `saves` *array*, `languages` *array*, `tools` *array*
-- `Access` — `userIds` *array*, `role` *player | co-gm | spectator*, `note` *string*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+appearance` `+personality` `+lore` `+fact` `+secret` `+readaloud`
 
@@ -720,22 +569,13 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Faction` · erbt von `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `kind` *string*, `color` *string*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- `FactionInfo` — `kind` *string*, `color` *string*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+lore` `+secret`
 
@@ -772,22 +612,13 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Inventory` · erbt von `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `capacity` *number*, `copper` *number*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- `InventoryInfo` — `capacity` *number*, `copper` *number*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+note`
 
@@ -813,29 +644,19 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Inventory`): `inventory`, `description`, `fields` (ohne InventoryInfo), `relations`
+**Gezeichnet** (aus `Inventory`): `inventory`, `description`, `fields` (ohne Inventory), `relations`
 
 ### Item
 
 `Item` · erbt von `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- `ItemInfo` — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*
-- `Footprint` — `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+lore` `+secret` `+fact`
 
@@ -870,24 +691,14 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Material` · erbt von `Item` ← `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `materialType` *string*, `trades` *array*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- `MaterialInfo` — `materialType` *string*, `trades` *array*
-- *`ItemInfo`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*
-- *`Footprint`* — `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Kanten von hier**
 
@@ -920,27 +731,10 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `NPC` · erbt von `Creature` ← `Base`
 
-**Verlangt**
+**Geerbte Felder**
 
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
-
-**Erlaubt**
-
-- *`CreatureInfo`* — `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
-- *`Vars`* — `bindings` *object*
-- *`StatblockInfo`* — `system` *string*, `size` *winzig | klein | mittel | gross | riesig | gewaltig*, `kind` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *string*, `cr` *string*, `prof` *number*, `combatRole` *string*, `str` *number*, `strMod` *gerechnet*, `dex` *number*, `dexMod` *gerechnet*, `con` *number*, `conMod` *gerechnet*, `int` *number*, `intMod` *gerechnet*, `wis` *number*, `wisMod` *gerechnet*, `cha` *number*, `chaMod` *gerechnet*, `initiative` *gerechnet*, `passivePerception` *gerechnet*, `senses` *string*, `languages` *string*, `saves` *string*, `skills` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*
-- *`Vitals`* — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `exhaustion` *number*, `conditions` *array*, `nat1` *number*
-- *`Skills`* — `proficient` *array*, `expertise` *array*, `saves` *array*, `languages` *array*, `tools` *array*
-- *`Access`* — `userIds` *array*, `role` *player | co-gm | spectator*, `note` *string*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Creature`* — `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Kanten von hier**
 
@@ -988,24 +782,13 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Party` · erbt von `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `level` *number*, `motto` *string*, `at` *link*, `day` *number*, `watch` *number*, `sinceRation` *number*, `sinceLight` *number*, `actions` *object*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- `PartyInfo` — `level` *number*, `motto` *string*
-- `Access` — `userIds` *array*, `role` *player | co-gm | spectator*, `note` *string*
-- `TravelInfo` — `at` *link*, `day` *number*, `watch` *number*, `sinceRation` *number*, `sinceLight` *number*, `actions` *object*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+lore` `+note`
 
@@ -1043,23 +826,13 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Place` · erbt von `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `kind` *Reich | Stadt | Distrikt | Gasse | Gebäude | Raum | Wildnis*, `environment` *string*, `settlementType` *string*, `state` *hidden | discovered | explored*, `since` *string*, `arrival` *long*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- `LocationInfo` — `kind` *Reich | Stadt | Distrikt | Gasse | Gebäude | Raum | Wildnis*, `environment` *string*, `settlementType` *string*
-- `Explored` — `state` *hidden | discovered | explored*, `since` *string*, `arrival` *long*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+lore` `+readaloud` `+secret`
 
@@ -1098,28 +871,14 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `PlayerCharacter` · erbt von `Creature` ← `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- `CharacterInfo` — `player` *string*, `ancestry` *string*, `class` *string*, `level` *number*, `proficiency` *gerechnet*
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `player` *string*, `ancestry` *string*, `class` *string*, `level` *number*, `proficiency` *gerechnet*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- *`CreatureInfo`* — `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
-- *`Vars`* — `bindings` *object*
-- *`StatblockInfo`* — `system` *string*, `size` *winzig | klein | mittel | gross | riesig | gewaltig*, `kind` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *string*, `cr` *string*, `prof` *number*, `combatRole` *string*, `str` *number*, `strMod` *gerechnet*, `dex` *number*, `dexMod` *gerechnet*, `con` *number*, `conMod` *gerechnet*, `int` *number*, `intMod` *gerechnet*, `wis` *number*, `wisMod` *gerechnet*, `cha` *number*, `chaMod` *gerechnet*, `initiative` *gerechnet*, `passivePerception` *gerechnet*, `senses` *string*, `languages` *string*, `saves` *string*, `skills` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*
-- *`Vitals`* — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `exhaustion` *number*, `conditions` *array*, `nat1` *number*
-- *`Skills`* — `proficient` *array*, `expertise` *array*, `saves` *array*, `languages` *array*, `tools` *array*
-- *`Access`* — `userIds` *array*, `role` *player | co-gm | spectator*, `note` *string*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Creature`* — `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+backstory`
 
@@ -1165,27 +924,10 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Retainer` · erbt von `Creature` ← `Base`
 
-**Verlangt**
+**Geerbte Felder**
 
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
-
-**Erlaubt**
-
-- *`CreatureInfo`* — `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
-- *`Vars`* — `bindings` *object*
-- *`StatblockInfo`* — `system` *string*, `size` *winzig | klein | mittel | gross | riesig | gewaltig*, `kind` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *string*, `cr` *string*, `prof` *number*, `combatRole` *string*, `str` *number*, `strMod` *gerechnet*, `dex` *number*, `dexMod` *gerechnet*, `con` *number*, `conMod` *gerechnet*, `int` *number*, `intMod` *gerechnet*, `wis` *number*, `wisMod` *gerechnet*, `cha` *number*, `chaMod` *gerechnet*, `initiative` *gerechnet*, `passivePerception` *gerechnet*, `senses` *string*, `languages` *string*, `saves` *string*, `skills` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*
-- *`Vitals`* — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `exhaustion` *number*, `conditions` *array*, `nat1` *number*
-- *`Skills`* — `proficient` *array*, `expertise` *array*, `saves` *array*, `languages` *array*, `tools` *array*
-- *`Access`* — `userIds` *array*, `role` *player | co-gm | spectator*, `note` *string*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Creature`* — `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Kanten von hier**
 
@@ -1228,23 +970,9 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Statblock` · erbt von `Base`
 
-**Verlangt**
+**Geerbte Felder**
 
-- `StatblockInfo` — `system` *string*, `size` *winzig | klein | mittel | gross | riesig | gewaltig*, `kind` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *string*, `cr` *string*, `prof` *number*, `combatRole` *string*, `str` *number*, `strMod` *gerechnet*, `dex` *number*, `dexMod` *gerechnet*, `con` *number*, `conMod` *gerechnet*, `int` *number*, `intMod` *gerechnet*, `wis` *number*, `wisMod` *gerechnet*, `cha` *number*, `chaMod` *gerechnet*, `initiative` *gerechnet*, `passivePerception` *gerechnet*, `senses` *string*, `languages` *string*, `saves` *string*, `skills` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
-
-**Erlaubt**
-
-- `Vars` — `bindings` *object*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+tactics`
 
@@ -1278,24 +1006,14 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Weapon` · erbt von `Item` ← `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `damage` *string*, `damageType` *string*, `range` *string*, `Properties` *string*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- `WeaponInfo` — `damage` *string*, `damageType` *string*, `range` *string*, `Properties` *string*
-- *`ItemInfo`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*
-- *`Footprint`* — `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Kanten von hier**
 
@@ -1334,22 +1052,13 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Asset` · erbt von `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- `AssetInfo` — `backend` *app | nas | external*, `ref` *string*, `mime` *string*, `width` *number*, `height` *number*, `bytes` *number*
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `backend` *app | nas | external*, `ref` **Pflicht** *string*, `mime` *string*, `width` *number*, `height` *number*, `bytes` *number*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- `SourceRef` — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Kanten von hier**
 
@@ -1377,24 +1086,14 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Feat` · erbt von `Rule` ← `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- *`RuleInfo`* — `kind` *action | bonus | reaction | feature | trait | condition | legendary | lair | feat | skill*, `uses` *string*, `autolink` *boolean*, `recharge` *string*
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `prerequisite` *string*, `repeatable` *boolean*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- `FeatInfo` — `prerequisite` *string*, `repeatable` *boolean*
-- *`Vars`* — `bindings` *object*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Rule`* — `kind` **Pflicht** *action | bonus | reaction | feature | trait | condition | legendary | lair | feat | skill*, `uses` *string*, `autolink` *boolean*, `recharge` *string*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Kanten von hier**
 
@@ -1425,22 +1124,13 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Group` · erbt von `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- `GroupInfo` — `purpose` *string*, `kind` *players | table | guests | crew*
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `purpose` *string*, `kind` *players | table | guests | crew*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+note`
 
@@ -1471,22 +1161,13 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Information` · erbt von `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- `Info` — `fields` *array*, `blocks` *array*, `tier` *open | rumour | secret*
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `fields` *array*, `blocks` *array*, `tier` *open | rumour | secret*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+secret` `+fact`
 
@@ -1519,22 +1200,13 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `KnowledgeLevel` · erbt von `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- `KnowledgeInfo` — `scope` *common | group | personal*
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `scope` *common | group | personal*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Kanten von hier**
 
@@ -1564,22 +1236,13 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Layer` · erbt von `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- `LayerInfo` — `kind` *system | expansion | world | pack | campaign | overrides*, `order` *number*, `version` *string*
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `kind` *system | expansion | world | pack | campaign | overrides*, `order` *number*, `version` *string*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+note`
 
@@ -1611,22 +1274,13 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Recipe` · erbt von `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- `RecipeInfo` — `trade` *string*, `tool` *string*, `ability` *str | dex | con | int | wis | cha*, `dc` *number*, `time` *string*, `days` *number*, `yieldCount` *number*, `onFailure` *materialsLost | halfLost | nothingLost*
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `trade` *string*, `tool` *string*, `ability` *str | dex | con | int | wis | cha*, `dc` *number*, `time` *string*, `days` *number*, `yieldCount` *number*, `onFailure` *materialsLost | halfLost | nothingLost*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+note` `+secret` `+lore`
 
@@ -1659,23 +1313,13 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Rule` · erbt von `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- `RuleInfo` — `kind` *action | bonus | reaction | feature | trait | condition | legendary | lair | feat | skill*, `uses` *string*, `autolink` *boolean*, `recharge` *string*
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `kind` **Pflicht** *action | bonus | reaction | feature | trait | condition | legendary | lair | feat | skill*, `uses` *string*, `autolink` *boolean*, `recharge` *string*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- `Vars` — `bindings` *object*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Kanten von hier**
 
@@ -1705,24 +1349,14 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Skill` · erbt von `Rule` ← `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- *`RuleInfo`* — `kind` *action | bonus | reaction | feature | trait | condition | legendary | lair | feat | skill*, `uses` *string*, `autolink` *boolean*, `recharge` *string*
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `ability` *str | dex | con | int | wis | cha*, `tool` *boolean*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- `SkillInfo` — `ability` *str | dex | con | int | wis | cha*, `tool` *boolean*
-- *`Vars`* — `bindings` *object*
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Rule`* — `kind` **Pflicht** *action | bonus | reaction | feature | trait | condition | legendary | lair | feat | skill*, `uses` *string*, `autolink` *boolean*, `recharge` *string*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Kanten von hier**
 
@@ -1753,22 +1387,13 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Table` · erbt von `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- `TableInfo` — `kind` *loot | encounter | name | shop | event | generic*, `die` *string*, `rows` *array*, `note` *string*
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `kind` *loot | encounter | name | shop | event | generic*, `die` *string*, `rows` *array*, `note` *string*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+note` `+secret`
 
@@ -1794,7 +1419,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Table`): `table`, `description`, `fields` (ohne TableInfo.rows), `blocks`
+**Gezeichnet** (aus `Table`): `table`, `description`, `fields` (ohne Table.rows), `blocks`
 
 ---
 
@@ -1806,22 +1431,13 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Board` · erbt von `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- `BoardInfo` — `width` *number*, `height` *number*, `snap` *number*, `background` *asset*, `rules` *object*, `shapes` *array*, `anchors` *array*
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `width` *number*, `height` *number*, `snap` *number*, `background` *asset*, `rules` *object*, `shapes` *array*, `anchors` *array*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+note`
 
@@ -1846,28 +1462,19 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Board`): `board`, `fields` (ohne BoardInfo.shapes, BoardInfo.anchors)
+**Gezeichnet** (aus `Board`): `board`, `fields` (ohne Board.shapes, Board.anchors)
 
 ### Encounter
 
 `Encounter` · erbt von `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- `EncounterInfo` — `difficulty` *trivial | easy | medium | hard | deadly*, `xpBudget` *number*, `state` *planned | running | done | skipped*, `round` *number*, `turn` *number*, `surprise` *string*
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `difficulty` *trivial | easy | medium | hard | deadly*, `xpBudget` *number*, `state` *planned | running | done | skipped*, `round` *number*, `turn` *number*, `surprise` *string*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+tactics` `+readaloud` `+note` `+secret`
 
@@ -1901,22 +1508,13 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 `Map` · erbt von `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- `MapInfo` — `image` *asset*, `sheets` *array*, `baseHidden` *boolean*, `baseGmOnly` *boolean*, `kind` *world | region | settlement | district | building | battle*, `gridShape` *none | square | hex*, `gridSize` *number*, `gridOffsetX` *number*, `gridOffsetY` *number*, `scale` *string*, `lighting` *bright | dim | dark*, `fog` *boolean*, `reveal` *array*, `walls` *array*, `tiles` *string*, `tileCols` *number*, `tileRows` *number*, `tileSize` *number*
-- *`Name`* — `text` *string*
-- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
-- *`Status`* — `value` *idea | planned | used | discarded*
+- `image` *asset*, `sheets` *array*, `baseHidden` *boolean*, `baseGmOnly` *boolean*, `kind` *world | region | settlement | district | building | battle*, `gridShape` *none | square | hex*, `gridSize` *number*, `gridOffsetX` *number*, `gridOffsetY` *number*, `scale` *string*, `lighting` *bright | dim | dark*, `fog` *boolean*, `reveal` *array*, `walls` *array*, `tiles` *string*, `tileCols` *number*, `tileRows` *number*, `tileSize` *number*
 
-**Erlaubt**
+**Geerbte Felder**
 
-- *`Description`* — `raw` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- *`Todos`* — `items` *array*
+- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `+note` `+secret` `+readaloud`
 
@@ -1952,29 +1550,167 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ## Ohne Bereich
 
-*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 1 Arten.
+*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 6 Arten.
+
+### Access — *abstrakt*
+
+`Access`
+
+**Eigene Felder**
+
+- `userIds` *array*, `role` *player | co-gm | spectator*, `note` *string*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
 
 ### Base — *abstrakt*
 
 `Base`
 
-**Verlangt**
+**Eigene Felder**
 
-- `Name` — `text` *string*
-- `Identity` — `key` *string*, `aliases` *array*, `cover` *string*
-- `Status` — `value` *idea | planned | used | discarded*
-
-**Erlaubt**
-
-- `Description` — `raw` *long*
-- `Visibility` — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
-- `Image` — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- `RawContent` — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
-- `SourceRef` — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- `WorldDate` — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-- `Todos` — `items` *array*
+- `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 
 **Blöcke** `paragraph` `note`
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+
+### Skills — *abstrakt*
+
+`Skills`
+
+**Eigene Felder**
+
+- `proficient` *array*, `expertise` *array*, `saves` *array*, `languages` *array*, `tools` *array*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+
+### Statblock numbers — *abstrakt*
+
+`StatblockInfo`
+
+**Eigene Felder**
+
+- `system` *string*, `size` *winzig | klein | mittel | gross | riesig | gewaltig*, `kind` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *string*, `cr` *string*, `prof` *number*, `combatRole` *string*, `str` *number*, `strMod` *gerechnet*, `dex` *number*, `dexMod` *gerechnet*, `con` *number*, `conMod` *gerechnet*, `int` *number*, `intMod` *gerechnet*, `wis` *number*, `wisMod` *gerechnet*, `cha` *number*, `chaMod` *gerechnet*, `initiative` *gerechnet*, `passivePerception` *gerechnet*, `senses` *string*, `languages` *string*, `saves` *string*, `skills` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+
+### Variables — *abstrakt*
+
+`Vars`
+
+**Eigene Felder**
+
+- `bindings` *object*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+
+### Vitals — *abstrakt*
+
+`Vitals`
+
+**Eigene Felder**
+
+- `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `exhaustion` *number*, `conditions` *array*, `nat1` *number*
 
 **Kanten von hier**
 

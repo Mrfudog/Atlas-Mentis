@@ -29,7 +29,7 @@ Grundregelwerk gehört und nicht der Kampagne.
 Das ist der Normalfall, und er soll keine Zeile kosten: wer keine Pakete
 benutzt, merkt vom Stapel nichts.
 
-Eine **Ebene** (`Layer` mit `LayerInfo`) sammelt, was zusammengehört. Die
+Eine **Ebene** (`Layer`) sammelt, was zusammengehört. Die
 Kampagne schaltet sie mit einer `activates`-Kante auf; die Reihenfolge steht
 an der Kante, sonst an der Ebene. Was eine aufgeschaltete Ebene mitbringt,
 ist da.
@@ -84,8 +84,8 @@ beantwortet: **was ist gerade nicht im Spiel, und warum.**
 
 | Art | Name | Zweck |
 |---|---|---|
-| Komponente | `LayerInfo` | `kind`, `order`, `version` |
-| Schnittstelle | `Layer` | verlangt `Name`, `LayerInfo` |
+| Felder der Art | `Layer` | `kind`, `order`, `version` |
+| Artikelart | `Layer` | `kind`, `order`, `version` an der Art selbst |
 | Kante | `inLayer` | Artikel → Ebene, `props.mode: "adds" \| "removes"` |
 | Kante | `activates` | Kampagne → Ebene, `props.order` |
 | Kante | `overrides` | neuer Artikel → alter Artikel |

@@ -13,14 +13,14 @@ import { ausEingabe, eingabeArt, inEingabe, kantenAusEntwurf } from '../src/app/
 
 describe('eingabeArt', () => {
   it('reads the kind out of the registry, not out of the field name', () => {
-    const map = seedRegistry.components.MapInfo.schema.properties ?? {};
+    const map = seedRegistry.interfaces.Map.schema?.properties ?? {};
     expect(eingabeArt(map['kind'])).toBe('auswahl'); // hat ein enum
     expect(eingabeArt(map['gridSize'])).toBe('zahl');
     expect(eingabeArt(map['fog'])).toBe('jaNein');
     expect(eingabeArt(map['reveal'])).toBe('liste');
     expect(eingabeArt(map['scale'])).toBe('text');
-    const beschr = seedRegistry.components.Description.schema.properties ?? {};
-    expect(eingabeArt(beschr['raw'])).toBe('lang'); // format: long
+    const basis = seedRegistry.interfaces.Base.schema?.properties ?? {};
+    expect(eingabeArt(basis['raw'])).toBe('lang'); // format: long
   });
 
   it('falls back to plain text rather than guessing', () => {

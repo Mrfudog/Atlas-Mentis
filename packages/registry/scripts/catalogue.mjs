@@ -55,19 +55,13 @@ function kette(n) {
   }
   return out;
 }
-/* Was eine Art erbt: die Komponenten und Blockarten ihrer Vorfahren. Ohne
-   das liest man bei `NPC` „verlangt nichts" und übersieht, dass sie über
-   `Creature` die halbe Kampagne trägt. */
-function geerbt(n, feld) {
-  const out = [];
-  for (const a of kette(n)) out.push(...(R.interfaces[a]?.[feld] ?? []));
-  return [...new Set(out)];
-}
-function felderVon(comp) {
-  const props = R.components[comp]?.schema?.properties ?? {};
+function felderVon(art) {
+  const schema = R.interfaces[art]?.schema;
+  const props = schema?.properties ?? {};
+  const pflicht = new Set(schema?.required ?? []);
   return Object.entries(props).map(([k, p]) => {
-    const art = p.derived ? 'gerechnet' : (p.enum ? p.enum.join(' | ') : (p.format ?? p.type ?? '?'));
-    return `\`${k}\` *${art}*`;
+    const wie = p.derived ? 'gerechnet' : (p.enum ? p.enum.join(' | ') : (p.format ?? p.type ?? '?'));
+    return `\`${k}\`${pflicht.has(k) ? ' **Pflicht**' : ''} *${wie}*`;
   });
 }
 function kantenVon(name) {
@@ -112,11 +106,10 @@ z('     `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->');
 z();
 z(`Stand ${new Date().toISOString().slice(0, 10)}. ` +
   `${Object.keys(R.interfaces).length} Schnittstellen, ` +
-  `${Object.keys(R.components).length} Komponenten, ` +
   `${Object.keys(R.relations).length} Kantenarten.`);
 z();
-z('Je Art vier Fragen: **was sie verlangt**, **was sie erlauben darf**,');
-z('**welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes');
+z('Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie');
+z('erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes');
 z('steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und');
 z('übersieht, dass sie über `Creature` die halbe Kampagne trägt.');
 z();
@@ -135,10 +128,6 @@ for (const [key, titel, wozu] of AREAS) {
   for (const n of arten) {
     const d = R.interfaces[n];
     const k = kette(n);
-    const req = d.requires ?? [];
-    const allow = d.allows ?? [];
-    const reqE = geerbt(n, 'requires');
-    const allowE = geerbt(n, 'allows');
     const { raus, rein } = kantenVon(n);
     const sicht = sichtVon(n);
 
@@ -146,18 +135,18 @@ for (const [key, titel, wozu] of AREAS) {
     z();
     z(`\`${n}\`${k.length ? ` · erbt von ${k.map((x) => `\`${x}\``).join(' ← ')}` : ''}`);
     z();
-    if (req.length || reqE.length) {
-      z('**Verlangt**');
+    const eigene = felderVon(n);
+    if (eigene.length) {
+      z('**Eigene Felder**');
       z();
-      for (const c of req) z(`- \`${c}\` — ${felderVon(c).join(', ') || '*keine Felder*'}`);
-      for (const c of reqE) if (!req.includes(c)) z(`- *\`${c}\`* — ${felderVon(c).join(', ') || '*keine Felder*'}`);
+      z(`- ${eigene.join(', ')}`);
       z();
     }
-    if (allow.length || allowE.length) {
-      z('**Erlaubt**');
+    const vonOben = k.map((a) => [a, felderVon(a)]).filter(([, f]) => f.length);
+    if (vonOben.length) {
+      z('**Geerbte Felder**');
       z();
-      for (const c of allow) z(`- \`${c}\` — ${felderVon(c).join(', ') || '*keine Felder*'}`);
-      for (const c of allowE) if (!allow.includes(c)) z(`- *\`${c}\`* — ${felderVon(c).join(', ') || '*keine Felder*'}`);
+      for (const [a, f] of vonOben) z(`- *\`${a}\`* — ${f.join(', ')}`);
       z();
     }
     if (d.blockTypes?.length) {

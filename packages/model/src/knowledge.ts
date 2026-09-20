@@ -36,10 +36,10 @@ export const AT_LEVEL_RELATION = 'atLevel';
 /** Party-Mitgliedschaft — wer in der Gruppe ist, erbt deren Wissen. */
 export const PARTY_RELATION = 'memberOfParty';
 
-/** Die Komponente, die eine Information trägt. */
-export const INFO_COMPONENT = 'Info';
+/** Die Art, deren Karte die Angaben einer Information trägt. */
+export const INFO_COMPONENT = 'Information';
 
-/** Ein Feldverweis, wie ihn auch die Ansichten schreiben: `Comp` oder `Comp.field`. */
+/** Ein Feldverweis, wie ihn auch die Ansichten schreiben: `Type` oder `Type.field`. */
 export type FieldRef = string;
 
 export interface KnowledgeGroup {
@@ -80,8 +80,8 @@ function infoBlocks(info: Entity): string[] {
 
 /**
  * Beansprucht diese Information das Feld?
- * Dieselbe Regel wie bei den Ansichten: ein blosser Komponentenname nimmt
- * alle ihre Felder, `Comp.field` genau eines.
+ * Dieselbe Regel wie bei den Ansichten: ein blosser Artname nimmt alle
+ * Felder, die diese Art erklärt, `Type.field` genau eines.
  */
 export function covers(info: Entity, component: string, property: string): boolean {
   const fields = infoFields(info);
@@ -270,10 +270,10 @@ export function redactEntity(
   /* Der Deckname. Er ist die einzige Stelle, an der etwas eingesetzt und
      nicht weggelassen wird — ein Artikel ohne Namen wäre unbrauchbar, und
      „jemand" ist ehrlicher als nichts. */
-  const identity = (article.components ?? {})['Identity'] as { cover?: string } | undefined;
-  if (!erlaubtF.has('Name.text')) {
-    const cover = identity?.cover;
-    components['Name'] = { ...(components['Name'] ?? {}), text: cover || 'jemand' };
+  const basis = (article.components ?? {})['Base'] as { cover?: string } | undefined;
+  if (!erlaubtF.has('Base.text')) {
+    const cover = basis?.cover;
+    components['Base'] = { ...(components['Base'] ?? {}), text: cover || 'jemand' };
   }
 
   const blocks = (article.blocks ?? []).filter((b) => {
@@ -286,7 +286,7 @@ export function redactEntity(
   /* Auch der bequeme Name oben am Artikel. Ihn stehen zu lassen wäre die
      Art Lücke, die niemand sucht: die Karte ist gesiebt, und daneben steht
      der Name im Klartext. */
-  const name = (components['Name']?.['text'] as string | undefined) ?? article.name;
+  const name = (components['Base']?.['text'] as string | undefined) ?? article.name;
 
   return { ...article, name, components, blocks } as Entity;
 }

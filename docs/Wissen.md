@@ -30,7 +30,7 @@ Information  --knownBy-->    Creature | Party | Faction | KnowledgeLevel | Group
 Creature     --atLevel-->    KnowledgeLevel
 ```
 
-Drei Kantenarten, zwei Schnittstellen, eine Komponente. Kein neues Konstrukt.
+Drei Kantenarten und zwei Artikelarten. Kein neues Konstrukt.
 
 ---
 
@@ -38,17 +38,17 @@ Drei Kantenarten, zwei Schnittstellen, eine Komponente. Kein neues Konstrukt.
 
 | Zeile | Art | Was sie sagt |
 |---|---|---|
-| `Information` | Schnittstelle | erweitert `Base`, verlangt `Info` |
-| `KnowledgeLevel` | Schnittstelle | erweitert `Base`, verlangt `KnowledgeInfo` |
-| `Info` | Komponente | `fields[]`, `blocks[]`, `tier` |
-| `KnowledgeInfo` | Komponente | `scope`: common / group / personal |
+| `Information` | Schnittstelle | erweitert `Base`, verlangt `Information` |
+| `KnowledgeLevel` | Schnittstelle | erweitert `Base`, verlangt `KnowledgeLevel` |
+| `Information` | Felder der Art | `fields[]`, `blocks[]`, `tier` |
+| `KnowledgeLevel` | Felder der Art | `scope`: common / group / personal |
 | `knowledge` | Kante | Artikel → Information, `owned` |
 | `knownBy` | Kante | Information → Geschöpf, Gruppe, Wissensstand |
 | `atLevel` | Kante | Geschöpf, Gruppe → Wissensstand |
 | `knowledge` | Ansicht | Layout aus Beschreibung + Wissensgruppen |
 
-`Info.fields` schreibt Feldverweise in derselben Schreibweise wie die
-Ansichten: `StatblockInfo` nimmt die ganze Komponente, `StatblockInfo.ac`
+`Information.fields` schreibt Feldverweise in derselben Schreibweise wie die
+Ansichten: `StatblockInfo` nimmt jedes Feld dieser Art, `StatblockInfo.ac`
 genau ein Feld. Zwei Schreibweisen für dieselbe Sache wären eine zu viel.
 
 `tier` ist **nur Anzeige und Sortierung**. Was jemand sehen darf, entscheiden
@@ -89,7 +89,7 @@ Der Preis ist ein Vergessen, das leckt. Dagegen steht, dass die Wissensansicht
 die **offene Gruppe zuoberst** zeigt: man sieht immer, was gerade offen liegt,
 statt es erschliessen zu müssen.
 
-> Die Sichtbarkeit des *ganzen* Artikels regelt weiterhin die Komponente
+> Die Sichtbarkeit des *ganzen* Artikels regeln weiterhin die Felder
 > `Visibility`. Wissen verfeinert innerhalb eines Artikels, den jemand
 > ohnehin sehen darf. Die beiden schliessen einander nicht aus: was
 > `Visibility` verbirgt, erreicht kein Wissen.
@@ -135,7 +135,7 @@ Es deckt aber nur die Abenteuergruppe ab. **„Die Spieler dieser Kampagne"
 ist etwas anderes** — wer noch keine Figur hat, wer gerade eine neue baut,
 wer als Gast zusieht, steht in keiner Party und soll dasselbe erfahren.
 
-Dafür gibt es `Group` (mit `GroupInfo`). Sie trägt kein Blatt, keine Werte
+Dafür gibt es `Group`. Sie trägt kein Blatt, keine Werte
 und keine Ausrüstung; sie ist da, damit Wissen einen Empfänger hat, der
 grösser ist als eine Figur und anders als eine Party.
 
@@ -179,5 +179,5 @@ ist es nicht, denn dasselbe Feld kann auf zwei Wegen bekannt werden.
 3. **Wissen an Kanten und Bausteinen.** Eine Information bündelt heute Felder
    und Blöcke. Ob eine *Verbindung* („der Baron kennt Floon") ebenso
    zuteilbar sein soll, ist nicht entschieden.
-4. **Wissensstände über mehrere Kampagnen.** `KnowledgeInfo.scope` steht
+4. **Wissensstände über mehrere Kampagnen.** `KnowledgeLevel.scope` steht
    schon da, wird aber von nichts gelesen.

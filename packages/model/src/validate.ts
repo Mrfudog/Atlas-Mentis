@@ -1,10 +1,9 @@
 /**
  * The Validation engine.
  *
- * On write: read the asserted interfaces, load their definitions, and check
- * that every required component is present and that no component outside
- * requires ∪ allows is carried. `allows` is strict (D2) unless the caller
- * opts into expert mode.
+ * On write: read the asserted type, walk its chain, and check that every card
+ * names a type in that chain and that every required field is filled. Strict
+ * by default (D2) unless the caller opts into expert mode.
  *
  * Zod guards the shape of registry rows and entities at the storage boundary —
  * the place where a malformed document would otherwise become a silent
@@ -12,7 +11,7 @@
  */
 
 import { z } from 'zod';
-import { allowedComponents, requiredComponents } from './entity.js';
+import { typeChain } from './entity.js';
 import type { Entity, LayoutElement, Registry } from './types.js';
 
 const propertyType = z.enum(['string', 'number', 'integer', 'boolean', 'array', 'object']);
@@ -35,20 +34,12 @@ const objectSchema = z.object({
   additionalProperties: z.boolean().optional(),
 });
 
-export const ComponentDefSchema = z.object({
-  name: z.string(),
-  label: z.string().optional(),
-  engine: z.string().nullable(),
-  schema: objectSchema,
-});
-
 export const InterfaceDefSchema = z.object({
   name: z.string(),
   label: z.string().optional(),
   abstract: z.boolean().optional(),
   extends: z.array(z.string()).optional(),
-  requires: z.array(z.string()).optional(),
-  allows: z.array(z.string()).optional(),
+  schema: objectSchema.optional(),
   blockTypes: z.array(z.string()).optional(),
   area: z.enum(['story', 'world', 'game', 'play']).optional(),
 });
@@ -105,7 +96,6 @@ export const ViewDefSchema = z.object({
 });
 
 export const RegistrySchema = z.object({
-  components: z.record(z.string(), ComponentDefSchema),
   interfaces: z.record(z.string(), InterfaceDefSchema),
   relations: z.record(z.string(), RelationDefSchema),
   views: z.record(z.string(), ViewDefSchema),
@@ -144,15 +134,22 @@ export const EntitySchema = z.object({
 });
 
 export interface ValidationIssue {
-  code: 'unknown_interface' | 'missing_component' | 'component_not_allowed' | 'unknown_component' | 'missing_property' | 'dangling_relation' | 'unknown_relation';
+  code:
+    | 'unknown_interface'
+    | 'card_not_inherited'
+    | 'unknown_card'
+    | 'missing_property'
+    | 'dangling_relation'
+    | 'unknown_relation';
   message: string;
+  /** Die Art, deren Karte es betrifft. */
   component?: string;
   property?: string;
   relation?: string;
 }
 
 export interface ValidateOptions {
-  /** D2: when true, components outside requires ∪ allows are tolerated. */
+  /** D2: when true, cards outside the type's chain are tolerated. */
   expertMode?: boolean;
   /** Ids that exist, so dangling edges can be reported. Omit to skip that check. */
   knownIds?: ReadonlySet<string>;
@@ -175,49 +172,45 @@ export function validateEntity(
     return issues;
   }
 
-  const required = requiredComponents(registry, name);
-  const allowed = new Set(allowedComponents(registry, name));
+  const kette = typeChain(registry, name);
+  const erlaubt = new Set(kette);
 
-  for (const component of required) {
-    if (!entity.components?.[component]) {
+  /* Eine Karte, die keine Art des Artikels nennt, ist kein Tippfehler im
+     Register, sondern ein Wert ohne Erklärung: es gibt kein Feld, das ihn
+     beschreibt, und keine Ansicht, die ihn zeigt. */
+  for (const card of Object.keys(entity.components ?? {})) {
+    if (!registry.interfaces[card]) {
       issues.push({
-        code: 'missing_component',
-        component,
-        message: `${name} requires the component ${component}`,
-      });
-    }
-  }
-
-  for (const component of Object.keys(entity.components ?? {})) {
-    if (!registry.components[component]) {
-      issues.push({
-        code: 'unknown_component',
-        component,
-        message: `Component ${component} is not in the registry`,
+        code: 'unknown_card',
+        component: card,
+        message: `${card} is not a type in the registry`,
       });
       continue;
     }
-    if (!allowed.has(component) && !options.expertMode) {
+    if (!erlaubt.has(card) && !options.expertMode) {
       issues.push({
-        code: 'component_not_allowed',
-        component,
-        message: `${name} does not allow the component ${component}`,
+        code: 'card_not_inherited',
+        component: card,
+        message: `${name} does not inherit from ${card}`,
       });
     }
   }
 
-  for (const [component, value] of Object.entries(entity.components ?? {})) {
-    const def = registry.components[component];
-    if (!def) continue;
-    for (const property of def.schema.required ?? []) {
-      const prop = def.schema.properties[property];
+  /* Pflichtfelder gelten für die ganze Kette, auch wenn die Karte gar nicht
+     da ist: eine fehlende Karte ist kein leerer Wert, sondern derselbe. */
+  for (const type of kette) {
+    const schema = registry.interfaces[type]?.schema;
+    if (!schema) continue;
+    const card = entity.components?.[type];
+    for (const property of schema.required ?? []) {
+      const prop = schema.properties[property];
       if (prop?.derived) continue; // derived values are never stored
-      if (value?.[property] === undefined || value[property] === '') {
+      if (card?.[property] === undefined || card[property] === '') {
         issues.push({
           code: 'missing_property',
-          component,
+          component: type,
           property,
-          message: `${component}.${property} is required`,
+          message: `${type}.${property} is required`,
         });
       }
     }

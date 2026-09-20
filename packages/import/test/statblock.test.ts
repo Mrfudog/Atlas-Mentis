@@ -97,7 +97,7 @@ describe('parseStatblock', () => {
   it('keeps the original file verbatim and places every carried key', () => {
     for (const file of files) {
       const parsed = parseStatblock(read(file).text, file);
-      const raw = parsed.entity.components['RawContent'] as Record<string, unknown>;
+      const raw = parsed.entity.components['Base'] as Record<string, unknown>;
       expect(raw['imported']).toBe(read(file).text);
       expect(parsed.unplaced, `${file}: unplaced keys`).toEqual([]);
       expect(parsed.entity.name, `${file}: name`).toBeTruthy();
@@ -132,7 +132,7 @@ describe('importStatblocks', () => {
 
   it('classifies the section as the rule kind', () => {
     const report = importStatblocks([read('Ankheg Drone.md')]);
-    const kinds = report.rules.map((r) => (r.components['RuleInfo'] as Record<string, unknown>)['kind']);
+    const kinds = report.rules.map((r) => (r.components['Rule'] as Record<string, unknown>)['kind']);
     expect(kinds).toContain('trait');
     expect(kinds).toContain('action');
     expect(kinds).toContain('bonus');

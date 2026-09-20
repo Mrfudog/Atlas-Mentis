@@ -57,7 +57,7 @@ export class Liste {
     if (!q) return alle;
     return alle.filter((e) => {
       if (entityName(e).toLocaleLowerCase('de').includes(q)) return true;
-      const identity = e.components?.['Identity'] as { aliases?: string[] } | undefined;
+      const identity = e.components?.['Base'] as { aliases?: string[] } | undefined;
       return (identity?.aliases ?? []).some((a) => a.toLocaleLowerCase('de').includes(q));
     });
   });

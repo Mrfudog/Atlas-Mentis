@@ -12,7 +12,7 @@
  *   properties are pooled rule articles. Importing them as text would copy
  *   what should be shared — the same loss the old app's statblock export made.
  *
- * Whatever the importer cannot place is kept verbatim in `RawContent`
+ * Whatever the importer cannot place is kept verbatim in `Base.imported`
  * (REQ-019), so nothing is lost merely because this parser did not expect it.
  */
 
@@ -106,11 +106,17 @@ export function parseItem(text: string, filename: string): ImportedItem {
     if (target) pending.push({ relation: 'hasProperty', target });
   }
 
+  /* Eine Karte je Art: was `Base` erklärt, steht auf `Base`. */
   const components: Entity['components'] = {
-    Name: { text: name },
-    Identity: { key: `${slug(iface)}/${slug(name)}`, aliases: list(fm, 'aliases') },
-    Status: { value: 'used' },
-    RawContent: { imported: text, format: 'obsidian', importedAt: new Date().toISOString().slice(0, 10) },
+    Base: {
+      text: name,
+      key: `${slug(iface)}/${slug(name)}`,
+      aliases: list(fm, 'aliases'),
+      value: 'used',
+      imported: text,
+      format: 'obsidian',
+      importedAt: new Date().toISOString().slice(0, 10),
+    },
   };
 
   const itemInfo: Record<string, unknown> = {};
@@ -125,17 +131,17 @@ export function parseItem(text: string, filename: string): ImportedItem {
   if (copperPrice !== undefined) itemInfo['copperPrice'] = copperPrice;
   const stackSize = num(fm, 'Stapelgrösse');
   if (stackSize !== undefined) itemInfo['stackSize'] = stackSize;
-  if (Object.keys(itemInfo).length) components['ItemInfo'] = itemInfo;
+  if (Object.keys(itemInfo).length) components['Item'] = itemInfo;
 
   const rows = list(fm, 'Formfaktor');
-  if (rows.length) components['Footprint'] = { rows };
+  if (rows.length) components['Item'] = { ...(components['Item'] ?? {}), rows };
 
   if (iface === 'Weapon') {
     const weapon: Record<string, unknown> = {};
     if (str(fm, 'Schaden')) weapon['damage'] = str(fm, 'Schaden');
     if (str(fm, 'Schadenstyp')) weapon['damageType'] = str(fm, 'Schadenstyp');
     if (str(fm, 'Reichweite')) weapon['range'] = str(fm, 'Reichweite');
-    if (Object.keys(weapon).length) components['WeaponInfo'] = weapon;
+    if (Object.keys(weapon).length) components['Weapon'] = weapon;
   }
 
   if (iface === 'Armor') {
@@ -143,7 +149,7 @@ export function parseItem(text: string, filename: string): ImportedItem {
     const ac = num(fm, 'rüstungsklasse');
     if (ac !== undefined) armor['ac'] = ac;
     if (str(fm, 'rüstungstyp')) armor['armorType'] = str(fm, 'rüstungstyp');
-    if (Object.keys(armor).length) components['ArmorInfo'] = armor;
+    if (Object.keys(armor).length) components['Armor'] = armor;
   }
 
   if (iface === 'Material') {
@@ -151,10 +157,10 @@ export function parseItem(text: string, filename: string): ImportedItem {
     if (str(fm, 'Materialtyp')) material['materialType'] = str(fm, 'Materialtyp');
     const trades = list(fm, 'Berufe');
     if (trades.length) material['trades'] = trades;
-    if (Object.keys(material).length) components['MaterialInfo'] = material;
+    if (Object.keys(material).length) components['Material'] = material;
   }
 
-  if (images[0]) components['Image'] = { url: images[0], caption: '' };
+  if (images[0]) components['Base'] = { ...(components['Base'] ?? {}), url: images[0], caption: '' };
 
   // Prose that is neither the image embed nor the Dataview block.
   const prose = body

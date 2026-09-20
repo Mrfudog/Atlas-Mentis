@@ -875,7 +875,7 @@ var REG={interfaces:{},components:{},relations:{},vars:{},views:{},settings:{}};
 var assetStore=null, downloadNS=null;
 var UI={route:{k:"list"}, view:"quick", area:"", iface:"", tag:"", q:"", offen:false, pane:"main",
         regtab:"types", regiface:"", regcomp:"", regprop:"", regjson:false,
-        regview:"", regscope:"", regel:"", regcomp2:"", regrel:"",
+        regview:"", regscope:"", regel:"", regrel:"",
         trail:[], inline:false, editField:"", pick:false, picked:{}, status:"",
         aside:"rel", info:"", assetBusy:"",
         mapZoom:1, mapLock:false, mapKind:"", mapDrag:null, mapTool:"",
@@ -1076,7 +1076,7 @@ function linkCandidates(target,query,limit){
   ENT.forEach(function(e){
     if(!targetMatches(target,e))return;
     var name=nameOf(e).toLowerCase();
-    var aliases=(((e.components||{}).Identity||{}).aliases||[]).join(" ").toLowerCase();
+    var aliases=(((e.components||{}).Base||{}).aliases||[]).join(" ").toLowerCase();
     if(!q){ vorn.push(e); return; }
     if(name.indexOf(q)===0) vorn.push(e);
     else if(name.indexOf(q)>=0||aliases.indexOf(q)>=0) hinten.push(e);
@@ -1155,16 +1155,17 @@ function linkInput(pd,cur){
    Gefüllt werden nur Komponenten, die der Artikel schon trägt — also die,
    die seine Art verlangt. Eine Karte allein deshalb anzulegen, weil eines
    ihrer Felder einen Standard hat, brachte jedem Artikel eine
-   Sichtbarkeits-Karte, die niemand wollte: `default` im Schema heisst „falls
-   der Wert fehlt, gilt dieser", nicht „lege die Komponente an". Wer eine
-   Komponente auf jedem Artikel will, setzt sie an der Schnittstelle auf
-   Pflicht — dort steht die Entscheidung sichtbar. */
+   Sichtbarkeits-Karte, die niemand wollte. Seit die Felder der Art gehören,
+   stellt sich die Frage anders: eine Karte heisst nach der Art, und wer von
+   dieser Art ist, hat sie — leer oder gefüllt. Angelegt wird sie trotzdem
+   nur, wenn etwas drinsteht (siehe `reqFor`); `default` heisst weiter „falls
+   der Wert fehlt, gilt dieser". */
 function applyDefaults(e,ifn){
   e.components=e.components||{};
   compsFor(ifn).forEach(function(cn){
     var card=e.components[cn];
     if(!card)return;
-    var props=((REG.components[cn]||{}).schema||{}).properties||{};
+    var props=((REG.interfaces[cn]||{}).schema||{}).properties||{};
     Object.keys(props).forEach(function(k){
       if(props[k].derived||props[k]["default"]===undefined)return;
       if(card[k]===undefined) card[k]=props[k]["default"];
@@ -1181,7 +1182,7 @@ function applyDefaults(e,ifn){
 
    Die Id ist der haltbare Zeiger, nicht die Adresse: die Ablage-Adresse gilt
    je Ansicht, die Id für immer. Gespeichert wird deshalb die Id. */
-var ASSET_IFACE="Asset", ASSET_COMP="AssetInfo";
+var ASSET_IFACE="Asset", ASSET_COMP="Asset";
 function assetSrc(ref,tiefe){
   var t=String(ref==null?"":ref).trim();
   if(!t)return "";
@@ -1223,9 +1224,9 @@ function uploadAsset(file){
    zweimal dazuliegen. */
 function newAssetArticle(name,res){
   var e={ id:uid("as"), interfaces:[ASSET_IFACE], name:name, tags:[],
-    components:{ Name:{text:name}, Identity:{key:"asset/"+slug(name),aliases:[]} },
+    components:{ Base:{text:name,key:"asset/"+slug(name),aliases:[]} },
     adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
-  reqFor(ASSET_IFACE).forEach(function(c){ if(!e.components[c]&&REG.components[c]) e.components[c]={}; });
+  reqFor(ASSET_IFACE).forEach(function(c){ if(!e.components[c]&&REG.interfaces[c]) e.components[c]={}; });
   applyDefaults(e,ASSET_IFACE);
   e.components[ASSET_COMP]=Object.assign(e.components[ASSET_COMP]||{},{
     backend:"app", ref:res.id, mime:res.contentType||"", bytes:res.sizeBytes||0 });
@@ -1367,7 +1368,7 @@ function slug(s){return String(s||"").toLowerCase()
 function esc(s){return String(s==null?"":s);}
 /* Der gespeicherte Name. Zum Auflösen und zum Schreiben — nie zum Anzeigen,
    solange ein Deckname gelten könnte. */
-function rawName(e){return e&&(e.name||(e.components&&e.components.Name&&e.components.Name.text))||"Unnamed";}
+function rawName(e){return e&&(e.name||(e.components&&e.components.Base&&e.components.Base.text))||"Unnamed";}
 /* Der angezeigte Name (REQ-178). Ist der eigene Name von einer Information
    beansprucht, die dieser Betrachter nicht kennt, steht der Deckname da —
    und wenn keiner gesetzt ist, ein ehrliches „jemand".
@@ -1378,9 +1379,9 @@ function nameOf(e){
   if(!e)return "Unnamed";
   var echt=rawName(e);
   if(isGM())return echt;
-  var id=(e.components||{}).Identity||{};
+  var id=(e.components||{}).Base||{};
   if(!id.cover)return echt;
-  var frei=visibleRefs(e,["Name.text"]);
+  var frei=visibleRefs(e,["Base.text"]);
   return frei.length?echt:id.cover;
 }
 function byName(){return Array.from(ENT.values()).sort(function(a,b){
@@ -1389,20 +1390,33 @@ function byName(){return Array.from(ENT.values()).sort(function(a,b){
 /* ---------- registry access ---------- */
 function ifaceOf(e){ var n=(e.interfaces&&e.interfaces[0])||""; return REG.interfaces[n]||null; }
 function ifaceName(e){ var d=ifaceOf(e); return d?(d.label||d.name):((e.interfaces&&e.interfaces[0])||"—"); }
-// requires ∪ allows, walking `extends`
-function compsFor(name,seen){
-  var d=REG.interfaces[name]; if(!d)return [];
-  seen=seen||{}; if(seen[name])return []; seen[name]=1;
-  var out=[];
-  (d.extends||[]).forEach(function(p){ out=out.concat(compsFor(p,seen)); });
-  out=out.concat(d.requires||[],d.allows||[]);
-  return out.filter(function(c,i){return out.indexOf(c)===i && REG.components[c];});
+/* Die Arten, deren Felder hier gelten: diese und alle Obertypen. Das ist
+   zugleich die Liste der Karten, die ein Artikel tragen darf — eine Karte
+   heisst nach der Art, die ihre Felder erklärt. */
+function compsFor(name){
+  return selfAndAncestors(name).filter(function(n){ return REG.interfaces[n]; });
 }
-function reqFor(name,seen){
-  var d=REG.interfaces[name]; if(!d)return [];
-  seen=seen||{}; if(seen[name])return []; seen[name]=1;
-  var out=[]; (d.extends||[]).forEach(function(p){out=out.concat(reqFor(p,seen));});
-  return out.concat(d.requires||[]);
+/* Das Schema einer Art: ihre **eigenen** Felder, nicht die geerbten. */
+function schemaOf(n){
+  var d=REG.interfaces[n]||{};
+  return d.schema||{type:"object",properties:{}};
+}
+function propsOf(n){ return schemaOf(n).properties||{}; }
+/* Welche Karten ein neuer Artikel gleich bekommt: die, in denen etwas steht,
+   sobald er sie hat — ein Pflichtfeld oder ein Vorgabewert. Eine Karte ohne
+   beides bliebe leer, und eine leere Karte sagt nichts.
+
+   Früher entschied das `requires` an der Schnittstelle. Das gibt es nicht
+   mehr, und es taugte auch wenig: 13 von 18 Einträgen verlangten eine Karte
+   ohne ein einziges Pflichtfeld. */
+function reqFor(name){
+  return compsFor(name).filter(function(n){
+    var sc=schemaOf(n);
+    if((sc.required||[]).length) return true;
+    var props=sc.properties||{};
+    return Object.keys(props).some(function(k){
+      return !props[k].derived && props[k]["default"]!==undefined; });
+  });
 }
 function blockTypesFor(name){
   var d=REG.interfaces[name]; if(!d)return ["paragraph"];
@@ -1492,22 +1506,17 @@ function wouldCycle(n,parent){
   if(parent===n)return true;
   return ancestorsOf(parent).indexOf(n)>=0;
 }
-/* Woher eine Komponente an dieser Schnittstelle kommt, und wie sie dort steht. */
+/* Woher eine Karte an dieser Art kommt: aus ihr selbst oder von oben. */
 function compOrigin(ifn,comp){
-  var kette=selfAndAncestors(ifn);
-  for(var i=0;i<kette.length;i++){
-    var d=REG.interfaces[kette[i]]||{};
-    if((d.requires||[]).indexOf(comp)>=0) return {iface:kette[i],mode:"requires"};
-    if((d.allows||[]).indexOf(comp)>=0)   return {iface:kette[i],mode:"allows"};
-  }
-  return null;
+  if(ifn===comp) return {iface:comp,mode:"own"};
+  return ancestorsOf(ifn).indexOf(comp)>=0 ? {iface:comp,mode:"inherited"} : null;
 }
-/* Welche Schnittstellen eine Komponente nutzen — ein Feld zu ändern ändert es
-   bei allen. Das gehört hingeschrieben, bevor jemand es herausfindet. */
+/* Welche Arten die Felder dieser Art mitbekommen — eines davon zu ändern
+   ändert es bei allen. Das gehört hingeschrieben, bevor jemand es
+   herausfindet. */
 function ifacesUsing(comp){
   return Object.keys(REG.interfaces).filter(function(n){
-    var d=REG.interfaces[n];
-    return (d.requires||[]).indexOf(comp)>=0||(d.allows||[]).indexOf(comp)>=0;
+    return n!==comp && ancestorsOf(n).indexOf(comp)>=0;
   }).sort();
 }
 function countIface(n){
@@ -1543,25 +1552,27 @@ function checkArticle(e){
   if(!ifn||!REG.interfaces[ifn]){
     return [{t:"Unknown interface: "+(ifn||"(none)")}];
   }
-  var erlaubt={}; compsFor(ifn).forEach(function(c){erlaubt[c]=1;});
+  var kette=compsFor(ifn), erlaubt={};
+  kette.forEach(function(c){erlaubt[c]=1;});
 
-  reqFor(ifn).forEach(function(c){
-    if(!(e.components||{})[c]) problems.push({t:(REG.interfaces[ifn].label||ifn)+" requires the component "+((REG.components[c]||{}).label||c)});
+  /* Eine Karte, die keine Art dieses Artikels nennt, ist kein Tippfehler im
+     Register, sondern ein Wert ohne Erklärung: es gibt kein Feld, das ihn
+     beschreibt, und keine Ansicht, die ihn zeigt. */
+  Object.keys(e.components||{}).forEach(function(c){
+    if(!REG.interfaces[c]) problems.push({t:c+" is not a type in the registry"});
+    else if(!erlaubt[c]) problems.push({t:(REG.interfaces[ifn].label||ifn)+" does not inherit from "+(REG.interfaces[c].label||c)});
   });
 
-  Object.keys(e.components||{}).forEach(function(c){
-    if(!REG.components[c]) problems.push({t:"Component "+c+" is not in the registry"});
-    else if(!erlaubt[c]) problems.push({t:(REG.interfaces[ifn].label||ifn)+" does not allow the component "+(REG.components[c].label||c)+""});
-  });
-
-  Object.keys(e.components||{}).forEach(function(c){
-    var cd=REG.components[c]; if(!cd)return;
-    ((cd.schema||{}).required||[]).forEach(function(p){
+  /* Pflichtfelder gelten für die ganze Kette, auch wenn die Karte gar nicht
+     da ist: eine fehlende Karte ist kein leerer Wert, sondern derselbe. */
+  kette.forEach(function(c){
+    var cd=REG.interfaces[c]; if(!cd||!cd.schema)return;
+    (cd.schema.required||[]).forEach(function(p){
       var pd=(cd.schema.properties||{})[p];
       if(pd&&pd.derived)return;                       // abgeleitet wird nie gespeichert
-      var val=(e.components[c]||{})[p];
+      var val=((e.components||{})[c]||{})[p];
       if(val===undefined||val===""||val===null)
-        problems.push({t:(cd.label||c)+" · "+((pd&&pd.title)||p)+" is required"});
+        problems.push({t:(cd.label||c)+" \u00b7 "+((pd&&pd.title)||p)+" is required"});
     });
   });
 
@@ -1599,7 +1610,7 @@ function findByName(n){
     /* Aufgelöst wird gegen den gespeicherten Namen: ein Verweis muss auch
        dann ankommen, wenn der Betrachter nur den Decknamen sieht. */
     if(rawName(e).toLowerCase()===t){hit=id;return;}
-    var al=(e.components&&e.components.Identity&&e.components.Identity.aliases)||[];
+    var al=(e.components&&e.components.Base&&e.components.Base.aliases)||[];
     for(var i=0;i<al.length;i++) if(String(al[i]).toLowerCase()===t){hit=id;return;} });
   return hit;
 }
@@ -1811,12 +1822,12 @@ function renderRail(){
   var s3=el("section");
   s3.appendChild(el("h3",{text:"System"}));
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="types"),
-    title:"What each kind requires, carries, connects to and looks like",
+    title:"What each kind records, inherits, connects to and looks like",
     onclick:function(){ UI.regtab="types"; go({k:"reg"}); }},
     [el("b",{text:"Article types"}),el("em",{text:String(Object.keys(REG.interfaces).length)})]));
   s3.appendChild(el("button",{class:"navrow",type:"button",
     "aria-current":String(UI.route.k==="reg"&&UI.regtab!=="types"),
-    onclick:function(){ if(UI.regtab==="types") UI.regtab="components"; go({k:"reg"}); }},
+    onclick:function(){ if(UI.regtab==="types") UI.regtab="relations"; go({k:"reg"}); }},
     [el("b",{text:"Data model"}),el("em",{text:"def"})]));
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="graph"),
     onclick:function(){go({k:"graph"});}},[el("b",{text:"Graph"}),el("em",{text:"↔"})]));
@@ -1840,7 +1851,7 @@ function renderRail(){
      bauen heisst, sie nicht zu stellen. */
   var unfertig=0;
   ENT.forEach(function(x){
-    var st=((x.components||{}).Status||{}).value;
+    var st=((x.components||{}).Base||{}).value;
     if(st==="idea"||st==="planned") unfertig++;
   });
   s3.appendChild(el("button",{class:"navrow",type:"button",
@@ -1850,7 +1861,7 @@ function renderRail(){
     [el("b",{text:"Unfinished"}),el("em",{text:String(unfertig)})]));
   var offeneTodos=0;
   ENT.forEach(function(x){
-    ((((x.components||{}).Todos||{}).items)||[]).forEach(function(t){ if(!t.done) offeneTodos++; });
+    ((((x.components||{}).Base||{}).items)||[]).forEach(function(t){ if(!t.done) offeneTodos++; });
   });
   if(offeneTodos) s3.appendChild(el("button",{class:"navrow",type:"button",
     title:"Open the prep board of the first campaign or session",
@@ -1877,7 +1888,7 @@ function renderRail(){
    Artikelliste zu erreichen hiesse: mitten im Kampf suchen gehen.
 
    Was gerade läuft, steht **nicht hier**, sondern an der Sitzung
-   (`SessionState.activeMap`, `activeEncounter`, `activeScene`). Eine
+   (`Session.activeMap`, `activeEncounter`, `activeScene`). Eine
    zweite Stelle dafür wäre die, an der der Beamer eine andere Karte zeigt
    als der Laptop.
 
@@ -1885,20 +1896,27 @@ function renderRail(){
    zweiter Kartenzeichner „für den Tisch" wäre der, der als Erster nicht
    mehr kann, was der andere kann. */
 function playingSession(){
-  var beste=null;
+  /* Die jüngste Sitzung, an der etwas läuft — und erst wenn es keine gibt,
+     die jüngste überhaupt. Sonst übernimmt eine gerade angelegte, leere
+     Sitzung den Tisch, und Karte und Kampf sind weg, ohne dass jemand etwas
+     ausgeschaltet hätte. */
+  var beste=null, leer=null;
+  function neuer(a,b){ return (a.updatedAt||a.createdAt||"")>(b.updatedAt||b.createdAt||""); }
   ENT.forEach(function(e){
-    if(!(e.components||{}).SessionState)return;
+    var card=(e.components||{}).Session;
+    if(!card)return;
     if(!inStack(e)||!articleVisible(e))return;
-    var t=e.updatedAt||e.createdAt||"";
-    if(!beste||t>(beste.updatedAt||beste.createdAt||"")) beste=e;
+    var laeuft=card.activeMap||card.activeEncounter||card.activeScene;
+    if(laeuft){ if(!beste||neuer(e,beste)) beste=e; }
+    else if(!leer||neuer(e,leer)) leer=e;
   });
-  return beste;
+  return beste||leer;
 }
 /* Die Karte, auf die geschaut wird: die der Sitzung, sonst die, auf der die
    Gruppe steht, sonst die einzige. Drei Antworten auf dieselbe Frage, in
    der Reihenfolge, in der sie jemand gemeint hat. */
 function playMap(ses){
-  var card=(ses&&(ses.components||{}).SessionState)||{};
+  var card=(ses&&(ses.components||{}).Session)||{};
   var m=card.activeMap&&ENT.get(card.activeMap);
   if(m&&articleVisible(m))return m;
   var p=theParty(), ids={};
@@ -1924,14 +1942,14 @@ function playBoards(){
    gestellt wird sie hier, weil hier jemand sitzt, der sie stellen will. */
 function setPlaying(ses,feld,id){
   if(!ses)return;
-  var card=(ses.components||{}).SessionState||{};
+  var card=(ses.components||{}).Session||{};
   var patch={}; patch[feld]=id||undefined;
   ses.components=ses.components||{};
-  ses.components.SessionState=Object.assign({},card,patch);
+  ses.components.Session=Object.assign({},card,patch);
   persist(ses);
 }
 function playPicker(ses,feld,label,arten){
-  var card=(ses&&(ses.components||{}).SessionState)||{};
+  var card=(ses&&(ses.components||{}).Session)||{};
   var sel=el("select",{class:"i",style:"width:auto",title:label});
   sel.appendChild(el("option",{value:""},"— "+label.toLowerCase()+" —"));
   byName().forEach(function(c){
@@ -1947,7 +1965,7 @@ function playPicker(ses,feld,label,arten){
 var PLAY_TABS=[["map","Map"],["board","Boards"]];
 function renderPlay(v){
   var ses=playingSession();
-  var card=(ses&&(ses.components||{}).SessionState)||{};
+  var card=(ses&&(ses.components||{}).Session)||{};
 
   var head=el("div",{class:"listhead"});
   head.appendChild(el("h2",{text:"At the table"}));
@@ -2076,7 +2094,7 @@ function matches(e){
      Leiste steht und in der Liste fehlt. */
   if(UI.area && areaOf((e.interfaces||[])[0])!==UI.area) return false;
   if(UI.tag && (e.tags||[]).indexOf(UI.tag)<0) return false;
-  if(UI.status && (((e.components||{}).Status||{}).value)!==UI.status) return false;
+  if(UI.status && (((e.components||{}).Base||{}).value)!==UI.status) return false;
   if(UI.q){
     var hay=(nameOf(e)+" "+(e.tags||[]).join(" ")+" "+
       (e.blocks||[]).map(function(b){return b.body;}).join(" ")+" "+
@@ -2086,7 +2104,7 @@ function matches(e){
   return true;
 }
 function summary(e){
-  var d=e.components&&e.components.Description&&e.components.Description.raw;
+  var d=e.components&&e.components.Base&&e.components.Base.raw;
   if(d)return d;
   var b=(e.blocks||[]).filter(function(x){return x.blockType!=="secret";})[0];
   return b?b.body:"";
@@ -2134,7 +2152,7 @@ function renderList(v){
     if(UI.pick) t.appendChild(el("span",{class:"tick",text:UI.picked[e.id]?"\u2713":"\u00b7"}));
     t.appendChild(el("span",{class:"rn",text:nameOf(e)}));
     t.appendChild(el("span",{class:"pill",text:ifaceName(e)}));
-    var st=e.components&&e.components.Status&&e.components.Status.value;
+    var st=e.components&&e.components.Base&&e.components.Base.value;
     if(st) t.appendChild(el("span",{class:"pill q",text:st}));
     (e.tags||[]).slice(0,3).forEach(function(tg){ t.appendChild(el("span",{class:"pill q",text:"#"+tg})); });
     var pr=checkArticle(e);
@@ -2142,7 +2160,7 @@ function renderList(v){
       text:"\u25cf "+pr.length}));
     row.appendChild(t);
     if(vw.image){
-      var b=e.components&&e.components.Image&&e.components.Image.url;
+      var b=e.components&&e.components.Base&&e.components.Base.url;
       if(b) row.appendChild(el("img",{class:"thumb",src:b,alt:"",loading:"lazy"}));
     }
     if(vw.description!==false&&summary(e))
@@ -2169,7 +2187,7 @@ function renderArticle(v,id){
   var head=el("div",{class:"arthead"});
   var kick=el("div",{class:"kicker"});
   kick.appendChild(el("span",{class:"pill",text:ifaceName(e)}));
-  var st=e.components&&e.components.Status&&e.components.Status.value;
+  var st=e.components&&e.components.Base&&e.components.Base.value;
   if(st) kick.appendChild(el("span",{class:"pill q",text:st}));
   if(canWrite()&&(UI.inline||UI.editField==="__tags")){
     var tgIn=el("input",{class:"i",type:"text",value:(e.tags||[]).join(", "),
@@ -2195,7 +2213,10 @@ function renderArticle(v,id){
     var nmIn=el("input",{class:"i",type:"text",value:nameOf(e),style:"font-family:var(--ff-disp);font-size:26px"});
     nmIn.addEventListener("change",function(){
       var neu=nmIn.value.trim(); if(!neu||neu===nameOf(e)){ if(!UI.inline)UI.editField=""; render(); return; }
-      e.name=neu; e.components=e.components||{}; e.components.Name={text:neu};
+      e.name=neu; e.components=e.components||{};
+      /* Nur das Feld setzen: `Base` trägt seit der Auflösung auch Stand,
+         Beschreibung und Bild — die ganze Karte zu ersetzen warf sie weg. */
+      e.components.Base=Object.assign({},e.components.Base||{},{text:neu});
       if(!UI.inline) UI.editField="";
       persist(e);
     });
@@ -2210,7 +2231,7 @@ function renderArticle(v,id){
       h2.addEventListener("click",function(){ UI.editField="__name"; render(); }); }
     head.appendChild(h2);
   }
-  var ik=e.components&&e.components.Identity&&e.components.Identity.key;
+  var ik=e.components&&e.components.Base&&e.components.Base.key;
   if(ik) head.appendChild(el("div",{class:"key",text:ik}));
   var herkunft=stackChip(e);
   if(herkunft) head.appendChild(herkunft);
@@ -2291,7 +2312,7 @@ function filterBar(){
   tag.addEventListener("change",function(){ UI.tag=tag.value; UI.route={k:"list"}; render(); });
   bar.appendChild(tag);
 
-  var stProp=(((REG.components.Status||{}).schema||{}).properties||{}).value;
+  var stProp=(((REG.interfaces.Base||{}).schema||{}).properties||{}).value;
   var st=el("select",{class:"i"});
   st.appendChild(el("option",{value:""},"any status"));
   ((stProp&&stProp["enum"])||["idea","planned","used","discarded"]).forEach(function(o){
@@ -2366,7 +2387,7 @@ function bulkBar(list){
   }},"− tags"));
 
   /* Stand */
-  var stEnum=(((REG.components.Status||{}).schema||{}).properties||{}).value;
+  var stEnum=(((REG.interfaces.Base||{}).schema||{}).properties||{}).value;
   var stSel=el("select",{class:"i",style:"width:auto"});
   stSel.appendChild(el("option",{value:""},"set status…"));
   ((stEnum&&stEnum["enum"])||["idea","planned","used","discarded"]).forEach(function(o){
@@ -2375,7 +2396,8 @@ function bulkBar(list){
     if(!stSel.value)return;
     var val=stSel.value; stSel.value="";
     durch("Status set to “"+val+"”",function(e){
-      e.components=e.components||{}; e.components.Status={value:val}; });
+      e.components=e.components||{};
+      e.components.Base=Object.assign({},e.components.Base||{},{value:val}); });
   });
   bar.appendChild(stSel);
 
@@ -2404,7 +2426,7 @@ function bulkBar(list){
     confirmDialog(frage,function(){
       durch("Type changed",function(e){
         e.interfaces=[ifn];
-        reqFor(ifn).forEach(function(c){ if(!e.components[c]&&REG.components[c]) e.components[c]={}; });
+        reqFor(ifn).forEach(function(c){ if(!e.components[c]&&REG.interfaces[c]) e.components[c]={}; });
       });
     },"Change");
   });
@@ -2428,7 +2450,7 @@ function bulkBar(list){
   return bar;
 }
 
-var BULK_TABU={"Name.text":1,"Identity.key":1};
+var BULK_TABU={"Base.text":1,"Base.key":1};
 /* Nur Felder anbieten, die alle Gewählten überhaupt führen können — sonst
    stellt man etwas ein, das bei der Hälfte nirgends ankommt. */
 function bulkFieldDialog(betroffen,durch){
@@ -2437,7 +2459,7 @@ function bulkFieldDialog(betroffen,durch){
     var ifn=(e.interfaces||[])[0]||"";
     var hier={};
     compsFor(ifn).forEach(function(cn){
-      var props=((REG.components[cn]||{}).schema||{}).properties||{};
+      var props=((REG.interfaces[cn]||{}).schema||{}).properties||{};
       Object.keys(props).forEach(function(k){
         if(props[k].derived)return;
         /* Name und Identitätsschlüssel sind nicht Eigenschaft, sondern
@@ -2463,7 +2485,7 @@ function bulkFieldDialog(betroffen,durch){
     }
     var sel=el("select",{class:"i"});
     refs.forEach(function(r){
-      var teil=r.split("."), cd=REG.components[teil[0]]||{};
+      var teil=r.split("."), cd=REG.interfaces[teil[0]]||{};
       var pd=((cd.schema||{}).properties||{})[teil[1]]||{};
       sel.appendChild(el("option",{value:r},(cd.label||teil[0])+" · "+(pd.title||teil[1])));
     });
@@ -2473,7 +2495,7 @@ function bulkFieldDialog(betroffen,durch){
     function zeigeEingang(){
       halter.textContent="";
       var teil=sel.value.split(".");
-      var pd=((REG.components[teil[0]].schema||{}).properties||{})[teil[1]];
+      var pd=((REG.interfaces[teil[0]].schema||{}).properties||{})[teil[1]];
       var node=fieldInput(pd,undefined);
       halter.appendChild(field("Value",node));
       halter.__node=node; halter.__pd=pd; halter.__ref=teil;
@@ -2676,7 +2698,7 @@ function renderLayoutItem(item,e,ifn,vw){
 }
 
 function elImage(e){
-  var img=(e.components||{}).Image;
+  var img=(e.components||{}).Base;
   if(!img)return null;
   var src=assetSrc(img.ref||img.url);
   if(!src)return null;
@@ -2687,7 +2709,7 @@ function elImage(e){
 }
 
 function elDescription(e){
-  var desc=((e.components||{}).Description||{}).raw;
+  var desc=((e.components||{}).Base||{}).raw;
   return desc?para(fillVars(desc,null,e)):null;
 }
 
@@ -2711,7 +2733,7 @@ function fieldPlan(e,ifn,want,ausser){
   var cells=[];
   compsFor(ifn).forEach(function(cn){
     if(cn==="Name"||cn==="Identity"||cn==="Vars")return;
-    var cd=REG.components[cn]; if(!cd)return;
+    var cd=REG.interfaces[cn]; if(!cd)return;
     var val=(e.components||{})[cn]; if(!val)return;
     var props=(cd.schema&&cd.schema.properties)||{};
     /* a derived field with `of` rides in its base field's cell: 16 (+3) */
@@ -2731,7 +2753,7 @@ function fieldPlan(e,ifn,want,ausser){
         if(dv!=="") txt+=" ("+dv+")";
       });
       cells.push({cn:cn,p:p,pd:pd,val:val,txt:txt,ref:cn+"."+p,
-        label:(REG.components[cn].label||cn)+" · "+(pd.title||p)});
+        label:(REG.interfaces[cn].label||cn)+" · "+(pd.title||p)});
     });
   });
   /* Der Wissensfilter sitzt hier, weil hier die Feldauswahl entsteht:
@@ -2824,7 +2846,7 @@ function elComposed(e){
       tn.appendChild(el("button",{class:"ref",type:"button",onclick:function(){go({k:"art",id:t.id});}},
         (r.props&&r.props.vars&&r.props.vars.NAME)||nameOf(t)));
       box.appendChild(tn);
-      var body=((t.components||{}).Description||{}).raw||((t.blocks||[])[0]&&t.blocks[0].body)||"";
+      var body=((t.components||{}).Base||{}).raw||((t.blocks||[])[0]&&t.blocks[0].body)||"";
       /* Reihenfolge nach REQ-174: Bindung an der Kante → der *nutzende*
          Artikel → Kampagnenregister. Der Statblock trägt DC=12, nicht die
          Regel — gegen die Regel aufzulösen lässt {DC} stehen. */
@@ -2869,7 +2891,7 @@ function elRelations(e){
    wie bei abgeleiteten Werten (D8). Sie sitzt in `articleVisible` und
    `resolveArticle`, also an denselben zwei Stellen wie Sichtbarkeit und
    Wissen; wer eine dritte Stelle bräuchte, hätte das Modell verfehlt. */
-var LAYER_IFACE="Layer", LAYER_COMP="LayerInfo",
+var LAYER_IFACE="Layer", LAYER_COMP="Layer",
     REL_INLAYER="inLayer", REL_ACTIVATES="activates",
     REL_OVERRIDES="overrides", REL_VARIANT="variantOf";
 
@@ -3122,7 +3144,7 @@ function elStack(e,ifn,item){
 
    Angeordnet wird von selbst — nach Abstand vom Standort. Koordinaten je
    Knoten zu speichern hiesse, sie bei jeder neuen Kante nachzuziehen. */
-var EXPL_COMP="Explored", TRAVEL_COMP="TravelInfo", REL_ROUTE="route";
+var EXPL_COMP="Place", TRAVEL_COMP="Party", REL_ROUTE="route";
 var EXPL_STATES=[["hidden","Hidden"],["discovered","Known of"],["explored","Been there"]];
 
 function explOf(e){ return ((e.components||{})[EXPL_COMP]||{}).state||"hidden"; }
@@ -3418,7 +3440,7 @@ function elCrawl(e,ifn,item){
    ein Satz landet als Punkt am Artikel, vor dem man gerade steht — ohne
    die Ansicht zu verlassen. Wer dafür erst irgendwohin springen muss,
    notiert es nicht. */
-var TODO_COMP="Todos";
+var TODO_COMP="Base";
 
 function todosOf(e){
   var c=(e.components||{})[TODO_COMP]||{};
@@ -3483,12 +3505,11 @@ function elPrep(e,ifn,item){
         var t=qi.value.trim(); if(!t)return;
         var neu={ id:uid("id"), interfaces:[REG.interfaces.Article?"Article":ifn],
           name:t.slice(0,60), tags:["idee"],
-          components:{ Name:{text:t.slice(0,60)},
-            Identity:{key:"idea/"+slug(t).slice(0,40),aliases:[]},
-            Status:{value:"idea"}, Description:{raw:t} },
+          components:{ Base:{text:t.slice(0,60),key:"idea/"+slug(t).slice(0,40),
+            aliases:[],value:"idea",raw:t} },
           adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
         reqFor(neu.interfaces[0]).forEach(function(c){
-          if(!neu.components[c]&&REG.components[c]) neu.components[c]={}; });
+          if(!neu.components[c]&&REG.interfaces[c]) neu.components[c]={}; });
         applyDefaults(neu,neu.interfaces[0]);
         ENT.set(neu.id,neu); persist(neu);
         qi.value="";
@@ -3510,7 +3531,7 @@ function elPrep(e,ifn,item){
         var row=el("div",{class:"crowlite"});
         row.appendChild(el("button",{class:"ref",type:"button",
           onclick:function(){go({k:"art",id:x.art.id});}},nameOf(x.art)));
-        var st=((x.art.components||{}).Status||{}).value;
+        var st=((x.art.components||{}).Base||{}).value;
         if(st&&st!=="used") row.appendChild(el("span",{class:"pill q",text:st}));
         var off=todosOf(x.art).filter(function(t){return !t.done;}).length;
         if(off) row.appendChild(el("span",{class:"co",text:off+" open"}));
@@ -3572,7 +3593,7 @@ function elPrep(e,ifn,item){
   var unfertig=[];
   ENT.forEach(function(o){
     if(!articleVisible(o))return;
-    var st=((o.components||{}).Status||{}).value;
+    var st=((o.components||{}).Base||{}).value;
     if(st==="idea"||st==="planned") unfertig.push({e:o,st:st});
   });
   unfertig.sort(function(a,b){
@@ -3600,7 +3621,7 @@ function elPrep(e,ifn,item){
         sel.value=x.st;
         sel.addEventListener("change",function(){
           x.e.components=x.e.components||{};
-          x.e.components.Status=Object.assign({},x.e.components.Status||{},{value:sel.value});
+          x.e.components.Base=Object.assign({},x.e.components.Base||{},{value:sel.value});
           persist(x.e);
         });
         row.appendChild(sel);
@@ -3628,7 +3649,7 @@ function elPrep(e,ifn,item){
    Eine Tabelle darf in einer Tabelle stehen. Das braucht genau einen
    Zyklusschutz und sonst nichts: wer A → B → A legt, bekommt keinen
    Absturz, sondern ein Ende. */
-var TABLE_IFACE="Table", TABLE_COMP="TableInfo",
+var TABLE_IFACE="Table", TABLE_COMP="Table",
     REL_ENTRY="entry", REL_TABLEFOR="tableFor";
 
 /* Alle Einträge, Kanten und Feldzeilen in einer Liste. Die Reihenfolge ist
@@ -3882,7 +3903,7 @@ function addTableEntry(e){
    Was auf dem Brett *steht*, entscheidet das Wissen: ein Auftrag, dessen
    Informationen du nicht kennst, steht als Gerücht da, nicht als Zeile mit
    Belohnung. Das Wissensmodell aus A6 trägt auch hier. */
-var QUEST_IFACE="Quest", QUEST_COMP="QuestInfo";
+var QUEST_IFACE="Quest", QUEST_COMP="Quest";
 var QUEST_STATES=[
   ["rumoured","Rumoured"],["offered","Offered"],["accepted","Running"],
   ["done","Done"],["failed","Failed"],["abandoned","Dropped"]
@@ -4009,7 +4030,7 @@ function elQuests(e,ifn,item){
 function worldDated(){
   var out=[];
   ENT.forEach(function(o){
-    var wd=(o.components||{}).WorldDate;
+    var wd=(o.components||{}).Base;
     if(!wd)return;
     if(wd.sort===undefined&&!wd.display)return;
     out.push({e:o,wd:wd,sort:Number(wd.sort)});
@@ -4026,7 +4047,7 @@ function elTimeline(e,ifn,item){
   var alle=worldDated();
   if(!alle.length){
     wrap.appendChild(el("p",{class:"hint",
-      text:"Nothing carries a world date yet. Give an article a WorldDate card — `sort` orders it, `display` is what gets read out."}));
+      text:"Nothing carries a world date yet. Fill `sort` and `display` on an article — `sort` orders it, `display` is what gets read out."}));
     return wrap;
   }
   var kal=setting("calendar","");
@@ -4038,7 +4059,7 @@ function elTimeline(e,ifn,item){
     b.appendChild(el("button",{class:"ref",type:"button",
       onclick:function(){go({k:"art",id:x.e.id});}},nameOf(x.e)));
     b.appendChild(el("span",{class:"pill q",text:ifaceName(x.e)}));
-    var d=((x.e.components||{}).Description||{}).raw;
+    var d=((x.e.components||{}).Base||{}).raw;
     if(d) b.appendChild(para(fillVars(d,null,x.e),"co"));
     if(x.wd.duration) b.appendChild(el("span",{class:"co",text:x.wd.duration}));
     row.appendChild(b);
@@ -4063,7 +4084,7 @@ function elTimeline(e,ifn,item){
    **Angeheftete Regeln** (REQ-099) liegen im eigenen Bereich des Nutzers —
    `data/users/me` ist je Betrachter privat. Ein Merkzettel, den alle sehen,
    ist keiner. */
-var RULE_IFACE="Rule", RULE_COMP="RuleInfo";
+var RULE_IFACE="Rule", RULE_COMP="Rule";
 var pinned=[], pinsLoaded=false;
 
 function ruleArticles(){
@@ -4077,7 +4098,7 @@ function ruleArticles(){
   return out;
 }
 function ruleText(e){
-  var d=((e.components||{}).Description||{}).raw;
+  var d=((e.components||{}).Base||{}).raw;
   if(d)return d;
   var b=(e.blocks||[])[0];
   return b?b.body:"";
@@ -4092,7 +4113,7 @@ function rebuildRuleIndex(){
     if(((e.interfaces||[])[0])!==RULE_IFACE)return;
     var info=(e.components||{})[RULE_COMP]||{};
     if(info.autolink===false)return;
-    var id=(e.components||{}).Identity||{};
+    var id=(e.components||{}).Base||{};
     var namen=[rawName(e)].concat(Array.isArray(id.aliases)?id.aliases:[]);
     namen.forEach(function(n){
       var t=String(n||"").trim();
@@ -4267,7 +4288,7 @@ function renderRules(v){
       if(UI.ruleKind&&(((e.components||{})[RULE_COMP]||{}).kind||"—")!==UI.ruleKind)return false;
       if(!q)return true;
       if(nameOf(e).toLowerCase().indexOf(q)>=0)return true;
-      var al=((e.components||{}).Identity||{}).aliases||[];
+      var al=((e.components||{}).Base||{}).aliases||[];
       if(al.some(function(a){return String(a).toLowerCase().indexOf(q)>=0;}))return true;
       return ruleText(e).toLowerCase().indexOf(q)>=0;
     });
@@ -4356,7 +4377,7 @@ function exportState(){
   return {
     format:"nebelwacht/1",
     at:new Date().toISOString(),
-    registry:{interfaces:REG.interfaces,components:REG.components,
+    registry:{interfaces:REG.interfaces,components:REG.interfaces,
       relations:REG.relations,views:REG.views,vars:REG.vars,settings:REG.settings},
     entities:ents
   };
@@ -4401,7 +4422,7 @@ function importReport(daten){
   if(!Array.isArray(daten.entities))
     r.fehler.push("No entities in the file.");
   if(r.fehler.length)return r;
-  ["interfaces","components","relations","views","vars","settings"].forEach(function(t){
+  ["interfaces","relations","views","vars","settings"].forEach(function(t){
     if(daten.registry[t]&&typeof daten.registry[t]==="object")
       r.teile.push(t+" ("+Object.keys(daten.registry[t]).length+")");
   });
@@ -4420,7 +4441,7 @@ function importReport(daten){
 }
 function applyImport(daten,loeschen,melde){
   var reg=daten.registry||{};
-  ["interfaces","components","relations","views","vars","settings"].forEach(function(t){
+  ["interfaces","relations","views","vars","settings"].forEach(function(t){
     if(reg[t]&&typeof reg[t]==="object"){ REG[t]=thawed(reg[t]); saveReg(t); }
   });
   var drin={};
@@ -4454,7 +4475,7 @@ function renderBackupEditor(v){
   var stand=exportState();
   bar.appendChild(el("span",{class:"hint",style:"margin:0;align-self:center",
     text:stand.entities.length+" articles · "+
-      Object.keys(REG.components||{}).length+" components · "+
+
       Object.keys(REG.interfaces||{}).length+" interfaces · "+
       Object.keys(REG.relations||{}).length+" relation types"}));
   v.appendChild(bar);
@@ -4596,7 +4617,7 @@ function addPing(p){
 }
 
 function elLive(e,ifn,item){
-  var card=(e.components||{}).SessionState||{};
+  var card=(e.components||{}).Session||{};
   var wrap=el("div",{class:"live"});
   var darf=isGM()||card.stewardship==="table";
 
@@ -4644,7 +4665,7 @@ function elLive(e,ifn,item){
       sel.addEventListener("change",function(){
         var patch={}; patch[f[0]]=sel.value||undefined;
         e.components=e.components||{};
-        e.components.SessionState=Object.assign({},card,patch);
+        e.components.Session=Object.assign({},card,patch);
         persist(e);
       });
       rv.appendChild(sel);
@@ -4661,7 +4682,7 @@ function elLive(e,ifn,item){
       placeholder:"What is playing — a link or a name"});
     npi.addEventListener("change",function(){
       e.components=e.components||{};
-      e.components.SessionState=Object.assign({},card,{nowPlaying:npi.value});
+      e.components.Session=Object.assign({},card,{nowPlaying:npi.value});
       persist(e); });
     np.appendChild(npi);
   } else np.appendChild(el("span",{class:"rv",text:card.nowPlaying||"—"}));
@@ -4673,7 +4694,7 @@ function elLive(e,ifn,item){
     ta.value=card.partyNote||"";
     ta.addEventListener("change",function(){
       e.components=e.components||{};
-      e.components.SessionState=Object.assign({},card,{partyNote:ta.value});
+      e.components.Session=Object.assign({},card,{partyNote:ta.value});
       persist(e); });
     wrap.appendChild(ta);
   } else wrap.appendChild(para(card.partyNote||"—"));
@@ -4686,7 +4707,7 @@ function elLive(e,ifn,item){
       st.appendChild(el("button",{class:"btn sm"+((card.stewardship||"gm")===o[0]?" pri":""),
         type:"button",onclick:function(){
           e.components=e.components||{};
-          e.components.SessionState=Object.assign({},card,{stewardship:o[0]});
+          e.components.Session=Object.assign({},card,{stewardship:o[0]});
           persist(e); }},o[1]));
     });
     wrap.appendChild(st);
@@ -4793,7 +4814,7 @@ function rollButton(label,ausdruck,titel){
    `round` und `turn` liegen vorläufig an der Begegnung. Richtig wären
    Sitzungszustände mit Echtzeitkanal (REQ-116); das ist die Stelle, die
    dann umzieht. */
-var ENC_IFACE="Encounter", ENC_COMP="EncounterInfo",
+var ENC_IFACE="Encounter", ENC_COMP="Encounter",
     REL_PART="participates", REL_ONMAP="onMap", REL_LOOT="loot";
 
 function encCard(e){ return (e.components||{})[ENC_COMP]||{}; }
@@ -5117,7 +5138,7 @@ function addParticipants(e){
    Das ist kein Rückfall: ein Rechteck zeigt auf nichts. Ein Token zeigt auf
    einen Artikel, deshalb ist es eine Kante; eine Linie, die zwei Kästen
    umfasst, ist Zeichnung und gehört dem Board. */
-var BOARD_IFACE="Board", BOARD_COMP="BoardInfo", REL_PLACED="placed";
+var BOARD_IFACE="Board", BOARD_COMP="Board", REL_PLACED="placed";
 var SHAPE_KINDS=[["rect","Rectangle"],["ellipse","Ellipse"],["line","Line"],["label","Label"]];
 
 function boardCard(e){ return (e.components||{})[BOARD_COMP]||{}; }
@@ -5394,10 +5415,10 @@ function newOnBoard(e){
       var name=nm.value.trim(); if(!name){nm.focus();return false;}
       var ifn2=sel.value;
       var neu={ id:uid("e"), interfaces:[ifn2], name:name, tags:[],
-        components:{ Name:{text:name}, Identity:{key:slug(ifn2)+"/"+slug(name),aliases:[]} },
+        components:{ Base:{text:name,key:slug(ifn2)+"/"+slug(name),aliases:[]} },
         adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
-      if(tx.value.trim()) neu.components.Description={raw:tx.value.trim()};
-      reqFor(ifn2).forEach(function(c){ if(!neu.components[c]&&REG.components[c]) neu.components[c]={}; });
+      if(tx.value.trim()) neu.components.Base=Object.assign({},neu.components.Base||{},{raw:tx.value.trim()});
+      reqFor(ifn2).forEach(function(c){ if(!neu.components[c]&&REG.interfaces[c]) neu.components[c]={}; });
       applyDefaults(neu,ifn2);
       ENT.set(neu.id,neu); persist(neu);
       var n=(e.relations||[]).filter(function(r){return r.type===REL_PLACED;}).length;
@@ -5439,7 +5460,7 @@ function addAnchor(e,wrap){
    `knownBy` an Figuren; ein Feld „bekannt von" am Rezept wäre ein zweites,
    schwächeres Wissensmodell neben dem vorhandenen. Ein Rezept ohne
    Information liegt offen — dieselbe Regel wie überall sonst. */
-var RECIPE_IFACE="Recipe", RECIPE_COMP="RecipeInfo",
+var RECIPE_IFACE="Recipe", RECIPE_COMP="Recipe",
     REL_NEEDS="needs", REL_YIELDS="yields";
 
 function recipeNeeds(r){
@@ -6026,10 +6047,10 @@ function carriedItems(e){
   });
   return out;
 }
-/* Die Form eines Gegenstands im Raster. Ohne `Footprint` ist er ein Feld
+/* Die Form eines Gegenstands im Raster. Ohne `rows` ist er ein Feld
    gross — das ist kein Sonderfall, sondern der Normalfall. */
 function footprintOf(it){
-  var fp=(it.components||{}).Footprint||{};
+  var fp=(it.components||{}).Item||{};
   var rows=Array.isArray(fp.rows)?fp.rows.map(String):
     (typeof fp.rows==="string"?fp.rows.split("\n"):[]);
   if(!rows.length)return {rows:["1"],w:1,h:1};
@@ -6157,7 +6178,7 @@ function elInventory(e,ifn,item){
   });
   if(canWrite()) tabs.appendChild(el("button",{class:"btn sm",type:"button",
     onclick:function(){ addToInventory(inv); }},"+ Item"));
-  var geld=(inv.components||{}).InventoryInfo||{};
+  var geld=(inv.components||{}).Inventory||{};
   if(geld.copper!=null) tabs.appendChild(el("span",{class:"hint",style:"margin:0",
     text:geld.copper+" cp"}));
   wrap.appendChild(tabs);
@@ -6259,7 +6280,7 @@ function elInventory(e,ifn,item){
   if(UI.invView==="grid"){
     /* Das Kachelraster (REQ-065). Dieselben Daten wie oben — was hier liegt,
        liegt auch in einer Stufe; das Raster sagt nur, *wo* im Rucksack.
-       Die Form kommt aus `Footprint`, das der Import schon füllt. */
+       Die Form kommt aus `Item.rows`, das der Import schon füllt. */
     var size=invSize();
     var g=el("div",{class:"invgrid"+(gewaehlt?" picking":"")});
     g.style.gridTemplateColumns="repeat("+size.cols+",1fr)";
@@ -6319,9 +6340,9 @@ function elInventory(e,ifn,item){
 function newInventory(e){
   var name=nameOf(e)+" — gear";
   var inv={ id:uid("inv"), interfaces:[INV_IFACE], name:name, tags:[],
-    components:{ Name:{text:name}, Identity:{key:"inventory/"+slug(name),aliases:[]} },
+    components:{ Base:{text:name,key:"inventory/"+slug(name),aliases:[]} },
     adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
-  reqFor(INV_IFACE).forEach(function(c){ if(!inv.components[c]&&REG.components[c]) inv.components[c]={}; });
+  reqFor(INV_IFACE).forEach(function(c){ if(!inv.components[c]&&REG.interfaces[c]) inv.components[c]={}; });
   applyDefaults(inv,INV_IFACE);
   ENT.set(inv.id,inv);
   persist(inv);
@@ -6418,9 +6439,9 @@ function modOf(card,attr){
   return isFinite(n)?Math.floor((n-10)/2):0;
 }
 function profOf(e){
-  var ch=(e.components||{}).CharacterInfo||{};
+  var ch=(e.components||{}).PlayerCharacter||{};
   if(ch.level!==undefined){
-    var pd=((REG.components.CharacterInfo||{}).schema||{}).properties||{};
+    var pd=((REG.interfaces.PlayerCharacter||{}).schema||{}).properties||{};
     var d=pd.proficiency&&derivedValue(pd.proficiency,ch);
     if(d!==undefined)return d;
   }
@@ -6474,7 +6495,7 @@ function elSheet(e,ifn,item){
   var st=statsOf(e), sb=st.card;
   var vit=(e.components||{})[VIT_COMP]||{};
   var sk=(e.components||{})[SKILL_COMP]||{};
-  var ch=(e.components||{}).CharacterInfo||{};
+  var ch=(e.components||{}).PlayerCharacter||{};
   var prof=profOf(e);
   var wrap=el("div",{class:"sheet"});
 
@@ -6634,7 +6655,7 @@ function elSheet(e,ifn,item){
   wrap.appendChild(sg);
 
   /* ---- Angriffe: was getragen wird, nicht was eingetippt wurde ---- */
-  var waffen=carriedItems(e).filter(function(x){ return (x.item.components||{}).WeaponInfo; });
+  var waffen=carriedItems(e).filter(function(x){ return (x.item.components||{}).Weapon; });
   if(waffen.length){
     wrap.appendChild(el("div",{class:"sec",text:"Attacks"}));
     var tb=el("table",{class:"atk"});
@@ -6642,7 +6663,7 @@ function elSheet(e,ifn,item){
     ["Weapon","Where","To hit","Damage","Notes"].forEach(function(h){ hd.appendChild(el("th",{text:h})); });
     tb.appendChild(hd);
     waffen.forEach(function(w){
-      var wi=(w.item.components||{}).WeaponInfo||{};
+      var wi=(w.item.components||{}).Weapon||{};
       var fern=/fern|ranged|wurf|thrown/i.test(String(wi.range||"")+" "+String(wi.Properties||""));
       var attr=fern?"dex":"str";
       /* Finesse nimmt den besseren der beiden — dieselbe Regel wie am Tisch. */
@@ -6678,7 +6699,7 @@ function elSheet(e,ifn,item){
    darf dadurch ersetzt, verkleinert oder neu ausgeschnitten werden, ohne
    dass jeder Marker wandert — und dieselbe Karte trägt auf dem Telefon und
    am Bildschirm dieselben Stellen. */
-var MAP_IFACE="Map", MAP_COMP="MapInfo",
+var MAP_IFACE="Map", MAP_COMP="Map",
     REL_MARKER="marker", REL_MAPOF="mapOf", REL_INSIDE="insideMap";
 
 var TOKEN_KINDS=[
@@ -6775,7 +6796,7 @@ function natOf(src){ return mapNat[src]||null; }
    was von aussen kommt — eine Adresse, die niemand beschrieben hat. */
 function natFor(card,src){
   var a=card&&card.image&&ENT.get(card.image);
-  var ai=a&&(a.components||{}).AssetInfo;
+  var ai=a&&(a.components||{})[ASSET_COMP];
   if(ai&&Number(ai.width)>0&&Number(ai.height)>0)
     return {w:Number(ai.width),h:Number(ai.height)};
   return natOf(src);
@@ -7676,7 +7697,7 @@ function elMap(e,ifn,item){
        mit und das Möbel wandert beim Drehen aus. */
     var dreh=Number(pr.rot)||0;
     if(dreh) t.style.transform="translate(-50%,-50%) rotate("+dreh+"deg)";
-    var bild=art&&assetSrc(((art.components||{}).Image||{}).ref||((art.components||{}).Image||{}).url);
+    var bild=art&&assetSrc(((art.components||{}).Base||{}).ref||((art.components||{}).Base||{}).url);
     if(bild) t.appendChild(el("img",{src:bild,alt:""}));
     else t.appendChild(el("span",{text:(art?nameOf(art):"?").slice(0,2)}));
 
@@ -7803,9 +7824,9 @@ function addSubmap(e,rahmen){
       if(!kind){
         var name=nm.value.trim(); if(!name){nm.focus();return false;}
         kind={ id:uid("mp"), interfaces:[MAP_IFACE], name:name, tags:[],
-          components:{ Name:{text:name}, Identity:{key:"map/"+slug(name),aliases:[]} },
+          components:{ Base:{text:name,key:"map/"+slug(name),aliases:[]} },
           adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
-        reqFor(MAP_IFACE).forEach(function(c){ if(!kind.components[c]&&REG.components[c]) kind.components[c]={}; });
+        reqFor(MAP_IFACE).forEach(function(c){ if(!kind.components[c]&&REG.interfaces[c]) kind.components[c]={}; });
         applyDefaults(kind,MAP_IFACE);
         ENT.set(kind.id,kind);
       }
@@ -7857,7 +7878,7 @@ function articleVisible(e){
   if(!inStack(e))return false;
   if(isOverridden(e))return false;
   if(isGM())return true;
-  var vis=(e.components||{}).Visibility||{};
+  var vis=(e.components||{}).Base||{};
   if(vis.audience==="gm")return false;
   var a=viewerActor();
   if(Array.isArray(vis.hiddenFrom)&&a&&vis.hiddenFrom.indexOf(a)>=0)return false;
@@ -7944,7 +7965,7 @@ function renderAsSelect(){
    sicherer, macht aber jede neue Zeile unsichtbar, bis jemand daran denkt.
    Deshalb steht „Offen" als eigene Gruppe zuoberst: man sieht dort immer,
    was gerade offen liegt. */
-var INFO_IFACE="Information", INFO_COMP="Info",
+var INFO_IFACE="Information", INFO_COMP="Information",
     REL_KNOW="knowledge", REL_KNOWNBY="knownBy", REL_ATLEVEL="atLevel", REL_PARTY="memberOfParty";
 
 function edgesOf(e,typ){
@@ -8080,9 +8101,9 @@ function newInformation(e){
       var name=nm.value.trim(); if(!name){nm.focus();return false;}
       if(!REG.interfaces[INFO_IFACE]){ alert("The interface “"+INFO_IFACE+"” is missing from the registry."); return; }
       var info={ id:uid("i"), interfaces:[INFO_IFACE], name:name, tags:[],
-        components:{ Name:{text:name}, Identity:{key:"information/"+slug(name),aliases:[]} },
+        components:{ Base:{text:name,key:"information/"+slug(name),aliases:[]} },
         adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
-      reqFor(INFO_IFACE).forEach(function(c){ if(!info.components[c]&&REG.components[c]) info.components[c]={}; });
+      reqFor(INFO_IFACE).forEach(function(c){ if(!info.components[c]&&REG.interfaces[c]) info.components[c]={}; });
       applyDefaults(info,INFO_IFACE);
       info.components[INFO_COMP]=Object.assign({fields:[],blocks:[]},info.components[INFO_COMP]||{},{tier:tier.value});
       ENT.set(info.id,info); persist(info);
@@ -8552,9 +8573,9 @@ function worldToday(){
   if(gesetzt)return gesetzt;
   var beste=null, rang=-Infinity;
   ENT.forEach(function(e){
-    var wd=(e.components||{}).WorldDate;
+    var wd=(e.components||{}).Base;
     if(!wd||!wd.display)return;
-    if((((e.components||{}).Status||{}).value)!=="used")return;
+    if((((e.components||{}).Base||{}).value)!=="used")return;
     var s=Number(wd.sort);
     if(!isFinite(s)||s<rang)return;
     rang=s; beste=wd.display;
@@ -8576,7 +8597,7 @@ function campaignVars(){
   if(sig===computedSig&&computedCache)return computedCache;
   var p=theParty(), mit=partyMembers(p);
   var stufen=mit.map(function(m){
-    return Number(((m.components||{}).CharacterInfo||{}).level);
+    return Number(((m.components||{}).PlayerCharacter||{}).level);
   }).filter(function(n){ return isFinite(n)&&n>0; });
   var mittel=stufen.length?Math.round(stufen.reduce(function(a,b){return a+b;},0)/stufen.length):0;
   var ort=partyPlace(p);
@@ -8730,15 +8751,16 @@ function relsTo(ifn){
   }
   return out;
 }
-/* Die Felder einer Komponente, kurz: Name und Art. `derived` steht da als
+/* Die Felder einer Art, kurz: Name und Art. `derived` steht da als
    „gerechnet", weil das der Unterschied ist, der am meisten erklärt — ein
    gerechnetes Feld bekommt keine Eingabe und keine Spalte (D8). */
 function compFieldList(comp){
-  var props=((REG.components[comp]||{}).schema||{}).properties||{};
+  var props=((REG.interfaces[comp]||{}).schema||{}).properties||{};
+  var pflicht=(((REG.interfaces[comp]||{}).schema||{}).required)||[];
   return Object.keys(props).map(function(k){
     var p=props[k]||{};
     var art=p.derived?"derived":(p["enum"]?p["enum"].join(" | "):(p.format||p.type||"?"));
-    return {name:k,kind:art,derived:!!p.derived};
+    return {name:k,kind:art,derived:!!p.derived,required:pflicht.indexOf(k)>=0};
   });
 }
 function typeCompRow(ifn,comp){
@@ -8747,19 +8769,20 @@ function typeCompRow(ifn,comp){
   var kopf=el("div",{class:"ck"});
   kopf.appendChild(el("button",{class:"ref",type:"button",
     title:"Open it in the data model",
-    onclick:function(){ UI.regtab="components"; UI.regcomp=comp; UI.regprop="";
+    onclick:function(){ UI.regtab="types"; UI.regiface=comp; UI.regcomp=comp; UI.regprop="";
       go({k:"reg"}); }},comp));
   if(woher&&woher.iface!==ifn) kopf.appendChild(el("span",{class:"co",
     text:"from "+(REG.interfaces[woher.iface].label||woher.iface)}));
   row.appendChild(kopf);
   var felder=compFieldList(comp);
-  if(!felder.length){ row.appendChild(el("span",{class:"hint",style:"margin:0",text:"no fields"}));
+  if(!felder.length){ row.appendChild(el("span",{class:"hint",style:"margin:0",text:"no fields of its own"}));
     return row; }
   var box=el("div",{class:"tfields"});
   felder.forEach(function(f){
     box.appendChild(el("span",{class:"pill q"+(f.derived?" der":""),
-      title:f.derived?"Computed on read — no input, no column (D8)":f.kind,
-      text:f.name}));
+      title:f.derived?"Computed on read — no input, no column (D8)"
+           :(f.kind+(f.required?" · required":"")),
+      text:f.name+(f.required?"*":"")}));
   });
   row.appendChild(box);
   return row;
@@ -8972,11 +8995,11 @@ function renderTypes(v){
   var kopf=el("div",{class:"listhead"});
   kopf.appendChild(el("h2",{text:"Article types"}));
   kopf.appendChild(el("span",{class:"count",
-    text:arten.length+" types · "+Object.keys(REG.components).length+" components · "+
+    text:arten.length+" types · "+
       Object.keys(REG.relations).length+" relation types"}));
   v.appendChild(kopf);
   v.appendChild(el("p",{class:"hint",
-    text:"What each kind requires, what it may carry, which edges it holds in both directions, and how it is drawn. Inherited entries say where they come from."}));
+    text:"What each kind records, what it inherits, which edges it holds in both directions, and how it is drawn. Inherited entries say where they come from."}));
 
   var split=el("div",{class:"tsplit"});
 
@@ -9039,16 +9062,21 @@ function renderTypes(v){
   h.appendChild(marken);
   doc.appendChild(h);
 
-  var req=reqFor(wahl), alle=compsFor(wahl);
-  var darf=alle.filter(function(c){ return req.indexOf(c)<0; });
+  /* Eigene Felder zuerst, geerbte darunter. Vorher stand hier „Requires"
+     und „May carry" — zwei Überschriften für einen Unterschied, den es im
+     Register nicht mehr gibt: Pflicht steht je Feld. */
+  var alle=compsFor(wahl);
+  var eigen=alle.filter(function(c){ return c===wahl; });
+  var oben=alle.filter(function(c){ return c!==wahl; });
 
-  if(req.length){
-    doc.appendChild(el("div",{class:"sec",text:"Requires"}));
-    req.forEach(function(c){ doc.appendChild(typeCompRow(wahl,c)); });
+  if(eigen.length&&compFieldList(wahl).length){
+    doc.appendChild(el("div",{class:"sec",text:"Its own fields"}));
+    eigen.forEach(function(c){ doc.appendChild(typeCompRow(wahl,c)); });
   }
-  if(darf.length){
-    doc.appendChild(el("div",{class:"sec",text:"May carry"}));
-    darf.forEach(function(c){ doc.appendChild(typeCompRow(wahl,c)); });
+  var mitFeldern=oben.filter(function(c){ return compFieldList(c).length; });
+  if(mitFeldern.length){
+    doc.appendChild(el("div",{class:"sec",text:"Inherited fields"}));
+    mitFeldern.forEach(function(c){ doc.appendChild(typeCompRow(wahl,c)); });
   }
 
   var bl=blockTypesFor(wahl);
@@ -9157,7 +9185,9 @@ function renderRegistry(v){
   v.appendChild(el("h2",{text:"Data model"}));
   v.appendChild(konzept());
   var tabs=el("div",{class:"tabs",role:"tablist"});
-  [["types","Types"],["components","Components"],
+  /* Kein Reiter „Components" mehr: eine Art trägt ihre Felder selbst, und
+     zwei Stellen für dieselbe Sache waren genau das, was hier weg sollte. */
+  [["types","Types"],
    ["relations","Relation types"],["views","Views"],["vars","Variables"],
    ["settings","Settings"],["backup","Backup"]]
   .forEach(function(t){
@@ -9169,8 +9199,6 @@ function renderRegistry(v){
   /* Schnittstellen bekommen eine Maske: Komponenten, Felder, Blockarten und
      Subtypen an einer Stelle. Das JSON bleibt daneben stehen — für Massen-
      änderungen ist ein Textfeld schneller als jedes Formular. */
-  if(UI.regtab==="components"&&!UI.regjson){ maskeMitJson(v,renderComponentEditor,
-    "A component is one typed fact about an article — at most one per kind, absent when unused. Its fields are edited here and hold wherever the component is used."); return; }
   if(UI.regtab==="relations"&&!UI.regjson){ maskeMitJson(v,renderRelationEditor,null); return; }
   if(UI.regtab==="vars"&&!UI.regjson){ maskeMitJson(v,renderVarEditor,null); return; }
   if(UI.regtab==="settings"&&!UI.regjson){ maskeMitJson(v,renderSettingsEditor,null); return; }
@@ -9229,112 +9257,11 @@ function newInterfaceBar(unter){
   bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
     var label=i.value.trim(); if(!label) return;
     var n=techName(label,REG.interfaces);
-    REG.interfaces[n]={name:n,label:label,requires:[],allows:[],blockTypes:[]};
+    REG.interfaces[n]={name:n,label:label,schema:{type:"object",properties:{}},blockTypes:[]};
     if(unter) REG.interfaces[n].extends=[unter];
     UI.regiface=n; UI.regcomp=""; saveReg("interfaces"); render();
   }},"Create interface"));
   return bar;
-}
-
-/* ---------- components tab ----------
-   Dieselbe Feldmaske wie in der Schnittstelle, aber hier ist die Komponente
-   selbst das Thema: was sie an Feldern trägt und wer sie nutzt. */
-function renderComponentEditor(v){
-  var names=Object.keys(REG.components).sort();
-  if(!names.length){
-    v.appendChild(el("div",{class:"empty",text:"No components yet."}));
-    if(canWrite()) v.appendChild(newComponentBar());
-    return;
-  }
-  if(names.indexOf(UI.regcomp2)<0) UI.regcomp2=names[0];
-
-  var grid=el("div",{class:"reg2"});
-  var list=el("div",{class:"regtree"});
-  names.forEach(function(cn){
-    var cd=REG.components[cn];
-    var n=Object.keys((cd.schema&&cd.schema.properties)||{}).length;
-    var b=el("button",{type:"button","aria-current":String(UI.regcomp2===cn),
-      onclick:function(){ UI.regcomp2=cn; UI.regprop=""; render(); }});
-    if(n) b.appendChild(el("em",{text:String(n)}));
-    b.appendChild(el("span",{text:cd.label||cn}));
-    list.appendChild(b);
-  });
-  grid.appendChild(list);
-  grid.appendChild(componentBody(UI.regcomp2));
-  v.appendChild(grid);
-  if(canWrite()) v.appendChild(newComponentBar());
-}
-
-function newComponentBar(){
-  var i=el("input",{class:"i",type:"text",placeholder:"Label, e.g. Trade info"});
-  var bar=el("div",{class:"addbar",style:"margin-top:10px"});
-  bar.appendChild(i);
-  bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
-    var label=i.value.trim(); if(!label) return;
-    var cn=techName(label,REG.components);
-    REG.components[cn]={label:label,engine:null,schema:{type:"object",properties:{}}};
-    UI.regcomp2=cn; UI.regprop=""; saveReg("components"); render();
-  }},"Create component"));
-  return bar;
-}
-
-function componentBody(cn){
-  var cd=REG.components[cn], w=canWrite();
-  var box=el("div",{class:"regbody"});
-  function save(){ saveReg("components"); render(); }
-
-  box.appendChild(el("h3",{text:cd.label||cn}));
-  box.appendChild(el("div",{class:"key",text:cn}));
-
-  var head=el("div",{class:"fmore",style:"border-bottom:0;padding-top:10px"});
-  var labelInput=el("input",{class:"i",type:"text",value:cd.label||""});
-  if(!w) labelInput.disabled=true;
-  labelInput.addEventListener("change",function(){ cd.label=labelInput.value.trim()||cn; save(); });
-  head.appendChild(field("Label",labelInput));
-  var eng=el("input",{class:"i",type:"text",value:cd.engine||"",placeholder:"none"});
-  if(!w) eng.disabled=true;
-  eng.addEventListener("change",function(){
-    var val=eng.value.trim(); if(val) cd.engine=val; else cd.engine=null; save(); });
-  head.appendChild(field("Engine",eng));
-  box.appendChild(head);
-
-  box.appendChild(el("div",{class:"rsec",text:"Fields"}));
-  box.appendChild(fieldBox(cn,"",w,save));
-
-  var users=ifacesUsing(cn);
-  box.appendChild(el("div",{class:"rsec",text:"Used by"}));
-  if(!users.length) box.appendChild(el("p",{class:"hint",
-    text:"No interface lists this component yet. Add it under an interface, or it stays unreachable."}));
-  else{
-    var chips=el("div",{class:"chips"});
-    users.forEach(function(n){
-      var c=el("span",{class:"chip"});
-      c.appendChild(el("button",{type:"button",class:"ref",onclick:function(){
-        UI.regtab="types"; UI.typePick=n; UI.regiface=n; UI.regcomp=cn;
-        go({k:"reg"}); }},
-        REG.interfaces[n].label||n));
-      chips.appendChild(c);
-    });
-    box.appendChild(chips);
-  }
-
-  if(w){
-    /* Eine Komponente zu entfernen, die noch jemand nennt, hinterliesse eine
-       Schnittstelle, die auf nichts zeigt — die Prüfung beanstandet dann
-       jeden Artikel dieser Art. */
-    var traeger=[]; ENT.forEach(function(e){ if((e.components||{})[cn]) traeger.push(e); });
-    var reason=users.length?users.length+" interfaces list it"
-              :(traeger.length?traeger.length+" articles carry it":"");
-    var del=el("button",{class:"btn sm dngr",type:"button",onclick:function(){
-      if(reason)return;
-      confirmDialog("Remove the component “"+(cd.label||cn)+"”?",function(){
-        delete REG.components[cn]; UI.regcomp2=""; save(); },"Remove"); }},"Remove component");
-    if(reason){ del.disabled=true; del.title=reason; }
-    var fbar=el("div",{class:"rowbtns"}); fbar.appendChild(del);
-    if(reason) fbar.appendChild(el("span",{class:"co",style:"align-self:center",text:reason}));
-    box.appendChild(fbar);
-  }
-  return box;
 }
 
 /* ---------- relation types tab ---------- */
@@ -9587,16 +9514,16 @@ function konzept(){
     "this prototype is testing."));
 
   var t=el("dl",{class:"kdl"});
-  [["Interfaces",
-    "What an article of this kind must carry (requires) and may carry (allows), what it extends, "+
-    "and which text blocks it allows. Resolution walks extends upward, so Weapon gets everything "+
-    "Item and Base have. A subtype may tighten optional into required, never the other way — "+
-    "validation walks the same chain and would find the requirement anyway."],
-   ["Components",
-    "One typed fact, at most one per article, absent when unused. Each is a JSON Schema: fields "+
-    "with a type, a title, and optionally a format, choices, a derived expression, or a link "+
-    "target. Components are shared — changing a field here changes it everywhere the component "+
-    "is used, which is the point of the pool."],
+  [["Types",
+    "The only row for a kind of thing: the fields it records, what it extends, and which text "+
+    "blocks it allows. Resolution walks extends upward, so Weapon gets everything Item and Base "+
+    "have. There is no second list of components — a type carries its fields itself, and what "+
+    "several types share is a parent type."],
+   ["Fields",
+    "Each type's schema is JSON Schema: fields with a type, a title, and optionally a format, "+
+    "choices, a derived expression, or a link target. The values of an article are stored one "+
+    "card per type, named after the type that declares them — that is what keeps hp at the "+
+    "creature apart from hp at the statblock without renaming either."],
    ["Relation types",
     "A typed, directed edge with its own properties. Stored in one direction only; the reverse is "+
     "a query, and the inverse label is what it reads as from the other end. A relation with a "+
@@ -9617,9 +9544,6 @@ function konzept(){
   d.appendChild(el("p",{class:"hint",style:"margin:10px 0 0"},
     "Two things are never stored: a derived value, which is computed on read, and the reverse of "+
     "an edge. Storing either means having two places that can disagree."));
-  d.appendChild(el("p",{class:"hint",style:"margin:6px 0 0"},
-    "`engine` on a component names the machinery that will own it in the real stack "+
-    "(Calculation, Resolution, Access …). The prototype records it and does not act on it yet."));
 
   /* Ein durchgezogenes Beispiel schlägt fünf Definitionen. Es nennt echte
      Zeilen aus diesem Register, damit man es nachklicken kann statt es zu
@@ -9627,16 +9551,15 @@ function konzept(){
   d.appendChild(el("div",{class:"rsec",style:"margin-top:18px",text:"Following one article through"}));
   var bsp=el("ol",{class:"bsp"});
   [["The row that says what a statblock is",
-    "Interfaces › Statblock. It extends Base, requires StatblockInfo and allows Vars. "+
-    "That is the whole definition — everything below follows from it."],
+    "Types › Statblock. It extends Base, StatblockInfo and Vars. That is the whole "+
+    "definition — everything below follows from it."],
    ["What it may carry",
-    "Because it extends Base it also gets Name, Identity, Status, Description, Visibility, "+
-    "Image and Raw content. Open Statblock and you see them listed as inherited, with the "+
-    "interface they come from."],
+    "Because it extends Base it also gets name, key, status, description, visibility, image "+
+    "and the imported original. Open Statblock and you see them listed as inherited, with the "+
+    "type they come from."],
    ["Where the fields come from",
-    "Components › StatblockInfo holds ac, hp, speed, str … and their titles. Nothing about "+
-    "statblocks is written in code: the form, the field table and the validation all read "+
-    "this one schema."],
+    "StatblockInfo holds ac, hp, speed, str … and their titles. Nothing about statblocks is "+
+    "written in code: the form, the field table and the validation all read this one schema."],
    ["A value nobody typed",
     "StatblockInfo.passivePerception carries derived: 10+mod(wis). It has no input and is "+
     "never stored — it is computed each time the article is read. Change wis and it follows."],
@@ -9655,7 +9578,7 @@ function konzept(){
     "layout, so Statblock: Full can lead with the stat table where Item: Full leads with the "+
     "image — one view, two layouts."],
    ["Add a kind of thing",
-    "Interfaces › Create interface. Give it a parent, tick the components it needs, and it "+
+    "Types › Create interface. Give it a parent, add the fields it needs, and it "+
     "appears in the compendium, in the new-article picker and in validation. No code changed; "+
     "that is the claim this prototype exists to test."]
   ].forEach(function(r){
@@ -9917,9 +9840,9 @@ function viewBody(key){
       /* Nur die Komponenten, die der gewählte Typ überhaupt führen kann —
          eine Ansicht auf Felder zu stellen, die dieser Typ nie hat, sieht
          eingestellt aus und zeigt nichts. */
-      var quelle=ifn?compsFor(ifn):Object.keys(REG.components).sort();
+      var quelle=ifn?compsFor(ifn):Object.keys(REG.interfaces).sort();
       quelle.forEach(function(cn){
-        var cd=REG.components[cn]; if(!cd)return;
+        var cd=REG.interfaces[cn]; if(!cd)return;
         var props=(cd.schema&&cd.schema.properties)||{};
         if(!Object.keys(props).length)return;
         var ganz=!isAll&&Array.isArray(item.fields)&&item.fields.indexOf(cn)>=0;
@@ -9967,13 +9890,6 @@ function regIfaceBody(ifn){
   var d=REG.interfaces[ifn], w=canWrite();
   var box=el("div",{class:"regbody"});
   function save(){ saveReg("interfaces"); render(); }
-  function saveC(){ saveReg("components"); render(); }
-  function setMode(cn,mode){
-    d.requires=(d.requires||[]).filter(function(x){return x!==cn;});
-    d.allows=(d.allows||[]).filter(function(x){return x!==cn;});
-    if(mode==="requires") d.requires.push(cn);
-    else if(mode==="allows") d.allows.push(cn);
-  }
 
   /* ---- Kopf ---- */
   box.appendChild(el("h3",{text:d.label||ifn}));
@@ -10042,36 +9958,12 @@ function regIfaceBody(ifn){
   head.appendChild(field("Kind",ab));
   box.appendChild(head);
 
-  /* ---- Komponenten und Felder ---- */
-  box.appendChild(el("div",{class:"rsec",text:"Components and fields"}));
+  /* ---- Felder ---- */
+  box.appendChild(el("div",{class:"rsec",text:"Fields"}));
   box.appendChild(el("p",{class:"hint",
-    text:"Required means validation rejects the article without it. Inherited entries sit higher in the tree — change them there and it holds for every subtype."}));
-
-  /* Was requires/allows nennen, das Register aber nicht kennt, wäre sonst
-     unsichtbar — und die Prüfung beanstandet es bei jedem Artikel. */
-  var fehlend=[];
-  (d.requires||[]).concat(d.allows||[]).forEach(function(cn){
-    if(!REG.components[cn]&&fehlend.indexOf(cn)<0) fehlend.push(cn); });
-  if(fehlend.length) box.appendChild(el("p",{class:"warnzeile",
-    text:"Not in the registry: "+fehlend.join(", ")+" — named here but described nowhere."}));
+    text:"The fields this kind records. Inherited ones sit higher in the tree — change them there and it holds for every subtype. Required means validation rejects the article without the field."}));
 
   compsFor(ifn).forEach(function(cn){ box.appendChild(compRow(cn)); });
-
-  if(w){
-    var sel=el("select",{class:"i"});
-    sel.appendChild(el("option",{value:""},"— existing component —"));
-    Object.keys(REG.components).sort().forEach(function(cn){
-      if(compOrigin(ifn,cn))return;
-      sel.appendChild(el("option",{value:cn},(REG.components[cn].label||cn)+"  ("+cn+")")); });
-    var cbar=el("div",{class:"addbar",style:"margin-top:10px"});
-    cbar.appendChild(sel);
-    cbar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
-      if(!sel.value)return;
-      setMode(sel.value,"allows"); UI.regcomp=sel.value; save(); }},"Add"));
-    cbar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
-      newComponent(ifn); }},"New component…"));
-    box.appendChild(cbar);
-  }
 
   /* ---- Blockarten ---- */
   box.appendChild(el("div",{class:"rsec",text:"Block types"}));
@@ -10143,48 +10035,38 @@ function regIfaceBody(ifn){
 
   return box;
 
-  /* ---------- eine Komponentenzeile, aufklappbar ---------- */
+  /* ---------- eine Karte, aufklappbar ----------
+     Eine Karte heisst nach der Art, die ihre Felder erklärt. Für diese Art
+     ist es sie selbst; alles andere kommt von oben und wird dort geändert.
+     Es gab hier einmal eine Auswahl „Pflicht / Optional / nicht benutzt" —
+     sie stand für `requires` und `allows`, und beides sagte über die Hälfte
+     der Einträge nichts, weil die verlangte Karte kein Pflichtfeld hatte. */
   function compRow(cn){
-    var cd=REG.components[cn]||{};
-    var props=((cd.schema||{}).properties)||{};
+    var cd=REG.interfaces[cn]||{};
+    var props=propsOf(cn);
     var n=Object.keys(props).length;
-
-    /* Wo die Komponente steht, hier oder weiter above — und was daraus folgt.
-       Ein Subtyp darf verschärfen (Optional → Pflicht), aber nicht lockern:
-       reqFor() läuft die Kette hoch und fände die Pflicht trotzdem. Eine
-       Auswahl, die nichts bewirkt, wäre eine Lüge im Formular. */
-    var local=(d.requires||[]).indexOf(cn)>=0?"requires"
-             :((d.allows||[]).indexOf(cn)>=0?"allows":"");
-    var above=null;
-    parentsOf(ifn).some(function(p){ above=compOrigin(p,cn); return !!above; });
-    var aboveName=above?((REG.interfaces[above.iface]||{}).label||above.iface):"";
+    var eigen=(cn===ifn);
 
     var row=el("div",{class:"crow"});
     var lft=el("div",{class:"cl"});
     lft.appendChild(el("b",{text:cd.label||cn}));
-    var origin=local?(above?" · tightened here, inherited from "+aboveName:"")
-                      :(above?" · inherited from "+aboveName:"");
     lft.appendChild(el("span",{class:"co",
-      text:cn+" · "+n+(n===1?" field":" fields")+origin}));
+      text:cn+" · "+n+(n===1?" field":" fields")+(eigen?" · its own":" · inherited")}));
     row.appendChild(lft);
 
-    var md=el("select");
-    md.appendChild(el("option",{value:"requires"},"Required"));
-    if(!above||above.mode!=="requires") md.appendChild(el("option",{value:"allows"},"Optional"));
-    md.appendChild(el("option",{value:""},
-      above?("inherited: "+(above.mode==="requires"?"Required":"Optional")):"not used"));
-    md.value=local;
-    if(!w) md.disabled=true;
-    md.addEventListener("change",function(){ setMode(cn,md.value); save(); });
-    row.appendChild(md);
+    if(!eigen) row.appendChild(el("button",{class:"btn sm gh",type:"button",onclick:function(){
+      UI.regiface=cn; UI.regcomp=""; UI.regprop=""; render(); }},"Open"));
 
     row.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
       UI.regcomp=(UI.regcomp===cn?"":cn); UI.regprop=""; render(); }},
-      UI.regcomp===cn?"Fields ▴":"Fields ▾"));
+      UI.regcomp===cn?"Fields \u25b4":"Fields \u25be"));
 
     var wrap=el("div");
     wrap.appendChild(row);
-    if(UI.regcomp===cn) wrap.appendChild(fieldBox(cn,ifn,w,saveC));
+    /* Geerbte Felder werden dort geändert, wo sie stehen. Sie hier
+       bearbeitbar zu machen hiesse, sie für jede andere Art mitzuändern,
+       ohne dass es jemand sieht. */
+    if(UI.regcomp===cn) wrap.appendChild(fieldBox(cn,ifn,w&&eigen,save));
     return wrap;
   }
 }
@@ -10195,7 +10077,7 @@ function regIfaceBody(ifn){
  component is the subject. `within` may be empty — the sharing note then
  names every user instead of "the others". */
 function fieldBox(cn,within,w,saveC){
-  var cd=REG.components[cn];
+  var cd=REG.interfaces[cn];
   if(!cd) return el("div",{class:"fbox"},el("span",{class:"warnzeile",text:"Component missing from the registry."}));
   cd.schema=cd.schema||{type:"object",properties:{}};
   var schema=cd.schema;
@@ -10239,7 +10121,7 @@ function fieldBox(cn,within,w,saveC){
 }
 
 function fieldRow(cn,k,within,w,saveC){
-  var cd=REG.components[cn], schema=cd.schema, props=schema.properties, p=props[k];
+  var cd=REG.interfaces[cn], schema=cd.schema, props=schema.properties, p=props[k];
   var row=el("div",{class:"frow"});
   row.appendChild(el("span",{class:"fk",text:k+(p["default"]!==undefined?" \u2190 "+fmtVal(p,p["default"]):"")}));
 
@@ -10285,7 +10167,7 @@ function fieldRow(cn,k,within,w,saveC){
 }
 
 function fieldMore(cn,k,within,w,saveC){
-  var cd=REG.components[cn], schema=cd.schema, p=schema.properties[k];
+  var cd=REG.interfaces[cn], schema=cd.schema, p=schema.properties[k];
   var box=el("div",{class:"fmore"});
   function text(label,wert,setValue,ph){
     var i=el("input",{class:"i",type:"text",value:wert==null?"":wert,placeholder:ph||""});
@@ -10369,7 +10251,7 @@ function fieldMore(cn,k,within,w,saveC){
    Missing any one of them loses data quietly — the value stays under the old
    key, where nothing reads it any more. */
 function renameProperty(cn,oldKey,newKey){
-  var cd=REG.components[cn]; if(!cd||!cd.schema)return;
+  var cd=REG.interfaces[cn]; if(!cd||!cd.schema)return;
   var props=cd.schema.properties||{};
   if(!props[oldKey]||props[newKey])return;
 
@@ -10410,7 +10292,7 @@ function renameProperty(cn,oldKey,newKey){
   });
 
   UI.regprop=cn+"."+newKey;
-  saveReg("components");
+  saveReg("interfaces");
   if(viewsTouched) saveReg("views");
   betroffen.forEach(function(e){ persist(e); });
   UI.err=betroffen.length
@@ -10454,7 +10336,7 @@ function targetEditor(p,save,writable){
   var wo=t.where||{};
   var feldBox=el("input",{class:"i",type:"text",
     value:wo.component?wo.component+"."+(wo.property||""):"",
-    placeholder:"ItemInfo.rarity"});
+    placeholder:"Item.rarity"});
   var wertBox=el("input",{class:"i",type:"text",value:wo.value==null?"":String(wo.value),
     placeholder:"rare"});
   if(!writable){ feldBox.disabled=true; wertBox.disabled=true; }
@@ -10475,24 +10357,6 @@ function targetEditor(p,save,writable){
     text:n+(n===1?" article matches":" articles match")+
       " right now. Leave everything empty to allow any article."}));
   return box;
-}
-
-function newComponent(ifn){
-  dialog("New component",function(host,close){
-    var lb=el("input",{class:"i",type:"text",placeholder:"e.g. Trade info"});
-    host.appendChild(field("Label",lb));
-    host.appendChild(el("p",{class:"hint",
-      text:"The component starts empty and is attached to this interface as optional. You add its fields afterwards."}));
-    actions(host,close,function(){
-      var label=lb.value.trim(); if(!label) return false;
-      var cn=techName(label,REG.components);
-      REG.components[cn]={label:label,engine:null,schema:{type:"object",properties:{}}};
-      var d=REG.interfaces[ifn];
-      d.allows=(d.allows||[]).concat([cn]);
-      UI.regcomp=cn; UI.regprop="";
-      saveReg("components"); saveReg("interfaces"); render();
-    },"Create");
-  });
 }
 
 /* ============================================================
@@ -10560,9 +10424,9 @@ function newEntity(presetName){
       var name=nm.value.trim(); if(!name){nm.focus();return false;}
       var ifn=sel.value;
       var e={ id:uid("e"), interfaces:[ifn], name:name, tags:[],
-        components:{ Name:{text:name}, Identity:{key:slug(ifn)+"/"+slug(name),aliases:[]} },
+        components:{ Base:{text:name,key:slug(ifn)+"/"+slug(name),aliases:[]} },
         adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
-      reqFor(ifn).forEach(function(c){ if(!e.components[c]&&REG.components[c]) e.components[c]={}; });
+      reqFor(ifn).forEach(function(c){ if(!e.components[c]&&REG.interfaces[c]) e.components[c]={}; });
       applyDefaults(e,ifn);
       persist(e); go({k:"art",id:e.id});
       /* Aus einem Verweis heraus angelegt heisst: man war woanders und will
@@ -10596,7 +10460,7 @@ function editEntity(e){
       });
     }
     compsFor(ifn).forEach(function(cn){
-      var cd=REG.components[cn]; if(!cd)return;
+      var cd=REG.interfaces[cn]; if(!cd)return;
       var props=(cd.schema&&cd.schema.properties)||{};
       var keys=Object.keys(props).filter(function(p){return !(cn==="Name"&&p==="text");});
       if(!keys.length)return;
@@ -10629,7 +10493,7 @@ function editEntity(e){
       e.name=nm.value.trim()||e.name;
       e.tags=tg.value.split(",").map(function(s){return s.trim();}).filter(Boolean);
       e.components=e.components||{};
-      e.components.Name={text:e.name};
+      e.components.Base=Object.assign({},e.components.Base||{},{text:e.name});
       inputs.forEach(function(it){
         if(it.adhoc!==undefined){ e.adhoc[it.adhoc].value=it.node.value; return; }
         var val=readInput(it);
@@ -10721,12 +10585,15 @@ function addAdhoc(e){
       var label=lb.value.trim(); if(!label)return false;
       var key=slug(label).replace(/-/g,"_");
       if(pr.checked){
-        var ifn=(e.interfaces||[])[0], cn=ifn+"Eigen";
-        REG.components[cn]=REG.components[cn]||{label:"Custom fields",engine:null,schema:{type:"object",properties:{}}};
-        REG.components[cn].schema.properties[key]={type:"string",title:label};
-        var d=REG.interfaces[ifn];
-        d.allows=d.allows||[]; if(d.allows.indexOf(cn)<0)d.allows.push(cn);
-        saveReg("components"); saveReg("interfaces");
+        /* Befördern heisst jetzt: das Feld an die Art schreiben, der der
+           Artikel angehört. Vorher legte es eine Sammelkarte „Custom
+           fields" an — ein Behälter neben dem Modell, in dem alles landete,
+           was jemand einmal gebraucht hat. */
+        var cn=(e.interfaces||[])[0];
+        var d=REG.interfaces[cn];
+        d.schema=d.schema||{type:"object",properties:{}};
+        d.schema.properties[key]={type:"string",title:label};
+        saveReg("interfaces");
         e.components[cn]=e.components[cn]||{}; e.components[cn][key]=vl.value;
       } else {
         e.adhoc=e.adhoc||[];
@@ -10805,10 +10672,10 @@ function impGegenstand(text,datei){
   (body.match(/!\[\[[^\]|#]+\.(?:png|jpe?g|webp|gif)(?:\|[^\]]*)?\]\]/gi)||[]).forEach(function(x){
     bilder.push(linkZiel(x)); });
 
-  var c={ Name:{text:name},
-    Identity:{key:slug(ifn)+"/"+slug(name),aliases:fmList(fm,"aliases")},
-    Status:{value:"used"},
-    RawContent:{imported:text,format:"obsidian",importedAt:new Date().toISOString().slice(0,10)} };
+  /* Eine Karte je Art: was `Base` erklärt, steht auf `Base`. */
+  var c={ Base:{text:name,key:slug(ifn)+"/"+slug(name),aliases:fmList(fm,"aliases"),
+    value:"used",imported:text,format:"obsidian",
+    importedAt:new Date().toISOString().slice(0,10)} };
 
   var info={}, r=fmStr(fm,"Rarität"), kr=fmStr(fm,"Kaufrarität"),
       kp=fmNum(fm,"Kupferpreis"), st=fmNum(fm,"Stapelgrösse");
@@ -10817,23 +10684,23 @@ function impGegenstand(text,datei){
   if(kr&&kr!=="-") info.availability=kr;     // andere Skala als raritaet
   if(kp!==undefined) info.copperPrice=kp;
   if(st!==undefined) info.stackSize=st;
-  if(Object.keys(info).length) c.ItemInfo=info;
+  if(Object.keys(info).length) c.Item=Object.assign({},c.Item||{},info);
 
-  var rows=fmList(fm,"Formfaktor"); if(rows.length) c.Footprint={rows:rows};
+  var rows=fmList(fm,"Formfaktor"); if(rows.length) c.Item=Object.assign({},c.Item||{},{rows:rows});
   if(ifn==="Weapon"){ var w={};
     if(fmStr(fm,"Schaden"))w.damage=fmStr(fm,"Schaden");
     if(fmStr(fm,"Schadenstyp"))w.damageType=fmStr(fm,"Schadenstyp");
     if(fmStr(fm,"Reichweite"))w.range=fmStr(fm,"Reichweite");
-    if(Object.keys(w).length)c.WeaponInfo=w; }
+    if(Object.keys(w).length)c.Weapon=w; }
   if(ifn==="Armor"){ var ru={}, rk=fmNum(fm,"rüstungsklasse");
     if(rk!==undefined)ru.ac=rk;
     if(fmStr(fm,"rüstungstyp"))ru.armorType=fmStr(fm,"rüstungstyp");
-    if(Object.keys(ru).length)c.ArmorInfo=ru; }
+    if(Object.keys(ru).length)c.Armor=ru; }
   if(ifn==="Material"){ var ma={};
     if(fmStr(fm,"Materialtyp"))ma.materialType=fmStr(fm,"Materialtyp");
     var be=fmList(fm,"Berufe"); if(be.length)ma.trades=be;
-    if(Object.keys(ma).length)c.MaterialInfo=ma; }
-  if(bilder[0]) c.Image={url:bilder[0],caption:""};
+    if(Object.keys(ma).length)c.Material=ma; }
+  if(bilder[0]) c.Base=Object.assign({},c.Base,{url:bilder[0],caption:""});
 
   var prosa=body.replace(/!\[\[[^\]]+\]\]/g,"").replace(/^#+\s*Eigenschaften[\s\S]*$/im,"").trim();
   var bl=[];
@@ -10908,10 +10775,12 @@ function impStatblock(text,datei){
   schliess(); if(akt)abschnitte.push(akt);
 
   return { e:{ id:uid("sb"), interfaces:["Statblock"], name:name, tags:[],
-      components:{ Name:{text:name},
-        Identity:{key:"statblock/"+slug(name),aliases:fmList(fm,"aliases")},
-        Status:{value:"used"}, StatblockInfo:info,
-        RawContent:{imported:text,format:"obsidian",importedAt:new Date().toISOString().slice(0,10)} },
+      components:{ Base:{text:name,key:"statblock/"+slug(name),aliases:fmList(fm,"aliases"),
+        value:"used",imported:text,format:"obsidian",
+        importedAt:new Date().toISOString().slice(0,10)},
+        /* Die Zahlen bleiben ihre eigene Karte: `hp` heisst am Statblock
+           etwas anderes als an der Kreatur, die gerade Schaden nimmt. */
+        StatblockInfo:info },
       adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() },
     abschnitte:abschnitte, kreatur:linkZiel(fmStr(fm,"kreatur"))||null };
 }
@@ -10932,10 +10801,9 @@ function impOrt(text,datei){
   if(fmStr(fm,"biom"))li.umwelt=fmStr(fm,"biom");
   if(fmStr(fm,"siedlungstyp"))li.siedlungstyp=fmStr(fm,"siedlungstyp");
 
-  var c={ Name:{text:name},
-    Identity:{key:"ort/"+slug(name),aliases:fmList(fm,"aliases")},
-    Status:{value:"used"}, LocationInfo:li,
-    RawContent:{imported:text,format:"obsidian",importedAt:new Date().toISOString().slice(0,10)} };
+  var c={ Base:{text:name,key:"ort/"+slug(name),aliases:fmList(fm,"aliases"),
+    value:"used",imported:text,format:"obsidian",
+    importedAt:new Date().toISOString().slice(0,10)}, Place:li };
 
   var prosa=body.replace(/!\[\[[^\]]+\]\]/g,"").replace(/^#+\s.*$/gm,"").trim();
   var bl=[];
@@ -10969,8 +10837,8 @@ function runImport(files){
         var kind=/^bonus/i.test(ab.name)?"bonus":/^reaction/i.test(ab.name)?"reaction"
                 :/^(villain|legendary)/i.test(ab.name)?"legendary":/^action/i.test(ab.name)?"action":"trait";
         result.rules.push({ id:id, interfaces:["Rule"], name:en.name, tags:[],
-          components:{ Name:{text:en.name}, Identity:{key:"regel/"+slug(en.name),aliases:[]},
-            Status:{value:"used"}, RuleInfo:{kind:kind}, Description:{raw:en.text} },
+          components:{ Base:{text:en.name,key:"regel/"+slug(en.name),aliases:[],
+            value:"used",raw:en.text}, Rule:{kind:kind} },
           adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() }); }
       x.r.e.relations.push({id:uid("rel"),type:"composedOf",to:id,props:{section:ab.name}});
     });});
@@ -10979,11 +10847,11 @@ function runImport(files){
   var alle=result.item.concat(result.place,result.statblock,result.rules);
   var nachName={};
   ENT.forEach(function(e){ if((e.interfaces||[])[0]!=="Statblock") nachName[nameOf(e).toLowerCase()]=e.id;
-    ((e.components&&e.components.Identity&&e.components.Identity.aliases)||[]).forEach(function(a){
+    ((e.components&&e.components.Base&&e.components.Base.aliases)||[]).forEach(function(a){
       nachName[String(a).toLowerCase()]=e.id; }); });
   alle.forEach(function(e){ if((e.interfaces||[])[0]==="Statblock")return;
     nachName[e.name.toLowerCase()]=e.id;
-    ((e.components.Identity&&e.components.Identity.aliases)||[]).forEach(function(a){
+    ((e.components.Base&&e.components.Base.aliases)||[]).forEach(function(a){
       nachName[String(a).toLowerCase()]=e.id; }); });
 
   roh.forEach(function(x){
@@ -11152,7 +11020,7 @@ render();
     render(); return;
   }
 
-  var TEILE=["interfaces","components","relations","views","vars","settings"];
+  var TEILE=["interfaces","relations","views","vars","settings"];
   var arrived={register:{},artikel:false};
 
   /* Wirft ein Snapshot-Callback, endet die Zustellung still: `ready` bliebe

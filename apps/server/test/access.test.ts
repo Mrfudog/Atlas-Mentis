@@ -25,10 +25,8 @@ const rook: Entity = {
   name: 'Rook',
   tags: [],
   components: {
-    Name: { text: 'Rook' },
-    Identity: { key: 'pc/rook', aliases: [] },
-    Status: { value: 'used' },
-    CharacterInfo: { level: 5 },
+    Base: { text: 'Rook', key: 'pc/rook', aliases: [], value: 'used' },
+    PlayerCharacter: { level: 5 },
   },
   blocks: [],
   relations: [{ id: 'r1', type: 'carries', to: 'inv_rook', props: {} }],
@@ -39,9 +37,7 @@ const inv: Entity = {
   name: 'Rooks Sachen',
   tags: [],
   components: {
-    Name: { text: 'Rooks Sachen' },
-    Identity: { key: 'inv/rook', aliases: [] },
-    Status: { value: 'used' },
+    Base: { text: 'Rooks Sachen', key: 'inv/rook', aliases: [], value: 'used' },
   },
   blocks: [],
   relations: [],
@@ -52,9 +48,7 @@ const fremd: Entity = {
   name: 'Volo',
   tags: [],
   components: {
-    Name: { text: 'Volo' },
-    Identity: { key: 'npc/volo', aliases: [] },
-    Status: { value: 'used' },
+    Base: { text: 'Volo', key: 'npc/volo', aliases: [], value: 'used' },
   },
   blocks: [],
   relations: [],
@@ -367,10 +361,7 @@ describe('what a player gets to read', () => {
     name: 'Der Wachsmann',
     tags: [],
     components: {
-      Name: { text: 'Der Wachsmann' },
-      Identity: { key: 'npc/wachsmann', aliases: [], cover: 'die Gestalt im Mantel' },
-      Status: { value: 'used' },
-      Description: { raw: 'Er heisst Aurinax und war einmal Goldschmied.' },
+      Base: { text: 'Der Wachsmann', key: 'npc/wachsmann', aliases: [], cover: 'die Gestalt im Mantel', value: 'used', raw: 'Er heisst Aurinax und war einmal Goldschmied.' },
     },
     blocks: [
       { id: 'b1', anchor: 'paragraph-offen', blockType: 'paragraph', body: 'Gross, still, wächsern.', order: 0 },
@@ -384,10 +375,8 @@ describe('what a player gets to read', () => {
     name: 'Sein richtiger Name',
     tags: [],
     components: {
-      Name: { text: 'Sein richtiger Name' },
-      Identity: { key: 'info/wachsmann-name', aliases: [] },
-      Status: { value: 'used' },
-      Info: { tier: 'secret', fields: ['Name.text', 'Description.raw'], blocks: [] },
+      Base: { text: 'Sein richtiger Name', key: 'info/wachsmann-name', aliases: [], value: 'used' },
+      Information: { tier: 'secret', fields: ['Base.text', 'Base.raw'], blocks: [] },
     },
     blocks: [],
     relations: [],
@@ -412,7 +401,7 @@ describe('what a player gets to read', () => {
       url: '/api/entities/n_wachsmann',
       headers: { cookie: keks },
     });
-    expect(res.json().components.Description.raw).toMatch(/Aurinax/);
+    expect(res.json().components.Base.raw).toMatch(/Aurinax/);
     expect(res.json().blocks).toHaveLength(2);
   });
 
@@ -428,8 +417,11 @@ describe('what a player gets to read', () => {
     });
     const body = res.json();
     expect(JSON.stringify(body)).not.toMatch(/Aurinax/);
-    expect(body.components.Description).toBeUndefined();
-    expect(body.components.Name.text).toBe('die Gestalt im Mantel');
+    /* Die Karte bleibt, weil `Base` auch Offenes trägt — was weg ist, ist
+       das Feld. Vorher war die ganze Karte weg, und das sah nach einer
+       stärkeren Zusicherung aus, als es war. */
+    expect(body.components.Base.raw).toBeUndefined();
+    expect(body.components.Base.text).toBe('die Gestalt im Mantel');
     // Ein GM-Block geht gar nicht erst mit.
     expect(body.blocks.map((b: { anchor: string }) => b.anchor)).toEqual(['paragraph-offen']);
   });
@@ -443,8 +435,8 @@ describe('what a player gets to read', () => {
       headers: { cookie: keks },
     });
     const body = res.json();
-    expect(body.components.Description.raw).toMatch(/Aurinax/);
-    expect(body.components.Name.text).toBe('Der Wachsmann');
+    expect(body.components.Base.raw).toMatch(/Aurinax/);
+    expect(body.components.Base.text).toBe('Der Wachsmann');
   });
 
   /* Und die Liste ebenso — sie ist der bequemere Weg an dieselben Daten,
@@ -601,13 +593,11 @@ describe('one account, several characters', () => {
     name: 'Sela',
     tags: [],
     components: {
-      Name: { text: 'Sela' },
-      Identity: { key: 'pc/sela', aliases: [] },
-      Status: { value: 'used' },
+      Base: { text: 'Sela', key: 'pc/sela', aliases: [], value: 'used' },
       /* `PlayerCharacter` verlangt sie — eine Figur ohne sie liesse sich
          lesen und nicht zurückschreiben, und die Prüfung fiele auf die
          Maske statt auf die Vorlage. */
-      CharacterInfo: { player: 'Prüfung' },
+      PlayerCharacter: { player: 'Prüfung' },
     },
     blocks: [],
     relations: [],
@@ -618,10 +608,7 @@ describe('one account, several characters', () => {
     name: 'Der Wachsmann',
     tags: [],
     components: {
-      Name: { text: 'Der Wachsmann' },
-      Identity: { key: 'npc/wachsmann', aliases: [] },
-      Status: { value: 'used' },
-      Description: { raw: 'Er heisst Aurinax.' },
+      Base: { text: 'Der Wachsmann', key: 'npc/wachsmann', aliases: [], value: 'used', raw: 'Er heisst Aurinax.' },
     },
     blocks: [],
     relations: [{ id: 'rk', type: 'knowledge', to: 'i_name', props: {} }],
@@ -633,10 +620,8 @@ describe('one account, several characters', () => {
     name: 'Sein richtiger Name',
     tags: [],
     components: {
-      Name: { text: 'Sein richtiger Name' },
-      Identity: { key: 'info/name', aliases: [] },
-      Status: { value: 'used' },
-      Info: { tier: 'secret', fields: ['Description.raw'], blocks: [] },
+      Base: { text: 'Sein richtiger Name', key: 'info/name', aliases: [], value: 'used' },
+      Information: { tier: 'secret', fields: ['Base.raw'], blocks: [] },
     },
     blocks: [],
     relations: [{ id: 'rb', type: 'knownBy', to: 'pc_sela', props: {} }],
@@ -657,7 +642,7 @@ describe('one account, several characters', () => {
       url: '/api/entities/n_wachsmann',
       headers: { cookie: keks },
     });
-    expect(res.json().components.Description?.raw).toMatch(/Aurinax/);
+    expect(res.json().components.Base?.raw).toMatch(/Aurinax/);
   });
 
   it('and withholds it from an account that only plays the other one', async () => {
@@ -717,10 +702,8 @@ describe('knowledge shared with a whole group', () => {
     name: 'Die Donnerstagsrunde',
     tags: [],
     components: {
-      Name: { text: 'Die Donnerstagsrunde' },
-      Identity: { key: 'group/donnerstag', aliases: [] },
-      Status: { value: 'used' },
-      GroupInfo: { kind: 'players', purpose: 'Wer an diesem Tisch sitzt' },
+      Base: { text: 'Die Donnerstagsrunde', key: 'group/donnerstag', aliases: [], value: 'used' },
+      Group: { kind: 'players', purpose: 'Wer an diesem Tisch sitzt' },
     },
     blocks: [],
     relations: [],
@@ -731,10 +714,7 @@ describe('knowledge shared with a whole group', () => {
     name: 'Der Lampenkeller',
     tags: [],
     components: {
-      Name: { text: 'Der Lampenkeller' },
-      Identity: { key: 'place/keller', aliases: [] },
-      Status: { value: 'used' },
-      Description: { raw: 'Der Eingang liegt hinter dem Fass.' },
+      Base: { text: 'Der Lampenkeller', key: 'place/keller', aliases: [], value: 'used', raw: 'Der Eingang liegt hinter dem Fass.' },
     },
     blocks: [],
     relations: [{ id: 'rk', type: 'knowledge', to: 'i_eingang', props: {} }],
@@ -746,10 +726,8 @@ describe('knowledge shared with a whole group', () => {
     name: 'Wo der Eingang liegt',
     tags: [],
     components: {
-      Name: { text: 'Wo der Eingang liegt' },
-      Identity: { key: 'info/eingang', aliases: [] },
-      Status: { value: 'used' },
-      Info: { tier: 'secret', fields: ['Description.raw'], blocks: [] },
+      Base: { text: 'Wo der Eingang liegt', key: 'info/eingang', aliases: [], value: 'used' },
+      Information: { tier: 'secret', fields: ['Base.raw'], blocks: [] },
     },
     blocks: [],
     relations: [{ id: 'rb', type: 'knownBy', to: 'grp_runde', props: {} }],
@@ -768,7 +746,7 @@ describe('knowledge shared with a whole group', () => {
 
   it('reaches an account that belongs to the group', async () => {
     const { app } = await setup(['pc_rook', 'grp_runde']);
-    expect((await lesen(app)).json().components.Description?.raw).toMatch(/hinter dem Fass/);
+    expect((await lesen(app)).json().components.Base?.raw).toMatch(/hinter dem Fass/);
   });
 
   /* Und niemanden sonst — auch nicht jemanden mit einer Figur, die alles
@@ -785,15 +763,15 @@ describe('knowledge shared with a whole group', () => {
      mitlesen. */
   it('works for an account that plays nobody at all', async () => {
     const { app } = await setup(['grp_runde']);
-    expect((await lesen(app)).json().components.Description?.raw).toMatch(/hinter dem Fass/);
+    expect((await lesen(app)).json().components.Base?.raw).toMatch(/hinter dem Fass/);
   });
 
   it('is a holder the registry allows, not one smuggled past it', () => {
     expect(seedRegistry.relations.knownBy.to).toContain('Group');
-    expect(seedRegistry.interfaces.Group.requires).toContain('GroupInfo');
+    expect(Object.keys(seedRegistry.interfaces.Group.schema?.properties ?? {})).toContain('purpose');
     /* Sie trägt kein Blatt und keine Ausrüstung — sie ist keine Party mit
        anderem Namen. */
-    expect(seedRegistry.interfaces.Group.allows ?? []).not.toContain('Vitals');
+    expect(seedRegistry.interfaces.Group.extends ?? []).not.toContain('Vitals');
     expect(seedRegistry.relations.carries.from).not.toContain('Group');
   });
 });

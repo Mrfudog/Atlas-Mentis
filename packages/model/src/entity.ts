@@ -1,10 +1,9 @@
 /**
- * Reading the registry: what an interface allows, what a relation may target,
- * and what points back at an entity.
+ * Reading the registry: which fields a type carries, what a relation may
+ * target, and what points back at an entity.
  *
- * Interface inheritance unions `requires`, `allows` and `relations` from
- * `extends`. For `blockTypes`, a `+x` entry adds to the inherited set and a
- * bare list replaces it.
+ * Vererbung vereinigt Felder und Kanten über `extends`. Bei `blockTypes`
+ * ergänzt ein `+x` die geerbte Menge, eine blosse Liste ersetzt sie.
  */
 
 import type {
@@ -12,14 +11,15 @@ import type {
   Entity,
   EntityId,
   InterfaceDef,
+  PropertySchema,
   Registry,
   RelationDef,
 } from './types.js';
 
 export function entityName(entity: Entity | undefined): string {
   if (!entity) return 'Ohne Namen';
-  const fromComponent = entity.components?.['Name']?.['text'];
-  return entity.name || (typeof fromComponent === 'string' ? fromComponent : '') || 'Ohne Namen';
+  const ausKarte = entity.components?.['Base']?.['text'];
+  return entity.name || (typeof ausKarte === 'string' ? ausKarte : '') || 'Ohne Namen';
 }
 
 export function primaryInterface(entity: Entity): string {
@@ -43,21 +43,55 @@ function unique<T>(items: T[]): T[] {
   return [...new Set(items)];
 }
 
-/** Components this interface requires. */
-export function requiredComponents(registry: Pick<Registry, 'interfaces'>, name: string): string[] {
-  return unique(walk(registry, name, (d) => d.requires));
+/**
+ * Die Arten, deren Felder hier gelten: diese und alle Obertypen.
+ *
+ * Das ist zugleich die Liste der Karten, die ein Artikel dieser Art tragen
+ * darf — eine Karte heisst nach der Art, die ihre Felder erklärt.
+ */
+export function typeChain(registry: Pick<Registry, 'interfaces'>, name: string): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const offen = [name];
+  while (offen.length) {
+    const at = offen.shift() as string;
+    if (seen.has(at) || !registry.interfaces[at]) continue;
+    seen.add(at);
+    out.push(at);
+    for (const p of registry.interfaces[at]?.extends ?? []) offen.push(p);
+  }
+  return out;
 }
 
-/** Components this interface may carry: requires ∪ allows, inherited included. */
-export function allowedComponents(
-  registry: Pick<Registry, 'interfaces' | 'components'>,
+/** The fields of one type — its own only, not the inherited ones. */
+export function ownFields(
+  registry: Pick<Registry, 'interfaces'>,
   name: string,
-): string[] {
-  const all = unique([
-    ...walk(registry, name, (d) => d.requires),
-    ...walk(registry, name, (d) => d.allows),
-  ]);
-  return all.filter((c) => registry.components[c]);
+): Record<string, PropertySchema> {
+  return registry.interfaces[name]?.schema?.properties ?? {};
+}
+
+/**
+ * Ein Feld mitsamt der Art, die es erklärt. Heisst nicht `FieldRef`, weil das
+ * im Wissensteil schon eine Zeichenkette ist (`Type.field`) — zwei Namen für
+ * zwei Sachen sind besser als ein Name für beide.
+ */
+export interface TypedField {
+  type: string;
+  key: string;
+  prop: PropertySchema;
+}
+
+/**
+ * Every field an article of this type may carry, own ones first and the
+ * inherited ones behind them, each with the type that declares it.
+ */
+export function fieldsOf(registry: Pick<Registry, 'interfaces'>, name: string): TypedField[] {
+  const out: TypedField[] = [];
+  for (const t of typeChain(registry, name)) {
+    for (const [key, prop] of Object.entries(ownFields(registry, t))) out.push({ type: t, key, prop });
+  }
+  return out;
 }
 
 /** Block types this interface accepts, resolving `+x` additions. */
@@ -186,7 +220,7 @@ export function findByName(entities: Iterable<Entity>, name: string): Entity | u
   if (!needle) return undefined;
   for (const entity of entities) {
     if (entityName(entity).toLowerCase() === needle) return entity;
-    const aliases = entity.components?.['Identity']?.['aliases'];
+    const aliases = entity.components?.['Base']?.['aliases'];
     if (Array.isArray(aliases) && aliases.some((a) => String(a).toLowerCase() === needle)) {
       return entity;
     }

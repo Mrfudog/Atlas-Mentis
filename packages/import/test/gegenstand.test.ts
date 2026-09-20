@@ -67,20 +67,20 @@ describe('parseItem', () => {
 
   it('keeps Rarität and Kaufrarität apart — they are different scales', () => {
     const schwert = parseItem(read('Bastardschwert.md').text, 'Bastardschwert.md');
-    const info = schwert.entity.components['ItemInfo'] as Record<string, unknown>;
+    const info = schwert.entity.components['Item'] as Record<string, unknown>;
     // `-` means "not a magic item", which is not a rarity value.
     expect(info['rarity']).toBeUndefined();
     expect(info['availability']).toBe('Ungewöhnlich');
 
     const essenz = parseItem(read('Arkane Essenz (gewöhnlich).md').text, 'Arkane Essenz (gewöhnlich).md');
-    const essenzInfo = essenz.entity.components['ItemInfo'] as Record<string, unknown>;
+    const essenzInfo = essenz.entity.components['Item'] as Record<string, unknown>;
     expect(essenzInfo['rarity']).toBe('gewöhnlich');
     expect(essenzInfo['availability']).toBeUndefined();
   });
 
   it('reads the armour class that only lowercase lookup finds', () => {
     const kette = parseItem(read('Kettenrüstung.md').text, 'Kettenrüstung.md');
-    expect(kette.entity.components['ArmorInfo']).toEqual({
+    expect(kette.entity.components['Armor']).toEqual({
       ac: 16,
       armorType: 'Schwere Rüstung',
     });
@@ -88,7 +88,7 @@ describe('parseItem', () => {
 
   it('keeps the grid as rows', () => {
     const balken = parseItem(read('Holzbalken.md').text, 'Holzbalken.md');
-    const grid = balken.entity.components['Footprint'] as { rows: string[] };
+    const grid = balken.entity.components['Item'] as { rows: string[] };
     expect(grid.rows).toHaveLength(4);
     expect(grid.rows[0]).toHaveLength(16);
   });
@@ -102,7 +102,9 @@ describe('parseItem', () => {
 
   it('takes the image embed as the Image component', () => {
     const kette = parseItem(read('Kettenrüstung.md').text, 'Kettenrüstung.md');
-    expect(kette.entity.components['Image']).toEqual({ url: 'Kettenrüstung.png', caption: '' });
+    const basis = kette.entity.components['Base'] as Record<string, unknown>;
+    expect(basis['url']).toBe('Kettenrüstung.png');
+    expect(basis['caption']).toBe('');
     expect(kette.images).toEqual(['Kettenrüstung.png']);
   });
 
@@ -117,7 +119,7 @@ describe('parseItem', () => {
   it('keeps the original file verbatim (REQ-019)', () => {
     for (const file of files) {
       const parsed = parseItem(read(file).text, file);
-      const raw = parsed.entity.components['RawContent'] as Record<string, unknown>;
+      const raw = parsed.entity.components['Base'] as Record<string, unknown>;
       expect(raw['imported']).toBe(read(file).text);
       expect(raw['format']).toBe('obsidian');
     }

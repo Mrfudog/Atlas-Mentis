@@ -50,7 +50,7 @@ export interface AppOptions {
   staticRoot?: string;
 }
 
-const REGISTRY_PARTS = ['components', 'interfaces', 'relations', 'views', 'vars'] as const;
+const REGISTRY_PARTS = ['interfaces', 'relations', 'views', 'vars'] as const;
 type RegistryPart = (typeof REGISTRY_PARTS)[number];
 
 function isRegistryPart(value: string): value is RegistryPart {
@@ -423,7 +423,6 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
       // indexed write across the union loses the correlation between the
       // key and the value's shape.
       switch (part) {
-        case 'components': await repo.putRegistryPart('components', parsed.data.components); break;
         case 'interfaces': await repo.putRegistryPart('interfaces', parsed.data.interfaces); break;
         case 'relations': await repo.putRegistryPart('relations', parsed.data.relations); break;
         case 'views': await repo.putRegistryPart('views', parsed.data.views); break;
@@ -505,7 +504,7 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
       const stored = await repo.putEntity(entity);
       await repo.appendEvent('entity.written', entity.id, {
         interfaces: entity.interfaces,
-        components: Object.keys(entity.components ?? {}),
+        cards: Object.keys(entity.components ?? {}),
       });
       return stored;
     },

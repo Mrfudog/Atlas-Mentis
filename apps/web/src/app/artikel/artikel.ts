@@ -2,7 +2,7 @@ import { Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
-  allowedComponents,
+  typeChain,
   backlinks,
   blockTypesFor,
   entityName,
@@ -10,7 +10,6 @@ import {
   relationsFrom,
   primaryInterface,
   relationDef,
-  requiredComponents,
   resolveView,
   showBlock,
   showField,
@@ -319,14 +318,14 @@ export class Artikel {
     const e = this.artikel();
     const v = this.view();
     if (!e || !v?.description) return null;
-    const d = e.components?.['Description'] as { raw?: string } | undefined;
+    const d = e.components?.['Base'] as { raw?: string } | undefined;
     return d?.raw ?? null;
   });
 
   /**
-   * Die Feldzellen. `Description` bleibt draussen, weil sie schon als Absatz
-   * oben steht — sie zweimal zu zeigen wäre kein Fehler, aber es liest sich
-   * wie einer.
+   * Die Feldzellen. `Base.raw` bleibt draussen, weil die Beschreibung schon
+   * als Absatz oben steht — sie zweimal zu zeigen wäre kein Fehler, aber es
+   * liest sich wie einer.
    */
   protected readonly zellen = computed<Zelle[]>(() => {
     const e = this.artikel();
@@ -335,9 +334,9 @@ export class Artikel {
     if (!e || !r || !v) return [];
     const out: Zelle[] = [];
     for (const [comp, karte] of Object.entries(e.components ?? {})) {
-      if (comp === 'Description' && v.description) continue;
-      const def = r.components[comp];
+      const def = r.interfaces[comp];
       for (const [prop, wert] of Object.entries((karte ?? {}) as Record<string, unknown>)) {
+        if (comp === 'Base' && prop === 'raw' && v.description) continue;
         if (!showField(v, comp, prop)) continue;
         if (wert === null || wert === undefined || wert === '') continue;
         const titel = def?.schema?.properties?.[prop]?.title ?? prop;
@@ -404,11 +403,13 @@ export class Artikel {
     const e = this.artikel();
     const r = this.reg();
     if (!e || !r) return;
-    const erlaubt = allowedComponents(r, primaryInterface(e));
-    const pflicht = new Set(requiredComponents(r, primaryInterface(e)));
+    const erlaubt = typeChain(r, primaryInterface(e));
+    const pflicht = new Set(
+      erlaubt.flatMap((t) => (r.interfaces[t]?.schema?.required ?? []).map((k) => `${t}.${k}`)),
+    );
     const out: Feld[] = [];
     for (const comp of erlaubt) {
-      const def = r.components[comp];
+      const def = r.interfaces[comp];
       if (!def) continue;
       const karte = (e.components?.[comp] ?? {}) as Record<string, unknown>;
       for (const [prop, schema] of Object.entries(def.schema?.properties ?? {})) {
@@ -426,7 +427,7 @@ export class Artikel {
           schema,
           wert: art === 'jaNein' ? '' : inEingabe(karte[prop]),
           jaNein: karte[prop] === true,
-          pflicht: pflicht.has(comp) && (def.schema?.required ?? []).includes(prop),
+          pflicht: pflicht.has(`${comp}.${prop}`),
         });
       }
     }

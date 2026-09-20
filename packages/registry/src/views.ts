@@ -149,7 +149,7 @@ export const views: Record<string, ViewDef> = {
       Inventory: [
         { id: 'i-inv', el: 'inventory' },
         { id: 'i-desc', el: 'description' },
-        { id: 'i-f', el: 'fields', fields: 'all', except: ['InventoryInfo'] },
+        { id: 'i-f', el: 'fields', fields: 'all', except: ['Inventory'] },
         { id: 'i-r', el: 'relations' },
       ],
       Recipe: [
@@ -162,7 +162,7 @@ export const views: Record<string, ViewDef> = {
       Table: [
         { id: 't-table', el: 'table' },
         { id: 't-desc', el: 'description' },
-        { id: 't-f', el: 'fields', fields: 'all', except: ['TableInfo.rows'] },
+        { id: 't-f', el: 'fields', fields: 'all', except: ['Table.rows'] },
         { id: 't-b', el: 'blocks', blocks: 'all' },
       ],
       /* Ein Ort trägt seine Punktreise selbst — sie ist kein eigener Ort,
@@ -189,7 +189,7 @@ export const views: Record<string, ViewDef> = {
       ],
       Board: [
         { id: 'b-board', el: 'board' },
-        { id: 'b-f', el: 'fields', fields: 'all', except: ['BoardInfo.shapes', 'BoardInfo.anchors'] },
+        { id: 'b-f', el: 'fields', fields: 'all', except: ['Board.shapes', 'Board.anchors'] },
       ],
       Encounter: [
         { id: 'e-init', el: 'initiative' },
@@ -216,7 +216,7 @@ export const views: Record<string, ViewDef> = {
       Quest: [
         { id: 'qu-q', el: 'quests' },
         { id: 'qu-desc', el: 'description' },
-        { id: 'qu-f', el: 'fields', fields: 'all', except: ['QuestInfo.tasks'] },
+        { id: 'qu-f', el: 'fields', fields: 'all', except: ['Quest.tasks'] },
         { id: 'qu-b', el: 'blocks', blocks: 'all' },
         { id: 'qu-r', el: 'relations' },
       ],

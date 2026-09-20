@@ -316,6 +316,30 @@ in [Spieltisch.md](Spieltisch.md).
   2026-09-20 geht jeder Aufstieg über alle Zweige. `parentOf` bleibt, aber nur
   fürs Zeichnen des Baums, wo es eine Zeile je Art braucht.
 
+- **D27 · Eine Art trägt ihre Felder selbst** — Komponenten gibt es nicht
+  mehr. Gemessen hatten sie wenig Wert: **38 von 43** wurden von genau einer
+  Artikelart benutzt, und **13 von 18** `requires`-Einträgen verlangten eine
+  Karte, die kein einziges Pflichtfeld hat — eine leere Karte trägt nichts.
+  Was mehrere Arten teilten, ist jetzt ein Obertyp (`Vars`, `StatblockInfo`,
+  `SourceRef`, `WorldDate`, `Access`, `Vitals`, `Skills`); was einer gehörte,
+  sind ihre Felder. `requires` und `allows` fallen weg: Pflicht steht je Feld.
+
+  **Gespeichert wird weiter eine Karte je Art**, und das ist kein Rest: die
+  Gruppierung hält `hp` an der Kreatur von `hp` am Statblock auseinander,
+  ohne dass eins von beiden einen Namen bekommt, den niemand gewählt hätte.
+  Legte man alles flach, kollidierten acht Namen; so gruppiert, keiner.
+
+  `Vitals` und `Skills` bleiben eigene Arten, obwohl nur `Creature` sie
+  nutzt: der Bogen zeichnet die Werte schon, also nimmt die Feldtabelle
+  `except: ['Vitals']` — und dieser Verweis verschwände, legte man die
+  Felder zu `Creature` dazu. Dann stünde dort eine Aufzählung von vierzehn
+  Namen, und die wäre am Tag des fünfzehnten falsch.
+
+  Eine Folge davon steht ausdrücklich da: `StatblockInfo.system` war Pflicht,
+  solange die Karte nur am Statblock hing. Als Obertyp jeder Kreatur hiesse
+  Pflicht, dass ein NSC, der seine Zahlen borgt, trotzdem ein Regelwerk
+  angeben muss. Statt der Pflicht steht dort jetzt ein Vorgabewert.
+
 - **D26 · Beute ist nicht nur Zeug** — REQ-186. Die Kante `loot` zeigt auf
   `Item`, **`Information`, `Feat` und `Skill`**, und sie geht von einer Quest
   aus wie von einer Begegnung. Was jemand erfährt, ist genauso ein Fund, und

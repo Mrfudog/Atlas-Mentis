@@ -74,7 +74,6 @@ export interface Repository {
 }
 
 const emptyRegistry = (): Registry => ({
-  components: {},
   interfaces: {},
   relations: {},
   views: {},

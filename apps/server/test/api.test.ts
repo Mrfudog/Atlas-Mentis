@@ -10,13 +10,16 @@ const volo: Entity = {
   interfaces: ['NPC'],
   name: 'Volo Geddarm',
   tags: ['händler'],
+  /* Eine Karte je Art: was `Base` erklärt, steht auf `Base`. `text` und
+     `key` sind Pflicht — ohne sie weist die Validierung den Artikel mit 422
+     ab, was sie soll. */
   components: {
-    Name: { text: 'Volo Geddarm' },
-    Identity: { key: 'npc/volo-geddarm', aliases: ['Der Dicke'] },
-    /* `Base` verlangt Status. Ohne die Karte weist die Validierung den
-       Artikel mit 422 ab — was sie soll; die Vorlage war die veraltete
-       Seite, nicht die Regel. */
-    Status: { value: 'used' },
+    Base: {
+      text: 'Volo Geddarm',
+      key: 'npc/volo-geddarm',
+      aliases: ['Der Dicke'],
+      value: 'used',
+    },
   },
   blocks: [],
   relations: [],
@@ -126,11 +129,32 @@ describe('entities', () => {
     expect(ctx.repo.events.map((e) => e.name)).toContain('entity.written');
   });
 
-  it('refuses an article whose interface requires a missing component', async () => {
-    const broken: Entity = { ...volo, id: '22222222-2222-4222-8222-222222222222', interfaces: ['Statblock'] };
+  /* Pflicht steht je Feld. Eine Regel ohne `kind` ist eine Regel, von der
+     niemand weiss, wann sie gilt. */
+  it('refuses an article whose type leaves a required field empty', async () => {
+    const broken: Entity = {
+      ...volo,
+      id: '22222222-2222-4222-8222-222222222222',
+      interfaces: ['Rule'],
+    };
     const res = await ctx.inject({ method: 'PUT', url: `/api/entities/${broken.id}`, payload: broken });
     expect(res.statusCode).toBe(422);
-    expect(res.json().issues.map((i: { code: string }) => i.code)).toContain('missing_component');
+    const issues = res.json().issues as { code: string; component?: string; property?: string }[];
+    expect(issues.map((i) => i.code)).toContain('missing_property');
+    expect(issues.find((i) => i.property === 'kind')?.component).toBe('Rule');
+  });
+
+  /* Und eine Karte, deren Art der Artikel gar nicht ist, ist kein Tippfehler
+     im Register, sondern ein Wert ohne Erklärung. */
+  it('refuses a card whose type the article does not inherit', async () => {
+    const odd: Entity = {
+      ...volo,
+      id: '33333333-3333-4333-8333-333333333333',
+      components: { ...volo.components, Map: { fog: true } },
+    };
+    const res = await ctx.inject({ method: 'PUT', url: `/api/entities/${odd.id}`, payload: odd });
+    expect(res.statusCode).toBe(422);
+    expect(res.json().issues.map((i: { code: string }) => i.code)).toContain('card_not_inherited');
   });
 
   it('refuses an edge pointing at nothing', async () => {
@@ -172,7 +196,7 @@ describe('entities', () => {
 describe('POST /api/validate', () => {
   it('reports the same issues as a write, without writing', async () => {
     const { inject, repo } = await makeApp();
-    const broken: Entity = { ...volo, interfaces: ['Statblock'] };
+    const broken: Entity = { ...volo, interfaces: ['Rule'] };
     const res = await inject({ method: 'POST', url: '/api/validate', payload: broken });
     expect(res.statusCode).toBe(200);
     expect(res.json().issues.length).toBeGreaterThan(0);

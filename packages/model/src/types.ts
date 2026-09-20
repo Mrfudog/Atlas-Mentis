@@ -2,12 +2,16 @@
  * The compound backbone, as types.
  *
  *   entity   = peg   — an opaque id and nothing else
- *   component = card — one typed payload per type per entity, absent when unused
- *   relation  = string — a typed, directed edge that may carry its own props
+ *   type     = row   — what a kind of thing records, and what it inherits
+ *   card     = one payload per type per entity, absent when unused
+ *   relation = string — a typed, directed edge that may carry its own props
  *
- * Interfaces replace entity types (D5): membership is asserted with `Typed`
- * and verified by Validation. Every definition below is a REGISTRY ROW, not
- * code — adding a kind of thing is an insert, never a migration.
+ * Membership is asserted with `Typed` and verified by Validation (D5). Every
+ * definition below is a REGISTRY ROW, not code — adding a kind of thing is an
+ * insert, never a migration.
+ *
+ * Komponenten gibt es nicht mehr. Eine Art trägt ihre Felder selbst; was
+ * mehrere Arten teilten, ist ein Obertyp geworden.
  */
 
 /** Opaque entity id. No pack, type or version encoded in it (D15 / REQ-163). */
@@ -41,24 +45,29 @@ export interface ObjectSchema {
   additionalProperties?: boolean;
 }
 
-/** A row of `component_def`. */
-export interface ComponentDef {
-  name: string;
-  label?: string;
-  /** The engine that owns the meaning; null means plain data (D1). */
-  engine: string | null;
-  schema: ObjectSchema;
-}
-
-/** A row of `interface`. */
+/**
+ * A row of `interface` — the only registry row for a kind of thing.
+ *
+ * Es gab hier einmal zwei: `ComponentDef` trug die Felder, `InterfaceDef`
+ * zählte auf, welche Komponenten eine Artikelart verlangt und welche sie
+ * erlaubt. Gemessen hatte das wenig Wert: **38 von 43** Komponenten hatten
+ * genau einen Nutzer, und **13 von 18** `requires`-Einträgen verlangten eine
+ * Karte, die kein einziges Pflichtfeld hat — eine leere Karte trägt nichts.
+ * Was mehrere Arten teilten, ist jetzt ein Obertyp; was einer gehörte, sind
+ * ihre Felder.
+ *
+ * Gespeichert wird weiterhin eine Karte je Art (`Entity.components`), weil
+ * genau das `hp` an der Kreatur von `hp` am Statblock unterscheidet, ohne
+ * dass jemand eins von beiden umbenennen muss.
+ */
 export interface InterfaceDef {
   name: string;
   label?: string;
   /** Abstract interfaces are extended but never instantiated. */
   abstract?: boolean;
   extends?: string[];
-  requires?: string[];
-  allows?: string[];
+  /** The fields this type records itself. Inherited ones come from `extends`. */
+  schema?: ObjectSchema;
   /** `+x` adds to the inherited set; a bare list replaces it. */
   blockTypes?: string[];
   /**
@@ -201,7 +210,6 @@ export interface ViewDef {
 }
 
 export interface Registry {
-  components: Record<string, ComponentDef>;
   interfaces: Record<string, InterfaceDef>;
   relations: Record<string, RelationDef>;
   views: Record<string, ViewDef>;
@@ -255,6 +263,12 @@ export interface Entity {
   interfaces: string[];
   name: string;
   tags: string[];
+  /**
+   * Die Feldwerte, gruppiert nach der Art, die sie erklärt. Die Gruppierung
+   * ist kein Rest der alten Komponenten: sie hält `hp` an der Kreatur und
+   * `hp` am Statblock auseinander, ohne dass eins von beiden einen Namen
+   * bekommt, den niemand gewählt hätte.
+   */
   components: Record<string, ComponentValue>;
   adhoc?: AdhocField[];
   blocks?: Block[];

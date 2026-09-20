@@ -3,7 +3,7 @@
  *
  * A projection defines what *can* be read; a ViewDef defines what *is* shown,
  * and it can only ever narrow. Field selection is per property, so a combat
- * view takes `StatblockInfo.ac` without dragging in the whole component.
+ * view takes `Statblock.ac` without dragging in every field of that type.
  *
  * A view also carries an ordered `layout`; `layoutFor` resolves it, falling
  * back to the flags for views written before layouts existed. Converting on
@@ -11,7 +11,7 @@
  * registry is edited.
  */
 
-import type { ComponentDef, ObjectSchema, Registry, ViewDef } from './types.js';
+import type { ObjectSchema, Registry, ViewDef } from './types.js';
 
 export const FALLBACK_VIEW: ViewDef = {
   label: 'Full',
@@ -42,9 +42,9 @@ export function resolveView(registry: Pick<Registry, 'views'>, key: string | und
 }
 
 /**
- * Does this view show `component.property`?
- * A bare component name in `fields` takes all of its properties;
- * `Component.field` takes exactly one.
+ * Does this view show `type.property`?
+ * A bare type name in `fields` takes all the fields that type declares;
+ * `Type.field` takes exactly one.
  */
 export function showField(view: ViewDef, component: string, property: string): boolean {
   if (view.fields === 'all') return true;
@@ -53,7 +53,7 @@ export function showField(view: ViewDef, component: string, property: string): b
   return view.fields.includes(component) || view.fields.includes(`${component}.${property}`);
 }
 
-/** True when at least one of the component's properties survives the view. */
+/** True when at least one field the type declares survives the view. */
 export function componentVisible(view: ViewDef, component: string, schema: ObjectSchema): boolean {
   return Object.keys(schema.properties).some((p) => showField(view, component, p));
 }
@@ -70,10 +70,10 @@ export function showBlock(view: ViewDef, blockType: string): boolean {
 export function attachedDerived(
   view: ViewDef,
   component: string,
-  def: ComponentDef,
+  schema: ObjectSchema,
 ): Record<string, string[]> {
   const attached: Record<string, string[]> = {};
-  for (const [key, prop] of Object.entries(def.schema.properties)) {
+  for (const [key, prop] of Object.entries(schema.properties)) {
     if (!prop.derived || !prop.of) continue;
     // Already shown in its own right, or its base field is hidden — nothing to attach to.
     if (showField(view, component, key)) continue;

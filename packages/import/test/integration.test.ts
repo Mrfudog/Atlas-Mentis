@@ -47,8 +47,8 @@ describe('derived values over imported data', () => {
   it('computes grid dimensions without storing them', () => {
     const report = importItems(load(items));
     const balken = report.entities.find((e) => e.name === 'Holzbalken');
-    const grid = balken?.components['Footprint'] as Record<string, unknown>;
-    const schema = seedRegistry.components['Footprint']!.schema.properties;
+    const grid = balken?.components['Item'] as Record<string, unknown>;
+    const schema = seedRegistry.interfaces['Item']!.schema!.properties;
 
     // Holzbalken is 16 wide, 4 tall, fully filled.
     expect(derivedValue(schema['width']!, grid)).toBe(16);
@@ -57,20 +57,24 @@ describe('derived values over imported data', () => {
 
     // Bastardschwert's cross shape: 3 wide, 5 tall, 7 occupied cells.
     const schwert = report.entities.find((e) => e.name === 'Bastardschwert');
-    const kreuz = schwert?.components['Footprint'] as Record<string, unknown>;
+    const kreuz = schwert?.components['Item'] as Record<string, unknown>;
     expect(derivedValue(schema['width']!, kreuz)).toBe(3);
     expect(derivedValue(schema['height']!, kreuz)).toBe(5);
     expect(derivedValue(schema['cells']!, kreuz)).toBe(7);
 
-    // None of them are stored — the article carries only the rows.
-    expect(Object.keys(kreuz!)).toEqual(['rows']);
+    /* Keiner davon wird gespeichert (D8). Seit die Felder der Art gehören,
+       liegt `rows` neben den übrigen Gegenstandsfeldern in derselben Karte —
+       geprüft wird deshalb, dass die gerechneten *nicht* dort stehen, statt
+       den ganzen Schlüsselsatz aufzuzählen. */
+    for (const k of ['width', 'height', 'cells']) expect(Object.keys(kreuz!)).not.toContain(k);
+    expect(Object.keys(kreuz!)).toContain('rows');
   });
 
   it('computes ability modifiers on an imported statblock', () => {
     const report = importStatblocks(load(statblocks));
     const grimm = report.entities.find((e) => e.name === 'Grimmhauer');
     const info = grimm?.components['StatblockInfo'] as Record<string, unknown>;
-    const schema = seedRegistry.components['StatblockInfo']!.schema.properties;
+    const schema = seedRegistry.interfaces['StatblockInfo']!.schema!.properties;
 
     expect(derivedValue(schema['strMod']!, info)).toBe(4); // STR 18
     expect(derivedValue(schema['intMod']!, info)).toBe(-4); // INT 3, Unicode minus
@@ -90,7 +94,7 @@ describe('the pool is shared, not copied', () => {
     // Every rule exists exactly once per distinct name+text.
     const keys = report.rules.map(
       (r) =>
-        `${r.name}\u0000${(r.components['Description'] as Record<string, unknown>)['raw'] as string}`,
+        `${r.name}\u0000${(r.components['Base'] as Record<string, unknown>)['raw'] as string}`,
     );
     expect(new Set(keys).size).toBe(keys.length);
   });

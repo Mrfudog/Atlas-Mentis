@@ -7,20 +7,16 @@ import {
   showField,
   viewKeys,
 } from '../src/views.js';
-import type { ComponentDef, Registry, ViewDef } from '../src/types.js';
+import type { ObjectSchema, Registry, ViewDef } from '../src/types.js';
 
-const statblockInfo: ComponentDef = {
-  name: 'StatblockInfo',
-  engine: 'Calculation',
-  schema: {
-    type: 'object',
-    properties: {
-      ac: { type: 'number', title: 'Rüstungsklasse' },
-      tp: { type: 'number', title: 'Trefferpunkte' },
-      str: { type: 'number', title: 'STÄ' },
-      strMod: { type: 'number', derived: 'mod(str)', of: 'str', format: 'signed' },
-      initiative: { type: 'number', derived: 'mod(dex)', format: 'signed' },
-    },
+const statblockInfo: ObjectSchema = {
+  type: 'object',
+  properties: {
+    ac: { type: 'number', title: 'Rüstungsklasse' },
+    tp: { type: 'number', title: 'Trefferpunkte' },
+    str: { type: 'number', title: 'STÄ' },
+    strMod: { type: 'number', derived: 'mod(str)', of: 'str', format: 'signed' },
+    initiative: { type: 'number', derived: 'mod(dex)', format: 'signed' },
   },
 };
 
@@ -53,8 +49,8 @@ describe('showField', () => {
 describe('componentVisible', () => {
   it('is false when no property of the component survives', () => {
     const image: ViewDef = { label: 'Image', fields: 'none', blocks: [] };
-    expect(componentVisible(combat, 'StatblockInfo', statblockInfo.schema)).toBe(true);
-    expect(componentVisible(image, 'StatblockInfo', statblockInfo.schema)).toBe(false);
+    expect(componentVisible(combat, 'StatblockInfo', statblockInfo)).toBe(true);
+    expect(componentVisible(image, 'StatblockInfo', statblockInfo)).toBe(false);
   });
 });
 

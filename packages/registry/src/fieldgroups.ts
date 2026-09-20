@@ -1,21 +1,28 @@
-import type { ComponentDef } from '@nw/model';
+import type { ObjectSchema } from '@nw/model';
 
 /**
- * `component_def` rows. One card per type per entity, absent when unused.
- * `engine: null` means plain data; a named engine owns the meaning (D1).
+ * Feldgruppen — **ein Ordnungsmittel dieser Datei und keine Registerzeile.**
+ *
+ * Im Register gibt es sie nicht: eine Art trägt ihre Felder selbst
+ * (`interfaces.ts` setzt sie mit `merge` zusammen). Hier stehen sie
+ * gruppiert, weil 19 Felder an `Base` als eine Liste niemand liest.
+ *
+ * Es waren einmal Komponenten mit `name`, `label` und `engine`. `engine` las
+ * keine Zeile Code; die Namen standen zweimal da; und die Bezeichnung einer
+ * Gruppe war eine Überschrift, die keine Ansicht zeichnete.
  */
-export const components: Record<string, ComponentDef> = {
+interface FieldGroup {
+  schema: ObjectSchema;
+}
+
+/* `satisfies` statt einer Annotation: so kennt der Übersetzer die Namen
+   und `g.Vitals` ist nicht „vielleicht undefiniert". */
+export const fieldGroups = {
   Name: {
-    name: 'Name',
-    label: 'Name',
-    engine: null,
     schema: { type: 'object', required: ['text'], properties: { text: { type: 'string', title: 'Name' } } },
   },
 
   Identity: {
-    name: 'Identity',
-    label: 'Identity',
-    engine: 'Resolution',
     schema: {
       type: 'object',
       required: ['key'],
@@ -32,16 +39,10 @@ export const components: Record<string, ComponentDef> = {
   },
 
   Description: {
-    name: 'Description',
-    label: 'Description',
-    engine: null,
     schema: { type: 'object', properties: { raw: { type: 'string', format: 'long', title: 'Text' } } },
   },
 
   Status: {
-    name: 'Status',
-    label: 'Status',
-    engine: 'Status',
     schema: {
       type: 'object',
       properties: {
@@ -63,9 +64,6 @@ export const components: Record<string, ComponentDef> = {
    * now. The remaining fields exist so player access is not a schema change.
    */
   Visibility: {
-    name: 'Visibility',
-    label: 'Visibility',
-    engine: 'Access',
     schema: {
       type: 'object',
       properties: {
@@ -88,9 +86,6 @@ export const components: Record<string, ComponentDef> = {
    * für zwei Sachen.
    */
   RawContent: {
-    name: 'RawContent',
-    label: 'Raw content',
-    engine: null,
     schema: {
       type: 'object',
       properties: {
@@ -102,9 +97,6 @@ export const components: Record<string, ComponentDef> = {
   },
 
   Image: {
-    name: 'Image',
-    label: 'Image',
-    engine: 'Asset',
     schema: {
       type: 'object',
       properties: {
@@ -122,16 +114,10 @@ export const components: Record<string, ComponentDef> = {
 
   /** Entity-level defaults for {VAR} placeholders (REQ-174). */
   Vars: {
-    name: 'Vars',
-    label: 'Variables',
-    engine: null,
     schema: { type: 'object', properties: { bindings: { type: 'object', title: 'Bindings' } } },
   },
 
   CreatureInfo: {
-    name: 'CreatureInfo',
-    label: 'Creature',
-    engine: null,
     schema: {
       type: 'object',
       properties: {
@@ -147,14 +133,15 @@ export const components: Record<string, ComponentDef> = {
   },
 
   StatblockInfo: {
-    name: 'StatblockInfo',
-    label: 'Stats',
-    engine: 'Calculation',
     schema: {
       type: 'object',
-      required: ['system'],
+      /* `system` war Pflicht, solange die Karte nur am `Statblock` hing und
+         eine Kreatur sie bloss tragen *durfte*. Als Obertyp gilt sie für
+         jede Kreatur, und dann hiesse Pflicht: jeder NSC, der seine Zahlen
+         von einem Statblock borgt, müsste trotzdem ein Regelwerk angeben.
+         Statt der Pflicht steht jetzt ein Vorgabewert. */
       properties: {
-        system: { type: 'string', title: 'System' },
+        system: { type: 'string', title: 'System', default: 'dnd5e' },
         size: {
           type: 'string',
           title: 'Size',
@@ -196,9 +183,6 @@ export const components: Record<string, ComponentDef> = {
   },
 
   RuleInfo: {
-    name: 'RuleInfo',
-    label: 'Rule',
-    engine: null,
     schema: {
       type: 'object',
       required: ['kind'],
@@ -230,9 +214,6 @@ export const components: Record<string, ComponentDef> = {
   },
 
   FeatInfo: {
-    name: 'FeatInfo',
-    label: 'Feat',
-    engine: null,
     schema: {
       type: 'object',
       properties: {
@@ -247,9 +228,6 @@ export const components: Record<string, ComponentDef> = {
      sagt, welche von beiden es ist — nicht zwei Artikelarten, die sich in
      nichts unterscheiden ausser im Wort. */
   SkillInfo: {
-    name: 'SkillInfo',
-    label: 'Skill',
-    engine: null,
     schema: {
       type: 'object',
       properties: {
@@ -264,9 +242,6 @@ export const components: Record<string, ComponentDef> = {
   },
 
   LocationInfo: {
-    name: 'LocationInfo',
-    label: 'Place',
-    engine: null,
     schema: {
       type: 'object',
       properties: {
@@ -282,9 +257,6 @@ export const components: Record<string, ComponentDef> = {
   },
 
   FactionInfo: {
-    name: 'FactionInfo',
-    label: 'Faction',
-    engine: null,
     schema: {
       type: 'object',
       properties: {
@@ -297,9 +269,6 @@ export const components: Record<string, ComponentDef> = {
   // ---------------------------------------------------------------- items
 
   ItemInfo: {
-    name: 'ItemInfo',
-    label: 'Item',
-    engine: null,
     schema: {
       type: 'object',
       properties: {
@@ -321,9 +290,6 @@ export const components: Record<string, ComponentDef> = {
    * (see `calc.ts`), not field names — they stay as the engine spells them.
    */
   Footprint: {
-    name: 'Footprint',
-    label: 'Footprint',
-    engine: 'Calculation',
     schema: {
       type: 'object',
       properties: {
@@ -336,9 +302,6 @@ export const components: Record<string, ComponentDef> = {
   },
 
   WeaponInfo: {
-    name: 'WeaponInfo',
-    label: 'Weapon',
-    engine: null,
     schema: {
       type: 'object',
       properties: {
@@ -351,9 +314,6 @@ export const components: Record<string, ComponentDef> = {
   },
 
   ArmorInfo: {
-    name: 'ArmorInfo',
-    label: 'Armor',
-    engine: null,
     schema: {
       type: 'object',
       properties: {
@@ -364,9 +324,6 @@ export const components: Record<string, ComponentDef> = {
   },
 
   MaterialInfo: {
-    name: 'MaterialInfo',
-    label: 'Material',
-    engine: null,
     schema: {
       type: 'object',
       properties: {
@@ -379,9 +336,6 @@ export const components: Record<string, ComponentDef> = {
   // ---------------------------------------------------------------- story
 
   StoryInfo: {
-    name: 'StoryInfo',
-    label: 'Story',
-    engine: null,
     schema: {
       type: 'object',
       properties: {
@@ -405,9 +359,6 @@ export const components: Record<string, ComponentDef> = {
   },
 
   SceneInfo: {
-    name: 'SceneInfo',
-    label: 'Scene',
-    engine: null,
     schema: {
       type: 'object',
       properties: {
@@ -424,9 +375,6 @@ export const components: Record<string, ComponentDef> = {
   },
 
   QuestInfo: {
-    name: 'QuestInfo',
-    label: 'Quest',
-    engine: null,
     schema: {
       type: 'object',
       properties: {
@@ -451,9 +399,6 @@ export const components: Record<string, ComponentDef> = {
   // ---------------------------------------------------------------- party
 
   CharacterInfo: {
-    name: 'CharacterInfo',
-    label: 'Character',
-    engine: null,
     schema: {
       type: 'object',
       properties: {
@@ -474,9 +419,6 @@ export const components: Record<string, ComponentDef> = {
   },
 
   PartyInfo: {
-    name: 'PartyInfo',
-    label: 'Party',
-    engine: null,
     schema: {
       type: 'object',
       properties: {
@@ -487,9 +429,6 @@ export const components: Record<string, ComponentDef> = {
   },
 
   InventoryInfo: {
-    name: 'InventoryInfo',
-    label: 'Inventory',
-    engine: null,
     schema: {
       type: 'object',
       properties: {
@@ -506,9 +445,6 @@ export const components: Record<string, ComponentDef> = {
    * Peg ist und eine Liste von IDs in einer Karte kein Rückbezug wäre.
    */
   Info: {
-    name: 'Info',
-    label: 'Information',
-    engine: 'Knowledge',
     schema: {
       type: 'object',
       properties: {
@@ -530,9 +466,6 @@ export const components: Record<string, ComponentDef> = {
 
   /** Ein benannter Wissensstand, dem Figuren angehören: „Gildenwissen". */
   KnowledgeInfo: {
-    name: 'KnowledgeInfo',
-    label: 'Knowledge level',
-    engine: 'Knowledge',
     schema: {
       type: 'object',
       properties: {
@@ -548,9 +481,6 @@ export const components: Record<string, ComponentDef> = {
    * so lässt sich die Ablage wechseln, ohne jeden Verbraucher anzufassen.
    */
   AssetInfo: {
-    name: 'AssetInfo',
-    label: 'Asset',
-    engine: 'Asset',
     schema: {
       type: 'object',
       required: ['ref'],
@@ -572,16 +502,13 @@ export const components: Record<string, ComponentDef> = {
 
   /** Woher eine Angabe stammt (REQ-020) — Publikation, Seite, Anker. */
   SourceRef: {
-    name: 'SourceRef',
-    label: 'Source',
-    engine: null,
     schema: {
       type: 'object',
       properties: {
         publication: { type: 'string', title: 'Publication' },
         page: { type: 'string', title: 'Page' },
         anchor: { type: 'string', title: 'Anchor' },
-        url: { type: 'string', title: 'URL' },
+        sourceUrl: { type: 'string', title: 'URL' },
       },
     },
   },
@@ -592,9 +519,6 @@ export const components: Record<string, ComponentDef> = {
    * vergleichen, und `14920512` liest niemand vor.
    */
   WorldDate: {
-    name: 'WorldDate',
-    label: 'World date',
-    engine: null,
     schema: {
       type: 'object',
       properties: {
@@ -613,9 +537,6 @@ export const components: Record<string, ComponentDef> = {
    * ohne das ist ein Gitter Dekoration.
    */
   MapInfo: {
-    name: 'MapInfo',
-    label: 'Map',
-    engine: 'Map',
     schema: {
       type: 'object',
       properties: {
@@ -685,9 +606,6 @@ export const components: Record<string, ComponentDef> = {
    * andere mit, und die Wissensgruppen könnten sie nicht trennen.
    */
   Vitals: {
-    name: 'Vitals',
-    label: 'Vitals',
-    engine: 'Play',
     schema: {
       type: 'object',
       properties: {
@@ -711,9 +629,6 @@ export const components: Record<string, ComponentDef> = {
    * Kampagneneinstellungen, wo sie jemand ändern kann.
    */
   Skills: {
-    name: 'Skills',
-    label: 'Skills',
-    engine: 'Play',
     schema: {
       type: 'object',
       properties: {
@@ -734,9 +649,6 @@ export const components: Record<string, ComponentDef> = {
    * und die erste, die veraltet, wenn jemand den Namen ändert.
    */
   RecipeInfo: {
-    name: 'RecipeInfo',
-    label: 'Recipe',
-    engine: 'Craft',
     schema: {
       type: 'object',
       properties: {
@@ -781,9 +693,6 @@ export const components: Record<string, ComponentDef> = {
    * Kästen umfasst, ist Zeichnung und gehört dem Board.
    */
   BoardInfo: {
-    name: 'BoardInfo',
-    label: 'Board',
-    engine: 'Board',
     schema: {
       type: 'object',
       properties: {
@@ -806,9 +715,6 @@ export const components: Record<string, ComponentDef> = {
    * ein Dutzend Felder.
    */
   EncounterInfo: {
-    name: 'EncounterInfo',
-    label: 'Encounter',
-    engine: 'Play',
     schema: {
       type: 'object',
       properties: {
@@ -855,9 +761,6 @@ export const components: Record<string, ComponentDef> = {
    * dritter Halter neben Figur und Party, im selben Verfahren.
    */
   GroupInfo: {
-    name: 'GroupInfo',
-    label: 'Group',
-    engine: null,
     schema: {
       type: 'object',
       properties: {
@@ -877,9 +780,6 @@ export const components: Record<string, ComponentDef> = {
   },
 
   Access: {
-    name: 'Access',
-    label: 'Access',
-    engine: 'Access',
     schema: {
       type: 'object',
       properties: {
@@ -902,9 +802,6 @@ export const components: Record<string, ComponentDef> = {
    * Augenblick ist — ein Wurf, ein Zeigen auf die Karte.
    */
   SessionState: {
-    name: 'SessionState',
-    label: 'Live',
-    engine: 'Play',
     schema: {
       type: 'object',
       properties: {
@@ -938,9 +835,6 @@ export const components: Record<string, ComponentDef> = {
    * Tisch selbst würfeln will.
    */
   TableInfo: {
-    name: 'TableInfo',
-    label: 'Table',
-    engine: 'Table',
     schema: {
       type: 'object',
       properties: {
@@ -967,9 +861,6 @@ export const components: Record<string, ComponentDef> = {
    * mitten in der Sitzung notiert" ist die Angabe, die hilft.
    */
   Todos: {
-    name: 'Todos',
-    label: 'To do',
-    engine: null,
     schema: {
       type: 'object',
       properties: {
@@ -989,9 +880,6 @@ export const components: Record<string, ComponentDef> = {
    * ein Ort kann bekannt und trotzdem unerkundet sein.
    */
   Explored: {
-    name: 'Explored',
-    label: 'Exploration',
-    engine: 'Travel',
     schema: {
       type: 'object',
       properties: {
@@ -1015,9 +903,6 @@ export const components: Record<string, ComponentDef> = {
    * ist die Einheit, in der am Tisch gerechnet wird.
    */
   TravelInfo: {
-    name: 'TravelInfo',
-    label: 'Travel',
-    engine: 'Travel',
     schema: {
       type: 'object',
       properties: {
@@ -1044,9 +929,6 @@ export const components: Record<string, ComponentDef> = {
    * dasselbe anfassen. Das Grundregelwerk steht unten, die Kampagne oben.
    */
   LayerInfo: {
-    name: 'LayerInfo',
-    label: 'Layer',
-    engine: 'Stack',
     schema: {
       type: 'object',
       properties: {
@@ -1062,4 +944,4 @@ export const components: Record<string, ComponentDef> = {
     },
   },
 
-};
+} satisfies Record<string, FieldGroup>;

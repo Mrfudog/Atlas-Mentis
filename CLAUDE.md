@@ -16,14 +16,17 @@ sind (`gewöhnlich`, `Gebäude`, `freundlich`): das sind Daten, keine Namen.
 
 ## Das Modell in fünf Sätzen
 
-Eine Entität ist ein **Peg**: eine undurchsichtige ID und sonst nichts. Jede
-Tatsache ist eine **Komponente** — höchstens eine je Typ, und abwesend, wenn
-ungenutzt. Verbindungen sind typisierte, gerichtete **Kanten**, die eigene
+Eine Entität ist ein **Peg**: eine undurchsichtige ID und sonst nichts. Eine
+**Artikelart** ist eine Registerzeile: sie trägt ihre **Felder** selbst und
+erbt über `extends` von beliebig vielen Obertypen; was mehrere Arten teilen,
+ist ein Obertyp und keine Komponente. Gespeichert wird **eine Karte je Art**,
+benannt nach der Art, die ihre Felder erklärt — das hält `hp` an der Kreatur
+von `hp` am Statblock auseinander, ohne dass eins von beiden umbenannt werden
+muss. Verbindungen sind typisierte, gerichtete **Kanten**, die eigene
 Eigenschaften tragen dürfen, nur in einer Richtung gespeichert werden und deren
-Gegenrichtung immer eine Abfrage ist. **Schnittstellen** ersetzen Entitätstypen:
-Registerzeilen mit `requires` / `allows`, behauptet über `Typed`, geprüft von der
-Validierung. Alles davon sind Zeilen — eine neue Artikelart anzulegen heisst
-einfügen, nicht migrieren.
+Gegenrichtung immer eine Abfrage ist. Zugehörigkeit wird über `Typed`
+behauptet und von der Validierung geprüft; Pflicht steht je Feld. Alles davon
+sind Zeilen — eine neue Artikelart anzulegen heisst einfügen, nicht migrieren.
 
 Vollständig in [`Mrfudog/atlas-mentis`](https://github.com/Mrfudog/atlas-mentis):
 `Backbone Concept.md` erklärt die Mechanismen, `Schemas.md` hat die Schemata und
@@ -84,6 +87,14 @@ die Entscheidungen D0–D17, `Requirements.md` die REQ-Nummern.
   und keine Aufzählung im Register: was jemand vom anderen hält, ist
   Kampagneninhalt. Die Kante steht beim Urteilenden, und die Gegenrichtung
   ist eine eigene Kante, die etwas anderes sagen darf.
+- **Ein Ding, nicht zwei.** Es gab einmal Komponenten *und* Schnittstellen;
+  38 von 43 Komponenten hatten genau einen Nutzer, und 13 von 18
+  `requires`-Einträgen verlangten eine Karte ohne ein einziges Pflichtfeld.
+  Was jetzt gilt: die Art trägt ihre Felder, geteilte Felder wohnen in einem
+  Obertyp, und `requires`/`allows` gibt es nicht mehr (D27). Eine Feldgruppe,
+  die eine **Ansicht als Ganzes nennen muss** (`except: ['Vitals']`), bleibt
+  eine eigene Art — sonst stünde dort eine Aufzählung, die am Tag des
+  nächsten Feldes falsch ist.
 - **Das Register steht einmal.** Wer eine Zeile ändert, ändert sie in
   `packages/registry` und lässt `emit-seed` laufen. Zweimal dasselbe von Hand
   zu pflegen hält genau so lange, wie jemand daran denkt — und als es hier
