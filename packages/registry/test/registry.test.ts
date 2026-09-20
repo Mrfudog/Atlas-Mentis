@@ -61,8 +61,8 @@ describe('seed registry', () => {
   it('every field a view names exists on its component', () => {
     const bad: string[] = [];
     for (const [key, view] of Object.entries(seedRegistry.views)) {
-      if (!Array.isArray(view.felder)) continue;
-      for (const entry of view.felder) {
+      if (!Array.isArray(view.fields)) continue;
+      for (const entry of view.fields) {
         const [component, property] = entry.split('.');
         const def = component ? seedRegistry.components[component] : undefined;
         if (!def) {
@@ -83,8 +83,8 @@ describe('seed registry', () => {
     );
     const bad: string[] = [];
     for (const [key, view] of Object.entries(seedRegistry.views)) {
-      if (!Array.isArray(view.bloecke)) continue;
-      for (const type of view.bloecke) {
+      if (!Array.isArray(view.blocks)) continue;
+      for (const type of view.blocks) {
         if (!accepted.has(type)) bad.push(`${key}: ${type}`);
       }
     }
@@ -92,14 +92,14 @@ describe('seed registry', () => {
   });
 
   it('the player view withholds secrets', () => {
-    const spieler = seedRegistry.views['spieler'];
-    expect(spieler).toBeDefined();
-    expect(Array.isArray(spieler!.bloecke) && spieler!.bloecke.includes('secret')).toBe(false);
-    expect(showField(spieler!, 'StatblockInfo', 'ac')).toBe(false);
+    const player = seedRegistry.views['player'];
+    expect(player).toBeDefined();
+    expect(Array.isArray(player!.blocks) && player!.blocks.includes('secret')).toBe(false);
+    expect(showField(player!, 'StatblockInfo', 'ac')).toBe(false);
   });
 
   it('exposes the facets the table actually uses', () => {
-    expect(viewKeys(seedRegistry)).toEqual(['schnell', 'voll', 'kampf', 'bild', 'spieler', 'werte']);
+    expect(viewKeys(seedRegistry)).toEqual(['quick', 'full', 'combat', 'image', 'player', 'stats']);
   });
 });
 

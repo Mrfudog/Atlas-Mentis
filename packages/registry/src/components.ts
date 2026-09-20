@@ -209,6 +209,7 @@ export const components: Record<string, ComponentDef> = {
           enum: ['Reich', 'Stadt', 'Distrikt', 'Gasse', 'Gebäude', 'Raum', 'Wildnis'],
         },
         environment: { type: 'string', title: 'Environment' },
+        settlementType: { type: 'string', title: 'Settlement type' },
       },
     },
   },

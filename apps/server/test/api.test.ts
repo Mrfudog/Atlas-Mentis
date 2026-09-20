@@ -42,7 +42,7 @@ describe('registry', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(Object.keys(body.interfaces)).toContain('Statblock');
-    expect(body.views.spieler.label).toBe('Spieler');
+    expect(body.views.player.label).toBe('Player');
   });
 
   it('accepts a new interface row — adding an article kind is data, not code', async () => {
