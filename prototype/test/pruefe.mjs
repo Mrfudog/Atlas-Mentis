@@ -32,14 +32,22 @@ const zurSeite = async (p, name) => {
   await p.waitForTimeout(400);
 };
 
-/** Auf einen Teil des Registers. Es gab einmal eine Reiterzeile daneben,
- *  die dasselbe sagte wie die Leiste — jetzt sagt es die Leiste allein. */
+/** Auf einen Teil des Registers. Die Reiter oben sagen, worin man ist; die
+ *  Leiste links zeigt danach die Zeilen dieses Teils. */
 const zumRegister = async (p, name) => {
   await zurSeite(p, 'Registry');
   await p.evaluate((n) => {
-    const b = [...document.querySelectorAll('.rail button')].find((x) => x.textContent.startsWith(n));
+    const b = [...document.querySelectorAll('.tabs button')].find((x) => x.textContent === n);
     if (b) b.click();
   }, name);
+  await p.waitForTimeout(350);
+};
+
+/** Eine Artikelart in der Leiste wählen — über den Namen und nicht über die
+ *  Beschriftung: `StatblockInfo` steht dort als „Statblock numbers". */
+const zumTyp = async (p, name) => {
+  await zumRegister(p, 'Types');
+  await p.evaluate((i) => document.querySelector('.rail .navrow[data-t="' + i + '"]').click(), name);
   await p.waitForTimeout(350);
 };
 
@@ -72,19 +80,17 @@ async function seite(datei, warten) {
   pruefe('no exception', errs.length === 0, errs);
 
   /* 2 — Register: Baum, Felder, Subtyp anlegen.
-     Artikelarten und Datenmodell sind **eine** Seite: der Baum steht links,
-     die Maske rechts unter der Vorlage. Zwei Seiten hiessen, das Modell
-     hier anzulegen und dort nachzusehen, was dabei herauskommt. */
-  await zurSeite(p, 'Registry');
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((b) => /^Types/.test(b.textContent))?.click());
-  await p.waitForTimeout(400);
+     **Oben die Reiter, links die Zeilen.** Der Reiter sagt, in welchem Teil
+     des Registers man ist; die Leiste zeigt, was darin steht. Beides in der
+     Leiste zu haben und die Zeilen noch einmal in der Seite waren zwei
+     Listen für eine Frage, und keine sagte, welche gerade gilt. */
+  await zumRegister(p, 'Types');
   const baum = await p.evaluate(() =>
-    [...document.querySelectorAll('.tpnav .navrow')].map((b) => b.textContent));
+    [...document.querySelectorAll('.rail .navrow')].map((b) => b.textContent));
   pruefe('registry shows the interface tree', baum.length > 3, baum.length);
 
   await p.evaluate(() =>
-    [...document.querySelectorAll('.tpnav .navrow')].find((b) => /Statblock/.test(b.textContent))?.click());
+    [...document.querySelectorAll('.rail .navrow')].find((b) => /Statblock/.test(b.textContent))?.click());
   await p.waitForTimeout(350);
   /* Eine Liste, nicht eine Zeile je Karte: eigene Felder zuerst, geerbte
      darunter mit dem Bestandteil, der sie mitbringt. */
@@ -96,7 +102,7 @@ async function seite(datei, warten) {
     felderDa.alle.length);
   pruefe('and an inherited one says which part brings it', felderDa.geerbt > 0, felderDa.geerbt);
 
-  const vorher = await p.evaluate(() => document.querySelectorAll('.tpnav .navrow').length);
+  const vorher = await p.evaluate(() => document.querySelectorAll('.rail .navrow').length);
   await p.evaluate(() => {
     const bar = [...document.querySelectorAll('#view .addbar')]
       .find((b) => [...b.querySelectorAll('button')].some((x) => /Create interface/.test(x.textContent)));
@@ -105,7 +111,7 @@ async function seite(datei, warten) {
   });
   await p.waitForTimeout(400);
   const nachher = await p.evaluate(() => ({
-    anzahl: document.querySelectorAll('.tpnav .navrow').length,
+    anzahl: document.querySelectorAll('.rail .navrow').length,
     gewaehlt: document.querySelector('.regbody h3')?.textContent,
     geerbt: [...document.querySelectorAll('.fbox .frow.inh')].length > 0,
     geschrieben: window.__WROTE__.includes('registry/interfaces'),
@@ -154,14 +160,7 @@ async function seite(datei, warten) {
 
   /* 4 — Feldarten: Farbe, Auswahl, Verweis; Schlüssel umbenennen */
   const zumFeld = async (iface, key) => {
-    await zurSeite(p, 'Registry');
-    await p.evaluate(() =>
-      [...document.querySelectorAll('.rail button')].find((x) => /^Types/.test(x.textContent)).click());
-    await p.waitForTimeout(350);
-    /* Über `data-t` und nicht über die Beschriftung: `StatblockInfo` steht
-       in der Leiste als „Statblock numbers". */
-    await p.evaluate((i) => document.querySelector('.tpnav .navrow[data-t="' + i + '"]').click(), iface);
-    await p.waitForTimeout(350);
+    await zumTyp(p, iface);
     if (!key) return;
     /* Geerbte Zeilen haben kein „⋯" — ein Feld wird dort geändert, wo es
        erklärt wird, und nicht dort, wo es ankommt. */
@@ -364,8 +363,8 @@ async function seite(datei, warten) {
       && werkzeuge.length === bekannt.length, { werkzeuge, bekannt });
 
   await p.evaluate(() =>
-    [...document.querySelectorAll('.regtree button')].find((b) => b.textContent === 'Full').click());
-  await p.waitForTimeout(200);
+    document.querySelector('.rail .navrow[data-v="full"]').click());
+  await p.waitForTimeout(250);
   const umgewandelt = await p.evaluate(() =>
     [...document.querySelectorAll('.regbody .crow .cl b')].map((c) => c.textContent));
   /* Die alten Ansichten waren eine Sammlung von Schaltern. Sie müssen beim
@@ -726,22 +725,59 @@ async function seite(datei, warten) {
     ['Registry', 'Compendium', 'World', 'History', 'Rules', 'Play']
       .every((n, i) => seiten[i] === n) && seiten.length === 6, seiten);
 
-  /* Und die Leiste zeigt genau die Seite, auf der man steht: „Types" gehört
-     ins Register und nicht neben die Kreaturen. */
+  /* Und die Leiste zeigt genau die Seite, auf der man steht. Im Register
+     sagen die Reiter oben, in welchem Teil man ist, und die Leiste zeigt
+     die Zeilen darin — beim Teil „Types" also die Artikelarten. */
   const leisten = {};
   for (const n of ['Registry', 'World', 'History', 'Play']) {
-    await zurSeite(p, n);
-    leisten[n] = await p.evaluate(() =>
-      [...document.querySelectorAll('.rail button')].map((b) => b.textContent));
+    if (n === 'Registry') await zumRegister(p, 'Types');
+    else await zurSeite(p, n);
+    leisten[n] = await p.evaluate(() => ({
+      zeilen: [...document.querySelectorAll('.rail button')].map((b) => b.textContent),
+      reiter: [...document.querySelectorAll('.tabs button')].map((b) => b.textContent),
+    }));
   }
+  /* Was nach **Artikeln** fragt, gehört nicht ins Register: „was liegt noch
+     halb da", „was ist noch zu tun", „woran hängt die Validierung" fragen
+     nach Artikeln und nicht nach den Zeilen, aus denen Artikel gemacht
+     sind. Und nachschlagen tut man dort, wo die Regeln stehen. */
+  const umgezogen = await p.evaluate(() => {
+    const raus = () => [...document.querySelectorAll('.rail button')].map((b) => b.textContent);
+    return { reg: raus() };
+  });
+  await zurSeite(p, 'Compendium');
+  umgezogen.komp = await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].map((b) => b.textContent));
+  await zurSeite(p, 'Rules');
+  umgezogen.regeln = await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].map((b) => b.textContent));
+  pruefe('what asks about articles sits with the articles',
+    ['Unfinished', 'To do', 'Open issues'].every((w) =>
+      umgezogen.komp.some((x) => x.startsWith(w)) && !umgezogen.reg.some((x) => x.startsWith(w)))
+    && umgezogen.regeln.some((x) => x.startsWith('Rules'))
+    && !umgezogen.reg.some((x) => x.startsWith('Rules')),
+    { reg: umgezogen.reg.slice(0, 4), komp: umgezogen.komp.slice(-3), regeln: umgezogen.regeln.slice(-1) });
+
+  /* Der Stapel ist das, was am wenigsten selbsterklärend ist. Er stand als
+     ein Wort in der Leiste — jetzt hat er einen Reiter, der sagt, wofür er
+     da ist. */
+  await zumRegister(p, 'Stack');
+  const stapelSeite = await p.evaluate(() => ({
+    erklaert: (document.querySelector('#view .hint')?.textContent ?? '').length > 200,
+    ebenen: document.querySelectorAll('#view .layers .layer').length,
+  }));
+  pruefe('the stack says what it is for, and what is running',
+    stapelSeite.erklaert && stapelSeite.ebenen > 0, stapelSeite);
+
   pruefe('each page shows only its own rail',
-    leisten.Registry.some((x) => /^Types/.test(x))
-      && leisten.World.some((x) => /^Creature/.test(x))
-      && !leisten.World.some((x) => /^Types/.test(x))
-      && leisten.History.some((x) => /^Quest/.test(x))
-      && !leisten.History.some((x) => /^Creature/.test(x))
-      && leisten.Play.some((x) => /^Map/.test(x)),
-    { r: leisten.Registry.slice(0, 3), w: leisten.World.slice(0, 3), h: leisten.History.slice(0, 3) });
+    leisten.Registry.reiter.includes('Types')
+      && leisten.Registry.zeilen.some((x) => /^Article/.test(x))
+      && leisten.World.zeilen.some((x) => /^Creature/.test(x))
+      && !leisten.World.reiter.length
+      && leisten.History.zeilen.some((x) => /^Quest/.test(x))
+      && !leisten.History.zeilen.some((x) => /^Creature/.test(x))
+      && leisten.Play.zeilen.some((x) => /^Map/.test(x)),
+    { r: leisten.Registry, w: leisten.World.zeilen.slice(0, 3) });
 
   await zurSeite(p, 'Compendium');
   await p.evaluate(() =>
@@ -896,9 +932,7 @@ async function seite(datei, warten) {
   const dm = await p.evaluate(() => ({
     titel: document.querySelector('#view h2')?.textContent,
     begriffe: [...document.querySelectorAll('.kdl dt')].map((x) => x.textContent),
-    /* Die Reiterzeile gibt es nicht mehr: sie sagte dasselbe wie die
-       Leiste, zwei Handbreit daneben. */
-    reiter: document.querySelectorAll('.tabs button').length,
+    reiter: [...document.querySelectorAll('.tabs button')].map((x) => x.textContent),
     knoten: [...document.querySelectorAll('.tree .tnode .tw')].map((x) => x.textContent),
     felder: document.querySelectorAll('.tree .tfield').length,
     belegt: document.querySelectorAll('.tree .tfield.on').length,
@@ -907,9 +941,11 @@ async function seite(datei, warten) {
      nur in Commit-Nachrichten. Und sie wird aus dem Register gezogen: eine
      Erklärung, die eine Liste abtippt, stimmt am Tag ihrer Entstehung. */
   pruefe('the registry explains its own words',
-    dm.titel === 'Registry' && dm.reiter === 0
+    dm.titel === 'Registry'
+    && ['How it works', 'Types', 'Views', 'Relations', 'Variables', 'Settings',
+      'Backup', 'Stack', 'Graph'].every((t) => dm.reiter.includes(t))
     && ['Type', 'Part', 'Field', 'Article', 'View', 'Block', 'Edge']
-      .every((w, i) => dm.begriffe[i] === w), dm.begriffe);
+      .every((w, i) => dm.begriffe[i] === w), { begriffe: dm.begriffe, reiter: dm.reiter });
   pruefe('and follows one article from its type down to its fields',
     dm.knoten[0] === 'article' && dm.knoten[1] === 'its type'
     && dm.knoten.filter((x) => /^part/.test(x)).length > 3
@@ -1166,13 +1202,7 @@ async function seite(datei, warten) {
       && quellen.ablage === '/_blob/0123456789abcdef0123456789abcdef'
       && quellen.wurzel === '/_blob/x', quellen);
 
-  await zurSeite(p, 'Registry');
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((b) => /^Types/.test(b.textContent))?.click());
-  await p.waitForTimeout(300);
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((b) => /^Settings/.test(b.textContent)).click());
-  await p.waitForTimeout(300);
+  await zumRegister(p, 'Settings');
   const einst = await p.evaluate(() => ({
     zeilen: [...document.querySelectorAll('.regbody .crow .cl b')].map((x) => x.textContent),
     bekannt: [...(document.querySelectorAll('.addbar select.i')[0]?.options ?? [])].map((o) => o.value),
@@ -1820,20 +1850,17 @@ async function seite(datei, warten) {
      **laufenden** Register. Eine Seite, die eine Liste abtippt, stimmt am
      Tag ihrer Entstehung und danach nie wieder — die Prüfung fragt deshalb
      nicht, ob etwas dasteht, sondern ob es aus dem Register kommt. */
-  await zurSeite(p, 'Registry');
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')]
-      .find((x) => /^Types/.test(x.textContent)).click());
-  await p.waitForTimeout(600);
+  await zumRegister(p, 'Types');
   const typen = await p.evaluate(() => ({
-    kopf: document.querySelector('#view .listhead h2')?.textContent ?? '',
-    bereiche: [...document.querySelectorAll('.tpnav h3')].map((h) => h.textContent),
-    arten: document.querySelectorAll('.tpnav .navrow').length,
+    kopf: document.querySelector('#view h2')?.textContent ?? '',
+    reiter: [...document.querySelectorAll('.tabs button[aria-selected="true"]')].map((x) => x.textContent),
+    bereiche: [...document.querySelectorAll('.rail h3')].map((h) => h.textContent),
+    arten: document.querySelectorAll('.rail .navrow').length,
     imRegister: Object.keys(window.__T__.REG.interfaces).length,
     abschnitte: [...document.querySelectorAll('.tpdoc .sec')].map((x) => x.textContent),
   }));
-  pruefe('the article types open as a page of their own',
-    typen.kopf === 'Article types', typen.kopf);
+  pruefe('the article types open as a part of their own',
+    typen.kopf === 'Registry' && typen.reiter.join() === 'Types', typen);
   /* Jede Art aus dem Register steht in der Leiste — keine fehlt, keine ist
      doppelt. Eine Übersicht, die eine Art auslässt, ist schlimmer als keine:
      man hält sie für vollständig. */
@@ -1895,12 +1922,12 @@ async function seite(datei, warten) {
      heisst als das, was darunter steht. */
   const lauf = await p.evaluate(async () => {
     const T = window.__T__;
-    const nav = [...document.querySelectorAll('.tpnav .navrow b')].map((b) => b.textContent);
-    const jetzt = document.querySelector('.tpnav .navrow.on b')?.textContent ?? '';
+    const nav = [...document.querySelectorAll('.rail .navrow b')].map((b) => b.textContent);
+    const jetzt = document.querySelector('.rail .navrow.on b')?.textContent ?? '';
     [...document.querySelectorAll('.tpdoc .maptools .btn')]
       .find((b) => b.textContent === '→').click();
     await new Promise((r) => setTimeout(r, 250));
-    return { nav, jetzt, danach: document.querySelector('.tpnav .navrow.on b')?.textContent ?? '' };
+    return { nav, jetzt, danach: document.querySelector('.rail .navrow.on b')?.textContent ?? '' };
   });
   pruefe('forward steps to the next one in the list, not somewhere else',
     lauf.nav.indexOf(lauf.danach) === lauf.nav.indexOf(lauf.jetzt) + 1, lauf);
@@ -1912,7 +1939,8 @@ async function seite(datei, warten) {
     T.UI.asActor = 'pc_rook';
     T.render();
     await new Promise((r) => setTimeout(r, 250));
-    const zu = !document.querySelector('.tpnav');
+    const zu = !document.querySelector('#pages button[data-p="registry"]')
+      && ![...document.querySelectorAll('#pages button')].some((b) => b.textContent === 'Registry');
     T.UI.asActor = vorher;
     T.render();
     return zu;
@@ -3154,13 +3182,7 @@ async function seite(datei, warten) {
      von der nächsten Selbstspeicherung überschrieben, und der unlesbare
      Stand war danach weg. Die Prüfung dafür muss den Fehler wirklich
      auslösen — „es sieht richtig aus" hat damals auch gereicht. */
-  await zurSeite(p, 'Registry');
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((b) => /^Types/.test(b.textContent)).click());
-  await p.waitForTimeout(300);
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((b) => /^Backup/.test(b.textContent)).click());
-  await p.waitForTimeout(400);
+  await zumRegister(p, 'Backup');
   await p.evaluate(() => { window.__SAVED__.length = 0; });
   await p.evaluate(() =>
     [...document.querySelectorAll('#view .btn')].find((b) => /Download a backup/.test(b.textContent)).click());
@@ -3231,13 +3253,7 @@ async function seite(datei, warten) {
   pruefe('after a failed load nothing is written any more',
     zu.geschrieben === 0 && /Nothing is being saved/.test(zu.banner), zu);
   /* Und die Sicherung geht trotzdem — gerade dann. */
-  await zurSeite(p, 'Registry');
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((b) => /^Types/.test(b.textContent)).click());
-  await p.waitForTimeout(300);
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((b) => /^Backup/.test(b.textContent)).click());
-  await p.waitForTimeout(350);
+  await zumRegister(p, 'Backup');
   await p.evaluate(() => { window.__SAVED__.length = 0; });
   await p.evaluate(() =>
     [...document.querySelectorAll('#view .btn')].find((b) => /Download a backup/.test(b.textContent)).click());
@@ -3335,9 +3351,10 @@ async function seite(datei, warten) {
   const hatRegeln = await p.evaluate(() =>
     [...window.__T__.ENT.values()].filter((e) => (e.interfaces || [])[0] === 'Rule').length);
   if (hatRegeln >= 2) {
-    /* Der Regelbrowser hängt am Register — nachschlagen ist keine
-       Spielleitungssache, aber die Zeile steht dort, wo die Regeln leben. */
-    await zurSeite(p, 'Registry');
+    /* Nach Regeln sucht man dort, wo die Regeln stehen: auf der
+       Regelwerk-Seite. Der Einstieg lag im Register, und das Register ist
+       nichts für Spieler — nachschlagen aber schon. */
+    await zurSeite(p, 'Rules');
     await p.evaluate(() =>
       [...document.querySelectorAll('.rail button')].find((b) => /^Rules/.test(b.textContent)).click());
     await p.waitForTimeout(400);

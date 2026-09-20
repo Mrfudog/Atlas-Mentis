@@ -286,16 +286,10 @@ body.asplayer .brand span{color:var(--link)}
 /* Die Artenübersicht: links die Liste, rechts eine Art ganz. Zwei Spalten,
    weil man durchgeht und nicht nachschlägt — zurückspringen nach jedem
    Eintrag wäre genau der Umweg, den die Seite abschaffen soll. */
-.tsplit{display:grid;grid-template-columns:minmax(180px,240px) 1fr;gap:18px;
-  align-items:start}
-@media(max-width:820px){ .tsplit{grid-template-columns:1fr} }
-.tpnav{position:sticky;top:0;max-height:78vh;overflow:auto;
-  border:1px solid var(--line);border-radius:var(--r);padding:6px;
-  background:var(--surface)}
-.tpnav h3{font-size:10px;text-transform:uppercase;letter-spacing:.08em;
-  color:var(--dim);margin:10px 0 3px;padding-left:8px}
-.tpnav h3:first-child{margin-top:2px}
-.tpnav .navrow.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+/* Der Typenbaum sitzt in der Leiste links — `.navrow.on` markiert dort die
+   gewählte Art. Er stand einmal in der Seite, neben derselben Auswahl in
+   der Leiste. */
+.rail .navrow.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
 .tpdoc{min-width:0}
 .tcomp{border:1px solid var(--line);border-radius:var(--r);padding:7px 10px;
   margin-bottom:5px;background:var(--surface2)}
@@ -1895,6 +1889,64 @@ function renderRail(){
       onclick:function(){ UI.iface="";UI.area=""; go({k:"tags"}); }},
       [el("b",{text:"Tags"}),el("em",{text:String(Object.keys(tags).length)})]));
     r.appendChild(sAll);
+
+    /* Die drei Fragen vor jeder Sitzung. Sie standen im Register, und dort
+       gehören sie nicht hin: sie fragen nach **Artikeln**, nicht nach den
+       Zeilen, aus denen Artikel gemacht sind. Auf dem Vorbereitungsbrett
+       der Spielleitung stehen sie ausserdem noch einmal — dort mit dem, was
+       man daran tut. */
+    var sPrep=el("section");
+    sPrep.appendChild(el("h3",{text:"Before the session"}));
+    var unfertig=0;
+    ENT.forEach(function(x){
+      var st=((x.components||{}).Status||{}).status;
+      if(st==="idea"||st==="planned") unfertig++;
+    });
+    sPrep.appendChild(el("button",{class:"navrow",type:"button",
+      title:"Everything still at idea or planned (REQ-188)",
+      "aria-current":String(UI.status==="idea"||UI.status==="planned"),
+      onclick:function(){ UI.status=UI.status==="idea"?"planned":(UI.status==="planned"?"":"idea");
+        UI.iface="";UI.area=""; go({k:"list"}); }},
+      [el("b",{text:"Unfinished"}),el("em",{text:String(unfertig)})]));
+    var offeneTodos=0;
+    ENT.forEach(function(x){
+      ((((x.components||{}).Todos||{}).items)||[]).forEach(function(t){ if(!t.done) offeneTodos++; });
+    });
+    if(offeneTodos) sPrep.appendChild(el("button",{class:"navrow",type:"button",
+      title:"Open the prep board of the first campaign or session",
+      onclick:function(){
+        var ziel=null;
+        ENT.forEach(function(x){
+          if(ziel)return;
+          var i2=(x.interfaces||[])[0];
+          if(i2==="Campaign"||i2==="Session") ziel=x;
+        });
+        if(ziel) go({k:"art",id:ziel.id});
+      }},[el("b",{text:"To do"}),el("em",{text:String(offeneTodos)})]));
+    var openCount=0; ENT.forEach(function(x){ if(checkArticle(x).length) openCount++; });
+    sPrep.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.offen),
+      title:"Articles the validation complains about",
+      onclick:function(){UI.offen=!UI.offen;UI.iface="";UI.area="";go({k:"list"});}},
+      [el("b",{text:"Open issues"}),el("em",{text:String(openCount)})]));
+    r.appendChild(sPrep);
+  }
+
+  /* ---- Regelwerk ----
+     Nachschlagen ist keine Spielleitungssache: die Regel gilt für alle, und
+     wer sie nicht findet, hält den Tisch auf. Der Regelbrowser stand im
+     Register — nach Regeln sucht man aber dort, wo die Regeln stehen. */
+  if(seite==="rules"){
+    var regelZahl=0;
+    ENT.forEach(function(x){ if(((x.interfaces||[])[0])===RULE_IFACE) regelZahl++; });
+    if(regelZahl){
+      var sR=el("section");
+      sR.appendChild(el("h3",{text:"Look it up"}));
+      sR.appendChild(el("button",{class:"navrow",type:"button",
+        "aria-current":String(UI.route.k==="rules"),
+        onclick:function(){go({k:"rules"});}},
+        [el("b",{text:"Rules"}),el("em",{text:String(regelZahl)})]));
+      r.appendChild(sR);
+    }
   }
 
 
@@ -1914,89 +1966,79 @@ function renderRail(){
         onclick:function(){go({k:"art",id:o.id});}},
         [el("b",{text:nameOf(o)}),el("em",{text:"party"})]));
     });
-    /* Nachschlagen ist keine Spielleitungssache — die Regel gilt für alle,
-       und wer sie nicht findet, hält den Tisch auf. */
-    var rz=0; ENT.forEach(function(x){ if(((x.interfaces||[])[0])===RULE_IFACE) rz++; });
-    if(rz) sp.appendChild(el("button",{class:"navrow",type:"button",
-      "aria-current":String(UI.route.k==="rules"),
-      onclick:function(){go({k:"rules"});}},
-      [el("b",{text:"Rules"}),el("em",{text:String(rz)})]));
     r.appendChild(sp);
     return;
   }
   /* ---- Register ----
-     Die Zeilen, aus denen alles besteht: Typen, Ansichten, Beziehungen.
-     Es hiess „System", und das klang nach Einstellungen — nach etwas, das
-     man einmal setzt. Hier wird die Kampagne definiert. */
+     **Oben die Teile, links die Zeilen darin.** Es stand einmal beides in
+     der Leiste: die Teile als Zeilen und daneben, in der Seite, noch einmal
+     eine Auswahl — zwei Listen für eine Frage, und keine sagte, welche
+     gerade gilt. Jetzt sagen die Reiter, worin man ist, und die Leiste, an
+     welcher Zeile. */
   if(seite!=="registry") return;
   var s3=el("section");
-  s3.appendChild(el("h3",{text:"Registry"}));
-  function regZeile(tab,label,zusatz,titel){
-    s3.appendChild(el("button",{class:"navrow",type:"button",
-      "aria-current":String((UI.route.k==="reg"||UI.route.k==="types")&&UI.regtab===tab),
-      title:titel||null,
-      onclick:function(){ UI.regtab=tab; UI.regjson=false; go({k:"reg"}); }},
-      [el("b",{text:label}),el("em",{text:zusatz})]));
+
+  if(UI.regtab==="types"){
+    s3.appendChild(el("h3",{text:"Types"}));
+    typeNav(s3);
+  }else if(UI.regtab==="views"){
+    s3.appendChild(el("h3",{text:"Views"}));
+    viewKeys().forEach(function(k){
+      var vd=(Object.keys(REG.views).length?REG.views:VIEWS_FALLBACK)[k]||{};
+      s3.appendChild(el("button",{class:"navrow",type:"button","data-v":k,
+        "aria-current":String(UI.regview===k),
+        onclick:function(){ UI.regview=k; UI.regscope=""; UI.regel=""; render(); }},
+        [el("b",{text:vd.label||k}),el("em",{text:k})]));
+    });
+  }else if(UI.regtab==="relations"){
+    s3.appendChild(el("h3",{text:"Relation types"}));
+    Object.keys(REG.relations).sort().forEach(function(k){
+      var rd=REG.relations[k]||{};
+      s3.appendChild(el("button",{class:"navrow",type:"button","data-r":k,
+        "aria-current":String(UI.regrel===k),
+        onclick:function(){ UI.regrel=k; render(); }},
+        [el("b",{text:rd.label||k}),el("em",{text:(rd.to||["*"]).length+"→"})]));
+    });
+  }else{
+    s3.appendChild(el("h3",{text:"Registry"}));
+    s3.appendChild(el("p",{class:"hint",style:"margin:0",
+      text:"Nothing to pick here — the tabs above say which part you are in."}));
   }
-  regZeile("howto","How it works","?",
-    "The seven words, and one article followed from its type down to its fields");
-  regZeile("types","Types",String(Object.keys(REG.interfaces).length),
-    "What each kind records, inherits, connects to and looks like");
-  regZeile("views","Views",String(Object.keys(REG.views).length));
-  regZeile("relations","Relations",String(Object.keys(REG.relations).length));
-  s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="graph"),
-    onclick:function(){go({k:"graph"});}},[el("b",{text:"Graph"}),el("em",{text:"↔"})]));
-  regZeile("vars","Variables",String(Object.keys(REG.vars||{}).length));
-  regZeile("settings","Settings","·");
-  regZeile("backup","Backup","·");
-  var ebenen=0; ENT.forEach(function(x){ if(((x.interfaces||[])[0])===LAYER_IFACE) ebenen++; });
-  if(ebenen){
-    var camp=currentCampaign();
-    s3.appendChild(el("button",{class:"navrow",type:"button",
-      title:"Which layers are running",
-      onclick:function(){ if(camp) go({k:"art",id:camp.id}); }},
-      [el("b",{text:"Stack"}),el("em",{text:activeStack().length+"/"+ebenen})]));
-  }
-  var regelZahl=0; ENT.forEach(function(x){ if(((x.interfaces||[])[0])===RULE_IFACE) regelZahl++; });
-  if(regelZahl) s3.appendChild(el("button",{class:"navrow",type:"button",
-    "aria-current":String(UI.route.k==="rules"),
-    onclick:function(){go({k:"rules"});}},
-    [el("b",{text:"Rules"}),el("em",{text:String(regelZahl)})]));
-  if(canWrite()) s3.appendChild(el("button",{class:"navrow",type:"button",
-    onclick:function(){importDialog();}},[el("b",{text:"Import"}),el("em",{text:"md"})]));
-  /* Unfertiges als eigener Einstieg (REQ-188): die Frage „was liegt noch
-     halb da?" stellt man vor jeder Sitzung, und sie über den Filter zu
-     bauen heisst, sie nicht zu stellen. */
-  var unfertig=0;
-  ENT.forEach(function(x){
-    var st=((x.components||{}).Status||{}).status;
-    if(st==="idea"||st==="planned") unfertig++;
-  });
-  s3.appendChild(el("button",{class:"navrow",type:"button",
-    "aria-current":String(UI.status==="idea"||UI.status==="planned"),
-    onclick:function(){ UI.status=UI.status==="idea"?"planned":(UI.status==="planned"?"":"idea");
-      go({k:"list"}); }},
-    [el("b",{text:"Unfinished"}),el("em",{text:String(unfertig)})]));
-  var offeneTodos=0;
-  ENT.forEach(function(x){
-    ((((x.components||{}).Todos||{}).items)||[]).forEach(function(t){ if(!t.done) offeneTodos++; });
-  });
-  if(offeneTodos) s3.appendChild(el("button",{class:"navrow",type:"button",
-    title:"Open the prep board of the first campaign or session",
-    onclick:function(){
-      var ziel=null;
-      ENT.forEach(function(x){
-        if(ziel)return;
-        var i2=(x.interfaces||[])[0];
-        if(i2==="Campaign"||i2==="Session") ziel=x;
-      });
-      if(ziel) go({k:"art",id:ziel.id});
-    }},[el("b",{text:"To do"}),el("em",{text:String(offeneTodos)})]));
-  var openCount=0; ENT.forEach(function(x){ if(checkArticle(x).length) openCount++; });
-  s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.offen),
-    onclick:function(){UI.offen=!UI.offen;go({k:"list"});}},
-    [el("b",{text:"Open issues"}),el("em",{text:String(openCount)})]));
   r.appendChild(s3);
+}
+
+/** Der Typenbaum. Er stand in der Seite und steht jetzt in der Leiste: eine
+ *  hohe schmale Liste gehört an die Seite und nicht mitten in den Text. */
+function typeNav(into){
+  var wahl=REG.interfaces[UI.typePick]?UI.typePick:typeOrder()[0];
+  function zeile(n,tiefe){
+    var dd=REG.interfaces[n]||{};
+    var zahl=countIface(n);
+    into.appendChild(el("button",{class:"navrow"+(n===wahl?" on":""),type:"button",
+      "aria-current":String(n===wahl),
+      /* Der Name, nicht die Beschriftung: „Statblock numbers" heisst
+         `StatblockInfo`, und wer die Zeile sucht, sucht den Namen. */
+      "data-t":n,
+      style:tiefe?"padding-left:"+(7+tiefe*11)+"px":null,
+      onclick:function(){ UI.typePick=n; UI.regiface=n; render(); }},
+      [el("b",{class:dd.abstract?"ab":"",text:dd.label||n}),
+       el("em",{text:zahl?String(zahl):"—"})]));
+  }
+  function zweig(n,tiefe){
+    zeile(n,tiefe);
+    kindsOf(n).forEach(function(k){ if(areaOf(k)===areaOf(n)) zweig(k,tiefe+1); });
+  }
+  AREAS.forEach(function(ar){
+    var wurzeln=areaRoots(ar[0]);
+    if(!wurzeln.length)return;
+    into.appendChild(el("h3",{text:ar[1]}));
+    wurzeln.forEach(function(n){ zweig(n,0); });
+  });
+  var ohne=typeOrder().filter(function(n){ return !areaOf(n); });
+  if(ohne.length){
+    into.appendChild(el("h3",{text:"No area"}));
+    ohne.forEach(function(n){ zeile(n,0); });
+  }
 }
 
 /* ---------- main ---------- */
@@ -8863,6 +8905,30 @@ function renderAside(){
 }
 
 /* ---------- graph ---------- */
+/* ---------- Der Stapel ----------
+   Er ist das, was am wenigsten selbsterklärend ist, und stand bisher als
+   ein Wort in der Leiste. Also steht hier, wofür er da ist, und darunter,
+   was gerade läuft. */
+function renderStackPage(v){
+  v.appendChild(el("p",{class:"hint"},
+    "A layer is a pack of content that can be switched on or off as a whole: "+
+    "a house rule set, an adventure module, the bits you invented at the "+
+    "table. The campaign says which layers run and in what order; an article "+
+    "that belongs to a layer is only there while that layer is on, and a "+
+    "later layer may replace an article an earlier one brought. An article "+
+    "that belongs to no layer is always there — which is the right default "+
+    "for a campaign that uses no packs at all."));
+  var camp=currentCampaign();
+  if(camp){
+    var bar=el("div",{class:"maptools"});
+    bar.appendChild(el("span",{class:"co",style:"align-self:center",text:"Campaign"}));
+    bar.appendChild(el("button",{class:"btn sm",type:"button",
+      onclick:function(){ go({k:"art",id:camp.id}); }},nameOf(camp)));
+    v.appendChild(bar);
+  }
+  v.appendChild(elStack(camp||{},"Campaign",{}));
+}
+
 function renderGraph(v){
   v.appendChild(el("h2",{text:"Graph"}));
   v.appendChild(el("p",{class:"hint",text:"Every stored edge, once — the reverse direction is derived from it everywhere."}));
@@ -9123,51 +9189,10 @@ function renderTypes(v){
   var wahl=REG.interfaces[UI.typePick]?UI.typePick:arten[0];
   var d=REG.interfaces[wahl]||{};
 
-  var kopf=el("div",{class:"listhead"});
-  kopf.appendChild(el("h2",{text:"Article types"}));
-  kopf.appendChild(el("span",{class:"count",
-    text:arten.length+" types · "+
-      Object.keys(REG.relations).length+" relation types"}));
-  v.appendChild(kopf);
-  v.appendChild(el("p",{class:"hint",
-    text:"What each kind records, what it inherits, which edges it holds in both directions, and how it is drawn. Inherited entries say where they come from."}));
-
-  var split=el("div",{class:"tsplit"});
-
-  /* ---- links: die Arten nach Bereich ---- */
-  var nav=el("div",{class:"tpnav"});
-  function zeile(n,tiefe){
-    var dd=REG.interfaces[n]||{};
-    var zahl=countIface(n);
-    var b=el("button",{class:"navrow"+(n===wahl?" on":""),type:"button",
-      "aria-current":String(n===wahl),
-      /* Der Name, nicht die Beschriftung: „Statblock numbers" heisst
-         `StatblockInfo`, und wer die Zeile sucht, sucht den Namen. */
-      "data-t":n,
-      style:tiefe?"padding-left:"+(10+tiefe*11)+"px":null,
-      onclick:function(){ UI.typePick=n; render(); }},
-      [el("b",{class:dd.abstract?"ab":"",text:dd.label||n}),
-       el("em",{text:zahl?String(zahl):"—"})]);
-    nav.appendChild(b);
-  }
-  function zweig(n,tiefe){
-    zeile(n,tiefe);
-    kindsOf(n).forEach(function(k){ if(areaOf(k)===areaOf(n)) zweig(k,tiefe+1); });
-  }
-  AREAS.forEach(function(ar){
-    var wurzeln=areaRoots(ar[0]);
-    if(!wurzeln.length)return;
-    nav.appendChild(el("h3",{text:ar[1]}));
-    wurzeln.forEach(function(n){ zweig(n,0); });
-  });
-  var ohne=arten.filter(function(n){ return !areaOf(n); });
-  if(ohne.length){
-    nav.appendChild(el("h3",{text:"No area"}));
-    ohne.forEach(function(n){ zeile(n,0); });
-  }
-  split.appendChild(nav);
-
-  /* ---- rechts: eine Art ganz ---- */
+  /* Die Liste der Arten steht in der Leiste links und nicht mehr hier: eine
+     hohe schmale Liste gehört an die Seite, nicht mitten in den Text — und
+     sie zweimal zu zeigen war der Grund, dass man sie beim ersten Mal nicht
+     bedienen konnte. */
   var doc=el("div",{class:"tpdoc"});
   var i=arten.indexOf(wahl);
   var bar=el("div",{class:"maptools"});
@@ -9264,18 +9289,38 @@ function renderTypes(v){
     doc.appendChild(cb);
   }
 
-  split.appendChild(doc);
-  v.appendChild(split);
+  v.appendChild(doc);
   if(canWrite()) v.appendChild(newInterfaceBar(""));
 }
 
+/* Die Teile des Registers. Sie stehen **oben als Reiter**, und die Leiste
+   links zeigt die Zeilen des gewählten Teils. Es stand einmal beides in der
+   Leiste und die Zeilen noch einmal in der Seite — zwei Listen für eine
+   Frage, und keine sagte, welche gerade gilt. */
+var REGTABS=[["howto","How it works"],["types","Types"],["views","Views"],
+  ["relations","Relations"],["vars","Variables"],["settings","Settings"],
+  ["backup","Backup"],["stack","Stack"],["graph","Graph"],["import","Import"]];
+
 function renderRegistry(v){
   v.appendChild(el("h2",{text:"Registry"}));
-  /* Keine Reiterzeile mehr. Sie sagte dasselbe wie die Leiste links —
-     dieselben sechs Wörter, zwei Handbreit voneinander entfernt, und wer
-     einen Reiter suchte, suchte ihn an beiden Stellen. Die Leiste ist die
-     Navigation, hier steht der Inhalt. */
+  var tabs=el("div",{class:"tabs",role:"tablist"});
+  REGTABS.forEach(function(t){
+    if(t[0]==="import"&&!canWrite())return;
+    tabs.appendChild(el("button",{type:"button",role:"tab",
+      "aria-selected":String(UI.regtab===t[0]),
+      onclick:function(){
+        UI.err="";
+        /* Import ist kein Ort, sondern eine Handlung: er macht einen
+           Dialog auf und lässt die Seite, wo sie war. */
+        if(t[0]==="import"){ importDialog(); return; }
+        UI.regtab=t[0]; UI.regjson=false; go({k:"reg"});
+      }},t[1]));
+  });
+  v.appendChild(tabs);
+
   if(UI.regtab==="howto"){ renderHowto(v); return; }
+  if(UI.regtab==="stack"){ renderStackPage(v); return; }
+  if(UI.regtab==="graph"){ renderGraph(v); return; }
 
   /* Schnittstellen bekommen eine Maske: Komponenten, Felder, Blockarten und
      Subtypen an einer Stelle. Das JSON bleibt daneben stehen — für Massen-
@@ -9354,21 +9399,7 @@ function renderRelationEditor(v){
     return;
   }
   if(names.indexOf(UI.regrel)<0) UI.regrel=names[0];
-
-  var grid=el("div",{class:"reg2"});
-  var list=el("div",{class:"regtree"});
-  names.forEach(function(rt){
-    var rd=REG.relations[rt];
-    var n=0; ENT.forEach(function(e){ (e.relations||[]).forEach(function(r){ if(r.type===rt)n++; }); });
-    var b=el("button",{type:"button","aria-current":String(UI.regrel===rt),
-      onclick:function(){ UI.regrel=rt; render(); }});
-    if(n) b.appendChild(el("em",{text:String(n)}));
-    b.appendChild(el("span",{text:rd.label||rt}));
-    list.appendChild(b);
-  });
-  grid.appendChild(list);
-  grid.appendChild(relationBody(UI.regrel));
-  v.appendChild(grid);
+  v.appendChild(relationBody(UI.regrel));
   if(canWrite()) v.appendChild(newRelationBar());
 }
 
@@ -9799,19 +9830,9 @@ function renderViewEditor(v){
     return;
   }
   if(keys.indexOf(UI.regview)<0) UI.regview=keys[0];
-
-  var grid=el("div",{class:"reg2"});
-  var list=el("div",{class:"regtree"});
-  keys.forEach(function(k){
-    var vd=REG.views[k]||{};
-    var b=el("button",{type:"button","aria-current":String(UI.regview===k),
-      onclick:function(){ UI.regview=k; UI.regscope=""; UI.regel=""; render(); }});
-    b.appendChild(el("span",{text:vd.label||k}));
-    list.appendChild(b);
-  });
-  grid.appendChild(list);
-  grid.appendChild(viewBody(UI.regview));
-  v.appendChild(grid);
+  /* Gewählt wird in der Leiste. Eine zweite Liste hier wäre genau die
+     doppelte Auswahl, die auf der Typenseite schon im Weg stand. */
+  v.appendChild(viewBody(UI.regview));
   if(canWrite()) v.appendChild(newViewBar());
 }
 
@@ -10077,8 +10098,8 @@ function regIfaceBody(ifn){
   var box=el("div",{class:"regbody"});
   function save(){ saveReg("interfaces"); render(); }
 
-  /* ---- Kopf ---- */
-  box.appendChild(el("h3",{text:d.label||ifn}));
+  /* ---- Kopf ----
+     Kein zweiter Titel: die Art steht als Überschrift darüber. */
   var count=countIface(ifn);
   box.appendChild(el("div",{class:"key",
     text:ifn+" · "+(count?count+(count===1?" articles":" articles"):"no articles")}));
