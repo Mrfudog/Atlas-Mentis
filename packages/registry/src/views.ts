@@ -173,4 +173,22 @@ export const views: Record<string, ViewDef> = {
       { id: 'g-f', el: 'fields', fields: ['InventoryInfo'], columns: 2 },
     ],
   },
+
+  /** Die Werkbank: was aus dem vorhandenen Material herstellbar ist. */
+  craft: {
+    label: 'Crafting',
+    order: 11,
+    fields: ['RecipeInfo'],
+    blocks: ['note', 'lore'],
+    description: true,
+    composed: false,
+    relations: true,
+    bindings: false,
+    image: false,
+    layout: [
+      { id: 'c-craft', el: 'crafting' },
+      { id: 'c-desc', el: 'description' },
+      { id: 'c-b', el: 'blocks', blocks: ['note', 'lore'] },
+    ],
+  },
 };

@@ -1172,6 +1172,94 @@ async function seite(datei, warten) {
     pruefe('a character with skills and gear exists in the data', false, 'keiner gefunden');
   }
 
+  /* ---- Handwerk (REQ-184) ----
+     Die Probe aufs Wissensmodell: ein Rezept, das jemand kennt, ist eine
+     Information mit `knownBy` — kein Feld „bekannt von" am Rezept. Wenn das
+     trägt, steht Crafting auf demselben Rückgrat wie alles andere. */
+  const werkbank = await p.evaluate(() => {
+    const alle = [...window.__T__.ENT.values()];
+    const rezept = alle.find((e) => (e.interfaces || [])[0] === 'Recipe'
+      && (e.relations || []).some((r) => r.type === 'knowledge'));
+    const kenner = alle.find((e) => (e.relations || []).some((r) => r.type === 'carries'));
+    return {
+      rezept: rezept ? (rezept.name || rezept.components.Name.text) : null,
+      kenner: kenner ? (kenner.name || kenner.components.Name.text) : null,
+    };
+  });
+  if (werkbank.rezept && werkbank.kenner) {
+    await oeffne(werkbank.rezept);
+    await p.evaluate(() => {
+      const f = document.getElementById('facet');
+      f.value = 'craft';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(400);
+    const rez = await p.evaluate(() => ({
+      kopf: [...document.querySelectorAll('.crhead .pill')].map((x) => x.textContent),
+      zeilen: [...document.querySelectorAll('table.craftm tr')]
+        .map((r) => [...r.children].map((c) => c.textContent)),
+      kenner: [...document.querySelectorAll('.craft .chips .chip')].map((x) => x.textContent),
+      probleme: [...document.querySelectorAll('.pruef li')].map((x) => x.textContent),
+    }));
+    pruefe('a recipe shows its trade, check and time', rez.kopf.length >= 3, rez.kopf);
+    /* Die Matrix hat je Träger eine Spalte — „hat jemand von uns genug?" ist
+       die Frage am Tisch, nicht „hat diese eine Figur genug?". */
+    pruefe('the material matrix has a column per carrier',
+      rez.zeilen.length > 2 && rez.zeilen[0].length >= 3, rez.zeilen[0]);
+    pruefe('who knows the recipe comes from the knowledge edges, not from a field',
+      rez.kenner.length > 0, rez.kenner);
+    pruefe('the recipe validates clean', rez.probleme.length === 0, rez.probleme);
+
+    /* Die Werkbank an der Figur: bekannt, teilweise, unbekannt — und was
+       fehlt, steht als Zahl da, nicht als „nein". */
+    await oeffne(werkbank.kenner);
+    await p.evaluate(() => {
+      const f = document.getElementById('facet');
+      f.value = 'craft';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(400);
+    const bank = await p.evaluate(() => ({
+      zeilen: [...document.querySelectorAll('table.craftm tr.crrow')]
+        .map((r) => [...r.children].map((c) => c.textContent)),
+      knoepfe: [...document.querySelectorAll('table.craftm tr.crrow .btn')].length,
+    }));
+    pruefe('the workbench lists the recipes with what is missing',
+      bank.zeilen.length >= 2
+      && bank.zeilen.some((z) => /\d+\/\d+/.test(z[2]) || /all there/.test(z[2])), bank.zeilen);
+    pruefe('a recipe that is all there can be crafted', bank.knoepfe > 0, bank.knoepfe);
+
+    /* Herstellen verbraucht wirklich. Ohne diesen Schritt wäre die Matrix
+       eine Tabelle, und die Tabelle führt niemand nach. */
+    const vorrat = () => p.evaluate(() => {
+      const T = window.__T__;
+      const traeger = [...T.ENT.values()].find((e) =>
+        (e.relations || []).some((r) => r.type === 'carries'));
+      const inv = T.ENT.get(traeger.relations.find((r) => r.type === 'carries').to);
+      const m = {};
+      (inv.relations || []).filter((r) => r.type === 'holds').forEach((r) => {
+        const it = T.ENT.get(r.to);
+        if (it) m[it.name || it.components.Name.text] = (r.props || {}).qty || 1;
+      });
+      return m;
+    });
+    const vor = await vorrat();
+    await p.evaluate(() =>
+      [...document.querySelectorAll('table.craftm tr.crrow .btn')][0].click());
+    await p.waitForTimeout(250);
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.dlgbox .rowbtns button')].find((b) => /Craft/.test(b.textContent)).click());
+    await p.waitForTimeout(500);
+    const nach = await vorrat();
+    const verbraucht = Object.keys(vor).some((k) => (nach[k] ?? 0) < vor[k]);
+    const entstanden = Object.keys(nach).some((k) => (vor[k] ?? 0) < nach[k]);
+    pruefe('crafting consumes the materials and yields the result',
+      verbraucht && entstanden, { vor, nach });
+    pruefe('crafting raised no exception', errs.length === 0, errs);
+  } else {
+    pruefe('a recipe with knowledge and a carrier exist in the data', false, werkbank);
+  }
+
   pruefe('knowledge needed no browser modal', modale.length === 0, modale);
   pruefe('no exception through the knowledge panel', errs.length === 0, errs);
 

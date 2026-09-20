@@ -621,4 +621,41 @@ export const components: Record<string, ComponentDef> = {
       },
     },
   },
+
+  /**
+   * Rezepte (REQ-184). Die Eingaben stehen nicht hier, sondern an
+   * `needs`-Kanten: ein Material ist ein Artikel, und wie viel davon ein
+   * Rezept braucht, gehört an die Verbindung zwischen beiden. Eine Liste
+   * von Namen im Feld wäre eine zweite Wahrheit neben dem Materialartikel —
+   * und die erste, die veraltet, wenn jemand den Namen ändert.
+   */
+  RecipeInfo: {
+    name: 'RecipeInfo',
+    label: 'Recipe',
+    engine: 'Craft',
+    schema: {
+      type: 'object',
+      properties: {
+        trade: { type: 'string', title: 'Trade' },
+        tool: { type: 'string', title: 'Tool needed' },
+        ability: {
+          type: 'string',
+          title: 'Check',
+          enum: ['str', 'dex', 'con', 'int', 'wis', 'cha'],
+          default: 'int',
+        },
+        dc: { type: 'number', title: 'DC', default: 12 },
+        time: { type: 'string', title: 'Time' },
+        yieldCount: { type: 'number', title: 'Yield', default: 1 },
+        /* Was beim Misslingen passiert, gehört ins Rezept: sonst entscheidet
+           es jedes Mal die Laune am Tisch, und das merkt sich niemand. */
+        onFailure: {
+          type: 'string',
+          title: 'On a failure',
+          enum: ['materialsLost', 'halfLost', 'nothingLost'],
+          default: 'halfLost',
+        },
+      },
+    },
+  },
 };

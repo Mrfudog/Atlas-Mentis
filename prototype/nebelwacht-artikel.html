@@ -389,6 +389,26 @@ table.atk tr.stowed td,table.atk tr.buried td{color:var(--dim)}
   display:block}
 .gitem i.off{background:transparent;border-color:transparent}
 .gitem.selected i.on{background:var(--accent);border-color:var(--accent)}
+/* Handwerk: eine Matrix, in der die fehlende Zutat auffällt. */
+.crhead{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.yield{font-size:14px}
+table.craftm{width:100%;border-collapse:collapse;font-size:13.5px;margin:6px 0 14px}
+table.craftm th{text-align:left;font-family:var(--ff-mono);font-size:10px;text-transform:uppercase;
+  letter-spacing:.07em;color:var(--dim);font-weight:500;padding:4px 6px;
+  border-bottom:1px solid var(--line)}
+table.craftm td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+table.craftm td.num{font-family:var(--ff-mono);text-align:right;font-variant-numeric:tabular-nums}
+table.craftm td.num.short{color:var(--warn);font-weight:600}
+table.craftm td.num.ok{color:var(--ok)}
+table.craftm td.note{color:var(--dim);font-size:12.5px}
+table.craftm tr.crfoot td{border-bottom:0;padding-top:8px}
+table.craftm tr.crrow.unknown td{color:var(--dim);font-style:italic}
+.cdot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px}
+.cdot.d-ok{background:var(--ok)}
+.cdot.d-no{background:var(--accent)}
+.cdot.d-un{background:var(--line2)}
+.craft .ok{color:var(--ok)}
+
 .gitem .glab{position:absolute;left:3px;right:3px;top:50%;transform:translateY(-50%);
   font-size:10.5px;font-family:var(--ff-mono);text-align:center;pointer-events:none;
   color:var(--ink);text-shadow:0 0 3px var(--surface),0 0 3px var(--surface);
@@ -506,7 +526,7 @@ var UI={route:{k:"list"}, view:"quick", iface:"", tag:"", q:"", offen:false, pan
         trail:[], inline:false, editField:"", pick:false, picked:{}, status:"",
         aside:"rel", info:"", assetBusy:"",
         mapZoom:1, mapLock:false, mapKind:"", mapDrag:null,
-        invView:"tiers", invPick:"",
+        invView:"tiers", invPick:"", craftOnly:false,
         konzept:false, err:""};
 
 /* Darstellungsstufen (Facets, REQ-164) — registry rows, not code.
@@ -1799,7 +1819,7 @@ var LAYOUT_ELEMENTS=[
   ["heading","Heading"],["text","Paragraph"],["fields","Field table"],
   ["description","Description"],["blocks","Text blocks"],
   ["composed","Composed rules"],["relations","Relations"],["image","Image"],
-  ["knowledge","Knowledge groups"],["map","Map"],["sheet","Character sheet"],["inventory","Inventory"]
+  ["knowledge","Knowledge groups"],["map","Map"],["sheet","Character sheet"],["inventory","Inventory"],["crafting","Crafting"]
 ];
 function layoutOf(vw,ifn){
   var by=vw.byInterface||{};
@@ -1836,6 +1856,7 @@ function renderLayoutItem(item,e,ifn,vw){
     case "map":         return elMap(e,ifn,item);
     case "sheet":       return elSheet(e,ifn,item);
     case "inventory":   return elInventory(e,ifn,item);
+    case "crafting":    return elCrafting(e,ifn,item);
     default:            return null;
   }
 }
@@ -1977,6 +1998,257 @@ function elRelations(e){
     row.appendChild(rv);
     wrap.appendChild(row);
   });
+  return wrap;
+}
+
+/* ---------- Handwerk (REQ-184) ----------
+   Ein Rezept ist ein Artikel, und was es verbraucht, steht an `needs`-Kanten
+   mit Menge. Die Menge gehört an die Kante, weil sie von beiden Enden
+   abhängt: dasselbe Material geht in das eine Rezept einmal und in das
+   andere zwölfmal ein.
+
+   **Ein Rezept, das jemand kennt, ist Wissen** — und Wissen hat dieses
+   Modell schon. Das Rezept trägt eine Information, die Information geht über
+   `knownBy` an Figuren; ein Feld „bekannt von" am Rezept wäre ein zweites,
+   schwächeres Wissensmodell neben dem vorhandenen. Ein Rezept ohne
+   Information liegt offen — dieselbe Regel wie überall sonst. */
+var RECIPE_IFACE="Recipe", RECIPE_COMP="RecipeInfo",
+    REL_NEEDS="needs", REL_YIELDS="yields";
+
+function recipeNeeds(r){
+  return (r.relations||[]).filter(function(x){return x.type===REL_NEEDS;})
+    .map(function(x){ var it=ENT.get(x.to);
+      return it?{item:it,rel:x,qty:Number((x.props||{}).qty)||1,
+        consumed:(x.props||{}).consumed!==false}:null; })
+    .filter(Boolean);
+}
+function recipeYield(r){
+  var x=(r.relations||[]).filter(function(y){return y.type===REL_YIELDS;})[0];
+  return x?ENT.get(x.to):null;
+}
+/* Wie viel von diesem Gegenstand trägt der Träger — über alle Stufen
+   hinweg. Was eingelagert ist, zählt mit; das Rezept fragt nach Vorrat,
+   nicht nach Griffabstand. */
+function amountHeld(traeger,itemId){
+  var n=0;
+  carriedItems(traeger).forEach(function(st){ if(st.item.id===itemId) n+=st.qty; });
+  return n;
+}
+/* Kennt der Betrachter das Rezept? Alle Informationen daran müssen bekannt
+   sein; keine Information heisst offen. Teilwissen ist ein eigener Zustand —
+   „du kennst das Rezept, aber nicht die letzte Zutat" ist eine Lage, die am
+   Tisch vorkommt, und sie soll sichtbar sein. */
+function recipeKnowledge(rec,viewerId){
+  var infos=infosOf(rec);
+  if(!infos.length)return "open";
+  var bekannt=infos.filter(function(i){ return knowsInfo(i,viewerId); }).length;
+  if(bekannt===infos.length)return "known";
+  return bekannt?"partial":"hidden";
+}
+function craftStatus(rec,traeger){
+  var fehlt=[], ok=true;
+  recipeNeeds(rec).forEach(function(n){
+    var da=traeger?amountHeld(traeger,n.item.id):0;
+    if(da<n.qty){ ok=false; fehlt.push({item:n.item,need:n.qty,have:da}); }
+  });
+  return {ok:ok,missing:fehlt};
+}
+
+/* Herstellen: verbrauchen, was verbraucht wird, und das Ergebnis eintragen.
+   Ohne diesen Schritt ist die Matrix eine Tabelle, und die Tabelle führt
+   niemand nach. */
+function craftIt(rec,traeger){
+  var inv=inventoryOf(traeger);
+  if(!inv){ UI.err="No inventory to take from."; render(); return; }
+  var st=craftStatus(rec,traeger);
+  if(!st.ok){ UI.err="Missing: "+st.missing.map(function(m){
+    return nameOf(m.item)+" ("+m.have+"/"+m.need+")"; }).join(", "); render(); return; }
+  var ergebnis=recipeYield(rec);
+  var info=(rec.components||{})[RECIPE_COMP]||{};
+  confirmDialog("Craft “"+(ergebnis?nameOf(ergebnis):nameOf(rec))+"”? "+
+    "This consumes the materials"+(info.dc?" — the check is DC "+info.dc+
+      " and it is not rolled here":"")+".",function(){
+    recipeNeeds(rec).forEach(function(n){
+      if(!n.consumed)return;
+      var rest=n.qty;
+      /* Von hinten abtragen: was eingelagert ist, geht zuerst, was in der
+         Hand liegt, zuletzt — sonst nimmt das Handwerk die Waffe weg. */
+      var stuecke=carriedItems(traeger).filter(function(x){return x.item.id===n.item.id;});
+      var ordnung=["stored","pack","belt","worn","held"];
+      stuecke.sort(function(a,b){ return ordnung.indexOf(a.tier)-ordnung.indexOf(b.tier); });
+      stuecke.forEach(function(x){
+        if(rest<=0)return;
+        var weg=Math.min(rest,x.qty); rest-=weg;
+        if(x.qty-weg<=0) inv.relations=inv.relations.filter(function(y){return y.id!==x.rel.id;});
+        else x.rel.props=Object.assign({},x.rel.props,{qty:x.qty-weg});
+      });
+    });
+    if(ergebnis){
+      var wieviel=Number(info.yieldCount)||1;
+      var vorhanden=(inv.relations||[]).filter(function(y){
+        return y.type===REL_HOLDS&&y.to===ergebnis.id; })[0];
+      if(vorhanden) vorhanden.props=Object.assign({},vorhanden.props,
+        {qty:(Number((vorhanden.props||{}).qty)||1)+wieviel});
+      else{ inv.relations=inv.relations||[];
+        inv.relations.push({id:uid("r"),type:REL_HOLDS,to:ergebnis.id,
+          props:{qty:wieviel,tier:"pack"}}); }
+    }
+    persist(inv);
+  },"Craft");
+}
+
+function elCrafting(e,ifn,item){
+  var wrap=el("div",{class:"craft"});
+
+  /* Auf dem Rezept selbst: was es braucht, was es gibt, wer es kennt. */
+  if(ifn===RECIPE_IFACE||((e.components||{})[RECIPE_COMP])){
+    var info=(e.components||{})[RECIPE_COMP]||{};
+    var kopf=el("div",{class:"crhead"});
+    if(info.trade) kopf.appendChild(el("span",{class:"pill",text:info.trade}));
+    if(info.dc) kopf.appendChild(el("span",{class:"pill q",
+      text:(info.ability||"int").toUpperCase()+" DC "+info.dc}));
+    if(info.time) kopf.appendChild(el("span",{class:"pill q",text:info.time}));
+    if(info.tool) kopf.appendChild(el("span",{class:"pill q",text:info.tool}));
+    wrap.appendChild(kopf);
+
+    var erg=recipeYield(e);
+    if(erg){
+      var z=el("p",{class:"yield"});
+      z.appendChild(document.createTextNode("Yields "+((Number(info.yieldCount)||1)>1?
+        (info.yieldCount+"× "):"")));
+      z.appendChild(el("button",{class:"ref",type:"button",
+        onclick:function(){go({k:"art",id:erg.id});}},nameOf(erg)));
+      wrap.appendChild(z);
+    }
+
+    var braucht=recipeNeeds(e);
+    if(!braucht.length) wrap.appendChild(el("p",{class:"hint",
+      text:"No materials listed yet — add them with the relation “needs”."}));
+    else{
+      wrap.appendChild(el("div",{class:"sec",text:"Materials"}));
+      /* Je Träger eine Spalte: dieselbe Frage, die man am Tisch stellt —
+         „hat jemand von uns genug?" — statt für jeden einzeln nachzusehen. */
+      var traeger=[];
+      ENT.forEach(function(o){
+        if(!(o.relations||[]).some(function(r){return r.type===REL_CARRIES;}))return;
+        traeger.push(o);
+      });
+      traeger.sort(function(a,b){return nameOf(a).localeCompare(nameOf(b),"de");});
+      var tb=el("table",{class:"craftm"});
+      var hd=el("tr");
+      hd.appendChild(el("th",{text:"Material"}));
+      hd.appendChild(el("th",{text:"Needs"}));
+      traeger.forEach(function(t){ hd.appendChild(el("th",{text:nameOf(t)})); });
+      tb.appendChild(hd);
+      braucht.forEach(function(n){
+        var row=el("tr");
+        var c=el("td");
+        c.appendChild(el("button",{class:"ref",type:"button",
+          onclick:function(){go({k:"art",id:n.item.id});}},nameOf(n.item)));
+        if(!n.consumed) c.appendChild(el("span",{class:"co",text:" (not consumed)"}));
+        row.appendChild(c);
+        row.appendChild(el("td",{class:"num",text:String(n.qty)}));
+        traeger.forEach(function(t){
+          var da=amountHeld(t,n.item.id);
+          row.appendChild(el("td",{class:"num"+(da<n.qty?" short":" ok"),text:String(da)}));
+        });
+        tb.appendChild(row);
+      });
+      var foot=el("tr",{class:"crfoot"});
+      foot.appendChild(el("td",{text:"Craftable"}));
+      foot.appendChild(el("td",{text:""}));
+      traeger.forEach(function(t){
+        var st=craftStatus(e,t);
+        var cell=el("td");
+        if(st.ok&&me.write) cell.appendChild(el("button",{class:"btn sm pri",type:"button",
+          onclick:function(){ craftIt(e,t); }},"Craft"));
+        else cell.appendChild(el("span",{class:st.ok?"ok":"gone",text:st.ok?"yes":"no"}));
+        foot.appendChild(cell);
+      });
+      tb.appendChild(foot);
+      wrap.appendChild(tb);
+    }
+
+    /* Wer es kennt: der Rückbezug über die Informationen am Rezept. */
+    var infos=infosOf(e);
+    wrap.appendChild(el("div",{class:"sec",text:"Who knows it"}));
+    if(!infos.length) wrap.appendChild(el("p",{class:"hint",
+      text:"Nothing about this recipe is guarded — everyone can read it. Bundle its fields into an information in the side panel to hand it out deliberately."}));
+    else{
+      var wl=el("div",{class:"chips"});
+      var wer={};
+      infos.forEach(function(i){
+        edgesOf(i,REL_KNOWNBY).forEach(function(r){ var t=ENT.get(r.to); if(t) wer[t.id]=t; });
+      });
+      if(!Object.keys(wer).length) wl.appendChild(el("span",{class:"hint",style:"margin:0",
+        text:"Nobody yet — it stays with the GM."}));
+      Object.keys(wer).forEach(function(k){
+        wl.appendChild(el("button",{class:"chip",type:"button",
+          onclick:function(){go({k:"art",id:k});}},nameOf(wer[k])));
+      });
+      wrap.appendChild(wl);
+    }
+    return wrap;
+  }
+
+  /* Sonst: die Werkbank dieser Figur oder Gruppe. */
+  var inv=inventoryOf(e);
+  if(!inv){ wrap.appendChild(el("p",{class:"hint",
+    text:"No inventory — nothing to craft from."})); return wrap; }
+
+  var rezepte=[];
+  ENT.forEach(function(o){ if(((o.interfaces||[])[0])===RECIPE_IFACE) rezepte.push(o); });
+  rezepte.sort(function(a,b){return nameOf(a).localeCompare(nameOf(b),"de");});
+  if(!rezepte.length){ wrap.appendChild(el("p",{class:"hint",text:"No recipes in the registry yet."}));
+    return wrap; }
+
+  var bar=el("div",{class:"ktabs"});
+  bar.appendChild(el("button",{class:"btn sm"+(UI.craftOnly?" pri":""),type:"button",
+    "aria-pressed":String(UI.craftOnly),
+    onclick:function(){ UI.craftOnly=!UI.craftOnly; render(); }},"Only what works"));
+  wrap.appendChild(bar);
+
+  var tb2=el("table",{class:"craftm"});
+  var hd2=el("tr");
+  ["Recipe","Knowledge","Materials","Yields",""].forEach(function(h){ hd2.appendChild(el("th",{text:h})); });
+  tb2.appendChild(hd2);
+  var gezeigt=0;
+  rezepte.forEach(function(rec){
+    var wissen=recipeKnowledge(rec,e.id);
+    var st=craftStatus(rec,e);
+    if(UI.craftOnly&&(!st.ok||wissen==="hidden"))return;
+    gezeigt++;
+    var row=el("tr",{class:"crrow "+(wissen==="hidden"?"unknown":(st.ok?"ready":"short"))});
+    var c1=el("td");
+    c1.appendChild(el("span",{class:"cdot "+(wissen==="hidden"?"d-un":(st.ok?"d-ok":"d-no"))}));
+    c1.appendChild(el("button",{class:"ref",type:"button",
+      onclick:function(){go({k:"art",id:rec.id});}},
+      wissen==="hidden"?"(unknown recipe)":nameOf(rec)));
+    row.appendChild(c1);
+    row.appendChild(el("td",{class:"note",
+      text:{open:"open",known:"known",partial:"partly known",hidden:"not known"}[wissen]}));
+    var c3=el("td",{class:"note"});
+    if(wissen==="hidden") c3.textContent="—";
+    else if(st.ok) c3.textContent="all there";
+    else c3.textContent=st.missing.map(function(m){
+      return nameOf(m.item)+" "+m.have+"/"+m.need; }).join(", ");
+    row.appendChild(c3);
+    var erg2=recipeYield(rec);
+    var c4=el("td");
+    if(wissen!=="hidden"&&erg2) c4.appendChild(el("button",{class:"ref",type:"button",
+      onclick:function(){go({k:"art",id:erg2.id});}},nameOf(erg2)));
+    else c4.textContent="—";
+    row.appendChild(c4);
+    var c5=el("td");
+    if(st.ok&&wissen!=="hidden"&&me.write)
+      c5.appendChild(el("button",{class:"btn sm pri",type:"button",
+        onclick:function(){ craftIt(rec,e); }},"Craft"));
+    row.appendChild(c5);
+    tb2.appendChild(row);
+  });
+  wrap.appendChild(tb2);
+  if(!gezeigt) wrap.appendChild(el("p",{class:"hint",
+    text:"Nothing craftable right now."}));
   return wrap;
 }
 

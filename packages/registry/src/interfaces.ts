@@ -271,4 +271,20 @@ export const interfaces: Record<string, InterfaceDef> = {
     requires: ['MapInfo'],
     blockTypes: ['+note', '+secret', '+readaloud'],
   },
+
+  /**
+   * Ein Rezept ist ein Artikel — und damit gilt für es alles, was für
+   * Artikel gilt: es trägt einen Stand, Marken, eine Beschreibung. Vor allem
+   * aber kann es über eine Information *zugeteilt* werden: ein Rezept, das
+   * jemand kennt, ist Wissen, und Wissen hat dieses Modell schon (A6).
+   * Ein Feld „bekannt von" am Rezept wäre ein zweites, schwächeres
+   * Wissensmodell neben dem vorhandenen.
+   */
+  Recipe: {
+    name: 'Recipe',
+    label: 'Recipe',
+    extends: ['Base'],
+    requires: ['RecipeInfo'],
+    blockTypes: ['+note', '+secret', '+lore'],
+  },
 };

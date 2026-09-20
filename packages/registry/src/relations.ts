@@ -316,4 +316,37 @@ export const relations: Record<string, RelationDef> = {
       },
     },
   },
+
+  // -------------------------------------------------------------- crafting
+
+  /**
+   * Was ein Rezept verbraucht (REQ-184). Die Menge steht an der Kante, weil
+   * sie von beiden Enden abhängt: dasselbe Material geht in das eine Rezept
+   * einmal und in das andere zwölfmal ein.
+   */
+  needs: {
+    type: 'needs',
+    label: 'needs',
+    inverseLabel: 'used in',
+    from: ['Recipe'],
+    to: ['Item'],
+    props: {
+      type: 'object',
+      properties: {
+        qty: { type: 'number', title: 'Quantity', default: 1 },
+        consumed: { type: 'boolean', title: 'Consumed', default: true },
+        note: { type: 'string', title: 'Note' },
+      },
+    },
+  },
+
+  /** Was dabei herauskommt. */
+  yields: {
+    type: 'yields',
+    label: 'yields',
+    inverseLabel: 'made by',
+    from: ['Recipe'],
+    to: ['Item'],
+    cardinality: 'one',
+  },
 };
