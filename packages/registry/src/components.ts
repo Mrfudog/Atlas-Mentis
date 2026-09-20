@@ -789,4 +789,35 @@ export const components: Record<string, ComponentDef> = {
       },
     },
   },
+
+  /**
+   * Tabellen (REQ-085, 125, 172, 186). Einträge, die auf einen Artikel
+   * zeigen, sind Kanten (`entry`); Einträge, die auf nichts zeigen — ein
+   * Name, ein Satz, ein Wetter — stehen in `rows`. Dieselbe Trennlinie wie
+   * bei den Formen auf dem Board und den Aufgaben im Auftrag.
+   *
+   * Gewichte statt Bereiche: „1–3, 4–5, 6" von Hand zu führen bricht, sobald
+   * jemand eine Zeile einfügt. Die Bereiche rechnet die Seite aus, der
+   * Würfel steht daneben und heisst, womit gewürfelt wird, wenn jemand am
+   * Tisch selbst würfeln will.
+   */
+  TableInfo: {
+    name: 'TableInfo',
+    label: 'Table',
+    engine: 'Table',
+    schema: {
+      type: 'object',
+      properties: {
+        kind: {
+          type: 'string',
+          title: 'Kind',
+          enum: ['loot', 'encounter', 'name', 'shop', 'event', 'generic'],
+          default: 'generic',
+        },
+        die: { type: 'string', title: 'Die', default: '1d100' },
+        rows: { type: 'array', title: 'Plain entries', items: { type: 'object' } },
+        note: { type: 'string', title: 'Note' },
+      },
+    },
+  },
 };

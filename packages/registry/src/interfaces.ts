@@ -329,4 +329,18 @@ export const interfaces: Record<string, InterfaceDef> = {
     requires: ['WorldDate'],
     blockTypes: ['+lore', '+secret', '+readaloud'],
   },
+
+  /**
+   * Eine Tabelle ist ein Artikel: sie trägt Marken, einen Stand und Wissen,
+   * und sie kann in einer anderen Tabelle stehen. Verschachtelung ist eine
+   * Kante auf eine Tabelle, nicht ein Sonderfeld — deshalb braucht sie
+   * einen Zyklusschutz und sonst nichts.
+   */
+  Table: {
+    name: 'Table',
+    label: 'Table',
+    extends: ['Base'],
+    requires: ['TableInfo'],
+    blockTypes: ['+note', '+secret'],
+  },
 };

@@ -437,6 +437,14 @@ async function seite(datei, warten) {
     await p.waitForTimeout(250);
   };
 
+  /* Über die Id öffnen, nicht über den Namen: sobald es „Karte: X" und „X"
+     gibt, trifft ein Namensklick das Falsche, und die Prüfung meldet dann
+     etwas über die Sortierung statt über den Code. */
+  const oeffneId = async (id) => {
+    await p.evaluate((i) => window.__T__.go({ k: 'art', id: i }), id);
+    await p.waitForTimeout(350);
+  };
+
   const neuerArtikel = async (typ, name) => {
     await p.evaluate(() => document.getElementById('new').click());
     await p.waitForTimeout(250);
@@ -1659,6 +1667,98 @@ async function seite(datei, warten) {
     pruefe('the live channel raised no exception', errs.length === 0, errs);
   } else {
     pruefe('a session with a live state exists in the data', false, 'keine gefunden');
+  }
+
+  /* ---- Tabellen (REQ-085, 125, 172, 186) ----
+     Drei Dinge, die eine Tabelle von einer Liste unterscheiden: die
+     Bereiche werden gerechnet, eine Tabelle darf in einer stehen, und ein
+     Eintrag kann an einen Ort gebunden sein. Alle drei sind prüfbar, und
+     alle drei gehen still kaputt, wenn niemand sie prüft. */
+  const tabelle = await p.evaluate(() => {
+    const alle = [...window.__T__.ENT.values()];
+    const t = alle.find((e) => (e.interfaces || [])[0] === 'Table'
+      && (e.relations || []).some((r) => {
+        const z = window.__T__.ENT.get(r.to);
+        return r.type === 'entry' && z && (z.interfaces || [])[0] === 'Table';
+      }));
+    const ort = alle.find((e) => (e.relations || []).some((r) => r.type === 'tableFor')
+      && (e.interfaces || [])[0] !== 'Encounter');
+    return { t: t ? t.id : null, ort: ort ? ort.id : null };
+  });
+  if (tabelle.t && tabelle.ort) {
+    await oeffneId(tabelle.t);
+    await p.evaluate(() => {
+      const f = document.getElementById('facet');
+      f.value = 'table';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(450);
+    const tb = await p.evaluate(() => ({
+      zeilen: [...document.querySelectorAll('.tablebox table tr')].slice(1)
+        .map((r) => [...r.children].map((c) => c.textContent)),
+      kopf: [...document.querySelectorAll('.tablebox table th')].map((x) => x.textContent),
+      probleme: [...document.querySelectorAll('.pruef li')].map((x) => x.textContent),
+    }));
+    pruefe('the table validates clean', tb.probleme.length === 0, tb.probleme);
+    /* Die Bereiche sind gerechnet und lückenlos: 1–3, 4–5, 6–9, 10. Von
+       Hand geführt bricht das, sobald jemand eine Zeile einfügt. */
+    const bereiche = tb.zeilen.map((z) => z[0]);
+    const grenzen = bereiche.map((b) => b.split('–').map(Number));
+    pruefe('the ranges are computed and leave no gap',
+      grenzen[0][0] === 1
+      && grenzen.every((g, i) => i === 0 || g[0] === (grenzen[i - 1][1] || grenzen[i - 1][0]) + 1),
+      bereiche);
+    pruefe('a nested table is marked as one',
+      tb.zeilen.some((z) => /a table/.test(z[1])), tb.zeilen.map((z) => z[1]));
+    pruefe('a conditional entry says what it asks for',
+      tb.zeilen.some((z) => /^#/.test(z[3])), tb.zeilen.map((z) => z[3]));
+
+    /* Auf dem Ort gilt der Zusammenhang: ein Eintrag mit Marke kommt nur
+       dort in den Topf — und eine verschachtelte Tabelle würfelt weiter. */
+    await oeffneId(tabelle.ort);
+    await p.evaluate(() => {
+      const f = document.getElementById('facet');
+      f.value = 'table';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(450);
+    const knopf = await p.evaluate(() =>
+      [...document.querySelectorAll('.tablebox .btn')].map((b) => b.textContent));
+    pruefe('a place rolls on the table that applies there',
+      knopf.some((t) => /^Roll /.test(t)), knopf);
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.tablebox .btn')].find((b) => /^Roll /.test(b.textContent)).click());
+    await p.waitForTimeout(250);
+    const einWurf = await p.evaluate(() =>
+      [...document.querySelectorAll('.rollrow .rv')].map((x) => x.textContent));
+    pruefe('the button on the place produces a result', einWurf.length > 0, einWurf);
+
+    /* Der Zusammenhang wird zweihundertmal geprüft und nicht sechsmal: ein
+       Eintrag mit 20 % Gewicht taucht in sechs Würfen manchmal nicht auf,
+       und eine Prüfung, die manchmal rot wird, glaubt bald niemand mehr. */
+    const probe = await p.evaluate((ids) => {
+      const T = window.__T__;
+      const tab = T.ENT.get(ids.t), ort = T.ENT.get(ids.ort);
+      const ohne = { id: 'ctx_leer', tags: [] };
+      const zaehl = (ctx) => {
+        const o = { treffer: 0, kaputt: 0, leer: 0 };
+        for (let i = 0; i < 200; i++) {
+          const r = T.rollTable(tab, ctx);
+          if (!r || !r.text || /undefined|NaN|loops back/.test(r.text)) o.kaputt++;
+          else if (r.empty) o.leer++;
+          else if (/→/.test(r.text)) o.treffer++;
+        }
+        return o;
+      };
+      return { mit: zaehl(ort), ohne: zaehl(ohne) };
+    }, tabelle);
+    pruefe('a conditional entry only comes up where its tag is',
+      probe.mit.treffer > 0 && probe.ohne.treffer === 0, probe);
+    pruefe('no roll came back empty or broken',
+      probe.mit.kaputt === 0 && probe.ohne.kaputt === 0, probe);
+    pruefe('tables raised no exception', errs.length === 0, errs);
+  } else {
+    pruefe('a nested table and a place that uses one exist in the data', false, tabelle);
   }
 
   pruefe('knowledge needed no browser modal', modale.length === 0, modale);

@@ -444,4 +444,41 @@ export const relations: Record<string, RelationDef> = {
     from: ['Event'],
     to: ['*'],
   },
+
+  // --------------------------------------------------------------- tables
+
+  /**
+   * Ein Eintrag, der auf einen Artikel zeigt — einen Gegenstand, ein
+   * Geschöpf, oder eine weitere Tabelle (REQ-186). `weight` ist das
+   * Gewicht, nicht der Bereich: Bereiche von Hand zu führen bricht, sobald
+   * jemand eine Zeile einfügt.
+   */
+  entry: {
+    type: 'entry',
+    label: 'entry',
+    inverseLabel: 'rolled on',
+    from: ['Table'],
+    to: ['*'],
+    props: {
+      type: 'object',
+      properties: {
+        weight: { type: 'number', title: 'Weight', default: 1 },
+        qty: { type: 'string', title: 'Quantity', default: '1' },
+        label: { type: 'string', title: 'Shown as' },
+        /* Eine Bedingung, die den Eintrag aus dem Topf nimmt: eine Marke,
+           die der Ort tragen muss (REQ-172). Leer heisst „immer". */
+        requiresTag: { type: 'string', title: 'Only where tagged' },
+        note: { type: 'string', title: 'Note' },
+      },
+    },
+  },
+
+  /** Welche Tabelle an diesem Ort gilt (REQ-172). */
+  tableFor: {
+    type: 'tableFor',
+    label: 'rolls on',
+    inverseLabel: 'used at',
+    from: ['Place', 'Story', 'Encounter'],
+    to: ['Table'],
+  },
 };

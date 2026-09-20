@@ -104,7 +104,8 @@ export type LayoutElementKind =
   | 'initiative'
   | 'quests'
   | 'timeline'
-  | 'live';
+  | 'live'
+  | 'table';
 
 /**
  * One element of a view's layout. A view is an ordered list of these, so the

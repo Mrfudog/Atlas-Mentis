@@ -1996,7 +1996,7 @@ var LAYOUT_ELEMENTS=[
   ["description","Description"],["blocks","Text blocks"],
   ["composed","Composed rules"],["relations","Relations"],["image","Image"],
   ["knowledge","Knowledge groups"],["map","Map"],["sheet","Character sheet"],["inventory","Inventory"],["crafting","Crafting"],["board","Board"],["initiative","Initiative"],
-  ["quests","Quest board"],["timeline","Timeline"],["live","Live"]
+  ["quests","Quest board"],["timeline","Timeline"],["live","Live"],["table","Table"]
 ];
 function layoutOf(vw,ifn){
   var by=vw.byInterface||{};
@@ -2039,6 +2039,7 @@ function renderLayoutItem(item,e,ifn,vw){
     case "quests":      return elQuests(e,ifn,item);
     case "timeline":    return elTimeline(e,ifn,item);
     case "live":        return elLive(e,ifn,item);
+    case "table":       return elTable(e,ifn,item);
     default:            return null;
   }
 }
@@ -2193,6 +2194,264 @@ function elRelations(e){
     wrap.appendChild(row);
   });
   return wrap;
+}
+
+/* ---------- Tabellen (REQ-085, 125, 172, 186) ----------
+   Einträge, die auf einen Artikel zeigen, sind Kanten; Einträge, die auf
+   nichts zeigen — ein Name, ein Wetter, ein Satz — stehen im Feld. Dieselbe
+   Trennlinie wie bei den Formen auf dem Board und den Aufgaben im Auftrag.
+
+   **Gewichte statt Bereiche.** „1–3, 4–5, 6" von Hand zu führen bricht,
+   sobald jemand eine Zeile einfügt; die Bereiche rechnet die Seite aus. Der
+   Würfel daneben sagt, womit man am Tisch selbst würfeln kann — dann ist er
+   eine Angabe und keine Rechnung.
+
+   Eine Tabelle darf in einer Tabelle stehen. Das braucht genau einen
+   Zyklusschutz und sonst nichts: wer A → B → A legt, bekommt keinen
+   Absturz, sondern ein Ende. */
+var TABLE_IFACE="Table", TABLE_COMP="TableInfo",
+    REL_ENTRY="entry", REL_TABLEFOR="tableFor";
+
+/* Alle Einträge, Kanten und Feldzeilen in einer Liste. Die Reihenfolge ist
+   die gespeicherte: Kanten zuerst, dann die Feldzeilen. */
+function tableEntries(t){
+  var card=(t.components||{})[TABLE_COMP]||{};
+  var out=[];
+  (t.relations||[]).forEach(function(r){
+    if(r.type!==REL_ENTRY)return;
+    var ziel=ENT.get(r.to);
+    var pr=r.props||{};
+    out.push({kind:"ref",rel:r,target:ziel,
+      label:pr.label||(ziel?nameOf(ziel):"(missing)"),
+      weight:Math.max(0,Number(pr.weight)||1),qty:pr.qty||"",
+      requiresTag:pr.requiresTag||"",note:pr.note||""});
+  });
+  (Array.isArray(card.rows)?card.rows:[]).forEach(function(z){
+    out.push({kind:"row",row:z,label:String(z.text||z.label||""),
+      weight:Math.max(0,Number(z.weight)||1),qty:z.qty||"",
+      requiresTag:z.requiresTag||"",note:z.note||""});
+  });
+  return out;
+}
+/* Bereiche aus Gewichten. Bei ganzzahligen Gewichten steht „4–6" da, bei
+   krummen die Wahrscheinlichkeit — anders wäre eine der beiden Anzeigen
+   gelogen. */
+function tableRanges(eintraege){
+  var summe=eintraege.reduce(function(a,b){return a+b.weight;},0);
+  var ganz=eintraege.every(function(x){return x.weight===Math.round(x.weight);});
+  var at=1;
+  return eintraege.map(function(x){
+    var von=at, bis=at+Math.round(x.weight)-1;
+    at=bis+1;
+    return {e:x,von:von,bis:bis,ganz:ganz,
+      anteil:summe?x.weight/summe:0,summe:summe};
+  });
+}
+/* Was der Ort verlangt: ein Eintrag mit `requiresTag` kommt nur in den
+   Topf, wenn der Zusammenhang die Marke trägt (REQ-172). */
+function tablePool(t,kontext){
+  var marken=(kontext&&kontext.tags)||[];
+  return tableEntries(t).filter(function(x){
+    if(!x.requiresTag)return true;
+    return marken.indexOf(x.requiresTag)>=0;
+  }).filter(function(x){ return x.weight>0; });
+}
+/* Einmal würfeln. Verschachtelte Tabellen lösen sich auf, bis der
+   Zyklusschutz greift — eine Tabelle, die sich selbst enthält, ist ein
+   Fehler in den Daten und kein Grund, die Seite anzuhalten. */
+function rollTable(t,kontext,gesehen,tiefe){
+  gesehen=gesehen||{}; tiefe=tiefe||0;
+  if(gesehen[t.id]||tiefe>6) return {text:"(table loops back on itself)",loop:true};
+  gesehen[t.id]=1;
+  var pool=tablePool(t,kontext);
+  if(!pool.length) return {text:"(nothing in the pool here)",empty:true};
+  var summe=pool.reduce(function(a,b){return a+b.weight;},0);
+  var w=Math.random()*summe, at=0, treffer=pool[pool.length-1];
+  for(var i=0;i<pool.length;i++){ at+=pool[i].weight; if(w<at){ treffer=pool[i]; break; } }
+  var menge=treffer.qty?rollDice(treffer.qty):null;
+  var text=(menge?menge.total+"× ":"")+treffer.label;
+  if(treffer.kind==="ref"&&treffer.target&&
+     ((treffer.target.interfaces||[])[0])===TABLE_IFACE){
+    var tiefer=rollTable(treffer.target,kontext,gesehen,tiefe+1);
+    return {text:treffer.label+" → "+tiefer.text,target:tiefer.target||treffer.target,
+      nested:tiefer,qty:menge?menge.total:null};
+  }
+  return {text:text,target:treffer.kind==="ref"?treffer.target:null,
+    qty:menge?menge.total:null,entry:treffer};
+}
+
+function elTable(e,ifn,item){
+  var card=(e.components||{})[TABLE_COMP]||{};
+  var wrap=el("div",{class:"tablebox"});
+
+  /* Auf einem Ort, einer Szene oder einer Begegnung zeigt dasselbe Element
+     die Tabellen, die *hier* gelten — und würfelt sie mit diesem Artikel
+     als Zusammenhang. Erst dadurch greift `requiresTag`: ein Eintrag, der
+     nur in der Kerzengasse vorkommt, kommt nur dort in den Topf. */
+  if(!card.die&&!((e.relations||[]).some(function(r){return r.type===REL_ENTRY;}))){
+    var hier=(e.relations||[]).filter(function(r){return r.type===REL_TABLEFOR;})
+      .map(function(r){ return ENT.get(r.to); }).filter(Boolean);
+    if(!hier.length){
+      wrap.appendChild(el("p",{class:"hint",
+        text:"No table here. Link one with the relation “rolls on”."}));
+      return wrap;
+    }
+    var bar0=el("div",{class:"rowbtns"});
+    hier.forEach(function(t){
+      bar0.appendChild(el("button",{class:"btn sm pri",type:"button",onclick:function(){
+        var r=rollTable(t,e);
+        shareRoll(nameOf(t)+" @ "+nameOf(e),{total:0,rolls:[],expr:"",pretty:r.text});
+        render();
+      }},"Roll "+nameOf(t)));
+      bar0.appendChild(el("button",{class:"btn sm gh",type:"button",
+        onclick:function(){go({k:"art",id:t.id});}},"open"));
+    });
+    wrap.appendChild(bar0);
+    wrap.appendChild(el("p",{class:"hint",
+      text:"Rolled with this article as the context — entries that ask for a tag only come up where it is."}));
+    if(UI.rollLog.length){
+      var log0=el("div",{class:"rolllog"});
+      UI.rollLog.slice(0,6).forEach(function(x){
+        var row0=el("div",{class:"rollrow"});
+        row0.appendChild(el("span",{class:"rl",text:(x.who?x.who+" · ":"")+x.t}));
+        row0.appendChild(el("span",{class:"rv",text:rollText(x.r)}));
+        log0.appendChild(row0);
+      });
+      wrap.appendChild(log0);
+    }
+    return wrap;
+  }
+
+  var eintraege=tableEntries(e);
+  var bereiche=tableRanges(eintraege);
+
+  var bar=el("div",{class:"maptools"});
+  if(inPlacement) bar.style.display="none";
+  bar.appendChild(el("span",{class:"pill",text:card.kind||"generic"}));
+  if(card.die) bar.appendChild(el("span",{class:"pill q",text:card.die}));
+  bar.appendChild(el("button",{class:"btn sm pri",type:"button",onclick:function(){
+    var r=rollTable(e,e);
+    logRoll("Table: "+nameOf(e),{total:0,rolls:[],expr:card.die||"",pretty:r.text},whoAmI());
+    if(roomNS) shareRoll("Table: "+nameOf(e),{total:0,rolls:[],expr:"",pretty:r.text});
+    render();
+  }},"Roll on it"));
+  if(canWrite()) bar.appendChild(el("button",{class:"btn sm",type:"button",
+    onclick:function(){ addTableEntry(e); }},"+ Entry"));
+  wrap.appendChild(bar);
+
+  if(!eintraege.length){
+    wrap.appendChild(el("div",{class:"empty",
+      text:canWrite()?"No entries yet. An entry that points at an article is a relation; one that points at nothing is a plain row.":"Empty table."}));
+    return wrap;
+  }
+
+  var tb=el("table",{class:"craftm"});
+  var hd=el("tr");
+  [bereiche[0]&&bereiche[0].ganz?"Roll":"Chance","Entry","Qty","Only where","" ]
+    .forEach(function(h){ hd.appendChild(el("th",{text:h})); });
+  tb.appendChild(hd);
+  bereiche.forEach(function(b){
+    var x=b.e;
+    var row=el("tr");
+    row.appendChild(el("td",{class:"num",
+      text:b.ganz?(b.von===b.bis?String(b.von):b.von+"–"+b.bis)
+                 :(Math.round(b.anteil*1000)/10)+"%"}));
+    var c2=el("td");
+    if(x.kind==="ref"&&x.target){
+      c2.appendChild(el("button",{class:"ref",type:"button",
+        onclick:function(){go({k:"art",id:x.target.id});}},x.label));
+      if(((x.target.interfaces||[])[0])===TABLE_IFACE)
+        c2.appendChild(el("span",{class:"co",text:" (a table)"}));
+    } else if(x.kind==="ref") c2.appendChild(el("span",{class:"gone",text:x.label}));
+    else c2.appendChild(inline(x.label,el("span")));
+    if(x.note) c2.appendChild(el("span",{class:"bind",text:x.note}));
+    row.appendChild(c2);
+    row.appendChild(el("td",{class:"num",text:x.qty||""}));
+    row.appendChild(el("td",{class:"note",text:x.requiresTag?"#"+x.requiresTag:""}));
+    var c5=el("td");
+    if(canWrite()) c5.appendChild(el("button",{class:"btn gh sm",type:"button",title:"Remove",
+      onclick:function(){
+        if(x.kind==="ref") e.relations=e.relations.filter(function(y){return y.id!==x.rel.id;});
+        else{
+          var rows=(card.rows||[]).filter(function(y){return y!==x.row;});
+          e.components[TABLE_COMP]=Object.assign({},card,{rows:rows});
+        }
+        persist(e); }},"×"));
+    row.appendChild(c5);
+    tb.appendChild(row);
+  });
+  wrap.appendChild(tb);
+
+  if(UI.rollLog.length){
+    var log=el("div",{class:"rolllog"});
+    UI.rollLog.slice(0,6).forEach(function(x){
+      var row=el("div",{class:"rollrow"});
+      row.appendChild(el("span",{class:"rl",text:(x.who?x.who+" · ":"")+x.t}));
+      row.appendChild(el("span",{class:"rv",text:rollText(x.r)}));
+      log.appendChild(row);
+    });
+    wrap.appendChild(log);
+  }
+  wrap.appendChild(el("p",{class:"hint",
+    text:"Weights, not ranges — the ranges are computed, so inserting a row does not break the numbering."}));
+  return wrap;
+}
+
+function addTableEntry(e){
+  var card=(e.components||{})[TABLE_COMP]||{};
+  dialog("Add an entry",function(host,close){
+    var art=el("select",{class:"i"});
+    art.appendChild(el("option",{value:"row"},"Plain text — points at nothing"));
+    art.appendChild(el("option",{value:"ref"},"An article — or another table"));
+    var txt=el("input",{class:"i",type:"text",placeholder:"What it says"});
+    var suche=el("input",{class:"i",type:"text",placeholder:"Search articles…"});
+    var sel=el("select",{class:"i",size:"6",style:"height:auto"});
+    function fuelle(){
+      var q=suche.value.toLowerCase().trim();
+      sel.textContent="";
+      byName().forEach(function(c){
+        if(c.id===e.id)return;
+        if(q&&nameOf(c).toLowerCase().indexOf(q)<0)return;
+        sel.appendChild(el("option",{value:c.id},nameOf(c)+" — "+ifaceName(c)));
+      });
+      if(!sel.childNodes.length) sel.appendChild(el("option",{value:""},"— nothing matches —"));
+    }
+    suche.addEventListener("input",fuelle); fuelle();
+    var gew=el("input",{class:"i",type:"number",value:"1",min:"0",step:"0.5"});
+    var menge=el("input",{class:"i",type:"text",placeholder:"1 or 2d4"});
+    var marke=el("input",{class:"i",type:"text",placeholder:"only where tagged…"});
+    var refFeld=field("Article",suche), listFeld=sel, txtFeld=field("Text",txt);
+    host.appendChild(field("Kind",art));
+    host.appendChild(txtFeld);
+    host.appendChild(refFeld); host.appendChild(listFeld);
+    host.appendChild(field("Weight",gew));
+    host.appendChild(field("Quantity",menge));
+    host.appendChild(field("Condition",marke));
+    function zeige(){
+      var ref=art.value==="ref";
+      refFeld.style.display=ref?"":"none";
+      listFeld.style.display=ref?"":"none";
+      txtFeld.style.display=ref?"none":"";
+    }
+    art.addEventListener("change",zeige); zeige();
+    actions(host,close,function(){
+      var g=Number(gew.value)||1;
+      if(art.value==="ref"){
+        if(!sel.value)return false;
+        e.relations=e.relations||[];
+        e.relations.push({id:uid("r"),type:REL_ENTRY,to:sel.value,props:{
+          weight:g,qty:menge.value.trim()||undefined,
+          requiresTag:marke.value.trim()||undefined}});
+      } else {
+        var t=txt.value.trim(); if(!t){txt.focus();return false;}
+        e.components=e.components||{};
+        e.components[TABLE_COMP]=Object.assign({},card,{rows:(card.rows||[]).concat([{
+          id:uid("tr"),text:t,weight:g,qty:menge.value.trim()||undefined,
+          requiresTag:marke.value.trim()||undefined}])});
+      }
+      persist(e);
+    },"Add");
+  });
 }
 
 /* ---------- Aufträge und Zeitleiste (REQ-082, 083, 106) ----------
@@ -2828,6 +3087,24 @@ function elInitiative(e,ifn,item){
   }
 
   /* Beute (REQ-085): was dabei zu holen ist, steht bei der Begegnung. */
+  /* Beutetabellen an der Begegnung (REQ-085, 186): was gewürfelt wird,
+     steht in der Tabelle, nicht hier — sonst gäbe es zwei Wahrheiten. */
+  var btab=(e.relations||[]).filter(function(r){return r.type===REL_TABLEFOR;})
+    .map(function(r){ return ENT.get(r.to); }).filter(Boolean);
+  if(btab.length){
+    wrap.appendChild(el("div",{class:"sec",text:"Tables"}));
+    var tbar=el("div",{class:"rowbtns"});
+    btab.forEach(function(t){
+      tbar.appendChild(el("button",{class:"btn sm",type:"button",
+        onclick:function(){
+          var r=rollTable(t,e);
+          shareRoll(nameOf(t),{total:0,rolls:[],expr:"",pretty:r.text});
+          render();
+        }},"Roll " + nameOf(t)));
+    });
+    wrap.appendChild(tbar);
+  }
+
   var beute=(e.relations||[]).filter(function(r){return r.type===REL_LOOT;});
   if(beute.length){
     wrap.appendChild(el("div",{class:"sec",text:"Loot"}));

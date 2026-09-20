@@ -276,4 +276,22 @@ export const views: Record<string, ViewDef> = {
       { id: 'l-b', el: 'blocks', blocks: ['note', 'recap'] },
     ],
   },
+
+  /** Die Tabelle mit ihren Bereichen — und einem Knopf, der sie auswürfelt. */
+  table: {
+    label: 'Table',
+    order: 17,
+    fields: ['TableInfo'],
+    blocks: ['note', 'secret'],
+    description: true,
+    composed: false,
+    relations: true,
+    bindings: false,
+    image: false,
+    layout: [
+      { id: 'tb-table', el: 'table' },
+      { id: 'tb-desc', el: 'description' },
+      { id: 'tb-b', el: 'blocks', blocks: ['note', 'secret'] },
+    ],
+  },
 };
