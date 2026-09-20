@@ -45,7 +45,12 @@ window.claude = { use: async function(n){
     isOwner: async function(){ return true; }, id: async function(){ return 'u_test'; } };
   if(n==='downloads') return { save: async function(r){ window.__SAVED__.push(r); return {status:'saved'}; } };
   if(n==='room') return {
-    emit: async function(t,d){ window.__EMITS__.push({t:t,d:d}); },
+    /* Der echte Raum spielt Gesendetes auch dem Absender wieder ein
+       („plus your own publishing session when admitted"). Ein Stub, der das
+       verschweigt, lässt genau den Fehler durch, den es hier gab: derselbe
+       Wurf stand dreimal im Protokoll. */
+    emit: async function(t,d){ window.__EMITS__.push({t:t,d:d});
+      setTimeout(function(){ window.__ROOM__.fire(t,d); },0); },
     on: function(t,h){ (window.__ROOM__.handlers[t]=window.__ROOM__.handlers[t]||[]).push(h);
       return function(){}; },
     presence: async function(p){ window.__PRESENCE__.push(p); },

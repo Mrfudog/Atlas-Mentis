@@ -1843,8 +1843,11 @@ async function seite(datei, warten) {
     ['World', 'History', 'Rules', 'Play'].every((a) => typen.bereiche.includes(a))
     && typen.bereiche[typen.bereiche.length - 1] === 'No area', typen.bereiche);
 
-  /* Eine Art zeigt alle vier Fragen: was sie verlangt, was sie tragen darf,
-     welche Kanten sie hat und wie sie gezeichnet wird. */
+  /* Eine Art zeigt, woraus sie besteht, was sie festhält, welche Kanten sie
+     trägt und wie sie gezeichnet wird — **und jedes davon genau einmal.**
+     Es stand einmal alles zweimal da: oben zum Lesen, unten zum Ändern. Wer
+     einen Bestandteil entfernen wollte, versuchte es oben, und dort war es
+     ein Bild. */
   const eine = await p.evaluate(async () => {
     const T = window.__T__;
     T.UI.typePick = 'PlayerCharacter';
@@ -1853,29 +1856,39 @@ async function seite(datei, warten) {
     const txt = (sel) => [...document.querySelectorAll(sel)].map((x) => x.textContent);
     return {
       titel: document.querySelector('.tpdoc .arthead h2')?.textContent ?? '',
-      abschnitte: txt('.tpdoc .sec'),
-      /* Geerbtes sagt, woher es kommt — sonst liest man „verlangt nichts"
-         und übersieht, was über Creature hereinkommt. */
-      geerbt: txt('.tcomp .co'),
-      komponenten: txt('.tcomp .ref'),
+      abschnitte: txt('.tpdoc .sec').concat(txt('.tpdoc .rsec')),
+      /* Ein Bestandteil steht als Chip, den man wegnehmen kann — nicht als
+         Pille, die nur aussieht wie einer. */
+      teile: [...document.querySelectorAll('.tpdoc .chips .chip')]
+        .filter((c) => c.querySelector('button[title="remove"]'))
+        .map((c) => c.querySelector('.ref')?.textContent ?? ''),
+      /* Geerbtes steht als Block unter dem Bestandteil, der es mitbringt —
+         und nicht flach mit „from X" an jeder der 83 Zeilen. */
+      bloecke: txt('.fbox.part .fhead .ref'),
+      inh: document.querySelectorAll('.fbox.part .frow.inh').length,
       kantenRaus: document.querySelectorAll('.tedges').length,
-      layout: txt('.tlayout li'),
+      reiter: txt('.tmpltab'),
     };
   });
-  pruefe('a kind shows what it records, inherits, connects and looks like',
+  pruefe('a kind shows what it is made of, records, connects and looks like',
     eine.titel === 'Player character'
-    && eine.abschnitte.some((x) => /^Its own fields/.test(x))
-    && eine.abschnitte.some((x) => /^Inherited fields/.test(x))
+    && eine.abschnitte.some((x) => /^Made of/.test(x))
+    && eine.abschnitte.some((x) => /^Fields/.test(x))
     && eine.abschnitte.some((x) => /^Edges from here/.test(x))
-    && eine.abschnitte.some((x) => /^Drawn as/.test(x)), eine.abschnitte);
-  pruefe('inherited fields say which type declares them',
-    eine.geerbt.some((x) => /from Creature/.test(x))
-    && eine.komponenten.includes('PlayerCharacter'), eine.geerbt.slice(0, 4));
-  /* Die Reiter des Bogens stehen eingerückt darunter — „tabs" allein zu
-     lesen sagt nichts. */
-  pruefe('the drawing shows the tabs by name, not just the word “tabs”',
-    eine.layout.includes('tabs') && eine.layout.includes('Overview')
-    && eine.layout.includes('Gear'), eine.layout);
+    && eine.abschnitte.some((x) => /^Template/.test(x)), eine.abschnitte);
+  /* Jede Frage einmal. Eine Seite, die alles zweimal zeigt, hat eine Hälfte,
+     die nur so aussieht, als könnte man sie bedienen. */
+  pruefe('and says each of them exactly once',
+    eine.abschnitte.length === new Set(eine.abschnitte).size, eine.abschnitte);
+  pruefe('a part can be taken out where it is shown',
+    eine.teile.includes('Creature'), eine.teile);
+  pruefe('inherited fields stand under the part that brings them',
+    eine.bloecke.includes('Creature') && eine.bloecke.includes('Identity')
+    && eine.inh > 20, { bloecke: eine.bloecke.slice(0, 4), inh: eine.inh });
+  /* Die Reiter des Bogens stehen in der Vorlage mit Namen — „tabs" allein
+     zu lesen sagt nichts. */
+  pruefe('the template shows the tabs by name, not just the word “tabs”',
+    eine.reiter.includes('Overview') && eine.reiter.includes('Gear'), eine.reiter);
 
   /* Vor/zurück geht durch dieselbe Reihenfolge wie die Liste links. Eine
      zweite Ordnung daneben wäre die Stelle, an der „nächste" etwas anderes
@@ -3020,12 +3033,20 @@ async function seite(datei, warten) {
       [...document.querySelectorAll('.tablebox .btn')].map((b) => b.textContent));
     pruefe('a place rolls on the table that applies there',
       knopf.some((t) => /^Roll /.test(t)), knopf);
+    await p.evaluate(() => { window.__T__.UI.rollLog.length = 0; });
     await p.evaluate(() =>
       [...document.querySelectorAll('.tablebox .btn')].find((b) => /^Roll /.test(b.textContent)).click());
-    await p.waitForTimeout(250);
+    await p.waitForTimeout(300);
     const einWurf = await p.evaluate(() =>
       [...document.querySelectorAll('.rollrow .rv')].map((x) => x.textContent));
     pruefe('the button on the place produces a result', einWurf.length > 0, einWurf);
+    /* **Einmal drücken heisst einmal würfeln.** Es stand dreimal da: einmal
+       protokolliert, einmal über `shareRoll` noch einmal protokolliert, und
+       einmal, weil der Raum Gesendetes auch dem Absender wieder einspielt.
+       Drei Zeilen für einen Wurf — und am Tisch fragt dann jemand, welche
+       davon gilt. */
+    const einmal = await p.evaluate(() => window.__T__.UI.rollLog.length);
+    pruefe('pressing it once rolls once', einmal === 1, einmal);
 
     /* Der Zusammenhang wird zweihundertmal geprüft und nicht sechsmal: ein
        Eintrag mit 20 % Gewicht taucht in sechs Würfen manchmal nicht auf,

@@ -212,6 +212,13 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 .crow select{width:auto;padding:3px 6px;font-size:12px}
 .fbox{background:var(--bg);border:1px solid var(--line);border-radius:var(--r);
   padding:9px 11px;margin:2px 0 10px}
+/* Ein Block: eigene Felder oder die eines Bestandteils. Die Kopfzeile sagt,
+   welcher — und nicht jede Zeile einzeln. */
+.fbox.part{background:var(--surface)}
+.fhead{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;
+  padding-bottom:5px;margin-bottom:4px;border-bottom:1px solid var(--line)}
+.fhead b,.fhead .ref{font-family:var(--ff-disp);font-size:15px;font-weight:700}
+.fhead .co{font-family:var(--ff-mono);font-size:11px;color:var(--dim)}
 .frow{display:grid;grid-template-columns:minmax(90px,150px) minmax(0,1fr) 108px auto auto;
   gap:6px;align-items:center;padding:3px 0}
 .frow .fk{font-family:var(--ff-mono);font-size:12px;color:var(--dim);overflow-wrap:anywhere}
@@ -3930,9 +3937,11 @@ function elTable(e,ifn,item){
   bar.appendChild(el("span",{class:"pill",text:card.kind||"generic"}));
   if(card.die) bar.appendChild(el("span",{class:"pill q",text:card.die}));
   bar.appendChild(el("button",{class:"btn sm pri",type:"button",onclick:function(){
+    /* `shareRoll` protokolliert **und** sendet. Hier stand beides
+       nacheinander, und mit dem Widerhall aus dem Raum stand derselbe Wurf
+       dreimal da. */
     var r=rollTable(e,e);
-    logRoll("Table: "+nameOf(e),{total:0,rolls:[],expr:card.die||"",pretty:r.text},whoAmI());
-    if(roomNS) shareRoll("Table: "+nameOf(e),{total:0,rolls:[],expr:"",pretty:r.text});
+    shareRoll("Table: "+nameOf(e),{total:0,rolls:[],expr:card.die||"",pretty:r.text});
     render();
   }},"Roll on it"));
   if(canWrite()) bar.appendChild(el("button",{class:"btn sm",type:"button",
@@ -4755,17 +4764,25 @@ function whoAmI(){
   var a=ENT.get(viewerActor());
   return a?nameOf(a):(isGM()?"GM":"Someone");
 }
+/* Was dieser Browser selbst gesendet hat. Der Raum spielt Gesendetes auch
+   dem Absender wieder ein — ohne diese Marke stünde jeder eigene Wurf
+   zweimal im Protokoll: einmal, weil man ihn geworfen hat, und einmal, weil
+   man ihn gehört hat. Der Name reicht dafür nicht: zwei Leute dürfen gleich
+   heissen, und derselbe Mensch darf zwei Fenster offen haben. */
+var ROOM_SELF=uid("rs");
+
 function shareRoll(was,r){
   logRoll(was,r,whoAmI());
-  if(roomNS) roomNS.emit("roll",{who:whoAmI(),what:was,total:r.total,text:rollText(r)})
-    ["catch"](function(){});
+  if(roomNS) roomNS.emit("roll",{src:ROOM_SELF,who:whoAmI(),what:was,
+    total:r.total,text:rollText(r)})["catch"](function(){});
 }
 /* Auf die Karte zeigen. Das ist der Grund, warum es den Raum überhaupt
    braucht: „da" lässt sich nicht speichern. */
 function pingMap(mapId,x,y){
   var p={id:uid("pg"),map:mapId,x:x,y:y,at:Date.now(),who:whoAmI()};
   addPing(p);
-  if(roomNS) roomNS.emit("ping",p)["catch"](function(){});
+  if(roomNS) roomNS.emit("ping",{id:p.id,map:p.map,x:p.x,y:p.y,who:p.who,
+    src:ROOM_SELF})["catch"](function(){});
 }
 function addPing(p){
   UI.pings=(UI.pings||[]).filter(function(x){ return Date.now()-x.at<PING_MS; }).concat([p]);
@@ -8923,52 +8940,6 @@ function compFieldList(comp){
     return {name:k,kind:art,derived:!!p.derived,required:pflicht.indexOf(k)>=0};
   });
 }
-function typeCompRow(ifn,comp){
-  var row=el("div",{class:"tcomp"});
-  var woher=compOrigin(ifn,comp);
-  var kopf=el("div",{class:"ck"});
-  kopf.appendChild(el("button",{class:"ref",type:"button",
-    title:"Open it in the data model",
-    onclick:function(){ UI.regtab="types"; UI.regiface=comp; UI.regcomp=comp; UI.regprop="";
-      go({k:"reg"}); }},comp));
-  if(woher&&woher.iface!==ifn) kopf.appendChild(el("span",{class:"co",
-    text:"from "+(REG.interfaces[woher.iface].label||woher.iface)}));
-  row.appendChild(kopf);
-  var felder=compFieldList(comp);
-  if(!felder.length){ row.appendChild(el("span",{class:"hint",style:"margin:0",text:"no fields of its own"}));
-    return row; }
-  var box=el("div",{class:"tfields"});
-  felder.forEach(function(f){
-    box.appendChild(el("span",{class:"pill q"+(f.derived?" der":""),
-      title:f.derived?"Computed on read — no input, no column (D8)"
-           :(f.kind+(f.required?" · required":"")),
-      text:f.name+(f.required?"*":"")}));
-  });
-  row.appendChild(box);
-  return row;
-}
-/* Das Layout einer Art, wie `full` es zeichnet. Reiter stehen eingerückt
-   darunter — sonst liest man „tabs" und weiss nichts. */
-function layoutLines(layout,tiefe,into){
-  (layout||[]).forEach(function(x){
-    if(x.el==="tabs"){
-      into.appendChild(el("li",{class:"d"+tiefe},[el("b",{text:"tabs"})]));
-      (x.tabs||[]).forEach(function(t){
-        into.appendChild(el("li",{class:"d"+(tiefe+1)},[el("em",{text:t.label||t.id})]));
-        layoutLines(t.layout,tiefe+2,into);
-      });
-      return;
-    }
-    var zeile=el("li",{class:"d"+tiefe});
-    zeile.appendChild(el("code",{text:x.el}));
-    if(x.except&&x.except.length) zeile.appendChild(el("span",{class:"co",
-      text:"without "+x.except.join(", ")}));
-    if(x.fields&&x.fields!=="all") zeile.appendChild(el("span",{class:"co",
-      text:Array.isArray(x.fields)?x.fields.join(", "):String(x.fields)}));
-    into.appendChild(zeile);
-  });
-}
-
 /* ---- Welches Layout für diese Art gilt, und wo es liegt ----
    `layoutOf` sagt nur *was* gezeichnet wird. Wer es ändern will, muss
    wissen **wo es steht**: eine geerbte Anordnung zu bearbeiten ändert sie
@@ -9218,42 +9189,14 @@ function renderTypes(v){
   if(areaOf(wahl)) marken.appendChild(el("span",{class:"pill",text:areaOf(wahl)}));
   if(d.abstract) marken.appendChild(el("span",{class:"pill q",
     title:"No article carries this one directly — it is an umbrella",text:"abstract"}));
-  ancestorsOf(wahl).forEach(function(p){
-    marken.appendChild(el("button",{class:"chip",type:"button",
-      onclick:function(){ UI.typePick=p; render(); }},"↑ "+(REG.interfaces[p].label||p)));
-  });
   h.appendChild(marken);
   doc.appendChild(h);
 
-  /* Eigene Felder zuerst, geerbte darunter. Vorher stand hier „Requires"
-     und „May carry" — zwei Überschriften für einen Unterschied, den es im
-     Register nicht mehr gibt: Pflicht steht je Feld. */
-  var alle=compsFor(wahl);
-  var eigen=alle.filter(function(c){ return c===wahl; });
-  var oben=alle.filter(function(c){ return c!==wahl; });
-
-  if(eigen.length&&compFieldList(wahl).length){
-    doc.appendChild(el("div",{class:"sec",text:"Its own fields"}));
-    eigen.forEach(function(c){ doc.appendChild(typeCompRow(wahl,c)); });
-  }
-  var mitFeldern=oben.filter(function(c){ return compFieldList(c).length; });
-  if(mitFeldern.length){
-    doc.appendChild(el("div",{class:"sec",text:"Inherited fields"}));
-    mitFeldern.forEach(function(c){ doc.appendChild(typeCompRow(wahl,c)); });
-  }
-
-  var bl=blockTypesFor(wahl);
-  if(bl.length){
-    doc.appendChild(el("div",{class:"sec",text:"Block kinds"}));
-    var bb=el("div",{class:"chips"});
-    bl.forEach(function(b){
-      bb.appendChild(el("span",{class:"pill q"+(gmBlockTypes().indexOf(b)>=0?" gmb":""),
-        title:gmBlockTypes().indexOf(b)>=0
-          ?"Held back from players at the server":"Anyone may read it",
-        text:b+(gmBlockTypes().indexOf(b)>=0?" \u25cf":"")}));
-    });
-    doc.appendChild(bb);
-  }
+  /* **Die Maske steht hier und sonst nirgends.** Bis hierher standen
+     dieselben Sachen zweimal auf dieser Seite: oben als Kurzübersicht zum
+     Lesen, unten unter „Model" zum Ändern. Wer einen Bestandteil entfernen
+     wollte, versuchte es oben — und dort war es ein Bild. */
+  doc.appendChild(regIfaceBody(wahl));
 
   /* ---- Die Vorlage ----
      **Das ist, wofür man die Seite öffnet**: was diese Ansicht von dieser
@@ -9302,17 +9245,6 @@ function renderTypes(v){
   kantenListe(raus,"Edges from here","out");
   kantenListe(rein,"Edges to here","in");
 
-  /* Wie sie gezeichnet wird — und aus welcher Zeile das kommt. */
-  var vw=REG.views&&REG.views.full;
-  if(vw){
-    var gefunden=layoutSource(vw,wahl).iface||"";
-    doc.appendChild(el("div",{class:"sec",
-      text:"Drawn as"+(gefunden?" — from "+(REG.interfaces[gefunden].label||gefunden):" — the default")}));
-    var ul2=el("ul",{class:"tlayout"});
-    layoutLines(layoutOf(vw,wahl),0,ul2);
-    doc.appendChild(ul2);
-  }
-
   /* Und die Artikel selbst. Eine Art ohne einen einzigen Artikel ist eine
      Frage für sich — deshalb steht die Null da und nicht nichts. */
   var meine=[];
@@ -9331,13 +9263,6 @@ function renderTypes(v){
       text:"and "+(meine.length-40)+" more"}));
     doc.appendChild(cb);
   }
-
-  /* ---- Das Modell ----
-     Dieselbe Maske wie im alten Reiter „Interfaces". Sie steht hier, weil
-     das Anlegen und das Ansehen dieselbe Arbeit sind: wer ein Feld
-     dazunimmt, will sehen, wo es landet, ohne die Seite zu wechseln. */
-  doc.appendChild(el("div",{class:"sec",text:"Model"}));
-  doc.appendChild(regIfaceBody(wahl));
 
   split.appendChild(doc);
   v.appendChild(split);
@@ -10337,15 +10262,45 @@ function regIfaceBody(ifn){
    `Identity` zu ändern, weil man gerade bei `Event` steht, änderte es für
    jede Artikelart — und zwar ohne dass es irgendwo stünde. Ein Klick auf
    den Bestandteil führt dorthin, wo die Änderung hingehört. */
+/* Die Felder einer Art — als **Blöcke**, nicht als eine flache Liste.
+   Oben die eigenen, darunter je ein Block für den Bestandteil, der seine
+   mitbringt. Vorher stand an jeder geerbten Zeile „from Time"; bei
+   dreiundachtzig Feldern las man dann dreiundachtzigmal, woher etwas kommt,
+   statt einmal zu sehen, woraus die Art besteht. Und es ist dieselbe
+   Einteilung, die die Ansicht zeichnet — zwei Bilder derselben Sache im
+   Kopf zusammenzuhalten ist Arbeit, die niemand tun sollte. */
 function fieldTable(ifn,w,save){
+  var aussen=el("div");
   var box=el("div",{class:"fbox"});
   var eigen=propsOf(ifn), keys=Object.keys(eigen);
+  if(keys.length) box.appendChild(el("div",{class:"fhead"},
+    [el("b",{text:"Its own"}),
+     el("span",{class:"co",text:keys.length+(keys.length===1?" field":" fields")})]));
   keys.forEach(function(k){ box.appendChild(fieldRow(ifn,k,ifn,w,save)); });
 
   var geerbt=0;
+  var bloecke=[];
   ancestorsOf(ifn).forEach(function(a){
-    Object.keys(propsOf(a)).forEach(function(k){
-      box.appendChild(erbRow(a,k)); geerbt++; });
+    var ks=Object.keys(propsOf(a));
+    if(!ks.length)return;
+    var teil=el("div",{class:"fbox part"});
+    var kopf=el("div",{class:"fhead"});
+    kopf.appendChild(el("button",{class:"ref",type:"button",
+      title:"Open the part — a field is changed where it is declared",
+      onclick:function(){ UI.typePick=a; UI.regiface=a; UI.regcomp=""; UI.regprop=""; render(); }},
+      REG.interfaces[a].label||a));
+    kopf.appendChild(el("span",{class:"co",text:ks.length+(ks.length===1?" field":" fields")}));
+    /* Woher der Bestandteil kommt: direkt genommen oder über einen anderen
+       hereingekommen. Ohne das sähe `Identity` an `NPC` aus wie etwas, das
+       man dort wegnehmen könnte. */
+    if(parentsOf(ifn).indexOf(a)<0){
+      var ueber=parentsOf(ifn).filter(function(p2){ return ancestorsOf(p2).indexOf(a)>=0||p2===a; })[0];
+      if(ueber) kopf.appendChild(el("span",{class:"co",
+        text:"via "+(REG.interfaces[ueber].label||ueber)}));
+    }
+    teil.appendChild(kopf);
+    ks.forEach(function(k){ teil.appendChild(erbRow(a,k)); geerbt++; });
+    bloecke.push(teil);
   });
 
   if(!keys.length&&!geerbt) box.appendChild(el("p",{class:"hint",text:"No fields yet."}));
@@ -10370,10 +10325,13 @@ function fieldTable(ifn,w,save){
     }},"Add field"));
     box.appendChild(bar);
   }
-  return box;
+  if(keys.length||w||!geerbt) aussen.appendChild(box);
+  bloecke.forEach(function(b){ aussen.appendChild(b); });
+  return aussen;
 }
 
-/* Eine geerbte Zeile: lesen, nicht ändern — und ein Weg dorthin, wo es geht. */
+/* Eine geerbte Zeile: lesen, nicht ändern. Wo es geht, sagt die Kopfzeile
+   des Blocks — an jeder Zeile stünde es dreiundachtzigmal. */
 function erbRow(art,k){
   var p=propsOf(art)[k]||{};
   var pflicht=(schemaOf(art).required||[]).indexOf(k)>=0;
@@ -10383,10 +10341,6 @@ function erbRow(art,k){
   row.appendChild(el("span",{class:"pill q"+(p.derived?" der":""),
     title:p.derived?"Computed on read — no input, no column (D8)":"",
     text:p.derived?"derived":fieldKind(p)}));
-  row.appendChild(el("button",{class:"btn sm gh",type:"button",
-    title:"Open the part that brings it",
-    onclick:function(){ UI.typePick=art; UI.regiface=art; UI.regcomp=""; UI.regprop=""; render(); }},
-    REG.interfaces[art].label||art));
   return row;
 }
 
@@ -11331,7 +11285,7 @@ render();
       roomNS.onPeers(function(liste){ UI.peers=liste||[]; render(); });
       roomNS.on("roll",function(ev){
         var d=(ev&&ev.data)||{};
-        if(!d.text)return;
+        if(!d.text||d.src===ROOM_SELF)return;
         UI.rollLog.unshift({t:d.what||"roll",who:d.who||"",at:Date.now(),
           r:{total:d.total,rolls:[],expr:d.what,pretty:d.text}});
         if(UI.rollLog.length>12) UI.rollLog.length=12;
@@ -11339,7 +11293,7 @@ render();
       });
       roomNS.on("ping",function(ev){
         var d=(ev&&ev.data)||{};
-        if(!d.map)return;
+        if(!d.map||d.src===ROOM_SELF)return;
         addPing({id:d.id||uid("pg"),map:d.map,x:d.x,y:d.y,at:Date.now(),who:d.who||""});
       });
     }catch(x){}
