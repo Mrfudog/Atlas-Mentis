@@ -292,6 +292,11 @@ in [Spieltisch.md](Spieltisch.md).
   Werkzeug; das Material wird angehängt, während gearbeitet wird, und der
   letzte Tag bleibt zu, bis alles drin ist. Vorher konnte anfangen nur, wer
   schon alles hatte — am Tisch ist es andersherum.
+- **D22 · Der Spieltisch** — REQ-116, 117, 130, 144. Der Bereich Play führt
+  an den Tisch und nicht in eine Liste: Initiative oben, darunter Karte oder
+  Boards. Was läuft, kommt aus `SessionState` und wird hier nur gezeigt —
+  und gezeichnet wird mit denselben Elementen wie die Artikelseite, damit
+  es keinen zweiten Kartenzeichner „für den Tisch" gibt.
 
 ---
 

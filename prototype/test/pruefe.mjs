@@ -1437,6 +1437,77 @@ async function seite(datei, warten) {
     pruefe('a relationship exists in the data', false, 'kein regards gefunden');
   }
 
+  /* ---- Der Spieltisch (Bereich Play) ----
+     Karte, Initiative und Boards sind keine Artikel, die man nachschlägt —
+     sie sind das, worauf man während der Sitzung schaut. Die Prüfung fragt
+     deshalb zuerst, ob der Bereich überhaupt an den Tisch führt und nicht
+     in eine Liste: genau dort ging es vorher verloren. */
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')]
+      .find((x) => /At the table/.test(x.textContent)).click());
+  await p.waitForTimeout(700);
+  const tisch = await p.evaluate(() => ({
+    kopf: document.querySelector('#view .listhead h2')?.textContent ?? '',
+    /* Keine Artikelliste: wer hier Zeilen sieht, ist im Kompendium
+       gelandet und nicht am Tisch. */
+    zeilen: document.querySelectorAll('#view .row').length,
+    karte: !!document.querySelector('.playpane .mapbox'),
+    kampf: !!document.querySelector('.playpane .fight'),
+    reiter: [...document.querySelectorAll('#view .ktabs .btn')].map((b) => b.textContent),
+    /* Was läuft, steht an der Sitzung und wird hier nur gezeigt. */
+    sitzung: !!document.querySelector('#view .listhead .ref'),
+  }));
+  pruefe('the play area opens the table, not a list of articles',
+    tisch.kopf === 'At the table' && tisch.zeilen === 0, tisch);
+  pruefe('the map and the running fight are both on it',
+    tisch.karte === true && tisch.kampf === true, tisch);
+  pruefe('and it says which session it is drawing from',
+    tisch.sitzung === true, tisch);
+
+  /* Die Initiative steht oben und bleibt stehen, wenn man auf die Boards
+     umschaltet: wer dran ist, muss man sehen, ohne zurückzuschalten. */
+  await p.evaluate(() =>
+    [...document.querySelectorAll('#view .ktabs .btn')]
+      .find((b) => /Boards/.test(b.textContent)).click());
+  await p.waitForTimeout(600);
+  const brett = await p.evaluate(() => ({
+    board: !!document.querySelector('.playpane .boardbox'),
+    kampf: !!document.querySelector('.playpane .fight'),
+    /* Nach den Streifen gefragt und nicht nach `.mapbox`: eine Karte kann
+       als Karte auf einem Board liegen, und dann ist sie zu Recht da. Was
+       hier zählt, ist, welcher Streifen aufgeschlagen ist. */
+    streifen: [...document.querySelectorAll('.playpane > .sec > span')]
+      .map((x) => x.textContent),
+  }));
+  pruefe('switching to the boards swaps the map pane, not the initiative',
+    brett.board === true && brett.kampf === true
+    && brett.streifen.includes('Board') && !brett.streifen.includes('Map'),
+    brett);
+
+  /* Und was läuft, kommt aus der Sitzung: nimmt man den Kampf dort heraus,
+     ist der Streifen weg — eine zweite Stelle dafür wäre die, an der der
+     Beamer etwas anderes zeigt als der Laptop. */
+  const ausgeschaltet = await p.evaluate(() => {
+    const T = window.__T__;
+    const ses = [...T.ENT.values()].find((e) => (e.components || {}).SessionState);
+    const merk = ses.components.SessionState.activeEncounter;
+    ses.components.SessionState = Object.assign({}, ses.components.SessionState,
+      { activeEncounter: undefined });
+    T.render();
+    const weg = !document.querySelector('.playpane .fight');
+    ses.components.SessionState.activeEncounter = merk;
+    T.render();
+    return weg;
+  });
+  await p.waitForTimeout(400);
+  pruefe('what is running comes from the session, not from this screen',
+    ausgeschaltet === true, ausgeschaltet);
+  await p.evaluate(() =>
+    [...document.querySelectorAll('#view .ktabs .btn')]
+      .find((b) => /^Map$/.test(b.textContent)).click());
+  await p.waitForTimeout(400);
+  pruefe('the table raised no exception', errs.length === 0, errs);
+
   /* ---- Blockanker und Kampagnenwerte (B3) ----
      Beides hängt daran, dass ein Bezeichner hält. Ein Anker, der sich beim
      Import ändert, nimmt jede Wissenszuteilung mit ins Leere — und das

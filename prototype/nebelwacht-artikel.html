@@ -259,7 +259,13 @@ body.asplayer .brand span{color:var(--link)}
 .kgrp .who{font-size:11.5px;color:var(--dim)}
 .kgrp .who .ref{font-size:11.5px}
 .kgrp .nothing{font-size:12.5px;color:var(--dim)}
-.ktabs{display:flex;gap:4px;margin-bottom:10px}
+.ktabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+/* Der Spieltisch: eine Leiste mit dem, was läuft, und darunter Streifen.
+   Die Initiative steht immer oben — wer dran ist, muss man sehen, ohne
+   umzuschalten. */
+.playbar{flex-wrap:wrap;margin-bottom:10px}
+.playpane{margin-bottom:14px}
+.playpane .sec{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
 .kpick{display:flex;flex-direction:column;gap:2px;max-height:230px;overflow:auto;
   border:1px solid var(--line);border-radius:var(--r);padding:6px 8px;margin:4px 0}
 .kpick label{display:flex;gap:6px;align-items:baseline;font-size:12.5px;cursor:pointer}
@@ -797,7 +803,7 @@ var UI={route:{k:"list"}, view:"quick", area:"", iface:"", tag:"", q:"", offen:f
         trail:[], inline:false, editField:"", pick:false, picked:{}, status:"",
         aside:"rel", info:"", assetBusy:"",
         mapZoom:1, mapLock:false, mapKind:"", mapDrag:null, mapTool:"",
-        wallKind:"wall",
+        wallKind:"wall", playTab:"map", playBoard:"",
         invView:"tiers", invPick:"", craftOnly:false, craftLog:[],
         boardZoom:1, boardPick:"", boardTool:"",
         turnActor:"", rollLog:[], asActor:"", peers:[], pings:[],
@@ -1633,10 +1639,22 @@ function renderRail(){
        Frage, die man stellt, bevor man weiss, welche Artikelart man sucht. */
     var summe=0;
     wurzeln.forEach(function(n){ summe+=(counts[n]||0); });
-    sec.appendChild(el("button",{class:"navrow area",type:"button",
-      "aria-current":String(UI.area===ar[0]&&UI.route.k==="list"),
-      onclick:function(){UI.area=ar[0];UI.iface="";go({k:"list"});}},
-      [el("b",{text:"All "+ar[1].toLowerCase()}),el("em",{text:String(summe)})]));
+    /* **Play führt an den Tisch**, nicht in eine Liste. Karte, Initiative
+       und Boards sind das, worauf man während der Sitzung schaut — sie
+       über eine Artikelliste zu erreichen hiesse, mitten im Kampf suchen
+       zu gehen. Die Artikelarten darunter bleiben Filter: eine Karte
+       nachzuschlagen ist etwas anderes, als sie zu benutzen. */
+    if(ar[0]==="play"){
+      sec.appendChild(el("button",{class:"navrow area",type:"button",
+        "aria-current":String(UI.route.k==="play"),
+        onclick:function(){UI.area="";UI.iface="";go({k:"play"});}},
+        [el("b",{text:"At the table"}),el("em",{text:String(summe)})]));
+    } else {
+      sec.appendChild(el("button",{class:"navrow area",type:"button",
+        "aria-current":String(UI.area===ar[0]&&UI.route.k==="list"),
+        onclick:function(){UI.area=ar[0];UI.iface="";go({k:"list"});}},
+        [el("b",{text:"All "+ar[1].toLowerCase()}),el("em",{text:String(summe)})]));
+    }
     wurzeln.forEach(function(n){ zweig(sec,n,1); });
     r.appendChild(sec);
   });
@@ -1740,6 +1758,174 @@ function renderRail(){
 }
 
 /* ---------- main ---------- */
+/* ---------- Der Spieltisch (Bereich Play) ----------
+   Karte, Initiative und Boards sind keine Artikel, die man nachschlägt —
+   sie sind das, worauf man während der Sitzung schaut. Sie über die
+   Artikelliste zu erreichen hiesse: mitten im Kampf suchen gehen.
+
+   Was gerade läuft, steht **nicht hier**, sondern an der Sitzung
+   (`SessionState.activeMap`, `activeEncounter`, `activeScene`). Eine
+   zweite Stelle dafür wäre die, an der der Beamer eine andere Karte zeigt
+   als der Laptop.
+
+   Gezeichnet wird mit denselben Elementen wie auf der Artikelseite. Ein
+   zweiter Kartenzeichner „für den Tisch" wäre der, der als Erster nicht
+   mehr kann, was der andere kann. */
+function playingSession(){
+  var beste=null;
+  ENT.forEach(function(e){
+    if(!(e.components||{}).SessionState)return;
+    if(!inStack(e)||!articleVisible(e))return;
+    var t=e.updatedAt||e.createdAt||"";
+    if(!beste||t>(beste.updatedAt||beste.createdAt||"")) beste=e;
+  });
+  return beste;
+}
+/* Die Karte, auf die geschaut wird: die der Sitzung, sonst die, auf der die
+   Gruppe steht, sonst die einzige. Drei Antworten auf dieselbe Frage, in
+   der Reihenfolge, in der sie jemand gemeint hat. */
+function playMap(ses){
+  var card=(ses&&(ses.components||{}).SessionState)||{};
+  var m=card.activeMap&&ENT.get(card.activeMap);
+  if(m&&articleVisible(m))return m;
+  var p=theParty(), ids={};
+  if(p){ ids[p.id]=true; partyMembers(p).forEach(function(x){ ids[x.id]=true; }); }
+  var treffer=null, erste=null;
+  ENT.forEach(function(k){
+    if(((k.interfaces||[])[0])!==MAP_IFACE||!articleVisible(k))return;
+    if(!erste) erste=k;
+    if(treffer)return;
+    if((k.relations||[]).some(function(r){
+      return r.type===REL_MARKER&&((r.props||{}).kind)==="party"&&ids[r.to]; })) treffer=k;
+  });
+  return treffer||erste;
+}
+function playBoards(){
+  var out=[];
+  ENT.forEach(function(e){
+    if(((e.interfaces||[])[0])===BOARD_IFACE&&articleVisible(e)) out.push(e); });
+  out.sort(function(a,b){ return nameOf(a).localeCompare(nameOf(b),"de"); });
+  return out;
+}
+/* Die Auswahl an der Sitzung ändern. Sie steht dort und nicht hier — aber
+   gestellt wird sie hier, weil hier jemand sitzt, der sie stellen will. */
+function setPlaying(ses,feld,id){
+  if(!ses)return;
+  var card=(ses.components||{}).SessionState||{};
+  var patch={}; patch[feld]=id||undefined;
+  ses.components=ses.components||{};
+  ses.components.SessionState=Object.assign({},card,patch);
+  persist(ses);
+}
+function playPicker(ses,feld,label,arten){
+  var card=(ses&&(ses.components||{}).SessionState)||{};
+  var sel=el("select",{class:"i",style:"width:auto",title:label});
+  sel.appendChild(el("option",{value:""},"— "+label.toLowerCase()+" —"));
+  byName().forEach(function(c){
+    if(!ifaceInList(arten,(c.interfaces||[])[0]))return;
+    if(!articleVisible(c))return;
+    sel.appendChild(el("option",{value:c.id},nameOf(c)));
+  });
+  sel.value=card[feld]||"";
+  sel.addEventListener("change",function(){ setPlaying(ses,feld,sel.value); });
+  return sel;
+}
+
+var PLAY_TABS=[["map","Map"],["board","Boards"]];
+function renderPlay(v){
+  var ses=playingSession();
+  var card=(ses&&(ses.components||{}).SessionState)||{};
+
+  var head=el("div",{class:"listhead"});
+  head.appendChild(el("h2",{text:"At the table"}));
+  if(ses) head.appendChild(el("button",{class:"ref",type:"button",
+    onclick:function(){go({k:"art",id:ses.id});}},nameOf(ses)));
+  else head.appendChild(el("span",{class:"hint",style:"margin:0",
+    text:"No session with a state yet — what runs is set on the session."}));
+  v.appendChild(head);
+
+  /* Die Szene ist eine Zeile und kein Feld: sie sagt, worum es gerade geht,
+     und mehr braucht sie nicht. */
+  var bar=el("div",{class:"maptools playbar"});
+  var szene=card.activeScene&&ENT.get(card.activeScene);
+  if(szene) bar.appendChild(el("button",{class:"ref",type:"button",
+    onclick:function(){go({k:"art",id:szene.id});}},nameOf(szene)));
+  if(ses&&(isGM()||card.stewardship==="table")){
+    bar.appendChild(playPicker(ses,"activeScene","Scene",["Story"]));
+    bar.appendChild(playPicker(ses,"activeMap","Map",["Map"]));
+    bar.appendChild(playPicker(ses,"activeEncounter","Fight",["Encounter"]));
+  }
+  var leute=roomPeers();
+  bar.appendChild(el("span",{class:"hint",style:"margin:0;align-self:center",
+    text:roomNS?(leute.length===1?"only you here":leute.length+" here"):"no live channel"}));
+  v.appendChild(bar);
+
+  /* Die Initiative steht immer oben. Sie ist ein Streifen, und wer dran
+     ist, muss man sehen, ohne umzuschalten. */
+  var kampf=card.activeEncounter&&ENT.get(card.activeEncounter);
+  if(kampf&&articleVisible(kampf)){
+    var kb=el("section",{class:"playpane"});
+    var kk=el("div",{class:"sec"});
+    kk.appendChild(el("span",{text:"Initiative"}));
+    kk.appendChild(el("button",{class:"ref",type:"button",
+      onclick:function(){go({k:"art",id:kampf.id});}},nameOf(kampf)));
+    kb.appendChild(kk);
+    kb.appendChild(elInitiative(kampf,(kampf.interfaces||[])[0],{}));
+    v.appendChild(kb);
+  } else {
+    /* Kein Kampf ist der Normalfall und keine Panne — es steht trotzdem da,
+       damit niemand sucht, wo die Initiative hin ist. */
+    UI.turnActor="";
+    v.appendChild(el("p",{class:"hint",text:"No fight running."}));
+  }
+
+  var tabs=el("div",{class:"ktabs"});
+  PLAY_TABS.forEach(function(t){
+    tabs.appendChild(el("button",{class:"btn sm"+(UI.playTab===t[0]?" pri":""),type:"button",
+      "aria-pressed":String(UI.playTab===t[0]),
+      onclick:function(){ UI.playTab=t[0]; render(); }},t[1]));
+  });
+  v.appendChild(tabs);
+
+  if(UI.playTab==="board"){
+    var bretter=playBoards();
+    if(!bretter.length){ v.appendChild(el("div",{class:"empty",text:"No boards yet."})); return; }
+    var wahl=bretter.filter(function(b){ return b.id===UI.playBoard; })[0]||bretter[0];
+    if(bretter.length>1){
+      var bt=el("div",{class:"ktabs"});
+      bretter.forEach(function(b){
+        bt.appendChild(el("button",{class:"btn sm"+(b.id===wahl.id?" pri":" gh"),type:"button",
+          onclick:function(){ UI.playBoard=b.id; render(); }},nameOf(b)));
+      });
+      v.appendChild(bt);
+    }
+    var bp=el("section",{class:"playpane"});
+    var bk=el("div",{class:"sec"});
+    bk.appendChild(el("span",{text:"Board"}));
+    bk.appendChild(el("button",{class:"ref",type:"button",
+      onclick:function(){go({k:"art",id:wahl.id});}},nameOf(wahl)));
+    bp.appendChild(bk);
+    bp.appendChild(elBoard(wahl,(wahl.interfaces||[])[0],{}));
+    v.appendChild(bp);
+    return;
+  }
+
+  var karte=playMap(ses);
+  if(!karte){ v.appendChild(el("div",{class:"empty",text:"No map to look at."})); return; }
+  var mp=el("section",{class:"playpane"});
+  var mk=el("div",{class:"sec"});
+  mk.appendChild(el("span",{text:"Map"}));
+  mk.appendChild(el("button",{class:"ref",type:"button",
+    onclick:function(){go({k:"art",id:karte.id});}},nameOf(karte)));
+  if(ses&&card.activeMap!==karte.id&&(isGM()||card.stewardship==="table"))
+    mk.appendChild(el("button",{class:"btn sm gh",type:"button",
+      title:"Everyone at the table sees this one",
+      onclick:function(){ setPlaying(ses,"activeMap",karte.id); }},"put it on the table"));
+  mp.appendChild(mk);
+  mp.appendChild(elMap(karte,(karte.interfaces||[])[0],{}));
+  v.appendChild(mp);
+}
+
 function renderMain(){
   var v=document.getElementById("view"); v.textContent="";
   if(UI.err) v.appendChild(el("div",{class:"banner",text:UI.err}));
@@ -1755,6 +1941,7 @@ function renderMain(){
   if(UI.route.k==="reg"){ renderRegistry(v); return; }
   if(UI.route.k==="graph"){ renderGraph(v); return; }
   if(UI.route.k==="rules"){ renderRules(v); return; }
+  if(UI.route.k==="play"){ renderPlay(v); return; }
   renderList(v);
 }
 

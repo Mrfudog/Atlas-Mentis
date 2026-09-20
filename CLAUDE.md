@@ -72,6 +72,13 @@ die Entscheidungen D0–D17, `Requirements.md` die REQ-Nummern.
   steht als `area` an ihrer Schnittstelle und wird wie alles andere geerbt.
   Im Code steht keine Liste davon — sonst bräuchte eine neue Artikelart eine
   Codeänderung, um auffindbar zu sein.
+- **Play ist ein Schirm und keine Liste.** Karte, Initiative und Boards sind
+  das, worauf man während der Sitzung schaut; sie über die Artikelliste zu
+  erreichen hiesse, mitten im Kampf suchen zu gehen. **Was gerade läuft,
+  steht an der Sitzung** (`SessionState.activeMap`, `activeEncounter`,
+  `activeScene`) und nicht am Schirm — eine zweite Stelle dafür wäre die, an
+  der der Beamer etwas anderes zeigt als der Laptop. Gezeichnet wird mit
+  denselben Layout-Elementen wie die Artikelseite.
 - **Eine Beziehung ist eine Kante mit Marken** und keine gerechnete Zahl
   (siehe [docs/Beziehungen.md](docs/Beziehungen.md)). Die Marken sind Worte
   und keine Aufzählung im Register: was jemand vom anderen hält, ist
