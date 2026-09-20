@@ -703,6 +703,108 @@ async function seite(datei, warten) {
   pruefe('changing the default changes what is created next',
     zweiter.includes('planned') && !zweiter.includes('idea'), zweiter);
   pruefe('defaults raised no exception', errs.length === 0, errs);
+
+  /* 12 — Etappe B: Geschichts- und Spielerartikel sind Registerzeilen.
+     Diese Prüfung ist die Probe aufs Rückgrat. Geht sie kaputt, weil jemand
+     Code für einen Artikeltyp geschrieben hat, war die Behauptung falsch. */
+  const neuerArtikel = async (typ, name) => {
+    await p.evaluate(() => document.getElementById('new').click());
+    await p.waitForTimeout(250);
+    await p.evaluate((t) => {
+      const s = [...document.querySelectorAll('.dlgbox select')][0];
+      [...s.options].forEach((o) => { if (o.textContent === t) s.value = o.value; });
+    }, typ);
+    await p.evaluate((n) => { [...document.querySelectorAll('.dlgbox input')][0].value = n; }, name);
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.dlgbox .rowbtns button')].find((b) => /Create/.test(b.textContent)).click());
+    await p.waitForTimeout(400);
+    return p.evaluate(() => ({
+      titel: document.querySelector('.arthead h2')?.textContent,
+      typ: document.querySelector('.kicker .pill')?.textContent,
+      probleme: [...document.querySelectorAll('.pruef li')].map((x) => x.textContent),
+    }));
+  };
+
+  const auswahl = await p.evaluate(() => {
+    document.getElementById('new').click();
+    return [...[...document.querySelectorAll('.dlgbox select')][0].options].map((x) => x.textContent);
+  });
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.dlgbox .rowbtns button')].find((b) => /Cancel/.test(b.textContent)).click());
+  await p.waitForTimeout(200);
+  const erwartet = ['Campaign', 'Session', 'Scene / Encounter', 'Quest', 'Player character', 'Party', 'Inventory'];
+  pruefe('the story and player types are offered',
+    erwartet.every((t) => auswahl.includes(t)), auswahl);
+  /* Abstrakte Typen sind Struktur, nicht anlegbar. */
+  pruefe('the abstract parents are not offered',
+    !auswahl.includes('Story') && !auswahl.includes('Creature'), auswahl);
+
+  const kampagne = await neuerArtikel('Campaign', 'Probe campaign');
+  const pc = await neuerArtikel('Player character', 'Probe hero');
+  pruefe('they validate clean on creation',
+    kampagne.probleme.length === 0 && pc.probleme.length === 0, { kampagne, pc });
+
+  await p.evaluate(() => {
+    const f = document.querySelector('#facet');
+    f.value = 'full';
+    f.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await p.waitForTimeout(300);
+  const pcFelder = await p.evaluate(() => {
+    const o = {};
+    document.querySelectorAll('.fld').forEach((f) => { o[f.querySelector('dt').textContent] = f.querySelector('dd').textContent; });
+    return o;
+  });
+  pruefe('a required component arrives with its defaults',
+    pcFelder.Level === '1' && pcFelder.Proficiency === '+2', pcFelder);
+
+  /* Der Übungsbonus ist abgeleitet, nicht gespeichert — er muss der Stufe
+     folgen, ohne dass jemand ihn nachträgt. */
+  await p.evaluate(() => {
+    const dt = [...document.querySelectorAll('.fld dt')].find((d) => d.textContent === 'Level');
+    dt.nextElementSibling.click();
+  });
+  await p.waitForTimeout(250);
+  await p.evaluate(() => {
+    const i = document.querySelector('.fld dd.editing input');
+    i.value = '9';
+    i.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await p.waitForTimeout(400);
+  const nachStufe = await p.evaluate(() => {
+    const o = {};
+    document.querySelectorAll('.fld').forEach((f) => { o[f.querySelector('dt').textContent] = f.querySelector('dd').textContent; });
+    return { level: o.Level, prof: o.Proficiency };
+  });
+  pruefe('the derived proficiency follows the level',
+    nachStufe.level === '9' && nachStufe.prof === '+4', nachStufe);
+
+  /* Eine Kante, die an einem abstrakten Elternteil hängt, muss jeden Subtyp
+     erreichen. Exakt zu vergleichen hiesse: sie erreicht keinen. */
+  const session = await neuerArtikel('Session', 'Probe session');
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rowbtns button')].find((b) => /\+ Relation/.test(b.textContent)).click());
+  await p.waitForTimeout(300);
+  const kanten = await p.evaluate(() =>
+    [...[...document.querySelectorAll('.dlgbox select')][0].options].map((o) => o.textContent));
+  await p.evaluate(() => {
+    const s = [...document.querySelectorAll('.dlgbox select')][0];
+    [...s.options].forEach((o) => { if (/part of/.test(o.textContent)) s.value = o.value; });
+    s.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await p.waitForTimeout(250);
+  const ziele = await p.evaluate(() =>
+    [...[...document.querySelectorAll('.dlgbox select')][1].options].map((o) => o.textContent));
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.dlgbox .rowbtns button')].find((b) => /Cancel/.test(b.textContent)).click());
+  await p.waitForTimeout(200);
+  pruefe('an edge on an abstract parent reaches its subtypes',
+    kanten.some((k) => /follows/.test(k)) && kanten.some((k) => /happens at/.test(k)),
+    { session: session.typ, kanten });
+  pruefe('and its targets resolve through inheritance too',
+    ziele.some((z) => /Campaign/.test(z)), ziele.slice(0, 5));
+
+  pruefe('stage B needed no code for its types', errs.length === 0, errs);
   await p.close();
 }
 

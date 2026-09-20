@@ -275,6 +275,11 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 .kdl dt{font-family:var(--ff-disp);font-weight:700;font-size:15px;margin-top:10px}
 .kdl dd{margin:2px 0 0;color:var(--dim)}
 
+.bsp{margin:0;padding-left:20px;font-size:13.5px}
+.bsp li{margin:0 0 9px}
+.bsp b{font-family:var(--ff-disp)}
+.bsp span{color:var(--dim)}
+
 @media (max-width:900px){
   .body{grid-template-columns:minmax(0,1fr)}
   .rail,.aside{display:none}
@@ -609,18 +614,22 @@ function linkInput(pd,cur){
    Jetzt trägt das Feld seinen Standard, und wer ihn ändert, ändert ihn für
    alles, was danach entsteht. Rückwirkend gilt er nicht: vorhandene Artikel
    still zu beschreiben hiesse, Werte zu setzen, die niemand eingetragen hat.
-   Eine Komponente entsteht nur, wenn sie verlangt ist oder mindestens ein Feld
-   einen Standard trägt — sonst bekäme jeder Artikel leere Karten für alles,
-   was seine Art erlaubt. */
+
+   Gefüllt werden nur Komponenten, die der Artikel schon trägt — also die,
+   die seine Art verlangt. Eine Karte allein deshalb anzulegen, weil eines
+   ihrer Felder einen Standard hat, brachte jedem Artikel eine
+   Sichtbarkeits-Karte, die niemand wollte: `default` im Schema heisst „falls
+   der Wert fehlt, gilt dieser", nicht „lege die Komponente an". Wer eine
+   Komponente auf jedem Artikel will, setzt sie an der Schnittstelle auf
+   Pflicht — dort steht die Entscheidung sichtbar. */
 function applyDefaults(e,ifn){
   e.components=e.components||{};
   compsFor(ifn).forEach(function(cn){
+    var card=e.components[cn];
+    if(!card)return;
     var props=((REG.components[cn]||{}).schema||{}).properties||{};
-    var withDefault=Object.keys(props).filter(function(k){
-      return !props[k].derived && props[k]["default"]!==undefined; });
-    if(!withDefault.length&&!e.components[cn])return;
-    var card=e.components[cn]=e.components[cn]||{};
-    withDefault.forEach(function(k){
+    Object.keys(props).forEach(function(k){
+      if(props[k].derived||props[k]["default"]===undefined)return;
       if(card[k]===undefined) card[k]=props[k]["default"];
     });
   });
@@ -763,11 +772,21 @@ function techName(label,taken){
   return n;
 }
 
+/* Steht ein Typ in dieser Liste — direkt, als „*", oder über einen seiner
+   Obertypen? Exakt zu vergleichen hiesse: eine Kante, die an `Creature`
+   hängt, erreicht kein einziges Geschöpf, weil jedes ein Subtyp davon ist.
+   Nach oben, nicht nach unten: `from: ["NPC"]` gilt für NPCs, nicht für
+   alles, was Geschöpf ist. */
+function ifaceInList(list,ifn){
+  if(!list||!list.length||list.indexOf("*")>=0)return true;
+  var at=ifn, guard=0;
+  while(at&&guard++<64){ if(list.indexOf(at)>=0)return true; at=parentOf(at); }
+  return false;
+}
 function relsFrom(ifn){
   var out=[];
   for(var k in REG.relations){ var r=REG.relations[k];
-    var from=r.from||["*"];
-    if(from.indexOf("*")>=0||from.indexOf(ifn)>=0) out.push(Object.assign({type:k},r)); }
+    if(ifaceInList(r.from,ifn)) out.push(Object.assign({type:k},r)); }
   return out;
 }
 function relDef(t){ var r=REG.relations[t]; return r?Object.assign({type:t},r):{type:t,label:t,inverseLabel:"← "+t,to:["*"]}; }
@@ -2127,6 +2146,52 @@ function konzept(){
   d.appendChild(el("p",{class:"hint",style:"margin:6px 0 0"},
     "`engine` on a component names the machinery that will own it in the real stack "+
     "(Calculation, Resolution, Access …). The prototype records it and does not act on it yet."));
+
+  /* Ein durchgezogenes Beispiel schlägt fünf Definitionen. Es nennt echte
+     Zeilen aus diesem Register, damit man es nachklicken kann statt es zu
+     glauben. */
+  d.appendChild(el("div",{class:"rsec",style:"margin-top:18px",text:"Following one article through"}));
+  var bsp=el("ol",{class:"bsp"});
+  [["The row that says what a statblock is",
+    "Interfaces › Statblock. It extends Base, requires StatblockInfo and allows Vars. "+
+    "That is the whole definition — everything below follows from it."],
+   ["What it may carry",
+    "Because it extends Base it also gets Name, Identity, Status, Description, Visibility, "+
+    "Image and Raw content. Open Statblock and you see them listed as inherited, with the "+
+    "interface they come from."],
+   ["Where the fields come from",
+    "Components › StatblockInfo holds ac, hp, speed, str … and their titles. Nothing about "+
+    "statblocks is written in code: the form, the field table and the validation all read "+
+    "this one schema."],
+   ["A value nobody typed",
+    "StatblockInfo.passivePerception carries derived: 10+mod(wis). It has no input and is "+
+    "never stored — it is computed each time the article is read. Change wis and it follows."],
+   ["How the actions get in",
+    "Relation types › composed of has a section heading. That makes it compose instead of "+
+    "list: open Kanalschleim and its three pooled rules are written into the article under "+
+    "“Actions & traits”, not shown as links. The rules themselves are ordinary articles of "+
+    "type Rule Element, shared by every statblock that uses them."],
+   ["The same rule, said differently",
+    "“Weapon attack” is one article. Kanalschleim binds NAME=Pseudopod, AB=+5, DMG=2d6 + 3 "+
+    "on the edge, so {VAR} in the rule text reads as its own attack. Another statblock binds "+
+    "other values against the same rule. Resolution order: the edge, then the article using "+
+    "it, then Variables."],
+   ["What you actually see",
+    "Views › Full lists the elements in order. Under “Applies to” a type may carry its own "+
+    "layout, so Statblock: Full can lead with the stat table where Item: Full leads with the "+
+    "image — one view, two layouts."],
+   ["Add a kind of thing",
+    "Interfaces › Create interface. Give it a parent, tick the components it needs, and it "+
+    "appears in the compendium, in the new-article picker and in validation. No code changed; "+
+    "that is the claim this prototype exists to test."]
+  ].forEach(function(r){
+    var li=el("li");
+    li.appendChild(el("b",{text:r[0]}));
+    li.appendChild(el("span",{text:" — "+r[1]}));
+    bsp.appendChild(li);
+  });
+  d.appendChild(bsp);
+
   box.appendChild(d);
   return box;
 }
@@ -3077,21 +3142,21 @@ function addRelation(e){
     var ifn=(e.interfaces||[])[0]||"";
     var defs=relsFrom(ifn);
     if(!defs.length){ host.appendChild(el("p",{class:"hint",text:"No relation type is defined for this interface. Add one in the registry."}));
-      actions(host,close,function(){},"Schliessen"); return; }
+      actions(host,close,function(){},"Close"); return; }
     var rsel=el("select",{class:"i"});
     defs.forEach(function(d){ rsel.appendChild(el("option",{value:d.type},(d.label||d.type))); });
     var tsel=el("select",{class:"i"});
     var note=el("input",{class:"i",type:"text",placeholder:"optional"});
     var vars=el("textarea",{class:"i code",placeholder:'{"NAME":"Pseudopod","DMG":"2d6 + 3"}'});
     vars.style.minHeight="72px";
-    var vlab=field("Variablenbindung (JSON)",vars);
+    var vlab=field("Variable bindings (JSON)",vars);
 
     function fillTargets(){
       tsel.textContent="";
       var d=relDef(rsel.value), to=d.to||["*"];
       byName().forEach(function(c){
         if(c.id===e.id)return;
-        if(to.indexOf("*")<0 && to.indexOf((c.interfaces||[])[0])<0)return;
+        if(!ifaceInList(to,(c.interfaces||[])[0]))return;
         tsel.appendChild(el("option",{value:c.id},nameOf(c)+" — "+ifaceName(c)));
       });
       if(!tsel.childNodes.length) tsel.appendChild(el("option",{value:""},"— no matching article —"));
