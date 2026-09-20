@@ -42,7 +42,7 @@ async function seite(datei, warten) {
 
   /* 2 — Register: Baum, Felder, Subtyp anlegen */
   await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((b) => /Registry/.test(b.textContent))?.click());
+    [...document.querySelectorAll('.rail button')].find((b) => /Data model/.test(b.textContent))?.click());
   await p.waitForTimeout(300);
   const baum = await p.evaluate(() =>
     [...document.querySelectorAll('.regtree button')].map((b) => b.textContent));
@@ -119,7 +119,7 @@ async function seite(datei, warten) {
   /* 4 — Feldarten: Farbe, Auswahl, Verweis; Schlüssel umbenennen */
   const zumFeld = async (iface, comp, key) => {
     await p.evaluate(() =>
-      [...document.querySelectorAll('.rail button')].find((x) => /Registry/.test(x.textContent)).click());
+      [...document.querySelectorAll('.rail button')].find((x) => /Data model/.test(x.textContent)).click());
     await p.waitForTimeout(200);
     await p.evaluate((i) =>
       [...document.querySelectorAll('.regtree button')].find((b) => b.textContent.includes(i)).click(), iface);
@@ -297,10 +297,10 @@ async function seite(datei, warten) {
 
   /* 6 — Ansichten als Werkzeugkasten, und ein Layout je Typ */
   await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((x) => /Registry/.test(x.textContent)).click());
+    [...document.querySelectorAll('.rail button')].find((x) => /Data model/.test(x.textContent)).click());
   await p.waitForTimeout(200);
   await p.evaluate(() =>
-    [...document.querySelectorAll('.tabs button')].find((x) => /Compendium/.test(x.textContent)).click());
+    [...document.querySelectorAll('.tabs button')].find((x) => /^Views$/.test(x.textContent)).click());
   await p.waitForTimeout(250);
   const werkzeuge = await p.evaluate(() =>
     [...document.querySelectorAll('.tools button')].map((b) => b.textContent));
@@ -366,10 +366,10 @@ async function seite(datei, warten) {
 
   /* 7 — jeder Registerreiter hat eine Maske, keiner nur ein JSON-Textfeld */
   await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((x) => /Registry/.test(x.textContent)).click());
+    [...document.querySelectorAll('.rail button')].find((x) => /Data model/.test(x.textContent)).click());
   await p.waitForTimeout(200);
   const masken = {};
-  for (const name of ['Interfaces', 'Components', 'Relation types', 'Compendium', 'Variables']) {
+  for (const name of ['Interfaces', 'Components', 'Relation types', 'Views', 'Variables']) {
     await p.evaluate((n) =>
       [...document.querySelectorAll('.tabs button')].find((x) => x.textContent === n).click(), name);
     await p.waitForTimeout(280);
@@ -577,6 +577,58 @@ async function seite(datei, warten) {
   await p.waitForTimeout(200);
 
   pruefe('bulk editing raised no exception', errs.length === 0, errs);
+
+  /* 10 — Seitenaufbau: Kompendium sind die Artikel, Datenmodell ist das Register */
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
+  await p.waitForTimeout(250);
+  const aufbau = await p.evaluate(() => ({
+    kapitel: [...document.querySelectorAll('.rail h3')].map((h) => h.textContent),
+    system: [...([...document.querySelectorAll('.rail section')].pop()?.querySelectorAll('.navrow') ?? [])]
+      .map((b) => b.textContent),
+    filter: [...document.querySelectorAll('.filters select')].map((s) => s.options[0].textContent),
+  }));
+  pruefe('the rail separates compendium from system',
+    aufbau.kapitel[0] === 'Compendium' && aufbau.system.some((x) => /Data model/.test(x)), aufbau);
+  pruefe('the compendium carries its filters',
+    aufbau.filter.length === 3 && aufbau.filter[0] === 'any type', aufbau.filter);
+
+  /* Ein Obertyp meint seine Subtypen mit. Exakt zu vergleichen hiesse:
+     „Item" zeigt nichts, obwohl jede Waffe eins ist. */
+  const vorFilter = await p.evaluate(() => document.querySelectorAll('#view .row').length);
+  await p.evaluate(() => {
+    const s = document.querySelector('.filters select');
+    [...s.options].forEach((o) => { if (/^\s*Item/.test(o.textContent)) s.value = o.value; });
+    s.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await p.waitForTimeout(300);
+  const nachFilter = await p.evaluate(() => ({
+    zeilen: document.querySelectorAll('#view .row').length,
+    typen: [...new Set([...document.querySelectorAll('#view .row .pill')].map((x) => x.textContent))],
+  }));
+  pruefe('a parent type filters its subtypes in',
+    nachFilter.zeilen > 0 && nachFilter.zeilen < vorFilter && nachFilter.typen.includes('Armor'),
+    { vorFilter, nachFilter });
+
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.filters button')].find((b) => /Clear filters/.test(b.textContent))?.click());
+  await p.waitForTimeout(250);
+  const geleert = await p.evaluate(() => document.querySelectorAll('#view .row').length);
+  pruefe('clearing the filters brings everything back', geleert === vorFilter, { geleert, vorFilter });
+
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].find((x) => /Data model/.test(x.textContent)).click());
+  await p.waitForTimeout(300);
+  const dm = await p.evaluate(() => ({
+    titel: document.querySelector('#view h2')?.textContent,
+    konzept: [...document.querySelectorAll('.kdl dt')].map((x) => x.textContent),
+    reiter: [...document.querySelectorAll('.tabs button')].map((x) => x.textContent),
+  }));
+  /* Die Mechanik gehört auf die Seite, die sie bearbeitet — sonst steht sie
+     nur in Commit-Nachrichten. */
+  pruefe('the data model explains itself',
+    dm.titel === 'Data model' && dm.konzept.length === 5 && dm.reiter.includes('Views'), dm);
+  pruefe('the page structure raised no exception', errs.length === 0, errs);
   await p.close();
 }
 
