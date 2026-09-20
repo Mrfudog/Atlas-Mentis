@@ -531,6 +531,29 @@ table.craftm tr.crrow.unknown td{color:var(--dim);font-style:italic}
   font-size:10.5px;font-family:var(--ff-mono);text-align:center;pointer-events:none;
   color:var(--ink);text-shadow:0 0 3px var(--surface),0 0 3px var(--surface);
   overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+/* Regeln: der Text steht gleich da, und ein Verweis klappt an Ort und
+   Stelle auf. */
+.rules{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.rule{border:1px solid var(--line);border-radius:var(--r);padding:8px 11px;background:var(--surface)}
+.rule .rk{display:flex;flex-wrap:wrap;gap:7px;align-items:baseline;margin-bottom:3px}
+.rule .rk .ref{font-family:var(--ff-disp);font-size:16px}
+.rule .rt{margin:0;font-size:13.5px}
+.rusers{display:flex;flex-wrap:wrap;gap:6px;align-items:baseline;margin-top:5px;
+  padding-top:5px;border-top:1px solid var(--line)}
+.rusers .rl{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--dim)}
+.rusers .ref{font-size:12.5px}
+.pinbar{display:flex;flex-wrap:wrap;gap:6px;align-items:baseline;margin:6px 0 2px}
+.pinbar .rl{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--accent)}
+.ruleref{position:relative}
+.rulew{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:help;
+  border-bottom:1px dotted var(--link);text-underline-offset:2px}
+.rulew:hover{color:var(--link)}
+.rulepop{display:block;margin:5px 0;padding:7px 10px;background:var(--surface2);
+  border:1px solid var(--line2);border-left:3px solid var(--link);border-radius:var(--r);
+  font-size:13px}
+.rulepop .rk{display:flex;flex-wrap:wrap;gap:7px;align-items:baseline;margin-bottom:3px}
+.rulepop .rt{display:block}
+
 .fld.withheld{background:var(--surface2);border-left:2px dashed var(--line2)}
 .fld.withheld dt{color:var(--dim)}
 .fld.withheld dd{color:var(--dim);font-style:italic}
@@ -683,6 +706,7 @@ var UI={route:{k:"list"}, view:"quick", iface:"", tag:"", q:"", offen:false, pan
         invView:"tiers", invPick:"", craftOnly:false,
         boardZoom:1, boardPick:"", boardTool:"",
         turnActor:"", rollLog:[], asActor:"", peers:[], pings:[],
+        ruleQ:"", ruleKind:"",
         konzept:false, err:""};
 
 /* Darstellungsstufen (Facets, REQ-164) — registry rows, not code.
@@ -1364,7 +1388,7 @@ function inline(text,into){
   if(last<s.length) into.appendChild(document.createTextNode(s.slice(last)));
   return into;
 }
-function para(text,cls){ return inline(text,el("p",cls?{class:cls}:null)); }
+function para(text,cls){ return markRules(inline(text,el("p",cls?{class:cls}:null))); }
 
 /* ---------- db wiring ---------- */
 function persist(e){
@@ -1493,6 +1517,13 @@ function renderRail(){
         onclick:function(){go({k:"art",id:o.id});}},
         [el("b",{text:nameOf(o)}),el("em",{text:"party"})]));
     });
+    /* Nachschlagen ist keine Spielleitungssache — die Regel gilt für alle,
+       und wer sie nicht findet, hält den Tisch auf. */
+    var rz=0; ENT.forEach(function(x){ if(((x.interfaces||[])[0])===RULE_IFACE) rz++; });
+    if(rz) sp.appendChild(el("button",{class:"navrow",type:"button",
+      "aria-current":String(UI.route.k==="rules"),
+      onclick:function(){go({k:"rules"});}},
+      [el("b",{text:"Rules"}),el("em",{text:String(rz)})]));
     r.appendChild(sp);
     return;
   }
@@ -1502,6 +1533,11 @@ function renderRail(){
     onclick:function(){go({k:"reg"});}},[el("b",{text:"Data model"}),el("em",{text:"def"})]));
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="graph"),
     onclick:function(){go({k:"graph"});}},[el("b",{text:"Graph"}),el("em",{text:"↔"})]));
+  var regelZahl=0; ENT.forEach(function(x){ if(((x.interfaces||[])[0])===RULE_IFACE) regelZahl++; });
+  if(regelZahl) s3.appendChild(el("button",{class:"navrow",type:"button",
+    "aria-current":String(UI.route.k==="rules"),
+    onclick:function(){go({k:"rules"});}},
+    [el("b",{text:"Rules"}),el("em",{text:String(regelZahl)})]));
   if(canWrite()) s3.appendChild(el("button",{class:"navrow",type:"button",
     onclick:function(){importDialog();}},[el("b",{text:"Import"}),el("em",{text:"md"})]));
   /* Unfertiges als eigener Einstieg (REQ-188): die Frage „was liegt noch
@@ -1554,6 +1590,7 @@ function renderMain(){
   }
   if(UI.route.k==="reg"){ renderRegistry(v); return; }
   if(UI.route.k==="graph"){ renderGraph(v); return; }
+  if(UI.route.k==="rules"){ renderRules(v); return; }
   renderList(v);
 }
 
@@ -2927,6 +2964,280 @@ function elTimeline(e,ifn,item){
     wrap.appendChild(row);
   });
   return wrap;
+}
+
+/* ---------- Regeln: nachschlagen, verweisen, anheften (REQ-091, 098, 099, 175) ----------
+   Der Massstab steht in REQ-098: unter fünf Sekunden. Daran hängt alles
+   andere — wer eine Regel erst sucht, dann öffnet, dann liest, hat die
+   fünf Sekunden schon überschritten. Also: alles auf einer Seite, der Text
+   gleich mit, und getippt wird höchstens ein Wortanfang.
+
+   **Verweise im Fliesstext** (REQ-175) sind der zweite Weg dorthin: wo eine
+   Regel beim Namen genannt wird, steht sie auch. Das Erkennen ist bewusst
+   vorsichtig — nur ganze Wörter, nur ab vier Zeichen, und nur, wo genau
+   eine Regel in Frage kommt. Ein falscher Treffer kostet mehr Vertrauen,
+   als zehn richtige einbringen; deshalb lässt sich das Erkennen je Regel
+   abschalten und im Zweifel unterbleibt es.
+
+   **Angeheftete Regeln** (REQ-099) liegen im eigenen Bereich des Nutzers —
+   `data/users/me` ist je Betrachter privat. Ein Merkzettel, den alle sehen,
+   ist keiner. */
+var RULE_IFACE="Rule", RULE_COMP="RuleInfo";
+var pinned=[], pinsLoaded=false;
+
+function ruleArticles(){
+  var out=[];
+  ENT.forEach(function(e){
+    if(((e.interfaces||[])[0])!==RULE_IFACE)return;
+    if(!articleVisible(e))return;
+    out.push(e);
+  });
+  out.sort(function(a,b){return nameOf(a).localeCompare(nameOf(b),"de");});
+  return out;
+}
+function ruleText(e){
+  var d=((e.components||{}).Description||{}).raw;
+  if(d)return d;
+  var b=(e.blocks||[])[0];
+  return b?b.body:"";
+}
+/* Die Namen und Aliasse, gegen die der Fliesstext geprüft wird. Lang vor
+   kurz, damit „Umschlingen des Schleims" nicht als „Umschlingen" endet. */
+var ruleIndexSig="", ruleIndex=[];
+function rebuildRuleIndex(){
+  var sig=[];
+  var eintraege=[];
+  ENT.forEach(function(e){
+    if(((e.interfaces||[])[0])!==RULE_IFACE)return;
+    var info=(e.components||{})[RULE_COMP]||{};
+    if(info.autolink===false)return;
+    var id=(e.components||{}).Identity||{};
+    var namen=[rawName(e)].concat(Array.isArray(id.aliases)?id.aliases:[]);
+    namen.forEach(function(n){
+      var t=String(n||"").trim();
+      if(t.length<4)return;                  /* zu kurz, trifft zu oft */
+      eintraege.push({t:t,low:t.toLowerCase(),id:e.id});
+    });
+    sig.push(e.id+":"+namen.join("|"));
+  });
+  var s2=sig.sort().join(";");
+  if(s2===ruleIndexSig)return ruleIndex;
+  /* Mehrdeutige Namen fliegen raus: „auto-link when unambiguous" (REQ-013),
+     und Uneindeutigkeit heisst hier: zwei Regeln, ein Wort. */
+  var zaehler={};
+  eintraege.forEach(function(x){ (zaehler[x.low]=zaehler[x.low]||[]).push(x.id); });
+  ruleIndex=eintraege.filter(function(x){
+    var ids=zaehler[x.low];
+    return ids.length===1||ids.every(function(i){return i===ids[0];});
+  }).sort(function(a,b){ return b.t.length-a.t.length; });
+  ruleIndexSig=s2;
+  return ruleIndex;
+}
+/* Einen Textknoten nach Regelnamen absuchen und die Treffer ersetzen. Läuft
+   über die fertigen Knoten, nicht über den Rohtext: so bleiben [[Verweise]]
+   und {VAR} unangetastet — sie sind schon Elemente, keine Zeichen mehr. */
+function markRules(root){
+  if(!root)return root;
+  var idx=rebuildRuleIndex();
+  if(!idx.length)return root;
+  var texte=[];
+  (function sammle(n){
+    for(var i=0;i<n.childNodes.length;i++){
+      var k=n.childNodes[i];
+      if(k.nodeType===3) texte.push(k);
+      else if(k.nodeType===1&&k.tagName!=="BUTTON"&&!k.classList.contains("ruleref")) sammle(k);
+    }
+  })(root);
+  texte.forEach(function(tn){
+    var s2=tn.nodeValue;
+    if(!s2||s2.length<4)return;
+    var low=s2.toLowerCase();
+    var treffer=null, at=-1;
+    for(var i=0;i<idx.length;i++){
+      var p=low.indexOf(idx[i].low);
+      while(p>=0){
+        var vor=p===0?" ":s2.charAt(p-1);
+        var nach=p+idx[i].t.length>=s2.length?" ":s2.charAt(p+idx[i].t.length);
+        if(!/[\wÄÖÜäöüß]/.test(vor)&&!/[\wÄÖÜäöüß]/.test(nach)){ treffer=idx[i]; at=p; break; }
+        p=low.indexOf(idx[i].low,p+1);
+      }
+      if(treffer)break;
+    }
+    if(!treffer)return;
+    var e=ENT.get(treffer.id); if(!e)return;
+    var frag=document.createDocumentFragment();
+    if(at>0) frag.appendChild(document.createTextNode(s2.slice(0,at)));
+    frag.appendChild(ruleChip(e,s2.substr(at,treffer.t.length)));
+    var rest=s2.slice(at+treffer.t.length);
+    if(rest) frag.appendChild(document.createTextNode(rest));
+    tn.parentNode.replaceChild(frag,tn);
+  });
+  return root;
+}
+/* Ein Verweis, der sich an Ort und Stelle aufklappt. Wegspringen und
+   zurückspringen sind zwei Schritte zu viel für fünf Sekunden. */
+function ruleChip(e,text){
+  var wrap=el("span",{class:"ruleref"});
+  var b=el("button",{class:"rulew",type:"button",title:"Rule: "+nameOf(e)},text);
+  var box=el("span",{class:"rulepop"});
+  box.style.display="none";
+  b.addEventListener("click",function(ev){
+    ev.stopPropagation();
+    if(box.style.display==="none"){
+      box.textContent="";
+      var info=(e.components||{})[RULE_COMP]||{};
+      var kopf=el("span",{class:"rk"});
+      kopf.appendChild(el("b",{text:nameOf(e)}));
+      if(info.kind) kopf.appendChild(el("span",{class:"pill q",text:info.kind}));
+      if(info.uses) kopf.appendChild(el("span",{class:"co",text:info.uses}));
+      if(info.recharge) kopf.appendChild(el("span",{class:"co",text:"recharge "+info.recharge}));
+      kopf.appendChild(el("button",{class:"btn gh sm",type:"button",
+        onclick:function(ev2){ ev2.stopPropagation(); go({k:"art",id:e.id}); }},"open"));
+      kopf.appendChild(pinButton(e));
+      box.appendChild(kopf);
+      box.appendChild(inline(fillVars(ruleText(e),null,e),el("span",{class:"rt"})));
+      box.style.display="";
+    } else box.style.display="none";
+  });
+  wrap.appendChild(b); wrap.appendChild(box);
+  return wrap;
+}
+
+/* ---- Merkzettel (REQ-099) ---- */
+function pinButton(e){
+  var an=pinned.indexOf(e.id)>=0;
+  return el("button",{class:"btn gh sm"+(an?" pri":""),type:"button",
+    title:an?"Unpin":"Pin this rule",
+    onclick:function(ev){ ev.stopPropagation(); togglePin(e.id); }},an?"pinned":"pin");
+}
+function togglePin(id){
+  pinned=pinned.indexOf(id)>=0?pinned.filter(function(x){return x!==id;}):pinned.concat([id]);
+  savePins();
+  render();
+}
+function savePins(){
+  if(!db)return;
+  /* `data/users/me` ist je Betrachter privat — ein Merkzettel, den alle
+     sehen, ist keiner. Misslingt es, bleibt der Zettel für diese Sitzung
+     stehen; ein Merkzettel ist keine Kampagnendatei. */
+  try{ db.doc("data/users/me").set({pins:pinned,at:new Date().toISOString()})["catch"](function(){}); }
+  catch(x){}
+}
+function loadPins(){
+  if(!db||pinsLoaded)return;
+  pinsLoaded=true;
+  try{
+    db.doc("data/users/me").onSnapshot(function(s2){
+      var d=s2&&s2.exists&&s2.data();
+      pinned=(d&&Array.isArray(d.pins))?d.pins.slice():[];
+      render();
+    },function(){});
+  }catch(x){}
+}
+
+/* ---- Der Regelbrowser (REQ-091, 098) ---- */
+function renderRules(v){
+  v.appendChild(el("h2",{text:"Rules"}));
+  v.appendChild(el("p",{class:"hint",
+    text:"Everything on one page with its text, because looking a rule up in another view is already too slow. Type a word; the list narrows as you go."}));
+
+  var alle=ruleArticles();
+  if(!alle.length){
+    v.appendChild(el("div",{class:"empty",text:"No rule elements yet."}));
+    return;
+  }
+
+  var suche=el("input",{class:"i",type:"search",placeholder:"Type a word…",
+    value:UI.ruleQ||"",autofocus:"autofocus"});
+  suche.addEventListener("input",function(){ UI.ruleQ=suche.value; zeichne(); });
+  var arten=el("div",{class:"chips"});
+  var body=el("div");
+
+  var sorten={};
+  alle.forEach(function(e){
+    var k=((e.components||{})[RULE_COMP]||{}).kind||"—";
+    sorten[k]=(sorten[k]||0)+1;
+  });
+  Object.keys(sorten).sort().forEach(function(k){
+    arten.appendChild(el("button",{class:"chip pick"+(UI.ruleKind===k?" on":""),type:"button",
+      "aria-pressed":String(UI.ruleKind===k),
+      onclick:function(){ UI.ruleKind=UI.ruleKind===k?"":k; zeichne(); }},
+      k+" ("+sorten[k]+")"));
+  });
+  v.appendChild(suche);
+  v.appendChild(arten);
+
+  if(pinned.length){
+    var pb=el("div",{class:"pinbar"});
+    pb.appendChild(el("span",{class:"rl",text:"Pinned"}));
+    pinned.forEach(function(id){
+      var e=ENT.get(id); if(!e)return;
+      pb.appendChild(el("button",{class:"chip",type:"button",
+        onclick:function(){ UI.ruleQ=rawName(e); suche.value=UI.ruleQ; zeichne(); }},nameOf(e)));
+    });
+    v.appendChild(pb);
+  }
+  v.appendChild(body);
+
+  function zeichne(){
+    body.textContent="";
+    var q=String(UI.ruleQ||"").toLowerCase().trim();
+    var treffer=alle.filter(function(e){
+      if(UI.ruleKind&&(((e.components||{})[RULE_COMP]||{}).kind||"—")!==UI.ruleKind)return false;
+      if(!q)return true;
+      if(nameOf(e).toLowerCase().indexOf(q)>=0)return true;
+      var al=((e.components||{}).Identity||{}).aliases||[];
+      if(al.some(function(a){return String(a).toLowerCase().indexOf(q)>=0;}))return true;
+      return ruleText(e).toLowerCase().indexOf(q)>=0;
+    });
+    /* Namenstreffer vor Texttreffern: wer „Umschlingen" tippt, meint die
+       Regel und nicht jede, die das Wort erwähnt. */
+    treffer.sort(function(a,b){
+      var an=nameOf(a).toLowerCase().indexOf(q)>=0?0:1;
+      var bn=nameOf(b).toLowerCase().indexOf(q)>=0?0:1;
+      if(an!==bn)return an-bn;
+      return nameOf(a).localeCompare(nameOf(b),"de");
+    });
+    body.appendChild(el("p",{class:"count",
+      text:treffer.length+" of "+alle.length}));
+    var liste=el("div",{class:"rules"});
+    treffer.slice(0,40).forEach(function(e){
+      var info=(e.components||{})[RULE_COMP]||{};
+      var karte=el("div",{class:"rule"});
+      var kopf=el("div",{class:"rk"});
+      kopf.appendChild(el("button",{class:"ref",type:"button",
+        onclick:function(){go({k:"art",id:e.id});}},nameOf(e)));
+      if(info.kind) kopf.appendChild(el("span",{class:"pill q",text:info.kind}));
+      if(info.uses) kopf.appendChild(el("span",{class:"co",text:info.uses}));
+      if(info.recharge) kopf.appendChild(el("span",{class:"co",text:"recharge "+info.recharge}));
+      kopf.appendChild(pinButton(e));
+      karte.appendChild(kopf);
+      /* Der Text steht gleich da — das ist der ganze Punkt. */
+      karte.appendChild(inline(fillVars(ruleText(e),null,e),el("p",{class:"rt"})));
+      /* Wer die Regel benutzt: der Rückbezug, den `composedOf` schon trägt. */
+      var nutzer=[];
+      ENT.forEach(function(o){
+        (o.relations||[]).forEach(function(r){
+          if(r.to===e.id&&relDef(r.type).section&&articleVisible(o)) nutzer.push(o);
+        });
+      });
+      if(nutzer.length){
+        var nb=el("div",{class:"rusers"});
+        nb.appendChild(el("span",{class:"rl",text:"used by"}));
+        nutzer.slice(0,8).forEach(function(o){
+          nb.appendChild(el("button",{class:"ref",type:"button",
+            onclick:function(){go({k:"art",id:o.id});}},nameOf(o)));
+        });
+        karte.appendChild(nb);
+      }
+      liste.appendChild(karte);
+    });
+    body.appendChild(liste);
+    if(treffer.length>40) body.appendChild(el("p",{class:"hint",
+      text:"…and "+(treffer.length-40)+" more. Narrow it down."}));
+  }
+  zeichne();
+  setTimeout(function(){ try{ suche.focus(); }catch(x){} },0);
 }
 
 /* ---------- Sicherung und Ausfuhr (REQ-029, 155, 191, 192) ----------
@@ -7625,6 +7936,8 @@ render();
     }),function(e){ loadFailed="the registry part “"+part+"” failed ("+e.code+").";
       UI.err="Registry: "+e.code; render(); });
   });
+
+  loadPins();
 
   db.collection("entities").limit(1000).onSnapshot(guarded("Artikel",function(snap){
     arrived.artikel=true;

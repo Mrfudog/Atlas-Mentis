@@ -2012,6 +2012,122 @@ async function seite(datei, warten) {
     pruefe('an article with a cover name exists in the data', false, deck);
   }
 
+  /* ---- Regeln (REQ-091, 098, 099, 175) ----
+     Der Massstab ist REQ-098: unter fünf Sekunden. Prüfbar ist daran, dass
+     der Text gleich dasteht und dass getippt wird, nicht geklickt. */
+  const hatRegeln = await p.evaluate(() =>
+    [...window.__T__.ENT.values()].filter((e) => (e.interfaces || [])[0] === 'Rule').length);
+  if (hatRegeln >= 2) {
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.rail button')].find((b) => /^Rules/.test(b.textContent)).click());
+    await p.waitForTimeout(400);
+    const br = await p.evaluate(() => ({
+      count: document.querySelector('#view .count')?.textContent ?? '',
+      arten: [...document.querySelectorAll('#view .chips .chip')].map((x) => x.textContent),
+      /* Der Text steht gleich da — das ist der ganze Punkt. */
+      mitText: [...document.querySelectorAll('#view .rule')]
+        .filter((r) => (r.querySelector('.rt')?.textContent || '').trim().length > 10).length,
+      gesamt: document.querySelectorAll('#view .rule').length,
+      nutzer: [...document.querySelectorAll('#view .rusers .ref')].map((x) => x.textContent),
+    }));
+    pruefe('the rules browser shows every rule with its text',
+      br.gesamt >= 2 && br.mitText === br.gesamt, br);
+    pruefe('it groups by kind', br.arten.length >= 2, br.arten);
+    /* Wer die Regel benutzt, ist der Rückbezug, den `composedOf` schon
+       trägt — keine zweite Liste. */
+    pruefe('it says who uses a rule', br.nutzer.length > 0, br.nutzer);
+
+    /* Getippt wird ein Wortanfang, und die Liste wird schmaler. */
+    const wort = await p.evaluate(() => {
+      const n = document.querySelector('#view .rule .ref')?.textContent || '';
+      return n.slice(0, 5).toLowerCase();
+    });
+    await p.evaluate((w) => {
+      const i = document.querySelector('#view input[type=search]');
+      i.value = w;
+      i.dispatchEvent(new Event('input', { bubbles: true }));
+    }, wort);
+    await p.waitForTimeout(300);
+    const eng = await p.evaluate(() => ({
+      count: document.querySelector('#view .count')?.textContent ?? '',
+      erste: document.querySelector('#view .rule .ref')?.textContent ?? null,
+    }));
+    pruefe('typing narrows it down and puts the name match first',
+      /^1 of /.test(eng.count) === false || eng.erste !== null,
+      eng);
+    pruefe('the search finds the rule it was typed for',
+      (eng.erste || '').toLowerCase().indexOf(wort) === 0, { wort, eng });
+    await p.evaluate(() => {
+      const i = document.querySelector('#view input[type=search]');
+      i.value = '';
+      i.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await p.waitForTimeout(250);
+
+    /* Der Merkzettel liegt im eigenen Bereich des Nutzers — einer, den
+       alle sehen, ist keiner. */
+    await p.evaluate(() => [...document.querySelectorAll('#view .rule .rk .btn')][0].click());
+    await p.waitForTimeout(450);
+    const pin = await p.evaluate(() => ({
+      chips: [...document.querySelectorAll('.pinbar .chip')].map((x) => x.textContent),
+      wohin: window.__WROTE__.filter((x) => /data\/users/.test(x)),
+    }));
+    pruefe('a pinned rule goes to the viewer’s own corner',
+      pin.chips.length === 1 && pin.wohin.length > 0, pin);
+
+    /* Verweise im Fliesstext: wo eine Regel beim Namen genannt wird, steht
+       sie auch — und sie klappt an Ort und Stelle auf, weil Wegspringen und
+       Zurückspringen zwei Schritte zu viel sind. */
+    /* Gesucht ist ein Artikel, in dessen *gezeichnetem* Text ein Regelname
+       vorkommt. Das ist nicht dasselbe wie „steht in seinen Feldern": ein
+       Statblock zieht die Regeltexte über `composedOf` herein, und genau
+       dort will man den Verweis. Deshalb wird der gezogene Text mitgesucht. */
+    const mitProsa = await p.evaluate(() => {
+      const T = window.__T__;
+      const regeln = [...T.ENT.values()].filter((e) => (e.interfaces || [])[0] === 'Rule');
+      const namen = regeln.map((e) => e.name || e.components.Name.text)
+        .filter((n) => n && n.length >= 4);
+      const textVon = (x) => {
+        let t = JSON.stringify(x.components || {}) + JSON.stringify(x.blocks || []);
+        (x.relations || []).forEach((r) => {
+          const d = T.REG.relations[r.type];
+          if (!d || !d.section) return;
+          const z = T.ENT.get(r.to);
+          if (z) t += JSON.stringify(z.components || {}) + JSON.stringify(z.blocks || []);
+        });
+        return t;
+      };
+      const e = [...T.ENT.values()].find((x) =>
+        (x.interfaces || [])[0] !== 'Rule' && namen.some((n) => textVon(x).indexOf(n) >= 0));
+      return e ? e.id : null;
+    });
+    if (mitProsa) {
+      await oeffneId(mitProsa);
+      await p.evaluate(() => {
+        const f = document.getElementById('facet');
+        f.value = 'full';
+        f.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      await p.waitForTimeout(450);
+      const inline2 = await p.evaluate(() =>
+        [...document.querySelectorAll('.rulew')].map((x) => x.textContent));
+      pruefe('a rule named in prose is marked', inline2.length > 0, inline2);
+      await p.evaluate(() => { const w = document.querySelector('.rulew'); if (w) w.click(); });
+      await p.waitForTimeout(300);
+      const auf = await p.evaluate(() => {
+        const n = document.querySelector('.rulepop');
+        return n && n.style.display !== 'none' ? n.textContent : null;
+      });
+      pruefe('it opens where it stands instead of jumping away',
+        !!auf && auf.length > 20, auf && auf.slice(0, 60));
+    } else {
+      pruefe('some article names a rule in its prose', false, 'keiner gefunden');
+    }
+    pruefe('the rules browser raised no exception', errs.length === 0, errs);
+  } else {
+    pruefe('rule elements exist in the data', false, hatRegeln);
+  }
+
   pruefe('knowledge needed no browser modal', modale.length === 0, modale);
   pruefe('no exception through the knowledge panel', errs.length === 0, errs);
 

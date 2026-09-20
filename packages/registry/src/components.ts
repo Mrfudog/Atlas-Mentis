@@ -202,6 +202,10 @@ export const components: Record<string, ComponentDef> = {
           enum: ['action', 'bonus', 'reaction', 'feature', 'trait', 'condition', 'legendary', 'lair'],
         },
         uses: { type: 'string', title: 'Uses' },
+        /* Ob der Name dieser Regel im Fliesstext erkannt werden darf
+           (REQ-175). Ein falscher Treffer kostet mehr Vertrauen, als zehn
+           richtige einbringen — deshalb lässt er sich hier abschalten. */
+        autolink: { type: 'boolean', title: 'Spot it in prose', default: true },
         recharge: { type: 'string', title: 'Recharge' },
       },
     },
