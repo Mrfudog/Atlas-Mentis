@@ -357,4 +357,17 @@ export const interfaces: Record<string, InterfaceDef> = {
     requires: ['LayerInfo'],
     blockTypes: ['+note'],
   },
+
+  /**
+   * Eine Tat (REQ-030). Sie ist ein Artikel, weil sie sich beschreiben,
+   * datieren, auf die Zeitleiste legen und verbergen lässt — als Zeile in
+   * einer Liste könnte sie nichts davon.
+   */
+  Deed: {
+    name: 'Deed',
+    label: 'Deed',
+    extends: ['Base'],
+    requires: ['DeedInfo'],
+    blockTypes: ['+lore', '+secret', '+readaloud'],
+  },
 };

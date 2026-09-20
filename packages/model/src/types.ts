@@ -108,6 +108,7 @@ export type LayoutElementKind =
   | 'table'
   | 'prep'
   | 'crawl'
+  | 'standing'
   | 'stack';
 
 /**

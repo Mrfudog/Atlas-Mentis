@@ -152,8 +152,8 @@ ihn niemand, der später dazukommt — und das merkte man erst am Tisch.
    ist vorgesehen, wird aber nicht vergeben.
 5. ~~**Gebietsraster auf der Karte** (REQ-193) und **Kartenkacheln**
    (REQ-138).~~ Stehen seit 2026-09-20 — siehe den Nachtrag unten.
-6. **Ruf und Beziehungen** (REQ-030, 081). Die Kantenlast dafür steht, aber
-   nichts rechnet sie aus.
+6. ~~**Ruf und Beziehungen** (REQ-030, 081).~~ Steht seit 2026-09-20 — siehe
+   [Ruf.md](Ruf.md).
 7. **Handwerk mit Zeit** (REQ-184 zur Hälfte): Zeit und Probe stehen am
    Rezept, aber niemand würfelt sie und niemand zählt Tage.
 

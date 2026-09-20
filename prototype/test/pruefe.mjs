@@ -224,7 +224,11 @@ async function seite(datei, warten) {
   await p.evaluate(() =>
     [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
   await p.waitForTimeout(200);
-  await p.evaluate(() => [...document.querySelectorAll('#view .row')].find((r) => /Volo/.test(r.textContent)).click());
+  /* Genau dieser Artikel, nicht „irgendeiner mit Volo drin". Eine Tat hiess
+     später „Volo aus dem Schleimgang geholt" und stand alphabetisch davor —
+     die Prüfung öffnete sie und fand keine Artikelseite. */
+  await p.evaluate(() => [...document.querySelectorAll('#view .row')]
+    .find((r) => /^Volothamp/.test(r.textContent.trim())).click());
   await p.waitForTimeout(200);
   await p.evaluate(() => {
     const f = document.querySelector('#facet');
@@ -462,7 +466,7 @@ async function seite(datei, warten) {
       probleme: [...document.querySelectorAll('.pruef li')].map((x) => x.textContent),
     }));
   };
-  await oeffne('Volo');
+  await oeffneId('n_volo');
 
   await p.evaluate(() => {
     const dt = [...document.querySelectorAll('.fld dt')].find((d) => d.textContent === 'Role');
@@ -1166,6 +1170,102 @@ async function seite(datei, warten) {
     await p.waitForTimeout(300);
   } else {
     pruefe('a map with fog and walls exists in the data', false, 'keine Nebelkarte gefunden');
+  }
+
+  /* ---- Ruf und Beziehungen (REQ-030, 081) ----
+     Ruf ist gerechnet, nicht gespeichert. Die Prüfung sucht deshalb zuerst
+     nach dem Gegenteil: ein Feld, in dem eine Ruf-Zahl liegen könnte. Gäbe
+     es eines, wäre alles danach Zierrat.
+
+     `CreatureInfo.attitude` ist ausdrücklich keines davon: das ist die
+     Grundhaltung gegenüber Fremden, ein Wort und kein Zähler. Sie zeigt auf
+     niemanden, also ist sie ein Feld — richtig so. Was auf jemanden zeigt,
+     ist die Kante `regards`, und was daraus folgt, wird gerechnet. Damit
+     die Trennung hält, wird sie hier beides geprüft. */
+  const rufFeld = await p.evaluate(() => {
+    const treffer = [];
+    Object.entries(window.__T__.REG.components).forEach(([k, c]) => {
+      Object.keys((c.schema || {}).properties || {}).forEach((f) => {
+        if (/^(standing|reputation|favour|reknown)$/i.test(f)) treffer.push(k + '.' + f);
+      });
+    });
+    return treffer;
+  });
+  pruefe('no component stores a standing — it is computed on read (D8)',
+    rufFeld.length === 0, rufFeld);
+  const haltung = await p.evaluate(() =>
+    ((window.__T__.REG.components.CreatureInfo.schema.properties || {}).attitude || {}));
+  pruefe('the default attitude stays a word about strangers, not a counter',
+    haltung.type === 'string' && Array.isArray(haltung.enum), haltung);
+
+  const auge = await p.evaluate(() => {
+    const f = [...window.__T__.ENT.values()].find((e) =>
+      (e.relations || []).some((r) => r.type === 'regards'));
+    return f ? f.id : null;
+  });
+  if (auge) {
+    await oeffneId(auge);
+    await p.evaluate(() => {
+      const f = document.getElementById('facet');
+      f.value = 'standing';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(400);
+    const lesen = () => p.evaluate(() =>
+      [...document.querySelectorAll('.strow')].map((r) => ({
+        wer: r.querySelector('.ref')?.textContent ?? '',
+        wort: r.querySelector('.pill')?.textContent ?? '',
+        zurueck: [...r.querySelectorAll('.co')].map((c) => c.textContent).join('|'),
+        taten: [...r.querySelectorAll('ul.deeds li .ref')].map((b) => b.textContent),
+        verborgen: r.querySelector('.warnzeile')?.textContent ?? '',
+        striche: r.querySelectorAll('.stbar i.on').length,
+      })));
+    const vorher = await lesen();
+    pruefe('a standing shows a word, a number and the deeds behind it',
+      vorher.length > 0 && vorher.some((r) => /\(-?\d\)/.test(r.wort) && r.taten.length > 0),
+      vorher);
+    pruefe('the ladder draws as many marks as the standing is far from neutral',
+      vorher.every((r) => {
+        const n = Number((r.wort.match(/\((-?\d)\)/) ?? [])[1] ?? 0);
+        return r.striche === Math.abs(n);
+      }), vorher);
+    /* Die Gegenrichtung (REQ-081): eine Kante, zwei Urteile. Genau da wird
+       es interessant — einer traut, der andere nicht. */
+    pruefe('the other direction is shown when it differs',
+      vorher.some((r) => /back/.test(r.zurueck)), vorher.map((r) => r.zurueck));
+
+    /* Und der eigentliche Punkt: eine Tat, von der niemand weiss, bewegt
+       nichts — und sie fängt an zu zählen, sobald die Gegenseite es erfährt.
+       Rückwirkend, weil sie ja passiert ist. */
+    const geheim = vorher.find((r) => r.verborgen);
+    pruefe('a deed nobody found out about is not counted, but the GM is told',
+      !!geheim && /not counted/.test(geheim.verborgen), geheim);
+
+    if (geheim) {
+      const vorWert = Number((geheim.wort.match(/\((-?\d)\)/) ?? [])[1] ?? 0);
+      await p.evaluate((id) => {
+        const info = [...window.__T__.ENT.values()].find((e) =>
+          (e.interfaces || [])[0] === 'Information'
+          && (e.components.Info || {}).tier === 'secret'
+          && !(e.relations || []).some((r) => r.type === 'knownBy')
+          && [...window.__T__.ENT.values()].some((d) =>
+            (d.relations || []).some((r) => r.type === 'knowledge' && r.to === e.id)));
+        info.relations.push({ id: 'r_test_kb', type: 'knownBy', to: id, props: {} });
+      }, auge);
+      await p.evaluate(() => { document.getElementById('facet')
+        .dispatchEvent(new Event('change', { bubbles: true })); });
+      await p.waitForTimeout(400);
+      const nachher = await lesen();
+      const gleicheZeile = nachher.find((r) => r.wer === geheim.wer);
+      const nachWert = Number((gleicheZeile?.wort.match(/\((-?\d)\)/) ?? [])[1] ?? 0);
+      pruefe('once the other side finds out, the deed counts — retroactively',
+        nachWert < vorWert && gleicheZeile.taten.length > geheim.taten.length,
+        { vorWert, nachWert, taten: gleicheZeile?.taten });
+      pruefe('and it is no longer listed as something nobody found out about',
+        gleicheZeile && !gleicheZeile.verborgen, gleicheZeile);
+    }
+  } else {
+    pruefe('a starting attitude exists in the data', false, 'kein regards gefunden');
   }
 
   /* ---- Charakterbogen und Inventar (REQ-051, 063, 064, 065) ----

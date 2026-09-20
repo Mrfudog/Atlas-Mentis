@@ -348,4 +348,21 @@ export const views: Record<string, ViewDef> = {
       { id: 'st-b', el: 'blocks', blocks: ['note'] },
     ],
   },
+
+  /** Wie jemand zu jemandem steht — und woraus sich das ergibt (REQ-030, 081). */
+  standing: {
+    label: 'Standing',
+    order: 21,
+    fields: ['DeedInfo'],
+    blocks: ['lore', 'secret'],
+    description: true,
+    composed: false,
+    relations: true,
+    bindings: false,
+    image: false,
+    layout: [
+      { id: 'st-1', el: 'standing' },
+      { id: 'st-2', el: 'description' },
+    ],
+  },
 };

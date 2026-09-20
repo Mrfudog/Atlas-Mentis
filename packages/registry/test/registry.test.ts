@@ -167,6 +167,28 @@ describe('interface inheritance', () => {
     expect(relationsFrom(seedRegistry, 'Map').map((r) => r.type)).toContain('territory');
   });
 
+  /* Ruf (REQ-030, 081). Eine Tat ist dreistellig — wer, was, bei wem — und
+     eine Kante hat ein Ziel; also ist die Mitte ein Artikel mit zwei
+     Kanten. Wandert das Gewicht an eine der beiden Kanten, ist die dritte
+     Stelle wieder verloren, und niemand merkt es, bis die Zahlen nicht mehr
+     stimmen. */
+  it('keeps a deed a thing of its own, with both ends as edges', () => {
+    expect(seedRegistry.interfaces.Deed.requires).toContain('DeedInfo');
+    const tat = seedRegistry.components.DeedInfo.schema.properties ?? {};
+    expect(tat.delta?.type).toBe('number');
+    expect(tat.secret?.type).toBe('boolean'); // eine Tat, von der niemand weiss
+    ['doneBy', 'regarding'].forEach((k) => {
+      expect(seedRegistry.relations[k].from).toEqual(['Deed']);
+      expect(seedRegistry.relations[k].cardinality).toBe('one');
+    });
+    // Der Ausgangswert steht am Urteilenden und trägt keinen Zähler daneben.
+    const reg = seedRegistry.relations.regards;
+    expect(reg.props?.properties?.value?.type).toBe('number');
+    expect(Object.keys(reg.props?.properties ?? {})).toEqual(['value', 'note']);
+    // Und eine Fraktion darf etwas erfahren — daran hängt, ob eine Tat zählt.
+    expect(seedRegistry.relations.knownBy.to).toContain('Faction');
+  });
+
   /* Kachelkarten (REQ-138): ohne Spalten und Zeilen ist ein Muster nur eine
      Zeichenkette, und die Seite wüsste nicht, wie gross das Bild ist. */
   it('describes a tiled map completely enough to draw it', () => {
