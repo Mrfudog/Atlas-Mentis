@@ -22,6 +22,11 @@ export const components: Record<string, ComponentDef> = {
       properties: {
         key: { type: 'string', title: 'Key' },
         aliases: { type: 'array', title: 'Aliases', items: { type: 'string' } },
+        /* Der Deckname (REQ-178): was ein Spieler sieht, solange der echte
+           Name von einer Information beansprucht wird, die er nicht kennt.
+           Ohne ihn stünde dort der echte Name oder gar nichts — beides
+           macht partielle Enthüllung unspielbar. */
+        cover: { type: 'string', title: 'Cover name' },
       },
     },
   },
@@ -96,8 +101,14 @@ export const components: Record<string, ComponentDef> = {
     schema: {
       type: 'object',
       properties: {
-        url: { type: 'string', title: 'Source' },
+        /* `ref` zeigt auf ein Asset, eine Ablage-Id oder eine fremde Adresse
+           und wird vom Auflöser gelesen. `url` bleibt daneben stehen: die
+           vorhandenen Artikel tragen es, und ein Zwangsumzug brächte nichts,
+           was ein Blick auf beide Felder nicht auch bringt. */
+        ref: { type: 'string', format: 'asset', title: 'Image' },
+        url: { type: 'string', title: 'Source (legacy)' },
         caption: { type: 'string', title: 'Caption' },
+        alt: { type: 'string', title: 'Alt text' },
       },
     },
   },
@@ -191,6 +202,10 @@ export const components: Record<string, ComponentDef> = {
           enum: ['action', 'bonus', 'reaction', 'feature', 'trait', 'condition', 'legendary', 'lair'],
         },
         uses: { type: 'string', title: 'Uses' },
+        /* Ob der Name dieser Regel im Fliesstext erkannt werden darf
+           (REQ-175). Ein falscher Treffer kostet mehr Vertrauen, als zehn
+           richtige einbringen — deshalb lässt er sich hier abschalten. */
+        autolink: { type: 'boolean', title: 'Spot it in prose', default: true },
         recharge: { type: 'string', title: 'Recharge' },
       },
     },
@@ -371,6 +386,12 @@ export const components: Record<string, ComponentDef> = {
         },
         reward: { type: 'string', title: 'Reward' },
         deadline: { type: 'string', title: 'Deadline' },
+        restriction: { type: 'string', title: 'Restriction' },
+        /* Aufgaben liegen als Feld am Auftrag, nicht als Kanten: „bring das
+           Fass zurück" zeigt auf nichts, was eine eigene ID verdiente.
+           Zeigt eine Aufgabe doch auf etwas, steht das im Text als
+           [[Verweis]] — und der löst sich auf wie jeder andere. */
+        tasks: { type: 'array', title: 'Tasks', items: { type: 'object' } },
       },
     },
   },
@@ -467,4 +488,491 @@ export const components: Record<string, ComponentDef> = {
       },
     },
   },
+
+  /**
+   * Assets (REQ-021). Der Verweis ist der haltbare Zeiger, nicht die Adresse:
+   * eine Ablage-Adresse gilt je Ansicht, die Id für immer. Wer ein Bild
+   * zeigt, ruft den Auflöser und fragt nie, welche Art Verweis es ist — nur
+   * so lässt sich die Ablage wechseln, ohne jeden Verbraucher anzufassen.
+   */
+  AssetInfo: {
+    name: 'AssetInfo',
+    label: 'Asset',
+    engine: 'Asset',
+    schema: {
+      type: 'object',
+      required: ['ref'],
+      properties: {
+        backend: {
+          type: 'string',
+          title: 'Backend',
+          enum: ['app', 'nas', 'external'],
+          default: 'app',
+        },
+        ref: { type: 'string', title: 'Reference' },
+        mime: { type: 'string', title: 'Media type' },
+        width: { type: 'number', title: 'Width in px' },
+        height: { type: 'number', title: 'Height in px' },
+        bytes: { type: 'number', title: 'Bytes' },
+      },
+    },
+  },
+
+  /** Woher eine Angabe stammt (REQ-020) — Publikation, Seite, Anker. */
+  SourceRef: {
+    name: 'SourceRef',
+    label: 'Source',
+    engine: null,
+    schema: {
+      type: 'object',
+      properties: {
+        publication: { type: 'string', title: 'Publication' },
+        page: { type: 'string', title: 'Page' },
+        anchor: { type: 'string', title: 'Anchor' },
+        url: { type: 'string', title: 'URL' },
+      },
+    },
+  },
+
+  /**
+   * Ein Datum in der Spielwelt (REQ-024). Zwei Felder, weil das eine sortiert
+   * und das andere gelesen wird: „Mirtul 12, 1492 DR" lässt sich nicht
+   * vergleichen, und `14920512` liest niemand vor.
+   */
+  WorldDate: {
+    name: 'WorldDate',
+    label: 'World date',
+    engine: null,
+    schema: {
+      type: 'object',
+      properties: {
+        sort: { type: 'number', title: 'Sortable value' },
+        display: { type: 'string', format: 'date', title: 'Date' },
+        calendar: { type: 'string', title: 'Calendar' },
+        duration: { type: 'string', title: 'Duration' },
+      },
+    },
+  },
+
+  /**
+   * Karten (REQ-130). Das Gitter steht in Bildpunkten, nicht in Feldern: eine
+   * Karte wird fotografiert oder gezeichnet, und was darauf ein Feld ist,
+   * misst man am Bild. `scale` sagt, was ein Feld in der Welt bedeutet —
+   * ohne das ist ein Gitter Dekoration.
+   */
+  MapInfo: {
+    name: 'MapInfo',
+    label: 'Map',
+    engine: 'Map',
+    schema: {
+      type: 'object',
+      properties: {
+        image: { type: 'string', format: 'asset', title: 'Image' },
+        /* **Zeichenebenen** (REQ-130). Nicht zu verwechseln mit den
+           Inhaltsebenen (`Layer`, der Stapel): das hier sind Bilder
+           übereinander auf *einer* Karte — Gelände, Beschriftung, Ruinen,
+           Schnee —, und nur die Spielleitung entscheidet, welche liegen.
+           Sie heissen im Schema `sheets` (Kartenblätter), damit das Wort
+           „Ebene" für die Inhaltsebenen frei bleibt; in der Kartenleiste
+           steht „Layers", weil dort nichts zu verwechseln ist.
+
+           `image` bleibt das unterste Blatt: es ist die Karte selbst, und
+           an ihm hängt ihre natürliche Grösse. Was in `sheets` steht, liegt
+           darüber. */
+        sheets: { type: 'array', title: 'Drawing layers', items: { type: 'object' } },
+        /* Was am untersten Blatt einstellbar ist, steht an der Karte — es
+           hat keinen eigenen Eintrag in `sheets`, weil es die Karte *ist*. */
+        baseHidden: { type: 'boolean', title: 'Hide the base image' },
+        baseGmOnly: { type: 'boolean', title: 'Base image is GM only' },
+        kind: {
+          type: 'string',
+          title: 'Map kind',
+          enum: ['world', 'region', 'settlement', 'district', 'building', 'battle'],
+          default: 'region',
+        },
+        gridShape: {
+          type: 'string',
+          title: 'Grid',
+          enum: ['none', 'square', 'hex'],
+          default: 'none',
+        },
+        gridSize: { type: 'number', title: 'Grid size in px', default: 70 },
+        gridOffsetX: { type: 'number', title: 'Grid offset X', default: 0 },
+        gridOffsetY: { type: 'number', title: 'Grid offset Y', default: 0 },
+        scale: { type: 'string', title: 'One square is', default: '1,5 m' },
+        // Nebel und Licht (REQ-139, 140). Aufgedecktes wird gespeichert, weil
+        // es bleibt; Beleuchtetes nie, weil es sich mit jedem Zug ändert.
+        lighting: {
+          type: 'string',
+          title: 'Lighting',
+          enum: ['bright', 'dim', 'dark'],
+          default: 'bright',
+        },
+        fog: { type: 'boolean', title: 'Fog of war', default: false },
+        reveal: { type: 'array', title: 'Uncovered areas', items: { type: 'object' } },
+        /* Sperren, nicht nur Sichtblocker: eine Wand hält Blick und Schritt,
+           ein Fenster nur den Schritt, ein Abgrund auch nur den Schritt, und
+           eine Tür hält beides, solange sie zu ist. Was welche Sorte ist,
+           steht an der Sperre (`kind`) — eine zweite Liste je Sorte hiesse,
+           vier Listen zu pflegen, die dasselbe meinen. */
+        walls: { type: 'array', title: 'Walls, doors, windows, chasms', items: { type: 'object' } },
+        // Kacheln (REQ-138) für Scans, die als ein Stück niemand lädt.
+        tiles: { type: 'string', title: 'Tile pattern ({x}, {y})' },
+        tileCols: { type: 'number', title: 'Tile columns' },
+        tileRows: { type: 'number', title: 'Tile rows' },
+        tileSize: { type: 'number', title: 'Tile size in px', default: 256 },
+      },
+    },
+  },
+
+  /**
+   * Was sich am Tisch ändert (REQ-051, 063). Getrennt von `StatblockInfo`,
+   * weil das zwei verschiedene Sorten Zahl sind: die Rüstungsklasse ändert
+   * sich einmal pro Ausrüstungswechsel, die Trefferpunkte zwanzigmal pro
+   * Kampf. In einer Karte lägen sie im Weg — jede Änderung schriebe die
+   * andere mit, und die Wissensgruppen könnten sie nicht trennen.
+   */
+  Vitals: {
+    name: 'Vitals',
+    label: 'Vitals',
+    engine: 'Play',
+    schema: {
+      type: 'object',
+      properties: {
+        hp: { type: 'number', title: 'Hit points now' },
+        hpTemp: { type: 'number', title: 'Temporary HP' },
+        hitDiceLeft: { type: 'number', title: 'Hit dice left' },
+        deathSuccess: { type: 'number', title: 'Death saves passed', default: 0 },
+        deathFail: { type: 'number', title: 'Death saves failed', default: 0 },
+        inspiration: { type: 'boolean', title: 'Inspiration' },
+        exhaustion: { type: 'number', title: 'Exhaustion', default: 0 },
+        conditions: { type: 'array', title: 'Conditions', items: { type: 'string' } },
+        nat1: { type: 'number', title: 'Natural 1s', default: 0 },
+      },
+    },
+  },
+
+  /**
+   * Übung und Expertise als Listen, nicht als Feld je Fertigkeit. Eine
+   * Kampagne mit anderen Fertigkeiten ist damit eine andere Einstellung und
+   * kein Schemawechsel — die Liste der Fertigkeiten steht in den
+   * Kampagneneinstellungen, wo sie jemand ändern kann.
+   */
+  Skills: {
+    name: 'Skills',
+    label: 'Skills',
+    engine: 'Play',
+    schema: {
+      type: 'object',
+      properties: {
+        proficient: { type: 'array', title: 'Proficient in', items: { type: 'string' } },
+        expertise: { type: 'array', title: 'Expertise in', items: { type: 'string' } },
+        saves: { type: 'array', title: 'Saving throws', items: { type: 'string' } },
+        languages: { type: 'array', title: 'Languages', items: { type: 'string' } },
+        tools: { type: 'array', title: 'Tool proficiencies', items: { type: 'string' } },
+      },
+    },
+  },
+
+  /**
+   * Rezepte (REQ-184). Die Eingaben stehen nicht hier, sondern an
+   * `needs`-Kanten: ein Material ist ein Artikel, und wie viel davon ein
+   * Rezept braucht, gehört an die Verbindung zwischen beiden. Eine Liste
+   * von Namen im Feld wäre eine zweite Wahrheit neben dem Materialartikel —
+   * und die erste, die veraltet, wenn jemand den Namen ändert.
+   */
+  RecipeInfo: {
+    name: 'RecipeInfo',
+    label: 'Recipe',
+    engine: 'Craft',
+    schema: {
+      type: 'object',
+      properties: {
+        trade: { type: 'string', title: 'Trade' },
+        tool: { type: 'string', title: 'Tool needed' },
+        ability: {
+          type: 'string',
+          title: 'Check',
+          enum: ['str', 'dex', 'con', 'int', 'wis', 'cha'],
+          default: 'int',
+        },
+        dc: { type: 'number', title: 'DC', default: 12 },
+        time: { type: 'string', title: 'Time' },
+        // Eine Zahl neben dem Text: „2 Stunden“ liest sich schön und rechnet
+        // nicht. Ein Gang unter einem Tag ist eine Sitzung (REQ-184).
+        days: { type: 'number', title: 'Days of work', default: 1 },
+        yieldCount: { type: 'number', title: 'Yield', default: 1 },
+        /* Was beim Misslingen passiert, gehört ins Rezept: sonst entscheidet
+           es jedes Mal die Laune am Tisch, und das merkt sich niemand. */
+        onFailure: {
+          type: 'string',
+          title: 'On a failure',
+          enum: ['materialsLost', 'halfLost', 'nothingLost'],
+          default: 'halfLost',
+        },
+      },
+    },
+  },
+
+  /**
+   * Boards (REQ-111, 157 bis 166). Eine Leinwand, auf der Artikel frei
+   * liegen.
+   *
+   * `rules` ist die Darstellungsauflösung (REQ-161): je Schnittstelle eine
+   * Ansicht, die das Board vorschlägt. Die Platzierung darf sie überstimmen —
+   * *dieser* Statblock hier soll voll stehen, alle anderen kurz. Priorität
+   * also: Platzierung, dann Board-Regel, dann die erste Ansicht.
+   *
+   * `shapes` und `anchors` liegen als Felder am Board und nicht als Kanten,
+   * und das ist kein Rückfall: ein Rechteck zeigt auf nichts. Ein Token zeigt
+   * auf einen Artikel, deshalb ist es eine Kante; eine Linie, die zwei
+   * Kästen umfasst, ist Zeichnung und gehört dem Board.
+   */
+  BoardInfo: {
+    name: 'BoardInfo',
+    label: 'Board',
+    engine: 'Board',
+    schema: {
+      type: 'object',
+      properties: {
+        width: { type: 'number', title: 'Width in px', default: 2400 },
+        height: { type: 'number', title: 'Height in px', default: 1500 },
+        snap: { type: 'number', title: 'Snap to px', default: 10 },
+        background: { type: 'string', format: 'asset', title: 'Background' },
+        rules: { type: 'object', title: 'View per interface' },
+        shapes: { type: 'array', title: 'Shapes', items: { type: 'object' } },
+        anchors: { type: 'array', title: 'Anchors', items: { type: 'object' } },
+      },
+    },
+  },
+
+  /**
+   * Begegnungen (REQ-085, 115). `round` und `turn` sind Spielzustand und
+   * liegen vorläufig hier — richtig wären Sitzungszustände mit einem
+   * Echtzeitkanal (REQ-116). Das ist die Stelle, die dann umzieht; sie steht
+   * absichtlich beieinander, damit der Umzug eine Karte betrifft und nicht
+   * ein Dutzend Felder.
+   */
+  EncounterInfo: {
+    name: 'EncounterInfo',
+    label: 'Encounter',
+    engine: 'Play',
+    schema: {
+      type: 'object',
+      properties: {
+        difficulty: {
+          type: 'string',
+          title: 'Difficulty',
+          enum: ['trivial', 'easy', 'medium', 'hard', 'deadly'],
+          default: 'medium',
+        },
+        xpBudget: { type: 'number', title: 'XP budget' },
+        state: {
+          type: 'string',
+          title: 'State',
+          enum: ['planned', 'running', 'done', 'skipped'],
+          default: 'planned',
+        },
+        round: { type: 'number', title: 'Round', default: 0 },
+        turn: { type: 'number', title: 'Turn', default: 0 },
+        surprise: { type: 'string', title: 'Surprise' },
+      },
+    },
+  },
+
+  /**
+   * Wer diese Figur spielt (REQ-033, 035, 036). Die Zuordnung steht in den
+   * Daten und nicht in der Sitzung, damit die Spielleitung sie ändern kann,
+   * ohne dass jemand sich neu anmeldet.
+   *
+   * Gespeichert wird die undurchsichtige Nutzer-Id, nie ein Name: Namen
+   * unterscheiden sich je Betrachter, frieren beim Schreiben ein und
+   * überleben Menschen.
+   */
+  Access: {
+    name: 'Access',
+    label: 'Access',
+    engine: 'Access',
+    schema: {
+      type: 'object',
+      properties: {
+        userIds: { type: 'array', title: 'User ids', items: { type: 'string' } },
+        role: {
+          type: 'string',
+          title: 'Role',
+          enum: ['player', 'co-gm', 'spectator'],
+          default: 'player',
+        },
+        note: { type: 'string', title: 'Note' },
+      },
+    },
+  },
+
+  /**
+   * Was gerade läuft (REQ-116). Es liegt an der Sitzung und im Speicher,
+   * nicht im Echtzeitkanal: wer zehn Minuten später dazukommt, muss es auch
+   * sehen, und der Kanal wiederholt nichts. Der Kanal trägt nur, was ein
+   * Augenblick ist — ein Wurf, ein Zeigen auf die Karte.
+   */
+  SessionState: {
+    name: 'SessionState',
+    label: 'Live',
+    engine: 'Play',
+    schema: {
+      type: 'object',
+      properties: {
+        activeScene: { type: 'string', format: 'link', title: 'Scene in play' },
+        activeEncounter: { type: 'string', format: 'link', title: 'Fight in play' },
+        activeMap: { type: 'string', format: 'link', title: 'Map on the table' },
+        nowPlaying: { type: 'string', title: 'Now playing' },
+        partyNote: { type: 'string', format: 'long', title: 'Note for the table' },
+        /* Wer schreiben darf (REQ-117). `gm` ist die Vorgabe; `table` heisst,
+           dass auch die Spieler die Notiz führen dürfen. Feiner wird es
+           erst, wenn jemand den Bedarf zeigt. */
+        stewardship: {
+          type: 'string',
+          title: 'Who may write',
+          enum: ['gm', 'table'],
+          default: 'gm',
+        },
+      },
+    },
+  },
+
+  /**
+   * Tabellen (REQ-085, 125, 172, 186). Einträge, die auf einen Artikel
+   * zeigen, sind Kanten (`entry`); Einträge, die auf nichts zeigen — ein
+   * Name, ein Satz, ein Wetter — stehen in `rows`. Dieselbe Trennlinie wie
+   * bei den Formen auf dem Board und den Aufgaben im Auftrag.
+   *
+   * Gewichte statt Bereiche: „1–3, 4–5, 6" von Hand zu führen bricht, sobald
+   * jemand eine Zeile einfügt. Die Bereiche rechnet die Seite aus, der
+   * Würfel steht daneben und heisst, womit gewürfelt wird, wenn jemand am
+   * Tisch selbst würfeln will.
+   */
+  TableInfo: {
+    name: 'TableInfo',
+    label: 'Table',
+    engine: 'Table',
+    schema: {
+      type: 'object',
+      properties: {
+        kind: {
+          type: 'string',
+          title: 'Kind',
+          enum: ['loot', 'encounter', 'name', 'shop', 'event', 'generic'],
+          default: 'generic',
+        },
+        die: { type: 'string', title: 'Die', default: '1d100' },
+        rows: { type: 'array', title: 'Plain entries', items: { type: 'object' } },
+        note: { type: 'string', title: 'Note' },
+      },
+    },
+  },
+
+  /**
+   * Was an einem Artikel noch zu tun ist (REQ-189, 190). Einträge, die auf
+   * nichts zeigen — dieselbe Regel wie bei den Aufgaben im Auftrag. Der
+   * Unterschied zum Auftrag ist der Adressat: eine Quest-Aufgabe ist für die
+   * Gruppe, ein Todo für die Spielleitung.
+   *
+   * `at` ist die Zeit der Notiz, nicht der Erledigung: „das habe ich mir
+   * mitten in der Sitzung notiert" ist die Angabe, die hilft.
+   */
+  Todos: {
+    name: 'Todos',
+    label: 'To do',
+    engine: null,
+    schema: {
+      type: 'object',
+      properties: {
+        items: { type: 'array', title: 'Items', items: { type: 'object' } },
+      },
+    },
+  },
+
+  /**
+   * Erkundungsstand eines Ortes (REQ-169). Drei Stufen, nicht zwei:
+   * „verborgen" heisst, die Gruppe weiss nicht einmal, dass es ihn gibt;
+   * „entdeckt" heisst, sie weiss davon und war nicht dort; „erkundet"
+   * heisst, sie war da. Zwei Stufen könnten „wir haben davon gehört" nicht
+   * abbilden, und genau daraus entsteht das Reisen.
+   *
+   * Das ist nicht dasselbe wie Sichtbarkeit und nicht dasselbe wie Wissen:
+   * ein Ort kann bekannt und trotzdem unerkundet sein.
+   */
+  Explored: {
+    name: 'Explored',
+    label: 'Exploration',
+    engine: 'Travel',
+    schema: {
+      type: 'object',
+      properties: {
+        state: {
+          type: 'string',
+          title: 'State',
+          enum: ['hidden', 'discovered', 'explored'],
+          default: 'hidden',
+        },
+        since: { type: 'string', title: 'Since' },
+        /* Was beim Ankommen vorgelesen wird — an den Ort, nicht an die
+           Kante: man kommt auf mehreren Wegen an und sieht dasselbe. */
+        arrival: { type: 'string', format: 'long', title: 'On arrival' },
+      },
+    },
+  },
+
+  /**
+   * Wo die Gruppe gerade ist und was die Reise bisher gekostet hat
+   * (REQ-170). Die Zehrung zählt Knoten, nicht Stunden: ein Punktreise-Zug
+   * ist die Einheit, in der am Tisch gerechnet wird.
+   */
+  TravelInfo: {
+    name: 'TravelInfo',
+    label: 'Travel',
+    engine: 'Travel',
+    schema: {
+      type: 'object',
+      properties: {
+        at: { type: 'string', format: 'link', title: 'Currently at' },
+        day: { type: 'number', title: 'Day', default: 1 },
+        watch: { type: 'number', title: 'Watch', default: 1 },
+        sinceRation: { type: 'number', title: 'Nodes since rations', default: 0 },
+        sinceLight: { type: 'number', title: 'Nodes since light', default: 0 },
+        /* Was jede Figur an diesem Knoten tut (REQ-171): Figur → Handlung.
+           Wird beim Weiterziehen geleert, weil eine Handlung zum Knoten
+           gehört und nicht zur Figur. */
+        actions: { type: 'object', title: 'Actions at this node' },
+      },
+    },
+  },
+
+  /**
+   * Eine Ebene (REQ-004). Sie ist ein Artikel, kein Registereintrag: sie
+   * trägt einen Namen, eine Beschreibung, eine Quellenangabe und — vor
+   * allem — Kanten. „Welche Ebene bringt diesen Artikel mit?" ist damit ein
+   * Rückbezug wie jeder andere.
+   *
+   * `order` ist die Spezifität: höher schlägt niedriger, wenn zwei Ebenen
+   * dasselbe anfassen. Das Grundregelwerk steht unten, die Kampagne oben.
+   */
+  LayerInfo: {
+    name: 'LayerInfo',
+    label: 'Layer',
+    engine: 'Stack',
+    schema: {
+      type: 'object',
+      properties: {
+        kind: {
+          type: 'string',
+          title: 'Kind',
+          enum: ['system', 'expansion', 'world', 'pack', 'campaign', 'overrides'],
+          default: 'pack',
+        },
+        order: { type: 'number', title: 'Specificity', default: 10 },
+        version: { type: 'string', title: 'Version' },
+      },
+    },
+  },
+
 };

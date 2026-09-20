@@ -19,8 +19,9 @@ export interface PropertySchema {
   type: PropertyType;
   title?: string;
   enum?: string[];
-  /** `long` asks for a textarea; `signed` prints +3 / -1. */
-  format?: 'long' | 'signed' | string;
+  /** `long` asks for a textarea; `signed` prints +3 / -1; `color`, `link`,
+   *  `asset` and `date` each pick their own input. */
+  format?: 'long' | 'signed' | 'color' | 'link' | 'asset' | 'date' | string;
   items?: { type: PropertyType };
   /**
    * Calculation engine: an expression evaluated on read and never stored (D8).
@@ -60,6 +61,14 @@ export interface InterfaceDef {
   allows?: string[];
   /** `+x` adds to the inherited set; a bare list replaces it. */
   blockTypes?: string[];
+  /**
+   * In welchen Bereich der Oberfläche diese Artikelart gehört: `story`,
+   * `world`, `game` oder `play`. Steht hier und nicht im Code, weil eine
+   * neue Artikelart sonst eine Codeänderung bräuchte, um überhaupt
+   * auffindbar zu sein — und das wäre genau die Sorte Ausnahme, die das
+   * Rückgrat vermeidet. Ohne Angabe: taucht nur unter „alle" auf.
+   */
+  area?: 'story' | 'world' | 'game' | 'play';
 }
 
 /** A row of `relation_def`. */
@@ -94,7 +103,21 @@ export type LayoutElementKind =
   | 'composed'
   | 'relations'
   | 'image'
-  | 'knowledge';
+  | 'knowledge'
+  | 'map'
+  | 'sheet'
+  | 'inventory'
+  | 'crafting'
+  | 'board'
+  | 'initiative'
+  | 'quests'
+  | 'timeline'
+  | 'live'
+  | 'table'
+  | 'prep'
+  | 'crawl'
+  | 'standing'
+  | 'stack';
 
 /**
  * One element of a view's layout. A view is an ordered list of these, so the
@@ -113,6 +136,13 @@ export interface LayoutElement {
   text?: string;
   /** `fields`: `all` or a list of `Component` / `Component.field`. */
   fields?: 'all' | string[];
+  /**
+   * `fields`: was ein anderes Element desselben Layouts schon zeichnet —
+   * der Bogen die Kampfwerte, die Feldtabelle den Rest. Ohne das müsste
+   * jede Artikelart ihre Felder einzeln aufzählen, und ein neu
+   * hinzugekommenes Feld stünde nirgends, bis es jemand nachträgt.
+   */
+  except?: string[];
   /** `fields`: 0 fits the width. */
   columns?: number;
   /** `blocks`: `all` or a list of block types. */
@@ -148,6 +178,12 @@ export interface Registry {
   views: Record<string, ViewDef>;
   /** Campaign-wide defaults for {VAR} substitution — the last resort. */
   vars: Record<string, string>;
+  /**
+   * Campaign settings (REQ-043): a key-value store each area reads the keys
+   * it knows from and ignores the rest. Deliberately untyped — a setting
+   * that needs a schema before anyone can set it does not get set.
+   */
+  settings?: Record<string, string>;
 }
 
 export interface Block {

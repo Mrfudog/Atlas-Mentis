@@ -216,20 +216,114 @@ Beschreibung unter `.claude/agents/`.
 6. **Session als Artikel mit Kanten**, dem Rückgrat entsprechend — kein
    eigenes Behälterkonstrukt.
 
+---
+
+## Etappe D — der Spieltisch (Prototyp) — **steht**
+
+Nach Entscheidung 1 im Artefakt gebaut, nicht im echten Stapel. Ausführlich
+in [Spieltisch.md](Spieltisch.md).
+
+- **D1 · Assets, Quellen, Weltdaten, Einstellungen** — REQ-020, 021, 024,
+  043, 145, 147, 148. Ein Asset ist ein Artikel; Verbraucher fragen nie,
+  welche Art Verweis ein Bild trägt. Sechster Registerteil für die
+  Kampagneneinstellungen.
+- **D2 · Karten** — REQ-130 bis 136. Tokens sind Kanten mit Koordinaten in
+  Anteilen; Unterkarten über `insideMap`; Quadrat- und Hexgitter.
+- **D3 · Charakterbogen** — REQ-051, 063, 066. `Vitals` getrennt von
+  `StatblockInfo`; alles ein Tipp, kein Formular.
+- **D4 · Inventar** — REQ-064, 065. Griffabstand, Körperslots und
+  Kachelraster über denselben Daten; die Formangaben lagen schon im
+  Register.
+- **D5 · Handwerk** — REQ-184. Ein Rezept, das jemand kennt, ist eine
+  Information — das Wissensmodell aus A6 trägt auch hier.
+- **D6 · Boards** — REQ-111, 157 bis 166. Jede Platzierung wird mit
+  denselben Elementen gezeichnet wie die Artikelseite; die
+  Darstellungsauflösung hat drei Stufen.
+- **D7 · Begegnung, Initiative, Würfel** — REQ-070, 085, 115, 144. Eine
+  Kante je Teilnehmer; Zustände mit Dauer; der Zeiger auf der Karte.
+- **D8 · Aufträge und Zeitleiste** — REQ-082, 083, 106. Aufgaben zum
+  Abhaken, ein Brett nach Stand gruppiert, Ereignisse nach Weltdatum.
+- **D9 · Ebenen und Stapelauflösung** — REQ-004 bis 009, 044. Was gilt, ist
+  eine Abfrage; Überschreiben und Herausnehmen statt Löschen. Siehe
+  [Ebenen.md](Ebenen.md).
+- **D10 · Nebel, Licht, Gebiete** — REQ-138, 139, 140, 193. Aufgedecktes ist
+  ein Feld, Beleuchtetes eine Rechnung, Gebiet eine Kante; der Schatten wird
+  gerechnet, nicht gemalt.
+- **D11 · Ruf und Beziehungen** — REQ-030, 081. Eine Tat war ein Artikel mit
+  zwei Kanten, und eine Tat, von der niemand wusste, änderte nichts.
+  **Von D20 abgelöst.**
+- **D12 · Handwerk, das läuft** — REQ-184 zu Ende. Ein Gang steht an einer
+  Kante, und am letzten Tag wird wirklich gewürfelt. Das Material ging
+  anfangs am Anfang hinein; **seit D21 wird es angehängt, während der Gang
+  läuft.**
+- **D13 · Blockanker und Kampagnenwerte** — B3. Ein Anker aus dem Inhalt
+  statt aus einer Id; Gruppenstufe und Aufenthaltsort gerechnet statt
+  eingetippt.
+- **D14 · Ein Register, eine Quelle** — C4. `emit-seed` erzeugt die
+  Registerzeilen des Prototyps aus `packages/registry`; dazu acht Prüfungen
+  der Bezugstreue, weil eine einzige Quelle nur so viel wert ist, wie sie
+  geprüft ist.
+- **D15 · Zugang am Server** — REQ-031, 032, 035, 036. Ein Passwort je
+  Nutzer (Argon2id), Sitzungen beim Server, und gelesen wird gesiebt. Siehe
+  [Zugang.md](Zugang.md).
+- **D16 · Die Oberfläche fängt an** — `apps/web`. Anmeldung, Wache,
+  Artikelliste und Artikelansicht; gezeichnet aus dem Register über
+  `packages/model`, nicht aus einer Vorlage je Artikelart.
+- **D17 · Bearbeiten** — `apps/web`. Die Eingabeart kommt aus dem Register;
+  geschrieben wird der ganze Artikel, und der Server sagt, wer darf. Kanten
+  werden nur vorwärts bearbeitet — die Gegenrichtung ist eine Abfrage und
+  hat kein Feld.
+- **D18 · Vier Bereiche, drei Stufen** — Story, World, Game und Play stehen
+  an der Schnittstelle (`area`) und nicht in einer Liste neben dem Register.
+  Die einundzwanzig Darstellungsstufen sind drei: `quick`, `full`, `player`.
+  Was für eine Artikelart eigen ist, steht in `byInterface` und nicht in
+  einer eigenen Stufe — eine Kreatur zeigt ihren Bogen, ohne dass jemand
+  etwas auswählt.
+- **D19 · Karten: Blätter, Sperren, Rahmen** — REQ-130 bis 140. Ein
+  Hintergrundbild je Zeichenebene; Wände, Türen, Fenster und Abgründe mit
+  je eigener Wirkung auf Blick und Schritt; der Rahmen einer Unterkarte wird
+  aufgezogen statt in die Mitte gelegt. Siehe [Karten.md](Karten.md).
+- **D20 · Beziehung statt Ruf** — REQ-030, 081. Die Taten, ihre beiden
+  Kanten und die gerechnete Leiter sind weg; geblieben ist eine Kante mit
+  Marken und einer Zeile. Es war richtig gebaut und trotzdem zu viel: am
+  Tisch fragt niemand nach einer Zahl. Siehe
+  [Beziehungen.md](Beziehungen.md).
+- **D21 · Material während des Gangs** — REQ-184. Anfangen braucht nur das
+  Werkzeug; das Material wird angehängt, während gearbeitet wird, und der
+  letzte Tag bleibt zu, bis alles drin ist. Vorher konnte anfangen nur, wer
+  schon alles hatte — am Tisch ist es andersherum.
+- **D22 · Der Spieltisch** — REQ-116, 117, 130, 144. Der Bereich Play führt
+  an den Tisch und nicht in eine Liste: Initiative oben, darunter Karte oder
+  Boards. Was läuft, kommt aus `SessionState` und wird hier nur gezeigt —
+  und gezeichnet wird mit denselben Elementen wie die Artikelseite, damit
+  es keinen zweiten Kartenzeichner „für den Tisch" gibt.
+- **D23 · Hineinzoomen und Möbel** — REQ-131, 160. Das Rad zoomt; füllt ein
+  Unterkartenrahmen den Blick, sagt er es an, und der Schritt danach
+  betritt ihn. Ganz hinauszoomen führt zur Karte darüber. Möbel sind
+  gedrehte Bilder mit Seitenverhältnis statt runder Tokens — beides an der
+  Kante, weil dasselbe Fass auf der nächsten Karte längs steht. Siehe
+  [Karten.md](Karten.md).
+
+---
+
 ## Als Nächstes
 
-Etappe A steht damit ganz, Etappe B auch. Offen sind vier Dinge, und welches
-zuerst kommt, hängt davon ab, was du am Tisch zuerst brauchst:
+A, B und D stehen. Was bleibt, in der Reihenfolge, in der es sich lohnt:
 
-1. **Der Zugang** (Entscheidung 2): ein Passwort je Nutzer. Erst damit wird
-   aus `visibleFields` eine Spieleransicht statt einer geprüften Funktion —
-   heute liegt die Auflösung bereit und niemand benutzt sie.
-2. **Globale Variablen** (B3): Gruppenstufe und Gruppen-Aufenthaltsort haben
+1. **Der Zugang** (Entscheidung 2, REQ-031 bis 038): ein Passwort je Nutzer.
+   Erst damit wird aus `visibleFields` eine Spieleransicht statt einer
+   geprüften Funktion — und erst damit haben Wissen, Rezeptgeheimnisse und
+   das Questbrett einen Empfänger, der nicht die Spielleitung ist.
+2. **Sitzungszustände und Echtzeit** (REQ-116, 117). Runde und Zug liegen
+   heute an der Begegnung. Die Artefakt-Fähigkeit `room` liefert genau den
+   Kanal, den das braucht — mehrere Geräte, die dieselbe Initiative sehen.
+3. **Globale Variablen** (B3): Gruppenstufe und Gruppen-Aufenthaltsort haben
    im Register eine Zeile, aber noch keine Maske und keine Verwendung in den
    Ansichten.
-3. **Der Spieltisch** (C3): Board, Karten, Initiative, Spiel- und
-   Vorbereitungsmodus. Nach Entscheidung 1 wird das im Artefakt versucht,
-   solange es trägt.
-4. **Die Nachzügler** (C4): Ortsimporter als TypeScript, und das Register des
-   Prototyps mit `packages/registry` zusammenführen — die laufen derzeit von
-   Hand nebeneinander her, und das hält nicht ewig.
+4. **Die Bereiche in der Oberfläche.** Anmelden, suchen, lesen, bearbeiten
+   und Kanten ändern geht seit 2026-09-20. Als Nächstes die Bereiche, die der
+   Prototyp schon kann — Karte, Bogen, Inventar, Boards, Handwerk —, in
+   derselben Reihenfolge, in der sie dort entstanden sind.
+5. **Der Ortsimporter als TypeScript** (C4, Rest). Das Register steht seit
+   2026-09-20 nur noch einmal: `pnpm --filter @nw/registry emit-seed`
+   erzeugt die Zeilen des Prototyps aus `packages/registry`.

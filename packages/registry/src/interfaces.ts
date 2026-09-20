@@ -13,7 +13,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     /* `Status` is required, not allowed: every article has a standing, and
        leaving it optional made it a card that half the articles lacked. */
     requires: ['Name', 'Identity', 'Status'],
-    allows: ['Description', 'Visibility', 'Image', 'RawContent'],
+    allows: ['Description', 'Visibility', 'Image', 'RawContent', 'SourceRef', 'WorldDate', 'Todos'],
     blockTypes: ['paragraph', 'note'],
   },
 
@@ -24,21 +24,28 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Creature: {
     name: 'Creature',
+    area: 'world',
     label: 'Creature',
     abstract: true,
     extends: ['Base'],
-    allows: ['CreatureInfo', 'Vars'],
+    /* `StatblockInfo` darf hier direkt liegen: ein Spielercharakter trägt
+       seine Zahlen selbst, ein NSC borgt sie meist von einem Statblock über
+       `belongsTo`. Der Bogen liest beides — erst die eigene Karte, dann die
+       geborgte — statt eine der beiden Formen zu verbieten. */
+    allows: ['CreatureInfo', 'Vars', 'StatblockInfo', 'Vitals', 'Skills', 'Access'],
     blockTypes: ['+appearance', '+personality', '+lore', '+fact', '+secret', '+readaloud'],
   },
 
   NPC: {
     name: 'NPC',
+    area: 'world',
     label: 'NPC',
     extends: ['Creature'],
   },
 
   PlayerCharacter: {
     name: 'PlayerCharacter',
+    area: 'world',
     label: 'Player character',
     extends: ['Creature'],
     requires: ['CharacterInfo'],
@@ -47,26 +54,30 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Companion: {
     name: 'Companion',
+    area: 'world',
     label: 'Companion',
     extends: ['Creature'],
   },
 
   Retainer: {
     name: 'Retainer',
+    area: 'world',
     label: 'Retainer',
     extends: ['Creature'],
   },
 
   Place: {
     name: 'Place',
+    area: 'world',
     label: 'Place',
     extends: ['Base'],
-    allows: ['LocationInfo'],
+    allows: ['LocationInfo', 'Explored'],
     blockTypes: ['+lore', '+readaloud', '+secret'],
   },
 
   Faction: {
     name: 'Faction',
+    area: 'world',
     label: 'Faction',
     extends: ['Base'],
     allows: ['FactionInfo'],
@@ -75,6 +86,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Article: {
     name: 'Article',
+    area: 'world',
     label: 'Article',
     extends: ['Base'],
     blockTypes: ['+lore', '+secret', '+poem', '+song'],
@@ -83,6 +95,7 @@ export const interfaces: Record<string, InterfaceDef> = {
   /** The reuse pool: traits, actions, conditions, feats — all one interface. */
   Rule: {
     name: 'Rule',
+    area: 'game',
     label: 'Rule Element',
     extends: ['Base'],
     requires: ['RuleInfo'],
@@ -92,6 +105,7 @@ export const interfaces: Record<string, InterfaceDef> = {
   /** An entity of its own (D4), referenced by creatures, never embedded. */
   Statblock: {
     name: 'Statblock',
+    area: 'world',
     label: 'Statblock',
     extends: ['Base'],
     requires: ['StatblockInfo'],
@@ -106,6 +120,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Item: {
     name: 'Item',
+    area: 'world',
     label: 'Item',
     extends: ['Base'],
     allows: ['ItemInfo', 'Footprint'],
@@ -114,6 +129,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Weapon: {
     name: 'Weapon',
+    area: 'world',
     label: 'Weapon',
     extends: ['Item'],
     allows: ['WeaponInfo'],
@@ -121,6 +137,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Armor: {
     name: 'Armor',
+    area: 'world',
     label: 'Armor',
     extends: ['Item'],
     allows: ['ArmorInfo'],
@@ -128,6 +145,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Material: {
     name: 'Material',
+    area: 'world',
     label: 'Material',
     extends: ['Item'],
     allows: ['MaterialInfo'],
@@ -135,20 +153,23 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Consumable: {
     name: 'Consumable',
+    area: 'world',
     label: 'Consumable',
     extends: ['Item'],
   },
 
   Party: {
     name: 'Party',
+    area: 'world',
     label: 'Party',
     extends: ['Base'],
-    allows: ['PartyInfo'],
+    allows: ['PartyInfo', 'Access', 'TravelInfo'],
     blockTypes: ['+lore', '+note'],
   },
 
   Inventory: {
     name: 'Inventory',
+    area: 'world',
     label: 'Inventory',
     extends: ['Base'],
     allows: ['InventoryInfo'],
@@ -162,6 +183,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Story: {
     name: 'Story',
+    area: 'story',
     label: 'Story',
     abstract: true,
     extends: ['Base'],
@@ -171,31 +193,37 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Campaign: {
     name: 'Campaign',
+    area: 'story',
     label: 'Campaign',
     extends: ['Story'],
   },
 
   Arc: {
     name: 'Arc',
+    area: 'story',
     label: 'Arc',
     extends: ['Story'],
   },
 
   Chapter: {
     name: 'Chapter',
+    area: 'story',
     label: 'Chapter',
     extends: ['Story'],
   },
 
   Session: {
     name: 'Session',
+    area: 'story',
     label: 'Session',
     extends: ['Story'],
+    allows: ['SessionState'],
     blockTypes: ['+recap'],
   },
 
   Scene: {
     name: 'Scene',
+    area: 'story',
     label: 'Scene / Encounter',
     extends: ['Story'],
     allows: ['SceneInfo'],
@@ -208,6 +236,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Quest: {
     name: 'Quest',
+    area: 'story',
     label: 'Quest',
     extends: ['Base'],
     requires: ['QuestInfo'],
@@ -222,6 +251,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Information: {
     name: 'Information',
+    area: 'game',
     label: 'Information',
     extends: ['Base'],
     requires: ['Info'],
@@ -235,8 +265,131 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   KnowledgeLevel: {
     name: 'KnowledgeLevel',
+    area: 'game',
     label: 'Knowledge level',
     extends: ['Base'],
     requires: ['KnowledgeInfo'],
   },
+
+  /**
+   * Ein Asset ist ein Artikel, kein blosser Anhang: so trägt es Marken, eine
+   * Quellenangabe und eine Sichtbarkeit, und dieselbe Datei kann von zwei
+   * Karten benutzt werden, ohne zweimal dazuliegen.
+   */
+  Asset: {
+    name: 'Asset',
+    area: 'game',
+    label: 'Asset',
+    extends: ['Base'],
+    requires: ['AssetInfo'],
+    allows: ['SourceRef'],
+  },
+
+  /**
+   * Eine Karte ist ein Artikel wie jeder andere — sie trägt Marken, einen
+   * Stand und Wissen. Was sie darstellt, sagt die Kante `mapOf`; was auf ihr
+   * liegt, sagen die `marker`-Kanten. Eine Karte, die ihre Marken als Feld
+   * trüge, könnte keinen Rückbezug beantworten: „auf welchen Karten kommt
+   * der Baron vor?" ist so eine Abfrage wie jede andere.
+   */
+  Map: {
+    name: 'Map',
+    area: 'play',
+    label: 'Map',
+    extends: ['Base'],
+    requires: ['MapInfo'],
+    blockTypes: ['+note', '+secret', '+readaloud'],
+  },
+
+  /**
+   * Ein Rezept ist ein Artikel — und damit gilt für es alles, was für
+   * Artikel gilt: es trägt einen Stand, Marken, eine Beschreibung. Vor allem
+   * aber kann es über eine Information *zugeteilt* werden: ein Rezept, das
+   * jemand kennt, ist Wissen, und Wissen hat dieses Modell schon (A6).
+   * Ein Feld „bekannt von" am Rezept wäre ein zweites, schwächeres
+   * Wissensmodell neben dem vorhandenen.
+   */
+  Recipe: {
+    name: 'Recipe',
+    area: 'game',
+    label: 'Recipe',
+    extends: ['Base'],
+    requires: ['RecipeInfo'],
+    blockTypes: ['+note', '+secret', '+lore'],
+  },
+
+  /**
+   * Ein Board ist ein Artikel, und was darauf liegt, sind Kanten. Damit
+   * beantwortet „wo liegt dieser NSC überall?" derselbe Rückbezug wie
+   * überall sonst — und ein Board kann geteilt, versioniert und mit Wissen
+   * belegt werden, ohne dass dafür etwas Neues erfunden wird.
+   */
+  Board: {
+    name: 'Board',
+    area: 'play',
+    label: 'Board',
+    extends: ['Base'],
+    requires: ['BoardInfo'],
+    blockTypes: ['+note'],
+  },
+
+  /**
+   * Eine Begegnung hängt über `partOf` an irgendeiner Stufe der Geschichte —
+   * an einer Szene, einem Kapitel, einer Kampagne. Sie ist keine eigene
+   * Stufe der Leiter, denn dieselbe Begegnung kann in zwei Sitzungen
+   * auftauchen, und eine Stufe kann das nicht.
+   */
+  Encounter: {
+    name: 'Encounter',
+    area: 'play',
+    label: 'Encounter',
+    extends: ['Base'],
+    requires: ['EncounterInfo'],
+    blockTypes: ['+tactics', '+readaloud', '+note', '+secret'],
+  },
+
+  /**
+   * Ein Ereignis in der Weltzeit (REQ-106). Es verlangt ein Weltdatum —
+   * ohne das ist es kein Ereignis, sondern eine Notiz. Sortiert wird nach
+   * `WorldDate.sort`, gelesen wird `WorldDate.display`.
+   */
+  Event: {
+    name: 'Event',
+    area: 'story',
+    label: 'Event',
+    extends: ['Base'],
+    requires: ['WorldDate'],
+    blockTypes: ['+lore', '+secret', '+readaloud'],
+  },
+
+  /**
+   * Eine Tabelle ist ein Artikel: sie trägt Marken, einen Stand und Wissen,
+   * und sie kann in einer anderen Tabelle stehen. Verschachtelung ist eine
+   * Kante auf eine Tabelle, nicht ein Sonderfeld — deshalb braucht sie
+   * einen Zyklusschutz und sonst nichts.
+   */
+  Table: {
+    name: 'Table',
+    area: 'game',
+    label: 'Table',
+    extends: ['Base'],
+    requires: ['TableInfo'],
+    blockTypes: ['+note', '+secret'],
+  },
+
+  /**
+   * Eine Ebene ist ein Artikel (REQ-004). Was zu ihr gehört, sagen Kanten —
+   * `inLayer` von der Sache zur Ebene, nicht umgekehrt: eine Liste an der
+   * Ebene müsste bei jedem neuen Artikel angefasst werden, und wer sie
+   * vergisst, hat einen Artikel, den niemand findet.
+   */
+  Layer: {
+    name: 'Layer',
+    area: 'game',
+    label: 'Layer',
+    extends: ['Base'],
+    requires: ['LayerInfo'],
+    blockTypes: ['+note'],
+  },
+
 };
