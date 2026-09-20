@@ -241,6 +241,19 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 .chip.pick:disabled{opacity:.4;cursor:default}
 .crow .btn.sm.gh:disabled{opacity:.3;cursor:default}
 
+.crumbs{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px;margin-bottom:10px;
+  font-size:12.5px;color:var(--dim)}
+.crumbs .sep{color:var(--line2)}
+.fld dd.editable{cursor:text;border-radius:2px;margin:1px -3px 0;padding:0 3px}
+.fld dd.editable:hover{background:var(--accent-soft);box-shadow:inset 0 -1px 0 var(--accent)}
+.fld dd.editing{margin-top:2px}
+.fld dd.editing input.i,.fld dd.editing select.i,.fld dd.editing textarea.i{
+  padding:2px 5px;font-size:13px}
+.fld dd.editing textarea.i{min-height:52px}
+
+.arthead h2.editable{cursor:text;border-radius:2px}
+.arthead h2.editable:hover{background:var(--accent-soft)}
+
 @media (max-width:900px){
   .body{grid-template-columns:minmax(0,1fr)}
   .rail,.aside{display:none}
@@ -311,7 +324,8 @@ function thawed(o){
 var REG={interfaces:{},components:{},relations:{},vars:{},views:{}};
 var UI={route:{k:"list"}, view:"quick", iface:"", tag:"", q:"", offen:false, pane:"main",
         regtab:"interfaces", regiface:"", regcomp:"", regprop:"", regjson:false,
-        regview:"", regscope:"", regel:"", regcomp2:"", regrel:"", err:""};
+        regview:"", regscope:"", regel:"", regcomp2:"", regrel:"",
+        trail:[], inline:false, editField:"", err:""};
 
 /* Darstellungsstufen (Facets, REQ-164) — registry rows, not code.
    Fallback only; the live set lives in registry/views. */
@@ -535,6 +549,10 @@ function linkInput(pd,cur){
         waehlt=true;
         inp.value=nameOf(t); inp.dataset.id=t.id; hide();
         inp.dispatchEvent(new Event("input",{bubbles:true}));
+        /* Einen Vorschlag zu übernehmen ist eine fertige Änderung, kein
+           Tippen. Ohne `change` merkt das Bearbeiten in der Ansicht nichts
+           davon — das Feld zeigte den Namen und speicherte nie. */
+        inp.dispatchEvent(new Event("change",{bubbles:true}));
         waehlt=false;
       }});
       b.appendChild(el("b",{text:nameOf(t)}));
@@ -562,6 +580,47 @@ function linkInput(pd,cur){
   });
   wrap.addEventListener=function(t,f){ inp.addEventListener(t,f); };
   return wrap;
+}
+
+/* ---------- one input for one field ----------
+   The dialog and the in-place editing share it. Two code paths for the same
+   field would drift, and the one used less often would be the one that
+   quietly stops matching the schema. */
+function fieldInput(pd,cur){
+  var kind=fieldKind(pd);
+  if(kind==="color")
+    return el("input",{class:"i",type:"color",
+      value:/^#[0-9a-fA-F]{6}$/.test(String(cur||""))?String(cur):"#888888"});
+  if(kind==="link") return linkInput(pd,cur);
+  if(pd["enum"]){
+    var sel=el("select",{class:"i"});
+    sel.appendChild(el("option",{value:""},"—"));
+    pd["enum"].forEach(function(o){ sel.appendChild(el("option",{value:o},o)); });
+    sel.value=cur==null?"":String(cur);
+    return sel;
+  }
+  if(pd.type==="number"||pd.type==="integer")
+    return el("input",{class:"i",type:"number",value:cur==null?"":String(cur)});
+  if(pd.format==="long"){
+    var ta=el("textarea",{class:"i"}); ta.value=cur==null?"":String(cur); return ta;
+  }
+  if(pd.type==="array")
+    return el("input",{class:"i",type:"text",value:Array.isArray(cur)?cur.join(", "):""});
+  if(pd.type==="object"){
+    var to=el("textarea",{class:"i code"}); to.value=JSON.stringify(cur||{},null,1); return to;
+  }
+  return el("input",{class:"i",type:"text",value:cur==null?"":String(cur)});
+}
+/* Was aus so einem Eingang herauskommt, in der Form, die das Schema will.
+   `undefined` heisst „kein Wert" und löscht das Feld — leer zu speichern
+   hiesse, einen leeren String gegen eine Zahl zu halten. */
+function fieldValue(pd,node){
+  var raw=node.value;
+  if(raw==="")return undefined;
+  if(pd.type==="number"||pd.type==="integer"){ var n=Number(raw); return isFinite(n)?n:undefined; }
+  if(pd.type==="array") return raw.split(",").map(function(x){return x.trim();}).filter(Boolean);
+  if(pd.type==="object"){ try{ return JSON.parse(raw); }catch(x){ return undefined; } }
+  return raw;
 }
 
 /* ---------- small helpers ---------- */
@@ -777,7 +836,10 @@ function fail(x){
 /* ============================================================
    RENDER
    ============================================================ */
-function go(r){ UI.route=r; UI.err=""; UI.pane="main"; render();
+function go(r){
+  if(r.k==="art"&&r.id!==UI.route.id) trailPush(UI.route);
+  if(r.k!=="art") UI.trail=[];
+  UI.route=r; UI.err=""; UI.pane="main"; UI.editField=""; render();
   var m=document.getElementById("main"); if(m)m.scrollTop=0; }
 
 /* Jeder Abschnitt für sich. Vorher konnte eine Ausnahme in renderRail()
@@ -924,22 +986,62 @@ function renderArticle(v,id){
   if(!e){ v.appendChild(el("div",{class:"empty",text:"Article not found."})); return; }
   var ifn=(e.interfaces||[])[0]||"", d=REG.interfaces[ifn], vw=viewDef();
 
+  var crumbs=renderTrail(); if(crumbs) v.appendChild(crumbs);
+
   var head=el("div",{class:"arthead"});
   var kick=el("div",{class:"kicker"});
   kick.appendChild(el("span",{class:"pill",text:ifaceName(e)}));
   var st=e.components&&e.components.Status&&e.components.Status.value;
   if(st) kick.appendChild(el("span",{class:"pill q",text:st}));
-  (e.tags||[]).forEach(function(t){ kick.appendChild(el("button",{class:"tag",type:"button",
-    onclick:function(){UI.tag=t;UI.iface="";go({k:"list"});}},"#"+t)); });
+  if(me.write&&(UI.inline||UI.editField==="__tags")){
+    var tgIn=el("input",{class:"i",type:"text",value:(e.tags||[]).join(", "),
+      placeholder:"comma, separated",style:"max-width:280px"});
+    tgIn.addEventListener("change",function(){
+      e.tags=tgIn.value.split(",").map(function(x){return x.trim();}).filter(Boolean);
+      if(!UI.inline) UI.editField="";
+      persist(e);
+    });
+    tgIn.addEventListener("keydown",function(ev){
+      if(ev.key==="Enter"){ ev.preventDefault(); tgIn.blur(); }
+      if(ev.key==="Escape"){ UI.editField=""; render(); } });
+    kick.appendChild(tgIn);
+    if(!UI.inline) setTimeout(function(){ try{ tgIn.focus(); }catch(x){} },0);
+  } else {
+    (e.tags||[]).forEach(function(t){ kick.appendChild(el("button",{class:"tag",type:"button",
+      onclick:function(){UI.tag=t;UI.iface="";go({k:"list"});}},"#"+t)); });
+    if(me.write) kick.appendChild(el("button",{class:"tag",type:"button",title:"Edit tags",
+      onclick:function(){ UI.editField="__tags"; render(); }},(e.tags||[]).length?"✎":"+ tag"));
+  }
   head.appendChild(kick);
-  head.appendChild(el("h2",{text:nameOf(e)}));
+  if(me.write&&(UI.inline||UI.editField==="__name")){
+    var nmIn=el("input",{class:"i",type:"text",value:nameOf(e),style:"font-family:var(--ff-disp);font-size:26px"});
+    nmIn.addEventListener("change",function(){
+      var neu=nmIn.value.trim(); if(!neu||neu===nameOf(e)){ if(!UI.inline)UI.editField=""; render(); return; }
+      e.name=neu; e.components=e.components||{}; e.components.Name={text:neu};
+      if(!UI.inline) UI.editField="";
+      persist(e);
+    });
+    nmIn.addEventListener("keydown",function(ev){
+      if(ev.key==="Enter"){ ev.preventDefault(); nmIn.blur(); }
+      if(ev.key==="Escape"){ UI.editField=""; render(); } });
+    head.appendChild(nmIn);
+    if(!UI.inline) setTimeout(function(){ try{ nmIn.focus(); nmIn.select(); }catch(x){} },0);
+  } else {
+    var h2=el("h2",{text:nameOf(e)});
+    if(me.write){ h2.className="editable";
+      h2.addEventListener("click",function(){ UI.editField="__name"; render(); }); }
+    head.appendChild(h2);
+  }
   var ik=e.components&&e.components.Identity&&e.components.Identity.key;
   if(ik) head.appendChild(el("div",{class:"key",text:ik}));
   v.appendChild(head);
 
   var bar=el("div",{class:"rowbtns"});
   if(me.write){
-    bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){editEntity(e);}},"Edit"));
+    bar.appendChild(el("button",{class:"btn sm"+(UI.inline?" pri":""),type:"button",
+      "aria-pressed":String(!!UI.inline),onclick:function(){
+        UI.inline=!UI.inline; UI.editField=""; render(); }},
+      UI.inline?"Done editing":"Edit all fields"));
     bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addBlock(e);}},"+ Block"));
     bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addRelation(e);}},"+ Relation"));
     bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addAdhoc(e);}},"+ Custom field"));
@@ -968,6 +1070,87 @@ function renderArticle(v,id){
     var node=renderLayoutItem(item,e,ifn,vw);
     if(node) v.appendChild(node);
   });
+}
+
+/* ---------- editing where the value is ----------
+   A click on a value turns that one field into an input; the switch in the
+   bar turns every field into one at once. The dialog stays for creating an
+   article from another one, where there is nothing to click yet.
+   Derived fields never become inputs — they have no stored value to write
+   back to, and offering one would promise an edit that cannot happen. */
+function fieldCell(e,cn,p,pd,val,txt){
+  var id=cn+"."+p;
+  var cell=el("div",{class:"fld"+(pd.derived?" drv":"")});
+  cell.appendChild(el("dt",{text:pd.title||p}));
+  var editable=me.write&&!pd.derived;
+  var open=editable&&(UI.inline||UI.editField===id);
+
+  if(open){
+    var node=fieldInput(pd,val[p]);
+    var dd=el("dd",{class:"editing"});
+    dd.appendChild(node);
+    var schliessen=function(){
+      var neu=fieldValue(pd,node);
+      var card=e.components[cn]=e.components[cn]||{};
+      var alt=card[p];
+      if(neu===undefined) delete card[p]; else card[p]=neu;
+      var gleich=JSON.stringify(alt===undefined?null:alt)===JSON.stringify(neu===undefined?null:neu);
+      if(!UI.inline) UI.editField="";
+      if(gleich){ render(); return; }
+      persist(e);
+    };
+    node.addEventListener("change",schliessen);
+    if(node.tagName==="INPUT") node.addEventListener("keydown",function(ev){
+      if(ev.key==="Enter"){ ev.preventDefault(); node.blur(); }
+      if(ev.key==="Escape"){ UI.editField=""; render(); }
+    });
+    cell.appendChild(dd);
+    /* Beim Einzelfeld sofort hineinspringen — sonst muss man zweimal klicken. */
+    if(!UI.inline) setTimeout(function(){ try{ node.focus(); }catch(x){} },0);
+    return cell;
+  }
+
+  var dd2=el(editable?"dd":"dd",{class:editable?"editable":null});
+  if(fieldKind(pd)==="color"&&txt){
+    dd2.appendChild(el("span",{class:"swatch",style:"background:"+txt}));
+    dd2.appendChild(document.createTextNode(" "+txt));
+  } else if(fieldKind(pd)==="link"&&txt){
+    var target=ENT.get(txt);
+    if(target) dd2.appendChild(el("button",{class:"ref",type:"button",
+      onclick:function(ev){ ev.stopPropagation(); go({k:"art",id:target.id}); }},nameOf(target)));
+    else dd2.appendChild(el("span",{class:"gone",text:"missing"}));
+  } else dd2.textContent=txt===""?"—":txt;
+  if(editable) dd2.addEventListener("click",function(){ UI.editField=id; render(); });
+  cell.appendChild(dd2);
+  return cell;
+}
+
+/* ---------- breadcrumbs ----------
+   Jeder Absprung hinterlässt eine Spur. Kommt man auf etwas zurück, das
+   schon darin steht, wird die Spur dort abgeschnitten statt verlängert —
+   sonst wächst sie beim Hin und Her ins Endlose. */
+var TRAIL_MAX=8;
+function trailPush(von){
+  if(!von||von.k!=="art")return;
+  var da=-1;
+  UI.trail.forEach(function(t,i){ if(t.id===von.id) da=i; });
+  if(da>=0){ UI.trail=UI.trail.slice(0,da+1); return; }
+  UI.trail.push({k:"art",id:von.id});
+  if(UI.trail.length>TRAIL_MAX) UI.trail=UI.trail.slice(-TRAIL_MAX);
+}
+function renderTrail(){
+  if(!UI.trail.length)return null;
+  var bar=el("nav",{class:"crumbs","aria-label":"Where you came from"});
+  UI.trail.forEach(function(t,i){
+    var e=ENT.get(t.id);
+    if(i) bar.appendChild(el("span",{class:"sep",text:"›"}));
+    bar.appendChild(el("button",{class:"ref",type:"button",onclick:function(){
+      UI.trail=UI.trail.slice(0,i);
+      UI.route={k:"art",id:t.id}; UI.err=""; UI.editField=""; render();
+    }},e?nameOf(e):"(gone)"));
+  });
+  bar.appendChild(el("span",{class:"sep",text:"›"}));
+  return bar;
 }
 
 /* ---------- view layout ----------
@@ -1054,23 +1237,12 @@ function elFields(e,ifn,item){
       if(!zeig(cn,p))return;
       if(pd.derived&&pd.of)return;
       var txt=fmtVal(pd, pd.derived?derivedValue(pd,val):val[p]);
-      if(txt==="")return;
+      if(txt===""&&!(UI.inline&&me.write&&!pd.derived))return;
       (attach[p]||[]).forEach(function(dp){
         var dv=fmtVal(props[dp],derivedValue(props[dp],val));
         if(dv!=="") txt+=" ("+dv+")";
       });
-      var dd=el("dd");
-      if(fieldKind(pd)==="color"){
-        dd.appendChild(el("span",{class:"swatch",style:"background:"+txt}));
-        dd.appendChild(document.createTextNode(" "+txt));
-      } else if(fieldKind(pd)==="link"){
-        var target=ENT.get(txt);
-        if(target) dd.appendChild(el("button",{class:"ref",type:"button",
-          onclick:function(){ go({k:"art",id:target.id}); }},nameOf(target)));
-        else dd.appendChild(el("span",{class:"gone",text:"missing"}));
-      } else dd.textContent=txt;
-      flds.appendChild(el("div",{class:"fld"+(pd.derived?" drv":"")},[
-        el("dt",{text:pd.title||p}), dd])); nf++;
+      flds.appendChild(fieldCell(e,cn,p,pd,val,txt)); nf++;
     });
   });
   if(want==="all") (e.adhoc||[]).forEach(function(f){
@@ -2418,6 +2590,10 @@ function newEntity(presetName){
         adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
       reqFor(ifn).forEach(function(c){ if(!e.components[c]&&REG.components[c]) e.components[c]={}; });
       persist(e); go({k:"art",id:e.id});
+      /* Aus einem Verweis heraus angelegt heisst: man war woanders und will
+         dahin zurück. Das Formular nimmt die Angaben in einem Zug auf,
+         statt dass man sich durch die frische, leere Ansicht klickt. */
+      if(presetName) editEntity(e);
     },"Create");
   });
 }
@@ -2432,14 +2608,7 @@ function editEntity(e){
     host.appendChild(field("Tags",tg));
 
     var inputs=[], drvCells=[];
-    function readInput(it){
-      var raw=it.node.value;
-      if(raw==="")return undefined;
-      if(it.pd.type==="number"||it.pd.type==="integer")return Number(raw);
-      if(it.pd.type==="array")return raw.split(",").map(function(s){return s.trim();}).filter(Boolean);
-      if(it.pd.type==="object"){ try{return JSON.parse(raw);}catch(x){return undefined;} }
-      return raw;
-    }
+    function readInput(it){ return fieldValue(it.pd,it.node); }
     function recalc(){
       var live={};
       inputs.forEach(function(it){
@@ -2467,27 +2636,7 @@ function editEntity(e){
           drvCells.push({cn:cn,p:p,pd:pd,node:b});
           return;
         }
-        var node, kind=fieldKind(pd);
-        if(kind==="color"){
-          node=el("input",{class:"i",type:"color",value:/^#[0-9a-fA-F]{6}$/.test(String(cur||""))?String(cur):"#888888"});
-        } else if(kind==="link"){
-          node=linkInput(pd,cur);
-        } else if(pd.enum){
-          node=el("select",{class:"i"});
-          node.appendChild(el("option",{value:""},"—"));
-          pd.enum.forEach(function(o){ node.appendChild(el("option",{value:o},o)); });
-          node.value=cur==null?"":String(cur);
-        } else if(pd.type==="number"||pd.type==="integer"){
-          node=el("input",{class:"i",type:"number",value:cur==null?"":String(cur)});
-        } else if(pd.format==="long"){
-          node=el("textarea",{class:"i"}); node.value=cur==null?"":String(cur);
-        } else if(pd.type==="array"){
-          node=el("input",{class:"i",type:"text",value:Array.isArray(cur)?cur.join(", "):""});
-        } else if(pd.type==="object"){
-          node=el("textarea",{class:"i code"}); node.value=JSON.stringify(cur||{},null,1);
-        } else {
-          node=el("input",{class:"i",type:"text",value:cur==null?"":String(cur)});
-        }
+        var node=fieldInput(pd,cur);
         host.appendChild(field(pd.title||p,node));
         node.addEventListener("input",recalc);
         inputs.push({cn:cn,p:p,pd:pd,node:node});
