@@ -2087,18 +2087,28 @@ async function seite(datei, warten) {
       const regeln = [...T.ENT.values()].filter((e) => (e.interfaces || [])[0] === 'Rule');
       const namen = regeln.map((e) => e.name || e.components.Name.text)
         .filter((n) => n && n.length >= 4);
+      /* Prosa ist die Beschreibung und die Textblöcke — nicht der ganze
+         Artikel. Der Name selbst zählt nicht: ein Artikel, der „Verzicht:
+         Verstrickt" heisst, nennt keine Regel im Text, und ein Treffer
+         darauf prüfte die Suche statt das Erkennen. */
+      const prosa = (x) => {
+        let t = ((x.components || {}).Description || {}).raw || '';
+        (x.blocks || []).forEach((b) => { t += ' ' + (b.body || ''); });
+        return t;
+      };
       const textVon = (x) => {
-        let t = JSON.stringify(x.components || {}) + JSON.stringify(x.blocks || []);
+        let t = prosa(x);
         (x.relations || []).forEach((r) => {
           const d = T.REG.relations[r.type];
           if (!d || !d.section) return;
           const z = T.ENT.get(r.to);
-          if (z) t += JSON.stringify(z.components || {}) + JSON.stringify(z.blocks || []);
+          if (z) t += ' ' + prosa(z);
         });
         return t;
       };
       const e = [...T.ENT.values()].find((x) =>
-        (x.interfaces || [])[0] !== 'Rule' && namen.some((n) => textVon(x).indexOf(n) >= 0));
+        (x.interfaces || [])[0] !== 'Rule' && T.articleVisible(x)
+        && namen.some((n) => textVon(x).indexOf(n) >= 0));
       return e ? e.id : null;
     });
     if (mitProsa) {
@@ -2201,6 +2211,120 @@ async function seite(datei, warten) {
     pruefe('the crawl raised no exception', errs.length === 0, errs);
   } else {
     pruefe('a point-crawl exists in the data', false, 'keine gefunden');
+  }
+
+  /* ---- Ebenen und Stapel (REQ-004 bis 009, 044) ----
+     Der Prüfstein ist, dass sich etwas *ändert*, wenn man eine Ebene
+     umlegt. Eine Stapelanzeige, die immer dasselbe zeigt, ist eine
+     Behauptung. */
+  const stapel = await p.evaluate(() => {
+    const T = window.__T__;
+    const camp = [...T.ENT.values()].find((e) =>
+      (e.relations || []).some((r) => r.type === 'activates'));
+    const aus = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Layer'
+      && !(camp?.relations || []).some((r) => r.type === 'activates' && r.to === e.id));
+    const ersetzt = [...T.ENT.values()].find((e) =>
+      (e.relations || []).some((r) => r.type === 'overrides'));
+    return {
+      camp: camp ? camp.id : null,
+      aus: aus ? aus.id : null,
+      neu: ersetzt ? ersetzt.id : null,
+      alt: ersetzt ? ersetzt.relations.find((r) => r.type === 'overrides').to : null,
+    };
+  });
+  if (stapel.camp && stapel.neu) {
+    await oeffneId(stapel.camp);
+    await p.evaluate(() => {
+      const f = document.getElementById('facet');
+      f.value = 'stack';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(550);
+    const st3 = await p.evaluate(() => ({
+      ebenen: [...document.querySelectorAll('.layer .ck .ref')].map((x) => x.textContent),
+      nummern: [...document.querySelectorAll('.layer .num')].map((x) => Number(x.textContent)),
+      ersetzt: [...document.querySelectorAll('.stackbox .chips .chip.warn')].map((x) => x.textContent),
+      probleme: [...document.querySelectorAll('.pruef li')].map((x) => x.textContent),
+    }));
+    pruefe('the stack lists its layers bottom first',
+      st3.ebenen.length >= 2
+      && st3.nummern.every((n, i) => i === 0 || n === st3.nummern[i - 1] + 1), st3);
+    pruefe('the stack names what a higher layer replaces',
+      st3.ersetzt.length >= 1 && /→/.test(st3.ersetzt[0]), st3.ersetzt);
+    pruefe('the stack validates clean', st3.probleme.length === 0, st3.probleme);
+
+    /* Was ersetzt ist, ist weg — nicht durchgestrichen, sondern weg: eine
+       Liste, die beide Fassungen zeigt, ist schlimmer als keine. */
+    const beide = await p.evaluate((ids) => {
+      const sichtbar = (id) => {
+        const e = window.__T__.ENT.get(id);
+        return !!e && window.__T__.articleVisible(e);
+      };
+      return { neu: sichtbar(ids.neu), alt: sichtbar(ids.alt) };
+    }, stapel);
+    pruefe('the replaced version is out and the replacing one is in',
+      beide.neu === true && beide.alt === false, beide);
+
+    /* Die Herkunft steht am Artikel, nicht in einem Register — die Frage
+       stellt sich dort, wo man liest. */
+    await oeffneId(stapel.neu);
+    const herkunft = await p.evaluate(() =>
+      [...document.querySelectorAll('.stackchip .chip')].map((x) => x.textContent));
+    pruefe('an article says which layer it comes from', herkunft.length >= 1, herkunft);
+
+    /* Und jetzt die Gegenprobe: eine Ebene aufschalten, die etwas
+       herausnimmt, und nachsehen, dass es verschwindet. */
+    if (stapel.aus) {
+      const wegName = await p.evaluate((lid) => {
+        const T = window.__T__;
+        const opfer = [...T.ENT.values()].find((e) =>
+          (e.relations || []).some((r) => r.type === 'inLayer' && r.to === lid
+            && (r.props || {}).mode === 'removes'));
+        return opfer ? opfer.id : null;
+      }, stapel.aus);
+      if (wegName) {
+        const vorhin = await p.evaluate((id) => {
+          const e = window.__T__.ENT.get(id);
+          return !!e && window.__T__.articleVisible(e);
+        }, wegName);
+        await oeffneId(stapel.camp);
+        await p.evaluate(() => {
+          const f = document.getElementById('facet');
+          f.value = 'stack';
+          f.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        await p.waitForTimeout(500);
+        await p.evaluate((lid) => {
+          const sel = [...document.querySelectorAll('.stackbox select')][0];
+          sel.value = lid;
+          sel.dispatchEvent(new Event('change', { bubbles: true }));
+        }, stapel.aus);
+        await p.waitForTimeout(600);
+        const jetzt = await p.evaluate((id) => {
+          const e = window.__T__.ENT.get(id);
+          return !!e && window.__T__.articleVisible(e);
+        }, wegName);
+        pruefe('switching a layer on can take something out of play',
+          vorhin === true && jetzt === false, { vorhin, jetzt });
+        /* Und wieder ab: der Artikel ist zurück. Löschen wäre endgültig
+           gewesen, Herausnehmen ist es nicht. */
+        await p.evaluate(() => {
+          const b2 = [...document.querySelectorAll('.layer .btn')].pop();
+          if (b2) b2.click();
+        });
+        await p.waitForTimeout(600);
+        const zurueck2 = await p.evaluate((id) => {
+          const e = window.__T__.ENT.get(id);
+          return !!e && window.__T__.articleVisible(e);
+        }, wegName);
+        pruefe('switching it off brings it back', zurueck2 === true, zurueck2);
+      } else {
+        pruefe('a layer that removes something exists in the data', false, stapel.aus);
+      }
+    }
+    pruefe('the layer stack raised no exception', errs.length === 0, errs);
+  } else {
+    pruefe('a campaign with layers exists in the data', false, stapel);
   }
 
   pruefe('knowledge needed no browser modal', modale.length === 0, modale);

@@ -343,4 +343,18 @@ export const interfaces: Record<string, InterfaceDef> = {
     requires: ['TableInfo'],
     blockTypes: ['+note', '+secret'],
   },
+
+  /**
+   * Eine Ebene ist ein Artikel (REQ-004). Was zu ihr gehört, sagen Kanten —
+   * `inLayer` von der Sache zur Ebene, nicht umgekehrt: eine Liste an der
+   * Ebene müsste bei jedem neuen Artikel angefasst werden, und wer sie
+   * vergisst, hat einen Artikel, den niemand findet.
+   */
+  Layer: {
+    name: 'Layer',
+    label: 'Layer',
+    extends: ['Base'],
+    requires: ['LayerInfo'],
+    blockTypes: ['+note'],
+  },
 };

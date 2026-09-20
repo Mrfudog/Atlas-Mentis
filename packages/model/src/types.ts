@@ -107,7 +107,8 @@ export type LayoutElementKind =
   | 'live'
   | 'table'
   | 'prep'
-  | 'crawl';
+  | 'crawl'
+  | 'stack';
 
 /**
  * One element of a view's layout. A view is an ordered list of these, so the

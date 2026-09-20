@@ -508,4 +508,85 @@ export const relations: Record<string, RelationDef> = {
       },
     },
   },
+
+  // ---------------------------------------------------------------- layers
+
+  /**
+   * Wozu ein Artikel gehört (REQ-005). Ohne diese Kante gehört er der
+   * Kampagne selbst und ist immer da — das ist der Normalfall und soll
+   * keine Zeile kosten.
+   *
+   * `mode: removes` nimmt etwas aus dem Stapel, das eine niedrigere Ebene
+   * mitbringt. Löschen ginge nicht: der Artikel gehört der anderen Ebene,
+   * und beim nächsten Import wäre er wieder da.
+   */
+  inLayer: {
+    type: 'inLayer',
+    label: 'from',
+    inverseLabel: 'brings',
+    from: ['*'],
+    to: ['Layer'],
+    props: {
+      type: 'object',
+      properties: {
+        mode: {
+          type: 'string',
+          title: 'Mode',
+          enum: ['adds', 'removes'],
+          default: 'adds',
+        },
+        addedAt: { type: 'string', title: 'Added at' },
+      },
+    },
+  },
+
+  /**
+   * Welche Ebenen diese Kampagne aufschaltet, in welcher Reihenfolge
+   * (REQ-006). An der Kampagne und nicht an der Ebene, weil zwei Kampagnen
+   * dieselbe Ebene verschieden hoch hängen dürfen.
+   */
+  activates: {
+    type: 'activates',
+    label: 'runs on',
+    inverseLabel: 'used by',
+    from: ['Campaign'],
+    to: ['Layer'],
+    props: {
+      type: 'object',
+      properties: {
+        order: { type: 'number', title: 'Order' },
+      },
+    },
+  },
+
+  /** Eine Kopie mit Herkunft (REQ-008) — sie ersetzt nichts. */
+  variantOf: {
+    type: 'variantOf',
+    label: 'variant of',
+    inverseLabel: 'has variants',
+    from: ['*'],
+    to: ['*'],
+    cardinality: 'one',
+  },
+
+  /**
+   * Eine Fassung, die eine andere ersetzt (REQ-009), solange ihre Ebene
+   * aufgeschaltet ist. Der Unterschied zur Variante ist die Absicht: eine
+   * Variante steht daneben, eine Überschreibung tritt an die Stelle.
+   */
+  overrides: {
+    type: 'overrides',
+    label: 'replaces',
+    inverseLabel: 'replaced by',
+    from: ['*'],
+    to: ['*'],
+    cardinality: 'one',
+    props: {
+      type: 'object',
+      properties: {
+        scope: { type: 'string', title: 'Scope' },
+        note: { type: 'string', title: 'Why' },
+      },
+    },
+  },
 };

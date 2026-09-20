@@ -395,6 +395,20 @@ table.atk tr.stowed td,table.atk tr.buried td{color:var(--dim)}
   display:block}
 .gitem i.off{background:transparent;border-color:transparent}
 .gitem.selected i.on{background:var(--accent);border-color:var(--accent)}
+/* Ebenen: von unten nach oben, mit dem, was jede beisteuert. */
+.stackchip{display:inline-flex;flex-wrap:wrap;gap:5px;align-items:baseline;margin-left:8px}
+.stackchip .chip{font-size:11px;padding:1px 7px;cursor:pointer}
+.stackchip .chip.warn{border-color:var(--warn);color:var(--warn)}
+.stackchip .co{font-size:10.5px;color:var(--warn)}
+.layers{display:flex;flex-direction:column;gap:4px;margin:6px 0}
+.layer{border:1px solid var(--line);border-radius:var(--r);padding:6px 10px;background:var(--surface)}
+.layer .ck{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
+.layer .num{font-family:var(--ff-mono);font-size:11px;color:var(--accent);
+  border:1px solid var(--line2);border-radius:999px;padding:0 6px}
+.layer .ref{font-family:var(--ff-disp);font-size:15px}
+.layer .co{font-size:11.5px;color:var(--dim);margin-left:auto}
+.chips .chip.warn{border-color:var(--warn);color:var(--warn)}
+
 /* Punktreise: Knoten nach Abstand, Wege mit ihrem Eindruck. */
 .crgraph{display:flex;gap:14px;overflow-x:auto;padding:8px 0;margin:6px 0}
 .crcol{display:flex;flex-direction:column;gap:6px;min-width:150px}
@@ -1553,6 +1567,14 @@ function renderRail(){
     onclick:function(){go({k:"reg"});}},[el("b",{text:"Data model"}),el("em",{text:"def"})]));
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="graph"),
     onclick:function(){go({k:"graph"});}},[el("b",{text:"Graph"}),el("em",{text:"↔"})]));
+  var ebenen=0; ENT.forEach(function(x){ if(((x.interfaces||[])[0])===LAYER_IFACE) ebenen++; });
+  if(ebenen){
+    var camp=currentCampaign();
+    s3.appendChild(el("button",{class:"navrow",type:"button",
+      title:"Which layers are running",
+      onclick:function(){ if(camp){ UI.view="stack"; go({k:"art",id:camp.id}); } }},
+      [el("b",{text:"Stack"}),el("em",{text:activeStack().length+"/"+ebenen})]));
+  }
   var regelZahl=0; ENT.forEach(function(x){ if(((x.interfaces||[])[0])===RULE_IFACE) regelZahl++; });
   if(regelZahl) s3.appendChild(el("button",{class:"navrow",type:"button",
     "aria-current":String(UI.route.k==="rules"),
@@ -1756,6 +1778,8 @@ function renderArticle(v,id){
   }
   var ik=e.components&&e.components.Identity&&e.components.Identity.key;
   if(ik) head.appendChild(el("div",{class:"key",text:ik}));
+  var herkunft=stackChip(e);
+  if(herkunft) head.appendChild(herkunft);
   v.appendChild(head);
 
   var bar=el("div",{class:"rowbtns"});
@@ -2128,7 +2152,7 @@ var LAYOUT_ELEMENTS=[
   ["description","Description"],["blocks","Text blocks"],
   ["composed","Composed rules"],["relations","Relations"],["image","Image"],
   ["knowledge","Knowledge groups"],["map","Map"],["sheet","Character sheet"],["inventory","Inventory"],["crafting","Crafting"],["board","Board"],["initiative","Initiative"],
-  ["quests","Quest board"],["timeline","Timeline"],["live","Live"],["table","Table"],["prep","Prep board"],["crawl","Point-crawl"]
+  ["quests","Quest board"],["timeline","Timeline"],["live","Live"],["table","Table"],["prep","Prep board"],["crawl","Point-crawl"],["stack","Layer stack"]
 ];
 function layoutOf(vw,ifn){
   var by=vw.byInterface||{};
@@ -2174,6 +2198,7 @@ function renderLayoutItem(item,e,ifn,vw){
     case "table":       return elTable(e,ifn,item);
     case "prep":        return elPrep(e,ifn,item);
     case "crawl":       return elCrawl(e,ifn,item);
+    case "stack":       return elStack(e,ifn,item);
     default:            return null;
   }
 }
@@ -2340,6 +2365,254 @@ function elRelations(e){
     row.appendChild(rv);
     wrap.appendChild(row);
   });
+  return wrap;
+}
+
+/* ---------- Ebenen und Stapel (REQ-004 bis 009, 044) ----------
+   Ein Artikel ohne `inLayer`-Kante gehört der Kampagne selbst und ist immer
+   da. Das ist der Normalfall und soll keine Zeile kosten — wer eine
+   Kampagne führt und keine Pakete benutzt, merkt vom Stapel nichts.
+
+   Was eine Ebene mitbringt, ist da, solange die Kampagne sie aufschaltet.
+   Eine höhere Ebene kann dasselbe Ding **überschreiben** (`overrides`) oder
+   **herausnehmen** (`inLayer` mit `mode: removes`). Löschen ginge in beiden
+   Fällen nicht: der Artikel gehört der anderen Ebene, und beim nächsten
+   Import wäre er wieder da.
+
+   Die Auflösung ist eine Abfrage und wird nie gespeichert — dieselbe Regel
+   wie bei abgeleiteten Werten (D8). Sie sitzt in `articleVisible` und
+   `resolveArticle`, also an denselben zwei Stellen wie Sichtbarkeit und
+   Wissen; wer eine dritte Stelle bräuchte, hätte das Modell verfehlt. */
+var LAYER_IFACE="Layer", LAYER_COMP="LayerInfo",
+    REL_INLAYER="inLayer", REL_ACTIVATES="activates",
+    REL_OVERRIDES="overrides", REL_VARIANT="variantOf";
+
+/* Die laufende Kampagne. Eine Einstellung schlägt die Suche — wer zwei
+   Kampagnen in einem Speicher führt, muss sagen können, welche gilt. */
+function currentCampaign(){
+  var gesetzt=setting("campaign","");
+  if(gesetzt&&ENT.get(gesetzt))return ENT.get(gesetzt);
+  var hit=null;
+  ENT.forEach(function(e){ if(!hit&&((e.interfaces||[])[0])==="Campaign") hit=e; });
+  return hit;
+}
+/* Die aufgeschalteten Ebenen, von unten nach oben. Reihenfolge: was an der
+   Kante steht, sonst die Spezifität der Ebene selbst. */
+var stackSig="", stackCache=null;
+function activeStack(){
+  var camp=currentCampaign();
+  var sig=(camp?camp.id+":"+JSON.stringify(camp.relations||[]):"-")+"|"+ENT.size;
+  if(sig===stackSig&&stackCache)return stackCache;
+  var out=[];
+  if(camp){
+    (camp.relations||[]).forEach(function(r){
+      if(r.type!==REL_ACTIVATES)return;
+      var l=ENT.get(r.to); if(!l)return;
+      var info=(l.components||{})[LAYER_COMP]||{};
+      out.push({layer:l,order:(r.props&&r.props.order!=null)?Number(r.props.order):(Number(info.order)||10)});
+    });
+  }
+  out.sort(function(a,b){ return a.order-b.order; });
+  stackSig=sig; stackCache=out;
+  return out;
+}
+function activeLayerIds(){
+  var m={};
+  activeStack().forEach(function(x,i){ m[x.layer.id]=i+1; });   /* 1..n, höher = spezifischer */
+  return m;
+}
+function layerEdges(e){
+  return (e.relations||[]).filter(function(r){ return r.type===REL_INLAYER; });
+}
+/* Steht dieser Artikel im laufenden Stapel? Ohne Ebenenkante: ja. Mit:
+   nur, wenn eine aufgeschaltete Ebene ihn hinzufügt — und keine
+   spezifischere ihn herausnimmt. */
+function inStack(e){
+  var kanten=layerEdges(e);
+  if(!kanten.length)return true;
+  var aktiv=activeLayerIds();
+  var addAt=0, remAt=0;
+  kanten.forEach(function(r){
+    var rang=aktiv[r.to]; if(!rang)return;
+    if(((r.props||{}).mode)==="removes") remAt=Math.max(remAt,rang);
+    else addAt=Math.max(addAt,rang);
+  });
+  if(!addAt&&!remAt)return false;          /* nur in Ebenen, die nicht laufen */
+  return addAt>remAt;
+}
+/* Höchste aufgeschaltete Ebene eines Artikels — für die Herkunftsanzeige. */
+function layerOf(e){
+  var kanten=layerEdges(e);
+  if(!kanten.length)return null;
+  var aktiv=activeLayerIds(), best=null, rang=0;
+  kanten.forEach(function(r){
+    if(((r.props||{}).mode)==="removes")return;
+    var x=aktiv[r.to]; if(!x||x<rang)return;
+    rang=x; best=ENT.get(r.to)||null;
+  });
+  if(best)return best;
+  return ENT.get(kanten[0].to)||null;
+}
+/* Wer diesen Artikel überschreibt — die spezifischste aufgeschaltete
+   Fassung. Ohne aufgeschaltete Ebene überschreibt niemand: eine
+   Überschreibung, die immer gilt, wäre eine Bearbeitung. */
+function overriderOf(id){
+  var aktiv=activeLayerIds(), best=null, rang=-1;
+  ENT.forEach(function(o){
+    (o.relations||[]).forEach(function(r){
+      if(r.type!==REL_OVERRIDES||r.to!==id)return;
+      var l=layerEdges(o).map(function(x){return aktiv[x.to]||0;});
+      var r2=l.length?Math.max.apply(null,l):0;
+      if(!r2)return;                        /* Überschreibung ohne Ebene zählt nicht */
+      if(r2>rang){ rang=r2; best=o; }
+    });
+  });
+  return best;
+}
+/* Was an dieser Stelle wirklich gilt. Eine Kette von Überschreibungen wird
+   bis zum Ende verfolgt, aber nicht im Kreis. */
+function resolveArticle(e){
+  var at=e, guard=0;
+  while(at&&guard++<8){
+    var o=overriderOf(at.id);
+    if(!o||o.id===at.id)break;
+    at=o;
+  }
+  return at;
+}
+function isOverridden(e){ return !!overriderOf(e.id); }
+
+/* Der schlanke Herkunfts-Anzeiger (REQ-044): woher dieser Artikel kommt und
+   ob etwas ihn ersetzt. Er steht am Artikel und nicht in einem Register —
+   die Frage stellt sich dort, wo man liest. */
+function stackChip(e){
+  var l=layerOf(e);
+  var ov=overriderOf(e.id);
+  if(!l&&!ov)return null;
+  var box=el("span",{class:"stackchip"});
+  if(l){
+    var info=(l.components||{})[LAYER_COMP]||{};
+    box.appendChild(el("button",{class:"chip",type:"button",
+      title:"From the layer “"+nameOf(l)+"”"+(info.kind?" ("+info.kind+")":""),
+      onclick:function(){go({k:"art",id:l.id});}},nameOf(l)));
+    if(!activeLayerIds()[l.id]) box.appendChild(el("span",{class:"co",text:"not running"}));
+  }
+  if(ov) box.appendChild(el("button",{class:"chip warn",type:"button",
+    title:"Something replaces this one in the running stack",
+    onclick:function(){go({k:"art",id:ov.id});}},"replaced by "+nameOf(ov)));
+  var vr=(e.relations||[]).filter(function(r){return r.type===REL_VARIANT;})[0];
+  if(vr){
+    var q=ENT.get(vr.to);
+    if(q) box.appendChild(el("button",{class:"chip",type:"button",
+      onclick:function(){go({k:"art",id:q.id});}},"variant of "+nameOf(q)));
+  }
+  return box;
+}
+
+function elStack(e,ifn,item){
+  var wrap=el("div",{class:"stackbox"});
+  var camp=currentCampaign();
+  var stapel=activeStack();
+
+  if(!camp){
+    wrap.appendChild(el("p",{class:"hint",
+      text:"No campaign yet. Without one nothing is switched on, and every article is simply there — which is the right default for a campaign that uses no packs."}));
+  }
+
+  /* Die Ebenen von unten nach oben, mit dem, was sie beisteuern. */
+  wrap.appendChild(el("div",{class:"sec",text:"Running, bottom first"}));
+  if(!stapel.length) wrap.appendChild(el("p",{class:"hint",
+    text:camp?"This campaign switches on no layer. Everything that carries no layer is in anyway.":""}));
+  var box=el("div",{class:"layers"});
+  stapel.forEach(function(x,i){
+    var info=(x.layer.components||{})[LAYER_COMP]||{};
+    var row=el("div",{class:"layer"});
+    var kopf=el("div",{class:"ck"});
+    kopf.appendChild(el("span",{class:"num",text:String(i+1)}));
+    kopf.appendChild(el("button",{class:"ref",type:"button",
+      onclick:function(){go({k:"art",id:x.layer.id});}},nameOf(x.layer)));
+    if(info.kind) kopf.appendChild(el("span",{class:"pill q",text:info.kind}));
+    if(info.version) kopf.appendChild(el("span",{class:"co",text:info.version}));
+    var bringt=0, nimmt=0;
+    ENT.forEach(function(o){
+      layerEdges(o).forEach(function(r){
+        if(r.to!==x.layer.id)return;
+        if(((r.props||{}).mode)==="removes") nimmt++; else bringt++;
+      });
+    });
+    kopf.appendChild(el("span",{class:"co",
+      text:bringt+" brought"+(nimmt?", "+nimmt+" taken out":"")}));
+    if(canWrite()&&camp) kopf.appendChild(el("button",{class:"btn gh sm",type:"button",
+      title:"Switch this layer off",
+      onclick:function(){
+        camp.relations=(camp.relations||[]).filter(function(r){
+          return !(r.type===REL_ACTIVATES&&r.to===x.layer.id); });
+        persist(camp);
+      }},"off"));
+    row.appendChild(kopf);
+    box.appendChild(row);
+  });
+  wrap.appendChild(box);
+
+  if(canWrite()&&camp){
+    var frei=[];
+    var an=activeLayerIds();
+    ENT.forEach(function(o){
+      if(((o.interfaces||[])[0])!==LAYER_IFACE)return;
+      if(an[o.id])return;
+      frei.push(o);
+    });
+    if(frei.length){
+      var sel=el("select",{class:"i",style:"width:auto"});
+      sel.appendChild(el("option",{value:""},"— switch a layer on …"));
+      frei.sort(function(a,b){return nameOf(a).localeCompare(nameOf(b),"de");});
+      frei.forEach(function(o){ sel.appendChild(el("option",{value:o.id},nameOf(o))); });
+      sel.addEventListener("change",function(){
+        if(!sel.value)return;
+        var l=ENT.get(sel.value);
+        var info=(l&&l.components&&l.components[LAYER_COMP])||{};
+        camp.relations=camp.relations||[];
+        camp.relations.push({id:uid("r"),type:REL_ACTIVATES,to:sel.value,
+          props:{order:Number(info.order)||10}});
+        persist(camp);
+      });
+      wrap.appendChild(sel);
+    }
+  }
+
+  /* Was der Stapel gerade ausblendet — die Frage, die man stellt, wenn
+     etwas fehlt, und die sonst niemand beantwortet. */
+  var draussen=[], ersetzt=[];
+  ENT.forEach(function(o){
+    if(!inStack(o)) draussen.push(o);
+    else if(isOverridden(o)) ersetzt.push(o);
+  });
+  wrap.appendChild(el("div",{class:"sec",text:"Not in play right now"}));
+  if(!draussen.length&&!ersetzt.length) wrap.appendChild(el("p",{class:"hint",
+    text:"Nothing is switched out and nothing is replaced."}));
+  if(draussen.length){
+    var d=el("div",{class:"chips"});
+    draussen.slice(0,30).forEach(function(o){
+      d.appendChild(el("button",{class:"chip",type:"button",
+        onclick:function(){go({k:"art",id:o.id});}},nameOf(o)));
+    });
+    wrap.appendChild(el("p",{class:"hint",
+      text:draussen.length+" article"+(draussen.length===1?"":"s")+
+        " belong only to layers that are not running."}));
+    wrap.appendChild(d);
+  }
+  if(ersetzt.length){
+    var r2=el("div",{class:"chips"});
+    ersetzt.slice(0,30).forEach(function(o){
+      var ov=overriderOf(o.id);
+      r2.appendChild(el("button",{class:"chip warn",type:"button",
+        onclick:function(){go({k:"art",id:ov?ov.id:o.id});}},
+        nameOf(o)+" → "+(ov?nameOf(ov):"?")));
+    });
+    wrap.appendChild(el("p",{class:"hint",
+      text:ersetzt.length+" replaced by a more specific layer."}));
+    wrap.appendChild(r2);
+  }
   return wrap;
 }
 
@@ -5830,6 +6103,11 @@ function actorForUser(uid){
    feine Auswertung (REQ-039) ist das Wissensmodell, und das sitzt eine
    Ebene tiefer — am Feld, nicht am Artikel. */
 function articleVisible(e){
+  /* Der Stapel gilt für alle, auch für die Spielleitung: was nicht läuft,
+     ist nicht da. Wissen und Sichtbarkeit sind die zweite Frage und
+     kommen danach. */
+  if(!inStack(e))return false;
+  if(isOverridden(e))return false;
   if(isGM())return true;
   var vis=(e.components||{}).Visibility||{};
   if(vis.audience==="gm")return false;

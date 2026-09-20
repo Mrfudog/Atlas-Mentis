@@ -330,4 +330,22 @@ export const views: Record<string, ViewDef> = {
       { id: 'cr-b', el: 'blocks', blocks: ['readaloud', 'lore'] },
     ],
   },
+
+  /** Der Stapel: welche Ebenen laufen und was jede beisteuert. */
+  stack: {
+    label: 'Stack',
+    order: 20,
+    fields: ['LayerInfo'],
+    blocks: ['note'],
+    description: true,
+    composed: false,
+    relations: true,
+    bindings: false,
+    image: false,
+    layout: [
+      { id: 'st-stack', el: 'stack' },
+      { id: 'st-desc', el: 'description' },
+      { id: 'st-b', el: 'blocks', blocks: ['note'] },
+    ],
+  },
 };

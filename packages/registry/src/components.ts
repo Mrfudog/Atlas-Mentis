@@ -906,4 +906,32 @@ export const components: Record<string, ComponentDef> = {
       },
     },
   },
+
+  /**
+   * Eine Ebene (REQ-004). Sie ist ein Artikel, kein Registereintrag: sie
+   * trägt einen Namen, eine Beschreibung, eine Quellenangabe und — vor
+   * allem — Kanten. „Welche Ebene bringt diesen Artikel mit?" ist damit ein
+   * Rückbezug wie jeder andere.
+   *
+   * `order` ist die Spezifität: höher schlägt niedriger, wenn zwei Ebenen
+   * dasselbe anfassen. Das Grundregelwerk steht unten, die Kampagne oben.
+   */
+  LayerInfo: {
+    name: 'LayerInfo',
+    label: 'Layer',
+    engine: 'Stack',
+    schema: {
+      type: 'object',
+      properties: {
+        kind: {
+          type: 'string',
+          title: 'Kind',
+          enum: ['system', 'expansion', 'world', 'pack', 'campaign', 'overrides'],
+          default: 'pack',
+        },
+        order: { type: 'number', title: 'Specificity', default: 10 },
+        version: { type: 'string', title: 'Version' },
+      },
+    },
+  },
 };
