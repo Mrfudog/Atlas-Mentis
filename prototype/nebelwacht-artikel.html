@@ -668,7 +668,7 @@ function thawed(o){
 var REG={interfaces:{},components:{},relations:{},vars:{},views:{},settings:{}};
 /* Die Ablage des Artefakts für Bilder und Karten. Nur Schreibberechtigte
    bekommen sie; ohne sie bleibt der Verweis auf fremde Adressen. */
-var assetStore=null;
+var assetStore=null, downloadNS=null;
 var UI={route:{k:"list"}, view:"quick", iface:"", tag:"", q:"", offen:false, pane:"main",
         regtab:"interfaces", regiface:"", regcomp:"", regprop:"", regjson:false,
         regview:"", regscope:"", regel:"", regcomp2:"", regrel:"",
@@ -1344,17 +1344,21 @@ function para(text,cls){ return inline(text,el("p",cls?{class:cls}:null)); }
 
 /* ---------- db wiring ---------- */
 function persist(e){
+  if(blockedByLoad())return Promise.resolve();
   e.updatedAt=new Date().toISOString();
+  lastWroteAt[e.id]=e.updatedAt;
   ENT.set(e.id,e);
   render();
   if(!db){return Promise.resolve();}
   return db.doc("entities/"+e.id).set(e).catch(function(x){ fail(x); });
 }
 function drop(id){
+  if(blockedByLoad())return;
   ENT.delete(id); render();
   if(db) db.doc("entities/"+id).delete().catch(fail);
 }
 function saveReg(part){
+  if(blockedByLoad())return Promise.resolve();
   if(!db)return Promise.resolve();
   return db.doc("registry/"+part).set(REG[part]).catch(fail);
 }
@@ -1687,6 +1691,15 @@ function renderArticle(v,id){
         drop(e.id); go({k:"list"}); });}},"Delete"));
   }
   v.appendChild(bar);
+
+  if(foreignEdit===e.id){
+    var fw=el("div",{class:"banner"});
+    fw.appendChild(document.createTextNode(
+      "Someone else changed this article while you had it open. What you see is theirs."));
+    fw.appendChild(el("button",{class:"btn sm gh",type:"button",
+      onclick:function(){ foreignEdit=""; render(); }},"Got it"));
+    v.appendChild(fw);
+  }
 
   /* Was die Validierung beanstanden würde — hier, wo es zu beheben ist. */
   var problems=checkArticle(e);
@@ -2877,6 +2890,198 @@ function elTimeline(e,ifn,item){
     wrap.appendChild(row);
   });
   return wrap;
+}
+
+/* ---------- Sicherung und Ausfuhr (REQ-029, 155, 191, 192) ----------
+   Der Grund steht in der alten App: ein misslungener Ladevorgang wurde von
+   der nächsten Selbstspeicherung überschrieben, und der unlesbare Stand war
+   danach weg. Deshalb zwei Regeln, die nichts kosten und alles retten:
+
+   **Nach einem kaputten Ladevorgang wird nicht geschrieben.** `loadFailed`
+   schliesst jeden Schreibweg, und die Seite sagt, was ausblieb, statt es
+   zuzudecken. Was da ist, lässt sich weiterhin herunterladen — auch und
+   gerade dann.
+
+   **Eine fremde Änderung am offenen Artikel wird gesagt, nicht verschluckt.**
+   Der Speicher kennt keine Bedingung am Schreiben, also lässt sich der
+   zweite Schreiber nicht abweisen; erkennen und hinschreiben lässt er sich
+   schon, und das ist mehr, als eine stille Überschreibung hinterlässt. */
+var loadFailed="", lastSeenAt={}, lastWroteAt={}, foreignEdit="";
+
+function blockedByLoad(){
+  if(!loadFailed)return false;
+  UI.err="Nothing is being saved: "+loadFailed+
+    " Reload the page. Until then you can still download what is here — "+
+    "Data model · Backup.";
+  render();
+  return true;
+}
+
+/* Der ganze Stand als ein Stück. Was hier hineingeht, geht auch wieder
+   heraus: Register und Artikel, sonst nichts, und die Fassung dazu, damit
+   ein späteres Einlesen weiss, was es vor sich hat. */
+function exportState(){
+  var ents=[];
+  ENT.forEach(function(e){ ents.push(e); });
+  ents.sort(function(a,b){ return String(a.id).localeCompare(String(b.id)); });
+  return {
+    format:"nebelwacht/1",
+    at:new Date().toISOString(),
+    registry:{interfaces:REG.interfaces,components:REG.components,
+      relations:REG.relations,views:REG.views,vars:REG.vars,settings:REG.settings},
+    entities:ents
+  };
+}
+function exportFilename(){
+  return "nebelwacht-"+new Date().toISOString().slice(0,16).replace(/[:T]/g,"-")+".json";
+}
+/* Herunterladen: über die Laufzeit, wenn sie es anbietet, sonst über einen
+   Link. Der Rückfall ist kein Beiwerk — eine Sicherung, die von einer
+   Fähigkeit abhängt, ist genau dann weg, wenn man sie braucht. */
+function downloadState(melde){
+  var text=JSON.stringify(exportState(),null,1);
+  var name=exportFilename();
+  function fallback(){
+    try{
+      var blob=new Blob([text],{type:"application/json"});
+      var a=el("a",{href:URL.createObjectURL(blob),download:name});
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },2000);
+      melde&&melde("Downloaded "+name+" ("+Math.round(text.length/1024)+" KB).");
+    }catch(x){ melde&&melde("Could not download: "+((x&&x.message)||x)); }
+  }
+  if(!downloadNS){ fallback(); return; }
+  downloadNS.save({filename:name,data:text}).then(function(){
+    melde&&melde("Saved "+name+" ("+Math.round(text.length/1024)+" KB).");
+  })["catch"](function(x){
+    var c=(x&&x.code)||"";
+    if(c==="declined"){ melde&&melde("Not saved."); return; }
+    fallback();
+  });
+}
+
+/* Einlesen. Erst sagen, was es täte, dann tun — eine Wiederherstellung, die
+   ohne Vorschau schreibt, ist ein zweiter Datenverlust mit Anlauf. */
+function importReport(daten){
+  var r={ok:false,fehler:[],neu:0,geaendert:0,gleich:0,weg:0,teile:[]};
+  if(!daten||typeof daten!=="object"){ r.fehler.push("Not an object."); return r; }
+  if(daten.format&&String(daten.format).indexOf("nebelwacht/")!==0)
+    r.fehler.push("Unknown format: "+daten.format);
+  if(!daten.registry||typeof daten.registry!=="object")
+    r.fehler.push("No registry in the file.");
+  if(!Array.isArray(daten.entities))
+    r.fehler.push("No entities in the file.");
+  if(r.fehler.length)return r;
+  ["interfaces","components","relations","views","vars","settings"].forEach(function(t){
+    if(daten.registry[t]&&typeof daten.registry[t]==="object")
+      r.teile.push(t+" ("+Object.keys(daten.registry[t]).length+")");
+  });
+  var drin={};
+  daten.entities.forEach(function(e){
+    if(!e||!e.id){ r.fehler.push("An entity without an id."); return; }
+    drin[e.id]=1;
+    var alt=ENT.get(e.id);
+    if(!alt) r.neu++;
+    else if(JSON.stringify(alt)===JSON.stringify(e)) r.gleich++;
+    else r.geaendert++;
+  });
+  ENT.forEach(function(e){ if(!drin[e.id]) r.weg++; });
+  r.ok=r.fehler.length===0;
+  return r;
+}
+function applyImport(daten,loeschen,melde){
+  var reg=daten.registry||{};
+  ["interfaces","components","relations","views","vars","settings"].forEach(function(t){
+    if(reg[t]&&typeof reg[t]==="object"){ REG[t]=thawed(reg[t]); saveReg(t); }
+  });
+  var drin={};
+  (daten.entities||[]).forEach(function(e){
+    if(!e||!e.id)return;
+    drin[e.id]=1;
+    var kopie=thawed(e);
+    ENT.set(kopie.id,kopie);
+    persist(kopie);
+  });
+  var fort=0;
+  if(loeschen){
+    var weg=[];
+    ENT.forEach(function(e){ if(!drin[e.id]) weg.push(e.id); });
+    weg.forEach(function(id){ drop(id); fort++; });
+  }
+  melde&&melde("Restored "+Object.keys(drin).length+" articles"+
+    (fort?", removed "+fort:"")+".");
+  render();
+}
+
+function renderBackupEditor(v){
+  v.appendChild(el("p",{class:"hint",
+    text:"The whole state as one file: the registry and every article. This is the backup, and it is also how you start over — export, wipe, import."}));
+
+  var msg=el("div",{class:"err"});
+  var bar=el("div",{class:"rowbtns"});
+  bar.appendChild(el("button",{class:"btn pri",type:"button",onclick:function(){
+    downloadState(function(t){ msg.textContent=t; });
+  }},"Download a backup"));
+  var stand=exportState();
+  bar.appendChild(el("span",{class:"hint",style:"margin:0;align-self:center",
+    text:stand.entities.length+" articles · "+
+      Object.keys(REG.components||{}).length+" components · "+
+      Object.keys(REG.interfaces||{}).length+" interfaces · "+
+      Object.keys(REG.relations||{}).length+" relation types"}));
+  v.appendChild(bar);
+  v.appendChild(msg);
+  if(!downloadNS) v.appendChild(el("p",{class:"hint",
+    text:"The runtime offers no save dialog here, so the download goes through a plain link instead."}));
+
+  v.appendChild(el("div",{class:"sec",text:"Restore"}));
+  v.appendChild(el("p",{class:"hint",
+    text:"Paste a backup. Nothing is written until you have seen what it would do."}));
+  var ta=el("textarea",{class:"i code",spellcheck:"false",
+    placeholder:'{"format":"nebelwacht/1", …}'});
+  ta.style.minHeight="120px";
+  v.appendChild(ta);
+  var bericht=el("div",{class:"bericht"});
+  var loeschen=el("input",{type:"checkbox"});
+  var opt=el("label",{class:"task"},[loeschen,
+    el("span",{text:"Also remove articles the file does not contain"})]);
+  var geprueft=null;
+  var bar2=el("div",{class:"rowbtns"});
+  bar2.appendChild(el("button",{class:"btn",type:"button",onclick:function(){
+    bericht.textContent="";
+    var daten;
+    try{ daten=JSON.parse(ta.value); }
+    catch(x){ bericht.appendChild(el("div",{class:"warnzeile",
+      text:"Not valid JSON: "+x.message})); geprueft=null; return; }
+    var r=importReport(daten);
+    geprueft=r.ok?daten:null;
+    if(!r.ok){
+      r.fehler.forEach(function(f){ bericht.appendChild(el("div",{class:"warnzeile",text:f})); });
+      return;
+    }
+    var ul=el("ul");
+    ul.appendChild(el("li",{text:r.neu+" new, "+r.geaendert+" changed, "+r.gleich+" unchanged"}));
+    if(r.weg) ul.appendChild(el("li",{text:r.weg+" article"+(r.weg===1?"":"s")+
+      " here that the file does not have"+(loeschen.checked?" — they would go":" — they would stay")}));
+    ul.appendChild(el("li",{text:"Registry: "+r.teile.join(", ")}));
+    bericht.appendChild(ul);
+  }},"See what it would do"));
+  bar2.appendChild(el("button",{class:"btn dngr",type:"button",onclick:function(){
+    if(!geprueft){ bericht.appendChild(el("div",{class:"warnzeile",
+      text:"Check it first — the report is the point."})); return; }
+    confirmDialog("Restore this backup over the current state?",function(){
+      applyImport(geprueft,loeschen.checked,function(t){ msg.textContent=t; });
+    },"Restore");
+  }},"Restore it"));
+  v.appendChild(opt);
+  v.appendChild(bar2);
+  v.appendChild(bericht);
+
+  v.appendChild(el("div",{class:"sec",text:"When loading goes wrong"}));
+  v.appendChild(el("p",{class:"hint",
+    text:loadFailed
+      ? ("Loading failed: "+loadFailed+" Nothing is being written until the page loads cleanly. The download above still works.")
+      : "If a part of the registry or the articles fails to arrive, the page stops writing rather than saving over what it could not read. That is the one lesson from the old app that cost the most."}));
+  return v;
 }
 
 /* ---------- Der Tisch in Echtzeit (REQ-071, 116, 117) ----------
@@ -5409,7 +5614,7 @@ function renderRegistry(v){
   var tabs=el("div",{class:"tabs",role:"tablist"});
   [["interfaces","Interfaces"],["components","Components"],
    ["relations","Relation types"],["views","Views"],["vars","Variables"],
-   ["settings","Settings"]]
+   ["settings","Settings"],["backup","Backup"]]
   .forEach(function(t){
     tabs.appendChild(el("button",{type:"button",role:"tab","aria-selected":String(UI.regtab===t[0]),
       onclick:function(){UI.regtab=t[0];UI.err="";render();}},t[1]));
@@ -5424,6 +5629,8 @@ function renderRegistry(v){
   if(UI.regtab==="relations"&&!UI.regjson){ maskeMitJson(v,renderRelationEditor,null); return; }
   if(UI.regtab==="vars"&&!UI.regjson){ maskeMitJson(v,renderVarEditor,null); return; }
   if(UI.regtab==="settings"&&!UI.regjson){ maskeMitJson(v,renderSettingsEditor,null); return; }
+  /* Die Sicherung hat kein JSON daneben: sie *ist* das JSON. */
+  if(UI.regtab==="backup"){ renderBackupEditor(v); return; }
 
   if(UI.regtab==="views"&&!UI.regjson){
     v.appendChild(el("p",{class:"hint",
@@ -7296,7 +7503,8 @@ render();
     hat?claude.use("db").catch(function(){return null;}):null,
     hat?claude.use("user").catch(function(){return null;}):null,
     hat?claude.use("assets").catch(function(){return null;}):null,
-    hat?claude.use("room").catch(function(){return null;}):null
+    hat?claude.use("room").catch(function(){return null;}):null,
+    hat?claude.use("downloads").catch(function(){return null;}):null
   ]);
   db=erg[0];
   /* Nur Schreibberechtigte bekommen die Ablage; `null` heisst hier nicht
@@ -7319,6 +7527,7 @@ render();
   /* Der Raum ist die Zugabe, nicht die Grundlage: fehlt er, läuft alles
      weiter — nur ohne Anwesenheit und ohne Zeigen. */
   roomNS=erg[3];
+  downloadNS=erg[4];
   if(roomNS){
     try{
       roomNS.onPeers(function(liste){ UI.peers=liste||[]; render(); });
@@ -7340,6 +7549,7 @@ render();
 
   if(!db){
     ready=true;
+    loadFailed="no data store reachable.";
     UI.err="No data store reachable — nothing will be saved. "+
            "A full page reload usually helps.";
     render(); return;
@@ -7354,7 +7564,14 @@ render();
   function guarded(was,fn){
     return function(arg){
       try{ fn(arg); }
-      catch(x){ ready=true; UI.err=was+": "+((x&&x.message)||x); render(); }
+      catch(x){
+        /* Ein Ladevorgang, der hier hereinfällt, hat etwas nicht gelesen.
+           Von da an wird nicht mehr geschrieben (REQ-191): die alte App ist
+           genau daran gestorben, dass die nächste Selbstspeicherung den
+           unlesbaren Stand überschrieb. */
+        ready=true; loadFailed=was+" could not be read.";
+        UI.err=was+": "+((x&&x.message)||x); render();
+      }
     };
   }
 
@@ -7363,17 +7580,29 @@ render();
       arrived.register[part]=true;
       REG[part]=thawed(s.exists&&s.data())||REG[part]||{};
       render();
-    }),function(e){ UI.err="Registry: "+e.code; render(); });
+    }),function(e){ loadFailed="the registry part “"+part+"” failed ("+e.code+").";
+      UI.err="Registry: "+e.code; render(); });
   });
 
   db.collection("entities").limit(1000).onSnapshot(guarded("Artikel",function(snap){
     arrived.artikel=true;
     var neu=new Map();
+    var fremd="";
     (snap.docs||[]).forEach(function(d){
       var b=thawed(d.data())||{};
       if(!b.id) b.id=d.id;
+      /* Fremd heisst: seit dem letzten Schnappschuss geändert, und nicht
+         von uns. Der Speicher kennt keine Bedingung am Schreiben, also
+         lässt sich der zweite Schreiber nicht abweisen — erkennen und
+         hinschreiben lässt er sich schon, und das ist mehr, als eine
+         stille Überschreibung hinterlässt (REQ-192). */
+      var vorher=lastSeenAt[b.id];
+      if(vorher&&b.updatedAt&&b.updatedAt!==vorher&&b.updatedAt!==lastWroteAt[b.id]
+         &&UI.route.k==="art"&&UI.route.id===b.id) fremd=b.id;
+      lastSeenAt[b.id]=b.updatedAt||"";
       neu.set(b.id,b);
     });
+    foreignEdit=fremd;
     ENT=neu;
     ready=true;
     /* Erst mit den Artikeln steht fest, wen dieser Nutzer spielt — die
@@ -7381,7 +7610,8 @@ render();
     me.actor=actorForUser(me.id);
     UI.err="";   // eine frühere Wachmeldung ist mit den Daten erledigt
     render();
-  }),function(e){ UI.err="Articles: "+e.code; ready=true; render(); });
+  }),function(e){ loadFailed="the articles failed ("+e.code+").";
+    UI.err="Articles: "+e.code; ready=true; render(); });
 
   /* Kommt binnen zehn Sekunden nichts, sagt die Seite, was ausblieb —
      statt schweigend auf „Lädt…" zu stehen. */

@@ -1832,6 +1832,104 @@ async function seite(datei, warten) {
     pruefe('an article with notes and relations exists in the data', false, 'keiner gefunden');
   }
 
+  /* ---- Sicherung (REQ-029, 155, 191, 192) ----
+     Der Grund steht in der alten App: ein misslungener Ladevorgang wurde
+     von der nächsten Selbstspeicherung überschrieben, und der unlesbare
+     Stand war danach weg. Die Prüfung dafür muss den Fehler wirklich
+     auslösen — „es sieht richtig aus" hat damals auch gereicht. */
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].find((b) => /Data model/.test(b.textContent)).click());
+  await p.waitForTimeout(300);
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.tabs button')].find((b) => /^Backup$/.test(b.textContent)).click());
+  await p.waitForTimeout(400);
+  await p.evaluate(() => { window.__SAVED__.length = 0; });
+  await p.evaluate(() =>
+    [...document.querySelectorAll('#view .btn')].find((b) => /Download a backup/.test(b.textContent)).click());
+  await p.waitForTimeout(450);
+  const sicherung = await p.evaluate(() => {
+    const s2 = window.__SAVED__[0];
+    if (!s2) return null;
+    let d = null;
+    try { d = JSON.parse(s2.data); } catch (x) { return { parse: String(x) }; }
+    return {
+      name: s2.filename,
+      format: d.format,
+      teile: Object.keys(d.registry || {}),
+      artikel: (d.entities || []).length,
+      hier: window.__T__.ENT.size,
+    };
+  });
+  pruefe('a backup carries the registry and every article',
+    sicherung && sicherung.format === 'nebelwacht/1'
+    && sicherung.artikel === sicherung.hier
+    && sicherung.teile.length === 6 && /\.json$/.test(sicherung.name), sicherung);
+
+  /* Der Trockenlauf sagt, was passieren würde — eine Wiederherstellung ohne
+     Vorschau ist ein zweiter Datenverlust mit Anlauf. */
+  const trocken = await p.evaluate(() => {
+    const T = window.__T__;
+    const st = T.exportState();
+    st.entities.push({ id: 'x_probe', interfaces: ['Article'], name: 'Probe',
+      tags: [], components: { Name: { text: 'Probe' } }, relations: [] });
+    st.entities[0] = Object.assign({}, st.entities[0], { name: 'Anders' });
+    const weg = Object.assign({}, st, { entities: st.entities.slice(2) });
+    return {
+      gut: T.importReport(st),
+      fehlend: T.importReport(weg),
+      kaputt: T.importReport({ format: 'anders/1' }),
+      keinObjekt: T.importReport('nein'),
+    };
+  });
+  pruefe('the dry run counts new, changed and unchanged',
+    trocken.gut.ok && trocken.gut.neu === 1 && trocken.gut.geaendert === 1
+    && trocken.gut.gleich > 0, trocken.gut);
+  pruefe('the dry run says what a restore would remove',
+    trocken.fehlend.weg >= 2, trocken.fehlend);
+  pruefe('a file that is not a backup is refused with reasons',
+    !trocken.kaputt.ok && trocken.kaputt.fehler.length >= 2
+    && !trocken.keinObjekt.ok, trocken);
+
+  /* Fail-closed: nach einem kaputten Ladevorgang wird nicht geschrieben. */
+  const vorSchreib = await p.evaluate(() => window.__WROTE__.length);
+  await p.evaluate(() => window.__T__.breakLoad('the registry part “views” failed (test).'));
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
+  await p.waitForTimeout(250);
+  await p.evaluate(() => [...document.querySelectorAll('#view .row')][0].click());
+  await p.waitForTimeout(300);
+  await p.evaluate(() => { const h = document.querySelector('.arthead h2'); if (h) h.click(); });
+  await p.waitForTimeout(200);
+  await p.evaluate(() => {
+    const i = document.querySelector('.arthead input');
+    if (i) { i.value = 'Darf nicht gespeichert werden'; i.dispatchEvent(new Event('change', { bubbles: true })); }
+  });
+  await p.waitForTimeout(400);
+  const zu = await p.evaluate((v) => ({
+    geschrieben: window.__WROTE__.length - v,
+    banner: document.querySelector('#view .banner')?.textContent ?? '',
+  }), vorSchreib);
+  pruefe('after a failed load nothing is written any more',
+    zu.geschrieben === 0 && /Nothing is being saved/.test(zu.banner), zu);
+  /* Und die Sicherung geht trotzdem — gerade dann. */
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].find((b) => /Data model/.test(b.textContent)).click());
+  await p.waitForTimeout(300);
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.tabs button')].find((b) => /^Backup$/.test(b.textContent)).click());
+  await p.waitForTimeout(350);
+  await p.evaluate(() => { window.__SAVED__.length = 0; });
+  await p.evaluate(() =>
+    [...document.querySelectorAll('#view .btn')].find((b) => /Download a backup/.test(b.textContent)).click());
+  await p.waitForTimeout(450);
+  const trotzdem = await p.evaluate(() => window.__SAVED__.length);
+  pruefe('the backup still works while writing is closed', trotzdem === 1, trotzdem);
+  pruefe('the backup raised no exception', errs.length === 0, errs);
+
+  /* Der Prüflauf darf nicht mit geschlossenem Schreibweg weitergehen. */
+  await p.evaluate(() => window.__T__.breakLoad(''));
+  await p.waitForTimeout(200);
+
   pruefe('knowledge needed no browser modal', modale.length === 0, modale);
   pruefe('no exception through the knowledge panel', errs.length === 0, errs);
 

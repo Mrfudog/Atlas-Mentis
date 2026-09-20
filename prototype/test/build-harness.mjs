@@ -35,6 +35,7 @@ tiefKalt(window.__REG__); tiefKalt(window.__ENT__);
    jemand anderem — ohne das liesse sich nur prüfen, dass etwas rausgeht, und
    nicht, was ankommt. */
 window.__EMITS__ = [];
+window.__SAVED__ = [];
 window.__PRESENCE__ = [];
 window.__ROOM__ = { handlers: {}, peers: [],
   fire: function(topic, data){ (this.handlers[topic]||[]).forEach(function(h){ h({data:data}); }); },
@@ -42,6 +43,7 @@ window.__ROOM__ = { handlers: {}, peers: [],
 window.claude = { use: async function(n){
   if(n==='user') return { can: async function(){ return true; },
     isOwner: async function(){ return true; }, id: async function(){ return 'u_test'; } };
+  if(n==='downloads') return { save: async function(r){ window.__SAVED__.push(r); return {status:'saved'}; } };
   if(n==='room') return {
     emit: async function(t,d){ window.__EMITS__.push({t:t,d:d}); },
     on: function(t,h){ (window.__ROOM__.handlers[t]=window.__ROOM__.handlers[t]||[]).push(h);
@@ -86,7 +88,9 @@ window.claude = { use: async function(n){
    nichts und sagt nicht warum. Deshalb Zugriffsfunktionen statt Werte. */
 const GRIFF = `
 window.__T__={runImport:runImport,derivedValue:derivedValue,assetSrc:assetSrc,UI:UI,
-  LAYOUT_ELEMENTS:LAYOUT_ELEMENTS,rollDice:rollDice,go:go,rollTable:rollTable};
+  LAYOUT_ELEMENTS:LAYOUT_ELEMENTS,rollDice:rollDice,go:go,rollTable:rollTable,
+  exportState:exportState,importReport:importReport,
+  breakLoad:function(t){ loadFailed=t||'the articles failed (test).'; }};
 Object.defineProperty(window.__T__,'REG',{get:function(){return REG;}});
 Object.defineProperty(window.__T__,'ENT',{get:function(){return ENT;}});
 `;
