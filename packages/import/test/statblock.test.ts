@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { importStatbloecke, normaliseMinus, parseStatblock } from '../src/statblock.js';
+import { importStatblocks, normaliseMinus, parseStatblock } from '../src/statblock.js';
 
 const DIR = join(import.meta.dirname, 'fixtures', 'statblock');
 const read = (file: string) => ({ name: file, text: readFileSync(join(DIR, file), 'utf8') });
@@ -20,17 +20,17 @@ describe('normaliseMinus', () => {
 
 describe('parseStatblock', () => {
   it('splits grösse into size and creature type', () => {
-    expect(info('Ankheg Drone.md')['groesse']).toBe('Klein');
-    expect(info('Ankheg Drone.md')['art']).toBe('Ankheg');
-    expect(info('Grimmhauer.md')['groesse']).toBe('Gross');
-    expect(info('Grimmhauer.md')['art']).toBe('Monstrosität');
+    expect(info('Ankheg Drone.md')['size']).toBe('Klein');
+    expect(info('Ankheg Drone.md')['kind']).toBe('Ankheg');
+    expect(info('Grimmhauer.md')['size']).toBe('Gross');
+    expect(info('Grimmhauer.md')['kind']).toBe('Monstrosität');
   });
 
   it('splits the armour class from its parenthetical source', () => {
     expect(info('Ankheg Drone.md')['ac']).toBe(12);
-    expect(info('Ankheg Drone.md')['acNotiz']).toBe('Natürlicher Panzer');
+    expect(info('Ankheg Drone.md')['acNote']).toBe('Natürlicher Panzer');
     expect(info('Grimmhauer.md')['ac']).toBe(13);
-    expect(info('Grimmhauer.md')['acNotiz']).toBeUndefined();
+    expect(info('Grimmhauer.md')['acNote']).toBeUndefined();
   });
 
   it('keeps a fractional challenge rating as a string', () => {
@@ -55,19 +55,19 @@ describe('parseStatblock', () => {
     // `**Geschwindigkeit:**` carries a colon where no other label does.
     const grimm = info('Grimmhauer.md');
     expect(grimm['prof']).toBe(2);
-    expect(grimm['rettungswuerfe']).toBe('STR +6');
-    expect(grimm['fertigkeiten']).toBe('Wahrnehmung +3');
-    expect(grimm['sinne']).toContain('Dunkelsicht');
+    expect(grimm['saves']).toBe('STR +6');
+    expect(grimm['skills']).toBe('Wahrnehmung +3');
+    expect(grimm['senses']).toContain('Dunkelsicht');
   });
 
   it('treats an em dash as absent rather than as a value', () => {
     const grimm = info('Grimmhauer.md');
-    expect(grimm['resistenzen']).toBeUndefined();
-    expect(grimm['sprachen']).toBeUndefined();
+    expect(grimm['resistances']).toBeUndefined();
+    expect(grimm['languages']).toBeUndefined();
 
     const drone = info('Ankheg Drone.md');
-    expect(drone['resistenzen']).toBe('Bludgeoning, Fire');
-    expect(drone['immunitaeten']).toBe('Acid');
+    expect(drone['resistances']).toBe('Bludgeoning, Fire');
+    expect(drone['immunities']).toBe('Acid');
   });
 
   it('keeps entry text that wraps across lines', () => {
@@ -106,9 +106,9 @@ describe('parseStatblock', () => {
   });
 });
 
-describe('importStatbloecke', () => {
+describe('importStatblocks', () => {
   it('pools every entry as its own rule and references it', () => {
-    const report = importStatbloecke(files.map(read));
+    const report = importStatblocks(files.map(read));
     expect(report.entities).toHaveLength(files.length);
     expect(report.rules.length).toBeGreaterThan(0);
 
@@ -122,7 +122,7 @@ describe('importStatbloecke', () => {
 
   it('shares one rule between statblocks that carry the same entry', () => {
     const twice = [read(files[0] as string), { name: 'Kopie.md', text: read(files[0] as string).text }];
-    const report = importStatbloecke(twice);
+    const report = importStatblocks(twice);
     const ids = report.entities.flatMap((e) =>
       (e.relations ?? []).filter((r) => r.type === 'composedOf').map((r) => r.to),
     );
@@ -131,7 +131,7 @@ describe('importStatbloecke', () => {
   });
 
   it('classifies the section as the rule kind', () => {
-    const report = importStatbloecke([read('Ankheg Drone.md')]);
+    const report = importStatblocks([read('Ankheg Drone.md')]);
     const kinds = report.rules.map((r) => (r.components['RuleInfo'] as Record<string, unknown>)['kind']);
     expect(kinds).toContain('trait');
     expect(kinds).toContain('action');
@@ -139,7 +139,7 @@ describe('importStatbloecke', () => {
   });
 
   it('reports an unresolved creature link instead of dropping it', () => {
-    const report = importStatbloecke([read('Grimmhauer.md')]);
+    const report = importStatblocks([read('Grimmhauer.md')]);
     expect(report.unresolved).toEqual([{ from: 'Grimmhauer', target: 'Grimmhauer' }]);
   });
 
@@ -147,9 +147,9 @@ describe('importStatbloecke', () => {
     // The vault names creature and statblock alike — `Grimmhauer` is both,
     // which is the D4 split working as intended. Matching by name across
     // everything would make the statblock its own creature.
-    const report = importStatbloecke([read('Grimmhauer.md')]);
+    const report = importStatblocks([read('Grimmhauer.md')]);
     const statblock = report.entities[0];
-    expect(statblock?.relations?.some((r) => r.type === 'gehoertZu' && r.to === statblock.id))
+    expect(statblock?.relations?.some((r) => r.type === 'belongsTo' && r.to === statblock.id))
       .toBe(false);
   });
 
@@ -161,10 +161,10 @@ describe('importStatbloecke', () => {
       tags: [],
       components: { Name: { text: 'Grimmhauer' } },
     };
-    const report = importStatbloecke([read('Grimmhauer.md')], [creature]);
+    const report = importStatblocks([read('Grimmhauer.md')], [creature]);
     expect(report.unresolved).toEqual([]);
     expect(report.entities[0]?.relations).toContainEqual(
-      expect.objectContaining({ type: 'gehoertZu', to: 'npc_grimmhauer' }),
+      expect.objectContaining({ type: 'belongsTo', to: 'npc_grimmhauer' }),
     );
   });
 });

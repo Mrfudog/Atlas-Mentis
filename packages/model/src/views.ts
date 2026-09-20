@@ -1,23 +1,28 @@
 /**
- * View resolution — which fields and blocks a Darstellungsstufe shows.
+ * View resolution — which fields and blocks a view shows, and in which order.
  *
  * A projection defines what *can* be read; a ViewDef defines what *is* shown,
  * and it can only ever narrow. Field selection is per property, so a combat
  * view takes `StatblockInfo.ac` without dragging in the whole component.
+ *
+ * A view also carries an ordered `layout`; `layoutFor` resolves it, falling
+ * back to the flags for views written before layouts existed. Converting on
+ * read rather than migrating means both forms can sit side by side while the
+ * registry is edited.
  */
 
 import type { ComponentDef, ObjectSchema, Registry, ViewDef } from './types.js';
 
 export const FALLBACK_VIEW: ViewDef = {
-  label: 'Voll',
+  label: 'Full',
   order: 1,
-  felder: 'alle',
-  bloecke: 'alle',
-  beschreibung: true,
-  bausteine: true,
-  bezuege: true,
-  bindungen: true,
-  bild: true,
+  fields: 'all',
+  blocks: 'all',
+  description: true,
+  composed: true,
+  relations: true,
+  bindings: true,
+  image: true,
 };
 
 /** View keys in display order; `order` first, then the key itself. */
@@ -38,14 +43,14 @@ export function resolveView(registry: Pick<Registry, 'views'>, key: string | und
 
 /**
  * Does this view show `component.property`?
- * A bare component name in `felder` takes all of its properties;
- * `Komponente.feld` takes exactly one.
+ * A bare component name in `fields` takes all of its properties;
+ * `Component.field` takes exactly one.
  */
 export function showField(view: ViewDef, component: string, property: string): boolean {
-  if (view.felder === 'alle') return true;
-  if (view.felder === 'keine' || !view.felder) return false;
-  if (!Array.isArray(view.felder)) return false;
-  return view.felder.includes(component) || view.felder.includes(`${component}.${property}`);
+  if (view.fields === 'all') return true;
+  if (view.fields === 'none' || !view.fields) return false;
+  if (!Array.isArray(view.fields)) return false;
+  return view.fields.includes(component) || view.fields.includes(`${component}.${property}`);
 }
 
 /** True when at least one of the component's properties survives the view. */
@@ -54,8 +59,8 @@ export function componentVisible(view: ViewDef, component: string, schema: Objec
 }
 
 export function showBlock(view: ViewDef, blockType: string): boolean {
-  if (view.bloecke === 'alle') return true;
-  return Array.isArray(view.bloecke) && view.bloecke.includes(blockType);
+  if (view.blocks === 'all') return true;
+  return Array.isArray(view.blocks) && view.blocks.includes(blockType);
 }
 
 /**

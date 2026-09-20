@@ -8,7 +8,8 @@
 
 import type { Pool } from 'pg';
 import type { Entity, Registry, Relation } from '@nw/model';
-import type { Repository } from './repo.js';
+import type { Repository, SessionRow, StoredUser } from './repo.js';
+import type { Invite, User } from './auth.js';
 
 type Row = Record<string, unknown>;
 
@@ -235,5 +236,260 @@ export class PgRepository implements Repository {
       'insert into event_log(id,name,subject,payload) values (gen_random_uuid(),$1,$2,$3)',
       [name, subject ?? null, JSON.stringify(payload ?? {})],
     );
+  }
+
+  // ------------------------------------------------------------- Zugang
+
+  /* Die Figuren kommen aus der Verbundtabelle und werden hier
+     hineingelegt. `array_agg` liefert `{null}` für ein Konto ohne Figur —
+     das eine Element ist dann null und kein Name. */
+  private static toUser(row: Row): StoredUser {
+    const raw = (row['actor_ids'] as (string | null)[] | null) ?? [];
+    return {
+      id: String(row['id']),
+      name: String(row['name']),
+      passwordHash: String(row['password_hash']),
+      isGm: row['is_gm'] === true,
+      actorIds: raw.filter((x): x is string => typeof x === 'string' && x.length > 0),
+      disabledAt: row['disabled_at'] ? new Date(row['disabled_at'] as string).toISOString() : undefined,
+    };
+  }
+
+  /** Ein Konto samt seinen Figuren. Als eigener Ausdruck, damit die vier
+   *  Stellen, die Konten lesen, nicht viermal dasselbe `left join`
+   *  schreiben — und dann eine davon anders. */
+  private static readonly USER_SELECT = `
+    select u.*, array_agg(a.actor_id order by a.added_at) as actor_ids
+      from app_user u
+      left join app_user_actor a on a.user_id = u.id`;
+
+  private static toInvite(row: Row): Invite {
+    return {
+      codeHash: String(row['code_hash']),
+      label: (row['label'] as string | null) ?? undefined,
+      isGm: row['is_gm'] === true,
+      actorId: (row['actor_id'] as string | null) ?? undefined,
+      usesLeft: row['uses_left'] == null ? undefined : Number(row['uses_left']),
+      expiresAt: row['expires_at'] ? new Date(row['expires_at'] as string).toISOString() : undefined,
+      createdBy: (row['created_by'] as string | null) ?? undefined,
+    };
+  }
+
+  async countUsers(): Promise<number> {
+    const { rows } = await this.pool.query<Row>('select count(*)::int as n from app_user');
+    return Number(rows[0]?.['n'] ?? 0);
+  }
+
+  async findUserByName(nameFold: string): Promise<StoredUser | undefined> {
+    const { rows } = await this.pool.query<Row>(
+      `${PgRepository.USER_SELECT} where u.name_fold = $1 group by u.id`,
+      [nameFold],
+    );
+    return rows[0] ? PgRepository.toUser(rows[0]) : undefined;
+  }
+
+  async getUser(id: string): Promise<StoredUser | undefined> {
+    const { rows } = await this.pool.query<Row>(
+      `${PgRepository.USER_SELECT} where u.id = $1 group by u.id`,
+      [id],
+    );
+    return rows[0] ? PgRepository.toUser(rows[0]) : undefined;
+  }
+
+  async listUsers(): Promise<User[]> {
+    const { rows } = await this.pool.query<Row>(
+      `${PgRepository.USER_SELECT} group by u.id order by u.name`,
+    );
+    return rows.map((r) => {
+      const { passwordHash: _hash, ...rest } = PgRepository.toUser(r);
+      return rest;
+    });
+  }
+
+  async usersOfActor(actorId: string): Promise<User[]> {
+    const { rows } = await this.pool.query<Row>(
+      `${PgRepository.USER_SELECT}
+        where u.id in (select user_id from app_user_actor where actor_id = $1)
+        group by u.id order by u.name`,
+      [actorId],
+    );
+    return rows.map((r) => {
+      const { passwordHash: _hash, ...rest } = PgRepository.toUser(r);
+      return rest;
+    });
+  }
+
+  /* Konto und Figuren gehen zusammen hinein. In einer Transaktion, weil
+     ein Konto ohne seine Figuren ein Spieler ohne Blatt ist — und wer das
+     nach einem halben Schreiben sieht, meldet einen Fehler, den es nicht
+     gibt. */
+  async putUser(user: StoredUser): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('begin');
+      await client.query(
+        `insert into app_user(id,name,name_fold,password_hash,is_gm,disabled_at,updated_at)
+         values ($1,$2,$3,$4,$5,$6,now())
+         on conflict (id) do update set
+           name = excluded.name, name_fold = excluded.name_fold,
+           password_hash = excluded.password_hash, is_gm = excluded.is_gm,
+           disabled_at = excluded.disabled_at, updated_at = now()`,
+        [
+          user.id,
+          user.name,
+          user.name.trim().toLocaleLowerCase('de'),
+          user.passwordHash,
+          user.isGm,
+          user.disabledAt ?? null,
+        ],
+      );
+      const ids = [...new Set(user.actorIds ?? [])];
+      /* Abziehen, was nicht mehr dasteht, und dazulegen, was fehlt — statt
+         alles zu löschen und neu zu schreiben. Sonst verlöre jede Bindung
+         bei jedem Passwortwechsel ihr `added_at`. */
+      await client.query(
+        `delete from app_user_actor where user_id = $1 and actor_id <> all($2::text[])`,
+        [user.id, ids],
+      );
+      if (ids.length) {
+        await client.query(
+          `insert into app_user_actor(user_id, actor_id)
+             select $1, unnest($2::text[]) on conflict do nothing`,
+          [user.id, ids],
+        );
+      }
+      await client.query('commit');
+    } catch (err) {
+      await client.query('rollback');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  // ---------------------------------------------------------- Einladungen
+
+  async putInvite(invite: Invite): Promise<void> {
+    await this.pool.query(
+      `insert into app_invite(code_hash,label,is_gm,actor_id,uses_left,expires_at,created_by)
+       values ($1,$2,$3,$4,$5,$6,$7)
+       on conflict (code_hash) do update set
+         label = excluded.label, is_gm = excluded.is_gm, actor_id = excluded.actor_id,
+         uses_left = excluded.uses_left, expires_at = excluded.expires_at`,
+      [
+        invite.codeHash,
+        invite.label ?? null,
+        invite.isGm,
+        invite.actorId ?? null,
+        invite.usesLeft ?? null,
+        invite.expiresAt ?? null,
+        invite.createdBy ?? null,
+      ],
+    );
+  }
+
+  async getInvite(codeHash: string): Promise<Invite | undefined> {
+    const { rows } = await this.pool.query<Row>('select * from app_invite where code_hash = $1', [
+      codeHash,
+    ]);
+    return rows[0] ? PgRepository.toInvite(rows[0]) : undefined;
+  }
+
+  async listInvites(): Promise<Invite[]> {
+    const { rows } = await this.pool.query<Row>('select * from app_invite order by created_at desc');
+    return rows.map((r) => PgRepository.toInvite(r));
+  }
+
+  async dropInvite(codeHash: string): Promise<boolean> {
+    const { rowCount } = await this.pool.query('delete from app_invite where code_hash = $1', [
+      codeHash,
+    ]);
+    return (rowCount ?? 0) > 0;
+  }
+
+  /* Abziehen und zurückgeben in **einem** Schritt. Zwei Leute öffnen
+     denselben Link gleichzeitig; wer erst liest, dann prüft und dann
+     schreibt, lässt beide durch. Die Bedingung steht deshalb im `update`
+     und nicht davor. */
+  async useInvite(codeHash: string, now: string): Promise<Invite | undefined> {
+    const { rows } = await this.pool.query<Row>(
+      `update app_invite
+          set uses_left = case when uses_left is null then null else uses_left - 1 end
+        where code_hash = $1
+          and (expires_at is null or expires_at > $2)
+          and (uses_left is null or uses_left > 0)
+        returning *`,
+      [codeHash, now],
+    );
+    if (!rows[0]) return undefined;
+    const invite = PgRepository.toInvite(rows[0]);
+    /* Aufgebraucht heisst weg. Eine Einladung mit null Gebrauchen wäre eine
+       Zeile, die nur noch erklärt, warum sie nicht mehr geht. */
+    if (invite.usesLeft != null && invite.usesLeft <= 0) await this.dropInvite(codeHash);
+    return invite;
+  }
+
+  async createSession(row: SessionRow & { agent?: string | undefined }): Promise<void> {
+    await this.pool.query(
+      `insert into app_session(token_hash,user_id,expires_at,agent) values ($1,$2,$3,$4)
+       on conflict (token_hash) do nothing`,
+      [row.tokenHash, row.userId, row.expiresAt, row.agent ?? null],
+    );
+  }
+
+  async touchSession(tokenHash: string, until: string): Promise<StoredUser | undefined> {
+    /* Nachschieben und lesen in einem Schritt: zwei Abfragen liessen ein
+       Zeitfenster, in dem eine gerade abgemeldete Sitzung noch gilt. */
+    const { rows } = await this.pool.query<Row>(
+      `update app_session set seen_at = now(), expires_at = $2
+         where token_hash = $1 and expires_at > now()
+       returning user_id`,
+      [tokenHash, until],
+    );
+    const userId = rows[0]?.['user_id'];
+    if (!userId) {
+      await this.pool.query('delete from app_session where token_hash = $1 and expires_at <= now()', [
+        tokenHash,
+      ]);
+      return undefined;
+    }
+    return this.getUser(String(userId));
+  }
+
+  async dropSession(tokenHash: string): Promise<void> {
+    await this.pool.query('delete from app_session where token_hash = $1', [tokenHash]);
+  }
+
+  async dropSessionsOf(userId: string): Promise<number> {
+    const { rowCount } = await this.pool.query('delete from app_session where user_id = $1', [
+      userId,
+    ]);
+    return rowCount ?? 0;
+  }
+
+  async countAttempts(nameFold: string, origin: string, since: string): Promise<number> {
+    const { rows } = await this.pool.query<Row>(
+      `select count(*)::int as n from login_attempt
+         where name_fold = $1 and origin = $2 and at >= $3`,
+      [nameFold, origin, since],
+    );
+    return Number(rows[0]?.['n'] ?? 0);
+  }
+
+  async noteAttempt(nameFold: string, origin: string): Promise<void> {
+    await this.pool.query('insert into login_attempt(name_fold,origin) values ($1,$2)', [
+      nameFold,
+      origin,
+    ]);
+    /* Alte Versuche wegräumen, damit die Tabelle nicht das Einzige ist, was
+       in dieser Datenbank unbegrenzt wächst. */
+    await this.pool.query("delete from login_attempt where at < now() - interval '1 day'");
+  }
+
+  async clearAttempts(nameFold: string, origin: string): Promise<void> {
+    await this.pool.query('delete from login_attempt where name_fold = $1 and origin = $2', [
+      nameFold,
+      origin,
+    ]);
   }
 }

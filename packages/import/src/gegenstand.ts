@@ -21,15 +21,15 @@ import { keys, list, num, parseFrontmatter, str } from './frontmatter.js';
 
 /** `Gegenstandstyp` → the interface the article claims. */
 const INTERFACE_BY_TYPE: Record<string, string> = {
-  waffe: 'Waffe',
-  ausrüstung: 'Ruestung',
-  ausruestung: 'Ruestung',
-  rüstung: 'Ruestung',
+  waffe: 'Weapon',
+  ausrüstung: 'Armor',
+  ausruestung: 'Armor',
+  rüstung: 'Armor',
   material: 'Material',
-  verbrauchsgut: 'Verbrauchsgut',
-  werkzeug: 'Gegenstand',
-  wundersam: 'Gegenstand',
-  sonstiges: 'Gegenstand',
+  verbrauchsgut: 'Consumable',
+  werkzeug: 'Item',
+  wundersam: 'Item',
+  sonstiges: 'Item',
 };
 
 /** Keys the importer places itself; everything else is reported as unplaced. */
@@ -85,16 +85,16 @@ function newId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}${counter.toString(36)}`;
 }
 
-export function parseGegenstand(text: string, filename: string): ImportedItem {
+export function parseItem(text: string, filename: string): ImportedItem {
   const fm = parseFrontmatter(text);
   const name = filename.replace(/\.md$/i, '').trim();
 
-  const typ = str(fm, 'Gegenstandstyp').toLowerCase();
-  const iface = INTERFACE_BY_TYPE[typ] ?? 'Gegenstand';
+  const vaultType = str(fm, 'Gegenstandstyp').toLowerCase();
+  const iface = INTERFACE_BY_TYPE[vaultType] ?? 'Item';
 
   const body = stripDataview(fm.body);
 
-  // Image embeds lead the body in this vault; they become the Bild component.
+  // Image embeds lead the body in this vault; they become the Image component.
   const images: string[] = [];
   for (const m of body.matchAll(/!\[\[([^\]|#]+\.(?:png|jpe?g|webp|gif))(?:\|[^\]]*)?\]\]/gi)) {
     if (m[1]) images.push(m[1].trim());
@@ -103,7 +103,7 @@ export function parseGegenstand(text: string, filename: string): ImportedItem {
   const pending: { relation: string; target: string }[] = [];
   for (const raw of list(fm, 'Eigenschaften')) {
     const target = linkTarget(raw);
-    if (target) pending.push({ relation: 'hatEigenschaft', target });
+    if (target) pending.push({ relation: 'hasProperty', target });
   }
 
   const components: Entity['components'] = {
@@ -114,47 +114,47 @@ export function parseGegenstand(text: string, filename: string): ImportedItem {
   };
 
   const itemInfo: Record<string, unknown> = {};
-  const gegenstandstyp = str(fm, 'Gegenstandstyp');
-  if (gegenstandstyp) itemInfo['gegenstandstyp'] = gegenstandstyp;
+  const itemType = str(fm, 'Gegenstandstyp');
+  if (itemType) itemInfo['itemType'] = itemType;
   // `-` is the vault's way of saying "not a magic item", which is not a rarity.
-  const raritaet = str(fm, 'Rarität');
-  if (raritaet && raritaet !== '-') itemInfo['raritaet'] = raritaet;
-  const kauf = str(fm, 'Kaufrarität');
-  if (kauf && kauf !== '-') itemInfo['kaufraritaet'] = kauf;
-  const kupfer = num(fm, 'Kupferpreis');
-  if (kupfer !== undefined) itemInfo['kupferpreis'] = kupfer;
-  const stapel = num(fm, 'Stapelgrösse');
-  if (stapel !== undefined) itemInfo['stapel'] = stapel;
+  const rarity = str(fm, 'Rarität');
+  if (rarity && rarity !== '-') itemInfo['rarity'] = rarity;
+  const availability = str(fm, 'Kaufrarität');
+  if (availability && availability !== '-') itemInfo['availability'] = availability;
+  const copperPrice = num(fm, 'Kupferpreis');
+  if (copperPrice !== undefined) itemInfo['copperPrice'] = copperPrice;
+  const stackSize = num(fm, 'Stapelgrösse');
+  if (stackSize !== undefined) itemInfo['stackSize'] = stackSize;
   if (Object.keys(itemInfo).length) components['ItemInfo'] = itemInfo;
 
   const rows = list(fm, 'Formfaktor');
-  if (rows.length) components['Formfaktor'] = { rows };
+  if (rows.length) components['Footprint'] = { rows };
 
-  if (iface === 'Waffe') {
-    const waffe: Record<string, unknown> = {};
-    if (str(fm, 'Schaden')) waffe['schaden'] = str(fm, 'Schaden');
-    if (str(fm, 'Schadenstyp')) waffe['schadenstyp'] = str(fm, 'Schadenstyp');
-    if (str(fm, 'Reichweite')) waffe['reichweite'] = str(fm, 'Reichweite');
-    if (Object.keys(waffe).length) components['WaffenInfo'] = waffe;
+  if (iface === 'Weapon') {
+    const weapon: Record<string, unknown> = {};
+    if (str(fm, 'Schaden')) weapon['damage'] = str(fm, 'Schaden');
+    if (str(fm, 'Schadenstyp')) weapon['damageType'] = str(fm, 'Schadenstyp');
+    if (str(fm, 'Reichweite')) weapon['range'] = str(fm, 'Reichweite');
+    if (Object.keys(weapon).length) components['WeaponInfo'] = weapon;
   }
 
-  if (iface === 'Ruestung') {
-    const ruestung: Record<string, unknown> = {};
-    const rk = num(fm, 'rüstungsklasse');
-    if (rk !== undefined) ruestung['rk'] = rk;
-    if (str(fm, 'rüstungstyp')) ruestung['ruestungstyp'] = str(fm, 'rüstungstyp');
-    if (Object.keys(ruestung).length) components['RuestungsInfo'] = ruestung;
+  if (iface === 'Armor') {
+    const armor: Record<string, unknown> = {};
+    const ac = num(fm, 'rüstungsklasse');
+    if (ac !== undefined) armor['ac'] = ac;
+    if (str(fm, 'rüstungstyp')) armor['armorType'] = str(fm, 'rüstungstyp');
+    if (Object.keys(armor).length) components['ArmorInfo'] = armor;
   }
 
   if (iface === 'Material') {
     const material: Record<string, unknown> = {};
-    if (str(fm, 'Materialtyp')) material['materialtyp'] = str(fm, 'Materialtyp');
-    const berufe = list(fm, 'Berufe');
-    if (berufe.length) material['berufe'] = berufe;
+    if (str(fm, 'Materialtyp')) material['materialType'] = str(fm, 'Materialtyp');
+    const trades = list(fm, 'Berufe');
+    if (trades.length) material['trades'] = trades;
     if (Object.keys(material).length) components['MaterialInfo'] = material;
   }
 
-  if (images[0]) components['Bild'] = { url: images[0], bu: '' };
+  if (images[0]) components['Image'] = { url: images[0], caption: '' };
 
   // Prose that is neither the image embed nor the Dataview block.
   const prose = body
@@ -207,11 +207,11 @@ export interface ImportReport {
  * is reported rather than dropped — with dead links being creatable in the
  * editor, an unresolved reference is a to-do, not a failure.
  */
-export function importGegenstaende(
+export function importItems(
   files: { name: string; text: string }[],
   existing: Entity[] = [],
 ): ImportReport {
-  const parsed = files.map((f) => parseGegenstand(f.text, f.name));
+  const parsed = files.map((f) => parseItem(f.text, f.name));
   const entities = parsed.map((p) => p.entity);
 
   const byName = new Map<string, string>();

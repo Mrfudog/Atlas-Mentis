@@ -11,3 +11,4 @@ daten
 # Prototyp-Prüfaufbau: echte Kampagnendaten, gehören nicht ins öffentliche Repo
 prototype/test/dbdump/
 prototype/test/harness/
+prototype/test/showcase/

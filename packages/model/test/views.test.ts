@@ -24,69 +24,69 @@ const statblockInfo: ComponentDef = {
   },
 };
 
-const kampf: ViewDef = {
-  label: 'Kampf',
+const combat: ViewDef = {
+  label: 'Combat',
   order: 3,
-  felder: ['StatblockInfo.ac', 'StatblockInfo.tp'],
-  bloecke: ['tactics'],
+  fields: ['StatblockInfo.ac', 'StatblockInfo.tp'],
+  blocks: ['tactics'],
 };
 
 describe('showField', () => {
   it('takes a single field when named with a dot', () => {
-    expect(showField(kampf, 'StatblockInfo', 'ac')).toBe(true);
-    expect(showField(kampf, 'StatblockInfo', 'str')).toBe(false);
+    expect(showField(combat, 'StatblockInfo', 'ac')).toBe(true);
+    expect(showField(combat, 'StatblockInfo', 'str')).toBe(false);
   });
 
   it('takes every field when the bare component is named', () => {
-    const werte: ViewDef = { label: 'Werte', felder: ['StatblockInfo'], bloecke: [] };
-    expect(showField(werte, 'StatblockInfo', 'ac')).toBe(true);
-    expect(showField(werte, 'StatblockInfo', 'str')).toBe(true);
-    expect(showField(werte, 'CreatureInfo', 'rolle')).toBe(false);
+    const stats: ViewDef = { label: 'Werte', fields: ['StatblockInfo'], blocks: [] };
+    expect(showField(stats, 'StatblockInfo', 'ac')).toBe(true);
+    expect(showField(stats, 'StatblockInfo', 'str')).toBe(true);
+    expect(showField(stats, 'CreatureInfo', 'rolle')).toBe(false);
   });
 
   it('honours the two keywords', () => {
-    expect(showField({ label: 'A', felder: 'alle', bloecke: 'alle' }, 'X', 'y')).toBe(true);
-    expect(showField({ label: 'B', felder: 'keine', bloecke: 'alle' }, 'X', 'y')).toBe(false);
+    expect(showField({ label: 'A', fields: 'all', blocks: 'all' }, 'X', 'y')).toBe(true);
+    expect(showField({ label: 'B', fields: 'none', blocks: 'all' }, 'X', 'y')).toBe(false);
   });
 });
 
 describe('componentVisible', () => {
   it('is false when no property of the component survives', () => {
-    const bild: ViewDef = { label: 'Bild', felder: 'keine', bloecke: [] };
-    expect(componentVisible(kampf, 'StatblockInfo', statblockInfo.schema)).toBe(true);
-    expect(componentVisible(bild, 'StatblockInfo', statblockInfo.schema)).toBe(false);
+    const image: ViewDef = { label: 'Image', fields: 'none', blocks: [] };
+    expect(componentVisible(combat, 'StatblockInfo', statblockInfo.schema)).toBe(true);
+    expect(componentVisible(image, 'StatblockInfo', statblockInfo.schema)).toBe(false);
   });
 });
 
 describe('showBlock', () => {
   it('filters by block type', () => {
-    expect(showBlock(kampf, 'tactics')).toBe(true);
-    expect(showBlock(kampf, 'secret')).toBe(false);
+    expect(showBlock(combat, 'tactics')).toBe(true);
+    expect(showBlock(combat, 'secret')).toBe(false);
   });
 
   it('a player view must not leak secrets', () => {
-    const spieler: ViewDef = {
-      label: 'Spieler',
-      felder: 'keine',
-      bloecke: ['paragraph', 'readaloud', 'lore'],
+    const player: ViewDef = {
+      label: 'Player',
+      fields: 'none',
+      blocks: ['paragraph', 'readaloud', 'lore'],
     };
-    expect(showBlock(spieler, 'secret')).toBe(false);
-    expect(showBlock(spieler, 'readaloud')).toBe(true);
+    expect(showBlock(player, 'secret')).toBe(false);
+    expect(showBlock(player, 'readaloud')).toBe(true);
   });
 });
 
 describe('attachedDerived', () => {
   it('rides a derived value in its base field unless the view names it', () => {
-    const voll: ViewDef = { label: 'Voll', felder: 'alle', bloecke: 'alle' };
-    // felder: 'alle' shows strMod in its own right, so nothing is attached.
-    expect(attachedDerived(voll, 'StatblockInfo', statblockInfo)).toEqual({});
+    const full: ViewDef = { label: 'Full', fields: 'all', blocks: 'all' };
+    // fields: 'all' shows strMod in its own right, so nothing is attached.
+    expect(attachedDerived(full, 'StatblockInfo', statblockInfo)).toEqual({});
 
-    const nurStr: ViewDef = { label: 'X', felder: ['StatblockInfo.str'], bloecke: [] };
+    const nurStr: ViewDef = { label: 'X', fields: ['StatblockInfo.str'], blocks: [] };
     expect(attachedDerived(nurStr, 'StatblockInfo', statblockInfo)).toEqual({ str: ['strMod'] });
   });
 
   it('never attaches a derived value that has no base field', () => {
-    const nurInit: ViewDef = { label: 'X', felder: ['StatblockInfo.initiative'], bloecke: [] };
+    const nurInit: ViewDef = { label: 'X', fields: ['StatblockInfo.initiative'], blocks: [] };
     expect(attachedDerived(nurInit, 'StatblockInfo', statblockInfo)).toEqual({});
   });
 });
@@ -94,18 +94,18 @@ describe('attachedDerived', () => {
 describe('view ordering', () => {
   const registry: Pick<Registry, 'views'> = {
     views: {
-      voll: { label: 'Voll', order: 2, felder: 'alle', bloecke: 'alle' },
-      schnell: { label: 'Schnell', order: 1, felder: 'keine', bloecke: ['paragraph'] },
-      kampf,
+      full: { label: 'Full', order: 2, fields: 'all', blocks: 'all' },
+      quick: { label: 'Quick', order: 1, fields: 'none', blocks: ['paragraph'] },
+      combat,
     },
   };
 
   it('sorts by order', () => {
-    expect(viewKeys(registry)).toEqual(['schnell', 'voll', 'kampf']);
+    expect(viewKeys(registry)).toEqual(['quick', 'full', 'combat']);
   });
 
   it('falls back to the first view for an unknown key', () => {
-    expect(resolveView(registry, 'gibtsnicht').label).toBe('Schnell');
-    expect(resolveView({ views: {} }, 'egal').label).toBe('Voll');
+    expect(resolveView(registry, 'gibtsnicht').label).toBe('Quick');
+    expect(resolveView({ views: {} }, 'egal').label).toBe('Full');
   });
 });

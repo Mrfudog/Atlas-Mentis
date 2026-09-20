@@ -1,1 +1,45 @@
-/* You can add global styles to this file, and also import other style files */
+/* Ruhige Farben, weil die Seite am Tisch neben Kerzenlicht und Würfeln
+   steht und nicht um Aufmerksamkeit konkurrieren soll. Helles und dunkles
+   Schema, beides über dieselben Marken. */
+:root {
+  --bg: #fbfaf7;
+  --surface: #ffffff;
+  --line: #ddd8cc;
+  --line2: #eeeae2;
+  --ink: #23201b;
+  --dim: #7b756a;
+  --accent: #6b5e9c;
+  --link: #3d5a80;
+  --warn: #a8441f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #14161a;
+    --surface: #1b1e24;
+    --line: #2e333c;
+    --line2: #23272e;
+    --ink: #e6e3d8;
+    --dim: #8e8879;
+    --accent: #a094d6;
+    --link: #8ab0d8;
+    --warn: #d98a63;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+a {
+  color: var(--link);
+}

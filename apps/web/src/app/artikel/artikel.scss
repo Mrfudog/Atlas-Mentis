@@ -1,0 +1,223 @@
+.kopf {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+h2 {
+  font-size: 1.2rem;
+  margin: 0;
+}
+h3 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+  margin: 1.5rem 0 0.5rem;
+}
+.art {
+  font-size: 0.75rem;
+  color: var(--dim);
+}
+select,
+input[type='search'] {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+}
+input[type='search'] {
+  flex: 1;
+}
+.zahl {
+  font-size: 0.75rem;
+  color: var(--dim);
+  white-space: nowrap;
+}
+.beschreibung {
+  margin: 0 0 1rem;
+  line-height: 1.55;
+}
+.felder {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  font-size: 0.9rem;
+  margin: 0 0 1rem;
+}
+.felder dt {
+  color: var(--dim);
+}
+.felder dd {
+  margin: 0;
+}
+.block {
+  border-left: 2px solid var(--line);
+  padding: 0.25rem 0 0.25rem 0.75rem;
+  margin: 0.75rem 0;
+}
+.block .bl {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+}
+.block p {
+  margin: 0.25rem 0 0;
+  line-height: 1.55;
+}
+.block.readaloud {
+  border-left-color: var(--accent);
+  font-style: italic;
+}
+.block.secret,
+.block.tactics {
+  border-left-color: var(--warn);
+}
+.liste,
+.kanten {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.liste li,
+.kanten li {
+  display: flex;
+  gap: 0.6rem;
+  align-items: baseline;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--line2);
+}
+.rl {
+  font-size: 0.75rem;
+  color: var(--dim);
+  min-width: 9rem;
+}
+.weg {
+  color: var(--dim);
+  font-style: italic;
+}
+.leer,
+.fehler {
+  color: var(--dim);
+  font-size: 0.9rem;
+}
+.fehler {
+  color: var(--warn);
+}
+a {
+  color: var(--link);
+}
+
+/* Die Bearbeitungsmaske. Zwei Spalten, weil die Beschriftungen lang sind und
+   eine Zeile je Feld die Seite sonst doppelt so hoch macht. */
+.werkzeuge {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.werkzeuge button {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.werkzeuge button.pri {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+}
+.werkzeuge button[disabled] {
+  opacity: 0.6;
+  cursor: default;
+}
+.maske {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.6rem 1rem;
+  margin: 1rem 0;
+}
+.maske label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+}
+.maske label > span {
+  color: var(--dim);
+}
+.maske .pflicht {
+  color: var(--warn);
+  font-style: normal;
+  margin-left: 0.15rem;
+}
+.maske input[type='text'],
+.maske select,
+.maske textarea,
+.blockmaske textarea {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  width: 100%;
+}
+.maske input[type='checkbox'] {
+  align-self: flex-start;
+  width: 1rem;
+  height: 1rem;
+}
+.blockmaske {
+  margin: 0.5rem 0;
+}
+.bkopf {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+.bkopf .weg {
+  margin-left: auto;
+  border: none;
+  background: none;
+  color: var(--dim);
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.maengel {
+  margin: 0.5rem 0;
+  padding-left: 1.2rem;
+  color: var(--warn);
+  font-size: 0.85rem;
+}
+
+.kantenmaske {
+  border: 1px solid var(--line2);
+  border-radius: 4px;
+  padding: 0.5rem 0.6rem;
+  margin: 0.4rem 0;
+}
+.kantenmaske .bkopf select {
+  flex: 1;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+}
+.kantenmaske .maske {
+  margin: 0.4rem 0 0;
+}

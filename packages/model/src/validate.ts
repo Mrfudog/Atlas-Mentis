@@ -50,6 +50,7 @@ export const InterfaceDefSchema = z.object({
   requires: z.array(z.string()).optional(),
   allows: z.array(z.string()).optional(),
   blockTypes: z.array(z.string()).optional(),
+  area: z.enum(['story', 'world', 'game', 'play']).optional(),
 });
 
 export const RelationDefSchema = z.object({
@@ -64,16 +65,28 @@ export const RelationDefSchema = z.object({
   props: objectSchema.optional(),
 });
 
+const LayoutElementSchema = z.object({
+  id: z.string(),
+  el: z.enum(['heading', 'text', 'fields', 'blocks', 'description', 'composed', 'relations', 'image', 'knowledge', 'map', 'sheet', 'inventory', 'crafting', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'standing']),
+  text: z.string().optional(),
+  fields: z.union([z.literal('all'), z.array(z.string())]).optional(),
+  except: z.array(z.string()).optional(),
+  columns: z.number().optional(),
+  blocks: z.union([z.literal('all'), z.array(z.string())]).optional(),
+});
+
 export const ViewDefSchema = z.object({
   label: z.string(),
   order: z.number().optional(),
-  felder: z.union([z.literal('alle'), z.literal('keine'), z.array(z.string())]),
-  bloecke: z.union([z.literal('alle'), z.array(z.string())]),
-  beschreibung: z.boolean().optional(),
-  bausteine: z.boolean().optional(),
-  bezuege: z.boolean().optional(),
-  bindungen: z.boolean().optional(),
-  bild: z.boolean().optional(),
+  fields: z.union([z.literal('all'), z.literal('none'), z.array(z.string())]),
+  blocks: z.union([z.literal('all'), z.array(z.string())]),
+  description: z.boolean().optional(),
+  composed: z.boolean().optional(),
+  relations: z.boolean().optional(),
+  bindings: z.boolean().optional(),
+  image: z.boolean().optional(),
+  layout: z.array(LayoutElementSchema).optional(),
+  byInterface: z.record(z.string(), z.array(LayoutElementSchema)).optional(),
 });
 
 export const RegistrySchema = z.object({
@@ -82,6 +95,7 @@ export const RegistrySchema = z.object({
   relations: z.record(z.string(), RelationDefSchema),
   views: z.record(z.string(), ViewDefSchema),
   vars: z.record(z.string(), z.string()),
+  settings: z.record(z.string(), z.string()).optional(),
 });
 
 export const BlockSchema = z.object({
@@ -89,7 +103,7 @@ export const BlockSchema = z.object({
   blockType: z.string(),
   body: z.string(),
   order: z.number(),
-  anker: z.string().optional(),
+  anchor: z.string().optional(),
 });
 
 export const RelationSchema = z.object({
@@ -141,7 +155,7 @@ export function validateEntity(
   if (!name || !registry.interfaces[name]) {
     issues.push({
       code: 'unknown_interface',
-      message: `Unbekannte Schnittstelle: ${name ?? '(keine)'}`,
+      message: `Unknown interface: ${name ?? '(none)'}`,
     });
     return issues;
   }
@@ -154,7 +168,7 @@ export function validateEntity(
       issues.push({
         code: 'missing_component',
         component,
-        message: `${name} verlangt die Komponente ${component}`,
+        message: `${name} requires the component ${component}`,
       });
     }
   }
@@ -164,7 +178,7 @@ export function validateEntity(
       issues.push({
         code: 'unknown_component',
         component,
-        message: `Komponente ${component} steht nicht im Register`,
+        message: `Component ${component} is not in the registry`,
       });
       continue;
     }
@@ -172,7 +186,7 @@ export function validateEntity(
       issues.push({
         code: 'component_not_allowed',
         component,
-        message: `${name} erlaubt die Komponente ${component} nicht`,
+        message: `${name} does not allow the component ${component}`,
       });
     }
   }
@@ -188,7 +202,7 @@ export function validateEntity(
           code: 'missing_property',
           component,
           property,
-          message: `${component}.${property} ist erforderlich`,
+          message: `${component}.${property} is required`,
         });
       }
     }
@@ -199,14 +213,14 @@ export function validateEntity(
       issues.push({
         code: 'unknown_relation',
         relation: relation.type,
-        message: `Bezugsart ${relation.type} steht nicht im Register`,
+        message: `Relation type ${relation.type} is not in the registry`,
       });
     }
     if (options.knownIds && !options.knownIds.has(relation.to)) {
       issues.push({
         code: 'dangling_relation',
         relation: relation.type,
-        message: `${relation.type} zeigt auf ${relation.to}, das es nicht gibt`,
+        message: `${relation.type} points at ${relation.to}, which does not exist`,
       });
     }
   }

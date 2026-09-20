@@ -70,15 +70,40 @@ export function blockTypesFor(registry: Pick<Registry, 'interfaces'>, name: stri
   return unique(out.length ? out : ['paragraph']);
 }
 
+/**
+ * Is this interface in that list — directly, as `*`, or through one of its
+ * ancestors?
+ *
+ * Matching the name literally means an edge anchored on an abstract parent
+ * reaches none of its subtypes: `from: ['Creature']` would be offered on
+ * nothing, because every creature is a subtype and none *is* `Creature`.
+ * The walk goes upward only — `from: ['NPC']` stays an NPC edge and does not
+ * leak onto everything that happens to be a creature.
+ */
+function interfaceInList(
+  registry: Pick<Registry, 'interfaces'>,
+  list: readonly string[] | undefined,
+  interfaceName: string,
+): boolean {
+  if (!list || list.length === 0 || list.includes('*')) return true;
+  const seen = new Set<string>();
+  let at: string | undefined = interfaceName;
+  while (at && !seen.has(at)) {
+    if (list.includes(at)) return true;
+    seen.add(at);
+    at = registry.interfaces[at]?.extends?.[0];
+  }
+  return false;
+}
+
 /** Relation definitions whose source may be this interface. */
 export function relationsFrom(
-  registry: Pick<Registry, 'relations'>,
+  registry: Pick<Registry, 'relations' | 'interfaces'>,
   interfaceName: string,
 ): RelationDef[] {
-  return Object.values(registry.relations).filter((def) => {
-    const from = def.from ?? ['*'];
-    return from.includes('*') || from.includes(interfaceName);
-  });
+  return Object.values(registry.relations).filter((def) =>
+    interfaceInList(registry, def.from, interfaceName),
+  );
 }
 
 /** May this relation point at that entity? `same` means the source's own interface. */
@@ -86,10 +111,12 @@ export function relationAccepts(
   def: RelationDef,
   sourceInterface: string,
   targetInterface: string,
+  registry?: Pick<Registry, 'interfaces'>,
 ): boolean {
   const to = def.to ?? ['*'];
   if (to.includes('*')) return true;
   if (to.includes('same') && targetInterface === sourceInterface) return true;
+  if (registry) return interfaceInList(registry, to, targetInterface);
   return to.includes(targetInterface);
 }
 
