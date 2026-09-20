@@ -266,6 +266,35 @@ body.asplayer .brand span{color:var(--link)}
 .tabrow{position:sticky;top:0;z-index:4;background:var(--bg);
   padding:6px 0;margin-bottom:0;border-bottom:1px solid var(--line)}
 .tabpane{padding-top:12px}
+/* Die Artenübersicht: links die Liste, rechts eine Art ganz. Zwei Spalten,
+   weil man durchgeht und nicht nachschlägt — zurückspringen nach jedem
+   Eintrag wäre genau der Umweg, den die Seite abschaffen soll. */
+.tsplit{display:grid;grid-template-columns:minmax(180px,240px) 1fr;gap:18px;
+  align-items:start}
+@media(max-width:820px){ .tsplit{grid-template-columns:1fr} }
+.tpnav{position:sticky;top:0;max-height:78vh;overflow:auto;
+  border:1px solid var(--line);border-radius:var(--r);padding:6px;
+  background:var(--surface)}
+.tpnav h3{font-size:10px;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--dim);margin:10px 0 3px;padding-left:8px}
+.tpnav h3:first-child{margin-top:2px}
+.tpnav .navrow.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.tpdoc{min-width:0}
+.tcomp{border:1px solid var(--line);border-radius:var(--r);padding:7px 10px;
+  margin-bottom:5px;background:var(--surface2)}
+.tcomp .ck{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.tfields{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+/* Ein gerechnetes Feld sieht anders aus, weil es sich anders verhält: keine
+   Eingabe, keine Spalte (D8). */
+.pill.q.der{border:1px dashed var(--line2);opacity:.75;font-style:italic}
+ul.tedges,ul.tlayout{margin:0 0 6px;padding-left:0;list-style:none;
+  display:flex;flex-direction:column;gap:2px}
+ul.tedges li{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;font-size:13px}
+ul.tedges .tlab{color:var(--dim)}
+ul.tlayout li{font-size:13px}
+ul.tlayout li.d1{padding-left:16px}
+ul.tlayout li.d2{padding-left:32px}
+ul.tlayout li.d3{padding-left:48px}
 /* Der Spieltisch: eine Leiste mit dem, was läuft, und darunter Streifen.
    Die Initiative steht immer oben — wer dran ist, muss man sehen, ohne
    umzuschalten. */
@@ -833,7 +862,7 @@ var UI={route:{k:"list"}, view:"quick", area:"", iface:"", tag:"", q:"", offen:f
         trail:[], inline:false, editField:"", pick:false, picked:{}, status:"",
         aside:"rel", info:"", assetBusy:"",
         mapZoom:1, mapLock:false, mapKind:"", mapDrag:null, mapTool:"",
-        wallKind:"wall", playTab:"map", playBoard:"", tab:"",
+        wallKind:"wall", playTab:"map", playBoard:"", tab:"", typePick:"",
         invView:"tiers", invPick:"", craftOnly:false, craftLog:[],
         boardZoom:1, boardPick:"", boardTool:"",
         turnActor:"", rollLog:[], asActor:"", peers:[], pings:[],
@@ -1741,6 +1770,10 @@ function renderRail(){
   }
   var s3=el("section");
   s3.appendChild(el("h3",{text:"System"}));
+  s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="types"),
+    title:"What each kind requires, carries, connects to and looks like",
+    onclick:function(){go({k:"types"});}},
+    [el("b",{text:"Article types"}),el("em",{text:String(Object.keys(REG.interfaces).length)})]));
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="reg"),
     onclick:function(){go({k:"reg"});}},[el("b",{text:"Data model"}),el("em",{text:"def"})]));
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="graph"),
@@ -1973,13 +2006,14 @@ function renderMain(){
   /* Register und Graph gehören der Spielleitung. Ein Spieler, der die
      Adresse errät, bekommt dieselbe Antwort wie ein Spieler, der sie nicht
      errät. */
-  if((UI.route.k==="reg"||UI.route.k==="graph")&&!isGM()){
+  if((UI.route.k==="reg"||UI.route.k==="graph"||UI.route.k==="types")&&!isGM()){
     v.appendChild(el("div",{class:"empty",text:"Not for you."})); return;
   }
   if(UI.route.k==="reg"){ renderRegistry(v); return; }
   if(UI.route.k==="graph"){ renderGraph(v); return; }
   if(UI.route.k==="rules"){ renderRules(v); return; }
   if(UI.route.k==="play"){ renderPlay(v); return; }
+  if(UI.route.k==="types"){ renderTypes(v); return; }
   renderList(v);
 }
 
@@ -8602,6 +8636,263 @@ function renderGraph(v){
 }
 
 /* ---------- registry ---------- */
+/* ---------- Die Artikelarten zum Durchgehen ----------
+   Dieselbe Übersicht, die `pnpm --filter @nw/registry catalogue` als Datei
+   schreibt — aber aus dem **laufenden** Register. Eine Datei ist ein Abbild
+   von gestern; diese Seite ist, was gerade gilt.
+
+   Sie ist zum Durchgehen gebaut und nicht zum Nachschlagen: links die Arten
+   nach Bereich, rechts eine davon ganz, und vor/zurück durch die Liste. Vier
+   Fragen je Art — **was sie verlangt**, **was sie erlauben darf**, **welche
+   Kanten** sie trägt und **wie sie gezeichnet wird**. Genau die vier, die man
+   stellt, wenn man entscheiden will, ob eine Art so bleiben soll.
+
+   Geerbtes steht dabei, mit der Angabe woher. Ohne das liest man bei `NPC`
+   „verlangt nichts" und übersieht, dass sie über `Creature` die halbe
+   Kampagne trägt. */
+
+/* Die Arten in der Reihenfolge, in der die linke Spalte sie zeigt — und
+   damit auch die, in der vor/zurück läuft. Eine zweite Ordnung daneben wäre
+   die Stelle, an der „nächste" etwas anderes heisst als das, was darunter
+   steht. */
+function typeOrder(){
+  var out=[];
+  function zweig(n){
+    out.push(n);
+    kindsOf(n).forEach(function(k){ if(areaOf(k)===areaOf(n)) zweig(k); });
+  }
+  AREAS.forEach(function(ar){ areaRoots(ar[0]).forEach(zweig); });
+  /* Was in keinem Bereich liegt, steht am Schluss: abstrakte Oberbegriffe,
+     die keine Artikel tragen. Sie wegzulassen hiesse, dass man `Base` nie zu
+     sehen bekommt — und dort steht, was jede Art erbt. */
+  Object.keys(REG.interfaces).sort().forEach(function(n){
+    if(!areaOf(n)&&out.indexOf(n)<0) out.push(n);
+  });
+  return out;
+}
+function relsTo(ifn){
+  var out=[];
+  for(var k in REG.relations){
+    var r=REG.relations[k];
+    if(ifaceInList(r.to,ifn)) out.push(Object.assign({type:k},r));
+  }
+  return out;
+}
+/* Die Felder einer Komponente, kurz: Name und Art. `derived` steht da als
+   „gerechnet", weil das der Unterschied ist, der am meisten erklärt — ein
+   gerechnetes Feld bekommt keine Eingabe und keine Spalte (D8). */
+function compFieldList(comp){
+  var props=((REG.components[comp]||{}).schema||{}).properties||{};
+  return Object.keys(props).map(function(k){
+    var p=props[k]||{};
+    var art=p.derived?"derived":(p["enum"]?p["enum"].join(" | "):(p.format||p.type||"?"));
+    return {name:k,kind:art,derived:!!p.derived};
+  });
+}
+function compRow(ifn,comp){
+  var row=el("div",{class:"tcomp"});
+  var woher=compOrigin(ifn,comp);
+  var kopf=el("div",{class:"ck"});
+  kopf.appendChild(el("button",{class:"ref",type:"button",
+    title:"Open it in the data model",
+    onclick:function(){ UI.regtab="components"; UI.regcomp=comp; UI.regprop="";
+      go({k:"reg"}); }},comp));
+  if(woher&&woher.iface!==ifn) kopf.appendChild(el("span",{class:"co",
+    text:"from "+(REG.interfaces[woher.iface].label||woher.iface)}));
+  row.appendChild(kopf);
+  var felder=compFieldList(comp);
+  if(!felder.length){ row.appendChild(el("span",{class:"hint",style:"margin:0",text:"no fields"}));
+    return row; }
+  var box=el("div",{class:"tfields"});
+  felder.forEach(function(f){
+    box.appendChild(el("span",{class:"pill q"+(f.derived?" der":""),
+      title:f.derived?"Computed on read — no input, no column (D8)":f.kind,
+      text:f.name}));
+  });
+  row.appendChild(box);
+  return row;
+}
+/* Das Layout einer Art, wie `full` es zeichnet. Reiter stehen eingerückt
+   darunter — sonst liest man „tabs" und weiss nichts. */
+function layoutLines(layout,tiefe,into){
+  (layout||[]).forEach(function(x){
+    if(x.el==="tabs"){
+      into.appendChild(el("li",{class:"d"+tiefe},[el("b",{text:"tabs"})]));
+      (x.tabs||[]).forEach(function(t){
+        into.appendChild(el("li",{class:"d"+(tiefe+1)},[el("em",{text:t.label||t.id})]));
+        layoutLines(t.layout,tiefe+2,into);
+      });
+      return;
+    }
+    var zeile=el("li",{class:"d"+tiefe});
+    zeile.appendChild(el("code",{text:x.el}));
+    if(x.except&&x.except.length) zeile.appendChild(el("span",{class:"co",
+      text:"without "+x.except.join(", ")}));
+    if(x.fields&&x.fields!=="all") zeile.appendChild(el("span",{class:"co",
+      text:Array.isArray(x.fields)?x.fields.join(", "):String(x.fields)}));
+    into.appendChild(zeile);
+  });
+}
+
+function renderTypes(v){
+  var arten=typeOrder();
+  var wahl=REG.interfaces[UI.typePick]?UI.typePick:arten[0];
+  var d=REG.interfaces[wahl]||{};
+
+  var kopf=el("div",{class:"listhead"});
+  kopf.appendChild(el("h2",{text:"Article types"}));
+  kopf.appendChild(el("span",{class:"count",
+    text:arten.length+" types · "+Object.keys(REG.components).length+" components · "+
+      Object.keys(REG.relations).length+" relation types"}));
+  v.appendChild(kopf);
+  v.appendChild(el("p",{class:"hint",
+    text:"What each kind requires, what it may carry, which edges it holds in both directions, and how it is drawn. Inherited entries say where they come from."}));
+
+  var split=el("div",{class:"tsplit"});
+
+  /* ---- links: die Arten nach Bereich ---- */
+  var nav=el("div",{class:"tpnav"});
+  function zeile(n,tiefe){
+    var dd=REG.interfaces[n]||{};
+    var zahl=countIface(n);
+    var b=el("button",{class:"navrow"+(n===wahl?" on":""),type:"button",
+      "aria-current":String(n===wahl),
+      style:tiefe?"padding-left:"+(10+tiefe*11)+"px":null,
+      onclick:function(){ UI.typePick=n; render(); }},
+      [el("b",{class:dd.abstract?"ab":"",text:dd.label||n}),
+       el("em",{text:zahl?String(zahl):"—"})]);
+    nav.appendChild(b);
+  }
+  function zweig(n,tiefe){
+    zeile(n,tiefe);
+    kindsOf(n).forEach(function(k){ if(areaOf(k)===areaOf(n)) zweig(k,tiefe+1); });
+  }
+  AREAS.forEach(function(ar){
+    var wurzeln=areaRoots(ar[0]);
+    if(!wurzeln.length)return;
+    nav.appendChild(el("h3",{text:ar[1]}));
+    wurzeln.forEach(function(n){ zweig(n,0); });
+  });
+  var ohne=arten.filter(function(n){ return !areaOf(n); });
+  if(ohne.length){
+    nav.appendChild(el("h3",{text:"No area"}));
+    ohne.forEach(function(n){ zeile(n,0); });
+  }
+  split.appendChild(nav);
+
+  /* ---- rechts: eine Art ganz ---- */
+  var doc=el("div",{class:"tpdoc"});
+  var i=arten.indexOf(wahl);
+  var bar=el("div",{class:"maptools"});
+  bar.appendChild(el("button",{class:"btn sm",type:"button",disabled:i<=0,
+    onclick:function(){ UI.typePick=arten[i-1]; render(); }},"←"));
+  bar.appendChild(el("button",{class:"btn sm",type:"button",disabled:i>=arten.length-1,
+    onclick:function(){ UI.typePick=arten[i+1]; render(); }},"→"));
+  bar.appendChild(el("span",{class:"hint",style:"margin:0;align-self:center",
+    text:(i+1)+" of "+arten.length}));
+  if(canWrite()) bar.appendChild(el("button",{class:"btn sm gh",type:"button",
+    title:"Change it in the data model",
+    onclick:function(){ UI.regtab="interfaces"; UI.regiface=wahl; UI.regcomp="";
+      go({k:"reg"}); }},"edit"));
+  doc.appendChild(bar);
+
+  var h=el("div",{class:"arthead"});
+  h.appendChild(el("h2",{text:d.label||wahl}));
+  var marken=el("div",{class:"chips"});
+  marken.appendChild(el("span",{class:"pill q",text:wahl}));
+  if(areaOf(wahl)) marken.appendChild(el("span",{class:"pill",text:areaOf(wahl)}));
+  if(d.abstract) marken.appendChild(el("span",{class:"pill q",
+    title:"No article carries this one directly — it is an umbrella",text:"abstract"}));
+  var erbe=[], at=parentOf(wahl), guard=0;
+  while(at&&guard++<64){ erbe.push(at); at=parentOf(at); }
+  erbe.forEach(function(p){
+    marken.appendChild(el("button",{class:"chip",type:"button",
+      onclick:function(){ UI.typePick=p; render(); }},"↑ "+(REG.interfaces[p].label||p)));
+  });
+  h.appendChild(marken);
+  doc.appendChild(h);
+
+  var req=reqFor(wahl), alle=compsFor(wahl);
+  var darf=alle.filter(function(c){ return req.indexOf(c)<0; });
+
+  if(req.length){
+    doc.appendChild(el("div",{class:"sec",text:"Requires"}));
+    req.forEach(function(c){ doc.appendChild(compRow(wahl,c)); });
+  }
+  if(darf.length){
+    doc.appendChild(el("div",{class:"sec",text:"May carry"}));
+    darf.forEach(function(c){ doc.appendChild(compRow(wahl,c)); });
+  }
+
+  var bl=blockTypesFor(wahl);
+  if(bl.length){
+    doc.appendChild(el("div",{class:"sec",text:"Block kinds"}));
+    var bb=el("div",{class:"chips"});
+    bl.forEach(function(b){ bb.appendChild(el("span",{class:"pill q",text:b})); });
+    doc.appendChild(bb);
+  }
+
+  /* Kanten in beide Richtungen. Gespeichert wird nur vorwärts — aber wer
+     entscheiden will, ob eine Art bleibt, muss wissen, wer auf sie zeigt. */
+  var raus=relsFrom(wahl), rein=relsTo(wahl);
+  function kantenListe(liste,titel,richtung){
+    if(!liste.length)return;
+    doc.appendChild(el("div",{class:"sec",text:titel}));
+    var ul=el("ul",{class:"tedges"});
+    liste.forEach(function(r){
+      var li=el("li");
+      li.appendChild(el("code",{text:r.type}));
+      li.appendChild(el("span",{class:"co",
+        text:richtung==="out"?("→ "+(r.to||["*"]).join(" | ")):("← "+(r.from||["*"]).join(" | "))}));
+      li.appendChild(el("span",{class:"tlab",
+        text:"„"+(richtung==="out"?(r.label||r.type):(r.inverseLabel||r.label||r.type))+"“"}));
+      if(r.props&&r.props.properties){
+        var pk=Object.keys(r.props.properties);
+        if(pk.length) li.appendChild(el("span",{class:"co",text:pk.join(", ")}));
+      }
+      ul.appendChild(li);
+    });
+    doc.appendChild(ul);
+  }
+  kantenListe(raus,"Edges from here","out");
+  kantenListe(rein,"Edges to here","in");
+
+  /* Wie sie gezeichnet wird — und aus welcher Zeile das kommt. */
+  var vw=REG.views&&REG.views.full;
+  if(vw){
+    var von=wahl, gefunden="";
+    var by=vw.byInterface||{}, g2=0;
+    while(von&&g2++<64){ if(Array.isArray(by[von])&&by[von].length){ gefunden=von; break; } von=parentOf(von); }
+    doc.appendChild(el("div",{class:"sec",
+      text:"Drawn as"+(gefunden?" — from "+(REG.interfaces[gefunden].label||gefunden):" — the default")}));
+    var ul2=el("ul",{class:"tlayout"});
+    layoutLines(layoutOf(vw,wahl),0,ul2);
+    doc.appendChild(ul2);
+  }
+
+  /* Und die Artikel selbst. Eine Art ohne einen einzigen Artikel ist eine
+     Frage für sich — deshalb steht die Null da und nicht nichts. */
+  var meine=[];
+  byName().forEach(function(x){ if(((x.interfaces||[])[0])===wahl) meine.push(x); });
+  doc.appendChild(el("div",{class:"sec",text:"Articles ("+meine.length+")"}));
+  if(!meine.length) doc.appendChild(el("p",{class:"hint",style:"margin:0",
+    text:d.abstract?"None — an abstract type carries no articles of its own."
+                   :"None yet."}));
+  else{
+    var cb=el("div",{class:"chips"});
+    meine.slice(0,40).forEach(function(x){
+      cb.appendChild(el("button",{class:"chip",type:"button",
+        onclick:function(){ go({k:"art",id:x.id}); }},nameOf(x)));
+    });
+    if(meine.length>40) cb.appendChild(el("span",{class:"hint",style:"margin:0",
+      text:"and "+(meine.length-40)+" more"}));
+    doc.appendChild(cb);
+  }
+
+  split.appendChild(doc);
+  v.appendChild(split);
+}
+
 function renderRegistry(v){
   v.appendChild(el("h2",{text:"Data model"}));
   v.appendChild(konzept());

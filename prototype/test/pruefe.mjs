@@ -1658,6 +1658,98 @@ async function seite(datei, warten) {
   await p.waitForTimeout(400);
   pruefe('the table raised no exception', errs.length === 0, errs);
 
+  /* ---- Die Artikelarten zum Durchgehen ----
+     Dieselbe Übersicht, die der Katalog als Datei schreibt, aber aus dem
+     **laufenden** Register. Eine Seite, die eine Liste abtippt, stimmt am
+     Tag ihrer Entstehung und danach nie wieder — die Prüfung fragt deshalb
+     nicht, ob etwas dasteht, sondern ob es aus dem Register kommt. */
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')]
+      .find((x) => /Article types/.test(x.textContent)).click());
+  await p.waitForTimeout(600);
+  const typen = await p.evaluate(() => ({
+    kopf: document.querySelector('#view .listhead h2')?.textContent ?? '',
+    bereiche: [...document.querySelectorAll('.tpnav h3')].map((h) => h.textContent),
+    arten: document.querySelectorAll('.tpnav .navrow').length,
+    imRegister: Object.keys(window.__T__.REG.interfaces).length,
+    abschnitte: [...document.querySelectorAll('.tpdoc .sec')].map((x) => x.textContent),
+  }));
+  pruefe('the article types open as a page of their own',
+    typen.kopf === 'Article types', typen.kopf);
+  /* Jede Art aus dem Register steht in der Leiste — keine fehlt, keine ist
+     doppelt. Eine Übersicht, die eine Art auslässt, ist schlimmer als keine:
+     man hält sie für vollständig. */
+  pruefe('every kind in the registry is listed, exactly once',
+    typen.arten === typen.imRegister, typen);
+  pruefe('and they are grouped by area, with the homeless ones at the end',
+    ['Story', 'World', 'Game', 'Play'].every((a) => typen.bereiche.includes(a))
+    && typen.bereiche[typen.bereiche.length - 1] === 'No area', typen.bereiche);
+
+  /* Eine Art zeigt alle vier Fragen: was sie verlangt, was sie tragen darf,
+     welche Kanten sie hat und wie sie gezeichnet wird. */
+  const eine = await p.evaluate(async () => {
+    const T = window.__T__;
+    T.UI.typePick = 'PlayerCharacter';
+    T.render();
+    await new Promise((r) => setTimeout(r, 250));
+    const txt = (sel) => [...document.querySelectorAll(sel)].map((x) => x.textContent);
+    return {
+      titel: document.querySelector('.tpdoc .arthead h2')?.textContent ?? '',
+      abschnitte: txt('.tpdoc .sec'),
+      /* Geerbtes sagt, woher es kommt — sonst liest man „verlangt nichts"
+         und übersieht, was über Creature hereinkommt. */
+      geerbt: txt('.tcomp .co'),
+      komponenten: txt('.tcomp .ref'),
+      kantenRaus: document.querySelectorAll('.tedges').length,
+      layout: txt('.tlayout li'),
+    };
+  });
+  pruefe('a kind shows what it requires, carries, connects and looks like',
+    eine.titel === 'Player character'
+    && eine.abschnitte.some((x) => /^Requires/.test(x))
+    && eine.abschnitte.some((x) => /^May carry/.test(x))
+    && eine.abschnitte.some((x) => /^Edges from here/.test(x))
+    && eine.abschnitte.some((x) => /^Drawn as/.test(x)), eine.abschnitte);
+  pruefe('inherited components say where they come from',
+    eine.geerbt.some((x) => /from Creature/.test(x))
+    && eine.komponenten.includes('CharacterInfo'), eine.geerbt.slice(0, 4));
+  /* Die Reiter des Bogens stehen eingerückt darunter — „tabs" allein zu
+     lesen sagt nichts. */
+  pruefe('the drawing shows the tabs by name, not just the word “tabs”',
+    eine.layout.includes('tabs') && eine.layout.includes('Overview')
+    && eine.layout.includes('Gear'), eine.layout);
+
+  /* Vor/zurück geht durch dieselbe Reihenfolge wie die Liste links. Eine
+     zweite Ordnung daneben wäre die Stelle, an der „nächste" etwas anderes
+     heisst als das, was darunter steht. */
+  const lauf = await p.evaluate(async () => {
+    const T = window.__T__;
+    const nav = [...document.querySelectorAll('.tpnav .navrow b')].map((b) => b.textContent);
+    const jetzt = document.querySelector('.tpnav .navrow.on b')?.textContent ?? '';
+    [...document.querySelectorAll('.tpdoc .maptools .btn')]
+      .find((b) => b.textContent === '→').click();
+    await new Promise((r) => setTimeout(r, 250));
+    return { nav, jetzt, danach: document.querySelector('.tpnav .navrow.on b')?.textContent ?? '' };
+  });
+  pruefe('forward steps to the next one in the list, not somewhere else',
+    lauf.nav.indexOf(lauf.danach) === lauf.nav.indexOf(lauf.jetzt) + 1, lauf);
+
+  /* Und sie ist nichts für Spieler: sie zeigt, was es geben *kann*. */
+  const alsSpieler2 = await p.evaluate(async () => {
+    const T = window.__T__;
+    const vorher = T.UI.asActor;
+    T.UI.asActor = 'pc_rook';
+    T.render();
+    await new Promise((r) => setTimeout(r, 250));
+    const zu = !document.querySelector('.tpnav');
+    T.UI.asActor = vorher;
+    T.render();
+    return zu;
+  });
+  await p.waitForTimeout(300);
+  pruefe('the type overview stays with the GM', alsSpieler2 === true, alsSpieler2);
+  pruefe('the type overview raised no exception', errs.length === 0, errs);
+
   /* ---- Blockanker und Kampagnenwerte (B3) ----
      Beides hängt daran, dass ein Bezeichner hält. Ein Anker, der sich beim
      Import ändert, nimmt jede Wissenszuteilung mit ins Leere — und das
