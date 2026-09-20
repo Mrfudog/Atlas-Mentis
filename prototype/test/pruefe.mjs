@@ -925,6 +925,56 @@ async function seite(datei, warten) {
   pruefe('the recipient shows on the group and in the panel',
     /Probe lore/.test(wEmpfaenger.kopf) && wEmpfaenger.panel.some((x) => /Probe lore/.test(x)), wEmpfaenger);
 
+  /* ---- C1/C2: Assets, Einstellungen ----
+     Der Auflöser ist die einzige Stelle, die weiss, welche Sorte Verweis ein
+     Bild trägt. Geht er falsch, zeigt die Seite ein kaputtes Bild und sagt
+     nicht, warum — deshalb gegen alle drei Formen geprüft. */
+  const quellen = await p.evaluate(() => {
+    const T = window.__T__;
+    const asset = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Asset');
+    return {
+      leer: T.assetSrc(''),
+      fremd: T.assetSrc('https://example.invalid/a.png'),
+      ablage: T.assetSrc('0123456789abcdef0123456789abcdef'),
+      wurzel: T.assetSrc('/_blob/x'),
+      artikel: asset ? T.assetSrc(asset.id) : '(kein Asset-Artikel)',
+    };
+  });
+  pruefe('the asset resolver knows its three kinds of reference',
+    quellen.leer === '' && quellen.fremd === 'https://example.invalid/a.png'
+      && quellen.ablage === '/_blob/0123456789abcdef0123456789abcdef'
+      && quellen.wurzel === '/_blob/x', quellen);
+
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].find((b) => /Data model/.test(b.textContent))?.click());
+  await p.waitForTimeout(300);
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.tabs button')].find((b) => /^Settings$/.test(b.textContent)).click());
+  await p.waitForTimeout(300);
+  const einst = await p.evaluate(() => ({
+    zeilen: [...document.querySelectorAll('.regbody .crow .cl b')].map((x) => x.textContent),
+    bekannt: [...(document.querySelectorAll('.addbar select.i')[0]?.options ?? [])].map((o) => o.value),
+  }));
+  pruefe('campaign settings are a form of their own',
+    einst.zeilen.includes('gridSize') && einst.zeilen.includes('inventoryCols'), einst.zeilen);
+
+  /* Ein Bildfeld bietet die Ablage an, wenn es eine gibt, und sonst die
+     fremde Adresse — es verschwindet nie stillschweigend. */
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.tabs button')].find((b) => /^Components$/.test(b.textContent)).click());
+  await p.waitForTimeout(300);
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.regtree button')].find((b) => /Image/.test(b.textContent))?.click());
+  await p.waitForTimeout(250);
+  const bildfeld = await p.evaluate(() => {
+    const arten = [...document.querySelectorAll('.frow select.i')]
+      .map((s) => [...s.options].map((o) => o.value));
+    return { hatAsset: arten.some((a) => a.includes('asset')), felder:
+      [...document.querySelectorAll('.fbox .frow .fk')].map((x) => x.textContent) };
+  });
+  pruefe('a field can be an image reference',
+    bildfeld.hatAsset && bildfeld.felder.includes('ref'), bildfeld);
+
   pruefe('knowledge needed no browser modal', modale.length === 0, modale);
   pruefe('no exception through the knowledge panel', errs.length === 0, errs);
 
@@ -947,7 +997,7 @@ async function seite(datei, warten) {
     laedt: document.getElementById('view').innerText.trim() === 'Loading…',
   }));
   pruefe('watchdog banner appears', /No data received/.test(s.banner ?? ''), s);
-  pruefe('counts registry parts correctly', /0 of 5 registry parts/.test(s.banner ?? ''), s);
+  pruefe('counts registry parts correctly', /0 of 6 registry parts/.test(s.banner ?? ''), s);
   pruefe('does not sit on Loading…', !s.laedt, s);
   pruefe('no exception without data', errs.length === 0, errs);
   await p.close();

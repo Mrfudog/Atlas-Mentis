@@ -258,6 +258,13 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
   border:1px solid var(--line);border-radius:var(--r);padding:6px 8px;margin:4px 0}
 .kpick label{display:flex;gap:6px;align-items:baseline;font-size:12.5px;cursor:pointer}
 .kpick label.taken{color:var(--dim)}
+
+/* Assets: Vorschau über dem Verweis, damit man sieht, was man wählt. */
+.assetbox{display:flex;flex-direction:column;gap:6px}
+.aprev{display:flex;align-items:center;justify-content:center;min-height:74px;
+  background:var(--surface2);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.aprev img{max-height:150px;max-width:100%;display:block}
+.assetbox .addbar select.i{min-width:120px}
 .fld dd.editable{cursor:text;border-radius:2px;margin:1px -3px 0;padding:0 3px}
 .fld dd.editable:hover{background:var(--accent-soft);box-shadow:inset 0 -1px 0 var(--accent)}
 .fld dd.editing{margin-top:2px}
@@ -361,12 +368,15 @@ function thawed(o){
   try{ return structuredClone(o); }catch(x){}
   try{ return JSON.parse(JSON.stringify(o)); }catch(x){ return o; }
 }
-var REG={interfaces:{},components:{},relations:{},vars:{},views:{}};
+var REG={interfaces:{},components:{},relations:{},vars:{},views:{},settings:{}};
+/* Die Ablage des Artefakts für Bilder und Karten. Nur Schreibberechtigte
+   bekommen sie; ohne sie bleibt der Verweis auf fremde Adressen. */
+var assetStore=null;
 var UI={route:{k:"list"}, view:"quick", iface:"", tag:"", q:"", offen:false, pane:"main",
         regtab:"interfaces", regiface:"", regcomp:"", regprop:"", regjson:false,
         regview:"", regscope:"", regel:"", regcomp2:"", regrel:"",
         trail:[], inline:false, editField:"", pick:false, picked:{}, status:"",
-        aside:"rel", info:"",
+        aside:"rel", info:"", assetBusy:"",
         konzept:false, err:""};
 
 /* Darstellungsstufen (Facets, REQ-164) — registry rows, not code.
@@ -488,12 +498,15 @@ function showBlock(v,bt){
 var FIELD_KINDS=[
   ["text","Text"],["number","Number"],["boolean","Yes/No"],
   ["choice","Choice"],["color","Colour"],["link","Link to article"],
+  ["asset","Image / asset"],["date","World date"],
   ["list","List"],["object","Object"]
 ];
 function fieldKind(p){
   if(!p) return "text";
   if(p.format==="color") return "color";
   if(p.format==="link") return "link";
+  if(p.format==="asset") return "asset";
+  if(p.format==="date") return "date";
   if(Array.isArray(p["enum"])) return "choice";
   if(p.type==="number"||p.type==="integer") return "number";
   if(p.type==="boolean") return "boolean";
@@ -505,7 +518,7 @@ function fieldKind(p){
    alone — title, derived and required survive a change of mind. */
 function setFieldKind(p,kind){
   delete p["enum"];
-  if(p.format==="color"||p.format==="link") delete p.format;
+  if(p.format==="color"||p.format==="link"||p.format==="asset"||p.format==="date") delete p.format;
   delete p.target;
   switch(kind){
     case "number":  p.type="number"; break;
@@ -514,6 +527,8 @@ function setFieldKind(p,kind){
     case "object":  p.type="object"; break;
     case "choice":  p.type="string"; p["enum"]=[]; break;
     case "color":   p.type="string"; p.format="color"; break;
+    case "asset":   p.type="string"; p.format="asset"; break;
+    case "date":    p.type="string"; p.format="date"; break;
     case "link":    p.type="string"; p.format="link"; p.target={}; break;
     default:        p.type="string";
   }
@@ -650,6 +665,138 @@ function applyDefaults(e,ifn){
   });
 }
 
+/* ---------- Assets (REQ-021, 145, 147, 148) ----------
+   Ein Bildverweis kann dreierlei sein: ein Artikel vom Typ Asset, eine
+   Ablage-Id im Artefakt, oder eine fremde Adresse. Verbraucher fragen nie,
+   welche Art es ist — sie rufen `assetSrc` und bekommen eine Adresse. Genau
+   das meint REQ-021 mit „consumers resolve URLs via asset service": wechselt
+   die Ablage, ändert sich diese Funktion und sonst nichts.
+
+   Die Id ist der haltbare Zeiger, nicht die Adresse: die Ablage-Adresse gilt
+   je Ansicht, die Id für immer. Gespeichert wird deshalb die Id. */
+var ASSET_IFACE="Asset", ASSET_COMP="AssetInfo";
+function assetSrc(ref,tiefe){
+  var t=String(ref==null?"":ref).trim();
+  if(!t)return "";
+  if((tiefe||0)>3)return "";                      /* Artikel zeigt im Kreis */
+  var art=ENT.get(t);
+  if(art) return assetSrc(((art.components||{})[ASSET_COMP]||{}).ref,(tiefe||0)+1);
+  if(/^(https?:|data:|blob:)/i.test(t))return t;
+  if(t.charAt(0)==="/")return t;
+  if(/^[0-9a-f]{32}$/i.test(t))return "/_blob/"+t;  /* Ablage-Id des Artefakts */
+  return t;
+}
+/* Wie gross die Ablage ist und wie voll — Hauswirtschaft, keine Galerie:
+   was ein Bild bedeutet, steht im Artikel, nicht in der Ablage. */
+function assetUsage(){
+  if(!assetStore||!assetStore.list)return Promise.resolve(null);
+  return assetStore.list().then(function(r){ return r&&r.usage||null; })
+    .catch(function(){ return null; });
+}
+var ASSET_FEHLER={
+  too_large:"The file is over the limit (20 MB, SVG 2 MB).",
+  unsupported_type:"That file type cannot be stored — PNG, JPEG, GIF, WebP, SVG, MP4, WebM or PDF.",
+  quota_or_state:"The asset store is full. Remove an asset nothing points at.",
+  rate_limited:"Too many uploads in a row. Wait a moment.",
+  not_granted:"This view may not upload.",
+  capability_disabled:"The asset store is not available in this view."
+};
+/* Hochladen und den Verweis zurückgeben. Fehlschläge kommen als Text, den
+   man hinschreiben kann — ein Code allein sagt dem Nutzer nichts. */
+function uploadAsset(file){
+  if(!assetStore)return Promise.reject(new Error("No asset store in this view — use a URL instead."));
+  return assetStore.upload(file).then(function(r){ return r; })
+    .catch(function(x){
+      var c=(x&&x.code)||"";
+      throw new Error(ASSET_FEHLER[c]||("Upload failed ("+(c||"unknown")+")"));
+    });
+}
+/* Ein Asset ist ein Artikel: so trägt es Marken, eine Quellenangabe und eine
+   Sichtbarkeit, und dieselbe Datei kann von zwei Karten benutzt werden, ohne
+   zweimal dazuliegen. */
+function newAssetArticle(name,res){
+  var e={ id:uid("as"), interfaces:[ASSET_IFACE], name:name, tags:[],
+    components:{ Name:{text:name}, Identity:{key:"asset/"+slug(name),aliases:[]} },
+    adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
+  reqFor(ASSET_IFACE).forEach(function(c){ if(!e.components[c]&&REG.components[c]) e.components[c]={}; });
+  applyDefaults(e,ASSET_IFACE);
+  e.components[ASSET_COMP]=Object.assign(e.components[ASSET_COMP]||{},{
+    backend:"app", ref:res.id, mime:res.contentType||"", bytes:res.sizeBytes||0 });
+  ENT.set(e.id,e);
+  persist(e);
+  return e;
+}
+
+/* Ein Feld, das auf ein Bild zeigt. Drei Wege hinein, weil es drei Sorten
+   Bild gibt: aus der Ablage laden, ein vorhandenes Asset wählen, oder eine
+   fremde Adresse eintippen. Gespeichert wird immer nur der Verweis. */
+function assetInput(pd,cur){
+  var wrap=el("div",{class:"assetbox"});
+  var vorschau=el("div",{class:"aprev"});
+  var inp=el("input",{class:"i",type:"text",placeholder:"Asset, id or URL",
+    value:String(cur==null?"":cur)});
+  var msg=el("div",{class:"err"});
+
+  function zeichne(){
+    vorschau.textContent="";
+    var src=assetSrc(inp.value);
+    if(!src){ vorschau.appendChild(el("span",{class:"hint",text:"no image"})); return; }
+    var img=el("img",{src:src,alt:""});
+    img.addEventListener("error",function(){
+      vorschau.textContent=""; vorschau.appendChild(el("span",{class:"gone",text:"cannot be loaded"})); });
+    vorschau.appendChild(img);
+  }
+  inp.addEventListener("input",zeichne);
+
+  var bar=el("div",{class:"addbar"});
+  var vorhanden=el("select",{class:"i"});
+  function fuelle(){
+    vorhanden.textContent="";
+    vorhanden.appendChild(el("option",{value:""},"— pick an asset —"));
+    byName().forEach(function(a){
+      if(((a.interfaces||[])[0])!==ASSET_IFACE)return;
+      vorhanden.appendChild(el("option",{value:a.id},nameOf(a)));
+    });
+  }
+  fuelle();
+  vorhanden.addEventListener("change",function(){
+    if(!vorhanden.value)return;
+    inp.value=vorhanden.value; zeichne();
+    inp.dispatchEvent(new Event("change",{bubbles:true}));
+  });
+  bar.appendChild(vorhanden);
+
+  if(me.write&&assetStore){
+    var datei=el("input",{type:"file",accept:"image/*",style:"display:none"});
+    var knopf=el("button",{class:"btn sm",type:"button",onclick:function(){ datei.click(); }},"Upload…");
+    datei.addEventListener("change",function(){
+      var f=datei.files&&datei.files[0]; if(!f)return;
+      knopf.disabled=true; knopf.textContent="Uploading…"; msg.textContent="";
+      uploadAsset(f).then(function(res){
+        var a=newAssetArticle(f.name.replace(/\.[^.]+$/,"")||"Asset",res);
+        inp.value=a.id; zeichne(); fuelle();
+        inp.dispatchEvent(new Event("change",{bubbles:true}));
+      }).catch(function(x){ msg.textContent=x.message; })
+        .then(function(){ knopf.disabled=false; knopf.textContent="Upload…"; });
+    });
+    bar.appendChild(knopf); bar.appendChild(datei);
+  } else if(me.write){
+    bar.appendChild(el("span",{class:"hint",text:"No asset store here — paste a URL."}));
+  }
+
+  wrap.appendChild(vorschau);
+  wrap.appendChild(inp);
+  wrap.appendChild(bar);
+  wrap.appendChild(msg);
+  zeichne();
+  Object.defineProperty(wrap,"value",{
+    get:function(){ return inp.value.trim(); },
+    set:function(v){ inp.value=v==null?"":String(v); zeichne(); }
+  });
+  wrap.addEventListener=function(t,f){ inp.addEventListener(t,f); };
+  return wrap;
+}
+
 /* ---------- one input for one field ----------
    The dialog and the in-place editing share it. Two code paths for the same
    field would drift, and the one used less often would be the one that
@@ -663,6 +810,9 @@ function fieldInput(pd,cur){
     return el("input",{class:"i",type:"color",
       value:/^#[0-9a-fA-F]{6}$/.test(String(cur||""))?String(cur):"#888888"});
   if(kind==="link") return linkInput(pd,cur);
+  if(kind==="asset") return assetInput(pd,cur);
+  if(kind==="date") return el("input",{class:"i",type:"text",
+    placeholder:"1492-07-03 or Mirtul 12, 1492 DR",value:cur==null?"":String(cur)});
   if(pd["enum"]){
     var sel=el("select",{class:"i"});
     sel.appendChild(el("option",{value:""},"—"));
@@ -1559,11 +1709,15 @@ function renderLayoutItem(item,e,ifn,vw){
 
 function elImage(e){
   var img=(e.components||{}).Image;
-  if(!img||!img.url)return null;
-  return el("figure",{class:"pic"},[
-    el("img",{src:img.url,alt:nameOf(e)}),
-    (img.caption?el("figcaption",{text:img.caption}):null)]);
+  if(!img)return null;
+  var src=assetSrc(img.ref||img.url);
+  if(!src)return null;
+  var fig=el("figure",{class:"pic"});
+  fig.appendChild(el("img",{src:src,alt:img.caption||nameOf(e),loading:"lazy"}));
+  if(img.caption) fig.appendChild(el("figcaption",{text:img.caption}));
+  return fig;
 }
+
 function elDescription(e){
   var desc=((e.components||{}).Description||{}).raw;
   return desc?para(fillVars(desc,null,e)):null;
@@ -2071,7 +2225,8 @@ function renderRegistry(v){
   v.appendChild(konzept());
   var tabs=el("div",{class:"tabs",role:"tablist"});
   [["interfaces","Interfaces"],["components","Components"],
-   ["relations","Relation types"],["views","Views"],["vars","Variables"]]
+   ["relations","Relation types"],["views","Views"],["vars","Variables"],
+   ["settings","Settings"]]
   .forEach(function(t){
     tabs.appendChild(el("button",{type:"button",role:"tab","aria-selected":String(UI.regtab===t[0]),
       onclick:function(){UI.regtab=t[0];UI.err="";render();}},t[1]));
@@ -2085,6 +2240,7 @@ function renderRegistry(v){
     "A component is one typed fact about an article — at most one per kind, absent when unused. Its fields are edited here and hold wherever the component is used."); return; }
   if(UI.regtab==="relations"&&!UI.regjson){ maskeMitJson(v,renderRelationEditor,null); return; }
   if(UI.regtab==="vars"&&!UI.regjson){ maskeMitJson(v,renderVarEditor,null); return; }
+  if(UI.regtab==="settings"&&!UI.regjson){ maskeMitJson(v,renderSettingsEditor,null); return; }
 
   if(UI.regtab==="views"&&!UI.regjson){
     v.appendChild(el("p",{class:"hint",
@@ -2412,6 +2568,70 @@ function renderVarEditor(v){
       REG.vars=REG.vars||{}; REG.vars[k]=nv.value;
       saveReg("vars"); render();
     }},"Add variable"));
+    v.appendChild(bar);
+  }
+}
+
+/* Kampagneneinstellungen (REQ-043): ein Schlüssel-Wert-Speicher, den jeder
+   Bereich für sich auslegt. Absichtlich nicht typisiert — eine Einstellung,
+   die erst ein Schema braucht, bevor jemand sie setzen kann, wird nicht
+   gesetzt. Wer sie liest, weiss, was sie heisst; `setting()` gibt einen
+   Rückfallwert, damit ein fehlender Schlüssel nichts bricht. */
+function setting(key,fallback){
+  var v=(REG.settings||{})[key];
+  return v===undefined||v===""?fallback:v;
+}
+function settingNum(key,fallback){
+  var n=Number(setting(key,fallback)); return isFinite(n)?n:fallback;
+}
+var SETTING_HINTS={
+  gridSize:"Battlemap grid in pixels (maps)",
+  gridUnit:"What one square means, e.g. 1,5 m",
+  inventoryCols:"Columns of the tile inventory",
+  inventoryRows:"Rows of the tile inventory",
+  calendar:"Name of the calendar world dates are read in",
+  partyLevel:"Party level, for encounter budgeting"
+};
+function renderSettingsEditor(v){
+  var w=me.write;
+  v.appendChild(el("p",{class:"hint",
+    text:"Campaign settings. Each area reads the keys it knows and ignores the rest — the store has no schema on purpose, so a setting can exist before anything reads it."}));
+  var keys=Object.keys(REG.settings||{}).sort();
+  var box=el("div",{class:"regbody",style:"max-height:none;border:1px solid var(--line);border-radius:var(--r)"});
+  if(!keys.length) box.appendChild(el("p",{class:"hint",text:"None yet."}));
+  keys.forEach(function(k){
+    var row=el("div",{class:"crow"});
+    var lab=el("span",{class:"cl"});
+    lab.appendChild(el("b",{text:k}));
+    if(SETTING_HINTS[k]) lab.appendChild(el("span",{class:"co",text:SETTING_HINTS[k]}));
+    row.appendChild(lab);
+    var inp=el("input",{class:"i",type:"text",value:String(REG.settings[k])});
+    if(!w) inp.disabled=true;
+    inp.addEventListener("change",function(){ REG.settings[k]=inp.value; saveReg("settings"); render(); });
+    row.appendChild(inp);
+    if(w) row.appendChild(el("button",{class:"btn sm gh dngr",type:"button",title:"Remove",
+      onclick:function(){ confirmDialog("Remove the setting “"+k+"”?",function(){
+        delete REG.settings[k]; saveReg("settings"); render(); },"Remove"); }},"×"));
+    box.appendChild(row);
+  });
+  v.appendChild(box);
+  if(w){
+    var nk=el("select",{class:"i"});
+    nk.appendChild(el("option",{value:""},"— known setting —"));
+    Object.keys(SETTING_HINTS).forEach(function(k){
+      if(keys.indexOf(k)>=0)return;
+      nk.appendChild(el("option",{value:k},k+" — "+SETTING_HINTS[k])); });
+    var frei=el("input",{class:"i",type:"text",placeholder:"or a key of your own"});
+    var nv=el("input",{class:"i",type:"text",placeholder:"value"});
+    nk.addEventListener("change",function(){ if(nk.value) frei.value=nk.value; });
+    var bar=el("div",{class:"addbar",style:"margin-top:10px"});
+    bar.appendChild(nk); bar.appendChild(frei); bar.appendChild(nv);
+    bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+      var k=frei.value.trim().replace(/[^A-Za-z0-9_.]/g,"");
+      if(!k)return;
+      REG.settings=REG.settings||{}; REG.settings[k]=nv.value;
+      saveReg("settings"); render();
+    }},"Add setting"));
     v.appendChild(bar);
   }
 }
@@ -3891,9 +4111,13 @@ render();
   var hat=window.claude&&claude.use;
   var erg=await Promise.all([
     hat?claude.use("db").catch(function(){return null;}):null,
-    hat?claude.use("user").catch(function(){return null;}):null
+    hat?claude.use("user").catch(function(){return null;}):null,
+    hat?claude.use("assets").catch(function(){return null;}):null
   ]);
   db=erg[0];
+  /* Nur Schreibberechtigte bekommen die Ablage; `null` heisst hier nicht
+     „kaputt", sondern „diese Ansicht darf nicht hochladen". */
+  assetStore=erg[2];
   try{ if(erg[1]){ var w=await erg[1].can("data.write"); if(w===false) me.write=false; } }catch(x){}
 
   if(!db){
@@ -3903,7 +4127,7 @@ render();
     render(); return;
   }
 
-  var TEILE=["interfaces","components","relations","views","vars"];
+  var TEILE=["interfaces","components","relations","views","vars","settings"];
   var arrived={register:{},artikel:false};
 
   /* Wirft ein Snapshot-Callback, endet die Zustellung still: `ready` bliebe

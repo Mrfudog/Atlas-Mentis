@@ -19,8 +19,9 @@ export interface PropertySchema {
   type: PropertyType;
   title?: string;
   enum?: string[];
-  /** `long` asks for a textarea; `signed` prints +3 / -1. */
-  format?: 'long' | 'signed' | string;
+  /** `long` asks for a textarea; `signed` prints +3 / -1; `color`, `link`,
+   *  `asset` and `date` each pick their own input. */
+  format?: 'long' | 'signed' | 'color' | 'link' | 'asset' | 'date' | string;
   items?: { type: PropertyType };
   /**
    * Calculation engine: an expression evaluated on read and never stored (D8).
@@ -148,6 +149,12 @@ export interface Registry {
   views: Record<string, ViewDef>;
   /** Campaign-wide defaults for {VAR} substitution — the last resort. */
   vars: Record<string, string>;
+  /**
+   * Campaign settings (REQ-043): a key-value store each area reads the keys
+   * it knows from and ignores the rest. Deliberately untyped — a setting
+   * that needs a schema before anyone can set it does not get set.
+   */
+  settings?: Record<string, string>;
 }
 
 export interface Block {

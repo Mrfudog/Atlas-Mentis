@@ -96,8 +96,14 @@ export const components: Record<string, ComponentDef> = {
     schema: {
       type: 'object',
       properties: {
-        url: { type: 'string', title: 'Source' },
+        /* `ref` zeigt auf ein Asset, eine Ablage-Id oder eine fremde Adresse
+           und wird vom Auflöser gelesen. `url` bleibt daneben stehen: die
+           vorhandenen Artikel tragen es, und ein Zwangsumzug brächte nichts,
+           was ein Blick auf beide Felder nicht auch bringt. */
+        ref: { type: 'string', format: 'asset', title: 'Image' },
+        url: { type: 'string', title: 'Source (legacy)' },
         caption: { type: 'string', title: 'Caption' },
+        alt: { type: 'string', title: 'Alt text' },
       },
     },
   },
@@ -464,6 +470,71 @@ export const components: Record<string, ComponentDef> = {
       type: 'object',
       properties: {
         scope: { type: 'string', title: 'Scope', enum: ['common', 'group', 'personal'], default: 'group' },
+      },
+    },
+  },
+
+  /**
+   * Assets (REQ-021). Der Verweis ist der haltbare Zeiger, nicht die Adresse:
+   * eine Ablage-Adresse gilt je Ansicht, die Id für immer. Wer ein Bild
+   * zeigt, ruft den Auflöser und fragt nie, welche Art Verweis es ist — nur
+   * so lässt sich die Ablage wechseln, ohne jeden Verbraucher anzufassen.
+   */
+  AssetInfo: {
+    name: 'AssetInfo',
+    label: 'Asset',
+    engine: 'Asset',
+    schema: {
+      type: 'object',
+      required: ['ref'],
+      properties: {
+        backend: {
+          type: 'string',
+          title: 'Backend',
+          enum: ['app', 'nas', 'external'],
+          default: 'app',
+        },
+        ref: { type: 'string', title: 'Reference' },
+        mime: { type: 'string', title: 'Media type' },
+        width: { type: 'number', title: 'Width in px' },
+        height: { type: 'number', title: 'Height in px' },
+        bytes: { type: 'number', title: 'Bytes' },
+      },
+    },
+  },
+
+  /** Woher eine Angabe stammt (REQ-020) — Publikation, Seite, Anker. */
+  SourceRef: {
+    name: 'SourceRef',
+    label: 'Source',
+    engine: null,
+    schema: {
+      type: 'object',
+      properties: {
+        publication: { type: 'string', title: 'Publication' },
+        page: { type: 'string', title: 'Page' },
+        anchor: { type: 'string', title: 'Anchor' },
+        url: { type: 'string', title: 'URL' },
+      },
+    },
+  },
+
+  /**
+   * Ein Datum in der Spielwelt (REQ-024). Zwei Felder, weil das eine sortiert
+   * und das andere gelesen wird: „Mirtul 12, 1492 DR" lässt sich nicht
+   * vergleichen, und `14920512` liest niemand vor.
+   */
+  WorldDate: {
+    name: 'WorldDate',
+    label: 'World date',
+    engine: null,
+    schema: {
+      type: 'object',
+      properties: {
+        sort: { type: 'number', title: 'Sortable value' },
+        display: { type: 'string', format: 'date', title: 'Date' },
+        calendar: { type: 'string', title: 'Calendar' },
+        duration: { type: 'string', title: 'Duration' },
       },
     },
   },

@@ -13,7 +13,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     /* `Status` is required, not allowed: every article has a standing, and
        leaving it optional made it a card that half the articles lacked. */
     requires: ['Name', 'Identity', 'Status'],
-    allows: ['Description', 'Visibility', 'Image', 'RawContent'],
+    allows: ['Description', 'Visibility', 'Image', 'RawContent', 'SourceRef', 'WorldDate'],
     blockTypes: ['paragraph', 'note'],
   },
 
@@ -238,5 +238,18 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Knowledge level',
     extends: ['Base'],
     requires: ['KnowledgeInfo'],
+  },
+
+  /**
+   * Ein Asset ist ein Artikel, kein blosser Anhang: so trägt es Marken, eine
+   * Quellenangabe und eine Sichtbarkeit, und dieselbe Datei kann von zwei
+   * Karten benutzt werden, ohne zweimal dazuliegen.
+   */
+  Asset: {
+    name: 'Asset',
+    label: 'Asset',
+    extends: ['Base'],
+    requires: ['AssetInfo'],
+    allows: ['SourceRef'],
   },
 };

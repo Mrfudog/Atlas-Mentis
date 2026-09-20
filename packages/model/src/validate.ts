@@ -93,6 +93,7 @@ export const RegistrySchema = z.object({
   relations: z.record(z.string(), RelationDefSchema),
   views: z.record(z.string(), ViewDefSchema),
   vars: z.record(z.string(), z.string()),
+  settings: z.record(z.string(), z.string()).optional(),
 });
 
 export const BlockSchema = z.object({

@@ -12,5 +12,17 @@ export const vars: Record<string, string> = {
   TYP: 'wuchtig',
 };
 
+/**
+ * Kampagneneinstellungen (REQ-043). Jeder Bereich liest die Schlüssel, die
+ * er kennt, und lässt den Rest liegen — deshalb steht hier kein Schema.
+ */
+export const settings: Record<string, string> = {
+  gridSize: '70',
+  gridUnit: '1,5 m',
+  inventoryCols: '10',
+  inventoryRows: '6',
+  calendar: 'Harptos',
+};
+
 /** The rows a fresh database is seeded with. */
-export const seedRegistry: Registry = { components, interfaces, relations, views, vars };
+export const seedRegistry: Registry = { components, interfaces, relations, views, vars, settings };
