@@ -658,4 +658,36 @@ export const components: Record<string, ComponentDef> = {
       },
     },
   },
+
+  /**
+   * Boards (REQ-111, 157 bis 166). Eine Leinwand, auf der Artikel frei
+   * liegen.
+   *
+   * `rules` ist die Darstellungsauflösung (REQ-161): je Schnittstelle eine
+   * Ansicht, die das Board vorschlägt. Die Platzierung darf sie überstimmen —
+   * *dieser* Statblock hier soll voll stehen, alle anderen kurz. Priorität
+   * also: Platzierung, dann Board-Regel, dann die erste Ansicht.
+   *
+   * `shapes` und `anchors` liegen als Felder am Board und nicht als Kanten,
+   * und das ist kein Rückfall: ein Rechteck zeigt auf nichts. Ein Token zeigt
+   * auf einen Artikel, deshalb ist es eine Kante; eine Linie, die zwei
+   * Kästen umfasst, ist Zeichnung und gehört dem Board.
+   */
+  BoardInfo: {
+    name: 'BoardInfo',
+    label: 'Board',
+    engine: 'Board',
+    schema: {
+      type: 'object',
+      properties: {
+        width: { type: 'number', title: 'Width in px', default: 2400 },
+        height: { type: 'number', title: 'Height in px', default: 1500 },
+        snap: { type: 'number', title: 'Snap to px', default: 10 },
+        background: { type: 'string', format: 'asset', title: 'Background' },
+        rules: { type: 'object', title: 'View per interface' },
+        shapes: { type: 'array', title: 'Shapes', items: { type: 'object' } },
+        anchors: { type: 'array', title: 'Anchors', items: { type: 'object' } },
+      },
+    },
+  },
 };

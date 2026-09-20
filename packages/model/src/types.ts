@@ -99,7 +99,8 @@ export type LayoutElementKind =
   | 'map'
   | 'sheet'
   | 'inventory'
-  | 'crafting';
+  | 'crafting'
+  | 'board';
 
 /**
  * One element of a view's layout. A view is an ordered list of these, so the

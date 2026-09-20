@@ -349,4 +349,32 @@ export const relations: Record<string, RelationDef> = {
     to: ['Item'],
     cardinality: 'one',
   },
+
+  // ---------------------------------------------------------------- boards
+
+  /**
+   * Was auf dem Board liegt (REQ-157, 158, 165). Die Platzierung trägt Ort,
+   * Grösse und — wenn sie will — die Ansicht, in der sie gezeichnet wird.
+   * Ohne eigene Ansicht entscheidet die Regel des Boards (REQ-161).
+   */
+  placed: {
+    type: 'placed',
+    label: 'on the board',
+    inverseLabel: 'lies on',
+    from: ['Board'],
+    to: ['*'],
+    props: {
+      type: 'object',
+      properties: {
+        x: { type: 'number', title: 'X in px' },
+        y: { type: 'number', title: 'Y in px' },
+        w: { type: 'number', title: 'Width in px', default: 260 },
+        h: { type: 'number', title: 'Height in px', default: 180 },
+        view: { type: 'string', title: 'Shown as' },
+        z: { type: 'number', title: 'Layer', default: 0 },
+        locked: { type: 'boolean', title: 'Locked' },
+        note: { type: 'string', title: 'Note' },
+      },
+    },
+  },
 };

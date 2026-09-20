@@ -191,4 +191,18 @@ export const views: Record<string, ViewDef> = {
       { id: 'c-b', el: 'blocks', blocks: ['note', 'lore'] },
     ],
   },
+
+  /** Die Leinwand, sonst nichts — alles andere liegt darauf. */
+  board: {
+    label: 'Board',
+    order: 12,
+    fields: 'none',
+    blocks: [],
+    description: false,
+    composed: false,
+    relations: false,
+    bindings: false,
+    image: false,
+    layout: [{ id: 'b-canvas', el: 'board' }],
+  },
 };

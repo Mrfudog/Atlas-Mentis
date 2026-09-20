@@ -287,4 +287,18 @@ export const interfaces: Record<string, InterfaceDef> = {
     requires: ['RecipeInfo'],
     blockTypes: ['+note', '+secret', '+lore'],
   },
+
+  /**
+   * Ein Board ist ein Artikel, und was darauf liegt, sind Kanten. Damit
+   * beantwortet „wo liegt dieser NSC überall?" derselbe Rückbezug wie
+   * überall sonst — und ein Board kann geteilt, versioniert und mit Wissen
+   * belegt werden, ohne dass dafür etwas Neues erfunden wird.
+   */
+  Board: {
+    name: 'Board',
+    label: 'Board',
+    extends: ['Base'],
+    requires: ['BoardInfo'],
+    blockTypes: ['+note'],
+  },
 };

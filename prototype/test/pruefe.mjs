@@ -1260,6 +1260,70 @@ async function seite(datei, warten) {
     pruefe('a recipe with knowledge and a carrier exist in the data', false, werkbank);
   }
 
+  /* ---- Boards (REQ-111, 157 bis 166) ----
+     Der Prüfstein ist die Darstellungsauflösung: jede Platzierung wird in
+     der Ansicht gezeichnet, die Platzierung → Board-Regel → Rückfall ergibt,
+     und zwar mit *denselben* Elementen wie die Artikelseite. Zeichnete das
+     Board eigene Kacheln, wäre jedes neue Element zweimal zu bauen. */
+  const boardName = await p.evaluate(() => {
+    const b = [...window.__T__.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Board');
+    return b ? (b.name || b.components.Name.text) : null;
+  });
+  if (boardName) {
+    await oeffne(boardName);
+    await p.evaluate(() => {
+      const f = document.getElementById('facet');
+      f.value = 'board';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(700);
+    const brd = await p.evaluate(() => ({
+      karten: [...document.querySelectorAll('.bcard')].map((c) => ({
+        n: c.querySelector('.bhead .ref')?.textContent ?? null,
+        v: c.querySelector('.bview')?.textContent ?? null,
+        leer: !(c.querySelector('.pbody')?.textContent || '').trim(),
+        l: c.style.left, t: c.style.top })),
+      formen: document.querySelectorAll('.bshape').length,
+      anker: [...(document.querySelectorAll('.maptools select')[1]?.options ?? [])]
+        .map((o) => o.textContent),
+      probleme: [...document.querySelectorAll('.pruef li')].map((x) => x.textContent),
+    }));
+    pruefe('the board draws every placement', brd.karten.length >= 4, brd.karten.length);
+    pruefe('no placement comes out empty',
+      brd.karten.every((k) => !k.leer), brd.karten.filter((k) => k.leer));
+    /* Verschiedene Ansichten nebeneinander: genau das ist die Auflösung.
+       Stünde überall dasselbe, entschiede in Wahrheit nichts. */
+    const ansichten = [...new Set(brd.karten.map((k) => k.v))];
+    pruefe('placements resolve to different views', ansichten.length >= 3, ansichten);
+    pruefe('shapes and anchors belong to the board', brd.formen >= 3 && brd.anker.length >= 3,
+      { formen: brd.formen, anker: brd.anker });
+    pruefe('the board validates clean', brd.probleme.length === 0, brd.probleme);
+
+    /* Die Ansicht einer einzelnen Platzierung überstimmt die Board-Regel. */
+    const vorher = brd.karten[1];
+    await p.evaluate(() => {
+      const s2 = [...document.querySelectorAll('.bcard')][1].querySelector('.bsel');
+      s2.value = 'full';
+      s2.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(500);
+    const nachher = await p.evaluate(() => ({
+      v: [...document.querySelectorAll('.bcard')][1]?.querySelector('.bview')?.textContent ?? null,
+    }));
+    pruefe('a placement may overrule the board rule',
+      nachher.v === 'Full' && nachher.v !== vorher.v, { vorher: vorher.v, nachher: nachher.v });
+
+    /* Eine Karte, die auf einem Board liegt, bringt ihre Werkzeugleiste
+       nicht mit: ein Zoomknopf dort änderte den Zoom der grossen Karte. */
+    const leisten = await p.evaluate(() =>
+      [...document.querySelectorAll('.bcard .maptools')].filter((m) => m.style.display !== 'none').length);
+    pruefe('a placement brings no toolbar of its own', leisten === 0, leisten);
+
+    pruefe('the board raised no exception', errs.length === 0, errs);
+  } else {
+    pruefe('a board exists in the data', false, 'keines gefunden');
+  }
+
   pruefe('knowledge needed no browser modal', modale.length === 0, modale);
   pruefe('no exception through the knowledge panel', errs.length === 0, errs);
 

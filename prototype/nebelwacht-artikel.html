@@ -389,6 +389,39 @@ table.atk tr.stowed td,table.atk tr.buried td{color:var(--dim)}
   display:block}
 .gitem i.off{background:transparent;border-color:transparent}
 .gitem.selected i.on{background:var(--accent);border-color:var(--accent)}
+/* Boards: die Leinwand scrollt, die Karten liegen darauf. */
+.boardbox{margin:8px 0}
+.boardstage{overflow:auto;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--surface2);max-height:74vh;position:relative}
+.boardcanvas{position:relative;background-repeat:no-repeat;
+  background-image:linear-gradient(to right,var(--line) 1px,transparent 1px),
+    linear-gradient(to bottom,var(--line) 1px,transparent 1px);
+  background-size:40px 40px,40px 40px}
+.bcard{position:absolute;background:var(--surface);border:1px solid var(--line2);
+  border-radius:var(--r);box-shadow:0 2px 8px rgba(0,0,0,.18);overflow:hidden;
+  display:flex;flex-direction:column}
+.bcard.selected{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.bhead{display:flex;align-items:center;gap:6px;padding:3px 6px;background:var(--surface2);
+  border-bottom:1px solid var(--line);cursor:move;touch-action:none;min-height:26px;
+  font-size:12.5px}
+.bhead .ref{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bhead .bview{font-family:var(--ff-mono);font-size:9.5px;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--dim);margin-left:auto;white-space:nowrap}
+.bhead .bsel{font-size:10.5px;padding:0 2px;background:var(--bg);color:var(--ink);
+  border:1px solid var(--line);border-radius:2px;max-width:88px}
+.bscroll{overflow:auto;transform-origin:0 0;flex:1}
+.pbody{padding:6px 8px;font-size:13.5px}
+.pbody .sec{font-size:15px;margin:8px 0 4px}
+.pbody .fields{margin:6px 0}
+.pbody .pic img{max-height:150px;width:auto}
+.bgrip{position:absolute;right:0;bottom:0;width:14px;height:14px;cursor:nwse-resize;
+  background:linear-gradient(135deg,transparent 50%,var(--line2) 50%);touch-action:none}
+.bshape{position:absolute;border:2px solid var(--accent);pointer-events:auto}
+.bshape.sh-ellipse{border-radius:50%}
+.bshape.sh-line{border:0;border-top:2px solid var(--accent);height:0!important}
+.bshape.sh-label{border:0;font-family:var(--ff-disp);font-size:17px;white-space:nowrap;
+  color:var(--accent)}
+
 /* Handwerk: eine Matrix, in der die fehlende Zutat auffällt. */
 .crhead{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 .yield{font-size:14px}
@@ -527,6 +560,7 @@ var UI={route:{k:"list"}, view:"quick", iface:"", tag:"", q:"", offen:false, pan
         aside:"rel", info:"", assetBusy:"",
         mapZoom:1, mapLock:false, mapKind:"", mapDrag:null,
         invView:"tiers", invPick:"", craftOnly:false,
+        boardZoom:1, boardPick:"", boardTool:"",
         konzept:false, err:""};
 
 /* Darstellungsstufen (Facets, REQ-164) — registry rows, not code.
@@ -1819,7 +1853,7 @@ var LAYOUT_ELEMENTS=[
   ["heading","Heading"],["text","Paragraph"],["fields","Field table"],
   ["description","Description"],["blocks","Text blocks"],
   ["composed","Composed rules"],["relations","Relations"],["image","Image"],
-  ["knowledge","Knowledge groups"],["map","Map"],["sheet","Character sheet"],["inventory","Inventory"],["crafting","Crafting"]
+  ["knowledge","Knowledge groups"],["map","Map"],["sheet","Character sheet"],["inventory","Inventory"],["crafting","Crafting"],["board","Board"]
 ];
 function layoutOf(vw,ifn){
   var by=vw.byInterface||{};
@@ -1857,6 +1891,7 @@ function renderLayoutItem(item,e,ifn,vw){
     case "sheet":       return elSheet(e,ifn,item);
     case "inventory":   return elInventory(e,ifn,item);
     case "crafting":    return elCrafting(e,ifn,item);
+    case "board":       return elBoard(e,ifn,item);
     default:            return null;
   }
 }
@@ -1999,6 +2034,335 @@ function elRelations(e){
     wrap.appendChild(row);
   });
   return wrap;
+}
+
+/* ---------- Boards (REQ-111, 157 bis 166) ----------
+   Eine Leinwand, auf der Artikel frei liegen. Was darauf liegt, sind Kanten
+   mit Ort und Grösse — damit beantwortet „wo liegt dieser NSC überall?"
+   derselbe Rückbezug wie überall sonst.
+
+   **Jede Platzierung wird in einer Ansicht gezeichnet, und dieselbe
+   Ansicht, die auch die Artikelseite zeichnet.** Genau dafür wurde die
+   Ansicht in A4 eine geordnete Liste von Elementen: `layoutOf` und
+   `renderLayoutItem` gelten hier unverändert, und ein neues Element steht
+   ohne Zutun auch auf dem Board.
+
+   Die Auflösung, welche Ansicht (REQ-161): erst die Platzierung, dann die
+   Regel des Boards je Schnittstelle, dann die erste Ansicht. So steht ein
+   Board voller Kurzfassungen da, und *dieser eine* Statblock darin voll.
+
+   Rechtecke und Ankerpunkte liegen als Felder am Board, nicht als Kanten.
+   Das ist kein Rückfall: ein Rechteck zeigt auf nichts. Ein Token zeigt auf
+   einen Artikel, deshalb ist es eine Kante; eine Linie, die zwei Kästen
+   umfasst, ist Zeichnung und gehört dem Board. */
+var BOARD_IFACE="Board", BOARD_COMP="BoardInfo", REL_PLACED="placed";
+var SHAPE_KINDS=[["rect","Rectangle"],["ellipse","Ellipse"],["line","Line"],["label","Label"]];
+
+function boardCard(e){ return (e.components||{})[BOARD_COMP]||{}; }
+/* Welche Ansicht zeichnet diese Platzierung (REQ-161)? */
+function placementView(board,rel,target){
+  var pr=rel.props||{};
+  if(pr.view&&REG.views[pr.view])return pr.view;
+  var regeln=boardCard(board).rules||{};
+  var at=(target.interfaces||[])[0], guard=0;
+  while(at&&guard++<64){ if(regeln[at]&&REG.views[regeln[at]])return regeln[at]; at=parentOf(at); }
+  return viewKeys()[0];
+}
+/* Eine Platzierung zeichnen: dieselben Elemente wie die Artikelseite.
+   `tiefe` bricht ab, wenn ein Board auf einem Board auf einem Board liegt —
+   das ist erlaubt, aber nicht unendlich. */
+/* Innerhalb einer Platzierung gehören die Werkzeugleisten nicht hin: ein
+   Zoomknopf auf einer Karte, die als Kachel auf einem Board liegt, änderte
+   den Zoom der grossen Karte nebenan. Gelesen wird hier, bearbeitet wird
+   auf der Artikelseite — der Titel der Kachel führt hin. */
+var inPlacement=0;
+function renderPlacement(target,viewKey,tiefe){
+  var host=el("div",{class:"pbody"});
+  var vw=(REG.views||{})[viewKey];
+  if(!vw){ host.appendChild(el("p",{class:"hint",text:"Unknown view."})); return host; }
+  var ifn=(target.interfaces||[])[0]||"";
+  if((tiefe||0)>2){ host.appendChild(el("p",{class:"hint",text:"…"})); return host; }
+  inPlacement++;
+  try{
+    layoutOf(vw,ifn).forEach(function(it){
+      /* Ein Board in einem Board zeichnet nicht wieder eine ganze Leinwand. */
+      if(it.el==="board"&&(tiefe||0)>=1)return;
+      var node;
+      try{ node=renderLayoutItem(it,target,ifn,vw); }
+      catch(x){ node=el("p",{class:"err",text:String(x&&x.message||x)}); }
+      if(node) host.appendChild(node);
+    });
+  } finally { inPlacement--; }
+  if(!host.childNodes.length) host.appendChild(el("p",{class:"hint",
+    text:"Nothing to show in this view."}));
+  return host;
+}
+
+function elBoard(e,ifn,item){
+  var card=boardCard(e);
+  var breite=Number(card.width)||2400, hoehe=Number(card.height)||1500;
+  var snap=Math.max(1,Number(card.snap)||10);
+  var z=UI.boardZoom;
+  var wrap=el("div",{class:"boardbox"});
+
+  var bar=el("div",{class:"maptools"});
+  [["−",-0.1],["+",0.1]].forEach(function(t){
+    bar.appendChild(el("button",{class:"btn sm",type:"button",
+      onclick:function(){ UI.boardZoom=Math.min(2,Math.max(0.2,UI.boardZoom+t[1])); render(); }},t[0]));
+  });
+  bar.appendChild(el("span",{class:"hint",style:"margin:0",text:Math.round(z*100)+"%"}));
+  if(me.write){
+    bar.appendChild(el("button",{class:"btn sm",type:"button",
+      onclick:function(){ placeOnBoard(e); }},"+ Place"));
+    bar.appendChild(el("button",{class:"btn sm",type:"button",
+      onclick:function(){ newOnBoard(e); }},"+ New article"));
+    var werkzeug=el("select",{class:"i",style:"width:auto"});
+    werkzeug.appendChild(el("option",{value:""},"draw…"));
+    SHAPE_KINDS.forEach(function(k){ werkzeug.appendChild(el("option",{value:k[0]},k[1])); });
+    werkzeug.value=UI.boardTool;
+    werkzeug.addEventListener("change",function(){ UI.boardTool=werkzeug.value; render(); });
+    bar.appendChild(werkzeug);
+  }
+  /* Ankerpunkte (REQ-159, 160): benannte Stellen auf der Leinwand. */
+  var anker=Array.isArray(card.anchors)?card.anchors:[];
+  if(anker.length){
+    var sel=el("select",{class:"i",style:"width:auto"});
+    sel.appendChild(el("option",{value:""},"jump to…"));
+    anker.forEach(function(a){ sel.appendChild(el("option",{value:a.id},a.name||a.id)); });
+    sel.addEventListener("change",function(){
+      var a=anker.filter(function(x){return x.id===sel.value;})[0];
+      if(!a)return;
+      var st=wrap.querySelector(".boardstage");
+      if(a.zoom){ UI.boardZoom=a.zoom; render();
+        setTimeout(function(){ var s2=document.querySelector(".boardstage");
+          if(s2){ s2.scrollLeft=(a.x||0)*UI.boardZoom-60; s2.scrollTop=(a.y||0)*UI.boardZoom-60; } },0);
+        return; }
+      if(st){ st.scrollLeft=(a.x||0)*z-60; st.scrollTop=(a.y||0)*z-60; }
+    });
+    bar.appendChild(sel);
+  }
+  if(me.write) bar.appendChild(el("button",{class:"btn sm gh",type:"button",
+    onclick:function(){ addAnchor(e,wrap); }},"+ Anchor"));
+  wrap.appendChild(bar);
+
+  var stage=el("div",{class:"boardstage"});
+  var canvas=el("div",{class:"boardcanvas"});
+  canvas.style.width=(breite*z)+"px";
+  canvas.style.height=(hoehe*z)+"px";
+  var bg=assetSrc(card.background);
+  if(bg) canvas.style.backgroundImage="url("+JSON.stringify(bg).slice(1,-1)+")";
+  canvas.style.backgroundSize="100% 100%";
+
+  /* Zeichnung zuerst: sie liegt unter den Karten. */
+  (Array.isArray(card.shapes)?card.shapes:[]).forEach(function(sh){
+    var n=el("div",{class:"bshape sh-"+(sh.kind||"rect")});
+    n.style.left=((sh.x||0)*z)+"px"; n.style.top=((sh.y||0)*z)+"px";
+    n.style.width=((sh.w||120)*z)+"px"; n.style.height=((sh.h||80)*z)+"px";
+    if(sh.color) n.style.borderColor=sh.color;
+    if(sh.kind==="label"){ n.textContent=sh.text||""; n.style.color=sh.color||""; }
+    if(me.write) n.addEventListener("contextmenu",function(ev){
+      ev.preventDefault();
+      confirmDialog("Remove this shape?",function(){
+        card.shapes=(card.shapes||[]).filter(function(x){return x.id!==sh.id;});
+        e.components[BOARD_COMP]=card; persist(e); });
+    });
+    canvas.appendChild(n);
+  });
+
+  var platz=(e.relations||[]).filter(function(r){ return r.type===REL_PLACED; });
+  platz.sort(function(a,b){ return ((a.props||{}).z||0)-((b.props||{}).z||0); });
+  platz.forEach(function(r){
+    var t=ENT.get(r.to);
+    var pr=r.props||{};
+    var karte=el("div",{class:"bcard"+(UI.boardPick===r.id?" selected":"")});
+    karte.style.left=((pr.x||0)*z)+"px";
+    karte.style.top=((pr.y||0)*z)+"px";
+    karte.style.width=((pr.w||260)*z)+"px";
+    karte.style.height=((pr.h||180)*z)+"px";
+    if(!t){
+      karte.appendChild(el("div",{class:"gone",text:"missing article"}));
+      canvas.appendChild(karte); return;
+    }
+    var vk=placementView(e,r,t);
+    var kopf=el("div",{class:"bhead"});
+    kopf.appendChild(el("button",{class:"ref",type:"button",
+      onclick:function(ev){ ev.stopPropagation(); go({k:"art",id:t.id}); }},nameOf(t)));
+    kopf.appendChild(el("span",{class:"bview",text:(REG.views[vk]||{}).label||vk}));
+    if(me.write){
+      /* Die Ansicht je Platzierung wechseln: das ist die
+         Darstellungsauflösung von Hand, und sie muss dort sein, wo die
+         Karte steht — nicht in einem Register. */
+      var vs=el("select",{class:"bsel"});
+      vs.appendChild(el("option",{value:""},"(board rule)"));
+      viewKeys().forEach(function(k){ vs.appendChild(el("option",{value:k},(REG.views[k]||{}).label||k)); });
+      vs.value=pr.view||"";
+      vs.addEventListener("click",function(ev){ ev.stopPropagation(); });
+      vs.addEventListener("change",function(){
+        r.props=Object.assign({},r.props,{view:vs.value||undefined}); persist(e); });
+      kopf.appendChild(vs);
+      kopf.appendChild(el("button",{class:"btn gh sm",type:"button",title:"Take off the board",
+        onclick:function(ev){ ev.stopPropagation();
+          e.relations=e.relations.filter(function(x){return x.id!==r.id;}); persist(e); }},"×"));
+    }
+    karte.appendChild(kopf);
+    var body=el("div",{class:"bscroll"});
+    body.style.transform="scale("+z+")";
+    body.style.width=(100/z)+"%";
+    body.style.height="calc("+(100/z)+"% - "+(26/z)+"px)";
+    body.appendChild(renderPlacement(t,vk,0));
+    karte.appendChild(body);
+
+    if(me.write&&!pr.locked){
+      var griff=el("div",{class:"bgrip",title:"Resize"});
+      karte.appendChild(griff);
+      var zieh=null;
+      kopf.addEventListener("pointerdown",function(ev){
+        if(ev.target!==kopf)return;
+        zieh={x:ev.clientX,y:ev.clientY,ox:pr.x||0,oy:pr.y||0,mode:"move"};
+        UI.boardPick=r.id;
+        try{ kopf.setPointerCapture(ev.pointerId); }catch(x){}
+      });
+      griff.addEventListener("pointerdown",function(ev){
+        ev.stopPropagation();
+        zieh={x:ev.clientX,y:ev.clientY,ow:pr.w||260,oh:pr.h||180,mode:"size"};
+        try{ griff.setPointerCapture(ev.pointerId); }catch(x){}
+      });
+      var bewegen=function(ev){
+        if(!zieh)return;
+        var dx=(ev.clientX-zieh.x)/z, dy=(ev.clientY-zieh.y)/z;
+        if(zieh.mode==="move"){
+          zieh.nx=Math.max(0,Math.round((zieh.ox+dx)/snap)*snap);
+          zieh.ny=Math.max(0,Math.round((zieh.oy+dy)/snap)*snap);
+          karte.style.left=(zieh.nx*z)+"px"; karte.style.top=(zieh.ny*z)+"px";
+        } else {
+          zieh.nw=Math.max(80,Math.round((zieh.ow+dx)/snap)*snap);
+          zieh.nh=Math.max(60,Math.round((zieh.oh+dy)/snap)*snap);
+          karte.style.width=(zieh.nw*z)+"px"; karte.style.height=(zieh.nh*z)+"px";
+        }
+      };
+      var los=function(){
+        if(!zieh)return;
+        var w=zieh; zieh=null;
+        if(w.mode==="move"&&w.nx!=null) r.props=Object.assign({},r.props,{x:w.nx,y:w.ny});
+        if(w.mode==="size"&&w.nw!=null) r.props=Object.assign({},r.props,{w:w.nw,h:w.nh});
+        persist(e);
+      };
+      kopf.addEventListener("pointermove",bewegen);
+      kopf.addEventListener("pointerup",los);
+      griff.addEventListener("pointermove",bewegen);
+      griff.addEventListener("pointerup",los);
+    }
+    canvas.appendChild(karte);
+  });
+
+  /* Mit einem Zeichenwerkzeug in der Hand legt ein Klick eine Form an. */
+  if(me.write&&UI.boardTool){
+    canvas.style.cursor="crosshair";
+    canvas.addEventListener("click",function(ev){
+      if(ev.target!==canvas)return;
+      var rect=canvas.getBoundingClientRect();
+      var x=Math.round(((ev.clientX-rect.left)/z)/snap)*snap;
+      var y=Math.round(((ev.clientY-rect.top)/z)/snap)*snap;
+      var sh={id:uid("sh"),kind:UI.boardTool,x:x,y:y,w:160,h:100};
+      if(UI.boardTool==="label"){ sh.text="Label"; sh.h=24; }
+      card.shapes=(card.shapes||[]).concat([sh]);
+      e.components=e.components||{}; e.components[BOARD_COMP]=card;
+      UI.boardTool=""; persist(e);
+    });
+  }
+
+  stage.appendChild(canvas);
+  wrap.appendChild(stage);
+  wrap.appendChild(el("p",{class:"hint",
+    text:platz.length+" placed · "+((card.shapes||[]).length)+" shapes · "+
+      anker.length+" anchors"+(me.write?" · drag the title bar to move, the corner to resize, right-click a shape to remove":"")}));
+  return wrap;
+}
+
+/* Etwas aufs Board legen. */
+function placeOnBoard(e){
+  dialog("Place on the board",function(host,close){
+    var suche=el("input",{class:"i",type:"text",placeholder:"Search articles…"});
+    var sel=el("select",{class:"i",size:"8",style:"height:auto"});
+    function fuelle(){
+      var q=suche.value.toLowerCase().trim();
+      sel.textContent="";
+      byName().forEach(function(c){
+        if(c.id===e.id)return;
+        if(q&&nameOf(c).toLowerCase().indexOf(q)<0)return;
+        sel.appendChild(el("option",{value:c.id},nameOf(c)+" — "+ifaceName(c)));
+      });
+      if(!sel.childNodes.length) sel.appendChild(el("option",{value:""},"— nothing matches —"));
+    }
+    suche.addEventListener("input",fuelle); fuelle();
+    var vs=el("select",{class:"i"});
+    vs.appendChild(el("option",{value:""},"(board rule decides)"));
+    viewKeys().forEach(function(k){ vs.appendChild(el("option",{value:k},(REG.views[k]||{}).label||k)); });
+    host.appendChild(field("Article",suche));
+    host.appendChild(sel);
+    host.appendChild(field("Shown as",vs));
+    actions(host,close,function(){
+      if(!sel.value)return false;
+      var n=(e.relations||[]).filter(function(r){return r.type===REL_PLACED;}).length;
+      e.relations=e.relations||[];
+      e.relations.push({id:uid("r"),type:REL_PLACED,to:sel.value,
+        props:{x:40+(n%6)*280,y:40+Math.floor(n/6)*200,w:260,h:180,z:n,
+               view:vs.value||undefined}});
+      persist(e);
+    },"Place");
+  });
+}
+
+/* Board-first (REQ-166): anlegen und gleich hinlegen. Wer erst in die Liste
+   springen müsste, legt nichts an, während er denkt. */
+function newOnBoard(e){
+  dialog("New article on the board",function(host,close){
+    var sel=el("select",{class:"i"});
+    Object.keys(REG.interfaces).sort().forEach(function(n){
+      if(REG.interfaces[n].abstract)return;
+      sel.appendChild(el("option",{value:n},REG.interfaces[n].label||n)); });
+    if(REG.interfaces.Article) sel.value="Article";
+    var nm=el("input",{class:"i",type:"text",placeholder:"Name"});
+    var tx=el("textarea",{class:"i",placeholder:"A line or two — it becomes the description."});
+    host.appendChild(field("Interface",sel));
+    host.appendChild(field("Name",nm));
+    host.appendChild(field("Text",tx));
+    actions(host,close,function(){
+      var name=nm.value.trim(); if(!name){nm.focus();return false;}
+      var ifn2=sel.value;
+      var neu={ id:uid("e"), interfaces:[ifn2], name:name, tags:[],
+        components:{ Name:{text:name}, Identity:{key:slug(ifn2)+"/"+slug(name),aliases:[]} },
+        adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
+      if(tx.value.trim()) neu.components.Description={raw:tx.value.trim()};
+      reqFor(ifn2).forEach(function(c){ if(!neu.components[c]&&REG.components[c]) neu.components[c]={}; });
+      applyDefaults(neu,ifn2);
+      ENT.set(neu.id,neu); persist(neu);
+      var n=(e.relations||[]).filter(function(r){return r.type===REL_PLACED;}).length;
+      e.relations=e.relations||[];
+      e.relations.push({id:uid("r"),type:REL_PLACED,to:neu.id,
+        props:{x:40+(n%6)*280,y:40+Math.floor(n/6)*200,w:260,h:180,z:n}});
+      persist(e);
+    },"Create and place");
+  });
+}
+
+/* Ein Ankerpunkt merkt sich die Stelle, an der man gerade steht (REQ-159). */
+function addAnchor(e,wrap){
+  var st=wrap.querySelector(".boardstage");
+  var z=UI.boardZoom;
+  var x=st?Math.round(st.scrollLeft/z):0, y=st?Math.round(st.scrollTop/z):0;
+  dialog("Anchor here",function(host,close){
+    var nm=el("input",{class:"i",type:"text",placeholder:"e.g. The alley"});
+    host.appendChild(field("Name",nm));
+    host.appendChild(el("p",{class:"hint",text:"Remembers x "+x+", y "+y+" at "+Math.round(z*100)+"%."}));
+    actions(host,close,function(){
+      var name=nm.value.trim(); if(!name){nm.focus();return false;}
+      var card=boardCard(e);
+      card.anchors=(card.anchors||[]).concat([{id:uid("an"),name:name,x:x,y:y,zoom:z}]);
+      e.components=e.components||{}; e.components[BOARD_COMP]=card;
+      persist(e);
+    },"Save");
+  });
 }
 
 /* ---------- Handwerk (REQ-184) ----------
@@ -2344,6 +2708,7 @@ function elInventory(e,ifn,item){
   var stuecke=carriedItems(e);
 
   var tabs=el("div",{class:"ktabs"});
+  if(inPlacement) tabs.style.display="none";
   [["tiers","Within reach"],["body","Worn"],["grid","Grid"]].forEach(function(t){
     tabs.appendChild(el("button",{class:"btn sm"+(UI.invView===t[0]?" pri":""),type:"button",
       "aria-pressed":String(UI.invView===t[0]),
@@ -2940,6 +3305,7 @@ function elMap(e,ifn,item){
      eine vorbereitete Karte und eine im Spiel laufende sind dieselbe Karte,
      und man will die Vorbereitung sehen können, ohne die Spielzüge. */
   var bar=el("div",{class:"maptools"});
+  if(inPlacement) bar.style.display="none";
   [["−",-0.25],["+",0.25]].forEach(function(z){
     bar.appendChild(el("button",{class:"btn sm",type:"button",title:"Zoom",
       onclick:function(){ UI.mapZoom=Math.min(4,Math.max(0.25,UI.mapZoom+z[1])); render(); }},z[0]));
