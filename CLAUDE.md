@@ -113,6 +113,13 @@ nimmt der Schalter einzelne Zeilen: `--prune components:DeedInfo,interfaces:Deed
 Ein Name, der nichts trifft, wird gesagt und lässt den Lauf fehlschlagen;
 ein stiller Tippfehler sähe aus wie eine erledigte Löschung.
 
+`pnpm --filter @nw/registry catalogue` schreibt
+[docs/Artikeltypen.md](docs/Artikeltypen.md) neu — je Artikelart, was sie
+verlangt, was sie erlaubt, welche Kanten sie trägt und wie sie gezeichnet
+wird. Die Datei wird **erzeugt und nicht von Hand geändert**: eine
+Übersicht, die jemand abtippt, stimmt am Tag ihrer Entstehung und danach
+nie wieder.
+
 `pnpm test` läuft in zwei Projekten: `node` für Modell, Register und Server,
 `web` mit jsdom und Angulars aufgesetzter Prüfumgebung. Eine gemeinsame
 Aufsetzdatei wäre der Weg, auf dem ein Node-Test plötzlich von einem
