@@ -67,10 +67,12 @@ die Entscheidungen D0–D17, `Requirements.md` die REQ-Nummern.
   zu pflegen hält genau so lange, wie jemand daran denkt — und als es hier
   zuletzt auseinanderlief, standen deutsche Variablen im Paket und englische
   im Prototyp, und gemerkt hat es niemand, weil beide für sich stimmten.
-- **Nicht auf `0.0.0.0` binden.** Der Reverse Proxy ist das, was nach aussen
-  zeigt. Seit 2026-09-20 hat der Server einen Zugang (ein Passwort je Nutzer,
-  siehe [docs/Zugang.md](docs/Zugang.md)) — das ist ein Grund mehr für die
-  Bindung auf Loopback und keiner weniger.
+- **Nicht auf `0.0.0.0` binden** — ausserhalb eines Containers. Im Container
+  ist `HOST=0.0.0.0` richtig, weil dort die Containergrenze das ist, was
+  zählt; auf einer Maschine ist es der Reverse Proxy. Seit 2026-09-20 hat der
+  Server ausserdem einen Zugang (ein Passwort je Nutzer, siehe
+  [docs/Zugang.md](docs/Zugang.md)) — das ist ein Grund mehr für die enge
+  Bindung und keiner weniger.
 
 ## Bauen und prüfen
 
