@@ -17,14 +17,15 @@ export class PgRepository implements Repository {
   constructor(private readonly pool: Pool) {}
 
   async getRegistry(): Promise<Registry> {
-    const [interfaces, relations, views, vars] = await Promise.all([
+    const [interfaces, relations, views, units, vars] = await Promise.all([
       this.pool.query<Row>('select * from interface_def'),
       this.pool.query<Row>('select * from relation_def'),
       this.pool.query<Row>('select * from view_def order by ord'),
+      this.pool.query<Row>('select * from unit_def'),
       this.pool.query<Row>('select * from var_def'),
     ]);
 
-    const registry: Registry = { interfaces: {}, relations: {}, views: {}, vars: {} };
+    const registry: Registry = { interfaces: {}, relations: {}, views: {}, units: {}, vars: {} };
 
     for (const r of interfaces.rows) {
       registry.interfaces[r['name'] as string] = {
@@ -35,6 +36,7 @@ export class PgRepository implements Repository {
         schema: (r['schema'] as InterfaceDef['schema']) ?? undefined,
         blockTypes: (r['block_types'] as string[]) ?? [],
         area: (r['area'] as InterfaceDef['area']) ?? undefined,
+        units: (r['units'] as InterfaceDef['units']) ?? undefined,
         /* Die Anordnung wohnt am Typ (D28): eine Kreatur ordnet ihre `full`
            anders als ein Rezept, und das steht bei der Kreatur. */
         views: (r['views'] as InterfaceDef['views']) ?? undefined,
@@ -59,6 +61,19 @@ export class PgRepository implements Repository {
         order: r['ord'] as number,
       } as Registry['views'][string];
     }
+    /* Einheiten sind Zeilen wie alles andere: `base` sagt, wie viel eine
+       davon in der Grundeinheit ihrer Grösse ist. */
+    for (const r of units.rows) {
+      registry.units[r['code'] as string] = {
+        code: r['code'] as string,
+        label: r['label'] as string,
+        quantity: r['quantity'] as string,
+        system: r['system'] as 'imperial' | 'metric',
+        base: Number(r['base']),
+        aliases: (r['aliases'] as string[]) ?? [],
+        decimals: r['decimals'] == null ? undefined : Number(r['decimals']),
+      };
+    }
     for (const r of vars.rows) registry.vars[r['name'] as string] = r['value'] as string;
 
     return registry;
@@ -72,11 +87,12 @@ export class PgRepository implements Repository {
         await client.query('delete from interface_def');
         for (const [name, def] of Object.entries(value as Registry['interfaces'])) {
           await client.query(
-            `insert into interface_def(name,label,abstract,extends,schema,block_types,area,views)
-             values ($1,$2,$3,$4,$5,$6,$7,$8)`,
+            `insert into interface_def(name,label,abstract,extends,schema,block_types,area,views,units)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
             [name, def.label ?? null, def.abstract ?? false, def.extends ?? [],
              def.schema ? JSON.stringify(def.schema) : null, def.blockTypes ?? [],
-             def.area ?? null, def.views ? JSON.stringify(def.views) : null],
+             def.area ?? null, def.views ? JSON.stringify(def.views) : null,
+             def.units ?? null],
           );
         }
       } else if (part === 'relations') {
@@ -96,6 +112,16 @@ export class PgRepository implements Repository {
           await client.query('insert into view_def(key,label,ord,config) values ($1,$2,$3,$4)', [
             key, def.label, def.order ?? 99, JSON.stringify(def),
           ]);
+        }
+      } else if (part === 'units') {
+        await client.query('delete from unit_def');
+        for (const [code, def] of Object.entries(value as Registry['units'])) {
+          await client.query(
+            `insert into unit_def(code,label,quantity,system,base,aliases,decimals)
+             values ($1,$2,$3,$4,$5,$6,$7)`,
+            [code, def.label, def.quantity, def.system, def.base,
+             def.aliases ?? [], def.decimals ?? null],
+          );
         }
       } else if (part === 'vars') {
         await client.query('delete from var_def');

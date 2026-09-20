@@ -347,6 +347,72 @@ async function seite(datei, warten) {
   pruefe('and picking one opens it right there',
     angebot.nachher === angebot.vorher + 1 && angebot.offen === true, angebot);
 
+  /* **Einheiten werden beim Lesen gerechnet, nie gespeichert** (D8). Der
+     Vault ist imperial, weil die Regeln es sind; am Tisch sitzen Leute,
+     für die vierzig Fuss nichts bedeuten. Beides in die Daten zu schreiben
+     hiesse, zwei Zahlen zu haben, die sich widersprechen können. */
+  const masse = await p.evaluate(() => {
+    const T = window.__T__;
+    return {
+      zeilen: Object.keys(T.REG.units || {}).length,
+      /* Nach Grössenordnung: drei Meilen sind knapp fünf Kilometer und
+         nicht 4828 Meter. */
+      beide: T.formatMeasure(40, 'ft', 'both'),
+      weit: T.formatMeasure(3, 'mi', 'both'),
+      nurMetrisch: T.formatMeasure(30, 'lb', 'metric'),
+      nurImperial: T.formatMeasure(1.5, 'm', 'imperial'),
+      /* Im Fliesstext: angefasst wird nur, was wie ein Mass aussieht. */
+      text: T.convertText('40 ft, climb 20 ft — and a rope', 'metric'),
+      /* Eine unbekannte Einheit bleibt stehen. Eine irreführende Zahl ist
+         schlimmer als keine. */
+      fremd: T.convertText('7 zorp of nothing', 'metric'),
+      /* Und welches System gilt, sagt die Art oder die Einstellung. */
+      proArt: T.unitsFor('Creature'),
+    };
+  });
+  pruefe('units are a registry row, and the conversion picks the right magnitude',
+    masse.zeilen > 8 && /12\.2/.test(masse.beide) && /m\b/.test(masse.beide)
+    && /4\.8/.test(masse.weit) && /km/.test(masse.weit), masse);
+  pruefe('one system only shows only that one',
+    /kg/.test(masse.nurMetrisch) && !/lb/.test(masse.nurMetrisch)
+    && /ft/.test(masse.nurImperial) && !/\bm\b/.test(masse.nurImperial), masse);
+  pruefe('a measure inside prose is converted, and nothing else is touched',
+    /climb/.test(masse.text) && /rope/.test(masse.text) && !/ft/.test(masse.text)
+    && masse.fremd === '7 zorp of nothing', masse);
+
+  await zumRegister(p, 'Units');
+  const einheiten = await p.evaluate(() => ({
+    probe: [...document.querySelectorAll('#view .fbox .frow')].map((r) => r.textContent),
+    modus: document.getElementById('unitmode')?.value ?? '',
+    zeilen: document.querySelectorAll('#view .regbody .crow').length,
+  }));
+  pruefe('the units have a page that shows what the setting does',
+    einheiten.zeilen > 8 && einheiten.modus === 'both'
+    && einheiten.probe.some((x) => /40\s*ft/.test(x) && /m\)/.test(x)), einheiten);
+
+  /* Nur eines zeigen: die Einstellung wirkt, und man sieht es sofort. */
+  const umgestellt = await p.evaluate(async () => {
+    const sel = document.getElementById('unitmode');
+    sel.value = 'metric';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 350));
+    const nun = [...document.querySelectorAll('#view .fbox .frow')].map((x) => x.textContent);
+    const T = window.__T__;
+    const heute = T.formatMeasure(40, 'ft', T.unitsFor('Creature'));
+    sel.value = 'both';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 350));
+    return { nun, heute };
+  });
+  pruefe('switching to one system leaves the other out everywhere',
+    umgestellt.nun.every((x) => !/\(/.test(x)) && !/ft/.test(umgestellt.heute),
+    umgestellt);
+
+  await zurSeite(p, 'Compendium');
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
+  await p.waitForTimeout(250);
+
   pruefe('a reference shows its overview before you follow it',
     blick.keiner !== true && blick.vorher === 0 && blick.da === true
     && blick.name.length > 0 && blick.felder === 0 && blick.text > blick.name.length,
@@ -631,6 +697,23 @@ async function seite(datei, warten) {
   const s3 = await spring();
   pruefe('every jump leaves a crumb', s3.krumen.length === 3 && s1.krumen[0] === start,
     { start, s1, s2, s3 });
+  /* Und sie stehen **über** der Navigation und nicht im Artikel: sie sagen,
+     wo man ist, und das gehört zur Navigation. Im Artikel standen sie unter
+     dem Seitenwechsel und sahen aus wie ein Teil des Artikels. */
+  const wo = await p.evaluate(() => {
+    const bar = document.querySelector('.crumbs');
+    const nav = document.getElementById('pages');
+    if (!bar || !nav) return null;
+    return {
+      ausserhalb: !document.getElementById('view').contains(bar),
+      ueber: !!(bar.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING),
+      /* Der Artikel, auf dem man steht, steht am Ende der Spur — sonst
+         sagte sie, woher man kam, und nicht, wo man ist. */
+      letzte: bar.querySelector('.hier')?.textContent ?? '',
+    };
+  });
+  pruefe('the crumbs sit above the navigation, and name where you are',
+    wo && wo.ausserhalb && wo.ueber && wo.letzte === s3.hier, { wo, hier: s3.hier });
 
   /* Zurück auf etwas, das schon in der Spur steht, schneidet sie dort ab.
      Sonst wüchse sie beim Hin und Her ins Endlose. */
@@ -986,7 +1069,7 @@ async function seite(datei, warten) {
     dm.titel === 'Registry'
     && ['How it works', 'Types', 'Views', 'Relations', 'Variables', 'Settings',
       'Backup', 'Stack', 'Graph'].every((t) => dm.reiter.includes(t))
-    && ['Type', 'Part', 'Field', 'Article', 'View', 'Block', 'Edge']
+    && ['Type', 'Part', 'Field', 'Article', 'View', 'Block', 'Edge', 'Unit']
       .every((w, i) => dm.begriffe[i] === w), { begriffe: dm.begriffe, reiter: dm.reiter });
   pruefe('and follows one article from its type down to its fields',
     dm.knoten[0] === 'article' && dm.knoten[1] === 'its type'
@@ -3629,7 +3712,11 @@ async function seite(datei, warten) {
     laedt: document.getElementById('view').innerText.trim() === 'Loading…',
   }));
   pruefe('watchdog banner appears', /No data received/.test(s.banner ?? ''), s);
-  pruefe('counts registry parts correctly', /0 of 5 registry parts/.test(s.banner ?? ''), s);
+  /* Die Zahl kommt aus der Liste der Teile und nicht aus dem Text: seit
+     „Units" dazugehört, sind es sechs, und eine Prüfung, die eine Zahl
+     abtippt, wird beim nächsten Teil rot, ohne etwas zu sagen. */
+  pruefe('counts registry parts correctly',
+    new RegExp('0 of \\d+ registry parts').test(s.banner ?? ''), s);
   pruefe('does not sit on Loading…', !s.laedt, s);
   pruefe('no exception without data', errs.length === 0, errs);
   await p.close();

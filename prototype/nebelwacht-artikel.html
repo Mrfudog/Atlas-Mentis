@@ -270,8 +270,11 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 .chip.pick:disabled{opacity:.4;cursor:default}
 .crow .btn.sm.gh:disabled{opacity:.3;cursor:default}
 
-.crumbs{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px;margin-bottom:10px;
-  font-size:12.5px;color:var(--dim)}
+.crumbs{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px;
+  font-size:12.5px;color:var(--dim);
+  padding:5px var(--gut);background:var(--surface2);
+  border-bottom:1px solid var(--line)}
+.crumbs .hier{color:var(--ink);font-weight:600}
 .crumbs .sep{color:var(--line2)}
 
 /* Ansehen als: ein sichtbarer Streifen, damit niemand vergisst, dass er
@@ -838,6 +841,7 @@ table.craftm tr.crrow.unknown td{color:var(--dim);font-style:italic}
     <button id="new" class="btn pri" type="button">+ New</button>
   </header>
 
+  <div id="crumbs"></div>
   <nav class="pages" id="pages" aria-label="Sections"></nav>
 
   <div class="body">
@@ -908,7 +912,7 @@ function thawed(o){
   try{ return structuredClone(o); }catch(x){}
   try{ return JSON.parse(JSON.stringify(o)); }catch(x){ return o; }
 }
-var REG={interfaces:{},components:{},relations:{},vars:{},views:{},settings:{}};
+var REG={interfaces:{},components:{},relations:{},vars:{},views:{},units:{},settings:{}};
 /* Die Ablage des Artefakts für Bilder und Karten. Nur Schreibberechtigte
    bekommen sie; ohne sie bleibt der Verweis auf fremde Adressen. */
 var assetStore=null, downloadNS=null;
@@ -1037,10 +1041,106 @@ function derivedValue(pd,val){
   var r=evalArith(expr);
   return r==null?undefined:Math.trunc(r);
 }
-function fmtVal(pd,x){
+/* ---------- Einheiten ----------
+   Der Vault ist imperial, weil die Regeln es sind: vierzig Fuss Bewegung,
+   dreissig Pfund Gepäck. Am Tisch sitzen Leute, für die das nichts
+   bedeutet. Beides in die Daten zu schreiben hiesse, zwei Zahlen zu haben,
+   die sich widersprechen können — also steht eine da, und die andere wird
+   **beim Lesen gerechnet** (D8), genau wie ein abgeleiteter Wert.
+
+   Wie gerechnet wird, steht im Register: `ft` ist eine Zeile mit
+   `quantity`, `system` und `base`. Eine Einheit dazuzunehmen ist ein
+   Einfügen und keine Codeänderung. */
+function unitByCode(code){
+  var g=String(code||"").trim().toLowerCase().replace(/\.$/,"");
+  var treffer=null;
+  Object.keys(REG.units||{}).forEach(function(k){
+    if(treffer)return;
+    var u=REG.units[k];
+    if(String(u.code).toLowerCase()===g){ treffer=u; return; }
+    (u.aliases||[]).forEach(function(a){
+      if(!treffer&&String(a).toLowerCase()===g) treffer=u; });
+  });
+  return treffer;
+}
+/* In welcher Einheit ein Wert im Zielsystem dasteht — nach Grössenordnung
+   und nicht nach fester Zuordnung: drei Meilen sind knapp fünf Kilometer
+   und nicht 4828 Meter. */
+function targetUnit(from,system,basiswert){
+  var kand=[];
+  Object.keys(REG.units||{}).forEach(function(k){
+    var u=REG.units[k];
+    if(u.quantity===from.quantity&&u.system===system) kand.push(u); });
+  if(!kand.length)return null;
+  kand.sort(function(a,b){ return a.base-b.base; });
+  var betrag=Math.abs(basiswert), gewaehlt=kand[0];
+  kand.forEach(function(u){ if(betrag/u.base>=1) gewaehlt=u; });
+  return gewaehlt;
+}
+function convertUnit(value,fromCode,system){
+  var from=unitByCode(fromCode);
+  if(!from||!isFinite(value))return null;
+  if(from.system===system)return {value:value,unit:from};
+  var basis=value*from.base;
+  var to=targetUnit(from,system,basis);
+  if(!to)return null;
+  return {value:basis/to.base,unit:to};
+}
+function formatUnit(value,unit){
+  var stellen=unit.decimals==null?1:unit.decimals;
+  return Number(value.toFixed(stellen))+"\u202f"+unit.code;
+}
+/* `both` schreibt das Gespeicherte zuerst und das Gerechnete in Klammern:
+   in den Regeln steht das eine, vorstellen kann man sich das andere. */
+function formatMeasure(value,unitCode,mode){
+  var from=unitByCode(unitCode);
+  if(!from)return value+"\u202f"+unitCode;
+  var eigen=formatUnit(value,from);
+  if(mode===from.system)return eigen;
+  var andere=from.system==="imperial"?"metric":"imperial";
+  var um=convertUnit(value,from.code,mode==="both"?andere:mode);
+  if(!um)return eigen;
+  var text=formatUnit(um.value,um.unit);
+  return mode==="both"?(eigen+" ("+text+")"):text;
+}
+/* Masse **im Fliesstext**: die Geschwindigkeit einer Kreatur heisst im
+   Vault „40 ft, climb 20 ft" und ist keine Zahl. Angefasst wird nur, was
+   wie eine Zahl mit bekannter Einheit aussieht; alles andere bleibt Wort
+   für Wort stehen. Ein Umschreiben, das auch nur manchmal danebengreift,
+   wäre schlimmer als gar keines — man sähe es dem Ergebnis nicht an. */
+function convertText(text,mode){
+  if(!text)return text;
+  return String(text).replace(/(-?\d+(?:[.,]\d+)?)\s*([A-Za-zäöü']{1,6})\b/g,
+    function(ganz,zahl,code){
+      var u=unitByCode(code);
+      if(!u)return ganz;
+      var wert=Number(String(zahl).replace(",","."));
+      if(!isFinite(wert))return ganz;
+      return formatMeasure(wert,u.code,mode);
+    });
+}
+/* Welches System für diese Artikelart gilt. Geerbt wie `area`: eine
+   Kreatur darf imperial bleiben, weil ihre Zahlen aus dem Regelwerk
+   kommen, während der Rest der Kampagne metrisch dasteht. */
+function unitsFor(ifn){
+  var ok=function(v){ return v==="imperial"||v==="metric"||v==="both"; };
+  var kette=ifn?selfAndAncestors(ifn):[];
+  for(var i=0;i<kette.length;i++){
+    var v=(REG.interfaces[kette[i]]||{}).units;
+    if(ok(v))return v;
+  }
+  var aus=(REG.settings||{}).units;
+  return ok(aus)?aus:"both";
+}
+
+function fmtVal(pd,x,ifn){
   if(x===undefined||x===null||x==="")return "";
   if(pd&&pd.format==="signed"&&typeof x==="number")return (x>=0?"+":"")+x;
+  /* Ein Feld mit `unit` trägt eine Zahl in einer Einheit; eines mit
+     `format:"measure"` einen Text, in dem welche stehen dürfen. */
+  if(pd&&pd.unit&&typeof x==="number") return formatMeasure(x,pd.unit,unitsFor(ifn));
   if(typeof x==="object")return Array.isArray(x)?x.join(", "):JSON.stringify(x);
+  if(pd&&pd.format==="measure") return convertText(String(x),unitsFor(ifn));
   return String(x);
 }
 /* does this view show this block type? blocks: "all" | [Blockarten] */
@@ -1796,7 +1896,7 @@ function go(r){
    sagte nicht, warum. Ein sichtbarer Fehler ist besser als eine leere Seite. */
 function render(){
   var broken=[];
-  [["Betrachter",renderAsSelect],
+  [["Betrachter",renderAsSelect],["Krümel",renderTrail],
    ["Seiten",renderPages],["Seitenleiste",renderRail],["Content",renderMain],
    ["Bezüge",renderAside],["Bereiche",renderPanes]].forEach(function(t){
     try{ t[1](); }catch(x){ broken.push(t[0]+": "+(x&&x.message||x)); }
@@ -2451,7 +2551,6 @@ function renderArticle(v,id){
   }
   var ifn=(e.interfaces||[])[0]||"", d=REG.interfaces[ifn], vw=viewDef();
 
-  var crumbs=renderTrail(); if(crumbs) v.appendChild(crumbs);
 
   var head=el("div",{class:"arthead"});
   var kick=el("div",{class:"kicker"});
@@ -2852,8 +2951,13 @@ function trailPush(von){
   UI.trail.push({k:"art",id:von.id});
   if(UI.trail.length>TRAIL_MAX) UI.trail=UI.trail.slice(-TRAIL_MAX);
 }
+/* Woher man kommt, steht **über** der Navigation und nicht im Artikel: es
+   sagt, wo man ist, und das gehört zur Navigation. Im Artikel stand es
+   unter dem Seitenwechsel und sah aus wie ein Teil des Artikels. */
 function renderTrail(){
-  if(!UI.trail.length)return null;
+  var host=document.getElementById("crumbs");
+  if(host) host.textContent="";
+  if(!UI.trail.length||UI.route.k!=="art")return null;
   var bar=el("nav",{class:"crumbs","aria-label":"Where you came from"});
   UI.trail.forEach(function(t,i){
     var e=ENT.get(t.id);
@@ -2863,7 +2967,12 @@ function renderTrail(){
       UI.route={k:"art",id:t.id}; UI.err=""; UI.editField=""; render();
     }},e?nameOf(e):"(gone)"));
   });
-  bar.appendChild(el("span",{class:"sep",text:"›"}));
+  var e0=ENT.get(UI.route.id);
+  if(e0){
+    bar.appendChild(el("span",{class:"sep",text:"›"}));
+    bar.appendChild(el("span",{class:"hier",text:nameOf(e0)}));
+  }
+  if(host) host.appendChild(bar);
   return bar;
 }
 
@@ -3026,7 +3135,7 @@ function fieldPlan(e,ifn,want,ausser){
       var pd=props[p];
       if(!zeig(cn,p))return;
       if(pd.derived&&pd.of)return;
-      var txt=fmtVal(pd, pd.derived?derivedValue(pd,val):val[p]);
+      var txt=fmtVal(pd, pd.derived?derivedValue(pd,val):val[p], ifn);
       if(txt===""){
         if(!pd.derived) frei.push({cn:cn,p:p,pd:pd,ref:cn+"."+p,
           label:(REG.interfaces[cn].label||cn)+" · "+(pd.title||p)});
@@ -3037,7 +3146,7 @@ function fieldPlan(e,ifn,want,ausser){
         if(!gewaehlt&&!(UI.inline&&canWrite()&&!pd.derived))return;
       }
       (attach[p]||[]).forEach(function(dp){
-        var dv=fmtVal(props[dp],derivedValue(props[dp],val));
+        var dv=fmtVal(props[dp],derivedValue(props[dp],val), ifn);
         if(dv!=="") txt+=" ("+dv+")";
       });
       cells.push({cn:cn,p:p,pd:pd,val:val,txt:txt,ref:cn+"."+p,
@@ -4745,7 +4854,7 @@ function importReport(daten){
   if(!Array.isArray(daten.entities))
     r.fehler.push("No entities in the file.");
   if(r.fehler.length)return r;
-  ["interfaces","relations","views","vars","settings"].forEach(function(t){
+  ["interfaces","relations","views","units","vars","settings"].forEach(function(t){
     if(daten.registry[t]&&typeof daten.registry[t]==="object")
       r.teile.push(t+" ("+Object.keys(daten.registry[t]).length+")");
   });
@@ -4764,7 +4873,7 @@ function importReport(daten){
 }
 function applyImport(daten,loeschen,melde){
   var reg=daten.registry||{};
-  ["interfaces","relations","views","vars","settings"].forEach(function(t){
+  ["interfaces","relations","views","units","vars","settings"].forEach(function(t){
     if(reg[t]&&typeof reg[t]==="object"){ REG[t]=thawed(reg[t]); saveReg(t); }
   });
   var drin={};
@@ -9435,8 +9544,9 @@ function renderTypes(v){
    Leiste und die Zeilen noch einmal in der Seite — zwei Listen für eine
    Frage, und keine sagte, welche gerade gilt. */
 var REGTABS=[["howto","How it works"],["types","Types"],["views","Views"],
-  ["relations","Relations"],["vars","Variables"],["settings","Settings"],
-  ["backup","Backup"],["stack","Stack"],["graph","Graph"],["import","Import"]];
+  ["relations","Relations"],["units","Units"],["vars","Variables"],
+  ["settings","Settings"],["backup","Backup"],["stack","Stack"],
+  ["graph","Graph"],["import","Import"]];
 
 function renderRegistry(v){
   v.appendChild(el("h2",{text:"Registry"}));
@@ -9463,6 +9573,7 @@ function renderRegistry(v){
      Subtypen an einer Stelle. Das JSON bleibt daneben stehen — für Massen-
      änderungen ist ein Textfeld schneller als jedes Formular. */
   if(UI.regtab==="relations"&&!UI.regjson){ maskeMitJson(v,renderRelationEditor,null); return; }
+  if(UI.regtab==="units"&&!UI.regjson){ maskeMitJson(v,renderUnitEditor,null); return; }
   if(UI.regtab==="vars"&&!UI.regjson){ maskeMitJson(v,renderVarEditor,null); return; }
   if(UI.regtab==="settings"&&!UI.regjson){ maskeMitJson(v,renderSettingsEditor,null); return; }
   /* Die Sicherung hat kein JSON daneben: sie *ist* das JSON. */
@@ -9623,6 +9734,105 @@ function relationBody(rt){
 /* ---------- variables tab ----------
    Kampagnenvariablen: die dritte und letzte Stufe, auf der {VAR} auflöst.
    Kante → nutzender Artikel → hier. */
+/* ---------- Einheiten ----------
+   Wie gerechnet wird, steht hier und nicht im Code: `base` sagt, wie viel
+   eine Einheit in der Grundeinheit ihrer Grösse ist — ein Fuss sind 0,3048
+   Meter. Damit ist jede Umrechnung eine Division, und eine neue Einheit ist
+   ein Einfügen. */
+function renderUnitEditor(v){
+  var w=canWrite();
+  v.appendChild(el("p",{class:"hint"},
+    "How a measure reads in the other system. `base` is how much one of "+
+    "these is in the base unit of its quantity — metres, kilograms, litres. "+
+    "Which system is shown is a setting, and an article type may override "+
+    "it: a creature may stay imperial because its numbers come out of the "+
+    "rules, while the rest of the campaign reads metric."));
+
+  var jetzt=(REG.settings||{}).units||"both";
+  var bar=el("div",{class:"addbar",style:"margin-bottom:12px"});
+  bar.appendChild(el("span",{class:"co",style:"align-self:center",text:"Show"}));
+  var sel=el("select",{class:"i",id:"unitmode"});
+  [["imperial","Imperial only"],["metric","Metric only"],
+   ["both","Both — stored first, converted in brackets"]].forEach(function(o){
+    sel.appendChild(el("option",{value:o[0]},o[1])); });
+  sel.value=jetzt;
+  if(!w) sel.disabled=true;
+  sel.addEventListener("change",function(){
+    REG.settings=REG.settings||{};
+    REG.settings.units=sel.value; saveReg("settings"); render(); });
+  bar.appendChild(sel);
+  v.appendChild(bar);
+
+  /* Eine Probe mit echten Zeilen. Eine Einstellung, deren Wirkung man erst
+     drei Klicks später sieht, stellt man einmal und nie wieder. */
+  var probe=el("div",{class:"fbox"});
+  probe.appendChild(el("div",{class:"fhead"},[el("b",{text:"Reads as"})]));
+  [[40,"ft"],[3,"mi"],[30,"lb"],[1.5,"m"]].forEach(function(x){
+    if(!unitByCode(x[1]))return;
+    var row=el("div",{class:"frow"});
+    row.appendChild(el("span",{class:"fk",text:x[0]+" "+x[1]}));
+    row.appendChild(el("span",{text:formatMeasure(x[0],x[1],jetzt)}));
+    probe.appendChild(row);
+  });
+  v.appendChild(probe);
+
+  var keys=Object.keys(REG.units||{}).sort(function(a,b){
+    var ua=REG.units[a], ub=REG.units[b];
+    return ua.quantity===ub.quantity?ua.base-ub.base:ua.quantity.localeCompare(ub.quantity); });
+  var box=el("div",{class:"regbody",style:"max-height:none;border:1px solid var(--line);border-radius:var(--r)"});
+  if(!keys.length) box.appendChild(el("p",{class:"hint",text:"None yet."}));
+  var letzte="";
+  keys.forEach(function(k){
+    var u=REG.units[k];
+    if(u.quantity!==letzte){ letzte=u.quantity;
+      box.appendChild(el("div",{class:"rsec",text:u.quantity})); }
+    var row=el("div",{class:"crow"});
+    row.appendChild(el("span",{class:"fk",style:"flex:0 0 70px",text:u.code}));
+    var lab=el("input",{class:"i",type:"text",value:u.label||""});
+    if(!w) lab.disabled=true;
+    lab.addEventListener("change",function(){ u.label=lab.value.trim()||k; saveReg("units"); });
+    row.appendChild(lab);
+    row.appendChild(el("span",{class:"pill q",text:u.system}));
+    var basis=el("input",{class:"i",type:"number",step:"any",style:"max-width:130px",
+      value:String(u.base)});
+    if(!w) basis.disabled=true;
+    basis.addEventListener("change",function(){
+      var n=Number(basis.value);
+      /* Null oder Unsinn machte jede Umrechnung zu einer Division durch
+         null — und die Zahl, die dabei herauskommt, sieht aus wie eine. */
+      if(!isFinite(n)||n<=0){ UI.err="A unit’s base must be a positive number."; render(); return; }
+      u.base=n; saveReg("units"); render(); });
+    row.appendChild(basis);
+    if(w) row.appendChild(el("button",{class:"btn sm gh dngr",type:"button",
+      onclick:function(){ confirmDialog("Remove the unit “"+u.code+"”?",function(){
+        delete REG.units[k]; saveReg("units"); render(); }); }},"×"));
+    box.appendChild(row);
+  });
+  v.appendChild(box);
+
+  if(w){
+    var nc=el("input",{class:"i",type:"text",placeholder:"Code, e.g. st"});
+    var nq=el("input",{class:"i",type:"text",placeholder:"Quantity, e.g. weight"});
+    var ns=el("select",{class:"i"});
+    ns.appendChild(el("option",{value:"imperial"},"imperial"));
+    ns.appendChild(el("option",{value:"metric"},"metric"));
+    var nb=el("input",{class:"i",type:"number",step:"any",placeholder:"Base",style:"max-width:110px"});
+    var nbar=el("div",{class:"addbar",style:"margin-top:10px"});
+    [nc,nq,ns,nb].forEach(function(x){ nbar.appendChild(x); });
+    nbar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+      var code=nc.value.trim();
+      var basis=Number(nb.value);
+      if(!code||!nq.value.trim()||!isFinite(basis)||basis<=0){
+        UI.err="A unit needs a code, a quantity and a positive base."; render(); return; }
+      if(REG.units[code]){ UI.err="The unit "+code+" already exists."; render(); return; }
+      REG.units[code]={code:code,label:code,quantity:nq.value.trim(),
+        system:ns.value,base:basis,decimals:1};
+      saveReg("units"); render();
+    }},"Add unit"));
+    v.appendChild(nbar);
+  }
+}
+
 function renderVarEditor(v){
   var w=canWrite();
   v.appendChild(el("p",{class:"hint",
@@ -9796,7 +10006,14 @@ var BEGRIFFE=[
    "A typed, directed connection between two articles, which may carry "+
    "properties of its own. Stored forward only; the other direction is "+
    "always a query. An edge with a section heading writes the target into "+
-   "the article instead of linking to it."]
+   "the article instead of linking to it."],
+  ["Unit",
+   "How a measure is written and converted. The vault is imperial because "+
+   "the rules are; at the table sit people for whom forty feet means "+
+   "nothing. So one number is stored and the other is worked out on read — "+
+   "two numbers for one measure are two numbers that can disagree. How the "+
+   "conversion goes is a registry row, and which system is shown is a "+
+   "setting an article type may override."]
 ];
 
 /** Ein Artikel, an dem sich das Ganze zeigen lässt: einer mit möglichst
@@ -9820,7 +10037,7 @@ function howtoBeispiel(){
 
 function renderHowto(v){
   v.appendChild(el("p",{class:"hint"},
-    "Seven words, and one article followed from its type down to the fields "+
+    "Eight words, and one article followed from its type down to the fields "+
     "it records. Everything below is read from the registry as it stands "+
     "right now — nothing here is typed out."));
 
@@ -9844,7 +10061,7 @@ function renderHowto(v){
   }
 
   /* ---- Die Begriffe ---- */
-  v.appendChild(el("div",{class:"rsec",text:"The seven words"}));
+  v.appendChild(el("div",{class:"rsec",text:"The eight words"}));
   var dl=el("dl",{class:"kdl"});
   BEGRIFFE.forEach(function(r){
     dl.appendChild(el("dt",{text:r[0]}));
@@ -11458,7 +11675,7 @@ render();
     render(); return;
   }
 
-  var TEILE=["interfaces","relations","views","vars","settings"];
+  var TEILE=["interfaces","relations","views","units","vars","settings"];
   var arrived={register:{},artikel:false};
 
   /* Wirft ein Snapshot-Callback, endet die Zustellung still: `ready` bliebe

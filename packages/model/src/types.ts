@@ -24,8 +24,15 @@ export interface PropertySchema {
   title?: string;
   enum?: string[];
   /** `long` asks for a textarea; `signed` prints +3 / -1; `color`, `link`,
-   *  `asset` and `date` each pick their own input. */
-  format?: 'long' | 'signed' | 'color' | 'link' | 'asset' | 'date' | string;
+   *  `asset` and `date` each pick their own input. `measure` says the text
+   *  carries numbers with units and may be converted on read. */
+  format?: 'long' | 'signed' | 'color' | 'link' | 'asset' | 'date' | 'measure' | string;
+  /**
+   * Die Einheit, in der **der gespeicherte Wert** steht — `ft`, `lb`, `m`.
+   * Umgerechnet wird beim Lesen und nie gespeichert (D8): zwei Zahlen für
+   * dasselbe Mass sind zwei Zahlen, die sich widersprechen können.
+   */
+  unit?: string;
   items?: { type: PropertyType };
   /**
    * Calculation engine: an expression evaluated on read and never stored (D8).
@@ -92,6 +99,34 @@ export interface InterfaceDef {
    * aufmachen und in jeder nach ihr suchen.
    */
   views?: Record<string, LayoutElement[]>;
+  /**
+   * In welchem System die Masse dieser Artikelart dastehen. Wird wie `area`
+   * die `extends`-Kette hoch geerbt; ohne Angabe gilt die Einstellung der
+   * Kampagne. Eine Kreatur darf imperial bleiben, weil ihre Zahlen aus dem
+   * Regelwerk kommen, während der Rest metrisch dasteht.
+   */
+  units?: 'imperial' | 'metric' | 'both';
+}
+
+/**
+ * Eine Einheit als Registerzeile. Umgerechnet wird über die Grundeinheit
+ * der Grösse: `base` sagt, wie viel eine davon darin ist — ein Fuss sind
+ * 0,3048 Meter. Damit ist jede Umrechnung eine Division, und eine neue
+ * Einheit ist ein Einfügen und keine Codeänderung.
+ */
+export interface UnitDef {
+  /** Wie sie geschrieben wird: `ft`. */
+  code: string;
+  label: string;
+  /** Was sie misst: `length`, `weight`, `volume`. */
+  quantity: string;
+  system: 'imperial' | 'metric';
+  /** Wie viel eine Einheit davon in der Grundeinheit der Grösse ist. */
+  base: number;
+  /** Andere Schreibweisen, die im Text vorkommen: `feet`, `Fuss`, `'`. */
+  aliases?: string[];
+  /** Nachkommastellen beim Anzeigen. */
+  decimals?: number;
 }
 
 /** A row of `relation_def`. */
@@ -229,6 +264,8 @@ export interface Registry {
   interfaces: Record<string, InterfaceDef>;
   relations: Record<string, RelationDef>;
   views: Record<string, ViewDef>;
+  /** Einheiten und wie sie ineinander umgerechnet werden. */
+  units: Record<string, UnitDef>;
   /** Campaign-wide defaults for {VAR} substitution — the last resort. */
   vars: Record<string, string>;
   /**

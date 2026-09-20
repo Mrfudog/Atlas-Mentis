@@ -2,8 +2,9 @@ import type { Registry } from '@nw/model';
 import { interfaces } from './interfaces.js';
 import { relations } from './relations.js';
 import { views } from './views.js';
+import { units } from './units.js';
 
-export { interfaces, relations, views };
+export { interfaces, relations, views, units };
 
 /** Campaign-wide defaults, the last scope {VAR} resolution falls back to. */
 export const vars: Record<string, string> = {
@@ -46,6 +47,11 @@ export const settings: Record<string, string> = {
   /* Blockarten, die ein Spieler nicht sieht. Als Einstellung, weil eine
      Kampagne das anders halten darf. */
   gmBlockTypes: 'secret,tactics',
+  /* Welches Mass-System die Seite zeigt: `imperial`, `metric` oder `both`.
+     Eine Artikelart darf es überschreiben (`InterfaceDef.units`) — eine
+     Kreatur darf imperial bleiben, weil ihre Zahlen aus dem Regelwerk
+     kommen, während der Rest der Kampagne metrisch dasteht. */
+  units: 'both',
   /* Reisezehrung (REQ-170): alle wie viele Knoten eine Ration und ein
      Licht fällig werden. Null schaltet die Zählung ab. */
   travelRationEvery: '3',
@@ -59,4 +65,4 @@ export const settings: Record<string, string> = {
 };
 
 /** The rows a fresh database is seeded with. */
-export const seedRegistry: Registry = { interfaces, relations, views, vars, settings };
+export const seedRegistry: Registry = { interfaces, relations, views, units, vars, settings };

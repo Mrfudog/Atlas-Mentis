@@ -51,3 +51,49 @@ describe('the registry survives a round trip through Postgres', () => {
     expect(fehlt).toEqual([]);
   });
 });
+
+/* Ein ganzer Registerteil kann ebenso still verlorengehen wie ein Feld: er
+   steht im Seed, im Speicher stimmt alles, und erst wer über den Server
+   speichert, hat ihn nicht mehr. */
+describe('every registry part has a table, and is written and read', () => {
+  const teile: Record<string, string> = {
+    interfaces: 'interface_def',
+    relations: 'relation_def',
+    views: 'view_def',
+    units: 'unit_def',
+    vars: 'var_def',
+  };
+
+  it('knows a table for each one', () => {
+    const fehlt = Object.entries(teile)
+      .filter(([teil, tabelle]) =>
+        Object.keys(seedRegistry[teil as keyof typeof seedRegistry] ?? {}).length &&
+        !new RegExp(`create table if not exists ${tabelle}\\b`).test(ddl))
+      .map(([teil]) => teil);
+    expect(fehlt).toEqual([]);
+  });
+
+  it('writes and reads each one', () => {
+    const fehlt = Object.entries(teile)
+      .filter(([, tabelle]) =>
+        !new RegExp(`insert into ${tabelle}\\(`).test(pgQuelle) ||
+        !new RegExp(`from ${tabelle}\\b`).test(pgQuelle))
+      .map(([teil]) => teil);
+    expect(fehlt).toEqual([]);
+  });
+
+  /* Und die Felder einer Einheit: `base` zu verlieren macht jede Umrechnung
+     zu einer Division durch undefined. */
+  it('keeps every field a unit row carries', () => {
+    const benutzt = new Set<string>();
+    for (const u of Object.values(seedRegistry.units)) {
+      for (const [k, v] of Object.entries(u)) {
+        if (v === undefined || (Array.isArray(v) && !v.length)) continue;
+        benutzt.add(k);
+      }
+    }
+    const insert = /insert into unit_def\(([^)]*)\)/.exec(pgQuelle)?.[1] ?? '';
+    expect([...benutzt].filter((k) => !insert.split(',').includes(k))).toEqual([]);
+    expect([...benutzt].filter((k) => !new RegExp(`r\\['${k}'\\]`).test(pgQuelle))).toEqual([]);
+  });
+});

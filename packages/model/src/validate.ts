@@ -68,6 +68,17 @@ export const InterfaceDefSchema = z.object({
   blockTypes: z.array(z.string()).optional(),
   area: z.enum(['world', 'history', 'rules', 'play']).optional(),
   views: z.record(z.string(), z.array(LayoutElementSchema)).optional(),
+  units: z.enum(['imperial', 'metric', 'both']).optional(),
+});
+
+export const UnitDefSchema = z.object({
+  code: z.string(),
+  label: z.string(),
+  quantity: z.string(),
+  system: z.enum(['imperial', 'metric']),
+  base: z.number(),
+  aliases: z.array(z.string()).optional(),
+  decimals: z.number().optional(),
 });
 
 export const RelationDefSchema = z.object({
@@ -99,6 +110,7 @@ export const RegistrySchema = z.object({
   interfaces: z.record(z.string(), InterfaceDefSchema),
   relations: z.record(z.string(), RelationDefSchema),
   views: z.record(z.string(), ViewDefSchema),
+  units: z.record(z.string(), UnitDefSchema),
   vars: z.record(z.string(), z.string()),
   settings: z.record(z.string(), z.string()).optional(),
 });

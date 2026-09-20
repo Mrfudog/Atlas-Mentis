@@ -12,7 +12,7 @@ Prosa benutzt das deutsche Wort und nennt den englischen Bezeichner dazu.
 
 ---
 
-## Die sieben Wörter
+## Die acht Wörter
 
 | Deutsch | Englisch | Was es ist |
 |---|---|---|
@@ -23,6 +23,7 @@ Prosa benutzt das deutsche Wort und nennt den englischen Bezeichner dazu.
 | **Ansicht** | View | Wie ein Artikel gezeichnet wird. |
 | **Block** | Block | Ein Stück einer Ansicht. |
 | **Kante** | Edge | Eine gerichtete Verbindung zwischen zwei Artikeln. |
+| **Einheit** | Unit | Wie ein Mass geschrieben und umgerechnet wird. |
 
 Mehr sind es nicht. Was früher **Komponente** hiess, gibt es nicht mehr —
 eine Zeile, die Felder trug, ohne ein Typ zu sein, war ein zweites Ding für
@@ -158,6 +159,32 @@ Gegenrichtung ist immer eine Abfrage, und wie sie sich von dort liest, sagt
 Eine Kante mit `section` **setzt ein**, statt zu verweisen: die drei
 gepoolten Regeln eines Statblocks stehen im Artikel und nicht als Links
 daneben.
+
+---
+
+## Einheit
+
+Der Vault ist imperial, weil die Regeln es sind: vierzig Fuss Bewegung,
+dreissig Pfund Gepäck. Am Tisch sitzen Leute, für die das nichts bedeutet.
+
+Deshalb steht **eine** Zahl in den Daten, und die andere wird beim Lesen
+gerechnet (D8) — zwei Zahlen für dasselbe Mass sind zwei Zahlen, die sich
+widersprechen können.
+
+Wie gerechnet wird, ist eine Registerzeile: `ft` hat `quantity: length`,
+`system: imperial` und `base: 0.3048` — so viel Meter ist einer. Damit ist
+jede Umrechnung eine Division, und eine neue Einheit ist ein Einfügen. In
+welcher Einheit ein Wert im Zielsystem dasteht, entscheidet die
+Grössenordnung: drei Meilen sind knapp fünf Kilometer und nicht 4828 Meter.
+
+Ein Feld sagt mit `unit`, in welcher Einheit sein Wert steht. Ein Textfeld
+mit `format: measure` darf Masse im Fliesstext tragen („40 ft, climb 20 ft")
+— umgeschrieben wird nur, was wie eine Zahl mit bekannter Einheit aussieht.
+
+Was gezeigt wird, sagt die Einstellung `units` (`imperial`, `metric`,
+`both`); eine Artikelart darf es überschreiben und vererbt es wie `area`.
+Eine Kreatur darf imperial bleiben, weil ihre Zahlen aus dem Regelwerk
+kommen, während der Rest der Kampagne metrisch dasteht.
 
 ---
 

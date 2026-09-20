@@ -77,6 +77,7 @@ const emptyRegistry = (): Registry => ({
   interfaces: {},
   relations: {},
   views: {},
+  units: {},
   vars: {},
 });
 

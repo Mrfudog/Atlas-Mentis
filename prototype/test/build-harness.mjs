@@ -107,6 +107,8 @@ window.__T__={runImport:runImport,derivedValue:derivedValue,assetSrc:assetSrc,UI
   compsFor:compsFor,blockTypesFor:blockTypesFor,relsFrom:relsFrom,
   compOrigin:compOrigin,parentsOf:parentsOf,ancestorsOf:ancestorsOf,
   tagsOf:tagsOf,setTags:setTags,layoutOf:layoutOf,layoutSource:layoutSource,
+  formatMeasure:formatMeasure,convertText:convertText,unitsFor:unitsFor,
+  convertUnit:convertUnit,
   ifaceInList:ifaceInList};
 Object.defineProperty(window.__T__,'REG',{get:function(){return REG;}});
 Object.defineProperty(window.__T__,'ENT',{get:function(){return ENT;}});

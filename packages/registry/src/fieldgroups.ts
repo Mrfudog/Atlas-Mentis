@@ -168,7 +168,7 @@ export const fieldGroups = {
         acNote: { type: 'string', title: 'AC source' },
         hp: { type: 'number', title: 'Hit points' },
         hpFormula: { type: 'string', title: 'Hit dice' },
-        speed: { type: 'string', title: 'Speed' },
+        speed: { type: 'string', format: 'measure', title: 'Speed' },
         cr: { type: 'string', title: 'Challenge rating' },
         prof: { type: 'number', title: 'Proficiency bonus' },
         combatRole: { type: 'string', title: 'Combat role' },
@@ -295,6 +295,11 @@ export const fieldGroups = {
         availability: { type: 'string', title: 'Availability' },
         copperPrice: { type: 'number', title: 'Price in copper' },
         stackSize: { type: 'number', title: 'Stack size' },
+        /* Ein Gewicht als **Zahl mit Einheit** und nicht als Text: was sich
+           addieren lassen soll, muss eine Zahl sein. In welcher Einheit es
+           dasteht, sagt `unit`; was der Leser sieht, entscheidet die
+           Einstellung oder die Artikelart. */
+        weight: { type: 'number', unit: 'lb', title: 'Weight' },
       },
     },
   },
@@ -322,7 +327,7 @@ export const fieldGroups = {
       properties: {
         damage: { type: 'string', title: 'Damage' },
         damageType: { type: 'string', title: 'Damage type' },
-        range: { type: 'string', title: 'Range' },
+        range: { type: 'string', format: 'measure', title: 'Range' },
         Properties: { type: 'string', title: 'Properties' },
       },
     },
@@ -597,7 +602,7 @@ export const fieldGroups = {
         gridSize: { type: 'number', title: 'Grid size in px', default: 70 },
         gridOffsetX: { type: 'number', title: 'Grid offset X', default: 0 },
         gridOffsetY: { type: 'number', title: 'Grid offset Y', default: 0 },
-        scale: { type: 'string', title: 'One square is', default: '1,5 m' },
+        scale: { type: 'string', format: 'measure', title: 'One square is', default: '1,5 m' },
         // Nebel und Licht (REQ-139, 140). Aufgedecktes wird gespeichert, weil
         // es bleibt; Beleuchtetes nie, weil es sich mit jedem Zug ändert.
         lighting: {
