@@ -138,10 +138,16 @@ export interface LayoutElement {
   /** `fields`: `all` or a list of `Component` / `Component.field`. */
   fields?: 'all' | string[];
   /**
-   * `fields`: was ein anderes Element desselben Layouts schon zeichnet —
-   * der Bogen die Kampfwerte, die Feldtabelle den Rest. Ohne das müsste
-   * jede Artikelart ihre Felder einzeln aufzählen, und ein neu
-   * hinzugekommenes Feld stünde nirgends, bis es jemand nachträgt.
+   * `fields` **und `blocks`**: was weggelassen wird.
+   *
+   * Bei Feldern, weil ein anderes Element desselben Layouts sie schon
+   * zeichnet — der Bogen die Kampfwerte, die Feldtabelle den Rest. Bei
+   * Blöcken, weil „alles ausser Geheimnissen" richtig bleiben soll, wenn
+   * eine neue Blockart dazukommt.
+   *
+   * In beiden Fällen dasselbe Argument: eine ausgeschriebene Liste ist am
+   * Tag der nächsten Registerzeile falsch, und niemand merkt es — das Neue
+   * steht einfach nirgends.
    */
   except?: string[];
   /** `fields`: 0 fits the width. */

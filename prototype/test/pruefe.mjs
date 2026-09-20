@@ -49,17 +49,20 @@ async function seite(datei, warten) {
   pruefe('not stuck on Loading…', !s.laedt, s);
   pruefe('no exception', errs.length === 0, errs);
 
-  /* 2 — Register: Baum, Felder, Subtyp anlegen */
+  /* 2 — Register: Baum, Felder, Subtyp anlegen.
+     Artikelarten und Datenmodell sind **eine** Seite: der Baum steht links,
+     die Maske rechts unter der Vorlage. Zwei Seiten hiessen, das Modell
+     hier anzulegen und dort nachzusehen, was dabei herauskommt. */
   await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((b) => /Data model/.test(b.textContent))?.click());
-  await p.waitForTimeout(300);
+    [...document.querySelectorAll('.rail button')].find((b) => /Article types/.test(b.textContent))?.click());
+  await p.waitForTimeout(400);
   const baum = await p.evaluate(() =>
-    [...document.querySelectorAll('.regtree button')].map((b) => b.textContent));
-  pruefe('registry shows the interface tree', baum.length > 3, baum);
+    [...document.querySelectorAll('.tpnav .navrow')].map((b) => b.textContent));
+  pruefe('registry shows the interface tree', baum.length > 3, baum.length);
 
   await p.evaluate(() =>
-    [...document.querySelectorAll('.regtree button')].find((b) => /Statblock/.test(b.textContent))?.click());
-  await p.waitForTimeout(200);
+    [...document.querySelectorAll('.tpnav .navrow')].find((b) => /Statblock/.test(b.textContent))?.click());
+  await p.waitForTimeout(350);
   await p.evaluate(() => {
     const row = [...document.querySelectorAll('.regbody .crow')]
       .find((r) => r.textContent.includes('StatblockInfo'));
@@ -70,16 +73,16 @@ async function seite(datei, warten) {
     [...document.querySelectorAll('.fbox .frow .fk')].map((x) => x.textContent));
   pruefe('a component expands to its fields', felder.includes('passivePerception'), felder.length);
 
-  const vorher = await p.evaluate(() => document.querySelectorAll('.regtree button').length);
+  const vorher = await p.evaluate(() => document.querySelectorAll('.tpnav .navrow').length);
   await p.evaluate(() => {
-    const bar = [...document.querySelectorAll('.regbody .addbar')]
+    const bar = [...document.querySelectorAll('#view .addbar')]
       .find((b) => [...b.querySelectorAll('button')].some((x) => /Create interface/.test(x.textContent)));
     bar.querySelector('input').value = 'Probe';
     [...bar.querySelectorAll('button')].find((x) => /Create interface/.test(x.textContent)).click();
   });
-  await p.waitForTimeout(200);
+  await p.waitForTimeout(400);
   const nachher = await p.evaluate(() => ({
-    anzahl: document.querySelectorAll('.regtree button').length,
+    anzahl: document.querySelectorAll('.tpnav .navrow').length,
     gewaehlt: document.querySelector('.regbody h3')?.textContent,
     geerbt: [...document.querySelectorAll('.regbody .crow .co')].some((c) => /inherited from/.test(c.textContent)),
     geschrieben: window.__WROTE__.includes('registry/interfaces'),
@@ -128,11 +131,11 @@ async function seite(datei, warten) {
   /* 4 — Feldarten: Farbe, Auswahl, Verweis; Schlüssel umbenennen */
   const zumFeld = async (iface, comp, key) => {
     await p.evaluate(() =>
-      [...document.querySelectorAll('.rail button')].find((x) => /Data model/.test(x.textContent)).click());
-    await p.waitForTimeout(200);
+      [...document.querySelectorAll('.rail button')].find((x) => /Article types/.test(x.textContent)).click());
+    await p.waitForTimeout(350);
     await p.evaluate((i) =>
-      [...document.querySelectorAll('.regtree button')].find((b) => b.textContent.includes(i)).click(), iface);
-    await p.waitForTimeout(200);
+      [...document.querySelectorAll('.tpnav .navrow')].find((b) => b.textContent.includes(i)).click(), iface);
+    await p.waitForTimeout(350);
     await p.evaluate((c) => {
       const row = [...document.querySelectorAll('.regbody .crow')].find((r) => r.textContent.includes(c));
       [...row.querySelectorAll('button')].find((b) => /Fields/.test(b.textContent)).click();
@@ -399,7 +402,7 @@ async function seite(datei, warten) {
     [...document.querySelectorAll('.rail button')].find((x) => /Data model/.test(x.textContent)).click());
   await p.waitForTimeout(200);
   const masken = {};
-  for (const name of ['Interfaces', 'Components', 'Relation types', 'Views', 'Variables']) {
+  for (const name of ['Types', 'Components', 'Relation types', 'Views', 'Variables']) {
     await p.evaluate((n) =>
       [...document.querySelectorAll('.tabs button')].find((x) => x.textContent === n).click(), name);
     await p.waitForTimeout(280);
@@ -1748,6 +1751,133 @@ async function seite(datei, warten) {
   });
   await p.waitForTimeout(300);
   pruefe('the type overview stays with the GM', alsSpieler2 === true, alsSpieler2);
+
+  /* ---- Die Vorlage ----
+     Artikelarten und Datenmodell sind eine Seite: rechts steht, was die
+     gewählte Ansicht von dieser Art zeigt, und ein Klick nimmt ein Feld
+     heraus oder legt es zurück. Zwei Seiten hiessen, das Modell hier
+     anzulegen und dort nachzusehen, was dabei herauskommt. */
+  const vorlage = await p.evaluate(async () => {
+    const T = window.__T__;
+    T.UI.typePick = 'PlayerCharacter';
+    T.UI.view = 'full';
+    T.render();
+    await new Promise((r) => setTimeout(r, 300));
+    return {
+      elemente: [...document.querySelectorAll('.tmplel > .ck > code')].map((x) => x.textContent),
+      reiter: [...document.querySelectorAll('.tmpltab')].map((x) => x.textContent),
+      felder: document.querySelectorAll('.tmplfields .tgl').length,
+      an: document.querySelectorAll('.tmplfields .tgl.on').length,
+      /* Was in `full` **aus** ist, ist es nicht aus Versehen: der Bogen
+         zeichnet es schon, und die Feldtabelle lässt es über `except`
+         weg. Die Prüfung sieht deshalb nach, *welche* aus sind. */
+      ausWoher: [...document.querySelectorAll('.tmplfields .tgl:not(.on)')]
+        .map((x) => x.dataset.comp),
+      /* Die Maske steht auf derselben Seite darunter — das ist die
+         Vereinigung, um die es ging. */
+      maske: !!document.querySelector('.tpdoc .regbody'),
+    };
+  });
+  pruefe('the template shows what the view draws for this kind',
+    vorlage.elemente.includes('sheet') && vorlage.elemente.includes('tabs')
+    && vorlage.reiter.includes('Overview'), vorlage);
+  pruefe('and the model editor sits on the same page',
+    vorlage.maske === true, vorlage.maske);
+  /* `full` zeigt alles — ausser dem, was ein anderes Element derselben
+     Seite schon zeichnet. Bei einer Kreatur sind das die Kampfwerte: sie
+     stehen im Bogen, und die Feldtabelle lässt sie über `except` weg. Eine
+     Prüfung auf „alle an" wäre falsch und würde genau diese Absicht
+     beanstanden. */
+  pruefe('every field is offered, and what is off is off on purpose',
+    vorlage.felder > 10 && vorlage.an > 0
+    && vorlage.ausWoher.every((c) => ['StatblockInfo', 'Vitals', 'Skills'].includes(c)),
+    { felder: vorlage.felder, an: vorlage.an, ausWoher: [...new Set(vorlage.ausWoher)] });
+
+  /* Ein Klick nimmt ein Feld aus der Ansicht — und ein zweiter legt es
+     zurück. Geschrieben wird dabei `except` und keine ausgeschriebene
+     Liste: die wäre am Tag der nächsten Registerzeile falsch, und das Neue
+     stünde nirgends. */
+  const geklickt = await p.evaluate(async () => {
+    const T = window.__T__;
+    /* Eine Spielerfigur erbt die Anordnung von `Creature`. Der Weg, den
+       man tatsächlich geht, ist deshalb: erst eine eigene machen, dann
+       ändern — und genau den prüft das hier. */
+    const eigenKnopf = [...document.querySelectorAll('.tmpl .maptools .btn')]
+      .find((b) => /Give it its own/.test(b.textContent));
+    if (eigenKnopf) { eigenKnopf.click(); await new Promise((r) => setTimeout(r, 350)); }
+    const erste = () => document.querySelector('.tmplfields .tgl.on:not([disabled])');
+    const name = erste()?.dataset.ref ?? '';
+    erste().click();
+    await new Promise((r) => setTimeout(r, 300));
+    const vw = T.REG.views.full;
+    const eigen = (vw.byInterface || {}).PlayerCharacter || [];
+    const feldEl = eigen.find((x) => x.el === 'fields')
+      || (eigen.find((x) => x.el === 'tabs')?.tabs || [])
+        .flatMap((t) => t.layout).find((x) => x.el === 'fields');
+    const aus = document.querySelectorAll('.tmplfields .tgl:not(.on)').length;
+    return { name, aus, except: feldEl?.except ?? null, fields: feldEl?.fields ?? null,
+      geschrieben: window.__WROTE__.includes('registry/views') };
+  });
+  pruefe('clicking a field takes it out of the view',
+    geklickt.aus >= 1 && (geklickt.except || []).includes(geklickt.name),
+    geklickt);
+  pruefe('and it writes “all except”, not a frozen list',
+    geklickt.fields === 'all' && Array.isArray(geklickt.except) && geklickt.geschrieben,
+    geklickt);
+  /* Genau dasselbe Feld zurück — nicht irgendeines. Es sind noch andere
+     aus, und die sind es zu Recht: der Bogen zeichnet sie schon. */
+  const zurueck2 = await p.evaluate(async (ref) => {
+    const knopf = document.querySelector(`.tmplfields .tgl[data-ref="${ref}"]`);
+    const warAus = !knopf.classList.contains('on');
+    knopf.click();
+    await new Promise((r) => setTimeout(r, 300));
+    const nun = document.querySelector(`.tmplfields .tgl[data-ref="${ref}"]`);
+    const vw = window.__T__.REG.views.full;
+    const eigen = (vw.byInterface || {}).PlayerCharacter || [];
+    const feldEl = eigen.find((x) => x.el === 'fields')
+      || (eigen.find((x) => x.el === 'tabs')?.tabs || [])
+        .flatMap((t) => t.layout).find((x) => x.el === 'fields');
+    return { warAus, wiederAn: nun.classList.contains('on'),
+      except: feldEl?.except ?? [] };
+  }, geklickt.name);
+  pruefe('clicking it again puts that very one back',
+    zurueck2.warAus && zurueck2.wiederAn
+    && !zurueck2.except.includes(geklickt.name), zurueck2);
+
+  /* Eine geerbte Anordnung sagt, woher sie kommt — sie zu bearbeiten ändert
+     sie für jede Unterart mit, und das soll niemand aus Versehen tun. */
+  const geerbt2 = await p.evaluate(async () => {
+    const T = window.__T__;
+    T.UI.typePick = 'NPC';
+    T.render();
+    await new Promise((r) => setTimeout(r, 300));
+    return {
+      sagt: document.querySelector('.tmpl .maptools .hint')?.textContent ?? '',
+      zu: document.querySelectorAll('.tmplfields .tgl[disabled]').length > 0,
+      knopf: [...document.querySelectorAll('.tmpl .maptools .btn')].map((b) => b.textContent),
+    };
+  });
+  pruefe('an inherited arrangement says so and is not edited by accident',
+    /Inherited from/.test(geerbt2.sagt) && geerbt2.zu
+    && geerbt2.knopf.some((x) => /Give it its own/.test(x)), geerbt2);
+
+  /* Und der Wähler oben rechts bestimmt, welche Ansicht die Vorlage zeigt.
+     `full` ist die Grundlage, in der alles steht; die engeren lassen weg. */
+  const engere = await p.evaluate(async () => {
+    const T = window.__T__;
+    T.UI.typePick = 'PlayerCharacter';
+    T.UI.view = 'quick';
+    T.render();
+    await new Promise((r) => setTimeout(r, 300));
+    const nun = [...document.querySelectorAll('.tmplel > .ck > code')].map((x) => x.textContent);
+    T.UI.view = 'full';
+    T.render();
+    await new Promise((r) => setTimeout(r, 300));
+    return nun;
+  });
+  pruefe('the selector at the top right picks which view the template shows',
+    engere.length > 0 && !engere.includes('sheet'), engere);
+  pruefe('the template raised no exception', errs.length === 0, errs);
   pruefe('the type overview raised no exception', errs.length === 0, errs);
 
   /* ---- Blockanker und Kampagnenwerte (B3) ----

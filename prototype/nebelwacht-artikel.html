@@ -295,6 +295,23 @@ ul.tlayout li{font-size:13px}
 ul.tlayout li.d1{padding-left:16px}
 ul.tlayout li.d2{padding-left:32px}
 ul.tlayout li.d3{padding-left:48px}
+/* Die Vorlage: ein Kasten je Element, die Auswahl als anklickbare Marken.
+   An heisst gezeigt, aus heisst weggelassen — und man sieht beides, statt
+   nur das, was übrig blieb. */
+.tmpl{display:flex;flex-direction:column;gap:6px;margin-bottom:6px}
+.tmplel{border:1px solid var(--line);border-radius:var(--r);padding:7px 10px;
+  background:var(--surface2)}
+.tmplel.d1{margin-left:14px} .tmplel.d2{margin-left:28px} .tmplel.d3{margin-left:42px}
+.tmplel .ck{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.tmpltab{font-family:var(--ff-mono);font-size:11px;text-transform:uppercase;
+  letter-spacing:.08em;color:var(--accent);margin:6px 0 2px}
+.tmpltab.d1{margin-left:14px} .tmpltab.d2{margin-left:28px} .tmpltab.d3{margin-left:42px}
+.tmplfields{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.pill.tgl{cursor:pointer;opacity:.4;text-decoration:line-through}
+.pill.tgl.on{opacity:1;text-decoration:none;border-color:var(--accent);
+  color:var(--accent)}
+.pill.tgl[disabled]{cursor:default}
+.pill.gmb{border:1px solid var(--warn);color:var(--warn)}
 /* Der Spieltisch: eine Leiste mit dem, was läuft, und darunter Streifen.
    Die Initiative steht immer oben — wer dran ist, muss man sehen, ohne
    umzuschalten. */
@@ -857,7 +874,7 @@ var REG={interfaces:{},components:{},relations:{},vars:{},views:{},settings:{}};
    bekommen sie; ohne sie bleibt der Verweis auf fremde Adressen. */
 var assetStore=null, downloadNS=null;
 var UI={route:{k:"list"}, view:"quick", area:"", iface:"", tag:"", q:"", offen:false, pane:"main",
-        regtab:"interfaces", regiface:"", regcomp:"", regprop:"", regjson:false,
+        regtab:"types", regiface:"", regcomp:"", regprop:"", regjson:false,
         regview:"", regscope:"", regel:"", regcomp2:"", regrel:"",
         trail:[], inline:false, editField:"", pick:false, picked:{}, status:"",
         aside:"rel", info:"", assetBusy:"",
@@ -1772,10 +1789,12 @@ function renderRail(){
   s3.appendChild(el("h3",{text:"System"}));
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="types"),
     title:"What each kind requires, carries, connects to and looks like",
-    onclick:function(){go({k:"types"});}},
+    onclick:function(){ UI.regtab="types"; go({k:"reg"}); }},
     [el("b",{text:"Article types"}),el("em",{text:String(Object.keys(REG.interfaces).length)})]));
-  s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="reg"),
-    onclick:function(){go({k:"reg"});}},[el("b",{text:"Data model"}),el("em",{text:"def"})]));
+  s3.appendChild(el("button",{class:"navrow",type:"button",
+    "aria-current":String(UI.route.k==="reg"&&UI.regtab!=="types"),
+    onclick:function(){ if(UI.regtab==="types") UI.regtab="components"; go({k:"reg"}); }},
+    [el("b",{text:"Data model"}),el("em",{text:"def"})]));
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="graph"),
     onclick:function(){go({k:"graph"});}},[el("b",{text:"Graph"}),el("em",{text:"↔"})]));
   var ebenen=0; ENT.forEach(function(x){ if(((x.interfaces||[])[0])===LAYER_IFACE) ebenen++; });
@@ -2013,7 +2032,10 @@ function renderMain(){
   if(UI.route.k==="graph"){ renderGraph(v); return; }
   if(UI.route.k==="rules"){ renderRules(v); return; }
   if(UI.route.k==="play"){ renderPlay(v); return; }
-  if(UI.route.k==="types"){ renderTypes(v); return; }
+  /* `types` ist keine eigene Seite mehr, sondern der erste Reiter des
+     Datenmodells. Die Route bleibt als Abkürzung: sie wählt den Reiter und
+     zeigt dieselbe Seite. */
+  if(UI.route.k==="types"){ UI.regtab="types"; renderRegistry(v); return; }
   renderList(v);
 }
 
@@ -2731,7 +2753,15 @@ function elFields(e,ifn,item){
 
 function elBlocks(e,item){
   var want=item.blocks;
-  var zeig=function(bt){ return want==="all"||(Array.isArray(want)&&want.indexOf(bt)>=0); };
+  /* `except` gilt auch für Blöcke, aus demselben Grund wie bei den Feldern:
+     „alles ausser Geheimnissen" bleibt richtig, wenn eine neue Blockart
+     dazukommt. Eine ausgeschriebene Liste wäre am selben Tag falsch — die
+     neue Art stünde nirgends, bis jemand sie nachträgt. */
+  var weg=Array.isArray(item["except"])?item["except"]:[];
+  var zeig=function(bt){
+    if(weg.indexOf(bt)>=0)return false;
+    return want==="all"||(Array.isArray(want)&&want.indexOf(bt)>=0);
+  };
   var blocks=(e.blocks||[]).slice().sort(function(a,b){return (a.order||0)-(b.order||0);});
   if(!isGM()){
     var ok={}; visibleBlockIds(e).forEach(function(k){ ok[k]=1; });
@@ -7828,8 +7858,7 @@ function visibleBlockIds(e){
   var a=viewerActor();
   var ids=(e.blocks||[]).map(function(b){return b.anchor||b.id;});
   if(isGM())return ids;
-  var geheim=String(setting("gmBlockTypes","secret,tactics")).split(",")
-    .map(function(x){return x.trim();}).filter(Boolean);
+  var geheim=gmBlockTypes();
   /* Zwei Regeln, und die ausdrückliche gewinnt: ein Block, den eine
      *bekannte* Information beansprucht, ist freigegeben — auch wenn er
      `secret` heisst. Genau dafür hat ihn jemand hineingelegt. Ein Block,
@@ -8689,7 +8718,7 @@ function compFieldList(comp){
     return {name:k,kind:art,derived:!!p.derived};
   });
 }
-function compRow(ifn,comp){
+function typeCompRow(ifn,comp){
   var row=el("div",{class:"tcomp"});
   var woher=compOrigin(ifn,comp);
   var kopf=el("div",{class:"ck"});
@@ -8732,6 +8761,184 @@ function layoutLines(layout,tiefe,into){
       text:Array.isArray(x.fields)?x.fields.join(", "):String(x.fields)}));
     into.appendChild(zeile);
   });
+}
+
+/* ---- Welches Layout für diese Art gilt, und wo es liegt ----
+   `layoutOf` sagt nur *was* gezeichnet wird. Wer es ändern will, muss
+   wissen **wo es steht**: eine geerbte Anordnung zu bearbeiten ändert sie
+   für jede Unterart mit, und das soll niemand aus Versehen tun. */
+/* Welche Blockarten der Server zurückhält. Einmal gefragt, weil zwei
+   Listen die Stelle wären, an der eine davon veraltet — und diese hier
+   entscheidet, was ein Spieler zu sehen bekommt. */
+function gmBlockTypes(){
+  return String(setting("gmBlockTypes","secret,tactics")).split(",")
+    .map(function(x){return x.trim();}).filter(Boolean);
+}
+/* Welchen Registerteil ein Reiter bearbeitet. „Types" zeigt mehr als die
+   Zeilen — Vorlage, Kanten, Artikel —, aber bearbeitet werden dieselben
+   `interfaces`. Ohne diese Zuordnung schriebe die JSON-Fassung in ein
+   `REG.types`, das es nicht gibt, und die Arbeit wäre still weg. */
+function regPart(){ return UI.regtab==="types"?"interfaces":UI.regtab; }
+function layoutSource(vw,ifn){
+  var by=vw.byInterface||{}, at=ifn, guard=0;
+  while(at&&guard++<64){
+    if(Array.isArray(by[at])&&by[at].length) return {wo:"iface",iface:at,layout:by[at]};
+    at=parentOf(at);
+  }
+  if(Array.isArray(vw.layout)) return {wo:"view",layout:vw.layout};
+  return {wo:"legacy",layout:legacyLayout(vw)};
+}
+/* Eine eigene Anordnung für diese Art: die geerbte kopieren und unter
+   ihrem Namen ablegen. Ab da gilt sie nur hier — und die Unterarten dieser
+   Art erben sie weiter. */
+function ownLayout(vw,ifn){
+  var q=layoutSource(vw,ifn);
+  vw.byInterface=vw.byInterface||{};
+  vw.byInterface[ifn]=JSON.parse(JSON.stringify(q.layout));
+  saveReg("views");
+}
+
+/* Alle Felder, die eine Art überhaupt tragen kann — als `Comp.key`. Das ist
+   die Menge, aus der eine Ansicht auswählt; was nicht darin steht, kann
+   keine Ansicht zeigen. */
+function allFieldRefs(ifn){
+  var out=[];
+  compsFor(ifn).forEach(function(cn){
+    compFieldList(cn).forEach(function(f){
+      out.push({ref:cn+"."+f.name,comp:cn,key:f.name,kind:f.kind,derived:f.derived});
+    });
+  });
+  return out;
+}
+/* Zeigt diese Auswahl das Feld? `Comp` meint alle Felder der Komponente,
+   `Comp.key` genau eines — dieselbe Regel wie in `fieldPlan`, weil eine
+   zweite Lesart hier eine Maske ergäbe, die etwas anderes verspricht als
+   die Seite zeigt. */
+function wantsField(want,ausser,f){
+  if((ausser||[]).some(function(x){ return x===f.comp||x===f.ref; })) return false;
+  if(want==="all")return true;
+  if(!Array.isArray(want))return false;
+  return want.some(function(x){ return x===f.comp||x===f.ref; });
+}
+/* Ein Feld oder eine Blockart in dieser Anordnung an- und abschalten.
+   Abschalten geht über `except`, solange die Auswahl „all" ist — eine
+   ausgeschriebene Liste wäre am Tag der nächsten Registerzeile falsch, und
+   niemand merkt es: das Neue stünde einfach nirgends. */
+function togglePick(item,feld,ref,an){
+  var want=item[feld];
+  if(want==="all"){
+    var weg=Array.isArray(item["except"])?item["except"].slice():[];
+    var i=weg.indexOf(ref);
+    if(an&&i>=0) weg.splice(i,1);
+    if(!an&&i<0) weg.push(ref);
+    if(weg.length) item["except"]=weg; else delete item["except"];
+    return;
+  }
+  var liste=Array.isArray(want)?want.slice():[];
+  var j=liste.indexOf(ref);
+  if(an&&j<0) liste.push(ref);
+  if(!an&&j>=0) liste.splice(j,1);
+  item[feld]=liste;
+}
+
+/* ---- Die Vorlage ----
+   Was diese Ansicht von dieser Artikelart zeigt, Element für Element. Kein
+   Beispielartikel: eine Vorlage zeigt die **Form**, und ein Beispiel führt
+   dazu, dass man dessen Lücken für Fehler der Form hält. */
+function templateFor(v,ifn,vw,src){
+  var w=canWrite()&&src.wo==="iface"&&src.iface===ifn;
+
+  function elementBox(item,tiefe){
+    var box=el("div",{class:"tmplel d"+Math.min(tiefe,3)});
+    var kopf=el("div",{class:"ck"});
+    kopf.appendChild(el("code",{text:item.el}));
+
+    if(item.el==="fields"){
+      var felder=allFieldRefs(ifn);
+      var an=felder.filter(function(f){ return wantsField(item.fields,item["except"],f); });
+      kopf.appendChild(el("span",{class:"co",text:an.length+" of "+felder.length+" fields"}));
+      box.appendChild(kopf);
+      var g=el("div",{class:"tmplfields"});
+      felder.forEach(function(f){
+        var zeigt=wantsField(item.fields,item["except"],f);
+        /* Der Bezeichner steht an der Marke und nicht im Titel: ein Titel
+           ist ein Satz für Menschen, und wer ihn zerlegt, um an die Daten
+           zu kommen, hängt an seiner Formulierung. */
+        var b=el("button",{class:"pill q tgl"+(zeigt?" on":"")+(f.derived?" der":""),
+          type:"button",disabled:!w,"data-ref":f.ref,"data-comp":f.comp,
+          title:(f.derived?"Computed on read — no input, no column (D8). ":"")+
+            f.ref+" · "+f.kind,
+          onclick:function(){
+            togglePick(item,"fields",f.ref,!zeigt); saveReg("views"); render();
+          }},f.key);
+        g.appendChild(b);
+      });
+      box.appendChild(g);
+      return box;
+    }
+
+    if(item.el==="blocks"){
+      var arten=blockTypesFor(ifn);
+      var anB=arten.filter(function(bt){
+        return wantsField(item.blocks,item["except"],{comp:bt,ref:bt}); });
+      kopf.appendChild(el("span",{class:"co",text:anB.length+" of "+arten.length+" block kinds"}));
+      box.appendChild(kopf);
+      var g2=el("div",{class:"tmplfields"});
+      arten.forEach(function(bt){
+        var zeigt=wantsField(item.blocks,item["except"],{comp:bt,ref:bt});
+        g2.appendChild(el("button",{class:"pill q tgl"+(zeigt?" on":""),type:"button",
+          disabled:!w,"data-ref":bt,
+          title:gmBlockTypes().indexOf(bt)>=0?"Held back from players at the server":bt,
+          onclick:function(){
+            togglePick(item,"blocks",bt,!zeigt); saveReg("views"); render();
+          }},bt+(gmBlockTypes().indexOf(bt)>=0?" ●":"")));
+      });
+      box.appendChild(g2);
+      return box;
+    }
+
+    if(item.el==="tabs"){
+      kopf.appendChild(el("span",{class:"co",text:(item.tabs||[]).length+" tabs"}));
+      box.appendChild(kopf);
+      (item.tabs||[]).forEach(function(t){
+        box.appendChild(el("div",{class:"tmpltab d"+Math.min(tiefe+1,3),
+          text:t.label||t.id}));
+        (t.layout||[]).forEach(function(x){ box.appendChild(elementBox(x,tiefe+2)); });
+      });
+      return box;
+    }
+
+    /* Alles andere zeichnet sich selbst und hat nichts auszuwählen. Es steht
+       trotzdem da: eine Vorlage, die nur die Felder zeigt, verschweigt, dass
+       oben der Bogen und unten die Kanten stehen. */
+    var was=LAYOUT_ELEMENTS.filter(function(x){ return x[0]===item.el; })[0];
+    kopf.appendChild(el("span",{class:"co",text:was?was[1]:""}));
+    box.appendChild(kopf);
+    return box;
+  }
+
+  var wrap=el("div",{class:"tmpl"});
+  var bar=el("div",{class:"maptools"});
+  bar.appendChild(el("span",{class:"hint",style:"margin:0;align-self:center",
+    text:src.wo==="iface"
+      ?(src.iface===ifn?"Its own arrangement":"Inherited from "+(REG.interfaces[src.iface].label||src.iface))
+      :(src.wo==="view"?"The view's default arrangement":"Derived from the view's old switches")}));
+  if(canWrite()&&!w) bar.appendChild(el("button",{class:"btn sm",type:"button",
+    title:"Copy it here so changes stay with this kind",
+    onclick:function(){ ownLayout(vw,ifn); render(); }},"Give it its own"));
+  if(w&&Object.keys(vw.byInterface||{}).indexOf(ifn)>=0)
+    bar.appendChild(el("button",{class:"btn sm gh",type:"button",
+      title:"Drop it and inherit again",
+      onclick:function(){
+        confirmDialog("Drop this kind’s own arrangement and inherit again?",function(){
+          delete vw.byInterface[ifn]; saveReg("views"); render(); });
+      }},"Inherit again"));
+  wrap.appendChild(bar);
+
+  (src.layout||[]).forEach(function(item){ wrap.appendChild(elementBox(item,0)); });
+  if(!(src.layout||[]).length) wrap.appendChild(el("div",{class:"empty",
+    text:"This view draws nothing for this kind."}));
+  v.appendChild(wrap);
 }
 
 function renderTypes(v){
@@ -8790,10 +8997,9 @@ function renderTypes(v){
     onclick:function(){ UI.typePick=arten[i+1]; render(); }},"→"));
   bar.appendChild(el("span",{class:"hint",style:"margin:0;align-self:center",
     text:(i+1)+" of "+arten.length}));
-  if(canWrite()) bar.appendChild(el("button",{class:"btn sm gh",type:"button",
-    title:"Change it in the data model",
-    onclick:function(){ UI.regtab="interfaces"; UI.regiface=wahl; UI.regcomp="";
-      go({k:"reg"}); }},"edit"));
+  /* Kein „edit"-Knopf mehr: die Maske steht auf derselben Seite weiter
+     unten. Ein Knopf, der dorthin führt, wo man schon ist, verspricht einen
+     Ortswechsel und liefert keinen. */
   doc.appendChild(bar);
 
   var h=el("div",{class:"arthead"});
@@ -8817,19 +9023,46 @@ function renderTypes(v){
 
   if(req.length){
     doc.appendChild(el("div",{class:"sec",text:"Requires"}));
-    req.forEach(function(c){ doc.appendChild(compRow(wahl,c)); });
+    req.forEach(function(c){ doc.appendChild(typeCompRow(wahl,c)); });
   }
   if(darf.length){
     doc.appendChild(el("div",{class:"sec",text:"May carry"}));
-    darf.forEach(function(c){ doc.appendChild(compRow(wahl,c)); });
+    darf.forEach(function(c){ doc.appendChild(typeCompRow(wahl,c)); });
   }
 
   var bl=blockTypesFor(wahl);
   if(bl.length){
     doc.appendChild(el("div",{class:"sec",text:"Block kinds"}));
     var bb=el("div",{class:"chips"});
-    bl.forEach(function(b){ bb.appendChild(el("span",{class:"pill q",text:b})); });
+    bl.forEach(function(b){
+      bb.appendChild(el("span",{class:"pill q"+(gmBlockTypes().indexOf(b)>=0?" gmb":""),
+        title:gmBlockTypes().indexOf(b)>=0
+          ?"Held back from players at the server":"Anyone may read it",
+        text:b+(gmBlockTypes().indexOf(b)>=0?" \u25cf":"")}));
+    });
     doc.appendChild(bb);
+  }
+
+  /* ---- Die Vorlage ----
+     **Das ist, wofür man die Seite öffnet**: was diese Ansicht von dieser
+     Artikelart zeigt. Der Wähler oben rechts bestimmt welche — `full` ist
+     die Grundlage, in der alles steht, und die engeren Stufen lassen etwas
+     davon weg.
+
+     Kein Beispielartikel, sondern die Form. Ein Beispiel führte dazu, dass
+     man seine Lücken für Fehler der Vorlage hält. */
+  var vws=Object.keys(REG.views).length?REG.views:VIEWS_FALLBACK;
+  var vwKey=vws[UI.view]?UI.view:viewKeys()[0];
+  var vw=vws[vwKey];
+  if(vw){
+    var src=layoutSource(vw,wahl);
+    var vk=el("div",{class:"sec"});
+    vk.appendChild(el("span",{text:"Template"}));
+    vk.appendChild(el("span",{class:"co",text:"view: "+(vw.label||vwKey)}));
+    doc.appendChild(vk);
+    doc.appendChild(el("p",{class:"hint",style:"margin:0 0 8px",
+      text:"What this view draws for this kind. Click a field or a block kind to take it out of the view or put it back — the selector at the top right picks which view you are looking at."}));
+    templateFor(doc,wahl,vw,src);
   }
 
   /* Kanten in beide Richtungen. Gespeichert wird nur vorwärts — aber wer
@@ -8889,15 +9122,23 @@ function renderTypes(v){
     doc.appendChild(cb);
   }
 
+  /* ---- Das Modell ----
+     Dieselbe Maske wie im alten Reiter „Interfaces". Sie steht hier, weil
+     das Anlegen und das Ansehen dieselbe Arbeit sind: wer ein Feld
+     dazunimmt, will sehen, wo es landet, ohne die Seite zu wechseln. */
+  doc.appendChild(el("div",{class:"sec",text:"Model"}));
+  doc.appendChild(regIfaceBody(wahl));
+
   split.appendChild(doc);
   v.appendChild(split);
+  if(canWrite()) v.appendChild(newInterfaceBar(""));
 }
 
 function renderRegistry(v){
   v.appendChild(el("h2",{text:"Data model"}));
   v.appendChild(konzept());
   var tabs=el("div",{class:"tabs",role:"tablist"});
-  [["interfaces","Interfaces"],["components","Components"],
+  [["types","Types"],["components","Components"],
    ["relations","Relation types"],["views","Views"],["vars","Variables"],
    ["settings","Settings"],["backup","Backup"]]
   .forEach(function(t){
@@ -8928,8 +9169,12 @@ function renderRegistry(v){
     return;
   }
 
-  if(UI.regtab==="interfaces"&&!UI.regjson){
-    regIfaceEditor(v);
+  /* **Artikelarten und Datenmodell sind eine Seite.** Sie waren zwei, und
+     das hiess: das Modell hier anlegen, dort nachsehen, was dabei
+     herauskommt, und dazwischen jedes Mal die Seite wechseln. Wer ein Feld
+     dazunimmt, will sehen, wo es landet. */
+  if(UI.regtab==="types"&&!UI.regjson){
+    renderTypes(v);
     var bar0=el("div",{class:"rowbtns"});
     bar0.appendChild(el("button",{class:"btn sm gh",type:"button",onclick:function(){
       UI.regjson=true; UI.err=""; render(); }},"Edit as JSON"));
@@ -8940,7 +9185,7 @@ function renderRegistry(v){
   if(UI.regtab==="views") v.appendChild(el("p",{class:"hint",
     text:"Compendium — the views in the picker at the top right. fields: \"none\" | \"all\" | a list of components · blocks: \"all\" | a list of block types · description, composed, relations, bindings, image: true/false · order sets the sequence."}));
   var ta=el("textarea",{class:"i code",spellcheck:"false",id:"regbox"});
-  ta.value=JSON.stringify(REG[UI.regtab],null,2);
+  ta.value=JSON.stringify(REG[regPart()],null,2);
   v.appendChild(ta);
   var msg=el("div",{class:"err"});
   v.appendChild(msg);
@@ -8949,43 +9194,13 @@ function renderRegistry(v){
   if(canWrite()) bar.appendChild(el("button",{class:"btn pri",type:"button",onclick:function(){
     try{ var parsed=JSON.parse(ta.value); }
     catch(x){ msg.textContent="Not valid JSON: "+x.message; return; }
-    REG[UI.regtab]=parsed; saveReg(UI.regtab); msg.textContent=""; render();
+    REG[regPart()]=parsed; saveReg(regPart()); msg.textContent=""; render();
   }},"Apply"));
   bar.appendChild(el("button",{class:"btn",type:"button",onclick:function(){
-    ta.value=JSON.stringify(REG[UI.regtab],null,2); msg.textContent="";}},"Reset"));
+    ta.value=JSON.stringify(REG[regPart()],null,2); msg.textContent="";}},"Reset"));
   bar.appendChild(el("button",{class:"btn gh",type:"button",
     onclick:function(){ UI.regjson=false; UI.err=""; render(); }},"Back to the form"));
   v.appendChild(bar);
-}
-
-/* Der Baum links, die gewählte Schnittstelle rechts. */
-function regIfaceEditor(v){
-  var namen=Object.keys(REG.interfaces);
-  if(!namen.length){
-    v.appendChild(el("div",{class:"empty",text:"No interfaces yet."}));
-    if(canWrite()) v.appendChild(newInterfaceBar(""));
-    return;
-  }
-  if(!REG.interfaces[UI.regiface]) UI.regiface=ifaceRoots()[0]||namen.sort()[0];
-
-  var grid=el("div",{class:"reg2"});
-  var tree=el("div",{class:"regtree"});
-  (function walk(list,depth){
-    list.forEach(function(n){
-      var d=REG.interfaces[n], c=countIface(n);
-      var b=el("button",{type:"button","aria-current":String(UI.regiface===n),
-        style:"padding-left:"+(7+depth*13)+"px",
-        onclick:function(){ UI.regiface=n; UI.regcomp=""; UI.regprop=""; render(); }});
-      if(c) b.appendChild(el("em",{text:String(c)}));
-      b.appendChild(el("span",{class:d.abstract?"ab":"",text:d.label||n}));
-      tree.appendChild(b);
-      walk(kindsOf(n),depth+1);
-    });
-  })(ifaceRoots(),0);
-  grid.appendChild(tree);
-  grid.appendChild(regIfaceBody(UI.regiface));
-  v.appendChild(grid);
-  if(canWrite()) v.appendChild(newInterfaceBar(""));
 }
 
 function newInterfaceBar(unter){
@@ -9076,7 +9291,8 @@ function componentBody(cn){
     users.forEach(function(n){
       var c=el("span",{class:"chip"});
       c.appendChild(el("button",{type:"button",class:"ref",onclick:function(){
-        UI.regtab="interfaces"; UI.regiface=n; UI.regcomp=cn; render(); }},
+        UI.regtab="types"; UI.typePick=n; UI.regiface=n; UI.regcomp=cn;
+        go({k:"reg"}); }},
         REG.interfaces[n].label||n));
       chips.appendChild(c);
     });
