@@ -698,3 +698,102 @@ describe('one account, several characters', () => {
     expect(await repo.usersOfActor('n_wachsmann')).toEqual([]);
   });
 });
+
+/* ---------------------------------------------------------------------
+   Eine Gruppe von **Menschen**, nicht von Figuren.
+
+   Wissen liess sich schon einer Party zuteilen, und jedes Mitglied bekam
+   es über `memberOfParty`. Das deckt die Abenteuergruppe ab und sonst
+   nichts: wer keine Figur hat, wer gerade eine neue baut, wer als Gast
+   zusieht, steht in keiner Party — und soll dasselbe erfahren.
+
+   Die Gruppe ist deshalb ein Halter wie jeder andere, und ein Konto zeigt
+   auf sie wie auf eine Figur. Kein zweites Verfahren.
+   --------------------------------------------------------------------- */
+describe('knowledge shared with a whole group', () => {
+  const gruppe: Entity = {
+    id: 'grp_runde',
+    interfaces: ['Group'],
+    name: 'Die Donnerstagsrunde',
+    tags: [],
+    components: {
+      Name: { text: 'Die Donnerstagsrunde' },
+      Identity: { key: 'group/donnerstag', aliases: [] },
+      Status: { value: 'used' },
+      GroupInfo: { kind: 'players', purpose: 'Wer an diesem Tisch sitzt' },
+    },
+    blocks: [],
+    relations: [],
+  };
+  const ort: Entity = {
+    id: 'o_keller',
+    interfaces: ['Place'],
+    name: 'Der Lampenkeller',
+    tags: [],
+    components: {
+      Name: { text: 'Der Lampenkeller' },
+      Identity: { key: 'place/keller', aliases: [] },
+      Status: { value: 'used' },
+      Description: { raw: 'Der Eingang liegt hinter dem Fass.' },
+    },
+    blocks: [],
+    relations: [{ id: 'rk', type: 'knowledge', to: 'i_eingang', props: {} }],
+  };
+  /* Zugeteilt ist es der **Gruppe** — keiner einzelnen Figur. */
+  const info: Entity = {
+    id: 'i_eingang',
+    interfaces: ['Information'],
+    name: 'Wo der Eingang liegt',
+    tags: [],
+    components: {
+      Name: { text: 'Wo der Eingang liegt' },
+      Identity: { key: 'info/eingang', aliases: [] },
+      Status: { value: 'used' },
+      Info: { tier: 'secret', fields: ['Description.raw'], blocks: [] },
+    },
+    blocks: [],
+    relations: [{ id: 'rb', type: 'knownBy', to: 'grp_runde', props: {} }],
+  };
+
+  async function setup(actorIds: string[]) {
+    const repo = new InMemoryRepository(seedRegistry, [rook, inv, gruppe, ort, info]);
+    const app = buildApp({ repo });
+    await addUser(repo, 'Spieler', { actorIds });
+    return { app, repo };
+  }
+  const lesen = async (app: ReturnType<typeof buildApp>) => {
+    const keks = cookieOf(await login(app, 'Spieler'));
+    return app.inject({ method: 'GET', url: '/api/entities/o_keller', headers: { cookie: keks } });
+  };
+
+  it('reaches an account that belongs to the group', async () => {
+    const { app } = await setup(['pc_rook', 'grp_runde']);
+    expect((await lesen(app)).json().components.Description?.raw).toMatch(/hinter dem Fass/);
+  });
+
+  /* Und niemanden sonst — auch nicht jemanden mit einer Figur, die alles
+     andere darf. Ohne diese Hälfte wäre die Gruppe nur Zierrat. */
+  it('and nobody outside it, character or no character', async () => {
+    const { app } = await setup(['pc_rook']);
+    expect(JSON.stringify((await lesen(app)).json())).not.toContain('hinter dem Fass');
+    const { app: leer } = await setup([]);
+    expect(JSON.stringify((await lesen(leer)).json())).not.toContain('hinter dem Fass');
+  });
+
+  /* Eine Gruppe ohne Figuren ist der Punkt: „die Spieler dieser Kampagne"
+     ist kein Figurengefüge, und wer noch keine Figur hat, soll trotzdem
+     mitlesen. */
+  it('works for an account that plays nobody at all', async () => {
+    const { app } = await setup(['grp_runde']);
+    expect((await lesen(app)).json().components.Description?.raw).toMatch(/hinter dem Fass/);
+  });
+
+  it('is a holder the registry allows, not one smuggled past it', () => {
+    expect(seedRegistry.relations.knownBy.to).toContain('Group');
+    expect(seedRegistry.interfaces.Group.requires).toContain('GroupInfo');
+    /* Sie trägt kein Blatt und keine Ausrüstung — sie ist keine Party mit
+       anderem Namen. */
+    expect(seedRegistry.interfaces.Group.allows ?? []).not.toContain('Vitals');
+    expect(seedRegistry.relations.carries.from).not.toContain('Group');
+  });
+});

@@ -303,6 +303,12 @@ in [Spieltisch.md](Spieltisch.md).
   gedrehte Bilder mit Seitenverhältnis statt runder Tokens — beides an der
   Kante, weil dasselbe Fass auf der nächsten Karte längs steht. Siehe
   [Karten.md](Karten.md).
+- **D24 · Konten und Gruppen** — REQ-031 bis 040. Ein Konto legt sich jeder
+  selbst an, gegen eine Einladung, und führt **mehrere Figuren**; der
+  Betrachter ist damit eine Liste und keine Id. Dazu `Group`: eine Gruppe
+  von **Menschen**, nicht von Figuren, als dritter Wissenshalter neben
+  Figur und Party — „die Spieler dieser Kampagne" ist kein Figurengefüge.
+  Siehe [Wissen.md](Wissen.md) und [Zugang.md](Zugang.md).
 
 ---
 

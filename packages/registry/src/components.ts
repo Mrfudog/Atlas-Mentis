@@ -789,6 +789,41 @@ export const components: Record<string, ComponentDef> = {
    * unterscheiden sich je Betrachter, frieren beim Schreiben ein und
    * überleben Menschen.
    */
+  /**
+   * Eine **Gruppe von Menschen**, nicht von Figuren (REQ-040).
+   *
+   * Wissen liess sich schon einer `Party` zuteilen, und jedes Mitglied
+   * bekam es über `memberOfParty`. Das deckt die Abenteuergruppe ab und
+   * sonst nichts: „die Spieler dieser Kampagne" ist etwas anderes. Wer
+   * keine Figur hat, wer gerade eine neue baut, wer als Gast zusieht —
+   * keiner davon steht in einer Party, und alle sollen dasselbe erfahren.
+   *
+   * Deshalb eine eigene Art, die **kein** Figurengefüge ist. Ein Konto
+   * zeigt auf sie wie auf eine Figur, und `knownBy` darf sie nennen: ein
+   * dritter Halter neben Figur und Party, im selben Verfahren.
+   */
+  GroupInfo: {
+    name: 'GroupInfo',
+    label: 'Group',
+    engine: null,
+    schema: {
+      type: 'object',
+      properties: {
+        purpose: { type: 'string', title: 'What it is for' },
+        /* Wozu sie da ist — damit eine Liste von Gruppen lesbar bleibt,
+           wenn es fünf davon gibt. Aufzählungswerte sind Kampagneninhalt
+           und bleiben deutsch, wo sie welche sind; diese hier sind es
+           nicht, sie beschreiben das Werkzeug. */
+        kind: {
+          type: 'string',
+          title: 'Kind',
+          enum: ['players', 'table', 'guests', 'crew'],
+          default: 'players',
+        },
+      },
+    },
+  },
+
   Access: {
     name: 'Access',
     label: 'Access',

@@ -26,7 +26,7 @@ Stand und Marken haben.
 
 ```
 Artikel      --knowledge-->  Information        (owned)
-Information  --knownBy-->    Creature | Party | KnowledgeLevel
+Information  --knownBy-->    Creature | Party | Faction | KnowledgeLevel | Group
 Creature     --atLevel-->    KnowledgeLevel
 ```
 
@@ -113,6 +113,36 @@ kennt(Betrachter, Information) :=
 Einen Schritt weit, nicht transitiv. Ein Wissensstand, der einem anderen
 angehört, wäre eine Hierarchie — die hat niemand verlangt, und sie liesse sich
 nachrüsten, ohne eine Zeile zu ändern.
+
+**Ein Betrachter ist eine Liste, keine Id.** Ein Konto führt mehrere Figuren,
+und wer zwei spielt, weiss am Tisch, was beide wissen — eine Seite, die ihm
+das eine vorenthält, während er auf das andere schaut, zwingt ihn zum
+Umschalten und sonst zu nichts. Gerechnet wird über die Vereinigung.
+
+Eine **leere** Liste ist dabei nicht dasselbe wie **keine**: `undefined`
+heisst Spielleitung und sieht alles, `[]` heisst ein Konto ohne Figur und
+sieht genau das Offene.
+
+---
+
+## Die Gruppe
+
+`Party` ist ein Figurengefüge: Rook, Sela und der Rest ziehen zusammen los.
+Wissen an die Party zu geben erreicht jedes Mitglied über `memberOfParty`,
+und das ist richtig so.
+
+Es deckt aber nur die Abenteuergruppe ab. **„Die Spieler dieser Kampagne"
+ist etwas anderes** — wer noch keine Figur hat, wer gerade eine neue baut,
+wer als Gast zusieht, steht in keiner Party und soll dasselbe erfahren.
+
+Dafür gibt es `Group` (mit `GroupInfo`). Sie trägt kein Blatt, keine Werte
+und keine Ausrüstung; sie ist da, damit Wissen einen Empfänger hat, der
+grösser ist als eine Figur und anders als eine Party.
+
+**Ihre Mitglieder sind Konten, nicht Figuren.** Ein Konto zeigt auf sie wie
+auf eine Figur — dieselbe Zeile in `app_user_actor`, derselbe Eintrag in der
+Betrachterliste. Genau deshalb ist sie keine zweite Mechanik, sondern ein
+dritter Halter im selben Verfahren.
 
 Ohne Betrachter ist es die Spielleitung: sie sieht alles.
 

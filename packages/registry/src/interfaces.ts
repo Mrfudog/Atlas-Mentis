@@ -392,4 +392,21 @@ export const interfaces: Record<string, InterfaceDef> = {
     blockTypes: ['+note'],
   },
 
+  /**
+   * Eine Gruppe von Menschen. Sie trägt kein Blatt, keine Werte und keine
+   * Ausrüstung — sie ist da, damit Wissen einen Empfänger hat, der grösser
+   * ist als eine Figur und anders als eine Party.
+   *
+   * Bereich `game`: sie gehört zur Einrichtung der Runde und nicht in die
+   * Welt. Eine Gruppe im Kompendium neben den Fraktionen zu führen hiesse,
+   * sie für Kampagneninhalt zu halten.
+   */
+  Group: {
+    name: 'Group',
+    area: 'game',
+    label: 'Group',
+    extends: ['Base'],
+    requires: ['GroupInfo'],
+    blockTypes: ['+note'],
+  },
 };

@@ -240,9 +240,14 @@ export const relations: Record<string, RelationDef> = {
     label: 'known by',
     inverseLabel: 'knows',
     from: ['Information'],
-    // Eine Fraktion kann etwas erfahren — „das Auge weiss es“ ist genau die
-    // Frage, an der eine Tat zu zählen anfängt (REQ-030, 040).
-    to: ['Creature', 'Party', 'Faction', 'KnowledgeLevel'],
+    // Eine Fraktion kann etwas erfahren — „das Auge weiss es“ ist eine
+    // Frage, die eine Kampagne stellt (REQ-040).
+    //
+    // Und eine **Gruppe von Menschen**: „die Spieler dieser Kampagne" ist
+    // kein Figurengefüge, also keine Party. Sie dazuzunehmen ist eine
+    // Zeile und keine zweite Mechanik — `knowledgeHolders` fragt ohnehin
+    // nach Haltern und nicht nach Figuren.
+    to: ['Creature', 'Party', 'Faction', 'KnowledgeLevel', 'Group'],
   },
 
   atLevel: {
