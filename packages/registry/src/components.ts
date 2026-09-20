@@ -677,6 +677,9 @@ export const components: Record<string, ComponentDef> = {
         },
         dc: { type: 'number', title: 'DC', default: 12 },
         time: { type: 'string', title: 'Time' },
+        // Eine Zahl neben dem Text: „2 Stunden“ liest sich schön und rechnet
+        // nicht. Ein Gang unter einem Tag ist eine Sitzung (REQ-184).
+        days: { type: 'number', title: 'Days of work', default: 1 },
         yieldCount: { type: 'number', title: 'Yield', default: 1 },
         /* Was beim Misslingen passiert, gehört ins Rezept: sonst entscheidet
            es jedes Mal die Laune am Tisch, und das merkt sich niemand. */

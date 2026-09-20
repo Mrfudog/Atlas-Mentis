@@ -323,6 +323,15 @@ body.asplayer .brand span{color:var(--link)}
 .mprev.line{height:0;border:none;border-top:3px solid var(--warn);transform-origin:0 0}
 .maptools.sub{padding-top:2px;border-top:1px dashed var(--line);margin-top:-2px}
 
+/* Die Werkbank: ein laufender Gang ist ein Balken und zwei Knöpfe. */
+.bench{margin:8px 0}
+.job{border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;
+  background:var(--surface2);margin-bottom:6px}
+.jbar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin:6px 0}
+.jbar i{display:block;height:100%;background:var(--accent)}
+.mtiles{display:grid;gap:0;line-height:0}
+.mtiles img{width:100%;height:auto;display:block}
+
 /* Ruf: eine Zeile je Gegenseite, sieben Striche als Leiter. Kein Diagramm —
    man soll sie im Vorbeigehen ablesen. */
 .standbox{display:flex;flex-direction:column;gap:8px}
@@ -779,7 +788,7 @@ var UI={route:{k:"list"}, view:"quick", iface:"", tag:"", q:"", offen:false, pan
         trail:[], inline:false, editField:"", pick:false, picked:{}, status:"",
         aside:"rel", info:"", assetBusy:"",
         mapZoom:1, mapLock:false, mapKind:"", mapDrag:null, mapTool:"",
-        invView:"tiers", invPick:"", craftOnly:false,
+        invView:"tiers", invPick:"", craftOnly:false, craftLog:[],
         boardZoom:1, boardPick:"", boardTool:"",
         turnActor:"", rollLog:[], asActor:"", peers:[], pings:[],
         ruleQ:"", ruleKind:"",
@@ -5008,57 +5017,247 @@ function recipeKnowledge(rec,viewerId){
   if(bekannt===infos.length)return "known";
   return bekannt?"partial":"hidden";
 }
+/* Was fehlt — Material **und** Werkzeug. Die beiden auseinanderzuhalten
+   hiesse, dass die Matrix „ja" sagt und das Anfangen „nein": genau die Art
+   Widerspruch, die man am Tisch der Software nicht mehr verzeiht. */
 function craftStatus(rec,traeger){
   var fehlt=[], ok=true;
   recipeNeeds(rec).forEach(function(n){
     var da=traeger?amountHeld(traeger,n.item.id):0;
     if(da<n.qty){ ok=false; fehlt.push({item:n.item,need:n.qty,have:da}); }
   });
-  return {ok:ok,missing:fehlt};
+  var info=(rec.components||{})[RECIPE_COMP]||{};
+  var werkzeug=!info.tool||(traeger&&hasTool(traeger,info));
+  if(!werkzeug){ ok=false; }
+  return {ok:ok,missing:fehlt,tool:werkzeug?"":info.tool};
 }
 
-/* Herstellen: verbrauchen, was verbraucht wird, und das Ergebnis eintragen.
-   Ohne diesen Schritt ist die Matrix eine Tabelle, und die Tabelle führt
-   niemand nach. */
-function craftIt(rec,traeger){
+/* ---------- Ein laufender Handwerksgang (REQ-184, Rest) ----------
+   Bis hierher stand am Rezept, was es kostet, wie lange es dauert und
+   gegen welchen Wert man würfelt — und niemand würfelte und niemand zählte.
+   Eine Zeit, die nur dasteht, ist eine Notiz; eine Probe, die nur dasteht,
+   ist eine Behauptung.
+
+   Ein Gang hängt an **beiden** Enden: an dem, der arbeitet, und an dem
+   Rezept. Also steht er an einer Kante — dieselbe Regel wie bei der
+   Tragestufe im Inventar und beim Lichtradius auf der Karte. Kein Artikel:
+   ein Gang ist vorbei, wenn er vorbei ist, und ein Artikel, den man
+   anschliessend löscht, war keiner.
+
+   **Das Material geht am Anfang hinein.** Deshalb kann ein Gang scheitern
+   und etwas kosten — und deshalb ist `onFailure` mehr als eine Zeile im
+   Register. Was bei einem Fehlschlag übrig bleibt, wandert zurück ins
+   Inventar; was verloren ist, ist verloren.
+
+   Gewürfelt wird **einmal am Ende**, mit demselben Würfelwerk wie alles
+   andere, und der Wurf bleibt an der Kante stehen. Ein Ergebnis, das nicht
+   nachlesbar ist, wird am Tisch neu gewürfelt. */
+var REL_CRAFTING="crafting";
+
+function craftJobs(traeger){
+  return ((traeger&&traeger.relations)||[]).filter(function(r){
+    return r.type===REL_CRAFTING&&ENT.get(r.to);
+  }).map(function(r){ return {rel:r,recipe:ENT.get(r.to),
+    day:Number((r.props||{}).day)||0, days:Math.max(1,Number((r.props||{}).days)||1),
+    rolls:((r.props||{}).rolls)||[]}; });
+}
+function jobFor(traeger,recId){
+  return craftJobs(traeger).filter(function(j){ return j.recipe.id===recId; })[0]||null;
+}
+/* Wie viele Tage dieses Rezept braucht. Eine Zahl im Register schlägt den
+   Text — „2 Tage" liest sich schön und rechnet nicht. */
+function recipeDays(info){
+  var n=Number(info.days);
+  if(isFinite(n)&&n>0)return Math.round(n);
+  var m=/(\d+)\s*(tag|tage|day|days)/i.exec(String(info.time||""));
+  if(m)return parseInt(m[1],10);
+  return 1;
+}
+/* Der Wert, gegen den gewürfelt wird. Fähigkeitsbonus immer, Übungsbonus
+   nur, wenn das Werkzeug in den Werkzeugübungen steht — und das steht in
+   den Daten, nicht in einer Annahme. */
+function craftMod(traeger,info){
+  if(!traeger)return {mod:0,parts:["no crafter"]};
+  var sb=statsOf(traeger).card;
+  var m=modOf(sb,(info.ability||"int"));
+  var teile=[(info.ability||"int").toUpperCase()+" "+sgn(m)];
+  var werkzeuge=((traeger.components||{}).Skills||{}).tools||[];
+  var geuebt=info.tool&&werkzeuge.some(function(t){
+    return String(t).toLowerCase()===String(info.tool).toLowerCase(); });
+  if(geuebt){ var p=profOf(traeger); m+=p; teile.push("proficient "+sgn(p)); }
+  return {mod:m,parts:teile,proficient:!!geuebt};
+}
+/* Hat der Arbeiter das Werkzeug dabei? Ein Rezept, das Alchemistenwerkzeug
+   verlangt, lässt sich ohne nicht anfangen — und das ist eine Frage an das
+   Inventar, nicht an eine Häkchenliste. */
+function hasTool(traeger,info){
+  if(!info.tool)return true;
+  var gesucht=String(info.tool).toLowerCase();
+  return carriedItems(traeger).some(function(st){
+    return rawName(st.item).toLowerCase().indexOf(gesucht)>=0
+        || nameOf(st.item).toLowerCase().indexOf(gesucht)>=0;
+  });
+}
+
+/* Anfangen: Material hinein, Kante anlegen. Erst hier wird verbraucht —
+   vorher hat niemand angefangen. */
+function craftStart(rec,traeger){
   var inv=inventoryOf(traeger);
   if(!inv){ UI.err="No inventory to take from."; render(); return; }
   var st=craftStatus(rec,traeger);
   if(!st.ok){ UI.err="Missing: "+st.missing.map(function(m){
-    return nameOf(m.item)+" ("+m.have+"/"+m.need+")"; }).join(", "); render(); return; }
-  var ergebnis=recipeYield(rec);
+    return nameOf(m.item)+" ("+m.have+"/"+m.need+")"; })
+    .concat(st.tool?[st.tool]:[]).join(", "); render(); return; }
   var info=(rec.components||{})[RECIPE_COMP]||{};
-  confirmDialog("Craft “"+(ergebnis?nameOf(ergebnis):nameOf(rec))+"”? "+
-    "This consumes the materials"+(info.dc?" — the check is DC "+info.dc+
-      " and it is not rolled here":"")+".",function(){
-    recipeNeeds(rec).forEach(function(n){
-      if(!n.consumed)return;
-      var rest=n.qty;
-      /* Von hinten abtragen: was eingelagert ist, geht zuerst, was in der
-         Hand liegt, zuletzt — sonst nimmt das Handwerk die Waffe weg. */
-      var stuecke=carriedItems(traeger).filter(function(x){return x.item.id===n.item.id;});
-      var ordnung=["stored","pack","belt","worn","held"];
-      stuecke.sort(function(a,b){ return ordnung.indexOf(a.tier)-ordnung.indexOf(b.tier); });
-      stuecke.forEach(function(x){
-        if(rest<=0)return;
-        var weg=Math.min(rest,x.qty); rest-=weg;
-        if(x.qty-weg<=0) inv.relations=inv.relations.filter(function(y){return y.id!==x.rel.id;});
-        else x.rel.props=Object.assign({},x.rel.props,{qty:x.qty-weg});
+  if(jobFor(traeger,rec.id)){ UI.err="Already working on that one."; render(); return; }
+  var tage=recipeDays(info);
+  var eingelegt=[];
+  confirmDialog("Start “"+nameOf(rec)+"”? The materials go in now — "+
+    tage+" day"+(tage===1?"":"s")+" of work, then a "+
+    (info.ability||"int").toUpperCase()+" check against DC "+(info.dc||12)+".",
+    function(){
+      recipeNeeds(rec).forEach(function(n){
+        if(!n.consumed)return;
+        takeFromInventory(inv,traeger,n.item.id,n.qty);
+        eingelegt.push({item:n.item.id,qty:n.qty});
       });
-    });
-    if(ergebnis){
-      var wieviel=Number(info.yieldCount)||1;
-      var vorhanden=(inv.relations||[]).filter(function(y){
-        return y.type===REL_HOLDS&&y.to===ergebnis.id; })[0];
-      if(vorhanden) vorhanden.props=Object.assign({},vorhanden.props,
-        {qty:(Number((vorhanden.props||{}).qty)||1)+wieviel});
-      else{ inv.relations=inv.relations||[];
-        inv.relations.push({id:uid("r"),type:REL_HOLDS,to:ergebnis.id,
-          props:{qty:wieviel,tier:"pack"}}); }
-    }
-    persist(inv);
-  },"Craft");
+      traeger.relations=traeger.relations||[];
+      traeger.relations.push({id:uid("r"),type:REL_CRAFTING,to:rec.id,
+        props:{day:0,days:tage,rolls:[],put:eingelegt}});
+      persist(inv);
+      if(inv.id!==traeger.id) persist(traeger);
+    },"Start");
 }
+/* Material abtragen. Von hinten: was eingelagert ist, geht zuerst, was in
+   der Hand liegt, zuletzt — sonst nimmt das Handwerk die Waffe weg. */
+function takeFromInventory(inv,traeger,itemId,menge){
+  var rest=menge;
+  var stuecke=carriedItems(traeger).filter(function(x){return x.item.id===itemId;});
+  var ordnung=["stored","pack","belt","worn","held"];
+  stuecke.sort(function(a,b){ return ordnung.indexOf(a.tier)-ordnung.indexOf(b.tier); });
+  stuecke.forEach(function(x){
+    if(rest<=0)return;
+    var weg=Math.min(rest,x.qty); rest-=weg;
+    if(x.qty-weg<=0) inv.relations=inv.relations.filter(function(y){return y.id!==x.rel.id;});
+    else x.rel.props=Object.assign({},x.rel.props,{qty:x.qty-weg});
+  });
+  return menge-rest;
+}
+function putIntoInventory(inv,itemId,menge,stufe){
+  var vorhanden=(inv.relations||[]).filter(function(y){
+    return y.type===REL_HOLDS&&y.to===itemId; })[0];
+  if(vorhanden) vorhanden.props=Object.assign({},vorhanden.props,
+    {qty:(Number((vorhanden.props||{}).qty)||1)+menge});
+  else{ inv.relations=inv.relations||[];
+    inv.relations.push({id:uid("r"),type:REL_HOLDS,to:itemId,
+      props:{qty:menge,tier:stufe||"pack"}}); }
+}
+
+/* Einen Tag arbeiten. Am letzten Tag wird gewürfelt, und dann ist der Gang
+   vorbei — so oder so. */
+function craftDay(traeger,job){
+  var info=(job.recipe.components||{})[RECIPE_COMP]||{};
+  var tag=job.day+1;
+  if(tag<job.days){
+    job.rel.props=Object.assign({},job.rel.props,{day:tag});
+    persist(traeger);
+    return;
+  }
+  var bonus=craftMod(traeger,info);
+  var wurf=rollDice("1d20"+(bonus.mod?sgn(bonus.mod):""));
+  var dc=Number(info.dc)||12;
+  var geschafft=wurf&&wurf.total>=dc;
+  var eintrag={at:new Date().toISOString(),total:wurf?wurf.total:0,
+    dice:wurf?wurf.rolls:[],dc:dc,mod:bonus.mod,ok:!!geschafft};
+  var inv=inventoryOf(traeger);
+  var ergebnis=recipeYield(job.recipe);
+  var zurueck=[];
+
+  if(geschafft&&inv&&ergebnis) putIntoInventory(inv,ergebnis.id,Number(info.yieldCount)||1);
+  if(!geschafft&&inv){
+    /* Was bei einem Fehlschlag übrig bleibt (REQ-184). `halfLost` rundet
+       zugunsten des Arbeiters ab — die Hälfte einer einzelnen Zutat ist
+       keine halbe Zutat, sondern Glück. */
+    var regel=info.onFailure||"halfLost";
+    (job.rel.props.put||[]).forEach(function(p){
+      var behalten=regel==="nothingLost"?p.qty:
+        (regel==="halfLost"?Math.floor(p.qty/2):0);
+      if(behalten>0){ putIntoInventory(inv,p.item,behalten); zurueck.push({item:p.item,qty:behalten}); }
+    });
+  }
+  traeger.relations=(traeger.relations||[]).filter(function(r){ return r.id!==job.rel.id; });
+  UI.craftLog=(UI.craftLog||[]).concat([{recipe:job.recipe.id,who:traeger.id,
+    roll:eintrag,back:zurueck,
+    yield:geschafft&&ergebnis?ergebnis.id:""}]).slice(-12);
+  if(inv) persist(inv);
+  if(!inv||inv.id!==traeger.id) persist(traeger);
+}
+function craftAbort(traeger,job){
+  var info=(job.recipe.components||{})[RECIPE_COMP]||{};
+  confirmDialog("Stop working on “"+nameOf(job.recipe)+"”? "+
+    (info.onFailure==="nothingLost"?"The materials come back."
+      :"What is already in it is spoilt — "+
+       (info.onFailure==="materialsLost"?"nothing comes back.":"half comes back.")),
+    function(){
+      var inv=inventoryOf(traeger);
+      var regel=info.onFailure||"halfLost";
+      if(inv)(job.rel.props.put||[]).forEach(function(p){
+        var behalten=regel==="nothingLost"?p.qty:
+          (regel==="halfLost"?Math.floor(p.qty/2):0);
+        if(behalten>0) putIntoInventory(inv,p.item,behalten);
+      });
+      traeger.relations=(traeger.relations||[]).filter(function(r){ return r.id!==job.rel.id; });
+      if(inv) persist(inv);
+      if(!inv||inv.id!==traeger.id) persist(traeger);
+    },"Stop");
+}
+
+/* Die Werkbank: was läuft, wie weit, und was zuletzt gewürfelt wurde. */
+function craftBench(traeger){
+  var jobs=craftJobs(traeger);
+  var log=(UI.craftLog||[]).filter(function(x){ return x.who===traeger.id; });
+  if(!jobs.length&&!log.length)return null;
+  var wrap=el("div",{class:"bench"});
+  wrap.appendChild(el("div",{class:"sec",text:"On the bench"}));
+  jobs.forEach(function(j){
+    var info=(j.recipe.components||{})[RECIPE_COMP]||{};
+    var bonus=craftMod(traeger,info);
+    var row=el("div",{class:"job"});
+    var kopf=el("div",{class:"ck"});
+    kopf.appendChild(el("button",{class:"ref",type:"button",
+      onclick:function(){go({k:"art",id:j.recipe.id});}},nameOf(j.recipe)));
+    kopf.appendChild(el("span",{class:"co",
+      text:j.day+"/"+j.days+" day"+(j.days===1?"":"s")+
+        (j.days===1&&info.time?" ("+info.time+", one sitting)":"")}));
+    kopf.appendChild(el("span",{class:"pill q",
+      title:bonus.parts.join(" · "),
+      text:(info.ability||"int").toUpperCase()+" "+sgn(bonus.mod)+" vs DC "+(info.dc||12)}));
+    row.appendChild(kopf);
+    var bar=el("div",{class:"jbar"});
+    var fill=el("i"); fill.style.width=Math.min(100,(j.day/j.days)*100)+"%";
+    bar.appendChild(fill); row.appendChild(bar);
+    if(canWrite()){
+      var btns=el("div",{class:"rowbtns"});
+      btns.appendChild(el("button",{class:"btn sm pri",type:"button",
+        onclick:function(){ craftDay(traeger,j); }},
+        j.day+1>=j.days?"Last day — roll it":"Work a day"));
+      btns.appendChild(el("button",{class:"btn sm gh",type:"button",
+        onclick:function(){ craftAbort(traeger,j); }},"Stop"));
+      row.appendChild(btns);
+    }
+    wrap.appendChild(row);
+  });
+  log.slice().reverse().forEach(function(x){
+    var rec=ENT.get(x.recipe), erg=x.yield&&ENT.get(x.yield);
+    var z=el("p",{class:"hint"+(x.roll.ok?"":" warnzeile"),style:"margin:2px 0"});
+    z.textContent=(rec?nameOf(rec):"?")+": "+x.roll.total+" vs DC "+x.roll.dc+
+      " — "+(x.roll.ok?("made it"+(erg?", "+nameOf(erg)+" in the pack":""))
+                     :("failed"+(x.back.length?", some of it came back":", all of it gone")));
+    wrap.appendChild(z);
+  });
+  return wrap;
+}
+
 
 function elCrafting(e,ifn,item){
   var wrap=el("div",{class:"craft"});
@@ -5124,7 +5323,8 @@ function elCrafting(e,ifn,item){
         var st=craftStatus(e,t);
         var cell=el("td");
         if(st.ok&&canWrite()) cell.appendChild(el("button",{class:"btn sm pri",type:"button",
-          onclick:function(){ craftIt(e,t); }},"Craft"));
+          onclick:function(){ craftStart(e,t); }},
+          jobFor(t,e.id)?"On the bench":"Start"));
         else cell.appendChild(el("span",{class:st.ok?"ok":"gone",text:st.ok?"yes":"no"}));
         foot.appendChild(cell);
       });
@@ -5158,6 +5358,9 @@ function elCrafting(e,ifn,item){
   var inv=inventoryOf(e);
   if(!inv){ wrap.appendChild(el("p",{class:"hint",
     text:"No inventory — nothing to craft from."})); return wrap; }
+
+  var werkbank=craftBench(e);
+  if(werkbank) wrap.appendChild(werkbank);
 
   var rezepte=[];
   ENT.forEach(function(o){ if(((o.interfaces||[])[0])===RECIPE_IFACE) rezepte.push(o); });
@@ -5194,7 +5397,8 @@ function elCrafting(e,ifn,item){
     if(wissen==="hidden") c3.textContent="—";
     else if(st.ok) c3.textContent="all there";
     else c3.textContent=st.missing.map(function(m){
-      return nameOf(m.item)+" "+m.have+"/"+m.need; }).join(", ");
+      return nameOf(m.item)+" "+m.have+"/"+m.need; })
+      .concat(st.tool?["no "+st.tool]:[]).join(", ");
     row.appendChild(c3);
     var erg2=recipeYield(rec);
     var c4=el("td");
@@ -5205,7 +5409,8 @@ function elCrafting(e,ifn,item){
     var c5=el("td");
     if(st.ok&&wissen!=="hidden"&&canWrite())
       c5.appendChild(el("button",{class:"btn sm pri",type:"button",
-        onclick:function(){ craftIt(rec,e); }},"Craft"));
+        onclick:function(){ craftStart(rec,e); }},
+        jobFor(e,rec.id)?"On the bench":"Start"));
     row.appendChild(c5);
     tb2.appendChild(row);
   });

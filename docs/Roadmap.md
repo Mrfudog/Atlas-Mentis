@@ -252,6 +252,9 @@ in [Spieltisch.md](Spieltisch.md).
 - **D11 · Ruf und Beziehungen** — REQ-030, 081. Eine Tat ist ein Artikel mit
   zwei Kanten; eine Tat, von der niemand weiss, ändert nichts. Siehe
   [Ruf.md](Ruf.md).
+- **D12 · Handwerk, das läuft** — REQ-184 zu Ende. Ein Gang steht an einer
+  Kante, das Material geht am Anfang hinein, und am letzten Tag wird
+  wirklich gewürfelt.
 
 ---
 
@@ -269,8 +272,10 @@ A, B und D stehen. Was bleibt, in der Reihenfolge, in der es sich lohnt:
 3. **Globale Variablen** (B3): Gruppenstufe und Gruppen-Aufenthaltsort haben
    im Register eine Zeile, aber noch keine Maske und keine Verwendung in den
    Ansichten.
-4. **Handwerk mit Zeit und Probe** (REQ-184, Rest): Zeit und Probe stehen am
-   Rezept, aber niemand würfelt sie und niemand zählt Tage.
+4. **Blockanker und globale Variablen** (B3): `Block.anchor` ist vorgesehen,
+   wird aber nicht vergeben — Wissen an einem Block hängt heute an der
+   Block-Id und übersteht keinen Import. Und Gruppenstufe und
+   Gruppen-Aufenthaltsort haben eine Registerzeile, aber keine Maske.
 5. **Die Nachzügler** (C4): Ortsimporter als TypeScript, und das Register
    des Prototyps mit `packages/registry` zusammenführen — die laufen derzeit
    von Hand nebeneinander her, und das hält nicht ewig.

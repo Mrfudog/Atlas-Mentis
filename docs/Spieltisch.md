@@ -154,8 +154,8 @@ ihn niemand, der später dazukommt — und das merkte man erst am Tisch.
    (REQ-138).~~ Stehen seit 2026-09-20 — siehe den Nachtrag unten.
 6. ~~**Ruf und Beziehungen** (REQ-030, 081).~~ Steht seit 2026-09-20 — siehe
    [Ruf.md](Ruf.md).
-7. **Handwerk mit Zeit** (REQ-184 zur Hälfte): Zeit und Probe stehen am
-   Rezept, aber niemand würfelt sie und niemand zählt Tage.
+7. ~~**Handwerk mit Zeit** (REQ-184 zur Hälfte).~~ Steht seit 2026-09-20 —
+   siehe den Nachtrag unten.
 
 ---
 
@@ -223,3 +223,34 @@ welche Quadrate unsere sind, nicht wo die Linie genau verläuft.
 
 Für die Spielleitung ist Zugedecktes durchscheinend: sie muss sehen, was sie
 zudeckt. Für alle anderen ist es zu.
+
+---
+
+## Nachtrag 2026-09-20 — Handwerk, das wirklich läuft
+
+Bis hierher stand am Rezept, was es kostet, wie lange es dauert und gegen
+welchen Wert man würfelt — **und niemand würfelte und niemand zählte.** Eine
+Zeit, die nur dasteht, ist eine Notiz; eine Probe, die nur dasteht, ist eine
+Behauptung.
+
+Ein Gang hängt an **beiden** Enden: an dem, der arbeitet, und an dem Rezept.
+Also steht er an einer Kante (`crafting`) — dieselbe Regel wie bei der
+Tragestufe im Inventar und beim Lichtradius auf der Karte. Kein Artikel: ein
+Gang ist vorbei, wenn er vorbei ist, und ein Artikel, den man anschliessend
+löscht, war keiner.
+
+**Das Material geht am Anfang hinein.** Das ist die Zeile `put` an der Kante,
+und an ihr hängt alles Weitere: nur deshalb kann ein Gang scheitern und etwas
+kosten, und nur deshalb ist `onFailure` mehr als eine Zeile im Register.
+
+Gewürfelt wird **einmal am Ende**, mit demselben Würfelwerk wie alles andere,
+gegen den Schwierigkeitsgrad des Rezepts. Der Übungsbonus kommt aus
+`Skills.tools` — Rook ist in Alchemie geübt, die Gruppe als solche nicht — und
+das Werkzeug muss dabei sein: es gehört zu **„was fehlt"**, in derselben
+Spalte wie das Material. Es getrennt zu behandeln hiesse, dass die Matrix
+„ja" sagt und das Anfangen „nein", und genau die Art Widerspruch verzeiht man
+am Tisch der Software nicht mehr.
+
+Der Wurf bleibt stehen: „Rezept: Rauchbombe: 17 vs DC 12 — made it, Rauchbombe
+in the pack." Ein Ergebnis, das nicht nachlesbar ist, wird am Tisch neu
+gewürfelt.

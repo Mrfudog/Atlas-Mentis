@@ -1442,10 +1442,16 @@ async function seite(datei, warten) {
     pruefe('the workbench lists the recipes with what is missing',
       bank.zeilen.length >= 2
       && bank.zeilen.some((z) => /\d+\/\d+/.test(z[2]) || /all there/.test(z[2])), bank.zeilen);
-    pruefe('a recipe that is all there can be crafted', bank.knoepfe > 0, bank.knoepfe);
+    pruefe('a recipe that is all there can be started', bank.knoepfe > 0, bank.knoepfe);
 
-    /* Herstellen verbraucht wirklich. Ohne diesen Schritt wäre die Matrix
-       eine Tabelle, und die Tabelle führt niemand nach. */
+    /* Ein Gang, der wirklich läuft (REQ-184). Das Material geht am Anfang
+       hinein — deshalb kann er scheitern und etwas kosten. Gewürfelt wird
+       am letzten Tag, und der Wurf wird nachgelesen, nicht geglaubt.
+
+       Der Würfel ist echt, also wird der Schwierigkeitsgrad gesetzt: einmal
+       auf 1, damit er gelingt, und einmal auf 99, damit er scheitert. Eine
+       Prüfung, die „irgendeines von beidem" hinnimmt, prüft keinen der
+       beiden Zweige. */
     const vorrat = () => p.evaluate(() => {
       const T = window.__T__;
       const traeger = [...T.ENT.values()].find((e) =>
@@ -1458,18 +1464,130 @@ async function seite(datei, warten) {
       });
       return m;
     });
-    const vor = await vorrat();
-    await p.evaluate(() =>
-      [...document.querySelectorAll('table.craftm tr.crrow .btn')][0].click());
-    await p.waitForTimeout(250);
-    await p.evaluate(() =>
-      [...document.querySelectorAll('.dlgbox .rowbtns button')].find((b) => /Craft/.test(b.textContent)).click());
-    await p.waitForTimeout(500);
-    const nach = await vorrat();
-    const verbraucht = Object.keys(vor).some((k) => (nach[k] ?? 0) < vor[k]);
-    const entstanden = Object.keys(nach).some((k) => (vor[k] ?? 0) < nach[k]);
-    pruefe('crafting consumes the materials and yields the result',
-      verbraucht && entstanden, { vor, nach });
+    const zustand = () => p.evaluate(() => ({
+      jobs: [...document.querySelectorAll('.job')].map((j) => ({
+        text: j.querySelector('.co')?.textContent ?? '',
+        knopf: j.querySelector('.btn')?.textContent ?? '',
+        balken: j.querySelector('.jbar i')?.style.width ?? '',
+      })),
+      log: [...document.querySelectorAll('.bench p.hint')].map((x) => x.textContent),
+    }));
+    const starten = async (dc) => {
+      await p.evaluate((d) => {
+        const T = window.__T__;
+        const traeger = [...T.ENT.values()].find((e) =>
+          (e.relations || []).some((r) => r.type === 'carries'));
+        /* Das Rezept, das in der ersten Zeile bereitsteht — dasselbe, das
+           der Knopf anfangen würde. */
+        const zeile = document.querySelector('table.craftm tr.crrow.ready .ref');
+        const rez = [...T.ENT.values()].find((e) =>
+          (e.interfaces || [])[0] === 'Recipe'
+          && (e.name || e.components.Name.text) === zeile.textContent);
+        rez.components.RecipeInfo.dc = d;
+        rez.components.RecipeInfo.days = 2;
+        traeger.relations = (traeger.relations || []).filter((r) => r.type !== 'crafting');
+        window.__T__.UI.craftLog = [];
+      }, dc);
+      await p.evaluate(() => { document.getElementById('facet')
+        .dispatchEvent(new Event('change', { bubbles: true })); });
+      await p.waitForTimeout(300);
+      await p.evaluate(() =>
+        [...document.querySelectorAll('table.craftm tr.crrow.ready .btn')][0].click());
+      await p.waitForTimeout(250);
+      await p.evaluate(() =>
+        [...document.querySelectorAll('.dlgbox .rowbtns button')]
+          .find((b) => /^Start$/.test(b.textContent)).click());
+      await p.waitForTimeout(450);
+    };
+    const arbeiten = async () => {
+      await p.evaluate(() => document.querySelector('.job .btn').click());
+      await p.waitForTimeout(400);
+    };
+
+    const vorStart = await vorrat();
+    await starten(1);
+    const nachStart = await vorrat();
+    pruefe('starting a craft takes the materials in right away',
+      Object.keys(vorStart).some((k) => (nachStart[k] ?? 0) < vorStart[k]),
+      { vorStart, nachStart });
+    const tag0 = await zustand();
+    pruefe('a running craft shows how far along it is',
+      tag0.jobs.length === 1 && /0\/2 days/.test(tag0.jobs[0].text), tag0.jobs);
+    pruefe('nothing is yielded before the work is done',
+      !Object.keys(nachStart).some((k) => (vorStart[k] ?? 0) < nachStart[k]),
+      { vorStart, nachStart });
+
+    await arbeiten();
+    const tag1 = await zustand();
+    pruefe('a day of work moves it on without rolling anything',
+      tag1.jobs.length === 1 && /1\/2 days/.test(tag1.jobs[0].text)
+      && /Last day/.test(tag1.jobs[0].knopf) && tag1.log.length === 0, tag1);
+
+    await arbeiten();
+    const fertig = await zustand();
+    const nachFertig = await vorrat();
+    pruefe('the last day rolls the check and says what it rolled against',
+      fertig.jobs.length === 0 && fertig.log.length === 1
+      && /vs DC 1 — made it/.test(fertig.log[0]), fertig.log);
+    pruefe('a success puts the result in the pack',
+      Object.keys(nachFertig).some((k) => (nachStart[k] ?? 0) < nachFertig[k]),
+      { nachStart, nachFertig });
+
+    /* Und der andere Zweig: gescheitert, und `onFailure` entscheidet, was
+       zurückkommt. Ohne diesen Zweig wäre die Zeile im Register Zierrat. */
+    const vorFehl = await vorrat();
+    await starten(99);
+    await arbeiten();
+    await arbeiten();
+    const gescheitert = await zustand();
+    const nachFehl = await vorrat();
+    pruefe('a failure says so and does not yield the result',
+      gescheitert.jobs.length === 0 && gescheitert.log.length === 1
+      && /vs DC 99 — failed/.test(gescheitert.log[0]), gescheitert.log);
+    pruefe('a failure costs materials — that is what starting them meant',
+      Object.keys(vorFehl).some((k) => (nachFehl[k] ?? 0) < vorFehl[k]),
+      { vorFehl, nachFehl });
+    /* Das Werkzeug gehört zu „was fehlt". Es getrennt zu behandeln hiesse,
+       dass die Matrix „ja" sagt und das Anfangen „nein". */
+    const werkzeugFehlt = await p.evaluate(() => {
+      const T = window.__T__;
+      const traeger = [...T.ENT.values()].find((e) =>
+        (e.relations || []).some((r) => r.type === 'carries'));
+      const inv = T.ENT.get(traeger.relations.find((r) => r.type === 'carries').to);
+      const weg = inv.relations.filter((r) => {
+        const it = T.ENT.get(r.to);
+        return it && /werkzeug|form/i.test(it.name || '');
+      });
+      inv.relations = inv.relations.filter((r) => weg.indexOf(r) < 0);
+      document.getElementById('facet').dispatchEvent(new Event('change', { bubbles: true }));
+      return weg.length;
+    });
+    await p.waitForTimeout(400);
+    const ohneWerkzeug = await p.evaluate(() =>
+      [...document.querySelectorAll('table.craftm tr.crrow')]
+        .map((r) => r.className + '|' + r.children[2].textContent));
+    pruefe('without the tool nothing is ready, and the reason says which tool',
+      werkzeugFehlt > 0 && ohneWerkzeug.every((z) => !/ready/.test(z))
+      && ohneWerkzeug.some((z) => /no \w+werkzeug|no Kerzenzieherform/i.test(z)),
+      ohneWerkzeug);
+
+    /* Der Übungsbonus kommt aus `Skills.tools`, nicht aus einer Annahme.
+       Rook ist in Alchemie geübt, die Gruppe als solche nicht. */
+    const boni = await p.evaluate(() => {
+      const T = window.__T__;
+      const rez = [...T.ENT.values()].find((e) =>
+        ((e.components || {}).RecipeInfo || {}).tool === 'Alchemistenwerkzeug');
+      const info = rez.components.RecipeInfo;
+      const rook = [...T.ENT.values()].find((e) =>
+        (((e.components || {}).Skills || {}).tools || []).indexOf('Alchemistenwerkzeug') >= 0);
+      const andere = [...T.ENT.values()].find((e) =>
+        (e.interfaces || [])[0] === 'Party');
+      return { rook: T.craftMod(rook, info), andere: T.craftMod(andere, info) };
+    });
+    pruefe('tool proficiency comes from the data, and only for who has it',
+      boni.rook.proficient === true && boni.andere.proficient === false
+      && boni.rook.mod > boni.andere.mod, boni);
+
     pruefe('crafting raised no exception', errs.length === 0, errs);
   } else {
     pruefe('a recipe with knowledge and a carrier exist in the data', false, werkbank);

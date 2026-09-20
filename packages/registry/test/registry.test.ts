@@ -189,6 +189,20 @@ describe('interface inheritance', () => {
     expect(seedRegistry.relations.knownBy.to).toContain('Faction');
   });
 
+  /* Ein laufender Handwerksgang (REQ-184). `put` ist die Zeile, an der
+     alles hängt: ohne sie wüsste ein Fehlschlag nicht, was er kosten soll,
+     und `onFailure` wäre Zierrat. */
+  it('lets a craft actually run, on an edge and not in an article', () => {
+    const gang = seedRegistry.relations.crafting;
+    expect(gang.to).toEqual(['Recipe']);
+    expect(Object.keys(gang.props?.properties ?? {})).toEqual(['day', 'days', 'put', 'rolls']);
+    expect(Object.keys(seedRegistry.interfaces)).not.toContain('CraftJob');
+    // Und eine Zahl neben dem Text, weil „2 Stunden" nicht rechnet.
+    const rez = seedRegistry.components.RecipeInfo.schema.properties ?? {};
+    expect(rez.days?.type).toBe('number');
+    expect(rez.onFailure?.enum).toEqual(['materialsLost', 'halfLost', 'nothingLost']);
+  });
+
   /* Kachelkarten (REQ-138): ohne Spalten und Zeilen ist ein Muster nur eine
      Zeichenkette, und die Seite wüsste nicht, wie gross das Bild ist. */
   it('describes a tiled map completely enough to draw it', () => {

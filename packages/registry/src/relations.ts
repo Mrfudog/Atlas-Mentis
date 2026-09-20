@@ -660,6 +660,31 @@ export const relations: Record<string, RelationDef> = {
    * driftet von der Geschichte weg, und dann steht am Tisch eine Zahl, die
    * niemand belegen kann.
    */
+  /**
+   * Ein laufender Handwerksgang (REQ-184). Er hängt an beiden Enden — an
+   * dem, der arbeitet, und an dem Rezept — also steht er an einer Kante,
+   * wie die Tragestufe im Inventar. Kein Artikel: ein Gang ist vorbei, wenn
+   * er vorbei ist, und ein Artikel, den man anschliessend löscht, war
+   * keiner. `put` merkt sich, was schon drin ist — nur deshalb kann ein
+   * Fehlschlag etwas kosten und `onFailure` mehr sein als eine Zeile.
+   */
+  crafting: {
+    type: 'crafting',
+    label: 'working on',
+    inverseLabel: 'worked on by',
+    from: ['Creature', 'NPC', 'PlayerCharacter', 'Party'],
+    to: ['Recipe'],
+    props: {
+      type: 'object',
+      properties: {
+        day: { type: 'number', title: 'Days done', default: 0 },
+        days: { type: 'number', title: 'Days needed', default: 1 },
+        put: { type: 'array', title: 'Materials already in it' },
+        rolls: { type: 'array', title: 'Rolls' },
+      },
+    },
+  },
+
   regards: {
     type: 'regards',
     label: 'regards',
