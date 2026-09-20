@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { seedRegistry } from '@nw/registry';
-import { ausEingabe, eingabeArt, inEingabe } from '../src/app/artikel/felder';
+import { ausEingabe, eingabeArt, inEingabe, kantenAusEntwurf } from '../src/app/artikel/felder';
 
 describe('eingabeArt', () => {
   it('reads the kind out of the registry, not out of the field name', () => {
@@ -74,5 +74,35 @@ describe('inEingabe', () => {
     expect(inEingabe(0)).toBe('0');
     expect(inEingabe(false)).toBe('false');
     expect(inEingabe(['a', 'b'])).toBe('a, b');
+  });
+});
+
+describe('kantenAusEntwurf', () => {
+  /* „Zeigt auf nichts" ist im Modell kein Zustand, den eine Kante haben
+     darf — dafür gibt es das Feld. Eine halbfertige Zeile in der Maske ist
+     kein Grund, eine kaputte Kante zu schreiben. */
+  it('drops an edge that points at nothing instead of writing it empty', () => {
+    const raus = kantenAusEntwurf([
+      { id: 'r1', type: 'livesIn', to: 'o_kerzengasse', props: {} },
+      { id: 'r2', type: 'livesIn', to: '', props: {} },
+      { id: 'r3', type: '', to: 'o_markt', props: {} },
+    ]);
+    expect(raus.map((k) => k.id)).toEqual(['r1']);
+  });
+
+  it('carries the edge’s own properties along', () => {
+    const raus = kantenAusEntwurf([
+      { id: 'r1', type: 'holds', to: 'it_seil', props: { qty: 2, tier: 'pack' } },
+    ]);
+    expect(raus[0]?.props).toEqual({ qty: 2, tier: 'pack' });
+  });
+
+  /* Kopiert, nicht durchgereicht: sonst änderte ein späterer Tastendruck in
+     der Maske noch das, was gerade geschrieben wird. */
+  it('copies the properties rather than handing the draft through', () => {
+    const entwurf = [{ id: 'r1', type: 'holds', to: 'it_seil', props: { qty: 2 } }];
+    const raus = kantenAusEntwurf(entwurf);
+    entwurf[0]!.props['qty'] = 99;
+    expect(raus[0]?.props['qty']).toBe(2);
   });
 });

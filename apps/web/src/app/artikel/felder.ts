@@ -51,3 +51,29 @@ export function inEingabe(wert: unknown): string {
   if (Array.isArray(wert)) return wert.join(', ');
   return String(wert);
 }
+
+/** Eine Kante im Entwurf — dasselbe wie eine gespeicherte, nur mit noch
+ *  möglicherweise leerem Ziel. */
+export interface KantenEntwurf {
+  id: string;
+  type: string;
+  to: string;
+  props: Record<string, unknown>;
+}
+
+/**
+ * Der Entwurf zurück in Kanten.
+ *
+ * **Eine Kante ohne Ziel wird weggelassen**, nicht als leere geschrieben:
+ * „zeigt auf nichts" ist im Modell kein Zustand, den eine Kante haben darf —
+ * dafür gibt es das Feld. Der Server wiese sie ohnehin ab; sie gar nicht
+ * erst zu schicken erspart eine Fehlermeldung, die nur sagt, was die Maske
+ * schon wusste.
+ */
+export function kantenAusEntwurf(
+  entwurf: KantenEntwurf[],
+): { id: string; type: string; to: string; props: Record<string, unknown> }[] {
+  return entwurf
+    .filter((k) => k.to !== '' && k.type !== '')
+    .map((k) => ({ id: k.id, type: k.type, to: k.to, props: { ...k.props } }));
+}

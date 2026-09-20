@@ -201,3 +201,23 @@ a {
   color: var(--warn);
   font-size: 0.85rem;
 }
+
+.kantenmaske {
+  border: 1px solid var(--line2);
+  border-radius: 4px;
+  padding: 0.5rem 0.6rem;
+  margin: 0.4rem 0;
+}
+.kantenmaske .bkopf select {
+  flex: 1;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+}
+.kantenmaske .maske {
+  margin: 0.4rem 0 0;
+}
