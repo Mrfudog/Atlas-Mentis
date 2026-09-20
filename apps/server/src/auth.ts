@@ -35,8 +35,29 @@ export interface User {
   id: string;
   name: string;
   isGm: boolean;
-  actorId?: string | undefined;
+  /** **Mehrere Figuren je Konto.** Wer zwei spielt, ist trotzdem eine
+   *  Person: was die eine erfahren hat, weiss er auch, wenn er auf die
+   *  andere schaut, und die Freigabeliste zeigt einen Absender. */
+  actorIds: string[];
   disabledAt?: string | undefined;
+}
+
+/** Eine Einladung: ein Code, der eine Registrierung erlaubt, und sonst
+ *  nichts. Gespeichert wird sein Hash — wer die Datenbank liest, soll sich
+ *  damit nicht einladen können. */
+export interface Invite {
+  codeHash: string;
+  label?: string | undefined;
+  isGm: boolean;
+  /** Bindet die neue Person gleich an eine Figur. Das ist der „spezifische
+   *  Link": einer, der weiss, wer kommt. */
+  actorId?: string | undefined;
+  /** `undefined` heisst unbegrenzt — der Link, den man einmal in die Gruppe
+   *  stellt. Eine Einladung je Person wäre genauer und würde bei fünf
+   *  Leuten viermal vergessen. */
+  usesLeft?: number | undefined;
+  expiresAt?: string | undefined;
+  createdBy?: string | undefined;
 }
 
 export interface Viewer {
@@ -84,6 +105,12 @@ export async function checkPassword(hash: string, password: string): Promise<boo
 
 export function newSessionToken(): string {
   return randomBytes(32).toString('base64url');
+}
+/** Ein Einladungscode. Kürzer als ein Sitzungstoken, weil er in einen Link
+ *  und notfalls in eine Sprachnachricht passen muss — 16 Byte sind immer
+ *  noch mehr, als sich erraten lässt. Gespeichert wird nur sein Hash. */
+export function newInviteCode(): string {
+  return randomBytes(16).toString('base64url');
 }
 export function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');

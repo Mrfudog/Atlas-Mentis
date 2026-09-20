@@ -14,7 +14,7 @@ import { seedRegistry } from '@nw/registry';
 import type { Entity } from '@nw/model';
 import { buildApp } from '../src/app.js';
 import { InMemoryRepository } from '../src/repo.js';
-import { hashPassword, passwordProblem } from '../src/auth.js';
+import { hashPassword, hashToken, passwordProblem } from '../src/auth.js';
 import { runUserCommand } from '../src/user.js';
 
 const PASSWORT = 'nebel-wacht-am-tor';
@@ -68,14 +68,14 @@ function makeApp() {
 async function addUser(
   repo: InMemoryRepository,
   name: string,
-  opts: { gm?: boolean; actorId?: string } = {},
+  opts: { gm?: boolean; actorId?: string; actorIds?: string[] } = {},
 ) {
   await repo.putUser({
     id: randomUUID(),
     name,
     passwordHash: await hashPassword(PASSWORT),
     isGm: opts.gm ?? false,
-    actorId: opts.actorId,
+    actorIds: opts.actorIds ?? (opts.actorId ? [opts.actorId] : []),
   });
 }
 
@@ -458,5 +458,243 @@ describe('what a player gets to read', () => {
       headers: { cookie: keks },
     });
     expect(JSON.stringify(res.json())).not.toMatch(/Aurinax/);
+  });
+});
+
+/* ---------------------------------------------------------------------
+   Konten, die sich jemand selbst anlegt — gegen eine Einladung.
+
+   Zwei Dinge gehen hier still schief. Ein offener Registrierungsendpunkt
+   fällt niemandem auf, weil sich nichts ändert ausser dass ein Konto mehr
+   da ist. Und eine Einladung, deren Gebrauch erst nach der Prüfung
+   abgezogen wird, lässt zwei Leute durch, die gleichzeitig klicken.
+   --------------------------------------------------------------------- */
+describe('signing yourself up', () => {
+  async function mitEinladung(
+    repo: InMemoryRepository,
+    opts: { uses?: number; actorId?: string; gm?: boolean; expired?: boolean } = {},
+  ) {
+    const code = 'einladung-zum-pruefen';
+    await repo.putInvite({
+      codeHash: hashToken(code),
+      label: 'Prüfung',
+      isGm: opts.gm ?? false,
+      actorId: opts.actorId,
+      usesLeft: opts.uses,
+      expiresAt: opts.expired ? new Date(Date.now() - 1000).toISOString() : undefined,
+    });
+    return code;
+  }
+  const anmelden = (
+    app: ReturnType<typeof buildApp>,
+    payload: Record<string, unknown>,
+  ) => app.inject({ method: 'POST', url: '/api/register', payload });
+
+  it('refuses to make an account without an invitation', async () => {
+    const { app } = makeApp();
+    const res = await anmelden(app, { name: 'Neu', password: PASSWORT });
+    expect(res.statusCode).toBe(400);
+    const ohne = await anmelden(app, { name: 'Neu', password: PASSWORT, invite: 'erfunden' });
+    expect(ohne.statusCode).toBe(403);
+  });
+
+  it('makes the account and logs it straight in', async () => {
+    const { app, repo } = makeApp();
+    const code = await mitEinladung(repo);
+    const res = await anmelden(app, { name: 'Neu', password: PASSWORT, invite: code });
+    expect(res.statusCode).toBe(201);
+    /* Wer sich eben ein Passwort ausgedacht hat, soll es nicht sofort
+       wieder eintippen müssen. */
+    expect(cookieOf(res)).toMatch(/^nw_session=/);
+    const me = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie: cookieOf(res) } });
+    expect(me.json().user.name).toBe('Neu');
+    expect(me.json().user.isGm).toBe(false);
+  });
+
+  /* Der spezifische Link: einer, der weiss, wer kommt. */
+  it('binds the character the invitation names', async () => {
+    const { app, repo } = makeApp();
+    const code = await mitEinladung(repo, { actorId: 'pc_rook' });
+    const res = await anmelden(app, { name: 'Neu', password: PASSWORT, invite: code });
+    const me = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie: cookieOf(res) } });
+    expect(me.json().user.actorIds).toEqual(['pc_rook']);
+    expect(me.json().actors).toEqual([{ id: 'pc_rook', name: 'Rook' }]);
+  });
+
+  it('spends a single-use invitation exactly once', async () => {
+    const { app, repo } = makeApp();
+    const code = await mitEinladung(repo, { uses: 1 });
+    expect((await anmelden(app, { name: 'Erste', password: PASSWORT, invite: code })).statusCode)
+      .toBe(201);
+    expect((await anmelden(app, { name: 'Zweite', password: PASSWORT, invite: code })).statusCode)
+      .toBe(403);
+  });
+
+  it('will not spend an expired one at all', async () => {
+    const { app, repo } = makeApp();
+    const code = await mitEinladung(repo, { expired: true });
+    expect((await anmelden(app, { name: 'Neu', password: PASSWORT, invite: code })).statusCode)
+      .toBe(403);
+  });
+
+  /* Ein Name, den es schon gibt, darf keinen Gebrauch kosten — sonst
+     verliert jemand seine Einladung an einen Tippfehler. */
+  it('does not spend the invitation on a name that is taken', async () => {
+    const { app, repo } = makeApp();
+    await addUser(repo, 'Basil', { gm: true });
+    const code = await mitEinladung(repo, { uses: 1 });
+    expect((await anmelden(app, { name: 'basil', password: PASSWORT, invite: code })).statusCode)
+      .toBe(409);
+    expect((await anmelden(app, { name: 'Neu', password: PASSWORT, invite: code })).statusCode)
+      .toBe(201);
+  });
+
+  it('holds the password to the same rule as the command line', async () => {
+    const { app, repo } = makeApp();
+    const code = await mitEinladung(repo);
+    const res = await anmelden(app, { name: 'Neu', password: 'kurz', invite: code });
+    expect(res.statusCode).toBe(400);
+    /* Und der Gebrauch ist noch da: geprüft wird vor dem Abziehen. */
+    expect((await anmelden(app, { name: 'Neu', password: PASSWORT, invite: code })).statusCode)
+      .toBe(201);
+  });
+
+  it('keeps invitations out of reach of everyone but the GM', async () => {
+    const { app, repo } = makeApp();
+    await addUser(repo, 'Sela', { actorId: 'pc_rook' });
+    const keks = cookieOf(await login(app, 'Sela'));
+    const res = await app.inject({ method: 'GET', url: '/api/invites', headers: { cookie: keks } });
+    expect(res.statusCode).toBe(403);
+  });
+
+  /* Der Code steht **einmal** in der Antwort und danach nie wieder —
+     gespeichert ist nur sein Hash. */
+  it('shows a new invitation code once and never again', async () => {
+    const { app, repo } = makeApp();
+    await addUser(repo, 'Basil', { gm: true });
+    const keks = cookieOf(await login(app, 'Basil'));
+    const neu = await app.inject({
+      method: 'POST',
+      url: '/api/invites',
+      headers: { cookie: keks },
+      payload: { label: 'Für die Gruppe', uses: 3 },
+    });
+    expect(neu.statusCode).toBe(201);
+    const code = neu.json().code as string;
+    expect(code).toBeTruthy();
+    const liste = await app.inject({ method: 'GET', url: '/api/invites', headers: { cookie: keks } });
+    expect(JSON.stringify(liste.json())).not.toContain(code);
+    expect(liste.json()[0].usesLeft).toBe(3);
+  });
+});
+
+/* ---------------------------------------------------------------------
+   Mehrere Figuren an einem Konto. Wer zwei spielt, ist trotzdem eine
+   Person: was die eine erfahren hat, weiss er auch, wenn er auf die andere
+   schaut. Eine Seite, die ihm das vorenthält, zwingt ihn zum Umschalten
+   und sonst zu nichts.
+   --------------------------------------------------------------------- */
+describe('one account, several characters', () => {
+  const sela: Entity = {
+    id: 'pc_sela',
+    interfaces: ['PlayerCharacter'],
+    name: 'Sela',
+    tags: [],
+    components: {
+      Name: { text: 'Sela' },
+      Identity: { key: 'pc/sela', aliases: [] },
+      Status: { value: 'used' },
+      /* `PlayerCharacter` verlangt sie — eine Figur ohne sie liesse sich
+         lesen und nicht zurückschreiben, und die Prüfung fiele auf die
+         Maske statt auf die Vorlage. */
+      CharacterInfo: { player: 'Prüfung' },
+    },
+    blocks: [],
+    relations: [],
+  };
+  const geheim: Entity = {
+    id: 'n_wachsmann',
+    interfaces: ['NPC'],
+    name: 'Der Wachsmann',
+    tags: [],
+    components: {
+      Name: { text: 'Der Wachsmann' },
+      Identity: { key: 'npc/wachsmann', aliases: [] },
+      Status: { value: 'used' },
+      Description: { raw: 'Er heisst Aurinax.' },
+    },
+    blocks: [],
+    relations: [{ id: 'rk', type: 'knowledge', to: 'i_name', props: {} }],
+  };
+  /* Nur **Sela** weiss es — Rook nicht. */
+  const info: Entity = {
+    id: 'i_name',
+    interfaces: ['Information'],
+    name: 'Sein richtiger Name',
+    tags: [],
+    components: {
+      Name: { text: 'Sein richtiger Name' },
+      Identity: { key: 'info/name', aliases: [] },
+      Status: { value: 'used' },
+      Info: { tier: 'secret', fields: ['Description.raw'], blocks: [] },
+    },
+    blocks: [],
+    relations: [{ id: 'rb', type: 'knownBy', to: 'pc_sela', props: {} }],
+  };
+
+  async function setup(actorIds: string[]) {
+    const repo = new InMemoryRepository(seedRegistry, [rook, sela, inv, geheim, info]);
+    const app = buildApp({ repo });
+    await addUser(repo, 'Spieler', { actorIds });
+    return { app, repo };
+  }
+
+  it('reads with everything its characters know together', async () => {
+    const { app } = await setup(['pc_rook', 'pc_sela']);
+    const keks = cookieOf(await login(app, 'Spieler'));
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/entities/n_wachsmann',
+      headers: { cookie: keks },
+    });
+    expect(res.json().components.Description?.raw).toMatch(/Aurinax/);
+  });
+
+  it('and withholds it from an account that only plays the other one', async () => {
+    const { app } = await setup(['pc_rook']);
+    const keks = cookieOf(await login(app, 'Spieler'));
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/entities/n_wachsmann',
+      headers: { cookie: keks },
+    });
+    /* Nicht „wird nicht angezeigt" — steht nicht drin. */
+    expect(JSON.stringify(res.json())).not.toContain('Aurinax');
+  });
+
+  it('may write every character it plays', async () => {
+    const { app } = await setup(['pc_rook', 'pc_sela']);
+    const keks = cookieOf(await login(app, 'Spieler'));
+    const me = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie: keks } });
+    expect(me.json().writable).toEqual(expect.arrayContaining(['pc_rook', 'pc_sela']));
+    for (const id of ['pc_rook', 'pc_sela']) {
+      const art = (await app.inject({ method: 'GET', url: `/api/entities/${id}`, headers: { cookie: keks } })).json();
+      const res = await app.inject({
+        method: 'PUT',
+        url: `/api/entities/${id}`,
+        headers: { cookie: keks },
+        payload: art,
+      });
+      expect(res.statusCode).toBe(200);
+    }
+  });
+
+  /* Die Gegenrichtung: wer diese Figur spielt. Daran hängt das Freigeben —
+     „wer hat das angelegt" ist die Frage, die eine Freigabeliste stellt. */
+  it('can be asked the other way round: who plays this one', async () => {
+    const { repo } = await setup(['pc_rook', 'pc_sela']);
+    const wer = await repo.usersOfActor('pc_sela');
+    expect(wer.map((u) => u.name)).toEqual(['Spieler']);
+    expect(await repo.usersOfActor('n_wachsmann')).toEqual([]);
   });
 });

@@ -7,7 +7,7 @@
  */
 
 import type { Entity, Registry } from '@nw/model';
-import type { User } from './auth.js';
+import type { Invite, User } from './auth.js';
 
 /** Was die Ablage über einen Zugang weiss. Der Hash bleibt hier und geht
  *  nie an eine Route — deshalb trägt `User` ihn nicht. */
@@ -41,6 +41,24 @@ export interface Repository {
   getUser(id: string): Promise<StoredUser | undefined>;
   listUsers(): Promise<User[]>;
   putUser(user: StoredUser): Promise<void>;
+
+  /** Alle Konten, die diese Figur führen. Die Gegenrichtung von
+   *  `User.actorIds` — gefragt wird sie dort, wo etwas freigegeben werden
+   *  soll: „wer hat das angelegt" ist die Frage, an der das Freigeben
+   *  hängt. */
+  usersOfActor(actorId: string): Promise<User[]>;
+
+  /* Einladungen. Ein Code erlaubt eine Registrierung und sonst nichts; ein
+     offener Registrierungsendpunkt wäre ein Loch, und ein Passwort, das die
+     Spielleitung für jeden ausdenkt und weitergibt, geht über einen Kanal,
+     der keiner ist. */
+  putInvite(invite: Invite): Promise<void>;
+  getInvite(codeHash: string): Promise<Invite | undefined>;
+  listInvites(): Promise<Invite[]>;
+  dropInvite(codeHash: string): Promise<boolean>;
+  /** Zieht einen Gebrauch ab und sagt, ob er noch zu haben war. Beides in
+   *  einem Schritt, weil zwei Leute denselben Link gleichzeitig öffnen. */
+  useInvite(codeHash: string, now: string): Promise<Invite | undefined>;
 
   createSession(row: SessionRow & { agent?: string | undefined }): Promise<void>;
   /** Gibt den Nutzer zurück und schiebt das Ablaufdatum nach; eine
@@ -108,6 +126,7 @@ export class InMemoryRepository implements Repository {
   // ------------------------------------------------------------- Zugang
 
   private users = new Map<string, StoredUser>();
+  private invites = new Map<string, Invite>();
   private sessions = new Map<string, SessionRow>();
   private attempts: { key: string; at: string }[] = [];
 
@@ -128,7 +147,37 @@ export class InMemoryRepository implements Repository {
     return [...this.users.values()].map(({ passwordHash: _hash, ...rest }) => ({ ...rest }));
   }
   async putUser(user: StoredUser): Promise<void> {
-    this.users.set(user.id, { ...user });
+    this.users.set(user.id, { ...user, actorIds: [...(user.actorIds ?? [])] });
+  }
+  async usersOfActor(actorId: string): Promise<User[]> {
+    return [...this.users.values()]
+      .filter((u) => (u.actorIds ?? []).includes(actorId))
+      .map(({ passwordHash: _hash, ...rest }) => ({ ...rest, actorIds: [...rest.actorIds] }));
+  }
+
+  async putInvite(invite: Invite): Promise<void> {
+    this.invites.set(invite.codeHash, { ...invite });
+  }
+  async getInvite(codeHash: string): Promise<Invite | undefined> {
+    const i = this.invites.get(codeHash);
+    return i ? { ...i } : undefined;
+  }
+  async listInvites(): Promise<Invite[]> {
+    return [...this.invites.values()].map((i) => ({ ...i }));
+  }
+  async dropInvite(codeHash: string): Promise<boolean> {
+    return this.invites.delete(codeHash);
+  }
+  async useInvite(codeHash: string, now: string): Promise<Invite | undefined> {
+    const i = this.invites.get(codeHash);
+    if (!i) return undefined;
+    if (i.expiresAt && i.expiresAt <= now) return undefined;
+    if (i.usesLeft != null) {
+      if (i.usesLeft <= 0) return undefined;
+      i.usesLeft -= 1;
+      if (i.usesLeft <= 0) this.invites.delete(codeHash);
+    }
+    return { ...i };
   }
 
   async createSession(row: SessionRow): Promise<void> {

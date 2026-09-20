@@ -21,7 +21,7 @@ import { randomUUID } from 'node:crypto';
 import { createInterface } from 'node:readline/promises';
 import { closePool, getPool } from './db.js';
 import { PgRepository } from './repo.pg.js';
-import { foldName, hashPassword, passwordProblem } from './auth.js';
+import { foldName, hashPassword, hashToken, newInviteCode, passwordProblem } from './auth.js';
 import type { Repository } from './repo.js';
 
 async function askPassword(prompt: string): Promise<string> {
@@ -47,6 +47,53 @@ export async function runUserCommand(repo: Repository, argv: string[]): Promise<
   const actorAt = rest.indexOf('--actor');
   const actorId = actorAt >= 0 ? rest[actorAt + 1] : undefined;
 
+  /* Einladungen. Sie brauchen keinen Namen, also stehen sie vor der
+     Namensprüfung — und der Code wird **einmal** ausgegeben: gespeichert
+     ist nur sein Hash. */
+  if (cmd === 'invite') {
+    const sub = name ?? 'list';
+    if (sub === 'list') {
+      const list = await repo.listInvites();
+      if (!list.length) return 'Keine Einladung offen.';
+      return list
+        .map(
+          (i) =>
+            `${i.label ?? '(ohne Kennung)'}` +
+            `${i.isGm ? '  (Spielleitung)' : ''}` +
+            `${i.actorId ? `  für ${i.actorId}` : ''}` +
+            `${i.usesLeft == null ? '  unbegrenzt' : `  noch ${i.usesLeft}×`}` +
+            `${i.expiresAt ? `  bis ${i.expiresAt.slice(0, 10)}` : ''}` +
+            `\n  ${i.codeHash}`,
+        )
+        .join('\n');
+    }
+    if (sub === 'drop') {
+      const handle = rest[0];
+      if (!handle) throw new Error('Welche? Die Kennung steht bei `invite list`.');
+      return (await repo.dropInvite(handle)) ? 'Zurückgenommen.' : 'Nicht gefunden.';
+    }
+    if (sub === 'new') {
+      const usesAt = rest.indexOf('--uses');
+      const daysAt = rest.indexOf('--days');
+      const labelAt = rest.indexOf('--label');
+      const code = newInviteCode();
+      await repo.putInvite({
+        codeHash: hashToken(code),
+        label: labelAt >= 0 ? rest[labelAt + 1] : undefined,
+        isGm: flags.has('--gm'),
+        actorId: actorId,
+        usesLeft: usesAt >= 0 ? Math.max(1, Number(rest[usesAt + 1]) || 1) : undefined,
+        expiresAt:
+          daysAt >= 0
+            ? new Date(Date.now() + Math.max(1, Number(rest[daysAt + 1]) || 1) * 86400000).toISOString()
+            : undefined,
+      });
+      /* Einmal und nie wieder — danach steht nur noch der Hash da. */
+      return `Einladung: ${code}\n(Sie steht nur hier. Gespeichert ist nur ihr Hash.)`;
+    }
+    throw new Error('invite new | invite list | invite drop <kennung>');
+  }
+
   if (cmd === 'list') {
     const users = await repo.listUsers();
     if (!users.length) return 'Kein Konto angelegt.';
@@ -54,7 +101,7 @@ export async function runUserCommand(repo: Repository, argv: string[]): Promise<
       .map(
         (u) =>
           `${u.name}${u.isGm ? '  (Spielleitung)' : ''}` +
-          `${u.actorId ? `  spielt ${u.actorId}` : ''}` +
+          `${u.actorIds.length ? `  spielt ${u.actorIds.join(', ')}` : ''}` +
           `${u.disabledAt ? '  [gesperrt]' : ''}`,
       )
       .join('\n');
@@ -75,7 +122,7 @@ export async function runUserCommand(repo: Repository, argv: string[]): Promise<
         name: name.trim(),
         passwordHash: await hashPassword(password),
         isGm: flags.has('--gm'),
-        actorId: actorId,
+        actorIds: actorId ? [actorId] : [],
       });
       return `${name} angelegt${flags.has('--gm') ? ' (Spielleitung)' : ''}.`;
     }
@@ -101,13 +148,28 @@ export async function runUserCommand(repo: Repository, argv: string[]): Promise<
       await repo.putUser({ ...existing, disabledAt: undefined });
       return `${name} wieder offen.`;
     }
+    /* **Figuren dazu und weg**, nicht ersetzen. Ein Konto führt mehrere,
+       und ein `actor`, das die Liste jedes Mal überschreibt, nimmt beim
+       Hinzufügen der zweiten die erste weg — und niemand merkt es, bis
+       jemand sein halbes Blatt vermisst. */
     case 'actor': {
       if (!existing) throw new Error(`„${name}" gibt es nicht.`);
-      await repo.putUser({ ...existing, actorId: actorId });
-      return actorId ? `${name} spielt ${actorId}.` : `${name} spielt niemanden mehr.`;
+      const wie = rest[0] === 'remove' || flags.has('--remove') ? 'remove' : 'add';
+      if (!actorId) {
+        return existing.actorIds.length
+          ? `${name} spielt ${existing.actorIds.join(', ')}.`
+          : `${name} spielt niemanden.`;
+      }
+      const ids = new Set(existing.actorIds);
+      if (wie === 'remove') ids.delete(actorId);
+      else ids.add(actorId);
+      await repo.putUser({ ...existing, actorIds: [...ids] });
+      return wie === 'remove'
+        ? `${name} spielt ${actorId} nicht mehr.`
+        : `${name} spielt jetzt auch ${actorId}.`;
     }
     default:
-      throw new Error('add | password | disable | enable | actor | list');
+      throw new Error('add | password | disable | enable | actor | invite | list');
   }
 }
 

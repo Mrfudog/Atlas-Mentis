@@ -19,10 +19,14 @@ import {
   SESSION_DAYS,
   checkPassword,
   foldName,
+  hashPassword,
   hashToken,
   mayWrite,
+  newInviteCode,
   newSessionToken,
+  passwordProblem,
   sessionExpiry,
+  type Invite,
   type User,
 } from './auth.js';
 
@@ -96,9 +100,8 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
   /** Was ein Spieler schreiben darf: seine Figur und was an ihr hängt. Die
    *  Kante steht in den Daten, also wird sie dort nachgesehen. */
   async function ownedBy(user: User): Promise<Set<string>> {
-    const own = new Set<string>();
-    if (!user.actorId) return own;
-    own.add(user.actorId);
+    const own = new Set<string>(user.actorIds ?? []);
+    if (!own.size) return own;
     for (const e of await repo.listEntities()) {
       for (const r of e.relations ?? []) {
         if (OWNING_RELATIONS.has(r.type) && r.to && own.has(e.id)) own.add(r.to);
@@ -118,13 +121,27 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
        `null` heisst „alles" und nicht „nichts": die Spielleitung bekommt
        keine Liste über den ganzen Bestand geschickt. */
     const writable = user && !user.isGm ? [...(await ownedBy(user))] : null;
+    /* Die Figuren mit Namen, nicht nur mit Id. Die Maske müsste sie sonst
+       einzeln nachladen, bevor sie „meine Figuren" überhaupt beschriften
+       kann — und täte es beim ersten Mal falsch. */
+    const actors: { id: string; name: string }[] = [];
+    for (const id of user?.actorIds ?? []) {
+      const e = await repo.getEntity(id);
+      if (e) actors.push({ id, name: String(e.name ?? id) });
+    }
     return {
       user,
+      actors,
       writable,
       /* Ein frischer Server sagt es geradeheraus. Das ist keine Auskunft,
          die jemandem nützt, den es nichts angeht: wer den Port erreicht,
          sieht ohnehin, dass nichts eingerichtet ist. */
       setup: count === 0 ? 'Kein Konto angelegt. `pnpm --filter @nw/server user add <name> --gm`' : null,
+      /* Ob sich hier überhaupt jemand anmelden kann, ohne dass die
+         Spielleitung etwas tut. Die Maske zeigt den Registrieren-Knopf nur
+         dann — einer, der bei jedem Versuch „Einladung fehlt" sagt, ist
+         kein Knopf, sondern eine Enttäuschung. */
+      invites: count === 0 ? false : (await repo.listInvites()).length > 0,
     };
   });
 
@@ -185,6 +202,148 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
     },
   );
 
+  /**
+   * Ein Konto anlegen — vom Spieler selbst, nicht von der Spielleitung.
+   *
+   * Die Spielleitung dachte sich sonst für jeden ein Passwort aus und gab
+   * es weiter, über einen Kanal, der keiner ist. Wer sich selbst eines
+   * setzt, hat eines, das nur er kennt.
+   *
+   * **Gegen eine Einladung**, und ohne sie gar nicht. Ein offener
+   * Registrierungsendpunkt an einem Server, der im Netz steht, ist ein
+   * Loch — und eines, das niemandem auffällt, weil sich ja nichts ändert,
+   * ausser dass ein Konto mehr da ist.
+   *
+   * Der Code kommt aus der Einladung, die Rolle auch: ein Link kann eine
+   * Figur mitbringen (dann ist es „der spezifische Link") oder die
+   * Spielleitungsrolle (dann sollte ihn niemand weiterleiten).
+   */
+  app.post<{ Body: { name?: string; password?: string; invite?: string } }>(
+    '/api/register',
+    async (request, reply) => {
+      const name = String(request.body?.name ?? '').trim();
+      const password = String(request.body?.password ?? '');
+      const code = String(request.body?.invite ?? '').trim();
+      const fold = foldName(name);
+      const origin = request.ip ?? 'unknown';
+      const since = new Date(Date.now() - ATTEMPT_WINDOW_MINUTES * 60 * 1000).toISOString();
+
+      if (!fold || !password || !code) {
+        return reply.code(400).send({ error: 'Name, Passwort und Einladung gehören dazu.' });
+      }
+      /* Dieselbe Bremse wie beim Anmelden, mit demselben Zähler: sonst
+         liesse sich über diesen Weg durchprobieren, welche Einladungen es
+         gibt, während der Anmeldeweg zugehalten wird. */
+      if ((await repo.countAttempts(fold, origin, since)) >= MAX_ATTEMPTS) {
+        return reply.code(429).send({
+          error: `Zu viele Versuche. In ${ATTEMPT_WINDOW_MINUTES} Minuten wieder.`,
+        });
+      }
+      const schwach = passwordProblem(password);
+      if (schwach) return reply.code(400).send({ error: schwach });
+
+      /* Erst der Name, dann die Einladung: sonst wird ein Gebrauch
+         verbraucht, weil jemand einen Namen gewählt hat, den es schon
+         gibt. */
+      if (await repo.findUserByName(fold)) {
+        return reply.code(409).send({ error: 'Diesen Namen gibt es schon.' });
+      }
+      const invite = await repo.useInvite(hashToken(code), new Date().toISOString());
+      if (!invite) {
+        await repo.noteAttempt(fold, origin);
+        await repo.appendEvent('register.refused', undefined, { name: fold });
+        /* Eine Auskunft für alle Fälle — abgelaufen, aufgebraucht oder nie
+           dagewesen geht niemanden an, der sie nicht hat. */
+        return reply.code(403).send({ error: 'Diese Einladung gilt nicht (mehr).' });
+      }
+
+      const id = `u_${newSessionToken().slice(0, 16)}`;
+      await repo.putUser({
+        id,
+        name,
+        passwordHash: await hashPassword(password),
+        isGm: invite.isGm,
+        actorIds: invite.actorId ? [invite.actorId] : [],
+      });
+      await repo.clearAttempts(fold, origin);
+      await repo.appendEvent('register.ok', id, { invite: invite.label ?? null });
+
+      /* Gleich angemeldet. Wer sich eben ein Passwort ausgedacht hat, soll
+         es nicht sofort wieder eintippen müssen — und der Weg dahin ist
+         derselbe, den `/api/login` nimmt. */
+      const token = newSessionToken();
+      await repo.createSession({
+        tokenHash: hashToken(token),
+        userId: id,
+        expiresAt: sessionExpiry().toISOString(),
+        agent: String(request.headers['user-agent'] ?? '').slice(0, 200),
+      });
+      void reply.setCookie(COOKIE, token, {
+        path: '/',
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: request.protocol === 'https',
+        maxAge: SESSION_DAYS * 24 * 60 * 60,
+      });
+      const angelegt = await repo.getUser(id);
+      const rest = angelegt ? (({ passwordHash: _h, ...r }) => r)(angelegt) : null;
+      return reply.code(201).send({ user: rest });
+    },
+  );
+
+  /**
+   * Einladungen anlegen und ansehen. Nur die Spielleitung, und der Code
+   * steht **genau einmal** in der Antwort auf das Anlegen: gespeichert ist
+   * nur sein Hash, und was hier nicht mitgeschrieben wird, ist weg.
+   */
+  app.get('/api/invites', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user?.isGm) return reply.code(403).send({ error: 'Nicht für dich.' });
+    return (await repo.listInvites()).map((i) => ({
+      label: i.label ?? null,
+      isGm: i.isGm,
+      actorId: i.actorId ?? null,
+      usesLeft: i.usesLeft ?? null,
+      expiresAt: i.expiresAt ?? null,
+      /* Der Hash geht mit, damit sich eine Einladung zurücknehmen lässt.
+         Aus ihm kommt man nicht auf den Code zurück. */
+      handle: i.codeHash,
+    }));
+  });
+
+  app.post<{ Body: { label?: string; gm?: boolean; actorId?: string; uses?: number; days?: number } }>(
+    '/api/invites',
+    async (request, reply) => {
+      const user = await viewerOf(request);
+      if (!user?.isGm) return reply.code(403).send({ error: 'Nicht für dich.' });
+      const b = request.body ?? {};
+      const code = newInviteCode();
+      const uses = b.uses == null ? undefined : Math.max(1, Math.floor(Number(b.uses) || 1));
+      const days = b.days == null ? undefined : Math.max(1, Math.floor(Number(b.days) || 1));
+      const invite: Invite = {
+        codeHash: hashToken(code),
+        label: b.label?.trim() || undefined,
+        isGm: b.gm === true,
+        actorId: b.actorId?.trim() || undefined,
+        usesLeft: uses,
+        expiresAt: days ? new Date(Date.now() + days * 86400000).toISOString() : undefined,
+        createdBy: user.id,
+      };
+      await repo.putInvite(invite);
+      await repo.appendEvent('invite.created', user.id, { label: invite.label ?? null });
+      /* Einmal und nie wieder. */
+      return reply.code(201).send({ code, handle: invite.codeHash });
+    },
+  );
+
+  app.delete<{ Params: { handle: string } }>('/api/invites/:handle', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user?.isGm) return reply.code(403).send({ error: 'Nicht für dich.' });
+    const weg = await repo.dropInvite(request.params.handle);
+    if (!weg) return reply.code(404).send({ error: 'Nicht gefunden' });
+    return { ok: true };
+  });
+
   app.post('/api/logout', async (request, reply) => {
     const token = request.cookies?.[COOKIE];
     if (token) await repo.dropSession(hashToken(token));
@@ -210,7 +369,7 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
    * Server nicht heran, und ein offener Schreibweg wäre das Schlimmste von
    * beidem.
    */
-  const OPEN = new Set(['/api/health', '/api/login', '/api/logout', '/api/me']);
+  const OPEN = new Set(['/api/health', '/api/login', '/api/register', '/api/logout', '/api/me']);
   app.addHook('preHandler', async (request, reply) => {
     const url = request.url.split('?')[0] ?? '';
     if (!url.startsWith('/api/') || OPEN.has(url)) return;
@@ -301,11 +460,16 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
       .split(',')
       .map((x) => x.trim())
       .filter(Boolean);
-    /* Ohne Figur ist ein Spieler niemand, den irgendein Wissen kennt — dann
-       bleibt genau das Offene. Das ist die richtige Vorgabe: ein Konto ohne
-       Figur ist ein Konto, dem noch nichts zugeteilt wurde. */
-    const viewerId = user.actorId ?? '';
-    return entities.map((e) => redactEntity(registry, alle, e, viewerId || '\u0000', gmBlocks));
+    /* **Alle Figuren dieses Kontos zusammen.** Wer Rook und Sela spielt,
+       weiss am Tisch, was beide wissen — eine Seite, die ihm Selas Wissen
+       vorenthält, während er Rook offen hat, zwingt ihn zum Umschalten und
+       sonst zu nichts.
+
+       Eine leere Liste ist nicht dasselbe wie keine: `undefined` heisst
+       Spielleitung und sieht alles, `[]` heisst ein Konto ohne Figur und
+       sieht genau das Offene. Das ist die richtige Vorgabe — ein Konto
+       ohne Figur ist eines, dem noch nichts zugeteilt wurde. */
+    return entities.map((e) => redactEntity(registry, alle, e, user.actorIds ?? [], gmBlocks));
   }
 
   app.get('/api/entities', async (request) => sieve(request, await repo.listEntities()));
