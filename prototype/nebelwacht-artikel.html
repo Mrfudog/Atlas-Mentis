@@ -245,6 +245,12 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
   font-size:12.5px;color:var(--dim)}
 .crumbs .sep{color:var(--line2)}
 
+/* Ansehen als: ein sichtbarer Streifen, damit niemand vergisst, dass er
+   gerade nicht alles sieht. */
+body.asplayer .top{box-shadow:inset 0 -3px 0 var(--link)}
+body.asplayer .brand span{color:var(--link)}
+#asbox select.vw{max-width:150px}
+
 /* Wissen (A6): Gruppen, deren Kopfzeile sagt, wer sie kennt. */
 .kgrp{border:1px solid var(--line);border-radius:var(--r);padding:9px 11px;margin:10px 0}
 .kgrp.open{border-style:dashed}
@@ -562,6 +568,7 @@ table.craftm tr.crrow.unknown td{color:var(--dim);font-style:italic}
     <div class="sub">Article Engine</div>
     <div class="grow"></div>
     <input id="q" class="search" type="search" placeholder="Search…" aria-label="Search articles">
+    <span id="asbox"></span>
     <select id="facet" class="vw" aria-label="View"></select>
     <button id="new" class="btn pri" type="button">+ New</button>
   </header>
@@ -591,7 +598,12 @@ table.craftm tr.crrow.unknown td{color:var(--dim);font-style:italic}
    Adding a kind of thing = one interface row. No code change.
    ============================================================ */
 
-var db=null, me={write:true}, ready=false;
+var db=null, ready=false;
+/* Wer hier zusieht (REQ-031 bis 038). `base` ist, was die Laufzeit erlaubt;
+   `gm` ist die Rolle; `actor` der Spielercharakter, den dieser Betrachter
+   spielt. Ein Spieler ist kein Zuschauer mit weniger Knöpfen: er sieht einen
+   anderen Artikel, weil Wissen und Sichtbarkeit vor der Darstellung greifen. */
+var me={base:true, id:"", gm:true, actor:""};
 var ENT=new Map();                       // id -> entity body
 
 /* Ein Schnappschuss liefert eingefrorene Objekte („Delivered snapshots and
@@ -599,6 +611,31 @@ var ENT=new Map();                       // id -> entity body
    so einem Objekt — und zwar mitten im Snapshot-Callback, wo niemand es
    auffängt. Deshalb kommt alles, was die Seite später bearbeitet, als
    eigene Kopie herein. */
+/* Der Artikel, der gerade gezeichnet wird. `canWrite()` ohne Argument fragt
+   ihn — so steht die Rechteprüfung an einer Stelle statt an zweiundachtzig,
+   und ein Knopf, der im falschen Zusammenhang gezeichnet würde, verschwindet
+   von selbst. */
+var writeCtx=null;
+/* Sieht diese Sitzung als Spielleitung? Der „Ansehen als"-Schalter zählt
+   dabei wie ein anderer Betrachter — sonst könnte man nicht prüfen, was ein
+   Charakter sieht, und würde es erst am Tisch merken. */
+function isGM(){ return me.gm&&!UI.asActor; }
+function viewerActor(){ return UI.asActor||me.actor||""; }
+function ownedByViewer(e,actorId){
+  if(!e||!actorId)return false;
+  if(e.id===actorId)return true;
+  var ich=ENT.get(actorId); if(!ich)return false;
+  /* Was die Figur trägt, gehört ihr: ihr Inventar und was darin liegt. */
+  return (ich.relations||[]).some(function(r){
+    return (r.type===REL_CARRIES||r.type===REL_KNOW)&&r.to===e.id; });
+}
+function canWrite(e){
+  if(!me.base)return false;
+  if(isGM())return true;
+  var a=viewerActor(); if(!a)return false;
+  return ownedByViewer(e||writeCtx,a);
+}
+
 function thawed(o){
   if(o==null) return o;
   try{ return structuredClone(o); }catch(x){}
@@ -616,7 +653,7 @@ var UI={route:{k:"list"}, view:"quick", iface:"", tag:"", q:"", offen:false, pan
         mapZoom:1, mapLock:false, mapKind:"", mapDrag:null,
         invView:"tiers", invPick:"", craftOnly:false,
         boardZoom:1, boardPick:"", boardTool:"",
-        turnActor:"", rollLog:[],
+        turnActor:"", rollLog:[], asActor:"",
         konzept:false, err:""};
 
 /* Darstellungsstufen (Facets, REQ-164) — registry rows, not code.
@@ -1006,7 +1043,7 @@ function assetInput(pd,cur){
   });
   bar.appendChild(vorhanden);
 
-  if(me.write&&assetStore){
+  if(canWrite()&&assetStore){
     var datei=el("input",{type:"file",accept:"image/*",style:"display:none"});
     var knopf=el("button",{class:"btn sm",type:"button",onclick:function(){ datei.click(); }},"Upload…");
     datei.addEventListener("change",function(){
@@ -1020,7 +1057,7 @@ function assetInput(pd,cur){
         .then(function(){ knopf.disabled=false; knopf.textContent="Upload…"; });
     });
     bar.appendChild(knopf); bar.appendChild(datei);
-  } else if(me.write){
+  } else if(canWrite()){
     bar.appendChild(el("span",{class:"hint",text:"No asset store here — paste a URL."}));
   }
 
@@ -1265,8 +1302,8 @@ function inline(text,into){
       if(id) into.appendChild(el("button",{class:"ref",type:"button",onclick:function(x){return function(){go({k:"art",id:x});};}(id)},show));
       // A dead link is an invitation, not an error: klicken legt den Artikel an.
       else   into.appendChild(el("button",{class:"ref dead",type:"button",
-               title:me.write?"No article yet — create one":"No article named “"+target+"“",
-               onclick:function(t){return function(){ if(me.write)newEntity(t); };}(target)},show));
+               title:canWrite()?"No article yet — create one":"No article named “"+target+"“",
+               onclick:function(t){return function(){ if(canWrite())newEntity(t); };}(target)},show));
     } else if(m[3]!==undefined){
       into.appendChild(el("span",{class:"vr"},m[3]));
     } else {
@@ -1299,7 +1336,7 @@ function saveReg(part){
 }
 function fail(x){
   var c=(x&&x.code)||"";
-  if(c==="invalid_argument"){ me.write=false; UI.err="Write refused — this view is read only."; }
+  if(c==="invalid_argument"){ me.base=false; UI.err="Write refused — this view is read only."; }
   else UI.err="Save failed ("+(c||"unknown")+")";
   render();
 }
@@ -1318,7 +1355,8 @@ function go(r){
    sagte nicht, warum. Ein sichtbarer Fehler ist besser als eine leere Seite. */
 function render(){
   var broken=[];
-  [["Auswahl",renderViewSelect],["Seitenleiste",renderRail],["Content",renderMain],
+  [["Auswahl",renderViewSelect],["Betrachter",renderAsSelect],
+   ["Seitenleiste",renderRail],["Content",renderMain],
    ["Bezüge",renderAside],["Bereiche",renderPanes]].forEach(function(t){
     try{ t[1](); }catch(x){ broken.push(t[0]+": "+(x&&x.message||x)); }
   });
@@ -1386,13 +1424,32 @@ function renderRail(){
     s2.appendChild(box); r.appendChild(s2);
   }
 
+  if(!isGM()){
+    /* Für einen Spieler gibt es kein Register und keinen Import. Sie
+       auszugrauen wäre eine Einladung; sie wegzulassen ist die Antwort. */
+    var sp=el("section");
+    sp.appendChild(el("h3",{text:"You"}));
+    var ich=ENT.get(viewerActor());
+    if(ich) sp.appendChild(el("button",{class:"navrow",type:"button",
+      "aria-current":String(UI.route.k==="art"&&UI.route.id===ich.id),
+      onclick:function(){go({k:"art",id:ich.id});}},
+      [el("b",{text:nameOf(ich)}),el("em",{text:"sheet"})]));
+    ENT.forEach(function(o){
+      if(((o.interfaces||[])[0])!=="Party")return;
+      sp.appendChild(el("button",{class:"navrow",type:"button",
+        onclick:function(){go({k:"art",id:o.id});}},
+        [el("b",{text:nameOf(o)}),el("em",{text:"party"})]));
+    });
+    r.appendChild(sp);
+    return;
+  }
   var s3=el("section");
   s3.appendChild(el("h3",{text:"System"}));
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="reg"),
     onclick:function(){go({k:"reg"});}},[el("b",{text:"Data model"}),el("em",{text:"def"})]));
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="graph"),
     onclick:function(){go({k:"graph"});}},[el("b",{text:"Graph"}),el("em",{text:"↔"})]));
-  if(me.write) s3.appendChild(el("button",{class:"navrow",type:"button",
+  if(canWrite()) s3.appendChild(el("button",{class:"navrow",type:"button",
     onclick:function(){importDialog();}},[el("b",{text:"Import"}),el("em",{text:"md"})]));
   var openCount=0; ENT.forEach(function(x){ if(checkArticle(x).length) openCount++; });
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.offen),
@@ -1406,13 +1463,21 @@ function renderMain(){
   var v=document.getElementById("view"); v.textContent="";
   if(UI.err) v.appendChild(el("div",{class:"banner",text:UI.err}));
   if(!ready){ v.appendChild(el("div",{class:"empty",text:"Loading…"})); return; }
+  writeCtx=null;
   if(UI.route.k==="art"){ renderArticle(v,UI.route.id); return; }
+  /* Register und Graph gehören der Spielleitung. Ein Spieler, der die
+     Adresse errät, bekommt dieselbe Antwort wie ein Spieler, der sie nicht
+     errät. */
+  if((UI.route.k==="reg"||UI.route.k==="graph")&&!isGM()){
+    v.appendChild(el("div",{class:"empty",text:"Not for you."})); return;
+  }
   if(UI.route.k==="reg"){ renderRegistry(v); return; }
   if(UI.route.k==="graph"){ renderGraph(v); return; }
   renderList(v);
 }
 
 function matches(e){
+  if(!articleVisible(e))return false;
   if(UI.offen && !checkArticle(e).length) return false;
   if(UI.iface){
     /* Ein Obertyp meint seine Subtypen mit. Exakt zu vergleichen hiesse:
@@ -1443,7 +1508,7 @@ function renderList(v){
   head.appendChild(el("h2",{text:UI.iface?(REG.interfaces[UI.iface]&&REG.interfaces[UI.iface].label||UI.iface):"All articles"}));
   head.appendChild(el("span",{class:"count",text:list.length+" of "+ENT.size}));
   if(UI.tag) head.appendChild(el("span",{class:"pill",text:"#"+UI.tag}));
-  if(me.write) head.appendChild(el("button",{class:"btn sm"+(UI.pick?" pri":""),type:"button",
+  if(canWrite()) head.appendChild(el("button",{class:"btn sm"+(UI.pick?" pri":""),type:"button",
     onclick:function(){ UI.pick=!UI.pick; UI.picked={}; render(); }},
     UI.pick?"Done selecting":"Select"));
   v.appendChild(head);
@@ -1497,6 +1562,12 @@ function renderList(v){
 function renderArticle(v,id){
   var e=ENT.get(id);
   if(!e){ v.appendChild(el("div",{class:"empty",text:"Article not found."})); return; }
+  writeCtx=e;
+  if(!articleVisible(e)){
+    v.appendChild(el("div",{class:"empty",
+      text:"Nothing here for you — or not yet."}));
+    return;
+  }
   var ifn=(e.interfaces||[])[0]||"", d=REG.interfaces[ifn], vw=viewDef();
 
   var crumbs=renderTrail(); if(crumbs) v.appendChild(crumbs);
@@ -1506,7 +1577,7 @@ function renderArticle(v,id){
   kick.appendChild(el("span",{class:"pill",text:ifaceName(e)}));
   var st=e.components&&e.components.Status&&e.components.Status.value;
   if(st) kick.appendChild(el("span",{class:"pill q",text:st}));
-  if(me.write&&(UI.inline||UI.editField==="__tags")){
+  if(canWrite()&&(UI.inline||UI.editField==="__tags")){
     var tgIn=el("input",{class:"i",type:"text",value:(e.tags||[]).join(", "),
       placeholder:"comma, separated",style:"max-width:280px"});
     tgIn.addEventListener("change",function(){
@@ -1522,11 +1593,11 @@ function renderArticle(v,id){
   } else {
     (e.tags||[]).forEach(function(t){ kick.appendChild(el("button",{class:"tag",type:"button",
       onclick:function(){UI.tag=t;UI.iface="";go({k:"list"});}},"#"+t)); });
-    if(me.write) kick.appendChild(el("button",{class:"tag",type:"button",title:"Edit tags",
+    if(canWrite()) kick.appendChild(el("button",{class:"tag",type:"button",title:"Edit tags",
       onclick:function(){ UI.editField="__tags"; render(); }},(e.tags||[]).length?"✎":"+ tag"));
   }
   head.appendChild(kick);
-  if(me.write&&(UI.inline||UI.editField==="__name")){
+  if(canWrite()&&(UI.inline||UI.editField==="__name")){
     var nmIn=el("input",{class:"i",type:"text",value:nameOf(e),style:"font-family:var(--ff-disp);font-size:26px"});
     nmIn.addEventListener("change",function(){
       var neu=nmIn.value.trim(); if(!neu||neu===nameOf(e)){ if(!UI.inline)UI.editField=""; render(); return; }
@@ -1541,7 +1612,7 @@ function renderArticle(v,id){
     if(!UI.inline) setTimeout(function(){ try{ nmIn.focus(); nmIn.select(); }catch(x){} },0);
   } else {
     var h2=el("h2",{text:nameOf(e)});
-    if(me.write){ h2.className="editable";
+    if(canWrite()){ h2.className="editable";
       h2.addEventListener("click",function(){ UI.editField="__name"; render(); }); }
     head.appendChild(h2);
   }
@@ -1550,7 +1621,7 @@ function renderArticle(v,id){
   v.appendChild(head);
 
   var bar=el("div",{class:"rowbtns"});
-  if(me.write){
+  if(canWrite()){
     bar.appendChild(el("button",{class:"btn sm"+(UI.inline?" pri":""),type:"button",
       "aria-pressed":String(!!UI.inline),onclick:function(){
         UI.inline=!UI.inline; UI.editField=""; render(); }},
@@ -1828,7 +1899,7 @@ function fieldCell(e,cn,p,pd,val,txt){
   var id=cn+"."+p;
   var cell=el("div",{class:"fld"+(pd.derived?" drv":"")});
   cell.appendChild(el("dt",{text:pd.title||p}));
-  var editable=me.write&&!pd.derived;
+  var editable=canWrite()&&!pd.derived;
   var open=editable&&(UI.inline||UI.editField===id);
 
   if(open){
@@ -2000,7 +2071,7 @@ function fieldPlan(e,ifn,want){
       if(!zeig(cn,p))return;
       if(pd.derived&&pd.of)return;
       var txt=fmtVal(pd, pd.derived?derivedValue(pd,val):val[p]);
-      if(txt===""&&!(UI.inline&&me.write&&!pd.derived))return;
+      if(txt===""&&!(UI.inline&&canWrite()&&!pd.derived))return;
       (attach[p]||[]).forEach(function(dp){
         var dv=fmtVal(props[dp],derivedValue(props[dp],val));
         if(dv!=="") txt+=" ("+dv+")";
@@ -2009,6 +2080,14 @@ function fieldPlan(e,ifn,want){
         label:(REG.components[cn].label||cn)+" · "+(pd.title||p)});
     });
   });
+  /* Der Wissensfilter sitzt hier, weil hier die Feldauswahl entsteht:
+     Feldtabelle, Wissensansicht und Board-Kachel gehen alle durch diese
+     Funktion, also filtert sie einmal für alle drei. */
+  if(!isGM()){
+    var erlaubt={};
+    visibleRefs(e,cells.map(function(c){return c.ref;})).forEach(function(r){ erlaubt[r]=1; });
+    cells=cells.filter(function(c){ return erlaubt[c.ref]; });
+  }
   return cells;
 }
 
@@ -2031,13 +2110,17 @@ function elBlocks(e,item){
   var want=item.blocks;
   var zeig=function(bt){ return want==="all"||(Array.isArray(want)&&want.indexOf(bt)>=0); };
   var blocks=(e.blocks||[]).slice().sort(function(a,b){return (a.order||0)-(b.order||0);});
+  if(!isGM()){
+    var ok={}; visibleBlockIds(e).forEach(function(k){ ok[k]=1; });
+    blocks=blocks.filter(function(b){ return ok[b.anchor||b.id]; });
+  }
   var bw=el("div",{class:"blocks"});
   blocks.forEach(function(b){
     if(!zeig(b.blockType))return;
     var box=el("div",{class:"blk "+b.blockType});
     if(b.blockType!=="paragraph"){
       var blockLabel=el("div",{class:"bl"},[document.createTextNode(b.blockType)]);
-      if(me.write) blockLabel.appendChild(el("button",{class:"btn gh sm",type:"button",
+      if(canWrite()) blockLabel.appendChild(el("button",{class:"btn gh sm",type:"button",
         onclick:function(){ confirmDialog("Delete this block?",function(){
           e.blocks=e.blocks.filter(function(x){return x.id!==b.id;}); persist(e); }); }},"×"));
       box.appendChild(blockLabel);
@@ -2137,7 +2220,7 @@ function elQuests(e,ifn,item){
     if(card.deadline) kopf.appendChild(el("span",{class:"pill q",text:"by "+card.deadline}));
     if(card.reward) kopf.appendChild(el("span",{class:"pill q",text:card.reward}));
     if(card.restriction) kopf.appendChild(el("span",{class:"pill q",text:card.restriction}));
-    if(me.write){
+    if(canWrite()){
       var sel=el("select",{class:"bsel"});
       QUEST_STATES.forEach(function(x){ sel.appendChild(el("option",{value:x[0]},x[1])); });
       sel.value=card.state||"rumoured";
@@ -2154,7 +2237,7 @@ function elQuests(e,ifn,item){
     aufgaben.forEach(function(t){
       var row=el("label",{class:"task"+(t.done?" done":"")});
       var cb=el("input",{type:"checkbox"});
-      cb.checked=!!t.done; cb.disabled=!me.write;
+      cb.checked=!!t.done; cb.disabled=!canWrite();
       cb.addEventListener("change",function(){
         var neu=aufgaben.map(function(x){
           return x===t?Object.assign({},x,{done:cb.checked}):x; });
@@ -2163,14 +2246,14 @@ function elQuests(e,ifn,item){
       row.appendChild(cb);
       row.appendChild(inline(t.text||"",el("span")));
       if(t.optional) row.appendChild(el("span",{class:"co",text:"optional"}));
-      if(me.write) row.appendChild(el("button",{class:"btn gh sm",type:"button",
+      if(canWrite()) row.appendChild(el("button",{class:"btn gh sm",type:"button",
         onclick:function(ev){ ev.preventDefault();
           var neu=aufgaben.filter(function(x){return x!==t;});
           e.components[QUEST_COMP]=Object.assign({},card,{tasks:neu}); persist(e); }},"×"));
       liste.appendChild(row);
     });
     wrap.appendChild(liste);
-    if(me.write){
+    if(canWrite()){
       var neu2=el("input",{class:"i",type:"text",placeholder:"A task — [[links]] work here"});
       var bar=el("div",{class:"addbar",style:"margin-top:8px"});
       bar.appendChild(neu2);
@@ -2407,7 +2490,7 @@ function elInitiative(e,ifn,item){
   var bar=el("div",{class:"maptools"});
   if(inPlacement) bar.style.display="none";
   bar.appendChild(el("span",{class:"pill",text:"Round "+(runde||"—")}));
-  if(me.write){
+  if(canWrite()){
     bar.appendChild(el("button",{class:"btn sm pri",type:"button",
       onclick:naechster},"Next turn ▸"));
     bar.appendChild(el("button",{class:"btn sm",type:"button",
@@ -2439,7 +2522,7 @@ function elInitiative(e,ifn,item){
 
   if(!liste.length){
     wrap.appendChild(el("div",{class:"empty",
-      text:me.write?"Nobody in this fight yet — add fighters.":"No participants."}));
+      text:canWrite()?"Nobody in this fight yet — add fighters.":"No participants."}));
     return wrap;
   }
 
@@ -2453,7 +2536,7 @@ function elInitiative(e,ifn,item){
     row.appendChild(el("td",{class:"turn",text:i===zug?"▶":""}));
 
     var ci=el("td",{class:"num"});
-    if(me.write){
+    if(canWrite()){
       var iv=el("input",{class:"tin",type:"number",value:isFinite(p2.init)?String(p2.init):""});
       iv.addEventListener("change",function(){
         p2.rel.props=Object.assign({},p2.rel.props,
@@ -2471,7 +2554,7 @@ function elInitiative(e,ifn,item){
     row.appendChild(cw);
 
     var ch=el("td",{class:"num hpcell"});
-    if(me.write){
+    if(canWrite()){
       /* Schaden wird dem laufenden Zug zugeschrieben: der Wurf landet im
          Verlauf mit dem Namen dessen, der gerade dran ist. */
       ch.appendChild(el("button",{class:"vbtn",type:"button",title:"Damage 1",
@@ -2492,14 +2575,14 @@ function elInitiative(e,ifn,item){
     (p2.conditions||[]).forEach(function(c){
       var chip=el("span",{class:"chip cond"},
         c.name+(isFinite(Number(c.rounds))?" ("+c.rounds+")":""));
-      if(me.write) chip.appendChild(el("button",{class:"x",type:"button",
+      if(canWrite()) chip.appendChild(el("button",{class:"x",type:"button",
         onclick:function(){
           p2.rel.props=Object.assign({},p2.rel.props,
             {conditions:(p2.conditions||[]).filter(function(x){return x!==c;})});
           persist(e); }},"×"));
       cc.appendChild(chip);
     });
-    if(me.write){
+    if(canWrite()){
       var add=el("select",{class:"bsel"});
       add.appendChild(el("option",{value:""},"+ condition"));
       conditionList().forEach(function(c){ add.appendChild(el("option",{value:c},c)); });
@@ -2515,7 +2598,7 @@ function elInitiative(e,ifn,item){
     row.appendChild(cc);
 
     var cx=el("td");
-    if(me.write) cx.appendChild(el("button",{class:"btn gh sm",type:"button",title:"Remove",
+    if(canWrite()) cx.appendChild(el("button",{class:"btn gh sm",type:"button",title:"Remove",
       onclick:function(){
         e.relations=e.relations.filter(function(x){return x.id!==p2.rel.id;});
         persist(e); }},"×"));
@@ -2705,7 +2788,7 @@ function elBoard(e,ifn,item){
       onclick:function(){ UI.boardZoom=Math.min(2,Math.max(0.2,UI.boardZoom+t[1])); render(); }},t[0]));
   });
   bar.appendChild(el("span",{class:"hint",style:"margin:0",text:Math.round(z*100)+"%"}));
-  if(me.write){
+  if(canWrite()){
     bar.appendChild(el("button",{class:"btn sm",type:"button",
       onclick:function(){ placeOnBoard(e); }},"+ Place"));
     bar.appendChild(el("button",{class:"btn sm",type:"button",
@@ -2735,7 +2818,7 @@ function elBoard(e,ifn,item){
     });
     bar.appendChild(sel);
   }
-  if(me.write) bar.appendChild(el("button",{class:"btn sm gh",type:"button",
+  if(canWrite()) bar.appendChild(el("button",{class:"btn sm gh",type:"button",
     onclick:function(){ addAnchor(e,wrap); }},"+ Anchor"));
   wrap.appendChild(bar);
 
@@ -2754,7 +2837,7 @@ function elBoard(e,ifn,item){
     n.style.width=((sh.w||120)*z)+"px"; n.style.height=((sh.h||80)*z)+"px";
     if(sh.color) n.style.borderColor=sh.color;
     if(sh.kind==="label"){ n.textContent=sh.text||""; n.style.color=sh.color||""; }
-    if(me.write) n.addEventListener("contextmenu",function(ev){
+    if(canWrite()) n.addEventListener("contextmenu",function(ev){
       ev.preventDefault();
       confirmDialog("Remove this shape?",function(){
         card.shapes=(card.shapes||[]).filter(function(x){return x.id!==sh.id;});
@@ -2782,7 +2865,7 @@ function elBoard(e,ifn,item){
     kopf.appendChild(el("button",{class:"ref",type:"button",
       onclick:function(ev){ ev.stopPropagation(); go({k:"art",id:t.id}); }},nameOf(t)));
     kopf.appendChild(el("span",{class:"bview",text:(REG.views[vk]||{}).label||vk}));
-    if(me.write){
+    if(canWrite()){
       /* Die Ansicht je Platzierung wechseln: das ist die
          Darstellungsauflösung von Hand, und sie muss dort sein, wo die
          Karte steht — nicht in einem Register. */
@@ -2806,7 +2889,7 @@ function elBoard(e,ifn,item){
     body.appendChild(renderPlacement(t,vk,0));
     karte.appendChild(body);
 
-    if(me.write&&!pr.locked){
+    if(canWrite()&&!pr.locked){
       var griff=el("div",{class:"bgrip",title:"Resize"});
       karte.appendChild(griff);
       var zieh=null;
@@ -2850,7 +2933,7 @@ function elBoard(e,ifn,item){
   });
 
   /* Mit einem Zeichenwerkzeug in der Hand legt ein Klick eine Form an. */
-  if(me.write&&UI.boardTool){
+  if(canWrite()&&UI.boardTool){
     canvas.style.cursor="crosshair";
     canvas.addEventListener("click",function(ev){
       if(ev.target!==canvas)return;
@@ -2869,7 +2952,7 @@ function elBoard(e,ifn,item){
   wrap.appendChild(stage);
   wrap.appendChild(el("p",{class:"hint",
     text:platz.length+" placed · "+((card.shapes||[]).length)+" shapes · "+
-      anker.length+" anchors"+(me.write?" · drag the title bar to move, the corner to resize, right-click a shape to remove":"")}));
+      anker.length+" anchors"+(canWrite()?" · drag the title bar to move, the corner to resize, right-click a shape to remove":"")}));
   return wrap;
 }
 
@@ -3118,7 +3201,7 @@ function elCrafting(e,ifn,item){
       traeger.forEach(function(t){
         var st=craftStatus(e,t);
         var cell=el("td");
-        if(st.ok&&me.write) cell.appendChild(el("button",{class:"btn sm pri",type:"button",
+        if(st.ok&&canWrite()) cell.appendChild(el("button",{class:"btn sm pri",type:"button",
           onclick:function(){ craftIt(e,t); }},"Craft"));
         else cell.appendChild(el("span",{class:st.ok?"ok":"gone",text:st.ok?"yes":"no"}));
         foot.appendChild(cell);
@@ -3198,7 +3281,7 @@ function elCrafting(e,ifn,item){
     else c4.textContent="—";
     row.appendChild(c4);
     var c5=el("td");
-    if(st.ok&&wissen!=="hidden"&&me.write)
+    if(st.ok&&wissen!=="hidden"&&canWrite())
       c5.appendChild(el("button",{class:"btn sm pri",type:"button",
         onclick:function(){ craftIt(rec,e); }},"Craft"));
     row.appendChild(c5);
@@ -3295,7 +3378,7 @@ function elInventory(e,ifn,item){
   if(!inv){
     wrap.appendChild(el("p",{class:"hint",
       text:"No inventory yet. Link one with the relation “carries”."}));
-    if(me.write) wrap.appendChild(el("button",{class:"btn sm",type:"button",
+    if(canWrite()) wrap.appendChild(el("button",{class:"btn sm",type:"button",
       onclick:function(){ newInventory(e); }},"+ Inventory"));
     return wrap;
   }
@@ -3308,7 +3391,7 @@ function elInventory(e,ifn,item){
       "aria-pressed":String(UI.invView===t[0]),
       onclick:function(){ UI.invView=t[0]; render(); }},t[1]));
   });
-  if(me.write) tabs.appendChild(el("button",{class:"btn sm",type:"button",
+  if(canWrite()) tabs.appendChild(el("button",{class:"btn sm",type:"button",
     onclick:function(){ addToInventory(inv); }},"+ Item"));
   var geld=(inv.components||{}).InventoryInfo||{};
   if(geld.copper!=null) tabs.appendChild(el("span",{class:"hint",style:"margin:0",
@@ -3329,12 +3412,12 @@ function elInventory(e,ifn,item){
 
   function chip(st){
     var b=el("button",{class:"chip item"+(st.rel.id===UI.invPick?" selected":""),
-      type:"button",draggable:me.write?"true":null,
+      type:"button",draggable:canWrite()?"true":null,
       title:(st.note||"")+(st.attuned?" · attuned":"")});
     b.appendChild(el("span",{text:nameOf(st.item)}));
     if(st.qty>1) b.appendChild(el("span",{class:"qty",text:"×"+st.qty}));
     b.addEventListener("click",function(ev){
-      if(ev.shiftKey||!me.write){ go({k:"art",id:st.item.id}); return; }
+      if(ev.shiftKey||!canWrite()){ go({k:"art",id:st.item.id}); return; }
       UI.invPick=(UI.invPick===st.rel.id?"":st.rel.id); render();
     });
     b.addEventListener("dragstart",function(ev){
@@ -3349,7 +3432,7 @@ function elInventory(e,ifn,item){
     persist(st.inv);
   }
   function dropZiel(node,fn){
-    if(!me.write)return node;
+    if(!canWrite())return node;
     node.addEventListener("dragover",function(ev){ ev.preventDefault();
       node.classList.add("over"); });
     node.addEventListener("dragleave",function(){ node.classList.remove("over"); });
@@ -3390,7 +3473,7 @@ function elInventory(e,ifn,item){
       if(!drin.length) inhalt.appendChild(el("span",{class:"hint",style:"margin:0",text:"empty"}));
       drin.forEach(function(st){
         inhalt.appendChild(chip(st));
-        if(me.write) inhalt.appendChild(el("button",{class:"btn gh sm",type:"button",
+        if(canWrite()) inhalt.appendChild(el("button",{class:"btn gh sm",type:"button",
           title:"Take off",onclick:function(ev){ ev.stopPropagation();
             lege(st,{slot:undefined,tier:"pack"}); }},"×"));
       });
@@ -3440,11 +3523,11 @@ function elInventory(e,ifn,item){
       }
       var lab=el("span",{class:"glab",text:nameOf(st.item)+(st.qty>1?" ×"+st.qty:"")});
       box.appendChild(lab);
-      box.setAttribute("draggable",me.write?"true":"false");
+      box.setAttribute("draggable",canWrite()?"true":"false");
       box.title=nameOf(st.item)+" — "+fp.w+"×"+fp.h;
       box.addEventListener("click",function(ev){
         ev.stopPropagation();
-        if(ev.shiftKey||!me.write){ go({k:"art",id:st.item.id}); return; }
+        if(ev.shiftKey||!canWrite()){ go({k:"art",id:st.item.id}); return; }
         UI.invPick=(UI.invPick===st.rel.id?"":st.rel.id); render();
       });
       box.addEventListener("dragstart",function(ev){ UI.invPick=st.rel.id;
@@ -3591,14 +3674,14 @@ function vitalStepper(label,wert,setzen,klasse,zusatz){
   var box=el("div",{class:"vital"+(klasse?" "+klasse:"")});
   box.appendChild(el("div",{class:"vk",text:label}));
   var row=el("div",{class:"vrow"});
-  if(me.write) row.appendChild(el("button",{class:"vbtn",type:"button",
+  if(canWrite()) row.appendChild(el("button",{class:"vbtn",type:"button",
     "aria-label":"minus",onclick:function(){ setzen(-1); }},"−"));
   var inp=el("input",{class:"vin",type:"number",value:String(wert==null?"":wert)});
-  if(!me.write) inp.disabled=true;
+  if(!canWrite()) inp.disabled=true;
   inp.addEventListener("change",function(){ setzen(null,inp.value); });
   row.appendChild(inp);
   if(zusatz) row.appendChild(el("span",{class:"vmax",text:zusatz}));
-  if(me.write) row.appendChild(el("button",{class:"vbtn",type:"button",
+  if(canWrite()) row.appendChild(el("button",{class:"vbtn",type:"button",
     "aria-label":"plus",onclick:function(){ setzen(1); }},"+"));
   box.appendChild(row);
   return box;
@@ -3616,7 +3699,7 @@ function pipRow(n,voll,aus,rund,klasse){
   for(var i=0;i<n;i++)(function(i){
     var b=el("button",{class:"pip"+(i<voll?"":" used")+(rund?" round":""),type:"button",
       "aria-pressed":String(i<voll)});
-    if(me.write) b.addEventListener("click",function(){ aus(i<voll?i:i+1); });
+    if(canWrite()) b.addEventListener("click",function(){ aus(i<voll?i:i+1); });
     else b.disabled=true;
     row.appendChild(b);
   })(i);
@@ -3691,7 +3774,7 @@ function elSheet(e,ifn,item){
   wrap.appendChild(strip);
 
   /* ---- Rasten: die Regel steht im Code, aber sie steht auch daneben ---- */
-  if(me.write){
+  if(canWrite()){
     var rest=el("div",{class:"rowbtns"});
     rest.appendChild(el("button",{class:"btn sm",type:"button",
       title:"Spend one hit die: heal the die's average plus your CON modifier",
@@ -3724,7 +3807,7 @@ function elSheet(e,ifn,item){
   conditionList().forEach(function(c){
     var an=aktiv.indexOf(c)>=0;
     var b=el("button",{class:"chip pick"+(an?" on":""),type:"button","aria-pressed":String(an)},c);
-    if(me.write) b.addEventListener("click",function(){
+    if(canWrite()) b.addEventListener("click",function(){
       var neu=an?aktiv.filter(function(x){return x!==c;}):aktiv.concat([c]);
       schreibVit({conditions:neu});
     });
@@ -3746,7 +3829,7 @@ function elSheet(e,ifn,item){
     var sv=el("button",{class:"save"+(geuebt?" on":""),type:"button",
       title:"Saving throw"+(geuebt?" (proficient)":"")},
       "save "+sgn(modOf(sb,a)+(geuebt?prof:0)));
-    if(me.write) sv.addEventListener("click",function(){
+    if(canWrite()) sv.addEventListener("click",function(){
       var liste=sk.saves||[];
       var neu=geuebt?liste.filter(function(x){return x!==a;}):liste.concat([a]);
       e.components[SKILL_COMP]=Object.assign({},sk,{saves:neu});
@@ -3768,7 +3851,7 @@ function elSheet(e,ifn,item){
     var row=el("div",{class:"skillrow"});
     var dot=el("button",{class:"sdot s"+stufe,type:"button",
       title:["not proficient","proficient","expertise"][stufe]});
-    if(me.write) dot.addEventListener("click",function(){
+    if(canWrite()) dot.addEventListener("click",function(){
       var np=pl.filter(function(x){return x!==s2.key;});
       var ne=ex.filter(function(x){return x!==s2.key;});
       if(stufe===0) np.push(s2.key);
@@ -3912,9 +3995,9 @@ function elMap(e,ifn,item){
   filt.value=UI.mapKind;
   filt.addEventListener("change",function(){ UI.mapKind=filt.value; render(); });
   bar.appendChild(filt);
-  if(me.write) bar.appendChild(el("button",{class:"btn sm",type:"button",
+  if(canWrite()) bar.appendChild(el("button",{class:"btn sm",type:"button",
     onclick:function(){ addMarker(e); }},"+ Token"));
-  if(me.write) bar.appendChild(el("button",{class:"btn sm",type:"button",
+  if(canWrite()) bar.appendChild(el("button",{class:"btn sm",type:"button",
     onclick:function(){ addSubmap(e); }},"+ Sub-map"));
   var eltern=parentMap(e);
   if(eltern) bar.appendChild(el("button",{class:"btn sm gh",type:"button",
@@ -3923,7 +4006,7 @@ function elMap(e,ifn,item){
 
   if(!src){
     wrap.appendChild(el("div",{class:"empty",
-      text:me.write?"This map has no image yet — set MapInfo · Image.":"No image."}));
+      text:canWrite()?"This map has no image yet — set MapInfo · Image.":"No image."}));
     return wrap;
   }
 
@@ -3973,7 +4056,7 @@ function elMap(e,ifn,item){
        niemand mitten im Kampf. */
     var von=null;
     t.addEventListener("pointerdown",function(ev){
-      if(!me.write)return;
+      if(!canWrite())return;
       von={x:ev.clientX,y:ev.clientY,moved:false};
       try{ t.setPointerCapture(ev.pointerId); }catch(x){}
     });
@@ -3998,7 +4081,7 @@ function elMap(e,ifn,item){
     });
     t.addEventListener("contextmenu",function(ev){
       ev.preventDefault();
-      if(!me.write)return;
+      if(!canWrite())return;
       confirmDialog("Remove the token “"+(art?nameOf(art):"?")+"” from this map?",function(){
         e.relations=e.relations.filter(function(x){return x.id!==r.id;}); persist(e); });
     });
@@ -4011,7 +4094,7 @@ function elMap(e,ifn,item){
   var zahl=marker.length;
   wrap.appendChild(el("p",{class:"hint",
     text:zahl?(zahl+" token"+(zahl===1?"":"s")+
-      (me.write?" · drag to move, right-click to remove":"")):
+      (canWrite()?" · drag to move, right-click to remove":"")):
       "No tokens yet."}));
   return wrap;
 }
@@ -4090,6 +4173,113 @@ function addSubmap(e){
       render();
     },"Attach");
   });
+}
+
+/* ---------- Zugang und Spieleransicht (REQ-031 bis 040, 069, 119, 128) ----------
+   Ein Spieler ist kein Zuschauer mit weniger Knöpfen. Er sieht einen anderen
+   Artikel: Sichtbarkeit und Wissen greifen *vor* der Darstellung, nicht
+   danach. Alles, was die Seite filtert, filtert sie an drei Stellen —
+   welche Artikel, welche Felder, welche Blöcke — und nirgends sonst.
+
+   Die Identität kommt von der Laufzeit (`user`), nicht aus einem Passwort
+   in einem Feld: die Seite hat keinen Server, an dem sie eines prüfen
+   könnte, und ein Passwort im Browser ist keines. Wenn der echte Stapel
+   kommt, tritt REQ-031 an diese Stelle — die Abfragen darunter bleiben.
+
+   Der „Ansehen als"-Schalter zählt wie ein anderer Betrachter. Sonst liesse
+   sich nicht prüfen, was ein Charakter sieht, und man merkte es erst am
+   Tisch. */
+var ACCESS_COMP="Access";
+
+/* Wen dieser Nutzer spielt: die Figur, deren Access-Karte seine Id nennt. */
+function actorForUser(uid){
+  if(!uid)return "";
+  var hit="";
+  ENT.forEach(function(e){
+    if(hit)return;
+    var ac=(e.components||{})[ACCESS_COMP];
+    if(ac&&Array.isArray(ac.userIds)&&ac.userIds.indexOf(uid)>=0) hit=e.id;
+  });
+  return hit;
+}
+/* Darf dieser Betrachter den Artikel überhaupt sehen? Nur die grobe Stufe
+   (REQ-038): `gm` heisst Spielleitung, alles andere heisst sichtbar. Die
+   feine Auswertung (REQ-039) ist das Wissensmodell, und das sitzt eine
+   Ebene tiefer — am Feld, nicht am Artikel. */
+function articleVisible(e){
+  if(isGM())return true;
+  var vis=(e.components||{}).Visibility||{};
+  if(vis.audience==="gm")return false;
+  var a=viewerActor();
+  if(Array.isArray(vis.hiddenFrom)&&a&&vis.hiddenFrom.indexOf(a)>=0)return false;
+  return true;
+}
+/* Welche Feldverweise darf dieser Betrachter sehen? Offen plus das, was er
+   weiss — dieselbe Abfrage wie in der Wissensansicht, nur als Filter. */
+function visibleRefs(e,refs){
+  if(isGM())return refs;
+  var a=viewerActor();
+  var erlaubt={};
+  knowledgeGroups(e,refs,a).forEach(function(g){
+    if(g.known) g.fields.forEach(function(f){ erlaubt[f]=1; });
+  });
+  return refs.filter(function(f){ return erlaubt[f]; });
+}
+/* Blöcke: was eine unbekannte Information beansprucht, fällt weg. Dazu die
+   Blockarten, die ein Spieler grundsätzlich nicht sieht — als Einstellung,
+   damit eine Kampagne das anders halten kann. */
+function visibleBlockIds(e){
+  var a=viewerActor();
+  var ids=(e.blocks||[]).map(function(b){return b.anchor||b.id;});
+  if(isGM())return ids;
+  var geheim=String(setting("gmBlockTypes","secret,tactics")).split(",")
+    .map(function(x){return x.trim();}).filter(Boolean);
+  /* Zwei Regeln, und die ausdrückliche gewinnt: ein Block, den eine
+     *bekannte* Information beansprucht, ist freigegeben — auch wenn er
+     `secret` heisst. Genau dafür hat ihn jemand hineingelegt. Ein Block,
+     den keine Information nennt, liegt offen und fällt nur über seine
+     Blockart weg. Andersherum wäre jede Freigabe wirkungslos, sobald der
+     Block die falsche Art trägt, und niemand fände den Grund. */
+  var bekannt={}, beansprucht={};
+  knowledgeGroups(e,[],a).forEach(function(g){
+    g.blocks.forEach(function(b){
+      if(!g.open) beansprucht[b]=1;
+      if(g.known) bekannt[b]=1;
+    });
+  });
+  return (e.blocks||[]).filter(function(b){
+    var key=b.anchor||b.id;
+    if(beansprucht[key])return !!bekannt[key];
+    return geheim.indexOf(b.blockType)<0;
+  }).map(function(b){ return b.anchor||b.id; });
+}
+
+/* Der Schalter in der Kopfzeile: als wen sehe ich das gerade an? */
+function renderAsSelect(){
+  var host=document.getElementById("asbox");
+  if(!host)return;
+  if(!me.gm){ host.style.display="none"; return; }
+  host.style.display="";
+  var spieler=[];
+  ENT.forEach(function(e){
+    if(!ifaceInList(["Creature","Party"],(e.interfaces||[])[0]))return;
+    if(!(e.components||{})[ACCESS_COMP]&&((e.interfaces||[])[0])!=="PlayerCharacter")return;
+    spieler.push(e);
+  });
+  spieler.sort(function(a,b){return nameOf(a).localeCompare(nameOf(b),"de");});
+  var sig=spieler.map(function(e){return e.id;}).join("|");
+  if(host.getAttribute("data-sig")!==sig){
+    host.textContent="";
+    var sel=el("select",{class:"vw",id:"asview","aria-label":"Viewing as"});
+    sel.appendChild(el("option",{value:""},"As GM"));
+    spieler.forEach(function(e){ sel.appendChild(el("option",{value:e.id},"As "+nameOf(e))); });
+    sel.addEventListener("change",function(){ UI.asActor=sel.value; UI.err=""; render(); });
+    host.appendChild(sel);
+    host.setAttribute("data-sig",sig);
+  }
+  var s2=document.getElementById("asview");
+  if(s2) s2.value=UI.asActor||"";
+  document.body.classList.toggle("asplayer",!!UI.asActor);
 }
 
 /* ---------- Wissen (A6) ----------
@@ -4189,7 +4379,7 @@ function elKnowledge(e,ifn,item){
       });
       head.appendChild(who);
     }
-    if(me.write) head.appendChild(el("button",{class:"btn gh sm",type:"button",
+    if(canWrite()) head.appendChild(el("button",{class:"btn gh sm",type:"button",
       title:g.open?"Turn the open fields into an Information":"Edit this Information",
       onclick:function(){ UI.pane="aside"; UI.aside="know";
         UI.info=g.info?g.info.id:""; if(!g.info) newInformation(e); else render(); }},
@@ -4256,7 +4446,7 @@ function renderKnowPanel(a,e){
   var infos=infosOf(e);
 
   var head=el("h3",{text:"Knowledge"});
-  if(me.write) head.appendChild(el("button",{class:"btn gh sm",type:"button",
+  if(canWrite()) head.appendChild(el("button",{class:"btn gh sm",type:"button",
     title:"New information",onclick:function(){newInformation(e);}},"+"));
   a.appendChild(head);
 
@@ -4288,7 +4478,7 @@ function renderKnowPanel(a,e){
   cells.forEach(function(c){
     var mine=infoCovers(info,c.ref);
     var taken=!mine&&infos.some(function(o){ return o.id!==info.id&&infoCovers(o,c.ref); });
-    var cb=el("input",{type:"checkbox"}); cb.checked=mine; cb.disabled=!me.write;
+    var cb=el("input",{type:"checkbox"}); cb.checked=mine; cb.disabled=!canWrite();
     cb.addEventListener("change",function(){
       var f=infoList(info,"fields").filter(function(x){ return x!==c.ref&&x!==c.cn; });
       if(cb.checked) f.push(c.ref);
@@ -4306,7 +4496,7 @@ function renderKnowPanel(a,e){
     var bp=el("div",{class:"kpick"});
     (e.blocks||[]).slice().sort(function(x,y){return (x.order||0)-(y.order||0);}).forEach(function(b){
       var key=b.anchor||b.id, mine=infoList(info,"blocks").indexOf(key)>=0;
-      var cb=el("input",{type:"checkbox"}); cb.checked=mine; cb.disabled=!me.write;
+      var cb=el("input",{type:"checkbox"}); cb.checked=mine; cb.disabled=!canWrite();
       cb.addEventListener("change",function(){
         var l=infoList(info,"blocks").filter(function(x){return x!==key;});
         if(cb.checked) l.push(key);
@@ -4334,7 +4524,7 @@ function renderKnowPanel(a,e){
       if(t) rv.appendChild(el("button",{class:"ref",type:"button",
         onclick:function(){go({k:"art",id:t.id});}},nameOf(t)));
       else rv.appendChild(el("span",{class:"gone",text:"missing"}));
-      if(me.write) rv.appendChild(el("button",{class:"btn gh sm",type:"button",onclick:function(){
+      if(canWrite()) rv.appendChild(el("button",{class:"btn gh sm",type:"button",onclick:function(){
         info.relations=(info.relations||[]).filter(function(x){return x.id!==r.id;});
         persist(info); }},"×"));
       row.appendChild(rv); box.appendChild(row);
@@ -4342,7 +4532,7 @@ function renderKnowPanel(a,e){
     a.appendChild(box);
   }
 
-  if(me.write){
+  if(canWrite()){
     var to=relDef(REL_KNOWNBY).to||["*"];
     var add=el("select",{class:"i"});
     add.appendChild(el("option",{value:""},"— assign to …"));
@@ -4399,7 +4589,7 @@ function renderAside(){
 
   var outs=(e.relations||[]).filter(function(r){ var rd=REG.relations[r.type]; return !(rd&&rd.section); });
   var head=el("h3",{text:"Zeigt auf"});
-  if(me.write) head.appendChild(el("button",{class:"btn gh sm",type:"button",
+  if(canWrite()) head.appendChild(el("button",{class:"btn gh sm",type:"button",
     title:"Add relation",onclick:function(){addRelation(e);}},"+"));
   a.appendChild(head);
   if(!outs.length) a.appendChild(el("p",{class:"hint",text:"Keine."}));
@@ -4413,7 +4603,7 @@ function renderAside(){
       if(t) rv.appendChild(el("button",{class:"ref",type:"button",onclick:function(){go({k:"art",id:t.id});}},nameOf(t)));
       else rv.appendChild(el("span",{class:"gone",text:"missing"}));
       if(r.props&&r.props.note) rv.appendChild(el("span",{class:"bind",text:r.props.note}));
-      if(me.write) rv.appendChild(el("button",{class:"btn gh sm",type:"button",onclick:function(){
+      if(canWrite()) rv.appendChild(el("button",{class:"btn gh sm",type:"button",onclick:function(){
         e.relations=e.relations.filter(function(x){return x.id!==r.id;}); persist(e); }},"×"));
       row.appendChild(rv); box.appendChild(row);
     });
@@ -4516,7 +4706,7 @@ function renderRegistry(v){
   v.appendChild(msg);
 
   var bar=el("div",{class:"rowbtns"});
-  if(me.write) bar.appendChild(el("button",{class:"btn pri",type:"button",onclick:function(){
+  if(canWrite()) bar.appendChild(el("button",{class:"btn pri",type:"button",onclick:function(){
     try{ var parsed=JSON.parse(ta.value); }
     catch(x){ msg.textContent="Not valid JSON: "+x.message; return; }
     REG[UI.regtab]=parsed; saveReg(UI.regtab); msg.textContent=""; render();
@@ -4533,7 +4723,7 @@ function regIfaceEditor(v){
   var namen=Object.keys(REG.interfaces);
   if(!namen.length){
     v.appendChild(el("div",{class:"empty",text:"No interfaces yet."}));
-    if(me.write) v.appendChild(newInterfaceBar(""));
+    if(canWrite()) v.appendChild(newInterfaceBar(""));
     return;
   }
   if(!REG.interfaces[UI.regiface]) UI.regiface=ifaceRoots()[0]||namen.sort()[0];
@@ -4555,7 +4745,7 @@ function regIfaceEditor(v){
   grid.appendChild(tree);
   grid.appendChild(regIfaceBody(UI.regiface));
   v.appendChild(grid);
-  if(me.write) v.appendChild(newInterfaceBar(""));
+  if(canWrite()) v.appendChild(newInterfaceBar(""));
 }
 
 function newInterfaceBar(unter){
@@ -4579,7 +4769,7 @@ function renderComponentEditor(v){
   var names=Object.keys(REG.components).sort();
   if(!names.length){
     v.appendChild(el("div",{class:"empty",text:"No components yet."}));
-    if(me.write) v.appendChild(newComponentBar());
+    if(canWrite()) v.appendChild(newComponentBar());
     return;
   }
   if(names.indexOf(UI.regcomp2)<0) UI.regcomp2=names[0];
@@ -4598,7 +4788,7 @@ function renderComponentEditor(v){
   grid.appendChild(list);
   grid.appendChild(componentBody(UI.regcomp2));
   v.appendChild(grid);
-  if(me.write) v.appendChild(newComponentBar());
+  if(canWrite()) v.appendChild(newComponentBar());
 }
 
 function newComponentBar(){
@@ -4615,7 +4805,7 @@ function newComponentBar(){
 }
 
 function componentBody(cn){
-  var cd=REG.components[cn], w=me.write;
+  var cd=REG.components[cn], w=canWrite();
   var box=el("div",{class:"regbody"});
   function save(){ saveReg("components"); render(); }
 
@@ -4677,7 +4867,7 @@ function renderRelationEditor(v){
   var names=Object.keys(REG.relations).sort();
   if(!names.length){
     v.appendChild(el("div",{class:"empty",text:"No relation types yet."}));
-    if(me.write) v.appendChild(newRelationBar());
+    if(canWrite()) v.appendChild(newRelationBar());
     return;
   }
   if(names.indexOf(UI.regrel)<0) UI.regrel=names[0];
@@ -4696,7 +4886,7 @@ function renderRelationEditor(v){
   grid.appendChild(list);
   grid.appendChild(relationBody(UI.regrel));
   v.appendChild(grid);
-  if(me.write) v.appendChild(newRelationBar());
+  if(canWrite()) v.appendChild(newRelationBar());
 }
 
 function newRelationBar(){
@@ -4714,7 +4904,7 @@ function newRelationBar(){
 }
 
 function relationBody(rt){
-  var rd=REG.relations[rt], w=me.write;
+  var rd=REG.relations[rt], w=canWrite();
   var box=el("div",{class:"regbody"});
   function save(){ saveReg("relations"); render(); }
 
@@ -4783,7 +4973,7 @@ function relationBody(rt){
    Kampagnenvariablen: die dritte und letzte Stufe, auf der {VAR} auflöst.
    Kante → nutzender Artikel → hier. */
 function renderVarEditor(v){
-  var w=me.write;
+  var w=canWrite();
   v.appendChild(el("p",{class:"hint",
     text:"Campaign-wide values for {VAR}. A binding on an edge wins, then the article using it, then these."}));
   var keys=Object.keys(REG.vars||{}).sort();
@@ -4838,7 +5028,7 @@ var SETTING_HINTS={
   partyLevel:"Party level, for encounter budgeting"
 };
 function renderSettingsEditor(v){
-  var w=me.write;
+  var w=canWrite();
   v.appendChild(el("p",{class:"hint",
     text:"Campaign settings. Each area reads the keys it knows and ignores the rest — the store has no schema on purpose, so a setting can exist before anything reads it."}));
   var keys=Object.keys(REG.settings||{}).sort();
@@ -4997,7 +5187,7 @@ function renderViewEditor(v){
   var keys=viewKeys();
   if(!keys.length){
     v.appendChild(el("div",{class:"empty",text:"No views yet."}));
-    if(me.write) v.appendChild(newViewBar());
+    if(canWrite()) v.appendChild(newViewBar());
     return;
   }
   if(keys.indexOf(UI.regview)<0) UI.regview=keys[0];
@@ -5014,7 +5204,7 @@ function renderViewEditor(v){
   grid.appendChild(list);
   grid.appendChild(viewBody(UI.regview));
   v.appendChild(grid);
-  if(me.write) v.appendChild(newViewBar());
+  if(canWrite()) v.appendChild(newViewBar());
 }
 
 function newViewBar(){
@@ -5034,7 +5224,7 @@ function newViewBar(){
 }
 
 function viewBody(key){
-  var vd=REG.views[key], w=me.write;
+  var vd=REG.views[key], w=canWrite();
   var box=el("div",{class:"regbody"});
   function save(){ saveReg("views"); render(); }
 
@@ -5276,7 +5466,7 @@ function viewBody(key){
 }
 
 function regIfaceBody(ifn){
-  var d=REG.interfaces[ifn], w=me.write;
+  var d=REG.interfaces[ifn], w=canWrite();
   var box=el("div",{class:"regbody"});
   function save(){ saveReg("interfaces"); render(); }
   function saveC(){ saveReg("components"); render(); }
@@ -6328,7 +6518,7 @@ function importDialog(){
 /* ============================================================
    BOOT
    ============================================================ */
-document.getElementById("new").addEventListener("click",function(){ if(me.write)newEntity(); });
+document.getElementById("new").addEventListener("click",function(){ if(canWrite())newEntity(); });
 document.getElementById("q").addEventListener("input",function(ev){
   UI.q=ev.target.value; if(UI.route.k!=="list")UI.route={k:"list"}; render(); });
 var viewSel=document.getElementById("facet");
@@ -6363,7 +6553,20 @@ render();
   /* Nur Schreibberechtigte bekommen die Ablage; `null` heisst hier nicht
      „kaputt", sondern „diese Ansicht darf nicht hochladen". */
   assetStore=erg[2];
-  try{ if(erg[1]){ var w=await erg[1].can("data.write"); if(w===false) me.write=false; } }catch(x){}
+
+  /* Wer zusieht. `isOwner` ist die Spielleitung — im Artefakt gibt es keine
+     zweite Stelle, an der eine Rolle stünde, und eine erfundene wäre eine
+     Behauptung. Die Zuordnung Nutzer → Figur steht dagegen in den Daten
+     (Access-Karte), damit sie die Spielleitung ändern kann. */
+  try{
+    if(erg[1]){
+      me.gm=await erg[1].isOwner();
+      if(erg[1].id) me.id=(await erg[1].id())||"";
+      var w=await erg[1].can("data.write");
+      if(w===false) me.base=false;
+    }
+  }catch(x){}
+  try{ if(erg[1]){ var w=await erg[1].can("data.write"); if(w===false) canWrite()=false; } }catch(x){}
 
   if(!db){
     ready=true;
@@ -6403,6 +6606,9 @@ render();
     });
     ENT=neu;
     ready=true;
+    /* Erst mit den Artikeln steht fest, wen dieser Nutzer spielt — die
+       Zuordnung liegt in den Daten, nicht in der Sitzung. */
+    me.actor=actorForUser(me.id);
     UI.err="";   // eine frühere Wachmeldung ist mit den Daten erledigt
     render();
   }),function(e){ UI.err="Articles: "+e.code; ready=true; render(); });

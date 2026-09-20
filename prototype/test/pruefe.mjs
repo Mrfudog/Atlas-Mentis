@@ -1496,6 +1496,90 @@ async function seite(datei, warten) {
     pruefe('a quest with tasks and a party exist in the data', false, auftrag);
   }
 
+  /* ---- Zugang und Spieleransicht (REQ-031 bis 040, 119, 128) ----
+     Der Prüfstein: zwei Charaktere, dasselbe Rezept, verschiedene Seiten.
+     Gilt der Filter nur für die Blöcke oder nur für die Felder, sieht man es
+     an einer einzelnen Ansicht nicht — erst im Vergleich. */
+  const paar2 = await p.evaluate(() => {
+    const alle = [...window.__T__.ENT.values()];
+    const rec = alle.find((e) => (e.interfaces || [])[0] === 'Recipe'
+      && (e.relations || []).some((r) => r.type === 'knowledge'));
+    const info = rec && window.__T__.ENT.get(
+      rec.relations.find((r) => r.type === 'knowledge').to);
+    const kenner = info && (info.relations || []).find((r) => r.type === 'knownBy');
+    const pcs = alle.filter((e) => (e.interfaces || [])[0] === 'PlayerCharacter');
+    const fremd = pcs.find((e) => !kenner || e.id !== kenner.to);
+    return {
+      rec: rec ? (rec.name || rec.components.Name.text) : null,
+      kennerId: kenner ? kenner.to : null,
+      fremdId: fremd ? fremd.id : null,
+    };
+  });
+  if (paar2.rec && paar2.kennerId && paar2.fremdId) {
+    await oeffne(paar2.rec);
+    await p.evaluate(() => {
+      const f = document.getElementById('facet');
+      f.value = 'full';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(400);
+    const sicht = async (id) => {
+      await p.evaluate((v) => {
+        const s2 = document.getElementById('asview');
+        s2.value = v;
+        s2.dispatchEvent(new Event('change', { bubbles: true }));
+      }, id);
+      await p.waitForTimeout(450);
+      return p.evaluate(() => ({
+        felder: [...document.querySelectorAll('.fld dt')].map((x) => x.textContent),
+        bloecke: [...document.querySelectorAll('.blk .bl')].map((x) => x.textContent.replace('×', '')),
+        rail: [...document.querySelectorAll('.rail h3')].map((x) => x.textContent),
+      }));
+    };
+    const alsGM = await sicht('');
+    const alsKenner = await sicht(paar2.kennerId);
+    const alsFremd = await sicht(paar2.fremdId);
+
+    pruefe('the GM sees everything',
+      alsGM.bloecke.includes('secret') && alsGM.felder.length > alsFremd.felder.length, alsGM);
+    /* Wer die Information kennt, sieht ihre Felder und ihren Block — auch
+       wenn der Block `secret` heisst: eine ausdrückliche Freigabe schlägt
+       die Voreinstellung, sonst wäre jede Freigabe wirkungslos. */
+    pruefe('a granted secret block reaches the one who knows it',
+      alsKenner.bloecke.includes('secret') && !alsFremd.bloecke.includes('secret'),
+      { alsKenner: alsKenner.bloecke, alsFremd: alsFremd.bloecke });
+    pruefe('a field of an unknown information is gone for the other one',
+      alsKenner.felder.length > alsFremd.felder.length
+      && alsFremd.felder.every((f) => alsKenner.felder.includes(f)),
+      { alsKenner: alsKenner.felder, alsFremd: alsFremd.felder });
+    /* Für einen Spieler gibt es kein Register. Auszugrauen wäre eine
+       Einladung; wegzulassen ist die Antwort. */
+    pruefe('a player gets no data model in the rail',
+      alsGM.rail.includes('System') && !alsFremd.rail.includes('System'),
+      { alsGM: alsGM.rail, alsFremd: alsFremd.rail });
+
+    const zugesperrt = await p.evaluate(() => {
+      window.__T__.UI.route = { k: 'reg' };
+      return null;
+    });
+    await p.evaluate(() => {
+      const b2 = [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent));
+      if (b2) b2.click();
+    });
+    await p.waitForTimeout(300);
+    await p.evaluate(() => {
+      const s2 = document.getElementById('asview');
+      s2.value = '';
+      s2.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(350);
+    pruefe('the viewing-as switch goes back to the GM',
+      await p.evaluate(() => !document.body.classList.contains('asplayer')), zugesperrt);
+    pruefe('the player view raised no exception', errs.length === 0, errs);
+  } else {
+    pruefe('two characters and a guarded recipe exist in the data', false, paar2);
+  }
+
   pruefe('knowledge needed no browser modal', modale.length === 0, modale);
   pruefe('no exception through the knowledge panel', errs.length === 0, errs);
 

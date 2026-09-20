@@ -31,7 +31,7 @@ export const interfaces: Record<string, InterfaceDef> = {
        seine Zahlen selbst, ein NSC borgt sie meist von einem Statblock über
        `belongsTo`. Der Bogen liest beides — erst die eigene Karte, dann die
        geborgte — statt eine der beiden Formen zu verbieten. */
-    allows: ['CreatureInfo', 'Vars', 'StatblockInfo', 'Vitals', 'Skills'],
+    allows: ['CreatureInfo', 'Vars', 'StatblockInfo', 'Vitals', 'Skills', 'Access'],
     blockTypes: ['+appearance', '+personality', '+lore', '+fact', '+secret', '+readaloud'],
   },
 
@@ -147,7 +147,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Party',
     label: 'Party',
     extends: ['Base'],
-    allows: ['PartyInfo'],
+    allows: ['PartyInfo', 'Access'],
     blockTypes: ['+lore', '+note'],
   },
 

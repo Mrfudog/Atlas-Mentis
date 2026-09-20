@@ -730,4 +730,32 @@ export const components: Record<string, ComponentDef> = {
       },
     },
   },
+
+  /**
+   * Wer diese Figur spielt (REQ-033, 035, 036). Die Zuordnung steht in den
+   * Daten und nicht in der Sitzung, damit die Spielleitung sie ändern kann,
+   * ohne dass jemand sich neu anmeldet.
+   *
+   * Gespeichert wird die undurchsichtige Nutzer-Id, nie ein Name: Namen
+   * unterscheiden sich je Betrachter, frieren beim Schreiben ein und
+   * überleben Menschen.
+   */
+  Access: {
+    name: 'Access',
+    label: 'Access',
+    engine: 'Access',
+    schema: {
+      type: 'object',
+      properties: {
+        userIds: { type: 'array', title: 'User ids', items: { type: 'string' } },
+        role: {
+          type: 'string',
+          title: 'Role',
+          enum: ['player', 'co-gm', 'spectator'],
+          default: 'player',
+        },
+        note: { type: 'string', title: 'Note' },
+      },
+    },
+  },
 };

@@ -31,6 +31,9 @@ export const settings: Record<string, string> = {
     'history:int,insight:wis,intimidation:cha,investigation:int,medicine:wis,' +
     'nature:int,perception:wis,performance:cha,persuasion:cha,religion:int,' +
     'sleightOfHand:dex,stealth:dex,survival:wis',
+  /* Blockarten, die ein Spieler nicht sieht. Als Einstellung, weil eine
+     Kampagne das anders halten darf. */
+  gmBlockTypes: 'secret,tactics',
   conditions:
     'blinded,charmed,deafened,frightened,grappled,incapacitated,invisible,' +
     'paralysed,petrified,poisoned,prone,restrained,stunned,unconscious',
