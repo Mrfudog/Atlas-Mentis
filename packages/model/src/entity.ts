@@ -18,7 +18,7 @@ import type {
 
 export function entityName(entity: Entity | undefined): string {
   if (!entity) return 'Ohne Namen';
-  const ausKarte = entity.components?.['Base']?.['text'];
+  const ausKarte = entity.components?.['Identity']?.['name'];
   return entity.name || (typeof ausKarte === 'string' ? ausKarte : '') || 'Ohne Namen';
 }
 
@@ -220,7 +220,7 @@ export function findByName(entities: Iterable<Entity>, name: string): Entity | u
   if (!needle) return undefined;
   for (const entity of entities) {
     if (entityName(entity).toLowerCase() === needle) return entity;
-    const aliases = entity.components?.['Base']?.['aliases'];
+    const aliases = entity.components?.['Identity']?.['aliases'];
     if (Array.isArray(aliases) && aliases.some((a) => String(a).toLowerCase() === needle)) {
       return entity;
     }

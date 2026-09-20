@@ -12,7 +12,7 @@
  *   properties are pooled rule articles. Importing them as text would copy
  *   what should be shared — the same loss the old app's statblock export made.
  *
- * Whatever the importer cannot place is kept verbatim in `Base.imported`
+ * Whatever the importer cannot place is kept verbatim in `Imported.text`
  * (REQ-019), so nothing is lost merely because this parser did not expect it.
  */
 
@@ -106,17 +106,11 @@ export function parseItem(text: string, filename: string): ImportedItem {
     if (target) pending.push({ relation: 'hasProperty', target });
   }
 
-  /* Eine Karte je Art: was `Base` erklärt, steht auf `Base`. */
+  /* Eine Karte je Art: jeder Bestandteil trägt seine eigenen Felder. */
   const components: Entity['components'] = {
-    Base: {
-      text: name,
-      key: `${slug(iface)}/${slug(name)}`,
-      aliases: list(fm, 'aliases'),
-      value: 'used',
-      imported: text,
-      format: 'obsidian',
-      importedAt: new Date().toISOString().slice(0, 10),
-    },
+    Identity: { name, key: `${slug(iface)}/${slug(name)}`, aliases: list(fm, 'aliases') },
+    Status: { status: 'used' },
+    Imported: { text, format: 'obsidian', at: new Date().toISOString().slice(0, 10) },
   };
 
   const itemInfo: Record<string, unknown> = {};
@@ -160,7 +154,7 @@ export function parseItem(text: string, filename: string): ImportedItem {
     if (Object.keys(material).length) components['Material'] = material;
   }
 
-  if (images[0]) components['Base'] = { ...(components['Base'] ?? {}), url: images[0], caption: '' };
+  if (images[0]) components['Image'] = { url: images[0], caption: '' };
 
   // Prose that is neither the image embed nor the Dataview block.
   const prose = body

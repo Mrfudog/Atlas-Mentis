@@ -136,7 +136,7 @@ describe('interface inheritance', () => {
   it('gathers the fields of every type up the extends chain', () => {
     const felder = fieldsOf(seedRegistry, 'NPC');
     const wo = (k: string) => felder.find((f) => f.key === k)?.type;
-    expect(wo('text')).toBe('Base'); // von Base
+    expect(wo('name')).toBe('Identity'); // von Identity
     expect(wo('species')).toBe('Creature'); // von Creature
     /* Seit dem Charakterbogen darf ein Geschöpf seine Zahlen auch selbst
        tragen: ein Spielercharakter tut das, ein NSC borgt sie meist über

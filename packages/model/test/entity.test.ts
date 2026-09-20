@@ -5,14 +5,14 @@ import type { Entity, Registry } from '../src/types.js';
 
 const registry: Registry = {
   interfaces: {
-    Base: {
-      name: 'Base',
+    Identity: {
+      name: 'Identity',
       abstract: true,
       schema: {
         type: 'object',
-        required: ['text'],
+        required: ['name'],
         properties: {
-          text: { type: 'string' },
+          name: { type: 'string' },
           key: { type: 'string' },
           aliases: { type: 'array', items: { type: 'string' } },
         },
@@ -20,7 +20,7 @@ const registry: Registry = {
     },
     NPC: {
       name: 'NPC',
-      extends: ['Base'],
+      extends: ['Identity'],
       schema: { type: 'object', properties: { rolle: { type: 'string' } } },
     },
     /* Eigener Obertyp, damit `StatblockInfo` eine Karte bleibt — dieselbe
@@ -34,7 +34,7 @@ const registry: Registry = {
         properties: { system: { type: 'string' }, ac: { type: 'number' } },
       },
     },
-    Statblock: { name: 'Statblock', extends: ['Base', 'StatblockInfo'] },
+    Statblock: { name: 'Statblock', extends: ['Identity', 'StatblockInfo'] },
   },
   relations: {
     schuldet: { type: 'schuldet', label: 'schuldet', inverseLabel: 'Gläubiger von', from: ['NPC'], to: ['NPC'] },
@@ -50,7 +50,7 @@ const volo: Entity = {
   name: 'Volo Geddarm',
   tags: [],
   components: {
-    Base: { text: 'Volo Geddarm', key: 'npc/volo', aliases: ['Volothamp Geddarm', 'Der Dicke'] },
+    Identity: { name: 'Volo Geddarm', key: 'npc/volo', aliases: ['Volothamp Geddarm', 'Der Dicke'] },
   },
   relations: [{ id: 'r1', type: 'schuldet', to: 'n_floon', props: { note: '80 Drachen' } }],
 };
@@ -60,7 +60,7 @@ const floon: Entity = {
   interfaces: ['NPC'],
   name: 'Floon Blagmaar',
   tags: [],
-  components: { Base: { text: 'Floon Blagmaar' } },
+  components: { Identity: { name: 'Floon Blagmaar' } },
 };
 
 describe('backlinks', () => {
@@ -113,7 +113,7 @@ describe('splitRelations', () => {
   it('separates composition sections from plain references', () => {
     const statblock: Entity = {
       id: 'sb', interfaces: ['Statblock'], name: 'Schleim', tags: [],
-      components: { Base: { text: 'Schleim' }, StatblockInfo: { system: 'dnd5e' } },
+      components: { Identity: { name: 'Schleim' }, StatblockInfo: { system: 'dnd5e' } },
       relations: [
         { id: 'a', type: 'composedOf', to: 'r_amorph' },
         { id: 'b', type: 'schuldet', to: 'n_floon' },
@@ -133,7 +133,7 @@ describe('validateEntity', () => {
   /* Eine fehlende Karte ist kein eigener Fall mehr: wo sie fehlt, fehlen
      ihre Pflichtfelder, und genau das steht da. */
   it('reports the required fields of a card that is not there at all', () => {
-    const broken: Entity = { ...volo, interfaces: ['Statblock'], components: { Base: { text: 'x' } } };
+    const broken: Entity = { ...volo, interfaces: ['Statblock'], components: { Identity: { name: 'x' } } };
     const issue = validateEntity(registry, broken).find((i) => i.code === 'missing_property');
     expect(issue?.component).toBe('StatblockInfo');
     expect(issue?.property).toBe('system');
@@ -142,7 +142,7 @@ describe('validateEntity', () => {
   it('reports a missing required property', () => {
     const broken: Entity = {
       id: 'sb', interfaces: ['Statblock'], name: 'x', tags: [],
-      components: { Base: { text: 'x' }, StatblockInfo: {} },
+      components: { Identity: { name: 'x' }, StatblockInfo: {} },
     };
     const issue = validateEntity(registry, broken).find((i) => i.code === 'missing_property');
     expect(issue?.property).toBe('system');

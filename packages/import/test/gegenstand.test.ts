@@ -102,9 +102,9 @@ describe('parseItem', () => {
 
   it('takes the image embed as the Image component', () => {
     const kette = parseItem(read('Kettenrüstung.md').text, 'Kettenrüstung.md');
-    const basis = kette.entity.components['Base'] as Record<string, unknown>;
-    expect(basis['url']).toBe('Kettenrüstung.png');
-    expect(basis['caption']).toBe('');
+    const bild = kette.entity.components['Image'] as Record<string, unknown>;
+    expect(bild['url']).toBe('Kettenrüstung.png');
+    expect(bild['caption']).toBe('');
     expect(kette.images).toEqual(['Kettenrüstung.png']);
   });
 
@@ -119,8 +119,8 @@ describe('parseItem', () => {
   it('keeps the original file verbatim (REQ-019)', () => {
     for (const file of files) {
       const parsed = parseItem(read(file).text, file);
-      const raw = parsed.entity.components['Base'] as Record<string, unknown>;
-      expect(raw['imported']).toBe(read(file).text);
+      const raw = parsed.entity.components['Imported'] as Record<string, unknown>;
+      expect(raw['text']).toBe(read(file).text);
       expect(raw['format']).toBe('obsidian');
     }
   });

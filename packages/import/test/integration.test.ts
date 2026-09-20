@@ -94,7 +94,7 @@ describe('the pool is shared, not copied', () => {
     // Every rule exists exactly once per distinct name+text.
     const keys = report.rules.map(
       (r) =>
-        `${r.name}\u0000${(r.components['Base'] as Record<string, unknown>)['raw'] as string}`,
+        `${r.name}\u0000${(r.components['Description'] as Record<string, unknown>)['description'] as string}`,
     );
     expect(new Set(keys).size).toBe(keys.length);
   });

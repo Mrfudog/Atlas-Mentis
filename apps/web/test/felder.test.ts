@@ -19,8 +19,8 @@ describe('eingabeArt', () => {
     expect(eingabeArt(map['fog'])).toBe('jaNein');
     expect(eingabeArt(map['reveal'])).toBe('liste');
     expect(eingabeArt(map['scale'])).toBe('text');
-    const basis = seedRegistry.interfaces.Base.schema?.properties ?? {};
-    expect(eingabeArt(basis['raw'])).toBe('lang'); // format: long
+    const beschr = seedRegistry.interfaces.Description.schema?.properties ?? {};
+    expect(eingabeArt(beschr['description'])).toBe('lang'); // format: long
   });
 
   it('falls back to plain text rather than guessing', () => {

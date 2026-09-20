@@ -270,10 +270,10 @@ export function redactEntity(
   /* Der Deckname. Er ist die einzige Stelle, an der etwas eingesetzt und
      nicht weggelassen wird — ein Artikel ohne Namen wäre unbrauchbar, und
      „jemand" ist ehrlicher als nichts. */
-  const basis = (article.components ?? {})['Base'] as { cover?: string } | undefined;
-  if (!erlaubtF.has('Base.text')) {
-    const cover = basis?.cover;
-    components['Base'] = { ...(components['Base'] ?? {}), text: cover || 'jemand' };
+  const wer = (article.components ?? {})['Identity'] as { cover?: string } | undefined;
+  if (!erlaubtF.has('Identity.name')) {
+    const cover = wer?.cover;
+    components['Identity'] = { ...(components['Identity'] ?? {}), name: cover || 'jemand' };
   }
 
   const blocks = (article.blocks ?? []).filter((b) => {
@@ -286,7 +286,7 @@ export function redactEntity(
   /* Auch der bequeme Name oben am Artikel. Ihn stehen zu lassen wäre die
      Art Lücke, die niemand sucht: die Karte ist gesiebt, und daneben steht
      der Name im Klartext. */
-  const name = (components['Base']?.['text'] as string | undefined) ?? article.name;
+  const name = (components['Identity']?.['name'] as string | undefined) ?? article.name;
 
   return { ...article, name, components, blocks } as Entity;
 }

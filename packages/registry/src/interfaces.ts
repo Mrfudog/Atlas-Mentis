@@ -81,31 +81,85 @@ export const interfaces: Record<string, InterfaceDef> = {
     schema: g.Skills.schema,
   },
 
-  Base: {
-    name: 'Base',
-    label: 'Base',
+  /* ---------- Basistypen ----------
+     Jeder erklärt Felder und erbt nichts. Was eine Artikelart braucht,
+     nimmt sie dazu — deshalb trägt ein Ereignis kein Bild, und zwar nicht,
+     weil jemand ein Feld ausgeblendet hat, sondern weil es keins hat.
+
+     Vorher stand das alles in einem Sammeltyp `Base`, den jede Art erbte:
+     28 Felder, von denen 17 in keinem einzigen der 73 Artikel belegt waren.
+     Ein Ereignis schleppte Bildunterschrift, Alt-Text und Seitenzahl mit. */
+
+  /** Wer der Artikel ist. Das erbt jede Artikelart. */
+  Identity: {
+    name: 'Identity',
+    label: 'Identity',
     abstract: true,
-    /* Die Felder, die jeder Artikel hat. `SourceRef` und `WorldDate` stehen
-       mit darin und nicht als Obertypen: sie hatten ausser `Base` keinen
-       Nutzer, und als erste Einträge in `extends` hätten sie den Artenbaum
-       unter sich gehängt — die erste Zeile in `extends` ist die, an der der
-       Baum zeichnet. `Status` ist Pflicht und nicht
-       optional: jeder Artikel hat einen Stand, und als freiwilliges Feld
-       fehlte er der Hälfte. */
-    schema: merge(
-      g.Name,
-      g.Identity,
-      g.Status,
-      g.Description,
-      g.Visibility,
-      g.Image,
-      g.RawContent,
-      g.Todos,
-      g.SourceRef,
-      g.WorldDate,
-    ),
+    schema: g.Identity.schema,
+    /* Die Blockarten, die überall gelten. Sie stehen hier, weil `Identity`
+       der einzige Typ ist, den wirklich jede Art erbt. */
     blockTypes: ['paragraph', 'note'],
   },
+
+  Status: {
+    name: 'Status',
+    label: 'Status',
+    abstract: true,
+    schema: g.Status.schema,
+  },
+
+  Description: {
+    name: 'Description',
+    label: 'Description',
+    abstract: true,
+    schema: g.Description.schema,
+  },
+
+  Visibility: {
+    name: 'Visibility',
+    label: 'Visibility',
+    abstract: true,
+    schema: g.Visibility.schema,
+  },
+
+  /** Wann etwas in der Welt steht: `sort` ordnet, `display` wird gelesen. */
+  Time: {
+    name: 'Time',
+    label: 'Time',
+    abstract: true,
+    schema: g.Time.schema,
+  },
+
+  Image: {
+    name: 'Image',
+    label: 'Image',
+    abstract: true,
+    schema: g.Image.schema,
+  },
+
+  /** Woher es stammt: Buch, Seite, Anker, Adresse. */
+  Source: {
+    name: 'Source',
+    label: 'Source',
+    abstract: true,
+    schema: g.Source.schema,
+  },
+
+  /** Der Wortlaut, wie er aus dem Vault kam (REQ-019). */
+  Imported: {
+    name: 'Imported',
+    label: 'Imported',
+    abstract: true,
+    schema: g.Imported.schema,
+  },
+
+  Todos: {
+    name: 'Todos',
+    label: 'Todos',
+    abstract: true,
+    schema: g.Todos.schema,
+  },
+
 
   /**
    * Abstract, and the reason the rows below are short: everything that walks
@@ -117,7 +171,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     area: 'world',
     label: 'Creature',
     abstract: true,
-    extends: ['Base', 'Vars', 'StatblockInfo', 'Access', 'Vitals', 'Skills'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Image', 'Imported', 'Source', 'Vars', 'StatblockInfo', 'Access', 'Vitals', 'Skills'],
     schema: g.CreatureInfo.schema,
     /* `StatblockInfo` darf hier direkt liegen: ein Spielercharakter trägt
        seine Zahlen selbst, ein NSC borgt sie meist von einem Statblock über
@@ -160,7 +214,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Place',
     area: 'world',
     label: 'Place',
-    extends: ['Base'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Image', 'Imported'],
     schema: merge(g.LocationInfo, g.Explored),
     blockTypes: ['+lore', '+readaloud', '+secret'],
   },
@@ -169,7 +223,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Faction',
     area: 'world',
     label: 'Faction',
-    extends: ['Base'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Image'],
     schema: merge(g.FactionInfo),
     blockTypes: ['+lore', '+secret'],
   },
@@ -178,16 +232,16 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Article',
     area: 'world',
     label: 'Article',
-    extends: ['Base'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Imported', 'Source', 'Todos'],
     blockTypes: ['+lore', '+secret', '+poem', '+song'],
   },
 
   /** The reuse pool: traits, actions, conditions, feats — all one interface. */
   Rule: {
     name: 'Rule',
-    area: 'game',
+    area: 'rules',
     label: 'Rule Element',
-    extends: ['Base', 'Vars'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Source', 'Imported', 'Vars'],
     schema: merge(g.RuleInfo),
   },
 
@@ -199,7 +253,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Feat: {
     name: 'Feat',
-    area: 'game',
+    area: 'rules',
     label: 'Feat',
     extends: ['Rule'],
     schema: merge(g.FeatInfo),
@@ -207,7 +261,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Skill: {
     name: 'Skill',
-    area: 'game',
+    area: 'rules',
     label: 'Skill',
     extends: ['Rule'],
     schema: merge(g.SkillInfo),
@@ -216,9 +270,9 @@ export const interfaces: Record<string, InterfaceDef> = {
   /** An entity of its own (D4), referenced by creatures, never embedded. */
   Statblock: {
     name: 'Statblock',
-    area: 'world',
+    area: 'rules',
     label: 'Statblock',
-    extends: ['Base', 'StatblockInfo', 'Vars'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Source', 'Imported', 'StatblockInfo', 'Vars'],
     blockTypes: ['+tactics'],
   },
 
@@ -231,7 +285,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Item',
     area: 'world',
     label: 'Item',
-    extends: ['Base'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Image', 'Imported', 'Source'],
     schema: merge(g.ItemInfo, g.Footprint),
     blockTypes: ['+lore', '+secret', '+fact'],
   },
@@ -271,16 +325,16 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Party',
     area: 'world',
     label: 'Party',
-    extends: ['Base', 'Access'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Image', 'Access'],
     schema: merge(g.PartyInfo, g.TravelInfo),
     blockTypes: ['+lore', '+note'],
   },
 
   Inventory: {
     name: 'Inventory',
-    area: 'world',
+    area: 'rules',
     label: 'Inventory',
-    extends: ['Base'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility'],
     schema: merge(g.InventoryInfo),
     blockTypes: ['+note'],
   },
@@ -292,38 +346,38 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Story: {
     name: 'Story',
-    area: 'story',
+    area: 'history',
     label: 'Story',
     abstract: true,
-    extends: ['Base'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Todos', 'Time'],
     schema: merge(g.StoryInfo),
     blockTypes: ['+lore', '+secret', '+readaloud', '+note'],
   },
 
   Campaign: {
     name: 'Campaign',
-    area: 'story',
+    area: 'history',
     label: 'Campaign',
     extends: ['Story'],
   },
 
   Arc: {
     name: 'Arc',
-    area: 'story',
+    area: 'history',
     label: 'Arc',
     extends: ['Story'],
   },
 
   Chapter: {
     name: 'Chapter',
-    area: 'story',
+    area: 'history',
     label: 'Chapter',
     extends: ['Story'],
   },
 
   Session: {
     name: 'Session',
-    area: 'story',
+    area: 'history',
     label: 'Session',
     extends: ['Story'],
     schema: merge(g.SessionState),
@@ -332,7 +386,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Scene: {
     name: 'Scene',
-    area: 'story',
+    area: 'history',
     label: 'Scene / Encounter',
     extends: ['Story'],
     schema: merge(g.SceneInfo),
@@ -345,9 +399,9 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Quest: {
     name: 'Quest',
-    area: 'story',
+    area: 'history',
     label: 'Quest',
-    extends: ['Base'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Todos', 'Time'],
     schema: merge(g.QuestInfo),
     blockTypes: ['+lore', '+secret'],
   },
@@ -360,9 +414,9 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Information: {
     name: 'Information',
-    area: 'game',
+    area: 'rules',
     label: 'Information',
-    extends: ['Base'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility'],
     schema: merge(g.Info),
     blockTypes: ['+secret', '+fact'],
   },
@@ -374,9 +428,9 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   KnowledgeLevel: {
     name: 'KnowledgeLevel',
-    area: 'game',
+    area: 'rules',
     label: 'Knowledge level',
-    extends: ['Base'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility'],
     schema: merge(g.KnowledgeInfo),
   },
 
@@ -387,9 +441,8 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Asset: {
     name: 'Asset',
-    area: 'game',
     label: 'Asset',
-    extends: ['Base'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Image', 'Source'],
     schema: merge(g.AssetInfo),
   },
 
@@ -404,7 +457,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Map',
     area: 'play',
     label: 'Map',
-    extends: ['Base'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Image'],
     schema: merge(g.MapInfo),
     blockTypes: ['+note', '+secret', '+readaloud'],
   },
@@ -419,9 +472,9 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Recipe: {
     name: 'Recipe',
-    area: 'game',
+    area: 'rules',
     label: 'Recipe',
-    extends: ['Base'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Source', 'Imported'],
     schema: merge(g.RecipeInfo),
     blockTypes: ['+note', '+secret', '+lore'],
   },
@@ -436,7 +489,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Board',
     area: 'play',
     label: 'Board',
-    extends: ['Base'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility'],
     schema: merge(g.BoardInfo),
     blockTypes: ['+note'],
   },
@@ -451,7 +504,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Encounter',
     area: 'play',
     label: 'Encounter',
-    extends: ['Base'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Todos'],
     schema: merge(g.EncounterInfo),
     blockTypes: ['+tactics', '+readaloud', '+note', '+secret'],
   },
@@ -459,14 +512,41 @@ export const interfaces: Record<string, InterfaceDef> = {
   /**
    * Ein Ereignis in der Weltzeit (REQ-106). Es verlangt ein Weltdatum —
    * ohne das ist es kein Ereignis, sondern eine Notiz. Sortiert wird nach
-   * `Base.sort`, gelesen wird `Base.display`.
+   * `Time.sort`, gelesen wird `Time.display`.
    */
   Event: {
     name: 'Event',
-    area: 'story',
+    area: 'history',
     label: 'Event',
-    extends: ['Base'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Time'],
     blockTypes: ['+lore', '+secret', '+readaloud'],
+  },
+
+  /* ---------- Weltgeschichte ----------
+     `Story` ist die Geschichte des *Spiels* — Kampagne, Arc, Kapitel,
+     Sitzung, Szene. Was der Welt widerfuhr, bevor jemand sie bespielte,
+     hängt dagegen an `Event`: eine Ära dauert Jahrhunderte, ein Kataklysmus
+     Tage, ein Meilenstein einen Nachmittag. Drei Zeilen, keine Codeänderung
+     — genau das ist die Behauptung, die das Rückgrat macht. */
+  Era: {
+    name: 'Era',
+    area: 'history',
+    label: 'Era',
+    extends: ['Event'],
+  },
+
+  Cataclysm: {
+    name: 'Cataclysm',
+    area: 'history',
+    label: 'Cataclysm',
+    extends: ['Event'],
+  },
+
+  Milestone: {
+    name: 'Milestone',
+    area: 'history',
+    label: 'Milestone',
+    extends: ['Event'],
   },
 
   /**
@@ -477,9 +557,9 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Table: {
     name: 'Table',
-    area: 'game',
+    area: 'rules',
     label: 'Table',
-    extends: ['Base'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Source'],
     schema: merge(g.TableInfo),
     blockTypes: ['+note', '+secret'],
   },
@@ -492,9 +572,8 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Layer: {
     name: 'Layer',
-    area: 'game',
     label: 'Layer',
-    extends: ['Base'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility'],
     schema: merge(g.LayerInfo),
     blockTypes: ['+note'],
   },
@@ -510,9 +589,9 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Group: {
     name: 'Group',
-    area: 'game',
+    area: 'play',
     label: 'Group',
-    extends: ['Base'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility'],
     schema: merge(g.GroupInfo),
     blockTypes: ['+note'],
   },

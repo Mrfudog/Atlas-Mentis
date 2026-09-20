@@ -318,12 +318,12 @@ export class Artikel {
     const e = this.artikel();
     const v = this.view();
     if (!e || !v?.description) return null;
-    const d = e.components?.['Base'] as { raw?: string } | undefined;
-    return d?.raw ?? null;
+    const d = e.components?.['Description'] as { description?: string } | undefined;
+    return d?.description ?? null;
   });
 
   /**
-   * Die Feldzellen. `Base.raw` bleibt draussen, weil die Beschreibung schon
+   * Die Feldzellen. `Description.description` bleibt draussen, weil sie schon
    * als Absatz oben steht — sie zweimal zu zeigen wäre kein Fehler, aber es
    * liest sich wie einer.
    */
@@ -336,7 +336,7 @@ export class Artikel {
     for (const [comp, karte] of Object.entries(e.components ?? {})) {
       const def = r.interfaces[comp];
       for (const [prop, wert] of Object.entries((karte ?? {}) as Record<string, unknown>)) {
-        if (comp === 'Base' && prop === 'raw' && v.description) continue;
+        if (comp === 'Description' && prop === 'description' && v.description) continue;
         if (!showField(v, comp, prop)) continue;
         if (wert === null || wert === undefined || wert === '') continue;
         const titel = def?.schema?.properties?.[prop]?.title ?? prop;

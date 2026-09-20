@@ -18,15 +18,15 @@ interface FieldGroup {
 /* `satisfies` statt einer Annotation: so kennt der Übersetzer die Namen
    und `g.Vitals` ist nicht „vielleicht undefiniert". */
 export const fieldGroups = {
-  Name: {
-    schema: { type: 'object', required: ['text'], properties: { text: { type: 'string', title: 'Name' } } },
-  },
 
+  /* Wer der Artikel ist. Das erbt jede Artikelart — ohne Namen und ohne
+     Schlüssel gibt es nichts nachzuschlagen. */
   Identity: {
     schema: {
       type: 'object',
-      required: ['key'],
+      required: ['name', 'key'],
       properties: {
+        name: { type: 'string', title: 'Name' },
         key: { type: 'string', title: 'Key' },
         aliases: { type: 'array', title: 'Aliases', items: { type: 'string' } },
         /* Der Deckname (REQ-178): was ein Spieler sieht, solange der echte
@@ -39,7 +39,10 @@ export const fieldGroups = {
   },
 
   Description: {
-    schema: { type: 'object', properties: { raw: { type: 'string', format: 'long', title: 'Text' } } },
+    schema: {
+      type: 'object',
+      properties: { description: { type: 'string', format: 'long', title: 'Description' } },
+    },
   },
 
   Status: {
@@ -49,7 +52,7 @@ export const fieldGroups = {
         /* `default` gilt beim Anlegen, nicht rückwirkend. Bis hierher stand
            „idea" fest im Code, der Artikel anlegt — also genau die Sorte
            Wissen, die eine Registerzeile sein soll. */
-        value: {
+        status: {
           type: 'string',
           title: 'Status',
           enum: ['idea', 'planned', 'used', 'discarded'],
@@ -77,21 +80,14 @@ export const fieldGroups = {
     },
   },
 
-  /**
-   * REQ-019: an import keeps its original form beside the structured result.
-   *
-   * Das Feld hiess `raw` wie das in `Description` — solange beide in ihrer
-   * eigenen Karte standen, ging das gut. Sie stehen beide an `Base`, und
-   * sobald die Felder der Art gehören und nicht der Karte, ist es ein Name
-   * für zwei Sachen.
-   */
-  RawContent: {
+  /** REQ-019: an import keeps its original form beside the structured result. */
+  Imported: {
     schema: {
       type: 'object',
       properties: {
-        imported: { type: 'string', format: 'long', title: 'Original' },
+        text: { type: 'string', format: 'long', title: 'Original' },
         format: { type: 'string', title: 'Format', enum: ['obsidian', 'markdown', 'json', 'plain'] },
-        importedAt: { type: 'string', title: 'Imported at' },
+        at: { type: 'string', title: 'Imported at' },
       },
     },
   },
@@ -100,11 +96,11 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        /* `ref` zeigt auf ein Asset, eine Ablage-Id oder eine fremde Adresse
-           und wird vom Auflöser gelesen. `url` bleibt daneben stehen: die
-           vorhandenen Artikel tragen es, und ein Zwangsumzug brächte nichts,
-           was ein Blick auf beide Felder nicht auch bringt. */
-        ref: { type: 'string', format: 'asset', title: 'Image' },
+        /* `image` zeigt auf ein Asset, eine Ablage-Id oder eine fremde
+           Adresse und wird vom Auflöser gelesen. `url` bleibt daneben
+           stehen: die vorhandenen Artikel tragen es, und ein Zwangsumzug
+           brächte nichts, was ein Blick auf beide Felder nicht auch bringt. */
+        image: { type: 'string', format: 'asset', title: 'Image' },
         url: { type: 'string', title: 'Source (legacy)' },
         caption: { type: 'string', title: 'Caption' },
         alt: { type: 'string', title: 'Alt text' },
@@ -501,14 +497,14 @@ export const fieldGroups = {
   },
 
   /** Woher eine Angabe stammt (REQ-020) — Publikation, Seite, Anker. */
-  SourceRef: {
+  Source: {
     schema: {
       type: 'object',
       properties: {
         publication: { type: 'string', title: 'Publication' },
         page: { type: 'string', title: 'Page' },
         anchor: { type: 'string', title: 'Anchor' },
-        sourceUrl: { type: 'string', title: 'URL' },
+        url: { type: 'string', title: 'URL' },
       },
     },
   },
@@ -518,12 +514,22 @@ export const fieldGroups = {
    * und das andere gelesen wird: „Mirtul 12, 1492 DR" lässt sich nicht
    * vergleichen, und `14920512` liest niemand vor.
    */
-  WorldDate: {
+  /**
+   * Wann etwas in der Welt steht. `sort` ordnet, `display` wird gelesen.
+   *
+   * Eine **Spanne**, nicht ein Punkt: eine Ära dauert, ein Kataklysmus hat
+   * ein Ende, ein Meilenstein fällt auf einen Tag. Bliebe es bei einem
+   * Datum, wäre die Weltgeschichte eine Liste von Augenblicken — und für
+   * „das Dritte Zeitalter" müsste sich jemand etwas ausdenken.
+   */
+  Time: {
     schema: {
       type: 'object',
       properties: {
         sort: { type: 'number', title: 'Sortable value' },
         display: { type: 'string', format: 'date', title: 'Date' },
+        untilSort: { type: 'number', title: 'Sortable value of the end' },
+        until: { type: 'string', format: 'date', title: 'Until' },
         calendar: { type: 'string', title: 'Calendar' },
         duration: { type: 'string', title: 'Duration' },
       },

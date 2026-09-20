@@ -10,16 +10,11 @@ const volo: Entity = {
   interfaces: ['NPC'],
   name: 'Volo Geddarm',
   tags: ['händler'],
-  /* Eine Karte je Art: was `Base` erklärt, steht auf `Base`. `text` und
-     `key` sind Pflicht — ohne sie weist die Validierung den Artikel mit 422
-     ab, was sie soll. */
+  /* Eine Karte je Bestandteil. `name` und `key` sind Pflicht — ohne sie
+     weist die Validierung den Artikel mit 422 ab, was sie soll. */
   components: {
-    Base: {
-      text: 'Volo Geddarm',
-      key: 'npc/volo-geddarm',
-      aliases: ['Der Dicke'],
-      value: 'used',
-    },
+    Identity: { name: 'Volo Geddarm', key: 'npc/volo-geddarm', aliases: ['Der Dicke'] },
+    Status: { status: 'used' },
   },
   blocks: [],
   relations: [],
@@ -78,7 +73,7 @@ describe('registry', () => {
 
     const withRezept = {
       ...current.interfaces,
-      Rezept: { name: 'Rezept', label: 'Rezept', extends: ['Base'], allows: ['Description'] },
+      Rezept: { name: 'Rezept', label: 'Rezept', extends: ['Identity', 'Description'] },
     };
     const put = await inject({
       method: 'PUT',

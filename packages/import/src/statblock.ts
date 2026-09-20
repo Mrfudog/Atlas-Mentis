@@ -201,15 +201,9 @@ export function parseStatblock(text: string, filename: string): ImportedStatbloc
     name,
     tags: [],
     components: {
-      Base: {
-        text: name,
-        key: `statblock/${slug(name)}`,
-        aliases: list(fm, 'aliases'),
-        value: 'used',
-        imported: text,
-        format: 'obsidian',
-        importedAt: new Date().toISOString().slice(0, 10),
-      },
+      Identity: { name, key: `statblock/${slug(name)}`, aliases: list(fm, 'aliases') },
+      Status: { status: 'used' },
+      Imported: { text, format: 'obsidian', at: new Date().toISOString().slice(0, 10) },
       /* Die Zahlen bleiben ihre eigene Karte: `hp` heisst am Statblock etwas
          anderes als an der Kreatur, die gerade Schaden nimmt. */
       StatblockInfo: info,
@@ -280,13 +274,9 @@ export function importStatblocks(
             name: entry.name,
             tags: [],
             components: {
-              Base: {
-                text: entry.name,
-                key: `rule/${slug(entry.name)}`,
-                aliases: [],
-                value: 'used',
-                raw: entry.text,
-              },
+              Identity: { name: entry.name, key: `rule/${slug(entry.name)}`, aliases: [] },
+              Status: { status: 'used' },
+              Description: { description: entry.text },
               Rule: { kind: kindOf(group.section) },
             },
             adhoc: [],

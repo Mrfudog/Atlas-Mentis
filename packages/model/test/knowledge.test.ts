@@ -11,12 +11,12 @@ import type { Entity, EntityId, Registry } from '../src/types.js';
 
 const registry: Pick<Registry, 'interfaces'> = {
   interfaces: {
-    Base: { name: 'Base', abstract: true },
-    NPC: { name: 'NPC', extends: ['Base'] },
-    PlayerCharacter: { name: 'PlayerCharacter', extends: ['Base'] },
-    Party: { name: 'Party', extends: ['Base'] },
-    KnowledgeLevel: { name: 'KnowledgeLevel', extends: ['Base'] },
-    Information: { name: 'Information', extends: ['Base'] },
+    Identity: { name: 'Identity', abstract: true },
+    NPC: { name: 'NPC', extends: ['Identity'] },
+    PlayerCharacter: { name: 'PlayerCharacter', extends: ['Identity'] },
+    Party: { name: 'Party', extends: ['Identity'] },
+    KnowledgeLevel: { name: 'KnowledgeLevel', extends: ['Identity'] },
+    Information: { name: 'Information', extends: ['Identity'] },
   },
 };
 
@@ -26,7 +26,7 @@ function entity(id: string, name: string, extra: Partial<Entity> = {}): Entity {
     interfaces: ['NPC'],
     name,
     tags: [],
-    components: { Base: { text: name } },
+    components: { Identity: { name } },
     ...extra,
   };
 }
@@ -35,8 +35,8 @@ function entity(id: string, name: string, extra: Partial<Entity> = {}): Entity {
 const trueName = entity('i_name', 'Sein wahrer Name', {
   interfaces: ['Information'],
   components: {
-    Base: { text: 'Sein wahrer Name' },
-    Information: { fields: ['Base.aliases'], tier: 'secret' },
+    Identity: { name: 'Sein wahrer Name' },
+    Information: { fields: ['Identity.aliases'], tier: 'secret' },
   },
   relations: [{ id: 'r1', type: 'knownBy', to: 'pc_mara' }],
 });
@@ -44,7 +44,7 @@ const trueName = entity('i_name', 'Sein wahrer Name', {
 const rumour = entity('i_debt', 'Seine Schulden', {
   interfaces: ['Information'],
   components: {
-    Base: { text: 'Seine Schulden' },
+    Identity: { name: 'Seine Schulden' },
     Information: { fields: ['Creature'], blocks: ['b_secret'], tier: 'rumour' },
   },
   relations: [{ id: 'r2', type: 'knownBy', to: 'kl_street' }],
@@ -76,7 +76,7 @@ const entities = new Map<EntityId, Entity>(
   [baron, trueName, rumour, mara, torn, party, street].map((e) => [e.id, e]),
 );
 
-const ALL = ['Base.key', 'Base.aliases', 'Creature.attitude', 'StatblockInfo.ac'];
+const ALL = ['Identity.key', 'Identity.aliases', 'Creature.attitude', 'StatblockInfo.ac'];
 
 describe('knowledge', () => {
   it('findet die Informationen am Artikel', () => {
@@ -84,8 +84,8 @@ describe('knowledge', () => {
   });
 
   it('beansprucht ein Feld einzeln und eine Art ganz', () => {
-    expect(covers(trueName, 'Base', 'aliases')).toBe(true);
-    expect(covers(trueName, 'Base', 'key')).toBe(false);
+    expect(covers(trueName, 'Identity', 'aliases')).toBe(true);
+    expect(covers(trueName, 'Identity', 'key')).toBe(false);
     /* `Creature` ohne Punkt nimmt jedes Feld, das diese Art erklärt. */
     expect(covers(rumour, 'Creature', 'attitude')).toBe(true);
   });
@@ -106,7 +106,7 @@ describe('knowledge', () => {
   it('stellt das Offene voran und beansprucht den Rest', () => {
     const groups = knowledgeGroups(registry, entities, baron, ALL);
     expect(groups[0]?.open).toBe(true);
-    expect(groups[0]?.fields).toEqual(['Base.key', 'StatblockInfo.ac']);
+    expect(groups[0]?.fields).toEqual(['Identity.key', 'StatblockInfo.ac']);
     expect(groups[0]?.blocks).toEqual(['b_open']);
     expect(groups.map((g) => g.label)).toEqual(['Open', 'Sein wahrer Name', 'Seine Schulden']);
     expect(groups[2]?.blocks).toEqual(['b_secret']);
@@ -114,18 +114,18 @@ describe('knowledge', () => {
 
   it('zeigt einem Betrachter das Offene plus sein Wissen', () => {
     expect(visibleFields(registry, entities, baron, ALL, 'pc_mara')).toEqual([
-      'Base.key',
-      'Base.aliases',
+      'Identity.key',
+      'Identity.aliases',
       'StatblockInfo.ac',
     ]);
     expect(visibleFields(registry, entities, baron, ALL, 'pc_torn')).toEqual([
-      'Base.key',
+      'Identity.key',
       'Creature.attitude',
       'StatblockInfo.ac',
     ]);
     /* Ein Fremder sieht nur, was keine Information beansprucht. */
     expect(visibleFields(registry, entities, baron, ALL, 'pc_niemand')).toEqual([
-      'Base.key',
+      'Identity.key',
       'StatblockInfo.ac',
     ]);
     /* Und die Spielleitung alles. */

@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-09-20. 43 Schnittstellen, 41 Kantenarten.
+Stand 2026-09-20. 54 Schnittstellen, 41 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -12,356 +12,13 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ---
 
-## Story
-
-*Was passiert und passiert ist.* — 8 Arten.
-
-### Arc
-
-`Arc` · erbt von `Story` ← `Base`
-
-**Geerbte Felder**
-
-- *`Story`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `state` *planned | running | played | dropped*, `summary` *long*
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-
-**Kanten von hier**
-
-- `partOf` → Place | Story — „part of"
-- `describedIn` → Article — „described in"
-- `followsFrom` → Story — „follows"
-- `happensAt` → Place — „happens at"
-- `features` → Creature | NPC | Statblock | Faction — „features"
-- `knowledge` → Information — „knowledge about it"
-- `onMap` → Map — „fought on"
-- `loot` → Item | Information | Feat | Skill — „loot"
-- `tableFor` → Table — „rolls on"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- Place | Story | Quest — `partOf` → „contains"
-- PlayerCharacter — `playedBy` → „plays"
-- Story — `followsFrom` → „followed by"
-- Quest — `questAbout` → „concerned by"
-- Map — `mapOf` → „maps"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
-
-### Campaign
-
-`Campaign` · erbt von `Story` ← `Base`
-
-**Geerbte Felder**
-
-- *`Story`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `state` *planned | running | played | dropped*, `summary` *long*
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-
-**Kanten von hier**
-
-- `partOf` → Place | Story — „part of"
-- `describedIn` → Article — „described in"
-- `followsFrom` → Story — „follows"
-- `happensAt` → Place — „happens at"
-- `features` → Creature | NPC | Statblock | Faction — „features"
-- `knowledge` → Information — „knowledge about it"
-- `onMap` → Map — „fought on"
-- `loot` → Item | Information | Feat | Skill — „loot"
-- `tableFor` → Table — „rolls on"
-- `inLayer` → Layer — „from"
-- `activates` → Layer — „runs on"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- Place | Story | Quest — `partOf` → „contains"
-- PlayerCharacter — `playedBy` → „plays"
-- Story — `followsFrom` → „followed by"
-- Quest — `questAbout` → „concerned by"
-- Map — `mapOf` → „maps"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `Campaign`): `description`, `fields`, `stack`, `quests`, `timeline`, `prep`, `blocks`, `relations`
-
-### Chapter
-
-`Chapter` · erbt von `Story` ← `Base`
-
-**Geerbte Felder**
-
-- *`Story`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `state` *planned | running | played | dropped*, `summary` *long*
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-
-**Kanten von hier**
-
-- `partOf` → Place | Story — „part of"
-- `describedIn` → Article — „described in"
-- `followsFrom` → Story — „follows"
-- `happensAt` → Place — „happens at"
-- `features` → Creature | NPC | Statblock | Faction — „features"
-- `knowledge` → Information — „knowledge about it"
-- `onMap` → Map — „fought on"
-- `loot` → Item | Information | Feat | Skill — „loot"
-- `tableFor` → Table — „rolls on"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- Place | Story | Quest — `partOf` → „contains"
-- PlayerCharacter — `playedBy` → „plays"
-- Story — `followsFrom` → „followed by"
-- Quest — `questAbout` → „concerned by"
-- Map — `mapOf` → „maps"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
-
-### Event
-
-`Event` · erbt von `Base`
-
-**Geerbte Felder**
-
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-
-**Blöcke** `+lore` `+secret` `+readaloud`
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `involves` → * — „involves"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- PlayerCharacter — `playedBy` → „plays"
-- Quest — `questAbout` → „concerned by"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
-
-### Quest
-
-`Quest` · erbt von `Base`
-
-**Eigene Felder**
-
-- `state` *rumoured | offered | accepted | done | failed | abandoned*, `reward` *string*, `deadline` *string*, `restriction` *string*, `tasks` *array*
-
-**Geerbte Felder**
-
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-
-**Blöcke** `+lore` `+secret`
-
-**Kanten von hier**
-
-- `partOf` → Place | Story — „part of"
-- `describedIn` → Article — „described in"
-- `questGiver` → Creature | Faction — „given by"
-- `questAbout` → * — „concerns"
-- `knowledge` → Information — „knowledge about it"
-- `loot` → Item | Information | Feat | Skill — „loot"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- PlayerCharacter — `playedBy` → „plays"
-- Quest — `questAbout` → „concerned by"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `Quest`): `quests`, `description`, `fields` (ohne Quest.tasks), `blocks`, `relations`
-
-### Scene / Encounter
-
-`Scene` · erbt von `Story` ← `Base`
-
-**Eigene Felder**
-
-- `mode` *roleplay | encounter | exploration | downtime*, `difficulty` *string*, `readaloud` *long*
-
-**Geerbte Felder**
-
-- *`Story`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `state` *planned | running | played | dropped*, `summary` *long*
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-
-**Blöcke** `+tactics`
-
-**Kanten von hier**
-
-- `partOf` → Place | Story — „part of"
-- `describedIn` → Article — „described in"
-- `followsFrom` → Story — „follows"
-- `happensAt` → Place — „happens at"
-- `features` → Creature | NPC | Statblock | Faction — „features"
-- `knowledge` → Information — „knowledge about it"
-- `onMap` → Map — „fought on"
-- `loot` → Item | Information | Feat | Skill — „loot"
-- `tableFor` → Table — „rolls on"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- Place | Story | Quest — `partOf` → „contains"
-- PlayerCharacter — `playedBy` → „plays"
-- Story — `followsFrom` → „followed by"
-- Quest — `questAbout` → „concerned by"
-- Map — `mapOf` → „maps"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
-
-### Session
-
-`Session` · erbt von `Story` ← `Base`
-
-**Eigene Felder**
-
-- `activeScene` *link*, `activeEncounter` *link*, `activeMap` *link*, `nowPlaying` *string*, `partyNote` *long*, `stewardship` *gm | table*
-
-**Geerbte Felder**
-
-- *`Story`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `state` *planned | running | played | dropped*, `summary` *long*
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-
-**Blöcke** `+recap`
-
-**Kanten von hier**
-
-- `partOf` → Place | Story — „part of"
-- `describedIn` → Article — „described in"
-- `followsFrom` → Story — „follows"
-- `happensAt` → Place — „happens at"
-- `features` → Creature | NPC | Statblock | Faction — „features"
-- `knowledge` → Information — „knowledge about it"
-- `onMap` → Map — „fought on"
-- `loot` → Item | Information | Feat | Skill — „loot"
-- `tableFor` → Table — „rolls on"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- Place | Story | Quest — `partOf` → „contains"
-- PlayerCharacter — `playedBy` → „plays"
-- Story — `followsFrom` → „followed by"
-- Quest — `questAbout` → „concerned by"
-- Map — `mapOf` → „maps"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `Session`): `live`, `prep`, `description`, `fields`, `blocks`, `relations`
-
-### Story — *abstrakt*
-
-`Story` · erbt von `Base`
-
-**Eigene Felder**
-
-- `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `state` *planned | running | played | dropped*, `summary` *long*
-
-**Geerbte Felder**
-
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-
-**Blöcke** `+lore` `+secret` `+readaloud` `+note`
-
-**Kanten von hier**
-
-- `partOf` → Place | Story — „part of"
-- `describedIn` → Article — „described in"
-- `followsFrom` → Story — „follows"
-- `happensAt` → Place — „happens at"
-- `features` → Creature | NPC | Statblock | Faction — „features"
-- `knowledge` → Information — „knowledge about it"
-- `onMap` → Map — „fought on"
-- `loot` → Item | Information | Feat | Skill — „loot"
-- `tableFor` → Table — „rolls on"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- Place | Story | Quest — `partOf` → „contains"
-- PlayerCharacter — `playedBy` → „plays"
-- Story — `followsFrom` → „followed by"
-- Quest — `questAbout` → „concerned by"
-- Map — `mapOf` → „maps"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
-
----
-
 ## World
 
-*Wer und was es gibt.* — 16 Arten.
+*Wer und was es gibt.* — 14 Arten.
 
 ### Armor
 
-`Armor` · erbt von `Item` ← `Base`
+`Armor` · erbt von `Item` ← `Identity`
 
 **Eigene Felder**
 
@@ -370,7 +27,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 **Geerbte Felder**
 
 - *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -401,11 +58,11 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ### Article
 
-`Article` · erbt von `Base`
+`Article` · erbt von `Identity`
 
 **Geerbte Felder**
 
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Blöcke** `+lore` `+secret` `+poem` `+song`
 
@@ -434,12 +91,12 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ### Companion
 
-`Companion` · erbt von `Creature` ← `Base`
+`Companion` · erbt von `Creature` ← `Identity`
 
 **Geerbte Felder**
 
 - *`Creature`* — `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -480,12 +137,12 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ### Consumable
 
-`Consumable` · erbt von `Item` ← `Base`
+`Consumable` · erbt von `Item` ← `Identity`
 
 **Geerbte Felder**
 
 - *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -516,7 +173,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ### Creature — *abstrakt*
 
-`Creature` · erbt von `Base`
+`Creature` · erbt von `Identity`
 
 **Eigene Felder**
 
@@ -524,7 +181,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Blöcke** `+appearance` `+personality` `+lore` `+fact` `+secret` `+readaloud`
 
@@ -567,7 +224,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ### Faction
 
-`Faction` · erbt von `Base`
+`Faction` · erbt von `Identity`
 
 **Eigene Felder**
 
@@ -575,7 +232,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Blöcke** `+lore` `+secret`
 
@@ -608,47 +265,9 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
 
-### Inventory
-
-`Inventory` · erbt von `Base`
-
-**Eigene Felder**
-
-- `capacity` *number*, `copper` *number*
-
-**Geerbte Felder**
-
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-
-**Blöcke** `+note`
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `holds` → Item — „holds"
-- `knowledge` → Information — „knowledge about it"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- PlayerCharacter — `playedBy` → „plays"
-- Creature | Party — `carries` → „carried by"
-- Quest — `questAbout` → „concerned by"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `Inventory`): `inventory`, `description`, `fields` (ohne Inventory), `relations`
-
 ### Item
 
-`Item` · erbt von `Base`
+`Item` · erbt von `Identity`
 
 **Eigene Felder**
 
@@ -656,7 +275,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Blöcke** `+lore` `+secret` `+fact`
 
@@ -689,7 +308,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ### Material
 
-`Material` · erbt von `Item` ← `Base`
+`Material` · erbt von `Item` ← `Identity`
 
 **Eigene Felder**
 
@@ -698,7 +317,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 **Geerbte Felder**
 
 - *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -729,12 +348,12 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ### NPC
 
-`NPC` · erbt von `Creature` ← `Base`
+`NPC` · erbt von `Creature` ← `Identity`
 
 **Geerbte Felder**
 
 - *`Creature`* — `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -780,7 +399,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ### Party
 
-`Party` · erbt von `Base`
+`Party` · erbt von `Identity`
 
 **Eigene Felder**
 
@@ -788,7 +407,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Blöcke** `+lore` `+note`
 
@@ -824,7 +443,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ### Place
 
-`Place` · erbt von `Base`
+`Place` · erbt von `Identity`
 
 **Eigene Felder**
 
@@ -832,7 +451,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Blöcke** `+lore` `+readaloud` `+secret`
 
@@ -869,7 +488,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ### Player character
 
-`PlayerCharacter` · erbt von `Creature` ← `Base`
+`PlayerCharacter` · erbt von `Creature` ← `Identity`
 
 **Eigene Felder**
 
@@ -878,7 +497,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 **Geerbte Felder**
 
 - *`Creature`* — `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Blöcke** `+backstory`
 
@@ -922,12 +541,12 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ### Retainer
 
-`Retainer` · erbt von `Creature` ← `Base`
+`Retainer` · erbt von `Creature` ← `Identity`
 
 **Geerbte Felder**
 
 - *`Creature`* — `species` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -966,45 +585,9 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
   - **Craft** — `crafting`
   - **Ties** — `standing`, `relations`
 
-### Statblock
-
-`Statblock` · erbt von `Base`
-
-**Geerbte Felder**
-
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-
-**Blöcke** `+tactics`
-
-**Kanten von hier**
-
-- `composedOf` → Rule — „composed of"
-- `belongsTo` → NPC — „belongs to"
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- PlayerCharacter — `playedBy` → „plays"
-- Quest — `questAbout` → „concerned by"
-- Story — `features` → „appears in"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Encounter — `participates` → „fights in"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `Statblock`): `fields`, `composed`, `blocks`, `relations`
-
 ### Weapon
 
-`Weapon` · erbt von `Item` ← `Base`
+`Weapon` · erbt von `Item` ← `Identity`
 
 **Eigene Felder**
 
@@ -1013,7 +596,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 **Geerbte Felder**
 
 - *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
 
@@ -1044,392 +627,13 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ---
 
-## Game
-
-*Woran man sich hält.* — 10 Arten.
-
-### Asset
-
-`Asset` · erbt von `Base`
-
-**Eigene Felder**
-
-- `backend` *app | nas | external*, `ref` **Pflicht** *string*, `mime` *string*, `width` *number*, `height` *number*, `bytes` *number*
-
-**Geerbte Felder**
-
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- PlayerCharacter — `playedBy` → „plays"
-- Quest — `questAbout` → „concerned by"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
-
-### Feat
-
-`Feat` · erbt von `Rule` ← `Base`
-
-**Eigene Felder**
-
-- `prerequisite` *string*, `repeatable` *boolean*
-
-**Geerbte Felder**
-
-- *`Rule`* — `kind` **Pflicht** *action | bonus | reaction | feature | trait | condition | legendary | lair | feat | skill*, `uses` *string*, `autolink` *boolean*, `recharge` *string*
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- Statblock — `composedOf` → „used in"
-- Weapon | Item | Armor — `hasProperty` → „property of"
-- PlayerCharacter — `playedBy` → „plays"
-- Quest — `questAbout` → „concerned by"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Encounter | Story | Quest — `loot` → „found in"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
-
-### Group
-
-`Group` · erbt von `Base`
-
-**Eigene Felder**
-
-- `purpose` *string*, `kind` *players | table | guests | crew*
-
-**Geerbte Felder**
-
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-
-**Blöcke** `+note`
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- PlayerCharacter — `playedBy` → „plays"
-- Quest — `questAbout` → „concerned by"
-- Information — `knownBy` → „knows"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
-
-### Information
-
-`Information` · erbt von `Base`
-
-**Eigene Felder**
-
-- `fields` *array*, `blocks` *array*, `tier` *open | rumour | secret*
-
-**Geerbte Felder**
-
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-
-**Blöcke** `+secret` `+fact`
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `knownBy` → Creature | Party | Faction | KnowledgeLevel | Group — „known by"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- PlayerCharacter — `playedBy` → „plays"
-- Quest — `questAbout` → „concerned by"
-- * — `knowledge` → „about"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Encounter | Story | Quest — `loot` → „found in"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
-
-### Knowledge level
-
-`KnowledgeLevel` · erbt von `Base`
-
-**Eigene Felder**
-
-- `scope` *common | group | personal*
-
-**Geerbte Felder**
-
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- PlayerCharacter — `playedBy` → „plays"
-- Quest — `questAbout` → „concerned by"
-- Information — `knownBy` → „knows"
-- Creature | Party — `atLevel` → „known to"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
-
-### Layer
-
-`Layer` · erbt von `Base`
-
-**Eigene Felder**
-
-- `kind` *system | expansion | world | pack | campaign | overrides*, `order` *number*, `version` *string*
-
-**Geerbte Felder**
-
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-
-**Blöcke** `+note`
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- PlayerCharacter — `playedBy` → „plays"
-- Quest — `questAbout` → „concerned by"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `inLayer` → „brings"
-- Campaign — `activates` → „used by"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
-
-### Recipe
-
-`Recipe` · erbt von `Base`
-
-**Eigene Felder**
-
-- `trade` *string*, `tool` *string*, `ability` *str | dex | con | int | wis | cha*, `dc` *number*, `time` *string*, `days` *number*, `yieldCount` *number*, `onFailure` *materialsLost | halfLost | nothingLost*
-
-**Geerbte Felder**
-
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-
-**Blöcke** `+note` `+secret` `+lore`
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `needs` → Item — „needs"
-- `yields` → Item — „yields"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- PlayerCharacter — `playedBy` → „plays"
-- Quest — `questAbout` → „concerned by"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-- Creature | NPC | PlayerCharacter | Party — `crafting` → „worked on by"
-
-**Gezeichnet** (aus `Recipe`): `crafting`, `description`, `fields`, `blocks`, `relations`
-
-### Rule Element
-
-`Rule` · erbt von `Base`
-
-**Eigene Felder**
-
-- `kind` **Pflicht** *action | bonus | reaction | feature | trait | condition | legendary | lair | feat | skill*, `uses` *string*, `autolink` *boolean*, `recharge` *string*
-
-**Geerbte Felder**
-
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- Statblock — `composedOf` → „used in"
-- Weapon | Item | Armor — `hasProperty` → „property of"
-- PlayerCharacter — `playedBy` → „plays"
-- Quest — `questAbout` → „concerned by"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
-
-### Skill
-
-`Skill` · erbt von `Rule` ← `Base`
-
-**Eigene Felder**
-
-- `ability` *str | dex | con | int | wis | cha*, `tool` *boolean*
-
-**Geerbte Felder**
-
-- *`Rule`* — `kind` **Pflicht** *action | bonus | reaction | feature | trait | condition | legendary | lair | feat | skill*, `uses` *string*, `autolink` *boolean*, `recharge` *string*
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- Statblock — `composedOf` → „used in"
-- Weapon | Item | Armor — `hasProperty` → „property of"
-- PlayerCharacter — `playedBy` → „plays"
-- Quest — `questAbout` → „concerned by"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Encounter | Story | Quest — `loot` → „found in"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
-
-### Table
-
-`Table` · erbt von `Base`
-
-**Eigene Felder**
-
-- `kind` *loot | encounter | name | shop | event | generic*, `die` *string*, `rows` *array*, `note` *string*
-
-**Geerbte Felder**
-
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
-
-**Blöcke** `+note` `+secret`
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `entry` → * — „entry"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- PlayerCharacter — `playedBy` → „plays"
-- Quest — `questAbout` → „concerned by"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- Place | Story | Encounter — `tableFor` → „used at"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `Table`): `table`, `description`, `fields` (ohne Table.rows), `blocks`
-
----
-
 ## Play
 
-*Worauf man während der Sitzung schaut.* — 3 Arten.
+*Worauf man während der Sitzung schaut.* — 4 Arten.
 
 ### Board
 
-`Board` · erbt von `Base`
+`Board` · erbt von `Identity`
 
 **Eigene Felder**
 
@@ -1437,7 +641,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Blöcke** `+note`
 
@@ -1466,7 +670,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ### Encounter
 
-`Encounter` · erbt von `Base`
+`Encounter` · erbt von `Identity`
 
 **Eigene Felder**
 
@@ -1474,7 +678,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Blöcke** `+tactics` `+readaloud` `+note` `+secret`
 
@@ -1504,9 +708,46 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Gezeichnet** (aus `Encounter`): `initiative`, `description`, `fields`, `blocks`
 
+### Group
+
+`Group` · erbt von `Identity`
+
+**Eigene Felder**
+
+- `purpose` *string*, `kind` *players | table | guests | crew*
+
+**Geerbte Felder**
+
+- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+
+**Blöcke** `+note`
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Information — `knownBy` → „knows"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+
 ### Map
 
-`Map` · erbt von `Base`
+`Map` · erbt von `Identity`
 
 **Eigene Felder**
 
@@ -1514,7 +755,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Geerbte Felder**
 
-- *`Base`* — `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Blöcke** `+note` `+secret` `+readaloud`
 
@@ -1550,7 +791,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ## Ohne Bereich
 
-*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 6 Arten.
+*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 16 Arten.
 
 ### Access — *abstrakt*
 
@@ -1582,13 +823,77 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
 
-### Base — *abstrakt*
+### Asset
 
-`Base`
+`Asset` · erbt von `Identity`
 
 **Eigene Felder**
 
-- `text` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*, `value` *idea | planned | used | discarded*, `raw` *long*, `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*, `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*, `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*, `items` *array*, `publication` *string*, `page` *string*, `anchor` *string*, `sourceUrl` *string*, `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
+- `backend` *app | nas | external*, `ref` **Pflicht** *string*, `mime` *string*, `width` *number*, `height` *number*, `bytes` *number*
+
+**Geerbte Felder**
+
+- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+
+### Description — *abstrakt*
+
+`Description`
+
+**Eigene Felder**
+
+- `description` *long*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+
+### Identity — *abstrakt*
+
+`Identity`
+
+**Eigene Felder**
+
+- `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Blöcke** `paragraph` `note`
 
@@ -1614,6 +919,104 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
 
+### Image — *abstrakt*
+
+`Image`
+
+**Eigene Felder**
+
+- `image` *asset*, `url` *string*, `caption` *string*, `alt` *string*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+
+### Imported — *abstrakt*
+
+`Imported`
+
+**Eigene Felder**
+
+- `text` *long*, `format` *obsidian | markdown | json | plain*, `at` *string*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+
+### Layer
+
+`Layer` · erbt von `Identity`
+
+**Eigene Felder**
+
+- `kind` *system | expansion | world | pack | campaign | overrides*, `order` *number*, `version` *string*
+
+**Geerbte Felder**
+
+- *`Identity`* — `name` **Pflicht** *string*, `key` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+
+**Blöcke** `+note`
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `inLayer` → „brings"
+- Campaign — `activates` → „used by"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+
 ### Skills — *abstrakt*
 
 `Skills`
@@ -1621,6 +1024,36 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 **Eigene Felder**
 
 - `proficient` *array*, `expertise` *array*, `saves` *array*, `languages` *array*, `tools` *array*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+
+### Source — *abstrakt*
+
+`Source`
+
+**Eigene Felder**
+
+- `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 
 **Kanten von hier**
 
@@ -1674,6 +1107,96 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
 
+### Status — *abstrakt*
+
+`Status`
+
+**Eigene Felder**
+
+- `status` *idea | planned | used | discarded*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+
+### Time — *abstrakt*
+
+`Time`
+
+**Eigene Felder**
+
+- `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `calendar` *string*, `duration` *string*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+
+### Todos — *abstrakt*
+
+`Todos`
+
+**Eigene Felder**
+
+- `items` *array*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+
 ### Variables — *abstrakt*
 
 `Vars`
@@ -1681,6 +1204,36 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 **Eigene Felder**
 
 - `bindings` *object*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+
+### Visibility — *abstrakt*
+
+`Visibility`
+
+**Eigene Felder**
+
+- `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 
 **Kanten von hier**
 

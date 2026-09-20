@@ -41,7 +41,7 @@ export const InterfaceDefSchema = z.object({
   extends: z.array(z.string()).optional(),
   schema: objectSchema.optional(),
   blockTypes: z.array(z.string()).optional(),
-  area: z.enum(['story', 'world', 'game', 'play']).optional(),
+  area: z.enum(['world', 'history', 'rules', 'play']).optional(),
 });
 
 export const RelationDefSchema = z.object({

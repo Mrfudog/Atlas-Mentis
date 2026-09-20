@@ -71,13 +71,16 @@ export interface InterfaceDef {
   /** `+x` adds to the inherited set; a bare list replaces it. */
   blockTypes?: string[];
   /**
-   * In welchen Bereich der Oberfläche diese Artikelart gehört: `story`,
-   * `world`, `game` oder `play`. Steht hier und nicht im Code, weil eine
+   * In welchen Bereich der Oberfläche diese Artikelart gehört: `world`,
+   * `history`, `rules` oder `play`. Steht hier und nicht im Code, weil eine
    * neue Artikelart sonst eine Codeänderung bräuchte, um überhaupt
    * auffindbar zu sein — und das wäre genau die Sorte Ausnahme, die das
-   * Rückgrat vermeidet. Ohne Angabe: taucht nur unter „alle" auf.
+   * Rückgrat vermeidet. Ohne Angabe: taucht nur im Kompendium auf.
+   *
+   * Register und Kompendium sind **keine** Bereiche: das eine zeigt die
+   * Zeilen, das andere alle Artikel ohne Rücksicht darauf, wo sie hingehören.
    */
-  area?: 'story' | 'world' | 'game' | 'play';
+  area?: 'world' | 'history' | 'rules' | 'play';
 }
 
 /** A row of `relation_def`. */
