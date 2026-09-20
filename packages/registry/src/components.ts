@@ -40,7 +40,15 @@ export const components: Record<string, ComponentDef> = {
     schema: {
       type: 'object',
       properties: {
-        value: { type: 'string', title: 'Status', enum: ['idea', 'planned', 'used', 'discarded'] },
+        /* `default` gilt beim Anlegen, nicht rückwirkend. Bis hierher stand
+           „idea" fest im Code, der Artikel anlegt — also genau die Sorte
+           Wissen, die eine Registerzeile sein soll. */
+        value: {
+          type: 'string',
+          title: 'Status',
+          enum: ['idea', 'planned', 'used', 'discarded'],
+          default: 'idea',
+        },
       },
     },
   },

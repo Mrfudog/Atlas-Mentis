@@ -394,6 +394,16 @@ async function seite(datei, warten) {
     zurueck: !![...document.querySelectorAll('button')].find((b) => /Back to the form/.test(b.textContent)),
   }));
   pruefe('the JSON way out leads back', imJson.roh && imJson.zurueck, imJson);
+  /* Und dann auch wirklich zurückgehen: eine Prüfung, die den Zustand
+     verstellt stehen lässt, bricht die nächste. */
+  await p.evaluate(() =>
+    [...document.querySelectorAll('button')].find((b) => /Back to the form/.test(b.textContent)).click());
+  await p.waitForTimeout(250);
+  const zurueckInMaske = await p.evaluate(() => ({
+    maske: !!document.querySelector('.regbody'),
+    roh: !!document.getElementById('regbox'),
+  }));
+  pruefe('and the form comes back', zurueckInMaske.maske && !zurueckInMaske.roh, zurueckInMaske);
   pruefe('registry tabs raised no exception', errs.length === 0, errs);
 
   /* 8 — Bearbeiten in der Ansicht, und die Spur zurück */
@@ -629,6 +639,70 @@ async function seite(datei, warten) {
   pruefe('the data model explains itself',
     dm.titel === 'Data model' && dm.konzept.length === 5 && dm.reiter.includes('Views'), dm);
   pruefe('the page structure raised no exception', errs.length === 0, errs);
+
+  /* 11 — Standardwerte stehen im Feld, nicht im Code */
+  const zumStatusFeld = async () => {
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.rail button')].find((x) => /Data model/.test(x.textContent)).click());
+    await p.waitForTimeout(250);
+    const tabs = await p.evaluate(() => [...document.querySelectorAll('.tabs button')].map((x) => x.textContent));
+    if (!tabs.includes('Components')) throw new Error('Reiter fehlen: ' + JSON.stringify(tabs));
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.tabs button')].find((x) => x.textContent === 'Components').click());
+    await p.waitForTimeout(250);
+    const baum = await p.evaluate(() => [...document.querySelectorAll('.regtree button')].map((b) => b.textContent));
+    if (!baum.some((b) => /Status/.test(b))) throw new Error('Kein Status im Baum: ' + JSON.stringify(baum.slice(0, 8)));
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.regtree button')].find((b) => /Status/.test(b.textContent)).click());
+    await p.waitForTimeout(250);
+    await p.evaluate(() => {
+      const r = [...document.querySelectorAll('.fbox .frow')][0];
+      [...r.querySelectorAll('button')].find((b) => b.textContent === '⋯').click();
+    });
+    await p.waitForTimeout(250);
+  };
+  const standardFeld = () => p.evaluate(() =>
+    [...document.querySelectorAll('.fbox .fmore label.f')]
+      .find((l) => /Default/.test(l.querySelector('span').textContent))
+      ?.querySelector('select,input') ?? null);
+
+  await zumStatusFeld();
+  const stand = await p.evaluate(() => ({
+    zeile: document.querySelector('.fbox .frow .fk')?.textContent ?? '',
+    wert: [...document.querySelectorAll('.fbox .fmore label.f')]
+      .find((l) => /Default/.test(l.querySelector('span').textContent))
+      ?.querySelector('select,input')?.value ?? null,
+  }));
+  pruefe('a field carries its default, and shows it', /← idea/.test(stand.zeile) && stand.wert === 'idea', stand);
+
+  const anlegen = async (name) => {
+    await p.evaluate(() => document.getElementById('new').click());
+    await p.waitForTimeout(300);
+    await p.evaluate((n) => { [...document.querySelectorAll('.dlgbox input')][0].value = n; }, name);
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.dlgbox .rowbtns button')].find((b) => /Create/.test(b.textContent)).click());
+    await p.waitForTimeout(400);
+    return p.evaluate(() => [...document.querySelectorAll('.kicker .pill')].map((x) => x.textContent));
+  };
+  const erster = await anlegen('Default probe');
+  pruefe('a new article gets the default', erster.includes('idea'), erster);
+
+  /* Der Standard stand bis hierher fest in newEntity — also genau die Sorte
+     Wissen, die laut Rückgrat eine Registerzeile sein soll. Ihn zu ändern
+     muss reichen. */
+  await zumStatusFeld();
+  await p.evaluate(() => {
+    const l = [...document.querySelectorAll('.fbox .fmore label.f')]
+      .find((x) => /Default/.test(x.querySelector('span').textContent));
+    const n = l.querySelector('select,input');
+    n.value = 'planned';
+    n.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await p.waitForTimeout(350);
+  const zweiter = await anlegen('Second probe');
+  pruefe('changing the default changes what is created next',
+    zweiter.includes('planned') && !zweiter.includes('idea'), zweiter);
+  pruefe('defaults raised no exception', errs.length === 0, errs);
   await p.close();
 }
 

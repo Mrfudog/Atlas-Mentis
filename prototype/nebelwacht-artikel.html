@@ -604,12 +604,37 @@ function linkInput(pd,cur){
   return wrap;
 }
 
+/* Standardwerte beim Anlegen. Bis hierher stand `Status: idea` fest im Code —
+   also genau die Sorte Wissen, die laut Rückgrat eine Registerzeile sein soll.
+   Jetzt trägt das Feld seinen Standard, und wer ihn ändert, ändert ihn für
+   alles, was danach entsteht. Rückwirkend gilt er nicht: vorhandene Artikel
+   still zu beschreiben hiesse, Werte zu setzen, die niemand eingetragen hat.
+   Eine Komponente entsteht nur, wenn sie verlangt ist oder mindestens ein Feld
+   einen Standard trägt — sonst bekäme jeder Artikel leere Karten für alles,
+   was seine Art erlaubt. */
+function applyDefaults(e,ifn){
+  e.components=e.components||{};
+  compsFor(ifn).forEach(function(cn){
+    var props=((REG.components[cn]||{}).schema||{}).properties||{};
+    var withDefault=Object.keys(props).filter(function(k){
+      return !props[k].derived && props[k]["default"]!==undefined; });
+    if(!withDefault.length&&!e.components[cn])return;
+    var card=e.components[cn]=e.components[cn]||{};
+    withDefault.forEach(function(k){
+      if(card[k]===undefined) card[k]=props[k]["default"];
+    });
+  });
+}
+
 /* ---------- one input for one field ----------
    The dialog and the in-place editing share it. Two code paths for the same
    field would drift, and the one used less often would be the one that
    quietly stops matching the schema. */
 function fieldInput(pd,cur){
   var kind=fieldKind(pd);
+  /* Steht nichts drin, aber ein Standard ist gesetzt, zeigt ihn das Feld als
+     Vorschlag an — sichtbar, aber nicht gespeichert, bis jemand bestätigt. */
+  if(cur===undefined&&pd&&pd["default"]!==undefined) cur=pd["default"];
   if(kind==="color")
     return el("input",{class:"i",type:"color",
       value:/^#[0-9a-fA-F]{6}$/.test(String(cur||""))?String(cur):"#888888"});
@@ -2640,7 +2665,7 @@ function fieldBox(cn,within,w,saveC){
 function fieldRow(cn,k,within,w,saveC){
   var cd=REG.components[cn], schema=cd.schema, props=schema.properties, p=props[k];
   var row=el("div",{class:"frow"});
-  row.appendChild(el("span",{class:"fk",text:k}));
+  row.appendChild(el("span",{class:"fk",text:k+(p["default"]!==undefined?" \u2190 "+fmtVal(p,p["default"]):"")}));
 
   var ti=el("input",{class:"i",type:"text",value:p.title||""});
   if(!w) ti.disabled=true;
@@ -2720,6 +2745,18 @@ function fieldMore(cn,k,within,w,saveC){
     if(r.length) schema.required=r; else delete schema.required;
     saveC(); });
   box.appendChild(field("Required field",req));
+
+  /* Ein Standardwert gilt beim Anlegen, nicht rückwirkend. Ihn auch auf
+     vorhandene Artikel zu schreiben hiesse, still Werte zu setzen, die
+     niemand eingetragen hat. */
+  var defNode=fieldInput(p,p["default"]);
+  if(!w) defNode.disabled=true;
+  defNode.addEventListener("change",function(){
+    var val=fieldValue(p,defNode);
+    if(val===undefined) delete p["default"]; else p["default"]=val;
+    saveC();
+  });
+  box.appendChild(field("Default when created",defNode));
 
   var fm=el("select",{class:"i"}); if(!w) fm.disabled=true;
   [["","—"],["long","long text"],["signed","signed"]].forEach(function(f){
@@ -2937,9 +2974,10 @@ function newEntity(presetName){
       var name=nm.value.trim(); if(!name){nm.focus();return false;}
       var ifn=sel.value;
       var e={ id:uid("e"), interfaces:[ifn], name:name, tags:[],
-        components:{ Name:{text:name}, Identity:{key:slug(ifn)+"/"+slug(name),aliases:[]}, Status:{value:"idea"} },
+        components:{ Name:{text:name}, Identity:{key:slug(ifn)+"/"+slug(name),aliases:[]} },
         adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
       reqFor(ifn).forEach(function(c){ if(!e.components[c]&&REG.components[c]) e.components[c]={}; });
+      applyDefaults(e,ifn);
       persist(e); go({k:"art",id:e.id});
       /* Aus einem Verweis heraus angelegt heisst: man war woanders und will
          dahin zurück. Das Formular nimmt die Angaben in einem Zug auf,
