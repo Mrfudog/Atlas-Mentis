@@ -45,6 +45,25 @@ export const fieldGroups = {
     },
   },
 
+  /**
+   * Marken. Bis hierher war `tags` eine Eigenschaft der Entität selbst —
+   * die einzige, die keiner Art gehörte, und damit die einzige, die man
+   * nirgends weglassen konnte. Jetzt ist es ein Bestandteil wie jeder
+   * andere: wer ihn erbt, hat Marken, und wer nicht, hat keine.
+   *
+   * Die Marken selbst sind keine Aufzählung im Register: welche es gibt,
+   * sagen die Artikel. Eine feste Liste hiesse, dass eine neue Marke eine
+   * Registeränderung braucht — und gemarkt wird während der Sitzung.
+   */
+  Tags: {
+    schema: {
+      type: 'object',
+      properties: {
+        tags: { type: 'array', format: 'tags', title: 'Tags', items: { type: 'string' } },
+      },
+    },
+  },
+
   Status: {
     schema: {
       type: 'object',

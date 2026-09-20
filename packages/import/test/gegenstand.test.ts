@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { importItems, parseItem, stripDataview } from '../src/gegenstand.js';
+import { tagsOf } from '@nw/model';
 import { list, num, parseFrontmatter, str } from '../src/frontmatter.js';
 
 /**
@@ -110,10 +111,10 @@ describe('parseItem', () => {
 
   it('drops the `gegenstand` tag every file carries and keeps the rest', () => {
     const schwert = parseItem(read('Bastardschwert.md').text, 'Bastardschwert.md');
-    expect(schwert.entity.tags).toEqual(['waffe']);
+    expect(tagsOf(schwert.entity)).toEqual(['waffe']);
     // Kettenrüstung carries only `gegenstand` — the vault is inconsistent here.
     const kette = parseItem(read('Kettenrüstung.md').text, 'Kettenrüstung.md');
-    expect(kette.entity.tags).toEqual([]);
+    expect(tagsOf(kette.entity)).toEqual([]);
   });
 
   it('keeps the original file verbatim (REQ-019)', () => {
@@ -154,7 +155,6 @@ describe('importItems', () => {
       id: 'r_versatil',
       interfaces: ['Rule'],
       name: 'Versatil',
-      tags: [],
       components: { Name: { text: 'Versatil' } },
     };
     const report = importItems(files.map(read), [versatil]);
@@ -170,7 +170,6 @@ describe('importItems', () => {
       id: 'r_versatile',
       interfaces: ['Rule'],
       name: 'Vielseitig',
-      tags: [],
       components: { Name: { text: 'Vielseitig' }, Identity: { aliases: ['Versatil'] } },
     };
     const report = importItems(files.map(read), [byAlias]);

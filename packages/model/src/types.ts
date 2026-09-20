@@ -265,7 +265,6 @@ export interface Entity {
   /** Asserted interface membership — the `Typed` card, flattened. */
   interfaces: string[];
   name: string;
-  tags: string[];
   /**
    * Die Feldwerte, gruppiert nach der Art, die sie erklärt. Die Gruppierung
    * ist kein Rest der alten Komponenten: sie hält `hp` an der Kreatur und

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { backlinks, findByName, relationAccepts, relationDef, splitRelations } from '../src/entity.js';
+import {
+  backlinks,
+  findByName,
+  relationAccepts,
+  relationDef,
+  setTags,
+  splitRelations,
+  tagsOf,
+} from '../src/entity.js';
 import { validateEntity } from '../src/validate.js';
 import type { Entity, Registry } from '../src/types.js';
 
@@ -48,7 +56,6 @@ const volo: Entity = {
   id: 'n_volo',
   interfaces: ['NPC'],
   name: 'Volo Geddarm',
-  tags: [],
   components: {
     Identity: { name: 'Volo Geddarm', key: 'npc/volo', aliases: ['Volothamp Geddarm', 'Der Dicke'] },
   },
@@ -59,7 +66,6 @@ const floon: Entity = {
   id: 'n_floon',
   interfaces: ['NPC'],
   name: 'Floon Blagmaar',
-  tags: [],
   components: { Identity: { name: 'Floon Blagmaar' } },
 };
 
@@ -112,7 +118,7 @@ describe('relationDef', () => {
 describe('splitRelations', () => {
   it('separates composition sections from plain references', () => {
     const statblock: Entity = {
-      id: 'sb', interfaces: ['Statblock'], name: 'Schleim', tags: [],
+      id: 'sb', interfaces: ['Statblock'], name: 'Schleim',
       components: { Identity: { name: 'Schleim' }, StatblockInfo: { system: 'dnd5e' } },
       relations: [
         { id: 'a', type: 'composedOf', to: 'r_amorph' },
@@ -141,7 +147,7 @@ describe('validateEntity', () => {
 
   it('reports a missing required property', () => {
     const broken: Entity = {
-      id: 'sb', interfaces: ['Statblock'], name: 'x', tags: [],
+      id: 'sb', interfaces: ['Statblock'], name: 'x',
       components: { Identity: { name: 'x' }, StatblockInfo: {} },
     };
     const issue = validateEntity(registry, broken).find((i) => i.code === 'missing_property');
@@ -170,5 +176,30 @@ describe('validateEntity', () => {
     expect(validateEntity(registry, alien)).toEqual([
       expect.objectContaining({ code: 'unknown_interface' }),
     ]);
+  });
+});
+
+/* Marken waren die einzige Eigenschaft, die keiner Art gehörte — und damit
+   die einzige, die man nirgends weglassen konnte. Jetzt ist es ein
+   Bestandteil, und `abwesend` heisst „trägt keine Marken", nicht „hat
+   gerade keine". */
+describe('tagsOf / setTags', () => {
+  it('reads the tags from the card and never throws on an article without one', () => {
+    expect(tagsOf({ id: 'x', interfaces: ['NPC'], name: 'x', components: {} })).toEqual([]);
+    expect(tagsOf(undefined)).toEqual([]);
+    expect(
+      tagsOf({
+        id: 'x', interfaces: ['NPC'], name: 'x',
+        components: { Tags: { tags: ['händler', 'stadt'] } },
+      }),
+    ).toEqual(['händler', 'stadt']);
+  });
+
+  it('writes them back, trims them, and drops the card when nothing is left', () => {
+    const e: Entity = { id: 'x', interfaces: ['NPC'], name: 'x', components: {} };
+    setTags(e, [' händler ', '', 'stadt']);
+    expect(e.components['Tags']).toEqual({ tags: ['händler', 'stadt'] });
+    setTags(e, []);
+    expect(e.components['Tags']).toBeUndefined();
   });
 });

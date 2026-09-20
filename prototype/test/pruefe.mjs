@@ -776,6 +776,75 @@ async function seite(datei, warten) {
   pruefe('the compendium carries its filters',
     aufbau.filter.length === 3 && aufbau.filter[0] === 'any type', aufbau.filter);
 
+  /* Marken sind ein Feld wie jedes andere: der Bestandteil `Tags` bringt
+     sie mit, und eine Art, die ihn nicht erbt, trägt keine. Vorher war
+     `tags` eine Eigenschaft der Entität — die einzige, die keiner Art
+     gehörte, und damit die einzige, die man nirgends weglassen konnte. */
+  const markenFeld = await p.evaluate(() => {
+    const T = window.__T__;
+    const arten = Object.keys(T.REG.interfaces).filter((n) => !T.REG.interfaces[n].abstract);
+    return {
+      arten: arten.length,
+      ohne: arten.filter((n) => T.compsFor(n).indexOf('Tags') < 0),
+      feld: (T.REG.interfaces.Tags?.schema?.properties ?? {}).tags?.format ?? null,
+      /* Und an der Entität steht nichts mehr. */
+      nochOben: [...T.ENT.values()].filter((e) => 'tags' in e).length,
+    };
+  });
+  pruefe('every article kind inherits its tags, and none carries them at the envelope',
+    markenFeld.arten > 20 && markenFeld.ohne.length === 0
+    && markenFeld.feld === 'tags' && markenFeld.nochOben === 0, markenFeld);
+
+  /* Die Marken bekommen eine eigene Ansicht. Eine Wolke in der Leiste
+     wächst mit der Kampagne, bis sie die Leiste füllt, und sagt bei keiner
+     Marke, wie oft sie vergeben ist. */
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].find((b) => /^Tags/.test(b.textContent)).click());
+  await p.waitForTimeout(350);
+  const markenSeite = await p.evaluate(() => ({
+    kopf: document.querySelector('#view .listhead h2')?.textContent ?? '',
+    zeilen: [...document.querySelectorAll('.tagtab .tagrow')].map((r) => ({
+      marke: r.querySelector('.tag')?.textContent ?? '',
+      zahl: Number(r.querySelector('.count')?.textContent ?? '0'),
+      arten: [...r.querySelectorAll('.tagkinds .pill')].length,
+    })),
+    /* Nur was dieser Betrachter sehen darf: eine Marke, die allein an
+       einem zurückgehaltenen Artikel hängt, gehört nicht in die
+       Übersicht — sie verriete, dass es ihn gibt. */
+    imBestand: (() => {
+      const T = window.__T__;
+      const alle = new Set();
+      T.ENT.forEach((e) => { if (T.articleVisible(e)) T.tagsOf(e).forEach((t) => alle.add(t)); });
+      return alle.size;
+    })(),
+  }));
+  pruefe('the tags open as a view of their own, with a count and the kinds that carry them',
+    markenSeite.kopf === 'Tags'
+    && markenSeite.zeilen.length === markenSeite.imBestand
+    && markenSeite.zeilen.every((z) => z.zahl > 0 && z.arten > 0),
+    { kopf: markenSeite.kopf, n: markenSeite.zeilen.length, soll: markenSeite.imBestand });
+  /* Die häufigste zuerst: eine alphabetische Liste beantwortet die Frage
+     nicht, die man an eine Markenübersicht hat. */
+  pruefe('the most used tag stands first',
+    markenSeite.zeilen.length > 1
+    && markenSeite.zeilen[0].zahl >= markenSeite.zeilen[markenSeite.zeilen.length - 1].zahl,
+    markenSeite.zeilen.slice(0, 3));
+
+  await p.evaluate(() => document.querySelector('.tagtab .tagrow').click());
+  await p.waitForTimeout(350);
+  const gefiltert = await p.evaluate(() => ({
+    pille: [...document.querySelectorAll('#view .listhead .pill')].map((x) => x.textContent),
+    zeilen: document.querySelectorAll('#view .row').length,
+  }));
+  pruefe('a tag row filters the list to that tag',
+    gefiltert.pille.some((x) => x === '#' + markenSeite.zeilen[0].marke)
+    && gefiltert.zeilen === markenSeite.zeilen[0].zahl, { gefiltert, soll: markenSeite.zeilen[0] });
+
+  await zurSeite(p, 'Compendium');
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
+  await p.waitForTimeout(250);
+
   /* Ein Obertyp meint seine Subtypen mit. Exakt zu vergleichen hiesse:
      „Item" zeigt nichts, obwohl jede Waffe eins ist. */
   const vorFilter = await p.evaluate(() => document.querySelectorAll('#view .row').length);
@@ -2955,7 +3024,9 @@ async function seite(datei, warten) {
     const probe = await p.evaluate((ids) => {
       const T = window.__T__;
       const tab = T.ENT.get(ids.t), ort = T.ENT.get(ids.ort);
-      const ohne = { id: 'ctx_leer', tags: [] };
+      /* Ein Zusammenhang ohne Marken — und die stehen seit der Zerlegung
+         am Bestandteil `Tags` und nicht an der Entität. */
+      const ohne = { id: 'ctx_leer', components: {} };
       const zaehl = (ctx) => {
         const o = { treffer: 0, kaputt: 0, leer: 0 };
         for (let i = 0; i < 200; i++) {

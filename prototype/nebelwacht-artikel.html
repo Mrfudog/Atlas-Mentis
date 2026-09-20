@@ -439,6 +439,10 @@ ul.jmat li.ok .co{color:var(--ok)}
 .strow .ck{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .strow .ck.back{margin-top:4px;font-size:13px;opacity:.85}
 .rtags{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center}
+.tagtab{display:flex;flex-direction:column;gap:2px}
+.tagrow{display:flex;align-items:center;gap:10px;text-align:left;width:100%}
+.tagrow .count{min-width:2.5em}
+.tagkinds{display:flex;flex-wrap:wrap;gap:4px;margin-left:auto}
 /* Eine Marke, die man wegklicken kann, sagt das erst beim Darüberfahren —
    sonst stünde neben jedem Gedanken ein Kreuz und man läse nur Kreuze. */
 .pill.tag.x{cursor:pointer;border:1px solid transparent}
@@ -1072,7 +1076,7 @@ function targetMatches(target,e){
     if(!(e.interfaces||[]).some(function(n){ return erlaubt[n]; })) return false;
   }
   if(Array.isArray(t.tags)&&t.tags.length){
-    if(!(e.tags||[]).some(function(x){ return t.tags.indexOf(x)>=0; })) return false;
+    if(!tagsOf(e).some(function(x){ return t.tags.indexOf(x)>=0; })) return false;
   }
   if(t.where&&t.where.component&&t.where.property){
     var have=((e.components||{})[t.where.component]||{})[t.where.property];
@@ -1235,7 +1239,7 @@ function uploadAsset(file){
    Sichtbarkeit, und dieselbe Datei kann von zwei Karten benutzt werden, ohne
    zweimal dazuliegen. */
 function newAssetArticle(name,res){
-  var e={ id:uid("as"), interfaces:[ASSET_IFACE], name:name, tags:[],
+  var e={ id:uid("as"), interfaces:[ASSET_IFACE], name:name,
     components:{ Identity:{name:name,key:"asset/"+slug(name),aliases:[]} },
     adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
   reqFor(ASSET_IFACE).forEach(function(c){ if(!e.components[c]&&REG.interfaces[c]) e.components[c]={}; });
@@ -1381,6 +1385,26 @@ function esc(s){return String(s==null?"":s);}
 /* Der gespeicherte Name. Zum Auflösen und zum Schreiben — nie zum Anzeigen,
    solange ein Deckname gelten könnte. */
 function rawName(e){return e&&(e.name||(e.components&&e.components.Identity&&e.components.Identity.name))||"Unnamed";}
+/* ---------- Marken ----------
+   Sie waren die einzige Eigenschaft, die keiner Art gehörte — und damit die
+   einzige, die man nirgends weglassen konnte. Jetzt sind sie ein
+   Bestandteil (`Tags`), den jede Artikelart erbt und den eine neue Art
+   weglassen darf. Gelesen und geschrieben wird er nur hier: sonst stünde
+   `components.Tags.tags` an dreissig Stellen und die einunddreissigste
+   vergässe das `||[]`. */
+var TAGS_COMP="Tags";
+function tagsOf(e){
+  var t=e&&e.components&&e.components[TAGS_COMP]&&e.components[TAGS_COMP].tags;
+  return Array.isArray(t)?t:[];
+}
+/* Leer heisst weg: abwesend ist „trägt keine Marken", und eine leere Karte
+   wäre eine dritte Antwort auf eine Frage mit zwei. */
+function setTags(e,xs){
+  var sauber=(xs||[]).map(function(x){return String(x).trim();}).filter(Boolean);
+  if(!e.components) e.components={};
+  if(sauber.length) e.components[TAGS_COMP]={tags:sauber};
+  else delete e.components[TAGS_COMP];
+}
 /* Der angezeigte Name (REQ-178). Ist der eigene Name von einer Information
    beansprucht, die dieser Betrachter nicht kennt, steht der Deckname da —
    und wenn keiner gesetzt ist, ein ehrliches „jemand".
@@ -1747,6 +1771,7 @@ function currentPage(){
   if(UI.route.k==="reg"||UI.route.k==="types"||UI.route.k==="graph") return "registry";
   if(UI.route.k==="play") return "play";
   if(UI.route.k==="list") return UI.area||"compendium";
+  if(UI.route.k==="tags") return "compendium";
   /* Ein Artikel gehört zu der Seite, in die seine Art fällt. */
   if(UI.route.k==="art"){
     var e=ENT.get(UI.route.id);
@@ -1787,7 +1812,7 @@ function renderRail(){
   };
   ENT.forEach(function(e){
     zaehle(e);
-    (e.tags||[]).forEach(function(t){tags[t]=(tags[t]||0)+1;});
+    tagsOf(e).forEach(function(t){tags[t]=(tags[t]||0)+1;});
   });
 
   /* Vier Bereiche statt eines Kompendiums. Innerhalb eines Bereichs bleibt
@@ -1848,17 +1873,17 @@ function renderRail(){
     /* Auch im Kompendium bleibt der Baum: ein Obertyp steht über seinen
        Subtypen. Ohne ihn wäre „alle Artikel" eine Liste ohne Einstieg. */
     AREAS.forEach(function(ar){ areaRoots(ar[0]).forEach(function(n){ zweig(sAll,n,1); }); });
+    /* Die Marken bekommen eine eigene Ansicht und keine Wolke in der
+       Leiste. Eine Wolke wächst mit der Kampagne, bis sie die Leiste füllt,
+       und sie sagt bei keiner Marke, wie viele Artikel sie trägt oder
+       welcher Art die sind. */
+    sAll.appendChild(el("button",{class:"navrow area",type:"button",
+      "aria-current":String(UI.route.k==="tags"),
+      onclick:function(){ UI.iface="";UI.area=""; go({k:"tags"}); }},
+      [el("b",{text:"Tags"}),el("em",{text:String(Object.keys(tags).length)})]));
     r.appendChild(sAll);
   }
 
-  var keys=seite==="compendium"?Object.keys(tags).sort():[];
-  if(keys.length){
-    var s2=el("section"); s2.appendChild(el("h3",{text:"Tags"}));
-    var box=el("div",{class:"tags"});
-    keys.forEach(function(t){ box.appendChild(el("button",{class:"tag",type:"button",
-      "aria-pressed":String(UI.tag===t),onclick:function(){UI.tag=(UI.tag===t?"":t);go({k:"list"});}},t)); });
-    s2.appendChild(box); r.appendChild(s2);
-  }
 
   if(!isGM()){
     /* Für einen Spieler gibt es kein Register und keinen Import. Sie
@@ -2150,6 +2175,7 @@ function renderMain(){
   if(UI.route.k==="reg"){ renderRegistry(v); return; }
   if(UI.route.k==="graph"){ renderGraph(v); return; }
   if(UI.route.k==="rules"){ renderRules(v); return; }
+  if(UI.route.k==="tags"){ renderTags(v); return; }
   if(UI.route.k==="play"){ renderPlay(v); return; }
   /* `types` ist keine eigene Seite mehr, sondern der erste Reiter des
      Datenmodells. Die Route bleibt als Abkürzung: sie wählt den Reiter und
@@ -2171,10 +2197,10 @@ function matches(e){
      eine zweite Zuordnung hier wäre die Stelle, an der ein Artikel in der
      Leiste steht und in der Liste fehlt. */
   if(UI.area && areaOf((e.interfaces||[])[0])!==UI.area) return false;
-  if(UI.tag && (e.tags||[]).indexOf(UI.tag)<0) return false;
+  if(UI.tag && tagsOf(e).indexOf(UI.tag)<0) return false;
   if(UI.status && (((e.components||{}).Status||{}).status)!==UI.status) return false;
   if(UI.q){
-    var hay=(nameOf(e)+" "+(e.tags||[]).join(" ")+" "+
+    var hay=(nameOf(e)+" "+tagsOf(e).join(" ")+" "+
       (e.blocks||[]).map(function(b){return b.body;}).join(" ")+" "+
       JSON.stringify(e.components||{})).toLowerCase();
     if(hay.indexOf(UI.q.toLowerCase())<0) return false;
@@ -2186,6 +2212,53 @@ function summary(e){
   if(d)return d;
   var b=(e.blocks||[]).filter(function(x){return x.blockType!=="secret";})[0];
   return b?b.body:"";
+}
+
+/* ---------- Marken ----------
+   Eine eigene Ansicht und keine Wolke in der Leiste: hier steht, wie oft
+   eine Marke vergeben ist und an welchen Artikelarten sie hängt. Genau das
+   ist die Frage, die man an eine Marke hat — „gibt es sie" beantwortet
+   schon die Eingabe mit ihrer Vervollständigung.
+
+   Die Marken selbst stehen nirgends im Register: welche es gibt, sagen die
+   Artikel. Eine Aufzählung im Register hiesse, dass eine neue Marke eine
+   Registeränderung braucht, und gemarkt wird während der Sitzung. */
+function renderTags(v){
+  var zahl={},arten={};
+  ENT.forEach(function(e){
+    if(!articleVisible(e))return;
+    var art=(e.interfaces||[])[0]||"";
+    tagsOf(e).forEach(function(t){
+      zahl[t]=(zahl[t]||0)+1;
+      (arten[t]=arten[t]||{})[art]=1;
+    });
+  });
+  var keys=Object.keys(zahl).sort(function(a,b){
+    return zahl[b]-zahl[a] || a.localeCompare(b,"de");
+  });
+
+  var head=el("div",{class:"listhead"});
+  head.appendChild(el("h2",{text:"Tags"}));
+  head.appendChild(el("span",{class:"count",text:keys.length+" tags"}));
+  v.appendChild(head);
+  v.appendChild(el("p",{class:"hint",
+    text:"A tag is a field like any other: the type `Tags` brings it, and a kind that does not inherit it carries none. Which tags exist is said by the articles, not by the registry."}));
+  if(!keys.length){ v.appendChild(el("div",{class:"empty",text:"No tag has been given yet."})); return; }
+
+  var box=el("div",{class:"tagtab"});
+  keys.forEach(function(t){
+    var row=el("button",{class:"row tagrow",type:"button",
+      onclick:function(){ UI.tag=t; UI.iface=""; UI.area=""; go({k:"list"}); }});
+    row.appendChild(el("span",{class:"tag",text:t}));
+    row.appendChild(el("span",{class:"count",text:String(zahl[t])}));
+    var wo=el("span",{class:"tagkinds"});
+    Object.keys(arten[t]).sort().forEach(function(a){
+      wo.appendChild(el("span",{class:"pill q",
+        text:(REG.interfaces[a]&&REG.interfaces[a].label)||a||"—"})); });
+    row.appendChild(wo);
+    box.appendChild(row);
+  });
+  v.appendChild(box);
 }
 
 function renderList(v){
@@ -2232,7 +2305,7 @@ function renderList(v){
     t.appendChild(el("span",{class:"pill",text:ifaceName(e)}));
     var st=e.components&&e.components.Status&&e.components.Status.status;
     if(st) t.appendChild(el("span",{class:"pill q",text:st}));
-    (e.tags||[]).slice(0,3).forEach(function(tg){ t.appendChild(el("span",{class:"pill q",text:"#"+tg})); });
+    tagsOf(e).slice(0,3).forEach(function(tg){ t.appendChild(el("span",{class:"pill q",text:"#"+tg})); });
     var pr=checkArticle(e);
     if(pr.length) t.appendChild(el("span",{class:"warn",title:pr.map(function(x){return x.t;}).join("\n"),
       text:"\u25cf "+pr.length}));
@@ -2268,10 +2341,10 @@ function renderArticle(v,id){
   var st=e.components&&e.components.Status&&e.components.Status.status;
   if(st) kick.appendChild(el("span",{class:"pill q",text:st}));
   if(canWrite()&&(UI.inline||UI.editField==="__tags")){
-    var tgIn=el("input",{class:"i",type:"text",value:(e.tags||[]).join(", "),
+    var tgIn=el("input",{class:"i",type:"text",value:tagsOf(e).join(", "),
       placeholder:"comma, separated",style:"max-width:280px"});
     tgIn.addEventListener("change",function(){
-      e.tags=tgIn.value.split(",").map(function(x){return x.trim();}).filter(Boolean);
+      setTags(e,tgIn.value.split(","));
       if(!UI.inline) UI.editField="";
       persist(e);
     });
@@ -2281,10 +2354,10 @@ function renderArticle(v,id){
     kick.appendChild(tgIn);
     if(!UI.inline) setTimeout(function(){ try{ tgIn.focus(); }catch(x){} },0);
   } else {
-    (e.tags||[]).forEach(function(t){ kick.appendChild(el("button",{class:"tag",type:"button",
+    tagsOf(e).forEach(function(t){ kick.appendChild(el("button",{class:"tag",type:"button",
       onclick:function(){UI.tag=t;UI.iface="";UI.area="";go({k:"list"});}},"#"+t)); });
     if(canWrite()) kick.appendChild(el("button",{class:"tag",type:"button",title:"Edit tags",
-      onclick:function(){ UI.editField="__tags"; render(); }},(e.tags||[]).length?"✎":"+ tag"));
+      onclick:function(){ UI.editField="__tags"; render(); }},tagsOf(e).length?"✎":"+ tag"));
   }
   head.appendChild(kick);
   if(canWrite()&&(UI.inline||UI.editField==="__name")){
@@ -2382,7 +2455,7 @@ function filterBar(){
   bar.appendChild(typ);
 
   var tagNames={};
-  ENT.forEach(function(e){ (e.tags||[]).forEach(function(t){ tagNames[t]=1; }); });
+  ENT.forEach(function(e){ tagsOf(e).forEach(function(t){ tagNames[t]=1; }); });
   var tag=el("select",{class:"i"});
   tag.appendChild(el("option",{value:""},"any tag"));
   Object.keys(tagNames).sort().forEach(function(t){ tag.appendChild(el("option",{value:t},"#"+t)); });
@@ -2452,15 +2525,16 @@ function bulkBar(list){
     var xs=tagIn.value.split(",").map(function(x){return x.trim();}).filter(Boolean);
     if(!xs.length)return;
     durch("Tags added",function(e){
-      e.tags=e.tags||[];
-      xs.forEach(function(t){ if(e.tags.indexOf(t)<0) e.tags.push(t); });
+      var jetzt=tagsOf(e).slice();
+      xs.forEach(function(t){ if(jetzt.indexOf(t)<0) jetzt.push(t); });
+      setTags(e,jetzt);
     });
   }},"+ tags"));
   bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
     var xs=tagIn.value.split(",").map(function(x){return x.trim();}).filter(Boolean);
     if(!xs.length)return;
     durch("Tags removed",function(e){
-      e.tags=(e.tags||[]).filter(function(t){ return xs.indexOf(t)<0; });
+      setTags(e,tagsOf(e).filter(function(t){ return xs.indexOf(t)<0; }));
     });
   }},"− tags"));
 
@@ -3582,9 +3656,9 @@ function elPrep(e,ifn,item){
       onclick:function(){
         var t=qi.value.trim(); if(!t)return;
         var neu={ id:uid("id"), interfaces:[REG.interfaces.Article?"Article":ifn],
-          name:t.slice(0,60), tags:["idee"],
+          name:t.slice(0,60),
           components:{ Identity:{name:t.slice(0,60),key:"idea/"+slug(t).slice(0,40),aliases:[]},
-            Status:{status:"idea"}, Description:{description:t} },
+            Status:{status:"idea"}, Description:{description:t}, Tags:{tags:["idee"]} },
           adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
         reqFor(neu.interfaces[0]).forEach(function(c){
           if(!neu.components[c]&&REG.interfaces[c]) neu.components[c]={}; });
@@ -3768,7 +3842,7 @@ function tableRanges(eintraege){
 /* Was der Ort verlangt: ein Eintrag mit `requiresTag` kommt nur in den
    Topf, wenn der Zusammenhang die Marke trägt (REQ-172). */
 function tablePool(t,kontext){
-  var marken=(kontext&&kontext.tags)||[];
+  var marken=tagsOf(kontext);
   return tableEntries(t).filter(function(x){
     if(!x.requiresTag)return true;
     return marken.indexOf(x.requiresTag)>=0;
@@ -5492,7 +5566,7 @@ function newOnBoard(e){
     actions(host,close,function(){
       var name=nm.value.trim(); if(!name){nm.focus();return false;}
       var ifn2=sel.value;
-      var neu={ id:uid("e"), interfaces:[ifn2], name:name, tags:[],
+      var neu={ id:uid("e"), interfaces:[ifn2], name:name,
         components:{ Identity:{name:name,key:slug(ifn2)+"/"+slug(name),aliases:[]} },
         adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
       if(tx.value.trim()) neu.components.Description={description:tx.value.trim()};
@@ -6417,7 +6491,7 @@ function elInventory(e,ifn,item){
    im Register verdrahten müsste, legt niemand an. */
 function newInventory(e){
   var name=nameOf(e)+" — gear";
-  var inv={ id:uid("inv"), interfaces:[INV_IFACE], name:name, tags:[],
+  var inv={ id:uid("inv"), interfaces:[INV_IFACE], name:name,
     components:{ Identity:{name:name,key:"inventory/"+slug(name),aliases:[]} },
     adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
   reqFor(INV_IFACE).forEach(function(c){ if(!inv.components[c]&&REG.interfaces[c]) inv.components[c]={}; });
@@ -7901,7 +7975,7 @@ function addSubmap(e,rahmen){
       var kind=sel.value?ENT.get(sel.value):null;
       if(!kind){
         var name=nm.value.trim(); if(!name){nm.focus();return false;}
-        kind={ id:uid("mp"), interfaces:[MAP_IFACE], name:name, tags:[],
+        kind={ id:uid("mp"), interfaces:[MAP_IFACE], name:name,
           components:{ Identity:{name:name,key:"map/"+slug(name),aliases:[]} },
           adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
         reqFor(MAP_IFACE).forEach(function(c){ if(!kind.components[c]&&REG.interfaces[c]) kind.components[c]={}; });
@@ -8178,7 +8252,7 @@ function newInformation(e){
     actions(host,close,function(){
       var name=nm.value.trim(); if(!name){nm.focus();return false;}
       if(!REG.interfaces[INFO_IFACE]){ alert("The interface “"+INFO_IFACE+"” is missing from the registry."); return; }
-      var info={ id:uid("i"), interfaces:[INFO_IFACE], name:name, tags:[],
+      var info={ id:uid("i"), interfaces:[INFO_IFACE], name:name,
         components:{ Identity:{name:name,key:"information/"+slug(name),aliases:[]} },
         adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
       reqFor(INFO_IFACE).forEach(function(c){ if(!info.components[c]&&REG.interfaces[c]) info.components[c]={}; });
@@ -10572,7 +10646,7 @@ function newEntity(presetName){
     actions(host,close,function(){
       var name=nm.value.trim(); if(!name){nm.focus();return false;}
       var ifn=sel.value;
-      var e={ id:uid("e"), interfaces:[ifn], name:name, tags:[],
+      var e={ id:uid("e"), interfaces:[ifn], name:name,
         components:{ Identity:{name:name,key:slug(ifn)+"/"+slug(name),aliases:[]} },
         adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
       reqFor(ifn).forEach(function(c){ if(!e.components[c]&&REG.interfaces[c]) e.components[c]={}; });
@@ -10592,7 +10666,7 @@ function editEntity(e){
     var ifn=(e.interfaces||[])[0]||"";
     var nm=el("input",{class:"i",type:"text",value:nameOf(e)});
     host.appendChild(field("Name",nm));
-    var tg=el("input",{class:"i",type:"text",value:(e.tags||[]).join(", "),placeholder:"comma, separated"});
+    var tg=el("input",{class:"i",type:"text",value:tagsOf(e).join(", "),placeholder:"comma, separated"});
     host.appendChild(field("Tags",tg));
 
     var inputs=[], drvCells=[];
@@ -10640,7 +10714,7 @@ function editEntity(e){
 
     actions(host,close,function(){
       e.name=nm.value.trim()||e.name;
-      e.tags=tg.value.split(",").map(function(s){return s.trim();}).filter(Boolean);
+      setTags(e,tg.value.split(","));
       e.components=e.components||{};
       e.components.Identity=Object.assign({},e.components.Identity||{},{name:e.name});
       inputs.forEach(function(it){
@@ -10860,8 +10934,10 @@ function impGegenstand(text,datei){
   fmList(fm,"Eigenschaften").forEach(function(x){
     var z=linkZiel(x); if(z) unresolved.push({type:"hasProperty",target:z}); });
 
+  /* `tags` trägt immer `gegenstand` und, uneinheitlich, eine Artmarke. */
+  var marken=fmList(fm,"tags").filter(function(t){return t!=="gegenstand";});
+  if(marken.length) c.Tags={tags:marken};
   return { e:{ id:uid("g"), interfaces:[ifn], name:name,
-      tags:fmList(fm,"tags").filter(function(t){return t!=="gegenstand";}),
       components:c, adhoc:[], blocks:bl, relations:[], createdAt:new Date().toISOString() },
     unresolved:unresolved, bilder:bilder };
 }
@@ -10923,7 +10999,7 @@ function impStatblock(text,datei){
   });
   schliess(); if(akt)abschnitte.push(akt);
 
-  return { e:{ id:uid("sb"), interfaces:["Statblock"], name:name, tags:[],
+  return { e:{ id:uid("sb"), interfaces:["Statblock"], name:name,
       components:{ Identity:{name:name,key:"statblock/"+slug(name),aliases:fmList(fm,"aliases")},
         Status:{status:"used"},
         Imported:{text:text,format:"obsidian",at:new Date().toISOString().slice(0,10)},
@@ -10959,7 +11035,8 @@ function impOrt(text,datei){
   if(prosa) bl.push({id:uid("b"),anchor:"paragraph-"+slug(String(prosa).split(/\s+/).slice(0,5).join(" ")),
     blockType:"paragraph",body:prosa,order:0});
 
-  return { e:{ id:uid("o"), interfaces:["Place"], name:name, tags:fmList(fm,"tags"),
+  if(fmList(fm,"tags").length) c.Tags={tags:fmList(fm,"tags")};
+  return { e:{ id:uid("o"), interfaces:["Place"], name:name,
       components:c, adhoc:[], blocks:bl, relations:[], createdAt:new Date().toISOString() },
     unresolved:enthaelt.map(function(z){return {type:"contains",target:z};}) };
 }
@@ -10985,7 +11062,7 @@ function runImport(files){
       if(!id){ id=uid("r"); regelNach[k]=id;
         var kind=/^bonus/i.test(ab.name)?"bonus":/^reaction/i.test(ab.name)?"reaction"
                 :/^(villain|legendary)/i.test(ab.name)?"legendary":/^action/i.test(ab.name)?"action":"trait";
-        result.rules.push({ id:id, interfaces:["Rule"], name:en.name, tags:[],
+        result.rules.push({ id:id, interfaces:["Rule"], name:en.name,
           components:{ Identity:{name:en.name,key:"regel/"+slug(en.name),aliases:[]},
             Status:{status:"used"}, Description:{description:en.text},
             Rule:{kind:kind} },

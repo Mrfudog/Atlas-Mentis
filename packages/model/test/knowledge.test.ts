@@ -25,7 +25,6 @@ function entity(id: string, name: string, extra: Partial<Entity> = {}): Entity {
     id,
     interfaces: ['NPC'],
     name,
-    tags: [],
     components: { Identity: { name } },
     ...extra,
   };

@@ -480,4 +480,16 @@ describe('one registry of types', () => {
       expect(Object.keys(d?.schema?.properties ?? {}).length).toBeGreaterThan(0);
     }
   });
+
+  /* Marken gehören einem Bestandteil und nicht der Entität. Jede Artikelart
+     muss ihn erben — sonst gäbe es Artikel, die sich nicht markieren
+     lassen, ohne dass irgendwo stünde, warum. */
+  it('gives every article type its tags', () => {
+    const arten = Object.keys(seedRegistry.interfaces)
+      .filter((n) => !seedRegistry.interfaces[n]?.abstract);
+    expect(arten.length).toBeGreaterThan(20);
+    for (const n of arten) {
+      expect(fieldsOf(seedRegistry, n).some((f) => f.type === 'Tags' && f.key === 'tags')).toBe(true);
+    }
+  });
 });

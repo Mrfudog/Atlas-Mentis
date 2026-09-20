@@ -199,7 +199,6 @@ export function parseStatblock(text: string, filename: string): ImportedStatbloc
     id: newId('sb'),
     interfaces: ['Statblock'],
     name,
-    tags: [],
     components: {
       Identity: { name, key: `statblock/${slug(name)}`, aliases: list(fm, 'aliases') },
       Status: { status: 'used' },
@@ -272,7 +271,6 @@ export function importStatblocks(
             id: ruleId,
             interfaces: ['Rule'],
             name: entry.name,
-            tags: [],
             components: {
               Identity: { name: entry.name, key: `rule/${slug(entry.name)}`, aliases: [] },
               Status: { status: 'used' },

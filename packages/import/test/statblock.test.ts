@@ -158,7 +158,6 @@ describe('importStatblocks', () => {
       id: 'npc_grimmhauer',
       interfaces: ['NPC'],
       name: 'Grimmhauer',
-      tags: [],
       components: { Name: { text: 'Grimmhauer' } },
     };
     const report = importStatblocks([read('Grimmhauer.md')], [creature]);

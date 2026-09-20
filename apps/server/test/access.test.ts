@@ -23,7 +23,6 @@ const rook: Entity = {
   id: 'pc_rook',
   interfaces: ['PlayerCharacter'],
   name: 'Rook',
-  tags: [],
   components: {
     Identity: { name: 'Rook', key: 'pc/rook', aliases: [] }, Status: { status: 'used' },
     PlayerCharacter: { level: 5 },
@@ -35,7 +34,6 @@ const inv: Entity = {
   id: 'inv_rook',
   interfaces: ['Inventory'],
   name: 'Rooks Sachen',
-  tags: [],
   components: {
     Identity: { name: 'Rooks Sachen', key: 'inv/rook', aliases: [] }, Status: { status: 'used' },
   },
@@ -46,7 +44,6 @@ const fremd: Entity = {
   id: 'n_volo',
   interfaces: ['NPC'],
   name: 'Volo',
-  tags: [],
   components: {
     Identity: { name: 'Volo', key: 'npc/volo', aliases: [] }, Status: { status: 'used' },
   },
@@ -359,7 +356,6 @@ describe('what a player gets to read', () => {
     id: 'n_wachsmann',
     interfaces: ['NPC'],
     name: 'Der Wachsmann',
-    tags: [],
     components: {
       Identity: { name: 'Der Wachsmann', key: 'npc/wachsmann', aliases: [], cover: 'die Gestalt im Mantel' }, Status: { status: 'used' }, Description: { description: 'Er heisst Aurinax und war einmal Goldschmied.' },
     },
@@ -373,7 +369,6 @@ describe('what a player gets to read', () => {
     id: 'i_name',
     interfaces: ['Information'],
     name: 'Sein richtiger Name',
-    tags: [],
     components: {
       Identity: { name: 'Sein richtiger Name', key: 'info/wachsmann-name', aliases: [] }, Status: { status: 'used' },
       Information: { tier: 'secret', fields: ['Identity.name', 'Description.description'], blocks: [] },
@@ -590,7 +585,6 @@ describe('one account, several characters', () => {
     id: 'pc_sela',
     interfaces: ['PlayerCharacter'],
     name: 'Sela',
-    tags: [],
     components: {
       Identity: { name: 'Sela', key: 'pc/sela', aliases: [] }, Status: { status: 'used' },
       /* `PlayerCharacter` verlangt sie — eine Figur ohne sie liesse sich
@@ -605,7 +599,6 @@ describe('one account, several characters', () => {
     id: 'n_wachsmann',
     interfaces: ['NPC'],
     name: 'Der Wachsmann',
-    tags: [],
     components: {
       Identity: { name: 'Der Wachsmann', key: 'npc/wachsmann', aliases: [] }, Status: { status: 'used' }, Description: { description: 'Er heisst Aurinax.' },
     },
@@ -617,7 +610,6 @@ describe('one account, several characters', () => {
     id: 'i_name',
     interfaces: ['Information'],
     name: 'Sein richtiger Name',
-    tags: [],
     components: {
       Identity: { name: 'Sein richtiger Name', key: 'info/name', aliases: [] }, Status: { status: 'used' },
       Information: { tier: 'secret', fields: ['Description.description'], blocks: [] },
@@ -699,7 +691,6 @@ describe('knowledge shared with a whole group', () => {
     id: 'grp_runde',
     interfaces: ['Group'],
     name: 'Die Donnerstagsrunde',
-    tags: [],
     components: {
       Identity: { name: 'Die Donnerstagsrunde', key: 'group/donnerstag', aliases: [] }, Status: { status: 'used' },
       Group: { kind: 'players', purpose: 'Wer an diesem Tisch sitzt' },
@@ -711,7 +702,6 @@ describe('knowledge shared with a whole group', () => {
     id: 'o_keller',
     interfaces: ['Place'],
     name: 'Der Lampenkeller',
-    tags: [],
     components: {
       Identity: { name: 'Der Lampenkeller', key: 'place/keller', aliases: [] }, Status: { status: 'used' }, Description: { description: 'Der Eingang liegt hinter dem Fass.' },
     },
@@ -723,7 +713,6 @@ describe('knowledge shared with a whole group', () => {
     id: 'i_eingang',
     interfaces: ['Information'],
     name: 'Wo der Eingang liegt',
-    tags: [],
     components: {
       Identity: { name: 'Wo der Eingang liegt', key: 'info/eingang', aliases: [] }, Status: { status: 'used' },
       Information: { tier: 'secret', fields: ['Description.description'], blocks: [] },

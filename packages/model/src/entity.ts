@@ -26,6 +26,33 @@ export function primaryInterface(entity: Entity): string {
   return entity.interfaces?.[0] ?? '';
 }
 
+export const TAGS_COMPONENT = 'Tags';
+
+/**
+ * Die Marken eines Artikels. Sie waren einmal eine Eigenschaft der Entität
+ * selbst — die einzige, die keiner Art gehörte. Jetzt stehen sie an einem
+ * Bestandteil, und der einzige Zugriff darauf ist dieser hier: sonst stünde
+ * `components.Tags.tags` an dreissig Stellen und die einunddreissigste
+ * vergässe das `?? []`.
+ */
+export function tagsOf(entity: Entity | undefined): string[] {
+  const roh = entity?.components?.[TAGS_COMPONENT]?.['tags'];
+  return Array.isArray(roh) ? roh.filter((t): t is string => typeof t === 'string') : [];
+}
+
+/** Setzt die Marken. Eine leere Menge löscht den Bestandteil — abwesend ist
+ *  nicht dasselbe wie leer, und nur abwesend heisst „trägt keine". */
+export function setTags(entity: Entity, tags: string[]): void {
+  const sauber = tags.map((t) => t.trim()).filter(Boolean);
+  if (sauber.length) {
+    entity.components = { ...entity.components, [TAGS_COMPONENT]: { tags: sauber } };
+  } else if (entity.components?.[TAGS_COMPONENT]) {
+    const rest = { ...entity.components };
+    delete rest[TAGS_COMPONENT];
+    entity.components = rest;
+  }
+}
+
 function walk<T>(
   registry: Pick<Registry, 'interfaces'>,
   name: string,

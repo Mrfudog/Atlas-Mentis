@@ -9,12 +9,12 @@ const volo: Entity = {
   id: '11111111-1111-4111-8111-111111111111',
   interfaces: ['NPC'],
   name: 'Volo Geddarm',
-  tags: ['händler'],
   /* Eine Karte je Bestandteil. `name` und `key` sind Pflicht — ohne sie
      weist die Validierung den Artikel mit 422 ab, was sie soll. */
   components: {
     Identity: { name: 'Volo Geddarm', key: 'npc/volo-geddarm', aliases: ['Der Dicke'] },
     Status: { status: 'used' },
+    Tags: { tags: ['händler'] },
   },
   blocks: [],
   relations: [],

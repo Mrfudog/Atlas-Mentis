@@ -122,7 +122,6 @@ export const EntitySchema = z.object({
   id: z.string().min(1),
   interfaces: z.array(z.string()).min(1),
   name: z.string(),
-  tags: z.array(z.string()),
   components: z.record(z.string(), z.record(z.string(), z.unknown())),
   adhoc: z
     .array(z.object({ key: z.string(), label: z.string(), type: z.string(), value: z.unknown() }))

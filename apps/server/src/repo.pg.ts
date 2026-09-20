@@ -143,7 +143,6 @@ export class PgRepository implements Repository {
       id,
       interfaces: (meta['interfaces'] as string[]) ?? [],
       name: (byType['Name']?.['text'] as string) ?? '',
-      tags: (meta['tags'] as string[]) ?? [],
       components: byType,
       adhoc: (meta['adhoc'] as Entity['adhoc']) ?? [],
       blocks: (meta['blocks'] as Entity['blocks']) ?? [],
@@ -181,7 +180,6 @@ export class PgRepository implements Repository {
         '__meta',
         JSON.stringify({
           interfaces: entity.interfaces,
-          tags: entity.tags ?? [],
           adhoc: entity.adhoc ?? [],
           blocks: entity.blocks ?? [],
         }),

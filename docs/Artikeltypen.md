@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-09-20. 54 Schnittstellen, 41 Kantenarten.
+Stand 2026-09-20. 55 Schnittstellen, 41 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -791,7 +791,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ## Ohne Bereich
 
-*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 16 Arten.
+*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 17 Arten.
 
 ### Access — *abstrakt*
 
@@ -1114,6 +1114,36 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 **Eigene Felder**
 
 - `status` *idea | planned | used | discarded*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+
+### Tags — *abstrakt*
+
+`Tags`
+
+**Eigene Felder**
+
+- `tags` *tags*
 
 **Kanten von hier**
 

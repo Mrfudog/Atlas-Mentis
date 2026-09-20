@@ -169,12 +169,12 @@ export function parseItem(text: string, filename: string): ImportedItem {
 
   // `tags` always carries `gegenstand` plus, inconsistently, a type tag.
   const tags = list(fm, 'tags').filter((t) => t !== 'gegenstand');
+  if (tags.length) components['Tags'] = { tags };
 
   const entity: Entity = {
     id: newId('g'),
     interfaces: [iface],
     name,
-    tags,
     components,
     adhoc: [],
     blocks,
