@@ -8,8 +8,16 @@ export { components, interfaces, relations, views };
 
 /** Campaign-wide defaults, the last scope {VAR} resolution falls back to. */
 export const vars: Record<string, string> = {
-  REICHWEITE: '1,5 m',
-  TYP: 'wuchtig',
+  /* Die Namen sind englisch wie jede Registerzeile. Sie standen hier noch
+     deutsch, nachdem die Oberfläche umgestellt war — gemerkt hat es
+     niemand, weil Paket und Prototyp jedes für sich stimmten. Genau dafür
+     gibt es jetzt `emit-seed`. */
+  ATK: '+4',
+  DMG: '4 (1d6)',
+  DMG2: '(5 1d8)',
+  DMGTYP: 'bludgeoning',
+  DMGTYP2: 'piercing',
+  RNG: '5 ft.',
 };
 
 /**

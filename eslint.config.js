@@ -6,6 +6,12 @@ export default ts.config(
   js.configs.recommended,
   ...ts.configs.recommended,
   {
+    /* Node-Skripte im Repo (Erzeuger, Prüfaufbau) laufen nicht im Browser.
+       Ohne diese Zeile hält eslint `process` und `console` für Tippfehler. */
+    files: ['**/scripts/**/*.mjs', '**/*.config.{js,mjs,ts}'],
+    languageOptions: { globals: { process: 'readonly', console: 'readonly' } },
+  },
+  {
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/consistent-type-imports': 'error',

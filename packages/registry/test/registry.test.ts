@@ -212,3 +212,123 @@ describe('interface inheritance', () => {
     });
   });
 });
+
+/**
+ * Bezugstreue der Startzeilen (C4).
+ *
+ * Seit `emit-seed` das Register des Prototyps aus diesen Zeilen erzeugt,
+ * ist das hier die einzige Quelle — und eine einzige Quelle ist nur so viel
+ * wert, wie sie geprüft ist. Ein Tippfehler in einem `requires` erzeugte
+ * vorher eine Artikelart, deren Pflichtfeld es nicht gibt; die Oberfläche
+ * zeigte dann eine leere Maske und niemand wusste, warum.
+ */
+describe('seed registry, referential integrity', () => {
+  const { components, interfaces, relations, views } = seedRegistry;
+  const blockTypes = new Set<string>();
+  Object.values(interfaces).forEach((i) =>
+    (i.blockTypes ?? []).forEach((b) => blockTypes.add(b.replace(/^\+/, ''))),
+  );
+
+  it('names only components that exist', () => {
+    const fehlt: string[] = [];
+    Object.entries(interfaces).forEach(([n, i]) => {
+      [...(i.requires ?? []), ...(i.allows ?? [])].forEach((c) => {
+        if (!components[c]) fehlt.push(`${n} → ${c}`);
+      });
+    });
+    expect(fehlt).toEqual([]);
+  });
+
+  it('extends only interfaces that exist, and never itself', () => {
+    const fehlt: string[] = [];
+    Object.entries(interfaces).forEach(([n, i]) => {
+      (i.extends ?? []).forEach((p) => {
+        if (!interfaces[p] || p === n) fehlt.push(`${n} → ${p}`);
+      });
+    });
+    expect(fehlt).toEqual([]);
+  });
+
+  it('points relations at interfaces that exist', () => {
+    const fehlt: string[] = [];
+    Object.entries(relations).forEach(([n, r]) => {
+      [...(r.from ?? []), ...(r.to ?? [])].forEach((t) => {
+        if (t !== '*' && !interfaces[t]) fehlt.push(`${n} → ${t}`);
+      });
+    });
+    expect(fehlt).toEqual([]);
+  });
+
+  /* Ein Layout-Element, das die Seite nicht kennt, zeichnet nichts — und
+     die Ansicht ist dann leer, ohne dass irgendwo etwas schiefgeht. */
+  it('uses only layout elements the schema knows', () => {
+    expect(() => RegistrySchema.parse(seedRegistry)).not.toThrow();
+    const ohne = Object.entries(views).filter(([, v]) => (v.layout ?? []).length === 0);
+    // Ansichten ohne Layout fallen auf die Standardfolge zurück — das ist
+    // in Ordnung, aber es soll niemand versehentlich tun.
+    expect(ohne.map(([n]) => n).sort()).toEqual(
+      ['combat', 'full', 'image', 'player', 'quick', 'stats'].sort(),
+    );
+  });
+
+  it('refers to fields that exist', () => {
+    const fehlt: string[] = [];
+    Object.entries(views).forEach(([n, v]) => {
+      const refs = Array.isArray(v.fields) ? v.fields : [];
+      refs.forEach((ref) => {
+        const [c, f] = String(ref).split('.');
+        const def = components[c];
+        if (!def) {
+          fehlt.push(`${n} → ${ref}`);
+          return;
+        }
+        if (f && !(def.schema?.properties ?? {})[f]) fehlt.push(`${n} → ${ref}`);
+      });
+    });
+    expect(fehlt).toEqual([]);
+  });
+
+  it('refers to block types some interface declares', () => {
+    const fehlt: string[] = [];
+    Object.entries(views).forEach(([n, v]) => {
+      (Array.isArray(v.blocks) ? v.blocks : []).forEach((b) => {
+        if (!blockTypes.has(b)) fehlt.push(`${n} → ${b}`);
+      });
+      (v.layout ?? []).forEach((el) =>
+        // `blocks` darf auch "all" heissen — dann steht da kein Name, der
+        // falsch sein könnte.
+        (Array.isArray(el.blocks) ? el.blocks : []).forEach((b) => {
+          if (!blockTypes.has(b)) fehlt.push(`${n}/${el.id} → ${b}`);
+        }),
+      );
+    });
+    expect(fehlt).toEqual([]);
+  });
+
+  /* Ein abgeleiteter Wert bekommt keine Eingabe und keine Spalte (D8). Ihn
+     zugleich zur Pflicht zu machen hiesse, ein Feld zu verlangen, das
+     niemand ausfüllen kann. */
+  it('never makes a derived property required', () => {
+    const schlecht: string[] = [];
+    Object.entries(components).forEach(([n, c]) => {
+      const req = c.schema?.required ?? [];
+      Object.entries(c.schema?.properties ?? {}).forEach(([p, def]) => {
+        if ((def as { derived?: string }).derived && req.includes(p)) schlecht.push(`${n}.${p}`);
+      });
+    });
+    expect(schlecht).toEqual([]);
+  });
+
+  /* Schweizer Rechtschreibung, überall. Kein ß — auch nicht in einem
+     Aufzählungswert, der Kampagneninhalt ist. */
+  it('spells everything the Swiss way', () => {
+    expect(JSON.stringify(seedRegistry)).not.toMatch(/ß/);
+  });
+
+  /* Und die Variablennamen bleiben bei A–Z: `{VAR}` wird mit genau diesem
+     Zeichensatz gesucht, und ein Name daneben würde nie ersetzt. */
+  it('keeps variable names to what {VAR} can actually match', () => {
+    const schlecht = Object.keys(seedRegistry.vars ?? {}).filter((k) => !/^[A-Z0-9_]+$/.test(k));
+    expect(schlecht).toEqual([]);
+  });
+});

@@ -35,7 +35,11 @@ die Entscheidungen D0–D17, `Requirements.md` die REQ-Nummern.
   `views.ts` (Feldauswahl je Darstellungsstufe), `inline.ts` (`[[Verweise]]`,
   `{VAR}`), `entity.ts` (Registerzugriff, Rückbezüge). **Kein Framework-Import.**
   Was hier liegt, gilt für Server und Oberfläche gleichermassen.
-- `packages/registry` — die Startzeilen.
+- `packages/registry` — die Startzeilen, und zwar **die einzige Quelle
+  dafür**. `pnpm --filter @nw/registry emit-seed` schreibt sie als JSON in
+  den Prüfaufbau des Prototyps; von Hand nachgezogen wird nichts mehr. Zeilen,
+  die es nur dort gibt, bleiben stehen und werden aufgezählt — eine neue
+  Artikelart im Prototyp anzulegen ist der Sinn der Sache und kein Fehler.
 - `apps/server` — Fastify. Routen sprechen mit `Repository`, nie mit Postgres;
   deshalb sind sie ohne Datenbank testbar (`InMemoryRepository`).
 - `apps/web` — Angular, bisher nur ein Gerüst.
@@ -54,6 +58,11 @@ die Entscheidungen D0–D17, `Requirements.md` die REQ-Nummern.
   verloren, und der Verlust war endgültig.
 - **Kanten nur vorwärts speichern.** Ein gespiegeltes Gegenstück verwaist.
 - **Schreiben geht durch `validateEntity`**, auch wenn es umständlich scheint.
+- **Das Register steht einmal.** Wer eine Zeile ändert, ändert sie in
+  `packages/registry` und lässt `emit-seed` laufen. Zweimal dasselbe von Hand
+  zu pflegen hält genau so lange, wie jemand daran denkt — und als es hier
+  zuletzt auseinanderlief, standen deutsche Variablen im Paket und englische
+  im Prototyp, und gemerkt hat es niemand, weil beide für sich stimmten.
 - **Nicht auf `0.0.0.0` binden.** Die Anwendung hat keine Authentifizierung; der
   Reverse Proxy ist das, was nach aussen zeigt.
 
@@ -63,6 +72,7 @@ die Entscheidungen D0–D17, `Requirements.md` die REQ-Nummern.
 pnpm install
 pnpm --filter @nw/model build && pnpm --filter @nw/registry build   # zuerst
 pnpm test && pnpm lint
+pnpm --filter @nw/registry emit-seed   # nach jeder Registeränderung
 ```
 
 Die Reihenfolge ist notwendig: die übrigen Pakete übersetzen gegen die von

@@ -258,6 +258,10 @@ in [Spieltisch.md](Spieltisch.md).
 - **D13 · Blockanker und Kampagnenwerte** — B3. Ein Anker aus dem Inhalt
   statt aus einer Id; Gruppenstufe und Aufenthaltsort gerechnet statt
   eingetippt.
+- **D14 · Ein Register, eine Quelle** — C4. `emit-seed` erzeugt die
+  Registerzeilen des Prototyps aus `packages/registry`; dazu acht Prüfungen
+  der Bezugstreue, weil eine einzige Quelle nur so viel wert ist, wie sie
+  geprüft ist.
 
 ---
 
@@ -279,6 +283,6 @@ A, B und D stehen. Was bleibt, in der Reihenfolge, in der es sich lohnt:
    heute von der Laufzeit des Artefakts; ein Passwort im Browser wäre keines.
    Das ist der letzte Punkt, der wirklich auf den echten Stapel wartet — die
    Abfragen darunter bleiben unverändert.
-5. **Die Nachzügler** (C4): Ortsimporter als TypeScript, und das Register
-   des Prototyps mit `packages/registry` zusammenführen — die laufen derzeit
-   von Hand nebeneinander her, und das hält nicht ewig.
+5. **Der Ortsimporter als TypeScript** (C4, Rest). Das Register steht seit
+   2026-09-20 nur noch einmal: `pnpm --filter @nw/registry emit-seed`
+   erzeugt die Zeilen des Prototyps aus `packages/registry`.
