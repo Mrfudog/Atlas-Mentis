@@ -42,6 +42,16 @@ button,input,select,textarea{font:inherit;color:inherit}
 .brand span{color:var(--accent)}
 .sub{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.09em;white-space:nowrap}
 .grow{flex:1}
+/* Die sechs Seiten. Sie stehen oben und nicht in der Leiste, weil die
+   Leiste zeigt, was *in* einer Seite steckt — und weil man sonst nicht
+   sieht, wo man ist, ohne zu scrollen. */
+.pages{position:sticky;top:calc(env(safe-area-inset-top,0px) + 49px);z-index:19;display:flex;gap:2px;
+  padding:0 var(--gut);background:var(--surface);border-bottom:1px solid var(--line);overflow-x:auto}
+.pages button{appearance:none;background:none;border:0;border-bottom:2px solid transparent;
+  padding:9px 12px;font:inherit;font-weight:600;color:var(--dim);cursor:pointer;white-space:nowrap}
+.pages button:hover{color:var(--fg)}
+.pages button[aria-current="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.pages button em{font-style:normal;font-weight:400;color:var(--dim);margin-left:6px;font-size:11px}
 .search{flex:0 1 260px;min-width:0;padding:6px 9px;background:var(--bg);border:1px solid var(--line);border-radius:var(--r)}
 .body{flex:1;display:grid;grid-template-columns:210px minmax(0,1fr) 260px;gap:0;min-height:0}
 .rail,.aside{overflow-y:auto;padding:14px var(--gut);border-right:1px solid var(--line);background:var(--surface)}
@@ -801,6 +811,8 @@ table.craftm tr.crrow.unknown td{color:var(--dim);font-style:italic}
     <button id="new" class="btn pri" type="button">+ New</button>
   </header>
 
+  <nav class="pages" id="pages" aria-label="Sections"></nav>
+
   <div class="body">
     <nav class="rail" id="rail"></nav>
     <main class="main" id="main"><div class="wrap" id="view"></div></main>
@@ -874,7 +886,7 @@ var REG={interfaces:{},components:{},relations:{},vars:{},views:{},settings:{}};
    bekommen sie; ohne sie bleibt der Verweis auf fremde Adressen. */
 var assetStore=null, downloadNS=null;
 var UI={route:{k:"list"}, view:"quick", area:"", iface:"", tag:"", q:"", offen:false, pane:"main",
-        regtab:"types", regiface:"", regcomp:"", regprop:"", regjson:false,
+        page:"", regtab:"types", regiface:"", regcomp:"", regprop:"", regjson:false,
         regview:"", regscope:"", regel:"", regrel:"",
         trail:[], inline:false, editField:"", pick:false, picked:{}, status:"",
         aside:"rel", info:"", assetBusy:"",
@@ -1076,7 +1088,7 @@ function linkCandidates(target,query,limit){
   ENT.forEach(function(e){
     if(!targetMatches(target,e))return;
     var name=nameOf(e).toLowerCase();
-    var aliases=(((e.components||{}).Base||{}).aliases||[]).join(" ").toLowerCase();
+    var aliases=(((e.components||{}).Identity||{}).aliases||[]).join(" ").toLowerCase();
     if(!q){ vorn.push(e); return; }
     if(name.indexOf(q)===0) vorn.push(e);
     else if(name.indexOf(q)>=0||aliases.indexOf(q)>=0) hinten.push(e);
@@ -1224,7 +1236,7 @@ function uploadAsset(file){
    zweimal dazuliegen. */
 function newAssetArticle(name,res){
   var e={ id:uid("as"), interfaces:[ASSET_IFACE], name:name, tags:[],
-    components:{ Base:{text:name,key:"asset/"+slug(name),aliases:[]} },
+    components:{ Identity:{name:name,key:"asset/"+slug(name),aliases:[]} },
     adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
   reqFor(ASSET_IFACE).forEach(function(c){ if(!e.components[c]&&REG.interfaces[c]) e.components[c]={}; });
   applyDefaults(e,ASSET_IFACE);
@@ -1368,7 +1380,7 @@ function slug(s){return String(s||"").toLowerCase()
 function esc(s){return String(s==null?"":s);}
 /* Der gespeicherte Name. Zum Auflösen und zum Schreiben — nie zum Anzeigen,
    solange ein Deckname gelten könnte. */
-function rawName(e){return e&&(e.name||(e.components&&e.components.Base&&e.components.Base.text))||"Unnamed";}
+function rawName(e){return e&&(e.name||(e.components&&e.components.Identity&&e.components.Identity.name))||"Unnamed";}
 /* Der angezeigte Name (REQ-178). Ist der eigene Name von einer Information
    beansprucht, die dieser Betrachter nicht kennt, steht der Deckname da —
    und wenn keiner gesetzt ist, ein ehrliches „jemand".
@@ -1379,9 +1391,9 @@ function nameOf(e){
   if(!e)return "Unnamed";
   var echt=rawName(e);
   if(isGM())return echt;
-  var id=(e.components||{}).Base||{};
+  var id=(e.components||{}).Identity||{};
   if(!id.cover)return echt;
-  var frei=visibleRefs(e,["Base.text"]);
+  var frei=visibleRefs(e,["Identity.name"]);
   return frei.length?echt:id.cover;
 }
 function byName(){return Array.from(ENT.values()).sort(function(a,b){
@@ -1477,7 +1489,10 @@ function ifaceRoots(){
    Geerbt wird wie alles andere: eine Schnittstelle ohne eigene Angabe nimmt
    die ihres Obertyps. Ein NSC muss nicht wiederholen, dass Kreaturen zur
    Welt gehören. */
-var AREAS=[["story","Story"],["world","World"],["game","Game"],["play","Play"]];
+/* Vier **Bereiche** für Artikel. Register und Kompendium stehen daneben und
+   sind keine: das eine zeigt die Zeilen, aus denen alles besteht, das andere
+   alle Artikel ohne Rücksicht darauf, wo sie hingehören. */
+var AREAS=[["world","World"],["history","History"],["rules","Rules"],["play","Play"]];
 function areaOf(n){
   var kette=selfAndAncestors(n);
   for(var i=0;i<kette.length;i++){
@@ -1610,7 +1625,7 @@ function findByName(n){
     /* Aufgelöst wird gegen den gespeicherten Namen: ein Verweis muss auch
        dann ankommen, wenn der Betrachter nur den Decknamen sieht. */
     if(rawName(e).toLowerCase()===t){hit=id;return;}
-    var al=(e.components&&e.components.Base&&e.components.Base.aliases)||[];
+    var al=(e.components&&e.components.Identity&&e.components.Identity.aliases)||[];
     for(var i=0;i<al.length;i++) if(String(al[i]).toLowerCase()===t){hit=id;return;} });
   return hit;
 }
@@ -1693,7 +1708,7 @@ function go(r){
 function render(){
   var broken=[];
   [["Auswahl",renderViewSelect],["Betrachter",renderAsSelect],
-   ["Seitenleiste",renderRail],["Content",renderMain],
+   ["Seiten",renderPages],["Seitenleiste",renderRail],["Content",renderMain],
    ["Bezüge",renderAside],["Bereiche",renderPanes]].forEach(function(t){
     try{ t[1](); }catch(x){ broken.push(t[0]+": "+(x&&x.message||x)); }
   });
@@ -1721,6 +1736,47 @@ function renderPanes(){
 }
 
 /* ---------- left rail ---------- */
+/* ---------- Die sechs Seiten ----------
+   Register, Kompendium, Welt, Geschichte, Regelwerk, Spiel. Zwei davon sind
+   keine Bereiche: das Register zeigt die Zeilen, aus denen alles besteht,
+   das Kompendium alle Artikel ohne Rücksicht darauf, wo sie hingehören. Die
+   vier anderen wählt eine Artikelart über `area` — im Code steht keine
+   Liste davon, sonst bräuchte eine neue Art eine Codeänderung, um
+   auffindbar zu sein. */
+function currentPage(){
+  if(UI.route.k==="reg"||UI.route.k==="types"||UI.route.k==="graph") return "registry";
+  if(UI.route.k==="play") return "play";
+  if(UI.route.k==="list") return UI.area||"compendium";
+  /* Ein Artikel gehört zu der Seite, in die seine Art fällt. */
+  if(UI.route.k==="art"){
+    var e=ENT.get(UI.route.id);
+    var a=e?areaOf((e.interfaces||[])[0]):"";
+    return a||"compendium";
+  }
+  return UI.page||"compendium";
+}
+function goPage(p){
+  UI.page=p; UI.iface=""; UI.tag="";
+  if(p==="registry"){ if(!UI.regtab) UI.regtab="types"; UI.area=""; go({k:"reg"}); return; }
+  if(p==="play"){ UI.area=""; go({k:"play"}); return; }
+  UI.area=(p==="compendium"?"":p);
+  go({k:"list"});
+}
+function renderPages(){
+  var n=document.getElementById("pages"); if(!n)return;
+  n.textContent="";
+  var jetzt=currentPage();
+  var seiten=[["registry","Registry"],["compendium","Compendium"]]
+    .concat(AREAS.map(function(a){ return [a[0],a[1]]; }));
+  /* Ein Spieler bekommt kein Register — es auszugrauen wäre eine Einladung. */
+  if(!isGM()) seiten=seiten.filter(function(x){ return x[0]!=="registry"; });
+  seiten.forEach(function(sp){
+    var b=el("button",{type:"button","aria-current":String(jetzt===sp[0]),
+      onclick:function(){ goPage(sp[0]); }},sp[1]);
+    n.appendChild(b);
+  });
+}
+
 function renderRail(){
   var r=document.getElementById("rail"); r.textContent="";
   var counts={},tags={};
@@ -1748,7 +1804,12 @@ function renderRail(){
     kindsOf(n).forEach(function(k){ if(areaOf(k)===areaOf(n)) zweig(box,k,depth+1); });
   }
 
+  /* Nur der Abschnitt, auf dem man steht. Die sechs Seiten stehen oben;
+     die Leiste zeigt, was *in* einer Seite steckt — alle vier Bereiche
+     untereinander hiesse, dass die Navigation zweimal dasteht. */
+  var seite=currentPage();
   AREAS.forEach(function(ar){
+    if(seite!==ar[0])return;
     var wurzeln=areaRoots(ar[0]);
     if(!wurzeln.length)return;
     var sec=el("section");
@@ -1777,14 +1838,20 @@ function renderRail(){
     r.appendChild(sec);
   });
 
-  var sAll=el("section");
-  sAll.appendChild(el("button",{class:"navrow",type:"button",
-    "aria-current":String(UI.iface===""&&UI.area===""&&UI.route.k==="list"),
-    onclick:function(){UI.iface="";UI.area="";go({k:"list"});}},
-    [el("b",{text:"All articles"}),el("em",{text:String(ENT.size)})]));
-  r.appendChild(sAll);
+  if(seite==="compendium"){
+    var sAll=el("section");
+    sAll.appendChild(el("h3",{text:"Compendium"}));
+    sAll.appendChild(el("button",{class:"navrow area",type:"button",
+      "aria-current":String(UI.iface===""&&UI.area===""&&UI.route.k==="list"),
+      onclick:function(){UI.iface="";UI.area="";go({k:"list"});}},
+      [el("b",{text:"All articles"}),el("em",{text:String(ENT.size)})]));
+    /* Auch im Kompendium bleibt der Baum: ein Obertyp steht über seinen
+       Subtypen. Ohne ihn wäre „alle Artikel" eine Liste ohne Einstieg. */
+    AREAS.forEach(function(ar){ areaRoots(ar[0]).forEach(function(n){ zweig(sAll,n,1); }); });
+    r.appendChild(sAll);
+  }
 
-  var keys=Object.keys(tags).sort();
+  var keys=seite==="compendium"?Object.keys(tags).sort():[];
   if(keys.length){
     var s2=el("section"); s2.appendChild(el("h3",{text:"Tags"}));
     var box=el("div",{class:"tags"});
@@ -1819,18 +1886,29 @@ function renderRail(){
     r.appendChild(sp);
     return;
   }
+  /* ---- Register ----
+     Die Zeilen, aus denen alles besteht: Typen, Ansichten, Beziehungen.
+     Es hiess „System", und das klang nach Einstellungen — nach etwas, das
+     man einmal setzt. Hier wird die Kampagne definiert. */
+  if(seite!=="registry") return;
   var s3=el("section");
-  s3.appendChild(el("h3",{text:"System"}));
-  s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="types"),
-    title:"What each kind records, inherits, connects to and looks like",
-    onclick:function(){ UI.regtab="types"; go({k:"reg"}); }},
-    [el("b",{text:"Article types"}),el("em",{text:String(Object.keys(REG.interfaces).length)})]));
-  s3.appendChild(el("button",{class:"navrow",type:"button",
-    "aria-current":String(UI.route.k==="reg"&&UI.regtab!=="types"),
-    onclick:function(){ if(UI.regtab==="types") UI.regtab="relations"; go({k:"reg"}); }},
-    [el("b",{text:"Data model"}),el("em",{text:"def"})]));
+  s3.appendChild(el("h3",{text:"Registry"}));
+  function regZeile(tab,label,zusatz,titel){
+    s3.appendChild(el("button",{class:"navrow",type:"button",
+      "aria-current":String((UI.route.k==="reg"||UI.route.k==="types")&&UI.regtab===tab),
+      title:titel||null,
+      onclick:function(){ UI.regtab=tab; UI.regjson=false; go({k:"reg"}); }},
+      [el("b",{text:label}),el("em",{text:zusatz})]));
+  }
+  regZeile("types","Types",String(Object.keys(REG.interfaces).length),
+    "What each kind records, inherits, connects to and looks like");
+  regZeile("views","Views",String(Object.keys(REG.views).length));
+  regZeile("relations","Relations",String(Object.keys(REG.relations).length));
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.route.k==="graph"),
     onclick:function(){go({k:"graph"});}},[el("b",{text:"Graph"}),el("em",{text:"↔"})]));
+  regZeile("vars","Variables",String(Object.keys(REG.vars||{}).length));
+  regZeile("settings","Settings","·");
+  regZeile("backup","Backup","·");
   var ebenen=0; ENT.forEach(function(x){ if(((x.interfaces||[])[0])===LAYER_IFACE) ebenen++; });
   if(ebenen){
     var camp=currentCampaign();
@@ -1851,7 +1929,7 @@ function renderRail(){
      bauen heisst, sie nicht zu stellen. */
   var unfertig=0;
   ENT.forEach(function(x){
-    var st=((x.components||{}).Base||{}).value;
+    var st=((x.components||{}).Status||{}).status;
     if(st==="idea"||st==="planned") unfertig++;
   });
   s3.appendChild(el("button",{class:"navrow",type:"button",
@@ -1861,7 +1939,7 @@ function renderRail(){
     [el("b",{text:"Unfinished"}),el("em",{text:String(unfertig)})]));
   var offeneTodos=0;
   ENT.forEach(function(x){
-    ((((x.components||{}).Base||{}).items)||[]).forEach(function(t){ if(!t.done) offeneTodos++; });
+    ((((x.components||{}).Todos||{}).items)||[]).forEach(function(t){ if(!t.done) offeneTodos++; });
   });
   if(offeneTodos) s3.appendChild(el("button",{class:"navrow",type:"button",
     title:"Open the prep board of the first campaign or session",
@@ -2094,7 +2172,7 @@ function matches(e){
      Leiste steht und in der Liste fehlt. */
   if(UI.area && areaOf((e.interfaces||[])[0])!==UI.area) return false;
   if(UI.tag && (e.tags||[]).indexOf(UI.tag)<0) return false;
-  if(UI.status && (((e.components||{}).Base||{}).value)!==UI.status) return false;
+  if(UI.status && (((e.components||{}).Status||{}).status)!==UI.status) return false;
   if(UI.q){
     var hay=(nameOf(e)+" "+(e.tags||[]).join(" ")+" "+
       (e.blocks||[]).map(function(b){return b.body;}).join(" ")+" "+
@@ -2104,7 +2182,7 @@ function matches(e){
   return true;
 }
 function summary(e){
-  var d=e.components&&e.components.Base&&e.components.Base.raw;
+  var d=e.components&&e.components.Description&&e.components.Description.description;
   if(d)return d;
   var b=(e.blocks||[]).filter(function(x){return x.blockType!=="secret";})[0];
   return b?b.body:"";
@@ -2152,7 +2230,7 @@ function renderList(v){
     if(UI.pick) t.appendChild(el("span",{class:"tick",text:UI.picked[e.id]?"\u2713":"\u00b7"}));
     t.appendChild(el("span",{class:"rn",text:nameOf(e)}));
     t.appendChild(el("span",{class:"pill",text:ifaceName(e)}));
-    var st=e.components&&e.components.Base&&e.components.Base.value;
+    var st=e.components&&e.components.Status&&e.components.Status.status;
     if(st) t.appendChild(el("span",{class:"pill q",text:st}));
     (e.tags||[]).slice(0,3).forEach(function(tg){ t.appendChild(el("span",{class:"pill q",text:"#"+tg})); });
     var pr=checkArticle(e);
@@ -2160,7 +2238,7 @@ function renderList(v){
       text:"\u25cf "+pr.length}));
     row.appendChild(t);
     if(vw.image){
-      var b=e.components&&e.components.Base&&e.components.Base.url;
+      var b=e.components&&e.components.Image&&e.components.Image.url;
       if(b) row.appendChild(el("img",{class:"thumb",src:b,alt:"",loading:"lazy"}));
     }
     if(vw.description!==false&&summary(e))
@@ -2187,7 +2265,7 @@ function renderArticle(v,id){
   var head=el("div",{class:"arthead"});
   var kick=el("div",{class:"kicker"});
   kick.appendChild(el("span",{class:"pill",text:ifaceName(e)}));
-  var st=e.components&&e.components.Base&&e.components.Base.value;
+  var st=e.components&&e.components.Status&&e.components.Status.status;
   if(st) kick.appendChild(el("span",{class:"pill q",text:st}));
   if(canWrite()&&(UI.inline||UI.editField==="__tags")){
     var tgIn=el("input",{class:"i",type:"text",value:(e.tags||[]).join(", "),
@@ -2214,9 +2292,9 @@ function renderArticle(v,id){
     nmIn.addEventListener("change",function(){
       var neu=nmIn.value.trim(); if(!neu||neu===nameOf(e)){ if(!UI.inline)UI.editField=""; render(); return; }
       e.name=neu; e.components=e.components||{};
-      /* Nur das Feld setzen: `Base` trägt seit der Auflösung auch Stand,
-         Beschreibung und Bild — die ganze Karte zu ersetzen warf sie weg. */
-      e.components.Base=Object.assign({},e.components.Base||{},{text:neu});
+      /* Nur das Feld setzen, nicht die ganze Karte: `Identity` trägt auch
+         Schlüssel, Aliasse und den Decknamen. */
+      e.components.Identity=Object.assign({},e.components.Identity||{},{name:neu});
       if(!UI.inline) UI.editField="";
       persist(e);
     });
@@ -2231,7 +2309,7 @@ function renderArticle(v,id){
       h2.addEventListener("click",function(){ UI.editField="__name"; render(); }); }
     head.appendChild(h2);
   }
-  var ik=e.components&&e.components.Base&&e.components.Base.key;
+  var ik=e.components&&e.components.Identity&&e.components.Identity.key;
   if(ik) head.appendChild(el("div",{class:"key",text:ik}));
   var herkunft=stackChip(e);
   if(herkunft) head.appendChild(herkunft);
@@ -2312,7 +2390,7 @@ function filterBar(){
   tag.addEventListener("change",function(){ UI.tag=tag.value; UI.route={k:"list"}; render(); });
   bar.appendChild(tag);
 
-  var stProp=(((REG.interfaces.Base||{}).schema||{}).properties||{}).value;
+  var stProp=(((REG.interfaces.Status||{}).schema||{}).properties||{}).status;
   var st=el("select",{class:"i"});
   st.appendChild(el("option",{value:""},"any status"));
   ((stProp&&stProp["enum"])||["idea","planned","used","discarded"]).forEach(function(o){
@@ -2387,7 +2465,7 @@ function bulkBar(list){
   }},"− tags"));
 
   /* Stand */
-  var stEnum=(((REG.interfaces.Base||{}).schema||{}).properties||{}).value;
+  var stEnum=(((REG.interfaces.Status||{}).schema||{}).properties||{}).status;
   var stSel=el("select",{class:"i",style:"width:auto"});
   stSel.appendChild(el("option",{value:""},"set status…"));
   ((stEnum&&stEnum["enum"])||["idea","planned","used","discarded"]).forEach(function(o){
@@ -2397,7 +2475,7 @@ function bulkBar(list){
     var val=stSel.value; stSel.value="";
     durch("Status set to “"+val+"”",function(e){
       e.components=e.components||{};
-      e.components.Base=Object.assign({},e.components.Base||{},{value:val}); });
+      e.components.Status=Object.assign({},e.components.Status||{},{status:val}); });
   });
   bar.appendChild(stSel);
 
@@ -2450,7 +2528,7 @@ function bulkBar(list){
   return bar;
 }
 
-var BULK_TABU={"Base.text":1,"Base.key":1};
+var BULK_TABU={"Identity.name":1,"Identity.key":1};
 /* Nur Felder anbieten, die alle Gewählten überhaupt führen können — sonst
    stellt man etwas ein, das bei der Hälfte nirgends ankommt. */
 function bulkFieldDialog(betroffen,durch){
@@ -2698,7 +2776,7 @@ function renderLayoutItem(item,e,ifn,vw){
 }
 
 function elImage(e){
-  var img=(e.components||{}).Base;
+  var img=(e.components||{}).Image;
   if(!img)return null;
   var src=assetSrc(img.ref||img.url);
   if(!src)return null;
@@ -2709,7 +2787,7 @@ function elImage(e){
 }
 
 function elDescription(e){
-  var desc=((e.components||{}).Base||{}).raw;
+  var desc=((e.components||{}).Description||{}).description;
   return desc?para(fillVars(desc,null,e)):null;
 }
 
@@ -2846,7 +2924,7 @@ function elComposed(e){
       tn.appendChild(el("button",{class:"ref",type:"button",onclick:function(){go({k:"art",id:t.id});}},
         (r.props&&r.props.vars&&r.props.vars.NAME)||nameOf(t)));
       box.appendChild(tn);
-      var body=((t.components||{}).Base||{}).raw||((t.blocks||[])[0]&&t.blocks[0].body)||"";
+      var body=((t.components||{}).Description||{}).description||((t.blocks||[])[0]&&t.blocks[0].body)||"";
       /* Reihenfolge nach REQ-174: Bindung an der Kante → der *nutzende*
          Artikel → Kampagnenregister. Der Statblock trägt DC=12, nicht die
          Regel — gegen die Regel aufzulösen lässt {DC} stehen. */
@@ -3440,7 +3518,7 @@ function elCrawl(e,ifn,item){
    ein Satz landet als Punkt am Artikel, vor dem man gerade steht — ohne
    die Ansicht zu verlassen. Wer dafür erst irgendwohin springen muss,
    notiert es nicht. */
-var TODO_COMP="Base";
+var TODO_COMP="Todos";
 
 function todosOf(e){
   var c=(e.components||{})[TODO_COMP]||{};
@@ -3505,8 +3583,8 @@ function elPrep(e,ifn,item){
         var t=qi.value.trim(); if(!t)return;
         var neu={ id:uid("id"), interfaces:[REG.interfaces.Article?"Article":ifn],
           name:t.slice(0,60), tags:["idee"],
-          components:{ Base:{text:t.slice(0,60),key:"idea/"+slug(t).slice(0,40),
-            aliases:[],value:"idea",raw:t} },
+          components:{ Identity:{name:t.slice(0,60),key:"idea/"+slug(t).slice(0,40),aliases:[]},
+            Status:{status:"idea"}, Description:{description:t} },
           adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
         reqFor(neu.interfaces[0]).forEach(function(c){
           if(!neu.components[c]&&REG.interfaces[c]) neu.components[c]={}; });
@@ -3531,7 +3609,7 @@ function elPrep(e,ifn,item){
         var row=el("div",{class:"crowlite"});
         row.appendChild(el("button",{class:"ref",type:"button",
           onclick:function(){go({k:"art",id:x.art.id});}},nameOf(x.art)));
-        var st=((x.art.components||{}).Base||{}).value;
+        var st=((x.art.components||{}).Status||{}).status;
         if(st&&st!=="used") row.appendChild(el("span",{class:"pill q",text:st}));
         var off=todosOf(x.art).filter(function(t){return !t.done;}).length;
         if(off) row.appendChild(el("span",{class:"co",text:off+" open"}));
@@ -3593,7 +3671,7 @@ function elPrep(e,ifn,item){
   var unfertig=[];
   ENT.forEach(function(o){
     if(!articleVisible(o))return;
-    var st=((o.components||{}).Base||{}).value;
+    var st=((o.components||{}).Status||{}).status;
     if(st==="idea"||st==="planned") unfertig.push({e:o,st:st});
   });
   unfertig.sort(function(a,b){
@@ -3621,7 +3699,7 @@ function elPrep(e,ifn,item){
         sel.value=x.st;
         sel.addEventListener("change",function(){
           x.e.components=x.e.components||{};
-          x.e.components.Base=Object.assign({},x.e.components.Base||{},{value:sel.value});
+          x.e.components.Status=Object.assign({},x.e.components.Status||{},{status:sel.value});
           persist(x.e);
         });
         row.appendChild(sel);
@@ -4030,7 +4108,7 @@ function elQuests(e,ifn,item){
 function worldDated(){
   var out=[];
   ENT.forEach(function(o){
-    var wd=(o.components||{}).Base;
+    var wd=(o.components||{}).Time;
     if(!wd)return;
     if(wd.sort===undefined&&!wd.display)return;
     out.push({e:o,wd:wd,sort:Number(wd.sort)});
@@ -4059,7 +4137,7 @@ function elTimeline(e,ifn,item){
     b.appendChild(el("button",{class:"ref",type:"button",
       onclick:function(){go({k:"art",id:x.e.id});}},nameOf(x.e)));
     b.appendChild(el("span",{class:"pill q",text:ifaceName(x.e)}));
-    var d=((x.e.components||{}).Base||{}).raw;
+    var d=((x.e.components||{}).Description||{}).description;
     if(d) b.appendChild(para(fillVars(d,null,x.e),"co"));
     if(x.wd.duration) b.appendChild(el("span",{class:"co",text:x.wd.duration}));
     row.appendChild(b);
@@ -4098,7 +4176,7 @@ function ruleArticles(){
   return out;
 }
 function ruleText(e){
-  var d=((e.components||{}).Base||{}).raw;
+  var d=((e.components||{}).Description||{}).description;
   if(d)return d;
   var b=(e.blocks||[])[0];
   return b?b.body:"";
@@ -4113,7 +4191,7 @@ function rebuildRuleIndex(){
     if(((e.interfaces||[])[0])!==RULE_IFACE)return;
     var info=(e.components||{})[RULE_COMP]||{};
     if(info.autolink===false)return;
-    var id=(e.components||{}).Base||{};
+    var id=(e.components||{}).Identity||{};
     var namen=[rawName(e)].concat(Array.isArray(id.aliases)?id.aliases:[]);
     namen.forEach(function(n){
       var t=String(n||"").trim();
@@ -4288,7 +4366,7 @@ function renderRules(v){
       if(UI.ruleKind&&(((e.components||{})[RULE_COMP]||{}).kind||"—")!==UI.ruleKind)return false;
       if(!q)return true;
       if(nameOf(e).toLowerCase().indexOf(q)>=0)return true;
-      var al=((e.components||{}).Base||{}).aliases||[];
+      var al=((e.components||{}).Identity||{}).aliases||[];
       if(al.some(function(a){return String(a).toLowerCase().indexOf(q)>=0;}))return true;
       return ruleText(e).toLowerCase().indexOf(q)>=0;
     });
@@ -5415,9 +5493,9 @@ function newOnBoard(e){
       var name=nm.value.trim(); if(!name){nm.focus();return false;}
       var ifn2=sel.value;
       var neu={ id:uid("e"), interfaces:[ifn2], name:name, tags:[],
-        components:{ Base:{text:name,key:slug(ifn2)+"/"+slug(name),aliases:[]} },
+        components:{ Identity:{name:name,key:slug(ifn2)+"/"+slug(name),aliases:[]} },
         adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
-      if(tx.value.trim()) neu.components.Base=Object.assign({},neu.components.Base||{},{raw:tx.value.trim()});
+      if(tx.value.trim()) neu.components.Description={description:tx.value.trim()};
       reqFor(ifn2).forEach(function(c){ if(!neu.components[c]&&REG.interfaces[c]) neu.components[c]={}; });
       applyDefaults(neu,ifn2);
       ENT.set(neu.id,neu); persist(neu);
@@ -6340,7 +6418,7 @@ function elInventory(e,ifn,item){
 function newInventory(e){
   var name=nameOf(e)+" — gear";
   var inv={ id:uid("inv"), interfaces:[INV_IFACE], name:name, tags:[],
-    components:{ Base:{text:name,key:"inventory/"+slug(name),aliases:[]} },
+    components:{ Identity:{name:name,key:"inventory/"+slug(name),aliases:[]} },
     adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
   reqFor(INV_IFACE).forEach(function(c){ if(!inv.components[c]&&REG.interfaces[c]) inv.components[c]={}; });
   applyDefaults(inv,INV_IFACE);
@@ -7697,7 +7775,7 @@ function elMap(e,ifn,item){
        mit und das Möbel wandert beim Drehen aus. */
     var dreh=Number(pr.rot)||0;
     if(dreh) t.style.transform="translate(-50%,-50%) rotate("+dreh+"deg)";
-    var bild=art&&assetSrc(((art.components||{}).Base||{}).ref||((art.components||{}).Base||{}).url);
+    var bild=art&&assetSrc(((art.components||{}).Image||{}).image||((art.components||{}).Image||{}).url);
     if(bild) t.appendChild(el("img",{src:bild,alt:""}));
     else t.appendChild(el("span",{text:(art?nameOf(art):"?").slice(0,2)}));
 
@@ -7824,7 +7902,7 @@ function addSubmap(e,rahmen){
       if(!kind){
         var name=nm.value.trim(); if(!name){nm.focus();return false;}
         kind={ id:uid("mp"), interfaces:[MAP_IFACE], name:name, tags:[],
-          components:{ Base:{text:name,key:"map/"+slug(name),aliases:[]} },
+          components:{ Identity:{name:name,key:"map/"+slug(name),aliases:[]} },
           adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
         reqFor(MAP_IFACE).forEach(function(c){ if(!kind.components[c]&&REG.interfaces[c]) kind.components[c]={}; });
         applyDefaults(kind,MAP_IFACE);
@@ -7878,7 +7956,7 @@ function articleVisible(e){
   if(!inStack(e))return false;
   if(isOverridden(e))return false;
   if(isGM())return true;
-  var vis=(e.components||{}).Base||{};
+  var vis=(e.components||{}).Visibility||{};
   if(vis.audience==="gm")return false;
   var a=viewerActor();
   if(Array.isArray(vis.hiddenFrom)&&a&&vis.hiddenFrom.indexOf(a)>=0)return false;
@@ -8101,7 +8179,7 @@ function newInformation(e){
       var name=nm.value.trim(); if(!name){nm.focus();return false;}
       if(!REG.interfaces[INFO_IFACE]){ alert("The interface “"+INFO_IFACE+"” is missing from the registry."); return; }
       var info={ id:uid("i"), interfaces:[INFO_IFACE], name:name, tags:[],
-        components:{ Base:{text:name,key:"information/"+slug(name),aliases:[]} },
+        components:{ Identity:{name:name,key:"information/"+slug(name),aliases:[]} },
         adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
       reqFor(INFO_IFACE).forEach(function(c){ if(!info.components[c]&&REG.interfaces[c]) info.components[c]={}; });
       applyDefaults(info,INFO_IFACE);
@@ -8573,9 +8651,9 @@ function worldToday(){
   if(gesetzt)return gesetzt;
   var beste=null, rang=-Infinity;
   ENT.forEach(function(e){
-    var wd=(e.components||{}).Base;
+    var wd=(e.components||{}).Time;
     if(!wd||!wd.display)return;
-    if((((e.components||{}).Base||{}).value)!=="used")return;
+    if((((e.components||{}).Status||{}).status)!=="used")return;
     var s=Number(wd.sort);
     if(!isFinite(s)||s<rang)return;
     rang=s; beste=wd.display;
@@ -8736,7 +8814,7 @@ function typeOrder(){
   }
   AREAS.forEach(function(ar){ areaRoots(ar[0]).forEach(zweig); });
   /* Was in keinem Bereich liegt, steht am Schluss: abstrakte Oberbegriffe,
-     die keine Artikel tragen. Sie wegzulassen hiesse, dass man `Base` nie zu
+     die keine Artikel tragen. Sie wegzulassen hiesse, dass man `Identity` nie zu
      sehen bekommt — und dort steht, was jede Art erbt. */
   Object.keys(REG.interfaces).sort().forEach(function(n){
     if(!areaOf(n)&&out.indexOf(n)<0) out.push(n);
@@ -9010,6 +9088,9 @@ function renderTypes(v){
     var zahl=countIface(n);
     var b=el("button",{class:"navrow"+(n===wahl?" on":""),type:"button",
       "aria-current":String(n===wahl),
+      /* Der Name, nicht die Beschriftung: „Statblock numbers" heisst
+         `StatblockInfo`, und wer die Zeile sucht, sucht den Namen. */
+      "data-t":n,
       style:tiefe?"padding-left:"+(10+tiefe*11)+"px":null,
       onclick:function(){ UI.typePick=n; render(); }},
       [el("b",{class:dd.abstract?"ab":"",text:dd.label||n}),
@@ -9182,14 +9263,13 @@ function renderTypes(v){
 }
 
 function renderRegistry(v){
-  v.appendChild(el("h2",{text:"Data model"}));
+  v.appendChild(el("h2",{text:"Registry"}));
   v.appendChild(konzept());
   var tabs=el("div",{class:"tabs",role:"tablist"});
   /* Kein Reiter „Components" mehr: eine Art trägt ihre Felder selbst, und
      zwei Stellen für dieselbe Sache waren genau das, was hier weg sollte. */
-  [["types","Types"],
-   ["relations","Relation types"],["views","Views"],["vars","Variables"],
-   ["settings","Settings"],["backup","Backup"]]
+  [["types","Types"],["views","Views"],["relations","Relations"],
+   ["vars","Variables"],["settings","Settings"],["backup","Backup"]]
   .forEach(function(t){
     tabs.appendChild(el("button",{type:"button",role:"tab","aria-selected":String(UI.regtab===t[0]),
       onclick:function(){UI.regtab=t[0];UI.err="";render();}},t[1]));
@@ -9516,7 +9596,7 @@ function konzept(){
   var t=el("dl",{class:"kdl"});
   [["Types",
     "The only row for a kind of thing: the fields it records, what it extends, and which text "+
-    "blocks it allows. Resolution walks extends upward, so Weapon gets everything Item and Base "+
+    "blocks it allows. Resolution walks extends upward, so Weapon gets everything Item and Identity "+
     "have. There is no second list of components — a type carries its fields itself, and what "+
     "several types share is a parent type."],
    ["Fields",
@@ -9551,10 +9631,11 @@ function konzept(){
   d.appendChild(el("div",{class:"rsec",style:"margin-top:18px",text:"Following one article through"}));
   var bsp=el("ol",{class:"bsp"});
   [["The row that says what a statblock is",
-    "Types › Statblock. It extends Base, StatblockInfo and Vars. That is the whole "+
+    "Types › Statblock. It is made of Identity, Status, Description, Visibility, Source, "+
+    "Imported, StatblockInfo and Vars. That is the whole "+
     "definition — everything below follows from it."],
    ["What it may carry",
-    "Because it extends Base it also gets name, key, status, description, visibility, image "+
+    "Each part brings its own fields: Identity the name and key, Source the book and page, "+
     "and the imported original. Open Statblock and you see them listed as inherited, with the "+
     "type they come from."],
    ["Where the fields come from",
@@ -9903,51 +9984,6 @@ function regIfaceBody(ifn){
   labelInput.addEventListener("change",function(){ d.label=labelInput.value.trim()||ifn; save(); });
   head.appendChild(field("Label",labelInput));
 
-  var parentSel=el("select",{class:"i"}); if(!w) parentSel.disabled=true;
-  parentSel.appendChild(el("option",{value:""},"— none —"));
-  Object.keys(REG.interfaces).sort().forEach(function(n){
-    if(n===ifn||wouldCycle(ifn,n))return;
-    parentSel.appendChild(el("option",{value:n},REG.interfaces[n].label||n)); });
-  parentSel.value=parentOf(ifn);
-  parentSel.addEventListener("change",function(){
-    /* Nur den **ersten** Obertyp ändern. `d.extends=[wert]` hätte einen
-       zweiten still weggeworfen — und niemand hätte es gemerkt, weil die
-       Felder danach einfach fehlen. */
-    var rest=parentsOf(ifn).slice(1);
-    if(parentSel.value) d.extends=[parentSel.value].concat(rest);
-    else if(rest.length) d.extends=rest;
-    else delete d.extends;
-    save(); });
-  head.appendChild(field("Extends",parentSel));
-
-  /* Weitere Obertypen. `extends` ist ein Array — eine Art darf von
-     mehreren erben, und dann gilt, was beide mitbringen. Sie stehen
-     daneben, weil ein Wähler mit einem Wert sie sonst verschwiegen und der
-     nächste Klick sie gelöscht hätte. */
-  var weitere=el("div",{class:"chips"});
-  parentsOf(ifn).slice(1).forEach(function(p2){
-    var c=el("span",{class:"chip"});
-    c.appendChild(el("span",{text:REG.interfaces[p2].label||p2}));
-    if(w) c.appendChild(el("button",{type:"button",title:"remove",onclick:function(){
-      d.extends=parentsOf(ifn).filter(function(x){ return x!==p2; });
-      if(!d.extends.length) delete d.extends;
-      save(); }},"\u00d7"));
-    weitere.appendChild(c);
-  });
-  if(w){
-    var mehr=el("select",{class:"i",style:"width:auto"});
-    mehr.appendChild(el("option",{value:""},"+ also inherits\u2026"));
-    Object.keys(REG.interfaces).sort().forEach(function(n2){
-      if(n2===ifn||wouldCycle(ifn,n2)||parentsOf(ifn).indexOf(n2)>=0)return;
-      mehr.appendChild(el("option",{value:n2},REG.interfaces[n2].label||n2)); });
-    mehr.addEventListener("change",function(){
-      if(!mehr.value)return;
-      d.extends=parentsOf(ifn).concat([mehr.value]);
-      save(); });
-    weitere.appendChild(mehr);
-  }
-  if(parentsOf(ifn).length>1||w) head.appendChild(field("Also inherits",weitere));
-
   var ab=el("select",{class:"i"}); if(!w) ab.disabled=true;
   ab.appendChild(el("option",{value:""},"instantiable"));
   ab.appendChild(el("option",{value:"1"},"abstract only"));
@@ -9958,12 +9994,56 @@ function regIfaceBody(ifn){
   head.appendChild(field("Kind",ab));
   box.appendChild(head);
 
-  /* ---- Felder ---- */
+  /* ---- Besteht aus ----
+     Ein Typ ist entweder ein **Basistyp** — er erklärt Felder und erbt
+     nichts — oder ein **Zusammenschluss** aus anderen Typen. Was ein
+     Ereignis nicht braucht, nimmt es nicht dazu; ein Feld einzeln
+     auszublenden gibt es nicht, weil eine Ausnahmeliste am Tag des nächsten
+     Feldes unvollständig wäre und es niemand merkte. */
+  var teile=parentsOf(ifn);
+  box.appendChild(el("div",{class:"rsec",text:"Made of"}));
+  box.appendChild(el("p",{class:"hint",
+    text:teile.length
+      ? "The types this one is made of. The first draws the tree and decides the area; the rest come along. Removing one removes its fields."
+      : "Nothing — this type declares its fields itself. Add a part and it becomes a composition."}));
+  var tc=el("div",{class:"chips"});
+  teile.forEach(function(p2,i){
+    var c=el("span",{class:"chip"+(i?"":" first")});
+    c.appendChild(el("button",{type:"button",class:"ref",onclick:function(){
+      UI.typePick=p2; UI.regiface=p2; UI.regcomp=""; UI.regprop=""; render(); }},
+      (REG.interfaces[p2].label||p2)));
+    if(w) c.appendChild(el("button",{type:"button",title:"remove",onclick:function(){
+      confirmDialog("„"+(REG.interfaces[p2].label||p2)+"” aus "+(d.label||ifn)+
+        " herausnehmen? Die Werte bleiben in den Artikeln, werden aber nicht mehr gezeigt.",
+        function(){
+          d.extends=parentsOf(ifn).filter(function(x){ return x!==p2; });
+          if(!d.extends.length) delete d.extends;
+          save(); },"Remove"); }},"\u00d7"));
+    tc.appendChild(c);
+  });
+  if(w){
+    var mehr=el("select",{class:"i",style:"width:auto"});
+    mehr.appendChild(el("option",{value:""},"+ part\u2026"));
+    Object.keys(REG.interfaces).sort().forEach(function(n2){
+      if(n2===ifn||wouldCycle(ifn,n2)||teile.indexOf(n2)>=0)return;
+      mehr.appendChild(el("option",{value:n2},REG.interfaces[n2].label||n2)); });
+    mehr.addEventListener("change",function(){
+      if(!mehr.value)return;
+      d.extends=parentsOf(ifn).concat([mehr.value]);
+      save(); });
+    tc.appendChild(mehr);
+  }
+  box.appendChild(tc);
+
+  /* ---- Felder ----
+     **Eine** Liste, nicht eine Zeile je Karte. Jedes Feld mit seiner Art,
+     ob es Pflicht ist und woher es kommt. Vorher standen eigene und geerbte
+     Felder in zwei Abschnitten, die dasselbe meinten — und wer wissen
+     wollte, was ein Ereignis trägt, musste beide aufklappen. */
   box.appendChild(el("div",{class:"rsec",text:"Fields"}));
   box.appendChild(el("p",{class:"hint",
-    text:"The fields this kind records. Inherited ones sit higher in the tree — change them there and it holds for every subtype. Required means validation rejects the article without the field."}));
-
-  compsFor(ifn).forEach(function(cn){ box.appendChild(compRow(cn)); });
+    text:"Every field an article of this kind records. Its own are editable here; inherited ones belong to the part that brings them — open it to change them for every type that has it."}));
+  box.appendChild(fieldTable(ifn,w,save));
 
   /* ---- Blockarten ---- */
   box.appendChild(el("div",{class:"rsec",text:"Block types"}));
@@ -10069,6 +10149,75 @@ function regIfaceBody(ifn){
     if(UI.regcomp===cn) wrap.appendChild(fieldBox(cn,ifn,w&&eigen,save));
     return wrap;
   }
+}
+
+/* ---------- alle Felder einer Art, in einer Liste ----------
+   Eigene zuerst und bearbeitbar, geerbte darunter mit dem Bestandteil, der
+   sie mitbringt. Geerbte sind hier **nicht** bearbeitbar: ein Feld an
+   `Identity` zu ändern, weil man gerade bei `Event` steht, änderte es für
+   jede Artikelart — und zwar ohne dass es irgendwo stünde. Ein Klick auf
+   den Bestandteil führt dorthin, wo die Änderung hingehört. */
+function fieldTable(ifn,w,save){
+  var box=el("div",{class:"fbox"});
+  var eigen=propsOf(ifn), keys=Object.keys(eigen);
+  keys.forEach(function(k){ box.appendChild(fieldRow(ifn,k,ifn,w,save)); });
+
+  var geerbt=0;
+  ancestorsOf(ifn).forEach(function(a){
+    Object.keys(propsOf(a)).forEach(function(k){
+      box.appendChild(erbRow(a,k)); geerbt++; });
+  });
+
+  if(!keys.length&&!geerbt) box.appendChild(el("p",{class:"hint",text:"No fields yet."}));
+
+  if(w){
+    var nk=el("input",{class:"i",type:"text",placeholder:"Field name, e.g. weight"});
+    var nt=el("input",{class:"i",type:"text",placeholder:"Label"});
+    var bar=el("div",{class:"addbar",style:"margin-top:9px"});
+    bar.appendChild(nk); bar.appendChild(nt);
+    bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+      var k=nk.value.trim().replace(/[^A-Za-z0-9_]/g,"");
+      if(!k) return;
+      var schon=fieldsOf(ifn).filter(function(f){ return f.key===k; })[0];
+      if(schon){ UI.err="The field "+k+" already comes from "+
+        (REG.interfaces[schon.type].label||schon.type)+"."; render(); return; }
+      var d=REG.interfaces[ifn];
+      d.schema=d.schema||{type:"object",properties:{}};
+      d.schema.properties=d.schema.properties||{};
+      d.schema.properties[k]={type:"string",title:nt.value.trim()||k};
+      UI.regprop=ifn+"."+k;
+      save();
+    }},"Add field"));
+    box.appendChild(bar);
+  }
+  return box;
+}
+
+/* Eine geerbte Zeile: lesen, nicht ändern — und ein Weg dorthin, wo es geht. */
+function erbRow(art,k){
+  var p=propsOf(art)[k]||{};
+  var pflicht=(schemaOf(art).required||[]).indexOf(k)>=0;
+  var row=el("div",{class:"frow inh"});
+  row.appendChild(el("span",{class:"fk",text:k+(pflicht?"*":"")}));
+  row.appendChild(el("span",{class:"co",text:p.title||k}));
+  row.appendChild(el("span",{class:"pill q"+(p.derived?" der":""),
+    title:p.derived?"Computed on read — no input, no column (D8)":"",
+    text:p.derived?"derived":fieldKind(p)}));
+  row.appendChild(el("button",{class:"btn sm gh",type:"button",
+    title:"Open the part that brings it",
+    onclick:function(){ UI.typePick=art; UI.regiface=art; UI.regcomp=""; UI.regprop=""; render(); }},
+    REG.interfaces[art].label||art));
+  return row;
+}
+
+/* Alle Felder einer Art mit der Art, die sie erklärt — dieselbe Reihenfolge
+   wie die Liste oben. */
+function fieldsOf(ifn){
+  var out=[];
+  selfAndAncestors(ifn).forEach(function(a){
+    Object.keys(propsOf(a)).forEach(function(k){ out.push({type:a,key:k,prop:propsOf(a)[k]}); });
+  });
+  return out;
 }
 
 /* ---------- the fields of a component ----------
@@ -10424,7 +10573,7 @@ function newEntity(presetName){
       var name=nm.value.trim(); if(!name){nm.focus();return false;}
       var ifn=sel.value;
       var e={ id:uid("e"), interfaces:[ifn], name:name, tags:[],
-        components:{ Base:{text:name,key:slug(ifn)+"/"+slug(name),aliases:[]} },
+        components:{ Identity:{name:name,key:slug(ifn)+"/"+slug(name),aliases:[]} },
         adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
       reqFor(ifn).forEach(function(c){ if(!e.components[c]&&REG.interfaces[c]) e.components[c]={}; });
       applyDefaults(e,ifn);
@@ -10493,7 +10642,7 @@ function editEntity(e){
       e.name=nm.value.trim()||e.name;
       e.tags=tg.value.split(",").map(function(s){return s.trim();}).filter(Boolean);
       e.components=e.components||{};
-      e.components.Base=Object.assign({},e.components.Base||{},{text:e.name});
+      e.components.Identity=Object.assign({},e.components.Identity||{},{name:e.name});
       inputs.forEach(function(it){
         if(it.adhoc!==undefined){ e.adhoc[it.adhoc].value=it.node.value; return; }
         var val=readInput(it);
@@ -10672,10 +10821,10 @@ function impGegenstand(text,datei){
   (body.match(/!\[\[[^\]|#]+\.(?:png|jpe?g|webp|gif)(?:\|[^\]]*)?\]\]/gi)||[]).forEach(function(x){
     bilder.push(linkZiel(x)); });
 
-  /* Eine Karte je Art: was `Base` erklärt, steht auf `Base`. */
-  var c={ Base:{text:name,key:slug(ifn)+"/"+slug(name),aliases:fmList(fm,"aliases"),
-    value:"used",imported:text,format:"obsidian",
-    importedAt:new Date().toISOString().slice(0,10)} };
+  /* Eine Karte je Bestandteil: was `Identity` erklärt, steht auf `Identity`. */
+  var c={ Identity:{name:name,key:slug(ifn)+"/"+slug(name),aliases:fmList(fm,"aliases")},
+    Status:{status:"used"},
+    Imported:{text:text,format:"obsidian",at:new Date().toISOString().slice(0,10)} };
 
   var info={}, r=fmStr(fm,"Rarität"), kr=fmStr(fm,"Kaufrarität"),
       kp=fmNum(fm,"Kupferpreis"), st=fmNum(fm,"Stapelgrösse");
@@ -10700,7 +10849,7 @@ function impGegenstand(text,datei){
     if(fmStr(fm,"Materialtyp"))ma.materialType=fmStr(fm,"Materialtyp");
     var be=fmList(fm,"Berufe"); if(be.length)ma.trades=be;
     if(Object.keys(ma).length)c.Material=ma; }
-  if(bilder[0]) c.Base=Object.assign({},c.Base,{url:bilder[0],caption:""});
+  if(bilder[0]) c.Image={url:bilder[0],caption:""};
 
   var prosa=body.replace(/!\[\[[^\]]+\]\]/g,"").replace(/^#+\s*Eigenschaften[\s\S]*$/im,"").trim();
   var bl=[];
@@ -10775,9 +10924,9 @@ function impStatblock(text,datei){
   schliess(); if(akt)abschnitte.push(akt);
 
   return { e:{ id:uid("sb"), interfaces:["Statblock"], name:name, tags:[],
-      components:{ Base:{text:name,key:"statblock/"+slug(name),aliases:fmList(fm,"aliases"),
-        value:"used",imported:text,format:"obsidian",
-        importedAt:new Date().toISOString().slice(0,10)},
+      components:{ Identity:{name:name,key:"statblock/"+slug(name),aliases:fmList(fm,"aliases")},
+        Status:{status:"used"},
+        Imported:{text:text,format:"obsidian",at:new Date().toISOString().slice(0,10)},
         /* Die Zahlen bleiben ihre eigene Karte: `hp` heisst am Statblock
            etwas anderes als an der Kreatur, die gerade Schaden nimmt. */
         StatblockInfo:info },
@@ -10801,9 +10950,9 @@ function impOrt(text,datei){
   if(fmStr(fm,"biom"))li.umwelt=fmStr(fm,"biom");
   if(fmStr(fm,"siedlungstyp"))li.siedlungstyp=fmStr(fm,"siedlungstyp");
 
-  var c={ Base:{text:name,key:"ort/"+slug(name),aliases:fmList(fm,"aliases"),
-    value:"used",imported:text,format:"obsidian",
-    importedAt:new Date().toISOString().slice(0,10)}, Place:li };
+  var c={ Identity:{name:name,key:"ort/"+slug(name),aliases:fmList(fm,"aliases")},
+    Status:{status:"used"},
+    Imported:{text:text,format:"obsidian",at:new Date().toISOString().slice(0,10)}, Place:li };
 
   var prosa=body.replace(/!\[\[[^\]]+\]\]/g,"").replace(/^#+\s.*$/gm,"").trim();
   var bl=[];
@@ -10837,8 +10986,9 @@ function runImport(files){
         var kind=/^bonus/i.test(ab.name)?"bonus":/^reaction/i.test(ab.name)?"reaction"
                 :/^(villain|legendary)/i.test(ab.name)?"legendary":/^action/i.test(ab.name)?"action":"trait";
         result.rules.push({ id:id, interfaces:["Rule"], name:en.name, tags:[],
-          components:{ Base:{text:en.name,key:"regel/"+slug(en.name),aliases:[],
-            value:"used",raw:en.text}, Rule:{kind:kind} },
+          components:{ Identity:{name:en.name,key:"regel/"+slug(en.name),aliases:[]},
+            Status:{status:"used"}, Description:{description:en.text},
+            Rule:{kind:kind} },
           adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() }); }
       x.r.e.relations.push({id:uid("rel"),type:"composedOf",to:id,props:{section:ab.name}});
     });});
@@ -10847,11 +10997,11 @@ function runImport(files){
   var alle=result.item.concat(result.place,result.statblock,result.rules);
   var nachName={};
   ENT.forEach(function(e){ if((e.interfaces||[])[0]!=="Statblock") nachName[nameOf(e).toLowerCase()]=e.id;
-    ((e.components&&e.components.Base&&e.components.Base.aliases)||[]).forEach(function(a){
+    ((e.components&&e.components.Identity&&e.components.Identity.aliases)||[]).forEach(function(a){
       nachName[String(a).toLowerCase()]=e.id; }); });
   alle.forEach(function(e){ if((e.interfaces||[])[0]==="Statblock")return;
     nachName[e.name.toLowerCase()]=e.id;
-    ((e.components.Base&&e.components.Base.aliases)||[]).forEach(function(a){
+    ((e.components.Identity&&e.components.Identity.aliases)||[]).forEach(function(a){
       nachName[String(a).toLowerCase()]=e.id; }); });
 
   roh.forEach(function(x){

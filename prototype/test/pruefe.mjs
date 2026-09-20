@@ -21,6 +21,17 @@ const pruefe = (name, ok, was) => {
   console.log(`${ok ? '  ok  ' : 'FEHLT '} ${name}${ok ? '' : ' — ' + JSON.stringify(was)}`);
 };
 
+/** Auf eine der sechs Seiten wechseln. Die Leiste zeigt danach, was darin
+ *  steckt — vorher standen alle Bereiche untereinander, und ein Klick in die
+ *  Leiste reichte. */
+const zurSeite = async (p, name) => {
+  await p.evaluate((n) => {
+    const b = [...document.querySelectorAll('#pages button')].find((x) => x.textContent === n);
+    if (b) b.click();
+  }, name);
+  await p.waitForTimeout(400);
+};
+
 async function seite(datei, warten) {
   const p = await browser.newPage({ viewport: { width: 1280, height: 950 } });
   const errs = [];
@@ -53,8 +64,9 @@ async function seite(datei, warten) {
      Artikelarten und Datenmodell sind **eine** Seite: der Baum steht links,
      die Maske rechts unter der Vorlage. Zwei Seiten hiessen, das Modell
      hier anzulegen und dort nachzusehen, was dabei herauskommt. */
+  await zurSeite(p, 'Registry');
   await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((b) => /Article types/.test(b.textContent))?.click());
+    [...document.querySelectorAll('.rail button')].find((b) => /^Types/.test(b.textContent))?.click());
   await p.waitForTimeout(400);
   const baum = await p.evaluate(() =>
     [...document.querySelectorAll('.tpnav .navrow')].map((b) => b.textContent));
@@ -63,15 +75,15 @@ async function seite(datei, warten) {
   await p.evaluate(() =>
     [...document.querySelectorAll('.tpnav .navrow')].find((b) => /Statblock/.test(b.textContent))?.click());
   await p.waitForTimeout(350);
-  await p.evaluate(() => {
-    const row = [...document.querySelectorAll('.regbody .crow')]
-      .find((r) => r.textContent.includes('StatblockInfo'));
-    [...row.querySelectorAll('button')].find((b) => /Fields/.test(b.textContent))?.click();
-  });
-  await p.waitForTimeout(200);
-  const felder = await p.evaluate(() =>
-    [...document.querySelectorAll('.fbox .frow .fk')].map((x) => x.textContent));
-  pruefe('a card expands to its fields', felder.includes('passivePerception'), felder.length);
+  /* Eine Liste, nicht eine Zeile je Karte: eigene Felder zuerst, geerbte
+     darunter mit dem Bestandteil, der sie mitbringt. */
+  const felderDa = await p.evaluate(() => ({
+    alle: [...document.querySelectorAll('.fbox .frow .fk')].map((x) => x.textContent),
+    geerbt: [...document.querySelectorAll('.fbox .frow.inh')].length,
+  }));
+  pruefe('every field stands in one list', felderDa.alle.some((k) => /^passivePerception/.test(k)),
+    felderDa.alle.length);
+  pruefe('and an inherited one says which part brings it', felderDa.geerbt > 0, felderDa.geerbt);
 
   const vorher = await p.evaluate(() => document.querySelectorAll('.tpnav .navrow').length);
   await p.evaluate(() => {
@@ -84,7 +96,7 @@ async function seite(datei, warten) {
   const nachher = await p.evaluate(() => ({
     anzahl: document.querySelectorAll('.tpnav .navrow').length,
     gewaehlt: document.querySelector('.regbody h3')?.textContent,
-    geerbt: [...document.querySelectorAll('.regbody .crow .co')].some((c) => /inherited$/.test(c.textContent.trim())),
+    geerbt: [...document.querySelectorAll('.fbox .frow.inh')].length > 0,
     geschrieben: window.__WROTE__.includes('registry/interfaces'),
   }));
   pruefe('creating a subtype inserts a row', nachher.anzahl === vorher + 1, nachher);
@@ -93,6 +105,7 @@ async function seite(datei, warten) {
   pruefe('registry raised no exception', errs.length === 0, errs);
 
   /* 3 — Löschen: eigener Dialog, kein window.confirm */
+  await zurSeite(p, 'Compendium');
   await p.evaluate(() =>
     [...document.querySelectorAll('.rail button')].find((b) => /All articles/.test(b.textContent))?.click());
   await p.waitForTimeout(250);
@@ -129,27 +142,28 @@ async function seite(datei, warten) {
   pruefe('no browser modal — discarded in the iframe', modale.length === 0, modale);
 
   /* 4 — Feldarten: Farbe, Auswahl, Verweis; Schlüssel umbenennen */
-  const zumFeld = async (iface, comp, key) => {
+  const zumFeld = async (iface, key) => {
+    await zurSeite(p, 'Registry');
     await p.evaluate(() =>
-      [...document.querySelectorAll('.rail button')].find((x) => /Article types/.test(x.textContent)).click());
+      [...document.querySelectorAll('.rail button')].find((x) => /^Types/.test(x.textContent)).click());
     await p.waitForTimeout(350);
-    await p.evaluate((i) =>
-      [...document.querySelectorAll('.tpnav .navrow')].find((b) => b.textContent.includes(i)).click(), iface);
+    /* Über `data-t` und nicht über die Beschriftung: `StatblockInfo` steht
+       in der Leiste als „Statblock numbers". */
+    await p.evaluate((i) => document.querySelector('.tpnav .navrow[data-t="' + i + '"]').click(), iface);
     await p.waitForTimeout(350);
-    await p.evaluate((c) => {
-      const row = [...document.querySelectorAll('.regbody .crow')].find((r) => r.textContent.includes(c));
-      [...row.querySelectorAll('button')].find((b) => /Fields/.test(b.textContent)).click();
-    }, comp);
-    await p.waitForTimeout(200);
     if (!key) return;
+    /* Geerbte Zeilen haben kein „⋯" — ein Feld wird dort geändert, wo es
+       erklärt wird, und nicht dort, wo es ankommt. */
     await p.evaluate((k) => {
-      const row = [...document.querySelectorAll('.fbox .frow')].find((r) => r.querySelector('.fk')?.textContent === k);
+      const row = [...document.querySelectorAll('.fbox .frow')]
+        .find((r) => !r.classList.contains('inh') && r.querySelector('.fk')?.textContent.startsWith(k));
+      if (row.parentElement.querySelector('.fmore')) return;
       [...row.querySelectorAll('button')].find((b) => b.textContent === '⋯').click();
     }, key);
     await p.waitForTimeout(200);
   };
 
-  await zumFeld('Faction', 'Faction', 'color');
+  await zumFeld('Faction', 'color');
   const arten = await p.evaluate(() => {
     const row = [...document.querySelectorAll('.fbox .frow')].find((r) => r.querySelector('.fk')?.textContent === 'color');
     return [...row.querySelector('select').options].map((o) => o.value);
@@ -163,6 +177,7 @@ async function seite(datei, warten) {
     sel.dispatchEvent(new Event('change', { bubbles: true }));
   });
   await p.waitForTimeout(250);
+  await zurSeite(p, 'Compendium');
   await p.evaluate(() =>
     [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
   await p.waitForTimeout(200);
@@ -178,7 +193,7 @@ async function seite(datei, warten) {
 
   /* Umbenennen muss Schema, Ansichten UND die Werte in den Artikeln treffen —
      wer nur das Schema ändert, lässt die Werte still hinter dem alten Namen. */
-  await zumFeld('Statblock', 'StatblockInfo', 'hp');
+  await zumFeld('StatblockInfo', 'hp');
   await p.evaluate(() => {
     const box = [...document.querySelectorAll('.fbox .fmore')][0];
     const keyIn = [...box.querySelectorAll('label.f')]
@@ -208,7 +223,7 @@ async function seite(datei, warten) {
     keinRest.alt === false && keinRest.neu === true, keinRest);
 
   /* Verweisfeld: Zielbeschränkung engt ein, Vorschlag speichert die Id */
-  await zumFeld('Creature', 'Creature', null);
+  await zumFeld('Creature', null);
   await p.evaluate(() => {
     const bar = [...document.querySelectorAll('.fbox .addbar')][0];
     const [k, t] = bar.querySelectorAll('input');
@@ -235,6 +250,7 @@ async function seite(datei, warten) {
   const zahl = (t) => Number((t.match(/^(\d+)/) ?? [])[1] ?? -1);
   pruefe('a target constraint narrows the candidates', zahl(eng) > 0 && zahl(eng) < zahl(offen), { offen, eng });
 
+  await zurSeite(p, 'Compendium');
   await p.evaluate(() =>
     [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
   await p.waitForTimeout(200);
@@ -308,7 +324,7 @@ async function seite(datei, warten) {
       schwert: schwert && { iface: schwert.interfaces[0], type: schwert.components.Item?.itemType,
                             dmg: schwert.components.Weapon?.damage, fp: !!(schwert.components.Item||{}).rows },
       kette: kette && { iface: kette.interfaces[0], ac: kette.components.Armor?.ac,
-                        bild: !!kette.components.Base?.url },
+                        bild: !!kette.components.Image?.url },
       grimm: grimm && { size: grimm.components.StatblockInfo?.size, hp: grimm.components.StatblockInfo?.hp,
                         speed: grimm.components.StatblockInfo?.speed },
     };
@@ -325,8 +341,9 @@ async function seite(datei, warten) {
   pruefe('field kinds and import raised no exception', errs.length === 0, errs);
 
   /* 6 — Ansichten als Werkzeugkasten, und ein Layout je Typ */
+  await zurSeite(p, 'Registry');
   await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((x) => /Data model/.test(x.textContent)).click());
+    [...document.querySelectorAll('.rail button')].find((x) => /^Types/.test(x.textContent)).click());
   await p.waitForTimeout(200);
   await p.evaluate(() =>
     [...document.querySelectorAll('.tabs button')].find((x) => /^Views$/.test(x.textContent)).click());
@@ -391,6 +408,7 @@ async function seite(datei, warten) {
   pruefe('elements can be reordered', reihe[0] === 'Heading', reihe);
 
   const zeig = async (name) => {
+    await zurSeite(p, 'Compendium');
     await p.evaluate(() =>
       [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
     await p.waitForTimeout(200);
@@ -412,11 +430,12 @@ async function seite(datei, warten) {
   pruefe('views raised no exception', errs.length === 0, errs);
 
   /* 7 — jeder Registerreiter hat eine Maske, keiner nur ein JSON-Textfeld */
+  await zurSeite(p, 'Registry');
   await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((x) => /Data model/.test(x.textContent)).click());
+    [...document.querySelectorAll('.rail button')].find((x) => /^Types/.test(x.textContent)).click());
   await p.waitForTimeout(200);
   const masken = {};
-  for (const name of ['Types', 'Relation types', 'Views', 'Variables']) {
+  for (const name of ['Types', 'Relations', 'Views', 'Variables']) {
     await p.evaluate((n) =>
       [...document.querySelectorAll('.tabs button')].find((x) => x.textContent === n).click(), name);
     await p.waitForTimeout(280);
@@ -455,6 +474,7 @@ async function seite(datei, warten) {
 
   /* 8 — Bearbeiten in der Ansicht, und die Spur zurück */
   const oeffne = async (name) => {
+    await zurSeite(p, 'Compendium');
     await p.evaluate(() =>
       [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
     await p.waitForTimeout(200);
@@ -622,6 +642,7 @@ async function seite(datei, warten) {
   pruefe('in-place editing raised no exception', errs.length === 0, errs);
 
   /* 9 — Massenbearbeitung */
+  await zurSeite(p, 'Compendium');
   await p.evaluate(() =>
     [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
   await p.waitForTimeout(250);
@@ -696,28 +717,45 @@ async function seite(datei, warten) {
 
   pruefe('bulk editing raised no exception', errs.length === 0, errs);
 
-  /* 10 — Seitenaufbau: Kompendium sind die Artikel, Datenmodell ist das Register */
+  /* 10 — Seitenaufbau: sechs Seiten oben, und jede zeigt in der Leiste, was
+     in ihr steckt. Vorher standen alle Bereiche untereinander in einer
+     einzigen Leiste — wer im Spiel eine Karte suchte, scrollte an der
+     halben Kampagne vorbei. */
+  const seiten = await p.evaluate(() =>
+    [...document.querySelectorAll('#pages button')].map((b) => b.textContent));
+  pruefe('six pages stand at the top',
+    ['Registry', 'Compendium', 'World', 'History', 'Rules', 'Play']
+      .every((n, i) => seiten[i] === n) && seiten.length === 6, seiten);
+
+  /* Und die Leiste zeigt genau die Seite, auf der man steht: „Types" gehört
+     ins Register und nicht neben die Kreaturen. */
+  const leisten = {};
+  for (const n of ['Registry', 'World', 'History', 'Play']) {
+    await zurSeite(p, n);
+    leisten[n] = await p.evaluate(() =>
+      [...document.querySelectorAll('.rail button')].map((b) => b.textContent));
+  }
+  pruefe('each page shows only its own rail',
+    leisten.Registry.some((x) => /^Types/.test(x))
+      && leisten.World.some((x) => /^Creature/.test(x))
+      && !leisten.World.some((x) => /^Types/.test(x))
+      && leisten.History.some((x) => /^Quest/.test(x))
+      && !leisten.History.some((x) => /^Creature/.test(x))
+      && leisten.Play.some((x) => /^Map/.test(x)),
+    { r: leisten.Registry.slice(0, 3), w: leisten.World.slice(0, 3), h: leisten.History.slice(0, 3) });
+
+  await zurSeite(p, 'Compendium');
   await p.evaluate(() =>
     [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
   await p.waitForTimeout(250);
   const aufbau = await p.evaluate(() => ({
-    kapitel: [...document.querySelectorAll('.rail h3')].map((h) => h.textContent),
-    system: [...([...document.querySelectorAll('.rail section')].pop()?.querySelectorAll('.navrow') ?? [])]
-      .map((b) => b.textContent),
     filter: [...document.querySelectorAll('.filters select')].map((s) => s.options[0].textContent),
   }));
-  /* Vier Bereiche statt eines Kompendiums, und welche Artikelart wohin
-     gehört, steht als `area` an der Schnittstelle — nicht im Code. Die
-     Prüfung fragt deshalb beides: dass die vier Abschnitte da sind, und
-     dass die Zuordnung aus dem Register kommt. */
-  pruefe('the rail carries the four areas, and System stays apart',
-    ['Story', 'World', 'Game', 'Play'].every((k) => aufbau.kapitel.includes(k))
-      && aufbau.kapitel.includes('System')
-      && aufbau.system.some((x) => /Data model/.test(x)), aufbau);
   const bereiche = await p.evaluate(() => ({
     npc: window.__T__.areaOf('NPC'),
     quest: window.__T__.areaOf('Quest'),
     rule: window.__T__.areaOf('Rule'),
+    item: window.__T__.areaOf('Item'),
     map: window.__T__.areaOf('Map'),
     /* Und geerbt wie alles andere: eine Artikelart, die im Prototyp neu
        entsteht, trägt keine eigene Angabe — sie muss die ihres Obertyps
@@ -731,8 +769,9 @@ async function seite(datei, warten) {
     })(),
   }));
   pruefe('an article kind finds its area in the registry, and inherits it',
-    bereiche.npc === 'world' && bereiche.quest === 'story'
-      && bereiche.rule === 'game' && bereiche.map === 'play'
+    bereiche.npc === 'world' && bereiche.quest === 'history'
+      && bereiche.rule === 'rules' && bereiche.map === 'play'
+      && bereiche.item === 'world'
       && bereiche.geerbt === 'world', bereiche);
   pruefe('the compendium carries its filters',
     aufbau.filter.length === 3 && aufbau.filter[0] === 'any type', aufbau.filter);
@@ -756,7 +795,7 @@ async function seite(datei, warten) {
       while (at) { (treffer[at] = treffer[at] || new Set()).add(eigen); at = parent(at); }
     });
     for (const [ober, unter] of Object.entries(treffer)) {
-      if (ober !== 'Base' && unter.size) {
+      if (R[ober]?.area && unter.size) {
         const u = [...unter][0];
         return { ober, unter: u, label: R[u]?.label || u };
       }
@@ -785,8 +824,9 @@ async function seite(datei, warten) {
   const geleert = await p.evaluate(() => document.querySelectorAll('#view .row').length);
   pruefe('clearing the filters brings everything back', geleert === vorFilter, { geleert, vorFilter });
 
+  await zurSeite(p, 'Registry');
   await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((x) => /Data model/.test(x.textContent)).click());
+    [...document.querySelectorAll('.rail button')].find((x) => /^Types/.test(x.textContent)).click());
   await p.waitForTimeout(300);
   const dm = await p.evaluate(() => ({
     titel: document.querySelector('#view h2')?.textContent,
@@ -796,51 +836,20 @@ async function seite(datei, warten) {
   /* Die Mechanik gehört auf die Seite, die sie bearbeitet — sonst steht sie
      nur in Commit-Nachrichten. */
   pruefe('the data model explains itself',
-    dm.titel === 'Data model' && dm.konzept.length === 5 && dm.reiter.includes('Views'), dm);
+    dm.titel === 'Registry' && dm.konzept.length === 5 && dm.reiter.includes('Views'), dm);
   pruefe('the page structure raised no exception', errs.length === 0, errs);
 
   /* 11 — Standardwerte stehen im Feld, nicht im Code */
-  /* Den Stand gibt es nicht mehr als eigene Karte: er ist `Base.value`.
-     Der Weg dorthin geht deshalb über die Artikelarten und nicht über einen
-     Reiter „Components", den es nicht mehr gibt. */
+  /* Den Stand erklärt `Status` — ein Bestandteil, den jede Artikelart erbt.
+     Der Weg dorthin geht über die Artikelarten und nicht über einen Reiter
+     „Components", den es nicht mehr gibt. */
   const zumStatusFeld = async () => {
-    await p.evaluate(() =>
-      [...document.querySelectorAll('.rail button')].find((x) => /Article types/.test(x.textContent)).click());
-    await p.waitForTimeout(350);
-    /* Ein früherer Schritt kann die Seite im JSON-Modus zurückgelassen
-       haben. Dann gibt es keine Artenliste, und die Prüfung bräche an einer
-       Stelle, die nichts mit ihr zu tun hat. */
-    await p.evaluate(() => {
-      if (document.querySelector('.tpnav')) return;
-      const zurueck = [...document.querySelectorAll('#view button')]
-        .find((b) => /Back to the form|Zurück/.test(b.textContent));
-      if (zurueck) zurueck.click();
-    });
-    await p.waitForTimeout(350);
-    await p.evaluate(() =>
-      [...document.querySelectorAll('.tpnav .navrow')].find((b) => /\bBase\b/.test(b.textContent)).click());
-    await p.waitForTimeout(350);
-    /* Am Beschriftungselement suchen, nicht am ganzen Zeilentext: der
-       lautet „BaseBase · 28 fields …", und darin trifft `\bBase\b` nirgends. */
-    await p.evaluate(() => {
-      const row = [...document.querySelectorAll('.regbody .crow')]
-        .find((r) => r.querySelector('.cl b')?.textContent === 'Base');
-      /* Der Schalter klappt um. Ein früherer Schritt kann die Felder schon
-         offen gelassen haben — dann schlösse ein Klick sie. */
-      if (row.parentElement.querySelector('.fbox')) return;
-      [...row.querySelectorAll('button')].find((b) => /Fields/.test(b.textContent)).click();
-    });
-    await p.waitForTimeout(250);
-    await p.evaluate(() => {
-      const rows = [...document.querySelectorAll('.fbox .frow')];
-      /* Der Schlüssel steht mit seinem Vorgabewert dort: „value ← idea". */
-      const r = rows.find((x) => /^value\b/.test(x.querySelector('.fk')?.textContent ?? ''));
-      if (!r) throw new Error('Kein Feld `value`: ' + JSON.stringify(rows.map((x) => x.querySelector('.fk')?.textContent)));
-      if (r.parentElement.querySelector('.fmore')) return;
-      [...r.querySelectorAll('button')].find((b) => b.textContent === '⋯').click();
-    });
-    await p.waitForTimeout(250);
+    /* Den Stand erklärt `Status` — ein eigener Bestandteil, seit `Base`
+       zerfallen ist. Geändert wird er dort und nicht an einer Art, die ihn
+       nur erbt. */
+    await zumFeld('Status', 'status');
   };
+
   const standardFeld = () => p.evaluate(() =>
     [...document.querySelectorAll('.fbox .fmore label.f')]
       .find((l) => /Default/.test(l.querySelector('span').textContent))
@@ -849,7 +858,7 @@ async function seite(datei, warten) {
   await zumStatusFeld();
   const stand = await p.evaluate(() => ({
     zeile: [...document.querySelectorAll('.fbox .frow')]
-      .find((x) => /^value\b/.test(x.querySelector('.fk')?.textContent ?? ''))?.textContent ?? '',
+      .find((x) => /^status\b/.test(x.querySelector('.fk')?.textContent ?? ''))?.textContent ?? '',
     wert: [...document.querySelectorAll('.fbox .fmore label.f')]
       .find((l) => /Default/.test(l.querySelector('span').textContent))
       ?.querySelector('select,input')?.value ?? null,
@@ -1079,8 +1088,9 @@ async function seite(datei, warten) {
       && quellen.ablage === '/_blob/0123456789abcdef0123456789abcdef'
       && quellen.wurzel === '/_blob/x', quellen);
 
+  await zurSeite(p, 'Registry');
   await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((b) => /Data model/.test(b.textContent))?.click());
+    [...document.querySelectorAll('.rail button')].find((b) => /^Types/.test(b.textContent))?.click());
   await p.waitForTimeout(300);
   await p.evaluate(() =>
     [...document.querySelectorAll('.tabs button')].find((b) => /^Settings$/.test(b.textContent)).click());
@@ -1094,35 +1104,17 @@ async function seite(datei, warten) {
 
   /* Ein Bildfeld bietet die Ablage an, wenn es eine gibt, und sonst die
      fremde Adresse — es verschwindet nie stillschweigend. */
-  /* Das Bildfeld sitzt an `Base` — die Bildangaben sind Felder jeder Art,
-     seit es keine Komponente `Image` mehr gibt. */
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((x) => /Article types/.test(x.textContent)).click());
-  await p.waitForTimeout(350);
-  await p.evaluate(() => {
-    if (document.querySelector('.tpnav')) return;
-    [...document.querySelectorAll('#view button')]
-      .find((b) => /Back to the form/.test(b.textContent))?.click();
-  });
-  await p.waitForTimeout(300);
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.tpnav .navrow')].find((b) => /\bBase\b/.test(b.textContent)).click());
-  await p.waitForTimeout(350);
-  await p.evaluate(() => {
-    const row = [...document.querySelectorAll('.regbody .crow')]
-      .find((r) => r.querySelector('.cl b')?.textContent === 'Base');
-    if (row.parentElement.querySelector('.fbox')) return;
-    [...row.querySelectorAll('button')].find((b) => /Fields/.test(b.textContent)).click();
-  });
-  await p.waitForTimeout(250);
+  /* Die Bildangaben bringt `Image` mit; worauf ein Verweis zeigt, erklärt
+     `Asset`. Beides sind Bestandteile, seit `Base` zerfallen ist. */
+  await zumFeld('Asset', null);
   const bildfeld = await p.evaluate(() => {
-    const arten = [...document.querySelectorAll('.frow select.i')]
-      .map((s) => [...s.options].map((o) => o.value));
-    return { hatAsset: arten.some((a) => a.includes('asset')), felder:
-      [...document.querySelectorAll('.fbox .frow .fk')].map((x) => x.textContent) };
+    const arten = [...document.querySelectorAll('.fbox .frow select')]
+      .map((s2) => [...s2.options].map((o) => o.value));
+    return { hatAsset: arten.some((a) => a.includes('asset')),
+      felder: [...document.querySelectorAll('.fbox .frow .fk')].map((x) => x.textContent) };
   });
   pruefe('a field can be an image reference',
-    bildfeld.hatAsset && bildfeld.felder.includes('ref'), bildfeld);
+    bildfeld.hatAsset && bildfeld.felder.some((f) => /^ref\b/.test(f)), bildfeld);
 
   /* ---- Karten (REQ-130 bis 136) ----
      Koordinaten stehen in Anteilen, nicht in Bildpunkten. Prüfbar ist das
@@ -1143,7 +1135,7 @@ async function seite(datei, warten) {
   if (karte) {
     const kartenName = await p.evaluate((id) => {
       const e = window.__T__.ENT.get(id);
-      return (e && (e.name || (e.components.Base || {}).text)) || '';
+      return (e && (e.name || (e.components.Imported || {}).text)) || '';
     }, karte);
     await oeffne(kartenName);
     await p.waitForTimeout(250);
@@ -1674,6 +1666,7 @@ async function seite(datei, warten) {
      sie sind das, worauf man während der Sitzung schaut. Die Prüfung fragt
      deshalb zuerst, ob der Bereich überhaupt an den Tisch führt und nicht
      in eine Liste: genau dort ging es vorher verloren. */
+  await zurSeite(p, 'Play');
   await p.evaluate(() =>
     [...document.querySelectorAll('.rail button')]
       .find((x) => /At the table/.test(x.textContent)).click());
@@ -1749,9 +1742,10 @@ async function seite(datei, warten) {
      **laufenden** Register. Eine Seite, die eine Liste abtippt, stimmt am
      Tag ihrer Entstehung und danach nie wieder — die Prüfung fragt deshalb
      nicht, ob etwas dasteht, sondern ob es aus dem Register kommt. */
+  await zurSeite(p, 'Registry');
   await p.evaluate(() =>
     [...document.querySelectorAll('.rail button')]
-      .find((x) => /Article types/.test(x.textContent)).click());
+      .find((x) => /^Types/.test(x.textContent)).click());
   await p.waitForTimeout(600);
   const typen = await p.evaluate(() => ({
     kopf: document.querySelector('#view .listhead h2')?.textContent ?? '',
@@ -1768,7 +1762,7 @@ async function seite(datei, warten) {
   pruefe('every kind in the registry is listed, exactly once',
     typen.arten === typen.imRegister, typen);
   pruefe('and they are grouped by area, with the homeless ones at the end',
-    ['Story', 'World', 'Game', 'Play'].every((a) => typen.bereiche.includes(a))
+    ['World', 'History', 'Rules', 'Play'].every((a) => typen.bereiche.includes(a))
     && typen.bereiche[typen.bereiche.length - 1] === 'No area', typen.bereiche);
 
   /* Eine Art zeigt alle vier Fragen: was sie verlangt, was sie tragen darf,
@@ -1974,8 +1968,8 @@ async function seite(datei, warten) {
     /* Ein Obertyp im Bereich `game` mit eigenem Feld und eigener Blockart —
        damit sich alle drei Vererbungswege prüfen lassen. */
     T.REG.interfaces.ProbeOben = {
-      name: 'ProbeOben', label: 'Probe oben', area: 'game', abstract: true,
-      extends: ['Base'], blockTypes: ['+probeblock'],
+      name: 'ProbeOben', label: 'Probe oben', area: 'rules', abstract: true,
+      extends: ['Identity'], blockTypes: ['+probeblock'],
       schema: { type: 'object', properties: { probefeld: { type: 'string', title: 'Probe' } } },
     };
     /* Erbt von **zwei** Ästen: Item (Bereich world) und ProbeOben (game). */
@@ -1989,7 +1983,7 @@ async function seite(datei, warten) {
       bereich: T.areaOf('ProbeZwei'),
       /* Blockarten: die des zweiten Astes müssen dabei sein. */
       bloecke: T.blockTypesFor('ProbeZwei'),
-      /* Kanten: eine Kante, die an `Item` hängt, und eine an `Base`. */
+      /* Kanten: eine Kante, die an `Item` hängt, und eine an `Identity`. */
       kanten: T.relsFrom('ProbeZwei').map((r) => r.type),
       /* Und woher ein Feld kommt, muss über beide Äste gefunden werden. */
       herkunft: T.compOrigin('ProbeZwei', 'ProbeOben'),
@@ -2102,7 +2096,7 @@ async function seite(datei, warten) {
     const m = [...window.__T__.ENT.values()].find((e) =>
       (e.components || {}).Skills && (e.components || {}).StatblockInfo
       && (e.relations || []).some((r) => r.type === 'carries'));
-    return m ? (m.name || m.components.Base.text) : null;
+    return m ? (m.name || (m.components.Imported || {}).text) : null;
   });
   if (held) {
     await oeffne(held);
@@ -2238,8 +2232,8 @@ async function seite(datei, warten) {
       && (e.relations || []).some((r) => r.type === 'knowledge'));
     const kenner = alle.find((e) => (e.relations || []).some((r) => r.type === 'carries'));
     return {
-      rezept: rezept ? (rezept.name || rezept.components.Base.text) : null,
-      kenner: kenner ? (kenner.name || kenner.components.Base.text) : null,
+      rezept: rezept ? (rezept.name || (rezept.components.Imported || {}).text) : null,
+      kenner: kenner ? (kenner.name || (kenner.components.Imported || {}).text) : null,
     };
   });
   if (werkbank.rezept && werkbank.kenner) {
@@ -2301,7 +2295,7 @@ async function seite(datei, warten) {
       const m = {};
       (inv.relations || []).filter((r) => r.type === 'holds').forEach((r) => {
         const it = T.ENT.get(r.to);
-        if (it) m[it.name || it.components.Base.text] = (r.props || {}).qty || 1;
+        if (it) m[it.name || (it.components.Imported || {}).text] = (r.props || {}).qty || 1;
       });
       return m;
     });
@@ -2331,7 +2325,7 @@ async function seite(datei, warten) {
         const zeile = document.querySelector('table.craftm tr.crrow.ready .ref');
         const rez = [...T.ENT.values()].find((e) =>
           (e.interfaces || [])[0] === 'Recipe'
-          && (e.name || e.components.Base.text) === zeile.textContent);
+          && (e.name || (e.components.Imported || {}).text) === zeile.textContent);
         rez.components.Recipe.dc = d;
         rez.components.Recipe.days = 2;
         traeger.relations = (traeger.relations || []).filter((r) => r.type !== 'crafting');
@@ -2476,7 +2470,7 @@ async function seite(datei, warten) {
      Board eigene Kacheln, wäre jedes neue Element zweimal zu bauen. */
   const boardName = await p.evaluate(() => {
     const b = [...window.__T__.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Board');
-    return b ? (b.name || b.components.Base.text) : null;
+    return b ? (b.name || (b.components.Imported || {}).text) : null;
   });
   if (boardName) {
     await oeffne(boardName);
@@ -2546,7 +2540,7 @@ async function seite(datei, warten) {
   /* ---- Begegnung, Initiative, Würfel (REQ-070, 085, 115, 144) ---- */
   const kampf = await p.evaluate(() => {
     const k = [...window.__T__.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Encounter');
-    return k ? (k.name || k.components.Base.text) : null;
+    return k ? (k.name || (k.components.Imported || {}).text) : null;
   });
   if (kampf) {
     await oeffne(kampf);
@@ -2639,8 +2633,8 @@ async function seite(datei, warten) {
        der Träger beliebig, weil jede Ansicht auf jedem Artikel stand. */
     const traeger = [...window.__T__.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Campaign');
     return {
-      q: q ? (q.name || q.components.Base.text) : null,
-      p: traeger ? (traeger.name || traeger.components.Base.text) : null,
+      q: q ? (q.name || (q.components.Imported || {}).text) : null,
+      p: traeger ? (traeger.name || (traeger.components.Imported || {}).text) : null,
     };
   });
   if (auftrag.q && auftrag.p) {
@@ -2702,8 +2696,8 @@ async function seite(datei, warten) {
         d: r.querySelector('.tdate').textContent,
         n: r.querySelector('.ref').textContent })),
       sortiert: [...window.__T__.ENT.values()]
-        .filter((e) => ((e.components || {}).Base || {}).sort !== undefined)
-        .map((e) => Number(e.components.Base.sort)),
+        .filter((e) => ((e.components || {}).Time || {}).sort !== undefined)
+        .map((e) => Number(e.components.Time.sort)),
     }));
     pruefe('the timeline lists everything that carries a world date',
       zeit.zeilen.length >= 4, zeit.zeilen.length);
@@ -2732,7 +2726,7 @@ async function seite(datei, warten) {
     const pcs = alle.filter((e) => (e.interfaces || [])[0] === 'PlayerCharacter');
     const fremd = pcs.find((e) => !kenner || e.id !== kenner.to);
     return {
-      rec: rec ? (rec.name || rec.components.Base.text) : null,
+      rec: rec ? (rec.name || (rec.components.Imported || {}).text) : null,
       kennerId: kenner ? kenner.to : null,
       fremdId: fremd ? fremd.id : null,
     };
@@ -2756,6 +2750,7 @@ async function seite(datei, warten) {
         felder: [...document.querySelectorAll('.fld dt')].map((x) => x.textContent),
         bloecke: [...document.querySelectorAll('.blk .bl')].map((x) => x.textContent.replace('×', '')),
         rail: [...document.querySelectorAll('.rail h3')].map((x) => x.textContent),
+        seiten: [...document.querySelectorAll('#pages button')].map((x) => x.textContent),
       }));
     };
     const alsGM = await sicht('');
@@ -2779,15 +2774,18 @@ async function seite(datei, warten) {
       && alsFremd.felder.includes('Not yours yet'),
       { alsKenner: alsKenner.felder, alsFremd: alsFremd.felder });
     /* Für einen Spieler gibt es kein Register. Auszugrauen wäre eine
-       Einladung; wegzulassen ist die Antwort. */
-    pruefe('a player gets no data model in the rail',
-      alsGM.rail.includes('System') && !alsFremd.rail.includes('System'),
-      { alsGM: alsGM.rail, alsFremd: alsFremd.rail });
+       Einladung; wegzulassen ist die Antwort. Seit es sechs Seiten gibt,
+       fällt die ganze Seite weg und nicht ein Abschnitt in der Leiste. */
+    pruefe('a player gets no registry page',
+      alsGM.seiten.includes('Registry') && !alsFremd.seiten.includes('Registry')
+      && alsFremd.seiten.includes('Compendium'),
+      { alsGM: alsGM.seiten, alsFremd: alsFremd.seiten });
 
     const zugesperrt = await p.evaluate(() => {
       window.__T__.UI.route = { k: 'reg' };
       return null;
     });
+    await zurSeite(p, 'Compendium');
     await p.evaluate(() => {
       const b2 = [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent));
       if (b2) b2.click();
@@ -2813,7 +2811,7 @@ async function seite(datei, warten) {
      merkte man erst am Tisch. */
   const sitzung = await p.evaluate(() => {
     const se = [...window.__T__.ENT.values()].find((e) => (e.components || {}).Session);
-    return se ? (se.name || se.components.Base.text) : null;
+    return se ? (se.name || s(e.components.Imported || {}).text) : null;
   });
   if (sitzung) {
     await oeffne(sitzung);
@@ -2986,7 +2984,7 @@ async function seite(datei, warten) {
      eigene Tabelle „Vorbereitung" wäre eine zweite Wahrheit. */
   const vorbereitung = await p.evaluate(() => {
     const e = [...window.__T__.ENT.values()].find((x) =>
-      (((x.components || {}).Base || {}).items || []).length > 1
+      (((x.components || {}).Todos || {}).items || []).length > 1
       && (x.relations || []).length > 1);
     return e ? e.id : null;
   });
@@ -3055,8 +3053,9 @@ async function seite(datei, warten) {
      von der nächsten Selbstspeicherung überschrieben, und der unlesbare
      Stand war danach weg. Die Prüfung dafür muss den Fehler wirklich
      auslösen — „es sieht richtig aus" hat damals auch gereicht. */
+  await zurSeite(p, 'Registry');
   await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((b) => /Data model/.test(b.textContent)).click());
+    [...document.querySelectorAll('.rail button')].find((b) => /^Types/.test(b.textContent)).click());
   await p.waitForTimeout(300);
   await p.evaluate(() =>
     [...document.querySelectorAll('.tabs button')].find((b) => /^Backup$/.test(b.textContent)).click());
@@ -3111,6 +3110,7 @@ async function seite(datei, warten) {
   /* Fail-closed: nach einem kaputten Ladevorgang wird nicht geschrieben. */
   const vorSchreib = await p.evaluate(() => window.__WROTE__.length);
   await p.evaluate(() => window.__T__.breakLoad('the registry part “views” failed (test).'));
+  await zurSeite(p, 'Compendium');
   await p.evaluate(() =>
     [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
   await p.waitForTimeout(250);
@@ -3130,8 +3130,9 @@ async function seite(datei, warten) {
   pruefe('after a failed load nothing is written any more',
     zu.geschrieben === 0 && /Nothing is being saved/.test(zu.banner), zu);
   /* Und die Sicherung geht trotzdem — gerade dann. */
+  await zurSeite(p, 'Registry');
   await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((b) => /Data model/.test(b.textContent)).click());
+    [...document.querySelectorAll('.rail button')].find((b) => /^Types/.test(b.textContent)).click());
   await p.waitForTimeout(300);
   await p.evaluate(() =>
     [...document.querySelectorAll('.tabs button')].find((b) => /^Backup$/.test(b.textContent)).click());
@@ -3154,7 +3155,7 @@ async function seite(datei, warten) {
      einzelnen Ansicht sähe nichts. */
   const deck = await p.evaluate(() => {
     const alle = [...window.__T__.ENT.values()];
-    const e = alle.find((x) => ((x.components || {}).Base || {}).cover
+    const e = alle.find((x) => ((x.components || {}).Identity || {}).cover
       && (x.relations || []).some((r) => r.type === 'knowledge'));
     if (!e) return null;
     const info = window.__T__.ENT.get(
@@ -3162,8 +3163,8 @@ async function seite(datei, warten) {
     const kennt = info && (info.relations || []).find((r) => r.type === 'knownBy');
     const pcs = alle.filter((x) => (x.interfaces || [])[0] === 'PlayerCharacter');
     const fremd = pcs.find((x) => !kennt || x.id !== kennt.to);
-    return { id: e.id, echt: e.name || e.components.Base.text,
-      cover: e.components.Base.cover,
+    return { id: e.id, echt: e.name || (e.components.Imported || {}).text,
+      cover: e.components.Identity.cover,
       kennerId: kennt ? kennt.to : null, fremdId: fremd ? fremd.id : null };
   });
   if (deck && deck.kennerId && deck.fremdId) {
@@ -3202,6 +3203,7 @@ async function seite(datei, warten) {
       /withheld/.test(fremd2.letzte), fremd2.letzte);
 
     /* In der Liste gilt derselbe Name — sonst verriete ihn das Kompendium. */
+    await zurSeite(p, 'Compendium');
     await p.evaluate(() =>
       [...document.querySelectorAll('.rail button')].find((b) => /All articles/.test(b.textContent)).click());
     await p.waitForTimeout(350);
@@ -3232,6 +3234,9 @@ async function seite(datei, warten) {
   const hatRegeln = await p.evaluate(() =>
     [...window.__T__.ENT.values()].filter((e) => (e.interfaces || [])[0] === 'Rule').length);
   if (hatRegeln >= 2) {
+    /* Der Regelbrowser hängt am Register — nachschlagen ist keine
+       Spielleitungssache, aber die Zeile steht dort, wo die Regeln leben. */
+    await zurSeite(p, 'Registry');
     await p.evaluate(() =>
       [...document.querySelectorAll('.rail button')].find((b) => /^Rules/.test(b.textContent)).click());
     await p.waitForTimeout(400);
@@ -3299,14 +3304,14 @@ async function seite(datei, warten) {
     const mitProsa = await p.evaluate(() => {
       const T = window.__T__;
       const regeln = [...T.ENT.values()].filter((e) => (e.interfaces || [])[0] === 'Rule');
-      const namen = regeln.map((e) => e.name || e.components.Base.text)
+      const namen = regeln.map((e) => e.name || (e.components.Imported || {}).text)
         .filter((n) => n && n.length >= 4);
       /* Prosa ist die Beschreibung und die Textblöcke — nicht der ganze
          Artikel. Der Name selbst zählt nicht: ein Artikel, der „Verzicht:
          Verstrickt" heisst, nennt keine Regel im Text, und ein Treffer
          darauf prüfte die Suche statt das Erkennen. */
       const prosa = (x) => {
-        let t = ((x.components || {}).Base || {}).raw || '';
+        let t = ((x.components || {}).Description || {}).description || '';
         (x.blocks || []).forEach((b) => { t += ' ' + (b.body || ''); });
         return t;
       };
