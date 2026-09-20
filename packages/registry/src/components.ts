@@ -690,4 +690,38 @@ export const components: Record<string, ComponentDef> = {
       },
     },
   },
+
+  /**
+   * Begegnungen (REQ-085, 115). `round` und `turn` sind Spielzustand und
+   * liegen vorläufig hier — richtig wären Sitzungszustände mit einem
+   * Echtzeitkanal (REQ-116). Das ist die Stelle, die dann umzieht; sie steht
+   * absichtlich beieinander, damit der Umzug eine Karte betrifft und nicht
+   * ein Dutzend Felder.
+   */
+  EncounterInfo: {
+    name: 'EncounterInfo',
+    label: 'Encounter',
+    engine: 'Play',
+    schema: {
+      type: 'object',
+      properties: {
+        difficulty: {
+          type: 'string',
+          title: 'Difficulty',
+          enum: ['trivial', 'easy', 'medium', 'hard', 'deadly'],
+          default: 'medium',
+        },
+        xpBudget: { type: 'number', title: 'XP budget' },
+        state: {
+          type: 'string',
+          title: 'State',
+          enum: ['planned', 'running', 'done', 'skipped'],
+          default: 'planned',
+        },
+        round: { type: 'number', title: 'Round', default: 0 },
+        turn: { type: 'number', title: 'Turn', default: 0 },
+        surprise: { type: 'string', title: 'Surprise' },
+      },
+    },
+  },
 };

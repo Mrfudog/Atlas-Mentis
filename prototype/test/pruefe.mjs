@@ -1324,6 +1324,91 @@ async function seite(datei, warten) {
     pruefe('a board exists in the data', false, 'keines gefunden');
   }
 
+  /* ---- Begegnung, Initiative, Würfel (REQ-070, 085, 115, 144) ---- */
+  const kampf = await p.evaluate(() => {
+    const k = [...window.__T__.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Encounter');
+    return k ? (k.name || k.components.Name.text) : null;
+  });
+  if (kampf) {
+    await oeffne(kampf);
+    await p.evaluate(() => {
+      const f = document.getElementById('facet');
+      f.value = 'fight';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(600);
+    const lies = () => p.evaluate(() => ({
+      zeilen: [...document.querySelectorAll('.initt tr')].slice(1).map((r) => ({
+        cls: r.className,
+        who: r.children[2]?.textContent ?? '',
+        init: r.querySelectorAll('input')[0]?.value ?? '',
+        hp: r.querySelectorAll('input')[1]?.value ?? '' })),
+      runde: document.querySelector('.fight .pill')?.textContent ?? '',
+      karte: document.querySelectorAll('.fight .mapimg').length,
+      ring: document.querySelectorAll('.mtoken.now').length,
+      probleme: [...document.querySelectorAll('.pruef li')].map((x) => x.textContent),
+    }));
+    const vor = await lies();
+    pruefe('every fighter is a row of its own', vor.zeilen.length >= 4, vor.zeilen.length);
+    /* Drei Goblins aus einem Statblock heissen drei Zeilen mit eigenen
+       Trefferpunkten — eine Zahl an einer Kante könnte nur einen verletzen. */
+    const doppelt = vor.zeilen.filter((z) => /Kanalschleim/.test(z.who));
+    pruefe('two of the same statblock have hit points of their own',
+      doppelt.length === 2 && doppelt.every((z) => z.hp !== ''), doppelt);
+    pruefe('the fight shows the map it happens on', vor.karte === 1, vor.karte);
+    pruefe('the encounter validates clean', vor.probleme.length === 0, vor.probleme);
+
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.maptools button')].find((b) => /Roll initiative/.test(b.textContent)).click());
+    await p.waitForTimeout(500);
+    const nachWurf = await lies();
+    pruefe('rolling initiative fills every row and starts round one',
+      nachWurf.zeilen.every((z) => z.init !== '') && /Round 1/.test(nachWurf.runde), nachWurf.runde);
+    /* Sortiert wird absteigend — und zwar sichtbar, sonst rechnet es am
+       Tisch jemand im Kopf nach und kommt auf etwas anderes. */
+    const werte = nachWurf.zeilen.map((z) => Number(z.init));
+    pruefe('the order is highest initiative first',
+      werte.every((v, i) => i === 0 || werte[i - 1] >= v), werte);
+    pruefe('exactly one row has the turn',
+      nachWurf.zeilen.filter((z) => /now/.test(z.cls)).length === 1,
+      nachWurf.zeilen.map((z) => z.cls));
+
+    /* Der Wurfverlauf zeigt die Einzelwürfe — „18" und „1+17" sind am Tisch
+       zweierlei, und ein Wurf, der „undefined" anzeigt, glaubt niemand. */
+    const verlauf = await p.evaluate(() =>
+      [...document.querySelectorAll('.rollrow .rv')].map((x) => x.textContent));
+    pruefe('the dice log shows the individual rolls',
+      verlauf.length >= 4 && verlauf.every((t) => !/undefined|NaN/.test(t)), verlauf);
+
+    const wer = nachWurf.zeilen.find((z) => /now/.test(z.cls));
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.maptools button')].find((b) => /Next turn/.test(b.textContent)).click());
+    await p.waitForTimeout(500);
+    const nachZug = await lies();
+    const wer2 = nachZug.zeilen.find((z) => /now/.test(z.cls));
+    pruefe('the turn moves on', wer2 && wer2.who !== wer.who, { wer: wer.who, wer2: wer2 && wer2.who });
+
+    /* Ein freier Ausdruck darf kein `eval` sein und muss bei Unsinn nein
+       sagen, statt eine plausible Zahl zu erfinden. */
+    const wuerfel = await p.evaluate(() => {
+      const f = window.__T__;
+      return {
+        gut: f.rollDice('2d6+3'),
+        einzeln: f.rollDice('1d1'),
+        unsinn: f.rollDice('zwei Äpfel'),
+        leer: f.rollDice(''),
+      };
+    });
+    pruefe('the dice roller reads an expression and refuses nonsense',
+      wuerfel.gut && wuerfel.gut.total >= 5 && wuerfel.gut.total <= 15
+      && wuerfel.einzeln.total === 1
+      && wuerfel.unsinn === null && wuerfel.leer === null, wuerfel);
+
+    pruefe('the fight raised no exception', errs.length === 0, errs);
+  } else {
+    pruefe('an encounter exists in the data', false, 'keine gefunden');
+  }
+
   pruefe('knowledge needed no browser modal', modale.length === 0, modale);
   pruefe('no exception through the knowledge panel', errs.length === 0, errs);
 

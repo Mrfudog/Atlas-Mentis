@@ -377,4 +377,60 @@ export const relations: Record<string, RelationDef> = {
       },
     },
   },
+
+  // ------------------------------------------------------------ encounters
+
+  /**
+   * Wer mitkämpft (REQ-115). Eine Kante je Teilnehmer, nicht eine mit
+   * Anzahl: drei Goblins haben drei Mal Trefferpunkte, und eine Zahl an
+   * einer Kante könnte nur einen davon verletzen.
+   *
+   * Zustände tragen ihre Dauer mit; sie zählt am Ende des Zuges herunter,
+   * der sie gesetzt hat. Ohne Dauer vergisst sie der Tisch.
+   */
+  participates: {
+    type: 'participates',
+    label: 'in the fight',
+    inverseLabel: 'fights in',
+    from: ['Encounter'],
+    to: ['Creature', 'Statblock', 'Party'],
+    props: {
+      type: 'object',
+      properties: {
+        label: { type: 'string', title: 'Name at the table' },
+        init: { type: 'number', title: 'Initiative' },
+        hp: { type: 'number', title: 'Hit points' },
+        hpMax: { type: 'number', title: 'Maximum' },
+        ally: { type: 'boolean', title: 'On the party’s side' },
+        conditions: { type: 'array', title: 'Conditions', items: { type: 'object' } },
+        note: { type: 'string', title: 'Note' },
+      },
+    },
+  },
+
+  /** Wo sie stattfindet — damit der Initiative-Zeiger auf die Karte kann. */
+  onMap: {
+    type: 'onMap',
+    label: 'fought on',
+    inverseLabel: 'fights here',
+    from: ['Encounter', 'Story'],
+    to: ['Map'],
+    cardinality: 'one',
+  },
+
+  /** Was dabei zu holen ist. */
+  loot: {
+    type: 'loot',
+    label: 'loot',
+    inverseLabel: 'found in',
+    from: ['Encounter', 'Story'],
+    to: ['Item'],
+    props: {
+      type: 'object',
+      properties: {
+        qty: { type: 'number', title: 'Quantity', default: 1 },
+        chance: { type: 'number', title: 'Chance in percent' },
+      },
+    },
+  },
 };

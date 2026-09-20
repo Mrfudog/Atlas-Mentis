@@ -205,4 +205,22 @@ export const views: Record<string, ViewDef> = {
     image: false,
     layout: [{ id: 'b-canvas', el: 'board' }],
   },
+
+  /** Der Kampf: Reihenfolge, Karte, Taktik. */
+  fight: {
+    label: 'Fight',
+    order: 13,
+    fields: ['EncounterInfo'],
+    blocks: ['tactics', 'readaloud', 'note'],
+    description: true,
+    composed: false,
+    relations: true,
+    bindings: false,
+    image: false,
+    layout: [
+      { id: 'f-init', el: 'initiative' },
+      { id: 'f-desc', el: 'description' },
+      { id: 'f-b', el: 'blocks', blocks: ['readaloud', 'tactics', 'note'] },
+    ],
+  },
 };

@@ -68,7 +68,7 @@ window.claude = { use: async function(n){
    nichts und sagt nicht warum. Deshalb Zugriffsfunktionen statt Werte. */
 const GRIFF = `
 window.__T__={runImport:runImport,derivedValue:derivedValue,assetSrc:assetSrc,UI:UI,
-  LAYOUT_ELEMENTS:LAYOUT_ELEMENTS};
+  LAYOUT_ELEMENTS:LAYOUT_ELEMENTS,rollDice:rollDice};
 Object.defineProperty(window.__T__,'REG',{get:function(){return REG;}});
 Object.defineProperty(window.__T__,'ENT',{get:function(){return ENT;}});
 `;

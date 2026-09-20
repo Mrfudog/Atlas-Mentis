@@ -301,4 +301,18 @@ export const interfaces: Record<string, InterfaceDef> = {
     requires: ['BoardInfo'],
     blockTypes: ['+note'],
   },
+
+  /**
+   * Eine Begegnung hängt über `partOf` an irgendeiner Stufe der Geschichte —
+   * an einer Szene, einem Kapitel, einer Kampagne. Sie ist keine eigene
+   * Stufe der Leiter, denn dieselbe Begegnung kann in zwei Sitzungen
+   * auftauchen, und eine Stufe kann das nicht.
+   */
+  Encounter: {
+    name: 'Encounter',
+    label: 'Encounter',
+    extends: ['Base'],
+    requires: ['EncounterInfo'],
+    blockTypes: ['+tactics', '+readaloud', '+note', '+secret'],
+  },
 };

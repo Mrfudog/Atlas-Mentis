@@ -389,6 +389,37 @@ table.atk tr.stowed td,table.atk tr.buried td{color:var(--dim)}
   display:block}
 .gitem i.off{background:transparent;border-color:transparent}
 .gitem.selected i.on{background:var(--accent);border-color:var(--accent)}
+/* Kampf: die Reihe, der Zeiger, die Würfel. */
+.initt{width:100%;border-collapse:collapse;font-size:13.5px;margin:8px 0}
+.initt th{text-align:left;font-family:var(--ff-mono);font-size:10px;text-transform:uppercase;
+  letter-spacing:.07em;color:var(--dim);font-weight:500;padding:4px 6px;
+  border-bottom:1px solid var(--line)}
+.initt td{padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+.initt tr.now{background:var(--accent-soft)}
+.initt tr.now td.turn{color:var(--accent);font-weight:700}
+.initt tr.ally td:nth-child(3){color:var(--ok)}
+.initt tr.down{opacity:.5}
+.initt tr.down td:nth-child(3){text-decoration:line-through}
+.initt td.num{font-family:var(--ff-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.initt .tin{width:44px;background:var(--bg);border:1px solid var(--line);border-radius:2px;
+  color:var(--ink);font-family:var(--ff-mono);font-size:13px;text-align:center;padding:1px 2px;
+  -moz-appearance:textfield}
+.initt .tin::-webkit-outer-spin-button,.initt .tin::-webkit-inner-spin-button{
+  -webkit-appearance:none;margin:0}
+.initt td.hpcell{display:flex;align-items:center;gap:1px}
+.initt td.conds{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.chip.cond{font-size:11px;padding:1px 6px;gap:4px}
+.chip.cond .x{background:none;border:0;color:var(--dim);cursor:pointer;padding:0;line-height:1}
+.chip.cond .x:hover{color:var(--warn)}
+.btn.dice{font-family:var(--ff-mono)}
+.rolllog{display:flex;flex-direction:column;gap:2px;margin-top:8px;
+  border-left:2px solid var(--line);padding-left:9px}
+.rollrow{display:flex;gap:10px;font-size:12.5px}
+.rollrow .rl{color:var(--dim);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+.rollrow .rv{font-family:var(--ff-mono);font-variant-numeric:tabular-nums;color:var(--accent)}
+.mtoken.now{box-shadow:0 0 0 3px var(--accent),0 1px 4px rgba(0,0,0,.35);z-index:3}
+
 /* Boards: die Leinwand scrollt, die Karten liegen darauf. */
 .boardbox{margin:8px 0}
 .boardstage{overflow:auto;border:1px solid var(--line);border-radius:var(--r);
@@ -561,6 +592,7 @@ var UI={route:{k:"list"}, view:"quick", iface:"", tag:"", q:"", offen:false, pan
         mapZoom:1, mapLock:false, mapKind:"", mapDrag:null,
         invView:"tiers", invPick:"", craftOnly:false,
         boardZoom:1, boardPick:"", boardTool:"",
+        turnActor:"", rollLog:[],
         konzept:false, err:""};
 
 /* Darstellungsstufen (Facets, REQ-164) — registry rows, not code.
@@ -1853,7 +1885,7 @@ var LAYOUT_ELEMENTS=[
   ["heading","Heading"],["text","Paragraph"],["fields","Field table"],
   ["description","Description"],["blocks","Text blocks"],
   ["composed","Composed rules"],["relations","Relations"],["image","Image"],
-  ["knowledge","Knowledge groups"],["map","Map"],["sheet","Character sheet"],["inventory","Inventory"],["crafting","Crafting"],["board","Board"]
+  ["knowledge","Knowledge groups"],["map","Map"],["sheet","Character sheet"],["inventory","Inventory"],["crafting","Crafting"],["board","Board"],["initiative","Initiative"]
 ];
 function layoutOf(vw,ifn){
   var by=vw.byInterface||{};
@@ -1892,6 +1924,7 @@ function renderLayoutItem(item,e,ifn,vw){
     case "inventory":   return elInventory(e,ifn,item);
     case "crafting":    return elCrafting(e,ifn,item);
     case "board":       return elBoard(e,ifn,item);
+    case "initiative":  return elInitiative(e,ifn,item);
     default:            return null;
   }
 }
@@ -2034,6 +2067,366 @@ function elRelations(e){
     wrap.appendChild(row);
   });
   return wrap;
+}
+
+/* ---------- Würfel (REQ-070) ----------
+   Ein Ausdruck, ein Ergebnis, und die Einzelwürfe daneben. Die Einzelwürfe
+   sind nicht Zierde: „18" und „1+17" sind am Tisch zweierlei, und wer den
+   Wurf nicht sieht, glaubt ihn nicht. Kein `eval` — dieselbe Regel wie beim
+   Rechenwerk: Registerzeilen und Eingaben sind Daten. */
+function rollDice(ausdruck){
+  var txt=String(ausdruck||"").replace(/\s+/g,"").toLowerCase();
+  if(!txt)return null;
+  var teile=txt.match(/[+-]?[^+-]+/g);
+  if(!teile)return null;
+  var summe=0, wuerfe=[], ok=true;
+  teile.forEach(function(t){
+    var vz=1;
+    if(t.charAt(0)==="+")t=t.slice(1);
+    else if(t.charAt(0)==="-"){ vz=-1; t=t.slice(1); }
+    var m=/^(\d*)d(\d+)$/.exec(t);
+    if(m){
+      var n=Math.min(100,Math.max(1,parseInt(m[1]||"1",10)));
+      /* Mindestens eine Seite, nicht zwei: ein W1 ist albern, aber er
+         würfelt 1 — ihn auf einen W2 zu heben wäre eine stille Lüge. */
+      var seiten=Math.min(1000,Math.max(1,parseInt(m[2],10)));
+      for(var i=0;i<n;i++){
+        var w=1+Math.floor(Math.random()*seiten);
+        wuerfe.push({d:seiten,v:w,vz:vz});
+        summe+=vz*w;
+      }
+      return;
+    }
+    if(/^\d+$/.test(t)){ summe+=vz*parseInt(t,10); wuerfe.push({flat:vz*parseInt(t,10)}); return; }
+    ok=false;
+  });
+  if(!ok)return null;
+  return {total:summe,rolls:wuerfe,expr:ausdruck};
+}
+function rollText(r){
+  if(!r)return "?";
+  /* `x.flat === undefined` und nicht `!x.flat`: ein Modifikator von 0 ist
+     falsy, und mit `!x.flat` landete er in der Würfelliste und wurde dort
+     als „undefined" gezeichnet. Ein Wurf, der undefined anzeigt, glaubt
+     niemand mehr — auch die richtigen nicht. */
+  var st=r.rolls.filter(function(x){return x.flat===undefined;})
+    .map(function(x){return (x.vz<0?"−":"")+x.v;}).join(", ");
+  var flach=r.rolls.filter(function(x){return x.flat!==undefined;})
+    .reduce(function(a,b){return a+b.flat;},0);
+  return r.total+(st?"  ("+st+(flach?(flach>0?" +"+flach:" "+flach):"")+")":"");
+}
+/* Der Wurf landet im Verlauf — damit man am Ende der Runde noch sagen kann,
+   was da eigentlich gefallen ist. */
+function logRoll(was,r){
+  UI.rollLog.unshift({t:was,r:r,at:Date.now()});
+  if(UI.rollLog.length>12) UI.rollLog.length=12;
+}
+function rollButton(label,ausdruck,titel){
+  return el("button",{class:"btn sm gh dice",type:"button",title:titel||("Roll "+ausdruck),
+    onclick:function(){
+      var r=rollDice(ausdruck);
+      if(!r){ UI.err="Cannot read the dice expression “"+ausdruck+"”."; render(); return; }
+      logRoll(label,r); render();
+    }},label);
+}
+
+/* ---------- Begegnung und Initiative (REQ-085, 115, 144) ----------
+   Eine Kante je Teilnehmer, nicht eine mit Anzahl: drei Goblins haben drei
+   Mal Trefferpunkte, und eine Zahl an einer Kante könnte nur einen davon
+   verletzen.
+
+   Zustände tragen ihre Dauer mit und zählen am Ende des Zuges herunter, der
+   sie gesetzt hat. Ohne Dauer vergisst sie der Tisch — das ist der Grund,
+   warum sie überhaupt hier stehen und nicht an der Figur.
+
+   `round` und `turn` liegen vorläufig an der Begegnung. Richtig wären
+   Sitzungszustände mit Echtzeitkanal (REQ-116); das ist die Stelle, die
+   dann umzieht. */
+var ENC_IFACE="Encounter", ENC_COMP="EncounterInfo",
+    REL_PART="participates", REL_ONMAP="onMap", REL_LOOT="loot";
+
+function encCard(e){ return (e.components||{})[ENC_COMP]||{}; }
+function participants(e){
+  return (e.relations||[]).filter(function(r){return r.type===REL_PART;})
+    .map(function(r){
+      var t=ENT.get(r.to);
+      var pr=r.props||{};
+      return {rel:r,art:t,label:pr.label||(t?nameOf(t):"(missing)"),
+        init:Number(pr.init),hp:Number(pr.hp),hpMax:Number(pr.hpMax),
+        ally:!!pr.ally,conditions:Array.isArray(pr.conditions)?pr.conditions:[],
+        note:pr.note||""};
+    });
+}
+/* Die Reihenfolge: hohe Initiative zuerst, bei Gleichstand die Verbündeten —
+   das ist eine Hausregel, und sie steht hier, damit sie jedes Mal gleich
+   ausgeht statt jedes Mal neu verhandelt zu werden. */
+function initOrder(e){
+  return participants(e).sort(function(a,b){
+    var d=(isFinite(b.init)?b.init:-99)-(isFinite(a.init)?a.init:-99);
+    if(d)return d;
+    if(a.ally!==b.ally)return a.ally?-1:1;
+    return a.label.localeCompare(b.label,"de");
+  });
+}
+
+function elInitiative(e,ifn,item){
+  var card=encCard(e);
+  var liste=initOrder(e);
+  var runde=Number(card.round)||0, zug=Number(card.turn)||0;
+  if(zug>=liste.length) zug=0;
+  var dran=liste[zug]||null;
+  UI.turnActor=dran&&dran.art?dran.art.id:"";
+  var wrap=el("div",{class:"fight"});
+
+  function schreib(patch){
+    e.components=e.components||{};
+    e.components[ENC_COMP]=Object.assign({},e.components[ENC_COMP]||{},patch);
+    persist(e);
+  }
+  /* Am Ende eines Zuges laufen die Zustände ab, die in diesem Zug gesetzt
+     wurden. Sie dort zu zählen und nicht am Rundenwechsel ist der
+     Unterschied zwischen „bis zum Ende deines nächsten Zuges" und „bis
+     irgendwann". */
+  function naechster(){
+    if(!liste.length)return;
+    var aktuell=liste[zug];
+    if(aktuell){
+      var rest=(aktuell.conditions||[]).map(function(c){
+        var r2=Object.assign({},c);
+        if(isFinite(Number(r2.rounds))) r2.rounds=Number(r2.rounds)-1;
+        return r2;
+      }).filter(function(c){ return !isFinite(Number(c.rounds))||Number(c.rounds)>0; });
+      aktuell.rel.props=Object.assign({},aktuell.rel.props,{conditions:rest});
+    }
+    var n=zug+1, r3=runde;
+    if(n>=liste.length){ n=0; r3=runde+1; }
+    schreib({turn:n,round:r3,state:"running"});
+  }
+
+  var bar=el("div",{class:"maptools"});
+  if(inPlacement) bar.style.display="none";
+  bar.appendChild(el("span",{class:"pill",text:"Round "+(runde||"—")}));
+  if(me.write){
+    bar.appendChild(el("button",{class:"btn sm pri",type:"button",
+      onclick:naechster},"Next turn ▸"));
+    bar.appendChild(el("button",{class:"btn sm",type:"button",
+      title:"Roll initiative for everyone who has none",
+      onclick:function(){
+        liste.forEach(function(p2){
+          if(isFinite(p2.init))return;
+          var sb=p2.art?statsOf(p2.art).card:{};
+          var r4=rollDice("1d20"+(modOf(sb,"dex")>=0?"+":"")+modOf(sb,"dex"));
+          logRoll("Initiative "+p2.label,r4);
+          p2.rel.props=Object.assign({},p2.rel.props,{init:r4?r4.total:0});
+        });
+        schreib({state:"running",round:runde||1});
+      }},"Roll initiative"));
+    bar.appendChild(el("button",{class:"btn sm",type:"button",
+      onclick:function(){ addParticipants(e); }},"+ Fighters"));
+    bar.appendChild(el("button",{class:"btn sm gh",type:"button",
+      title:"Back to round zero, initiative cleared",
+      onclick:function(){
+        confirmDialog("Reset the fight? Initiative and conditions are cleared, hit points stay.",function(){
+          (e.relations||[]).forEach(function(r5){
+            if(r5.type!==REL_PART)return;
+            r5.props=Object.assign({},r5.props,{init:undefined,conditions:[]});
+          });
+          schreib({round:0,turn:0,state:"planned"});
+        }); }},"Reset"));
+  }
+  wrap.appendChild(bar);
+
+  if(!liste.length){
+    wrap.appendChild(el("div",{class:"empty",
+      text:me.write?"Nobody in this fight yet — add fighters.":"No participants."}));
+    return wrap;
+  }
+
+  var tb=el("table",{class:"initt"});
+  var hd=el("tr");
+  ["","Init","Who","HP","Conditions",""].forEach(function(h){ hd.appendChild(el("th",{text:h})); });
+  tb.appendChild(hd);
+  liste.forEach(function(p2,i){
+    var row=el("tr",{class:(i===zug?"now ":"")+(p2.ally?"ally":"foe")+
+      ((isFinite(p2.hp)&&p2.hp<=0)?" down":"")});
+    row.appendChild(el("td",{class:"turn",text:i===zug?"▶":""}));
+
+    var ci=el("td",{class:"num"});
+    if(me.write){
+      var iv=el("input",{class:"tin",type:"number",value:isFinite(p2.init)?String(p2.init):""});
+      iv.addEventListener("change",function(){
+        p2.rel.props=Object.assign({},p2.rel.props,
+          {init:iv.value===""?undefined:Number(iv.value)});
+        persist(e); });
+      ci.appendChild(iv);
+    } else ci.textContent=isFinite(p2.init)?String(p2.init):"—";
+    row.appendChild(ci);
+
+    var cw=el("td");
+    if(p2.art) cw.appendChild(el("button",{class:"ref",type:"button",
+      onclick:function(){go({k:"art",id:p2.art.id});}},p2.label));
+    else cw.appendChild(el("span",{class:"gone",text:p2.label}));
+    if(p2.note) cw.appendChild(el("span",{class:"bind",text:p2.note}));
+    row.appendChild(cw);
+
+    var ch=el("td",{class:"num hpcell"});
+    if(me.write){
+      /* Schaden wird dem laufenden Zug zugeschrieben: der Wurf landet im
+         Verlauf mit dem Namen dessen, der gerade dran ist. */
+      ch.appendChild(el("button",{class:"vbtn",type:"button",title:"Damage 1",
+        onclick:function(){ traf(p2,-1); }},"−"));
+      var hv=el("input",{class:"tin",type:"number",value:isFinite(p2.hp)?String(p2.hp):""});
+      hv.addEventListener("change",function(){
+        p2.rel.props=Object.assign({},p2.rel.props,
+          {hp:hv.value===""?undefined:Number(hv.value)});
+        persist(e); });
+      ch.appendChild(hv);
+      if(isFinite(p2.hpMax)) ch.appendChild(el("span",{class:"vmax",text:"/"+p2.hpMax}));
+      ch.appendChild(el("button",{class:"vbtn",type:"button",title:"Heal 1",
+        onclick:function(){ traf(p2,1); }},"+"));
+    } else ch.textContent=(isFinite(p2.hp)?p2.hp:"—")+(isFinite(p2.hpMax)?"/"+p2.hpMax:"");
+    row.appendChild(ch);
+
+    var cc=el("td",{class:"conds"});
+    (p2.conditions||[]).forEach(function(c){
+      var chip=el("span",{class:"chip cond"},
+        c.name+(isFinite(Number(c.rounds))?" ("+c.rounds+")":""));
+      if(me.write) chip.appendChild(el("button",{class:"x",type:"button",
+        onclick:function(){
+          p2.rel.props=Object.assign({},p2.rel.props,
+            {conditions:(p2.conditions||[]).filter(function(x){return x!==c;})});
+          persist(e); }},"×"));
+      cc.appendChild(chip);
+    });
+    if(me.write){
+      var add=el("select",{class:"bsel"});
+      add.appendChild(el("option",{value:""},"+ condition"));
+      conditionList().forEach(function(c){ add.appendChild(el("option",{value:c},c)); });
+      add.addEventListener("change",function(){
+        if(!add.value)return;
+        var dauer=prompt?null:null;
+        p2.rel.props=Object.assign({},p2.rel.props,{conditions:
+          (p2.conditions||[]).concat([{name:add.value,rounds:1,source:dran?dran.label:""}])});
+        persist(e);
+      });
+      cc.appendChild(add);
+    }
+    row.appendChild(cc);
+
+    var cx=el("td");
+    if(me.write) cx.appendChild(el("button",{class:"btn gh sm",type:"button",title:"Remove",
+      onclick:function(){
+        e.relations=e.relations.filter(function(x){return x.id!==p2.rel.id;});
+        persist(e); }},"×"));
+    row.appendChild(cx);
+    tb.appendChild(row);
+  });
+  wrap.appendChild(tb);
+
+  function traf(p2,d){
+    var jetzt=isFinite(p2.hp)?p2.hp:(isFinite(p2.hpMax)?p2.hpMax:0);
+    p2.rel.props=Object.assign({},p2.rel.props,{hp:jetzt+d});
+    logRoll((dran?dran.label+" → ":"")+p2.label+(d<0?" damage":" healed"),
+      {total:Math.abs(d),rolls:[{flat:Math.abs(d)}],expr:"manual"});
+    persist(e);
+  }
+
+  /* Die Karte, auf der gekämpft wird, mit dem Zeiger auf dem, der dran ist
+     (REQ-144). Dieselbe Karte, derselbe Zeichner — nur der Ring ist neu. */
+  var mapRel=(e.relations||[]).filter(function(r){return r.type===REL_ONMAP;})[0];
+  var karte=mapRel?ENT.get(mapRel.to):null;
+  if(karte&&!inPlacement){
+    wrap.appendChild(el("div",{class:"sec",text:"On the map"}));
+    wrap.appendChild(elMap(karte,(karte.interfaces||[])[0]||"",{el:"map"}));
+  }
+
+  /* Beute (REQ-085): was dabei zu holen ist, steht bei der Begegnung. */
+  var beute=(e.relations||[]).filter(function(r){return r.type===REL_LOOT;});
+  if(beute.length){
+    wrap.appendChild(el("div",{class:"sec",text:"Loot"}));
+    var lb=el("div",{class:"chips"});
+    beute.forEach(function(r){
+      var it=ENT.get(r.to); if(!it)return;
+      var pr=r.props||{};
+      lb.appendChild(el("button",{class:"chip",type:"button",
+        onclick:function(){go({k:"art",id:it.id});}},
+        nameOf(it)+(pr.qty>1?" ×"+pr.qty:"")+(pr.chance?" ("+pr.chance+"%)":"")));
+    });
+    wrap.appendChild(lb);
+  }
+
+  /* Der Würfelverlauf. Er steht hier und nicht in einer Ecke, weil er zum
+     Kampf gehört: „was ist da gefallen?" fragt jemand zwei Minuten später. */
+  var wbar=el("div",{class:"rowbtns"});
+  ["1d20","1d20+5","2d6","1d8+3","1d4"].forEach(function(a){
+    wbar.appendChild(rollButton(a,a));
+  });
+  var frei=el("input",{class:"i",type:"text",placeholder:"3d6+2",style:"width:auto;max-width:110px"});
+  frei.addEventListener("keydown",function(ev){
+    if(ev.key!=="Enter")return;
+    ev.preventDefault();
+    var r6=rollDice(frei.value);
+    if(!r6){ UI.err="Cannot read “"+frei.value+"”."; render(); return; }
+    logRoll(frei.value,r6); render();
+  });
+  wbar.appendChild(frei);
+  wrap.appendChild(el("div",{class:"sec",text:"Dice"}));
+  wrap.appendChild(wbar);
+  if(UI.rollLog.length){
+    var log=el("div",{class:"rolllog"});
+    UI.rollLog.forEach(function(x){
+      var row=el("div",{class:"rollrow"});
+      row.appendChild(el("span",{class:"rl",text:x.t}));
+      row.appendChild(el("span",{class:"rv",text:rollText(x.r)}));
+      log.appendChild(row);
+    });
+    wrap.appendChild(log);
+  }
+  return wrap;
+}
+
+/* Kämpfer dazunehmen. Eine Anzahl legt mehrere Kanten an, nicht eine mit
+   Zahl — jeder Goblin hat eigene Trefferpunkte. */
+function addParticipants(e){
+  dialog("Add fighters",function(host,close){
+    var suche=el("input",{class:"i",type:"text",placeholder:"Search…"});
+    var sel=el("select",{class:"i",size:"8",style:"height:auto"});
+    function fuelle(){
+      var q=suche.value.toLowerCase().trim();
+      sel.textContent="";
+      byName().forEach(function(c){
+        var ifn2=(c.interfaces||[])[0];
+        if(!ifaceInList(["Creature","Statblock","Party"],ifn2))return;
+        if(q&&nameOf(c).toLowerCase().indexOf(q)<0)return;
+        sel.appendChild(el("option",{value:c.id},nameOf(c)+" — "+ifaceName(c)));
+      });
+      if(!sel.childNodes.length) sel.appendChild(el("option",{value:""},"— nothing matches —"));
+    }
+    suche.addEventListener("input",fuelle); fuelle();
+    var anzahl=el("input",{class:"i",type:"number",value:"1",min:"1",max:"20"});
+    var seite=el("select",{class:"i"});
+    seite.appendChild(el("option",{value:"foe"},"Against the party"));
+    seite.appendChild(el("option",{value:"ally"},"On the party’s side"));
+    host.appendChild(field("Who",suche));
+    host.appendChild(sel);
+    host.appendChild(field("How many",anzahl));
+    host.appendChild(field("Side",seite));
+    actions(host,close,function(){
+      if(!sel.value)return false;
+      var art=ENT.get(sel.value); if(!art)return false;
+      var n=Math.min(20,Math.max(1,Number(anzahl.value)||1));
+      var sb=statsOf(art).card;
+      var hp=Number(sb.hp);
+      e.relations=e.relations||[];
+      for(var i=0;i<n;i++){
+        e.relations.push({id:uid("r"),type:REL_PART,to:art.id,props:{
+          label:n>1?nameOf(art)+" "+(i+1):nameOf(art),
+          hp:isFinite(hp)?hp:undefined, hpMax:isFinite(hp)?hp:undefined,
+          ally:seite.value==="ally", conditions:[]}});
+      }
+      persist(e);
+    },"Add");
+  });
 }
 
 /* ---------- Boards (REQ-111, 157 bis 166) ----------
@@ -3361,7 +3754,10 @@ function elMap(e,ifn,item){
     var kind=tokenKind(r);
     if(UI.mapKind&&kind!==UI.mapKind)return;
     var pr=r.props||{};
-    var t=el("button",{class:"mtoken k-"+kind,type:"button",
+    /* Der Zeiger auf dem, der dran ist (REQ-144): derselbe Zeichner, nur
+       ein Ring mehr. */
+    var dran=UI.turnActor&&art&&art.id===UI.turnActor;
+    var t=el("button",{class:"mtoken k-"+kind+(dran?" now":""),type:"button",
       title:(art?nameOf(art):"(missing)")+(pr.note?" — "+pr.note:"")});
     t.style.left=((pr.x||0.5)*100)+"%";
     t.style.top=((pr.y||0.5)*100)+"%";
