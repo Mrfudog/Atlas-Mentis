@@ -820,4 +820,25 @@ export const components: Record<string, ComponentDef> = {
       },
     },
   },
+
+  /**
+   * Was an einem Artikel noch zu tun ist (REQ-189, 190). Einträge, die auf
+   * nichts zeigen — dieselbe Regel wie bei den Aufgaben im Auftrag. Der
+   * Unterschied zum Auftrag ist der Adressat: eine Quest-Aufgabe ist für die
+   * Gruppe, ein Todo für die Spielleitung.
+   *
+   * `at` ist die Zeit der Notiz, nicht der Erledigung: „das habe ich mir
+   * mitten in der Sitzung notiert" ist die Angabe, die hilft.
+   */
+  Todos: {
+    name: 'Todos',
+    label: 'To do',
+    engine: null,
+    schema: {
+      type: 'object',
+      properties: {
+        items: { type: 'array', title: 'Items', items: { type: 'object' } },
+      },
+    },
+  },
 };

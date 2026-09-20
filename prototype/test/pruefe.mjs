@@ -1761,6 +1761,77 @@ async function seite(datei, warten) {
     pruefe('a nested table and a place that uses one exist in the data', false, tabelle);
   }
 
+  /* ---- Vorbereitung (REQ-078, 084, 188, 189, 190) ----
+     Der Prüfstein: nichts davon ist zusätzlich gespeichert. Das Cockpit
+     liest Kanten, die es ohnehin gibt; die Unfertigen sind der Stand; die
+     offenen Punkte stehen an den Artikeln, zu denen sie gehören. Eine
+     eigene Tabelle „Vorbereitung" wäre eine zweite Wahrheit. */
+  const vorbereitung = await p.evaluate(() => {
+    const e = [...window.__T__.ENT.values()].find((x) =>
+      (((x.components || {}).Todos || {}).items || []).length > 1
+      && (x.relations || []).length > 1);
+    return e ? e.id : null;
+  });
+  if (vorbereitung) {
+    await oeffneId(vorbereitung);
+    await p.evaluate(() => {
+      const f = document.getElementById('facet');
+      f.value = 'prep';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(500);
+    const pv = await p.evaluate(() => ({
+      abschnitte: [...document.querySelectorAll('.prep .sec')].map((x) => x.textContent),
+      cockpit: [...document.querySelectorAll('.cgroup .ck')].map((x) => x.textContent),
+      offen: [...document.querySelectorAll('.prep .task')].filter((t) => !t.querySelector('input').checked).length,
+      erledigt: [...document.querySelectorAll('.prep .task.done')].length,
+      anderswo: document.querySelectorAll('.prep .qlist')[0]?.children.length ?? 0,
+      unfertig: document.querySelectorAll('.prep .qlist')[1]?.children.length ?? 0,
+      probleme: [...document.querySelectorAll('.pruef li')].map((x) => x.textContent),
+    }));
+    pruefe('the prep board has its four lists', pv.abschnitte.length === 4, pv.abschnitte);
+    /* Die Gruppen des Cockpits sind Kantenarten, nicht erfundene Rubriken. */
+    pruefe('the cockpit groups by the relation that leads there',
+      pv.cockpit.length >= 2, pv.cockpit);
+    pruefe('open and done are told apart', pv.offen > 0 && pv.erledigt > 0, pv);
+    pruefe('open points from other articles are gathered', pv.anderswo > 0, pv.anderswo);
+    pruefe('what is still idea or planned is listed', pv.unfertig > 0, pv.unfertig);
+    pruefe('the prep board validates clean', pv.probleme.length === 0, pv.probleme);
+
+    /* Schnellerfassung: ein Satz, Enter, fertig — ohne die Ansicht zu
+       verlassen. Wer dafür springen muss, notiert es nicht. */
+    await p.evaluate(() => {
+      const i = document.querySelector('.prep .addbar.quick input');
+      i.value = 'Probe: das hier notiert der Prüflauf';
+      i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    });
+    await p.waitForTimeout(500);
+    const danach2 = await p.evaluate(() => ({
+      offen: [...document.querySelectorAll('.prep .task')].filter((t) => !t.querySelector('input').checked).length,
+      text: [...document.querySelectorAll('.prep .task')].map((t) => t.textContent).join(' '),
+    }));
+    pruefe('quick capture files a note without leaving the view',
+      danach2.offen === pv.offen + 1 && /Prüflauf/.test(danach2.text), danach2);
+
+    /* Den Stand gleich in der Liste ändern: wer dafür hinspringen muss,
+       lässt ihn stehen, und die Liste wird zur Tapete. */
+    const vorStand = await p.evaluate(() =>
+      document.querySelectorAll('.prep .qlist')[1]?.children.length ?? 0);
+    await p.evaluate(() => {
+      const sel = document.querySelectorAll('.prep .qlist')[1].querySelector('select');
+      sel.value = 'used';
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(500);
+    const nachStand = await p.evaluate(() =>
+      document.querySelectorAll('.prep .qlist')[1]?.children.length ?? 0);
+    pruefe('the status changes right in the list', nachStand === vorStand - 1,
+      { vorStand, nachStand });
+    pruefe('the prep board raised no exception', errs.length === 0, errs);
+  } else {
+    pruefe('an article with notes and relations exists in the data', false, 'keiner gefunden');
+  }
+
   pruefe('knowledge needed no browser modal', modale.length === 0, modale);
   pruefe('no exception through the knowledge panel', errs.length === 0, errs);
 

@@ -395,6 +395,16 @@ table.atk tr.stowed td,table.atk tr.buried td{color:var(--dim)}
   display:block}
 .gitem i.off{background:transparent;border-color:transparent}
 .gitem.selected i.on{background:var(--accent);border-color:var(--accent)}
+/* Vorbereitung: vier Listen, die es ohne dieses Element auch gäbe. */
+.prep .addbar.quick{margin-bottom:12px}
+.prep .addbar.quick input.i{flex:1;min-width:180px}
+.cockpit{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.cgroup{border:1px solid var(--line);border-radius:var(--r);padding:7px 9px;background:var(--surface)}
+.cgroup .ck{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);
+  margin-bottom:4px}
+.crowlite{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;padding:2px 0;font-size:13.5px}
+.crowlite .co{font-size:11px;color:var(--accent);margin-left:auto}
+
 /* Aufträge und Zeitleiste. */
 .tasks{display:flex;flex-direction:column;gap:2px}
 .task{display:flex;gap:8px;align-items:baseline;padding:3px 0;
@@ -1466,6 +1476,34 @@ function renderRail(){
     onclick:function(){go({k:"graph"});}},[el("b",{text:"Graph"}),el("em",{text:"↔"})]));
   if(canWrite()) s3.appendChild(el("button",{class:"navrow",type:"button",
     onclick:function(){importDialog();}},[el("b",{text:"Import"}),el("em",{text:"md"})]));
+  /* Unfertiges als eigener Einstieg (REQ-188): die Frage „was liegt noch
+     halb da?" stellt man vor jeder Sitzung, und sie über den Filter zu
+     bauen heisst, sie nicht zu stellen. */
+  var unfertig=0;
+  ENT.forEach(function(x){
+    var st=((x.components||{}).Status||{}).value;
+    if(st==="idea"||st==="planned") unfertig++;
+  });
+  s3.appendChild(el("button",{class:"navrow",type:"button",
+    "aria-current":String(UI.status==="idea"||UI.status==="planned"),
+    onclick:function(){ UI.status=UI.status==="idea"?"planned":(UI.status==="planned"?"":"idea");
+      go({k:"list"}); }},
+    [el("b",{text:"Unfinished"}),el("em",{text:String(unfertig)})]));
+  var offeneTodos=0;
+  ENT.forEach(function(x){
+    ((((x.components||{}).Todos||{}).items)||[]).forEach(function(t){ if(!t.done) offeneTodos++; });
+  });
+  if(offeneTodos) s3.appendChild(el("button",{class:"navrow",type:"button",
+    title:"Open the prep board of the first campaign or session",
+    onclick:function(){
+      var ziel=null;
+      ENT.forEach(function(x){
+        if(ziel)return;
+        var i2=(x.interfaces||[])[0];
+        if(i2==="Campaign"||i2==="Session") ziel=x;
+      });
+      if(ziel){ UI.view="prep"; go({k:"art",id:ziel.id}); }
+    }},[el("b",{text:"To do"}),el("em",{text:String(offeneTodos)})]));
   var openCount=0; ENT.forEach(function(x){ if(checkArticle(x).length) openCount++; });
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.offen),
     onclick:function(){UI.offen=!UI.offen;go({k:"list"});}},
@@ -1996,7 +2034,7 @@ var LAYOUT_ELEMENTS=[
   ["description","Description"],["blocks","Text blocks"],
   ["composed","Composed rules"],["relations","Relations"],["image","Image"],
   ["knowledge","Knowledge groups"],["map","Map"],["sheet","Character sheet"],["inventory","Inventory"],["crafting","Crafting"],["board","Board"],["initiative","Initiative"],
-  ["quests","Quest board"],["timeline","Timeline"],["live","Live"],["table","Table"]
+  ["quests","Quest board"],["timeline","Timeline"],["live","Live"],["table","Table"],["prep","Prep board"]
 ];
 function layoutOf(vw,ifn){
   var by=vw.byInterface||{};
@@ -2040,6 +2078,7 @@ function renderLayoutItem(item,e,ifn,vw){
     case "timeline":    return elTimeline(e,ifn,item);
     case "live":        return elLive(e,ifn,item);
     case "table":       return elTable(e,ifn,item);
+    case "prep":        return elPrep(e,ifn,item);
     default:            return null;
   }
 }
@@ -2193,6 +2232,218 @@ function elRelations(e){
     row.appendChild(rv);
     wrap.appendChild(row);
   });
+  return wrap;
+}
+
+/* ---------- Vorbereitung (REQ-078, 084, 188, 189, 190) ----------
+   Vier Listen, die es ohne dieses Element auch gäbe — nur müsste man sie
+   sich jedes Mal selbst zusammensuchen, und genau daran scheitert
+   Vorbereitung.
+
+   **Was hier steht, ist nirgends zusätzlich gespeichert.** Das Cockpit
+   liest Kanten, die es ohnehin gibt (`partOf`, `features`, `happensAt`,
+   `tableFor`), die Ideen sind Artikel im Stand „idea", und die offenen
+   Punkte stehen an den Artikeln, zu denen sie gehören. Eine eigene Tabelle
+   „Vorbereitung" wäre eine zweite Wahrheit, und die erste, die veraltet.
+
+   **Schnellerfassung** (REQ-190) ist das eine Feld, das es dafür braucht:
+   ein Satz landet als Punkt am Artikel, vor dem man gerade steht — ohne
+   die Ansicht zu verlassen. Wer dafür erst irgendwohin springen muss,
+   notiert es nicht. */
+var TODO_COMP="Todos";
+
+function todosOf(e){
+  var c=(e.components||{})[TODO_COMP]||{};
+  return Array.isArray(c.items)?c.items:[];
+}
+function setTodos(e,items){
+  e.components=e.components||{};
+  e.components[TODO_COMP]=Object.assign({},(e.components||{})[TODO_COMP]||{},{items:items});
+  persist(e);
+}
+function addTodo(e,text){
+  var t=String(text||"").trim(); if(!t)return;
+  setTodos(e,todosOf(e).concat([{id:uid("td"),text:t,done:false,
+    at:new Date().toISOString().slice(0,16).replace("T"," ")}]));
+}
+/* Alle offenen Punkte über alle Artikel hinweg (REQ-189). */
+function allOpenTodos(){
+  var out=[];
+  ENT.forEach(function(e){
+    if(!articleVisible(e))return;
+    todosOf(e).forEach(function(t){ if(!t.done) out.push({e:e,t:t}); });
+  });
+  out.sort(function(a,b){ return String(b.t.at||"").localeCompare(String(a.t.at||"")); });
+  return out;
+}
+/* Was an dieser Sitzung, diesem Kapitel, dieser Kampagne hängt — in beide
+   Richtungen: was darauf zeigt und worauf es zeigt. */
+function hangingOff(e){
+  var raus=(e.relations||[]).map(function(r){
+    var t=ENT.get(r.to); return t?{art:t,rel:relDef(r.type).label||r.type,dir:"out"}:null;
+  }).filter(Boolean);
+  var rein=[];
+  ENT.forEach(function(o){
+    (o.relations||[]).forEach(function(r){
+      if(r.to!==e.id)return;
+      rein.push({art:o,rel:relDef(r.type).inverseLabel||("← "+r.type),dir:"in"});
+    });
+  });
+  return raus.concat(rein).filter(function(x){ return articleVisible(x.art); });
+}
+
+function elPrep(e,ifn,item){
+  var wrap=el("div",{class:"prep"});
+
+  /* 1 — Schnellerfassung. Steht oben, weil sie während des Spiels benutzt
+     wird und nicht danach. */
+  if(canWrite()){
+    var qbar=el("div",{class:"addbar quick"});
+    var qi=el("input",{class:"i",type:"text",
+      placeholder:"A note for later — Enter files it here"});
+    qi.addEventListener("keydown",function(ev){
+      if(ev.key!=="Enter")return;
+      ev.preventDefault();
+      addTodo(e,qi.value); qi.value="";
+    });
+    qbar.appendChild(qi);
+    qbar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+      addTodo(e,qi.value); qi.value=""; }},"Note it"));
+    qbar.appendChild(el("button",{class:"btn sm gh",type:"button",
+      title:"File it as an idea of its own instead",
+      onclick:function(){
+        var t=qi.value.trim(); if(!t)return;
+        var neu={ id:uid("id"), interfaces:[REG.interfaces.Article?"Article":ifn],
+          name:t.slice(0,60), tags:["idee"],
+          components:{ Name:{text:t.slice(0,60)},
+            Identity:{key:"idea/"+slug(t).slice(0,40),aliases:[]},
+            Status:{value:"idea"}, Description:{raw:t} },
+          adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
+        reqFor(neu.interfaces[0]).forEach(function(c){
+          if(!neu.components[c]&&REG.components[c]) neu.components[c]={}; });
+        applyDefaults(neu,neu.interfaces[0]);
+        ENT.set(neu.id,neu); persist(neu);
+        qi.value="";
+      }},"As an idea"));
+    wrap.appendChild(qbar);
+  }
+
+  /* 2 — Das Cockpit: was an diesem Artikel hängt (REQ-078). */
+  var dran=hangingOff(e);
+  if(dran.length){
+    wrap.appendChild(el("div",{class:"sec",text:"Hanging off this"}));
+    var gruppen={};
+    dran.forEach(function(x){ (gruppen[x.rel]=gruppen[x.rel]||[]).push(x); });
+    var cock=el("div",{class:"cockpit"});
+    Object.keys(gruppen).sort().forEach(function(k){
+      var sp=el("div",{class:"cgroup"});
+      sp.appendChild(el("div",{class:"ck",text:k}));
+      gruppen[k].forEach(function(x){
+        var row=el("div",{class:"crowlite"});
+        row.appendChild(el("button",{class:"ref",type:"button",
+          onclick:function(){go({k:"art",id:x.art.id});}},nameOf(x.art)));
+        var st=((x.art.components||{}).Status||{}).value;
+        if(st&&st!=="used") row.appendChild(el("span",{class:"pill q",text:st}));
+        var off=todosOf(x.art).filter(function(t){return !t.done;}).length;
+        if(off) row.appendChild(el("span",{class:"co",text:off+" open"}));
+        sp.appendChild(row);
+      });
+      cock.appendChild(sp);
+    });
+    wrap.appendChild(cock);
+  }
+
+  /* 3 — Die offenen Punkte an diesem Artikel. */
+  var meine=todosOf(e);
+  wrap.appendChild(el("div",{class:"sec",text:"To do here"}));
+  if(!meine.length) wrap.appendChild(el("p",{class:"hint",text:"Nothing noted."}));
+  else{
+    var liste=el("div",{class:"tasks"});
+    meine.forEach(function(t){
+      var row=el("label",{class:"task"+(t.done?" done":"")});
+      var cb=el("input",{type:"checkbox"});
+      cb.checked=!!t.done; cb.disabled=!canWrite();
+      cb.addEventListener("change",function(){
+        setTodos(e,meine.map(function(x){
+          return x===t?Object.assign({},x,{done:cb.checked}):x; }));
+      });
+      row.appendChild(cb);
+      row.appendChild(inline(t.text||"",el("span")));
+      if(t.at) row.appendChild(el("span",{class:"co",text:t.at}));
+      if(canWrite()) row.appendChild(el("button",{class:"btn gh sm",type:"button",
+        onclick:function(ev){ ev.preventDefault();
+          setTodos(e,meine.filter(function(x){return x!==t;})); }},"×"));
+      liste.appendChild(row);
+    });
+    wrap.appendChild(liste);
+  }
+
+  /* 4 — Alles Offene über die Kampagne hinweg (REQ-189) und alles, was noch
+     Idee oder geplant ist (REQ-084, 188). Beides mit Sprung dorthin —
+     eine Liste ohne Sprung ist eine Liste, die man abschreibt. */
+  var alle=allOpenTodos().filter(function(x){ return x.e.id!==e.id; });
+  wrap.appendChild(el("div",{class:"sec",text:"Open elsewhere"}));
+  if(!alle.length) wrap.appendChild(el("p",{class:"hint",text:"Nothing open anywhere else."}));
+  else{
+    var box=el("div",{class:"qlist"});
+    alle.slice(0,20).forEach(function(x){
+      var row=el("div",{class:"qrow"});
+      var t2=el("div",{class:"qt"});
+      t2.appendChild(el("button",{class:"ref",type:"button",
+        onclick:function(){go({k:"art",id:x.e.id});}},nameOf(x.e)));
+      t2.appendChild(inline(x.t.text||"",el("span")));
+      row.appendChild(t2);
+      if(x.t.at) row.appendChild(el("span",{class:"qmeta",text:x.t.at}));
+      box.appendChild(row);
+    });
+    wrap.appendChild(box);
+    if(alle.length>20) wrap.appendChild(el("p",{class:"hint",
+      text:"…and "+(alle.length-20)+" more."}));
+  }
+
+  var unfertig=[];
+  ENT.forEach(function(o){
+    if(!articleVisible(o))return;
+    var st=((o.components||{}).Status||{}).value;
+    if(st==="idea"||st==="planned") unfertig.push({e:o,st:st});
+  });
+  unfertig.sort(function(a,b){
+    if(a.st!==b.st)return a.st==="idea"?-1:1;
+    return nameOf(a.e).localeCompare(nameOf(b.e),"de");
+  });
+  wrap.appendChild(el("div",{class:"sec",text:"Not finished"}));
+  if(!unfertig.length) wrap.appendChild(el("p",{class:"hint",text:"Everything is in play."}));
+  else{
+    var ub=el("div",{class:"qlist"});
+    unfertig.slice(0,30).forEach(function(x){
+      var row=el("div",{class:"qrow"});
+      var t3=el("div",{class:"qt"});
+      t3.appendChild(el("span",{class:"pill q",text:x.st}));
+      t3.appendChild(el("button",{class:"ref",type:"button",
+        onclick:function(){go({k:"art",id:x.e.id});}},nameOf(x.e)));
+      t3.appendChild(el("span",{class:"co",text:ifaceName(x.e)}));
+      row.appendChild(t3);
+      if(canWrite()){
+        /* Den Stand gleich hier ändern: wer dafür erst hinspringen muss,
+           lässt ihn stehen, und die Liste wird zur Tapete. */
+        var sel=el("select",{class:"bsel"});
+        ["idea","planned","used","discarded"].forEach(function(v){
+          sel.appendChild(el("option",{value:v},v)); });
+        sel.value=x.st;
+        sel.addEventListener("change",function(){
+          x.e.components=x.e.components||{};
+          x.e.components.Status=Object.assign({},x.e.components.Status||{},{value:sel.value});
+          persist(x.e);
+        });
+        row.appendChild(sel);
+      }
+      ub.appendChild(row);
+    });
+    wrap.appendChild(ub);
+    wrap.appendChild(el("p",{class:"hint",
+      text:unfertig.length+" article"+(unfertig.length===1?"":"s")+
+        " still idea or planned. The compendium’s status filter shows them all, and the bulk bar changes many at once."}));
+  }
   return wrap;
 }
 

@@ -32,6 +32,10 @@ Stelle, um Code zu schreiben.
 | Begegnungen | `EncounterInfo`, `Encounter`, `participates` / `onMap` / `loot` | `initiative` |
 | Aufträge | `QuestInfo.tasks` | `quests` |
 | Zeitleiste | `WorldDate`, `Event`, `involves` | `timeline` |
+| Zugang | `Access` | — (Filter vor der Darstellung) |
+| Sitzung live | `SessionState` | `live` |
+| Tabellen | `TableInfo`, `Table`, `entry` / `tableFor` | `table` |
+| Vorbereitung | `Todos` | `prep` |
 
 ---
 
@@ -116,26 +120,38 @@ Fertigkeiten ist damit eine Einstellung und kein Schemawechsel.
 
 ---
 
+## Zwei Kanäle, und sie tragen Verschiedenes
+
+Das hat sich beim Bauen von REQ-116 gezeigt und gilt seither überall:
+
+**Der Speicher ist der Kanal für alles, was bleibt.** `onSnapshot` liefert
+jede Änderung an jedes offene Fenster — die Seite war mehrgerätefähig, seit
+sie Daten lädt, ohne dass es jemand gesagt hätte. Runde, Zug, Trefferpunkte,
+die laufende Szene: alles steht im Speicher und kommt von dort bei allen an,
+auch bei dem, der zehn Minuten später dazukommt.
+
+**Der Raum ist der Kanal für Augenblicke.** Ein Wurf und ein Zeigen auf die
+Karte muss niemand nachlesen. Ginge der laufende Kampf über den Kanal, sähe
+ihn niemand, der später dazukommt — und das merkte man erst am Tisch.
+
 ## Was noch fehlt
 
-1. **Sitzungszustände und Echtzeit** (REQ-116, 117). `round` und `turn`
-   liegen an der Begegnung; richtig wäre ein Zustandsobjekt je Sitzung mit
-   einem Kanal, den mehrere Geräte sehen. Sie stehen absichtlich beieinander
-   in einer Karte, damit der Umzug eine Karte betrifft und nicht ein Dutzend
-   Felder. **Das Artefakt könnte das:** die Fähigkeit `room` liefert genau
-   diesen Kanal.
-2. **Spielerzugang** (REQ-031 bis 038). Ohne ihn bleibt `visibleFields`
-   geprüft, aber ungenutzt, und der Spielerbogen ist eine Ansicht, die
-   niemand aufruft.
-3. **Nebel des Krieges, Licht und Sicht** (REQ-139, 140). Braucht eine
+1. **Ein richtiger Login** (REQ-031, 032). Die Identität kommt heute von der
+   Laufzeit des Artefakts; ein Passwort im Browser wäre keines. Wenn der
+   echte Stapel kommt, tritt REQ-031 an diese Stelle — die Abfragen darunter
+   bleiben unverändert.
+2. **Nebel des Krieges, Licht und Sicht** (REQ-139, 140). Braucht eine
    Zeichenfläche statt Bildpunkten.
-4. **Zufallstabellen und Beutetabellen** (REQ-125, 186). `loot` trägt heute
-   eine Chance in Prozent, aber niemand würfelt sie aus.
-5. **Ebenen und Stapelauflösung** (REQ-004 bis 007). Der Prototyp kennt eine
+3. **Ebenen und Stapelauflösung** (REQ-004 bis 007). Der Prototyp kennt eine
    Kampagne; die Ebenen sind der grösste Brocken, den das Rückgrat noch
    nicht trägt.
-6. **Blockanker.** Wissen an Blöcken hängt an der Block-Id; `Block.anchor`
+4. **Regelbrowser und Regelverweise im Text** (REQ-091, 098, 175, 099).
+   `Rule` gibt es, `composedOf` löst auf — aber es gibt keine Suche, keine
+   Ablage und kein automatisches Erkennen im Fliesstext.
+5. **Blockanker.** Wissen an Blöcken hängt an der Block-Id; `Block.anchor`
    ist vorgesehen, wird aber nicht vergeben.
+6. **Punktreise und Erkundung** (REQ-168 bis 171). Ein ganzer Bereich, für
+   den es noch keine Zeile gibt.
 
 ---
 
@@ -156,3 +172,9 @@ und zum Wegwerfen gedacht:
 - **Eine Begegnung** am Gully mit vier Teilnehmern, Beute und Taktik.
 - **Drei Aufträge** in drei Ständen und **drei Ereignisse** über dreihundert
   Jahre Weltzeit.
+- **Sela Kerzendocht** als zweite Spielerfigur — am selben Rezept sieht die
+  Spielleitung alles, Rook den Kniff, Sela weder noch.
+- **Zwei Tabellen**, die eine in der anderen, mit einem Eintrag, der nur in
+  der Kerzengasse vorkommt.
+- **Sitzung 12** mit laufendem Kampf, Karte auf dem Tisch und drei offenen
+  Punkten.

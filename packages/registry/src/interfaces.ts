@@ -13,7 +13,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     /* `Status` is required, not allowed: every article has a standing, and
        leaving it optional made it a card that half the articles lacked. */
     requires: ['Name', 'Identity', 'Status'],
-    allows: ['Description', 'Visibility', 'Image', 'RawContent', 'SourceRef', 'WorldDate'],
+    allows: ['Description', 'Visibility', 'Image', 'RawContent', 'SourceRef', 'WorldDate', 'Todos'],
     blockTypes: ['paragraph', 'note'],
   },
 

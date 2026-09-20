@@ -294,4 +294,22 @@ export const views: Record<string, ViewDef> = {
       { id: 'tb-b', el: 'blocks', blocks: ['note', 'secret'] },
     ],
   },
+
+  /** Das Cockpit: was ansteht, was offen ist, was noch Idee ist. */
+  prep: {
+    label: 'Prep',
+    order: 18,
+    fields: 'none',
+    blocks: ['note'],
+    description: true,
+    composed: false,
+    relations: true,
+    bindings: false,
+    image: false,
+    layout: [
+      { id: 'p-prep', el: 'prep' },
+      { id: 'p-desc', el: 'description' },
+      { id: 'p-b', el: 'blocks', blocks: ['note'] },
+    ],
+  },
 };
