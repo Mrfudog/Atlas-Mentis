@@ -310,6 +310,21 @@ in [Spieltisch.md](Spieltisch.md).
   Figur und Party — „die Spieler dieser Kampagne" ist kein Figurengefüge.
   Siehe [Wissen.md](Wissen.md) und [Zugang.md](Zugang.md).
 
+- **D25 · Mehrere Obertypen** — `extends` stand im Schema immer als Liste;
+  gelesen wurde nur der erste. Wer einen zweiten eintrug, bekam weder dessen
+  Felder noch dessen Blockarten noch dessen Bereich — und keine Meldung. Seit
+  2026-09-20 geht jeder Aufstieg über alle Zweige. `parentOf` bleibt, aber nur
+  fürs Zeichnen des Baums, wo es eine Zeile je Art braucht.
+
+- **D26 · Beute ist nicht nur Zeug** — REQ-186. Die Kante `loot` zeigt auf
+  `Item`, **`Information`, `Feat` und `Skill`**, und sie geht von einer Quest
+  aus wie von einer Begegnung. Was jemand erfährt, ist genauso ein Fund, und
+  manchmal der einzige, den es zu machen gab.
+
+  Talent und Fertigkeit sind deshalb eigene Arten unter `Rule` und nicht zwei
+  Werte in `RuleInfo.kind`: eine Kante nennt Arten, keine Aufzählungswerte.
+  Zeigte `loot` auf `Rule`, stünde im Auswahlfeld auch die Lauernde Aktion.
+
 ---
 
 ## Als Nächstes

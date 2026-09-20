@@ -471,13 +471,21 @@ export const relations: Record<string, RelationDef> = {
     cardinality: 'one',
   },
 
-  /** Was dabei zu holen ist. */
+  /**
+   * Was dabei zu holen ist. Nicht nur Gegenstände: was jemand *erfährt*, ist
+   * genauso Beute, und manchmal die einzige — ein Brief im Nachlass, ein Name,
+   * den der Sterbende noch sagt. Selten, aber nicht nie: ein Talent oder eine
+   * Fertigkeit, die aus der Begegnung mitkommt.
+   *
+   * Deshalb zeigt die Kante auf `Feat` und `Skill` und nicht auf `Rule`: eine
+   * Lauernde Aktion ist auch eine Regel, und sie ist keine Beute.
+   */
   loot: {
     type: 'loot',
     label: 'loot',
     inverseLabel: 'found in',
-    from: ['Encounter', 'Story'],
-    to: ['Item'],
+    from: ['Encounter', 'Story', 'Quest'],
+    to: ['Item', 'Information', 'Feat', 'Skill'],
     props: {
       type: 'object',
       properties: {

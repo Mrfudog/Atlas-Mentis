@@ -405,3 +405,39 @@ describe('the character sheet has tabs', () => {
     }
   });
 });
+
+/* Beute ist nicht nur, was man einstecken kann. Was jemand erfährt, ist
+   genauso ein Fund — und manchmal der einzige, den es zu machen gab. */
+describe('loot is more than items', () => {
+  const loot = seedRegistry.relations['loot'];
+
+  it('reaches knowledge, feats and skills as well as items', () => {
+    expect(loot.to).toEqual(expect.arrayContaining(['Item', 'Information', 'Feat', 'Skill']));
+  });
+
+  /* Eine Lauernde Aktion ist auch eine Regel. Zeigte die Kante auf `Rule`,
+     dürfte man sie erbeuten, und die Auswahl im Feld wäre voller Unsinn. */
+  it('does not reach every rule', () => {
+    expect(loot.to).not.toContain('Rule');
+  });
+
+  it('is recordable on a quest, not only on an encounter', () => {
+    expect(loot.from).toEqual(expect.arrayContaining(['Encounter', 'Story', 'Quest']));
+  });
+
+  it('lets a feat and a skill be articles of their own, below Rule', () => {
+    for (const n of ['Feat', 'Skill']) {
+      expect(seedRegistry.interfaces[n]?.extends).toContain('Rule');
+      expect(seedRegistry.interfaces[n]?.abstract).toBeFalsy();
+    }
+    expect(seedRegistry.components['FeatInfo']).toBeTruthy();
+    expect(seedRegistry.components['SkillInfo']).toBeTruthy();
+  });
+
+  /* `RuleInfo.kind` ist Pflicht. Gäbe es die beiden Werte nicht, liesse sich
+     kein Talent anlegen, das die Validierung besteht. */
+  it('leaves a feat and a skill a kind they may carry', () => {
+    const kind = seedRegistry.components['RuleInfo'].schema.properties['kind'];
+    expect(kind.enum).toEqual(expect.arrayContaining(['feat', 'skill']));
+  });
+});

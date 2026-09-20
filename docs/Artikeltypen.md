@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-09-20. 36 Schnittstellen, 43 Komponenten, 41 Kantenarten.
+Stand 2026-09-20. 38 Schnittstellen, 45 Komponenten, 41 Kantenarten.
 
 Je Art vier Fragen: **was sie verlangt**, **was sie erlauben darf**,
 **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -46,7 +46,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - `features` → Creature | NPC | Statblock | Faction — „features"
 - `knowledge` → Information — „knowledge about it"
 - `onMap` → Map — „fought on"
-- `loot` → Item — „loot"
+- `loot` → Item | Information | Feat | Skill — „loot"
 - `tableFor` → Table — „rolls on"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -99,7 +99,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - `features` → Creature | NPC | Statblock | Faction — „features"
 - `knowledge` → Information — „knowledge about it"
 - `onMap` → Map — „fought on"
-- `loot` → Item — „loot"
+- `loot` → Item | Information | Feat | Skill — „loot"
 - `tableFor` → Table — „rolls on"
 - `inLayer` → Layer — „from"
 - `activates` → Layer — „runs on"
@@ -153,7 +153,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - `features` → Creature | NPC | Statblock | Faction — „features"
 - `knowledge` → Information — „knowledge about it"
 - `onMap` → Map — „fought on"
-- `loot` → Item — „loot"
+- `loot` → Item | Information | Feat | Skill — „loot"
 - `tableFor` → Table — „rolls on"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -252,6 +252,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - `questGiver` → Creature | Faction — „given by"
 - `questAbout` → * — „concerns"
 - `knowledge` → Information — „knowledge about it"
+- `loot` → Item | Information | Feat | Skill — „loot"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
@@ -303,7 +304,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - `features` → Creature | NPC | Statblock | Faction — „features"
 - `knowledge` → Information — „knowledge about it"
 - `onMap` → Map — „fought on"
-- `loot` → Item — „loot"
+- `loot` → Item | Information | Feat | Skill — „loot"
 - `tableFor` → Table — „rolls on"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -359,7 +360,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - `features` → Creature | NPC | Statblock | Faction — „features"
 - `knowledge` → Information — „knowledge about it"
 - `onMap` → Map — „fought on"
-- `loot` → Item — „loot"
+- `loot` → Item | Information | Feat | Skill — „loot"
 - `tableFor` → Table — „rolls on"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -414,7 +415,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - `features` → Creature | NPC | Statblock | Faction — „features"
 - `knowledge` → Information — „knowledge about it"
 - `onMap` → Map — „fought on"
-- `loot` → Item — „loot"
+- `loot` → Item | Information | Feat | Skill — „loot"
 - `tableFor` → Table — „rolls on"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -485,7 +486,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - Recipe — `needs` → „used in"
 - Recipe — `yields` → „made by"
 - Board — `placed` → „lies on"
-- Encounter | Story — `loot` → „found in"
+- Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - * — `variantOf` → „has variants"
@@ -642,7 +643,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - Recipe — `needs` → „used in"
 - Recipe — `yields` → „made by"
 - Board — `placed` → „lies on"
-- Encounter | Story — `loot` → „found in"
+- Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - * — `variantOf` → „has variants"
@@ -857,7 +858,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - Recipe — `needs` → „used in"
 - Recipe — `yields` → „made by"
 - Board — `placed` → „lies on"
-- Encounter | Story — `loot` → „found in"
+- Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - * — `variantOf` → „has variants"
@@ -907,7 +908,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - Recipe — `needs` → „used in"
 - Recipe — `yields` → „made by"
 - Board — `placed` → „lies on"
-- Encounter | Story — `loot` → „found in"
+- Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - * — `variantOf` → „has variants"
@@ -1315,7 +1316,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - Recipe — `needs` → „used in"
 - Recipe — `yields` → „made by"
 - Board — `placed` → „lies on"
-- Encounter | Story — `loot` → „found in"
+- Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - * — `variantOf` → „has variants"
@@ -1327,7 +1328,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ## Game
 
-*Woran man sich hält.* — 8 Arten.
+*Woran man sich hält.* — 10 Arten.
 
 ### Asset
 
@@ -1365,6 +1366,54 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+
+### Feat
+
+`Feat` · erbt von `Rule` ← `Base`
+
+**Verlangt**
+
+- *`RuleInfo`* — `kind` *action | bonus | reaction | feature | trait | condition | legendary | lair | feat | skill*, `uses` *string*, `autolink` *boolean*, `recharge` *string*
+- *`Name`* — `text` *string*
+- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
+- *`Status`* — `value` *idea | planned | used | discarded*
+
+**Erlaubt**
+
+- `FeatInfo` — `prerequisite` *string*, `repeatable` *boolean*
+- *`Vars`* — `bindings` *object*
+- *`Description`* — `raw` *long*
+- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
+- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
+- *`Todos`* — `items` *array*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Weapon | Item | Armor — `hasProperty` → „property of"
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - * — `variantOf` → „has variants"
@@ -1458,6 +1507,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
+- Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - * — `variantOf` → „has variants"
@@ -1611,7 +1661,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Verlangt**
 
-- `RuleInfo` — `kind` *action | bonus | reaction | feature | trait | condition | legendary | lair*, `uses` *string*, `autolink` *boolean*, `recharge` *string*
+- `RuleInfo` — `kind` *action | bonus | reaction | feature | trait | condition | legendary | lair | feat | skill*, `uses` *string*, `autolink` *boolean*, `recharge` *string*
 - *`Name`* — `text` *string*
 - *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
 - *`Status`* — `value` *idea | planned | used | discarded*
@@ -1644,6 +1694,54 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `blocks`, `composed`, `standing`, `relations`
+
+### Skill
+
+`Skill` · erbt von `Rule` ← `Base`
+
+**Verlangt**
+
+- *`RuleInfo`* — `kind` *action | bonus | reaction | feature | trait | condition | legendary | lair | feat | skill*, `uses` *string*, `autolink` *boolean*, `recharge` *string*
+- *`Name`* — `text` *string*
+- *`Identity`* — `key` *string*, `aliases` *array*, `cover` *string*
+- *`Status`* — `value` *idea | planned | used | discarded*
+
+**Erlaubt**
+
+- `SkillInfo` — `ability` *str | dex | con | int | wis | cha*, `tool` *boolean*
+- *`Vars`* — `bindings` *object*
+- *`Description`* — `raw` *long*
+- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
+- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
+- *`Todos`* — `items` *array*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Weapon | Item | Armor — `hasProperty` → „property of"
+- PlayerCharacter — `playedBy` → „plays"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - * — `variantOf` → „has variants"
@@ -1779,7 +1877,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - `knowledge` → Information — „knowledge about it"
 - `participates` → Creature | Statblock | Party — „in the fight"
 - `onMap` → Map — „fought on"
-- `loot` → Item — „loot"
+- `loot` → Item | Information | Feat | Skill — „loot"
 - `tableFor` → Table — „rolls on"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"

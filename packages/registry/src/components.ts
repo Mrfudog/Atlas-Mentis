@@ -199,7 +199,18 @@ export const components: Record<string, ComponentDef> = {
         kind: {
           type: 'string',
           title: 'Rule kind',
-          enum: ['action', 'bonus', 'reaction', 'feature', 'trait', 'condition', 'legendary', 'lair'],
+          enum: [
+            'action',
+            'bonus',
+            'reaction',
+            'feature',
+            'trait',
+            'condition',
+            'legendary',
+            'lair',
+            'feat',
+            'skill',
+          ],
         },
         uses: { type: 'string', title: 'Uses' },
         /* Ob der Name dieser Regel im Fliesstext erkannt werden darf
@@ -207,6 +218,40 @@ export const components: Record<string, ComponentDef> = {
            richtige einbringen — deshalb lässt er sich hier abschalten. */
         autolink: { type: 'boolean', title: 'Spot it in prose', default: true },
         recharge: { type: 'string', title: 'Recharge' },
+      },
+    },
+  },
+
+  FeatInfo: {
+    name: 'FeatInfo',
+    label: 'Feat',
+    engine: null,
+    schema: {
+      type: 'object',
+      properties: {
+        prerequisite: { type: 'string', title: 'Prerequisite' },
+        repeatable: { type: 'boolean', title: 'May be taken again', default: false },
+      },
+    },
+  },
+
+  /* Eine Fertigkeit ist auch das Werkzeug, mit dem jemand umgehen kann: in
+     5e stehen beide auf derselben Liste und werden gleich geprüft. `tool`
+     sagt, welche von beiden es ist — nicht zwei Artikelarten, die sich in
+     nichts unterscheiden ausser im Wort. */
+  SkillInfo: {
+    name: 'SkillInfo',
+    label: 'Skill',
+    engine: null,
+    schema: {
+      type: 'object',
+      properties: {
+        ability: {
+          type: 'string',
+          title: 'Ability',
+          enum: ['str', 'dex', 'con', 'int', 'wis', 'cha'],
+        },
+        tool: { type: 'boolean', title: 'A tool, not a skill', default: false },
       },
     },
   },

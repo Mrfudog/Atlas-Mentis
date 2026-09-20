@@ -102,6 +102,28 @@ export const interfaces: Record<string, InterfaceDef> = {
     allows: ['Vars'],
   },
 
+  /**
+   * Talent und Fertigkeit sind eigene Arten und nicht nur zwei Werte in
+   * `RuleInfo.kind`, weil Beute auf sie zeigen darf und auf eine Lauernde
+   * Aktion nicht. Eine Kante nennt Arten, keine Aufzählungswerte — und was
+   * eine Kante unterscheiden muss, gehört in eine Art.
+   */
+  Feat: {
+    name: 'Feat',
+    area: 'game',
+    label: 'Feat',
+    extends: ['Rule'],
+    allows: ['FeatInfo'],
+  },
+
+  Skill: {
+    name: 'Skill',
+    area: 'game',
+    label: 'Skill',
+    extends: ['Rule'],
+    allows: ['SkillInfo'],
+  },
+
   /** An entity of its own (D4), referenced by creatures, never embedded. */
   Statblock: {
     name: 'Statblock',

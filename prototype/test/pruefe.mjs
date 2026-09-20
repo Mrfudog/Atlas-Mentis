@@ -1590,6 +1590,32 @@ async function seite(datei, warten) {
     pruefe('a relationship exists in the data', false, 'kein regards gefunden');
   }
 
+  /* ---- Beute ----
+     Was jemand erfährt, ist genauso ein Fund wie, was er einsteckt. Die
+     Prüfung fragt das am Register und nicht an der Maske: die Auswahl im
+     Kantendialog entsteht aus `to`, und wenn dort das Falsche steht, hilft
+     kein Klick. */
+  const beute = await p.evaluate(() => {
+    const T = window.__T__;
+    const to = T.REG.relations.loot.to || [];
+    return {
+      anQuest: T.relsFrom('Quest').map((r) => r.type).includes('loot'),
+      information: T.ifaceInList(to, 'Information'),
+      feat: T.ifaceInList(to, 'Feat'),
+      skill: T.ifaceInList(to, 'Skill'),
+      /* Eine Waffe ist ein Gegenstand — über `extends`, nicht über einen
+         zweiten Eintrag in `to`. */
+      weapon: T.ifaceInList(to, 'Weapon'),
+      /* Eine Lauernde Aktion ist auch eine Regel und trotzdem keine Beute. */
+      rule: T.ifaceInList(to, 'Rule'),
+    };
+  });
+  pruefe('a quest may carry loot, not only an encounter', beute.anQuest === true, beute);
+  pruefe('what you learn is loot, and so is a feat or a skill',
+    beute.information && beute.feat && beute.skill, beute);
+  pruefe('an item subtype gets there through inheritance', beute.weapon === true, beute);
+  pruefe('but not every rule is a prize', beute.rule === false, beute);
+
   /* ---- Der Spieltisch (Bereich Play) ----
      Karte, Initiative und Boards sind keine Artikel, die man nachschlägt —
      sie sind das, worauf man während der Sitzung schaut. Die Prüfung fragt
