@@ -181,4 +181,40 @@ export const relations: Record<string, RelationDef> = {
     from: ['Story'],
     to: ['Creature', 'NPC', 'Statblock', 'Faction'],
   },
+
+  // ------------------------------------------------------------- knowledge
+
+  /**
+   * Der Artikel trägt die Kante zu seinen Informationen, nicht umgekehrt:
+   * so steht die Liste dort, wo das Seitenpanel sie bearbeitet, und `owned`
+   * lässt die Bündel mit dem Artikel sterben statt verwaist zurückzubleiben.
+   */
+  knowledge: {
+    type: 'knowledge',
+    label: 'knowledge about it',
+    inverseLabel: 'about',
+    from: ['*'],
+    to: ['Information'],
+    owned: true,
+  },
+
+  /**
+   * Die Zuteilung. Ein Ziel, drei Sorten Empfänger — Figur, Gruppe oder
+   * Wissensstand — und die Auflösung ist immer dieselbe Abfrage.
+   */
+  knownBy: {
+    type: 'knownBy',
+    label: 'known by',
+    inverseLabel: 'knows',
+    from: ['Information'],
+    to: ['Creature', 'Party', 'KnowledgeLevel'],
+  },
+
+  atLevel: {
+    type: 'atLevel',
+    label: 'knows as',
+    inverseLabel: 'known to',
+    from: ['Creature', 'Party'],
+    to: ['KnowledgeLevel'],
+  },
 };

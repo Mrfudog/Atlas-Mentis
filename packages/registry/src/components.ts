@@ -425,4 +425,46 @@ export const components: Record<string, ComponentDef> = {
       },
     },
   },
+
+  /**
+   * Wissen (A6): ein Bündel von Feldern und Textblöcken eines Artikels, das
+   * als Ganzes zugeteilt wird. Die Karte sagt nur, *was* das Bündel umfasst —
+   * *wer* es kennt, steht an den `knownBy`-Kanten, weil ein Empfänger ein
+   * Peg ist und eine Liste von IDs in einer Karte kein Rückbezug wäre.
+   */
+  Info: {
+    name: 'Info',
+    label: 'Information',
+    engine: 'Knowledge',
+    schema: {
+      type: 'object',
+      properties: {
+        /* Feldverweise in der Schreibweise der Ansichten: `Comp` nimmt die
+           ganze Komponente, `Comp.field` genau ein Feld. */
+        fields: { type: 'array', title: 'Fields', items: { type: 'string' } },
+        blocks: { type: 'array', title: 'Text blocks', items: { type: 'string' } },
+        /* Nur Anzeige und Sortierung. Was jemand sehen darf, entscheiden die
+           Kanten — ein Rang hier wäre eine zweite, widersprechende Quelle. */
+        tier: {
+          type: 'string',
+          title: 'Guardedness',
+          enum: ['open', 'rumour', 'secret'],
+          default: 'secret',
+        },
+      },
+    },
+  },
+
+  /** Ein benannter Wissensstand, dem Figuren angehören: „Gildenwissen". */
+  KnowledgeInfo: {
+    name: 'KnowledgeInfo',
+    label: 'Knowledge level',
+    engine: 'Knowledge',
+    schema: {
+      type: 'object',
+      properties: {
+        scope: { type: 'string', title: 'Scope', enum: ['common', 'group', 'personal'], default: 'group' },
+      },
+    },
+  },
 };

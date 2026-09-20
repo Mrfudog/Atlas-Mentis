@@ -93,4 +93,25 @@ export const views: Record<string, ViewDef> = {
     bindings: false,
     image: false,
   },
+
+  /**
+   * Wissen (A6). Ein Layout aus genau einem Element: die Felder, nach
+   * Informationen gruppiert, und was offen liegt zuoberst. Die Gruppierung
+   * ordnet nur, was die Ansicht ohnehin zeigt — sie holt nichts hervor.
+   */
+  knowledge: {
+    label: 'Knowledge',
+    order: 7,
+    fields: 'all',
+    blocks: 'all',
+    description: true,
+    composed: false,
+    relations: true,
+    bindings: false,
+    image: false,
+    layout: [
+      { id: 'k-desc', el: 'description' },
+      { id: 'k-know', el: 'knowledge', fields: 'all', blocks: 'all' },
+    ],
+  },
 };

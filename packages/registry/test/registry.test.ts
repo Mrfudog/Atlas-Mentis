@@ -99,7 +99,7 @@ describe('seed registry', () => {
   });
 
   it('exposes the facets the table actually uses', () => {
-    expect(viewKeys(seedRegistry)).toEqual(['quick', 'full', 'combat', 'image', 'player', 'stats']);
+    expect(viewKeys(seedRegistry)).toEqual(['quick', 'full', 'combat', 'image', 'player', 'stats', 'knowledge']);
   });
 });
 
