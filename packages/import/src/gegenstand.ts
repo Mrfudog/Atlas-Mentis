@@ -110,7 +110,7 @@ export function parseItem(text: string, filename: string): ImportedItem {
     Name: { text: name },
     Identity: { key: `${slug(iface)}/${slug(name)}`, aliases: list(fm, 'aliases') },
     Status: { value: 'used' },
-    RawContent: { raw: text, format: 'obsidian', importedAt: new Date().toISOString().slice(0, 10) },
+    RawContent: { imported: text, format: 'obsidian', importedAt: new Date().toISOString().slice(0, 10) },
   };
 
   const itemInfo: Record<string, unknown> = {};

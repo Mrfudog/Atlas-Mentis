@@ -10808,7 +10808,7 @@ function impGegenstand(text,datei){
   var c={ Name:{text:name},
     Identity:{key:slug(ifn)+"/"+slug(name),aliases:fmList(fm,"aliases")},
     Status:{value:"used"},
-    RawContent:{raw:text,format:"obsidian",importedAt:new Date().toISOString().slice(0,10)} };
+    RawContent:{imported:text,format:"obsidian",importedAt:new Date().toISOString().slice(0,10)} };
 
   var info={}, r=fmStr(fm,"Rarität"), kr=fmStr(fm,"Kaufrarität"),
       kp=fmNum(fm,"Kupferpreis"), st=fmNum(fm,"Stapelgrösse");
@@ -10911,7 +10911,7 @@ function impStatblock(text,datei){
       components:{ Name:{text:name},
         Identity:{key:"statblock/"+slug(name),aliases:fmList(fm,"aliases")},
         Status:{value:"used"}, StatblockInfo:info,
-        RawContent:{raw:text,format:"obsidian",importedAt:new Date().toISOString().slice(0,10)} },
+        RawContent:{imported:text,format:"obsidian",importedAt:new Date().toISOString().slice(0,10)} },
       adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() },
     abschnitte:abschnitte, kreatur:linkZiel(fmStr(fm,"kreatur"))||null };
 }
@@ -10935,7 +10935,7 @@ function impOrt(text,datei){
   var c={ Name:{text:name},
     Identity:{key:"ort/"+slug(name),aliases:fmList(fm,"aliases")},
     Status:{value:"used"}, LocationInfo:li,
-    RawContent:{raw:text,format:"obsidian",importedAt:new Date().toISOString().slice(0,10)} };
+    RawContent:{imported:text,format:"obsidian",importedAt:new Date().toISOString().slice(0,10)} };
 
   var prosa=body.replace(/!\[\[[^\]]+\]\]/g,"").replace(/^#+\s.*$/gm,"").trim();
   var bl=[];

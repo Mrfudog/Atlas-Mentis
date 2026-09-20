@@ -206,7 +206,7 @@ export function parseStatblock(text: string, filename: string): ImportedStatbloc
       Status: { value: 'used' },
       StatblockInfo: info,
       RawContent: {
-        raw: text,
+        imported: text,
         format: 'obsidian',
         importedAt: new Date().toISOString().slice(0, 10),
       },

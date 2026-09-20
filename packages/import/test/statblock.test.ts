@@ -98,7 +98,7 @@ describe('parseStatblock', () => {
     for (const file of files) {
       const parsed = parseStatblock(read(file).text, file);
       const raw = parsed.entity.components['RawContent'] as Record<string, unknown>;
-      expect(raw['raw']).toBe(read(file).text);
+      expect(raw['imported']).toBe(read(file).text);
       expect(parsed.unplaced, `${file}: unplaced keys`).toEqual([]);
       expect(parsed.entity.name, `${file}: name`).toBeTruthy();
       expect(parsed.sections.length, `${file}: sections`).toBeGreaterThan(0);

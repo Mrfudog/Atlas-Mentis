@@ -441,3 +441,55 @@ describe('loot is more than items', () => {
     expect(kind.enum).toEqual(expect.arrayContaining(['feat', 'skill']));
   });
 });
+
+/* Die Vorbedingung für den nächsten Schritt: Felder gehören der Art und nicht
+   der Karte. Eine Komponente mit genau einem Nutzer wird zu Feldern dieser
+   Art — und dann muss jeder Feldname darin einmalig sein. Eine Komponente mit
+   mehreren Nutzern wird stattdessen ein Obertyp und behält ihre Karte; deren
+   Namen dürfen sich deshalb mit denen der Art überschneiden.
+
+   Genau so herum gemessen kollidierte nur `raw` in `Description` und
+   `RawContent`, beide an `Base` — nicht acht Namen, wie es aussah, als ich
+   alles auf eine Ebene legte. */
+describe('every type could carry its own fields', () => {
+  const nutzer = new Map<string, Set<string>>();
+  for (const [n, i] of Object.entries(seedRegistry.interfaces)) {
+    for (const c of [...(i.requires ?? []), ...(i.allows ?? [])]) {
+      if (!nutzer.has(c)) nutzer.set(c, new Set());
+      nutzer.get(c)!.add(n);
+    }
+  }
+
+  it('has no two cards of one type naming the same field', () => {
+    const doppelt: string[] = [];
+    for (const [n, i] of Object.entries(seedRegistry.interfaces)) {
+      const eigen = [...(i.requires ?? []), ...(i.allows ?? [])].filter(
+        (c) => (nutzer.get(c)?.size ?? 0) === 1,
+      );
+      const woher = new Map<string, string[]>();
+      for (const c of eigen) {
+        for (const k of Object.keys(seedRegistry.components[c]?.schema.properties ?? {})) {
+          woher.set(k, [...(woher.get(k) ?? []), c]);
+        }
+      }
+      for (const [k, cs] of woher) if (cs.length > 1) doppelt.push(`${n}.${k} (${cs.join('/')})`);
+    }
+    expect(doppelt).toEqual([]);
+  });
+
+  /* `requires` verlangt bei 13 von 18 Einträgen eine Karte, die kein einziges
+     Pflichtfeld hat. Eine leere Karte trägt nichts — die Forderung ist keine,
+     und sie löst sich in `required` je Feld ohne Verlust auf. */
+  it('demands little that per-field required could not say', () => {
+    let ohnePflichtfeld = 0;
+    let alle = 0;
+    for (const i of Object.values(seedRegistry.interfaces)) {
+      for (const c of i.requires ?? []) {
+        alle += 1;
+        if ((seedRegistry.components[c]?.schema.required ?? []).length === 0) ohnePflichtfeld += 1;
+      }
+    }
+    expect(alle).toBeGreaterThan(0);
+    expect(ohnePflichtfeld / alle).toBeGreaterThan(0.6);
+  });
+});

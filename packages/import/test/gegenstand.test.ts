@@ -118,7 +118,7 @@ describe('parseItem', () => {
     for (const file of files) {
       const parsed = parseItem(read(file).text, file);
       const raw = parsed.entity.components['RawContent'] as Record<string, unknown>;
-      expect(raw['raw']).toBe(read(file).text);
+      expect(raw['imported']).toBe(read(file).text);
       expect(raw['format']).toBe('obsidian');
     }
   });

@@ -32,7 +32,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -85,7 +85,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -139,7 +139,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -192,7 +192,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -238,7 +238,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -288,7 +288,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -344,7 +344,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -399,7 +399,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -462,7 +462,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -509,7 +509,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -560,7 +560,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -619,7 +619,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -672,7 +672,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -732,7 +732,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -784,7 +784,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -832,7 +832,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -884,7 +884,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -937,7 +937,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -1002,7 +1002,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -1056,7 +1056,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -1116,7 +1116,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -1182,7 +1182,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -1241,7 +1241,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -1292,7 +1292,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -1347,7 +1347,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
 
@@ -1391,7 +1391,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -1437,7 +1437,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -1483,7 +1483,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -1531,7 +1531,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -1576,7 +1576,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -1623,7 +1623,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -1672,7 +1672,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -1719,7 +1719,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -1765,7 +1765,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -1818,7 +1818,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -1864,7 +1864,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -1913,7 +1913,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - *`Description`* — `raw` *long*
 - *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - *`Image`* — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- *`RawContent`* — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- *`RawContent`* — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - *`SourceRef`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`WorldDate`* — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - *`Todos`* — `items` *array*
@@ -1969,7 +1969,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - `Description` — `raw` *long*
 - `Visibility` — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
 - `Image` — `ref` *asset*, `url` *string*, `caption` *string*, `alt` *string*
-- `RawContent` — `raw` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
+- `RawContent` — `imported` *long*, `format` *obsidian | markdown | json | plain*, `importedAt` *string*
 - `SourceRef` — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - `WorldDate` — `sort` *number*, `display` *date*, `calendar` *string*, `duration` *string*
 - `Todos` — `items` *array*

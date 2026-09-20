@@ -79,7 +79,14 @@ export const components: Record<string, ComponentDef> = {
     },
   },
 
-  /** REQ-019: an import keeps its original form beside the structured result. */
+  /**
+   * REQ-019: an import keeps its original form beside the structured result.
+   *
+   * Das Feld hiess `raw` wie das in `Description` — solange beide in ihrer
+   * eigenen Karte standen, ging das gut. Sie stehen beide an `Base`, und
+   * sobald die Felder der Art gehören und nicht der Karte, ist es ein Name
+   * für zwei Sachen.
+   */
   RawContent: {
     name: 'RawContent',
     label: 'Raw content',
@@ -87,7 +94,7 @@ export const components: Record<string, ComponentDef> = {
     schema: {
       type: 'object',
       properties: {
-        raw: { type: 'string', format: 'long', title: 'Original' },
+        imported: { type: 'string', format: 'long', title: 'Original' },
         format: { type: 'string', title: 'Format', enum: ['obsidian', 'markdown', 'json', 'plain'] },
         importedAt: { type: 'string', title: 'Imported at' },
       },
