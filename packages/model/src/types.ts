@@ -117,7 +117,8 @@ export type LayoutElementKind =
   | 'prep'
   | 'crawl'
   | 'standing'
-  | 'stack';
+  | 'stack'
+  | 'tabs';
 
 /**
  * One element of a view's layout. A view is an ordered list of these, so the
@@ -147,6 +148,28 @@ export interface LayoutElement {
   columns?: number;
   /** `blocks`: `all` or a list of block types. */
   blocks?: 'all' | string[];
+  /**
+   * `tabs`: benannte Gruppen desselben Layouts.
+   *
+   * Ein Charakterbogen ist keine Liste von Abschnitten untereinander — am
+   * Tisch schaut man auf **einen** davon. Statt dafür eine Darstellungsstufe
+   * je Reiter anzulegen (dann wären es wieder einundzwanzig), enthält ein
+   * Element benannte Gruppen, und jede Gruppe ist ein gewöhnliches Layout.
+   *
+   * Was **über** den Reitern stehen bleiben soll, steht vor diesem Element
+   * im selben Layout: der Vitalstreifen gehört dorthin, weil man ihn
+   * braucht, ohne umzuschalten — dieselbe Regel wie bei der Initiative auf
+   * dem Spieltisch.
+   */
+  tabs?: LayoutTab[];
+}
+
+export interface LayoutTab {
+  id: string;
+  label: string;
+  /** Leere Reiter zeichnet niemand: ein Reiter, der nichts zeigt, ist ein
+   *  Knopf, der nichts tut. */
+  layout: LayoutElement[];
 }
 
 export interface ViewDef {

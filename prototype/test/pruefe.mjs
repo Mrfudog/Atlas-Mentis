@@ -460,6 +460,23 @@ async function seite(datei, warten) {
     await p.waitForTimeout(350);
   };
 
+  /* Ein Reiter auf der Artikelseite. Seit ein Charakterbogen Reiter hat,
+     liegt nicht mehr alles untereinander — und eine Prüfung, die den
+     Reiter nicht umschaltet, prüft eine leere Seite und meldet einen
+     Fehler, den es nicht gibt. Fehlt der Reiter, wird nichts getan: dann
+     steht der Inhalt ohnehin da. */
+  const reiter = async (label) => {
+    const da = await p.evaluate((l) => {
+      const b = [...document.querySelectorAll('.tabrow .btn')]
+        .find((x) => x.textContent.trim() === l);
+      if (!b) return false;
+      b.click();
+      return true;
+    }, label);
+    if (da) await p.waitForTimeout(300);
+    return da;
+  };
+
   const neuerArtikel = async (typ, name) => {
     await p.evaluate(() => document.getElementById('new').click());
     await p.waitForTimeout(250);
@@ -1781,13 +1798,28 @@ async function seite(datei, warten) {
       [...document.querySelectorAll('.condrow .chip')].find((c) => c.textContent === 'prone').click());
     await p.waitForTimeout(300);
 
-    /* Das Inventar: drei Darstellungen, dieselben Daten. */
+    /* Das Inventar: drei Darstellungen, dieselben Daten. Seit der Bogen
+       Reiter hat, liegt es hinter „Gear" — der Vitalstreifen bleibt oben,
+       alles andere schaltet um. */
     await p.evaluate(() => {
       const f = document.getElementById('facet');
       f.value = 'full';
       f.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(400);
+    pruefe('a character sheet has tabs, and the vitals stay above them',
+      await p.evaluate(() => ({
+        reiter: [...document.querySelectorAll('.tabrow .btn')].map((b) => b.textContent),
+        /* Der Bogen steht **vor** der Reiterleiste im Baum: was man ohne
+           Umschalten braucht, darf nicht in einem Reiter liegen. */
+        bogenOben: !!(document.querySelector('.sheet')
+          && document.querySelector('.tabbox')
+          && (document.querySelector('.sheet').compareDocumentPosition(
+                document.querySelector('.tabbox')) & Node.DOCUMENT_POSITION_FOLLOWING)),
+      })).then((x) => {
+        return x.reiter.includes('Overview') && x.reiter.includes('Gear') && x.bogenOben;
+      }), 'siehe Reiterleiste');
+    await reiter('Gear');
     const stufen = await p.evaluate(() => ({
       reiter: [...document.querySelectorAll('.invbox .ktabs button')].map((b) => b.textContent),
       stufen: [...document.querySelectorAll('.tier .tlabel b')].map((b) => b.textContent),

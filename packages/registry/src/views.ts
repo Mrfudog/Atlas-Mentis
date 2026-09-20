@@ -72,22 +72,64 @@ export const views: Record<string, ViewDef> = {
     image: true,
     layout: [{ id: 'l-img', el: 'image' }, ...GEWOEHNLICH],
     byInterface: {
-      /* Eine Kreatur ist ihr Bogen. Erst die Zahlen, die am Tisch zählen,
-         dann der Text, dann wer wie zu ihr steht. */
+      /**
+       * **Eine Kreatur ist ihr Bogen, und ein Bogen hat Reiter.**
+       *
+       * Untereinander war alles da und nichts zu finden: der Kampf oben,
+       * das Inventar in der Mitte, die Geschichte unten, und am Tisch
+       * scrollt man zwischen zweien hin und her. Nach Reitern getrennt
+       * schaut man auf einen — so, wie Rooks Bogen es vormacht.
+       *
+       * **Der Bogen steht über den Reitern**, nicht in einem: Trefferpunkte
+       * und Rüstungsklasse braucht man, ohne umzuschalten. Dieselbe Regel
+       * wie bei der Initiative am Spieltisch.
+       */
       Creature: [
         { id: 'c-sheet', el: 'sheet' },
-        { id: 'c-desc', el: 'description' },
-        /* Alles, was der Bogen nicht schon zeigt. `except` statt einer
-           Aufzählung: ein neues Feld an CreatureInfo steht sonst nirgends,
-           bis es jemand von Hand nachträgt. */
-        { id: 'c-f', el: 'fields', fields: 'all', except: ['StatblockInfo', 'Vitals', 'Skills'] },
-        /* Was jemand trägt, gehört auf sein Blatt. Es hinter einer
-           eigenen Stufe zu verstecken hiess: am Tisch erst umschalten,
-           bevor man nachsieht, ob das Seil noch da ist. */
-        { id: 'c-inv', el: 'inventory' },
-        { id: 'c-b', el: 'blocks', blocks: 'all' },
-        { id: 'c-c', el: 'composed' },
-        { id: 'c-r', el: 'relations' },
+        {
+          id: 'c-tabs',
+          el: 'tabs',
+          tabs: [
+            /* **Die Übersicht ist der erste Reiter und trägt die Felder.**
+               Man öffnet einen Artikel, um zu wissen, wen man vor sich hat —
+               und wer etwas ändern will, soll nicht erst umschalten. Ein
+               eigener Reiter „More" für die Feldtabelle sah aufgeräumt aus
+               und versteckte das Bearbeiten.
+
+               `except` statt einer Aufzählung: ein neues Feld an
+               CreatureInfo stünde sonst nirgends, bis es jemand von Hand
+               nachträgt. */
+            {
+              id: 'about',
+              label: 'Overview',
+              layout: [
+                { id: 'c-img', el: 'image' },
+                { id: 'c-desc', el: 'description' },
+                {
+                  id: 'c-f',
+                  el: 'fields',
+                  fields: 'all',
+                  except: ['StatblockInfo', 'Vitals', 'Skills'],
+                },
+                { id: 'c-b', el: 'blocks', blocks: 'all' },
+              ],
+            },
+            /* Was im Kampf zählt. Die Zahlen stehen oben im Bogen; hier
+               steht, was man mit ihnen tut. */
+            { id: 'combat', label: 'Combat', layout: [{ id: 'c-c', el: 'composed' }] },
+            { id: 'gear', label: 'Gear', layout: [{ id: 'c-inv', el: 'inventory' }] },
+            { id: 'craft', label: 'Craft', layout: [{ id: 'c-craft', el: 'crafting' }] },
+            /* Wer wie zu wem steht, und woran sie sonst hängt. */
+            {
+              id: 'ties',
+              label: 'Ties',
+              layout: [
+                { id: 'c-stand', el: 'standing' },
+                { id: 'c-r', el: 'relations' },
+              ],
+            },
+          ],
+        },
       ],
       Statblock: [
         { id: 's-f', el: 'fields', fields: 'all' },

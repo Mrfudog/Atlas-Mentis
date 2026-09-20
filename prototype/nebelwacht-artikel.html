@@ -260,6 +260,12 @@ body.asplayer .brand span{color:var(--link)}
 .kgrp .who .ref{font-size:11.5px}
 .kgrp .nothing{font-size:12.5px;color:var(--dim)}
 .ktabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+/* Reiter auf einem Artikel. Die Leiste klebt oben, damit sie beim Scrollen
+   im langen Reiter nicht verschwindet — man schaltet mitten im Lesen um. */
+.tabbox{margin:10px 0}
+.tabrow{position:sticky;top:0;z-index:4;background:var(--bg);
+  padding:6px 0;margin-bottom:0;border-bottom:1px solid var(--line)}
+.tabpane{padding-top:12px}
 /* Der Spieltisch: eine Leiste mit dem, was läuft, und darunter Streifen.
    Die Initiative steht immer oben — wer dran ist, muss man sehen, ohne
    umzuschalten. */
@@ -445,6 +451,17 @@ table.atk tr.stowed td,table.atk tr.buried td{color:var(--dim)}
 
 /* Inventar: dieselben Daten, drei Blickwinkel. */
 .invbox .ktabs{margin-bottom:10px}
+/* Das Gruppeninventar: was da ist und bei wem. Keine Stufen, keine Slots —
+   wo etwas liegt, ist die Frage des Trägers und nicht der Gruppe. */
+ul.pstock{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;
+  gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);
+  overflow:hidden}
+ul.pstock li{display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+  padding:7px 10px;background:var(--surface)}
+ul.pstock .pq{font-family:var(--ff-mono);font-size:12px;color:var(--accent);
+  min-width:26px}
+ul.pstock .pbei{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
+.chip.sm{font-size:11.5px;padding:1px 7px}
 .pickon{color:var(--accent)}
 .tier{border:1px solid var(--line);border-radius:var(--r);padding:7px 10px;margin-bottom:7px;
   display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:44px}
@@ -816,7 +833,7 @@ var UI={route:{k:"list"}, view:"quick", area:"", iface:"", tag:"", q:"", offen:f
         trail:[], inline:false, editField:"", pick:false, picked:{}, status:"",
         aside:"rel", info:"", assetBusy:"",
         mapZoom:1, mapLock:false, mapKind:"", mapDrag:null, mapTool:"",
-        wallKind:"wall", playTab:"map", playBoard:"",
+        wallKind:"wall", playTab:"map", playBoard:"", tab:"",
         invView:"tiers", invPick:"", craftOnly:false, craftLog:[],
         boardZoom:1, boardPick:"", boardTool:"",
         turnActor:"", rollLog:[], asActor:"", peers:[], pings:[],
@@ -1581,6 +1598,10 @@ function fail(x){
 function go(r){
   if(r.k==="art"&&r.id!==UI.route.id) trailPush(UI.route);
   if(r.k!=="art") UI.trail=[];
+  /* Der Reiter gilt für **diesen** Artikel. Ihn mitzunehmen hiesse: von
+     seinem eigenen Bogen auf einen NSC springen und auf „Craft" landen —
+     und dort steht nichts, weil ein NSC nichts handwerkt. */
+  if(r.k!=="art"||r.id!==UI.route.id) UI.tab="";
   UI.route=r; UI.err=""; UI.pane="main"; UI.editField=""; render();
   pushPresence();
   var m=document.getElementById("main"); if(m)m.scrollTop=0; }
@@ -2486,7 +2507,8 @@ var LAYOUT_ELEMENTS=[
   ["description","Description"],["blocks","Text blocks"],
   ["composed","Composed rules"],["relations","Relations"],["image","Image"],
   ["knowledge","Knowledge groups"],["map","Map"],["sheet","Character sheet"],["inventory","Inventory"],["crafting","Crafting"],["board","Board"],["initiative","Initiative"],
-  ["quests","Quest board"],["timeline","Timeline"],["live","Live"],["table","Table"],["prep","Prep board"],["crawl","Point-crawl"],["stack","Layer stack"],["standing","Standing"]
+  ["quests","Quest board"],["timeline","Timeline"],["live","Live"],["table","Table"],["prep","Prep board"],["crawl","Point-crawl"],["stack","Layer stack"],["standing","Standing"],
+  ["tabs","Tabs"]
 ];
 function layoutOf(vw,ifn){
   var by=vw.byInterface||{};
@@ -2509,6 +2531,42 @@ function legacyLayout(vw){
   if(vw.composed!==false) out.push({id:"l-c",el:"composed"});
   return out;
 }
+/* ---- Reiter ----
+   Ein Charakterbogen ist keine Liste von Abschnitten untereinander: am
+   Tisch schaut man auf **einen** davon. Dafür eine Darstellungsstufe je
+   Reiter anzulegen wäre der Weg zurück zu einundzwanzig — also enthält ein
+   Element benannte Gruppen, und jede Gruppe ist ein gewöhnliches Layout.
+
+   Was **über** den Reitern stehen bleiben soll, steht vor diesem Element im
+   selben Layout. Der Vitalstreifen gehört dorthin, weil man ihn braucht,
+   ohne umzuschalten — dieselbe Regel wie bei der Initiative am Spieltisch.
+
+   Ein Reiter, der nichts zeichnet, wird nicht angeboten. Ein Knopf, der
+   auf eine leere Seite führt, ist am Tisch schlimmer als ein fehlender:
+   man drückt ihn zweimal, weil man denkt, es habe nicht geklappt. */
+function elTabs(e,ifn,item,vw){
+  var gruppen=(item.tabs||[]).map(function(t){
+    var teile=(t.layout||[]).map(function(x){ return renderLayoutItem(x,e,ifn,vw); })
+      .filter(Boolean);
+    return {id:t.id,label:t.label||t.id,teile:teile};
+  }).filter(function(g){ return g.teile.length; });
+  if(!gruppen.length)return null;
+
+  var wahl=gruppen.filter(function(g){ return g.id===UI.tab; })[0]||gruppen[0];
+  var wrap=el("div",{class:"tabbox"});
+  var leiste=el("div",{class:"ktabs tabrow",role:"tablist"});
+  gruppen.forEach(function(g){
+    leiste.appendChild(el("button",{class:"btn sm"+(g.id===wahl.id?" pri":""),
+      type:"button",role:"tab","aria-selected":String(g.id===wahl.id),
+      onclick:function(){ UI.tab=g.id; render(); }},g.label));
+  });
+  wrap.appendChild(leiste);
+  var inhalt=el("div",{class:"tabpane",role:"tabpanel"});
+  wahl.teile.forEach(function(n){ inhalt.appendChild(n); });
+  wrap.appendChild(inhalt);
+  return wrap;
+}
+
 function renderLayoutItem(item,e,ifn,vw){
   switch(item.el){
     case "heading":     return item.text?el("div",{class:"sec",text:fillVars(item.text,null,e)}):null;
@@ -2534,6 +2592,7 @@ function renderLayoutItem(item,e,ifn,vw){
     case "crawl":       return elCrawl(e,ifn,item);
     case "stack":       return elStack(e,ifn,item);
     case "standing":    return elStanding(e,ifn,item);
+    case "tabs":        return elTabs(e,ifn,item,vw);
     default:            return null;
   }
 }
@@ -5917,7 +5976,80 @@ function fitsAt(stuecke,ich,gx,gy){
   return true;
 }
 
+/* ---- Das Inventar einer Gruppe ist gerechnet ----
+   Eine Gruppe braucht **ein** Inventar, und das besteht aus dem, was ihre
+   Leute auf sich tragen und dem, was sie irgendwo lagern. Ein zweiter
+   Beutel an der Gruppe wäre ein zweiter Ort für dieselbe Frage — und
+   spätestens beim dritten Seil weiss niemand mehr, welches gilt.
+
+   **Nur Figuren kümmern sich darum, wo etwas liegt.** Die Tragestufe ist
+   eine Frage an den Träger: was habe ich in der Hand, was muss ich
+   auskramen. Auf der Gruppenseite zählt, ob es *da* ist und bei wem — und
+   sonst nichts. Deshalb hier keine Stufen, keine Slots, kein Raster.
+
+   Gerechnet und nie gespeichert (D8): eine gespeicherte Gruppenliste
+   driftet von den Blättern weg, und dann steht am Tisch ein Seil, das
+   niemand hat. */
+function partyStock(p){
+  var wer=partyMembers(p).slice();
+  /* Ein eigener Beutel an der Gruppe ist nicht verboten — er taucht in
+     derselben Liste auf, damit es bei einer Liste bleibt. */
+  if(inventoryOf(p)) wer.push(p);
+  var nach={};
+  wer.forEach(function(t){
+    carriedItems(t).forEach(function(st){
+      var k=st.item.id;
+      if(!nach[k]) nach[k]={item:st.item,qty:0,bei:[]};
+      nach[k].qty+=st.qty;
+      nach[k].bei.push({wer:t,tier:st.tier,qty:st.qty,rel:st.rel});
+    });
+  });
+  return Object.keys(nach).map(function(k){ return nach[k]; })
+    .sort(function(a,b){ return nameOf(a.item).localeCompare(nameOf(b.item),"de"); });
+}
+function elPartyStock(e){
+  var wrap=el("div",{class:"invbox"});
+  var leute=partyMembers(e);
+  var liste=partyStock(e);
+  if(!leute.length&&!liste.length){
+    wrap.appendChild(el("p",{class:"hint",
+      text:"Nobody in this party yet — members carry the party's things."}));
+    return wrap;
+  }
+  wrap.appendChild(el("p",{class:"hint",style:"margin:0 0 8px",
+    text:liste.length+" thing"+(liste.length===1?"":"s")+" between "+
+      leute.length+" of them · where each one sits is their own business"}));
+  if(!liste.length){
+    wrap.appendChild(el("div",{class:"empty",text:"Nothing carried yet."}));
+    return wrap;
+  }
+  var ul=el("ul",{class:"pstock"});
+  liste.forEach(function(row){
+    var li=el("li");
+    if(row.qty>1) li.appendChild(el("span",{class:"pq",text:row.qty+"×"}));
+    li.appendChild(el("button",{class:"ref",type:"button",
+      onclick:function(){ go({k:"art",id:row.item.id}); }},nameOf(row.item)));
+    var bei=el("span",{class:"pbei"});
+    row.bei.forEach(function(b){
+      /* Wer es hat, und — klein daneben — wo. Die Stufe steht da, weil sie
+         am Tisch die eine Frage beantwortet, die zählt: kommt er gerade
+         dran oder muss er den Rucksack abstellen. */
+      bei.appendChild(el("button",{class:"chip sm",type:"button",
+        title:tierLabel(b.tier),
+        onclick:function(){ go({k:"art",id:b.wer.id}); }},
+        nameOf(b.wer)+(b.qty>1?" ×"+b.qty:"")));
+    });
+    li.appendChild(bei);
+    ul.appendChild(li);
+  });
+  wrap.appendChild(ul);
+  return wrap;
+}
+
 function elInventory(e,ifn,item){
+  /* Eine Gruppe hat kein eigenes Blatt und keine eigenen Taschen — ihr
+     Inventar ist die Summe der Leute. */
+  if(ifaceAndKinds("Party").indexOf(ifn)>=0) return elPartyStock(e);
   var inv=inventoryOf(e);
   var wrap=el("div",{class:"invbox"});
   if(!inv){

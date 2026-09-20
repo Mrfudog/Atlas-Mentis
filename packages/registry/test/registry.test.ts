@@ -362,3 +362,46 @@ describe('seed registry, referential integrity', () => {
     expect(schlecht).toEqual([]);
   });
 });
+
+/* Reiter auf dem Charakterbogen. Zwei Dinge gehen hier still schief: ein
+   Reiter, dessen Inhalt woanders auch steht (dann bearbeitet man zweimal
+   dasselbe), und die Zahlen im Reiter statt darüber (dann muss man am Tisch
+   umschalten, um die Trefferpunkte zu sehen). */
+describe('the character sheet has tabs', () => {
+  const creature = seedRegistry.views.full?.byInterface?.['Creature'] ?? [];
+  const tabsEl = creature.find((x) => x.el === 'tabs');
+
+  it('keeps the sheet above the tabs, not inside one', () => {
+    expect(creature[0]?.el).toBe('sheet');
+    expect(tabsEl).toBeTruthy();
+    expect(creature.indexOf(tabsEl!)).toBeGreaterThan(0);
+    for (const t of tabsEl?.tabs ?? []) {
+      expect(t.layout.map((x) => x.el)).not.toContain('sheet');
+    }
+  });
+
+  it('starts on the overview, and the overview carries the field table', () => {
+    const erste = tabsEl?.tabs?.[0];
+    expect(erste?.id).toBe('about');
+    /* Wer etwas ändern will, soll nicht erst umschalten. Ein eigener Reiter
+       für die Felder sah aufgeräumt aus und versteckte das Bearbeiten. */
+    expect(erste?.layout.map((x) => x.el)).toContain('fields');
+  });
+
+  it('shows nothing twice', () => {
+    const wo = new Map<string, string[]>();
+    for (const t of tabsEl?.tabs ?? []) {
+      for (const x of t.layout) {
+        wo.set(x.el, [...(wo.get(x.el) ?? []), t.id]);
+      }
+    }
+    for (const [el, tabs] of wo) expect(`${el}: ${tabs.join(',')}`).toBe(`${el}: ${tabs[0]}`);
+  });
+
+  it('gives every tab a label and something to draw', () => {
+    for (const t of tabsEl?.tabs ?? []) {
+      expect(t.label.length).toBeGreaterThan(0);
+      expect(t.layout.length).toBeGreaterThan(0);
+    }
+  });
+});

@@ -13,7 +13,7 @@
 
 import { z } from 'zod';
 import { allowedComponents, requiredComponents } from './entity.js';
-import type { Entity, Registry } from './types.js';
+import type { Entity, LayoutElement, Registry } from './types.js';
 
 const propertyType = z.enum(['string', 'number', 'integer', 'boolean', 'array', 'object']);
 
@@ -65,15 +65,30 @@ export const RelationDefSchema = z.object({
   props: objectSchema.optional(),
 });
 
-const LayoutElementSchema = z.object({
-  id: z.string(),
-  el: z.enum(['heading', 'text', 'fields', 'blocks', 'description', 'composed', 'relations', 'image', 'knowledge', 'map', 'sheet', 'inventory', 'crafting', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'standing']),
-  text: z.string().optional(),
-  fields: z.union([z.literal('all'), z.array(z.string())]).optional(),
-  except: z.array(z.string()).optional(),
-  columns: z.number().optional(),
-  blocks: z.union([z.literal('all'), z.array(z.string())]).optional(),
-});
+/* Ein Reiter enthält ein Layout, und ein Layout kann Reiter enthalten —
+   also ist das Schema rekursiv. `z.lazy` ist dafür da; die Tiefe begrenzt
+   niemand, weil Reiter in Reitern niemand baut und eine Grenze, die nie
+   greift, nur eine Zahl ist, die jemand erklären muss. */
+const LayoutElementSchema: z.ZodType<LayoutElement> = z.lazy(() =>
+  z.object({
+    id: z.string(),
+    el: z.enum(['heading', 'text', 'fields', 'blocks', 'description', 'composed', 'relations', 'image', 'knowledge', 'map', 'sheet', 'inventory', 'crafting', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'standing', 'tabs']),
+    text: z.string().optional(),
+    fields: z.union([z.literal('all'), z.array(z.string())]).optional(),
+    except: z.array(z.string()).optional(),
+    columns: z.number().optional(),
+    blocks: z.union([z.literal('all'), z.array(z.string())]).optional(),
+    tabs: z
+      .array(
+        z.object({
+          id: z.string(),
+          label: z.string(),
+          layout: z.array(LayoutElementSchema),
+        }),
+      )
+      .optional(),
+  }),
+);
 
 export const ViewDefSchema = z.object({
   label: z.string(),
