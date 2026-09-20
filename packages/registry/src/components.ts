@@ -22,6 +22,11 @@ export const components: Record<string, ComponentDef> = {
       properties: {
         key: { type: 'string', title: 'Key' },
         aliases: { type: 'array', title: 'Aliases', items: { type: 'string' } },
+        /* Der Deckname (REQ-178): was ein Spieler sieht, solange der echte
+           Name von einer Information beansprucht wird, die er nicht kennt.
+           Ohne ihn stünde dort der echte Name oder gar nichts — beides
+           macht partielle Enthüllung unspielbar. */
+        cover: { type: 'string', title: 'Cover name' },
       },
     },
   },

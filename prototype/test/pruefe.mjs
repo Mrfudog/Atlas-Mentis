@@ -1556,9 +1556,13 @@ async function seite(datei, warten) {
     pruefe('a granted secret block reaches the one who knows it',
       alsKenner.bloecke.includes('secret') && !alsFremd.bloecke.includes('secret'),
       { alsKenner: alsKenner.bloecke, alsFremd: alsFremd.bloecke });
+    /* Die Fussnote „Not yours yet" ist kein Feld, sondern die Auskunft,
+       dass eines fehlt (REQ-179) — sie zählt hier nicht mit. */
+    const ohneFussnote = alsFremd.felder.filter((f) => f !== 'Not yours yet');
     pruefe('a field of an unknown information is gone for the other one',
-      alsKenner.felder.length > alsFremd.felder.length
-      && alsFremd.felder.every((f) => alsKenner.felder.includes(f)),
+      alsKenner.felder.length > ohneFussnote.length
+      && ohneFussnote.every((f) => alsKenner.felder.includes(f))
+      && alsFremd.felder.includes('Not yours yet'),
       { alsKenner: alsKenner.felder, alsFremd: alsFremd.felder });
     /* Für einen Spieler gibt es kein Register. Auszugrauen wäre eine
        Einladung; wegzulassen ist die Antwort. */
@@ -1929,6 +1933,84 @@ async function seite(datei, warten) {
   /* Der Prüflauf darf nicht mit geschlossenem Schreibweg weitergehen. */
   await p.evaluate(() => window.__T__.breakLoad(''));
   await p.waitForTimeout(200);
+
+  /* ---- Deckname und bekannte Unbekannte (REQ-178, 179) ----
+     Beides sind Zugaben zum Wissensmodell, und beide sind genau dann etwas
+     wert, wenn sie *unterschiedlich* ausfallen. Eine Prüfung an einer
+     einzelnen Ansicht sähe nichts. */
+  const deck = await p.evaluate(() => {
+    const alle = [...window.__T__.ENT.values()];
+    const e = alle.find((x) => ((x.components || {}).Identity || {}).cover
+      && (x.relations || []).some((r) => r.type === 'knowledge'));
+    if (!e) return null;
+    const info = window.__T__.ENT.get(
+      e.relations.find((r) => r.type === 'knowledge').to);
+    const kennt = info && (info.relations || []).find((r) => r.type === 'knownBy');
+    const pcs = alle.filter((x) => (x.interfaces || [])[0] === 'PlayerCharacter');
+    const fremd = pcs.find((x) => !kennt || x.id !== kennt.to);
+    return { id: e.id, echt: e.name || e.components.Name.text,
+      cover: e.components.Identity.cover,
+      kennerId: kennt ? kennt.to : null, fremdId: fremd ? fremd.id : null };
+  });
+  if (deck && deck.kennerId && deck.fremdId) {
+    const sicht2 = async (v) => {
+      await p.evaluate((x) => {
+        const s2 = document.getElementById('asview');
+        s2.value = x;
+        s2.dispatchEvent(new Event('change', { bubbles: true }));
+      }, v);
+      await p.waitForTimeout(400);
+      await p.evaluate((i) => window.__T__.go({ k: 'art', id: i }), deck.id);
+      await p.waitForTimeout(300);
+      await p.evaluate(() => {
+        const f = document.getElementById('facet');
+        f.value = 'full';
+        f.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      await p.waitForTimeout(400);
+      return p.evaluate(() => ({
+        titel: document.querySelector('.arthead h2')?.textContent ?? null,
+        zurueck: document.querySelector('.fld.withheld dd')?.textContent ?? null,
+        letzte: [...document.querySelectorAll('.fld')].pop()?.className ?? '',
+      }));
+    };
+    const gm2 = await sicht2('');
+    const kenner2 = await sicht2(deck.kennerId);
+    const fremd2 = await sicht2(deck.fremdId);
+    pruefe('the GM and the one who knows see the real name',
+      gm2.titel === deck.echt && kenner2.titel === deck.echt, { gm2, kenner2 });
+    pruefe('everyone else sees the cover name',
+      fremd2.titel === deck.cover, fremd2);
+    /* Dass etwas fehlt, darf man wissen — was, nicht. */
+    pruefe('a filtered view says how much it is withholding',
+      /and \d+ more/.test(fremd2.zurueck || '') && gm2.zurueck === null, fremd2);
+    pruefe('the note about it comes last, not in the middle',
+      /withheld/.test(fremd2.letzte), fremd2.letzte);
+
+    /* In der Liste gilt derselbe Name — sonst verriete ihn das Kompendium. */
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.rail button')].find((b) => /All articles/.test(b.textContent)).click());
+    await p.waitForTimeout(350);
+    const inListe = await p.evaluate((c) =>
+      [...document.querySelectorAll('#view .row .rn')].map((x) => x.textContent).includes(c), deck.cover);
+    pruefe('the cover name holds in the compendium too', inListe, deck.cover);
+
+    /* Ein Verweis muss trotzdem ankommen: aufgelöst wird gegen den
+       gespeicherten Namen, nicht gegen den, der angezeigt wird. */
+    const trifft = await p.evaluate((n) => window.__T__.findByName(n), deck.echt);
+    pruefe('a link still resolves against the stored name', trifft === deck.id,
+      { trifft, erwartet: deck.id });
+
+    await p.evaluate(() => {
+      const s2 = document.getElementById('asview');
+      s2.value = '';
+      s2.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(350);
+    pruefe('cover names raised no exception', errs.length === 0, errs);
+  } else {
+    pruefe('an article with a cover name exists in the data', false, deck);
+  }
 
   pruefe('knowledge needed no browser modal', modale.length === 0, modale);
   pruefe('no exception through the knowledge panel', errs.length === 0, errs);

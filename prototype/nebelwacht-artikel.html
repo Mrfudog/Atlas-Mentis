@@ -531,6 +531,11 @@ table.craftm tr.crrow.unknown td{color:var(--dim);font-style:italic}
   font-size:10.5px;font-family:var(--ff-mono);text-align:center;pointer-events:none;
   color:var(--ink);text-shadow:0 0 3px var(--surface),0 0 3px var(--surface);
   overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.fld.withheld{background:var(--surface2);border-left:2px dashed var(--line2)}
+.fld.withheld dt{color:var(--dim)}
+.fld.withheld dd{color:var(--dim);font-style:italic}
+.kgrp.withheldgrp{border-style:dashed;opacity:.8}
+.kgrp.withheldgrp .kh b{color:var(--dim)}
 .fld dd.editable{cursor:text;border-radius:2px;margin:1px -3px 0;padding:0 3px}
 .fld dd.editable:hover{background:var(--accent-soft);box-shadow:inset 0 -1px 0 var(--accent)}
 .fld dd.editing{margin-top:2px}
@@ -1159,7 +1164,24 @@ function slug(s){return String(s||"").toLowerCase()
   .replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss")
   .replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,60)||"unnamed";}
 function esc(s){return String(s==null?"":s);}
-function nameOf(e){return e&&(e.name||(e.components&&e.components.Name&&e.components.Name.text))||"Unnamed";}
+/* Der gespeicherte Name. Zum Auflösen und zum Schreiben — nie zum Anzeigen,
+   solange ein Deckname gelten könnte. */
+function rawName(e){return e&&(e.name||(e.components&&e.components.Name&&e.components.Name.text))||"Unnamed";}
+/* Der angezeigte Name (REQ-178). Ist der eigene Name von einer Information
+   beansprucht, die dieser Betrachter nicht kennt, steht der Deckname da —
+   und wenn keiner gesetzt ist, ein ehrliches „jemand".
+   Das gilt für die strukturierten Stellen: Titel, Listen, Tokens, Bezüge.
+   Fliesstext, in dem die Spielleitung den Namen geschrieben hat, deckt es
+   nicht zu; das wäre ein Versprechen, das die Seite nicht halten kann. */
+function nameOf(e){
+  if(!e)return "Unnamed";
+  var echt=rawName(e);
+  if(isGM())return echt;
+  var id=(e.components||{}).Identity||{};
+  if(!id.cover)return echt;
+  var frei=visibleRefs(e,["Name.text"]);
+  return frei.length?echt:id.cover;
+}
 function byName(){return Array.from(ENT.values()).sort(function(a,b){
   return nameOf(a).localeCompare(nameOf(b),"de");});}
 
@@ -1310,7 +1332,9 @@ function findByName(n){
   var t=String(n||"").trim().toLowerCase();
   var hit=null;
   ENT.forEach(function(e,id){ if(hit)return;
-    if(nameOf(e).toLowerCase()===t){hit=id;return;}
+    /* Aufgelöst wird gegen den gespeicherten Namen: ein Verweis muss auch
+       dann ankommen, wenn der Betrachter nur den Decknamen sieht. */
+    if(rawName(e).toLowerCase()===t){hit=id;return;}
     var al=(e.components&&e.components.Identity&&e.components.Identity.aliases)||[];
     for(var i=0;i<al.length;i++) if(String(al[i]).toLowerCase()===t){hit=id;return;} });
   return hit;
@@ -2152,10 +2176,14 @@ function fieldPlan(e,ifn,want){
   /* Der Wissensfilter sitzt hier, weil hier die Feldauswahl entsteht:
      Feldtabelle, Wissensansicht und Board-Kachel gehen alle durch diese
      Funktion, also filtert sie einmal für alle drei. */
+  cells.withheld=0;
   if(!isGM()){
     var erlaubt={};
     visibleRefs(e,cells.map(function(c){return c.ref;})).forEach(function(r){ erlaubt[r]=1; });
-    cells=cells.filter(function(c){ return erlaubt[c.ref]; });
+    var vorher=cells.length;
+    var gefiltert=cells.filter(function(c){ return erlaubt[c.ref]; });
+    gefiltert.withheld=vorher-gefiltert.length;
+    cells=gefiltert;
   }
   return cells;
 }
@@ -2164,7 +2192,8 @@ function fieldPlan(e,ifn,want){
 function elFields(e,ifn,item){
   var flds=el("dl",{class:"fields"}), nf=0;
   if(item.columns>0) flds.style.gridTemplateColumns="repeat("+item.columns+",minmax(0,1fr))";
-  fieldPlan(e,ifn,item.fields).forEach(function(c){
+  var plan=fieldPlan(e,ifn,item.fields);
+  plan.forEach(function(c){
     flds.appendChild(fieldCell(e,c.cn,c.p,c.pd,c.val,c.txt)); nf++;
   });
   if(item.fields==="all") (e.adhoc||[]).forEach(function(f){
@@ -2172,6 +2201,14 @@ function elFields(e,ifn,item){
     flds.appendChild(el("div",{class:"fld adhoc"},[
       el("dt",{text:f.label}),el("dd",{text:String(f.value)})])); nf++;
   });
+  /* Bekannte Unbekannte (REQ-179): dass etwas fehlt, darf man wissen — was,
+     nicht. Eine Ansicht, die lückenlos aussieht, obwohl sie es nicht ist,
+     lässt niemanden nachfragen, und Nachfragen ist der Sinn der Sache.
+     Zuletzt, nicht mittendrin: es ist eine Fussnote und kein Feld. */
+  if(plan.withheld) flds.appendChild(el("div",{class:"fld withheld"},[
+    el("dt",{text:"Not yours yet"}),
+    el("dd",{text:"…and "+plan.withheld+" more thing"+(plan.withheld===1?"":"s")+
+      " about this that you have not learned"})]));
   return nf?flds:null;
 }
 
@@ -5311,6 +5348,7 @@ function knowledgeGroups(e,refs,viewerId){
 
 function elKnowledge(e,ifn,item){
   var cells=fieldPlan(e,ifn,item.fields||"all");
+  var zurueck=cells.withheld||0;
   var byRef={}; cells.forEach(function(c){ byRef[c.ref]=c; });
   var blocks={}; (e.blocks||[]).forEach(function(b){ blocks[b.anchor||b.id]=b; });
   var wrap=el("div",{class:"knowledge"});
@@ -5357,6 +5395,10 @@ function elKnowledge(e,ifn,item){
     }
     wrap.appendChild(box);
   });
+  if(zurueck) wrap.appendChild(el("div",{class:"kgrp withheldgrp"},[
+    el("div",{class:"kh"},[el("b",{text:"Not yours yet"})]),
+    el("div",{class:"nothing",text:"…and "+zurueck+" thing"+(zurueck===1?"":"s")+
+      " about this that you have not learned"})]));
   return wrap;
 }
 

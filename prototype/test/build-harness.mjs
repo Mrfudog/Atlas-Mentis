@@ -89,7 +89,7 @@ window.claude = { use: async function(n){
 const GRIFF = `
 window.__T__={runImport:runImport,derivedValue:derivedValue,assetSrc:assetSrc,UI:UI,
   LAYOUT_ELEMENTS:LAYOUT_ELEMENTS,rollDice:rollDice,go:go,rollTable:rollTable,
-  exportState:exportState,importReport:importReport,
+  exportState:exportState,importReport:importReport,findByName:findByName,
   breakLoad:function(t){ loadFailed=t||'the articles failed (test).'; }};
 Object.defineProperty(window.__T__,'REG',{get:function(){return REG;}});
 Object.defineProperty(window.__T__,'ENT',{get:function(){return ENT;}});
