@@ -91,6 +91,23 @@ Gespeichert wird **eine Karte je Typ**, benannt nach dem Typ, der das Feld
 erklärt. Das hält `hp` an der Kreatur von `hp` am Statblock auseinander,
 ohne dass eines von beiden einen Namen bekommt, den niemand gewählt hätte.
 
+### Eins oder mehrere
+
+Ein Feld mit `many` hält **mehrere** Werte, und jeder trägt eine Id:
+`[{id, value}]`. Drei Geheimnisse an einer Kreatur sind drei Einträge in
+`Secrets.secret` und nicht drei Felder.
+
+Die Id ist kein Beiwerk. Eine Wissensfreigabe hängt an ihr — `Secrets.secret#
+schuldet-floon-achtzig-drachen` gibt **genau dieses** Geheimnis frei und nicht
+die anderen zwei. Deshalb wird sie aus dem Text gebildet und nicht
+durchgezählt: derselbe Text ergibt dieselbe Id, und ein erneuter Import nimmt
+die Freigaben nicht mit ins Leere. Das war der Blockanker, und das ist alles,
+was von ihm übrig ist.
+
+Ein Prosafeld — `many` und lange Eingabe — steht **nicht** in der Feldtabelle.
+Es gehört dem Prosa-Element der Ansicht; zweimal dasselbe zu zeigen, oben als
+Zeile und unten als Absatz, war genau das, was an den Blöcken störte.
+
 ---
 
 ## Artikel

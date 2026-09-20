@@ -4,14 +4,15 @@ import { RouterLink } from '@angular/router';
 import {
   typeChain,
   backlinks,
-  blockTypesFor,
   entityName,
+  entriesOf,
+  entryRef,
+  proseFields,
   relationAccepts,
   relationsFrom,
   primaryInterface,
   relationDef,
   resolveView,
-  showBlock,
   showField,
   viewKeys,
 } from '@nw/model';
@@ -131,23 +132,23 @@ interface Feld {
             }
           </div>
 
-          <h3>Text blocks</h3>
-          @for (b of entwurfBloecke(); track b.id) {
+          <h3>Passages</h3>
+          @for (b of entwurfProsa(); track b.id) {
             <div class="blockmaske">
               <div class="bkopf">
-                <span class="bl">{{ b.blockType }}</span>
-                <button type="button" class="weg" (click)="blockWeg(b.id)" title="Remove">×</button>
+                <span class="bl">{{ b.label }}</span>
+                <button type="button" class="weg" (click)="prosaWeg(b.id)" title="Remove">×</button>
               </div>
-              <textarea rows="3" [(ngModel)]="b.body" [name]="b.id"></textarea>
+              <textarea rows="3" [(ngModel)]="b.wert" [name]="b.id"></textarea>
             </div>
           }
           <div class="werkzeuge">
             <select #neueArt>
-              @for (t of blockArten(); track t) {
-                <option [value]="t">{{ t }}</option>
+              @for (t of prosaArten(); track t.ref) {
+                <option [value]="t.ref">{{ t.label }}</option>
               }
             </select>
-            <button type="button" (click)="blockDazu(neueArt.value)">+ Block</button>
+            <button type="button" (click)="prosaDazu(neueArt.value)">+ Passage</button>
           </div>
 
           <h3>Relations</h3>
@@ -227,12 +228,12 @@ interface Feld {
           </dl>
         }
 
-        @for (b of bloecke(); track b.id) {
-          <section class="block" [class]="b.blockType">
-            @if (b.blockType !== 'paragraph') {
-              <div class="bl">{{ b.blockType }}</div>
+        @for (b of prosa(); track b.ref) {
+          <section class="block" [class]="b.key">
+            @if (b.key !== 'paragraph') {
+              <div class="bl">{{ b.label }}</div>
             }
-            <p>{{ b.body }}</p>
+            <p>{{ b.wert }}</p>
           </section>
         }
 
@@ -350,13 +351,28 @@ export class Artikel {
     return out;
   });
 
-  protected readonly bloecke = computed(() => {
+  /**
+   * Die Prosa dieses Artikels. Sie steht in Feldern mit `many` und langer
+   * Eingabe — es gibt keine zweite Sorte Inhalt mehr neben den Karten —,
+   * und jeder Eintrag trägt die Id, an der die Wissensfreigabe hängt.
+   */
+  protected readonly prosa = computed(() => {
     const e = this.artikel();
-    const v = this.view();
-    if (!e || !v) return [];
-    return [...(e.blocks ?? [])]
-      .filter((b) => showBlock(v, b.blockType))
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const r = this.reg();
+    if (!e || !r) return [];
+    const out: { ref: string; key: string; label: string; wert: string }[] = [];
+    for (const f of proseFields(r, primaryInterface(e))) {
+      const karte = (e.components?.[f.type] ?? {}) as Record<string, unknown>;
+      for (const eintrag of entriesOf(karte[f.key])) {
+        out.push({
+          ref: entryRef(f.type, f.key, eintrag.id),
+          key: f.key,
+          label: f.prop.title ?? f.key,
+          wert: eintrag.value,
+        });
+      }
+    }
+    return out;
   });
 
   protected readonly kanten = computed(() => {
@@ -384,7 +400,9 @@ export class Artikel {
   protected readonly problem = signal<string | null>(null);
   protected readonly maengel = signal<string[]>([]);
   protected readonly felder = signal<Feld[]>([]);
-  protected readonly entwurfBloecke = signal<{ id: string; blockType: string; body: string }[]>([]);
+  protected readonly entwurfProsa = signal<
+    { id: string; type: string; key: string; label: string; wert: string }[]
+  >([]);
 
   private readonly api = inject(Api);
 
@@ -417,6 +435,10 @@ export class Artikel {
            anzubieten hiesse, jemanden etwas eintippen zu lassen, das beim
            nächsten Lesen überschrieben wird. */
         if (schema.derived) continue;
+        /* Ein Prosafeld gehört der Prosamaske und nicht der Feldliste.
+           Zweimal dasselbe anzubieten hiesse, dass der zweite Eingang den
+           ersten überschreibt, und keiner der beiden sagte das. */
+        if (schema.many && schema.format === 'long') continue;
         const art = eingabeArt(schema);
         out.push({
           ref: `${comp}.${prop}`,
@@ -432,10 +454,12 @@ export class Artikel {
       }
     }
     this.felder.set(out);
-    this.entwurfBloecke.set(
-      [...(e.blocks ?? [])]
-        .sort((a2, b2) => (a2.order ?? 0) - (b2.order ?? 0))
-        .map((b) => ({ id: b.anchor || b.id, blockType: b.blockType, body: b.body ?? '' })),
+    this.entwurfProsa.set(
+      this.prosa().map((b) => {
+        const [typ, rest] = b.ref.split('.');
+        const key = (rest ?? '').split('#')[0] ?? '';
+        return { id: b.ref, type: typ ?? '', key, label: b.label, wert: b.wert };
+      }),
     );
     this.entwurfKanten.set(
       (e.relations ?? []).map((rel) => ({
@@ -456,21 +480,28 @@ export class Artikel {
     this.maengel.set([]);
   }
 
-  protected blockArten(): string[] {
+  protected prosaArten(): { ref: string; label: string }[] {
     const e = this.artikel();
     const r = this.reg();
-    return e && r ? blockTypesFor(r, primaryInterface(e)) : [];
+    if (!e || !r) return [];
+    return proseFields(r, primaryInterface(e)).map((f) => ({
+      ref: `${f.type}.${f.key}`,
+      label: f.prop.title ?? f.key,
+    }));
   }
 
-  protected blockDazu(art: string): void {
-    if (!art) return;
-    this.entwurfBloecke.update((bs) => [
+  protected prosaDazu(ref: string): void {
+    if (!ref) return;
+    const [typ, key] = ref.split('.');
+    if (!typ || !key) return;
+    const label = this.prosaArten().find((a) => a.ref === ref)?.label ?? key;
+    this.entwurfProsa.update((bs) => [
       ...bs,
-      { id: `neu-${bs.length}-${Date.now()}`, blockType: art, body: '' },
+      { id: `${ref}#neu-${bs.length}-${Date.now()}`, type: typ, key, label, wert: '' },
     ]);
   }
-  protected blockWeg(id: string): void {
-    this.entwurfBloecke.update((bs) => bs.filter((b) => b.id !== id));
+  protected prosaWeg(id: string): void {
+    this.entwurfProsa.update((bs) => bs.filter((b) => b.id !== id));
   }
 
   // ------------------------------------------------------------- Kanten
@@ -576,13 +607,19 @@ export class Artikel {
       if (wert === undefined) continue;
       (components[f.comp] ??= {})[f.prop] = wert;
     }
-    const blocks = this.entwurfBloecke()
-      .filter((b) => b.body.trim() !== '')
-      .map((b, i) => ({ id: b.id, anchor: b.id, blockType: b.blockType, body: b.body, order: i }));
+    /* Die Prosa wandert in die Karten, aus denen sie kommt. Die Id bleibt
+       die, die sie hatte — eine Wissensfreigabe hängt daran, und sie beim
+       Speichern neu zu würfeln nähme sie mit ins Leere. */
+    for (const b of this.entwurfProsa()) {
+      if (b.wert.trim() === '') continue;
+      const id = b.id.split('#')[1] ?? b.id;
+      ((components[b.type] ??= {})[b.key] ??= [] as { id: string; value: string }[]);
+      (components[b.type][b.key] as { id: string; value: string }[]).push({ id, value: b.wert });
+    }
 
     const relations = kantenAusEntwurf(this.entwurfKanten());
 
-    const neu = { ...alt, components, blocks, relations } as Entity;
+    const neu = { ...alt, components, relations } as Entity;
 
     try {
       const gespeichert = await this.api.putEntity(neu);

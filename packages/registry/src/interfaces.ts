@@ -91,14 +91,14 @@ export const interfaces: Record<string, InterfaceDef> = {
      Ein Ereignis schleppte Bildunterschrift, Alt-Text und Seitenzahl mit. */
 
   /** Wer der Artikel ist. Das erbt jede Artikelart. */
+  /* `Prose` und `Notes` hängen hier, weil `Identity` der einzige Typ ist,
+     den wirklich jede Art erbt: Fliesstext und Notizen darf jeder haben. */
   Identity: {
     name: 'Identity',
+    extends: ['Prose', 'Notes'],
     label: 'Identity',
     abstract: true,
     schema: g.Identity.schema,
-    /* Die Blockarten, die überall gelten. Sie stehen hier, weil `Identity`
-       der einzige Typ ist, den wirklich jede Art erbt. */
-    blockTypes: ['paragraph', 'note'],
   },
 
   Status: {
@@ -129,6 +129,21 @@ export const interfaces: Record<string, InterfaceDef> = {
     abstract: true,
     schema: g.Tags.schema,
   },
+
+  /* ---- Prosa ----
+     Das waren die **Blockarten**: eine eigene Liste je Artikelart, neben
+     den Feldern, und damit eine zweite Frage, die jede Art zweimal
+     beantworten musste. Jetzt ist die Blockart das Feld — `secret` ist ein
+     Feld mit `many`, und seine Einträge tragen die Id, an der die
+     Wissensfreigabe hängt. Das war der Anker. */
+
+  Prose: { name: 'Prose', label: 'Text', abstract: true, schema: g.Prose.schema },
+  Notes: { name: 'Notes', label: 'Notes', abstract: true, schema: g.Notes.schema },
+  Lore: { name: 'Lore', label: 'Lore', abstract: true, schema: g.Lore.schema },
+  Secrets: { name: 'Secrets', label: 'Secrets', abstract: true, schema: g.Secrets.schema },
+  ReadAloud: { name: 'ReadAloud', label: 'Read aloud', abstract: true, schema: g.ReadAloud.schema },
+  Facts: { name: 'Facts', label: 'Facts', abstract: true, schema: g.Facts.schema },
+  Tactics: { name: 'Tactics', label: 'Tactics', abstract: true, schema: g.Tactics.schema },
 
   /** Wann etwas in der Welt steht: `sort` ordnet, `display` wird gelesen. */
   Time: {
@@ -179,13 +194,12 @@ export const interfaces: Record<string, InterfaceDef> = {
     area: 'world',
     label: 'Creature',
     abstract: true,
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Imported', 'Source', 'Vars', 'StatblockInfo', 'Access', 'Vitals', 'Skills'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Imported', 'Source', 'Vars', 'StatblockInfo', 'Access', 'Vitals', 'Skills', 'Lore', 'Facts', 'Secrets', 'ReadAloud'],
     schema: g.CreatureInfo.schema,
     /* `StatblockInfo` darf hier direkt liegen: ein Spielercharakter trägt
        seine Zahlen selbst, ein NSC borgt sie meist von einem Statblock über
        `belongsTo`. Der Bogen liest beides — erst die eigene Karte, dann die
        geborgte — statt eine der beiden Formen zu verbieten. */
-    blockTypes: ['+appearance', '+personality', '+lore', '+fact', '+secret', '+readaloud'],
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     /**
@@ -228,7 +242,7 @@ export const interfaces: Record<string, InterfaceDef> = {
                   fields: 'all',
                   except: ['StatblockInfo', 'Vitals', 'Skills'],
                 },
-                { id: 'c-b', el: 'blocks', blocks: 'all' },
+                { id: 'c-b', el: 'prose', fields: 'all' },
               ],
             },
             /* Was im Kampf zählt. Die Zahlen stehen oben im Bogen; hier
@@ -264,7 +278,6 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Player character',
     extends: ['Creature'],
     schema: merge(g.CharacterInfo),
-    blockTypes: ['+backstory'],
   },
 
   Companion: {
@@ -285,9 +298,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Place',
     area: 'world',
     label: 'Place',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Imported'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Imported', 'Lore', 'ReadAloud', 'Secrets'],
     schema: merge(g.LocationInfo, g.Explored),
-    blockTypes: ['+lore', '+readaloud', '+secret'],
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     /* Ein Ort trägt seine Punktreise selbst — sie ist kein eigener Ort,
@@ -297,7 +309,7 @@ export const interfaces: Record<string, InterfaceDef> = {
         { id: 'o-img', el: 'image' },
         { id: 'o-desc', el: 'description' },
         { id: 'o-f', el: 'fields', fields: 'all' },
-        { id: 'o-b', el: 'blocks', blocks: 'all' },
+        { id: 'o-b', el: 'prose', fields: 'all' },
         { id: 'o-crawl', el: 'crawl' },
         /* Worauf man hier würfelt. Die Tabelle gehört nicht dem Ort — sie
            gilt für ihn, und das steht an der Kante `tableFor`. */
@@ -311,17 +323,25 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Faction',
     area: 'world',
     label: 'Faction',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Lore', 'Secrets'],
     schema: merge(g.FactionInfo),
-    blockTypes: ['+lore', '+secret'],
   },
 
   Article: {
     name: 'Article',
     area: 'world',
     label: 'Article',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Imported', 'Source', 'Todos'],
-    blockTypes: ['+lore', '+secret', '+poem', '+song'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Imported', 'Source', 'Todos', 'Lore', 'Secrets'],
+    /* Ein Gedicht und ein Lied hat sonst keine Art. Einen Bestandteil für
+       einen einzigen Nutzer anzulegen wäre der Umweg, den es hier schon
+       achtunddreissigmal gab. */
+    schema: {
+      type: 'object',
+      properties: {
+        poem: { type: 'string', format: 'long', many: true, title: 'Poems' },
+        song: { type: 'string', format: 'long', many: true, title: 'Songs' },
+      },
+    },
   },
 
   /** The reuse pool: traits, actions, conditions, feats — all one interface. */
@@ -360,15 +380,14 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Statblock',
     area: 'rules',
     label: 'Statblock',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Imported', 'StatblockInfo', 'Vars'],
-    blockTypes: ['+tactics'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Imported', 'StatblockInfo', 'Vars', 'Tactics'],
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {
       full: [
         { id: 's-f', el: 'fields', fields: 'all' },
         { id: 's-c', el: 'composed' },
-        { id: 's-b', el: 'blocks', blocks: 'all' },
+        { id: 's-b', el: 'prose', fields: 'all' },
         { id: 's-r', el: 'relations' },
       ],
     },
@@ -383,9 +402,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Item',
     area: 'world',
     label: 'Item',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Imported', 'Source'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Imported', 'Source', 'Lore', 'Secrets', 'Facts'],
     schema: merge(g.ItemInfo, g.Footprint),
-    blockTypes: ['+lore', '+secret', '+fact'],
   },
 
   Weapon: {
@@ -423,9 +441,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Party',
     area: 'world',
     label: 'Party',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Access'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Access', 'Lore', 'Notes'],
     schema: merge(g.PartyInfo, g.TravelInfo),
-    blockTypes: ['+lore', '+note'],
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     /* Eine Gruppe hat kein eigenes Blatt, aber denselben Beutel und
@@ -445,9 +462,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Inventory',
     area: 'rules',
     label: 'Inventory',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
     schema: merge(g.InventoryInfo),
-    blockTypes: ['+note'],
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {
@@ -470,9 +486,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     area: 'history',
     label: 'Story',
     abstract: true,
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time', 'Lore', 'Secrets', 'ReadAloud', 'Notes'],
     schema: merge(g.StoryInfo),
-    blockTypes: ['+lore', '+secret', '+readaloud', '+note'],
   },
 
   Campaign: {
@@ -493,7 +508,7 @@ export const interfaces: Record<string, InterfaceDef> = {
         { id: 'k-q', el: 'quests' },
         { id: 'k-time', el: 'timeline' },
         { id: 'k-prep', el: 'prep' },
-        { id: 'k-b', el: 'blocks', blocks: 'all' },
+        { id: 'k-b', el: 'prose', fields: 'all' },
         { id: 'k-r', el: 'relations' },
       ],
     },
@@ -519,7 +534,6 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Session',
     extends: ['Story'],
     schema: merge(g.SessionState),
-    blockTypes: ['+recap'],
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     /* Eine Sitzung ist der Abend selbst: was läuft, und was noch zu tun
@@ -530,7 +544,7 @@ export const interfaces: Record<string, InterfaceDef> = {
         { id: 'se-prep', el: 'prep' },
         { id: 'se-desc', el: 'description' },
         { id: 'se-f', el: 'fields', fields: 'all' },
-        { id: 'se-b', el: 'blocks', blocks: 'all' },
+        { id: 'se-b', el: 'prose', fields: 'all' },
         { id: 'se-r', el: 'relations' },
       ],
     },
@@ -540,9 +554,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Scene',
     area: 'history',
     label: 'Scene / Encounter',
-    extends: ['Story'],
+    extends: ['Story', 'Tactics'],
     schema: merge(g.SceneInfo),
-    blockTypes: ['+tactics'],
   },
 
   /**
@@ -553,9 +566,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Quest',
     area: 'history',
     label: 'Quest',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time', 'Lore', 'Secrets'],
     schema: merge(g.QuestInfo),
-    blockTypes: ['+lore', '+secret'],
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     /* Ein Auftrag trägt seine Aufgaben selbst — sie sind Felder an ihm
@@ -566,7 +578,7 @@ export const interfaces: Record<string, InterfaceDef> = {
         { id: 'qu-q', el: 'quests' },
         { id: 'qu-desc', el: 'description' },
         { id: 'qu-f', el: 'fields', fields: 'all', except: ['Quest.tasks'] },
-        { id: 'qu-b', el: 'blocks', blocks: 'all' },
+        { id: 'qu-b', el: 'prose', fields: 'all' },
         { id: 'qu-r', el: 'relations' },
       ],
     },
@@ -582,9 +594,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Information',
     area: 'rules',
     label: 'Information',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Secrets', 'Facts'],
     schema: merge(g.Info),
-    blockTypes: ['+secret', '+fact'],
   },
 
   /**
@@ -623,9 +634,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Map',
     area: 'play',
     label: 'Map',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Notes', 'Secrets', 'ReadAloud'],
     schema: merge(g.MapInfo),
-    blockTypes: ['+note', '+secret', '+readaloud'],
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     /* Karte, Board und Begegnung gehören in den Bereich **Play** und
@@ -653,9 +663,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Recipe',
     area: 'rules',
     label: 'Recipe',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Imported'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Imported', 'Notes', 'Secrets', 'Lore'],
     schema: merge(g.RecipeInfo),
-    blockTypes: ['+note', '+secret', '+lore'],
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {
@@ -663,7 +672,7 @@ export const interfaces: Record<string, InterfaceDef> = {
         { id: 'rz-craft', el: 'crafting' },
         { id: 'rz-desc', el: 'description' },
         { id: 'rz-f', el: 'fields', fields: 'all' },
-        { id: 'rz-b', el: 'blocks', blocks: 'all' },
+        { id: 'rz-b', el: 'prose', fields: 'all' },
         { id: 'rz-r', el: 'relations' },
       ],
     },
@@ -679,9 +688,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Board',
     area: 'play',
     label: 'Board',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
     schema: merge(g.BoardInfo),
-    blockTypes: ['+note'],
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {
@@ -702,9 +710,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Encounter',
     area: 'play',
     label: 'Encounter',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Todos'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Tactics', 'ReadAloud', 'Notes', 'Secrets'],
     schema: merge(g.EncounterInfo),
-    blockTypes: ['+tactics', '+readaloud', '+note', '+secret'],
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {
@@ -712,7 +719,7 @@ export const interfaces: Record<string, InterfaceDef> = {
         { id: 'e-init', el: 'initiative' },
         { id: 'e-desc', el: 'description' },
         { id: 'e-f', el: 'fields', fields: 'all' },
-        { id: 'e-b', el: 'blocks', blocks: 'all' },
+        { id: 'e-b', el: 'prose', fields: 'all' },
       ],
     },
   },
@@ -726,8 +733,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Event',
     area: 'history',
     label: 'Event',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Time'],
-    blockTypes: ['+lore', '+secret', '+readaloud'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Time', 'Lore', 'Secrets', 'ReadAloud'],
   },
 
   /* ---------- Weltgeschichte ----------
@@ -767,9 +773,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Table',
     area: 'rules',
     label: 'Table',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Source'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Notes', 'Secrets'],
     schema: merge(g.TableInfo),
-    blockTypes: ['+note', '+secret'],
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {
@@ -777,7 +782,7 @@ export const interfaces: Record<string, InterfaceDef> = {
         { id: 't-table', el: 'table' },
         { id: 't-desc', el: 'description' },
         { id: 't-f', el: 'fields', fields: 'all', except: ['Table.rows'] },
-        { id: 't-b', el: 'blocks', blocks: 'all' },
+        { id: 't-b', el: 'prose', fields: 'all' },
       ],
     },
   },
@@ -791,9 +796,8 @@ export const interfaces: Record<string, InterfaceDef> = {
   Layer: {
     name: 'Layer',
     label: 'Layer',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
     schema: merge(g.LayerInfo),
-    blockTypes: ['+note'],
   },
 
   /**
@@ -809,8 +813,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Group',
     area: 'play',
     label: 'Group',
-    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags'],
+    extends: ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
     schema: merge(g.GroupInfo),
-    blockTypes: ['+note'],
   },
 };

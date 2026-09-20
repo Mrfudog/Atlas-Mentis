@@ -1,5 +1,5 @@
 /**
- * View resolution — which fields and blocks a view shows, and in which order.
+ * View resolution — which fields a view shows, and in which order.
  *
  * A projection defines what *can* be read; a ViewDef defines what *is* shown,
  * and it can only ever narrow. Field selection is per property, so a combat
@@ -18,7 +18,6 @@ export const FALLBACK_VIEW: ViewDef = {
   label: 'Full',
   order: 1,
   fields: 'all',
-  blocks: 'all',
   description: true,
   composed: true,
   relations: true,
@@ -57,11 +56,6 @@ export function showField(view: ViewDef, component: string, property: string): b
 /** True when at least one field the type declares survives the view. */
 export function componentVisible(view: ViewDef, component: string, schema: ObjectSchema): boolean {
   return Object.keys(schema.properties).some((p) => showField(view, component, p));
-}
-
-export function showBlock(view: ViewDef, blockType: string): boolean {
-  if (view.blocks === 'all') return true;
-  return Array.isArray(view.blocks) && view.blocks.includes(blockType);
 }
 
 /**

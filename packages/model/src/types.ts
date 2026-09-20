@@ -33,6 +33,21 @@ export interface PropertySchema {
    * dasselbe Mass sind zwei Zahlen, die sich widersprechen können.
    */
   unit?: string;
+  /**
+   * **Eins oder mehrere.** Ein Feld mit `many` trägt eine Liste von
+   * Einträgen statt eines Werts, und jeder Eintrag ist `{id, value}`.
+   *
+   * Die `id` ist nicht Zierde: an ihr hängt die Wissensfreigabe. Ein
+   * Geheimnis von dreien freizugeben heisst, genau diesen Eintrag
+   * freizugeben — über den Index ginge das auch, bis jemand die Reihenfolge
+   * ändert, und dann gehört die Freigabe still zum falschen Satz.
+   *
+   * Das waren einmal **Blöcke**: `{blockType, body, anchor}` neben den
+   * Feldern. Ein eigener Begriff für Text, der neben den Feldern lag, war
+   * eine zweite Art, dasselbe zu sagen — die Blockart ist jetzt das Feld
+   * (`secret`, `lore`, `readaloud`), und der Anker ist die `id`.
+   */
+  many?: boolean;
   items?: { type: PropertyType };
   /**
    * Calculation engine: an expression evaluated on read and never stored (D8).
@@ -75,8 +90,6 @@ export interface InterfaceDef {
   extends?: string[];
   /** The fields this type records itself. Inherited ones come from `extends`. */
   schema?: ObjectSchema;
-  /** `+x` adds to the inherited set; a bare list replaces it. */
-  blockTypes?: string[];
   /**
    * In welchen Bereich der Oberfläche diese Artikelart gehört: `world`,
    * `history`, `rules` oder `play`. Steht hier und nicht im Code, weil eine
@@ -156,7 +169,7 @@ export type LayoutElementKind =
   | 'heading'
   | 'text'
   | 'fields'
-  | 'blocks'
+  | 'prose'
   | 'description'
   | 'composed'
   | 'relations'
@@ -196,12 +209,12 @@ export interface LayoutElement {
   /** `fields`: `all` or a list of `Component` / `Component.field`. */
   fields?: 'all' | string[];
   /**
-   * `fields` **und `blocks`**: was weggelassen wird.
+   * Was weggelassen wird — bei `fields` wie bei `prose`.
    *
-   * Bei Feldern, weil ein anderes Element desselben Layouts sie schon
-   * zeichnet — der Bogen die Kampfwerte, die Feldtabelle den Rest. Bei
-   * Blöcken, weil „alles ausser Geheimnissen" richtig bleiben soll, wenn
-   * eine neue Blockart dazukommt.
+   * Weil ein anderes Element desselben Layouts sie schon zeichnet (der
+   * Bogen die Kampfwerte, die Feldtabelle den Rest), oder weil „alles
+   * ausser den Geheimnissen" richtig bleiben soll, wenn ein neues Feld
+   * dazukommt.
    *
    * In beiden Fällen dasselbe Argument: eine ausgeschriebene Liste ist am
    * Tag der nächsten Registerzeile falsch, und niemand merkt es — das Neue
@@ -210,8 +223,6 @@ export interface LayoutElement {
   except?: string[];
   /** `fields`: 0 fits the width. */
   columns?: number;
-  /** `blocks`: `all` or a list of block types. */
-  blocks?: 'all' | string[];
   /**
    * `tabs`: benannte Gruppen desselben Layouts.
    *
@@ -241,8 +252,6 @@ export interface ViewDef {
   order?: number;
   /** `all`, `none`, or a list of `Component` / `Component.field` entries. */
   fields: 'all' | 'none' | string[];
-  /** `all` or a list of block types. */
-  blocks: 'all' | string[];
   description?: boolean;
   /** Composition sections built from `section` relations. */
   composed?: boolean;
@@ -276,14 +285,6 @@ export interface Registry {
   settings?: Record<string, string>;
 }
 
-export interface Block {
-  id: string;
-  blockType: string;
-  body: string;
-  order: number;
-  /** Stable handle for per-block knowledge grants later. */
-  anchor?: string;
-}
 
 export interface RelationProps {
   /** Per-reference bindings for the target's {VAR} placeholders (REQ-174). */
@@ -323,7 +324,6 @@ export interface Entity {
    */
   components: Record<string, ComponentValue>;
   adhoc?: AdhocField[];
-  blocks?: Block[];
   /** Forward edges only. The reverse is always a query. */
   relations?: Relation[];
   createdAt?: string;

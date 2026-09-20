@@ -44,9 +44,11 @@ export const settings: Record<string, string> = {
     'history:int,insight:wis,intimidation:cha,investigation:int,medicine:wis,' +
     'nature:int,perception:wis,performance:cha,persuasion:cha,religion:int,' +
     'sleightOfHand:dex,stealth:dex,survival:wis',
-  /* Blockarten, die ein Spieler nicht sieht. Als Einstellung, weil eine
-     Kampagne das anders halten darf. */
-  gmBlockTypes: 'secret,tactics',
+  /* Felder, die ein Spieler nicht sieht, solange keine bekannte
+     Information sie ausdrücklich freigibt. Als Einstellung, weil eine
+     Kampagne das anders halten darf. Es hiess `gmBlockTypes` und nannte
+     Blockarten — die gibt es nicht mehr, es sind Felder. */
+  gmFields: 'Secrets.secret,Tactics.tactics',
   /* Welches Mass-System die Seite zeigt: `imperial`, `metric` oder `both`.
      Eine Artikelart darf es überschreiben (`InterfaceDef.units`) — eine
      Kreatur darf imperial bleiben, weil ihre Zahlen aus dem Regelwerk

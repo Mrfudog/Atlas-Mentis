@@ -81,6 +81,94 @@ export const fieldGroups = {
     },
   },
 
+  /* ---------------------------------------------------------------- Prosa
+
+     Das waren einmal **Blöcke**: `{blockType, body, anchor}` neben den
+     Feldern, mit einer eigenen Liste erlaubter Arten je Artikelart. Ein
+     zweiter Begriff für Text, der neben den Feldern lag — und der Preis
+     dafür war, dass jede Frage zweimal beantwortet werden musste: welche
+     Felder darf diese Art, *und* welche Blockarten.
+
+     Jetzt ist die Blockart das Feld. `secret` ist ein Feld mit `many`, und
+     seine Einträge tragen die Id, an der die Wissensfreigabe hängt — das
+     war der Anker. Eine Art, die Geheimnisse trägt, nimmt `Secrets` dazu;
+     eine, die keine hat, lässt es weg. */
+
+  /** Fliesstext, den jeder Artikel haben darf. */
+  Prose: {
+    schema: {
+      type: 'object',
+      properties: {
+        paragraph: { type: 'string', format: 'long', many: true, title: 'Text' },
+      },
+    },
+  },
+
+  /** Was die Spielleitung sich notiert. Steht offen — es ist keine Zusage. */
+  Notes: {
+    schema: {
+      type: 'object',
+      properties: {
+        note: { type: 'string', format: 'long', many: true, title: 'Notes' },
+      },
+    },
+  },
+
+  /** Was man darüber weiss, wenn man sich auskennt. */
+  Lore: {
+    schema: {
+      type: 'object',
+      properties: {
+        lore: { type: 'string', format: 'long', many: true, title: 'Lore' },
+      },
+    },
+  },
+
+  /**
+   * Was nicht an den Tisch geht, solange es niemand freigibt. Steht in der
+   * Einstellung `gmFields` und wird deshalb am Server zurückgehalten — ein
+   * Eintrag, den eine bekannte Information freigibt, bleibt trotzdem
+   * seiner.
+   */
+  Secrets: {
+    schema: {
+      type: 'object',
+      properties: {
+        secret: { type: 'string', format: 'long', many: true, title: 'Secrets' },
+      },
+    },
+  },
+
+  /** Was man vorliest. */
+  ReadAloud: {
+    schema: {
+      type: 'object',
+      properties: {
+        readaloud: { type: 'string', format: 'long', many: true, title: 'Read aloud' },
+      },
+    },
+  },
+
+  /** Einzelne festgestellte Tatsachen — je Eintrag freigebbar (REQ-059). */
+  Facts: {
+    schema: {
+      type: 'object',
+      properties: {
+        fact: { type: 'string', format: 'long', many: true, title: 'Facts' },
+      },
+    },
+  },
+
+  /** Wie man es spielt. Gehört der Spielleitung wie die Geheimnisse. */
+  Tactics: {
+    schema: {
+      type: 'object',
+      properties: {
+        tactics: { type: 'string', format: 'long', many: true, title: 'Tactics' },
+      },
+    },
+  },
+
   /**
    * Stored in full from day one; only `audience` gm/campaign is evaluated for
    * now. The remaining fields exist so player access is not a schema change.
@@ -136,6 +224,11 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
+        /* Prosa, die nur eine Kreatur hat. Ein eigener Bestandteil dafür
+           wäre einer mit genau einem Nutzer — davon gab es hier schon
+           achtunddreissig. */
+        appearance: { type: 'string', format: 'long', many: true, title: 'Appearance' },
+        personality: { type: 'string', format: 'long', many: true, title: 'Personality' },
         species: { type: 'string', title: 'Species' },
         role: { type: 'string', title: 'Role' },
         attitude: {
@@ -389,7 +482,11 @@ export const fieldGroups = {
           default: 'roleplay',
         },
         difficulty: { type: 'string', title: 'Difficulty' },
-        readaloud: { type: 'string', format: 'long', title: 'Read aloud' },
+        /* Der Vorlesetext stand hier als **ein** Absatz und kam mit
+           `ReadAloud.readaloud` noch einmal herein, sobald die Blockarten
+           Felder wurden — zwei Felder mit demselben Namen, eines davon
+           heimlich. Eine Szene hat mehrere Vorlesestellen; das Feld mit
+           `many` kann das, dieses konnte es nie. */
       },
     },
   },
@@ -422,6 +519,7 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
+        backstory: { type: 'string', format: 'long', many: true, title: 'Backstory' },
         player: { type: 'string', title: 'Player' },
         ancestry: { type: 'string', title: 'Ancestry' },
         class: { type: 'string', title: 'Class' },
@@ -459,7 +557,7 @@ export const fieldGroups = {
   },
 
   /**
-   * Wissen (A6): ein Bündel von Feldern und Textblöcken eines Artikels, das
+   * Wissen (A6): ein Bündel von Feldern und Textstellen eines Artikels, das
    * als Ganzes zugeteilt wird. Die Karte sagt nur, *was* das Bündel umfasst —
    * *wer* es kennt, steht an den `knownBy`-Kanten, weil ein Empfänger ein
    * Peg ist und eine Liste von IDs in einer Karte kein Rückbezug wäre.
@@ -468,10 +566,12 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        /* Feldverweise in der Schreibweise der Ansichten: `Comp` nimmt die
-           ganze Komponente, `Comp.field` genau ein Feld. */
+        /* Feldverweise in der Schreibweise der Ansichten: `Type` nimmt alle
+           Felder dieser Art, `Type.field` genau eines — und `Type.field#id`
+           genau einen Eintrag eines Feldes mit `many`. Die dritte Form war
+           einmal der Blockanker: ein Geheimnis von dreien freizugeben
+           heisst, genau dieses freizugeben. */
         fields: { type: 'array', title: 'Fields', items: { type: 'string' } },
-        blocks: { type: 'array', title: 'Text blocks', items: { type: 'string' } },
         /* Nur Anzeige und Sortierung. Was jemand sehen darf, entscheiden die
            Kanten — ein Rang hier wäre eine zweite, widersprechende Quelle. */
         tier: {
@@ -835,6 +935,9 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
+        /* Was hinterher darüber steht. Vor der Sitzung leer, danach der
+           Text, den die Runde liest. */
+        recap: { type: 'string', format: 'long', many: true, title: 'Recap' },
         activeScene: { type: 'string', format: 'link', title: 'Scene in play' },
         activeEncounter: { type: 'string', format: 'link', title: 'Fight in play' },
         activeMap: { type: 'string', format: 'link', title: 'Map on the table' },

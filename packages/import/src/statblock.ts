@@ -208,7 +208,6 @@ export function parseStatblock(text: string, filename: string): ImportedStatbloc
       StatblockInfo: info,
     },
     adhoc: [],
-    blocks: [],
     relations: [],
     createdAt: new Date().toISOString(),
   };
@@ -278,7 +277,6 @@ export function importStatblocks(
               Rule: { kind: kindOf(group.section) },
             },
             adhoc: [],
-            blocks: [],
             relations: [],
             createdAt: new Date().toISOString(),
           });

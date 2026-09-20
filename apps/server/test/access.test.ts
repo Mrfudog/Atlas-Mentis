@@ -27,7 +27,6 @@ const rook: Entity = {
     Identity: { name: 'Rook', key: 'pc/rook', aliases: [] }, Status: { status: 'used' },
     PlayerCharacter: { level: 5 },
   },
-  blocks: [],
   relations: [{ id: 'r1', type: 'carries', to: 'inv_rook', props: {} }],
 };
 const inv: Entity = {
@@ -37,7 +36,6 @@ const inv: Entity = {
   components: {
     Identity: { name: 'Rooks Sachen', key: 'inv/rook', aliases: [] }, Status: { status: 'used' },
   },
-  blocks: [],
   relations: [],
 };
 const fremd: Entity = {
@@ -47,7 +45,6 @@ const fremd: Entity = {
   components: {
     Identity: { name: 'Volo', key: 'npc/volo', aliases: [] }, Status: { status: 'used' },
   },
-  blocks: [],
   relations: [],
 };
 
@@ -358,11 +355,11 @@ describe('what a player gets to read', () => {
     name: 'Der Wachsmann',
     components: {
       Identity: { name: 'Der Wachsmann', key: 'npc/wachsmann', aliases: [], cover: 'die Gestalt im Mantel' }, Status: { status: 'used' }, Description: { description: 'Er heisst Aurinax und war einmal Goldschmied.' },
+      /* Prosa ist ein Feld mit Einträgen; an der Id hängt die Freigabe.
+         Das waren Blöcke mit Ankern. */
+      Prose: { paragraph: [{ id: 'paragraph-offen', value: 'Gross, still, wächsern.' }] },
+      Secrets: { secret: [{ id: 'secret-geheim', value: 'Er sucht seinen Bruder.' }] },
     },
-    blocks: [
-      { id: 'b1', anchor: 'paragraph-offen', blockType: 'paragraph', body: 'Gross, still, wächsern.', order: 0 },
-      { id: 'b2', anchor: 'secret-geheim', blockType: 'secret', body: 'Er sucht seinen Bruder.', order: 1 },
-    ],
     relations: [{ id: 'rk', type: 'knowledge', to: 'i_name', props: {} }],
   };
   const info: Entity = {
@@ -371,9 +368,8 @@ describe('what a player gets to read', () => {
     name: 'Sein richtiger Name',
     components: {
       Identity: { name: 'Sein richtiger Name', key: 'info/wachsmann-name', aliases: [] }, Status: { status: 'used' },
-      Information: { tier: 'secret', fields: ['Identity.name', 'Description.description'], blocks: [] },
+      Information: { tier: 'secret', fields: ['Identity.name', 'Description.description'] },
     },
-    blocks: [],
     relations: [],
   };
 
@@ -397,7 +393,9 @@ describe('what a player gets to read', () => {
       headers: { cookie: keks },
     });
     expect(res.json().components.Description.description).toMatch(/Aurinax/);
-    expect(res.json().blocks).toHaveLength(2);
+    /* Die Prosa ganz: die offene und die geheime. */
+    expect(res.json().components.Prose.paragraph).toHaveLength(1);
+    expect(res.json().components.Secrets.secret).toHaveLength(1);
   });
 
   /* Der eigentliche Prüfstein: der Name steht nicht in der Antwort. Nicht
@@ -416,8 +414,11 @@ describe('what a player gets to read', () => {
        bleibt nichts von ihr übrig, wird die Karte weggelassen. */
     expect(body.components.Description).toBeUndefined();
     expect(body.components.Identity.name).toBe('die Gestalt im Mantel');
-    // Ein GM-Block geht gar nicht erst mit.
-    expect(body.blocks.map((b: { anchor: string }) => b.anchor)).toEqual(['paragraph-offen']);
+    /* Ein Feld, das nur der Spielleitung gehört, geht gar nicht erst mit —
+       und die offene Prosa schon. Das war einmal die Blockart. */
+    expect(body.components.Secrets).toBeUndefined();
+    expect(body.components.Prose.paragraph.map((e: { id: string }) => e.id))
+      .toEqual(['paragraph-offen']);
   });
 
   it('sends it once the information is theirs', async () => {
@@ -592,7 +593,6 @@ describe('one account, several characters', () => {
          Maske statt auf die Vorlage. */
       PlayerCharacter: { player: 'Prüfung' },
     },
-    blocks: [],
     relations: [],
   };
   const geheim: Entity = {
@@ -602,7 +602,6 @@ describe('one account, several characters', () => {
     components: {
       Identity: { name: 'Der Wachsmann', key: 'npc/wachsmann', aliases: [] }, Status: { status: 'used' }, Description: { description: 'Er heisst Aurinax.' },
     },
-    blocks: [],
     relations: [{ id: 'rk', type: 'knowledge', to: 'i_name', props: {} }],
   };
   /* Nur **Sela** weiss es — Rook nicht. */
@@ -612,9 +611,8 @@ describe('one account, several characters', () => {
     name: 'Sein richtiger Name',
     components: {
       Identity: { name: 'Sein richtiger Name', key: 'info/name', aliases: [] }, Status: { status: 'used' },
-      Information: { tier: 'secret', fields: ['Description.description'], blocks: [] },
+      Information: { tier: 'secret', fields: ['Description.description'] },
     },
-    blocks: [],
     relations: [{ id: 'rb', type: 'knownBy', to: 'pc_sela', props: {} }],
   };
 
@@ -695,7 +693,6 @@ describe('knowledge shared with a whole group', () => {
       Identity: { name: 'Die Donnerstagsrunde', key: 'group/donnerstag', aliases: [] }, Status: { status: 'used' },
       Group: { kind: 'players', purpose: 'Wer an diesem Tisch sitzt' },
     },
-    blocks: [],
     relations: [],
   };
   const ort: Entity = {
@@ -705,7 +702,6 @@ describe('knowledge shared with a whole group', () => {
     components: {
       Identity: { name: 'Der Lampenkeller', key: 'place/keller', aliases: [] }, Status: { status: 'used' }, Description: { description: 'Der Eingang liegt hinter dem Fass.' },
     },
-    blocks: [],
     relations: [{ id: 'rk', type: 'knowledge', to: 'i_eingang', props: {} }],
   };
   /* Zugeteilt ist es der **Gruppe** — keiner einzelnen Figur. */
@@ -715,9 +711,8 @@ describe('knowledge shared with a whole group', () => {
     name: 'Wo der Eingang liegt',
     components: {
       Identity: { name: 'Wo der Eingang liegt', key: 'info/eingang', aliases: [] }, Status: { status: 'used' },
-      Information: { tier: 'secret', fields: ['Description.description'], blocks: [] },
+      Information: { tier: 'secret', fields: ['Description.description'] },
     },
-    blocks: [],
     relations: [{ id: 'rb', type: 'knownBy', to: 'grp_runde', props: {} }],
   };
 

@@ -2216,12 +2216,14 @@ async function seite(datei, warten) {
      an. */
   const zweiEltern = await p.evaluate(async () => {
     const T = window.__T__;
-    /* Ein Obertyp im Bereich `game` mit eigenem Feld und eigener Blockart —
+    /* Ein Obertyp im Bereich `rules` mit eigenem Feld und eigener Prosa —
        damit sich alle drei Vererbungswege prüfen lassen. */
     T.REG.interfaces.ProbeOben = {
       name: 'ProbeOben', label: 'Probe oben', area: 'rules', abstract: true,
-      extends: ['Identity'], blockTypes: ['+probeblock'],
-      schema: { type: 'object', properties: { probefeld: { type: 'string', title: 'Probe' } } },
+      extends: ['Identity'],
+      schema: { type: 'object', properties: {
+        probefeld: { type: 'string', title: 'Probe' },
+        probeprosa: { type: 'string', format: 'long', many: true, title: 'Probe prose' } } },
     };
     /* Erbt von **zwei** Ästen: Item (Bereich world) und ProbeOben (game). */
     T.REG.interfaces.ProbeZwei = {
@@ -2232,8 +2234,8 @@ async function seite(datei, warten) {
       felder: T.compsFor('ProbeZwei'),
       /* Bereich: der erste Ast gewinnt — Item steht vorn, also `world`. */
       bereich: T.areaOf('ProbeZwei'),
-      /* Blockarten: die des zweiten Astes müssen dabei sein. */
-      bloecke: T.blockTypesFor('ProbeZwei'),
+      /* Prosafelder: die des zweiten Astes müssen dabei sein. */
+      prosa: T.proseFields('ProbeZwei').map((f) => f.type + '.' + f.key),
       /* Kanten: eine Kante, die an `Item` hängt, und eine an `Identity`. */
       kanten: T.relsFrom('ProbeZwei').map((r) => r.type),
       /* Und woher ein Feld kommt, muss über beide Äste gefunden werden. */
@@ -2246,9 +2248,9 @@ async function seite(datei, warten) {
   pruefe('a kind may inherit from two branches, and gets both their fields',
     zweiEltern.felder.includes('ProbeOben') && zweiEltern.felder.includes('Item'),
     zweiEltern.felder);
-  pruefe('block kinds come from every branch, not just the first',
-    zweiEltern.bloecke.includes('probeblock') && zweiEltern.bloecke.includes('lore'),
-    zweiEltern.bloecke);
+  pruefe('passage fields come from every branch, not just the first',
+    zweiEltern.prosa.includes('ProbeOben.probeprosa') && zweiEltern.prosa.includes('Lore.lore'),
+    zweiEltern.prosa);
   /* Der Bereich kann nur einer sein: der erste genannte Ast gewinnt. Eine
      Reihenfolge, nach der man eine Aufzählung liest. */
   pruefe('the area comes from the branch named first',
@@ -2258,29 +2260,32 @@ async function seite(datei, warten) {
   pruefe('multiple inheritance raised no exception', errs.length === 0, errs);
   pruefe('the type overview raised no exception', errs.length === 0, errs);
 
-  /* ---- Blockanker und Kampagnenwerte (B3) ----
+  /* ---- Prosaanker und Kampagnenwerte (B3) ----
      Beides hängt daran, dass ein Bezeichner hält. Ein Anker, der sich beim
      Import ändert, nimmt jede Wissenszuteilung mit ins Leere — und das
-     fällt niemandem auf: der Block ist da, der Text ist da, und die
-     Information hat nur plötzlich nichts mehr zu verbergen. */
+     fällt niemandem auf: die Stelle ist da, der Text ist da, und die
+     Information hat nur plötzlich nichts mehr zu verbergen.
+
+     Seit Blöcke Felder sind, ist der Anker die **Eintrags-Id** eines Feldes
+     mit `many`. Eine erzeugte Id (`e0`, `e1` …) hält nur, solange die
+     Reihenfolge hält — genau daran hing der Verlust. */
   const anker = await p.evaluate(() => {
     const T = window.__T__;
-    let blocks = 0, mit = 0, ausId = 0;
+    let stellen = 0, erzeugt = 0;
     const doppelt = {};
     T.ENT.forEach((e) => {
       const hier = {};
-      (e.blocks || []).forEach((b) => {
-        blocks++;
-        if (b.anchor) mit++;
-        if (b.anchor === b.id) ausId++;
-        if (hier[b.anchor]) doppelt[e.id] = b.anchor;
-        hier[b.anchor] = 1;
+      T.allProse(e).forEach((x) => {
+        stellen++;
+        if (/^e\d+$/.test(x.id)) erzeugt++;
+        if (hier[x.ref]) doppelt[e.id] = x.ref;
+        hier[x.ref] = 1;
       });
     });
-    return { blocks, mit, ausId, doppelt: Object.keys(doppelt) };
+    return { stellen, erzeugt, doppelt: Object.keys(doppelt) };
   });
-  pruefe('every block carries an anchor, and none of them is just its id',
-    anker.blocks > 0 && anker.mit === anker.blocks && anker.ausId === 0, anker);
+  pruefe('every passage carries an anchor, and none of them is a generated id',
+    anker.stellen > 0 && anker.erzeugt === 0, anker);
   pruefe('anchors are unique inside their own article',
     anker.doppelt.length === 0, anker.doppelt);
 
@@ -2288,32 +2293,34 @@ async function seite(datei, warten) {
      Anker — das ist die ganze Eigenschaft, um die es geht. */
   const stabil = await p.evaluate(() => {
     const T = window.__T__;
-    const e = [...T.ENT.values()].find((x) => (x.blocks || []).length > 1);
-    const b = e.blocks[0];
-    const kopie = { id: 'b_ganz_anders', blockType: b.blockType, body: b.body };
-    return { alt: b.anchor, neu: T.anchorFor({ blocks: [] }, kopie) };
+    let treffer = null;
+    T.ENT.forEach((e) => {
+      if (treffer) return;
+      const st = T.allProse(e);
+      if (st.length) treffer = st[0];
+    });
+    return { alt: treffer.id, neu: T.entryAnchor(treffer.key, treffer.value, {}) };
   });
   pruefe('the same text yields the same anchor, whatever its id is',
     stabil.alt === stabil.neu, stabil);
 
-  /* Und die Wissenszuteilungen zeigen auf Anker, nicht auf Ids. */
+  /* Und die Wissenszuteilungen zeigen auf Anker, nicht auf erzeugte Ids. */
   const zuteilung = await p.evaluate(() => {
     const T = window.__T__;
-    const ids = {};
-    T.ENT.forEach((e) => (e.blocks || []).forEach((b) => { ids[b.id] = 1; }));
+    const echte = {};
+    T.ENT.forEach((e) => T.allProse(e).forEach((x) => { echte[x.ref] = 1; }));
     const schlecht = [];
     T.ENT.forEach((i) => {
       const info = (i.components || {}).Information;
-      if (!info || !Array.isArray(info.blocks)) return;
-      info.blocks.forEach((a) => {
-        const anker = [];
-        T.ENT.forEach((e) => (e.blocks || []).forEach((b) => { if (b.anchor === a) anker.push(1); }));
-        if (!anker.length && ids[a]) schlecht.push(i.id + ':' + a);
+      if (!info || !Array.isArray(info.fields)) return;
+      info.fields.forEach((r) => {
+        if (r.indexOf('#') < 0) return;         /* ein ganzes Feld, kein Eintrag */
+        if (/#e\d+$/.test(r) || !echte[r]) schlecht.push(i.id + ':' + r);
       });
     });
     return schlecht;
   });
-  pruefe('a knowledge grant on a block names its anchor, not its id',
+  pruefe('a knowledge grant on a passage names its anchor, not a generated id',
     zuteilung.length === 0, zuteilung);
 
   /* Kampagnenwerte: gerechnet, und sie schlagen eine gleichnamige Zeile im
@@ -2958,12 +2965,12 @@ async function seite(datei, warten) {
     const alsFremd = await sicht(paar2.fremdId);
 
     pruefe('the GM sees everything',
-      alsGM.bloecke.includes('secret') && alsGM.felder.length > alsFremd.felder.length, alsGM);
-    /* Wer die Information kennt, sieht ihre Felder und ihren Block — auch
-       wenn der Block `secret` heisst: eine ausdrückliche Freigabe schlägt
-       die Voreinstellung, sonst wäre jede Freigabe wirkungslos. */
-    pruefe('a granted secret block reaches the one who knows it',
-      alsKenner.bloecke.includes('secret') && !alsFremd.bloecke.includes('secret'),
+      alsGM.bloecke.includes('Secrets') && alsGM.felder.length > alsFremd.felder.length, alsGM);
+    /* Wer die Information kennt, sieht ihre Felder und ihre Textstelle —
+       auch wenn sie im Feld `secret` steht: eine ausdrückliche Freigabe
+       schlägt die Voreinstellung, sonst wäre jede Freigabe wirkungslos. */
+    pruefe('a granted secret passage reaches the one who knows it',
+      alsKenner.bloecke.includes('Secrets') && !alsFremd.bloecke.includes('Secrets'),
       { alsKenner: alsKenner.bloecke, alsFremd: alsFremd.bloecke });
     /* Die Fussnote „Not yours yet" ist kein Feld, sondern die Auskunft,
        dass eines fehlt (REQ-179) — sie zählt hier nicht mit. */
@@ -3475,13 +3482,13 @@ async function seite(datei, warten) {
       const regeln = [...T.ENT.values()].filter((e) => (e.interfaces || [])[0] === 'Rule');
       const namen = regeln.map((e) => e.name || (e.components.Imported || {}).text)
         .filter((n) => n && n.length >= 4);
-      /* Prosa ist die Beschreibung und die Textblöcke — nicht der ganze
+      /* Prosa ist die Beschreibung und die Textstellen — nicht der ganze
          Artikel. Der Name selbst zählt nicht: ein Artikel, der „Verzicht:
          Verstrickt" heisst, nennt keine Regel im Text, und ein Treffer
          darauf prüfte die Suche statt das Erkennen. */
       const prosa = (x) => {
         let t = ((x.components || {}).Description || {}).description || '';
-        (x.blocks || []).forEach((b) => { t += ' ' + (b.body || ''); });
+        T.allProse(x).forEach((y) => { t += ' ' + (y.value || ''); });
         return t;
       };
       const textVon = (x) => {

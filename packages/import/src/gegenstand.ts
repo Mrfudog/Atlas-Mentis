@@ -162,10 +162,10 @@ export function parseItem(text: string, filename: string): ImportedItem {
     .replace(/^#+\s*Eigenschaften[\s\S]*$/im, '')
     .trim();
 
-  const blocks: Entity['blocks'] = [];
-  if (prose) {
-    blocks.push({ id: newId('b'), blockType: 'paragraph', body: prose, order: 0 });
-  }
+  /* Fliesstext ist ein Feld mit `many`, kein Block mehr. Die Id des
+     Eintrags ist das, woran eine Wissensfreigabe hängt — sie war der
+     Anker. */
+  if (prose) components['Prose'] = { paragraph: [{ id: newId('b'), value: prose }] };
 
   // `tags` always carries `gegenstand` plus, inconsistently, a type tag.
   const tags = list(fm, 'tags').filter((t) => t !== 'gegenstand');
@@ -177,7 +177,6 @@ export function parseItem(text: string, filename: string): ImportedItem {
     name,
     components,
     adhoc: [],
-    blocks,
     relations: [],
     createdAt: new Date().toISOString(),
   };

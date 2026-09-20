@@ -450,12 +450,12 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
     if (!user || user.isGm) return entities;
     const registry = await repo.getRegistry();
     /* Der Zusammenhang ist immer der ganze Bestand, auch wenn nur ein
-       Artikel gesiebt wird: welche Information einen Block beansprucht und
+       Artikel gesiebt wird: welche Information ein Feld beansprucht und
        wem sie gehört, steht an anderen Artikeln. Mit einer Karte aus nur
        diesem einen fände das Sieb keine einzige Information — und liesse
        alles durch, ohne dass irgendwo etwas schiefginge. */
     const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
-    const gmBlocks = String(registry.settings?.['gmBlockTypes'] ?? 'secret,tactics')
+    const gmFields = String(registry.settings?.['gmFields'] ?? 'Secrets.secret,Tactics.tactics')
       .split(',')
       .map((x) => x.trim())
       .filter(Boolean);
@@ -468,7 +468,7 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
        Spielleitung und sieht alles, `[]` heisst ein Konto ohne Figur und
        sieht genau das Offene. Das ist die richtige Vorgabe — ein Konto
        ohne Figur ist eines, dem noch nichts zugeteilt wurde. */
-    return entities.map((e) => redactEntity(registry, alle, e, user.actorIds ?? [], gmBlocks));
+    return entities.map((e) => redactEntity(registry, alle, e, user.actorIds ?? [], gmFields));
   }
 
   app.get('/api/entities', async (request) => sieve(request, await repo.listEntities()));

@@ -34,7 +34,6 @@ export class PgRepository implements Repository {
         abstract: Boolean(r['abstract']),
         extends: (r['extends'] as string[]) ?? [],
         schema: (r['schema'] as InterfaceDef['schema']) ?? undefined,
-        blockTypes: (r['block_types'] as string[]) ?? [],
         area: (r['area'] as InterfaceDef['area']) ?? undefined,
         units: (r['units'] as InterfaceDef['units']) ?? undefined,
         /* Die Anordnung wohnt am Typ (D28): eine Kreatur ordnet ihre `full`
@@ -87,10 +86,10 @@ export class PgRepository implements Repository {
         await client.query('delete from interface_def');
         for (const [name, def] of Object.entries(value as Registry['interfaces'])) {
           await client.query(
-            `insert into interface_def(name,label,abstract,extends,schema,block_types,area,views,units)
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+            `insert into interface_def(name,label,abstract,extends,schema,area,views,units)
+             values ($1,$2,$3,$4,$5,$6,$7,$8)`,
             [name, def.label ?? null, def.abstract ?? false, def.extends ?? [],
-             def.schema ? JSON.stringify(def.schema) : null, def.blockTypes ?? [],
+             def.schema ? JSON.stringify(def.schema) : null,
              def.area ?? null, def.views ? JSON.stringify(def.views) : null,
              def.units ?? null],
           );
@@ -174,7 +173,6 @@ export class PgRepository implements Repository {
       name: (byType['Name']?.['text'] as string) ?? '',
       components: byType,
       adhoc: (meta['adhoc'] as Entity['adhoc']) ?? [],
-      blocks: (meta['blocks'] as Entity['blocks']) ?? [],
       relations: relations.rows.map((r) => ({
         id: r['id'] as string,
         type: r['type'] as string,
@@ -210,7 +208,6 @@ export class PgRepository implements Repository {
         JSON.stringify({
           interfaces: entity.interfaces,
           adhoc: entity.adhoc ?? [],
-          blocks: entity.blocks ?? [],
         }),
       ]);
 

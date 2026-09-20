@@ -782,6 +782,9 @@ table.craftm tr.crrow.unknown td{color:var(--dim);font-style:italic}
 .fld.withheld dd{color:var(--dim);font-style:italic}
 .kgrp.withheldgrp{border-style:dashed;opacity:.8}
 .kgrp.withheldgrp .kh b{color:var(--dim)}
+.blk .editable{cursor:text;border-radius:2px;margin:0 -3px;padding:0 3px}
+.blk .editable:hover{background:var(--accent-soft);box-shadow:inset 0 -1px 0 var(--accent)}
+.blk textarea.i{min-height:70px}
 .fld dd.editable{cursor:text;border-radius:2px;margin:1px -3px 0;padding:0 3px}
 .fld dd.editable:hover{background:var(--accent-soft);box-shadow:inset 0 -1px 0 var(--accent)}
 .fld dd.editing{margin-top:2px}
@@ -932,13 +935,16 @@ var UI={route:{k:"list"}, view:"quick", area:"", iface:"", tag:"", q:"", offen:f
 /* Darstellungsstufen (Facets, REQ-164) — registry rows, not code.
    Fallback only; the live set lives in registry/views. */
 var VIEWS_FALLBACK={
-  overview:{label:"Overview",order:1,fields:"none",blocks:[],
-           description:true,relations:false,bindings:false,
+  overview:{label:"Overview",order:1,
            layout:[{id:"ov-desc",el:"description"}]},
-  quick:{label:"Quick",order:2,fields:"none",blocks:["paragraph","readaloud"],
-           description:true,relations:false,bindings:false},
-  full:   {label:"Full",order:3,fields:"all",blocks:"all",
-           description:true,relations:true,bindings:true}
+  quick:{label:"Quick",order:2,
+           layout:[{id:"q-img",el:"image"},{id:"q-desc",el:"description"},
+                   {id:"q-p",el:"prose",fields:["Prose.paragraph","ReadAloud.readaloud"]}]},
+  full:   {label:"Full",order:3,
+           layout:[{id:"f-img",el:"image"},{id:"f-desc",el:"description"},
+                   {id:"f-f",el:"fields",fields:"all",columns:0},
+                   {id:"f-p",el:"prose",fields:"all"},
+                   {id:"f-c",el:"composed"},{id:"f-r",el:"relations"}]}
 };
 /* **Der Ort wählt die Ansicht, nicht ein Schalter.** Ein Verweis im Text
    ist ein Verweis, eine Karte auf dem Board ist eine Karte, und die
@@ -1143,10 +1149,77 @@ function fmtVal(pd,x,ifn){
   if(pd&&pd.format==="measure") return convertText(String(x),unitsFor(ifn));
   return String(x);
 }
-/* does this view show this block type? blocks: "all" | [Blockarten] */
-function showBlock(v,bt){
-  if(v.blocks==="all")return true;
-  return Array.isArray(v.blocks)&&v.blocks.indexOf(bt)>=0;
+/* ---------- Prosa ----------
+   Das waren **Blöcke**: `{blockType, body, anchor}` neben den Feldern, mit
+   einer eigenen Liste erlaubter Arten je Artikelart — also eine zweite
+   Frage, die jede Art zweimal beantworten musste.
+
+   Jetzt ist die Blockart das Feld: `secret` ist ein Feld mit `many` und
+   langer Eingabe, und seine Einträge tragen die Id, an der die
+   Wissensfreigabe hängt. Das war der Anker. */
+function entriesOf(v){
+  if(v===undefined||v===null||v==="")return [];
+  var eintrag=function(x,i){
+    if(x&&typeof x==="object")
+      return {id:(typeof x.id==="string"&&x.id)?x.id:("e"+i),
+              value:typeof x.value==="string"?x.value:String(x.value==null?"":x.value)};
+    return {id:"e"+i,value:String(x)};
+  };
+  if(Array.isArray(v))return v.map(eintrag);
+  return [eintrag(v,0)];
+}
+function entryRef(t,k,id){ return t+"."+k+"#"+id; }
+
+/** Die Prosafelder einer Art: `many` und lange Eingabe. Wer sie sucht,
+ *  fragt nach ihrer Form und nicht nach einer zweiten Liste. */
+function proseFields(ifn){
+  return fieldsOf(ifn).filter(function(f){
+    return f.prop&&f.prop.many&&f.prop.format==="long"; });
+}
+
+/** Was auf dieser Artikelseite an Prosa steht — je Eintrag eine Zeile, mit
+ *  dem Feld, das sie erklärt, und dem Verweis, an dem die Freigabe hängt. */
+function proseOf(e,ifn,want,ausser){
+  var weg=Array.isArray(ausser)?ausser:[];
+  var zeig=function(t,k){
+    if(weg.indexOf(t)>=0||weg.indexOf(t+"."+k)>=0)return false;
+    if(want==="all"||!want)return true;
+    if(!Array.isArray(want))return false;
+    return want.indexOf(t)>=0||want.indexOf(t+"."+k)>=0;
+  };
+  var out=[];
+  proseFields(ifn).forEach(function(f){
+    if(!zeig(f.type,f.key))return;
+    var karte=(e.components||{})[f.type];
+    if(!karte)return;
+    entriesOf(karte[f.key]).forEach(function(x){
+      out.push({type:f.type,key:f.key,prop:f.prop,id:x.id,value:x.value,
+                ref:entryRef(f.type,f.key,x.id)});
+    });
+  });
+  return out;
+}
+
+/** Einen Eintrag schreiben, anlegen oder wegnehmen. Eine Stelle, damit die
+ *  Form des Werts nicht an zehn Orten geraten wird. */
+function putEntry(e,typ,key,id,value){
+  e.components=e.components||{};
+  var karte=e.components[typ]=e.components[typ]||{};
+  var liste=entriesOf(karte[key]);
+  var da=false;
+  liste=liste.map(function(x){ if(x.id===id){ da=true; return {id:id,value:value}; } return x; });
+  if(!da) liste.push({id:id,value:value});
+  karte[key]=liste;
+}
+function dropEntry(e,typ,key,id){
+  var karte=((e.components||{})[typ])||{};
+  var liste=entriesOf(karte[key]).filter(function(x){ return x.id!==id; });
+  if(liste.length) karte[key]=liste; else delete karte[key];
+  if(!Object.keys(karte).length) delete e.components[typ];
+}
+/** Alle Prosaeinträge eines Artikels, ohne Rücksicht auf eine Ansicht. */
+function allProse(e){
+  return proseOf(e,(e.interfaces||[])[0]||"","all",null);
 }
 
 /* ---------- field kinds ----------
@@ -1378,7 +1451,7 @@ function uploadAsset(file){
 function newAssetArticle(name,res){
   var e={ id:uid("as"), interfaces:[ASSET_IFACE], name:name,
     components:{ Identity:{name:name,key:"asset/"+slug(name),aliases:[]} },
-    adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
+    adhoc:[], relations:[], createdAt:new Date().toISOString() };
   reqFor(ASSET_IFACE).forEach(function(c){ if(!e.components[c]&&REG.interfaces[c]) e.components[c]={}; });
   applyDefaults(e,ASSET_IFACE);
   e.components[ASSET_COMP]=Object.assign(e.components[ASSET_COMP]||{},{
@@ -1590,13 +1663,6 @@ function reqFor(name){
     return Object.keys(props).some(function(k){
       return !props[k].derived && props[k]["default"]!==undefined; });
   });
-}
-function blockTypesFor(name){
-  var d=REG.interfaces[name]; if(!d)return ["paragraph"];
-  var out=[]; (d.extends||[]).forEach(function(p){out=out.concat(blockTypesFor(p));});
-  (d.blockTypes||[]).forEach(function(b){ out.push(b.charAt(0)==="+"?b.slice(1):b); });
-  out=out.filter(function(b,i){return out.indexOf(b)===i;});
-  return out.length?out:["paragraph"];
 }
 /* ---------- registry: hierarchy and provenance ---------- */
 /* Subtypen sind keine eigene Sorte Zeile: eine Schnittstelle, die eine andere
@@ -2415,8 +2481,9 @@ function matches(e){
   if(UI.tag && tagsOf(e).indexOf(UI.tag)<0) return false;
   if(UI.status && (((e.components||{}).Status||{}).status)!==UI.status) return false;
   if(UI.q){
+    /* Prosa steht jetzt in den Karten und ist damit schon im Stringify —
+       eine zweite Zeile dafür fände dieselben Wörter zweimal. */
     var hay=(nameOf(e)+" "+tagsOf(e).join(" ")+" "+
-      (e.blocks||[]).map(function(b){return b.body;}).join(" ")+" "+
       JSON.stringify(e.components||{})).toLowerCase();
     if(hay.indexOf(UI.q.toLowerCase())<0) return false;
   }
@@ -2425,8 +2492,9 @@ function matches(e){
 function summary(e){
   var d=e.components&&e.components.Description&&e.components.Description.description;
   if(d)return d;
-  var b=(e.blocks||[]).filter(function(x){return x.blockType!=="secret";})[0];
-  return b?b.body:"";
+  var geheim=gmFields();
+  var p=allProse(e).filter(function(x){ return geheim.indexOf(x.type+"."+x.key)<0; })[0];
+  return p?p.value:"";
 }
 
 /* ---------- Marken ----------
@@ -2611,7 +2679,6 @@ function renderArticle(v,id){
       "aria-pressed":String(!!UI.inline),onclick:function(){
         UI.inline=!UI.inline; UI.editField=""; render(); }},
       UI.inline?"Done editing":"Edit all fields"));
-    bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addBlock(e);}},"+ Block"));
     bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addRelation(e);}},"+ Relation"));
     bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){addAdhoc(e);}},"+ Custom field"));
     bar.appendChild(el("button",{class:"btn sm dngr gh",type:"button",onclick:function(){
@@ -2985,7 +3052,7 @@ function renderTrail(){
    migriert werden muss, bevor es jemand anfasst. */
 var LAYOUT_ELEMENTS=[
   ["heading","Heading"],["text","Paragraph"],["fields","Field table"],
-  ["description","Description"],["blocks","Text blocks"],
+  ["description","Description"],["prose","Passages"],
   ["composed","Composed rules"],["relations","Relations"],["image","Image"],
   ["knowledge","Knowledge groups"],["map","Map"],["sheet","Character sheet"],["inventory","Inventory"],["crafting","Crafting"],["board","Board"],["initiative","Initiative"],
   ["quests","Quest board"],["timeline","Timeline"],["live","Live"],["table","Table"],["prep","Prep board"],["crawl","Point-crawl"],["stack","Layer stack"],["standing","Standing"],
@@ -3011,7 +3078,7 @@ function legacyLayout(vw){
   if(vw.image) out.push({id:"l-img",el:"image"});
   if(vw.description!==false) out.push({id:"l-desc",el:"description"});
   if(vw.fields&&vw.fields!=="none") out.push({id:"l-f",el:"fields",fields:vw.fields,columns:0});
-  if(vw.blocks&&(vw.blocks==="all"||vw.blocks.length)) out.push({id:"l-b",el:"blocks",blocks:vw.blocks});
+  if(vw.blocks&&(vw.blocks==="all"||vw.blocks.length)) out.push({id:"l-b",el:"prose",fields:vw.blocks});
   if(vw.composed!==false) out.push({id:"l-c",el:"composed"});
   return out;
 }
@@ -3058,7 +3125,7 @@ function renderLayoutItem(item,e,ifn,vw){
     case "image":       return elImage(e);
     case "description": return elDescription(e);
     case "fields":      return elFields(e,ifn,item);
-    case "blocks":      return elBlocks(e,item);
+    case "prose":       return elProse(e,ifn,item);
     case "composed":    return elComposed(e);
     case "relations":   return elRelations(e);
     case "knowledge":   return elKnowledge(e,ifn,item);
@@ -3135,6 +3202,10 @@ function fieldPlan(e,ifn,want,ausser){
       var pd=props[p];
       if(!zeig(cn,p))return;
       if(pd.derived&&pd.of)return;
+      /* Ein Prosafeld gehört `elProse` und nicht der Tabelle. Zweimal
+         dasselbe zu zeigen — oben als Zeile, unten als Absatz — war genau
+         das, was an den Blöcken störte, und es käme mit ihnen zurück. */
+      if(pd.many&&pd.format==="long")return;
       var txt=fmtVal(pd, pd.derived?derivedValue(pd,val):val[p], ifn);
       if(txt===""){
         if(!pd.derived) frei.push({cn:cn,p:p,pd:pd,ref:cn+"."+p,
@@ -3225,36 +3296,83 @@ function elFields(e,ifn,item){
   return nf?flds:null;
 }
 
-function elBlocks(e,item){
-  var want=item.blocks;
-  /* `except` gilt auch für Blöcke, aus demselben Grund wie bei den Feldern:
-     „alles ausser Geheimnissen" bleibt richtig, wenn eine neue Blockart
-     dazukommt. Eine ausgeschriebene Liste wäre am selben Tag falsch — die
-     neue Art stünde nirgends, bis jemand sie nachträgt. */
-  var weg=Array.isArray(item["except"])?item["except"]:[];
-  var zeig=function(bt){
-    if(weg.indexOf(bt)>=0)return false;
-    return want==="all"||(Array.isArray(want)&&want.indexOf(bt)>=0);
-  };
-  var blocks=(e.blocks||[]).slice().sort(function(a,b){return (a.order||0)-(b.order||0);});
+/* Prosa zeichnen. `except` gilt hier wie bei den Feldern und aus demselben
+   Grund: „alles ausser den Geheimnissen" bleibt richtig, wenn ein neues
+   Prosafeld dazukommt — eine ausgeschriebene Liste wäre am selben Tag
+   falsch, und das Neue stünde nirgends. */
+function elProse(e,ifn,item){
+  var stuecke=proseOf(e,ifn,item.fields||"all",item["except"]);
   if(!isGM()){
-    var ok={}; visibleBlockIds(e).forEach(function(k){ ok[k]=1; });
-    blocks=blocks.filter(function(b){ return ok[b.anchor||b.id]; });
+    var ok={};
+    visibleRefs(e,stuecke.map(function(x){return x.ref;})).forEach(function(r){ ok[r]=1; });
+    stuecke=stuecke.filter(function(x){ return ok[x.ref]; });
   }
   var bw=el("div",{class:"blocks"});
-  blocks.forEach(function(b){
-    if(!zeig(b.blockType))return;
-    var box=el("div",{class:"blk "+b.blockType});
-    if(b.blockType!=="paragraph"){
-      var blockLabel=el("div",{class:"bl"},[document.createTextNode(b.blockType)]);
-      if(canWrite()) blockLabel.appendChild(el("button",{class:"btn gh sm",type:"button",
-        onclick:function(){ confirmDialog("Delete this block?",function(){
-          e.blocks=e.blocks.filter(function(x){return x.id!==b.id;}); persist(e); }); }},"×"));
-      box.appendChild(blockLabel);
+  stuecke.forEach(function(x){
+    var box=el("div",{class:"blk "+x.key});
+    /* Der gewöhnliche Fliesstext trägt keine Überschrift — „Text" über
+       einem Absatz sagt nichts. Alles andere sagt, was es ist. */
+    if(x.key!=="paragraph"){
+      var kopf=el("div",{class:"bl"},[document.createTextNode(x.prop.title||x.key)]);
+      if(canWrite()) kopf.appendChild(el("button",{class:"btn gh sm",type:"button",
+        onclick:function(){ confirmDialog("Delete this passage?",function(){
+          dropEntry(e,x.type,x.key,x.id); persist(e); }); }},"×"));
+      box.appendChild(kopf);
     }
-    box.appendChild(para(fillVars(b.body,null,e)));
+    /* An Ort und Stelle schreiben. Eine Stelle, die man nur über eine
+       Maske irgendwo anders ändern kann, ändert niemand. */
+    var offen=canWrite()&&!inPlacement&&(UI.inline||UI.editField===x.ref);
+    if(offen){
+      var ta=el("textarea",{class:"i"});
+      ta.value=x.value;
+      ta.addEventListener("change",function(){
+        var neu=ta.value;
+        if(!neu.trim()) dropEntry(e,x.type,x.key,x.id);
+        else putEntry(e,x.type,x.key,x.id,neu);
+        if(!UI.inline) UI.editField="";
+        persist(e);
+      });
+      ta.addEventListener("keydown",function(ev){
+        if(ev.key==="Escape"){ UI.editField=""; render(); } });
+      box.appendChild(ta);
+      if(!UI.inline) setTimeout(function(){ try{ ta.focus(); }catch(z){} },0);
+    } else {
+      var text=para(fillVars(x.value,null,e));
+      if(canWrite()&&!inPlacement){
+        text.classList.add("editable");
+        text.addEventListener("click",function(){ UI.editField=x.ref; render(); });
+      }
+      box.appendChild(text);
+    }
     bw.appendChild(box);
   });
+  /* Und ein Weg, eine Stelle dazuzuschreiben. Er steht hier und nicht in
+     einem Menü: wer gerade liest, weiss, was fehlt. */
+  if(canWrite()&&!inPlacement){
+    var moeglich=proseFields(ifn).filter(function(f){
+      var weg=Array.isArray(item["except"])?item["except"]:[];
+      if(weg.indexOf(f.type)>=0||weg.indexOf(f.type+"."+f.key)>=0)return false;
+      var want=item.fields||"all";
+      return want==="all"||(Array.isArray(want)&&
+        (want.indexOf(f.type)>=0||want.indexOf(f.type+"."+f.key)>=0));
+    });
+    if(moeglich.length){
+      var bar=el("div",{class:"addfield"});
+      var sel=el("select",{class:"i"});
+      sel.appendChild(el("option",{value:""},"+ passage"));
+      moeglich.forEach(function(f){
+        sel.appendChild(el("option",{value:f.type+"."+f.key},f.prop.title||f.key)); });
+      sel.addEventListener("change",function(){
+        if(!sel.value)return;
+        var teil=sel.value.split("."), id=uid("b");
+        putEntry(e,teil[0],teil[1],id,"");
+        UI.editField=entryRef(teil[0],teil[1],id);
+        persist(e);
+      });
+      bar.appendChild(sel);
+      bw.appendChild(bar);
+    }
+  }
   return bw.childNodes.length?bw:null;
 }
 
@@ -3276,7 +3394,7 @@ function elComposed(e){
       tn.appendChild(el("button",{class:"ref",type:"button",onclick:function(){go({k:"art",id:t.id});}},
         (r.props&&r.props.vars&&r.props.vars.NAME)||nameOf(t)));
       box.appendChild(tn);
-      var body=((t.components||{}).Description||{}).description||((t.blocks||[])[0]&&t.blocks[0].body)||"";
+      var body=((t.components||{}).Description||{}).description||(allProse(t)[0]||{}).value||"";
       /* Reihenfolge nach REQ-174: Bindung an der Kante → der *nutzende*
          Artikel → Kampagnenregister. Der Statblock trägt DC=12, nicht die
          Regel — gegen die Regel aufzulösen lässt {DC} stehen. */
@@ -3937,7 +4055,7 @@ function elPrep(e,ifn,item){
           name:t.slice(0,60),
           components:{ Identity:{name:t.slice(0,60),key:"idea/"+slug(t).slice(0,40),aliases:[]},
             Status:{status:"idea"}, Description:{description:t}, Tags:{tags:["idee"]} },
-          adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
+          adhoc:[], relations:[], createdAt:new Date().toISOString() };
         reqFor(neu.interfaces[0]).forEach(function(c){
           if(!neu.components[c]&&REG.interfaces[c]) neu.components[c]={}; });
         applyDefaults(neu,neu.interfaces[0]);
@@ -4532,8 +4650,8 @@ function ruleArticles(){
 function ruleText(e){
   var d=((e.components||{}).Description||{}).description;
   if(d)return d;
-  var b=(e.blocks||[])[0];
-  return b?b.body:"";
+  var p=allProse(e)[0];
+  return p?p.value:"";
 }
 /* Die Namen und Aliasse, gegen die der Fliesstext geprüft wird. Lang vor
    kurz, damit „Umschlingen des Schleims" nicht als „Umschlingen" endet. */
@@ -4958,23 +5076,23 @@ function renderBackupEditor(v){
   v.appendChild(bar2);
   v.appendChild(bericht);
 
-  /* Blockanker nachtragen. Steht hier, weil es dieselbe Sorte Arbeit ist
-     wie eine Sicherung: etwas, das man einmal tut, damit ein späterer
-     Import nichts verliert. */
-  v.appendChild(el("div",{class:"sec",text:"Block anchors"}));
-  var ohne=anchorlessBlocks();
+  /* Ids für die Textstellen nachtragen. Steht hier, weil es dieselbe Sorte
+     Arbeit ist wie eine Sicherung: etwas, das man einmal tut, damit ein
+     späterer Import nichts verliert. */
+  v.appendChild(el("div",{class:"sec",text:"Passage anchors"}));
+  var ohne=anchorlessProse();
   v.appendChild(el("p",{class:"hint",
-    text:ohne?(ohne+" block"+(ohne===1?"":"s")+" still hang on a generated id. "+
-      "Re-import the same article and every knowledge grant on those blocks points at nothing — "+
-      "the block is still there, the text is still there, and the information has simply "+
+    text:ohne?(ohne+" passage"+(ohne===1?"":"s")+" still hang on a generated id. "+
+      "Re-import the same article and every knowledge grant on those passages points at nothing — "+
+      "the passage is still there, the text is still there, and the information has simply "+
       "stopped guarding anything.")
-      :"Every block carries an anchor derived from its own text. A re-import keeps the knowledge grants."}));
+      :"Every passage carries an anchor derived from its own text. A re-import keeps the knowledge grants."}));
   if(ohne&&canWrite()){
     var abar=el("div",{class:"rowbtns"});
     abar.appendChild(el("button",{class:"btn",type:"button",onclick:function(){
-      confirmDialog("Give every block an anchor and move the knowledge grants over?",
+      confirmDialog("Give every passage an anchor and move the knowledge grants over?",
         function(){ backfillAnchors(function(t){ msg.textContent=t; }); },"Anchor them");
-    }},"Anchor every block"));
+    }},"Anchor every passage"));
     v.appendChild(abar);
   }
 
@@ -5861,7 +5979,7 @@ function newOnBoard(e){
       var ifn2=sel.value;
       var neu={ id:uid("e"), interfaces:[ifn2], name:name,
         components:{ Identity:{name:name,key:slug(ifn2)+"/"+slug(name),aliases:[]} },
-        adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
+        adhoc:[], relations:[], createdAt:new Date().toISOString() };
       if(tx.value.trim()) neu.components.Description={description:tx.value.trim()};
       reqFor(ifn2).forEach(function(c){ if(!neu.components[c]&&REG.interfaces[c]) neu.components[c]={}; });
       applyDefaults(neu,ifn2);
@@ -6786,7 +6904,7 @@ function newInventory(e){
   var name=nameOf(e)+" — gear";
   var inv={ id:uid("inv"), interfaces:[INV_IFACE], name:name,
     components:{ Identity:{name:name,key:"inventory/"+slug(name),aliases:[]} },
-    adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
+    adhoc:[], relations:[], createdAt:new Date().toISOString() };
   reqFor(INV_IFACE).forEach(function(c){ if(!inv.components[c]&&REG.interfaces[c]) inv.components[c]={}; });
   applyDefaults(inv,INV_IFACE);
   ENT.set(inv.id,inv);
@@ -8270,7 +8388,7 @@ function addSubmap(e,rahmen){
         var name=nm.value.trim(); if(!name){nm.focus();return false;}
         kind={ id:uid("mp"), interfaces:[MAP_IFACE], name:name,
           components:{ Identity:{name:name,key:"map/"+slug(name),aliases:[]} },
-          adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
+          adhoc:[], relations:[], createdAt:new Date().toISOString() };
         reqFor(MAP_IFACE).forEach(function(c){ if(!kind.components[c]&&REG.interfaces[c]) kind.components[c]={}; });
         applyDefaults(kind,MAP_IFACE);
         ENT.set(kind.id,kind);
@@ -8336,38 +8454,28 @@ function visibleRefs(e,refs){
   var a=viewerActor();
   var erlaubt={};
   knowledgeGroups(e,refs,a).forEach(function(g){
-    if(g.known) g.fields.forEach(function(f){ erlaubt[f]=1; });
+    if(!g.known)return;
+    g.fields.forEach(function(f){
+      /* Zwei Regeln, und die ausdrückliche gewinnt: was eine *bekannte*
+         Information nennt, ist freigegeben — auch wenn das Feld „secret"
+         heisst. Genau dafür hat es jemand hineingelegt. Was keine
+         Information nennt, liegt offen und fällt nur über die Liste der
+         Felder weg, die nie an einen Spieler gehen. Andersherum wäre jede
+         Freigabe wirkungslos, sobald sie am falschen Feld hängt, und
+         niemand fände den Grund. */
+      if(g.open&&nurSL(f))return;
+      erlaubt[f]=1;
+    });
   });
   return refs.filter(function(f){ return erlaubt[f]; });
 }
-/* Blöcke: was eine unbekannte Information beansprucht, fällt weg. Dazu die
-   Blockarten, die ein Spieler grundsätzlich nicht sieht — als Einstellung,
-   damit eine Kampagne das anders halten kann. */
-function visibleBlockIds(e){
-  var a=viewerActor();
-  var ids=(e.blocks||[]).map(function(b){return b.anchor||b.id;});
-  if(isGM())return ids;
-  var geheim=gmBlockTypes();
-  /* Zwei Regeln, und die ausdrückliche gewinnt: ein Block, den eine
-     *bekannte* Information beansprucht, ist freigegeben — auch wenn er
-     `secret` heisst. Genau dafür hat ihn jemand hineingelegt. Ein Block,
-     den keine Information nennt, liegt offen und fällt nur über seine
-     Blockart weg. Andersherum wäre jede Freigabe wirkungslos, sobald der
-     Block die falsche Art trägt, und niemand fände den Grund. */
-  var bekannt={}, beansprucht={};
-  knowledgeGroups(e,[],a).forEach(function(g){
-    g.blocks.forEach(function(b){
-      if(!g.open) beansprucht[b]=1;
-      if(g.known) bekannt[b]=1;
-    });
-  });
-  return (e.blocks||[]).filter(function(b){
-    var key=b.anchor||b.id;
-    if(beansprucht[key])return !!bekannt[key];
-    return geheim.indexOf(b.blockType)<0;
-  }).map(function(b){ return b.anchor||b.id; });
+/* Ein Verweis auf ein Feld, das nie an einen Spieler geht. `Typ.feld#id`
+   zählt wie sein Feld — ein Eintrag ist nicht offener als das, worin er
+   steht. */
+function nurSL(ref){
+  var ohne=String(ref).split("#")[0];
+  return gmFields().indexOf(ohne)>=0;
 }
-
 /* Der Schalter in der Kopfzeile: als wen sehe ich das gerade an? */
 function renderAsSelect(){
   var host=document.getElementById("asbox");
@@ -8428,11 +8536,17 @@ function infoList(info,key){
 function infoTier(info){
   return ((info.components||{})[INFO_COMP]||{}).tier||"secret";
 }
-/* Dieselbe Regel wie bei den Ansichten: „Comp" nimmt die ganze Komponente,
-   „Comp.feld" genau eines. */
+/* Dieselbe Regel wie bei den Ansichten, eine Stufe tiefer: „Type" nimmt
+   alle Felder dieser Art, „Type.feld" das ganze Feld mit allen Einträgen,
+   „Type.feld#id" genau einen Eintrag. Die dritte Form war einmal der
+   Blockanker — ein Geheimnis von dreien freizugeben heisst, genau dieses
+   freizugeben, und dafür braucht es einen Namen, der ein Umsortieren
+   überlebt. */
 function infoCovers(info,ref){
-  var f=infoList(info,"fields"), cn=ref.split(".")[0];
-  return f.indexOf(ref)>=0||f.indexOf(cn)>=0;
+  var f=infoList(info,"fields");
+  if(f.indexOf(ref)>=0)return true;
+  var ohne=String(ref).split("#")[0];
+  return f.indexOf(ohne)>=0||f.indexOf(ohne.split(".")[0])>=0;
 }
 /* Wer zählt für diesen Betrachter als „ich": er selbst, seine Gruppen und
    seine Wissensstände. Einen Schritt weit — ein Stand, der einem anderen
@@ -8455,19 +8569,15 @@ function knowsInfo(info,viewerId){
 /* Der Artikel, nach Informationen geordnet. Die offene Restgruppe steht
    vorn und trägt keine Information — sie ist, was übrig bleibt. */
 function knowledgeGroups(e,refs,viewerId){
-  var blockIds=(e.blocks||[]).map(function(b){return b.anchor||b.id;});
-  var claimedF={}, claimedB={};
+  var claimedF={};
   var groups=infosOf(e).map(function(info){
     var fields=refs.filter(function(r){ return infoCovers(info,r); });
-    var blocks=infoList(info,"blocks").filter(function(a){ return blockIds.indexOf(a)>=0; });
     fields.forEach(function(f){claimedF[f]=true;});
-    blocks.forEach(function(b){claimedB[b]=true;});
-    return {info:info,label:nameOf(info),fields:fields,blocks:blocks,open:false,
+    return {info:info,label:nameOf(info),fields:fields,open:false,
             known:knowsInfo(info,viewerId)};
   });
   return [{info:null,label:"Open",open:true,known:true,
-           fields:refs.filter(function(f){return !claimedF[f];}),
-           blocks:blockIds.filter(function(b){return !claimedB[b];})}].concat(groups);
+           fields:refs.filter(function(f){return !claimedF[f];})}].concat(groups);
 }
 
 function elKnowledge(e,ifn,item){
@@ -8478,9 +8588,14 @@ function elKnowledge(e,ifn,item){
   var cells=fieldPlan(e,ifn,item.fields||"all",item.except);
   var zurueck=cells.withheld||0;
   var byRef={}; cells.forEach(function(c){ byRef[c.ref]=c; });
-  var blocks={}; (e.blocks||[]).forEach(function(b){ blocks[b.anchor||b.id]=b; });
+  /* Prosa steht hier neben den Feldern und nicht in einer zweiten Liste:
+     seit ein Textstück ein Feldeintrag ist, gibt es keinen zweiten Verweis
+     mehr, den eine Information nennen könnte. */
+  var stuecke={}; var proseRefs=[];
+  allProse(e).forEach(function(x){ stuecke[x.ref]=x; proseRefs.push(x.ref); });
+  var alle=cells.map(function(c){return c.ref;}).concat(proseRefs);
   var wrap=el("div",{class:"knowledge"});
-  knowledgeGroups(e,cells.map(function(c){return c.ref;})).forEach(function(g){
+  knowledgeGroups(e,alle).forEach(function(g){
     var box=el("div",{class:"kgrp"+(g.open?" open":"")});
     var head=el("div",{class:"kh"});
     head.appendChild(el("b",{text:g.label}));
@@ -8505,19 +8620,21 @@ function elKnowledge(e,ifn,item){
       g.open?"+ Information":"Edit"));
     box.appendChild(head);
 
-    if(!g.fields.length&&!g.blocks.length){
+    if(!g.fields.length){
       box.appendChild(el("div",{class:"nothing",text:"Nothing assigned."}));
     } else {
-      if(g.fields.length){
+      var felder=g.fields.filter(function(r){ return byRef[r]; });
+      if(felder.length){
         var dl=el("dl",{class:"fields"});
-        g.fields.forEach(function(ref){ var c=byRef[ref];
-          if(c) dl.appendChild(fieldCell(e,c.cn,c.p,c.pd,c.val,c.txt)); });
+        felder.forEach(function(ref){ var c=byRef[ref];
+          dl.appendChild(fieldCell(e,c.cn,c.p,c.pd,c.val,c.txt)); });
         box.appendChild(dl);
       }
-      g.blocks.forEach(function(a){ var b=blocks[a]; if(!b)return;
-        var blk=el("div",{class:"blk "+b.blockType});
-        if(b.blockType!=="paragraph") blk.appendChild(el("div",{class:"bl",text:b.blockType}));
-        blk.appendChild(para(fillVars(b.body,null,e)));
+      g.fields.forEach(function(ref){ var x=stuecke[ref]; if(!x)return;
+        var blk=el("div",{class:"blk "+x.key});
+        if(x.key!=="paragraph") blk.appendChild(el("div",{class:"bl",
+          text:x.prop.title||x.key}));
+        blk.appendChild(para(fillVars(x.value,null,e)));
         box.appendChild(blk);
       });
     }
@@ -8541,16 +8658,16 @@ function newInformation(e){
     host.appendChild(field("Label",nm));
     host.appendChild(field("Guardedness",tier));
     host.appendChild(el("p",{class:"hint",
-      text:"A bundle of fields and blocks of this article, handed out as a whole. Assign its fields and its recipients in the side panel."}));
+      text:"A bundle of fields and passages of this article, handed out as a whole. Assign its fields and its recipients in the side panel."}));
     actions(host,close,function(){
       var name=nm.value.trim(); if(!name){nm.focus();return false;}
       if(!REG.interfaces[INFO_IFACE]){ alert("The interface “"+INFO_IFACE+"” is missing from the registry."); return; }
       var info={ id:uid("i"), interfaces:[INFO_IFACE], name:name,
         components:{ Identity:{name:name,key:"information/"+slug(name),aliases:[]} },
-        adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
+        adhoc:[], relations:[], createdAt:new Date().toISOString() };
       reqFor(INFO_IFACE).forEach(function(c){ if(!info.components[c]&&REG.interfaces[c]) info.components[c]={}; });
       applyDefaults(info,INFO_IFACE);
-      info.components[INFO_COMP]=Object.assign({fields:[],blocks:[]},info.components[INFO_COMP]||{},{tier:tier.value});
+      info.components[INFO_COMP]=Object.assign({fields:[]},info.components[INFO_COMP]||{},{tier:tier.value});
       ENT.set(info.id,info); persist(info);
       e.relations=e.relations||[];
       e.relations.push({id:uid("r"),type:REL_KNOW,to:info.id,props:{}});
@@ -8574,7 +8691,7 @@ function renderKnowPanel(a,e){
   a.appendChild(head);
 
   if(!infos.length){
-    a.appendChild(el("p",{class:"hint",text:"Everything about this article is open. An information bundles some of its fields and blocks so they can be handed to a character, a party or a knowledge level — and stays hidden from everyone else."}));
+    a.appendChild(el("p",{class:"hint",text:"Everything about this article is open. An information bundles some of its fields and passages so they can be handed to a character, a party or a knowledge level — and stays hidden from everyone else."}));
     return;
   }
 
@@ -8614,19 +8731,23 @@ function renderKnowPanel(a,e){
   if(!cells.length) picks.appendChild(el("span",{class:"hint",text:"This article carries no fields yet."}));
   a.appendChild(picks);
 
-  if((e.blocks||[]).length){
-    a.appendChild(el("h3",{text:"Text blocks"}));
+  /* Einzelne Textstellen. Sie stehen in derselben Liste `fields` wie alles
+     andere — ein Eintrag heisst `Typ.feld#id`, und das ist der Anker, an
+     dem die Freigabe hängt, wenn jemand die Reihenfolge ändert. */
+  var prosa=allProse(e);
+  if(prosa.length){
+    a.appendChild(el("h3",{text:"Passages"}));
     var bp=el("div",{class:"kpick"});
-    (e.blocks||[]).slice().sort(function(x,y){return (x.order||0)-(y.order||0);}).forEach(function(b){
-      var key=b.anchor||b.id, mine=infoList(info,"blocks").indexOf(key)>=0;
+    prosa.forEach(function(x){
+      var mine=infoList(info,"fields").indexOf(x.ref)>=0;
       var cb=el("input",{type:"checkbox"}); cb.checked=mine; cb.disabled=!canWrite();
       cb.addEventListener("change",function(){
-        var l=infoList(info,"blocks").filter(function(x){return x!==key;});
-        if(cb.checked) l.push(key);
-        card.blocks=l; persist(info);
+        var l=infoList(info,"fields").filter(function(y){return y!==x.ref;});
+        if(cb.checked) l.push(x.ref);
+        card.fields=l; persist(info);
       });
       bp.appendChild(el("label",null,[cb,
-        el("span",{text:b.blockType+": "+String(b.body||"").slice(0,42)})]));
+        el("span",{text:(x.prop.title||x.key)+": "+String(x.value||"").slice(0,42)})]));
     });
     a.appendChild(bp);
   }
@@ -8897,38 +9018,52 @@ function addRegards(e){
    abgeleiteten Wert (D8) —, sie gewinnen gegen eine gleichnamige Zeile im
    Register, und die Maske gibt ihnen kein Eingabefeld. */
 
-function blockStub(b){
-  var t=String(b.body||"").replace(/[\[\]{}*_#>`]/g,"").replace(/\s+/g," ").trim();
+function blockStub(text){
+  var t=String(text||"").replace(/[\[\]{}*_#>`]/g,"").replace(/\s+/g," ").trim();
   var worte=t.split(" ").slice(0,5).join(" ");
-  return slug(worte)||"block";
+  return slug(worte)||"passage";
 }
-/* Der Anker eines Blocks, in der Reihenfolge, in der man ihm trauen darf:
-   was der Autor gesetzt hat, sonst was der Inhalt hergibt. */
-function anchorFor(e,b){
-  if(b.anchor)return b.anchor;
-  var roh=(b.blockType||"paragraph")+"-"+blockStub(b);
-  var belegt={};
-  (e.blocks||[]).forEach(function(x){ if(x!==b&&x.anchor) belegt[x.anchor]=true; });
+/* Eine erzeugte Id: die, die `entriesOf` vergibt, wenn keine dasteht. Sie
+   hält nur, solange die Reihenfolge hält — und genau daran hing der
+   Verlust. */
+function istErzeugt(id){ return !id||/^e\d+$/.test(String(id)); }
+/* Die Id eines Eintrags, aus seinem Inhalt: Feldname plus die ersten
+   Worte. Derselbe Text an derselben Stelle ergibt dieselbe Id, also
+   übersteht die Freigabe einen erneuten Import. Kollidieren zwei, zählt
+   der zweite hoch — innerhalb eines Artikels, nicht global: eine Id muss
+   nur dort eindeutig sein, wo sie gelesen wird. */
+function entryAnchor(key,value,belegt){
+  var roh=key+"-"+blockStub(value);
   var a=roh, n=2;
   while(belegt[a]) a=roh+"-"+(n++);
   return a;
 }
-/* Anker nachtragen. Gibt zurück, ob sich etwas geändert hat — nur dann
-   wird geschrieben, sonst schriebe jede Anzeige den Artikel neu. */
+/* Ids nachtragen. Gibt zurück, ob sich etwas geändert hat — nur dann wird
+   geschrieben, sonst schriebe jede Anzeige den Artikel neu. */
 function ensureAnchors(e){
   var neu=false;
-  (e.blocks||[]).forEach(function(b){
-    if(b.anchor)return;
-    b.anchor=anchorFor(e,b);
-    neu=true;
+  var belegt={};
+  allProse(e).forEach(function(x){ if(!istErzeugt(x.id)) belegt[x.id]=true; });
+  proseFields((e.interfaces||[])[0]||"").forEach(function(f){
+    var karte=(e.components||{})[f.type];
+    if(!karte)return;
+    var liste=entriesOf(karte[f.key]);
+    if(!liste.length)return;
+    var raus=liste.map(function(x){
+      if(!istErzeugt(x.id))return x;
+      var id=entryAnchor(f.key,x.value,belegt);
+      belegt[id]=true; neu=true;
+      return {id:id,value:x.value};
+    });
+    karte[f.key]=raus;
   });
   return neu;
 }
-/* Wie viele Blöcke im Bestand noch ohne Anker sind — die Zahl, die sagt,
-   ob ein Import die Wissenszuteilungen gerade mitgenommen hätte. */
-function anchorlessBlocks(){
+/* Wie viele Textstellen im Bestand noch ohne Anker sind — die Zahl, die
+   sagt, ob ein Import die Wissenszuteilungen gerade mitgenommen hätte. */
+function anchorlessProse(){
   var n=0;
-  ENT.forEach(function(e){ (e.blocks||[]).forEach(function(b){ if(!b.anchor) n++; }); });
+  ENT.forEach(function(e){ allProse(e).forEach(function(x){ if(istErzeugt(x.id)) n++; }); });
   return n;
 }
 
@@ -8939,34 +9074,41 @@ function anchorlessBlocks(){
 function backfillAnchors(melde){
   var geaendert={}, gesetzt=0, nachgezogen=0;
   ENT.forEach(function(e){
-    /* Je Artikel eine eigene Zuordnung. Block-Ids sind nur innerhalb eines
-       Artikels eindeutig — im Bestand heissen sieben verschiedene Blöcke
-       „b1" —, und eine gemeinsame Tabelle zöge die Zuteilung des einen auf
-       den Block des anderen. Das wäre schlimmer als gar keine Wanderung. */
+    /* Je Artikel eine eigene Zuordnung. Erzeugte Ids sind nur innerhalb
+       eines Artikels eindeutig — im Bestand heissen sieben verschiedene
+       Einträge „e0" —, und eine gemeinsame Tabelle zöge die Freigabe des
+       einen auf den Eintrag des anderen. Das wäre schlimmer als gar keine
+       Wanderung. */
+    var vorher=allProse(e);
+    if(!vorher.some(function(x){ return istErzeugt(x.id); }))return;
     var karte={};
-    (e.blocks||[]).forEach(function(b){
-      if(b.anchor)return;
-      karte[b.id]=b.anchor=anchorFor(e,b);
-      gesetzt++;
-      geaendert[e.id]=true;
+    var alt=vorher.map(function(x){ return x.ref; });
+    if(!ensureAnchors(e))return;
+    var nachher=allProse(e);
+    vorher.forEach(function(x,i){
+      var y=nachher[i];
+      if(!y||y.ref===x.ref)return;
+      karte[x.ref]=y.ref; gesetzt++;
     });
+    void alt;
+    geaendert[e.id]=true;
     if(!Object.keys(karte).length)return;
     /* Und nur die Informationen dieses Artikels — die Kante sagt, welche. */
     infosOf(e).forEach(function(i){
       var info=(i.components||{})[INFO_COMP];
-      if(!info||!Array.isArray(info.blocks))return;
-      var neu=info.blocks.map(function(a){
+      if(!info||!Array.isArray(info.fields))return;
+      var neu=info.fields.map(function(a){
         if(karte[a]){ nachgezogen++; return karte[a]; }
         return a;
       });
-      if(neu.join("\u0000")===info.blocks.join("\u0000"))return;
-      i.components[INFO_COMP]=Object.assign({},info,{blocks:neu});
+      if(neu.join("\u0000")===info.fields.join("\u0000"))return;
+      i.components[INFO_COMP]=Object.assign({},info,{fields:neu});
       geaendert[i.id]=true;
     });
   });
   var ids=Object.keys(geaendert);
   ids.forEach(function(id){ var e=ENT.get(id); if(e) persist(e); });
-  melde&&melde(gesetzt+" block"+(gesetzt===1?"":"s")+
+  melde&&melde(gesetzt+" passage"+(gesetzt===1?"":"s")+
     " anchored, "+nachgezogen+" knowledge reference"+(nachgezogen===1?"":"s")+
     " moved over, "+ids.length+" article"+(ids.length===1?"":"s")+" written.");
   render();
@@ -9236,11 +9378,13 @@ function compFieldList(comp){
    `layoutOf` sagt nur *was* gezeichnet wird. Wer es ändern will, muss
    wissen **wo es steht**: eine geerbte Anordnung zu bearbeiten ändert sie
    für jede Unterart mit, und das soll niemand aus Versehen tun. */
-/* Welche Blockarten der Server zurückhält. Einmal gefragt, weil zwei
-   Listen die Stelle wären, an der eine davon veraltet — und diese hier
-   entscheidet, was ein Spieler zu sehen bekommt. */
-function gmBlockTypes(){
-  return String(setting("gmBlockTypes","secret,tactics")).split(",")
+/* Welche Felder der Server zurückhält. Einmal gefragt, weil zwei Listen
+   die Stelle wären, an der eine davon veraltet — und diese hier
+   entscheidet, was ein Spieler zu sehen bekommt. Ein Eintrag ist
+   `Typ.feld`: der Typ gehört dazu, sonst hielte `secret` auch das
+   Geheimnis zurück, das eine andere Art gleich benennt. */
+function gmFields(){
+  return String(setting("gmFields","Secrets.secret,Tactics.tactics")).split(",")
     .map(function(x){return x.trim();}).filter(Boolean);
 }
 /* Welchen Registerteil ein Reiter bearbeitet. „Types" zeigt mehr als die
@@ -9354,21 +9498,23 @@ function templateFor(v,ifn,vw,src){
       return box;
     }
 
-    if(item.el==="blocks"){
-      var arten=blockTypesFor(ifn);
-      var anB=arten.filter(function(bt){
-        return wantsField(item.blocks,item["except"],{comp:bt,ref:bt}); });
-      kopf.appendChild(el("span",{class:"co",text:anB.length+" of "+arten.length+" block kinds"}));
+    if(item.el==="prose"){
+      var felder=proseFields(ifn);
+      var anB=felder.filter(function(f){
+        return wantsField(item.fields,item["except"],{comp:f.type,ref:f.type+"."+f.key}); });
+      kopf.appendChild(el("span",{class:"co",text:anB.length+" of "+felder.length+" passages"}));
       box.appendChild(kopf);
       var g2=el("div",{class:"tmplfields"});
-      arten.forEach(function(bt){
-        var zeigt=wantsField(item.blocks,item["except"],{comp:bt,ref:bt});
+      felder.forEach(function(f){
+        var ref=f.type+"."+f.key;
+        var zeigt=wantsField(item.fields,item["except"],{comp:f.type,ref:ref});
+        var sl=gmFields().indexOf(ref)>=0;
         g2.appendChild(el("button",{class:"pill q tgl"+(zeigt?" on":""),type:"button",
-          disabled:!w,"data-ref":bt,
-          title:gmBlockTypes().indexOf(bt)>=0?"Held back from players at the server":bt,
+          disabled:!w,"data-ref":ref,
+          title:sl?"Held back from players at the server":ref,
           onclick:function(){
-            togglePick(item,"blocks",bt,!zeigt); saveReg("views"); render();
-          }},bt+(gmBlockTypes().indexOf(bt)>=0?" ●":"")));
+            togglePick(item,"fields",ref,!zeigt); saveReg("views"); render();
+          }},(f.prop.title||f.key)+(sl?" ●":"")));
       });
       box.appendChild(g2);
       return box;
@@ -9604,7 +9750,7 @@ function renderRegistry(v){
   }
 
   if(UI.regtab==="views") v.appendChild(el("p",{class:"hint",
-    text:"Compendium — the views in the picker at the top right. fields: \"none\" | \"all\" | a list of components · blocks: \"all\" | a list of block types · description, composed, relations, bindings, image: true/false · order sets the sequence."}));
+    text:"The three views. Each carries a fallback layout; the layout a type actually uses lives at the type, under views. order sets the sequence."}));
   var ta=el("textarea",{class:"i code",spellcheck:"false",id:"regbox"});
   ta.value=JSON.stringify(REG[regPart()],null,2);
   v.appendChild(ta);
@@ -9631,7 +9777,7 @@ function newInterfaceBar(unter){
   bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
     var label=i.value.trim(); if(!label) return;
     var n=techName(label,REG.interfaces);
-    REG.interfaces[n]={name:n,label:label,schema:{type:"object",properties:{}},blockTypes:[]};
+    REG.interfaces[n]={name:n,label:label,schema:{type:"object",properties:{}}};
     if(unter) REG.interfaces[n].extends=[unter];
     UI.regiface=n; UI.regcomp=""; saveReg("interfaces"); render();
   }},"Create interface"));
@@ -10001,7 +10147,9 @@ var BEGRIFFE=[
    "One piece of a view — and the same piece in the type definition: the "+
    "fields of one part, a single field, the image, the edges. Definition and "+
    "view show the same blocks, so you do not have to hold two pictures of "+
-   "one thing in your head."],
+   "one thing in your head. It no longer means a piece of prose sitting "+
+   "beside the fields: that is a field with a long input, and several of "+
+   "them is “one or more”."],
   ["Edge",
    "A typed, directed connection between two articles, which may carry "+
    "properties of its own. Stored forward only; the other direction is "+
@@ -10301,7 +10449,7 @@ function viewBody(key){
         var liste=arbeitsliste();
         var neu={id:uid("l"),el:t[0]};
         if(t[0]==="fields"){ neu.fields=[]; neu.columns=0; }
-        if(t[0]==="blocks") neu.blocks="all";
+        if(t[0]==="prose") neu.fields="all";
         if(t[0]==="heading"||t[0]==="text") neu.text="";
         liste.push(neu); UI.regel=neu.id; schreibe(liste);
       }},"+ "+t[1]));
@@ -10347,7 +10495,7 @@ function viewBody(key){
       var n=(item.fields||[]).length;
       return (n?n+(n===1?" entry":" entries"):"nothing chosen")+(item.columns?" · "+item.columns+" columns":"");
     }
-    if(item.el==="blocks") return item.blocks==="all"?"every block type":((item.blocks||[]).join(", ")||"nothing chosen");
+    if(item.el==="prose") return item.fields==="all"?"every passage":((item.fields||[]).join(", ")||"nothing chosen");
     return "";
   }
 
@@ -10368,21 +10516,24 @@ function viewBody(key){
       return kasten;
     }
 
-    if(item.el==="blocks"){
-      var alleArten={};
+    if(item.el==="prose"){
+      /* Die Prosafelder, die es im ganzen Register gibt — „every passage"
+         bleibt richtig, wenn morgen eines dazukommt, eine abgetippte Liste
+         nicht. */
+      var alleFelder={};
       Object.keys(REG.interfaces).forEach(function(n){
-        blockTypesFor(n).forEach(function(b){ alleArten[b]=1; }); });
+        proseFields(n).forEach(function(f){ alleFelder[f.type+"."+f.key]=1; }); });
       var chips=el("div",{class:"chips"});
-      var isAll=item.blocks==="all";
-      chips.appendChild(marke("every type",isAll,function(){
-        aendere(function(z){ z.blocks=isAll?[]:"all"; }); }));
-      Object.keys(alleArten).sort().forEach(function(b){
-        var an=!isAll&&Array.isArray(item.blocks)&&item.blocks.indexOf(b)>=0;
+      var isAll=item.fields==="all";
+      chips.appendChild(marke("every passage",isAll,function(){
+        aendere(function(z){ z.fields=isAll?[]:"all"; }); }));
+      Object.keys(alleFelder).sort().forEach(function(b){
+        var an=!isAll&&Array.isArray(item.fields)&&item.fields.indexOf(b)>=0;
         chips.appendChild(marke(b,an,function(){
           aendere(function(z){
-            var l=Array.isArray(z.blocks)?z.blocks.slice():[];
+            var l=Array.isArray(z.fields)?z.fields.slice():[];
             if(an) l=l.filter(function(x){return x!==b;}); else l.push(b);
-            z.blocks=l; });
+            z.fields=l; });
         },isAll));
       });
       kasten.appendChild(chips);
@@ -10531,47 +10682,11 @@ function regIfaceBody(ifn){
     text:"Every field an article of this kind records. Its own are editable here; inherited ones belong to the part that brings them — open it to change them for every type that has it."}));
   box.appendChild(fieldTable(ifn,w,save));
 
-  /* ---- Blockarten ---- */
-  box.appendChild(el("div",{class:"rsec",text:"Block types"}));
-  box.appendChild(el("p",{class:"hint",
-    text:"Text blocks an article of this kind may carry. Inherited ones are added, not replaced."}));
-  var bare=function(b){ return b.charAt(0)==="+"?b.slice(1):b; };
-  var own=(d.blockTypes||[]).map(bare);
-  var inherited=[];
-  parentsOf(ifn).forEach(function(p){
-    blockTypesFor(p).forEach(function(b){ if(inherited.indexOf(b)<0) inherited.push(b); });
-  });
-  var chips=el("div",{class:"chips"});
-  inherited.forEach(function(b){ if(own.indexOf(b)<0)
-    chips.appendChild(el("span",{class:"chip inh",text:b})); });
-  own.forEach(function(b){
-    var c=el("span",{class:"chip"});
-    c.appendChild(el("span",{text:b}));
-    if(w) c.appendChild(el("button",{type:"button",title:"remove",onclick:function(){
-      d.blockTypes=(d.blockTypes||[]).filter(function(x){ return bare(x)!==b; });
-      save(); }},"×"));
-    chips.appendChild(c);
-  });
-  if(!own.length&&!inherited.length) chips.appendChild(el("span",{class:"gone",text:"none"}));
-  box.appendChild(chips);
-  if(w){
-    var bi=el("input",{class:"i",type:"text",placeholder:"e.g. tactics"});
-    var bbar=el("div",{class:"addbar"});
-    bbar.appendChild(bi);
-    bbar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
-      var b=bi.value.trim().replace(/^\+/,"").replace(/[^A-Za-z0-9_-]/g,"");
-      if(!b) return;
-      d.blockTypes=d.blockTypes||[];
-      if(d.blockTypes.map(bare).indexOf(b)<0) d.blockTypes.push(parentsOf(ifn).length?"+"+b:b);
-      save(); }},"Add block type"));
-    box.appendChild(bbar);
-  }
-
   /* ---- Subtypen ---- */
   box.appendChild(el("div",{class:"rsec",text:"Subtypes"}));
   var children=kindsOf(ifn);
   if(!children.length) box.appendChild(el("p",{class:"hint",
-    text:"None. A subtype inherits everything from here and adds components, fields and block types of its own."}));
+    text:"None. A subtype inherits everything from here and adds parts and fields of its own."}));
   else{
     var kc=el("div",{class:"chips"});
     children.forEach(function(n){
@@ -11089,7 +11204,7 @@ function newEntity(presetName){
       var ifn=sel.value;
       var e={ id:uid("e"), interfaces:[ifn], name:name,
         components:{ Identity:{name:name,key:slug(ifn)+"/"+slug(name),aliases:[]} },
-        adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() };
+        adhoc:[], relations:[], createdAt:new Date().toISOString() };
       reqFor(ifn).forEach(function(c){ if(!e.components[c]&&REG.interfaces[c]) e.components[c]={}; });
       applyDefaults(e,ifn);
       persist(e); go({k:"art",id:e.id});
@@ -11166,25 +11281,6 @@ function editEntity(e){
       });
       persist(e);
     });
-  });
-}
-
-function addBlock(e){
-  dialog("Add block",function(host,close){
-    var ifn=(e.interfaces||[])[0]||"";
-    var sel=el("select",{class:"i"});
-    blockTypesFor(ifn).forEach(function(b){ sel.appendChild(el("option",{value:b},b)); });
-    var ta=el("textarea",{class:"i",placeholder:"Text. [[Article name]] links, {VAR} is substituted."});
-    host.appendChild(field("Block type",sel));
-    host.appendChild(field("Text",ta));
-    actions(host,close,function(){
-      if(!ta.value.trim())return false;
-      e.blocks=e.blocks||[];
-      var neuBlock={id:uid("b"),blockType:sel.value,body:ta.value.trim(),order:e.blocks.length};
-      neuBlock.anchor=anchorFor(e,neuBlock);
-      e.blocks.push(neuBlock);
-      persist(e);
-    },"Add");
   });
 }
 
@@ -11367,9 +11463,7 @@ function impGegenstand(text,datei){
   if(bilder[0]) c.Image={url:bilder[0],caption:""};
 
   var prosa=body.replace(/!\[\[[^\]]+\]\]/g,"").replace(/^#+\s*Eigenschaften[\s\S]*$/im,"").trim();
-  var bl=[];
-  if(prosa) bl.push({id:uid("b"),anchor:"paragraph-"+slug(String(prosa).split(/\s+/).slice(0,5).join(" ")),
-    blockType:"paragraph",body:prosa,order:0});
+  if(prosa) c.Prose={paragraph:[{id:entryAnchor("paragraph",prosa,{}),value:prosa}]};
 
   var unresolved=[];
   fmList(fm,"Eigenschaften").forEach(function(x){
@@ -11379,7 +11473,7 @@ function impGegenstand(text,datei){
   var marken=fmList(fm,"tags").filter(function(t){return t!=="gegenstand";});
   if(marken.length) c.Tags={tags:marken};
   return { e:{ id:uid("g"), interfaces:[ifn], name:name,
-      components:c, adhoc:[], blocks:bl, relations:[], createdAt:new Date().toISOString() },
+      components:c, adhoc:[], relations:[], createdAt:new Date().toISOString() },
     unresolved:unresolved, bilder:bilder };
 }
 
@@ -11447,7 +11541,7 @@ function impStatblock(text,datei){
         /* Die Zahlen bleiben ihre eigene Karte: `hp` heisst am Statblock
            etwas anderes als an der Kreatur, die gerade Schaden nimmt. */
         StatblockInfo:info },
-      adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() },
+      adhoc:[], relations:[], createdAt:new Date().toISOString() },
     abschnitte:abschnitte, kreatur:linkZiel(fmStr(fm,"kreatur"))||null };
 }
 
@@ -11472,13 +11566,11 @@ function impOrt(text,datei){
     Imported:{text:text,format:"obsidian",at:new Date().toISOString().slice(0,10)}, Place:li };
 
   var prosa=body.replace(/!\[\[[^\]]+\]\]/g,"").replace(/^#+\s.*$/gm,"").trim();
-  var bl=[];
-  if(prosa) bl.push({id:uid("b"),anchor:"paragraph-"+slug(String(prosa).split(/\s+/).slice(0,5).join(" ")),
-    blockType:"paragraph",body:prosa,order:0});
+  if(prosa) c.Prose={paragraph:[{id:entryAnchor("paragraph",prosa,{}),value:prosa}]};
 
   if(fmList(fm,"tags").length) c.Tags={tags:fmList(fm,"tags")};
   return { e:{ id:uid("o"), interfaces:["Place"], name:name,
-      components:c, adhoc:[], blocks:bl, relations:[], createdAt:new Date().toISOString() },
+      components:c, adhoc:[], relations:[], createdAt:new Date().toISOString() },
     unresolved:enthaelt.map(function(z){return {type:"contains",target:z};}) };
 }
 
@@ -11507,7 +11599,7 @@ function runImport(files){
           components:{ Identity:{name:en.name,key:"regel/"+slug(en.name),aliases:[]},
             Status:{status:"used"}, Description:{description:en.text},
             Rule:{kind:kind} },
-          adhoc:[], blocks:[], relations:[], createdAt:new Date().toISOString() }); }
+          adhoc:[], relations:[], createdAt:new Date().toISOString() }); }
       x.r.e.relations.push({id:uid("rel"),type:"composedOf",to:id,props:{section:ab.name}});
     });});
   });

@@ -25,7 +25,7 @@
  */
 
 import type { Entity, EntityId, Registry } from './types.js';
-import { entityName } from './entity.js';
+import { entityName, entriesOf, entryRef } from './entity.js';
 
 /** Die Kantenart, die einen Artikel mit seinen Informationen verbindet. */
 export const KNOWLEDGE_RELATION = 'knowledge';
@@ -39,7 +39,15 @@ export const PARTY_RELATION = 'memberOfParty';
 /** Die Art, deren Karte die Angaben einer Information trägt. */
 export const INFO_COMPONENT = 'Information';
 
-/** Ein Feldverweis, wie ihn auch die Ansichten schreiben: `Type` oder `Type.field`. */
+/**
+ * Ein Feldverweis, wie ihn auch die Ansichten schreiben: `Type`,
+ * `Type.field` — oder `Type.field#id` für **einen Eintrag** eines Feldes
+ * mit `many`.
+ *
+ * Die dritte Form war einmal ein Blockanker. Ein Geheimnis von dreien
+ * freizugeben heisst, genau diesen Eintrag freizugeben, und dafür braucht
+ * er einen Namen, der eine Umsortierung überlebt.
+ */
 export type FieldRef = string;
 
 export interface KnowledgeGroup {
@@ -47,7 +55,6 @@ export interface KnowledgeGroup {
   info?: Entity;
   label: string;
   fields: FieldRef[];
-  blocks: string[];
   /** Offen liegend — also von keiner Information beansprucht. */
   open: boolean;
   /** Weiss der Betrachter davon? Ohne Betrachter (Spielleitung) immer true. */
@@ -73,19 +80,25 @@ function infoFields(info: Entity): FieldRef[] {
   return Array.isArray(raw) ? raw.map(String) : [];
 }
 
-function infoBlocks(info: Entity): string[] {
-  const raw = info.components?.[INFO_COMPONENT]?.['blocks'];
-  return Array.isArray(raw) ? raw.map(String) : [];
+/**
+ * Beansprucht diese Information diesen Verweis?
+ *
+ * Dieselbe Regel wie bei den Ansichten, eine Stufe tiefer: ein blosser
+ * Artname nimmt alle Felder, die diese Art erklärt; `Type.field` das ganze
+ * Feld mit allen seinen Einträgen; `Type.field#id` genau einen Eintrag.
+ */
+export function coversRef(info: Entity, ref: FieldRef): boolean {
+  const fields = infoFields(info);
+  if (fields.includes(ref)) return true;
+  const ohneEintrag = ref.split('#')[0] as string;
+  if (fields.includes(ohneEintrag)) return true;
+  const art = ohneEintrag.split('.')[0] as string;
+  return fields.includes(art);
 }
 
-/**
- * Beansprucht diese Information das Feld?
- * Dieselbe Regel wie bei den Ansichten: ein blosser Artname nimmt alle
- * Felder, die diese Art erklärt, `Type.field` genau eines.
- */
+/** Der alte Zugang: Art und Feld getrennt. */
 export function covers(info: Entity, component: string, property: string): boolean {
-  const fields = infoFields(info);
-  return fields.includes(component) || fields.includes(`${component}.${property}`);
+  return coversRef(info, property ? `${component}.${property}` : component);
 }
 
 /**
@@ -143,24 +156,15 @@ export function knowledgeGroups(
   viewerId?: EntityId | readonly EntityId[],
 ): KnowledgeGroup[] {
   const infos = informationsOf(entities, article);
-  const blockAnchors = (article.blocks ?? []).map((b) => b.anchor || b.id);
-
   const claimedFields = new Set<FieldRef>();
-  const claimedBlocks = new Set<string>();
 
   const groups: KnowledgeGroup[] = infos.map((info) => {
-    const fields = allFields.filter((ref) => {
-      const [component, property] = ref.split('.');
-      return covers(info, component ?? ref, property ?? '');
-    });
-    const blocks = infoBlocks(info).filter((a) => blockAnchors.includes(a));
+    const fields = allFields.filter((ref) => coversRef(info, ref));
     fields.forEach((f) => claimedFields.add(f));
-    blocks.forEach((b) => claimedBlocks.add(b));
     return {
       info,
       label: entityName(info),
       fields,
-      blocks,
       open: false,
       known: knows(entities, info, viewerId),
     };
@@ -169,7 +173,6 @@ export function knowledgeGroups(
   const rest: KnowledgeGroup = {
     label: 'Open',
     fields: allFields.filter((f) => !claimedFields.has(f)),
-    blocks: blockAnchors.filter((b) => !claimedBlocks.has(b)),
     open: true,
     known: true,
   };
@@ -208,10 +211,11 @@ export function visibleFields(
  *
  * Drei Sachen gehen weg:
  * - **Felder**, die eine Information beansprucht, die er nicht kennt.
- * - **Blöcke**, ebenso — plus die Blockarten, die nie an einen Spieler
- *   gehen (`gmBlockTypes`), sofern kein bekanntes Wissen sie ausdrücklich
- *   freigibt. Ein Block, den jemand geschenkt bekommen hat, bleibt sein
- *   Block, auch wenn er „secret" heisst.
+ * - **Einzelne Einträge** eines Feldes mit `many`, ebenso — plus die
+ *   Felder, die nie an einen Spieler gehen (`gmFields`), sofern kein
+ *   bekanntes Wissen sie ausdrücklich freigibt. Ein Geheimnis, das jemand
+ *   geschenkt bekommen hat, bleibt seines, auch wenn das Feld „secret"
+ *   heisst.
  * - **Der Name**, wenn er beansprucht und ungewusst ist: dann steht der
  *   Deckname da (REQ-178).
  *
@@ -225,40 +229,55 @@ export function redactEntity(
   entities: Map<EntityId, Entity>,
   article: Entity,
   viewerId?: EntityId | readonly EntityId[],
-  gmBlockTypes: string[] = ['secret', 'tactics'],
+  gmFields: string[] = ['Secrets.secret', 'Tactics.tactics'],
 ): Entity {
   if (!viewerId) return article;
 
+  /* Ein Feld mit `many` zählt je **Eintrag**: `Creature.secret#anchor`. Ein
+     Geheimnis von dreien freizugeben heisst, genau dieses freizugeben. */
+  const vieleFelder = (component: string, property: string): boolean =>
+    registry.interfaces[component]?.schema?.properties?.[property]?.many === true;
+
   const allFields: FieldRef[] = [];
   for (const [component, card] of Object.entries(article.components ?? {})) {
-    for (const property of Object.keys((card ?? {}) as Record<string, unknown>)) {
-      allFields.push(`${component}.${property}`);
+    for (const [property, value] of Object.entries((card ?? {}) as Record<string, unknown>)) {
+      if (vieleFelder(component, property)) {
+        for (const e of entriesOf(value)) allFields.push(entryRef(component, property, e.id));
+      } else {
+        allFields.push(`${component}.${property}`);
+      }
     }
   }
   const groups = knowledgeGroups(registry, entities, article, allFields, viewerId);
   const erlaubtF = new Set<FieldRef>();
-  const erlaubtB = new Set<string>();
-  const beanspruchtB = new Set<string>();
+  const beansprucht = new Set<FieldRef>();
   for (const g of groups) {
     if (!g.info) continue; /* die offene Restgruppe beansprucht nichts */
-    g.blocks.forEach((b) => beanspruchtB.add(b));
+    g.fields.forEach((f) => beansprucht.add(f));
     if (!g.known) continue;
     g.fields.forEach((f) => erlaubtF.add(f));
-    /* Nur ein Block, den eine **bekannte Information** ausdrücklich
-       freigibt, schlägt die Blockart. Die offene Restgruppe darf das nicht:
-       sonst wäre jeder unbeanspruchte `secret`-Block offen, und die
-       Blockart hiesse gar nichts mehr. */
-    g.blocks.forEach((b) => erlaubtB.add(b));
   }
   /* Was keine Information beansprucht, ist offen — das ist die Restgruppe,
-     und ihre Felder gelten ohne weiteres. */
+     und ihre Felder gelten ohne weiteres. Nur die Felder, die nie an einen
+     Spieler gehen, gelten auch dann nicht: sonst wäre jeder unbeanspruchte
+     `secret`-Eintrag offen, und das Feld hiesse gar nichts mehr. */
+  const nurSL = (ref: FieldRef): boolean => {
+    const ohne = ref.split('#')[0] as string;
+    return gmFields.includes(ohne) || gmFields.includes(ohne.split('.')[1] ?? '');
+  };
   const rest = groups.find((g) => !g.info);
-  rest?.fields.forEach((f) => erlaubtF.add(f));
+  rest?.fields.forEach((f) => { if (!nurSL(f)) erlaubtF.add(f); });
 
   const components: Record<string, Record<string, unknown>> = {};
   for (const [component, card] of Object.entries(article.components ?? {})) {
     const behalten: Record<string, unknown> = {};
     for (const [property, value] of Object.entries((card ?? {}) as Record<string, unknown>)) {
+      if (vieleFelder(component, property)) {
+        const uebrig = entriesOf(value)
+          .filter((e) => erlaubtF.has(entryRef(component, property, e.id)));
+        if (uebrig.length) behalten[property] = uebrig;
+        continue;
+      }
       if (erlaubtF.has(`${component}.${property}`)) behalten[property] = value;
     }
     /* Eine Karte, von der nichts übrig bleibt, wird weggelassen und nicht
@@ -276,17 +295,10 @@ export function redactEntity(
     components['Identity'] = { ...(components['Identity'] ?? {}), name: cover || 'jemand' };
   }
 
-  const blocks = (article.blocks ?? []).filter((b) => {
-    const anchor = b.anchor || b.id;
-    if (erlaubtB.has(anchor)) return true;
-    if (beanspruchtB.has(anchor)) return false;
-    return !gmBlockTypes.includes(b.blockType);
-  });
-
   /* Auch der bequeme Name oben am Artikel. Ihn stehen zu lassen wäre die
      Art Lücke, die niemand sucht: die Karte ist gesiebt, und daneben steht
      der Name im Klartext. */
   const name = (components['Identity']?.['name'] as string | undefined) ?? article.name;
 
-  return { ...article, name, components, blocks } as Entity;
+  return { ...article, name, components } as Entity;
 }

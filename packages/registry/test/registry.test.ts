@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   RegistrySchema,
   fieldsOf,
-  blockTypesFor,
+  proseFields,
   typeChain,
   relationsFrom,
   layoutFor,
@@ -78,15 +78,19 @@ describe('seed registry', () => {
     expect(bad).toEqual([]);
   });
 
-  it('every block type a view names is accepted by some interface', () => {
-    const accepted = new Set(
-      Object.keys(seedRegistry.interfaces).flatMap((name) => blockTypesFor(seedRegistry, name)),
+  /* Prosa ist ein Feld wie jedes andere — `many` und lange Eingabe. Eine
+     Ansicht, die eines nennt, das keine Art erklärt, zeichnet nichts und
+     sagt nicht warum. */
+  it('every prose field a view names is declared by some type', () => {
+    const da = new Set(
+      Object.keys(seedRegistry.interfaces)
+        .flatMap((name) => proseFields(seedRegistry, name).map((f) => `${f.type}.${f.key}`)),
     );
     const bad: string[] = [];
     for (const [key, view] of Object.entries(seedRegistry.views)) {
-      if (!Array.isArray(view.blocks)) continue;
-      for (const type of view.blocks) {
-        if (!accepted.has(type)) bad.push(`${key}: ${type}`);
+      for (const el of view.layout ?? []) {
+        if (el.el !== 'prose' || !Array.isArray(el.fields)) continue;
+        for (const ref of el.fields) if (!da.has(ref)) bad.push(`${key}: ${ref}`);
       }
     }
     expect(bad).toEqual([]);
@@ -165,11 +169,48 @@ describe('interface inheritance', () => {
     expect(typeChain(seedRegistry, 'NPC')).not.toContain('Quest');
   });
 
-  it('adds `+x` block types to the inherited set', () => {
-    const forNpc = blockTypesFor(seedRegistry, 'NPC');
-    expect(forNpc).toContain('paragraph'); // inherited from Base
-    expect(forNpc).toContain('secret'); // added with +secret
-    expect(blockTypesFor(seedRegistry, 'Rule')).toEqual(['paragraph', 'note']);
+  /* Was einmal `blockTypes: ['+secret']` war, ist jetzt ein Bestandteil:
+     `Secrets` bringt das Feld `secret` mit, und wer Geheimnisse trägt,
+     nimmt ihn dazu. Die Frage „welche Prosa hat diese Art" beantwortet
+     damit dieselbe Vererbung wie jede andere Frage. */
+  it('inherits its prose fields like every other field', () => {
+    const npc = proseFields(seedRegistry, 'NPC').map((f) => `${f.type}.${f.key}`);
+    expect(npc).toContain('Prose.paragraph'); // über Identity
+    expect(npc).toContain('Secrets.secret'); // über Creature
+    expect(npc).toContain('Creature.personality'); // eigenes Feld von Creature
+    /* Eine Regel hat Text und Notizen und sonst nichts — kein Geheimnis,
+       keine Taktik. */
+    const rule = proseFields(seedRegistry, 'Rule').map((f) => `${f.type}.${f.key}`);
+    expect(rule.sort()).toEqual(['Notes.note', 'Prose.paragraph']);
+  });
+
+  /* Die sieben Prosanamen sind immer ein Sack mit Einträgen. Einer davon
+     als einzelner Absatz wäre ein Feld, an dem keine Freigabe hängen kann —
+     und daran hing sie vorher. `Scene.readaloud` war genau das: ein
+     einzelner Vorlesetext, der mit `ReadAloud.readaloud` ein zweites Mal
+     hereinkam, sobald die Blockarten Felder wurden. */
+  it('keeps every prose name a bag with ids', () => {
+    const teile = ['Prose', 'Notes', 'Lore', 'Secrets', 'ReadAloud', 'Facts', 'Tactics'];
+    const namen = new Set<string>();
+    for (const t of teile) {
+      const props = Object.entries(seedRegistry.interfaces[t]?.schema?.properties ?? {});
+      expect(props.length).toBe(1);
+      const [key, prop] = props[0] as [string, { many?: boolean; format?: string }];
+      expect([t, prop.many, prop.format]).toEqual([t, true, 'long']);
+      namen.add(key);
+    }
+    /* Und kein anderer Typ nennt denselben Namen als langen Text: das war
+       `Scene.readaloud` — ein einzelner Vorlesetext, der neben dem Sack
+       stand und gleich hiess. Ein kurzes `note` an einer Zugriffszeile ist
+       etwas anderes und darf bleiben. */
+    const doppelt: string[] = [];
+    for (const [name, def] of Object.entries(seedRegistry.interfaces)) {
+      if (teile.includes(name)) continue;
+      for (const [key, prop] of Object.entries(def.schema?.properties ?? {})) {
+        if (namen.has(key) && prop.format === 'long') doppelt.push(`${name}.${key}`);
+      }
+    }
+    expect(doppelt).toEqual([]);
   });
 
   it('offers only the relations whose source matches', () => {

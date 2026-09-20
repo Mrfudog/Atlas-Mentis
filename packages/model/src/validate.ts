@@ -24,6 +24,8 @@ const propertySchema = z.object({
   items: z.object({ type: propertyType }).optional(),
   derived: z.string().optional(),
   of: z.string().optional(),
+  unit: z.string().optional(),
+  many: z.boolean().optional(),
   default: z.unknown().optional(),
 });
 
@@ -41,12 +43,11 @@ const objectSchema = z.object({
 const LayoutElementSchema: z.ZodType<LayoutElement> = z.lazy(() =>
   z.object({
     id: z.string(),
-    el: z.enum(['heading', 'text', 'fields', 'blocks', 'description', 'composed', 'relations', 'image', 'knowledge', 'map', 'sheet', 'inventory', 'crafting', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'standing', 'tabs']),
+    el: z.enum(['heading', 'text', 'fields', 'prose', 'description', 'composed', 'relations', 'image', 'knowledge', 'map', 'sheet', 'inventory', 'crafting', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'standing', 'tabs']),
     text: z.string().optional(),
     fields: z.union([z.literal('all'), z.array(z.string())]).optional(),
     except: z.array(z.string()).optional(),
     columns: z.number().optional(),
-    blocks: z.union([z.literal('all'), z.array(z.string())]).optional(),
     tabs: z
       .array(
         z.object({
@@ -65,7 +66,6 @@ export const InterfaceDefSchema = z.object({
   abstract: z.boolean().optional(),
   extends: z.array(z.string()).optional(),
   schema: objectSchema.optional(),
-  blockTypes: z.array(z.string()).optional(),
   area: z.enum(['world', 'history', 'rules', 'play']).optional(),
   views: z.record(z.string(), z.array(LayoutElementSchema)).optional(),
   units: z.enum(['imperial', 'metric', 'both']).optional(),
@@ -97,7 +97,6 @@ export const ViewDefSchema = z.object({
   label: z.string(),
   order: z.number().optional(),
   fields: z.union([z.literal('all'), z.literal('none'), z.array(z.string())]),
-  blocks: z.union([z.literal('all'), z.array(z.string())]),
   description: z.boolean().optional(),
   composed: z.boolean().optional(),
   relations: z.boolean().optional(),
@@ -115,13 +114,6 @@ export const RegistrySchema = z.object({
   settings: z.record(z.string(), z.string()).optional(),
 });
 
-export const BlockSchema = z.object({
-  id: z.string(),
-  blockType: z.string(),
-  body: z.string(),
-  order: z.number(),
-  anchor: z.string().optional(),
-});
 
 export const RelationSchema = z.object({
   id: z.string(),
@@ -138,7 +130,6 @@ export const EntitySchema = z.object({
   adhoc: z
     .array(z.object({ key: z.string(), label: z.string(), type: z.string(), value: z.unknown() }))
     .optional(),
-  blocks: z.array(BlockSchema).optional(),
   relations: z.array(RelationSchema).optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),

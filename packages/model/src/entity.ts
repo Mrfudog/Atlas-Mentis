@@ -10,7 +10,6 @@ import type {
   Backlink,
   Entity,
   EntityId,
-  InterfaceDef,
   PropertySchema,
   Registry,
   RelationDef,
@@ -53,22 +52,6 @@ export function setTags(entity: Entity, tags: string[]): void {
   }
 }
 
-function walk<T>(
-  registry: Pick<Registry, 'interfaces'>,
-  name: string,
-  pick: (def: InterfaceDef) => T[] | undefined,
-  seen = new Set<string>(),
-): T[] {
-  const def = registry.interfaces[name];
-  if (!def || seen.has(name)) return [];
-  seen.add(name);
-  const inherited = (def.extends ?? []).flatMap((parent) => walk(registry, parent, pick, seen));
-  return [...inherited, ...(pick(def) ?? [])];
-}
-
-function unique<T>(items: T[]): T[] {
-  return [...new Set(items)];
-}
 
 /**
  * Die Arten, deren Felder hier gelten: diese und alle Obertypen.
@@ -121,14 +104,18 @@ export function fieldsOf(registry: Pick<Registry, 'interfaces'>, name: string): 
   return out;
 }
 
-/** Block types this interface accepts, resolving `+x` additions. */
-export function blockTypesFor(registry: Pick<Registry, 'interfaces'>, name: string): string[] {
-  const raw = walk(registry, name, (d) => d.blockTypes);
-  const out: string[] = [];
-  for (const entry of raw) {
-    out.push(entry.startsWith('+') ? entry.slice(1) : entry);
-  }
-  return unique(out.length ? out : ['paragraph']);
+/**
+ * Die Prosafelder einer Art: die mit `many` und langer Eingabe.
+ *
+ * Das waren einmal die **Blockarten** — eine eigene Liste je Artikelart,
+ * neben den Feldern. Jetzt sind sie Felder wie alle anderen, und wer sie
+ * sucht, fragt nach ihrer Form statt nach einer zweiten Liste.
+ */
+export function proseFields(
+  registry: Pick<Registry, 'interfaces'>,
+  name: string,
+): TypedField[] {
+  return fieldsOf(registry, name).filter((f) => f.prop.many && f.prop.format === 'long');
 }
 
 /**
@@ -253,4 +240,41 @@ export function findByName(entities: Iterable<Entity>, name: string): Entity | u
     }
   }
   return undefined;
+}
+
+/**
+ * Ein Eintrag eines Feldes mit `many`.
+ *
+ * Die `id` ist das, woran eine Wissensfreigabe hängt — sie war einmal der
+ * Anker eines Blocks und heisst jetzt so, wie sie sich verhält.
+ */
+export interface FieldEntry {
+  id: string;
+  value: string;
+}
+
+/** Die Einträge eines Feldes, egal wie der Wert geschrieben ist.
+ *
+ *  Ein blosser Text wird als ein Eintrag gelesen und eine Liste von Texten
+ *  als Einträge ohne eigene Id: so bleibt ein von Hand getipptes Register
+ *  lesbar, statt am ersten Tippfehler stillzustehen. */
+export function entriesOf(value: unknown): FieldEntry[] {
+  if (value === undefined || value === null || value === '') return [];
+  const eintrag = (x: unknown, i: number): FieldEntry => {
+    if (x && typeof x === 'object') {
+      const o = x as Record<string, unknown>;
+      return {
+        id: typeof o['id'] === 'string' && o['id'] ? o['id'] : `e${i}`,
+        value: typeof o['value'] === 'string' ? o['value'] : String(o['value'] ?? ''),
+      };
+    }
+    return { id: `e${i}`, value: String(x) };
+  };
+  if (Array.isArray(value)) return value.map(eintrag);
+  return [eintrag(value, 0)];
+}
+
+/** Der Verweis auf einen einzelnen Eintrag: `Creature.secret#anchor`. */
+export function entryRef(type: string, key: string, id: string): string {
+  return `${type}.${key}#${id}`;
 }

@@ -43,7 +43,6 @@ export const views: Record<string, ViewDef> = {
     label: 'Overview',
     order: 1,
     fields: 'none',
-    blocks: [],
     description: true,
     composed: false,
     relations: false,
@@ -57,7 +56,6 @@ export const views: Record<string, ViewDef> = {
     label: 'Quick',
     order: 2,
     fields: 'none',
-    blocks: ['paragraph', 'readaloud'],
     description: true,
     composed: false,
     relations: true,
@@ -66,7 +64,7 @@ export const views: Record<string, ViewDef> = {
     layout: [
       { id: 'q-img', el: 'image' },
       { id: 'q-desc', el: 'description' },
-      { id: 'q-b', el: 'blocks', blocks: ['paragraph', 'readaloud'] },
+      { id: 'q-b', el: 'prose', fields: ['Prose.paragraph', 'ReadAloud.readaloud'] },
     ],
   },
 
@@ -79,7 +77,6 @@ export const views: Record<string, ViewDef> = {
     label: 'Full',
     order: 3,
     fields: 'all',
-    blocks: 'all',
     description: true,
     composed: true,
     relations: true,
@@ -89,7 +86,7 @@ export const views: Record<string, ViewDef> = {
       { id: 'l-img', el: 'image' },
       { id: 'l-desc', el: 'description' },
       { id: 'l-f', el: 'fields', fields: 'all' },
-      { id: 'l-b', el: 'blocks', blocks: 'all' },
+      { id: 'l-b', el: 'prose', fields: 'all' },
       { id: 'l-c', el: 'composed' },
       /* Wer wie zu wem steht, gehört auf die Seite und nicht hinter ein
          Dropdown. `elStanding` gibt nichts zurück, wo niemand eine Meinung

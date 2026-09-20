@@ -12,6 +12,16 @@ import type { Entity, EntityId, Registry } from '../src/types.js';
 const registry: Pick<Registry, 'interfaces'> = {
   interfaces: {
     Identity: { name: 'Identity', abstract: true },
+    /* Ein Sack mit Einträgen: an jedem hängt eine Id, und an der die
+       Freigabe. Das war einmal ein Block mit seinem Anker. */
+    Secrets: {
+      name: 'Secrets',
+      abstract: true,
+      schema: {
+        type: 'object',
+        properties: { secret: { type: 'string', format: 'long', many: true } },
+      },
+    },
     NPC: { name: 'NPC', extends: ['Identity'] },
     PlayerCharacter: { name: 'PlayerCharacter', extends: ['Identity'] },
     Party: { name: 'Party', extends: ['Identity'] },
@@ -44,16 +54,21 @@ const rumour = entity('i_debt', 'Seine Schulden', {
   interfaces: ['Information'],
   components: {
     Identity: { name: 'Seine Schulden' },
-    Information: { fields: ['Creature'], blocks: ['b_secret'], tier: 'rumour' },
+    Information: { fields: ['Creature', 'Secrets.secret#b_secret'], tier: 'rumour' },
   },
   relations: [{ id: 'r2', type: 'knownBy', to: 'kl_street' }],
 });
 
 const baron = entity('n_baron', 'Der Baron', {
-  blocks: [
-    { id: 'b_open', blockType: 'paragraph', body: 'Er trägt Grau.', order: 1 },
-    { id: 'b_secret', blockType: 'secret', body: 'Er schuldet der Gilde.', order: 2 },
-  ],
+  components: {
+    Identity: { name: 'Der Baron' },
+    Secrets: {
+      secret: [
+        { id: 'b_open', value: 'Er trägt Grau.' },
+        { id: 'b_secret', value: 'Er schuldet der Gilde.' },
+      ],
+    },
+  },
   relations: [
     { id: 'r3', type: 'knowledge', to: 'i_name' },
     { id: 'r4', type: 'knowledge', to: 'i_debt' },
@@ -75,7 +90,14 @@ const entities = new Map<EntityId, Entity>(
   [baron, trueName, rumour, mara, torn, party, street].map((e) => [e.id, e]),
 );
 
-const ALL = ['Identity.key', 'Identity.aliases', 'Creature.attitude', 'StatblockInfo.ac'];
+const ALL = [
+  'Identity.key',
+  'Identity.aliases',
+  'Creature.attitude',
+  'StatblockInfo.ac',
+  'Secrets.secret#b_open',
+  'Secrets.secret#b_secret',
+];
 
 describe('knowledge', () => {
   it('findet die Informationen am Artikel', () => {
@@ -105,10 +127,16 @@ describe('knowledge', () => {
   it('stellt das Offene voran und beansprucht den Rest', () => {
     const groups = knowledgeGroups(registry, entities, baron, ALL);
     expect(groups[0]?.open).toBe(true);
-    expect(groups[0]?.fields).toEqual(['Identity.key', 'StatblockInfo.ac']);
-    expect(groups[0]?.blocks).toEqual(['b_open']);
+    expect(groups[0]?.fields).toEqual([
+      'Identity.key',
+      'StatblockInfo.ac',
+      'Secrets.secret#b_open',
+    ]);
     expect(groups.map((g) => g.label)).toEqual(['Open', 'Sein wahrer Name', 'Seine Schulden']);
-    expect(groups[2]?.blocks).toEqual(['b_secret']);
+    /* Ein Eintrag von zweien: die Information nimmt genau den, den sie
+       nennt — über den Index ginge das auch, bis jemand umsortiert. */
+    expect(groups[2]?.fields).toContain('Secrets.secret#b_secret');
+    expect(groups[2]?.fields).not.toContain('Secrets.secret#b_open');
   });
 
   it('zeigt einem Betrachter das Offene plus sein Wissen', () => {
@@ -116,16 +144,21 @@ describe('knowledge', () => {
       'Identity.key',
       'Identity.aliases',
       'StatblockInfo.ac',
+      'Secrets.secret#b_open',
     ]);
+    /* Torn kennt das Gerücht — also auch den einen Eintrag, den es nennt. */
     expect(visibleFields(registry, entities, baron, ALL, 'pc_torn')).toEqual([
       'Identity.key',
       'Creature.attitude',
       'StatblockInfo.ac',
+      'Secrets.secret#b_open',
+      'Secrets.secret#b_secret',
     ]);
     /* Ein Fremder sieht nur, was keine Information beansprucht. */
     expect(visibleFields(registry, entities, baron, ALL, 'pc_niemand')).toEqual([
       'Identity.key',
       'StatblockInfo.ac',
+      'Secrets.secret#b_open',
     ]);
     /* Und die Spielleitung alles. */
     expect(visibleFields(registry, entities, baron, ALL)).toEqual(ALL);

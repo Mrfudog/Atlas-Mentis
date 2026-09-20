@@ -82,6 +82,14 @@ die Entscheidungen D0–D17, `Requirements.md` die REQ-Nummern.
   `extends`-Kette hoch); sagt keiner etwas, gilt die Grundanordnung der
   Ansicht. Eine Stufe für genau einen Typ wäre ein Sonderfall mit einem
   Dropdown davor.
+- **Ein Textblock ist ein Feld.** Es gab einmal `blocks: [{blockType, body,
+  anchor}]` neben den Karten, mit einer eigenen Liste erlaubter Blockarten je
+  Artikelart — also eine zweite Frage, die jede Art zweimal beantworten
+  musste. Jetzt ist die Blockart das Feld: `secret` ist ein Feld mit `many`
+  und `format: 'long'`, und seine Einträge tragen die Id, an der die
+  Wissensfreigabe hängt (`Secrets.secret#id`). Die Id kommt aus dem Text, denn
+  eine durchgezählte hält nur, solange die Reihenfolge hält. Ein Prosafeld
+  steht **nicht** in der Feldtabelle — es gehört dem Element `prose`.
 - **Wie die Dinge heissen, steht in [docs/Begriffe.md](docs/Begriffe.md):**
   Typ, Bestandteil, Feld, Artikel, Ansicht, Block, Kante, Einheit — acht
   Wörter, mehr nicht. Wer zwei Namen für eine Sache hat, hat bald zwei Sachen; im
