@@ -24,6 +24,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Creature: {
     name: 'Creature',
+    area: 'world',
     label: 'Creature',
     abstract: true,
     extends: ['Base'],
@@ -37,12 +38,14 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   NPC: {
     name: 'NPC',
+    area: 'world',
     label: 'NPC',
     extends: ['Creature'],
   },
 
   PlayerCharacter: {
     name: 'PlayerCharacter',
+    area: 'world',
     label: 'Player character',
     extends: ['Creature'],
     requires: ['CharacterInfo'],
@@ -51,18 +54,21 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Companion: {
     name: 'Companion',
+    area: 'world',
     label: 'Companion',
     extends: ['Creature'],
   },
 
   Retainer: {
     name: 'Retainer',
+    area: 'world',
     label: 'Retainer',
     extends: ['Creature'],
   },
 
   Place: {
     name: 'Place',
+    area: 'world',
     label: 'Place',
     extends: ['Base'],
     allows: ['LocationInfo', 'Explored'],
@@ -71,6 +77,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Faction: {
     name: 'Faction',
+    area: 'world',
     label: 'Faction',
     extends: ['Base'],
     allows: ['FactionInfo'],
@@ -79,6 +86,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Article: {
     name: 'Article',
+    area: 'world',
     label: 'Article',
     extends: ['Base'],
     blockTypes: ['+lore', '+secret', '+poem', '+song'],
@@ -87,6 +95,7 @@ export const interfaces: Record<string, InterfaceDef> = {
   /** The reuse pool: traits, actions, conditions, feats — all one interface. */
   Rule: {
     name: 'Rule',
+    area: 'game',
     label: 'Rule Element',
     extends: ['Base'],
     requires: ['RuleInfo'],
@@ -96,6 +105,7 @@ export const interfaces: Record<string, InterfaceDef> = {
   /** An entity of its own (D4), referenced by creatures, never embedded. */
   Statblock: {
     name: 'Statblock',
+    area: 'world',
     label: 'Statblock',
     extends: ['Base'],
     requires: ['StatblockInfo'],
@@ -110,6 +120,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Item: {
     name: 'Item',
+    area: 'world',
     label: 'Item',
     extends: ['Base'],
     allows: ['ItemInfo', 'Footprint'],
@@ -118,6 +129,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Weapon: {
     name: 'Weapon',
+    area: 'world',
     label: 'Weapon',
     extends: ['Item'],
     allows: ['WeaponInfo'],
@@ -125,6 +137,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Armor: {
     name: 'Armor',
+    area: 'world',
     label: 'Armor',
     extends: ['Item'],
     allows: ['ArmorInfo'],
@@ -132,6 +145,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Material: {
     name: 'Material',
+    area: 'world',
     label: 'Material',
     extends: ['Item'],
     allows: ['MaterialInfo'],
@@ -139,12 +153,14 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Consumable: {
     name: 'Consumable',
+    area: 'world',
     label: 'Consumable',
     extends: ['Item'],
   },
 
   Party: {
     name: 'Party',
+    area: 'world',
     label: 'Party',
     extends: ['Base'],
     allows: ['PartyInfo', 'Access', 'TravelInfo'],
@@ -153,6 +169,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Inventory: {
     name: 'Inventory',
+    area: 'world',
     label: 'Inventory',
     extends: ['Base'],
     allows: ['InventoryInfo'],
@@ -166,6 +183,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Story: {
     name: 'Story',
+    area: 'story',
     label: 'Story',
     abstract: true,
     extends: ['Base'],
@@ -175,24 +193,28 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Campaign: {
     name: 'Campaign',
+    area: 'story',
     label: 'Campaign',
     extends: ['Story'],
   },
 
   Arc: {
     name: 'Arc',
+    area: 'story',
     label: 'Arc',
     extends: ['Story'],
   },
 
   Chapter: {
     name: 'Chapter',
+    area: 'story',
     label: 'Chapter',
     extends: ['Story'],
   },
 
   Session: {
     name: 'Session',
+    area: 'story',
     label: 'Session',
     extends: ['Story'],
     allows: ['SessionState'],
@@ -201,6 +223,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Scene: {
     name: 'Scene',
+    area: 'story',
     label: 'Scene / Encounter',
     extends: ['Story'],
     allows: ['SceneInfo'],
@@ -213,6 +236,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Quest: {
     name: 'Quest',
+    area: 'story',
     label: 'Quest',
     extends: ['Base'],
     requires: ['QuestInfo'],
@@ -227,6 +251,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Information: {
     name: 'Information',
+    area: 'game',
     label: 'Information',
     extends: ['Base'],
     requires: ['Info'],
@@ -240,6 +265,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   KnowledgeLevel: {
     name: 'KnowledgeLevel',
+    area: 'game',
     label: 'Knowledge level',
     extends: ['Base'],
     requires: ['KnowledgeInfo'],
@@ -252,6 +278,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Asset: {
     name: 'Asset',
+    area: 'game',
     label: 'Asset',
     extends: ['Base'],
     requires: ['AssetInfo'],
@@ -267,6 +294,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Map: {
     name: 'Map',
+    area: 'play',
     label: 'Map',
     extends: ['Base'],
     requires: ['MapInfo'],
@@ -283,6 +311,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Recipe: {
     name: 'Recipe',
+    area: 'game',
     label: 'Recipe',
     extends: ['Base'],
     requires: ['RecipeInfo'],
@@ -297,6 +326,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Board: {
     name: 'Board',
+    area: 'play',
     label: 'Board',
     extends: ['Base'],
     requires: ['BoardInfo'],
@@ -311,6 +341,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Encounter: {
     name: 'Encounter',
+    area: 'play',
     label: 'Encounter',
     extends: ['Base'],
     requires: ['EncounterInfo'],
@@ -324,6 +355,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Event: {
     name: 'Event',
+    area: 'story',
     label: 'Event',
     extends: ['Base'],
     requires: ['WorldDate'],
@@ -338,6 +370,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Table: {
     name: 'Table',
+    area: 'game',
     label: 'Table',
     extends: ['Base'],
     requires: ['TableInfo'],
@@ -352,6 +385,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Layer: {
     name: 'Layer',
+    area: 'game',
     label: 'Layer',
     extends: ['Base'],
     requires: ['LayerInfo'],

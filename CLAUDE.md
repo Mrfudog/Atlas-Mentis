@@ -62,6 +62,16 @@ die Entscheidungen D0–D17, `Requirements.md` die REQ-Nummern.
   verloren, und der Verlust war endgültig.
 - **Kanten nur vorwärts speichern.** Ein gespiegeltes Gegenstück verwaist.
 - **Schreiben geht durch `validateEntity`**, auch wenn es umständlich scheint.
+- **Drei Darstellungsstufen, nicht einundzwanzig.** Eine Stufe sagt, **wie
+  viel** und **für wen** — `quick`, `full`, `player`. Was für eine Artikelart
+  eigen ist, steht in `byInterface` und nicht in einer eigenen Stufe: eine
+  Kreatur zeigt ihren Bogen, ein Rezept seine Werkbank, ohne dass jemand
+  etwas auswählt. Eine Stufe für genau einen Typ ist ein Sonderfall mit
+  einem Dropdown davor.
+- **Vier Bereiche: Story, World, Game, Play.** Wohin eine Artikelart gehört,
+  steht als `area` an ihrer Schnittstelle und wird wie alles andere geerbt.
+  Im Code steht keine Liste davon — sonst bräuchte eine neue Artikelart eine
+  Codeänderung, um auffindbar zu sein.
 - **Das Register steht einmal.** Wer eine Zeile ändert, ändert sie in
   `packages/registry` und lässt `emit-seed` laufen. Zweimal dasselbe von Hand
   zu pflegen hält genau so lange, wie jemand daran denkt — und als es hier
@@ -82,6 +92,11 @@ pnpm --filter @nw/model build && pnpm --filter @nw/registry build   # zuerst
 pnpm test && pnpm lint
 pnpm --filter @nw/registry emit-seed   # nach jeder Registeränderung
 ```
+
+`emit-seed` **behält** Zeilen, die es nur im Prototyp gibt — wer dort eine
+Artikelart anlegt, soll sie behalten. Eine Zeile zu **entfernen** ist deshalb
+ausdrücklich: `emit-seed --prune views` wirft die zusätzlichen Zeilen dieses
+Teils weg und zählt sie dabei auf.
 
 `pnpm test` läuft in zwei Projekten: `node` für Modell, Register und Server,
 `web` mit jsdom und Angulars aufgesetzter Prüfumgebung. Eine gemeinsame

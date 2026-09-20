@@ -61,6 +61,14 @@ export interface InterfaceDef {
   allows?: string[];
   /** `+x` adds to the inherited set; a bare list replaces it. */
   blockTypes?: string[];
+  /**
+   * In welchen Bereich der Oberfläche diese Artikelart gehört: `story`,
+   * `world`, `game` oder `play`. Steht hier und nicht im Code, weil eine
+   * neue Artikelart sonst eine Codeänderung bräuchte, um überhaupt
+   * auffindbar zu sein — und das wäre genau die Sorte Ausnahme, die das
+   * Rückgrat vermeidet. Ohne Angabe: taucht nur unter „alle" auf.
+   */
+  area?: 'story' | 'world' | 'game' | 'play';
 }
 
 /** A row of `relation_def`. */
@@ -128,6 +136,13 @@ export interface LayoutElement {
   text?: string;
   /** `fields`: `all` or a list of `Component` / `Component.field`. */
   fields?: 'all' | string[];
+  /**
+   * `fields`: was ein anderes Element desselben Layouts schon zeichnet —
+   * der Bogen die Kampfwerte, die Feldtabelle den Rest. Ohne das müsste
+   * jede Artikelart ihre Felder einzeln aufzählen, und ein neu
+   * hinzugekommenes Feld stünde nirgends, bis es jemand nachträgt.
+   */
+  except?: string[];
   /** `fields`: 0 fits the width. */
   columns?: number;
   /** `blocks`: `all` or a list of block types. */

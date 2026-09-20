@@ -91,11 +91,30 @@ describe('seed registry', () => {
     expect(bad).toEqual([]);
   });
 
-  it('the player view withholds secrets', () => {
+  /* Die Spielerstufe hält **Blöcke** zurück, keine Felder mehr.
+     Zurückgehalten wird, was einer Information gehört, die dieser Spieler
+     nicht hat — das entscheidet `redactEntity` an den Daten und nicht eine
+     Feldliste an der Ansicht. Eine Feldliste hier hiesse: ein Spieler sieht
+     die Rüstungsklasse **seiner eigenen Figur** nicht, und das war der
+     Fehler, den die Stufe hatte. */
+  it('the player view withholds the GM block types, not the fields', () => {
     const player = seedRegistry.views['player'];
     expect(player).toBeDefined();
     expect(Array.isArray(player!.blocks) && player!.blocks.includes('secret')).toBe(false);
-    expect(showField(player!, 'StatblockInfo', 'ac')).toBe(false);
+    expect(Array.isArray(player!.blocks) && player!.blocks.includes('tactics')).toBe(false);
+    // Die eigene Figur muss lesbar bleiben, sonst ist das Blatt wertlos.
+    expect(showField(player!, 'StatblockInfo', 'ac')).toBe(true);
+  });
+
+  /* Drei Stufen, nicht einundzwanzig. Vierzehn der alten gab es für genau
+     eine Artikelart — das ist keine Auswahl, sondern eine Liste von
+     Sonderfällen mit einem Dropdown davor. Was für eine Artikelart eigen
+     ist, steht seither in `byInterface`. */
+  it('keeps the facets to how much and for whom', () => {
+    expect(Object.keys(seedRegistry.views).sort()).toEqual(['full', 'player', 'quick']);
+    const proTyp = seedRegistry.views['full']?.byInterface ?? {};
+    expect(Object.keys(proTyp)).toContain('Creature');
+    expect(Object.keys(proTyp)).toContain('Map');
   });
 
   /* Die Liste der Ansichten wächst mit jedem Bereich. Fest einzutragen,
@@ -261,14 +280,13 @@ describe('seed registry, referential integrity', () => {
 
   /* Ein Layout-Element, das die Seite nicht kennt, zeichnet nichts — und
      die Ansicht ist dann leer, ohne dass irgendwo etwas schiefgeht. */
-  it('uses only layout elements the schema knows', () => {
+  it('uses only layout elements the schema knows, and writes them out', () => {
     expect(() => RegistrySchema.parse(seedRegistry)).not.toThrow();
+    /* Keine Ansicht fällt mehr auf die alte Schalterform zurück. Die gibt
+       es weiterhin, damit eine von Hand geschriebene Zeile lesbar bleibt —
+       aber die Startzeilen sollen sagen, was sie meinen. */
     const ohne = Object.entries(views).filter(([, v]) => (v.layout ?? []).length === 0);
-    // Ansichten ohne Layout fallen auf die Standardfolge zurück — das ist
-    // in Ordnung, aber es soll niemand versehentlich tun.
-    expect(ohne.map(([n]) => n).sort()).toEqual(
-      ['combat', 'full', 'image', 'player', 'quick', 'stats'].sort(),
-    );
+    expect(ohne.map(([n]) => n)).toEqual([]);
   });
 
   it('refers to fields that exist', () => {

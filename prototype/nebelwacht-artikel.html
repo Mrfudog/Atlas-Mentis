@@ -782,7 +782,7 @@ var REG={interfaces:{},components:{},relations:{},vars:{},views:{},settings:{}};
 /* Die Ablage des Artefakts für Bilder und Karten. Nur Schreibberechtigte
    bekommen sie; ohne sie bleibt der Verweis auf fremde Adressen. */
 var assetStore=null, downloadNS=null;
-var UI={route:{k:"list"}, view:"quick", iface:"", tag:"", q:"", offen:false, pane:"main",
+var UI={route:{k:"list"}, view:"quick", area:"", iface:"", tag:"", q:"", offen:false, pane:"main",
         regtab:"interfaces", regiface:"", regcomp:"", regprop:"", regjson:false,
         regview:"", regscope:"", regel:"", regcomp2:"", regrel:"",
         trail:[], inline:false, editField:"", pick:false, picked:{}, status:"",
@@ -1332,6 +1332,39 @@ function ifaceRoots(){
   return Object.keys(REG.interfaces).filter(function(n){ return !parentOf(n); })
     .sort(function(a,b){return a.localeCompare(b,"de");});
 }
+/* ---------- Bereiche ----------
+   Vier statt eines Kompendiums: **Story**, **World**, **Game**, **Play**.
+   Welche Artikelart wohin gehört, steht als `area` an der Schnittstelle —
+   also im Register und nicht hier. Sonst bräuchte eine neue Artikelart eine
+   Codeänderung, um überhaupt auffindbar zu sein, und genau diese Sorte
+   Ausnahme soll das Rückgrat nicht haben.
+
+   Geerbt wird wie alles andere: eine Schnittstelle ohne eigene Angabe nimmt
+   die ihres Obertyps. Ein NSC muss nicht wiederholen, dass Kreaturen zur
+   Welt gehören. */
+var AREAS=[["story","Story"],["world","World"],["game","Game"],["play","Play"]];
+function areaOf(n){
+  var at=n, guard=0;
+  while(at&&guard++<64){
+    var a=(REG.interfaces[at]||{}).area;
+    if(a)return a;
+    at=parentOf(at);
+  }
+  return "";
+}
+/* Die Wurzeln eines Bereichs: die obersten Schnittstellen, die dort liegen.
+   Liegt ein Obertyp anderswo, steht sein Subtyp hier trotzdem für sich —
+   sonst wäre er unauffindbar. */
+function areaRoots(area){
+  return Object.keys(REG.interfaces).filter(function(n){
+    if(areaOf(n)!==area)return false;
+    var p=parentOf(n);
+    return !p||areaOf(p)!==area;
+  }).sort(function(a,b){
+    var da=REG.interfaces[a], db=REG.interfaces[b];
+    return String(da.label||a).localeCompare(String(db.label||b),"de");
+  });
+}
 /* Würde `kind` unter `ganz above` hängen, entstünde ein Ring — dann fände
    compsFor() kein Ende. `seen` in compsFor fängt das ab, aber ein Register,
    das sich im Kreis dreht, ist trotzdem broken. Hier wird es verhindert. */
@@ -1567,26 +1600,43 @@ function renderRail(){
     (e.tags||[]).forEach(function(t){tags[t]=(tags[t]||0)+1;});
   });
 
-  var s1=el("section");
-  s1.appendChild(el("h3",{text:"Compendium"}));
-  s1.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.iface===""&&UI.route.k==="list"),
-    onclick:function(){UI.iface="";go({k:"list"});}},[el("b",{text:"All articles"}),el("em",{text:String(ENT.size)})]));
-  /* Der Baum wie im Datenmodell: ein Obertyp steht über seinen Subtypen und
-     zählt sie mit. Eine flache, alphabetische Liste verbirgt genau die
-     Verwandtschaft, die den Filter erklärt. */
-  (function walk(list,depth){
-    list.forEach(function(n){
-      var d=REG.interfaces[n];
-      var b=el("button",{class:"navrow",type:"button",
-        "aria-current":String(UI.iface===n&&UI.route.k==="list"),
-        style:depth?"padding-left:"+(10+depth*11)+"px":null,
-        onclick:function(){UI.iface=n;go({k:"list"});}},
-        [el("b",{class:d.abstract?"ab":"",text:d.label||n}),el("em",{text:String(counts[n]||0)})]);
-      s1.appendChild(b);
-      walk(kindsOf(n),depth+1);
-    });
-  })(ifaceRoots(),0);
-  r.appendChild(s1);
+  /* Vier Bereiche statt eines Kompendiums. Innerhalb eines Bereichs bleibt
+     der Baum wie im Datenmodell: ein Obertyp steht über seinen Subtypen und
+     zählt sie mit. Eine flache Liste verbirgt genau die Verwandtschaft, die
+     den Filter erklärt. */
+  function zweig(box,n,depth){
+    var d=REG.interfaces[n]; if(!d)return;
+    box.appendChild(el("button",{class:"navrow",type:"button",
+      "aria-current":String(UI.iface===n&&UI.route.k==="list"),
+      style:depth?"padding-left:"+(10+depth*11)+"px":null,
+      onclick:function(){UI.iface=n;UI.area="";go({k:"list"});}},
+      [el("b",{class:d.abstract?"ab":"",text:d.label||n}),el("em",{text:String(counts[n]||0)})]));
+    kindsOf(n).forEach(function(k){ if(areaOf(k)===areaOf(n)) zweig(box,k,depth+1); });
+  }
+
+  AREAS.forEach(function(ar){
+    var wurzeln=areaRoots(ar[0]);
+    if(!wurzeln.length)return;
+    var sec=el("section");
+    sec.appendChild(el("h3",{text:ar[1]}));
+    /* Der Bereich selbst ist anklickbar: „alles aus der Welt" ist eine
+       Frage, die man stellt, bevor man weiss, welche Artikelart man sucht. */
+    var summe=0;
+    wurzeln.forEach(function(n){ summe+=(counts[n]||0); });
+    sec.appendChild(el("button",{class:"navrow area",type:"button",
+      "aria-current":String(UI.area===ar[0]&&UI.route.k==="list"),
+      onclick:function(){UI.area=ar[0];UI.iface="";go({k:"list"});}},
+      [el("b",{text:"All "+ar[1].toLowerCase()}),el("em",{text:String(summe)})]));
+    wurzeln.forEach(function(n){ zweig(sec,n,1); });
+    r.appendChild(sec);
+  });
+
+  var sAll=el("section");
+  sAll.appendChild(el("button",{class:"navrow",type:"button",
+    "aria-current":String(UI.iface===""&&UI.area===""&&UI.route.k==="list"),
+    onclick:function(){UI.iface="";UI.area="";go({k:"list"});}},
+    [el("b",{text:"All articles"}),el("em",{text:String(ENT.size)})]));
+  r.appendChild(sAll);
 
   var keys=Object.keys(tags).sort();
   if(keys.length){
@@ -1634,7 +1684,7 @@ function renderRail(){
     var camp=currentCampaign();
     s3.appendChild(el("button",{class:"navrow",type:"button",
       title:"Which layers are running",
-      onclick:function(){ if(camp){ UI.view="stack"; go({k:"art",id:camp.id}); } }},
+      onclick:function(){ if(camp) go({k:"art",id:camp.id}); }},
       [el("b",{text:"Stack"}),el("em",{text:activeStack().length+"/"+ebenen})]));
   }
   var regelZahl=0; ENT.forEach(function(x){ if(((x.interfaces||[])[0])===RULE_IFACE) regelZahl++; });
@@ -1670,7 +1720,7 @@ function renderRail(){
         var i2=(x.interfaces||[])[0];
         if(i2==="Campaign"||i2==="Session") ziel=x;
       });
-      if(ziel){ UI.view="prep"; go({k:"art",id:ziel.id}); }
+      if(ziel) go({k:"art",id:ziel.id});
     }},[el("b",{text:"To do"}),el("em",{text:String(offeneTodos)})]));
   var openCount=0; ENT.forEach(function(x){ if(checkArticle(x).length) openCount++; });
   s3.appendChild(el("button",{class:"navrow",type:"button","aria-current":String(UI.offen),
@@ -1707,6 +1757,10 @@ function matches(e){
     var erlaubt=ifaceAndKinds(UI.iface);
     if(!(e.interfaces||[]).some(function(n){ return erlaubt.indexOf(n)>=0; })) return false;
   }
+  /* Der Bereich. Er fragt dieselbe Registerzeile wie die Seitenleiste —
+     eine zweite Zuordnung hier wäre die Stelle, an der ein Artikel in der
+     Leiste steht und in der Liste fehlt. */
+  if(UI.area && areaOf((e.interfaces||[])[0])!==UI.area) return false;
   if(UI.tag && (e.tags||[]).indexOf(UI.tag)<0) return false;
   if(UI.status && (((e.components||{}).Status||{}).value)!==UI.status) return false;
   if(UI.q){
@@ -1727,7 +1781,11 @@ function summary(e){
 function renderList(v){
   var list=byName().filter(matches);
   var head=el("div",{class:"listhead"});
-  head.appendChild(el("h2",{text:UI.iface?(REG.interfaces[UI.iface]&&REG.interfaces[UI.iface].label||UI.iface):"All articles"}));
+  var areaLabel="";
+  AREAS.forEach(function(x){ if(x[0]===UI.area) areaLabel="All "+x[1].toLowerCase(); });
+  head.appendChild(el("h2",{text:UI.iface
+    ?(REG.interfaces[UI.iface]&&REG.interfaces[UI.iface].label||UI.iface)
+    :(areaLabel||"All articles")}));
   head.appendChild(el("span",{class:"count",text:list.length+" of "+ENT.size}));
   if(UI.tag) head.appendChild(el("span",{class:"pill",text:"#"+UI.tag}));
   if(canWrite()) head.appendChild(el("button",{class:"btn sm"+(UI.pick?" pri":""),type:"button",
@@ -1814,7 +1872,7 @@ function renderArticle(v,id){
     if(!UI.inline) setTimeout(function(){ try{ tgIn.focus(); }catch(x){} },0);
   } else {
     (e.tags||[]).forEach(function(t){ kick.appendChild(el("button",{class:"tag",type:"button",
-      onclick:function(){UI.tag=t;UI.iface="";go({k:"list"});}},"#"+t)); });
+      onclick:function(){UI.tag=t;UI.iface="";UI.area="";go({k:"list"});}},"#"+t)); });
     if(canWrite()) kick.appendChild(el("button",{class:"tag",type:"button",title:"Edit tags",
       onclick:function(){ UI.editField="__tags"; render(); }},(e.tags||[]).length?"✎":"+ tag"));
   }
@@ -2287,8 +2345,14 @@ function elDescription(e){
    jede für sich, könnte die Wissensansicht etwas gruppieren, das die Tabelle
    gar nicht zeigt, und es fiele erst am Tisch auf.
    `want`: "all" oder eine Liste aus "Comp" / "Comp.key". */
-function fieldPlan(e,ifn,want){
+/* `ausser` lässt Komponenten weg, die im selben Layout schon ein eigenes
+   Element zeichnet — der Bogen zeigt die Kampfwerte, die Feldtabelle den
+   Rest. Ohne das müsste jede Artikelart ihre Felder einzeln aufzählen, und
+   ein neues Feld stünde dann nirgends, bis es jemand nachträgt. */
+function fieldPlan(e,ifn,want,ausser){
+  var weg=Array.isArray(ausser)?ausser:[];
   var zeig=function(cn,p){
+    if(weg.indexOf(cn)>=0||weg.indexOf(cn+"."+p)>=0)return false;
     if(want==="all")return true;
     if(!Array.isArray(want))return false;
     return want.indexOf(cn)>=0||want.indexOf(cn+"."+p)>=0;
@@ -2338,7 +2402,7 @@ function fieldPlan(e,ifn,want){
 function elFields(e,ifn,item){
   var flds=el("dl",{class:"fields"}), nf=0;
   if(item.columns>0) flds.style.gridTemplateColumns="repeat("+item.columns+",minmax(0,1fr))";
-  var plan=fieldPlan(e,ifn,item.fields);
+  var plan=fieldPlan(e,ifn,item.fields,item.except);
   plan.forEach(function(c){
     flds.appendChild(fieldCell(e,c.cn,c.p,c.pd,c.val,c.txt)); nf++;
   });
@@ -6945,7 +7009,11 @@ function knowledgeGroups(e,refs,viewerId){
 }
 
 function elKnowledge(e,ifn,item){
-  var cells=fieldPlan(e,ifn,item.fields||"all");
+  /* Wo nichts gehütet wird, steht auch keine Gruppierung. Eine leere
+     „offene Gruppe" auf jedem Artikel wäre Lärm — und sie sähe aus, als
+     wäre Wissen eingerichtet, wo keines ist. */
+  if(!infosOf(e).length)return null;
+  var cells=fieldPlan(e,ifn,item.fields||"all",item.except);
   var zurueck=cells.withheld||0;
   var byRef={}; cells.forEach(function(c){ byRef[c.ref]=c; });
   var blocks={}; (e.blocks||[]).forEach(function(b){ blocks[b.anchor||b.id]=b; });
@@ -7280,13 +7348,19 @@ function standingBar(v){
 }
 
 function elStanding(e,ifn,item){
-  var wrap=el("div",{class:"standbox"});
   var partner=standingPartners(e);
+  /* Wo niemand eine Meinung hat, steht nichts. Nur so darf das Element im
+     gewöhnlichen Layout stehen, statt hinter einem Dropdown für genau eine
+     Artikelart. */
+  if(!partner.length&&!canWrite())return null;
+  var wrap=el("div",{class:"standbox"});
   var betrachter=isGM()?"":viewerActor();
 
   if(!partner.length){
+    /* Für die Spielleitung bleibt der Weg hinein sichtbar — sonst gäbe es
+       keine Stelle, an der eine erste Beziehung entsteht. */
     wrap.appendChild(el("p",{class:"hint",
-      text:"Nobody has an opinion here yet. A standing starts with a `regards` edge — where somebody begins, before anything has happened — and moves with deeds."}));
+      text:"Nobody has an opinion here yet."}));
   }
 
   partner.forEach(function(id){

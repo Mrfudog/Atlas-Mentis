@@ -50,6 +50,7 @@ export const InterfaceDefSchema = z.object({
   requires: z.array(z.string()).optional(),
   allows: z.array(z.string()).optional(),
   blockTypes: z.array(z.string()).optional(),
+  area: z.enum(['story', 'world', 'game', 'play']).optional(),
 });
 
 export const RelationDefSchema = z.object({
@@ -69,6 +70,7 @@ const LayoutElementSchema = z.object({
   el: z.enum(['heading', 'text', 'fields', 'blocks', 'description', 'composed', 'relations', 'image', 'knowledge', 'map', 'sheet', 'inventory', 'crafting', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'standing']),
   text: z.string().optional(),
   fields: z.union([z.literal('all'), z.array(z.string())]).optional(),
+  except: z.array(z.string()).optional(),
   columns: z.number().optional(),
   blocks: z.union([z.literal('all'), z.array(z.string())]).optional(),
 });

@@ -14,7 +14,13 @@
    Sie werden aufgezählt, nicht gelöscht: so sieht man, was auseinanderläuft,
    statt es zuzudecken.
 
-   Aufruf: node scripts/emit-seed.mjs [zielverzeichnis]
+   **Entfernen** ist deshalb ausdrücklich: `--prune <teil>` wirft die
+   zusätzlichen Zeilen dieses Teils weg und zählt sie dabei auf. Ohne den
+   Schalter bleiben sie, denn der Erzeuger kann nicht wissen, ob eine Zeile
+   dazugekommen oder aus dem Paket verschwunden ist — und die falsche
+   Annahme löscht im einen Fall Arbeit.
+
+   Aufruf: node scripts/emit-seed.mjs [zielverzeichnis] [--prune teil,teil]
 */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -22,7 +28,13 @@ import { fileURLToPath } from 'node:url';
 import { seedRegistry } from '../dist/index.js';
 
 const HIER = dirname(fileURLToPath(import.meta.url));
-const ZIEL = resolve(process.argv[2] ?? join(HIER, '..', '..', '..', 'prototype', 'test', 'dbdump', 'registry'));
+const argv = process.argv.slice(2);
+const pruneAt = argv.indexOf('--prune');
+const PRUNE = new Set(
+  pruneAt >= 0 ? (argv[pruneAt + 1] ?? '').split(',').map((x) => x.trim()).filter(Boolean) : [],
+);
+const zielArg = argv.find((a, i) => !a.startsWith('--') && i !== pruneAt + 1);
+const ZIEL = resolve(zielArg ?? join(HIER, '..', '..', '..', 'prototype', 'test', 'dbdump', 'registry'));
 const TEILE = ['components', 'interfaces', 'relations', 'views', 'vars', 'settings'];
 
 mkdirSync(ZIEL, { recursive: true });
@@ -32,13 +44,18 @@ for (const teil of TEILE) {
   const datei = join(ZIEL, `${teil}.json`);
   const alt = existsSync(datei) ? JSON.parse(readFileSync(datei, 'utf8')) : {};
   const eigen = Object.keys(alt).filter((k) => !(k in aus));
+  const weg = PRUNE.has(teil);
   const raus = { ...aus };
-  for (const k of eigen) raus[k] = alt[k];
+  if (!weg) for (const k of eigen) raus[k] = alt[k];
   writeFileSync(datei, `${JSON.stringify(raus, null, 1)}\n`, 'utf8');
-  fremd += eigen.length;
+  if (!weg) fremd += eigen.length;
   console.log(
     `${teil}: ${Object.keys(aus).length} from the seed` +
-      (eigen.length ? `, ${eigen.length} kept that only exist there — ${eigen.join(', ')}` : ''),
+      (eigen.length
+        ? weg
+          ? `, ${eigen.length} REMOVED — ${eigen.join(', ')}`
+          : `, ${eigen.length} kept that only exist there — ${eigen.join(', ')}`
+        : ''),
   );
 }
 console.log(`written to ${ZIEL}${fremd ? ` · ${fremd} row(s) kept that the seed does not know` : ''}`);

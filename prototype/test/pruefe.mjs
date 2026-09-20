@@ -191,7 +191,18 @@ async function seite(datei, warten) {
   }));
   pruefe('renaming a key rewrites the schema', umbenannt.felder.includes('hitPoints') && !umbenannt.felder.includes('hp'), umbenannt.felder.slice(0, 5));
   pruefe('renaming a key rewrites the articles', /article/.test(umbenannt.banner) && umbenannt.geschrieben.some((x) => x.startsWith('entities/')), umbenannt.banner);
-  pruefe('renaming a key rewrites the views', umbenannt.geschrieben.includes('registry/views'), umbenannt.geschrieben);
+  /* Früher nannten die Ansichten einzelne Felder (`StatblockInfo.hp`), und
+     das Umbenennen musste sie mitziehen. Seit es drei Stufen gibt, die
+     `fields: 'all'` sagen, nennt keine Ansicht mehr ein Feld — die
+     eigentliche Zusicherung ist deshalb: **nirgends bleibt der alte Name
+     stehen.** Das ist die Frage, um die es immer ging. */
+  const keinRest = await p.evaluate(() => {
+    const T = window.__T__;
+    const hay = JSON.stringify({ views: T.REG.views, components: T.REG.components });
+    return { alt: /StatblockInfo\.hp\b/.test(hay), neu: /hitPoints/.test(hay) };
+  });
+  pruefe('renaming a key leaves no stale reference behind',
+    keinRest.alt === false && keinRest.neu === true, keinRest);
 
   /* Verweisfeld: Zielbeschränkung engt ein, Vorschlag speichert die Id */
   await zumFeld('Creature', 'CreatureInfo', null);
@@ -661,8 +672,34 @@ async function seite(datei, warten) {
       .map((b) => b.textContent),
     filter: [...document.querySelectorAll('.filters select')].map((s) => s.options[0].textContent),
   }));
-  pruefe('the rail separates compendium from system',
-    aufbau.kapitel[0] === 'Compendium' && aufbau.system.some((x) => /Data model/.test(x)), aufbau);
+  /* Vier Bereiche statt eines Kompendiums, und welche Artikelart wohin
+     gehört, steht als `area` an der Schnittstelle — nicht im Code. Die
+     Prüfung fragt deshalb beides: dass die vier Abschnitte da sind, und
+     dass die Zuordnung aus dem Register kommt. */
+  pruefe('the rail carries the four areas, and System stays apart',
+    ['Story', 'World', 'Game', 'Play'].every((k) => aufbau.kapitel.includes(k))
+      && aufbau.kapitel.includes('System')
+      && aufbau.system.some((x) => /Data model/.test(x)), aufbau);
+  const bereiche = await p.evaluate(() => ({
+    npc: window.__T__.areaOf('NPC'),
+    quest: window.__T__.areaOf('Quest'),
+    rule: window.__T__.areaOf('Rule'),
+    map: window.__T__.areaOf('Map'),
+    /* Und geerbt wie alles andere: eine Artikelart, die im Prototyp neu
+       entsteht, trägt keine eigene Angabe — sie muss die ihres Obertyps
+       bekommen, sonst wäre sie nirgends auffindbar. */
+    geerbt: (() => {
+      const T = window.__T__;
+      T.REG.interfaces.ProbeArt = { name: 'ProbeArt', label: 'Probe art', extends: ['NPC'] };
+      const a = T.areaOf('ProbeArt');
+      delete T.REG.interfaces.ProbeArt;
+      return a;
+    })(),
+  }));
+  pruefe('an article kind finds its area in the registry, and inherits it',
+    bereiche.npc === 'world' && bereiche.quest === 'story'
+      && bereiche.rule === 'game' && bereiche.map === 'play'
+      && bereiche.geerbt === 'world', bereiche);
   pruefe('the compendium carries its filters',
     aufbau.filter.length === 3 && aufbau.filter[0] === 'any type', aufbau.filter);
 
@@ -883,22 +920,25 @@ async function seite(datei, warten) {
   await oeffne('Probe hero');
   await p.evaluate(() => {
     const f = document.getElementById('facet');
-    f.value = 'knowledge';
+    f.value = 'full';
     f.dispatchEvent(new Event('change', { bubbles: true }));
   });
   await p.waitForTimeout(350);
 
-  const wOffen = await p.evaluate(() => ({
-    gruppen: document.querySelectorAll('#view .kgrp').length,
-    ersteOffen: document.querySelector('#view .kgrp')?.classList.contains('open'),
-    felder: [...document.querySelectorAll('#view .kgrp.open .fld dt')].map((x) => x.textContent),
-  }));
-  pruefe('the knowledge view puts the open fields first',
-    wOffen.gruppen === 1 && wOffen.ersteOffen === true && wOffen.felder.includes('Level'), wOffen);
-
+  /* Zugeteilt wird im Seitenpanel — dort, wo die Arbeit passiert. Die
+     Gruppierung als eigene Ansicht ist weg: sie zeichnete dieselben
+     Feldzellen wie die Feldtabelle, und zweimal dasselbe ist keine
+     Gruppierung. */
   await p.evaluate(() =>
     [...document.querySelectorAll('#aside .ktabs button')].find((b) => /Knowledge/.test(b.textContent)).click());
   await p.waitForTimeout(250);
+  const wOffen = await p.evaluate(() => ({
+    hinweis: document.querySelector('#aside .hint')?.textContent ?? '',
+    felder: [...document.querySelectorAll('#aside .kpick label span')].map((x) => x.textContent),
+  }));
+  pruefe('an article with nothing guarded says so, and the panel is empty',
+    /open/.test(wOffen.hinweis) && wOffen.felder.length === 0, wOffen);
+
   await p.evaluate(() =>
     [...document.querySelectorAll('#aside h3 button')].find((b) => b.textContent === '+').click());
   await p.waitForTimeout(250);
@@ -908,11 +948,11 @@ async function seite(datei, warten) {
   await p.waitForTimeout(500);
 
   const wAngelegt = await p.evaluate(() => ({
-    gruppen: [...document.querySelectorAll('#view .kgrp .kh b')].map((x) => x.textContent),
+    gewaehlt: [...(document.querySelector('#aside select.i')?.options ?? [])].map((o) => o.textContent),
     auswahl: [...document.querySelectorAll('#aside .kpick label span')].map((x) => x.textContent),
   }));
-  pruefe('a new information shows up as its own group and offers the fields',
-    wAngelegt.gruppen.length === 2 && wAngelegt.gruppen[1] === 'Probe secret'
+  pruefe('a new information offers the fields of this article',
+    wAngelegt.gewaehlt.includes('Probe secret')
       && wAngelegt.auswahl.some((x) => /Level/.test(x)), wAngelegt);
 
   await p.evaluate(() => {
@@ -924,12 +964,27 @@ async function seite(datei, warten) {
   });
   await p.waitForTimeout(500);
 
-  const wZugeteilt = await p.evaluate(() => ({
-    wOffen: [...document.querySelectorAll('#view .kgrp.open .fld dt')].map((x) => x.textContent),
-    geheim: [...document.querySelectorAll('#view .kgrp:not(.open) .fld dt')].map((x) => x.textContent),
-  }));
-  pruefe('an assigned field leaves the open group',
-    !wZugeteilt.wOffen.includes('Level') && wZugeteilt.geheim.includes('Level'), wZugeteilt);
+  /* Der eigentliche Prüfstein, und er hängt nicht an einer Darstellung:
+     **wer die Information nicht hat, sieht das Feld nicht.** Genau dafür
+     gibt es die Zuteilung; alles andere daran ist Anzeige. */
+  const wZugeteilt = await p.evaluate(() => {
+    const T = window.__T__;
+    const held = [...T.ENT.values()].find((e) => (e.name || '') === 'Probe hero');
+    const info = [...T.ENT.values()].find((e) => (e.name || '') === 'Probe secret');
+    const alsGm = T.visibleRefs(held, ['CharacterInfo.level']);
+    T.UI.asActor = 'pc_sela';
+    const alsSpieler = T.visibleRefs(held, ['CharacterInfo.level']);
+    T.UI.asActor = '';
+    return {
+      gespeichert: (info.components.Info || {}).fields ?? [],
+      alsGm: alsGm.length,
+      alsSpieler: alsSpieler.length,
+    };
+  });
+  pruefe('an assigned field is stored on the information',
+    wZugeteilt.gespeichert.includes('CharacterInfo.level'), wZugeteilt);
+  pruefe('and whoever does not have it does not see it',
+    wZugeteilt.alsGm === 1 && wZugeteilt.alsSpieler === 0, wZugeteilt);
 
   await p.evaluate(() => {
     const sel = [...document.querySelectorAll('#aside select.i')]
@@ -941,11 +996,10 @@ async function seite(datei, warten) {
   await p.waitForTimeout(500);
 
   const wEmpfaenger = await p.evaluate(() => ({
-    kopf: document.querySelector('#view .kgrp:not(.open) .who')?.textContent ?? '',
     panel: [...document.querySelectorAll('#aside .rel .relrow .rv')].map((x) => x.textContent),
   }));
-  pruefe('the recipient shows on the group and in the panel',
-    /Probe lore/.test(wEmpfaenger.kopf) && wEmpfaenger.panel.some((x) => /Probe lore/.test(x)), wEmpfaenger);
+  pruefe('the recipient shows in the panel',
+    wEmpfaenger.panel.some((x) => /Probe lore/.test(x)), wEmpfaenger);
 
   /* ---- C1/C2: Assets, Einstellungen ----
      Der Auflöser ist die einzige Stelle, die weiss, welche Sorte Verweis ein
@@ -1022,7 +1076,7 @@ async function seite(datei, warten) {
     await p.waitForTimeout(250);
     await p.evaluate(() => {
       const f = document.getElementById('facet');
-      f.value = 'map';
+      f.value = 'full';
       f.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(400);
@@ -1079,7 +1133,7 @@ async function seite(datei, warten) {
     await oeffneId(nebelKarte);
     await p.evaluate(() => {
       const f = document.getElementById('facet');
-      f.value = 'map';
+      f.value = 'full';
       f.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(600);
@@ -1207,7 +1261,7 @@ async function seite(datei, warten) {
     await oeffneId(auge);
     await p.evaluate(() => {
       const f = document.getElementById('facet');
-      f.value = 'standing';
+      f.value = 'full';
       f.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(400);
@@ -1363,7 +1417,7 @@ async function seite(datei, warten) {
     await oeffne(held);
     await p.evaluate(() => {
       const f = document.getElementById('facet');
-      f.value = 'sheet';
+      f.value = 'full';
       f.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(400);
@@ -1411,7 +1465,7 @@ async function seite(datei, warten) {
     /* Das Inventar: drei Darstellungen, dieselben Daten. */
     await p.evaluate(() => {
       const f = document.getElementById('facet');
-      f.value = 'gear';
+      f.value = 'full';
       f.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(400);
@@ -1486,7 +1540,7 @@ async function seite(datei, warten) {
     await oeffne(werkbank.rezept);
     await p.evaluate(() => {
       const f = document.getElementById('facet');
-      f.value = 'craft';
+      f.value = 'full';
       f.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(400);
@@ -1511,7 +1565,7 @@ async function seite(datei, warten) {
     await oeffne(werkbank.kenner);
     await p.evaluate(() => {
       const f = document.getElementById('facet');
-      f.value = 'craft';
+      f.value = 'full';
       f.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(400);
@@ -1687,7 +1741,7 @@ async function seite(datei, warten) {
     await oeffne(boardName);
     await p.evaluate(() => {
       const f = document.getElementById('facet');
-      f.value = 'board';
+      f.value = 'full';
       f.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(700);
@@ -1705,10 +1759,20 @@ async function seite(datei, warten) {
     pruefe('the board draws every placement', brd.karten.length >= 4, brd.karten.length);
     pruefe('no placement comes out empty',
       brd.karten.every((k) => !k.leer), brd.karten.filter((k) => k.leer));
-    /* Verschiedene Ansichten nebeneinander: genau das ist die Auflösung.
-       Stünde überall dasselbe, entschiede in Wahrheit nichts. */
+    /* Verschiedene Stufen nebeneinander — das ist die Auflösung. Neu ist,
+       **was** sie entscheidet: seit es drei Stufen statt einundzwanzig
+       gibt, sagt die Artikelart die Form (eine Figur zeigt ihr Blatt) und
+       die Stufe nur noch, wie viel davon. Die Prüfung fragt deshalb
+       beides. */
     const ansichten = [...new Set(brd.karten.map((k) => k.v))];
-    pruefe('placements resolve to different views', ansichten.length >= 3, ansichten);
+    pruefe('placements resolve to different levels', ansichten.length >= 2, ansichten);
+    const formen = await p.evaluate(() => [...document.querySelectorAll('.bcard')].map((k) => ({
+      v: k.querySelector('.bview')?.textContent ?? '',
+      bogen: !!k.querySelector('.ability'),
+    })));
+    pruefe('the article kind decides the shape, the level only how much',
+      formen.some((k) => /Full/i.test(k.v) && k.bogen)
+        && formen.every((k) => !(/Quick/i.test(k.v) && k.bogen)), formen);
     pruefe('shapes and anchors belong to the board', brd.formen >= 3 && brd.anker.length >= 3,
       { formen: brd.formen, anker: brd.anker });
     pruefe('the board validates clean', brd.probleme.length === 0, brd.probleme);
@@ -1747,7 +1811,7 @@ async function seite(datei, warten) {
     await oeffne(kampf);
     await p.evaluate(() => {
       const f = document.getElementById('facet');
-      f.value = 'fight';
+      f.value = 'full';
       f.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(600);
@@ -1829,7 +1893,10 @@ async function seite(datei, warten) {
       (e.interfaces || [])[0] === 'Quest'
       && Array.isArray(((e.components || {}).QuestInfo || {}).tasks)
       && e.components.QuestInfo.tasks.length > 2);
-    const traeger = [...window.__T__.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Party');
+    /* Das Brett und die Zeitleiste gehören der **Kampagne**: beides sind
+       Fragen an ihr Ganzes und keine Eigenschaft einer Gruppe. Vorher war
+       der Träger beliebig, weil jede Ansicht auf jedem Artikel stand. */
+    const traeger = [...window.__T__.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Campaign');
     return {
       q: q ? (q.name || q.components.Name.text) : null,
       p: traeger ? (traeger.name || traeger.components.Name.text) : null,
@@ -1839,7 +1906,7 @@ async function seite(datei, warten) {
     await oeffne(auftrag.q);
     await p.evaluate(() => {
       const f = document.getElementById('facet');
-      f.value = 'quests';
+      f.value = 'full';
       f.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(450);
@@ -1870,7 +1937,7 @@ async function seite(datei, warten) {
     await oeffne(auftrag.p);
     await p.evaluate(() => {
       const f = document.getElementById('facet');
-      f.value = 'quests';
+      f.value = 'full';
       f.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(450);
@@ -1885,7 +1952,7 @@ async function seite(datei, warten) {
 
     await p.evaluate(() => {
       const f = document.getElementById('facet');
-      f.value = 'timeline';
+      f.value = 'full';
       f.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(450);
@@ -2011,7 +2078,7 @@ async function seite(datei, warten) {
     await oeffne(sitzung);
     await p.evaluate(() => {
       const f = document.getElementById('facet');
-      f.value = 'live';
+      f.value = 'full';
       f.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(450);
@@ -2062,7 +2129,7 @@ async function seite(datei, warten) {
     await oeffne('Karte: Kerzengasse');
     await p.evaluate(() => {
       const f = document.getElementById('facet');
-      f.value = 'map';
+      f.value = 'full';
       f.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(450);
@@ -2099,7 +2166,7 @@ async function seite(datei, warten) {
     await oeffneId(tabelle.t);
     await p.evaluate(() => {
       const f = document.getElementById('facet');
-      f.value = 'table';
+      f.value = 'full';
       f.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(450);
@@ -2128,7 +2195,7 @@ async function seite(datei, warten) {
     await oeffneId(tabelle.ort);
     await p.evaluate(() => {
       const f = document.getElementById('facet');
-      f.value = 'table';
+      f.value = 'full';
       f.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(450);
@@ -2186,7 +2253,7 @@ async function seite(datei, warten) {
     await oeffneId(vorbereitung);
     await p.evaluate(() => {
       const f = document.getElementById('facet');
-      f.value = 'prep';
+      f.value = 'full';
       f.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(500);
@@ -2564,7 +2631,7 @@ async function seite(datei, warten) {
     await oeffneId(reise);
     await p.evaluate(() => {
       const f = document.getElementById('facet');
-      f.value = 'crawl';
+      f.value = 'full';
       f.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(550);
@@ -2642,7 +2709,7 @@ async function seite(datei, warten) {
     await oeffneId(stapel.camp);
     await p.evaluate(() => {
       const f = document.getElementById('facet');
-      f.value = 'stack';
+      f.value = 'full';
       f.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(550);
@@ -2696,7 +2763,7 @@ async function seite(datei, warten) {
         await oeffneId(stapel.camp);
         await p.evaluate(() => {
           const f = document.getElementById('facet');
-          f.value = 'stack';
+          f.value = 'full';
           f.dispatchEvent(new Event('change', { bubbles: true }));
         });
         await p.waitForTimeout(500);
