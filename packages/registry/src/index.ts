@@ -22,6 +22,18 @@ export const settings: Record<string, string> = {
   inventoryCols: '10',
   inventoryRows: '6',
   calendar: 'Harptos',
+  /* Fertigkeit zu Attribut. Steht hier und nicht im Code, damit eine
+     Kampagne mit anderen Fertigkeiten eine Einstellung ist und kein
+     Schemawechsel. Die Seite hat denselben Satz als Rückfall, damit sie
+     auch ohne diese Zeile rechnet. */
+  skills:
+    'acrobatics:dex,animalHandling:wis,arcana:int,athletics:str,deception:cha,' +
+    'history:int,insight:wis,intimidation:cha,investigation:int,medicine:wis,' +
+    'nature:int,perception:wis,performance:cha,persuasion:cha,religion:int,' +
+    'sleightOfHand:dex,stealth:dex,survival:wis',
+  conditions:
+    'blinded,charmed,deafened,frightened,grappled,incapacitated,invisible,' +
+    'paralysed,petrified,poisoned,prone,restrained,stunned,unconscious',
 };
 
 /** The rows a fresh database is seeded with. */

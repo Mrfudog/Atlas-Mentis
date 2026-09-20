@@ -313,7 +313,13 @@ async function seite(datei, warten) {
   await p.waitForTimeout(250);
   const werkzeuge = await p.evaluate(() =>
     [...document.querySelectorAll('.tools button')].map((b) => b.textContent));
-  pruefe('the toolbox offers every element', werkzeuge.length === 10 && werkzeuge.some((t) => /Field table/.test(t)), werkzeuge);
+  /* „Jedes" heisst: jedes, das die Seite kennt — nicht eine Zahl, die bei
+     jedem neuen Element rot wird und dabei nichts über den Werkzeugkasten
+     sagt. */
+  const bekannt = await p.evaluate(() => window.__T__.LAYOUT_ELEMENTS.map((x) => x[1]));
+  pruefe('the toolbox offers every element',
+    bekannt.length > 0 && bekannt.every((n) => werkzeuge.includes('+ ' + n))
+      && werkzeuge.length === bekannt.length, { werkzeuge, bekannt });
 
   await p.evaluate(() =>
     [...document.querySelectorAll('.regtree button')].find((b) => b.textContent === 'Full').click());
@@ -1045,6 +1051,125 @@ async function seite(datei, warten) {
     pruefe('a sub-map shows as a region to zoom into', mk.bereiche.length > 0, mk.bereiche);
   } else {
     pruefe('a map with tokens exists in the data', false, 'keine Karte gefunden');
+  }
+
+  /* ---- Charakterbogen und Inventar (REQ-051, 063, 064, 065) ----
+     Der Bogen rechnet aus zwei Karten: die ruhigen Zahlen aus StatblockInfo,
+     der Stand aus Vitals. Rechnet er falsch, steht am Tisch eine plausible
+     Zahl da und niemand merkt es — deshalb gegen bekannte Werte geprüft. */
+  const held = await p.evaluate(() => {
+    const m = [...window.__T__.ENT.values()].find((e) =>
+      (e.components || {}).Skills && (e.components || {}).StatblockInfo
+      && (e.relations || []).some((r) => r.type === 'carries'));
+    return m ? (m.name || m.components.Name.text) : null;
+  });
+  if (held) {
+    await oeffne(held);
+    await p.evaluate(() => {
+      const f = document.getElementById('facet');
+      f.value = 'sheet';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(400);
+    const bogen = await p.evaluate(() => {
+      const ab = {};
+      document.querySelectorAll('.ability').forEach((a) => {
+        ab[a.querySelector('.k').textContent] =
+          a.querySelector('.score').textContent + a.querySelector('.mod').textContent;
+      });
+      const sk = {};
+      document.querySelectorAll('.skillrow').forEach((r) => {
+        sk[r.querySelector('.sname').textContent] = r.querySelector('.smod').textContent;
+      });
+      return {
+        ab, sk,
+        hp: document.querySelector('.vital.hp .vin')?.value ?? null,
+        pips: document.querySelectorAll('.pip').length,
+        angriffe: [...document.querySelectorAll('table.atk tr')].length - 1,
+        probleme: [...document.querySelectorAll('.pruef li')].map((x) => x.textContent),
+      };
+    });
+    /* DEX 17 gibt +3; Expertise verdoppelt den Übungsbonus, also Stealth
+       +3+2*3 = +9 bei Übungsbonus 3. Eine Zahl, die man nachrechnen kann. */
+    pruefe('the sheet computes ability modifiers', bogen.ab.DEX === '17+3', bogen.ab);
+    pruefe('expertise doubles the proficiency bonus',
+      bogen.sk.Stealth === '+9' && bogen.sk.Arcana === '+2', bogen.sk);
+    pruefe('the current hit points come from Vitals, not from the maximum',
+      bogen.hp === '31', bogen.hp);
+    pruefe('hit dice, death saves and inspiration are pips', bogen.pips >= 7, bogen.pips);
+    pruefe('attacks come from what is carried', bogen.angriffe >= 2, bogen.angriffe);
+    pruefe('the character validates clean', bogen.probleme.length === 0, bogen.probleme);
+
+    /* Ein Zustand ist ein Klick, kein Formular. */
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.condrow .chip')].find((c) => c.textContent === 'prone').click());
+    await p.waitForTimeout(400);
+    const zust = await p.evaluate(() =>
+      [...document.querySelectorAll('.condrow .chip')].filter((c) => c.classList.contains('on'))
+        .map((c) => c.textContent));
+    pruefe('a condition is one click', zust.includes('prone'), zust);
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.condrow .chip')].find((c) => c.textContent === 'prone').click());
+    await p.waitForTimeout(300);
+
+    /* Das Inventar: drei Darstellungen, dieselben Daten. */
+    await p.evaluate(() => {
+      const f = document.getElementById('facet');
+      f.value = 'gear';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await p.waitForTimeout(400);
+    const stufen = await p.evaluate(() => ({
+      reiter: [...document.querySelectorAll('.invbox .ktabs button')].map((b) => b.textContent),
+      stufen: [...document.querySelectorAll('.tier .tlabel b')].map((b) => b.textContent),
+      stuecke: document.querySelectorAll('.tier .chip.item').length,
+    }));
+    pruefe('the inventory shows the five degrees of reach',
+      stufen.stufen.length === 5 && stufen.stufen[0] === 'In hand' && stufen.stuecke > 3, stufen);
+
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.invbox .ktabs button')].find((b) => /Grid/.test(b.textContent)).click());
+    await p.waitForTimeout(400);
+    const raster = await p.evaluate(() => ({
+      zellen: document.querySelectorAll('.gcell').length,
+      stuecke: [...document.querySelectorAll('.gitem')].map((i) => ({
+        n: i.querySelector('.glab').textContent, c: i.style.gridColumn, r: i.style.gridRow })),
+    }));
+    pruefe('the tile grid is as large as the settings say',
+      raster.zellen === 60, raster.zellen);
+    /* Die Form kommt aus `Footprint`: eine Rüstung ist 3 breit und 2 hoch,
+       ein Kurzschwert 1 breit und 3 hoch. Ein Raster, das alles gleich gross
+       zeichnet, ist eine Liste mit Kästchen. */
+    const ruestung = raster.stuecke.find((x) => /Leder/.test(x.n));
+    const schwert = raster.stuecke.find((x) => /^Kurzschwert /.test(x.n) || /^Kurzschwert$/.test(x.n));
+    pruefe('an item takes the shape its footprint gives it',
+      !!ruestung && /span 3/.test(ruestung.c) && /span 2/.test(ruestung.r)
+      && !!schwert && /span 1/.test(schwert.c) && /span 3/.test(schwert.r),
+      { ruestung, schwert });
+
+    /* Ein Stück aufnehmen und woanders hinlegen — der ganze Weg, den man am
+       Tisch geht. Ein belegtes Feld muss dabei nein sagen. */
+    const vorher = raster.stuecke.find((x) => /Diebeswerkzeug/.test(x.n));
+    await p.evaluate(() =>
+      [...document.querySelectorAll('.gitem')].find((i) => /Diebeswerkzeug/.test(i.textContent)).click());
+    await p.waitForTimeout(250);
+    await p.evaluate(() => {
+      const g = document.querySelector('.invgrid');
+      const zellen = [...g.querySelectorAll('.gcell')];
+      /* Die letzte Zeile ist frei — dort ist Platz für zwei Felder. */
+      zellen[zellen.length - 10].click();
+    });
+    await p.waitForTimeout(450);
+    const nachher = await p.evaluate(() =>
+      [...document.querySelectorAll('.gitem')].map((i) => ({
+        n: i.querySelector('.glab').textContent, c: i.style.gridColumn, r: i.style.gridRow })));
+    const jetzt = nachher.find((x) => /Diebeswerkzeug/.test(x.n));
+    pruefe('an item can be picked up and put somewhere else',
+      !!jetzt && jetzt.r !== vorher.r, { vorher, jetzt });
+
+    pruefe('the sheet and the inventory raised no exception', errs.length === 0, errs);
+  } else {
+    pruefe('a character with skills and gear exists in the data', false, 'keiner gefunden');
   }
 
   pruefe('knowledge needed no browser modal', modale.length === 0, modale);

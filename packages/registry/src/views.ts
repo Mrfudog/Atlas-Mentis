@@ -133,4 +133,44 @@ export const views: Record<string, ViewDef> = {
       { id: 'm-b', el: 'blocks', blocks: ['note', 'readaloud'] },
     ],
   },
+
+  /**
+   * Der Charakterbogen. Ein Layout aus einem Element, weil der Bogen als
+   * Ganzes gelesen wird: Vitalwerte oben und immer sichtbar, darunter, was
+   * man seltener braucht.
+   */
+  sheet: {
+    label: 'Sheet',
+    order: 9,
+    fields: 'all',
+    blocks: ['backstory', 'personality', 'note'],
+    description: true,
+    composed: true,
+    relations: true,
+    bindings: false,
+    image: true,
+    layout: [
+      { id: 's-sheet', el: 'sheet' },
+      { id: 's-desc', el: 'description' },
+      { id: 's-b', el: 'blocks', blocks: ['backstory', 'personality', 'note'] },
+      { id: 's-c', el: 'composed' },
+    ],
+  },
+
+  /** Das Inventar in drei Darstellungen über denselben Daten (REQ-064, 065). */
+  gear: {
+    label: 'Gear',
+    order: 10,
+    fields: ['InventoryInfo'],
+    blocks: [],
+    description: false,
+    composed: false,
+    relations: true,
+    bindings: false,
+    image: false,
+    layout: [
+      { id: 'g-inv', el: 'inventory' },
+      { id: 'g-f', el: 'fields', fields: ['InventoryInfo'], columns: 2 },
+    ],
+  },
 };

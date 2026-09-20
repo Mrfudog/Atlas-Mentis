@@ -131,12 +131,45 @@ export const relations: Record<string, RelationDef> = {
     cardinality: 'one',
   },
 
+  /**
+   * Was im Inventar liegt — und *wie* es dort liegt (REQ-064, 065). Die
+   * Angaben stehen an der Kante, nicht am Gegenstand: dasselbe Seil liegt
+   * bei der einen Figur am Gürtel und bei der anderen ganz unten im Rucksack,
+   * und ein Feld am Gegenstand könnte nur eine der beiden Wahrheiten tragen.
+   *
+   * `tier` ist der Griffabstand, nicht der Ort: was in der Hand ist, was am
+   * Körper, was am Gürtel, was im Rucksack, was zu Hause. Genau diese Frage
+   * stellt sich am Tisch — „habe ich das jetzt?" —, und sie ist eine andere
+   * als „gehört es mir?".
+   */
   holds: {
     type: 'holds',
     label: 'holds',
     inverseLabel: 'held in',
     from: ['Inventory'],
     to: ['Item'],
+    props: {
+      type: 'object',
+      properties: {
+        qty: { type: 'number', title: 'Quantity', default: 1 },
+        tier: {
+          type: 'string',
+          title: 'Within reach',
+          enum: ['held', 'worn', 'belt', 'pack', 'stored'],
+          default: 'pack',
+        },
+        slot: {
+          type: 'string',
+          title: 'Body slot',
+          enum: ['head', 'neck', 'cloak', 'torso', 'hands', 'mainHand', 'offHand',
+            'belt', 'legs', 'feet', 'ring1', 'ring2'],
+        },
+        gx: { type: 'number', title: 'Grid column' },
+        gy: { type: 'number', title: 'Grid row' },
+        attuned: { type: 'boolean', title: 'Attuned' },
+        note: { type: 'string', title: 'Note' },
+      },
+    },
   },
 
   // ---------------------------------------------------------------- story

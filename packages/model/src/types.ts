@@ -96,7 +96,9 @@ export type LayoutElementKind =
   | 'relations'
   | 'image'
   | 'knowledge'
-  | 'map';
+  | 'map'
+  | 'sheet'
+  | 'inventory';
 
 /**
  * One element of a view's layout. A view is an ordered list of these, so the

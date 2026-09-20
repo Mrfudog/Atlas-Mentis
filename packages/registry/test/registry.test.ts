@@ -118,7 +118,15 @@ describe('interface inheritance', () => {
     expect(forNpc).toContain('Name'); // from Base.requires
     expect(forNpc).toContain('Status'); // from Base.allows
     expect(forNpc).toContain('CreatureInfo'); // its own
-    expect(forNpc).not.toContain('StatblockInfo');
+    /* Seit dem Charakterbogen darf ein Geschöpf seine Zahlen auch selbst
+       tragen: ein Spielercharakter tut das, ein NSC borgt sie meist über
+       `belongsTo`. Beides muss gehen — der Bogen liest erst die eigene
+       Karte, dann die geliehene. Geprüft bleibt, dass die Vereinigung nicht
+       alles einsammelt: eine Karte einer fremden Linie hat hier nichts
+       verloren. */
+    expect(forNpc).toContain('StatblockInfo');
+    expect(forNpc).not.toContain('MapInfo');
+    expect(forNpc).not.toContain('QuestInfo');
   });
 
   it('adds `+x` block types to the inherited set', () => {

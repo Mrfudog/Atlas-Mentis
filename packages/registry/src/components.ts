@@ -572,4 +572,53 @@ export const components: Record<string, ComponentDef> = {
       },
     },
   },
+
+  /**
+   * Was sich am Tisch ändert (REQ-051, 063). Getrennt von `StatblockInfo`,
+   * weil das zwei verschiedene Sorten Zahl sind: die Rüstungsklasse ändert
+   * sich einmal pro Ausrüstungswechsel, die Trefferpunkte zwanzigmal pro
+   * Kampf. In einer Karte lägen sie im Weg — jede Änderung schriebe die
+   * andere mit, und die Wissensgruppen könnten sie nicht trennen.
+   */
+  Vitals: {
+    name: 'Vitals',
+    label: 'Vitals',
+    engine: 'Play',
+    schema: {
+      type: 'object',
+      properties: {
+        hp: { type: 'number', title: 'Hit points now' },
+        hpTemp: { type: 'number', title: 'Temporary HP' },
+        hitDiceLeft: { type: 'number', title: 'Hit dice left' },
+        deathSuccess: { type: 'number', title: 'Death saves passed', default: 0 },
+        deathFail: { type: 'number', title: 'Death saves failed', default: 0 },
+        inspiration: { type: 'boolean', title: 'Inspiration' },
+        exhaustion: { type: 'number', title: 'Exhaustion', default: 0 },
+        conditions: { type: 'array', title: 'Conditions', items: { type: 'string' } },
+        nat1: { type: 'number', title: 'Natural 1s', default: 0 },
+      },
+    },
+  },
+
+  /**
+   * Übung und Expertise als Listen, nicht als Feld je Fertigkeit. Eine
+   * Kampagne mit anderen Fertigkeiten ist damit eine andere Einstellung und
+   * kein Schemawechsel — die Liste der Fertigkeiten steht in den
+   * Kampagneneinstellungen, wo sie jemand ändern kann.
+   */
+  Skills: {
+    name: 'Skills',
+    label: 'Skills',
+    engine: 'Play',
+    schema: {
+      type: 'object',
+      properties: {
+        proficient: { type: 'array', title: 'Proficient in', items: { type: 'string' } },
+        expertise: { type: 'array', title: 'Expertise in', items: { type: 'string' } },
+        saves: { type: 'array', title: 'Saving throws', items: { type: 'string' } },
+        languages: { type: 'array', title: 'Languages', items: { type: 'string' } },
+        tools: { type: 'array', title: 'Tool proficiencies', items: { type: 'string' } },
+      },
+    },
+  },
 };

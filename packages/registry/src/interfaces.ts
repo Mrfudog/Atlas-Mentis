@@ -27,7 +27,11 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Creature',
     abstract: true,
     extends: ['Base'],
-    allows: ['CreatureInfo', 'Vars'],
+    /* `StatblockInfo` darf hier direkt liegen: ein Spielercharakter trägt
+       seine Zahlen selbst, ein NSC borgt sie meist von einem Statblock über
+       `belongsTo`. Der Bogen liest beides — erst die eigene Karte, dann die
+       geborgte — statt eine der beiden Formen zu verbieten. */
+    allows: ['CreatureInfo', 'Vars', 'StatblockInfo', 'Vitals', 'Skills'],
     blockTypes: ['+appearance', '+personality', '+lore', '+fact', '+secret', '+readaloud'],
   },
 
