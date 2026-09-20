@@ -249,9 +249,9 @@ in [Spieltisch.md](Spieltisch.md).
 - **D10 · Nebel, Licht, Gebiete** — REQ-138, 139, 140, 193. Aufgedecktes ist
   ein Feld, Beleuchtetes eine Rechnung, Gebiet eine Kante; der Schatten wird
   gerechnet, nicht gemalt.
-- **D11 · Ruf und Beziehungen** — REQ-030, 081. Eine Tat ist ein Artikel mit
-  zwei Kanten; eine Tat, von der niemand weiss, ändert nichts. Siehe
-  [Ruf.md](Ruf.md).
+- **D11 · Ruf und Beziehungen** — REQ-030, 081. Eine Tat war ein Artikel mit
+  zwei Kanten, und eine Tat, von der niemand wusste, änderte nichts.
+  **Von D20 abgelöst.**
 - **D12 · Handwerk, das läuft** — REQ-184 zu Ende. Ein Gang steht an einer
   Kante, das Material geht am Anfang hinein, und am letzten Tag wird
   wirklich gewürfelt.
@@ -282,6 +282,11 @@ in [Spieltisch.md](Spieltisch.md).
   Hintergrundbild je Zeichenebene; Wände, Türen, Fenster und Abgründe mit
   je eigener Wirkung auf Blick und Schritt; der Rahmen einer Unterkarte wird
   aufgezogen statt in die Mitte gelegt. Siehe [Karten.md](Karten.md).
+- **D20 · Beziehung statt Ruf** — REQ-030, 081. Die Taten, ihre beiden
+  Kanten und die gerechnete Leiter sind weg; geblieben ist eine Kante mit
+  Marken und einer Zeile. Es war richtig gebaut und trotzdem zu viel: am
+  Tisch fragt niemand nach einer Zahl. Siehe
+  [Beziehungen.md](Beziehungen.md).
 
 ---
 

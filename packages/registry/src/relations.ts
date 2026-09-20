@@ -82,7 +82,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'partOf',
     label: 'part of',
     inverseLabel: 'contains',
-    from: ['Place', 'Story', 'Quest', 'Deed'],
+    from: ['Place', 'Story', 'Quest'],
     to: ['Place', 'Story'],
   },
 
@@ -630,36 +630,8 @@ export const relations: Record<string, RelationDef> = {
     },
   },
 
-  // ------------------------------------------------- Ruf und Beziehungen
+  // ------------------------------------------------- Beziehungen
 
-  /** Wer die Tat begangen hat (REQ-030). */
-  doneBy: {
-    type: 'doneBy',
-    label: 'done by',
-    inverseLabel: 'did',
-    from: ['Deed'],
-    to: ['Creature', 'NPC', 'PlayerCharacter', 'Party', 'Faction'],
-    cardinality: 'one',
-  },
-
-  /** Wessen Meinung sich dadurch bewegt (REQ-030). */
-  regarding: {
-    type: 'regarding',
-    label: 'regarding',
-    inverseLabel: 'weighed by',
-    from: ['Deed'],
-    to: ['Creature', 'NPC', 'PlayerCharacter', 'Party', 'Faction'],
-    cardinality: 'one',
-  },
-
-  /**
-   * Der Ausgangswert (REQ-081): wo jemand anfängt, bevor etwas passiert
-   * ist. Er steht beim Urteilenden, nicht beim Beurteilten — „das Auge
-   * hält von euch nichts" ist eine Aussage über das Auge. Alles darüber
-   * hinaus ist gerechnet, nie gespeichert: eine gespeicherte Ruf-Zahl
-   * driftet von der Geschichte weg, und dann steht am Tisch eine Zahl, die
-   * niemand belegen kann.
-   */
   /**
    * Ein laufender Handwerksgang (REQ-184). Er hängt an beiden Enden — an
    * dem, der arbeitet, und an dem Rezept — also steht er an einer Kante,
@@ -685,6 +657,25 @@ export const relations: Record<string, RelationDef> = {
     },
   },
 
+  /**
+   * Was einer vom anderen hält (REQ-030, 081) — und mehr ist es nicht.
+   *
+   * Es gab hier einmal eine gerechnete Leiter: Taten als eigene Artikel,
+   * ein Gewicht je Tat, ein Ausgangswert, und daraus eine Zahl von −3 bis
+   * +3. Das war zu viel Maschinerie für eine Frage, die am Tisch in einem
+   * Satz beantwortet wird. Geblieben ist **eine Kante mit Marken**: die
+   * Gedanken, die der eine über den anderen hat.
+   *
+   * Die Marken sind Worte und keine Aufzählung im Register. Was jemand
+   * vom anderen hält, ist Kampagneninhalt — „schuldet mir was",
+   * „misstraut mir seit Nashkel" —, und eine feste Liste hätte entweder
+   * zwanzig Einträge oder die falschen drei.
+   *
+   * Sie steht beim Urteilenden, nicht beim Beurteilten: „das Auge hält von
+   * euch nichts" ist eine Aussage über das Auge. Die Gegenrichtung ist
+   * eine eigene Kante und darf etwas ganz anderes sagen — genau da wird es
+   * interessant (REQ-081): einer traut, der andere nicht.
+   */
   regards: {
     type: 'regards',
     label: 'regards',
@@ -694,7 +685,7 @@ export const relations: Record<string, RelationDef> = {
     props: {
       type: 'object',
       properties: {
-        value: { type: 'number', title: 'Starting attitude (−3 … +3)', default: 0 },
+        tags: { type: 'array', title: 'Thoughts', items: { type: 'string' } },
         note: { type: 'string', title: 'Why' },
       },
     },

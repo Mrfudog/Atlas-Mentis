@@ -975,32 +975,4 @@ export const components: Record<string, ComponentDef> = {
     },
   },
 
-  /**
-   * Das Gewicht einer Tat (REQ-030). Eine Tat ist dreistellig — wer hat was
-   * bei wem getan — und eine Kante hat ein Ziel; also wird die Mitte ein
-   * Artikel, wie beim Rezept und bei der Begegnung. Das Gewicht steht hier,
-   * die beiden Enden an `doneBy` und `regarding`.
-   *
-   * `secret` ist der eigentliche Punkt: eine Tat, von der niemand weiss,
-   * ändert nichts. Ob die Gegenseite davon weiss, beantwortet das
-   * Wissensmodell — keine zweite Mechanik für dieselbe Frage.
-   */
-  DeedInfo: {
-    name: 'DeedInfo',
-    label: 'Deed',
-    engine: null,
-    schema: {
-      type: 'object',
-      properties: {
-        delta: { type: 'number', title: 'Weight (−3 … +3)', default: 1 },
-        kind: {
-          type: 'string',
-          title: 'Kind',
-          enum: ['favour', 'service', 'gift', 'rescue', 'slight', 'theft', 'betrayal', 'debt'],
-          default: 'favour',
-        },
-        secret: { type: 'boolean', title: 'Nobody found out', default: false },
-      },
-    },
-  },
 };

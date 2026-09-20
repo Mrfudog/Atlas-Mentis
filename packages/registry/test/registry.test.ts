@@ -186,26 +186,31 @@ describe('interface inheritance', () => {
     expect(relationsFrom(seedRegistry, 'Map').map((r) => r.type)).toContain('territory');
   });
 
-  /* Ruf (REQ-030, 081). Eine Tat ist dreistellig — wer, was, bei wem — und
-     eine Kante hat ein Ziel; also ist die Mitte ein Artikel mit zwei
-     Kanten. Wandert das Gewicht an eine der beiden Kanten, ist die dritte
-     Stelle wieder verloren, und niemand merkt es, bis die Zahlen nicht mehr
-     stimmen. */
-  it('keeps a deed a thing of its own, with both ends as edges', () => {
-    expect(seedRegistry.interfaces.Deed.requires).toContain('DeedInfo');
-    const tat = seedRegistry.components.DeedInfo.schema.properties ?? {};
-    expect(tat.delta?.type).toBe('number');
-    expect(tat.secret?.type).toBe('boolean'); // eine Tat, von der niemand weiss
-    ['doneBy', 'regarding'].forEach((k) => {
-      expect(seedRegistry.relations[k].from).toEqual(['Deed']);
-      expect(seedRegistry.relations[k].cardinality).toBe('one');
-    });
-    // Der Ausgangswert steht am Urteilenden und trägt keinen Zähler daneben.
+  /* Beziehung (REQ-030, 081). Eine Kante mit Marken, und sonst nichts.
+     Die Prüfung sucht deshalb zuerst nach dem Gegenteil: einer Zahl, aus
+     der jemand wieder eine Leiter bauen könnte, und der Maschinerie, die
+     hier einmal stand. Gäbe es sie, wäre „simpel" nur eine Behauptung. */
+  it('keeps a relationship one edge with tags, and nothing more', () => {
     const reg = seedRegistry.relations.regards;
-    expect(reg.props?.properties?.value?.type).toBe('number');
-    expect(Object.keys(reg.props?.properties ?? {})).toEqual(['value', 'note']);
-    // Und eine Fraktion darf etwas erfahren — daran hängt, ob eine Tat zählt.
-    expect(seedRegistry.relations.knownBy.to).toContain('Faction');
+    expect(Object.keys(reg.props?.properties ?? {})).toEqual(['tags', 'note']);
+    expect(reg.props?.properties?.tags?.type).toBe('array');
+    // Marken sind Worte, keine Aufzählung: was jemand denkt, ist Inhalt.
+    expect(reg.props?.properties?.tags?.enum).toBeUndefined();
+    // Sie steht beim Urteilenden und darf in beide Richtungen verschieden sein.
+    expect(reg.from).toContain('Faction');
+    expect(reg.to).toContain('Party');
+
+    // Die Taten sind weg — mit ihnen die gerechnete Leiter.
+    expect(seedRegistry.interfaces.Deed).toBeUndefined();
+    expect(seedRegistry.components.DeedInfo).toBeUndefined();
+    ['doneBy', 'regarding'].forEach((k) => {
+      expect(seedRegistry.relations[k]).toBeUndefined();
+    });
+    // Und keine Kante zeigt mehr auf etwas, das es nicht mehr gibt.
+    Object.values(seedRegistry.relations).forEach((r) => {
+      expect(r.from ?? []).not.toContain('Deed');
+      expect(r.to ?? []).not.toContain('Deed');
+    });
   });
 
   /* Ein laufender Handwerksgang (REQ-184). `put` ist die Zeile, an der

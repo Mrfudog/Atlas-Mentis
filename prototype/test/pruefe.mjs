@@ -1333,16 +1333,17 @@ async function seite(datei, warten) {
     pruefe('a map with fog and walls exists in the data', false, 'keine Nebelkarte gefunden');
   }
 
-  /* ---- Ruf und Beziehungen (REQ-030, 081) ----
-     Ruf ist gerechnet, nicht gespeichert. Die Prüfung sucht deshalb zuerst
-     nach dem Gegenteil: ein Feld, in dem eine Ruf-Zahl liegen könnte. Gäbe
-     es eines, wäre alles danach Zierrat.
+  /* ---- Beziehungen (REQ-030, 081) ----
+     Eine Kante mit Marken, und sonst nichts. Die Prüfung sucht deshalb
+     zuerst nach dem Gegenteil: einem Feld, in dem wieder eine Ruf-Zahl
+     liegen könnte, und den Resten der Maschinerie, die hier einmal stand.
+     Gäbe es sie, wäre „simpel" nur eine Behauptung.
 
      `CreatureInfo.attitude` ist ausdrücklich keines davon: das ist die
      Grundhaltung gegenüber Fremden, ein Wort und kein Zähler. Sie zeigt auf
      niemanden, also ist sie ein Feld — richtig so. Was auf jemanden zeigt,
-     ist die Kante `regards`, und was daraus folgt, wird gerechnet. Damit
-     die Trennung hält, wird sie hier beides geprüft. */
+     ist die Kante `regards`. Damit die Trennung hält, wird sie hier beides
+     geprüft. */
   const rufFeld = await p.evaluate(() => {
     const treffer = [];
     Object.entries(window.__T__.REG.components).forEach(([k, c]) => {
@@ -1352,12 +1353,36 @@ async function seite(datei, warten) {
     });
     return treffer;
   });
-  pruefe('no component stores a standing — it is computed on read (D8)',
+  pruefe('no component stores a standing — a relationship is words, not a score',
     rufFeld.length === 0, rufFeld);
   const haltung = await p.evaluate(() =>
     ((window.__T__.REG.components.CreatureInfo.schema.properties || {}).attitude || {}));
   pruefe('the default attitude stays a word about strangers, not a counter',
     haltung.type === 'string' && Array.isArray(haltung.enum), haltung);
+
+  /* Was wegfiel, fiel ganz weg. Eine halb entfernte Mechanik ist schlimmer
+     als eine ganze: sie sieht aus, als liefe sie noch. */
+  const reste = await p.evaluate(() => ({
+    iface: !!window.__T__.REG.interfaces.Deed,
+    comp: !!window.__T__.REG.components.DeedInfo,
+    kanten: ['doneBy', 'regarding'].filter((k) => !!window.__T__.REG.relations[k]),
+    artikel: [...window.__T__.ENT.values()]
+      .filter((e) => (e.interfaces || [])[0] === 'Deed').length,
+    /* Und keine Kante irgendwo zeigt noch auf einen Artikel, den es nicht
+       mehr gibt — eine verwaiste Kante ist genau das, was dieses Modell
+       nicht haben will. */
+    verwaist: [...window.__T__.ENT.values()].flatMap((e) =>
+      (e.relations || []).filter((r) => r.to && !window.__T__.ENT.get(r.to))
+        .map((r) => e.id + ' -' + r.type + '-> ' + r.to)),
+    props: Object.keys(
+      ((window.__T__.REG.relations.regards || {}).props || {}).properties || {}),
+  }));
+  pruefe('the deeds are gone — interface, component and both edges',
+    !reste.iface && !reste.comp && reste.kanten.length === 0 && reste.artikel === 0, reste);
+  pruefe('nothing is left pointing at an article that no longer exists',
+    reste.verwaist.length === 0, reste.verwaist);
+  pruefe('a relationship carries thoughts and a line, and no number',
+    reste.props.join() === 'tags,note', reste.props);
 
   const auge = await p.evaluate(() => {
     const f = [...window.__T__.ENT.values()].find((e) =>
@@ -1374,59 +1399,42 @@ async function seite(datei, warten) {
     await p.waitForTimeout(400);
     const lesen = () => p.evaluate(() =>
       [...document.querySelectorAll('.strow')].map((r) => ({
-        wer: r.querySelector('.ref')?.textContent ?? '',
-        wort: r.querySelector('.pill')?.textContent ?? '',
-        zurueck: [...r.querySelectorAll('.co')].map((c) => c.textContent).join('|'),
-        taten: [...r.querySelectorAll('ul.deeds li .ref')].map((b) => b.textContent),
-        verborgen: r.querySelector('.warnzeile')?.textContent ?? '',
-        striche: r.querySelectorAll('.stbar i.on').length,
+        wer: r.querySelector('.ck .ref')?.textContent ?? '',
+        marken: [...r.querySelectorAll('.rtags .pill')].map((t) => t.textContent),
+        zurueck: [...r.querySelectorAll('.ck.back .pill')].map((t) => t.textContent),
+        warum: r.querySelector('.rnote')?.textContent ?? '',
       })));
     const vorher = await lesen();
-    pruefe('a standing shows a word, a number and the deeds behind it',
-      vorher.length > 0 && vorher.some((r) => /\(-?\d\)/.test(r.wort) && r.taten.length > 0),
+    pruefe('a relationship shows who, what they think, and why',
+      vorher.length > 0 && vorher.some((r) => r.marken.length > 0 && r.warum),
       vorher);
-    pruefe('the ladder draws as many marks as the standing is far from neutral',
-      vorher.every((r) => {
-        const n = Number((r.wort.match(/\((-?\d)\)/) ?? [])[1] ?? 0);
-        return r.striche === Math.abs(n);
-      }), vorher);
-    /* Die Gegenrichtung (REQ-081): eine Kante, zwei Urteile. Genau da wird
-       es interessant — einer traut, der andere nicht. */
-    pruefe('the other direction is shown when it differs',
-      vorher.some((r) => /back/.test(r.zurueck)), vorher.map((r) => r.zurueck));
+    /* Die Gegenrichtung (REQ-081): zwei Kanten, zwei Meinungen. Genau da
+       wird es interessant — einer ist dankbar, der andere misstraut. */
+    pruefe('the other direction is its own edge and may say something else',
+      vorher.some((r) => r.zurueck.length > 0
+        && r.zurueck.join() !== r.marken.join()),
+      vorher.map((r) => ({ hin: r.marken, her: r.zurueck })));
 
-    /* Und der eigentliche Punkt: eine Tat, von der niemand weiss, bewegt
-       nichts — und sie fängt an zu zählen, sobald die Gegenseite es erfährt.
-       Rückwirkend, weil sie ja passiert ist. */
-    const geheim = vorher.find((r) => r.verborgen);
-    pruefe('a deed nobody found out about is not counted, but the GM is told',
-      !!geheim && /not counted/.test(geheim.verborgen), geheim);
-
-    if (geheim) {
-      const vorWert = Number((geheim.wort.match(/\((-?\d)\)/) ?? [])[1] ?? 0);
-      await p.evaluate((id) => {
-        const info = [...window.__T__.ENT.values()].find((e) =>
-          (e.interfaces || [])[0] === 'Information'
-          && (e.components.Info || {}).tier === 'secret'
-          && !(e.relations || []).some((r) => r.type === 'knownBy')
-          && [...window.__T__.ENT.values()].some((d) =>
-            (d.relations || []).some((r) => r.type === 'knowledge' && r.to === e.id)));
-        info.relations.push({ id: 'r_test_kb', type: 'knownBy', to: id, props: {} });
-      }, auge);
-      await p.evaluate(() => { document.getElementById('facet')
-        .dispatchEvent(new Event('change', { bubbles: true })); });
-      await p.waitForTimeout(400);
-      const nachher = await lesen();
-      const gleicheZeile = nachher.find((r) => r.wer === geheim.wer);
-      const nachWert = Number((gleicheZeile?.wort.match(/\((-?\d)\)/) ?? [])[1] ?? 0);
-      pruefe('once the other side finds out, the deed counts — retroactively',
-        nachWert < vorWert && gleicheZeile.taten.length > geheim.taten.length,
-        { vorWert, nachWert, taten: gleicheZeile?.taten });
-      pruefe('and it is no longer listed as something nobody found out about',
-        gleicheZeile && !gleicheZeile.verborgen, gleicheZeile);
-    }
+    /* Eine Marke dazu und wieder weg. Beides am Ort, an dem sie steht —
+       eine Marke, die man nur über einen Dialog loswird, bleibt stehen. */
+    const zahl = await p.evaluate(() => {
+      const t = document.querySelector('.rtags .pill.x');
+      const vor = document.querySelectorAll('.rtags .pill').length;
+      t.click();
+      return { vor, nach: document.querySelectorAll('.rtags .pill').length };
+    });
+    await p.waitForTimeout(300);
+    pruefe('clicking a thought takes it off where it stands',
+      zahl.nach === zahl.vor - 1, zahl);
+    const gespeichert = await p.evaluate((id) => {
+      const e = window.__T__.ENT.get(id);
+      const r = (e.relations || []).find((x) => x.type === 'regards');
+      return r ? (r.props || {}).tags.length : -1;
+    }, auge);
+    pruefe('and the edge keeps what is left, not a fresh empty one',
+      gespeichert >= 1, gespeichert);
   } else {
-    pruefe('a starting attitude exists in the data', false, 'kein regards gefunden');
+    pruefe('a relationship exists in the data', false, 'kein regards gefunden');
   }
 
   /* ---- Blockanker und Kampagnenwerte (B3) ----

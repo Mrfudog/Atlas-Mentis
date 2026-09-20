@@ -151,8 +151,9 @@ ihn niemand, der später dazukommt — und das merkte man erst am Tisch.
 4. ~~**Blockanker.**~~ Steht seit 2026-09-20 — siehe den Nachtrag unten.
 5. ~~**Gebietsraster auf der Karte** (REQ-193) und **Kartenkacheln**
    (REQ-138).~~ Stehen seit 2026-09-20 — siehe den Nachtrag unten.
-6. ~~**Ruf und Beziehungen** (REQ-030, 081).~~ Steht seit 2026-09-20 — siehe
-   [Ruf.md](Ruf.md).
+6. ~~**Ruf und Beziehungen** (REQ-030, 081).~~ Steht seit 2026-09-20, und
+   ist seither wieder eingedampft: eine Kante mit Marken statt einer
+   gerechneten Leiter — siehe [Beziehungen.md](Beziehungen.md).
 7. ~~**Handwerk mit Zeit** (REQ-184 zur Hälfte).~~ Steht seit 2026-09-20 —
    siehe den Nachtrag unten.
 

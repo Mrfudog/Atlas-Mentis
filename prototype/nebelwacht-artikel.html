@@ -342,29 +342,20 @@ body.asplayer .brand span{color:var(--link)}
 .mtiles{display:grid;gap:0;line-height:0}
 .mtiles img{width:100%;height:auto;display:block}
 
-/* Ruf: eine Zeile je Gegenseite, sieben Striche als Leiter. Kein Diagramm —
-   man soll sie im Vorbeigehen ablesen. */
+/* Beziehung: eine Zeile je Gegenseite, die Gedanken als Marken. Keine
+   Leiter mehr — am Tisch fragt niemand nach einer Zahl. */
 .standbox{display:flex;flex-direction:column;gap:8px}
 .strow{border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;
   background:var(--surface2)}
-.stbar{display:inline-flex;gap:2px;align-items:center;margin-left:4px}
-.stbar i{width:7px;height:12px;border-radius:1px;background:var(--line)}
-.stbar i.mid{background:var(--muted);height:8px}
-.stbar.s-bad i.on{background:var(--warn);opacity:.9}
-.stbar.s-wary i.on{background:var(--warn);opacity:.6}
-.stbar.s-ok i.on{background:var(--accent)}
-.stbar.s-good i.on{background:var(--ok)}
-.pill.bad{background:var(--surface);color:var(--warn);border:1px solid var(--warn)}
-.pill.wary{background:var(--surface);color:var(--warn)}
-.pill.good{background:var(--surface);color:var(--ok);border:1px solid var(--ok)}
-.pill.flat{background:var(--surface);color:var(--dim)}
-ul.deeds{margin:4px 0 0;padding-left:0;list-style:none;display:flex;
-  flex-direction:column;gap:3px}
-ul.deeds li{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px}
-ul.deeds .delta{font-family:var(--ff-mono);font-size:12px;font-weight:600;
-  min-width:22px;text-align:right}
-ul.deeds .delta.good{color:var(--ok)}
-ul.deeds .delta.bad{color:var(--warn)}
+.strow .ck{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.strow .ck.back{margin-top:4px;font-size:13px;opacity:.85}
+.rtags{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center}
+/* Eine Marke, die man wegklicken kann, sagt das erst beim Darüberfahren —
+   sonst stünde neben jedem Gedanken ein Kreuz und man läse nur Kreuze. */
+.pill.tag.x{cursor:pointer;border:1px solid transparent}
+.pill.tag.x:hover{border-color:var(--warn);color:var(--warn)}
+.pill.tag.x:hover::after{content:" ×"}
+.rnote .btn{font-style:italic;color:var(--dim);text-align:left}
 
 /* Charakterbogen: die Vitalleiste ist eine Zeile, die man antippt. */
 .vitals{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:1px;
@@ -7492,114 +7483,51 @@ function renderKnowPanel(a,e){
   }
 }
 
-/* ---------- Ruf und Beziehungen (REQ-030, 081) ----------
-   Ruf ist keine Zahl, die jemand pflegt. Er ist das, was übrig bleibt,
-   nachdem etwas passiert ist — und deshalb wird er beim Lesen gerechnet
-   und nie gespeichert (D8). Eine gespeicherte Ruf-Zahl driftet von der
-   Geschichte weg, und dann steht am Tisch eine Zahl, die niemand belegen
-   kann.
+/* ---------- Beziehungen (REQ-030, 081) ----------
+   Hier stand einmal ein Ruf-System: Taten als eigene Artikel, ein Gewicht
+   je Tat, ein Ausgangswert, eine gerechnete Leiter von −3 bis +3, und die
+   Regel, dass eine Tat, von der niemand weiss, nichts ändert.
 
-   Eine Tat ist dreistellig: **wer** hat **was** **bei wem** getan. Eine
-   Kante hat aber ein Ziel. Das Rückgrat kennt dafür genau eine Antwort,
-   und es ist dieselbe wie beim Rezept und bei der Begegnung: **die Mitte
-   wird ein Artikel.** Eine `Deed` trägt das Gewicht als Feld und zeigt mit
-   zwei Kanten nach aussen — `doneBy` auf den Täter, `regarding` auf den,
-   dessen Meinung sich bewegt.
+   Es war richtig gebaut und trotzdem zu viel. Am Tisch fragt niemand nach
+   einer Zahl; man fragt „was hält das Auge von euch?", und die Antwort ist
+   ein Satz. Geblieben ist deshalb **eine Kante mit Marken**: die Gedanken,
+   die der eine über den anderen hat.
 
-   Das zahlt sich sofort aus: eine Tat lässt sich beschreiben, datieren, auf
-   die Zeitleiste legen — und **verbergen**. Denn der eigentliche Punkt ist:
+   Die Marken sind Worte und keine Aufzählung im Register. Was jemand vom
+   anderen hält, ist Kampagneninhalt — eine feste Liste hätte entweder
+   zwanzig Einträge oder die falschen drei.
 
-   **Eine Tat, von der niemand weiss, ändert nichts.** Sie zählt erst, wenn
-   die Gegenseite davon weiss — und ob sie das tut, beantwortet das
-   Wissensmodell, das schon da ist. Keine zweite Mechanik für dieselbe
-   Frage.
+   Zwei Dinge bleiben, weil sie nichts kosten: die Kante steht **beim
+   Urteilenden** („das Auge hält von euch nichts" ist eine Aussage über das
+   Auge), und die **Gegenrichtung ist eine eigene Kante**, die etwas ganz
+   anderes sagen darf. Genau da wird es interessant (REQ-081): einer traut,
+   der andere nicht.
 
-   Dazu ein Ausgangswert (`regards`), den die Spielleitung setzt: wo jemand
-   anfängt, bevor irgendetwas passiert ist. */
-var DEED_IFACE="Deed", DEED_COMP="DeedInfo",
-    REL_DONEBY="doneBy", REL_REGARDING="regarding", REL_REGARDS="regards";
+   Was mit den Taten wegfiel, ist eine Registerzeile und ein Dialog — wenn
+   es fehlt, kommt es zurück. */
+var REL_REGARDS="regards";
 
-/* Die Leiter. Sie ist absichtlich kurz: sieben Stufen kann man am Tisch
-   aussprechen, einundzwanzig nicht. */
-var STANDING=[
-  [-3,"sworn enemy"],[-2,"hostile"],[-1,"wary"],[0,"neutral"],
-  [1,"friendly"],[2,"trusted"],[3,"sworn ally"]
-];
-function standingWord(v){
-  var n=Math.max(-3,Math.min(3,Math.round(v)));
-  for(var i=0;i<STANDING.length;i++) if(STANDING[i][0]===n) return STANDING[i][1];
-  return "neutral";
+/* Die Kante von diesem Artikel auf jenen, falls es eine gibt. Höchstens
+   eine je Paar: zwei Meinungen desselben über denselben wären zwei
+   Wahrheiten. */
+function regardsEdge(e,zuId){
+  return (e.relations||[]).filter(function(r){
+    return r.type===REL_REGARDS&&r.to===zuId; })[0]||null;
 }
-function standingClass(v){ return v<=-2?"bad":(v<0?"wary":(v>=2?"good":(v>0?"ok":"flat"))); }
-
-function deedCard(d){ return (d.components||{})[DEED_COMP]||{}; }
-/* Alle Taten, an denen dieser Artikel als Täter oder als Publikum hängt.
-   Gespeichert wird nur vorwärts — also wird von der Tat aus gesucht. */
-function deedsFor(id){
-  var out=[];
-  ENT.forEach(function(d){
-    if(((d.interfaces||[])[0])!==DEED_IFACE)return;
-    if(!inStack(d))return;
-    var taeter=null, publikum=null;
-    (d.relations||[]).forEach(function(r){
-      if(r.type===REL_DONEBY&&!taeter) taeter=r.to;
-      else if(r.type===REL_REGARDING&&!publikum) publikum=r.to;
-    });
-    if(!taeter||!publikum)return;
-    if(taeter!==id&&publikum!==id)return;
-    out.push({deed:d,by:taeter,about:publikum});
-  });
-  out.sort(function(a,b){
-    var x=Number(((a.deed.components||{}).WorldDate||{}).sort)||0;
-    var y=Number(((b.deed.components||{}).WorldDate||{}).sort)||0;
-    return x-y;
-  });
-  return out;
+function regardTags(r){
+  var t=(r&&(r.props||{}).tags)||[];
+  return Array.isArray(t)?t.filter(function(x){ return String(x||"").trim(); }):[];
 }
-/* Weiss das Publikum davon? Eine offene Tat ja. Eine verborgene nur, wenn
-   eine Information darüber ihm gehört — dieselbe Abfrage, mit der auch die
-   Felder und die Blöcke entschieden werden. */
-function deedKnown(d,publikumId){
-  if(!deedCard(d).secret)return true;
-  var infos=infosOf(d);
-  if(!infos.length)return false;         /* geheim und nichts darüber gesagt */
-  return infos.some(function(i){ return knowsInfo(i,publikumId); });
-}
-/* Der Ausgangswert: wo das Publikum anfängt, bevor etwas passiert ist. */
-function regardsBase(publikum,taeterId){
-  var r=(publikum.relations||[]).filter(function(x){
-    return x.type===REL_REGARDS&&x.to===taeterId; })[0];
-  return r?{value:Number((r.props||{}).value)||0,note:(r.props||{}).note||"",rel:r}
-          :{value:0,note:"",rel:null};
-}
-/* Was gerade gilt (REQ-030). `von` ist das Publikum, `zu` der Beurteilte —
-   die Richtung, in der man am Tisch fragt: „wie steht das Auge zu uns?" */
-function standingOf(vonId,zuId){
-  var publikum=ENT.get(vonId);
-  if(!publikum)return null;
-  var basis=regardsBase(publikum,zuId);
-  var wert=basis.value, gezaehlt=[], verborgen=0;
-  deedsFor(zuId).forEach(function(t){
-    if(t.by!==zuId||t.about!==vonId)return;
-    var w=Number(deedCard(t.deed).delta)||0;
-    if(!deedKnown(t.deed,vonId)){ verborgen++; return; }
-    wert+=w; gezaehlt.push({deed:t.deed,delta:w});
-  });
-  return {value:Math.max(-3,Math.min(3,wert)),raw:wert,base:basis,
-          deeds:gezaehlt,hidden:verborgen};
-}
-/* Mit wem dieser Artikel überhaupt etwas zu tun hat — Ausgangswerte in
-   beide Richtungen und jede Gegenseite einer Tat. */
-function standingPartners(e){
+/* Mit wem dieser Artikel überhaupt etwas zu tun hat — hin wie zurück.
+   Gespeichert wird nur vorwärts, also wird die Gegenrichtung gesucht. */
+function regardPartners(e){
   var m={};
   (e.relations||[]).forEach(function(r){ if(r.type===REL_REGARDS) m[r.to]=true; });
   ENT.forEach(function(o){
+    if(o.id===e.id)return;
     (o.relations||[]).forEach(function(r){
       if(r.type===REL_REGARDS&&r.to===e.id) m[o.id]=true;
     });
-  });
-  deedsFor(e.id).forEach(function(t){
-    m[t.by===e.id?t.about:t.by]=true;
   });
   delete m[e.id];
   return Object.keys(m).filter(function(id){
@@ -7607,99 +7535,97 @@ function standingPartners(e){
   });
 }
 
-/* Die Leiter als sieben Striche. Kein Diagramm — man soll sie im Vorbeigehen
-   ablesen, nicht studieren. */
-function standingBar(v){
-  var box=el("span",{class:"stbar s-"+standingClass(v)});
-  for(var i=-3;i<=3;i++){
-    var an=(v>0&&i>0&&i<=v)||(v<0&&i<0&&i>=v);
-    box.appendChild(el("i",{class:an?"on":(i===0?"mid":"")}));
-  }
+/* Die Marken einer Beziehung. Jede ist ein Knopf, der sie wegnimmt —
+   eine Marke, die man nur über einen Dialog loswird, bleibt stehen. */
+function regardTagList(e,zuId,r){
+  var box=el("span",{class:"rtags"});
+  regardTags(r).forEach(function(t){
+    if(canWrite()){
+      box.appendChild(el("button",{class:"pill tag x",type:"button",
+        title:"Remove this thought",
+        onclick:function(){ setRegard(e,zuId,regardTags(r).filter(function(x){return x!==t;}),null); }},t));
+    } else {
+      box.appendChild(el("span",{class:"pill tag",text:t}));
+    }
+  });
+  if(canWrite()) box.appendChild(el("button",{class:"btn sm gh",type:"button",
+    title:"Add a thought",
+    onclick:function(){
+      prompt1("What does “"+nameOf(e)+"” think of them?","",function(v){
+        if(!v)return;
+        var alt=regardTags(r);
+        /* Zweimal dieselbe Marke sagt nichts zweimal. */
+        if(alt.indexOf(v)>=0)return;
+        setRegard(e,zuId,alt.concat([v]),null);
+      },"Add");
+    }},"+"));
   return box;
+}
+/* Schreiben. `tags` null heisst „lass sie", `note` null ebenso — sonst
+   löschte jedes Ändern der einen Seite die andere. Eine Kante ohne Marken
+   und ohne Zeile ist keine Beziehung und geht weg. */
+function setRegard(e,zuId,tags,note){
+  var r=regardsEdge(e,zuId);
+  var t=tags==null?regardTags(r):tags;
+  var n=note==null?((r&&(r.props||{}).note)||""):note;
+  e.relations=(e.relations||[]).filter(function(x){
+    return !(x.type===REL_REGARDS&&x.to===zuId); });
+  if(t.length||n) e.relations.push({id:(r&&r.id)||uid("r"),type:REL_REGARDS,to:zuId,
+    props:{tags:t,note:n||undefined}});
+  persist(e);
 }
 
 function elStanding(e,ifn,item){
-  var partner=standingPartners(e);
+  var partner=regardPartners(e);
   /* Wo niemand eine Meinung hat, steht nichts. Nur so darf das Element im
      gewöhnlichen Layout stehen, statt hinter einem Dropdown für genau eine
      Artikelart. */
   if(!partner.length&&!canWrite())return null;
   var wrap=el("div",{class:"standbox"});
-  var betrachter=isGM()?"":viewerActor();
 
-  if(!partner.length){
-    /* Für die Spielleitung bleibt der Weg hinein sichtbar — sonst gäbe es
-       keine Stelle, an der eine erste Beziehung entsteht. */
-    wrap.appendChild(el("p",{class:"hint",
-      text:"Nobody has an opinion here yet."}));
-  }
+  if(!partner.length) wrap.appendChild(el("p",{class:"hint",
+    text:"Nobody has an opinion here yet."}));
 
   partner.forEach(function(id){
     var o=ENT.get(id);
-    /* Vorn steht, was man auf dieser Seite fragt: „wie steht das Auge zu
-       ihnen?" — also das Urteil dieses Artikels über die Gegenseite. Die
-       Taten darunter sind dann genau die, die dieses Urteil bewegt haben. */
-    var hin=standingOf(e.id,id);     /* wie e über o denkt */
-    var her=standingOf(id,e.id);     /* und wie o zurückdenkt */
-    if(!hin&&!her)return;
+    var hin=regardsEdge(e,id);                  /* was e von o hält */
+    var her=o?regardsEdge(o,e.id):null;         /* und was o zurückhält */
     var row=el("div",{class:"strow"});
+
     var kopf=el("div",{class:"ck"});
     kopf.appendChild(el("button",{class:"ref",type:"button",
       onclick:function(){go({k:"art",id:id});}},nameOf(o)));
-    if(hin){
-      kopf.appendChild(el("span",{class:"pill "+standingClass(hin.value),
-        title:nameOf(e)+" → "+nameOf(o),
-        text:standingWord(hin.value)+" ("+(hin.value>0?"+":"")+hin.value+")"}));
-      kopf.appendChild(standingBar(hin.value));
-    }
-    /* Die Gegenrichtung steht daneben, wenn sie eine andere ist (REQ-081).
-       Genau da wird es interessant: einer traut, der andere nicht. */
-    if(her&&her.value!==(hin?hin.value:0))
-      kopf.appendChild(el("span",{class:"co",
-        text:"↩ "+standingWord(her.value)+" back"}));
+    kopf.appendChild(regardTagList(e,id,hin));
     row.appendChild(kopf);
 
-    if(hin&&(hin.base.note||hin.base.value))
-      row.appendChild(el("p",{class:"hint",style:"margin:2px 0",
-        text:"Starts at "+(hin.base.value>0?"+":"")+hin.base.value+
-          (hin.base.note?" — "+hin.base.note:"")}));
-
-    if(hin&&hin.deeds.length){
-      var ul=el("ul",{class:"deeds"});
-      hin.deeds.forEach(function(t){
-        var k=deedCard(t.deed);
-        var li=el("li");
-        li.appendChild(el("span",{class:"delta "+(t.delta<0?"bad":"good"),
-          text:(t.delta>0?"+":"")+t.delta}));
-        li.appendChild(el("button",{class:"ref",type:"button",
-          onclick:function(){go({k:"art",id:t.deed.id});}},nameOf(t.deed)));
-        if(k.kind) li.appendChild(el("span",{class:"pill q",text:k.kind}));
-        var wd=(t.deed.components||{}).WorldDate||{};
-        if(wd.display) li.appendChild(el("span",{class:"co",text:wd.display}));
-        ul.appendChild(li);
-      });
-      row.appendChild(ul);
+    var zeile=(hin&&(hin.props||{}).note)||"";
+    if(zeile||canWrite()){
+      var p=el("p",{class:"hint rnote",style:"margin:2px 0"});
+      if(canWrite()){
+        p.appendChild(el("button",{class:"btn sm gh",type:"button",
+          title:"Why they think so",
+          onclick:function(){
+            prompt1("Why — one line",zeile,function(v){ setRegard(e,id,null,v); });
+          }},zeile||"why…"));
+      } else p.appendChild(el("span",{text:zeile}));
+      row.appendChild(p);
     }
-    /* Was niemand weiss, zählt nicht — aber der Spielleitung wird gesagt,
-       dass da etwas liegt. Den Spielern nicht einmal die Anzahl: das wäre
-       genau die bekannte Unbekannte, die hier keine sein soll. */
-    if(hin&&hin.hidden&&isGM())
-      row.appendChild(el("p",{class:"hint warnzeile",style:"margin:2px 0",
-        text:hin.hidden+" deed"+(hin.hidden===1?"":"s")+" nobody found out about — "+
-          "not counted. Grant an Information about it and it starts to count."}));
+
+    /* Die Gegenrichtung als eigene Zeile, weil sie eine eigene Kante ist.
+       Bearbeitet wird sie dort, wo sie steht — wer sie hier änderte,
+       schriebe in einen fremden Artikel, ohne ihn zu sehen. */
+    if(her&&regardTags(her).length){
+      var rueck=el("div",{class:"ck back"});
+      rueck.appendChild(el("span",{class:"co",text:"↩ thinks back:"}));
+      regardTags(her).forEach(function(t){
+        rueck.appendChild(el("span",{class:"pill tag",text:t})); });
+      row.appendChild(rueck);
+    }
     wrap.appendChild(row);
   });
 
-  if(canWrite()){
-    var bar=el("div",{class:"rowbtns"});
-    bar.appendChild(el("button",{class:"btn sm",type:"button",
-      onclick:function(){ addRegards(e); }},"+ Starting attitude"));
-    bar.appendChild(el("button",{class:"btn sm",type:"button",
-      onclick:function(){ addDeed(e); }},"+ Deed"));
-    wrap.appendChild(bar);
-  }
-  if(betrachter) wrap.appendChild(el("p",{class:"hint",
-    text:"What you see here is what your side has found out. A deed nobody witnessed moves nothing."}));
+  if(canWrite()) wrap.appendChild(el("button",{class:"btn sm",type:"button",
+    onclick:function(){ addRegards(e); }},"+ Relationship"));
   return wrap;
 }
 
@@ -7726,71 +7652,24 @@ function pickArticle(titel,filter,dann){
     host.appendChild(btn);
   });
 }
-/* Der Ausgangswert. Er steht beim Publikum, nicht beim Beurteilten: „das
-   Auge hält von euch nichts" ist eine Aussage über das Auge. */
+/* Eine Beziehung anlegen: wen, was denkt er, warum. Drei Zeilen, und mehr
+   war die Frage nie. */
 function addRegards(e){
   pickArticle("Whom does “"+nameOf(e)+"” have an opinion about?",
     function(c){ return c.id!==e.id; },
     function(id){
-      dialog("Where does it start?",function(host,close){
-        var sel=el("select",{class:"i"});
-        STANDING.forEach(function(s){
-          sel.appendChild(el("option",{value:String(s[0])},
-            s[1]+" ("+(s[0]>0?"+":"")+s[0]+")"));
-        });
-        sel.value="0";
+      dialog("What does “"+nameOf(e)+"” think of them?",function(host,close){
+        var marken=el("input",{class:"i",type:"text",
+          placeholder:"Thoughts, comma separated — wary, owes us, asks too much"});
         var note=el("input",{class:"i",type:"text",placeholder:"Why — one line"});
-        host.appendChild(sel); host.appendChild(note);
-        var b=el("div",{class:"rowbtns"});
-        b.appendChild(el("button",{class:"btn pri",type:"button",onclick:function(){
-          e.relations=(e.relations||[]).filter(function(r){
-            return !(r.type===REL_REGARDS&&r.to===id); });
-          e.relations.push({id:uid("r"),type:REL_REGARDS,to:id,
-            props:{value:Number(sel.value)||0,note:note.value}});
-          close(); persist(e);
-        }},"Set it"));
-        host.appendChild(b);
-      });
-    });
-}
-/* Eine Tat anlegen. Sie ist ein Artikel, kein Formulareintrag — und sie
-   entsteht mit beiden Kanten, weil eine Tat ohne Publikum nichts bewegt
-   und eine ohne Täter niemandem gehört. */
-function addDeed(e){
-  pickArticle("Who is this about — whose opinion moves?",
-    function(c){ return c.id!==e.id; },
-    function(publikum){
-      dialog("What happened?",function(host,close){
-        var name=el("input",{class:"i",type:"text",placeholder:"What happened, in a few words"});
-        var art=el("select",{class:"i"});
-        ["favour","service","gift","rescue","slight","theft","betrayal","debt"]
-          .forEach(function(k){ art.appendChild(el("option",{value:k},k)); });
-        var wert=el("select",{class:"i"});
-        [-3,-2,-1,1,2,3].forEach(function(n){
-          wert.appendChild(el("option",{value:String(n)},(n>0?"+":"")+n)); });
-        wert.value="1";
-        var geheim=el("input",{type:"checkbox"});
-        var lab=el("label",{class:"task"},[geheim,
-          el("span",{text:"Nobody found out — it counts once they do"})]);
-        host.appendChild(name); host.appendChild(art);
-        host.appendChild(wert); host.appendChild(lab);
-        var b=el("div",{class:"rowbtns"});
-        b.appendChild(el("button",{class:"btn pri",type:"button",onclick:function(){
-          var t=name.value.trim();
-          if(!t)return;
-          var d={id:uid("dd"),interfaces:[DEED_IFACE],name:t,tags:[],
-            components:{Name:{text:t},Identity:{key:"deed/"+slug(t),aliases:[]},
-              Status:{value:"used"}},
-            adhoc:[],blocks:[],
-            relations:[{id:uid("r"),type:REL_DONEBY,to:e.id,props:{}},
-                       {id:uid("r"),type:REL_REGARDING,to:publikum,props:{}}],
-            createdAt:new Date().toISOString()};
-          d.components[DEED_COMP]={delta:Number(wert.value)||0,kind:art.value,
-            secret:geheim.checked};
-          ENT.set(d.id,d);
-          close(); persist(d);
-        }},"Record it"));
-        host.appendChild(b);
+        host.appendChild(field("Thoughts",marken));
+        host.appendChild(field("Why",note));
+        actions(host,close,function(){
+          var t=marken.value.split(",").map(function(x){return x.trim();})
+            .filter(function(x){return x;});
+          if(!t.length&&!note.value.trim())return false;
+          setRegard(e,id,t,note.value.trim());
+        },"Set it");
       });
     });
 }

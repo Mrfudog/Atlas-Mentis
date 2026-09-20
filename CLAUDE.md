@@ -72,6 +72,11 @@ die Entscheidungen D0–D17, `Requirements.md` die REQ-Nummern.
   steht als `area` an ihrer Schnittstelle und wird wie alles andere geerbt.
   Im Code steht keine Liste davon — sonst bräuchte eine neue Artikelart eine
   Codeänderung, um auffindbar zu sein.
+- **Eine Beziehung ist eine Kante mit Marken** und keine gerechnete Zahl
+  (siehe [docs/Beziehungen.md](docs/Beziehungen.md)). Die Marken sind Worte
+  und keine Aufzählung im Register: was jemand vom anderen hält, ist
+  Kampagneninhalt. Die Kante steht beim Urteilenden, und die Gegenrichtung
+  ist eine eigene Kante, die etwas anderes sagen darf.
 - **Das Register steht einmal.** Wer eine Zeile ändert, ändert sie in
   `packages/registry` und lässt `emit-seed` laufen. Zweimal dasselbe von Hand
   zu pflegen hält genau so lange, wie jemand daran denkt — und als es hier
@@ -96,7 +101,10 @@ pnpm --filter @nw/registry emit-seed   # nach jeder Registeränderung
 `emit-seed` **behält** Zeilen, die es nur im Prototyp gibt — wer dort eine
 Artikelart anlegt, soll sie behalten. Eine Zeile zu **entfernen** ist deshalb
 ausdrücklich: `emit-seed --prune views` wirft die zusätzlichen Zeilen dieses
-Teils weg und zählt sie dabei auf.
+Teils weg und zählt sie dabei auf. Ein ganzer Teil ist oft zu grob — dann
+nimmt der Schalter einzelne Zeilen: `--prune components:DeedInfo,interfaces:Deed`.
+Ein Name, der nichts trifft, wird gesagt und lässt den Lauf fehlschlagen;
+ein stiller Tippfehler sähe aus wie eine erledigte Löschung.
 
 `pnpm test` läuft in zwei Projekten: `node` für Modell, Register und Server,
 `web` mit jsdom und Angulars aufgesetzter Prüfumgebung. Eine gemeinsame
