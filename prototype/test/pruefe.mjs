@@ -1620,6 +1620,42 @@ async function seite(datei, warten) {
     await p.waitForTimeout(200);
     pruefe('a sub-map shows as a region to zoom into', mk.bereiche.length > 0, mk.bereiche);
 
+    /* ---- Ein Token gehoert der Karte und nicht der Buehne ----
+       Alles in Kartenkoordinaten steht in Prozent von `.mapinner`, also
+       muss `.mapinner` genau so gross sein wie das Bild. Der Kasten lag
+       einmal fest auf Buehnenbreite, waehrend das Bild darin wuchs: ein
+       Token bei 50 % sass danach in der Mitte der *Buehne* statt in der
+       Mitte der Karte und wanderte beim Zoomen. Geprueft wird darum die
+       Stelle auf dem Bild und nicht der Prozentwert im Stil. */
+    const haltung = await p.evaluate(async () => {
+      const stelle = () => {
+        const t = document.querySelector('.mtoken');
+        const bild = document.querySelector('.mapimg') || document.querySelector('.mapinner');
+        if (!t || !bild) return null;
+        const a = t.getBoundingClientRect(), b = bild.getBoundingClientRect();
+        if (!b.width || !b.height) return null;
+        return { x: (a.left + a.width / 2 - b.left) / b.width,
+          y: (a.top + a.height / 2 - b.top) / b.height };
+      };
+      const vorher = stelle();
+      const stage = document.querySelector('.mapstage');
+      for (let i = 0; i < 2; i++) {
+        stage.dispatchEvent(new WheelEvent('wheel',
+          { deltaY: -100, bubbles: true, cancelable: true }));
+        await new Promise((r) => setTimeout(r, 120));
+      }
+      const nachher = stelle();
+      const zoom = window.__T__.UI.mapZoom;
+      window.__T__.UI.mapZoom = 1;
+      window.__T__.render();
+      return { vorher, nachher, zoom };
+    });
+    await p.waitForTimeout(200);
+    pruefe('a token keeps its spot on the map while zooming',
+      !!haltung.vorher && !!haltung.nachher && haltung.zoom > 1
+      && Math.abs(haltung.vorher.x - haltung.nachher.x) < 0.01
+      && Math.abs(haltung.vorher.y - haltung.nachher.y) < 0.01, haltung);
+
     /* ---- Hineinzoomen statt hineinspringen (REQ-131, 160) ----
        Das Rad zoomt, und wenn ein Unterkartenrahmen den Blick füllt, ist
        der nächste Schritt der Schritt hinein. Eine Schwelle allein wäre

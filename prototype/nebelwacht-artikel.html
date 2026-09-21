@@ -364,8 +364,15 @@ ul.tlayout li.d3{padding-left:48px}
 .maptools{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
 .mapstage{overflow:auto;border:1px solid var(--line);border-radius:var(--r);
   background:var(--surface2);max-height:70vh}
-.mapinner{position:relative;display:inline-block;min-width:100%;line-height:0}
-.mapimg{display:block;max-width:none;height:auto}
+/* **Der Kasten ist das Bild.** Alles, was in Kartenkoordinaten liegt —
+   Tokens, Gitter, Nebel, Unterkartenrahmen — steht in Prozent von
+   `.mapinner`, also muss `.mapinner` genau so gross sein wie das Bild.
+   Hier stand `min-width:100%`: beim Hineinzoomen wuchs das Bild über den
+   Kasten hinaus, der Kasten blieb so breit wie die Bühne, und ein Token
+   bei `left:50%` sass danach in der Mitte der *Bühne* statt in der Mitte
+   der Karte. Es wanderte also beim Zoomen. */
+.mapinner{position:relative;display:block;line-height:0}
+.mapimg{display:block;width:100%;max-width:none;height:auto}
 .mgrid{position:absolute;inset:0;pointer-events:none}
 .maparea{position:absolute;border:2px dashed var(--accent);background:var(--accent-soft);
   opacity:.65;border-radius:var(--r);cursor:zoom-in;padding:0;display:flex;
@@ -8191,11 +8198,19 @@ function areaShare(pr,nat,zoom){
      Fensters ändert sich mit dem Fenster und nicht mit dem Zoom. */
   var st=document.querySelector(".mapstage");
   var sw=(st&&st.clientWidth)||mapBox.w, sh=(st&&st.clientHeight)||mapBox.h;
-  if(!sw||!sh||!nat||!(Number(nat.w)>0))return 0;
+  if(!sw||!nat||!(Number(nat.w)>0))return 0;
   var bw=sw*(zoom||1), bh=bw*(Number(nat.h)/Number(nat.w));
+  var quer=((Number(pr.w)||0.12)*bw)/sw;
+  /* Die Höhe des Sichtfensters steht nicht immer: beim Zeichnen hängt die
+     Bühne noch nicht im Baum, und ein Bild, das noch lädt, gibt ihr keine.
+     Dann zählt die Breite allein. Eine Höhe von null hiess hier einmal
+     „füllt den Blick nicht" — und der Rahmen sagte nie an, was der nächste
+     Schritt tut, sondern betrat sie ohne Vorwarnung. Eine fehlende Messung
+     ist keine Messung von null. */
+  if(!sh) return quer;
   /* Beide Seiten müssen voll sein. Ein Rahmen, der nur quer den Blick
      füllt, ist ein Streifen und kein Ziel. */
-  return Math.min(((Number(pr.w)||0.12)*bw)/sw,((Number(pr.h)||0.12)*bh)/sh);
+  return Math.min(quer,((Number(pr.h)||0.12)*bh)/sh);
 }
 function mapZoomBy(schritt,e,nat){
   var alt=UI.mapZoom;
@@ -8286,12 +8301,15 @@ function elMap(e,ifn,item){
     if(!rect.width)return;
     pingMap(e.id,(ev.clientX-rect.left)/rect.width,(ev.clientY-rect.top)/rect.height);
   });
+  /* Gezoomt wird der **Kasten** und nicht das Bild darin: so bleiben Bild,
+     Gitter und Tokens in einem Koordinatenraum, und ein Anteil von 0 bis 1
+     meint überall dasselbe. */
+  inner.style.width=(UI.mapZoom*100)+"%";
   if(kacheln){
     img=kacheln.node;
-    img.style.width=(UI.mapZoom*100)+"%";
+    img.style.width="100%";
   } else {
     img=el("img",{class:"mapimg",src:src,alt:nameOf(e)});
-    img.style.width=(UI.mapZoom*100)+"%";
     /* Die natürliche Grösse kommt erst mit dem Bild. Bis dahin wird nichts
        aufgedeckt — lieber ein Bild ohne Nebel gar nicht zeigen als einen
        Nebel, der einen Wimpernschlag zu spät kommt. */
