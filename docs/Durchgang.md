@@ -33,42 +33,40 @@ Offen aus Block 1:
 
 ---
 
-## Block 2 — Welt · vorbereitet
+## Block 2 — Welt · erledigt
 
-### Was auffällt
+| Was | Entscheidung |
+|---|---|
+| `Weapon.Properties` | **weg** — die Eigenschaften sind `hasProperty`-Kanten auf gepoolte Regeln. Aus „finesse, leicht" wurden 6 Kanten; für Finesse, Leicht und Laden entstanden Regelartikel |
+| `Group` lag in `play` | steht in `rules` — die Umbenennung `game` → `rules` hatte hier `play` eingesetzt, und der Kommentar daneben sagte weiter `game` |
+| `Place.settlementType` | weg — `kind` sagt es schon (`Stadt`, `Distrikt`, `Gebäude`). Wird eine Siedlung genauer, ist sie ein Untertyp von `Place` und keine zweite Spalte |
+| `Place.since` | weg — seit wann ist ein Datum, und `Time` führt Daten |
+| `Item.availability` | bleibt, heisst „Purchase rarity": es ist die **Kaufrarität** aus dem Vault und nicht die Seltenheit des magischen Gegenstands |
+| `Item.stackSize` | bleibt — gilt, wenn das Hausregel-Inventar läuft |
+| `Item.weight` | bleibt — gilt mit dem Standardmodul; das Kachelinventar rechnet mit `rows` |
+| `Group.purpose` | weg — wozu eine Gruppe da ist, steht in ihrer Beschreibung |
 
-**`Weapon.Properties`** — als einziges Feld im ganzen Register
-grossgeschrieben, und es ist ein String. Waffeneigenschaften sind
-eigentlich gepoolte Regeln, die über die Kante `hasProperty` hängen; genau
-das war der Grund, sie nicht als Text zu importieren. Drei Gegenstände
-tragen es. Entweder umbenennen (`properties`) oder durch die Kante
-ersetzen und den Text wegwerfen.
+Die drei neuen Regeln (Finesse, Leicht, Laden) tragen `status: idea` und
+keinen Text. Das ist Absicht: einen Regeltext zu erfinden, den niemand
+geprüft hat, wäre schlimmer als eine Lücke, die sich zeigt — sie stehen
+auf der Vorbereitungsseite unter „Unfinished".
 
-**`Group` liegt im Bereich `play`.** Sie ist ein Wissensempfänger („die
-Spieler dieser Kampagne") — das ist Einrichtung und nicht das, worauf man
-während der Sitzung schaut. Kein Artikel benutzt sie bisher.
+Offen aus Block 2:
 
-**`Companion` und `Retainer`** haben keine eigenen Felder, keine eigenen
-Kanten und keine Artikel: sie sind reine Beschriftungen auf `Creature`. Das
-darf so sein — ein Begleiter ist eine Kreatur, auf die man zeigen kann —,
-aber es ist eine Entscheidung und kein Versehen.
-
-### Felder, die kein Artikel füllt
-
-| Typ | Feld | Anmerkung |
-|---|---|---|
-| `Place` | `settlementType` | `kind` hat schon `Stadt`/`Distrikt`/`Gebäude` — vermutlich das ältere von beiden |
-| `Place` | `since` | seit wann es den Ort gibt; `Time` kann das |
-| `Item` | `availability` | neben `rarity`, das 17× gefüllt ist |
-| `Item` | `stackSize` | Stapelgrösse — kam aus dem Vault, nie benutzt |
-| `Item` | `weight` | trägt `unit: 'lb'`; das Inventar rechnet heute mit `rows` |
-| `Group` | `purpose`, `kind` | beide nie, weil es keine Gruppe gibt |
+- **`Group.kind`** — die Aufzählung heisst heute `players|table|guests|crew`.
+  Gemeint sind eher „Spielergruppe", „Fraktion" und was sonst eine
+  Menschengruppe sein kann. „Fraktion" überschneidet sich allerdings mit der
+  Artikelart `Faction`, also braucht die Liste ein Wort von dir.
+- **`Companion` und `Retainer`** — keine eigenen Felder, keine eigenen
+  Kanten, keine Artikel: reine Beschriftungen auf `Creature`. Das darf so
+  sein, ist aber eine Entscheidung und kein Versehen.
 
 ### Was stimmt
 
 `Creature` (5 Felder, alle gefüllt), `PlayerCharacter`, `Place.kind/state/arrival`,
 `Item.itemType/rarity/copperPrice/rows`, `Weapon.damage/damageType/range`,
-`Armor`, `Material`, `Faction.kind`, `Party` (acht Felder, alle gefüllt).
+`Armor`, `Material`, `Faction.kind` und `Faction.color` (das jetzt eine Farbe
+ist), `Party` (acht Felder, alle gefüllt).
 
 ---
 

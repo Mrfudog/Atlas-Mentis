@@ -3682,10 +3682,19 @@ async function seite(datei, warten) {
       mitText: [...document.querySelectorAll('#view .rule')]
         .filter((r) => (r.querySelector('.rt')?.textContent || '').trim().length > 10).length,
       gesamt: document.querySelectorAll('#view .rule').length,
+      /* Eine Regel mit `status: idea` darf leer sein — sie sagt, dass hier
+         etwas nachzutragen ist, und steht auf der Vorbereitungsseite unter
+         „Unfinished". Die Waffeneigenschaften sind so entstanden: aus dem
+         Text `„finesse, leicht"` wurden Kanten, und die Regeln dahinter
+         haben noch keinen Wortlaut. Sie zu erfinden hiesse, Regeltexte zu
+         schreiben, die niemand geprüft hat. */
+      unfertig: [...window.__T__.ENT.values()].filter((e) =>
+        (e.interfaces || [])[0] === 'Rule'
+        && ((e.components || {}).Status || {}).status === 'idea').length,
       nutzer: [...document.querySelectorAll('#view .rusers .ref')].map((x) => x.textContent),
     }));
-    pruefe('the rules browser shows every rule with its text',
-      br.gesamt >= 2 && br.mitText === br.gesamt, br);
+    pruefe('the rules browser shows every finished rule with its text',
+      br.gesamt >= 2 && br.mitText === br.gesamt - br.unfertig, br);
     pruefe('it groups by kind', br.arten.length >= 2, br.arten);
     /* Wer die Regel benutzt, ist der Rückbezug, den `composedOf` schon
        trägt — keine zweite Liste. */

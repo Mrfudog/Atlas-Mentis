@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-09-20. 61 Schnittstellen, 41 Kantenarten.
+Stand 2026-09-21. 61 Schnittstellen, 41 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -439,7 +439,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Eigene Felder**
 
-- `kind` *Reich | Stadt | Distrikt | Gasse | Gebäude | Raum | Wildnis*, `environment` *string*, `settlementType` *string*, `state` *hidden | discovered | explored*, `since` *string*, `arrival` *long*
+- `kind` *Reich | Stadt | Distrikt | Gasse | Gebäude | Raum | Wildnis*, `environment` *string*, `state` *hidden | discovered | explored*, `arrival` *long*
 
 **Geerbte Felder**
 
@@ -579,7 +579,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 **Eigene Felder**
 
-- `damage` *string*, `damageType` *string*, `range` *measure*, `Properties` *string*
+- `damage` *string*, `damageType` *string*, `range` *measure*
 
 **Geerbte Felder**
 
@@ -617,7 +617,7 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 
 ## Play
 
-*Worauf man während der Sitzung schaut.* — 4 Arten.
+*Worauf man während der Sitzung schaut.* — 3 Arten.
 
 ### Board
 
@@ -691,41 +691,6 @@ steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und
 - * — `overrides` → „replaced by"
 
 **Gezeichnet** (aus `Encounter`): `initiative`, `description`, `fields`, `prose`
-
-### Group
-
-`Group` · erbt von `Identity`
-
-**Eigene Felder**
-
-- `purpose` *string*, `kind` *players | table | guests | crew*
-
-**Geerbte Felder**
-
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- PlayerCharacter — `playedBy` → „plays"
-- Quest — `questAbout` → „concerned by"
-- Information | Knowledge — `knownBy` → „knows"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
 
 ### Map
 

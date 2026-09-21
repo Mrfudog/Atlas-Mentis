@@ -825,13 +825,18 @@ export const interfaces: Record<string, InterfaceDef> = {
    * Ausrüstung — sie ist da, damit Wissen einen Empfänger hat, der grösser
    * ist als eine Figur und anders als eine Party.
    *
-   * Bereich `game`: sie gehört zur Einrichtung der Runde und nicht in die
+   * Bereich `rules`: sie gehört zur Einrichtung der Runde und nicht in die
    * Welt. Eine Gruppe im Kompendium neben den Fraktionen zu führen hiesse,
    * sie für Kampagneninhalt zu halten.
+   *
+   * Sie stand bis 2026-09-21 in `play` — die Umbenennung `game` → `rules`
+   * hat hier `play` eingesetzt, und der Kommentar daneben sagte weiter
+   * `game`. Play ist, worauf man während der Sitzung schaut; eine Gruppe
+   * richtet man vorher ein.
    */
   Group: {
     name: 'Group',
-    area: 'play',
+    area: 'rules',
     label: 'Group',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
     schema: merge(g.GroupInfo),

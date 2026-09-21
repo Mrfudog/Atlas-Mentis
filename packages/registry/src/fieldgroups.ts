@@ -357,7 +357,11 @@ export const fieldGroups = {
           enum: ['Reich', 'Stadt', 'Distrikt', 'Gasse', 'Gebäude', 'Raum', 'Wildnis'],
         },
         environment: { type: 'string', title: 'Environment' },
-        settlementType: { type: 'string', title: 'Settlement type' },
+        /* `settlementType` fiel weg: `kind` sagt es schon, mit
+           `Stadt`/`Distrikt`/`Gebäude`. Zwei Felder für dieselbe Frage
+           heissen, dass eines gefüllt wird und das andere gelesen. Wird
+           eine Siedlung einmal genauer, ist sie ein Untertyp von `Place`
+           und keine zweite Spalte. */
       },
     },
   },
@@ -388,13 +392,24 @@ export const fieldGroups = {
         // magic-item rarity, `availability` is how hard the thing is to buy.
         rarity: { type: 'string', title: 'Rarity',
           enum: ['gewöhnlich', 'ungewöhnlich', 'selten', 'sehr selten', 'legendär', 'artefakt'] },
-        availability: { type: 'string', title: 'Availability' },
+        /* **Nicht dasselbe wie `rarity`.** Die ist die Seltenheit des
+           magischen Gegenstands („selten", „legendär"); das hier ist, wie
+           schwer er zu *kaufen* ist — im Vault die Hausregel-Leiter
+           `Kaufrarität`. Die beiden zusammenzulegen verlöre genau die
+           Unterscheidung, die dort jemand sorgfältig gemacht hat. */
+        availability: { type: 'string', title: 'Purchase rarity' },
         copperPrice: { type: 'number', title: 'Price in copper' },
+        /* Leer, solange das Hausregel-Inventar nicht läuft: dort sagt
+           die Stapelgrösse, wie viele auf ein Feld gehen. Kein totes Feld,
+           sondern ein Feld eines Moduls. */
         stackSize: { type: 'number', title: 'Stack size' },
         /* Ein Gewicht als **Zahl mit Einheit** und nicht als Text: was sich
            addieren lassen soll, muss eine Zahl sein. In welcher Einheit es
            dasteht, sagt `unit`; was der Leser sieht, entscheidet die
            Einstellung oder die Artikelart. */
+        /* Ebenso: das Standardmodul rechnet mit Gewicht, das
+           Kachelinventar mit `rows`. Beide dürfen dastehen, weil nur eines
+           von beiden zur Zeit gilt. */
         weight: { type: 'number', unit: 'lb', title: 'Weight' },
       },
     },
@@ -424,7 +439,12 @@ export const fieldGroups = {
         damage: { type: 'string', title: 'Damage' },
         damageType: { type: 'string', title: 'Damage type' },
         range: { type: 'string', format: 'measure', title: 'Range' },
-        Properties: { type: 'string', title: 'Properties' },
+        /* **Die Eigenschaften sind Kanten**, keine Aufzählung im Text:
+           `hasProperty` zeigt auf gepoolte Regelartikel. Genau darum ging
+           es beim Import — „Versatil" als Text zu übernehmen kopiert, was
+           geteilt gehört, und der Merkzettel am Tisch findet es nicht.
+           Hier stand `Properties` mit grossem P: das einzige Feld im ganzen
+           Register, das so hiess, und es war ein String. */
       },
     },
   },
@@ -890,7 +910,8 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        purpose: { type: 'string', title: 'What it is for' },
+        /* `purpose` fiel weg: wozu eine Gruppe da ist, steht in ihrer
+           Beschreibung — und `kind` sagt, was für eine sie ist. */
         /* Wozu sie da ist — damit eine Liste von Gruppen lesbar bleibt,
            wenn es fünf davon gibt. Aufzählungswerte sind Kampagneninhalt
            und bleiben deutsch, wo sie welche sind; diese hier sind es
@@ -1021,7 +1042,8 @@ export const fieldGroups = {
           enum: ['hidden', 'discovered', 'explored'],
           default: 'hidden',
         },
-        since: { type: 'string', title: 'Since' },
+        /* `since` fiel weg — seit wann es den Ort gibt, ist ein Datum,
+           und `Time` führt Daten. */
         /* Was beim Ankommen vorgelesen wird — an den Ort, nicht an die
            Kante: man kommt auf mehreren Wegen an und sieht dasselbe. */
         arrival: { type: 'string', format: 'long', title: 'On arrival' },

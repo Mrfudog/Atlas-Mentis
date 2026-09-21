@@ -751,7 +751,11 @@ describe('knowledge shared with a whole group', () => {
 
   it('is a holder the registry allows, not one smuggled past it', () => {
     expect(seedRegistry.relations.knownBy.to).toContain('Group');
-    expect(Object.keys(seedRegistry.interfaces.Group.schema?.properties ?? {})).toContain('purpose');
+    expect(Object.keys(seedRegistry.interfaces.Group.schema?.properties ?? {})).toContain('kind');
+    /* Und sie steht in `rules`: eine Gruppe richtet man ein, bevor gespielt
+       wird. Sie lag bis 2026-09-21 in `play` — die Umbenennung
+       `game` → `rules` hatte hier `play` eingesetzt. */
+    expect(seedRegistry.interfaces.Group.area).toBe('rules');
     /* Sie trägt kein Blatt und keine Ausrüstung — sie ist keine Party mit
        anderem Namen. */
     expect(seedRegistry.interfaces.Group.extends ?? []).not.toContain('Vitals');
