@@ -1346,6 +1346,33 @@ async function seite(datei, warten) {
   pruefe('a free word suggests what is already in use',
     vorschlag.frei && vorschlag.vor.includes('npc'), vorschlag);
 
+  /* ---- Mehrere Werte aus mehreren Listen ----
+     Worin jemand geübt ist, kommt aus sechs Listen und steht in **einem**
+     Feld. Ein Feld je Sorte hiesse, dieselbe Frage sechsmal zu stellen —
+     und die siebte Sorte bräuchte ein siebtes Feld. */
+  const mehrfach = await p.evaluate(() => {
+    const T = window.__T__;
+    const pd = T.REG.interfaces.Proficiencies.schema.properties.proficient;
+    const node = T.fieldInput(pd, ['stealth', 'Elfisch']);
+    return {
+      gruppen: [...node.querySelectorAll('.cgroup')].map((x) => x.textContent),
+      an: [...node.querySelectorAll('.cchk.on span')].map((x) => x.textContent),
+      /* Nach aussen sieht der Kasten aus wie ein Textfeld: so liest ihn
+         dieselbe Funktion wie jede andere Liste. */
+      wert: node.value,
+      /* Und die Rettungswürfe ziehen aus **einer** Liste. */
+      saves: T.enumWerte(T.REG.interfaces.Proficiencies.schema.properties.saves),
+      quelle: T.enumQuelle(pd, 'Diebeswerkzeug'),
+    };
+  });
+  pruefe('one field draws on several lists, grouped by where they come from',
+    mehrfach.gruppen.length === 6 && mehrfach.gruppen.includes('Skill')
+    && mehrfach.gruppen.includes('Language')
+    && mehrfach.quelle === 'Tool', mehrfach);
+  pruefe('and what is picked reads back as a plain list',
+    mehrfach.wert === 'stealth, Elfisch' && mehrfach.an.length === 2
+    && mehrfach.saves.join() === 'str,dex,con,int,wis,cha', mehrfach);
+
   const anlegen = async (name) => {
     await p.evaluate(() => document.getElementById('new').click());
     await p.waitForTimeout(300);
@@ -2299,9 +2326,28 @@ async function seite(datei, warten) {
      man hält sie für vollständig. */
   pruefe('every kind in the registry is listed, exactly once',
     typen.arten === typen.imRegister, typen);
-  pruefe('and they are grouped by area, with the homeless ones at the end',
-    ['World', 'History', 'Rules', 'Play'].every((a) => typen.bereiche.includes(a))
-    && typen.bereiche[typen.bereiche.length - 1] === 'No area', typen.bereiche);
+  /* **Flach und ohne Überschriften.** Die Liste war nach Bereich gruppiert
+     und nach Unterarten eingerückt — beides aus `extends`, und `extends` ist
+     ein Array. Ein Baum muss sich für eine Herkunft entscheiden, also stand
+     eine Art, die von zweien erbt, unter einer und unter der anderen nicht.
+     Wer sie dort suchte, hielt sie für nicht vorhanden. */
+  pruefe('the list is flat — no headings that pick one lineage',
+    typen.bereiche.join() === 'Types', typen.bereiche);
+  const leisteGefiltert = await p.evaluate(async () => {
+    const feld = document.querySelector('#rail input[type=search]');
+    feld.value = 'quest';
+    feld.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 300));
+    const namen = [...document.querySelectorAll('.rail .navrow')].map((b) => b.dataset.t);
+    const feld2 = document.querySelector('#rail input[type=search]');
+    feld2.value = '';
+    feld2.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 300));
+    return { namen, wiederAlle: document.querySelectorAll('.rail .navrow').length };
+  });
+  pruefe('and a filter narrows it — fifty-nine rows are more than one glance',
+    leisteGefiltert.namen.includes('Quest') && leisteGefiltert.namen.length < 5
+    && leisteGefiltert.wiederAlle === typen.imRegister, leisteGefiltert);
 
   /* Eine Art zeigt, woraus sie besteht, was sie festhält, welche Kanten sie
      trägt und wie sie gezeichnet wird — **und jedes davon genau einmal.**
@@ -2317,11 +2363,21 @@ async function seite(datei, warten) {
     return {
       titel: document.querySelector('.tpdoc .arthead h2')?.textContent ?? '',
       abschnitte: txt('.tpdoc .sec').concat(txt('.tpdoc .rsec')),
-      /* Ein Bestandteil steht als Chip, den man wegnehmen kann — nicht als
-         Pille, die nur aussieht wie einer. */
-      teile: [...document.querySelectorAll('.tpdoc .chips .chip')]
-        .filter((c) => c.querySelector('button[title="remove"]'))
-        .map((c) => c.querySelector('.ref')?.textContent ?? ''),
+      /* Ein Bestandteil ist die **Kopfzeile seiner Feldgruppe**: dort steht,
+         woher er kommt, und dort nimmt man ihn heraus. Ein eigener
+         Abschnitt „Made of" daneben war dieselbe Sache zum zweiten Mal —
+         und die Frage „wie werde ich dieses Feld los" war nur dort zu
+         beantworten, wo die Felder nicht standen. */
+      teile: [...document.querySelectorAll('.fbox.part .fhead')]
+        .filter((h) => h.querySelector('button.dngr'))
+        .map((h) => h.querySelector('.ref')?.textContent ?? ''),
+      /* Der erste Bestandteil entscheidet den Bereich, und das steht an ihm. */
+      erster: [...document.querySelectorAll('.fbox.part .fhead')]
+        .filter((h) => /first/.test(h.textContent))
+        .map((h) => h.querySelector('.ref')?.textContent ?? ''),
+      /* Ein Bestandteil dazu — an derselben Stelle wie ein Feld dazu. */
+      teilDazu: [...document.querySelectorAll('.tpdoc .addbar select option')]
+        .some((o) => /part/.test(o.textContent)),
       /* Geerbtes steht als Block unter dem Bestandteil, der es mitbringt —
          und nicht flach mit „from X" an jeder der 83 Zeilen. */
       bloecke: txt('.fbox.part .fhead .ref'),
@@ -2330,18 +2386,23 @@ async function seite(datei, warten) {
       reiter: txt('.tmpltab'),
     };
   });
-  pruefe('a kind shows what it is made of, records, connects and looks like',
+  pruefe('a kind shows what it records, connects and looks like',
     eine.titel === 'Player character'
-    && eine.abschnitte.some((x) => /^Made of/.test(x))
     && eine.abschnitte.some((x) => /^Fields/.test(x))
     && eine.abschnitte.some((x) => /^Edges from here/.test(x))
     && eine.abschnitte.some((x) => /^Views/.test(x)), eine.abschnitte);
+  /* **Ein Bereich und nicht zwei.** „Made of" gibt es nicht mehr: der
+     Bestandteil steht als Kopfzeile über seinen Feldern. */
+  pruefe('and the parts are not a second list next to the fields',
+    !eine.abschnitte.some((x) => /^Made of/.test(x)), eine.abschnitte);
   /* Jede Frage einmal. Eine Seite, die alles zweimal zeigt, hat eine Hälfte,
      die nur so aussieht, als könnte man sie bedienen. */
   pruefe('and says each of them exactly once',
     eine.abschnitte.length === new Set(eine.abschnitte).size, eine.abschnitte);
-  pruefe('a part can be taken out where it is shown',
-    eine.teile.includes('Creature'), eine.teile);
+  pruefe('a part can be taken out where its fields stand',
+    eine.teile.includes('Creature') && eine.teilDazu, eine.teile);
+  pruefe('and the first part says that it decides the area',
+    eine.erster.join() === 'Creature', eine.erster);
   pruefe('inherited fields stand under the part that brings them',
     eine.bloecke.includes('Creature') && eine.bloecke.includes('Identity')
     && eine.inh > 20, { bloecke: eine.bloecke.slice(0, 4), inh: eine.inh });
@@ -2389,19 +2450,23 @@ async function seite(datei, warten) {
   const vorlage = await p.evaluate(async () => {
     const T = window.__T__;
     T.UI.typePick = 'PlayerCharacter';
-    T.UI.view = 'full';
+    T.UI.typeView = 'full';
     T.render();
     await new Promise((r) => setTimeout(r, 300));
     return {
       elemente: [...document.querySelectorAll('.tmplel > .ck > code')].map((x) => x.textContent),
       reiter: [...document.querySelectorAll('.tmpltab')].map((x) => x.textContent),
-      felder: document.querySelectorAll('.tmplfields .tgl').length,
+      /* **Gewählt wird nach Gruppe.** Vorher stand jedes einzelne Feld als
+         Marke da — bei einer Figur achtundvierzig. Eine Übersicht ist drei
+         Zeilen lang; wer sie zusammenstellt, sagt „den Statblock nicht". */
+      gruppen: document.querySelectorAll('.tmplfields .tgl').length,
       an: document.querySelectorAll('.tmplfields .tgl.on').length,
       /* Was in `full` **aus** ist, ist es nicht aus Versehen: der Bogen
-         zeichnet es schon, und die Feldtabelle lässt es über `except`
-         weg. Die Prüfung sieht deshalb nach, *welche* aus sind. */
+         zeichnet es schon, und die Feldtabelle lässt es über `except` weg. */
       ausWoher: [...document.querySelectorAll('.tmplfields .tgl:not(.on)')]
         .map((x) => x.dataset.comp),
+      /* Und in `full` gibt es nichts anzuklicken: sie zeigt alles. */
+      zu: [...document.querySelectorAll('.tmplfields .tgl')].every((b) => b.disabled),
       /* Die Maske steht auf derselben Seite darunter — das ist die
          Vereinigung, um die es ging. */
       maske: !!document.querySelector('.tpdoc .regbody'),
@@ -2417,10 +2482,15 @@ async function seite(datei, warten) {
      stehen im Bogen, und die Feldtabelle lässt sie über `except` weg. Eine
      Prüfung auf „alle an" wäre falsch und würde genau diese Absicht
      beanstanden. */
-  pruefe('every field is offered, and what is off is off on purpose',
-    vorlage.felder > 10 && vorlage.an > 0
+  pruefe('every group is offered, and what is off is off on purpose',
+    vorlage.gruppen > 8 && vorlage.an > 0
     && vorlage.ausWoher.every((c) => ['Vitals', 'Proficiencies'].includes(c)),
-    { felder: vorlage.felder, an: vorlage.an, ausWoher: [...new Set(vorlage.ausWoher)] });
+    { gruppen: vorlage.gruppen, an: vorlage.an, ausWoher: [...new Set(vorlage.ausWoher)] });
+  /* `full` zeigt alles: dort ist nichts abzuwählen. Was fehlt, fehlt, weil
+     ein anderer Block derselben Seite es zeichnet — das ist eine Sache der
+     Anordnung und keine Wahl je Art. */
+  pruefe('and full has nothing to untick, because it shows everything',
+    vorlage.zu === true, vorlage.zu);
 
   /* Ein Klick nimmt ein Feld aus der Ansicht — und ein zweiter legt es
      zurück. Geschrieben wird dabei `except` und keine ausgeschriebene
@@ -2428,48 +2498,68 @@ async function seite(datei, warten) {
      stünde nirgends. */
   const geklickt = await p.evaluate(async () => {
     const T = window.__T__;
-    /* Eine Spielerfigur erbt die Anordnung von `Creature`. Der Weg, den
-       man tatsächlich geht, ist deshalb: erst eine eigene machen, dann
-       ändern — und genau den prüft das hier. */
+    /* Auf `quick` wird gewählt — `full` zeigt alles. Und eine Spielerfigur
+       erbt ihre Anordnung von `Creature`: der Weg, den man geht, ist erst
+       eine eigene machen, dann ändern. */
+    T.UI.typeView = 'quick';
+    T.render();
+    await new Promise((r) => setTimeout(r, 300));
     const eigenKnopf = [...document.querySelectorAll('.tmpl .maptools .btn')]
       .find((b) => /Give it its own/.test(b.textContent));
     if (eigenKnopf) { eigenKnopf.click(); await new Promise((r) => setTimeout(r, 350)); }
-    const erste = () => document.querySelector('.tmplfields .tgl.on:not([disabled])');
-    const name = erste()?.dataset.ref ?? '';
+    /* Die Marken der **Feldtabelle** tragen `data-comp` — die der Prosa
+       stehen daneben und meinen einzelne Stellen. Auf `quick` ist nichts
+       gewählt: eine Karte trägt zwei Werte, und welche, sagt die Art. Also
+       wird hier eine Gruppe **dazugenommen**. */
+    const erste = () => document.querySelector('.tmplfields .tgl[data-comp]:not(.on):not([disabled])');
+    const name = erste()?.dataset.comp ?? '';
     erste().click();
     await new Promise((r) => setTimeout(r, 300));
-    const eigen = (T.REG.interfaces.PlayerCharacter.views || {}).full || [];
+    const eigen = (T.REG.interfaces.PlayerCharacter.views || {}).quick || [];
     const feldEl = eigen.find((x) => x.el === 'fields')
       || (eigen.find((x) => x.el === 'tabs')?.tabs || [])
         .flatMap((t) => t.layout).find((x) => x.el === 'fields');
     const aus = document.querySelectorAll('.tmplfields .tgl:not(.on)').length;
-    return { name, aus, except: feldEl?.except ?? null, fields: feldEl?.fields ?? null,
-      geschrieben: window.__WROTE__.includes('registry/interfaces') };
+    const alleAngaben = [].concat(feldEl?.except ?? [],
+      Array.isArray(feldEl?.fields) ? feldEl.fields : []);
+    return {
+      name, aus,
+      except: feldEl?.except ?? null,
+      fields: feldEl?.fields ?? null,
+      /* Steht die Gruppe jetzt da? Entweder weil sie in der Liste steht
+         oder weil sie aus `except` heraus ist. */
+      sichtbar: !!document.querySelector(`.tmplfields .tgl[data-comp="${name}"]`)
+        ?.classList.contains('on'),
+      /* Und es steht die **Gruppe** da, kein einzelnes Feld daraus. */
+      einzelne: alleAngaben.filter((x) => String(x).indexOf(name + '.') === 0),
+      geschrieben: window.__WROTE__.includes('registry/interfaces'),
+    };
   });
-  pruefe('clicking a field takes it out of the view',
-    geklickt.aus >= 1 && (geklickt.except || []).includes(geklickt.name),
-    geklickt);
-  pruefe('and it writes “all except”, not a frozen list',
-    geklickt.fields === 'all' && Array.isArray(geklickt.except) && geklickt.geschrieben,
+  pruefe('clicking a group puts it into the view',
+    geklickt.sichtbar && geklickt.geschrieben, geklickt);
+  pruefe('and it writes the group name, not every field of it',
+    geklickt.einzelne.length === 0
+    && Array.isArray(geklickt.fields) && geklickt.fields.includes(geklickt.name),
     geklickt);
   /* Genau dasselbe Feld zurück — nicht irgendeines. Es sind noch andere
      aus, und die sind es zu Recht: der Bogen zeichnet sie schon. */
   const zurueck2 = await p.evaluate(async (ref) => {
-    const knopf = document.querySelector(`.tmplfields .tgl[data-ref="${ref}"]`);
-    const warAus = !knopf.classList.contains('on');
+    const knopf = document.querySelector(`.tmplfields .tgl[data-comp="${ref}"]`);
+    const warAn = knopf.classList.contains('on');
     knopf.click();
     await new Promise((r) => setTimeout(r, 300));
-    const nun = document.querySelector(`.tmplfields .tgl[data-ref="${ref}"]`);
-    const eigen = (window.__T__.REG.interfaces.PlayerCharacter.views || {}).full || [];
+    const nun = document.querySelector(`.tmplfields .tgl[data-comp="${ref}"]`);
+    const eigen = (window.__T__.REG.interfaces.PlayerCharacter.views || {}).quick || [];
     const feldEl = eigen.find((x) => x.el === 'fields')
       || (eigen.find((x) => x.el === 'tabs')?.tabs || [])
         .flatMap((t) => t.layout).find((x) => x.el === 'fields');
-    return { warAus, wiederAn: nun.classList.contains('on'),
+    return { warAn, wiederAn: nun.classList.contains('on'),
+      fields: Array.isArray(feldEl?.fields) ? feldEl.fields : null,
       except: feldEl?.except ?? [] };
   }, geklickt.name);
-  pruefe('clicking it again puts that very one back',
-    zurueck2.warAus && zurueck2.wiederAn
-    && !zurueck2.except.includes(geklickt.name), zurueck2);
+  pruefe('clicking it again takes that very one out',
+    zurueck2.warAn && !zurueck2.wiederAn
+    && !(zurueck2.fields || []).includes(geklickt.name), zurueck2);
 
   /* Eine geerbte Anordnung sagt, woher sie kommt — sie zu bearbeiten ändert
      sie für jede Unterart mit, und das soll niemand aus Versehen tun.
@@ -2481,6 +2571,10 @@ async function seite(datei, warten) {
     const T = window.__T__;
     T.REG.interfaces.ErbArt = { name: 'ErbArt', label: 'Erb art', extends: ['Creature'] };
     T.UI.typePick = 'ErbArt';
+    /* `full` ist die Ansicht, die `Creature` selbst anordnet — an ihr ist
+       „geerbt" zu sehen. Bei `quick` sagt die Vorlage „die Grundanordnung
+       der Ansicht", und das ist eine andere Auskunft. */
+    T.UI.typeView = 'full';
     T.render();
     await new Promise((r) => setTimeout(r, 300));
     const raus = {
@@ -2528,6 +2622,12 @@ async function seite(datei, warten) {
       ansichten: Object.keys(T.REG.views),
       /* Eine Übersicht ist ein Satz und keine Feldtabelle. */
       ueber: [...T.layoutOf(T.REG.views.overview, 'PlayerCharacter', 'overview')].map((x) => x.el),
+      /* Und sie zeigt keine: die Auswahl ist leer. */
+      ueberFelder: (() => {
+        const f = [...T.layoutOf(T.REG.views.overview, 'PlayerCharacter', 'overview')]
+          .find((x) => x.el === 'fields');
+        return Array.isArray(f?.fields) ? f.fields.length : -1;
+      })(),
       voll: [...T.layoutOf(T.REG.views.full, 'PlayerCharacter', 'full')].map((x) => x.el),
       /* Und die volle Anordnung einer Kreatur kommt von `Creature`
          selbst — die Art trägt sie, und ihre Unterarten erben sie. */
@@ -2538,8 +2638,12 @@ async function seite(datei, warten) {
   pruefe('the picker at the top right is gone — the place decides',
     ortWaehlt.waehler === true
     && ortWaehlt.ansichten.join() === 'overview,quick,full', ortWaehlt.ansichten);
+  /* Eine Übersicht ist ein Satz. Die Feldtabelle steht darin mit **leerer**
+     Auswahl: so lässt sich je Art eine Gruppe dazunehmen, ohne dass aus
+     einem Verweis eine Tabelle wird — und solange niemand etwas ankreuzt,
+     steht dort nur der Satz. */
   pruefe('an overview is a sentence, the article page is everything',
-    ortWaehlt.ueber.join() === 'description'
+    ortWaehlt.ueber.join() === 'description,fields' && ortWaehlt.ueberFelder === 0
     && ortWaehlt.voll.includes('sheet') && ortWaehlt.voll.length > 1,
     { ueber: ortWaehlt.ueber, voll: ortWaehlt.voll });
   pruefe('and a kind inherits its arrangement instead of repeating it',
@@ -3056,7 +3160,9 @@ async function seite(datei, warten) {
       && ohneWerkzeug.some((z) => /no \w+werkzeug|no Kerzenzieherform/i.test(z)),
       ohneWerkzeug);
 
-    /* Der Übungsbonus kommt aus `Proficiencies.tools`, nicht aus einer Annahme.
+    /* Der Übungsbonus kommt aus den Werkzeugübungen in
+       `Proficiencies.proficient` — den Einträgen, die aus der Liste `Tool`
+       kommen —, nicht aus einer Annahme.
        Rook ist in Alchemie geübt, die Gruppe als solche nicht. */
     const boni = await p.evaluate(() => {
       const T = window.__T__;
@@ -3064,7 +3170,8 @@ async function seite(datei, warten) {
         ((e.components || {}).Recipe || {}).tool === 'Alchemistenwerkzeug');
       const info = rez.components.Recipe;
       const rook = [...T.ENT.values()].find((e) =>
-        (((e.components || {}).Proficiencies || {}).tools || []).indexOf('Alchemistenwerkzeug') >= 0);
+        (((e.components || {}).Proficiencies || {}).proficient || [])
+          .indexOf('Alchemistenwerkzeug') >= 0);
       const andere = [...T.ENT.values()].find((e) =>
         (e.interfaces || [])[0] === 'Party');
       return { rook: T.craftMod(rook, info), andere: T.craftMod(andere, info) };

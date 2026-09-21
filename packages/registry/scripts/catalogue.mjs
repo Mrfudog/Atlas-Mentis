@@ -63,13 +63,21 @@ function felderVon(art) {
     /* Nennt das Feld eine Aufzählungszeile, steht deren Name da und
        dahinter ihre Wörter: `Ability` sagt, wo die Liste wohnt, und die
        Liste sagt, was drinsteht. Eine Spanne sagt ihre Grenzen. */
-    const zeile = p.enumRef ? R.enums?.[p.enumRef] : null;
+    /* Ein Feld darf mehrere Zeilen nennen: worin jemand geübt ist, kommt
+       aus sechs Listen. Dann steht hier, welche — und nicht die
+       fünfunddreissig Wörter daraus. */
+    const refs = p.enumRef ? (Array.isArray(p.enumRef) ? p.enumRef : [p.enumRef]) : [];
+    const zeilen = refs.map((r) => R.enums?.[r]).filter(Boolean);
+    const zeile = zeilen.length === 1 ? zeilen[0] : null;
+    const viele = zeilen.length > 1
+      ? `${refs.join(' + ')}: ${zeilen.reduce((n, z) => n + (z.values?.length ?? 0), 0)} words`
+      : null;
     const spanne = (p.min !== undefined || p.max !== undefined)
       ? `${p.min ?? '−∞'}…${p.max ?? '∞'}` : null;
     const wie = p.derived ? 'gerechnet'
-      : zeile ? `${p.enumRef}: ${(zeile.values ?? []).join(' | ')}`
+      : viele ?? (zeile ? `${refs[0]}: ${(zeile.values ?? []).join(' | ')}`
       : p.enum ? p.enum.join(' | ')
-      : spanne ?? (p.format ?? p.type ?? '?');
+      : spanne ?? (p.format ?? p.type ?? '?'));
     return `\`${k}\`${pflicht.has(k) ? ' **Pflicht**' : ''} *${wie}*`;
   });
 }

@@ -21,7 +21,7 @@ const propertySchema = z.object({
   title: z.string().optional(),
   enum: z.array(z.string()).optional(),
   /* Die Werte stehen einmal in einer Aufzählungszeile, und das Feld nennt sie. */
-  enumRef: z.string().optional(),
+  enumRef: z.union([z.string(), z.array(z.string())]).optional(),
   min: z.number().optional(),
   max: z.number().optional(),
   format: z.string().optional(),

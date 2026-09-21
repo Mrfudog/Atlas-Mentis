@@ -9,8 +9,12 @@
  *     Kreatur ist die Art, und `Creature.kind` sagt, was für eine — npc,
  *     companion, retainer. Ein freies Wort, damit eine neue Sorte ein
  *     Eintrag ist und keine Registerzeile.
- *  2. Die Karte `Skills` heisst `Proficiencies` und trägt jetzt auch
- *     Rüstungen, Waffen und Wissensgebiete.
+ *  2. Die Karte `Skills` heisst `Proficiencies`, und aus sechs Feldern wird
+ *     eines: was in `languages`, `tools`, `armor`, `weapons` und
+ *     `knowledge` stand, steht jetzt in `proficient`. Das Feld zieht seine
+ *     Werte aus sechs Aufzählungszeilen, und woher ein Wert kommt, sagt die
+ *     Liste, in der er steht — ein Feld je Sorte hiesse, dieselbe Frage
+ *     sechsmal zu stellen.
  *  3. `StatblockInfo.languages`, `.saves` und `.skills` fallen weg: sie
  *     standen als freier Text neben denselben Listen an `Proficiencies`.
  *     Was dort steht, wird aufgezählt und nicht stillschweigend gelöscht.
@@ -55,6 +59,7 @@ function neueZaehlung() {
     artikel: 0,
     kreaturen: 0,
     uebungen: 0,
+    zusammengelegt: 0,
     status: 0,
     schwere: 0,
     fortschritt: 0,
@@ -97,6 +102,28 @@ export function wandereArtikel(e, z) {
     }
     delete karten.Skills;
     beruehrt = true;
+  }
+
+  /* 2b. Sechs Felder werden eins: was in `languages`, `tools`, `armor`,
+        `weapons` und `knowledge` stand, steht jetzt in `proficient` —
+        dieselbe Frage sechsmal war der Grund. */
+  const prof = karten.Proficiencies;
+  if (prof) {
+    const zusammen = Array.isArray(prof.proficient) ? prof.proficient.slice() : [];
+    let gefaltet = false;
+    for (const feld of ['languages', 'tools', 'armor', 'weapons', 'knowledge']) {
+      const drin = prof[feld];
+      if (drin === undefined) continue;
+      for (const v of Array.isArray(drin) ? drin : [drin]) {
+        const t = String(v).trim();
+        if (t && !zusammen.includes(t)) zusammen.push(t);
+      }
+      delete prof[feld];
+      gefaltet = true;
+      beruehrt = true;
+    }
+    if (zusammen.length) prof.proficient = zusammen;
+    if (gefaltet) z.zusammengelegt += 1;
   }
 
   /* 3. Die drei Freitexte am Statblock. */
@@ -187,6 +214,7 @@ function bericht(z) {
   console.log(
     `${z.artikel} Artikel gewandert · ${z.kreaturen} Kreaturen (kind), `
     + `${z.uebungen} Übungskarten, ${z.status} Status, ${z.schwere} Schwierigkeiten, `
+    + `${z.zusammengelegt} Übungen zusammengelegt, `
     + `${z.fortschritt} Quest.progress, ${z.phase} Encounter.phase, `
     + `${z.geschichte} Story.state entfernt`,
   );

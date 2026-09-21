@@ -845,18 +845,40 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        proficient: { type: 'array', title: 'Skills', items: { type: 'string' } },
-        expertise: { type: 'array', title: 'Expertise in', items: { type: 'string' } },
-        saves: { type: 'array', title: 'Saving throws', items: { type: 'string' } },
-        languages: { type: 'array', title: 'Languages', items: { type: 'string' } },
-        tools: { type: 'array', title: 'Tools', items: { type: 'string' } },
-        armor: { type: 'array', title: 'Armour', items: { type: 'string' } },
-        weapons: { type: 'array', title: 'Weapons', items: { type: 'string' } },
-        /* Hausregel: was jemand *weiss*, ist eine Übung wie jede andere.
-           Es ist nicht das Wissensmodell — eine Information, die jemand
-           kennt, hängt an `knownBy`. Hier steht ein Gebiet, in dem sich
-           eine Figur auskennt, und darauf würfelt sie. */
-        knowledge: { type: 'array', title: 'Fields of knowledge', items: { type: 'string' } },
+        /**
+         * **Ein Feld für alle Übungen**, und es zieht seine Werte aus sechs
+         * Listen: Fertigkeiten, Werkzeuge, Sprachen, Waffengruppen,
+         * Rüstungsgruppen und (Hausregel) Wissensgebiete.
+         *
+         * Vorher stand je Sorte ein Feld — `proficient`, `languages`,
+         * `tools`, `armor`, `weapons`, `knowledge` —, also dieselbe Frage
+         * sechsmal, und die siebte Sorte hätte ein siebtes Feld gebraucht.
+         * Woher ein Wert kommt, sagt die Liste, in der er steht
+         * (`enumSource`); der Bogen gruppiert danach, ohne dass es im Feld
+         * stünde.
+         */
+        proficient: {
+          type: 'array',
+          title: 'Proficient in',
+          items: { type: 'string' },
+          enumRef: ['Skill', 'Tool', 'Language', 'WeaponTraining', 'ArmorTraining', 'KnowledgeField'],
+        },
+        /* Dieselben Listen: Expertise ist eine Übung, die doppelt zählt. */
+        expertise: {
+          type: 'array',
+          title: 'Expertise in',
+          items: { type: 'string' },
+          enumRef: ['Skill', 'Tool', 'Language', 'WeaponTraining', 'ArmorTraining', 'KnowledgeField'],
+        },
+        /* Rettungswürfe sind Attribute und sonst nichts — eine Liste aus
+           **einer** Zeile, und genau das ist der Unterschied zur Probe am
+           Rezept, die genau eines nennt. */
+        saves: {
+          type: 'array',
+          title: 'Saving throws',
+          items: { type: 'string' },
+          enumRef: 'Ability',
+        },
       },
     },
   },

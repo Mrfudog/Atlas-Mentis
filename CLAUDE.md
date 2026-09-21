@@ -134,16 +134,47 @@ wiederkommen, werden sie neu geschrieben.
   Gelesen wird **immer** über `enumOptions()` (Paket) bzw. `enumWerte()`
   (Prototyp) und nie `p.enum` direkt. Eine Liste mit genau einem Nutzer
   bleibt am Feld — eine Zeile dafür wäre der Umweg ohne den Gewinn.
+  **Mehrere Zeilen darf ein Feld nennen** (`enumRef: ['Skill', 'Tool', …]`),
+  und dann gelten sie zusammen: `Proficiencies.proficient` zieht aus sechs
+  Listen, weil ein Feld je Sorte dieselbe Frage sechsmal stellte und die
+  siebte Sorte ein siebtes Feld gebraucht hätte. Woher ein Wert kommt, sagt
+  die Liste, in der er steht (`enumSource` / `enumQuelle`) — der Bogen
+  gruppiert danach, und das Handwerk liest die Werkzeugübungen so heraus.
+  Getrennt gebraucht: `enumGroups()` / `enumGruppen()`.
+  Mit `type: 'array'` hält dasselbe Feld **mehrere** Werte aus diesen
+  Listen; die Maske zeigt dann Häkchen, nach Zeile gruppiert.
 - **Eine Zahl mit Grenzen ist eine Spanne** (`min`, `max`), keine
   Aufzählung von zwanzig Wörtern. Die Schwierigkeit war fünf Wörter an der
   Begegnung und freier Text an der Szene; sie ist jetzt eine Stufe von 1
   bis 20 im Typ `Difficulty`, und beide nehmen ihn dazu.
+- **Übungen stehen in einem Feld, nicht in sechs.**
+  `Proficiencies.proficient` (und `expertise`) ziehen aus `Skill`, `Tool`,
+  `Language`, `WeaponTraining`, `ArmorTraining` und `KnowledgeField`;
+  `saves` zieht aus `Ability`. Welche Fertigkeiten es gibt, sagt die Zeile
+  `Skill`; **worauf jede rechnet**, sagt die Einstellung `skills`
+  (`stealth:dex`) — zwei Stellen, aber nicht zweimal dasselbe, denn eine
+  Liste von Wörtern kann keine Zuordnung tragen. Wird eine Fertigkeit
+  einmal ein Artikel, fallen beide weg.
 - **`Status` ist der Vorbereitungsstand und sonst nichts:** `idea`,
   `prepared`, `ready` (Aufzählungszeile `State`). Was im Spiel geschah,
   gehört nicht hierher — `used` und `discarded` waren Ereignisse, die ein
   Feld für immer festhielt. Wie weit eine Sache am Tisch ist, sagt das Feld
   der Art: `Quest.progress`, `Encounter.phase`, `Explored.state`. Drei
   Felder hiessen einmal alle `state` und meinten Verschiedenes.
+- **Das Register zeigt einen Typ auf einer Fläche.** Die Bestandteile sind
+  die **Kopfzeilen der Feldgruppen** — dort steht, woher einer kommt, dort
+  nimmt man ihn heraus, und seine Felder stehen darunter. Ein eigener
+  Abschnitt „Made of" daneben war dieselbe Sache zum zweiten Mal, und die
+  Frage „wie werde ich dieses Feld los" liess sich nur dort beantworten, wo
+  die Felder nicht standen. Die **Typenauswahl ist flach**: sie war ein
+  Baum aus `extends`, und weil `extends` ein Array ist, musste der Baum
+  eine Herkunft wählen und die andere verschweigen.
+- **In einer Ansicht wird nach Gruppe gewählt, nicht Feld für Feld.**
+  `full` zeigt alles — was dort fehlt, zeichnet ein anderer Block derselben
+  Seite (der Bogen), und das ist eine Sache der Anordnung und keine Wahl je
+  Art. Für `overview` und `quick` schaltet ein Klick eine ganze Gruppe
+  (`except: ['Vitals']`, ein Typname). Eine ausgeschriebene Feldliste wäre
+  am Tag des nächsten Feldes unvollständig, und niemand merkte es.
 - **Bei jeder Modelländerung wandert die Erklärung mit.**
   [docs/Begriffe.md](docs/Begriffe.md) *und* die Seite „How it works" im
   Register, mitsamt dem durchgerechneten Beispiel am Ende — beides gehört

@@ -428,6 +428,26 @@ ul.tlayout li.d3{padding-left:48px}
   text-overflow:ellipsis;white-space:nowrap}
 .msopacity{width:80px}
 .mterr{pointer-events:none}
+/* Mehrere Werte aus Aufzählungszeilen: Häkchen, nach Zeile gruppiert. Die
+   Kiste scrollt, weil sechs Listen zusammen fünfunddreissig Wörter sind und
+   eine Maske nicht die halbe Seite sein soll. */
+/* Eine Gruppe, von der nur ein Teil dasteht: an, aber nicht ganz. */
+.tgl.part{border-style:dashed}
+
+/* Die übrigen Übungen auf dem Bogen: eine Zeile je Liste. */
+.proflist{display:flex;flex-direction:column;gap:2px;margin-bottom:8px}
+.profrow{display:flex;gap:8px;align-items:baseline;font-size:12px}
+.profrow .co{flex:0 0 120px;text-align:right}
+.choicebox{border:1px solid var(--line);border-radius:var(--r);padding:6px 8px;
+  max-height:190px;overflow:auto;background:var(--surface2)}
+.cgroup{font-family:var(--ff-mono);font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--dim);margin:4px 0 2px}
+.cwrap{display:flex;flex-wrap:wrap;gap:3px 10px}
+.cchk{display:inline-flex;align-items:center;gap:4px;font-size:12px;
+  padding:1px 4px;border-radius:2px;cursor:pointer}
+.cchk.on{background:var(--accent-soft);color:var(--accent)}
+.cchk input{margin:0}
+
 /* Ein freies Wort mit Vorschlagsliste: die Liste ist unsichtbar und muss
    trotzdem im Baum hängen, also steht sie neben dem Feld in einer Hülle.
    Die Hülle verhält sich wie das Feld, sonst rutschte die Maske. */
@@ -1315,7 +1335,8 @@ function proseTitle(x){ return x.titel||x.prop.title||x.key; }
    plain JSON Schema instead of growing a private type system. */
 var FIELD_KINDS=[
   ["text","Text"],["number","Number"],["boolean","Yes/No"],
-  ["choice","Choice"],["color","Colour"],["link","Link to article"],
+  ["choice","Choice"],["choices","Several choices"],
+  ["color","Colour"],["link","Link to article"],
   ["asset","Image / asset"],["date","World date"],
   ["list","List"],["object","Object"]
 ];
@@ -1331,9 +1352,41 @@ var FIELD_KINDS=[
 function enumWerte(p){
   if(!p) return null;
   if(Array.isArray(p["enum"])&&p["enum"].length) return p["enum"];
-  if(!p.enumRef) return null;
-  var zeile=(REG.enums||{})[p.enumRef];
-  return zeile&&Array.isArray(zeile.values)&&zeile.values.length?zeile.values:null;
+  var gruppen=enumGruppen(p);
+  if(!gruppen.length) return null;
+  var raus=[];
+  gruppen.forEach(function(g){ g.values.forEach(function(v){
+    if(raus.indexOf(v)<0) raus.push(v); }); });
+  return raus.length?raus:null;
+}
+/* Dieselben Werte, aber **je Zeile getrennt**: worin jemand geübt ist, kommt
+   aus sechs Listen, und eine Maske, die sie in einen Topf wirft, macht aus
+   fünfunddreissig Wörtern eine Wand. Genannte Zeilen, die es nicht gibt,
+   fallen weg — eine fehlende Zeile ist keine leere Liste. */
+function enumGruppen(p){
+  var refs=p&&p.enumRef;
+  if(!refs) return [];
+  var namen=Array.isArray(refs)?refs:[refs];
+  var raus=[];
+  namen.forEach(function(n){
+    var z=(REG.enums||{})[n];
+    if(!z||!Array.isArray(z.values)||!z.values.length)return;
+    raus.push({name:n,label:z.label||n,values:z.values});
+  });
+  return raus;
+}
+/** Aus welcher genannten Zeile dieser Wert kommt. */
+function enumQuelle(p,wert){
+  var g=enumGruppen(p).filter(function(x){ return x.values.indexOf(wert)>=0; })[0];
+  return g?g.name:null;
+}
+/** Die Werte eines Feldes, die aus **dieser** Zeile kommen. */
+function werteAusZeile(karte,typ,feld,zeile){
+  var p=((REG.interfaces[typ]||{}).schema||{}).properties||{};
+  var pd=p[feld]||{};
+  var drin=(karte||{})[feld];
+  if(!Array.isArray(drin)) return [];
+  return drin.filter(function(v){ return enumQuelle(pd,v)===zeile; });
 }
 function fieldKind(p){
   if(!p) return "text";
@@ -1341,6 +1394,11 @@ function fieldKind(p){
   if(p.format==="link") return "link";
   if(p.format==="asset") return "asset";
   if(p.format==="date") return "date";
+  /* Eine Liste **aus** einer Aufzählung ist etwas anderes als eine Liste
+     freier Wörter und etwas anderes als eine einzelne Wahl: „auf welche
+     Rettungswürfe geübt" sind mehrere Attribute, „welches Attribut trägt
+     die Probe" ist eines. */
+  if(p.type==="array"&&(Array.isArray(p["enum"])||p.enumRef)) return "choices";
   if(Array.isArray(p["enum"])||p.enumRef) return "choice";
   if(p.type==="number"||p.type==="integer") return "number";
   if(p.type==="boolean") return "boolean";
@@ -1363,6 +1421,10 @@ function setFieldKind(p,kind){
     case "list":    p.type="array"; break;
     case "object":  p.type="object"; break;
     case "choice":  p.type="string"; p["enum"]=[]; break;
+    /* Mehrere Werte aus einer Liste: die Werte kommen aus einer Zeile, und
+       die wählt man gleich darunter. Eigene Wörter am Feld gibt es hier
+       nicht — eine Liste, die mehrfach gewählt wird, wird geteilt. */
+    case "choices": p.type="array"; p.items={type:"string"}; break;
     case "color":   p.type="string"; p.format="color"; break;
     case "asset":   p.type="string"; p.format="asset"; break;
     case "date":    p.type="string"; p.format="date"; break;
@@ -1674,6 +1736,7 @@ function fieldInput(pd,cur,ref){
   if(kind==="asset") return assetInput(pd,cur);
   if(kind==="date") return el("input",{class:"i",type:"text",
     placeholder:"1492-07-03 or Mirtul 12, 1492 DR",value:cur==null?"":String(cur)});
+  if(kind==="choices") return choiceListInput(pd,cur);
   var werte=enumWerte(pd);
   if(werte){
     var sel=el("select",{class:"i"});
@@ -1721,6 +1784,65 @@ function fieldInput(pd,cur,ref){
   }
   return frei;
 }
+/**
+ * **Mehrere Werte aus einer oder mehreren Aufzählungszeilen.**
+ *
+ * Häkchen und kein Mehrfach-Auswahlfeld: fünfunddreissig Wörter in einem
+ * `select multiple` sind eine Liste, in der man mit der Maus rutscht und
+ * seine Wahl wieder verliert. Gruppiert nach Zeile, weil „geübt in" aus
+ * Fertigkeiten, Werkzeugen, Sprachen, Waffen, Rüstungen und Wissensgebieten
+ * kommt und die Herkunft die halbe Auskunft ist.
+ *
+ * Nach ausserhalb sieht der Kasten aus wie ein Textfeld: `value` gibt die
+ * Werte durch Komma getrennt zurück, und damit liest `fieldValue` ihn wie
+ * jede andere Liste — ein zweiter Weg durch dieselbe Funktion wäre eine
+ * zweite Stelle, an der eine Liste anders gespeichert wird.
+ */
+function choiceListInput(pd,cur){
+  var gewaehlt=Array.isArray(cur)?cur.slice():(cur==null||cur===""?[]:String(cur)
+    .split(",").map(function(x){return x.trim();}).filter(Boolean));
+  var box=el("div",{class:"choicebox"});
+  var gruppen=enumGruppen(pd);
+  var eigene=Array.isArray(pd["enum"])&&pd["enum"].length?pd["enum"]:null;
+  if(eigene) gruppen=[{name:"",label:"",values:eigene}].concat(gruppen);
+  if(!gruppen.length){
+    /* Kein Wort zur Wahl: dann ist es eine freie Liste, und die tippt man.
+       Eine leere Häkchenliste wäre eine Maske, die nichts anbietet und
+       nichts erklärt. */
+    var frei=el("input",{class:"i",type:"text",
+      value:gewaehlt.join(", "),placeholder:"comma separated"});
+    return frei;
+  }
+  gruppen.forEach(function(g){
+    if(g.label) box.appendChild(el("div",{class:"cgroup",text:g.label}));
+    var reihe=el("div",{class:"cwrap"});
+    g.values.forEach(function(v){
+      var an=gewaehlt.indexOf(v)>=0;
+      var lab=el("label",{class:"cchk"+(an?" on":"")});
+      var cb=el("input",{type:"checkbox"});
+      cb.checked=an;
+      cb.addEventListener("change",function(){
+        var i=gewaehlt.indexOf(v);
+        if(cb.checked&&i<0) gewaehlt.push(v);
+        if(!cb.checked&&i>=0) gewaehlt.splice(i,1);
+        lab.className="cchk"+(cb.checked?" on":"");
+        box.dispatchEvent(new Event("input",{bubbles:true}));
+        box.dispatchEvent(new Event("change",{bubbles:true}));
+      });
+      lab.appendChild(cb);
+      lab.appendChild(el("span",{text:humanKey(v)}));
+      reihe.appendChild(lab);
+    });
+    box.appendChild(reihe);
+  });
+  Object.defineProperty(box,"value",{
+    get:function(){ return gewaehlt.join(", "); },
+    set:function(v){ /* Die Wahl steht in den Häkchen; ein Setzen von
+                        aussen käme nur vom Zurücksetzen der Maske. */ },
+  });
+  return box;
+}
+
 /* Was aus so einem Eingang herauskommt, in der Form, die das Schema will.
    `undefined` heisst „kein Wert" und löscht das Feld — leer zu speichern
    hiesse, einen leeren String gegen eine Zahl zu halten. */
@@ -2386,11 +2508,54 @@ function renderRail(){
   r.appendChild(s3);
 }
 
-/** Der Typenbaum. Er stand in der Seite und steht jetzt in der Leiste: eine
- *  hohe schmale Liste gehört an die Seite und nicht mitten in den Text. */
+/**
+ * **Die Typenauswahl ist eine flache Liste.**
+ *
+ * Sie war ein Baum: nach Bereich gruppiert und nach Unterarten eingerückt.
+ * Beides kam aus `extends` — und `extends` ist ein Array. Ein Baum muss sich
+ * für **eine** Herkunft entscheiden, also stand jede Art, die von zweien
+ * erbt, unter einer davon und unter der anderen nicht. Wer sie dort suchte,
+ * fand sie nicht und hielt sie für nicht vorhanden.
+ *
+ * Jetzt: alle Zeilen alphabetisch, mit einem Filter davor, weil
+ * neunundfünfzig Zeilen mehr sind als ein Blick. Woher eine Art erbt, steht
+ * auf ihrer Seite — dort, wo es auch geändert wird, und vollständig.
+ */
+/**
+ * Die Reihenfolge der Typenauswahl: alphabetisch nach Beschriftung, und
+ * gefiltert wie die Liste, die man sieht.
+ *
+ * **Eine Ordnung, nicht zwei.** Die Pfeile vor/zurück liefen einmal durch
+ * `typeOrder()`, während die Leiste alphabetisch stand — also hiess
+ * „nächste" etwas anderes als das, was darunter stand.
+ */
+function typeNavOrder(){
+  var filter=String(UI.typeFilter||"").trim().toLowerCase();
+  return Object.keys(REG.interfaces).sort(function(a,b){
+    return (REG.interfaces[a].label||a).localeCompare(REG.interfaces[b].label||b);
+  }).filter(function(n){
+    if(!filter)return true;
+    return (n+" "+(REG.interfaces[n].label||"")).toLowerCase().indexOf(filter)>=0;
+  });
+}
 function typeNav(into){
-  var wahl=REG.interfaces[UI.typePick]?UI.typePick:typeOrder()[0];
-  function zeile(n,tiefe){
+  var wahl=REG.interfaces[UI.typePick]?UI.typePick:typeNavOrder()[0];
+  var suche=el("input",{class:"i",type:"search",placeholder:"Filter\u2026",
+    value:UI.typeFilter||""});
+  suche.addEventListener("input",function(){
+    UI.typeFilter=suche.value;
+    /* Nur die Liste neu zeichnen wäre schöner; die Seite ist billig genug,
+       und ein zweiter Zeichenweg wäre die Stelle, an der beide auseinander
+       laufen. */
+    render();
+    var n2=document.querySelector("#rail input[type=search]");
+    if(n2){ n2.focus(); n2.setSelectionRange(n2.value.length,n2.value.length); }
+  });
+  into.appendChild(suche);
+
+  var alle=typeNavOrder();
+  if(!alle.length) into.appendChild(el("p",{class:"hint",text:"Nothing matches."}));
+  alle.forEach(function(n){
     var dd=REG.interfaces[n]||{};
     var zahl=countIface(n);
     into.appendChild(el("button",{class:"navrow"+(n===wahl?" on":""),type:"button",
@@ -2398,26 +2563,12 @@ function typeNav(into){
       /* Der Name, nicht die Beschriftung: „Statblock numbers" heisst
          `StatblockInfo`, und wer die Zeile sucht, sucht den Namen. */
       "data-t":n,
-      style:tiefe?"padding-left:"+(7+tiefe*11)+"px":null,
+      title:n+(dd.abstract?" — abstract":"")+
+        ((dd.extends||[]).length?" · made of "+(dd.extends||[]).join(", "):""),
       onclick:function(){ UI.typePick=n; UI.regiface=n; render(); }},
       [el("b",{class:dd.abstract?"ab":"",text:dd.label||n}),
        el("em",{text:zahl?String(zahl):"—"})]));
-  }
-  function zweig(n,tiefe){
-    zeile(n,tiefe);
-    kindsOf(n).forEach(function(k){ if(areaOf(k)===areaOf(n)) zweig(k,tiefe+1); });
-  }
-  AREAS.forEach(function(ar){
-    var wurzeln=areaRoots(ar[0]);
-    if(!wurzeln.length)return;
-    into.appendChild(el("h3",{text:ar[1]}));
-    wurzeln.forEach(function(n){ zweig(n,0); });
   });
-  var ohne=typeOrder().filter(function(n){ return !areaOf(n); });
-  if(ohne.length){
-    into.appendChild(el("h3",{text:"No area"}));
-    ohne.forEach(function(n){ zeile(n,0); });
-  }
 }
 
 /* ---------- main ---------- */
@@ -6295,7 +6446,11 @@ function craftMod(traeger,info){
   var sb=statsOf(traeger).card;
   var m=modOf(sb,(info.ability||"int"));
   var teile=[(info.ability||"int").toUpperCase()+" "+sgn(m)];
-  var werkzeuge=((traeger.components||{}).Proficiencies||{}).tools||[];
+  /* Die Werkzeugübungen stehen nicht mehr in einem eigenen Feld: sie sind
+     die Einträge in `proficient`, die aus der Zeile `Tool` kommen. Ein Feld
+     je Sorte hiesse dieselbe Frage sechsmal. */
+  var werkzeuge=werteAusZeile((traeger.components||{}).Proficiencies,
+    "Proficiencies","proficient","Tool");
   var geuebt=info.tool&&werkzeuge.some(function(t){
     return String(t).toLowerCase()===String(info.tool).toLowerCase(); });
   if(geuebt){ var p=profOf(traeger); m+=p; teile.push("proficient "+sgn(p)); }
@@ -7134,10 +7289,26 @@ var SKILLS_FALLBACK="acrobatics:dex,animalHandling:wis,arcana:int,athletics:str,
   "religion:int,sleightOfHand:dex,stealth:dex,survival:wis";
 var CONDITIONS_FALLBACK="blinded,charmed,deafened,frightened,grappled,incapacitated,"+
   "invisible,paralysed,petrified,poisoned,prone,restrained,stunned,unconscious";
+/**
+ * Die Fertigkeiten: **welche es gibt**, sagt die Aufzählungszeile `Skill`;
+ * **worauf jede rechnet**, sagt die Einstellung `skills` (`stealth:dex`).
+ *
+ * Zwei Stellen, aber nicht zweimal dasselbe — eine Liste von Wörtern kann
+ * keine Zuordnung tragen, und eine Zuordnung, die auch die Liste wäre,
+ * liesse sich in der Maske nicht ankreuzen. Steht eine Fertigkeit nur in
+ * der Einstellung, kommt sie mit; steht sie nur in der Zeile, rechnet sie
+ * auf `dex`. Keine der beiden verschwindet still.
+ */
 function skillList(){
-  return String(setting("skills",SKILLS_FALLBACK)).split(",").map(function(p){
-    var t=p.split(":"); return {key:(t[0]||"").trim(),attr:(t[1]||"dex").trim()};
-  }).filter(function(x){return x.key;});
+  var zu={};
+  String(setting("skills",SKILLS_FALLBACK)).split(",").forEach(function(p){
+    var t=p.split(":"); var k=(t[0]||"").trim();
+    if(k) zu[k]=(t[1]||"dex").trim();
+  });
+  var zeile=((REG.enums||{}).Skill||{}).values;
+  var keys=Array.isArray(zeile)&&zeile.length?zeile.slice():Object.keys(zu);
+  Object.keys(zu).forEach(function(k){ if(keys.indexOf(k)<0) keys.push(k); });
+  return keys.map(function(k){ return {key:k,attr:zu[k]||"dex"}; });
 }
 function conditionList(){
   return String(setting("conditions",CONDITIONS_FALLBACK)).split(",")
@@ -7395,6 +7566,35 @@ function elSheet(e,ifn,item){
     sg.appendChild(row);
   });
   wrap.appendChild(sg);
+
+  /* ---- Die übrigen Übungen ----
+     Werkzeuge, Sprachen, Waffen- und Rüstungsgruppen, Wissensgebiete: sie
+     stehen in demselben Feld wie die Fertigkeiten und kommen aus anderen
+     Listen. Gezeigt werden sie nach Liste gruppiert — vorher standen sie in
+     eigenen Feldern und auf dem Bogen gar nicht, weil die Feldtabelle die
+     Übungskarte auslässt (der Bogen zeichnet sie schon). */
+  var profFeld=((REG.interfaces.Proficiencies||{}).schema||{}).properties||{};
+  var uebrig=enumGruppen(profFeld.proficient).filter(function(g){ return g.name!=="Skill"; });
+  var zeilenMitWerten=uebrig.map(function(g){
+    return {label:g.label,
+      werte:(sk.proficient||[]).filter(function(v){ return g.values.indexOf(v)>=0; }),
+      exp:(sk.expertise||[]).filter(function(v){ return g.values.indexOf(v)>=0; })};
+  }).filter(function(x){ return x.werte.length; });
+  if(zeilenMitWerten.length){
+    wrap.appendChild(el("div",{class:"sec",text:"Also proficient in"}));
+    var pl2=el("div",{class:"proflist"});
+    zeilenMitWerten.forEach(function(x){
+      var row=el("div",{class:"profrow"});
+      row.appendChild(el("span",{class:"co",text:x.label}));
+      row.appendChild(el("span",{text:x.werte.map(function(v){
+        /* Expertise zählt doppelt — das steht am Wert und nicht in einer
+           zweiten Zeile, die dieselben Wörter noch einmal aufzählt. */
+        return humanKey(v)+(x.exp.indexOf(v)>=0?" ★":"");
+      }).join(", ")}));
+      pl2.appendChild(row);
+    });
+    wrap.appendChild(pl2);
+  }
 
   /* ---- Angriffe: was getragen wird, nicht was eingetippt wurde ---- */
   var waffen=carriedItems(e).filter(function(x){ return (x.item.components||{}).Weapon; });
@@ -9565,25 +9765,10 @@ function renderGraph(v){
    „verlangt nichts" und übersieht, dass sie über `Creature` die halbe
    Kampagne trägt. */
 
-/* Die Arten in der Reihenfolge, in der die linke Spalte sie zeigt — und
-   damit auch die, in der vor/zurück läuft. Eine zweite Ordnung daneben wäre
-   die Stelle, an der „nächste" etwas anderes heisst als das, was darunter
-   steht. */
-function typeOrder(){
-  var out=[];
-  function zweig(n){
-    out.push(n);
-    kindsOf(n).forEach(function(k){ if(areaOf(k)===areaOf(n)) zweig(k); });
-  }
-  AREAS.forEach(function(ar){ areaRoots(ar[0]).forEach(zweig); });
-  /* Was in keinem Bereich liegt, steht am Schluss: abstrakte Oberbegriffe,
-     die keine Artikel tragen. Sie wegzulassen hiesse, dass man `Identity` nie zu
-     sehen bekommt — und dort steht, was jede Art erbt. */
-  Object.keys(REG.interfaces).sort().forEach(function(n){
-    if(!areaOf(n)&&out.indexOf(n)<0) out.push(n);
-  });
-  return out;
-}
+/* Hier stand `typeOrder()`: die Arten als Baum, nach Bereich und Unterart.
+   Die Ordnung der Auswahl macht jetzt `typeNavOrder()` — alphabetisch und
+   flach —, und eine zweite Ordnung daneben wäre genau die Stelle, an der
+   „nächste" etwas anderes heisst als das, was darunter steht. */
 function relsTo(ifn){
   var out=[];
   for(var k in REG.relations){
@@ -9696,6 +9881,32 @@ function togglePick(item,feld,ref,an){
   item[feld]=liste;
 }
 
+/**
+ * Eine **ganze Gruppe** an- oder abschalten — und dabei die Einzelangaben
+ * dieser Gruppe wegräumen.
+ *
+ * Ohne das Wegräumen bliebe nach einem Klick auf „Statblock aus" ein
+ * einzelnes Feld daraus in `except` oder in der Liste stehen, und die
+ * Gruppe wäre danach halb an: ein Zustand, den niemand gesetzt hat und den
+ * die Marke nur als Bruchzahl zeigen kann.
+ */
+function toggleGroup(item,gruppe,an){
+  var refs=gruppe.felder.map(function(f){ return f.ref; });
+  function ohneEinzelne(liste){
+    return (liste||[]).filter(function(x){ return refs.indexOf(x)<0; });
+  }
+  if(item.fields==="all"){
+    var weg=ohneEinzelne(item["except"]).filter(function(x){ return x!==gruppe.comp; });
+    if(!an) weg.push(gruppe.comp);
+    if(weg.length) item["except"]=weg; else delete item["except"];
+    return;
+  }
+  var liste=ohneEinzelne(Array.isArray(item.fields)?item.fields:[])
+    .filter(function(x){ return x!==gruppe.comp; });
+  if(an) liste.push(gruppe.comp);
+  item.fields=liste;
+}
+
 /* ---- Die Vorlage ----
    Was diese Ansicht von dieser Artikelart zeigt, Element für Element. Kein
    Beispielartikel: eine Vorlage zeigt die **Form**, und ein Beispiel führt
@@ -9713,19 +9924,43 @@ function templateFor(v,ifn,vw,src){
       var an=felder.filter(function(f){ return wantsField(item.fields,item["except"],f); });
       kopf.appendChild(el("span",{class:"co",text:an.length+" of "+felder.length+" fields"}));
       box.appendChild(kopf);
-      var g=el("div",{class:"tmplfields"});
+
+      /* **Gewählt wird nach Gruppe und nicht Feld für Feld.**
+         Vorher stand hier jedes einzelne Feld als Marke — bei einer Kreatur
+         achtundvierzig. Eine Übersicht ist drei Zeilen lang; wer sie
+         zusammenstellt, sagt „den Statblock nicht", nicht „diese
+         siebenundzwanzig Zahlen nicht". Und eine Gruppe bleibt richtig,
+         wenn morgen ein Feld dazukommt: eine ausgeschriebene Feldliste
+         wäre an dem Tag unvollständig, und niemand merkte es. */
+      var gruppen=[], nach={};
       felder.forEach(function(f){
-        var zeigt=wantsField(item.fields,item["except"],f);
-        /* Der Bezeichner steht an der Marke und nicht im Titel: ein Titel
-           ist ein Satz für Menschen, und wer ihn zerlegt, um an die Daten
-           zu kommen, hängt an seiner Formulierung. */
-        var b=el("button",{class:"pill q tgl"+(zeigt?" on":"")+(f.derived?" der":""),
-          type:"button",disabled:!w,"data-ref":f.ref,"data-comp":f.comp,
-          title:(f.derived?"Computed on read — no input, no column (D8). ":"")+
-            f.ref+" · "+f.kind,
+        if(!nach[f.comp]){ nach[f.comp]={comp:f.comp,felder:[]}; gruppen.push(nach[f.comp]); }
+        nach[f.comp].felder.push(f);
+      });
+      /* `full` zeigt alles. Was dort fehlt, fehlt nicht, weil jemand es
+         abgewählt hat, sondern weil ein anderer Block derselben Seite es
+         schon zeichnet — der Bogen zeichnet die Werte, also lässt die
+         Feldtabelle sie weg. Das ist eine Sache der Anordnung und keine
+         Wahl je Art, und darum gibt es hier nichts anzuklicken. */
+      var vollAnsicht=src.key==="full";
+      box.appendChild(el("p",{class:"hint",style:"margin:2px 0 6px",
+        text:vollAnsicht
+          ?"Full shows every field. A group that is off is drawn by another block on this page."
+          :"Click a group to show or hide it here. A group stays right when a field is added to it later."}));
+      var g=el("div",{class:"tmplfields"});
+      gruppen.forEach(function(gr){
+        var drin=gr.felder.filter(function(f){ return wantsField(item.fields,item["except"],f); });
+        var zeigt=drin.length>0;
+        var halb=zeigt&&drin.length<gr.felder.length;
+        var lab=(REG.interfaces[gr.comp]||{}).label||gr.comp;
+        var b=el("button",{class:"pill q tgl"+(zeigt?" on":"")+(halb?" part":""),
+          type:"button",disabled:!w||vollAnsicht,
+          "data-comp":gr.comp,"data-ref":gr.comp,
+          title:gr.comp+" · "+drin.length+" of "+gr.felder.length+" fields"
+            +(vollAnsicht&&!zeigt?" — drawn by another block on this page":""),
           onclick:function(){
-            togglePick(item,"fields",f.ref,!zeigt); saveReg("views"); render();
-          }},f.key);
+            toggleGroup(item,gr,!zeigt); saveReg("views"); render();
+          }},lab+(halb?" ("+drin.length+"/"+gr.felder.length+")":""));
         g.appendChild(b);
       });
       box.appendChild(g);
@@ -9802,7 +10037,9 @@ function templateFor(v,ifn,vw,src){
 }
 
 function renderTypes(v){
-  var arten=typeOrder();
+  /* Dieselbe Ordnung wie die Leiste — sonst hiesse „nächste" etwas anderes
+     als das, was darunter steht. */
+  var arten=typeNavOrder();
   var wahl=REG.interfaces[UI.typePick]?UI.typePick:arten[0];
   var d=REG.interfaces[wahl]||{};
 
@@ -10467,9 +10704,13 @@ var BEGRIFFE=[
   ["Field",
    "A type in one place — the fact it records there: a key, a label, a "+
    "kind, required or optional, maybe a default, maybe a calculation. A "+
-   "choice either carries its own words or names a choice list, never "+
-   "both; a number may carry a range (1 to 20 is a range, not twenty "+
-   "words). A calculated field takes no input "+
+   "choice either carries its own words or names choice lists, never "+
+   "both — several lists count together, which is how “proficient in” "+
+   "draws on skills, tools, languages, weapons, armour and fields of "+
+   "knowledge at once. As an array the same field holds several of them: "+
+   "one ability carries a check, several abilities are saving throws. A "+
+   "number may carry a range (1 to 20 is a range, not twenty words). A "+
+   "calculated field takes no input "+
    "and is never stored. Values are kept one card per type, named after the "+
    "type that declares the field — that is what keeps hp at the creature "+
    "apart from hp at the statblock. A type may rename a field it inherits: "+
@@ -10980,55 +11221,20 @@ function regIfaceBody(ifn){
   head.appendChild(field("Kind",ab));
   box.appendChild(head);
 
-  /* ---- Besteht aus ----
-     Ein Typ ist entweder ein **Basistyp** — er erklärt Felder und erbt
-     nichts — oder ein **Zusammenschluss** aus anderen Typen. Was ein
-     Ereignis nicht braucht, nimmt es nicht dazu; ein Feld einzeln
-     auszublenden gibt es nicht, weil eine Ausnahmeliste am Tag des nächsten
-     Feldes unvollständig wäre und es niemand merkte. */
-  var teile=parentsOf(ifn);
-  box.appendChild(el("div",{class:"rsec",text:"Made of"}));
-  box.appendChild(el("p",{class:"hint",
-    text:teile.length
-      ? "The types this one is made of. The first draws the tree and decides the area; the rest come along. Removing one removes its fields."
-      : "Nothing — this type declares its fields itself. Add a part and it becomes a composition."}));
-  var tc=el("div",{class:"chips"});
-  teile.forEach(function(p2,i){
-    var c=el("span",{class:"chip"+(i?"":" first")});
-    c.appendChild(el("button",{type:"button",class:"ref",onclick:function(){
-      UI.typePick=p2; UI.regiface=p2; UI.regcomp=""; UI.regprop=""; render(); }},
-      (REG.interfaces[p2].label||p2)));
-    if(w) c.appendChild(el("button",{type:"button",title:"remove",onclick:function(){
-      confirmDialog("„"+(REG.interfaces[p2].label||p2)+"” aus "+(d.label||ifn)+
-        " herausnehmen? Die Werte bleiben in den Artikeln, werden aber nicht mehr gezeigt.",
-        function(){
-          d.extends=parentsOf(ifn).filter(function(x){ return x!==p2; });
-          if(!d.extends.length) delete d.extends;
-          save(); },"Remove"); }},"\u00d7"));
-    tc.appendChild(c);
-  });
-  if(w){
-    var mehr=el("select",{class:"i",style:"width:auto"});
-    mehr.appendChild(el("option",{value:""},"+ part\u2026"));
-    Object.keys(REG.interfaces).sort().forEach(function(n2){
-      if(n2===ifn||wouldCycle(ifn,n2)||teile.indexOf(n2)>=0)return;
-      mehr.appendChild(el("option",{value:n2},REG.interfaces[n2].label||n2)); });
-    mehr.addEventListener("change",function(){
-      if(!mehr.value)return;
-      d.extends=parentsOf(ifn).concat([mehr.value]);
-      save(); });
-    tc.appendChild(mehr);
-  }
-  box.appendChild(tc);
-
-  /* ---- Felder ----
-     **Eine** Liste, nicht eine Zeile je Karte. Jedes Feld mit seiner Art,
-     ob es Pflicht ist und woher es kommt. Vorher standen eigene und geerbte
-     Felder in zwei Abschnitten, die dasselbe meinten — und wer wissen
-     wollte, was ein Ereignis trägt, musste beide aufklappen. */
+  /* ---- Felder: **ein** Bereich ----
+     Hier standen zwei: oben „Made of" mit den Bestandteilen als Marken,
+     darunter „Fields" mit den Feldern, gruppiert nach denselben
+     Bestandteilen. Zwei Darstellungen derselben Sache, und die Frage „wie
+     werde ich dieses Feld los" war nur in der oberen zu beantworten, wo die
+     Felder nicht standen.
+     
+     Jetzt ist der Bestandteil die **Kopfzeile seiner Gruppe**: dort steht,
+     woher er kommt, dort nimmt man ihn heraus, und die Felder, die dabei
+     mitgehen, stehen darunter. Ein neues Feld und ein neuer Bestandteil
+     kommen an derselben Stelle dazu. */
   box.appendChild(el("div",{class:"rsec",text:"Fields"}));
   box.appendChild(el("p",{class:"hint",
-    text:"Every field an article of this kind records. Its own are editable here; inherited ones belong to the part that brings them — open it to change them for every type that has it."}));
+    text:"Every field an article of this kind records, grouped by the type that declares it. Its own are editable here; an inherited group belongs to its part — open it to change the fields for every type that has it, or take the whole part out. The first part drawn with ● decides the area."}));
   box.appendChild(fieldTable(ifn,w,save));
 
   /* ---- Subtypen ---- */
@@ -11115,41 +11321,18 @@ function regIfaceBody(ifn){
    Einteilung, die die Ansicht zeichnet — zwei Bilder derselben Sache im
    Kopf zusammenzuhalten ist Arbeit, die niemand tun sollte. */
 function fieldTable(ifn,w,save){
+  var d=REG.interfaces[ifn]||{};
   var aussen=el("div");
   var box=el("div",{class:"fbox"});
   var eigen=propsOf(ifn), keys=Object.keys(eigen);
-  if(keys.length) box.appendChild(el("div",{class:"fhead"},
+  box.appendChild(el("div",{class:"fhead"},
     [el("b",{text:"Its own"}),
-     el("span",{class:"co",text:keys.length+(keys.length===1?" field":" fields")})]));
+     el("span",{class:"co",text:keys.length
+       ?keys.length+(keys.length===1?" field":" fields")
+       :"nothing of its own"})]));
   keys.forEach(function(k){ box.appendChild(fieldRow(ifn,k,ifn,w,save)); });
 
-  var geerbt=0;
-  var bloecke=[];
-  ancestorsOf(ifn).forEach(function(a){
-    var ks=Object.keys(propsOf(a));
-    if(!ks.length)return;
-    var teil=el("div",{class:"fbox part"});
-    var kopf=el("div",{class:"fhead"});
-    kopf.appendChild(el("button",{class:"ref",type:"button",
-      title:"Open the part — a field is changed where it is declared",
-      onclick:function(){ UI.typePick=a; UI.regiface=a; UI.regcomp=""; UI.regprop=""; render(); }},
-      REG.interfaces[a].label||a));
-    kopf.appendChild(el("span",{class:"co",text:ks.length+(ks.length===1?" field":" fields")}));
-    /* Woher der Bestandteil kommt: direkt genommen oder über einen anderen
-       hereingekommen. Ohne das sähe `Identity` an `NPC` aus wie etwas, das
-       man dort wegnehmen könnte. */
-    if(parentsOf(ifn).indexOf(a)<0){
-      var ueber=parentsOf(ifn).filter(function(p2){ return ancestorsOf(p2).indexOf(a)>=0||p2===a; })[0];
-      if(ueber) kopf.appendChild(el("span",{class:"co",
-        text:"via "+(REG.interfaces[ueber].label||ueber)}));
-    }
-    teil.appendChild(kopf);
-    ks.forEach(function(k){ teil.appendChild(erbRow(a,k,ifn,w,save)); geerbt++; });
-    bloecke.push(teil);
-  });
-
-  if(!keys.length&&!geerbt) box.appendChild(el("p",{class:"hint",text:"No fields yet."}));
-
+  /* Ein neues Feld gehört **dieser** Art und deshalb in diese Gruppe. */
   if(w){
     var nk=el("input",{class:"i",type:"text",placeholder:"Field name, e.g. weight"});
     var nt=el("input",{class:"i",type:"text",placeholder:"Label"});
@@ -11161,17 +11344,83 @@ function fieldTable(ifn,w,save){
       var schon=fieldsOf(ifn).filter(function(f){ return f.key===k; })[0];
       if(schon){ UI.err="The field "+k+" already comes from "+
         (REG.interfaces[schon.type].label||schon.type)+"."; render(); return; }
-      var d=REG.interfaces[ifn];
-      d.schema=d.schema||{type:"object",properties:{}};
-      d.schema.properties=d.schema.properties||{};
-      d.schema.properties[k]={type:"string",title:nt.value.trim()||k};
+      var dd=REG.interfaces[ifn];
+      dd.schema=dd.schema||{type:"object",properties:{}};
+      dd.schema.properties=dd.schema.properties||{};
+      dd.schema.properties[k]={type:"string",title:nt.value.trim()||k};
       UI.regprop=ifn+"."+k;
       save();
     }},"Add field"));
     box.appendChild(bar);
   }
-  if(keys.length||w||!geerbt) aussen.appendChild(box);
-  bloecke.forEach(function(b){ aussen.appendChild(b); });
+  aussen.appendChild(box);
+
+  /* Je Bestandteil eine Gruppe. Die Kopfzeile **ist** der Bestandteil: sie
+     sagt, woher er kommt, und dort nimmt man ihn heraus. */
+  var direkt=parentsOf(ifn);
+  ancestorsOf(ifn).forEach(function(a){
+    var ks=Object.keys(propsOf(a));
+    var teil=el("div",{class:"fbox part"});
+    var kopf=el("div",{class:"fhead"});
+    kopf.appendChild(el("button",{class:"ref",type:"button","data-part":a,
+      title:"Open the part — a field is changed where it is declared",
+      onclick:function(){ UI.typePick=a; UI.regiface=a; UI.regcomp=""; UI.regprop=""; render(); }},
+      REG.interfaces[a].label||a));
+    kopf.appendChild(el("span",{class:"co",text:ks.length
+      ?ks.length+(ks.length===1?" field":" fields")
+      :"no fields"}));
+    /* **Der erste zählt anders**: er entscheidet den Bereich. Das stand
+       einmal nur als Marke da und war damit genau die Auskunft, die man
+       sucht, wenn ein Artikel nirgends auftaucht. */
+    if(direkt.length&&direkt[0]===a) kopf.appendChild(el("span",{class:"pill q",
+      title:"The first part decides the area — "+(areaOf(ifn)||"none"),
+      text:"\u25cf first"}));
+    /* Direkt genommen oder über einen anderen hereingekommen. Ohne das sähe
+       `Identity` an einer Kreatur aus wie etwas, das man hier wegnehmen
+       könnte. */
+    var ueber=null;
+    if(direkt.indexOf(a)<0){
+      ueber=direkt.filter(function(p2){ return ancestorsOf(p2).indexOf(a)>=0||p2===a; })[0];
+      if(ueber) kopf.appendChild(el("span",{class:"co",
+        text:"via "+(REG.interfaces[ueber].label||ueber)}));
+    }
+    if(w&&!ueber) kopf.appendChild(el("button",{class:"btn sm gh dngr",type:"button",
+      title:"Take this part out of "+(d.label||ifn),
+      onclick:function(){
+        confirmDialog("Take „"+(REG.interfaces[a].label||a)+"” out of "+(d.label||ifn)+
+          "? Its "+ks.length+" field(s) go with it. The values stay in the articles "+
+          "but are no longer shown.",
+          function(){
+            var dd=REG.interfaces[ifn];
+            dd.extends=parentsOf(ifn).filter(function(x){ return x!==a; });
+            if(!dd.extends.length) delete dd.extends;
+            save(); },"Remove"); }},"\u00d7"));
+    teil.appendChild(kopf);
+    ks.forEach(function(k){ teil.appendChild(erbRow(a,k,ifn,w,save)); });
+    aussen.appendChild(teil);
+  });
+
+  /* Und ein Bestandteil dazu — an derselben Stelle wie ein Feld dazu. */
+  if(w){
+    var mehr=el("select",{class:"i",style:"width:auto"});
+    mehr.appendChild(el("option",{value:""},"+ part\u2026"));
+    Object.keys(REG.interfaces).sort(function(a,b){
+      return (REG.interfaces[a].label||a).localeCompare(REG.interfaces[b].label||b);
+    }).forEach(function(n2){
+      if(n2===ifn||wouldCycle(ifn,n2)||direkt.indexOf(n2)>=0)return;
+      mehr.appendChild(el("option",{value:n2},REG.interfaces[n2].label||n2)); });
+    mehr.addEventListener("change",function(){
+      if(!mehr.value)return;
+      var dd=REG.interfaces[ifn];
+      dd.extends=parentsOf(ifn).concat([mehr.value]);
+      save(); });
+    var pbar=el("div",{class:"addbar",style:"margin-top:9px"});
+    pbar.appendChild(el("span",{class:"co",
+      text:direkt.length?"Add a part — its fields come along":
+        "No parts yet — this type declares its fields itself"}));
+    pbar.appendChild(mehr);
+    aussen.appendChild(pbar);
+  }
   return aussen;
 }
 
@@ -11392,22 +11641,41 @@ function fieldMore(cn,k,within,w,saveC){
     if(fm.value)p.format=fm.value; else delete p.format; saveC(); });
   box.appendChild(field("Display",fm));
 
-  if(fieldKind(p)==="choice"){
-    /* Eine Auswahl nennt **entweder** eine Aufzählungszeile **oder** trägt
-       ihre Wörter selbst. Beides zugleich wären zwei Antworten auf
-       dieselbe Frage — deshalb löscht die Wahl die andere Angabe. */
-    var ref=el("select",{class:"i"}); if(!w) ref.disabled=true;
-    ref.appendChild(el("option",{value:""},"own list"));
-    Object.keys(REG.enums||{}).sort().forEach(function(k){
-      ref.appendChild(el("option",{value:k},(REG.enums[k].label||k)+" ("+k+")")); });
-    ref.value=p.enumRef||"";
-    ref.addEventListener("change",function(){
-      if(ref.value){ p.enumRef=ref.value; delete p["enum"]; }
-      else delete p.enumRef;
-      saveC(); render();
+  var art=fieldKind(p);
+  if(art==="choice"||art==="choices"){
+    /* **Woher die Werte kommen**: aus Aufzählungszeilen oder vom Feld
+       selbst. Mehrere Zeilen sind erlaubt und gelten zusammen — worin
+       jemand geübt ist, kommt aus Fertigkeiten, Werkzeugen, Sprachen,
+       Waffen, Rüstungen und Wissensgebieten. Eigene Wörter am Feld gibt es
+       nur, solange keine Zeile genannt ist: beides zugleich wären zwei
+       Antworten auf dieselbe Frage. */
+    var genannt=p.enumRef?(Array.isArray(p.enumRef)?p.enumRef.slice():[p.enumRef]):[];
+    var kasten=el("div",{class:"choicebox"});
+    var reihe=el("div",{class:"cwrap"});
+    var zeilen=Object.keys(REG.enums||{}).sort();
+    if(!zeilen.length) reihe.appendChild(el("span",{class:"hint",
+      text:"No choice lists yet — make one under Registry › Choices."}));
+    zeilen.forEach(function(k){
+      var an=genannt.indexOf(k)>=0;
+      var lab=el("label",{class:"cchk"+(an?" on":"")});
+      var cb=el("input",{type:"checkbox"}); cb.checked=an; if(!w) cb.disabled=true;
+      cb.addEventListener("change",function(){
+        var i=genannt.indexOf(k);
+        if(cb.checked&&i<0) genannt.push(k);
+        if(!cb.checked&&i>=0) genannt.splice(i,1);
+        /* Eine Zeile heisst: die Werte stehen dort. Also gehen die eigenen
+           Wörter weg — und wenn keine Zeile bleibt, geht die Nennung weg. */
+        if(genannt.length){ p.enumRef=genannt.length===1?genannt[0]:genannt.slice(); delete p["enum"]; }
+        else delete p.enumRef;
+        saveC(); render();
+      });
+      lab.appendChild(cb);
+      lab.appendChild(el("span",{text:(REG.enums[k].label||k)+" ("+(REG.enums[k].values||[]).length+")"}));
+      reihe.appendChild(lab);
     });
-    box.appendChild(field("Choices from",ref));
-    if(!p.enumRef) text("Choices (comma separated)",(p["enum"]||[]).join(", "),function(v){
+    kasten.appendChild(reihe);
+    box.appendChild(field("Choices from",kasten));
+    if(!genannt.length) text("Choices (comma separated)",(p["enum"]||[]).join(", "),function(v){
       var xs=v.split(",").map(function(x){return x.trim();}).filter(Boolean);
       p["enum"]=xs;
     },"common, rare");

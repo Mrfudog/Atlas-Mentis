@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   RegistrySchema,
+  enumGroups,
   enumOptions,
+  enumSource,
   fieldsOf,
   proseFields,
   typeChain,
@@ -158,10 +160,15 @@ describe('seed registry', () => {
    Zeile ohne Nutzer wäre der Umweg ohne den Gewinn, und ein Feld, das eine
    Zeile nennt, die es nicht gibt, hätte still keine Werte mehr. */
 describe('shared choice lists', () => {
+  /* Ein Feld darf **mehrere** Zeilen nennen, also wird flach gerechnet: je
+     genannte Zeile ein Eintrag. */
   const felderMitRef = Object.entries(seedRegistry.interfaces).flatMap(([typ, def]) =>
     Object.entries(def.schema?.properties ?? {})
       .filter(([, p]) => p.enumRef)
-      .map(([key, p]) => ({ ref: `${typ}.${key}`, nennt: p.enumRef as string })),
+      .flatMap(([key, p]) => {
+        const refs = Array.isArray(p.enumRef) ? p.enumRef : [p.enumRef as string];
+        return refs.map((nennt) => ({ ref: `${typ}.${key}`, nennt }));
+      }),
   );
 
   it('every named row exists, and every row is named', () => {
@@ -173,9 +180,9 @@ describe('shared choice lists', () => {
 
   /* Die sechs Attributkürzel standen wörtlich an der Fertigkeit und am
      Rezept. Dass beide jetzt dieselbe Zeile nennen, ist der ganze Punkt. */
-  it('the ability list is named by both the skill and the recipe', () => {
+  it('the ability list is named by the skill, the recipe and the saving throws', () => {
     const wer = felderMitRef.filter((f) => f.nennt === 'Ability').map((f) => f.ref).sort();
-    expect(wer).toEqual(['Recipe.ability', 'Skill.ability']);
+    expect(wer).toEqual(['Proficiencies.saves', 'Recipe.ability', 'Skill.ability']);
     expect(enumOptions(seedRegistry, { enumRef: 'Ability' })).toEqual([
       'str', 'dex', 'con', 'int', 'wis', 'cha',
     ]);
@@ -190,6 +197,39 @@ describe('shared choice lists', () => {
         .map(([key]) => `${typ}.${key}`),
     );
     expect(beides).toEqual([]);
+  });
+
+  /* **Ein Feld, sechs Listen.** Worin jemand geübt ist, kommt aus
+     Fertigkeiten, Werkzeugen, Sprachen, Waffen, Rüstungen und
+     Wissensgebieten. Vorher stand je Sorte ein Feld — dieselbe Frage
+     sechsmal, und die siebte Sorte hätte ein siebtes Feld gebraucht. */
+  it('proficiencies draw on several lists, saving throws on one', () => {
+    const p = seedRegistry.interfaces['Proficiencies']?.schema?.properties ?? {};
+    expect(Object.keys(p)).toEqual(['proficient', 'expertise', 'saves']);
+    expect(p['proficient']?.type).toBe('array');
+    expect(enumGroups(seedRegistry, p['proficient']).map((g) => g.name)).toEqual([
+      'Skill', 'Tool', 'Language', 'WeaponTraining', 'ArmorTraining', 'KnowledgeField',
+    ]);
+    /* Die Vereinigung hat jedes Wort einmal, und woher es kommt, bleibt
+       lesbar — daran hängt, dass der Bogen gruppieren kann. */
+    const alle = enumOptions(seedRegistry, p['proficient']) ?? [];
+    expect(new Set(alle).size).toBe(alle.length);
+    expect(enumSource(seedRegistry, p['proficient'], 'stealth')).toBe('Skill');
+    expect(enumSource(seedRegistry, p['proficient'], 'Elfisch')).toBe('Language');
+    /* Rettungswürfe sind Attribute und sonst nichts. */
+    expect(p['saves']?.enumRef).toBe('Ability');
+    expect(p['saves']?.type).toBe('array');
+  });
+
+  /* Die Fertigkeiten stehen als Liste **und** in der Einstellung, die sagt,
+     worauf jede rechnet. Nicht zweimal dasselbe — aber die eine darf der
+     anderen nicht widersprechen. */
+  it('every skill in the setting is in the list', () => {
+    const werte = seedRegistry.enums?.['Skill']?.values ?? [];
+    const ausEinstellung = String(seedRegistry.settings?.['skills'] ?? '')
+      .split(',').map((x) => x.split(':')[0]?.trim()).filter(Boolean);
+    expect(ausEinstellung.filter((k) => !werte.includes(k as string))).toEqual([]);
+    expect(werte.filter((k) => !ausEinstellung.includes(k))).toEqual([]);
   });
 
   /* Eine Spanne statt zwanzig Wörter: die Schwierigkeit ist eine Stufe. */

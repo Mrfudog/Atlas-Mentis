@@ -193,9 +193,50 @@ export function enumOptions(
 ): string[] | undefined {
   if (!prop) return undefined;
   if (prop.enum?.length) return prop.enum;
-  if (!prop.enumRef) return undefined;
-  const zeile = registry.enums?.[prop.enumRef];
-  return zeile?.values?.length ? zeile.values : undefined;
+  const gruppen = enumGroups(registry, prop);
+  if (!gruppen.length) return undefined;
+  /* Mehrere Zeilen gelten zusammen, in der Reihenfolge, in der das Feld sie
+     nennt. Doppelte fallen weg — zwei Listen, die dasselbe Wort führen,
+     sollen es nicht zweimal anbieten. */
+  const raus: string[] = [];
+  for (const g of gruppen) for (const v of g.values) if (!raus.includes(v)) raus.push(v);
+  return raus.length ? raus : undefined;
+}
+
+/**
+ * Dasselbe, aber **je Zeile getrennt** — für eine Maske, die die Werte
+ * gruppiert zeigen soll, und für die Frage, aus welcher Liste ein Wert
+ * kommt.
+ *
+ * Genannte Zeilen, die es nicht gibt, fallen weg: eine fehlende Zeile ist
+ * keine leere Liste. Eigene Werte am Feld (`enum`) sind keine Zeile und
+ * stehen deshalb nicht hier — sie haben keinen Namen, unter dem man sie
+ * gruppieren könnte.
+ */
+export function enumGroups(
+  registry: Pick<Registry, 'enums'>,
+  prop: Pick<PropertySchema, 'enumRef'> | undefined,
+): { name: string; label: string; values: string[] }[] {
+  const refs = prop?.enumRef;
+  if (!refs) return [];
+  const namen = Array.isArray(refs) ? refs : [refs];
+  const raus: { name: string; label: string; values: string[] }[] = [];
+  for (const n of namen) {
+    const zeile = registry.enums?.[n];
+    if (!zeile?.values?.length) continue;
+    raus.push({ name: n, label: zeile.label ?? n, values: zeile.values });
+  }
+  return raus;
+}
+
+/** Aus welcher genannten Zeile dieser Wert kommt — oder `undefined`. */
+export function enumSource(
+  registry: Pick<Registry, 'enums'>,
+  prop: Pick<PropertySchema, 'enumRef'> | undefined,
+  value: string,
+): string | undefined {
+  for (const g of enumGroups(registry, prop)) if (g.values.includes(value)) return g.name;
+  return undefined;
 }
 
 /**

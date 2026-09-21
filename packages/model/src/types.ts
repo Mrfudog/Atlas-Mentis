@@ -67,8 +67,20 @@ export interface PropertySchema {
    * an beide denkt — und die eine, die niemand nachzieht, ist danach still
    * falsch. Gelesen wird beides über `enumOptions()`: ein Feld nennt seine
    * Werte selbst **oder** eine Zeile, nie beides.
+   *
+   * **Mehrere Zeilen sind erlaubt**, und dann gelten sie zusammen: worin
+   * jemand geübt ist, kommt aus Fertigkeiten, Werkzeugen, Sprachen, Waffen,
+   * Rüstungen und Wissensgebieten — sechs Listen, ein Feld. Ein Feld je
+   * Liste hiesse, dieselbe Frage sechsmal zu stellen, und die siebte Sorte
+   * bräuchte ein siebtes Feld. Die Herkunft eines Werts bleibt lesbar,
+   * solange die Listen sich nicht überschneiden; `enumGroups()` gibt sie
+   * getrennt zurück, damit eine Maske sie gruppieren kann.
+   *
+   * Zusammen mit `type: 'array'` heisst das: **mehrere Werte aus diesen
+   * Listen.** Das ist der Unterschied zwischen „welches Attribut trägt die
+   * Probe" (eines) und „auf welche Rettungswürfe ist sie geübt" (mehrere).
    */
-  enumRef?: string;
+  enumRef?: string | string[];
   /**
    * Die Spanne einer Zahl, beide Grenzen eingeschlossen. Eine Stufe von 1
    * bis 20 ist eine Spanne und keine Aufzählung von zwanzig Wörtern: die

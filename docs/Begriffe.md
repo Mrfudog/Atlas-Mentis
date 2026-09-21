@@ -47,7 +47,9 @@ Eine Registerzeile. Sie hat drei Formen:
   ohne Felder. `Ability` ist eine: `str`, `dex`, `con`, `int`, `wis`, `cha`.
   Sie steht im Register, weil **mehrere Felder dieselbe Liste brauchen** —
   die sechs Kürzel standen wörtlich an der Fertigkeit und am Rezept, und
-  wer eins nachzog, zog das andere nicht nach.
+  wer eins nachzog, zog das andere nicht nach. Acht gibt es: `Ability`,
+  `Skill`, `Tool`, `Language`, `WeaponTraining`, `ArmorTraining`,
+  `KnowledgeField`, `State`.
 
 Ein Zusammenschluss darf aus Zusammenschlüssen bestehen; `PlayerCharacter`
 besteht aus `Creature`, und `Creature` besteht aus siebzehn anderen.
@@ -101,7 +103,15 @@ Eine Tatsache, die ein Typ festhält. Ein Feld hat
   Ablage —,
 - bei einer **Auswahl** entweder eigene Werte oder den Namen einer
   Aufzählungszeile (`enumRef`), nie beides: zwei Listen an einem Feld wären
-  zwei Antworten auf dieselbe Frage,
+  zwei Antworten auf dieselbe Frage. **Mehrere Zeilen sind erlaubt** und
+  gelten zusammen — worin jemand geübt ist, kommt aus Fertigkeiten,
+  Werkzeugen, Sprachen, Waffen, Rüstungen und Wissensgebieten. Ein Feld je
+  Sorte hiesse, dieselbe Frage sechsmal zu stellen, und die siebte Sorte
+  bräuchte ein siebtes Feld; woher ein Wert kommt, sagt die Liste, in der
+  er steht,
+- **eines oder mehrere**: dasselbe Feld mit `type: 'array'` hält mehrere
+  Werte aus denselben Listen. „Welches Attribut trägt die Probe" ist eines,
+  „auf welche Rettungswürfe ist sie geübt" sind mehrere,
 - bei einer **Zahl** vielleicht eine Spanne (`min`, `max`). Eine
   Schwierigkeit von 1 bis 20 ist eine Spanne und keine Aufzählung von
   zwanzig Wörtern; fünf Wörter wären fünf Stufen mit Lücken dazwischen,
@@ -378,4 +388,34 @@ Daran hängt alles, was dieses Dokument erklärt:
 - **Die Zahlen fehlen**, und das ist richtig: Volo kämpft nicht. Wer einen
   Statblock hat, hat ihn über `belongsTo` — und nicht, weil die Art es
   verlangt.
+
+Und eine Figur, weil an ihr die Listen hängen:
+
+```
+Artikel  pc_rook
+  ist    PlayerCharacter                ← erbt Creature, dazu Stufe und Klasse
+  Karten
+    Proficiencies
+      proficient  stealth, sleightOfHand, investigation, …   ← aus Skill
+                  Gemeinsprache, Diebeszinken, Elfisch        ← aus Language
+                  Diebeswerkzeug, Fälscherwerkzeug, …         ← aus Tool
+      expertise   stealth, sleightOfHand
+      saves       dex, int                                    ← aus Ability
+    Vitals        hp 19/24, conditions …    ← was sich in der Sitzung ändert
+  Kanten
+    belongsTo ← sb_rook                 ← dort wohnen die sechs Werte
+```
+
+**Ein Feld, sechs Listen.** `proficient` zieht aus `Skill`, `Tool`,
+`Language`, `WeaponTraining`, `ArmorTraining` und `KnowledgeField`. Vorher
+stand je Sorte ein Feld — also dieselbe Frage sechsmal, und die siebte
+Sorte hätte ein siebtes Feld gebraucht. Woher ein Wert kommt, sagt die
+Liste, in der er steht: der Bogen gruppiert danach, und das Handwerk liest
+sich die Werkzeugübungen daraus heraus.
+
+**Die sechs Werte stehen nicht an der Figur.** Sie wohnen am Statblock
+(`sb_rook`), und `belongsTo` sagt, an welchem — auch bei einem
+Spielercharakter. Das ist der Grund, warum man im Register unter
+`PlayerCharacter` kein `str` findet: dort steht, was eine Figur *ist*, und
+nicht, was in ihrem Bogen steht.
 

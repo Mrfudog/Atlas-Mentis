@@ -920,7 +920,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `proficient` *array*, `expertise` *array*, `saves` *array*, `languages` *array*, `tools` *array*, `armor` *array*, `weapons` *array*, `knowledge` *array*
+- `proficient` *Skill + Tool + Language + WeaponTraining + ArmorTraining + KnowledgeField: 35 words*, `expertise` *Skill + Tool + Language + WeaponTraining + ArmorTraining + KnowledgeField: 35 words*, `saves` *Ability: str | dex | con | int | wis | cha*
 
 **Kanten von hier**
 

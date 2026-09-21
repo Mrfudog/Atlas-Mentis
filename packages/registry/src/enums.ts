@@ -24,6 +24,68 @@ export const enums: Record<string, EnumDef> = {
   },
 
   /**
+   * **Die Fertigkeiten.** Welche es gibt, steht hier; **welches Attribut**
+   * jede benutzt, steht in der Einstellung `skills` (`stealth:dex`). Zwei
+   * Stellen, aber nicht zweimal dasselbe: die Zeile sagt, was es gibt, die
+   * Einstellung sagt, wie gerechnet wird. Eine Fertigkeit ohne Eintrag in
+   * der Einstellung rechnet auf `dex` und steht trotzdem in der Liste.
+   *
+   * Eines Tages ist eine Fertigkeit ein Artikel — dann hat sie ihren
+   * Regeltext, ihr Attribut und ihre Kanten an einer Stelle, und beide hier
+   * fallen weg. Bis dahin ist sie ein Wort in einer Liste.
+   */
+  Skill: {
+    name: 'Skill',
+    label: 'Skill',
+    values: [
+      'acrobatics', 'animalHandling', 'arcana', 'athletics', 'deception',
+      'history', 'insight', 'intimidation', 'investigation', 'medicine',
+      'nature', 'perception', 'performance', 'persuasion', 'religion',
+      'sleightOfHand', 'stealth', 'survival',
+    ],
+  },
+
+  /* Werkzeuge, Sprachen, Waffen- und Rüstungsgruppen: **Regelvokabular**,
+     aus dem sich Übungen zusammensetzen. Sie stehen als Listen und nicht als
+     Artikel, weil an einem Werkzeugnamen nichts weiter hängt als der Name;
+     sobald ein Werkzeug einen Regeltext hätte, wäre es ein Artikel. */
+  Tool: {
+    name: 'Tool',
+    label: 'Tool',
+    values: [
+      'Alchemistenwerkzeug', 'Diebeswerkzeug', 'Fälscherwerkzeug',
+      'Kerzenzieherwerkzeug',
+    ],
+  },
+
+  Language: {
+    name: 'Language',
+    label: 'Language',
+    values: ['Gemeinsprache', 'Diebeszinken', 'Elfisch', 'Halblingisch'],
+  },
+
+  WeaponTraining: {
+    name: 'WeaponTraining',
+    label: 'Weapon training',
+    values: ['Einfache Waffen', 'Kriegswaffen'],
+  },
+
+  ArmorTraining: {
+    name: 'ArmorTraining',
+    label: 'Armour training',
+    values: ['Leichte Rüstung', 'Mittlere Rüstung', 'Schwere Rüstung', 'Schilde'],
+  },
+
+  /* Die Hausregel: worin sich jemand **auskennt**. Ein Anfang, der ersetzt
+     werden soll — die Liste gehört der Kampagne, und sie steht hier, damit
+     sie an einer Stelle steht und nicht in jedem Bogen neu erfunden wird. */
+  KnowledgeField: {
+    name: 'KnowledgeField',
+    label: 'Field of knowledge',
+    values: ['Kräuterkunde', 'Stadtgeschichte', 'Nebelkunde'],
+  },
+
+  /**
    * **Der Vorbereitungsstand eines Artikels** — nicht, was im Spiel mit ihm
    * geschehen ist.
    *

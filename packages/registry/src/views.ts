@@ -48,7 +48,15 @@ export const views: Record<string, ViewDef> = {
     relations: false,
     bindings: false,
     image: false,
-    layout: [{ id: 'ov-desc', el: 'description' }],
+    /* **Eine Übersicht ist ein Satz.** Die Feldtabelle steht trotzdem hier,
+       mit leerer Auswahl: so lässt sich je Artikelart **eine** Gruppe
+       dazunehmen — die Art einer Kreatur, die Seltenheit eines
+       Gegenstands —, ohne dass aus dem Verweis eine Tabelle wird. Leer
+       heisst leer: solange niemand etwas ankreuzt, steht dort nur der Satz. */
+    layout: [
+      { id: 'ov-desc', el: 'description' },
+      { id: 'ov-f', el: 'fields', fields: [] },
+    ],
   },
 
   /** Die Karte: ein Bild, ein Satz, das Wesentliche. */
@@ -64,6 +72,10 @@ export const views: Record<string, ViewDef> = {
     layout: [
       { id: 'q-img', el: 'image' },
       { id: 'q-desc', el: 'description' },
+      /* Wie bei der Übersicht: die Auswahl ist leer und wird je Art
+         gefüllt. Eine Karte trägt zwei oder drei Werte, und **welche**
+         weiss die Art und nicht die Ansicht. */
+      { id: 'q-f', el: 'fields', fields: [] },
       { id: 'q-b', el: 'prose', fields: ['Prose.paragraph', 'ReadAloud.readaloud'] },
     ],
   },
