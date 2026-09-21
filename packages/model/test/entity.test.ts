@@ -33,7 +33,16 @@ const registry: Registry = {
     NPC: {
       name: 'NPC',
       extends: ['Identity'],
-      schema: { type: 'object', properties: { rolle: { type: 'string' } } },
+      schema: {
+        type: 'object',
+        properties: {
+          rolle: { type: 'string' },
+          /* Die Werte stehen als Zeile im Register, nicht am Feld. */
+          probe: { type: 'string', enumRef: 'Ability' },
+          stufe: { type: 'number', min: 1, max: 20 },
+          laune: { type: 'string', enum: ['gut', 'schlecht'] },
+        },
+      },
     },
     /* Eigener Obertyp, damit `StatblockInfo` eine Karte bleibt — dieselbe
        Form wie im echten Register. */
@@ -53,6 +62,9 @@ const registry: Registry = {
     composedOf: { type: 'composedOf', label: 'besteht aus', inverseLabel: 'verwendet in', from: ['Statblock'], to: ['*'], section: 'Aktionen' },
   },
   views: {},
+  enums: {
+    Ability: { name: 'Ability', values: ['str', 'dex', 'con', 'int', 'wis', 'cha'] },
+  },
   vars: {},
 };
 
@@ -167,6 +179,60 @@ describe('validateEntity', () => {
     expect(validateEntity(registry, odd, { expertMode: true }).map((i) => i.code)).not.toContain(
       'card_not_inherited',
     );
+  });
+
+  /* **Eine Aufzählung und eine Spanne müssen halten.** Bis hierher waren
+     beide Angaben für die Maske allein — und eine Regel, die nur das
+     Eingabefeld kennt, gilt für jeden Weg nicht, der nicht durch die Maske
+     führt: Einfuhr, Wanderung, eine Zeile von Hand. Genau dort entstehen
+     die Werte, die niemand mehr erklären kann. */
+  it('refuses a word the field does not allow', () => {
+    const falsch: Entity = {
+      ...volo,
+      components: { ...volo.components, NPC: { laune: 'mittel' } },
+    };
+    const issue = validateEntity(registry, falsch).find((i) => i.code === 'value_not_allowed');
+    expect(issue?.property).toBe('laune');
+    expect(issue?.message).toContain('gut');
+  });
+
+  it('reads the words from the enum row a field names', () => {
+    const gut: Entity = { ...volo, components: { ...volo.components, NPC: { probe: 'wis' } } };
+    expect(validateEntity(registry, gut).map((i) => i.code)).not.toContain('value_not_allowed');
+    const schlecht: Entity = { ...volo, components: { ...volo.components, NPC: { probe: 'luck' } } };
+    const issue = validateEntity(registry, schlecht).find((i) => i.code === 'value_not_allowed');
+    expect(issue?.message).toContain('str, dex');
+  });
+
+  /* Eine genannte Zeile, die es nicht gibt, ist **kein** Feld ohne Werte:
+     dann ist es ein freies Wort, und geprüft wird nichts. Eine leere Liste
+     zu prüfen hiesse, jeden Wert abzulehnen — und das wäre die Sorte
+     Fehler, die eine Datenbank zumauert. */
+  it('lets anything through when the named row is missing', () => {
+    const ohne: Registry = { ...registry, enums: {} };
+    const e: Entity = { ...volo, components: { ...volo.components, NPC: { probe: 'luck' } } };
+    expect(validateEntity(ohne, e).map((i) => i.code)).not.toContain('value_not_allowed');
+  });
+
+  it('keeps a number inside its range', () => {
+    const drin: Entity = { ...volo, components: { ...volo.components, NPC: { stufe: 20 } } };
+    expect(validateEntity(registry, drin).map((i) => i.code)).not.toContain('value_out_of_range');
+    const drueber: Entity = { ...volo, components: { ...volo.components, NPC: { stufe: 21 } } };
+    expect(validateEntity(registry, drueber).find((i) => i.code === 'value_out_of_range')?.property)
+      .toBe('stufe');
+    const text: Entity = { ...volo, components: { ...volo.components, NPC: { stufe: 'hoch' } } };
+    expect(validateEntity(registry, text).map((i) => i.code)).toContain('value_not_a_number');
+  });
+
+  /* Ein leeres Feld ist keine falsche Angabe — dafür gibt es `required`.
+     Sonst wäre jeder Artikel, an dem etwas noch nicht dasteht, kaputt. */
+  it('says nothing about a field that is empty', () => {
+    const leer: Entity = {
+      ...volo,
+      components: { ...volo.components, NPC: { laune: '', stufe: undefined } },
+    };
+    expect(validateEntity(registry, leer).map((i) => i.code))
+      .not.toContain('value_not_allowed');
   });
 
   it('reports an edge pointing at nothing', () => {

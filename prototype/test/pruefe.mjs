@@ -358,7 +358,7 @@ async function seite(datei, warten) {
      hinein macht daraus ein offenes Feld. */
   const angebot = await p.evaluate(async () => {
     const T = window.__T__;
-    const npc = [...T.ENT.values()].find((x) => (x.interfaces || [])[0] === 'NPC');
+    const npc = [...T.ENT.values()].find((x) => (x.interfaces || [])[0] === 'Creature');
     T.go({ k: 'art', id: npc.id });
     await new Promise((r) => setTimeout(r, 400));
     const sel = document.querySelector('.addfield select');
@@ -550,16 +550,20 @@ async function seite(datei, warten) {
     }));
   };
   const teil = await vorlageBei('Identity');
-  const artikelart = await vorlageBei('NPC');
-  const obertyp = await vorlageBei('Creature');
+  const artikelart = await vorlageBei('Creature');
+  /* Und eine Art, die ihre Anordnung **erbt**: die Spielerfigur nimmt die
+     der Kreatur. Hier stand einmal der abstrakte Obertyp mit eigener
+     Anordnung — den gibt es nicht mehr, seit eine Kreatur selbst eine Art
+     ist, und eine Prüfung auf einen Fall, den das Register nicht kennt,
+     prüft nichts. Dass geerbte Anordnungen durchreichen, prüft
+     `layoutSource` daneben und der Paketlauf mit. */
+  const erbend = await vorlageBei('PlayerCharacter');
   pruefe('a part that no article is shows no view template',
     teil.knopf === 0 && teil.elemente === 0 && teil.hinweis, teil);
   pruefe('an article kind shows one',
     artikelart.knopf > 0 && artikelart.elemente > 0 && !artikelart.hinweis, artikelart);
-  /* Und der abstrakte Obertyp mit eigener Anordnung auch — sonst wäre der
-     Kreaturenbogen an keiner Stelle mehr zu erreichen. */
-  pruefe('an abstract kind that carries a layout itself keeps its template',
-    obertyp.knopf > 0 && obertyp.elemente > 0 && !obertyp.hinweis, obertyp);
+  pruefe('and a kind that inherits its layout shows that one',
+    erbend.knopf > 0 && erbend.elemente > 0 && !erbend.hinweis, erbend);
 
   /* `Prose` und `Notes` hingen einmal an `Identity`, weil das der einzige
      Typ ist, den jede Art erbt. Dann stand unter „Identity" ein Feld
@@ -569,7 +573,7 @@ async function seite(datei, warten) {
     return { eigen: Object.keys(T.REG.interfaces.Identity.schema.properties),
              erbt: T.REG.interfaces.Identity.extends || [],
              prosa: T.proseFields('Identity').map((f) => f.type + '.' + f.key),
-             beimNPC: T.proseFields('NPC').map((f) => f.type + '.' + f.key) };
+             beimNPC: T.proseFields('Creature').map((f) => f.type + '.' + f.key) };
   });
   pruefe('a base kind inherits nothing, so identity carries no prose',
     idFelder.erbt.length === 0 && idFelder.prosa.length === 0, idFelder);
@@ -657,16 +661,23 @@ async function seite(datei, warten) {
     return {
       ohne: alle.filter((x) => !x.id).length,
       falscheForm: alle.filter((x) => x.id && !/^[a-z0-9-]+-\d{4}$/.test(x.id)).length,
-      /* Der Anfang ist die Artikelart — `npc-0003` und nicht `article-0003`. */
-      falscheArt: alle.filter((x) => x.id && x.art && x.id.indexOf(T.idPrefix(x.art) + '-') !== 0).length,
+      /* Der Anfang ist die Artikelart, **wie sie beim Anlegen hiess**.
+         Wechselt ein Artikel die Art — drei NSC sind Kreaturen geworden,
+         als `NPC` als Art wegfiel —, behält er seine Nummer: sie ist
+         `readOnly` und ändert sich nie. Eine Wanderung, die Bezeichner
+         umschreibt, wäre genau die Stelle, an der ein fester Bezeichner
+         wandert. Geprüft wird darum die Form; dass eine **neue** Nummer die
+         Art nennt, prüft `nextId` gleich darunter. */
+      fremdeArt: alle.filter((x) => x.id && x.art && x.id.indexOf(T.idPrefix(x.art) + '-') !== 0)
+        .map((x) => x.id + ' (' + x.art + ')'),
       doppelt: Object.keys(doppelt),
-      naechste: T.nextId('NPC'),
+      naechste: T.nextId('creature'),
       keiner: alle.some((x) => /\//.test(x.id)),
     };
   });
   pruefe('every article carries an issued number', nummern.ohne === 0, nummern);
   pruefe('and it reads kind-runningNumber, not a second copy of the name',
-    nummern.falscheForm === 0 && nummern.falscheArt === 0 && !nummern.keiner, nummern);
+    nummern.falscheForm === 0 && !nummern.keiner, nummern);
   pruefe('no two articles share one', nummern.doppelt.length === 0, nummern.doppelt);
 
   /* Die nächste ist die höchste plus eins — gezählt wird, was dasteht. Ein
@@ -676,16 +687,19 @@ async function seite(datei, warten) {
     const T = window.__T__;
     const hoch = [];
     T.ENT.forEach((e) => {
-      if ((e.interfaces || [])[0] === 'NPC') hoch.push(Number(T.articleId(e).split('-').pop()));
+      /* Gezählt wird, was der Anfang sagt, und nicht, was die Art heute
+         ist: die drei gewanderten NSC tragen weiter `npc-000n`. */
+      const id = T.articleId(e) || '';
+      if (id.indexOf('creature-') === 0) hoch.push(Number(id.split('-').pop()));
     });
-    return { erwartet: Math.max(0, ...hoch) + 1, bekommen: T.nextId('NPC'),
-             imStapel: T.nextId('NPC', [T.nextId('NPC')]) };
+    return { erwartet: Math.max(0, ...hoch) + 1, bekommen: T.nextId('Creature'),
+             imStapel: T.nextId('Creature', [T.nextId('Creature')]) };
   });
   pruefe('the next number is the highest plus one',
-    weiter.bekommen === 'npc-' + String(weiter.erwartet).padStart(4, '0'), weiter);
+    weiter.bekommen === 'creature-' + String(weiter.erwartet).padStart(4, '0'), weiter);
   /* Und ein Stapel zählt weiter, statt zwanzigmal dieselbe zu vergeben. */
   pruefe('and a batch counts on from what it has just issued',
-    weiter.imStapel === 'npc-' + String(weiter.erwartet + 1).padStart(4, '0'), weiter);
+    weiter.imStapel === 'creature-' + String(weiter.erwartet + 1).padStart(4, '0'), weiter);
 
   /* Sie steht am Kopf des Artikels — und bekommt auch beim „alles
      bearbeiten" keine Eingabe: sie steht seit dem Anlegen und darf sich
@@ -1084,7 +1098,7 @@ async function seite(datei, warten) {
     filter: [...document.querySelectorAll('.filters select')].map((s) => s.options[0].textContent),
   }));
   const bereiche = await p.evaluate(() => ({
-    npc: window.__T__.areaOf('NPC'),
+    npc: window.__T__.areaOf('Creature'),
     quest: window.__T__.areaOf('Quest'),
     rule: window.__T__.areaOf('Rule'),
     item: window.__T__.areaOf('Item'),
@@ -1094,7 +1108,7 @@ async function seite(datei, warten) {
        bekommen, sonst wäre sie nirgends auffindbar. */
     geerbt: (() => {
       const T = window.__T__;
-      T.REG.interfaces.ProbeArt = { name: 'ProbeArt', label: 'Probe art', extends: ['NPC'] };
+      T.REG.interfaces.ProbeArt = { name: 'ProbeArt', label: 'Probe art', extends: ['Creature'] };
       const a = T.areaOf('ProbeArt');
       delete T.REG.interfaces.ProbeArt;
       return a;
@@ -1276,6 +1290,62 @@ async function seite(datei, warten) {
   }));
   pruefe('a field carries its default, and shows it', /← idea/.test(stand.zeile) && stand.wert === 'idea', stand);
 
+  /* ---- Eine Aufzählung, die mehrere Felder teilen ----
+     Die sechs Attributkürzel standen wörtlich an der Fertigkeit und am
+     Rezept, der Vorbereitungsstand an jedem Artikel. Jetzt steht die Liste
+     einmal im Register, und das Feld nennt sie. Geprüft wird beides: dass
+     die Zeile sagt, wer sie nennt, und dass ein Feld, dessen Zeile sich
+     ändert, danach die neuen Wörter anbietet — sonst wäre die Zeile eine
+     Kopie mehr und nicht eine weniger. */
+  await zumRegister(p, 'Choices');
+  const wahl = await p.evaluate(() => ({
+    zeilen: [...document.querySelectorAll('.regbody .crow')].map((r) => ({
+      name: r.querySelector('.fk')?.textContent ?? '',
+      werte: r.querySelector('input.i:not([type=number]) + input.i')?.value
+        ?? [...r.querySelectorAll('input.i')][1]?.value ?? '',
+      haengt: r.querySelector('.pill.q')?.getAttribute('title') ?? '',
+    })),
+  }));
+  const ability = wahl.zeilen.find((z) => z.name === 'Ability');
+  pruefe('the registry holds the shared choice lists',
+    !!ability && /str, dex/.test(ability.werte), wahl.zeilen);
+  pruefe('and each one says which fields name it',
+    !!ability && /Skill\.ability/.test(ability.haengt) && /Recipe\.ability/.test(ability.haengt),
+    ability);
+
+  /* Ein Wort dazu — und das Feld am Artikel kennt es. */
+  const gefolgt = await p.evaluate(async () => {
+    const T = window.__T__;
+    const vorher = T.enumWerte(T.REG.interfaces.Status.schema.properties.status) || [];
+    T.REG.enums.State.values = vorher.concat(['shelved']);
+    const nachher = T.enumWerte(T.REG.interfaces.Status.schema.properties.status) || [];
+    const eingabe = T.fieldInput(T.REG.interfaces.Status.schema.properties.status, 'idea');
+    const angeboten = [...(eingabe.options || [])].map((o) => o.value);
+    T.REG.enums.State.values = vorher;
+    return { vorher, nachher, angeboten };
+  });
+  pruefe('a field follows the row it names',
+    gefolgt.vorher.join() === 'idea,prepared,ready'
+    && gefolgt.nachher.includes('shelved')
+    && gefolgt.angeboten.includes('shelved'), gefolgt);
+
+  /* Und ein freies Wort schlägt vor, was schon dasteht — `kind` an einer
+     Kreatur ist frei, damit eine neue Sorte ein Eintrag ist und keine
+     Registerzeile; dieselbe Sorte dreimal anders geschrieben wäre der
+     Preis dafür. */
+  const vorschlag = await p.evaluate(() => {
+    const T = window.__T__;
+    const feld = T.REG.interfaces.Creature.schema.properties.kind;
+    const node = T.fieldInput(feld, '', { type: 'Creature', key: 'kind' });
+    const liste = node.querySelector ? node.querySelector('datalist') : null;
+    return {
+      frei: !feld.enum && !feld.enumRef,
+      vor: liste ? [...liste.options].map((o) => o.getAttribute('value')) : [],
+    };
+  });
+  pruefe('a free word suggests what is already in use',
+    vorschlag.frei && vorschlag.vor.includes('npc'), vorschlag);
+
   const anlegen = async (name) => {
     await p.evaluate(() => document.getElementById('new').click());
     await p.waitForTimeout(300);
@@ -1296,13 +1366,13 @@ async function seite(datei, warten) {
     const l = [...document.querySelectorAll('.fbox .fmore label.f')]
       .find((x) => /Default/.test(x.querySelector('span').textContent));
     const n = l.querySelector('select,input');
-    n.value = 'planned';
+    n.value = 'prepared';
     n.dispatchEvent(new Event('change', { bubbles: true }));
   });
   await p.waitForTimeout(350);
   const zweiter = await anlegen('Second probe');
   pruefe('changing the default changes what is created next',
-    zweiter.includes('planned') && !zweiter.includes('idea'), zweiter);
+    zweiter.includes('prepared') && !zweiter.includes('idea'), zweiter);
   pruefe('defaults raised no exception', errs.length === 0, errs);
 
   /* 12 — Etappe B: Geschichts- und Spielerartikel sind Registerzeilen.
@@ -1319,9 +1389,13 @@ async function seite(datei, warten) {
   const erwartet = ['Campaign', 'Session', 'Scene / Encounter', 'Quest', 'Player character', 'Party', 'Inventory'];
   pruefe('the story and player types are offered',
     erwartet.every((t) => auswahl.includes(t)), auswahl);
-  /* Abstrakte Typen sind Struktur, nicht anlegbar. */
+  /* Abstrakte Typen sind Struktur, nicht anlegbar. `Creature` steht hier
+     nicht mehr: sie ist selbst eine Art geworden, und `kind` sagt, was für
+     eine — der Unterschied zwischen NSC und Begleiter war drei Zeilen ohne
+     ein einziges eigenes Feld wert. */
   pruefe('the abstract parents are not offered',
-    !auswahl.includes('Story') && !auswahl.includes('Creature'), auswahl);
+    !auswahl.includes('Story') && !auswahl.includes('Identity')
+    && !auswahl.includes('Proficiencies') && auswahl.includes('Creature'), auswahl);
 
   const kampagne = await neuerArtikel('Campaign', 'Probe campaign');
   const pc = await neuerArtikel('Player character', 'Probe hero');
@@ -2345,7 +2419,7 @@ async function seite(datei, warten) {
      beanstanden. */
   pruefe('every field is offered, and what is off is off on purpose',
     vorlage.felder > 10 && vorlage.an > 0
-    && vorlage.ausWoher.every((c) => ['Vitals', 'Skills'].includes(c)),
+    && vorlage.ausWoher.every((c) => ['Vitals', 'Proficiencies'].includes(c)),
     { felder: vorlage.felder, an: vorlage.an, ausWoher: [...new Set(vorlage.ausWoher)] });
 
   /* Ein Klick nimmt ein Feld aus der Ansicht — und ein zweiter legt es
@@ -2398,20 +2472,31 @@ async function seite(datei, warten) {
     && !zurueck2.except.includes(geklickt.name), zurueck2);
 
   /* Eine geerbte Anordnung sagt, woher sie kommt — sie zu bearbeiten ändert
-     sie für jede Unterart mit, und das soll niemand aus Versehen tun. */
+     sie für jede Unterart mit, und das soll niemand aus Versehen tun.
+     Geprüft an einer Probeart: im Register erbt keine Zeile mehr eine
+     Anordnung, seit die Kreatur selbst eine Art ist und die Spielerfigur
+     weiter oben eine eigene bekommen hat. Eine Prüfung braucht den Fall
+     und nicht die Zeile. */
   const geerbt2 = await p.evaluate(async () => {
     const T = window.__T__;
-    T.UI.typePick = 'NPC';
+    T.REG.interfaces.ErbArt = { name: 'ErbArt', label: 'Erb art', extends: ['Creature'] };
+    T.UI.typePick = 'ErbArt';
     T.render();
     await new Promise((r) => setTimeout(r, 300));
-    return {
+    const raus = {
       sagt: document.querySelector('.tmpl .maptools .hint')?.textContent ?? '',
       zu: document.querySelectorAll('.tmplfields .tgl[disabled]').length > 0,
       knopf: [...document.querySelectorAll('.tmpl .maptools .btn')].map((b) => b.textContent),
+      woher: T.layoutSource(T.REG.views.full, 'ErbArt', 'full').iface,
     };
+    delete T.REG.interfaces.ErbArt;
+    T.UI.typePick = 'PlayerCharacter';
+    T.render();
+    return raus;
   });
   pruefe('an inherited arrangement says so and is not edited by accident',
     /Inherited from/.test(geerbt2.sagt) && geerbt2.zu
+    && geerbt2.woher === 'Creature'
     && geerbt2.knopf.some((x) => /Give it its own/.test(x)), geerbt2);
 
   /* Welche Ansicht die Vorlage zeigt, wird **an der Art** gewählt und nicht
@@ -2444,11 +2529,9 @@ async function seite(datei, warten) {
       /* Eine Übersicht ist ein Satz und keine Feldtabelle. */
       ueber: [...T.layoutOf(T.REG.views.overview, 'PlayerCharacter', 'overview')].map((x) => x.el),
       voll: [...T.layoutOf(T.REG.views.full, 'PlayerCharacter', 'full')].map((x) => x.el),
-      /* Und die volle Anordnung eines NSC kommt von `Creature` — geerbt,
-         nicht wiederholt. (Die Spielerfigur hat weiter oben eine eigene
-         bekommen; ein Prüflauf, der seine eigenen Spuren übersieht, prüft
-         am Ende nur noch sich selbst.) */
-      woher: T.layoutSource(T.REG.views.full, 'NPC', 'full').iface,
+      /* Und die volle Anordnung einer Kreatur kommt von `Creature`
+         selbst — die Art trägt sie, und ihre Unterarten erben sie. */
+      woher: T.layoutSource(T.REG.views.full, 'Creature', 'full').iface,
       pc: pc ? pc.id : null,
     };
   });
@@ -2616,7 +2699,7 @@ async function seite(datei, warten) {
     /* Die Zahlen stehen am Statblock, nicht an der Figur: gesucht wird
        eine, die einen hat — `statsOf` geht die Kante `belongsTo` zurück. */
     const m = [...T.ENT.values()].find((e) =>
-      (e.components || {}).Skills
+      (e.components || {}).Proficiencies
       && Object.keys(T.statsOf(e).card).length
       && (e.relations || []).some((r) => r.type === 'carries'));
     return m ? m.name : null;
@@ -2738,7 +2821,7 @@ async function seite(datei, warten) {
     const woher = await p.evaluate(() => {
       const T = window.__T__;
       const figuren = [...T.ENT.values()]
-        .filter((e) => ['PlayerCharacter', 'NPC'].includes((e.interfaces || [])[0]));
+        .filter((e) => ['PlayerCharacter', 'Creature'].includes((e.interfaces || [])[0]));
       return {
         eigene: figuren.filter((e) => (e.components || {}).StatblockInfo).map((e) => e.name),
         /* Wer einen Statblock hat, liest ihn. Wer keinen hat, hat keine
@@ -2973,7 +3056,7 @@ async function seite(datei, warten) {
       && ohneWerkzeug.some((z) => /no \w+werkzeug|no Kerzenzieherform/i.test(z)),
       ohneWerkzeug);
 
-    /* Der Übungsbonus kommt aus `Skills.tools`, nicht aus einer Annahme.
+    /* Der Übungsbonus kommt aus `Proficiencies.tools`, nicht aus einer Annahme.
        Rook ist in Alchemie geübt, die Gruppe als solche nicht. */
     const boni = await p.evaluate(() => {
       const T = window.__T__;
@@ -2981,7 +3064,7 @@ async function seite(datei, warten) {
         ((e.components || {}).Recipe || {}).tool === 'Alchemistenwerkzeug');
       const info = rez.components.Recipe;
       const rook = [...T.ENT.values()].find((e) =>
-        (((e.components || {}).Skills || {}).tools || []).indexOf('Alchemistenwerkzeug') >= 0);
+        (((e.components || {}).Proficiencies || {}).tools || []).indexOf('Alchemistenwerkzeug') >= 0);
       const andere = [...T.ENT.values()].find((e) =>
         (e.interfaces || [])[0] === 'Party');
       return { rook: T.craftMod(rook, info), andere: T.craftMod(andere, info) };
@@ -3561,7 +3644,13 @@ async function seite(datei, warten) {
   pruefe('a backup carries the registry and every article',
     sicherung && sicherung.format === 'nebelwacht/1'
     && sicherung.artikel === sicherung.hier
-    && sicherung.teile.length === 6 && /\.json$/.test(sicherung.name), sicherung);
+    /* Genannt und nicht gezählt: eine Zahl wird beim nächsten Teil rot,
+       ohne zu sagen, welcher fehlt. Die Einheiten und die Aufzählungen
+       kamen dazu — eine Sicherung ohne sie liess sich zurücklesen und
+       hatte danach keine Masse mehr. */
+    && ['interfaces', 'relations', 'views', 'units', 'enums', 'vars', 'settings']
+      .every((t) => sicherung.teile.includes(t))
+    && /\.json$/.test(sicherung.name), sicherung);
 
   /* Der Trockenlauf sagt, was passieren würde — eine Wiederherstellung ohne
      Vorschau ist ein zweiter Datenverlust mit Anlauf. */

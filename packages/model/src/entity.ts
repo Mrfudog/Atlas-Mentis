@@ -177,6 +177,28 @@ export function fieldTitle(
 }
 
 /**
+ * Die Werte, die in dieses Feld dürfen — die eigenen oder die der
+ * Aufzählungszeile, die es nennt.
+ *
+ * Ein Feld nennt seine Werte selbst (`enum`) **oder** eine Zeile
+ * (`enumRef`), nie beides: zwei Listen für ein Feld wären zwei Antworten
+ * auf dieselbe Frage. Steht die genannte Zeile nicht im Register, gibt es
+ * keine Werte — und ein Feld ohne Werte ist ein freies Wort, nicht ein
+ * Feld mit einer leeren Liste. Genau das soll die Maske zeigen, statt
+ * eine Auswahl anzubieten, in der nichts steht.
+ */
+export function enumOptions(
+  registry: Pick<Registry, 'enums'>,
+  prop: Pick<PropertySchema, 'enum' | 'enumRef'> | undefined,
+): string[] | undefined {
+  if (!prop) return undefined;
+  if (prop.enum?.length) return prop.enum;
+  if (!prop.enumRef) return undefined;
+  const zeile = registry.enums?.[prop.enumRef];
+  return zeile?.values?.length ? zeile.values : undefined;
+}
+
+/**
  * Every field an article of this type may carry, own ones first and the
  * inherited ones behind them, each with the type that declares it.
  */

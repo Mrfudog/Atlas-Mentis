@@ -428,6 +428,11 @@ ul.tlayout li.d3{padding-left:48px}
   text-overflow:ellipsis;white-space:nowrap}
 .msopacity{width:80px}
 .mterr{pointer-events:none}
+/* Ein freies Wort mit Vorschlagsliste: die Liste ist unsichtbar und muss
+   trotzdem im Baum hängen, also steht sie neben dem Feld in einer Hülle.
+   Die Hülle verhält sich wie das Feld, sonst rutschte die Maske. */
+.withlist{display:block}
+.withlist>input{width:100%}
 .mtoken{z-index:3}
 .mdraw{position:absolute;inset:0;z-index:5;touch-action:none;cursor:crosshair}
 .mdraw.t-erase{cursor:not-allowed}
@@ -922,7 +927,7 @@ function thawed(o){
   try{ return structuredClone(o); }catch(x){}
   try{ return JSON.parse(JSON.stringify(o)); }catch(x){ return o; }
 }
-var REG={interfaces:{},components:{},relations:{},vars:{},views:{},units:{},settings:{}};
+var REG={interfaces:{},components:{},relations:{},vars:{},views:{},units:{},enums:{},settings:{}};
 /* Die Ablage des Artefakts für Bilder und Karten. Nur Schreibberechtigte
    bekommen sie; ohne sie bleibt der Verweis auf fremde Adressen. */
 var assetStore=null, downloadNS=null;
@@ -1314,13 +1319,29 @@ var FIELD_KINDS=[
   ["asset","Image / asset"],["date","World date"],
   ["list","List"],["object","Object"]
 ];
+/* **Die Werte, die in ein Feld dürfen** — die eigenen oder die der
+   Aufzählungszeile, die es nennt.
+
+   Ein Feld trägt `enum: [...]`, wenn die Liste ihm allein gehört, und
+   `enumRef: "Ability"`, wenn mehrere Felder dieselbe Liste brauchen. Die
+   sechs Attributkürzel standen an der Fertigkeit und am Rezept wörtlich —
+   zwei Listen für eine Sache, und die eine, die niemand nachzieht, ist
+   danach still falsch. Gelesen wird deshalb überall über diese Funktion und
+   nirgends `p.enum` direkt. */
+function enumWerte(p){
+  if(!p) return null;
+  if(Array.isArray(p["enum"])&&p["enum"].length) return p["enum"];
+  if(!p.enumRef) return null;
+  var zeile=(REG.enums||{})[p.enumRef];
+  return zeile&&Array.isArray(zeile.values)&&zeile.values.length?zeile.values:null;
+}
 function fieldKind(p){
   if(!p) return "text";
   if(p.format==="color") return "color";
   if(p.format==="link") return "link";
   if(p.format==="asset") return "asset";
   if(p.format==="date") return "date";
-  if(Array.isArray(p["enum"])) return "choice";
+  if(Array.isArray(p["enum"])||p.enumRef) return "choice";
   if(p.type==="number"||p.type==="integer") return "number";
   if(p.type==="boolean") return "boolean";
   if(p.type==="array") return "list";
@@ -1331,6 +1352,9 @@ function fieldKind(p){
    alone — title, derived and required survive a change of mind. */
 function setFieldKind(p,kind){
   delete p["enum"];
+  /* Auch die Nennung: ein Feld, das keine Auswahl mehr ist, darf keine
+     Liste mehr nennen — sonst käme sie beim nächsten Wechsel zurück. */
+  delete p.enumRef;
   if(p.format==="color"||p.format==="link"||p.format==="asset"||p.format==="date") delete p.format;
   delete p.target;
   switch(kind){
@@ -1615,7 +1639,30 @@ function assetInput(pd,cur){
    The dialog and the in-place editing share it. Two code paths for the same
    field would drift, and the one used less often would be the one that
    quietly stops matching the schema. */
-function fieldInput(pd,cur){
+/**
+ * **Was in diesem Feld schon dasteht** — als Vorschlagsliste.
+ *
+ * Ein freies Wort ist frei, damit eine neue Sorte ein Eintrag ist und
+ * keine Registeränderung. Der Preis wäre, dass dieselbe Sorte dreimal
+ * anders geschrieben dasteht: „npc", „NPC", „Npc". Also schlägt die Maske
+ * vor, was andere Artikel in **diesem** Feld tragen — gezogen aus dem
+ * Bestand und nicht aus einer gepflegten Liste, denn eine gepflegte Liste
+ * wäre die Aufzählung, die das Feld bewusst nicht ist.
+ */
+function feldVorschlaege(ref){
+  if(!ref||!ref.type||!ref.key) return [];
+  var gesehen={};
+  ENT.forEach(function(e){
+    var v=((e.components||{})[ref.type]||{})[ref.key];
+    if(typeof v!=="string") return;
+    var t=v.trim(); if(!t||t.length>40) return;
+    gesehen[t]=(gesehen[t]||0)+1;
+  });
+  return Object.keys(gesehen).sort(function(a,b){
+    return gesehen[b]-gesehen[a]||a.localeCompare(b);
+  }).slice(0,25);
+}
+function fieldInput(pd,cur,ref){
   var kind=fieldKind(pd);
   /* Steht nichts drin, aber ein Standard ist gesetzt, zeigt ihn das Feld als
      Vorschlag an — sichtbar, aber nicht gespeichert, bis jemand bestätigt. */
@@ -1627,15 +1674,24 @@ function fieldInput(pd,cur){
   if(kind==="asset") return assetInput(pd,cur);
   if(kind==="date") return el("input",{class:"i",type:"text",
     placeholder:"1492-07-03 or Mirtul 12, 1492 DR",value:cur==null?"":String(cur)});
-  if(pd["enum"]){
+  var werte=enumWerte(pd);
+  if(werte){
     var sel=el("select",{class:"i"});
     sel.appendChild(el("option",{value:""},"—"));
-    pd["enum"].forEach(function(o){ sel.appendChild(el("option",{value:o},o)); });
+    werte.forEach(function(o){ sel.appendChild(el("option",{value:o},o)); });
     sel.value=cur==null?"":String(cur);
     return sel;
   }
-  if(pd.type==="number"||pd.type==="integer")
-    return el("input",{class:"i",type:"number",value:cur==null?"":String(cur)});
+  if(pd.type==="number"||pd.type==="integer"){
+    /* Grenzen gehören an die Eingabe, nicht nur in die Prüfung: eine Zahl
+       erst abzulehnen, wenn sie dasteht, ist die zweitbeste Auskunft. */
+    var zahl=el("input",{class:"i",type:"number",value:cur==null?"":String(cur)});
+    if(typeof pd.min==="number") zahl.setAttribute("min",String(pd.min));
+    if(typeof pd.max==="number") zahl.setAttribute("max",String(pd.max));
+    if(typeof pd.min==="number"&&typeof pd.max==="number")
+      zahl.setAttribute("placeholder",pd.min+"–"+pd.max);
+    return zahl;
+  }
   if(pd.format==="long"){
     var ta=el("textarea",{class:"i"}); ta.value=cur==null?"":String(cur); return ta;
   }
@@ -1644,7 +1700,26 @@ function fieldInput(pd,cur){
   if(pd.type==="object"){
     var to=el("textarea",{class:"i code"}); to.value=JSON.stringify(cur||{},null,1); return to;
   }
-  return el("input",{class:"i",type:"text",value:cur==null?"":String(cur)});
+  var frei=el("input",{class:"i",type:"text",value:cur==null?"":String(cur)});
+  var vor=feldVorschlaege(ref);
+  if(vor.length){
+    /* `datalist` und kein `select`: getippt wird, was noch nicht dasteht,
+       und vorgeschlagen, was schon dasteht. */
+    var liste=el("datalist",{id:uid("dl")});
+    vor.forEach(function(x){ liste.appendChild(el("option",{value:x})); });
+    frei.setAttribute("list",liste.id);
+    /* Die Liste muss im Baum hängen, damit der Browser sie findet — sie
+       kommt als Geschwister mit, und `field()` reicht beides durch. */
+    var huelle=el("span",{class:"withlist"});
+    huelle.appendChild(frei); huelle.appendChild(liste);
+    Object.defineProperty(huelle,"value",{
+      get:function(){ return frei.value; },
+      set:function(v){ frei.value=v; },
+    });
+    huelle.addEventListener=function(t,f){ frei.addEventListener(t,f); };
+    return huelle;
+  }
+  return frei;
 }
 /* Was aus so einem Eingang herauskommt, in der Form, die das Schema will.
    `undefined` heisst „kein Wert" und löscht das Feld — leer zu speichern
@@ -2830,7 +2905,7 @@ function filterBar(){
   var stProp=(((REG.interfaces.Status||{}).schema||{}).properties||{}).status;
   var st=el("select",{class:"i"});
   st.appendChild(el("option",{value:""},"any status"));
-  ((stProp&&stProp["enum"])||["idea","planned","used","discarded"]).forEach(function(o){
+  (enumWerte(stProp)||["idea","prepared","ready"]).forEach(function(o){
     st.appendChild(el("option",{value:o},o)); });
   st.value=UI.status||"";
   st.addEventListener("change",function(){ UI.status=st.value; UI.route={k:"list"}; render(); });
@@ -2906,7 +2981,7 @@ function bulkBar(list){
   var stEnum=(((REG.interfaces.Status||{}).schema||{}).properties||{}).status;
   var stSel=el("select",{class:"i",style:"width:auto"});
   stSel.appendChild(el("option",{value:""},"set status…"));
-  ((stEnum&&stEnum["enum"])||["idea","planned","used","discarded"]).forEach(function(o){
+  (enumWerte(stEnum)||["idea","prepared","ready"]).forEach(function(o){
     stSel.appendChild(el("option",{value:o},o)); });
   stSel.addEventListener("change",function(){
     if(!stSel.value)return;
@@ -3050,7 +3125,7 @@ function fieldCell(e,cn,p,pd,val,txt,titel){
   var open=editable&&(UI.inline||UI.editField===id);
 
   if(open){
-    var node=fieldInput(pd,val[p]);
+    var node=fieldInput(pd,val[p],{type:cn,key:p});
     var dd=el("dd",{class:"editing"});
     dd.appendChild(node);
     var schliessen=function(){
@@ -4570,17 +4645,17 @@ function elQuests(e,ifn,item){
   if(ifn===QUEST_IFACE||((e.components||{})[QUEST_COMP])){
     var card=questCard(e);
     var kopf=el("div",{class:"crhead"});
-    var lab=QUEST_STATES.filter(function(x){return x[0]===card.state;})[0];
-    kopf.appendChild(el("span",{class:"pill",text:lab?lab[1]:(card.state||"—")}));
+    var lab=QUEST_STATES.filter(function(x){return x[0]===card.progress;})[0];
+    kopf.appendChild(el("span",{class:"pill",text:lab?lab[1]:(card.progress||"—")}));
     if(card.deadline) kopf.appendChild(el("span",{class:"pill q",text:"by "+card.deadline}));
     if(card.reward) kopf.appendChild(el("span",{class:"pill q",text:card.reward}));
     if(card.restriction) kopf.appendChild(el("span",{class:"pill q",text:card.restriction}));
     if(canWrite()){
       var sel=el("select",{class:"bsel"});
       QUEST_STATES.forEach(function(x){ sel.appendChild(el("option",{value:x[0]},x[1])); });
-      sel.value=card.state||"rumoured";
+      sel.value=card.progress||"rumoured";
       sel.addEventListener("change",function(){
-        e.components[QUEST_COMP]=Object.assign({},card,{state:sel.value}); persist(e); });
+        e.components[QUEST_COMP]=Object.assign({},card,{progress:sel.value}); persist(e); });
       kopf.appendChild(sel);
     }
     wrap.appendChild(kopf);
@@ -4635,7 +4710,7 @@ function elQuests(e,ifn,item){
   alle.sort(function(a,b){return nameOf(a).localeCompare(nameOf(b),"de");});
 
   QUEST_STATES.forEach(function(st){
-    var drin=alle.filter(function(q){ return (questCard(q).state||"rumoured")===st[0]; });
+    var drin=alle.filter(function(q){ return (questCard(q).progress||"rumoured")===st[0]; });
     if(!drin.length)return;
     wrap.appendChild(el("div",{class:"sec",text:st[1]}));
     var box=el("div",{class:"qlist"});
@@ -5018,7 +5093,8 @@ function exportState(){
     format:"nebelwacht/1",
     at:new Date().toISOString(),
     registry:{interfaces:REG.interfaces,components:REG.interfaces,
-      relations:REG.relations,views:REG.views,vars:REG.vars,settings:REG.settings},
+      relations:REG.relations,views:REG.views,units:REG.units,enums:REG.enums,
+      vars:REG.vars,settings:REG.settings},
     entities:ents
   };
 }
@@ -5062,7 +5138,7 @@ function importReport(daten){
   if(!Array.isArray(daten.entities))
     r.fehler.push("No entities in the file.");
   if(r.fehler.length)return r;
-  ["interfaces","relations","views","units","vars","settings"].forEach(function(t){
+  ["interfaces","relations","views","units","enums","vars","settings"].forEach(function(t){
     if(daten.registry[t]&&typeof daten.registry[t]==="object")
       r.teile.push(t+" ("+Object.keys(daten.registry[t]).length+")");
   });
@@ -5081,7 +5157,7 @@ function importReport(daten){
 }
 function applyImport(daten,loeschen,melde){
   var reg=daten.registry||{};
-  ["interfaces","relations","views","units","vars","settings"].forEach(function(t){
+  ["interfaces","relations","views","units","enums","vars","settings"].forEach(function(t){
     if(reg[t]&&typeof reg[t]==="object"){ REG[t]=thawed(reg[t]); saveReg(t); }
   });
   var drin={};
@@ -5521,7 +5597,7 @@ function elInitiative(e,ifn,item){
     }
     var n=zug+1, r3=runde;
     if(n>=liste.length){ n=0; r3=runde+1; }
-    schreib({turn:n,round:r3,state:"running"});
+    schreib({turn:n,round:r3,phase:"running"});
   }
 
   var bar=el("div",{class:"maptools"});
@@ -5540,7 +5616,7 @@ function elInitiative(e,ifn,item){
           logRoll("Initiative "+p2.label,r4);
           p2.rel.props=Object.assign({},p2.rel.props,{init:r4?r4.total:0});
         });
-        schreib({state:"running",round:runde||1});
+        schreib({phase:"running",round:runde||1});
       }},"Roll initiative"));
     bar.appendChild(el("button",{class:"btn sm",type:"button",
       onclick:function(){ addParticipants(e); }},"+ Fighters"));
@@ -5552,7 +5628,7 @@ function elInitiative(e,ifn,item){
             if(r5.type!==REL_PART)return;
             r5.props=Object.assign({},r5.props,{init:undefined,conditions:[]});
           });
-          schreib({round:0,turn:0,state:"planned"});
+          schreib({round:0,turn:0,phase:"planned"});
         }); }},"Reset"));
   }
   wrap.appendChild(bar);
@@ -6219,7 +6295,7 @@ function craftMod(traeger,info){
   var sb=statsOf(traeger).card;
   var m=modOf(sb,(info.ability||"int"));
   var teile=[(info.ability||"int").toUpperCase()+" "+sgn(m)];
-  var werkzeuge=((traeger.components||{}).Skills||{}).tools||[];
+  var werkzeuge=((traeger.components||{}).Proficiencies||{}).tools||[];
   var geuebt=info.tool&&werkzeuge.some(function(t){
     return String(t).toLowerCase()===String(info.tool).toLowerCase(); });
   if(geuebt){ var p=profOf(traeger); m+=p; teile.push("proficient "+sgn(p)); }
@@ -7046,7 +7122,7 @@ function addToInventory(inv){
    Ein Spielercharakter trägt seine Zahlen selbst; ein NSC borgt sie meist
    von einem Statblock über `belongsTo`. Der Bogen liest erst die eigene
    Karte, dann die geborgte, statt eine der beiden Formen zu verbieten. */
-var VIT_COMP="Vitals", SKILL_COMP="Skills", SB_COMP="StatblockInfo";
+var VIT_COMP="Vitals", SKILL_COMP="Proficiencies", SB_COMP="StatblockInfo";
 var ATTR6=["str","dex","con","int","wis","cha"];
 
 /* Fertigkeit zu Attribut: eine Kampagneneinstellung mit Rückfall, damit die
@@ -9524,7 +9600,11 @@ function compFieldList(comp){
   var pflicht=(((REG.interfaces[comp]||{}).schema||{}).required)||[];
   return Object.keys(props).map(function(k){
     var p=props[k]||{};
-    var art=p.derived?"derived":(p["enum"]?p["enum"].join(" | "):(p.format||p.type||"?"));
+    /* Nennt das Feld eine Aufzählungszeile, steht deren Name da und nicht
+       ihre zwanzig Wörter: `Ability` sagt, wo die Liste wohnt. */
+    var werte=enumWerte(p);
+    var art=p.derived?"derived"
+      :(p.enumRef?p.enumRef:(werte?werte.join(" | "):(p.format||p.type||"?")));
     return {name:k,kind:art,derived:!!p.derived,required:pflicht.indexOf(k)>=0};
   });
 }
@@ -9859,7 +9939,7 @@ function renderTypes(v){
    Leiste und die Zeilen noch einmal in der Seite — zwei Listen für eine
    Frage, und keine sagte, welche gerade gilt. */
 var REGTABS=[["howto","How it works"],["types","Types"],["views","Views"],
-  ["relations","Relations"],["units","Units"],["vars","Variables"],
+  ["relations","Relations"],["enums","Choices"],["units","Units"],["vars","Variables"],
   ["settings","Settings"],["backup","Backup"],["stack","Stack"],
   ["graph","Graph"]];
 
@@ -9884,6 +9964,7 @@ function renderRegistry(v){
      Subtypen an einer Stelle. Das JSON bleibt daneben stehen — für Massen-
      änderungen ist ein Textfeld schneller als jedes Formular. */
   if(UI.regtab==="relations"&&!UI.regjson){ maskeMitJson(v,renderRelationEditor,null); return; }
+  if(UI.regtab==="enums"&&!UI.regjson){ maskeMitJson(v,renderEnumEditor,null); return; }
   if(UI.regtab==="units"&&!UI.regjson){ maskeMitJson(v,renderUnitEditor,null); return; }
   if(UI.regtab==="vars"&&!UI.regjson){ maskeMitJson(v,renderVarEditor,null); return; }
   if(UI.regtab==="settings"&&!UI.regjson){ maskeMitJson(v,renderSettingsEditor,null); return; }
@@ -10144,6 +10225,92 @@ function renderUnitEditor(v){
   }
 }
 
+/**
+ * **Aufzählungszeilen: eine Liste von Wörtern, die einen Namen hat.**
+ *
+ * Sie steht hier und nicht am Feld, weil mehrere Felder dieselbe Liste
+ * brauchen: die sechs Attributkürzel gelten an der Fertigkeit und am
+ * Rezept, der Vorbereitungsstand an jedem Artikel. Vorher standen sie
+ * wörtlich an jedem dieser Felder — und wer eins nachzog, zog das andere
+ * nicht nach.
+ *
+ * Die Zeile sagt auch, **wer sie nennt**. Eine Liste zu ändern, ohne zu
+ * sehen, was daran hängt, ist die Änderung, die man hinterher sucht.
+ */
+function renderEnumEditor(v){
+  var w=canWrite();
+  v.appendChild(el("p",{class:"hint",
+    text:"A named list of words that fields share. A field picks it under “Choices from”."}));
+
+  /* Wer welche Zeile nennt — aus dem Register gezogen und nicht gepflegt. */
+  var nutzer={};
+  Object.keys(REG.interfaces||{}).forEach(function(t){
+    var props=((REG.interfaces[t]||{}).schema||{}).properties||{};
+    Object.keys(props).forEach(function(k){
+      var ref=(props[k]||{}).enumRef; if(!ref)return;
+      (nutzer[ref]=nutzer[ref]||[]).push(t+"."+k);
+    });
+  });
+
+  var keys=Object.keys(REG.enums||{}).sort();
+  var box=el("div",{class:"regbody",
+    style:"max-height:none;border:1px solid var(--line);border-radius:var(--r)"});
+  if(!keys.length) box.appendChild(el("p",{class:"hint",text:"None yet."}));
+  keys.forEach(function(k){
+    var z=REG.enums[k]||{};
+    var row=el("div",{class:"crow"});
+    row.appendChild(el("span",{class:"fk",style:"flex:0 0 110px",text:k}));
+    var lab=el("input",{class:"i",type:"text",style:"max-width:160px",value:z.label||""});
+    if(!w) lab.disabled=true;
+    lab.addEventListener("change",function(){
+      z.label=lab.value.trim()||k; saveReg("enums"); });
+    row.appendChild(lab);
+    var vals=el("input",{class:"i",type:"text",value:(z.values||[]).join(", ")});
+    if(!w) vals.disabled=true;
+    vals.addEventListener("change",function(){
+      var xs=vals.value.split(",").map(function(x){return x.trim();}).filter(Boolean);
+      /* Eine leere Liste hiesse: dieses Feld hat keine Werte mehr, und
+         jeder Artikel, der einen trägt, wäre falsch. Wer die Zeile los
+         will, löscht sie — das sagt es wenigstens. */
+      if(!xs.length){ UI.err="A choice list needs at least one word."; render(); return; }
+      z.values=xs; saveReg("enums"); render(); });
+    row.appendChild(vals);
+    var haengt=nutzer[k]||[];
+    row.appendChild(el("span",{class:"pill q",
+      title:haengt.join(", ")||"no field names this list",
+      text:haengt.length+" field"+(haengt.length===1?"":"s")}));
+    if(w) row.appendChild(el("button",{class:"btn sm gh dngr",type:"button",
+      onclick:function(){
+        /* Eine genannte Zeile zu löschen nimmt jedem dieser Felder seine
+           Werte. Das darf man wollen — aber nicht versehentlich. */
+        var warn=haengt.length
+          ? "Remove “"+k+"”? "+haengt.length+" field(s) name it and would lose their choices."
+          : "Remove the choice list “"+k+"”?";
+        confirmDialog(warn,function(){
+          delete REG.enums[k]; saveReg("enums"); render(); });
+      }},"×"));
+    box.appendChild(row);
+  });
+  v.appendChild(box);
+
+  if(w){
+    var nn=el("input",{class:"i",type:"text",placeholder:"Name, e.g. Ability"});
+    var nv=el("input",{class:"i",type:"text",placeholder:"Words, comma separated"});
+    var bar=el("div",{class:"addbar",style:"margin-top:10px"});
+    [nn,nv].forEach(function(x){ bar.appendChild(x); });
+    bar.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+      var name=nn.value.trim();
+      var xs=nv.value.split(",").map(function(x){return x.trim();}).filter(Boolean);
+      if(!name||!xs.length){ UI.err="A choice list needs a name and at least one word."; render(); return; }
+      if((REG.enums||{})[name]){ UI.err="The list "+name+" already exists."; render(); return; }
+      REG.enums=REG.enums||{};
+      REG.enums[name]={name:name,label:name,values:xs};
+      saveReg("enums"); render();
+    }},"Add list"));
+    v.appendChild(bar);
+  }
+}
+
 function renderVarEditor(v){
   var w=canWrite();
   v.appendChild(el("p",{class:"hint",
@@ -10283,10 +10450,14 @@ function renderSettingsEditor(v){
    man beim Arbeiten braucht. */
 var BEGRIFFE=[
   ["Type",
-   "A registry row: what a thing can be. Either a base type — it declares "+
-   "fields and inherits nothing — or a composite, made of other types. A "+
-   "composite may be made of composites. Abstract means no article is one "+
-   "directly: nobody writes an article called “Identity”."],
+   "A registry row. Three shapes: a base type — it declares fields and "+
+   "inherits nothing —, a composite made of other types, or a choice list, "+
+   "a named set of words with no fields (Ability is one). Text, number, "+
+   "date and colour are not rows: they are the shape of a field, and there "+
+   "is nothing about them to configure. Abstract means no article is one "+
+   "directly: nobody writes an article called “Identity”. A subtype that "+
+   "declares nothing of its own is a word and not a row — that is what "+
+   "Creature.kind is, and it becomes a row the day it needs fields."],
   ["Part",
    "A type another type is made of. The first one named draws the tree and "+
    "decides the area; the rest only bring their fields and edges along. You "+
@@ -10294,8 +10465,11 @@ var BEGRIFFE=[
    "would be incomplete the day the next field arrives, and nobody would "+
    "notice."],
   ["Field",
-   "One fact a type records: a key, a label, a kind, required or optional, "+
-   "maybe a default, maybe a calculation. A calculated field takes no input "+
+   "A type in one place — the fact it records there: a key, a label, a "+
+   "kind, required or optional, maybe a default, maybe a calculation. A "+
+   "choice either carries its own words or names a choice list, never "+
+   "both; a number may carry a range (1 to 20 is a range, not twenty "+
+   "words). A calculated field takes no input "+
    "and is never stored. Values are kept one card per type, named after the "+
    "type that declares the field — that is what keeps hp at the creature "+
    "apart from hp at the statblock. A type may rename a field it inherits: "+
@@ -10360,7 +10534,7 @@ function howtoBeispiel(){
 
 function renderHowto(v){
   v.appendChild(el("p",{class:"hint"},
-    "Eight words, and one article followed from its type down to the fields "+
+    "Nine words, and one article followed from its type down to the fields "+
     "it records. Everything below is read from the registry as it stands "+
     "right now — nothing here is typed out."));
 
@@ -10384,7 +10558,7 @@ function renderHowto(v){
   }
 
   /* ---- Die Begriffe ---- */
-  v.appendChild(el("div",{class:"rsec",text:"The eight words"}));
+  v.appendChild(el("div",{class:"rsec",text:"The nine words"}));
   var dl=el("dl",{class:"kdl"});
   BEGRIFFE.forEach(function(r){
     dl.appendChild(el("dt",{text:r[0]}));
@@ -11218,10 +11392,26 @@ function fieldMore(cn,k,within,w,saveC){
     if(fm.value)p.format=fm.value; else delete p.format; saveC(); });
   box.appendChild(field("Display",fm));
 
-  if(fieldKind(p)==="choice") text("Choices (comma separated)",(p["enum"]||[]).join(", "),function(v){
-    var xs=v.split(",").map(function(x){return x.trim();}).filter(Boolean);
-    p["enum"]=xs;
-  },"common, rare");
+  if(fieldKind(p)==="choice"){
+    /* Eine Auswahl nennt **entweder** eine Aufzählungszeile **oder** trägt
+       ihre Wörter selbst. Beides zugleich wären zwei Antworten auf
+       dieselbe Frage — deshalb löscht die Wahl die andere Angabe. */
+    var ref=el("select",{class:"i"}); if(!w) ref.disabled=true;
+    ref.appendChild(el("option",{value:""},"own list"));
+    Object.keys(REG.enums||{}).sort().forEach(function(k){
+      ref.appendChild(el("option",{value:k},(REG.enums[k].label||k)+" ("+k+")")); });
+    ref.value=p.enumRef||"";
+    ref.addEventListener("change",function(){
+      if(ref.value){ p.enumRef=ref.value; delete p["enum"]; }
+      else delete p.enumRef;
+      saveC(); render();
+    });
+    box.appendChild(field("Choices from",ref));
+    if(!p.enumRef) text("Choices (comma separated)",(p["enum"]||[]).join(", "),function(v){
+      var xs=v.split(",").map(function(x){return x.trim();}).filter(Boolean);
+      p["enum"]=xs;
+    },"common, rare");
+  }
 
   if(fieldKind(p)==="link") box.appendChild(targetEditor(p,saveC,w));
 
@@ -11479,7 +11669,7 @@ function editEntity(e){
             el("span",{class:"drvexp",text:"issued once"})]));
           return;
         }
-        var node=fieldInput(pd,cur);
+        var node=fieldInput(pd,cur,{type:cn,key:p});
         host.appendChild(field(fieldTitle(ifn,cn,p,pd),node));
         node.addEventListener("input",recalc);
         inputs.push({cn:cn,p:p,pd:pd,node:node});
@@ -11662,7 +11852,7 @@ render();
     render(); return;
   }
 
-  var TEILE=["interfaces","relations","views","units","vars","settings"];
+  var TEILE=["interfaces","relations","views","units","enums","vars","settings"];
   var arrived={register:{},artikel:false};
 
   /* Wirft ein Snapshot-Callback, endet die Zustellung still: `ready` bliebe

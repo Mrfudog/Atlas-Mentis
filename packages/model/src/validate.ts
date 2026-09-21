@@ -11,7 +11,7 @@
  */
 
 import { z } from 'zod';
-import { typeChain } from './entity.js';
+import { enumOptions, typeChain } from './entity.js';
 import type { Entity, LayoutElement, Registry } from './types.js';
 
 const propertyType = z.enum(['string', 'number', 'integer', 'boolean', 'array', 'object']);
@@ -20,6 +20,10 @@ const propertySchema = z.object({
   type: propertyType,
   title: z.string().optional(),
   enum: z.array(z.string()).optional(),
+  /* Die Werte stehen einmal in einer Aufzählungszeile, und das Feld nennt sie. */
+  enumRef: z.string().optional(),
+  min: z.number().optional(),
+  max: z.number().optional(),
   format: z.string().optional(),
   items: z.object({ type: propertyType }).optional(),
   derived: z.string().optional(),
@@ -74,6 +78,12 @@ export const InterfaceDefSchema = z.object({
   titles: z.record(z.string(), z.string()).optional(),
 });
 
+export const EnumDefSchema = z.object({
+  name: z.string(),
+  label: z.string().optional(),
+  values: z.array(z.string()),
+});
+
 export const UnitDefSchema = z.object({
   code: z.string(),
   label: z.string(),
@@ -113,6 +123,7 @@ export const RegistrySchema = z.object({
   relations: z.record(z.string(), RelationDefSchema),
   views: z.record(z.string(), ViewDefSchema),
   units: z.record(z.string(), UnitDefSchema),
+  enums: z.record(z.string(), EnumDefSchema).optional(),
   vars: z.record(z.string(), z.string()),
   settings: z.record(z.string(), z.string()).optional(),
 });
@@ -144,6 +155,12 @@ export interface ValidationIssue {
     | 'card_not_inherited'
     | 'unknown_card'
     | 'missing_property'
+    /* Was dasteht, aber nicht dastehen darf: ein Wort ausserhalb der
+       Aufzählung, eine Zahl ausserhalb der Spanne, ein Text, wo eine Zahl
+       mit Grenzen steht. */
+    | 'value_not_allowed'
+    | 'value_out_of_range'
+    | 'value_not_a_number'
     | 'dangling_relation'
     | 'unknown_relation';
   message: string;
@@ -217,6 +234,66 @@ export function validateEntity(
           property,
           message: `${type}.${property} is required`,
         });
+      }
+    }
+  }
+
+  /* Was in einem Feld steht, muss das Feld auch zulassen. Geprüft wird
+     nur, was **dasteht**: ein leeres Feld ist keine falsche Angabe, und
+     dafür gibt es `required`. Gerechnete Werte stehen nie in den Daten.
+
+     Eine Aufzählung und eine Spanne waren bis hierher Angaben für die
+     Maske allein. Eine Regel, die nur das Eingabefeld kennt, gilt für
+     jeden Weg nicht, der nicht durch die Maske führt — Einfuhr, Umzug,
+     eine Zeile von Hand —, und genau dort entstehen die Werte, die
+     niemand mehr erklären kann. */
+  for (const type of kette) {
+    const schema = registry.interfaces[type]?.schema;
+    const card = entity.components?.[type];
+    if (!schema || !card) continue;
+    for (const [property, prop] of Object.entries(schema.properties)) {
+      if (prop.derived) continue;
+      const wert = card[property];
+      if (wert === undefined || wert === '' || wert === null) continue;
+      const erlaubteWerte = enumOptions(registry, prop);
+      if (erlaubteWerte) {
+        /* Ein Feld mit `many` trägt eine Liste; jeder Eintrag gilt für sich. */
+        const werte = Array.isArray(wert) ? wert : [wert];
+        for (const einer of werte) {
+          const text = typeof einer === 'object' && einer !== null
+            ? (einer as { value?: unknown }).value
+            : einer;
+          if (text === undefined || text === '' || text === null) continue;
+          if (!erlaubteWerte.includes(String(text))) {
+            issues.push({
+              code: 'value_not_allowed',
+              component: type,
+              property,
+              message: `${type}.${property} is ${String(text)}, which is not one of ${erlaubteWerte.join(', ')}`,
+            });
+          }
+        }
+      }
+      if (typeof prop.min === 'number' || typeof prop.max === 'number') {
+        const zahl = Number(wert);
+        if (!Number.isFinite(zahl)) {
+          issues.push({
+            code: 'value_not_a_number',
+            component: type,
+            property,
+            message: `${type}.${property} is ${String(wert)}, which is not a number`,
+          });
+        } else if (
+          (typeof prop.min === 'number' && zahl < prop.min)
+          || (typeof prop.max === 'number' && zahl > prop.max)
+        ) {
+          issues.push({
+            code: 'value_out_of_range',
+            component: type,
+            property,
+            message: `${type}.${property} is ${zahl}, outside ${prop.min ?? '−∞'}…${prop.max ?? '∞'}`,
+          });
+        }
       }
     }
   }

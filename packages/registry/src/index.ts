@@ -3,8 +3,9 @@ import { interfaces } from './interfaces.js';
 import { relations } from './relations.js';
 import { views } from './views.js';
 import { units } from './units.js';
+import { enums } from './enums.js';
 
-export { interfaces, relations, views, units };
+export { interfaces, relations, views, units, enums };
 
 /** Campaign-wide defaults, the last scope {VAR} resolution falls back to. */
 export const vars: Record<string, string> = {
@@ -67,4 +68,4 @@ export const settings: Record<string, string> = {
 };
 
 /** The rows a fresh database is seeded with. */
-export const seedRegistry: Registry = { interfaces, relations, views, units, vars, settings };
+export const seedRegistry: Registry = { interfaces, relations, views, units, enums, vars, settings };

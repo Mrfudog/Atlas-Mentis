@@ -74,11 +74,22 @@ export const interfaces: Record<string, InterfaceDef> = {
     schema: g.Vitals.schema,
   },
 
-  Skills: {
-    name: 'Skills',
-    label: 'Skills',
+  /* Worin jemand geübt ist. Es hiess `Skills` und trug nur Fertigkeiten,
+     Sprachen und Werkzeuge; Rüstungen, Waffen und Wissensgebiete standen
+     nirgends oder als freier Text am Statblock. */
+  Proficiencies: {
+    name: 'Proficiencies',
+    label: 'Proficiencies',
     abstract: true,
-    schema: g.Skills.schema,
+    schema: g.Proficiencies.schema,
+  },
+
+  /* Eine Stufe von 1 bis 20, die Begegnung und Szene teilen. */
+  Difficulty: {
+    name: 'Difficulty',
+    label: 'Difficulty',
+    abstract: true,
+    schema: g.Difficulty.schema,
   },
 
   /* ---------- Basistypen ----------
@@ -188,8 +199,22 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Creature',
     area: 'world',
     label: 'Creature',
-    abstract: true,
-    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Vars', 'Access', 'Vitals', 'Skills', 'Lore', 'Facts', 'Secrets', 'ReadAloud'],
+    /**
+     * **Eine Kreatur ist selbst eine Art und kein Oberbegriff.**
+     *
+     * Darunter hingen `NPC`, `Companion` und `Retainer` — drei Zeilen, die
+     * zusammen kein eigenes Feld trugen und sich nur im Namen
+     * unterschieden. Was sie voneinander trennt, ist jetzt das freie Feld
+     * `kind`: npc, companion, retainer, pet, summon. Eine neue Sorte ist
+     * damit ein Eintrag und keine Registerzeile, und die Sonderregeln, die
+     * einen Begleiter zum Begleiter machen, stehen am Statblock und an der
+     * Regel, auf die er zeigt.
+     *
+     * `PlayerCharacter` bleibt eine eigene Art: er trägt Stufe, Klasse,
+     * Herkunft und den gerechneten Übungsbonus — Felder, die keine andere
+     * Kreatur hat.
+     */
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Vars', 'Access', 'Vitals', 'Proficiencies', 'Lore', 'Facts', 'Secrets', 'ReadAloud'],
     schema: g.CreatureInfo.schema,
     /* **Die Zahlen wohnen am Statblock**, auch die eines Spielercharakters.
        Er hat mehr darüber hinaus — Stufe, Klasse, Hintergrund —, aber AC,
@@ -245,7 +270,7 @@ export const interfaces: Record<string, InterfaceDef> = {
                      wohnen am Statblock, also hat die Kreatur sie gar
                      nicht. Eine Ausnahme für etwas, das es nicht gibt,
                      wird am Tag des Umzugs still falsch. */
-                  except: ['Vitals', 'Skills'],
+                  except: ['Vitals', 'Proficiencies'],
                 },
                 { id: 'c-b', el: 'prose', fields: 'all' },
               ],
@@ -270,33 +295,12 @@ export const interfaces: Record<string, InterfaceDef> = {
     },
   },
 
-  NPC: {
-    name: 'NPC',
-    area: 'world',
-    label: 'NPC',
-    extends: ['Creature'],
-  },
-
   PlayerCharacter: {
     name: 'PlayerCharacter',
     area: 'world',
     label: 'Player character',
     extends: ['Creature'],
     schema: merge(g.CharacterInfo),
-  },
-
-  Companion: {
-    name: 'Companion',
-    area: 'world',
-    label: 'Companion',
-    extends: ['Creature'],
-  },
-
-  Retainer: {
-    name: 'Retainer',
-    area: 'world',
-    label: 'Retainer',
-    extends: ['Creature'],
   },
 
   Place: {
@@ -561,7 +565,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Scene',
     area: 'history',
     label: 'Scene / Encounter',
-    extends: ['Story', 'Tactics'],
+    extends: ['Story', 'Tactics', 'Difficulty'],
     schema: merge(g.SceneInfo),
   },
 
@@ -730,7 +734,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Encounter',
     area: 'play',
     label: 'Encounter',
-    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Tactics', 'ReadAloud', 'Notes', 'Secrets'],
+    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Tactics', 'ReadAloud', 'Notes', 'Secrets', 'Difficulty'],
     schema: merge(g.EncounterInfo),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */

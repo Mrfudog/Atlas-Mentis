@@ -24,7 +24,7 @@ const rook: Entity = {
   interfaces: ['PlayerCharacter'],
   name: 'Rook',
   components: {
-    Identity: { name: 'Rook', id: 'pc-0001', aliases: [] }, Status: { status: 'used' },
+    Identity: { name: 'Rook', id: 'pc-0001', aliases: [] }, Status: { status: 'ready' },
     PlayerCharacter: { level: 5 },
   },
   relations: [{ id: 'r1', type: 'carries', to: 'inv_rook', props: {} }],
@@ -34,16 +34,16 @@ const inv: Entity = {
   interfaces: ['Inventory'],
   name: 'Rooks Sachen',
   components: {
-    Identity: { name: 'Rooks Sachen', id: 'inv-0001', aliases: [] }, Status: { status: 'used' },
+    Identity: { name: 'Rooks Sachen', id: 'inv-0001', aliases: [] }, Status: { status: 'ready' },
   },
   relations: [],
 };
 const fremd: Entity = {
   id: 'n_volo',
-  interfaces: ['NPC'],
+  interfaces: ['Creature'],
   name: 'Volo',
   components: {
-    Identity: { name: 'Volo', id: 'npc-0001', aliases: [] }, Status: { status: 'used' },
+    Identity: { name: 'Volo', id: 'npc-0001', aliases: [] }, Status: { status: 'ready' },
   },
   relations: [],
 };
@@ -351,10 +351,10 @@ describe('the user command', () => {
 describe('what a player gets to read', () => {
   const geheimnis: Entity = {
     id: 'n_wachsmann',
-    interfaces: ['NPC'],
+    interfaces: ['Creature'],
     name: 'Der Wachsmann',
     components: {
-      Identity: { name: 'Der Wachsmann', id: 'npc-0001', aliases: [], cover: 'die Gestalt im Mantel' }, Status: { status: 'used' }, Description: { description: 'Er heisst Aurinax und war einmal Goldschmied.' },
+      Identity: { name: 'Der Wachsmann', id: 'npc-0001', aliases: [], cover: 'die Gestalt im Mantel' }, Status: { status: 'ready' }, Description: { description: 'Er heisst Aurinax und war einmal Goldschmied.' },
       /* Prosa ist ein Feld mit Einträgen; an der Id hängt die Freigabe.
          Das waren Blöcke mit Ankern. */
       Prose: { paragraph: [{ id: 'paragraph-offen', value: 'Gross, still, wächsern.' }] },
@@ -367,7 +367,7 @@ describe('what a player gets to read', () => {
     interfaces: ['Information'],
     name: 'Sein richtiger Name',
     components: {
-      Identity: { name: 'Sein richtiger Name', id: 'info-0001', aliases: [] }, Status: { status: 'used' },
+      Identity: { name: 'Sein richtiger Name', id: 'info-0001', aliases: [] }, Status: { status: 'ready' },
       Information: { tier: 'secret', fields: ['Identity.name', 'Description.description'] },
     },
     relations: [],
@@ -587,7 +587,7 @@ describe('one account, several characters', () => {
     interfaces: ['PlayerCharacter'],
     name: 'Sela',
     components: {
-      Identity: { name: 'Sela', id: 'pc-0001', aliases: [] }, Status: { status: 'used' },
+      Identity: { name: 'Sela', id: 'pc-0001', aliases: [] }, Status: { status: 'ready' },
       /* `PlayerCharacter` verlangt sie — eine Figur ohne sie liesse sich
          lesen und nicht zurückschreiben, und die Prüfung fiele auf die
          Maske statt auf die Vorlage. */
@@ -597,10 +597,10 @@ describe('one account, several characters', () => {
   };
   const geheim: Entity = {
     id: 'n_wachsmann',
-    interfaces: ['NPC'],
+    interfaces: ['Creature'],
     name: 'Der Wachsmann',
     components: {
-      Identity: { name: 'Der Wachsmann', id: 'npc-0001', aliases: [] }, Status: { status: 'used' }, Description: { description: 'Er heisst Aurinax.' },
+      Identity: { name: 'Der Wachsmann', id: 'npc-0001', aliases: [] }, Status: { status: 'ready' }, Description: { description: 'Er heisst Aurinax.' },
     },
     relations: [{ id: 'rk', type: 'knowledge', to: 'i_name', props: {} }],
   };
@@ -610,7 +610,7 @@ describe('one account, several characters', () => {
     interfaces: ['Information'],
     name: 'Sein richtiger Name',
     components: {
-      Identity: { name: 'Sein richtiger Name', id: 'info-0001', aliases: [] }, Status: { status: 'used' },
+      Identity: { name: 'Sein richtiger Name', id: 'info-0001', aliases: [] }, Status: { status: 'ready' },
       Information: { tier: 'secret', fields: ['Description.description'] },
     },
     relations: [{ id: 'rb', type: 'knownBy', to: 'pc_sela', props: {} }],
@@ -690,7 +690,7 @@ describe('knowledge shared with a whole group', () => {
     interfaces: ['Group'],
     name: 'Die Donnerstagsrunde',
     components: {
-      Identity: { name: 'Die Donnerstagsrunde', id: 'group-0001', aliases: [] }, Status: { status: 'used' },
+      Identity: { name: 'Die Donnerstagsrunde', id: 'group-0001', aliases: [] }, Status: { status: 'ready' },
       Group: { kind: 'players', purpose: 'Wer an diesem Tisch sitzt' },
     },
     relations: [],
@@ -700,7 +700,7 @@ describe('knowledge shared with a whole group', () => {
     interfaces: ['Place'],
     name: 'Der Lampenkeller',
     components: {
-      Identity: { name: 'Der Lampenkeller', id: 'place-0001', aliases: [] }, Status: { status: 'used' }, Description: { description: 'Der Eingang liegt hinter dem Fass.' },
+      Identity: { name: 'Der Lampenkeller', id: 'place-0001', aliases: [] }, Status: { status: 'ready' }, Description: { description: 'Der Eingang liegt hinter dem Fass.' },
     },
     relations: [{ id: 'rk', type: 'knowledge', to: 'i_eingang', props: {} }],
   };
@@ -710,7 +710,7 @@ describe('knowledge shared with a whole group', () => {
     interfaces: ['Information'],
     name: 'Wo der Eingang liegt',
     components: {
-      Identity: { name: 'Wo der Eingang liegt', id: 'info-0001', aliases: [] }, Status: { status: 'used' },
+      Identity: { name: 'Wo der Eingang liegt', id: 'info-0001', aliases: [] }, Status: { status: 'ready' },
       Information: { tier: 'secret', fields: ['Description.description'] },
     },
     relations: [{ id: 'rb', type: 'knownBy', to: 'grp_runde', props: {} }],

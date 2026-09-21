@@ -37,7 +37,7 @@ export const relations: Record<string, RelationDef> = {
     from: ['Statblock'],
     /* **Jede Kreatur**, nicht nur ein NSC: ein Spielercharakter hat
        dieselben Zahlen wie ein Monster und mehr darüber hinaus. Solange
-       hier `NPC` stand, konnte er gar keinen Statblock haben und musste
+       hier nur der NSC stand, konnte er gar keinen Statblock haben und musste
        seine Zahlen selbst tragen — die zweite Form für dieselbe Sache. */
     to: ['Creature'],
     cardinality: 'one',
@@ -52,19 +52,22 @@ export const relations: Record<string, RelationDef> = {
     to: ['Rule'],
   },
 
+  /* `NPC` stand hier, solange es die Art gab. Jetzt ist eine Kreatur die
+     Art, und `kind` sagt, was für eine — eine Kante, die auf den Namen
+     einer verschwundenen Art zeigt, gilt für nichts. */
   owes: {
     type: 'owes',
     label: 'owes',
     inverseLabel: 'creditor of',
-    from: ['NPC'],
-    to: ['NPC'],
+    from: ['Creature'],
+    to: ['Creature'],
   },
 
   memberOf: {
     type: 'memberOf',
     label: 'member of',
     inverseLabel: 'members',
-    from: ['NPC'],
+    from: ['Creature'],
     to: ['Faction'],
   },
 
@@ -72,7 +75,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'livesIn',
     label: 'lives in',
     inverseLabel: 'residents',
-    from: ['NPC'],
+    from: ['Creature'],
     to: ['Place'],
   },
 
@@ -216,7 +219,7 @@ export const relations: Record<string, RelationDef> = {
     label: 'features',
     inverseLabel: 'appears in',
     from: ['Story'],
-    to: ['Creature', 'NPC', 'Statblock', 'Faction'],
+    to: ['Creature', 'Statblock', 'Faction'],
   },
 
   // ------------------------------------------------------------- knowledge
@@ -686,7 +689,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'crafting',
     label: 'working on',
     inverseLabel: 'worked on by',
-    from: ['Creature', 'NPC', 'PlayerCharacter', 'Party'],
+    from: ['Creature', 'PlayerCharacter', 'Party'],
     to: ['Recipe'],
     props: {
       type: 'object',
@@ -722,8 +725,8 @@ export const relations: Record<string, RelationDef> = {
     type: 'regards',
     label: 'regards',
     inverseLabel: 'judged by',
-    from: ['Creature', 'NPC', 'PlayerCharacter', 'Party', 'Faction'],
-    to: ['Creature', 'NPC', 'PlayerCharacter', 'Party', 'Faction'],
+    from: ['Creature', 'PlayerCharacter', 'Party', 'Faction'],
+    to: ['Creature', 'PlayerCharacter', 'Party', 'Faction'],
     props: {
       type: 'object',
       properties: {

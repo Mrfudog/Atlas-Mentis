@@ -1,6 +1,6 @@
 # Begriffe
 
-Stand 2026-09-20.
+Stand 2026-09-21.
 
 Diese Datei sagt, wie die Dinge heissen. Sie steht hier, weil dieselbe Sache
 in den letzten Wochen „Komponente", „Schnittstelle", „Interface", „Karte",
@@ -16,9 +16,9 @@ Prosa benutzt das deutsche Wort und nennt den englischen Bezeichner dazu.
 
 | Deutsch | Englisch | Was es ist |
 |---|---|---|
-| **Typ** | Type | Eine Registerzeile: was ein Ding sein kann. |
+| **Typ** | Type | Eine Registerzeile. **Alles im Register ist ein Typ.** |
 | **Bestandteil** | Part | Ein Typ, aus dem ein anderer zusammengesetzt ist. |
-| **Feld** | Field | Eine Tatsache, die ein Typ festhält. |
+| **Feld** | Field | Ein Typ **an einer Stelle**: die Tatsache, die er dort festhält. |
 | **Bezeichner** | Identifier | Die ausgegebene Nummer eines Artikels. |
 | **Artikel** | Article | Ein Ding in der Kampagne. |
 | **Ansicht** | View | Wie ein Artikel gezeichnet wird. |
@@ -35,25 +35,40 @@ schlicht Typ. Und **Facet** und **Stufe** hiessen beide Ansicht.
 
 ## Typ
 
-Eine Registerzeile in `REG.interfaces`. Sie hat genau zwei Formen:
+Eine Registerzeile. Sie hat drei Formen:
 
 - **Basistyp** — er erklärt Felder und erbt nichts. `Identity` ist einer:
-  Name, Schlüssel, Aliasse, Deckname. `Time` ist einer. `Tags` ist einer.
+  Name, Nummer, Aliasse, Deckname. `Time` ist einer. `Tags` ist einer.
 - **Zusammenschluss** — er ist aus anderen Typen gemacht und erklärt
   daneben vielleicht eigene Felder. `Quest` ist einer: `Identity`,
   `Status`, `Description`, `Visibility`, `Tags`, `Todos`, `Time` und ein
   paar eigene.
+- **Aufzählung** (`REG.enums`) — eine Liste von Wörtern mit einem Namen und
+  ohne Felder. `Ability` ist eine: `str`, `dex`, `con`, `int`, `wis`, `cha`.
+  Sie steht im Register, weil **mehrere Felder dieselbe Liste brauchen** —
+  die sechs Kürzel standen wörtlich an der Fertigkeit und am Rezept, und
+  wer eins nachzog, zog das andere nicht nach.
 
-Ein Zusammenschluss darf aus Zusammenschlüssen bestehen; `NPC` besteht aus
-`Creature`, und `Creature` besteht aus acht anderen.
+Ein Zusammenschluss darf aus Zusammenschlüssen bestehen; `PlayerCharacter`
+besteht aus `Creature`, und `Creature` besteht aus siebzehn anderen.
+
+**Text, Zahl, Datum, Farbe sind keine Registerzeilen.** Sie sind die *Form*
+eines Feldes (`type` und `format`) — es gibt nichts an ihnen zu
+konfigurieren, und eine Zeile „Text" wäre eine Zeile, die niemand öffnet.
+Eine Aufzählung dagegen hat Inhalt, den man ändert, und darum steht sie da.
 
 Ein Typ ist **abstrakt**, wenn kein Artikel ihn direkt trägt. `Identity` ist
-abstrakt — niemand legt einen Artikel „Identität" an. `Creature` ist
-abstrakt, weil jede Kreatur genauer ist: ein NPC, ein Begleiter, eine
-Spielfigur.
+abstrakt — niemand legt einen Artikel „Identität" an. Ohne die Angabe
+stünde jeder Bestandteil im Kompendium als etwas, das man anlegen kann; das
+ist der einzige Zweck, und es ist ein guter.
 
 Ein **Artikeltyp** ist ein Typ, der nicht abstrakt ist: einer, von dem es
-Artikel gibt.
+Artikel gibt. `Creature` ist einer — sie war einmal abstrakt, mit `NPC`,
+`Companion` und `Retainer` darunter; drei Zeilen, die zusammen kein eigenes
+Feld trugen. Was sie trennt, ist jetzt das freie Feld `kind`: npc,
+companion, retainer, pet, summon. **Ein Untertyp, der nichts eigenes
+erklärt, ist ein Wort und keine Zeile** — und wird eine Zeile in dem
+Moment, in dem er eigene Felder braucht.
 
 ### Der erste Bestandteil zählt anders
 
@@ -84,6 +99,13 @@ Eine Tatsache, die ein Typ festhält. Ein Feld hat
   die ein Typ für sich umbenennen darf, siehe unten,
 - eine **Art** — Text, langer Text, Zahl, Datum, Farbe, Auswahl, Verweis,
   Ablage —,
+- bei einer **Auswahl** entweder eigene Werte oder den Namen einer
+  Aufzählungszeile (`enumRef`), nie beides: zwei Listen an einem Feld wären
+  zwei Antworten auf dieselbe Frage,
+- bei einer **Zahl** vielleicht eine Spanne (`min`, `max`). Eine
+  Schwierigkeit von 1 bis 20 ist eine Spanne und keine Aufzählung von
+  zwanzig Wörtern; fünf Wörter wären fünf Stufen mit Lücken dazwischen,
+  und „zwischen medium und hard" gäbe es dann nicht,
 - **Pflicht oder optional**,
 - vielleicht einen **Standard**, der beim Anlegen gilt und nicht rückwirkend,
 - vielleicht eine **Rechnung** (`derived`), und dann bekommt es keine
@@ -141,6 +163,12 @@ ein zweites Mal derselbe Name war. Beim Umbenennen musste er entweder
 mitwandern, dann war er kein fester Bezeichner, oder nicht, dann log er.
 Eine Nummer sagt nichts und bleibt deshalb richtig; wie der Artikel heisst,
 steht daneben.
+
+**Er überlebt auch einen Wechsel der Art.** Die drei NSC, die Kreaturen
+wurden, heissen weiter `npc-0001` bis `npc-0003`: der Anfang sagt, wie die
+Art beim Anlegen hiess, und nicht, wie sie heute heisst. Eine Wanderung, die
+Bezeichner umschreibt, wäre genau die Stelle, an der ein fester Bezeichner
+wandert — und jede Freigabe, die ihn nennt, zeigte danach ins Leere.
 
 Gezählt wird, was dasteht: die höchste vergebene plus eins. Ein
 gespeicherter Zähler wäre eine zweite Stelle, die sagt, wie weit man ist,
@@ -309,3 +337,45 @@ Stellen können sich widersprechen:
 Und eines steht nie im Code, sondern im Register: **welche Artikelarten es
 gibt**. Eine neue anzulegen ist ein Einfügen und keine Migration. Das ist die
 Behauptung, die der Prototyp prüft.
+
+---
+
+## Ein Beispiel, ganz durch
+
+Volothamp Geddarm, wie er heute im Bestand steht. Dieselbe Kette zeigt der
+Prototyp unter **Registry › How it works**, dort aus dem laufenden Register
+gezogen statt abgeschrieben.
+
+```
+Artikel  n_volo
+  ist    Creature                       ← eine Art, kein Oberbegriff
+  Nummer npc-0003                       ← ausgegeben, als „NPC" noch eine Art war
+  Karten
+    Identity     name, aliases, cover   ← Basistyp
+    Status       status: ready          ← Auswahl aus der Aufzählung State
+    Description  description
+    Tags         tags: händler, kerzengasse
+    Creature     kind: npc              ← freies Wort; früher eine eigene Art
+                 species: Mensch, role: Händler, attitude: freundlich
+    Secrets      secret[0] = „Schuldet Floon achtzig Drachen…"
+    Vars         bindings
+  Kanten
+    owes     → n_floon                  ← trägt nichts, sagt aber beides
+    livesIn  → o_kerzengasse
+    knowledge→ i_volo_name              ← was an ihm verborgen ist
+    regards  → pa_wacht                 ← mit Marken an der Kante
+```
+
+Daran hängt alles, was dieses Dokument erklärt:
+
+- **`Creature` ist die Art**, `kind: npc` der Untertyp. Wäre der Unterschied
+  eine Registerzeile, gäbe es drei Zeilen ohne eigenes Feld.
+- **`Status.status` nennt die Aufzählung `State`** und trägt die Werte nicht
+  selbst. Wer `ready` in `abgeschlossen` umbenennen will, ändert eine Zeile.
+- **`npc-0003` bleibt `npc-0003`**, obwohl die Art heute anders heisst.
+- **`Secrets.secret[0]` trägt eine Id aus dem Text.** Daran hängt die
+  Freigabe, und darum übersteht sie einen erneuten Import.
+- **Die Zahlen fehlen**, und das ist richtig: Volo kämpft nicht. Wer einen
+  Statblock hat, hat ihn über `belongsTo` — und nicht, weil die Art es
+  verlangt.
+

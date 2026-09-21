@@ -57,6 +57,26 @@ export interface PropertySchema {
   derived?: string;
   /** Render this derived value inside the named sibling's cell: STÄ 16 (+3). */
   of?: string;
+  /**
+   * **Eine Aufzählung, die mehrere Felder teilen.** Statt der Werte steht
+   * hier der Name einer Aufzählungszeile (`Registry.enums`), und die Werte
+   * stehen dort einmal.
+   *
+   * `Skill.ability` und `Recipe.ability` trugen dieselben sechs Wörter
+   * zweimal. Zwei Listen für eine Sache halten genau so lange, wie jemand
+   * an beide denkt — und die eine, die niemand nachzieht, ist danach still
+   * falsch. Gelesen wird beides über `enumOptions()`: ein Feld nennt seine
+   * Werte selbst **oder** eine Zeile, nie beides.
+   */
+  enumRef?: string;
+  /**
+   * Die Spanne einer Zahl, beide Grenzen eingeschlossen. Eine Stufe von 1
+   * bis 20 ist eine Spanne und keine Aufzählung von zwanzig Wörtern: die
+   * Grenzen sagen, was gilt, und die Maske darf daraus ein Zahlenfeld mit
+   * Anschlag machen.
+   */
+  min?: number;
+  max?: number;
   default?: unknown;
   /**
    * **Ausgegeben, nicht eingetippt.** Das Feld bekommt keine Eingabe: es
@@ -295,6 +315,15 @@ export interface ViewDef {
 export interface Registry {
   interfaces: Record<string, InterfaceDef>;
   relations: Record<string, RelationDef>;
+  /**
+   * Aufzählungen, die mehrere Felder teilen — eine Liste von Wörtern mit
+   * einem Namen. Ein Feld nennt sie über `enumRef`.
+   *
+   * Das ist dieselbe Sorte Zeile wie ein Typ: es steht im Register, es
+   * gehört keinem Artikel, und wer die Liste ändert, ändert sie einmal.
+   * Optional, weil ein Register ohne geteilte Aufzählung vollständig ist.
+   */
+  enums?: Record<string, EnumDef>;
   views: Record<string, ViewDef>;
   /** Einheiten und wie sie ineinander umgerechnet werden. */
   units: Record<string, UnitDef>;
@@ -308,6 +337,19 @@ export interface Registry {
   settings?: Record<string, string>;
 }
 
+
+/**
+ * Eine Aufzählungszeile: ein Name und die Wörter, die er meint.
+ *
+ * Sie trägt keine Felder, also ist sie kein `InterfaceDef` — und sie ist
+ * trotzdem ein Typ im Register: `Skill` hat ein Feld `ability`, und dessen
+ * Typ ist `Ability`. Wer die sechs Wörter ändert, ändert sie hier.
+ */
+export interface EnumDef {
+  name: string;
+  label?: string;
+  values: string[];
+}
 
 export interface RelationProps {
   /** Per-reference bindings for the target's {VAR} placeholders (REQ-174). */

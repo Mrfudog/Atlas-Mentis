@@ -57,7 +57,7 @@ describe('units', () => {
       },
       settings: { ...seedRegistry.settings, units: 'metric' },
     };
-    expect(unitsFor(reg, 'NPC')).toBe('imperial'); // geerbt von Creature
+    expect(unitsFor(reg, 'PlayerCharacter')).toBe('imperial'); // geerbt von Creature
     expect(unitsFor(reg, 'Place')).toBe('metric'); // aus der Einstellung
     expect(unitsFor({ interfaces: {}, settings: {} }, 'Nothing')).toBe('both');
   });

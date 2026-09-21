@@ -7,13 +7,13 @@ import { hashPassword } from '../src/auth.js';
 
 const volo: Entity = {
   id: '11111111-1111-4111-8111-111111111111',
-  interfaces: ['NPC'],
+  interfaces: ['Creature'],
   name: 'Volo Geddarm',
   /* Eine Karte je Bestandteil. `name` und `key` sind Pflicht — ohne sie
      weist die Validierung den Artikel mit 422 ab, was sie soll. */
   components: {
     Identity: { name: 'Volo Geddarm', id: 'npc-0001', aliases: ['Der Dicke'] },
-    Status: { status: 'used' },
+    Status: { status: 'ready' },
     Tags: { tags: ['händler'] },
   },
   blocks: [],

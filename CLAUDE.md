@@ -28,7 +28,9 @@ von `hp` am Statblock auseinander, ohne dass eins von beiden umbenannt werden
 muss. Verbindungen sind typisierte, gerichtete **Kanten**, die eigene
 Eigenschaften tragen dürfen, nur in einer Richtung gespeichert werden und deren
 Gegenrichtung immer eine Abfrage ist. Zugehörigkeit wird über `Typed`
-behauptet und von der Validierung geprüft; Pflicht steht je Feld. Alles davon
+behauptet und von der Validierung geprüft; Pflicht steht je Feld, und was
+in einem Feld stehen darf, prüft sie mit — eine Aufzählung hält, eine
+Spanne hält. Alles davon
 sind Zeilen — eine neue Artikelart anzulegen heisst einfügen, nicht migrieren.
 
 Vollständig in [`Mrfudog/atlas-mentis`](https://github.com/Mrfudog/atlas-mentis):
@@ -116,6 +118,38 @@ wiederkommen, werden sie neu geschrieben.
   Wissensfreigabe hängt (`Secrets.secret#id`). Die Id kommt aus dem Text, denn
   eine durchgezählte hält nur, solange die Reihenfolge hält. Ein Prosafeld
   steht **nicht** in der Feldtabelle — es gehört dem Element `prose`.
+- **Ein Untertyp ohne eigene Felder ist ein Wort und keine Zeile.** `NPC`,
+  `Companion` und `Retainer` waren drei Artikelarten, die zusammen kein
+  einziges eigenes Feld trugen; eine Kreatur ist jetzt selbst eine Art, und
+  `Creature.kind` sagt, was für eine — npc, companion, retainer, pet,
+  summon. Das Feld ist **frei** und keine Aufzählung: die Maske schlägt vor,
+  was an anderen Kreaturen schon dasteht, und eine neue Sorte ist ein
+  Eintrag. Braucht eine Sorte eigene Felder, wird sie eine Zeile, die von
+  `Creature` erbt — bis dahin stehen ihre Sonderregeln am Statblock und an
+  der Regel, auf die er zeigt.
+- **Eine Aufzählung, die zwei Felder brauchen, ist eine Registerzeile**
+  (`REG.enums`), und das Feld nennt sie mit `enumRef`. Die sechs
+  Attributkürzel standen wörtlich an `SkillInfo.ability` und an
+  `RecipeInfo.ability`; wer eine Liste nachzog, zog die andere nicht nach.
+  Gelesen wird **immer** über `enumOptions()` (Paket) bzw. `enumWerte()`
+  (Prototyp) und nie `p.enum` direkt. Eine Liste mit genau einem Nutzer
+  bleibt am Feld — eine Zeile dafür wäre der Umweg ohne den Gewinn.
+- **Eine Zahl mit Grenzen ist eine Spanne** (`min`, `max`), keine
+  Aufzählung von zwanzig Wörtern. Die Schwierigkeit war fünf Wörter an der
+  Begegnung und freier Text an der Szene; sie ist jetzt eine Stufe von 1
+  bis 20 im Typ `Difficulty`, und beide nehmen ihn dazu.
+- **`Status` ist der Vorbereitungsstand und sonst nichts:** `idea`,
+  `prepared`, `ready` (Aufzählungszeile `State`). Was im Spiel geschah,
+  gehört nicht hierher — `used` und `discarded` waren Ereignisse, die ein
+  Feld für immer festhielt. Wie weit eine Sache am Tisch ist, sagt das Feld
+  der Art: `Quest.progress`, `Encounter.phase`, `Explored.state`. Drei
+  Felder hiessen einmal alle `state` und meinten Verschiedenes.
+- **Bei jeder Modelländerung wandert die Erklärung mit.**
+  [docs/Begriffe.md](docs/Begriffe.md) *und* die Seite „How it works" im
+  Register, mitsamt dem durchgerechneten Beispiel am Ende — beides gehört
+  in denselben Commit wie die Zeile, die sich geändert hat. Eine Erklärung,
+  die man später nachzieht, erklärt in der Zwischenzeit etwas, das es nicht
+  mehr gibt.
 - **Wie die Dinge heissen, steht in [docs/Begriffe.md](docs/Begriffe.md):**
   Typ, Bestandteil, Feld, Bezeichner, Artikel, Ansicht, Block, Kante,
   Einheit — neun Wörter, mehr nicht. Wer zwei Namen für eine Sache hat, hat bald zwei Sachen; im
@@ -179,6 +213,14 @@ Teils weg und zählt sie dabei auf. Ein ganzer Teil ist oft zu grob — dann
 nimmt der Schalter einzelne Zeilen: `--prune components:DeedInfo,interfaces:Deed`.
 Ein Name, der nichts trifft, wird gesagt und lässt den Lauf fehlschlagen;
 ein stiller Tippfehler sähe aus wie eine erledigte Löschung.
+
+Ändert eine Zeile ihren **Namen** oder fällt sie weg, wandert der Bestand
+mit: je Änderung ein Skript in `prototype/migration/`, wie
+`kreatur-und-uebungen.mjs` (`node … <verzeichnis>` für den Prüfbestand,
+`node … <ausfuhr.json>` für eine Sicherung aus dem laufenden Prototyp —
+dabei wird auch das Register durch das aktuelle ersetzt). Was dabei
+niemand mehr trägt, wird **aufgezählt**: ein stiller Verlust sieht später
+aus wie ein leeres Feld.
 
 `pnpm --filter @nw/registry catalogue` schreibt
 [docs/Artikeltypen.md](docs/Artikeltypen.md) neu — je Artikelart, was sie

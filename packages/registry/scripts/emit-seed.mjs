@@ -52,7 +52,7 @@ for (const p of PRUNE) {
 }
 const zielArg = argv.find((a, i) => !a.startsWith('--') && i !== pruneAt + 1);
 const ZIEL = resolve(zielArg ?? join(HIER, '..', '..', '..', 'prototype', 'test', 'dbdump', 'registry'));
-const TEILE = ['interfaces', 'relations', 'views', 'units', 'vars', 'settings'];
+const TEILE = ['interfaces', 'relations', 'views', 'units', 'enums', 'vars', 'settings'];
 
 mkdirSync(ZIEL, { recursive: true });
 let fremd = 0;

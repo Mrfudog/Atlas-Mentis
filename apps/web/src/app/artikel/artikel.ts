@@ -7,6 +7,7 @@ import {
   entityName,
   entriesOf,
   entryRef,
+  enumOptions,
   fieldTitle,
   proseFields,
   relationAccepts,
@@ -37,6 +38,10 @@ interface Feld {
   label: string;
   art: Eingabe;
   schema: PropertySchema | undefined;
+  /* Die Werte einer Auswahl, schon aufgelöst: das Feld trägt sie selbst
+     oder nennt eine Aufzählungszeile, und die Vorlage soll das nicht noch
+     einmal entscheiden müssen. */
+  werte: string[];
   wert: string;
   jaNein: boolean;
   pflicht: boolean;
@@ -111,7 +116,7 @@ interface Feld {
                   @case ('auswahl') {
                     <select [(ngModel)]="f.wert" [name]="f.ref">
                       <option value=""></option>
-                      @for (o of f.schema?.enum ?? []; track o) {
+                      @for (o of f.werte; track o) {
                         <option [value]="o">{{ o }}</option>
                       }
                     </select>
@@ -186,7 +191,7 @@ interface Feld {
                             [name]="k.id + '-' + f.prop"
                           >
                             <option value=""></option>
-                            @for (o of f.schema?.enum ?? []; track o) {
+                            @for (o of f.werte; track o) {
                               <option [value]="o">{{ o }}</option>
                             }
                           </select>
@@ -450,6 +455,7 @@ export class Artikel {
           label: `${def.label ?? comp} · ${fieldTitle(r, primaryInterface(e), { type: comp, key: prop, prop: schema })}`,
           art,
           schema,
+          werte: enumOptions(r, schema) ?? [],
           wert: art === 'jaNein' ? '' : inEingabe(karte[prop]),
           jaNein: karte[prop] === true,
           pflicht: pflicht.has(`${comp}.${prop}`),
@@ -553,7 +559,13 @@ export class Artikel {
 
   protected kantenFelder(
     type: string,
-  ): { prop: string; label: string; art: Eingabe; schema: PropertySchema | undefined }[] {
+  ): {
+    prop: string;
+    label: string;
+    art: Eingabe;
+    schema: PropertySchema | undefined;
+    werte: string[];
+  }[] {
     const r = this.reg();
     if (!r) return [];
     const props = relationDef(r, type).props?.properties ?? {};
@@ -562,6 +574,7 @@ export class Artikel {
       label: schema.title ?? prop,
       art: eingabeArt(schema),
       schema,
+      werte: enumOptions(r, schema) ?? [],
     }));
   }
 

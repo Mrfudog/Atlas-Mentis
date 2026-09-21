@@ -77,10 +77,18 @@ export const fieldGroups = {
         /* `default` gilt beim Anlegen, nicht rückwirkend. Bis hierher stand
            „idea" fest im Code, der Artikel anlegt — also genau die Sorte
            Wissen, die eine Registerzeile sein soll. */
+        /* Die Werte stehen als Aufzählungszeile `State` im Register und
+           nicht hier: derselbe Vorbereitungsstand gilt für jeden Artikel,
+           und wer die Liste ändert, ändert sie an einer Stelle.
+
+           Aus vier Wörtern sind drei geworden. `used` und `discarded`
+           waren keine Zustände, sondern Ereignisse — dass eine Begegnung
+           gespielt wurde, gehört ins Kampagnenlog, und nicht in ein Feld,
+           das danach für immer „benutzt" sagt. */
         status: {
           type: 'string',
           title: 'Status',
-          enum: ['idea', 'planned', 'used', 'discarded'],
+          enumRef: 'State',
           default: 'idea',
         },
       },
@@ -228,6 +236,22 @@ export const fieldGroups = {
         appearance: { type: 'string', format: 'long', many: true, title: 'Appearance' },
         personality: { type: 'string', format: 'long', many: true, title: 'Personality' },
         species: { type: 'string', title: 'Species' },
+        /**
+         * **Was für eine Kreatur das ist** — npc, companion, retainer,
+         * pet, summon, follower.
+         *
+         * Das waren eigene Artikelarten: `NPC`, `Companion`, `Retainer`,
+         * drei Zeilen, die zusammen kein einziges eigenes Feld trugen.
+         * Eine Art, die nichts eigenes erklärt, erklärt nichts — und die
+         * Sonderregeln, die einen Begleiter zum Begleiter machen, stehen
+         * ohnehin am Statblock und an der Regel, auf die er zeigt.
+         *
+         * Ein freies Wort und keine Aufzählung: die Maske schlägt vor, was
+         * an anderen Kreaturen schon dasteht, und eine neue Sorte ist ein
+         * Eintrag und keine Registeränderung. `role` bleibt daneben und
+         * meint etwas anderes — der Wirt, die Wache, die Händlerin.
+         */
+        kind: { type: 'string', title: 'Kind' },
         role: { type: 'string', title: 'Role' },
         attitude: {
           type: 'string',
@@ -278,9 +302,11 @@ export const fieldGroups = {
         initiative: { type: 'number', title: 'Initiative', derived: 'mod(dex)', format: 'signed' },
         passivePerception: { type: 'number', title: 'Passive perception', derived: '10+mod(wis)' },
         senses: { type: 'string', title: 'Senses' },
-        languages: { type: 'string', title: 'Languages' },
-        saves: { type: 'string', title: 'Saving throws' },
-        skills: { type: 'string', title: 'Skills' },
+        /* `languages`, `saves` und `skills` standen hier als freier Text
+           und zugleich als Listen an `Proficiencies` — dieselbe Sache
+           zweimal, einmal zum Rechnen und einmal zum Lesen. Gefüllt war
+           fast immer nur eine davon, und welche, wusste niemand. Die
+           Listen gewinnen: darauf rechnet der Bogen. */
         resistances: { type: 'string', title: 'Resistances' },
         vulnerabilities: { type: 'string', title: 'Vulnerabilities' },
         immunities: { type: 'string', title: 'Immunities' },
@@ -337,10 +363,13 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
+        /* Welcher der sechs Werte die Probe trägt. Die Liste steht als
+           Aufzählungszeile `Ability` im Register — an `RecipeInfo.ability`
+           standen dieselben sechs Wörter ein zweites Mal. */
         ability: {
           type: 'string',
           title: 'Ability',
-          enum: ['str', 'dex', 'con', 'int', 'wis', 'cha'],
+          enumRef: 'Ability',
         },
         tool: { type: 'boolean', title: 'A tool, not a skill', default: false },
       },
@@ -481,15 +510,34 @@ export const fieldGroups = {
           enum: ['campaign', 'arc', 'chapter', 'session', 'scene'],
         },
         played: { type: 'string', title: 'Played on' },
-        /* Where the telling stands, which is not where the article stands:
-           `Status` tracks the writing, `state` tracks the play. */
-        state: {
-          type: 'string',
-          title: 'State',
-          enum: ['planned', 'running', 'played', 'dropped'],
-          default: 'planned',
-        },
+        /* Hier stand ein zweiter Zustand — geplant, läuft, gespielt,
+           verworfen — neben `Status`. Zwei Felder für „wie weit ist das",
+           und keines davon las irgendein Schirm. Was vorbereitet ist, sagt
+           `Status`; dass es gespielt wurde, sagt `played` mit einem Datum,
+           und das ist die Angabe, die man später wirklich sucht. */
         summary: { type: 'string', format: 'long', title: 'Recap' },
+      },
+    },
+  },
+
+  /**
+   * **Wie schwer es ist — als Stufe von 1 bis 20.**
+   *
+   * Es stand zweimal da und zweimal anders: an der Begegnung als
+   * Aufzählung von fünf Wörtern, an der Szene als freier Text, den nie
+   * jemand gefüllt hat. Fünf Wörter sind fünf Stufen mit Lücken dazwischen
+   * — „zwischen medium und hard" gibt es dann nicht —, und ein freier Text
+   * lässt sich nicht vergleichen.
+   *
+   * Eine Spanne ist keine Aufzählung von zwanzig Wörtern: die Grenzen
+   * sagen, was gilt, die Prüfung hält sie, und die Maske macht daraus ein
+   * Zahlenfeld mit Anschlag.
+   */
+  Difficulty: {
+    schema: {
+      type: 'object',
+      properties: {
+        difficulty: { type: 'number', title: 'Difficulty', min: 1, max: 20 },
       },
     },
   },
@@ -504,7 +552,6 @@ export const fieldGroups = {
           enum: ['roleplay', 'encounter', 'exploration', 'downtime'],
           default: 'roleplay',
         },
-        difficulty: { type: 'string', title: 'Difficulty' },
         /* Der Vorlesetext stand hier als **ein** Absatz und kam mit
            `ReadAloud.readaloud` noch einmal herein, sobald die Blockarten
            Felder wurden — zwei Felder mit demselben Namen, eines davon
@@ -518,9 +565,13 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        state: {
+        /* Wie weit der Auftrag ist — **nicht**, wie weit seine
+           Vorbereitung ist. Das Feld hiess `state` wie drei andere in drei
+           anderen Typen, und jedes meinte etwas anderes; `Status` ist der
+           Vorbereitungsstand, dies der Gang der Sache am Tisch. */
+        progress: {
           type: 'string',
-          title: 'State',
+          title: 'Progress',
           enum: ['rumoured', 'offered', 'accepted', 'done', 'failed', 'abandoned'],
           default: 'rumoured',
         },
@@ -774,15 +825,38 @@ export const fieldGroups = {
    * kein Schemawechsel — die Liste der Fertigkeiten steht in den
    * Kampagneneinstellungen, wo sie jemand ändern kann.
    */
-  Skills: {
+  /**
+   * **Worin jemand geübt ist** — eine Gruppe und nicht sechs Felder an
+   * sechs Stellen: Fertigkeiten, Sprachen, Werkzeuge, Rüstungen, Waffen
+   * und (Hausregel) Wissensgebiete.
+   *
+   * Sie hiess `Skills` und trug nur die Hälfte davon. Die andere Hälfte
+   * stand als freier Text am Statblock (`languages`, `saves`, `skills`) —
+   * dieselbe Sache zweimal, einmal als Liste und einmal als Satz, und
+   * gefüllt war fast immer nur eine davon.
+   *
+   * Der **Übungsbonus** steht hier bewusst nicht: an einem Statblock ist
+   * er gegeben (`StatblockInfo.prof`), an einer Figur gerechnet
+   * (`CharacterInfo.proficiency` aus der Stufe). Ein gerechneter Wert sieht
+   * nur seine Nachbarn in derselben Karte (D8) — ein drittes Feld hier
+   * könnte nichts rechnen und wäre die Zahl, die als erste veraltet.
+   */
+  Proficiencies: {
     schema: {
       type: 'object',
       properties: {
-        proficient: { type: 'array', title: 'Proficient in', items: { type: 'string' } },
+        proficient: { type: 'array', title: 'Skills', items: { type: 'string' } },
         expertise: { type: 'array', title: 'Expertise in', items: { type: 'string' } },
         saves: { type: 'array', title: 'Saving throws', items: { type: 'string' } },
         languages: { type: 'array', title: 'Languages', items: { type: 'string' } },
-        tools: { type: 'array', title: 'Tool proficiencies', items: { type: 'string' } },
+        tools: { type: 'array', title: 'Tools', items: { type: 'string' } },
+        armor: { type: 'array', title: 'Armour', items: { type: 'string' } },
+        weapons: { type: 'array', title: 'Weapons', items: { type: 'string' } },
+        /* Hausregel: was jemand *weiss*, ist eine Übung wie jede andere.
+           Es ist nicht das Wissensmodell — eine Information, die jemand
+           kennt, hängt an `knownBy`. Hier steht ein Gebiet, in dem sich
+           eine Figur auskennt, und darauf würfelt sie. */
+        knowledge: { type: 'array', title: 'Fields of knowledge', items: { type: 'string' } },
       },
     },
   },
@@ -800,10 +874,13 @@ export const fieldGroups = {
       properties: {
         trade: { type: 'string', title: 'Trade' },
         tool: { type: 'string', title: 'Tool needed' },
+        /* Dieselbe Aufzählungszeile wie an der Fertigkeit. `titles` gibt
+           ihr hier den Namen „Check", ohne dass es die Liste zweimal
+           gäbe — eine Beschriftung ist kein zweites Feld. */
         ability: {
           type: 'string',
           title: 'Check',
-          enum: ['str', 'dex', 'con', 'int', 'wis', 'cha'],
+          enumRef: 'Ability',
           default: 'int',
         },
         dc: { type: 'number', title: 'DC', default: 12 },
@@ -864,16 +941,17 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        difficulty: {
-          type: 'string',
-          title: 'Difficulty',
-          enum: ['trivial', 'easy', 'medium', 'hard', 'deadly'],
-          default: 'medium',
-        },
+        /* Die Schwierigkeit stand hier als Aufzählung von fünf Wörtern und
+           an der Szene als freier Text. Sie ist jetzt eine Stufe von 1 bis
+           20 und steht einmal, im Typ `Difficulty`. */
         xpBudget: { type: 'number', title: 'XP budget' },
-        state: {
+        /* Wo der Kampf steht, während er läuft — die Initiative schreibt
+           es. Es hiess `state`, wie drei weitere Felder in drei weiteren
+           Typen; `phase` sagt, was es ist, und lässt `Status` den
+           Vorbereitungsstand. */
+        phase: {
           type: 'string',
-          title: 'State',
+          title: 'Phase',
           enum: ['planned', 'running', 'done', 'skipped'],
           default: 'planned',
         },

@@ -60,7 +60,16 @@ function felderVon(art) {
   const props = schema?.properties ?? {};
   const pflicht = new Set(schema?.required ?? []);
   return Object.entries(props).map(([k, p]) => {
-    const wie = p.derived ? 'gerechnet' : (p.enum ? p.enum.join(' | ') : (p.format ?? p.type ?? '?'));
+    /* Nennt das Feld eine Aufzählungszeile, steht deren Name da und
+       dahinter ihre Wörter: `Ability` sagt, wo die Liste wohnt, und die
+       Liste sagt, was drinsteht. Eine Spanne sagt ihre Grenzen. */
+    const zeile = p.enumRef ? R.enums?.[p.enumRef] : null;
+    const spanne = (p.min !== undefined || p.max !== undefined)
+      ? `${p.min ?? '−∞'}…${p.max ?? '∞'}` : null;
+    const wie = p.derived ? 'gerechnet'
+      : zeile ? `${p.enumRef}: ${(zeile.values ?? []).join(' | ')}`
+      : p.enum ? p.enum.join(' | ')
+      : spanne ?? (p.format ?? p.type ?? '?');
     return `\`${k}\`${pflicht.has(k) ? ' **Pflicht**' : ''} *${wie}*`;
   });
 }
@@ -73,7 +82,7 @@ function kantenVon(name) {
   };
 }
 /* Die Anordnung wohnt am Typ. Gesucht wird die `extends`-Kette hoch — eine
-   an `Creature` deckt NSC, Spielerfigur, Begleiter und Gefolge mit ab. */
+   an `Creature` deckt die Spielerfigur mit ab. */
 function sichtVon(name) {
   for (const at of [name, ...kette(name)]) {
     const eigen = R.interfaces[at]?.views?.full;
@@ -111,8 +120,8 @@ z(`Stand ${new Date().toISOString().slice(0, 10)}. ` +
 z();
 z('Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie');
 z('erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes');
-z('steht kursiv dabei — ohne das liest man bei `NPC` „verlangt nichts" und');
-z('übersieht, dass sie über `Creature` die halbe Kampagne trägt.');
+z('steht kursiv dabei — ohne das liest man bei `Consumable` „verlangt');
+z('nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.');
 z();
 
 for (const [key, titel, wozu] of AREAS) {
