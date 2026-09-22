@@ -110,6 +110,13 @@ wiederkommen, werden sie neu geschrieben.
   Spielercharakters; `belongsTo` sagt, welcher. `Vitals` bleibt bei der
   Figur: das ist, was sich während der Sitzung ändert. Damit heisst `hp` am
   Statblock das Maximum und an der Figur der Stand.
+  Der Statblock trägt seine Felder **selbst** (`ac`, `hp`, `speed`, `cr`,
+  `prof`, `senses`, `resistances` …) und nimmt `Abilities` dazu — die sechs
+  Werte samt ihren gerechneten Nachbarn, denn `mod(dex)` löst gegen
+  dieselbe Karte auf. `StatblockInfo` gibt es nicht mehr: dreissig Felder
+  unter einem Sammelnamen sind keine Auskunft. Der Bogen liest beide Karten
+  als eine (`sbCard`), weil `sb.ac` und `modOf(sb,"dex")` nebeneinander
+  gebraucht werden; geschrieben wird in die Karte, der das Feld gehört.
 - **Ein Textblock ist ein Feld.** Es gab einmal `blocks: [{blockType, body,
   anchor}]` neben den Karten, mit einer eigenen Liste erlaubter Blockarten je
   Artikelart — also eine zweite Frage, die jede Art zweimal beantworten
@@ -161,14 +168,21 @@ wiederkommen, werden sie neu geschrieben.
   Feld für immer festhielt. Wie weit eine Sache am Tisch ist, sagt das Feld
   der Art: `Quest.progress`, `Encounter.phase`, `Explored.state`. Drei
   Felder hiessen einmal alle `state` und meinten Verschiedenes.
-- **Das Register zeigt einen Typ auf einer Fläche.** Die Bestandteile sind
-  die **Kopfzeilen der Feldgruppen** — dort steht, woher einer kommt, dort
-  nimmt man ihn heraus, und seine Felder stehen darunter. Ein eigener
-  Abschnitt „Made of" daneben war dieselbe Sache zum zweiten Mal, und die
-  Frage „wie werde ich dieses Feld los" liess sich nur dort beantworten, wo
-  die Felder nicht standen. Die **Typenauswahl ist flach**: sie war ein
-  Baum aus `extends`, und weil `extends` ein Array ist, musste der Baum
-  eine Herkunft wählen und die andere verschweigen.
+- **Das Register zeigt einen Typ auf einer Fläche: eine flache Liste aller
+  Felder.** An jedem geerbten steht eine **Marke mit dem Typ, dem es
+  gehört** — sie sagt damit auch, warum es sich hier nicht löschen lässt;
+  gelöscht wird es dort, und ein Klick führt hin. Ein Typ, der **direkt**
+  dazugenommen wurde, lässt sich an der Marke herausnehmen (seine Felder
+  gehen mit); was über einen anderen hereinkam, trägt ein ↗ und kein ×.
+  Gruppen je Bestandteil lasen sich wie eine Gliederung und waren eine: wer
+  wissen wollte, was ein Typ trägt, musste sie zusammenlesen.
+- **Alle Typenlisten sind flach** (`typeList()`, alphabetisch nach
+  Beschriftung): die Auswahl im Register, die Leiste, der Filter im
+  Kompendium. Sie waren Bäume aus `extends`, und weil `extends` ein Array
+  ist, musste ein Baum eine Herkunft wählen und die andere verschweigen —
+  eine Art, die von zweien erbt, hing unter einer davon und unter der
+  anderen nicht. In der Leiste stehen nur Arten **mit Bereich**: nach
+  `Tags` zu filtern hiesse, nach „hat Marken" zu filtern.
 - **In einer Ansicht wird nach Gruppe gewählt, nicht Feld für Feld.**
   `full` zeigt alles — was dort fehlt, zeichnet ein anderer Block derselben
   Seite (der Bogen), und das ist eine Sache der Anordnung und keine Wahl je
@@ -244,6 +258,16 @@ Teils weg und zählt sie dabei auf. Ein ganzer Teil ist oft zu grob — dann
 nimmt der Schalter einzelne Zeilen: `--prune components:DeedInfo,interfaces:Deed`.
 Ein Name, der nichts trifft, wird gesagt und lässt den Lauf fehlschlagen;
 ein stiller Tippfehler sähe aus wie eine erledigte Löschung.
+
+**Das Register allein weiterreichen:**
+`node prototype/migration/register-datei.mjs` schreibt
+`prototype/nebelwacht-registry.json` — die Zeilen ohne den Bestand. Eine
+Datei mit `registry` und **ohne** `entities` nimmt die Einfuhr als
+Registerlieferung: die Zeilen kommen, die Artikel bleiben, auch mit „und
+lösche, was nicht in der Datei steht". Das Register wandert häufiger als
+der Bestand, und es aus- und wieder einzulesen ist ein Umweg, auf dem man
+einen Artikel verlieren kann. (Eine **leere** Liste `entities: []` ist
+etwas anderes: eine Sicherung ohne Artikel, also „alles weg".)
 
 Ändert eine Zeile ihren **Namen** oder fällt sie weg, wandert der Bestand
 mit: je Änderung ein Skript in `prototype/migration/`, wie

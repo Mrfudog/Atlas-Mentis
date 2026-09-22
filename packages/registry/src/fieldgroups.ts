@@ -262,31 +262,24 @@ export const fieldGroups = {
     },
   },
 
-  StatblockInfo: {
+  /**
+   * **Die sechs Werte** — und was sich unmittelbar aus ihnen rechnet.
+   *
+   * Sie standen in `StatblockInfo`, einer Karte mit dreissig Feldern: die
+   * Werte, die Rüstungsklasse, die Trefferpunkte, die Sinne, die
+   * Widerstände. Ein Sammelname für alles, was an einem Statblock steht —
+   * also keine Auskunft. Jetzt trägt der Statblock seine eigenen Felder und
+   * nimmt `Abilities` dazu; eine andere Art, die die sechs Werte braucht,
+   * nimmt dieselbe Zeile.
+   *
+   * Die gerechneten stehen **hier** und nicht am Statblock: `mod(dex)` löst
+   * gegen die Nachbarn derselben Karte auf (D8). Ein Modifikator in einer
+   * anderen Karte als sein Wert könnte nichts rechnen.
+   */
+  Abilities: {
     schema: {
       type: 'object',
-      /* `system` war Pflicht, solange die Karte nur am `Statblock` hing und
-         eine Kreatur sie bloss tragen *durfte*. Als Obertyp gilt sie für
-         jede Kreatur, und dann hiesse Pflicht: jeder NSC, der seine Zahlen
-         von einem Statblock borgt, müsste trotzdem ein Regelwerk angeben.
-         Statt der Pflicht steht jetzt ein Vorgabewert. */
       properties: {
-        system: { type: 'string', title: 'System', default: 'dnd5e' },
-        size: {
-          type: 'string',
-          title: 'Size',
-          enum: ['winzig', 'klein', 'mittel', 'gross', 'riesig', 'gewaltig'],
-        },
-        kind: { type: 'string', title: 'Kind' },
-        alignment: { type: 'string', title: 'Alignment' },
-        ac: { type: 'number', title: 'Armour class' },
-        acNote: { type: 'string', title: 'AC source' },
-        hp: { type: 'number', title: 'Hit points' },
-        hpFormula: { type: 'string', title: 'Hit dice' },
-        speed: { type: 'string', format: 'measure', title: 'Speed' },
-        cr: { type: 'string', title: 'Challenge rating' },
-        prof: { type: 'number', title: 'Proficiency bonus' },
-        combatRole: { type: 'string', title: 'Combat role' },
         str: { type: 'number', title: 'STR' },
         strMod: { type: 'number', title: 'STR mod', derived: 'mod(str)', of: 'str', format: 'signed' },
         dex: { type: 'number', title: 'DEX' },
@@ -301,12 +294,45 @@ export const fieldGroups = {
         chaMod: { type: 'number', title: 'CHA mod', derived: 'mod(cha)', of: 'cha', format: 'signed' },
         initiative: { type: 'number', title: 'Initiative', derived: 'mod(dex)', format: 'signed' },
         passivePerception: { type: 'number', title: 'Passive perception', derived: '10+mod(wis)' },
+      },
+    },
+  },
+
+  /**
+   * Was der Statblock **selbst** festhält: Regelwerk, Grösse, Art,
+   * Gesinnung, Panzerung, Trefferpunkte, Bewegung, Herausforderung,
+   * Übungsbonus, Rolle, Sinne und die drei Widerstandsfelder.
+   *
+   * `system` war Pflicht, solange die Karte nur am Statblock hing. Als
+   * geteilte Karte hiesse Pflicht: jede Kreatur, die ihre Zahlen borgt,
+   * müsste trotzdem ein Regelwerk angeben. Statt der Pflicht steht ein
+   * Vorgabewert.
+   */
+  StatblockCore: {
+    schema: {
+      type: 'object',
+      properties: {
+        system: { type: 'string', title: 'System', default: 'dnd5e' },
+        size: {
+          type: 'string',
+          title: 'Size',
+          enum: ['winzig', 'klein', 'mittel', 'gross', 'riesig', 'gewaltig'],
+        },
+        kind: { type: 'string', title: 'Creature type' },
+        alignment: { type: 'string', title: 'Alignment' },
+        ac: { type: 'number', title: 'Armour class' },
+        acNote: { type: 'string', title: 'AC note' },
+        hp: { type: 'number', title: 'Hit points' },
+        hpFormula: { type: 'string', title: 'Hit dice' },
+        speed: { type: 'string', format: 'measure', title: 'Speed' },
+        cr: { type: 'string', title: 'Challenge rating' },
+        prof: { type: 'number', title: 'Proficiency bonus' },
+        combatRole: { type: 'string', title: 'Combat role' },
         senses: { type: 'string', title: 'Senses' },
         /* `languages`, `saves` und `skills` standen hier als freier Text
            und zugleich als Listen an `Proficiencies` — dieselbe Sache
-           zweimal, einmal zum Rechnen und einmal zum Lesen. Gefüllt war
-           fast immer nur eine davon, und welche, wusste niemand. Die
-           Listen gewinnen: darauf rechnet der Bogen. */
+           zweimal, einmal zum Rechnen und einmal zum Lesen. Die Listen
+           gewinnen: darauf rechnet der Bogen. */
         resistances: { type: 'string', title: 'Resistances' },
         vulnerabilities: { type: 'string', title: 'Vulnerabilities' },
         immunities: { type: 'string', title: 'Immunities' },
@@ -796,7 +822,7 @@ export const fieldGroups = {
   },
 
   /**
-   * Was sich am Tisch ändert (REQ-051, 063). Getrennt von `StatblockInfo`,
+   * Was sich am Tisch ändert (REQ-051, 063). Getrennt vom Statblock,
    * weil das zwei verschiedene Sorten Zahl sind: die Rüstungsklasse ändert
    * sich einmal pro Ausrüstungswechsel, die Trefferpunkte zwanzigmal pro
    * Kampf. In einer Karte lägen sie im Weg — jede Änderung schriebe die
@@ -836,7 +862,7 @@ export const fieldGroups = {
    * gefüllt war fast immer nur eine davon.
    *
    * Der **Übungsbonus** steht hier bewusst nicht: an einem Statblock ist
-   * er gegeben (`StatblockInfo.prof`), an einer Figur gerechnet
+   * er gegeben (`Statblock.prof`), an einer Figur gerechnet
    * (`CharacterInfo.proficiency` aus der Stufe). Ein gerechneter Wert sieht
    * nur seine Nachbarn in derselben Karte (D8) — ein drittes Feld hier
    * könnte nichts rechnen und wäre die Zahl, die als erste veraltet.

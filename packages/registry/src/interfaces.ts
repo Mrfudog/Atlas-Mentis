@@ -8,7 +8,7 @@ import { fieldGroups as g } from './fieldgroups.js';
  * thing is a row here, not a code change.
  *
  * Jede Art trägt ihre Felder selbst. Was mehrere Arten teilen, ist ein
- * Obertyp — `Vars`, `StatblockInfo`, `Access`, `Vitals`, `Skills` — und
+ * Obertyp — `Vars`, `Abilities`, `Access`, `Vitals`, `Proficiencies` — und
  * behält damit seine eigene Karte am Artikel. Genau das hält `hp` an der
  * Kreatur von `hp` am Statblock auseinander.
  *
@@ -41,14 +41,16 @@ export const interfaces: Record<string, InterfaceDef> = {
     schema: g.Vars.schema,
   },
 
-  /* Die Zahlen eines Statblocks. Sie heissen weiter `StatblockInfo` und
-     nicht `Statline`, weil jede Karte in den Daten so heisst und ein
-     hübscherer Name eine Wanderung wert sein müsste. */
-  StatblockInfo: {
-    name: 'StatblockInfo',
-    label: 'Statblock numbers',
+  /* **Die sechs Werte.** Sie lagen in `StatblockInfo` — einer Karte mit
+     dreissig Feldern, von der Rüstungsklasse bis zu den Immunitäten. Ein
+     Sammelname für „alles, was an einem Statblock steht", ist keine
+     Auskunft; jetzt trägt der Statblock seine Felder selbst und nimmt diese
+     Zeile dazu. */
+  Abilities: {
+    name: 'Abilities',
+    label: 'Abilities',
     abstract: true,
-    schema: g.StatblockInfo.schema,
+    schema: g.Abilities.schema,
   },
 
   Access: {
@@ -221,7 +223,7 @@ export const interfaces: Record<string, InterfaceDef> = {
        HP-Maximum und die sechs Werte sind dieselbe Sache wie bei jedem
        Monster, und `belongsTo` sagt, welcher Statblock es ist.
 
-       `StatblockInfo` lag hier einmal *auch*, „erst die eigene Karte, dann
+       Die Statblockzahlen lagen hier einmal *auch*, „erst die eigene Karte, dann
        die geborgte". Das waren zwei Formen für dasselbe, und wer eine
        Kreatur änderte, musste wissen, in welcher der beiden ihre Zahlen
        gerade standen. `Vitals` bleibt: das ist, was sich während der Sitzung
@@ -266,7 +268,7 @@ export const interfaces: Record<string, InterfaceDef> = {
                   id: 'c-f',
                   el: 'fields',
                   fields: 'all',
-                  /* `StatblockInfo` steht hier nicht mehr: die Zahlen
+                  /* Die Statblockzahlen stehen hier nicht mehr: sie
                      wohnen am Statblock, also hat die Kreatur sie gar
                      nicht. Eine Ausnahme für etwas, das es nicht gibt,
                      wird am Tag des Umzugs still falsch. */
@@ -389,7 +391,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Statblock',
     area: 'rules',
     label: 'Statblock',
-    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'StatblockInfo', 'Vars', 'Tactics'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Abilities', 'Vars', 'Tactics'],
+    schema: merge(g.StatblockCore),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {

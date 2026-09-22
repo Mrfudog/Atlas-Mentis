@@ -431,6 +431,12 @@ ul.tlayout li.d3{padding-left:48px}
 /* Mehrere Werte aus Aufzählungszeilen: Häkchen, nach Zeile gruppiert. Die
    Kiste scrollt, weil sechs Listen zusammen fünfunddreissig Wörter sind und
    eine Maske nicht die halbe Seite sein soll. */
+/* Die Herkunftsmarke an einem geerbten Feld: klein, damit die Zeile eine
+   Zeile bleibt. Der Pfeil ↗ heisst „über einen anderen hereingekommen". */
+.frow .chip.inh{flex:0 0 auto;font-size:11px;padding:0 2px 0 0;max-width:40%}
+.frow .chip.inh .ref{font-size:11px;max-width:150px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+
 /* Eine Gruppe, von der nur ein Teil dasteht: an, aber nicht ganz. */
 .tgl.part{border-style:dashed}
 
@@ -999,7 +1005,7 @@ function viewKeys(){
   return Object.keys(vs).sort(function(a,b){return (vs[a].order||99)-(vs[b].order||99);});
 }
 /* Which fields does this view show?
-   fields: "none" | "all" | ["StatblockInfo", "StatblockInfo.ac", …]
+   fields: "none" | "all" | ["Abilities", "Statblock.ac", …]
    A bare component name takes all of its fields; "Komponente.feld" takes one. */
 function showField(v,cn,p){
   if(v.fields==="all")return true;
@@ -1983,6 +1989,25 @@ function ifaceRoots(){
   return Object.keys(REG.interfaces).filter(function(n){ return !parentOf(n); })
     .sort(function(a,b){return a.localeCompare(b,"de");});
 }
+/**
+ * **Alle Artikelarten, flach und alphabetisch** — dieselbe Ordnung für die
+ * Leiste, den Filter im Kompendium und die Auswahl im Register.
+ *
+ * Sie standen dreimal als Baum: nach Bereich gruppiert, nach Unterart
+ * eingerückt. Der Baum kam aus `extends`, und `extends` ist ein Array —
+ * also musste er sich für **eine** Herkunft entscheiden, und jede Art, die
+ * von zweien erbt, hing unter einer davon und unter der anderen nicht. Wer
+ * sie dort suchte, fand sie nicht und hielt sie für nicht vorhanden.
+ *
+ * Woher eine Art erbt, steht auf ihrer Seite im Register — dort
+ * vollständig, und dort wird es auch geändert.
+ */
+function typeList(){
+  return Object.keys(REG.interfaces).sort(function(a,b){
+    var da=REG.interfaces[a]||{}, db=REG.interfaces[b]||{};
+    return String(da.label||a).localeCompare(String(db.label||b),"de");
+  });
+}
 /* ---------- Bereiche ----------
    Vier statt eines Kompendiums: **Story**, **World**, **Game**, **Play**.
    Welche Artikelart wohin gehört, steht als `area` an der Schnittstelle —
@@ -2005,19 +2030,9 @@ function areaOf(n){
   }
   return "";
 }
-/* Die Wurzeln eines Bereichs: die obersten Schnittstellen, die dort liegen.
-   Liegt ein Obertyp anderswo, steht sein Subtyp hier trotzdem für sich —
-   sonst wäre er unauffindbar. */
-function areaRoots(area){
-  return Object.keys(REG.interfaces).filter(function(n){
-    if(areaOf(n)!==area)return false;
-    var ps=parentsOf(n);
-    return !ps.length||ps.every(function(p){ return areaOf(p)!==area; });
-  }).sort(function(a,b){
-    var da=REG.interfaces[a], db=REG.interfaces[b];
-    return String(da.label||a).localeCompare(String(db.label||b),"de");
-  });
-}
+/* Hier stand `areaRoots()`: die obersten Arten eines Bereichs, für den
+   Baum in der Leiste. Die Listen sind flach (`typeList()`), also braucht
+   niemand mehr eine Wurzel. */
 /* Würde `kind` unter `ganz above` hängen, entstünde ein Ring — dann fände
    compsFor() kein Ende. `seen` in compsFor fängt das ab, aber ein Register,
    das sich im Kreis dreht, ist trotzdem broken. Hier wird es verhindert. */
@@ -2327,14 +2342,17 @@ function renderRail(){
      der Baum wie im Datenmodell: ein Obertyp steht über seinen Subtypen und
      zählt sie mit. Eine flache Liste verbirgt genau die Verwandtschaft, die
      den Filter erklärt. */
-  function zweig(box,n,depth){
+  /* Eine Zeile je Artikelart, **ohne Einrückung**: der Baum kam aus
+     `extends`, und `extends` ist ein Array — er musste eine Herkunft wählen
+     und die andere verschweigen. Eine abstrakte Art bleibt in der Liste und
+     filtert auf sich und alles darunter; das ist die Frage „alles aus
+     dieser Ecke", und die stellt man, bevor man die Art kennt. */
+  function zeile(box,n){
     var d=REG.interfaces[n]; if(!d)return;
     box.appendChild(el("button",{class:"navrow",type:"button",
       "aria-current":String(UI.iface===n&&UI.route.k==="list"),
-      style:depth?"padding-left:"+(10+depth*11)+"px":null,
       onclick:function(){UI.iface=n;UI.area="";go({k:"list"});}},
       [el("b",{class:d.abstract?"ab":"",text:d.label||n}),el("em",{text:String(counts[n]||0)})]));
-    kindsOf(n).forEach(function(k){ if(areaOf(k)===areaOf(n)) zweig(box,k,depth+1); });
   }
 
   /* Nur der Abschnitt, auf dem man steht. Die sechs Seiten stehen oben;
@@ -2343,7 +2361,7 @@ function renderRail(){
   var seite=currentPage();
   AREAS.forEach(function(ar){
     if(seite!==ar[0])return;
-    var wurzeln=areaRoots(ar[0]);
+    var wurzeln=typeList().filter(function(n){ return areaOf(n)===ar[0]; });
     if(!wurzeln.length)return;
     var sec=el("section");
     sec.appendChild(el("h3",{text:ar[1]}));
@@ -2367,7 +2385,7 @@ function renderRail(){
         onclick:function(){UI.area=ar[0];UI.iface="";go({k:"list"});}},
         [el("b",{text:"All "+ar[1].toLowerCase()}),el("em",{text:String(summe)})]));
     }
-    wurzeln.forEach(function(n){ zweig(sec,n,1); });
+    wurzeln.forEach(function(n){ zeile(sec,n); });
     r.appendChild(sec);
   });
 
@@ -2378,9 +2396,17 @@ function renderRail(){
       "aria-current":String(UI.iface===""&&UI.area===""&&UI.route.k==="list"),
       onclick:function(){UI.iface="";UI.area="";go({k:"list"});}},
       [el("b",{text:"All articles"}),el("em",{text:String(ENT.size)})]));
-    /* Auch im Kompendium bleibt der Baum: ein Obertyp steht über seinen
-       Subtypen. Ohne ihn wäre „alle Artikel" eine Liste ohne Einstieg. */
-    AREAS.forEach(function(ar){ areaRoots(ar[0]).forEach(function(n){ zweig(sAll,n,1); }); });
+    /* Auch hier flach: jede Artikelart einmal, alphabetisch. Der Baum
+       stand für „ein Obertyp über seinen Subtypen" — und verschwieg dabei
+       die zweite Herkunft jeder Art, die von zweien erbt.
+
+       **Nur Arten mit Bereich.** Ein Bestandteil wie `Tags` oder `Image`
+       ist keine Artikelart: danach zu filtern hiesse, nach „hat Marken" zu
+       filtern, und das ist keine Frage, die man an eine Liste stellt. Der
+       Baum liess sie weg, weil er von den Wurzeln der Bereiche auslief —
+       flach muss es dastehen. */
+    typeList().filter(function(n){ return areaOf(n); })
+      .forEach(function(n){ zeile(sAll,n); });
     /* Die Marken bekommen eine eigene Ansicht und keine Wolke in der
        Leiste. Eine Wolke wächst mit der Kampagne, bis sie die Leiste füllt,
        und sie sagt bei keiner Marke, wie viele Artikel sie trägt oder
@@ -2531,9 +2557,7 @@ function renderRail(){
  */
 function typeNavOrder(){
   var filter=String(UI.typeFilter||"").trim().toLowerCase();
-  return Object.keys(REG.interfaces).sort(function(a,b){
-    return (REG.interfaces[a].label||a).localeCompare(REG.interfaces[b].label||b);
-  }).filter(function(n){
+  return typeList().filter(function(n){
     if(!filter)return true;
     return (n+" "+(REG.interfaces[n].label||"")).toLowerCase().indexOf(filter)>=0;
   });
@@ -2561,7 +2585,7 @@ function typeNav(into){
     into.appendChild(el("button",{class:"navrow"+(n===wahl?" on":""),type:"button",
       "aria-current":String(n===wahl),
       /* Der Name, nicht die Beschriftung: „Statblock numbers" heisst
-         `StatblockInfo`, und wer die Zeile sucht, sucht den Namen. */
+         `StatblockCore`, und wer die Zeile sucht, sucht den Namen. */
       "data-t":n,
       title:n+(dd.abstract?" — abstract":"")+
         ((dd.extends||[]).length?" · made of "+(dd.extends||[]).join(", "):""),
@@ -3030,16 +3054,17 @@ function renderArticle(v,id){
 function filterBar(){
   var bar=el("div",{class:"filters"});
 
+  /* **Flach und alphabetisch**, wie die Auswahl im Register. Hier stand ein
+     Baum mit Einrückung — gebaut aus `extends`, und weil `extends` ein Array
+     ist, hing eine Art, die von zweien erbt, unter einer davon und unter der
+     anderen nicht. Wer sie dort suchte, hielt sie für nicht filterbar. */
   var typ=el("select",{class:"i"});
   typ.appendChild(el("option",{value:""},"any type"));
-  (function walk(list,depth){
-    list.forEach(function(n){
-      var d=REG.interfaces[n];
-      typ.appendChild(el("option",{value:n},
-        new Array(depth+1).join("\u2007\u2007")+(d.label||n)+(d.abstract?" (and below)":"")));
-      walk(kindsOf(n),depth+1);
-    });
-  })(ifaceRoots(),0);
+  typeList().forEach(function(n){
+    var d=REG.interfaces[n];
+    typ.appendChild(el("option",{value:n},
+      (d.label||n)+(d.abstract?" (and below)":"")));
+  });
   typ.value=UI.iface||"";
   typ.addEventListener("change",function(){ UI.iface=typ.value; UI.route={k:"list"}; render(); });
   bar.appendChild(typ);
@@ -5280,15 +5305,30 @@ function downloadState(melde){
 /* Einlesen. Erst sagen, was es täte, dann tun — eine Wiederherstellung, die
    ohne Vorschau schreibt, ist ein zweiter Datenverlust mit Anlauf. */
 function importReport(daten){
-  var r={ok:false,fehler:[],neu:0,geaendert:0,gleich:0,weg:0,teile:[]};
+  var r={ok:false,fehler:[],neu:0,geaendert:0,gleich:0,weg:0,teile:[],nurRegister:false};
   if(!daten||typeof daten!=="object"){ r.fehler.push("Not an object."); return r; }
   if(daten.format&&String(daten.format).indexOf("nebelwacht/")!==0)
     r.fehler.push("Unknown format: "+daten.format);
   if(!daten.registry||typeof daten.registry!=="object")
     r.fehler.push("No registry in the file.");
-  if(!Array.isArray(daten.entities))
-    r.fehler.push("No entities in the file.");
+  /* **Eine Datei ohne Artikel ist erlaubt: dann sind es nur die Zeilen.**
+     Das Register wandert häufiger als der Bestand — eine neue Aufzählung,
+     ein geteilter Typ —, und dafür den ganzen Bestand aus- und wieder
+     einzulesen ist ein Umweg, auf dem man einen Artikel verlieren kann.
+     Fehlt `entities`, bleibt der Bestand unberührt; steht es als leere
+     Liste da, ist das eine Sicherung ohne Artikel und heisst „alles weg". */
+  if(daten.entities!==undefined&&!Array.isArray(daten.entities))
+    r.fehler.push("The entities in the file are not a list.");
   if(r.fehler.length)return r;
+  if(daten.entities===undefined){
+    r.nurRegister=true;
+    ["interfaces","relations","views","units","enums","vars","settings"].forEach(function(t){
+      if(daten.registry[t]&&typeof daten.registry[t]==="object")
+        r.teile.push(t+" ("+Object.keys(daten.registry[t]).length+")");
+    });
+    r.ok=true;
+    return r;
+  }
   ["interfaces","relations","views","units","enums","vars","settings"].forEach(function(t){
     if(daten.registry[t]&&typeof daten.registry[t]==="object")
       r.teile.push(t+" ("+Object.keys(daten.registry[t]).length+")");
@@ -5319,6 +5359,13 @@ function applyImport(daten,loeschen,melde){
     ENT.set(kopie.id,kopie);
     persist(kopie);
   });
+  /* Eine Datei ohne Artikel rührt den Bestand nicht an — und darf ihn
+     schon gar nicht leeren. */
+  if(daten.entities===undefined){
+    melde&&melde("Registry updated. The articles were left alone.");
+    render();
+    return;
+  }
   var fort=0;
   if(loeschen){
     var weg=[];
@@ -5332,7 +5379,7 @@ function applyImport(daten,loeschen,melde){
 
 function renderBackupEditor(v){
   v.appendChild(el("p",{class:"hint",
-    text:"The whole state as one file: the registry and every article. This is the backup, and it is also how you start over — export, wipe, import."}));
+    text:"The whole state as one file: the registry and every article. This is the backup, and it is also how you start over — export, wipe, import. A file with a registry and no articles at all brings the rows over and leaves the articles alone; that is how a model change arrives without the data taking the trip."}));
 
   var msg=el("div",{class:"err"});
   var bar=el("div",{class:"rowbtns"});
@@ -5376,16 +5423,26 @@ function renderBackupEditor(v){
       return;
     }
     var ul=el("ul");
-    ul.appendChild(el("li",{text:r.neu+" new, "+r.geaendert+" changed, "+r.gleich+" unchanged"}));
-    if(r.weg) ul.appendChild(el("li",{text:r.weg+" article"+(r.weg===1?"":"s")+
-      " here that the file does not have"+(loeschen.checked?" — they would go":" — they would stay")}));
-    ul.appendChild(el("li",{text:"Registry: "+r.teile.join(", ")}));
+    /* Eine Datei ohne Artikel ist eine Registerlieferung: die Zeilen
+       kommen, der Bestand bleibt. Das muss **vor** dem Klick dastehen —
+       „Restore" klingt wie „alles ersetzen". */
+    if(r.nurRegister){
+      ul.appendChild(el("li",{text:"Registry rows only — the articles stay as they are."}));
+      ul.appendChild(el("li",{text:"Registry: "+r.teile.join(", ")}));
+    } else {
+      ul.appendChild(el("li",{text:r.neu+" new, "+r.geaendert+" changed, "+r.gleich+" unchanged"}));
+      if(r.weg) ul.appendChild(el("li",{text:r.weg+" article"+(r.weg===1?"":"s")+
+        " here that the file does not have"+(loeschen.checked?" — they would go":" — they would stay")}));
+      ul.appendChild(el("li",{text:"Registry: "+r.teile.join(", ")}));
+    }
     bericht.appendChild(ul);
   }},"See what it would do"));
   bar2.appendChild(el("button",{class:"btn dngr",type:"button",onclick:function(){
     if(!geprueft){ bericht.appendChild(el("div",{class:"warnzeile",
       text:"Check it first — the report is the point."})); return; }
-    confirmDialog("Restore this backup over the current state?",function(){
+    confirmDialog(geprueft.entities===undefined
+      ?"Take these registry rows over? The articles stay as they are."
+      :"Restore this backup over the current state?",function(){
       applyImport(geprueft,loeschen.checked,function(t){ msg.textContent=t; });
     },"Restore");
   }},"Restore it"));
@@ -7269,7 +7326,7 @@ function addToInventory(inv){
 }
 
 /* ---------- Charakterbogen (REQ-051, 063, 066) ----------
-   Zwei Sorten Zahl, und der Bogen hält sie auseinander: `StatblockInfo` sind
+   Zwei Sorten Zahl, und der Bogen hält sie auseinander: der Statblock sind
    die ruhigen Werte (Rüstungsklasse, Attribute, Höchst-Trefferpunkte),
    `Vitals` ist, was sich am Tisch zwanzigmal pro Kampf ändert. In einer
    Karte lägen sie im Weg — jede Änderung schriebe die andere mit.
@@ -7277,7 +7334,31 @@ function addToInventory(inv){
    Ein Spielercharakter trägt seine Zahlen selbst; ein NSC borgt sie meist
    von einem Statblock über `belongsTo`. Der Bogen liest erst die eigene
    Karte, dann die geborgte, statt eine der beiden Formen zu verbieten. */
-var VIT_COMP="Vitals", SKILL_COMP="Proficiencies", SB_COMP="StatblockInfo";
+var VIT_COMP="Vitals", SKILL_COMP="Proficiencies";
+/**
+ * **Die Karten, in denen die Statblockzahlen stehen.**
+ *
+ * Es war eine: `StatblockInfo`, dreissig Felder von der Rüstungsklasse bis
+ * zu den Immunitäten. Jetzt sind es zwei — `Abilities` hält die sechs
+ * Werte, `Statblock` den Rest —, und der Bogen liest sie als **eine**
+ * Karte: die Feldnamen überschneiden sich nicht, und wer `sb.ac` und
+ * `modOf(sb,"dex")` nebeneinander braucht, soll nicht wissen müssen, in
+ * welcher der beiden was steht.
+ *
+ * Gelesen, nicht geschrieben: die Zusammenlegung ist eine Kopie. Geschrieben
+ * wird in die Karte, der das Feld gehört — über die Feldmaske, wie überall.
+ */
+var SB_PARTS=["Statblock","Abilities"];
+function sbCard(o){
+  var raus={}, leer=true;
+  SB_PARTS.forEach(function(t){
+    var c=(o.components||{})[t];
+    if(!c||!Object.keys(c).length)return;
+    leer=false;
+    Object.keys(c).forEach(function(k){ raus[k]=c[k]; });
+  });
+  return leer?null:raus;
+}
 var ATTR6=["str","dex","con","int","wis","cha"];
 
 /* Fertigkeit zu Attribut: eine Kampagneneinstellung mit Rückfall, damit die
@@ -7334,16 +7415,15 @@ function humanKey(k){
  * Zahlen gerade standen.
  */
 function statsOf(e){
-  if(((e.interfaces||[])[0])==="Statblock"){
-    var eigen=(e.components||{})[SB_COMP];
-    if(eigen&&Object.keys(eigen).length) return {card:eigen,from:e};
-  }
+  var eigen=sbCard(e);
+  if(((e.interfaces||[])[0])==="Statblock"&&eigen) return {card:eigen,from:e};
   var geliehen=null;
   ENT.forEach(function(o){
     if(geliehen)return;
-    if(!((o.components||{})[SB_COMP]))return;
+    var c=sbCard(o);
+    if(!c)return;
     if((o.relations||[]).some(function(r){ return r.type==="belongsTo"&&r.to===e.id; }))
-      geliehen={card:o.components[SB_COMP],from:o};
+      geliehen={card:c,from:o};
   });
   return geliehen||{card:{},from:null};
 }
@@ -7627,7 +7707,7 @@ function elSheet(e,ifn,item){
   }
 
   if(!Object.keys(sb).length) wrap.appendChild(el("p",{class:"hint",
-    text:"No numbers yet — give this article a StatblockInfo card, or link a statblock to it."}));
+    text:"No numbers yet — fill this statblock’s fields, or link a statblock to it."}));
   return wrap;
 }
 
@@ -11324,15 +11404,35 @@ function fieldTable(ifn,w,save){
   var d=REG.interfaces[ifn]||{};
   var aussen=el("div");
   var box=el("div",{class:"fbox"});
-  var eigen=propsOf(ifn), keys=Object.keys(eigen);
-  box.appendChild(el("div",{class:"fhead"},
-    [el("b",{text:"Its own"}),
-     el("span",{class:"co",text:keys.length
-       ?keys.length+(keys.length===1?" field":" fields")
-       :"nothing of its own"})]));
-  keys.forEach(function(k){ box.appendChild(fieldRow(ifn,k,ifn,w,save)); });
+  var direkt=parentsOf(ifn);
+  /* **Eine flache Liste aller Felder**, alphabetisch, mit einer Marke an
+     jedem geerbten: woher es kommt.
 
-  /* Ein neues Feld gehört **dieser** Art und deshalb in diese Gruppe. */
+     Sie standen einmal in Gruppen je Bestandteil. Das las sich wie eine
+     Gliederung und war eine: `Identity` kommt an einer Spielerfigur über
+     `Creature` herein, `Creature` über nichts, und `Vitals` über
+     `Creature` — drei Kästen für eine Frage, und die Antwort „was trägt
+     dieser Typ" musste man aus ihnen zusammenlesen. Flach steht jedes Feld
+     einmal da, und die Marke sagt, **warum es sich hier nicht löschen
+     lässt**: es gehört einem anderen Typ. */
+  var alle=fieldsOf(ifn).slice().sort(function(a,b){
+    var ka=String(a.key).toLowerCase(), kb=String(b.key).toLowerCase();
+    if(ka!==kb) return ka<kb?-1:1;
+    return String(a.type).localeCompare(String(b.type));
+  });
+  var eigen=alle.filter(function(f){ return f.type===ifn; }).length;
+  box.appendChild(el("div",{class:"fhead"},[
+    el("b",{text:"All fields"}),
+    el("span",{class:"co",text:alle.length
+      ?alle.length+" \u00b7 "+eigen+" of its own, "+(alle.length-eigen)+" inherited"
+      :"none yet"})]));
+  alle.forEach(function(f){
+    box.appendChild(f.type===ifn
+      ? fieldRow(ifn,f.key,ifn,w,save)
+      : erbRow(f.type,f.key,ifn,w,save));
+  });
+
+  /* Ein neues Feld gehört **dieser** Art. */
   if(w){
     var nk=el("input",{class:"i",type:"text",placeholder:"Field name, e.g. weight"});
     var nt=el("input",{class:"i",type:"text",placeholder:"Label"});
@@ -11355,58 +11455,13 @@ function fieldTable(ifn,w,save){
   }
   aussen.appendChild(box);
 
-  /* Je Bestandteil eine Gruppe. Die Kopfzeile **ist** der Bestandteil: sie
-     sagt, woher er kommt, und dort nimmt man ihn heraus. */
-  var direkt=parentsOf(ifn);
-  ancestorsOf(ifn).forEach(function(a){
-    var ks=Object.keys(propsOf(a));
-    var teil=el("div",{class:"fbox part"});
-    var kopf=el("div",{class:"fhead"});
-    kopf.appendChild(el("button",{class:"ref",type:"button","data-part":a,
-      title:"Open the part — a field is changed where it is declared",
-      onclick:function(){ UI.typePick=a; UI.regiface=a; UI.regcomp=""; UI.regprop=""; render(); }},
-      REG.interfaces[a].label||a));
-    kopf.appendChild(el("span",{class:"co",text:ks.length
-      ?ks.length+(ks.length===1?" field":" fields")
-      :"no fields"}));
-    /* **Der erste zählt anders**: er entscheidet den Bereich. Das stand
-       einmal nur als Marke da und war damit genau die Auskunft, die man
-       sucht, wenn ein Artikel nirgends auftaucht. */
-    if(direkt.length&&direkt[0]===a) kopf.appendChild(el("span",{class:"pill q",
-      title:"The first part decides the area — "+(areaOf(ifn)||"none"),
-      text:"\u25cf first"}));
-    /* Direkt genommen oder über einen anderen hereingekommen. Ohne das sähe
-       `Identity` an einer Kreatur aus wie etwas, das man hier wegnehmen
-       könnte. */
-    var ueber=null;
-    if(direkt.indexOf(a)<0){
-      ueber=direkt.filter(function(p2){ return ancestorsOf(p2).indexOf(a)>=0||p2===a; })[0];
-      if(ueber) kopf.appendChild(el("span",{class:"co",
-        text:"via "+(REG.interfaces[ueber].label||ueber)}));
-    }
-    if(w&&!ueber) kopf.appendChild(el("button",{class:"btn sm gh dngr",type:"button",
-      title:"Take this part out of "+(d.label||ifn),
-      onclick:function(){
-        confirmDialog("Take „"+(REG.interfaces[a].label||a)+"” out of "+(d.label||ifn)+
-          "? Its "+ks.length+" field(s) go with it. The values stay in the articles "+
-          "but are no longer shown.",
-          function(){
-            var dd=REG.interfaces[ifn];
-            dd.extends=parentsOf(ifn).filter(function(x){ return x!==a; });
-            if(!dd.extends.length) delete dd.extends;
-            save(); },"Remove"); }},"\u00d7"));
-    teil.appendChild(kopf);
-    ks.forEach(function(k){ teil.appendChild(erbRow(a,k,ifn,w,save)); });
-    aussen.appendChild(teil);
-  });
-
-  /* Und ein Bestandteil dazu — an derselben Stelle wie ein Feld dazu. */
+  /* Und ein ganzer Typ dazu — seine Felder kommen mit. Die Auswahl steht
+     hier, weil sie dieselbe Liste verlängert: ein Bestandteil ist nichts
+     anderes als eine Handvoll Felder, die einem anderen gehören. */
   if(w){
     var mehr=el("select",{class:"i",style:"width:auto"});
-    mehr.appendChild(el("option",{value:""},"+ part\u2026"));
-    Object.keys(REG.interfaces).sort(function(a,b){
-      return (REG.interfaces[a].label||a).localeCompare(REG.interfaces[b].label||b);
-    }).forEach(function(n2){
+    mehr.appendChild(el("option",{value:""},"+ type\u2026"));
+    typeList().forEach(function(n2){
       if(n2===ifn||wouldCycle(ifn,n2)||direkt.indexOf(n2)>=0)return;
       mehr.appendChild(el("option",{value:n2},REG.interfaces[n2].label||n2)); });
     mehr.addEventListener("change",function(){
@@ -11416,8 +11471,9 @@ function fieldTable(ifn,w,save){
       save(); });
     var pbar=el("div",{class:"addbar",style:"margin-top:9px"});
     pbar.appendChild(el("span",{class:"co",
-      text:direkt.length?"Add a part — its fields come along":
-        "No parts yet — this type declares its fields itself"}));
+      text:direkt.length
+        ?"Take a type in — its fields come along, marked with its name"
+        :"This type declares its fields itself. Take one in and its fields come along"}));
     pbar.appendChild(mehr);
     aussen.appendChild(pbar);
   }
@@ -11443,6 +11499,39 @@ function erbRow(art,k,ifn,w,save){
   var jetzt=fieldTitle(ifn,art,k,p);
   var row=el("div",{class:"frow inh"});
   row.appendChild(el("span",{class:"fk",text:k+(pflicht?"*":"")}));
+
+  /* **Die Marke sagt, wem das Feld gehört** — und damit, warum es hier
+     nicht zu löschen ist: es gehört einem anderen Typ, und dort wird es
+     gelöscht. Ein Klick öffnet ihn.
+
+     Kam der Typ über einen anderen herein, steht das dabei: `Identity` an
+     einer Spielerfigur kommt über `Creature`, und wer *dort* etwas
+     wegnehmen will, muss wissen, wo er ansetzt. Herausnehmen lässt sich
+     darum nur ein Typ, der **direkt** dazugenommen wurde. */
+  var chip=el("span",{class:"chip inh"});
+  var direktDrin=parentsOf(ifn).indexOf(art)>=0;
+  var ueber=direktDrin?null:parentsOf(ifn).filter(function(p2){
+    return p2===art||ancestorsOf(p2).indexOf(art)>=0; })[0];
+  chip.appendChild(el("button",{type:"button",class:"ref","data-from":art,
+    title:"Comes from "+(REG.interfaces[art]||{}).label+
+      (ueber?" (via "+((REG.interfaces[ueber]||{}).label||ueber)+")":"")+
+      " \u2014 the field is changed and deleted there",
+    onclick:function(){ UI.typePick=art; UI.regiface=art; UI.regcomp=""; UI.regprop=""; render(); }},
+    ((REG.interfaces[art]||{}).label||art)+(ueber?" \u2197":"")));
+  if(w&&direktDrin) chip.appendChild(el("button",{type:"button",
+    title:"Take "+((REG.interfaces[art]||{}).label||art)+" out of "+
+      ((REG.interfaces[ifn]||{}).label||ifn),
+    onclick:function(){
+      var ks=Object.keys(propsOf(art)).length;
+      confirmDialog("Take \u201e"+((REG.interfaces[art]||{}).label||art)+"\u201c out of "+
+        ((REG.interfaces[ifn]||{}).label||ifn)+"? Its "+ks+" field(s) go with it. "+
+        "The values stay in the articles but are no longer shown.",
+        function(){
+          var dd=REG.interfaces[ifn];
+          dd.extends=parentsOf(ifn).filter(function(x){ return x!==art; });
+          if(!dd.extends.length) delete dd.extends;
+          save(); },"Remove"); }},"\u00d7"));
+  row.appendChild(chip);
 
   if(w&&(!woher||woher===ifn)){
     var ti=el("input",{class:"i",type:"text",value:jetzt,placeholder:eigenName,

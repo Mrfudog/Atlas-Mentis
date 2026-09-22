@@ -232,6 +232,25 @@ describe('shared choice lists', () => {
     expect(werte.filter((k) => !ausEinstellung.includes(k))).toEqual([]);
   });
 
+  /* **Der Sammelname ist weg.** `StatblockInfo` trug dreissig Felder von
+     der Rüstungsklasse bis zu den Immunitäten — „alles, was an einem
+     Statblock steht" ist keine Auskunft. Die sechs Werte stehen in
+     `Abilities`, der Rest gehört dem Statblock selbst. */
+  it('the statblock declares its own fields and takes the abilities in', () => {
+    expect(seedRegistry.interfaces['StatblockInfo']).toBeUndefined();
+    const sb = seedRegistry.interfaces['Statblock'];
+    expect(sb?.extends).toContain('Abilities');
+    const eigen = Object.keys(sb?.schema?.properties ?? {});
+    expect(eigen).toContain('ac');
+    expect(eigen).toContain('hp');
+    expect(eigen).not.toContain('str');
+    /* Und die gerechneten stehen bei ihren Werten: `mod(dex)` löst gegen
+       die Nachbarn derselben Karte auf. */
+    const ab = seedRegistry.interfaces['Abilities']?.schema?.properties ?? {};
+    expect(ab['initiative']?.derived).toBe('mod(dex)');
+    expect(Object.keys(ab)).toContain('dex');
+  });
+
   /* Eine Spanne statt zwanzig Wörter: die Schwierigkeit ist eine Stufe. */
   it('difficulty is a range, and only one type declares it', () => {
     const feld = seedRegistry.interfaces['Difficulty']?.schema?.properties?.['difficulty'];
@@ -254,9 +273,9 @@ describe('interface inheritance', () => {
        Spielercharakters. Eine Kreatur trägt sie nicht mehr selbst: das
        waren zwei Formen für dasselbe, und wer eine Kreatur änderte, musste
        wissen, in welcher der beiden ihre Zahlen gerade standen. */
-    expect(typeChain(seedRegistry, 'Creature')).not.toContain('StatblockInfo');
-    expect(typeChain(seedRegistry, 'PlayerCharacter')).not.toContain('StatblockInfo');
-    expect(typeChain(seedRegistry, 'Statblock')).toContain('StatblockInfo');
+    expect(typeChain(seedRegistry, 'Creature')).not.toContain('Abilities');
+    expect(typeChain(seedRegistry, 'PlayerCharacter')).not.toContain('Abilities');
+    expect(typeChain(seedRegistry, 'Statblock')).toContain('Abilities');
     /* `Vitals` bleibt bei der Figur: das ist, was sich während der Sitzung
        ändert, und es gehört ihr und nicht ihrem Bogen. */
     expect(typeChain(seedRegistry, 'PlayerCharacter')).toContain('Vitals');
@@ -612,7 +631,7 @@ describe('one registry of types', () => {
     expect(fieldsOf(seedRegistry, 'PlayerCharacter').filter((f) => f.key === 'hp')
       .map((f) => f.type)).toEqual(['Vitals']);
     expect(fieldsOf(seedRegistry, 'Statblock').filter((f) => f.key === 'hp')
-      .map((f) => f.type)).toEqual(['StatblockInfo']);
+      .map((f) => f.type)).toEqual(['Statblock']);
   });
 
   /* Und die Kante reicht bis zum Spielercharakter. Solange sie nur auf
@@ -637,7 +656,7 @@ describe('one registry of types', () => {
      einen Artikel „Zugriff" anlegt — und sie tragen Felder, sonst wären sie
      eine Zeile ohne Inhalt. */
   it('keeps the shared ones abstract and full', () => {
-    for (const n of ['Vars', 'StatblockInfo', 'Access', 'Vitals', 'Proficiencies']) {
+    for (const n of ['Vars', 'Abilities', 'Access', 'Vitals', 'Proficiencies']) {
       const d = seedRegistry.interfaces[n];
       expect(d?.abstract).toBe(true);
       expect(Object.keys(d?.schema?.properties ?? {}).length).toBeGreaterThan(0);

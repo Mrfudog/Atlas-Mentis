@@ -15,9 +15,11 @@
  *     Werte aus sechs Aufzählungszeilen, und woher ein Wert kommt, sagt die
  *     Liste, in der er steht — ein Feld je Sorte hiesse, dieselbe Frage
  *     sechsmal zu stellen.
- *  3. `StatblockInfo.languages`, `.saves` und `.skills` fallen weg: sie
- *     standen als freier Text neben denselben Listen an `Proficiencies`.
- *     Was dort steht, wird aufgezählt und nicht stillschweigend gelöscht.
+ *  3. `StatblockInfo` fällt ganz weg: `languages`, `.saves` und `.skills`
+ *     standen als freier Text neben denselben Listen an `Proficiencies`
+ *     (was dort steht, wird aufgezählt und nicht stillschweigend
+ *     gelöscht), und die Karte selbst wird geteilt — die sechs Werte nach
+ *     `Abilities`, der Rest in die Karte `Statblock`.
  *  4. `Status.status` kennt drei Wörter statt vier: `planned` wird
  *     `prepared`, `used` wird `ready`. Dass etwas gespielt wurde, ist ein
  *     Ereignis und gehört ins Kampagnenlog, nicht in ein Feld, das danach
@@ -60,6 +62,7 @@ function neueZaehlung() {
     kreaturen: 0,
     uebungen: 0,
     zusammengelegt: 0,
+    zahlen: 0,
     status: 0,
     schwere: 0,
     fortschritt: 0,
@@ -142,6 +145,30 @@ export function wandereArtikel(e, z) {
     }
   }
 
+  /* 3b. `StatblockInfo` fällt weg: die sechs Werte ziehen in `Abilities`,
+         der Rest in die Karte des Statblocks selbst. Ein Sammelname für
+         „alles, was an einem Statblock steht", war keine Auskunft. */
+  if (karten.StatblockInfo) {
+    const alt = karten.StatblockInfo;
+    const werte = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+    /* Die Modifikatoren stehen nicht in den Daten — sie werden beim Lesen
+       gerechnet (D8). Trägt ein Artikel sie doch, gehen sie mit den Werten,
+       wo sie hingehören, statt als Rest übrig zu bleiben. */
+    const abgeleitet = ['strMod', 'dexMod', 'conMod', 'intMod', 'wisMod', 'chaMod',
+      'initiative', 'passivePerception'];
+    const ab = { ...(karten.Abilities ?? {}) };
+    const kern = { ...(karten.Statblock ?? {}) };
+    for (const [k, v] of Object.entries(alt)) {
+      if (werte.includes(k) || abgeleitet.includes(k)) ab[k] = v;
+      else kern[k] = v;
+    }
+    if (Object.keys(ab).length) karten.Abilities = ab;
+    if (Object.keys(kern).length) karten.Statblock = kern;
+    delete karten.StatblockInfo;
+    z.zahlen += 1;
+    beruehrt = true;
+  }
+
   /* 4. Vier Wörter werden drei. */
   const st = karten.Status;
   if (st && typeof st.status === 'string' && st.status in STATUS) {
@@ -214,7 +241,7 @@ function bericht(z) {
   console.log(
     `${z.artikel} Artikel gewandert · ${z.kreaturen} Kreaturen (kind), `
     + `${z.uebungen} Übungskarten, ${z.status} Status, ${z.schwere} Schwierigkeiten, `
-    + `${z.zusammengelegt} Übungen zusammengelegt, `
+    + `${z.zusammengelegt} Übungen zusammengelegt, ${z.zahlen} Statblöcke geteilt, `
     + `${z.fortschritt} Quest.progress, ${z.phase} Encounter.phase, `
     + `${z.geschichte} Story.state entfernt`,
   );

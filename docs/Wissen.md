@@ -48,7 +48,7 @@ Drei Kantenarten und zwei Artikelarten. Kein neues Konstrukt.
 | `knowledge` | Ansicht | Layout aus Beschreibung + Wissensgruppen |
 
 `Information.fields` schreibt Feldverweise in derselben Schreibweise wie die
-Ansichten: `StatblockInfo` nimmt jedes Feld dieser Art, `StatblockInfo.ac`
+Ansichten: `Abilities` nimmt jedes Feld dieser Art, `Statblock.ac`
 genau ein Feld. Zwei Schreibweisen für dieselbe Sache wären eine zu viel.
 
 `tier` ist **nur Anzeige und Sortierung**. Was jemand sehen darf, entscheiden

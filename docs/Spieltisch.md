@@ -75,7 +75,8 @@ beziehen müsste.
 
 ### 4. Zwei Sorten Zahl
 
-`StatblockInfo` sind die ruhigen Werte, `Vitals` ist der Stand am Tisch. In
+Der Statblock (`Abilities` und seine eigenen Felder) sind die ruhigen Werte,
+`Vitals` ist der Stand am Tisch. In
 einer Karte lägen sie im Weg: jede Änderung schriebe die andere mit, und das
 Wissensmodell könnte sie nicht trennen. Dieselbe Trennung bei der Begegnung
 (`Encounter.round` / `turn` gegen die Teilnehmerkanten).
@@ -201,7 +202,7 @@ Trennung steht schon im Register, und genau da muss sie halten:
 **Beleuchtetes wird nie gespeichert.** Es gibt kein Feld dafür — es wird bei
 jeder Zeichnung neu gerechnet, wie jeder abgeleitete Wert (D8). Aufgedecktes
 dagegen wird gespeichert, weil es bleibt. Das ist derselbe Schnitt wie
-zwischen `StatblockInfo` und `Vitals`, nur eine Etage höher.
+zwischen dem Statblock und `Vitals`, nur eine Etage höher.
 
 **Der Schatten wird gerechnet, nicht gemalt.** `visionPoly` schwenkt Strahlen
 zu jeder Wandecke — knapp daneben auf beiden Seiten, sonst hätte der Schatten

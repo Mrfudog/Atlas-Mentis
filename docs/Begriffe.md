@@ -302,7 +302,7 @@ Damit heisst `hp` am Statblock das Maximum und an der Figur, was sie gerade
 noch hat. Die Namensgleichheit ist keine Falle mehr, sondern die Wahrheit:
 zwei Karten an zwei Artikeln.
 
-> **Nicht mehr:** eine Kreatur trug ihre `StatblockInfo` auch selbst, und der
+> **Nicht mehr:** eine Kreatur trug die Statblockzahlen auch selbst, und der
 > Bogen las „erst die eigene, dann die geliehene". Zwei Formen für dasselbe —
 > wer eine Kreatur änderte, musste wissen, in welcher der beiden ihre Zahlen
 > gerade standen. Und `belongsTo` reichte nur bis zum NSC, ein
@@ -405,6 +405,25 @@ Artikel  pc_rook
   Kanten
     belongsTo ← sb_rook                 ← dort wohnen die sechs Werte
 ```
+
+Und der Bogen, auf den `belongsTo` zeigt:
+
+```
+Artikel  sb_rook
+  ist    Statblock
+  Karten
+    Abilities     str 10, dex 18, con 12, int 14, wis 12, cha 13
+                  strMod … chaMod, initiative, passivePerception  ← gerechnet
+    Statblock     system, size, ac, hp, speed, cr, prof, senses …
+```
+
+**`StatblockInfo` gibt es nicht mehr.** Es war eine Karte mit dreissig
+Feldern, von der Rüstungsklasse bis zu den Immunitäten — ein Sammelname für
+„alles, was an einem Statblock steht", und damit keine Auskunft. Jetzt trägt
+der Statblock seine eigenen Felder und nimmt `Abilities` dazu; eine andere
+Art, die die sechs Werte braucht, nimmt dieselbe Zeile. Die Modifikatoren
+stehen **bei** den Werten, weil `mod(dex)` gegen die Nachbarn derselben
+Karte auflöst.
 
 **Ein Feld, sechs Listen.** `proficient` zieht aus `Skill`, `Tool`,
 `Language`, `WeaponTraining`, `ArmorTraining` und `KnowledgeField`. Vorher

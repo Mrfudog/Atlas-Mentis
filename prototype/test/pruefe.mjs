@@ -44,7 +44,7 @@ const zumRegister = async (p, name) => {
 };
 
 /** Eine Artikelart in der Leiste wählen — über den Namen und nicht über die
- *  Beschriftung: `StatblockInfo` steht dort als „Statblock numbers". */
+ *  Beschriftung: `StatblockCore` steht dort als „Statblock". */
 const zumTyp = async (p, name) => {
   await zumRegister(p, 'Types');
   await p.evaluate((i) => document.querySelector('.rail .navrow[data-t="' + i + '"]').click(), name);
@@ -237,7 +237,7 @@ async function seite(datei, warten) {
 
   /* Umbenennen muss Schema, Ansichten UND die Werte in den Artikeln treffen —
      wer nur das Schema ändert, lässt die Werte still hinter dem alten Namen. */
-  await zumFeld('StatblockInfo', 'hp');
+  await zumFeld('Statblock', 'hp');
   await p.evaluate(() => {
     const box = [...document.querySelectorAll('.fbox .fmore')][0];
     const keyIn = [...box.querySelectorAll('label.f')]
@@ -253,7 +253,7 @@ async function seite(datei, warten) {
   }));
   pruefe('renaming a key rewrites the schema', umbenannt.felder.includes('hitPoints') && !umbenannt.felder.includes('hp'), umbenannt.felder.slice(0, 5));
   pruefe('renaming a key rewrites the articles', /article/.test(umbenannt.banner) && umbenannt.geschrieben.some((x) => x.startsWith('entities/')), umbenannt.banner);
-  /* Früher nannten die Ansichten einzelne Felder (`StatblockInfo.hp`), und
+  /* Früher nannten die Ansichten einzelne Felder (`Statblock.hp`), und
      das Umbenennen musste sie mitziehen. Seit es drei Stufen gibt, die
      `fields: 'all'` sagen, nennt keine Ansicht mehr ein Feld — die
      eigentliche Zusicherung ist deshalb: **nirgends bleibt der alte Name
@@ -261,7 +261,7 @@ async function seite(datei, warten) {
   const keinRest = await p.evaluate(() => {
     const T = window.__T__;
     const hay = JSON.stringify({ views: T.REG.views, components: T.REG.interfaces });
-    return { alt: /StatblockInfo\.hp\b/.test(hay), neu: /hitPoints/.test(hay) };
+    return { alt: /Statblock\.hp\b/.test(hay), neu: /hitPoints/.test(hay) };
   });
   pruefe('renaming a key leaves no stale reference behind',
     keinRest.alt === false && keinRest.neu === true, keinRest);
@@ -484,11 +484,10 @@ async function seite(datei, warten) {
      Ansicht sähe aus, als zeige sie nichts. */
   pruefe('an older view converts into elements', umgewandelt.includes('Description') && umgewandelt.includes('Field table'), umgewandelt);
 
-  /* Genau diese Art, nicht „irgendeine mit Statblock drin". Seit
-     `StatblockInfo` eine eigene Art ist, stand sie in der Liste hinter
-     `Statblock` — und eine Schleife, die die letzte Übereinstimmung nimmt,
-     landete dort. Die Anordnung wäre dann an der richtigen Stelle gewesen
-     und die Prüfung hätte sie an der falschen gesucht. */
+  /* Genau diese Art, nicht „irgendeine mit Statblock drin": eine Schleife,
+     die die letzte Übereinstimmung nimmt, landete früher bei
+     `StatblockInfo` — die Anordnung wäre dann an der richtigen Stelle
+     gewesen und die Prüfung hätte sie an der falschen gesucht. */
   await p.evaluate(() => {
     const s = [...document.querySelectorAll('.regbody select')]
       .find((x) => [...x.options].some((o) => o.value === 'Statblock'));
@@ -605,7 +604,7 @@ async function seite(datei, warten) {
      Feldes trägt ein Eingabefeld, das in den offenen Typ schreibt. */
   await zumTyp(p, 'Quest');
   const umbenennen = await p.evaluate(() => {
-    const zeile = [...document.querySelectorAll('.fbox.part .frow.inh')]
+    const zeile = [...document.querySelectorAll('.fbox .frow.inh')]
       .find((r) => r.querySelector('.fk')?.textContent.replace('*', '') === 'calendar');
     const i = zeile?.querySelector('input');
     if (!i) return { keinFeld: true };
@@ -631,7 +630,7 @@ async function seite(datei, warten) {
      Umbenennung, die dasselbe sagt wie das Feld, wird an dem Tag still
      falsch, an dem jemand das Feld umbenennt. */
   const titelZurueck = await p.evaluate(() => {
-    const zeile = [...document.querySelectorAll('.fbox.part .frow.inh')]
+    const zeile = [...document.querySelectorAll('.fbox .frow.inh')]
       .find((r) => r.querySelector('.fk')?.textContent.replace('*', '') === 'calendar');
     const i = zeile?.querySelector('input');
     if (i) { i.value = 'Calendar'; i.dispatchEvent(new Event('change', { bubbles: true })); }
@@ -2363,25 +2362,23 @@ async function seite(datei, warten) {
     return {
       titel: document.querySelector('.tpdoc .arthead h2')?.textContent ?? '',
       abschnitte: txt('.tpdoc .sec').concat(txt('.tpdoc .rsec')),
-      /* Ein Bestandteil ist die **Kopfzeile seiner Feldgruppe**: dort steht,
-         woher er kommt, und dort nimmt man ihn heraus. Ein eigener
-         Abschnitt „Made of" daneben war dieselbe Sache zum zweiten Mal —
-         und die Frage „wie werde ich dieses Feld los" war nur dort zu
-         beantworten, wo die Felder nicht standen. */
-      teile: [...document.querySelectorAll('.fbox.part .fhead')]
-        .filter((h) => h.querySelector('button.dngr'))
-        .map((h) => h.querySelector('.ref')?.textContent ?? ''),
-      /* Der erste Bestandteil entscheidet den Bereich, und das steht an ihm. */
-      erster: [...document.querySelectorAll('.fbox.part .fhead')]
-        .filter((h) => /first/.test(h.textContent))
-        .map((h) => h.querySelector('.ref')?.textContent ?? ''),
-      /* Ein Bestandteil dazu — an derselben Stelle wie ein Feld dazu. */
+      /* **Eine flache Liste aller Felder**, und an jedem geerbten eine
+         Marke: woher es kommt. Sie sagt damit auch, warum es sich hier
+         nicht löschen lässt — es gehört einem anderen Typ. Gruppen je
+         Bestandteil lasen sich wie eine Gliederung und waren eine: wer
+         wissen wollte, was ein Typ trägt, musste sie zusammenlesen. */
+      marken: [...document.querySelectorAll('.fbox .frow.inh .chip.inh .ref')]
+        .map((b) => b.dataset.from),
+      /* Ein direkt genommener Typ lässt sich an der Marke herausnehmen; was
+         über einen anderen hereinkam, nicht — dort ansetzen hiesse, am
+         falschen Typ zu ziehen. */
+      rausnehmbar: [...document.querySelectorAll('.fbox .frow.inh .chip.inh')]
+        .filter((c) => c.querySelector('button:not(.ref)'))
+        .map((c) => c.querySelector('.ref')?.dataset.from),
+      /* Und ein ganzer Typ dazu — an derselben Stelle wie ein Feld dazu. */
       teilDazu: [...document.querySelectorAll('.tpdoc .addbar select option')]
-        .some((o) => /part/.test(o.textContent)),
-      /* Geerbtes steht als Block unter dem Bestandteil, der es mitbringt —
-         und nicht flach mit „from X" an jeder der 83 Zeilen. */
-      bloecke: txt('.fbox.part .fhead .ref'),
-      inh: document.querySelectorAll('.fbox.part .frow.inh').length,
+        .some((o) => /\+ type/.test(o.textContent)),
+      inh: document.querySelectorAll('.fbox .frow.inh').length,
       kantenRaus: document.querySelectorAll('.tedges').length,
       reiter: txt('.tmpltab'),
     };
@@ -2399,13 +2396,16 @@ async function seite(datei, warten) {
      die nur so aussieht, als könnte man sie bedienen. */
   pruefe('and says each of them exactly once',
     eine.abschnitte.length === new Set(eine.abschnitte).size, eine.abschnitte);
-  pruefe('a part can be taken out where its fields stand',
-    eine.teile.includes('Creature') && eine.teilDazu, eine.teile);
-  pruefe('and the first part says that it decides the area',
-    eine.erster.join() === 'Creature', eine.erster);
-  pruefe('inherited fields stand under the part that brings them',
-    eine.bloecke.includes('Creature') && eine.bloecke.includes('Identity')
-    && eine.inh > 20, { bloecke: eine.bloecke.slice(0, 4), inh: eine.inh });
+  pruefe('every inherited field says which type it comes from',
+    eine.marken.includes('Creature') && eine.marken.includes('Identity')
+    && eine.marken.length === eine.inh, { marken: [...new Set(eine.marken)], inh: eine.inh });
+  /* `Creature` ist direkt dazugenommen und lässt sich herausnehmen;
+     `Identity` kommt über `Creature` herein und nicht. */
+  pruefe('and only a type taken in directly can be taken out again',
+    eine.rausnehmbar.includes('Creature') && !eine.rausnehmbar.includes('Identity')
+    && eine.teilDazu, { rausnehmbar: [...new Set(eine.rausnehmbar)] });
+  pruefe('and the list is flat — every field of this kind, once',
+    eine.inh > 20, { inh: eine.inh });
   /* Die Reiter des Bogens stehen in der Vorlage mit Namen — „tabs" allein
      zu lesen sagt nichts. */
   pruefe('the template shows the tabs by name, not just the word “tabs”',
@@ -2795,7 +2795,7 @@ async function seite(datei, warten) {
     typeof werte.vor.PARTYWHERE === 'string', werte.vor.PARTYWHERE);
 
   /* ---- Charakterbogen und Inventar (REQ-051, 063, 064, 065) ----
-     Der Bogen rechnet aus zwei Karten: die ruhigen Zahlen aus StatblockInfo,
+     Der Bogen rechnet aus zwei Karten: die ruhigen Zahlen vom Statblock,
      der Stand aus Vitals. Rechnet er falsch, steht am Tisch eine plausible
      Zahl da und niemand merkt es — deshalb gegen bekannte Werte geprüft. */
   const held = await p.evaluate(() => {
@@ -2927,7 +2927,8 @@ async function seite(datei, warten) {
       const figuren = [...T.ENT.values()]
         .filter((e) => ['PlayerCharacter', 'Creature'].includes((e.interfaces || [])[0]));
       return {
-        eigene: figuren.filter((e) => (e.components || {}).StatblockInfo).map((e) => e.name),
+        eigene: figuren.filter((e) => (e.components || {}).Abilities
+          || (e.components || {}).Statblock).map((e) => e.name),
         /* Wer einen Statblock hat, liest ihn. Wer keinen hat, hat keine
            Zahlen — und das ist richtig: der Händler am Lampenplatz kämpft
            nicht, und eine frisch angelegte Figur hat noch nichts. Ihnen
@@ -3758,6 +3759,43 @@ async function seite(datei, warten) {
     && ['interfaces', 'relations', 'views', 'units', 'enums', 'vars', 'settings']
       .every((t) => sicherung.teile.includes(t))
     && /\.json$/.test(sicherung.name), sicherung);
+
+  /* **Eine Datei mit Register und ohne Artikel** bringt die Zeilen und
+     lässt den Bestand in Ruhe. Das Register wandert häufiger als die
+     Artikel; dafür den ganzen Bestand aus- und wieder einzulesen ist ein
+     Umweg, auf dem man einen Artikel verlieren kann. */
+  const nurZeilen = await p.evaluate(() => {
+    const T = window.__T__;
+    const vorher = T.ENT.size;
+    const datei = {
+      format: 'nebelwacht/1',
+      registry: { enums: { ...T.REG.enums, Probe: { name: 'Probe', label: 'Probe', values: ['eins'] } } },
+    };
+    const bericht = T.importReport(datei);
+    return { bericht, vorher, artikel: bericht.neu + bericht.geaendert + bericht.gleich };
+  });
+  pruefe('a file with rows and no articles is a registry delivery',
+    nurZeilen.bericht.ok && nurZeilen.bericht.nurRegister === true
+    && nurZeilen.artikel === 0 && nurZeilen.bericht.weg === 0, nurZeilen.bericht);
+  const angewandt = await p.evaluate(async () => {
+    const T = window.__T__;
+    const vorher = T.ENT.size;
+    const datei = {
+      format: 'nebelwacht/1',
+      registry: { enums: { ...T.REG.enums, Probe: { name: 'Probe', label: 'Probe', values: ['eins'] } } },
+    };
+    T.applyImport(datei, true, function () {});
+    await new Promise((r) => setTimeout(r, 300));
+    const jetzt = { artikel: T.ENT.size, probe: !!(T.REG.enums || {}).Probe,
+      abilityDa: !!(T.REG.enums || {}).Ability };
+    delete T.REG.enums.Probe;
+    return { vorher, ...jetzt };
+  });
+  /* Auch mit „und lösche, was nicht in der Datei steht": eine Datei ohne
+     Artikel sagt nichts über Artikel. */
+  pruefe('and it leaves every article alone, even with “remove the rest” ticked',
+    angewandt.artikel === angewandt.vorher && angewandt.probe && angewandt.abilityDa,
+    angewandt);
 
   /* Der Trockenlauf sagt, was passieren würde — eine Wiederherstellung ohne
      Vorschau ist ein zweiter Datenverlust mit Anlauf. */
