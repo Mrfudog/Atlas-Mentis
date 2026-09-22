@@ -367,6 +367,36 @@ export function relationAccepts(
   return to.includes(targetInterface);
 }
 
+/**
+ * Die Zieltypen eines Verweisfelds, oder `undefined` für „jeder Artikel".
+ *
+ * Eine leere Liste ist dasselbe wie keine: ein Verweis ohne Einschränkung
+ * ist immer noch ein Verweis und kein Fehler.
+ */
+export function linkTargets(prop: PropertySchema | undefined): string[] | undefined {
+  const liste = prop?.target?.interfaces;
+  return liste && liste.length ? liste : undefined;
+}
+
+/**
+ * Darf dieses Verweisfeld auf einen Artikel dieser Art zeigen?
+ *
+ * Gelaufen wird dieselbe Kette wie bei einer Kante (`interfaceInList`, die
+ * `extends`-Kette hoch): `interfaces: ['Creature']` nimmt eine
+ * Spielerfigur, weil sie eine Kreatur **ist**. Die Marken und der Feldwert
+ * aus `LinkTarget` sind hier nicht dabei — die lesen den heutigen Zustand
+ * des Ziels und gehören der Maske, nicht der Prüfung.
+ */
+export function linkAccepts(
+  registry: Pick<Registry, 'interfaces'>,
+  prop: PropertySchema | undefined,
+  targetInterface: string,
+): boolean {
+  const liste = linkTargets(prop);
+  if (!liste) return true;
+  return interfaceInList(registry, liste, targetInterface);
+}
+
 export function relationDef(
   registry: Pick<Registry, 'relations'>,
   type: string,

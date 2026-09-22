@@ -259,6 +259,24 @@ wiederkommen, werden sie neu geschrieben.
   Registerzeile in `packages/registry/src/units.ts` und nicht im Code. Was
   gezeigt wird, sagt die Einstellung `units`; eine Artikelart darf es
   überschreiben und vererbt es wie `area`.
+  **Ein Mass ohne Einheit ist keines**: gerechnet wird aus der
+  gespeicherten Einheit, also verlangt die Prüfung `unit` an jedem Feld mit
+  `format: 'measure'` — ohne sie rechnet nichts, und das sieht aus wie eine
+  Zahl, die schon stimmt. An einem Text ist `unit` das **Ausgangsmass** für
+  Zahlen, die selbst keine nennen, und es greift nur, wenn im ganzen Text
+  kein Buchstabe steht: „40" und „30/120" sind Fuss, „7 zorp" bleibt sieben
+  Zorp. In „climb 20" könnte „climb" eine Einheit sein, die diese Kampagne
+  kennt und der Code nicht.
+- **Ein Verweisfeld nennt seinen Zieltyp** (`PropertySchema.target`). Ein
+  Feld mit `format: 'link'` hält eine Artikel-Id; ohne Zielangabe die von
+  irgendeinem, und „Scene in play" nahm eine Rüstung. `target.interfaces`
+  gilt wie `RelationDef.from`/`to` die `extends`-Kette hoch — eine
+  Spielerfigur *ist* eine Kreatur —, und `validateEntity` lehnt anderes ab
+  (`link_wrong_type`), sobald der Aufrufer `knownTypes` mitgibt.
+  **Die Art hält, der Filter schlägt vor:** `target.tags` und
+  `target.where` lesen den heutigen Zustand des Ziels, also engen sie nur
+  die Maske ein — eine Regel daraus machte einen längst gespeicherten
+  Verweis rückwirkend falsch, sobald jemand eine Marke entfernt.
 - **Nicht auf `0.0.0.0` binden** — ausserhalb eines Containers. Im Container
   ist `HOST=0.0.0.0` richtig, weil dort die Containergrenze das ist, was
   zählt; auf einer Maschine ist es der Reverse Proxy. Seit 2026-09-20 hat der

@@ -6,6 +6,8 @@ import {
   findByName,
   idPrefix,
   nextId,
+  linkAccepts,
+  linkTargets,
   relationAccepts,
   relationDef,
   setTags,
@@ -41,6 +43,10 @@ const registry: Registry = {
           probe: { type: 'string', enumRef: 'Ability' },
           stufe: { type: 'number', min: 1, max: 20 },
           laune: { type: 'string', enum: ['gut', 'schlecht'] },
+          /* Ein Verweisfeld, das seinen Zieltyp nennt — und eines, das
+             es nicht tut. */
+          sb: { type: 'string', format: 'link', target: { interfaces: ['Statblock'] } },
+          irgendwas: { type: 'string', format: 'link' },
         },
       },
     },
@@ -56,6 +62,9 @@ const registry: Registry = {
       },
     },
     Statblock: { name: 'Statblock', extends: ['Identity', 'StatblockInfo'] },
+    /* Ein Untertyp des genannten Typs. Er muss durchgehen: eine
+       Spielerfigur ist eine Kreatur. */
+    EliteStatblock: { name: 'EliteStatblock', extends: ['Statblock'] },
   },
   relations: {
     schuldet: { type: 'schuldet', label: 'schuldet', inverseLabel: 'Gläubiger von', from: ['NPC'], to: ['NPC'] },
@@ -246,6 +255,67 @@ describe('validateEntity', () => {
     expect(validateEntity(registry, alien)).toEqual([
       expect.objectContaining({ code: 'unknown_interface' }),
     ]);
+  });
+});
+
+/* ---- Ein Verweisfeld nennt seinen Zieltyp ----
+   Kanten sagen das längst (`from` / `to`). Ein Feld mit `format: 'link'`
+   sagte es nicht, und „Scene in play" hielt darum die Id von irgendetwas. */
+describe('link targets', () => {
+  const sb: Entity = { id: 'sb1', interfaces: ['Statblock'], name: 'Wache', components: {} };
+  const elite: Entity = { id: 'sb2', interfaces: ['EliteStatblock'], name: 'Hauptmann', components: {} };
+  const arten = new Map([
+    ['n_volo', 'NPC'], ['n_floon', 'NPC'], ['sb1', 'Statblock'], ['sb2', 'EliteStatblock'],
+  ]);
+
+  const mit = (karte: Record<string, unknown>): Entity =>
+    ({ ...volo, relations: [], components: { ...volo.components, NPC: karte } });
+
+  it('reads the named types off the field, and nothing from an empty list', () => {
+    const props = registry.interfaces['NPC']!.schema!.properties;
+    expect(linkTargets(props['sb'])).toEqual(['Statblock']);
+    expect(linkTargets(props['irgendwas'])).toBeUndefined();
+    expect(linkTargets(undefined)).toBeUndefined();
+  });
+
+  it('takes a subtype of the named type, because it is one', () => {
+    expect(linkAccepts(registry, registry.interfaces['NPC']!.schema!.properties['sb'], 'EliteStatblock'))
+      .toBe(true);
+    expect(validateEntity(registry, mit({ sb: 'sb2' }), { knownTypes: arten })
+      .map((i) => i.code)).not.toContain('link_wrong_type');
+    void sb; void elite;
+  });
+
+  it('rejects an article of the wrong type', () => {
+    const issue = validateEntity(registry, mit({ sb: 'n_floon' }), { knownTypes: arten })
+      .find((i) => i.code === 'link_wrong_type');
+    expect(issue?.property).toBe('sb');
+    expect(issue?.message).toContain('Statblock');
+  });
+
+  it('lets a field without a target point anywhere', () => {
+    expect(validateEntity(registry, mit({ irgendwas: 'sb1' }), { knownTypes: arten })
+      .map((i) => i.code)).not.toContain('link_wrong_type');
+  });
+
+  it('reports a link at an article that does not exist', () => {
+    expect(validateEntity(registry, mit({ sb: 'sb_weg' }), { knownTypes: arten })
+      .map((i) => i.code)).toContain('dangling_link');
+  });
+
+  /* Ohne die Arten weiss die Prüfung nicht, worauf der Verweis zeigt — und
+     eine Regel, die raten muss, lehnt irgendwann das Richtige ab. */
+  it('says nothing when the caller did not say what exists', () => {
+    expect(validateEntity(registry, mit({ sb: 'n_floon' })).map((i) => i.code))
+      .not.toContain('link_wrong_type');
+  });
+
+  /* Wer die Arten mitgibt, hat die Ids mitgegeben: zwei Listen derselben
+     Artikel wären eine, die veraltet. */
+  it('uses the same list for a dangling edge', () => {
+    const codes = validateEntity(registry, volo, { knownTypes: new Map([['n_volo', 'NPC']]) })
+      .map((i) => i.code);
+    expect(codes).toContain('dangling_relation');
   });
 });
 

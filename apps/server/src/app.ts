@@ -493,10 +493,15 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
       }
 
       const registry = await repo.getRegistry();
-      const known = new Set((await repo.listEntities()).map((e) => e.id));
-      known.add(entity.id);
+      /* Id **und Art**: daran prüft ein Verweisfeld seinen Zieltyp. Der
+         Artikel selbst kommt dazu, weil er in diesem Augenblick noch nicht
+         im Bestand steht und ein Verweis auf sich selbst kein Bruch ist. */
+      const known = new Map(
+        (await repo.listEntities()).map((e) => [e.id, e.interfaces?.[0] ?? ''] as const),
+      );
+      known.set(entity.id, entity.interfaces?.[0] ?? '');
 
-      const issues = validateEntity(registry, entity, { knownIds: known });
+      const issues = validateEntity(registry, entity, { knownTypes: known });
       if (issues.length) {
         return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
       }
@@ -527,8 +532,10 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
       return reply.code(400).send({ error: 'Artikel ungültig', issues: parsed.error.issues });
     }
     const registry = await repo.getRegistry();
-    const known = new Set((await repo.listEntities()).map((e) => e.id));
-    return { issues: validateEntity(registry, parsed.data as Entity, { knownIds: known }) };
+    const known = new Map(
+      (await repo.listEntities()).map((e) => [e.id, e.interfaces?.[0] ?? ''] as const),
+    );
+    return { issues: validateEntity(registry, parsed.data as Entity, { knownTypes: known }) };
   });
 
   return app;

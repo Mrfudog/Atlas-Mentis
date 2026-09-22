@@ -11,28 +11,49 @@
  */
 
 import { z } from 'zod';
-import { enumOptions, typeChain } from './entity.js';
+import { enumOptions, linkAccepts, linkTargets, typeChain } from './entity.js';
 import type { Entity, LayoutElement, Registry } from './types.js';
 
 const propertyType = z.enum(['string', 'number', 'integer', 'boolean', 'array', 'object']);
 
-const propertySchema = z.object({
-  type: propertyType,
-  title: z.string().optional(),
-  enum: z.array(z.string()).optional(),
-  /* Die Werte stehen einmal in einer Aufzählungszeile, und das Feld nennt sie. */
-  enumRef: z.union([z.string(), z.array(z.string())]).optional(),
-  min: z.number().optional(),
-  max: z.number().optional(),
-  format: z.string().optional(),
-  items: z.object({ type: propertyType }).optional(),
-  derived: z.string().optional(),
-  of: z.string().optional(),
-  unit: z.string().optional(),
-  many: z.boolean().optional(),
-  readOnly: z.boolean().optional(),
-  default: z.unknown().optional(),
+/* Worauf ein Verweisfeld zeigen darf. Die Art ist die Regel, die Marken
+   und der Feldwert sind Vorschläge für die Maske. */
+const linkTargetSchema = z.object({
+  interfaces: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
+  where: z
+    .object({ component: z.string(), property: z.string(), value: z.unknown().optional() })
+    .optional(),
 });
+
+const propertySchema = z
+  .object({
+    type: propertyType,
+    title: z.string().optional(),
+    enum: z.array(z.string()).optional(),
+    /* Die Werte stehen einmal in einer Aufzählungszeile, und das Feld nennt sie. */
+    enumRef: z.union([z.string(), z.array(z.string())]).optional(),
+    min: z.number().optional(),
+    max: z.number().optional(),
+    format: z.string().optional(),
+    items: z.object({ type: propertyType }).optional(),
+    derived: z.string().optional(),
+    of: z.string().optional(),
+    unit: z.string().optional(),
+    target: linkTargetSchema.optional(),
+    many: z.boolean().optional(),
+    readOnly: z.boolean().optional(),
+    default: z.unknown().optional(),
+  })
+  /* **`measure` ohne `unit` rechnet nichts.** Umgerechnet wird aus der
+     gespeicherten Einheit (D8); nennt das Feld keine, sieht das Ergebnis
+     aus wie „diese Zahl ist schon richtig". Genau so stand die
+     Geschwindigkeit einer Kreatur jahrelang in Fuss auf einem metrischen
+     Tisch, und niemand sah es dem Feld an. */
+  .refine((p) => p.format !== 'measure' || typeof p.unit === 'string', {
+    message: 'A measure field must name the unit its numbers are in (unit: "ft").',
+    path: ['unit'],
+  });
 
 const objectSchema = z.object({
   type: z.literal('object'),
@@ -163,6 +184,10 @@ export interface ValidationIssue {
     | 'value_not_allowed'
     | 'value_out_of_range'
     | 'value_not_a_number'
+    /* Ein Verweisfeld, das auf die falsche Artikelart zeigt — oder auf
+       nichts. */
+    | 'link_wrong_type'
+    | 'dangling_link'
     | 'dangling_relation'
     | 'unknown_relation';
   message: string;
@@ -177,6 +202,12 @@ export interface ValidateOptions {
   expertMode?: boolean;
   /** Ids that exist, so dangling edges can be reported. Omit to skip that check. */
   knownIds?: ReadonlySet<string>;
+  /**
+   * Was es gibt, **und als was**: Id → Artikelart. Damit prüft ein
+   * Verweisfeld seinen Zieltyp, und die Schlüssel zählen gleich als
+   * `knownIds` — zwei Listen derselben Artikel wären eine, die veraltet.
+   */
+  knownTypes?: ReadonlyMap<string, string>;
 }
 
 /** Check one entity against the registry. An empty array means it is valid. */
@@ -300,6 +331,53 @@ export function validateEntity(
     }
   }
 
+  /* **Ein Verweisfeld hält eine Id, und die Id gehört zu einer Art.**
+     Geprüft wird nur, wenn der Aufrufer sagt, was es gibt — ohne das
+     wüsste die Prüfung nicht, worauf der Verweis zeigt, und eine Regel,
+     die raten muss, lehnt irgendwann das Richtige ab.
+
+     Die Marken und der Feldwert aus `LinkTarget` bleiben aussen vor: sie
+     lesen den heutigen Zustand des Ziels, und ein entfernter Marker würde
+     einen längst gespeicherten Verweis rückwirkend falsch machen. */
+  if (options.knownTypes) {
+    for (const type of kette) {
+      const schema = registry.interfaces[type]?.schema;
+      const card = entity.components?.[type];
+      if (!schema || !card) continue;
+      for (const [property, prop] of Object.entries(schema.properties)) {
+        if (prop.format !== 'link' || prop.derived) continue;
+        const werte = Array.isArray(card[property]) ? card[property] : [card[property]];
+        for (const einer of werte as unknown[]) {
+          if (einer === undefined || einer === '' || einer === null) continue;
+          const id = String(einer);
+          const art = options.knownTypes.get(id);
+          if (!art) {
+            issues.push({
+              code: 'dangling_link',
+              component: type,
+              property,
+              message: `${type}.${property} points at ${id}, which does not exist`,
+            });
+            continue;
+          }
+          if (!linkAccepts(registry, prop, art)) {
+            issues.push({
+              code: 'link_wrong_type',
+              component: type,
+              property,
+              message: `${type}.${property} points at a ${art}, but only ${(linkTargets(prop) ?? []).join(', ')} is allowed`,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  /* Wer die Arten mitgibt, hat die Ids mitgegeben. Zwei Listen derselben
+     Artikel wären eine, die veraltet. */
+  const bekannt = options.knownIds
+    ?? (options.knownTypes ? new Set(options.knownTypes.keys()) : undefined);
+
   for (const relation of entity.relations ?? []) {
     if (!registry.relations[relation.type]) {
       issues.push({
@@ -308,7 +386,7 @@ export function validateEntity(
         message: `Relation type ${relation.type} is not in the registry`,
       });
     }
-    if (options.knownIds && !options.knownIds.has(relation.to)) {
+    if (bekannt && !bekannt.has(relation.to)) {
       issues.push({
         code: 'dangling_relation',
         relation: relation.type,

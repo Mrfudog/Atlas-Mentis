@@ -74,10 +74,17 @@ function felderVon(art) {
       : null;
     const spanne = (p.min !== undefined || p.max !== undefined)
       ? `${p.min ?? '−∞'}…${p.max ?? '∞'}` : null;
+    /* Ein Verweis sagt, worauf er zeigen darf, und ein Mass, in welcher
+       Einheit es dasteht. Ohne das hiesse beides nur „link" und
+       „measure" — also der Name des Mechanismus statt der Angabe. */
+    const ziel = (p.target?.interfaces ?? []).length
+      ? `link → ${p.target.interfaces.join(' | ')}` : null;
+    const mass = p.unit
+      ? (p.format === 'measure' ? `measure in ${p.unit}` : `${p.type} in ${p.unit}`) : null;
     const wie = p.derived ? 'gerechnet'
       : viele ?? (zeile ? `${refs[0]}: ${(zeile.values ?? []).join(' | ')}`
       : p.enum ? p.enum.join(' | ')
-      : spanne ?? (p.format ?? p.type ?? '?'));
+      : ziel ?? mass ?? spanne ?? (p.format ?? p.type ?? '?'));
     return `\`${k}\`${pflicht.has(k) ? ' **Pflicht**' : ''} *${wie}*`;
   });
 }

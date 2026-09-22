@@ -1163,9 +1163,23 @@ function formatMeasure(value,unitCode,mode){
    wie eine Zahl mit bekannter Einheit aussieht; alles andere bleibt Wort
    für Wort stehen. Ein Umschreiben, das auch nur manchmal danebengreift,
    wäre schlimmer als gar keines — man sähe es dem Ergebnis nicht an. */
-function convertText(text,mode){
+/* `annahme` ist das Ausgangsmass des Feldes (`unit`) und greift **nur**,
+   wenn im ganzen Text kein Buchstabe steht: „40" und „30/120" sind dann
+   Fuss, „7 zorp" bleibt sieben Zorp. Alles andere wäre geraten — in
+   „climb 20" könnte „climb" eine Einheit sein, die diese Kampagne kennt
+   und der Code nicht. */
+function convertText(text,mode,annahme){
   if(!text)return text;
-  return String(text).replace(/(-?\d+(?:[.,]\d+)?)\s*([A-Za-zäöü']{1,6})\b/g,
+  var t=String(text);
+  if(annahme&&!/[A-Za-zÀ-ÿ]/.test(t)&&unitByCode(annahme)){
+    var u0=unitByCode(annahme);
+    return t.replace(/-?\d+(?:[.,]\d+)?/g,function(zahl){
+      var w=Number(String(zahl).replace(",","."));
+      if(!isFinite(w))return zahl;
+      return formatMeasure(w,u0.code,mode);
+    });
+  }
+  return t.replace(/(-?\d+(?:[.,]\d+)?)\s*([A-Za-zäöü']{1,6})\b/g,
     function(ganz,zahl,code){
       var u=unitByCode(code);
       if(!u)return ganz;
@@ -1195,7 +1209,7 @@ function fmtVal(pd,x,ifn){
      `format:"measure"` einen Text, in dem welche stehen dürfen. */
   if(pd&&pd.unit&&typeof x==="number") return formatMeasure(x,pd.unit,unitsFor(ifn));
   if(typeof x==="object")return Array.isArray(x)?x.join(", "):JSON.stringify(x);
-  if(pd&&pd.format==="measure") return convertText(String(x),unitsFor(ifn));
+  if(pd&&pd.format==="measure") return convertText(String(x),unitsFor(ifn),pd.unit);
   return String(x);
 }
 /* ---------- Prosa ----------
@@ -1430,7 +1444,7 @@ function setFieldKind(p,kind){
   /* Auch die Nennung: ein Feld, das keine Auswahl mehr ist, darf keine
      Liste mehr nennen — sonst käme sie beim nächsten Wechsel zurück. */
   delete p.enumRef;
-  if(p.format==="color"||p.format==="link"||p.format==="asset"||p.format==="date") delete p.format;
+  if(p.format==="color"||p.format==="link"||p.format==="asset"||p.format==="date"||p.format==="measure") delete p.format;
   delete p.target;
   switch(kind){
     case "number":  p.type="number"; break;
@@ -2118,6 +2132,39 @@ function checkArticle(e){
       var val=((e.components||{})[c]||{})[p];
       if(val===undefined||val===""||val===null)
         problems.push({t:(cd.label||c)+" \u00b7 "+((pd&&pd.title)||p)+" is required"});
+    });
+  });
+
+  /* **Ein Verweisfeld hält eine Id, und die Id gehört zu einer Art.**
+     Geprüft wird die Art und nur die: Marken und Feldwert aus `target`
+     lesen den heutigen Zustand des Ziels, und ein entfernter Marker würde
+     einen längst gespeicherten Verweis rückwirkend falsch machen. Die Art
+     eines Artikels ändert sich nicht, weil jemand anderes etwas
+     bearbeitet — also hält sie. */
+  kette.forEach(function(c){
+    var cd=REG.interfaces[c]; if(!cd||!cd.schema)return;
+    var props=cd.schema.properties||{};
+    var karte=(e.components||{})[c]; if(!karte)return;
+    Object.keys(props).forEach(function(k){
+      var pd=props[k];
+      if(!pd||pd.format!=="link"||pd.derived)return;
+      var werte=Array.isArray(karte[k])?karte[k]:[karte[k]];
+      werte.forEach(function(v){
+        if(v===undefined||v===null||v==="")return;
+        var ziel=ENT.get(String(v));
+        var wie=(pd.title||k);
+        if(!ziel){
+          problems.push({t:(cd.label||c)+" \u00b7 "+wie+" points at an article that does not exist"});
+          return;
+        }
+        var arten=(pd.target||{}).interfaces||[];
+        if(!arten.length)return;
+        if(!targetMatches({interfaces:arten},ziel)){
+          problems.push({t:(cd.label||c)+" \u00b7 "+wie+" points at a "+ifaceName(ziel)
+            +", but only "+arten.map(function(n){return (REG.interfaces[n]||{}).label||n;}).join(", ")
+            +" is allowed"});
+        }
+      });
     });
   });
 
@@ -10943,6 +10990,11 @@ var BEGRIFFE=[
    "knowledge at once. As an array the same field holds several of them: "+
    "one ability carries a check, several abilities are saving throws. A "+
    "number may carry a range (1 to 20 is a range, not twenty words). A "+
+   "link names the article types it may point at, subtypes included — "+
+   "without that it held the id of anything, and “Scene in play” took an "+
+   "armour; tags and a field value may narrow the suggestions, but only "+
+   "the type is a rule, because a tag removed later would make a stored "+
+   "link wrong in hindsight. A measure names the unit it is stored in. A "+
    "calculated field takes no input "+
    "and is never stored. Values are kept one card per type, named after the "+
    "type that declares the field — that is what keeps hp at the creature "+
@@ -10984,7 +11036,13 @@ var BEGRIFFE=[
    "nothing. So one number is stored and the other is worked out on read — "+
    "two numbers for one measure are two numbers that can disagree. How the "+
    "conversion goes is a registry row, and which system is shown is a "+
-   "setting an article type may override."]
+   "setting an article type may override. A measure without a unit is not "+
+   "a measure: the conversion starts from the stored unit, so naming none "+
+   "converts nothing and looks like a number that is already right. In a "+
+   "text (“40 ft, climb 20 ft”) the unit is what bare numbers are assumed "+
+   "to be — and only where no word stands in the way, because in “climb "+
+   "20” the word could be a unit this campaign knows and the code does "+
+   "not."]
 ];
 
 /** Ein Artikel, an dem sich das Ganze zeigen lässt: einer mit möglichst
@@ -11099,10 +11157,23 @@ function howtoBaum(e){
         var belegt=karten[n]&&karten[n][k]!==undefined&&karten[n][k]!==""&&
           !(Array.isArray(karten[n][k])&&!karten[n][k].length);
         var p2=((d.schema||{}).properties||{})[k]||{};
+        /* Was ein Feld einschränkt, gehört in die Erklärung: ein Verweis
+           sagt, worauf er zeigen darf, ein Mass, in welcher Einheit es
+           dasteht, eine Zahl ihre Grenzen. Ohne das hiesse hier nur
+           „link" und „measure" — der Name des Mechanismus statt der
+           Angabe. */
+        var enger="";
+        if((( p2.target||{}).interfaces||[]).length)
+          enger+=" · points at "+p2.target.interfaces.map(function(n2){
+            return (REG.interfaces[n2]||{}).label||n2; }).join(" | ");
+        if(p2.unit) enger+=" · stored in "+p2.unit;
+        if(p2.min!==undefined||p2.max!==undefined)
+          enger+=" · "+(p2.min===undefined?"\u2212\u221e":p2.min)+"\u2026"+
+            (p2.max===undefined?"\u221e":p2.max);
         fb.appendChild(el("span",{
           class:"pill q tfield"+(belegt?" on":"")+(p2.derived?" der":""),
           title:(p2.title||k)+(pflicht.indexOf(k)>=0?" · required":" · optional")+
-            (p2.derived?" · calculated: "+p2.derived:"")+
+            (p2.derived?" · calculated: "+p2.derived:"")+enger+
             (belegt?"":" · this article carries none"),
           text:k+(pflicht.indexOf(k)>=0?"*":"")}));
       });
@@ -11971,12 +12042,40 @@ function fieldMore(cn,k,within,w,saveC){
   box.appendChild(field("Default when created",defNode));
 
   var fm=el("select",{class:"i"}); if(!w) fm.disabled=true;
-  [["","—"],["long","long text"],["signed","signed"]].forEach(function(f){
+  [["","—"],["long","long text"],["signed","signed"],
+   ["measure","measure (text with units)"]].forEach(function(f){
     fm.appendChild(el("option",{value:f[0]},f[1])); });
   fm.value=p.format||"";
   fm.addEventListener("change",function(){
-    if(fm.value)p.format=fm.value; else delete p.format; saveC(); });
+    if(fm.value)p.format=fm.value; else delete p.format;
+    /* Ein Mass braucht sein Ausgangsmass — also erscheint die Wahl
+       gleich, und nicht erst, wenn jemand das Feld wieder aufmacht. */
+    if(fm.value==="measure"&&!p.unit) p.unit="ft";
+    saveC(); render(); });
   box.appendChild(field("Display",fm));
+
+  /* **Ein Mass nennt die Einheit, in der es gespeichert ist.** Umgerechnet
+     wird beim Lesen (D8); nennt das Feld keine, rechnet nichts, und das
+     sieht aus wie „diese Zahl stimmt schon". An einem Text (`measure`) ist
+     es das Ausgangsmass für Zahlen, die selbst keine nennen. */
+  if(p.format==="measure"||p.unit||p.type==="number"||p.type==="integer"){
+    var un=el("select",{class:"i"}); if(!w) un.disabled=true;
+    un.appendChild(el("option",{value:""},"—"));
+    Object.keys(REG.units||{}).sort(function(a,b){
+      var ua=REG.units[a],ub=REG.units[b];
+      return (ua.quantity||"").localeCompare(ub.quantity||"")||ua.base-ub.base;
+    }).forEach(function(k){
+      var u=REG.units[k];
+      un.appendChild(el("option",{value:u.code},u.code+" — "+u.label+" ("+u.quantity+")"));
+    });
+    un.value=p.unit||"";
+    un.addEventListener("change",function(){
+      if(un.value)p.unit=un.value; else delete p.unit; saveC(); render(); });
+    box.appendChild(field("Stored in unit",un));
+    if(p.format==="measure"&&!p.unit) box.appendChild(el("p",{class:"hint",
+      style:"grid-column:1/-1;margin:0",
+      text:"A measure without a unit converts nothing. Name the unit its bare numbers are in."}));
+  }
 
   var art=fieldKind(p);
   if(art==="choice"||art==="choices"){

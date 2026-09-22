@@ -46,6 +46,25 @@ describe('units', () => {
     expect(convertText(seedRegistry, '', 'metric')).toBe('');
   });
 
+  /* **Das Ausgangsmass des Feldes** springt nur ein, wo keine Zahl ihre
+     Einheit nennen kann: „40" und „30/120" sind Fuss, „7 zorp" bleibt
+     sieben Zorp. Alles andere wäre geraten — in „climb 20" könnte „climb"
+     eine Einheit sein, die diese Kampagne kennt und der Code nicht. */
+  it('assumes the field unit for a text with no word in it', () => {
+    expect(convertText(seedRegistry, '40', 'metric', 'ft')).toMatch(/12\.2.*m/);
+    const bereich = convertText(seedRegistry, '30/120', 'metric', 'ft');
+    expect(bereich).toMatch(/9\.1/);
+    expect(bereich).toMatch(/36\.6/);
+    expect(bereich).toMatch(/\//);
+    /* Ohne Annahme bleibt eine nackte Zahl eine nackte Zahl. */
+    expect(convertText(seedRegistry, '40', 'metric')).toBe('40');
+    /* Steht ein Wort im Text, gilt wieder nur, was seine Einheit nennt. */
+    expect(convertText(seedRegistry, '7 zorp', 'metric', 'ft')).toBe('7 zorp');
+    expect(convertText(seedRegistry, '40 ft, climb 20', 'metric', 'ft')).toMatch(/climb 20$/);
+    /* Eine Annahme, die keine Zeile im Register hat, ist keine. */
+    expect(convertText(seedRegistry, '40', 'metric', 'zorp')).toBe('40');
+  });
+
   /* Eine Kreatur darf imperial bleiben, weil ihre Zahlen aus dem Regelwerk
      kommen, während der Rest der Kampagne metrisch dasteht. */
   it('takes the system from the type, then the campaign, then both', () => {

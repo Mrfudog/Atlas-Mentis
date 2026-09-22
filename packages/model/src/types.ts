@@ -31,6 +31,13 @@ export interface PropertySchema {
    * Die Einheit, in der **der gespeicherte Wert** steht — `ft`, `lb`, `m`.
    * Umgerechnet wird beim Lesen und nie gespeichert (D8): zwei Zahlen für
    * dasselbe Mass sind zwei Zahlen, die sich widersprechen können.
+   *
+   * An einem Text mit `format: 'measure'` ist es das **Ausgangsmass**: die
+   * Einheit, in der die Zahlen gemeint sind, die keine nennen. „40 ft,
+   * climb 20 ft" sagt es selbst, „40" nicht — und ohne Ausgangsmass rechnet
+   * an einem solchen Feld nichts, was aussieht wie „diese Kampagne ist
+   * eben imperial". Darum verlangt die Prüfung es: `measure` ohne `unit`
+   * ist keine Angabe, sondern eine, die stillschweigend ausfällt.
    */
   unit?: string;
   /**
@@ -91,6 +98,17 @@ export interface PropertySchema {
   max?: number;
   default?: unknown;
   /**
+   * **Worauf ein Verweisfeld zeigen darf.** Ein Feld mit `format: 'link'`
+   * hält die Id eines Artikels; ohne Zielangabe hält es die Id von
+   * *irgendeinem*, und „Scene in play" nahm eine Rüstung.
+   *
+   * Kanten sagen das längst (`RelationDef.from` / `to`), und hier gilt
+   * dasselbe: die Artikelart, Untertypen eingeschlossen, denn eine
+   * Spielerfigur ist eine Kreatur. Zwei Mechanismen für eine Frage wären
+   * zwei Antworten, von denen eine irgendwann veraltet.
+   */
+  target?: LinkTarget;
+  /**
    * **Ausgegeben, nicht eingetippt.** Das Feld bekommt keine Eingabe: es
    * wird beim Anlegen gesetzt und ändert sich danach nicht mehr.
    *
@@ -99,6 +117,27 @@ export interface PropertySchema {
    * derselbe Artikel morgen anders.
    */
   readOnly?: boolean;
+}
+
+/**
+ * Wohin ein Verweisfeld zeigen darf. Drei Filter, alle freiwillig, mit UND
+ * verbunden — und nur der erste ist eine **Regel**.
+ *
+ * `interfaces` prüft die Validierung: die Art eines Artikels ändert sich
+ * nicht, weil jemand anderes etwas bearbeitet, also hält die Prüfung. `tags`
+ * und `where` lesen den **heutigen** Zustand des Ziels; daraus eine Regel zu
+ * machen hiesse, dass ein entfernter Marker einen längst gespeicherten
+ * Verweis rückwirkend falsch macht. Also: **die Art hält, der Filter
+ * schlägt vor** — die Maske bietet weniger an, die Prüfung lehnt nur ab,
+ * was die Art verfehlt.
+ */
+export interface LinkTarget {
+  /** Artikelarten, **Untertypen eingeschlossen**. Leer heisst: jede. */
+  interfaces?: string[];
+  /** Marken: eine davon genügt. Ein Vorschlag für die Maske. */
+  tags?: string[];
+  /** Ein Feldwert, der stimmen soll. Auch das ein Vorschlag. */
+  where?: { component: string; property: string; value?: unknown };
 }
 
 export interface ObjectSchema {

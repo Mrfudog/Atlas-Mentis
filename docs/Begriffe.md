@@ -116,6 +116,15 @@ Eine Tatsache, die ein Typ festhält. Ein Feld hat
   Schwierigkeit von 1 bis 20 ist eine Spanne und keine Aufzählung von
   zwanzig Wörtern; fünf Wörter wären fünf Stufen mit Lücken dazwischen,
   und „zwischen medium und hard" gäbe es dann nicht,
+- bei einem **Verweis** die Artikelarten, auf die er zeigen darf
+  (`target.interfaces`, Untertypen eingeschlossen — eine Spielerfigur
+  *ist* eine Kreatur). Kanten sagen das längst mit `from` und `to`; ein
+  Feld sagte es nicht, und „Scene in play" hielt darum die Id von
+  irgendetwas. Marken und Feldwert dürfen auch dastehen, aber die sind ein
+  **Vorschlag für die Maske** und keine Regel: sie lesen den heutigen
+  Zustand des Ziels, und ein entfernter Marker würde einen längst
+  gespeicherten Verweis rückwirkend falsch machen,
+- bei einem **Mass** die Einheit, in der es dasteht (`unit`),
 - **Pflicht oder optional**,
 - vielleicht einen **Standard**, der beim Anlegen gilt und nicht rückwirkend,
 - vielleicht eine **Rechnung** (`derived`), und dann bekommt es keine
@@ -332,6 +341,17 @@ Grössenordnung: drei Meilen sind knapp fünf Kilometer und nicht 4828 Meter.
 Ein Feld sagt mit `unit`, in welcher Einheit sein Wert steht. Ein Textfeld
 mit `format: measure` darf Masse im Fliesstext tragen („40 ft, climb 20 ft")
 — umgeschrieben wird nur, was wie eine Zahl mit bekannter Einheit aussieht.
+
+**Ein Mass ohne Einheit ist keines.** Umgerechnet wird aus der
+gespeicherten Einheit; nennt das Feld keine, rechnet nichts, und das sieht
+aus wie eine Zahl, die schon stimmt — genau so stand die Geschwindigkeit
+einer Kreatur in Fuss auf einem metrischen Tisch. Darum verlangt die
+Prüfung `unit` an jedem `measure`-Feld. An einem Text ist es das
+**Ausgangsmass**: die Einheit der Zahlen, die selbst keine nennen. Es
+greift nur, wenn im ganzen Text kein Buchstabe steht — „40" und „30/120"
+sind dann Fuss, „7 zorp" bleibt sieben Zorp. Alles andere wäre geraten,
+und ein Umschreiben, das auch nur manchmal danebengreift, ist schlimmer
+als gar keines: man sieht es dem Ergebnis nicht an.
 
 Was gezeigt wird, sagt die Einstellung `units` (`imperial`, `metric`,
 `both`); eine Artikelart darf es überschreiben und vererbt es wie `area`.

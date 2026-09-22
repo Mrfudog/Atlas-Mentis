@@ -26,7 +26,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
+- *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
@@ -97,7 +97,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
+- *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
@@ -227,7 +227,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
+- `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
 
 **Geerbte Felder**
 
@@ -270,7 +270,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
+- *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
@@ -306,7 +306,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `level` *number*, `motto` *string*, `at` *link*, `day` *number*, `watch` *number*, `sinceRation` *number*, `sinceLight` *number*, `actions` *object*
+- `level` *number*, `motto` *string*, `at` *link → Place*, `day` *number*, `watch` *number*, `sinceRation` *number*, `sinceLight` *number*, `actions` *object*
 
 **Geerbte Felder**
 
@@ -445,11 +445,11 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `damage` *string*, `damageType` *string*, `range` *measure*
+- `damage` *string*, `damageType` *string*, `range` *measure in ft*
 
 **Geerbte Felder**
 
-- *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
+- *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *array*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 
 **Kanten von hier**
@@ -564,7 +564,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `sheets` *array*, `baseHidden` *boolean*, `baseGmOnly` *boolean*, `kind` *world | region | settlement | district | building | battle*, `gridShape` *none | square | hex*, `gridSize` *number*, `gridOffsetX` *number*, `gridOffsetY` *number*, `scale` *measure*, `lighting` *bright | dim | dark*, `fog` *boolean*, `reveal` *array*, `walls` *array*, `tiles` *string*, `tileCols` *number*, `tileRows` *number*, `tileSize` *number*
+- `sheets` *array*, `baseHidden` *boolean*, `baseGmOnly` *boolean*, `kind` *world | region | settlement | district | building | battle*, `gridShape` *none | square | hex*, `gridSize` *number*, `gridOffsetX` *number*, `gridOffsetY` *number*, `scale` *measure in m*, `lighting` *bright | dim | dark*, `fog` *boolean*, `reveal` *array*, `walls` *array*, `tiles` *string*, `tileCols` *number*, `tileRows` *number*, `tileSize` *number*
 
 **Geerbte Felder**
 

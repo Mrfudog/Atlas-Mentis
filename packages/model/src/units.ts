@@ -111,6 +111,12 @@ export function formatMeasure(
    Das Komma ist Absicht — der Vault schreibt deutsch. */
 const MASS = /(-?\d+(?:[.,]\d+)?)\s*([A-Za-zäöü']{1,6})\b/g;
 
+/* Ein Text, in dem **kein Buchstabe** steht: `40`, `30/120`, `1,5`. Dort
+   nennt keine Zahl ihre Einheit, weil es nichts gibt, was eine sein könnte
+   — und nur dort darf das Ausgangsmass des Feldes einspringen. */
+const OHNE_WORT = /^[^A-Za-zÀ-ÿ]*$/;
+const NUR_ZAHL = /-?\d+(?:[.,]\d+)?/g;
+
 /**
  * Masse **im Fliesstext** umrechnen.
  *
@@ -119,9 +125,28 @@ const MASS = /(-?\d+(?:[.,]\d+)?)\s*([A-Za-zäöü']{1,6})\b/g;
  * wie eine Zahl mit bekannter Einheit aussieht; alles andere bleibt Wort
  * für Wort stehen. Ein Umschreiben, das auch nur manchmal danebengreift,
  * wäre schlimmer als gar keines — man sähe es dem Ergebnis nicht an.
+ *
+ * `annahme` ist das Ausgangsmass des Feldes (`PropertySchema.unit`) und
+ * greift **nur**, wenn im ganzen Text kein Buchstabe steht: „40" und
+ * „30/120" sind dann Fuss, „7 zorp" bleibt sieben Zorp. Alles andere wäre
+ * geraten — in „climb 20" könnte „climb" eine Einheit sein, die diese
+ * Kampagne kennt und der Code nicht.
  */
-export function convertText(registry: UnitRegistry, text: string, mode: UnitMode): string {
+export function convertText(
+  registry: UnitRegistry,
+  text: string,
+  mode: UnitMode,
+  annahme?: string,
+): string {
   if (!text) return text;
+  if (annahme && OHNE_WORT.test(text) && unitByCode(registry, annahme)) {
+    const u = unitByCode(registry, annahme) as UnitDef;
+    return text.replace(NUR_ZAHL, (zahl: string) => {
+      const wert = Number(String(zahl).replace(',', '.'));
+      if (!Number.isFinite(wert)) return zahl;
+      return formatMeasure(registry, wert, u.code, mode);
+    });
+  }
   return text.replace(MASS, (ganz, zahl: string, code: string) => {
     const u = unitByCode(registry, code);
     if (!u) return ganz;

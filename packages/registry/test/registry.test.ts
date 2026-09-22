@@ -4,6 +4,9 @@ import {
   enumGroups,
   enumOptions,
   linkedTypes,
+  linkAccepts,
+  linkTargets,
+  unitByCode,
   enumSource,
   fieldsOf,
   proseFields,
@@ -12,6 +15,7 @@ import {
   layoutFor,
   viewKeys,
 } from '@nw/model';
+import type { PropertySchema } from '@nw/model';
 import { seedRegistry } from '../src/index.js';
 
 /**
@@ -261,6 +265,81 @@ describe('shared choice lists', () => {
       .filter(([n, d]) => n !== 'Difficulty' && d.schema?.properties?.['difficulty'])
       .map(([n]) => n);
     expect(auch).toEqual([]);
+  });
+});
+
+/* ---- Ein Verweis nennt sein Ziel, ein Mass seine Einheit ----
+   Beides sagte das Register nicht: vier Verweisfelder ohne Zieltyp und
+   drei Masse ohne Ausgangsmass. Ein Feld, das „link" heisst und sonst
+   nichts, nimmt alles; ein Feld, das „measure" heisst und sonst nichts,
+   rechnet nichts — und das sieht aus wie eine richtige Zahl. */
+describe('links name their target, measures name their unit', () => {
+  const felder = (): { art: string; feld: string; p: PropertySchema }[] => {
+    const out: { art: string; feld: string; p: PropertySchema }[] = [];
+    Object.entries(seedRegistry.interfaces).forEach(([art, def]) => {
+      Object.entries(def.schema?.properties ?? {}).forEach(([feld, p]) => {
+        out.push({ art, feld, p });
+      });
+    });
+    return out;
+  };
+
+  it('gives every measure field the unit its numbers are in', () => {
+    const ohne = felder()
+      .filter(({ p }) => p.format === 'measure' && !p.unit)
+      .map(({ art, feld }) => `${art}.${feld}`);
+    expect(ohne).toEqual([]);
+  });
+
+  /* Eine Einheit, die keine Zeile hat, ist ein Tippfehler mit dem Aussehen
+     einer Angabe: `unit: 'feet'` ginge noch (Schreibweise von `ft`),
+     `unit: 'fuß'` nicht. */
+  it('names only units the registry knows', () => {
+    const fremd = felder()
+      .filter(({ p }) => p.unit && !unitByCode(seedRegistry, p.unit))
+      .map(({ art, feld, p }) => `${art}.${feld}: ${p.unit}`);
+    expect(fremd).toEqual([]);
+  });
+
+  it('gives every link field a target type that exists', () => {
+    const verweise = felder().filter(({ p }) => p.format === 'link');
+    expect(verweise.length).toBeGreaterThan(0);
+    const ohne = verweise
+      .filter(({ p }) => !(p.target?.interfaces ?? []).length)
+      .map(({ art, feld }) => `${art}.${feld}`);
+    expect(ohne).toEqual([]);
+    const fremd: string[] = [];
+    verweise.forEach(({ art, feld, p }) => {
+      (p.target?.interfaces ?? []).forEach((n) => {
+        if (!seedRegistry.interfaces[n]) fremd.push(`${art}.${feld} → ${n}`);
+      });
+    });
+    expect(fremd).toEqual([]);
+  });
+
+  /* Der Zieltyp gilt wie bei einer Kante die `extends`-Kette hoch: was die
+     Sitzung als Karte zeigt, darf eine Unterart von `Map` sein. */
+  it('accepts a subtype of the named type and refuses a stranger', () => {
+    const p = seedRegistry.interfaces['Session']?.schema?.properties['activeMap'];
+    expect(linkTargets(p)).toEqual(['Map']);
+    expect(linkAccepts(seedRegistry, p, 'Map')).toBe(true);
+    expect(linkAccepts(seedRegistry, p, 'Armor')).toBe(false);
+  });
+
+  /* Die Prüfung am Schema hält die Lücke zu: `measure` ohne `unit` kommt
+     nicht durch die Speichergrenze zurück. */
+  it('refuses a measure row without a unit at the storage boundary', () => {
+    const kaputt = {
+      ...seedRegistry,
+      interfaces: {
+        ...seedRegistry.interfaces,
+        Probe: {
+          name: 'Probe',
+          schema: { type: 'object', properties: { weit: { type: 'string', format: 'measure' } } },
+        },
+      },
+    };
+    expect(RegistrySchema.safeParse(kaputt).success).toBe(false);
   });
 });
 

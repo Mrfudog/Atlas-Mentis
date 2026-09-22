@@ -324,7 +324,9 @@ export const fieldGroups = {
         acNote: { type: 'string', title: 'AC note' },
         hp: { type: 'number', title: 'Hit points' },
         hpFormula: { type: 'string', title: 'Hit dice' },
-        speed: { type: 'string', format: 'measure', title: 'Speed' },
+        /* `unit` ist das Ausgangsmass: die Einheit der Zahlen, die keine
+           nennen. „40 ft, climb 20 ft" sagt es selbst, „40" nicht. */
+        speed: { type: 'string', format: 'measure', unit: 'ft', title: 'Speed' },
         cr: { type: 'string', title: 'Challenge rating' },
         prof: { type: 'number', title: 'Proficiency bonus' },
         combatRole: { type: 'string', title: 'Combat role' },
@@ -493,7 +495,7 @@ export const fieldGroups = {
       properties: {
         damage: { type: 'string', title: 'Damage' },
         damageType: { type: 'string', title: 'Damage type' },
-        range: { type: 'string', format: 'measure', title: 'Range' },
+        range: { type: 'string', format: 'measure', unit: 'ft', title: 'Range' },
         /* **Die Eigenschaften sind Kanten**, keine Aufzählung im Text:
            `hasProperty` zeigt auf gepoolte Regelartikel. Genau darum ging
            es beim Import — „Versatil" als Text zu übernehmen kopiert, was
@@ -795,7 +797,10 @@ export const fieldGroups = {
         gridSize: { type: 'number', title: 'Grid size in px', default: 70 },
         gridOffsetX: { type: 'number', title: 'Grid offset X', default: 0 },
         gridOffsetY: { type: 'number', title: 'Grid offset Y', default: 0 },
-        scale: { type: 'string', format: 'measure', title: 'One square is', default: '1,5 m' },
+        /* Eine Karte ist metrisch gemessen, auch wenn die Regeln in Fuss
+           rechnen: das Raster steht in Metern da, und wer „1,5" schreibt,
+           meint Meter. */
+        scale: { type: 'string', format: 'measure', unit: 'm', title: 'One square is', default: '1,5 m' },
         // Nebel und Licht (REQ-139, 140). Aufgedecktes wird gespeichert, weil
         // es bleibt; Beleuchtetes nie, weil es sich mit jedem Zug ändert.
         lighting: {
@@ -1082,9 +1087,22 @@ export const fieldGroups = {
         /* Was hinterher darüber steht. Vor der Sitzung leer, danach der
            Text, den die Runde liest. */
         recap: { type: 'string', format: 'long', many: true, title: 'Recap' },
-        activeScene: { type: 'string', format: 'link', title: 'Scene in play' },
-        activeEncounter: { type: 'string', format: 'link', title: 'Fight in play' },
-        activeMap: { type: 'string', format: 'link', title: 'Map on the table' },
+        /* **Ein Verweisfeld nennt seinen Zieltyp** (`target.interfaces`,
+           Untertypen eingeschlossen). Ohne das hielt „Scene in play" die
+           Id von irgendetwas — und am Tisch fällt das erst auf, wenn der
+           Beamer eine Rüstung zeigt. */
+        activeScene: {
+          type: 'string', format: 'link', title: 'Scene in play',
+          target: { interfaces: ['Scene'] },
+        },
+        activeEncounter: {
+          type: 'string', format: 'link', title: 'Fight in play',
+          target: { interfaces: ['Encounter'] },
+        },
+        activeMap: {
+          type: 'string', format: 'link', title: 'Map on the table',
+          target: { interfaces: ['Map'] },
+        },
         nowPlaying: { type: 'string', title: 'Now playing' },
         partyNote: { type: 'string', format: 'long', title: 'Note for the table' },
         /* Wer schreiben darf (REQ-117). `gm` ist die Vorgabe; `table` heisst,
@@ -1186,7 +1204,13 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        at: { type: 'string', format: 'link', title: 'Currently at' },
+        /* Der Knoten, auf dem die Gruppe steht — ein Ort, wie jeder
+           Punktreise-Knoten (`partOf` unter dem Ort, der die Reise
+           trägt). */
+        at: {
+          type: 'string', format: 'link', title: 'Currently at',
+          target: { interfaces: ['Place'] },
+        },
         day: { type: 'number', title: 'Day', default: 1 },
         watch: { type: 'number', title: 'Watch', default: 1 },
         sinceRation: { type: 'number', title: 'Nodes since rations', default: 0 },

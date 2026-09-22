@@ -418,6 +418,67 @@ async function seite(datei, warten) {
     /climb/.test(masse.text) && /rope/.test(masse.text) && !/ft/.test(masse.text)
     && masse.fremd === '7 zorp of nothing', masse);
 
+  /* **Ein Mass nennt die Einheit, in der es dasteht.** Drei Felder taten
+     das nicht — `Statblock.speed`, `Weapon.range`, `Map.scale` —, und
+     umgerechnet wird aus der gespeicherten Einheit: ohne sie rechnete
+     nichts, und das sah aus wie eine Zahl, die schon stimmt. Das
+     Ausgangsmass greift nur, wo keine Zahl ihre Einheit nennen kann. */
+  const ausgangs = await p.evaluate(() => {
+    const T = window.__T__;
+    const sp = T.REG.interfaces.Statblock.schema.properties.speed;
+    return {
+      unit: sp.unit,
+      nackt: T.convertText('40', 'metric', 'ft'),
+      ohneAnnahme: T.convertText('40', 'metric'),
+      bereich: T.convertText('30/120', 'metric', 'ft'),
+      mitWort: T.convertText('7 zorp', 'metric', 'ft'),
+      gezeichnet: T.fmtVal(sp, '40', 'Statblock'),
+      karte: T.REG.interfaces.Map.schema.properties.scale.unit,
+    };
+  });
+  pruefe('a bare number takes the field unit, and a word stops the guessing',
+    ausgangs.unit === 'ft' && /12\.2/.test(ausgangs.nackt)
+    && ausgangs.ohneAnnahme === '40' && ausgangs.mitWort === '7 zorp'
+    && /9\.1/.test(ausgangs.bereich) && /36\.6/.test(ausgangs.bereich)
+    && /ft/.test(ausgangs.gezeichnet) && /m\)/.test(ausgangs.gezeichnet)
+    && ausgangs.karte === 'm', ausgangs);
+
+  /* **Ein Verweisfeld nennt seinen Zieltyp.** Vier Felder hielten die Id
+     von irgendetwas — „Scene in play" nahm eine Rüstung. Geprüft wird die
+     Art und nur die: Marken lesen den heutigen Zustand des Ziels, und ein
+     entfernter Marker würde einen gespeicherten Verweis rückwirkend
+     falsch machen. */
+  const zielTyp = await p.evaluate(() => {
+    const T = window.__T__;
+    const pd = T.REG.interfaces.Session.schema.properties.activeMap;
+    /* Ein Artikel jeder Art, ohne etwas zu speichern. */
+    let karte = null, andere = null, sitzung = null;
+    T.ENT.forEach((e) => {
+      const art = (e.interfaces || [])[0];
+      if (art === 'Map' && !karte) karte = e;
+      if (art === 'Armor' && !andere) andere = e;
+      if (art === 'Session' && !sitzung) sitzung = e;
+    });
+    if (!karte || !andere || !sitzung) return { fehlt: true, karte: !!karte, andere: !!andere, sitzung: !!sitzung };
+    const mit = (id) => ({
+      ...sitzung,
+      components: { ...sitzung.components, Session: { activeMap: id } },
+    });
+    const sagt = (e) => T.checkArticle(e).map((x) => x.t).filter((t) => /Map on the table/.test(t));
+    return {
+      ziel: (pd.target || {}).interfaces,
+      richtig: sagt(mit(karte.id)),
+      falsch: sagt(mit(andere.id)),
+      weg: sagt(mit('gibt-es-nicht')),
+      leer: sagt(mit('')),
+    };
+  });
+  pruefe('a link field names its target type, and the check holds it',
+    Array.isArray(zielTyp.ziel) && zielTyp.ziel[0] === 'Map'
+    && zielTyp.richtig.length === 0 && zielTyp.falsch.length === 1
+    && /Armor/.test(zielTyp.falsch[0] || '') && zielTyp.weg.length === 1
+    && zielTyp.leer.length === 0, zielTyp);
+
   await zumRegister(p, 'Units');
   const einheiten = await p.evaluate(() => ({
     probe: [...document.querySelectorAll('#view .fbox .frow')].map((r) => r.textContent),
