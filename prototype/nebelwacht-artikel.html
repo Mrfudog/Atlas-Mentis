@@ -431,11 +431,13 @@ ul.tlayout li.d3{padding-left:48px}
 /* Mehrere Werte aus Aufzählungszeilen: Häkchen, nach Zeile gruppiert. Die
    Kiste scrollt, weil sechs Listen zusammen fünfunddreissig Wörter sind und
    eine Maske nicht die halbe Seite sein soll. */
-/* Die Herkunftsmarke an einem geerbten Feld: klein, damit die Zeile eine
-   Zeile bleibt. Der Pfeil ↗ heisst „über einen anderen hereingekommen". */
-.frow .chip.inh{flex:0 0 auto;font-size:11px;padding:0 2px 0 0;max-width:40%}
-.frow .chip.inh .ref{font-size:11px;max-width:150px;overflow:hidden;
-  text-overflow:ellipsis;white-space:nowrap}
+/* Die Kopfzeile eines geerbten Typs: eine Zeile, die sich aufklappt. Der
+   ganze Balken ist der Schalter — ein Dreieck von acht Pixeln zu treffen
+   ist eine Geduldsprobe und keine Bedienung. */
+.fhead.klapp{cursor:pointer;user-select:none}
+.fhead.klapp:hover{background:var(--surface2)}
+.twist{flex:0 0 12px;color:var(--dim);font-size:10px}
+.partfields{border-top:1px dashed var(--line)}
 
 /* Eine Gruppe, von der nur ein Teil dasteht: an, aber nicht ganz. */
 .tgl.part{border-style:dashed}
@@ -2252,13 +2254,37 @@ function go(r){
 /* Jeder Abschnitt für sich. Vorher konnte eine Ausnahme in renderRail()
    renderMain() verhindern — die Seite blieb dann auf „Lädt…" stehen und
    sagte nicht, warum. Ein sichtbarer Fehler ist besser als eine leere Seite. */
+/* **Wo man war, bleibt man.**
+   Gezeichnet wird die Seite ganz neu, und jeder Kasten mit eigenem Scroll
+   fängt danach oben an. Wer unten in einer Feldliste ein Feld aufklappt,
+   landete dadurch am Seitenanfang — und suchte die Stelle, an der er
+   gerade war. Gemerkt wird über die Reihenfolge der Treffer: dieselben
+   Kästen entstehen beim Zeichnen in derselben Ordnung. */
+var SCROLLER=".main,.rail,.aside,.regbody,.fbox";
+function scrollMerken(){
+  var stand=[];
+  document.querySelectorAll(SCROLLER).forEach(function(n){ stand.push(n.scrollTop); });
+  return {stand:stand,fenster:window.scrollY||0};
+}
+function scrollZurueck(was){
+  if(!was)return;
+  var i=0;
+  document.querySelectorAll(SCROLLER).forEach(function(n){
+    var v=was.stand[i++];
+    if(v) n.scrollTop=v;
+  });
+  if(was.fenster) window.scrollTo(0,was.fenster);
+}
 function render(){
   var broken=[];
+  var wo=null;
+  try{ wo=scrollMerken(); }catch(z){}
   [["Betrachter",renderAsSelect],["Krümel",renderTrail],
    ["Seiten",renderPages],["Seitenleiste",renderRail],["Content",renderMain],
    ["Bezüge",renderAside],["Bereiche",renderPanes]].forEach(function(t){
     try{ t[1](); }catch(x){ broken.push(t[0]+": "+(x&&x.message||x)); }
   });
+  try{ scrollZurueck(wo); }catch(z2){}
   if(broken.length){
     try{
       var v=document.getElementById("view");
@@ -11403,36 +11429,18 @@ function regIfaceBody(ifn){
 function fieldTable(ifn,w,save){
   var d=REG.interfaces[ifn]||{};
   var aussen=el("div");
-  var box=el("div",{class:"fbox"});
   var direkt=parentsOf(ifn);
-  /* **Eine flache Liste aller Felder**, alphabetisch, mit einer Marke an
-     jedem geerbten: woher es kommt.
 
-     Sie standen einmal in Gruppen je Bestandteil. Das las sich wie eine
-     Gliederung und war eine: `Identity` kommt an einer Spielerfigur über
-     `Creature` herein, `Creature` über nichts, und `Vitals` über
-     `Creature` — drei Kästen für eine Frage, und die Antwort „was trägt
-     dieser Typ" musste man aus ihnen zusammenlesen. Flach steht jedes Feld
-     einmal da, und die Marke sagt, **warum es sich hier nicht löschen
-     lässt**: es gehört einem anderen Typ. */
-  var alle=fieldsOf(ifn).slice().sort(function(a,b){
-    var ka=String(a.key).toLowerCase(), kb=String(b.key).toLowerCase();
-    if(ka!==kb) return ka<kb?-1:1;
-    return String(a.type).localeCompare(String(b.type));
-  });
-  var eigen=alle.filter(function(f){ return f.type===ifn; }).length;
-  box.appendChild(el("div",{class:"fhead"},[
-    el("b",{text:"All fields"}),
-    el("span",{class:"co",text:alle.length
-      ?alle.length+" \u00b7 "+eigen+" of its own, "+(alle.length-eigen)+" inherited"
-      :"none yet"})]));
-  alle.forEach(function(f){
-    box.appendChild(f.type===ifn
-      ? fieldRow(ifn,f.key,ifn,w,save)
-      : erbRow(f.type,f.key,ifn,w,save));
-  });
-
-  /* Ein neues Feld gehört **dieser** Art. */
+  /* ---- Die eigenen Felder ----
+     Sie stehen offen da: das ist der Typ, den man aufgeschlagen hat. */
+  var box=el("div",{class:"fbox"});
+  var eigen=propsOf(ifn), keys=Object.keys(eigen);
+  box.appendChild(el("div",{class:"fhead"},
+    [el("b",{text:"Its own fields"}),
+     el("span",{class:"co",text:keys.length
+       ?keys.length+(keys.length===1?" field":" fields")
+       :"nothing of its own"})]));
+  keys.forEach(function(k){ box.appendChild(fieldRow(ifn,k,ifn,w,save)); });
   if(w){
     var nk=el("input",{class:"i",type:"text",placeholder:"Field name, e.g. weight"});
     var nt=el("input",{class:"i",type:"text",placeholder:"Label"});
@@ -11455,9 +11463,83 @@ function fieldTable(ifn,w,save){
   }
   aussen.appendChild(box);
 
-  /* Und ein ganzer Typ dazu — seine Felder kommen mit. Die Auswahl steht
-     hier, weil sie dieselbe Liste verlängert: ein Bestandteil ist nichts
-     anderes als eine Handvoll Felder, die einem anderen gehören. */
+  /* ---- Die geerbten Typen: **zugeklappt** ----
+     Eine Spielerfigur erbt aus siebzehn Typen; flach ausgeschrieben sind
+     das achtundvierzig Zeilen, und die eigenen sechs gehen darin unter.
+     Zugeklappt steht je Typ eine Zeile: der Name, woher er kommt, wie
+     viele Felder er bringt. Aufgeklappt stehen **seine** Felder, mit
+     derselben Konfiguration wie am Typ selbst — geändert wird damit der
+     Typ, dem sie gehören, und das gilt dann für jede Art, die ihn nimmt.
+     Darum steht es an der Kopfzeile und nicht im Kleingedruckten.
+
+     Auf- und Zuklappen zeichnet die Seite **nicht** neu: die Zeilen stehen
+     schon da und werden nur gezeigt. Ein Neuzeichnen setzte jeden Kasten
+     mit eigenem Scroll wieder nach oben, und wer unten in der Liste etwas
+     aufklappt, sucht danach die Stelle, an der er war. */
+  ancestorsOf(ifn).forEach(function(a){
+    var ks=Object.keys(propsOf(a));
+    var schluessel=ifn+"::"+a;
+    var offen=!!(UI.regOpen||{})[schluessel];
+    var teil=el("div",{class:"fbox part","data-part":a});
+    var kopf=el("div",{class:"fhead klapp"});
+    var pfeil=el("span",{class:"twist",text:offen?"\u25be":"\u25b8"});
+    kopf.appendChild(pfeil);
+    kopf.appendChild(el("button",{class:"ref",type:"button","data-from":a,
+      title:"Open "+((REG.interfaces[a]||{}).label||a)+" as a type of its own",
+      onclick:function(ev){
+        ev.stopPropagation();
+        UI.typePick=a; UI.regiface=a; UI.regcomp=""; UI.regprop=""; render(); }},
+      (REG.interfaces[a]||{}).label||a));
+    /* Woher er kommt: direkt dazugenommen oder über einen anderen
+       hereingekommen. Nur der direkte lässt sich hier herausnehmen — am
+       anderen zu ziehen hiesse, den falschen Typ zu ändern. */
+    var ueber=direkt.indexOf(a)>=0?null:direkt.filter(function(p2){
+      return p2===a||ancestorsOf(p2).indexOf(a)>=0; })[0];
+    kopf.appendChild(el("span",{class:"pill q",
+      title:ueber?"Comes in through "+((REG.interfaces[ueber]||{}).label||ueber)
+        :"Taken in here",
+      text:ueber?"via "+((REG.interfaces[ueber]||{}).label||ueber):"taken in here"}));
+    if(direkt.length&&direkt[0]===a) kopf.appendChild(el("span",{class:"pill q",
+      title:"The first type taken in decides the area — "+(areaOf(ifn)||"none"),
+      text:"\u25cf area"}));
+    kopf.appendChild(el("span",{class:"co",text:ks.length
+      ?ks.length+(ks.length===1?" field":" fields")
+      :"no fields"}));
+    if(w&&!ueber) kopf.appendChild(el("button",{class:"btn sm gh dngr",type:"button",
+      title:"Take "+((REG.interfaces[a]||{}).label||a)+" out of "+(d.label||ifn),
+      onclick:function(ev){
+        ev.stopPropagation();
+        confirmDialog("Take \u201e"+((REG.interfaces[a]||{}).label||a)+"\u201c out of "+
+          (d.label||ifn)+"? Its "+ks.length+" field(s) go with it. "+
+          "The values stay in the articles but are no longer shown.",
+          function(){
+            var dd=REG.interfaces[ifn];
+            dd.extends=parentsOf(ifn).filter(function(x){ return x!==a; });
+            if(!dd.extends.length) delete dd.extends;
+            save(); },"Remove"); }},"\u00d7"));
+    teil.appendChild(kopf);
+
+    var felder=el("div",{class:"partfields"});
+    if(!offen) felder.style.display="none";
+    ks.forEach(function(k){ felder.appendChild(erbRow(a,k,ifn,w,save)); });
+    if(!ks.length) felder.appendChild(el("p",{class:"hint",
+      text:"This type brings no fields — it is taken in for its edges or its arrangement."}));
+    teil.appendChild(felder);
+
+    kopf.addEventListener("click",function(){
+      offen=!offen;
+      UI.regOpen=UI.regOpen||{};
+      if(offen) UI.regOpen[schluessel]=1; else delete UI.regOpen[schluessel];
+      felder.style.display=offen?"":"none";
+      pfeil.textContent=offen?"\u25be":"\u25b8";
+      kopf.setAttribute("aria-expanded",String(offen));
+    });
+    kopf.setAttribute("role","button");
+    kopf.setAttribute("aria-expanded",String(offen));
+    aussen.appendChild(teil);
+  });
+
+  /* Und ein ganzer Typ dazu — seine Felder kommen mit. */
   if(w){
     var mehr=el("select",{class:"i",style:"width:auto"});
     mehr.appendChild(el("option",{value:""},"+ type\u2026"));
@@ -11472,7 +11554,7 @@ function fieldTable(ifn,w,save){
     var pbar=el("div",{class:"addbar",style:"margin-top:9px"});
     pbar.appendChild(el("span",{class:"co",
       text:direkt.length
-        ?"Take a type in — its fields come along, marked with its name"
+        ?"Take a type in — its fields come along"
         :"This type declares its fields itself. Take one in and its fields come along"}));
     pbar.appendChild(mehr);
     aussen.appendChild(pbar);
@@ -11500,39 +11582,10 @@ function erbRow(art,k,ifn,w,save){
   var row=el("div",{class:"frow inh"});
   row.appendChild(el("span",{class:"fk",text:k+(pflicht?"*":"")}));
 
-  /* **Die Marke sagt, wem das Feld gehört** — und damit, warum es hier
-     nicht zu löschen ist: es gehört einem anderen Typ, und dort wird es
-     gelöscht. Ein Klick öffnet ihn.
-
-     Kam der Typ über einen anderen herein, steht das dabei: `Identity` an
-     einer Spielerfigur kommt über `Creature`, und wer *dort* etwas
-     wegnehmen will, muss wissen, wo er ansetzt. Herausnehmen lässt sich
-     darum nur ein Typ, der **direkt** dazugenommen wurde. */
-  var chip=el("span",{class:"chip inh"});
-  var direktDrin=parentsOf(ifn).indexOf(art)>=0;
-  var ueber=direktDrin?null:parentsOf(ifn).filter(function(p2){
-    return p2===art||ancestorsOf(p2).indexOf(art)>=0; })[0];
-  chip.appendChild(el("button",{type:"button",class:"ref","data-from":art,
-    title:"Comes from "+(REG.interfaces[art]||{}).label+
-      (ueber?" (via "+((REG.interfaces[ueber]||{}).label||ueber)+")":"")+
-      " \u2014 the field is changed and deleted there",
-    onclick:function(){ UI.typePick=art; UI.regiface=art; UI.regcomp=""; UI.regprop=""; render(); }},
-    ((REG.interfaces[art]||{}).label||art)+(ueber?" \u2197":"")));
-  if(w&&direktDrin) chip.appendChild(el("button",{type:"button",
-    title:"Take "+((REG.interfaces[art]||{}).label||art)+" out of "+
-      ((REG.interfaces[ifn]||{}).label||ifn),
-    onclick:function(){
-      var ks=Object.keys(propsOf(art)).length;
-      confirmDialog("Take \u201e"+((REG.interfaces[art]||{}).label||art)+"\u201c out of "+
-        ((REG.interfaces[ifn]||{}).label||ifn)+"? Its "+ks+" field(s) go with it. "+
-        "The values stay in the articles but are no longer shown.",
-        function(){
-          var dd=REG.interfaces[ifn];
-          dd.extends=parentsOf(ifn).filter(function(x){ return x!==art; });
-          if(!dd.extends.length) delete dd.extends;
-          save(); },"Remove"); }},"\u00d7"));
-  row.appendChild(chip);
-
+  /* Wem das Feld gehört, sagt die **Kopfzeile der Gruppe** — dort steht es
+     einmal und nicht an jeder der achtundvierzig Zeilen, und dort wird der
+     Typ auch herausgenommen. Die Zeile selbst sagt, wie das Feld **hier**
+     heisst, und lässt es einstellen. */
   if(w&&(!woher||woher===ifn)){
     var ti=el("input",{class:"i",type:"text",value:jetzt,placeholder:eigenName,
       title:"What this field is called here. Empty means “"+eigenName+"”, the name it brings."});
@@ -11564,7 +11617,28 @@ function erbRow(art,k,ifn,w,save){
   if(woher===ifn&&ifn) row.appendChild(el("span",{class:"pill",
     title:"Renamed here; it is called “"+eigenName+"” where it is declared",
     text:"renamed"}));
-  return row;
+
+  /* **Auch ein geerbtes Feld lässt sich einstellen** — Standard, Werte,
+     Pflicht, Spanne. Geändert wird dabei der Typ, dem es gehört, und das
+     gilt für jede Art, die ihn nimmt; darum sagt es die Kopfzeile der
+     Gruppe und der Titel dieses Knopfs. Ohne das müsste man den Typ
+     aufschlagen, um einen Standard zu setzen, und käme mit dem, was man
+     gerade eingestellt hat, nirgends wieder heraus.
+
+     Gelöscht wird es **nur dort**: das × steht an der Zeile des Typs, dem
+     das Feld gehört, und die steht eine Gruppe weiter unten. Hier wäre es
+     der Klick, der aussieht wie „an dieser Art weg" und alle trifft. */
+  var id=art+"."+k;
+  row.appendChild(el("button",{class:"btn sm gh",type:"button",
+    title:"Settings of this field — they belong to "+
+      ((REG.interfaces[art]||{}).label||art)+" and hold for every kind that takes it",
+    onclick:function(){ UI.regprop=(UI.regprop===id?"":id); render(); }},
+    UI.regprop===id?"\u25b4":"\u22ef"));
+
+  var wrap=el("div");
+  wrap.appendChild(row);
+  if(UI.regprop===id) wrap.appendChild(fieldMore(art,k,ifn,w,save));
+  return wrap;
 }
 
 /* Alle Felder einer Art mit der Art, die sie erklärt — dieselbe Reihenfolge

@@ -140,6 +140,10 @@ Tag des nächsten Feldes unvollständig.
 
 Geändert wird die Beschriftung auf der Typenseite, in der Zeile des
 geerbten Feldes — und sie schreibt in den Typ, den man gerade offen hat.
+Die Zeile steht in der Gruppe ihres Typs: zugeklappt sagt die Kopfzeile
+nur, welcher Typ es ist und woher er kommt; aufgeklappt stehen seine
+Felder, jedes mit seinen Einstellungen. Die gehören dem Typ, dem das Feld
+gehört, und gelten für jede Art, die ihn nimmt.
 Eine Umbenennung, die ein *Obertyp* gesetzt hat, steht dort lesbar und wird
 dort geändert, wo sie steht: sie gilt für jede Unterart mit.
 

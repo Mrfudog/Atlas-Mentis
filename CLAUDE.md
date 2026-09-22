@@ -168,14 +168,22 @@ wiederkommen, werden sie neu geschrieben.
   Feld für immer festhielt. Wie weit eine Sache am Tisch ist, sagt das Feld
   der Art: `Quest.progress`, `Encounter.phase`, `Explored.state`. Drei
   Felder hiessen einmal alle `state` und meinten Verschiedenes.
-- **Das Register zeigt einen Typ auf einer Fläche: eine flache Liste aller
-  Felder.** An jedem geerbten steht eine **Marke mit dem Typ, dem es
-  gehört** — sie sagt damit auch, warum es sich hier nicht löschen lässt;
-  gelöscht wird es dort, und ein Klick führt hin. Ein Typ, der **direkt**
-  dazugenommen wurde, lässt sich an der Marke herausnehmen (seine Felder
-  gehen mit); was über einen anderen hereinkam, trägt ein ↗ und kein ×.
-  Gruppen je Bestandteil lasen sich wie eine Gliederung und waren eine: wer
-  wissen wollte, was ein Typ trägt, musste sie zusammenlesen.
+- **Das Register zeigt einen Typ auf einer Fläche: seine eigenen Felder
+  offen, die geerbten Typen zugeklappt.** Je geerbter Typ eine Kopfzeile —
+  Name, ob er hier dazugenommen wurde oder über einen anderen hereinkam,
+  wie viele Felder er bringt, und ein × nur am **direkt** dazugenommenen
+  (seine Felder gehen mit). Aufgeklappt stehen **seine** Felder, mit
+  derselben Konfiguration wie an ihm selbst: geändert wird damit der Typ,
+  dem sie gehören, und das gilt für jede Art, die ihn nimmt — darum sagt es
+  die Kopfzeile. **Gelöscht** wird ein Feld nur dort, wo es erklärt ist.
+  Siebzehn geerbte Typen flach ausgeschrieben sind achtundvierzig Zeilen,
+  und die eigenen sechs gehen darin unter.
+- **Auf- und Zuklappen zeichnet nicht neu**: die Zeilen stehen schon im
+  Baum und werden gezeigt (`UI.regOpen` hält den Stand über ein späteres
+  Zeichnen). Und `render()` **merkt sich den Scrollstand** jedes Kastens
+  mit eigenem Scroll (`.main`, `.rail`, `.aside`, `.regbody`, `.fbox`) und
+  setzt ihn zurück — wer unten in einer Liste etwas aufklappt, sucht sonst
+  die Stelle, an der er gerade war.
 - **Alle Typenlisten sind flach** (`typeList()`, alphabetisch nach
   Beschriftung): die Auswahl im Register, die Leiste, der Filter im
   Kompendium. Sie waren Bäume aus `extends`, und weil `extends` ein Array

@@ -604,7 +604,10 @@ async function seite(datei, warten) {
      Feldes trägt ein Eingabefeld, das in den offenen Typ schreibt. */
   await zumTyp(p, 'Quest');
   const umbenennen = await p.evaluate(() => {
-    const zeile = [...document.querySelectorAll('.fbox .frow.inh')]
+    /* `Time` steht als zugeklappte Gruppe da — die Zeilen sind im Baum und
+       werden nur gezeigt. Für die Prüfung genügt die Zeile; ein Klick auf
+       die Kopfzeile wäre der Weg der Hand. */
+    const zeile = [...document.querySelectorAll('.fbox.part .frow.inh')]
       .find((r) => r.querySelector('.fk')?.textContent.replace('*', '') === 'calendar');
     const i = zeile?.querySelector('input');
     if (!i) return { keinFeld: true };
@@ -630,7 +633,7 @@ async function seite(datei, warten) {
      Umbenennung, die dasselbe sagt wie das Feld, wird an dem Tag still
      falsch, an dem jemand das Feld umbenennt. */
   const titelZurueck = await p.evaluate(() => {
-    const zeile = [...document.querySelectorAll('.fbox .frow.inh')]
+    const zeile = [...document.querySelectorAll('.fbox.part .frow.inh')]
       .find((r) => r.querySelector('.fk')?.textContent.replace('*', '') === 'calendar');
     const i = zeile?.querySelector('input');
     if (i) { i.value = 'Calendar'; i.dispatchEvent(new Event('change', { bubbles: true })); }
@@ -2362,19 +2365,22 @@ async function seite(datei, warten) {
     return {
       titel: document.querySelector('.tpdoc .arthead h2')?.textContent ?? '',
       abschnitte: txt('.tpdoc .sec').concat(txt('.tpdoc .rsec')),
-      /* **Eine flache Liste aller Felder**, und an jedem geerbten eine
-         Marke: woher es kommt. Sie sagt damit auch, warum es sich hier
-         nicht löschen lässt — es gehört einem anderen Typ. Gruppen je
-         Bestandteil lasen sich wie eine Gliederung und waren eine: wer
-         wissen wollte, was ein Typ trägt, musste sie zusammenlesen. */
-      marken: [...document.querySelectorAll('.fbox .frow.inh .chip.inh .ref')]
-        .map((b) => b.dataset.from),
-      /* Ein direkt genommener Typ lässt sich an der Marke herausnehmen; was
-         über einen anderen hereinkam, nicht — dort ansetzen hiesse, am
-         falschen Typ zu ziehen. */
-      rausnehmbar: [...document.querySelectorAll('.fbox .frow.inh .chip.inh')]
-        .filter((c) => c.querySelector('button:not(.ref)'))
-        .map((c) => c.querySelector('.ref')?.dataset.from),
+      /* **Die eigenen Felder offen, die geerbten Typen zugeklappt.** Je
+         geerbter Typ eine Zeile: Name, woher er kommt, wie viele Felder er
+         bringt. Eine Spielerfigur erbt aus siebzehn Typen — flach
+         ausgeschrieben sind das achtundvierzig Zeilen, und die eigenen
+         sechs gehen darin unter. */
+      gruppen: [...document.querySelectorAll('.fbox.part')].map((b) => b.dataset.part),
+      zu: [...document.querySelectorAll('.fbox.part .partfields')]
+        .filter((f) => f.style.display === 'none').length,
+      /* Woher: direkt dazugenommen oder über einen anderen hereingekommen.
+         Nur der direkte lässt sich hier herausnehmen. */
+      woher: [...document.querySelectorAll('.fbox.part .fhead')]
+        .map((h) => (h.querySelector('.ref')?.dataset.from ?? '') + '='
+          + (/via /.test(h.textContent) ? 'via' : 'direct')),
+      rausnehmbar: [...document.querySelectorAll('.fbox.part .fhead')]
+        .filter((h) => h.querySelector('button.dngr'))
+        .map((h) => h.querySelector('.ref')?.dataset.from),
       /* Und ein ganzer Typ dazu — an derselben Stelle wie ein Feld dazu. */
       teilDazu: [...document.querySelectorAll('.tpdoc .addbar select option')]
         .some((o) => /\+ type/.test(o.textContent)),
@@ -2396,16 +2402,77 @@ async function seite(datei, warten) {
      die nur so aussieht, als könnte man sie bedienen. */
   pruefe('and says each of them exactly once',
     eine.abschnitte.length === new Set(eine.abschnitte).size, eine.abschnitte);
-  pruefe('every inherited field says which type it comes from',
-    eine.marken.includes('Creature') && eine.marken.includes('Identity')
-    && eine.marken.length === eine.inh, { marken: [...new Set(eine.marken)], inh: eine.inh });
-  /* `Creature` ist direkt dazugenommen und lässt sich herausnehmen;
-     `Identity` kommt über `Creature` herein und nicht. */
-  pruefe('and only a type taken in directly can be taken out again',
-    eine.rausnehmbar.includes('Creature') && !eine.rausnehmbar.includes('Identity')
-    && eine.teilDazu, { rausnehmbar: [...new Set(eine.rausnehmbar)] });
-  pruefe('and the list is flat — every field of this kind, once',
+  pruefe('the inherited types stand as their own groups, closed',
+    eine.gruppen.includes('Creature') && eine.gruppen.includes('Identity')
+    && eine.zu === eine.gruppen.length, { gruppen: eine.gruppen.length, zu: eine.zu });
+  /* `Creature` ist direkt dazugenommen, `Identity` kommt über `Creature`
+     herein — und nur der direkte lässt sich hier herausnehmen. */
+  pruefe('and each says whether it was taken in here or came in through another',
+    eine.woher.includes('Creature=direct') && eine.woher.includes('Identity=via')
+    && eine.rausnehmbar.includes('Creature') && !eine.rausnehmbar.includes('Identity')
+    && eine.teilDazu, { woher: eine.woher.slice(0, 4), rausnehmbar: eine.rausnehmbar });
+  pruefe('and every inherited field is there, once, ready to be opened',
     eine.inh > 20, { inh: eine.inh });
+  /* **Aufklappen zeigt die Felder und lässt die Stelle, an der man war.**
+     Gezeichnet wird dabei nichts neu: die Zeilen stehen schon im Baum. Ein
+     Neuzeichnen setzte jeden Kasten mit eigenem Scroll nach oben, und wer
+     unten in einer Feldliste etwas aufklappt, sucht danach die Stelle, an
+     der er gerade war. */
+  const aufgeklappt = await p.evaluate(async () => {
+    const T = window.__T__;
+    const kasten = [...document.querySelectorAll('.fbox.part')]
+      .find((b) => b.dataset.part === 'Identity');
+    const felder = kasten.querySelector('.partfields');
+    const roller = document.querySelector('.main');
+    roller.scrollTop = 180;
+    const vorher = { zu: felder.style.display === 'none', y: roller.scrollTop };
+    kasten.querySelector('.fhead.klapp').click();
+    await new Promise((r) => setTimeout(r, 200));
+    return {
+      vorher,
+      offenJetzt: kasten.querySelector('.partfields').style.display !== 'none',
+      y: document.querySelector('.main').scrollTop,
+      gemerkt: !!(T.UI.regOpen || {})['PlayerCharacter::Identity'],
+      zeilen: kasten.querySelectorAll('.frow.inh').length,
+    };
+  });
+  pruefe('opening an inherited type shows its fields and remembers it',
+    aufgeklappt.vorher.zu && aufgeklappt.offenJetzt && aufgeklappt.gemerkt
+    && aufgeklappt.zeilen === 4, aufgeklappt);
+  pruefe('and it stays where you were',
+    aufgeklappt.y === aufgeklappt.vorher.y, aufgeklappt);
+
+  /* Und ein geerbtes Feld lässt sich **einstellen**: Standard, Werte,
+     Pflicht. Geändert wird der Typ, dem es gehört — darum steht es an der
+     Kopfzeile der Gruppe und im Titel des Knopfs. Ohne das müsste man den
+     Typ aufschlagen, um einen Standard zu setzen. */
+  const einstellbar = await p.evaluate(async () => {
+    const T = window.__T__;
+    const zeile = [...document.querySelectorAll('.fbox.part .frow.inh')]
+      .find((r) => r.querySelector('.fk')?.textContent.replace('*', '') === 'aliases');
+    const knopf = [...zeile.querySelectorAll('button')]
+      .find((b) => b.textContent === '\u22ef');
+    if (!knopf) return { keinKnopf: true };
+    knopf.click();
+    await new Promise((r) => setTimeout(r, 250));
+    const panel = document.querySelector('.fbox.part .fmore');
+    const raus = {
+      regprop: T.UI.regprop,
+      felder: [...(panel?.querySelectorAll('label.f span') ?? [])].map((x) => x.textContent),
+      /* Die Gruppe bleibt offen — das Zeichnen liest `UI.regOpen`. */
+      nochOffen: [...document.querySelectorAll('.fbox.part')]
+        .find((b) => b.dataset.part === 'Identity')
+        ?.querySelector('.partfields').style.display !== 'none',
+    };
+    T.UI.regprop = '';
+    T.render();
+    return raus;
+  });
+  pruefe('an inherited field can be configured where it stands',
+    einstellbar.regprop === 'Identity.aliases'
+    && einstellbar.felder.some((x) => /Default/.test(x))
+    && einstellbar.nochOffen, einstellbar);
+
   /* Die Reiter des Bogens stehen in der Vorlage mit Namen — „tabs" allein
      zu lesen sagt nichts. */
   pruefe('the template shows the tabs by name, not just the word “tabs”',
