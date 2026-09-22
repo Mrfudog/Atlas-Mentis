@@ -41,6 +41,14 @@ export const relations: Record<string, RelationDef> = {
        seine Zahlen selbst tragen — die zweite Form für dieselbe Sache. */
     to: ['Creature'],
     cardinality: 'one',
+    /* **An der Kreatur liest sich das wie ein Feld.** Ihre Zahlen stehen am
+       Statblock, und der ist ein eigener Artikel — austauschbar (Wolfsgestalt,
+       verzauberte Fassung), wiederverwendbar (dreissig Wachen, ein Bogen).
+       Für die Kreatur ist er trotzdem kein Verweis auf etwas Fremdes,
+       sondern der Teil von ihr, der woanders wohnt. Also zeigt das Register
+       seine Felder an der Kreatur mit, und die Artikelseite lässt sie dort
+       bearbeiten, statt auf einen zweiten Artikel zu springen. */
+    asField: 'to',
   },
 
   /** Weapon properties are pooled rules, referenced rather than copied. */
@@ -136,6 +144,10 @@ export const relations: Record<string, RelationDef> = {
     from: ['Creature', 'Party'],
     to: ['Inventory'],
     cardinality: 'one',
+    /* Dasselbe am anderen Ende: das Inventar ist ein eigener Artikel, weil
+       es den Träger wechselt — aber wer eine Figur aufschlägt, will ihre
+       Sachen sehen und nicht einen Verweis darauf. */
+    asField: 'from',
   },
 
   /**

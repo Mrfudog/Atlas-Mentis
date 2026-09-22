@@ -210,6 +210,28 @@ export interface RelationDef {
   /** The target is deleted with the source. */
   owned?: boolean;
   cardinality?: 'one' | 'many';
+  /**
+   * **An welchem Ende diese Verbindung sich wie ein Feld liest** — `from`
+   * oder `to`.
+   *
+   * Die Zahlen einer Kreatur stehen am Statblock, und der Statblock ist ein
+   * eigener Artikel: austauschbar, wiederverwendbar, mit eigenem Namen. Für
+   * die Kreatur ist er trotzdem kein Verweis auf etwas Fremdes, sondern der
+   * Teil von ihr, der woanders wohnt. Genau das sagt diese Angabe: das
+   * Register zeigt die Felder des anderen Typs am Typ mit an, und der
+   * Artikel lässt sie **dort** bearbeiten, wo man ist, statt auf einen
+   * zweiten Artikel zu springen.
+   *
+   * `belongsTo` steht `to`: die Kante geht vom Statblock zur Kreatur, und
+   * die **Kreatur** ist das Ende, das ihn wie ein Feld liest. `carries`
+   * steht `from`: dort geht sie von der Kreatur zum Inventar.
+   *
+   * **Nicht** für einen Verweis auf etwas, das für sich steht: ein Rezept
+   * liefert einen Gegenstand, eine Begegnung wird auf einer Karte
+   * gefochten — beide gäbe es auch ohne. Das Mass ist: **ohne das andere
+   * wäre dieser Artikel unvollständig, und es gehört keinem zweiten.**
+   */
+  asField?: 'from' | 'to';
   /** When set, the edge renders as a composition section under this heading. */
   section?: string;
   props?: ObjectSchema;
@@ -229,6 +251,14 @@ export type LayoutElementKind =
   | 'composed'
   | 'relations'
   | 'image'
+  /**
+   * **Was woanders wohnt, hier bearbeiten.** Die Felder der Artikel, die
+   * über eine `asField`-Kante hängen — der Statblock einer Kreatur, das
+   * Inventar einer Gruppe. Gezeichnet werden ihre eigenen Eingaben, die in
+   * ihren eigenen Artikel schreiben; ein Verweis, auf den man springen
+   * muss, um eine Zahl zu ändern, ist der Umweg, den niemand zweimal geht.
+   */
+  | 'linked'
   | 'knowledge'
   | 'map'
   | 'sheet'

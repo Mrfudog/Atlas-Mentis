@@ -264,6 +264,13 @@ export const interfaces: Record<string, InterfaceDef> = {
               layout: [
                 { id: 'c-img', el: 'image' },
                 { id: 'c-desc', el: 'description' },
+                /* **Der Statblock steht hier und nicht hinter einem
+                   Sprung.** Seine Felder gehören zu dem, was man gerade
+                   offen hat; gezeichnet werden seine eigenen Eingaben, die
+                   in ihn schreiben. Das Inventar bleibt aussen vor: es hat
+                   im Reiter „Gear" sein eigenes Element, und zweimal
+                   dasselbe ist keine Gliederung. */
+                { id: 'c-linked', el: 'linked', except: ['Inventory'] },
                 {
                   id: 'c-f',
                   el: 'fields',

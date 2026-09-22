@@ -98,6 +98,10 @@ export const views: Record<string, ViewDef> = {
       { id: 'l-img', el: 'image' },
       { id: 'l-desc', el: 'description' },
       { id: 'l-f', el: 'fields', fields: 'all' },
+      /* Was über eine `asField`-Kante hängt, steht hier mit seinen Feldern
+         — bearbeitbar, ohne auf einen zweiten Artikel zu springen. Hat eine
+         Art keine solche Kante, zeichnet das Element nichts. */
+      { id: 'l-linked', el: 'linked' },
       { id: 'l-b', el: 'prose', fields: 'all' },
       { id: 'l-c', el: 'composed' },
       /* Wer wie zu wem steht, gehört auf die Seite und nicht hinter ein

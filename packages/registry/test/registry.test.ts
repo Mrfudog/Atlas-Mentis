@@ -3,6 +3,7 @@ import {
   RegistrySchema,
   enumGroups,
   enumOptions,
+  linkedTypes,
   enumSource,
   fieldsOf,
   proseFields,
@@ -632,6 +633,36 @@ describe('one registry of types', () => {
       .map((f) => f.type)).toEqual(['Vitals']);
     expect(fieldsOf(seedRegistry, 'Statblock').filter((f) => f.key === 'hp')
       .map((f) => f.type)).toEqual(['Statblock']);
+  });
+
+  /* **Eine Kante, die sich wie ein Feld liest.** Die Zahlen einer Kreatur
+     stehen am Statblock, und der ist ein eigener Artikel — austauschbar,
+     wiederverwendbar. Für die Kreatur ist er trotzdem kein Verweis auf
+     etwas Fremdes, sondern der Teil von ihr, der woanders wohnt. */
+  it('the statblock and the inventory read like fields at the creature', () => {
+    const l = linkedTypes(seedRegistry, 'Creature');
+    expect(l.map((x) => x.type).sort()).toEqual(['Inventory', 'Statblock']);
+    /* Die Richtung sagt, wo die Kante **liegt**: `belongsTo` am Statblock,
+       `carries` an der Kreatur. Gespeichert wird nur vorwärts. */
+    expect(l.find((x) => x.type === 'Statblock')?.direction).toBe('in');
+    expect(l.find((x) => x.type === 'Inventory')?.direction).toBe('out');
+    /* Und am anderen Ende ist es keines: die Kreatur ist nicht der Teil
+       ihres Statblocks, der woanders wohnt. */
+    expect(linkedTypes(seedRegistry, 'Statblock')).toEqual([]);
+  });
+
+  /* Ein Verweis auf etwas, das für sich steht, bleibt eine Kante: den
+     Gegenstand, den ein Rezept liefert, gäbe es auch ohne das Rezept. */
+  it('and a reference to something that stands on its own does not', () => {
+    const wie = Object.values(seedRegistry.relations).filter((r) => r.asField);
+    expect(wie.map((r) => r.type).sort()).toEqual(['belongsTo', 'carries']);
+    /* Jede davon ist eins-zu-eins — „irgendeiner von vielen" wäre eine
+       Auswahl und kein Feld. */
+    expect(wie.every((r) => r.cardinality === 'one')).toBe(true);
+    /* Und das Element, das sie zeichnet, steht in der Grundanordnung von
+       `full`: sonst stünden die Felder nirgends. */
+    const voll = seedRegistry.views['full']?.layout ?? [];
+    expect(voll.some((x) => x.el === 'linked')).toBe(true);
   });
 
   /* Und die Kante reicht bis zum Spielercharakter. Solange sie nur auf

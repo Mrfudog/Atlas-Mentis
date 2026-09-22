@@ -48,7 +48,7 @@ const objectSchema = z.object({
 const LayoutElementSchema: z.ZodType<LayoutElement> = z.lazy(() =>
   z.object({
     id: z.string(),
-    el: z.enum(['heading', 'text', 'fields', 'prose', 'description', 'composed', 'relations', 'image', 'knowledge', 'map', 'sheet', 'inventory', 'crafting', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'standing', 'tabs']),
+    el: z.enum(['heading', 'text', 'fields', 'prose', 'description', 'composed', 'relations', 'image', 'linked', 'knowledge', 'map', 'sheet', 'inventory', 'crafting', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'standing', 'tabs']),
     text: z.string().optional(),
     fields: z.union([z.literal('all'), z.array(z.string())]).optional(),
     except: z.array(z.string()).optional(),
@@ -102,6 +102,8 @@ export const RelationDefSchema = z.object({
   to: z.array(z.string()).optional(),
   owned: z.boolean().optional(),
   cardinality: z.enum(['one', 'many']).optional(),
+  /* An welchem Ende die Kante sich wie ein Feld liest. */
+  asField: z.enum(['from', 'to']).optional(),
   section: z.string().optional(),
   props: objectSchema.optional(),
 });

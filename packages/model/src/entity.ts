@@ -177,6 +177,51 @@ export function fieldTitle(
 }
 
 /**
+ * **Die Typen, deren Felder dieser Typ über eine Kante mitbringt** — die
+ * Verbindungen, die sich an diesem Ende wie ein Feld lesen (`asField`).
+ *
+ * Zurück kommt je Kante, welcher Typ dort hängt, wie die Gruppe heisst und
+ * in welche Richtung die Kante gespeichert ist. Gespeichert wird weiterhin
+ * **nur vorwärts** (D: eine Kante hat eine Richtung): steht `asField` auf
+ * `to`, liegt die Kante am anderen Artikel, und dieser hier findet sie über
+ * die Rückfrage. Genau das ist der Grund, warum es diese Funktion gibt und
+ * nicht eine zweite Kante.
+ */
+export function linkedTypes(
+  registry: Pick<Registry, 'relations' | 'interfaces'>,
+  interfaceName: string,
+): {
+  relation: string;
+  /** `out` — die Kante liegt an diesem Artikel; `in` — am anderen. */
+  direction: 'out' | 'in';
+  /** Der Typ am anderen Ende. */
+  type: string;
+  label: string;
+  cardinality: 'one' | 'many';
+}[] {
+  const raus: ReturnType<typeof linkedTypes> = [];
+  for (const def of Object.values(registry.relations)) {
+    if (!def.asField) continue;
+    const hier = def.asField;
+    const liste = hier === 'from' ? def.from : def.to;
+    if (!interfaceInList(registry, liste, interfaceName)) continue;
+    /* Der Typ am anderen Ende. Steht dort `*` oder mehr als einer, ist es
+       kein Feld: ein Feld hat einen Typ, und „irgendeiner von vier" wäre
+       eine Auswahl und keine Angabe. */
+    const gegen = hier === 'from' ? def.to : def.from;
+    if (!gegen || gegen.length !== 1 || gegen[0] === '*') continue;
+    raus.push({
+      relation: def.type,
+      direction: hier === 'from' ? 'out' : 'in',
+      type: gegen[0] as string,
+      label: hier === 'from' ? def.label : def.inverseLabel,
+      cardinality: def.cardinality ?? 'many',
+    });
+  }
+  return raus;
+}
+
+/**
  * Die Werte, die in dieses Feld dürfen — die eigenen oder die der
  * Aufzählungszeile, die es nennt.
  *

@@ -54,7 +54,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Article
 
@@ -89,7 +89,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Consumable
 
@@ -125,7 +125,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Creature
 
@@ -174,7 +174,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - Creature | PlayerCharacter | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
-  - **Overview** — `image`, `description`, `fields` (ohne Vitals, Proficiencies), `prose`
+  - **Overview** — `image`, `description`, `linked` (ohne Inventory), `fields` (ohne Vitals, Proficiencies), `prose`
   - **Combat** — `composed`
   - **Gear** — `inventory`
   - **Craft** — `crafting`
@@ -219,7 +219,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `overrides` → „replaced by"
 - Creature | PlayerCharacter | Party | Faction — `regards` → „judged by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Item
 
@@ -258,7 +258,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Material
 
@@ -298,7 +298,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Party
 
@@ -433,7 +433,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - Creature | PlayerCharacter | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
-  - **Overview** — `image`, `description`, `fields` (ohne Vitals, Proficiencies), `prose`
+  - **Overview** — `image`, `description`, `linked` (ohne Inventory), `fields` (ohne Vitals, Proficiencies), `prose`
   - **Combat** — `composed`
   - **Gear** — `inventory`
   - **Craft** — `crafting`
@@ -477,7 +477,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ---
 
@@ -632,7 +632,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Access — *abstrakt*
 
@@ -662,7 +662,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Asset
 
@@ -696,7 +696,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Description — *abstrakt*
 
@@ -726,7 +726,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Difficulty — *abstrakt*
 
@@ -756,7 +756,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Facts — *abstrakt*
 
@@ -786,7 +786,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Identity — *abstrakt*
 
@@ -816,7 +816,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Image — *abstrakt*
 
@@ -846,7 +846,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Layer
 
@@ -882,7 +882,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Lore — *abstrakt*
 
@@ -912,7 +912,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Notes — *abstrakt*
 
@@ -942,7 +942,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Proficiencies — *abstrakt*
 
@@ -972,7 +972,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Text — *abstrakt*
 
@@ -1002,7 +1002,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Read aloud — *abstrakt*
 
@@ -1032,7 +1032,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Secrets — *abstrakt*
 
@@ -1062,7 +1062,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Source — *abstrakt*
 
@@ -1092,7 +1092,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Status — *abstrakt*
 
@@ -1122,7 +1122,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Tactics — *abstrakt*
 
@@ -1152,7 +1152,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Tags — *abstrakt*
 
@@ -1182,7 +1182,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Time — *abstrakt*
 
@@ -1212,7 +1212,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Todos — *abstrakt*
 
@@ -1242,7 +1242,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Variables — *abstrakt*
 
@@ -1272,7 +1272,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Visibility — *abstrakt*
 
@@ -1302,7 +1302,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Vitals — *abstrakt*
 
@@ -1332,5 +1332,5 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `prose`, `composed`, `standing`, `relations`
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 

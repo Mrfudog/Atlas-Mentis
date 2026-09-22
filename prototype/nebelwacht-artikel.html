@@ -431,6 +431,12 @@ ul.tlayout li.d3{padding-left:48px}
 /* Mehrere Werte aus Aufzählungszeilen: Häkchen, nach Zeile gruppiert. Die
    Kiste scrollt, weil sechs Listen zusammen fünfunddreissig Wörter sind und
    eine Maske nicht die halbe Seite sein soll. */
+/* Was woanders wohnt: eine Kopfzeile mit dem Namen des anderen Artikels,
+   darunter seine Felder. Der Rahmen sagt, dass es nicht diese Karte ist. */
+.linkedbox{border-left:2px solid var(--line);padding-left:10px;margin:10px 0}
+.linkedhead{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.linkedhead .ref{font-family:var(--ff-mono);font-size:12px}
+
 /* Die Kopfzeile eines geerbten Typs: eine Zeile, die sich aufklappt. Der
    ganze Balken ist der Schalter — ein Dreieck von acht Pixeln zu treffen
    ist eine Geduldsprobe und keine Bedienung. */
@@ -438,6 +444,9 @@ ul.tlayout li.d3{padding-left:48px}
 .fhead.klapp:hover{background:var(--surface2)}
 .twist{flex:0 0 12px;color:var(--dim);font-size:10px}
 .partfields{border-top:1px dashed var(--line)}
+/* Ein Typ, der über eine Kante hängt: seine Felder gehören dazu und stehen
+   doch in einem anderen Artikel. Der gestrichelte Rahmen sagt genau das. */
+.fbox.part.linked{border-style:dashed}
 
 /* Eine Gruppe, von der nur ein Teil dasteht: an, aber nicht ganz. */
 .tgl.part{border-style:dashed}
@@ -3415,6 +3424,7 @@ var LAYOUT_ELEMENTS=[
   ["heading","Heading"],["text","Paragraph"],["fields","Field table"],
   ["description","Description"],["prose","Passages"],
   ["composed","Composed rules"],["relations","Relations"],["image","Image"],
+  ["linked","Linked articles"],
   ["knowledge","Knowledge groups"],["map","Map"],["sheet","Character sheet"],["inventory","Inventory"],["crafting","Crafting"],["board","Board"],["initiative","Initiative"],
   ["quests","Quest board"],["timeline","Timeline"],["live","Live"],["table","Table"],["prep","Prep board"],["crawl","Point-crawl"],["stack","Layer stack"],["standing","Standing"],
   ["tabs","Tabs"]
@@ -3486,6 +3496,7 @@ function renderLayoutItem(item,e,ifn,vw){
     case "image":       return elImage(e);
     case "description": return elDescription(e);
     case "fields":      return elFields(e,ifn,item);
+    case "linked":      return elLinked(e,ifn,item);
     case "prose":       return elProse(e,ifn,item);
     case "composed":    return elComposed(e);
     case "relations":   return elRelations(e);
@@ -3744,6 +3755,122 @@ function elProse(e,ifn,item){
 }
 
 /* compounding — composedOf sections resolved from the pool */
+/**
+ * **Die Typen, deren Felder diese Art über eine Kante mitbringt.**
+ *
+ * Eine Kante mit `asField` liest sich an einem ihrer Enden wie ein Feld:
+ * die Zahlen einer Kreatur stehen am Statblock, und der ist ein eigener
+ * Artikel — austauschbar, wiederverwendbar, mit eigenem Namen. Für die
+ * Kreatur ist er trotzdem kein Verweis auf etwas Fremdes, sondern der Teil
+ * von ihr, der woanders wohnt.
+ *
+ * Gespeichert bleibt die Kante **einseitig**: steht `asField` auf `to`,
+ * liegt sie am anderen Artikel, und dieser hier findet sie über die
+ * Rückfrage. Eine zweite Kante wäre ein Gegenstück, das verwaist.
+ */
+function verlinkteTypen(ifn){
+  var raus=[];
+  Object.keys(REG.relations||{}).forEach(function(k){
+    var r=REG.relations[k];
+    if(!r||!r.asField)return;
+    var hier=r.asField;
+    var liste=hier==="from"?r.from:r.to;
+    if(!ifaceInList(liste,ifn))return;
+    var gegen=hier==="from"?r.to:r.from;
+    /* Ein Feld hat **einen** Typ. „Irgendeiner von vier" wäre eine Auswahl
+       und keine Angabe — dann bleibt es eine Kante wie jede andere. */
+    if(!gegen||gegen.length!==1||gegen[0]==="*")return;
+    raus.push({relation:k,direction:hier==="from"?"out":"in",
+      type:gegen[0],label:hier==="from"?r.label:r.inverseLabel,
+      cardinality:r.cardinality||"many"});
+  });
+  return raus;
+}
+/** Der Artikel am anderen Ende — oder `null`. */
+function verlinkterArtikel(e,l){
+  if(l.direction==="out"){
+    var k=(e.relations||[]).filter(function(r){ return r.type===l.relation; })[0];
+    var ziel=k&&ENT.get(k.to);
+    return ziel?{art:ziel,an:e}:null;
+  }
+  var treffer=null;
+  ENT.forEach(function(o){
+    if(treffer)return;
+    if((o.relations||[]).some(function(r){ return r.type===l.relation&&r.to===e.id; }))
+      treffer={art:o,an:o};
+  });
+  return treffer;
+}
+
+/**
+ * **Was woanders wohnt, hier bearbeiten.**
+ *
+ * Bis hierher stand an einer Kreatur ein Verweis „statblock of: Rooks
+ * Bogen", und wer eine Zahl ändern wollte, sprang auf einen zweiten
+ * Artikel, änderte sie dort und suchte den Weg zurück. Die Zahlen gehören
+ * aber zu dem, was man gerade offen hat.
+ *
+ * Gezeichnet wird deshalb die Feldtabelle **des anderen Artikels** — mit
+ * seinen eigenen Eingaben, die in ihn schreiben. Kein Abschreiben, keine
+ * zweite Karte: dieselbe Funktion wie auf seiner eigenen Seite, nur an
+ * einer anderen Stelle der Seite. Der Name steht als Kopfzeile und führt
+ * hin, denn manchmal will man doch dorthin.
+ */
+function elLinked(e,ifn,item){
+  var liste=verlinkteTypen(ifn).filter(function(l){
+    return !(item&&Array.isArray(item["except"])&&item["except"].indexOf(l.type)>=0);
+  });
+  if(!liste.length) return null;
+  var wrap=el("div",{class:"linkedbox"});
+  var etwas=false;
+  liste.forEach(function(l){
+    var d=REG.interfaces[l.type]||{};
+    var ziel=verlinkterArtikel(e,l);
+    if(!ziel&&!canWrite())return;
+    etwas=true;
+    var kopf=el("div",{class:"sec linkedhead"});
+    kopf.appendChild(el("span",{text:d.label||l.type}));
+    if(ziel) kopf.appendChild(el("button",{class:"ref",type:"button","data-linked":l.type,
+      title:"Open "+nameOf(ziel.art)+" as its own article",
+      onclick:function(){ go({k:"art",id:ziel.art.id}); }},nameOf(ziel.art)));
+    kopf.appendChild(el("span",{class:"co",
+      title:"Stored as the edge “"+l.relation+"” — this article and that one stay two",
+      text:"its own article"}));
+    wrap.appendChild(kopf);
+    if(!ziel){
+      var leer=el("div",{class:"addbar"});
+      leer.appendChild(el("span",{class:"hint",style:"margin:0",
+        text:"None linked yet."}));
+      leer.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
+        /* Angelegt **und** verbunden: ein Artikel, den man danach von Hand
+           anhängen muss, ist ein halber Schritt, und den zweiten vergisst
+           man. Die Kante liegt an dem Ende, an dem sie gespeichert wird. */
+        var name=nameOf(e)+" \u2014 "+(d.label||l.type);
+        var neu={id:uid("e"),interfaces:[l.type],name:name,
+          components:{Identity:{name:name,id:nextId(l.type),aliases:[]}},
+          adhoc:[],relations:[],createdAt:new Date().toISOString()};
+        applyDefaults(neu,l.type);
+        if(l.direction==="out"){
+          persist(neu);
+          e.relations=(e.relations||[]).concat([
+            {id:uid("r"),type:l.relation,to:neu.id,props:{}}]);
+          persist(e);
+        } else {
+          neu.relations=[{id:uid("r"),type:l.relation,to:e.id,props:{}}];
+          persist(neu);
+        }
+        render();
+      }},"Make one and link it"));
+      wrap.appendChild(leer);
+      return;
+    }
+    var felder=elFields(ziel.art,l.type,{el:"fields",fields:"all"});
+    if(felder) wrap.appendChild(felder);
+    else wrap.appendChild(el("p",{class:"hint",text:"Nothing filled in there yet."}));
+  });
+  return etwas?wrap:null;
+}
+
 function elComposed(e){
   var comp=(e.relations||[]).filter(function(r){ var rd=REG.relations[r.type]; return rd&&rd.section; });
   if(!comp.length)return null;
@@ -11526,6 +11653,53 @@ function fieldTable(ifn,w,save){
       text:"This type brings no fields — it is taken in for its edges or its arrangement."}));
     teil.appendChild(felder);
 
+    kopf.addEventListener("click",function(){
+      offen=!offen;
+      UI.regOpen=UI.regOpen||{};
+      if(offen) UI.regOpen[schluessel]=1; else delete UI.regOpen[schluessel];
+      felder.style.display=offen?"":"none";
+      pfeil.textContent=offen?"\u25be":"\u25b8";
+      kopf.setAttribute("aria-expanded",String(offen));
+    });
+    kopf.setAttribute("role","button");
+    kopf.setAttribute("aria-expanded",String(offen));
+    aussen.appendChild(teil);
+  });
+
+  /* ---- Und die Typen, die über eine Kante hängen ----
+     Der Statblock einer Kreatur ist ein eigener Artikel, und seine Felder
+     gehören trotzdem zu dem, was eine Kreatur trägt: wer im Register
+     wissen will, was an einer Kreatur dransteht, will `ac` und `hp` sehen
+     und nicht „es gibt da eine Kante". Also stehen sie hier — als Gruppe
+     wie eine geerbte, mit einer Marke, die sagt, dass sie woanders wohnen
+     und **nicht** in der Karte dieser Art stehen. */
+  verlinkteTypen(ifn).forEach(function(l){
+    var dl=REG.interfaces[l.type]||{};
+    var ks=Object.keys(propsOf(l.type));
+    var schluessel=ifn+"::\u2192"+l.type;
+    var offen=!!(UI.regOpen||{})[schluessel];
+    var teil=el("div",{class:"fbox part linked","data-linked":l.type});
+    var kopf=el("div",{class:"fhead klapp"});
+    var pfeil=el("span",{class:"twist",text:offen?"\u25be":"\u25b8"});
+    kopf.appendChild(pfeil);
+    kopf.appendChild(el("button",{class:"ref",type:"button","data-from":l.type,
+      title:"Open "+(dl.label||l.type)+" as a type of its own",
+      onclick:function(ev){
+        ev.stopPropagation();
+        UI.typePick=l.type; UI.regiface=l.type; UI.regcomp=""; UI.regprop=""; render(); }},
+      dl.label||l.type));
+    kopf.appendChild(el("span",{class:"pill",
+      title:"Its own article, held by the edge \u201c"+l.relation+"\u201d ("+
+        (l.cardinality==="one"?"one":"many")+"). The values do not live in this type\u2019s card.",
+      text:"linked \u00b7 "+l.relation}));
+    kopf.appendChild(el("span",{class:"co",text:ks.length
+      ?ks.length+(ks.length===1?" field":" fields")
+      :"no fields"}));
+    teil.appendChild(kopf);
+    var felder=el("div",{class:"partfields"});
+    if(!offen) felder.style.display="none";
+    ks.forEach(function(k){ felder.appendChild(fieldRow(l.type,k,l.type,w,save)); });
+    teil.appendChild(felder);
     kopf.addEventListener("click",function(){
       offen=!offen;
       UI.regOpen=UI.regOpen||{};

@@ -2307,6 +2307,50 @@ async function seite(datei, warten) {
   await p.waitForTimeout(400);
   pruefe('the table raised no exception', errs.length === 0, errs);
 
+  /* ---- Was woanders wohnt, hier bearbeiten ----
+     An einer Figur stand ein Verweis „statblock of: Werte von Rook", und
+     wer eine Zahl ändern wollte, sprang auf einen zweiten Artikel, änderte
+     sie dort und suchte den Weg zurück. Gezeichnet werden jetzt die Felder
+     **des anderen Artikels**, mit seinen eigenen Eingaben — und die
+     schreiben in ihn und nicht in die Figur. */
+  await oeffneId('pc_rook');
+  const dran = await p.evaluate(() => {
+    const box = document.querySelector('.linkedbox');
+    if (!box) return { keineKiste: true };
+    return {
+      name: box.querySelector('.ref')?.textContent ?? '',
+      /* Das Inventar ist ausgenommen: es hat im Reiter „Gear" sein eigenes
+         Element, und zweimal dasselbe ist keine Gliederung. */
+      kisten: document.querySelectorAll('.linkedbox').length,
+      felder: [...box.querySelectorAll('.fld dt')].map((d) => d.textContent),
+    };
+  });
+  pruefe('a linked article stands on the page with its own fields',
+    !dran.keineKiste && /Rook/.test(dran.name)
+    && dran.felder.includes('Armour class') && dran.felder.includes('Hit points'), dran);
+
+  const dortGeschrieben = await p.evaluate(async () => {
+    const T = window.__T__;
+    const box = document.querySelector('.linkedbox');
+    const dt = [...box.querySelectorAll('.fld dt')].find((d) => d.textContent === 'Armour class');
+    dt.nextElementSibling.click();
+    await new Promise((r) => setTimeout(r, 250));
+    const i = document.querySelector('.linkedbox .fld dd.editing input');
+    if (!i) return { keinEingang: true };
+    i.value = '17';
+    i.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 350));
+    return {
+      /* Der Wert steht im **Statblock**, nicht in der Figur. */
+      imStatblock: (T.ENT.get('sb_pc_rook').components.Statblock || {}).ac,
+      inDerFigur: (T.ENT.get('pc_rook').components.Statblock || {}).ac,
+      geschrieben: window.__WROTE__.filter((x) => /sb_pc_rook/.test(x)).length,
+    };
+  });
+  pruefe('and editing there writes into that article, not into this one',
+    dortGeschrieben.imStatblock === 17 && dortGeschrieben.inDerFigur === undefined
+    && dortGeschrieben.geschrieben > 0, dortGeschrieben);
+
   /* ---- Die Artikelarten zum Durchgehen ----
      Dieselbe Übersicht, die der Katalog als Datei schreibt, aber aus dem
      **laufenden** Register. Eine Seite, die eine Liste abtippt, stimmt am
@@ -2413,6 +2457,34 @@ async function seite(datei, warten) {
     && eine.teilDazu, { woher: eine.woher.slice(0, 4), rausnehmbar: eine.rausnehmbar });
   pruefe('and every inherited field is there, once, ready to be opened',
     eine.inh > 20, { inh: eine.inh });
+  /* **Was über eine Kante hängt, steht als Gruppe mit dabei.**
+     Der Statblock einer Kreatur ist ein eigener Artikel — austauschbar,
+     wiederverwendbar —, und seine Felder gehören trotzdem zu dem, was an
+     einer Kreatur dransteht. Wer im Register wissen will, was eine
+     Kreatur trägt, will `ac` und `hp` sehen und nicht „es gibt da eine
+     Kante". Die Marke sagt, dass die Werte **nicht** in der Karte dieser
+     Art stehen. */
+  const verlinkt = await p.evaluate(() => {
+    const kasten = [...document.querySelectorAll('.fbox.part.linked')];
+    return kasten.map((b) => ({
+      typ: b.dataset.linked,
+      marke: b.querySelector('.pill')?.textContent ?? '',
+      zu: b.querySelector('.partfields').style.display === 'none',
+      felder: [...b.querySelectorAll('.frow .fk')].map((x) => x.textContent.split(' ')[0]),
+    }));
+  });
+  const sbGruppe = verlinkt.find((x) => x.typ === 'Statblock');
+  /* Auf `hp` zu prüfen ginge schief: weiter oben hat der Lauf es zu
+     `hitPoints` umbenannt, und eine Prüfung, die von der Spur einer
+     anderen lebt, prüft am Ende nur noch sich selbst. */
+  pruefe('a type that hangs on an edge stands there with its fields',
+    !!sbGruppe && /linked · belongsTo/.test(sbGruppe.marke) && sbGruppe.zu
+    && sbGruppe.felder.includes('ac') && sbGruppe.felder.length > 10, verlinkt);
+  /* Und das Inventar genauso — dieselbe Sorte Kante, anderes Ende. */
+  pruefe('and so does the one at the other end of the edge',
+    verlinkt.some((x) => x.typ === 'Inventory' && /linked · carries/.test(x.marke)),
+    verlinkt.map((x) => x.typ));
+
   /* **Aufklappen zeigt die Felder und lässt die Stelle, an der man war.**
      Gezeichnet wird dabei nichts neu: die Zeilen stehen schon im Baum. Ein
      Neuzeichnen setzte jeden Kasten mit eigenem Scroll nach oben, und wer

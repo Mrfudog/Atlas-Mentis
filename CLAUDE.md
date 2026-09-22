@@ -75,6 +75,22 @@ wiederkommen, werden sie neu geschrieben.
   die Vorlage; die Bindung liegt an der Kante. Genau das ging in der alten App
   verloren, und der Verlust war endgültig.
 - **Kanten nur vorwärts speichern.** Ein gespiegeltes Gegenstück verwaist.
+- **Eine Kante darf sich an einem Ende wie ein Feld lesen**
+  (`RelationDef.asField: 'from' | 'to'` — welches Ende). Die Zahlen einer
+  Kreatur stehen am Statblock, und der ist ein eigener Artikel:
+  austauschbar, wiederverwendbar, mit eigenem Namen. Für die Kreatur ist er
+  trotzdem kein Verweis auf etwas Fremdes, sondern der Teil von ihr, der
+  woanders wohnt. Also zeigt das Register seine Felder an ihr mit (als
+  Gruppe, gestrichelt, Marke `linked · belongsTo`), und das Layout-Element
+  `linked` zeichnet seine Felder **auf ihrer Seite** — mit seinen eigenen
+  Eingaben, die in seinen Artikel schreiben. Gespeichert bleibt eine Kante
+  in einer Richtung; das andere Ende findet sie über die Rückfrage
+  (`linkedTypes` / `verlinkteTypen`).
+  **Das Mass:** ohne das andere wäre dieser Artikel unvollständig, und es
+  gehört keinem zweiten. Ein Rezept, das einen Gegenstand liefert, und eine
+  Begegnung auf einer Karte sind Verweise auf Dinge, die für sich stehen —
+  die bleiben Kanten. Heute tragen `belongsTo` (Statblock an der Kreatur)
+  und `carries` (Inventar an Kreatur und Gruppe) die Angabe.
 - **Schreiben geht durch `validateEntity`**, auch wenn es umständlich scheint.
 - **Drei Ansichten, und der Ort wählt sie.** `overview` steht in einem
   Verweis oder einer Listenzeile, `quick` auf einer Karte, `full` auf der

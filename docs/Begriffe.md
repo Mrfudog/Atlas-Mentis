@@ -438,7 +438,18 @@ sich die Werkzeugübungen daraus heraus.
 
 **Die sechs Werte stehen nicht an der Figur.** Sie wohnen am Statblock
 (`sb_rook`), und `belongsTo` sagt, an welchem — auch bei einem
-Spielercharakter. Das ist der Grund, warum man im Register unter
-`PlayerCharacter` kein `str` findet: dort steht, was eine Figur *ist*, und
-nicht, was in ihrem Bogen steht.
+Spielercharakter.
+
+**Im Register stehen sie trotzdem an ihr.** Eine Kante darf sich an einem
+Ende wie ein Feld lesen (`asField`), und dann zeigt die Typenseite die
+Felder des anderen Typs als eigene Gruppe: gestrichelt, mit der Marke
+`linked · belongsTo` — sie gehören dazu und stehen doch in einem anderen
+Artikel. Auf der Artikelseite zeichnet das Element `linked` sie mit ihren
+eigenen Eingaben, und die schreiben in **jenen** Artikel. Wer eine Zahl
+ändern will, springt nicht mehr hin und sucht den Weg zurück.
+
+Das Mass dafür: **ohne das andere wäre dieser Artikel unvollständig, und es
+gehört keinem zweiten.** Der Statblock einer Kreatur und das Inventar einer
+Gruppe sind so; ein Gegenstand, den ein Rezept liefert, ist es nicht — den
+gäbe es auch ohne das Rezept, und er bleibt ein Verweis.
 
