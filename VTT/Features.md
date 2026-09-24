@@ -13,3 +13,15 @@ Process, transcribe & summarize
 - change hue, saturation etc
 - add lights
 - Add walls, windows, doors
+## Play
+- place tokens
+- move tokens
+- Lock tokens
+- confirmation mode
+- zoom
+- draw/add shapes/animations
+- calculations
+- show height
+
+# Articles
+Read articles
