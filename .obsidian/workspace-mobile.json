@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "VTT/Areas.md",
+                "file": "VTT/Features.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Areas"
+              "title": "Features"
             }
           }
         ]
@@ -177,6 +177,8 @@
   },
   "active": "0f563dc26f82184d",
   "lastOpenFiles": [
+    "VTT/Areas.md",
+    "VTT/Features.md",
     "Ideen/Richtung.md",
     "Kampagne",
     "VTT/Requirements by Area.md",
@@ -187,7 +189,6 @@
     "20_Decision_Log.md",
     "Obsidian/Start.md",
     "broken links output.md",
-    "VTT/Areas.md",
     "VTT/Backbone Concept.md",
     "VTT/Data Definitions.md",
     "VTT/Decision Log.md",
