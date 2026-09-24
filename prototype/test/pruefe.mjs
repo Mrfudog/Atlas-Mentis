@@ -1377,7 +1377,13 @@ async function seite(datei, warten) {
       alle, linien, erb, spalten,
       gewaehlt: T.UI.dgPick,
       danach: svg2.querySelectorAll('.dgl').length,
-      beschriftet: svg2.querySelectorAll('.dgt').length,
+      /* **Die Namen stehen unter dem Bild**, nicht darin: sechs Kanten,
+         die am selben Kasten ankommen, schrieben ihre Namen an dieselbe
+         Stelle. Eine Zeile je Kantenart und Richtung, die Gegenüber
+         dahinter. */
+      zeilen: document.querySelectorAll('.dglist .dgrow').length,
+      kanten: [...document.querySelectorAll('.dglist .dgrow code')]
+        .map((x) => x.textContent),
       /* Und der Schalter nimmt die geteilten Typen dazu. */
     };
     T.UI.dgPick = ''; T.UI.dgAll = true; T.render();
@@ -1393,7 +1399,12 @@ async function seite(datei, warten) {
     diagramm);
   pruefe('picking a type leaves only what touches it, and names those edges',
     diagramm.gewaehlt === 'Creature' && diagramm.danach > 0
-    && diagramm.danach < diagramm.linien && diagramm.beschriftet > 0,
+    && diagramm.danach < diagramm.linien && diagramm.zeilen > 5
+    && diagramm.kanten.includes('carries') && diagramm.kanten.includes('belongsTo')
+    /* Eine Zeile je Art und Richtung: `regards` steht zwischen vier Arten
+       in beide Richtungen und wäre als Kreuzprodukt zwölf Zeilen, die
+       alle dasselbe heissen. */
+    && diagramm.kanten.filter((x) => x === 'regards').length === 2,
     diagramm);
   pruefe('and the shared types can be taken in',
     diagramm.mitGeteilten > diagramm.alle, diagramm);

@@ -653,7 +653,22 @@ ul.pstock .pbei{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
 .dgbox{margin:8px 0 4px}
 .dgscroll{overflow:auto;border:1px solid var(--line);border-radius:6px;
   background:var(--surface);padding:4px}
-svg.dg{display:block;min-width:820px}
+svg.dg{display:block}
+/* Die Kanten der gewählten Art, ausgeschrieben: das Bild sagt, wie es
+   zusammenhängt, die Liste, wie es heisst. */
+.dglist{display:flex;flex-direction:column;gap:2px;margin-top:8px}
+.dgrow{display:flex;align-items:baseline;gap:8px;font-size:12px;
+  padding:2px 4px;border-radius:3px}
+.dgrow:hover{background:var(--surface2)}
+.dgrow.erb{opacity:.7}
+.dgrow .dgar{width:12px;color:var(--dim)}
+.dgrow code{font-family:var(--ff-mono);font-size:11px;min-width:120px}
+.dgrow .co{min-width:96px}
+/* Die Gegenüber fliessen als Text: als Flex-Kasten standen zwischen
+   „Faction," und „Party" acht Pixel Abstand, und das Komma hing in der
+   Luft. */
+.dgrow .dgz{display:inline}
+.dgrow .dgz .ref{margin:0}
 svg.dg .dgh{fill:var(--dim);font-size:10px;font-family:var(--ff-mono);
   text-transform:uppercase;letter-spacing:.08em}
 svg.dg .dgn rect{fill:var(--surface2);stroke:var(--line2);stroke-width:1}
@@ -11571,8 +11586,11 @@ function elTypeDiagram(){
   });
   var linien=dgLinien(pos);
 
+  /* Die natürliche Breite und kein `100%`: sonst staucht ein enger Kasten
+     das Ganze, bis die Namen nicht mehr lesbar sind. Zu schmal wird
+     gescrollt — das ist die ehrlichere Antwort. */
   var svg=sv("svg",{class:"dg",viewBox:"0 0 "+breite+" "+(hoehe+DG_PAD),
-    width:"100%",height:String(hoehe+DG_PAD),role:"img",
+    width:String(breite),height:String(hoehe+DG_PAD),role:"img",
     "aria-label":"Every article type and the edges between them"});
   var defs=sv("defs");
   ["dgar","dgar-on"].forEach(function(id){
@@ -11582,9 +11600,11 @@ function elTypeDiagram(){
   });
   svg.appendChild(defs);
 
-  /* Erst die Linien, dann die Kästen: eine Linie, die über einem Kasten
-     liegt, streicht seinen Namen durch. */
+  /* Erst die Linien, dann die Kästen, dann die Beschriftungen: eine Linie
+     über einem Kasten streicht seinen Namen durch, und eine Beschriftung
+     **unter** einem Kasten ist keine. */
   var lg=sv("g",{class:"dglines"});
+  var beschriftung=[];
   linien.forEach(function(l){
     var a=pos[l.a], b=pos[l.b];
     if(!a||!b)return;
@@ -11608,11 +11628,12 @@ function elTypeDiagram(){
         d:"M"+x1+","+y1+" C"+mx+","+y1+" "+mx+","+y2+" "+x2+","+y2,
         "marker-end":"url(#"+(an?"dgar-on":"dgar")+")"}));
     }
-    /* Der Name der Kante steht nur dran, wenn eine Art gewählt ist —
-       einundvierzig Beschriftungen übereinander sind keine. */
-    if(UI.dgPick&&an) lg.appendChild(sv("text",{class:"dgt",
-      x:String((x1+x2)/2),y:String((y1+y2)/2-3),"text-anchor":"middle"},
-      document.createTextNode(l.label)));
+    /* **Die Namen stehen nicht im Bild.** Sechs Kanten, die am selben
+       Kasten ankommen, schreiben ihre Namen an dieselbe Stelle; mit einem
+       Saum liest man dann einen Namen aus sechs übereinander. Also nennt
+       sie die Liste unter dem Bild — dort steht jede für sich, mit
+       Richtung und Gegenüber. */
+    if(UI.dgPick&&an) beschriftung.push(l);
   });
   svg.appendChild(lg);
 
@@ -11650,6 +11671,52 @@ function elTypeDiagram(){
   var host=el("div",{class:"dgscroll"});
   host.appendChild(svg);
   wrap.appendChild(host);
+
+  /* Die Kanten der gewählten Art, ausgeschrieben: Richtung, Name,
+     Gegenüber. Das Bild sagt, wie es zusammenhängt; die Liste sagt, wie
+     es heisst. */
+  if(UI.dgPick&&beschriftung.length){
+    /* **Eine Zeile je Kantenart und Richtung**, und die Gegenüber
+       dahinter. `regards` steht zwischen vier Arten in beide Richtungen —
+       als Kreuzprodukt wären das zwölf Zeilen, die alle dasselbe
+       heissen. */
+    var nach={}, ordnung=[];
+    beschriftung.forEach(function(l){
+      var raus=l.a===UI.dgPick;
+      var gegen=raus?l.b:l.a;
+      var schl=l.art+"|"+l.name+"|"+(raus?"out":"in");
+      if(!nach[schl]){
+        nach[schl]={art:l.art,name:l.name,raus:raus,label:l.label,ziele:[]};
+        ordnung.push(schl);
+      }
+      if(nach[schl].ziele.indexOf(gegen)<0) nach[schl].ziele.push(gegen);
+    });
+    var liste=el("div",{class:"dglist"});
+    ordnung.sort(function(a,b){
+      var x=nach[a], y=nach[b];
+      return (x.art===y.art?0:(x.art==="erb"?-1:1))||x.name.localeCompare(y.name);
+    }).forEach(function(schl){
+      var g=nach[schl];
+      var z=el("div",{class:"dgrow"+(g.art==="erb"?" erb":"")});
+      z.appendChild(el("span",{class:"dgar",
+        title:g.raus?"from here":"to here",text:g.raus?"\u2192":"\u2190"}));
+      z.appendChild(el("code",{text:g.name}));
+      /* Bei der Vererbung sagt die Richtung etwas anderes als bei einer
+         Kante: hinaus heisst „ist ein", herein heisst „davon gibt es". */
+      z.appendChild(el("span",{class:"co",
+        text:g.art==="erb"?(g.raus?"is a":"subtype"):g.label}));
+      var ziele=el("span",{class:"dgz"});
+      g.ziele.sort().forEach(function(gegen,i){
+        if(i) ziele.appendChild(el("span",{class:"co",text:", "}));
+        ziele.appendChild(el("button",{class:"ref",type:"button",onclick:function(){
+          UI.dgPick=gegen; render(); }},(REG.interfaces[gegen]||{}).label||gegen));
+      });
+      z.appendChild(ziele);
+      liste.appendChild(z);
+    });
+    wrap.appendChild(liste);
+  }
+
   wrap.appendChild(el("p",{class:"hint",style:"margin:6px 0 0",
     text:Object.keys(pos).length+" types, "+linien.filter(function(l){
       return l.art==="rel"; }).length+" edges. A dashed line is inheritance ("+
