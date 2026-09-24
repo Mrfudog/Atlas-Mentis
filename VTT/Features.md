@@ -78,3 +78,6 @@ Process, transcribe & summarize
 - alley
 - base
 - war
+
+# Story
+- deviations/possible outcomes
