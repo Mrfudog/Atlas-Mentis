@@ -48,6 +48,7 @@ Process, transcribe & summarize
 # NPCs
 - relation manager (mainly towards players)
 - seeds/events
+- statblocks by region, biome, location, faction, type
 
 # Shops
 - selling table (for shops, locations, npcs)
