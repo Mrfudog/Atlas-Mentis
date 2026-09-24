@@ -24,4 +24,17 @@ Process, transcribe & summarize
 - show height
 
 # Articles
-Read articles
+- save/favorize articles
+- session mode (articles pertaining to session)
+- quick jump between relevant articles
+- add article as recurring (villain, city etc)
+
+# Global variables
+
+## Campaign
+- system/packs
+- relevant articles (group, players, villains, locations, systems/rules)
+
+# Monsters
+- statblock creator/importer from template
+- feat/trait reuse and suggestion
