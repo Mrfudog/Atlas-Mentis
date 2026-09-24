@@ -77,4 +77,4 @@ Process, transcribe & summarize
 - settlement
 - alley
 - base
-- 
+- war
