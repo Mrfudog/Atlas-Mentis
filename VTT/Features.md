@@ -70,3 +70,11 @@ Process, transcribe & summarize
 - statblocks/npcs added
 - location
 - possible locations, regions, factions
+- (possible) maps
+- rules (environment, combat, social, exploration)
+# Custom systems
+- inventory
+- settlement
+- alley
+- base
+- 
