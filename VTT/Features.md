@@ -81,3 +81,6 @@ Process, transcribe & summarize
 
 # Story
 - deviations/possible outcomes
+- ideas
+- preparation notes, separate space, control visibility/grouping
+- 
