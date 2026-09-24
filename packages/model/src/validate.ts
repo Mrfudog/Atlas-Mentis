@@ -41,6 +41,7 @@ const propertySchema = z
     of: z.string().optional(),
     unit: z.string().optional(),
     target: linkTargetSchema.optional(),
+    alwaysEdit: z.boolean().optional(),
     many: z.boolean().optional(),
     readOnly: z.boolean().optional(),
     default: z.unknown().optional(),
@@ -90,6 +91,7 @@ export const InterfaceDefSchema = z.object({
   name: z.string(),
   label: z.string().optional(),
   abstract: z.boolean().optional(),
+  alwaysEdit: z.boolean().optional(),
   extends: z.array(z.string()).optional(),
   schema: objectSchema.optional(),
   area: z.enum(['world', 'history', 'rules', 'play']).optional(),
@@ -290,8 +292,16 @@ export function validateEntity(
       if (wert === undefined || wert === '' || wert === null) continue;
       const erlaubteWerte = enumOptions(registry, prop);
       if (erlaubteWerte) {
-        /* Ein Feld mit `many` trägt eine Liste; jeder Eintrag gilt für sich. */
-        const werte = Array.isArray(wert) ? wert : [wert];
+        /* **Eine Karte nennt ihre Werte, nicht sich selbst.** `zones`
+           hält `{"x,y": "action"}`: die Zeile gilt für die Einträge, und
+           den Schlüssel erfindet der Ort. Ohne diesen Zweig prüfte die
+           Schleife das Objekt selbst gegen die Liste — und liess es durch,
+           weil es keinen `value` trägt. Stillschweigend richtig ist
+           dasselbe wie stillschweigend falsch: beides sagt nichts. */
+        const eintraege = prop.format === 'zones' && wert && typeof wert === 'object'
+          ? Object.values(wert as Record<string, unknown>)
+          : null;
+        const werte = eintraege ?? (Array.isArray(wert) ? wert : [wert]);
         for (const einer of werte) {
           const text = typeof einer === 'object' && einer !== null
             ? (einer as { value?: unknown }).value

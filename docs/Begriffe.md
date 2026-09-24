@@ -125,6 +125,14 @@ Eine Tatsache, die ein Typ festhält. Ein Feld hat
   Zustand des Ziels, und ein entfernter Marker würde einen längst
   gespeicherten Verweis rückwirkend falsch machen,
 - bei einem **Mass** die Einheit, in der es dasteht (`unit`),
+- bei einer **Form** (`format: 'grid'`) ein Zeichen je Feld — und die Maske
+  malt sie als Raster. `##.,##.` als Text sagt der Eingabe nicht, was dabei
+  herauskommt, und beim Abzählen verrutscht eine Spalte,
+- **immer bearbeitbar oder erst auf Klick** (`alwaysEdit`). Der Stand der
+  Trefferpunkte wird mitten im Zug gesetzt; erst „Bearbeiten" zu sagen
+  sind drei Klicks für eine Zahl. Am Typ gesagt gilt es für die Felder,
+  die *er* erklärt, und wird nicht vererbt — sonst machte ein Haken an
+  einem Obertyp die ganze Kreatur zum Formular,
 - **Pflicht oder optional**,
 - vielleicht einen **Standard**, der beim Anlegen gilt und nicht rückwirkend,
 - vielleicht eine **Rechnung** (`derived`), und dann bekommt es keine
@@ -357,6 +365,30 @@ Was gezeigt wird, sagt die Einstellung `units` (`imperial`, `metric`,
 `both`); eine Artikelart darf es überschreiben und vererbt es wie `area`.
 Eine Kreatur darf imperial bleiben, weil ihre Zahlen aus dem Regelwerk
 kommen, während der Rest der Kampagne metrisch dasteht.
+
+---
+
+## Behälter, Form und Zone
+
+Ein **Behälter** ist ein Artikel (`Inventory`), und er hat seine eigene
+Form: `grid` ist dieselbe Schreibweise wie die Kachelform eines Gegenstands
+— ein Zeichen je Feld, `.` ist **kein** Feld. Damit ist ein Köcher, ein L
+und ein Schlauch ein Behälter und kein Sonderfall. Sagt er nichts, gilt das
+Rechteck aus den Einstellungen; eine Einstellung wegzunehmen, die für die
+einfachen Fälle reicht, wäre kein Gewinn.
+
+`zones` sagt je Feld, **was es kostet**, etwas von dort zu holen —
+`{"x,y": "action"}`, Werte aus der Aufzählungszeile `DrawTime` (freie
+Handlung, Bonushandlung, Handlung, Zug, Runde). Der Name steht als Wort in
+der Karte und nicht als Nummer: eine Nummer wäre beim Umsortieren der Zeile
+still die falsche Zone. Die Zone eines Stücks ist die **langsamste**, die
+es bedeckt — man muss das Ganze herausbekommen, nicht nur eine Ecke.
+
+Die **Drehung** steht an der Kante (`holds.props.rot`) und nicht am
+Gegenstand: derselbe Bogen liegt quer oder längs, und dieselbe Fackel soll
+nicht in jedem Beutel gleich liegen. Ein Stück **vom Raster** zu nehmen und
+es **aus dem Behälter** zu nehmen sind zwei Dinge, und beide braucht man:
+das eine räumt um, das andere gibt her.
 
 ---
 

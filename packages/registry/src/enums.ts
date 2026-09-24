@@ -94,6 +94,20 @@ export const enums: Record<string, EnumDef> = {
    * Zustände — dass eine Begegnung gespielt wurde, gehört ins Kampagnenlog
    * und nicht in ein Feld, das danach für immer „benutzt" sagt.
    */
+  /**
+   * **Was es kostet, etwas hervorzuholen.** Die Leiter steht am Tisch
+   * ohnehin — eine freie Handlung, eine Bonushandlung, eine Handlung, ein
+   * ganzer Zug, eine Runde —, und im Behälter sagt sie, wie lange es
+   * dauert, bis das Ding in der Hand ist. Als Zeile und nicht im Code:
+   * eine Kampagne mit einer anderen Leiter ist eine andere Zeile und kein
+   * Codewechsel.
+   */
+  DrawTime: {
+    name: 'DrawTime',
+    label: 'Draw time',
+    values: ['free action', 'bonus action', 'action', 'turn', 'round'],
+  },
+
   State: {
     name: 'State',
     label: 'State',

@@ -69,10 +69,16 @@ export const interfaces: Record<string, InterfaceDef> = {
 
      Sachlich stimmt es auch: was eine Kreatur *ist*, ändert sich selten; was
      sie gerade *aushält*, ändert sich jede Runde. */
+  /* **Der Stand, nicht die Festlegung.** Trefferpunkte, Erschöpfung und
+     Zustände ändern sich mitten im Zug, und dafür erst „Bearbeiten" zu
+     sagen sind drei Klicks für eine Zahl. Also stehen die Felder dieses
+     Typs immer als Eingabe da (`alwaysEdit`). Am Statblock gilt das
+     nicht: dort ist `hp` das Maximum, und das legt jemand einmal fest. */
   Vitals: {
     name: 'Vitals',
     label: 'Vitals',
     abstract: true,
+    alwaysEdit: true,
     schema: g.Vitals.schema,
   },
 
@@ -482,14 +488,20 @@ export const interfaces: Record<string, InterfaceDef> = {
     area: 'rules',
     label: 'Inventory',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
-    schema: merge(g.InventoryInfo),
+    schema: merge(g.InventoryInfo, g.Container),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {
       full: [
         { id: 'i-inv', el: 'inventory' },
         { id: 'i-desc', el: 'description' },
-        { id: 'i-f', el: 'fields', fields: 'all', except: ['Inventory'] },
+        /* **Nur der Geldbeutel ist ausgenommen** — den zeigt das
+           Inventar-Element in seiner Leiste. Vorher stand hier die ganze
+           Art (`except: ['Inventory']`), und das war richtig, solange sie
+           nur Fassung und Münzen trug; seit sie ihre **Form** und ihre
+           **Zonen** trägt, hiess es: die zwei Felder, mit denen man einen
+           Behälter überhaupt einrichtet, stehen nirgends. */
+        { id: 'i-f', el: 'fields', fields: 'all', except: ['Inventory.copper'] },
         { id: 'i-r', el: 'relations' },
       ],
     },

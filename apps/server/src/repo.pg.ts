@@ -32,6 +32,10 @@ export class PgRepository implements Repository {
         name: r['name'] as string,
         label: (r['label'] as string) ?? undefined,
         abstract: Boolean(r['abstract']),
+        /* Werden die Felder dieses Typs immer bearbeitet? `false` ist die
+           Vorgabe und kein Wert: ein Haken, den niemand gesetzt hat,
+           gehört nicht in die Zeile. */
+        alwaysEdit: r['always_edit'] ? true : undefined,
         extends: (r['extends'] as string[]) ?? [],
         schema: (r['schema'] as InterfaceDef['schema']) ?? undefined,
         area: (r['area'] as InterfaceDef['area']) ?? undefined,
@@ -88,9 +92,10 @@ export class PgRepository implements Repository {
         await client.query('delete from interface_def');
         for (const [name, def] of Object.entries(value as Registry['interfaces'])) {
           await client.query(
-            `insert into interface_def(name,label,abstract,extends,schema,area,views,units,titles)
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-            [name, def.label ?? null, def.abstract ?? false, def.extends ?? [],
+            `insert into interface_def(name,label,abstract,always_edit,extends,schema,area,views,units,titles)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+            [name, def.label ?? null, def.abstract ?? false, def.alwaysEdit ?? false,
+             def.extends ?? [],
              def.schema ? JSON.stringify(def.schema) : null,
              def.area ?? null, def.views ? JSON.stringify(def.views) : null,
              def.units ?? null, def.titles ? JSON.stringify(def.titles) : null],

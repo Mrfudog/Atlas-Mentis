@@ -1254,6 +1254,17 @@ async function seite(datei, warten) {
     [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
   await p.waitForTimeout(250);
 
+  /* **Der Filter bleibt jetzt stehen**, auch beim Klick auf dieselbe Seite
+     — also wird er hier ausdrücklich geleert. Sich darauf zu verlassen,
+     dass ein Seitenwechsel ihn wegwirft, hiesse: diese Prüfung hängt an
+     einem Verhalten, das sie nicht prüft. */
+  await p.evaluate(() => {
+    const T = window.__T__;
+    T.UI.iface = ''; T.UI.tag = ''; T.UI.status = ''; T.UI.offen = false; T.UI.q = '';
+    T.render();
+  });
+  await p.waitForTimeout(250);
+
   /* Ein Obertyp meint seine Subtypen mit. Exakt zu vergleichen hiesse:
      „Item" zeigt nichts, obwohl jede Waffe eins ist. */
   const vorFilter = await p.evaluate(() => document.querySelectorAll('#view .row').length);
@@ -1296,6 +1307,45 @@ async function seite(datei, warten) {
       && nachFilter.typen.includes(paar.label),
     { paar, vorFilter, nachFilter });
 
+  /* **Der Filter gehört der Seite.** Einen Artikel zu öffnen und
+     zurückzugehen hiess bisher, ihn neu zu setzen — `goPage` leerte ihn
+     bei jedem Klick, auch beim Klick auf dieselbe Seite. */
+  const bleibt = await p.evaluate(async () => {
+    const T = window.__T__;
+    const vorher = T.UI.iface;
+    /* Ein Artikel der gefilterten Art — über die Id, nicht über eine
+       Zeile: was in der Zeile klickbar ist, ist eine Frage an die Liste. */
+    let ziel = null;
+    T.ENT.forEach((e) => { if (!ziel && (e.interfaces || [])[0] === vorher) ziel = e; });
+    T.ENT.forEach((e) => {
+      if (!ziel && T.compsFor((e.interfaces || [])[0]).includes(vorher)) ziel = e;
+    });
+    if (!ziel) return { keinZiel: true, vorher };
+    T.go({ k: 'art', id: ziel.id });
+    await new Promise((r) => setTimeout(r, 300));
+    const aufArtikel = T.UI.route.k;
+    /* Zurück über den Seitenknopf, der gerade als aktuell markiert ist —
+       genau der Weg, auf dem der Filter verloren ging. */
+    const jetzt = [...document.querySelectorAll('#pages button')]
+      .find((b) => b.getAttribute('aria-current') === 'true');
+    if (jetzt) jetzt.click();
+    await new Promise((r) => setTimeout(r, 300));
+    const gleich = T.UI.iface;
+    /* Und auf eine andere Seite geht er weg: eine Artikelart aus dem
+       Regelwerk filtert in der Welt nichts. */
+    const andere = [...document.querySelectorAll('#pages button')]
+      .find((b) => b.textContent === 'Registry');
+    if (andere) andere.click();
+    await new Promise((r) => setTimeout(r, 250));
+    return { vorher, aufArtikel, gleich, danach: T.UI.iface };
+  });
+  pruefe('the filter survives opening an article and coming back',
+    bleibt.aufArtikel === 'art' && bleibt.gleich === bleibt.vorher
+    && bleibt.danach === '', bleibt);
+
+  await p.evaluate(() => { const T = window.__T__;
+    T.UI.page = 'compendium'; T.UI.route = { k: 'list' }; T.render(); });
+  await p.waitForTimeout(250);
   await p.evaluate(() =>
     [...document.querySelectorAll('.filters button')].find((b) => /Clear filters/.test(b.textContent))?.click());
   await p.waitForTimeout(250);
@@ -1303,6 +1353,51 @@ async function seite(datei, warten) {
   pruefe('clearing the filters brings everything back', geleert === vorFilter, { geleert, vorFilter });
 
   await zumRegister(p, 'How it works');
+  /* **Das Diagramm.** Ein Kasten je Artikelart, eine Linie je Kantenart,
+     gestrichelt für die Vererbung — gezogen aus dem laufenden Register.
+     Einundvierzig Kantenarten gleichzeitig sind ein Knäuel, also stehen
+     alle blass da und die eines gewählten Kastens kräftig. */
+  const diagramm = await p.evaluate(async () => {
+    const T = window.__T__;
+    T.UI.dgPick = ''; T.UI.dgAll = false; T.render();
+    await new Promise((r) => setTimeout(r, 400));
+    const svg = document.querySelector('svg.dg');
+    if (!svg) return { keins: true };
+    const alle = svg.querySelectorAll('.dgn').length;
+    const linien = svg.querySelectorAll('.dgl').length;
+    const erb = svg.querySelectorAll('.dgl.erb').length;
+    const spalten = [...svg.querySelectorAll('.dgh')].map((x) => x.textContent);
+    /* Ein Klick zeigt nur, was diese Art berührt. */
+    const kasten = [...svg.querySelectorAll('.dgn')]
+      .find((g) => g.textContent.indexOf('Creature') === 0);
+    if (kasten) kasten.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 400));
+    const svg2 = document.querySelector('svg.dg');
+    const raus = {
+      alle, linien, erb, spalten,
+      gewaehlt: T.UI.dgPick,
+      danach: svg2.querySelectorAll('.dgl').length,
+      beschriftet: svg2.querySelectorAll('.dgt').length,
+      /* Und der Schalter nimmt die geteilten Typen dazu. */
+    };
+    T.UI.dgPick = ''; T.UI.dgAll = true; T.render();
+    await new Promise((r) => setTimeout(r, 400));
+    raus.mitGeteilten = document.querySelectorAll('svg.dg .dgn').length;
+    T.UI.dgAll = false; T.render();
+    await new Promise((r) => setTimeout(r, 300));
+    return raus;
+  });
+  pruefe('the type diagram draws every article kind and its edges',
+    !diagramm.keins && diagramm.alle > 15 && diagramm.linien > 30
+    && diagramm.erb > 3 && diagramm.spalten.some((x) => /World/.test(x)),
+    diagramm);
+  pruefe('picking a type leaves only what touches it, and names those edges',
+    diagramm.gewaehlt === 'Creature' && diagramm.danach > 0
+    && diagramm.danach < diagramm.linien && diagramm.beschriftet > 0,
+    diagramm);
+  pruefe('and the shared types can be taken in',
+    diagramm.mitGeteilten > diagramm.alle, diagramm);
+
   const dm = await p.evaluate(() => ({
     titel: document.querySelector('#view h2')?.textContent,
     begriffe: [...document.querySelectorAll('.kdl dt')].map((x) => x.textContent),
@@ -2390,6 +2485,66 @@ async function seite(datei, warten) {
     !dran.keineKiste && /Rook/.test(dran.name)
     && dran.felder.includes('Armour class') && dran.felder.includes('Hit points'), dran);
 
+  /* **Die Attribute wohnen am Statblock**, und der Statblock nimmt
+     `Abilities` dazu. An der Figur müssen sie deshalb in der verlinkten
+     Kiste stehen — sonst hiesse „die Zahlen der Kreatur stehen am
+     Statblock" dass sie nirgends stehen. */
+  pruefe('and the abilities the statblock takes in are among them',
+    dran.felder.includes('STR') && dran.felder.includes('DEX')
+    && dran.felder.includes('Initiative'), dran.felder);
+
+  /* **Was ein Stand ist, steht immer als Eingabe da** (`alwaysEdit` an
+     `Vitals`). Die Trefferpunkte werden mitten im Zug gesetzt; erst
+     „Bearbeiten" zu sagen sind drei Klicks für eine Zahl. Was eine
+     Festlegung ist — `ac` am Statblock — bleibt Text, bis man darauf
+     klickt. */
+  /* **Was ein Stand ist, steht immer als Eingabe da.** Am Typ sagt es
+     `Vitals` (der Stand während der Sitzung, gegen den Statblock, der die
+     Festlegung ist); am Feld sagen es die Reisezähler einer Gruppe, die
+     sich an jedem Knoten ändern. Das Motto daneben bleibt Text, bis
+     jemand darauf klickt — sonst wäre die ganze Seite ein Formular. */
+  const immer = await p.evaluate(async () => {
+    const T = window.__T__;
+    let gruppe = null;
+    T.ENT.forEach((e) => { if (!gruppe && (e.interfaces || [])[0] === 'Party') gruppe = e; });
+    if (!gruppe) return { keineGruppe: true };
+    T.go({ k: 'art', id: gruppe.id });
+    await new Promise((r) => setTimeout(r, 350));
+    const zelle = (t) => [...document.querySelectorAll('.fld')]
+      .find((f) => f.querySelector('dt')?.textContent === t);
+    return {
+      amTyp: !!T.REG.interfaces.Vitals.alwaysEdit,
+      amFeld: !!T.REG.interfaces.Party.schema.properties.day.alwaysEdit,
+      standOffen: !!zelle('Day')?.querySelector('dd.editing input'),
+      wacheOffen: !!zelle('Watch')?.querySelector('dd.editing input'),
+      festeOffen: !!zelle('Motto')?.querySelector('dd.editing input'),
+      bearbeiten: !!T.UI.inline,
+    };
+  });
+  pruefe('a field that is a state is always an input, a fixed one is not',
+    immer.amTyp && immer.amFeld && immer.standOffen && immer.wacheOffen
+    && !immer.festeOffen && !immer.bearbeiten, immer);
+
+  await oeffneId('pc_rook');
+
+  /* Und **beim Bearbeiten steht jedes Feld da** — auch die aus `Identity`,
+     die vorher nirgends waren: ein Feld, das man nur über die Einfuhr
+     füllen kann, ist keines. Der Name bleibt draussen, er ist die
+     Überschrift. */
+  const alleFelder = await p.evaluate(async () => {
+    const T = window.__T__;
+    T.UI.inline = true; T.render();
+    await new Promise((r) => setTimeout(r, 300));
+    const dts = [...document.querySelectorAll('.fld dt')].map((d) => d.textContent);
+    const eingaben = [...document.querySelectorAll('.fld dd.editing')].length;
+    T.UI.inline = false; T.render();
+    await new Promise((r) => setTimeout(r, 200));
+    return { dts, eingaben, ohneName: !dts.includes('Name') };
+  });
+  pruefe('editing shows every field as an input, aliases and cover name included',
+    alleFelder.dts.includes('Aliases') && alleFelder.dts.includes('Cover name')
+    && alleFelder.ohneName && alleFelder.eingaben > 20, alleFelder);
+
   const dortGeschrieben = await p.evaluate(async () => {
     const T = window.__T__;
     const box = document.querySelector('.linkedbox');
@@ -2605,6 +2760,29 @@ async function seite(datei, warten) {
     einstellbar.regprop === 'Identity.aliases'
     && einstellbar.felder.some((x) => /Default/.test(x))
     && einstellbar.nochOffen, einstellbar);
+
+  /* **Die verlinkte Gruppe zeigt die ganze Kette des anderen Typs.** Die
+     sechs Attribute wohnen an `Abilities`, und der Statblock nimmt sie
+     dazu — wer an der Figur nachsieht, was dransteht, sucht `str` und
+     nicht die Auskunft, dass es da noch einen Obertyp gibt. */
+  const kette = await p.evaluate(async () => {
+    const T = window.__T__;
+    const kasten = [...document.querySelectorAll('.fbox.part.linked')]
+      .find((b) => b.dataset.linked === 'Statblock');
+    if (!kasten) return { keine: true };
+    kasten.querySelector('.fhead.klapp').click();
+    await new Promise((r) => setTimeout(r, 200));
+    return {
+      zahl: kasten.querySelector('.fhead .co')?.textContent ?? '',
+      via: [...kasten.querySelectorAll('.fhead.sub .ref')].map((x) => x.textContent),
+      schluessel: [...kasten.querySelectorAll('.frow .fk')]
+        .map((x) => x.textContent.replace('*', '')),
+    };
+  });
+  pruefe('the linked group shows the whole chain of the other type',
+    !kette.keine && kette.schluessel.includes('ac')
+    && kette.schluessel.includes('str') && kette.schluessel.includes('dexMod')
+    && kette.via.includes('Abilities'), kette);
 
   /* Die Reiter des Bogens stehen in der Vorlage mit Namen — „tabs" allein
      zu lesen sagt nichts. */
@@ -3116,6 +3294,136 @@ async function seite(datei, warten) {
     const jetzt = nachher.find((x) => /Diebeswerkzeug/.test(x.n));
     pruefe('an item can be picked up and put somewhere else',
       !!jetzt && jetzt.r !== vorher.r, { vorher, jetzt });
+
+    /* **Drehen.** Derselbe Bogen liegt quer oder längs; die Drehung steht
+       an der Kante und nicht am Artikel, denn sonst läge dieselbe Fackel
+       in jedem Beutel gleich. */
+    const gedreht = await p.evaluate(async () => {
+      const T = window.__T__;
+      /* Die Form selbst zuerst: eine Vierteldrehung macht aus 1×3 ein 3×1.
+         Ohne das prüfte der Rest nur, dass ein Knopf etwas tut. */
+      const quer = T.gridTurn(['#', '#', '#'], 1);
+      const kurz = [...document.querySelectorAll('.gitem')]
+        .find((i) => /Kurzschwert/.test(i.textContent));
+      if (!kurz) return { keins: true, quer };
+      const vor = { c: kurz.style.gridColumn, r: kurz.style.gridRow };
+      kurz.click();
+      await new Promise((r) => setTimeout(r, 250));
+      const dreh = [...document.querySelectorAll('.invbox .maptools .btn')]
+        .find((b) => /Turn/.test(b.textContent));
+      if (!dreh) return { keinKnopf: true, vor, quer };
+      dreh.click();
+      await new Promise((r) => setTimeout(r, 500));
+      const inv = T.inventoryOf(T.ENT.get(T.UI.route.id));
+      const halt = (inv.relations || []).find((r) => r.type === 'holds'
+        && /Kurzschwert/.test(T.ENT.get(r.to)?.name || ''));
+      const nun = [...document.querySelectorAll('.gitem')]
+        .find((i) => /Kurzschwert/.test(i.textContent));
+      return { vor, quer,
+        rot: (halt?.props || {}).rot,
+        /* Passt es quer nicht mehr dorthin, liegt es danach im Fach — eine
+           Drehung, die abgelehnt wird, heisst drei Schritte für eine
+           Vierteldrehung. */
+        nach: nun ? { c: nun.style.gridColumn, r: nun.style.gridRow } : null,
+        imFach: [...document.querySelectorAll('.invbox .chips .chip.item')]
+          .some((c) => /Kurzschwert/.test(c.textContent)),
+        form: T.footprintOf(T.ENT.get(halt.to), (halt.props || {}).rot) };
+    });
+    pruefe('an item can be turned a quarter, and its shape turns with it',
+      !gedreht.keins && !gedreht.keinKnopf
+      && gedreht.quer.length === 1 && gedreht.quer[0] === '###'
+      && gedreht.rot === 90 && gedreht.form.w === 3 && gedreht.form.h === 1
+      /* Entweder liegt es gedreht im Raster, oder es liegt im Fach — es
+         gibt zwei Kurzschwerter, also sagt die Kachel allein nichts. */
+      && (gedreht.imFach || (gedreht.nach && /span 3/.test(gedreht.nach.c))), gedreht);
+
+    /* Wieder aufs Raster, damit die folgenden Prüfungen etwas dort finden. */
+    await p.evaluate(async () => {
+      const T = window.__T__;
+      const inv = T.inventoryOf(T.ENT.get(T.UI.route.id));
+      const halt = (inv.relations || []).find((r) => r.type === 'holds'
+        && /Kurzschwert/.test(T.ENT.get(r.to)?.name || ''));
+      if (halt && halt.props && halt.props.gx == null) {
+        halt.props = Object.assign({}, halt.props, { gx: 0, gy: 5 });
+        T.persist(inv);
+      }
+      await new Promise((r) => setTimeout(r, 300));
+    });
+    await p.waitForTimeout(350);
+
+    /* **Vom Raster nehmen, ohne aus dem Beutel zu nehmen.** Zwei
+       verschiedene Dinge, und beide braucht man: das eine räumt um, das
+       andere gibt her. */
+    const runter = await p.evaluate(async () => {
+      const b = [...document.querySelectorAll('.invbox .maptools .btn')]
+        .find((x) => /Off the grid/.test(x.textContent));
+      if (!b) return { keinKnopf: true };
+      const vorZahl = document.querySelectorAll('.gitem').length;
+      b.click();
+      await new Promise((r) => setTimeout(r, 450));
+      return { vorZahl, nachZahl: document.querySelectorAll('.gitem').length,
+        imBeutel: [...document.querySelectorAll('.invbox .chips .chip.item')]
+          .some((c) => /Kurzschwert/.test(c.textContent)) };
+    });
+    pruefe('taking it off the grid leaves it in the inventory',
+      !runter.keinKnopf && runter.nachZahl === runter.vorZahl - 1
+      && runter.imBeutel, runter);
+
+    /* **Neu anfangen.** Wer einmal falsch angefangen hat, will nicht
+       neunzehn Stücke einzeln wegklicken — und keines soll dabei aus dem
+       Behälter verschwinden. */
+    const zurueck = await p.evaluate(async () => {
+      const T = window.__T__;
+      const vorZahl = document.querySelectorAll('.gitem').length;
+      const inv = T.ENT.get(T.UI.route.id) && T.inventoryOf(T.ENT.get(T.UI.route.id));
+      const haelt = (inv.relations || []).filter((r) => r.type === 'holds').length;
+      const b = [...document.querySelectorAll('.invbox .maptools .btn')]
+        .find((x) => /Reset layout/.test(x.textContent));
+      if (!b) return { keinKnopf: true };
+      b.click();
+      await new Promise((r) => setTimeout(r, 250));
+      [...document.querySelectorAll('.dlgbox .btn')]
+        .find((x) => /Reset/.test(x.textContent)).click();
+      await new Promise((r) => setTimeout(r, 500));
+      const inv2 = T.inventoryOf(T.ENT.get(T.UI.route.id));
+      return { vorZahl, nachZahl: document.querySelectorAll('.gitem').length,
+        haelt, haeltNun: (inv2.relations || []).filter((r) => r.type === 'holds').length };
+    });
+    pruefe('the layout can be started over without losing anything',
+      !zurueck.keinKnopf && zurueck.vorZahl > 0 && zurueck.nachZahl === 0
+      && zurueck.haeltNun === zurueck.haelt, zurueck);
+
+    /* **Der Behälter hat seine eigene Form und seine eigenen Zonen.** Das
+       Raster war eine Kampagneneinstellung — zehn mal sechs für jeden
+       Rucksack. Ein Köcher ist aber kein Rechteck, und was oben liegt, ist
+       schneller in der Hand als was unten liegt. */
+    const behaelter = await p.evaluate(async () => {
+      const T = window.__T__;
+      const inv = T.inventoryOf(T.ENT.get(T.UI.route.id));
+      inv.components = inv.components || {};
+      inv.components.Inventory = Object.assign({}, inv.components.Inventory, {
+        grid: ['####', '##..', '####'],
+        zones: { '0,0': 'free action', '1,0': 'free action', '0,2': 'round' },
+      });
+      T.render();
+      await new Promise((r) => setTimeout(r, 400));
+      const zellen = [...document.querySelectorAll('.gcell')];
+      return {
+        zahl: zellen.length,
+        gesperrt: zellen.filter((c) => /blocked/.test(c.className)).length,
+        zonen: zellen.filter((c) => /\bz[1-5]\b/.test(c.className)).length,
+        fuss: [...document.querySelectorAll('.invbox .hint')]
+          .map((x) => x.textContent).join(' | '),
+        /* Und die Zone eines Stücks ist die **langsamste**, die es bedeckt:
+           man muss das Ganze herausbekommen, nicht nur eine Ecke. */
+        kosten: T.drawCost(inv, { gx: 0, gy: 0, rot: 0,
+          item: { components: { Item: { rows: ['##'] } } } }),
+      };
+    });
+    pruefe('a container carries its own grid, blocked cells and zones',
+      behaelter.zahl === 12 && behaelter.gesperrt === 2
+      && behaelter.zonen === 3 && /own grid/.test(behaelter.fuss)
+      && behaelter.kosten === 'free action', behaelter);
 
     /* ---- Die Zahlen wohnen am Statblock ----
      Auch die eines Spielercharakters: er hat mehr darüber hinaus, aber AC,

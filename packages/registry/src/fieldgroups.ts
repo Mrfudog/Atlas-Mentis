@@ -481,7 +481,12 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        rows: { type: 'array', title: 'Grid', items: { type: 'string' } },
+        /* **Die Form wird gezeichnet, nicht getippt.** `format: 'grid'`
+           heisst: ein Zeichen je Feld (`#` belegt, `.` frei), und die
+           Maske malt es als Raster. Als Textfeld war es eine Zeile wie
+           `##.,##.` — man sah der Eingabe nicht an, was dabei herauskommt,
+           und beim Abzählen verrutscht eine Spalte. */
+        rows: { type: 'array', format: 'grid', title: 'Grid', items: { type: 'string' } },
         width: { type: 'number', title: 'Width', derived: 'colCount(rows)' },
         height: { type: 'number', title: 'Height', derived: 'rowCount(rows)' },
         cells: { type: 'number', title: 'Cells', derived: 'cellCount(rows)' },
@@ -654,6 +659,40 @@ export const fieldGroups = {
       properties: {
         capacity: { type: 'number', title: 'Slots' },
         copper: { type: 'number', title: 'Purse in copper' },
+      },
+    },
+  },
+
+  /**
+   * **Ein Behälter hat seine eigene Form und seine eigenen Zonen.**
+   *
+   * Das Raster war eine Kampagneneinstellung: zehn mal sechs, für jeden
+   * Rucksack gleich. Ein Köcher ist aber kein Rechteck, und ein Bandelier
+   * auch nicht — und was oben liegt, ist schneller in der Hand als was
+   * unten liegt. Beides gehört dem Behälter und nicht der Kampagne.
+   *
+   * `grid` ist dieselbe Schreibweise wie die Kachelform eines Gegenstands
+   * (`Footprint.rows`): ein Zeichen je Feld, `.` ist kein Feld. Damit ist
+   * ein L, ein Schlauch und ein Dreieck ein Behälter und kein Sonderfall.
+   *
+   * `zones` sagt je Feld, **was es kostet**, etwas von dort zu holen —
+   * `{"x,y": "action"}`, Werte aus der Zeile `DrawTime`. Eine Karte und
+   * kein zweites Raster, weil ein Feld ohne Zone einfach keine hat; und
+   * der Name steht im Feld und nicht als Nummer, denn eine Nummer wäre
+   * beim Umsortieren der Zeile still die falsche Zone.
+   */
+  Container: {
+    schema: {
+      type: 'object',
+      properties: {
+        grid: { type: 'array', format: 'grid', title: 'Grid', items: { type: 'string' } },
+        zones: {
+          type: 'object', format: 'zones', title: 'Zones',
+          /* Die **Werte** dieser Karte kommen aus der Zeile: `enumRef` sagt
+             hier nicht „das Feld hält einen dieser Werte", sondern „jeder
+             Eintrag hält einen". Geprüft wird genau das. */
+          enumRef: 'DrawTime',
+        },
       },
     },
   },
@@ -1211,10 +1250,15 @@ export const fieldGroups = {
           type: 'string', format: 'link', title: 'Currently at',
           target: { interfaces: ['Place'] },
         },
-        day: { type: 'number', title: 'Day', default: 1 },
-        watch: { type: 'number', title: 'Watch', default: 1 },
-        sinceRation: { type: 'number', title: 'Nodes since rations', default: 0 },
-        sinceLight: { type: 'number', title: 'Nodes since light', default: 0 },
+        /* **Zähler, die am Tisch gesetzt werden** (`alwaysEdit`): Tag,
+           Wache und die beiden Zehrungen ändern sich an jedem Knoten. Erst
+           „Bearbeiten" zu sagen sind drei Klicks für eine Zahl, und das
+           mitten im Marsch. Am Feld und nicht am Typ: das Motto einer
+           Gruppe ist keine, die sich unterwegs ändert. */
+        day: { type: 'number', title: 'Day', default: 1, alwaysEdit: true },
+        watch: { type: 'number', title: 'Watch', default: 1, alwaysEdit: true },
+        sinceRation: { type: 'number', title: 'Nodes since rations', default: 0, alwaysEdit: true },
+        sinceLight: { type: 'number', title: 'Nodes since light', default: 0, alwaysEdit: true },
         /* Was jede Figur an diesem Knoten tut (REQ-171): Figur → Handlung.
            Wird beim Weiterziehen geleert, weil eine Handlung zum Knoten
            gehört und nicht zur Figur. */

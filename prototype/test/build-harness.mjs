@@ -124,6 +124,10 @@ window.__T__={derivedValue:derivedValue,assetSrc:assetSrc,UI:UI,
   formatMeasure:formatMeasure,convertText:convertText,unitsFor:unitsFor,
   convertUnit:convertUnit,fmtVal:fmtVal,
   checkArticle:checkArticle,targetMatches:targetMatches,
+  persist:persist,
+  inventoryOf:inventoryOf,containerGrid:containerGrid,drawCost:drawCost,
+  footprintOf:footprintOf,gridTurn:gridTurn,fitsAt:fitsAt,
+  dgTypen:dgTypen,dgLinien:dgLinien,
   ifaceInList:ifaceInList};
 Object.defineProperty(window.__T__,'REG',{get:function(){return REG;}});
 Object.defineProperty(window.__T__,'ENT',{get:function(){return ENT;}});

@@ -7,6 +7,7 @@ import {
   linkAccepts,
   linkTargets,
   unitByCode,
+  validateEntity,
   enumSource,
   fieldsOf,
   proseFields,
@@ -340,6 +341,84 @@ describe('links name their target, measures name their unit', () => {
       },
     };
     expect(RegistrySchema.safeParse(kaputt).success).toBe(false);
+  });
+});
+
+/* ---- Ein Behälter hat seine eigene Form und seine eigenen Zonen ----
+   Das Raster war eine Kampagneneinstellung: zehn mal sechs für jeden
+   Rucksack. Ein Köcher ist aber kein Rechteck, und was oben liegt, ist
+   schneller in der Hand als was unten liegt. */
+describe('a container carries its grid and its zones', () => {
+  const inv = seedRegistry.interfaces['Inventory'];
+
+  it('paints its shape instead of typing it', () => {
+    const grid = inv?.schema?.properties['grid'];
+    expect(grid?.format).toBe('grid');
+    expect(grid?.type).toBe('array');
+    /* Dieselbe Schreibweise wie die Kachelform eines Gegenstands — ein
+       zweites Format für dasselbe wären zwei Wege, die auseinanderlaufen. */
+    expect(seedRegistry.interfaces['Item']?.schema?.properties['rows']?.format).toBe('grid');
+  });
+
+  it('names the draw times its zones may hold, and does not spell them out', () => {
+    const zones = inv?.schema?.properties['zones'];
+    expect(zones?.format).toBe('zones');
+    expect(zones?.enumRef).toBe('DrawTime');
+    expect(zones?.enum).toBeUndefined();
+    expect(enumOptions(seedRegistry, zones!)).toContain('action');
+    expect(enumOptions(seedRegistry, zones!)).toContain('free action');
+  });
+
+  /* Eine Zonenkarte hält `{"x,y": "action"}`: die Zeile gilt für die
+     **Einträge**. Ohne diesen Zweig prüfte die Validierung das Objekt
+     selbst gegen die Liste — und liess es durch, weil es keinen `value`
+     trägt. Stillschweigend richtig ist dasselbe wie stillschweigend
+     falsch. */
+  it('checks the values inside a zone map', () => {
+    const gut = validateEntity(seedRegistry, {
+      id: 'i1', interfaces: ['Inventory'], name: 'Rucksack',
+      components: { Identity: { name: 'Rucksack', id: 'inventory-0001' },
+        Inventory: { zones: { '0,0': 'action' } } },
+    });
+    expect(gut.map((i) => i.code)).not.toContain('value_not_allowed');
+    const schlecht = validateEntity(seedRegistry, {
+      id: 'i1', interfaces: ['Inventory'], name: 'Rucksack',
+      components: { Identity: { name: 'Rucksack', id: 'inventory-0001' },
+        Inventory: { zones: { '0,0': 'sofort' } } },
+    });
+    expect(schlecht.find((i) => i.code === 'value_not_allowed')?.property).toBe('zones');
+  });
+});
+
+/* ---- Was ein Stand ist, steht immer als Eingabe da ----
+   Nicht vererbt: ein Haken an einem Obertyp machte die ganze Kreatur zum
+   Formular. Der Typ, der ein Feld erklärt, weiss, ob es ein Stand ist. */
+describe('a type says whether its fields are always edited', () => {
+  it('marks the state, not the fixed numbers', () => {
+    expect(seedRegistry.interfaces['Vitals']?.alwaysEdit).toBe(true);
+    expect(seedRegistry.interfaces['Statblock']?.alwaysEdit).toBeUndefined();
+    expect(seedRegistry.interfaces['Creature']?.alwaysEdit).toBeUndefined();
+  });
+
+  it('and a single field may say it for itself', () => {
+    const p = seedRegistry.interfaces['Party']?.schema?.properties;
+    expect(p?.['day']?.alwaysEdit).toBe(true);
+    expect(p?.['watch']?.alwaysEdit).toBe(true);
+    /* Das Motto einer Gruppe ändert sich nicht unterwegs. */
+    expect(p?.['motto']?.alwaysEdit).toBeUndefined();
+  });
+
+  /* Ein gerechnetes oder ausgegebenes Feld bekommt keine Eingabe — dort
+     ginge sie ins Leere. Ein `alwaysEdit` daran wäre eine Angabe, die
+     nichts tut. */
+  it('never sits on a derived or issued field', () => {
+    const falsch: string[] = [];
+    Object.entries(seedRegistry.interfaces).forEach(([art, def]) => {
+      Object.entries(def.schema?.properties ?? {}).forEach(([feld, p]) => {
+        if (p.alwaysEdit && (p.derived || p.readOnly)) falsch.push(`${art}.${feld}`);
+      });
+    });
+    expect(falsch).toEqual([]);
   });
 });
 

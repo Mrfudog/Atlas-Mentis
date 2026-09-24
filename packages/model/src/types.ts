@@ -109,6 +109,21 @@ export interface PropertySchema {
    */
   target?: LinkTarget;
   /**
+   * **Immer eine Eingabe, ohne erst „Bearbeiten" zu sagen.**
+   *
+   * Der Stand der Trefferpunkte wird am Tisch gesetzt, mitten im Zug, und
+   * jedes Mal erst in den Bearbeitungsmodus zu gehen heisst, drei Klicks
+   * für eine Zahl. Steht es am Typ (`InterfaceDef.alwaysEdit`), gilt es
+   * für **seine** Felder — der Typ, der ein Feld erklärt, weiss, ob es
+   * ein Stand ist oder eine Festlegung; hier am Feld gilt es für dieses
+   * eine.
+   *
+   * Es ist kein Recht: wer nicht schreiben darf, sieht weiter den Wert.
+   * Und ein gerechnetes oder ausgegebenes Feld bleibt ohne Eingabe, denn
+   * dort ginge sie ins Leere.
+   */
+  alwaysEdit?: boolean;
+  /**
    * **Ausgegeben, nicht eingetippt.** Das Feld bekommt keine Eingabe: es
    * wird beim Anlegen gesetzt und ändert sich danach nicht mehr.
    *
@@ -167,6 +182,14 @@ export interface InterfaceDef {
   label?: string;
   /** Abstract interfaces are extended but never instantiated. */
   abstract?: boolean;
+  /**
+   * **Die Felder dieses Typs werden immer direkt bearbeitet.** Gemeint
+   * sind die, die *er* erklärt, und nicht die, die eine Art von ihm erbt:
+   * `Vitals` ist der Stand während der Sitzung, `Statblock` die
+   * Festlegung. Vererbt wird das nicht — sonst machte ein `alwaysEdit` an
+   * einem Obertyp die ganze Kreatur zum Formular.
+   */
+  alwaysEdit?: boolean;
   extends?: string[];
   /** The fields this type records itself. Inherited ones come from `extends`. */
   schema?: ObjectSchema;

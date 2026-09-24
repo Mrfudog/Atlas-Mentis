@@ -277,6 +277,52 @@ wiederkommen, werden sie neu geschrieben.
   `target.where` lesen den heutigen Zustand des Ziels, also engen sie nur
   die Maske ein — eine Regel daraus machte einen längst gespeicherten
   Verweis rückwirkend falsch, sobald jemand eine Marke entfernt.
+- **Ein Typ sagt, ob seine Felder immer bearbeitet werden** (`alwaysEdit`
+  am Typ oder am Feld). Der Stand der Trefferpunkte wird mitten im Zug
+  gesetzt, und erst „Bearbeiten" zu sagen sind drei Klicks für eine Zahl.
+  Am Typ gilt es für die Felder, die **er** erklärt, und wird **nicht**
+  vererbt — sonst machte ein Haken an einem Obertyp die ganze Kreatur zum
+  Formular. Heute: `Vitals` (der Stand, gegen den Statblock als
+  Festlegung) und die Reisezähler `Party.day`/`watch`/`sinceRation`/
+  `sinceLight`. Ein gerechnetes oder ausgegebenes Feld bleibt ohne
+  Eingabe, und wer nicht schreiben darf, sieht weiter den Wert.
+- **Beim Bearbeiten steht jedes Feld als Eingabe da**, auch die aus
+  `Identity` (Aliasse, Deckname) — ein Feld, das man nur über die Einfuhr
+  füllen kann, ist keines. Der Name bleibt draussen: er ist die
+  Überschrift, und zwei Eingaben für ihn wären zwei Stellen, die
+  auseinanderlaufen.
+- **Eine Form wird gemalt, nicht getippt** (`format: 'grid'`). `##.,##.`
+  als Text sagt der Eingabe nicht, was dabei herauskommt, und beim
+  Abzählen verrutscht eine Spalte, ohne dass es jemandem auffällt. Ein
+  Zeichen je Feld, `.` ist frei; dasselbe Format trägt die Kachelform
+  eines Gegenstands (`Item.rows`) und die Form eines Behälters
+  (`Inventory.grid`).
+- **Ein Behälter hat seine eigene Form und seine eigenen Zonen.** Das
+  Raster war eine Kampagneneinstellung — zehn mal sechs für jeden
+  Rucksack; ein Köcher ist aber kein Rechteck. `Inventory.grid` sperrt
+  Felder, `Inventory.zones` (`{"x,y": "action"}`, Werte aus der Zeile
+  `DrawTime`) sagt je Feld, **was es kostet**, etwas von dort zu holen.
+  Die Zone eines Stücks ist die **langsamste**, die es bedeckt: man muss
+  das Ganze herausbekommen, nicht nur eine Ecke. Sagt der Behälter nichts,
+  gilt weiter das Rechteck aus den Einstellungen. Der Zonenname steht als
+  Wort in der Karte und nicht als Nummer — eine Nummer wäre beim
+  Umsortieren der Zeile still die falsche Zone.
+- **Die Drehung eines Stücks steht an der Kante** (`holds.props.rot`), nicht
+  am Gegenstand: derselbe Bogen liegt quer oder längs, und dieselbe Fackel
+  soll nicht in jedem Beutel gleich liegen. Vom Raster nehmen und aus dem
+  Behälter nehmen sind **zwei** Dinge, und beide braucht man.
+- **Der Filter gehört der Seite.** `goPage` leert Typ, Marke und Status nur
+  beim Wechsel auf eine **andere** Seite; von einem Artikel auf seine Liste
+  zurückzugehen behält ihn. Ihn auch dort zu leeren hiesse, ihn jedes Mal
+  neu zu setzen.
+- **Das Diagramm zeichnet sich selbst.** Auf „How it works" steht ein
+  Kasten je Artikelart und eine Linie je Kantenart (gestrichelt: die
+  Vererbung), angeordnet nach Bereich — aus dem laufenden Register
+  gezogen. Einen Kasten bekommt, was man anlegen kann, und was eine Kante
+  nennt; die geteilten Typen ohne Kante sind Felder und keine Beziehungen
+  und kommen erst auf Schalter dazu. Gezeigt wird eine Art auf einmal:
+  einundvierzig Kantenarten gleichzeitig sind ein Knäuel, in dem keine
+  einzelne mehr lesbar ist.
 - **Nicht auf `0.0.0.0` binden** — ausserhalb eines Containers. Im Container
   ist `HOST=0.0.0.0` richtig, weil dort die Containergrenze das ist, was
   zählt; auf einer Maschine ist es der Reverse Proxy. Seit 2026-09-20 hat der
