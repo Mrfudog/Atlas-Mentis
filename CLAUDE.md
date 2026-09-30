@@ -365,6 +365,16 @@ dabei wird auch das Register durch das aktuelle ersetzt). Was dabei
 niemand mehr trägt, wird **aufgezählt**: ein stiller Verlust sieht später
 aus wie ein leeres Feld.
 
+`node packages/registry/scripts/typ.mjs <Typ> [bestand]` schreibt **einen**
+Typ vollständig aus: eigene Felder, geerbte je erklärendem Typ, die Kanten,
+die ihn **nennen** (die mit `*` gelten für jede Art und sagen über ihn
+nichts), und wer ihn mitnimmt. Mit einem Bestand — einem Verzeichnis wie
+`prototype/test/dbdump/entities` oder einer Ausfuhrdatei — steht je Feld
+dabei, in wie vielen Artikeln etwas darin steht. Das ist die Frage, die der
+Katalog nicht beantwortet und die man beim Streichen braucht: ein Feld, das
+nirgends steht, hielt jemand einmal für richtig und füllt niemand.
+`… --liste` zählt die Arten nach Bereich auf.
+
 `pnpm --filter @nw/registry catalogue` schreibt
 [docs/Artikeltypen.md](docs/Artikeltypen.md) neu — je Artikelart, was sie
 verlangt, was sie erlaubt, welche Kanten sie trägt und wie sie gezeichnet

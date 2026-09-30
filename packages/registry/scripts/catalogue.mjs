@@ -16,6 +16,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { areaOf as areaVon, typeChain } from '@nw/model';
 import { seedRegistry as R } from '../dist/index.js';
 
 const HIER = dirname(fileURLToPath(import.meta.url));
@@ -31,30 +32,14 @@ const AREAS = [
   ['', 'Ohne Bereich', 'Abstrakte Oberbegriffe — sie tragen keine Artikel.'],
 ];
 
-/* Dieselbe Regel wie in der Oberfläche: der Bereich wird geerbt. Sie hier
-   nachzubauen wäre die zweite Stelle, an der jemand sie ändern müsste —
-   aber `areaOf` lebt im Prototyp und nicht im Paket, also steht sie
-   ausnahmsweise zweimal. Wenn sie ein drittes Mal gebraucht wird, gehört
-   sie nach `packages/model`. */
-const elternOf = (n) => (R.interfaces[n]?.extends ?? [])[0];
-function areaOf(n) {
-  let at = n;
-  for (let i = 0; at && i < 64; i++) {
-    const a = R.interfaces[at]?.area;
-    if (a) return a;
-    at = elternOf(at);
-  }
-  return '';
-}
-function kette(n) {
-  const out = [];
-  let at = elternOf(n);
-  for (let i = 0; at && i < 64; i++) {
-    out.push(at);
-    at = elternOf(at);
-  }
-  return out;
-}
+/* **Die Kette und der Bereich kommen aus dem Paket.** Sie standen hier als
+   eigene Schleife über `extends[0]` — und seit `extends` ein Array ist, war
+   das die falsche Antwort: der Katalog verschwieg 360 geerbte Typen bei 37
+   von 59 Arten, weil eine Art, die von zweien erbt, nur unter einem davon
+   erschien. Zwei Regeln für eine Frage halten genau so lange, wie beide
+   jemandem einfallen. */
+const areaOf = (n) => areaVon(R, n);
+const kette = (n) => typeChain(R, n).slice(1);
 function felderVon(art) {
   const schema = R.interfaces[art]?.schema;
   const props = schema?.properties ?? {};

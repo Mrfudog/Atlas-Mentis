@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  areaOf,
   articleId,
   backlinks,
   fieldTitle,
@@ -255,6 +256,35 @@ describe('validateEntity', () => {
     expect(validateEntity(registry, alien)).toEqual([
       expect.objectContaining({ code: 'unknown_interface' }),
     ]);
+  });
+});
+
+/* ---- In welchen Bereich eine Art gehört ----
+   Sie stand zweimal: im Prototyp über die ganze Kette, im Katalogskript über
+   `extends[0]` allein. Zwei Regeln für eine Frage, und die zweite gab bei
+   jeder Art mit mehreren Obertypen eine andere Antwort — der Katalog
+   verschwieg dadurch 360 geerbte Typen. */
+describe('areaOf', () => {
+  const mitBereich: Registry = {
+    ...registry,
+    interfaces: {
+      ...registry.interfaces,
+      Welt: { name: 'Welt', abstract: true, area: 'world' },
+      /* Der Bereich kommt über den **zweiten** Obertyp herein. Wer nur dem
+         ersten folgt, findet ihn nicht. */
+      Ding: { name: 'Ding', extends: ['Identity', 'Welt'] },
+      Unterding: { name: 'Unterding', extends: ['Ding'] },
+    },
+  };
+
+  it('takes the first area in the whole chain, not just the first parent', () => {
+    expect(areaOf(mitBereich, 'Ding')).toBe('world');
+    expect(areaOf(mitBereich, 'Unterding')).toBe('world');
+  });
+
+  it('says nothing when nothing in the chain has one', () => {
+    expect(areaOf(mitBereich, 'Identity')).toBe('');
+    expect(areaOf(mitBereich, 'Gibtsnicht')).toBe('');
   });
 });
 

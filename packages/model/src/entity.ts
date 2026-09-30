@@ -73,6 +73,30 @@ export function typeChain(registry: Pick<Registry, 'interfaces'>, name: string):
   return out;
 }
 
+/**
+ * **In welchen Bereich der Oberfläche eine Artikelart gehört.**
+ *
+ * Gesucht wird die ganze Kette (`typeChain`, Breite zuerst) und der erste
+ * Bereich gewonnen — der erste dazugenommene Typ entscheidet, und was er
+ * mitbringt, gilt für die Untertypen.
+ *
+ * Sie stand bis hierher zweimal: im Prototyp über `selfAndAncestors` und im
+ * Katalogskript über `extends[0]` allein. Zwei Regeln für eine Frage, und
+ * die zweite gab bei jeder Art mit mehreren Obertypen eine andere Antwort.
+ * Beim dritten Bedarf gehört sie hierher — so stand es auch als Vorsatz im
+ * Skript.
+ */
+export function areaOf(
+  registry: Pick<Registry, 'interfaces'>,
+  name: string,
+): string {
+  for (const at of typeChain(registry, name)) {
+    const a = registry.interfaces[at]?.area;
+    if (a) return a;
+  }
+  return '';
+}
+
 /** The fields of one type — its own only, not the inherited ones. */
 export function ownFields(
   registry: Pick<Registry, 'interfaces'>,

@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-09-24. 59 Schnittstellen, 41 Kantenarten.
+Stand 2026-09-30. 59 Schnittstellen, 41 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -18,7 +18,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ### Armor
 
-`Armor` · erbt von `Item` ← `Identity`
+`Armor` · erbt von `Item` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts`
 
 **Eigene Felder**
 
@@ -28,6 +28,17 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 - *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Tags`* — `tags` *tags*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Lore`* — `lore` *long*
+- *`Secrets`* — `secret` *long*
+- *`Facts`* — `fact` *long*
 
 **Kanten von hier**
 
@@ -58,7 +69,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ### Article
 
-`Article` · erbt von `Identity`
+`Article` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Todos` ← `Lore` ← `Secrets`
 
 **Eigene Felder**
 
@@ -67,6 +78,16 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 **Geerbte Felder**
 
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Todos`* — `items` *array*
+- *`Lore`* — `lore` *long*
+- *`Secrets`* — `secret` *long*
 
 **Kanten von hier**
 
@@ -93,12 +114,23 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ### Consumable
 
-`Consumable` · erbt von `Item` ← `Identity`
+`Consumable` · erbt von `Item` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts`
 
 **Geerbte Felder**
 
 - *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Tags`* — `tags` *tags*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Lore`* — `lore` *long*
+- *`Secrets`* — `secret` *long*
+- *`Facts`* — `fact` *long*
 
 **Kanten von hier**
 
@@ -129,7 +161,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ### Creature
 
-`Creature` · erbt von `Identity`
+`Creature` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Vars` ← `Access` ← `Vitals` ← `Proficiencies` ← `Lore` ← `Facts` ← `Secrets` ← `ReadAloud`
 
 **Eigene Felder**
 
@@ -138,6 +170,22 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 **Geerbte Felder**
 
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Tags`* — `tags` *tags*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Vars`* — `bindings` *object*
+- *`Access`* — `userIds` *array*, `role` *player | co-gm | spectator*
+- *`Vitals`* — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `exhaustion` *number*, `conditions` *array*, `nat1` *number*
+- *`Proficiencies`* — `proficient` *Skill + Tool + Language + WeaponTraining + ArmorTraining + KnowledgeField: 35 words*, `expertise` *Skill + Tool + Language + WeaponTraining + ArmorTraining + KnowledgeField: 35 words*, `saves` *Ability: str | dex | con | int | wis | cha*
+- *`Lore`* — `lore` *long*
+- *`Facts`* — `fact` *long*
+- *`Secrets`* — `secret` *long*
+- *`ReadAloud`* — `readaloud` *long*
 
 **Kanten von hier**
 
@@ -182,7 +230,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ### Faction
 
-`Faction` · erbt von `Identity`
+`Faction` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Lore` ← `Secrets`
 
 **Eigene Felder**
 
@@ -191,6 +239,15 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 **Geerbte Felder**
 
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Tags`* — `tags` *tags*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Lore`* — `lore` *long*
+- *`Secrets`* — `secret` *long*
 
 **Kanten von hier**
 
@@ -223,7 +280,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ### Item
 
-`Item` · erbt von `Identity`
+`Item` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts`
 
 **Eigene Felder**
 
@@ -232,6 +289,17 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 **Geerbte Felder**
 
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Tags`* — `tags` *tags*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Lore`* — `lore` *long*
+- *`Secrets`* — `secret` *long*
+- *`Facts`* — `fact` *long*
 
 **Kanten von hier**
 
@@ -262,7 +330,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ### Material
 
-`Material` · erbt von `Item` ← `Identity`
+`Material` · erbt von `Item` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts`
 
 **Eigene Felder**
 
@@ -272,6 +340,17 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 - *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Tags`* — `tags` *tags*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Lore`* — `lore` *long*
+- *`Secrets`* — `secret` *long*
+- *`Facts`* — `fact` *long*
 
 **Kanten von hier**
 
@@ -302,7 +381,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ### Party
 
-`Party` · erbt von `Identity`
+`Party` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Access` ← `Lore` ← `Notes`
 
 **Eigene Felder**
 
@@ -311,6 +390,15 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 **Geerbte Felder**
 
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Tags`* — `tags` *tags*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Access`* — `userIds` *array*, `role` *player | co-gm | spectator*
+- *`Lore`* — `lore` *long*
+- *`Notes`* — `note` *long*
 
 **Kanten von hier**
 
@@ -343,7 +431,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ### Place
 
-`Place` · erbt von `Identity`
+`Place` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Lore` ← `ReadAloud` ← `Secrets`
 
 **Eigene Felder**
 
@@ -352,6 +440,16 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 **Geerbte Felder**
 
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Tags`* — `tags` *tags*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Lore`* — `lore` *long*
+- *`ReadAloud`* — `readaloud` *long*
+- *`Secrets`* — `secret` *long*
 
 **Kanten von hier**
 
@@ -386,7 +484,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ### Player character
 
-`PlayerCharacter` · erbt von `Creature` ← `Identity`
+`PlayerCharacter` · erbt von `Creature` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Vars` ← `Access` ← `Vitals` ← `Proficiencies` ← `Lore` ← `Facts` ← `Secrets` ← `ReadAloud`
 
 **Eigene Felder**
 
@@ -396,6 +494,22 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 - *`Creature`* — `appearance` *long*, `personality` *long*, `species` *string*, `kind` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Tags`* — `tags` *tags*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Vars`* — `bindings` *object*
+- *`Access`* — `userIds` *array*, `role` *player | co-gm | spectator*
+- *`Vitals`* — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `exhaustion` *number*, `conditions` *array*, `nat1` *number*
+- *`Proficiencies`* — `proficient` *Skill + Tool + Language + WeaponTraining + ArmorTraining + KnowledgeField: 35 words*, `expertise` *Skill + Tool + Language + WeaponTraining + ArmorTraining + KnowledgeField: 35 words*, `saves` *Ability: str | dex | con | int | wis | cha*
+- *`Lore`* — `lore` *long*
+- *`Facts`* — `fact` *long*
+- *`Secrets`* — `secret` *long*
+- *`ReadAloud`* — `readaloud` *long*
 
 **Kanten von hier**
 
@@ -441,7 +555,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ### Weapon
 
-`Weapon` · erbt von `Item` ← `Identity`
+`Weapon` · erbt von `Item` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts`
 
 **Eigene Felder**
 
@@ -451,6 +565,17 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 - *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Tags`* — `tags` *tags*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Lore`* — `lore` *long*
+- *`Secrets`* — `secret` *long*
+- *`Facts`* — `fact` *long*
 
 **Kanten von hier**
 
@@ -487,7 +612,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ### Board
 
-`Board` · erbt von `Identity`
+`Board` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Notes`
 
 **Eigene Felder**
 
@@ -496,6 +621,12 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 **Geerbte Felder**
 
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Tags`* — `tags` *tags*
+- *`Notes`* — `note` *long*
 
 **Kanten von hier**
 
@@ -522,7 +653,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ### Encounter
 
-`Encounter` · erbt von `Identity`
+`Encounter` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Tactics` ← `ReadAloud` ← `Notes` ← `Secrets` ← `Difficulty`
 
 **Eigene Felder**
 
@@ -531,6 +662,17 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 **Geerbte Felder**
 
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Tags`* — `tags` *tags*
+- *`Todos`* — `items` *array*
+- *`Tactics`* — `tactics` *long*
+- *`ReadAloud`* — `readaloud` *long*
+- *`Notes`* — `note` *long*
+- *`Secrets`* — `secret` *long*
+- *`Difficulty`* — `difficulty` *1…20*
 
 **Kanten von hier**
 
@@ -560,7 +702,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ### Map
 
-`Map` · erbt von `Identity`
+`Map` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Notes` ← `Secrets` ← `ReadAloud`
 
 **Eigene Felder**
 
@@ -569,6 +711,15 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 **Geerbte Felder**
 
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Tags`* — `tags` *tags*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Notes`* — `note` *long*
+- *`Secrets`* — `secret` *long*
+- *`ReadAloud`* — `readaloud` *long*
 
 **Kanten von hier**
 
@@ -666,7 +817,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ### Asset
 
-`Asset` · erbt von `Identity`
+`Asset` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source`
 
 **Eigene Felder**
 
@@ -675,6 +826,14 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 **Geerbte Felder**
 
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Tags`* — `tags` *tags*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 
 **Kanten von hier**
 
@@ -850,7 +1009,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ### Layer
 
-`Layer` · erbt von `Identity`
+`Layer` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Notes`
 
 **Eigene Felder**
 
@@ -859,6 +1018,12 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 **Geerbte Felder**
 
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Tags`* — `tags` *tags*
+- *`Notes`* — `note` *long*
 
 **Kanten von hier**
 
