@@ -1176,11 +1176,33 @@ export const fieldGroups = {
       type: 'object',
       properties: {
         userIds: { type: 'array', title: 'User ids', items: { type: 'string' } },
-        /* „Account role" und nicht „Role": eine Kreatur trägt schon ein
-           `role` — das ist ihre Rolle in der Welt (Händler), nicht die des
-           Kontos am Tisch. Zwei Felder namens „Role" untereinander sind
-           die Sorte Liste, bei der man das falsche erwischt. */
-        role: { type: 'string', title: 'Account role', enum: ['player', 'co-gm', 'spectator'], default: 'player' },
+        /**
+         * „Account role" und nicht „Role": eine Kreatur trägt schon ein
+         * `role` — das ist ihre Rolle in der Welt (Händler), nicht die des
+         * Kontos am Tisch. Zwei Felder namens „Role" untereinander sind
+         * die Sorte Liste, bei der man das falsche erwischt.
+         *
+         * **`gm` steht an der Kampagne, die anderen an einer Figur.** Eine
+         * Kampagne hat genau eine Frage zu beantworten — wer sitzt hinter
+         * dem Schirm —, und die beantwortet eine Karte mit einer Rolle.
+         * Wer mitspielt, steht weiter an seiner Figur: dort hängt ohnehin,
+         * welches Konto sie führt.
+         *
+         * Von innen nach aussen, wie `Visibility.audience`. `co-gm` bleibt
+         * eine Rolle an der Figur: am Schirm sieht ein Mitleiter dasselbe
+         * wie die Leitung, also braucht die Kampagne den Unterschied nicht.
+         *
+         * Die Vorgabe bleibt `player` — die drei Arten, die `Access` sonst
+         * tragen, sind Figuren. An einer Kampagne ist sie zu ändern, und
+         * das sieht man: die Maske zeigt einen Standard als Vorschlag und
+         * speichert ihn nicht.
+         */
+        role: {
+          type: 'string',
+          title: 'Account role',
+          enum: ['gm', 'co-gm', 'player', 'spectator'],
+          default: 'player',
+        },
         /* Eine Notiz zum Zugang ist eine Notiz. `Notes.note` gibt es, und
            es kann mehrere und lange — ein zweites Feld daneben heisst nur,
            dass man beide durchsuchen muss. */

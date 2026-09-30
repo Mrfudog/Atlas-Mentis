@@ -1835,6 +1835,99 @@ async function seite(datei, warten) {
   pruefe('naming the party hides it from its members',
     rang.ueberGruppe.sela === false && rang.ueberGruppe.rook === false, rang);
 
+  /* ---- Eine Leitung je Kampagne, und die Ebene sagt wessen ----
+     `audience: 'gm'` hiess bis hierher „die Verwaltung dieser
+     Installation" — ein Merkmal am Konto, das für alles gilt. Wer in einer
+     Runde leitet, kann in einer anderen mitspielen; also steht die Leitung
+     an der **Kampagne** (`Access` mit `role: 'gm'`), und wem ein Artikel
+     gehört, sagt der Ebenenstapel: eine Ebene, die genau eine Kampagne
+     aufschaltet, gehört ihr, eine von mehreren aufgeschaltete ist
+     gemeinsam. */
+  const zwei = await p.evaluate(async () => {
+    const T = window.__T__;
+    const camp = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Campaign');
+    const inEbene = (l) => [...T.ENT.values()].find((e) =>
+      (e.relations || []).some((r) => r.type === 'inLayer' && r.to === l)
+      && T.articleVisible(e));
+    const eigen = inEbene('ly_nebel');       /* nur diese Kampagne schaltet sie auf */
+    const geteilt = inEbene('ly_system');    /* gleich die zweite Runde dazu */
+    const ohne = [...T.ENT.values()].find((e) =>
+      !(e.relations || []).some((r) => r.type === 'inLayer') && T.articleVisible(e));
+    if (!camp || !eigen || !geteilt || !ohne) return { fehlt: true };
+
+    /* Eine zweite Runde auf derselben Installation: sie schaltet nur das
+       Grundregelwerk auf und hat ihre eigene Leitung. */
+    const zweite = {
+      id: 'camp_probe',
+      name: 'Probe: zweite Runde',
+      interfaces: ['Campaign'],
+      components: {
+        Identity: { name: 'Probe: zweite Runde' },
+        Access: { role: 'gm', userIds: ['u_zweite'] },
+      },
+      relations: [{ id: 'pz1', type: 'activates', to: 'ly_system', props: { order: 10 } }],
+    };
+    T.ENT.set(zweite.id, zweite);
+    const vorherAccess = camp.components.Access;
+    camp.components.Access = { role: 'gm', userIds: ['u_leitung'] };
+
+    const vorherGm = T.me.gm, vorherId = T.me.id;
+    /* Eine Leitung ohne Figur — genau der Fall, den es bis hierher nicht
+       gab: ihre Rolle steht an der Kampagne und nirgends sonst. */
+    T.me.gm = false;
+    const alsKonto = (u, e) => { T.me.id = u; return T.articleVisible(e); };
+    const setzeGm = (e) => {
+      e.components = e.components || {};
+      e.components.Visibility = { audience: 'gm' };
+    };
+    const merk = [eigen, geteilt, ohne].map((e) => (e.components || {}).Visibility);
+    [eigen, geteilt, ohne].forEach(setzeGm);
+
+    const erg = {
+      besitzerEigen: T.kampagnenVon(eigen),
+      besitzerGeteilt: (T.kampagnenVon(geteilt) || []).length,
+      besitzerOhne: T.kampagnenVon(ohne),
+      eineEigen: T.campaignOf(eigen) === camp.id,
+      eineGeteilt: T.campaignOf(geteilt),
+      konten: T.gmAccounts(camp),
+      eigenFuerUns: alsKonto('u_leitung', eigen),
+      eigenFuerAndere: alsKonto('u_zweite', eigen),
+      geteiltFuerUns: alsKonto('u_leitung', geteilt),
+      geteiltFuerAndere: alsKonto('u_zweite', geteilt),
+      ohneEbeneFuerAndere: alsKonto('u_zweite', ohne),
+      fremdesKonto: alsKonto('u_niemand', eigen),
+    };
+
+    [eigen, geteilt, ohne].forEach((e, i) => {
+      if (merk[i] === undefined) delete e.components.Visibility;
+      else e.components.Visibility = merk[i];
+    });
+    if (vorherAccess === undefined) delete camp.components.Access;
+    else camp.components.Access = vorherAccess;
+    T.ENT.delete('camp_probe');
+    T.me.gm = vorherGm; T.me.id = vorherId;
+    T.render();
+    await new Promise((r) => setTimeout(r, 200));
+    return erg;
+  });
+  pruefe('the data for two campaigns on one install is there', !zwei.fehlt, zwei);
+  pruefe('a layer one campaign runs belongs to it, one that several run is shared',
+    zwei.besitzerEigen && zwei.besitzerEigen.length === 1
+    && zwei.besitzerGeteilt === 2 && zwei.besitzerOhne === null
+    && zwei.eineEigen === true && zwei.eineGeteilt === '', zwei);
+  pruefe('the campaign names the accounts that lead it',
+    Array.isArray(zwei.konten) && zwei.konten.join() === 'u_leitung', zwei);
+  /* Der Prüfstein: dasselbe `audience: 'gm'`, zwei verschiedene Antworten,
+     und die Ebene entscheidet. */
+  pruefe('a gm article in the campaign layer stays with that campaign’s lead',
+    zwei.eigenFuerUns === true && zwei.eigenFuerAndere === false, zwei);
+  pruefe('a gm article in a shared layer goes to every lead',
+    zwei.geteiltFuerUns === true && zwei.geteiltFuerAndere === true, zwei);
+  pruefe('an article with no layer is nobody’s secret in particular',
+    zwei.ohneEbeneFuerAndere === true, zwei);
+  pruefe('an account that leads nothing sees no gm article',
+    zwei.fremdesKonto === false, zwei);
+
   await p.evaluate(() => {
     const sel = [...document.querySelectorAll('#aside select.i')]
       .find((s) => [...s.options].some((o) => /assign to/.test(o.textContent)));

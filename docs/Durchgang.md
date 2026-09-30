@@ -56,9 +56,41 @@ Dazu drei Dinge, die keine Feldfrage waren und daran hingen:
 - **`app_user.is_gm` heisst `is_admin`.** Das Merkmal gilt für die ganze
   Installation und schaltet Register, Einladungen und unbeschnittenes Lesen —
   eine Verwaltungsrolle. „GM" las sich wie eine Rolle am Tisch.
-- **Offen bleibt die Leitung je Kampagne.** `Access.role` kennt `player`,
-  `co-gm` und `spectator`, `Campaign` hat keine eigenen Felder. Bis das
-  entschieden ist, heisst `audience: 'gm'`: die Verwaltung.
+- **Die Leitung je Kampagne** — am selben Tag nachgezogen, siehe unten.
+
+### Eine Leitung je Kampagne — entschieden am 30.9.
+
+`audience: 'gm'` hiess „die Verwaltung dieser Installation". Wer in einer
+Runde leitet, kann in einer anderen mitspielen; also:
+
+| Was | Entscheidung |
+|---|---|
+| `Access.role` | bekommt `gm`; die Liste steht jetzt von innen nach aussen (`gm ǀ co-gm ǀ player ǀ spectator`) |
+| `Campaign` | nimmt `Access` dazu — eine Karte mit `role: 'gm'` und den Konten hinter dem Schirm |
+| `co-gm` | bleibt an der Figur: am Schirm sieht ein Mitleiter dasselbe wie die Leitung |
+| Wem ein Artikel gehört | **kein Feld** — eine Ebene, die genau eine Kampagne aufschaltet, gehört ihr; eine, die mehrere aufschalten, ist gemeinsam |
+
+Damit heisst `audience: 'gm'` dreierlei, je nachdem wo der Artikel liegt: in
+der Kampagnenebene nur deren Leitung, in einer geteilten Ebene jede Leitung,
+in keiner Ebene ebenfalls jede. Ein Grundregelwerk, das drei Runden
+aufschalten, gehört keiner davon.
+
+`Layer.kind` kennt ein Wort `campaign` und wäre der naheliegende Ort gewesen.
+Er ist es nicht: ein Feld, das gleichzeitig Regel ist, leckt beim ersten
+Tippfehler — und ein geteiltes Paket mit `kind: 'campaign'`, das drei Runden
+aufschalten, gehörte welcher?
+
+**Offen und benannt:** ohne Ebenenkante gehört ein Artikel niemandem besonders
+(65 von 75 heute — richtig bei *einer* Kampagne, falsch bei zweien);
+`mayWrite` kennt die Leitung noch nicht; die laufende Kampagne ist eine
+globale Einstellung.
+
+Dabei gefunden: **der Katalog verschwieg zwei ganze Bereiche.** Seine
+Bereichsliste stand fest im Skript und nannte `story` und `game` — die Namen
+von vor der Umbenennung zu `history` und `rules`. Einundzwanzig Artikelarten
+standen deshalb nirgends darin, und eine fehlende Überschrift hinterlässt
+keine Lücke. Die Bereiche kommen jetzt aus den Zeilen; 59 von 59 Arten stehen
+im Katalog, vorher 38.
 
 ---
 

@@ -9641,9 +9641,73 @@ function actorForUser(uid){
    **nicht** das Konto-Merkmal `is_admin` am Server — das gilt für die
    ganze Installation, und wer in einer Runde leitet, kann in einer anderen
    mitspielen. */
-var ROLLEN_RANG={"co-gm":3,"player":2,"spectator":1};
-function tableRole(actorId){
-  var beste=null;
+var ROLLEN_RANG={"gm":4,"co-gm":3,"player":2,"spectator":1};
+/* ---------- wem ein Artikel gehört ----------
+   **Abgelesen am Ebenenstapel und nicht an einem eigenen Feld.** Ein
+   Artikel liegt in Ebenen (`inLayer`), eine Kampagne schaltet Ebenen auf
+   (`activates`). Also gehört eine Ebene, die genau **eine** Kampagne
+   aufschaltet, ihr — und eine, die mehrere aufschalten, ist gemeinsam.
+
+   Dass die Zugehörigkeit so von selbst herausfällt, ist der Grund, hier
+   kein Feld zu setzen: ein Feld, das gleichzeitig Regel ist, leckt beim
+   ersten Tippfehler — ein Paket, das versehentlich `campaign` heisst,
+   gehörte plötzlich wem? */
+function kampagnenVon(e){
+  var ebenen={};
+  (e.relations||[]).forEach(function(r){
+    if(r.type!==REL_INLAYER)return;
+    if(((r.props||{}).mode)==="removes")return;      /* nimmt heraus, bringt nicht */
+    ebenen[r.to]=1;
+  });
+  if(!Object.keys(ebenen).length)return null;        /* keine Ebene sagt nichts */
+  var out={};
+  ENT.forEach(function(c){
+    if((c.interfaces||[])[0]!=="Campaign")return;
+    (c.relations||[]).forEach(function(r){
+      if(r.type===REL_ACTIVATES&&ebenen[r.to]) out[c.id]=1;
+    });
+  });
+  return Object.keys(out);
+}
+/* Die **eine** Kampagne, der er gehört — sonst nichts. Keine Ebene (nicht
+   zuzuordnen) und mehrere Kampagnen (gemeinsam) laufen auf dasselbe
+   hinaus: er ist nicht das Geheimnis *einer* Runde. */
+function campaignOf(e){
+  var k=kampagnenVon(e);
+  return (k&&k.length===1)?k[0]:"";
+}
+/* Die Konten, die eine Kampagne leiten: ihre `Access`-Karte mit `gm`. An
+   einer Figur steht dieselbe Karte und meint etwas anderes. */
+function gmAccounts(c){
+  var a=(c&&c.components||{})[ACCESS_COMP];
+  if(!a||a.role!=="gm")return [];
+  return (Array.isArray(a.userIds)?a.userIds:[]).filter(Boolean);
+}
+/* Leitet dieses Konto die genannte Kampagne — oder, ohne Kampagne,
+   irgendeine? Ohne Konto niemals: eine Leitung, die sich aus Figuren
+   ergäbe, wäre geraten, und bei „darf er das Geheimnis sehen" wird nicht
+   geraten. */
+function leadsCampaign(user,campId){
+  if(!user)return false;
+  if(campId) return gmAccounts(ENT.get(campId)).indexOf(user)>=0;
+  var hit=false;
+  ENT.forEach(function(c){
+    if(hit||(c.interfaces||[])[0]!=="Campaign")return;
+    if(gmAccounts(c).indexOf(user)>=0) hit=true;
+  });
+  return hit;
+}
+/* Das Konto, das gerade schaut. Beim Blick „als Figur" ist es das Konto,
+   das sie führt — sonst sähe die Probe weiter die eigene Leitung. */
+function viewerUser(){
+  if(UI.asActor){
+    var a=((ENT.get(UI.asActor)||{}).components||{})[ACCESS_COMP]||{};
+    return (Array.isArray(a.userIds)&&a.userIds[0])||"";
+  }
+  return me.id||"";
+}
+function tableRole(actorId,user){
+  var beste=leadsCampaign(user)?"gm":null;
   Object.keys(knowledgeHolders(actorId||"")).forEach(function(id){
     var r=((ENT.get(id)||{}).components||{})[ACCESS_COMP];
     var rolle=r&&r.role;
@@ -9652,12 +9716,16 @@ function tableRole(actorId){
   });
   return beste;
 }
-/* Was die Stufe erlaubt. **`public` ist die Vorgabe:** ein Artikel, den
-   niemand eingestuft hat, ist offen. Andersherum wäre die halbe Kampagne
-   unsichtbar, und niemand wüsste, warum. */
+/* Was die Stufe erlaubt — ohne `gm`, das fragt mehr (siehe unten).
+   **`public` ist die Vorgabe:** ein Artikel, den niemand eingestuft hat,
+   ist offen. Andersherum wäre die halbe Kampagne unsichtbar, und niemand
+   wüsste, warum. */
 function audienceAllows(stufe,rolle){
-  if(stufe==="gm")return false;                      /* nur die Leitung */
-  if(stufe==="players")return rolle==="player"||rolle==="co-gm";
+  if(stufe==="gm")return rolle==="gm";               /* nur die Leitung */
+  /* Ein Mitleiter sitzt hinter dem Schirm und nicht davor, und die Leitung
+     sieht alles darunter mit — ein Artikel „für die Spielenden" vor ihr zu
+     verbergen wäre Unsinn. */
+  if(stufe==="players")return rolle==="player"||rolle==="co-gm"||rolle==="gm";
   if(stufe==="campaign")return rolle!==null;         /* wer am Tisch sitzt */
   return true;                                       /* public */
 }
@@ -9679,7 +9747,14 @@ function articleVisible(e){
      Freigabe, die nichts tat. */
   if(nennt(vis.hiddenFrom))return false;
   if(nennt(vis.revealedTo))return true;
-  return audienceAllows(vis.audience||"public",tableRole(viewerActor()));
+  var user=viewerUser();
+  /* **Eine Leitung je Kampagne.** Liegt der Artikel in der Ebene einer
+     Kampagne, sieht ihn nur ihre Leitung; liegt er in einer geteilten
+     Ebene — ein Grundregelwerk, das drei Runden aufschalten —, sehen ihn
+     alle Leitungen. Seine Spielleitungshinweise vor den anderen zwei zu
+     verbergen wäre eine Sperre ohne Grund. */
+  if((vis.audience||"public")==="gm") return leadsCampaign(user,campaignOf(e));
+  return audienceAllows(vis.audience||"public",tableRole(viewerActor(),user));
 }
 /* Welche Feldverweise darf dieser Betrachter sehen? Offen plus das, was er
    weiss — dieselbe Abfrage wie in der Wissensansicht, nur als Filter. */
@@ -11926,9 +12001,16 @@ function renderHowto(v){
       "figure or a group. An account without a figure has no seat yet.",
     "players":"the ones playing: Access role player or co-gm. A co-GM sits "+
       "behind the screen, not in front of it.",
-    "gm":"the GM alone. Where the GM lives per table is still open — today "+
-      "it is the installation-wide account flag is_admin, and whoever runs "+
-      "one table may play at another."
+    "gm":"the lead of THIS campaign. A campaign names its lead on an Access "+
+      "card (role gm); who plays stands on their figure, as it always did. "+
+      "Which campaign an article belongs to is read off the layer stack: a "+
+      "layer one campaign runs belongs to it, a layer several run is "+
+      "shared — so a gm article in the campaign’s own layer stays with its "+
+      "lead, and one in the rulebook every table runs goes to every lead. "+
+      "An article in no layer belongs to nobody in particular, which today "+
+      "is 65 articles of 75. That is a different thing from is_admin, the "+
+      "account flag for the whole installation: whoever runs one table may "+
+      "play at another."
   };
   var sl=el("ul",{class:"bsp"});
   ((sichtP.audience||{})["enum"]||[]).forEach(function(a){

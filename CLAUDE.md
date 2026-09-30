@@ -111,10 +111,23 @@ wiederkommen, werden sie neu geschrieben.
   darin zu kennen, und eine Vererbung ohne Tiefe gibt irgendwann einen
   ganzen Zweig frei. Das Feld `inherit` gab es und war nie ausgewertet — es
   ist bewusst weggelassen und kommt bei Bedarf mit einer Tiefe wieder.
-  **Offen:** wo die Leitung *je Kampagne* wohnt. `app_user.is_admin` gilt für
-  die ganze Installation; wer in einer Runde leitet, kann in einer anderen
-  mitspielen. Bis das an `Access` entschieden ist, heisst `gm`: die
-  Verwaltung dieser Installation.
+- **Eine Leitung je Kampagne, und die Ebene sagt wessen.** Die Kampagne
+  nennt ihre Leitung (`Access` mit `role: 'gm'`); wer mitspielt, steht
+  weiter an seiner Figur, und `co-gm` bleibt dort, weil ein Mitleiter am
+  Schirm dasselbe sieht. `app_user.is_admin` ist etwas anderes: die
+  Verwaltung der **Installation** — wer in einer Runde leitet, kann in einer
+  anderen mitspielen.
+  Wem ein Artikel gehört, steht in keinem Feld: **eine Ebene, die genau
+  eine Kampagne aufschaltet, gehört ihr; eine, die mehrere aufschalten, ist
+  gemeinsam** (`campaignsOf`). Also sieht `audience: 'gm'` in der
+  Kampagnenebene nur deren Leitung, in einer geteilten Ebene jede — ein
+  Grundregelwerk, das drei Runden aufschalten, gehört keiner davon.
+  `Layer.kind` kennt zwar ein Wort `campaign`, bleibt aber **Beschreibung**:
+  ein Feld, das gleichzeitig Regel ist, leckt beim ersten Tippfehler.
+  **Offen:** ohne Ebenenkante gehört ein Artikel niemandem besonders (65 von
+  75 heute) — das stimmt bei *einer* Kampagne und nicht mehr bei zweien.
+  Ebenso offen: `mayWrite` kennt die Leitung noch nicht, und die laufende
+  Kampagne ist eine globale Einstellung.
 - **Drei Ansichten, und der Ort wählt sie.** `overview` steht in einem
   Verweis oder einer Listenzeile, `quick` auf einer Karte, `full` auf der
   Artikelseite. Einen Wähler gibt es nicht — ein Verweis ist ein Verweis,

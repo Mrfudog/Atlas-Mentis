@@ -520,11 +520,22 @@ export const interfaces: Record<string, InterfaceDef> = {
     schema: merge(g.StoryInfo),
   },
 
+  /**
+   * **Die Kampagne sagt, wer sie leitet** — dafür nimmt sie `Access` dazu:
+   * eine Karte mit `role: 'gm'` und den Konten, die hinter dem Schirm
+   * sitzen. Das war die eine Angabe, die nirgends stand: `app_user.is_admin`
+   * gilt für die ganze Installation, und wer in einer Runde leitet, kann in
+   * einer anderen mitspielen.
+   *
+   * Wer mitspielt, steht weiter an seiner Figur — dort hängt ohnehin,
+   * welches Konto sie führt. Eine zweite Liste an der Kampagne wäre die,
+   * die beim nächsten Spielerwechsel niemand nachzieht.
+   */
   Campaign: {
     name: 'Campaign',
     area: 'history',
     label: 'Campaign',
-    extends: ['Story'],
+    extends: ['Story', 'Access'],
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     /* Die Kampagne trägt, was über ihr Ganzes geht: welche Ebenen laufen,

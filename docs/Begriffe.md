@@ -335,7 +335,7 @@ Die vier Stufen von aussen nach innen:
   eine `Access`-Karte trägt. Ein Konto ohne Figur hat noch keinen Platz.
 - **`players`** — die Spielenden: `Access.role` `player` oder `co-gm`, keine
   Zuschauer. Ein Mitleiter sitzt hinter dem Schirm und nicht davor.
-- **`gm`** — nur die Leitung.
+- **`gm`** — nur die Leitung **dieser Kampagne**.
 
 **Die Reihenfolge ist die Regel:** `hiddenFrom` schlägt `revealedTo` schlägt
 `audience`. Das ausdrückliche Verbot gewinnt, weil es die Ausnahme ist, die
@@ -361,12 +361,47 @@ Bewusst weggelassen, bis jemand sie braucht.
 > standen da, weil zwei Entwürfe sich nicht einig waren und jemand die
 > Vereinigung nahm; gefüllt war keines, in fünfundsiebzig Artikeln.
 
-**Wo die Leitung je Kampagne wohnt, ist offen.** Heute ist es das
-Konto-Merkmal `app_user.is_admin` — eines für die ganze Installation, und es
-schaltet Register, Einladungen und unbeschnittenes Lesen. Wer in einer Runde
-leitet, kann in einer anderen mitspielen; diese Rolle gehört an `Access` und
-ist noch nicht entschieden. Bis dahin heisst `gm`: die Verwaltung dieser
-Installation.
+### Eine Leitung je Kampagne
+
+**Die Kampagne sagt, wer sie leitet:** eine `Access`-Karte mit `role: 'gm'`
+und den Konten, die hinter dem Schirm sitzen. Das ist etwas anderes als
+`app_user.is_admin` — das gilt für die ganze Installation und schaltet
+Register, Einladungen und unbeschnittenes Lesen. Wer in einer Runde leitet,
+kann in einer anderen mitspielen, und ein Merkmal am Konto kann das nicht
+sagen.
+
+Wer mitspielt, steht weiter an seiner **Figur** — dort hängt ohnehin, welches
+Konto sie führt. Eine zweite Liste an der Kampagne wäre die, die beim
+nächsten Spielerwechsel niemand nachzieht. `co-gm` bleibt aus demselben Grund
+an der Figur: am Schirm sieht ein Mitleiter dasselbe wie die Leitung.
+
+**Und wem ein Artikel gehört, sagt die Ebene.** Ein Artikel liegt in Ebenen
+(`inLayer`), eine Kampagne schaltet Ebenen auf (`activates`) — also gehört
+eine Ebene, die genau **eine** Kampagne aufschaltet, ihr, und eine, die
+mehrere aufschalten, ist gemeinsam:
+
+| Der Artikel liegt … | `audience: 'gm'` heisst |
+|---|---|
+| in der Ebene **einer** Kampagne | nur deren Leitung |
+| in einer Ebene, die **mehrere** aufschalten | jede Leitung |
+| in **keiner** Ebene | jede Leitung |
+
+Ein Grundregelwerk, das drei Runden aufschalten, gehört keiner davon — seine
+Spielleitungshinweise vor den anderen zwei zu verbergen wäre eine Sperre ohne
+Grund.
+
+Dass die Zugehörigkeit so von selbst herausfällt, ist der Grund, dafür **kein
+Feld** zu setzen. `Layer.kind` kennt zwar ein Wort `campaign`, aber ein Feld,
+das gleichzeitig Regel ist, leckt beim ersten Tippfehler: ein Paket, das
+versehentlich `campaign` heisst, gehörte plötzlich wem? Das `kind` bleibt
+Beschreibung.
+
+> **Die dritte Zeile der Tabelle ist die, die heute zählt.** Von
+> fünfundsiebzig Artikeln tragen fünfundsechzig keine Ebenenkante — die
+> Regel „ohne Ebene gehört er der Kampagne und ist immer da" (siehe
+> [Ebenen.md](Ebenen.md)) ist richtig, solange es *eine* Kampagne gibt. Die
+> zweite Runde braucht je Kampagne eine eigene Ebene, und das ist eine
+> eigene Entscheidung.
 
 ---
 

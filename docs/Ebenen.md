@@ -69,6 +69,49 @@ Eine Überschreibung, die zu keiner Ebene gehört, zählt nicht. Sie wäre keine
 
 ---
 
+## Die Ebene sagt auch, wem ein Artikel gehört
+
+Seit dem 30.9. hat der Stapel eine zweite Aufgabe. Eine Kampagne nennt ihre
+Leitung (`Access` mit `role: 'gm'` an der Kampagne), und `audience: 'gm'`
+fragt nicht mehr „ist das die Verwaltung dieser Installation", sondern **„ist
+das die Leitung der Kampagne, der dieser Artikel gehört"**.
+
+Wem er gehört, steht in keinem Feld — es fällt aus dem heraus, was ohnehin
+dasteht:
+
+> Eine Ebene, die genau **eine** Kampagne aufschaltet, gehört ihr. Eine, die
+> **mehrere** aufschalten, ist gemeinsam.
+
+| Der Artikel liegt … | `audience: 'gm'` heisst |
+|---|---|
+| in der Ebene **einer** Kampagne | nur deren Leitung |
+| in einer Ebene, die **mehrere** aufschalten | jede Leitung |
+| in **keiner** Ebene | jede Leitung |
+
+Das Grundregelwerk, das drei Runden aufschalten, gehört keiner davon; seine
+Spielleitungshinweise vor den anderen zwei zu verbergen wäre eine Sperre ohne
+Grund. Die Hausregeln, die nur eine Runde aufschaltet, gehören ihr.
+
+**Warum kein Feld:** `Layer.kind` kennt ein Wort `campaign`, und es wäre
+naheliegend, daran zu hängen. Ein Feld, das gleichzeitig Regel ist, leckt
+aber beim ersten Tippfehler — ein Paket, das versehentlich `campaign` heisst,
+gehörte plötzlich wem? Und ein geteiltes Paket mit `kind: 'campaign'`, das
+drei Runden aufschalten, gehörte welcher? Das `kind` bleibt Beschreibung.
+
+`mode: 'removes'` zählt nicht mit: eine Ebene, die den Artikel herausnimmt,
+bringt ihn nicht mit und besitzt ihn nicht.
+
+> **Die dritte Zeile ist heute die häufigste.** Fünfundsechzig von
+> fünfundsiebzig Artikeln tragen keine Ebenenkante — das ist der Normalfall
+> von oben, und er ist richtig, solange es *eine* Kampagne gibt. Sobald eine
+> zweite dazukommt, braucht jede ihre eigene Ebene, sonst gehört jeder
+> ungelegte Artikel beiden. Die Umkehrung („keine Ebene heisst gemeinsam,
+> eigene Artikel liegen in der Kampagnenebene") kostet eine Wanderung über
+> diese fünfundsechzig und eine Kante je neuem Artikel, die die Maske setzt.
+> Sie ist **nicht** entschieden.
+
+---
+
 ## Die Herkunftsanzeige (REQ-044)
 
 Am Artikelkopf steht, woher er kommt: die Ebene, ob etwas ihn ersetzt, wovon
@@ -89,6 +132,7 @@ beantwortet: **was ist gerade nicht im Spiel, und warum.**
 | Kante | `inLayer` | Artikel → Ebene, `props.mode: "adds" \| "removes"` |
 | Kante | `activates` | Kampagne → Ebene, `props.order` |
 | Kante | `overrides` | neuer Artikel → alter Artikel |
+| Karte | `Access` an `Campaign` | wer diese Kampagne leitet (`role: 'gm'`) |
 | Kante | `variantOf` | Fassung → Vorlage |
 | Ansicht | `stack` | der Stapel und was er ausblendet |
 

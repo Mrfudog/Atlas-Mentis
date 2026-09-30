@@ -24,13 +24,39 @@ const ZIEL = resolve(
   process.argv[2] ?? join(HIER, '..', '..', '..', 'docs', 'Artikeltypen.md'),
 );
 
-const AREAS = [
-  ['story', 'Story', 'Was passiert und passiert ist.'],
-  ['world', 'World', 'Wer und was es gibt.'],
-  ['game', 'Game', 'Woran man sich hält.'],
-  ['play', 'Play', 'Worauf man während der Sitzung schaut.'],
-  ['', 'Ohne Bereich', 'Abstrakte Oberbegriffe — sie tragen keine Artikel.'],
-];
+/**
+ * **Welche Bereiche es gibt, sagt das Register und nicht diese Datei.**
+ *
+ * Hier stand eine feste Liste mit `story` und `game` — den Namen von vor der
+ * Umbenennung zu `history` und `rules`. Die Schleife lief über die Liste und
+ * nicht über den Bestand, also fielen einundzwanzig Artikelarten aus dem
+ * Katalog: Kampagne, Sitzung, Szene, Quest, Regel, Talent, Fertigkeit,
+ * Statblock, Rezept … Gemerkt hat es niemand, weil eine Überschrift, die
+ * fehlt, keine Lücke hinterlässt.
+ *
+ * Also andersherum: die Bereiche kommen aus den Zeilen. Was hier steht, ist
+ * nur die **Reihenfolge** und der Satz darunter; ein Bereich, den niemand
+ * beschrieben hat, kommt trotzdem — hinten, ohne Satz. Ein neuer Bereich
+ * braucht dann keine Codeänderung, um im Katalog zu stehen.
+ */
+const AREA_TITEL = {
+  world: ['World', 'Wer und was es gibt.'],
+  history: ['History', 'Was passiert und passiert ist.'],
+  rules: ['Rules', 'Woran man sich hält.'],
+  play: ['Play', 'Worauf man während der Sitzung schaut.'],
+  '': ['Ohne Bereich', 'Abstrakte Oberbegriffe — sie tragen keine Artikel.'],
+};
+const AREA_ORDER = ['world', 'history', 'rules', 'play', ''];
+
+function areas() {
+  const da = new Set(Object.keys(R.interfaces).map((n) => areaOf(n) || ''));
+  const bekannt = AREA_ORDER.filter((k) => da.has(k));
+  /* Was das Register kennt und diese Datei nicht. Aufgezählt und nicht
+     verschwiegen — genau daran ist die alte Liste gescheitert. */
+  const rest = [...da].filter((k) => !AREA_ORDER.includes(k)).sort();
+  if (rest.length) console.log(`Bereiche ohne Beschreibung: ${rest.join(', ')}`);
+  return [...bekannt, ...rest].map((k) => [k, ...(AREA_TITEL[k] ?? [k, ''])]);
+}
 
 /* **Die Kette und der Bereich kommen aus dem Paket.** Sie standen hier als
    eigene Schleife über `extends[0]` — und seit `extends` ein Array ist, war
@@ -124,7 +150,7 @@ z('steht kursiv dabei — ohne das liest man bei `Consumable` „verlangt');
 z('nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.');
 z();
 
-for (const [key, titel, wozu] of AREAS) {
+for (const [key, titel, wozu] of areas()) {
   const arten = Object.keys(R.interfaces)
     .filter((n) => areaOf(n) === key)
     .sort((a, b) => a.localeCompare(b));
@@ -133,7 +159,7 @@ for (const [key, titel, wozu] of AREAS) {
   z();
   z(`## ${titel}`);
   z();
-  z(`*${wozu}* — ${arten.length} Arten.`);
+  z(wozu ? `*${wozu}* — ${arten.length} Arten.` : `${arten.length} Arten.`);
   z();
   for (const n of arten) {
     const d = R.interfaces[n];

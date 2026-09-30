@@ -124,10 +124,22 @@ dort, wer in *dieser* Kampagne leitet.
 
 Der Unterschied ist keiner auf dem Papier. Wer in einer Runde leitet, kann in
 einer anderen mitspielen; ein Merkmal am Konto kann das nicht sagen. Die
-Rolle je Tisch steht in der `Access`-Karte an der Figur (`Access.role`:
-`player`, `co-gm`, `spectator`) — und **welche Rolle dort „leitet" heisst,
-ist noch nicht entschieden.** Bis dahin heisst `Visibility.audience: 'gm'`:
-die Verwaltung dieser Installation.
+Rolle am Tisch steht deshalb in `Access.role`, und zwar an zwei Stellen:
+
+| Rolle | Wo die Karte hängt |
+|---|---|
+| `gm` | an der **Kampagne** — wer sitzt hinter dem Schirm |
+| `co-gm`, `player`, `spectator` | an der **Figur** — dort hängt ohnehin, welches Konto sie führt |
+
+`Visibility.audience: 'gm'` fragt seither: **leitet dieser Betrachter die
+Kampagne, der der Artikel gehört?** Und wem er gehört, sagt der Ebenenstapel
+— eine Ebene, die genau eine Kampagne aufschaltet, gehört ihr; eine, die
+mehrere aufschalten, ist gemeinsam (siehe [Ebenen.md](Ebenen.md)).
+
+Das Sieb bekommt dafür die Konto-Id mit, nicht nur die Figuren: eine Leitung
+hat keine Figur, und ohne die Id fände die Regel ihre Karte nie. Das Wissen
+fragt weiter nur nach den Figuren — was jemand erfahren hat, hat eine Figur
+erfahren.
 
 ---
 
@@ -201,14 +213,21 @@ in der Sitzung aus.
 - **Die Bereiche in der Oberfläche.** Anmeldung, Liste, Artikelansicht und
   Bearbeiten stehen; Karten, Bogen, Inventar, Boards und Handwerk sind im
   Prototyp und noch nicht dort.
-- **Die Leitung je Tisch.** `is_admin` gilt für die Installation, und das ist
-  richtig für Register, Konten und Einladungen. Wer in *dieser* Kampagne
-  leitet, steht nirgends: `Access.role` kennt `player`, `co-gm` und
-  `spectator` und hängt an `Creature` und `Party`, `Campaign` hat gar keine
-  eigenen Felder. Solange das so ist, meint `Visibility.audience: 'gm'` die
-  Verwaltung. Ein Vorschlag liegt vor (`Access` als Feld mit mehreren
-  `{user, role}`, das `Campaign` mitnimmt, und eine Aufzählungszeile, die
-  sich `audience` und `Access.role` teilen) — entschieden ist er nicht.
+- **Schreiben kennt die Leitung noch nicht.** `mayWrite` ist „Verwaltung oder
+  eigene Figur". Eine Leitung, die nicht Verwaltung ist, darf ihre eigene
+  Kampagne lesen und nichts daran ändern. Die Ableitung dafür steht schon
+  (`campaignOf` im Modellpaket) — die Regel fehlt, und sie ändert, wer
+  Daten anfassen darf. Also eine eigene Entscheidung.
+- **Die laufende Kampagne ist eine globale Einstellung.** `currentCampaign()`
+  liest `setting('campaign')` — wer umschaltet, schaltet für alle um.
+  Solange das so ist, gibt es faktisch eine Kampagne. Sie muss der
+  Betrachter mitbringen: die, in denen er leitet, plus die, in deren Stapel
+  seine Figur liegt.
+- **Ohne Ebenenkante gehört ein Artikel niemandem besonders** — heute 65 von
+  75. Das stimmt bei *einer* Kampagne; bei zweien braucht jede ihre eigene
+  Ebene, und die Umkehrung kostet eine Wanderung.
+- **`gmFields`** („was nie an einen Spieler geht") gilt installationsweit.
+  Mit mehreren Kampagnen heisst es „nie an jemanden ausserhalb dieser".
 - **Einen zweiten Blick auf das Sieb.** `redactEntity` hält Felder, Blöcke
   und den Namen zurück; die Kanten bleiben, weil eine verborgene Verbindung
   den Rückbezug am anderen Ende mitverbergen müsste und das eine andere
