@@ -258,7 +258,7 @@ export class PgRepository implements Repository {
       id: String(row['id']),
       name: String(row['name']),
       passwordHash: String(row['password_hash']),
-      isGm: row['is_gm'] === true,
+      isAdmin: row['is_admin'] === true,
       actorIds: raw.filter((x): x is string => typeof x === 'string' && x.length > 0),
       disabledAt: row['disabled_at'] ? new Date(row['disabled_at'] as string).toISOString() : undefined,
     };
@@ -276,7 +276,7 @@ export class PgRepository implements Repository {
     return {
       codeHash: String(row['code_hash']),
       label: (row['label'] as string | null) ?? undefined,
-      isGm: row['is_gm'] === true,
+      isAdmin: row['is_admin'] === true,
       actorId: (row['actor_id'] as string | null) ?? undefined,
       usesLeft: row['uses_left'] == null ? undefined : Number(row['uses_left']),
       expiresAt: row['expires_at'] ? new Date(row['expires_at'] as string).toISOString() : undefined,
@@ -337,18 +337,18 @@ export class PgRepository implements Repository {
     try {
       await client.query('begin');
       await client.query(
-        `insert into app_user(id,name,name_fold,password_hash,is_gm,disabled_at,updated_at)
+        `insert into app_user(id,name,name_fold,password_hash,is_admin,disabled_at,updated_at)
          values ($1,$2,$3,$4,$5,$6,now())
          on conflict (id) do update set
            name = excluded.name, name_fold = excluded.name_fold,
-           password_hash = excluded.password_hash, is_gm = excluded.is_gm,
+           password_hash = excluded.password_hash, is_admin = excluded.is_admin,
            disabled_at = excluded.disabled_at, updated_at = now()`,
         [
           user.id,
           user.name,
           user.name.trim().toLocaleLowerCase('de'),
           user.passwordHash,
-          user.isGm,
+          user.isAdmin,
           user.disabledAt ?? null,
         ],
       );
@@ -380,15 +380,15 @@ export class PgRepository implements Repository {
 
   async putInvite(invite: Invite): Promise<void> {
     await this.pool.query(
-      `insert into app_invite(code_hash,label,is_gm,actor_id,uses_left,expires_at,created_by)
+      `insert into app_invite(code_hash,label,is_admin,actor_id,uses_left,expires_at,created_by)
        values ($1,$2,$3,$4,$5,$6,$7)
        on conflict (code_hash) do update set
-         label = excluded.label, is_gm = excluded.is_gm, actor_id = excluded.actor_id,
+         label = excluded.label, is_admin = excluded.is_admin, actor_id = excluded.actor_id,
          uses_left = excluded.uses_left, expires_at = excluded.expires_at`,
       [
         invite.codeHash,
         invite.label ?? null,
-        invite.isGm,
+        invite.isAdmin,
         invite.actorId ?? null,
         invite.usesLeft ?? null,
         invite.expiresAt ?? null,

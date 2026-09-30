@@ -6,7 +6,7 @@
  * selbst benutzbar ist, ist hier die richtige: wer auf dem Server eine
  * Shell hat, kommt ohnehin an die Datenbank.
  *
- *   pnpm --filter @nw/server user add basil --gm
+ *   pnpm --filter @nw/server user add basil --admin
  *   pnpm --filter @nw/server user add sela --actor pc_sela
  *   pnpm --filter @nw/server user password basil
  *   pnpm --filter @nw/server user disable sela
@@ -59,7 +59,7 @@ export async function runUserCommand(repo: Repository, argv: string[]): Promise<
         .map(
           (i) =>
             `${i.label ?? '(ohne Kennung)'}` +
-            `${i.isGm ? '  (Spielleitung)' : ''}` +
+            `${i.isAdmin ? '  (Verwaltung)' : ''}` +
             `${i.actorId ? `  für ${i.actorId}` : ''}` +
             `${i.usesLeft == null ? '  unbegrenzt' : `  noch ${i.usesLeft}×`}` +
             `${i.expiresAt ? `  bis ${i.expiresAt.slice(0, 10)}` : ''}` +
@@ -80,7 +80,7 @@ export async function runUserCommand(repo: Repository, argv: string[]): Promise<
       await repo.putInvite({
         codeHash: hashToken(code),
         label: labelAt >= 0 ? rest[labelAt + 1] : undefined,
-        isGm: flags.has('--gm'),
+        isAdmin: flags.has('--admin'),
         actorId: actorId,
         usesLeft: usesAt >= 0 ? Math.max(1, Number(rest[usesAt + 1]) || 1) : undefined,
         expiresAt:
@@ -100,7 +100,7 @@ export async function runUserCommand(repo: Repository, argv: string[]): Promise<
     return users
       .map(
         (u) =>
-          `${u.name}${u.isGm ? '  (Spielleitung)' : ''}` +
+          `${u.name}${u.isAdmin ? '  (Verwaltung)' : ''}` +
           `${u.actorIds.length ? `  spielt ${u.actorIds.join(', ')}` : ''}` +
           `${u.disabledAt ? '  [gesperrt]' : ''}`,
       )
@@ -121,10 +121,10 @@ export async function runUserCommand(repo: Repository, argv: string[]): Promise<
         id: randomUUID(),
         name: name.trim(),
         passwordHash: await hashPassword(password),
-        isGm: flags.has('--gm'),
+        isAdmin: flags.has('--admin'),
         actorIds: actorId ? [actorId] : [],
       });
-      return `${name} angelegt${flags.has('--gm') ? ' (Spielleitung)' : ''}.`;
+      return `${name} angelegt${flags.has('--admin') ? ' (Verwaltung)' : ''}.`;
     }
     case 'password': {
       if (!existing) throw new Error(`„${name}" gibt es nicht.`);

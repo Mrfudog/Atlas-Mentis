@@ -261,6 +261,15 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 .swatch{display:inline-block;width:11px;height:11px;border-radius:2px;
   border:1px solid var(--line2);vertical-align:baseline}
 .linkbox{position:relative}
+/* Mehrere Verweise: die gewählten als Marken, darunter der Sucher. */
+.linksbox{display:grid;gap:5px}
+.linkchips{display:flex;flex-wrap:wrap;gap:5px;align-items:center;min-height:20px}
+.linkchip{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;font-size:12px;
+  background:var(--surface2);border:1px solid var(--line);border-radius:999px}
+.linkchip.gone b{color:var(--warn);font-family:var(--ff-mono);font-size:11px}
+.linkchip button{background:none;border:0;cursor:pointer;color:var(--dim);font:inherit;
+  padding:0;line-height:1}
+.linkchip button:hover{color:var(--warn)}
 .sugg{position:absolute;left:0;right:0;top:100%;z-index:70;background:var(--surface);
   border:1px solid var(--line2);border-top:0;border-radius:0 0 var(--r) var(--r);
   max-height:210px;overflow-y:auto;box-shadow:0 6px 18px rgba(0,0,0,.14)}
@@ -1456,7 +1465,7 @@ function proseTitle(x){ return x.titel||x.prop.title||x.key; }
 var FIELD_KINDS=[
   ["text","Text"],["number","Number"],["boolean","Yes/No"],
   ["choice","Choice"],["choices","Several choices"],
-  ["color","Colour"],["link","Link to article"],
+  ["color","Colour"],["link","Link to article"],["links","Links to articles"],
   ["asset","Image / asset"],["date","World date"],
   ["grid","Painted grid"],["zones","Zones on a grid"],
   ["list","List"],["object","Object"]
@@ -1512,7 +1521,11 @@ function werteAusZeile(karte,typ,feld,zeile){
 function fieldKind(p){
   if(!p) return "text";
   if(p.format==="color") return "color";
-  if(p.format==="link") return "link";
+  /* Eine **Liste** von Verweisen ist etwas anderes als einer: „Revealed
+     to" nennt mehrere Träger, „Scene in play" genau eine Szene. Mit einer
+     einzelnen Eingabe daran stand dort der erste Eintrag und der zweite
+     fiel beim Speichern weg. */
+  if(p.format==="link") return p.type==="array"?"links":"link";
   if(p.format==="asset") return "asset";
   if(p.format==="date") return "date";
   /* **Eine Form wird gezeichnet, nicht getippt.** `##.,##.` als Text sagt
@@ -1556,6 +1569,8 @@ function setFieldKind(p,kind){
     case "asset":   p.type="string"; p.format="asset"; break;
     case "date":    p.type="string"; p.format="date"; break;
     case "link":    p.type="string"; p.format="link"; p.target={}; break;
+    case "links":   p.type="array"; p.format="link"; p.items={type:"string"};
+                    p.target={}; break;
     case "grid":    p.type="array"; p.format="grid"; p.items={type:"string"}; break;
     case "zones":   p.type="object"; p.format="zones"; break;
     default:        p.type="string";
@@ -1664,6 +1679,68 @@ function linkInput(pd,cur){
     set:function(v){ var t=ENT.get(v); inp.value=t?nameOf(t):""; inp.dataset.id=t?v:""; }
   });
   wrap.addEventListener=function(t,f){ inp.addEventListener(t,f); };
+  return wrap;
+}
+
+/* ---------- mehrere Verweise ----------
+   `Visibility.revealedTo` und `hiddenFrom` nennen **Träger**: eine Figur,
+   eine Gruppe, eine Fraktion, einen Reisetrupp — und oft mehr als einen.
+   Mit `linkInput` daran stand dort einer, und der zweite fiel beim
+   Speichern weg; mit der Freitext-Listeneingabe daneben musste man Ids
+   tippen, und eine getippte Id ist entweder richtig oder unauffindbar.
+
+   Also: die gewählten als Marken mit einem ×, und darunter dasselbe
+   Suchfeld wie beim einzelnen Verweis. Nach ausserhalb sieht der Kasten
+   aus wie ein Textfeld — `value` gibt die Ids durch Komma getrennt zurück,
+   und damit liest `fieldValue` ihn wie jede andere Liste. Ein zweiter Weg
+   durch dieselbe Funktion wäre eine zweite Stelle, an der eine Liste
+   anders gespeichert wird. */
+function linksInput(pd,cur){
+  var ids=Array.isArray(cur)?cur.map(String).filter(Boolean)
+    :(typeof cur==="string"&&cur!==""
+      ?String(cur).split(",").map(function(x){return x.trim();}).filter(Boolean):[]);
+  var wrap=el("div",{class:"linksbox"});
+  var marken=el("div",{class:"linkchips"});
+  var sucher=linkInput(pd,"");
+  function melde(){
+    wrap.dispatchEvent(new Event("input",{bubbles:true}));
+    wrap.dispatchEvent(new Event("change",{bubbles:true}));
+  }
+  function zeichne(){
+    marken.textContent="";
+    if(!ids.length) marken.appendChild(el("span",{class:"dim",text:"nobody yet"}));
+    ids.forEach(function(id){
+      var ziel=ENT.get(id);
+      var chip=el("span",{class:"linkchip"+(ziel?"":" gone")});
+      chip.appendChild(el("b",{text:ziel?nameOf(ziel):id}));
+      chip.appendChild(el("button",{class:"x",type:"button",title:"Remove",
+        onclick:function(ev){
+          ev.preventDefault(); ev.stopPropagation();
+          ids=ids.filter(function(x){ return x!==id; });
+          zeichne(); melde();
+        }},"\u00d7"));
+      marken.appendChild(chip);
+    });
+  }
+  /* Der Sucher meldet `change`, sobald ein Vorschlag übernommen ist. Dann
+     wandert die Id in die Marken und das Feld ist wieder leer — sonst
+     müsste man es vor dem nächsten Träger von Hand löschen. */
+  sucher.addEventListener("change",function(){
+    var id=sucher.value;
+    if(!id)return;
+    if(ids.indexOf(id)<0) ids.push(id);
+    sucher.value="";
+    zeichne(); melde();
+  });
+  zeichne();
+  wrap.appendChild(marken); wrap.appendChild(sucher);
+  Object.defineProperty(wrap,"value",{
+    get:function(){ return ids.join(", "); },
+    set:function(v){
+      ids=String(v||"").split(",").map(function(x){return x.trim();}).filter(Boolean);
+      zeichne();
+    }
+  });
   return wrap;
 }
 
@@ -1862,6 +1939,7 @@ function fieldInput(pd,cur,ref){
     return el("input",{class:"i",type:"color",
       value:/^#[0-9a-fA-F]{6}$/.test(String(cur||""))?String(cur):"#888888"});
   if(kind==="link") return linkInput(pd,cur);
+  if(kind==="links") return linksInput(pd,cur);
   if(kind==="asset") return assetInput(pd,cur);
   if(kind==="date") return el("input",{class:"i",type:"text",
     placeholder:"1492-07-03 or Mirtul 12, 1492 DR",value:cur==null?"":String(cur)});
@@ -3680,6 +3758,16 @@ function fieldCell(e,cn,p,pd,val,txt,titel){
     if(target) dd2.appendChild(el("button",{class:"ref",type:"button",
       onclick:function(ev){ ev.stopPropagation(); go({k:"art",id:target.id}); }},nameOf(target)));
     else dd2.appendChild(el("span",{class:"gone",text:"missing"}));
+  } else if(fieldKind(pd)==="links"&&Array.isArray(val)&&val.length){
+    /* Gelesen wird der **Wert** und nicht der formatierte Text: der trüge
+       Ids, und „pc_rook, pc_sela" sagt am Tisch niemandem etwas. */
+    val.forEach(function(v,i){
+      var ziel=ENT.get(String(v));
+      if(i) dd2.appendChild(document.createTextNode(" "));
+      if(ziel) dd2.appendChild(el("button",{class:"ref",type:"button",
+        onclick:function(ev){ ev.stopPropagation(); go({k:"art",id:ziel.id}); }},nameOf(ziel)));
+      else dd2.appendChild(el("span",{class:"gone",text:String(v)}));
+    });
   } else dd2.textContent=txt===""?"—":txt;
   if(editable) dd2.addEventListener("click",function(){ UI.editField=id; render(); });
   cell.appendChild(dd2);
@@ -9541,10 +9629,38 @@ function actorForUser(uid){
   });
   return hit;
 }
-/* Darf dieser Betrachter den Artikel überhaupt sehen? Nur die grobe Stufe
-   (REQ-038): `gm` heisst Spielleitung, alles andere heisst sichtbar. Die
-   feine Auswertung (REQ-039) ist das Wissensmodell, und das sitzt eine
-   Ebene tiefer — am Feld, nicht am Artikel. */
+/* ---------- Sichtbarkeit (REQ-038) ----------
+   Die **grobe** Frage: ob dieser Artikel überhaupt an diesen Betrachter
+   geht. Die feine (REQ-039) ist das Wissensmodell und sitzt eine Ebene
+   tiefer — am Feld, nicht am Artikel. Sie zusammenzulegen hiesse, einen
+   Artikel dadurch zu verbergen, dass man alle seine Felder wegnimmt, und
+   er stünde trotzdem in der Liste, mit Namen und Bereich.
+
+   Was ein Konto am Tisch ist, sagt `Access.role` an der Figur (oder an der
+   Gruppe, der sie angehört): `player`, `co-gm`, `spectator`. Das ist
+   **nicht** das Konto-Merkmal `is_admin` am Server — das gilt für die
+   ganze Installation, und wer in einer Runde leitet, kann in einer anderen
+   mitspielen. */
+var ROLLEN_RANG={"co-gm":3,"player":2,"spectator":1};
+function tableRole(actorId){
+  var beste=null;
+  Object.keys(knowledgeHolders(actorId||"")).forEach(function(id){
+    var r=((ENT.get(id)||{}).components||{})[ACCESS_COMP];
+    var rolle=r&&r.role;
+    if(!rolle||!ROLLEN_RANG[rolle])return;
+    if(!beste||ROLLEN_RANG[rolle]>ROLLEN_RANG[beste]) beste=rolle;
+  });
+  return beste;
+}
+/* Was die Stufe erlaubt. **`public` ist die Vorgabe:** ein Artikel, den
+   niemand eingestuft hat, ist offen. Andersherum wäre die halbe Kampagne
+   unsichtbar, und niemand wüsste, warum. */
+function audienceAllows(stufe,rolle){
+  if(stufe==="gm")return false;                      /* nur die Leitung */
+  if(stufe==="players")return rolle==="player"||rolle==="co-gm";
+  if(stufe==="campaign")return rolle!==null;         /* wer am Tisch sitzt */
+  return true;                                       /* public */
+}
 function articleVisible(e){
   /* Der Stapel gilt für alle, auch für die Spielleitung: was nicht läuft,
      ist nicht da. Wissen und Sichtbarkeit sind die zweite Frage und
@@ -9553,10 +9669,17 @@ function articleVisible(e){
   if(isOverridden(e))return false;
   if(isGM())return true;
   var vis=(e.components||{}).Visibility||{};
-  if(vis.audience==="gm")return false;
-  var a=viewerActor();
-  if(Array.isArray(vis.hiddenFrom)&&a&&vis.hiddenFrom.indexOf(a)>=0)return false;
-  return true;
+  var traeger=knowledgeHolders(viewerActor()||"");
+  var nennt=function(liste){
+    return Array.isArray(liste)&&liste.some(function(x){ return !!traeger[x]; });
+  };
+  /* Die Reihenfolge **ist** die Regel: Verbot, Freigabe, Stufe. Das
+     ausdrückliche Verbot gewinnt, weil es die Ausnahme ist, die jemand von
+     Hand eingetragen hat. `revealedTo` war bis hierher nie gelesen — eine
+     Freigabe, die nichts tat. */
+  if(nennt(vis.hiddenFrom))return false;
+  if(nennt(vis.revealedTo))return true;
+  return audienceAllows(vis.audience||"public",tableRole(viewerActor()));
 }
 /* Welche Feldverweise darf dieser Betrachter sehen? Offen plus das, was er
    weiss — dieselbe Abfrage wie in der Wissensansicht, nur als Filter. */
@@ -11781,6 +11904,50 @@ function renderHowto(v){
   });
   v.appendChild(dl);
 
+  /* ---- Wer einen Artikel sehen darf ----
+     Die **grobe** Frage, und sie kommt vor der feinen: das Wissen sagt,
+     welche Felder jemand liest, die Sichtbarkeit, ob der Artikel
+     überhaupt an ihn geht. Die Stufen werden aus der Zeile gelesen und
+     nicht abgetippt — eine Liste von Hand stimmte am Tag ihrer
+     Entstehung. */
+  v.appendChild(el("div",{class:"rsec",text:"Who gets to see an article"}));
+  v.appendChild(el("p",{class:"hint"},
+    "Two questions, and the coarse one comes first: visibility decides "+
+    "whether the article reaches a reader at all, knowledge decides which "+
+    "of its fields. Merging them would mean hiding an article by taking "+
+    "away every field — and it would still stand in the list, with its "+
+    "name and its area."));
+  var sichtP=((REG.interfaces.Visibility||{}).schema||{}).properties||{};
+  var STUFEN={
+    "public":"every account. This is the default: an article nobody "+
+      "classified is open, because the other way round half the campaign "+
+      "would be invisible and nobody would know why.",
+    "campaign":"every account at the table — one with an Access card on a "+
+      "figure or a group. An account without a figure has no seat yet.",
+    "players":"the ones playing: Access role player or co-gm. A co-GM sits "+
+      "behind the screen, not in front of it.",
+    "gm":"the GM alone. Where the GM lives per table is still open — today "+
+      "it is the installation-wide account flag is_admin, and whoever runs "+
+      "one table may play at another."
+  };
+  var sl=el("ul",{class:"bsp"});
+  ((sichtP.audience||{})["enum"]||[]).forEach(function(a){
+    var li=el("li");
+    li.appendChild(el("b",{text:a+((sichtP.audience||{})["default"]===a?" (default)":"")}));
+    li.appendChild(el("span",{text:" \u2014 "+(STUFEN[a]||"")}));
+    sl.appendChild(li);
+  });
+  v.appendChild(sl);
+  v.appendChild(el("p",{class:"hint"},
+    "Two lists override the step, and the order is the rule: Hidden from "+
+    "beats Revealed to beats Audience. The explicit ban wins because it is "+
+    "the exception somebody entered by hand. Both name holders \u2014 a "+
+    "creature, a party, a faction, a group \u2014 and a holder counts one "+
+    "step out: naming the party hides it from its members. Nothing is "+
+    "inherited to an article\u2019s children: knowing a house is not "+
+    "knowing every room in it, and an inheritance without a depth "+
+    "eventually releases a whole branch nobody meant."));
+
   /* ---- Was nie gespeichert wird ---- */
   v.appendChild(el("div",{class:"rsec",text:"What is never stored"}));
   var nie=el("ul",{class:"bsp"});
@@ -12940,7 +13107,8 @@ function fieldMore(cn,k,within,w,saveC){
     },"common, rare");
   }
 
-  if(fieldKind(p)==="link") box.appendChild(targetEditor(p,saveC,w));
+  if(fieldKind(p)==="link"||fieldKind(p)==="links")
+    box.appendChild(targetEditor(p,saveC,w));
 
   text("Derived from",p.derived||"",function(v){
     if(v)p.derived=v; else delete p.derived;

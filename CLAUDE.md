@@ -92,6 +92,29 @@ wiederkommen, werden sie neu geschrieben.
   die bleiben Kanten. Heute tragen `belongsTo` (Statblock an der Kreatur)
   und `carries` (Inventar an Kreatur und Gruppe) die Angabe.
 - **Schreiben geht durch `validateEntity`**, auch wenn es umständlich scheint.
+- **Zwei Fragen, und die grobe kommt zuerst.** Die **Sichtbarkeit**
+  (`articleVisible`) sagt, ob ein Artikel überhaupt an jemanden geht; das
+  **Wissen** (`redactEntity`) sagt, welche Felder darin. Beides zu einer
+  Frage zu machen hiesse, einen Artikel dadurch zu verbergen, dass man alle
+  seine Felder wegnimmt — und er stünde trotzdem in der Liste, mit Namen und
+  Bereich.
+  Gelesen werden drei Felder, und die Reihenfolge ist die Regel:
+  `hiddenFrom` schlägt `revealedTo` schlägt `audience`. **`public` ist die
+  Vorgabe und heisst: jeder darf es sehen** — wer etwas verbergen will, sagt
+  es, und nicht umgekehrt. Die Stufen von aussen nach innen: `public` jedes
+  Konto, `campaign` jedes Konto am Tisch (mit `Access`-Karte), `players` die
+  Spielenden (`Access.role` `player` oder `co-gm`), `gm` nur die Leitung.
+  Die beiden Listen nennen **Träger** (`Creature | Party | Faction | Group`),
+  dieselben vier wie `knownBy`, und ein Träger zählt einen Schritt weit auch
+  als seine Gruppe.
+  **Vererbt wird nichts:** ein Haus zu kennen heisst nicht, jedes Zimmer
+  darin zu kennen, und eine Vererbung ohne Tiefe gibt irgendwann einen
+  ganzen Zweig frei. Das Feld `inherit` gab es und war nie ausgewertet — es
+  ist bewusst weggelassen und kommt bei Bedarf mit einer Tiefe wieder.
+  **Offen:** wo die Leitung *je Kampagne* wohnt. `app_user.is_admin` gilt für
+  die ganze Installation; wer in einer Runde leitet, kann in einer anderen
+  mitspielen. Bis das an `Access` entschieden ist, heisst `gm`: die
+  Verwaltung dieser Installation.
 - **Drei Ansichten, und der Ort wählt sie.** `overview` steht in einem
   Verweis oder einer Listenzeile, `quick` auf einer Karte, `full` auf der
   Artikelseite. Einen Wähler gibt es nicht — ein Verweis ist ein Verweis,
@@ -415,7 +438,9 @@ Browser-Stub abhängt.
 
 Zum Entwickeln: `pnpm dev:server` und `pnpm dev:web` nebeneinander; die
 Oberfläche schickt `/api` über `apps/web/proxy.conf.json` an den Server.
-Das erste Konto legt `pnpm --filter @nw/server user add <name> --gm` an.
+Das erste Konto legt `pnpm --filter @nw/server user add <name> --admin` an
+(`is_admin` ist die Verwaltungsrolle der Installation, nicht die Leitung
+einer Kampagne — die steht als `Access.role` an der Figur).
 
 Die Reihenfolge ist notwendig: die übrigen Pakete übersetzen gegen die von
 `model` erzeugten `.d.ts`, nicht gegen dessen Quelltext. In `tsconfig.json` der

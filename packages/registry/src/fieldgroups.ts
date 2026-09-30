@@ -184,19 +184,88 @@ export const fieldGroups = {
   },
 
   /**
-   * Stored in full from day one; only `audience` gm/campaign is evaluated for
-   * now. The remaining fields exist so player access is not a schema change.
+   * **Wer diesen Artikel überhaupt sehen darf.** Drei Felder, und alle drei
+   * werden gelesen — das ist der Unterschied zu vorher.
+   *
+   * Es waren sechs: `audience`, `scope`, `revealedTo`, `hiddenFrom`,
+   * `sharedUsers` und `inherit`. Sie standen da, weil zwei Entwürfe sich
+   * nicht einig waren und jemand die Vereinigung nahm („full visibility
+   * schema stored from day one"); gelesen wurden zwei, gefüllt war keines
+   * — null von fünfundsiebzig Artikeln. Was davon weg ist und warum:
+   *
+   * - `scope` — nirgends erklärt und nirgends gelesen. Ein Feld, dessen
+   *   Bedeutung niemand aufgeschrieben hat, füllt beim nächsten Mal jemand
+   *   anders als beim letzten.
+   * - `sharedUsers` — dasselbe wie `revealedTo`, nur in Konto-Ids statt in
+   *   Artikel-Ids. Zwei Listen für eine Frage heissen, dass eine davon
+   *   vergessen wird, und die Auswertung sah nur eine.
+   * - `inherit` — eine Vererbung an die „Kinder" eines Artikels. Sie stimmt
+   *   nicht: ein Haus zu kennen heisst nicht, jedes Zimmer darin zu kennen,
+   *   und sobald sie stimmen soll, braucht sie eine Tiefe. Beides ist eine
+   *   eigene Entscheidung und keine, die ein Haken nebenbei trifft — also
+   *   **bewusst weggelassen**, bis jemand sie braucht.
+   *
+   * Was gilt, gilt in dieser Reihenfolge: `hiddenFrom` schlägt `revealedTo`
+   * schlägt `audience`. Das ausdrückliche Verbot gewinnt, weil es die
+   * Ausnahme ist, die jemand von Hand eingetragen hat — und eine Freigabe,
+   * die ein Verbot aufhebt, wäre die Sorte Regel, deren Wirkung man erst
+   * beim Spieler merkt.
    */
   Visibility: {
     schema: {
       type: 'object',
       properties: {
-        audience: { type: 'string', title: 'Audience', enum: ['gm', 'campaign', 'players', 'public'] },
-        scope: { type: 'string', title: 'Scope' },
-        revealedTo: { type: 'array', title: 'Revealed to', items: { type: 'string' } },
-        hiddenFrom: { type: 'array', title: 'Hidden from', items: { type: 'string' } },
-        sharedUsers: { type: 'array', title: 'Shared with', items: { type: 'string' } },
-        inherit: { type: 'boolean', title: 'Inherit to children', default: true },
+        /**
+         * **Die Stufe, und `public` ist die Vorgabe:** jeder darf es sehen.
+         * Ein Artikel, den niemand eingestuft hat, ist offen — wer etwas
+         * verbergen will, sagt es, und nicht umgekehrt. Andersherum wäre
+         * die halbe Kampagne unsichtbar, und niemand wüsste, warum.
+         *
+         * Die vier Stufen von aussen nach innen:
+         * `public` jedes Konto · `campaign` jedes Konto am Tisch (eines mit
+         * einer `Access`-Karte an einer Figur oder Gruppe) · `players` die
+         * Spielenden, also `Access.role` `player` oder `co-gm`, aber keine
+         * Zuschauer · `gm` nur die Leitung.
+         *
+         * **Offen bleibt, wo die Leitung je Kampagne wohnt.** Heute ist es
+         * das Konto-Merkmal `app_user.is_admin` — eines für die ganze
+         * Installation. Wer in einer Runde leitet und in einer anderen
+         * mitspielt, braucht eine Rolle je Tisch; die gehört an `Access`
+         * und ist noch nicht entschieden. Bis dahin heisst `gm`: die
+         * Verwaltung dieser Installation.
+         *
+         * Vier Wörter mit genau einem Nutzer — die bleiben am Feld. Eine
+         * Registerzeile dafür wäre der Umweg ohne den Gewinn.
+         */
+        audience: {
+          type: 'string',
+          title: 'Audience',
+          enum: ['public', 'campaign', 'players', 'gm'],
+          default: 'public',
+        },
+        /* Ausdrücklich freigegeben, ausdrücklich verborgen — an **Träger**
+           und nicht an Konten: eine Figur, eine Gruppe, eine Fraktion, ein
+           Reisetrupp. Dieselben vier, die eine `knownBy`-Kante halten, denn
+           es ist dieselbe Frage: wem gehört etwas. Ein Konto spielt
+           vielleicht zwei Figuren, und eine Liste von Konten wüsste nicht,
+           welche davon gemeint ist.
+
+           Ein Verweisfeld nennt seinen Zieltyp, auch als Liste: ohne das
+           nähme „Revealed to" eine Rüstung. */
+        revealedTo: {
+          type: 'array',
+          format: 'link',
+          title: 'Revealed to',
+          items: { type: 'string' },
+          target: { interfaces: ['Creature', 'Party', 'Faction', 'Group'] },
+        },
+        hiddenFrom: {
+          type: 'array',
+          format: 'link',
+          title: 'Hidden from',
+          items: { type: 'string' },
+          target: { interfaces: ['Creature', 'Party', 'Faction', 'Group'] },
+        },
       },
     },
   },

@@ -23,13 +23,42 @@ Lesen (D8). Es taucht hier deshalb nicht als ungenutzt auf.
 
 Offen aus Block 1:
 
-- **`Visibility`** — sechs Felder, gelesen werden zwei (`audience === 'gm'`,
-  `hiddenFrom`). Vorschlag: `audience` auf `gm | table` kürzen, `hiddenFrom`
-  behalten, `scope`/`revealedTo`/`sharedUsers`/`inherit` streichen. `public`
-  verspricht einen anonymen Leser, den es nicht gibt — der Server verlangt
-  eine Anmeldung.
 - **`Time.until`/`untilSort`** — bleiben; `until` heisst an der Quest
   „Deadline".
+
+### `Visibility` — entschieden am 30.9.
+
+Sechs Felder, gelesen wurden zwei, gefüllt war keines (0 von 75). Sie waren
+die **Vereinigung zweier Entwürfe**, die sich nicht einig waren; angenommen,
+weil eine Bereichsentscheidung „full visibility schema stored from day one"
+sagte. `allowedRoles`/`deniedRoles` aus dem zweiten Entwurf kamen nie an.
+
+| Feld | Entscheidung |
+|---|---|
+| `audience` | bleibt, **`public` wird die Vorgabe** und heisst „jeder darf es sehen". Vier Stufen von aussen nach innen: `public` · `campaign` · `players` · `gm` |
+| `revealedTo` | bleibt — und wird jetzt auch gelesen. Ein Verweisfeld auf Träger (`Creature ǀ Party ǀ Faction ǀ Group`) |
+| `hiddenFrom` | bleibt, dieselben Träger. Es schlägt `revealedTo` schlägt `audience` |
+| `scope` | **weg** — nirgends erklärt, nirgends gelesen. Ein Feld ohne aufgeschriebene Bedeutung füllt beim nächsten Mal jemand anders als beim letzten |
+| `sharedUsers` | **weg** — dasselbe wie `revealedTo`, nur in Konto-Ids. Zwei Listen für eine Frage heissen, dass eine vergessen wird |
+| `inherit` | **weg, und zwar bewusst.** Eine Vererbung an die „Kinder" stimmt nicht — ein Haus zu kennen heisst nicht, jedes Zimmer zu kennen. Sie bräuchte eine **Tiefe**, und die ist eine eigene Entscheidung. Kommt bei Bedarf wieder |
+
+Der frühere Vorschlag (`audience` auf `gm | table` kürzen, `public`
+streichen) war falsch: `public` heisst nicht „ein anonymer Leser", sondern
+„jedes Konto" — und genau das ist die richtige Vorgabe.
+
+Dazu drei Dinge, die keine Feldfrage waren und daran hingen:
+
+- **Der Server wertete die Sichtbarkeit gar nicht aus.** `redactEntity`
+  siebte Felder; `audience: 'gm'` stand in der Karte, und der Artikel ging
+  raus. Jetzt filtert `sieve` zuerst (`articleVisible` in
+  `packages/model/src/visibility.ts`), und ein Einzelabruf, der durchfällt,
+  antwortet mit 404.
+- **`app_user.is_gm` heisst `is_admin`.** Das Merkmal gilt für die ganze
+  Installation und schaltet Register, Einladungen und unbeschnittenes Lesen —
+  eine Verwaltungsrolle. „GM" las sich wie eine Rolle am Tisch.
+- **Offen bleibt die Leitung je Kampagne.** `Access.role` kennt `player`,
+  `co-gm` und `spectator`, `Campaign` hat keine eigenen Felder. Bis das
+  entschieden ist, heisst `audience: 'gm'`: die Verwaltung.
 
 ---
 

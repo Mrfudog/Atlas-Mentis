@@ -18,7 +18,7 @@ import { Session } from './kern/session';
         <a routerLink="/" class="marke">Atlas Mentis</a>
         <span class="wer">
           {{ session.user()?.name }}
-          @if (session.isGm()) {
+          @if (session.isAdmin()) {
             <span class="rolle">GM</span>
           }
         </span>

@@ -47,9 +47,9 @@ Eine Registerzeile. Sie hat drei Formen:
   ohne Felder. `Ability` ist eine: `str`, `dex`, `con`, `int`, `wis`, `cha`.
   Sie steht im Register, weil **mehrere Felder dieselbe Liste brauchen** —
   die sechs Kürzel standen wörtlich an der Fertigkeit und am Rezept, und
-  wer eins nachzog, zog das andere nicht nach. Acht gibt es: `Ability`,
+  wer eins nachzog, zog das andere nicht nach. Neun gibt es: `Ability`,
   `Skill`, `Tool`, `Language`, `WeaponTraining`, `ArmorTraining`,
-  `KnowledgeField`, `State`.
+  `KnowledgeField`, `State`, `DrawTime`.
 
 Ein Zusammenschluss darf aus Zusammenschlüssen bestehen; `PlayerCharacter`
 besteht aus `Creature`, und `Creature` besteht aus siebzehn anderen.
@@ -304,6 +304,69 @@ bei den Haltern. Sonst reichte eine Freigabe weiter, als jemand gemeint hat.
 > über `atLevel` angehörten. Das war ein zweiter Weg zu „wer weiss das",
 > obwohl `Party` und `Group` schon Empfänger sein konnten, und in zwei Jahren
 > hat ihn niemand benutzt: kein Artikel, keine Kante.
+
+---
+
+## Sichtbarkeit
+
+**Die grobe Frage, und sie kommt vor der feinen.** Das Wissen sagt, welche
+*Felder* eines Artikels jemand liest; die Sichtbarkeit sagt, ob er den
+Artikel überhaupt bekommt. Beides zu einer Frage zu machen hiesse, einen
+Artikel dadurch zu verbergen, dass man alle seine Felder wegnimmt — und er
+stünde trotzdem in der Liste, mit Namen und Bereich.
+
+Der Bestandteil `Visibility` hat drei Felder, und alle drei werden gelesen:
+
+| Feld | Was es sagt |
+|---|---|
+| `audience` | die Stufe: `public` · `campaign` · `players` · `gm` |
+| `revealedTo` | ausdrücklich freigegeben — an Träger, nicht an Konten |
+| `hiddenFrom` | ausdrücklich verborgen, dieselben Träger |
+
+**`public` ist die Vorgabe und heisst: jeder darf es sehen.** Ein Artikel,
+den niemand eingestuft hat, ist offen — wer etwas verbergen will, sagt es,
+und nicht umgekehrt. Andersherum wäre die halbe Kampagne unsichtbar, und
+niemand wüsste, warum.
+
+Die vier Stufen von aussen nach innen:
+
+- **`public`** — jedes Konto.
+- **`campaign`** — jedes Konto **am Tisch**: eines, dessen Figur oder Gruppe
+  eine `Access`-Karte trägt. Ein Konto ohne Figur hat noch keinen Platz.
+- **`players`** — die Spielenden: `Access.role` `player` oder `co-gm`, keine
+  Zuschauer. Ein Mitleiter sitzt hinter dem Schirm und nicht davor.
+- **`gm`** — nur die Leitung.
+
+**Die Reihenfolge ist die Regel:** `hiddenFrom` schlägt `revealedTo` schlägt
+`audience`. Das ausdrückliche Verbot gewinnt, weil es die Ausnahme ist, die
+jemand von Hand eingetragen hat; eine Freigabe, die ein Verbot aufhebt, wäre
+die Sorte Regel, deren Wirkung man erst am Tisch merkt.
+
+Beide Listen nennen **Träger** — `Creature`, `Party`, `Faction`, `Group`,
+dieselben vier wie `knownBy`, denn es ist dieselbe Frage: wem gehört etwas.
+Ein Träger zählt einen Schritt weit auch als seine Gruppe: wer den
+Reisetrupp nennt, verbirgt es vor seinen Mitgliedern.
+
+**Vererbt wird nichts.** Ein Artikel sagt für sich, wer ihn sehen darf; dass
+das Zimmer zum Haus gehört, sagt nichts darüber, wer das Zimmer kennt. Es
+gab dafür ein Feld (`inherit`, Vorgabe `true`), und es war nie ausgewertet —
+sobald es stimmen soll, braucht es eine **Tiefe**, und eine Vererbung ohne
+Tiefe gibt irgendwann einen ganzen Zweig frei, den niemand gemeint hat.
+Bewusst weggelassen, bis jemand sie braucht.
+
+> **Nicht mehr:** `scope` — nirgends erklärt und nirgends gelesen; ein Feld,
+> dessen Bedeutung niemand aufgeschrieben hat, füllt beim nächsten Mal
+> jemand anders als beim letzten. Und `sharedUsers` — dasselbe wie
+> `revealedTo`, nur in Konto-Ids statt in Artikel-Ids. Alle sechs Felder
+> standen da, weil zwei Entwürfe sich nicht einig waren und jemand die
+> Vereinigung nahm; gefüllt war keines, in fünfundsiebzig Artikeln.
+
+**Wo die Leitung je Kampagne wohnt, ist offen.** Heute ist es das
+Konto-Merkmal `app_user.is_admin` — eines für die ganze Installation, und es
+schaltet Register, Einladungen und unbeschnittenes Lesen. Wer in einer Runde
+leitet, kann in einer anderen mitspielen; diese Rolle gehört an `Access` und
+ist noch nicht entschieden. Bis dahin heisst `gm`: die Verwaltung dieser
+Installation.
 
 ---
 

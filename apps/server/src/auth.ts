@@ -34,7 +34,7 @@ export const ATTEMPT_WINDOW_MINUTES = 15;
 export interface User {
   id: string;
   name: string;
-  isGm: boolean;
+  isAdmin: boolean;
   /** **Mehrere Figuren je Konto.** Wer zwei spielt, ist trotzdem eine
    *  Person: was die eine erfahren hat, weiss er auch, wenn er auf die
    *  andere schaut, und die Freigabeliste zeigt einen Absender. */
@@ -48,7 +48,7 @@ export interface User {
 export interface Invite {
   codeHash: string;
   label?: string | undefined;
-  isGm: boolean;
+  isAdmin: boolean;
   /** Bindet die neue Person gleich an eine Figur. Das ist der „spezifische
    *  Link": einer, der weiss, wer kommt. */
   actorId?: string | undefined;
@@ -139,6 +139,6 @@ export function sessionExpiry(from: Date = new Date()): Date {
  */
 export function mayWrite(user: User | null, ownedIds: Set<string>, id: string): boolean {
   if (!user || user.disabledAt) return false;
-  if (user.isGm) return true;
+  if (user.isAdmin) return true;
   return ownedIds.has(id);
 }

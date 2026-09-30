@@ -1732,6 +1732,109 @@ async function seite(datei, warten) {
   pruefe('and whoever does not have it does not see it',
     wZugeteilt.alsGm === 1 && wZugeteilt.alsSpieler === 0, wZugeteilt);
 
+  /* ---- Sichtbarkeit: drei Felder, und alle drei werden gelesen ----
+     Es waren sechs, und gelesen wurden zwei. `scope` war nirgends erklärt,
+     `sharedUsers` dasselbe wie `revealedTo` in Konto-Ids, `inherit` eine
+     Vererbung, die nicht stimmt (ein Haus zu kennen heisst nicht, jedes
+     Zimmer darin zu kennen) — die drei sind weg. Was bleibt, gilt in
+     dieser Reihenfolge: `hiddenFrom` schlägt `revealedTo` schlägt
+     `audience`. */
+  const sichtFelder = await p.evaluate(() => {
+    const T = window.__T__;
+    const props = ((T.REG.interfaces.Visibility || {}).schema || {}).properties || {};
+    return {
+      felder: Object.keys(props),
+      vorgabe: (props.audience || {})['default'],
+      stufen: (props.audience || {})['enum'] || [],
+      artRevealed: T.fieldKind(props.revealedTo),
+      zielRevealed: ((props.revealedTo || {}).target || {}).interfaces || [],
+    };
+  });
+  pruefe('visibility is three fields, not six',
+    sichtFelder.felder.length === 3
+    && ['audience', 'revealedTo', 'hiddenFrom'].every((f) => sichtFelder.felder.includes(f)),
+    sichtFelder);
+  pruefe('public is the default and the widest step',
+    sichtFelder.vorgabe === 'public' && sichtFelder.stufen[0] === 'public'
+    && sichtFelder.stufen.length === 4, sichtFelder);
+  /* Ein Verweisfeld nennt sein Ziel, auch als Liste — sonst nähme
+     „Revealed to" eine Rüstung. */
+  pruefe('the two lists are links to holders and say so',
+    sichtFelder.artRevealed === 'links'
+    && sichtFelder.zielRevealed.join(',') === 'Creature,Party,Faction,Group', sichtFelder);
+
+  const stufen = await p.evaluate(() => {
+    const T = window.__T__;
+    const zeile = (rolle) => ['public', 'campaign', 'players', 'gm']
+      .map((a) => (T.audienceAllows(a, rolle) ? 1 : 0)).join('');
+    return {
+      spieler: zeile('player'),
+      mitleiter: zeile('co-gm'),
+      zuschauer: zeile('spectator'),
+      ohnePlatz: zeile(null),
+      rolleSela: T.tableRole('pc_sela'),
+      rolleOhne: T.tableRole(''),
+    };
+  });
+  /* Vier Stufen × vier Rollen, als Tabelle lesbar: die Reihenfolge ist
+     public · campaign · players · gm. */
+  pruefe('the four steps narrow from outside in',
+    stufen.spieler === '1110' && stufen.mitleiter === '1110'
+    && stufen.zuschauer === '1100' && stufen.ohnePlatz === '1000', stufen);
+  pruefe('the role at the table comes from Access.role, not from the account',
+    stufen.rolleSela === 'player' && stufen.rolleOhne === null, stufen);
+
+  const rang = await p.evaluate(async () => {
+    const T = window.__T__;
+    const held = [...T.ENT.values()].find((e) => (e.name || '') === 'Probe hero');
+    const vorherActor = T.UI.asActor;
+    const vorherKarte = (held.components || {}).Visibility;
+    const setze = (v) => {
+      if (v === null) delete held.components.Visibility;
+      else held.components.Visibility = v;
+    };
+    const sicht = (actor) => {
+      T.UI.asActor = actor;
+      const r = T.articleVisible(held);
+      T.UI.asActor = vorherActor;
+      return r;
+    };
+    setze(null);
+    const ohneKarte = sicht('pc_sela');
+    setze({ audience: 'gm' });
+    const nurSL = sicht('pc_sela');
+    const nurSLalsGm = sicht('');
+    setze({ audience: 'public' });
+    const offen = sicht('pc_sela');
+    /* Eine Freigabe schlägt die Stufe — bis hierher war `revealedTo` nie
+       gelesen, also eine Freigabe, die nichts tat. */
+    setze({ audience: 'gm', revealedTo: ['pc_sela'] });
+    const freigegeben = sicht('pc_sela');
+    const nichtFreigegeben = sicht('pc_rook');
+    /* Und ein Verbot schlägt die Freigabe. */
+    setze({ audience: 'public', revealedTo: ['pc_sela'], hiddenFrom: ['pc_sela'] });
+    const verboten = sicht('pc_sela');
+    /* Der Träger ist einer Schritt weit auch seine Gruppe: beide Figuren
+       gehören `pa_wacht` an. */
+    setze({ hiddenFrom: ['pa_wacht'] });
+    const ueberGruppe = { sela: sicht('pc_sela'), rook: sicht('pc_rook') };
+    if (vorherKarte === undefined) delete held.components.Visibility;
+    else held.components.Visibility = vorherKarte;
+    T.render();
+    await new Promise((r) => setTimeout(r, 200));
+    return { ohneKarte, nurSL, nurSLalsGm, offen, freigegeben, nichtFreigegeben,
+      verboten, ueberGruppe };
+  });
+  pruefe('an article nobody classified is open',
+    rang.ohneKarte === true && rang.offen === true, rang);
+  pruefe('audience gm keeps it with the GM',
+    rang.nurSL === false && rang.nurSLalsGm === true, rang);
+  pruefe('revealedTo beats the step, and only for whom it names',
+    rang.freigegeben === true && rang.nichtFreigegeben === false, rang);
+  pruefe('hiddenFrom beats revealedTo', rang.verboten === false, rang);
+  pruefe('naming the party hides it from its members',
+    rang.ueberGruppe.sela === false && rang.ueberGruppe.rook === false, rang);
+
   await p.evaluate(() => {
     const sel = [...document.querySelectorAll('#aside select.i')]
       .find((s) => [...s.options].some((o) => /assign to/.test(o.textContent)));

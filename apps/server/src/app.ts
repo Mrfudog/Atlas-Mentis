@@ -10,7 +10,13 @@
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyCookie from '@fastify/cookie';
-import { EntitySchema, RegistrySchema, redactEntity, validateEntity } from '@nw/model';
+import {
+  EntitySchema,
+  RegistrySchema,
+  articleVisible,
+  redactEntity,
+  validateEntity,
+} from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
 import type { Repository } from './repo.js';
 import {
@@ -120,7 +126,7 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
 
        `null` heisst „alles" und nicht „nichts": die Spielleitung bekommt
        keine Liste über den ganzen Bestand geschickt. */
-    const writable = user && !user.isGm ? [...(await ownedBy(user))] : null;
+    const writable = user && !user.isAdmin ? [...(await ownedBy(user))] : null;
     /* Die Figuren mit Namen, nicht nur mit Id. Die Maske müsste sie sonst
        einzeln nachladen, bevor sie „meine Figuren" überhaupt beschriften
        kann — und täte es beim ersten Mal falsch. */
@@ -136,7 +142,7 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
       /* Ein frischer Server sagt es geradeheraus. Das ist keine Auskunft,
          die jemandem nützt, den es nichts angeht: wer den Port erreicht,
          sieht ohnehin, dass nichts eingerichtet ist. */
-      setup: count === 0 ? 'Kein Konto angelegt. `pnpm --filter @nw/server user add <name> --gm`' : null,
+      setup: count === 0 ? 'Kein Konto angelegt. `pnpm --filter @nw/server user add <name> --admin`' : null,
       /* Ob sich hier überhaupt jemand anmelden kann, ohne dass die
          Spielleitung etwas tut. Die Maske zeigt den Registrieren-Knopf nur
          dann — einer, der bei jedem Versuch „Einladung fehlt" sagt, ist
@@ -262,7 +268,7 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
         id,
         name,
         passwordHash: await hashPassword(password),
-        isGm: invite.isGm,
+        isAdmin: invite.isAdmin,
         actorIds: invite.actorId ? [invite.actorId] : [],
       });
       await repo.clearAttempts(fold, origin);
@@ -298,10 +304,10 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
    */
   app.get('/api/invites', async (request, reply) => {
     const user = await viewerOf(request);
-    if (!user?.isGm) return reply.code(403).send({ error: 'Nicht für dich.' });
+    if (!user?.isAdmin) return reply.code(403).send({ error: 'Nicht für dich.' });
     return (await repo.listInvites()).map((i) => ({
       label: i.label ?? null,
-      isGm: i.isGm,
+      isAdmin: i.isAdmin,
       actorId: i.actorId ?? null,
       usesLeft: i.usesLeft ?? null,
       expiresAt: i.expiresAt ?? null,
@@ -311,11 +317,11 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
     }));
   });
 
-  app.post<{ Body: { label?: string; gm?: boolean; actorId?: string; uses?: number; days?: number } }>(
+  app.post<{ Body: { label?: string; admin?: boolean; actorId?: string; uses?: number; days?: number } }>(
     '/api/invites',
     async (request, reply) => {
       const user = await viewerOf(request);
-      if (!user?.isGm) return reply.code(403).send({ error: 'Nicht für dich.' });
+      if (!user?.isAdmin) return reply.code(403).send({ error: 'Nicht für dich.' });
       const b = request.body ?? {};
       const code = newInviteCode();
       const uses = b.uses == null ? undefined : Math.max(1, Math.floor(Number(b.uses) || 1));
@@ -323,7 +329,7 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
       const invite: Invite = {
         codeHash: hashToken(code),
         label: b.label?.trim() || undefined,
-        isGm: b.gm === true,
+        isAdmin: b.admin === true,
         actorId: b.actorId?.trim() || undefined,
         usesLeft: uses,
         expiresAt: days ? new Date(Date.now() + days * 86400000).toISOString() : undefined,
@@ -338,7 +344,7 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
 
   app.delete<{ Params: { handle: string } }>('/api/invites/:handle', async (request, reply) => {
     const user = await viewerOf(request);
-    if (!user?.isGm) return reply.code(403).send({ error: 'Nicht für dich.' });
+    if (!user?.isAdmin) return reply.code(403).send({ error: 'Nicht für dich.' });
     const weg = await repo.dropInvite(request.params.handle);
     if (!weg) return reply.code(404).send({ error: 'Nicht gefunden' });
     return { ok: true };
@@ -384,7 +390,7 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
       return reply.code(401).send({ error: 'Nicht angemeldet.' });
     }
     if (!schreibt) return;
-    if (user.isGm) return;
+    if (user.isAdmin) return;
 
     /* Ein Spieler schreibt seine Figur und was an ihr hängt — und sonst
        nichts. Das Register gehört der Spielleitung: eine Registerzeile zu
@@ -447,7 +453,7 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
    */
   async function sieve(request: FastifyRequest, entities: Entity[]): Promise<Entity[]> {
     const user = await viewerOf(request);
-    if (!user || user.isGm) return entities;
+    if (!user || user.isAdmin) return entities;
     const registry = await repo.getRegistry();
     /* Der Zusammenhang ist immer der ganze Bestand, auch wenn nur ein
        Artikel gesiebt wird: welche Information ein Feld beansprucht und
@@ -468,7 +474,19 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
        Spielleitung und sieht alles, `[]` heisst ein Konto ohne Figur und
        sieht genau das Offene. Das ist die richtige Vorgabe — ein Konto
        ohne Figur ist eines, dem noch nichts zugeteilt wurde. */
-    return entities.map((e) => redactEntity(registry, alle, e, user.actorIds ?? [], gmFields));
+    /* **Zwei Fragen, und die grobe kommt zuerst.** Die Sichtbarkeit sagt,
+       ob dieser Artikel überhaupt an ihn geht; das Wissen sagt, welche
+       Felder darin. Sie zusammenzulegen hiesse, einen Artikel dadurch zu
+       verbergen, dass man alle seine Felder wegnimmt — und er stünde
+       trotzdem in der Liste, mit Namen und Bereich.
+
+       Bis hierher war die grobe Frage nur eine Angabe in der Karte, die
+       niemand auswertete: `audience: 'gm'` stand da, und der Server
+       schickte den Artikel. */
+    const augen = user.actorIds ?? [];
+    return entities
+      .filter((e) => articleVisible(alle, e, augen))
+      .map((e) => redactEntity(registry, alle, e, augen, gmFields));
   }
 
   app.get('/api/entities', async (request) => sieve(request, await repo.listEntities()));
@@ -477,7 +495,13 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
     const entity = await repo.getEntity(request.params.id);
     if (!entity) return reply.code(404).send({ error: 'Nicht gefunden' });
     const [einer] = await sieve(request, [entity]);
-    return einer ?? entity;
+    /* Fällt er durchs Sieb, gibt es ihn für diesen Betrachter nicht.
+       „Verboten" wäre die genauere Auskunft und die falsche: sie sagt, dass
+       da etwas ist. Vorher stand hier `einer ?? entity` — der Rückfall
+       schickte genau den Artikel, den das Sieb gerade zurückgehalten
+       hatte. */
+    if (!einer) return reply.code(404).send({ error: 'Nicht gefunden' });
+    return einer;
   });
 
   app.put<{ Params: { id: string }; Body: unknown }>(

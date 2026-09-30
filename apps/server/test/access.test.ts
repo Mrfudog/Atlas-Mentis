@@ -56,13 +56,13 @@ function makeApp() {
 async function addUser(
   repo: InMemoryRepository,
   name: string,
-  opts: { gm?: boolean; actorId?: string; actorIds?: string[] } = {},
+  opts: { admin?: boolean; actorId?: string; actorIds?: string[] } = {},
 ) {
   await repo.putUser({
     id: randomUUID(),
     name,
     passwordHash: await hashPassword(PASSWORT),
-    isGm: opts.gm ?? false,
+    isAdmin: opts.admin ?? false,
     actorIds: opts.actorIds ?? (opts.actorId ? [opts.actorId] : []),
   });
 }
@@ -108,13 +108,13 @@ describe('logging in', () => {
   let repo: InMemoryRepository;
   beforeEach(async () => {
     ({ app, repo } = makeApp());
-    await addUser(repo, 'Basil', { gm: true });
+    await addUser(repo, 'Basil', { admin: true });
   });
 
   it('takes the right password and hands out a session', async () => {
     const res = await login(app, 'Basil');
     expect(res.statusCode).toBe(200);
-    expect(res.json().user.isGm).toBe(true);
+    expect(res.json().user.isAdmin).toBe(true);
     expect(res.json().user.passwordHash).toBeUndefined();
     expect(cookieOf(res)).toMatch(/^nw_session=/);
   });
@@ -175,7 +175,7 @@ describe('who may write what', () => {
   let repo: InMemoryRepository;
   beforeEach(async () => {
     ({ app, repo } = makeApp());
-    await addUser(repo, 'Basil', { gm: true });
+    await addUser(repo, 'Basil', { admin: true });
     await addUser(repo, 'Sela', { actorId: 'pc_rook' });
   });
 
@@ -304,8 +304,8 @@ describe('the user command', () => {
 
   it('adds, lists, disables and re-opens an account', async () => {
     expect(await runUserCommand(repo, ['list'])).toMatch(/Kein Konto/);
-    await runUserCommand(repo, ['add', 'Basil', '--gm']);
-    expect(await runUserCommand(repo, ['list'])).toMatch(/Basil {2}\(Spielleitung\)/);
+    await runUserCommand(repo, ['add', 'Basil', '--admin']);
+    expect(await runUserCommand(repo, ['list'])).toMatch(/Basil {2}\(Verwaltung\)/);
     await runUserCommand(repo, ['add', 'Sela', '--actor', 'pc_rook']);
     expect(await runUserCommand(repo, ['list'])).toMatch(/spielt pc_rook/);
     await runUserCommand(repo, ['disable', 'Sela']);
@@ -379,7 +379,7 @@ describe('what a player gets to read', () => {
       : info;
     const repo = new InMemoryRepository(seedRegistry, [rook, inv, geheimnis, mitWissen]);
     const app = buildApp({ repo });
-    await addUser(repo, 'Basil', { gm: true });
+    await addUser(repo, 'Basil', { admin: true });
     await addUser(repo, 'Sela', { actorId: 'pc_rook' });
     return { app, repo };
   }
@@ -446,6 +446,74 @@ describe('what a player gets to read', () => {
     });
     expect(JSON.stringify(res.json())).not.toMatch(/Aurinax/);
   });
+
+  /* ---- Die grobe Frage, und sie kommt vor der feinen ----
+     Bis hierher siebte der Server nur Felder: `audience: 'gm'` stand in
+     der Karte, und der Artikel ging trotzdem raus. Das Feld auszuwerten
+     und den Artikel zu schicken ist keine halbe Sichtbarkeit, sondern
+     keine. */
+  const nurSL: Entity = {
+    id: 'n_plan',
+    interfaces: ['Creature'],
+    name: 'Der Plan hinter allem',
+    components: {
+      Identity: { name: 'Der Plan hinter allem', id: 'npc-0002', aliases: [] },
+      Status: { status: 'idea' },
+      Visibility: { audience: 'gm' },
+    },
+    relations: [],
+  };
+
+  async function mitStufe(vis: Record<string, unknown>) {
+    const artikel: Entity = { ...nurSL, components: { ...nurSL.components, Visibility: vis } };
+    const repo = new InMemoryRepository(seedRegistry, [rook, inv, artikel]);
+    const app = buildApp({ repo });
+    await addUser(repo, 'Basil', { admin: true });
+    await addUser(repo, 'Sela', { actorId: 'pc_rook' });
+    return app;
+  }
+
+  async function liest(app: ReturnType<typeof buildApp>, wer: string) {
+    const keks = cookieOf(await login(app, wer));
+    const einzeln = await app.inject({
+      method: 'GET',
+      url: '/api/entities/n_plan',
+      headers: { cookie: keks },
+    });
+    const liste = await app.inject({
+      method: 'GET',
+      url: '/api/entities',
+      headers: { cookie: keks },
+    });
+    return {
+      code: einzeln.statusCode,
+      inListe: (liste.json() as Entity[]).some((e) => e.id === 'n_plan'),
+    };
+  }
+
+  it('keeps an article marked gm away from a player, list and single read', async () => {
+    const app = await mitStufe({ audience: 'gm' });
+    expect(await liest(app, 'Basil')).toEqual({ code: 200, inListe: true });
+    /* 404 und nicht 403: „verboten" wäre die genauere Auskunft und die
+       falsche — sie sagt, dass da etwas ist. */
+    expect(await liest(app, 'Sela')).toEqual({ code: 404, inListe: false });
+  });
+
+  it('treats an article nobody classified as public', async () => {
+    const app = await mitStufe({});
+    expect(await liest(app, 'Sela')).toEqual({ code: 200, inListe: true });
+  });
+
+  it('lets revealedTo beat the step and hiddenFrom beat revealedTo', async () => {
+    const frei = await mitStufe({ audience: 'gm', revealedTo: ['pc_rook'] });
+    expect(await liest(frei, 'Sela')).toEqual({ code: 200, inListe: true });
+    const weg = await mitStufe({
+      audience: 'public',
+      revealedTo: ['pc_rook'],
+      hiddenFrom: ['pc_rook'],
+    });
+    expect(await liest(weg, 'Sela')).toEqual({ code: 404, inListe: false });
+  });
 });
 
 /* ---------------------------------------------------------------------
@@ -459,13 +527,13 @@ describe('what a player gets to read', () => {
 describe('signing yourself up', () => {
   async function mitEinladung(
     repo: InMemoryRepository,
-    opts: { uses?: number; actorId?: string; gm?: boolean; expired?: boolean } = {},
+    opts: { uses?: number; actorId?: string; admin?: boolean; expired?: boolean } = {},
   ) {
     const code = 'einladung-zum-pruefen';
     await repo.putInvite({
       codeHash: hashToken(code),
       label: 'Prüfung',
-      isGm: opts.gm ?? false,
+      isAdmin: opts.admin ?? false,
       actorId: opts.actorId,
       usesLeft: opts.uses,
       expiresAt: opts.expired ? new Date(Date.now() - 1000).toISOString() : undefined,
@@ -495,7 +563,7 @@ describe('signing yourself up', () => {
     expect(cookieOf(res)).toMatch(/^nw_session=/);
     const me = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie: cookieOf(res) } });
     expect(me.json().user.name).toBe('Neu');
-    expect(me.json().user.isGm).toBe(false);
+    expect(me.json().user.isAdmin).toBe(false);
   });
 
   /* Der spezifische Link: einer, der weiss, wer kommt. */
@@ -528,7 +596,7 @@ describe('signing yourself up', () => {
      verliert jemand seine Einladung an einen Tippfehler. */
   it('does not spend the invitation on a name that is taken', async () => {
     const { app, repo } = makeApp();
-    await addUser(repo, 'Basil', { gm: true });
+    await addUser(repo, 'Basil', { admin: true });
     const code = await mitEinladung(repo, { uses: 1 });
     expect((await anmelden(app, { name: 'basil', password: PASSWORT, invite: code })).statusCode)
       .toBe(409);
@@ -558,7 +626,7 @@ describe('signing yourself up', () => {
      gespeichert ist nur sein Hash. */
   it('shows a new invitation code once and never again', async () => {
     const { app, repo } = makeApp();
-    await addUser(repo, 'Basil', { gm: true });
+    await addUser(repo, 'Basil', { admin: true });
     const keks = cookieOf(await login(app, 'Basil'));
     const neu = await app.inject({
       method: 'POST',

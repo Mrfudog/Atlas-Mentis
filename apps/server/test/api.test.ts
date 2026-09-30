@@ -34,7 +34,7 @@ async function makeApp(entities: Entity[] = []) {
     id: 'u_test',
     name: 'Prüfer',
     passwordHash: await hashPassword('nebel-wacht-am-tor'),
-    isGm: true,
+    isAdmin: true,
   });
   const res = await app.inject({
     method: 'POST',

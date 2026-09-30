@@ -32,7 +32,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
@@ -82,7 +82,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`Todos`* — `items` *array*
@@ -124,7 +124,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
@@ -174,7 +174,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
@@ -243,7 +243,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Lore`* — `lore` *long*
@@ -293,7 +293,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
@@ -344,7 +344,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
@@ -393,7 +393,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Access`* — `userIds` *array*, `role` *player | co-gm | spectator*
@@ -444,7 +444,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Lore`* — `lore` *long*
@@ -498,7 +498,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
@@ -569,7 +569,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
@@ -624,7 +624,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
 - *`Tags`* — `tags` *tags*
 - *`Notes`* — `note` *long*
 
@@ -665,7 +665,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
 - *`Tags`* — `tags` *tags*
 - *`Todos`* — `items` *array*
 - *`Tactics`* — `tactics` *long*
@@ -714,7 +714,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Notes`* — `note` *long*
@@ -830,7 +830,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
@@ -1021,7 +1021,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
 - *`Tags`* — `tags` *tags*
 - *`Notes`* — `note` *long*
 
@@ -1445,7 +1445,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `audience` *gm | campaign | players | public*, `scope` *string*, `revealedTo` *array*, `hiddenFrom` *array*, `sharedUsers` *array*, `inherit` *boolean*
+- `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
 
 **Kanten von hier**
 

@@ -14,7 +14,7 @@ Die Anwendung bindet auf `127.0.0.1`, und der Reverse Proxy ist das, was nach
 aussen zeigt. Das ist richtig so — aber **„nur das Heimnetz" ist keine
 Zugangskontrolle, sondern eine Annahme über das Heimnetz.** Jedes Gerät darin,
 jeder Gast im WLAN, jeder Dienst mit einer Schwachstelle spricht dann mit
-einer Anwendung, die jeden für die Spielleitung hält.
+einer Anwendung, die jeden für die Verwaltung hält.
 
 ---
 
@@ -81,20 +81,53 @@ Server und Oberfläche gleichermassen, und es gibt es nur einmal. Weg gehen
 Die Kanten bleiben. Eine Verbindung zu verbergen hiesse, den Rückbezug am
 anderen Ende mitzuverbergen, und das ist eine andere Frage als diese.
 
+### Und vorher die grobe Frage
+
+`redactEntity` siebt **Felder**. Ob ein Artikel überhaupt an jemanden geht,
+sagt `articleVisible` — und das tat bis zum 30.9. niemand: `audience: 'gm'`
+stand in der Karte, und der Server schickte den Artikel trotzdem. Ein Feld
+auszuwerten und die Antwort dann doch zu schicken ist keine halbe
+Sichtbarkeit, sondern keine.
+
+Jetzt filtert `sieve` zuerst und siebt danach. Ein Artikel, den der
+Betrachter nicht sehen darf, fehlt in der Liste und beantwortet den
+Einzelabruf mit **404** — „verboten" wäre die genauere Auskunft und die
+falsche: sie sagt, dass da etwas ist. (An der Stelle stand `einer ?? entity`:
+der Rückfall schickte genau den Artikel, den das Sieb zurückgehalten hatte.)
+
+Die Regel selbst steht in `packages/model/src/visibility.ts` und ist in
+[Begriffe.md](Begriffe.md#sichtbarkeit) ausgeschrieben: `hiddenFrom` schlägt
+`revealedTo` schlägt `audience`, und `public` ist die Vorgabe.
+
 ---
 
 ## Wer was darf
 
 Die Regel ist kurz, weil eine lange niemand mehr nachliest:
 
-- **Die Spielleitung darf alles.**
+- **Die Verwaltung darf alles.**
 - **Ein Spieler liest alles** (was die Sichtbarkeit ihn lesen lässt) **und
   schreibt genau seine Figur und was an ihr hängt.** „Hängt an" heisst: über
   eine Kante aus `OWNING_RELATIONS` — `carries`, `holds`, `crafting`. Die
   Kante steht in den Daten, also wird sie dort nachgesehen und nicht im
   Server behauptet.
-- **Das Register gehört der Spielleitung.** Eine Registerzeile zu ändern
+- **Das Register gehört der Verwaltung.** Eine Registerzeile zu ändern
   heisst, die Regeln zu ändern, und die Antwort sagt das auch so.
+
+### Verwaltung ist keine Rolle am Tisch
+
+Das Konto-Merkmal hiess `is_gm` und heisst seit dem 30.9. **`is_admin`**. Es
+gilt für die **ganze Installation** und schaltet vier Dinge: alles schreiben,
+das Register ändern, Einladungen anlegen — und unbeschnitten lesen. Das ist
+eine Verwaltungsrolle. „GM" las sich aber wie eine Rolle am Tisch: als stünde
+dort, wer in *dieser* Kampagne leitet.
+
+Der Unterschied ist keiner auf dem Papier. Wer in einer Runde leitet, kann in
+einer anderen mitspielen; ein Merkmal am Konto kann das nicht sagen. Die
+Rolle je Tisch steht in der `Access`-Karte an der Figur (`Access.role`:
+`player`, `co-gm`, `spectator`) — und **welche Rolle dort „leitet" heisst,
+ist noch nicht entschieden.** Bis dahin heisst `Visibility.audience: 'gm'`:
+die Verwaltung dieser Installation.
 
 ---
 
@@ -105,7 +138,7 @@ herkommen, und jeder Weg dafür über HTTP ist eine Tür, die danach offen
 bleibt. Wer auf dem Server eine Shell hat, kommt ohnehin an die Datenbank.
 
 ```bash
-pnpm --filter @nw/server user add basil --gm
+pnpm --filter @nw/server user add basil --admin
 pnpm --filter @nw/server user add sela --actor pc_sela
 pnpm --filter @nw/server user password basil
 pnpm --filter @nw/server user disable sela
@@ -138,7 +171,7 @@ und eine Artikelansicht. Drei Sachen daran sind Absicht:
   sie lüde dazu ein, die erste wegzulassen.
 - **Und sie rechnet nicht aus, was jemand schreiben darf.** `/api/me` gibt
   `writable` mit — eine Liste von Ids, oder `null` für „alles" (die
-  Spielleitung bekommt keine Aufzählung über den ganzen Bestand). Der Server
+  Verwaltung bekommt keine Aufzählung über den ganzen Bestand). Der Server
   wendet die Regel ohnehin an; sie in der Maske nachzurechnen wäre die zweite
   Stelle, an der jemand eine Kante vergisst, und dann stünde dort ein Knopf,
   den der Server danach abweist.
@@ -168,10 +201,14 @@ in der Sitzung aus.
 - **Die Bereiche in der Oberfläche.** Anmeldung, Liste, Artikelansicht und
   Bearbeiten stehen; Karten, Bogen, Inventar, Boards und Handwerk sind im
   Prototyp und noch nicht dort.
-- **Einladungen für Spieler** (REQ-034). Heute legt die Spielleitung das
-  Konto an und sagt das Passwort; ein Einladungstoken wäre bequemer und ist
-  eine eigene Entscheidung — auch weil ein Token je Figur nie ins öffentliche
-  Repo gehört (REQ-199).
+- **Die Leitung je Tisch.** `is_admin` gilt für die Installation, und das ist
+  richtig für Register, Konten und Einladungen. Wer in *dieser* Kampagne
+  leitet, steht nirgends: `Access.role` kennt `player`, `co-gm` und
+  `spectator` und hängt an `Creature` und `Party`, `Campaign` hat gar keine
+  eigenen Felder. Solange das so ist, meint `Visibility.audience: 'gm'` die
+  Verwaltung. Ein Vorschlag liegt vor (`Access` als Feld mit mehreren
+  `{user, role}`, das `Campaign` mitnimmt, und eine Aufzählungszeile, die
+  sich `audience` und `Access.role` teilen) — entschieden ist er nicht.
 - **Einen zweiten Blick auf das Sieb.** `redactEntity` hält Felder, Blöcke
   und den Namen zurück; die Kanten bleiben, weil eine verborgene Verbindung
   den Rückbezug am anderen Ende mitverbergen müsste und das eine andere

@@ -24,7 +24,7 @@ export class ApiError extends Error {
 }
 
 export interface Me {
-  user: { id: string; name: string; isGm: boolean; actorId?: string } | null;
+  user: { id: string; name: string; isAdmin: boolean; actorId?: string } | null;
   /**
    * Welche Artikel dieser Betrachter schreiben darf. **`null` heisst alles**
    * (die Spielleitung), eine Liste heisst genau diese. Sie kommt vom Server,
