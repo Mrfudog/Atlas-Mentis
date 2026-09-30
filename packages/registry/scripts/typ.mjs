@@ -97,10 +97,12 @@ function tabelle(art) {
   const zeilen = keys.map((k) => {
     const p = props[k];
     const z = zaehle(art, k);
+    /* Ein `|` in einer Aufzählung schliesst sonst die Spalte: „gm |
+       campaign" wurden zwei Zellen, und die Zeile verrutschte. */
     const spalten = [
       `\`${k}\``,
       p.title ?? k,
-      wieFeld(p),
+      wieFeld(p).replace(/\|/g, '\u2223'),
       pflicht.has(k) ? '**ja**' : '—',
     ];
     if (mitZahl) {

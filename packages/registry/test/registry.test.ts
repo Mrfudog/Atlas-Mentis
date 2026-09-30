@@ -393,19 +393,50 @@ describe('a container carries its grid and its zones', () => {
 /* ---- Was ein Stand ist, steht immer als Eingabe da ----
    Nicht vererbt: ein Haken an einem Obertyp machte die ganze Kreatur zum
    Formular. Der Typ, der ein Feld erklärt, weiss, ob es ein Stand ist. */
-describe('a type says whether its fields are always edited', () => {
-  it('marks the state, not the fixed numbers', () => {
-    expect(seedRegistry.interfaces['Vitals']?.alwaysEdit).toBe(true);
-    expect(seedRegistry.interfaces['Statblock']?.alwaysEdit).toBeUndefined();
-    expect(seedRegistry.interfaces['Creature']?.alwaysEdit).toBeUndefined();
+describe('a field says whether it is always edited', () => {
+  /* **Am Feld und nur dort.** Am Typ war es ein Schalter für zwanzig
+     Felder auf einmal: an `Vitals` sind die Trefferpunkte ein Stand, die
+     Zustandsliste aber ein Satz Häkchen und die Trefferwürfel Punkte. Wer
+     jedes Feld einzeln benennt, benennt auch die Ausnahme. */
+  it('marks the state, and leaves the rest alone', () => {
+    const v = seedRegistry.interfaces['Vitals']?.schema?.properties;
+    expect(v?.['hp']?.alwaysEdit).toBe(true);
+    expect(v?.['hpTemp']?.alwaysEdit).toBe(true);
+    expect(v?.['exhaustion']?.alwaysEdit).toBe(true);
+    /* Häkchen und Punkte zeichnet der Bogen ohnehin anklickbar. */
+    expect(v?.['conditions']?.alwaysEdit).toBeUndefined();
+    expect(v?.['hitDiceLeft']?.alwaysEdit).toBeUndefined();
+    /* Am Statblock ist `hp` das Maximum — eine Festlegung. */
+    expect(seedRegistry.interfaces['Statblock']?.schema?.properties['hp']?.alwaysEdit)
+      .toBeUndefined();
   });
 
-  it('and a single field may say it for itself', () => {
+  it('and the travel counters say it too', () => {
     const p = seedRegistry.interfaces['Party']?.schema?.properties;
     expect(p?.['day']?.alwaysEdit).toBe(true);
     expect(p?.['watch']?.alwaysEdit).toBe(true);
     /* Das Motto einer Gruppe ändert sich nicht unterwegs. */
     expect(p?.['motto']?.alwaysEdit).toBeUndefined();
+  });
+
+  /* **Keine Zeile sagt es mehr am Typ.** `InterfaceDef` kennt das Feld
+     nicht, also kommt es beim Übersetzen nicht durch — und über die
+     Speichergrenze wird es **stillschweigend weggelassen**: `z.object`
+     streicht, was es nicht kennt, statt die Zeile abzulehnen. Das ist
+     Absicht (eine Zeile aus einer neueren Fassung soll nicht ganz
+     zurückgewiesen werden), heisst hier aber: was diese Prüfung hält, ist
+     der Seed und nicht die Grenze. */
+  it('is never said at the type any more', () => {
+    const amTyp = Object.entries(seedRegistry.interfaces)
+      .filter(([, d]) => (d as Record<string, unknown>)['alwaysEdit'] !== undefined)
+      .map(([n]) => n);
+    expect(amTyp).toEqual([]);
+    const gestrichen = RegistrySchema.parse({
+      ...seedRegistry,
+      interfaces: { Probe: { name: 'Probe', alwaysEdit: true } },
+    });
+    expect((gestrichen.interfaces['Probe'] as Record<string, unknown>)['alwaysEdit'])
+      .toBeUndefined();
   });
 
   /* Ein gerechnetes oder ausgegebenes Feld bekommt keine Eingabe — dort

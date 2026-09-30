@@ -876,13 +876,19 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        hp: { type: 'number', title: 'Hit points now' },
-        hpTemp: { type: 'number', title: 'Temporary HP' },
+        /* **Die Zahlen, die am Tisch gesetzt werden** (`alwaysEdit`):
+           Trefferpunkte, zeitweilige, Erschöpfung. Erst „Bearbeiten" zu
+           sagen sind drei Klicks für eine Zahl, und das mitten im Zug. Die
+           Zustandsliste und die Trefferwürfel stehen nicht dabei: die eine
+           ist ein Satz Häkchen, die anderen Punkte, und beides zeichnet der
+           Bogen ohnehin anklickbar. */
+        hp: { type: 'number', title: 'Hit points now', alwaysEdit: true },
+        hpTemp: { type: 'number', title: 'Temporary HP', alwaysEdit: true },
         hitDiceLeft: { type: 'number', title: 'Hit dice left' },
         deathSuccess: { type: 'number', title: 'Death saves passed', default: 0 },
         deathFail: { type: 'number', title: 'Death saves failed', default: 0 },
         inspiration: { type: 'boolean', title: 'Inspiration' },
-        exhaustion: { type: 'number', title: 'Exhaustion', default: 0 },
+        exhaustion: { type: 'number', title: 'Exhaustion', default: 0, alwaysEdit: true },
         conditions: { type: 'array', title: 'Conditions', items: { type: 'string' } },
         nat1: { type: 'number', title: 'Natural 1s', default: 0 },
       },

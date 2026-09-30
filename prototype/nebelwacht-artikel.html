@@ -212,7 +212,12 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 .regtree button[aria-current="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
 .regtree .ab{color:var(--dim);font-style:italic}
 .regtree em{font-style:normal;font-family:var(--ff-mono);font-size:10.5px;color:var(--dim);float:right}
-.regbody{padding:14px 16px;overflow-y:auto;max-height:72vh;background:var(--surface)}
+/* **Eine Seite, ein Scroll.** Der Registerkörper hatte sein eigenes
+   Fenster (`overflow-y:auto; max-height:72vh`) — und damit scrollte die
+   Feldliste im Kasten, während die Seite daneben stillstand. Wer unten
+   etwas aufklappte, verlor die Stelle und fand die Kopfzeile nicht mehr.
+   Aufklappbar ist es weiter, nur eben in der Seite. */
+.regbody{padding:14px 16px;background:var(--surface)}
 .regbody h3{font-family:var(--ff-disp);font-size:19px;margin:0 0 2px}
 .rsec{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--accent);
   border-bottom:1px solid var(--line);padding-bottom:3px;margin:20px 0 8px}
@@ -238,6 +243,11 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 .fmore{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
   gap:6px;padding:4px 0 8px 0;border-bottom:1px dashed var(--line)}
 .fmore label.f{margin-bottom:0}
+/* Die Erklärung zu einer Einstellung: über die ganze Breite, direkt
+   darunter. Wer nicht weiss, was eine Angabe auslöst, lässt sie leer. */
+.fhint{grid-column:1/-1;margin:-2px 0 4px;font-size:11px;line-height:1.45}
+.fhint code{font-family:var(--ff-mono);font-size:10.5px;
+  background:var(--surface2);padding:0 3px;border-radius:2px}
 .chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;font-size:12px;
   background:var(--surface2);border:1px solid var(--line);border-radius:999px}
@@ -452,6 +462,8 @@ ul.tlayout li.d3{padding-left:48px}
 /* Ein Typ, der über eine Kante hängt: seine Felder gehören dazu und stehen
    doch in einem anderen Artikel. Der gestrichelte Rahmen sagt genau das. */
 .fbox.part.linked{border-style:dashed}
+/* Kanten, die von hier ausgehen: kein Feld, aber Teil des Bildes. */
+.fbox.part.kanten{border-style:dotted}
 
 /* Eine Gruppe, von der nur ein Teil dasteht: an, aber nicht ganz. */
 .tgl.part{border-style:dashed}
@@ -2550,7 +2562,7 @@ function go(r){
    landete dadurch am Seitenanfang — und suchte die Stelle, an der er
    gerade war. Gemerkt wird über die Reihenfolge der Treffer: dieselben
    Kästen entstehen beim Zeichnen in derselben Ordnung. */
-var SCROLLER=".main,.rail,.aside,.regbody,.fbox";
+var SCROLLER=".main,.rail,.aside";
 function scrollMerken(){
   var stand=[];
   document.querySelectorAll(SCROLLER).forEach(function(n){ stand.push(n.scrollTop); });
@@ -3611,12 +3623,11 @@ function bulkFieldDialog(betroffen,durch){
    article from another one, where there is nothing to click yet.
    Derived fields never become inputs — they have no stored value to write
    back to, and offering one would promise an edit that cannot happen. */
-/** Wird dieses Feld immer als Eingabe gezeichnet? Am Feld oder am Typ,
- *  der es erklärt — und nie an einem gerechneten oder ausgegebenen. */
+/** Wird dieses Feld immer als Eingabe gezeichnet? **Am Feld und nur dort**
+ *  — am Typ traf es zwanzig Felder auf einmal, und die Zustandsliste einer
+ *  Figur ist kein Stand. Nie an einem gerechneten oder ausgegebenen. */
 function immerOffen(cn,pd){
-  if(!pd||pd.derived||pd.readOnly)return false;
-  if(pd.alwaysEdit)return true;
-  return !!((REG.interfaces[cn]||{}).alwaysEdit);
+  return !!(pd&&!pd.derived&&!pd.readOnly&&pd.alwaysEdit);
 }
 
 function fieldCell(e,cn,p,pd,val,txt,titel){
@@ -10793,13 +10804,10 @@ function renderTypes(v){
   var vw=vws[vwKey];
   var eigeneSicht=Object.keys(((REG.interfaces[wahl]||{}).views)||{}).length>0;
   var gezeichnet=!d.abstract||eigeneSicht;
-  if(vw&&!gezeichnet){
-    doc.appendChild(el("div",{class:"sec",text:"Views"}));
-    doc.appendChild(el("p",{class:"hint",
-      text:"No article is a “"+(d.label||wahl)+"” — it is a part that other kinds take. "+
-        "How it is drawn is decided where it is used; open one of the kinds below, "+
-        "or give this one a layout of its own from there."}));
-  }
+  /* **Was nicht gilt, steht nicht da.** Hier stand ein Absatz „No article
+     is a Identity …" — eine Auskunft über eine Frage, die sich bei einem
+     geteilten Typ nicht stellt. Eine Überschrift mit einer Erklärung,
+     warum darunter nichts kommt, ist eine Überschrift zu viel. */
   if(vw&&gezeichnet){
     var src=layoutSource(vw,wahl,vwKey);
     var vk=el("div",{class:"sec"});
@@ -10845,15 +10853,20 @@ function renderTypes(v){
   kantenListe(raus,"Edges from here","out");
   kantenListe(rein,"Edges to here","in");
 
-  /* Und die Artikel selbst. Eine Art ohne einen einzigen Artikel ist eine
-     Frage für sich — deshalb steht die Null da und nicht nichts. */
+  /* Und die Artikel selbst. Eine **anlegbare** Art ohne einen einzigen
+     Artikel ist eine Frage für sich — deshalb steht dort die Null da und
+     nicht nichts. Bei einem geteilten Typ stellt sich die Frage nicht: er
+     trägt grundsätzlich keine, und „None — an abstract type carries no
+     articles of its own" ist eine Zeile, die nur sich selbst erklärt. */
   var meine=[];
   byName().forEach(function(x){ if(((x.interfaces||[])[0])===wahl) meine.push(x); });
-  doc.appendChild(el("div",{class:"sec",text:"Articles ("+meine.length+")"}));
-  if(!meine.length) doc.appendChild(el("p",{class:"hint",style:"margin:0",
-    text:d.abstract?"None — an abstract type carries no articles of its own."
-                   :"None yet."}));
+  if(d.abstract){ /* nichts */ }
+  else if(!meine.length){
+    doc.appendChild(el("div",{class:"sec",text:"Articles (0)"}));
+    doc.appendChild(el("p",{class:"hint",style:"margin:0",text:"None yet."}));
+  }
   else{
+    doc.appendChild(el("div",{class:"sec",text:"Articles ("+meine.length+")"}));
     var cb=el("div",{class:"chips"});
     meine.slice(0,40).forEach(function(x){
       cb.appendChild(el("button",{class:"chip",type:"button",
@@ -11408,10 +11421,11 @@ var BEGRIFFE=[
    "one ability carries a check, several abilities are saving throws. A "+
    "number may carry a range (1 to 20 is a range, not twenty words). A "+
    "A field may say it is always an input (a state set mid-turn: current "+
-   "hit points, the travel counters) instead of waiting for “edit”; said "+
-   "at the type it holds for the fields THAT type declares, and is not "+
-   "inherited — otherwise one tick on a parent turns the whole creature "+
-   "into a form. A shape is painted, not typed (one character per cell). A "+
+   "hit points, the travel counters) instead of waiting for “edit”. It is "+
+   "said at the FIELD and nowhere else: at the type it was one switch for "+
+   "twenty fields, and on a creature the hit points are a state while the "+
+   "list of conditions is a set of ticks. A shape is painted, not typed "+
+   "(one character per cell). A "+
    "link names the article types it may point at, subtypes included — "+
    "without that it held the id of anything, and “Scene in play” took an "+
    "armour; tags and a field value may narrow the suggestions, but only "+
@@ -12193,20 +12207,10 @@ function regIfaceBody(ifn){
     save(); });
   head.appendChild(field("Kind",ab));
 
-  /* **Stand oder Festlegung.** Die Felder eines Typs, der einen Stand
-     trägt, stehen immer als Eingabe da — die Trefferpunkte werden mitten
-     im Zug gesetzt, und erst „Bearbeiten" zu sagen sind drei Klicks für
-     eine Zahl. Es gilt für die Felder, die **dieser** Typ erklärt, und
-     wird nicht vererbt: sonst machte ein Haken an einem Obertyp die ganze
-     Kreatur zum Formular. */
-  var ae=el("select",{class:"i"}); if(!w) ae.disabled=true;
-  ae.appendChild(el("option",{value:""},"only while editing"));
-  ae.appendChild(el("option",{value:"1"},"always an input"));
-  ae.value=d.alwaysEdit?"1":"";
-  ae.addEventListener("change",function(){
-    if(ae.value) d.alwaysEdit=true; else delete d.alwaysEdit;
-    save(); });
-  head.appendChild(field("Its fields are",ae));
+  /* Hier stand „Its fields are: always an input". Am Typ traf das zwanzig
+     Felder auf einmal — an `Vitals` sind die Trefferpunkte ein Stand, die
+     Zustandsliste aber ein Satz Häkchen. Die Angabe steht jetzt am Feld,
+     wo sich auch die Ausnahme benennen lässt. */
   box.appendChild(head);
 
   /* ---- Felder: **ein** Bereich ----
@@ -12489,6 +12493,88 @@ function fieldTable(ifn,w,save){
     aussen.appendChild(teil);
   });
 
+  /* ---- Und die Kanten, die von hier ausgehen ----
+     **Damit ein Gesamtbild entsteht.** Eine Kante ist kein Feld: sie steht
+     nicht in der Karte, sie zeigt auf einen anderen Artikel, und die
+     Gegenrichtung ist eine Abfrage. Aber wer im Register wissen will, was
+     an einer Art dransteht, will sie sehen — sonst liest er eine
+     Feldliste und hält sie für alles.
+
+     Die mit `asField` stehen schon oben als eigene Gruppe: dort **sind**
+     sie ein Feld. Hier kommt der Rest, und die Zahl der Kantenarten, die
+     mit `*` jede Art treffen, steht als Fussnote — sie sagen über diese
+     Art nichts. */
+  (function(){
+    var schonOben={};
+    verlinkteTypen(ifn).forEach(function(l){ schonOben[l.relation]=1; });
+    /* **Genannt ist nicht dasselbe wie getroffen.** `relsFrom` nimmt auch
+       die mit `from: ['*']` mit — die treffen jede Art und sagen über
+       diese nichts. Also zählt hier nur, was sie (oder einen ihrer
+       Obertypen) beim Namen nennt. */
+    var kette=selfAndAncestors(ifn);
+    var genannt=[], allgemein=0;
+    relsFrom(ifn).forEach(function(r){
+      if(schonOben[r.type])return;
+      var liste=r.from||[];
+      var nennt=liste.length&&liste.indexOf("*")<0
+        &&liste.some(function(n2){ return kette.indexOf(n2)>=0; });
+      if(nennt) genannt.push(r); else allgemein++;
+    });
+    if(!genannt.length&&!allgemein)return;
+    var schluessel=ifn+"::kanten";
+    var offen=!!(UI.regOpen||{})[schluessel];
+    var teil=el("div",{class:"fbox part kanten","data-kanten":"1"});
+    var kopf=el("div",{class:"fhead klapp"});
+    var pfeil=el("span",{class:"twist",text:offen?"\u25be":"\u25b8"});
+    kopf.appendChild(pfeil);
+    kopf.appendChild(el("b",{text:"Edges from here"}));
+    kopf.appendChild(el("span",{class:"pill",
+      title:"Not fields: an edge points at another article and is stored in one direction. The other way round is a query.",
+      text:"edge \u00b7 its own article"}));
+    kopf.appendChild(el("span",{class:"co",text:genannt.length
+      ?genannt.length+(genannt.length===1?" kind":" kinds")
+      :"none that name this type"}));
+    teil.appendChild(kopf);
+    var felder=el("div",{class:"partfields"});
+    if(!offen) felder.style.display="none";
+    genannt.sort(function(a,b){ return a.type.localeCompare(b.type); }).forEach(function(r){
+      var zeile=el("div",{class:"frow inh"});
+      zeile.appendChild(el("span",{class:"fk",text:r.type}));
+      zeile.appendChild(el("span",{class:"co",text:r.label||r.type}));
+      var ziel=el("span",{class:"dgz"});
+      (r.to||["*"]).forEach(function(n2,i){
+        if(i) ziel.appendChild(el("span",{class:"co",text:", "}));
+        if(n2==="*"||n2==="same"||!REG.interfaces[n2])
+          ziel.appendChild(el("span",{class:"co",text:n2}));
+        else ziel.appendChild(el("button",{class:"ref",type:"button",onclick:function(){
+          UI.typePick=n2; UI.regiface=n2; UI.regcomp=""; UI.regprop=""; render(); }},
+          REG.interfaces[n2].label||n2));
+      });
+      zeile.appendChild(ziel);
+      zeile.appendChild(el("span",{class:"pill q",
+        text:(r.cardinality==="one"?"one":"many")+(r.owned?" \u00b7 owned":"")}));
+      zeile.appendChild(el("button",{class:"btn sm gh",type:"button",
+        title:"Open this edge kind under Registry \u00b7 Relations",
+        onclick:function(){ UI.regtab="relations"; UI.regrel=r.type; go({k:"reg"}); }},
+        "\u2197"));
+      felder.appendChild(zeile);
+    });
+    if(allgemein) felder.appendChild(el("p",{class:"hint",style:"margin:4px 0 0",
+      text:"Plus "+allgemein+" edge kinds that hit every kind (*) \u2014 they say nothing about this one."}));
+    teil.appendChild(felder);
+    kopf.addEventListener("click",function(){
+      offen=!offen;
+      UI.regOpen=UI.regOpen||{};
+      if(offen) UI.regOpen[schluessel]=1; else delete UI.regOpen[schluessel];
+      felder.style.display=offen?"":"none";
+      pfeil.textContent=offen?"\u25be":"\u25b8";
+      kopf.setAttribute("aria-expanded",String(offen));
+    });
+    kopf.setAttribute("role","button");
+    kopf.setAttribute("aria-expanded",String(offen));
+    aussen.appendChild(teil);
+  })();
+
   /* Und ein ganzer Typ dazu — seine Felder kommen mit. */
   if(w){
     var mehr=el("select",{class:"i",style:"width:auto"});
@@ -12699,6 +12785,18 @@ function fieldRow(cn,k,within,w,saveC){
 function fieldMore(cn,k,within,w,saveC){
   var cd=REG.interfaces[cn], schema=cd.schema, p=schema.properties[k];
   var box=el("div",{class:"fmore"});
+  /* Eine Zeile Erklärung unter einer Einstellung, über die ganze Breite.
+     `**fett**` und `` `code` `` werden ausgezeichnet — mehr braucht es
+     nicht, und mehr wäre ein zweiter Textsatz im Register. */
+  function hinweis(md){
+    var p2=el("p",{class:"hint fhint"});
+    String(md).split(/(\*\*[^*]+\*\*|`[^`]+`)/).forEach(function(teil){
+      if(/^\*\*.+\*\*$/.test(teil)) p2.appendChild(el("b",{text:teil.slice(2,-2)}));
+      else if(/^`.+`$/.test(teil)) p2.appendChild(el("code",{text:teil.slice(1,-1)}));
+      else if(teil) p2.appendChild(document.createTextNode(teil));
+    });
+    box.appendChild(p2);
+  }
   function text(label,wert,setValue,ph){
     var i=el("input",{class:"i",type:"text",value:wert==null?"":wert,placeholder:ph||""});
     if(!w) i.disabled=true;
@@ -12738,8 +12836,7 @@ function fieldMore(cn,k,within,w,saveC){
      keinen Bearbeitungsmodus davor. Ein gerechnetes oder ausgegebenes Feld
      bekommt ohnehin keine Eingabe — dort ginge sie ins Leere. */
   var imm=el("select",{class:"i"}); if(!w||p.derived||p.readOnly) imm.disabled=true;
-  imm.appendChild(el("option",{value:""},
-    (REG.interfaces[cn]||{}).alwaysEdit?"always (from the type)":"only while editing"));
+  imm.appendChild(el("option",{value:""},"only while editing"));
   imm.appendChild(el("option",{value:"1"},"always an input"));
   imm.value=p.alwaysEdit?"1":"";
   imm.addEventListener("change",function(){
@@ -12771,6 +12868,14 @@ function fieldMore(cn,k,within,w,saveC){
     if(fm.value==="measure"&&!p.unit) p.unit="ft";
     saveC(); render(); });
   box.appendChild(field("Display",fm));
+  /* **Was eine Einstellung auslöst, gehört dabei.** „Display" sagte nur,
+     dass es eine Wahl gibt, und „Derived from" gar nichts — wer nicht
+     weiss, was eine Angabe tut, lässt sie leer, und dann ist sie kein
+     Werkzeug, sondern ein Rätsel. */
+  hinweis("How it is drawn and typed. **long text** gives a textarea "
+    +"instead of one line; **signed** prints +3 and \u22121 instead of 3 "
+    +"and -3; **measure** says the text carries numbers with units and may "
+    +"be converted on read \u2014 that one needs a unit below.");
 
   /* **Ein Mass nennt die Einheit, in der es gespeichert ist.** Umgerechnet
      wird beim Lesen (D8); nennt das Feld keine, rechnet nichts, und das
@@ -12840,10 +12945,21 @@ function fieldMore(cn,k,within,w,saveC){
   text("Derived from",p.derived||"",function(v){
     if(v)p.derived=v; else delete p.derived;
   },"10+mod(wis)");
+  hinweis("**A sum instead of a value.** Write a formula and the field is "
+    +"worked out every time the article is read \u2014 never stored, and it "
+    +"gets no input (D8). The names in it are the **other fields of this "
+    +"same type**: `mod(dex)` reads `dex` next door, `10+mod(wis)` is the "
+    +"passive perception. Two places that can disagree are worse than one "
+    +"that has to think.");
 
   text("belongs to field",p.of||"",function(v){
     if(v)p.of=v; else delete p.of;
   },"wis");
+  hinweis("**Where a computed value is shown.** Name a neighbour and this "
+    +"field rides in its cell instead of taking one of its own: `dexMod` "
+    +"belongs to `dex`, so the sheet reads **DEX 16 (+3)** on one line "
+    +"instead of two. Only for computed fields \u2014 a stored one has its "
+    +"own place.");
 
   if(p.derived) box.appendChild(el("p",{class:"hint",style:"grid-column:1/-1;margin:0",
     text:"Derived fields are computed on read and never stored. They get no input."}));

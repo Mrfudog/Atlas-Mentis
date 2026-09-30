@@ -605,8 +605,11 @@ async function seite(datei, warten) {
     return p.evaluate(() => ({
       knopf: [...document.querySelectorAll('.chips .chip.pick[data-vk]')].length,
       elemente: [...document.querySelectorAll('.tmpl .tmplel')].length,
-      hinweis: [...document.querySelectorAll('.regbody .hint, #view .hint')]
-        .some((x) => /it is a part that other kinds take/.test(x.textContent)),
+      /* **Was nicht gilt, steht nicht da.** Hier stand ein Absatz „it is a
+         part that other kinds take" — eine Auskunft über eine Frage, die
+         sich bei einem geteilten Typ nicht stellt. Geprüft wird jetzt, dass
+         die Überschrift fehlt, und nicht, dass ein Trostsatz dasteht. */
+      sec: [...document.querySelectorAll('.tpdoc .sec')].map((x) => x.textContent),
     }));
   };
   const teil = await vorlageBei('Identity');
@@ -618,12 +621,14 @@ async function seite(datei, warten) {
      prüft nichts. Dass geerbte Anordnungen durchreichen, prüft
      `layoutSource` daneben und der Paketlauf mit. */
   const erbend = await vorlageBei('PlayerCharacter');
-  pruefe('a part that no article is shows no view template',
-    teil.knopf === 0 && teil.elemente === 0 && teil.hinweis, teil);
+  pruefe('a part that no article is shows no view template, and no heading either',
+    teil.knopf === 0 && teil.elemente === 0
+    && !teil.sec.some((x) => /^Views/.test(x)), teil);
   pruefe('an article kind shows one',
-    artikelart.knopf > 0 && artikelart.elemente > 0 && !artikelart.hinweis, artikelart);
+    artikelart.knopf > 0 && artikelart.elemente > 0
+    && artikelart.sec.some((x) => /^Views/.test(x)), artikelart);
   pruefe('and a kind that inherits its layout shows that one',
-    erbend.knopf > 0 && erbend.elemente > 0 && !erbend.hinweis, erbend);
+    erbend.knopf > 0 && erbend.elemente > 0, erbend);
 
   /* `Prose` und `Notes` hingen einmal an `Identity`, weil das der einzige
      Typ ist, den jede Art erbt. Dann stand unter „Identity" ein Feld
@@ -2509,11 +2514,12 @@ async function seite(datei, warten) {
      „Bearbeiten" zu sagen sind drei Klicks für eine Zahl. Was eine
      Festlegung ist — `ac` am Statblock — bleibt Text, bis man darauf
      klickt. */
-  /* **Was ein Stand ist, steht immer als Eingabe da.** Am Typ sagt es
-     `Vitals` (der Stand während der Sitzung, gegen den Statblock, der die
-     Festlegung ist); am Feld sagen es die Reisezähler einer Gruppe, die
-     sich an jedem Knoten ändern. Das Motto daneben bleibt Text, bis
-     jemand darauf klickt — sonst wäre die ganze Seite ein Formular. */
+  /* **Was ein Stand ist, steht immer als Eingabe da** — und das sagt das
+     **Feld**, nicht der Typ. Am Typ war es ein Schalter für zwanzig
+     Felder auf einmal: die Trefferpunkte sind ein Stand, die
+     Zustandsliste ein Satz Häkchen. Gesagt haben es hier die Reisezähler
+     einer Gruppe, die sich an jedem Knoten ändern; das Motto daneben
+     bleibt Text, bis jemand darauf klickt. */
   const immer = await p.evaluate(async () => {
     const T = window.__T__;
     let gruppe = null;
@@ -2524,8 +2530,11 @@ async function seite(datei, warten) {
     const zelle = (t) => [...document.querySelectorAll('.fld')]
       .find((f) => f.querySelector('dt')?.textContent === t);
     return {
-      amTyp: !!T.REG.interfaces.Vitals.alwaysEdit,
+      /* Kein Typ sagt es mehr. */
+      amTyp: Object.values(T.REG.interfaces)
+        .some((x) => x.alwaysEdit !== undefined),
       amFeld: !!T.REG.interfaces.Party.schema.properties.day.alwaysEdit,
+      vitals: !!T.REG.interfaces.Vitals.schema.properties.hp.alwaysEdit,
       standOffen: !!zelle('Day')?.querySelector('dd.editing input'),
       wacheOffen: !!zelle('Watch')?.querySelector('dd.editing input'),
       festeOffen: !!zelle('Motto')?.querySelector('dd.editing input'),
@@ -2533,7 +2542,8 @@ async function seite(datei, warten) {
     };
   });
   pruefe('a field that is a state is always an input, a fixed one is not',
-    immer.amTyp && immer.amFeld && immer.standOffen && immer.wacheOffen
+    !immer.amTyp && immer.amFeld && immer.vitals
+    && immer.standOffen && immer.wacheOffen
     && !immer.festeOffen && !immer.bearbeiten, immer);
 
   await oeffneId('pc_rook');
@@ -2794,6 +2804,51 @@ async function seite(datei, warten) {
     !kette.keine && kette.schluessel.includes('ac')
     && kette.schluessel.includes('str') && kette.schluessel.includes('dexMod')
     && kette.via.includes('Abilities'), kette);
+
+  /* **Die Kanten, die von hier ausgehen, stehen mit in der Liste.** Eine
+     Kante ist kein Feld — sie steht nicht in der Karte, und die
+     Gegenrichtung ist eine Abfrage. Wer aber wissen will, was an einer Art
+     dransteht, liest sonst eine Feldliste und hält sie für alles. Die mit
+     `asField` stehen schon als eigene Gruppe; hier kommt der Rest, und
+     die mit `*` werden nur gezählt. */
+  const kantenGruppe = await p.evaluate(async () => {
+    const kasten = document.querySelector('.fbox.part.kanten');
+    if (!kasten) return { keine: true };
+    kasten.querySelector('.fhead.klapp').click();
+    await new Promise((r) => setTimeout(r, 200));
+    return {
+      namen: [...kasten.querySelectorAll('.frow .fk')].map((x) => x.textContent),
+      fuss: kasten.querySelector('.hint')?.textContent ?? '',
+      /* `belongsTo` liest sich am Statblock-Ende wie ein Feld und steht
+         darum oben als verlinkte Gruppe — hier wäre es zweimal. */
+      ohneAsField: ![...kasten.querySelectorAll('.frow .fk')]
+        .some((x) => x.textContent === 'belongsTo'),
+    };
+  });
+  pruefe('the edges from here stand in the field list too, once each',
+    !kantenGruppe.keine && kantenGruppe.namen.length > 2
+    && kantenGruppe.ohneAsField
+    && /every kind/.test(kantenGruppe.fuss), kantenGruppe);
+
+  /* **Was nicht gilt, steht nicht da.** Bei einem geteilten Typ stellt
+     sich die Frage nach Ansicht und Artikeln nicht — dort standen eine
+     Überschrift und ein Absatz, die nur erklärten, warum darunter nichts
+     kommt. */
+  const geteilt = await p.evaluate(async () => {
+    const T = window.__T__;
+    T.UI.typePick = 'Identity'; T.UI.regiface = 'Identity'; T.render();
+    await new Promise((r) => setTimeout(r, 350));
+    const sec = [...document.querySelectorAll('.tpdoc .sec')].map((x) => x.textContent);
+    T.UI.typePick = 'PlayerCharacter'; T.UI.regiface = 'PlayerCharacter'; T.render();
+    await new Promise((r) => setTimeout(r, 350));
+    const sec2 = [...document.querySelectorAll('.tpdoc .sec')].map((x) => x.textContent);
+    return { geteilt: sec, anlegbar: sec2 };
+  });
+  pruefe('views and articles are only listed where they mean something',
+    !geteilt.geteilt.some((x) => /^Views/.test(x))
+    && !geteilt.geteilt.some((x) => /^Articles/.test(x))
+    && geteilt.anlegbar.some((x) => /^Views/.test(x))
+    && geteilt.anlegbar.some((x) => /^Articles/.test(x)), geteilt);
 
   /* Die Reiter des Bogens stehen in der Vorlage mit Namen — „tabs" allein
      zu lesen sagt nichts. */

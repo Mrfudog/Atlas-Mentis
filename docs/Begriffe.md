@@ -130,9 +130,9 @@ Eine Tatsache, die ein Typ festhält. Ein Feld hat
   herauskommt, und beim Abzählen verrutscht eine Spalte,
 - **immer bearbeitbar oder erst auf Klick** (`alwaysEdit`). Der Stand der
   Trefferpunkte wird mitten im Zug gesetzt; erst „Bearbeiten" zu sagen
-  sind drei Klicks für eine Zahl. Am Typ gesagt gilt es für die Felder,
-  die *er* erklärt, und wird nicht vererbt — sonst machte ein Haken an
-  einem Obertyp die ganze Kreatur zum Formular,
+  sind drei Klicks für eine Zahl. Es steht **am Feld und nur dort**: am Typ
+  war es ein Schalter für zwanzig Felder auf einmal, und an `Vitals` sind
+  die Trefferpunkte ein Stand, die Zustandsliste aber ein Satz Häkchen,
 - **Pflicht oder optional**,
 - vielleicht einen **Standard**, der beim Anlegen gilt und nicht rückwirkend,
 - vielleicht eine **Rechnung** (`derived`), und dann bekommt es keine

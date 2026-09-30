@@ -184,6 +184,30 @@ wiederkommen, werden sie neu geschrieben.
   Feld für immer festhielt. Wie weit eine Sache am Tisch ist, sagt das Feld
   der Art: `Quest.progress`, `Encounter.phase`, `Explored.state`. Drei
   Felder hiessen einmal alle `state` und meinten Verschiedenes.
+- **Eine Seite, ein Scroll.** Der Registerkörper hatte sein eigenes
+  Fenster (`overflow-y:auto; max-height:72vh`) — die Feldliste scrollte im
+  Kasten, während die Seite stillstand, und wer unten etwas aufklappte,
+  fand die Kopfzeile nicht mehr. Aufklappbar ist alles weiter, nur eben in
+  der Seite.
+- **Was nicht gilt, steht nicht da.** Ansicht und Artikelliste stehen nur
+  an einer **anlegbaren** Art. An einem geteilten Typ standen dort eine
+  Überschrift und ein Absatz, die nur erklärten, warum darunter nichts
+  kommt — eine Überschrift zu viel.
+- **Die Kanten, die von einer Art ausgehen, stehen in der Feldliste mit.**
+  Eine Kante ist kein Feld: sie steht nicht in der Karte, sie zeigt auf
+  einen anderen Artikel, und die Gegenrichtung ist eine Abfrage. Wer aber
+  im Register wissen will, was an einer Art dransteht, liest sonst eine
+  Feldliste und hält sie für alles. Also eine gepunktete Gruppe „Edges from
+  here", zugeklappt wie die geerbten; die mit `asField` stehen schon als
+  verlinkte Gruppe, und die mit `from: ['*']` treffen jede Art und werden
+  nur gezählt.
+- **Was eine Einstellung auslöst, steht dabei.** Unter `Display`,
+  `Derived from` und `belongs to field` steht eine Zeile, die sagt, was
+  passiert: `signed` druckt +3, `measure` rechnet um, eine Rechnung löst
+  gegen die **Nachbarfelder derselben Karte** auf, und `of` heisst, dass
+  der gerechnete Wert in der Zelle des Nachbarn reitet (**DEX 16 (+3)**).
+  Wer nicht weiss, was eine Angabe tut, lässt sie leer — dann ist sie kein
+  Werkzeug, sondern ein Rätsel.
 - **Das Register zeigt einen Typ auf einer Fläche: seine eigenen Felder
   offen, die geerbten Typen zugeklappt.** Je geerbter Typ eine Kopfzeile —
   Name, ob er hier dazugenommen wurde oder über einen anderen hereinkam,
@@ -277,15 +301,17 @@ wiederkommen, werden sie neu geschrieben.
   `target.where` lesen den heutigen Zustand des Ziels, also engen sie nur
   die Maske ein — eine Regel daraus machte einen längst gespeicherten
   Verweis rückwirkend falsch, sobald jemand eine Marke entfernt.
-- **Ein Typ sagt, ob seine Felder immer bearbeitet werden** (`alwaysEdit`
-  am Typ oder am Feld). Der Stand der Trefferpunkte wird mitten im Zug
+- **Ein Feld sagt, ob es immer bearbeitet wird** (`alwaysEdit`), und zwar
+  **am Feld und nur dort**. Der Stand der Trefferpunkte wird mitten im Zug
   gesetzt, und erst „Bearbeiten" zu sagen sind drei Klicks für eine Zahl.
-  Am Typ gilt es für die Felder, die **er** erklärt, und wird **nicht**
-  vererbt — sonst machte ein Haken an einem Obertyp die ganze Kreatur zum
-  Formular. Heute: `Vitals` (der Stand, gegen den Statblock als
-  Festlegung) und die Reisezähler `Party.day`/`watch`/`sinceRation`/
-  `sinceLight`. Ein gerechnetes oder ausgegebenes Feld bleibt ohne
-  Eingabe, und wer nicht schreiben darf, sieht weiter den Wert.
+  Am Typ stand es einmal auch — das war ein Schalter für zwanzig Felder auf
+  einmal: an `Vitals` sind die Trefferpunkte ein Stand, die Zustandsliste
+  aber ein Satz Häkchen und die Trefferwürfel Punkte, die der Bogen ohnehin
+  anklickbar zeichnet. Wer jedes Feld einzeln benennt, benennt auch die
+  Ausnahme. Heute: `Vitals.hp`/`hpTemp`/`exhaustion` und die Reisezähler
+  `Party.day`/`watch`/`sinceRation`/`sinceLight`. Ein gerechnetes oder
+  ausgegebenes Feld bleibt ohne Eingabe, und wer nicht schreiben darf,
+  sieht weiter den Wert.
 - **Beim Bearbeiten steht jedes Feld als Eingabe da**, auch die aus
   `Identity` (Aliasse, Deckname) — ein Feld, das man nur über die Einfuhr
   füllen kann, ist keines. Der Name bleibt draussen: er ist die

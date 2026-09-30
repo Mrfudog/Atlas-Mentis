@@ -69,16 +69,15 @@ export const interfaces: Record<string, InterfaceDef> = {
 
      Sachlich stimmt es auch: was eine Kreatur *ist*, ändert sich selten; was
      sie gerade *aushält*, ändert sich jede Runde. */
-  /* **Der Stand, nicht die Festlegung.** Trefferpunkte, Erschöpfung und
-     Zustände ändern sich mitten im Zug, und dafür erst „Bearbeiten" zu
-     sagen sind drei Klicks für eine Zahl. Also stehen die Felder dieses
-     Typs immer als Eingabe da (`alwaysEdit`). Am Statblock gilt das
-     nicht: dort ist `hp` das Maximum, und das legt jemand einmal fest. */
+  /* **Der Stand, nicht die Festlegung.** Am Statblock ist `hp` das Maximum
+     und wird einmal festgelegt; hier ist es der Stand und ändert sich
+     mitten im Zug. Welche Felder deshalb immer als Eingabe dastehen, sagt
+     jedes für sich (`alwaysEdit` am Feld) — am Typ war es ein Schalter für
+     alle neun, und die Zustandsliste ist ein Satz Häkchen und kein Stand. */
   Vitals: {
     name: 'Vitals',
     label: 'Vitals',
     abstract: true,
-    alwaysEdit: true,
     schema: g.Vitals.schema,
   },
 

@@ -91,7 +91,6 @@ export const InterfaceDefSchema = z.object({
   name: z.string(),
   label: z.string().optional(),
   abstract: z.boolean().optional(),
-  alwaysEdit: z.boolean().optional(),
   extends: z.array(z.string()).optional(),
   schema: objectSchema.optional(),
   area: z.enum(['world', 'history', 'rules', 'play']).optional(),
