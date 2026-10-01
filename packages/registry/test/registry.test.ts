@@ -845,9 +845,15 @@ describe('one registry of types', () => {
   it('and a reference to something that stands on its own does not', () => {
     const wie = Object.values(seedRegistry.relations).filter((r) => r.asField);
     expect(wie.map((r) => r.type).sort()).toEqual(['belongsTo', 'carries']);
-    /* Jede davon ist eins-zu-eins — „irgendeiner von vielen" wäre eine
-       Auswahl und kein Feld. */
-    expect(wie.every((r) => r.cardinality === 'one')).toBe(true);
+    /* **Das lesende Ende sieht eins** — „irgendeiner von vielen" wäre eine
+       Auswahl und kein Feld. Liegt die Kante an diesem Ende
+       (`asField: 'from'`), heisst das `one`: eine Kreatur trägt ein
+       Inventar. Liegt sie am anderen (`asField: 'to'`), zählt die
+       Kardinalität dort und darf `many` sein: ein Statblock gehört dreissig
+       Wachen, und jede liest ihren. */
+    expect(wie.filter((r) => r.asField === 'from').every((r) => r.cardinality === 'one'))
+      .toBe(true);
+    expect(seedRegistry.relations['belongsTo']?.cardinality).toBe('many');
     /* Und das Element, das sie zeichnet, steht in der Grundanordnung von
        `full`: sonst stünden die Felder nirgends. */
     const voll = seedRegistry.views['full']?.layout ?? [];

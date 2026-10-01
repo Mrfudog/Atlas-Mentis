@@ -86,8 +86,12 @@ wiederkommen, werden sie neu geschrieben.
   Eingaben, die in seinen Artikel schreiben. Gespeichert bleibt eine Kante
   in einer Richtung; das andere Ende findet sie über die Rückfrage
   (`linkedTypes` / `verlinkteTypen`).
-  **Das Mass:** ohne das andere wäre dieser Artikel unvollständig, und es
-  gehört keinem zweiten. Ein Rezept, das einen Gegenstand liefert, und eine
+  **Das Mass:** ohne das andere wäre dieser Artikel unvollständig, und
+  **an seinem Ende liest es sich als eines**. Geteilt werden darf es: ein
+  Statblock gehört dreissig Wachen, und jede liest ihren. Liegt die Kante am
+  lesenden Ende (`carries`, `asField: 'from'`), heisst das
+  `cardinality: 'one'`; liegt sie am anderen (`belongsTo`, `asField: 'to'`),
+  zählt die Kardinalität dort und ist `many`. Ein Rezept, das einen Gegenstand liefert, und eine
   Begegnung auf einer Karte sind Verweise auf Dinge, die für sich stehen —
   die bleiben Kanten. Heute tragen `belongsTo` (Statblock an der Kreatur)
   und `carries` (Inventar an Kreatur und Gruppe) die Angabe.
@@ -181,6 +185,15 @@ wiederkommen, werden sie neu geschrieben.
   unter einem Sammelnamen sind keine Auskunft. Der Bogen liest beide Karten
   als eine (`sbCard`), weil `sb.ac` und `modOf(sb,"dex")` nebeneinander
   gebraucht werden; geschrieben wird in die Karte, der das Feld gehört.
+  **Ohne Statblock keine Zahlen:** der Bogen zeichnet nichts, bis einer
+  anhängt; an seiner Stelle stehen „anlegen" (mit dem Namen der Kreatur)
+  und „bestehenden anhängen", und der Anlegedialog fragt danach (neu,
+  bestehend, später). Kreaturen ohne Statblock stehen auf der
+  Vorbereitungsseite — eine Prüfung, die das Anlegen verbietet, gibt es
+  nicht, denn eine NSC-Idee hat noch keine Zahlen. **Ein Statblock darf
+  vielen gehören** (`belongsTo` ist am Statblock `many`), und die verlinkte
+  Gruppe sagt „shared by N", bevor jemand tippt. „Hängt einer an"
+  (`statblockOf`) und „trägt er Zahlen" (`statsOf`) sind zwei Fragen.
 - **Ein Textblock ist ein Feld.** Es gab einmal `blocks: [{blockType, body,
   anchor}]` neben den Karten, mit einer eigenen Liste erlaubter Blockarten je
   Artikelart — also eine zweite Frage, die jede Art zweimal beantworten
@@ -227,7 +240,9 @@ wiederkommen, werden sie neu geschrieben.
   Liste von Wörtern kann keine Zuordnung tragen. Wird eine Fertigkeit
   einmal ein Artikel, fallen beide weg.
 - **`Status` ist der Vorbereitungsstand und sonst nichts:** `idea`,
-  `prepared`, `ready` (Aufzählungszeile `State`). Was im Spiel geschah,
+  `prepared`, `ready` (Aufzählungszeile `State`). Gelesen wird die Zeile
+  (`statusWerte()`), nicht ein Gedächtnis: „Unfinished" zählte nach der
+  Umstellung noch `planned` und bot `used` an. Was im Spiel geschah,
   gehört nicht hierher — `used` und `discarded` waren Ereignisse, die ein
   Feld für immer festhielt. Wie weit eine Sache am Tisch ist, sagt das Feld
   der Art: `Quest.progress`, `Encounter.phase`, `Explored.state`. Drei

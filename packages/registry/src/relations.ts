@@ -40,7 +40,13 @@ export const relations: Record<string, RelationDef> = {
        hier nur der NSC stand, konnte er gar keinen Statblock haben und musste
        seine Zahlen selbst tragen — die zweite Form für dieselbe Sache. */
     to: ['Creature'],
-    cardinality: 'one',
+    /* **`many`, gezählt am Statblock**: die Kante liegt an ihm, und ein
+       Statblock gehört dreissig Wachen. Hier stand `one` — neben einem
+       Kommentar, der „dreissig Wachen, ein Bogen" versprach. Durchgesetzt
+       wurde es nie, also stand das Versprechen und die Angabe nebeneinander
+       und widersprachen sich still. Eine Kreatur liest den ersten
+       Statblock, der auf sie zeigt. */
+    cardinality: 'many',
     /* **An der Kreatur liest sich das wie ein Feld.** Ihre Zahlen stehen am
        Statblock, und der ist ein eigener Artikel — austauschbar (Wolfsgestalt,
        verzauberte Fassung), wiederverwendbar (dreissig Wachen, ein Bogen).

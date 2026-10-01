@@ -286,7 +286,10 @@ export interface RelationDef {
    * **Nicht** für einen Verweis auf etwas, das für sich steht: ein Rezept
    * liefert einen Gegenstand, eine Begegnung wird auf einer Karte
    * gefochten — beide gäbe es auch ohne. Das Mass ist: **ohne das andere
-   * wäre dieser Artikel unvollständig, und es gehört keinem zweiten.**
+   * wäre dieser Artikel unvollständig, und an seinem Ende liest es sich als
+   * eines.** Geteilt werden darf es — ein Statblock gehört dreissig Wachen,
+   * und jede liest ihren; dann liegt die Kante am geteilten Ende und ist
+   * dort `many`.
    */
   asField?: 'from' | 'to';
   /** When set, the edge renders as a composition section under this heading. */

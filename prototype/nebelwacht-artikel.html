@@ -2847,12 +2847,15 @@ function renderRail(){
     var unfertig=0;
     ENT.forEach(function(x){
       var st=((x.components||{}).Status||{}).status;
-      if(st==="idea"||st==="planned") unfertig++;
+      if(unfertigStatus(st)) unfertig++;
     });
     sPrep.appendChild(el("button",{class:"navrow",type:"button",
-      title:"Everything still at idea or planned (REQ-188)",
-      "aria-current":String(UI.status==="idea"||UI.status==="planned"),
-      onclick:function(){ UI.status=UI.status==="idea"?"planned":(UI.status==="planned"?"":"idea");
+      title:"Everything not yet ready (REQ-188)",
+      "aria-current":String(unfertigStatus(UI.status)),
+      /* Ein Klick schaltet durch die unfertigen Stände und dann wieder aus. */
+      onclick:function(){
+        var w=statusWerte().filter(unfertigStatus), i=w.indexOf(UI.status);
+        UI.status=i<0?(w[0]||""):(w[i+1]||"");
         UI.iface="";UI.area=""; go({k:"list"}); }},
       [el("b",{text:"Unfinished"}),el("em",{text:String(unfertig)})]));
     var offeneTodos=0;
@@ -4223,6 +4226,59 @@ function verlinkterArtikel(e,l){
   return treffer;
 }
 
+/* ---------- anlegen und anhängen ----------
+   Ein verlinkter Artikel entsteht **angelegt und verbunden** in einem
+   Schritt: einer, den man danach von Hand anhängen muss, ist ein halber
+   Schritt, und den zweiten vergisst man. Die Kante liegt an dem Ende, an
+   dem sie gespeichert wird. */
+function linkFor(ifn,type){
+  return verlinkteTypen(ifn).filter(function(l){ return l.type===type; })[0]||null;
+}
+/* **Ein Statblock trägt den Namen seiner Kreatur** — er ist ihre
+   Zahlenseite und kein Ding für sich. Ein Inventar dagegen ist ein
+   Behälter und heisst nach ihr: „Rook" zweimal in der Liste, einmal als
+   Figur und einmal als Beutel, wäre die Sorte Name, bei der man das
+   falsche erwischt. */
+function linkedName(e,l){
+  var d=REG.interfaces[l.type]||{};
+  return l.type==="Statblock"?nameOf(e):nameOf(e)+" \u2014 "+(d.label||l.type);
+}
+function makeLinked(e,l){
+  var name=linkedName(e,l);
+  var neu={id:uid("e"),interfaces:[l.type],name:name,
+    components:{Identity:{name:name,id:nextId(l.type),aliases:[]}},
+    adhoc:[],relations:[],createdAt:new Date().toISOString()};
+  applyDefaults(neu,l.type);
+  if(l.direction==="out"){
+    persist(neu);
+    e.relations=(e.relations||[]).concat([{id:uid("r"),type:l.relation,to:neu.id,props:{}}]);
+    persist(e);
+  } else {
+    neu.relations=[{id:uid("r"),type:l.relation,to:e.id,props:{}}];
+    persist(neu);
+  }
+  return neu;
+}
+/* **Einen bestehenden anhängen.** Dreissig Wachen, ein Statblock: die
+   Kante kommt an den Statblock dazu, und er gehört danach allen dreissig.
+   Doppelt angehängt wird nichts. */
+function attachLinked(e,l,zielId){
+  var ziel=ENT.get(zielId); if(!ziel||ziel.id===e.id)return;
+  if(l.direction==="out"){
+    if((e.relations||[]).some(function(r){ return r.type===l.relation&&r.to===ziel.id; }))return;
+    e.relations=(e.relations||[]).concat([{id:uid("r"),type:l.relation,to:ziel.id,props:{}}]);
+    persist(e);
+  } else {
+    if((ziel.relations||[]).some(function(r){ return r.type===l.relation&&r.to===e.id; }))return;
+    ziel.relations=(ziel.relations||[]).concat([{id:uid("r"),type:l.relation,to:e.id,props:{}}]);
+    persist(ziel);
+  }
+}
+function makeStatblockFor(o){
+  var l=linkFor((o.interfaces||[])[0],"Statblock");
+  if(l){ makeLinked(o,l); render(); }
+}
+
 /**
  * **Was woanders wohnt, hier bearbeiten.**
  *
@@ -4259,31 +4315,33 @@ function elLinked(e,ifn,item){
       text:"its own article"}));
     wrap.appendChild(kopf);
     if(!ziel){
-      var leer=el("div",{class:"addbar"});
+      var leer=el("div",{class:"addbar linkmissing"});
       leer.appendChild(el("span",{class:"hint",style:"margin:0",
         text:"None linked yet."}));
-      leer.appendChild(el("button",{class:"btn sm",type:"button",onclick:function(){
-        /* Angelegt **und** verbunden: ein Artikel, den man danach von Hand
-           anhängen muss, ist ein halber Schritt, und den zweiten vergisst
-           man. Die Kante liegt an dem Ende, an dem sie gespeichert wird. */
-        var name=nameOf(e)+" \u2014 "+(d.label||l.type);
-        var neu={id:uid("e"),interfaces:[l.type],name:name,
-          components:{Identity:{name:name,id:nextId(l.type),aliases:[]}},
-          adhoc:[],relations:[],createdAt:new Date().toISOString()};
-        applyDefaults(neu,l.type);
-        if(l.direction==="out"){
-          persist(neu);
-          e.relations=(e.relations||[]).concat([
-            {id:uid("r"),type:l.relation,to:neu.id,props:{}}]);
-          persist(e);
-        } else {
-          neu.relations=[{id:uid("r"),type:l.relation,to:e.id,props:{}}];
-          persist(neu);
-        }
-        render();
-      }},"Make one and link it"));
+      leer.appendChild(el("button",{class:"btn sm",type:"button","data-make":l.type,
+        onclick:function(){ makeLinked(e,l); render(); }},
+        "Make \u201c"+linkedName(e,l)+"\u201d"));
+      /* Oder einen, den es schon gibt — mit demselben Sucher wie jedes
+         Verweisfeld, eingeschränkt auf die Art, die hier hängen kann. */
+      var such=linkInput({target:{interfaces:[l.type]}},"");
+      such.classList.add("attachlinked");
+      such.addEventListener("change",function(){
+        if(!such.value)return;
+        attachLinked(e,l,such.value); render();
+      });
+      leer.appendChild(el("span",{class:"co",text:"or attach"}));
+      leer.appendChild(such);
       wrap.appendChild(leer);
       return;
+    }
+    /* **Geteilt heisst: eine Änderung gilt für alle.** Wer an Wache Nr. 7
+       die Rüstungsklasse ändert, ändert sie an dreissig Wachen — das soll
+       dastehen, bevor jemand tippt. */
+    if(l.direction!=="out"){
+      var mit=(ziel.art.relations||[]).filter(function(r){ return r.type===l.relation; }).length;
+      if(mit>1) kopf.appendChild(el("span",{class:"pill q shared",
+        title:"Changing it here changes it for all of them",
+        text:"shared by "+mit}));
     }
     var felder=elFields(ziel.art,l.type,{el:"fields",fields:"all"});
     if(felder) wrap.appendChild(felder);
@@ -5138,10 +5196,11 @@ function elPrep(e,ifn,item){
   ENT.forEach(function(o){
     if(!articleVisible(o))return;
     var st=((o.components||{}).Status||{}).status;
-    if(st==="idea"||st==="planned") unfertig.push({e:o,st:st});
+    if(unfertigStatus(st)) unfertig.push({e:o,st:st});
   });
+  var stufe=statusWerte();
   unfertig.sort(function(a,b){
-    if(a.st!==b.st)return a.st==="idea"?-1:1;
+    if(a.st!==b.st)return stufe.indexOf(a.st)-stufe.indexOf(b.st);
     return nameOf(a.e).localeCompare(nameOf(b.e),"de");
   });
   wrap.appendChild(el("div",{class:"sec",text:"Not finished"}));
@@ -5160,7 +5219,7 @@ function elPrep(e,ifn,item){
         /* Den Stand gleich hier ändern: wer dafür erst hinspringen muss,
            lässt ihn stehen, und die Liste wird zur Tapete. */
         var sel=el("select",{class:"bsel"});
-        ["idea","planned","used","discarded"].forEach(function(v){
+        statusWerte().forEach(function(v){
           sel.appendChild(el("option",{value:v},v)); });
         sel.value=x.st;
         sel.addEventListener("change",function(){
@@ -5175,7 +5234,42 @@ function elPrep(e,ifn,item){
     wrap.appendChild(ub);
     wrap.appendChild(el("p",{class:"hint",
       text:unfertig.length+" article"+(unfertig.length===1?"":"s")+
-        " still idea or planned. The compendium’s status filter shows them all, and the bulk bar changes many at once."}));
+        " not yet ready. The compendium’s status filter shows them all, and the bulk bar changes many at once."}));
+  }
+
+  /* **Kreaturen ohne Statblock.** Eine Kreatur darf ohne ihn angelegt
+     werden — eine NSC-Idee hat noch keine Zahlen —, aber an den Tisch
+     gehört sie so nicht: ihr Bogen zeigt dann nichts. Darum stehen sie
+     hier und nicht in einer Prüfung, die das Anlegen verbietet. */
+  var ohneSb=[];
+  ENT.forEach(function(o){
+    if(!articleVisible(o))return;
+    if(!ifaceInList(["Creature"],(o.interfaces||[])[0]))return;
+    if(!statblockOf(o)) ohneSb.push(o);
+  });
+  if(ohneSb.length){
+    ohneSb.sort(function(a,b){ return nameOf(a).localeCompare(nameOf(b),"de"); });
+    wrap.appendChild(el("div",{class:"sec",text:"Creatures without a statblock"}));
+    var sbl=el("div",{class:"qlist sbmissing"});
+    ohneSb.slice(0,30).forEach(function(o){
+      var row=el("div",{class:"qrow"});
+      var t4=el("div",{class:"qt"});
+      t4.appendChild(el("button",{class:"ref",type:"button",
+        onclick:function(){go({k:"art",id:o.id});}},nameOf(o)));
+      t4.appendChild(el("span",{class:"co",text:ifaceName(o)}));
+      row.appendChild(t4);
+      ub2(row,o);
+      sbl.appendChild(row);
+    });
+    wrap.appendChild(sbl);
+    wrap.appendChild(el("p",{class:"hint",
+      text:"Their sheet shows no numbers until one is made or attached."}));
+  }
+  /* Gleich hier anlegen — derselbe Knopf wie auf der Kreatur. */
+  function ub2(row,o){
+    if(!canWrite())return;
+    row.appendChild(el("button",{class:"btn sm",type:"button",
+      onclick:function(){ makeStatblockFor(o); }},"Make “"+nameOf(o)+"”"));
   }
   return wrap;
 }
@@ -8220,6 +8314,34 @@ function humanKey(k){
  * und wer eine Kreatur änderte, musste wissen, in welcher der beiden ihre
  * Zahlen gerade standen.
  */
+/* **Hängt ein Statblock an dieser Kreatur?** Gefragt wird die Kante und
+   nicht der Inhalt: ein frisch angelegter Statblock ist leer und trotzdem
+   da. `statsOf` liefert dagegen die Zahlen, und ein leerer liefert keine —
+   das sind zwei Fragen, und eine davon mit der anderen zu beantworten
+   hiesse, dass ein eben angehängter Statblock aussieht wie keiner. */
+/* Die Vorbereitungsstände aus der Zeile `State` — idea, prepared, ready.
+   Hier standen einmal `planned`, `used` und `discarded` fest im Code; nach
+   der Umstellung zählte „Unfinished" keinen vorbereiteten Artikel mehr, und
+   die Auswahl bot Werte an, die die Prüfung abweist. Unfertig ist, was
+   nicht beim letzten Wert steht. */
+function statusWerte(){
+  var pd=(((REG.interfaces.Status||{}).schema||{}).properties||{}).status;
+  return (pd&&enumWerte(pd))||["idea","prepared","ready"];
+}
+function unfertigStatus(st){
+  var w=statusWerte();
+  return !!st&&w.indexOf(st)>=0&&st!==w[w.length-1];
+}
+function statblockOf(e){
+  if(!e)return null;
+  if(((e.interfaces||[])[0])==="Statblock")return e;
+  var hit=null;
+  ENT.forEach(function(o){
+    if(hit||((o.interfaces||[])[0])!=="Statblock")return;
+    if((o.relations||[]).some(function(r){ return r.type==="belongsTo"&&r.to===e.id; })) hit=o;
+  });
+  return hit;
+}
 function statsOf(e){
   var eigen=sbCard(e);
   if(((e.interfaces||[])[0])==="Statblock"&&eigen) return {card:eigen,from:e};
@@ -8291,6 +8413,13 @@ function pipRow(n,voll,aus,rund,klasse){
 }
 
 function elSheet(e,ifn,item){
+  /* **Ohne Statblock keine Zahlen.** Der Bogen zeichnete sonst HP 0, AC „—"
+     und Init +0 — Werte, die es nicht gibt, und die am Tisch aussehen wie
+     eine Kreatur, die schon tot ist. Anlegen und Anhängen stehen dort, wo
+     der Statblock sonst seine Felder zeigt (Element `linked`); der Stand an
+     der Figur (HP jetzt, Erschöpfung) bleibt gespeichert und kommt wieder,
+     sobald etwas da ist, an dem er sich misst. */
+  if(!statblockOf(e))return null;
   var st=statsOf(e), sb=st.card;
   var vit=(e.components||{})[VIT_COMP]||{};
   var sk=(e.components||{})[SKILL_COMP]||{};
@@ -11783,7 +11912,12 @@ var BEGRIFFE=[
    "A typed, directed connection between two articles, which may carry "+
    "properties of its own. Stored forward only; the other direction is "+
    "always a query. An edge with a section heading writes the target into "+
-   "the article instead of linking to it."],
+   "the article instead of linking to it. An edge may also read like a "+
+   "field at one end: a creature's numbers live on its statblock, and the "+
+   "creature page draws the statblock's fields with their own inputs. The "+
+   "reading end sees one; the other may be shared — one statblock serves "+
+   "thirty guards, each reads its own, and the page says so before anyone "+
+   "types. Without a statblock a creature shows no numbers at all."],
   ["Unit",
    "How a measure is written and converted. The vault is imperial because "+
    "the rules are; at the table sit people for whom forty feet means "+
@@ -13508,17 +13642,48 @@ function newEntity(presetName){
     var nm=el("input",{class:"i",type:"text",placeholder:"Name",value:presetName||""});
     host.appendChild(field("Interface",sel));
     host.appendChild(field("Name",nm));
+
+    /* **Eine Kreatur fragt nach ihrem Statblock.** Ohne ihn zeigt ihr Bogen
+       keine Zahlen; mit einem neuen trägt er ihren Namen, oder sie nimmt
+       einen, den es schon gibt (fünf Goblins, ein Statblock). „Später" gibt
+       es, weil eine NSC-Idee noch keine Zahlen hat — sie steht dann auf der
+       Vorbereitungsseite unter den Kreaturen ohne Statblock. Gefragt wird
+       nur, wo die Art einen Statblock trägt; sonst steht die Zeile nicht
+       da. */
+    var sbWahl=el("select",{class:"i sbchoice"});
+    [["new","New, with this name"],["existing","Attach an existing one"],["later","Later"]]
+      .forEach(function(o){ sbWahl.appendChild(el("option",{value:o[0]},o[1])); });
+    var sbVorhanden=linkInput({target:{interfaces:["Statblock"]}},"");
+    var sbFeld=field("Statblock",sbWahl), sbZeile=field("Existing statblock",sbVorhanden);
+    host.appendChild(sbFeld); host.appendChild(sbZeile);
+    function sbZeigen(){
+      var hat=!!linkFor(sel.value,"Statblock");
+      sbFeld.style.display=hat?"":"none";
+      sbZeile.style.display=(hat&&sbWahl.value==="existing")?"":"none";
+    }
+    sel.addEventListener("change",sbZeigen);
+    sbWahl.addEventListener("change",sbZeigen);
+    sbZeigen();
+
     if(presetName) host.appendChild(el("p",{class:"hint",
       text:"The link that led here finds the article as soon as it carries the name."}));
     actions(host,close,function(){
       var name=nm.value.trim(); if(!name){nm.focus();return false;}
       var ifn=sel.value;
+      var sbl=linkFor(ifn,"Statblock");
+      if(sbl&&sbWahl.value==="existing"&&!sbVorhanden.value){
+        /* „Bestehenden anhängen" ohne Wahl wäre still „später". */
+        sbVorhanden.querySelector("input").focus(); return false;
+      }
       var e={ id:uid("e"), interfaces:[ifn], name:name,
         components:{ Identity:{name:name,id:nextId(ifn),aliases:[]} },
         adhoc:[], relations:[], createdAt:new Date().toISOString() };
       reqFor(ifn).forEach(function(c){ if(!e.components[c]&&REG.interfaces[c]) e.components[c]={}; });
       applyDefaults(e,ifn);
-      persist(e); go({k:"art",id:e.id});
+      persist(e);
+      if(sbl&&sbWahl.value==="new") makeLinked(e,sbl);
+      if(sbl&&sbWahl.value==="existing") attachLinked(e,sbl,sbVorhanden.value);
+      go({k:"art",id:e.id});
       /* Aus einem Verweis heraus angelegt heisst: man war woanders und will
          dahin zurück. Das Formular nimmt die Angaben in einem Zug auf,
          statt dass man sich durch die frische, leere Ansicht klickt. */

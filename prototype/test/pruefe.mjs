@@ -308,17 +308,30 @@ async function seite(datei, warten) {
   await p.evaluate(() =>
     [...document.querySelectorAll('.rowbtns button')].find((b) => /Edit all fields/.test(b.textContent)).click());
   await p.waitForTimeout(350);
+  /* Das Feld „Home" und kein anderes: seit eine Kreatur ohne Statblock
+     ein „oder anhängen" mit demselben Sucher trägt, ist das erste
+     Verweisfeld der Seite nicht mehr dieses. */
   await p.evaluate(() => {
-    const inp = document.querySelector('.linkbox input');
+    const fld = [...document.querySelectorAll('.fld')]
+      .find((f) => f.querySelector('dt')?.textContent === 'Home');
+    const inp = (fld || document).querySelector('.linkbox input');
     inp.value = 'kerz';
     inp.dispatchEvent(new Event('input', { bubbles: true }));
   });
   await p.waitForTimeout(200);
-  const treffer = await p.evaluate(() => [...document.querySelectorAll('.sugg button')].map((b) => b.textContent));
+  const treffer = await p.evaluate(() => {
+    const fld = [...document.querySelectorAll('.fld')]
+      .find((f) => f.querySelector('dt')?.textContent === 'Home');
+    return [...(fld || document).querySelectorAll('.sugg button')].map((b) => b.textContent);
+  });
   pruefe('typing filters the link suggestions', treffer.length === 1 && /Kerzengasse/.test(treffer[0]), treffer);
 
-  await p.evaluate(() =>
-    document.querySelector('.sugg button').dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));
+  await p.evaluate(() => {
+    const fld = [...document.querySelectorAll('.fld')]
+      .find((f) => f.querySelector('dt')?.textContent === 'Home');
+    (fld || document).querySelector('.sugg button')
+      .dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+  });
   await p.waitForTimeout(200);
   await p.evaluate(() =>
     [...document.querySelectorAll('.rowbtns button')].find((b) => /Done editing/.test(b.textContent)).click());
@@ -1976,6 +1989,96 @@ async function seite(datei, warten) {
     mitglieder.rollenAlsSela[mitglieder.campId] === 'player', mitglieder);
   pruefe('a player does not get the member list', mitglieder.fuerSpieler === 0, mitglieder);
 
+  /* ---- Ohne Statblock keine Zahlen ----
+     Der Bogen zeichnete HP 0, AC „—" und Init +0 auch für eine Kreatur, an
+     der nichts hing — Werte, die es nicht gibt. Jetzt steht dort nichts,
+     und wo der Statblock sonst seine Felder zeigt, stehen „anlegen" (mit
+     dem Namen der Kreatur) und „bestehenden anhängen". */
+  const ohneSb = await p.evaluate(async () => {
+    const T = window.__T__;
+    const warte = (ms) => new Promise((r) => setTimeout(r, ms));
+    const vorherRoute = JSON.parse(JSON.stringify(T.UI.route));
+    const neu = (id, name) => {
+      const e = { id, name, interfaces: ['Creature'], adhoc: [], relations: [],
+        components: { Identity: { name, id: T.nextId('Creature'), aliases: [] } },
+        createdAt: new Date().toISOString() };
+      T.persist(e);
+      return e;
+    };
+    const a = neu('cr_probe_a', 'Probe goblin');
+    const b = neu('cr_probe_b', 'Probe goblin two');
+    T.go({ k: 'art', id: a.id });
+    await warte(300);
+    const ohne = {
+      bogen: !!document.querySelector('.vitals'),
+      knopf: [...document.querySelectorAll('.linkmissing button[data-make="Statblock"]')]
+        .map((x) => x.textContent)[0] || '',
+      anhaengen: !!document.querySelector('.linkmissing .attachlinked'),
+    };
+    document.querySelector('.linkmissing button[data-make="Statblock"]').click();
+    await warte(300);
+    const sbA = T.statblockOf(a);
+    const mit = { bogen: !!document.querySelector('.vitals'), name: sbA && sbA.name };
+    /* Ein zweiter Goblin nimmt denselben Statblock. */
+    T.attachLinked(b, T.linkFor('Creature', 'Statblock'), sbA.id);
+    T.go({ k: 'art', id: b.id });
+    await warte(300);
+    const geteilt = {
+      selber: T.statblockOf(b) && T.statblockOf(b).id === sbA.id,
+      marke: [...document.querySelectorAll('.linkedhead .shared')].map((x) => x.textContent),
+      bogen: !!document.querySelector('.vitals'),
+    };
+    /* Doppelt anhängen tut nichts. */
+    T.attachLinked(b, T.linkFor('Creature', 'Statblock'), sbA.id);
+    const kanten = (T.ENT.get(sbA.id).relations || []).filter((r) => r.type === 'belongsTo').length;
+    const problemeSb = T.checkArticle(T.ENT.get(sbA.id)).map((x) => x.t);
+    T.UI.route = vorherRoute;
+    T.render();
+    await warte(200);
+    return { ohne, mit, geteilt, kanten, problemeSb };
+  });
+  pruefe('a creature without a statblock shows no numbers', ohneSb.ohne.bogen === false, ohneSb);
+  pruefe('it offers to make one named after it, or to attach one',
+    ohneSb.ohne.knopf === 'Make “Probe goblin”' && ohneSb.ohne.anhaengen, ohneSb);
+  pruefe('made, it is linked and the sheet appears',
+    ohneSb.mit.bogen === true && ohneSb.mit.name === 'Probe goblin', ohneSb);
+  pruefe('a second creature can take the same statblock, and says it is shared',
+    ohneSb.geteilt.selber && ohneSb.geteilt.bogen && ohneSb.geteilt.marke.join() === 'shared by 2', ohneSb);
+  pruefe('attaching twice adds nothing', ohneSb.kanten === 2, ohneSb);
+  pruefe('a statblock shared by two validates clean', ohneSb.problemeSb.length === 0, ohneSb);
+
+  /* Der Anlegedialog fragt danach — und eine Art ohne Statblock fragt er
+     nicht. */
+  const dialog = await p.evaluate(async () => {
+    const T = window.__T__;
+    const warte = (ms) => new Promise((r) => setTimeout(r, ms));
+    const vorherRoute = JSON.parse(JSON.stringify(T.UI.route));
+    document.getElementById('new').click();
+    await warte(250);
+    const art = document.querySelectorAll('.dlgbox select')[0];
+    const zeile = () => document.querySelector('.dlgbox .sbchoice').closest('label').style.display;
+    art.value = 'Place'; art.dispatchEvent(new Event('change'));
+    const beiOrt = zeile();
+    art.value = 'Creature'; art.dispatchEvent(new Event('change'));
+    const beiKreatur = zeile();
+    const wahl = document.querySelector('.dlgbox .sbchoice').value;
+    document.querySelectorAll('.dlgbox input')[0].value = 'Probe ogre';
+    [...document.querySelectorAll('.dlgbox .rowbtns button')].find((x) => /Create/.test(x.textContent)).click();
+    await warte(400);
+    const oger = [...T.ENT.values()].find((e) => e.name === 'Probe ogre'
+      && (e.interfaces || [])[0] === 'Creature');
+    const sbO = oger && T.statblockOf(oger);
+    const seite = document.querySelector('.arthead h2')?.textContent;
+    T.UI.route = vorherRoute;
+    T.render();
+    await warte(300);
+    return { beiOrt, beiKreatur, wahl, oger: !!oger, sb: sbO && sbO.name, seite };
+  });
+  pruefe('the new-article dialog asks for a statblock only where one belongs',
+    dialog.beiOrt === 'none' && dialog.beiKreatur === '' && dialog.wahl === 'new', dialog);
+  pruefe('and by default makes one named after the creature, then opens the creature',
+    dialog.oger && dialog.sb === 'Probe ogre' && dialog.seite === 'Probe ogre', dialog);
+
   await p.evaluate(() => {
     const sel = [...document.querySelectorAll('#aside select.i')]
       .find((s) => [...s.options].some((o) => /assign to/.test(o.textContent)));
@@ -2011,7 +2114,7 @@ async function seite(datei, warten) {
     const b = {
       id: 'k_probe', interfaces: ['Knowledge'], name: 'Was man in der Gasse weiss',
       components: { Identity: { name: 'Was man in der Gasse weiss', id: 'knowledge-9999', aliases: [] },
-                    Status: { status: 'used' } },
+                    Status: { status: 'ready' } },
       adhoc: [],
       relations: [
         { id: 'kb1', type: 'includes', to: info.id },
@@ -3752,12 +3855,20 @@ async function seite(datei, warten) {
            nicht, und eine frisch angelegte Figur hat noch nichts. Ihnen
            einen Statblock zu geben, damit die Prüfung grün wird, hiesse
            Daten für die Prüfung zu erfinden. */
+        /* Gezählt werden Statblöcke, **in denen etwas steht**: einer, der
+           beim Anlegen der Kreatur mitentsteht, ist leer und trotzdem da —
+           „hängt einer an" und „trägt er Zahlen" sind zwei Fragen
+           (`statblockOf` und `statsOf`). */
         mitKante: figuren.filter((e) => [...T.ENT.values()].some((o) =>
-          (o.relations || []).some((r) => r.type === 'belongsTo' && r.to === e.id)))
+          (o.relations || []).some((r) => r.type === 'belongsTo' && r.to === e.id)
+          && Object.keys((o.components || {}).Statblock || {}).length
+            + Object.keys((o.components || {}).Abilities || {}).length > 0))
           .map((e) => ({ n: e.name, liest: Object.keys(T.statsOf(e).card).length > 0 })),
-        /* Und der Statblock liest seine eigene Karte. */
+        /* Und der Statblock liest seine eigene Karte — sofern er eine hat. */
         amStatblock: [...T.ENT.values()]
-          .filter((e) => (e.interfaces || [])[0] === 'Statblock')
+          .filter((e) => (e.interfaces || [])[0] === 'Statblock'
+            && Object.keys((e.components || {}).Statblock || {}).length
+              + Object.keys((e.components || {}).Abilities || {}).length > 0)
           .every((e) => T.statsOf(e).from === e),
       };
     });
@@ -4501,13 +4612,19 @@ async function seite(datei, warten) {
       unfertig: document.querySelectorAll('.prep .qlist')[1]?.children.length ?? 0,
       probleme: [...document.querySelectorAll('.pruef li')].map((x) => x.textContent),
     }));
-    pruefe('the prep board has its four lists', pv.abschnitte.length === 4, pv.abschnitte);
+    /* Vier Listen, und eine fünfte, sobald es Kreaturen ohne Statblock
+       gibt — die gibt es im Prüfbestand. */
+    pruefe('the prep board has its four lists',
+      ['Not finished'].every((x) => pv.abschnitte.includes(x)) && pv.abschnitte.length >= 4,
+      pv.abschnitte);
+    pruefe('creatures without a statblock are listed on the prep board',
+      pv.abschnitte.includes('Creatures without a statblock'), pv.abschnitte);
     /* Die Gruppen des Cockpits sind Kantenarten, nicht erfundene Rubriken. */
     pruefe('the cockpit groups by the relation that leads there',
       pv.cockpit.length >= 2, pv.cockpit);
     pruefe('open and done are told apart', pv.offen > 0 && pv.erledigt > 0, pv);
     pruefe('open points from other articles are gathered', pv.anderswo > 0, pv.anderswo);
-    pruefe('what is still idea or planned is listed', pv.unfertig > 0, pv.unfertig);
+    pruefe('what is not yet ready is listed', pv.unfertig > 0, pv.unfertig);
     pruefe('the prep board validates clean', pv.probleme.length === 0, pv.probleme);
 
     /* Schnellerfassung: ein Satz, Enter, fertig — ohne die Ansicht zu
@@ -4531,7 +4648,7 @@ async function seite(datei, warten) {
       document.querySelectorAll('.prep .qlist')[1]?.children.length ?? 0);
     await p.evaluate(() => {
       const sel = document.querySelectorAll('.prep .qlist')[1].querySelector('select');
-      sel.value = 'used';
+      sel.value = 'ready';
       sel.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await p.waitForTimeout(500);
@@ -4539,6 +4656,14 @@ async function seite(datei, warten) {
       document.querySelectorAll('.prep .qlist')[1]?.children.length ?? 0);
     pruefe('the status changes right in the list', nachStand === vorStand - 1,
       { vorStand, nachStand });
+    /* Die Auswahl kennt die Stände, die es gibt — aus der Zeile `State`.
+       Hier standen `planned`, `used` und `discarded`, die die Prüfung
+       abweist. */
+    const staende = await p.evaluate(() =>
+      [...document.querySelectorAll('.prep .qlist')[1].querySelector('select').options]
+        .map((o) => o.value));
+    pruefe('the status choice offers the states that exist',
+      staende.join() === 'idea,prepared,ready', staende);
     pruefe('the prep board raised no exception', errs.length === 0, errs);
   } else {
     pruefe('an article with notes and relations exists in the data', false, 'keiner gefunden');

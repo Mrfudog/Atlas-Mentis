@@ -437,11 +437,34 @@ Damit heisst `hp` am Statblock das Maximum und an der Figur, was sie gerade
 noch hat. Die Namensgleichheit ist keine Falle mehr, sondern die Wahrheit:
 zwei Karten an zwei Artikeln.
 
+**Ohne Statblock keine Zahlen.** Der Bogen zeichnet nichts, solange keiner
+anhängt — vorher stand dort HP 0, AC „—" und Init +0, Werte, die es nicht
+gibt. Wo der Statblock sonst seine Felder zeigt, stehen dann zwei Wege:
+**anlegen**, und er trägt den Namen der Kreatur (er ist ihre Zahlenseite und
+kein Ding für sich), oder **einen bestehenden anhängen**. Der Anlegedialog
+fragt danach — neu, bestehend oder später —, und „später" gibt es, weil eine
+NSC-Idee noch keine Zahlen hat. Solche Kreaturen stehen auf der
+Vorbereitungsseite unter „Creatures without a statblock", statt dass eine
+Prüfung das Anlegen verbietet. Der Stand an der Figur bleibt gespeichert und
+erscheint wieder, sobald etwas da ist, an dem er sich misst.
+
+**Ein Statblock darf vielen gehören** — dreissig Wachen, ein Bogen. Die Kante
+liegt am Statblock, also ist `belongsTo` von dort aus `many`; eine Kreatur
+liest den ersten, der auf sie zeigt. Wer an Wache Nr. 7 die Rüstungsklasse
+ändert, ändert sie an allen dreissig, und darum steht an der verlinkten
+Gruppe „shared by 30", bevor jemand tippt. Der Stand (HP jetzt) bleibt je
+Wache.
+
+„Hängt einer an" und „trägt er Zahlen" sind zwei Fragen (`statblockOf`,
+`statsOf`): ein eben angelegter Statblock ist leer und trotzdem da.
+
 > **Nicht mehr:** eine Kreatur trug die Statblockzahlen auch selbst, und der
 > Bogen las „erst die eigene, dann die geliehene". Zwei Formen für dasselbe —
 > wer eine Kreatur änderte, musste wissen, in welcher der beiden ihre Zahlen
 > gerade standen. Und `belongsTo` reichte nur bis zum NSC, ein
-> Spielercharakter konnte also gar keinen haben.
+> Spielercharakter konnte also gar keinen haben. `belongsTo` stand ausserdem
+> auf `one` — neben einem Kommentar, der „dreissig Wachen, ein Bogen"
+> versprach; durchgesetzt wurde es nie.
 
 ---
 
@@ -614,8 +637,16 @@ Artikel. Auf der Artikelseite zeichnet das Element `linked` sie mit ihren
 eigenen Eingaben, und die schreiben in **jenen** Artikel. Wer eine Zahl
 ändern will, springt nicht mehr hin und sucht den Weg zurück.
 
-Das Mass dafür: **ohne das andere wäre dieser Artikel unvollständig, und es
-gehört keinem zweiten.** Der Statblock einer Kreatur und das Inventar einer
-Gruppe sind so; ein Gegenstand, den ein Rezept liefert, ist es nicht — den
-gäbe es auch ohne das Rezept, und er bleibt ein Verweis.
+Das Mass dafür: **ohne das andere wäre dieser Artikel unvollständig, und an
+seinem Ende liest es sich als eines.** Der Statblock einer Kreatur und das
+Inventar einer Gruppe sind so; ein Gegenstand, den ein Rezept liefert, ist es
+nicht — den gäbe es auch ohne das Rezept, und er bleibt ein Verweis.
+
+Geteilt werden darf es trotzdem: ein Statblock gehört dreissig Wachen, und
+jede liest ihren. Die Kardinalität zählt an dem Ende, an dem die Kante
+**liegt**. Liegt sie am lesenden (`carries` an der Kreatur), heisst das
+`one` — eine Kreatur trägt ein Inventar. Liegt sie am anderen (`belongsTo`
+am Statblock), ist sie dort `many`. Hier stand einmal „und es gehört keinem
+zweiten" — neben einem Kommentar an `belongsTo`, der „dreissig Wachen, ein
+Bogen" versprach.
 
