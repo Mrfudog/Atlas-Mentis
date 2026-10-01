@@ -7,3 +7,4 @@ export * from './knowledge.js';
 export * from './visibility.js';
 export * from './units.js';
 export * from './validate.js';
+export * from './instance.js';

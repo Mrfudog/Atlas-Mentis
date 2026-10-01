@@ -14,7 +14,13 @@ import {
   EntitySchema,
   RegistrySchema,
   articleVisible,
+  detachInstance,
+  instancesOf,
+  isInstance,
+  readInstance,
   redactEntity,
+  resolveInstance,
+  thinInstance,
   validateEntity,
 } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
@@ -463,6 +469,11 @@ export function buildApp({
    */
   async function sieve(request: FastifyRequest, entities: Entity[]): Promise<Entity[]> {
     const user = await viewerOf(request);
+    /* **Eine Instanz geht aufgelöst hinaus**, mit ihrer Vorlage darin und
+       der Angabe, welche Felder von dort kommen. Gespeichert ist an ihr nur,
+       was abweicht; ohne Auflösung hätte Wache 1 keine Trefferpunkte. */
+    const roh = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    entities = entities.map((e) => readInstance(roh, e));
     if (!user || user.isAdmin) return entities;
     const registry = await repo.getRegistry();
     /* Der Zusammenhang ist immer der ganze Bestand, auch wenn nur ein
@@ -470,7 +481,7 @@ export function buildApp({
        wem sie gehört, steht an anderen Artikeln. Mit einer Karte aus nur
        diesem einen fände das Sieb keine einzige Information — und liesse
        alles durch, ohne dass irgendwo etwas schiefginge. */
-    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const alle = roh;
     const gmFields = String(registry.settings?.['gmFields'] ?? 'Secrets.secret,Tactics.tactics')
       .split(',')
       .map((x) => x.trim())
@@ -540,12 +551,26 @@ export function buildApp({
       );
       known.set(entity.id, entity.interfaces?.[0] ?? '');
 
-      const issues = validateEntity(registry, entity, { knownTypes: known });
+      /* **Eine Instanz wird aufgelöst geprüft und ausgedünnt gespeichert.**
+         Ihre Pflichtfelder stehen an der Vorlage; gespeichert wird nur, was
+         abweicht. Eine Maske, die den aufgelösten Artikel zurückschickt,
+         schreibt so nicht still jeden Wert der Vorlage fest — und wer den
+         Wert der Vorlage einträgt, folgt ihr wieder. */
+      let zuSchreiben = entity;
+      let zuPruefen = entity;
+      if (isInstance(entity)) {
+        const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+        alle.set(entity.id, entity);
+        zuPruefen = resolveInstance(alle, entity);
+        zuSchreiben = thinInstance(alle, entity);
+      }
+
+      const issues = validateEntity(registry, zuPruefen, { knownTypes: known });
       if (issues.length) {
         return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
       }
 
-      const stored = await repo.putEntity(entity);
+      const stored = await repo.putEntity(zuSchreiben);
       await repo.appendEvent('entity.written', entity.id, {
         interfaces: entity.interfaces,
         cards: Object.keys(entity.components ?? {}),
@@ -555,6 +580,27 @@ export function buildApp({
   );
 
   app.delete<{ Params: { id: string } }>('/api/entities/:id', async (request, reply) => {
+    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const weg = alle.get(request.params.id);
+    if (weg) {
+      /* Eine Vorlage nimmt beim Gehen nichts mit: ihre Instanzen bekommen
+         vorher, was sie von ihr lasen. */
+      for (const instanz of instancesOf(alle, weg)) {
+        await repo.putEntity(detachInstance(alle, instanz));
+      }
+      /* Eine Kreatur nimmt ihre Instanz mit — die steht in keiner Liste und
+         gehört nur ihr. Ein eigener Statblock bleibt stehen. */
+      const registry = await repo.getRegistry();
+      const teilVon = new Set(
+        Object.values(registry.relations).filter((r) => r.asField === 'to').map((r) => r.type),
+      );
+      for (const o of alle.values()) {
+        if (o.id === weg.id || !isInstance(o)) continue;
+        if ((o.relations ?? []).some((r) => teilVon.has(r.type) && r.to === weg.id)) {
+          await repo.deleteEntity(o.id);
+        }
+      }
+    }
     const removed = await repo.deleteEntity(request.params.id);
     if (!removed) return reply.code(404).send({ error: 'Nicht gefunden' });
     await repo.appendEvent('entity.deleted', request.params.id, {});
@@ -574,7 +620,15 @@ export function buildApp({
     const known = new Map(
       (await repo.listEntities()).map((e) => [e.id, e.interfaces?.[0] ?? ''] as const),
     );
-    return { issues: validateEntity(registry, parsed.data as Entity, { knownTypes: known }) };
+    /* Dieselbe Auflösung wie beim Schreiben: eine Instanz ohne eigene
+       Trefferpunkte ist keine unvollständige. */
+    let pruefling = parsed.data as Entity;
+    if (isInstance(pruefling)) {
+      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      alle.set(pruefling.id, pruefling);
+      pruefling = resolveInstance(alle, pruefling);
+    }
+    return { issues: validateEntity(registry, pruefling, { knownTypes: known }) };
   });
 
   return app;

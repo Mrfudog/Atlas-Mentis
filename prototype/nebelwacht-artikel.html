@@ -117,6 +117,11 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 .fld dd{margin:1px 0 0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .fld.adhoc{border-left:2px solid var(--accent)}
 .fld.drv dd{color:var(--link)}
+/* Instanz: was von der Vorlage kommt, steht blass; was hier gesetzt ist,
+   trägt ein ↺ zum Zurücknehmen. */
+.fld.inherited dd{color:var(--dim);font-style:italic}
+.fld dt .reset{margin-left:4px;padding:0 4px;line-height:1.2;font-size:11px}
+button.pill.instof{cursor:pointer;border:1px dashed var(--line2)}
 .fgrp{grid-column:1/-1;background:var(--surface2);padding:3px 10px;font-size:10.5px;
   text-transform:uppercase;letter-spacing:.09em;color:var(--dim);font-weight:600}
 .drvnote{font-size:11px;color:var(--link);margin:-4px 0 8px;font-family:var(--ff-mono)}
@@ -1619,6 +1624,9 @@ function linkCandidates(target,query,limit){
   var vorn=[], hinten=[];
   ENT.forEach(function(e){
     if(!targetMatches(target,e))return;
+    /* Eine Instanz ist kein Verweisziel: sie gehört ihrer Kreatur, und als
+       Vorlage dient die Vorlage. */
+    if(isInstance(e))return;
     var name=nameOf(e).toLowerCase();
     var aliases=(((e.components||{}).Identity||{}).aliases||[]).join(" ").toLowerCase();
     if(!q){ vorn.push(e); return; }
@@ -2439,6 +2447,10 @@ function relDef(t){ var r=REG.relations[t]; return r?Object.assign({type:t},r):{
 
 /* ---------- Validation: dieselben Regeln wie validateEntity im Modellpaket ---------- */
 function checkArticle(e){
+  /* Eine Instanz wird **aufgelöst** geprüft: ihre Pflichtfelder stehen an
+     der Vorlage, und eine Wache ohne eigene Trefferpunkte ist keine
+     unvollständige Wache. */
+  e=resolvedOf(e);
   var problems=[], ifn=(e.interfaces||[])[0];
   if(!ifn||!REG.interfaces[ifn]){
     return [{t:"Unknown interface: "+(ifn||"(none)")}];
@@ -2600,6 +2612,10 @@ function persist(e){
      Eine Stelle, nicht sechs: an jedem Anlegeweg einzeln daran zu denken
      heisst, es an einem zu vergessen — und dort verliert der nächste Import
      dann die Wissenszuteilungen (B3). */
+  /* Eine Instanz speichert nur, was von ihrer Vorlage abweicht. Hier und
+     nicht an jeder Maske: die Masken bearbeiten den aufgelösten Artikel,
+     und eine, die das vergässe, schriebe alle Werte der Vorlage fest. */
+  if(isInstance(e)) e=thinned(e);
   ensureAnchors(e);
   e.updatedAt=new Date().toISOString();
   lastWroteAt[e.id]=e.updatedAt;
@@ -2610,6 +2626,30 @@ function persist(e){
 }
 function drop(id){
   if(blockedByLoad())return;
+  var weg=ENT.get(id);
+  if(weg){
+    /* **Eine Vorlage nimmt beim Gehen nichts mit.** Ihre Instanzen
+       bekommen vorher, was sie von ihr lasen, und hängen danach an
+       niemandem. */
+    instancesOf(weg).forEach(function(i){ persist(detachInstance(i)); });
+    /* **Eine Kreatur nimmt ihre Instanz mit.** Die steht in keiner Liste
+       und gehört nur ihr; bliebe sie, wäre sie ein Statblock, den niemand
+       mehr findet. Ein eigener Statblock ohne Vorlage bleibt stehen — der
+       steht im Regelwerk und kann einer anderen Kreatur als Vorlage
+       dienen —, nur seine Kante auf die Kreatur geht. */
+    var teilVon={};
+    Object.keys(REG.relations||{}).forEach(function(k){
+      if((REG.relations[k]||{}).asField==="to") teilVon[k]=1; });
+    ENT.forEach(function(o){
+      if(o.id===id)return;
+      var haengt=(o.relations||[]).some(function(r){ return teilVon[r.type]&&r.to===id; });
+      if(!haengt)return;
+      if(isInstance(o)){ drop(o.id); return; }
+      /* Der eigene bleibt, aber ohne Kante ins Leere. */
+      persist(Object.assign({},o,{relations:(o.relations||[]).filter(function(r){
+        return !(teilVon[r.type]&&r.to===id); })}));
+    });
+  }
   ENT.delete(id); render();
   if(db) db.doc("entities/"+id).delete().catch(fail);
 }
@@ -3220,6 +3260,9 @@ function renderMain(){
 
 function matches(e){
   if(!articleVisible(e))return false;
+  /* Instanzen stehen an ihrer Kreatur und sonst nirgends: dreissig Wachen
+     wären sonst dreissig „Wache"-Statblocks im Regelwerk. */
+  if(isInstance(e))return false;
   if(UI.offen && !checkArticle(e).length) return false;
   if(UI.iface){
     /* Ein Obertyp meint seine Subtypen mit. Exakt zu vergleichen hiesse:
@@ -3362,7 +3405,9 @@ function renderList(v){
 
 /* ---------- article ---------- */
 function renderArticle(v,id){
-  var e=ENT.get(id);
+  /* Eine Instanz zeigt sich aufgelöst: mit dem, was sie von ihrer Vorlage
+     liest. Geschrieben wird trotzdem nur, was abweicht (`persist`). */
+  var e=resolvedOf(ENT.get(id));
   if(!e){ v.appendChild(el("div",{class:"empty",text:"Article not found."})); return; }
   writeCtx=e;
   if(!articleVisible(e)){
@@ -3378,6 +3423,15 @@ function renderArticle(v,id){
   kick.appendChild(el("span",{class:"pill",text:ifaceName(e)}));
   var st=e.components&&e.components.Status&&e.components.Status.status;
   if(st) kick.appendChild(el("span",{class:"pill q",text:st}));
+  /* Woher sie liest und wer aus ihr liest — beides vor dem ersten Feld,
+     denn es sagt, wen eine Änderung hier trifft. */
+  if(e.__template) kick.appendChild(el("button",{class:"pill q instof",type:"button",
+    title:"Fields not set here come from the template",
+    onclick:function(){ go({k:"art",id:e.__template.id}); }},"instance of "+nameOf(e.__template)));
+  var inst=instancesOf(e).length;
+  if(inst) kick.appendChild(el("span",{class:"pill q tplof",
+    title:"Changing a field here changes it for every instance that has not set it itself",
+    text:"template of "+inst}));
   if(canWrite()&&(UI.inline||UI.editField==="__tags")){
     var tgIn=el("input",{class:"i",type:"text",value:tagsOf(e).join(", "),
       placeholder:"comma, separated",style:"max-width:280px"});
@@ -3721,8 +3775,26 @@ function immerOffen(cn,pd){
 
 function fieldCell(e,cn,p,pd,val,txt,titel){
   var id=cn+"."+p;
-  var cell=el("div",{class:"fld"+(pd.derived?" drv":"")});
-  cell.appendChild(el("dt",{text:titel||pd.title||p}));
+  /* **An einer Instanz sagt jedes Feld, woher es kommt.** Blass: von der
+     Vorlage. Mit ↺: hier gesetzt, und ein Klick nimmt es zurück — dann
+     gilt wieder, was die Vorlage sagt. */
+  var vonVorlage=e.__inherited&&e.__inherited[id];
+  var cell=el("div",{class:"fld"+(pd.derived?" drv":"")+(vonVorlage?" inherited":"")});
+  if(vonVorlage) cell.title="From "+nameOf(vonVorlage);
+  var dt=el("dt",{text:titel||pd.title||p});
+  if(e.__template&&!vonVorlage&&!pd.derived&&canWrite()){
+    var roh=ENT.get(e.id), eigen=roh&&((roh.components||{})[cn]||{})[p];
+    var dort=(((resolvedOf(e.__template).components||{})[cn])||{})[p];
+    if(!leerWert(eigen)&&!leerWert(dort)) dt.appendChild(el("button",{class:"btn gh sm reset",type:"button",
+      title:"Back to the template ("+fmtVal(pd,dort)+")",
+      onclick:function(ev){
+        ev.stopPropagation();
+        var card=e.components[cn]=Object.assign({},e.components[cn]||{});
+        card[p]=tief(dort);
+        persist(e);
+      }},"\u21ba"));
+  }
+  cell.appendChild(dt);
   /* Eine ausgegebene Nummer bekommt keine Eingabe: sie steht seit dem
      Anlegen und darf sich nicht ändern — sonst hiesse derselbe Artikel
      morgen anders. Ein gerechneter Wert bekommt aus dem anderen Grund
@@ -4259,9 +4331,10 @@ function makeLinked(e,l){
   }
   return neu;
 }
-/* **Einen bestehenden anhängen.** Dreissig Wachen, ein Statblock: die
-   Kante kommt an den Statblock dazu, und er gehört danach allen dreissig.
-   Doppelt angehängt wird nichts. */
+/* **Einen bestehenden anhängen** — für Kanten, die an diesem Artikel
+   liegen (ein Inventar). Ein Statblock wird so nicht mehr geteilt: aus
+   dem gewählten wird eine Instanz (`makeInstanceFor`). Doppelt angehängt
+   wird nichts. */
 function attachLinked(e,l,zielId){
   var ziel=ENT.get(zielId); if(!ziel||ziel.id===e.id)return;
   if(l.direction==="out"){
@@ -4325,25 +4398,29 @@ function elLinked(e,ifn,item){
          Verweisfeld, eingeschränkt auf die Art, die hier hängen kann. */
       var such=linkInput({target:{interfaces:[l.type]}},"");
       such.classList.add("attachlinked");
+      /* Liegt die Kante am anderen Ende und kann die Art Vorlagen haben,
+         wird aus dem gewählten eine **Instanz** für diese Kreatur — sonst
+         hinge ein Bogen an dreissig Wachen, und jede Änderung an einer
+         wäre eine an allen. */
+      var alsInstanz=l.direction!=="out"&&canTemplate(l.type);
       such.addEventListener("change",function(){
         if(!such.value)return;
-        attachLinked(e,l,such.value); render();
+        if(alsInstanz) makeInstanceFor(e,l,such.value);
+        else attachLinked(e,l,such.value);
+        render();
       });
-      leer.appendChild(el("span",{class:"co",text:"or attach"}));
+      leer.appendChild(el("span",{class:"co",text:alsInstanz?"or from a template":"or attach"}));
       leer.appendChild(such);
       wrap.appendChild(leer);
       return;
     }
-    /* **Geteilt heisst: eine Änderung gilt für alle.** Wer an Wache Nr. 7
-       die Rüstungsklasse ändert, ändert sie an dreissig Wachen — das soll
-       dastehen, bevor jemand tippt. */
-    if(l.direction!=="out"){
-      var mit=(ziel.art.relations||[]).filter(function(r){ return r.type===l.relation; }).length;
-      if(mit>1) kopf.appendChild(el("span",{class:"pill q shared",
-        title:"Changing it here changes it for all of them",
-        text:"shared by "+mit}));
-    }
-    var felder=elFields(ziel.art,l.type,{el:"fields",fields:"all"});
+    /* **Aus welcher Vorlage**, bevor jemand tippt: was hier geändert wird,
+       gilt nur für diese Kreatur; was nicht gesetzt ist, kommt von dort. */
+    var vorlage=templateOf(ziel.art);
+    if(vorlage) kopf.appendChild(el("button",{class:"pill q instof",type:"button",
+      title:"Fields not set here come from the template — changes here stay here",
+      onclick:function(){ go({k:"art",id:vorlage.id}); }},"from "+nameOf(vorlage)));
+    var felder=elFields(resolvedOf(ziel.art),l.type,{el:"fields",fields:"all"});
     if(felder) wrap.appendChild(felder);
     else wrap.appendChild(el("p",{class:"hint",text:"Nothing filled in there yet."}));
   });
@@ -8250,6 +8327,9 @@ var VIT_COMP="Vitals", SKILL_COMP="Proficiencies";
  */
 var SB_PARTS=["Statblock","Abilities"];
 function sbCard(o){
+  /* Eine Instanz liest ihre Vorlage mit — sonst hätte Wache 1 genau die
+     Zahlen, die sie selbst geändert hat, und sonst keine. */
+  o=resolvedOf(o);
   var raus={}, leer=true;
   SB_PARTS.forEach(function(t){
     var c=(o.components||{})[t];
@@ -8355,6 +8435,167 @@ function statsOf(e){
   });
   return geliehen||{card:{},from:null};
 }
+/* ---------- Vorlage und Instanz ----------
+   **Zwei Wachen aus einer Vorlage, und jede darf anders werden.** Eine
+   Instanz ist ein eigener Statblock mit der Kante `instanceOf` auf ihre
+   Vorlage. Gespeichert wird an ihr nur, was abweicht; gelesen wird beides
+   zusammen. Korrigiert jemand die Vorlage, erreicht das jede Wache, die
+   das Feld nicht selbst gesetzt hat — und die mit 18 Trefferpunkten behält
+   ihre 18.
+
+   **Gleich wie die Vorlage heisst: folgt der Vorlage.** `persist` dünnt
+   eine Instanz aus, bevor sie geschrieben wird: was gleich steht wie in
+   der Vorlage, fällt weg. So bleibt jede Maske, die den aufgelösten
+   Artikel bearbeitet, richtig, ohne von Instanzen zu wissen.
+
+   Dieselben Regeln wie `instance.ts` im Paket; die Namen der Kanten und
+   Karten, die nicht mitgehen, stehen dort wie hier. */
+var REL_INSTANCE="instanceOf",
+    INST_KEEP_CARDS=["Identity","Visibility"],
+    INST_KEEP_RELS=["instanceOf","belongsTo","inLayer","overrides","variantOf"];
+function templateOf(e){
+  var k=e&&(e.relations||[]).filter(function(r){ return r.type===REL_INSTANCE; })[0];
+  return (k&&ENT.get(k.to))||null;
+}
+function isInstance(e){
+  return !!e&&(e.relations||[]).some(function(r){ return r.type===REL_INSTANCE; });
+}
+function templateChain(e){
+  var kette=[], gesehen={}; gesehen[e.id]=1;
+  var t=templateOf(e);
+  while(t&&!gesehen[t.id]&&kette.length<8){ kette.push(t); gesehen[t.id]=1; t=templateOf(t); }
+  return kette;
+}
+function instancesOf(t){
+  var raus=[];
+  ENT.forEach(function(o){
+    if((o.relations||[]).some(function(r){ return r.type===REL_INSTANCE&&r.to===t.id; })) raus.push(o);
+  });
+  return raus;
+}
+/* Kann diese Art Vorlagen haben? Das sagt die Kante, nicht der Code. */
+function canTemplate(ifn){
+  var r=(REG.relations||{})[REL_INSTANCE];
+  return !!r&&ifaceInList(r.from,ifn);
+}
+function leerWert(v){ return v===undefined||v===null||v===""; }
+function tief(v){ return v===undefined?v:JSON.parse(JSON.stringify(v)); }
+/**
+ * Der Artikel, wie er gelesen wird: Vorlage, darüber die Abweichungen.
+ * Feld für Feld — Wache 2 mit eigenen Trefferpunkten behält die
+ * Rüstungsklasse der Vorlage. Kanten nach Art: eigene Aktionen ersetzen die
+ * der Vorlage, sonst kommen ihre mit. Das Ergebnis ist eine **Kopie** mit
+ * derselben Id; was jemand darin ändert, schreibt `persist` ausgedünnt
+ * zurück. Ohne Vorlage kommt der Artikel selbst zurück.
+ */
+function resolvedOf(e){
+  if(!e||!isInstance(e))return e;
+  var kette=templateChain(e);
+  if(!kette.length)return e;
+  var comps={}, geerbt={};
+  kette.slice().reverse().forEach(function(t){
+    Object.keys(t.components||{}).forEach(function(cn){
+      if(INST_KEEP_CARDS.indexOf(cn)>=0)return;
+      var c=t.components[cn]||{}, ziel=comps[cn]=comps[cn]||{};
+      Object.keys(c).forEach(function(k){
+        if(leerWert(c[k]))return;
+        ziel[k]=tief(c[k]); geerbt[cn+"."+k]=t;
+      });
+    });
+  });
+  Object.keys(e.components||{}).forEach(function(cn){
+    var c=e.components[cn]||{}, ziel=comps[cn]=comps[cn]||{};
+    Object.keys(c).forEach(function(k){
+      if(leerWert(c[k]))return;
+      ziel[k]=tief(c[k]); delete geerbt[cn+"."+k];
+    });
+  });
+  var eigene=(e.relations||[]).map(tief), arten={};
+  eigene.forEach(function(r){ arten[r.type]=1; });
+  var mit=[];
+  kette.forEach(function(t){
+    var neu={};
+    (t.relations||[]).forEach(function(r){
+      if(INST_KEEP_RELS.indexOf(r.type)>=0||arten[r.type])return;
+      mit.push(tief(r)); neu[r.type]=1;
+    });
+    Object.keys(neu).forEach(function(a){ arten[a]=1; });
+  });
+  var raus=Object.assign({},e,{components:comps,relations:eigene.concat(mit)});
+  /* Nicht aufzählbar: das geht beim Schreiben nicht mit. */
+  Object.defineProperty(raus,"__template",{value:kette[0]});
+  Object.defineProperty(raus,"__inherited",{value:geerbt});
+  return raus;
+}
+/**
+ * Was gespeichert wird: nur, was abweicht. Ein Feld, das gleich steht wie
+ * in der aufgelösten Vorlage, fällt weg. Kanten je Art: stehen genau die der
+ * Vorlage da, folgt die Instanz ihr; ist die Liste anders, gehört sie ganz
+ * der Instanz — sonst käme ein gestrichener Waffenangriff beim Speichern
+ * zurück, weil die übrigen noch gleich sind.
+ */
+function thinned(e){
+  var t=templateOf(e);
+  if(!t)return e;
+  var basis=resolvedOf(t);
+  var geerbteIds={};
+  (basis.relations||[]).forEach(function(r){ geerbteIds[r.id]=1; });
+  var comps={};
+  Object.keys(e.components||{}).forEach(function(cn){
+    var c=e.components[cn]||{};
+    if(INST_KEEP_CARDS.indexOf(cn)>=0){ comps[cn]=c; return; }
+    var dort=(basis.components||{})[cn]||{}, eigen={};
+    Object.keys(c).forEach(function(k){
+      if(leerWert(c[k]))return;
+      if(JSON.stringify(dort[k])===JSON.stringify(c[k]))return;
+      eigen[k]=c[k];
+    });
+    if(Object.keys(eigen).length) comps[cn]=eigen;
+  });
+  var dortNach={}, hierNach={}, rels=[];
+  (basis.relations||[]).forEach(function(r){
+    if(INST_KEEP_RELS.indexOf(r.type)>=0)return;
+    (dortNach[r.type]=dortNach[r.type]||[]).push(r);
+  });
+  (e.relations||[]).forEach(function(r){
+    if(INST_KEEP_RELS.indexOf(r.type)>=0){ rels.push(r); return; }
+    (hierNach[r.type]=hierNach[r.type]||[]).push(r);
+  });
+  Object.keys(hierNach).forEach(function(a){
+    if(JSON.stringify(hierNach[a])===JSON.stringify(dortNach[a]||[]))return;
+    hierNach[a].forEach(function(r){
+      rels.push(geerbteIds[r.id]?Object.assign({},r,{id:r.id+"@"+e.id}):r);
+    });
+  });
+  return Object.assign({},e,{components:comps,relations:rels});
+}
+/* Vor dem Löschen einer Vorlage: alles, was die Instanz von ihr las,
+   steht danach an ihr selbst. Sonst nähme das Löschen dreissig Wachen
+   ihre Zahlen, und keine sagte warum. */
+function detachInstance(e){
+  var voll=resolvedOf(e);
+  return Object.assign({},voll,{
+    relations:(voll.relations||[]).filter(function(r){ return r.type!==REL_INSTANCE; })});
+}
+/**
+ * **Eine Kreatur bekommt ihre Instanz.** Wer an einer Kreatur einen
+ * bestehenden Statblock wählt, hängt nicht die Vorlage selbst an — dann
+ * wäre jede Änderung an dieser Kreatur eine an allen —, sondern eine
+ * Instanz, die ihren Namen trägt und vorerst nichts Eigenes hat.
+ */
+function makeInstanceFor(e,l,vorlageId){
+  var t=ENT.get(vorlageId); if(!t)return null;
+  var name=linkedName(e,l);
+  var neu={id:uid("e"),interfaces:[(t.interfaces||[])[0]],name:name,
+    components:{Identity:{name:name,id:nextId((t.interfaces||[])[0]),aliases:[]}},
+    adhoc:[],relations:[
+      {id:uid("r"),type:REL_INSTANCE,to:t.id,props:{}},
+      {id:uid("r"),type:l.relation,to:e.id,props:{}}],
+    createdAt:new Date().toISOString()};
+  persist(neu);
+  return neu;
+}
+
 function modOf(card,attr){
   var n=Number(card[attr]);
   return isFinite(n)?Math.floor((n-10)/2):0;
@@ -11914,10 +12155,14 @@ var BEGRIFFE=[
    "always a query. An edge with a section heading writes the target into "+
    "the article instead of linking to it. An edge may also read like a "+
    "field at one end: a creature's numbers live on its statblock, and the "+
-   "creature page draws the statblock's fields with their own inputs. The "+
-   "reading end sees one; the other may be shared — one statblock serves "+
-   "thirty guards, each reads its own, and the page says so before anyone "+
-   "types. Without a statblock a creature shows no numbers at all."],
+   "creature page draws the statblock's fields with their own inputs. Such "+
+   "an edge is always one: a statblock belongs to one creature. What thirty "+
+   "guards have in common sits on a template, and each guard reads its own "+
+   "instance of it (instanceOf): the instance stores only what differs, the "+
+   "template fills in the rest on read, and a value typed back to the "+
+   "template's follows the template again. Instances stand at their "+
+   "creature and in no list. Without a statblock a creature shows no "+
+   "numbers at all."],
   ["Unit",
    "How a measure is written and converted. The vault is imperial because "+
    "the rules are; at the table sit people for whom forty feet means "+
@@ -12316,6 +12561,16 @@ function howtoBaum(e){
   kopf.appendChild(el("span",{class:"tw",text:"article"}));
   kopf.appendChild(el("button",{class:"ref",type:"button",
     onclick:function(){ go({k:"art",id:e.id}); }},nameOf(e)));
+  /* Eine Instanz trägt nur, was abweicht — das Übrige liest sie. Steht
+     das nicht hier, sieht der Baum aus wie ein halb leerer Statblock. */
+  var vorl=templateOf(e);
+  if(vorl){
+    kopf.appendChild(el("span",{class:"co",text:" instance of "}));
+    kopf.appendChild(el("button",{class:"ref",type:"button",
+      onclick:function(){ go({k:"art",id:vorl.id}); }},nameOf(vorl)));
+    kopf.appendChild(el("span",{class:"co",
+      text:" — it stores only what differs and reads the rest from there"}));
+  }
   box.appendChild(kopf);
 
   var gesehen={};
@@ -13651,10 +13906,10 @@ function newEntity(presetName){
        nur, wo die Art einen Statblock trägt; sonst steht die Zeile nicht
        da. */
     var sbWahl=el("select",{class:"i sbchoice"});
-    [["new","New, with this name"],["existing","Attach an existing one"],["later","Later"]]
+    [["new","New, with this name"],["existing","From a template"],["later","Later"]]
       .forEach(function(o){ sbWahl.appendChild(el("option",{value:o[0]},o[1])); });
     var sbVorhanden=linkInput({target:{interfaces:["Statblock"]}},"");
-    var sbFeld=field("Statblock",sbWahl), sbZeile=field("Existing statblock",sbVorhanden);
+    var sbFeld=field("Statblock",sbWahl), sbZeile=field("Template",sbVorhanden);
     host.appendChild(sbFeld); host.appendChild(sbZeile);
     function sbZeigen(){
       var hat=!!linkFor(sel.value,"Statblock");
@@ -13682,7 +13937,10 @@ function newEntity(presetName){
       applyDefaults(e,ifn);
       persist(e);
       if(sbl&&sbWahl.value==="new") makeLinked(e,sbl);
-      if(sbl&&sbWahl.value==="existing") attachLinked(e,sbl,sbVorhanden.value);
+      if(sbl&&sbWahl.value==="existing"){
+        if(sbl.direction!=="out"&&canTemplate(sbl.type)) makeInstanceFor(e,sbl,sbVorhanden.value);
+        else attachLinked(e,sbl,sbVorhanden.value);
+      }
       go({k:"art",id:e.id});
       /* Aus einem Verweis heraus angelegt heisst: man war woanders und will
          dahin zurück. Das Formular nimmt die Angaben in einem Zug auf,

@@ -2019,33 +2019,112 @@ async function seite(datei, warten) {
     await warte(300);
     const sbA = T.statblockOf(a);
     const mit = { bogen: !!document.querySelector('.vitals'), name: sbA && sbA.name };
-    /* Ein zweiter Goblin nimmt denselben Statblock. */
-    T.attachLinked(b, T.linkFor('Creature', 'Statblock'), sbA.id);
+    /* **Ein zweiter Goblin aus derselben Vorlage** bekommt eine Instanz:
+       eigener Statblock, liest die Vorlage, speichert nur, was abweicht. */
+    const sbl = T.linkFor('Creature', 'Statblock');
+    const vorlage = T.ENT.get(sbA.id);
+    vorlage.components = { ...vorlage.components, Statblock: { ac: 15, hp: 11, speed: '30' } };
+    T.persist(vorlage);
+    T.makeInstanceFor(b, sbl, sbA.id);
     T.go({ k: 'art', id: b.id });
     await warte(300);
-    const geteilt = {
-      selber: T.statblockOf(b) && T.statblockOf(b).id === sbA.id,
-      marke: [...document.querySelectorAll('.linkedhead .shared')].map((x) => x.textContent),
+    const instB = T.statblockOf(b);
+    const inst = {
+      eigene: instB && instB.id !== sbA.id,
+      vorlage: instB && T.templateOf(instB) && T.templateOf(instB).id,
+      marke: [...document.querySelectorAll('.linkedhead .instof')].map((x) => x.textContent),
+      blass: document.querySelectorAll('.linkedbox .fld.inherited').length,
       bogen: !!document.querySelector('.vitals'),
+      hpGelesen: T.statsOf(b).card.hp,
+      roh: JSON.stringify(T.ENT.get(instB.id).components),
     };
-    /* Doppelt anhängen tut nichts. */
-    T.attachLinked(b, T.linkFor('Creature', 'Statblock'), sbA.id);
-    const kanten = (T.ENT.get(sbA.id).relations || []).filter((r) => r.type === 'belongsTo').length;
-    const problemeSb = T.checkArticle(T.ENT.get(sbA.id)).map((x) => x.t);
+    /* Wache 2 bekommt eigene Trefferpunkte — so, wie eine Maske schreibt:
+       in den aufgelösten Artikel, und `persist` dünnt aus. */
+    const offen = T.resolvedOf(T.ENT.get(instB.id));
+    offen.components.Statblock.hp = 18;
+    T.persist(offen);
+    const abweichung = {
+      roh: T.ENT.get(instB.id).components.Statblock,
+      b: T.statsOf(b).card.hp,
+      a: T.statsOf(a).card.hp,
+      vorlage: T.ENT.get(sbA.id).components.Statblock.hp,
+    };
+    /* Die Vorlage korrigiert: die Rüstung kommt an, die 18 bleiben. */
+    const v2 = T.ENT.get(sbA.id);
+    v2.components = { ...v2.components, Statblock: { ...v2.components.Statblock, ac: 16 } };
+    T.persist(v2);
+    const korrigiert = { ac: T.statsOf(b).card.ac, hp: T.statsOf(b).card.hp };
+    /* ↺ an einem Feld, das hier gesetzt ist: danach folgt es wieder der
+       Vorlage, und an der Instanz steht davon nichts mehr. */
+    const ruest = T.resolvedOf(T.ENT.get(instB.id));
+    ruest.components.Statblock.ac = 13;
+    T.persist(ruest);
+    T.go({ k: 'art', id: b.id });
+    await warte(250);
+    const knopf = [...document.querySelectorAll('.linkedbox .fld')]
+      .find((x) => /Armour class/.test(x.querySelector('dt')?.textContent || ''))
+      ?.querySelector('dt .reset');
+    const ruecksetzer = !!knopf;
+    const vorReset = T.statsOf(b).card.ac;
+    if (knopf) knopf.click();
+    await warte(200);
+    const gefolgt = { roh: T.ENT.get(instB.id).components.Statblock, ac: T.statsOf(b).card.ac, vorReset };
+    /* In keiner Liste, kein Verweisziel, und sauber geprüft. */
+    T.UI.q = ''; T.UI.iface = 'Statblock';
+    const inListe = T.ENT.get(instB.id) && T.linkCandidates
+      ? T.linkCandidates({ interfaces: ['Statblock'] }, '', 200).some((x) => x.id === instB.id) : null;
+    T.UI.iface = '';
+    const probleme = T.checkArticle(T.ENT.get(instB.id)).map((x) => x.t);
+    /* Die Vorlage geht: die Instanz behält, was sie las. */
+    const mitHp = T.resolvedOf(T.ENT.get(instB.id));
+    mitHp.components.Statblock.hp = 18;
+    T.persist(mitHp);
+    T.drop(sbA.id);
+    await warte(100);
+    const los = T.ENT.get(instB.id);
+    const geloest = { sb: los && los.components.Statblock,
+      kante: los && (los.relations || []).some((r) => r.type === 'instanceOf') };
+    /* Die Kreatur geht: ihre Instanz geht mit. Dafür eine frische. */
+    const v3 = { id: 'sb_probe_tpl', name: 'Probe template', interfaces: ['Statblock'], adhoc: [],
+      relations: [], components: { Identity: { name: 'Probe template', id: T.nextId('Statblock'), aliases: [] },
+        Statblock: { ac: 12 } } };
+    T.persist(v3);
+    const c = neu('cr_probe_c', 'Probe goblin three');
+    const instC = T.makeInstanceFor(c, sbl, v3.id);
+    T.drop(c.id);
+    await warte(100);
+    const mitGegangen = !T.ENT.get(instC.id) && !!T.ENT.get(v3.id);
+    T.drop(v3.id); T.drop(a.id); T.drop(b.id); T.drop(instB.id);
     T.UI.route = vorherRoute;
     T.render();
     await warte(200);
-    return { ohne, mit, geteilt, kanten, problemeSb };
+    return { ohne, mit, sbAId: sbA.id, inst, abweichung, korrigiert, ruecksetzer, gefolgt, inListe,
+      probleme, geloest, mitGegangen };
   });
   pruefe('a creature without a statblock shows no numbers', ohneSb.ohne.bogen === false, ohneSb);
-  pruefe('it offers to make one named after it, or to attach one',
+  pruefe('it offers to make one named after it, or to take a template',
     ohneSb.ohne.knopf === 'Make “Probe goblin”' && ohneSb.ohne.anhaengen, ohneSb);
   pruefe('made, it is linked and the sheet appears',
     ohneSb.mit.bogen === true && ohneSb.mit.name === 'Probe goblin', ohneSb);
-  pruefe('a second creature can take the same statblock, and says it is shared',
-    ohneSb.geteilt.selber && ohneSb.geteilt.bogen && ohneSb.geteilt.marke.join() === 'shared by 2', ohneSb);
-  pruefe('attaching twice adds nothing', ohneSb.kanten === 2, ohneSb);
-  pruefe('a statblock shared by two validates clean', ohneSb.problemeSb.length === 0, ohneSb);
+  pruefe('a second creature from the same template gets an instance of its own',
+    ohneSb.inst.eigene && ohneSb.inst.vorlage === ohneSb.sbAId
+      && ohneSb.inst.bogen && ohneSb.inst.marke.join() === 'from Probe goblin', ohneSb);
+  pruefe('the instance reads the template and stores nothing of it',
+    ohneSb.inst.hpGelesen === 11 && ohneSb.inst.blass > 0 && !/"hp"/.test(ohneSb.inst.roh), ohneSb);
+  pruefe('a change on one creature stays with it',
+    JSON.stringify(ohneSb.abweichung.roh) === '{"hp":18}' && ohneSb.abweichung.b === 18
+      && ohneSb.abweichung.a === 11 && ohneSb.abweichung.vorlage === 11, ohneSb);
+  pruefe('a corrected template reaches the instance, except where it differs',
+    ohneSb.korrigiert.ac === 16 && ohneSb.korrigiert.hp === 18, ohneSb);
+  pruefe('↺ takes a field back to the template',
+    ohneSb.ruecksetzer && ohneSb.gefolgt.vorReset === 13 && ohneSb.gefolgt.ac === 16
+      && JSON.stringify(ohneSb.gefolgt.roh) === '{"hp":18}', ohneSb);
+  pruefe('an instance is no link target and validates clean',
+    ohneSb.inListe === false && ohneSb.probleme.length === 0, ohneSb);
+  pruefe('deleting the template leaves the instance what it read',
+    ohneSb.geloest.sb && ohneSb.geloest.sb.hp === 18 && ohneSb.geloest.sb.ac === 16
+      && ohneSb.geloest.kante === false, ohneSb);
+  pruefe('deleting a creature takes its instance along, not the template', ohneSb.mitGegangen, ohneSb);
 
   /* Der Anlegedialog fragt danach — und eine Art ohne Statblock fragt er
      nicht. */

@@ -87,11 +87,10 @@ wiederkommen, werden sie neu geschrieben.
   in einer Richtung; das andere Ende findet sie über die Rückfrage
   (`linkedTypes` / `verlinkteTypen`).
   **Das Mass:** ohne das andere wäre dieser Artikel unvollständig, und
-  **an seinem Ende liest es sich als eines**. Geteilt werden darf es: ein
-  Statblock gehört dreissig Wachen, und jede liest ihren. Liegt die Kante am
-  lesenden Ende (`carries`, `asField: 'from'`), heisst das
-  `cardinality: 'one'`; liegt sie am anderen (`belongsTo`, `asField: 'to'`),
-  zählt die Kardinalität dort und ist `many`. Ein Rezept, das einen Gegenstand liefert, und eine
+  **an seinem Ende liest es sich als eines** — jede Kante mit `asField` ist
+  `one`, an welchem Ende sie auch liegt. Was dreissig Wachen gemeinsam
+  haben, steht an einer Vorlage, aus der jede ihre Instanz liest (unten,
+  Statblock). Ein Rezept, das einen Gegenstand liefert, und eine
   Begegnung auf einer Karte sind Verweise auf Dinge, die für sich stehen —
   die bleiben Kanten. Heute tragen `belongsTo` (Statblock an der Kreatur)
   und `carries` (Inventar an Kreatur und Gruppe) die Angabe.
@@ -187,13 +186,27 @@ wiederkommen, werden sie neu geschrieben.
   gebraucht werden; geschrieben wird in die Karte, der das Feld gehört.
   **Ohne Statblock keine Zahlen:** der Bogen zeichnet nichts, bis einer
   anhängt; an seiner Stelle stehen „anlegen" (mit dem Namen der Kreatur)
-  und „bestehenden anhängen", und der Anlegedialog fragt danach (neu,
-  bestehend, später). Kreaturen ohne Statblock stehen auf der
+  und „aus einer Vorlage", und der Anlegedialog fragt danach (neu, aus
+  einer Vorlage, später). Kreaturen ohne Statblock stehen auf der
   Vorbereitungsseite — eine Prüfung, die das Anlegen verbietet, gibt es
-  nicht, denn eine NSC-Idee hat noch keine Zahlen. **Ein Statblock darf
-  vielen gehören** (`belongsTo` ist am Statblock `many`), und die verlinkte
-  Gruppe sagt „shared by N", bevor jemand tippt. „Hängt einer an"
+  nicht, denn eine NSC-Idee hat noch keine Zahlen. „Hängt einer an"
   (`statblockOf`) und „trägt er Zahlen" (`statsOf`) sind zwei Fragen.
+  **Vorlage und Instanz:** „aus einer Vorlage" hängt nicht die Vorlage an,
+  sondern eine **Instanz** — einen eigenen Statblock mit `instanceOf` auf
+  die Vorlage, der **nur speichert, was abweicht**, und beim Lesen die
+  Vorlage darunterlegt (`resolveInstance`, Feld für Feld; Kanten nach
+  Art). Zwei Wachen aus einer Vorlage werden so verschieden, und eine
+  Korrektur an der Vorlage erreicht jede, die das Feld nicht selbst
+  gesetzt hat. **Gleich wie die Vorlage heisst: folgt der Vorlage** —
+  `persist` im Prototyp und `thinInstance` am Server werfen beim Speichern
+  weg, was gleich steht; ↺ am Feld tut dasselbe. Instanzen stehen in
+  keiner Liste und sind kein Verweisziel; geht die Vorlage, bekommen sie
+  vorher, was sie lasen (`detachInstance`), geht die Kreatur, geht ihre
+  Instanz mit. Nicht vererbt werden `Identity`, `Visibility` und die
+  Kanten, die zur Vorlage als Artikel gehören (`inLayer`, `belongsTo`,
+  `overrides`, `variantOf`). Für einen Tag durfte ein Statblock vielen
+  gehören („shared by 30") — dann war jede Änderung an einer Wache eine an
+  allen.
 - **Ein Textblock ist ein Feld.** Es gab einmal `blocks: [{blockType, body,
   anchor}]` neben den Karten, mit einer eigenen Liste erlaubter Blockarten je
   Artikelart — also eine zweite Frage, die jede Art zweimal beantworten

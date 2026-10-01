@@ -845,19 +845,28 @@ describe('one registry of types', () => {
   it('and a reference to something that stands on its own does not', () => {
     const wie = Object.values(seedRegistry.relations).filter((r) => r.asField);
     expect(wie.map((r) => r.type).sort()).toEqual(['belongsTo', 'carries']);
-    /* **Das lesende Ende sieht eins** — „irgendeiner von vielen" wäre eine
-       Auswahl und kein Feld. Liegt die Kante an diesem Ende
-       (`asField: 'from'`), heisst das `one`: eine Kreatur trägt ein
-       Inventar. Liegt sie am anderen (`asField: 'to'`), zählt die
-       Kardinalität dort und darf `many` sein: ein Statblock gehört dreissig
-       Wachen, und jede liest ihren. */
-    expect(wie.filter((r) => r.asField === 'from').every((r) => r.cardinality === 'one'))
-      .toBe(true);
-    expect(seedRegistry.relations['belongsTo']?.cardinality).toBe('many');
+    /* **Ein Feld hat einen Wert**: jede Kante mit `asField` ist `one`,
+       an welchem Ende sie auch liegt. Eine Kreatur trägt ein Inventar, ein
+       Statblock gehört einer Kreatur. Dreissig Wachen teilen sich keinen
+       Statblock, sondern lesen je eine Instanz einer Vorlage — für einen
+       Tag stand `belongsTo` auf `many`, und jede Änderung an einer Wache
+       war eine an allen. */
+    expect(wie.every((r) => r.cardinality === 'one')).toBe(true);
     /* Und das Element, das sie zeichnet, steht in der Grundanordnung von
        `full`: sonst stünden die Felder nirgends. */
     const voll = seedRegistry.views['full']?.layout ?? [];
     expect(voll.some((x) => x.el === 'linked')).toBe(true);
+  });
+
+  /* Die Vorlage, aus der eine Instanz liest: Statblock zu Statblock, und
+     eine Instanz hat genau eine. Mehrere Vorlagen wären eine Mischung, die
+     niemand geschrieben hat. */
+  it('lets a statblock read a template', () => {
+    const r = seedRegistry.relations['instanceOf'];
+    expect(r?.from).toEqual(['Statblock']);
+    expect(r?.to).toEqual(['Statblock']);
+    expect(r?.cardinality).toBe('one');
+    expect(r?.asField).toBeUndefined();
   });
 
   /* Und die Kante reicht bis zum Spielercharakter. Solange sie nur auf

@@ -28,6 +28,8 @@ interface Zelle {
   ref: string;
   label: string;
   wert: string;
+  /** An einer Instanz: der Wert kommt von der Vorlage. */
+  geerbt?: boolean;
 }
 
 interface Feld {
@@ -229,7 +231,7 @@ interface Feld {
           <dl class="felder">
             @for (z of zellen(); track z.ref) {
               <dt>{{ z.label }}</dt>
-              <dd>{{ z.wert }}</dd>
+              <dd [class.geerbt]="z.geerbt" [attr.title]="z.geerbt ? 'From the template' : null">{{ z.wert }}</dd>
             }
           </dl>
         }
@@ -351,6 +353,7 @@ export class Artikel {
           ref: `${comp}.${prop}`,
           label: titel,
           wert: Array.isArray(wert) ? wert.join(', ') : String(wert),
+          geerbt: e.fromTemplate?.fields.includes(`${comp}.${prop}`) ?? false,
         });
       }
     }

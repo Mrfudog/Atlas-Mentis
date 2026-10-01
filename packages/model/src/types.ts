@@ -287,9 +287,9 @@ export interface RelationDef {
    * liefert einen Gegenstand, eine Begegnung wird auf einer Karte
    * gefochten — beide gäbe es auch ohne. Das Mass ist: **ohne das andere
    * wäre dieser Artikel unvollständig, und an seinem Ende liest es sich als
-   * eines.** Geteilt werden darf es — ein Statblock gehört dreissig Wachen,
-   * und jede liest ihren; dann liegt die Kante am geteilten Ende und ist
-   * dort `many`.
+   * eines** — darum ist eine solche Kante `one`, an welchem Ende sie auch
+   * liegt. Was dreissig Wachen gemeinsam haben, steht an einer Vorlage, aus
+   * der jede ihre Instanz liest (`instanceOf`, `instance.ts`).
    */
   asField?: 'from' | 'to';
   /** When set, the edge renders as a composition section under this heading. */
@@ -501,6 +501,13 @@ export interface Entity {
   relations?: Relation[];
   createdAt?: string;
   updatedAt?: string;
+  /**
+   * Nur gelesen, nie gespeichert: an einer Instanz, aus welcher Vorlage sie
+   * liest und welche Felder (`Karte.feld`) von dort kommen. Der Server setzt
+   * es beim Ausliefern; beim Schreiben fällt es weg (`EntitySchema` kennt
+   * es nicht), und was gleich steht wie die Vorlage, fällt mit.
+   */
+  fromTemplate?: { template: EntityId; fields: string[] };
 }
 
 /** One edge seen from its target. */

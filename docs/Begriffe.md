@@ -441,19 +441,56 @@ zwei Karten an zwei Artikeln.
 anhängt — vorher stand dort HP 0, AC „—" und Init +0, Werte, die es nicht
 gibt. Wo der Statblock sonst seine Felder zeigt, stehen dann zwei Wege:
 **anlegen**, und er trägt den Namen der Kreatur (er ist ihre Zahlenseite und
-kein Ding für sich), oder **einen bestehenden anhängen**. Der Anlegedialog
-fragt danach — neu, bestehend oder später —, und „später" gibt es, weil eine
+kein Ding für sich), oder **aus einer Vorlage**. Der Anlegedialog
+fragt danach — neu, aus einer Vorlage oder später —, und „später" gibt es, weil eine
 NSC-Idee noch keine Zahlen hat. Solche Kreaturen stehen auf der
 Vorbereitungsseite unter „Creatures without a statblock", statt dass eine
 Prüfung das Anlegen verbietet. Der Stand an der Figur bleibt gespeichert und
 erscheint wieder, sobald etwas da ist, an dem er sich misst.
 
-**Ein Statblock darf vielen gehören** — dreissig Wachen, ein Bogen. Die Kante
-liegt am Statblock, also ist `belongsTo` von dort aus `many`; eine Kreatur
-liest den ersten, der auf sie zeigt. Wer an Wache Nr. 7 die Rüstungsklasse
-ändert, ändert sie an allen dreissig, und darum steht an der verlinkten
-Gruppe „shared by 30", bevor jemand tippt. Der Stand (HP jetzt) bleibt je
-Wache.
+**Vorlage und Instanz.** Zwei Wachen aus einer Vorlage sollen verschieden
+werden dürfen. Wer an einer Kreatur „aus einer Vorlage" wählt, hängt darum
+nicht die Vorlage selbst an, sondern eine **Instanz**: ein eigener Statblock
+mit dem Namen der Kreatur und einer Kante `instanceOf` auf die Vorlage.
+Gespeichert wird an ihr **nur, was abweicht**; gelesen wird beides zusammen
+(`resolveInstance`), Feld für Feld.
+
+| | `hp` | `ac` | `str` |
+| --- | --- | --- | --- |
+| Vorlage „Wache" | 11 | 16 | 13 |
+| Wache 1 (Instanz, nichts Eigenes) | → 11 | → 16 | → 13 |
+| Wache 2 (Instanz, `hp: 18`) | **18** | → 16 | → 13 |
+| Vorlage `ac` auf 17 | Wache 1: 11 · Wache 2: 18 | beide 17 | beide 13 |
+
+- **Gleich wie die Vorlage heisst: folgt der Vorlage.** Beim Speichern fällt
+  weg, was gleich steht wie dort (`thinInstance`). Wer den Wert der Vorlage
+  einträgt oder ein Feld leert, folgt ihr wieder; ↺ an einem Feld tut
+  dasselbe mit einem Klick. Eine Maske, die den aufgelösten Artikel
+  zurückschickt, schreibt so nicht still jeden Wert der Vorlage fest.
+- **Kanten nach Art.** Die Aktionen der Vorlage (`composedOf`) kommen mit,
+  solange die Instanz keine eigenen hat; ändert jemand die Liste, gehört sie
+  ganz der Instanz. Was zur Vorlage **als Artikel** gehört — `inLayer`,
+  `belongsTo`, `overrides`, `variantOf` — kommt nicht mit, ebenso wenig ihr
+  Name (`Identity`) und ihre Sichtbarkeit (`Visibility`).
+- **Eine Vorlage darf selbst eine Instanz sein** („Hauptmann" aus „Wache");
+  gelesen wird die Kette hoch, ein Kreis bricht ab.
+- **Instanzen stehen an ihrer Kreatur und sonst nirgends** — nicht in
+  Listen, nicht im Kompendium, nicht als Verweisziel. Dreissig Wachen wären
+  sonst dreissig „Wache"-Statblocks im Regelwerk. Die Vorlage sagt
+  „template of 30", die Instanz „instance of Wache".
+- **Löschen nimmt nichts weg.** Geht die Vorlage, bekommen ihre Instanzen
+  vorher, was sie von ihr lasen. Geht die Kreatur, geht ihre Instanz mit;
+  ein eigener Statblock ohne Vorlage bleibt stehen, nur seine Kante geht.
+- Am Server kommt eine Instanz aufgelöst an, mit `fromTemplate` (Vorlage und
+  die Felder, die von dort kommen) — nur gelesen, nie gespeichert.
+
+Ein Statblock gehört damit **einer** Kreatur (`belongsTo` ist wieder `one`).
+
+> **Nicht mehr:** für einen Tag durfte ein Statblock vielen gehören, und die
+> Seite warnte „shared by 30". Die Warnung beschrieb genau den Fall, den
+> niemand wollte: jede Änderung an Wache 7 war eine an allen dreissig. Eine
+> Kopie je Wache wäre das andere Extrem gewesen — dreissig Stellen für einen
+> Tippfehler in der Vorlage.
 
 „Hängt einer an" und „trägt er Zahlen" sind zwei Fragen (`statblockOf`,
 `statsOf`): ein eben angelegter Statblock ist leer und trotzdem da.
@@ -462,9 +499,7 @@ Wache.
 > Bogen las „erst die eigene, dann die geliehene". Zwei Formen für dasselbe —
 > wer eine Kreatur änderte, musste wissen, in welcher der beiden ihre Zahlen
 > gerade standen. Und `belongsTo` reichte nur bis zum NSC, ein
-> Spielercharakter konnte also gar keinen haben. `belongsTo` stand ausserdem
-> auf `one` — neben einem Kommentar, der „dreissig Wachen, ein Bogen"
-> versprach; durchgesetzt wurde es nie.
+> Spielercharakter konnte also gar keinen haben.
 
 ---
 
@@ -642,11 +677,8 @@ seinem Ende liest es sich als eines.** Der Statblock einer Kreatur und das
 Inventar einer Gruppe sind so; ein Gegenstand, den ein Rezept liefert, ist es
 nicht — den gäbe es auch ohne das Rezept, und er bleibt ein Verweis.
 
-Geteilt werden darf es trotzdem: ein Statblock gehört dreissig Wachen, und
-jede liest ihren. Die Kardinalität zählt an dem Ende, an dem die Kante
-**liegt**. Liegt sie am lesenden (`carries` an der Kreatur), heisst das
-`one` — eine Kreatur trägt ein Inventar. Liegt sie am anderen (`belongsTo`
-am Statblock), ist sie dort `many`. Hier stand einmal „und es gehört keinem
-zweiten" — neben einem Kommentar an `belongsTo`, der „dreissig Wachen, ein
-Bogen" versprach.
+Ein Feld hat einen Wert: jede Kante mit `asField` ist `one`, an welchem Ende
+sie auch liegt. Eine Kreatur trägt ein Inventar, ein Statblock gehört einer
+Kreatur. Was dreissig Wachen gemeinsam haben, steht an einer **Vorlage**, aus
+der jede ihre Instanz liest (siehe Statblock).
 

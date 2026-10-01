@@ -112,6 +112,21 @@ const ARTIKEL = [
     components: { ...ident('Probefigur', 'playercharacter-0901'), PlayerCharacter: { level: 3 } },
     relations: [{ id: 'pc_probe_in', type: 'inLayer', to: 'ly_probe_a', props: {} }],
   },
+  /* Vorlage und Instanz: Postgres speichert je Karte, und eine
+     ausgedünnte Instanz hat Karten, die ganz fehlen. */
+  {
+    id: 'sb_probe_vorlage', name: 'Probewache', interfaces: ['Statblock'],
+    components: { ...ident('Probewache', 'statblock-0901'), Statblock: { ac: 16, hp: 11 } },
+    relations: [],
+  },
+  {
+    id: 'sb_probe_instanz', name: 'Probefigur', interfaces: ['Statblock'],
+    components: ident('Probefigur', 'statblock-0902'),
+    relations: [
+      { id: 'sb_probe_i', type: 'instanceOf', to: 'sb_probe_vorlage', props: {} },
+      { id: 'sb_probe_b', type: 'belongsTo', to: 'pc_probe', props: {} },
+    ],
+  },
   {
     id: 'npc_probe_geheim', name: 'Geheim', interfaces: ['Creature'],
     components: { ...ident('Geheim', 'creature-0901'), Visibility: { audience: 'gm' } },
@@ -150,6 +165,22 @@ try {
     zurueck.components?.PlayerCharacter?.level === 3 &&
       zurueck.relations?.some((r) => r.type === 'inLayer' && r.to === 'ly_probe_a'),
     JSON.stringify(zurueck).slice(0, 300),
+  );
+
+  const inst = await (await get(admin, '/api/entities/sb_probe_instanz')).json();
+  pruefe(
+    'eine Instanz kommt aufgelöst an',
+    inst.components?.Statblock?.ac === 16 && inst.fromTemplate?.template === 'sb_probe_vorlage',
+    JSON.stringify(inst).slice(0, 300),
+  );
+  inst.components.Statblock.hp = 18;
+  const r3 = await put(admin, inst);
+  const wieder = await (await get(admin, '/api/entities/sb_probe_instanz')).json();
+  pruefe(
+    'zurückgeschickt speichert sie nur, was abweicht',
+    r3.ok && wieder.components?.Statblock?.hp === 18 && wieder.components?.Statblock?.ac === 16
+      && !wieder.fromTemplate?.fields?.includes('Statblock.hp'),
+    `${r3.status} ${JSON.stringify(wieder).slice(0, 300)}`,
   );
 
   /* Das Register speichern, während Artikel darauf zeigen — scheiterte

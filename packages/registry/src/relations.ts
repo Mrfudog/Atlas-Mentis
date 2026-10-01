@@ -40,20 +40,21 @@ export const relations: Record<string, RelationDef> = {
        hier nur der NSC stand, konnte er gar keinen Statblock haben und musste
        seine Zahlen selbst tragen — die zweite Form für dieselbe Sache. */
     to: ['Creature'],
-    /* **`many`, gezählt am Statblock**: die Kante liegt an ihm, und ein
-       Statblock gehört dreissig Wachen. Hier stand `one` — neben einem
-       Kommentar, der „dreissig Wachen, ein Bogen" versprach. Durchgesetzt
-       wurde es nie, also stand das Versprechen und die Angabe nebeneinander
-       und widersprachen sich still. Eine Kreatur liest den ersten
-       Statblock, der auf sie zeigt. */
-    cardinality: 'many',
+    /* **`one`: ein Statblock gehört einer Kreatur.** Dreissig Wachen
+       teilen sich nicht einen Bogen — dann wäre jede Änderung an Wache 7
+       eine an allen dreissig —, sondern lesen je ihre **Instanz** einer
+       Vorlage (`instanceOf`): was gleich ist, kommt von der Vorlage, was
+       abweicht, steht an der Instanz. Für einen Tag stand hier `many`, und
+       die Seite warnte „shared by 30"; die Warnung beschrieb genau den
+       Fall, den niemand wollte. */
+    cardinality: 'one',
     /* **An der Kreatur liest sich das wie ein Feld.** Ihre Zahlen stehen am
        Statblock, und der ist ein eigener Artikel — austauschbar (Wolfsgestalt,
-       verzauberte Fassung), wiederverwendbar (dreissig Wachen, ein Bogen).
-       Für die Kreatur ist er trotzdem kein Verweis auf etwas Fremdes,
-       sondern der Teil von ihr, der woanders wohnt. Also zeigt das Register
-       seine Felder an der Kreatur mit, und die Artikelseite lässt sie dort
-       bearbeiten, statt auf einen zweiten Artikel zu springen. */
+       verzauberte Fassung), aus einer Vorlage gezogen (dreissig Wachen, eine
+       Vorlage). Für die Kreatur ist er trotzdem kein Verweis auf etwas
+       Fremdes, sondern der Teil von ihr, der woanders wohnt. Also zeigt das
+       Register seine Felder an der Kreatur mit, und die Artikelseite lässt
+       sie dort bearbeiten, statt auf einen zweiten Artikel zu springen. */
     asField: 'to',
   },
 
@@ -652,6 +653,26 @@ export const relations: Record<string, RelationDef> = {
         order: { type: 'number', title: 'Order' },
       },
     },
+  },
+
+  /**
+   * **Eine Instanz liest ihre Vorlage.** Gespeichert wird an ihr nur, was
+   * abweicht; gelesen wird beides zusammen (`resolveInstance` im Modell).
+   * Eine Korrektur an der Vorlage erreicht jede Instanz, die das Feld nicht
+   * selbst gesetzt hat. Wer den Wert der Vorlage einträgt, folgt ihr wieder.
+   *
+   * Anders als `variantOf`, das eine Kopie mit Herkunft ist und nichts
+   * nachliest. Erlaubt ist es heute am Statblock; eine weitere Art, die
+   * Vorlagen braucht, kommt hier in `from` und `to` dazu und braucht keine
+   * Codeänderung.
+   */
+  instanceOf: {
+    type: 'instanceOf',
+    label: 'instance of',
+    inverseLabel: 'instances',
+    from: ['Statblock'],
+    to: ['Statblock'],
+    cardinality: 'one',
   },
 
   /** Eine Kopie mit Herkunft (REQ-008) — sie ersetzt nichts. */
