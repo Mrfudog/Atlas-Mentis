@@ -16,6 +16,7 @@ import { buildApp } from '../src/app.js';
 import { InMemoryRepository } from '../src/repo.js';
 import { hashPassword, hashToken, passwordProblem } from '../src/auth.js';
 import { runUserCommand } from '../src/user.js';
+import { loadConfig } from '../src/config.js';
 
 const PASSWORT = 'nebel-wacht-am-tor';
 
@@ -173,6 +174,58 @@ describe('logging in', () => {
     const me = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie: keks } });
     expect(me.json().user).toBeNull();
     expect((await login(app, 'Basil')).statusCode).toBe(401);
+  });
+});
+
+/* Hinter Caddy kommt jede Anfrage als http von 127.0.0.1. Ohne Vertrauen
+   in den Proxy bekäme das Cookie nie `secure`, und die Bremse sperrte nach
+   acht Fehlversuchen irgendeines Gastes jeden — alle hätten dieselbe
+   Adresse. Mit Vertrauen gilt beides wieder je Gast; ohne es zählt ein
+   gefälschter Kopf nichts. */
+describe('behind the reverse proxy', () => {
+  const vonAussen = (ip: string) => ({
+    remoteAddress: '127.0.0.1',
+    headers: { 'x-forwarded-for': ip, 'x-forwarded-proto': 'https' },
+  });
+  async function anmelden(app: ReturnType<typeof buildApp>, ip: string, password = PASSWORT) {
+    return app.inject({
+      method: 'POST',
+      url: '/api/login',
+      payload: { name: 'Basil', password },
+      ...vonAussen(ip),
+    });
+  }
+  async function mitProxy(trustProxy?: string) {
+    const repo = new InMemoryRepository(seedRegistry, []);
+    await addUser(repo, 'Basil', { admin: true });
+    return buildApp({ repo, trustProxy });
+  }
+
+  it('reads the client and the scheme from the proxy it trusts', async () => {
+    const app = await mitProxy('loopback');
+    const res = await anmelden(app, '203.0.113.5');
+    expect(res.cookies.find((c) => c.name === 'nw_session')?.secure).toBe(true);
+
+    for (let i = 0; i < 8; i += 1) await anmelden(app, '203.0.113.5', 'daneben-daneben');
+    expect((await anmelden(app, '203.0.113.5')).statusCode).toBe(429);
+    expect((await anmelden(app, '198.51.100.7')).statusCode).toBe(200);
+  });
+
+  it('believes no header when nobody is trusted', async () => {
+    const app = await mitProxy();
+    const res = await anmelden(app, '203.0.113.5');
+    expect(res.cookies.find((c) => c.name === 'nw_session')?.secure).toBeFalsy();
+    for (let i = 0; i < 8; i += 1) await anmelden(app, '203.0.113.5', 'daneben-daneben');
+    expect((await anmelden(app, '198.51.100.7')).statusCode).toBe(429);
+  });
+
+  it('takes TRUST_PROXY as a list or a yes', () => {
+    expect(loadConfig({}).trustProxy).toBe(false);
+    expect(loadConfig({ TRUST_PROXY: 'loopback,uniquelocal' }).trustProxy).toBe(
+      'loopback,uniquelocal',
+    );
+    expect(loadConfig({ TRUST_PROXY: 'true' }).trustProxy).toBe(true);
+    expect(loadConfig({ TRUST_PROXY: 'false' }).trustProxy).toBe(false);
   });
 });
 

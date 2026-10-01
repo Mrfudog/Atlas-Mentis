@@ -495,3 +495,10 @@ Vitest bildet `@nw/model` und `@nw/registry` auf den Quelltext ab (siehe
 Zweige `feature/*` → Pull Request nach `preprod` → `main` nur vorspulen.
 Anforderungen leben im Vault, Issues bilden ab, was gerade gebaut wird. Siehe
 [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Ein Push auf `preprod` rollt nach `dev.atlas.…` aus, einer auf `main` nach
+der Produktion — beide auf Hetzner, aus einem Abbild, das **nur CI baut**,
+nachdem Tests und der Durchstich gegen eine frische Postgres
+(`apps/server/scripts/durchstich.mjs`) grün sind. Wer eine Migration
+schreibt, lässt den Durchstich lokal laufen: die übrigen Tests sehen keine
+Datenbank. Einrichtung, Sichern und Zurück: [docs/Betrieb.md](docs/Betrieb.md).

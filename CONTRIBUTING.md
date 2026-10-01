@@ -9,7 +9,8 @@ feature/*  →  preprod  →  main
 - **`main`** ist das, woran der Tisch spielt. Nichts landet hier, das nicht auf
   `preprod` gelaufen ist. Vorspulen statt zusammenführen.
 - **`preprod`** ist die Testinstanz — eigener Port, eigene Datenbank, eigenes
-  Volume. Ein Fehler hier kostet nichts.
+  Volume. Ein Fehler hier kostet nichts. Jeder Push rollt nach `dev.atlas.…`
+  aus, ein Push auf `main` nach der Produktion ([docs/Betrieb.md](docs/Betrieb.md)).
 - **`feature/*`** trägt ein Anliegen. Ein Pull Request nach `preprod`.
 
 Ein Pull Request bleibt klein genug, dass man ihn in einem Zug liest. Lieber drei
@@ -22,6 +23,8 @@ pnpm lint
 pnpm test
 pnpm --filter @nw/model build && pnpm --filter @nw/registry build
 pnpm --filter @nw/server build && pnpm --filter web build
+# Wer eine Migration anfasst, zusätzlich gegen eine leere Postgres:
+DATABASE_URL=postgres://… node apps/server/scripts/durchstich.mjs
 ```
 
 Die Reihenfolge ist keine Willkür: `registry`, `server` und `web` übersetzen

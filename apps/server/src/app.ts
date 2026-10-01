@@ -54,6 +54,8 @@ export interface AppOptions {
   logger?: boolean;
   /** Directory of the built Angular app. Omitted in tests — the API stands alone. */
   staticRoot?: string;
+  /** Siehe `Config.trustProxy`; in Tests ungesetzt. */
+  trustProxy?: boolean | string;
 }
 
 const REGISTRY_PARTS = ['interfaces', 'relations', 'views', 'vars'] as const;
@@ -63,8 +65,13 @@ function isRegistryPart(value: string): value is RegistryPart {
   return (REGISTRY_PARTS as readonly string[]).includes(value);
 }
 
-export function buildApp({ repo, logger = false, staticRoot }: AppOptions): FastifyInstance {
-  const app = Fastify({ logger });
+export function buildApp({
+  repo,
+  logger = false,
+  staticRoot,
+  trustProxy = false,
+}: AppOptions): FastifyInstance {
+  const app = Fastify({ logger, trustProxy });
 
   void app.register(fastifyCookie);
 
