@@ -56,7 +56,12 @@ function makeApp() {
 async function addUser(
   repo: InMemoryRepository,
   name: string,
-  opts: { admin?: boolean; actorId?: string; actorIds?: string[] } = {},
+  opts: {
+    admin?: boolean;
+    actorId?: string;
+    actorIds?: string[];
+    roles?: Record<string, 'gm' | 'co-gm' | 'player' | 'spectator'>;
+  } = {},
 ) {
   await repo.putUser({
     id: randomUUID(),
@@ -64,6 +69,7 @@ async function addUser(
     passwordHash: await hashPassword(PASSWORT),
     isAdmin: opts.admin ?? false,
     actorIds: opts.actorIds ?? (opts.actorId ? [opts.actorId] : []),
+    roles: opts.roles ?? {},
   });
 }
 
@@ -314,6 +320,19 @@ describe('the user command', () => {
     expect(await runUserCommand(repo, ['list'])).not.toMatch(/\[gesperrt\]/);
   });
 
+  /* Die Rolle steht am Konto, je Kampagne — und eine, die es nicht gibt,
+     wird abgewiesen statt geraten. */
+  it('sets, lists and takes away a role per campaign', async () => {
+    await runUserCommand(repo, ['add', 'Basil']);
+    expect(await runUserCommand(repo, ['role', 'Basil', 'camp_a', 'gm'])).toMatch(/jetzt gm/);
+    await runUserCommand(repo, ['role', 'Basil', 'camp_b', 'player']);
+    expect(await runUserCommand(repo, ['role', 'Basil'])).toMatch(/gm in camp_a, player in camp_b/);
+    expect(await runUserCommand(repo, ['list'])).toMatch(/gm in camp_a/);
+    await runUserCommand(repo, ['role', 'Basil', 'camp_b', 'none']);
+    expect((await repo.findUserByName('basil'))?.roles).toEqual({ camp_a: 'gm' });
+    await expect(runUserCommand(repo, ['role', 'Basil', 'camp_a', 'kaiser'])).rejects.toThrow(/Rolle/);
+  });
+
   it('refuses a second account with the same name in another case', async () => {
     await runUserCommand(repo, ['add', 'Basil']);
     await expect(runUserCommand(repo, ['add', 'basil'])).rejects.toThrow(/gibt es schon/);
@@ -502,6 +521,37 @@ describe('what a player gets to read', () => {
   it('treats an article nobody classified as public', async () => {
     const app = await mitStufe({});
     expect(await liest(app, 'Sela')).toEqual({ code: 200, inListe: true });
+  });
+
+  /* **Eine Leitung je Kampagne, und die Ebene sagt wessen.** Zwei Runden
+     auf derselben Installation: der Artikel liegt in der Ebene der einen.
+     Ihre Leitung sieht ihn, die der anderen nicht — und keine der beiden
+     ist die Verwaltung. Die Rollen stehen am Konto, nicht in einem
+     Artikel. */
+  it('shows a gm article to the lead of the campaign it belongs to, and only to them', async () => {
+    const ebene = (id: string): Entity => ({
+      id, interfaces: ['Layer'], name: id,
+      components: { Identity: { name: id, id: `layer-${id}`, aliases: [] } }, relations: [],
+    });
+    const runde = (id: string, layer: string): Entity => ({
+      id, interfaces: ['Campaign'], name: id,
+      components: { Identity: { name: id, id: `campaign-${id}`, aliases: [] } },
+      relations: [{ id: `a_${id}`, type: 'activates', to: layer, props: {} }],
+    });
+    const geheim: Entity = {
+      ...nurSL,
+      components: { ...nurSL.components, Visibility: { audience: 'gm' } },
+      relations: [{ id: 'il', type: 'inLayer', to: 'ly_nebel', props: {} }],
+    };
+    const repo = new InMemoryRepository(seedRegistry, [
+      ebene('ly_nebel'), ebene('ly_salz'),
+      runde('camp_nebel', 'ly_nebel'), runde('camp_salz', 'ly_salz'), geheim,
+    ]);
+    const app = buildApp({ repo });
+    await addUser(repo, 'Basil', { roles: { camp_nebel: 'gm', camp_salz: 'player' } });
+    await addUser(repo, 'Mira', { roles: { camp_salz: 'gm' } });
+    expect(await liest(app, 'Basil')).toEqual({ code: 200, inListe: true });
+    expect(await liest(app, 'Mira')).toEqual({ code: 404, inListe: false });
   });
 
   it('lets revealedTo beat the step and hiddenFrom beat revealedTo', async () => {

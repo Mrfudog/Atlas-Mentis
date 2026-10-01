@@ -72,7 +72,7 @@ Eine Überschreibung, die zu keiner Ebene gehört, zählt nicht. Sie wäre keine
 ## Die Ebene sagt auch, wem ein Artikel gehört
 
 Seit dem 30.9. hat der Stapel eine zweite Aufgabe. Eine Kampagne nennt ihre
-Leitung (`Access` mit `role: 'gm'` an der Kampagne), und `audience: 'gm'`
+Leitung (am Konto: `campaign_member`, Rolle `gm` oder `co-gm`), und `audience: 'gm'`
 fragt nicht mehr „ist das die Verwaltung dieser Installation", sondern **„ist
 das die Leitung der Kampagne, der dieser Artikel gehört"**.
 
@@ -132,7 +132,7 @@ beantwortet: **was ist gerade nicht im Spiel, und warum.**
 | Kante | `inLayer` | Artikel → Ebene, `props.mode: "adds" \| "removes"` |
 | Kante | `activates` | Kampagne → Ebene, `props.order` |
 | Kante | `overrides` | neuer Artikel → alter Artikel |
-| Karte | `Access` an `Campaign` | wer diese Kampagne leitet (`role: 'gm'`) |
+| Tabelle | `campaign_member` (Server), `members` (Prototyp) | wer in welcher Kampagne welche Rolle hat — am Konto, nicht an der Kampagne |
 | Kante | `variantOf` | Fassung → Vorlage |
 | Ansicht | `stack` | der Stapel und was er ausblendet |
 

@@ -123,21 +123,35 @@ eine Verwaltungsrolle. „GM" las sich aber wie eine Rolle am Tisch: als stünde
 dort, wer in *dieser* Kampagne leitet.
 
 Der Unterschied ist keiner auf dem Papier. Wer in einer Runde leitet, kann in
-einer anderen mitspielen; ein Merkmal am Konto kann das nicht sagen. Die
-Rolle am Tisch steht deshalb in `Access.role`, und zwar an zwei Stellen:
+einer anderen mitspielen; ein Merkmal je Konto kann das nicht sagen. Die
+Rolle am Tisch steht deshalb **am Konto, je Kampagne**:
 
-| Rolle | Wo die Karte hängt |
-|---|---|
-| `gm` | an der **Kampagne** — wer sitzt hinter dem Schirm |
-| `co-gm`, `player`, `spectator` | an der **Figur** — dort hängt ohnehin, welches Konto sie führt |
+```sql
+campaign_member (campaign_id, user_id, role)   -- gm | co-gm | player | spectator
+```
 
-`Visibility.audience: 'gm'` fragt seither: **leitet dieser Betrachter die
-Kampagne, der der Artikel gehört?** Und wem er gehört, sagt der Ebenenstapel
-— eine Ebene, die genau eine Kampagne aufschaltet, gehört ihr; eine, die
-mehrere aufschalten, ist gemeinsam (siehe [Ebenen.md](Ebenen.md)).
+Eine Zeile je Konto und Kampagne, neben `app_user_actor` (welche Figuren ein
+Konto führt). Gesetzt wird sie von der Kommandozeile:
 
-Das Sieb bekommt dafür die Konto-Id mit, nicht nur die Figuren: eine Leitung
-hat keine Figur, und ohne die Id fände die Regel ihre Karte nie. Das Wissen
+```bash
+pnpm --filter @nw/server user role basil camp_nebel gm
+pnpm --filter @nw/server user role sela camp_nebel player
+pnpm --filter @nw/server user role sela camp_nebel none     # nimmt sie weg
+```
+
+`Visibility.audience: 'gm'` fragt seither: **hat dieser Betrachter in der
+Kampagne, der der Artikel gehört, die Rolle `gm` oder `co-gm`?** Und wem er
+gehört, sagt der Ebenenstapel — eine Ebene, die genau eine Kampagne
+aufschaltet, gehört ihr; eine, die mehrere aufschalten, ist gemeinsam (siehe
+[Ebenen.md](Ebenen.md)).
+
+Für einen Tag stand die Leitung als `Access`-Karte an der Kampagne, davor die
+Rolle der Spielenden als `Access`-Karte an der Figur. Beides war eine
+Kontoangabe in einem Artikel: der Server las die Karte nie, und sie wäre mit
+jeder Ausfuhr mitgewandert (REQ-199).
+
+Das Sieb bekommt dafür die Rollen des Kontos mit, nicht nur die Figuren:
+eine Leitung hat keine Figur. Das Wissen
 fragt weiter nur nach den Figuren — was jemand erfahren hat, hat eine Figur
 erfahren.
 
@@ -213,6 +227,10 @@ in der Sitzung aus.
 - **Die Bereiche in der Oberfläche.** Anmeldung, Liste, Artikelansicht und
   Bearbeiten stehen; Karten, Bogen, Inventar, Boards und Handwerk sind im
   Prototyp und noch nicht dort.
+- **Rollen setzt am Server nur die Kommandozeile.** Im Prototyp pflegt die
+  Leitung sie auf der Kampagnenseite (Element `members`); die Oberfläche in
+  `apps/web` hat dafür noch keine Maske und keinen Endpunkt. Eine Einladung
+  bindet an eine Figur, nicht an eine Rolle — die setzt danach die Leitung.
 - **Schreiben kennt die Leitung noch nicht.** `mayWrite` ist „Verwaltung oder
   eigene Figur". Eine Leitung, die nicht Verwaltung ist, darf ihre eigene
   Kampagne lesen und nichts daran ändern. Die Ableitung dafür steht schon

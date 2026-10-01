@@ -1772,17 +1772,24 @@ async function seite(datei, warten) {
       mitleiter: zeile('co-gm'),
       zuschauer: zeile('spectator'),
       ohnePlatz: zeile(null),
-      rolleSela: T.tableRole('pc_sela'),
-      rolleOhne: T.tableRole(''),
+      leitung: zeile('gm'),
+      /* Die Rolle je Kampagne: wer die eine leitet, ist in der anderen,
+         was dort steht — oder nichts. */
+      hier: T.tableRole({ c1: 'gm', c2: 'spectator' }, 'c1'),
+      dort: T.tableRole({ c1: 'gm', c2: 'spectator' }, 'c2'),
+      nirgends: T.tableRole({ c1: 'gm' }, 'c3'),
+      staerkste: T.tableRole({ c1: 'spectator', c2: 'player' }),
     };
   });
-  /* Vier Stufen × vier Rollen, als Tabelle lesbar: die Reihenfolge ist
-     public · campaign · players · gm. */
+  /* Fünf Rollen × vier Stufen, als Tabelle lesbar: die Reihenfolge ist
+     public · campaign · players · gm. Ein Mitleiter sitzt hinter dem
+     Schirm und sieht dasselbe wie die Leitung. */
   pruefe('the four steps narrow from outside in',
-    stufen.spieler === '1110' && stufen.mitleiter === '1110'
+    stufen.leitung === '1111' && stufen.mitleiter === '1111' && stufen.spieler === '1110'
     && stufen.zuschauer === '1100' && stufen.ohnePlatz === '1000', stufen);
-  pruefe('the role at the table comes from Access.role, not from the account',
-    stufen.rolleSela === 'player' && stufen.rolleOhne === null, stufen);
+  pruefe('the role is the account’s, and counts per campaign',
+    stufen.hier === 'gm' && stufen.dort === 'spectator' && stufen.nirgends === null
+    && stufen.staerkste === 'player', stufen);
 
   const rang = await p.evaluate(async () => {
     const T = window.__T__;
@@ -1836,13 +1843,11 @@ async function seite(datei, warten) {
     rang.ueberGruppe.sela === false && rang.ueberGruppe.rook === false, rang);
 
   /* ---- Eine Leitung je Kampagne, und die Ebene sagt wessen ----
-     `audience: 'gm'` hiess bis hierher „die Verwaltung dieser
-     Installation" — ein Merkmal am Konto, das für alles gilt. Wer in einer
-     Runde leitet, kann in einer anderen mitspielen; also steht die Leitung
-     an der **Kampagne** (`Access` mit `role: 'gm'`), und wem ein Artikel
-     gehört, sagt der Ebenenstapel: eine Ebene, die genau eine Kampagne
-     aufschaltet, gehört ihr, eine von mehreren aufgeschaltete ist
-     gemeinsam. */
+     Wer in einer Runde leitet, kann in einer anderen mitspielen; also
+     steht die Rolle **am Konto, je Kampagne** (Sammlung `members`, am
+     Server `campaign_member`), und wem ein Artikel gehört, sagt der
+     Ebenenstapel: eine Ebene, die genau eine Kampagne aufschaltet, gehört
+     ihr, eine von mehreren aufgeschaltete ist gemeinsam. */
   const zwei = await p.evaluate(async () => {
     const T = window.__T__;
     const camp = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Campaign');
@@ -1861,19 +1866,19 @@ async function seite(datei, warten) {
       id: 'camp_probe',
       name: 'Probe: zweite Runde',
       interfaces: ['Campaign'],
-      components: {
-        Identity: { name: 'Probe: zweite Runde' },
-        Access: { role: 'gm', userIds: ['u_zweite'] },
-      },
+      components: { Identity: { name: 'Probe: zweite Runde' } },
       relations: [{ id: 'pz1', type: 'activates', to: 'ly_system', props: { order: 10 } }],
     };
     T.ENT.set(zweite.id, zweite);
-    const vorherAccess = camp.components.Access;
-    camp.components.Access = { role: 'gm', userIds: ['u_leitung'] };
+    /* Die Rollen stehen an den Konten — keine Karte an einer Kampagne. */
+    const vorherKonten = new Map(T.MEMBERS);
+    T.setMembers(new Map([
+      ['u_leitung', { actors: [], roles: { [camp.id]: 'gm' } }],
+      ['u_zweite', { actors: [], roles: { camp_probe: 'gm' } }],
+    ]));
 
     const vorherGm = T.me.gm, vorherId = T.me.id;
-    /* Eine Leitung ohne Figur — genau der Fall, den es bis hierher nicht
-       gab: ihre Rolle steht an der Kampagne und nirgends sonst. */
+    /* Eine Leitung ohne Figur — ihre Rolle steht an ihrem Konto. */
     T.me.gm = false;
     const alsKonto = (u, e) => { T.me.id = u; return T.articleVisible(e); };
     const setzeGm = (e) => {
@@ -1889,7 +1894,7 @@ async function seite(datei, warten) {
       besitzerOhne: T.kampagnenVon(ohne),
       eineEigen: T.campaignOf(eigen) === camp.id,
       eineGeteilt: T.campaignOf(geteilt),
-      konten: T.gmAccounts(camp),
+      konten: T.gmAccounts(camp.id),
       eigenFuerUns: alsKonto('u_leitung', eigen),
       eigenFuerAndere: alsKonto('u_zweite', eigen),
       geteiltFuerUns: alsKonto('u_leitung', geteilt),
@@ -1902,8 +1907,7 @@ async function seite(datei, warten) {
       if (merk[i] === undefined) delete e.components.Visibility;
       else e.components.Visibility = merk[i];
     });
-    if (vorherAccess === undefined) delete camp.components.Access;
-    else camp.components.Access = vorherAccess;
+    T.setMembers(vorherKonten);
     T.ENT.delete('camp_probe');
     T.me.gm = vorherGm; T.me.id = vorherId;
     T.render();
@@ -1915,7 +1919,7 @@ async function seite(datei, warten) {
     zwei.besitzerEigen && zwei.besitzerEigen.length === 1
     && zwei.besitzerGeteilt === 2 && zwei.besitzerOhne === null
     && zwei.eineEigen === true && zwei.eineGeteilt === '', zwei);
-  pruefe('the campaign names the accounts that lead it',
+  pruefe('the accounts that lead a campaign are found by their role',
     Array.isArray(zwei.konten) && zwei.konten.join() === 'u_leitung', zwei);
   /* Der Prüfstein: dasselbe `audience: 'gm'`, zwei verschiedene Antworten,
      und die Ebene entscheidet. */
@@ -1927,6 +1931,50 @@ async function seite(datei, warten) {
     zwei.ohneEbeneFuerAndere === true, zwei);
   pruefe('an account that leads nothing sees no gm article',
     zwei.fremdesKonto === false, zwei);
+
+  /* ---- Gepflegt wird auf der Kampagnenseite ----
+     Die Rollen stehen am Konto; man sucht sie aber dort, wo man die Runde
+     einrichtet. Spielende bekommen die Liste nicht zu sehen. */
+  const mitglieder = await p.evaluate(async () => {
+    const T = window.__T__;
+    const camp = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Campaign');
+    const vorher = new Map(T.MEMBERS);
+    /* Wo die Seite war — der nächste Block erwartet sie dort. */
+    const vorherRoute = JSON.parse(JSON.stringify(T.UI.route));
+    T.setMembers(new Map([['u_test', { actors: [], roles: {} }],
+      ['u_sela', { actors: ['pc_sela'], roles: { [camp.id]: 'player' } }]]));
+    T.go({ k: 'art', id: camp.id });
+    await new Promise((r) => setTimeout(r, 300));
+    const zeilen = [...document.querySelectorAll('.memberrow')].map((r) => r.dataset.user);
+    const sel = document.querySelector('.memberrow[data-user="u_test"] select.mrole');
+    let gesetzt = null;
+    if (sel) {
+      sel.value = 'gm';
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 200));
+      gesetzt = (T.memberOf('u_test') || {}).roles || null;
+    }
+    /* Sela führt pc_sela: wer „als Sela" schaut, hat Selas Rollen. */
+    T.UI.asActor = 'pc_sela';
+    const rollenAlsSela = T.viewerRoles();
+    T.render();
+    await new Promise((r) => setTimeout(r, 200));
+    const fuerSpieler = document.querySelectorAll('.memberrow').length;
+    T.UI.asActor = '';
+    T.setMembers(vorher);
+    T.UI.route = vorherRoute;
+    T.render();
+    await new Promise((r) => setTimeout(r, 300));
+    return { zeilen, gesetzt, campId: camp.id, rollenAlsSela, fuerSpieler,
+      erste: zeilen[0] };
+  });
+  pruefe('the campaign page lists the accounts, seated ones first',
+    mitglieder.zeilen.length === 2 && mitglieder.erste === 'u_sela', mitglieder);
+  pruefe('a role set there is stored on the account, for this campaign',
+    mitglieder.gesetzt && mitglieder.gesetzt[mitglieder.campId] === 'gm', mitglieder);
+  pruefe('viewing as a figure takes the roles of the account that plays it',
+    mitglieder.rollenAlsSela[mitglieder.campId] === 'player', mitglieder);
+  pruefe('a player does not get the member list', mitglieder.fuerSpieler === 0, mitglieder);
 
   await p.evaluate(() => {
     const sel = [...document.querySelectorAll('#aside select.i')]

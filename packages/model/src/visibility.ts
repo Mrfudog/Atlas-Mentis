@@ -31,8 +31,6 @@ import { knowledgeHolders } from './knowledge.js';
 
 /** Die Art, deren Karte die Sichtbarkeit trägt. */
 export const VISIBILITY_COMPONENT = 'Visibility';
-/** Die Art, deren Karte die Rolle eines Kontos am Tisch trägt. */
-export const ACCESS_COMPONENT = 'Access';
 /** Die Artikelart, die eine Kampagne ist. */
 export const CAMPAIGN_TYPE = 'Campaign';
 /** Artikel → Ebene. `props.mode` sagt, ob sie ihn bringt oder herausnimmt. */
@@ -48,33 +46,36 @@ export const ACTIVATES_RELATION = 'activates';
 export type Audience = 'public' | 'campaign' | 'players' | 'gm';
 
 /**
- * Was ein Konto am Tisch ist — aus `Access.role`. `null` heisst: gehört
- * nicht an diesen Tisch.
+ * Was ein Konto in **einer** Kampagne ist. Es steht am Konto und nicht in
+ * einem Artikel — am Server in `campaign_member`, im Prototyp in der
+ * Sammlung `members`.
  *
- * `gm` steht an der **Kampagne**, die anderen an einer Figur (oder an der
- * Gruppe, der sie angehört). Das ist **nicht** dasselbe wie das
- * Konto-Merkmal `app_user.is_admin`: das gilt für die ganze Installation,
- * und genau darum geht es hier — wer in einer Runde leitet, kann in einer
- * anderen mitspielen.
+ * Es stand einmal als `Access`-Karte an der Figur (und für einen Tag an der
+ * Kampagne). Der Server las sie nie: welche Figur ein Konto führt, stand
+ * dort längst am Konto (`app_user_actor`), und `Access.userIds` war eine
+ * Doppelung, die in keinem Artikel des Prüfbestands gefüllt war. Eine
+ * Kontoangabe in einem Artikel wandert ausserdem beim Export mit — und
+ * Zugänge wandern nicht (REQ-199).
+ *
+ * `co-gm` sitzt hinter dem Schirm und sieht dasselbe wie die Leitung; was
+ * die beiden trennt (wer Mitglieder verwaltet, wer schreiben darf), ist
+ * eine Frage an die Schreibregel und nicht an die Sichtbarkeit.
  */
 export type TableRole = 'gm' | 'co-gm' | 'player' | 'spectator';
 
 /**
- * **Wer schaut.** Ein Konto führt Figuren, und beides wird gebraucht: die
- * Figuren für Wissen und Freigaben, die Konto-Id für die Leitung einer
- * Kampagne (die steht an der Kampagne und nicht an einer Figur — eine
- * Leitung hat keine).
+ * **Wer schaut.** Die Figuren für Wissen und Freigaben, die Rollen je
+ * Kampagne für die Stufe. Beides kommt vom Konto.
  *
- * Eine blosse Id oder Liste gilt weiter als „diese Figuren, kein Konto":
- * die meisten Aufrufer haben nur sie, und eine Pflicht zum Konto hiesse,
- * an dreissig Stellen `{ actors: … }` zu schreiben, damit einer davon die
- * Leitung prüfen kann.
+ * Eine blosse Id oder Liste gilt weiter als „diese Figuren, keine Rolle":
+ * die meisten Aufrufer haben nur sie, und eine Pflicht zum Objekt hiesse,
+ * an dreissig Stellen `{ actors: … }` zu schreiben.
  */
 export interface Viewer {
   /** Die Figuren dieses Kontos. */
   actors?: EntityId | readonly EntityId[];
-  /** Die Konto-Id. Ohne sie ist niemand Leitung einer Kampagne. */
-  user?: string;
+  /** Kampagnen-Id → Rolle darin. Was fehlt, ist kein Platz am Tisch. */
+  roles?: Readonly<Record<EntityId, TableRole>>;
 }
 
 /** Wen auch immer der Aufrufer mitgibt. `undefined` heisst: die Verwaltung. */
@@ -89,16 +90,9 @@ function alsViewer(ref: ViewerRef): Viewer {
 /** Von innen nach aussen — wer zwei Rollen hält, gilt als die stärkere. */
 const RANG: Record<TableRole, number> = { gm: 4, 'co-gm': 3, player: 2, spectator: 1 };
 
-function rolleAus(karte: unknown): TableRole | null {
-  const rolle = (karte as { role?: unknown } | undefined)?.role;
-  if (typeof rolle !== 'string' || !(rolle in RANG)) return null;
-  return rolle as TableRole;
-}
-
-function staerker(a: TableRole | null, b: TableRole | null): TableRole | null {
-  if (!a) return b;
-  if (!b) return a;
-  return RANG[a] >= RANG[b] ? a : b;
+/** Ist das eine Rolle, die es gibt? Was nicht, zählt nicht — geraten wird nicht. */
+export function isTableRole(x: unknown): x is TableRole {
+  return typeof x === 'string' && x in RANG;
 }
 
 /* ---------- wem ein Artikel gehört ---------- */
@@ -118,8 +112,6 @@ function staerker(a: TableRole | null, b: TableRole | null): TableRole | null {
  * `null` heisst **nicht zuzuordnen**: der Artikel trägt keine Ebenenkante.
  * Das ist heute der Normalfall („ohne Ebene gehört er der Kampagne und ist
  * immer da"), und solange es ihn gibt, sagt der Stapel über ihn nichts.
- * Mit einer Kampagne ist das richtig; mit zweien braucht jede ihre eigene
- * Ebene, und das ist eine eigene Entscheidung.
  *
  * `mode: 'removes'` zählt nicht: eine Ebene, die den Artikel herausnimmt,
  * bringt ihn nicht mit und besitzt ihn nicht.
@@ -145,71 +137,63 @@ export function campaignsOf(
   return out;
 }
 
-/** Die Konten, die diese Kampagne leiten — ihre `Access`-Karte mit `gm`. */
-export function gmAccounts(campaign: Entity | undefined): ReadonlySet<string> {
-  const karte = campaign?.components?.[ACCESS_COMPONENT] as
-    | { role?: unknown; userIds?: unknown }
-    | undefined;
-  if (rolleAus(karte) !== 'gm') return new Set();
-  const ids = Array.isArray(karte?.userIds) ? karte.userIds : [];
-  return new Set(ids.filter((x): x is string => typeof x === 'string' && !!x));
-}
-
 /**
- * Leitet dieses Konto die genannte Kampagne — oder, ohne Kampagne,
- * irgendeine?
+ * **Die eine Kampagne, der dieser Artikel gehört** — oder `undefined`,
+ * wenn es keine einzelne ist.
  *
- * Ohne Konto niemals: eine Leitung, die sich aus Figuren ergäbe, wäre
- * geraten, und geraten wird bei der Frage „darf er das Geheimnis sehen"
- * nicht.
+ * `undefined` heisst zweierlei, und beides läuft auf dasselbe hinaus: der
+ * Artikel trägt keine Ebene (nicht zuzuordnen), oder seine Ebenen laufen
+ * unter mehreren Kampagnen (gemeinsam). In beiden Fällen ist er nicht das
+ * Geheimnis *einer* Runde, und gefragt wird die Rolle in irgendeiner.
  */
-export function leadsCampaign(
+export function campaignOf(
   entities: Map<EntityId, Entity>,
-  user: string | undefined,
-  campaignId?: EntityId,
-): boolean {
-  if (!user) return false;
-  if (campaignId !== undefined) return gmAccounts(entities.get(campaignId)).has(user);
-  for (const e of entities.values()) {
-    if ((e.interfaces ?? [])[0] !== CAMPAIGN_TYPE) continue;
-    if (gmAccounts(e).has(user)) return true;
-  }
-  return false;
+  article: Entity,
+): EntityId | undefined {
+  const besitzer = campaignsOf(entities, article);
+  if (!besitzer || besitzer.size !== 1) return undefined;
+  const [eine] = besitzer;
+  return eine;
 }
 
 /* ---------- was der Betrachter am Tisch ist ---------- */
 
 /**
- * Die Rolle dieses Betrachters am Tisch: die stärkste, die eine seiner
- * Figuren oder deren Gruppen trägt — und `gm`, wenn sein Konto eine
- * Kampagne leitet.
+ * Die Rolle dieses Betrachters — **in der genannten Kampagne**, oder ohne
+ * Kampagne die stärkste, die er irgendwo hält.
  *
- * Gefragt wird über die **Träger** und nicht über die Konto-Id, weil
- * `Access.userIds` an der Figur steht und ein Konto mehrere Figuren führen
- * darf. Wer Rook (Spieler) und einen Zuschauerplatz hält, ist Spieler.
+ * Mit Kampagne zählt nur sie: wer in der einen Runde leitet und in der
+ * anderen zuschaut, ist in der anderen Zuschauer. Das ging nicht, solange
+ * die Rolle an einer Figur stand — eine Figur sagt nicht, in welcher Runde
+ * ihr Konto was ist.
  */
-export function tableRole(
-  entities: Map<EntityId, Entity>,
-  viewerId: ViewerRef,
-): TableRole | null {
-  const v = alsViewer(viewerId);
-  let beste: TableRole | null = leadsCampaign(entities, v.user) ? 'gm' : null;
-  for (const id of knowledgeHolders(entities, v.actors ?? [])) {
-    beste = staerker(beste, rolleAus(entities.get(id)?.components?.[ACCESS_COMPONENT]));
+export function tableRole(viewerId: ViewerRef, campaignId?: EntityId): TableRole | null {
+  const rollen = alsViewer(viewerId).roles ?? {};
+  if (campaignId !== undefined) {
+    const r = rollen[campaignId];
+    return isTableRole(r) ? r : null;
+  }
+  let beste: TableRole | null = null;
+  for (const r of Object.values(rollen)) {
+    if (!isTableRole(r)) continue;
+    if (!beste || RANG[r] > RANG[beste]) beste = r;
   }
   return beste;
 }
 
-/** Was die Stufe für diesen Betrachter erlaubt — ohne `gm`, das fragt mehr. */
-function stufeErlaubt(audience: Audience, rolle: TableRole | null): boolean {
+/**
+ * Was die Stufe für diese Rolle erlaubt. Die Leitung sieht jede Stufe
+ * darunter mit — ein Artikel „für die Spielenden" vor ihr zu verbergen wäre
+ * Unsinn —, und ein Mitleiter sitzt hinter dem Schirm und nicht davor.
+ */
+export function audienceAllows(audience: Audience, rolle: TableRole | null): boolean {
   switch (audience) {
-    /* Die Spielenden, keine Zuschauer. Ein Mitleiter ist einer von ihnen —
-       er sitzt hinter dem Schirm und nicht davor, und die Leitung sieht
-       ohnehin alles darunter. */
+    case 'gm':
+      return rolle === 'gm' || rolle === 'co-gm';
     case 'players':
       return rolle === 'player' || rolle === 'co-gm' || rolle === 'gm';
     /* Wer an diesem Tisch sitzt, gleich in welcher Rolle. Ein Konto ohne
-       Figur und ohne Leitung gehört nicht dazu: es hat noch keinen Platz. */
+       Rolle gehört nicht dazu: es hat noch keinen Platz. */
     case 'campaign':
       return rolle !== null;
     default:
@@ -222,7 +206,7 @@ function stufeErlaubt(audience: Audience, rolle: TableRole | null): boolean {
  *
  * Ohne Betrachter (`undefined`) immer ja — das ist die Verwaltung, und die
  * sieht alles. Eine **leere** Liste ist etwas anderes: ein Konto ohne Figur
- * sieht, was offen ist, und sonst nichts.
+ * und ohne Rolle sieht, was offen ist, und sonst nichts.
  *
  * Wer das Ergebnis nicht anwendet, hält nichts zurück: ein Server, der
  * einem Spieler den Artikel schickt und darauf baut, dass die Maske ihn
@@ -248,32 +232,11 @@ export function articleVisible(
   if (nennt(vis.hiddenFrom)) return false;
   if (nennt(vis.revealedTo)) return true;
   const stufe = typeof vis.audience === 'string' ? (vis.audience as Audience) : 'public';
-  if (stufe === 'gm') return leadsCampaign(entities, v.user, campaignOf(entities, article));
-  return stufeErlaubt(stufe, tableRole(entities, v));
-}
-
-/**
- * **Die eine Kampagne, der dieser Artikel gehört** — oder `undefined`,
- * wenn es keine einzelne ist.
- *
- * `undefined` heisst hier zweierlei, und beides läuft auf dasselbe hinaus:
- * der Artikel trägt keine Ebene (nicht zuzuordnen), oder seine Ebenen
- * laufen unter mehreren Kampagnen (gemeinsam). In beiden Fällen ist er
- * nicht das Geheimnis *einer* Runde, und `audience: 'gm'` heisst dann:
- * jede Leitung.
- *
- * Das ist die Regel, um die es geht: **liegt ein Artikel in der Ebene der
- * Kampagne, sieht ihn nur ihre Leitung; liegt er in einer geteilten Ebene,
- * sehen ihn alle Leitungen.** Ein Grundregelwerk, das drei Runden
- * aufschalten, gehört keiner davon — seine Spielleitungshinweise vor den
- * anderen zwei zu verbergen wäre eine Sperre ohne Grund.
- */
-export function campaignOf(
-  entities: Map<EntityId, Entity>,
-  article: Entity,
-): EntityId | undefined {
-  const besitzer = campaignsOf(entities, article);
-  if (!besitzer || besitzer.size !== 1) return undefined;
-  const [eine] = besitzer;
-  return eine;
+  if (stufe === 'public') return true;
+  /* **Die Rolle in der Kampagne, der der Artikel gehört.** Liegt er in der
+     Ebene einer Runde, zählt nur die Rolle dort — die Leitung der anderen
+     Runde ist hier niemand. Liegt er in einer geteilten Ebene oder in
+     keiner, zählt die stärkste Rolle irgendwo: ein Grundregelwerk, das
+     drei Runden aufschalten, gehört keiner davon. */
+  return audienceAllows(stufe, tableRole(v, campaignOf(entities, article)));
 }

@@ -102,8 +102,8 @@ wiederkommen, werden sie neu geschrieben.
   `hiddenFrom` schlägt `revealedTo` schlägt `audience`. **`public` ist die
   Vorgabe und heisst: jeder darf es sehen** — wer etwas verbergen will, sagt
   es, und nicht umgekehrt. Die Stufen von aussen nach innen: `public` jedes
-  Konto, `campaign` jedes Konto am Tisch (mit `Access`-Karte), `players` die
-  Spielenden (`Access.role` `player` oder `co-gm`), `gm` nur die Leitung.
+  Konto, `campaign` jedes Konto mit einer Rolle am Tisch, `players` die
+  Spielenden (`player`, `co-gm`, `gm`), `gm` die Leitung (`gm`, `co-gm`).
   Die beiden Listen nennen **Träger** (`Creature | Party | Faction | Group`),
   dieselben vier wie `knownBy`, und ein Träger zählt einen Schritt weit auch
   als seine Gruppe.
@@ -111,17 +111,29 @@ wiederkommen, werden sie neu geschrieben.
   darin zu kennen, und eine Vererbung ohne Tiefe gibt irgendwann einen
   ganzen Zweig frei. Das Feld `inherit` gab es und war nie ausgewertet — es
   ist bewusst weggelassen und kommt bei Bedarf mit einer Tiefe wieder.
-- **Eine Leitung je Kampagne, und die Ebene sagt wessen.** Die Kampagne
-  nennt ihre Leitung (`Access` mit `role: 'gm'`); wer mitspielt, steht
-  weiter an seiner Figur, und `co-gm` bleibt dort, weil ein Mitleiter am
-  Schirm dasselbe sieht. `app_user.is_admin` ist etwas anderes: die
-  Verwaltung der **Installation** — wer in einer Runde leitet, kann in einer
-  anderen mitspielen.
-  Wem ein Artikel gehört, steht in keinem Feld: **eine Ebene, die genau
-  eine Kampagne aufschaltet, gehört ihr; eine, die mehrere aufschalten, ist
-  gemeinsam** (`campaignsOf`). Also sieht `audience: 'gm'` in der
-  Kampagnenebene nur deren Leitung, in einer geteilten Ebene jede — ein
-  Grundregelwerk, das drei Runden aufschalten, gehört keiner davon.
+- **Die Rolle am Tisch steht am Konto, je Kampagne** — in keinem Artikel.
+  Am Server `campaign_member (campaign, user, role)` mit `gm`, `co-gm`,
+  `player`, `spectator`; welche Figuren ein Konto führt, steht daneben in
+  `app_user_actor`; im Prototyp die Sammlung `members`. Es gab dafür eine
+  `Access`-Karte an der Figur (und für einen Tag an der Kampagne): der
+  Server las sie nie, `userIds` war in keinem Artikel gefüllt, eine Figur
+  sagt nicht, in welcher Runde ihr Konto was ist, und eine Konto-Id in
+  einem Artikel wandert beim Export mit (REQ-199). Die Sammlung `members`
+  steht darum **nicht** in der Ausfuhr. Gepflegt wird auf der
+  Kampagnenseite (Element `members`): von der Verwaltung und der Leitung
+  dieser Kampagne; ein Mitleiter sieht die Liste und ändert sie nicht —
+  das trennt `gm` und `co-gm`, sehen tun beide dasselbe.
+  `app_user.is_admin` ist etwas anderes: die Verwaltung der
+  **Installation**, die alles sieht.
+- **Eine Leitung je Kampagne, und die Ebene sagt wessen.** Gefragt wird die
+  Rolle in **der** Kampagne, der der Artikel gehört — wer in der einen Runde
+  leitet und in der anderen mitspielt, ist dort Spieler. Wem ein Artikel
+  gehört, steht in keinem Feld: **eine Ebene, die genau eine Kampagne
+  aufschaltet, gehört ihr; eine, die mehrere aufschalten, ist gemeinsam**
+  (`campaignsOf`), und dann zählt die stärkste Rolle irgendwo. Also sieht
+  `audience: 'gm'` in der Kampagnenebene nur deren Leitung, in einer
+  geteilten Ebene jede — ein Grundregelwerk, das drei Runden aufschalten,
+  gehört keiner davon.
   `Layer.kind` kennt zwar ein Wort `campaign`, bleibt aber **Beschreibung**:
   ein Feld, das gleichzeitig Regel ist, leckt beim ersten Tippfehler.
   **Offen:** ohne Ebenenkante gehört ein Artikel niemandem besonders (65 von
@@ -453,7 +465,7 @@ Zum Entwickeln: `pnpm dev:server` und `pnpm dev:web` nebeneinander; die
 Oberfläche schickt `/api` über `apps/web/proxy.conf.json` an den Server.
 Das erste Konto legt `pnpm --filter @nw/server user add <name> --admin` an
 (`is_admin` ist die Verwaltungsrolle der Installation, nicht die Leitung
-einer Kampagne — die steht als `Access.role` an der Figur).
+einer Kampagne — die setzt `user role <name> <kampagne> gm`).
 
 Die Reihenfolge ist notwendig: die übrigen Pakete übersetzen gegen die von
 `model` erzeugten `.d.ts`, nicht gegen dessen Quelltext. In `tsconfig.json` der

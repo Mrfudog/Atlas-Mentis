@@ -270,6 +270,9 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
         passwordHash: await hashPassword(password),
         isAdmin: invite.isAdmin,
         actorIds: invite.actorId ? [invite.actorId] : [],
+        /* Eine Einladung bindet an eine Figur, nicht an eine Rolle: wer
+           am Tisch was ist, setzt die Leitung danach. */
+        roles: {},
       });
       await repo.clearAttempts(fold, origin);
       await repo.appendEvent('register.ok', id, { invite: invite.label ?? null });
@@ -484,12 +487,11 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
        niemand auswertete: `audience: 'gm'` stand da, und der Server
        schickte den Artikel. */
     const augen = user.actorIds ?? [];
-    /* **Das Konto geht mit, nicht nur seine Figuren.** Wer eine Kampagne
-       leitet, hat keine Figur — das steht als `Access`-Karte mit
-       `role: 'gm'` an der Kampagne, und ohne die Konto-Id fände die Regel
-       sie nie. Das Wissen fragt weiter nur nach den Figuren: was jemand
-       erfahren hat, hat eine Figur erfahren. */
-    const auge = { actors: augen, user: user.id };
+    /* **Die Rollen gehen mit, nicht nur die Figuren.** Wer eine Kampagne
+       leitet, hat keine Figur — seine Rolle steht am Konto, je Kampagne
+       (`campaign_member`). Das Wissen fragt weiter nur nach den Figuren:
+       was jemand erfahren hat, hat eine Figur erfahren. */
+    const auge = { actors: augen, roles: user.roles ?? {} };
     return entities
       .filter((e) => articleVisible(alle, e, auge))
       .map((e) => redactEntity(registry, alle, e, augen, gmFields));

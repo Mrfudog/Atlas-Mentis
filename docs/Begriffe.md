@@ -331,11 +331,12 @@ niemand wüsste, warum.
 Die vier Stufen von aussen nach innen:
 
 - **`public`** — jedes Konto.
-- **`campaign`** — jedes Konto **am Tisch**: eines, dessen Figur oder Gruppe
-  eine `Access`-Karte trägt. Ein Konto ohne Figur hat noch keinen Platz.
-- **`players`** — die Spielenden: `Access.role` `player` oder `co-gm`, keine
-  Zuschauer. Ein Mitleiter sitzt hinter dem Schirm und nicht davor.
-- **`gm`** — nur die Leitung **dieser Kampagne**.
+- **`campaign`** — jedes Konto **am Tisch**: eines mit einer Rolle in dieser
+  Kampagne. Ein Konto ohne Rolle hat noch keinen Platz.
+- **`players`** — die Spielenden: `player`, `co-gm` oder `gm`, keine
+  Zuschauer. Die Leitung sieht jede Stufe unter sich mit.
+- **`gm`** — die Leitung **dieser Kampagne**: `gm` oder `co-gm`. Ein
+  Mitleiter sitzt hinter dem Schirm und nicht davor.
 
 **Die Reihenfolge ist die Regel:** `hiddenFrom` schlägt `revealedTo` schlägt
 `audience`. Das ausdrückliche Verbot gewinnt, weil es die Ausnahme ist, die
@@ -361,19 +362,34 @@ Bewusst weggelassen, bis jemand sie braucht.
 > standen da, weil zwei Entwürfe sich nicht einig waren und jemand die
 > Vereinigung nahm; gefüllt war keines, in fünfundsiebzig Artikeln.
 
-### Eine Leitung je Kampagne
+### Die Rolle steht am Konto, je Kampagne
 
-**Die Kampagne sagt, wer sie leitet:** eine `Access`-Karte mit `role: 'gm'`
-und den Konten, die hinter dem Schirm sitzen. Das ist etwas anderes als
-`app_user.is_admin` — das gilt für die ganze Installation und schaltet
-Register, Einladungen und unbeschnittenes Lesen. Wer in einer Runde leitet,
-kann in einer anderen mitspielen, und ein Merkmal am Konto kann das nicht
-sagen.
+**Was ein Konto am Tisch ist, ist eine Angabe über das Konto** und steht in
+keinem Artikel:
 
-Wer mitspielt, steht weiter an seiner **Figur** — dort hängt ohnehin, welches
-Konto sie führt. Eine zweite Liste an der Kampagne wäre die, die beim
-nächsten Spielerwechsel niemand nachzieht. `co-gm` bleibt aus demselben Grund
-an der Figur: am Schirm sieht ein Mitleiter dasselbe wie die Leitung.
+| Was | Wo |
+|---|---|
+| welche Figuren ein Konto führt | `app_user_actor` (Server) |
+| welche Rolle es in welcher Kampagne hat | `campaign_member (campaign, user, role)` |
+| beides im Prototyp | Sammlung `members`, ein Dokument je Konto |
+
+Die Rollen: `gm` · `co-gm` · `player` · `spectator`. Wer in einer Runde
+leitet und in einer anderen mitspielt, hat zwei Zeilen — und gefragt wird die
+Rolle in **der** Kampagne, der der Artikel gehört. Leitung und Mitleitung
+sehen dasselbe; was sie trennt, ist, wer die Mitglieder pflegt: die Leitung
+(und die Verwaltung) ändert sie auf der Kampagnenseite (Element `members`),
+ein Mitleiter sieht die Liste.
+
+`app_user.is_admin` ist etwas anderes: die Verwaltung der **Installation**.
+Sie schaltet Register, Einladungen und unbeschnittenes Lesen.
+
+> **Nicht mehr:** `Access` — eine Karte mit `userIds` und `role` an der
+> Figur, für einen Tag auch an der Kampagne. Der Server las sie nie, denn
+> welche Figur ein Konto führt, stand längst am Konto; `userIds` war in
+> keinem Artikel gefüllt. Eine Figur sagt nicht, in welcher Runde ihr Konto
+> was ist, und eine Konto-Id in einem Artikel wandert mit jeder Ausfuhr mit
+> — Zugänge wandern nicht (REQ-199). Darum steht auch `members` nicht in
+> der Ausfuhr.
 
 **Und wem ein Artikel gehört, sagt die Ebene.** Ein Artikel liegt in Ebenen
 (`inLayer`), eine Kampagne schaltet Ebenen auf (`activates`) — also gehört

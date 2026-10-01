@@ -67,9 +67,13 @@ window.claude = { use: async function(n){
       set: async function(){ window.__WROTE__.push(path); },
       delete: async function(){ window.__DELETED__.push(path);
         window.__ENT__ = window.__ENT__.filter(function(d){ return 'entities/'+d.id !== path; }); } }; },
-    collection: function(){ return { limit:function(){return this;},
+    /* Die Sammlung beim Namen: \`members\` sind Konten und keine Artikel.
+       Ohne die Unterscheidung kämen fünfundsiebzig Artikel als Konten
+       zurück, und jede Rollenprüfung liefe gegen Unsinn. */
+    collection: function(name){ return { limit:function(){return this;},
       onSnapshot:function(next){
-        setTimeout(function(){ next(tiefKalt({docs: window.__ENT__.map(function(d){
+        var quelle = name==='members' ? (window.__MEMBERS__||[]) : window.__ENT__;
+        setTimeout(function(){ next(tiefKalt({docs: quelle.map(function(d){
           return {id:d.id, exists:true, data:function(){return d;}}; })})); },0);
         return function(){}; } }; } }; } };
 `;
@@ -98,7 +102,9 @@ window.__T__={derivedValue:derivedValue,assetSrc:assetSrc,UI:UI,
   articleVisible:articleVisible,activeStack:activeStack,
   tableRole:tableRole,audienceAllows:audienceAllows,fieldKind:fieldKind,
   kampagnenVon:kampagnenVon,campaignOf:campaignOf,gmAccounts:gmAccounts,
-  leadsCampaign:leadsCampaign,me:me,
+  viewerRoles:viewerRoles,saveMember:saveMember,memberOf:memberOf,
+  actorForUser:actorForUser,me:me,
+  setMembers:function(m){ MEMBERS=m; },
   breakLoad:function(t){ loadFailed=t||'the articles failed (test).'; },
   visionPoly:visionPoly,rayHit:rayHit,inShape:inShape,mapLights:mapLights,
   noteNat:noteNat,craftMod:craftMod,recipeDays:recipeDays,craftStatus:craftStatus,
@@ -134,6 +140,7 @@ window.__T__={derivedValue:derivedValue,assetSrc:assetSrc,UI:UI,
   ifaceInList:ifaceInList};
 Object.defineProperty(window.__T__,'REG',{get:function(){return REG;}});
 Object.defineProperty(window.__T__,'ENT',{get:function(){return ENT;}});
+Object.defineProperty(window.__T__,'MEMBERS',{get:function(){return MEMBERS;}});
 `;
 const mitGriff = page.replace(/\n\}\)\(\);\n<\/script>\s*$/, `${GRIFF}})();\n<\/script>\n`);
 if (mitGriff === page) throw new Error('IIFE-Ende nicht gefunden — Seite umgebaut?');

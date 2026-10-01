@@ -85,6 +85,23 @@ aufschalten, gehörte welcher?
 `mayWrite` kennt die Leitung noch nicht; die laufende Kampagne ist eine
 globale Einstellung.
 
+### Die Rolle steht am Konto — entschieden am 1.10.
+
+Einen Tag später nachgezogen: **eine Kontorolle gehört ans Konto**, nicht an
+eine Figur und nicht an eine Kampagne. `Access` fällt als Typ weg.
+
+| Was | Entscheidung |
+|---|---|
+| `Access` (`userIds`, `role`) | **weg** an Creature, PlayerCharacter, Party und Campaign. Der Server las die Karte nie, `userIds` war in keinem Artikel gefüllt |
+| Konto → Figuren | bleibt `app_user_actor` |
+| Konto → Rolle je Kampagne | neue Tabelle `campaign_member`; im Prototyp die Sammlung `members`, **nicht** in der Ausfuhr (REQ-199) |
+| `gm` und `co-gm` | sehen dasselbe; die Leitung pflegt die Mitglieder, der Mitleiter sieht sie |
+| Gepflegt | auf der Kampagnenseite, Element `members`; am Server `user role <name> <kampagne> <rolle>` |
+
+Die Wanderung `prototype/migration/rollen-ans-konto.mjs` nimmt die Karten
+heraus und zählt auf, was darin stand: im Prüfbestand zweimal `role player`
+(Rook, Sela), keine einzige Konto-Id.
+
 Dabei gefunden: **der Katalog verschwieg zwei ganze Bereiche.** Seine
 Bereichsliste stand fest im Skript und nannte `story` und `game` — die Namen
 von vor der Umbenennung zu `history` und `rules`. Einundzwanzig Artikelarten

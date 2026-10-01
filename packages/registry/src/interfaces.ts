@@ -8,7 +8,7 @@ import { fieldGroups as g } from './fieldgroups.js';
  * thing is a row here, not a code change.
  *
  * Jede Art trägt ihre Felder selbst. Was mehrere Arten teilen, ist ein
- * Obertyp — `Vars`, `Abilities`, `Access`, `Vitals`, `Proficiencies` — und
+ * Obertyp — `Vars`, `Abilities`, `Vitals`, `Proficiencies` — und
  * behält damit seine eigene Karte am Artikel. Genau das hält `hp` an der
  * Kreatur von `hp` am Statblock auseinander.
  *
@@ -51,13 +51,6 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Abilities',
     abstract: true,
     schema: g.Abilities.schema,
-  },
-
-  Access: {
-    name: 'Access',
-    label: 'Access',
-    abstract: true,
-    schema: g.Access.schema,
   },
 
   /* Zwei weitere, die keine Kreatur mit einer anderen teilt und die trotzdem
@@ -221,7 +214,7 @@ export const interfaces: Record<string, InterfaceDef> = {
      * Herkunft und den gerechneten Übungsbonus — Felder, die keine andere
      * Kreatur hat.
      */
-    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Vars', 'Access', 'Vitals', 'Proficiencies', 'Lore', 'Facts', 'Secrets', 'ReadAloud'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Vars', 'Vitals', 'Proficiencies', 'Lore', 'Facts', 'Secrets', 'ReadAloud'],
     schema: g.CreatureInfo.schema,
     /* **Die Zahlen wohnen am Statblock**, auch die eines Spielercharakters.
        Er hat mehr darüber hinaus — Stufe, Klasse, Hintergrund —, aber AC,
@@ -465,7 +458,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Party',
     area: 'world',
     label: 'Party',
-    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Access', 'Lore', 'Notes'],
+    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Lore', 'Notes'],
     schema: merge(g.PartyInfo, g.TravelInfo),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
@@ -521,21 +514,17 @@ export const interfaces: Record<string, InterfaceDef> = {
   },
 
   /**
-   * **Die Kampagne sagt, wer sie leitet** — dafür nimmt sie `Access` dazu:
-   * eine Karte mit `role: 'gm'` und den Konten, die hinter dem Schirm
-   * sitzen. Das war die eine Angabe, die nirgends stand: `app_user.is_admin`
-   * gilt für die ganze Installation, und wer in einer Runde leitet, kann in
-   * einer anderen mitspielen.
-   *
-   * Wer mitspielt, steht weiter an seiner Figur — dort hängt ohnehin,
-   * welches Konto sie führt. Eine zweite Liste an der Kampagne wäre die,
-   * die beim nächsten Spielerwechsel niemand nachzieht.
+   * **Wer die Kampagne leitet, steht nicht an ihr**, sondern am Konto:
+   * `campaign_member` hält je Konto und Kampagne eine Rolle (`gm`, `co-gm`,
+   * `player`, `spectator`). Für einen Tag stand hier eine `Access`-Karte mit
+   * `role: 'gm'` — eine Kontoangabe in einem Artikel, die beim Export
+   * mitgewandert wäre, und eine zweite Stelle neben den Figuren der Konten.
    */
   Campaign: {
     name: 'Campaign',
     area: 'history',
     label: 'Campaign',
-    extends: ['Story', 'Access'],
+    extends: ['Story'],
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     /* Die Kampagne trägt, was über ihr Ganzes geht: welche Ebenen laufen,
@@ -546,6 +535,10 @@ export const interfaces: Record<string, InterfaceDef> = {
         { id: 'k-desc', el: 'description' },
         { id: 'k-f', el: 'fields', fields: 'all' },
         { id: 'k-stack', el: 'stack' },
+        /* Wer an diesem Tisch sitzt. Die Rollen stehen am Konto; gepflegt
+           werden sie hier, weil man sie hier sucht. Spielende bekommen das
+           Element nicht zu sehen. */
+        { id: 'k-mem', el: 'members' },
         { id: 'k-q', el: 'quests' },
         { id: 'k-time', el: 'timeline' },
         { id: 'k-prep', el: 'prep' },

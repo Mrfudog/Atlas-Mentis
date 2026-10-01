@@ -261,6 +261,14 @@ textarea.code{font-family:var(--ff-mono);font-size:12.5px;min-height:240px;line-
 .swatch{display:inline-block;width:11px;height:11px;border-radius:2px;
   border:1px solid var(--line2);vertical-align:baseline}
 .linkbox{position:relative}
+/* Wer an einem Tisch sitzt: Konto, Rolle hier, Figuren überall. */
+.memberrows{display:flex;flex-direction:column;gap:6px}
+.memberrow{display:grid;grid-template-columns:minmax(120px,1fr) 140px minmax(0,2fr);
+  gap:8px;align-items:start;padding:6px 8px;border:1px solid var(--line);
+  border-radius:var(--r);background:var(--surface)}
+.memberrow .mwho{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;
+  overflow-wrap:anywhere;font-size:13px}
+@media (max-width:640px){ .memberrow{grid-template-columns:1fr} }
 /* Mehrere Verweise: die gewählten als Marken, darunter der Sucher. */
 .linksbox{display:grid;gap:5px}
 .linkchips{display:flex;flex-wrap:wrap;gap:5px;align-items:center;min-height:20px}
@@ -3825,7 +3833,7 @@ var LAYOUT_ELEMENTS=[
   ["composed","Composed rules"],["relations","Relations"],["image","Image"],
   ["linked","Linked articles"],
   ["knowledge","Knowledge groups"],["map","Map"],["sheet","Character sheet"],["inventory","Inventory"],["crafting","Crafting"],["board","Board"],["initiative","Initiative"],
-  ["quests","Quest board"],["timeline","Timeline"],["live","Live"],["table","Table"],["prep","Prep board"],["crawl","Point-crawl"],["stack","Layer stack"],["standing","Standing"],
+  ["quests","Quest board"],["timeline","Timeline"],["live","Live"],["table","Table"],["prep","Prep board"],["crawl","Point-crawl"],["stack","Layer stack"],["members","Members"],["standing","Standing"],
   ["tabs","Tabs"]
 ];
 /* **Die Anordnung wohnt am Typ.** Gesucht wird die `extends`-Kette hoch:
@@ -3913,6 +3921,7 @@ function renderLayoutItem(item,e,ifn,vw){
     case "prep":        return elPrep(e,ifn,item);
     case "crawl":       return elCrawl(e,ifn,item);
     case "stack":       return elStack(e,ifn,item);
+    case "members":     return elMembers(e);
     case "standing":    return elStanding(e,ifn,item);
     case "tabs":        return elTabs(e,ifn,item,vw);
     default:            return null;
@@ -4469,6 +4478,87 @@ function stackChip(e){
       onclick:function(){go({k:"art",id:q.id});}},"variant of "+nameOf(q)));
   }
   return box;
+}
+
+/* ---------- Wer an diesem Tisch sitzt ----------
+   **Die Rollen stehen am Konto, gepflegt werden sie hier.** Eine Zeile je
+   Konto: welche Rolle es in **dieser** Kampagne hat, und welche Figuren es
+   führt. Die Rolle gilt nur hier — wer in der einen Runde leitet, kann in
+   der anderen mitspielen; die Figuren gelten überall, wie am Server
+   `app_user_actor`.
+
+   Pflegen darf die Verwaltung (der Besitzer des Artefakts) und die Leitung
+   dieser Kampagne. Ein Mitleiter sieht die Liste und ändert sie nicht —
+   das ist, was `gm` und `co-gm` trennt; sehen tun beide dasselbe. Wer
+   weder das eine noch das andere ist, bekommt das Element gar nicht: eine
+   Liste aller Konten ist keine Auskunft für Spielende. */
+function elMembers(e){
+  if((e.interfaces||[])[0]!=="Campaign")return null;
+  var meine=tableRole(viewerRoles(),e.id);
+  var pflegt=isGM()||meine==="gm";
+  if(!pflegt&&meine!=="co-gm")return null;
+  var wrap=el("div",{class:"members"});
+  wrap.appendChild(el("div",{class:"sec",text:"Members"}));
+  wrap.appendChild(el("p",{class:"hint"},
+    "A role counts in this campaign only; the figures an account plays count "+
+    "everywhere. Accounts appear here once they have opened the page."));
+  var ids=[];
+  MEMBERS.forEach(function(m,uid){ ids.push(uid); });
+  if(!ids.length){
+    wrap.appendChild(el("p",{class:"hint",text:"No accounts yet."}));
+    return wrap;
+  }
+  /* Wer hier eine Rolle hat, zuerst — nach Rang; dann der Rest nach Name. */
+  ids.sort(function(a,b){
+    var ra=ROLLEN_RANG[(MEMBERS.get(a).roles||{})[e.id]]||0;
+    var rb=ROLLEN_RANG[(MEMBERS.get(b).roles||{})[e.id]]||0;
+    if(ra!==rb)return rb-ra;
+    return String(MEMBERS.get(a).name||a).localeCompare(String(MEMBERS.get(b).name||b));
+  });
+  var tab=el("div",{class:"memberrows"});
+  ids.forEach(function(uid){
+    var m=MEMBERS.get(uid);
+    var row=el("div",{class:"memberrow","data-user":uid});
+    var wer=el("div",{class:"mwho"});
+    wer.appendChild(el("b",{text:m.name||uid}));
+    if(uid===me.id) wer.appendChild(el("span",{class:"pill q",text:"you"}));
+    row.appendChild(wer);
+
+    var rolle=(m.roles||{})[e.id]||"";
+    var sel=el("select",{class:"i mrole","aria-label":"Role in this campaign"});
+    sel.appendChild(el("option",{value:""},"— no seat"));
+    ROLLEN.forEach(function(r){ sel.appendChild(el("option",{value:r},r)); });
+    sel.value=rolle;
+    if(!pflegt) sel.disabled=true;
+    sel.addEventListener("change",function(){
+      var roles=Object.assign({},m.roles||{});
+      if(sel.value) roles[e.id]=sel.value; else delete roles[e.id];
+      saveMember(uid,{actors:m.actors,roles:roles,name:m.name});
+    });
+    row.appendChild(sel);
+
+    /* Die Figuren als Verweise, mit demselben Sucher wie überall: eine
+       getippte Id ist entweder richtig oder unauffindbar. */
+    var fig=linksInput({target:{interfaces:["Creature","Party"]}},m.actors||[]);
+    if(pflegt){
+      /* Der Sucher meldet `change` auch beim blossen Verlassen, und das
+         Ereignis steigt durch den Kasten auf. Geschrieben wird darum nur,
+         was sich wirklich geändert hat. */
+      fig.addEventListener("change",function(){
+        var neu=String(fig.value||"").split(",").map(function(x){return x.trim();})
+          .filter(Boolean);
+        if(neu.join("|")===(m.actors||[]).join("|"))return;
+        saveMember(uid,{actors:neu,roles:m.roles,name:m.name});
+      });
+    } else {
+      Array.prototype.forEach.call(fig.querySelectorAll("input,button"),
+        function(x){ x.disabled=true; });
+    }
+    row.appendChild(fig);
+    tab.appendChild(row);
+  });
+  wrap.appendChild(tab);
+  return wrap;
 }
 
 function elStack(e,ifn,item){
@@ -9616,18 +9706,47 @@ function addSubmap(e,rahmen){
    Der „Ansehen als"-Schalter zählt wie ein anderer Betrachter. Sonst liesse
    sich nicht prüfen, was ein Charakter sieht, und man merkte es erst am
    Tisch. */
-var ACCESS_COMP="Access";
+/* ---------- Konten und ihre Rollen ----------
+   **Was ein Konto am Tisch ist, steht am Konto** und in keinem Artikel. Am
+   Server sind das zwei Tabellen — `app_user_actor` (welche Figuren) und
+   `campaign_member` (welche Rolle in welcher Kampagne); hier ist es die
+   Sammlung `members`, ein Dokument je Konto:
 
-/* Wen dieser Nutzer spielt: die Figur, deren Access-Karte seine Id nennt. */
+     members/<kontoId> = { actors: [Figuren-Ids], roles: { <kampagne>: "gm" } }
+
+   Es stand als `Access`-Karte an der Figur (und für einen Tag an der
+   Kampagne). Eine Figur sagt aber nicht, in welcher Runde ihr Konto was
+   ist, und eine Konto-Id in einem Artikel wanderte mit jeder Ausfuhr mit
+   (REQ-199). Die Sammlung wandert deshalb **nicht** mit: sie steht nicht in
+   der Ausfuhr, und keine Einfuhr rührt sie an. */
+var MEMBERS=new Map();
+function memberOf(uid){ return (uid&&MEMBERS.get(uid))||null; }
+
+/* Wen dieser Nutzer spielt: die erste Figur seines Kontos. */
 function actorForUser(uid){
-  if(!uid)return "";
-  var hit="";
-  ENT.forEach(function(e){
-    if(hit)return;
-    var ac=(e.components||{})[ACCESS_COMP];
-    if(ac&&Array.isArray(ac.userIds)&&ac.userIds.indexOf(uid)>=0) hit=e.id;
+  var m=memberOf(uid);
+  return (m&&Array.isArray(m.actors)&&m.actors[0])||"";
+}
+/* Das Konto, das eine Figur führt — für „ansehen als". */
+function memberOfActor(actorId){
+  var hit=null;
+  MEMBERS.forEach(function(m,uid){
+    if(!hit&&actorId&&Array.isArray(m.actors)&&m.actors.indexOf(actorId)>=0) hit={id:uid,m:m};
   });
   return hit;
+}
+/* Ein Konto schreiben. Wer das darf, prüft der Aufrufer (die Verwaltung,
+   oder die Leitung der Kampagne, um deren Rolle es geht). */
+function saveMember(uid,m){
+  if(!uid||blockedByLoad())return;
+  var sauber={actors:(m.actors||[]).filter(Boolean),roles:{}};
+  Object.keys(m.roles||{}).forEach(function(k){
+    if(ROLLEN_RANG[m.roles[k]]) sauber.roles[k]=m.roles[k];
+  });
+  if(m.name) sauber.name=String(m.name);
+  MEMBERS.set(uid,sauber);
+  render();
+  if(db) db.doc("members/"+uid).set(sauber).catch(fail);
 }
 /* ---------- Sichtbarkeit (REQ-038) ----------
    Die **grobe** Frage: ob dieser Artikel überhaupt an diesen Betrachter
@@ -9636,12 +9755,12 @@ function actorForUser(uid){
    Artikel dadurch zu verbergen, dass man alle seine Felder wegnimmt, und
    er stünde trotzdem in der Liste, mit Namen und Bereich.
 
-   Was ein Konto am Tisch ist, sagt `Access.role` an der Figur (oder an der
-   Gruppe, der sie angehört): `player`, `co-gm`, `spectator`. Das ist
-   **nicht** das Konto-Merkmal `is_admin` am Server — das gilt für die
-   ganze Installation, und wer in einer Runde leitet, kann in einer anderen
-   mitspielen. */
+   Was ein Konto am Tisch ist, steht an ihm (`members`, siehe oben), **je
+   Kampagne**: `gm`, `co-gm`, `player`, `spectator`. Das ist nicht der
+   Besitzer des Artefakts (`me.gm`) — der ist die Verwaltung und sieht
+   alles, wie `is_admin` am Server. */
 var ROLLEN_RANG={"gm":4,"co-gm":3,"player":2,"spectator":1};
+var ROLLEN=["gm","co-gm","player","spectator"];
 /* ---------- wem ein Artikel gehört ----------
    **Abgelesen am Ebenenstapel und nicht an einem eigenen Feld.** Ein
    Artikel liegt in Ebenen (`inLayer`), eine Kampagne schaltet Ebenen auf
@@ -9676,55 +9795,52 @@ function campaignOf(e){
   var k=kampagnenVon(e);
   return (k&&k.length===1)?k[0]:"";
 }
-/* Die Konten, die eine Kampagne leiten: ihre `Access`-Karte mit `gm`. An
-   einer Figur steht dieselbe Karte und meint etwas anderes. */
-function gmAccounts(c){
-  var a=(c&&c.components||{})[ACCESS_COMP];
-  if(!a||a.role!=="gm")return [];
-  return (Array.isArray(a.userIds)?a.userIds:[]).filter(Boolean);
-}
-/* Leitet dieses Konto die genannte Kampagne — oder, ohne Kampagne,
-   irgendeine? Ohne Konto niemals: eine Leitung, die sich aus Figuren
-   ergäbe, wäre geraten, und bei „darf er das Geheimnis sehen" wird nicht
-   geraten. */
-function leadsCampaign(user,campId){
-  if(!user)return false;
-  if(campId) return gmAccounts(ENT.get(campId)).indexOf(user)>=0;
-  var hit=false;
-  ENT.forEach(function(c){
-    if(hit||(c.interfaces||[])[0]!=="Campaign")return;
-    if(gmAccounts(c).indexOf(user)>=0) hit=true;
+/* Die Konten, die eine Kampagne leiten — `gm` oder `co-gm` an ihrem Konto. */
+function gmAccounts(campId){
+  var out=[];
+  MEMBERS.forEach(function(m,uid){
+    var r=(m.roles||{})[campId];
+    if(r==="gm"||r==="co-gm") out.push(uid);
   });
-  return hit;
+  return out;
 }
-/* Das Konto, das gerade schaut. Beim Blick „als Figur" ist es das Konto,
-   das sie führt — sonst sähe die Probe weiter die eigene Leitung. */
-function viewerUser(){
+/* **Die Rollen des Betrachters**, je Kampagne.
+   Beim Blick „als Figur" sind es die Rollen des Kontos, das sie führt —
+   sonst sähe die Probe weiter die eigene Leitung. Führt kein Konto die
+   Figur, ist der Blick eine **Probe**: sie sitzt als Spielerin in der
+   laufenden Kampagne, denn genau das will wissen, wer „als Rook" schaut. */
+function viewerRoles(){
   if(UI.asActor){
-    var a=((ENT.get(UI.asActor)||{}).components||{})[ACCESS_COMP]||{};
-    return (Array.isArray(a.userIds)&&a.userIds[0])||"";
+    var wer=memberOfActor(UI.asActor);
+    if(wer) return wer.m.roles||{};
+    var camp=currentCampaign(), r={};
+    if(camp) r[camp.id]="player";
+    return r;
   }
-  return me.id||"";
+  return (memberOf(me.id)||{}).roles||{};
 }
-function tableRole(actorId,user){
-  var beste=leadsCampaign(user)?"gm":null;
-  Object.keys(knowledgeHolders(actorId||"")).forEach(function(id){
-    var r=((ENT.get(id)||{}).components||{})[ACCESS_COMP];
-    var rolle=r&&r.role;
-    if(!rolle||!ROLLEN_RANG[rolle])return;
-    if(!beste||ROLLEN_RANG[rolle]>ROLLEN_RANG[beste]) beste=rolle;
+/* Die Rolle in **dieser** Kampagne — oder, ohne Kampagne, die stärkste
+   irgendwo. Wer in der einen Runde leitet und in der anderen zuschaut, ist
+   in der anderen Zuschauer. */
+function tableRole(roles,campId){
+  roles=roles||{};
+  if(campId) return ROLLEN_RANG[roles[campId]]?roles[campId]:null;
+  var beste=null;
+  Object.keys(roles).forEach(function(k){
+    var r=roles[k];
+    if(!ROLLEN_RANG[r])return;
+    if(!beste||ROLLEN_RANG[r]>ROLLEN_RANG[beste]) beste=r;
   });
   return beste;
 }
-/* Was die Stufe erlaubt — ohne `gm`, das fragt mehr (siehe unten).
-   **`public` ist die Vorgabe:** ein Artikel, den niemand eingestuft hat,
-   ist offen. Andersherum wäre die halbe Kampagne unsichtbar, und niemand
-   wüsste, warum. */
+/* Was die Stufe für diese Rolle erlaubt. **`public` ist die Vorgabe:** ein
+   Artikel, den niemand eingestuft hat, ist offen. Andersherum wäre die
+   halbe Kampagne unsichtbar, und niemand wüsste, warum. */
 function audienceAllows(stufe,rolle){
-  if(stufe==="gm")return rolle==="gm";               /* nur die Leitung */
-  /* Ein Mitleiter sitzt hinter dem Schirm und nicht davor, und die Leitung
-     sieht alles darunter mit — ein Artikel „für die Spielenden" vor ihr zu
-     verbergen wäre Unsinn. */
+  /* Ein Mitleiter sitzt hinter dem Schirm und nicht davor. */
+  if(stufe==="gm")return rolle==="gm"||rolle==="co-gm";
+  /* Die Leitung sieht alles darunter mit — ein Artikel „für die
+     Spielenden" vor ihr zu verbergen wäre Unsinn. */
   if(stufe==="players")return rolle==="player"||rolle==="co-gm"||rolle==="gm";
   if(stufe==="campaign")return rolle!==null;         /* wer am Tisch sitzt */
   return true;                                       /* public */
@@ -9747,14 +9863,14 @@ function articleVisible(e){
      Freigabe, die nichts tat. */
   if(nennt(vis.hiddenFrom))return false;
   if(nennt(vis.revealedTo))return true;
-  var user=viewerUser();
-  /* **Eine Leitung je Kampagne.** Liegt der Artikel in der Ebene einer
-     Kampagne, sieht ihn nur ihre Leitung; liegt er in einer geteilten
-     Ebene — ein Grundregelwerk, das drei Runden aufschalten —, sehen ihn
-     alle Leitungen. Seine Spielleitungshinweise vor den anderen zwei zu
-     verbergen wäre eine Sperre ohne Grund. */
-  if((vis.audience||"public")==="gm") return leadsCampaign(user,campaignOf(e));
-  return audienceAllows(vis.audience||"public",tableRole(viewerActor(),user));
+  var stufe=vis.audience||"public";
+  if(stufe==="public")return true;
+  /* **Die Rolle in der Kampagne, der der Artikel gehört.** Liegt er in der
+     Ebene einer Runde, zählt nur die Rolle dort — die Leitung der anderen
+     Runde ist hier niemand. Liegt er in einer geteilten Ebene oder in
+     keiner, zählt die stärkste Rolle irgendwo: ein Grundregelwerk, das
+     drei Runden aufschalten, gehört keiner davon. */
+  return audienceAllows(stufe,tableRole(viewerRoles(),campaignOf(e)));
 }
 /* Welche Feldverweise darf dieser Betrachter sehen? Offen plus das, was er
    weiss — dieselbe Abfrage wie in der Wissensansicht, nur als Filter. */
@@ -9792,9 +9908,13 @@ function renderAsSelect(){
   if(!me.gm){ host.style.display="none"; return; }
   host.style.display="";
   var spieler=[];
+  /* Wer sich ansehen lässt: jede Spielerfigur, und jede Figur oder Gruppe,
+     die ein Konto führt. Das stand einmal an einer `Access`-Karte. */
+  var gefuehrt={};
+  MEMBERS.forEach(function(m){ (m.actors||[]).forEach(function(a){ gefuehrt[a]=1; }); });
   ENT.forEach(function(e){
     if(!ifaceInList(["Creature","Party"],(e.interfaces||[])[0]))return;
-    if(!(e.components||{})[ACCESS_COMP]&&((e.interfaces||[])[0])!=="PlayerCharacter")return;
+    if(!gefuehrt[e.id]&&((e.interfaces||[])[0])!=="PlayerCharacter")return;
     spieler.push(e);
   });
   spieler.sort(function(a,b){return nameOf(a).localeCompare(nameOf(b),"de");});
@@ -11997,20 +12117,18 @@ function renderHowto(v){
     "public":"every account. This is the default: an article nobody "+
       "classified is open, because the other way round half the campaign "+
       "would be invisible and nobody would know why.",
-    "campaign":"every account at the table — one with an Access card on a "+
-      "figure or a group. An account without a figure has no seat yet.",
-    "players":"the ones playing: Access role player or co-gm. A co-GM sits "+
-      "behind the screen, not in front of it.",
-    "gm":"the lead of THIS campaign. A campaign names its lead on an Access "+
-      "card (role gm); who plays stands on their figure, as it always did. "+
-      "Which campaign an article belongs to is read off the layer stack: a "+
-      "layer one campaign runs belongs to it, a layer several run is "+
-      "shared — so a gm article in the campaign’s own layer stays with its "+
-      "lead, and one in the rulebook every table runs goes to every lead. "+
-      "An article in no layer belongs to nobody in particular, which today "+
-      "is 65 articles of 75. That is a different thing from is_admin, the "+
-      "account flag for the whole installation: whoever runs one table may "+
-      "play at another."
+    "campaign":"every account with a role at this table. An account without "+
+      "one has no seat yet.",
+    "players":"the ones playing — player, co-gm or gm, but no spectators. The "+
+      "lead sees every step below its own.",
+    "gm":"the lead of THIS campaign: gm or co-gm. A role belongs to the "+
+      "account, per campaign, and to no article — whoever runs one table may "+
+      "play at another, and at that other one they count as what they are "+
+      "there. Which campaign an article belongs to is read off the layer "+
+      "stack: a layer one campaign runs belongs to it, a layer several run is "+
+      "shared, and then the strongest role anywhere counts. That is a "+
+      "different thing from is_admin, the account flag for the whole "+
+      "installation."
   };
   var sl=el("ul",{class:"bsp"});
   ((sichtP.audience||{})["enum"]||[]).forEach(function(a){
@@ -13596,10 +13714,10 @@ render();
      „kaputt", sondern „diese Ansicht darf nicht hochladen". */
   assetStore=erg[2];
 
-  /* Wer zusieht. `isOwner` ist die Spielleitung — im Artefakt gibt es keine
-     zweite Stelle, an der eine Rolle stünde, und eine erfundene wäre eine
-     Behauptung. Die Zuordnung Nutzer → Figur steht dagegen in den Daten
-     (Access-Karte), damit sie die Spielleitung ändern kann. */
+  /* Wer zusieht. `isOwner` ist die Verwaltung — wie `is_admin` am Server:
+     sie sieht alles und pflegt die Konten. Welche Figuren ein Konto führt
+     und welche Rolle es in welcher Kampagne hat, steht in der Sammlung
+     `members` und nicht in einem Artikel. */
   try{
     if(erg[1]){
       me.gm=await erg[1].isOwner();
@@ -13699,6 +13817,26 @@ render();
     render();
   }),function(e){ loadFailed="the articles failed ("+e.code+").";
     UI.err="Articles: "+e.code; ready=true; render(); });
+
+  /* **Die Konten** — welche Figuren sie führen, welche Rolle sie in welcher
+     Kampagne haben. Sie fehlen zu dürfen ist richtig: ohne Konten ist jede
+     Rolle leer, und die Seite zeigt, was offen ist. Ein Fehler hier stoppt
+     deshalb nicht das Schreiben von Artikeln — es sind zwei Dinge. */
+  db.collection("members").limit(500).onSnapshot(function(snap){
+    var neu=new Map();
+    (snap.docs||[]).forEach(function(d){
+      var m=thawed(d.data())||{};
+      neu.set(d.id,{actors:Array.isArray(m.actors)?m.actors:[],
+        roles:(m.roles&&typeof m.roles==="object")?m.roles:{},name:m.name||""});
+    });
+    MEMBERS=neu;
+    me.actor=actorForUser(me.id);
+    /* **Wer schaut, steht in der Liste**, ohne Rolle. Sonst müsste die
+       Leitung eine Konto-Id abtippen, die sie nirgends sehen kann — und
+       eine Rolle für ein Konto, das es nicht gibt, gälte für niemanden. */
+    if(me.id&&!MEMBERS.has(me.id)&&me.base&&!loadFailed) saveMember(me.id,{actors:[],roles:{}});
+    render();
+  },function(){ /* ohne Konten: alle ohne Rolle — sicher, nicht kaputt */ });
 
   /* Kommt binnen zehn Sekunden nichts, sagt die Seite, was ausblieb —
      statt schweigend auf „Lädt…" zu stehen. */

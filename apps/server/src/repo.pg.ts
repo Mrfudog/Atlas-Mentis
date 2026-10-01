@@ -7,7 +7,8 @@
  */
 
 import type { Pool } from 'pg';
-import type { Entity, InterfaceDef, Registry, Relation } from '@nw/model';
+import { isTableRole } from '@nw/model';
+import type { Entity, InterfaceDef, Registry, Relation, TableRole } from '@nw/model';
 import type { Repository, SessionRow, StoredUser } from './repo.js';
 import type { Invite, User } from './auth.js';
 
@@ -260,15 +261,34 @@ export class PgRepository implements Repository {
       passwordHash: String(row['password_hash']),
       isAdmin: row['is_admin'] === true,
       actorIds: raw.filter((x): x is string => typeof x === 'string' && x.length > 0),
+      roles: PgRepository.rollen(row['roles']),
       disabledAt: row['disabled_at'] ? new Date(row['disabled_at'] as string).toISOString() : undefined,
     };
   }
 
-  /** Ein Konto samt seinen Figuren. Als eigener Ausdruck, damit die vier
-   *  Stellen, die Konten lesen, nicht viermal dasselbe `left join`
-   *  schreiben — und dann eine davon anders. */
+  /** Was aus `campaign_member` kommt, und nur Rollen, die es gibt. Eine
+   *  unbekannte bleibt draussen — eine Rolle zu raten hiesse, jemandem ein
+   *  Geheimnis zu zeigen, weil ein Wort falsch geschrieben war. */
+  private static rollen(raw: unknown): Record<string, TableRole> {
+    const out: Record<string, TableRole> = {};
+    if (!raw || typeof raw !== 'object') return out;
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      if (isTableRole(v)) out[k] = v;
+    }
+    return out;
+  }
+
+  /** Ein Konto samt seinen Figuren und Rollen. Als eigener Ausdruck, damit
+   *  die vier Stellen, die Konten lesen, nicht viermal dasselbe `left join`
+   *  schreiben — und dann eine davon anders.
+   *
+   *  Die Rollen als Unterabfrage und nicht als zweiter Join: zwei Joins
+   *  multiplizierten die Zeilen, und jede Figur stünde so oft da, wie das
+   *  Konto Kampagnen hat. */
   private static readonly USER_SELECT = `
-    select u.*, array_agg(a.actor_id order by a.added_at) as actor_ids
+    select u.*, array_agg(a.actor_id order by a.added_at) as actor_ids,
+           (select coalesce(jsonb_object_agg(m.campaign_id, m.role), '{}'::jsonb)
+              from campaign_member m where m.user_id = u.id) as roles
       from app_user u
       left join app_user_actor a on a.user_id = u.id`;
 
@@ -365,6 +385,20 @@ export class PgRepository implements Repository {
           `insert into app_user_actor(user_id, actor_id)
              select $1, unnest($2::text[]) on conflict do nothing`,
           [user.id, ids],
+        );
+      }
+      /* Die Rollen ebenso: was nicht mehr dasteht, geht; was dasteht, wird
+         gesetzt. Eine Rolle, die sich nur ändert, behält ihr `added_at`. */
+      const rollen = Object.entries(user.roles ?? {}).filter(([, r]) => isTableRole(r));
+      await client.query(
+        `delete from campaign_member where user_id = $1 and campaign_id <> all($2::text[])`,
+        [user.id, rollen.map(([k]) => k)],
+      );
+      for (const [kampagne, rolle] of rollen) {
+        await client.query(
+          `insert into campaign_member(campaign_id, user_id, role) values ($1,$2,$3)
+             on conflict (campaign_id, user_id) do update set role = excluded.role`,
+          [kampagne, user.id, rolle],
         );
       }
       await client.query('commit');

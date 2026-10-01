@@ -22,6 +22,7 @@
 
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { hash as argonHash, verify as argonVerify } from '@node-rs/argon2';
+import type { TableRole } from '@nw/model';
 
 /** Wie lange eine Sitzung ohne Wiedersehen gilt. Eine Woche: lange genug,
  *  dass niemand mitten in der Sitzung herausfliegt, kurz genug, dass ein
@@ -39,6 +40,12 @@ export interface User {
    *  Person: was die eine erfahren hat, weiss er auch, wenn er auf die
    *  andere schaut, und die Freigabeliste zeigt einen Absender. */
   actorIds: string[];
+  /** **Die Rolle je Kampagne** — Kampagnen-Id → `gm ǀ co-gm ǀ player ǀ
+   *  spectator`. Sie steht am Konto und in keinem Artikel: eine Figur sagt
+   *  nicht, in welcher Runde ihr Konto was ist, und eine Kontoangabe in
+   *  einem Artikel wanderte beim Export mit (REQ-199). `isAdmin` ist etwas
+   *  anderes — die Verwaltung der ganzen Installation. */
+  roles: Record<string, TableRole>;
   disabledAt?: string | undefined;
 }
 

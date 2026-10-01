@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-09-30. 59 Schnittstellen, 41 Kantenarten.
+Stand 2026-10-01. 58 Schnittstellen, 41 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -161,7 +161,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ### Creature
 
-`Creature` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Vars` ← `Access` ← `Vitals` ← `Proficiencies` ← `Lore` ← `Facts` ← `Secrets` ← `ReadAloud`
+`Creature` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Vars` ← `Vitals` ← `Proficiencies` ← `Lore` ← `Facts` ← `Secrets` ← `ReadAloud`
 
 **Eigene Felder**
 
@@ -179,7 +179,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`Vars`* — `bindings` *object*
-- *`Access`* — `userIds` *array*, `role` *gm | co-gm | player | spectator*
 - *`Vitals`* — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `exhaustion` *number*, `conditions` *array*, `nat1` *number*
 - *`Proficiencies`* — `proficient` *Skill + Tool + Language + WeaponTraining + ArmorTraining + KnowledgeField: 35 words*, `expertise` *Skill + Tool + Language + WeaponTraining + ArmorTraining + KnowledgeField: 35 words*, `saves` *Ability: str | dex | con | int | wis | cha*
 - *`Lore`* — `lore` *long*
@@ -381,7 +380,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ### Party
 
-`Party` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Access` ← `Lore` ← `Notes`
+`Party` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Lore` ← `Notes`
 
 **Eigene Felder**
 
@@ -396,7 +395,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
-- *`Access`* — `userIds` *array*, `role` *gm | co-gm | player | spectator*
 - *`Lore`* — `lore` *long*
 - *`Notes`* — `note` *long*
 
@@ -484,7 +482,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ### Player character
 
-`PlayerCharacter` · erbt von `Creature` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Vars` ← `Access` ← `Vitals` ← `Proficiencies` ← `Lore` ← `Facts` ← `Secrets` ← `ReadAloud`
+`PlayerCharacter` · erbt von `Creature` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Vars` ← `Vitals` ← `Proficiencies` ← `Lore` ← `Facts` ← `Secrets` ← `ReadAloud`
 
 **Eigene Felder**
 
@@ -503,7 +501,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`Vars`* — `bindings` *object*
-- *`Access`* — `userIds` *array*, `role` *gm | co-gm | player | spectator*
 - *`Vitals`* — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `exhaustion` *number*, `conditions` *array*, `nat1` *number*
 - *`Proficiencies`* — `proficient` *Skill + Tool + Language + WeaponTraining + ArmorTraining + KnowledgeField: 35 words*, `expertise` *Skill + Tool + Language + WeaponTraining + ArmorTraining + KnowledgeField: 35 words*, `saves` *Ability: str | dex | con | int | wis | cha*
 - *`Lore`* — `lore` *long*
@@ -664,12 +661,11 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ### Campaign
 
-`Campaign` · erbt von `Story` ← `Access` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud` ← `Notes`
+`Campaign` · erbt von `Story` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud` ← `Notes`
 
 **Geerbte Felder**
 
 - *`Story`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `summary` *long*
-- *`Access`* — `userIds` *array*, `role` *gm | co-gm | player | spectator*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
@@ -714,7 +710,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Campaign`): `description`, `fields`, `stack`, `quests`, `timeline`, `prep`, `prose`, `relations`
+**Gezeichnet** (aus `Campaign`): `description`, `fields`, `stack`, `members`, `quests`, `timeline`, `prep`, `prose`, `relations`
 
 ### Cataclysm
 
@@ -1745,7 +1741,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ## Ohne Bereich
 
-*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 24 Arten.
+*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 23 Arten.
 
 ### Abilities — *abstrakt*
 
@@ -1754,36 +1750,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 **Eigene Felder**
 
 - `str` *number*, `strMod` *gerechnet*, `dex` *number*, `dexMod` *gerechnet*, `con` *number*, `conMod` *gerechnet*, `int` *number*, `intMod` *gerechnet*, `wis` *number*, `wisMod` *gerechnet*, `cha` *number*, `chaMod` *gerechnet*, `initiative` *gerechnet*, `passivePerception` *gerechnet*
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- PlayerCharacter — `playedBy` → „plays"
-- Quest — `questAbout` → „concerned by"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
-
-### Access — *abstrakt*
-
-`Access`
-
-**Eigene Felder**
-
-- `userIds` *array*, `role` *gm | co-gm | player | spectator*
 
 **Kanten von hier**
 

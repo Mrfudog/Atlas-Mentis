@@ -8,6 +8,7 @@
  *
  *   pnpm --filter @nw/server user add basil --admin
  *   pnpm --filter @nw/server user add sela --actor pc_sela
+ *   pnpm --filter @nw/server user role basil camp_nebel gm
  *   pnpm --filter @nw/server user password basil
  *   pnpm --filter @nw/server user disable sela
  *   pnpm --filter @nw/server user list
@@ -23,6 +24,7 @@ import { closePool, getPool } from './db.js';
 import { PgRepository } from './repo.pg.js';
 import { foldName, hashPassword, hashToken, newInviteCode, passwordProblem } from './auth.js';
 import type { Repository } from './repo.js';
+import { isTableRole } from '@nw/model';
 
 async function askPassword(prompt: string): Promise<string> {
   const fromEnv = process.env['NW_PASSWORD'];
@@ -102,6 +104,9 @@ export async function runUserCommand(repo: Repository, argv: string[]): Promise<
         (u) =>
           `${u.name}${u.isAdmin ? '  (Verwaltung)' : ''}` +
           `${u.actorIds.length ? `  spielt ${u.actorIds.join(', ')}` : ''}` +
+          `${Object.keys(u.roles ?? {}).length
+            ? `  ${Object.entries(u.roles).map(([k, r]) => `${r} in ${k}`).join(', ')}`
+            : ''}` +
           `${u.disabledAt ? '  [gesperrt]' : ''}`,
       )
       .join('\n');
@@ -123,6 +128,7 @@ export async function runUserCommand(repo: Repository, argv: string[]): Promise<
         passwordHash: await hashPassword(password),
         isAdmin: flags.has('--admin'),
         actorIds: actorId ? [actorId] : [],
+        roles: {},
       });
       return `${name} angelegt${flags.has('--admin') ? ' (Verwaltung)' : ''}.`;
     }
@@ -168,8 +174,32 @@ export async function runUserCommand(repo: Repository, argv: string[]): Promise<
         ? `${name} spielt ${actorId} nicht mehr.`
         : `${name} spielt jetzt auch ${actorId}.`;
     }
+    /* **Die Rolle je Kampagne.** Sie steht am Konto und nicht an einer
+       Figur: wer in einer Runde leitet und in einer anderen mitspielt, hat
+       zwei Zeilen, und eine Figur sagt nicht, in welcher Runde ihr Konto
+       was ist. `none` nimmt die Rolle weg. */
+    case 'role': {
+      if (!existing) throw new Error(`„${name}" gibt es nicht.`);
+      const [kampagne, rolle] = rest.filter((a) => !a.startsWith('--'));
+      if (!kampagne) {
+        const r = Object.entries(existing.roles ?? {});
+        return r.length
+          ? `${name}: ${r.map(([k, v]) => `${v} in ${k}`).join(', ')}.`
+          : `${name} sitzt an keinem Tisch.`;
+      }
+      const roles = { ...(existing.roles ?? {}) };
+      if (!rolle || rolle === 'none') {
+        delete roles[kampagne];
+        await repo.putUser({ ...existing, roles });
+        return `${name} hat in ${kampagne} keine Rolle mehr.`;
+      }
+      if (!isTableRole(rolle)) throw new Error('Rolle: gm | co-gm | player | spectator | none');
+      roles[kampagne] = rolle;
+      await repo.putUser({ ...existing, roles });
+      return `${name} ist in ${kampagne} jetzt ${rolle}.`;
+    }
     default:
-      throw new Error('add | password | disable | enable | actor | invite | list');
+      throw new Error('add | password | disable | enable | actor | role | invite | list');
   }
 }
 

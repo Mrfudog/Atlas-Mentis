@@ -70,7 +70,7 @@ const objectSchema = z.object({
 const LayoutElementSchema: z.ZodType<LayoutElement> = z.lazy(() =>
   z.object({
     id: z.string(),
-    el: z.enum(['heading', 'text', 'fields', 'prose', 'description', 'composed', 'relations', 'image', 'linked', 'knowledge', 'map', 'sheet', 'inventory', 'crafting', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'standing', 'tabs']),
+    el: z.enum(['heading', 'text', 'fields', 'prose', 'description', 'composed', 'relations', 'image', 'linked', 'knowledge', 'map', 'sheet', 'inventory', 'crafting', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'members', 'standing', 'tabs']),
     text: z.string().optional(),
     fields: z.union([z.literal('all'), z.array(z.string())]).optional(),
     except: z.array(z.string()).optional(),

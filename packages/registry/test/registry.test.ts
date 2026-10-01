@@ -876,7 +876,7 @@ describe('one registry of types', () => {
      einen Artikel „Zugriff" anlegt — und sie tragen Felder, sonst wären sie
      eine Zeile ohne Inhalt. */
   it('keeps the shared ones abstract and full', () => {
-    for (const n of ['Vars', 'Abilities', 'Access', 'Vitals', 'Proficiencies']) {
+    for (const n of ['Vars', 'Abilities', 'Vitals', 'Proficiencies']) {
       const d = seedRegistry.interfaces[n];
       expect(d?.abstract).toBe(true);
       expect(Object.keys(d?.schema?.properties ?? {}).length).toBeGreaterThan(0);

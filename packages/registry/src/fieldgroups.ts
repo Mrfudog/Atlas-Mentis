@@ -222,17 +222,17 @@ export const fieldGroups = {
          * die halbe Kampagne unsichtbar, und niemand wüsste, warum.
          *
          * Die vier Stufen von aussen nach innen:
-         * `public` jedes Konto · `campaign` jedes Konto am Tisch (eines mit
-         * einer `Access`-Karte an einer Figur oder Gruppe) · `players` die
-         * Spielenden, also `Access.role` `player` oder `co-gm`, aber keine
-         * Zuschauer · `gm` nur die Leitung.
+         * `public` jedes Konto · `campaign` jedes Konto mit einer Rolle am
+         * Tisch · `players` die Spielenden (`player`, `co-gm`, `gm`), aber
+         * keine Zuschauer · `gm` nur die Leitung (`gm`, `co-gm`).
          *
-         * **Offen bleibt, wo die Leitung je Kampagne wohnt.** Heute ist es
-         * das Konto-Merkmal `app_user.is_admin` — eines für die ganze
-         * Installation. Wer in einer Runde leitet und in einer anderen
-         * mitspielt, braucht eine Rolle je Tisch; die gehört an `Access`
-         * und ist noch nicht entschieden. Bis dahin heisst `gm`: die
-         * Verwaltung dieser Installation.
+         * **Die Rolle steht am Konto, je Kampagne** (`campaign_member`), und
+         * gefragt wird die Rolle in **der** Kampagne, der der Artikel
+         * gehört. Wem er gehört, sagt der Ebenenstapel: eine Ebene, die
+         * genau eine Kampagne aufschaltet, gehört ihr; eine, die mehrere
+         * aufschalten, ist gemeinsam — dann zählt die stärkste Rolle
+         * irgendwo. `app_user.is_admin` ist etwas anderes: die Verwaltung
+         * der Installation, die alles sieht.
          *
          * Vier Wörter mit genau einem Nutzer — die bleiben am Feld. Eine
          * Registerzeile dafür wäre der Umweg ohne den Gewinn.
@@ -1171,44 +1171,12 @@ export const fieldGroups = {
     },
   },
 
-  Access: {
-    schema: {
-      type: 'object',
-      properties: {
-        userIds: { type: 'array', title: 'User ids', items: { type: 'string' } },
-        /**
-         * „Account role" und nicht „Role": eine Kreatur trägt schon ein
-         * `role` — das ist ihre Rolle in der Welt (Händler), nicht die des
-         * Kontos am Tisch. Zwei Felder namens „Role" untereinander sind
-         * die Sorte Liste, bei der man das falsche erwischt.
-         *
-         * **`gm` steht an der Kampagne, die anderen an einer Figur.** Eine
-         * Kampagne hat genau eine Frage zu beantworten — wer sitzt hinter
-         * dem Schirm —, und die beantwortet eine Karte mit einer Rolle.
-         * Wer mitspielt, steht weiter an seiner Figur: dort hängt ohnehin,
-         * welches Konto sie führt.
-         *
-         * Von innen nach aussen, wie `Visibility.audience`. `co-gm` bleibt
-         * eine Rolle an der Figur: am Schirm sieht ein Mitleiter dasselbe
-         * wie die Leitung, also braucht die Kampagne den Unterschied nicht.
-         *
-         * Die Vorgabe bleibt `player` — die drei Arten, die `Access` sonst
-         * tragen, sind Figuren. An einer Kampagne ist sie zu ändern, und
-         * das sieht man: die Maske zeigt einen Standard als Vorschlag und
-         * speichert ihn nicht.
-         */
-        role: {
-          type: 'string',
-          title: 'Account role',
-          enum: ['gm', 'co-gm', 'player', 'spectator'],
-          default: 'player',
-        },
-        /* Eine Notiz zum Zugang ist eine Notiz. `Notes.note` gibt es, und
-           es kann mehrere und lange — ein zweites Feld daneben heisst nur,
-           dass man beide durchsuchen muss. */
-      },
-    },
-  },
+  /* `Access` gab es hier: `userIds` und `role` an einer Figur, für einen
+     Tag auch an der Kampagne. Das sind Angaben **über ein Konto**, und sie
+     stehen jetzt am Konto — am Server in `app_user_actor` (welche Figuren)
+     und `campaign_member` (welche Rolle in welcher Kampagne). Der Server las
+     die Karte nie, `userIds` war in keinem Artikel gefüllt, und eine
+     Kontoangabe in einem Artikel wanderte beim Export mit (REQ-199). */
 
   /**
    * Was gerade läuft (REQ-116). Es liegt an der Sitzung und im Speicher,

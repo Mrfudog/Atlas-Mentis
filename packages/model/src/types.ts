@@ -331,6 +331,12 @@ export type LayoutElementKind =
   | 'crawl'
   | 'standing'
   | 'stack'
+  /**
+   * **Wer an diesem Tisch sitzt** — die Konten mit ihrer Rolle in dieser
+   * Kampagne und den Figuren, die sie führen. Die Angaben stehen am Konto
+   * und in keinem Artikel; gezeichnet werden sie dort, wo man sie pflegt.
+   */
+  | 'members'
   | 'tabs';
 
 /**
