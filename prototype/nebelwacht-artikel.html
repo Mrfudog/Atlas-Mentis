@@ -10399,7 +10399,27 @@ function knowledgeHolders(viewerId){
   var holders={}; holders[viewerId]=true;
   var v=ENT.get(viewerId); if(!v)return holders;
   edgesOf(v,REL_PARTY).forEach(function(r){ holders[r.to]=true; });
+  /* Die Fraktion zählt auch einen Schritt weit (A7, REQ-203): eine
+     Fraktion weiss nichts, ihre Mitglieder wissen. Den Rang prüft
+     `knowsInfo` an der Zuteilung. */
+  edgesOf(v,"memberOf").forEach(function(r){ holders[r.to]=true; });
   return holders;
+}
+/* Die Rangleiter einer Fraktion, der niedrigste zuerst. */
+function factionRanks(f){
+  var raw=(((f||{}).components||{}).Faction||{}).ranks;
+  return Array.isArray(raw)?raw.map(String):[];
+}
+/* Auf welcher Sprosse der Betrachter steht: -1 Mitglied ohne Rang, null
+   kein Mitglied. Ein Rang, der nicht in der Leiter steht, zählt wie keiner. */
+function rankIndex(viewerId,factionId){
+  var leiter=factionRanks(ENT.get(factionId)), best=null;
+  edgesOf(ENT.get(viewerId),"memberOf").forEach(function(r){
+    if(r.to!==factionId)return;
+    var rang=(r.props||{}).rank, idx=rang?leiter.indexOf(String(rang)):-1;
+    if(best===null||idx>best) best=idx;
+  });
+  return best;
 }
 /* Die Bündel, die diese Information nennen — ein Rückbezug, weil
    `includes` nur vorwärts gespeichert wird. */
@@ -10431,8 +10451,16 @@ function informationsIn(b){
 function knowsInfo(info,viewerId){
   if(!viewerId)return true;               /* ohne Betrachter: die Spielleitung */
   var holders=knowledgeHolders(viewerId);
-  var direkt=function(e){
-    return edgesOf(e,REL_KNOWNBY).some(function(r){ return !!holders[r.to]; }); };
+  /* Eine Zuteilung an eine Fraktion darf einen Mindestrang nennen (A7). */
+  var erreicht=function(r){
+    if(!holders[r.to])return false;
+    var verlangt=(r.props||{}).rank; if(!verlangt)return true;
+    var leiter=factionRanks(ENT.get(r.to)); if(!leiter.length)return true;
+    var noetig=leiter.indexOf(String(verlangt)); if(noetig<0)return false;
+    var hat=rankIndex(viewerId,r.to);
+    return hat!==null&&hat>=noetig;
+  };
+  var direkt=function(e){ return edgesOf(e,REL_KNOWNBY).some(erreicht); };
   if(direkt(info))return true;
   return bundlesWith(info.id).some(direkt);
 }
@@ -10638,6 +10666,21 @@ function renderKnowPanel(a,e){
       if(t) rv.appendChild(el("button",{class:"ref",type:"button",
         onclick:function(){go({k:"art",id:t.id});}},nameOf(t)));
       else rv.appendChild(el("span",{class:"gone",text:"missing"}));
+      /* An eine Fraktion mit Rängen: ab welcher Sprosse (A7). Ohne Wahl
+         weiss es jedes Mitglied. */
+      var leiter=t?factionRanks(t):[];
+      if(leiter.length){
+        var rs=el("select",{class:"bsel",title:"Known from this rank upward"});
+        rs.appendChild(el("option",{value:""},"every member"));
+        leiter.forEach(function(k){ rs.appendChild(el("option",{value:k},"from "+k)); });
+        rs.value=(r.props||{}).rank||"";
+        if(!canWrite()) rs.disabled=true;
+        rs.addEventListener("change",function(){
+          r.props=Object.assign({},r.props||{},{rank:rs.value||undefined});
+          persist(info);
+        });
+        rv.appendChild(rs);
+      }
       if(canWrite()) rv.appendChild(el("button",{class:"btn gh sm",type:"button",onclick:function(){
         info.relations=(info.relations||[]).filter(function(x){return x.id!==r.id;});
         persist(info); }},"×"));
@@ -12684,7 +12727,10 @@ function renderHowto(v){
     "beats Revealed to beats Audience. The explicit ban wins because it is "+
     "the exception somebody entered by hand. Both name holders \u2014 a "+
     "creature, a party, a faction, a group \u2014 and a holder counts one "+
-    "step out: naming the party hides it from its members. Nothing is "+
+    "step out: naming the party hides it from its members, naming the "+
+    "faction from everyone in it. A faction knows nothing by itself: its "+
+    "members do, and a knowledge grant to a faction may name the rank it "+
+    "starts at (Faction.ranks, memberOf.rank). Nothing is "+
     "inherited to an article\u2019s children: knowing a house is not "+
     "knowing every room in it, and an inheritance without a depth "+
     "eventually releases a whole branch nobody meant."));

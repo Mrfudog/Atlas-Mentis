@@ -2228,6 +2228,43 @@ async function seite(datei, warten) {
     buendel.drin && buendel.drin.length === 1 && buendel.rueck.join() === 'k_probe', buendel);
   pruefe('while everyone else still knows nothing', buendel.fremd === false, buendel);
 
+  /* ---- Die Fraktion mit Rängen (A7, REQ-203) ----
+     Eine Fraktion weiss nichts, ihre Mitglieder wissen — und ab welcher
+     Sprosse, sagt die Zuteilung. Alles an Kanten und einem Feld, nichts
+     gespeichert gerechnet. */
+  const raenge = await p.evaluate(() => {
+    const T = window.__T__;
+    const info = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Information');
+    const pcs = [...T.ENT.values()].filter((e) => (e.interfaces || [])[0] === 'PlayerCharacter');
+    if (!info || pcs.length < 2) return { fehlt: true };
+    const [novize, adeptin] = pcs;
+    const f = {
+      id: 'f_probe', interfaces: ['Faction'], name: 'Der Zirkel',
+      components: { Identity: { name: 'Der Zirkel', id: 'faction-9999', aliases: [] },
+                    Faction: { ranks: ['novice', 'adept', 'master'] }, Status: { status: 'ready' } },
+      adhoc: [], relations: [], createdAt: new Date().toISOString(),
+    };
+    T.ENT.set(f.id, f);
+    const alt = { n: novize.relations.slice(), a: adeptin.relations.slice(), i: info.relations.slice() };
+    novize.relations = alt.n.concat([{ id: 'fm1', type: 'memberOf', to: f.id, props: {} }]);
+    adeptin.relations = alt.a.concat([{ id: 'fm2', type: 'memberOf', to: f.id, props: { rank: 'adept' } }]);
+    info.relations = alt.i.filter((r) => r.type !== 'knownBy')
+      .concat([{ id: 'fk1', type: 'knownBy', to: f.id, props: { rank: 'adept' } }]);
+    const mitRang = { novize: T.knowsInfo(info, novize.id), adeptin: T.knowsInfo(info, adeptin.id),
+      fremd: T.knowsInfo(info, 'gibt-es-nicht'), sprosse: T.rankIndex(adeptin.id, f.id) };
+    info.relations = alt.i.filter((r) => r.type !== 'knownBy')
+      .concat([{ id: 'fk1', type: 'knownBy', to: f.id, props: {} }]);
+    const ohneRang = { novize: T.knowsInfo(info, novize.id), adeptin: T.knowsInfo(info, adeptin.id) };
+    novize.relations = alt.n; adeptin.relations = alt.a; info.relations = alt.i;
+    T.ENT.delete(f.id);
+    return { mitRang, ohneRang };
+  });
+  pruefe('a grant to a faction from a rank reaches the adept and not the novice',
+    !raenge.fehlt && raenge.mitRang.adeptin === true && raenge.mitRang.novize === false
+    && raenge.mitRang.fremd === false && raenge.mitRang.sprosse === 1, raenge);
+  pruefe('a grant to a faction without a rank reaches every member',
+    !raenge.fehlt && raenge.ohneRang.adeptin === true && raenge.ohneRang.novize === true, raenge);
+
   /* ---- C1/C2: Assets, Einstellungen ----
      Der Auflöser ist die einzige Stelle, die weiss, welche Sorte Verweis ein
      Bild trägt. Geht er falsch, zeigt die Seite ein kaputtes Bild und sagt
