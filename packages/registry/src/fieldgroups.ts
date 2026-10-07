@@ -879,8 +879,26 @@ export const fieldGroups = {
         display: { type: 'string', format: 'date', title: 'Date' },
         untilSort: { type: 'number', title: 'Sortable value of the end' },
         until: { type: 'string', format: 'date', title: 'Until' },
-        calendar: { type: 'string', suggest: true, title: 'Calendar' },
+        /* `calendar` stand hier je Artikel — zwei Stellen für dieselbe
+           Angabe neben der Einstellung, im Bestand nie anders als dort.
+           Der Kalender hängt an der **Welt** (`World.calendar`), und alle
+           Kampagnen darin lesen ihre Daten so (Abgleich A11, 7.10.). */
         duration: { type: 'string', title: 'Duration' },
+      },
+    },
+  },
+
+  /**
+   * **Die Welt trägt den Kalender** (REQ-024, A11): alle Kampagnen darin
+   * lesen ihre Weltdaten so. Es war eine Einstellung je Kampagne und ein
+   * freies Feld je Artikel — drei Stellen für eine Angabe, die sich
+   * nie unterschied.
+   */
+  WorldInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        calendar: { type: 'string', suggest: true, title: 'Calendar' },
       },
     },
   },

@@ -674,6 +674,16 @@ export const relations: Record<string, RelationDef> = {
    * (REQ-006). An der Kampagne und nicht an der Ebene, weil zwei Kampagnen
    * dieselbe Ebene verschieden hoch hängen dürfen.
    */
+  /** In welcher Welt die Kampagne spielt — und damit, in welchem Kalender (A11). */
+  inWorld: {
+    type: 'inWorld',
+    label: 'in the world',
+    inverseLabel: 'campaigns',
+    from: ['Campaign'],
+    to: ['World'],
+    cardinality: 'one',
+  },
+
   activates: {
     type: 'activates',
     label: 'runs on',

@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-07. 51 Schnittstellen, 42 Kantenarten.
+Stand 2026-10-07. 52 Schnittstellen, 43 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -14,7 +14,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## World
 
-*Wer und was es gibt.* — 10 Arten.
+*Wer und was es gibt.* — 11 Arten.
 
 ### Armor
 
@@ -544,6 +544,47 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
+### World
+
+`World` · erbt von `Identity` ← `Prose` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Lore` ← `Notes`
+
+**Eigene Felder**
+
+- `calendar` *string*
+
+**Geerbte Felder**
+
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Lore`* — `lore` *long*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Campaign — `inWorld` → „campaigns"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
+
 ---
 
 ## History
@@ -564,7 +605,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Todos`* — `items` *array*
-- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `calendar` *string*, `duration` *string*
+- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `duration` *string*
 - *`Lore`* — `lore` *long*
 - *`Secrets`* — `secret` *long*
 - *`ReadAloud`* — `readaloud` *long*
@@ -582,6 +623,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `loot` → Item | Information | Feat | Skill — „loot"
 - `tableFor` → Table — „rolls on"
 - `inLayer` → Layer — „from"
+- `inWorld` → World — „in the world"
 - `activates` → Layer — „runs on"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
@@ -620,7 +662,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Description`* — `description` *long*
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
-- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `calendar` *string*, `duration` *string*
+- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `duration` *string*
 - *`Lore`* — `lore` *long*
 - *`Secrets`* — `secret` *long*
 - *`ReadAloud`* — `readaloud` *long*
@@ -665,7 +707,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Todos`* — `items` *array*
-- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `calendar` *string*, `duration` *string*
+- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `duration` *string*
 - *`Lore`* — `lore` *long*
 - *`Secrets`* — `secret` *long*
 
@@ -714,7 +756,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Todos`* — `items` *array*
-- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `calendar` *string*, `duration` *string*
+- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `duration` *string*
 - *`Lore`* — `lore` *long*
 - *`Secrets`* — `secret` *long*
 - *`ReadAloud`* — `readaloud` *long*
@@ -769,7 +811,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Todos`* — `items` *array*
-- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `calendar` *string*, `duration` *string*
+- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `duration` *string*
 - *`Lore`* — `lore` *long*
 - *`Secrets`* — `secret` *long*
 - *`ReadAloud`* — `readaloud` *long*
@@ -823,7 +865,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Todos`* — `items` *array*
-- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `calendar` *string*, `duration` *string*
+- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `duration` *string*
 - *`Lore`* — `lore` *long*
 - *`Secrets`* — `secret` *long*
 - *`ReadAloud`* — `readaloud` *long*
@@ -1959,7 +2001,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `calendar` *string*, `duration` *string*
+- `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `duration` *string*
 
 **Kanten von hier**
 

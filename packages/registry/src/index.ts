@@ -30,7 +30,8 @@ export const settings: Record<string, string> = {
   gridUnit: '1,5 m',
   inventoryCols: '10',
   inventoryRows: '6',
-  calendar: 'Harptos',
+  /* `calendar` stand hier: der Kalender hängt seit dem 7.10. an der Welt
+     (`World.calendar`, Kante `inWorld` von der Kampagne), A11. */
   /* Der Tag, an dem die Kampagne steht. Leer heisst: das jüngste benutzte
      Ereignis. Gruppenstufe und Gruppen-Aufenthaltsort stehen hier
      ausdrücklich NICHT — sie werden gerechnet (B3, D8), und eine
