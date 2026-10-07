@@ -126,15 +126,10 @@ export const relations: Record<string, RelationDef> = {
 
   // ------------------------------------------------------ players & party
 
-  /** The one edge that leaves the fiction: who at the table runs this one. */
-  playedBy: {
-    type: 'playedBy',
-    label: 'played by',
-    inverseLabel: 'plays',
-    from: ['PlayerCharacter'],
-    to: ['*'],
-    cardinality: 'one',
-  },
+  /* Hier stand `playedBy` (Spielerfigur → `*`): die eine Kante, die aus
+     der Fiktion hinauszeigte. Wer eine Figur spielt, ist eine Angabe über
+     ein Konto und steht dort (`app_user_actor`), nicht in einem Artikel —
+     Abgleich A1, REQ-199. Im Bestand hat sie nie jemand gesetzt. */
 
   memberOfParty: {
     type: 'memberOfParty',

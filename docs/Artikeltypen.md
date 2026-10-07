@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-07. 58 Schnittstellen, 42 Kantenarten.
+Stand 2026-10-07. 58 Schnittstellen, 41 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -51,7 +51,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Inventory — `holds` → „held in"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -100,7 +99,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - * — `describedIn` → „describes"
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -143,7 +141,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Inventory — `holds` → „held in"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -205,7 +202,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 - Statblock — `belongsTo` → „statblock of"
 - Creature — `owes` → „creditor of"
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questGiver` → „gives"
 - Quest — `questAbout` → „concerned by"
 - Story — `features` → „appears in"
@@ -261,7 +257,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Creature — `memberOf` → „members"
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questGiver` → „gives"
 - Quest — `questAbout` → „concerned by"
 - Story — `features` → „appears in"
@@ -311,7 +306,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Inventory — `holds` → „held in"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -362,7 +356,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Inventory — `holds` → „held in"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -411,7 +404,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Creature — `memberOfParty` → „members"
 - Quest — `questAbout` → „concerned by"
 - Information | Knowledge — `knownBy` → „knows"
@@ -465,7 +457,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - Creature — `livesIn` → „residents"
 - Place | Story | Quest — `partOf` → „contains"
 - Faction — `controls` → „controlled by"
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Story — `happensAt` → „scenes here"
 - Map — `mapOf` → „maps"
@@ -486,7 +477,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `backstory` *long*, `player` *string*, `ancestry` *string*, `class` *string*, `level` *number*, `proficiency` *gerechnet*
+- `backstory` *long*, `ancestry` *string*, `class` *string*, `level` *number*, `proficiency` *gerechnet*
 
 **Geerbte Felder**
 
@@ -514,7 +505,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - `memberOf` → Faction — „member of"
 - `livesIn` → Place — „lives in"
 - `describedIn` → Article — „described in"
-- `playedBy` → * — „played by"
 - `memberOfParty` → Party — „in the party"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
@@ -528,7 +518,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 - Statblock — `belongsTo` → „statblock of"
 - Creature — `owes` → „creditor of"
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questGiver` → „gives"
 - Quest — `questAbout` → „concerned by"
 - Story — `features` → „appears in"
@@ -585,7 +574,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Inventory — `holds` → „held in"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -645,7 +633,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Place | Story | Quest — `partOf` → „contains"
-- PlayerCharacter — `playedBy` → „plays"
 - Story — `followsFrom` → „followed by"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
@@ -698,7 +685,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Place | Story | Quest — `partOf` → „contains"
-- PlayerCharacter — `playedBy` → „plays"
 - Story — `followsFrom` → „followed by"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
@@ -741,7 +727,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -791,7 +776,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Place | Story | Quest — `partOf` → „contains"
-- PlayerCharacter — `playedBy` → „plays"
 - Story — `followsFrom` → „followed by"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
@@ -834,7 +818,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -875,7 +858,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -916,7 +898,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -964,7 +945,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1020,7 +1000,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Place | Story | Quest — `partOf` → „contains"
-- PlayerCharacter — `playedBy` → „plays"
 - Story — `followsFrom` → „followed by"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
@@ -1076,7 +1055,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Place | Story | Quest — `partOf` → „contains"
-- PlayerCharacter — `playedBy` → „plays"
 - Story — `followsFrom` → „followed by"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
@@ -1131,7 +1109,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Place | Story | Quest — `partOf` → „contains"
-- PlayerCharacter — `playedBy` → „plays"
 - Story — `followsFrom` → „followed by"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
@@ -1184,7 +1161,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Weapon | Item | Armor — `hasProperty` → „property of"
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1225,7 +1201,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Information | Knowledge — `knownBy` → „knows"
 - Map — `marker` → „on the map"
@@ -1269,7 +1244,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - * — `knowledge` → „about"
 - Knowledge — `includes` → „part of"
@@ -1313,7 +1287,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Creature | Party — `carries` → „carried by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -1352,7 +1325,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1397,7 +1369,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1442,7 +1413,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Weapon | Item | Armor — `hasProperty` → „property of"
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1487,7 +1457,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Weapon | Item | Armor — `hasProperty` → „property of"
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1535,7 +1504,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Story — `features` → „appears in"
 - Map — `marker` → „on the map"
@@ -1581,7 +1549,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1629,7 +1596,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1678,7 +1644,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1725,7 +1690,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `insideMap` → „zoom into"
 - Map — `marker` → „on the map"
@@ -1763,7 +1727,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1805,7 +1768,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1835,7 +1797,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1865,7 +1826,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1895,7 +1855,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1925,7 +1884,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1955,7 +1913,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1995,7 +1952,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2027,7 +1983,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2057,7 +2012,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2087,7 +2041,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2117,7 +2070,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2147,7 +2099,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2177,7 +2128,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2207,7 +2157,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2237,7 +2186,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2267,7 +2215,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2297,7 +2244,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2327,7 +2273,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2357,7 +2302,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2387,7 +2331,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2417,7 +2360,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2447,7 +2389,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- PlayerCharacter — `playedBy` → „plays"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
