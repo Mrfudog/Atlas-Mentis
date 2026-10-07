@@ -149,6 +149,23 @@ export const relations: Record<string, RelationDef> = {
     to: ['Party'],
   },
 
+  /**
+   * **Die Gruppe hängt an der Kampagne, und ihre Figuren darüber** (A8,
+   * 7.10.). Eine Party ist das Figurengefüge einer Runde; eine andere
+   * Konstellation gibt es nicht. Eine Kampagne darf mehrere haben (zwei
+   * Tische in derselben Welt), eine Party gehört genau einer — darum
+   * `one`. Die laufende Kampagne findet ihre Gruppe hierüber, nicht über
+   * die erste Party, die im Speicher steht.
+   */
+  partyOf: {
+    type: 'partyOf',
+    label: 'party of',
+    inverseLabel: 'parties',
+    from: ['Party'],
+    to: ['Campaign'],
+    cardinality: 'one',
+  },
+
   carries: {
     type: 'carries',
     label: 'carries',
@@ -276,11 +293,9 @@ export const relations: Record<string, RelationDef> = {
     // Eine Fraktion kann etwas erfahren — „das Auge weiss es“ ist eine
     // Frage, die eine Kampagne stellt (REQ-040).
     //
-    // Und eine **Gruppe von Menschen**: „die Spieler dieser Kampagne" ist
-    // kein Figurengefüge, also keine Party. Sie dazuzunehmen ist eine
-    // Zeile und keine zweite Mechanik — `knowledgeHolders` fragt ohnehin
-    // nach Haltern und nicht nach Figuren.
-    to: ['Creature', 'Party', 'Faction', 'Group'],
+    // „Die Spieler dieser Kampagne“ sind eine Rolle am Konto, kein Träger:
+    // `audience: players` sagt es. `Group` als vierter Träger ist weg (A8).
+    to: ['Creature', 'Party', 'Faction'],
     /* An eine Fraktion darf die Zuteilung einen **Mindestrang** nennen
        (`Faction.ranks`): wer auf dieser Sprosse oder höher steht, weiss es.
        Ohne Rang weiss es jedes Mitglied. An einer Figur oder Gruppe sagt

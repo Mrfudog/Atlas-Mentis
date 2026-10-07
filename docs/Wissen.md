@@ -27,7 +27,7 @@ Stand und Marken haben.
 ```
 Artikel      --knowledge-->  Information        (owned)
 Knowledge    --includes-->   Information        (ein Bündel)
-Information | Knowledge --knownBy--> Creature | Party | Faction | Group
+Information | Knowledge --knownBy--> Creature | Party | Faction
 ```
 
 ```mermaid
@@ -56,7 +56,7 @@ Drei Kantenarten und zwei Artikelarten. Kein neues Konstrukt.
 | `Knowledge` | Artikelart (rules) | ein Bündel; keine eigenen Felder, die Kante `includes` |
 | `knowledge` | Kante | Artikel → Information, `owned` |
 | `includes` | Kante | Knowledge → Information |
-| `knownBy` | Kante | Information, Knowledge → Creature, Party, Faction, Group |
+| `knownBy` | Kante | Information, Knowledge → Creature, Party, Faction |
 | `knowledge` | Layout-Element | der Artikel nach Informationen geordnet |
 
 `Information.fields` schreibt Feldverweise in derselben Schreibweise wie die
@@ -159,30 +159,19 @@ sieht genau das Offene.
 
 ## Die Gruppe
 
-`Party` ist ein Figurengefüge: Rook, Sela und der Rest ziehen zusammen los.
-Wissen an die Party zu geben erreicht jedes Mitglied über `memberOfParty`,
-und das ist richtig so.
+`Party` ist das Figurengefüge einer Runde: Rook, Sela und der Rest ziehen
+zusammen los. Sie hängt an ihrer Kampagne (`partyOf`, genau eine), und
+ihre Figuren sind darüber Teil der Kampagne (`memberOfParty`). Wissen an
+die Party zu geben erreicht jedes Mitglied, und das ist richtig so.
 
-Es deckt aber nur die Abenteuergruppe ab. **„Die Spieler dieser Kampagne"
-ist etwas anderes** — wer noch keine Figur hat, wer gerade eine neue baut,
-wer als Gast zusieht, steht in keiner Party und soll dasselbe erfahren.
-
-Dafür gibt es `Group`. Sie trägt kein Blatt, keine Werte
-und keine Ausrüstung; sie ist da, damit Wissen einen Empfänger hat, der
-grösser ist als eine Figur und anders als eine Party.
-
-**Ihre Mitglieder sind Konten, nicht Figuren.** Ein Konto zeigt auf sie wie
-auf eine Figur — dieselbe Zeile in `app_user_actor`, derselbe Eintrag in der
-Betrachterliste. Genau deshalb ist sie keine zweite Mechanik, sondern ein
-dritter Halter im selben Verfahren.
-
-Ohne Betrachter ist es die Spielleitung: sie sieht alles.
-
-Der Code steht in `packages/model/src/knowledge.ts` (`knows`,
-`knowledgeGroups`, `visibleFields`) und, in derselben Form, im Prototyp. Beide
-sind geprüft — sechs Vitest-Fälle und sechs Prüfungen im Playwright-Lauf.
-
----
+Es gab daneben `Group` — eine Gruppe von Konten für „die Spieler dieser
+Kampagne“, wer noch keine Figur hat, wer zusieht. Mitglied wurde ein
+Konto am Server, indem es die Gruppe wie eine Figur führte
+(`app_user_actor`); im Register und im Prototyp gab es dafür keine Kante,
+dort erreichte sie niemanden. Und seit `campaign_member` sind die Spieler
+einer Kampagne eine **Rolle**: `audience: players` sagt es, `audience: campaign` nimmt die
+Zuschauer dazu. Zwei Spieler mit einem gemeinsamen Geheimnis bekommen es
+als Figuren oder als zweite Party. `Group` ist seit dem 7.10. weg (A8).
 
 ## Die Oberfläche
 

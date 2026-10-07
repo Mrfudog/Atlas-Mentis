@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-07. 52 Schnittstellen, 41 Kantenarten.
+Stand 2026-10-07. 51 Schnittstellen, 42 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -32,7 +32,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
@@ -81,7 +81,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`Todos`* — `items` *array*
@@ -125,7 +125,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
@@ -192,7 +192,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Lore`* — `lore` *long*
@@ -241,7 +241,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
@@ -291,7 +291,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
@@ -339,7 +339,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Lore`* — `lore` *long*
@@ -348,6 +348,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `describedIn` → Article — „described in"
+- `partyOf` → Campaign — „party of"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -388,7 +389,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Lore`* — `lore` *long*
@@ -441,7 +442,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
@@ -509,7 +510,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
@@ -560,7 +561,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Todos`* — `items` *array*
 - *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `calendar` *string*, `duration` *string*
@@ -588,6 +589,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Place | Story | Quest — `partOf` → „contains"
+- Party — `partyOf` → „parties"
 - Story — `followsFrom` → „followed by"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
@@ -616,7 +618,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `calendar` *string*, `duration` *string*
 - *`Lore`* — `lore` *long*
@@ -660,7 +662,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Todos`* — `items` *array*
 - *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `calendar` *string*, `duration` *string*
@@ -709,7 +711,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Todos`* — `items` *array*
 - *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `calendar` *string*, `duration` *string*
@@ -764,7 +766,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Todos`* — `items` *array*
 - *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `calendar` *string*, `duration` *string*
@@ -818,7 +820,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Todos`* — `items` *array*
 - *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `calendar` *string*, `duration` *string*
@@ -862,7 +864,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## Rules
 
-*Woran man sich hält.* — 10 Arten.
+*Woran man sich hält.* — 9 Arten.
 
 ### Feat
 
@@ -880,7 +882,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`Vars`* — `bindings` *object*
@@ -909,46 +911,6 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
-### Group
-
-`Group` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Notes`
-
-**Eigene Felder**
-
-- `kind` *players | table | guests | crew*
-
-**Geerbte Felder**
-
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-- *`Prose`* — `paragraph` *long*
-- *`Status`* — `status` *State: idea | prepared | ready*
-- *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
-- *`Tags`* — `tags` *tags*
-- *`Notes`* — `note` *long*
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- Quest — `questAbout` → „concerned by"
-- Information | Knowledge — `knownBy` → „knows"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
-
 ### Information
 
 `Information` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Secrets` ← `Facts`
@@ -964,7 +926,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Secrets`* — `secret` *long*
 - *`Facts`* — `fact` *long*
@@ -973,7 +935,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
-- `knownBy` → Creature | Party | Faction | Group — „known by"
+- `knownBy` → Creature | Party | Faction — „known by"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
@@ -1008,7 +970,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Notes`* — `note` *long*
 
@@ -1046,14 +1008,14 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 
 **Kanten von hier**
 
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
-- `knownBy` → Creature | Party | Faction | Group — „known by"
+- `knownBy` → Creature | Party | Faction — „known by"
 - `includes` → Information — „includes"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
@@ -1086,7 +1048,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`Notes`* — `note` *long*
@@ -1132,7 +1094,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`Vars`* — `bindings` *object*
@@ -1176,7 +1138,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`Vars`* — `bindings` *object*
@@ -1220,7 +1182,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`Abilities`* — `str` *number*, `strMod` *gerechnet*, `dex` *number*, `dexMod` *gerechnet*, `con` *number*, `conMod` *gerechnet*, `int` *number*, `intMod` *gerechnet*, `wis` *number*, `wisMod` *gerechnet*, `cha` *number*, `chaMod` *gerechnet*, `initiative` *gerechnet*, `passivePerception` *gerechnet*
@@ -1268,7 +1230,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
 - *`Notes`* — `note` *long*
@@ -1317,7 +1279,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Notes`* — `note` *long*
 
@@ -1357,7 +1319,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Todos`* — `items` *array*
 - *`Tactics`* — `tactics` *long*
@@ -1405,7 +1367,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Notes`* — `note` *long*
@@ -1489,7 +1451,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Notes`* — `note` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
@@ -1674,7 +1636,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
 - *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Notes`* — `note` *long*
 
@@ -2084,7 +2046,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
+- `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 
 **Kanten von hier**
 

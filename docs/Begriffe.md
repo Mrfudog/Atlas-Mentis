@@ -308,7 +308,7 @@ Zuteilungen einzeln nachzieht.
 ```
 Artikel     --knowledge--> Information        (owned: stirbt mit dem Artikel)
 Knowledge   --includes-->  Information
-Information | Knowledge --knownBy--> Creature | Party | Faction | Group
+Information | Knowledge --knownBy--> Creature | Party | Faction
 ```
 
 Ein Bündel in einem Bündel zählt nicht: ein Schritt weit, dieselbe Regel wie
@@ -316,7 +316,7 @@ bei den Haltern. Sonst reichte eine Freigabe weiter, als jemand gemeint hat.
 
 > **Nicht mehr:** es gab einen `KnowledgeLevel` — einen *Stand*, dem Figuren
 > über `atLevel` angehörten. Das war ein zweiter Weg zu „wer weiss das",
-> obwohl `Party` und `Group` schon Empfänger sein konnten, und in zwei Jahren
+> obwohl `Party` schon Empfänger sein konnte, und in zwei Jahren
 > hat ihn niemand benutzt: kein Artikel, keine Kante.
 
 ---
@@ -357,8 +357,8 @@ Die vier Stufen von aussen nach innen:
 jemand von Hand eingetragen hat; eine Freigabe, die ein Verbot aufhebt, wäre
 die Sorte Regel, deren Wirkung man erst am Tisch merkt.
 
-Beide Listen nennen **Träger** — `Creature`, `Party`, `Faction`, `Group`,
-dieselben vier wie `knownBy`, denn es ist dieselbe Frage: wem gehört etwas.
+Beide Listen nennen **Träger** — `Creature`, `Party`, `Faction`,
+dieselben drei wie `knownBy`, denn es ist dieselbe Frage: wem gehört etwas.
 Ein Träger zählt einen Schritt weit auch als seine Gruppe: wer den
 Reisetrupp nennt, verbirgt es vor seinen Mitgliedern.
 

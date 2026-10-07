@@ -1686,10 +1686,11 @@ async function seite(datei, warten) {
      Die Information ist ein eigener Artikel. Geprüft wird die ganze Kette:
      anlegen, ein Feld zuteilen, einen Empfänger setzen — und dass das Feld
      danach nicht mehr in der offenen Gruppe steht. */
-  /* Der Empfänger ist eine **Gruppe** — eine von vieren, die es sein
-     dürfen (Creature, Party, Faction, Group). Ein eigener „Wissensstand"
-     war ein zweiter Weg zu derselben Frage und ist weg. */
-  await neuerArtikel('Group', 'Probe lore');
+  /* Der Empfänger ist eine **Party** — eine von dreien, die es sein
+     dürfen (Creature, Party, Faction). Ein eigener „Wissensstand“ war ein
+     zweiter Weg zu derselben Frage und ist weg; `Group` als vierter Träger
+     (Konten statt Figuren) ist es auch (A8). */
+  await neuerArtikel('Party', 'Probe lore');
   await oeffne('Probe hero');
   await p.waitForTimeout(350);
 
@@ -1783,7 +1784,7 @@ async function seite(datei, warten) {
      „Revealed to" eine Rüstung. */
   pruefe('the two lists are links to holders and say so',
     sichtFelder.artRevealed === 'links'
-    && sichtFelder.zielRevealed.join(',') === 'Creature,Party,Faction,Group', sichtFelder);
+    && sichtFelder.zielRevealed.join(',') === 'Creature,Party,Faction', sichtFelder);
 
   const stufen = await p.evaluate(() => {
     const T = window.__T__;
@@ -2190,7 +2191,7 @@ async function seite(datei, warten) {
 
      Vorher stand an der Stelle ein *Wissensstand*, dem Figuren über
      `atLevel` angehörten: ein zweiter Weg zu derselben Frage, obwohl Party
-     und Group schon Empfänger sein konnten. Kein Artikel, keine Kante, in
+     schon Empfänger sein konnte. Kein Artikel, keine Kante, in
      zwei Jahren. */
   const buendel = await p.evaluate(() => {
     const T = window.__T__;
