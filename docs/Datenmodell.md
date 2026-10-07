@@ -401,8 +401,11 @@ Information | Knowledge --knownBy--> Creature | Party | Faction | Group
 `Information.fields` nennt, was sie beansprucht: `Typ` (alle Felder des
 Typs), `Typ.feld`, `Typ.feld#id` (ein Eintrag). **Was keine Information
 nennt, liegt offen.** Ein Betrachter ist die Liste seiner Figuren; eine Figur
-zählt einen Schritt weit auch als ihre `Party` (`memberOfParty`). Ohne
-Betrachter liest die Leitung.
+zählt einen Schritt weit auch als ihre `Party` (`memberOfParty`) und ihre
+`Faction` (`memberOf`). **Eine Fraktion weiss nichts, ihre Mitglieder
+wissen:** `Faction.ranks` ist die Leiter, `memberOf.props.rank` die Sprosse,
+und `knownBy.props.rank` an einer Zuteilung an die Fraktion ein Mindestrang
+(A7, REQ-203). Ohne Betrachter liest die Leitung.
 
 Zurückgehalten wird **am Server**: Felder, die eine ungewusste Information
 beansprucht; die Felder aus der Einstellung `gmFields`
@@ -536,7 +539,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Armor` | `Item` | `ac` `armorType` | `hasProperty` | `holds` `needs` `yields` `loot` | — |
 | `Article` | `Source` `Todos` `Lore` `Secrets` | `poem` `song` | — | `describedIn` | — |
 | `Creature` | `Image` `Source` `Vars` `Vitals` `Proficiencies` `Lore` `Facts` `Secrets` `ReadAloud` | `appearance` `personality` `species` `kind` `role` `attitude` | `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | full |
-| `Faction` | `Image` `Lore` `Secrets` | `kind` `color` | `controls` `regards` | `memberOf` `questGiver` `features` `knownBy` `regards` | — |
+| `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` | `controls` `regards` | `memberOf` `questGiver` `features` `knownBy` `regards` | — |
 | `Item` | `Image` `Source` `Lore` `Secrets` `Facts` | `itemType` `rarity` `availability` `copperPrice` `stackSize` `weight` `rows` `width*` `height*` `cells*` | `hasProperty` | `holds` `needs` `yields` `loot` | — |
 | `Material` | `Item` | `materialType` `trades` | `hasProperty` | `holds` `needs` `yields` `loot` | — |
 | `Party` | `Image` `Lore` | `level` `motto` `day` `watch` `sinceRation` `sinceLight` `actions` | `carries` `crafting` `regards` | `memberOfParty` `knownBy` `participates` `regards` | full |
@@ -608,12 +611,12 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `instanceOf` | Statblock → Statblock | ja | — | — |
 | `involves` | Event → * |  | — | — |
 | `knowledge` | * → Information |  | owned | — |
-| `knownBy` | Information \| Knowledge → Creature \| Party \| Faction \| Group |  | — | — |
+| `knownBy` | Information \| Knowledge → Creature \| Party \| Faction \| Group |  | — | `rank` |
 | `livesIn` | Creature → Place |  | — | — |
 | `loot` | Encounter \| Story \| Quest → Item \| Information \| Feat \| Skill |  | — | `qty` `chance` |
 | `mapOf` | Map → Place \| Story |  | — | — |
 | `marker` | Map → * |  | — | `x` `y` `kind` `size` `rot` `ratio` `note` `light` `dim` |
-| `memberOf` | Creature → Faction |  | — | — |
+| `memberOf` | Creature → Faction |  | — | `rank` `note` |
 | `memberOfParty` | Creature → Party |  | — | — |
 | `needs` | Recipe → Item |  | — | `qty` `consumed` `note` |
 | `onMap` | Encounter \| Story → Map | ja | — | — |

@@ -509,6 +509,14 @@ export const fieldGroups = {
            sie die Feldart selbst setzt — sie prüfte den Editor, nicht die
            Zeile. */
         color: { type: 'string', format: 'color', title: 'Colour' },
+        /* **Eine Fraktion weiss nichts — ihre Mitglieder wissen** (Abgleich
+           A7, 7.10.; REQ-203). Die Ränge stehen hier als Leiter, der
+           niedrigste zuerst; `memberOf.props.rank` sagt, auf welcher
+           Sprosse jemand steht, und eine Zuteilung `knownBy` an die
+           Fraktion darf einen Mindestrang nennen: was der Zirkel weiss,
+           weiss der Novize noch nicht. Ohne Rang an der Zuteilung erreicht
+           sie jedes Mitglied. */
+        ranks: { type: 'array', items: { type: 'string' }, title: 'Ranks (lowest first)' },
       },
     },
   },
