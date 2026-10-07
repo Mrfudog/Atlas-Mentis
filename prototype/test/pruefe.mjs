@@ -1609,13 +1609,16 @@ async function seite(datei, warten) {
   const erwartet = ['Campaign', 'Session', 'Scene / Encounter', 'Quest', 'Player character', 'Party', 'Inventory'];
   pruefe('the story and player types are offered',
     erwartet.every((t) => auswahl.includes(t)), auswahl);
-  /* Abstrakte Typen sind Struktur, nicht anlegbar. `Creature` steht hier
-     nicht mehr: sie ist selbst eine Art geworden, und `kind` sagt, was für
-     eine — der Unterschied zwischen NSC und Begleiter war drei Zeilen ohne
-     ein einziges eigenes Feld wert. */
+  /* Abstrakte Typen sind Struktur, nicht anlegbar. `Creature` und `Story`
+     stehen hier: beide sind selbst Arten geworden, und `kind` sagt, was für
+     eine — der Unterschied zwischen NSC und Begleiter, zwischen Arc und
+     Kapitel, war je drei Zeilen ohne ein einziges eigenes Feld wert
+     (Regel T2, Abgleich A5). */
   pruefe('the abstract parents are not offered',
-    !auswahl.includes('Story') && !auswahl.includes('Identity')
-    && !auswahl.includes('Proficiencies') && auswahl.includes('Creature'), auswahl);
+    !auswahl.includes('Identity') && !auswahl.includes('Proficiencies')
+    && auswahl.includes('Creature') && auswahl.includes('Story'), auswahl);
+  pruefe('the former subtypes without fields are words now',
+    !['Arc', 'Chapter', 'Era', 'Cataclysm', 'Milestone', 'Consumable'].some((t) => auswahl.includes(t)), auswahl);
 
   const kampagne = await neuerArtikel('Campaign', 'Probe campaign');
   const pc = await neuerArtikel('Player character', 'Probe hero');
