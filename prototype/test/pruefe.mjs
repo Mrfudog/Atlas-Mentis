@@ -204,7 +204,7 @@ async function seite(datei, warten) {
   const formen = await p.evaluate(() => {
     const P = (t, k) => (window.__T__.REG.interfaces[t]?.schema?.properties || {})[k] || {};
     return { faction: P('Faction', 'color').format, bild: P('Image', 'image').format,
-             ort: P('Party', 'at').format };
+             ort: P('Session', 'activeMap').format };
   });
   pruefe('and the registry row already says so',
     formen.faction === 'color' && formen.bild === 'asset' && formen.ort === 'link', formen);
@@ -5174,6 +5174,57 @@ async function seite(datei, warten) {
       nachR !== null && vorR !== null && nachR === vorR - 1
       && nach2.kopf.join() !== vor2.kopf.join(), { vorR, nachR });
     pruefe('the crawl raised no exception', errs.length === 0, errs);
+
+    /* Wo die Gruppe ist, sagt ihr Token (A6): nach dem Weiterziehen steht
+       es auf der Karte des Knotens oder auf seiner Marke, und der Ort, den
+       `partyPlace` liest, ist der Knoten — kein Feld an der Gruppe. */
+    const stand = await p.evaluate(() => {
+      const T = window.__T__;
+      const g = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Party');
+      const t = T.partyToken(g);
+      const ort = T.partyPlace(g);
+      return { token: !!t, karte: t ? t.map.name : null, ort: ort ? ort.name : null,
+        feld: 'at' in ((g.components || {}).Party || {}) };
+    });
+    pruefe('after travelling the party token stands where the party is',
+      stand.token && stand.ort === nach2.hier && !stand.feld, { stand, hier: nach2.hier });
+
+    /* Auf der gröberen Karte wird das Token nur abgebildet: durch den
+       Rahmen der Unterkarte, gestrichelt, ohne zweites Token in den Daten. */
+    const abbild = await p.evaluate(() => {
+      const T = window.__T__;
+      const g = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Party');
+      const fein = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Map'
+        && (e.relations || []).some((r) => r.type === 'insideMap')
+        && (e.relations || []).some((r) => r.type === 'mapOf'));
+      if (!fein) return null;
+      const grob = fein.relations.find((r) => r.type === 'insideMap').to;
+      const ort = T.ENT.get(fein.relations.find((r) => r.type === 'mapOf').to);
+      const vorher = T.partyPlace(g);
+      T.placePartyAt(g, ort);
+      return { grob, fein: fein.id, vorher: vorher ? vorher.id : null,
+        tokens: [...T.ENT.values()].filter((e) => (e.interfaces || [])[0] === 'Map')
+          .reduce((n, e) => n + (e.relations || []).filter((r) => r.type === 'marker' && r.props?.kind === 'party' && r.to === g.id).length, 0) };
+    });
+    if (abbild) {
+      pruefe('moving the party keeps exactly one party token', abbild.tokens === 1, abbild);
+      await oeffneId(abbild.grob);
+      await p.waitForTimeout(500);
+      const geist = await p.evaluate(() => ({
+        ghost: document.querySelectorAll('.mtoken.ghost').length,
+        echt: [...document.querySelectorAll('.mtoken.k-party:not(.ghost)')].length,
+      }));
+      pruefe('the coarser map shows the party through the sub-map frame, dashed',
+        geist.ghost === 1, geist);
+      await p.evaluate((x) => {
+        const T = window.__T__;
+        const g = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Party');
+        if (x.vorher) T.placePartyAt(g, T.ENT.get(x.vorher));
+      }, abbild);
+      await p.waitForTimeout(300);
+    } else {
+      pruefe('a nested map exists to show the party through', false, 'keine');
+    }
   } else {
     pruefe('a point-crawl exists in the data', false, 'keine gefunden');
   }
