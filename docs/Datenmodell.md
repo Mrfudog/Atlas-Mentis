@@ -570,7 +570,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Recipe` | `Source` `Secrets` `Lore` | `trade` `tool` `ability` `dc` `time` `days` `yieldCount` `onFailure` | `needs` `yields` | `crafting` | full |
 | `Rule` | `Source` `Vars` | `kind` `uses` `autolink` `recharge` | — | `composedOf` `hasProperty` | — |
 | `Skill` | `Rule` | `ability` `tool` | — | `composedOf` `hasProperty` `loot` | — |
-| `Statblock` | `Source` `Abilities` `Vars` `Tactics` | `system` `size` `kind` `alignment` `ac` `acNote` `hp` `hpFormula` `speed` `cr` `prof` `combatRole` `senses` `resistances` `vulnerabilities` `immunities` | `composedOf` `belongsTo` `instanceOf` | `features` `participates` `instanceOf` | full |
+| `Statblock` | `Source` `Abilities` `Vars` `Tactics` | `system` `size` `creatureType` `alignment` `ac` `acNote` `hp` `hpFormula` `speed` `cr` `prof` `combatRole` `senses` `resistances` `vulnerabilities` `immunities` | `composedOf` `belongsTo` `instanceOf` | `features` `participates` `instanceOf` | full |
 | `Table` | `Source` `Secrets` | `kind` `die` `rows` | `entry` | `tableFor` | full |
 
 **Play**
@@ -627,7 +627,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `placed` | Board → * |  | — | `x` `y` `w` `h` `view` `z` `locked` `note` |
 | `questAbout` | Quest → * |  | — | — |
 | `questGiver` | Quest → Creature \| Faction |  | — | — |
-| `regards` | Creature \| PlayerCharacter \| Party \| Faction → Creature \| PlayerCharacter \| Party \| Faction |  | — | `tags` `note` |
+| `regards` | Creature \| Party \| Faction → Creature \| Party \| Faction |  | — | `tags` `note` |
 | `route` | Place → Place |  | — | `hours` `terrain` `signal` `hidden` `oneWay` |
 | `tableFor` | Place \| Story \| Encounter → Table |  | — | — |
 | `territory` | Map → * |  | — | `kind` `x` `y` `w` `h` `r` `pts` `color` `opacity` |

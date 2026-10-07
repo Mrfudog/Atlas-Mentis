@@ -150,7 +150,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
 - `crafting` → Recipe — „working on"
-- `regards` → Creature | PlayerCharacter | Party | Faction — „regards"
+- `regards` → Creature | Party | Faction — „regards"
 
 **Kanten hierher**
 
@@ -168,7 +168,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Table — `entry` → „rolled on"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
-- Creature | PlayerCharacter | Party | Faction — `regards` → „judged by"
+- Creature | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
   - **Overview** — `image`, `description`, `linked` (ohne Inventory), `fields` (ohne Vitals, Proficiencies), `prose`
@@ -206,7 +206,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
-- `regards` → Creature | PlayerCharacter | Party | Faction — „regards"
+- `regards` → Creature | Party | Faction — „regards"
 
 **Kanten hierher**
 
@@ -222,7 +222,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Table — `entry` → „rolled on"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
-- Creature | PlayerCharacter | Party | Faction — `regards` → „judged by"
+- Creature | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
@@ -354,7 +354,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
 - `crafting` → Recipe — „working on"
-- `regards` → Creature | PlayerCharacter | Party | Faction — „regards"
+- `regards` → Creature | Party | Faction — „regards"
 
 **Kanten hierher**
 
@@ -369,7 +369,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Table — `entry` → „rolled on"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
-- Creature | PlayerCharacter | Party | Faction — `regards` → „judged by"
+- Creature | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Party`): `description`, `fields`, `inventory`, `crafting`, `relations`
 
@@ -466,7 +466,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
 - `crafting` → Recipe — „working on"
-- `regards` → Creature | PlayerCharacter | Party | Faction — „regards"
+- `regards` → Creature | Party | Faction — „regards"
 
 **Kanten hierher**
 
@@ -484,7 +484,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Table — `entry` → „rolled on"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
-- Creature | PlayerCharacter | Party | Faction — `regards` → „judged by"
+- Creature | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
   - **Overview** — `image`, `description`, `linked` (ohne Inventory), `fields` (ohne Vitals, Proficiencies), `prose`
@@ -1211,7 +1211,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `system` *string*, `size` *winzig | klein | mittel | gross | riesig | gewaltig*, `kind` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *measure in ft*, `cr` *string*, `prof` *number*, `combatRole` *string*, `senses` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*
+- `system` *string*, `size` *winzig | klein | mittel | gross | riesig | gewaltig*, `creatureType` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *measure in ft*, `cr` *string*, `prof` *number*, `combatRole` *string*, `senses` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*
 
 **Geerbte Felder**
 
