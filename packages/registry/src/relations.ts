@@ -485,6 +485,9 @@ export const relations: Record<string, RelationDef> = {
         hp: { type: 'number', title: 'Hit points' },
         hpMax: { type: 'number', title: 'Maximum' },
         ally: { type: 'boolean', title: 'On the party’s side' },
+        /* Zeitlich begrenzte Zustände (REQ-115): je Eintrag `rule` (Id
+           eines Regelartikels mit `kind: condition`), `rounds` (zählt am
+           Zugende herunter) und `source` (wer ihn verhängt hat). */
         conditions: { type: 'array', title: 'Conditions', items: { type: 'object' } },
         note: { type: 'string', title: 'Note' },
       },

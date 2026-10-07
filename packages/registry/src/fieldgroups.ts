@@ -430,6 +430,12 @@ export const fieldGroups = {
             'lair',
             'feat',
             'skill',
+            /* Was eine Figur an einem Reiseknoten tun kann (REQ-171):
+               kundschaften, sammeln, rasten. Es war die Einstellung
+               `travelActions`, eine Wortliste — ein Wort hat aber keine
+               Beschreibung, keine Probe und keine Quelle. Eine Handlung ist
+               eine Regel (Abgleich A3, 7.10.). */
+            'travel',
           ],
         },
         uses: { type: 'string', title: 'Uses' },
@@ -964,7 +970,15 @@ export const fieldGroups = {
         deathFail: { type: 'number', title: 'Death saves failed', default: 0 },
         inspiration: { type: 'boolean', title: 'Inspiration' },
         exhaustion: { type: 'number', title: 'Exhaustion', default: 0, alwaysEdit: true },
-        conditions: { type: 'array', title: 'Conditions', items: { type: 'string' } },
+        /* **Ein Zustand ist ein Regelartikel** (`Rule.kind = condition`),
+           kein Wort aus einer Einstellung (Abgleich A3, 7.10.): „prone"
+           hat eine Beschreibung, die am Tisch jemand lesen will, und eine
+           Hausregel dazu ist ein zweiter Artikel, kein zweites Wort. Hier
+           stehen die Ids; der Bogen zeichnet sie als Häkchen (REQ-115). */
+        conditions: {
+          type: 'array', format: 'link', title: 'Conditions', items: { type: 'string' },
+          target: { interfaces: ['Rule'], where: { component: 'Rule', property: 'kind', value: 'condition' } },
+        },
         nat1: { type: 'number', title: 'Natural 1s', default: 0 },
       },
     },
@@ -1345,9 +1359,11 @@ export const fieldGroups = {
         watch: { type: 'number', title: 'Watch', default: 1, alwaysEdit: true },
         sinceRation: { type: 'number', title: 'Nodes since rations', default: 0, alwaysEdit: true },
         sinceLight: { type: 'number', title: 'Nodes since light', default: 0, alwaysEdit: true },
-        /* Was jede Figur an diesem Knoten tut (REQ-171): Figur → Handlung.
-           Wird beim Weiterziehen geleert, weil eine Handlung zum Knoten
-           gehört und nicht zur Figur. */
+        /* Was jede Figur an diesem Knoten tut (REQ-171): Figur-Id →
+           Id eines Regelartikels mit `kind: travel`. Wird beim Weiterziehen
+           geleert, weil eine Handlung zum Knoten gehört und nicht zur
+           Figur. Die Handlungen selbst sind Artikel, keine Einstellung
+           (Abgleich A3). */
         actions: { type: 'object', title: 'Actions at this node' },
       },
     },

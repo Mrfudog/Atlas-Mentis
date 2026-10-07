@@ -38,7 +38,7 @@ nennt den Bezeichner dazu.
 | **Aufzählung** (`EnumDef`) | Eine benannte Wortliste, die mehrere Felder nennen. | Registerteil `enums` |
 | **Einheit** (`UnitDef`) | Ein Mass und seine Umrechnung. | Registerteil `units` |
 | **Variable** (`VarDef`) | Ein `{PLATZHALTER}` mit Vorgabe. | Registerteil `vars` |
-| **Einstellung** | Ein Schlüssel und ein Wert je Kampagne, ohne Schema. | Registerteil `settings` |
+| **Einstellung** | Ein Schlüssel und ein Wert je Kampagne, ohne Schema — ein Wort oder eine Zahl, nie eine Liste von Dingen, die eine Beschreibung bräuchten (F10). | Registerteil `settings` |
 | **Ansicht** (`ViewDef`) und **Anordnung** (`LayoutElement[]`) | Wie ein Artikel gezeichnet wird: drei Ansichten, je eine Grundanordnung; eine Art darf ihre eigene tragen. | Registerteil `views`; `InterfaceDef.views` |
 
 **Alles im Register ist eine Zeile.** Eine neue Artikelart, eine neue Kante,
@@ -223,6 +223,7 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | F7 | **Vorgeschlagen wird nur, wo das Feld es sagt** (`suggest`), und nur aus Artikeln, die man sehen darf. |
 | F8 | **Status ist der Vorbereitungsstand** (`idea` · `prepared` · `ready`). Wie weit eine Sache am Tisch ist, sagt das Feld der Art (`Quest.progress`, `Encounter.phase`, `Place.state`). |
 | F9 | **Beim Bearbeiten steht jedes Feld als Eingabe da**, auch die aus `Identity`; nur der Name bleibt Überschrift. |
+| F10 | **Was eine Beschreibung braucht, ist ein Artikel und keine Wortliste.** Zustände und Reisehandlungen sind Regelartikel (`Rule.kind` `condition`, `travel`); Felder, die sie brauchen, verweisen (`Vitals.conditions`, `Party.actions`). Eine Einstellung hält nur, was ein Wort oder eine Zahl ist (`skills`, `gridSize`). |
 
 ---
 
@@ -640,7 +641,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 - Einheiten: length · imperial: `ft` `in` `mi`; length · metric: `cm` `m` `km`; weight · imperial: `lb` `oz`; weight · metric: `g` `kg`; volume · imperial: `gal` `pt`; volume · metric: `ml` `l`
 - Variablen: `ATK` `DMG` `DMG2` `DMGTYP` `DMGTYP2` `RNG`
-- Einstellungen: `gridSize` `gridUnit` `inventoryCols` `inventoryRows` `calendar` `today` `skills` `gmFields` `units` `travelRationEvery` `travelLightEvery` `travelWatchesPerDay` `travelActions` `conditions`
+- Einstellungen: `gridSize` `gridUnit` `inventoryCols` `inventoryRows` `calendar` `today` `skills` `gmFields` `units` `travelRationEvery` `travelLightEvery` `travelWatchesPerDay`
 <!-- register:ende -->
 
 ---

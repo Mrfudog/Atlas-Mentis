@@ -116,12 +116,20 @@ Bereich liest die Schlüssel, die er kennt:
 | `gridSize`, `gridUnit` | Karten |
 | `inventoryCols`, `inventoryRows` | Kachelraster |
 | `skills` | Charakterbogen (Fertigkeit → Attribut) |
-| `conditions` | Charakterbogen und Initiative |
 | `calendar` | Zeitleiste |
 
-Die Seite hat für `skills` und `conditions` denselben Satz als Rückfall,
-damit sie auch ohne die Zeile rechnet. Eine Kampagne mit anderen
-Fertigkeiten ist damit eine Einstellung und kein Schemawechsel.
+Die Seite hat für `skills` denselben Satz als Rückfall, damit sie auch
+ohne die Zeile rechnet. Eine Kampagne mit anderen Fertigkeiten ist damit
+eine Einstellung und kein Schemawechsel.
+
+**Zustände und Reisehandlungen sind keine Einstellung mehr** (7.10.,
+Abgleich A3): „prone" und „scout" sind Regelartikel (`Rule.kind`
+`condition` bzw. `travel`), mit Beschreibung, Quelle und Sichtbarkeit wie
+jede Regel. Bogen, Initiative und Punktreise lesen die sichtbaren
+Regelartikel dieser Sorte und speichern die Artikel-Id — ein Wort aus einer
+Liste konnte niemand nachschlagen. Die Wanderung
+`prototype/migration/zustaende-als-regeln.mjs` legt je Wort einen Artikel
+an (Stand `idea`, der Wortlaut fehlt noch) und schreibt die Ids ein.
 
 ---
 
