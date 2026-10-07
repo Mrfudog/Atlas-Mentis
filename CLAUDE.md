@@ -109,7 +109,11 @@ wiederkommen, werden sie neu geschrieben.
   Spielenden (`player`, `co-gm`, `gm`), `gm` die Leitung (`gm`, `co-gm`).
   Die beiden Listen nennen **Träger** (`Creature | Party | Faction | Group`),
   dieselben vier wie `knownBy`, und ein Träger zählt einen Schritt weit auch
-  als seine Gruppe.
+  als seine Gruppe und seine Fraktion. **Eine Fraktion weiss nichts, ihre
+  Mitglieder wissen:** `Faction.ranks` ist die Leiter, `memberOf.props.rank`
+  die Sprosse, und eine Zuteilung `knownBy` an die Fraktion darf einen
+  Mindestrang nennen (`props.rank`) — was der Zirkel weiss, weiss der Novize
+  noch nicht (A7, REQ-203).
   **Vererbt wird nichts:** ein Haus zu kennen heisst nicht, jedes Zimmer
   darin zu kennen, und eine Vererbung ohne Tiefe gibt irgendwann einen
   ganzen Zweig frei. Das Feld `inherit` gab es und war nie ausgewertet — es

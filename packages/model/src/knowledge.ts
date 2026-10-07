@@ -42,6 +42,15 @@ export const KNOWN_BY_RELATION = 'knownBy';
 export const INCLUDES_RELATION = 'includes';
 /** Party-Mitgliedschaft — wer in der Gruppe ist, erbt deren Wissen. */
 export const PARTY_RELATION = 'memberOfParty';
+/**
+ * Fraktionsmitgliedschaft — **eine Fraktion weiss nichts, ihre Mitglieder
+ * wissen** (Abgleich A7, REQ-203). Die Kante trägt den Rang
+ * (`props.rank`, ein Wort aus `Faction.ranks`), und eine Zuteilung an die
+ * Fraktion darf einen Mindestrang nennen.
+ */
+export const FACTION_RELATION = 'memberOf';
+/** Die Art, deren Karte die Rangleiter einer Fraktion trägt. */
+export const FACTION_COMPONENT = 'Faction';
 
 /** Die Art, deren Karte die Angaben einer Information trägt. */
 export const INFO_COMPONENT = 'Information';
@@ -128,8 +137,42 @@ export function knowledgeHolders(
     const viewer = entities.get(one);
     if (!viewer) continue;
     for (const partyId of edges(viewer, PARTY_RELATION)) holders.add(partyId);
+    /* Die Fraktion zählt auch einen Schritt weit — den Rang prüft `knows`
+       an der Zuteilung, denn hier ist nur die Frage, wer gemeint ist. */
+    for (const factionId of edges(viewer, FACTION_RELATION)) holders.add(factionId);
   }
   return holders;
+}
+
+/** Die Rangleiter einer Fraktion, der niedrigste zuerst; leer, wenn keine. */
+export function factionRanks(faction: Entity | undefined): string[] {
+  const raw = faction?.components?.[FACTION_COMPONENT]?.['ranks'];
+  return Array.isArray(raw) ? raw.map(String) : [];
+}
+
+/**
+ * Auf welcher Sprosse der Betrachter in dieser Fraktion steht: die höchste
+ * über alle seine Figuren. `-1` heisst Mitglied ohne Rang, `null` kein
+ * Mitglied. Ein Rang, der nicht in der Leiter steht, zählt wie keiner — ein
+ * Tippfehler darf nichts aufschliessen.
+ */
+export function rankIndex(
+  entities: Map<EntityId, Entity>,
+  viewerId: EntityId | readonly EntityId[],
+  factionId: EntityId,
+): number | null {
+  const leiter = factionRanks(entities.get(factionId));
+  const viewers = typeof viewerId === 'string' ? [viewerId] : viewerId;
+  let best: number | null = null;
+  for (const one of viewers) {
+    for (const r of entities.get(one)?.relations ?? []) {
+      if (r.type !== FACTION_RELATION || r.to !== factionId) continue;
+      const rank = typeof r.props?.['rank'] === 'string' ? (r.props['rank'] as string) : '';
+      const idx = rank ? leiter.indexOf(rank) : -1;
+      if (best === null || idx > best) best = idx;
+    }
+  }
+  return best;
 }
 
 /**
@@ -153,8 +196,22 @@ export function knows(
 ): boolean {
   if (!viewerId) return true;
   const holders = knowledgeHolders(entities, viewerId);
+  /* Eine Zuteilung an eine Fraktion darf einen Mindestrang nennen (A7):
+     wer darunter steht, weiss es nicht — und wer gar keinen Rang hat, auch
+     nicht, sobald einer verlangt ist. */
+  const erreicht = (r: { to: EntityId; props?: Record<string, unknown> }): boolean => {
+    if (!holders.has(r.to)) return false;
+    const verlangt = typeof r.props?.['rank'] === 'string' ? (r.props['rank'] as string) : '';
+    if (!verlangt) return true;
+    const leiter = factionRanks(entities.get(r.to));
+    if (!leiter.length) return true;
+    const noetig = leiter.indexOf(verlangt);
+    if (noetig < 0) return false;
+    const hat = rankIndex(entities, viewerId, r.to);
+    return hat !== null && hat >= noetig;
+  };
   const direkt = (e: Entity): boolean =>
-    edges(e, KNOWN_BY_RELATION).some((id) => holders.has(id));
+    (e.relations ?? []).some((r) => r.type === KNOWN_BY_RELATION && erreicht(r));
   if (direkt(info)) return true;
   for (const buendel of bundlesWith(entities, info.id)) if (direkt(buendel)) return true;
   return false;

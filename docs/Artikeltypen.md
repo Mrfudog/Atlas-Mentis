@@ -183,7 +183,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `kind` *string*, `color` *color*
+- `kind` *string*, `color` *color*, `ranks` *array*
 
 **Geerbte Felder**
 

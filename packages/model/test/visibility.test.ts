@@ -18,7 +18,11 @@ const welt: [EntityId, Entity][] = [
     id: 'pc_sela',
     name: 'Sela',
     interfaces: ['PlayerCharacter'],
-    relations: [{ id: 's1', type: 'memberOfParty', to: 'pa_wacht' }],
+    relations: [
+      { id: 's1', type: 'memberOfParty', to: 'pa_wacht' },
+      /* Sela ist im Auge — eine Fraktion zählt als Träger wie die Gruppe. */
+      { id: 's2', type: 'memberOf', to: 'f_auge', props: { rank: 'adept' } },
+    ],
   },
   {
     id: 'pc_rook',
@@ -27,6 +31,7 @@ const welt: [EntityId, Entity][] = [
     relations: [{ id: 'r1', type: 'memberOfParty', to: 'pa_wacht' }],
   },
   { id: 'pa_wacht', name: 'Nebelwacht', interfaces: ['Party'] },
+  { id: 'f_auge', name: 'Das Auge', interfaces: ['Faction'] },
   { id: 'npc_baron', name: 'Baron', interfaces: ['Creature'] },
   { id: 'ly_system', name: 'Grundregelwerk', interfaces: ['Layer'] },
   { id: 'ly_nebel', name: 'Ebene: Nebelwacht', interfaces: ['Layer'] },
@@ -156,6 +161,16 @@ describe('articleVisible', () => {
     expect(articleVisible(entities, e, sela)).toBe(false);
     expect(articleVisible(entities, e, rook)).toBe(false);
     expect(articleVisible(entities, e, gast)).toBe(true);
+  });
+
+  /* Und die Fraktion ebenso (A7): ihre Mitglieder sind gemeint, nicht sie. */
+  it('counts the faction as a holder', () => {
+    const e = artikel({ hiddenFrom: ['f_auge'] });
+    expect(articleVisible(entities, e, sela)).toBe(false);
+    expect(articleVisible(entities, e, rook)).toBe(true);
+    const f = artikel({ audience: 'gm', revealedTo: ['f_auge'] });
+    expect(articleVisible(entities, f, sela)).toBe(true);
+    expect(articleVisible(entities, f, rook)).toBe(false);
   });
 });
 

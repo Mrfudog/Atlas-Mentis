@@ -234,6 +234,7 @@ const STAND = {
   'REQ-200': ['offen', ''],
   'REQ-201': ['offen', ''],
   'REQ-202': ['offen', ''],
+  'REQ-203': ['steht', '`Faction.ranks`, `memberOf.props.rank`, `knownBy.props.rank` als Mindestrang (7.10., A7)'],
 };
 
 const z = [];

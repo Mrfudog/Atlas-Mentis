@@ -84,6 +84,16 @@ export const relations: Record<string, RelationDef> = {
     inverseLabel: 'members',
     from: ['Creature'],
     to: ['Faction'],
+    /* Der Rang steht an der Kante: dieselbe Figur ist in der einen Fraktion
+       Meisterin und in der anderen Novizin. Das Wort kommt aus
+       `Faction.ranks` (A7, REQ-203). */
+    props: {
+      type: 'object',
+      properties: {
+        rank: { type: 'string', title: 'Rank' },
+        note: { type: 'string', title: 'Note' },
+      },
+    },
   },
 
   livesIn: {
@@ -271,6 +281,16 @@ export const relations: Record<string, RelationDef> = {
     // Zeile und keine zweite Mechanik — `knowledgeHolders` fragt ohnehin
     // nach Haltern und nicht nach Figuren.
     to: ['Creature', 'Party', 'Faction', 'Group'],
+    /* An eine Fraktion darf die Zuteilung einen **Mindestrang** nennen
+       (`Faction.ranks`): wer auf dieser Sprosse oder höher steht, weiss es.
+       Ohne Rang weiss es jedes Mitglied. An einer Figur oder Gruppe sagt
+       das Feld nichts (A7, REQ-203). */
+    props: {
+      type: 'object',
+      properties: {
+        rank: { type: 'string', title: 'From rank' },
+      },
+    },
   },
 
   /**

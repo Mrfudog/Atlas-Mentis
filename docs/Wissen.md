@@ -105,12 +105,19 @@ Was ein Betrachter weiss, ist immer eine Abfrage — nie ein gespeicherter Wert
 (D8):
 
 ```
-träger(Betrachter) := Betrachter ∪ { P | Betrachter --memberOfParty--> P }
+träger(Betrachter) := Betrachter
+                    ∪ { P | Betrachter --memberOfParty--> P }
+                    ∪ { F | Betrachter --memberOf--> F }
+
+erreicht(Betrachter, Zuteilung --knownBy--> t) :=
+      t ∈ träger(Betrachter)
+   ∧  ( Zuteilung nennt keinen Rang
+      ∨ rang(Betrachter, t) ≥ Zuteilung.rank     in der Leiter t.Faction.ranks )
 
 kennt(Betrachter, Information) :=
-      Information --knownBy--> t          für ein t in träger(Betrachter)
+      erreicht(Betrachter, Information --knownBy--> t)
    ∨  Knowledge --includes--> Information
-      ∧ Knowledge --knownBy--> t          für ein t in träger(Betrachter)
+      ∧ erreicht(Betrachter, Knowledge --knownBy--> t)
 ```
 
 Einen Schritt weit, nicht transitiv: ein Bündel in einem Bündel zählt nicht,
@@ -118,9 +125,16 @@ und eine Gruppe in einer Gruppe auch nicht. Eine Hierarchie hat niemand
 verlangt, und sie wäre die Stelle, an der eine Freigabe weiter reicht, als
 jemand gemeint hat.
 
-> **Offen (Abgleich A7 in [Durchgang.md](Durchgang.md)):** `memberOf` — die
-> Fraktion — zählt heute **nicht** als Schritt. Eine Information an eine
-> Fraktion erreicht deren Mitglieder nicht.
+**Die Fraktion weiss nichts — ihre Mitglieder wissen** (7.10., Abgleich
+A7, REQ-203). `Faction.ranks` ist ihre Leiter, der niedrigste Rang zuerst;
+`memberOf.props.rank` sagt, auf welcher Sprosse ein Mitglied steht; eine
+Zuteilung an die Fraktion darf mit `knownBy.props.rank` einen
+**Mindestrang** nennen — was der Zirkel weiss, weiss der Novize noch nicht.
+Ohne Rang an der Zuteilung erreicht sie jedes Mitglied; ein Mitglied ohne
+Rang steht unter der untersten Sprosse; ein Rang, der nicht in der Leiter
+steht, schliesst nichts auf (ein Tippfehler darf keine Tür öffnen). Zwei
+Figuren eines Kontos: die höhere Sprosse zählt. `hiddenFrom` und
+`revealedTo` nennen die Fraktion ohne Rang — sie meinen jedes Mitglied.
 
 **Ein Betrachter ist eine Liste, keine Id.** Ein Konto führt mehrere Figuren,
 und wer zwei spielt, weiss am Tisch, was beide wissen — eine Seite, die ihm
@@ -185,4 +199,5 @@ ist es nicht, denn dasselbe Feld kann auf zwei Wegen bekannt werden.
 3. **Wissen an Kanten.** Eine Information bündelt heute Felder und Einträge.
    Ob eine *Verbindung* („der Baron kennt Floon") ebenso zuteilbar sein soll,
    ist nicht entschieden; die Kanten gehen heute immer mit.
-4. **Die Fraktion als Träger** — Abgleich A7.
+4. ~~**Die Fraktion als Träger** — Abgleich A7.~~ Entschieden am 7.10.:
+   Mitglieder je Rang, siehe oben.

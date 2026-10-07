@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   bundlesWith,
   covers,
+  factionRanks,
+  rankIndex,
   informationsIn,
   informationsOf,
   knowledgeGroups,
@@ -27,6 +29,7 @@ const registry: Pick<Registry, 'interfaces'> = {
     NPC: { name: 'NPC', extends: ['Identity'] },
     PlayerCharacter: { name: 'PlayerCharacter', extends: ['Identity'] },
     Party: { name: 'Party', extends: ['Identity'] },
+    Faction: { name: 'Faction', extends: ['Identity'] },
     Knowledge: { name: 'Knowledge', extends: ['Identity'] },
     Information: { name: 'Information', extends: ['Identity'] },
   },
@@ -81,13 +84,45 @@ const baron = entity('n_baron', 'Der Baron', {
 
 const mara = entity('pc_mara', 'Mara', {
   interfaces: ['PlayerCharacter'],
-  relations: [{ id: 'r5', type: 'memberOfParty', to: 'p_wacht' }],
+  relations: [
+    { id: 'r5', type: 'memberOfParty', to: 'p_wacht' },
+    /* Mara ist Adeptin der Gilde — der Rang steht an der Kante. */
+    { id: 'r8', type: 'memberOf', to: 'f_guild', props: { rank: 'adept' } },
+  ],
 });
 const torn = entity('pc_torn', 'Torn', {
   interfaces: ['PlayerCharacter'],
-  relations: [],
+  /* Torn ist Mitglied ohne Rang. */
+  relations: [{ id: 'r9', type: 'memberOf', to: 'f_guild' }],
 });
 const party = entity('p_wacht', 'Die Wacht', { interfaces: ['Party'] });
+/* **Eine Fraktion weiss nichts, ihre Mitglieder wissen** (A7): die Gilde
+   hat eine Rangleiter, und eine Zuteilung an sie darf einen Mindestrang
+   nennen. */
+const guild = entity('f_guild', 'Die Gilde', {
+  interfaces: ['Faction'],
+  components: { Identity: { name: 'Die Gilde' }, Faction: { ranks: ['novice', 'adept', 'master'] } },
+});
+const guildLore = entity('i_lore', 'Das Gildenzeichen', {
+  interfaces: ['Information'],
+  components: { Identity: { name: 'Das Gildenzeichen' }, Information: { fields: ['Identity.aliases'] } },
+  relations: [{ id: 'r10', type: 'knownBy', to: 'f_guild' }],
+});
+const guildSecret = entity('i_adept', 'Der Griff der Adepten', {
+  interfaces: ['Information'],
+  components: { Identity: { name: 'Der Griff der Adepten' }, Information: { fields: ['Identity.aliases'] } },
+  relations: [{ id: 'r11', type: 'knownBy', to: 'f_guild', props: { rank: 'adept' } }],
+});
+const guildInner = entity('i_master', 'Das Meisterwort', {
+  interfaces: ['Information'],
+  components: { Identity: { name: 'Das Meisterwort' }, Information: { fields: ['Identity.aliases'] } },
+  relations: [{ id: 'r12', type: 'knownBy', to: 'f_guild', props: { rank: 'master' } }],
+});
+const guildTypo = entity('i_typo', 'Ein verschriebener Rang', {
+  interfaces: ['Information'],
+  components: { Identity: { name: 'Ein verschriebener Rang' }, Information: { fields: ['Identity.aliases'] } },
+  relations: [{ id: 'r13', type: 'knownBy', to: 'f_guild', props: { rank: 'adpet' } }],
+});
 /* Ein **Bündel**: es nennt seine Informationen über `includes` und wird
    über dieselbe `knownBy`-Kante zugeteilt wie eine einzelne. */
 const street = entity('k_street', 'Gassenwissen', {
@@ -99,7 +134,8 @@ const street = entity('k_street', 'Gassenwissen', {
 });
 
 const entities = new Map<EntityId, Entity>(
-  [baron, trueName, rumour, mara, torn, party, street].map((e) => [e.id, e]),
+  [baron, trueName, rumour, mara, torn, party, street, guild, guildLore, guildSecret, guildInner, guildTypo]
+    .map((e) => [e.id, e]),
 );
 
 const ALL = [
@@ -123,9 +159,31 @@ describe('knowledge', () => {
     expect(covers(rumour, 'Creature', 'attitude')).toBe(true);
   });
 
-  it('zählt die Gruppe zum Betrachter', () => {
-    expect([...knowledgeHolders(entities, 'pc_mara')].sort()).toEqual(['p_wacht', 'pc_mara']);
-    expect([...knowledgeHolders(entities, 'pc_torn')].sort()).toEqual(['pc_torn']);
+  it('zählt die Gruppe und die Fraktion zum Betrachter', () => {
+    expect([...knowledgeHolders(entities, 'pc_mara')].sort()).toEqual(['f_guild', 'p_wacht', 'pc_mara']);
+    expect([...knowledgeHolders(entities, 'pc_torn')].sort()).toEqual(['f_guild', 'pc_torn']);
+  });
+
+  /* Eine Fraktion weiss nichts — ihre Mitglieder wissen, und der Rang an
+     der Zuteilung sagt, welche (A7, REQ-203). */
+  it('reicht Wissen an die Fraktion je Rang weiter', () => {
+    expect(factionRanks(guild)).toEqual(['novice', 'adept', 'master']);
+    expect(rankIndex(entities, 'pc_mara', 'f_guild')).toBe(1);
+    expect(rankIndex(entities, 'pc_torn', 'f_guild')).toBe(-1);
+    expect(rankIndex(entities, 'n_baron', 'f_guild')).toBeNull();
+    /* Ohne Rang an der Zuteilung: jedes Mitglied. */
+    expect(knows(entities, guildLore, 'pc_mara')).toBe(true);
+    expect(knows(entities, guildLore, 'pc_torn')).toBe(true);
+    expect(knows(entities, guildLore, 'n_baron')).toBe(false);
+    /* Ab Adept: Mara ja, Torn ohne Rang nein. */
+    expect(knows(entities, guildSecret, 'pc_mara')).toBe(true);
+    expect(knows(entities, guildSecret, 'pc_torn')).toBe(false);
+    /* Ab Meister: niemand von beiden. */
+    expect(knows(entities, guildInner, 'pc_mara')).toBe(false);
+    /* Ein Rang, der nicht in der Leiter steht, schliesst nichts auf. */
+    expect(knows(entities, guildTypo, 'pc_mara')).toBe(false);
+    /* Zwei Figuren: die höhere Sprosse zählt. */
+    expect(rankIndex(entities, ['pc_torn', 'pc_mara'], 'f_guild')).toBe(1);
   });
 
   it('kennt direkt und über ein Bündel', () => {
