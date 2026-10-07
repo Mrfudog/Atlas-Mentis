@@ -486,7 +486,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-07: 36 Artikelarten, 22 Grundtypen, 42 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-07: 36 Artikelarten, 22 Grundtypen, 41 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -534,7 +534,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Material` | `Item` | `materialType` `trades` | `hasProperty` | `holds` `needs` `yields` `loot` | — |
 | `Party` | `Image` `Lore` | `level` `motto` `at` `day` `watch` `sinceRation` `sinceLight` `actions` | `carries` `crafting` `regards` | `memberOfParty` `knownBy` `participates` `regards` | full |
 | `Place` | `Image` `Lore` `ReadAloud` `Secrets` | `kind` `environment` `state` `arrival` | `partOf` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | full |
-| `PlayerCharacter` | `Creature` | `backstory` `player` `ancestry` `class` `level` `proficiency*` | `owes` `memberOf` `livesIn` `playedBy` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | — |
+| `PlayerCharacter` | `Creature` | `backstory` `ancestry` `class` `level` `proficiency*` | `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | — |
 | `Weapon` | `Item` | `damage` `damageType` `range` | `hasProperty` | `holds` `needs` `yields` `loot` | — |
 
 **History**
@@ -619,7 +619,6 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `participates` | Encounter → Creature \| Statblock \| Party |  | — | `label` `init` `hp` `hpMax` `ally` `conditions` `note` |
 | `partOf` | Place \| Story \| Quest → Place \| Story |  | — | — |
 | `placed` | Board → * |  | — | `x` `y` `w` `h` `view` `z` `locked` `note` |
-| `playedBy` | PlayerCharacter → * | ja | — | — |
 | `questAbout` | Quest → * |  | — | — |
 | `questGiver` | Quest → Creature \| Faction |  | — | — |
 | `regards` | Creature \| PlayerCharacter \| Party \| Faction → Creature \| PlayerCharacter \| Party \| Faction |  | — | `tags` `note` |

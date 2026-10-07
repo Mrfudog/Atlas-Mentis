@@ -398,7 +398,9 @@ Sie schaltet Register, Einladungen und unbeschnittenes Lesen.
 > keinem Artikel gefüllt. Eine Figur sagt nicht, in welcher Runde ihr Konto
 > was ist, und eine Konto-Id in einem Artikel wandert mit jeder Ausfuhr mit
 > — Zugänge wandern nicht (REQ-199). Darum steht auch `members` nicht in
-> der Ausfuhr.
+> der Ausfuhr. Aus demselben Grund sind seit dem 7.10. `PlayerCharacter.player`
+> (ein Name als Text) und die Kante `playedBy` weg (Abgleich A1): wer eine
+> Figur spielt, steht in `app_user_actor`.
 
 **Und wem ein Artikel gehört, sagt die Ebene.** Ein Artikel liegt in Ebenen
 (`inLayer`), eine Kampagne schaltet Ebenen auf (`activates`) — also gehört

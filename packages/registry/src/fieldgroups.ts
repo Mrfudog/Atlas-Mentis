@@ -696,7 +696,10 @@ export const fieldGroups = {
       type: 'object',
       properties: {
         backstory: { type: 'string', format: 'long', many: true, title: 'Backstory' },
-        player: { type: 'string', title: 'Player' },
+        /* **Wer die Figur spielt, steht am Konto** (`app_user_actor`,
+           Abgleich A1, REQ-199). Hier stand ein Feld `player` als freier
+           Text — eine Kontoangabe im Artikel, die mit jeder Ausfuhr
+           wanderte, und im Bestand zweimal „—". */
         ancestry: { type: 'string', suggest: true, title: 'Ancestry' },
         class: { type: 'string', suggest: true, title: 'Class' },
         level: { type: 'number', title: 'Level', default: 1 },
