@@ -606,11 +606,14 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        kind: {
-          type: 'string',
-          title: 'Kind',
-          enum: ['campaign', 'arc', 'chapter', 'session', 'scene'],
-        },
+        /* Welche Sprosse: arc, chapter — ein freies Wort mit Vorschlägen,
+           wie `Creature.kind`. Es war eine Aufzählung mit fünf Werten, von
+           denen drei (`campaign`, `session`, `scene`) zugleich Arten waren:
+           dieselbe Einordnung zweimal (Abgleich A5). An einer dieser Arten
+           bleibt das Feld leer, denn die Art sagt es schon; `Arc` und
+           `Chapter` sind seit dem 7.10. Werte hier und keine Zeilen mehr
+           (Regel T2). */
+        kind: { type: 'string', suggest: true, title: 'Kind' },
         played: { type: 'string', title: 'Played on' },
         /* Hier stand ein zweiter Zustand — geplant, läuft, gespielt,
            verworfen — neben `Status`. Zwei Felder für „wie weit ist das",
@@ -1180,6 +1183,21 @@ export const fieldGroups = {
      und `campaign_member` (welche Rolle in welcher Kampagne). Der Server las
      die Karte nie, `userIds` war in keinem Artikel gefüllt, und eine
      Kontoangabe in einem Artikel wanderte beim Export mit (REQ-199). */
+
+  /**
+   * Was für ein Ereignis (REQ-106): era, cataclysm, milestone — ein freies
+   * Wort mit Vorschlägen. Die drei waren Zeilen unter `Event` ohne ein
+   * eigenes Feld (Abgleich A5, Regel T2); eine Sorte, die einmal eigene
+   * Felder braucht, wird wieder eine Zeile, die von `Event` erbt.
+   */
+  EventInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', suggest: true, title: 'Kind' },
+      },
+    },
+  },
 
   /**
    * Was gerade läuft (REQ-116). Es liegt an der Sitzung und im Speicher,

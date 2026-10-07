@@ -624,9 +624,9 @@ describe('seed registry, referential integrity', () => {
     (i.blockTypes ?? []).forEach((b) => blockTypes.add(b.replace(/^\+/, ''))),
   );
 
-  /* Eine Art ohne eigene Felder ist in Ordnung — `Consumable` erbt alles
-     von `Item`. Eine Art mit einem leeren Schema dagegen ist eine Zeile,
-     die etwas behauptet und nichts sagt. */
+  /* Eine Art ohne eigene Felder ist in Ordnung, solange sie eine Ansicht
+     oder eine Kante beisteuert (`Campaign`). Eine Art mit einem leeren
+     Schema dagegen ist eine Zeile, die etwas behauptet und nichts sagt. */
   it('carries no empty schema', () => {
     const leer = Object.entries(interfaces)
       .filter(([, i]) => i.schema && Object.keys(i.schema.properties).length === 0)

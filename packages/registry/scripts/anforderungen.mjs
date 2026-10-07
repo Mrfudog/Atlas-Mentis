@@ -107,7 +107,7 @@ const STAND = {
   'REQ-073': ['ersetzt', 'die Anordnung steht am Typ im Register, nicht je Nutzer'],
   'REQ-074': ['teils', 'Bereich Play und die Leiste'],
   'REQ-075': ['steht', '`Campaign`, `settings`, Zeitleiste'],
-  'REQ-076': ['steht', '`Story`: Campaign · Arc · Chapter · Session · Scene, Hierarchie über `partOf`'],
+  'REQ-076': ['steht', '`Story` (`kind`: arc, chapter …) · Campaign · Session · Scene, Hierarchie über `partOf`'],
   'REQ-077': ['steht', '`Session`, `Encounter.phase`'],
   'REQ-078': ['steht', 'Element `prep`'],
   'REQ-079': ['teils', 'Wissen zuteilen im Seitenpanel; kein Ein-Tipp-Knopf in der Sitzung'],

@@ -74,7 +74,12 @@ Artikel gibt. `Creature` ist einer — sie war einmal abstrakt, mit `NPC`,
 Feld trugen. Was sie trennt, ist jetzt das freie Feld `kind`: npc,
 companion, retainer, pet, summon. **Ein Untertyp, der nichts eigenes
 erklärt, ist ein Wort und keine Zeile** — und wird eine Zeile in dem
-Moment, in dem er eigene Felder braucht.
+Moment, in dem er eigene Felder braucht. Dasselbe geschah am 7.10. mit
+`Story` (`Arc` und `Chapter` sind Werte von `kind`; `Session` bleibt eine
+Zeile, weil sie den Sitzungszustand trägt), mit `Event` (`Era`,
+`Cataclysm`, `Milestone`) und mit `Item` (`Consumable` ist ein
+`itemType`). Sechs Zeilen weniger, und keine davon hatte je ein Feld
+gebraucht.
 
 ### Der erste Bestandteil zählt anders
 

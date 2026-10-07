@@ -113,7 +113,7 @@ Was nicht als Nummer im Vault steht, sondern hier entschieden wurde — alles ge
 | REQ-073 | Custom / reorderable sheet layout | 4 | **ersetzt** | die Anordnung steht am Typ im Register, nicht je Nutzer |
 | REQ-074 | Quicklinks: campaign, quests, party, session | 3 | **teils** | Bereich Play und die Leiste |
 | REQ-075 | Campaign as root NarrativeContainer with attached CampaignSettings, WorldDate, KnowledgeState | 1 | **steht** | `Campaign`, `settings`, Zeitleiste |
-| REQ-076 | NarrativeContainer hierarchy with DM-definable container types (Arc, Session, Scene, Kapitel…) | 1 | **steht** | `Story`: Campaign · Arc · Chapter · Session · Scene, Hierarchie über `partOf` |
+| REQ-076 | NarrativeContainer hierarchy with DM-definable container types (Arc, Session, Scene, Kapitel…) | 1 | **steht** | `Story` (`kind`: arc, chapter …) · Campaign · Session · Scene, Hierarchie über `partOf` |
 | REQ-077 | Session documents with planned vs occurred encounters and reports | 2 | **steht** | `Session`, `Encounter.phase` |
 | REQ-078 | Session prep cockpit: container view aggregating scenes, quests, storylines, encounters, notes | 2 | **steht** | Element `prep` |
 | REQ-079 | DM session quick actions: grant knowledge, reveal block, mark encounter occurred — one tap | 2 | **teils** | Wissen zuteilen im Seitenpanel; kein Ein-Tipp-Knopf in der Sitzung |
