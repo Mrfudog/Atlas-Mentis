@@ -1,13 +1,14 @@
 /**
  * The Postgres adapter for the storage port.
  *
- * Entities are assembled from the three tables on read and written back
- * component by component, because that is what makes `sparse by default`
- * real: a component that is not set has no row at all.
+ * Entities are assembled from the three tables on read and written back one
+ * card per type, because that is what makes `sparse by default` real: a type
+ * whose fields are all empty has no row at all.
  */
 
 import type { Pool } from 'pg';
-import type { Entity, Registry, Relation } from '@nw/model';
+import { isTableRole } from '@nw/model';
+import type { Entity, InterfaceDef, Registry, Relation, TableRole } from '@nw/model';
 import type { Repository, SessionRow, StoredUser } from './repo.js';
 import type { Invite, User } from './auth.js';
 
@@ -17,35 +18,30 @@ export class PgRepository implements Repository {
   constructor(private readonly pool: Pool) {}
 
   async getRegistry(): Promise<Registry> {
-    const [components, interfaces, relations, views, vars] = await Promise.all([
-      this.pool.query<Row>('select * from component_def'),
+    const [interfaces, relations, views, units, vars] = await Promise.all([
       this.pool.query<Row>('select * from interface_def'),
       this.pool.query<Row>('select * from relation_def'),
       this.pool.query<Row>('select * from view_def order by ord'),
+      this.pool.query<Row>('select * from unit_def'),
       this.pool.query<Row>('select * from var_def'),
     ]);
 
-    const registry: Registry = {
-      components: {}, interfaces: {}, relations: {}, views: {}, vars: {},
-    };
+    const registry: Registry = { interfaces: {}, relations: {}, views: {}, units: {}, vars: {} };
 
-    for (const r of components.rows) {
-      registry.components[r['name'] as string] = {
-        name: r['name'] as string,
-        label: (r['label'] as string) ?? undefined,
-        engine: (r['engine'] as string) ?? null,
-        schema: r['schema'] as Registry['components'][string]['schema'],
-      };
-    }
     for (const r of interfaces.rows) {
       registry.interfaces[r['name'] as string] = {
         name: r['name'] as string,
         label: (r['label'] as string) ?? undefined,
         abstract: Boolean(r['abstract']),
         extends: (r['extends'] as string[]) ?? [],
-        requires: (r['requires'] as string[]) ?? [],
-        allows: (r['allows'] as string[]) ?? [],
-        blockTypes: (r['block_types'] as string[]) ?? [],
+        schema: (r['schema'] as InterfaceDef['schema']) ?? undefined,
+        area: (r['area'] as InterfaceDef['area']) ?? undefined,
+        units: (r['units'] as InterfaceDef['units']) ?? undefined,
+        /* Die Anordnung wohnt am Typ (D28): eine Kreatur ordnet ihre `full`
+           anders als ein Rezept, und das steht bei der Kreatur. */
+        views: (r['views'] as InterfaceDef['views']) ?? undefined,
+        /* Wie ein geerbtes Feld an dieser Art heisst. */
+        titles: (r['titles'] as InterfaceDef['titles']) ?? undefined,
       };
     }
     for (const r of relations.rows) {
@@ -67,6 +63,19 @@ export class PgRepository implements Repository {
         order: r['ord'] as number,
       } as Registry['views'][string];
     }
+    /* Einheiten sind Zeilen wie alles andere: `base` sagt, wie viel eine
+       davon in der Grundeinheit ihrer Grösse ist. */
+    for (const r of units.rows) {
+      registry.units[r['code'] as string] = {
+        code: r['code'] as string,
+        label: r['label'] as string,
+        quantity: r['quantity'] as string,
+        system: r['system'] as 'imperial' | 'metric',
+        base: Number(r['base']),
+        aliases: (r['aliases'] as string[]) ?? [],
+        decimals: r['decimals'] == null ? undefined : Number(r['decimals']),
+      };
+    }
     for (const r of vars.rows) registry.vars[r['name'] as string] = r['value'] as string;
 
     return registry;
@@ -76,22 +85,17 @@ export class PgRepository implements Repository {
     const client = await this.pool.connect();
     try {
       await client.query('begin');
-      if (part === 'components') {
-        await client.query('delete from component_def');
-        for (const [name, def] of Object.entries(value as Registry['components'])) {
-          await client.query(
-            'insert into component_def(name,label,engine,schema) values ($1,$2,$3,$4)',
-            [name, def.label ?? null, def.engine, JSON.stringify(def.schema)],
-          );
-        }
-      } else if (part === 'interfaces') {
+      if (part === 'interfaces') {
         await client.query('delete from interface_def');
         for (const [name, def] of Object.entries(value as Registry['interfaces'])) {
           await client.query(
-            `insert into interface_def(name,label,abstract,extends,requires,allows,block_types)
-             values ($1,$2,$3,$4,$5,$6,$7)`,
-            [name, def.label ?? null, def.abstract ?? false, def.extends ?? [], def.requires ?? [],
-             def.allows ?? [], def.blockTypes ?? []],
+            `insert into interface_def(name,label,abstract,extends,schema,area,views,units,titles)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+            [name, def.label ?? null, def.abstract ?? false,
+             def.extends ?? [],
+             def.schema ? JSON.stringify(def.schema) : null,
+             def.area ?? null, def.views ? JSON.stringify(def.views) : null,
+             def.units ?? null, def.titles ? JSON.stringify(def.titles) : null],
           );
         }
       } else if (part === 'relations') {
@@ -111,6 +115,16 @@ export class PgRepository implements Repository {
           await client.query('insert into view_def(key,label,ord,config) values ($1,$2,$3,$4)', [
             key, def.label, def.order ?? 99, JSON.stringify(def),
           ]);
+        }
+      } else if (part === 'units') {
+        await client.query('delete from unit_def');
+        for (const [code, def] of Object.entries(value as Registry['units'])) {
+          await client.query(
+            `insert into unit_def(code,label,quantity,system,base,aliases,decimals)
+             values ($1,$2,$3,$4,$5,$6,$7)`,
+            [code, def.label, def.quantity, def.system, def.base,
+             def.aliases ?? [], def.decimals ?? null],
+          );
         }
       } else if (part === 'vars') {
         await client.query('delete from var_def');
@@ -161,10 +175,8 @@ export class PgRepository implements Repository {
       id,
       interfaces: (meta['interfaces'] as string[]) ?? [],
       name: (byType['Name']?.['text'] as string) ?? '',
-      tags: (meta['tags'] as string[]) ?? [],
       components: byType,
       adhoc: (meta['adhoc'] as Entity['adhoc']) ?? [],
-      blocks: (meta['blocks'] as Entity['blocks']) ?? [],
       relations: relations.rows.map((r) => ({
         id: r['id'] as string,
         type: r['type'] as string,
@@ -199,9 +211,7 @@ export class PgRepository implements Repository {
         '__meta',
         JSON.stringify({
           interfaces: entity.interfaces,
-          tags: entity.tags ?? [],
           adhoc: entity.adhoc ?? [],
-          blocks: entity.blocks ?? [],
         }),
       ]);
 
@@ -249,17 +259,36 @@ export class PgRepository implements Repository {
       id: String(row['id']),
       name: String(row['name']),
       passwordHash: String(row['password_hash']),
-      isGm: row['is_gm'] === true,
+      isAdmin: row['is_admin'] === true,
       actorIds: raw.filter((x): x is string => typeof x === 'string' && x.length > 0),
+      roles: PgRepository.rollen(row['roles']),
       disabledAt: row['disabled_at'] ? new Date(row['disabled_at'] as string).toISOString() : undefined,
     };
   }
 
-  /** Ein Konto samt seinen Figuren. Als eigener Ausdruck, damit die vier
-   *  Stellen, die Konten lesen, nicht viermal dasselbe `left join`
-   *  schreiben — und dann eine davon anders. */
+  /** Was aus `campaign_member` kommt, und nur Rollen, die es gibt. Eine
+   *  unbekannte bleibt draussen — eine Rolle zu raten hiesse, jemandem ein
+   *  Geheimnis zu zeigen, weil ein Wort falsch geschrieben war. */
+  private static rollen(raw: unknown): Record<string, TableRole> {
+    const out: Record<string, TableRole> = {};
+    if (!raw || typeof raw !== 'object') return out;
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      if (isTableRole(v)) out[k] = v;
+    }
+    return out;
+  }
+
+  /** Ein Konto samt seinen Figuren und Rollen. Als eigener Ausdruck, damit
+   *  die vier Stellen, die Konten lesen, nicht viermal dasselbe `left join`
+   *  schreiben — und dann eine davon anders.
+   *
+   *  Die Rollen als Unterabfrage und nicht als zweiter Join: zwei Joins
+   *  multiplizierten die Zeilen, und jede Figur stünde so oft da, wie das
+   *  Konto Kampagnen hat. */
   private static readonly USER_SELECT = `
-    select u.*, array_agg(a.actor_id order by a.added_at) as actor_ids
+    select u.*, array_agg(a.actor_id order by a.added_at) as actor_ids,
+           (select coalesce(jsonb_object_agg(m.campaign_id, m.role), '{}'::jsonb)
+              from campaign_member m where m.user_id = u.id) as roles
       from app_user u
       left join app_user_actor a on a.user_id = u.id`;
 
@@ -267,7 +296,7 @@ export class PgRepository implements Repository {
     return {
       codeHash: String(row['code_hash']),
       label: (row['label'] as string | null) ?? undefined,
-      isGm: row['is_gm'] === true,
+      isAdmin: row['is_admin'] === true,
       actorId: (row['actor_id'] as string | null) ?? undefined,
       usesLeft: row['uses_left'] == null ? undefined : Number(row['uses_left']),
       expiresAt: row['expires_at'] ? new Date(row['expires_at'] as string).toISOString() : undefined,
@@ -328,18 +357,18 @@ export class PgRepository implements Repository {
     try {
       await client.query('begin');
       await client.query(
-        `insert into app_user(id,name,name_fold,password_hash,is_gm,disabled_at,updated_at)
+        `insert into app_user(id,name,name_fold,password_hash,is_admin,disabled_at,updated_at)
          values ($1,$2,$3,$4,$5,$6,now())
          on conflict (id) do update set
            name = excluded.name, name_fold = excluded.name_fold,
-           password_hash = excluded.password_hash, is_gm = excluded.is_gm,
+           password_hash = excluded.password_hash, is_admin = excluded.is_admin,
            disabled_at = excluded.disabled_at, updated_at = now()`,
         [
           user.id,
           user.name,
           user.name.trim().toLocaleLowerCase('de'),
           user.passwordHash,
-          user.isGm,
+          user.isAdmin,
           user.disabledAt ?? null,
         ],
       );
@@ -358,6 +387,20 @@ export class PgRepository implements Repository {
           [user.id, ids],
         );
       }
+      /* Die Rollen ebenso: was nicht mehr dasteht, geht; was dasteht, wird
+         gesetzt. Eine Rolle, die sich nur ändert, behält ihr `added_at`. */
+      const rollen = Object.entries(user.roles ?? {}).filter(([, r]) => isTableRole(r));
+      await client.query(
+        `delete from campaign_member where user_id = $1 and campaign_id <> all($2::text[])`,
+        [user.id, rollen.map(([k]) => k)],
+      );
+      for (const [kampagne, rolle] of rollen) {
+        await client.query(
+          `insert into campaign_member(campaign_id, user_id, role) values ($1,$2,$3)
+             on conflict (campaign_id, user_id) do update set role = excluded.role`,
+          [kampagne, user.id, rolle],
+        );
+      }
       await client.query('commit');
     } catch (err) {
       await client.query('rollback');
@@ -371,15 +414,15 @@ export class PgRepository implements Repository {
 
   async putInvite(invite: Invite): Promise<void> {
     await this.pool.query(
-      `insert into app_invite(code_hash,label,is_gm,actor_id,uses_left,expires_at,created_by)
+      `insert into app_invite(code_hash,label,is_admin,actor_id,uses_left,expires_at,created_by)
        values ($1,$2,$3,$4,$5,$6,$7)
        on conflict (code_hash) do update set
-         label = excluded.label, is_gm = excluded.is_gm, actor_id = excluded.actor_id,
+         label = excluded.label, is_admin = excluded.is_admin, actor_id = excluded.actor_id,
          uses_left = excluded.uses_left, expires_at = excluded.expires_at`,
       [
         invite.codeHash,
         invite.label ?? null,
-        invite.isGm,
+        invite.isAdmin,
         invite.actorId ?? null,
         invite.usesLeft ?? null,
         invite.expiresAt ?? null,

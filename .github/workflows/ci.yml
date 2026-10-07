@@ -5,6 +5,11 @@ on:
     branches: [main, preprod]
   pull_request:
     branches: [main, preprod]
+  # Dieselbe Umgebung noch einmal ausrollen, ohne einen Commit dafür.
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   check:
@@ -32,9 +37,129 @@ jobs:
       - run: pnpm --filter @nw/server build
       - run: pnpm --filter web build
 
-  docker:
+  # Die Tests laufen gegen InMemoryRepository; das hier läuft gegen eine
+  # frische Postgres, mit allen Migrationen von der ersten an. Zwei davon
+  # liefen nie auf einer leeren Datenbank durch, und keiner hat es gemerkt.
+  postgres:
     runs-on: ubuntu-latest
-    needs: check
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v5
-      - run: docker build -t nebelwacht:ci .
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @nw/model build
+      - run: pnpm --filter @nw/registry build
+      - run: pnpm --filter @nw/server build
+      - run: node apps/server/scripts/durchstich.mjs
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+
+  # Gebaut wird immer; nach GHCR geht das Abbild nur von preprod und main.
+  # Der Server baut nie selbst — was dort läuft, ist genau das, was hier
+  # geprüft wurde.
+  image:
+    runs-on: ubuntu-latest
+    needs: [check, postgres]
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      ref: ${{ steps.name.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: name
+        shell: bash
+        run: |
+          repo="ghcr.io/${GITHUB_REPOSITORY,,}"
+          # „123/merge" aus einem Pull Request ist kein gültiger Tag.
+          tag="$(printf '%s' "$GITHUB_REF_NAME" | tr -c 'A-Za-z0-9_.-' '-')"
+          echo "ref=${repo}:${tag}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "branch=${repo}:${tag}" >> "$GITHUB_OUTPUT"
+          case "$GITHUB_EVENT_NAME:$GITHUB_REF_NAME" in
+            pull_request:*) echo "push=false" >> "$GITHUB_OUTPUT" ;;
+            *:main|*:preprod) echo "push=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "push=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - uses: docker/setup-buildx-action@v3
+      - if: steps.name.outputs.push == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ steps.name.outputs.push == 'true' }}
+          tags: |
+            ${{ steps.name.outputs.ref }}
+            ${{ steps.name.outputs.branch }}
+          # Verknüpft das Paket mit dem Repository; dann darf der
+          # GITHUB_TOKEN eines späteren Laufs es auch lesen.
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # preprod → dev, main → prod. Je Umgebung ein GitHub-Environment mit
+  # eigenen Geheimnissen; wer für prod eine Freigabe will, stellt sie dort
+  # ein (Required reviewers), nicht hier.
+  deploy:
+    runs-on: ubuntu-latest
+    needs: image
+    if: github.event_name != 'pull_request' && (github.ref_name == 'preprod' || github.ref_name == 'main')
+    environment:
+      name: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
+      url: ${{ vars.PUBLIC_URL }}
+    # Nie zwei Ausrollungen derselben Umgebung gleichzeitig, und keine
+    # abbrechen: eine halbe ist schlimmer als eine späte.
+    concurrency:
+      group: deploy-${{ github.ref_name }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: read
+    env:
+      DIR: ${{ vars.DEPLOY_DIR || (github.ref_name == 'main' && '/srv/atlas/prod' || '/srv/atlas/dev') }}
+      COMPOSE: ${{ github.ref_name == 'main' && 'docker-compose.yml' || 'docker-compose.preprod.yml' }}
+      TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: SSH
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          # Feste Hostschlüssel statt „beim ersten Mal vertrauen": sonst
+          # rollt CI auf die erste Maschine aus, die sich meldet.
+          printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts
+          printf 'Host *\n  IdentityFile ~/.ssh/id_deploy\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' > ~/.ssh/config
+      - name: Dateien
+        run: |
+          ssh "$TARGET" "mkdir -p '$DIR'"
+          scp "$COMPOSE" "$TARGET:$DIR/compose.yml"
+          scp deploy/deploy.sh "$TARGET:$DIR/deploy.sh"
+      - name: Ausrollen
+        env:
+          IMAGE: ${{ needs.image.outputs.ref }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Der Zugang zu GHCR geht über stdin und nicht in die Befehlszeile:
+        # die stünde auf dem Server in der Prozessliste.
+        run: |
+          printf '%s\n' "$TOKEN" | ssh "$TARGET" \
+            "cd '$DIR' && chmod +x deploy.sh && read -r GHCR_TOKEN && export GHCR_TOKEN GHCR_USER='${{ github.actor }}' && ./deploy.sh '$IMAGE'"

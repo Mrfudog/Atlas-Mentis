@@ -55,6 +55,11 @@ input[type='search'] {
 .felder dd {
   margin: 0;
 }
+/* Von der Vorlage gelesen, nicht hier gesetzt. */
+.felder dd.geerbt {
+  color: var(--dim);
+  font-style: italic;
+}
 .block {
   border-left: 2px solid var(--line);
   padding: 0.25rem 0 0.25rem 0.75rem;

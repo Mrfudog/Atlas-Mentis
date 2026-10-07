@@ -10,7 +10,7 @@ Würfel, Aufträge und Zeitleiste. Die REQ-Nummern stammen aus
 ## Was daran neu ist — und was nicht
 
 **Nichts davon hat das Rückgrat angefasst.** Jeder Bereich besteht aus
-denselben drei Sorten Zeile: Komponenten, Schnittstellen, Kantenarten. Dazu
+denselben zwei Sorten Zeile: Artikelarten und Kantenarten. Dazu
 kommt je ein **Layout-Element** — ein Stück Zeichencode, das die Ansicht
 aufrufen kann. Eine neue Sorte Artikel ist weiterhin ein Einfügen; eine neue
 Sorte *Darstellung* ist eine Funktion und ein Eintrag in einer Liste.
@@ -23,23 +23,23 @@ Stelle, um Code zu schreiben.
 
 | Bereich | Zeilen | Element |
 |---|---|---|
-| Assets | `AssetInfo`, `Asset` | — (im Bildfeld) |
-| Karten | `MapInfo`, `Map`, `mapOf` / `insideMap` / `marker` | `map` |
-| Charakterbogen | `Vitals`, `Skills` | `sheet` |
+| Assets | `Asset` | — (im Bildfeld) |
+| Karten | `Map`, `mapOf` / `insideMap` / `marker` | `map` |
+| Charakterbogen | `Vitals`, `Proficiencies` | `sheet` |
 | Inventar | `holds`-Eigenschaften | `inventory` |
-| Handwerk | `RecipeInfo`, `Recipe`, `needs` / `yields` | `crafting` |
-| Boards | `BoardInfo`, `Board`, `placed` | `board` |
-| Begegnungen | `EncounterInfo`, `Encounter`, `participates` / `onMap` / `loot` | `initiative` |
-| Aufträge | `QuestInfo.tasks` | `quests` |
-| Zeitleiste | `WorldDate`, `Event`, `involves` | `timeline` |
-| Zugang | `Access` | — (Filter vor der Darstellung) |
-| Sitzung live | `SessionState` | `live` |
-| Tabellen | `TableInfo`, `Table`, `entry` / `tableFor` | `table` |
+| Handwerk | `Recipe`, `needs` / `yields` | `crafting` |
+| Boards | `Board`, `placed` | `board` |
+| Begegnungen | `Encounter`, `participates` / `onMap` / `loot` | `initiative` |
+| Aufträge | `Quest.tasks` | `quests` |
+| Zeitleiste | `Time`, `Event`, `involves` | `timeline` |
+| Zugang | `campaign_member` am Server, `members` im Prototyp — am Konto, in keinem Artikel | `members` (Kampagnenseite) |
+| Sitzung live | `Session` | `live` |
+| Tabellen | `Table`, `entry` / `tableFor` | `table` |
 | Vorbereitung | `Todos` | `prep` |
 | Sicherung | — (Register + Artikel als eine Datei) | — (Registerreiter) |
-| Regeln | `RuleInfo.autolink` | — (eigener Einstieg) |
+| Regeln | `Rule.autolink` | — (eigener Einstieg) |
 | Decknamen | `Identity.cover` | — (im Namen selbst) |
-| Punktreise | `Explored`, `TravelInfo`, `route` | `crawl` |
+| Punktreise | `Place.state`, `Party.at`, `route` | `crawl` |
 
 ---
 
@@ -75,10 +75,11 @@ beziehen müsste.
 
 ### 4. Zwei Sorten Zahl
 
-`StatblockInfo` sind die ruhigen Werte, `Vitals` ist der Stand am Tisch. In
+Der Statblock (`Abilities` und seine eigenen Felder) sind die ruhigen Werte,
+`Vitals` ist der Stand am Tisch. In
 einer Karte lägen sie im Weg: jede Änderung schriebe die andere mit, und das
 Wissensmodell könnte sie nicht trennen. Dieselbe Trennung bei der Begegnung
-(`EncounterInfo.round` / `turn` gegen die Teilnehmerkanten).
+(`Encounter.round` / `turn` gegen die Teilnehmerkanten).
 
 ### 5. Eine Ansicht zeichnet überall gleich
 
@@ -194,14 +195,14 @@ Trennung steht schon im Register, und genau da muss sie halten:
 
 | | Was es ist | Wo es liegt | Warum dort |
 |---|---|---|---|
-| **Nebel** (REQ-139) | Was die Gruppe noch nie gesehen hat | `MapInfo.reveal` — ein Feld | Es zeigt auf nichts, und es bleibt |
+| **Nebel** (REQ-139) | Was die Gruppe noch nie gesehen hat | `Map.reveal` — ein Feld | Es zeigt auf nichts, und es bleibt |
 | **Licht** (REQ-140) | Was sie gerade sieht | `marker.light` / `marker.dim` — an der Kante | Derselbe Radius ist auf einer Stadtkarte eine Strasse und auf einer Kampfkarte ein Raum; er hängt an beiden Enden |
 | **Gebiet** (REQ-193) | Wem etwas gehört | Kantenart `territory` | Es zeigt auf einen Artikel |
 
 **Beleuchtetes wird nie gespeichert.** Es gibt kein Feld dafür — es wird bei
 jeder Zeichnung neu gerechnet, wie jeder abgeleitete Wert (D8). Aufgedecktes
 dagegen wird gespeichert, weil es bleibt. Das ist derselbe Schnitt wie
-zwischen `StatblockInfo` und `Vitals`, nur eine Etage höher.
+zwischen dem Statblock und `Vitals`, nur eine Etage höher.
 
 **Der Schatten wird gerechnet, nicht gemalt.** `visionPoly` schwenkt Strahlen
 zu jeder Wandecke — knapp daneben auf beiden Seiten, sonst hätte der Schatten
@@ -212,7 +213,7 @@ ihn nach, statt das Bild anzusehen.
 
 **Gezeichnet wird in Quadrateinheiten** (x von 0 bis 1, y von 0 bis
 Seitenverhältnis). Sonst wäre jeder Lichtkreis auf einer breiten Karte ein Ei.
-Die Bildgrösse kommt aus `AssetInfo.width`/`height` — ein Wert, der im
+Die Bildgrösse kommt aus `Asset.width`/`height` — ein Wert, der im
 Register steht, muss nicht gemessen werden; gemessen wird nur, was von aussen
 kommt. Solange sie unbekannt ist, deckt die Seite **alles** zu: ein Nebel, der
 zu spät kommt, ist kein Nebel.
@@ -253,7 +254,8 @@ deshalb zu und sagt, was fehlt.
 
 Gewürfelt wird **einmal am Ende**, mit demselben Würfelwerk wie alles andere,
 gegen den Schwierigkeitsgrad des Rezepts. Der Übungsbonus kommt aus
-`Skills.tools` — Rook ist in Alchemie geübt, die Gruppe als solche nicht — und
+`Proficiencies.proficient`, aus den Wörtern der Zeile `Tool` darin — Rook ist
+in Alchemie geübt, die Gruppe als solche nicht — und
 das Werkzeug muss dabei sein: es gehört zu **„was fehlt"**, in derselben
 Spalte wie das Material. Es getrennt zu behandeln hiesse, dass die Matrix
 „ja" sagt und das Anfangen „nein", und genau die Art Widerspruch verzeiht man
@@ -304,7 +306,7 @@ niemand merkt es, weil sie plausibel aussieht.** Also werden sie gerechnet:
 |---|---|
 | `{PARTY}` | der Name der Gruppe |
 | `{PARTYSIZE}` | ihre `memberOfParty`-Kanten |
-| `{PARTYLEVEL}` | Mittel der `CharacterInfo.level` ihrer Mitglieder |
+| `{PARTYLEVEL}` | Mittel der `PlayerCharacter.level` ihrer Mitglieder |
 | `{PARTYTIER}` | 1–4, fürs Begegnungsbudget |
 | `{PARTYWHERE}` | der Ort der Karte, auf der ihr Gruppen-Token steht |
 | `{TODAY}` | die Einstellung `today`, sonst das jüngste benutzte Ereignis |
