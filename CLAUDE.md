@@ -490,6 +490,12 @@ Katalog nicht beantwortet und die man beim Streichen braucht: ein Feld, das
 nirgends steht, hielt jemand einmal für richtig und füllt niemand.
 `… --liste` zählt die Arten nach Bereich auf.
 
+`pnpm --filter @nw/registry anforderungen -- --umsetzung ../atlas-mentis/VTT/Umsetzung.md`
+schreibt [docs/Anforderungen.md](docs/Anforderungen.md) neu **und** dieselbe
+Übersicht als Notiz in den Vault — die Spalte *Status* im Register des
+Vaults folgt ihr. Wer einen Stand anders sieht, ändert die Zuordnung im
+Skript, nicht die Datei.
+
 `pnpm --filter @nw/registry catalogue` schreibt
 [docs/Artikeltypen.md](docs/Artikeltypen.md) neu — je Artikelart, was sie
 verlangt, was sie erlaubt, welche Kanten sie trägt und wie sie gezeichnet
