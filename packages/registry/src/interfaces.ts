@@ -348,16 +348,9 @@ export const interfaces: Record<string, InterfaceDef> = {
     area: 'world',
     label: 'Article',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Todos', 'Lore', 'Secrets'],
-    /* Ein Gedicht und ein Lied hat sonst keine Art. Einen Bestandteil für
-       einen einzigen Nutzer anzulegen wäre der Umweg, den es hier schon
-       achtunddreissigmal gab. */
-    schema: {
-      type: 'object',
-      properties: {
-        poem: { type: 'string', format: 'long', many: true, title: 'Poems' },
-        song: { type: 'string', format: 'long', many: true, title: 'Songs' },
-      },
-    },
+    /* `poem` und `song` standen hier als eigene Prosafelder — ein Gedicht
+       ist Prosa und steht in `lore`, mit seiner Überschrift im Text; zwei
+       Felder, die niemand füllte (A14, 7.10.). */
   },
 
   /** The reuse pool: traits, actions, conditions, feats — all one interface. */

@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-07. 52 Schnittstellen, 43 Kantenarten.
+Stand 2026-10-07. 52 Schnittstellen, 42 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -69,10 +69,6 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 ### Article
 
 `Article` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Todos` ← `Lore` ← `Secrets`
-
-**Eigene Felder**
-
-- `poem` *long*, `song` *long*
 
 **Geerbte Felder**
 
@@ -615,7 +611,6 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `partOf` → Place | Story — „part of"
 - `describedIn` → Article — „described in"
-- `followsFrom` → Story — „follows"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
 - `knowledge` → Information — „knowledge about it"
@@ -632,7 +627,6 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Place | Story | Quest — `partOf` → „contains"
 - Party — `partyOf` → „parties"
-- Story — `followsFrom` → „followed by"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -766,7 +760,6 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `partOf` → Place | Story — „part of"
 - `describedIn` → Article — „described in"
-- `followsFrom` → Story — „follows"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
 - `knowledge` → Information — „knowledge about it"
@@ -780,7 +773,6 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Place | Story | Quest — `partOf` → „contains"
-- Story — `followsFrom` → „followed by"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -799,7 +791,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `recap` *long*, `activeScene` *link → Scene*, `activeEncounter` *link → Encounter*, `activeMap` *link → Map*, `nowPlaying` *string*, `partyNote` *long*, `stewardship` *gm | table*
+- `activeScene` *link → Scene*, `activeEncounter` *link → Encounter*, `activeMap` *link → Map*, `nowPlaying` *string*, `partyNote` *long*, `stewardship` *gm | table*
 
 **Geerbte Felder**
 
@@ -821,7 +813,6 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `partOf` → Place | Story — „part of"
 - `describedIn` → Article — „described in"
-- `followsFrom` → Story — „follows"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
 - `knowledge` → Information — „knowledge about it"
@@ -835,7 +826,6 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Place | Story | Quest — `partOf` → „contains"
-- Story — `followsFrom` → „followed by"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -875,7 +865,6 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `partOf` → Place | Story — „part of"
 - `describedIn` → Article — „described in"
-- `followsFrom` → Story — „follows"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
 - `knowledge` → Information — „knowledge about it"
@@ -889,7 +878,6 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Place | Story | Quest — `partOf` → „contains"
-- Story — `followsFrom` → „followed by"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"

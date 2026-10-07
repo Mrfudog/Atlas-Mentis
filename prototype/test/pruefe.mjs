@@ -1675,7 +1675,7 @@ async function seite(datei, warten) {
     [...document.querySelectorAll('.dlgbox .rowbtns button')].find((b) => /Cancel/.test(b.textContent)).click());
   await p.waitForTimeout(200);
   pruefe('an edge on an abstract parent reaches its subtypes',
-    kanten.some((k) => /follows/.test(k)) && kanten.some((k) => /happens at/.test(k)),
+    kanten.some((k) => /fought on/.test(k)) && kanten.some((k) => /happens at/.test(k)),
     { session: session.typ, kanten });
   pruefe('and its targets resolve through inheritance too',
     ziele.some((z) => /Campaign/.test(z)), ziele.slice(0, 5));

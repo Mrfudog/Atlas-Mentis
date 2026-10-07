@@ -150,9 +150,13 @@ Seit dem Prototyp werden Modellentscheidungen dort festgehalten, wo das Modell s
 | D40 | A10/A12 | `Statblock.kind` heisst `creatureType`; `regards` ohne `PlayerCharacter` | **decided** 2026-10-07 |
 | D41 | Arbeitsweise | ein Zweig je Anliegen, Pull Request nach `preprod` (automatisch gemergt), nach `main` nur mit Freigabe; kleine Commits; Doku im selben Commit | **decided** 2026-10-07 |
 | D42 | Ein Repo, eine Richtung | Code und Vault in `Mrfudog/atlas-mentis`; Nebelwacht wird archiviert. Kein generisches VTT, sondern die Seite für eine Leitung und ihre Gruppen: Anforderungen aus Nebelwacht haben Vorrang vor den generischen; einschneidende Änderungen entscheidet die Verwaltung | **decided** 2026-10-07 |
+| D43 | A8 Party statt Group | `Group` ist weg; die Gruppe ist das Figurengefüge einer Runde (`Party`, `partyOf` → `Campaign`, `memberOfParty`); Träger sind Creature, Party, Faction | **decided** 2026-10-07 |
+| D44 | A11 Welt mit Kalender | neue Art `World` mit `calendar`, Kante `inWorld` (Campaign → World); `Time.calendar` und die Einstellung `calendar` entfallen | **decided** 2026-10-07 |
+| D45 | A2 Stapel im Modell | `packages/model/src/stack.ts`; der Server siebt mit `inPlay` vor der Sichtbarkeit, für jeden | **decided** 2026-10-07 |
+| D46 | A4, A14, A15 | F1 ergänzt (gepflegte Wortlisten dürfen Zeilen sein); `Session.recap`, `Article.poem`/`song`, `followsFrom` entfallen; A9 Regeltypen später, A13 bestätigt | **decided** 2026-10-07 |
 
 ## Changelog
-- **0.6** (2026-10-07): D25–D42 aus dem Bau nachgetragen; Modellentscheidungen leben seither in diesem Repo.
+- **0.6** (2026-10-07): D25–D46 aus dem Bau nachgetragen; Modellentscheidungen leben seither in diesem Repo.
 - **0.5** (2026-09-05): AD-19 board-first v1; D16 placement kinds; D17 print & export via facets/media.
 - **0.4** (2026-09-04): AD-01 tech confirmed via D0. New D-series section consolidating the data-model decisions D0–D10 ([[Schemas]]) with post-walkthrough statuses (D1/D3/D4/D6 decided) and D11–D15 from the boards/display session.
 - **0.3** (2026-08-31): AD-16 decided, AD-18 added.
