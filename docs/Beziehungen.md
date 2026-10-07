@@ -1,7 +1,7 @@
 # Beziehungen
 
 Stand 2026-09-20. REQ-030 und REQ-081 aus
-[`Mrfudog/atlas-mentis`](https://github.com/Mrfudog/atlas-mentis).
+[`VTT/`](../VTT/) in diesem Repo (überholt durch [Datenmodell.md](Datenmodell.md)).
 
 ---
 

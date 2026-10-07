@@ -16,7 +16,7 @@ Dazu [Anforderungen.md](Anforderungen.md) — was gefordert war und was davon
 steht — und [Durchgang.md](Durchgang.md), die gemessene Durchsicht der Arten
 mit den offenen Entscheidungen.
 
-Das ursprüngliche Konzept im Vault (`Mrfudog/atlas-mentis`, `Schemas.md`,
+Das ursprüngliche Konzept im Vault (`VTT/` in diesem Repo: `Schemas.md`,
 `Data Definitions.md`, `Backbone Concept.md`, Stand 5.9.) ist durch diese
 Datei **überholt**: Komponenten, `requires`/`allows`, `Access`,
 `KnowledgeLevel`, `successorId`, `key` und die Facetten gibt es nicht mehr.

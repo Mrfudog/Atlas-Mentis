@@ -1,4 +1,15 @@
 {
   "alwaysUpdateLinks": true,
-  "mobileQuickRibbonItem": ""
+  "mobileQuickRibbonItem": "",
+  "userIgnoreFilters": [
+    "node_modules/",
+    "apps/",
+    "packages/",
+    "prototype/",
+    "legacy/",
+    "deploy/",
+    ".github/",
+    "dist/",
+    "coverage/"
+  ]
 }

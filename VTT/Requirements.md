@@ -9,7 +9,9 @@ updated: 2026-10-07
 
 Single source of truth for all requirements. **IDs are immutable**: sequential, never reused, never renumbered, carrying no meaning (areas may move; IDs never do). Dropped requirements stay with status `dropped`.
 
-Per-area views are derived: see [[Requirements by Area]]. **Was davon steht**, sagt [[Umsetzung]] (erzeugt aus dem Repo [Nebelwacht](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Anforderungen.md)); die Spalte *Status* hier folgt ihr: `done` = steht, `in progress` = teils, `dropped` = ersetzt oder verworfen. Definitions of the areas: [[Areas]]. Terms: [[Glossary]].
+**Vorrang (D42, 7.10.2026):** was der Tisch von Nebelwacht braucht, vor dem, was ein beliebiger Tisch brauchen könnte — die Nummern aus der Ernte (REQ-168 ff.) vor den generischen; die Spalte *Prio* bleibt, wie sie ist, der Vorrang gilt bei gleicher Prio. Einschneidende Änderungen entscheidet die Verwaltung.
+
+Per-area views are derived: see [[Requirements by Area]]. **Was davon steht**, sagt [[Umsetzung]] (erzeugt aus dem Repo [Nebelwacht](../docs/Anforderungen.md)); die Spalte *Status* hier folgt ihr: `done` = steht, `in progress` = teils, `dropped` = ersetzt oder verworfen. Definitions of the areas: [[Areas]]. Terms: [[Glossary]].
 
 ## Scales
 - **Priority** 1 backbone-critical · 2 first table use · 3 full v1.0 · 4 expansion · 5 idea parking

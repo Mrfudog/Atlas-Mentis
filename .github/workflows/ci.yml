@@ -120,7 +120,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: image
-    if: github.event_name != 'pull_request' && (github.ref_name == 'preprod' || github.ref_name == 'main')
+    # Ausgerollt wird nur, wenn das Repo es sagt (Variable DEPLOY_ENABLED=true):
+    # ohne Secrets scheiterte der Job sonst bei jedem Push und färbte den
+    # Zweig rot, obwohl Tests und Abbild grün sind.
+    if: github.event_name != 'pull_request' && (github.ref_name == 'preprod' || github.ref_name == 'main') && vars.DEPLOY_ENABLED == 'true'
     environment:
       name: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
       url: ${{ vars.PUBLIC_URL }}

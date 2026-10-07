@@ -1,6 +1,6 @@
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-07. Jede Nummer aus dem Vault ([`Mrfudog/atlas-mentis`](https://github.com/Mrfudog/atlas-mentis), `Requirements.md` v0.6) und aus der Ernte
+Stand 2026-10-07. Jede Nummer aus dem Vault (`VTT/Requirements.md` in diesem Repo, v0.7) und aus der Ernte
 ([Requirements from Kanalgang.md](Requirements%20from%20Kanalgang.md)), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs` aus einer Zuordnung, die ein Urteil ist:
 wer eine Zeile anders sieht, ändert sie dort und lässt das Skript laufen.

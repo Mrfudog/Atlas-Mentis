@@ -1,7 +1,7 @@
 # Ebenen und Stapelauflösung
 
 Stand 2026-09-20. REQ-004 bis 009 und REQ-044 aus
-[`Mrfudog/atlas-mentis`](https://github.com/Mrfudog/atlas-mentis).
+[`VTT/`](../VTT/) in diesem Repo (überholt durch [Datenmodell.md](Datenmodell.md)).
 
 ---
 

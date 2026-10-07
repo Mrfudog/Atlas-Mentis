@@ -1,10 +1,24 @@
 # Atlas Mentis — Hinweise für Claude
 
-Kampagnenplattform, gebaut für „Aus Nebel wacht“. **Die Plattform heisst
-Atlas Mentis, die Kampagne heisst Nebelwacht** — das Repository und die
-Paketnamen (`@nw/*`) tragen noch den alten Namen; sichtbar heisst es überall
-Atlas Mentis. Schweizer Rechtschreibung (**ss statt ß**) in allem
-Deutschen.
+Die Seite für „Aus Nebel wacht“ und die Runden, die daraus werden. **Die
+Plattform heisst Atlas Mentis, die Kampagne heisst Nebelwacht**; die
+Paketnamen (`@nw/*`) tragen die Kampagne, sichtbar heisst es überall Atlas
+Mentis. Schweizer Rechtschreibung (**ss statt ß**) in allem Deutschen.
+
+**Die Richtung (7.10.2026):** kein generisches VTT, sondern die Seite für
+eine Leitung und ihre Gruppen. Was der Tisch von Nebelwacht braucht, hat
+Vorrang vor dem, was ein beliebiger Tisch brauchen könnte — die
+Anforderungen aus der Ernte (REQ-168 ff.) vor den generischen aus dem
+Konzept. **Einschneidende Änderungen entscheidet die Verwaltung**, nicht
+Claude: ein Umbau, der Daten verliert, die Arbeitsweise ändert oder eine
+Art wegnimmt, wird vorgeschlagen und abgewartet.
+
+**Ein Repo.** Code und Vault liegen seit dem 7.10.2026 zusammen: `VTT/`
+und `Ideen/` sind der Obsidian-Vault, `.obsidian/` seine Einstellungen
+(`userIgnoreFilters` hält die Code-Ordner aus dem Index). Der Vault wird
+auch vom Telefon aus direkt auf `main` geschrieben — darum merged jeder
+Zweig von `preprod` vor einem Pull Request nach `main` erst `main` herein,
+und `preprod` wird nicht auf `main` vorgespult, sondern gemerged.
 
 **Sprache:** Code, Bezeichner, Registerzeilen und sichtbare Texte auf Englisch.
 Kommentare und Commit-Nachrichten auf Deutsch. Die Oberfläche war bis
@@ -33,9 +47,11 @@ in einem Feld stehen darf, prüft sie mit — eine Aufzählung hält, eine
 Spanne hält. Alles davon
 sind Zeilen — eine neue Artikelart anzulegen heisst einfügen, nicht migrieren.
 
-Vollständig in [`Mrfudog/atlas-mentis`](https://github.com/Mrfudog/atlas-mentis):
-`Backbone Concept.md` erklärt die Mechanismen, `Schemas.md` hat die Schemata und
-die Entscheidungen D0–D17, `Requirements.md` die REQ-Nummern.
+Das ursprüngliche Konzept liegt in `VTT/` (`Backbone Concept.md`,
+`Schemas.md` mit D0–D17, `Data Definitions.md`) und ist **überholt** —
+was gilt, steht in [docs/Datenmodell.md](docs/Datenmodell.md). Die
+REQ-Nummern stehen in `VTT/Requirements.md`, ihr Stand in
+`VTT/Umsetzung.md` (erzeugt).
 
 ## Wo was liegt
 
@@ -490,7 +506,7 @@ Katalog nicht beantwortet und die man beim Streichen braucht: ein Feld, das
 nirgends steht, hielt jemand einmal für richtig und füllt niemand.
 `… --liste` zählt die Arten nach Bereich auf.
 
-`pnpm --filter @nw/registry anforderungen -- --umsetzung ../atlas-mentis/VTT/Umsetzung.md`
+`pnpm --filter @nw/registry anforderungen -- --umsetzung VTT/Umsetzung.md`
 schreibt [docs/Anforderungen.md](docs/Anforderungen.md) neu **und** dieselbe
 Übersicht als Notiz in den Vault — die Spalte *Status* im Register des
 Vaults folgt ihr. Wer einen Stand anders sieht, ändert die Zuordnung im
@@ -529,7 +545,9 @@ Vitest bildet `@nw/model` und `@nw/registry` auf den Quelltext ab (siehe
 **Je Anliegen ein Zweig `feature/<anliegen>`**, abgezweigt von `preprod`.
 Nicht alles auf einem Sitzungszweig sammeln. Ist das Anliegen fertig
 (Tests, Lint, Durchstich bei Migrationen, Doku nachgezogen): Pull Request
-nach `preprod` **und selbst mergen**. Ein Pull Request nach `main` wird
+nach `preprod` **und selbst mergen**; den Zweig danach löschen (der
+GitHub-Proxy dieser Sitzungen darf keine Zweige löschen — dafür steht in
+den Repo-Einstellungen „Automatically delete head branches"). Ein Pull Request nach `main` wird
 geöffnet, wenn ein Feature ganz steht oder eine Version reif ist — den
 merged die Verwaltung, nicht Claude. Commits klein und je eine Sache;
 Nachricht deutsch, sagt **warum**.
@@ -549,7 +567,7 @@ vom Code zur Begründung ohne Suchen.
 
 | Was | Wo |
 |---|---|
-| Anforderungen (REQ-Nummern, Prio, Stand) | der Vault `Mrfudog/atlas-mentis`, `VTT/Requirements.md` — mit Obsidian-Mitteln: `[[Verweise]]`, Auszüge `![[…]]`, Bases für Übersichten |
+| Anforderungen (REQ-Nummern, Prio, Stand) | der Vault in diesem Repo, `VTT/Requirements.md` — mit Obsidian-Mitteln: `[[Verweise]]`, Auszüge `![[…]]`, Bases für Übersichten |
 | was davon hier steht | [docs/Anforderungen.md](docs/Anforderungen.md), erzeugt von `anforderungen.mjs` |
 | Entscheidungen zum Modell | [docs/Durchgang.md](docs/Durchgang.md) (Abgleich, mit Entscheidungsspalte), [docs/Begriffe.md](docs/Begriffe.md) (das Warum) |
 | offene Arbeit | [docs/Roadmap.md](docs/Roadmap.md) „Als Nächstes"; Issues für das, was gerade gebaut wird |
@@ -558,7 +576,8 @@ vom Code zur Begründung ohne Suchen.
 Siehe [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Ein Push auf `preprod` rollt nach `dev.atlas.…` aus, einer auf `main` nach
-der Produktion — beide auf Hetzner, aus einem Abbild, das **nur CI baut**,
+der Produktion — sobald die Repo-Variable `DEPLOY_ENABLED` auf `true` steht
+und die Umgebungen `dev` und `prod` ihre Secrets haben; beide auf Hetzner, aus einem Abbild, das **nur CI baut**,
 nachdem Tests und der Durchstich gegen eine frische Postgres
 (`apps/server/scripts/durchstich.mjs`) grün sind. Wer eine Migration
 schreibt, lässt den Durchstich lokal laufen: die übrigen Tests sehen keine

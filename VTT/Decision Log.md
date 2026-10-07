@@ -129,7 +129,7 @@ Fine-grained decisions of the compound data model. Source and schemas: [[Schemas
 
 ## Modellentscheidungen aus dem Bau (2026-09-19 bis 2026-10-07)
 
-Seit dem Prototyp werden Modellentscheidungen dort festgehalten, wo das Modell steht: [Datenmodell.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Datenmodell.md) (die Regel), [Begriffe.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Begriffe.md) (das Warum), [Durchgang.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Durchgang.md) (der Abgleich A1–A16 mit diesem Konzept). Die wichtigsten, damit dieses Log vollständig bleibt:
+Seit dem Prototyp werden Modellentscheidungen dort festgehalten, wo das Modell steht: [Datenmodell.md](../docs/Datenmodell.md) (die Regel), [Begriffe.md](../docs/Begriffe.md) (das Warum), [Durchgang.md](../docs/Durchgang.md) (der Abgleich A1–A16 mit diesem Konzept). Die wichtigsten, damit dieses Log vollständig bleibt:
 
 | ID | Topic | Decision | Status |
 |---|---|---|---|
@@ -149,9 +149,10 @@ Seit dem Prototyp werden Modellentscheidungen dort festgehalten, wo das Modell s
 | D39 | A7 Fraktionsränge | eine Fraktion weiss nichts, ihre Mitglieder wissen: `Faction.ranks`, `memberOf.rank`, Mindestrang an `knownBy` (REQ-203) | **decided** 2026-10-07 |
 | D40 | A10/A12 | `Statblock.kind` heisst `creatureType`; `regards` ohne `PlayerCharacter` | **decided** 2026-10-07 |
 | D41 | Arbeitsweise | ein Zweig je Anliegen, Pull Request nach `preprod` (automatisch gemergt), nach `main` nur mit Freigabe; kleine Commits; Doku im selben Commit | **decided** 2026-10-07 |
+| D42 | Ein Repo, eine Richtung | Code und Vault in `Mrfudog/atlas-mentis`; Nebelwacht wird archiviert. Kein generisches VTT, sondern die Seite für eine Leitung und ihre Gruppen: Anforderungen aus Nebelwacht haben Vorrang vor den generischen; einschneidende Änderungen entscheidet die Verwaltung | **decided** 2026-10-07 |
 
 ## Changelog
-- **0.6** (2026-10-07): D25–D41 aus dem Bau nachgetragen; Modellentscheidungen leben seither im Repo Nebelwacht.
+- **0.6** (2026-10-07): D25–D42 aus dem Bau nachgetragen; Modellentscheidungen leben seither in diesem Repo.
 - **0.5** (2026-09-05): AD-19 board-first v1; D16 placement kinds; D17 print & export via facets/media.
 - **0.4** (2026-09-04): AD-01 tech confirmed via D0. New D-series section consolidating the data-model decisions D0–D10 ([[Schemas]]) with post-walkthrough statuses (D1/D3/D4/D6 decided) and D11–D15 from the boards/display session.
 - **0.3** (2026-08-31): AD-16 decided, AD-18 added.

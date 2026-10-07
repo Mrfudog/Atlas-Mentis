@@ -1,7 +1,7 @@
 # Karten: Zeichenebenen, Sperren, Unterkarten
 
 Stand 2026-09-20. REQ-130 bis 140 und REQ-193 aus
-[`Mrfudog/atlas-mentis`](https://github.com/Mrfudog/atlas-mentis).
+[`VTT/`](../VTT/) in diesem Repo (überholt durch [Datenmodell.md](Datenmodell.md)).
 
 ---
 

@@ -1,11 +1,14 @@
 # Atlas Mentis
 
-Kampagnenplattform. Gebaut für **„Aus Nebel wacht“** — Wasserfeste,
-Nebeldistrikt, Unterwacht —, aber nicht an sie gebunden: was es an
-Artikelarten gibt, ist eine Registerzeile und keine Codezeile.
+Die Seite für **„Aus Nebel wacht“** und die Runden, die daraus werden —
+Wasserfeste, Nebeldistrikt, Unterwacht. Kein generisches VTT: was der Tisch
+braucht, kommt zuerst; was ein beliebiger Tisch brauchen könnte, danach.
+Trotzdem ist nichts an die Kampagne genagelt: was es an Artikelarten gibt,
+ist eine Registerzeile und keine Codezeile.
 
-Die Kampagne heisst Nebelwacht, die Plattform heisst Atlas Mentis. Das
-Repository trägt noch den alten Namen.
+Die Kampagne heisst Nebelwacht, die Plattform heisst Atlas Mentis. Die
+Paketnamen (`@nw/*`) und die Datenbanknamen tragen die Kampagne im Namen,
+und das dürfen sie.
 
 Ein Artikel ist die Grundform für alles in der Welt: Geschöpfe, Orte, Fraktionen,
 Regeln, Statblöcke, Wissensartikel. Er besteht aus **Komponenten** (typisierte
@@ -14,9 +17,11 @@ Felder), **Blöcken** (Fliesstext mit eigener Sichtbarkeit) und **Verknüpfungen
 welche Felder sie tragen und wie sie dargestellt werden, steht im **Register** —
 als Daten, nicht als Code. Eine neue Artikelart ist eine Zeile, keine Migration.
 
-Die Architektur dahinter ist in [`Mrfudog/atlas-mentis`](https://github.com/Mrfudog/atlas-mentis)
-ausgearbeitet: `Backbone Concept.md`, `Schemas.md`, `Data Definitions.md` und die
-Anforderungen mit unveränderlichen REQ-Nummern. Dieses Repo setzt sie um.
+Was gilt, steht in [docs/Datenmodell.md](docs/Datenmodell.md); das
+ursprüngliche Konzept (`VTT/Backbone Concept.md`, `Schemas.md`, `Data
+Definitions.md`) ist überholt und bleibt als Herkunft stehen. Die
+Anforderungen mit unveränderlichen REQ-Nummern: [`VTT/Requirements.md`](VTT/Requirements.md),
+ihr Stand: [`VTT/Umsetzung.md`](VTT/Umsetzung.md).
 
 ## Aufbau
 
@@ -28,7 +33,8 @@ Anforderungen mit unveränderlichen REQ-Nummern. Dieses Repo setzt sie um.
 | `apps/web` | Angular. |
 | `legacy/` | Die alte React-App (Kanalgang). Eingefroren, weiter lauffähig, wird nicht mehr weiterentwickelt. |
 | `prototype/` | Die Artikel-Engine v0 als eigenständige HTML-Seite — zum Ausprobieren des Modells. |
-| `docs/` | Aus der alten App geerntete Anforderungen, für den Vault. |
+| `docs/` | Datenmodell, Begriffe, Betrieb, Abgleich — die geltende Erklärung. |
+| `VTT/`, `Ideen/` | Der Obsidian-Vault: Anforderungen, Umsetzungsstand, Entscheidungslog, Notizen. |
 
 ## Entwickeln
 

@@ -2,19 +2,19 @@
 tags: [vtt, requirements, view, umsetzung]
 status: derived
 updated: 2026-10-07
-source: https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Anforderungen.md
+source: ../docs/Anforderungen.md
 ---
 
 > [!info] Erzeugt aus dem Repo
-> `pnpm --filter @nw/registry anforderungen -- --umsetzung <diese Datei>` in
-> [Mrfudog/Nebelwacht](https://github.com/Mrfudog/Nebelwacht) schreibt diese Notiz neu.
+> `pnpm --filter @nw/registry anforderungen -- --umsetzung VTT/Umsetzung.md`
+> im Repo schreibt diese Notiz neu.
 > Wer einen Stand anders sieht, ändert ihn in `packages/registry/scripts/anforderungen.mjs`.
 > Die Nummern selbst stehen in [[Requirements]]; die Spalte *Status* dort folgt dieser Notiz.
 
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-07. Jede Nummer aus dem Vault ([`Mrfudog/atlas-mentis`](https://github.com/Mrfudog/atlas-mentis), `Requirements.md` v0.6) und aus der Ernte
-([Requirements from Kanalgang.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Requirements%20from%20Kanalgang.md)), mit dem Stand im Repo.
+Stand 2026-10-07. Jede Nummer aus dem Vault (`VTT/Requirements.md` in diesem Repo, v0.7) und aus der Ernte
+([Requirements from Kanalgang.md](../docs/Requirements%20from%20Kanalgang.md)), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs` aus einer Zuordnung, die ein Urteil ist:
 wer eine Zeile anders sieht, ändert sie dort und lässt das Skript laufen.
 
@@ -34,18 +34,18 @@ Was nicht als Nummer im Vault steht, sondern hier entschieden wurde — alles ge
 
 | Wann | Entscheidung | Wo |
 |---|---|---|
-| 19.9. | Prototyp bleibt Artefakt; Zugang ein Passwort je Nutzer, kein SSO; Bearbeiten per Klick aufs Feld; Wissen über ein Seitenpanel; Massenbearbeitung; Session als Artikel | [Roadmap.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Roadmap.md) |
-| 19.9. | Oberfläche und Bezeichner englisch | [CLAUDE.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/CLAUDE.md) |
-| 20.9. | Importer weg, `Imported` weg; Register steht einmal (`emit-seed`) | [CLAUDE.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/CLAUDE.md) |
+| 19.9. | Prototyp bleibt Artefakt; Zugang ein Passwort je Nutzer, kein SSO; Bearbeiten per Klick aufs Feld; Wissen über ein Seitenpanel; Massenbearbeitung; Session als Artikel | [Roadmap.md](../docs/Roadmap.md) |
+| 19.9. | Oberfläche und Bezeichner englisch | [CLAUDE.md](../CLAUDE.md) |
+| 20.9. | Importer weg, `Imported` weg; Register steht einmal (`emit-seed`) | [CLAUDE.md](../CLAUDE.md) |
 | 20.9. | Komponenten weg, Arten tragen ihre Felder (D27); `extends` ist ein Array | Roadmap.md D25, D27 |
-| 21.9. | Aufzählungszeilen (`enums`), Spannen, Übungen in einem Feld; Identity.key wird Identity.id | [Begriffe.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Begriffe.md) |
-| 30.9. | Sichtbarkeit: `public` ist die Vorgabe, drei Felder, keine Vererbung; `is_gm` heisst `is_admin` | [Durchgang.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Durchgang.md) |
-| 30.9. | Eine Leitung je Kampagne; wem ein Artikel gehört, sagt die Ebene | [Ebenen.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Ebenen.md) |
-| 1.10. | Rollen am Konto (`campaign_member`), `Access` weg | [Zugang.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Zugang.md) |
-| 1.10. | Ohne Statblock keine Zahlen; Anlegen oder aus einer Vorlage; Kreaturen ohne Statblock in der Vorbereitung | [Begriffe.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Begriffe.md) |
-| 1.10. | Hetzner: `preprod` → dev, `main` → prod, nur CI baut; Durchstich gegen Postgres | [Betrieb.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Betrieb.md) |
-| 1.10. | Vorlage und Instanz: eine Instanz je Kreatur, nur Abweichungen gespeichert | [Datenmodell.md §7](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Datenmodell.md) |
-| 7.10. | Vorschläge nur, wo das Feld es sagt (`suggest`); der Deckname ist keine Sorte | [Begriffe.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Begriffe.md) |
+| 21.9. | Aufzählungszeilen (`enums`), Spannen, Übungen in einem Feld; Identity.key wird Identity.id | [Begriffe.md](../docs/Begriffe.md) |
+| 30.9. | Sichtbarkeit: `public` ist die Vorgabe, drei Felder, keine Vererbung; `is_gm` heisst `is_admin` | [Durchgang.md](../docs/Durchgang.md) |
+| 30.9. | Eine Leitung je Kampagne; wem ein Artikel gehört, sagt die Ebene | [Ebenen.md](../docs/Ebenen.md) |
+| 1.10. | Rollen am Konto (`campaign_member`), `Access` weg | [Zugang.md](../docs/Zugang.md) |
+| 1.10. | Ohne Statblock keine Zahlen; Anlegen oder aus einer Vorlage; Kreaturen ohne Statblock in der Vorbereitung | [Begriffe.md](../docs/Begriffe.md) |
+| 1.10. | Hetzner: `preprod` → dev, `main` → prod, nur CI baut; Durchstich gegen Postgres | [Betrieb.md](../docs/Betrieb.md) |
+| 1.10. | Vorlage und Instanz: eine Instanz je Kreatur, nur Abweichungen gespeichert | [Datenmodell.md §7](../docs/Datenmodell.md) |
+| 7.10. | Vorschläge nur, wo das Feld es sagt (`suggest`); der Deckname ist keine Sorte | [Begriffe.md](../docs/Begriffe.md) |
 
 ## Die Nummern
 

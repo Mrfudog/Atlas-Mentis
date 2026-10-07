@@ -8,7 +8,7 @@ related: "[[Requirements]], [[Requirements by Area]], [[Scope v1]], [[Decision L
 
 # Requirements from Kanalgang
 
-Harvested from the "Aus Nebel wacht" session tracker (`Mrfudog/Nebelwacht`, `src/App.jsx`) — the tool that actually ran eight sessions. Its **data is not being ported**; its *experience* is. These are mechanics that proved useful at the table and that [[Requirements]] does not currently cover.
+Harvested from the "Aus Nebel wacht" session tracker (die alte React-App, heute `legacy/`) — the tool that actually ran eight sessions. Its **data is not being ported**; its *experience* is. These are mechanics that proved useful at the table and that [[Requirements]] does not currently cover.
 
 IDs continue the immutable numbering from REQ-167 ("add with the next free ID, never renumber"). All carry status `idea` until you triage them.
 

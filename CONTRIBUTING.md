@@ -40,7 +40,7 @@ gegen die von `model` erzeugten Typdateien, nicht gegen dessen Quelltext.
 
 ## Wo Anforderungen leben
 
-**Im Vault**, nicht hier. `Mrfudog/atlas-mentis` → `VTT/Requirements.md` ist die
+**Im Vault**, der seit dem 7.10. in diesem Repo liegt: `VTT/Requirements.md` ist die
 Quelle: unveränderliche REQ-Nummern, Priorität, Aufwand, v1-Tiefe, Abhängigkeiten
 und die Begründung daneben. IDs werden vergeben, nie neu nummeriert; Verworfenes
 bleibt mit Status `dropped` stehen.

@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
   - name: Anforderungen nachschlagen
-    url: https://github.com/Mrfudog/atlas-mentis/blob/main/VTT/Requirements.md
+    url: https://github.com/Mrfudog/atlas-mentis/blob/preprod/VTT/Requirements.md
     about: Die Anforderungen selbst leben im Vault, nicht hier. Issues bilden nur ab, was gerade gebaut wird.

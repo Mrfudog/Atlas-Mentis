@@ -10,6 +10,11 @@ Ein Server, zwei Umgebungen, beide aus CI ausgerollt:
 Jede Umgebung hat ihre eigene Datenbank, ihr eigenes Volume und ihre eigenen
 Konten. Davor steht Caddy und macht TLS.
 
+> **Schalter:** der Job `deploy` läuft nur, wenn die Repo-Variable
+> `DEPLOY_ENABLED` auf `true` steht (Settings › Secrets and variables ›
+> Actions › Variables). Ohne ihn bleibt ein Push grün, auch wenn die
+> Umgebungen noch keine Secrets haben.
+
 ## Was bei einem Push passiert
 
 ```
@@ -145,7 +150,7 @@ Ausrollen nach `prod` noch einmal bestätigen will, setzt dort *Required
 reviewers*. `DEPLOY_DIR` als Variable überschreibt das Verzeichnis, wenn es
 nicht `/srv/atlas/<env>` sein soll.
 
-Das Abbild liegt unter `ghcr.io/<owner>/nebelwacht` und ist privat. Der
+Das Abbild liegt unter `ghcr.io/<owner>/atlas-mentis` und ist privat. Der
 Server meldet sich dafür nicht dauerhaft an: CI reicht seinen eigenen,
 kurzlebigen `GITHUB_TOKEN` über stdin weiter (nicht über die Befehlszeile —
 die stünde in der Prozessliste), `deploy.sh` meldet sich an, holt und meldet

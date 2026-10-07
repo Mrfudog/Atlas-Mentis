@@ -3,7 +3,7 @@
 Stand 2026-09-20. Was in einem Zug gebaut wurde, nachdem A und B standen:
 Assets, Karten, Charakterbogen, Inventar, Handwerk, Boards, Begegnungen,
 Würfel, Aufträge und Zeitleiste. Die REQ-Nummern stammen aus
-[`Mrfudog/atlas-mentis`](https://github.com/Mrfudog/atlas-mentis).
+[`VTT/`](../VTT/) in diesem Repo (überholt durch [Datenmodell.md](Datenmodell.md)).
 
 ---
 

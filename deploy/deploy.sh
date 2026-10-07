@@ -3,7 +3,7 @@
 # Verzeichnis der Umgebung (/srv/atlas/prod oder /srv/atlas/dev), und wird
 # von CI über SSH aufgerufen — von Hand geht es genauso:
 #
-#   ./deploy.sh ghcr.io/mrfudog/nebelwacht:main-<sha>
+#   ./deploy.sh ghcr.io/mrfudog/atlas-mentis:main-<sha>
 #   ./deploy.sh "$(cat previous-image)"        # zurück aufs vorige
 #
 # Vor dem Wechsel wird die Datenbank gesichert. Migrationen laufen nur
@@ -12,7 +12,7 @@
 set -eu
 cd "$(dirname "$0")"
 
-IMAGE="${1:?Abbild fehlt, z. B. ghcr.io/mrfudog/nebelwacht:main-abc1234}"
+IMAGE="${1:?Abbild fehlt, z. B. ghcr.io/mrfudog/atlas-mentis:main-abc1234}"
 KEEP="${KEEP_BACKUPS:-20}"
 [ -f .env ] || { echo ".env fehlt — siehe docs/Betrieb.md" >&2; exit 1; }
 [ -f compose.yml ] || { echo "compose.yml fehlt" >&2; exit 1; }

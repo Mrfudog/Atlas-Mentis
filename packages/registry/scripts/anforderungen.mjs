@@ -8,7 +8,7 @@
   sieht, ändert sie in `STAND` und lässt das Skript laufen.
 
   Aufruf: node scripts/anforderungen.mjs [pfad-zum-vault/VTT/Requirements.md]
-  Ohne Pfad wird der Vault neben dem Repo gesucht (../atlas-mentis).
+  Ohne Pfad wird der Vault im Repo gelesen (VTT/Requirements.md).
 */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -19,11 +19,13 @@ const REPO = resolve(HIER, '..', '..', '..');
 /* `--umsetzung <datei>` schreibt dieselbe Übersicht zusätzlich als Obsidian-
    Notiz in den Vault (mit Frontmatter), damit die Anforderungen dort den
    Stand sehen, ohne dass jemand ihn abtippt. */
-const argv = process.argv.slice(2);
+const argv = process.argv.slice(2).filter((a) => a !== '--');
 const umsetzungAt = argv.indexOf('--umsetzung');
-const UMSETZUNG = umsetzungAt >= 0 ? resolve(argv[umsetzungAt + 1] ?? '') : null;
+/* Ein relativer Pfad meint das Repo, nicht das Paket — pnpm läuft in
+   packages/registry, der Aufruf steht in CLAUDE.md vom Wurzelverzeichnis aus. */
+const UMSETZUNG = umsetzungAt >= 0 ? resolve(REPO, argv[umsetzungAt + 1] ?? '') : null;
 const pfadArg = argv.find((a, i) => !a.startsWith('--') && i !== umsetzungAt + 1);
-const VAULT = resolve(pfadArg ?? join(REPO, '..', 'atlas-mentis', 'VTT', 'Requirements.md'));
+const VAULT = pfadArg ? resolve(REPO, pfadArg) : join(REPO, 'VTT', 'Requirements.md');
 const vault = readFileSync(VAULT, 'utf8');
 const ernte = readFileSync(join(REPO, 'docs', 'Requirements from Kanalgang.md'), 'utf8');
 
@@ -249,7 +251,7 @@ const w = (s = '') => z.push(s);
 w('# Anforderungen — was gefordert war und was steht');
 w();
 w(`Stand ${new Date().toISOString().slice(0, 10)}. Jede Nummer aus dem Vault ` +
-  '([`Mrfudog/atlas-mentis`](https://github.com/Mrfudog/atlas-mentis), `Requirements.md` v0.6) und aus der Ernte');
+  '(`VTT/Requirements.md` in diesem Repo, v0.7) und aus der Ernte');
 w('([Requirements from Kanalgang.md](Requirements%20from%20Kanalgang.md)), mit dem Stand im Repo.');
 w('Erzeugt von `packages/registry/scripts/anforderungen.mjs` aus einer Zuordnung, die ein Urteil ist:');
 w('wer eine Zeile anders sieht, ändert sie dort und lässt das Skript laufen.');
@@ -314,20 +316,20 @@ if (UMSETZUNG) {
     'tags: [vtt, requirements, view, umsetzung]',
     'status: derived',
     `updated: ${heute}`,
-    'source: https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Anforderungen.md',
+    'source: ../docs/Anforderungen.md',
     '---',
     '',
     '> [!info] Erzeugt aus dem Repo',
-    '> `pnpm --filter @nw/registry anforderungen -- --umsetzung <diese Datei>` in',
-    '> [Mrfudog/Nebelwacht](https://github.com/Mrfudog/Nebelwacht) schreibt diese Notiz neu.',
+    '> `pnpm --filter @nw/registry anforderungen -- --umsetzung VTT/Umsetzung.md`',
+    '> im Repo schreibt diese Notiz neu.',
     '> Wer einen Stand anders sieht, ändert ihn in `packages/registry/scripts/anforderungen.mjs`.',
     '> Die Nummern selbst stehen in [[Requirements]]; die Spalte *Status* dort folgt dieser Notiz.',
     '',
   ];
   const koerper = z.map((l) =>
-    l.replace('(Requirements%20from%20Kanalgang.md)', '(https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Requirements%20from%20Kanalgang.md)')
+    l.replace('(Requirements%20from%20Kanalgang.md)', '(../docs/Requirements%20from%20Kanalgang.md)')
       .replace(/\| (Roadmap|CLAUDE|Begriffe|Durchgang|Ebenen|Zugang|Betrieb|Datenmodell|Wissen|Spieltisch)\.md( §\d+)? \|$/, (m, d, para) =>
-        `| [${d}.md${para ?? ''}](https://github.com/Mrfudog/Nebelwacht/blob/preprod/${d === 'CLAUDE' ? '' : 'docs/'}${d}.md) |`));
+        `| [${d}.md${para ?? ''}](../${d === 'CLAUDE' ? '' : 'docs/'}${d}.md) |`));
   writeFileSync(UMSETZUNG, kopf.concat(koerper).join('\n') + '\n');
   console.log(`geschrieben: ${UMSETZUNG}`);
 }

@@ -1,7 +1,7 @@
 # Zugang
 
 Stand 2026-09-20. REQ-031 und REQ-032 aus
-[`Mrfudog/atlas-mentis`](https://github.com/Mrfudog/atlas-mentis).
+[`VTT/`](../VTT/) in diesem Repo (überholt durch [Datenmodell.md](Datenmodell.md)).
 
 Das hier betrifft den **Server** (`apps/server`), nicht den Artefakt-Prototyp.
 Dort kommt die Identität von der Laufzeit; ein Passwort im Browser wäre keines.
