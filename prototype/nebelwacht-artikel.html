@@ -5036,8 +5036,7 @@ function elCrawl(e,ifn,item){
       });
       if(figuren.length){
         wrap.appendChild(el("div",{class:"sec",text:"At this node"}));
-        var moeglich=String(setting("travelActions","scout,forage,rest"))
-          .split(",").map(function(x){return x.trim();}).filter(Boolean);
+        var moeglich=rulesOfKind("travel");
         var tat=karte.actions||{};
         var ab=el("div",{class:"cractions"});
         figuren.forEach(function(f){
@@ -5045,7 +5044,7 @@ function elCrawl(e,ifn,item){
           row.appendChild(el("span",{class:"rl",text:nameOf(f)}));
           var sel=el("select",{class:"bsel"});
           sel.appendChild(el("option",{value:""},"— nothing —"));
-          moeglich.forEach(function(a){ sel.appendChild(el("option",{value:a},a)); });
+          moeglich.forEach(function(a){ sel.appendChild(el("option",{value:a.id},nameOf(a))); });
           sel.value=tat[f.id]||"";
           if(!canWrite()) sel.disabled=true;
           sel.addEventListener("change",function(){
@@ -5060,7 +5059,8 @@ function elCrawl(e,ifn,item){
         });
         wrap.appendChild(ab);
         wrap.appendChild(el("p",{class:"hint",
-          text:"One action each per node. Moving on clears them — an action belongs to the node, not to the character."}));
+          text:"One action each per node. Moving on clears them — an action belongs to the node, not to the character."+
+            (moeglich.length?"":" No travel actions yet: a travel action is a rule with kind “travel”.")}));
       }
     }
   } else if(gruppe){
@@ -6727,8 +6727,10 @@ function elInitiative(e,ifn,item){
 
     var cc=el("td",{class:"conds"});
     (p2.conditions||[]).forEach(function(c){
-      var chip=el("span",{class:"chip cond"},
-        c.name+(isFinite(Number(c.rounds))?" ("+c.rounds+")":""));
+      /* `rule` ist die Id des Regelartikels; `name` trug ein älterer Bestand. */
+      var regel=c.rule?ENT.get(c.rule):null;
+      var chip=el("span",{class:"chip cond",title:regel?(((regel.components||{}).Description||{}).description||""):""},
+        (regel?nameOf(regel):(c.name||"?"))+(isFinite(Number(c.rounds))?" ("+c.rounds+")":""));
       if(canWrite()) chip.appendChild(el("button",{class:"x",type:"button",
         onclick:function(){
           p2.rel.props=Object.assign({},p2.rel.props,
@@ -6739,12 +6741,11 @@ function elInitiative(e,ifn,item){
     if(canWrite()){
       var add=el("select",{class:"bsel"});
       add.appendChild(el("option",{value:""},"+ condition"));
-      conditionList().forEach(function(c){ add.appendChild(el("option",{value:c},c)); });
+      conditionList().forEach(function(r){ add.appendChild(el("option",{value:r.id},nameOf(r))); });
       add.addEventListener("change",function(){
         if(!add.value)return;
-        var dauer=prompt?null:null;
         p2.rel.props=Object.assign({},p2.rel.props,{conditions:
-          (p2.conditions||[]).concat([{name:add.value,rounds:1,source:dran?dran.label:""}])});
+          (p2.conditions||[]).concat([{rule:add.value,rounds:1,source:dran?dran.label:""}])});
         persist(e);
       });
       cc.appendChild(add);
@@ -8355,8 +8356,6 @@ var SKILLS_FALLBACK="acrobatics:dex,animalHandling:wis,arcana:int,athletics:str,
   "deception:cha,history:int,insight:wis,intimidation:cha,investigation:int,"+
   "medicine:wis,nature:int,perception:wis,performance:cha,persuasion:cha,"+
   "religion:int,sleightOfHand:dex,stealth:dex,survival:wis";
-var CONDITIONS_FALLBACK="blinded,charmed,deafened,frightened,grappled,incapacitated,"+
-  "invisible,paralysed,petrified,poisoned,prone,restrained,stunned,unconscious";
 /**
  * Die Fertigkeiten: **welche es gibt**, sagt die Aufzählungszeile `Skill`;
  * **worauf jede rechnet**, sagt die Einstellung `skills` (`stealth:dex`).
@@ -8378,10 +8377,24 @@ function skillList(){
   Object.keys(zu).forEach(function(k){ if(keys.indexOf(k)<0) keys.push(k); });
   return keys.map(function(k){ return {key:k,attr:zu[k]||"dex"}; });
 }
-function conditionList(){
-  return String(setting("conditions",CONDITIONS_FALLBACK)).split(",")
-    .map(function(x){return x.trim();}).filter(Boolean);
+/**
+ * **Ein Zustand ist ein Regelartikel** (`Rule.kind = condition`), eine
+ * Reisehandlung auch (`kind = travel`) — Abgleich A3, 7.10. Beides war
+ * eine Einstellung mit einer Wortliste, und ein Wort hat keine
+ * Beschreibung, keine Probe und keine Quelle. Gelesen wird, was sichtbar
+ * ist, alphabetisch; gespeichert wird die Artikel-Id (REQ-115, REQ-171).
+ */
+function rulesOfKind(kind){
+  var raus=[];
+  ENT.forEach(function(e){
+    if((e.interfaces||[]).indexOf("Rule")<0)return;
+    if((((e.components||{}).Rule||{}).kind)!==kind)return;
+    if(!articleVisible(e))return;
+    raus.push(e);
+  });
+  return raus.sort(function(a,b){ return nameOf(a).localeCompare(nameOf(b),"en"); });
 }
+function conditionList(){ return rulesOfKind("condition"); }
 /* aus `animalHandling` wird „Animal handling" — Titel aus dem Schlüssel,
    damit eine neue Fertigkeit nur eine Einstellung ist. */
 function humanKey(k){
@@ -8765,16 +8778,20 @@ function elSheet(e,ifn,item){
   /* ---- Zustände ---- */
   var zust=el("div",{class:"condrow"});
   var aktiv=vit.conditions||[];
-  conditionList().forEach(function(c){
-    var an=aktiv.indexOf(c)>=0;
-    var b=el("button",{class:"chip pick"+(an?" on":""),type:"button","aria-pressed":String(an)},c);
+  var regeln=conditionList();
+  regeln.forEach(function(r){
+    var an=aktiv.indexOf(r.id)>=0;
+    var b=el("button",{class:"chip pick"+(an?" on":""),type:"button","aria-pressed":String(an),
+      title:((r.components||{}).Description||{}).description||""},nameOf(r));
     if(canWrite()) b.addEventListener("click",function(){
-      var neu=an?aktiv.filter(function(x){return x!==c;}):aktiv.concat([c]);
+      var neu=an?aktiv.filter(function(x){return x!==r.id;}):aktiv.concat([r.id]);
       schreibVit({conditions:neu});
     });
     else b.disabled=true;
     zust.appendChild(b);
   });
+  if(!regeln.length) zust.appendChild(el("span",{class:"hint",
+    text:"No condition articles yet — a condition is a rule with kind “condition”."}));
   wrap.appendChild(el("div",{class:"sec",text:"Conditions"}));
   wrap.appendChild(zust);
 

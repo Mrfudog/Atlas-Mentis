@@ -152,7 +152,7 @@ Was nicht als Nummer im Vault steht, sondern hier entschieden wurde — alles ge
 | REQ-112 | Widget: reference box holding multiple open articles with inner tabs | 2 | **ersetzt** | Platzierungen auf dem Board |
 | REQ-113 | Widget: notes | 2 | **offen** | Aufgabe #58 |
 | REQ-114 | Widget: quick-create (creates entries in the campaign layer inline) | 2 | **teils** | Anlegen aus dem Board |
-| REQ-115 | Widget: initiative tracker — session-aware, conditions with durations, damage attributed to current actor by default | 2 | **steht** | `participates` mit init, hp, conditions |
+| REQ-115 | Widget: initiative tracker — session-aware, conditions with durations, damage attributed to current actor by default | 2 | **steht** | `participates` mit init, hp, conditions (je Eintrag ein Regelartikel `kind: condition`, Runden, Quelle) |
 | REQ-116 | Session state objects (initiative, now-playing, active scene, party note) + realtime channel per session | 2 | **steht** | `Session.activeMap/activeEncounter/activeScene`; Raum-Kanal für Augenblicke |
 | REQ-117 | Stewardship: write permission on a state object per user, GM override configurable | 3 | **steht** | `Session.stewardship` gm/table |
 | REQ-118 | Widget: encounter runner — instantiate participants, roll random entries, raw statblocks trackable | 3 | **steht** | Begegnung mit Teilnehmern und Tabellen |
@@ -208,7 +208,7 @@ Was nicht als Nummer im Vault steht, sondern hier entschieden wurde — alles ge
 | REQ-168 | Point-crawl travel: node/edge graph attached to a Location, with per-edge sensory read-aloud text and per-node arrival state | 3 | **steht** | `route` mit signal, `Place.state` |
 | REQ-169 | Exploration state ladder per map feature (verborgen → entdeckt → erkundet) with cascade: exploring a node reveals its edges as discovered | 3 | **steht** | `Place.state` hidden · discovered · explored |
 | REQ-170 | Travel resource cadence: consumables consumed every N nodes or watches, configurable per travel ruleset | 4 | **steht** | Einstellungen `travel*`, `Party.sinceRation/sinceLight` |
-| REQ-171 | Per-node action budget: one action per character per node from a configurable list (sneak, craft, forage, rest) | 4 | **steht** | `Party.actions` |
+| REQ-171 | Per-node action budget: one action per character per node from a configurable list (sneak, craft, forage, rest) | 4 | **steht** | `Party.actions`: Figur → Regelartikel `kind: travel` |
 | REQ-172 | Weighted encounter tables per region, with per-location type constraints and safety states that restrict the pool | 3 | **steht** | `entry.weight`, `requiresTag`, `tableFor` |
 | REQ-173 | World-state decay between sessions: roll to degrade secured locations, weighted by adjacency to faction territory | 4 | **offen** |  |
 | REQ-174 | Parameterised rule templates: `{VAR}` placeholders in RuleElement text, bound per reference; resolution order reference → entity → campaign register | 2 | **steht** | `{VAR}`: Kante → Artikel → Kampagnenwerte → Register |

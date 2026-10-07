@@ -60,11 +60,10 @@ export const settings: Record<string, string> = {
   travelRationEvery: '3',
   travelLightEvery: '4',
   travelWatchesPerDay: '3',
-  /* Was eine Figur an einem Knoten tun kann (REQ-171). */
-  travelActions: 'scout,forage,craft,rest,guard,tend the fire',
-  conditions:
-    'blinded,charmed,deafened,frightened,grappled,incapacitated,invisible,' +
-    'paralysed,petrified,poisoned,prone,restrained,stunned,unconscious',
+  /* `travelActions` und `conditions` standen hier als Wortlisten. Beides
+     sind seit dem 7.10. Regelartikel (`Rule.kind` travel bzw. condition,
+     Abgleich A3): ein Wort hat keine Beschreibung und keine Quelle, ein
+     Artikel schon. Wanderung: `prototype/migration/zustaende-als-regeln.mjs`. */
 };
 
 /** The rows a fresh database is seeded with. */
