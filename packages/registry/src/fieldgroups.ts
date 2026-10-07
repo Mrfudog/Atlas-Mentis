@@ -304,7 +304,7 @@ export const fieldGroups = {
            achtunddreissig. */
         appearance: { type: 'string', format: 'long', many: true, title: 'Appearance' },
         personality: { type: 'string', format: 'long', many: true, title: 'Personality' },
-        species: { type: 'string', title: 'Species' },
+        species: { type: 'string', suggest: true, title: 'Species' },
         /**
          * **Was für eine Kreatur das ist** — npc, companion, retainer,
          * pet, summon, follower.
@@ -316,12 +316,12 @@ export const fieldGroups = {
          * ohnehin am Statblock und an der Regel, auf die er zeigt.
          *
          * Ein freies Wort und keine Aufzählung: die Maske schlägt vor, was
-         * an anderen Kreaturen schon dasteht, und eine neue Sorte ist ein
+         * an anderen Kreaturen schon dasteht (`suggest`), und eine neue Sorte ist ein
          * Eintrag und keine Registeränderung. `role` bleibt daneben und
          * meint etwas anderes — der Wirt, die Wache, die Händlerin.
          */
-        kind: { type: 'string', title: 'Kind' },
-        role: { type: 'string', title: 'Role' },
+        kind: { type: 'string', suggest: true, title: 'Kind' },
+        role: { type: 'string', suggest: true, title: 'Role' },
         attitude: {
           type: 'string',
           title: 'Attitude',
@@ -381,14 +381,14 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        system: { type: 'string', title: 'System', default: 'dnd5e' },
+        system: { type: 'string', suggest: true, title: 'System', default: 'dnd5e' },
         size: {
           type: 'string',
           title: 'Size',
           enum: ['winzig', 'klein', 'mittel', 'gross', 'riesig', 'gewaltig'],
         },
-        kind: { type: 'string', title: 'Creature type' },
-        alignment: { type: 'string', title: 'Alignment' },
+        kind: { type: 'string', suggest: true, title: 'Creature type' },
+        alignment: { type: 'string', suggest: true, title: 'Alignment' },
         ac: { type: 'number', title: 'Armour class' },
         acNote: { type: 'string', title: 'AC note' },
         hp: { type: 'number', title: 'Hit points' },
@@ -398,7 +398,7 @@ export const fieldGroups = {
         speed: { type: 'string', format: 'measure', unit: 'ft', title: 'Speed' },
         cr: { type: 'string', title: 'Challenge rating' },
         prof: { type: 'number', title: 'Proficiency bonus' },
-        combatRole: { type: 'string', title: 'Combat role' },
+        combatRole: { type: 'string', suggest: true, title: 'Combat role' },
         senses: { type: 'string', title: 'Senses' },
         /* `languages`, `saves` und `skills` standen hier als freier Text
            und zugleich als Listen an `Proficiencies` — dieselbe Sache
@@ -482,7 +482,7 @@ export const fieldGroups = {
           title: 'Place type',
           enum: ['Reich', 'Stadt', 'Distrikt', 'Gasse', 'Gebäude', 'Raum', 'Wildnis'],
         },
-        environment: { type: 'string', title: 'Environment' },
+        environment: { type: 'string', suggest: true, title: 'Environment' },
         /* `settlementType` fiel weg: `kind` sagt es schon, mit
            `Stadt`/`Distrikt`/`Gebäude`. Zwei Felder für dieselbe Frage
            heissen, dass eines gefüllt wird und das andere gelesen. Wird
@@ -496,7 +496,7 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        kind: { type: 'string', title: 'Kind' },
+        kind: { type: 'string', suggest: true, title: 'Kind' },
         /* `format: 'color'` und nicht bloss ein String: sonst steht in der
            Feldtabelle `#8b5cf6` als Text, und das Feld heisst „Colour",
            ohne je eine zu zeigen. Die Prüfung hat es nicht gesehen, weil
@@ -513,7 +513,7 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        itemType: { type: 'string', title: 'Item type' },
+        itemType: { type: 'string', suggest: true, title: 'Item type' },
         // Two different scales, deliberately kept apart: `rarity` is the 5e
         // magic-item rarity, `availability` is how hard the thing is to buy.
         rarity: { type: 'string', title: 'Rarity',
@@ -523,7 +523,7 @@ export const fieldGroups = {
            schwer er zu *kaufen* ist — im Vault die Hausregel-Leiter
            `Kaufrarität`. Die beiden zusammenzulegen verlöre genau die
            Unterscheidung, die dort jemand sorgfältig gemacht hat. */
-        availability: { type: 'string', title: 'Purchase rarity' },
+        availability: { type: 'string', suggest: true, title: 'Purchase rarity' },
         copperPrice: { type: 'number', title: 'Price in copper' },
         /* Leer, solange das Hausregel-Inventar nicht läuft: dort sagt
            die Stapelgrösse, wie viele auf ein Feld gehen. Kein totes Feld,
@@ -568,7 +568,7 @@ export const fieldGroups = {
       type: 'object',
       properties: {
         damage: { type: 'string', title: 'Damage' },
-        damageType: { type: 'string', title: 'Damage type' },
+        damageType: { type: 'string', suggest: true, title: 'Damage type' },
         range: { type: 'string', format: 'measure', unit: 'ft', title: 'Range' },
         /* **Die Eigenschaften sind Kanten**, keine Aufzählung im Text:
            `hasProperty` zeigt auf gepoolte Regelartikel. Genau darum ging
@@ -585,7 +585,7 @@ export const fieldGroups = {
       type: 'object',
       properties: {
         ac: { type: 'number', title: 'Armour class' },
-        armorType: { type: 'string', title: 'Armour type' },
+        armorType: { type: 'string', suggest: true, title: 'Armour type' },
       },
     },
   },
@@ -594,7 +594,7 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        materialType: { type: 'string', title: 'Material type' },
+        materialType: { type: 'string', suggest: true, title: 'Material type' },
         trades: { type: 'array', title: 'Trades', items: { type: 'string' } },
       },
     },
@@ -697,8 +697,8 @@ export const fieldGroups = {
       properties: {
         backstory: { type: 'string', format: 'long', many: true, title: 'Backstory' },
         player: { type: 'string', title: 'Player' },
-        ancestry: { type: 'string', title: 'Ancestry' },
-        class: { type: 'string', title: 'Class' },
+        ancestry: { type: 'string', suggest: true, title: 'Ancestry' },
+        class: { type: 'string', suggest: true, title: 'Class' },
         level: { type: 'number', title: 'Level', default: 1 },
         /* The 5e proficiency bonus follows from the level, so it is computed
            on read (D8) and never stored — truncated, like every derived value. */
@@ -825,7 +825,7 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        publication: { type: 'string', title: 'Publication' },
+        publication: { type: 'string', suggest: true, title: 'Publication' },
         page: { type: 'string', title: 'Page' },
         anchor: { type: 'string', title: 'Anchor' },
         url: { type: 'string', title: 'URL' },
@@ -854,7 +854,7 @@ export const fieldGroups = {
         display: { type: 'string', format: 'date', title: 'Date' },
         untilSort: { type: 'number', title: 'Sortable value of the end' },
         until: { type: 'string', format: 'date', title: 'Until' },
-        calendar: { type: 'string', title: 'Calendar' },
+        calendar: { type: 'string', suggest: true, title: 'Calendar' },
         duration: { type: 'string', title: 'Duration' },
       },
     },
@@ -1039,8 +1039,8 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        trade: { type: 'string', title: 'Trade' },
-        tool: { type: 'string', title: 'Tool needed' },
+        trade: { type: 'string', suggest: true, title: 'Trade' },
+        tool: { type: 'string', suggest: true, title: 'Tool needed' },
         /* Dieselbe Aufzählungszeile wie an der Fertigkeit. `titles` gibt
            ihr hier den Namen „Check", ohne dass es die Liste zweimal
            gäbe — eine Beschriftung ist kein zweites Feld. */
@@ -1243,7 +1243,7 @@ export const fieldGroups = {
           enum: ['loot', 'encounter', 'name', 'shop', 'event', 'generic'],
           default: 'generic',
         },
-        die: { type: 'string', title: 'Die', default: '1d100' },
+        die: { type: 'string', suggest: true, title: 'Die', default: '1d100' },
         rows: { type: 'array', title: 'Plain entries', items: { type: 'object' } },
         /* Eine Notiz zur Tabelle ist eine Notiz — `Notes.note` kann mehrere
            und lange. Zwei Felder namens „Note" untereinander hiesse, beide

@@ -1525,13 +1525,19 @@ async function seite(datei, warten) {
     const feld = T.REG.interfaces.Creature.schema.properties.kind;
     const node = T.fieldInput(feld, '', { type: 'Creature', key: 'kind' });
     const liste = node.querySelector ? node.querySelector('datalist') : null;
+    /* Der Deckname ist kein Vorschlag: ein Name ist einzeln gemeint, und
+       der eines anderen Artikels gehört nicht in die Auswahl. */
+    const deck = T.REG.interfaces.Identity.schema.properties.cover;
+    const deckNode = T.fieldInput(deck, '', { type: 'Identity', key: 'cover' });
     return {
       frei: !feld.enum && !feld.enumRef,
       vor: liste ? [...liste.options].map((o) => o.getAttribute('value')) : [],
+      deckListe: !!(deckNode.querySelector && deckNode.querySelector('datalist')),
     };
   });
   pruefe('a free word suggests what is already in use',
     vorschlag.frei && vorschlag.vor.includes('npc'), vorschlag);
+  pruefe('a name does not suggest the names of other articles', vorschlag.deckListe === false, vorschlag);
 
   /* ---- Mehrere Werte aus mehreren Listen ----
      Worin jemand geübt ist, kommt aus sechs Listen und steht in **einem**

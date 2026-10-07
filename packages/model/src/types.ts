@@ -127,6 +127,20 @@ export interface PropertySchema {
    */
   alwaysEdit?: boolean;
   /**
+   * **Schlägt vor, was schon dasteht.** Für ein freies Wort, das eine
+   * Sorte benennt (`Creature.kind`, `Item.itemType`): die Eingabe bietet
+   * die Werte an, die andere Artikel in diesem Feld tragen, damit dieselbe
+   * Sorte nicht dreimal anders geschrieben wird. Eine Aufzählung wäre zu
+   * starr — eine neue Sorte soll ein Eintrag sein und keine
+   * Registeränderung.
+   *
+   * **Nur, wo es gesagt ist.** Es galt einmal für jedes freie Textfeld, und
+   * der Deckname bot die Decknamen anderer Artikel an: ein Feld, dessen
+   * Werte einzeln gemeint sind, ist keine Sorte. Angeboten wird ausserdem
+   * nur aus Artikeln, die der Schreibende sehen darf.
+   */
+  suggest?: boolean;
+  /**
    * **Ausgegeben, nicht eingetippt.** Das Feld bekommt keine Eingabe: es
    * wird beim Anlegen gesetzt und ändert sich danach nicht mehr.
    *

@@ -133,6 +133,11 @@ Eine Tatsache, die ein Typ festhält. Ein Feld hat
   sind drei Klicks für eine Zahl. Es steht **am Feld und nur dort**: am Typ
   war es ein Schalter für zwanzig Felder auf einmal, und an `Vitals` sind
   die Trefferpunkte ein Stand, die Zustandsliste aber ein Satz Häkchen,
+- bei einem freien Wort, ob es **vorschlägt, was schon dasteht** (`suggest`)
+  — für eine Sorte wie `Creature.kind` oder `Item.itemType`, damit sie nicht
+  dreimal anders geschrieben wird, und **nicht** für einen Namen: der
+  Deckname bot einmal die Decknamen anderer Artikel an, weil jedes freie
+  Textfeld vorschlug. Angeboten wird nur aus Artikeln, die man sehen darf,
 - **Pflicht oder optional**,
 - vielleicht einen **Standard**, der beim Anlegen gilt und nicht rückwirkend,
 - vielleicht eine **Rechnung** (`derived`), und dann bekommt es keine

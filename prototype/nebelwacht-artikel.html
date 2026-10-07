@@ -1933,10 +1933,17 @@ function assetInput(pd,cur){
  * Bestand und nicht aus einer gepflegten Liste, denn eine gepflegte Liste
  * wäre die Aufzählung, die das Feld bewusst nicht ist.
  */
-function feldVorschlaege(ref){
+/* **Vorgeschlagen wird nur, wo das Feld es sagt** (`suggest`) — eine Sorte
+   wie `Creature.kind`, die dreimal anders geschrieben drei Sorten wäre.
+   Es galt einmal für jedes freie Textfeld, und der Deckname bot die
+   Decknamen anderer Artikel an. Und nur aus Artikeln, die man sehen darf:
+   sonst stünde in der Auswahl, was in der Liste fehlt. */
+function feldVorschlaege(ref,pd){
   if(!ref||!ref.type||!ref.key) return [];
+  if(!(pd&&pd.suggest)) return [];
   var gesehen={};
   ENT.forEach(function(e){
+    if(!articleVisible(e)) return;
     var v=((e.components||{})[ref.type]||{})[ref.key];
     if(typeof v!=="string") return;
     var t=v.trim(); if(!t||t.length>40) return;
@@ -1989,7 +1996,7 @@ function fieldInput(pd,cur,ref){
     var to=el("textarea",{class:"i code"}); to.value=JSON.stringify(cur||{},null,1); return to;
   }
   var frei=el("input",{class:"i",type:"text",value:cur==null?"":String(cur)});
-  var vor=feldVorschlaege(ref);
+  var vor=feldVorschlaege(ref,pd);
   if(vor.length){
     /* `datalist` und kein `select`: getippt wird, was noch nicht dasteht,
        und vorgeschlagen, was schon dasteht. */
@@ -13599,6 +13606,24 @@ function fieldMore(cn,k,within,w,saveC){
     if(imm.value) p.alwaysEdit=true; else delete p.alwaysEdit;
     saveC(); });
   box.appendChild(field("Edited",imm));
+
+  /* Ob die Eingabe vorschlägt, was andere Artikel schon tragen. Für eine
+     Sorte ja (Kind, Item type), für einen Namen nein: der Deckname eines
+     Artikels ist kein Vorschlag für den nächsten. */
+  if(p.type==="string"&&!p.format&&!enumWerte(p)){
+    var vs=el("select",{class:"i"}); if(!w||p.derived||p.readOnly) vs.disabled=true;
+    vs.appendChild(el("option",{value:""},"free text"));
+    vs.appendChild(el("option",{value:"1"},"free text, suggests values in use"));
+    vs.value=p.suggest?"1":"";
+    vs.addEventListener("change",function(){
+      if(vs.value) p.suggest=true; else delete p.suggest;
+      saveC(); });
+    box.appendChild(field("Input",vs));
+    hinweis("**Suggests values in use** offers what other articles you can see "
+      +"already carry in this field \u2014 for a kind of thing (species, item "
+      +"type), so the same kind is not spelled three ways. Leave it off for a "
+      +"name: a cover name is meant one at a time.");
+  }
 
   /* Ein Standardwert gilt beim Anlegen, nicht rückwirkend. Ihn auch auf
      vorhandene Artikel zu schreiben hiesse, still Werte zu setzen, die

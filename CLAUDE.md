@@ -220,8 +220,10 @@ wiederkommen, werden sie neu geschrieben.
   einziges eigenes Feld trugen; eine Kreatur ist jetzt selbst eine Art, und
   `Creature.kind` sagt, was für eine — npc, companion, retainer, pet,
   summon. Das Feld ist **frei** und keine Aufzählung: die Maske schlägt vor,
-  was an anderen Kreaturen schon dasteht, und eine neue Sorte ist ein
-  Eintrag. Braucht eine Sorte eigene Felder, wird sie eine Zeile, die von
+  was an anderen Kreaturen schon dasteht (`suggest: true` am Feld), und
+  eine neue Sorte ist ein Eintrag. **Vorgeschlagen wird nur, wo das Feld
+  es sagt**, und nur aus sichtbaren Artikeln — es galt einmal für jedes
+  freie Textfeld, und der Deckname bot die Decknamen anderer Artikel an. Braucht eine Sorte eigene Felder, wird sie eine Zeile, die von
   `Creature` erbt — bis dahin stehen ihre Sonderregeln am Statblock und an
   der Regel, auf die er zeigt.
 - **Eine Aufzählung, die zwei Felder brauchen, ist eine Registerzeile**
