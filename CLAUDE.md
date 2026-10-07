@@ -123,9 +123,14 @@ wiederkommen, werden sie neu geschrieben.
   es, und nicht umgekehrt. Die Stufen von aussen nach innen: `public` jedes
   Konto, `campaign` jedes Konto mit einer Rolle am Tisch, `players` die
   Spielenden (`player`, `co-gm`, `gm`), `gm` die Leitung (`gm`, `co-gm`).
-  Die beiden Listen nennen **Träger** (`Creature | Party | Faction | Group`),
-  dieselben vier wie `knownBy`, und ein Träger zählt einen Schritt weit auch
-  als seine Gruppe und seine Fraktion. **Eine Fraktion weiss nichts, ihre
+  Die beiden Listen nennen **Träger** (`Creature | Party | Faction`),
+  dieselben drei wie `knownBy`, und ein Träger zählt einen Schritt weit auch
+  als seine Gruppe und seine Fraktion. **Die Gruppe ist das Figurengefüge
+  einer Runde** (`Party`, `partyOf` → `Campaign`, `memberOfParty`); eine
+  andere Konstellation gibt es nicht — `Group`, der Träger von Konten (ein
+  Konto führte sie wie eine Figur), ist weg (A8): zwei Sorten Träger waren
+  zwei Wahrheiten. „Die Spieler dieser Kampagne“
+  sind eine Rolle am Konto, kein Träger. **Eine Fraktion weiss nichts, ihre
   Mitglieder wissen:** `Faction.ranks` ist die Leiter, `memberOf.props.rank`
   die Sprosse, und eine Zuteilung `knownBy` an die Fraktion darf einen
   Mindestrang nennen (`props.rank`) — was der Zirkel weiss, weiss der Novize
@@ -191,7 +196,7 @@ wiederkommen, werden sie neu geschrieben.
 - **Wissen ist eine Information oder ein Bündel davon.** `Information` nennt
   die Felder *eines* Artikels, `Knowledge` bündelt Informationen über
   `includes`, und beide gehen über dieselbe `knownBy`-Kante an Creature,
-  Party, Faction oder Group. Ein Bündel in einem Bündel zählt nicht — ein
+  Party oder Faction. Ein Bündel in einem Bündel zählt nicht — ein
   Schritt weit, sonst reicht eine Freigabe weiter, als jemand gemeint hat.
 - **Die Zahlen einer Kreatur wohnen am Statblock**, auch die eines
   Spielercharakters; `belongsTo` sagt, welcher. `Vitals` bleibt bei der

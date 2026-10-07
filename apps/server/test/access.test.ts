@@ -845,26 +845,30 @@ describe('one account, several characters', () => {
 });
 
 /* ---------------------------------------------------------------------
-   Eine Gruppe von **Menschen**, nicht von Figuren.
+   Wissen an die Gruppe geht an ihre Figuren — und an sonst niemanden.
 
-   Wissen liess sich schon einer Party zuteilen, und jedes Mitglied bekam
-   es über `memberOfParty`. Das deckt die Abenteuergruppe ab und sonst
-   nichts: wer keine Figur hat, wer gerade eine neue baut, wer als Gast
-   zusieht, steht in keiner Party — und soll dasselbe erfahren.
-
-   Die Gruppe ist deshalb ein Halter wie jeder andere, und ein Konto zeigt
-   auf sie wie auf eine Figur. Kein zweites Verfahren.
+   Es gab daneben `Group`, eine Gruppe von Konten: ein Konto führte sie wie
+   eine Figur (`app_user_actor`), und wer keine Figur hatte, las so mit.
+   Seit dem 7.10. (A8) ist die Gruppe das Figurengefüge einer Runde und
+   sonst nichts: wer mitlesen soll, hat eine Figur oder eine Rolle am Tisch
+   (`audience`). Eine zweite Sorte Träger war eine zweite Wahrheit.
    --------------------------------------------------------------------- */
-describe('knowledge shared with a whole group', () => {
-  const gruppe: Entity = {
-    id: 'grp_runde',
-    interfaces: ['Group'],
+describe('knowledge shared with the party', () => {
+  const runde: Entity = {
+    id: 'pa_runde',
+    interfaces: ['Party'],
     name: 'Die Donnerstagsrunde',
     components: {
-      Identity: { name: 'Die Donnerstagsrunde', id: 'group-0001', aliases: [] }, Status: { status: 'ready' },
-      Group: { kind: 'players', purpose: 'Wer an diesem Tisch sitzt' },
+      Identity: { name: 'Die Donnerstagsrunde', id: 'party-0001', aliases: [] }, Status: { status: 'ready' },
     },
     relations: [],
+  };
+  const sela: Entity = {
+    id: 'pc_sela2',
+    interfaces: ['PlayerCharacter'],
+    name: 'Sela',
+    components: { Identity: { name: 'Sela', id: 'pc-0002', aliases: [] }, Status: { status: 'ready' } },
+    relations: [{ id: 'rm', type: 'memberOfParty', to: 'pa_runde', props: {} }],
   };
   const ort: Entity = {
     id: 'o_keller',
@@ -884,11 +888,11 @@ describe('knowledge shared with a whole group', () => {
       Identity: { name: 'Wo der Eingang liegt', id: 'info-0001', aliases: [] }, Status: { status: 'ready' },
       Information: { tier: 'secret', fields: ['Description.description'] },
     },
-    relations: [{ id: 'rb', type: 'knownBy', to: 'grp_runde', props: {} }],
+    relations: [{ id: 'rb', type: 'knownBy', to: 'pa_runde', props: {} }],
   };
 
   async function setup(actorIds: string[]) {
-    const repo = new InMemoryRepository(seedRegistry, [rook, inv, gruppe, ort, info]);
+    const repo = new InMemoryRepository(seedRegistry, [rook, inv, runde, sela, ort, info]);
     const app = buildApp({ repo });
     await addUser(repo, 'Spieler', { actorIds });
     return { app, repo };
@@ -898,13 +902,13 @@ describe('knowledge shared with a whole group', () => {
     return app.inject({ method: 'GET', url: '/api/entities/o_keller', headers: { cookie: keks } });
   };
 
-  it('reaches an account that belongs to the group', async () => {
-    const { app } = await setup(['pc_rook', 'grp_runde']);
+  it('reaches an account whose character is in the party', async () => {
+    const { app } = await setup(['pc_sela2']);
     expect((await lesen(app)).json().components.Description?.description).toMatch(/hinter dem Fass/);
   });
 
   /* Und niemanden sonst — auch nicht jemanden mit einer Figur, die alles
-     andere darf. Ohne diese Hälfte wäre die Gruppe nur Zierrat. */
+     andere darf, und nicht ein Konto ohne Figur. */
   it('and nobody outside it, character or no character', async () => {
     const { app } = await setup(['pc_rook']);
     expect(JSON.stringify((await lesen(app)).json())).not.toContain('hinter dem Fass');
@@ -912,24 +916,11 @@ describe('knowledge shared with a whole group', () => {
     expect(JSON.stringify((await lesen(leer)).json())).not.toContain('hinter dem Fass');
   });
 
-  /* Eine Gruppe ohne Figuren ist der Punkt: „die Spieler dieser Kampagne"
-     ist kein Figurengefüge, und wer noch keine Figur hat, soll trotzdem
-     mitlesen. */
-  it('works for an account that plays nobody at all', async () => {
-    const { app } = await setup(['grp_runde']);
-    expect((await lesen(app)).json().components.Description?.description).toMatch(/hinter dem Fass/);
-  });
-
-  it('is a holder the registry allows, not one smuggled past it', () => {
-    expect(seedRegistry.relations.knownBy.to).toContain('Group');
-    expect(Object.keys(seedRegistry.interfaces.Group.schema?.properties ?? {})).toContain('kind');
-    /* Und sie steht in `rules`: eine Gruppe richtet man ein, bevor gespielt
-       wird. Sie lag bis 2026-09-21 in `play` — die Umbenennung
-       `game` → `rules` hatte hier `play` eingesetzt. */
-    expect(seedRegistry.interfaces.Group.area).toBe('rules');
-    /* Sie trägt kein Blatt und keine Ausrüstung — sie ist keine Party mit
-       anderem Namen. */
-    expect(seedRegistry.interfaces.Group.extends ?? []).not.toContain('Vitals');
-    expect(seedRegistry.relations.carries.from).not.toContain('Group');
+  it('knows three holders and no fourth', () => {
+    expect(seedRegistry.relations.knownBy.to).toEqual(['Creature', 'Party', 'Faction']);
+    expect(seedRegistry.interfaces.Group).toBeUndefined();
+    /* Die Gruppe hängt an ihrer Kampagne, genau einer. */
+    expect(seedRegistry.relations.partyOf.to).toEqual(['Campaign']);
+    expect(seedRegistry.relations.partyOf.cardinality).toBe('one');
   });
 });

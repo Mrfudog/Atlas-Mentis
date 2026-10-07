@@ -12,13 +12,13 @@
  *
  *   Artikel      --knowledge--> Information   (`owned`: stirbt mit dem Artikel)
  *   Knowledge    --includes-->  Information   (ein Bündel)
- *   Information | Knowledge --knownBy--> Creature | Party | Faction | Group
+ *   Information | Knowledge --knownBy--> Creature | Party | Faction
  *
  * Ein **Bündel** ist ein Artikel wie die Information selbst und wird über
  * dieselbe Kante zugeteilt: wer „was ein Kanalgänger weiss" kennt, kennt
  * jede Information darin. Es gab hier einmal einen *Wissensstand*, dem
  * Figuren über `atLevel` angehörten — ein zweiter Weg zu „wer weiss das",
- * obwohl Party und Group schon Empfänger sein konnten. In zwei Jahren hat
+ * obwohl Party schon Empfänger sein konnte. In zwei Jahren hat
  * ihn niemand benutzt.
  *
  * Ein Feld, das keine Information nennt, ist **offen**. Die Umkehrung wäre

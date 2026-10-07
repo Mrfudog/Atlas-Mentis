@@ -257,14 +257,14 @@ export const fieldGroups = {
           format: 'link',
           title: 'Revealed to',
           items: { type: 'string' },
-          target: { interfaces: ['Creature', 'Party', 'Faction', 'Group'] },
+          target: { interfaces: ['Creature', 'Party', 'Faction'] },
         },
         hiddenFrom: {
           type: 'array',
           format: 'link',
           title: 'Hidden from',
           items: { type: 'string' },
-          target: { interfaces: ['Creature', 'Party', 'Faction', 'Group'] },
+          target: { interfaces: ['Creature', 'Party', 'Faction'] },
         },
       },
     },
@@ -1184,25 +1184,6 @@ export const fieldGroups = {
    * zeigt auf sie wie auf eine Figur, und `knownBy` darf sie nennen: ein
    * dritter Halter neben Figur und Party, im selben Verfahren.
    */
-  GroupInfo: {
-    schema: {
-      type: 'object',
-      properties: {
-        /* `purpose` fiel weg: wozu eine Gruppe da ist, steht in ihrer
-           Beschreibung — und `kind` sagt, was für eine sie ist. */
-        /* Wozu sie da ist — damit eine Liste von Gruppen lesbar bleibt,
-           wenn es fünf davon gibt. Aufzählungswerte sind Kampagneninhalt
-           und bleiben deutsch, wo sie welche sind; diese hier sind es
-           nicht, sie beschreiben das Werkzeug. */
-        kind: {
-          type: 'string',
-          title: 'Kind',
-          enum: ['players', 'table', 'guests', 'crew'],
-          default: 'players',
-        },
-      },
-    },
-  },
 
   /* `Access` gab es hier: `userIds` und `role` an einer Figur, für einen
      Tag auch an der Kampagne. Das sind Angaben **über ein Konto**, und sie

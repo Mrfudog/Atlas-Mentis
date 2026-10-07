@@ -633,7 +633,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    *
    * Es hiess einmal `KnowledgeLevel` und war etwas anderes: ein *Stand*, dem
    * Figuren über `atLevel` angehörten. Das war ein zweiter Weg zu „wer weiss
-   * das" — Party und Group konnten schon Empfänger sein — und in zwei Jahren
+   * das" — Party konnte schon Empfänger sein — und in zwei Jahren
    * hat ihn niemand benutzt: kein Artikel, keine Kante.
    *
    * Eigene Felder hat es keine. Was ein Bündel ist, sagen seine Kanten; ein
@@ -829,11 +829,10 @@ export const interfaces: Record<string, InterfaceDef> = {
    * `game`. Play ist, worauf man während der Sitzung schaut; eine Gruppe
    * richtet man vorher ein.
    */
-  Group: {
-    name: 'Group',
-    area: 'rules',
-    label: 'Group',
-    extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Notes'],
-    schema: merge(g.GroupInfo),
-  },
+  /* `Group` stand hier: ein Träger von Konten für „die Spieler dieser
+     Kampagne“, die ein Konto wie eine Figur führte (`app_user_actor`).
+     Seit `campaign_member` ist das eine Rolle; im Register und im Prototyp
+     gab es keine Mitgliedskante. Es gibt eine Gruppe, die von Figuren,
+     und die heisst `Party` (A8, 7.10.).
+     Wanderung: `prototype/migration/gruppe-ist-party.mjs`. */
 };

@@ -444,7 +444,7 @@ und deren `Faction` (`memberOf`) — einen Schritt weit.
 | `hiddenFrom` | Träger | ausdrücklich verborgen |
 
 `hiddenFrom` schlägt `revealedTo` schlägt `audience`. Träger sind `Creature`,
-`Party`, `Faction`, `Group` — dieselben vier wie `knownBy`. Gefragt wird die
+`Party`, `Faction` — dieselben drei wie `knownBy`. Gefragt wird die
 Rolle in **der** Kampagne, der der Artikel gehört (E3); gehört er keiner
 einzelnen, zählt die stärkste Rolle irgendwo. **Vererbt wird nichts.** Wer
 durchfällt, bekommt in der Liste nichts und beim Einzelabruf 404. Die
@@ -476,7 +476,7 @@ flowchart LR
 ```
 Artikel     --knowledge-->  Information        (owned)
 Knowledge   --includes-->   Information        (ein Bündel; ein Schritt weit)
-Information | Knowledge --knownBy--> Creature | Party | Faction | Group
+Information | Knowledge --knownBy--> Creature | Party | Faction
 ```
 
 `Information.fields` nennt, was sie beansprucht: `Typ` (alle Felder des
@@ -579,32 +579,32 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-07: 31 Artikelarten, 21 Grundtypen, 41 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-07: 30 Artikelarten, 21 Grundtypen, 42 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
 | Grundtyp | Felder | genommen von |
 |---|---|---|
 | `Abilities` | `str` `strMod*` `dex` `dexMod*` `con` `conMod*` `int` `intMod*` `wis` `wisMod*` `cha` `chaMod*` `initiative*` `passivePerception*` | `Statblock` |
-| `Description` | `description` | 22 |
+| `Description` | `description` | 21 |
 | `Difficulty` | `difficulty` | `Scene` `Encounter` |
 | `Facts` | `fact` | `Creature` `Item` `Information` |
-| `Identity` | `name` `id` `aliases` `cover` | 22 |
+| `Identity` | `name` `id` `aliases` `cover` | 21 |
 | `Image` | `image` `caption` `alt` | 7 |
 | `Lore` | `lore` | 10 |
-| `Notes` | `note` | 22 |
+| `Notes` | `note` | 21 |
 | `Proficiencies` | `proficient` `expertise` `saves` | `Creature` |
-| `Prose` | `paragraph` | 22 |
+| `Prose` | `paragraph` | 21 |
 | `ReadAloud` | `readaloud` | 6 |
 | `Secrets` | `secret` | 13 |
 | `Source` | `publication` `page` `anchor` `url` | 8 |
-| `Status` | `status` | 22 |
+| `Status` | `status` | 21 |
 | `Tactics` | `tactics` | `Statblock` `Scene` `Encounter` |
-| `Tags` | `tags` | 22 |
+| `Tags` | `tags` | 21 |
 | `Time` | `sort` `display` `untilSort` `until` `calendar` `duration` | `Story` `Quest` `Event` |
 | `Todos` | `items` | 4 |
 | `Vars` | `bindings` | `Creature` `Rule` `Statblock` |
-| `Visibility` | `audience` `revealedTo` `hiddenFrom` | 22 |
+| `Visibility` | `audience` `revealedTo` `hiddenFrom` | 21 |
 | `Vitals` | `hp` `hpTemp` `hitDiceLeft` `deathSuccess` `deathFail` `inspiration` `exhaustion` `conditions` `nat1` | `Creature` |
 
 Ein `*` am Feld heisst gerechnet.
@@ -623,7 +623,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` | `controls` `regards` | `memberOf` `questGiver` `features` `knownBy` `regards` | — |
 | `Item` | `Image` `Source` `Lore` `Secrets` `Facts` | `itemType` `rarity` `availability` `copperPrice` `stackSize` `weight` `rows` `width*` `height*` `cells*` | `hasProperty` | `holds` `needs` `yields` `loot` | — |
 | `Material` | `Item` | `materialType` `trades` | `hasProperty` | `holds` `needs` `yields` `loot` | — |
-| `Party` | `Image` `Lore` | `level` `motto` `day` `watch` `sinceRation` `sinceLight` `actions` | `carries` `crafting` `regards` | `memberOfParty` `knownBy` `participates` `regards` | full |
+| `Party` | `Image` `Lore` | `level` `motto` `day` `watch` `sinceRation` `sinceLight` `actions` | `partyOf` `carries` `crafting` `regards` | `memberOfParty` `knownBy` `participates` `regards` | full |
 | `Place` | `Image` `Lore` `ReadAloud` `Secrets` | `kind` `environment` `state` `arrival` | `partOf` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | full |
 | `PlayerCharacter` | `Creature` | `backstory` `ancestry` `class` `level` `proficiency*` | `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | — |
 | `Weapon` | `Item` | `damage` `damageType` `range` | `hasProperty` | `holds` `needs` `yields` `loot` | — |
@@ -632,7 +632,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Campaign` | `Story` | — | `partOf` `followsFrom` `happensAt` `features` `onMap` `loot` `tableFor` `activates` | `partOf` `followsFrom` `mapOf` | full |
+| `Campaign` | `Story` | — | `partOf` `followsFrom` `happensAt` `features` `onMap` `loot` `tableFor` `activates` | `partOf` `partyOf` `followsFrom` `mapOf` | full |
 | `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `involves` | — | — |
 | `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | full |
 | `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `followsFrom` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `followsFrom` `mapOf` | — |
@@ -644,7 +644,6 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
 | `Feat` | `Rule` | `prerequisite` `repeatable` | — | `composedOf` `hasProperty` `loot` | — |
-| `Group` | — | `kind` | — | `knownBy` | — |
 | `Information` | `Secrets` `Facts` | `fields` `tier` | `knownBy` | `knowledge` `includes` `loot` | — |
 | `Inventory` | — | `capacity` `copper` `grid` `zones` | `holds` | `carries` | full |
 | `Knowledge` | — | — | `knownBy` `includes` | — | — |
@@ -692,7 +691,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `instanceOf` | Statblock → Statblock | ja | — | — |
 | `involves` | Event → * |  | — | — |
 | `knowledge` | * → Information |  | owned | — |
-| `knownBy` | Information \| Knowledge → Creature \| Party \| Faction \| Group |  | — | `rank` |
+| `knownBy` | Information \| Knowledge → Creature \| Party \| Faction |  | — | `rank` |
 | `livesIn` | Creature → Place |  | — | — |
 | `loot` | Encounter \| Story \| Quest → Item \| Information \| Feat \| Skill |  | — | `qty` `chance` |
 | `mapOf` | Map → Place \| Story |  | — | — |
@@ -705,6 +704,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `owes` | Creature → Creature |  | — | — |
 | `participates` | Encounter → Creature \| Statblock \| Party |  | — | `label` `init` `hp` `hpMax` `ally` `conditions` `note` |
 | `partOf` | Place \| Story \| Quest → Place \| Story |  | — | — |
+| `partyOf` | Party → Campaign | ja | — | — |
 | `placed` | Board → * |  | — | `x` `y` `w` `h` `view` `z` `locked` `note` |
 | `questAbout` | Quest → * |  | — | — |
 | `questGiver` | Quest → Creature \| Faction |  | — | — |
