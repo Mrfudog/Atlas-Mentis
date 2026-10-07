@@ -1,9 +1,12 @@
+> [!note] Ideen ohne Nummer
+> Was hier eine Nummer bekommen hat, steht dabei (`→ REQ-…`); die Nummern leben in [[Requirements]], ihr Stand in [[Umsetzung]].
+
 # Preparation
 
 # Play
 ## Recording
-Record audio, possibly warn if indistinguishable
-Process, transcribe & summarize
+Record audio, possibly warn if indistinguishable → REQ-196
+Process, transcribe & summarize → REQ-197, REQ-198
 
 # Map
 ## Preparation
@@ -36,14 +39,14 @@ Process, transcribe & summarize
 - relevant articles (group, players, villains, locations, systems/rules)
 
 # Monsters
-- statblock creator/importer from template
-- feat/trait reuse and suggestion
-- variants
+- statblock creator/importer from template → Vorlage und Instanz (steht, Datenmodell §7)
+- feat/trait reuse and suggestion → `composedOf` (steht)
+- variants → REQ-008
 
 # Faction
 - visualization of relations/hierarchy
 - relations with context (types/sentiment)
-- motto, lore, signs, language, colors, emblem, ranks
+- motto, lore, signs, language, colors, emblem, ranks → ranks: REQ-203 (steht); motto, lore, colour: `Faction` trägt sie
 
 # NPCs
 - relation manager (mainly towards players)

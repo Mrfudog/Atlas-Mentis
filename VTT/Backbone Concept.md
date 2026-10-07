@@ -1,10 +1,15 @@
 ---
 tags: [vtt, architecture, backbone, concept]
-status: draft
+status: superseded
+superseded_by: https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Datenmodell.md
 version: 0.3
 updated: 2026-09-05
 ---
 # Backbone Concept
+
+> [!warning] Überholt seit 2026-10-07
+> Das Datenmodell, wie es heute gilt, steht im Repo Nebelwacht: [Datenmodell.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Datenmodell.md) (Regeln A/T/F/K/E/V, Vorlage und Instanz, Sichtbarkeit, Wissen, die erzeugte Registerübersicht), dazu [Begriffe.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Begriffe.md) (das Warum) und [Durchgang.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Durchgang.md) (der Abgleich mit diesem Konzept, A1–A16). Diese Seite bleibt als Herkunft der Entscheidungen stehen und wird nicht mehr nachgeführt.
+
 
 The contract every area builds on. Complements [[30_Data_Architecture]] (tiers, vocabulary) and [[Data Definitions]] (living registry); this note explains the *mechanisms* and why they exist. Vocabulary follows [[Glossary]]. Requirements: [[Requirements by Area#Content Backbone]].
 

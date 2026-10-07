@@ -1,8 +1,8 @@
 ---
 tags: [vtt, decisions, architecture]
 status: living
-version: 0.5
-updated: 2026-09-05
+version: 0.6
+updated: 2026-10-07
 ---
 
 # Decision Log
@@ -127,7 +127,31 @@ Fine-grained decisions of the compound data model. Source and schemas: [[Schemas
 | D17 | print & export | output generation reuses the display system: the **facet** defines what appears (item card = e.g. `short`+`image`, character sheet = `full`), an additional **medium** parameter on `renderer_def` (screen · print · pdf · image) defines how it is drawn; an **Export engine** renders facets through renderer templates to PDF/PNG; page assembly (n cards per sheet, margins, bleed) is export configuration, not a renderer concern | **decided** 2026-09-05 |
 
 
+## Modellentscheidungen aus dem Bau (2026-09-19 bis 2026-10-07)
+
+Seit dem Prototyp werden Modellentscheidungen dort festgehalten, wo das Modell steht: [Datenmodell.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Datenmodell.md) (die Regel), [Begriffe.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Begriffe.md) (das Warum), [Durchgang.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Durchgang.md) (der Abgleich A1–A16 mit diesem Konzept). Die wichtigsten, damit dieses Log vollständig bleibt:
+
+| ID | Topic | Decision | Status |
+|---|---|---|---|
+| D25 | Prototyp vor Stack | Artikel-Engine zuerst als Artefakt, dann Angular + Fastify + Postgres (AD-26) | **decided** 2026-09-19 |
+| D27 | Komponenten | keine Komponenten neben Typen: eine Art trägt ihre Felder, Geteiltes wohnt in einem Obertyp, `extends` ist ein Array; `requires`/`allows` entfallen (ersetzt D2, D5) | **decided** 2026-09-20 |
+| D28 | Register steht einmal | `packages/registry` ist die einzige Quelle; `emit-seed` schreibt den Prototyp | **decided** 2026-09-20 |
+| D29 | Textblöcke | ein Block ist ein Feld mit `many` + `long`; die Wissensfreigabe hängt an der Eintrags-Id | **decided** 2026-09-21 |
+| D30 | Bezeichner | `Identity.id` = Typ-Nummer, beim Anlegen vergeben, danach unverändert (präzisiert D10/D15) | **decided** 2026-09-21 |
+| D31 | Sichtbarkeit | drei Felder (`audience`, `revealedTo`, `hiddenFrom`), `public` als Vorgabe, keine Vererbung (ersetzt D7/REQ-156 bis auf Weiteres) | **decided** 2026-09-30 |
+| D32 | Rollen | die Rolle am Tisch steht am Konto je Kampagne (`campaign_member`), nie im Artikel; wem ein Artikel gehört, sagt die Ebene | **decided** 2026-10-01 |
+| D33 | Statblock | ohne Statblock keine Zahlen; Vorlage und Instanz: eine Instanz je Kreatur speichert nur Abweichungen (`instanceOf`, `resolveInstance`) | **decided** 2026-10-01 |
+| D34 | Betrieb | `preprod` → dev, `main` → prod auf Hetzner; nur CI baut das Abbild; Durchstich gegen Postgres | **decided** 2026-10-01 |
+| D35 | A1 Spieler am Konto | `PlayerCharacter.player` und `playedBy` entfallen; wer eine Figur führt, steht in `app_user_actor` | **decided** 2026-10-07 |
+| D36 | A5 Wörter statt Zeilen | `Arc`, `Chapter` → `Story.kind`; `Era`, `Cataclysm`, `Milestone` → `Event.kind`; `Consumable` → `Item.itemType` | **decided** 2026-10-07 |
+| D37 | A3 Regelartikel | Zustände und Reisehandlungen sind `Rule`-Artikel (`kind` condition / travel), keine Einstellung | **decided** 2026-10-07 |
+| D38 | A6 Das Token | wo die Gruppe ist, sagt ihr Token auf der feinsten Karte; gröbere Karten bilden es durch den Rahmen ab; `Party.at` entfällt | **decided** 2026-10-07 |
+| D39 | A7 Fraktionsränge | eine Fraktion weiss nichts, ihre Mitglieder wissen: `Faction.ranks`, `memberOf.rank`, Mindestrang an `knownBy` (REQ-203) | **decided** 2026-10-07 |
+| D40 | A10/A12 | `Statblock.kind` heisst `creatureType`; `regards` ohne `PlayerCharacter` | **decided** 2026-10-07 |
+| D41 | Arbeitsweise | ein Zweig je Anliegen, Pull Request nach `preprod` (automatisch gemergt), nach `main` nur mit Freigabe; kleine Commits; Doku im selben Commit | **decided** 2026-10-07 |
+
 ## Changelog
+- **0.6** (2026-10-07): D25–D41 aus dem Bau nachgetragen; Modellentscheidungen leben seither im Repo Nebelwacht.
 - **0.5** (2026-09-05): AD-19 board-first v1; D16 placement kinds; D17 print & export via facets/media.
 - **0.4** (2026-09-04): AD-01 tech confirmed via D0. New D-series section consolidating the data-model decisions D0–D10 ([[Schemas]]) with post-walkthrough statuses (D1/D3/D4/D6 decided) and D11–D15 from the boards/display session.
 - **0.3** (2026-08-31): AD-16 decided, AD-18 added.

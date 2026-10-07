@@ -1,12 +1,17 @@
 ---
 tags: [vtt, data, registry]
-status: living
+status: superseded
+superseded_by: https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Datenmodell.md
 version: 0.7
 updated: 2026-09-05
 supersedes: 30_Data_Architecture §2 (vocabulary), §5 (compositions); 32_Data_Definitions v0.3; v0.4 §0/§7 (entity_type/props-bag model → compound model)
 ---
 
 # Data Definitions Registry
+
+> [!warning] Überholt seit 2026-10-07
+> Das Datenmodell, wie es heute gilt, steht im Repo Nebelwacht: [Datenmodell.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Datenmodell.md) (Regeln A/T/F/K/E/V, Vorlage und Instanz, Sichtbarkeit, Wissen, die erzeugte Registerübersicht), dazu [Begriffe.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Begriffe.md) (das Warum) und [Durchgang.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Durchgang.md) (der Abgleich mit diesem Konzept, A1–A16). Diese Seite bleibt als Herkunft der Entscheidungen stehen und wird nicht mehr nachgeführt.
+
 
 Single source of truth for every defined data element. Extend this file whenever a new entity, property type, relation, composition, projection, engine or event is introduced; record it in [[#10. Changelog]]. Origin column: **M** = named in the requirements sessions, **A** = added because a web platform needs it. Mechanisms and rationale: [[Backbone Concept]]. Terms: [[Glossary]].
 

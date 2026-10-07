@@ -1,0 +1,26 @@
+filters:
+  and:
+    - file.inFolder("VTT")
+    - file.ext == "md"
+views:
+  - type: table
+    name: Dokumente
+    order:
+      - file.name
+      - status
+      - version
+      - updated
+    sort:
+      - property: status
+        direction: ASC
+      - property: file.name
+        direction: ASC
+  - type: table
+    name: Überholt
+    filters:
+      and:
+        - status == "superseded"
+    order:
+      - file.name
+      - superseded_by
+      - updated

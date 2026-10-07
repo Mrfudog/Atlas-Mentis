@@ -1,12 +1,17 @@
 ---
 tags: [vtt, data, schema]
-status: living
+status: superseded
+superseded_by: https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Datenmodell.md
 version: 1.2
 updated: 2026-09-05
 related: [[[Data Definitions]], [[35_Data_Architecture_Overview]], [[Decision Log]]]
 ---
 
 # Schemas
+
+> [!warning] Überholt seit 2026-10-07
+> Das Datenmodell, wie es heute gilt, steht im Repo Nebelwacht: [Datenmodell.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Datenmodell.md) (Regeln A/T/F/K/E/V, Vorlage und Instanz, Sichtbarkeit, Wissen, die erzeugte Registerübersicht), dazu [Begriffe.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Begriffe.md) (das Warum) und [Durchgang.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Durchgang.md) (der Abgleich mit diesem Konzept, A1–A16). Diese Seite bleibt als Herkunft der Entscheidungen stehen und wird nicht mehr nachgeführt.
+
 
 Machine-readable counterpart to [[Data Definitions]]. Every component, interface, relation, projection and event has one entry here; change this file when the registry changes and log it in [[#8. Changelog]]. Format: JSON Schema draft 2020-12; `$id` values are the registry keys (`component/…`, `value/…`, `iface/…`, `rel/…`, `event/…`).
 
