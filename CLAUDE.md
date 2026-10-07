@@ -516,9 +516,36 @@ Vitest bildet `@nw/model` und `@nw/registry` auf den Quelltext ab (siehe
 
 ## Arbeitsweise
 
-Zweige `feature/*` → Pull Request nach `preprod` → `main` nur vorspulen.
-Anforderungen leben im Vault, Issues bilden ab, was gerade gebaut wird. Siehe
-[CONTRIBUTING.md](CONTRIBUTING.md).
+**Je Anliegen ein Zweig `feature/<anliegen>`**, abgezweigt von `preprod`.
+Nicht alles auf einem Sitzungszweig sammeln. Ist das Anliegen fertig
+(Tests, Lint, Durchstich bei Migrationen, Doku nachgezogen): Pull Request
+nach `preprod` **und selbst mergen**. Ein Pull Request nach `main` wird
+geöffnet, wenn ein Feature ganz steht oder eine Version reif ist — den
+merged die Verwaltung, nicht Claude. Commits klein und je eine Sache;
+Nachricht deutsch, sagt **warum**.
+
+**Die Dokumentation läuft mit, immer.** Eine Modelländerung ohne
+nachgezogenes [docs/Datenmodell.md](docs/Datenmodell.md),
+[docs/Begriffe.md](docs/Begriffe.md) und „How it works" ist nicht fertig.
+Anforderungen, Entscheidungen und Todos werden festgehalten, wo sie
+hingehören (unten); was nichts mehr sagt, wird gelöscht — im Zweifel
+fragen, und vorher abschätzen, ob jemand es noch braucht.
+
+**Ein Kommentar im Code nennt die Anforderung**, die er umsetzt (`REQ-174`)
+oder die Entscheidung (`D8`, `A7`), wenn es eine gibt — dann führt der Weg
+vom Code zur Begründung ohne Suchen.
+
+**Wo was festgehalten wird:**
+
+| Was | Wo |
+|---|---|
+| Anforderungen (REQ-Nummern, Prio, Stand) | der Vault `Mrfudog/atlas-mentis`, `VTT/Requirements.md` — mit Obsidian-Mitteln: `[[Verweise]]`, Auszüge `![[…]]`, Bases für Übersichten |
+| was davon hier steht | [docs/Anforderungen.md](docs/Anforderungen.md), erzeugt von `anforderungen.mjs` |
+| Entscheidungen zum Modell | [docs/Durchgang.md](docs/Durchgang.md) (Abgleich, mit Entscheidungsspalte), [docs/Begriffe.md](docs/Begriffe.md) (das Warum) |
+| offene Arbeit | [docs/Roadmap.md](docs/Roadmap.md) „Als Nächstes"; Issues für das, was gerade gebaut wird |
+| Konzepte | [docs/Datenmodell.md](docs/Datenmodell.md) — **mit Grafiken** (Mermaid), wo ein Bild mehr sagt als eine Liste |
+
+Siehe [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Ein Push auf `preprod` rollt nach `dev.atlas.…` aus, einer auf `main` nach
 der Produktion — beide auf Hetzner, aus einem Abbild, das **nur CI baut**,
