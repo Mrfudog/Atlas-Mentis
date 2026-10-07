@@ -3,18 +3,18 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-07. 58 Schnittstellen, 41 Kantenarten.
+Stand 2026-10-07. 52 Schnittstellen, 41 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
-steht kursiv dabei — ohne das liest man bei `Consumable` „verlangt
-nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
+steht kursiv dabei — ohne das liest man bei `Weapon` drei Waffenfelder
+und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ---
 
 ## World
 
-*Wer und was es gibt.* — 11 Arten.
+*Wer und was es gibt.* — 10 Arten.
 
 ### Armor
 
@@ -103,52 +103,6 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
-
-### Consumable
-
-`Consumable` · erbt von `Item` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts`
-
-**Geerbte Felder**
-
-- *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-- *`Prose`* — `paragraph` *long*
-- *`Notes`* — `note` *long*
-- *`Status`* — `status` *State: idea | prepared | ready*
-- *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
-- *`Tags`* — `tags` *tags*
-- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
-- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`Lore`* — `lore` *long*
-- *`Secrets`* — `secret` *long*
-- *`Facts`* — `fact` *long*
-
-**Kanten von hier**
-
-- `hasProperty` → Rule — „has property"
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- Inventory — `holds` → „held in"
-- Quest — `questAbout` → „concerned by"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Recipe — `needs` → „used in"
-- Recipe — `yields` → „made by"
-- Board — `placed` → „lies on"
-- Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - * — `variantOf` → „has variants"
@@ -593,58 +547,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 ## History
 
-*Was passiert und passiert ist.* — 11 Arten.
-
-### Arc
-
-`Arc` · erbt von `Story` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud` ← `Notes`
-
-**Geerbte Felder**
-
-- *`Story`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `summary` *long*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-- *`Prose`* — `paragraph` *long*
-- *`Status`* — `status` *State: idea | prepared | ready*
-- *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
-- *`Tags`* — `tags` *tags*
-- *`Todos`* — `items` *array*
-- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `calendar` *string*, `duration` *string*
-- *`Lore`* — `lore` *long*
-- *`Secrets`* — `secret` *long*
-- *`ReadAloud`* — `readaloud` *long*
-- *`Notes`* — `note` *long*
-
-**Kanten von hier**
-
-- `partOf` → Place | Story — „part of"
-- `describedIn` → Article — „described in"
-- `followsFrom` → Story — „follows"
-- `happensAt` → Place — „happens at"
-- `features` → Creature | Statblock | Faction — „features"
-- `knowledge` → Information — „knowledge about it"
-- `onMap` → Map — „fought on"
-- `loot` → Item | Information | Feat | Skill — „loot"
-- `tableFor` → Table — „rolls on"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- Place | Story | Quest — `partOf` → „contains"
-- Story — `followsFrom` → „followed by"
-- Quest — `questAbout` → „concerned by"
-- Map — `mapOf` → „maps"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
+*Was passiert und passiert ist.* — 6 Arten.
 
 ### Campaign
 
@@ -652,7 +555,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Story`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `summary` *long*
+- *`Story`* — `kind` *string*, `played` *string*, `summary` *long*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
@@ -698,180 +601,13 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Gezeichnet** (aus `Campaign`): `description`, `fields`, `stack`, `members`, `quests`, `timeline`, `prep`, `prose`, `relations`
 
-### Cataclysm
-
-`Cataclysm` · erbt von `Event` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud`
-
-**Geerbte Felder**
-
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-- *`Prose`* — `paragraph` *long*
-- *`Notes`* — `note` *long*
-- *`Status`* — `status` *State: idea | prepared | ready*
-- *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
-- *`Tags`* — `tags` *tags*
-- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `calendar` *string*, `duration` *string*
-- *`Lore`* — `lore` *long*
-- *`Secrets`* — `secret` *long*
-- *`ReadAloud`* — `readaloud` *long*
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `involves` → * — „involves"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- Quest — `questAbout` → „concerned by"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
-
-### Chapter
-
-`Chapter` · erbt von `Story` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud` ← `Notes`
-
-**Geerbte Felder**
-
-- *`Story`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `summary` *long*
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-- *`Prose`* — `paragraph` *long*
-- *`Status`* — `status` *State: idea | prepared | ready*
-- *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
-- *`Tags`* — `tags` *tags*
-- *`Todos`* — `items` *array*
-- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `calendar` *string*, `duration` *string*
-- *`Lore`* — `lore` *long*
-- *`Secrets`* — `secret` *long*
-- *`ReadAloud`* — `readaloud` *long*
-- *`Notes`* — `note` *long*
-
-**Kanten von hier**
-
-- `partOf` → Place | Story — „part of"
-- `describedIn` → Article — „described in"
-- `followsFrom` → Story — „follows"
-- `happensAt` → Place — „happens at"
-- `features` → Creature | Statblock | Faction — „features"
-- `knowledge` → Information — „knowledge about it"
-- `onMap` → Map — „fought on"
-- `loot` → Item | Information | Feat | Skill — „loot"
-- `tableFor` → Table — „rolls on"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- Place | Story | Quest — `partOf` → „contains"
-- Story — `followsFrom` → „followed by"
-- Quest — `questAbout` → „concerned by"
-- Map — `mapOf` → „maps"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
-
-### Era
-
-`Era` · erbt von `Event` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud`
-
-**Geerbte Felder**
-
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-- *`Prose`* — `paragraph` *long*
-- *`Notes`* — `note` *long*
-- *`Status`* — `status` *State: idea | prepared | ready*
-- *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
-- *`Tags`* — `tags` *tags*
-- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `calendar` *string*, `duration` *string*
-- *`Lore`* — `lore` *long*
-- *`Secrets`* — `secret` *long*
-- *`ReadAloud`* — `readaloud` *long*
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `involves` → * — „involves"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- Quest — `questAbout` → „concerned by"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
-
 ### Event
 
 `Event` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud`
 
-**Geerbte Felder**
+**Eigene Felder**
 
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-- *`Prose`* — `paragraph` *long*
-- *`Notes`* — `note` *long*
-- *`Status`* — `status` *State: idea | prepared | ready*
-- *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction | Group*, `hiddenFrom` *link → Creature | Party | Faction | Group*
-- *`Tags`* — `tags` *tags*
-- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `calendar` *string*, `duration` *string*
-- *`Lore`* — `lore` *long*
-- *`Secrets`* — `secret` *long*
-- *`ReadAloud`* — `readaloud` *long*
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `involves` → * — „involves"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- Quest — `questAbout` → „concerned by"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
-
-### Milestone
-
-`Milestone` · erbt von `Event` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud`
+- `kind` *string*
 
 **Geerbte Felder**
 
@@ -966,7 +702,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Story`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `summary` *long*
+- *`Story`* — `kind` *string*, `played` *string*, `summary` *long*
 - *`Tactics`* — `tactics` *long*
 - *`Difficulty`* — `difficulty` *1…20*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
@@ -1023,7 +759,7 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Story`* — `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `summary` *long*
+- *`Story`* — `kind` *string*, `played` *string*, `summary` *long*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Status`* — `status` *State: idea | prepared | ready*
@@ -1068,13 +804,13 @@ nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.
 
 **Gezeichnet** (aus `Session`): `live`, `prep`, `description`, `fields`, `prose`, `relations`
 
-### Story — *abstrakt*
+### Story
 
 `Story` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud` ← `Notes`
 
 **Eigene Felder**
 
-- `kind` *campaign | arc | chapter | session | scene*, `played` *string*, `summary` *long*
+- `kind` *string*, `played` *string*, `summary` *long*
 
 **Geerbte Felder**
 

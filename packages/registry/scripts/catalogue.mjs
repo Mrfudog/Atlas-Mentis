@@ -146,8 +146,8 @@ z(`Stand ${new Date().toISOString().slice(0, 10)}. ` +
 z();
 z('Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie');
 z('erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes');
-z('steht kursiv dabei — ohne das liest man bei `Consumable` „verlangt');
-z('nichts" und übersieht, dass er über `Item` die halbe Kampagne trägt.');
+z('steht kursiv dabei — ohne das liest man bei `Weapon` drei Waffenfelder');
+z('und übersieht, dass sie über `Item` die halbe Kampagne trägt.');
 z();
 
 for (const [key, titel, wozu] of areas()) {

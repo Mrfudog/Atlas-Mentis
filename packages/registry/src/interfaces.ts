@@ -447,12 +447,9 @@ export const interfaces: Record<string, InterfaceDef> = {
     schema: merge(g.MaterialInfo),
   },
 
-  Consumable: {
-    name: 'Consumable',
-    area: 'world',
-    label: 'Consumable',
-    extends: ['Item'],
-  },
+  /* `Consumable` war hier eine Art ohne ein einziges eigenes Feld — ein
+     Verbrauchsgut ist ein Wert von `Item.itemType` (Abgleich A5, Regel T2,
+     7.10.). Wanderung: `prototype/migration/arten-werden-woerter.mjs`. */
 
   Party: {
     name: 'Party',
@@ -500,15 +497,18 @@ export const interfaces: Record<string, InterfaceDef> = {
   },
 
   /**
-   * Abstract for the same reason as `Creature`: campaign, arc, chapter,
-   * session and scene differ in grain, not in kind. Declaring the edges and
-   * the shown fields once here keeps every rung of the ladder in step.
+   * Die Sprosse der Erzählung. Kampagne, Sitzung und Szene sind eigene
+   * Arten, weil sie eigene Felder und Ansichten tragen; **Arc und Kapitel
+   * sind Wörter** in `Story.kind` (Abgleich A5, Regel T2, 7.10.) — sie
+   * trugen als Zeilen kein eigenes Feld und keine Kante. Darum ist `Story`
+   * nicht mehr abstrakt: ein Arc *ist* eine Story mit `kind: 'arc'`.
+   * Braucht eine Sprosse einmal eigene Felder, wird sie eine Zeile, die von
+   * `Story` erbt — wie `Session`. Die Hierarchie trägt `partOf`.
    */
   Story: {
     name: 'Story',
     area: 'history',
     label: 'Story',
-    abstract: true,
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time', 'Lore', 'Secrets', 'ReadAloud', 'Notes'],
     schema: merge(g.StoryInfo),
   },
@@ -546,20 +546,6 @@ export const interfaces: Record<string, InterfaceDef> = {
         { id: 'k-r', el: 'relations' },
       ],
     },
-  },
-
-  Arc: {
-    name: 'Arc',
-    area: 'history',
-    label: 'Arc',
-    extends: ['Story'],
-  },
-
-  Chapter: {
-    name: 'Chapter',
-    area: 'history',
-    label: 'Chapter',
-    extends: ['Story'],
   },
 
   Session: {
@@ -778,38 +764,18 @@ export const interfaces: Record<string, InterfaceDef> = {
    * ohne das ist es kein Ereignis, sondern eine Notiz. Sortiert wird nach
    * `Time.sort`, gelesen wird `Time.display`.
    */
+  /* `Story` ist die Geschichte des *Spiels* — Kampagne, Arc, Kapitel,
+     Sitzung, Szene. Was der Welt widerfuhr, bevor jemand sie bespielte,
+     hängt dagegen an `Event`: eine Ära dauert Jahrhunderte, ein Kataklysmus
+     Tage, ein Meilenstein einen Nachmittag. `Era`, `Cataclysm` und
+     `Milestone` waren drei Zeilen ohne ein eigenes Feld — jetzt sind sie
+     Wörter in `Event.kind` (Abgleich A5, Regel T2, 7.10.). */
   Event: {
     name: 'Event',
     area: 'history',
     label: 'Event',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Time', 'Lore', 'Secrets', 'ReadAloud'],
-  },
-
-  /* ---------- Weltgeschichte ----------
-     `Story` ist die Geschichte des *Spiels* — Kampagne, Arc, Kapitel,
-     Sitzung, Szene. Was der Welt widerfuhr, bevor jemand sie bespielte,
-     hängt dagegen an `Event`: eine Ära dauert Jahrhunderte, ein Kataklysmus
-     Tage, ein Meilenstein einen Nachmittag. Drei Zeilen, keine Codeänderung
-     — genau das ist die Behauptung, die das Rückgrat macht. */
-  Era: {
-    name: 'Era',
-    area: 'history',
-    label: 'Era',
-    extends: ['Event'],
-  },
-
-  Cataclysm: {
-    name: 'Cataclysm',
-    area: 'history',
-    label: 'Cataclysm',
-    extends: ['Event'],
-  },
-
-  Milestone: {
-    name: 'Milestone',
-    area: 'history',
-    label: 'Milestone',
-    extends: ['Event'],
+    schema: merge(g.EventInfo),
   },
 
   /**
