@@ -18,7 +18,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "emit-seed": "node scripts/emit-seed.mjs",
-    "catalogue": "node scripts/catalogue.mjs"
+    "catalogue": "node scripts/catalogue.mjs",
+    "anforderungen": "node scripts/anforderungen.mjs"
   },
   "dependencies": {
     "@nw/model": "workspace:*"

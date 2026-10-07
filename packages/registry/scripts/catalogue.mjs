@@ -13,7 +13,7 @@
 
   Aufruf: node scripts/catalogue.mjs [zieldatei]
 */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { areaOf as areaVon, typeChain } from '@nw/model';
@@ -209,3 +209,113 @@ for (const [key, titel, wozu] of areas()) {
 mkdirSync(dirname(ZIEL), { recursive: true });
 writeFileSync(ZIEL, `${zeilen.join('\n')}\n`, 'utf8');
 console.log(`geschrieben: ${ZIEL} (${zeilen.length} Zeilen)`);
+
+/* ---------- die Übersicht im Konzept ----------
+   `docs/Datenmodell.md` sagt, was gilt, und zeigt in einem Abschnitt, was
+   das Register heute trägt — je Art, je Kante, je Aufzählung eine Zeile.
+   Der Abschnitt steht zwischen zwei Marken und wird hier geschrieben; eine
+   Übersicht, die jemand abtippt, stimmt am Tag ihrer Entstehung und danach
+   nie wieder. Fehlen die Marken, bleibt die Datei unberührt und es wird
+   gesagt. */
+const KONZEPT = resolve(join(HIER, '..', '..', '..', 'docs', 'Datenmodell.md'));
+const GRUND = ['Identity', 'Status', 'Description', 'Visibility', 'Tags', 'Notes', 'Prose'];
+const code = (xs) => xs.map((x) => `\`${x}\``).join(' ');
+const eigeneFelder = (n) => Object.keys(R.interfaces[n]?.schema?.properties ?? {});
+const nimmt = (n) => Object.keys(R.interfaces).filter((m) => (R.interfaces[m].extends ?? []).includes(n));
+
+function uebersicht() {
+  const u = [];
+  const w = (s = '') => u.push(s);
+  const arten = Object.keys(R.interfaces);
+  const abstrakt = arten.filter((n) => R.interfaces[n].abstract).sort();
+  const konkret = arten.filter((n) => !R.interfaces[n].abstract);
+  w(`Stand ${new Date().toISOString().slice(0, 10)}: ${konkret.length} Artikelarten, ` +
+    `${abstrakt.length} Grundtypen, ${Object.keys(R.relations).length} Kantenarten, ` +
+    `${Object.keys(R.enums ?? {}).length} Aufzählungszeilen, ` +
+    `${Object.keys(R.units ?? {}).length} Einheiten, ${Object.keys(R.vars ?? {}).length} Variablen.`);
+  w();
+  w('### Grundtypen');
+  w();
+  w('| Grundtyp | Felder | genommen von |');
+  w('|---|---|---|');
+  for (const n of abstrakt) {
+    const f = eigeneFelder(n).map((k) => k + (R.interfaces[n].schema.properties[k].derived ? '*' : ''));
+    const wer = nimmt(n);
+    w(`| \`${n}\`${R.interfaces[n].area ? ` (${R.interfaces[n].area})` : ''} | ${code(f) || '—'} | ${wer.length <= 3 ? code(wer) : wer.length} |`);
+  }
+  w();
+  w('Ein `*` am Feld heisst gerechnet.');
+  w();
+  w('### Artikelarten');
+  w();
+  w('Die Grundausstattung (`' + GRUND.join('`, `') + '`) nimmt jede Art und steht nicht dabei; ' +
+    '„erbt" nennt die übrigen direkten Obertypen.');
+  for (const [key, titel] of areas()) {
+    const hier = konkret.filter((n) => areaOf(n) === key).sort();
+    if (!hier.length) continue;
+    w();
+    w(`**${titel}**`);
+    w();
+    w('| Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |');
+    w('|---|---|---|---|---|---|');
+    for (const n of hier) {
+      const d = R.interfaces[n];
+      const erbt = (d.extends ?? []).filter((x) => !GRUND.includes(x));
+      const f = eigeneFelder(n).map((k) => k + (d.schema.properties[k].derived ? '*' : ''));
+      const { raus, rein } = kantenVon(n);
+      /* Kanten mit `*` treffen jede Art und sagen über diese nichts. */
+      const eigen = (xs, seite) => xs.filter((r) => !(r[seite] ?? []).includes('*')).map((r) => r.type);
+      w(`| \`${n}\` | ${code(erbt) || '—'} | ${code(f) || '—'} | ${code(eigen(raus, 'from')) || '—'} | ${code(eigen(rein, 'to')) || '—'} | ${d.views ? Object.keys(d.views).join(', ') : '—'} |`);
+    }
+  }
+  w();
+  w('### Kanten');
+  w();
+  w('| Kante | von → nach | eins | liest sich / setzt ein | Eigenschaften |');
+  w('|---|---|---|---|---|');
+  for (const r of Object.values(R.relations).sort((a, b) => a.type.localeCompare(b.type))) {
+    const wie = [r.asField ? `Feld am \`${r.asField}\`-Ende` : '', r.section ? `Abschnitt „${r.section}"` : '', r.owned ? 'owned' : '']
+      .filter(Boolean).join(', ');
+    const props = Object.keys(r.props?.properties ?? {});
+    w(`| \`${r.type}\` | ${(r.from ?? []).join(' \\| ')} → ${(r.to ?? []).join(' \\| ')} | ${r.cardinality === 'one' ? 'ja' : ''} | ${wie || '—'} | ${code(props) || '—'} |`);
+  }
+  w();
+  w('### Aufzählungszeilen');
+  w();
+  w('| Zeile | Wörter | genannt von |');
+  w('|---|---|---|');
+  const nutzer = {};
+  for (const n of arten) {
+    for (const [k, p] of Object.entries(R.interfaces[n].schema?.properties ?? {})) {
+      for (const ref of p.enumRef ? [].concat(p.enumRef) : []) (nutzer[ref] ??= []).push(`${n}.${k}`);
+    }
+  }
+  for (const [name, z] of Object.entries(R.enums ?? {}).sort(([a], [b]) => a.localeCompare(b))) {
+    const werte = z.values ?? [];
+    w(`| \`${name}\` | ${werte.length <= 8 ? werte.join(' · ') : `${werte.length}: ${werte.slice(0, 4).join(' · ')} …`} | ${code(nutzer[name] ?? []) || '—'} |`);
+  }
+  w();
+  w('### Einheiten, Variablen, Einstellungen');
+  w();
+  const einheiten = {};
+  for (const [c, d] of Object.entries(R.units ?? {})) (einheiten[`${d.quantity} · ${d.system}`] ??= []).push(c);
+  w('- Einheiten: ' + Object.entries(einheiten).map(([k, v]) => `${k}: ${code(v)}`).join('; '));
+  w('- Variablen: ' + code(Object.keys(R.vars ?? {})));
+  w('- Einstellungen: ' + code(Object.keys(R.settings ?? {})));
+  return u;
+}
+
+try {
+  const text = readFileSync(KONZEPT, 'utf8');
+  const ANFANG = '<!-- register:anfang -->', ENDE = '<!-- register:ende -->';
+  const a = text.indexOf(ANFANG), e = text.indexOf(ENDE);
+  if (a < 0 || e < 0 || e < a) {
+    console.log(`Marken ${ANFANG} … ${ENDE} nicht gefunden — ${KONZEPT} unverändert`);
+  } else {
+    const neu = text.slice(0, a + ANFANG.length) + '\n' + uebersicht().join('\n') + '\n' + text.slice(e);
+    writeFileSync(KONZEPT, neu, 'utf8');
+    console.log(`geschrieben: ${KONZEPT} (Abschnitt „Das Register heute")`);
+  }
+} catch (error) {
+  console.log(`Konzept nicht nachgezogen: ${error instanceof Error ? error.message : String(error)}`);
+}

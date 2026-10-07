@@ -10,6 +10,10 @@ gerade aufschrieb. Wer zwei Namen für eine Sache hat, hat bald zwei Sachen.
 Sichtbarer Text ist englisch (siehe [CLAUDE.md](../CLAUDE.md)); deutsche
 Prosa benutzt das deutsche Wort und nennt den englischen Bezeichner dazu.
 
+**Was gilt, steht in [Datenmodell.md](Datenmodell.md)** — die Regeln, die
+Formen, das Register heute. Diese Datei sagt, *warum* es so ist und was
+nicht mehr gilt. Wer nur wissen will, wie es ist, liest dort.
+
 ---
 
 ## Die neun Wörter

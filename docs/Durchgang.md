@@ -148,8 +148,46 @@ ist), `Party` (acht Felder, alle gefüllt).
 
 ---
 
-## Noch nicht gemessen
+## Abgleich mit dem Konzept — 2026-10-07
 
-Block 3 (Geschichte), Block 4 (Regelwerk), Block 5 (Spiel). Die Zahlen
-stehen in `docs/Artikeltypen.md`, das `pnpm --filter @nw/registry catalogue`
-erzeugt.
+Das Register, gemessen gegen [Datenmodell.md](Datenmodell.md) (die Regeln
+A, T, F, K, E, V) und gegen den Prüfbestand (75 Artikel). Je Punkt der Befund,
+eine Empfehlung und eine leere Spalte für die Entscheidung — die fällt im
+Gespräch, nicht hier.
+
+| | Befund | Verstösst gegen | Empfehlung | Entscheidung |
+|---|---|---|---|---|
+| **A1** | `PlayerCharacter.player` (freier Text) und die Kante `playedBy` (→ `*`, one): wer eine Figur spielt, steht am Konto (`app_user_actor`). Beides ist eine Kontoangabe im Artikel, die mit der Ausfuhr wandert — dieselbe Lage wie `Access`. Im Bestand: `player` zweimal „—", `playedBy` nie | A10, REQ-199 | beide weg | |
+| **A2** | **Der Server kennt den Stapel nicht.** `inStack` und `resolveArticle` laufen nur im Prototyp; das Modell liest `inLayer` nur für die Zugehörigkeit (`campaignsOf`). Ein Artikel, den eine Ebene herausnimmt (`removes`) oder überschreibt, geht vom Server trotzdem hinaus | E2 | E2 ins Modellpaket, vom Sieb vor `articleVisible` gerufen | |
+| **A3** | `conditions` (gelesen von `Vitals.conditions` und `participates.conditions`) und `travelActions` (`Party.actions`) sind Wortlisten mit zwei Nutzern — als **Einstellung**, nicht als Zeile. `skills` bleibt Einstellung: eine Zuordnung, keine Liste | F1 | Zeilen `Condition` und `TravelAction`; `Vitals.conditions` wird `array` + `enumRef` | |
+| **A4** | `State` (nur `Status.status`) und `DrawTime` (nur `Inventory.zones`) sind Zeilen mit **einem** Nutzer — F1 sagt wörtlich, so eine Liste bleibe am Feld. Sie stehen als Zeile, damit jemand die Wörter pflegen kann | F1 | die Regel ergänzen: „… oder wenn die Wörter Kampagneninhalt sind, den jemand pflegt"; beide behalten | |
+| **A5** | **Dieselbe Einordnung zweimal:** `Story.kind` (campaign · arc · chapter · session · scene) *und* die Arten `Campaign`, `Arc`, `Chapter`, `Session`, `Scene`. `Arc` und `Chapter` tragen kein eigenes Feld und keine Kante; ebenso `Era`, `Cataclysm`, `Milestone` unter `Event` und `Consumable` unter `Item`. Im Bestand: Arc 1, alle anderen 0 | T2 | `Story.kind` weg — die Art sagt es. Dann **dein Wort**: `Arc`/`Chapter` als Arten behalten (die Leiste listet je Art, `partOf` trägt die Hierarchie) oder als Wörter an `Session`/`Story`? `Era`/`Cataclysm`/`Milestone` → `Event.kind` (frei, `suggest`); `Consumable` → `Item.itemType` | |
+| **A6** | **Wo die Gruppe ist, steht zweimal:** `Party.at` (Verweis auf einen Ort, von der Punktreise geschrieben) und `{PARTYWHERE}` (vom Gruppen-Token auf der Karte). Spieltisch.md sagt „genau einmal — als Token" | K3, D8 | entweder sind es zwei Fragen (Knoten der Punktreise ≠ Ort auf der Karte), dann heisst `at` so, dass man es sieht — oder eine Stelle | |
+| **A7** | **Ein Träger und seine Mitglieder:** Modell und Prototyp zählen einen Schritt nur über `memberOfParty`. Eine Information `knownBy` → `Faction` erreicht deren Mitglieder (`memberOf`) **nicht**; `hiddenFrom: Faction` verbirgt vor niemandem. CLAUDE.md verspricht „ein Träger zählt einen Schritt weit auch als seine Gruppe" | §9.1, §9.3 | `memberOf` wie `memberOfParty` behandeln — oder die Regel auf `Party` und `Group` einschränken und `Faction` als Träger streichen | |
+| **A8** | `Group`: Träger von Konten, `kind` players · table · guests · crew (offen seit Block 2). Seit `campaign_member` sind „die Spieler dieser Kampagne" eine **Rolle**, keine Gruppe | — | `Group` behalten für Mengen, die keine Rolle sind (Gäste, ein Teil des Tischs); `kind` frei mit `suggest` statt Aufzählung | |
+| **A9** | **Keine Art für Zauber.** REQ-067, 092, 097 offen; `Statblock` kennt kein `knows`. Im Vault waren `Spell`, `Class`, `Species`, `Background` Arten | — | eine Zeile `Spell` unter `Rule` (Bereich rules), Kante `knows` Statblock → Spell — wenn du sie brauchst | |
+| **A10** | `kind` steht an zehn Arten mit verschiedenen Beschriftungen; `Statblock.kind` „Creature type" und `Creature.kind` „Kind" stehen auf **derselben** Seite nebeneinander (verlinkte Gruppe) | T6 | `Statblock.kind` → `creatureType` (humanoid, undead …); `Creature.kind` bleibt die Sorte (npc, companion …) | |
+| **A11** | `Time.calendar` je Artikel (frei, `suggest`) neben der Einstellung `calendar` — zwei Stellen für dieselbe Angabe, im Bestand nie gefüllt | — | behalten nur als „dieses Datum steht in einem anderen Kalender als die Kampagne", dann so beschriften; sonst weg | |
+| **A12** | `regards.from`/`to` nennen `PlayerCharacter` neben `Creature`, obwohl die Kette das abdeckt | §3.3 | streichen (kosmetisch) | |
+| **A13** | `Asset` und `Layer` haben keinen Bereich und stehen in keiner Liste; erreicht über das Bildfeld bzw. die Kampagnenseite. Datenmodell §3.1 schreibt das jetzt so | — | bestätigen — oder ihnen einen Bereich geben | |
+| **A14** | **Felder, die im Prüfbestand nie gefüllt sind** (Art hat Artikel): `Rule.uses`, `Rule.recharge` (8 Regeln) · `Statblock.resistances`, `vulnerabilities` (4) · `Item.availability`, `stackSize`, `weight` (5) · `Inventory.grid`, `zones` (2) · `Session.recap`, `activeScene` (1) · `Map.sheets`, `baseHidden`, `baseGmOnly`, `tiles`, `tileCols`, `tileRows`, `tileSize` (2) · `Board.background` (1) · `Article.poem`, `song` (2). Die meisten sind jünger als der Bestand | — | je Art durchgehen: behalten, wenn der Tisch sie braucht; sonst streichen | |
+| **A15** | **Kanten ohne Einsatz:** `playedBy` (A1), `followsFrom` (Story → Story, one — neben `partOf` und `Time.sort`), `variantOf`, `includes`, `instanceOf`, `crafting` (die letzten drei sind neu) | — | `followsFrom` weg, wenn `Time.sort` die Reihenfolge trägt; `variantOf` bleibt (REQ-008) | |
+| **A16** | **Das Konzept im Vault ist überholt** (`Schemas.md`, `Data Definitions.md`, `Backbone Concept.md`, Stand 5.9.): Komponenten, `requires`/`allows`, `Access`, `KnowledgeLevel`, `successorId`, `key`, Facetten | — | oben in den drei Dateien „überholt durch Nebelwacht/docs/Datenmodell.md" eintragen — ich kann es, wenn das Repo mit Schreibzugriff angehängt ist | |
+
+**Was dabei in Ordnung war:** alle 36 Artikelarten nehmen die Grundausstattung;
+kein `measure` ohne `unit`, kein Verweis ohne Zieltyp; keine wörtliche
+Aufzählung an zwei Feldern; keine Umbenennung auf ein fremdes Feld; keine
+Kante auf einen unbekannten Typ; jeder Standardwert steht in seiner Auswahl.
+
+**Bekannt offen, nicht neu:** mehrere Kampagnen (die laufende ist eine
+globale Einstellung, 65 von 75 Artikeln ohne Ebene, `gmFields` gilt
+installationsweit); `mayWrite` kennt die Leitung nicht; Rollen setzt am
+Server nur die Kommandozeile.
+
+---
+
+## Noch nicht durchgegangen
+
+Block 3 (Geschichte), Block 4 (Regelwerk), Block 5 (Spiel) — Feld für Feld
+mit dir. Die Nutzung ist gemessen (A14), die Felder stehen in
+`docs/Artikeltypen.md`, das `pnpm --filter @nw/registry catalogue` erzeugt.

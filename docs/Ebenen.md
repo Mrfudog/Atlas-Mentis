@@ -143,10 +143,10 @@ beantwortet: **was ist gerade nicht im Spiel, und warum.**
 Vier Ebenen belegen den Mechanismus:
 
 - **Grundregelwerk** (`system`, Rang 10) — was in jedem Spiel gilt.
-- **Paket: Nebeldistrikt** (`module`, Rang 20) — die Orte und die Kreatur.
-- **Hausregeln** (`house`, Rang 90) — enthält eine zweite Fassung von
+- **Paket: Nebeldistrikt** (`pack`, Rang 20) — die Orte und die Kreatur.
+- **Hausregeln** (`overrides`, Rang 90) — enthält eine zweite Fassung von
   „Amorph“, die die erste über `overrides` ersetzt.
-- **Verzicht: Verstrickt** (Rang 95, **nicht aufgeschaltet**) — nimmt die
+- **Verzicht: Verstrickt** (`overrides`, Rang 95, **nicht aufgeschaltet**) — nimmt die
   Regel „Verstrickt“ mit `mode: "removes"` heraus. Wer sie aufschaltet, sieht
   die Regel verschwinden; wer sie abschaltet, sieht sie wiederkommen. Nichts
   wurde dabei gelöscht.

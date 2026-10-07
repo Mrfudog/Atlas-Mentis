@@ -25,21 +25,21 @@ Stelle, um Code zu schreiben.
 |---|---|---|
 | Assets | `Asset` | — (im Bildfeld) |
 | Karten | `Map`, `mapOf` / `insideMap` / `marker` | `map` |
-| Charakterbogen | `Vitals`, `Skills` | `sheet` |
+| Charakterbogen | `Vitals`, `Proficiencies` | `sheet` |
 | Inventar | `holds`-Eigenschaften | `inventory` |
 | Handwerk | `Recipe`, `needs` / `yields` | `crafting` |
 | Boards | `Board`, `placed` | `board` |
 | Begegnungen | `Encounter`, `participates` / `onMap` / `loot` | `initiative` |
 | Aufträge | `Quest.tasks` | `quests` |
-| Zeitleiste | `WorldDate`, `Event`, `involves` | `timeline` |
-| Zugang | `Access` | — (Filter vor der Darstellung) |
+| Zeitleiste | `Time`, `Event`, `involves` | `timeline` |
+| Zugang | `campaign_member` am Server, `members` im Prototyp — am Konto, in keinem Artikel | `members` (Kampagnenseite) |
 | Sitzung live | `Session` | `live` |
 | Tabellen | `Table`, `entry` / `tableFor` | `table` |
 | Vorbereitung | `Todos` | `prep` |
 | Sicherung | — (Register + Artikel als eine Datei) | — (Registerreiter) |
 | Regeln | `Rule.autolink` | — (eigener Einstieg) |
 | Decknamen | `Identity.cover` | — (im Namen selbst) |
-| Punktreise | `Place.explored`, `Party.at`, `route` | `crawl` |
+| Punktreise | `Place.state`, `Party.at`, `route` | `crawl` |
 
 ---
 
@@ -254,7 +254,8 @@ deshalb zu und sagt, was fehlt.
 
 Gewürfelt wird **einmal am Ende**, mit demselben Würfelwerk wie alles andere,
 gegen den Schwierigkeitsgrad des Rezepts. Der Übungsbonus kommt aus
-`Skills.tools` — Rook ist in Alchemie geübt, die Gruppe als solche nicht — und
+`Proficiencies.proficient`, aus den Wörtern der Zeile `Tool` darin — Rook ist
+in Alchemie geübt, die Gruppe als solche nicht — und
 das Werkzeug muss dabei sein: es gehört zu **„was fehlt"**, in derselben
 Spalte wie das Material. Es getrennt zu behandeln hiesse, dass die Matrix
 „ja" sagt und das Anfangen „nein", und genau die Art Widerspruch verzeiht man

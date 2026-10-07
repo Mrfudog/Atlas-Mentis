@@ -1,6 +1,6 @@
 # Wissen — wer weiss was
 
-Stand 2026-09-20. Das ist A6 aus dem [Fahrplan](Roadmap.md), gebaut nach
+Stand 2026-09-20, nachgeführt 2026-10-07. Das ist A6 aus dem [Fahrplan](Roadmap.md), gebaut nach
 Entscheidung 4: *„Wissen: selbst festlegen, über ein Seitenpanel in der
 Artikelansicht."*
 
@@ -26,11 +26,15 @@ Stand und Marken haben.
 
 ```
 Artikel      --knowledge-->  Information        (owned)
-Information  --knownBy-->    Creature | Party | Faction | KnowledgeLevel | Group
-Creature     --atLevel-->    KnowledgeLevel
+Knowledge    --includes-->   Information        (ein Bündel)
+Information | Knowledge --knownBy--> Creature | Party | Faction | Group
 ```
 
 Drei Kantenarten und zwei Artikelarten. Kein neues Konstrukt.
+
+> **Nicht mehr (seit 2026-09-20):** der `KnowledgeLevel`, ein *Stand*, dem
+> Figuren über `atLevel` angehörten. Ein Bündel (`Knowledge`) tut dasselbe
+> über dieselbe Kante, und einen Stand hatte in zwei Jahren niemand benutzt.
 
 ---
 
@@ -38,18 +42,17 @@ Drei Kantenarten und zwei Artikelarten. Kein neues Konstrukt.
 
 | Zeile | Art | Was sie sagt |
 |---|---|---|
-| `Information` | Schnittstelle | erweitert `Base`, verlangt `Information` |
-| `KnowledgeLevel` | Schnittstelle | erweitert `Base`, verlangt `KnowledgeLevel` |
-| `Information` | Felder der Art | `fields[]`, `blocks[]`, `tier` |
-| `KnowledgeLevel` | Felder der Art | `scope`: common / group / personal |
+| `Information` | Artikelart (rules) | eigene Felder `fields[]`, `tier`; dazu die Grundausstattung |
+| `Knowledge` | Artikelart (rules) | ein Bündel; keine eigenen Felder, die Kante `includes` |
 | `knowledge` | Kante | Artikel → Information, `owned` |
-| `knownBy` | Kante | Information → Geschöpf, Gruppe, Wissensstand |
-| `atLevel` | Kante | Geschöpf, Gruppe → Wissensstand |
-| `knowledge` | Ansicht | Layout aus Beschreibung + Wissensgruppen |
+| `includes` | Kante | Knowledge → Information |
+| `knownBy` | Kante | Information, Knowledge → Creature, Party, Faction, Group |
+| `knowledge` | Layout-Element | der Artikel nach Informationen geordnet |
 
 `Information.fields` schreibt Feldverweise in derselben Schreibweise wie die
-Ansichten: `Abilities` nimmt jedes Feld dieser Art, `Statblock.ac`
-genau ein Feld. Zwei Schreibweisen für dieselbe Sache wären eine zu viel.
+Ansichten: `Abilities` nimmt jedes Feld dieser Art, `Statblock.ac` genau ein
+Feld, `Secrets.secret#id` **einen Eintrag** eines Feldes mit `many`. Zwei
+Schreibweisen für dieselbe Sache wären eine zu viel.
 
 `tier` ist **nur Anzeige und Sortierung**. Was jemand sehen darf, entscheiden
 die Kanten. Ein Rang, der es mitentscheidet, wäre eine zweite Quelle, die der
@@ -102,17 +105,22 @@ Was ein Betrachter weiss, ist immer eine Abfrage — nie ein gespeicherter Wert
 (D8):
 
 ```
+träger(Betrachter) := Betrachter ∪ { P | Betrachter --memberOfParty--> P }
+
 kennt(Betrachter, Information) :=
-      Information --knownBy--> Betrachter
-   ∨  Information --knownBy--> L  ∧  Betrachter --atLevel--> L
-   ∨  Information --knownBy--> P  ∧  Betrachter --memberOfParty--> P
-   ∨  Information --knownBy--> L  ∧  Betrachter --memberOfParty--> P
-                                  ∧  P --atLevel--> L
+      Information --knownBy--> t          für ein t in träger(Betrachter)
+   ∨  Knowledge --includes--> Information
+      ∧ Knowledge --knownBy--> t          für ein t in träger(Betrachter)
 ```
 
-Einen Schritt weit, nicht transitiv. Ein Wissensstand, der einem anderen
-angehört, wäre eine Hierarchie — die hat niemand verlangt, und sie liesse sich
-nachrüsten, ohne eine Zeile zu ändern.
+Einen Schritt weit, nicht transitiv: ein Bündel in einem Bündel zählt nicht,
+und eine Gruppe in einer Gruppe auch nicht. Eine Hierarchie hat niemand
+verlangt, und sie wäre die Stelle, an der eine Freigabe weiter reicht, als
+jemand gemeint hat.
+
+> **Offen (Abgleich A7 in [Durchgang.md](Durchgang.md)):** `memberOf` — die
+> Fraktion — zählt heute **nicht** als Schritt. Eine Information an eine
+> Fraktion erreicht deren Mitglieder nicht.
 
 **Ein Betrachter ist eine Liste, keine Id.** Ein Konto führt mehrere Figuren,
 und wer zwei spielt, weiss am Tisch, was beide wissen — eine Seite, die ihm
@@ -169,15 +177,12 @@ ist es nicht, denn dasselbe Feld kann auf zwei Wegen bekannt werden.
 
 ## Was noch offen ist
 
-1. **Die Spieleransicht selbst.** `visibleFields` liegt bereit, aber es gibt
-   noch keinen Zugang, der sie benutzt — dafür braucht es die Anmeldung
-   (Entscheidung 2, ein Passwort je Nutzer). Solange steht die Auflösung
-   geprüft, aber ungenutzt da.
-2. **Blöcke haben keinen stabilen Anker.** Zugeteilt wird über die Block-Id.
-   `Block.anchor` ist im Modell vorgesehen, wird aber noch nicht vergeben.
-   Wer einen Block löscht und neu schreibt, muss ihn neu zuteilen.
-3. **Wissen an Kanten und Bausteinen.** Eine Information bündelt heute Felder
-   und Blöcke. Ob eine *Verbindung* („der Baron kennt Floon") ebenso
-   zuteilbar sein soll, ist nicht entschieden.
-4. **Wissensstände über mehrere Kampagnen.** `KnowledgeLevel.scope` steht
-   schon da, wird aber von nichts gelesen.
+1. ~~**Die Spieleransicht selbst.**~~ Steht seit 2026-09-20: der Server siebt
+   (`redactEntity`), siehe [Zugang.md](Zugang.md).
+2. ~~**Blöcke haben keinen stabilen Anker.**~~ Ein Textblock ist ein Feld mit
+   `many`, und die Id jedes Eintrags kommt aus dem Text — sie übersteht einen
+   Import ([Spieltisch.md](Spieltisch.md), Blockanker).
+3. **Wissen an Kanten.** Eine Information bündelt heute Felder und Einträge.
+   Ob eine *Verbindung* („der Baron kennt Floon") ebenso zuteilbar sein soll,
+   ist nicht entschieden; die Kanten gehen heute immer mit.
+4. **Die Fraktion als Träger** — Abgleich A7.

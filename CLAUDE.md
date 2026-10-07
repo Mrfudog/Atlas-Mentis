@@ -315,12 +315,19 @@ wiederkommen, werden sie neu geschrieben.
   Art. Für `overview` und `quick` schaltet ein Klick eine ganze Gruppe
   (`except: ['Vitals']`, ein Typname). Eine ausgeschriebene Feldliste wäre
   am Tag des nächsten Feldes unvollständig, und niemand merkte es.
+- **Was gilt, steht in [docs/Datenmodell.md](docs/Datenmodell.md).** Die
+  Regeln (A, T, F, K, E, V), die Feldformen, die Kantenfamilien, und unter
+  „Das Register heute" die erzeugte Übersicht aller Arten und Kanten
+  (`catalogue` schreibt sie mit). Was gefordert war und was davon steht:
+  [docs/Anforderungen.md](docs/Anforderungen.md). Wo das Register vom
+  Konzept abweicht: der Abgleich in [docs/Durchgang.md](docs/Durchgang.md).
 - **Bei jeder Modelländerung wandert die Erklärung mit.**
-  [docs/Begriffe.md](docs/Begriffe.md) *und* die Seite „How it works" im
-  Register, mitsamt dem durchgerechneten Beispiel am Ende — beides gehört
-  in denselben Commit wie die Zeile, die sich geändert hat. Eine Erklärung,
-  die man später nachzieht, erklärt in der Zwischenzeit etwas, das es nicht
-  mehr gibt.
+  [docs/Datenmodell.md](docs/Datenmodell.md) (die Regel),
+  [docs/Begriffe.md](docs/Begriffe.md) (das Warum) *und* die Seite „How it
+  works" im Register, mitsamt dem durchgerechneten Beispiel am Ende — alles
+  gehört in denselben Commit wie die Zeile, die sich geändert hat. Eine
+  Erklärung, die man später nachzieht, erklärt in der Zwischenzeit etwas,
+  das es nicht mehr gibt.
 - **Wie die Dinge heissen, steht in [docs/Begriffe.md](docs/Begriffe.md):**
   Typ, Bestandteil, Feld, Bezeichner, Artikel, Ansicht, Block, Kante,
   Einheit — neun Wörter, mehr nicht. Wer zwei Namen für eine Sache hat, hat bald zwei Sachen; im
@@ -482,9 +489,11 @@ nirgends steht, hielt jemand einmal für richtig und füllt niemand.
 `pnpm --filter @nw/registry catalogue` schreibt
 [docs/Artikeltypen.md](docs/Artikeltypen.md) neu — je Artikelart, was sie
 verlangt, was sie erlaubt, welche Kanten sie trägt und wie sie gezeichnet
-wird. Die Datei wird **erzeugt und nicht von Hand geändert**: eine
-Übersicht, die jemand abtippt, stimmt am Tag ihrer Entstehung und danach
-nie wieder.
+wird — und den Abschnitt „Das Register heute" in
+[docs/Datenmodell.md](docs/Datenmodell.md) zwischen den Marken
+`register:anfang` und `register:ende`. Beides wird **erzeugt und nicht von
+Hand geändert**: eine Übersicht, die jemand abtippt, stimmt am Tag ihrer
+Entstehung und danach nie wieder.
 
 `pnpm test` läuft in zwei Projekten: `node` für Modell, Register und Server,
 `web` mit jsdom und Angulars aufgesetzter Prüfumgebung. Eine gemeinsame
