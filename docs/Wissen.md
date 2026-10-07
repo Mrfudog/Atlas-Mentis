@@ -30,6 +30,16 @@ Knowledge    --includes-->   Information        (ein Bündel)
 Information | Knowledge --knownBy--> Creature | Party | Faction | Group
 ```
 
+```mermaid
+flowchart LR
+  Art["Artikel: der Baron"] -- "knowledge" --> I1["Information: sein wahrer Name<br/>fields: Identity.aliases"]
+  Art -- "knowledge" --> I2["Information: seine Schulden<br/>fields: Secrets.secret#b_secret"]
+  K["Knowledge: Gassenwissen"] -- "includes" --> I2
+  I1 -- "knownBy" --> M["Figur: Mara"]
+  K -- "knownBy" --> T["Figur: Torn"]
+  I2 -. "Torn kennt sie über das Bündel" .-> T
+```
+
 Drei Kantenarten und zwei Artikelarten. Kein neues Konstrukt.
 
 > **Nicht mehr (seit 2026-09-20):** der `KnowledgeLevel`, ein *Stand*, dem

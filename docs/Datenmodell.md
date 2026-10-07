@@ -41,6 +41,31 @@ nennt den Bezeichner dazu.
 | **Einstellung** | Ein Schlüssel und ein Wert je Kampagne, ohne Schema — ein Wort oder eine Zahl, nie eine Liste von Dingen, die eine Beschreibung bräuchten (F10). | Registerteil `settings` |
 | **Ansicht** (`ViewDef`) und **Anordnung** (`LayoutElement[]`) | Wie ein Artikel gezeichnet wird: drei Ansichten, je eine Grundanordnung; eine Art darf ihre eigene tragen. | Registerteil `views`; `InterfaceDef.views` |
 
+```mermaid
+flowchart LR
+  subgraph Register["Register (Zeilen, nicht Code)"]
+    T["Typ<br/>InterfaceDef"]
+    F["Feld<br/>PropertySchema"]
+    K["Kantenart<br/>RelationDef"]
+    E["Aufzählung · Einheit · Variable · Einstellung"]
+    V["Ansicht + Anordnung"]
+  end
+  subgraph Bestand["Bestand (Artikel)"]
+    A["Artikel<br/>id · interfaces · components · relations"]
+    C["Karte je Typ<br/>components[Typ]"]
+    R["Kante<br/>relations[] — nur vorwärts"]
+  end
+  T -- "erklärt" --> F
+  T -- "extends (mehrere)" --> T
+  T -. "views · titles · area · units" .-> V
+  F -- "enumRef · unit · target" --> E
+  A -- "eine je Typ der Kette" --> C
+  C -- "Werte der Felder von" --> T
+  A -- "trägt" --> R
+  R -- "Art" --> K
+  R -- "zeigt auf" --> A
+```
+
 **Alles im Register ist eine Zeile.** Eine neue Artikelart, eine neue Kante,
 eine neue Aufzählung ist ein Einfügen und keine Migration. Was im Code steht,
 ist die Darstellung (die Layout-Elemente) und die Prüfung — nie die Liste
@@ -305,6 +330,20 @@ nach der Einstellung `units` (`imperial` · `metric` · `both`), die eine Art
 Grössenordnung. In einem Text mit `measure` greift das Ausgangsmass nur für
 Zahlen ohne Buchstaben — „7 zorp" bleibt sieben Zorp.
 
+```mermaid
+flowchart TB
+  subgraph Daten["gespeichert: genau ein Token"]
+    G["Gruppe"] -- "marker · kind: party · x, y" --- MB["Karte: Gebäude"]
+  end
+  MB -- "mapOf" --> OB["Ort: Gebäude"]
+  MB -- "insideMap (Rahmen x,y,w,h)" --> MD["Karte: Distrikt"]
+  MD -- "insideMap (Rahmen)" --> MR["Karte: Region"]
+  OB -- "partOf" --> OD["Ort: Distrikt"]
+  MD -. "zeigt das Token gestrichelt<br/>im Rahmen des Gebäudes" .-> G
+  MR -. "zeigt es in der Stadt" .-> G
+  OB -. "PARTYWHERE · Knoten der Punktreise" .-> G
+```
+
 **Wo die Gruppe ist.** Genau eine Stelle: ihr Token (`marker`, `kind:
 party`) auf der feinsten Karte, auf der sie steht. Der Ort ist die Marke,
 auf der es steht, sonst der Ort der Karte (`mapOf`); der Knoten der
@@ -319,6 +358,16 @@ Kante** (`backlinks`) und **was gerade gilt** (§8).
 ---
 
 ## 7. Vorlage und Instanz
+
+```mermaid
+flowchart LR
+  W1["Kreatur: Wache 1"] -- "belongsTo (one)" --> I1["Statblock-Instanz 1<br/>nur Abweichungen: hp 14"]
+  W2["Kreatur: Wache 2"] -- "belongsTo (one)" --> I2["Statblock-Instanz 2<br/>nur Abweichungen: —"]
+  I1 -- "instanceOf" --> V["Statblock-Vorlage: Stadtwache<br/>ac 16 · hp 11 · speed 30 ft …"]
+  I2 -- "instanceOf" --> V
+  V -. "resolveInstance: Feld für Feld darunterlegen" .-> I1
+  V -. "resolveInstance" .-> I2
+```
 
 Ein Statblock darf aus einer **Vorlage** lesen: die Kante `instanceOf` zeigt
 auf sie, gespeichert wird an der Instanz **nur, was abweicht**, gelesen wird
@@ -369,6 +418,25 @@ Artikel an jemanden geht; das Wissen sagt, welche Felder darin.
 
 ### 9.1 Sichtbarkeit (`Visibility`, `articleVisible`)
 
+```mermaid
+flowchart TD
+  S{"läuft der Artikel<br/>im Stapel?"} -- nein --> N0["unsichtbar"]
+  S -- ja --> GM{"Leitung der Kampagne,<br/>der er gehört?"}
+  GM -- ja --> J["sichtbar"]
+  GM -- nein --> H{"hiddenFrom nennt<br/>einen Träger?"}
+  H -- ja --> N1["unsichtbar"]
+  H -- nein --> R{"revealedTo nennt<br/>einen Träger?"}
+  R -- ja --> J
+  R -- nein --> A{"audience ≤ Rolle<br/>am Tisch?"}
+  A -- "public" --> J
+  A -- "campaign · players · gm" --> RO{"Rolle in der<br/>Kampagne der Ebene"}
+  RO -- reicht --> J
+  RO -- "reicht nicht" --> N2["unsichtbar"]
+```
+
+Träger eines Betrachters: seine Figuren, deren `Party` (`memberOfParty`)
+und deren `Faction` (`memberOf`) — einen Schritt weit.
+
 | Feld | Werte | Bedeutung |
 |---|---|---|
 | `audience` | `public` (Vorgabe) · `campaign` · `players` · `gm` | jedes Konto · jedes Konto mit Rolle am Tisch · `player`, `co-gm`, `gm` · `gm`, `co-gm` |
@@ -391,6 +459,19 @@ Die Rolle am Tisch steht **am Konto, je Kampagne**: `gm` · `co-gm` · `player`
 und Verwaltung; `gm` und `co-gm` sehen dasselbe. In keinem Artikel.
 
 ### 9.3 Wissen (`Information`, `Knowledge`, `redactEntity`)
+
+```mermaid
+flowchart LR
+  B["Betrachter<br/>(Konto → seine Figuren)"] --> Fg["Figur"]
+  Fg -- "memberOfParty" --> P["Party"]
+  Fg -- "memberOf · rank" --> Fa["Faction<br/>ranks: novice < adept < master"]
+  Art["Artikel"] -- "knowledge (owned)" --> Inf["Information<br/>fields: Typ · Typ.feld · Typ.feld#id"]
+  Kn["Knowledge (Bündel)"] -- "includes" --> Inf
+  Inf -- "knownBy" --> Fg
+  Inf -- "knownBy" --> P
+  Kn -- "knownBy · rank: adept" --> Fa
+  Fa -. "erreicht Mitglieder ab der Sprosse" .-> Fg
+```
 
 ```
 Artikel     --knowledge-->  Information        (owned)

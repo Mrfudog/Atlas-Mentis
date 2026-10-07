@@ -16,7 +16,14 @@ import { fileURLToPath } from 'node:url';
 
 const HIER = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HIER, '..', '..', '..');
-const VAULT = resolve(process.argv[2] ?? join(REPO, '..', 'atlas-mentis', 'VTT', 'Requirements.md'));
+/* `--umsetzung <datei>` schreibt dieselbe Übersicht zusätzlich als Obsidian-
+   Notiz in den Vault (mit Frontmatter), damit die Anforderungen dort den
+   Stand sehen, ohne dass jemand ihn abtippt. */
+const argv = process.argv.slice(2);
+const umsetzungAt = argv.indexOf('--umsetzung');
+const UMSETZUNG = umsetzungAt >= 0 ? resolve(argv[umsetzungAt + 1] ?? '') : null;
+const pfadArg = argv.find((a, i) => !a.startsWith('--') && i !== umsetzungAt + 1);
+const VAULT = resolve(pfadArg ?? join(REPO, '..', 'atlas-mentis', 'VTT', 'Requirements.md'));
 const vault = readFileSync(VAULT, 'utf8');
 const ernte = readFileSync(join(REPO, 'docs', 'Requirements from Kanalgang.md'), 'utf8');
 
@@ -298,6 +305,32 @@ for (const [id, r] of offen) w(`- **${id}** (${r.prio}, ${STAND[id][0]}) — ${r
 w();
 writeFileSync(join(REPO, 'docs', 'Anforderungen.md'), z.join('\n') + '\n');
 console.log(`geschrieben: ${reqs.size} Anforderungen, ${z.length} Zeilen`);
+if (UMSETZUNG) {
+  /* Dieselbe Übersicht als Vault-Notiz: Frontmatter davor, die Verweise
+     aufs Repo absolut, der Rest wörtlich. Abgeleitet, nicht bearbeitet. */
+  const heute = new Date().toISOString().slice(0, 10);
+  const kopf = [
+    '---',
+    'tags: [vtt, requirements, view, umsetzung]',
+    'status: derived',
+    `updated: ${heute}`,
+    'source: https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Anforderungen.md',
+    '---',
+    '',
+    '> [!info] Erzeugt aus dem Repo',
+    '> `pnpm --filter @nw/registry anforderungen -- --umsetzung <diese Datei>` in',
+    '> [Mrfudog/Nebelwacht](https://github.com/Mrfudog/Nebelwacht) schreibt diese Notiz neu.',
+    '> Wer einen Stand anders sieht, ändert ihn in `packages/registry/scripts/anforderungen.mjs`.',
+    '> Die Nummern selbst stehen in [[Requirements]]; die Spalte *Status* dort folgt dieser Notiz.',
+    '',
+  ];
+  const koerper = z.map((l) =>
+    l.replace('(Requirements%20from%20Kanalgang.md)', '(https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Requirements%20from%20Kanalgang.md)')
+      .replace(/\| (Roadmap|CLAUDE|Begriffe|Durchgang|Ebenen|Zugang|Betrieb|Datenmodell|Wissen|Spieltisch)\.md( §\d+)? \|$/, (m, d, para) =>
+        `| [${d}.md${para ?? ''}](https://github.com/Mrfudog/Nebelwacht/blob/preprod/${d === 'CLAUDE' ? '' : 'docs/'}${d}.md) |`));
+  writeFileSync(UMSETZUNG, kopf.concat(koerper).join('\n') + '\n');
+  console.log(`geschrieben: ${UMSETZUNG}`);
+}
 const fehlt = [...reqs.keys()].filter((id) => !STAND[id]);
 if (fehlt.length) console.log('ohne Stand: ' + fehlt.join(', '));
 const zuviel = Object.keys(STAND).filter((id) => !reqs.has(id));
