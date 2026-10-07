@@ -1,0 +1,27 @@
+# Produktion — das, woran der Tisch spielt. Läuft von main.
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nebelwacht
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nebelwacht}
+      POSTGRES_DB: nebelwacht
+    volumes: ["./daten/db:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nebelwacht"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgres://nebelwacht:${POSTGRES_PASSWORD:-nebelwacht}@db:5432/nebelwacht
+      HOST: 0.0.0.0
+      PORT: 8080
+    # Nur auf loopback veröffentlicht: davor gehört der Reverse Proxy mit SSO.
+    ports: ["127.0.0.1:8080:8080"]

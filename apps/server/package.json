@@ -1,0 +1,29 @@
+{
+  "name": "@nw/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "node --watch --experimental-strip-types src/index.ts",
+    "start": "node dist/index.js",
+    "migrate": "node --experimental-strip-types src/migrate.ts",
+    "user": "node --experimental-strip-types src/user.ts"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/static": "^8.2.0",
+    "@node-rs/argon2": "^2.2.1",
+    "@nw/model": "workspace:*",
+    "@nw/registry": "workspace:*",
+    "fastify": "^5.6.1",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.10",
+    "typescript": "~5.9.2"
+  }
+}

@@ -1,0 +1,90 @@
+/* Die Startzeilen als JSON, für den Prototyp und für jeden, der eine frische
+   Datenbank befüllt.
+
+   Der Grund: das Register lag zweimal — einmal als TypeScript hier, einmal
+   als JSON im Prüfaufbau des Prototyps —, und beide wurden von Hand
+   nachgezogen. Das hält genau so lange, wie jemand daran denkt. Nachgezogen
+   wurde diesmal richtig, und trotzdem standen am Ende deutsche Variablen im
+   Paket und englische im Prototyp; gemerkt hat es niemand, weil beide für
+   sich stimmten.
+
+   **Zusätzliche Zeilen bleiben stehen.** Wer im Prototyp eine Artikelart
+   anlegt, legt eine Zeile an — genau das ist der Sinn der Sache, und ein
+   Erzeuger, der sie beim nächsten Lauf wegräumt, nimmt der Idee ihren Kern.
+   Sie werden aufgezählt, nicht gelöscht: so sieht man, was auseinanderläuft,
+   statt es zuzudecken.
+
+   **Entfernen** ist deshalb ausdrücklich: `--prune <teil>` wirft die
+   zusätzlichen Zeilen dieses Teils weg und zählt sie dabei auf. Ohne den
+   Schalter bleiben sie, denn der Erzeuger kann nicht wissen, ob eine Zeile
+   dazugekommen oder aus dem Paket verschwunden ist — und die falsche
+   Annahme löscht im einen Fall Arbeit.
+
+   Ein ganzer Teil ist oft zu grob: aus `components` sollen die Zeilen einer
+   gestrichenen Artikelart weg, die eine Zeile daneben aber bleiben. Deshalb
+   nimmt der Schalter auch **einzelne Zeilen**, `teil:Name`. Was er so nicht
+   findet, sagt er — ein Name, der nichts trifft, ist meist ein Tippfehler
+   und keine erledigte Arbeit.
+
+   Aufruf: node scripts/emit-seed.mjs [zielverzeichnis]
+           [--prune teil,teil:Name,…]
+*/
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { seedRegistry } from '../dist/index.js';
+
+const HIER = dirname(fileURLToPath(import.meta.url));
+const argv = process.argv.slice(2);
+const pruneAt = argv.indexOf('--prune');
+const PRUNE = new Set(
+  pruneAt >= 0 ? (argv[pruneAt + 1] ?? '').split(',').map((x) => x.trim()).filter(Boolean) : [],
+);
+/* `teil` wirft alles Zusätzliche dieses Teils weg, `teil:Name` genau die
+   eine Zeile. */
+const PRUNE_ROW = new Map();
+for (const p of PRUNE) {
+  const i = p.indexOf(':');
+  if (i < 0) continue;
+  const teil = p.slice(0, i);
+  if (!PRUNE_ROW.has(teil)) PRUNE_ROW.set(teil, new Set());
+  PRUNE_ROW.get(teil).add(p.slice(i + 1));
+}
+const zielArg = argv.find((a, i) => !a.startsWith('--') && i !== pruneAt + 1);
+const ZIEL = resolve(zielArg ?? join(HIER, '..', '..', '..', 'prototype', 'test', 'dbdump', 'registry'));
+const TEILE = ['components', 'interfaces', 'relations', 'views', 'vars', 'settings'];
+
+mkdirSync(ZIEL, { recursive: true });
+let fremd = 0;
+const verfehlt = [];
+for (const teil of TEILE) {
+  const aus = seedRegistry[teil] ?? {};
+  const datei = join(ZIEL, `${teil}.json`);
+  const alt = existsSync(datei) ? JSON.parse(readFileSync(datei, 'utf8')) : {};
+  const eigen = Object.keys(alt).filter((k) => !(k in aus));
+  const namen = PRUNE_ROW.get(teil) ?? new Set();
+  const ganz = PRUNE.has(teil);
+  const geht = (k) => ganz || namen.has(k);
+  const raus = { ...aus };
+  for (const k of eigen) if (!geht(k)) raus[k] = alt[k];
+  writeFileSync(datei, `${JSON.stringify(raus, null, 1)}\n`, 'utf8');
+  const entfernt = eigen.filter(geht);
+  const bleibt = eigen.filter((k) => !geht(k));
+  fremd += bleibt.length;
+  /* Ein Name, der nichts trifft, wird gesagt und nicht verschwiegen: er ist
+     meist ein Tippfehler, und ein stiller Tippfehler sieht aus wie eine
+     erledigte Löschung. */
+  for (const n of namen) if (!eigen.includes(n)) verfehlt.push(`${teil}:${n}`);
+  console.log(
+    `${teil}: ${Object.keys(aus).length} from the seed` +
+      (entfernt.length ? `, ${entfernt.length} REMOVED — ${entfernt.join(', ')}` : '') +
+      (bleibt.length
+        ? `, ${bleibt.length} kept that only exist there — ${bleibt.join(', ')}`
+        : ''),
+  );
+}
+console.log(`written to ${ZIEL}${fremd ? ` · ${fremd} row(s) kept that the seed does not know` : ''}`);
+if (verfehlt.length) {
+  console.error(`--prune found nothing named: ${verfehlt.join(', ')}`);
+  process.exitCode = 1;
+}

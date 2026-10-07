@@ -1,0 +1,27 @@
+# Testinstanz — eigener Port, eigene Datenbank, eigenes Volume.
+# Läuft von preprod, damit main ungestört bleibt.
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nebelwacht
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nebelwacht}
+      POSTGRES_DB: nebelwacht_preprod
+    volumes: ["./daten/db-preprod:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nebelwacht"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgres://nebelwacht:${POSTGRES_PASSWORD:-nebelwacht}@db:5432/nebelwacht_preprod
+      HOST: 0.0.0.0
+      PORT: 8080
+    ports: ["127.0.0.1:8081:8080"]

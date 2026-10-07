@@ -1,0 +1,5 @@
+dist
+.angular
+pnpm-lock.yaml
+legacy
+prototype
