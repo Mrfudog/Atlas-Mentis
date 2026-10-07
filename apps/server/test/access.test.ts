@@ -229,6 +229,56 @@ describe('behind the reverse proxy', () => {
   });
 });
 
+/* ---------------------------------------------------------------------
+   Die nullte Frage: steht der Artikel im Stapel? (E2, A2)
+   Was eine aufgeschaltete Ebene herausnimmt oder eine spezifischere
+   Fassung überschreibt, geht vom Server nicht hinaus — auch nicht an die
+   Verwaltung. Bis zum 7.10. rechnete das nur der Prototyp.
+   --------------------------------------------------------------------- */
+describe('the layer stack on the server', () => {
+  const ebene = (id: string, order: number): Entity => ({
+    id, interfaces: ['Layer'], name: id,
+    components: { Identity: { name: id, id: `layer-${order}`, aliases: [] }, Status: { status: 'ready' }, Layer: { order } },
+    relations: [],
+  });
+  const regel = (id: string, relations: Entity['relations']): Entity => ({
+    id, interfaces: ['Rule'], name: id,
+    components: { Identity: { name: id, id: `rule-${id}`, aliases: [] }, Status: { status: 'ready' }, Rule: { kind: 'trait' } },
+    relations,
+  });
+  const camp: Entity = {
+    id: 'camp_probe', interfaces: ['Campaign'], name: 'Probe',
+    components: { Identity: { name: 'Probe', id: 'campaign-0001', aliases: [] }, Status: { status: 'ready' } },
+    relations: [{ id: 'a1', type: 'activates', to: 'ly_sys', props: {} }, { id: 'a2', type: 'activates', to: 'ly_an', props: {} }],
+  };
+  const bestand = [
+    rook, inv, camp, ebene('ly_sys', 1), ebene('ly_an', 20), ebene('ly_aus', 20),
+    regel('r_frei', []),
+    regel('r_sys', [{ id: 'l1', type: 'inLayer', to: 'ly_sys', props: {} }]),
+    regel('r_aus', [{ id: 'l2', type: 'inLayer', to: 'ly_aus', props: {} }]),
+    regel('r_haus', [{ id: 'l3', type: 'inLayer', to: 'ly_an', props: {} }, { id: 'o1', type: 'overrides', to: 'r_sys', props: {} }]),
+    regel('r_weg', [{ id: 'l4', type: 'inLayer', to: 'ly_sys', props: {} }, { id: 'l5', type: 'inLayer', to: 'ly_an', props: { mode: 'removes' } }]),
+  ];
+
+  it('sends only what the running campaign has in play, to admin and player alike', async () => {
+    for (const admin of [true, false]) {
+      const repo = new InMemoryRepository(seedRegistry, bestand);
+      const app = buildApp({ repo });
+      await addUser(repo, 'Wer', { admin, actorIds: ['pc_rook'] });
+      const keks = cookieOf(await login(app, 'Wer'));
+      const ids = (await app.inject({ method: 'GET', url: '/api/entities', headers: { cookie: keks } })).json()
+        .map((e: Entity) => e.id);
+      expect(ids).toContain('r_frei');
+      expect(ids).toContain('r_haus');
+      expect(ids).not.toContain('r_sys');   /* überschrieben */
+      expect(ids).not.toContain('r_aus');   /* Ebene nicht aufgeschaltet */
+      expect(ids).not.toContain('r_weg');   /* herausgenommen */
+      const einzeln = await app.inject({ method: 'GET', url: '/api/entities/r_aus', headers: { cookie: keks } });
+      expect(einzeln.statusCode).toBe(404);
+    }
+  });
+});
+
 describe('who may write what', () => {
   let app: ReturnType<typeof buildApp>;
   let repo: InMemoryRepository;

@@ -53,6 +53,11 @@ Was gerade gilt, wird **beim Lesen berechnet und nie gespeichert** — dieselbe
 Regel wie bei abgeleiteten Werten (D8). Der ganze Mechanismus sitzt in zwei
 Funktionen:
 
+> Seit dem 7.10. (A2) steht die Rechnung einmal, in `packages/model/src/stack.ts`
+> (`currentCampaign`, `activeStack`, `inStack`, `overriderOf`,
+> `resolveArticle`, `inPlay`), und der Server siebt damit **vor** der
+> Sichtbarkeit — für jeden, auch die Verwaltung. Der Prototyp rechnet gleich.
+
 - `inStack(e)` — steht dieser Artikel im laufenden Stapel? Ohne Ebenenkante:
   ja. Mit: nur, wenn eine aufgeschaltete Ebene ihn hinzufügt und keine
   spezifischere ihn herausnimmt (`addAt > remAt`, beides Ränge im Stapel).
