@@ -37,7 +37,7 @@ describe('wache', () => {
   });
 
   it('waits for the session instead of guessing, and then lets a viewer in', async () => {
-    stubFetch({ user: { id: 'u', name: 'Basil', isGm: true }, setup: null });
+    stubFetch({ user: { id: 'u', name: 'Basil', isAdmin: true }, setup: null });
     const ergebnis = await TestBed.runInInjectionContext(() =>
       wache({} as never, { url: '/artikel/x' } as never),
     );

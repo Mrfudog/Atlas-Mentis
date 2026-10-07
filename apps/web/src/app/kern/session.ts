@@ -24,7 +24,7 @@ export class Session {
   readonly stand = this._stand.asReadonly();
   readonly user = computed(() => this._me()?.user ?? null);
   readonly setupHint = computed(() => this._me()?.setup ?? null);
-  readonly isGm = computed(() => this.user()?.isGm === true);
+  readonly isAdmin = computed(() => this.user()?.isAdmin === true);
   readonly angemeldet = computed(() => this.user() !== null);
 
   /**
@@ -77,7 +77,7 @@ export class Session {
       /* Nach dem Anmelden noch einmal fragen: erst `/api/me` weiss, was
          dieser Betrachter schreiben darf. Es aus der Anmeldung zu raten
          hiesse, es zu raten. */
-      this._me.set({ user, writable: user?.isGm ? null : [], setup: null });
+      this._me.set({ user, writable: user?.isAdmin ? null : [], setup: null });
       this._stand.set('bereit');
       await this.load(true);
       return null;

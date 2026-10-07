@@ -10,7 +10,7 @@ Stand 2026-09-20. REQ-130 bis 140 und REQ-193 aus
 „Ebene“ heisst in diesem Projekt zweierlei, und wer die beiden verwechselt,
 sucht den Fehler an der falschen Stelle:
 
-- **Inhaltsebene** — `Layer` mit `LayerInfo`, der Stapel aus
+- **Inhaltsebene** — `Layer`, der Stapel aus
   [Ebenen.md](Ebenen.md). Sie sagt, *welche Artikel es überhaupt gibt*:
   Grundregelwerk, Abenteuer, Hausregeln.
 - **Zeichenebene** — ein Blatt auf *einer* Karte. Sie sagt, *was auf dem
@@ -28,7 +28,7 @@ ihr nichts zu suchen.
 Jedes Blatt trägt ein Hintergrundbild, eine Deckkraft, einen Schalter für
 sichtbar und einen dafür, ob es der Spielleitung gehört.
 
-**Das unterste Blatt ist das Kartenbild selbst** (`MapInfo.image`) und hat
+**Das unterste Blatt ist das Kartenbild selbst** (`Map.image`) und hat
 keinen Eintrag in `sheets`. Das ist kein Sonderfall aus Bequemlichkeit: an
 ihm hängt die natürliche Grösse der Karte, und aus ihr rechnen Nebel, Licht,
 Gitter und jede Tokenposition. Eine Karte ohne unterstes Blatt hätte keine
@@ -50,7 +50,7 @@ echten Stapel tut es `redactEntity`, bevor es losgeschickt wird.
 
 ## Sperren: Wand, Tür, Fenster, Abgrund
 
-Eine Liste, zwei Fragen. `MapInfo.walls` hiess einmal „Sichtblocker“ und
+Eine Liste, zwei Fragen. `Map.walls` hiess einmal „Sichtblocker“ und
 war es auch — jede Linie hielt den Blick. Jetzt trägt jede Linie ihre Art:
 
 | Art | Blick | Schritt |
@@ -121,6 +121,29 @@ jeder Rahmen winzig, obwohl er den halben Schirm füllt. Die Breite des
 Bildes ist ohnehin Zoom mal Fenster; sie auszurechnen ist genauer, als sie
 abzulesen. Die Fenstergrösse wird nach jedem Zeichnen gemerkt: sie ändert
 sich mit dem Fenster und nicht mit dem Zoom.
+
+**Eine fehlende Messung ist keine Messung von null.** Die Höhe des Fensters
+steht nicht immer — beim Zeichnen hängt die Bühne nicht im Baum, und ein
+Bild, das noch lädt, gibt ihr keine. Dann zählt die Breite allein. Solange
+die Höhe als null in die Rechnung ging, war der Anteil immer null: der
+Rahmen sagte nie an, und der Zoomschritt, der ihn hätte ankündigen sollen,
+betrat ihn.
+
+---
+
+## Der Kasten ist das Bild
+
+Alles, was in Kartenkoordinaten liegt — Tokens, Gitter, Nebel,
+Zeichenebenen, Unterkartenrahmen —, steht in Prozent von `.mapinner`.
+Also muss `.mapinner` **genau so gross sein wie das Bild**, und gezoomt
+wird der Kasten und nicht das Bild darin.
+
+Es war einmal umgekehrt: der Kasten blieb so breit wie die Bühne
+(`min-width:100%`), und das Bild darin wuchs mit dem Zoom. Ein Token bei
+`left:50%` sass danach in der Mitte der *Bühne* statt in der Mitte der
+Karte — es wanderte beim Hineinzoomen weg von der Stelle, auf die es
+gesetzt worden war. Ein Token wächst mit der Karte, weil es eine Fläche
+darauf belegt; wandern darf es nicht.
 
 ---
 

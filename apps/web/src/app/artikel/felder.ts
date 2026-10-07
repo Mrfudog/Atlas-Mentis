@@ -13,7 +13,10 @@ export type Eingabe = 'text' | 'lang' | 'zahl' | 'jaNein' | 'auswahl' | 'liste';
 
 export function eingabeArt(p: PropertySchema | undefined): Eingabe {
   if (!p) return 'text';
-  if (Array.isArray(p.enum) && p.enum.length) return 'auswahl';
+  /* Auch ein Feld, das seine Werte in einer Aufzählungszeile nennt, ist
+     eine Auswahl. Die Werte holt die Maske über `enumOptions()`; hier geht
+     es nur um die Form der Eingabe. */
+  if ((Array.isArray(p.enum) && p.enum.length) || p.enumRef) return 'auswahl';
   if (p.type === 'boolean') return 'jaNein';
   if (p.type === 'number' || p.type === 'integer') return 'zahl';
   if (p.type === 'array') return 'liste';

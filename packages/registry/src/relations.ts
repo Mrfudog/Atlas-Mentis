@@ -35,8 +35,27 @@ export const relations: Record<string, RelationDef> = {
     label: 'belongs to',
     inverseLabel: 'statblock of',
     from: ['Statblock'],
-    to: ['NPC'],
+    /* **Jede Kreatur**, nicht nur ein NSC: ein Spielercharakter hat
+       dieselben Zahlen wie ein Monster und mehr darüber hinaus. Solange
+       hier nur der NSC stand, konnte er gar keinen Statblock haben und musste
+       seine Zahlen selbst tragen — die zweite Form für dieselbe Sache. */
+    to: ['Creature'],
+    /* **`one`: ein Statblock gehört einer Kreatur.** Dreissig Wachen
+       teilen sich nicht einen Bogen — dann wäre jede Änderung an Wache 7
+       eine an allen dreissig —, sondern lesen je ihre **Instanz** einer
+       Vorlage (`instanceOf`): was gleich ist, kommt von der Vorlage, was
+       abweicht, steht an der Instanz. Für einen Tag stand hier `many`, und
+       die Seite warnte „shared by 30"; die Warnung beschrieb genau den
+       Fall, den niemand wollte. */
     cardinality: 'one',
+    /* **An der Kreatur liest sich das wie ein Feld.** Ihre Zahlen stehen am
+       Statblock, und der ist ein eigener Artikel — austauschbar (Wolfsgestalt,
+       verzauberte Fassung), aus einer Vorlage gezogen (dreissig Wachen, eine
+       Vorlage). Für die Kreatur ist er trotzdem kein Verweis auf etwas
+       Fremdes, sondern der Teil von ihr, der woanders wohnt. Also zeigt das
+       Register seine Felder an der Kreatur mit, und die Artikelseite lässt
+       sie dort bearbeiten, statt auf einen zweiten Artikel zu springen. */
+    asField: 'to',
   },
 
   /** Weapon properties are pooled rules, referenced rather than copied. */
@@ -48,27 +67,40 @@ export const relations: Record<string, RelationDef> = {
     to: ['Rule'],
   },
 
+  /* `NPC` stand hier, solange es die Art gab. Jetzt ist eine Kreatur die
+     Art, und `kind` sagt, was für eine — eine Kante, die auf den Namen
+     einer verschwundenen Art zeigt, gilt für nichts. */
   owes: {
     type: 'owes',
     label: 'owes',
     inverseLabel: 'creditor of',
-    from: ['NPC'],
-    to: ['NPC'],
+    from: ['Creature'],
+    to: ['Creature'],
   },
 
   memberOf: {
     type: 'memberOf',
     label: 'member of',
     inverseLabel: 'members',
-    from: ['NPC'],
+    from: ['Creature'],
     to: ['Faction'],
+    /* Der Rang steht an der Kante: dieselbe Figur ist in der einen Fraktion
+       Meisterin und in der anderen Novizin. Das Wort kommt aus
+       `Faction.ranks` (A7, REQ-203). */
+    props: {
+      type: 'object',
+      properties: {
+        rank: { type: 'string', title: 'Rank' },
+        note: { type: 'string', title: 'Note' },
+      },
+    },
   },
 
   livesIn: {
     type: 'livesIn',
     label: 'lives in',
     inverseLabel: 'residents',
-    from: ['NPC'],
+    from: ['Creature'],
     to: ['Place'],
   },
 
@@ -104,15 +136,10 @@ export const relations: Record<string, RelationDef> = {
 
   // ------------------------------------------------------ players & party
 
-  /** The one edge that leaves the fiction: who at the table runs this one. */
-  playedBy: {
-    type: 'playedBy',
-    label: 'played by',
-    inverseLabel: 'plays',
-    from: ['PlayerCharacter'],
-    to: ['*'],
-    cardinality: 'one',
-  },
+  /* Hier stand `playedBy` (Spielerfigur → `*`): die eine Kante, die aus
+     der Fiktion hinauszeigte. Wer eine Figur spielt, ist eine Angabe über
+     ein Konto und steht dort (`app_user_actor`), nicht in einem Artikel —
+     Abgleich A1, REQ-199. Im Bestand hat sie nie jemand gesetzt. */
 
   memberOfParty: {
     type: 'memberOfParty',
@@ -129,6 +156,10 @@ export const relations: Record<string, RelationDef> = {
     from: ['Creature', 'Party'],
     to: ['Inventory'],
     cardinality: 'one',
+    /* Dasselbe am anderen Ende: das Inventar ist ein eigener Artikel, weil
+       es den Träger wechselt — aber wer eine Figur aufschlägt, will ihre
+       Sachen sehen und nicht einen Verweis darauf. */
+    asField: 'from',
   },
 
   /**
@@ -212,7 +243,7 @@ export const relations: Record<string, RelationDef> = {
     label: 'features',
     inverseLabel: 'appears in',
     from: ['Story'],
-    to: ['Creature', 'NPC', 'Statblock', 'Faction'],
+    to: ['Creature', 'Statblock', 'Faction'],
   },
 
   // ------------------------------------------------------------- knowledge
@@ -239,18 +270,42 @@ export const relations: Record<string, RelationDef> = {
     type: 'knownBy',
     label: 'known by',
     inverseLabel: 'knows',
-    from: ['Information'],
-    // Eine Fraktion kann etwas erfahren — „das Auge weiss es“ ist genau die
-    // Frage, an der eine Tat zu zählen anfängt (REQ-030, 040).
-    to: ['Creature', 'Party', 'Faction', 'KnowledgeLevel'],
+    /* Eine einzelne Information **oder ein Bündel**: dieselbe Kante, weil
+       es dieselbe Frage ist. Wer ein Bündel kennt, kennt alles darin. */
+    from: ['Information', 'Knowledge'],
+    // Eine Fraktion kann etwas erfahren — „das Auge weiss es“ ist eine
+    // Frage, die eine Kampagne stellt (REQ-040).
+    //
+    // Und eine **Gruppe von Menschen**: „die Spieler dieser Kampagne" ist
+    // kein Figurengefüge, also keine Party. Sie dazuzunehmen ist eine
+    // Zeile und keine zweite Mechanik — `knowledgeHolders` fragt ohnehin
+    // nach Haltern und nicht nach Figuren.
+    to: ['Creature', 'Party', 'Faction', 'Group'],
+    /* An eine Fraktion darf die Zuteilung einen **Mindestrang** nennen
+       (`Faction.ranks`): wer auf dieser Sprosse oder höher steht, weiss es.
+       Ohne Rang weiss es jedes Mitglied. An einer Figur oder Gruppe sagt
+       das Feld nichts (A7, REQ-203). */
+    props: {
+      type: 'object',
+      properties: {
+        rank: { type: 'string', title: 'From rank' },
+      },
+    },
   },
 
-  atLevel: {
-    type: 'atLevel',
-    label: 'knows as',
-    inverseLabel: 'known to',
-    from: ['Creature', 'Party'],
-    to: ['KnowledgeLevel'],
+  /**
+   * Was in einem Bündel steckt. Nur vorwärts gespeichert: „in welchen
+   * Bündeln steckt diese Information" ist ein Rückbezug wie jeder andere.
+   *
+   * Nicht `owned`: dieselbe Information darf in zwei Bündeln stehen, und
+   * ein Bündel zu löschen darf sie nicht mitnehmen.
+   */
+  includes: {
+    type: 'includes',
+    label: 'includes',
+    inverseLabel: 'part of',
+    from: ['Knowledge'],
+    to: ['Information'],
   },
 
   // ------------------------------------------------------------------ maps
@@ -450,6 +505,9 @@ export const relations: Record<string, RelationDef> = {
         hp: { type: 'number', title: 'Hit points' },
         hpMax: { type: 'number', title: 'Maximum' },
         ally: { type: 'boolean', title: 'On the party’s side' },
+        /* Zeitlich begrenzte Zustände (REQ-115): je Eintrag `rule` (Id
+           eines Regelartikels mit `kind: condition`), `rounds` (zählt am
+           Zugende herunter) und `source` (wer ihn verhängt hat). */
         conditions: { type: 'array', title: 'Conditions', items: { type: 'object' } },
         note: { type: 'string', title: 'Note' },
       },
@@ -466,13 +524,21 @@ export const relations: Record<string, RelationDef> = {
     cardinality: 'one',
   },
 
-  /** Was dabei zu holen ist. */
+  /**
+   * Was dabei zu holen ist. Nicht nur Gegenstände: was jemand *erfährt*, ist
+   * genauso Beute, und manchmal die einzige — ein Brief im Nachlass, ein Name,
+   * den der Sterbende noch sagt. Selten, aber nicht nie: ein Talent oder eine
+   * Fertigkeit, die aus der Begegnung mitkommt.
+   *
+   * Deshalb zeigt die Kante auf `Feat` und `Skill` und nicht auf `Rule`: eine
+   * Lauernde Aktion ist auch eine Regel, und sie ist keine Beute.
+   */
   loot: {
     type: 'loot',
     label: 'loot',
     inverseLabel: 'found in',
-    from: ['Encounter', 'Story'],
-    to: ['Item'],
+    from: ['Encounter', 'Story', 'Quest'],
+    to: ['Item', 'Information', 'Feat', 'Skill'],
     props: {
       type: 'object',
       properties: {
@@ -607,6 +673,26 @@ export const relations: Record<string, RelationDef> = {
     },
   },
 
+  /**
+   * **Eine Instanz liest ihre Vorlage.** Gespeichert wird an ihr nur, was
+   * abweicht; gelesen wird beides zusammen (`resolveInstance` im Modell).
+   * Eine Korrektur an der Vorlage erreicht jede Instanz, die das Feld nicht
+   * selbst gesetzt hat. Wer den Wert der Vorlage einträgt, folgt ihr wieder.
+   *
+   * Anders als `variantOf`, das eine Kopie mit Herkunft ist und nichts
+   * nachliest. Erlaubt ist es heute am Statblock; eine weitere Art, die
+   * Vorlagen braucht, kommt hier in `from` und `to` dazu und braucht keine
+   * Codeänderung.
+   */
+  instanceOf: {
+    type: 'instanceOf',
+    label: 'instance of',
+    inverseLabel: 'instances',
+    from: ['Statblock'],
+    to: ['Statblock'],
+    cardinality: 'one',
+  },
+
   /** Eine Kopie mit Herkunft (REQ-008) — sie ersetzt nichts. */
   variantOf: {
     type: 'variantOf',
@@ -660,7 +746,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'crafting',
     label: 'working on',
     inverseLabel: 'worked on by',
-    from: ['Creature', 'NPC', 'PlayerCharacter', 'Party'],
+    from: ['Creature', 'PlayerCharacter', 'Party'],
     to: ['Recipe'],
     props: {
       type: 'object',
@@ -696,8 +782,10 @@ export const relations: Record<string, RelationDef> = {
     type: 'regards',
     label: 'regards',
     inverseLabel: 'judged by',
-    from: ['Creature', 'NPC', 'PlayerCharacter', 'Party', 'Faction'],
-    to: ['Creature', 'NPC', 'PlayerCharacter', 'Party', 'Faction'],
+    /* `PlayerCharacter` stand hier daneben, obwohl die `extends`-Kette es
+       abdeckt — eine Spielerfigur *ist* eine Kreatur (Abgleich A12). */
+    from: ['Creature', 'Party', 'Faction'],
+    to: ['Creature', 'Party', 'Faction'],
     props: {
       type: 'object',
       properties: {

@@ -74,10 +74,10 @@ export interface Repository {
 }
 
 const emptyRegistry = (): Registry => ({
-  components: {},
   interfaces: {},
   relations: {},
   views: {},
+  units: {},
   vars: {},
 });
 
@@ -147,12 +147,20 @@ export class InMemoryRepository implements Repository {
     return [...this.users.values()].map(({ passwordHash: _hash, ...rest }) => ({ ...rest }));
   }
   async putUser(user: StoredUser): Promise<void> {
-    this.users.set(user.id, { ...user, actorIds: [...(user.actorIds ?? [])] });
+    this.users.set(user.id, {
+      ...user,
+      actorIds: [...(user.actorIds ?? [])],
+      roles: { ...(user.roles ?? {}) },
+    });
   }
   async usersOfActor(actorId: string): Promise<User[]> {
     return [...this.users.values()]
       .filter((u) => (u.actorIds ?? []).includes(actorId))
-      .map(({ passwordHash: _hash, ...rest }) => ({ ...rest, actorIds: [...rest.actorIds] }));
+      .map(({ passwordHash: _hash, ...rest }) => ({
+        ...rest,
+        actorIds: [...rest.actorIds],
+        roles: { ...(rest.roles ?? {}) },
+      }));
   }
 
   async putInvite(invite: Invite): Promise<void> {

@@ -1,25 +1,80 @@
 import { describe, expect, it } from 'vitest';
-import { backlinks, findByName, relationAccepts, relationDef, splitRelations } from '../src/entity.js';
+import {
+  areaOf,
+  articleId,
+  backlinks,
+  fieldTitle,
+  findByName,
+  idPrefix,
+  nextId,
+  linkAccepts,
+  linkTargets,
+  relationAccepts,
+  relationDef,
+  setTags,
+  splitRelations,
+  tagsOf,
+} from '../src/entity.js';
 import { validateEntity } from '../src/validate.js';
 import type { Entity, Registry } from '../src/types.js';
 
 const registry: Registry = {
-  components: {
-    Name: { name: 'Name', engine: null, schema: { type: 'object', required: ['text'], properties: { text: { type: 'string' } } } },
-    Identity: { name: 'Identity', engine: 'Resolution', schema: { type: 'object', properties: { key: { type: 'string' }, aliases: { type: 'array', items: { type: 'string' } } } } },
-    CreatureInfo: { name: 'CreatureInfo', engine: null, schema: { type: 'object', properties: { rolle: { type: 'string' } } } },
-    StatblockInfo: { name: 'StatblockInfo', engine: 'Calculation', schema: { type: 'object', required: ['system'], properties: { system: { type: 'string' }, ac: { type: 'number' } } } },
-  },
   interfaces: {
-    Base: { name: 'Base', abstract: true, requires: ['Name'], allows: ['Identity'] },
-    NPC: { name: 'NPC', extends: ['Base'], allows: ['CreatureInfo'] },
-    Statblock: { name: 'Statblock', extends: ['Base'], requires: ['StatblockInfo'] },
+    Identity: {
+      name: 'Identity',
+      abstract: true,
+      schema: {
+        type: 'object',
+        required: ['name'],
+        properties: {
+          name: { type: 'string' },
+          key: { type: 'string' },
+          aliases: { type: 'array', items: { type: 'string' } },
+        },
+      },
+    },
+    NPC: {
+      name: 'NPC',
+      extends: ['Identity'],
+      schema: {
+        type: 'object',
+        properties: {
+          rolle: { type: 'string' },
+          /* Die Werte stehen als Zeile im Register, nicht am Feld. */
+          probe: { type: 'string', enumRef: 'Ability' },
+          stufe: { type: 'number', min: 1, max: 20 },
+          laune: { type: 'string', enum: ['gut', 'schlecht'] },
+          /* Ein Verweisfeld, das seinen Zieltyp nennt — und eines, das
+             es nicht tut. */
+          sb: { type: 'string', format: 'link', target: { interfaces: ['Statblock'] } },
+          irgendwas: { type: 'string', format: 'link' },
+        },
+      },
+    },
+    /* Eigener Obertyp, damit `StatblockInfo` eine Karte bleibt — dieselbe
+       Form wie im echten Register. */
+    StatblockInfo: {
+      name: 'StatblockInfo',
+      abstract: true,
+      schema: {
+        type: 'object',
+        required: ['system'],
+        properties: { system: { type: 'string' }, ac: { type: 'number' } },
+      },
+    },
+    Statblock: { name: 'Statblock', extends: ['Identity', 'StatblockInfo'] },
+    /* Ein Untertyp des genannten Typs. Er muss durchgehen: eine
+       Spielerfigur ist eine Kreatur. */
+    EliteStatblock: { name: 'EliteStatblock', extends: ['Statblock'] },
   },
   relations: {
     schuldet: { type: 'schuldet', label: 'schuldet', inverseLabel: 'Gläubiger von', from: ['NPC'], to: ['NPC'] },
     composedOf: { type: 'composedOf', label: 'besteht aus', inverseLabel: 'verwendet in', from: ['Statblock'], to: ['*'], section: 'Aktionen' },
   },
   views: {},
+  enums: {
+    Ability: { name: 'Ability', values: ['str', 'dex', 'con', 'int', 'wis', 'cha'] },
+  },
   vars: {},
 };
 
@@ -27,10 +82,8 @@ const volo: Entity = {
   id: 'n_volo',
   interfaces: ['NPC'],
   name: 'Volo Geddarm',
-  tags: [],
   components: {
-    Name: { text: 'Volo Geddarm' },
-    Identity: { key: 'npc/volo', aliases: ['Volothamp Geddarm', 'Der Dicke'] },
+    Identity: { name: 'Volo Geddarm', key: 'npc/volo', aliases: ['Volothamp Geddarm', 'Der Dicke'] },
   },
   relations: [{ id: 'r1', type: 'schuldet', to: 'n_floon', props: { note: '80 Drachen' } }],
 };
@@ -39,8 +92,7 @@ const floon: Entity = {
   id: 'n_floon',
   interfaces: ['NPC'],
   name: 'Floon Blagmaar',
-  tags: [],
-  components: { Name: { text: 'Floon Blagmaar' } },
+  components: { Identity: { name: 'Floon Blagmaar' } },
 };
 
 describe('backlinks', () => {
@@ -92,8 +144,8 @@ describe('relationDef', () => {
 describe('splitRelations', () => {
   it('separates composition sections from plain references', () => {
     const statblock: Entity = {
-      id: 'sb', interfaces: ['Statblock'], name: 'Schleim', tags: [],
-      components: { Name: { text: 'Schleim' }, StatblockInfo: { system: 'dnd5e' } },
+      id: 'sb', interfaces: ['Statblock'], name: 'Schleim',
+      components: { Identity: { name: 'Schleim' }, StatblockInfo: { system: 'dnd5e' } },
       relations: [
         { id: 'a', type: 'composedOf', to: 'r_amorph' },
         { id: 'b', type: 'schuldet', to: 'n_floon' },
@@ -110,30 +162,87 @@ describe('validateEntity', () => {
     expect(validateEntity(registry, volo)).toEqual([]);
   });
 
-  it('reports a missing required component', () => {
-    const broken: Entity = { ...volo, interfaces: ['Statblock'], components: { Name: { text: 'x' } } };
-    const codes = validateEntity(registry, broken).map((i) => i.code);
-    expect(codes).toContain('missing_component');
+  /* Eine fehlende Karte ist kein eigener Fall mehr: wo sie fehlt, fehlen
+     ihre Pflichtfelder, und genau das steht da. */
+  it('reports the required fields of a card that is not there at all', () => {
+    const broken: Entity = { ...volo, interfaces: ['Statblock'], components: { Identity: { name: 'x' } } };
+    const issue = validateEntity(registry, broken).find((i) => i.code === 'missing_property');
+    expect(issue?.component).toBe('StatblockInfo');
+    expect(issue?.property).toBe('system');
   });
 
   it('reports a missing required property', () => {
     const broken: Entity = {
-      id: 'sb', interfaces: ['Statblock'], name: 'x', tags: [],
-      components: { Name: { text: 'x' }, StatblockInfo: {} },
+      id: 'sb', interfaces: ['Statblock'], name: 'x',
+      components: { Identity: { name: 'x' }, StatblockInfo: {} },
     };
     const issue = validateEntity(registry, broken).find((i) => i.code === 'missing_property');
     expect(issue?.property).toBe('system');
   });
 
-  it('enforces `allows` strictly, and relents in expert mode (D2)', () => {
+  it('refuses a card whose type this article does not inherit, and relents in expert mode (D2)', () => {
     const odd: Entity = {
       ...volo,
       components: { ...volo.components, StatblockInfo: { system: 'dnd5e' } },
     };
-    expect(validateEntity(registry, odd).map((i) => i.code)).toContain('component_not_allowed');
+    expect(validateEntity(registry, odd).map((i) => i.code)).toContain('card_not_inherited');
     expect(validateEntity(registry, odd, { expertMode: true }).map((i) => i.code)).not.toContain(
-      'component_not_allowed',
+      'card_not_inherited',
     );
+  });
+
+  /* **Eine Aufzählung und eine Spanne müssen halten.** Bis hierher waren
+     beide Angaben für die Maske allein — und eine Regel, die nur das
+     Eingabefeld kennt, gilt für jeden Weg nicht, der nicht durch die Maske
+     führt: Einfuhr, Wanderung, eine Zeile von Hand. Genau dort entstehen
+     die Werte, die niemand mehr erklären kann. */
+  it('refuses a word the field does not allow', () => {
+    const falsch: Entity = {
+      ...volo,
+      components: { ...volo.components, NPC: { laune: 'mittel' } },
+    };
+    const issue = validateEntity(registry, falsch).find((i) => i.code === 'value_not_allowed');
+    expect(issue?.property).toBe('laune');
+    expect(issue?.message).toContain('gut');
+  });
+
+  it('reads the words from the enum row a field names', () => {
+    const gut: Entity = { ...volo, components: { ...volo.components, NPC: { probe: 'wis' } } };
+    expect(validateEntity(registry, gut).map((i) => i.code)).not.toContain('value_not_allowed');
+    const schlecht: Entity = { ...volo, components: { ...volo.components, NPC: { probe: 'luck' } } };
+    const issue = validateEntity(registry, schlecht).find((i) => i.code === 'value_not_allowed');
+    expect(issue?.message).toContain('str, dex');
+  });
+
+  /* Eine genannte Zeile, die es nicht gibt, ist **kein** Feld ohne Werte:
+     dann ist es ein freies Wort, und geprüft wird nichts. Eine leere Liste
+     zu prüfen hiesse, jeden Wert abzulehnen — und das wäre die Sorte
+     Fehler, die eine Datenbank zumauert. */
+  it('lets anything through when the named row is missing', () => {
+    const ohne: Registry = { ...registry, enums: {} };
+    const e: Entity = { ...volo, components: { ...volo.components, NPC: { probe: 'luck' } } };
+    expect(validateEntity(ohne, e).map((i) => i.code)).not.toContain('value_not_allowed');
+  });
+
+  it('keeps a number inside its range', () => {
+    const drin: Entity = { ...volo, components: { ...volo.components, NPC: { stufe: 20 } } };
+    expect(validateEntity(registry, drin).map((i) => i.code)).not.toContain('value_out_of_range');
+    const drueber: Entity = { ...volo, components: { ...volo.components, NPC: { stufe: 21 } } };
+    expect(validateEntity(registry, drueber).find((i) => i.code === 'value_out_of_range')?.property)
+      .toBe('stufe');
+    const text: Entity = { ...volo, components: { ...volo.components, NPC: { stufe: 'hoch' } } };
+    expect(validateEntity(registry, text).map((i) => i.code)).toContain('value_not_a_number');
+  });
+
+  /* Ein leeres Feld ist keine falsche Angabe — dafür gibt es `required`.
+     Sonst wäre jeder Artikel, an dem etwas noch nicht dasteht, kaputt. */
+  it('says nothing about a field that is empty', () => {
+    const leer: Entity = {
+      ...volo,
+      components: { ...volo.components, NPC: { laune: '', stufe: undefined } },
+    };
+    expect(validateEntity(registry, leer).map((i) => i.code))
+      .not.toContain('value_not_allowed');
   });
 
   it('reports an edge pointing at nothing', () => {
@@ -147,5 +256,244 @@ describe('validateEntity', () => {
     expect(validateEntity(registry, alien)).toEqual([
       expect.objectContaining({ code: 'unknown_interface' }),
     ]);
+  });
+});
+
+/* ---- In welchen Bereich eine Art gehört ----
+   Sie stand zweimal: im Prototyp über die ganze Kette, im Katalogskript über
+   `extends[0]` allein. Zwei Regeln für eine Frage, und die zweite gab bei
+   jeder Art mit mehreren Obertypen eine andere Antwort — der Katalog
+   verschwieg dadurch 360 geerbte Typen. */
+describe('areaOf', () => {
+  const mitBereich: Registry = {
+    ...registry,
+    interfaces: {
+      ...registry.interfaces,
+      Welt: { name: 'Welt', abstract: true, area: 'world' },
+      /* Der Bereich kommt über den **zweiten** Obertyp herein. Wer nur dem
+         ersten folgt, findet ihn nicht. */
+      Ding: { name: 'Ding', extends: ['Identity', 'Welt'] },
+      Unterding: { name: 'Unterding', extends: ['Ding'] },
+    },
+  };
+
+  it('takes the first area in the whole chain, not just the first parent', () => {
+    expect(areaOf(mitBereich, 'Ding')).toBe('world');
+    expect(areaOf(mitBereich, 'Unterding')).toBe('world');
+  });
+
+  it('says nothing when nothing in the chain has one', () => {
+    expect(areaOf(mitBereich, 'Identity')).toBe('');
+    expect(areaOf(mitBereich, 'Gibtsnicht')).toBe('');
+  });
+});
+
+/* ---- Ein Verweisfeld nennt seinen Zieltyp ----
+   Kanten sagen das längst (`from` / `to`). Ein Feld mit `format: 'link'`
+   sagte es nicht, und „Scene in play" hielt darum die Id von irgendetwas. */
+describe('link targets', () => {
+  const sb: Entity = { id: 'sb1', interfaces: ['Statblock'], name: 'Wache', components: {} };
+  const elite: Entity = { id: 'sb2', interfaces: ['EliteStatblock'], name: 'Hauptmann', components: {} };
+  const arten = new Map([
+    ['n_volo', 'NPC'], ['n_floon', 'NPC'], ['sb1', 'Statblock'], ['sb2', 'EliteStatblock'],
+  ]);
+
+  const mit = (karte: Record<string, unknown>): Entity =>
+    ({ ...volo, relations: [], components: { ...volo.components, NPC: karte } });
+
+  it('reads the named types off the field, and nothing from an empty list', () => {
+    const props = registry.interfaces['NPC']!.schema!.properties;
+    expect(linkTargets(props['sb'])).toEqual(['Statblock']);
+    expect(linkTargets(props['irgendwas'])).toBeUndefined();
+    expect(linkTargets(undefined)).toBeUndefined();
+  });
+
+  it('takes a subtype of the named type, because it is one', () => {
+    expect(linkAccepts(registry, registry.interfaces['NPC']!.schema!.properties['sb'], 'EliteStatblock'))
+      .toBe(true);
+    expect(validateEntity(registry, mit({ sb: 'sb2' }), { knownTypes: arten })
+      .map((i) => i.code)).not.toContain('link_wrong_type');
+    void sb; void elite;
+  });
+
+  it('rejects an article of the wrong type', () => {
+    const issue = validateEntity(registry, mit({ sb: 'n_floon' }), { knownTypes: arten })
+      .find((i) => i.code === 'link_wrong_type');
+    expect(issue?.property).toBe('sb');
+    expect(issue?.message).toContain('Statblock');
+  });
+
+  it('lets a field without a target point anywhere', () => {
+    expect(validateEntity(registry, mit({ irgendwas: 'sb1' }), { knownTypes: arten })
+      .map((i) => i.code)).not.toContain('link_wrong_type');
+  });
+
+  it('reports a link at an article that does not exist', () => {
+    expect(validateEntity(registry, mit({ sb: 'sb_weg' }), { knownTypes: arten })
+      .map((i) => i.code)).toContain('dangling_link');
+  });
+
+  /* Ohne die Arten weiss die Prüfung nicht, worauf der Verweis zeigt — und
+     eine Regel, die raten muss, lehnt irgendwann das Richtige ab. */
+  it('says nothing when the caller did not say what exists', () => {
+    expect(validateEntity(registry, mit({ sb: 'n_floon' })).map((i) => i.code))
+      .not.toContain('link_wrong_type');
+  });
+
+  /* Wer die Arten mitgibt, hat die Ids mitgegeben: zwei Listen derselben
+     Artikel wären eine, die veraltet. */
+  it('uses the same list for a dangling edge', () => {
+    const codes = validateEntity(registry, volo, { knownTypes: new Map([['n_volo', 'NPC']]) })
+      .map((i) => i.code);
+    expect(codes).toContain('dangling_relation');
+  });
+});
+
+/* Marken waren die einzige Eigenschaft, die keiner Art gehörte — und damit
+   die einzige, die man nirgends weglassen konnte. Jetzt ist es ein
+   Bestandteil, und `abwesend` heisst „trägt keine Marken", nicht „hat
+   gerade keine". */
+describe('tagsOf / setTags', () => {
+  it('reads the tags from the card and never throws on an article without one', () => {
+    expect(tagsOf({ id: 'x', interfaces: ['NPC'], name: 'x', components: {} })).toEqual([]);
+    expect(tagsOf(undefined)).toEqual([]);
+    expect(
+      tagsOf({
+        id: 'x', interfaces: ['NPC'], name: 'x',
+        components: { Tags: { tags: ['händler', 'stadt'] } },
+      }),
+    ).toEqual(['händler', 'stadt']);
+  });
+
+  it('writes them back, trims them, and drops the card when nothing is left', () => {
+    const e: Entity = { id: 'x', interfaces: ['NPC'], name: 'x', components: {} };
+    setTags(e, [' händler ', '', 'stadt']);
+    expect(e.components['Tags']).toEqual({ tags: ['händler', 'stadt'] });
+    setTags(e, []);
+    expect(e.components['Tags']).toBeUndefined();
+  });
+});
+
+/* ---- Wie ein Feld an dieser Art heisst ----
+   Derselbe `Time.until` ist an einem Ereignis, wann es aufhört, und an
+   einem Auftrag, wann es zu spät ist. `Time` dafür zu verdoppeln wäre der
+   teurere Weg zum selben Satz. */
+describe('fieldTitle', () => {
+  const reg: Pick<Registry, 'interfaces'> = {
+    interfaces: {
+      Time: {
+        name: 'Time',
+        abstract: true,
+        schema: {
+          type: 'object',
+          properties: {
+            until: { type: 'string', title: 'Until' },
+            display: { type: 'string', title: 'Date' },
+            bare: { type: 'string' },
+          },
+        },
+      },
+      Story: { name: 'Story', abstract: true, extends: ['Time'], titles: { 'Time.display': 'When' } },
+      Quest: { name: 'Quest', extends: ['Time'], titles: { 'Time.until': 'Deadline' } },
+      Event: { name: 'Event', extends: ['Time'] },
+      Session: { name: 'Session', extends: ['Story'] },
+      Recap: { name: 'Recap', extends: ['Story'], titles: { 'Time.display': 'Played on' } },
+    },
+  };
+  const feld = (key: string) => ({
+    type: 'Time',
+    key,
+    prop: reg.interfaces['Time']?.schema?.properties?.[key] ?? { type: 'string' as const },
+  });
+
+  it('takes the name the kind gives it', () => {
+    expect(fieldTitle(reg, 'Quest', feld('until'))).toBe('Deadline');
+  });
+
+  it('leaves every other kind alone', () => {
+    expect(fieldTitle(reg, 'Event', feld('until'))).toBe('Until');
+    expect(fieldTitle(reg, 'Quest', feld('display'))).toBe('Date');
+  });
+
+  it('inherits a rename from a supertype', () => {
+    expect(fieldTitle(reg, 'Session', feld('display'))).toBe('When');
+  });
+
+  /* Die nähere Art gewinnt — sonst hinge die Beschriftung davon ab, wie tief
+     der Baum gerade ist, und niemand könnte sie dort ändern, wo er sie sieht. */
+  it('and the nearer kind wins over the one further up', () => {
+    expect(fieldTitle(reg, 'Recap', feld('display'))).toBe('Played on');
+  });
+
+  it('falls back to the key when the field carries no title at all', () => {
+    expect(fieldTitle(reg, 'Event', feld('bare'))).toBe('bare');
+  });
+
+  /* Ohne Art gibt es keine Umbenennung: eine Feldliste im Register ist
+     nicht die eines Artikels. */
+  it('without a kind there is nothing to rename', () => {
+    expect(fieldTitle(reg, undefined, feld('until'))).toBe('Until');
+  });
+
+  /* Eine leere Beschriftung ist keine: sie stehenzulassen hiesse, ein Feld
+     ohne Namen zu zeigen, weil jemand das Eingabefeld geleert hat. */
+  it('an empty rename does not blank the field', () => {
+    const leer: Pick<Registry, 'interfaces'> = {
+      interfaces: { ...reg.interfaces, Quest: { name: 'Quest', extends: ['Time'], titles: { 'Time.until': '  ' } } },
+    };
+    expect(fieldTitle(leer, 'Quest', feld('until'))).toBe('Until');
+  });
+});
+
+/* ---- Die ausgegebene Nummer ----
+   `Identity.id` ist `npc-0042` und hiess einmal `key`: `npc/volo-geddarm`,
+   also ein Name, der ein zweites Mal derselbe Name war. Beim Umbenennen
+   musste er entweder mitwandern — dann war er kein fester Bezeichner — oder
+   nicht, und dann log er. */
+describe('nextId', () => {
+  const mit = (...ids: string[]): Pick<Entity, 'components'>[] =>
+    ids.map((id) => ({ components: { Identity: { id } } }));
+
+  it('starts at one when the kind has none yet', () => {
+    expect(nextId([], 'NPC')).toBe('npc-0001');
+  });
+
+  it('counts on from the highest that is already there', () => {
+    expect(nextId(mit('npc-0001', 'npc-0007', 'npc-0003'), 'NPC')).toBe('npc-0008');
+  });
+
+  /* Je Art gezählt: ein Gegenstand füllt keine Lücke bei den NSC. */
+  it('counts per kind', () => {
+    const bestand = mit('npc-0004', 'item-0011');
+    expect(nextId(bestand, 'NPC')).toBe('npc-0005');
+    expect(nextId(bestand, 'Item')).toBe('item-0012');
+  });
+
+  /* Ein Import legt zwanzig Artikel auf einmal an. Ohne die zweite Liste
+     bekämen alle zwanzig dieselbe Nummer. */
+  it('also counts what a batch has just issued', () => {
+    expect(nextId(mit('npc-0002'), 'NPC', ['npc-0003', 'npc-0004'])).toBe('npc-0005');
+  });
+
+  /* Eine Lücke bleibt eine Lücke: die höchste plus eins, nicht die erste
+     freie. Nummern nachzureichen hiesse, eine alte wiederzuverwenden, und
+     dann zeigte eine Freigabe auf den falschen Artikel. */
+  it('never fills a gap a deletion left', () => {
+    expect(nextId(mit('npc-0001', 'npc-0009'), 'NPC')).toBe('npc-0010');
+  });
+
+  it('ignores what does not look like one of its numbers', () => {
+    expect(nextId(mit('npc/volo-geddarm', 'npcx-0900', 'npc-0002'), 'NPC')).toBe('npc-0003');
+  });
+
+  it('folds a kind name down to something writable', () => {
+    expect(idPrefix('PlayerCharacter')).toBe('playercharacter');
+    expect(idPrefix('Statblock Info')).toBe('statblock-info');
+    expect(idPrefix('')).toBe('article');
+  });
+
+  it('reads the number back off an article', () => {
+    expect(articleId({ components: { Identity: { id: 'npc-0003' } } })).toBe('npc-0003');
+    expect(articleId({ components: {} })).toBe('');
   });
 });

@@ -1,6 +1,11 @@
-# Nebelwacht
+# Atlas Mentis
 
-Kampagnenplattform für **„Aus Nebel wacht“** — Wasserfeste, Nebeldistrikt, Unterwacht.
+Kampagnenplattform. Gebaut für **„Aus Nebel wacht“** — Wasserfeste,
+Nebeldistrikt, Unterwacht —, aber nicht an sie gebunden: was es an
+Artikelarten gibt, ist eine Registerzeile und keine Codezeile.
+
+Die Kampagne heisst Nebelwacht, die Plattform heisst Atlas Mentis. Das
+Repository trägt noch den alten Namen.
 
 Ein Artikel ist die Grundform für alles in der Welt: Geschöpfe, Orte, Fraktionen,
 Regeln, Statblöcke, Wissensartikel. Er besteht aus **Komponenten** (typisierte
@@ -45,19 +50,23 @@ Node 22.12 oder neuer, pnpm 10.
 Ein Container, ein Postgres daneben:
 
 ```bash
-cp .env.example .env               # Passwort setzen
+echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)" > .env
 docker compose up -d --build       # → 127.0.0.1:8080
 ```
 
-Der Server bindet bewusst auf **loopback**. Davor gehört der Reverse Proxy mit
-SSO — die Anwendung selbst hat noch keine Authentifizierung, und ohne Proxy wäre
-sie offen. Migrationen laufen beim Start, vorwärts und je einmal.
+Der Server bindet bewusst auf **loopback**; davor steht ein Reverse Proxy mit
+TLS. Angemeldet wird mit einem Passwort je Konto ([docs/Zugang.md](docs/Zugang.md)),
+das erste legt `user add <name> --admin` an. Migrationen laufen beim Start,
+vorwärts und je einmal.
 
 Die Testinstanz liegt daneben, mit eigener Datenbank und eigenem Port:
 
 ```bash
 docker compose -f docker-compose.preprod.yml up -d --build   # → 127.0.0.1:8081
 ```
+
+Wie beides auf Hetzner läuft — `preprod` nach `dev.…` bei jedem Push, `main`
+nach der Produktion — steht in [docs/Betrieb.md](docs/Betrieb.md).
 
 ## Zweige
 

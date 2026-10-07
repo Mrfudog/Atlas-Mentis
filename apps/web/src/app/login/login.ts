@@ -19,7 +19,7 @@ import { Session } from '../kern/session';
   imports: [FormsModule],
   template: `
     <main class="anmeldung">
-      <h1>Nebelwacht</h1>
+      <h1>Atlas Mentis</h1>
 
       @if (session.setupHint(); as hinweis) {
         <div class="karte hinweis">

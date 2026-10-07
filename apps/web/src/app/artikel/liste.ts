@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { entityName, primaryInterface } from '@nw/model';
+import { entityName, isInstance, primaryInterface } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 
 /**
@@ -21,7 +21,7 @@ import { Bestand } from '../kern/bestand';
         [value]="suche()"
         (input)="suche.set($any($event.target).value)"
       />
-      <span class="zahl">{{ gefiltert().length }} of {{ bestand.entities().length }}</span>
+      <span class="zahl">{{ gefiltert().length }} of {{ gelistet().length }}</span>
     </header>
 
     @if (bestand.fehler(); as f) {
@@ -49,9 +49,15 @@ export class Liste {
     void this.bestand.load();
   }
 
+  /* Instanzen stehen an ihrer Kreatur und nicht in der Liste: dreissig
+     Wachen wären sonst dreissig „Wache"-Statblocks. */
+  protected readonly gelistet = computed(() =>
+    this.bestand.entities().filter((e) => !isInstance(e)),
+  );
+
   protected readonly gefiltert = computed(() => {
     const q = this.suche().trim().toLocaleLowerCase('de');
-    const alle = [...this.bestand.entities()].sort((a, b) =>
+    const alle = [...this.gelistet()].sort((a, b) =>
       entityName(a).localeCompare(entityName(b), 'de'),
     );
     if (!q) return alle;
