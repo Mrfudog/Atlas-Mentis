@@ -8,3 +8,4 @@ export * from './visibility.js';
 export * from './units.js';
 export * from './validate.js';
 export * from './instance.js';
+export * from './stack.js';

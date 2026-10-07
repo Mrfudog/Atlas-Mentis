@@ -111,6 +111,12 @@ wiederkommen, werden sie neu geschrieben.
   die bleiben Kanten. Heute tragen `belongsTo` (Statblock an der Kreatur)
   und `carries` (Inventar an Kreatur und Gruppe) die Angabe.
 - **Schreiben geht durch `validateEntity`**, auch wenn es umständlich scheint.
+- **Die nullte Frage: steht der Artikel im Stapel?** `inPlay` in
+  `packages/model/src/stack.ts` (E2): was keine aufgeschaltete Ebene der
+  laufenden Kampagne bringt, eine spezifischere herausnimmt oder eine
+  Fassung aus einer aufgeschalteten Ebene überschreibt, ist nicht da — für
+  jeden, auch die Verwaltung. Der Server siebt damit zuerst, der Prototyp
+  rechnet gleich (A2).
 - **Zwei Fragen, und die grobe kommt zuerst.** Die **Sichtbarkeit**
   (`articleVisible`) sagt, ob ein Artikel überhaupt an jemanden geht; das
   **Wissen** (`redactEntity`) sagt, welche Felder darin. Beides zu einer

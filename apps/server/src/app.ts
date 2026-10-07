@@ -14,6 +14,8 @@ import {
   EntitySchema,
   RegistrySchema,
   articleVisible,
+  currentCampaign,
+  inPlay,
   detachInstance,
   instancesOf,
   isInstance,
@@ -473,9 +475,15 @@ export function buildApp({
        der Angabe, welche Felder von dort kommen. Gespeichert ist an ihr nur,
        was abweicht; ohne Auflösung hätte Wache 1 keine Trefferpunkte. */
     const roh = new Map((await repo.listEntities()).map((e) => [e.id, e]));
-    entities = entities.map((e) => readInstance(roh, e));
-    if (!user || user.isAdmin) return entities;
     const registry = await repo.getRegistry();
+    /* **Die nullte Frage: steht der Artikel im Stapel?** (E2, A2) Was eine
+       aufgeschaltete Ebene herausnimmt oder eine spezifischere Fassung
+       überschreibt, ist nicht da — für jeden, auch für die Verwaltung.
+       Bis zum 7.10. rechnete das nur der Prototyp, und der Server schickte
+       solche Artikel trotzdem hinaus. */
+    const kampagne = currentCampaign(roh, registry.settings ?? null);
+    entities = entities.filter((e) => inPlay(roh, e, kampagne)).map((e) => readInstance(roh, e));
+    if (!user || user.isAdmin) return entities;
     /* Der Zusammenhang ist immer der ganze Bestand, auch wenn nur ein
        Artikel gesiebt wird: welche Information ein Feld beansprucht und
        wem sie gehört, steht an anderen Artikeln. Mit einer Karte aus nur
