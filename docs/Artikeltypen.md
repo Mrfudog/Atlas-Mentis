@@ -331,7 +331,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `level` *number*, `motto` *string*, `at` *link → Place*, `day` *number*, `watch` *number*, `sinceRation` *number*, `sinceLight` *number*, `actions` *object*
+- `level` *number*, `motto` *string*, `day` *number*, `watch` *number*, `sinceRation` *number*, `sinceLight` *number*, `actions` *object*
 
 **Geerbte Felder**
 

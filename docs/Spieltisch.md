@@ -39,7 +39,7 @@ Stelle, um Code zu schreiben.
 | Sicherung | — (Register + Artikel als eine Datei) | — (Registerreiter) |
 | Regeln | `Rule.autolink` | — (eigener Einstieg) |
 | Decknamen | `Identity.cover` | — (im Namen selbst) |
-| Punktreise | `Place.state`, `Party.at`, `route` | `crawl` |
+| Punktreise | `Place.state`, `route`, das Gruppen-Token | `crawl` |
 
 ---
 
@@ -329,4 +329,14 @@ höher.
 
 `{PARTYWHERE}` liest die Karte, nicht ein zweites Feld: die Karte weiss über
 `mapOf` schon, welchen Ort sie zeigt. Wo die Gruppe ist, steht damit genau
-einmal in den Daten — als Token.
+einmal in den Daten — als Token. **Das Token sagt es, die Karten bilden es
+ab** (7.10., Abgleich A6): es liegt auf der feinsten Karte, auf der die
+Gruppe steht; jede gröbere zeichnet es gestrichelt durch den Rahmen ihrer
+Unterkarte (`insideMap`) — auf der Distriktkarte am genauen Gebäude, auf
+der Regionskarte in der Stadt —, und ein Klick darauf führt auf die Karte,
+auf der es wirklich liegt. Der Ort ist die Marke, auf der das Token steht,
+sonst der Ort der Karte. Die Punktreise liest ihren Knoten daraus (der Ort
+selbst oder der Knoten, in dem er liegt) und setzt beim Weiterziehen das
+Token um: auf die Karte des Knotens, sonst auf seine Marke auf der nächsten
+Karte darüber — die sie setzt, wenn sie fehlt. `Party.at` gab es dafür
+einmal daneben, und im Prüfbestand sagten beide etwas anderes.
