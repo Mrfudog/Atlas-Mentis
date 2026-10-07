@@ -782,8 +782,10 @@ export const relations: Record<string, RelationDef> = {
     type: 'regards',
     label: 'regards',
     inverseLabel: 'judged by',
-    from: ['Creature', 'PlayerCharacter', 'Party', 'Faction'],
-    to: ['Creature', 'PlayerCharacter', 'Party', 'Faction'],
+    /* `PlayerCharacter` stand hier daneben, obwohl die `extends`-Kette es
+       abdeckt — eine Spielerfigur *ist* eine Kreatur (Abgleich A12). */
+    from: ['Creature', 'Party', 'Faction'],
+    to: ['Creature', 'Party', 'Faction'],
     props: {
       type: 'object',
       properties: {

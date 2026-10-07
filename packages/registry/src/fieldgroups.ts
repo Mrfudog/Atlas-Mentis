@@ -387,7 +387,12 @@ export const fieldGroups = {
           title: 'Size',
           enum: ['winzig', 'klein', 'mittel', 'gross', 'riesig', 'gewaltig'],
         },
-        kind: { type: 'string', suggest: true, title: 'Creature type' },
+        /* Hiess `kind` und stand in der verlinkten Gruppe neben
+           `Creature.kind` — zwei Felder „Kind", die nichts miteinander zu
+           tun haben: dort die Sorte (npc, companion), hier der Kreaturentyp
+           (Schleim, Untoter). Jetzt heisst es, was es ist (Abgleich A10,
+           7.10.). Wanderung: `prototype/migration/statblock-creaturetype.mjs`. */
+        creatureType: { type: 'string', suggest: true, title: 'Creature type' },
         alignment: { type: 'string', suggest: true, title: 'Alignment' },
         ac: { type: 'number', title: 'Armour class' },
         acNote: { type: 'string', title: 'AC note' },
