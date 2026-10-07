@@ -10355,7 +10355,7 @@ function renderAsSelect(){
 
      Artikel     --knowledge--> Information   (owned)
      Knowledge   --includes--> Information               (ein Bündel)
-     Information | Knowledge --knownBy--> Creature | Party | Faction | Group
+     Information | Knowledge --knownBy--> Creature | Party | Faction
 
    Ein Feld, das keine Information nennt, liegt offen. Die Umkehrung wäre
    sicherer, macht aber jede neue Zeile unsichtbar, bis jemand daran denkt.
@@ -11028,14 +11028,18 @@ function backfillAnchors(melde){
 }
 
 /* ---- Kampagnenwerte, gerechnet ---- */
+/* Die Gruppe der laufenden Kampagne: die Party, die `partyOf` auf sie
+   zeigt (A8). Hat keine die Kante, gilt die erste im Stapel — ein Bestand
+   von vor dem 7.10. */
 function theParty(){
-  var beste=null;
+  var camp=currentCampaign(), beste=null, erste=null;
   ENT.forEach(function(e){
     if(((e.interfaces||[])[0])!=="Party")return;
     if(!inStack(e))return;
-    if(!beste) beste=e;
+    if(!erste) erste=e;
+    if(!beste&&camp&&(e.relations||[]).some(function(r){return r.type==="partyOf"&&r.to===camp.id;})) beste=e;
   });
-  return beste;
+  return beste||erste;
 }
 function partyMembers(p){
   if(!p)return [];
@@ -12726,7 +12730,7 @@ function renderHowto(v){
     "Two lists override the step, and the order is the rule: Hidden from "+
     "beats Revealed to beats Audience. The explicit ban wins because it is "+
     "the exception somebody entered by hand. Both name holders \u2014 a "+
-    "creature, a party, a faction, a group \u2014 and a holder counts one "+
+    "creature, a party, a faction \u2014 and a holder counts one "+
     "step out: naming the party hides it from its members, naming the "+
     "faction from everyone in it. A faction knows nothing by itself: its "+
     "members do, and a knowledge grant to a faction may name the rank it "+
