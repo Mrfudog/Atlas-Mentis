@@ -239,7 +239,7 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 
 | | Regel |
 |---|---|
-| F1 | **Eine Aufzählung, die zwei Felder brauchen, ist eine Zeile** (`enums`), und die Felder nennen sie mit `enumRef`. Gelesen wird immer über `enumOptions()`, nie `enum` direkt. |
+| F1 | **Eine Aufzählung, die zwei Felder brauchen, ist eine Zeile** (`enums`), und die Felder nennen sie mit `enumRef` — **oder wenn die Wörter Kampagneninhalt sind, den jemand pflegt** (`State`, `DrawTime`: ein Nutzer, aber die Wörter stehen im Register, damit man sie ändern kann, ohne Code anzufassen; A4). Gelesen wird immer über `enumOptions()`, nie `enum` direkt. |
 | F2 | **Eine Zahl mit Grenzen ist eine Spanne**, keine Aufzählung von Wörtern. |
 | F3 | **Ein Mass ohne Einheit ist keines:** jedes `measure`-Feld trägt `unit`. |
 | F4 | **Ein Verweis nennt seinen Zieltyp.** `target.interfaces` ist Regel, `tags` und `where` sind Vorschlag. |
@@ -293,7 +293,7 @@ nicht — den gäbe es auch ohne das Rezept.
 
 | Familie | Kanten | Trägt |
 |---|---|---|
-| Struktur | `partOf`, `insideMap`, `followsFrom` | Ort, Rahmen, Reihenfolge |
+| Struktur | `partOf`, `insideMap` | Ort, Rahmen — die Reihenfolge sagt `Time.sort` |
 | Teil | `belongsTo`, `carries` | `asField` |
 | Einsetzen | `composedOf`, `hasProperty` | `section`, `vars` |
 | Verweis | `livesIn`, `memberOf`, `memberOfParty`, `owes`, `regards`, `controls`, `questGiver`, `questAbout`, `describedIn`, `happensAt`, `features`, `involves`, `mapOf`, `onMap`, `tableFor`, `yields`, `needs`, `playedBy` | Marken, Mengen |
@@ -585,7 +585,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-07: 31 Artikelarten, 21 Grundtypen, 43 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-07: 31 Artikelarten, 21 Grundtypen, 42 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -624,7 +624,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
 | `Armor` | `Item` | `ac` `armorType` | `hasProperty` | `holds` `needs` `yields` `loot` | — |
-| `Article` | `Source` `Todos` `Lore` `Secrets` | `poem` `song` | — | `describedIn` | — |
+| `Article` | `Source` `Todos` `Lore` `Secrets` | — | — | `describedIn` | — |
 | `Creature` | `Image` `Source` `Vars` `Vitals` `Proficiencies` `Lore` `Facts` `Secrets` `ReadAloud` | `appearance` `personality` `species` `kind` `role` `attitude` | `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | full |
 | `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` | `controls` `regards` | `memberOf` `questGiver` `features` `knownBy` `regards` | — |
 | `Item` | `Image` `Source` `Lore` `Secrets` `Facts` | `itemType` `rarity` `availability` `copperPrice` `stackSize` `weight` `rows` `width*` `height*` `cells*` | `hasProperty` | `holds` `needs` `yields` `loot` | — |
@@ -639,12 +639,12 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Campaign` | `Story` | — | `partOf` `followsFrom` `happensAt` `features` `onMap` `loot` `tableFor` `inWorld` `activates` | `partOf` `partyOf` `followsFrom` `mapOf` | full |
+| `Campaign` | `Story` | — | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` `inWorld` `activates` | `partOf` `partyOf` `mapOf` | full |
 | `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `involves` | — | — |
 | `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | full |
-| `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `followsFrom` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `followsFrom` `mapOf` | — |
-| `Session` | `Story` | `recap` `activeScene` `activeEncounter` `activeMap` `nowPlaying` `partyNote` `stewardship` | `partOf` `followsFrom` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `followsFrom` `mapOf` | full |
-| `Story` | `Todos` `Time` `Lore` `Secrets` `ReadAloud` | `kind` `played` `summary` | `partOf` `followsFrom` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `followsFrom` `mapOf` | — |
+| `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `mapOf` | — |
+| `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `nowPlaying` `partyNote` `stewardship` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `mapOf` | full |
+| `Story` | `Todos` `Time` `Lore` `Secrets` `ReadAloud` | `kind` `played` `summary` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `mapOf` | — |
 
 **Rules**
 
@@ -688,7 +688,6 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `describedIn` | * → Article |  | — | — |
 | `entry` | Table → * |  | — | `weight` `qty` `label` `requiresTag` `note` |
 | `features` | Story → Creature \| Statblock \| Faction |  | — | — |
-| `followsFrom` | Story → Story | ja | — | — |
 | `happensAt` | Story → Place |  | — | — |
 | `hasProperty` | Weapon \| Item \| Armor → Rule |  | — | — |
 | `holds` | Inventory → Item |  | — | `qty` `tier` `slot` `gx` `gy` `attuned` `note` |

@@ -1235,9 +1235,10 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        /* Was hinterher darüber steht. Vor der Sitzung leer, danach der
-           Text, den die Runde liest. */
-        recap: { type: 'string', format: 'long', many: true, title: 'Recap' },
+        /* `recap` stand hier neben `Story.summary`, das an der Sitzung
+           schon „Recap“ heisst — zweimal dieselbe Frage, und im Bestand nie
+           gefüllt (A14, 7.10.). Was hinterher über die Sitzung steht, steht
+           in `summary`. */
         /* **Ein Verweisfeld nennt seinen Zieltyp** (`target.interfaces`,
            Untertypen eingeschlossen). Ohne das hielt „Scene in play" die
            Id von irgendetwas — und am Tisch fällt das erst auf, wenn der

@@ -222,14 +222,9 @@ export const relations: Record<string, RelationDef> = {
 
   // ---------------------------------------------------------------- story
 
-  followsFrom: {
-    type: 'followsFrom',
-    label: 'follows',
-    inverseLabel: 'followed by',
-    from: ['Story'],
-    to: ['Story'],
-    cardinality: 'one',
-  },
+  /* `followsFrom` (Story → Story, one) stand hier neben `partOf` und
+     `Time.sort`: die Reihenfolge der Sprossen sagt das Datum, die
+     Hierarchie die Kante `partOf`. Nie gesetzt, weg (A15, 7.10.). */
 
   questGiver: {
     type: 'questGiver',
