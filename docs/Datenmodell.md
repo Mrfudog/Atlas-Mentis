@@ -305,6 +305,14 @@ nach der Einstellung `units` (`imperial` · `metric` · `both`), die eine Art
 Grössenordnung. In einem Text mit `measure` greift das Ausgangsmass nur für
 Zahlen ohne Buchstaben — „7 zorp" bleibt sieben Zorp.
 
+**Wo die Gruppe ist.** Genau eine Stelle: ihr Token (`marker`, `kind:
+party`) auf der feinsten Karte, auf der sie steht. Der Ort ist die Marke,
+auf der es steht, sonst der Ort der Karte (`mapOf`); der Knoten der
+Punktreise ist dieser Ort oder der Knoten, in dem er liegt (`partOf`); jede
+gröbere Karte bildet das Token durch den Rahmen ihrer Unterkarte ab
+(`insideMap`), ohne ein zweites zu halten. Weiterziehen setzt das Token um.
+`Party.at` war ein Feld daneben und ist seit dem 7.10. weg (A6).
+
 Dazu die beiden Abfragen, die wie Daten aussehen: die **Gegenrichtung einer
 Kante** (`backlinks`) und **was gerade gilt** (§8).
 
@@ -531,7 +539,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Faction` | `Image` `Lore` `Secrets` | `kind` `color` | `controls` `regards` | `memberOf` `questGiver` `features` `knownBy` `regards` | — |
 | `Item` | `Image` `Source` `Lore` `Secrets` `Facts` | `itemType` `rarity` `availability` `copperPrice` `stackSize` `weight` `rows` `width*` `height*` `cells*` | `hasProperty` | `holds` `needs` `yields` `loot` | — |
 | `Material` | `Item` | `materialType` `trades` | `hasProperty` | `holds` `needs` `yields` `loot` | — |
-| `Party` | `Image` `Lore` | `level` `motto` `at` `day` `watch` `sinceRation` `sinceLight` `actions` | `carries` `crafting` `regards` | `memberOfParty` `knownBy` `participates` `regards` | full |
+| `Party` | `Image` `Lore` | `level` `motto` `day` `watch` `sinceRation` `sinceLight` `actions` | `carries` `crafting` `regards` | `memberOfParty` `knownBy` `participates` `regards` | full |
 | `Place` | `Image` `Lore` `ReadAloud` `Secrets` | `kind` `environment` `state` `arrival` | `partOf` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | full |
 | `PlayerCharacter` | `Creature` | `backstory` `ancestry` `class` `level` `proficiency*` | `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | — |
 | `Weapon` | `Item` | `damage` `damageType` `range` | `hasProperty` | `holds` `needs` `yields` `loot` | — |

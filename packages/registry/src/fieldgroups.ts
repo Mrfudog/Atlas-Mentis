@@ -1346,10 +1346,12 @@ export const fieldGroups = {
         /* Der Knoten, auf dem die Gruppe steht — ein Ort, wie jeder
            Punktreise-Knoten (`partOf` unter dem Ort, der die Reise
            trägt). */
-        at: {
-          type: 'string', format: 'link', title: 'Currently at',
-          target: { interfaces: ['Place'] },
-        },
+        /* Hier stand `at`, ein Verweis auf einen Ort, den die Punktreise
+           schrieb — neben dem Gruppen-Token auf der Karte eine zweite
+           Wahrheit (Abgleich A6, 7.10.). **Das Token sagt, wo die Gruppe
+           ist**; die Karte bildet es ab, jede gröbere durch den Rahmen
+           ihrer Unterkarte, und die Punktreise setzt es um, statt ein Feld
+           zu schreiben. Wanderung: `prototype/migration/ort-am-token.mjs`. */
         /* **Zähler, die am Tisch gesetzt werden** (`alwaysEdit`): Tag,
            Wache und die beiden Zehrungen ändern sich an jedem Knoten. Erst
            „Bearbeiten" zu sagen sind drei Klicks für eine Zahl, und das

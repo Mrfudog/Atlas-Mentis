@@ -418,6 +418,7 @@ ul.tlayout li.d3{padding-left:48px}
   overflow:hidden;display:flex;align-items:center;justify-content:center;
   touch-action:none;box-shadow:0 1px 4px rgba(0,0,0,.35);line-height:1}
 .mtoken:active{cursor:grabbing}
+.mtoken.ghost{border-style:dashed;opacity:.65;cursor:pointer}
 .mtoken img{width:100%;height:100%;object-fit:cover}
 .mtoken span{font-family:var(--ff-mono);font-size:11px;color:var(--accent);font-weight:600}
 .mtoken.k-party{border-color:var(--ok)}
@@ -4921,8 +4922,8 @@ function elCrawl(e,ifn,item){
 
   var gruppe=travellingParty();
   var karte=travelCard(gruppe);
-  var hier=karte.at&&ENT.get(karte.at);
-  if(hier&&knoten.indexOf(hier)<0) hier=null;
+  /* Wo die Gruppe steht, sagt ihr Token (A6) — kein Feld an der Gruppe. */
+  var hier=crawlNodeOf(partyPlace(gruppe),knoten);
   var lagen=crawlLayers(hier,knoten);
 
   /* Kopfzeile: Tag, Wache, Zehrung. Die Zahlen, nach denen am Tisch gefragt
@@ -4973,10 +4974,12 @@ function elCrawl(e,ifn,item){
       if((w.props||{}).hidden)return;
       if(explOf(w.to)==="hidden") setExpl(w.to,"discovered");
     });
-    g.components=g.components||{};
-    g.components[TRAVEL_COMP]=Object.assign({},k,{at:ziel.id});
-    persist(g);
-    zeitVergeht(g,Object.assign({},k,{at:ziel.id}),1);
+    /* Umgesetzt wird das Token, nicht ein Feld (A6). */
+    if(!placePartyAt(g,ziel)){
+      alert("No map to stand on: give "+nameOf(ziel)+" or a place above it a map.");
+      return;
+    }
+    zeitVergeht(g,k,1);
   }
 
   /* Der Graph. Reihen nach Abstand vom Standort, Kanten als Linien. */
@@ -5073,10 +5076,12 @@ function elCrawl(e,ifn,item){
       setz.addEventListener("change",function(){
         if(!setz.value)return;
         var ziel=ENT.get(setz.value);
-        gruppe.components=gruppe.components||{};
-        gruppe.components[TRAVEL_COMP]=Object.assign({},karte,{at:setz.value});
-        persist(gruppe);
-        if(ziel) setExpl(ziel,"explored");
+        if(!ziel)return;
+        if(!placePartyAt(gruppe,ziel)){
+          alert("No map to stand on: give "+nameOf(ziel)+" or a place above it a map.");
+          return;
+        }
+        setExpl(ziel,"explored");
       });
       wrap.appendChild(setz);
     }
@@ -9986,6 +9991,21 @@ function elMap(e,ifn,item){
     inner.appendChild(t);
   });
 
+  /* Die Gruppe steht auf einer feineren Karte: hier nur abgebildet (A6),
+     gestrichelt, und ein Klick führt auf die Karte, auf der sie steht. */
+  var abgebildet=derivedPartyToken(e);
+  if(abgebildet&&(!UI.mapKind||UI.mapKind==="party")){
+    var gt=el("button",{class:"mtoken k-party ghost",type:"button",
+      title:nameOf(abgebildet.party)+" — stands on "+nameOf(abgebildet.map)+
+        (abgebildet.place?" ("+nameOf(abgebildet.place)+")":"")+"; shown here, moved there"});
+    gt.style.left=(abgebildet.x*100)+"%"; gt.style.top=(abgebildet.y*100)+"%";
+    var gd=Math.max(14,(Number(card.gridSize)||70)*UI.mapZoom);
+    gt.style.width=gd+"px"; gt.style.height=gd+"px";
+    gt.appendChild(el("span",{text:nameOf(abgebildet.party).slice(0,2)}));
+    gt.addEventListener("click",function(){ go({k:"art",id:abgebildet.map.id}); });
+    inner.appendChild(gt);
+  }
+
   (UI.pings||[]).forEach(function(pg){
     if(pg.map!==e.id)return;
     var n=el("div",{class:"mping"});
@@ -10984,24 +11004,141 @@ function partyMembers(p){
   });
   return out;
 }
-/* Wo die Gruppe steht: da, wo ein Gruppen-Token auf der Karte sitzt. Die
-   Karte weiss, welchen Ort sie zeigt (`mapOf`) — also wird nicht ein
-   zweites Mal hingeschrieben, wo die Gruppe ist. */
-function partyPlace(p){
+/**
+ * **Das Token sagt, wo die Gruppe ist** (Abgleich A6, 7.10.; REQ-136,
+ * REQ-168). Es gibt genau eine Stelle dafür: das Gruppen-Token auf der
+ * feinsten Karte, auf der die Gruppe steht. Alles andere ist daraus
+ * gelesen — der Ort (`partyPlace`), der Knoten der Punktreise
+ * (`crawlNodeOf`), `{PARTYWHERE}`, und auf jeder gröberen Karte die
+ * Abbildung durch den Rahmen ihrer Unterkarte (`derivedPartyToken`). Die
+ * Punktreise schreibt kein Feld mehr (`Party.at` ist weg), sie setzt das
+ * Token um (`placePartyAt`).
+ */
+function partyToken(p){
   if(!p)return null;
   var ids={}; ids[p.id]=true;
   partyMembers(p).forEach(function(m){ ids[m.id]=true; });
-  var treffer=null;
+  var hit=null;
   ENT.forEach(function(k){
-    if(treffer)return;
+    if(hit)return;
     if(((k.interfaces||[])[0])!=="Map")return;
-    var hat=(k.relations||[]).some(function(r){
-      return r.type===REL_MARKER&&((r.props||{}).kind)==="party"&&ids[r.to]; });
-    if(!hat)return;
-    var ort=(k.relations||[]).filter(function(r){return r.type===REL_MAPOF;})[0];
-    treffer=ort?ENT.get(ort.to):k;
+    var r=(k.relations||[]).filter(function(q){
+      return q.type===REL_MARKER&&((q.props||{}).kind)==="party"&&ids[q.to]; })[0];
+    if(r) hit={map:k,rel:r,x:Number((r.props||{}).x)||0.5,y:Number((r.props||{}).y)||0.5};
   });
-  return treffer;
+  return hit;
+}
+function mapPlace(k){
+  var o=(k.relations||[]).filter(function(r){return r.type===REL_MAPOF;})[0];
+  return o?ENT.get(o.to)||null:null;
+}
+function mapOfPlace(ort){
+  var hit=null;
+  ENT.forEach(function(k){
+    if(hit)return;
+    if(((k.interfaces||[])[0])!=="Map")return;
+    if((k.relations||[]).some(function(r){return r.type===REL_MAPOF&&r.to===ort.id;})) hit=k;
+  });
+  return hit;
+}
+/* Die Orte über einem Ort, der nächste zuerst (`partOf`). */
+function placeAncestors(ort){
+  var out=[], seen={}, e=ort;
+  while(e&&out.length<12){
+    var r=(e.relations||[]).filter(function(q){return q.type==="partOf";})[0];
+    var oben=r?ENT.get(r.to):null;
+    if(!oben||seen[oben.id])break;
+    seen[oben.id]=1; out.push(oben); e=oben;
+  }
+  return out;
+}
+function isPlace(o){
+  var arten=ifaceAndKinds("Place");
+  return !!o&&(o.interfaces||[]).some(function(n){ return arten.indexOf(n)>=0; });
+}
+/* Wo die Gruppe steht: der Ort, auf dessen Marke ihr Token steht — auf
+   der Stadtkarte das genaue Gebäude —, sonst der Ort, den die Karte zeigt
+   (`mapOf`). Es wird nirgends ein zweites Mal hingeschrieben. */
+function partyPlace(p){
+  var t=partyToken(p);
+  if(!t)return null;
+  var nah=null, best=0.035;
+  (t.map.relations||[]).forEach(function(r){
+    if(r.type!==REL_MARKER||tokenKind(r)!=="static")return;
+    var o=ENT.get(r.to); if(!isPlace(o))return;
+    var d=Math.hypot((Number((r.props||{}).x)||0.5)-t.x,(Number((r.props||{}).y)||0.5)-t.y);
+    if(d<best){ best=d; nah=o; }
+  });
+  return nah||mapPlace(t.map);
+}
+/* Welcher Knoten einer Punktreise das ist: der Ort selbst oder der Knoten,
+   in dem er liegt — die Gruppe im Gebäude ist auch im Distrikt. */
+function crawlNodeOf(ort,knoten){
+  if(!ort)return null;
+  if(knoten.indexOf(ort)>=0)return ort;
+  var oben=placeAncestors(ort);
+  for(var i=0;i<oben.length;i++) if(knoten.indexOf(oben[i])>=0)return oben[i];
+  return null;
+}
+/* Die Gruppe an einen Ort stellen heisst: das Token umsetzen. Auf die
+   eigene Karte des Orts; sonst auf seine Marke auf der nächsten Karte
+   darüber — und hat er dort keine, bekommt er eine, so zeichnet sich die
+   Reise selbst auf die Karte. Ohne irgendeine Karte gibt es keine Stelle,
+   an der die Gruppe stehen könnte: dann null, und der Aufrufer sagt es. */
+function placePartyAt(p,ziel){
+  if(!p||!ziel)return null;
+  var alt=partyToken(p);
+  var karte=mapOfPlace(ziel), x=0.5, y=0.5;
+  if(karte){
+    if(alt&&alt.map.id===karte.id){ x=alt.x; y=alt.y; }
+  } else {
+    var oben=placeAncestors(ziel);
+    for(var i=0;i<oben.length&&!karte;i++){
+      var m=mapOfPlace(oben[i]); if(!m)continue;
+      var marke=(m.relations||[]).filter(function(r){
+        return r.type===REL_MARKER&&tokenKind(r)==="static"&&r.to===ziel.id; })[0];
+      if(!marke){
+        var n=(m.relations||[]).filter(function(r){return r.type===REL_MARKER;}).length;
+        marke={id:uid("r"),type:REL_MARKER,to:ziel.id,
+          props:{x:0.15+0.7*((n%4)/3),y:0.2+0.6*((Math.floor(n/4)%4)/3),kind:"static",size:1}};
+        m.relations=(m.relations||[]).concat([marke]);
+      }
+      karte=m; x=Number(marke.props.x)||0.5; y=Number(marke.props.y)||0.5;
+    }
+  }
+  if(!karte)return null;
+  var r=null;
+  if(alt){
+    if(alt.map.id===karte.id) r=alt.rel;
+    else { alt.map.relations=alt.map.relations.filter(function(q){return q!==alt.rel;}); persist(alt.map); }
+  }
+  if(!r){
+    r={id:uid("r"),type:REL_MARKER,to:p.id,props:{kind:"party",size:1}};
+    karte.relations=(karte.relations||[]).concat([r]);
+  }
+  r.props=Object.assign({},r.props,{x:x,y:y});
+  persist(karte);
+  return karte;
+}
+/* Was auf einer feineren Karte steht, wird hier nur abgebildet: das Token
+   der Unterkarte, durch deren Rahmen gerechnet, Rahmen für Rahmen hinauf.
+   Auf der Distriktkarte steht die Gruppe damit am genauen Gebäude, auf der
+   Regionskarte in der Stadt — ohne dass irgendwo ein zweites Token läge. */
+function derivedPartyToken(e){
+  var p=theParty()||travellingParty();
+  var t=partyToken(p);
+  if(!t||t.map.id===e.id)return null;
+  var x=t.x, y=t.y, m=t.map, hops=0;
+  while(m&&m.id!==e.id&&hops<12){
+    var r=(m.relations||[]).filter(function(q){return q.type===REL_INSIDE;})[0];
+    if(!r)return null;
+    var pr=r.props||{};
+    x=(Number(pr.x)||0)+x*(Number(pr.w)||0.12);
+    y=(Number(pr.y)||0)+y*(Number(pr.h)||0.12);
+    m=ENT.get(r.to); hops++;
+  }
+  if(!m||m.id!==e.id)return null;
+  return {x:x,y:y,party:p,map:t.map,place:mapPlace(t.map)};
 }
 /* Das jüngste benutzte Ereignis — der Tag, an dem die Kampagne steht, wenn
    niemand ihn als Einstellung gesetzt hat. */
