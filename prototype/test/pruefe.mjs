@@ -4732,17 +4732,28 @@ async function seite(datei, warten) {
 
     /* Den Stand gleich in der Liste ändern: wer dafür hinspringen muss,
        lässt ihn stehen, und die Liste wird zur Tapete. */
-    const vorStand = await p.evaluate(() =>
-      document.querySelectorAll('.prep .qlist')[1]?.children.length ?? 0);
-    await p.evaluate(() => {
-      const sel = document.querySelectorAll('.prep .qlist')[1].querySelector('select');
+    /* Die Liste zeigt höchstens dreissig; gezählt wird darum der Name,
+       nicht die Länge — mit neunzehn Zuständen als Regelartikel ist sie voll. */
+    /* Genommen wird keine Regel: eine Regel ohne Wortlaut auf „ready" zu
+       setzen machte den Regelbrowser-Lauf unten falsch — und hiesse
+       dasselbe wie dort: einen Regeltext behaupten, den niemand schrieb. */
+    const vorStand = await p.evaluate(() => {
+      const rows = [...(document.querySelectorAll('.prep .qlist')[1]?.children ?? [])];
+      const i = rows.findIndex((r) => r.querySelector('.co')?.textContent !== 'Rule Element');
+      return { n: rows.length, i, erster: rows[i]?.querySelector('.ref')?.textContent ?? '' };
+    });
+    await p.evaluate((i) => {
+      const sel = document.querySelectorAll('.prep .qlist')[1].children[i].querySelector('select');
       sel.value = 'ready';
       sel.dispatchEvent(new Event('change', { bubbles: true }));
-    });
+    }, vorStand.i);
     await p.waitForTimeout(500);
-    const nachStand = await p.evaluate(() =>
-      document.querySelectorAll('.prep .qlist')[1]?.children.length ?? 0);
-    pruefe('the status changes right in the list', nachStand === vorStand - 1,
+    const nachStand = await p.evaluate(() => ({
+      n: document.querySelectorAll('.prep .qlist')[1]?.children.length ?? 0,
+      namen: [...(document.querySelectorAll('.prep .qlist')[1]?.querySelectorAll('.ref') ?? [])].map((x) => x.textContent),
+    }));
+    pruefe('the status changes right in the list',
+      !nachStand.namen.includes(vorStand.erster) && nachStand.n <= vorStand.n,
       { vorStand, nachStand });
     /* Die Auswahl kennt die Stände, die es gibt — aus der Zeile `State`.
        Hier standen `planned`, `used` und `discarded`, die die Prüfung
