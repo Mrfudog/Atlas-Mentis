@@ -323,6 +323,12 @@ Karte `Vars.bindings` → die gerechneten Kampagnenwerte (`{PARTY}`,
 `{CALENDAR}`) → die Registerzeile `vars`. **Nie in den gespeicherten Text
 eingesetzt**; ein unaufgelöster Platzhalter bleibt sichtbar stehen.
 
+**Der Kalender** steht an der **Welt** (`World.calendar`), und jede Kampagne
+hängt über `inWorld` an genau einer: alle Runden in derselben Welt lesen
+ihre Weltdaten (`Time.sort`, `Time.display`) im selben Kalender, und
+`{CALENDAR}` kommt von dort. Er war eine Einstellung je Kampagne und ein
+Feld je Artikel (A11, 7.10.).
+
 **Masse.** Eine Zahl steht in der Einheit ihres Feldes (`unit`); gezeigt wird
 nach der Einstellung `units` (`imperial` · `metric` · `both`), die eine Art
 überschreiben darf. Wie gerechnet wird, steht in der Zeile `units`
@@ -579,32 +585,32 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-07: 30 Artikelarten, 21 Grundtypen, 42 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-07: 31 Artikelarten, 21 Grundtypen, 43 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
 | Grundtyp | Felder | genommen von |
 |---|---|---|
 | `Abilities` | `str` `strMod*` `dex` `dexMod*` `con` `conMod*` `int` `intMod*` `wis` `wisMod*` `cha` `chaMod*` `initiative*` `passivePerception*` | `Statblock` |
-| `Description` | `description` | 21 |
+| `Description` | `description` | 22 |
 | `Difficulty` | `difficulty` | `Scene` `Encounter` |
 | `Facts` | `fact` | `Creature` `Item` `Information` |
-| `Identity` | `name` `id` `aliases` `cover` | 21 |
-| `Image` | `image` `caption` `alt` | 7 |
-| `Lore` | `lore` | 10 |
-| `Notes` | `note` | 21 |
+| `Identity` | `name` `id` `aliases` `cover` | 22 |
+| `Image` | `image` `caption` `alt` | 8 |
+| `Lore` | `lore` | 11 |
+| `Notes` | `note` | 22 |
 | `Proficiencies` | `proficient` `expertise` `saves` | `Creature` |
-| `Prose` | `paragraph` | 21 |
+| `Prose` | `paragraph` | 22 |
 | `ReadAloud` | `readaloud` | 6 |
 | `Secrets` | `secret` | 13 |
 | `Source` | `publication` `page` `anchor` `url` | 8 |
 | `Status` | `status` | 21 |
 | `Tactics` | `tactics` | `Statblock` `Scene` `Encounter` |
-| `Tags` | `tags` | 21 |
-| `Time` | `sort` `display` `untilSort` `until` `calendar` `duration` | `Story` `Quest` `Event` |
+| `Tags` | `tags` | 22 |
+| `Time` | `sort` `display` `untilSort` `until` `duration` | `Story` `Quest` `Event` |
 | `Todos` | `items` | 4 |
 | `Vars` | `bindings` | `Creature` `Rule` `Statblock` |
-| `Visibility` | `audience` `revealedTo` `hiddenFrom` | 21 |
+| `Visibility` | `audience` `revealedTo` `hiddenFrom` | 22 |
 | `Vitals` | `hp` `hpTemp` `hitDiceLeft` `deathSuccess` `deathFail` `inspiration` `exhaustion` `conditions` `nat1` | `Creature` |
 
 Ein `*` am Feld heisst gerechnet.
@@ -627,12 +633,13 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Place` | `Image` `Lore` `ReadAloud` `Secrets` | `kind` `environment` `state` `arrival` | `partOf` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | full |
 | `PlayerCharacter` | `Creature` | `backstory` `ancestry` `class` `level` `proficiency*` | `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | — |
 | `Weapon` | `Item` | `damage` `damageType` `range` | `hasProperty` | `holds` `needs` `yields` `loot` | — |
+| `World` | `Image` `Lore` | `calendar` | — | `inWorld` | — |
 
 **History**
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Campaign` | `Story` | — | `partOf` `followsFrom` `happensAt` `features` `onMap` `loot` `tableFor` `activates` | `partOf` `partyOf` `followsFrom` `mapOf` | full |
+| `Campaign` | `Story` | — | `partOf` `followsFrom` `happensAt` `features` `onMap` `loot` `tableFor` `inWorld` `activates` | `partOf` `partyOf` `followsFrom` `mapOf` | full |
 | `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `involves` | — | — |
 | `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | full |
 | `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `followsFrom` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `followsFrom` `mapOf` | — |
@@ -690,6 +697,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `insideMap` | Map → Map | ja | — | `x` `y` `w` `h` |
 | `instanceOf` | Statblock → Statblock | ja | — | — |
 | `involves` | Event → * |  | — | — |
+| `inWorld` | Campaign → World | ja | — | — |
 | `knowledge` | * → Information |  | owned | — |
 | `knownBy` | Information \| Knowledge → Creature \| Party \| Faction |  | — | `rank` |
 | `livesIn` | Creature → Place |  | — | — |
@@ -733,7 +741,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 - Einheiten: length · imperial: `ft` `in` `mi`; length · metric: `cm` `m` `km`; weight · imperial: `lb` `oz`; weight · metric: `g` `kg`; volume · imperial: `gal` `pt`; volume · metric: `ml` `l`
 - Variablen: `ATK` `DMG` `DMG2` `DMGTYP` `DMGTYP2` `RNG`
-- Einstellungen: `gridSize` `gridUnit` `inventoryCols` `inventoryRows` `calendar` `today` `skills` `gmFields` `units` `travelRationEvery` `travelLightEvery` `travelWatchesPerDay`
+- Einstellungen: `gridSize` `gridUnit` `inventoryCols` `inventoryRows` `today` `skills` `gmFields` `units` `travelRationEvery` `travelLightEvery` `travelWatchesPerDay`
 <!-- register:ende -->
 
 ---

@@ -116,7 +116,6 @@ Bereich liest die Schlüssel, die er kennt:
 | `gridSize`, `gridUnit` | Karten |
 | `inventoryCols`, `inventoryRows` | Kachelraster |
 | `skills` | Charakterbogen (Fertigkeit → Attribut) |
-| `calendar` | Zeitleiste |
 
 Die Seite hat für `skills` denselben Satz als Rückfall, damit sie auch
 ohne die Zeile rechnet. Eine Kampagne mit anderen Fertigkeiten ist damit
@@ -318,7 +317,7 @@ niemand merkt es, weil sie plausibel aussieht.** Also werden sie gerechnet:
 | `{PARTYTIER}` | 1–4, fürs Begegnungsbudget |
 | `{PARTYWHERE}` | der Ort der Karte, auf der ihr Gruppen-Token steht |
 | `{TODAY}` | die Einstellung `today`, sonst das jüngste benutzte Ereignis |
-| `{CALENDAR}` | die Einstellung `calendar` |
+| `{CALENDAR}` | der Kalender der Welt, an der die laufende Kampagne hängt (`World.calendar`, `inWorld`) |
 
 Sie stehen in der Auflösungskette **zwischen dem Artikel und dem Register** und
 **schlagen eine gleichnamige Registerzeile** — sonst überdeckte eine einmal

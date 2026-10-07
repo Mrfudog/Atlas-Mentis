@@ -4501,6 +4501,16 @@ var LAYER_IFACE="Layer", LAYER_COMP="Layer",
     REL_INLAYER="inLayer", REL_ACTIVATES="activates",
     REL_OVERRIDES="overrides", REL_VARIANT="variantOf";
 
+/* Die Welt der laufenden Kampagne (`inWorld`) — sie trägt den Kalender (A11). */
+function currentWorld(){
+  var camp=currentCampaign(); if(!camp)return null;
+  var r=(camp.relations||[]).filter(function(x){return x.type==="inWorld";})[0];
+  return r?ENT.get(r.to)||null:null;
+}
+function campaignCalendar(){
+  var w=currentWorld();
+  return w?String((((w.components||{}).World||{}).calendar)||""):"";
+}
 /* Die laufende Kampagne. Eine Einstellung schlägt die Suche — wer zwei
    Kampagnen in einem Speicher führt, muss sagen können, welche gilt. */
 function currentCampaign(){
@@ -5779,8 +5789,8 @@ function elTimeline(e,ifn,item){
       text:"Nothing carries a world date yet. Fill `sort` and `display` on an article — `sort` orders it, `display` is what gets read out."}));
     return wrap;
   }
-  var kal=setting("calendar","");
-  if(kal) wrap.appendChild(el("p",{class:"hint",text:"Calendar: "+kal}));
+  var kal=campaignCalendar();
+  if(kal) wrap.appendChild(el("p",{class:"hint",text:"Calendar: "+kal+" (the world's)"}));
   alle.forEach(function(x){
     var row=el("div",{class:"tl"+(x.e.id===e.id?" here":"")});
     row.appendChild(el("span",{class:"tdate",text:x.wd.display||String(x.wd.sort||"")}));
@@ -11210,7 +11220,7 @@ var COMPUTED_VARS=[
   ["PARTYTIER","1–4, for encounter budgeting"],
   ["PARTYWHERE","Where its token stands on a map"],
   ["TODAY","The world date the campaign stands at"],
-  ["CALENDAR","Name of the calendar"]
+  ["CALENDAR","The calendar of the world the campaign plays in"]
 ];
 var computedSig="", computedCache=null;
 function campaignVars(){
@@ -11229,7 +11239,7 @@ function campaignVars(){
     PARTYTIER:mittel?String(mittel<5?1:(mittel<11?2:(mittel<17?3:4))):"",
     PARTYWHERE:ort?nameOf(ort):"",
     TODAY:worldToday(),
-    CALENDAR:setting("calendar","")
+    CALENDAR:campaignCalendar()
   };
   computedSig=sig; computedCache=out;
   return out;
@@ -12230,7 +12240,6 @@ var SETTING_HINTS={
   gridUnit:"What one square means, e.g. 1,5 m",
   inventoryCols:"Columns of the tile inventory",
   inventoryRows:"Rows of the tile inventory",
-  calendar:"Name of the calendar world dates are read in",
   today:"The world date the campaign stands at — empty means the newest used event"
 };
 function renderSettingsEditor(v){

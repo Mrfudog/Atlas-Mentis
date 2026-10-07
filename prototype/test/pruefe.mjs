@@ -687,7 +687,7 @@ async function seite(datei, warten) {
        werden nur gezeigt. Für die Prüfung genügt die Zeile; ein Klick auf
        die Kopfzeile wäre der Weg der Hand. */
     const zeile = [...document.querySelectorAll('.fbox.part .frow.inh')]
-      .find((r) => r.querySelector('.fk')?.textContent.replace('*', '') === 'calendar');
+      .find((r) => r.querySelector('.fk')?.textContent.replace('*', '') === 'duration');
     const i = zeile?.querySelector('input');
     if (!i) return { keinFeld: true };
     i.value = 'Reckoning';
@@ -697,30 +697,30 @@ async function seite(datei, warten) {
   await p.waitForTimeout(400);
   const titelJetzt = await p.evaluate(() => {
     const T = window.__T__;
-    const pd = T.REG.interfaces.Time.schema.properties.calendar;
-    return { quest: T.fieldTitle('Quest', 'Time', 'calendar', pd),
+    const pd = T.REG.interfaces.Time.schema.properties.duration;
+    return { quest: T.fieldTitle('Quest', 'Time', 'duration', pd),
              /* …und nur dort. Im Bestandteil steht weiter der eigene Name. */
              teil: pd.title,
-             ereignis: T.fieldTitle('Event', 'Time', 'calendar', pd) };
+             ereignis: T.fieldTitle('Event', 'Time', 'duration', pd) };
   });
   pruefe('renaming from the type page writes to that type',
     !umbenennen.keinFeld && titelJetzt.quest === 'Reckoning', { umbenennen, titelJetzt });
   pruefe('and leaves the part and its other users alone',
-    titelJetzt.teil === 'Calendar' && titelJetzt.ereignis === 'Calendar', titelJetzt);
+    titelJetzt.teil === 'Duration' && titelJetzt.ereignis === 'Duration', titelJetzt);
 
   /* Zurück auf den eigenen Namen heisst: die Zeile fällt weg. Eine
      Umbenennung, die dasselbe sagt wie das Feld, wird an dem Tag still
      falsch, an dem jemand das Feld umbenennt. */
   const titelZurueck = await p.evaluate(() => {
     const zeile = [...document.querySelectorAll('.fbox.part .frow.inh')]
-      .find((r) => r.querySelector('.fk')?.textContent.replace('*', '') === 'calendar');
+      .find((r) => r.querySelector('.fk')?.textContent.replace('*', '') === 'duration');
     const i = zeile?.querySelector('input');
-    if (i) { i.value = 'Calendar'; i.dispatchEvent(new Event('change', { bubbles: true })); }
+    if (i) { i.value = 'Duration'; i.dispatchEvent(new Event('change', { bubbles: true })); }
     return true;
   });
   await p.waitForTimeout(400);
   const titelWeg = await p.evaluate(() =>
-    ((window.__T__.REG.interfaces.Quest.titles) || {})['Time.calendar']);
+    ((window.__T__.REG.interfaces.Quest.titles) || {})['Time.duration']);
   pruefe('a rename that says the same as the field is not kept',
     titelZurueck && titelWeg === undefined, titelWeg);
 

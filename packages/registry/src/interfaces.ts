@@ -520,6 +520,20 @@ export const interfaces: Record<string, InterfaceDef> = {
    * `role: 'gm'` — eine Kontoangabe in einem Artikel, die beim Export
    * mitgewandert wäre, und eine zweite Stelle neben den Figuren der Konten.
    */
+  /**
+   * Die Welt, in der Kampagnen spielen (A11, 7.10.): sie trägt den
+   * Kalender, und jede Kampagne hängt über `inWorld` an genau einer. Was
+   * alle Runden in derselben Welt teilen, gehört hierher und nicht in die
+   * Einstellungen einer Kampagne.
+   */
+  World: {
+    name: 'World',
+    area: 'world',
+    label: 'World',
+    extends: ['Identity', 'Prose', 'Description', 'Visibility', 'Tags', 'Image', 'Lore', 'Notes'],
+    schema: merge(g.WorldInfo),
+  },
+
   Campaign: {
     name: 'Campaign',
     area: 'history',
