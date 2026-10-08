@@ -352,6 +352,8 @@ wiederkommen, werden sie neu geschrieben.
   (`catalogue` schreibt sie mit). Was gefordert war und was davon steht:
   [docs/Anforderungen.md](docs/Anforderungen.md). Wo das Register vom
   Konzept abweicht: der Abgleich in [docs/Durchgang.md](docs/Durchgang.md).
+  Was 5e.tools kennt und wir noch nicht, und wie es hereinkommt:
+  [docs/5etools-Abgleich.md](docs/5etools-Abgleich.md).
 - **Bei jeder Modelländerung wandert die Erklärung mit.**
   [docs/Datenmodell.md](docs/Datenmodell.md) (die Regel),
   [docs/Begriffe.md](docs/Begriffe.md) (das Warum) *und* die Seite „How it
