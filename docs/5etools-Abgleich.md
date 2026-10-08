@@ -7,7 +7,7 @@ geschätzt. Verglichen wurde gegen das Register in `packages/registry` nach
 PR #6 (31 Arten, 21 geteilte Typen, 42 Kantenarten).
 
 > **Entschieden am 2026-10-08** (D47): 2014 als Basis, alles ausser
-> 2024, einmaliges Laden, Namen deutsch nach offizieller Übersetzung.
+> 2024, einmaliges Laden als Artikel unserer Typen, alles englisch.
 > Was das an diesem Dokument ändert und in welcher Reihenfolge gebaut
 > wird: [5etools-Arbeitsplan.md](5etools-Arbeitsplan.md). Wo beide
 > widersprechen, gilt der Arbeitsplan.
