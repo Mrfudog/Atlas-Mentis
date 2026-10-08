@@ -1,11 +1,16 @@
 # Produktion — das, woran der Tisch spielt. Läuft von main.
+#
+# Lokal: `docker compose up --build` baut das Abbild selbst. Auf dem Server
+# setzt deploy/deploy.sh `IMAGE` auf das Abbild aus GHCR, das CI gebaut und
+# geprüft hat — dort wird nichts gebaut.
 services:
   db:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: nebelwacht
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nebelwacht}
+      # Kein Vorgabewert: ein Passwort, das im Repository steht, ist keines.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD fehlt in .env}
       POSTGRES_DB: nebelwacht
     volumes: ["./daten/db:/var/lib/postgresql/data"]
     healthcheck:
@@ -15,13 +20,19 @@ services:
       retries: 5
 
   app:
+    image: ${IMAGE:-atlas-mentis:local}
     build: .
     restart: unless-stopped
     depends_on:
       db: { condition: service_healthy }
     environment:
-      DATABASE_URL: postgres://nebelwacht:${POSTGRES_PASSWORD:-nebelwacht}@db:5432/nebelwacht
+      DATABASE_URL: postgres://nebelwacht:${POSTGRES_PASSWORD}@db:5432/nebelwacht
+      # Im Container richtig: die Grenze ist der Container, nach aussen geht
+      # nur der Port unten, und der nur auf loopback.
       HOST: 0.0.0.0
       PORT: 8080
-    # Nur auf loopback veröffentlicht: davor gehört der Reverse Proxy mit SSO.
-    ports: ["127.0.0.1:8080:8080"]
+      # Caddy auf derselben Maschine spricht über die Docker-Brücke herein
+      # (172.16/12 gehört zu uniquelocal). Nur ihm wird X-Forwarded-* geglaubt.
+      TRUST_PROXY: loopback,uniquelocal
+    # Nur auf loopback veröffentlicht: davor steht der Reverse Proxy.
+    ports: ["127.0.0.1:${APP_PORT:-8080}:8080"]

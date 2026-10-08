@@ -2,7 +2,7 @@
    Der Stub friert die Snapshot-Objekte ein wie die echte Laufzeit — siehe
    README.md; ein grosszügigerer Aufbau prüft nichts. */
 import { chromium } from 'playwright';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -19,6 +19,36 @@ let fehler = 0;
 const pruefe = (name, ok, was) => {
   if (!ok) fehler++;
   console.log(`${ok ? '  ok  ' : 'FEHLT '} ${name}${ok ? '' : ' — ' + JSON.stringify(was)}`);
+};
+
+/** Auf eine der sechs Seiten wechseln. Die Leiste zeigt danach, was darin
+ *  steckt — vorher standen alle Bereiche untereinander, und ein Klick in die
+ *  Leiste reichte. */
+const zurSeite = async (p, name) => {
+  await p.evaluate((n) => {
+    const b = [...document.querySelectorAll('#pages button')].find((x) => x.textContent === n);
+    if (b) b.click();
+  }, name);
+  await p.waitForTimeout(400);
+};
+
+/** Auf einen Teil des Registers. Die Reiter oben sagen, worin man ist; die
+ *  Leiste links zeigt danach die Zeilen dieses Teils. */
+const zumRegister = async (p, name) => {
+  await zurSeite(p, 'Registry');
+  await p.evaluate((n) => {
+    const b = [...document.querySelectorAll('.tabs button')].find((x) => x.textContent === n);
+    if (b) b.click();
+  }, name);
+  await p.waitForTimeout(350);
+};
+
+/** Eine Artikelart in der Leiste wählen — über den Namen und nicht über die
+ *  Beschriftung: `StatblockCore` steht dort als „Statblock". */
+const zumTyp = async (p, name) => {
+  await zumRegister(p, 'Types');
+  await p.evaluate((i) => document.querySelector('.rail .navrow[data-t="' + i + '"]').click(), name);
+  await p.waitForTimeout(350);
 };
 
 async function seite(datei, warten) {
@@ -49,47 +79,50 @@ async function seite(datei, warten) {
   pruefe('not stuck on Loading…', !s.laedt, s);
   pruefe('no exception', errs.length === 0, errs);
 
-  /* 2 — Register: Baum, Felder, Subtyp anlegen */
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((b) => /Data model/.test(b.textContent))?.click());
-  await p.waitForTimeout(300);
+  /* 2 — Register: Baum, Felder, Subtyp anlegen.
+     **Oben die Reiter, links die Zeilen.** Der Reiter sagt, in welchem Teil
+     des Registers man ist; die Leiste zeigt, was darin steht. Beides in der
+     Leiste zu haben und die Zeilen noch einmal in der Seite waren zwei
+     Listen für eine Frage, und keine sagte, welche gerade gilt. */
+  await zumRegister(p, 'Types');
   const baum = await p.evaluate(() =>
-    [...document.querySelectorAll('.regtree button')].map((b) => b.textContent));
-  pruefe('registry shows the interface tree', baum.length > 3, baum);
+    [...document.querySelectorAll('.rail .navrow')].map((b) => b.textContent));
+  pruefe('registry shows the interface tree', baum.length > 3, baum.length);
 
   await p.evaluate(() =>
-    [...document.querySelectorAll('.regtree button')].find((b) => /Statblock/.test(b.textContent))?.click());
-  await p.waitForTimeout(200);
-  await p.evaluate(() => {
-    const row = [...document.querySelectorAll('.regbody .crow')]
-      .find((r) => r.textContent.includes('StatblockInfo'));
-    [...row.querySelectorAll('button')].find((b) => /Fields/.test(b.textContent))?.click();
-  });
-  await p.waitForTimeout(200);
-  const felder = await p.evaluate(() =>
-    [...document.querySelectorAll('.fbox .frow .fk')].map((x) => x.textContent));
-  pruefe('a component expands to its fields', felder.includes('passivePerception'), felder.length);
+    [...document.querySelectorAll('.rail .navrow')].find((b) => /Statblock/.test(b.textContent))?.click());
+  await p.waitForTimeout(350);
+  /* Eine Liste, nicht eine Zeile je Karte: eigene Felder zuerst, geerbte
+     darunter mit dem Bestandteil, der sie mitbringt. */
+  const felderDa = await p.evaluate(() => ({
+    alle: [...document.querySelectorAll('.fbox .frow .fk')].map((x) => x.textContent),
+    geerbt: [...document.querySelectorAll('.fbox .frow.inh')].length,
+  }));
+  pruefe('every field stands in one list', felderDa.alle.some((k) => /^passivePerception/.test(k)),
+    felderDa.alle.length);
+  pruefe('and an inherited one says which part brings it', felderDa.geerbt > 0, felderDa.geerbt);
 
-  const vorher = await p.evaluate(() => document.querySelectorAll('.regtree button').length);
+  const vorher = await p.evaluate(() => document.querySelectorAll('.rail .navrow').length);
   await p.evaluate(() => {
-    const bar = [...document.querySelectorAll('.regbody .addbar')]
+    const bar = [...document.querySelectorAll('#view .addbar')]
       .find((b) => [...b.querySelectorAll('button')].some((x) => /Create interface/.test(x.textContent)));
     bar.querySelector('input').value = 'Probe';
     [...bar.querySelectorAll('button')].find((x) => /Create interface/.test(x.textContent)).click();
   });
-  await p.waitForTimeout(200);
+  await p.waitForTimeout(400);
   const nachher = await p.evaluate(() => ({
-    anzahl: document.querySelectorAll('.regtree button').length,
+    anzahl: document.querySelectorAll('.rail .navrow').length,
     gewaehlt: document.querySelector('.regbody h3')?.textContent,
-    geerbt: [...document.querySelectorAll('.regbody .crow .co')].some((c) => /inherited from/.test(c.textContent)),
+    geerbt: [...document.querySelectorAll('.fbox .frow.inh')].length > 0,
     geschrieben: window.__WROTE__.includes('registry/interfaces'),
   }));
   pruefe('creating a subtype inserts a row', nachher.anzahl === vorher + 1, nachher);
-  pruefe('the subtype inherits its components', nachher.geerbt, nachher);
+  pruefe('the subtype inherits its fields', nachher.geerbt, nachher);
   pruefe('the subtype is saved', nachher.geschrieben, nachher);
   pruefe('registry raised no exception', errs.length === 0, errs);
 
   /* 3 — Löschen: eigener Dialog, kein window.confirm */
+  await zurSeite(p, 'Compendium');
   await p.evaluate(() =>
     [...document.querySelectorAll('.rail button')].find((b) => /All articles/.test(b.textContent))?.click());
   await p.waitForTimeout(250);
@@ -126,27 +159,21 @@ async function seite(datei, warten) {
   pruefe('no browser modal — discarded in the iframe', modale.length === 0, modale);
 
   /* 4 — Feldarten: Farbe, Auswahl, Verweis; Schlüssel umbenennen */
-  const zumFeld = async (iface, comp, key) => {
-    await p.evaluate(() =>
-      [...document.querySelectorAll('.rail button')].find((x) => /Data model/.test(x.textContent)).click());
-    await p.waitForTimeout(200);
-    await p.evaluate((i) =>
-      [...document.querySelectorAll('.regtree button')].find((b) => b.textContent.includes(i)).click(), iface);
-    await p.waitForTimeout(200);
-    await p.evaluate((c) => {
-      const row = [...document.querySelectorAll('.regbody .crow')].find((r) => r.textContent.includes(c));
-      [...row.querySelectorAll('button')].find((b) => /Fields/.test(b.textContent)).click();
-    }, comp);
-    await p.waitForTimeout(200);
+  const zumFeld = async (iface, key) => {
+    await zumTyp(p, iface);
     if (!key) return;
+    /* Geerbte Zeilen haben kein „⋯" — ein Feld wird dort geändert, wo es
+       erklärt wird, und nicht dort, wo es ankommt. */
     await p.evaluate((k) => {
-      const row = [...document.querySelectorAll('.fbox .frow')].find((r) => r.querySelector('.fk')?.textContent === k);
+      const row = [...document.querySelectorAll('.fbox .frow')]
+        .find((r) => !r.classList.contains('inh') && r.querySelector('.fk')?.textContent.startsWith(k));
+      if (row.parentElement.querySelector('.fmore')) return;
       [...row.querySelectorAll('button')].find((b) => b.textContent === '⋯').click();
     }, key);
     await p.waitForTimeout(200);
   };
 
-  await zumFeld('Faction', 'FactionInfo', 'color');
+  await zumFeld('Faction', 'color');
   const arten = await p.evaluate(() => {
     const row = [...document.querySelectorAll('.fbox .frow')].find((r) => r.querySelector('.fk')?.textContent === 'color');
     return [...row.querySelector('select').options].map((o) => o.value);
@@ -160,22 +187,57 @@ async function seite(datei, warten) {
     sel.dispatchEvent(new Event('change', { bubbles: true }));
   });
   await p.waitForTimeout(250);
+  await zurSeite(p, 'Compendium');
   await p.evaluate(() =>
     [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
   await p.waitForTimeout(200);
   await p.evaluate(() => [...document.querySelectorAll('#view .row')].find((r) => /Auge/.test(r.textContent)).click());
   await p.waitForTimeout(200);
-  await p.evaluate(() => {
-    document.querySelector('#facet').value = 'full';
-    document.querySelector('#facet').dispatchEvent(new Event('change', { bubbles: true }));
-  });
   await p.waitForTimeout(250);
   const farbe = await p.evaluate(() => document.querySelector('.fld .swatch')?.getAttribute('style') ?? null);
   pruefe('a colour field renders as a swatch', /#8b5cf6/.test(farbe ?? ''), farbe);
 
+  /* Und die Zeile im Register trägt die Form auch schon. Die Prüfung oben
+     setzt sie selbst und sagt darum nur, dass der Editor sie setzen kann —
+     `Faction.color` stand deshalb lange als blosser String da und zeigte im
+     echten Register nie eine Farbe. */
+  const formen = await p.evaluate(() => {
+    const P = (t, k) => (window.__T__.REG.interfaces[t]?.schema?.properties || {})[k] || {};
+    return { faction: P('Faction', 'color').format, bild: P('Image', 'image').format,
+             ort: P('Session', 'activeMap').format };
+  });
+  pruefe('and the registry row already says so',
+    formen.faction === 'color' && formen.bild === 'asset' && formen.ort === 'link', formen);
+
+  /* ---- Das Bild wird gezeichnet ----
+     Das Element las `Image.ref`, das Register erklärt `Image.image`. Solange
+     beides auseinanderlief, zeichnete es nie etwas — und weil ein Artikel
+     ohne Bild genauso aussieht wie einer, dessen Bild nicht ankommt, fiel
+     es niemandem auf. Deshalb steht die Prüfung hier. */
+  const bild = await p.evaluate(() => {
+    const T = window.__T__;
+    /* Ein Asset, das es gibt, und irgendein Artikel, der keins hat. */
+    let asset = null;
+    T.ENT.forEach((x) => { if (!asset && (x.interfaces || [])[0] === 'Asset') asset = x; });
+    let ziel = null;
+    T.ENT.forEach((x) => {
+      if (!ziel && (x.interfaces || [])[0] === 'Place') ziel = x;
+    });
+    if (!asset || !ziel) return { fehlt: true };
+    ziel.components.Image = { image: asset.id, caption: 'Vom Lampenplatz aus' };
+    T.go({ k: 'art', id: ziel.id });
+    return new Promise((r) => setTimeout(() => r({
+      quelle: document.querySelector('#view .pic img')?.getAttribute('src') ?? null,
+      unterschrift: document.querySelector('#view .pic figcaption')?.textContent ?? null,
+    }), 400));
+  });
+  await p.waitForTimeout(300);
+  pruefe('an image field actually draws its picture',
+    !bild.fehlt && !!bild.quelle && bild.unterschrift === 'Vom Lampenplatz aus', bild);
+
   /* Umbenennen muss Schema, Ansichten UND die Werte in den Artikeln treffen —
      wer nur das Schema ändert, lässt die Werte still hinter dem alten Namen. */
-  await zumFeld('Statblock', 'StatblockInfo', 'hp');
+  await zumFeld('Statblock', 'hp');
   await p.evaluate(() => {
     const box = [...document.querySelectorAll('.fbox .fmore')][0];
     const keyIn = [...box.querySelectorAll('label.f')]
@@ -191,21 +253,21 @@ async function seite(datei, warten) {
   }));
   pruefe('renaming a key rewrites the schema', umbenannt.felder.includes('hitPoints') && !umbenannt.felder.includes('hp'), umbenannt.felder.slice(0, 5));
   pruefe('renaming a key rewrites the articles', /article/.test(umbenannt.banner) && umbenannt.geschrieben.some((x) => x.startsWith('entities/')), umbenannt.banner);
-  /* Früher nannten die Ansichten einzelne Felder (`StatblockInfo.hp`), und
+  /* Früher nannten die Ansichten einzelne Felder (`Statblock.hp`), und
      das Umbenennen musste sie mitziehen. Seit es drei Stufen gibt, die
      `fields: 'all'` sagen, nennt keine Ansicht mehr ein Feld — die
      eigentliche Zusicherung ist deshalb: **nirgends bleibt der alte Name
      stehen.** Das ist die Frage, um die es immer ging. */
   const keinRest = await p.evaluate(() => {
     const T = window.__T__;
-    const hay = JSON.stringify({ views: T.REG.views, components: T.REG.components });
-    return { alt: /StatblockInfo\.hp\b/.test(hay), neu: /hitPoints/.test(hay) };
+    const hay = JSON.stringify({ views: T.REG.views, components: T.REG.interfaces });
+    return { alt: /Statblock\.hp\b/.test(hay), neu: /hitPoints/.test(hay) };
   });
   pruefe('renaming a key leaves no stale reference behind',
     keinRest.alt === false && keinRest.neu === true, keinRest);
 
   /* Verweisfeld: Zielbeschränkung engt ein, Vorschlag speichert die Id */
-  await zumFeld('Creature', 'CreatureInfo', null);
+  await zumFeld('Creature', null);
   await p.evaluate(() => {
     const bar = [...document.querySelectorAll('.fbox .addbar')][0];
     const [k, t] = bar.querySelectorAll('input');
@@ -232,6 +294,7 @@ async function seite(datei, warten) {
   const zahl = (t) => Number((t.match(/^(\d+)/) ?? [])[1] ?? -1);
   pruefe('a target constraint narrows the candidates', zahl(eng) > 0 && zahl(eng) < zahl(offen), { offen, eng });
 
+  await zurSeite(p, 'Compendium');
   await p.evaluate(() =>
     [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
   await p.waitForTimeout(200);
@@ -241,26 +304,34 @@ async function seite(datei, warten) {
   await p.evaluate(() => [...document.querySelectorAll('#view .row')]
     .find((r) => /^Volothamp/.test(r.textContent.trim())).click());
   await p.waitForTimeout(200);
-  await p.evaluate(() => {
-    const f = document.querySelector('#facet');
-    f.value = 'full';
-    f.dispatchEvent(new Event('change', { bubbles: true }));
-  });
   await p.waitForTimeout(250);
   await p.evaluate(() =>
     [...document.querySelectorAll('.rowbtns button')].find((b) => /Edit all fields/.test(b.textContent)).click());
   await p.waitForTimeout(350);
+  /* Das Feld „Home" und kein anderes: seit eine Kreatur ohne Statblock
+     ein „oder anhängen" mit demselben Sucher trägt, ist das erste
+     Verweisfeld der Seite nicht mehr dieses. */
   await p.evaluate(() => {
-    const inp = document.querySelector('.linkbox input');
+    const fld = [...document.querySelectorAll('.fld')]
+      .find((f) => f.querySelector('dt')?.textContent === 'Home');
+    const inp = (fld || document).querySelector('.linkbox input');
     inp.value = 'kerz';
     inp.dispatchEvent(new Event('input', { bubbles: true }));
   });
   await p.waitForTimeout(200);
-  const treffer = await p.evaluate(() => [...document.querySelectorAll('.sugg button')].map((b) => b.textContent));
+  const treffer = await p.evaluate(() => {
+    const fld = [...document.querySelectorAll('.fld')]
+      .find((f) => f.querySelector('dt')?.textContent === 'Home');
+    return [...(fld || document).querySelectorAll('.sugg button')].map((b) => b.textContent);
+  });
   pruefe('typing filters the link suggestions', treffer.length === 1 && /Kerzengasse/.test(treffer[0]), treffer);
 
-  await p.evaluate(() =>
-    document.querySelector('.sugg button').dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));
+  await p.evaluate(() => {
+    const fld = [...document.querySelectorAll('.fld')]
+      .find((f) => f.querySelector('dt')?.textContent === 'Home');
+    (fld || document).querySelector('.sugg button')
+      .dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+  });
   await p.waitForTimeout(200);
   await p.evaluate(() =>
     [...document.querySelectorAll('.rowbtns button')].find((b) => /Done editing/.test(b.textContent)).click());
@@ -271,61 +342,202 @@ async function seite(datei, warten) {
   });
   pruefe('a picked link is stored and renders as a jump', verweis?.klickbar === true && /Kerzengasse/.test(verweis?.wert ?? ''), verweis);
 
-
-  /* 5 — Import: englische Namen in der Ausgabe, deutsche Vault-Schlüssel beim Lesen.
-     Diese beiden Seiten einmal zu verwechseln bricht den Import still: die
-     Notiz wird nicht mehr erkannt, oder der Artikel trägt eine Komponente,
-     die das Register nicht kennt. */
-  const FX = join(HIER, '../../packages/import/test/fixtures');
-  const lade = (d) => readdirSync(d).filter((f) => f.endsWith('.md'))
-    .map((f) => ({ name: f, text: readFileSync(join(d, f), 'utf8') }));
-  const fixtures = [...lade(FX), ...lade(join(FX, 'statblock'))];
-
-  const imp = await p.evaluate((dn) => {
-    const T = window.__T__;
-    const r = T.runImport(dn);
-    const ifs = new Set(Object.keys(T.REG.interfaces));
-    const comps = new Set(Object.keys(T.REG.components));
-    const rels = new Set(Object.keys(T.REG.relations));
-    const fremd = [];
-    r.all.forEach((e) => {
-      (e.interfaces || []).forEach((i) => { if (!ifs.has(i)) fremd.push(`${e.name}: interface ${i}`); });
-      Object.keys(e.components || {}).forEach((c) => { if (!comps.has(c)) fremd.push(`${e.name}: component ${c}`); });
-      (e.relations || []).forEach((x) => { if (!rels.has(x.type)) fremd.push(`${e.name}: relation ${x.type}`); });
-    });
-    const schwert = r.all.find((e) => e.name === 'Bastardschwert');
-    const kette = r.all.find((e) => /Kettenr/.test(e.name));
-    const grimm = r.all.find((e) => e.name === 'Grimmhauer' && e.interfaces[0] === 'Statblock');
+  /* **Ein Verweis zeigt seine Übersicht, bevor man ihm folgt.** Name,
+     Artikelart und der eine Satz — mehr hat neben einem Verweis im Satz
+     keinen Platz, und wer mehr will, klickt. Gebaut wird der Blick erst
+     beim Hinfahren: eine Seite mit vierzig Verweisen zeichnete sonst
+     vierzig Artikel mit, von denen man keinen anschaut. */
+  const blick = await p.evaluate(async () => {
+    const ref = [...document.querySelectorAll('.blk .refw > button.ref, .fld .refw > button.ref')][0]
+      || document.querySelector('.refw > button.ref');
+    if (!ref) return { keiner: true };
+    const vorher = document.querySelectorAll('.refpop').length;
+    ref.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
+    await new Promise((r) => setTimeout(r, 200));
+    const pop = ref.parentElement.querySelector('.refpop');
     return {
-      zahlen: { item: r.item.length, statblock: r.statblock.length, rules: r.rules.length },
-      fremd,
-      unknown: r.unknown,
-      schwert: schwert && { iface: schwert.interfaces[0], type: schwert.components.ItemInfo?.itemType,
-                            dmg: schwert.components.WeaponInfo?.damage, fp: !!schwert.components.Footprint },
-      kette: kette && { iface: kette.interfaces[0], ac: kette.components.ArmorInfo?.ac,
-                        bild: !!kette.components.Image?.url },
-      grimm: grimm && { size: grimm.components.StatblockInfo?.size, hp: grimm.components.StatblockInfo?.hp,
-                        speed: grimm.components.StatblockInfo?.speed },
+      vorher,
+      da: !!pop,
+      name: pop?.querySelector('b')?.textContent ?? '',
+      /* Eine Übersicht ist ein Satz und keine Feldtabelle. */
+      felder: pop ? pop.querySelectorAll('.fields').length : -1,
+      text: (pop?.textContent ?? '').length,
     };
-  }, fixtures);
+  });
+  /* **Was leer ist, steht nicht da — aber es ist zu haben.** Eine Seite,
+     die jedes mögliche Feld als Strich zeigt, liest sich wie ein Formular;
+     eine, die es verschweigt, lässt es nie jemand ausfüllen. Also eine
+     Zeile darunter, die aufzählt, was die Art noch trüge — und ein Griff
+     hinein macht daraus ein offenes Feld. */
+  const angebot = await p.evaluate(async () => {
+    const T = window.__T__;
+    const npc = [...T.ENT.values()].find((x) => (x.interfaces || [])[0] === 'Creature');
+    T.go({ k: 'art', id: npc.id });
+    await new Promise((r) => setTimeout(r, 400));
+    const sel = document.querySelector('.addfield select');
+    if (!sel) return { keins: true };
+    const vorher = document.querySelectorAll('.fields .fld').length;
+    const wahl = sel.options[1].value;
+    /* Leer heisst leer: kein Feld der Tabelle darf schon so heissen. */
+    const schon = [...document.querySelectorAll('.fields .fld dt')].map((x) => x.textContent);
+    sel.value = wahl;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 400));
+    return {
+      angeboten: sel.options.length - 1,
+      vorher,
+      schon,
+      wahl,
+      nachher: document.querySelectorAll('.fields .fld').length,
+      offen: !!document.querySelector('.fld dd.editing'),
+    };
+  });
+  pruefe('an empty field is not shown, but it is on offer',
+    angebot.keins !== true && angebot.angeboten > 5
+    && !angebot.schon.includes('Audience'), angebot);
+  pruefe('and picking one opens it right there',
+    angebot.nachher === angebot.vorher + 1 && angebot.offen === true, angebot);
 
-  pruefe('every vault note is recognised', imp.unknown.length === 0, imp.unknown);
-  pruefe('the import emits only names the registry knows', imp.fremd.length === 0, imp.fremd);
-  pruefe('items import as their subtype', imp.schwert?.iface === 'Weapon' && imp.kette?.iface === 'Armor', { s: imp.schwert, k: imp.kette });
-  pruefe('item fields land under the English keys', imp.schwert?.dmg === '1d8 / 1d10' && imp.kette?.ac === 16, { s: imp.schwert, k: imp.kette });
-  pruefe('the grid and the image survive', imp.schwert?.fp === true && imp.kette?.bild === true, { s: imp.schwert, k: imp.kette });
-  pruefe('statblock label lines land under the English keys', imp.grimm?.hp === 45 && /40ft/.test(imp.grimm?.speed ?? ''), imp.grimm);
-  pruefe('statblock sections become pooled rules', imp.zahlen.rules > 20, imp.zahlen);
+  /* **Einheiten werden beim Lesen gerechnet, nie gespeichert** (D8). Der
+     Vault ist imperial, weil die Regeln es sind; am Tisch sitzen Leute,
+     für die vierzig Fuss nichts bedeuten. Beides in die Daten zu schreiben
+     hiesse, zwei Zahlen zu haben, die sich widersprechen können. */
+  const masse = await p.evaluate(() => {
+    const T = window.__T__;
+    return {
+      zeilen: Object.keys(T.REG.units || {}).length,
+      /* Nach Grössenordnung: drei Meilen sind knapp fünf Kilometer und
+         nicht 4828 Meter. */
+      beide: T.formatMeasure(40, 'ft', 'both'),
+      weit: T.formatMeasure(3, 'mi', 'both'),
+      nurMetrisch: T.formatMeasure(30, 'lb', 'metric'),
+      nurImperial: T.formatMeasure(1.5, 'm', 'imperial'),
+      /* Im Fliesstext: angefasst wird nur, was wie ein Mass aussieht. */
+      text: T.convertText('40 ft, climb 20 ft — and a rope', 'metric'),
+      /* Eine unbekannte Einheit bleibt stehen. Eine irreführende Zahl ist
+         schlimmer als keine. */
+      fremd: T.convertText('7 zorp of nothing', 'metric'),
+      /* Und welches System gilt, sagt die Art oder die Einstellung. */
+      proArt: T.unitsFor('Creature'),
+    };
+  });
+  pruefe('units are a registry row, and the conversion picks the right magnitude',
+    masse.zeilen > 8 && /12\.2/.test(masse.beide) && /m\b/.test(masse.beide)
+    && /4\.8/.test(masse.weit) && /km/.test(masse.weit), masse);
+  pruefe('one system only shows only that one',
+    /kg/.test(masse.nurMetrisch) && !/lb/.test(masse.nurMetrisch)
+    && /ft/.test(masse.nurImperial) && !/\bm\b/.test(masse.nurImperial), masse);
+  pruefe('a measure inside prose is converted, and nothing else is touched',
+    /climb/.test(masse.text) && /rope/.test(masse.text) && !/ft/.test(masse.text)
+    && masse.fremd === '7 zorp of nothing', masse);
 
-  pruefe('field kinds and import raised no exception', errs.length === 0, errs);
+  /* **Ein Mass nennt die Einheit, in der es dasteht.** Drei Felder taten
+     das nicht — `Statblock.speed`, `Weapon.range`, `Map.scale` —, und
+     umgerechnet wird aus der gespeicherten Einheit: ohne sie rechnete
+     nichts, und das sah aus wie eine Zahl, die schon stimmt. Das
+     Ausgangsmass greift nur, wo keine Zahl ihre Einheit nennen kann. */
+  const ausgangs = await p.evaluate(() => {
+    const T = window.__T__;
+    const sp = T.REG.interfaces.Statblock.schema.properties.speed;
+    return {
+      unit: sp.unit,
+      nackt: T.convertText('40', 'metric', 'ft'),
+      ohneAnnahme: T.convertText('40', 'metric'),
+      bereich: T.convertText('30/120', 'metric', 'ft'),
+      mitWort: T.convertText('7 zorp', 'metric', 'ft'),
+      gezeichnet: T.fmtVal(sp, '40', 'Statblock'),
+      karte: T.REG.interfaces.Map.schema.properties.scale.unit,
+    };
+  });
+  pruefe('a bare number takes the field unit, and a word stops the guessing',
+    ausgangs.unit === 'ft' && /12\.2/.test(ausgangs.nackt)
+    && ausgangs.ohneAnnahme === '40' && ausgangs.mitWort === '7 zorp'
+    && /9\.1/.test(ausgangs.bereich) && /36\.6/.test(ausgangs.bereich)
+    && /ft/.test(ausgangs.gezeichnet) && /m\)/.test(ausgangs.gezeichnet)
+    && ausgangs.karte === 'm', ausgangs);
+
+  /* **Ein Verweisfeld nennt seinen Zieltyp.** Vier Felder hielten die Id
+     von irgendetwas — „Scene in play" nahm eine Rüstung. Geprüft wird die
+     Art und nur die: Marken lesen den heutigen Zustand des Ziels, und ein
+     entfernter Marker würde einen gespeicherten Verweis rückwirkend
+     falsch machen. */
+  const zielTyp = await p.evaluate(() => {
+    const T = window.__T__;
+    const pd = T.REG.interfaces.Session.schema.properties.activeMap;
+    /* Ein Artikel jeder Art, ohne etwas zu speichern. */
+    let karte = null, andere = null, sitzung = null;
+    T.ENT.forEach((e) => {
+      const art = (e.interfaces || [])[0];
+      if (art === 'Map' && !karte) karte = e;
+      if (art === 'Armor' && !andere) andere = e;
+      if (art === 'Session' && !sitzung) sitzung = e;
+    });
+    if (!karte || !andere || !sitzung) return { fehlt: true, karte: !!karte, andere: !!andere, sitzung: !!sitzung };
+    const mit = (id) => ({
+      ...sitzung,
+      components: { ...sitzung.components, Session: { activeMap: id } },
+    });
+    const sagt = (e) => T.checkArticle(e).map((x) => x.t).filter((t) => /Map on the table/.test(t));
+    return {
+      ziel: (pd.target || {}).interfaces,
+      richtig: sagt(mit(karte.id)),
+      falsch: sagt(mit(andere.id)),
+      weg: sagt(mit('gibt-es-nicht')),
+      leer: sagt(mit('')),
+    };
+  });
+  pruefe('a link field names its target type, and the check holds it',
+    Array.isArray(zielTyp.ziel) && zielTyp.ziel[0] === 'Map'
+    && zielTyp.richtig.length === 0 && zielTyp.falsch.length === 1
+    && /Armor/.test(zielTyp.falsch[0] || '') && zielTyp.weg.length === 1
+    && zielTyp.leer.length === 0, zielTyp);
+
+  await zumRegister(p, 'Units');
+  const einheiten = await p.evaluate(() => ({
+    probe: [...document.querySelectorAll('#view .fbox .frow')].map((r) => r.textContent),
+    modus: document.getElementById('unitmode')?.value ?? '',
+    zeilen: document.querySelectorAll('#view .regbody .crow').length,
+  }));
+  pruefe('the units have a page that shows what the setting does',
+    einheiten.zeilen > 8 && einheiten.modus === 'both'
+    && einheiten.probe.some((x) => /40\s*ft/.test(x) && /m\)/.test(x)), einheiten);
+
+  /* Nur eines zeigen: die Einstellung wirkt, und man sieht es sofort. */
+  const umgestellt = await p.evaluate(async () => {
+    const sel = document.getElementById('unitmode');
+    sel.value = 'metric';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 350));
+    const nun = [...document.querySelectorAll('#view .fbox .frow')].map((x) => x.textContent);
+    const T = window.__T__;
+    const heute = T.formatMeasure(40, 'ft', T.unitsFor('Creature'));
+    sel.value = 'both';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 350));
+    return { nun, heute };
+  });
+  pruefe('switching to one system leaves the other out everywhere',
+    umgestellt.nun.every((x) => !/\(/.test(x)) && !/ft/.test(umgestellt.heute),
+    umgestellt);
+
+  await zurSeite(p, 'Compendium');
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
+  await p.waitForTimeout(250);
+
+  pruefe('a reference shows its overview before you follow it',
+    blick.keiner !== true && blick.vorher === 0 && blick.da === true
+    && blick.name.length > 0 && blick.felder === 0 && blick.text > blick.name.length,
+    blick);
+
+
+  /* 5 — fiel weg: die Importer sind weg (2026-09-20). Was sie prüften —
+     englische Namen in der Ausgabe, deutsche Vault-Schlüssel beim Lesen —
+     gibt es nicht mehr zu prüfen, und ein Prüflauf gegen Code, den es nicht
+     gibt, sagt nur, dass er nicht da ist. */
 
   /* 6 — Ansichten als Werkzeugkasten, und ein Layout je Typ */
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((x) => /Data model/.test(x.textContent)).click());
-  await p.waitForTimeout(200);
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.tabs button')].find((x) => /^Views$/.test(x.textContent)).click());
-  await p.waitForTimeout(250);
+  await zumRegister(p, 'Views');
   const werkzeuge = await p.evaluate(() =>
     [...document.querySelectorAll('.tools button')].map((b) => b.textContent));
   /* „Jedes" heisst: jedes, das die Seite kennt — nicht eine Zahl, die bei
@@ -337,8 +549,8 @@ async function seite(datei, warten) {
       && werkzeuge.length === bekannt.length, { werkzeuge, bekannt });
 
   await p.evaluate(() =>
-    [...document.querySelectorAll('.regtree button')].find((b) => b.textContent === 'Full').click());
-  await p.waitForTimeout(200);
+    document.querySelector('.rail .navrow[data-v="full"]').click());
+  await p.waitForTimeout(250);
   const umgewandelt = await p.evaluate(() =>
     [...document.querySelectorAll('.regbody .crow .cl b')].map((c) => c.textContent));
   /* Die alten Ansichten waren eine Sammlung von Schaltern. Sie müssen beim
@@ -346,9 +558,14 @@ async function seite(datei, warten) {
      Ansicht sähe aus, als zeige sie nichts. */
   pruefe('an older view converts into elements', umgewandelt.includes('Description') && umgewandelt.includes('Field table'), umgewandelt);
 
+  /* Genau diese Art, nicht „irgendeine mit Statblock drin": eine Schleife,
+     die die letzte Übereinstimmung nimmt, landete früher bei
+     `StatblockInfo` — die Anordnung wäre dann an der richtigen Stelle
+     gewesen und die Prüfung hätte sie an der falschen gesucht. */
   await p.evaluate(() => {
-    const s = document.querySelector('.regbody select');
-    [...s.options].forEach((o) => { if (/Statblock/.test(o.textContent)) s.value = o.value; });
+    const s = [...document.querySelectorAll('.regbody select')]
+      .find((x) => [...x.options].some((o) => o.value === 'Statblock'));
+    s.value = 'Statblock';
     s.dispatchEvent(new Event('change', { bubbles: true }));
   });
   await p.waitForTimeout(250);
@@ -361,12 +578,18 @@ async function seite(datei, warten) {
     t.dispatchEvent(new Event('change', { bubbles: true }));
   });
   await p.waitForTimeout(300);
-  for (let i = 0; i < 6; i++) {
-    await p.evaluate(() => {
-      const r = [...document.querySelectorAll('.regbody .crow')].find((x) => /Heading/.test(x.textContent));
+  /* So oft nach oben, bis es oben ist — eine feste Zahl stimmt nur, solange
+     die Anordnung genau so lang bleibt. */
+  for (let i = 0; i < 12; i++) {
+    const oben = await p.evaluate(() => {
+      const rows = [...document.querySelectorAll('.regbody .crow')];
+      const r = rows.find((x) => /Heading/.test(x.textContent));
+      if (rows.indexOf(r) === 0) return true;
       const up = [...r.querySelectorAll('button')].find((b) => b.textContent === '↑');
       if (up && !up.disabled) up.click();
+      return false;
     });
+    if (oben) break;
     await p.waitForTimeout(140);
   }
   const reihe = await p.evaluate(() =>
@@ -374,20 +597,216 @@ async function seite(datei, warten) {
   pruefe('elements can be reordered', reihe[0] === 'Heading', reihe);
 
   const zeig = async (name) => {
+    await zurSeite(p, 'Compendium');
     await p.evaluate(() =>
       [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
     await p.waitForTimeout(200);
     await p.evaluate((n) =>
       [...document.querySelectorAll('#view .row')].find((r) => r.textContent.includes(n)).click(), name);
     await p.waitForTimeout(200);
-    await p.evaluate(() => {
-      const f = document.querySelector('#facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(250);
     return p.evaluate(() => [...document.querySelectorAll('#view .sec')].map((x) => x.textContent));
   };
+  /* ---- Eine Vorlage nur dort, wo gezeichnet wird ----
+     `Identity` ist ein Bestandteil und kein Artikel. „Overview" zeigte dort
+     die Beschreibung, die es an ihm gar nicht gibt — und lud dazu ein, eine
+     Anordnung an einer Stelle zu ändern, an der sie nichts tut. Ein
+     Obertyp, der eine Anordnung **selbst** trägt, behält sie: dort ist sie
+     zu ändern. */
+  const vorlageBei = async (name) => {
+    await zumTyp(p, name);
+    return p.evaluate(() => ({
+      knopf: [...document.querySelectorAll('.chips .chip.pick[data-vk]')].length,
+      elemente: [...document.querySelectorAll('.tmpl .tmplel')].length,
+      /* **Was nicht gilt, steht nicht da.** Hier stand ein Absatz „it is a
+         part that other kinds take" — eine Auskunft über eine Frage, die
+         sich bei einem geteilten Typ nicht stellt. Geprüft wird jetzt, dass
+         die Überschrift fehlt, und nicht, dass ein Trostsatz dasteht. */
+      sec: [...document.querySelectorAll('.tpdoc .sec')].map((x) => x.textContent),
+    }));
+  };
+  const teil = await vorlageBei('Identity');
+  const artikelart = await vorlageBei('Creature');
+  /* Und eine Art, die ihre Anordnung **erbt**: die Spielerfigur nimmt die
+     der Kreatur. Hier stand einmal der abstrakte Obertyp mit eigener
+     Anordnung — den gibt es nicht mehr, seit eine Kreatur selbst eine Art
+     ist, und eine Prüfung auf einen Fall, den das Register nicht kennt,
+     prüft nichts. Dass geerbte Anordnungen durchreichen, prüft
+     `layoutSource` daneben und der Paketlauf mit. */
+  const erbend = await vorlageBei('PlayerCharacter');
+  pruefe('a part that no article is shows no view template, and no heading either',
+    teil.knopf === 0 && teil.elemente === 0
+    && !teil.sec.some((x) => /^Views/.test(x)), teil);
+  pruefe('an article kind shows one',
+    artikelart.knopf > 0 && artikelart.elemente > 0
+    && artikelart.sec.some((x) => /^Views/.test(x)), artikelart);
+  pruefe('and a kind that inherits its layout shows that one',
+    erbend.knopf > 0 && erbend.elemente > 0, erbend);
+
+  /* `Prose` und `Notes` hingen einmal an `Identity`, weil das der einzige
+     Typ ist, den jede Art erbt. Dann stand unter „Identity" ein Feld
+     namens „Text". Ein Basistyp erbt nichts. */
+  const idFelder = await p.evaluate(() => {
+    const T = window.__T__;
+    return { eigen: Object.keys(T.REG.interfaces.Identity.schema.properties),
+             erbt: T.REG.interfaces.Identity.extends || [],
+             prosa: T.proseFields('Identity').map((f) => f.type + '.' + f.key),
+             beimNPC: T.proseFields('Creature').map((f) => f.type + '.' + f.key) };
+  });
+  pruefe('a base kind inherits nothing, so identity carries no prose',
+    idFelder.erbt.length === 0 && idFelder.prosa.length === 0, idFelder);
+  pruefe('the article kinds still have their prose',
+    idFelder.beimNPC.includes('Prose.paragraph') && idFelder.beimNPC.includes('Notes.note'),
+    idFelder.beimNPC);
+
+  /* ---- Ein Typ darf ein geerbtes Feld umbenennen ----
+     Derselbe `Time.until` ist an einem Ereignis, wann es aufhört, und an
+     einem Auftrag, wann es zu spät ist. Der Bestandteil bleibt einer — nur
+     die Beschriftung ist je Typ, und sie steht an dem Typ, der sie meint. */
+  const benannt = await p.evaluate(() => {
+    const T = window.__T__;
+    const von = (art) => T.fieldsOf(art)
+      .filter((f) => f.type === 'Time')
+      .map((f) => f.key + '=' + T.fieldTitle(art, f.type, f.key, f.prop));
+    return { quest: von('Quest'), ereignis: von('Event'),
+             woher: T.titleSource('Quest', 'Time', 'until'),
+             beiTime: T.titleSource('Time', 'Time', 'until') };
+  });
+  pruefe('a kind may rename a field it inherits',
+    benannt.quest.includes('until=Deadline'), benannt.quest);
+  pruefe('and every other kind keeps the name the part brings',
+    benannt.ereignis.includes('until=Until'), benannt.ereignis);
+  pruefe('the rename says which kind set it',
+    benannt.woher === 'Quest' && benannt.beiTime === '', benannt);
+
+  /* Und man ändert sie dort, wo man sie sieht: die Zeile des geerbten
+     Feldes trägt ein Eingabefeld, das in den offenen Typ schreibt. */
+  await zumTyp(p, 'Quest');
+  const umbenennen = await p.evaluate(() => {
+    /* `Time` steht als zugeklappte Gruppe da — die Zeilen sind im Baum und
+       werden nur gezeigt. Für die Prüfung genügt die Zeile; ein Klick auf
+       die Kopfzeile wäre der Weg der Hand. */
+    const zeile = [...document.querySelectorAll('.fbox.part .frow.inh')]
+      .find((r) => r.querySelector('.fk')?.textContent.replace('*', '') === 'duration');
+    const i = zeile?.querySelector('input');
+    if (!i) return { keinFeld: true };
+    i.value = 'Reckoning';
+    i.dispatchEvent(new Event('change', { bubbles: true }));
+    return { getippt: true };
+  });
+  await p.waitForTimeout(400);
+  const titelJetzt = await p.evaluate(() => {
+    const T = window.__T__;
+    const pd = T.REG.interfaces.Time.schema.properties.duration;
+    return { quest: T.fieldTitle('Quest', 'Time', 'duration', pd),
+             /* …und nur dort. Im Bestandteil steht weiter der eigene Name. */
+             teil: pd.title,
+             ereignis: T.fieldTitle('Event', 'Time', 'duration', pd) };
+  });
+  pruefe('renaming from the type page writes to that type',
+    !umbenennen.keinFeld && titelJetzt.quest === 'Reckoning', { umbenennen, titelJetzt });
+  pruefe('and leaves the part and its other users alone',
+    titelJetzt.teil === 'Duration' && titelJetzt.ereignis === 'Duration', titelJetzt);
+
+  /* Zurück auf den eigenen Namen heisst: die Zeile fällt weg. Eine
+     Umbenennung, die dasselbe sagt wie das Feld, wird an dem Tag still
+     falsch, an dem jemand das Feld umbenennt. */
+  const titelZurueck = await p.evaluate(() => {
+    const zeile = [...document.querySelectorAll('.fbox.part .frow.inh')]
+      .find((r) => r.querySelector('.fk')?.textContent.replace('*', '') === 'duration');
+    const i = zeile?.querySelector('input');
+    if (i) { i.value = 'Duration'; i.dispatchEvent(new Event('change', { bubbles: true })); }
+    return true;
+  });
+  await p.waitForTimeout(400);
+  const titelWeg = await p.evaluate(() =>
+    ((window.__T__.REG.interfaces.Quest.titles) || {})['Time.duration']);
+  pruefe('a rename that says the same as the field is not kept',
+    titelZurueck && titelWeg === undefined, titelWeg);
+
+  /* ---- Die ausgegebene Nummer ----
+     `Identity.id` ist `npc-0042` und hiess einmal `key`: `npc/volo-geddarm`,
+     also ein Name, der ein zweites Mal derselbe Name war. Beim Umbenennen
+     musste er entweder mitwandern — dann war er kein fester Bezeichner —
+     oder nicht, und dann log er. */
+  const nummern = await p.evaluate(() => {
+    const T = window.__T__;
+    const alle = [];
+    T.ENT.forEach((e) => alle.push({ art: (e.interfaces || [])[0] || '', id: T.articleId(e) }));
+    const doppelt = {};
+    const gesehen = {};
+    for (const x of alle) {
+      if (x.id && gesehen[x.id]) doppelt[x.id] = 1;
+      gesehen[x.id] = 1;
+    }
+    return {
+      ohne: alle.filter((x) => !x.id).length,
+      falscheForm: alle.filter((x) => x.id && !/^[a-z0-9-]+-\d{4}$/.test(x.id)).length,
+      /* Der Anfang ist die Artikelart, **wie sie beim Anlegen hiess**.
+         Wechselt ein Artikel die Art — drei NSC sind Kreaturen geworden,
+         als `NPC` als Art wegfiel —, behält er seine Nummer: sie ist
+         `readOnly` und ändert sich nie. Eine Wanderung, die Bezeichner
+         umschreibt, wäre genau die Stelle, an der ein fester Bezeichner
+         wandert. Geprüft wird darum die Form; dass eine **neue** Nummer die
+         Art nennt, prüft `nextId` gleich darunter. */
+      fremdeArt: alle.filter((x) => x.id && x.art && x.id.indexOf(T.idPrefix(x.art) + '-') !== 0)
+        .map((x) => x.id + ' (' + x.art + ')'),
+      doppelt: Object.keys(doppelt),
+      naechste: T.nextId('creature'),
+      keiner: alle.some((x) => /\//.test(x.id)),
+    };
+  });
+  pruefe('every article carries an issued number', nummern.ohne === 0, nummern);
+  pruefe('and it reads kind-runningNumber, not a second copy of the name',
+    nummern.falscheForm === 0 && !nummern.keiner, nummern);
+  pruefe('no two articles share one', nummern.doppelt.length === 0, nummern.doppelt);
+
+  /* Die nächste ist die höchste plus eins — gezählt wird, was dasteht. Ein
+     gespeicherter Zähler wäre eine zweite Stelle, die sagt, wie weit man
+     ist, und die nach dem ersten Import falsch steht. */
+  const weiter = await p.evaluate(() => {
+    const T = window.__T__;
+    const hoch = [];
+    T.ENT.forEach((e) => {
+      /* Gezählt wird, was der Anfang sagt, und nicht, was die Art heute
+         ist: die drei gewanderten NSC tragen weiter `npc-000n`. */
+      const id = T.articleId(e) || '';
+      if (id.indexOf('creature-') === 0) hoch.push(Number(id.split('-').pop()));
+    });
+    return { erwartet: Math.max(0, ...hoch) + 1, bekommen: T.nextId('Creature'),
+             imStapel: T.nextId('Creature', [T.nextId('Creature')]) };
+  });
+  pruefe('the next number is the highest plus one',
+    weiter.bekommen === 'creature-' + String(weiter.erwartet).padStart(4, '0'), weiter);
+  /* Und ein Stapel zählt weiter, statt zwanzigmal dieselbe zu vergeben. */
+  pruefe('and a batch counts on from what it has just issued',
+    weiter.imStapel === 'creature-' + String(weiter.erwartet + 1).padStart(4, '0'), weiter);
+
+  /* Sie steht am Kopf des Artikels — und bekommt auch beim „alles
+     bearbeiten" keine Eingabe: sie steht seit dem Anlegen und darf sich
+     nicht ändern, sonst hiesse derselbe Artikel morgen anders. */
+  await p.evaluate(() => window.__T__.go({ k: 'art', id: 'n_volo' }));
+  await p.waitForTimeout(400);
+  const tippbar = await p.evaluate(() => {
+    const T = window.__T__;
+    T.UI.inline = true;
+    T.render();
+    return new Promise((r) => setTimeout(() => {
+      const antwort = {
+        amKopf: document.querySelector('.arthead .key')?.textContent ?? '',
+        /* Nirgends eine Eingabe, die sie trägt. */
+        eingabe: [...document.querySelectorAll('#view input')]
+          .some((i) => /^[a-z0-9-]+-\d{4}$/.test(i.value || '')),
+      };
+      T.UI.inline = false;
+      T.render();
+      r(antwort);
+    }, 350));
+  });
+  await p.waitForTimeout(300);
+  pruefe('the number stands at the head and never becomes an input',
+    /^npc-\d{4}$/.test(tippbar.amKopf) && !tippbar.eingabe, tippbar);
+
   const sb = await zeig('Kanalschleim');
   const npc = await zeig('Volo');
   pruefe('a per-type layout reaches that type', sb.includes('Statblocks only'), sb);
@@ -395,14 +814,9 @@ async function seite(datei, warten) {
   pruefe('views raised no exception', errs.length === 0, errs);
 
   /* 7 — jeder Registerreiter hat eine Maske, keiner nur ein JSON-Textfeld */
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((x) => /Data model/.test(x.textContent)).click());
-  await p.waitForTimeout(200);
   const masken = {};
-  for (const name of ['Interfaces', 'Components', 'Relation types', 'Views', 'Variables']) {
-    await p.evaluate((n) =>
-      [...document.querySelectorAll('.tabs button')].find((x) => x.textContent === n).click(), name);
-    await p.waitForTimeout(280);
+  for (const name of ['Types', 'Relations', 'Views', 'Variables']) {
+    await zumRegister(p, name);
     masken[name] = await p.evaluate(() => ({
       maske: !!document.querySelector('.regbody'),
       felder: document.querySelectorAll('.regbody label.f, .regbody input.i').length,
@@ -411,7 +825,7 @@ async function seite(datei, warten) {
     }));
   }
   const ohneMaske = Object.keys(masken).filter((n) => !masken[n].maske || masken[n].roh);
-  pruefe('every registry tab opens as a form', ohneMaske.length === 0, masken);
+  pruefe('every registry part opens as a form', ohneMaske.length === 0, masken);
   pruefe('and every one keeps the JSON way out',
     Object.keys(masken).every((n) => masken[n].ausgang), masken);
 
@@ -438,17 +852,13 @@ async function seite(datei, warten) {
 
   /* 8 — Bearbeiten in der Ansicht, und die Spur zurück */
   const oeffne = async (name) => {
+    await zurSeite(p, 'Compendium');
     await p.evaluate(() =>
       [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
     await p.waitForTimeout(200);
     await p.evaluate((n) =>
       [...document.querySelectorAll('#view .row')].find((r) => r.textContent.includes(n)).click(), name);
     await p.waitForTimeout(200);
-    await p.evaluate(() => {
-      const f = document.querySelector('#facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(250);
   };
 
@@ -458,6 +868,23 @@ async function seite(datei, warten) {
   const oeffneId = async (id) => {
     await p.evaluate((i) => window.__T__.go({ k: 'art', id: i }), id);
     await p.waitForTimeout(350);
+  };
+
+  /* Ein Reiter auf der Artikelseite. Seit ein Charakterbogen Reiter hat,
+     liegt nicht mehr alles untereinander — und eine Prüfung, die den
+     Reiter nicht umschaltet, prüft eine leere Seite und meldet einen
+     Fehler, den es nicht gibt. Fehlt der Reiter, wird nichts getan: dann
+     steht der Inhalt ohnehin da. */
+  const reiter = async (label) => {
+    const da = await p.evaluate((l) => {
+      const b = [...document.querySelectorAll('.tabrow .btn')]
+        .find((x) => x.textContent.trim() === l);
+      if (!b) return false;
+      b.click();
+      return true;
+    }, label);
+    if (da) await p.waitForTimeout(300);
+    return da;
   };
 
   const neuerArtikel = async (typ, name) => {
@@ -537,6 +964,23 @@ async function seite(datei, warten) {
   const s3 = await spring();
   pruefe('every jump leaves a crumb', s3.krumen.length === 3 && s1.krumen[0] === start,
     { start, s1, s2, s3 });
+  /* Und sie stehen **über** der Navigation und nicht im Artikel: sie sagen,
+     wo man ist, und das gehört zur Navigation. Im Artikel standen sie unter
+     dem Seitenwechsel und sahen aus wie ein Teil des Artikels. */
+  const wo = await p.evaluate(() => {
+    const bar = document.querySelector('.crumbs');
+    const nav = document.getElementById('pages');
+    if (!bar || !nav) return null;
+    return {
+      ausserhalb: !document.getElementById('view').contains(bar),
+      ueber: !!(bar.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING),
+      /* Der Artikel, auf dem man steht, steht am Ende der Spur — sonst
+         sagte sie, woher man kam, und nicht, wo man ist. */
+      letzte: bar.querySelector('.hier')?.textContent ?? '',
+    };
+  });
+  pruefe('the crumbs sit above the navigation, and name where you are',
+    wo && wo.ausserhalb && wo.ueber && wo.letzte === s3.hier, { wo, hier: s3.hier });
 
   /* Zurück auf etwas, das schon in der Spur steht, schneidet sie dort ab.
      Sonst wüchse sie beim Hin und Her ins Endlose. */
@@ -588,6 +1032,7 @@ async function seite(datei, warten) {
   pruefe('in-place editing raised no exception', errs.length === 0, errs);
 
   /* 9 — Massenbearbeitung */
+  await zurSeite(p, 'Compendium');
   await p.evaluate(() =>
     [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
   await p.waitForTimeout(250);
@@ -662,46 +1107,181 @@ async function seite(datei, warten) {
 
   pruefe('bulk editing raised no exception', errs.length === 0, errs);
 
-  /* 10 — Seitenaufbau: Kompendium sind die Artikel, Datenmodell ist das Register */
+  /* 10 — Seitenaufbau: sechs Seiten oben, und jede zeigt in der Leiste, was
+     in ihr steckt. Vorher standen alle Bereiche untereinander in einer
+     einzigen Leiste — wer im Spiel eine Karte suchte, scrollte an der
+     halben Kampagne vorbei. */
+  const seiten = await p.evaluate(() =>
+    [...document.querySelectorAll('#pages button')].map((b) => b.textContent));
+  pruefe('six pages stand at the top',
+    ['Registry', 'Compendium', 'World', 'History', 'Rules', 'Play']
+      .every((n, i) => seiten[i] === n) && seiten.length === 6, seiten);
+
+  /* Und die Leiste zeigt genau die Seite, auf der man steht. Im Register
+     sagen die Reiter oben, in welchem Teil man ist, und die Leiste zeigt
+     die Zeilen darin — beim Teil „Types" also die Artikelarten. */
+  const leisten = {};
+  for (const n of ['Registry', 'World', 'History', 'Play']) {
+    if (n === 'Registry') await zumRegister(p, 'Types');
+    else await zurSeite(p, n);
+    leisten[n] = await p.evaluate(() => ({
+      zeilen: [...document.querySelectorAll('.rail button')].map((b) => b.textContent),
+      reiter: [...document.querySelectorAll('.tabs button')].map((b) => b.textContent),
+    }));
+  }
+  /* Was nach **Artikeln** fragt, gehört nicht ins Register: „was liegt noch
+     halb da", „was ist noch zu tun", „woran hängt die Validierung" fragen
+     nach Artikeln und nicht nach den Zeilen, aus denen Artikel gemacht
+     sind. Und nachschlagen tut man dort, wo die Regeln stehen. */
+  const umgezogen = await p.evaluate(() => {
+    const raus = () => [...document.querySelectorAll('.rail button')].map((b) => b.textContent);
+    return { reg: raus() };
+  });
+  await zurSeite(p, 'Compendium');
+  umgezogen.komp = await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].map((b) => b.textContent));
+  await zurSeite(p, 'Rules');
+  umgezogen.regeln = await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].map((b) => b.textContent));
+  pruefe('what asks about articles sits with the articles',
+    ['Unfinished', 'To do', 'Open issues'].every((w) =>
+      umgezogen.komp.some((x) => x.startsWith(w)) && !umgezogen.reg.some((x) => x.startsWith(w)))
+    && umgezogen.regeln.some((x) => x.startsWith('Rules'))
+    && !umgezogen.reg.some((x) => x.startsWith('Rules')),
+    { reg: umgezogen.reg.slice(0, 4), komp: umgezogen.komp.slice(-3), regeln: umgezogen.regeln.slice(-1) });
+
+  /* Der Stapel ist das, was am wenigsten selbsterklärend ist. Er stand als
+     ein Wort in der Leiste — jetzt hat er einen Reiter, der sagt, wofür er
+     da ist. */
+  await zumRegister(p, 'Stack');
+  const stapelSeite = await p.evaluate(() => ({
+    erklaert: (document.querySelector('#view .hint')?.textContent ?? '').length > 200,
+    ebenen: document.querySelectorAll('#view .layers .layer').length,
+  }));
+  pruefe('the stack says what it is for, and what is running',
+    stapelSeite.erklaert && stapelSeite.ebenen > 0, stapelSeite);
+
+  pruefe('each page shows only its own rail',
+    leisten.Registry.reiter.includes('Types')
+      && leisten.Registry.zeilen.some((x) => /^Article/.test(x))
+      && leisten.World.zeilen.some((x) => /^Creature/.test(x))
+      && !leisten.World.reiter.length
+      && leisten.History.zeilen.some((x) => /^Quest/.test(x))
+      && !leisten.History.zeilen.some((x) => /^Creature/.test(x))
+      && leisten.Play.zeilen.some((x) => /^Map/.test(x)),
+    { r: leisten.Registry, w: leisten.World.zeilen.slice(0, 3) });
+
+  await zurSeite(p, 'Compendium');
   await p.evaluate(() =>
     [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
   await p.waitForTimeout(250);
   const aufbau = await p.evaluate(() => ({
-    kapitel: [...document.querySelectorAll('.rail h3')].map((h) => h.textContent),
-    system: [...([...document.querySelectorAll('.rail section')].pop()?.querySelectorAll('.navrow') ?? [])]
-      .map((b) => b.textContent),
     filter: [...document.querySelectorAll('.filters select')].map((s) => s.options[0].textContent),
   }));
-  /* Vier Bereiche statt eines Kompendiums, und welche Artikelart wohin
-     gehört, steht als `area` an der Schnittstelle — nicht im Code. Die
-     Prüfung fragt deshalb beides: dass die vier Abschnitte da sind, und
-     dass die Zuordnung aus dem Register kommt. */
-  pruefe('the rail carries the four areas, and System stays apart',
-    ['Story', 'World', 'Game', 'Play'].every((k) => aufbau.kapitel.includes(k))
-      && aufbau.kapitel.includes('System')
-      && aufbau.system.some((x) => /Data model/.test(x)), aufbau);
   const bereiche = await p.evaluate(() => ({
-    npc: window.__T__.areaOf('NPC'),
+    npc: window.__T__.areaOf('Creature'),
     quest: window.__T__.areaOf('Quest'),
     rule: window.__T__.areaOf('Rule'),
+    item: window.__T__.areaOf('Item'),
     map: window.__T__.areaOf('Map'),
     /* Und geerbt wie alles andere: eine Artikelart, die im Prototyp neu
        entsteht, trägt keine eigene Angabe — sie muss die ihres Obertyps
        bekommen, sonst wäre sie nirgends auffindbar. */
     geerbt: (() => {
       const T = window.__T__;
-      T.REG.interfaces.ProbeArt = { name: 'ProbeArt', label: 'Probe art', extends: ['NPC'] };
+      T.REG.interfaces.ProbeArt = { name: 'ProbeArt', label: 'Probe art', extends: ['Creature'] };
       const a = T.areaOf('ProbeArt');
       delete T.REG.interfaces.ProbeArt;
       return a;
     })(),
   }));
   pruefe('an article kind finds its area in the registry, and inherits it',
-    bereiche.npc === 'world' && bereiche.quest === 'story'
-      && bereiche.rule === 'game' && bereiche.map === 'play'
+    bereiche.npc === 'world' && bereiche.quest === 'history'
+      && bereiche.rule === 'rules' && bereiche.map === 'play'
+      && bereiche.item === 'world'
       && bereiche.geerbt === 'world', bereiche);
   pruefe('the compendium carries its filters',
     aufbau.filter.length === 3 && aufbau.filter[0] === 'any type', aufbau.filter);
+
+  /* Marken sind ein Feld wie jedes andere: der Bestandteil `Tags` bringt
+     sie mit, und eine Art, die ihn nicht erbt, trägt keine. Vorher war
+     `tags` eine Eigenschaft der Entität — die einzige, die keiner Art
+     gehörte, und damit die einzige, die man nirgends weglassen konnte. */
+  const markenFeld = await p.evaluate(() => {
+    const T = window.__T__;
+    const arten = Object.keys(T.REG.interfaces).filter((n) => !T.REG.interfaces[n].abstract);
+    return {
+      arten: arten.length,
+      ohne: arten.filter((n) => T.compsFor(n).indexOf('Tags') < 0),
+      feld: (T.REG.interfaces.Tags?.schema?.properties ?? {}).tags?.format ?? null,
+      /* Und an der Entität steht nichts mehr. */
+      nochOben: [...T.ENT.values()].filter((e) => 'tags' in e).length,
+    };
+  });
+  pruefe('every article kind inherits its tags, and none carries them at the envelope',
+    markenFeld.arten > 20 && markenFeld.ohne.length === 0
+    && markenFeld.feld === 'tags' && markenFeld.nochOben === 0, markenFeld);
+
+  /* Die Marken bekommen eine eigene Ansicht. Eine Wolke in der Leiste
+     wächst mit der Kampagne, bis sie die Leiste füllt, und sagt bei keiner
+     Marke, wie oft sie vergeben ist. */
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].find((b) => /^Tags/.test(b.textContent)).click());
+  await p.waitForTimeout(350);
+  const markenSeite = await p.evaluate(() => ({
+    kopf: document.querySelector('#view .listhead h2')?.textContent ?? '',
+    zeilen: [...document.querySelectorAll('.tagtab .tagrow')].map((r) => ({
+      marke: r.querySelector('.tag')?.textContent ?? '',
+      zahl: Number(r.querySelector('.count')?.textContent ?? '0'),
+      arten: [...r.querySelectorAll('.tagkinds .pill')].length,
+    })),
+    /* Nur was dieser Betrachter sehen darf: eine Marke, die allein an
+       einem zurückgehaltenen Artikel hängt, gehört nicht in die
+       Übersicht — sie verriete, dass es ihn gibt. */
+    imBestand: (() => {
+      const T = window.__T__;
+      const alle = new Set();
+      T.ENT.forEach((e) => { if (T.articleVisible(e)) T.tagsOf(e).forEach((t) => alle.add(t)); });
+      return alle.size;
+    })(),
+  }));
+  pruefe('the tags open as a view of their own, with a count and the kinds that carry them',
+    markenSeite.kopf === 'Tags'
+    && markenSeite.zeilen.length === markenSeite.imBestand
+    && markenSeite.zeilen.every((z) => z.zahl > 0 && z.arten > 0),
+    { kopf: markenSeite.kopf, n: markenSeite.zeilen.length, soll: markenSeite.imBestand });
+  /* Die häufigste zuerst: eine alphabetische Liste beantwortet die Frage
+     nicht, die man an eine Markenübersicht hat. */
+  pruefe('the most used tag stands first',
+    markenSeite.zeilen.length > 1
+    && markenSeite.zeilen[0].zahl >= markenSeite.zeilen[markenSeite.zeilen.length - 1].zahl,
+    markenSeite.zeilen.slice(0, 3));
+
+  await p.evaluate(() => document.querySelector('.tagtab .tagrow').click());
+  await p.waitForTimeout(350);
+  const gefiltert = await p.evaluate(() => ({
+    pille: [...document.querySelectorAll('#view .listhead .pill')].map((x) => x.textContent),
+    zeilen: document.querySelectorAll('#view .row').length,
+  }));
+  pruefe('a tag row filters the list to that tag',
+    gefiltert.pille.some((x) => x === '#' + markenSeite.zeilen[0].marke)
+    && gefiltert.zeilen === markenSeite.zeilen[0].zahl, { gefiltert, soll: markenSeite.zeilen[0] });
+
+  await zurSeite(p, 'Compendium');
+  await p.evaluate(() =>
+    [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
+  await p.waitForTimeout(250);
+
+  /* **Der Filter bleibt jetzt stehen**, auch beim Klick auf dieselbe Seite
+     — also wird er hier ausdrücklich geleert. Sich darauf zu verlassen,
+     dass ein Seitenwechsel ihn wegwirft, hiesse: diese Prüfung hängt an
+     einem Verhalten, das sie nicht prüft. */
+  await p.evaluate(() => {
+    const T = window.__T__;
+    T.UI.iface = ''; T.UI.tag = ''; T.UI.status = ''; T.UI.offen = false; T.UI.q = '';
+    T.render();
+  });
+  await p.waitForTimeout(250);
 
   /* Ein Obertyp meint seine Subtypen mit. Exakt zu vergleichen hiesse:
      „Item" zeigt nichts, obwohl jede Waffe eins ist. */
@@ -712,6 +1292,8 @@ async function seite(datei, warten) {
      Kampagne verschwand — und das sagte nichts über den Filter. */
   const paar = await p.evaluate(() => {
     const R = window.__T__.REG.interfaces;
+    /* Der **erste** Eintrag ist der Obertyp, an dem der Baum zeichnet;
+       weitere sind Beimischungen und filtern quer durch alles. */
     const parent = (n) => (R[n]?.extends || [])[0];
     const treffer = {};
     window.__T__.ENT.forEach((e) => {
@@ -720,7 +1302,7 @@ async function seite(datei, warten) {
       while (at) { (treffer[at] = treffer[at] || new Set()).add(eigen); at = parent(at); }
     });
     for (const [ober, unter] of Object.entries(treffer)) {
-      if (ober !== 'Base' && unter.size) {
+      if (R[ober]?.area && unter.size) {
         const u = [...unter][0];
         return { ober, unter: u, label: R[u]?.label || u };
       }
@@ -743,47 +1325,143 @@ async function seite(datei, warten) {
       && nachFilter.typen.includes(paar.label),
     { paar, vorFilter, nachFilter });
 
+  /* **Der Filter gehört der Seite.** Einen Artikel zu öffnen und
+     zurückzugehen hiess bisher, ihn neu zu setzen — `goPage` leerte ihn
+     bei jedem Klick, auch beim Klick auf dieselbe Seite. */
+  const bleibt = await p.evaluate(async () => {
+    const T = window.__T__;
+    const vorher = T.UI.iface;
+    /* Ein Artikel der gefilterten Art — über die Id, nicht über eine
+       Zeile: was in der Zeile klickbar ist, ist eine Frage an die Liste. */
+    let ziel = null;
+    T.ENT.forEach((e) => { if (!ziel && (e.interfaces || [])[0] === vorher) ziel = e; });
+    T.ENT.forEach((e) => {
+      if (!ziel && T.compsFor((e.interfaces || [])[0]).includes(vorher)) ziel = e;
+    });
+    if (!ziel) return { keinZiel: true, vorher };
+    T.go({ k: 'art', id: ziel.id });
+    await new Promise((r) => setTimeout(r, 300));
+    const aufArtikel = T.UI.route.k;
+    /* Zurück über den Seitenknopf, der gerade als aktuell markiert ist —
+       genau der Weg, auf dem der Filter verloren ging. */
+    const jetzt = [...document.querySelectorAll('#pages button')]
+      .find((b) => b.getAttribute('aria-current') === 'true');
+    if (jetzt) jetzt.click();
+    await new Promise((r) => setTimeout(r, 300));
+    const gleich = T.UI.iface;
+    /* Und auf eine andere Seite geht er weg: eine Artikelart aus dem
+       Regelwerk filtert in der Welt nichts. */
+    const andere = [...document.querySelectorAll('#pages button')]
+      .find((b) => b.textContent === 'Registry');
+    if (andere) andere.click();
+    await new Promise((r) => setTimeout(r, 250));
+    return { vorher, aufArtikel, gleich, danach: T.UI.iface };
+  });
+  pruefe('the filter survives opening an article and coming back',
+    bleibt.aufArtikel === 'art' && bleibt.gleich === bleibt.vorher
+    && bleibt.danach === '', bleibt);
+
+  await p.evaluate(() => { const T = window.__T__;
+    T.UI.page = 'compendium'; T.UI.route = { k: 'list' }; T.render(); });
+  await p.waitForTimeout(250);
   await p.evaluate(() =>
     [...document.querySelectorAll('.filters button')].find((b) => /Clear filters/.test(b.textContent))?.click());
   await p.waitForTimeout(250);
   const geleert = await p.evaluate(() => document.querySelectorAll('#view .row').length);
   pruefe('clearing the filters brings everything back', geleert === vorFilter, { geleert, vorFilter });
 
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((x) => /Data model/.test(x.textContent)).click());
-  await p.waitForTimeout(300);
+  await zumRegister(p, 'How it works');
+  /* **Das Diagramm.** Ein Kasten je Artikelart, eine Linie je Kantenart,
+     gestrichelt für die Vererbung — gezogen aus dem laufenden Register.
+     Einundvierzig Kantenarten gleichzeitig sind ein Knäuel, also stehen
+     alle blass da und die eines gewählten Kastens kräftig. */
+  const diagramm = await p.evaluate(async () => {
+    const T = window.__T__;
+    T.UI.dgPick = ''; T.UI.dgAll = false; T.render();
+    await new Promise((r) => setTimeout(r, 400));
+    const svg = document.querySelector('svg.dg');
+    if (!svg) return { keins: true };
+    const alle = svg.querySelectorAll('.dgn').length;
+    const linien = svg.querySelectorAll('.dgl').length;
+    const erb = svg.querySelectorAll('.dgl.erb').length;
+    const spalten = [...svg.querySelectorAll('.dgh')].map((x) => x.textContent);
+    /* Ein Klick zeigt nur, was diese Art berührt. */
+    const kasten = [...svg.querySelectorAll('.dgn')]
+      .find((g) => g.textContent.indexOf('Creature') === 0);
+    if (kasten) kasten.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 400));
+    const svg2 = document.querySelector('svg.dg');
+    const raus = {
+      alle, linien, erb, spalten,
+      gewaehlt: T.UI.dgPick,
+      danach: svg2.querySelectorAll('.dgl').length,
+      /* **Die Namen stehen unter dem Bild**, nicht darin: sechs Kanten,
+         die am selben Kasten ankommen, schrieben ihre Namen an dieselbe
+         Stelle. Eine Zeile je Kantenart und Richtung, die Gegenüber
+         dahinter. */
+      zeilen: document.querySelectorAll('.dglist .dgrow').length,
+      kanten: [...document.querySelectorAll('.dglist .dgrow code')]
+        .map((x) => x.textContent),
+      /* Und der Schalter nimmt die geteilten Typen dazu. */
+    };
+    T.UI.dgPick = ''; T.UI.dgAll = true; T.render();
+    await new Promise((r) => setTimeout(r, 400));
+    raus.mitGeteilten = document.querySelectorAll('svg.dg .dgn').length;
+    T.UI.dgAll = false; T.render();
+    await new Promise((r) => setTimeout(r, 300));
+    return raus;
+  });
+  pruefe('the type diagram draws every article kind and its edges',
+    !diagramm.keins && diagramm.alle > 15 && diagramm.linien > 30
+    && diagramm.erb > 3 && diagramm.spalten.some((x) => /World/.test(x)),
+    diagramm);
+  pruefe('picking a type leaves only what touches it, and names those edges',
+    diagramm.gewaehlt === 'Creature' && diagramm.danach > 0
+    && diagramm.danach < diagramm.linien && diagramm.zeilen > 5
+    && diagramm.kanten.includes('carries') && diagramm.kanten.includes('belongsTo')
+    /* Eine Zeile je Art und Richtung: `regards` steht zwischen vier Arten
+       in beide Richtungen und wäre als Kreuzprodukt zwölf Zeilen, die
+       alle dasselbe heissen. */
+    && diagramm.kanten.filter((x) => x === 'regards').length === 2,
+    diagramm);
+  pruefe('and the shared types can be taken in',
+    diagramm.mitGeteilten > diagramm.alle, diagramm);
+
   const dm = await p.evaluate(() => ({
     titel: document.querySelector('#view h2')?.textContent,
-    konzept: [...document.querySelectorAll('.kdl dt')].map((x) => x.textContent),
+    begriffe: [...document.querySelectorAll('.kdl dt')].map((x) => x.textContent),
     reiter: [...document.querySelectorAll('.tabs button')].map((x) => x.textContent),
+    knoten: [...document.querySelectorAll('.tree .tnode .tw')].map((x) => x.textContent),
+    felder: document.querySelectorAll('.tree .tfield').length,
+    belegt: document.querySelectorAll('.tree .tfield.on').length,
   }));
   /* Die Mechanik gehört auf die Seite, die sie bearbeitet — sonst steht sie
-     nur in Commit-Nachrichten. */
-  pruefe('the data model explains itself',
-    dm.titel === 'Data model' && dm.konzept.length === 5 && dm.reiter.includes('Views'), dm);
+     nur in Commit-Nachrichten. Und sie wird aus dem Register gezogen: eine
+     Erklärung, die eine Liste abtippt, stimmt am Tag ihrer Entstehung. */
+  pruefe('the registry explains its own words',
+    dm.titel === 'Registry'
+    && ['How it works', 'Types', 'Views', 'Relations', 'Variables', 'Settings',
+      'Backup', 'Stack', 'Graph'].every((t) => dm.reiter.includes(t))
+    && ['Type', 'Part', 'Field', 'Identifier', 'Article', 'View', 'Block', 'Edge', 'Unit']
+      .every((w, i) => dm.begriffe[i] === w), { begriffe: dm.begriffe, reiter: dm.reiter });
+  pruefe('and follows one article from its type down to its fields',
+    dm.knoten[0] === 'article' && dm.knoten[1] === 'its type'
+    && dm.knoten.filter((x) => /^part/.test(x)).length > 3
+    && dm.felder > 20 && dm.belegt > 0 && dm.belegt < dm.felder,
+    { knoten: dm.knoten.slice(0, 4), felder: dm.felder, belegt: dm.belegt });
   pruefe('the page structure raised no exception', errs.length === 0, errs);
 
   /* 11 — Standardwerte stehen im Feld, nicht im Code */
+  /* Den Stand erklärt `Status` — ein Bestandteil, den jede Artikelart erbt.
+     Der Weg dorthin geht über die Artikelarten und nicht über einen Reiter
+     „Components", den es nicht mehr gibt. */
   const zumStatusFeld = async () => {
-    await p.evaluate(() =>
-      [...document.querySelectorAll('.rail button')].find((x) => /Data model/.test(x.textContent)).click());
-    await p.waitForTimeout(250);
-    const tabs = await p.evaluate(() => [...document.querySelectorAll('.tabs button')].map((x) => x.textContent));
-    if (!tabs.includes('Components')) throw new Error('Reiter fehlen: ' + JSON.stringify(tabs));
-    await p.evaluate(() =>
-      [...document.querySelectorAll('.tabs button')].find((x) => x.textContent === 'Components').click());
-    await p.waitForTimeout(250);
-    const baum = await p.evaluate(() => [...document.querySelectorAll('.regtree button')].map((b) => b.textContent));
-    if (!baum.some((b) => /Status/.test(b))) throw new Error('Kein Status im Baum: ' + JSON.stringify(baum.slice(0, 8)));
-    await p.evaluate(() =>
-      [...document.querySelectorAll('.regtree button')].find((b) => /Status/.test(b.textContent)).click());
-    await p.waitForTimeout(250);
-    await p.evaluate(() => {
-      const r = [...document.querySelectorAll('.fbox .frow')][0];
-      [...r.querySelectorAll('button')].find((b) => b.textContent === '⋯').click();
-    });
-    await p.waitForTimeout(250);
+    /* Den Stand erklärt `Status` — ein eigener Bestandteil, seit `Base`
+       zerfallen ist. Geändert wird er dort und nicht an einer Art, die ihn
+       nur erbt. */
+    await zumFeld('Status', 'status');
   };
+
   const standardFeld = () => p.evaluate(() =>
     [...document.querySelectorAll('.fbox .fmore label.f')]
       .find((l) => /Default/.test(l.querySelector('span').textContent))
@@ -791,12 +1469,102 @@ async function seite(datei, warten) {
 
   await zumStatusFeld();
   const stand = await p.evaluate(() => ({
-    zeile: document.querySelector('.fbox .frow .fk')?.textContent ?? '',
+    zeile: [...document.querySelectorAll('.fbox .frow')]
+      .find((x) => /^status\b/.test(x.querySelector('.fk')?.textContent ?? ''))?.textContent ?? '',
     wert: [...document.querySelectorAll('.fbox .fmore label.f')]
       .find((l) => /Default/.test(l.querySelector('span').textContent))
       ?.querySelector('select,input')?.value ?? null,
   }));
   pruefe('a field carries its default, and shows it', /← idea/.test(stand.zeile) && stand.wert === 'idea', stand);
+
+  /* ---- Eine Aufzählung, die mehrere Felder teilen ----
+     Die sechs Attributkürzel standen wörtlich an der Fertigkeit und am
+     Rezept, der Vorbereitungsstand an jedem Artikel. Jetzt steht die Liste
+     einmal im Register, und das Feld nennt sie. Geprüft wird beides: dass
+     die Zeile sagt, wer sie nennt, und dass ein Feld, dessen Zeile sich
+     ändert, danach die neuen Wörter anbietet — sonst wäre die Zeile eine
+     Kopie mehr und nicht eine weniger. */
+  await zumRegister(p, 'Choices');
+  const wahl = await p.evaluate(() => ({
+    zeilen: [...document.querySelectorAll('.regbody .crow')].map((r) => ({
+      name: r.querySelector('.fk')?.textContent ?? '',
+      werte: r.querySelector('input.i:not([type=number]) + input.i')?.value
+        ?? [...r.querySelectorAll('input.i')][1]?.value ?? '',
+      haengt: r.querySelector('.pill.q')?.getAttribute('title') ?? '',
+    })),
+  }));
+  const ability = wahl.zeilen.find((z) => z.name === 'Ability');
+  pruefe('the registry holds the shared choice lists',
+    !!ability && /str, dex/.test(ability.werte), wahl.zeilen);
+  pruefe('and each one says which fields name it',
+    !!ability && /Skill\.ability/.test(ability.haengt) && /Recipe\.ability/.test(ability.haengt),
+    ability);
+
+  /* Ein Wort dazu — und das Feld am Artikel kennt es. */
+  const gefolgt = await p.evaluate(async () => {
+    const T = window.__T__;
+    const vorher = T.enumWerte(T.REG.interfaces.Status.schema.properties.status) || [];
+    T.REG.enums.State.values = vorher.concat(['shelved']);
+    const nachher = T.enumWerte(T.REG.interfaces.Status.schema.properties.status) || [];
+    const eingabe = T.fieldInput(T.REG.interfaces.Status.schema.properties.status, 'idea');
+    const angeboten = [...(eingabe.options || [])].map((o) => o.value);
+    T.REG.enums.State.values = vorher;
+    return { vorher, nachher, angeboten };
+  });
+  pruefe('a field follows the row it names',
+    gefolgt.vorher.join() === 'idea,prepared,ready'
+    && gefolgt.nachher.includes('shelved')
+    && gefolgt.angeboten.includes('shelved'), gefolgt);
+
+  /* Und ein freies Wort schlägt vor, was schon dasteht — `kind` an einer
+     Kreatur ist frei, damit eine neue Sorte ein Eintrag ist und keine
+     Registerzeile; dieselbe Sorte dreimal anders geschrieben wäre der
+     Preis dafür. */
+  const vorschlag = await p.evaluate(() => {
+    const T = window.__T__;
+    const feld = T.REG.interfaces.Creature.schema.properties.kind;
+    const node = T.fieldInput(feld, '', { type: 'Creature', key: 'kind' });
+    const liste = node.querySelector ? node.querySelector('datalist') : null;
+    /* Der Deckname ist kein Vorschlag: ein Name ist einzeln gemeint, und
+       der eines anderen Artikels gehört nicht in die Auswahl. */
+    const deck = T.REG.interfaces.Identity.schema.properties.cover;
+    const deckNode = T.fieldInput(deck, '', { type: 'Identity', key: 'cover' });
+    return {
+      frei: !feld.enum && !feld.enumRef,
+      vor: liste ? [...liste.options].map((o) => o.getAttribute('value')) : [],
+      deckListe: !!(deckNode.querySelector && deckNode.querySelector('datalist')),
+    };
+  });
+  pruefe('a free word suggests what is already in use',
+    vorschlag.frei && vorschlag.vor.includes('npc'), vorschlag);
+  pruefe('a name does not suggest the names of other articles', vorschlag.deckListe === false, vorschlag);
+
+  /* ---- Mehrere Werte aus mehreren Listen ----
+     Worin jemand geübt ist, kommt aus sechs Listen und steht in **einem**
+     Feld. Ein Feld je Sorte hiesse, dieselbe Frage sechsmal zu stellen —
+     und die siebte Sorte bräuchte ein siebtes Feld. */
+  const mehrfach = await p.evaluate(() => {
+    const T = window.__T__;
+    const pd = T.REG.interfaces.Proficiencies.schema.properties.proficient;
+    const node = T.fieldInput(pd, ['stealth', 'Elfisch']);
+    return {
+      gruppen: [...node.querySelectorAll('.cgroup')].map((x) => x.textContent),
+      an: [...node.querySelectorAll('.cchk.on span')].map((x) => x.textContent),
+      /* Nach aussen sieht der Kasten aus wie ein Textfeld: so liest ihn
+         dieselbe Funktion wie jede andere Liste. */
+      wert: node.value,
+      /* Und die Rettungswürfe ziehen aus **einer** Liste. */
+      saves: T.enumWerte(T.REG.interfaces.Proficiencies.schema.properties.saves),
+      quelle: T.enumQuelle(pd, 'Diebeswerkzeug'),
+    };
+  });
+  pruefe('one field draws on several lists, grouped by where they come from',
+    mehrfach.gruppen.length === 6 && mehrfach.gruppen.includes('Skill')
+    && mehrfach.gruppen.includes('Language')
+    && mehrfach.quelle === 'Tool', mehrfach);
+  pruefe('and what is picked reads back as a plain list',
+    mehrfach.wert === 'stealth, Elfisch' && mehrfach.an.length === 2
+    && mehrfach.saves.join() === 'str,dex,con,int,wis,cha', mehrfach);
 
   const anlegen = async (name) => {
     await p.evaluate(() => document.getElementById('new').click());
@@ -818,13 +1586,13 @@ async function seite(datei, warten) {
     const l = [...document.querySelectorAll('.fbox .fmore label.f')]
       .find((x) => /Default/.test(x.querySelector('span').textContent));
     const n = l.querySelector('select,input');
-    n.value = 'planned';
+    n.value = 'prepared';
     n.dispatchEvent(new Event('change', { bubbles: true }));
   });
   await p.waitForTimeout(350);
   const zweiter = await anlegen('Second probe');
   pruefe('changing the default changes what is created next',
-    zweiter.includes('planned') && !zweiter.includes('idea'), zweiter);
+    zweiter.includes('prepared') && !zweiter.includes('idea'), zweiter);
   pruefe('defaults raised no exception', errs.length === 0, errs);
 
   /* 12 — Etappe B: Geschichts- und Spielerartikel sind Registerzeilen.
@@ -841,20 +1609,22 @@ async function seite(datei, warten) {
   const erwartet = ['Campaign', 'Session', 'Scene / Encounter', 'Quest', 'Player character', 'Party', 'Inventory'];
   pruefe('the story and player types are offered',
     erwartet.every((t) => auswahl.includes(t)), auswahl);
-  /* Abstrakte Typen sind Struktur, nicht anlegbar. */
+  /* Abstrakte Typen sind Struktur, nicht anlegbar. `Creature` und `Story`
+     stehen hier: beide sind selbst Arten geworden, und `kind` sagt, was für
+     eine — der Unterschied zwischen NSC und Begleiter, zwischen Arc und
+     Kapitel, war je drei Zeilen ohne ein einziges eigenes Feld wert
+     (Regel T2, Abgleich A5). */
   pruefe('the abstract parents are not offered',
-    !auswahl.includes('Story') && !auswahl.includes('Creature'), auswahl);
+    !auswahl.includes('Identity') && !auswahl.includes('Proficiencies')
+    && auswahl.includes('Creature') && auswahl.includes('Story'), auswahl);
+  pruefe('the former subtypes without fields are words now',
+    !['Arc', 'Chapter', 'Era', 'Cataclysm', 'Milestone', 'Consumable'].some((t) => auswahl.includes(t)), auswahl);
 
   const kampagne = await neuerArtikel('Campaign', 'Probe campaign');
   const pc = await neuerArtikel('Player character', 'Probe hero');
   pruefe('they validate clean on creation',
     kampagne.probleme.length === 0 && pc.probleme.length === 0, { kampagne, pc });
 
-  await p.evaluate(() => {
-    const f = document.querySelector('#facet');
-    f.value = 'full';
-    f.dispatchEvent(new Event('change', { bubbles: true }));
-  });
   await p.waitForTimeout(300);
   const pcFelder = await p.evaluate(() => {
     const o = {};
@@ -905,7 +1675,7 @@ async function seite(datei, warten) {
     [...document.querySelectorAll('.dlgbox .rowbtns button')].find((b) => /Cancel/.test(b.textContent)).click());
   await p.waitForTimeout(200);
   pruefe('an edge on an abstract parent reaches its subtypes',
-    kanten.some((k) => /follows/.test(k)) && kanten.some((k) => /happens at/.test(k)),
+    kanten.some((k) => /fought on/.test(k)) && kanten.some((k) => /happens at/.test(k)),
     { session: session.typ, kanten });
   pruefe('and its targets resolve through inheritance too',
     ziele.some((z) => /Campaign/.test(z)), ziele.slice(0, 5));
@@ -916,13 +1686,12 @@ async function seite(datei, warten) {
      Die Information ist ein eigener Artikel. Geprüft wird die ganze Kette:
      anlegen, ein Feld zuteilen, einen Empfänger setzen — und dass das Feld
      danach nicht mehr in der offenen Gruppe steht. */
-  await neuerArtikel('Knowledge level', 'Probe lore');
+  /* Der Empfänger ist eine **Party** — eine von dreien, die es sein
+     dürfen (Creature, Party, Faction). Ein eigener „Wissensstand“ war ein
+     zweiter Weg zu derselben Frage und ist weg; `Group` als vierter Träger
+     (Konten statt Figuren) ist es auch (A8). */
+  await neuerArtikel('Party', 'Probe lore');
   await oeffne('Probe hero');
-  await p.evaluate(() => {
-    const f = document.getElementById('facet');
-    f.value = 'full';
-    f.dispatchEvent(new Event('change', { bubbles: true }));
-  });
   await p.waitForTimeout(350);
 
   /* Zugeteilt wird im Seitenpanel — dort, wo die Arbeit passiert. Die
@@ -971,20 +1740,433 @@ async function seite(datei, warten) {
     const T = window.__T__;
     const held = [...T.ENT.values()].find((e) => (e.name || '') === 'Probe hero');
     const info = [...T.ENT.values()].find((e) => (e.name || '') === 'Probe secret');
-    const alsGm = T.visibleRefs(held, ['CharacterInfo.level']);
+    const alsGm = T.visibleRefs(held, ['PlayerCharacter.level']);
     T.UI.asActor = 'pc_sela';
-    const alsSpieler = T.visibleRefs(held, ['CharacterInfo.level']);
+    const alsSpieler = T.visibleRefs(held, ['PlayerCharacter.level']);
     T.UI.asActor = '';
     return {
-      gespeichert: (info.components.Info || {}).fields ?? [],
+      gespeichert: (info.components.Information || {}).fields ?? [],
       alsGm: alsGm.length,
       alsSpieler: alsSpieler.length,
     };
   });
   pruefe('an assigned field is stored on the information',
-    wZugeteilt.gespeichert.includes('CharacterInfo.level'), wZugeteilt);
+    wZugeteilt.gespeichert.includes('PlayerCharacter.level'), wZugeteilt);
   pruefe('and whoever does not have it does not see it',
     wZugeteilt.alsGm === 1 && wZugeteilt.alsSpieler === 0, wZugeteilt);
+
+  /* ---- Sichtbarkeit: drei Felder, und alle drei werden gelesen ----
+     Es waren sechs, und gelesen wurden zwei. `scope` war nirgends erklärt,
+     `sharedUsers` dasselbe wie `revealedTo` in Konto-Ids, `inherit` eine
+     Vererbung, die nicht stimmt (ein Haus zu kennen heisst nicht, jedes
+     Zimmer darin zu kennen) — die drei sind weg. Was bleibt, gilt in
+     dieser Reihenfolge: `hiddenFrom` schlägt `revealedTo` schlägt
+     `audience`. */
+  const sichtFelder = await p.evaluate(() => {
+    const T = window.__T__;
+    const props = ((T.REG.interfaces.Visibility || {}).schema || {}).properties || {};
+    return {
+      felder: Object.keys(props),
+      vorgabe: (props.audience || {})['default'],
+      stufen: (props.audience || {})['enum'] || [],
+      artRevealed: T.fieldKind(props.revealedTo),
+      zielRevealed: ((props.revealedTo || {}).target || {}).interfaces || [],
+    };
+  });
+  pruefe('visibility is three fields, not six',
+    sichtFelder.felder.length === 3
+    && ['audience', 'revealedTo', 'hiddenFrom'].every((f) => sichtFelder.felder.includes(f)),
+    sichtFelder);
+  pruefe('public is the default and the widest step',
+    sichtFelder.vorgabe === 'public' && sichtFelder.stufen[0] === 'public'
+    && sichtFelder.stufen.length === 4, sichtFelder);
+  /* Ein Verweisfeld nennt sein Ziel, auch als Liste — sonst nähme
+     „Revealed to" eine Rüstung. */
+  pruefe('the two lists are links to holders and say so',
+    sichtFelder.artRevealed === 'links'
+    && sichtFelder.zielRevealed.join(',') === 'Creature,Party,Faction', sichtFelder);
+
+  const stufen = await p.evaluate(() => {
+    const T = window.__T__;
+    const zeile = (rolle) => ['public', 'campaign', 'players', 'gm']
+      .map((a) => (T.audienceAllows(a, rolle) ? 1 : 0)).join('');
+    return {
+      spieler: zeile('player'),
+      mitleiter: zeile('co-gm'),
+      zuschauer: zeile('spectator'),
+      ohnePlatz: zeile(null),
+      leitung: zeile('gm'),
+      /* Die Rolle je Kampagne: wer die eine leitet, ist in der anderen,
+         was dort steht — oder nichts. */
+      hier: T.tableRole({ c1: 'gm', c2: 'spectator' }, 'c1'),
+      dort: T.tableRole({ c1: 'gm', c2: 'spectator' }, 'c2'),
+      nirgends: T.tableRole({ c1: 'gm' }, 'c3'),
+      staerkste: T.tableRole({ c1: 'spectator', c2: 'player' }),
+    };
+  });
+  /* Fünf Rollen × vier Stufen, als Tabelle lesbar: die Reihenfolge ist
+     public · campaign · players · gm. Ein Mitleiter sitzt hinter dem
+     Schirm und sieht dasselbe wie die Leitung. */
+  pruefe('the four steps narrow from outside in',
+    stufen.leitung === '1111' && stufen.mitleiter === '1111' && stufen.spieler === '1110'
+    && stufen.zuschauer === '1100' && stufen.ohnePlatz === '1000', stufen);
+  pruefe('the role is the account’s, and counts per campaign',
+    stufen.hier === 'gm' && stufen.dort === 'spectator' && stufen.nirgends === null
+    && stufen.staerkste === 'player', stufen);
+
+  const rang = await p.evaluate(async () => {
+    const T = window.__T__;
+    const held = [...T.ENT.values()].find((e) => (e.name || '') === 'Probe hero');
+    const vorherActor = T.UI.asActor;
+    const vorherKarte = (held.components || {}).Visibility;
+    const setze = (v) => {
+      if (v === null) delete held.components.Visibility;
+      else held.components.Visibility = v;
+    };
+    const sicht = (actor) => {
+      T.UI.asActor = actor;
+      const r = T.articleVisible(held);
+      T.UI.asActor = vorherActor;
+      return r;
+    };
+    setze(null);
+    const ohneKarte = sicht('pc_sela');
+    setze({ audience: 'gm' });
+    const nurSL = sicht('pc_sela');
+    const nurSLalsGm = sicht('');
+    setze({ audience: 'public' });
+    const offen = sicht('pc_sela');
+    /* Eine Freigabe schlägt die Stufe — bis hierher war `revealedTo` nie
+       gelesen, also eine Freigabe, die nichts tat. */
+    setze({ audience: 'gm', revealedTo: ['pc_sela'] });
+    const freigegeben = sicht('pc_sela');
+    const nichtFreigegeben = sicht('pc_rook');
+    /* Und ein Verbot schlägt die Freigabe. */
+    setze({ audience: 'public', revealedTo: ['pc_sela'], hiddenFrom: ['pc_sela'] });
+    const verboten = sicht('pc_sela');
+    /* Der Träger ist einer Schritt weit auch seine Gruppe: beide Figuren
+       gehören `pa_wacht` an. */
+    setze({ hiddenFrom: ['pa_wacht'] });
+    const ueberGruppe = { sela: sicht('pc_sela'), rook: sicht('pc_rook') };
+    if (vorherKarte === undefined) delete held.components.Visibility;
+    else held.components.Visibility = vorherKarte;
+    T.render();
+    await new Promise((r) => setTimeout(r, 200));
+    return { ohneKarte, nurSL, nurSLalsGm, offen, freigegeben, nichtFreigegeben,
+      verboten, ueberGruppe };
+  });
+  pruefe('an article nobody classified is open',
+    rang.ohneKarte === true && rang.offen === true, rang);
+  pruefe('audience gm keeps it with the GM',
+    rang.nurSL === false && rang.nurSLalsGm === true, rang);
+  pruefe('revealedTo beats the step, and only for whom it names',
+    rang.freigegeben === true && rang.nichtFreigegeben === false, rang);
+  pruefe('hiddenFrom beats revealedTo', rang.verboten === false, rang);
+  pruefe('naming the party hides it from its members',
+    rang.ueberGruppe.sela === false && rang.ueberGruppe.rook === false, rang);
+
+  /* ---- Eine Leitung je Kampagne, und die Ebene sagt wessen ----
+     Wer in einer Runde leitet, kann in einer anderen mitspielen; also
+     steht die Rolle **am Konto, je Kampagne** (Sammlung `members`, am
+     Server `campaign_member`), und wem ein Artikel gehört, sagt der
+     Ebenenstapel: eine Ebene, die genau eine Kampagne aufschaltet, gehört
+     ihr, eine von mehreren aufgeschaltete ist gemeinsam. */
+  const zwei = await p.evaluate(async () => {
+    const T = window.__T__;
+    const camp = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Campaign');
+    const inEbene = (l) => [...T.ENT.values()].find((e) =>
+      (e.relations || []).some((r) => r.type === 'inLayer' && r.to === l)
+      && T.articleVisible(e));
+    const eigen = inEbene('ly_nebel');       /* nur diese Kampagne schaltet sie auf */
+    const geteilt = inEbene('ly_system');    /* gleich die zweite Runde dazu */
+    const ohne = [...T.ENT.values()].find((e) =>
+      !(e.relations || []).some((r) => r.type === 'inLayer') && T.articleVisible(e));
+    if (!camp || !eigen || !geteilt || !ohne) return { fehlt: true };
+
+    /* Eine zweite Runde auf derselben Installation: sie schaltet nur das
+       Grundregelwerk auf und hat ihre eigene Leitung. */
+    const zweite = {
+      id: 'camp_probe',
+      name: 'Probe: zweite Runde',
+      interfaces: ['Campaign'],
+      components: { Identity: { name: 'Probe: zweite Runde' } },
+      relations: [{ id: 'pz1', type: 'activates', to: 'ly_system', props: { order: 10 } }],
+    };
+    T.ENT.set(zweite.id, zweite);
+    /* Die Rollen stehen an den Konten — keine Karte an einer Kampagne. */
+    const vorherKonten = new Map(T.MEMBERS);
+    T.setMembers(new Map([
+      ['u_leitung', { actors: [], roles: { [camp.id]: 'gm' } }],
+      ['u_zweite', { actors: [], roles: { camp_probe: 'gm' } }],
+    ]));
+
+    const vorherGm = T.me.gm, vorherId = T.me.id;
+    /* Eine Leitung ohne Figur — ihre Rolle steht an ihrem Konto. */
+    T.me.gm = false;
+    const alsKonto = (u, e) => { T.me.id = u; return T.articleVisible(e); };
+    const setzeGm = (e) => {
+      e.components = e.components || {};
+      e.components.Visibility = { audience: 'gm' };
+    };
+    const merk = [eigen, geteilt, ohne].map((e) => (e.components || {}).Visibility);
+    [eigen, geteilt, ohne].forEach(setzeGm);
+
+    const erg = {
+      besitzerEigen: T.kampagnenVon(eigen),
+      besitzerGeteilt: (T.kampagnenVon(geteilt) || []).length,
+      besitzerOhne: T.kampagnenVon(ohne),
+      eineEigen: T.campaignOf(eigen) === camp.id,
+      eineGeteilt: T.campaignOf(geteilt),
+      konten: T.gmAccounts(camp.id),
+      eigenFuerUns: alsKonto('u_leitung', eigen),
+      eigenFuerAndere: alsKonto('u_zweite', eigen),
+      geteiltFuerUns: alsKonto('u_leitung', geteilt),
+      geteiltFuerAndere: alsKonto('u_zweite', geteilt),
+      ohneEbeneFuerAndere: alsKonto('u_zweite', ohne),
+      fremdesKonto: alsKonto('u_niemand', eigen),
+    };
+
+    [eigen, geteilt, ohne].forEach((e, i) => {
+      if (merk[i] === undefined) delete e.components.Visibility;
+      else e.components.Visibility = merk[i];
+    });
+    T.setMembers(vorherKonten);
+    T.ENT.delete('camp_probe');
+    T.me.gm = vorherGm; T.me.id = vorherId;
+    T.render();
+    await new Promise((r) => setTimeout(r, 200));
+    return erg;
+  });
+  pruefe('the data for two campaigns on one install is there', !zwei.fehlt, zwei);
+  pruefe('a layer one campaign runs belongs to it, one that several run is shared',
+    zwei.besitzerEigen && zwei.besitzerEigen.length === 1
+    && zwei.besitzerGeteilt === 2 && zwei.besitzerOhne === null
+    && zwei.eineEigen === true && zwei.eineGeteilt === '', zwei);
+  pruefe('the accounts that lead a campaign are found by their role',
+    Array.isArray(zwei.konten) && zwei.konten.join() === 'u_leitung', zwei);
+  /* Der Prüfstein: dasselbe `audience: 'gm'`, zwei verschiedene Antworten,
+     und die Ebene entscheidet. */
+  pruefe('a gm article in the campaign layer stays with that campaign’s lead',
+    zwei.eigenFuerUns === true && zwei.eigenFuerAndere === false, zwei);
+  pruefe('a gm article in a shared layer goes to every lead',
+    zwei.geteiltFuerUns === true && zwei.geteiltFuerAndere === true, zwei);
+  pruefe('an article with no layer is nobody’s secret in particular',
+    zwei.ohneEbeneFuerAndere === true, zwei);
+  pruefe('an account that leads nothing sees no gm article',
+    zwei.fremdesKonto === false, zwei);
+
+  /* ---- Gepflegt wird auf der Kampagnenseite ----
+     Die Rollen stehen am Konto; man sucht sie aber dort, wo man die Runde
+     einrichtet. Spielende bekommen die Liste nicht zu sehen. */
+  const mitglieder = await p.evaluate(async () => {
+    const T = window.__T__;
+    const camp = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Campaign');
+    const vorher = new Map(T.MEMBERS);
+    /* Wo die Seite war — der nächste Block erwartet sie dort. */
+    const vorherRoute = JSON.parse(JSON.stringify(T.UI.route));
+    T.setMembers(new Map([['u_test', { actors: [], roles: {} }],
+      ['u_sela', { actors: ['pc_sela'], roles: { [camp.id]: 'player' } }]]));
+    T.go({ k: 'art', id: camp.id });
+    await new Promise((r) => setTimeout(r, 300));
+    const zeilen = [...document.querySelectorAll('.memberrow')].map((r) => r.dataset.user);
+    const sel = document.querySelector('.memberrow[data-user="u_test"] select.mrole');
+    let gesetzt = null;
+    if (sel) {
+      sel.value = 'gm';
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 200));
+      gesetzt = (T.memberOf('u_test') || {}).roles || null;
+    }
+    /* Sela führt pc_sela: wer „als Sela" schaut, hat Selas Rollen. */
+    T.UI.asActor = 'pc_sela';
+    const rollenAlsSela = T.viewerRoles();
+    T.render();
+    await new Promise((r) => setTimeout(r, 200));
+    const fuerSpieler = document.querySelectorAll('.memberrow').length;
+    T.UI.asActor = '';
+    T.setMembers(vorher);
+    T.UI.route = vorherRoute;
+    T.render();
+    await new Promise((r) => setTimeout(r, 300));
+    return { zeilen, gesetzt, campId: camp.id, rollenAlsSela, fuerSpieler,
+      erste: zeilen[0] };
+  });
+  pruefe('the campaign page lists the accounts, seated ones first',
+    mitglieder.zeilen.length === 2 && mitglieder.erste === 'u_sela', mitglieder);
+  pruefe('a role set there is stored on the account, for this campaign',
+    mitglieder.gesetzt && mitglieder.gesetzt[mitglieder.campId] === 'gm', mitglieder);
+  pruefe('viewing as a figure takes the roles of the account that plays it',
+    mitglieder.rollenAlsSela[mitglieder.campId] === 'player', mitglieder);
+  pruefe('a player does not get the member list', mitglieder.fuerSpieler === 0, mitglieder);
+
+  /* ---- Ohne Statblock keine Zahlen ----
+     Der Bogen zeichnete HP 0, AC „—" und Init +0 auch für eine Kreatur, an
+     der nichts hing — Werte, die es nicht gibt. Jetzt steht dort nichts,
+     und wo der Statblock sonst seine Felder zeigt, stehen „anlegen" (mit
+     dem Namen der Kreatur) und „bestehenden anhängen". */
+  const ohneSb = await p.evaluate(async () => {
+    const T = window.__T__;
+    const warte = (ms) => new Promise((r) => setTimeout(r, ms));
+    const vorherRoute = JSON.parse(JSON.stringify(T.UI.route));
+    const neu = (id, name) => {
+      const e = { id, name, interfaces: ['Creature'], adhoc: [], relations: [],
+        components: { Identity: { name, id: T.nextId('Creature'), aliases: [] } },
+        createdAt: new Date().toISOString() };
+      T.persist(e);
+      return e;
+    };
+    const a = neu('cr_probe_a', 'Probe goblin');
+    const b = neu('cr_probe_b', 'Probe goblin two');
+    T.go({ k: 'art', id: a.id });
+    await warte(300);
+    const ohne = {
+      bogen: !!document.querySelector('.vitals'),
+      knopf: [...document.querySelectorAll('.linkmissing button[data-make="Statblock"]')]
+        .map((x) => x.textContent)[0] || '',
+      anhaengen: !!document.querySelector('.linkmissing .attachlinked'),
+    };
+    document.querySelector('.linkmissing button[data-make="Statblock"]').click();
+    await warte(300);
+    const sbA = T.statblockOf(a);
+    const mit = { bogen: !!document.querySelector('.vitals'), name: sbA && sbA.name };
+    /* **Ein zweiter Goblin aus derselben Vorlage** bekommt eine Instanz:
+       eigener Statblock, liest die Vorlage, speichert nur, was abweicht. */
+    const sbl = T.linkFor('Creature', 'Statblock');
+    const vorlage = T.ENT.get(sbA.id);
+    vorlage.components = { ...vorlage.components, Statblock: { ac: 15, hp: 11, speed: '30' } };
+    T.persist(vorlage);
+    T.makeInstanceFor(b, sbl, sbA.id);
+    T.go({ k: 'art', id: b.id });
+    await warte(300);
+    const instB = T.statblockOf(b);
+    const inst = {
+      eigene: instB && instB.id !== sbA.id,
+      vorlage: instB && T.templateOf(instB) && T.templateOf(instB).id,
+      marke: [...document.querySelectorAll('.linkedhead .instof')].map((x) => x.textContent),
+      blass: document.querySelectorAll('.linkedbox .fld.inherited').length,
+      bogen: !!document.querySelector('.vitals'),
+      hpGelesen: T.statsOf(b).card.hp,
+      roh: JSON.stringify(T.ENT.get(instB.id).components),
+    };
+    /* Wache 2 bekommt eigene Trefferpunkte — so, wie eine Maske schreibt:
+       in den aufgelösten Artikel, und `persist` dünnt aus. */
+    const offen = T.resolvedOf(T.ENT.get(instB.id));
+    offen.components.Statblock.hp = 18;
+    T.persist(offen);
+    const abweichung = {
+      roh: T.ENT.get(instB.id).components.Statblock,
+      b: T.statsOf(b).card.hp,
+      a: T.statsOf(a).card.hp,
+      vorlage: T.ENT.get(sbA.id).components.Statblock.hp,
+    };
+    /* Die Vorlage korrigiert: die Rüstung kommt an, die 18 bleiben. */
+    const v2 = T.ENT.get(sbA.id);
+    v2.components = { ...v2.components, Statblock: { ...v2.components.Statblock, ac: 16 } };
+    T.persist(v2);
+    const korrigiert = { ac: T.statsOf(b).card.ac, hp: T.statsOf(b).card.hp };
+    /* ↺ an einem Feld, das hier gesetzt ist: danach folgt es wieder der
+       Vorlage, und an der Instanz steht davon nichts mehr. */
+    const ruest = T.resolvedOf(T.ENT.get(instB.id));
+    ruest.components.Statblock.ac = 13;
+    T.persist(ruest);
+    T.go({ k: 'art', id: b.id });
+    await warte(250);
+    const knopf = [...document.querySelectorAll('.linkedbox .fld')]
+      .find((x) => /Armour class/.test(x.querySelector('dt')?.textContent || ''))
+      ?.querySelector('dt .reset');
+    const ruecksetzer = !!knopf;
+    const vorReset = T.statsOf(b).card.ac;
+    if (knopf) knopf.click();
+    await warte(200);
+    const gefolgt = { roh: T.ENT.get(instB.id).components.Statblock, ac: T.statsOf(b).card.ac, vorReset };
+    /* In keiner Liste, kein Verweisziel, und sauber geprüft. */
+    T.UI.q = ''; T.UI.iface = 'Statblock';
+    const inListe = T.ENT.get(instB.id) && T.linkCandidates
+      ? T.linkCandidates({ interfaces: ['Statblock'] }, '', 200).some((x) => x.id === instB.id) : null;
+    T.UI.iface = '';
+    const probleme = T.checkArticle(T.ENT.get(instB.id)).map((x) => x.t);
+    /* Die Vorlage geht: die Instanz behält, was sie las. */
+    const mitHp = T.resolvedOf(T.ENT.get(instB.id));
+    mitHp.components.Statblock.hp = 18;
+    T.persist(mitHp);
+    T.drop(sbA.id);
+    await warte(100);
+    const los = T.ENT.get(instB.id);
+    const geloest = { sb: los && los.components.Statblock,
+      kante: los && (los.relations || []).some((r) => r.type === 'instanceOf') };
+    /* Die Kreatur geht: ihre Instanz geht mit. Dafür eine frische. */
+    const v3 = { id: 'sb_probe_tpl', name: 'Probe template', interfaces: ['Statblock'], adhoc: [],
+      relations: [], components: { Identity: { name: 'Probe template', id: T.nextId('Statblock'), aliases: [] },
+        Statblock: { ac: 12 } } };
+    T.persist(v3);
+    const c = neu('cr_probe_c', 'Probe goblin three');
+    const instC = T.makeInstanceFor(c, sbl, v3.id);
+    T.drop(c.id);
+    await warte(100);
+    const mitGegangen = !T.ENT.get(instC.id) && !!T.ENT.get(v3.id);
+    T.drop(v3.id); T.drop(a.id); T.drop(b.id); T.drop(instB.id);
+    T.UI.route = vorherRoute;
+    T.render();
+    await warte(200);
+    return { ohne, mit, sbAId: sbA.id, inst, abweichung, korrigiert, ruecksetzer, gefolgt, inListe,
+      probleme, geloest, mitGegangen };
+  });
+  pruefe('a creature without a statblock shows no numbers', ohneSb.ohne.bogen === false, ohneSb);
+  pruefe('it offers to make one named after it, or to take a template',
+    ohneSb.ohne.knopf === 'Make “Probe goblin”' && ohneSb.ohne.anhaengen, ohneSb);
+  pruefe('made, it is linked and the sheet appears',
+    ohneSb.mit.bogen === true && ohneSb.mit.name === 'Probe goblin', ohneSb);
+  pruefe('a second creature from the same template gets an instance of its own',
+    ohneSb.inst.eigene && ohneSb.inst.vorlage === ohneSb.sbAId
+      && ohneSb.inst.bogen && ohneSb.inst.marke.join() === 'from Probe goblin', ohneSb);
+  pruefe('the instance reads the template and stores nothing of it',
+    ohneSb.inst.hpGelesen === 11 && ohneSb.inst.blass > 0 && !/"hp"/.test(ohneSb.inst.roh), ohneSb);
+  pruefe('a change on one creature stays with it',
+    JSON.stringify(ohneSb.abweichung.roh) === '{"hp":18}' && ohneSb.abweichung.b === 18
+      && ohneSb.abweichung.a === 11 && ohneSb.abweichung.vorlage === 11, ohneSb);
+  pruefe('a corrected template reaches the instance, except where it differs',
+    ohneSb.korrigiert.ac === 16 && ohneSb.korrigiert.hp === 18, ohneSb);
+  pruefe('↺ takes a field back to the template',
+    ohneSb.ruecksetzer && ohneSb.gefolgt.vorReset === 13 && ohneSb.gefolgt.ac === 16
+      && JSON.stringify(ohneSb.gefolgt.roh) === '{"hp":18}', ohneSb);
+  pruefe('an instance is no link target and validates clean',
+    ohneSb.inListe === false && ohneSb.probleme.length === 0, ohneSb);
+  pruefe('deleting the template leaves the instance what it read',
+    ohneSb.geloest.sb && ohneSb.geloest.sb.hp === 18 && ohneSb.geloest.sb.ac === 16
+      && ohneSb.geloest.kante === false, ohneSb);
+  pruefe('deleting a creature takes its instance along, not the template', ohneSb.mitGegangen, ohneSb);
+
+  /* Der Anlegedialog fragt danach — und eine Art ohne Statblock fragt er
+     nicht. */
+  const dialog = await p.evaluate(async () => {
+    const T = window.__T__;
+    const warte = (ms) => new Promise((r) => setTimeout(r, ms));
+    const vorherRoute = JSON.parse(JSON.stringify(T.UI.route));
+    document.getElementById('new').click();
+    await warte(250);
+    const art = document.querySelectorAll('.dlgbox select')[0];
+    const zeile = () => document.querySelector('.dlgbox .sbchoice').closest('label').style.display;
+    art.value = 'Place'; art.dispatchEvent(new Event('change'));
+    const beiOrt = zeile();
+    art.value = 'Creature'; art.dispatchEvent(new Event('change'));
+    const beiKreatur = zeile();
+    const wahl = document.querySelector('.dlgbox .sbchoice').value;
+    document.querySelectorAll('.dlgbox input')[0].value = 'Probe ogre';
+    [...document.querySelectorAll('.dlgbox .rowbtns button')].find((x) => /Create/.test(x.textContent)).click();
+    await warte(400);
+    const oger = [...T.ENT.values()].find((e) => e.name === 'Probe ogre'
+      && (e.interfaces || [])[0] === 'Creature');
+    const sbO = oger && T.statblockOf(oger);
+    const seite = document.querySelector('.arthead h2')?.textContent;
+    T.UI.route = vorherRoute;
+    T.render();
+    await warte(300);
+    return { beiOrt, beiKreatur, wahl, oger: !!oger, sb: sbO && sbO.name, seite };
+  });
+  pruefe('the new-article dialog asks for a statblock only where one belongs',
+    dialog.beiOrt === 'none' && dialog.beiKreatur === '' && dialog.wahl === 'new', dialog);
+  pruefe('and by default makes one named after the creature, then opens the creature',
+    dialog.oger && dialog.sb === 'Probe ogre' && dialog.seite === 'Probe ogre', dialog);
 
   await p.evaluate(() => {
     const sel = [...document.querySelectorAll('#aside select.i')]
@@ -1000,6 +2182,89 @@ async function seite(datei, warten) {
   }));
   pruefe('the recipient shows in the panel',
     wEmpfaenger.panel.some((x) => /Probe lore/.test(x)), wEmpfaenger);
+
+  /* ---- Ein Bündel ----
+     Eine Information einzeln zuzuteilen ist die eine Hälfte; die andere
+     ist, mehrere als Ganzes zu übergeben. Ein Bündel ist ein Artikel wie
+     die Information und trägt dieselbe `knownBy`-Kante — wer es kennt,
+     kennt alles darin, ohne dass jemand die Zuteilungen einzeln nachzieht.
+
+     Vorher stand an der Stelle ein *Wissensstand*, dem Figuren über
+     `atLevel` angehörten: ein zweiter Weg zu derselben Frage, obwohl Party
+     schon Empfänger sein konnte. Kein Artikel, keine Kante, in
+     zwei Jahren. */
+  const buendel = await p.evaluate(() => {
+    const T = window.__T__;
+    const info = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Information');
+    const wer = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'PlayerCharacter');
+    if (!info || !wer) return { fehlt: true };
+    /* Niemand kennt sie einzeln. */
+    const vorher = T.knowsInfo(info, wer.id);
+    const b = {
+      id: 'k_probe', interfaces: ['Knowledge'], name: 'Was man in der Gasse weiss',
+      components: { Identity: { name: 'Was man in der Gasse weiss', id: 'knowledge-9999', aliases: [] },
+                    Status: { status: 'ready' } },
+      adhoc: [],
+      relations: [
+        { id: 'kb1', type: 'includes', to: info.id },
+        { id: 'kb2', type: 'knownBy', to: wer.id },
+      ],
+      createdAt: new Date().toISOString(),
+    };
+    T.ENT.set(b.id, b);
+    const antwort = {
+      vorher,
+      nachher: T.knowsInfo(info, wer.id),
+      drin: T.informationsIn(b).map((i) => i.id),
+      rueck: T.bundlesWith(info.id).map((x) => x.id),
+      /* Und jemand anderes kennt sie deshalb nicht. */
+      fremd: T.knowsInfo(info, 'gibt-es-nicht'),
+    };
+    T.ENT.delete(b.id);
+    return antwort;
+  });
+  pruefe('a bundle hands over every information in it',
+    !buendel.fehlt && buendel.vorher === false && buendel.nachher === true, buendel);
+  pruefe('and says what is in it, from both ends',
+    buendel.drin && buendel.drin.length === 1 && buendel.rueck.join() === 'k_probe', buendel);
+  pruefe('while everyone else still knows nothing', buendel.fremd === false, buendel);
+
+  /* ---- Die Fraktion mit Rängen (A7, REQ-203) ----
+     Eine Fraktion weiss nichts, ihre Mitglieder wissen — und ab welcher
+     Sprosse, sagt die Zuteilung. Alles an Kanten und einem Feld, nichts
+     gespeichert gerechnet. */
+  const raenge = await p.evaluate(() => {
+    const T = window.__T__;
+    const info = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Information');
+    const pcs = [...T.ENT.values()].filter((e) => (e.interfaces || [])[0] === 'PlayerCharacter');
+    if (!info || pcs.length < 2) return { fehlt: true };
+    const [novize, adeptin] = pcs;
+    const f = {
+      id: 'f_probe', interfaces: ['Faction'], name: 'Der Zirkel',
+      components: { Identity: { name: 'Der Zirkel', id: 'faction-9999', aliases: [] },
+                    Faction: { ranks: ['novice', 'adept', 'master'] }, Status: { status: 'ready' } },
+      adhoc: [], relations: [], createdAt: new Date().toISOString(),
+    };
+    T.ENT.set(f.id, f);
+    const alt = { n: novize.relations.slice(), a: adeptin.relations.slice(), i: info.relations.slice() };
+    novize.relations = alt.n.concat([{ id: 'fm1', type: 'memberOf', to: f.id, props: {} }]);
+    adeptin.relations = alt.a.concat([{ id: 'fm2', type: 'memberOf', to: f.id, props: { rank: 'adept' } }]);
+    info.relations = alt.i.filter((r) => r.type !== 'knownBy')
+      .concat([{ id: 'fk1', type: 'knownBy', to: f.id, props: { rank: 'adept' } }]);
+    const mitRang = { novize: T.knowsInfo(info, novize.id), adeptin: T.knowsInfo(info, adeptin.id),
+      fremd: T.knowsInfo(info, 'gibt-es-nicht'), sprosse: T.rankIndex(adeptin.id, f.id) };
+    info.relations = alt.i.filter((r) => r.type !== 'knownBy')
+      .concat([{ id: 'fk1', type: 'knownBy', to: f.id, props: {} }]);
+    const ohneRang = { novize: T.knowsInfo(info, novize.id), adeptin: T.knowsInfo(info, adeptin.id) };
+    novize.relations = alt.n; adeptin.relations = alt.a; info.relations = alt.i;
+    T.ENT.delete(f.id);
+    return { mitRang, ohneRang };
+  });
+  pruefe('a grant to a faction from a rank reaches the adept and not the novice',
+    !raenge.fehlt && raenge.mitRang.adeptin === true && raenge.mitRang.novize === false
+    && raenge.mitRang.fremd === false && raenge.mitRang.sprosse === 1, raenge);
+  pruefe('a grant to a faction without a rank reaches every member',
+    !raenge.fehlt && raenge.ohneRang.adeptin === true && raenge.ohneRang.novize === true, raenge);
 
   /* ---- C1/C2: Assets, Einstellungen ----
      Der Auflöser ist die einzige Stelle, die weiss, welche Sorte Verweis ein
@@ -1021,12 +2286,7 @@ async function seite(datei, warten) {
       && quellen.ablage === '/_blob/0123456789abcdef0123456789abcdef'
       && quellen.wurzel === '/_blob/x', quellen);
 
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((b) => /Data model/.test(b.textContent))?.click());
-  await p.waitForTimeout(300);
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.tabs button')].find((b) => /^Settings$/.test(b.textContent)).click());
-  await p.waitForTimeout(300);
+  await zumRegister(p, 'Settings');
   const einst = await p.evaluate(() => ({
     zeilen: [...document.querySelectorAll('.regbody .crow .cl b')].map((x) => x.textContent),
     bekannt: [...(document.querySelectorAll('.addbar select.i')[0]?.options ?? [])].map((o) => o.value),
@@ -1036,20 +2296,17 @@ async function seite(datei, warten) {
 
   /* Ein Bildfeld bietet die Ablage an, wenn es eine gibt, und sonst die
      fremde Adresse — es verschwindet nie stillschweigend. */
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.tabs button')].find((b) => /^Components$/.test(b.textContent)).click());
-  await p.waitForTimeout(300);
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.regtree button')].find((b) => /Image/.test(b.textContent))?.click());
-  await p.waitForTimeout(250);
+  /* Die Bildangaben bringt `Image` mit; worauf ein Verweis zeigt, erklärt
+     `Asset`. Beides sind Bestandteile, seit `Base` zerfallen ist. */
+  await zumFeld('Asset', null);
   const bildfeld = await p.evaluate(() => {
-    const arten = [...document.querySelectorAll('.frow select.i')]
-      .map((s) => [...s.options].map((o) => o.value));
-    return { hatAsset: arten.some((a) => a.includes('asset')), felder:
-      [...document.querySelectorAll('.fbox .frow .fk')].map((x) => x.textContent) };
+    const arten = [...document.querySelectorAll('.fbox .frow select')]
+      .map((s2) => [...s2.options].map((o) => o.value));
+    return { hatAsset: arten.some((a) => a.includes('asset')),
+      felder: [...document.querySelectorAll('.fbox .frow .fk')].map((x) => x.textContent) };
   });
   pruefe('a field can be an image reference',
-    bildfeld.hatAsset && bildfeld.felder.includes('ref'), bildfeld);
+    bildfeld.hatAsset && bildfeld.felder.some((f) => /^ref\b/.test(f)), bildfeld);
 
   /* ---- Karten (REQ-130 bis 136) ----
      Koordinaten stehen in Anteilen, nicht in Bildpunkten. Prüfbar ist das
@@ -1070,15 +2327,10 @@ async function seite(datei, warten) {
   if (karte) {
     const kartenName = await p.evaluate((id) => {
       const e = window.__T__.ENT.get(id);
-      return (e && (e.name || (e.components.Name || {}).text)) || '';
+      return (e && (e.name || (e.components.Imported || {}).text)) || '';
     }, karte);
     await oeffne(kartenName);
     await p.waitForTimeout(250);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(400);
     const mk = await p.evaluate(() => ({
       bild: document.querySelector('.mapimg')?.getAttribute('src') ?? null,
@@ -1115,6 +2367,42 @@ async function seite(datei, warten) {
     });
     await p.waitForTimeout(200);
     pruefe('a sub-map shows as a region to zoom into', mk.bereiche.length > 0, mk.bereiche);
+
+    /* ---- Ein Token gehoert der Karte und nicht der Buehne ----
+       Alles in Kartenkoordinaten steht in Prozent von `.mapinner`, also
+       muss `.mapinner` genau so gross sein wie das Bild. Der Kasten lag
+       einmal fest auf Buehnenbreite, waehrend das Bild darin wuchs: ein
+       Token bei 50 % sass danach in der Mitte der *Buehne* statt in der
+       Mitte der Karte und wanderte beim Zoomen. Geprueft wird darum die
+       Stelle auf dem Bild und nicht der Prozentwert im Stil. */
+    const haltung = await p.evaluate(async () => {
+      const stelle = () => {
+        const t = document.querySelector('.mtoken');
+        const bild = document.querySelector('.mapimg') || document.querySelector('.mapinner');
+        if (!t || !bild) return null;
+        const a = t.getBoundingClientRect(), b = bild.getBoundingClientRect();
+        if (!b.width || !b.height) return null;
+        return { x: (a.left + a.width / 2 - b.left) / b.width,
+          y: (a.top + a.height / 2 - b.top) / b.height };
+      };
+      const vorher = stelle();
+      const stage = document.querySelector('.mapstage');
+      for (let i = 0; i < 2; i++) {
+        stage.dispatchEvent(new WheelEvent('wheel',
+          { deltaY: -100, bubbles: true, cancelable: true }));
+        await new Promise((r) => setTimeout(r, 120));
+      }
+      const nachher = stelle();
+      const zoom = window.__T__.UI.mapZoom;
+      window.__T__.UI.mapZoom = 1;
+      window.__T__.render();
+      return { vorher, nachher, zoom };
+    });
+    await p.waitForTimeout(200);
+    pruefe('a token keeps its spot on the map while zooming',
+      !!haltung.vorher && !!haltung.nachher && haltung.zoom > 1
+      && Math.abs(haltung.vorher.x - haltung.nachher.x) < 0.01
+      && Math.abs(haltung.vorher.y - haltung.nachher.y) < 0.01, haltung);
 
     /* ---- Hineinzoomen statt hineinspringen (REQ-131, 160) ----
        Das Rad zoomt, und wenn ein Unterkartenrahmen den Blick füllt, ist
@@ -1187,12 +2475,12 @@ async function seite(datei, warten) {
       const ecke = { x: 0.4, y: 0.4 };
       T.UI.mapTool = 'area';
       /* Aus der Mitte heraus: der Rahmen wandert mit. */
-      T.applyMapTool(e, (e.components || {}).MapInfo || {}, mitte, { x: 0.5, y: 0.45 });
+      T.applyMapTool(e, (e.components || {}).Map || {}, mitte, { x: 0.5, y: 0.45 });
       const nachZug = Object.assign({}, kind.relations.find((r) => r.type === 'insideMap').props);
       /* An der Ecke: er wird grösser, ohne den Ursprung zu bewegen. */
       const r2 = kind.relations.find((r) => r.type === 'insideMap');
       const jetzt = { x: r2.props.x + r2.props.w, y: r2.props.y + r2.props.h };
-      T.applyMapTool(e, (e.components || {}).MapInfo || {}, jetzt,
+      T.applyMapTool(e, (e.components || {}).Map || {}, jetzt,
         { x: jetzt.x + 0.15, y: jetzt.y + 0.15 });
       const nachEcke = Object.assign({}, kind.relations.find((r) => r.type === 'insideMap').props);
       /* Und daneben: das legt einen neuen an, nicht diesen um. Der Dialog
@@ -1258,17 +2546,12 @@ async function seite(datei, warten) {
      leise schief — eine Karte, die zu viel zeigt, sieht aus wie eine Karte. */
   const nebelKarte = await p.evaluate(() => {
     const m = [...window.__T__.ENT.values()].find((e) =>
-      ((e.components || {}).MapInfo || {}).fog
-      && ((e.components || {}).MapInfo || {}).walls);
+      ((e.components || {}).Map || {}).fog
+      && ((e.components || {}).Map || {}).walls);
     return m ? m.id : null;
   });
   if (nebelKarte) {
     await oeffneId(nebelKarte);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(600);
 
     const sicht = await p.evaluate(() => {
@@ -1337,10 +2620,9 @@ async function seite(datei, warten) {
     /* Daylight schaltet die Dunkelheit ab — nicht die Lichter aus. */
     await p.evaluate((id) => {
       const e = window.__T__.ENT.get(id);
-      e.components.MapInfo.lighting = 'bright';
+      e.components.Map.lighting = 'bright';
     }, nebelKarte);
-    await p.evaluate(() => { document.getElementById('facet')
-      .dispatchEvent(new Event('change', { bubbles: true })); });
+    await p.evaluate(() => window.__T__.render());
     await p.waitForTimeout(400);
     const hell = await p.evaluate(() => ({
       polygone: document.querySelectorAll('.mvis mask polygon').length,
@@ -1360,7 +2642,7 @@ async function seite(datei, warten) {
        dahinter dunkel, und niemand sieht dem Bild an, warum. */
     const sperren = await p.evaluate((id) => {
       const e = window.__T__.ENT.get(id);
-      const c = e.components.MapInfo;
+      const c = e.components.Map;
       const alt = c.walls;
       c.walls = [
         { id: 'tw', kind: 'wall', x1: 0.1, y1: 0.1, x2: 0.1, y2: 0.9 },
@@ -1389,11 +2671,15 @@ async function seite(datei, warten) {
        hier steht, welche gemeint ist. */
     const ebenen = await p.evaluate((id) => {
       const e = window.__T__.ENT.get(id);
-      const c = e.components.MapInfo;
+      const c = e.components.Map;
+      /* Das Bild der Karte steht an `Image.image` und nicht an `Map`: eine
+         Karte hat ein Bild wie jeder andere Artikel, und genau dieses ist
+         ihr Hintergrund. */
+      const bild = window.__T__.mapImage(e);
       c.sheets = [
-        { id: 's1', name: 'Terrain', image: c.image, opacity: 0.5, visible: true },
-        { id: 's2', name: 'Secrets', image: c.image, opacity: 1, visible: true, gmOnly: true },
-        { id: 's3', name: 'Off', image: c.image, opacity: 1, visible: false },
+        { id: 's1', name: 'Terrain', image: bild, opacity: 0.5, visible: true },
+        { id: 's2', name: 'Secrets', image: bild, opacity: 1, visible: true, gmOnly: true },
+        { id: 's3', name: 'Off', image: bild, opacity: 1, visible: false },
       ];
       window.__T__.render();
       return {
@@ -1424,7 +2710,7 @@ async function seite(datei, warten) {
       gemalt.zeilen === 4, gemalt.zeilen);
 
     await p.evaluate((id) => {
-      window.__T__.ENT.get(id).components.MapInfo.baseHidden = true;
+      window.__T__.ENT.get(id).components.Map.baseHidden = true;
       window.__T__.render();
     }, nebelKarte);
     await p.waitForTimeout(300);
@@ -1442,7 +2728,7 @@ async function seite(datei, warten) {
        `redactEntity` es zurück, bevor es losgeschickt wird. */
     const alsSpieler = await p.evaluate((id) => {
       const e = window.__T__.ENT.get(id);
-      const c = e.components.MapInfo;
+      const c = e.components.Map;
       c.baseHidden = false;
       const vorher = window.__T__.UI.asActor;
       window.__T__.UI.asActor = 'pc_rook';
@@ -1457,10 +2743,9 @@ async function seite(datei, warten) {
     await p.waitForTimeout(300);
     await p.evaluate((id) => {
       const e = window.__T__.ENT.get(id);
-      e.components.MapInfo.lighting = 'dark';
+      e.components.Map.lighting = 'dark';
     }, nebelKarte);
-    await p.evaluate(() => { document.getElementById('facet')
-      .dispatchEvent(new Event('change', { bubbles: true })); });
+    await p.evaluate(() => window.__T__.render());
     await p.waitForTimeout(300);
   } else {
     pruefe('a map with fog and walls exists in the data', false, 'keine Nebelkarte gefunden');
@@ -1472,14 +2757,14 @@ async function seite(datei, warten) {
      liegen könnte, und den Resten der Maschinerie, die hier einmal stand.
      Gäbe es sie, wäre „simpel" nur eine Behauptung.
 
-     `CreatureInfo.attitude` ist ausdrücklich keines davon: das ist die
+     `Creature.attitude` ist ausdrücklich keines davon: das ist die
      Grundhaltung gegenüber Fremden, ein Wort und kein Zähler. Sie zeigt auf
      niemanden, also ist sie ein Feld — richtig so. Was auf jemanden zeigt,
      ist die Kante `regards`. Damit die Trennung hält, wird sie hier beides
      geprüft. */
   const rufFeld = await p.evaluate(() => {
     const treffer = [];
-    Object.entries(window.__T__.REG.components).forEach(([k, c]) => {
+    Object.entries(window.__T__.REG.interfaces).forEach(([k, c]) => {
       Object.keys((c.schema || {}).properties || {}).forEach((f) => {
         if (/^(standing|reputation|favour|reknown)$/i.test(f)) treffer.push(k + '.' + f);
       });
@@ -1489,7 +2774,7 @@ async function seite(datei, warten) {
   pruefe('no component stores a standing — a relationship is words, not a score',
     rufFeld.length === 0, rufFeld);
   const haltung = await p.evaluate(() =>
-    ((window.__T__.REG.components.CreatureInfo.schema.properties || {}).attitude || {}));
+    ((window.__T__.REG.interfaces.Creature.schema.properties || {}).attitude || {}));
   pruefe('the default attitude stays a word about strangers, not a counter',
     haltung.type === 'string' && Array.isArray(haltung.enum), haltung);
 
@@ -1497,7 +2782,7 @@ async function seite(datei, warten) {
      als eine ganze: sie sieht aus, als liefe sie noch. */
   const reste = await p.evaluate(() => ({
     iface: !!window.__T__.REG.interfaces.Deed,
-    comp: !!window.__T__.REG.components.DeedInfo,
+    comp: !!window.__T__.REG.interfaces.DeedInfo,
     kanten: ['doneBy', 'regarding'].filter((k) => !!window.__T__.REG.relations[k]),
     artikel: [...window.__T__.ENT.values()]
       .filter((e) => (e.interfaces || [])[0] === 'Deed').length,
@@ -1524,11 +2809,6 @@ async function seite(datei, warten) {
   });
   if (auge) {
     await oeffneId(auge);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(400);
     const lesen = () => p.evaluate(() =>
       [...document.querySelectorAll('.strow')].map((r) => ({
@@ -1570,11 +2850,38 @@ async function seite(datei, warten) {
     pruefe('a relationship exists in the data', false, 'kein regards gefunden');
   }
 
+  /* ---- Beute ----
+     Was jemand erfährt, ist genauso ein Fund wie, was er einsteckt. Die
+     Prüfung fragt das am Register und nicht an der Maske: die Auswahl im
+     Kantendialog entsteht aus `to`, und wenn dort das Falsche steht, hilft
+     kein Klick. */
+  const beute = await p.evaluate(() => {
+    const T = window.__T__;
+    const to = T.REG.relations.loot.to || [];
+    return {
+      anQuest: T.relsFrom('Quest').map((r) => r.type).includes('loot'),
+      information: T.ifaceInList(to, 'Information'),
+      feat: T.ifaceInList(to, 'Feat'),
+      skill: T.ifaceInList(to, 'Skill'),
+      /* Eine Waffe ist ein Gegenstand — über `extends`, nicht über einen
+         zweiten Eintrag in `to`. */
+      weapon: T.ifaceInList(to, 'Weapon'),
+      /* Eine Lauernde Aktion ist auch eine Regel und trotzdem keine Beute. */
+      rule: T.ifaceInList(to, 'Rule'),
+    };
+  });
+  pruefe('a quest may carry loot, not only an encounter', beute.anQuest === true, beute);
+  pruefe('what you learn is loot, and so is a feat or a skill',
+    beute.information && beute.feat && beute.skill, beute);
+  pruefe('an item subtype gets there through inheritance', beute.weapon === true, beute);
+  pruefe('but not every rule is a prize', beute.rule === false, beute);
+
   /* ---- Der Spieltisch (Bereich Play) ----
      Karte, Initiative und Boards sind keine Artikel, die man nachschlägt —
      sie sind das, worauf man während der Sitzung schaut. Die Prüfung fragt
      deshalb zuerst, ob der Bereich überhaupt an den Tisch führt und nicht
      in eine Liste: genau dort ging es vorher verloren. */
+  await zurSeite(p, 'Play');
   await p.evaluate(() =>
     [...document.querySelectorAll('.rail button')]
       .find((x) => /At the table/.test(x.textContent)).click());
@@ -1589,6 +2896,10 @@ async function seite(datei, warten) {
     reiter: [...document.querySelectorAll('#view .ktabs .btn')].map((b) => b.textContent),
     /* Was läuft, steht an der Sitzung und wird hier nur gezeigt. */
     sitzung: !!document.querySelector('#view .listhead .ref'),
+    /* Welche Sitzung der Tisch nimmt — eine leere, eben angelegte darf ihn
+       nicht übernehmen. */
+    sitzungen: [...window.__T__.ENT.values()]
+      .filter((e) => (e.components || {}).Session).map((e) => e.id),
   }));
   pruefe('the play area opens the table, not a list of articles',
     tisch.kopf === 'At the table' && tisch.zeilen === 0, tisch);
@@ -1622,13 +2933,13 @@ async function seite(datei, warten) {
      Beamer etwas anderes zeigt als der Laptop. */
   const ausgeschaltet = await p.evaluate(() => {
     const T = window.__T__;
-    const ses = [...T.ENT.values()].find((e) => (e.components || {}).SessionState);
-    const merk = ses.components.SessionState.activeEncounter;
-    ses.components.SessionState = Object.assign({}, ses.components.SessionState,
+    const ses = [...T.ENT.values()].find((e) => (e.components || {}).Session);
+    const merk = ses.components.Session.activeEncounter;
+    ses.components.Session = Object.assign({}, ses.components.Session,
       { activeEncounter: undefined });
     T.render();
     const weg = !document.querySelector('.playpane .fight');
-    ses.components.SessionState.activeEncounter = merk;
+    ses.components.Session.activeEncounter = merk;
     T.render();
     return weg;
   });
@@ -1641,29 +2952,705 @@ async function seite(datei, warten) {
   await p.waitForTimeout(400);
   pruefe('the table raised no exception', errs.length === 0, errs);
 
-  /* ---- Blockanker und Kampagnenwerte (B3) ----
+  /* ---- Was woanders wohnt, hier bearbeiten ----
+     An einer Figur stand ein Verweis „statblock of: Werte von Rook", und
+     wer eine Zahl ändern wollte, sprang auf einen zweiten Artikel, änderte
+     sie dort und suchte den Weg zurück. Gezeichnet werden jetzt die Felder
+     **des anderen Artikels**, mit seinen eigenen Eingaben — und die
+     schreiben in ihn und nicht in die Figur. */
+  await oeffneId('pc_rook');
+  const dran = await p.evaluate(() => {
+    const box = document.querySelector('.linkedbox');
+    if (!box) return { keineKiste: true };
+    return {
+      name: box.querySelector('.ref')?.textContent ?? '',
+      /* Das Inventar ist ausgenommen: es hat im Reiter „Gear" sein eigenes
+         Element, und zweimal dasselbe ist keine Gliederung. */
+      kisten: document.querySelectorAll('.linkedbox').length,
+      felder: [...box.querySelectorAll('.fld dt')].map((d) => d.textContent),
+    };
+  });
+  pruefe('a linked article stands on the page with its own fields',
+    !dran.keineKiste && /Rook/.test(dran.name)
+    && dran.felder.includes('Armour class') && dran.felder.includes('Hit points'), dran);
+
+  /* **Die Attribute wohnen am Statblock**, und der Statblock nimmt
+     `Abilities` dazu. An der Figur müssen sie deshalb in der verlinkten
+     Kiste stehen — sonst hiesse „die Zahlen der Kreatur stehen am
+     Statblock" dass sie nirgends stehen. */
+  pruefe('and the abilities the statblock takes in are among them',
+    dran.felder.includes('STR') && dran.felder.includes('DEX')
+    && dran.felder.includes('Initiative'), dran.felder);
+
+  /* **Was ein Stand ist, steht immer als Eingabe da** (`alwaysEdit` an
+     `Vitals`). Die Trefferpunkte werden mitten im Zug gesetzt; erst
+     „Bearbeiten" zu sagen sind drei Klicks für eine Zahl. Was eine
+     Festlegung ist — `ac` am Statblock — bleibt Text, bis man darauf
+     klickt. */
+  /* **Was ein Stand ist, steht immer als Eingabe da** — und das sagt das
+     **Feld**, nicht der Typ. Am Typ war es ein Schalter für zwanzig
+     Felder auf einmal: die Trefferpunkte sind ein Stand, die
+     Zustandsliste ein Satz Häkchen. Gesagt haben es hier die Reisezähler
+     einer Gruppe, die sich an jedem Knoten ändern; das Motto daneben
+     bleibt Text, bis jemand darauf klickt. */
+  const immer = await p.evaluate(async () => {
+    const T = window.__T__;
+    let gruppe = null;
+    T.ENT.forEach((e) => { if (!gruppe && (e.interfaces || [])[0] === 'Party') gruppe = e; });
+    if (!gruppe) return { keineGruppe: true };
+    T.go({ k: 'art', id: gruppe.id });
+    await new Promise((r) => setTimeout(r, 350));
+    const zelle = (t) => [...document.querySelectorAll('.fld')]
+      .find((f) => f.querySelector('dt')?.textContent === t);
+    return {
+      /* Kein Typ sagt es mehr. */
+      amTyp: Object.values(T.REG.interfaces)
+        .some((x) => x.alwaysEdit !== undefined),
+      amFeld: !!T.REG.interfaces.Party.schema.properties.day.alwaysEdit,
+      vitals: !!T.REG.interfaces.Vitals.schema.properties.hp.alwaysEdit,
+      standOffen: !!zelle('Day')?.querySelector('dd.editing input'),
+      wacheOffen: !!zelle('Watch')?.querySelector('dd.editing input'),
+      festeOffen: !!zelle('Motto')?.querySelector('dd.editing input'),
+      bearbeiten: !!T.UI.inline,
+    };
+  });
+  pruefe('a field that is a state is always an input, a fixed one is not',
+    !immer.amTyp && immer.amFeld && immer.vitals
+    && immer.standOffen && immer.wacheOffen
+    && !immer.festeOffen && !immer.bearbeiten, immer);
+
+  await oeffneId('pc_rook');
+
+  /* Und **beim Bearbeiten steht jedes Feld da** — auch die aus `Identity`,
+     die vorher nirgends waren: ein Feld, das man nur über die Einfuhr
+     füllen kann, ist keines. Der Name bleibt draussen, er ist die
+     Überschrift. */
+  const alleFelder = await p.evaluate(async () => {
+    const T = window.__T__;
+    T.UI.inline = true; T.render();
+    await new Promise((r) => setTimeout(r, 300));
+    const dts = [...document.querySelectorAll('.fld dt')].map((d) => d.textContent);
+    const eingaben = [...document.querySelectorAll('.fld dd.editing')].length;
+    T.UI.inline = false; T.render();
+    await new Promise((r) => setTimeout(r, 200));
+    return { dts, eingaben, ohneName: !dts.includes('Name') };
+  });
+  pruefe('editing shows every field as an input, aliases and cover name included',
+    alleFelder.dts.includes('Aliases') && alleFelder.dts.includes('Cover name')
+    && alleFelder.ohneName && alleFelder.eingaben > 20, alleFelder);
+
+  const dortGeschrieben = await p.evaluate(async () => {
+    const T = window.__T__;
+    const box = document.querySelector('.linkedbox');
+    const dt = [...box.querySelectorAll('.fld dt')].find((d) => d.textContent === 'Armour class');
+    dt.nextElementSibling.click();
+    await new Promise((r) => setTimeout(r, 250));
+    const i = document.querySelector('.linkedbox .fld dd.editing input');
+    if (!i) return { keinEingang: true };
+    i.value = '17';
+    i.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 350));
+    return {
+      /* Der Wert steht im **Statblock**, nicht in der Figur. */
+      imStatblock: (T.ENT.get('sb_pc_rook').components.Statblock || {}).ac,
+      inDerFigur: (T.ENT.get('pc_rook').components.Statblock || {}).ac,
+      geschrieben: window.__WROTE__.filter((x) => /sb_pc_rook/.test(x)).length,
+    };
+  });
+  pruefe('and editing there writes into that article, not into this one',
+    dortGeschrieben.imStatblock === 17 && dortGeschrieben.inDerFigur === undefined
+    && dortGeschrieben.geschrieben > 0, dortGeschrieben);
+
+  /* ---- Die Artikelarten zum Durchgehen ----
+     Dieselbe Übersicht, die der Katalog als Datei schreibt, aber aus dem
+     **laufenden** Register. Eine Seite, die eine Liste abtippt, stimmt am
+     Tag ihrer Entstehung und danach nie wieder — die Prüfung fragt deshalb
+     nicht, ob etwas dasteht, sondern ob es aus dem Register kommt. */
+  await zumRegister(p, 'Types');
+  const typen = await p.evaluate(() => ({
+    kopf: document.querySelector('#view h2')?.textContent ?? '',
+    reiter: [...document.querySelectorAll('.tabs button[aria-selected="true"]')].map((x) => x.textContent),
+    bereiche: [...document.querySelectorAll('.rail h3')].map((h) => h.textContent),
+    arten: document.querySelectorAll('.rail .navrow').length,
+    imRegister: Object.keys(window.__T__.REG.interfaces).length,
+    abschnitte: [...document.querySelectorAll('.tpdoc .sec')].map((x) => x.textContent),
+  }));
+  pruefe('the article types open as a part of their own',
+    typen.kopf === 'Registry' && typen.reiter.join() === 'Types', typen);
+  /* Jede Art aus dem Register steht in der Leiste — keine fehlt, keine ist
+     doppelt. Eine Übersicht, die eine Art auslässt, ist schlimmer als keine:
+     man hält sie für vollständig. */
+  pruefe('every kind in the registry is listed, exactly once',
+    typen.arten === typen.imRegister, typen);
+  /* **Flach und ohne Überschriften.** Die Liste war nach Bereich gruppiert
+     und nach Unterarten eingerückt — beides aus `extends`, und `extends` ist
+     ein Array. Ein Baum muss sich für eine Herkunft entscheiden, also stand
+     eine Art, die von zweien erbt, unter einer und unter der anderen nicht.
+     Wer sie dort suchte, hielt sie für nicht vorhanden. */
+  pruefe('the list is flat — no headings that pick one lineage',
+    typen.bereiche.join() === 'Types', typen.bereiche);
+  const leisteGefiltert = await p.evaluate(async () => {
+    const feld = document.querySelector('#rail input[type=search]');
+    feld.value = 'quest';
+    feld.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 300));
+    const namen = [...document.querySelectorAll('.rail .navrow')].map((b) => b.dataset.t);
+    const feld2 = document.querySelector('#rail input[type=search]');
+    feld2.value = '';
+    feld2.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 300));
+    return { namen, wiederAlle: document.querySelectorAll('.rail .navrow').length };
+  });
+  pruefe('and a filter narrows it — fifty-nine rows are more than one glance',
+    leisteGefiltert.namen.includes('Quest') && leisteGefiltert.namen.length < 5
+    && leisteGefiltert.wiederAlle === typen.imRegister, leisteGefiltert);
+
+  /* Eine Art zeigt, woraus sie besteht, was sie festhält, welche Kanten sie
+     trägt und wie sie gezeichnet wird — **und jedes davon genau einmal.**
+     Es stand einmal alles zweimal da: oben zum Lesen, unten zum Ändern. Wer
+     einen Bestandteil entfernen wollte, versuchte es oben, und dort war es
+     ein Bild. */
+  const eine = await p.evaluate(async () => {
+    const T = window.__T__;
+    T.UI.typePick = 'PlayerCharacter';
+    T.render();
+    await new Promise((r) => setTimeout(r, 250));
+    const txt = (sel) => [...document.querySelectorAll(sel)].map((x) => x.textContent);
+    return {
+      titel: document.querySelector('.tpdoc .arthead h2')?.textContent ?? '',
+      abschnitte: txt('.tpdoc .sec').concat(txt('.tpdoc .rsec')),
+      /* **Die eigenen Felder offen, die geerbten Typen zugeklappt.** Je
+         geerbter Typ eine Zeile: Name, woher er kommt, wie viele Felder er
+         bringt. Eine Spielerfigur erbt aus siebzehn Typen — flach
+         ausgeschrieben sind das achtundvierzig Zeilen, und die eigenen
+         sechs gehen darin unter. */
+      gruppen: [...document.querySelectorAll('.fbox.part')].map((b) => b.dataset.part),
+      zu: [...document.querySelectorAll('.fbox.part .partfields')]
+        .filter((f) => f.style.display === 'none').length,
+      /* Woher: direkt dazugenommen oder über einen anderen hereingekommen.
+         Nur der direkte lässt sich hier herausnehmen. */
+      woher: [...document.querySelectorAll('.fbox.part .fhead')]
+        .map((h) => (h.querySelector('.ref')?.dataset.from ?? '') + '='
+          + (/via /.test(h.textContent) ? 'via' : 'direct')),
+      rausnehmbar: [...document.querySelectorAll('.fbox.part .fhead')]
+        .filter((h) => h.querySelector('button.dngr'))
+        .map((h) => h.querySelector('.ref')?.dataset.from),
+      /* Und ein ganzer Typ dazu — an derselben Stelle wie ein Feld dazu. */
+      teilDazu: [...document.querySelectorAll('.tpdoc .addbar select option')]
+        .some((o) => /\+ type/.test(o.textContent)),
+      inh: document.querySelectorAll('.fbox .frow.inh').length,
+      kantenRaus: document.querySelectorAll('.tedges').length,
+      reiter: txt('.tmpltab'),
+    };
+  });
+  pruefe('a kind shows what it records, connects and looks like',
+    eine.titel === 'Player character'
+    && eine.abschnitte.some((x) => /^Fields/.test(x))
+    && eine.abschnitte.some((x) => /^Edges from here/.test(x))
+    && eine.abschnitte.some((x) => /^Views/.test(x)), eine.abschnitte);
+  /* **Ein Bereich und nicht zwei.** „Made of" gibt es nicht mehr: der
+     Bestandteil steht als Kopfzeile über seinen Feldern. */
+  pruefe('and the parts are not a second list next to the fields',
+    !eine.abschnitte.some((x) => /^Made of/.test(x)), eine.abschnitte);
+  /* Jede Frage einmal. Eine Seite, die alles zweimal zeigt, hat eine Hälfte,
+     die nur so aussieht, als könnte man sie bedienen. */
+  pruefe('and says each of them exactly once',
+    eine.abschnitte.length === new Set(eine.abschnitte).size, eine.abschnitte);
+  pruefe('the inherited types stand as their own groups, closed',
+    eine.gruppen.includes('Creature') && eine.gruppen.includes('Identity')
+    && eine.zu === eine.gruppen.length, { gruppen: eine.gruppen.length, zu: eine.zu });
+  /* `Creature` ist direkt dazugenommen, `Identity` kommt über `Creature`
+     herein — und nur der direkte lässt sich hier herausnehmen. */
+  pruefe('and each says whether it was taken in here or came in through another',
+    eine.woher.includes('Creature=direct') && eine.woher.includes('Identity=via')
+    && eine.rausnehmbar.includes('Creature') && !eine.rausnehmbar.includes('Identity')
+    && eine.teilDazu, { woher: eine.woher.slice(0, 4), rausnehmbar: eine.rausnehmbar });
+  pruefe('and every inherited field is there, once, ready to be opened',
+    eine.inh > 20, { inh: eine.inh });
+  /* **Was über eine Kante hängt, steht als Gruppe mit dabei.**
+     Der Statblock einer Kreatur ist ein eigener Artikel — austauschbar,
+     wiederverwendbar —, und seine Felder gehören trotzdem zu dem, was an
+     einer Kreatur dransteht. Wer im Register wissen will, was eine
+     Kreatur trägt, will `ac` und `hp` sehen und nicht „es gibt da eine
+     Kante". Die Marke sagt, dass die Werte **nicht** in der Karte dieser
+     Art stehen. */
+  const verlinkt = await p.evaluate(() => {
+    const kasten = [...document.querySelectorAll('.fbox.part.linked')];
+    return kasten.map((b) => ({
+      typ: b.dataset.linked,
+      marke: b.querySelector('.pill')?.textContent ?? '',
+      zu: b.querySelector('.partfields').style.display === 'none',
+      felder: [...b.querySelectorAll('.frow .fk')].map((x) => x.textContent.split(' ')[0]),
+    }));
+  });
+  const sbGruppe = verlinkt.find((x) => x.typ === 'Statblock');
+  /* Auf `hp` zu prüfen ginge schief: weiter oben hat der Lauf es zu
+     `hitPoints` umbenannt, und eine Prüfung, die von der Spur einer
+     anderen lebt, prüft am Ende nur noch sich selbst. */
+  pruefe('a type that hangs on an edge stands there with its fields',
+    !!sbGruppe && /linked · belongsTo/.test(sbGruppe.marke) && sbGruppe.zu
+    && sbGruppe.felder.includes('ac') && sbGruppe.felder.length > 10, verlinkt);
+  /* Und das Inventar genauso — dieselbe Sorte Kante, anderes Ende. */
+  pruefe('and so does the one at the other end of the edge',
+    verlinkt.some((x) => x.typ === 'Inventory' && /linked · carries/.test(x.marke)),
+    verlinkt.map((x) => x.typ));
+
+  /* **Aufklappen zeigt die Felder und lässt die Stelle, an der man war.**
+     Gezeichnet wird dabei nichts neu: die Zeilen stehen schon im Baum. Ein
+     Neuzeichnen setzte jeden Kasten mit eigenem Scroll nach oben, und wer
+     unten in einer Feldliste etwas aufklappt, sucht danach die Stelle, an
+     der er gerade war. */
+  const aufgeklappt = await p.evaluate(async () => {
+    const T = window.__T__;
+    const kasten = [...document.querySelectorAll('.fbox.part')]
+      .find((b) => b.dataset.part === 'Identity');
+    const felder = kasten.querySelector('.partfields');
+    const roller = document.querySelector('.main');
+    roller.scrollTop = 180;
+    const vorher = { zu: felder.style.display === 'none', y: roller.scrollTop };
+    kasten.querySelector('.fhead.klapp').click();
+    await new Promise((r) => setTimeout(r, 200));
+    return {
+      vorher,
+      offenJetzt: kasten.querySelector('.partfields').style.display !== 'none',
+      y: document.querySelector('.main').scrollTop,
+      gemerkt: !!(T.UI.regOpen || {})['PlayerCharacter::Identity'],
+      zeilen: kasten.querySelectorAll('.frow.inh').length,
+    };
+  });
+  pruefe('opening an inherited type shows its fields and remembers it',
+    aufgeklappt.vorher.zu && aufgeklappt.offenJetzt && aufgeklappt.gemerkt
+    && aufgeklappt.zeilen === 4, aufgeklappt);
+  pruefe('and it stays where you were',
+    aufgeklappt.y === aufgeklappt.vorher.y, aufgeklappt);
+
+  /* Und ein geerbtes Feld lässt sich **einstellen**: Standard, Werte,
+     Pflicht. Geändert wird der Typ, dem es gehört — darum steht es an der
+     Kopfzeile der Gruppe und im Titel des Knopfs. Ohne das müsste man den
+     Typ aufschlagen, um einen Standard zu setzen. */
+  const einstellbar = await p.evaluate(async () => {
+    const T = window.__T__;
+    const zeile = [...document.querySelectorAll('.fbox.part .frow.inh')]
+      .find((r) => r.querySelector('.fk')?.textContent.replace('*', '') === 'aliases');
+    const knopf = [...zeile.querySelectorAll('button')]
+      .find((b) => b.textContent === '\u22ef');
+    if (!knopf) return { keinKnopf: true };
+    knopf.click();
+    await new Promise((r) => setTimeout(r, 250));
+    const panel = document.querySelector('.fbox.part .fmore');
+    const raus = {
+      regprop: T.UI.regprop,
+      felder: [...(panel?.querySelectorAll('label.f span') ?? [])].map((x) => x.textContent),
+      /* Die Gruppe bleibt offen — das Zeichnen liest `UI.regOpen`. */
+      nochOffen: [...document.querySelectorAll('.fbox.part')]
+        .find((b) => b.dataset.part === 'Identity')
+        ?.querySelector('.partfields').style.display !== 'none',
+    };
+    T.UI.regprop = '';
+    T.render();
+    return raus;
+  });
+  pruefe('an inherited field can be configured where it stands',
+    einstellbar.regprop === 'Identity.aliases'
+    && einstellbar.felder.some((x) => /Default/.test(x))
+    && einstellbar.nochOffen, einstellbar);
+
+  /* **Die verlinkte Gruppe zeigt die ganze Kette des anderen Typs.** Die
+     sechs Attribute wohnen an `Abilities`, und der Statblock nimmt sie
+     dazu — wer an der Figur nachsieht, was dransteht, sucht `str` und
+     nicht die Auskunft, dass es da noch einen Obertyp gibt. */
+  const kette = await p.evaluate(async () => {
+    const T = window.__T__;
+    const kasten = [...document.querySelectorAll('.fbox.part.linked')]
+      .find((b) => b.dataset.linked === 'Statblock');
+    if (!kasten) return { keine: true };
+    kasten.querySelector('.fhead.klapp').click();
+    await new Promise((r) => setTimeout(r, 200));
+    return {
+      zahl: kasten.querySelector('.fhead .co')?.textContent ?? '',
+      via: [...kasten.querySelectorAll('.fhead.sub .ref')].map((x) => x.textContent),
+      schluessel: [...kasten.querySelectorAll('.frow .fk')]
+        .map((x) => x.textContent.replace('*', '')),
+    };
+  });
+  pruefe('the linked group shows the whole chain of the other type',
+    !kette.keine && kette.schluessel.includes('ac')
+    && kette.schluessel.includes('str') && kette.schluessel.includes('dexMod')
+    && kette.via.includes('Abilities'), kette);
+
+  /* **Die Kanten, die von hier ausgehen, stehen mit in der Liste.** Eine
+     Kante ist kein Feld — sie steht nicht in der Karte, und die
+     Gegenrichtung ist eine Abfrage. Wer aber wissen will, was an einer Art
+     dransteht, liest sonst eine Feldliste und hält sie für alles. Die mit
+     `asField` stehen schon als eigene Gruppe; hier kommt der Rest, und
+     die mit `*` werden nur gezählt. */
+  const kantenGruppe = await p.evaluate(async () => {
+    const kasten = document.querySelector('.fbox.part.kanten');
+    if (!kasten) return { keine: true };
+    kasten.querySelector('.fhead.klapp').click();
+    await new Promise((r) => setTimeout(r, 200));
+    return {
+      namen: [...kasten.querySelectorAll('.frow .fk')].map((x) => x.textContent),
+      fuss: kasten.querySelector('.hint')?.textContent ?? '',
+      /* `belongsTo` liest sich am Statblock-Ende wie ein Feld und steht
+         darum oben als verlinkte Gruppe — hier wäre es zweimal. */
+      ohneAsField: ![...kasten.querySelectorAll('.frow .fk')]
+        .some((x) => x.textContent === 'belongsTo'),
+    };
+  });
+  pruefe('the edges from here stand in the field list too, once each',
+    !kantenGruppe.keine && kantenGruppe.namen.length > 2
+    && kantenGruppe.ohneAsField
+    && /every kind/.test(kantenGruppe.fuss), kantenGruppe);
+
+  /* **Was nicht gilt, steht nicht da.** Bei einem geteilten Typ stellt
+     sich die Frage nach Ansicht und Artikeln nicht — dort standen eine
+     Überschrift und ein Absatz, die nur erklärten, warum darunter nichts
+     kommt. */
+  const geteilt = await p.evaluate(async () => {
+    const T = window.__T__;
+    T.UI.typePick = 'Identity'; T.UI.regiface = 'Identity'; T.render();
+    await new Promise((r) => setTimeout(r, 350));
+    const sec = [...document.querySelectorAll('.tpdoc .sec')].map((x) => x.textContent);
+    T.UI.typePick = 'PlayerCharacter'; T.UI.regiface = 'PlayerCharacter'; T.render();
+    await new Promise((r) => setTimeout(r, 350));
+    const sec2 = [...document.querySelectorAll('.tpdoc .sec')].map((x) => x.textContent);
+    return { geteilt: sec, anlegbar: sec2 };
+  });
+  pruefe('views and articles are only listed where they mean something',
+    !geteilt.geteilt.some((x) => /^Views/.test(x))
+    && !geteilt.geteilt.some((x) => /^Articles/.test(x))
+    && geteilt.anlegbar.some((x) => /^Views/.test(x))
+    && geteilt.anlegbar.some((x) => /^Articles/.test(x)), geteilt);
+
+  /* Die Reiter des Bogens stehen in der Vorlage mit Namen — „tabs" allein
+     zu lesen sagt nichts. */
+  pruefe('the template shows the tabs by name, not just the word “tabs”',
+    eine.reiter.includes('Overview') && eine.reiter.includes('Gear'), eine.reiter);
+
+  /* Vor/zurück geht durch dieselbe Reihenfolge wie die Liste links. Eine
+     zweite Ordnung daneben wäre die Stelle, an der „nächste" etwas anderes
+     heisst als das, was darunter steht. */
+  const lauf = await p.evaluate(async () => {
+    const T = window.__T__;
+    const nav = [...document.querySelectorAll('.rail .navrow b')].map((b) => b.textContent);
+    const jetzt = document.querySelector('.rail .navrow.on b')?.textContent ?? '';
+    [...document.querySelectorAll('.tpdoc .maptools .btn')]
+      .find((b) => b.textContent === '→').click();
+    await new Promise((r) => setTimeout(r, 250));
+    return { nav, jetzt, danach: document.querySelector('.rail .navrow.on b')?.textContent ?? '' };
+  });
+  pruefe('forward steps to the next one in the list, not somewhere else',
+    lauf.nav.indexOf(lauf.danach) === lauf.nav.indexOf(lauf.jetzt) + 1, lauf);
+
+  /* Und sie ist nichts für Spieler: sie zeigt, was es geben *kann*. */
+  const alsSpieler2 = await p.evaluate(async () => {
+    const T = window.__T__;
+    const vorher = T.UI.asActor;
+    T.UI.asActor = 'pc_rook';
+    T.render();
+    await new Promise((r) => setTimeout(r, 250));
+    const zu = !document.querySelector('#pages button[data-p="registry"]')
+      && ![...document.querySelectorAll('#pages button')].some((b) => b.textContent === 'Registry');
+    T.UI.asActor = vorher;
+    T.render();
+    return zu;
+  });
+  await p.waitForTimeout(300);
+  pruefe('the type overview stays with the GM', alsSpieler2 === true, alsSpieler2);
+
+  /* ---- Die Vorlage ----
+     Artikelarten und Datenmodell sind eine Seite: rechts steht, was die
+     gewählte Ansicht von dieser Art zeigt, und ein Klick nimmt ein Feld
+     heraus oder legt es zurück. Zwei Seiten hiessen, das Modell hier
+     anzulegen und dort nachzusehen, was dabei herauskommt. */
+  const vorlage = await p.evaluate(async () => {
+    const T = window.__T__;
+    T.UI.typePick = 'PlayerCharacter';
+    T.UI.typeView = 'full';
+    T.render();
+    await new Promise((r) => setTimeout(r, 300));
+    return {
+      elemente: [...document.querySelectorAll('.tmplel > .ck > code')].map((x) => x.textContent),
+      reiter: [...document.querySelectorAll('.tmpltab')].map((x) => x.textContent),
+      /* **Gewählt wird nach Gruppe.** Vorher stand jedes einzelne Feld als
+         Marke da — bei einer Figur achtundvierzig. Eine Übersicht ist drei
+         Zeilen lang; wer sie zusammenstellt, sagt „den Statblock nicht". */
+      gruppen: document.querySelectorAll('.tmplfields .tgl').length,
+      an: document.querySelectorAll('.tmplfields .tgl.on').length,
+      /* Was in `full` **aus** ist, ist es nicht aus Versehen: der Bogen
+         zeichnet es schon, und die Feldtabelle lässt es über `except` weg. */
+      ausWoher: [...document.querySelectorAll('.tmplfields .tgl:not(.on)')]
+        .map((x) => x.dataset.comp),
+      /* Und in `full` gibt es nichts anzuklicken: sie zeigt alles. */
+      zu: [...document.querySelectorAll('.tmplfields .tgl')].every((b) => b.disabled),
+      /* Die Maske steht auf derselben Seite darunter — das ist die
+         Vereinigung, um die es ging. */
+      maske: !!document.querySelector('.tpdoc .regbody'),
+    };
+  });
+  pruefe('the template shows what the view draws for this kind',
+    vorlage.elemente.includes('sheet') && vorlage.elemente.includes('tabs')
+    && vorlage.reiter.includes('Overview'), vorlage);
+  pruefe('and the model editor sits on the same page',
+    vorlage.maske === true, vorlage.maske);
+  /* `full` zeigt alles — ausser dem, was ein anderes Element derselben
+     Seite schon zeichnet. Bei einer Kreatur sind das die Kampfwerte: sie
+     stehen im Bogen, und die Feldtabelle lässt sie über `except` weg. Eine
+     Prüfung auf „alle an" wäre falsch und würde genau diese Absicht
+     beanstanden. */
+  pruefe('every group is offered, and what is off is off on purpose',
+    vorlage.gruppen > 8 && vorlage.an > 0
+    && vorlage.ausWoher.every((c) => ['Vitals', 'Proficiencies'].includes(c)),
+    { gruppen: vorlage.gruppen, an: vorlage.an, ausWoher: [...new Set(vorlage.ausWoher)] });
+  /* `full` zeigt alles: dort ist nichts abzuwählen. Was fehlt, fehlt, weil
+     ein anderer Block derselben Seite es zeichnet — das ist eine Sache der
+     Anordnung und keine Wahl je Art. */
+  pruefe('and full has nothing to untick, because it shows everything',
+    vorlage.zu === true, vorlage.zu);
+
+  /* Ein Klick nimmt ein Feld aus der Ansicht — und ein zweiter legt es
+     zurück. Geschrieben wird dabei `except` und keine ausgeschriebene
+     Liste: die wäre am Tag der nächsten Registerzeile falsch, und das Neue
+     stünde nirgends. */
+  const geklickt = await p.evaluate(async () => {
+    const T = window.__T__;
+    /* Auf `quick` wird gewählt — `full` zeigt alles. Und eine Spielerfigur
+       erbt ihre Anordnung von `Creature`: der Weg, den man geht, ist erst
+       eine eigene machen, dann ändern. */
+    T.UI.typeView = 'quick';
+    T.render();
+    await new Promise((r) => setTimeout(r, 300));
+    const eigenKnopf = [...document.querySelectorAll('.tmpl .maptools .btn')]
+      .find((b) => /Give it its own/.test(b.textContent));
+    if (eigenKnopf) { eigenKnopf.click(); await new Promise((r) => setTimeout(r, 350)); }
+    /* Die Marken der **Feldtabelle** tragen `data-comp` — die der Prosa
+       stehen daneben und meinen einzelne Stellen. Auf `quick` ist nichts
+       gewählt: eine Karte trägt zwei Werte, und welche, sagt die Art. Also
+       wird hier eine Gruppe **dazugenommen**. */
+    const erste = () => document.querySelector('.tmplfields .tgl[data-comp]:not(.on):not([disabled])');
+    const name = erste()?.dataset.comp ?? '';
+    erste().click();
+    await new Promise((r) => setTimeout(r, 300));
+    const eigen = (T.REG.interfaces.PlayerCharacter.views || {}).quick || [];
+    const feldEl = eigen.find((x) => x.el === 'fields')
+      || (eigen.find((x) => x.el === 'tabs')?.tabs || [])
+        .flatMap((t) => t.layout).find((x) => x.el === 'fields');
+    const aus = document.querySelectorAll('.tmplfields .tgl:not(.on)').length;
+    const alleAngaben = [].concat(feldEl?.except ?? [],
+      Array.isArray(feldEl?.fields) ? feldEl.fields : []);
+    return {
+      name, aus,
+      except: feldEl?.except ?? null,
+      fields: feldEl?.fields ?? null,
+      /* Steht die Gruppe jetzt da? Entweder weil sie in der Liste steht
+         oder weil sie aus `except` heraus ist. */
+      sichtbar: !!document.querySelector(`.tmplfields .tgl[data-comp="${name}"]`)
+        ?.classList.contains('on'),
+      /* Und es steht die **Gruppe** da, kein einzelnes Feld daraus. */
+      einzelne: alleAngaben.filter((x) => String(x).indexOf(name + '.') === 0),
+      geschrieben: window.__WROTE__.includes('registry/interfaces'),
+    };
+  });
+  pruefe('clicking a group puts it into the view',
+    geklickt.sichtbar && geklickt.geschrieben, geklickt);
+  pruefe('and it writes the group name, not every field of it',
+    geklickt.einzelne.length === 0
+    && Array.isArray(geklickt.fields) && geklickt.fields.includes(geklickt.name),
+    geklickt);
+  /* Genau dasselbe Feld zurück — nicht irgendeines. Es sind noch andere
+     aus, und die sind es zu Recht: der Bogen zeichnet sie schon. */
+  const zurueck2 = await p.evaluate(async (ref) => {
+    const knopf = document.querySelector(`.tmplfields .tgl[data-comp="${ref}"]`);
+    const warAn = knopf.classList.contains('on');
+    knopf.click();
+    await new Promise((r) => setTimeout(r, 300));
+    const nun = document.querySelector(`.tmplfields .tgl[data-comp="${ref}"]`);
+    const eigen = (window.__T__.REG.interfaces.PlayerCharacter.views || {}).quick || [];
+    const feldEl = eigen.find((x) => x.el === 'fields')
+      || (eigen.find((x) => x.el === 'tabs')?.tabs || [])
+        .flatMap((t) => t.layout).find((x) => x.el === 'fields');
+    return { warAn, wiederAn: nun.classList.contains('on'),
+      fields: Array.isArray(feldEl?.fields) ? feldEl.fields : null,
+      except: feldEl?.except ?? [] };
+  }, geklickt.name);
+  pruefe('clicking it again takes that very one out',
+    zurueck2.warAn && !zurueck2.wiederAn
+    && !(zurueck2.fields || []).includes(geklickt.name), zurueck2);
+
+  /* Eine geerbte Anordnung sagt, woher sie kommt — sie zu bearbeiten ändert
+     sie für jede Unterart mit, und das soll niemand aus Versehen tun.
+     Geprüft an einer Probeart: im Register erbt keine Zeile mehr eine
+     Anordnung, seit die Kreatur selbst eine Art ist und die Spielerfigur
+     weiter oben eine eigene bekommen hat. Eine Prüfung braucht den Fall
+     und nicht die Zeile. */
+  const geerbt2 = await p.evaluate(async () => {
+    const T = window.__T__;
+    T.REG.interfaces.ErbArt = { name: 'ErbArt', label: 'Erb art', extends: ['Creature'] };
+    T.UI.typePick = 'ErbArt';
+    /* `full` ist die Ansicht, die `Creature` selbst anordnet — an ihr ist
+       „geerbt" zu sehen. Bei `quick` sagt die Vorlage „die Grundanordnung
+       der Ansicht", und das ist eine andere Auskunft. */
+    T.UI.typeView = 'full';
+    T.render();
+    await new Promise((r) => setTimeout(r, 300));
+    const raus = {
+      sagt: document.querySelector('.tmpl .maptools .hint')?.textContent ?? '',
+      zu: document.querySelectorAll('.tmplfields .tgl[disabled]').length > 0,
+      knopf: [...document.querySelectorAll('.tmpl .maptools .btn')].map((b) => b.textContent),
+      woher: T.layoutSource(T.REG.views.full, 'ErbArt', 'full').iface,
+    };
+    delete T.REG.interfaces.ErbArt;
+    T.UI.typePick = 'PlayerCharacter';
+    T.render();
+    return raus;
+  });
+  pruefe('an inherited arrangement says so and is not edited by accident',
+    /Inherited from/.test(geerbt2.sagt) && geerbt2.zu
+    && geerbt2.woher === 'Creature'
+    && geerbt2.knopf.some((x) => /Give it its own/.test(x)), geerbt2);
+
+  /* Welche Ansicht die Vorlage zeigt, wird **an der Art** gewählt und nicht
+     oben rechts für die ganze Seite: die Anordnung gehört der Art, also
+     gehört die Wahl dorthin, wo die Art steht. `full` ist die Grundlage, in
+     der alles steht; die engeren lassen weg. */
+  const engere = await p.evaluate(async () => {
+    const T = window.__T__;
+    T.UI.typePick = 'PlayerCharacter';
+    T.render();
+    await new Promise((r) => setTimeout(r, 300));
+    const chips = [...document.querySelectorAll('.chip.pick[data-vk]')].map((c) => c.dataset.vk);
+    document.querySelector('.chip.pick[data-vk="quick"]').click();
+    await new Promise((r) => setTimeout(r, 350));
+    const nun = [...document.querySelectorAll('.tmplel > .ck > code')].map((x) => x.textContent);
+    document.querySelector('.chip.pick[data-vk="full"]').click();
+    await new Promise((r) => setTimeout(r, 350));
+    return { chips, nun };
+  });
+  /* **Der Ort wählt die Ansicht.** Oben rechts stand ein Dropdown, und wer
+     es jedes Mal bedienen muss, bedient es irgendwann falsch. Ein Verweis
+     ist ein Verweis, eine Listenzeile ist eine Zeile, und die Artikelseite
+     zeigt alles. */
+  const ortWaehlt = await p.evaluate(() => {
+    const T = window.__T__;
+    const pc = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'PlayerCharacter');
+    return {
+      waehler: !document.getElementById('facet'),
+      ansichten: Object.keys(T.REG.views),
+      /* Eine Übersicht ist ein Satz und keine Feldtabelle. */
+      ueber: [...T.layoutOf(T.REG.views.overview, 'PlayerCharacter', 'overview')].map((x) => x.el),
+      /* Und sie zeigt keine: die Auswahl ist leer. */
+      ueberFelder: (() => {
+        const f = [...T.layoutOf(T.REG.views.overview, 'PlayerCharacter', 'overview')]
+          .find((x) => x.el === 'fields');
+        return Array.isArray(f?.fields) ? f.fields.length : -1;
+      })(),
+      voll: [...T.layoutOf(T.REG.views.full, 'PlayerCharacter', 'full')].map((x) => x.el),
+      /* Und die volle Anordnung einer Kreatur kommt von `Creature`
+         selbst — die Art trägt sie, und ihre Unterarten erben sie. */
+      woher: T.layoutSource(T.REG.views.full, 'Creature', 'full').iface,
+      pc: pc ? pc.id : null,
+    };
+  });
+  pruefe('the picker at the top right is gone — the place decides',
+    ortWaehlt.waehler === true
+    && ortWaehlt.ansichten.join() === 'overview,quick,full', ortWaehlt.ansichten);
+  /* Eine Übersicht ist ein Satz. Die Feldtabelle steht darin mit **leerer**
+     Auswahl: so lässt sich je Art eine Gruppe dazunehmen, ohne dass aus
+     einem Verweis eine Tabelle wird — und solange niemand etwas ankreuzt,
+     steht dort nur der Satz. */
+  pruefe('an overview is a sentence, the article page is everything',
+    ortWaehlt.ueber.join() === 'description,fields' && ortWaehlt.ueberFelder === 0
+    && ortWaehlt.voll.includes('sheet') && ortWaehlt.voll.length > 1,
+    { ueber: ortWaehlt.ueber, voll: ortWaehlt.voll });
+  pruefe('and a kind inherits its arrangement instead of repeating it',
+    ortWaehlt.woher === 'Creature', ortWaehlt.woher);
+
+  pruefe('the three views are picked at the kind, not at a switch for the whole page',
+    engere.chips.join() === 'overview,quick,full', engere.chips);
+  pruefe('and a narrower one leaves things out',
+    engere.nun.length > 0 && !engere.nun.includes('sheet'), engere.nun);
+  pruefe('the template raised no exception', errs.length === 0, errs);
+
+  /* ---- Mehrfachvererbung ----
+     `extends` ist ein Array, und war es immer. Der Code las überall `[0]`:
+     die **Felder** erbten über alle Obertypen (`compsFor` läuft `forEach`),
+     Kanten, Bereich und Anordnung nur über den ersten. Zwei Antworten auf
+     dieselbe Frage, und die eine war still falsch — man hätte es erst
+     gemerkt, wenn eine Art von zweien erbt. Die Prüfung legt genau so eine
+     an. */
+  const zweiEltern = await p.evaluate(async () => {
+    const T = window.__T__;
+    /* Ein Obertyp im Bereich `rules` mit eigenem Feld und eigener Prosa —
+       damit sich alle drei Vererbungswege prüfen lassen. */
+    T.REG.interfaces.ProbeOben = {
+      name: 'ProbeOben', label: 'Probe oben', area: 'rules', abstract: true,
+      extends: ['Identity'],
+      schema: { type: 'object', properties: {
+        probefeld: { type: 'string', title: 'Probe' },
+        probeprosa: { type: 'string', format: 'long', many: true, title: 'Probe prose' } } },
+    };
+    /* Erbt von **zwei** Ästen: Item (Bereich world) und ProbeOben (game). */
+    T.REG.interfaces.ProbeZwei = {
+      name: 'ProbeZwei', label: 'Probe zwei', extends: ['Item', 'ProbeOben'],
+    };
+    const antwort = {
+      /* Felder: liefen schon über alle. */
+      felder: T.compsFor('ProbeZwei'),
+      /* Bereich: der erste Ast gewinnt — Item steht vorn, also `world`. */
+      bereich: T.areaOf('ProbeZwei'),
+      /* Prosafelder: die des zweiten Astes müssen dabei sein. */
+      prosa: T.proseFields('ProbeZwei').map((f) => f.type + '.' + f.key),
+      /* Kanten: eine Kante, die an `Item` hängt, und eine an `Identity`. */
+      kanten: T.relsFrom('ProbeZwei').map((r) => r.type),
+      /* Und woher ein Feld kommt, muss über beide Äste gefunden werden. */
+      herkunft: T.compOrigin('ProbeZwei', 'ProbeOben'),
+    };
+    delete T.REG.interfaces.ProbeZwei;
+    delete T.REG.interfaces.ProbeOben;
+    return antwort;
+  });
+  pruefe('a kind may inherit from two branches, and gets both their fields',
+    zweiEltern.felder.includes('ProbeOben') && zweiEltern.felder.includes('Item'),
+    zweiEltern.felder);
+  pruefe('passage fields come from every branch, not just the first',
+    zweiEltern.prosa.includes('ProbeOben.probeprosa') && zweiEltern.prosa.includes('Lore.lore'),
+    zweiEltern.prosa);
+  /* Der Bereich kann nur einer sein: der erste genannte Ast gewinnt. Eine
+     Reihenfolge, nach der man eine Aufzählung liest. */
+  pruefe('the area comes from the branch named first',
+    zweiEltern.bereich === 'world', zweiEltern.bereich);
+  pruefe('and where a component comes from is found across branches',
+    zweiEltern.herkunft && zweiEltern.herkunft.iface === 'ProbeOben', zweiEltern.herkunft);
+  pruefe('multiple inheritance raised no exception', errs.length === 0, errs);
+  pruefe('the type overview raised no exception', errs.length === 0, errs);
+
+  /* ---- Prosaanker und Kampagnenwerte (B3) ----
      Beides hängt daran, dass ein Bezeichner hält. Ein Anker, der sich beim
      Import ändert, nimmt jede Wissenszuteilung mit ins Leere — und das
-     fällt niemandem auf: der Block ist da, der Text ist da, und die
-     Information hat nur plötzlich nichts mehr zu verbergen. */
+     fällt niemandem auf: die Stelle ist da, der Text ist da, und die
+     Information hat nur plötzlich nichts mehr zu verbergen.
+
+     Seit Blöcke Felder sind, ist der Anker die **Eintrags-Id** eines Feldes
+     mit `many`. Eine erzeugte Id (`e0`, `e1` …) hält nur, solange die
+     Reihenfolge hält — genau daran hing der Verlust. */
   const anker = await p.evaluate(() => {
     const T = window.__T__;
-    let blocks = 0, mit = 0, ausId = 0;
+    let stellen = 0, erzeugt = 0;
     const doppelt = {};
     T.ENT.forEach((e) => {
       const hier = {};
-      (e.blocks || []).forEach((b) => {
-        blocks++;
-        if (b.anchor) mit++;
-        if (b.anchor === b.id) ausId++;
-        if (hier[b.anchor]) doppelt[e.id] = b.anchor;
-        hier[b.anchor] = 1;
+      T.allProse(e).forEach((x) => {
+        stellen++;
+        if (/^e\d+$/.test(x.id)) erzeugt++;
+        if (hier[x.ref]) doppelt[e.id] = x.ref;
+        hier[x.ref] = 1;
       });
     });
-    return { blocks, mit, ausId, doppelt: Object.keys(doppelt) };
+    return { stellen, erzeugt, doppelt: Object.keys(doppelt) };
   });
-  pruefe('every block carries an anchor, and none of them is just its id',
-    anker.blocks > 0 && anker.mit === anker.blocks && anker.ausId === 0, anker);
+  pruefe('every passage carries an anchor, and none of them is a generated id',
+    anker.stellen > 0 && anker.erzeugt === 0, anker);
   pruefe('anchors are unique inside their own article',
     anker.doppelt.length === 0, anker.doppelt);
 
@@ -1671,32 +3658,34 @@ async function seite(datei, warten) {
      Anker — das ist die ganze Eigenschaft, um die es geht. */
   const stabil = await p.evaluate(() => {
     const T = window.__T__;
-    const e = [...T.ENT.values()].find((x) => (x.blocks || []).length > 1);
-    const b = e.blocks[0];
-    const kopie = { id: 'b_ganz_anders', blockType: b.blockType, body: b.body };
-    return { alt: b.anchor, neu: T.anchorFor({ blocks: [] }, kopie) };
+    let treffer = null;
+    T.ENT.forEach((e) => {
+      if (treffer) return;
+      const st = T.allProse(e);
+      if (st.length) treffer = st[0];
+    });
+    return { alt: treffer.id, neu: T.entryAnchor(treffer.key, treffer.value, {}) };
   });
   pruefe('the same text yields the same anchor, whatever its id is',
     stabil.alt === stabil.neu, stabil);
 
-  /* Und die Wissenszuteilungen zeigen auf Anker, nicht auf Ids. */
+  /* Und die Wissenszuteilungen zeigen auf Anker, nicht auf erzeugte Ids. */
   const zuteilung = await p.evaluate(() => {
     const T = window.__T__;
-    const ids = {};
-    T.ENT.forEach((e) => (e.blocks || []).forEach((b) => { ids[b.id] = 1; }));
+    const echte = {};
+    T.ENT.forEach((e) => T.allProse(e).forEach((x) => { echte[x.ref] = 1; }));
     const schlecht = [];
     T.ENT.forEach((i) => {
-      const info = (i.components || {}).Info;
-      if (!info || !Array.isArray(info.blocks)) return;
-      info.blocks.forEach((a) => {
-        const anker = [];
-        T.ENT.forEach((e) => (e.blocks || []).forEach((b) => { if (b.anchor === a) anker.push(1); }));
-        if (!anker.length && ids[a]) schlecht.push(i.id + ':' + a);
+      const info = (i.components || {}).Information;
+      if (!info || !Array.isArray(info.fields)) return;
+      info.fields.forEach((r) => {
+        if (r.indexOf('#') < 0) return;         /* ein ganzes Feld, kein Eintrag */
+        if (/#e\d+$/.test(r) || !echte[r]) schlecht.push(i.id + ':' + r);
       });
     });
     return schlecht;
   });
-  pruefe('a knowledge grant on a block names its anchor, not its id',
+  pruefe('a knowledge grant on a passage names its anchor, not a generated id',
     zuteilung.length === 0, zuteilung);
 
   /* Kampagnenwerte: gerechnet, und sie schlagen eine gleichnamige Zeile im
@@ -1723,22 +3712,21 @@ async function seite(datei, warten) {
     typeof werte.vor.PARTYWHERE === 'string', werte.vor.PARTYWHERE);
 
   /* ---- Charakterbogen und Inventar (REQ-051, 063, 064, 065) ----
-     Der Bogen rechnet aus zwei Karten: die ruhigen Zahlen aus StatblockInfo,
+     Der Bogen rechnet aus zwei Karten: die ruhigen Zahlen vom Statblock,
      der Stand aus Vitals. Rechnet er falsch, steht am Tisch eine plausible
      Zahl da und niemand merkt es — deshalb gegen bekannte Werte geprüft. */
   const held = await p.evaluate(() => {
-    const m = [...window.__T__.ENT.values()].find((e) =>
-      (e.components || {}).Skills && (e.components || {}).StatblockInfo
+    const T = window.__T__;
+    /* Die Zahlen stehen am Statblock, nicht an der Figur: gesucht wird
+       eine, die einen hat — `statsOf` geht die Kante `belongsTo` zurück. */
+    const m = [...T.ENT.values()].find((e) =>
+      (e.components || {}).Proficiencies
+      && Object.keys(T.statsOf(e).card).length
       && (e.relations || []).some((r) => r.type === 'carries'));
-    return m ? (m.name || m.components.Name.text) : null;
+    return m ? m.name : null;
   });
   if (held) {
     await oeffne(held);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(400);
     const bogen = await p.evaluate(() => {
       const ab = {};
@@ -1781,13 +3769,23 @@ async function seite(datei, warten) {
       [...document.querySelectorAll('.condrow .chip')].find((c) => c.textContent === 'prone').click());
     await p.waitForTimeout(300);
 
-    /* Das Inventar: drei Darstellungen, dieselben Daten. */
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
+    /* Das Inventar: drei Darstellungen, dieselben Daten. Seit der Bogen
+       Reiter hat, liegt es hinter „Gear" — der Vitalstreifen bleibt oben,
+       alles andere schaltet um. */
     await p.waitForTimeout(400);
+    pruefe('a character sheet has tabs, and the vitals stay above them',
+      await p.evaluate(() => ({
+        reiter: [...document.querySelectorAll('.tabrow .btn')].map((b) => b.textContent),
+        /* Der Bogen steht **vor** der Reiterleiste im Baum: was man ohne
+           Umschalten braucht, darf nicht in einem Reiter liegen. */
+        bogenOben: !!(document.querySelector('.sheet')
+          && document.querySelector('.tabbox')
+          && (document.querySelector('.sheet').compareDocumentPosition(
+                document.querySelector('.tabbox')) & Node.DOCUMENT_POSITION_FOLLOWING)),
+      })).then((x) => {
+        return x.reiter.includes('Overview') && x.reiter.includes('Gear') && x.bogenOben;
+      }), 'siehe Reiterleiste');
+    await reiter('Gear');
     const stufen = await p.evaluate(() => ({
       reiter: [...document.querySelectorAll('.invbox .ktabs button')].map((b) => b.textContent),
       stufen: [...document.querySelectorAll('.tier .tlabel b')].map((b) => b.textContent),
@@ -1836,6 +3834,175 @@ async function seite(datei, warten) {
     pruefe('an item can be picked up and put somewhere else',
       !!jetzt && jetzt.r !== vorher.r, { vorher, jetzt });
 
+    /* **Drehen.** Derselbe Bogen liegt quer oder längs; die Drehung steht
+       an der Kante und nicht am Artikel, denn sonst läge dieselbe Fackel
+       in jedem Beutel gleich. */
+    const gedreht = await p.evaluate(async () => {
+      const T = window.__T__;
+      /* Die Form selbst zuerst: eine Vierteldrehung macht aus 1×3 ein 3×1.
+         Ohne das prüfte der Rest nur, dass ein Knopf etwas tut. */
+      const quer = T.gridTurn(['#', '#', '#'], 1);
+      const kurz = [...document.querySelectorAll('.gitem')]
+        .find((i) => /Kurzschwert/.test(i.textContent));
+      if (!kurz) return { keins: true, quer };
+      const vor = { c: kurz.style.gridColumn, r: kurz.style.gridRow };
+      kurz.click();
+      await new Promise((r) => setTimeout(r, 250));
+      const dreh = [...document.querySelectorAll('.invbox .maptools .btn')]
+        .find((b) => /Turn/.test(b.textContent));
+      if (!dreh) return { keinKnopf: true, vor, quer };
+      dreh.click();
+      await new Promise((r) => setTimeout(r, 500));
+      const inv = T.inventoryOf(T.ENT.get(T.UI.route.id));
+      const halt = (inv.relations || []).find((r) => r.type === 'holds'
+        && /Kurzschwert/.test(T.ENT.get(r.to)?.name || ''));
+      const nun = [...document.querySelectorAll('.gitem')]
+        .find((i) => /Kurzschwert/.test(i.textContent));
+      return { vor, quer,
+        rot: (halt?.props || {}).rot,
+        /* Passt es quer nicht mehr dorthin, liegt es danach im Fach — eine
+           Drehung, die abgelehnt wird, heisst drei Schritte für eine
+           Vierteldrehung. */
+        nach: nun ? { c: nun.style.gridColumn, r: nun.style.gridRow } : null,
+        imFach: [...document.querySelectorAll('.invbox .chips .chip.item')]
+          .some((c) => /Kurzschwert/.test(c.textContent)),
+        form: T.footprintOf(T.ENT.get(halt.to), (halt.props || {}).rot) };
+    });
+    pruefe('an item can be turned a quarter, and its shape turns with it',
+      !gedreht.keins && !gedreht.keinKnopf
+      && gedreht.quer.length === 1 && gedreht.quer[0] === '###'
+      && gedreht.rot === 90 && gedreht.form.w === 3 && gedreht.form.h === 1
+      /* Entweder liegt es gedreht im Raster, oder es liegt im Fach — es
+         gibt zwei Kurzschwerter, also sagt die Kachel allein nichts. */
+      && (gedreht.imFach || (gedreht.nach && /span 3/.test(gedreht.nach.c))), gedreht);
+
+    /* Wieder aufs Raster, damit die folgenden Prüfungen etwas dort finden. */
+    await p.evaluate(async () => {
+      const T = window.__T__;
+      const inv = T.inventoryOf(T.ENT.get(T.UI.route.id));
+      const halt = (inv.relations || []).find((r) => r.type === 'holds'
+        && /Kurzschwert/.test(T.ENT.get(r.to)?.name || ''));
+      if (halt && halt.props && halt.props.gx == null) {
+        halt.props = Object.assign({}, halt.props, { gx: 0, gy: 5 });
+        T.persist(inv);
+      }
+      await new Promise((r) => setTimeout(r, 300));
+    });
+    await p.waitForTimeout(350);
+
+    /* **Vom Raster nehmen, ohne aus dem Beutel zu nehmen.** Zwei
+       verschiedene Dinge, und beide braucht man: das eine räumt um, das
+       andere gibt her. */
+    const runter = await p.evaluate(async () => {
+      const b = [...document.querySelectorAll('.invbox .maptools .btn')]
+        .find((x) => /Off the grid/.test(x.textContent));
+      if (!b) return { keinKnopf: true };
+      const vorZahl = document.querySelectorAll('.gitem').length;
+      b.click();
+      await new Promise((r) => setTimeout(r, 450));
+      return { vorZahl, nachZahl: document.querySelectorAll('.gitem').length,
+        imBeutel: [...document.querySelectorAll('.invbox .chips .chip.item')]
+          .some((c) => /Kurzschwert/.test(c.textContent)) };
+    });
+    pruefe('taking it off the grid leaves it in the inventory',
+      !runter.keinKnopf && runter.nachZahl === runter.vorZahl - 1
+      && runter.imBeutel, runter);
+
+    /* **Neu anfangen.** Wer einmal falsch angefangen hat, will nicht
+       neunzehn Stücke einzeln wegklicken — und keines soll dabei aus dem
+       Behälter verschwinden. */
+    const zurueck = await p.evaluate(async () => {
+      const T = window.__T__;
+      const vorZahl = document.querySelectorAll('.gitem').length;
+      const inv = T.ENT.get(T.UI.route.id) && T.inventoryOf(T.ENT.get(T.UI.route.id));
+      const haelt = (inv.relations || []).filter((r) => r.type === 'holds').length;
+      const b = [...document.querySelectorAll('.invbox .maptools .btn')]
+        .find((x) => /Reset layout/.test(x.textContent));
+      if (!b) return { keinKnopf: true };
+      b.click();
+      await new Promise((r) => setTimeout(r, 250));
+      [...document.querySelectorAll('.dlgbox .btn')]
+        .find((x) => /Reset/.test(x.textContent)).click();
+      await new Promise((r) => setTimeout(r, 500));
+      const inv2 = T.inventoryOf(T.ENT.get(T.UI.route.id));
+      return { vorZahl, nachZahl: document.querySelectorAll('.gitem').length,
+        haelt, haeltNun: (inv2.relations || []).filter((r) => r.type === 'holds').length };
+    });
+    pruefe('the layout can be started over without losing anything',
+      !zurueck.keinKnopf && zurueck.vorZahl > 0 && zurueck.nachZahl === 0
+      && zurueck.haeltNun === zurueck.haelt, zurueck);
+
+    /* **Der Behälter hat seine eigene Form und seine eigenen Zonen.** Das
+       Raster war eine Kampagneneinstellung — zehn mal sechs für jeden
+       Rucksack. Ein Köcher ist aber kein Rechteck, und was oben liegt, ist
+       schneller in der Hand als was unten liegt. */
+    const behaelter = await p.evaluate(async () => {
+      const T = window.__T__;
+      const inv = T.inventoryOf(T.ENT.get(T.UI.route.id));
+      inv.components = inv.components || {};
+      inv.components.Inventory = Object.assign({}, inv.components.Inventory, {
+        grid: ['####', '##..', '####'],
+        zones: { '0,0': 'free action', '1,0': 'free action', '0,2': 'round' },
+      });
+      T.render();
+      await new Promise((r) => setTimeout(r, 400));
+      const zellen = [...document.querySelectorAll('.gcell')];
+      return {
+        zahl: zellen.length,
+        gesperrt: zellen.filter((c) => /blocked/.test(c.className)).length,
+        zonen: zellen.filter((c) => /\bz[1-5]\b/.test(c.className)).length,
+        fuss: [...document.querySelectorAll('.invbox .hint')]
+          .map((x) => x.textContent).join(' | '),
+        /* Und die Zone eines Stücks ist die **langsamste**, die es bedeckt:
+           man muss das Ganze herausbekommen, nicht nur eine Ecke. */
+        kosten: T.drawCost(inv, { gx: 0, gy: 0, rot: 0,
+          item: { components: { Item: { rows: ['##'] } } } }),
+      };
+    });
+    pruefe('a container carries its own grid, blocked cells and zones',
+      behaelter.zahl === 12 && behaelter.gesperrt === 2
+      && behaelter.zonen === 3 && /own grid/.test(behaelter.fuss)
+      && behaelter.kosten === 'free action', behaelter);
+
+    /* ---- Die Zahlen wohnen am Statblock ----
+     Auch die eines Spielercharakters: er hat mehr darüber hinaus, aber AC,
+     HP-Maximum und die sechs Werte sind dieselbe Sache wie bei jedem
+     Monster. Vorher trug er sie selbst, und der Bogen las „erst die eigene
+     Karte, dann die geliehene" — zwei Formen für dasselbe. */
+    const woher = await p.evaluate(() => {
+      const T = window.__T__;
+      const figuren = [...T.ENT.values()]
+        .filter((e) => ['PlayerCharacter', 'Creature'].includes((e.interfaces || [])[0]));
+      return {
+        eigene: figuren.filter((e) => (e.components || {}).Abilities
+          || (e.components || {}).Statblock).map((e) => e.name),
+        /* Wer einen Statblock hat, liest ihn. Wer keinen hat, hat keine
+           Zahlen — und das ist richtig: der Händler am Lampenplatz kämpft
+           nicht, und eine frisch angelegte Figur hat noch nichts. Ihnen
+           einen Statblock zu geben, damit die Prüfung grün wird, hiesse
+           Daten für die Prüfung zu erfinden. */
+        /* Gezählt werden Statblöcke, **in denen etwas steht**: einer, der
+           beim Anlegen der Kreatur mitentsteht, ist leer und trotzdem da —
+           „hängt einer an" und „trägt er Zahlen" sind zwei Fragen
+           (`statblockOf` und `statsOf`). */
+        mitKante: figuren.filter((e) => [...T.ENT.values()].some((o) =>
+          (o.relations || []).some((r) => r.type === 'belongsTo' && r.to === e.id)
+          && Object.keys((o.components || {}).Statblock || {}).length
+            + Object.keys((o.components || {}).Abilities || {}).length > 0))
+          .map((e) => ({ n: e.name, liest: Object.keys(T.statsOf(e).card).length > 0 })),
+        /* Und der Statblock liest seine eigene Karte — sofern er eine hat. */
+        amStatblock: [...T.ENT.values()]
+          .filter((e) => (e.interfaces || [])[0] === 'Statblock'
+            && Object.keys((e.components || {}).Statblock || {}).length
+              + Object.keys((e.components || {}).Abilities || {}).length > 0)
+          .every((e) => T.statsOf(e).from === e),
+      };
+    });
+    pruefe('no creature carries its own numbers any more', woher.eigene.length === 0, woher);
+    pruefe('and whoever has a statblock reads it — players included',
+      woher.mitKante.length >= 3 && woher.mitKante.every((x) => x.liest) && woher.amStatblock,
+      woher);
+
     pruefe('the sheet and the inventory raised no exception', errs.length === 0, errs);
   } else {
     pruefe('a character with skills and gear exists in the data', false, 'keiner gefunden');
@@ -1851,17 +4018,12 @@ async function seite(datei, warten) {
       && (e.relations || []).some((r) => r.type === 'knowledge'));
     const kenner = alle.find((e) => (e.relations || []).some((r) => r.type === 'carries'));
     return {
-      rezept: rezept ? (rezept.name || rezept.components.Name.text) : null,
-      kenner: kenner ? (kenner.name || kenner.components.Name.text) : null,
+      rezept: rezept ? (rezept.name || (rezept.components.Imported || {}).text) : null,
+      kenner: kenner ? (kenner.name || (kenner.components.Imported || {}).text) : null,
     };
   });
   if (werkbank.rezept && werkbank.kenner) {
     await oeffne(werkbank.rezept);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(400);
     const rez = await p.evaluate(() => ({
       kopf: [...document.querySelectorAll('.crhead .pill')].map((x) => x.textContent),
@@ -1882,11 +4044,6 @@ async function seite(datei, warten) {
     /* Die Werkbank an der Figur: bekannt, teilweise, unbekannt — und was
        fehlt, steht als Zahl da, nicht als „nein". */
     await oeffne(werkbank.kenner);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(400);
     const bank = await p.evaluate(() => ({
       zeilen: [...document.querySelectorAll('table.craftm tr.crrow')]
@@ -1914,7 +4071,7 @@ async function seite(datei, warten) {
       const m = {};
       (inv.relations || []).filter((r) => r.type === 'holds').forEach((r) => {
         const it = T.ENT.get(r.to);
-        if (it) m[it.name || it.components.Name.text] = (r.props || {}).qty || 1;
+        if (it) m[it.name || (it.components.Imported || {}).text] = (r.props || {}).qty || 1;
       });
       return m;
     });
@@ -1944,14 +4101,13 @@ async function seite(datei, warten) {
         const zeile = document.querySelector('table.craftm tr.crrow.ready .ref');
         const rez = [...T.ENT.values()].find((e) =>
           (e.interfaces || [])[0] === 'Recipe'
-          && (e.name || e.components.Name.text) === zeile.textContent);
-        rez.components.RecipeInfo.dc = d;
-        rez.components.RecipeInfo.days = 2;
+          && (e.name || (e.components.Imported || {}).text) === zeile.textContent);
+        rez.components.Recipe.dc = d;
+        rez.components.Recipe.days = 2;
         traeger.relations = (traeger.relations || []).filter((r) => r.type !== 'crafting');
         window.__T__.UI.craftLog = [];
       }, dc);
-      await p.evaluate(() => { document.getElementById('facet')
-        .dispatchEvent(new Event('change', { bubbles: true })); });
+      await p.evaluate(() => window.__T__.render());
       await p.waitForTimeout(300);
       await p.evaluate(() =>
         [...document.querySelectorAll('table.craftm tr.crrow.ready .btn')][0].click());
@@ -2048,7 +4204,7 @@ async function seite(datei, warten) {
         return it && /werkzeug|form/i.test(it.name || '');
       });
       inv.relations = inv.relations.filter((r) => weg.indexOf(r) < 0);
-      document.getElementById('facet').dispatchEvent(new Event('change', { bubbles: true }));
+      window.__T__.render();
       return weg.length;
     });
     await p.waitForTimeout(400);
@@ -2060,15 +4216,18 @@ async function seite(datei, warten) {
       && ohneWerkzeug.some((z) => /no \w+werkzeug|no Kerzenzieherform/i.test(z)),
       ohneWerkzeug);
 
-    /* Der Übungsbonus kommt aus `Skills.tools`, nicht aus einer Annahme.
+    /* Der Übungsbonus kommt aus den Werkzeugübungen in
+       `Proficiencies.proficient` — den Einträgen, die aus der Liste `Tool`
+       kommen —, nicht aus einer Annahme.
        Rook ist in Alchemie geübt, die Gruppe als solche nicht. */
     const boni = await p.evaluate(() => {
       const T = window.__T__;
       const rez = [...T.ENT.values()].find((e) =>
-        ((e.components || {}).RecipeInfo || {}).tool === 'Alchemistenwerkzeug');
-      const info = rez.components.RecipeInfo;
+        ((e.components || {}).Recipe || {}).tool === 'Alchemistenwerkzeug');
+      const info = rez.components.Recipe;
       const rook = [...T.ENT.values()].find((e) =>
-        (((e.components || {}).Skills || {}).tools || []).indexOf('Alchemistenwerkzeug') >= 0);
+        (((e.components || {}).Proficiencies || {}).proficient || [])
+          .indexOf('Alchemistenwerkzeug') >= 0);
       const andere = [...T.ENT.values()].find((e) =>
         (e.interfaces || [])[0] === 'Party');
       return { rook: T.craftMod(rook, info), andere: T.craftMod(andere, info) };
@@ -2089,15 +4248,10 @@ async function seite(datei, warten) {
      Board eigene Kacheln, wäre jedes neue Element zweimal zu bauen. */
   const boardName = await p.evaluate(() => {
     const b = [...window.__T__.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Board');
-    return b ? (b.name || b.components.Name.text) : null;
+    return b ? (b.name || (b.components.Imported || {}).text) : null;
   });
   if (boardName) {
     await oeffne(boardName);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(700);
     const brd = await p.evaluate(() => ({
       karten: [...document.querySelectorAll('.bcard')].map((c) => ({
@@ -2159,15 +4313,10 @@ async function seite(datei, warten) {
   /* ---- Begegnung, Initiative, Würfel (REQ-070, 085, 115, 144) ---- */
   const kampf = await p.evaluate(() => {
     const k = [...window.__T__.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Encounter');
-    return k ? (k.name || k.components.Name.text) : null;
+    return k ? (k.name || (k.components.Imported || {}).text) : null;
   });
   if (kampf) {
     await oeffne(kampf);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(600);
     const lies = () => p.evaluate(() => ({
       zeilen: [...document.querySelectorAll('.initt tr')].slice(1).map((r) => ({
@@ -2245,24 +4394,19 @@ async function seite(datei, warten) {
   const auftrag = await p.evaluate(() => {
     const q = [...window.__T__.ENT.values()].find((e) =>
       (e.interfaces || [])[0] === 'Quest'
-      && Array.isArray(((e.components || {}).QuestInfo || {}).tasks)
-      && e.components.QuestInfo.tasks.length > 2);
+      && Array.isArray(((e.components || {}).Quest || {}).tasks)
+      && e.components.Quest.tasks.length > 2);
     /* Das Brett und die Zeitleiste gehören der **Kampagne**: beides sind
        Fragen an ihr Ganzes und keine Eigenschaft einer Gruppe. Vorher war
        der Träger beliebig, weil jede Ansicht auf jedem Artikel stand. */
     const traeger = [...window.__T__.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Campaign');
     return {
-      q: q ? (q.name || q.components.Name.text) : null,
-      p: traeger ? (traeger.name || traeger.components.Name.text) : null,
+      q: q ? (q.name || (q.components.Imported || {}).text) : null,
+      p: traeger ? (traeger.name || (traeger.components.Imported || {}).text) : null,
     };
   });
   if (auftrag.q && auftrag.p) {
     await oeffne(auftrag.q);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(450);
     const qs = await p.evaluate(() => ({
       kopf: [...document.querySelectorAll('.crhead .pill')].map((x) => x.textContent),
@@ -2289,11 +4433,6 @@ async function seite(datei, warten) {
     pruefe('ticking a task is stored', danach === zahl - 1, { zahl, danach });
 
     await oeffne(auftrag.p);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(450);
     const brett = await p.evaluate(() => ({
       abschnitte: [...document.querySelectorAll('.quests .sec')].map((x) => x.textContent),
@@ -2304,19 +4443,14 @@ async function seite(datei, warten) {
     pruefe('the board counts the tasks per quest',
       brett.zeilen.some((z) => /\d+\/\d+ tasks/.test(z)), brett.zeilen);
 
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(450);
     const zeit = await p.evaluate(() => ({
       zeilen: [...document.querySelectorAll('.tl')].map((r) => ({
         d: r.querySelector('.tdate').textContent,
         n: r.querySelector('.ref').textContent })),
       sortiert: [...window.__T__.ENT.values()]
-        .filter((e) => (e.components || {}).WorldDate)
-        .map((e) => Number(e.components.WorldDate.sort)),
+        .filter((e) => ((e.components || {}).Time || {}).sort !== undefined)
+        .map((e) => Number(e.components.Time.sort)),
     }));
     pruefe('the timeline lists everything that carries a world date',
       zeit.zeilen.length >= 4, zeit.zeilen.length);
@@ -2345,18 +4479,13 @@ async function seite(datei, warten) {
     const pcs = alle.filter((e) => (e.interfaces || [])[0] === 'PlayerCharacter');
     const fremd = pcs.find((e) => !kenner || e.id !== kenner.to);
     return {
-      rec: rec ? (rec.name || rec.components.Name.text) : null,
+      rec: rec ? (rec.name || (rec.components.Imported || {}).text) : null,
       kennerId: kenner ? kenner.to : null,
       fremdId: fremd ? fremd.id : null,
     };
   });
   if (paar2.rec && paar2.kennerId && paar2.fremdId) {
     await oeffne(paar2.rec);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(400);
     const sicht = async (id) => {
       await p.evaluate((v) => {
@@ -2369,6 +4498,7 @@ async function seite(datei, warten) {
         felder: [...document.querySelectorAll('.fld dt')].map((x) => x.textContent),
         bloecke: [...document.querySelectorAll('.blk .bl')].map((x) => x.textContent.replace('×', '')),
         rail: [...document.querySelectorAll('.rail h3')].map((x) => x.textContent),
+        seiten: [...document.querySelectorAll('#pages button')].map((x) => x.textContent),
       }));
     };
     const alsGM = await sicht('');
@@ -2376,12 +4506,12 @@ async function seite(datei, warten) {
     const alsFremd = await sicht(paar2.fremdId);
 
     pruefe('the GM sees everything',
-      alsGM.bloecke.includes('secret') && alsGM.felder.length > alsFremd.felder.length, alsGM);
-    /* Wer die Information kennt, sieht ihre Felder und ihren Block — auch
-       wenn der Block `secret` heisst: eine ausdrückliche Freigabe schlägt
-       die Voreinstellung, sonst wäre jede Freigabe wirkungslos. */
-    pruefe('a granted secret block reaches the one who knows it',
-      alsKenner.bloecke.includes('secret') && !alsFremd.bloecke.includes('secret'),
+      alsGM.bloecke.includes('Secrets') && alsGM.felder.length > alsFremd.felder.length, alsGM);
+    /* Wer die Information kennt, sieht ihre Felder und ihre Textstelle —
+       auch wenn sie im Feld `secret` steht: eine ausdrückliche Freigabe
+       schlägt die Voreinstellung, sonst wäre jede Freigabe wirkungslos. */
+    pruefe('a granted secret passage reaches the one who knows it',
+      alsKenner.bloecke.includes('Secrets') && !alsFremd.bloecke.includes('Secrets'),
       { alsKenner: alsKenner.bloecke, alsFremd: alsFremd.bloecke });
     /* Die Fussnote „Not yours yet" ist kein Feld, sondern die Auskunft,
        dass eines fehlt (REQ-179) — sie zählt hier nicht mit. */
@@ -2392,15 +4522,18 @@ async function seite(datei, warten) {
       && alsFremd.felder.includes('Not yours yet'),
       { alsKenner: alsKenner.felder, alsFremd: alsFremd.felder });
     /* Für einen Spieler gibt es kein Register. Auszugrauen wäre eine
-       Einladung; wegzulassen ist die Antwort. */
-    pruefe('a player gets no data model in the rail',
-      alsGM.rail.includes('System') && !alsFremd.rail.includes('System'),
-      { alsGM: alsGM.rail, alsFremd: alsFremd.rail });
+       Einladung; wegzulassen ist die Antwort. Seit es sechs Seiten gibt,
+       fällt die ganze Seite weg und nicht ein Abschnitt in der Leiste. */
+    pruefe('a player gets no registry page',
+      alsGM.seiten.includes('Registry') && !alsFremd.seiten.includes('Registry')
+      && alsFremd.seiten.includes('Compendium'),
+      { alsGM: alsGM.seiten, alsFremd: alsFremd.seiten });
 
     const zugesperrt = await p.evaluate(() => {
       window.__T__.UI.route = { k: 'reg' };
       return null;
     });
+    await zurSeite(p, 'Compendium');
     await p.evaluate(() => {
       const b2 = [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent));
       if (b2) b2.click();
@@ -2425,16 +4558,11 @@ async function seite(datei, warten) {
      Kanal, sähe ihn niemand, der zehn Minuten später dazukommt — und das
      merkte man erst am Tisch. */
   const sitzung = await p.evaluate(() => {
-    const se = [...window.__T__.ENT.values()].find((e) => (e.components || {}).SessionState);
-    return se ? (se.name || se.components.Name.text) : null;
+    const se = [...window.__T__.ENT.values()].find((e) => (e.components || {}).Session);
+    return se ? (se.name || s(e.components.Imported || {}).text) : null;
   });
   if (sitzung) {
     await oeffne(sitzung);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(450);
     const lv = await p.evaluate(() => ({
       abschnitte: [...document.querySelectorAll('.live .sec')].map((x) => x.textContent),
@@ -2481,11 +4609,6 @@ async function seite(datei, warten) {
       { id: 'pg_test', map: 'mp_kerzengasse', x: 0.5, y: 0.5, who: 'Sela' }));
     await p.waitForTimeout(300);
     await oeffne('Karte: Kerzengasse');
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(450);
     const zeiger = await p.evaluate(() =>
       [...document.querySelectorAll('.mping')].map((n) => n.textContent));
@@ -2518,11 +4641,6 @@ async function seite(datei, warten) {
   });
   if (tabelle.t && tabelle.ort) {
     await oeffneId(tabelle.t);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(450);
     const tb = await p.evaluate(() => ({
       zeilen: [...document.querySelectorAll('.tablebox table tr')].slice(1)
@@ -2547,22 +4665,25 @@ async function seite(datei, warten) {
     /* Auf dem Ort gilt der Zusammenhang: ein Eintrag mit Marke kommt nur
        dort in den Topf — und eine verschachtelte Tabelle würfelt weiter. */
     await oeffneId(tabelle.ort);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(450);
     const knopf = await p.evaluate(() =>
       [...document.querySelectorAll('.tablebox .btn')].map((b) => b.textContent));
     pruefe('a place rolls on the table that applies there',
       knopf.some((t) => /^Roll /.test(t)), knopf);
+    await p.evaluate(() => { window.__T__.UI.rollLog.length = 0; });
     await p.evaluate(() =>
       [...document.querySelectorAll('.tablebox .btn')].find((b) => /^Roll /.test(b.textContent)).click());
-    await p.waitForTimeout(250);
+    await p.waitForTimeout(300);
     const einWurf = await p.evaluate(() =>
       [...document.querySelectorAll('.rollrow .rv')].map((x) => x.textContent));
     pruefe('the button on the place produces a result', einWurf.length > 0, einWurf);
+    /* **Einmal drücken heisst einmal würfeln.** Es stand dreimal da: einmal
+       protokolliert, einmal über `shareRoll` noch einmal protokolliert, und
+       einmal, weil der Raum Gesendetes auch dem Absender wieder einspielt.
+       Drei Zeilen für einen Wurf — und am Tisch fragt dann jemand, welche
+       davon gilt. */
+    const einmal = await p.evaluate(() => window.__T__.UI.rollLog.length);
+    pruefe('pressing it once rolls once', einmal === 1, einmal);
 
     /* Der Zusammenhang wird zweihundertmal geprüft und nicht sechsmal: ein
        Eintrag mit 20 % Gewicht taucht in sechs Würfen manchmal nicht auf,
@@ -2570,7 +4691,9 @@ async function seite(datei, warten) {
     const probe = await p.evaluate((ids) => {
       const T = window.__T__;
       const tab = T.ENT.get(ids.t), ort = T.ENT.get(ids.ort);
-      const ohne = { id: 'ctx_leer', tags: [] };
+      /* Ein Zusammenhang ohne Marken — und die stehen seit der Zerlegung
+         am Bestandteil `Tags` und nicht an der Entität. */
+      const ohne = { id: 'ctx_leer', components: {} };
       const zaehl = (ctx) => {
         const o = { treffer: 0, kaputt: 0, leer: 0 };
         for (let i = 0; i < 200; i++) {
@@ -2605,11 +4728,6 @@ async function seite(datei, warten) {
   });
   if (vorbereitung) {
     await oeffneId(vorbereitung);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(500);
     const pv = await p.evaluate(() => ({
       abschnitte: [...document.querySelectorAll('.prep .sec')].map((x) => x.textContent),
@@ -2620,13 +4738,19 @@ async function seite(datei, warten) {
       unfertig: document.querySelectorAll('.prep .qlist')[1]?.children.length ?? 0,
       probleme: [...document.querySelectorAll('.pruef li')].map((x) => x.textContent),
     }));
-    pruefe('the prep board has its four lists', pv.abschnitte.length === 4, pv.abschnitte);
+    /* Vier Listen, und eine fünfte, sobald es Kreaturen ohne Statblock
+       gibt — die gibt es im Prüfbestand. */
+    pruefe('the prep board has its four lists',
+      ['Not finished'].every((x) => pv.abschnitte.includes(x)) && pv.abschnitte.length >= 4,
+      pv.abschnitte);
+    pruefe('creatures without a statblock are listed on the prep board',
+      pv.abschnitte.includes('Creatures without a statblock'), pv.abschnitte);
     /* Die Gruppen des Cockpits sind Kantenarten, nicht erfundene Rubriken. */
     pruefe('the cockpit groups by the relation that leads there',
       pv.cockpit.length >= 2, pv.cockpit);
     pruefe('open and done are told apart', pv.offen > 0 && pv.erledigt > 0, pv);
     pruefe('open points from other articles are gathered', pv.anderswo > 0, pv.anderswo);
-    pruefe('what is still idea or planned is listed', pv.unfertig > 0, pv.unfertig);
+    pruefe('what is not yet ready is listed', pv.unfertig > 0, pv.unfertig);
     pruefe('the prep board validates clean', pv.probleme.length === 0, pv.probleme);
 
     /* Schnellerfassung: ein Satz, Enter, fertig — ohne die Ansicht zu
@@ -2646,18 +4770,37 @@ async function seite(datei, warten) {
 
     /* Den Stand gleich in der Liste ändern: wer dafür hinspringen muss,
        lässt ihn stehen, und die Liste wird zur Tapete. */
-    const vorStand = await p.evaluate(() =>
-      document.querySelectorAll('.prep .qlist')[1]?.children.length ?? 0);
-    await p.evaluate(() => {
-      const sel = document.querySelectorAll('.prep .qlist')[1].querySelector('select');
-      sel.value = 'used';
-      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    /* Die Liste zeigt höchstens dreissig; gezählt wird darum der Name,
+       nicht die Länge — mit neunzehn Zuständen als Regelartikel ist sie voll. */
+    /* Genommen wird keine Regel: eine Regel ohne Wortlaut auf „ready" zu
+       setzen machte den Regelbrowser-Lauf unten falsch — und hiesse
+       dasselbe wie dort: einen Regeltext behaupten, den niemand schrieb. */
+    const vorStand = await p.evaluate(() => {
+      const rows = [...(document.querySelectorAll('.prep .qlist')[1]?.children ?? [])];
+      const i = rows.findIndex((r) => r.querySelector('.co')?.textContent !== 'Rule Element');
+      return { n: rows.length, i, erster: rows[i]?.querySelector('.ref')?.textContent ?? '' };
     });
+    await p.evaluate((i) => {
+      const sel = document.querySelectorAll('.prep .qlist')[1].children[i].querySelector('select');
+      sel.value = 'ready';
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    }, vorStand.i);
     await p.waitForTimeout(500);
-    const nachStand = await p.evaluate(() =>
-      document.querySelectorAll('.prep .qlist')[1]?.children.length ?? 0);
-    pruefe('the status changes right in the list', nachStand === vorStand - 1,
+    const nachStand = await p.evaluate(() => ({
+      n: document.querySelectorAll('.prep .qlist')[1]?.children.length ?? 0,
+      namen: [...(document.querySelectorAll('.prep .qlist')[1]?.querySelectorAll('.ref') ?? [])].map((x) => x.textContent),
+    }));
+    pruefe('the status changes right in the list',
+      !nachStand.namen.includes(vorStand.erster) && nachStand.n <= vorStand.n,
       { vorStand, nachStand });
+    /* Die Auswahl kennt die Stände, die es gibt — aus der Zeile `State`.
+       Hier standen `planned`, `used` und `discarded`, die die Prüfung
+       abweist. */
+    const staende = await p.evaluate(() =>
+      [...document.querySelectorAll('.prep .qlist')[1].querySelector('select').options]
+        .map((o) => o.value));
+    pruefe('the status choice offers the states that exist',
+      staende.join() === 'idea,prepared,ready', staende);
     pruefe('the prep board raised no exception', errs.length === 0, errs);
   } else {
     pruefe('an article with notes and relations exists in the data', false, 'keiner gefunden');
@@ -2668,12 +4811,7 @@ async function seite(datei, warten) {
      von der nächsten Selbstspeicherung überschrieben, und der unlesbare
      Stand war danach weg. Die Prüfung dafür muss den Fehler wirklich
      auslösen — „es sieht richtig aus" hat damals auch gereicht. */
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((b) => /Data model/.test(b.textContent)).click());
-  await p.waitForTimeout(300);
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.tabs button')].find((b) => /^Backup$/.test(b.textContent)).click());
-  await p.waitForTimeout(400);
+  await zumRegister(p, 'Backup');
   await p.evaluate(() => { window.__SAVED__.length = 0; });
   await p.evaluate(() =>
     [...document.querySelectorAll('#view .btn')].find((b) => /Download a backup/.test(b.textContent)).click());
@@ -2694,7 +4832,50 @@ async function seite(datei, warten) {
   pruefe('a backup carries the registry and every article',
     sicherung && sicherung.format === 'nebelwacht/1'
     && sicherung.artikel === sicherung.hier
-    && sicherung.teile.length === 6 && /\.json$/.test(sicherung.name), sicherung);
+    /* Genannt und nicht gezählt: eine Zahl wird beim nächsten Teil rot,
+       ohne zu sagen, welcher fehlt. Die Einheiten und die Aufzählungen
+       kamen dazu — eine Sicherung ohne sie liess sich zurücklesen und
+       hatte danach keine Masse mehr. */
+    && ['interfaces', 'relations', 'views', 'units', 'enums', 'vars', 'settings']
+      .every((t) => sicherung.teile.includes(t))
+    && /\.json$/.test(sicherung.name), sicherung);
+
+  /* **Eine Datei mit Register und ohne Artikel** bringt die Zeilen und
+     lässt den Bestand in Ruhe. Das Register wandert häufiger als die
+     Artikel; dafür den ganzen Bestand aus- und wieder einzulesen ist ein
+     Umweg, auf dem man einen Artikel verlieren kann. */
+  const nurZeilen = await p.evaluate(() => {
+    const T = window.__T__;
+    const vorher = T.ENT.size;
+    const datei = {
+      format: 'nebelwacht/1',
+      registry: { enums: { ...T.REG.enums, Probe: { name: 'Probe', label: 'Probe', values: ['eins'] } } },
+    };
+    const bericht = T.importReport(datei);
+    return { bericht, vorher, artikel: bericht.neu + bericht.geaendert + bericht.gleich };
+  });
+  pruefe('a file with rows and no articles is a registry delivery',
+    nurZeilen.bericht.ok && nurZeilen.bericht.nurRegister === true
+    && nurZeilen.artikel === 0 && nurZeilen.bericht.weg === 0, nurZeilen.bericht);
+  const angewandt = await p.evaluate(async () => {
+    const T = window.__T__;
+    const vorher = T.ENT.size;
+    const datei = {
+      format: 'nebelwacht/1',
+      registry: { enums: { ...T.REG.enums, Probe: { name: 'Probe', label: 'Probe', values: ['eins'] } } },
+    };
+    T.applyImport(datei, true, function () {});
+    await new Promise((r) => setTimeout(r, 300));
+    const jetzt = { artikel: T.ENT.size, probe: !!(T.REG.enums || {}).Probe,
+      abilityDa: !!(T.REG.enums || {}).Ability };
+    delete T.REG.enums.Probe;
+    return { vorher, ...jetzt };
+  });
+  /* Auch mit „und lösche, was nicht in der Datei steht": eine Datei ohne
+     Artikel sagt nichts über Artikel. */
+  pruefe('and it leaves every article alone, even with “remove the rest” ticked',
+    angewandt.artikel === angewandt.vorher && angewandt.probe && angewandt.abilityDa,
+    angewandt);
 
   /* Der Trockenlauf sagt, was passieren würde — eine Wiederherstellung ohne
      Vorschau ist ein zweiter Datenverlust mit Anlauf. */
@@ -2724,6 +4905,7 @@ async function seite(datei, warten) {
   /* Fail-closed: nach einem kaputten Ladevorgang wird nicht geschrieben. */
   const vorSchreib = await p.evaluate(() => window.__WROTE__.length);
   await p.evaluate(() => window.__T__.breakLoad('the registry part “views” failed (test).'));
+  await zurSeite(p, 'Compendium');
   await p.evaluate(() =>
     [...document.querySelectorAll('.rail button')].find((x) => /All articles/.test(x.textContent)).click());
   await p.waitForTimeout(250);
@@ -2743,12 +4925,7 @@ async function seite(datei, warten) {
   pruefe('after a failed load nothing is written any more',
     zu.geschrieben === 0 && /Nothing is being saved/.test(zu.banner), zu);
   /* Und die Sicherung geht trotzdem — gerade dann. */
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.rail button')].find((b) => /Data model/.test(b.textContent)).click());
-  await p.waitForTimeout(300);
-  await p.evaluate(() =>
-    [...document.querySelectorAll('.tabs button')].find((b) => /^Backup$/.test(b.textContent)).click());
-  await p.waitForTimeout(350);
+  await zumRegister(p, 'Backup');
   await p.evaluate(() => { window.__SAVED__.length = 0; });
   await p.evaluate(() =>
     [...document.querySelectorAll('#view .btn')].find((b) => /Download a backup/.test(b.textContent)).click());
@@ -2775,7 +4952,7 @@ async function seite(datei, warten) {
     const kennt = info && (info.relations || []).find((r) => r.type === 'knownBy');
     const pcs = alle.filter((x) => (x.interfaces || [])[0] === 'PlayerCharacter');
     const fremd = pcs.find((x) => !kennt || x.id !== kennt.to);
-    return { id: e.id, echt: e.name || e.components.Name.text,
+    return { id: e.id, echt: e.name || (e.components.Imported || {}).text,
       cover: e.components.Identity.cover,
       kennerId: kennt ? kennt.to : null, fremdId: fremd ? fremd.id : null };
   });
@@ -2789,11 +4966,6 @@ async function seite(datei, warten) {
       await p.waitForTimeout(400);
       await p.evaluate((i) => window.__T__.go({ k: 'art', id: i }), deck.id);
       await p.waitForTimeout(300);
-      await p.evaluate(() => {
-        const f = document.getElementById('facet');
-        f.value = 'full';
-        f.dispatchEvent(new Event('change', { bubbles: true }));
-      });
       await p.waitForTimeout(400);
       return p.evaluate(() => ({
         titel: document.querySelector('.arthead h2')?.textContent ?? null,
@@ -2815,6 +4987,7 @@ async function seite(datei, warten) {
       /withheld/.test(fremd2.letzte), fremd2.letzte);
 
     /* In der Liste gilt derselbe Name — sonst verriete ihn das Kompendium. */
+    await zurSeite(p, 'Compendium');
     await p.evaluate(() =>
       [...document.querySelectorAll('.rail button')].find((b) => /All articles/.test(b.textContent)).click());
     await p.waitForTimeout(350);
@@ -2845,6 +5018,10 @@ async function seite(datei, warten) {
   const hatRegeln = await p.evaluate(() =>
     [...window.__T__.ENT.values()].filter((e) => (e.interfaces || [])[0] === 'Rule').length);
   if (hatRegeln >= 2) {
+    /* Nach Regeln sucht man dort, wo die Regeln stehen: auf der
+       Regelwerk-Seite. Der Einstieg lag im Register, und das Register ist
+       nichts für Spieler — nachschlagen aber schon. */
+    await zurSeite(p, 'Rules');
     await p.evaluate(() =>
       [...document.querySelectorAll('.rail button')].find((b) => /^Rules/.test(b.textContent)).click());
     await p.waitForTimeout(400);
@@ -2855,10 +5032,19 @@ async function seite(datei, warten) {
       mitText: [...document.querySelectorAll('#view .rule')]
         .filter((r) => (r.querySelector('.rt')?.textContent || '').trim().length > 10).length,
       gesamt: document.querySelectorAll('#view .rule').length,
+      /* Eine Regel mit `status: idea` darf leer sein — sie sagt, dass hier
+         etwas nachzutragen ist, und steht auf der Vorbereitungsseite unter
+         „Unfinished". Die Waffeneigenschaften sind so entstanden: aus dem
+         Text `„finesse, leicht"` wurden Kanten, und die Regeln dahinter
+         haben noch keinen Wortlaut. Sie zu erfinden hiesse, Regeltexte zu
+         schreiben, die niemand geprüft hat. */
+      unfertig: [...window.__T__.ENT.values()].filter((e) =>
+        (e.interfaces || [])[0] === 'Rule'
+        && ((e.components || {}).Status || {}).status === 'idea').length,
       nutzer: [...document.querySelectorAll('#view .rusers .ref')].map((x) => x.textContent),
     }));
-    pruefe('the rules browser shows every rule with its text',
-      br.gesamt >= 2 && br.mitText === br.gesamt, br);
+    pruefe('the rules browser shows every finished rule with its text',
+      br.gesamt >= 2 && br.mitText === br.gesamt - br.unfertig, br);
     pruefe('it groups by kind', br.arten.length >= 2, br.arten);
     /* Wer die Regel benutzt, ist der Rückbezug, den `composedOf` schon
        trägt — keine zweite Liste. */
@@ -2912,15 +5098,15 @@ async function seite(datei, warten) {
     const mitProsa = await p.evaluate(() => {
       const T = window.__T__;
       const regeln = [...T.ENT.values()].filter((e) => (e.interfaces || [])[0] === 'Rule');
-      const namen = regeln.map((e) => e.name || e.components.Name.text)
+      const namen = regeln.map((e) => e.name || (e.components.Imported || {}).text)
         .filter((n) => n && n.length >= 4);
-      /* Prosa ist die Beschreibung und die Textblöcke — nicht der ganze
+      /* Prosa ist die Beschreibung und die Textstellen — nicht der ganze
          Artikel. Der Name selbst zählt nicht: ein Artikel, der „Verzicht:
          Verstrickt" heisst, nennt keine Regel im Text, und ein Treffer
          darauf prüfte die Suche statt das Erkennen. */
       const prosa = (x) => {
-        let t = ((x.components || {}).Description || {}).raw || '';
-        (x.blocks || []).forEach((b) => { t += ' ' + (b.body || ''); });
+        let t = ((x.components || {}).Description || {}).description || '';
+        T.allProse(x).forEach((y) => { t += ' ' + (y.value || ''); });
         return t;
       };
       const textVon = (x) => {
@@ -2940,11 +5126,6 @@ async function seite(datei, warten) {
     });
     if (mitProsa) {
       await oeffneId(mitProsa);
-      await p.evaluate(() => {
-        const f = document.getElementById('facet');
-        f.value = 'full';
-        f.dispatchEvent(new Event('change', { bubbles: true }));
-      });
       await p.waitForTimeout(450);
       const inline2 = await p.evaluate(() =>
         [...document.querySelectorAll('.rulew')].map((x) => x.textContent));
@@ -2983,11 +5164,6 @@ async function seite(datei, warten) {
   });
   if (reise) {
     await oeffneId(reise);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(550);
     const lies2 = () => p.evaluate(() => ({
       kopf: [...document.querySelectorAll('.crawl .maptools .pill')].map((x) => x.textContent),
@@ -3036,6 +5212,57 @@ async function seite(datei, warten) {
       nachR !== null && vorR !== null && nachR === vorR - 1
       && nach2.kopf.join() !== vor2.kopf.join(), { vorR, nachR });
     pruefe('the crawl raised no exception', errs.length === 0, errs);
+
+    /* Wo die Gruppe ist, sagt ihr Token (A6): nach dem Weiterziehen steht
+       es auf der Karte des Knotens oder auf seiner Marke, und der Ort, den
+       `partyPlace` liest, ist der Knoten — kein Feld an der Gruppe. */
+    const stand = await p.evaluate(() => {
+      const T = window.__T__;
+      const g = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Party');
+      const t = T.partyToken(g);
+      const ort = T.partyPlace(g);
+      return { token: !!t, karte: t ? t.map.name : null, ort: ort ? ort.name : null,
+        feld: 'at' in ((g.components || {}).Party || {}) };
+    });
+    pruefe('after travelling the party token stands where the party is',
+      stand.token && stand.ort === nach2.hier && !stand.feld, { stand, hier: nach2.hier });
+
+    /* Auf der gröberen Karte wird das Token nur abgebildet: durch den
+       Rahmen der Unterkarte, gestrichelt, ohne zweites Token in den Daten. */
+    const abbild = await p.evaluate(() => {
+      const T = window.__T__;
+      const g = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Party');
+      const fein = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Map'
+        && (e.relations || []).some((r) => r.type === 'insideMap')
+        && (e.relations || []).some((r) => r.type === 'mapOf'));
+      if (!fein) return null;
+      const grob = fein.relations.find((r) => r.type === 'insideMap').to;
+      const ort = T.ENT.get(fein.relations.find((r) => r.type === 'mapOf').to);
+      const vorher = T.partyPlace(g);
+      T.placePartyAt(g, ort);
+      return { grob, fein: fein.id, vorher: vorher ? vorher.id : null,
+        tokens: [...T.ENT.values()].filter((e) => (e.interfaces || [])[0] === 'Map')
+          .reduce((n, e) => n + (e.relations || []).filter((r) => r.type === 'marker' && r.props?.kind === 'party' && r.to === g.id).length, 0) };
+    });
+    if (abbild) {
+      pruefe('moving the party keeps exactly one party token', abbild.tokens === 1, abbild);
+      await oeffneId(abbild.grob);
+      await p.waitForTimeout(500);
+      const geist = await p.evaluate(() => ({
+        ghost: document.querySelectorAll('.mtoken.ghost').length,
+        echt: [...document.querySelectorAll('.mtoken.k-party:not(.ghost)')].length,
+      }));
+      pruefe('the coarser map shows the party through the sub-map frame, dashed',
+        geist.ghost === 1, geist);
+      await p.evaluate((x) => {
+        const T = window.__T__;
+        const g = [...T.ENT.values()].find((e) => (e.interfaces || [])[0] === 'Party');
+        if (x.vorher) T.placePartyAt(g, T.ENT.get(x.vorher));
+      }, abbild);
+      await p.waitForTimeout(300);
+    } else {
+      pruefe('a nested map exists to show the party through', false, 'keine');
+    }
   } else {
     pruefe('a point-crawl exists in the data', false, 'keine gefunden');
   }
@@ -3061,11 +5288,6 @@ async function seite(datei, warten) {
   });
   if (stapel.camp && stapel.neu) {
     await oeffneId(stapel.camp);
-    await p.evaluate(() => {
-      const f = document.getElementById('facet');
-      f.value = 'full';
-      f.dispatchEvent(new Event('change', { bubbles: true }));
-    });
     await p.waitForTimeout(550);
     const st3 = await p.evaluate(() => ({
       ebenen: [...document.querySelectorAll('.layer .ck .ref')].map((x) => x.textContent),
@@ -3115,11 +5337,6 @@ async function seite(datei, warten) {
           return !!e && window.__T__.articleVisible(e);
         }, wegName);
         await oeffneId(stapel.camp);
-        await p.evaluate(() => {
-          const f = document.getElementById('facet');
-          f.value = 'full';
-          f.dispatchEvent(new Event('change', { bubbles: true }));
-        });
         await p.waitForTimeout(500);
         await p.evaluate((lid) => {
           const sel = [...document.querySelectorAll('.stackbox select')][0];
@@ -3159,11 +5376,6 @@ async function seite(datei, warten) {
 
   /* Die Ansicht wieder auf Schnell — eine Prüfung, die etwas aufmacht,
      räumt es auch weg. */
-  await p.evaluate(() => {
-    const f = document.getElementById('facet');
-    f.value = 'quick';
-    f.dispatchEvent(new Event('change', { bubbles: true }));
-  });
   await p.waitForTimeout(200);
   await p.close();
 }
@@ -3176,7 +5388,11 @@ async function seite(datei, warten) {
     laedt: document.getElementById('view').innerText.trim() === 'Loading…',
   }));
   pruefe('watchdog banner appears', /No data received/.test(s.banner ?? ''), s);
-  pruefe('counts registry parts correctly', /0 of 6 registry parts/.test(s.banner ?? ''), s);
+  /* Die Zahl kommt aus der Liste der Teile und nicht aus dem Text: seit
+     „Units" dazugehört, sind es sechs, und eine Prüfung, die eine Zahl
+     abtippt, wird beim nächsten Teil rot, ohne etwas zu sagen. */
+  pruefe('counts registry parts correctly',
+    new RegExp('0 of \\d+ registry parts').test(s.banner ?? ''), s);
   pruefe('does not sit on Loading…', !s.laedt, s);
   pruefe('no exception without data', errs.length === 0, errs);
   await p.close();

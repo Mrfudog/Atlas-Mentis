@@ -45,13 +45,13 @@ describe('Session', () => {
 
   it('holds what the server says about the viewer', async () => {
     stubFetch({
-      '/api/me': { status: 200, body: { user: { id: 'u', name: 'Basil', isGm: true }, writable: null, setup: null } },
+      '/api/me': { status: 200, body: { user: { id: 'u', name: 'Basil', isAdmin: true }, writable: null, setup: null } },
     });
     const s = TestBed.inject(Session);
     await s.load();
     expect(s.stand()).toBe('bereit');
     expect(s.angemeldet()).toBe(true);
-    expect(s.isGm()).toBe(true);
+    expect(s.isAdmin()).toBe(true);
     expect(s.user()?.name).toBe('Basil');
   });
 
@@ -101,10 +101,10 @@ describe('Session', () => {
      es zu raten. */
   it('signs in and then asks what this viewer may write', async () => {
     const gesehen = stubFetch({
-      '/api/login': { status: 200, body: { user: { id: 'u', name: 'Sela', isGm: false } } },
+      '/api/login': { status: 200, body: { user: { id: 'u', name: 'Sela', isAdmin: false } } },
       '/api/me': {
         status: 200,
-        body: { user: { id: 'u', name: 'Sela', isGm: false }, writable: ['pc_rook'], setup: null },
+        body: { user: { id: 'u', name: 'Sela', isAdmin: false }, writable: ['pc_rook'], setup: null },
       },
     });
     const s = TestBed.inject(Session);
@@ -122,7 +122,7 @@ describe('Session', () => {
     stubFetch({
       '/api/me': {
         status: 200,
-        body: { user: { id: 'u', name: 'Basil', isGm: true }, writable: null, setup: null },
+        body: { user: { id: 'u', name: 'Basil', isAdmin: true }, writable: null, setup: null },
       },
     });
     const s = TestBed.inject(Session);
@@ -150,7 +150,7 @@ describe('Session', () => {
      Sitzung dort weiterlebt. Also lokal leeren **und** es hinschreiben. */
   it('signs out locally and says so when the server did not confirm', async () => {
     stubFetch({
-      '/api/me': { status: 200, body: { user: { id: 'u', name: 'Basil', isGm: true }, writable: null, setup: null } },
+      '/api/me': { status: 200, body: { user: { id: 'u', name: 'Basil', isAdmin: true }, writable: null, setup: null } },
       '/api/logout': { status: 500, body: { error: 'kaputt' } },
     });
     const s = TestBed.inject(Session);
@@ -162,7 +162,7 @@ describe('Session', () => {
 
   it('says nothing when the sign-out went through', async () => {
     stubFetch({
-      '/api/me': { status: 200, body: { user: { id: 'u', name: 'Basil', isGm: true }, writable: null, setup: null } },
+      '/api/me': { status: 200, body: { user: { id: 'u', name: 'Basil', isAdmin: true }, writable: null, setup: null } },
       '/api/logout': { status: 200, body: { ok: true } },
     });
     const s = TestBed.inject(Session);

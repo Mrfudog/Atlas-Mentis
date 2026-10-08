@@ -2,17 +2,19 @@ import { Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
-  allowedComponents,
+  typeChain,
   backlinks,
-  blockTypesFor,
   entityName,
+  entriesOf,
+  entryRef,
+  enumOptions,
+  fieldTitle,
+  proseFields,
   relationAccepts,
   relationsFrom,
   primaryInterface,
   relationDef,
-  requiredComponents,
   resolveView,
-  showBlock,
   showField,
   viewKeys,
 } from '@nw/model';
@@ -26,6 +28,8 @@ interface Zelle {
   ref: string;
   label: string;
   wert: string;
+  /** An einer Instanz: der Wert kommt von der Vorlage. */
+  geerbt?: boolean;
 }
 
 interface Feld {
@@ -36,6 +40,10 @@ interface Feld {
   label: string;
   art: Eingabe;
   schema: PropertySchema | undefined;
+  /* Die Werte einer Auswahl, schon aufgelöst: das Feld trägt sie selbst
+     oder nennt eine Aufzählungszeile, und die Vorlage soll das nicht noch
+     einmal entscheiden müssen. */
+  werte: string[];
   wert: string;
   jaNein: boolean;
   pflicht: boolean;
@@ -110,7 +118,7 @@ interface Feld {
                   @case ('auswahl') {
                     <select [(ngModel)]="f.wert" [name]="f.ref">
                       <option value=""></option>
-                      @for (o of f.schema?.enum ?? []; track o) {
+                      @for (o of f.werte; track o) {
                         <option [value]="o">{{ o }}</option>
                       }
                     </select>
@@ -132,23 +140,23 @@ interface Feld {
             }
           </div>
 
-          <h3>Text blocks</h3>
-          @for (b of entwurfBloecke(); track b.id) {
+          <h3>Passages</h3>
+          @for (b of entwurfProsa(); track b.id) {
             <div class="blockmaske">
               <div class="bkopf">
-                <span class="bl">{{ b.blockType }}</span>
-                <button type="button" class="weg" (click)="blockWeg(b.id)" title="Remove">×</button>
+                <span class="bl">{{ b.label }}</span>
+                <button type="button" class="weg" (click)="prosaWeg(b.id)" title="Remove">×</button>
               </div>
-              <textarea rows="3" [(ngModel)]="b.body" [name]="b.id"></textarea>
+              <textarea rows="3" [(ngModel)]="b.wert" [name]="b.id"></textarea>
             </div>
           }
           <div class="werkzeuge">
             <select #neueArt>
-              @for (t of blockArten(); track t) {
-                <option [value]="t">{{ t }}</option>
+              @for (t of prosaArten(); track t.ref) {
+                <option [value]="t.ref">{{ t.label }}</option>
               }
             </select>
-            <button type="button" (click)="blockDazu(neueArt.value)">+ Block</button>
+            <button type="button" (click)="prosaDazu(neueArt.value)">+ Passage</button>
           </div>
 
           <h3>Relations</h3>
@@ -185,7 +193,7 @@ interface Feld {
                             [name]="k.id + '-' + f.prop"
                           >
                             <option value=""></option>
-                            @for (o of f.schema?.enum ?? []; track o) {
+                            @for (o of f.werte; track o) {
                               <option [value]="o">{{ o }}</option>
                             }
                           </select>
@@ -223,17 +231,17 @@ interface Feld {
           <dl class="felder">
             @for (z of zellen(); track z.ref) {
               <dt>{{ z.label }}</dt>
-              <dd>{{ z.wert }}</dd>
+              <dd [class.geerbt]="z.geerbt" [attr.title]="z.geerbt ? 'From the template' : null">{{ z.wert }}</dd>
             }
           </dl>
         }
 
-        @for (b of bloecke(); track b.id) {
-          <section class="block" [class]="b.blockType">
-            @if (b.blockType !== 'paragraph') {
-              <div class="bl">{{ b.blockType }}</div>
+        @for (b of prosa(); track b.ref) {
+          <section class="block" [class]="b.key">
+            @if (b.key !== 'paragraph') {
+              <div class="bl">{{ b.label }}</div>
             }
-            <p>{{ b.body }}</p>
+            <p>{{ b.wert }}</p>
           </section>
         }
 
@@ -319,14 +327,14 @@ export class Artikel {
     const e = this.artikel();
     const v = this.view();
     if (!e || !v?.description) return null;
-    const d = e.components?.['Description'] as { raw?: string } | undefined;
-    return d?.raw ?? null;
+    const d = e.components?.['Description'] as { description?: string } | undefined;
+    return d?.description ?? null;
   });
 
   /**
-   * Die Feldzellen. `Description` bleibt draussen, weil sie schon als Absatz
-   * oben steht — sie zweimal zu zeigen wäre kein Fehler, aber es liest sich
-   * wie einer.
+   * Die Feldzellen. `Description.description` bleibt draussen, weil sie schon
+   * als Absatz oben steht — sie zweimal zu zeigen wäre kein Fehler, aber es
+   * liest sich wie einer.
    */
   protected readonly zellen = computed<Zelle[]>(() => {
     const e = this.artikel();
@@ -335,9 +343,9 @@ export class Artikel {
     if (!e || !r || !v) return [];
     const out: Zelle[] = [];
     for (const [comp, karte] of Object.entries(e.components ?? {})) {
-      if (comp === 'Description' && v.description) continue;
-      const def = r.components[comp];
+      const def = r.interfaces[comp];
       for (const [prop, wert] of Object.entries((karte ?? {}) as Record<string, unknown>)) {
+        if (comp === 'Description' && prop === 'description' && v.description) continue;
         if (!showField(v, comp, prop)) continue;
         if (wert === null || wert === undefined || wert === '') continue;
         const titel = def?.schema?.properties?.[prop]?.title ?? prop;
@@ -345,19 +353,35 @@ export class Artikel {
           ref: `${comp}.${prop}`,
           label: titel,
           wert: Array.isArray(wert) ? wert.join(', ') : String(wert),
+          geerbt: e.fromTemplate?.fields.includes(`${comp}.${prop}`) ?? false,
         });
       }
     }
     return out;
   });
 
-  protected readonly bloecke = computed(() => {
+  /**
+   * Die Prosa dieses Artikels. Sie steht in Feldern mit `many` und langer
+   * Eingabe — es gibt keine zweite Sorte Inhalt mehr neben den Karten —,
+   * und jeder Eintrag trägt die Id, an der die Wissensfreigabe hängt.
+   */
+  protected readonly prosa = computed(() => {
     const e = this.artikel();
-    const v = this.view();
-    if (!e || !v) return [];
-    return [...(e.blocks ?? [])]
-      .filter((b) => showBlock(v, b.blockType))
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const r = this.reg();
+    if (!e || !r) return [];
+    const out: { ref: string; key: string; label: string; wert: string }[] = [];
+    for (const f of proseFields(r, primaryInterface(e))) {
+      const karte = (e.components?.[f.type] ?? {}) as Record<string, unknown>;
+      for (const eintrag of entriesOf(karte[f.key])) {
+        out.push({
+          ref: entryRef(f.type, f.key, eintrag.id),
+          key: f.key,
+          label: fieldTitle(r, primaryInterface(e), f),
+          wert: eintrag.value,
+        });
+      }
+    }
+    return out;
   });
 
   protected readonly kanten = computed(() => {
@@ -385,7 +409,9 @@ export class Artikel {
   protected readonly problem = signal<string | null>(null);
   protected readonly maengel = signal<string[]>([]);
   protected readonly felder = signal<Feld[]>([]);
-  protected readonly entwurfBloecke = signal<{ id: string; blockType: string; body: string }[]>([]);
+  protected readonly entwurfProsa = signal<
+    { id: string; type: string; key: string; label: string; wert: string }[]
+  >([]);
 
   private readonly api = inject(Api);
 
@@ -404,11 +430,13 @@ export class Artikel {
     const e = this.artikel();
     const r = this.reg();
     if (!e || !r) return;
-    const erlaubt = allowedComponents(r, primaryInterface(e));
-    const pflicht = new Set(requiredComponents(r, primaryInterface(e)));
+    const erlaubt = typeChain(r, primaryInterface(e));
+    const pflicht = new Set(
+      erlaubt.flatMap((t) => (r.interfaces[t]?.schema?.required ?? []).map((k) => `${t}.${k}`)),
+    );
     const out: Feld[] = [];
     for (const comp of erlaubt) {
-      const def = r.components[comp];
+      const def = r.interfaces[comp];
       if (!def) continue;
       const karte = (e.components?.[comp] ?? {}) as Record<string, unknown>;
       for (const [prop, schema] of Object.entries(def.schema?.properties ?? {})) {
@@ -416,25 +444,34 @@ export class Artikel {
            anzubieten hiesse, jemanden etwas eintippen zu lassen, das beim
            nächsten Lesen überschrieben wird. */
         if (schema.derived) continue;
+        /* Ein Prosafeld gehört der Prosamaske und nicht der Feldliste.
+           Zweimal dasselbe anzubieten hiesse, dass der zweite Eingang den
+           ersten überschreibt, und keiner der beiden sagte das. */
+        if (schema.many && schema.format === 'long') continue;
         const art = eingabeArt(schema);
         out.push({
           ref: `${comp}.${prop}`,
           comp,
           prop,
-          label: `${def.label ?? comp} · ${schema.title ?? prop}`,
+          /* Wie das Feld **an dieser Art** heisst: derselbe `Time.until`
+             ist an einem Auftrag die Frist und an einem Ereignis das Ende. */
+          label: `${def.label ?? comp} · ${fieldTitle(r, primaryInterface(e), { type: comp, key: prop, prop: schema })}`,
           art,
           schema,
+          werte: enumOptions(r, schema) ?? [],
           wert: art === 'jaNein' ? '' : inEingabe(karte[prop]),
           jaNein: karte[prop] === true,
-          pflicht: pflicht.has(comp) && (def.schema?.required ?? []).includes(prop),
+          pflicht: pflicht.has(`${comp}.${prop}`),
         });
       }
     }
     this.felder.set(out);
-    this.entwurfBloecke.set(
-      [...(e.blocks ?? [])]
-        .sort((a2, b2) => (a2.order ?? 0) - (b2.order ?? 0))
-        .map((b) => ({ id: b.anchor || b.id, blockType: b.blockType, body: b.body ?? '' })),
+    this.entwurfProsa.set(
+      this.prosa().map((b) => {
+        const [typ, rest] = b.ref.split('.');
+        const key = (rest ?? '').split('#')[0] ?? '';
+        return { id: b.ref, type: typ ?? '', key, label: b.label, wert: b.wert };
+      }),
     );
     this.entwurfKanten.set(
       (e.relations ?? []).map((rel) => ({
@@ -455,21 +492,28 @@ export class Artikel {
     this.maengel.set([]);
   }
 
-  protected blockArten(): string[] {
+  protected prosaArten(): { ref: string; label: string }[] {
     const e = this.artikel();
     const r = this.reg();
-    return e && r ? blockTypesFor(r, primaryInterface(e)) : [];
+    if (!e || !r) return [];
+    return proseFields(r, primaryInterface(e)).map((f) => ({
+      ref: `${f.type}.${f.key}`,
+      label: fieldTitle(r, primaryInterface(e), f),
+    }));
   }
 
-  protected blockDazu(art: string): void {
-    if (!art) return;
-    this.entwurfBloecke.update((bs) => [
+  protected prosaDazu(ref: string): void {
+    if (!ref) return;
+    const [typ, key] = ref.split('.');
+    if (!typ || !key) return;
+    const label = this.prosaArten().find((a) => a.ref === ref)?.label ?? key;
+    this.entwurfProsa.update((bs) => [
       ...bs,
-      { id: `neu-${bs.length}-${Date.now()}`, blockType: art, body: '' },
+      { id: `${ref}#neu-${bs.length}-${Date.now()}`, type: typ, key, label, wert: '' },
     ]);
   }
-  protected blockWeg(id: string): void {
-    this.entwurfBloecke.update((bs) => bs.filter((b) => b.id !== id));
+  protected prosaWeg(id: string): void {
+    this.entwurfProsa.update((bs) => bs.filter((b) => b.id !== id));
   }
 
   // ------------------------------------------------------------- Kanten
@@ -518,7 +562,13 @@ export class Artikel {
 
   protected kantenFelder(
     type: string,
-  ): { prop: string; label: string; art: Eingabe; schema: PropertySchema | undefined }[] {
+  ): {
+    prop: string;
+    label: string;
+    art: Eingabe;
+    schema: PropertySchema | undefined;
+    werte: string[];
+  }[] {
     const r = this.reg();
     if (!r) return [];
     const props = relationDef(r, type).props?.properties ?? {};
@@ -527,6 +577,7 @@ export class Artikel {
       label: schema.title ?? prop,
       art: eingabeArt(schema),
       schema,
+      werte: enumOptions(r, schema) ?? [],
     }));
   }
 
@@ -575,13 +626,19 @@ export class Artikel {
       if (wert === undefined) continue;
       (components[f.comp] ??= {})[f.prop] = wert;
     }
-    const blocks = this.entwurfBloecke()
-      .filter((b) => b.body.trim() !== '')
-      .map((b, i) => ({ id: b.id, anchor: b.id, blockType: b.blockType, body: b.body, order: i }));
+    /* Die Prosa wandert in die Karten, aus denen sie kommt. Die Id bleibt
+       die, die sie hatte — eine Wissensfreigabe hängt daran, und sie beim
+       Speichern neu zu würfeln nähme sie mit ins Leere. */
+    for (const b of this.entwurfProsa()) {
+      if (b.wert.trim() === '') continue;
+      const id = b.id.split('#')[1] ?? b.id;
+      ((components[b.type] ??= {})[b.key] ??= [] as { id: string; value: string }[]);
+      (components[b.type][b.key] as { id: string; value: string }[]).push({ id, value: b.wert });
+    }
 
     const relations = kantenAusEntwurf(this.entwurfKanten());
 
-    const neu = { ...alt, components, blocks, relations } as Entity;
+    const neu = { ...alt, components, relations } as Entity;
 
     try {
       const gespeichert = await this.api.putEntity(neu);

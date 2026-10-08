@@ -45,7 +45,12 @@ window.claude = { use: async function(n){
     isOwner: async function(){ return true; }, id: async function(){ return 'u_test'; } };
   if(n==='downloads') return { save: async function(r){ window.__SAVED__.push(r); return {status:'saved'}; } };
   if(n==='room') return {
-    emit: async function(t,d){ window.__EMITS__.push({t:t,d:d}); },
+    /* Der echte Raum spielt Gesendetes auch dem Absender wieder ein
+       („plus your own publishing session when admitted"). Ein Stub, der das
+       verschweigt, lässt genau den Fehler durch, den es hier gab: derselbe
+       Wurf stand dreimal im Protokoll. */
+    emit: async function(t,d){ window.__EMITS__.push({t:t,d:d});
+      setTimeout(function(){ window.__ROOM__.fire(t,d); },0); },
     on: function(t,h){ (window.__ROOM__.handlers[t]=window.__ROOM__.handlers[t]||[]).push(h);
       return function(){}; },
     presence: async function(p){ window.__PRESENCE__.push(p); },
@@ -62,9 +67,13 @@ window.claude = { use: async function(n){
       set: async function(){ window.__WROTE__.push(path); },
       delete: async function(){ window.__DELETED__.push(path);
         window.__ENT__ = window.__ENT__.filter(function(d){ return 'entities/'+d.id !== path; }); } }; },
-    collection: function(){ return { limit:function(){return this;},
+    /* Die Sammlung beim Namen: \`members\` sind Konten und keine Artikel.
+       Ohne die Unterscheidung kämen fünfundsiebzig Artikel als Konten
+       zurück, und jede Rollenprüfung liefe gegen Unsinn. */
+    collection: function(name){ return { limit:function(){return this;},
       onSnapshot:function(next){
-        setTimeout(function(){ next(tiefKalt({docs: window.__ENT__.map(function(d){
+        var quelle = name==='members' ? (window.__MEMBERS__||[]) : window.__ENT__;
+        setTimeout(function(){ next(tiefKalt({docs: quelle.map(function(d){
           return {id:d.id, exists:true, data:function(){return d;}}; })})); },0);
         return function(){}; } }; } }; } };
 `;
@@ -87,20 +96,57 @@ window.claude = { use: async function(n){
    leere vom Seitenanfang — und eine Prüfung, die daraus liest, findet
    nichts und sagt nicht warum. Deshalb Zugriffsfunktionen statt Werte. */
 const GRIFF = `
-window.__T__={runImport:runImport,derivedValue:derivedValue,assetSrc:assetSrc,UI:UI,
+window.__T__={derivedValue:derivedValue,assetSrc:assetSrc,UI:UI,
   LAYOUT_ELEMENTS:LAYOUT_ELEMENTS,rollDice:rollDice,go:go,rollTable:rollTable,
   exportState:exportState,importReport:importReport,findByName:findByName,
   articleVisible:articleVisible,activeStack:activeStack,
+  tableRole:tableRole,audienceAllows:audienceAllows,fieldKind:fieldKind,
+  kampagnenVon:kampagnenVon,campaignOf:campaignOf,gmAccounts:gmAccounts,
+  viewerRoles:viewerRoles,saveMember:saveMember,memberOf:memberOf,
+  actorForUser:actorForUser,me:me,
+  statblockOf:statblockOf,makeLinked:makeLinked,attachLinked:attachLinked,linkFor:linkFor,
+  statusWerte:statusWerte,unfertigStatus:unfertigStatus,
+  setMembers:function(m){ MEMBERS=m; },
   breakLoad:function(t){ loadFailed=t||'the articles failed (test).'; },
   visionPoly:visionPoly,rayHit:rayHit,inShape:inShape,mapLights:mapLights,
   noteNat:noteNat,craftMod:craftMod,recipeDays:recipeDays,craftStatus:craftStatus,
-  anchorFor:anchorFor,campaignVars:campaignVars,fillVars:fillVars,
+  entryAnchor:entryAnchor,ensureAnchors:ensureAnchors,
+  anchorlessProse:anchorlessProse,backfillAnchors:backfillAnchors,
+  proseFields:proseFields,proseOf:proseOf,allProse:allProse,
+  bundlesWith:bundlesWith,informationsIn:informationsIn,knowsInfo:knowsInfo,
+  statsOf:statsOf,
+  makeInstanceFor:makeInstanceFor,templateOf:templateOf,resolvedOf:resolvedOf,
+  isInstance:isInstance,instancesOf:instancesOf,linkCandidates:linkCandidates,drop:drop,
+  fieldsOf:fieldsOf,fieldTitle:fieldTitle,titleSource:titleSource,
+  nextId:nextId,idPrefix:idPrefix,articleId:articleId,
+  natFor:natFor,mapCard:mapCard,
+  entriesOf:entriesOf,entryRef:entryRef,putEntry:putEntry,dropEntry:dropEntry,
+  gmFields:gmFields,summary:summary,
+  campaignVars:campaignVars,fillVars:fillVars,
+  partyToken:partyToken,partyPlace:partyPlace,placePartyAt:placePartyAt,crawlNodeOf:crawlNodeOf,
+  factionRanks:factionRanks,rankIndex:rankIndex,currentWorld:currentWorld,campaignCalendar:campaignCalendar,
   visibleRefs:visibleRefs,areaOf:areaOf,render:render,
-  mapWalls:mapWalls,mapBarriers:mapBarriers,mapSheets:mapSheets,
+  mapWalls:mapWalls,mapBarriers:mapBarriers,mapSheets:mapSheets,mapImage:mapImage,
   drawnSheets:drawnSheets,blocksSight:blocksSight,blocksMove:blocksMove,
-  applyMapTool:applyMapTool,frameAt:frameAt,areaShare:areaShare};
+  applyMapTool:applyMapTool,frameAt:frameAt,areaShare:areaShare,
+  enumWerte:enumWerte,enumGruppen:enumGruppen,enumQuelle:enumQuelle,
+  importReport:importReport,applyImport:applyImport,typeList:typeList,
+  verlinkteTypen:verlinkteTypen,verlinkterArtikel:verlinkterArtikel,
+  fieldInput:fieldInput,feldVorschlaege:feldVorschlaege,
+  compsFor:compsFor,relsFrom:relsFrom,
+  compOrigin:compOrigin,parentsOf:parentsOf,ancestorsOf:ancestorsOf,
+  tagsOf:tagsOf,setTags:setTags,layoutOf:layoutOf,layoutSource:layoutSource,
+  formatMeasure:formatMeasure,convertText:convertText,unitsFor:unitsFor,
+  convertUnit:convertUnit,fmtVal:fmtVal,
+  checkArticle:checkArticle,targetMatches:targetMatches,
+  persist:persist,
+  inventoryOf:inventoryOf,containerGrid:containerGrid,drawCost:drawCost,
+  footprintOf:footprintOf,gridTurn:gridTurn,fitsAt:fitsAt,
+  dgTypen:dgTypen,dgLinien:dgLinien,
+  ifaceInList:ifaceInList};
 Object.defineProperty(window.__T__,'REG',{get:function(){return REG;}});
 Object.defineProperty(window.__T__,'ENT',{get:function(){return ENT;}});
+Object.defineProperty(window.__T__,'MEMBERS',{get:function(){return MEMBERS;}});
 `;
 const mitGriff = page.replace(/\n\}\)\(\);\n<\/script>\s*$/, `${GRIFF}})();\n<\/script>\n`);
 if (mitGriff === page) throw new Error('IIFE-Ende nicht gefunden — Seite umgebaut?');

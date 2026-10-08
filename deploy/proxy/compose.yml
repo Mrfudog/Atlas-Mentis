@@ -1,0 +1,23 @@
+# Der Reverse Proxy: Caddy, als Container, mit dem Netz des Hosts.
+#
+# Host-Netz, damit er 127.0.0.1:8080 (prod) und 127.0.0.1:8081 (dev)
+# erreicht — die beiden Umgebungen veröffentlichen nur auf loopback — und
+# damit die Anwendung ihn als loopback sieht (TRUST_PROXY). Zertifikate holt
+# und erneuert Caddy selbst (Let's Encrypt); sie liegen in ./daten.
+#
+# Liegt auf dem Server unter /srv/atlas/proxy; CI legt Caddyfile und diese
+# Datei bei jedem Ausrollen frisch hin und lädt Caddy neu. Die Namen stehen
+# in .env (PROD_HOST, DEV_HOST), die deploy/bootstrap.sh einmal schreibt.
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      PROD_HOST: ${PROD_HOST:?PROD_HOST fehlt in .env}
+      DEV_HOST: ${DEV_HOST:?DEV_HOST fehlt in .env}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./daten/data:/data
+      - ./daten/config:/config

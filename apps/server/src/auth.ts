@@ -22,6 +22,7 @@
 
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { hash as argonHash, verify as argonVerify } from '@node-rs/argon2';
+import type { TableRole } from '@nw/model';
 
 /** Wie lange eine Sitzung ohne Wiedersehen gilt. Eine Woche: lange genug,
  *  dass niemand mitten in der Sitzung herausfliegt, kurz genug, dass ein
@@ -34,11 +35,17 @@ export const ATTEMPT_WINDOW_MINUTES = 15;
 export interface User {
   id: string;
   name: string;
-  isGm: boolean;
+  isAdmin: boolean;
   /** **Mehrere Figuren je Konto.** Wer zwei spielt, ist trotzdem eine
    *  Person: was die eine erfahren hat, weiss er auch, wenn er auf die
    *  andere schaut, und die Freigabeliste zeigt einen Absender. */
   actorIds: string[];
+  /** **Die Rolle je Kampagne** — Kampagnen-Id → `gm ǀ co-gm ǀ player ǀ
+   *  spectator`. Sie steht am Konto und in keinem Artikel: eine Figur sagt
+   *  nicht, in welcher Runde ihr Konto was ist, und eine Kontoangabe in
+   *  einem Artikel wanderte beim Export mit (REQ-199). `isAdmin` ist etwas
+   *  anderes — die Verwaltung der ganzen Installation. */
+  roles: Record<string, TableRole>;
   disabledAt?: string | undefined;
 }
 
@@ -48,7 +55,7 @@ export interface User {
 export interface Invite {
   codeHash: string;
   label?: string | undefined;
-  isGm: boolean;
+  isAdmin: boolean;
   /** Bindet die neue Person gleich an eine Figur. Das ist der „spezifische
    *  Link": einer, der weiss, wer kommt. */
   actorId?: string | undefined;
@@ -139,6 +146,6 @@ export function sessionExpiry(from: Date = new Date()): Date {
  */
 export function mayWrite(user: User | null, ownedIds: Set<string>, id: string): boolean {
   if (!user || user.disabledAt) return false;
-  if (user.isGm) return true;
+  if (user.isAdmin) return true;
   return ownedIds.has(id);
 }

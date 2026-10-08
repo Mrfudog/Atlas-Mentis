@@ -1,7 +1,7 @@
 # Zugang
 
 Stand 2026-09-20. REQ-031 und REQ-032 aus
-[`Mrfudog/atlas-mentis`](https://github.com/Mrfudog/atlas-mentis).
+[`VTT/`](../VTT/) in diesem Repo (überholt durch [Datenmodell.md](Datenmodell.md)).
 
 Das hier betrifft den **Server** (`apps/server`), nicht den Artefakt-Prototyp.
 Dort kommt die Identität von der Laufzeit; ein Passwort im Browser wäre keines.
@@ -14,7 +14,7 @@ Die Anwendung bindet auf `127.0.0.1`, und der Reverse Proxy ist das, was nach
 aussen zeigt. Das ist richtig so — aber **„nur das Heimnetz" ist keine
 Zugangskontrolle, sondern eine Annahme über das Heimnetz.** Jedes Gerät darin,
 jeder Gast im WLAN, jeder Dienst mit einer Schwachstelle spricht dann mit
-einer Anwendung, die jeden für die Spielleitung hält.
+einer Anwendung, die jeden für die Verwaltung hält.
 
 ---
 
@@ -81,20 +81,79 @@ Server und Oberfläche gleichermassen, und es gibt es nur einmal. Weg gehen
 Die Kanten bleiben. Eine Verbindung zu verbergen hiesse, den Rückbezug am
 anderen Ende mitzuverbergen, und das ist eine andere Frage als diese.
 
+### Und vorher die grobe Frage
+
+`redactEntity` siebt **Felder**. Ob ein Artikel überhaupt an jemanden geht,
+sagt `articleVisible` — und das tat bis zum 30.9. niemand: `audience: 'gm'`
+stand in der Karte, und der Server schickte den Artikel trotzdem. Ein Feld
+auszuwerten und die Antwort dann doch zu schicken ist keine halbe
+Sichtbarkeit, sondern keine.
+
+Jetzt filtert `sieve` zuerst und siebt danach. Ein Artikel, den der
+Betrachter nicht sehen darf, fehlt in der Liste und beantwortet den
+Einzelabruf mit **404** — „verboten" wäre die genauere Auskunft und die
+falsche: sie sagt, dass da etwas ist. (An der Stelle stand `einer ?? entity`:
+der Rückfall schickte genau den Artikel, den das Sieb zurückgehalten hatte.)
+
+Die Regel selbst steht in `packages/model/src/visibility.ts` und ist in
+[Begriffe.md](Begriffe.md#sichtbarkeit) ausgeschrieben: `hiddenFrom` schlägt
+`revealedTo` schlägt `audience`, und `public` ist die Vorgabe.
+
 ---
 
 ## Wer was darf
 
 Die Regel ist kurz, weil eine lange niemand mehr nachliest:
 
-- **Die Spielleitung darf alles.**
+- **Die Verwaltung darf alles.**
 - **Ein Spieler liest alles** (was die Sichtbarkeit ihn lesen lässt) **und
   schreibt genau seine Figur und was an ihr hängt.** „Hängt an" heisst: über
   eine Kante aus `OWNING_RELATIONS` — `carries`, `holds`, `crafting`. Die
   Kante steht in den Daten, also wird sie dort nachgesehen und nicht im
   Server behauptet.
-- **Das Register gehört der Spielleitung.** Eine Registerzeile zu ändern
+- **Das Register gehört der Verwaltung.** Eine Registerzeile zu ändern
   heisst, die Regeln zu ändern, und die Antwort sagt das auch so.
+
+### Verwaltung ist keine Rolle am Tisch
+
+Das Konto-Merkmal hiess `is_gm` und heisst seit dem 30.9. **`is_admin`**. Es
+gilt für die **ganze Installation** und schaltet vier Dinge: alles schreiben,
+das Register ändern, Einladungen anlegen — und unbeschnitten lesen. Das ist
+eine Verwaltungsrolle. „GM" las sich aber wie eine Rolle am Tisch: als stünde
+dort, wer in *dieser* Kampagne leitet.
+
+Der Unterschied ist keiner auf dem Papier. Wer in einer Runde leitet, kann in
+einer anderen mitspielen; ein Merkmal je Konto kann das nicht sagen. Die
+Rolle am Tisch steht deshalb **am Konto, je Kampagne**:
+
+```sql
+campaign_member (campaign_id, user_id, role)   -- gm | co-gm | player | spectator
+```
+
+Eine Zeile je Konto und Kampagne, neben `app_user_actor` (welche Figuren ein
+Konto führt). Gesetzt wird sie von der Kommandozeile:
+
+```bash
+pnpm --filter @nw/server user role basil camp_nebel gm
+pnpm --filter @nw/server user role sela camp_nebel player
+pnpm --filter @nw/server user role sela camp_nebel none     # nimmt sie weg
+```
+
+`Visibility.audience: 'gm'` fragt seither: **hat dieser Betrachter in der
+Kampagne, der der Artikel gehört, die Rolle `gm` oder `co-gm`?** Und wem er
+gehört, sagt der Ebenenstapel — eine Ebene, die genau eine Kampagne
+aufschaltet, gehört ihr; eine, die mehrere aufschalten, ist gemeinsam (siehe
+[Ebenen.md](Ebenen.md)).
+
+Für einen Tag stand die Leitung als `Access`-Karte an der Kampagne, davor die
+Rolle der Spielenden als `Access`-Karte an der Figur. Beides war eine
+Kontoangabe in einem Artikel: der Server las die Karte nie, und sie wäre mit
+jeder Ausfuhr mitgewandert (REQ-199).
+
+Das Sieb bekommt dafür die Rollen des Kontos mit, nicht nur die Figuren:
+eine Leitung hat keine Figur. Das Wissen
+fragt weiter nur nach den Figuren — was jemand erfahren hat, hat eine Figur
+erfahren.
 
 ---
 
@@ -105,7 +164,7 @@ herkommen, und jeder Weg dafür über HTTP ist eine Tür, die danach offen
 bleibt. Wer auf dem Server eine Shell hat, kommt ohnehin an die Datenbank.
 
 ```bash
-pnpm --filter @nw/server user add basil --gm
+pnpm --filter @nw/server user add basil --admin
 pnpm --filter @nw/server user add sela --actor pc_sela
 pnpm --filter @nw/server user password basil
 pnpm --filter @nw/server user disable sela
@@ -138,7 +197,7 @@ und eine Artikelansicht. Drei Sachen daran sind Absicht:
   sie lüde dazu ein, die erste wegzulassen.
 - **Und sie rechnet nicht aus, was jemand schreiben darf.** `/api/me` gibt
   `writable` mit — eine Liste von Ids, oder `null` für „alles" (die
-  Spielleitung bekommt keine Aufzählung über den ganzen Bestand). Der Server
+  Verwaltung bekommt keine Aufzählung über den ganzen Bestand). Der Server
   wendet die Regel ohnehin an; sie in der Maske nachzurechnen wäre die zweite
   Stelle, an der jemand eine Kante vergisst, und dann stünde dort ein Knopf,
   den der Server danach abweist.
@@ -168,10 +227,25 @@ in der Sitzung aus.
 - **Die Bereiche in der Oberfläche.** Anmeldung, Liste, Artikelansicht und
   Bearbeiten stehen; Karten, Bogen, Inventar, Boards und Handwerk sind im
   Prototyp und noch nicht dort.
-- **Einladungen für Spieler** (REQ-034). Heute legt die Spielleitung das
-  Konto an und sagt das Passwort; ein Einladungstoken wäre bequemer und ist
-  eine eigene Entscheidung — auch weil ein Token je Figur nie ins öffentliche
-  Repo gehört (REQ-199).
+- **Rollen setzt am Server nur die Kommandozeile.** Im Prototyp pflegt die
+  Leitung sie auf der Kampagnenseite (Element `members`); die Oberfläche in
+  `apps/web` hat dafür noch keine Maske und keinen Endpunkt. Eine Einladung
+  bindet an eine Figur, nicht an eine Rolle — die setzt danach die Leitung.
+- **Schreiben kennt die Leitung noch nicht.** `mayWrite` ist „Verwaltung oder
+  eigene Figur". Eine Leitung, die nicht Verwaltung ist, darf ihre eigene
+  Kampagne lesen und nichts daran ändern. Die Ableitung dafür steht schon
+  (`campaignOf` im Modellpaket) — die Regel fehlt, und sie ändert, wer
+  Daten anfassen darf. Also eine eigene Entscheidung.
+- **Die laufende Kampagne ist eine globale Einstellung.** `currentCampaign()`
+  liest `setting('campaign')` — wer umschaltet, schaltet für alle um.
+  Solange das so ist, gibt es faktisch eine Kampagne. Sie muss der
+  Betrachter mitbringen: die, in denen er leitet, plus die, in deren Stapel
+  seine Figur liegt.
+- **Ohne Ebenenkante gehört ein Artikel niemandem besonders** — heute 65 von
+  75. Das stimmt bei *einer* Kampagne; bei zweien braucht jede ihre eigene
+  Ebene, und die Umkehrung kostet eine Wanderung.
+- **`gmFields`** („was nie an einen Spieler geht") gilt installationsweit.
+  Mit mehreren Kampagnen heisst es „nie an jemanden ausserhalb dieser".
 - **Einen zweiten Blick auf das Sieb.** `redactEntity` hält Felder, Blöcke
   und den Namen zurück; die Kanten bleiben, weil eine verborgene Verbindung
   den Rückbezug am anderen Ende mitverbergen müsste und das eine andere

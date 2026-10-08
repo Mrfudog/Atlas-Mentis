@@ -129,7 +129,7 @@ Fine-grained decisions of the compound data model. Source and schemas: [[Schemas
 
 ## Modellentscheidungen aus dem Bau (2026-09-19 bis 2026-10-07)
 
-Seit dem Prototyp werden Modellentscheidungen dort festgehalten, wo das Modell steht: [Datenmodell.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Datenmodell.md) (die Regel), [Begriffe.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Begriffe.md) (das Warum), [Durchgang.md](https://github.com/Mrfudog/Nebelwacht/blob/preprod/docs/Durchgang.md) (der Abgleich A1–A16 mit diesem Konzept). Die wichtigsten, damit dieses Log vollständig bleibt:
+Seit dem Prototyp werden Modellentscheidungen dort festgehalten, wo das Modell steht: [Datenmodell.md](../docs/Datenmodell.md) (die Regel), [Begriffe.md](../docs/Begriffe.md) (das Warum), [Durchgang.md](../docs/Durchgang.md) (der Abgleich A1–A16 mit diesem Konzept). Die wichtigsten, damit dieses Log vollständig bleibt:
 
 | ID | Topic | Decision | Status |
 |---|---|---|---|
@@ -149,9 +149,16 @@ Seit dem Prototyp werden Modellentscheidungen dort festgehalten, wo das Modell s
 | D39 | A7 Fraktionsränge | eine Fraktion weiss nichts, ihre Mitglieder wissen: `Faction.ranks`, `memberOf.rank`, Mindestrang an `knownBy` (REQ-203) | **decided** 2026-10-07 |
 | D40 | A10/A12 | `Statblock.kind` heisst `creatureType`; `regards` ohne `PlayerCharacter` | **decided** 2026-10-07 |
 | D41 | Arbeitsweise | ein Zweig je Anliegen, Pull Request nach `preprod` (automatisch gemergt), nach `main` nur mit Freigabe; kleine Commits; Doku im selben Commit | **decided** 2026-10-07 |
+| D42 | Ein Repo, eine Richtung | Code und Vault in `Mrfudog/atlas-mentis`; Nebelwacht wird archiviert. Kein generisches VTT, sondern die Seite für eine Leitung und ihre Gruppen: Anforderungen aus Nebelwacht haben Vorrang vor den generischen; einschneidende Änderungen entscheidet die Verwaltung | **decided** 2026-10-07 |
+| D43 | A8 Party statt Group | `Group` ist weg; die Gruppe ist das Figurengefüge einer Runde (`Party`, `partyOf` → `Campaign`, `memberOfParty`); Träger sind Creature, Party, Faction | **decided** 2026-10-07 |
+| D44 | A11 Welt mit Kalender | neue Art `World` mit `calendar`, Kante `inWorld` (Campaign → World); `Time.calendar` und die Einstellung `calendar` entfallen | **decided** 2026-10-07 |
+| D45 | A2 Stapel im Modell | `packages/model/src/stack.ts`; der Server siebt mit `inPlay` vor der Sichtbarkeit, für jeden | **decided** 2026-10-07 |
+| D46 | A4, A14, A15 | F1 ergänzt (gepflegte Wortlisten dürfen Zeilen sein); `Session.recap`, `Article.poem`/`song`, `followsFrom` entfallen; A9 Regeltypen später, A13 bestätigt | **decided** 2026-10-07 |
+| D47 | 5e.tools als Grundlage des Bestands | Umfang (E1), Ausgabe 2014/2024 als Ebenen (E2), englische Aufzählungswerte (E3), Vehikel/Bastionen/Decks später (E4), keine Bilder (E5), Reihenfolge (E6) — Vorschläge in `docs/5etools-Abgleich.md` §5 | **open** 2026-10-08 |
 
 ## Changelog
-- **0.6** (2026-10-07): D25–D41 aus dem Bau nachgetragen; Modellentscheidungen leben seither im Repo Nebelwacht.
+- **0.7** (2026-10-08): D47 offen — 5e.tools-Abgleich.
+- **0.6** (2026-10-07): D25–D46 aus dem Bau nachgetragen; Modellentscheidungen leben seither in diesem Repo.
 - **0.5** (2026-09-05): AD-19 board-first v1; D16 placement kinds; D17 print & export via facets/media.
 - **0.4** (2026-09-04): AD-01 tech confirmed via D0. New D-series section consolidating the data-model decisions D0–D10 ([[Schemas]]) with post-walkthrough statuses (D1/D3/D4/D6 decided) and D11–D15 from the boards/display session.
 - **0.3** (2026-08-31): AD-16 decided, AD-18 added.

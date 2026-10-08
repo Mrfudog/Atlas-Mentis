@@ -1,10 +1,11 @@
 import type { Registry } from '@nw/model';
-import { components } from './components.js';
 import { interfaces } from './interfaces.js';
 import { relations } from './relations.js';
 import { views } from './views.js';
+import { units } from './units.js';
+import { enums } from './enums.js';
 
-export { components, interfaces, relations, views };
+export { interfaces, relations, views, units, enums };
 
 /** Campaign-wide defaults, the last scope {VAR} resolution falls back to. */
 export const vars: Record<string, string> = {
@@ -29,7 +30,8 @@ export const settings: Record<string, string> = {
   gridUnit: '1,5 m',
   inventoryCols: '10',
   inventoryRows: '6',
-  calendar: 'Harptos',
+  /* `calendar` stand hier: der Kalender hängt seit dem 7.10. an der Welt
+     (`World.calendar`, Kante `inWorld` von der Kampagne), A11. */
   /* Der Tag, an dem die Kampagne steht. Leer heisst: das jüngste benutzte
      Ereignis. Gruppenstufe und Gruppen-Aufenthaltsort stehen hier
      ausdrücklich NICHT — sie werden gerechnet (B3, D8), und eine
@@ -44,20 +46,26 @@ export const settings: Record<string, string> = {
     'history:int,insight:wis,intimidation:cha,investigation:int,medicine:wis,' +
     'nature:int,perception:wis,performance:cha,persuasion:cha,religion:int,' +
     'sleightOfHand:dex,stealth:dex,survival:wis',
-  /* Blockarten, die ein Spieler nicht sieht. Als Einstellung, weil eine
-     Kampagne das anders halten darf. */
-  gmBlockTypes: 'secret,tactics',
+  /* Felder, die ein Spieler nicht sieht, solange keine bekannte
+     Information sie ausdrücklich freigibt. Als Einstellung, weil eine
+     Kampagne das anders halten darf. Es hiess `gmBlockTypes` und nannte
+     Blockarten — die gibt es nicht mehr, es sind Felder. */
+  gmFields: 'Secrets.secret,Tactics.tactics',
+  /* Welches Mass-System die Seite zeigt: `imperial`, `metric` oder `both`.
+     Eine Artikelart darf es überschreiben (`InterfaceDef.units`) — eine
+     Kreatur darf imperial bleiben, weil ihre Zahlen aus dem Regelwerk
+     kommen, während der Rest der Kampagne metrisch dasteht. */
+  units: 'both',
   /* Reisezehrung (REQ-170): alle wie viele Knoten eine Ration und ein
      Licht fällig werden. Null schaltet die Zählung ab. */
   travelRationEvery: '3',
   travelLightEvery: '4',
   travelWatchesPerDay: '3',
-  /* Was eine Figur an einem Knoten tun kann (REQ-171). */
-  travelActions: 'scout,forage,craft,rest,guard,tend the fire',
-  conditions:
-    'blinded,charmed,deafened,frightened,grappled,incapacitated,invisible,' +
-    'paralysed,petrified,poisoned,prone,restrained,stunned,unconscious',
+  /* `travelActions` und `conditions` standen hier als Wortlisten. Beides
+     sind seit dem 7.10. Regelartikel (`Rule.kind` travel bzw. condition,
+     Abgleich A3): ein Wort hat keine Beschreibung und keine Quelle, ein
+     Artikel schon. Wanderung: `prototype/migration/zustaende-als-regeln.mjs`. */
 };
 
 /** The rows a fresh database is seeded with. */
-export const seedRegistry: Registry = { components, interfaces, relations, views, vars, settings };
+export const seedRegistry: Registry = { interfaces, relations, views, units, enums, vars, settings };

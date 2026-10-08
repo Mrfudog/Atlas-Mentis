@@ -1,12 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import {
   RegistrySchema,
-  allowedComponents,
-  blockTypesFor,
+  enumGroups,
+  enumOptions,
+  linkedTypes,
+  linkAccepts,
+  linkTargets,
+  unitByCode,
+  validateEntity,
+  enumSource,
+  fieldsOf,
+  proseFields,
+  typeChain,
   relationsFrom,
-  showField,
+  layoutFor,
   viewKeys,
 } from '@nw/model';
+import type { PropertySchema } from '@nw/model';
 import { seedRegistry } from '../src/index.js';
 
 /**
@@ -19,11 +29,11 @@ describe('seed registry', () => {
     expect(() => RegistrySchema.parse(seedRegistry)).not.toThrow();
   });
 
-  it('every component an interface names exists', () => {
+  it('gives every required field a schema to live in', () => {
     const missing: string[] = [];
     for (const [name, def] of Object.entries(seedRegistry.interfaces)) {
-      for (const component of [...(def.requires ?? []), ...(def.allows ?? [])]) {
-        if (!seedRegistry.components[component]) missing.push(`${name} → ${component}`);
+      for (const key of def.schema?.required ?? []) {
+        if (!def.schema?.properties[key]) missing.push(`${name} → ${key}`);
       }
     }
     expect(missing).toEqual([]);
@@ -58,63 +68,68 @@ describe('seed registry', () => {
     }
   });
 
-  it('every field a view names exists on its component', () => {
+  it('every field a view names exists on its type', () => {
     const bad: string[] = [];
     for (const [key, view] of Object.entries(seedRegistry.views)) {
       if (!Array.isArray(view.fields)) continue;
       for (const entry of view.fields) {
-        const [component, property] = entry.split('.');
-        const def = component ? seedRegistry.components[component] : undefined;
+        const [type, property] = entry.split('.');
+        const def = type ? seedRegistry.interfaces[type] : undefined;
         if (!def) {
-          bad.push(`${key}: unbekannte Komponente ${component}`);
+          bad.push(`${key}: unbekannte Art ${type}`);
           continue;
         }
-        if (property && !def.schema.properties[property]) {
-          bad.push(`${key}: ${component} hat kein Feld ${property}`);
+        if (property && !def.schema?.properties[property]) {
+          bad.push(`${key}: ${type} hat kein Feld ${property}`);
         }
       }
     }
     expect(bad).toEqual([]);
   });
 
-  it('every block type a view names is accepted by some interface', () => {
-    const accepted = new Set(
-      Object.keys(seedRegistry.interfaces).flatMap((name) => blockTypesFor(seedRegistry, name)),
+  /* Prosa ist ein Feld wie jedes andere — `many` und lange Eingabe. Eine
+     Ansicht, die eines nennt, das keine Art erklärt, zeichnet nichts und
+     sagt nicht warum. */
+  it('every prose field a view names is declared by some type', () => {
+    const da = new Set(
+      Object.keys(seedRegistry.interfaces)
+        .flatMap((name) => proseFields(seedRegistry, name).map((f) => `${f.type}.${f.key}`)),
     );
     const bad: string[] = [];
     for (const [key, view] of Object.entries(seedRegistry.views)) {
-      if (!Array.isArray(view.blocks)) continue;
-      for (const type of view.blocks) {
-        if (!accepted.has(type)) bad.push(`${key}: ${type}`);
+      for (const el of view.layout ?? []) {
+        if (el.el !== 'prose' || !Array.isArray(el.fields)) continue;
+        for (const ref of el.fields) if (!da.has(ref)) bad.push(`${key}: ${ref}`);
       }
     }
     expect(bad).toEqual([]);
   });
 
-  /* Die Spielerstufe hält **Blöcke** zurück, keine Felder mehr.
-     Zurückgehalten wird, was einer Information gehört, die dieser Spieler
-     nicht hat — das entscheidet `redactEntity` an den Daten und nicht eine
-     Feldliste an der Ansicht. Eine Feldliste hier hiesse: ein Spieler sieht
-     die Rüstungsklasse **seiner eigenen Figur** nicht, und das war der
-     Fehler, den die Stufe hatte. */
-  it('the player view withholds the GM block types, not the fields', () => {
-    const player = seedRegistry.views['player'];
-    expect(player).toBeDefined();
-    expect(Array.isArray(player!.blocks) && player!.blocks.includes('secret')).toBe(false);
-    expect(Array.isArray(player!.blocks) && player!.blocks.includes('tactics')).toBe(false);
-    // Die eigene Figur muss lesbar bleiben, sonst ist das Blatt wertlos.
-    expect(showField(player!, 'StatblockInfo', 'ac')).toBe(true);
+  /* **Es gibt keine Spieleransicht mehr.** Sie war die zweite Stelle, an
+     der stand, was ein Spieler nicht sehen darf — und sie hielt einmal
+     Felder zurück, sodass ein Spieler die Rüstungsklasse seiner eigenen
+     Figur nicht sah. Zurückgehalten wird am Server (`redactEntity`) an den
+     Daten, nicht an einer Feldliste; wer weniger sehen darf, sieht dieselbe
+     Ansicht mit weniger darin. */
+  it('has no player view — what is withheld is withheld at the server', () => {
+    expect(seedRegistry.views['player']).toBeUndefined();
   });
 
-  /* Drei Stufen, nicht einundzwanzig. Vierzehn der alten gab es für genau
-     eine Artikelart — das ist keine Auswahl, sondern eine Liste von
-     Sonderfällen mit einem Dropdown davor. Was für eine Artikelart eigen
-     ist, steht seither in `byInterface`. */
-  it('keeps the facets to how much and for whom', () => {
-    expect(Object.keys(seedRegistry.views).sort()).toEqual(['full', 'player', 'quick']);
-    const proTyp = seedRegistry.views['full']?.byInterface ?? {};
-    expect(Object.keys(proTyp)).toContain('Creature');
-    expect(Object.keys(proTyp)).toContain('Map');
+  /* Drei Ansichten, nicht einundzwanzig. Vierzehn der alten gab es für
+     genau eine Artikelart — das ist keine Auswahl, sondern eine Liste von
+     Sonderfällen mit einem Dropdown davor. Und **die Anordnung wohnt am
+     Typ**: was für eine Artikelart eigen ist, steht bei ihr. */
+  it('keeps the views to how much, and the arrangement at the type', () => {
+    expect(Object.keys(seedRegistry.views).sort()).toEqual(['full', 'overview', 'quick']);
+    const mitEigener = Object.keys(seedRegistry.interfaces)
+      .filter((n) => seedRegistry.interfaces[n]?.views?.['full']?.length);
+    expect(mitEigener).toContain('Creature');
+    expect(mitEigener).toContain('Map');
+    /* Und nichts liegt mehr an der Ansicht: eine Anordnung dort wäre die
+       zweite Stelle, an der stünde, wie eine Art gezeichnet wird. */
+    for (const v of Object.values(seedRegistry.views)) {
+      expect((v as unknown as Record<string, unknown>)['byInterface']).toBeUndefined();
+    }
   });
 
   /* Die Liste der Ansichten wächst mit jedem Bereich. Fest einzutragen,
@@ -122,37 +137,386 @@ describe('seed registry', () => {
      und sagt dabei nichts über das, was er prüfen soll. Geprüft wird die
      Reihenfolge, denn die ist die Zusage: `order` bestimmt sie, nicht der
      Zufall der Einfügereihenfolge. */
+  /* Die Anordnung wird die `extends`-Kette hoch gesucht. Eine an `Creature`
+     deckt damit die Spielerfigur mit ab, ohne dass die sie wiederholt — und
+     wer sie ändert, ändert sie für beide, was der Sinn ist und trotzdem
+     dastehen muss. */
+  it('resolves a layout up the chain, and says where it came from', () => {
+    const pc = layoutFor(seedRegistry, 'full', 'PlayerCharacter');
+    expect(pc.from).toBe('Creature');
+    expect(pc.layout[0]?.el).toBe('sheet');
+    /* Sagt niemand in der Kette etwas, gilt die Grundanordnung der Ansicht
+       — eine neu angelegte Art fängt nicht mit einer leeren Seite an. */
+    const artikel = layoutFor(seedRegistry, 'full', 'Article');
+    expect(artikel.from).toBe(null);
+    expect(artikel.layout.length).toBeGreaterThan(0);
+  });
+
   it('orders the facets by their order field', () => {
     const keys = viewKeys(seedRegistry);
     expect(new Set(keys)).toEqual(new Set(Object.keys(seedRegistry.views)));
-    expect(keys[0]).toBe('quick');
+    expect(keys[0]).toBe('overview');
     const orders = keys.map((k) => seedRegistry.views[k]?.order ?? 99);
     expect(orders).toEqual([...orders].sort((a, b) => a - b));
   });
 });
 
-describe('interface inheritance', () => {
-  it('unions components up the extends chain', () => {
-    const forNpc = allowedComponents(seedRegistry, 'NPC');
-    expect(forNpc).toContain('Name'); // from Base.requires
-    expect(forNpc).toContain('Status'); // from Base.allows
-    expect(forNpc).toContain('CreatureInfo'); // its own
-    /* Seit dem Charakterbogen darf ein Geschöpf seine Zahlen auch selbst
-       tragen: ein Spielercharakter tut das, ein NSC borgt sie meist über
-       `belongsTo`. Beides muss gehen — der Bogen liest erst die eigene
-       Karte, dann die geliehene. Geprüft bleibt, dass die Vereinigung nicht
-       alles einsammelt: eine Karte einer fremden Linie hat hier nichts
-       verloren. */
-    expect(forNpc).toContain('StatblockInfo');
-    expect(forNpc).not.toContain('MapInfo');
-    expect(forNpc).not.toContain('QuestInfo');
+/* **Geteilte Aufzählungen.** Sie stehen im Register, weil mehrere Felder
+   dieselbe Liste brauchen — und die Prüfung hier hält genau das fest: eine
+   Zeile ohne Nutzer wäre der Umweg ohne den Gewinn, und ein Feld, das eine
+   Zeile nennt, die es nicht gibt, hätte still keine Werte mehr. */
+describe('shared choice lists', () => {
+  /* Ein Feld darf **mehrere** Zeilen nennen, also wird flach gerechnet: je
+     genannte Zeile ein Eintrag. */
+  const felderMitRef = Object.entries(seedRegistry.interfaces).flatMap(([typ, def]) =>
+    Object.entries(def.schema?.properties ?? {})
+      .filter(([, p]) => p.enumRef)
+      .flatMap(([key, p]) => {
+        const refs = Array.isArray(p.enumRef) ? p.enumRef : [p.enumRef as string];
+        return refs.map((nennt) => ({ ref: `${typ}.${key}`, nennt }));
+      }),
+  );
+
+  it('every named row exists, and every row is named', () => {
+    const zeilen = new Set(Object.keys(seedRegistry.enums ?? {}));
+    expect(felderMitRef.filter((f) => !zeilen.has(f.nennt))).toEqual([]);
+    const genannt = new Set(felderMitRef.map((f) => f.nennt));
+    expect([...zeilen].filter((z) => !genannt.has(z))).toEqual([]);
   });
 
-  it('adds `+x` block types to the inherited set', () => {
-    const forNpc = blockTypesFor(seedRegistry, 'NPC');
-    expect(forNpc).toContain('paragraph'); // inherited from Base
-    expect(forNpc).toContain('secret'); // added with +secret
-    expect(blockTypesFor(seedRegistry, 'Rule')).toEqual(['paragraph', 'note']);
+  /* Die sechs Attributkürzel standen wörtlich an der Fertigkeit und am
+     Rezept. Dass beide jetzt dieselbe Zeile nennen, ist der ganze Punkt. */
+  it('the ability list is named by the skill, the recipe and the saving throws', () => {
+    const wer = felderMitRef.filter((f) => f.nennt === 'Ability').map((f) => f.ref).sort();
+    expect(wer).toEqual(['Proficiencies.saves', 'Recipe.ability', 'Skill.ability']);
+    expect(enumOptions(seedRegistry, { enumRef: 'Ability' })).toEqual([
+      'str', 'dex', 'con', 'int', 'wis', 'cha',
+    ]);
+  });
+
+  /* Ein Feld nennt eine Zeile **oder** trägt seine Wörter selbst. Beides
+     zugleich wären zwei Antworten auf dieselbe Frage. */
+  it('no field carries both its own words and a named row', () => {
+    const beides = Object.entries(seedRegistry.interfaces).flatMap(([typ, def]) =>
+      Object.entries(def.schema?.properties ?? {})
+        .filter(([, p]) => p.enumRef && p.enum?.length)
+        .map(([key]) => `${typ}.${key}`),
+    );
+    expect(beides).toEqual([]);
+  });
+
+  /* **Ein Feld, sechs Listen.** Worin jemand geübt ist, kommt aus
+     Fertigkeiten, Werkzeugen, Sprachen, Waffen, Rüstungen und
+     Wissensgebieten. Vorher stand je Sorte ein Feld — dieselbe Frage
+     sechsmal, und die siebte Sorte hätte ein siebtes Feld gebraucht. */
+  it('proficiencies draw on several lists, saving throws on one', () => {
+    const p = seedRegistry.interfaces['Proficiencies']?.schema?.properties ?? {};
+    expect(Object.keys(p)).toEqual(['proficient', 'expertise', 'saves']);
+    expect(p['proficient']?.type).toBe('array');
+    expect(enumGroups(seedRegistry, p['proficient']).map((g) => g.name)).toEqual([
+      'Skill', 'Tool', 'Language', 'WeaponTraining', 'ArmorTraining', 'KnowledgeField',
+    ]);
+    /* Die Vereinigung hat jedes Wort einmal, und woher es kommt, bleibt
+       lesbar — daran hängt, dass der Bogen gruppieren kann. */
+    const alle = enumOptions(seedRegistry, p['proficient']) ?? [];
+    expect(new Set(alle).size).toBe(alle.length);
+    expect(enumSource(seedRegistry, p['proficient'], 'stealth')).toBe('Skill');
+    expect(enumSource(seedRegistry, p['proficient'], 'Elfisch')).toBe('Language');
+    /* Rettungswürfe sind Attribute und sonst nichts. */
+    expect(p['saves']?.enumRef).toBe('Ability');
+    expect(p['saves']?.type).toBe('array');
+  });
+
+  /* Die Fertigkeiten stehen als Liste **und** in der Einstellung, die sagt,
+     worauf jede rechnet. Nicht zweimal dasselbe — aber die eine darf der
+     anderen nicht widersprechen. */
+  it('every skill in the setting is in the list', () => {
+    const werte = seedRegistry.enums?.['Skill']?.values ?? [];
+    const ausEinstellung = String(seedRegistry.settings?.['skills'] ?? '')
+      .split(',').map((x) => x.split(':')[0]?.trim()).filter(Boolean);
+    expect(ausEinstellung.filter((k) => !werte.includes(k as string))).toEqual([]);
+    expect(werte.filter((k) => !ausEinstellung.includes(k))).toEqual([]);
+  });
+
+  /* **Der Sammelname ist weg.** `StatblockInfo` trug dreissig Felder von
+     der Rüstungsklasse bis zu den Immunitäten — „alles, was an einem
+     Statblock steht" ist keine Auskunft. Die sechs Werte stehen in
+     `Abilities`, der Rest gehört dem Statblock selbst. */
+  it('the statblock declares its own fields and takes the abilities in', () => {
+    expect(seedRegistry.interfaces['StatblockInfo']).toBeUndefined();
+    const sb = seedRegistry.interfaces['Statblock'];
+    expect(sb?.extends).toContain('Abilities');
+    const eigen = Object.keys(sb?.schema?.properties ?? {});
+    expect(eigen).toContain('ac');
+    expect(eigen).toContain('hp');
+    expect(eigen).not.toContain('str');
+    /* Und die gerechneten stehen bei ihren Werten: `mod(dex)` löst gegen
+       die Nachbarn derselben Karte auf. */
+    const ab = seedRegistry.interfaces['Abilities']?.schema?.properties ?? {};
+    expect(ab['initiative']?.derived).toBe('mod(dex)');
+    expect(Object.keys(ab)).toContain('dex');
+  });
+
+  /* Eine Spanne statt zwanzig Wörter: die Schwierigkeit ist eine Stufe. */
+  it('difficulty is a range, and only one type declares it', () => {
+    const feld = seedRegistry.interfaces['Difficulty']?.schema?.properties?.['difficulty'];
+    expect(feld?.min).toBe(1);
+    expect(feld?.max).toBe(20);
+    const auch = Object.entries(seedRegistry.interfaces)
+      .filter(([n, d]) => n !== 'Difficulty' && d.schema?.properties?.['difficulty'])
+      .map(([n]) => n);
+    expect(auch).toEqual([]);
+  });
+});
+
+/* ---- Ein Verweis nennt sein Ziel, ein Mass seine Einheit ----
+   Beides sagte das Register nicht: vier Verweisfelder ohne Zieltyp und
+   drei Masse ohne Ausgangsmass. Ein Feld, das „link" heisst und sonst
+   nichts, nimmt alles; ein Feld, das „measure" heisst und sonst nichts,
+   rechnet nichts — und das sieht aus wie eine richtige Zahl. */
+describe('links name their target, measures name their unit', () => {
+  const felder = (): { art: string; feld: string; p: PropertySchema }[] => {
+    const out: { art: string; feld: string; p: PropertySchema }[] = [];
+    Object.entries(seedRegistry.interfaces).forEach(([art, def]) => {
+      Object.entries(def.schema?.properties ?? {}).forEach(([feld, p]) => {
+        out.push({ art, feld, p });
+      });
+    });
+    return out;
+  };
+
+  it('gives every measure field the unit its numbers are in', () => {
+    const ohne = felder()
+      .filter(({ p }) => p.format === 'measure' && !p.unit)
+      .map(({ art, feld }) => `${art}.${feld}`);
+    expect(ohne).toEqual([]);
+  });
+
+  /* Eine Einheit, die keine Zeile hat, ist ein Tippfehler mit dem Aussehen
+     einer Angabe: `unit: 'feet'` ginge noch (Schreibweise von `ft`),
+     `unit: 'fuß'` nicht. */
+  it('names only units the registry knows', () => {
+    const fremd = felder()
+      .filter(({ p }) => p.unit && !unitByCode(seedRegistry, p.unit))
+      .map(({ art, feld, p }) => `${art}.${feld}: ${p.unit}`);
+    expect(fremd).toEqual([]);
+  });
+
+  it('gives every link field a target type that exists', () => {
+    const verweise = felder().filter(({ p }) => p.format === 'link');
+    expect(verweise.length).toBeGreaterThan(0);
+    const ohne = verweise
+      .filter(({ p }) => !(p.target?.interfaces ?? []).length)
+      .map(({ art, feld }) => `${art}.${feld}`);
+    expect(ohne).toEqual([]);
+    const fremd: string[] = [];
+    verweise.forEach(({ art, feld, p }) => {
+      (p.target?.interfaces ?? []).forEach((n) => {
+        if (!seedRegistry.interfaces[n]) fremd.push(`${art}.${feld} → ${n}`);
+      });
+    });
+    expect(fremd).toEqual([]);
+  });
+
+  /* Der Zieltyp gilt wie bei einer Kante die `extends`-Kette hoch: was die
+     Sitzung als Karte zeigt, darf eine Unterart von `Map` sein. */
+  it('accepts a subtype of the named type and refuses a stranger', () => {
+    const p = seedRegistry.interfaces['Session']?.schema?.properties['activeMap'];
+    expect(linkTargets(p)).toEqual(['Map']);
+    expect(linkAccepts(seedRegistry, p, 'Map')).toBe(true);
+    expect(linkAccepts(seedRegistry, p, 'Armor')).toBe(false);
+  });
+
+  /* Die Prüfung am Schema hält die Lücke zu: `measure` ohne `unit` kommt
+     nicht durch die Speichergrenze zurück. */
+  it('refuses a measure row without a unit at the storage boundary', () => {
+    const kaputt = {
+      ...seedRegistry,
+      interfaces: {
+        ...seedRegistry.interfaces,
+        Probe: {
+          name: 'Probe',
+          schema: { type: 'object', properties: { weit: { type: 'string', format: 'measure' } } },
+        },
+      },
+    };
+    expect(RegistrySchema.safeParse(kaputt).success).toBe(false);
+  });
+});
+
+/* ---- Ein Behälter hat seine eigene Form und seine eigenen Zonen ----
+   Das Raster war eine Kampagneneinstellung: zehn mal sechs für jeden
+   Rucksack. Ein Köcher ist aber kein Rechteck, und was oben liegt, ist
+   schneller in der Hand als was unten liegt. */
+describe('a container carries its grid and its zones', () => {
+  const inv = seedRegistry.interfaces['Inventory'];
+
+  it('paints its shape instead of typing it', () => {
+    const grid = inv?.schema?.properties['grid'];
+    expect(grid?.format).toBe('grid');
+    expect(grid?.type).toBe('array');
+    /* Dieselbe Schreibweise wie die Kachelform eines Gegenstands — ein
+       zweites Format für dasselbe wären zwei Wege, die auseinanderlaufen. */
+    expect(seedRegistry.interfaces['Item']?.schema?.properties['rows']?.format).toBe('grid');
+  });
+
+  it('names the draw times its zones may hold, and does not spell them out', () => {
+    const zones = inv?.schema?.properties['zones'];
+    expect(zones?.format).toBe('zones');
+    expect(zones?.enumRef).toBe('DrawTime');
+    expect(zones?.enum).toBeUndefined();
+    expect(enumOptions(seedRegistry, zones!)).toContain('action');
+    expect(enumOptions(seedRegistry, zones!)).toContain('free action');
+  });
+
+  /* Eine Zonenkarte hält `{"x,y": "action"}`: die Zeile gilt für die
+     **Einträge**. Ohne diesen Zweig prüfte die Validierung das Objekt
+     selbst gegen die Liste — und liess es durch, weil es keinen `value`
+     trägt. Stillschweigend richtig ist dasselbe wie stillschweigend
+     falsch. */
+  it('checks the values inside a zone map', () => {
+    const gut = validateEntity(seedRegistry, {
+      id: 'i1', interfaces: ['Inventory'], name: 'Rucksack',
+      components: { Identity: { name: 'Rucksack', id: 'inventory-0001' },
+        Inventory: { zones: { '0,0': 'action' } } },
+    });
+    expect(gut.map((i) => i.code)).not.toContain('value_not_allowed');
+    const schlecht = validateEntity(seedRegistry, {
+      id: 'i1', interfaces: ['Inventory'], name: 'Rucksack',
+      components: { Identity: { name: 'Rucksack', id: 'inventory-0001' },
+        Inventory: { zones: { '0,0': 'sofort' } } },
+    });
+    expect(schlecht.find((i) => i.code === 'value_not_allowed')?.property).toBe('zones');
+  });
+});
+
+/* ---- Was ein Stand ist, steht immer als Eingabe da ----
+   Nicht vererbt: ein Haken an einem Obertyp machte die ganze Kreatur zum
+   Formular. Der Typ, der ein Feld erklärt, weiss, ob es ein Stand ist. */
+describe('a field says whether it is always edited', () => {
+  /* **Am Feld und nur dort.** Am Typ war es ein Schalter für zwanzig
+     Felder auf einmal: an `Vitals` sind die Trefferpunkte ein Stand, die
+     Zustandsliste aber ein Satz Häkchen und die Trefferwürfel Punkte. Wer
+     jedes Feld einzeln benennt, benennt auch die Ausnahme. */
+  it('marks the state, and leaves the rest alone', () => {
+    const v = seedRegistry.interfaces['Vitals']?.schema?.properties;
+    expect(v?.['hp']?.alwaysEdit).toBe(true);
+    expect(v?.['hpTemp']?.alwaysEdit).toBe(true);
+    expect(v?.['exhaustion']?.alwaysEdit).toBe(true);
+    /* Häkchen und Punkte zeichnet der Bogen ohnehin anklickbar. */
+    expect(v?.['conditions']?.alwaysEdit).toBeUndefined();
+    expect(v?.['hitDiceLeft']?.alwaysEdit).toBeUndefined();
+    /* Am Statblock ist `hp` das Maximum — eine Festlegung. */
+    expect(seedRegistry.interfaces['Statblock']?.schema?.properties['hp']?.alwaysEdit)
+      .toBeUndefined();
+  });
+
+  it('and the travel counters say it too', () => {
+    const p = seedRegistry.interfaces['Party']?.schema?.properties;
+    expect(p?.['day']?.alwaysEdit).toBe(true);
+    expect(p?.['watch']?.alwaysEdit).toBe(true);
+    /* Das Motto einer Gruppe ändert sich nicht unterwegs. */
+    expect(p?.['motto']?.alwaysEdit).toBeUndefined();
+  });
+
+  /* **Keine Zeile sagt es mehr am Typ.** `InterfaceDef` kennt das Feld
+     nicht, also kommt es beim Übersetzen nicht durch — und über die
+     Speichergrenze wird es **stillschweigend weggelassen**: `z.object`
+     streicht, was es nicht kennt, statt die Zeile abzulehnen. Das ist
+     Absicht (eine Zeile aus einer neueren Fassung soll nicht ganz
+     zurückgewiesen werden), heisst hier aber: was diese Prüfung hält, ist
+     der Seed und nicht die Grenze. */
+  it('is never said at the type any more', () => {
+    const amTyp = Object.entries(seedRegistry.interfaces)
+      .filter(([, d]) => (d as Record<string, unknown>)['alwaysEdit'] !== undefined)
+      .map(([n]) => n);
+    expect(amTyp).toEqual([]);
+    const gestrichen = RegistrySchema.parse({
+      ...seedRegistry,
+      interfaces: { Probe: { name: 'Probe', alwaysEdit: true } },
+    });
+    expect((gestrichen.interfaces['Probe'] as Record<string, unknown>)['alwaysEdit'])
+      .toBeUndefined();
+  });
+
+  /* Ein gerechnetes oder ausgegebenes Feld bekommt keine Eingabe — dort
+     ginge sie ins Leere. Ein `alwaysEdit` daran wäre eine Angabe, die
+     nichts tut. */
+  it('never sits on a derived or issued field', () => {
+    const falsch: string[] = [];
+    Object.entries(seedRegistry.interfaces).forEach(([art, def]) => {
+      Object.entries(def.schema?.properties ?? {}).forEach(([feld, p]) => {
+        if (p.alwaysEdit && (p.derived || p.readOnly)) falsch.push(`${art}.${feld}`);
+      });
+    });
+    expect(falsch).toEqual([]);
+  });
+});
+
+describe('interface inheritance', () => {
+  it('gathers the fields of every type up the extends chain', () => {
+    const felder = fieldsOf(seedRegistry, 'Creature');
+    const wo = (k: string) => felder.find((f) => f.key === k)?.type;
+    expect(wo('name')).toBe('Identity'); // von Identity
+    expect(wo('species')).toBe('Creature'); // von Creature
+    /* **Die Zahlen wohnen am Statblock**, auch die eines
+       Spielercharakters. Eine Kreatur trägt sie nicht mehr selbst: das
+       waren zwei Formen für dasselbe, und wer eine Kreatur änderte, musste
+       wissen, in welcher der beiden ihre Zahlen gerade standen. */
+    expect(typeChain(seedRegistry, 'Creature')).not.toContain('Abilities');
+    expect(typeChain(seedRegistry, 'PlayerCharacter')).not.toContain('Abilities');
+    expect(typeChain(seedRegistry, 'Statblock')).toContain('Abilities');
+    /* `Vitals` bleibt bei der Figur: das ist, was sich während der Sitzung
+       ändert, und es gehört ihr und nicht ihrem Bogen. */
+    expect(typeChain(seedRegistry, 'PlayerCharacter')).toContain('Vitals');
+    /* Und die Vereinigung sammelt nicht alles ein: eine fremde Linie hat
+       hier nichts verloren. */
+    expect(typeChain(seedRegistry, 'Creature')).not.toContain('Map');
+    expect(typeChain(seedRegistry, 'Creature')).not.toContain('Quest');
+  });
+
+  /* Was einmal `blockTypes: ['+secret']` war, ist jetzt ein Bestandteil:
+     `Secrets` bringt das Feld `secret` mit, und wer Geheimnisse trägt,
+     nimmt ihn dazu. Die Frage „welche Prosa hat diese Art" beantwortet
+     damit dieselbe Vererbung wie jede andere Frage. */
+  it('inherits its prose fields like every other field', () => {
+    const npc = proseFields(seedRegistry, 'Creature').map((f) => `${f.type}.${f.key}`);
+    expect(npc).toContain('Prose.paragraph'); // über Identity
+    expect(npc).toContain('Secrets.secret'); // über Creature
+    expect(npc).toContain('Creature.personality'); // eigenes Feld von Creature
+    /* Eine Regel hat Text und Notizen und sonst nichts — kein Geheimnis,
+       keine Taktik. */
+    const rule = proseFields(seedRegistry, 'Rule').map((f) => `${f.type}.${f.key}`);
+    expect(rule.sort()).toEqual(['Notes.note', 'Prose.paragraph']);
+  });
+
+  /* Die sieben Prosanamen sind immer ein Sack mit Einträgen. Einer davon
+     als einzelner Absatz wäre ein Feld, an dem keine Freigabe hängen kann —
+     und daran hing sie vorher. `Scene.readaloud` war genau das: ein
+     einzelner Vorlesetext, der mit `ReadAloud.readaloud` ein zweites Mal
+     hereinkam, sobald die Blockarten Felder wurden. */
+  it('keeps every prose name a bag with ids', () => {
+    const teile = ['Prose', 'Notes', 'Lore', 'Secrets', 'ReadAloud', 'Facts', 'Tactics'];
+    const namen = new Set<string>();
+    for (const t of teile) {
+      const props = Object.entries(seedRegistry.interfaces[t]?.schema?.properties ?? {});
+      expect(props.length).toBe(1);
+      const [key, prop] = props[0] as [string, { many?: boolean; format?: string }];
+      expect([t, prop.many, prop.format]).toEqual([t, true, 'long']);
+      namen.add(key);
+    }
+    /* Und kein anderer Typ nennt denselben Namen als langen Text: das war
+       `Scene.readaloud` — ein einzelner Vorlesetext, der neben dem Sack
+       stand und gleich hiess. Ein kurzes `note` an einer Zugriffszeile ist
+       etwas anderes und darf bleiben. */
+    const doppelt: string[] = [];
+    for (const [name, def] of Object.entries(seedRegistry.interfaces)) {
+      if (teile.includes(name)) continue;
+      for (const [key, prop] of Object.entries(def.schema?.properties ?? {})) {
+        if (namen.has(key) && prop.format === 'long') doppelt.push(`${name}.${key}`);
+      }
+    }
+    expect(doppelt).toEqual([]);
   });
 
   it('offers only the relations whose source matches', () => {
@@ -168,7 +532,7 @@ describe('interface inheritance', () => {
      ist eine eigene Kantenart. Wandert eines davon an die falsche Stelle,
      fällt es am Tisch niemandem auf — und im Modell ist es dann zu spät. */
   it('keeps fog on the map, light on the edge, territory as its own edge', () => {
-    const karte = seedRegistry.components.MapInfo.schema.properties ?? {};
+    const karte = seedRegistry.interfaces.Map.schema.properties ?? {};
     expect(karte.fog?.type).toBe('boolean');
     expect(karte.reveal?.type).toBe('array'); // aufgedeckt bleibt aufgedeckt
     expect(karte.walls?.type).toBe('array');
@@ -184,7 +548,7 @@ describe('interface inheritance', () => {
        und ein gedrehtes Bild als eigenes Asset wäre ein zweites Fass. */
     expect(marker.rot?.type).toBe('number');
     expect(marker.ratio?.type).toBe('number');
-    expect(seedRegistry.components.AssetInfo.schema.properties ?? {})
+    expect(seedRegistry.interfaces.Asset.schema.properties ?? {})
       .not.toHaveProperty('rot');
 
     const terr = seedRegistry.relations.territory;
@@ -209,7 +573,7 @@ describe('interface inheritance', () => {
 
     // Die Taten sind weg — mit ihnen die gerechnete Leiter.
     expect(seedRegistry.interfaces.Deed).toBeUndefined();
-    expect(seedRegistry.components.DeedInfo).toBeUndefined();
+    expect(seedRegistry.interfaces.DeedInfo).toBeUndefined();
     ['doneBy', 'regarding'].forEach((k) => {
       expect(seedRegistry.relations[k]).toBeUndefined();
     });
@@ -229,7 +593,7 @@ describe('interface inheritance', () => {
     expect(Object.keys(gang.props?.properties ?? {})).toEqual(['day', 'days', 'put', 'rolls']);
     expect(Object.keys(seedRegistry.interfaces)).not.toContain('CraftJob');
     // Und eine Zahl neben dem Text, weil „2 Stunden" nicht rechnet.
-    const rez = seedRegistry.components.RecipeInfo.schema.properties ?? {};
+    const rez = seedRegistry.interfaces.Recipe.schema.properties ?? {};
     expect(rez.days?.type).toBe('number');
     expect(rez.onFailure?.enum).toEqual(['materialsLost', 'halfLost', 'nothingLost']);
   });
@@ -237,7 +601,7 @@ describe('interface inheritance', () => {
   /* Kachelkarten (REQ-138): ohne Spalten und Zeilen ist ein Muster nur eine
      Zeichenkette, und die Seite wüsste nicht, wie gross das Bild ist. */
   it('describes a tiled map completely enough to draw it', () => {
-    const karte = seedRegistry.components.MapInfo.schema.properties ?? {};
+    const karte = seedRegistry.interfaces.Map.schema.properties ?? {};
     ['tiles', 'tileCols', 'tileRows', 'tileSize'].forEach((k) => {
       expect(Object.keys(karte)).toContain(k);
     });
@@ -254,20 +618,20 @@ describe('interface inheritance', () => {
  * zeigte dann eine leere Maske und niemand wusste, warum.
  */
 describe('seed registry, referential integrity', () => {
-  const { components, interfaces, relations, views } = seedRegistry;
+  const { interfaces, relations, views } = seedRegistry;
   const blockTypes = new Set<string>();
   Object.values(interfaces).forEach((i) =>
     (i.blockTypes ?? []).forEach((b) => blockTypes.add(b.replace(/^\+/, ''))),
   );
 
-  it('names only components that exist', () => {
-    const fehlt: string[] = [];
-    Object.entries(interfaces).forEach(([n, i]) => {
-      [...(i.requires ?? []), ...(i.allows ?? [])].forEach((c) => {
-        if (!components[c]) fehlt.push(`${n} → ${c}`);
-      });
-    });
-    expect(fehlt).toEqual([]);
+  /* Eine Art ohne eigene Felder ist in Ordnung, solange sie eine Ansicht
+     oder eine Kante beisteuert (`Campaign`). Eine Art mit einem leeren
+     Schema dagegen ist eine Zeile, die etwas behauptet und nichts sagt. */
+  it('carries no empty schema', () => {
+    const leer = Object.entries(interfaces)
+      .filter(([, i]) => i.schema && Object.keys(i.schema.properties).length === 0)
+      .map(([n]) => n);
+    expect(leer).toEqual([]);
   });
 
   it('extends only interfaces that exist, and never itself', () => {
@@ -307,7 +671,7 @@ describe('seed registry, referential integrity', () => {
       const refs = Array.isArray(v.fields) ? v.fields : [];
       refs.forEach((ref) => {
         const [c, f] = String(ref).split('.');
-        const def = components[c];
+        const def = interfaces[c];
         if (!def) {
           fehlt.push(`${n} → ${ref}`);
           return;
@@ -340,7 +704,7 @@ describe('seed registry, referential integrity', () => {
      niemand ausfüllen kann. */
   it('never makes a derived property required', () => {
     const schlecht: string[] = [];
-    Object.entries(components).forEach(([n, c]) => {
+    Object.entries(interfaces).forEach(([n, c]) => {
       const req = c.schema?.required ?? [];
       Object.entries(c.schema?.properties ?? {}).forEach(([p, def]) => {
         if ((def as { derived?: string }).derived && req.includes(p)) schlecht.push(`${n}.${p}`);
@@ -360,5 +724,189 @@ describe('seed registry, referential integrity', () => {
   it('keeps variable names to what {VAR} can actually match', () => {
     const schlecht = Object.keys(seedRegistry.vars ?? {}).filter((k) => !/^[A-Z0-9_]+$/.test(k));
     expect(schlecht).toEqual([]);
+  });
+});
+
+/* Reiter auf dem Charakterbogen. Zwei Dinge gehen hier still schief: ein
+   Reiter, dessen Inhalt woanders auch steht (dann bearbeitet man zweimal
+   dasselbe), und die Zahlen im Reiter statt darüber (dann muss man am Tisch
+   umschalten, um die Trefferpunkte zu sehen). */
+describe('the character sheet has tabs', () => {
+  const creature = seedRegistry.interfaces['Creature']?.views?.['full'] ?? [];
+  const tabsEl = creature.find((x) => x.el === 'tabs');
+
+  it('keeps the sheet above the tabs, not inside one', () => {
+    expect(creature[0]?.el).toBe('sheet');
+    expect(tabsEl).toBeTruthy();
+    expect(creature.indexOf(tabsEl!)).toBeGreaterThan(0);
+    for (const t of tabsEl?.tabs ?? []) {
+      expect(t.layout.map((x) => x.el)).not.toContain('sheet');
+    }
+  });
+
+  it('starts on the overview, and the overview carries the field table', () => {
+    const erste = tabsEl?.tabs?.[0];
+    expect(erste?.id).toBe('about');
+    /* Wer etwas ändern will, soll nicht erst umschalten. Ein eigener Reiter
+       für die Felder sah aufgeräumt aus und versteckte das Bearbeiten. */
+    expect(erste?.layout.map((x) => x.el)).toContain('fields');
+  });
+
+  it('shows nothing twice', () => {
+    const wo = new Map<string, string[]>();
+    for (const t of tabsEl?.tabs ?? []) {
+      for (const x of t.layout) {
+        wo.set(x.el, [...(wo.get(x.el) ?? []), t.id]);
+      }
+    }
+    for (const [el, tabs] of wo) expect(`${el}: ${tabs.join(',')}`).toBe(`${el}: ${tabs[0]}`);
+  });
+
+  it('gives every tab a label and something to draw', () => {
+    for (const t of tabsEl?.tabs ?? []) {
+      expect(t.label.length).toBeGreaterThan(0);
+      expect(t.layout.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+/* Beute ist nicht nur, was man einstecken kann. Was jemand erfährt, ist
+   genauso ein Fund — und manchmal der einzige, den es zu machen gab. */
+describe('loot is more than items', () => {
+  const loot = seedRegistry.relations['loot'];
+
+  it('reaches knowledge, feats and skills as well as items', () => {
+    expect(loot.to).toEqual(expect.arrayContaining(['Item', 'Information', 'Feat', 'Skill']));
+  });
+
+  /* Eine Lauernde Aktion ist auch eine Regel. Zeigte die Kante auf `Rule`,
+     dürfte man sie erbeuten, und die Auswahl im Feld wäre voller Unsinn. */
+  it('does not reach every rule', () => {
+    expect(loot.to).not.toContain('Rule');
+  });
+
+  it('is recordable on a quest, not only on an encounter', () => {
+    expect(loot.from).toEqual(expect.arrayContaining(['Encounter', 'Story', 'Quest']));
+  });
+
+  it('lets a feat and a skill be articles of their own, below Rule', () => {
+    for (const n of ['Feat', 'Skill']) {
+      expect(seedRegistry.interfaces[n]?.extends).toContain('Rule');
+      expect(seedRegistry.interfaces[n]?.abstract).toBeFalsy();
+    }
+    expect(seedRegistry.interfaces['Feat']).toBeTruthy();
+    expect(seedRegistry.interfaces['Skill']).toBeTruthy();
+  });
+
+  /* `RuleInfo.kind` ist Pflicht. Gäbe es die beiden Werte nicht, liesse sich
+     kein Talent anlegen, das die Validierung besteht. */
+  it('leaves a feat and a skill a kind they may carry', () => {
+    const kind = seedRegistry.interfaces['Rule'].schema.properties['kind'];
+    expect(kind.enum).toEqual(expect.arrayContaining(['feat', 'skill']));
+  });
+});
+
+/* Was der Umbau erreicht hat, als Zusicherung und nicht als Behauptung. */
+describe('one registry of types', () => {
+  it('has no component part left', () => {
+    expect((seedRegistry as unknown as { components?: unknown }).components).toBeUndefined();
+  });
+
+  /* Der Grund, weshalb die Werte nach Art gruppiert bleiben und nicht alle
+     in einen Topf wandern: `hp` heisst am Statblock das Maximum und an der
+     Figur, was sie gerade noch hat. Beides ohne Umbenennung, weil es zwei
+     Karten an zwei Artikeln sind — und seit die Zahlen am Statblock wohnen,
+     ist die Namensgleichheit keine Falle mehr, sondern die Wahrheit. */
+  it('keeps hp at the creature apart from hp at the statblock', () => {
+    expect(fieldsOf(seedRegistry, 'PlayerCharacter').filter((f) => f.key === 'hp')
+      .map((f) => f.type)).toEqual(['Vitals']);
+    expect(fieldsOf(seedRegistry, 'Statblock').filter((f) => f.key === 'hp')
+      .map((f) => f.type)).toEqual(['Statblock']);
+  });
+
+  /* **Eine Kante, die sich wie ein Feld liest.** Die Zahlen einer Kreatur
+     stehen am Statblock, und der ist ein eigener Artikel — austauschbar,
+     wiederverwendbar. Für die Kreatur ist er trotzdem kein Verweis auf
+     etwas Fremdes, sondern der Teil von ihr, der woanders wohnt. */
+  it('the statblock and the inventory read like fields at the creature', () => {
+    const l = linkedTypes(seedRegistry, 'Creature');
+    expect(l.map((x) => x.type).sort()).toEqual(['Inventory', 'Statblock']);
+    /* Die Richtung sagt, wo die Kante **liegt**: `belongsTo` am Statblock,
+       `carries` an der Kreatur. Gespeichert wird nur vorwärts. */
+    expect(l.find((x) => x.type === 'Statblock')?.direction).toBe('in');
+    expect(l.find((x) => x.type === 'Inventory')?.direction).toBe('out');
+    /* Und am anderen Ende ist es keines: die Kreatur ist nicht der Teil
+       ihres Statblocks, der woanders wohnt. */
+    expect(linkedTypes(seedRegistry, 'Statblock')).toEqual([]);
+  });
+
+  /* Ein Verweis auf etwas, das für sich steht, bleibt eine Kante: den
+     Gegenstand, den ein Rezept liefert, gäbe es auch ohne das Rezept. */
+  it('and a reference to something that stands on its own does not', () => {
+    const wie = Object.values(seedRegistry.relations).filter((r) => r.asField);
+    expect(wie.map((r) => r.type).sort()).toEqual(['belongsTo', 'carries']);
+    /* **Ein Feld hat einen Wert**: jede Kante mit `asField` ist `one`,
+       an welchem Ende sie auch liegt. Eine Kreatur trägt ein Inventar, ein
+       Statblock gehört einer Kreatur. Dreissig Wachen teilen sich keinen
+       Statblock, sondern lesen je eine Instanz einer Vorlage — für einen
+       Tag stand `belongsTo` auf `many`, und jede Änderung an einer Wache
+       war eine an allen. */
+    expect(wie.every((r) => r.cardinality === 'one')).toBe(true);
+    /* Und das Element, das sie zeichnet, steht in der Grundanordnung von
+       `full`: sonst stünden die Felder nirgends. */
+    const voll = seedRegistry.views['full']?.layout ?? [];
+    expect(voll.some((x) => x.el === 'linked')).toBe(true);
+  });
+
+  /* Die Vorlage, aus der eine Instanz liest: Statblock zu Statblock, und
+     eine Instanz hat genau eine. Mehrere Vorlagen wären eine Mischung, die
+     niemand geschrieben hat. */
+  it('lets a statblock read a template', () => {
+    const r = seedRegistry.relations['instanceOf'];
+    expect(r?.from).toEqual(['Statblock']);
+    expect(r?.to).toEqual(['Statblock']);
+    expect(r?.cardinality).toBe('one');
+    expect(r?.asField).toBeUndefined();
+  });
+
+  /* Und die Kante reicht bis zum Spielercharakter. Solange sie nur auf
+     den NSC zeigte, konnte er gar keinen Statblock haben. */
+  it('lets a statblock belong to any creature', () => {
+    expect(seedRegistry.relations['belongsTo']?.to).toEqual(['Creature']);
+  });
+
+  /* Kein Feldname darf zweimal in derselben Karte stehen — das kann nicht
+     passieren, seit eine Karte ein Schema ist. Wohl aber, dass zwei Arten
+     einer Kette dasselbe Feld erklären, und dann muss klar bleiben, welche
+     gemeint ist. Geprüft wird deshalb, dass die Art immer dabeisteht. */
+  it('says which type declares each field', () => {
+    for (const n of Object.keys(seedRegistry.interfaces)) {
+      for (const f of fieldsOf(seedRegistry, n)) {
+        expect(seedRegistry.interfaces[f.type]?.schema?.properties[f.key]).toBeTruthy();
+      }
+    }
+  });
+
+  /* Die sieben, die mehrere Arten teilen. Sie sind abstrakt, weil niemand
+     einen Artikel „Zugriff" anlegt — und sie tragen Felder, sonst wären sie
+     eine Zeile ohne Inhalt. */
+  it('keeps the shared ones abstract and full', () => {
+    for (const n of ['Vars', 'Abilities', 'Vitals', 'Proficiencies']) {
+      const d = seedRegistry.interfaces[n];
+      expect(d?.abstract).toBe(true);
+      expect(Object.keys(d?.schema?.properties ?? {}).length).toBeGreaterThan(0);
+    }
+  });
+
+  /* Marken gehören einem Bestandteil und nicht der Entität. Jede Artikelart
+     muss ihn erben — sonst gäbe es Artikel, die sich nicht markieren
+     lassen, ohne dass irgendwo stünde, warum. */
+  it('gives every article type its tags', () => {
+    const arten = Object.keys(seedRegistry.interfaces)
+      .filter((n) => !seedRegistry.interfaces[n]?.abstract);
+    expect(arten.length).toBeGreaterThan(20);
+    for (const n of arten) {
+      expect(fieldsOf(seedRegistry, n).some((f) => f.type === 'Tags' && f.key === 'tags')).toBe(true);
+    }
   });
 });

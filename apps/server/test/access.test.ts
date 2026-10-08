@@ -16,6 +16,7 @@ import { buildApp } from '../src/app.js';
 import { InMemoryRepository } from '../src/repo.js';
 import { hashPassword, hashToken, passwordProblem } from '../src/auth.js';
 import { runUserCommand } from '../src/user.js';
+import { loadConfig } from '../src/config.js';
 
 const PASSWORT = 'nebel-wacht-am-tor';
 
@@ -23,40 +24,28 @@ const rook: Entity = {
   id: 'pc_rook',
   interfaces: ['PlayerCharacter'],
   name: 'Rook',
-  tags: [],
   components: {
-    Name: { text: 'Rook' },
-    Identity: { key: 'pc/rook', aliases: [] },
-    Status: { value: 'used' },
-    CharacterInfo: { level: 5 },
+    Identity: { name: 'Rook', id: 'pc-0001', aliases: [] }, Status: { status: 'ready' },
+    PlayerCharacter: { level: 5 },
   },
-  blocks: [],
   relations: [{ id: 'r1', type: 'carries', to: 'inv_rook', props: {} }],
 };
 const inv: Entity = {
   id: 'inv_rook',
   interfaces: ['Inventory'],
   name: 'Rooks Sachen',
-  tags: [],
   components: {
-    Name: { text: 'Rooks Sachen' },
-    Identity: { key: 'inv/rook', aliases: [] },
-    Status: { value: 'used' },
+    Identity: { name: 'Rooks Sachen', id: 'inv-0001', aliases: [] }, Status: { status: 'ready' },
   },
-  blocks: [],
   relations: [],
 };
 const fremd: Entity = {
   id: 'n_volo',
-  interfaces: ['NPC'],
+  interfaces: ['Creature'],
   name: 'Volo',
-  tags: [],
   components: {
-    Name: { text: 'Volo' },
-    Identity: { key: 'npc/volo', aliases: [] },
-    Status: { value: 'used' },
+    Identity: { name: 'Volo', id: 'npc-0001', aliases: [] }, Status: { status: 'ready' },
   },
-  blocks: [],
   relations: [],
 };
 
@@ -68,14 +57,20 @@ function makeApp() {
 async function addUser(
   repo: InMemoryRepository,
   name: string,
-  opts: { gm?: boolean; actorId?: string; actorIds?: string[] } = {},
+  opts: {
+    admin?: boolean;
+    actorId?: string;
+    actorIds?: string[];
+    roles?: Record<string, 'gm' | 'co-gm' | 'player' | 'spectator'>;
+  } = {},
 ) {
   await repo.putUser({
     id: randomUUID(),
     name,
     passwordHash: await hashPassword(PASSWORT),
-    isGm: opts.gm ?? false,
+    isAdmin: opts.admin ?? false,
     actorIds: opts.actorIds ?? (opts.actorId ? [opts.actorId] : []),
+    roles: opts.roles ?? {},
   });
 }
 
@@ -120,13 +115,13 @@ describe('logging in', () => {
   let repo: InMemoryRepository;
   beforeEach(async () => {
     ({ app, repo } = makeApp());
-    await addUser(repo, 'Basil', { gm: true });
+    await addUser(repo, 'Basil', { admin: true });
   });
 
   it('takes the right password and hands out a session', async () => {
     const res = await login(app, 'Basil');
     expect(res.statusCode).toBe(200);
-    expect(res.json().user.isGm).toBe(true);
+    expect(res.json().user.isAdmin).toBe(true);
     expect(res.json().user.passwordHash).toBeUndefined();
     expect(cookieOf(res)).toMatch(/^nw_session=/);
   });
@@ -182,12 +177,114 @@ describe('logging in', () => {
   });
 });
 
+/* Hinter Caddy kommt jede Anfrage als http von 127.0.0.1. Ohne Vertrauen
+   in den Proxy bekäme das Cookie nie `secure`, und die Bremse sperrte nach
+   acht Fehlversuchen irgendeines Gastes jeden — alle hätten dieselbe
+   Adresse. Mit Vertrauen gilt beides wieder je Gast; ohne es zählt ein
+   gefälschter Kopf nichts. */
+describe('behind the reverse proxy', () => {
+  const vonAussen = (ip: string) => ({
+    remoteAddress: '127.0.0.1',
+    headers: { 'x-forwarded-for': ip, 'x-forwarded-proto': 'https' },
+  });
+  async function anmelden(app: ReturnType<typeof buildApp>, ip: string, password = PASSWORT) {
+    return app.inject({
+      method: 'POST',
+      url: '/api/login',
+      payload: { name: 'Basil', password },
+      ...vonAussen(ip),
+    });
+  }
+  async function mitProxy(trustProxy?: string) {
+    const repo = new InMemoryRepository(seedRegistry, []);
+    await addUser(repo, 'Basil', { admin: true });
+    return buildApp({ repo, trustProxy });
+  }
+
+  it('reads the client and the scheme from the proxy it trusts', async () => {
+    const app = await mitProxy('loopback');
+    const res = await anmelden(app, '203.0.113.5');
+    expect(res.cookies.find((c) => c.name === 'nw_session')?.secure).toBe(true);
+
+    for (let i = 0; i < 8; i += 1) await anmelden(app, '203.0.113.5', 'daneben-daneben');
+    expect((await anmelden(app, '203.0.113.5')).statusCode).toBe(429);
+    expect((await anmelden(app, '198.51.100.7')).statusCode).toBe(200);
+  });
+
+  it('believes no header when nobody is trusted', async () => {
+    const app = await mitProxy();
+    const res = await anmelden(app, '203.0.113.5');
+    expect(res.cookies.find((c) => c.name === 'nw_session')?.secure).toBeFalsy();
+    for (let i = 0; i < 8; i += 1) await anmelden(app, '203.0.113.5', 'daneben-daneben');
+    expect((await anmelden(app, '198.51.100.7')).statusCode).toBe(429);
+  });
+
+  it('takes TRUST_PROXY as a list or a yes', () => {
+    expect(loadConfig({}).trustProxy).toBe(false);
+    expect(loadConfig({ TRUST_PROXY: 'loopback,uniquelocal' }).trustProxy).toBe(
+      'loopback,uniquelocal',
+    );
+    expect(loadConfig({ TRUST_PROXY: 'true' }).trustProxy).toBe(true);
+    expect(loadConfig({ TRUST_PROXY: 'false' }).trustProxy).toBe(false);
+  });
+});
+
+/* ---------------------------------------------------------------------
+   Die nullte Frage: steht der Artikel im Stapel? (E2, A2)
+   Was eine aufgeschaltete Ebene herausnimmt oder eine spezifischere
+   Fassung überschreibt, geht vom Server nicht hinaus — auch nicht an die
+   Verwaltung. Bis zum 7.10. rechnete das nur der Prototyp.
+   --------------------------------------------------------------------- */
+describe('the layer stack on the server', () => {
+  const ebene = (id: string, order: number): Entity => ({
+    id, interfaces: ['Layer'], name: id,
+    components: { Identity: { name: id, id: `layer-${order}`, aliases: [] }, Status: { status: 'ready' }, Layer: { order } },
+    relations: [],
+  });
+  const regel = (id: string, relations: Entity['relations']): Entity => ({
+    id, interfaces: ['Rule'], name: id,
+    components: { Identity: { name: id, id: `rule-${id}`, aliases: [] }, Status: { status: 'ready' }, Rule: { kind: 'trait' } },
+    relations,
+  });
+  const camp: Entity = {
+    id: 'camp_probe', interfaces: ['Campaign'], name: 'Probe',
+    components: { Identity: { name: 'Probe', id: 'campaign-0001', aliases: [] }, Status: { status: 'ready' } },
+    relations: [{ id: 'a1', type: 'activates', to: 'ly_sys', props: {} }, { id: 'a2', type: 'activates', to: 'ly_an', props: {} }],
+  };
+  const bestand = [
+    rook, inv, camp, ebene('ly_sys', 1), ebene('ly_an', 20), ebene('ly_aus', 20),
+    regel('r_frei', []),
+    regel('r_sys', [{ id: 'l1', type: 'inLayer', to: 'ly_sys', props: {} }]),
+    regel('r_aus', [{ id: 'l2', type: 'inLayer', to: 'ly_aus', props: {} }]),
+    regel('r_haus', [{ id: 'l3', type: 'inLayer', to: 'ly_an', props: {} }, { id: 'o1', type: 'overrides', to: 'r_sys', props: {} }]),
+    regel('r_weg', [{ id: 'l4', type: 'inLayer', to: 'ly_sys', props: {} }, { id: 'l5', type: 'inLayer', to: 'ly_an', props: { mode: 'removes' } }]),
+  ];
+
+  it('sends only what the running campaign has in play, to admin and player alike', async () => {
+    for (const admin of [true, false]) {
+      const repo = new InMemoryRepository(seedRegistry, bestand);
+      const app = buildApp({ repo });
+      await addUser(repo, 'Wer', { admin, actorIds: ['pc_rook'] });
+      const keks = cookieOf(await login(app, 'Wer'));
+      const ids = (await app.inject({ method: 'GET', url: '/api/entities', headers: { cookie: keks } })).json()
+        .map((e: Entity) => e.id);
+      expect(ids).toContain('r_frei');
+      expect(ids).toContain('r_haus');
+      expect(ids).not.toContain('r_sys');   /* überschrieben */
+      expect(ids).not.toContain('r_aus');   /* Ebene nicht aufgeschaltet */
+      expect(ids).not.toContain('r_weg');   /* herausgenommen */
+      const einzeln = await app.inject({ method: 'GET', url: '/api/entities/r_aus', headers: { cookie: keks } });
+      expect(einzeln.statusCode).toBe(404);
+    }
+  });
+});
+
 describe('who may write what', () => {
   let app: ReturnType<typeof buildApp>;
   let repo: InMemoryRepository;
   beforeEach(async () => {
     ({ app, repo } = makeApp());
-    await addUser(repo, 'Basil', { gm: true });
+    await addUser(repo, 'Basil', { admin: true });
     await addUser(repo, 'Sela', { actorId: 'pc_rook' });
   });
 
@@ -316,14 +413,27 @@ describe('the user command', () => {
 
   it('adds, lists, disables and re-opens an account', async () => {
     expect(await runUserCommand(repo, ['list'])).toMatch(/Kein Konto/);
-    await runUserCommand(repo, ['add', 'Basil', '--gm']);
-    expect(await runUserCommand(repo, ['list'])).toMatch(/Basil {2}\(Spielleitung\)/);
+    await runUserCommand(repo, ['add', 'Basil', '--admin']);
+    expect(await runUserCommand(repo, ['list'])).toMatch(/Basil {2}\(Verwaltung\)/);
     await runUserCommand(repo, ['add', 'Sela', '--actor', 'pc_rook']);
     expect(await runUserCommand(repo, ['list'])).toMatch(/spielt pc_rook/);
     await runUserCommand(repo, ['disable', 'Sela']);
     expect(await runUserCommand(repo, ['list'])).toMatch(/\[gesperrt\]/);
     await runUserCommand(repo, ['enable', 'Sela']);
     expect(await runUserCommand(repo, ['list'])).not.toMatch(/\[gesperrt\]/);
+  });
+
+  /* Die Rolle steht am Konto, je Kampagne — und eine, die es nicht gibt,
+     wird abgewiesen statt geraten. */
+  it('sets, lists and takes away a role per campaign', async () => {
+    await runUserCommand(repo, ['add', 'Basil']);
+    expect(await runUserCommand(repo, ['role', 'Basil', 'camp_a', 'gm'])).toMatch(/jetzt gm/);
+    await runUserCommand(repo, ['role', 'Basil', 'camp_b', 'player']);
+    expect(await runUserCommand(repo, ['role', 'Basil'])).toMatch(/gm in camp_a, player in camp_b/);
+    expect(await runUserCommand(repo, ['list'])).toMatch(/gm in camp_a/);
+    await runUserCommand(repo, ['role', 'Basil', 'camp_b', 'none']);
+    expect((await repo.findUserByName('basil'))?.roles).toEqual({ camp_a: 'gm' });
+    await expect(runUserCommand(repo, ['role', 'Basil', 'camp_a', 'kaiser'])).rejects.toThrow(/Rolle/);
   });
 
   it('refuses a second account with the same name in another case', async () => {
@@ -363,33 +473,25 @@ describe('the user command', () => {
 describe('what a player gets to read', () => {
   const geheimnis: Entity = {
     id: 'n_wachsmann',
-    interfaces: ['NPC'],
+    interfaces: ['Creature'],
     name: 'Der Wachsmann',
-    tags: [],
     components: {
-      Name: { text: 'Der Wachsmann' },
-      Identity: { key: 'npc/wachsmann', aliases: [], cover: 'die Gestalt im Mantel' },
-      Status: { value: 'used' },
-      Description: { raw: 'Er heisst Aurinax und war einmal Goldschmied.' },
+      Identity: { name: 'Der Wachsmann', id: 'npc-0001', aliases: [], cover: 'die Gestalt im Mantel' }, Status: { status: 'ready' }, Description: { description: 'Er heisst Aurinax und war einmal Goldschmied.' },
+      /* Prosa ist ein Feld mit Einträgen; an der Id hängt die Freigabe.
+         Das waren Blöcke mit Ankern. */
+      Prose: { paragraph: [{ id: 'paragraph-offen', value: 'Gross, still, wächsern.' }] },
+      Secrets: { secret: [{ id: 'secret-geheim', value: 'Er sucht seinen Bruder.' }] },
     },
-    blocks: [
-      { id: 'b1', anchor: 'paragraph-offen', blockType: 'paragraph', body: 'Gross, still, wächsern.', order: 0 },
-      { id: 'b2', anchor: 'secret-geheim', blockType: 'secret', body: 'Er sucht seinen Bruder.', order: 1 },
-    ],
     relations: [{ id: 'rk', type: 'knowledge', to: 'i_name', props: {} }],
   };
   const info: Entity = {
     id: 'i_name',
     interfaces: ['Information'],
     name: 'Sein richtiger Name',
-    tags: [],
     components: {
-      Name: { text: 'Sein richtiger Name' },
-      Identity: { key: 'info/wachsmann-name', aliases: [] },
-      Status: { value: 'used' },
-      Info: { tier: 'secret', fields: ['Name.text', 'Description.raw'], blocks: [] },
+      Identity: { name: 'Sein richtiger Name', id: 'info-0001', aliases: [] }, Status: { status: 'ready' },
+      Information: { tier: 'secret', fields: ['Identity.name', 'Description.description'] },
     },
-    blocks: [],
     relations: [],
   };
 
@@ -399,7 +501,7 @@ describe('what a player gets to read', () => {
       : info;
     const repo = new InMemoryRepository(seedRegistry, [rook, inv, geheimnis, mitWissen]);
     const app = buildApp({ repo });
-    await addUser(repo, 'Basil', { gm: true });
+    await addUser(repo, 'Basil', { admin: true });
     await addUser(repo, 'Sela', { actorId: 'pc_rook' });
     return { app, repo };
   }
@@ -412,8 +514,10 @@ describe('what a player gets to read', () => {
       url: '/api/entities/n_wachsmann',
       headers: { cookie: keks },
     });
-    expect(res.json().components.Description.raw).toMatch(/Aurinax/);
-    expect(res.json().blocks).toHaveLength(2);
+    expect(res.json().components.Description.description).toMatch(/Aurinax/);
+    /* Die Prosa ganz: die offene und die geheime. */
+    expect(res.json().components.Prose.paragraph).toHaveLength(1);
+    expect(res.json().components.Secrets.secret).toHaveLength(1);
   });
 
   /* Der eigentliche Prüfstein: der Name steht nicht in der Antwort. Nicht
@@ -428,10 +532,15 @@ describe('what a player gets to read', () => {
     });
     const body = res.json();
     expect(JSON.stringify(body)).not.toMatch(/Aurinax/);
+    /* Die Beschreibung ist ganz weg — sie ist ihr eigener Bestandteil, und
+       bleibt nichts von ihr übrig, wird die Karte weggelassen. */
     expect(body.components.Description).toBeUndefined();
-    expect(body.components.Name.text).toBe('die Gestalt im Mantel');
-    // Ein GM-Block geht gar nicht erst mit.
-    expect(body.blocks.map((b: { anchor: string }) => b.anchor)).toEqual(['paragraph-offen']);
+    expect(body.components.Identity.name).toBe('die Gestalt im Mantel');
+    /* Ein Feld, das nur der Spielleitung gehört, geht gar nicht erst mit —
+       und die offene Prosa schon. Das war einmal die Blockart. */
+    expect(body.components.Secrets).toBeUndefined();
+    expect(body.components.Prose.paragraph.map((e: { id: string }) => e.id))
+      .toEqual(['paragraph-offen']);
   });
 
   it('sends it once the information is theirs', async () => {
@@ -443,8 +552,8 @@ describe('what a player gets to read', () => {
       headers: { cookie: keks },
     });
     const body = res.json();
-    expect(body.components.Description.raw).toMatch(/Aurinax/);
-    expect(body.components.Name.text).toBe('Der Wachsmann');
+    expect(body.components.Description.description).toMatch(/Aurinax/);
+    expect(body.components.Identity.name).toBe('Der Wachsmann');
   });
 
   /* Und die Liste ebenso — sie ist der bequemere Weg an dieselben Daten,
@@ -459,6 +568,105 @@ describe('what a player gets to read', () => {
     });
     expect(JSON.stringify(res.json())).not.toMatch(/Aurinax/);
   });
+
+  /* ---- Die grobe Frage, und sie kommt vor der feinen ----
+     Bis hierher siebte der Server nur Felder: `audience: 'gm'` stand in
+     der Karte, und der Artikel ging trotzdem raus. Das Feld auszuwerten
+     und den Artikel zu schicken ist keine halbe Sichtbarkeit, sondern
+     keine. */
+  const nurSL: Entity = {
+    id: 'n_plan',
+    interfaces: ['Creature'],
+    name: 'Der Plan hinter allem',
+    components: {
+      Identity: { name: 'Der Plan hinter allem', id: 'npc-0002', aliases: [] },
+      Status: { status: 'idea' },
+      Visibility: { audience: 'gm' },
+    },
+    relations: [],
+  };
+
+  async function mitStufe(vis: Record<string, unknown>) {
+    const artikel: Entity = { ...nurSL, components: { ...nurSL.components, Visibility: vis } };
+    const repo = new InMemoryRepository(seedRegistry, [rook, inv, artikel]);
+    const app = buildApp({ repo });
+    await addUser(repo, 'Basil', { admin: true });
+    await addUser(repo, 'Sela', { actorId: 'pc_rook' });
+    return app;
+  }
+
+  async function liest(app: ReturnType<typeof buildApp>, wer: string) {
+    const keks = cookieOf(await login(app, wer));
+    const einzeln = await app.inject({
+      method: 'GET',
+      url: '/api/entities/n_plan',
+      headers: { cookie: keks },
+    });
+    const liste = await app.inject({
+      method: 'GET',
+      url: '/api/entities',
+      headers: { cookie: keks },
+    });
+    return {
+      code: einzeln.statusCode,
+      inListe: (liste.json() as Entity[]).some((e) => e.id === 'n_plan'),
+    };
+  }
+
+  it('keeps an article marked gm away from a player, list and single read', async () => {
+    const app = await mitStufe({ audience: 'gm' });
+    expect(await liest(app, 'Basil')).toEqual({ code: 200, inListe: true });
+    /* 404 und nicht 403: „verboten" wäre die genauere Auskunft und die
+       falsche — sie sagt, dass da etwas ist. */
+    expect(await liest(app, 'Sela')).toEqual({ code: 404, inListe: false });
+  });
+
+  it('treats an article nobody classified as public', async () => {
+    const app = await mitStufe({});
+    expect(await liest(app, 'Sela')).toEqual({ code: 200, inListe: true });
+  });
+
+  /* **Eine Leitung je Kampagne, und die Ebene sagt wessen.** Zwei Runden
+     auf derselben Installation: der Artikel liegt in der Ebene der einen.
+     Ihre Leitung sieht ihn, die der anderen nicht — und keine der beiden
+     ist die Verwaltung. Die Rollen stehen am Konto, nicht in einem
+     Artikel. */
+  it('shows a gm article to the lead of the campaign it belongs to, and only to them', async () => {
+    const ebene = (id: string): Entity => ({
+      id, interfaces: ['Layer'], name: id,
+      components: { Identity: { name: id, id: `layer-${id}`, aliases: [] } }, relations: [],
+    });
+    const runde = (id: string, layer: string): Entity => ({
+      id, interfaces: ['Campaign'], name: id,
+      components: { Identity: { name: id, id: `campaign-${id}`, aliases: [] } },
+      relations: [{ id: `a_${id}`, type: 'activates', to: layer, props: {} }],
+    });
+    const geheim: Entity = {
+      ...nurSL,
+      components: { ...nurSL.components, Visibility: { audience: 'gm' } },
+      relations: [{ id: 'il', type: 'inLayer', to: 'ly_nebel', props: {} }],
+    };
+    const repo = new InMemoryRepository(seedRegistry, [
+      ebene('ly_nebel'), ebene('ly_salz'),
+      runde('camp_nebel', 'ly_nebel'), runde('camp_salz', 'ly_salz'), geheim,
+    ]);
+    const app = buildApp({ repo });
+    await addUser(repo, 'Basil', { roles: { camp_nebel: 'gm', camp_salz: 'player' } });
+    await addUser(repo, 'Mira', { roles: { camp_salz: 'gm' } });
+    expect(await liest(app, 'Basil')).toEqual({ code: 200, inListe: true });
+    expect(await liest(app, 'Mira')).toEqual({ code: 404, inListe: false });
+  });
+
+  it('lets revealedTo beat the step and hiddenFrom beat revealedTo', async () => {
+    const frei = await mitStufe({ audience: 'gm', revealedTo: ['pc_rook'] });
+    expect(await liest(frei, 'Sela')).toEqual({ code: 200, inListe: true });
+    const weg = await mitStufe({
+      audience: 'public',
+      revealedTo: ['pc_rook'],
+      hiddenFrom: ['pc_rook'],
+    });
+    expect(await liest(weg, 'Sela')).toEqual({ code: 404, inListe: false });
+  });
 });
 
 /* ---------------------------------------------------------------------
@@ -472,13 +680,13 @@ describe('what a player gets to read', () => {
 describe('signing yourself up', () => {
   async function mitEinladung(
     repo: InMemoryRepository,
-    opts: { uses?: number; actorId?: string; gm?: boolean; expired?: boolean } = {},
+    opts: { uses?: number; actorId?: string; admin?: boolean; expired?: boolean } = {},
   ) {
     const code = 'einladung-zum-pruefen';
     await repo.putInvite({
       codeHash: hashToken(code),
       label: 'Prüfung',
-      isGm: opts.gm ?? false,
+      isAdmin: opts.admin ?? false,
       actorId: opts.actorId,
       usesLeft: opts.uses,
       expiresAt: opts.expired ? new Date(Date.now() - 1000).toISOString() : undefined,
@@ -508,7 +716,7 @@ describe('signing yourself up', () => {
     expect(cookieOf(res)).toMatch(/^nw_session=/);
     const me = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie: cookieOf(res) } });
     expect(me.json().user.name).toBe('Neu');
-    expect(me.json().user.isGm).toBe(false);
+    expect(me.json().user.isAdmin).toBe(false);
   });
 
   /* Der spezifische Link: einer, der weiss, wer kommt. */
@@ -541,7 +749,7 @@ describe('signing yourself up', () => {
      verliert jemand seine Einladung an einen Tippfehler. */
   it('does not spend the invitation on a name that is taken', async () => {
     const { app, repo } = makeApp();
-    await addUser(repo, 'Basil', { gm: true });
+    await addUser(repo, 'Basil', { admin: true });
     const code = await mitEinladung(repo, { uses: 1 });
     expect((await anmelden(app, { name: 'basil', password: PASSWORT, invite: code })).statusCode)
       .toBe(409);
@@ -571,7 +779,7 @@ describe('signing yourself up', () => {
      gespeichert ist nur sein Hash. */
   it('shows a new invitation code once and never again', async () => {
     const { app, repo } = makeApp();
-    await addUser(repo, 'Basil', { gm: true });
+    await addUser(repo, 'Basil', { admin: true });
     const keks = cookieOf(await login(app, 'Basil'));
     const neu = await app.inject({
       method: 'POST',
@@ -599,31 +807,22 @@ describe('one account, several characters', () => {
     id: 'pc_sela',
     interfaces: ['PlayerCharacter'],
     name: 'Sela',
-    tags: [],
     components: {
-      Name: { text: 'Sela' },
-      Identity: { key: 'pc/sela', aliases: [] },
-      Status: { value: 'used' },
+      Identity: { name: 'Sela', id: 'pc-0001', aliases: [] }, Status: { status: 'ready' },
       /* `PlayerCharacter` verlangt sie — eine Figur ohne sie liesse sich
          lesen und nicht zurückschreiben, und die Prüfung fiele auf die
          Maske statt auf die Vorlage. */
-      CharacterInfo: { player: 'Prüfung' },
+      PlayerCharacter: { player: 'Prüfung' },
     },
-    blocks: [],
     relations: [],
   };
   const geheim: Entity = {
     id: 'n_wachsmann',
-    interfaces: ['NPC'],
+    interfaces: ['Creature'],
     name: 'Der Wachsmann',
-    tags: [],
     components: {
-      Name: { text: 'Der Wachsmann' },
-      Identity: { key: 'npc/wachsmann', aliases: [] },
-      Status: { value: 'used' },
-      Description: { raw: 'Er heisst Aurinax.' },
+      Identity: { name: 'Der Wachsmann', id: 'npc-0001', aliases: [] }, Status: { status: 'ready' }, Description: { description: 'Er heisst Aurinax.' },
     },
-    blocks: [],
     relations: [{ id: 'rk', type: 'knowledge', to: 'i_name', props: {} }],
   };
   /* Nur **Sela** weiss es — Rook nicht. */
@@ -631,14 +830,10 @@ describe('one account, several characters', () => {
     id: 'i_name',
     interfaces: ['Information'],
     name: 'Sein richtiger Name',
-    tags: [],
     components: {
-      Name: { text: 'Sein richtiger Name' },
-      Identity: { key: 'info/name', aliases: [] },
-      Status: { value: 'used' },
-      Info: { tier: 'secret', fields: ['Description.raw'], blocks: [] },
+      Identity: { name: 'Sein richtiger Name', id: 'info-0001', aliases: [] }, Status: { status: 'ready' },
+      Information: { tier: 'secret', fields: ['Description.description'] },
     },
-    blocks: [],
     relations: [{ id: 'rb', type: 'knownBy', to: 'pc_sela', props: {} }],
   };
 
@@ -657,7 +852,7 @@ describe('one account, several characters', () => {
       url: '/api/entities/n_wachsmann',
       headers: { cookie: keks },
     });
-    expect(res.json().components.Description?.raw).toMatch(/Aurinax/);
+    expect(res.json().components.Description?.description).toMatch(/Aurinax/);
   });
 
   it('and withholds it from an account that only plays the other one', async () => {
@@ -696,5 +891,86 @@ describe('one account, several characters', () => {
     const wer = await repo.usersOfActor('pc_sela');
     expect(wer.map((u) => u.name)).toEqual(['Spieler']);
     expect(await repo.usersOfActor('n_wachsmann')).toEqual([]);
+  });
+});
+
+/* ---------------------------------------------------------------------
+   Wissen an die Gruppe geht an ihre Figuren — und an sonst niemanden.
+
+   Es gab daneben `Group`, eine Gruppe von Konten: ein Konto führte sie wie
+   eine Figur (`app_user_actor`), und wer keine Figur hatte, las so mit.
+   Seit dem 7.10. (A8) ist die Gruppe das Figurengefüge einer Runde und
+   sonst nichts: wer mitlesen soll, hat eine Figur oder eine Rolle am Tisch
+   (`audience`). Eine zweite Sorte Träger war eine zweite Wahrheit.
+   --------------------------------------------------------------------- */
+describe('knowledge shared with the party', () => {
+  const runde: Entity = {
+    id: 'pa_runde',
+    interfaces: ['Party'],
+    name: 'Die Donnerstagsrunde',
+    components: {
+      Identity: { name: 'Die Donnerstagsrunde', id: 'party-0001', aliases: [] }, Status: { status: 'ready' },
+    },
+    relations: [],
+  };
+  const sela: Entity = {
+    id: 'pc_sela2',
+    interfaces: ['PlayerCharacter'],
+    name: 'Sela',
+    components: { Identity: { name: 'Sela', id: 'pc-0002', aliases: [] }, Status: { status: 'ready' } },
+    relations: [{ id: 'rm', type: 'memberOfParty', to: 'pa_runde', props: {} }],
+  };
+  const ort: Entity = {
+    id: 'o_keller',
+    interfaces: ['Place'],
+    name: 'Der Lampenkeller',
+    components: {
+      Identity: { name: 'Der Lampenkeller', id: 'place-0001', aliases: [] }, Status: { status: 'ready' }, Description: { description: 'Der Eingang liegt hinter dem Fass.' },
+    },
+    relations: [{ id: 'rk', type: 'knowledge', to: 'i_eingang', props: {} }],
+  };
+  /* Zugeteilt ist es der **Gruppe** — keiner einzelnen Figur. */
+  const info: Entity = {
+    id: 'i_eingang',
+    interfaces: ['Information'],
+    name: 'Wo der Eingang liegt',
+    components: {
+      Identity: { name: 'Wo der Eingang liegt', id: 'info-0001', aliases: [] }, Status: { status: 'ready' },
+      Information: { tier: 'secret', fields: ['Description.description'] },
+    },
+    relations: [{ id: 'rb', type: 'knownBy', to: 'pa_runde', props: {} }],
+  };
+
+  async function setup(actorIds: string[]) {
+    const repo = new InMemoryRepository(seedRegistry, [rook, inv, runde, sela, ort, info]);
+    const app = buildApp({ repo });
+    await addUser(repo, 'Spieler', { actorIds });
+    return { app, repo };
+  }
+  const lesen = async (app: ReturnType<typeof buildApp>) => {
+    const keks = cookieOf(await login(app, 'Spieler'));
+    return app.inject({ method: 'GET', url: '/api/entities/o_keller', headers: { cookie: keks } });
+  };
+
+  it('reaches an account whose character is in the party', async () => {
+    const { app } = await setup(['pc_sela2']);
+    expect((await lesen(app)).json().components.Description?.description).toMatch(/hinter dem Fass/);
+  });
+
+  /* Und niemanden sonst — auch nicht jemanden mit einer Figur, die alles
+     andere darf, und nicht ein Konto ohne Figur. */
+  it('and nobody outside it, character or no character', async () => {
+    const { app } = await setup(['pc_rook']);
+    expect(JSON.stringify((await lesen(app)).json())).not.toContain('hinter dem Fass');
+    const { app: leer } = await setup([]);
+    expect(JSON.stringify((await lesen(leer)).json())).not.toContain('hinter dem Fass');
+  });
+
+  it('knows three holders and no fourth', () => {
+    expect(seedRegistry.relations.knownBy.to).toEqual(['Creature', 'Party', 'Faction']);
+    expect(seedRegistry.interfaces.Group).toBeUndefined();
+    /* Die Gruppe hängt an ihrer Kampagne, genau einer. */
+    expect(seedRegistry.relations.partyOf.to).toEqual(['Campaign']);
+    expect(seedRegistry.relations.partyOf.cardinality).toBe('one');
   });
 });

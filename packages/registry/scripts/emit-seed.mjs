@@ -20,7 +20,7 @@
    dazugekommen oder aus dem Paket verschwunden ist — und die falsche
    Annahme löscht im einen Fall Arbeit.
 
-   Ein ganzer Teil ist oft zu grob: aus `components` sollen die Zeilen einer
+   Ein ganzer Teil ist oft zu grob: aus `interfaces` sollen die Zeilen einer
    gestrichenen Artikelart weg, die eine Zeile daneben aber bleiben. Deshalb
    nimmt der Schalter auch **einzelne Zeilen**, `teil:Name`. Was er so nicht
    findet, sagt er — ein Name, der nichts trifft, ist meist ein Tippfehler
@@ -52,7 +52,7 @@ for (const p of PRUNE) {
 }
 const zielArg = argv.find((a, i) => !a.startsWith('--') && i !== pruneAt + 1);
 const ZIEL = resolve(zielArg ?? join(HIER, '..', '..', '..', 'prototype', 'test', 'dbdump', 'registry'));
-const TEILE = ['components', 'interfaces', 'relations', 'views', 'vars', 'settings'];
+const TEILE = ['interfaces', 'relations', 'views', 'units', 'enums', 'vars', 'settings'];
 
 mkdirSync(ZIEL, { recursive: true });
 let fremd = 0;

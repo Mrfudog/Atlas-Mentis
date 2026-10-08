@@ -10,7 +10,21 @@
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyCookie from '@fastify/cookie';
-import { EntitySchema, RegistrySchema, redactEntity, validateEntity } from '@nw/model';
+import {
+  EntitySchema,
+  RegistrySchema,
+  articleVisible,
+  currentCampaign,
+  inPlay,
+  detachInstance,
+  instancesOf,
+  isInstance,
+  readInstance,
+  redactEntity,
+  resolveInstance,
+  thinInstance,
+  validateEntity,
+} from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
 import type { Repository } from './repo.js';
 import {
@@ -48,17 +62,24 @@ export interface AppOptions {
   logger?: boolean;
   /** Directory of the built Angular app. Omitted in tests — the API stands alone. */
   staticRoot?: string;
+  /** Siehe `Config.trustProxy`; in Tests ungesetzt. */
+  trustProxy?: boolean | string;
 }
 
-const REGISTRY_PARTS = ['components', 'interfaces', 'relations', 'views', 'vars'] as const;
+const REGISTRY_PARTS = ['interfaces', 'relations', 'views', 'vars'] as const;
 type RegistryPart = (typeof REGISTRY_PARTS)[number];
 
 function isRegistryPart(value: string): value is RegistryPart {
   return (REGISTRY_PARTS as readonly string[]).includes(value);
 }
 
-export function buildApp({ repo, logger = false, staticRoot }: AppOptions): FastifyInstance {
-  const app = Fastify({ logger });
+export function buildApp({
+  repo,
+  logger = false,
+  staticRoot,
+  trustProxy = false,
+}: AppOptions): FastifyInstance {
+  const app = Fastify({ logger, trustProxy });
 
   void app.register(fastifyCookie);
 
@@ -120,7 +141,7 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
 
        `null` heisst „alles" und nicht „nichts": die Spielleitung bekommt
        keine Liste über den ganzen Bestand geschickt. */
-    const writable = user && !user.isGm ? [...(await ownedBy(user))] : null;
+    const writable = user && !user.isAdmin ? [...(await ownedBy(user))] : null;
     /* Die Figuren mit Namen, nicht nur mit Id. Die Maske müsste sie sonst
        einzeln nachladen, bevor sie „meine Figuren" überhaupt beschriften
        kann — und täte es beim ersten Mal falsch. */
@@ -136,7 +157,7 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
       /* Ein frischer Server sagt es geradeheraus. Das ist keine Auskunft,
          die jemandem nützt, den es nichts angeht: wer den Port erreicht,
          sieht ohnehin, dass nichts eingerichtet ist. */
-      setup: count === 0 ? 'Kein Konto angelegt. `pnpm --filter @nw/server user add <name> --gm`' : null,
+      setup: count === 0 ? 'Kein Konto angelegt. `pnpm --filter @nw/server user add <name> --admin`' : null,
       /* Ob sich hier überhaupt jemand anmelden kann, ohne dass die
          Spielleitung etwas tut. Die Maske zeigt den Registrieren-Knopf nur
          dann — einer, der bei jedem Versuch „Einladung fehlt" sagt, ist
@@ -262,8 +283,11 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
         id,
         name,
         passwordHash: await hashPassword(password),
-        isGm: invite.isGm,
+        isAdmin: invite.isAdmin,
         actorIds: invite.actorId ? [invite.actorId] : [],
+        /* Eine Einladung bindet an eine Figur, nicht an eine Rolle: wer
+           am Tisch was ist, setzt die Leitung danach. */
+        roles: {},
       });
       await repo.clearAttempts(fold, origin);
       await repo.appendEvent('register.ok', id, { invite: invite.label ?? null });
@@ -298,10 +322,10 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
    */
   app.get('/api/invites', async (request, reply) => {
     const user = await viewerOf(request);
-    if (!user?.isGm) return reply.code(403).send({ error: 'Nicht für dich.' });
+    if (!user?.isAdmin) return reply.code(403).send({ error: 'Nicht für dich.' });
     return (await repo.listInvites()).map((i) => ({
       label: i.label ?? null,
-      isGm: i.isGm,
+      isAdmin: i.isAdmin,
       actorId: i.actorId ?? null,
       usesLeft: i.usesLeft ?? null,
       expiresAt: i.expiresAt ?? null,
@@ -311,11 +335,11 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
     }));
   });
 
-  app.post<{ Body: { label?: string; gm?: boolean; actorId?: string; uses?: number; days?: number } }>(
+  app.post<{ Body: { label?: string; admin?: boolean; actorId?: string; uses?: number; days?: number } }>(
     '/api/invites',
     async (request, reply) => {
       const user = await viewerOf(request);
-      if (!user?.isGm) return reply.code(403).send({ error: 'Nicht für dich.' });
+      if (!user?.isAdmin) return reply.code(403).send({ error: 'Nicht für dich.' });
       const b = request.body ?? {};
       const code = newInviteCode();
       const uses = b.uses == null ? undefined : Math.max(1, Math.floor(Number(b.uses) || 1));
@@ -323,7 +347,7 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
       const invite: Invite = {
         codeHash: hashToken(code),
         label: b.label?.trim() || undefined,
-        isGm: b.gm === true,
+        isAdmin: b.admin === true,
         actorId: b.actorId?.trim() || undefined,
         usesLeft: uses,
         expiresAt: days ? new Date(Date.now() + days * 86400000).toISOString() : undefined,
@@ -338,7 +362,7 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
 
   app.delete<{ Params: { handle: string } }>('/api/invites/:handle', async (request, reply) => {
     const user = await viewerOf(request);
-    if (!user?.isGm) return reply.code(403).send({ error: 'Nicht für dich.' });
+    if (!user?.isAdmin) return reply.code(403).send({ error: 'Nicht für dich.' });
     const weg = await repo.dropInvite(request.params.handle);
     if (!weg) return reply.code(404).send({ error: 'Nicht gefunden' });
     return { ok: true };
@@ -384,7 +408,7 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
       return reply.code(401).send({ error: 'Nicht angemeldet.' });
     }
     if (!schreibt) return;
-    if (user.isGm) return;
+    if (user.isAdmin) return;
 
     /* Ein Spieler schreibt seine Figur und was an ihr hängt — und sonst
        nichts. Das Register gehört der Spielleitung: eine Registerzeile zu
@@ -423,7 +447,6 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
       // indexed write across the union loses the correlation between the
       // key and the value's shape.
       switch (part) {
-        case 'components': await repo.putRegistryPart('components', parsed.data.components); break;
         case 'interfaces': await repo.putRegistryPart('interfaces', parsed.data.interfaces); break;
         case 'relations': await repo.putRegistryPart('relations', parsed.data.relations); break;
         case 'views': await repo.putRegistryPart('views', parsed.data.views); break;
@@ -448,15 +471,26 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
    */
   async function sieve(request: FastifyRequest, entities: Entity[]): Promise<Entity[]> {
     const user = await viewerOf(request);
-    if (!user || user.isGm) return entities;
+    /* **Eine Instanz geht aufgelöst hinaus**, mit ihrer Vorlage darin und
+       der Angabe, welche Felder von dort kommen. Gespeichert ist an ihr nur,
+       was abweicht; ohne Auflösung hätte Wache 1 keine Trefferpunkte. */
+    const roh = new Map((await repo.listEntities()).map((e) => [e.id, e]));
     const registry = await repo.getRegistry();
+    /* **Die nullte Frage: steht der Artikel im Stapel?** (E2, A2) Was eine
+       aufgeschaltete Ebene herausnimmt oder eine spezifischere Fassung
+       überschreibt, ist nicht da — für jeden, auch für die Verwaltung.
+       Bis zum 7.10. rechnete das nur der Prototyp, und der Server schickte
+       solche Artikel trotzdem hinaus. */
+    const kampagne = currentCampaign(roh, registry.settings ?? null);
+    entities = entities.filter((e) => inPlay(roh, e, kampagne)).map((e) => readInstance(roh, e));
+    if (!user || user.isAdmin) return entities;
     /* Der Zusammenhang ist immer der ganze Bestand, auch wenn nur ein
-       Artikel gesiebt wird: welche Information einen Block beansprucht und
+       Artikel gesiebt wird: welche Information ein Feld beansprucht und
        wem sie gehört, steht an anderen Artikeln. Mit einer Karte aus nur
        diesem einen fände das Sieb keine einzige Information — und liesse
        alles durch, ohne dass irgendwo etwas schiefginge. */
-    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
-    const gmBlocks = String(registry.settings?.['gmBlockTypes'] ?? 'secret,tactics')
+    const alle = roh;
+    const gmFields = String(registry.settings?.['gmFields'] ?? 'Secrets.secret,Tactics.tactics')
       .split(',')
       .map((x) => x.trim())
       .filter(Boolean);
@@ -469,7 +503,24 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
        Spielleitung und sieht alles, `[]` heisst ein Konto ohne Figur und
        sieht genau das Offene. Das ist die richtige Vorgabe — ein Konto
        ohne Figur ist eines, dem noch nichts zugeteilt wurde. */
-    return entities.map((e) => redactEntity(registry, alle, e, user.actorIds ?? [], gmBlocks));
+    /* **Zwei Fragen, und die grobe kommt zuerst.** Die Sichtbarkeit sagt,
+       ob dieser Artikel überhaupt an ihn geht; das Wissen sagt, welche
+       Felder darin. Sie zusammenzulegen hiesse, einen Artikel dadurch zu
+       verbergen, dass man alle seine Felder wegnimmt — und er stünde
+       trotzdem in der Liste, mit Namen und Bereich.
+
+       Bis hierher war die grobe Frage nur eine Angabe in der Karte, die
+       niemand auswertete: `audience: 'gm'` stand da, und der Server
+       schickte den Artikel. */
+    const augen = user.actorIds ?? [];
+    /* **Die Rollen gehen mit, nicht nur die Figuren.** Wer eine Kampagne
+       leitet, hat keine Figur — seine Rolle steht am Konto, je Kampagne
+       (`campaign_member`). Das Wissen fragt weiter nur nach den Figuren:
+       was jemand erfahren hat, hat eine Figur erfahren. */
+    const auge = { actors: augen, roles: user.roles ?? {} };
+    return entities
+      .filter((e) => articleVisible(alle, e, auge))
+      .map((e) => redactEntity(registry, alle, e, augen, gmFields));
   }
 
   app.get('/api/entities', async (request) => sieve(request, await repo.listEntities()));
@@ -478,7 +529,13 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
     const entity = await repo.getEntity(request.params.id);
     if (!entity) return reply.code(404).send({ error: 'Nicht gefunden' });
     const [einer] = await sieve(request, [entity]);
-    return einer ?? entity;
+    /* Fällt er durchs Sieb, gibt es ihn für diesen Betrachter nicht.
+       „Verboten" wäre die genauere Auskunft und die falsche: sie sagt, dass
+       da etwas ist. Vorher stand hier `einer ?? entity` — der Rückfall
+       schickte genau den Artikel, den das Sieb gerade zurückgehalten
+       hatte. */
+    if (!einer) return reply.code(404).send({ error: 'Nicht gefunden' });
+    return einer;
   });
 
   app.put<{ Params: { id: string }; Body: unknown }>(
@@ -494,24 +551,64 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
       }
 
       const registry = await repo.getRegistry();
-      const known = new Set((await repo.listEntities()).map((e) => e.id));
-      known.add(entity.id);
+      /* Id **und Art**: daran prüft ein Verweisfeld seinen Zieltyp. Der
+         Artikel selbst kommt dazu, weil er in diesem Augenblick noch nicht
+         im Bestand steht und ein Verweis auf sich selbst kein Bruch ist. */
+      const known = new Map(
+        (await repo.listEntities()).map((e) => [e.id, e.interfaces?.[0] ?? ''] as const),
+      );
+      known.set(entity.id, entity.interfaces?.[0] ?? '');
 
-      const issues = validateEntity(registry, entity, { knownIds: known });
+      /* **Eine Instanz wird aufgelöst geprüft und ausgedünnt gespeichert.**
+         Ihre Pflichtfelder stehen an der Vorlage; gespeichert wird nur, was
+         abweicht. Eine Maske, die den aufgelösten Artikel zurückschickt,
+         schreibt so nicht still jeden Wert der Vorlage fest — und wer den
+         Wert der Vorlage einträgt, folgt ihr wieder. */
+      let zuSchreiben = entity;
+      let zuPruefen = entity;
+      if (isInstance(entity)) {
+        const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+        alle.set(entity.id, entity);
+        zuPruefen = resolveInstance(alle, entity);
+        zuSchreiben = thinInstance(alle, entity);
+      }
+
+      const issues = validateEntity(registry, zuPruefen, { knownTypes: known });
       if (issues.length) {
         return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
       }
 
-      const stored = await repo.putEntity(entity);
+      const stored = await repo.putEntity(zuSchreiben);
       await repo.appendEvent('entity.written', entity.id, {
         interfaces: entity.interfaces,
-        components: Object.keys(entity.components ?? {}),
+        cards: Object.keys(entity.components ?? {}),
       });
       return stored;
     },
   );
 
   app.delete<{ Params: { id: string } }>('/api/entities/:id', async (request, reply) => {
+    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const weg = alle.get(request.params.id);
+    if (weg) {
+      /* Eine Vorlage nimmt beim Gehen nichts mit: ihre Instanzen bekommen
+         vorher, was sie von ihr lasen. */
+      for (const instanz of instancesOf(alle, weg)) {
+        await repo.putEntity(detachInstance(alle, instanz));
+      }
+      /* Eine Kreatur nimmt ihre Instanz mit — die steht in keiner Liste und
+         gehört nur ihr. Ein eigener Statblock bleibt stehen. */
+      const registry = await repo.getRegistry();
+      const teilVon = new Set(
+        Object.values(registry.relations).filter((r) => r.asField === 'to').map((r) => r.type),
+      );
+      for (const o of alle.values()) {
+        if (o.id === weg.id || !isInstance(o)) continue;
+        if ((o.relations ?? []).some((r) => teilVon.has(r.type) && r.to === weg.id)) {
+          await repo.deleteEntity(o.id);
+        }
+      }
+    }
     const removed = await repo.deleteEntity(request.params.id);
     if (!removed) return reply.code(404).send({ error: 'Nicht gefunden' });
     await repo.appendEvent('entity.deleted', request.params.id, {});
@@ -528,8 +625,18 @@ export function buildApp({ repo, logger = false, staticRoot }: AppOptions): Fast
       return reply.code(400).send({ error: 'Artikel ungültig', issues: parsed.error.issues });
     }
     const registry = await repo.getRegistry();
-    const known = new Set((await repo.listEntities()).map((e) => e.id));
-    return { issues: validateEntity(registry, parsed.data as Entity, { knownIds: known }) };
+    const known = new Map(
+      (await repo.listEntities()).map((e) => [e.id, e.interfaces?.[0] ?? ''] as const),
+    );
+    /* Dieselbe Auflösung wie beim Schreiben: eine Instanz ohne eigene
+       Trefferpunkte ist keine unvollständige. */
+    let pruefling = parsed.data as Entity;
+    if (isInstance(pruefling)) {
+      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      alle.set(pruefling.id, pruefling);
+      pruefling = resolveInstance(alle, pruefling);
+    }
+    return { issues: validateEntity(registry, pruefling, { knownTypes: known }) };
   });
 
   return app;

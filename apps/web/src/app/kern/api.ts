@@ -24,7 +24,14 @@ export class ApiError extends Error {
 }
 
 export interface Me {
-  user: { id: string; name: string; isGm: boolean; actorId?: string } | null;
+  user: {
+    id: string;
+    name: string;
+    isAdmin: boolean;
+    actorId?: string;
+    /** Kampagnen-Id → Rolle darin. Steht am Konto und in keinem Artikel. */
+    roles?: Record<string, 'gm' | 'co-gm' | 'player' | 'spectator'>;
+  } | null;
   /**
    * Welche Artikel dieser Betrachter schreiben darf. **`null` heisst alles**
    * (die Spielleitung), eine Liste heisst genau diese. Sie kommt vom Server,
