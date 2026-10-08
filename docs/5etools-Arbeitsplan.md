@@ -1,6 +1,6 @@
 # 5e.tools übernehmen — Arbeitsplan
 
-Stand 2026-10-08. Baut auf [5etools-Abgleich.md](5etools-Abgleich.md) auf:
+Stand 2026-10-08, überarbeitet nach Mikes Rückmeldung am selben Tag. Baut auf [5etools-Abgleich.md](5etools-Abgleich.md) auf:
 dort steht, *was* fehlt; hier steht, *in welcher Reihenfolge* es gebaut
 wird, mit welchem Modell, und wie man dabei nicht das ganze Kontingent
 verbraucht.
@@ -13,7 +13,7 @@ verbraucht.
 |---|---|---|
 | E1 | Umfang | **Alles**, was auf 2014 aufbaut — nicht nur das SRD. Die Seite ist **nicht öffentlich**: jede Route ausser Anmeldung verlangt ein Konto, Konten gibt es nur auf Einladung. Eine spätere Demo zeigt nur SRD-Inhalt; dafür trägt jeder Artikel die Lizenzflagge (`Source.srd`) |
 | E2 | Ausgabe | **2014 als Basis.** Die 2024-Kernbücher (`XPHB`, `XMM`, `XDMG`) kommen nicht herein, ebenso die Bücher seit September 2024, die auf den 2024-Regeln stehen (Heroes of Faerûn, Forge of the Artificer …), und Unearthed Arcana. Der Importer zählt sie auf; einschalten ist eine Zeile |
-| E3 | Sprache | **Text englisch (Original), Namen deutsch nach offizieller Übersetzung.** Der Artikel heisst „Feuerball", der englische Name steht als Alias, der Regeltext bleibt englisch. Aufzählungswerte sind englische Schlüssel (`uncommon`), die Beschriftung ist der offizielle deutsche Begriff („ungewöhnlich"). Wo es keine offizielle Übersetzung gibt, bleibt der englische Name — **keine** Übersetzung durch ein Modell, das wäre nicht offiziell |
+| E3 | Sprache | **Alles englisch, wie im Original** — Namen, Text, Aufzählungswerte und ihre Beschriftungen. Übersetzt wird danach von Mike, Begriff für Begriff (Paket P8). Der Importer übernimmt keine fremde Übersetzung |
 | E4 | Vehikel, Bastionen, Decks | später |
 | E5 | Bilder | nicht im ersten Durchgang |
 | E6 | Reihenfolge | Regeln, Zustände, Zauber, Gegenstände, Monster zuerst; Klassen und Abstammungen mit dem Bogen |
@@ -51,59 +51,139 @@ Gemessen an `5etools-src` (Stand 2026-09-23), ohne Bilder und Begleittext:
 Die grössten Posten: 3 809 Monster, 1 649 Gegenstände, 1 307
 Klassen- und Unterklassenmerkmale, 525 Zauber, 494 Gottheiten.
 
-### 1.2 Woher die deutschen Namen kommen
+### 1.2 Übersetzen kommt danach
 
-| Quelle | Umfang | Lizenz | Stand |
-|---|---|---|---|
-| [`mhilbrunner/foundryvtt-dnd5e-lang-de`](https://github.com/mhilbrunner/foundryvtt-dnd5e-lang-de), Ordner `compendium/` | 2 101 Einträge des **SRD 2014**: 319 Zauber, 325 Monster, 818 Gegenstände, 238 Klassenmerkmale, 252 Monstermerkmale, Klassen, Unterklassen, Völker, Hintergründe, Tabellen — Name **und** deutscher Text, mit Seitenangabe im Spielerhandbuch („SHB S. 249") | MIT oder CC BY 4.0 | nicht mehr gepflegt, für 2014 aber vollständig |
-| dieselbe, `languages/de.json` | 1 566 Begriffe der Oberfläche: Attribute, Fertigkeiten, Zustände, Schadensarten, Grössen, Seltenheiten | wie oben | — |
-| dnddeutsch.de | die offiziellen Namen auch ausserhalb des SRD (Xanathar, Volo, Tasha …) | ungeklärt — vor der Nutzung beim Betreiber fragen | **von hier aus nicht erreichbar** (Netzrichtlinie der Umgebung); entweder die Domain freigeben oder die Liste lokal ziehen |
-
-Damit sind die Namen im SRD gedeckt (~20 % der Artikel, aber die
-meistgebrauchten). Für den Rest braucht es dnddeutsch.de oder die
-Bücher; was offen bleibt, behält den englischen Namen und steht im
-Bericht.
-
-Bonus: für die 2 101 SRD-Einträge liegt der **deutsche Text** schon vor,
-unter freier Lizenz. Ein späteres „auf Deutsch umstellen" kostet für
-diesen Teil nichts.
+Der Importer schreibt nur Englisch. Die Übersetzung ist ein eigener
+Schritt (P8): ein Skript schreibt eine Liste aller Namen und
+Aufzählungswerte als Tabelle (englisch, Art, Anzahl Verwendungen), Mike
+trägt die deutschen Begriffe ein, und ein zweites Skript benennt die
+Artikel um und legt den englischen Namen als Alias ab. Das kostet kaum
+Tokens, weil kein Modell übersetzt; was offen ist, gehen wir zusammen
+durch, die meistgebrauchten Begriffe zuerst.
 
 ---
 
-## 2. Regeltypen: Ist „Zustand" ein eigener Typ?
+## 2. Regeltypen
 
-**Ja.** Heute ist ein Zustand eine `Rule` mit `kind: condition`, und
-`Vitals.conditions` verweist auf `Rule` mit dem Filter `kind = condition`.
-Nach unserer eigenen Regel („Die Art hält, der Filter schlägt vor",
-CLAUDE.md) ist dieser Filter nur ein Vorschlag der Maske: die Prüfung
-nimmt jede Regel an — „Waffenangriff" als Zustand einer Kreatur geht
-durch. Wer etwas einer Kreatur **zuweisen** will, braucht dafür eine Art.
+Stand nach Mikes Rückmeldung vom 2026-10-08. Ersetzt den ersten
+Vorschlag (Zustand mit `levels` und `implies`).
 
-Die Messlatte, für jede Regelart gleich:
+### 2.1 Die Messlatte
 
 > **Eine Regelart wird ein eigener Typ, wenn ein Verweisfeld oder eine
 > Kante sie *als Art* verlangt, oder wenn sie eigene Felder trägt.
 > Sonst bleibt sie ein Wort in `Rule.kind`.**
 
-| Heute `Rule.kind` | wird | Grund |
+Heute ist ein Zustand eine `Rule` mit `kind: condition`, und
+`Vitals.conditions` zeigt auf `Rule` mit einem Filter. Nach unserer
+eigenen Regel („Die Art hält, der Filter schlägt vor") ist das nur ein
+Vorschlag der Maske; die Prüfung nähme auch „Waffenangriff" als Zustand
+einer Kreatur an. Was man einer Kreatur zuweisen will, braucht eine Art.
+
+### 2.2 Die Familie
+
+```mermaid
+flowchart TB
+  R[Rule<br/>Regeltext, Quelle]
+  R --> C[Condition<br/>Zustand]
+  C --> D[Disease<br/>Krankheit]
+  R --> AT[ActionType<br/>Aktionsart]
+  R --> A[Action<br/>Aktion]
+  R --> F[Feature<br/>Merkmal]
+  R --> IP[ItemProperty<br/>Gegenstandseigenschaft]
+  R --> S[Spell<br/>Zauber]
+  R --> FT[Feat · Skill<br/>gibt es schon]
+  A -. actionType .-> AT
+  C -. stageOf .-> C
+  R -. affects .-> R
+```
+
+| Typ | Was er ist | Eigene Felder und Kanten | Warum ein Typ |
+|---|---|---|---|
+| **`Condition`** | Zustand: Blinded, Prone, Concentration, Exhaustion 3 | `kind` (`condition` · `status`); `stage` (Zahl); Kante **`stageOf`** auf den Grundzustand; `recovery` (`none` · `shortRest` · `longRest` · `longRestStep` · `save` · `special`) | `Vitals.conditions` und `participates.conditions` verlangen ihn |
+| **`Disease`** erbt `Condition` | je Krankheit ein Artikel: Sewer Plague, Sight Rot | `save` (Attribut), `dc`, `incubation`, `transmission`; `kind` frei (mundane, magical …). Stadien wie bei Erschöpfung über `stageOf`, Spielarten über `variantOf` | eine Krankheit *hat* man, also ist sie zuweisbar wie ein Zustand, und sie trägt eigene Felder |
+| **`ActionType`** | Aktionsart: Action, Bonus Action, Reaction, Free Object Interaction, Movement, Legendary Action, Lair Action | `per` (`turn` · `round`), `count` (wie oft) | vier Stellen verlangen ihn: `Action.actionType`, die Wirkzeit eines Zaubers, Einschränkungen durch Zustände (`affects`), später die Zonen im Inventar (heute Zeile `DrawTime`) |
+| **`Action`** | Aktion: Dodge, Dash, Help, und jede Aktion eines Statblocks (Bite, Multiattack, Fire Breath) | **`actionType`** (Verweis, Pflicht); `recharge`, `uses`; für Angriffe `attack` (melee/ranged, weapon/spell), `toHit`, `reach`, `range`, `damage`, `damageType` | hat eigene Felder, und die Initiative kann damit rechnen statt Text zu lesen |
+| **`Feature`** | Merkmal, also alles Dauerhafte: Klassenmerkmal, Volksmerkmal, Monstermerkmal (Nimble Escape), Regionaleffekt | `level`, `featureType`; Kante `featureOf` (→ Klasse, Unterklasse, mit Stufe) | `featureOf` verlangt es; Monster-, Volks- und Klassenmerkmale sind dieselbe Sache an verschiedenen Trägern |
+| **`ItemProperty`** | Finesse, Versatile, Heavy; Waffenmeisterschaft gibt es erst 2024 | `abbreviation` | `hasProperty` (Gegenstand → Eigenschaft) verlangt es |
+| **`Spell`** | Zauber | Abgleich M2; die Wirkzeit nennt bei Aktion, Bonusaktion und Reaktion den `ActionType` | Kante `casts`, zwanzig eigene Felder |
+| `Feat`, `Skill` | gibt es schon | — | `Rule.kind` hatte die Wörter `feat` und `skill` zusätzlich: das war doppelt und fällt weg |
+
+`Rule.kind` behält nur noch die Wörter für Regeln ohne Träger:
+`rule` (Variantregeln), `travel`, `sense`, `reward`, `boon`, `option`.
+Es wird eine Aufzählungszeile `RuleKind` und ist **nicht mehr Pflicht**,
+denn ein Zauber braucht kein zweites Wort für das, was sein Typ sagt.
+Die Statblock-Teile `action`, `bonus`, `reaction`, `legendary`, `lair`
+sind jetzt `Action` mit der passenden Aktionsart, `trait` ist `Feature`.
+
+### 2.3 Erschöpfung als sechs Zustände
+
+**Geht, und wird nicht schwieriger, wenn die Stufen untereinander
+verbunden sind.** Der Grundzustand „Exhaustion" trägt die allgemeine
+Regel (Stufen sind kumulativ, eine lange Rast mit Essen und Trinken
+senkt um eins, `recovery: longRestStep`). Darunter sechs Artikel
+„Exhaustion 1" bis „Exhaustion 6", jeder mit `stage` und `stageOf` auf
+den Grundzustand und mit seinem eigenen Text.
+
+| | Eine Zahl (heute `Vitals.exhaustion`) | Sechs Zustände |
 |---|---|---|
-| `condition` | **`Condition`** erbt `Rule` | `Vitals.conditions` und `participates.conditions` verlangen ihn; eigene Felder `levels` (Erschöpfung hat sechs Stufen) und `implies` (gelähmt, versteinert, betäubt, bewusstlos *schliessen* kampfunfähig *ein* — ein Verweis auf andere Zustände). `kind`: `condition` oder `status` (Konzentration, Überrascht) |
-| — (5e.tools `disease`) | **`Disease`** erbt `Condition` | eigene Felder: Rettungswurf, SG, Inkubation, Übertragung. Eine Krankheit hat man, also ist sie zuweisbar wie ein Zustand |
-| `feature` | **`Feature`** erbt `Rule` | die Kante `featureOf` (→ Klasse, Unterklasse, mit Stufe) verlangt es; eigene Felder `level`, `featureType` |
-| — (5e.tools `itemProperty`, `itemMastery`) | **`ItemProperty`** erbt `Rule` | `hasProperty` (Gegenstand → Eigenschaft) verlangt es; `kind`: `property` oder `mastery` |
-| — (5e.tools `spell`) | **`Spell`** erbt `Rule` | die Kante `casts` und zwanzig eigene Felder (Abgleich M2) |
-| `feat`, `skill` | `Feat`, `Skill` — **gibt es schon** | der Wert in `Rule.kind` war doppelt: ein Talent war zugleich Typ `Feat` und Wort `feat`. Das Wort fällt weg |
-| `action`, `bonus`, `reaction`, `trait`, `legendary`, `lair` + neu `regional`, `mythic` | bleiben **Wörter** | Teile eines Statblocks über `composedOf`; keine eigenen Felder, keine Kante, die genau sie verlangt |
-| `travel` + neu `sense`, `reward`, `boon`, `option`, `rule` | bleiben **Wörter** | dasselbe |
+| Stufe senken nach langer Rast | Zahl minus eins | den Zustand durch die Stufe darunter **ersetzen**: gleicher `stageOf`, `stage − 1`; bei Stufe 1 entfernen |
+| Stufe erhöhen | Zahl plus eins | ersetzen durch `stage + 1` |
+| Was gilt bei Stufe 3 | im Text nachlesen | Stufen 1 bis 3 gelten, weil der Grundzustand „kumulativ" sagt; die Liste der Wirkungen ist gerechnet, nicht gespeichert (D8) |
+| Andere Regeln können eine Stufe nennen | nein | ja: „Exhaustion 3" `affects` Angriffe mit Nachteil |
+| Neue Regel nötig | — | **höchstens eine Stufe je Grundzustand** in der Zustandsliste; die Prüfung hält das |
 
-Was das am Modell ändert: `Rule.kind` wird eine Aufzählungszeile
-`RuleKind` mit den verbliebenen Wörtern und ist **nicht mehr Pflicht** —
-ein Zauber oder ein Zustand braucht kein zweites Wort für das, was sein
-Typ schon sagt. `Vitals.conditions` und `participates.conditions` zeigen
-auf `Condition`. Die fünfzehn Zustände im heutigen Bestand müssen nicht
-umgezogen werden: der Bestand wird ersetzt (Abgleich §4.4).
+Der Preis ist diese eine Prüfregel und ein Ersetzen statt Zählen. Dafür
+fällt `Vitals.exhaustion` weg: die Stufe steht in der Zustandsliste, und
+zwei Stellen für dieselbe Zahl laufen auseinander. Dasselbe Muster trägt
+die Stadien einer Krankheit und später Wahnsinn (kurz, lang, unbefristet).
 
-Das ist D48 (vorgeschlagen) und Teil von Paket P2.
+Wer die Rast auslöst, ist eine eigene Frage: heute niemand, die Stufe
+wird von Hand umgestellt. Ein Knopf „lange Rast" an der Gruppe, der
+jedes `recovery: longRestStep` eine Stufe senkt, ist ein späteres Stück
+Bedienung und keine Modellfrage.
+
+### 2.4 Wirkungen zwischen Regeln
+
+Gelähmt *ist* nicht kampfunfähig; gelähmt **bewirkt** kampfunfähig, und
+kampfunfähig **verbietet** Aktionen und Reaktionen. Das sind Kanten, kein
+Feld am Zustand:
+
+| Kante | von → nach | `props.effect` | Beispiel |
+|---|---|---|---|
+| **`affects`** | Rule → Rule | `imposes` (bewirkt), `prevents` (verbietet), `limits` (schränkt ein), `advantage`, `disadvantage`, `triggers` (löst aus); dazu `on` (worauf: attack, save, check, Attribut) und `note` | Paralyzed `imposes` Incapacitated · Incapacitated `prevents` Action, Reaction · Exhaustion 3 `disadvantage` on attack · Unconscious `triggers` Prone |
+
+Gespeichert wird vorwärts, die Gegenfrage („was verbietet mir
+Reaktionen?") ist eine Abfrage. **Ausgewertet wird vorerst nichts**: die
+Kanten sind Daten, die der Bogen anzeigt („Weil gelähmt: kampfunfähig").
+Eine Regelmaschine, die daraus Vor- und Nachteile rechnet, ist ein
+eigenes Vorhaben.
+
+Der Importer legt diese Kanten **nicht** an. Dass ein Zustand im Text
+einen anderen nennt, heisst nicht, dass er ihn bewirkt („can't be
+frightened" nennt verängstigt auch). Die 15 Zustände und die
+Erschöpfungsstufen bekommen ihre Wirkungen von Hand, mit Mike; das sind
+rund dreissig Kanten.
+
+### 2.5 Einmal übernehmen, als unsere Artikel
+
+Jeder 5e.tools-Eintrag wird ein Artikel **unseres** Typs mit gefüllten
+Feldern und liegt danach in unserer Datenbank. Nichts zeigt zurück auf
+5e.tools: keine URL, kein Nachladen, kein Abgleich. Welches Buch und
+welche Seite, steht in `Source` als Text. Was im Text auf einen anderen
+Eintrag zeigt (`{@spell fireball}`), wird ein Verweis auf **unseren**
+importierten Artikel — das ist die einzige Verknüpfung, und sie bleibt
+innerhalb des Bestands.
+
+Das Monster selbst wird dabei zerlegt: der Statblock ist ein Artikel,
+seine Aktionen und Merkmale sind eigene `Action`- und `Feature`-Artikel
+über `composedOf`. Gleichlautende Merkmale über Monster hinweg legt der
+Importer **einmal** an (Pack Tactics, Magic Resistance), mit `{VAR}` für
+das, was sich unterscheidet. Das ist der Grund, warum die Aktionen Typen
+sind und nicht Text am Statblock.
+
+Das ist D48 (vorgeschlagen) und Paket P2; `Action` mit Angriffsfeldern
+kommt mit dem Statblock in P4.
 
 ---
 
@@ -124,7 +204,7 @@ was diese Sitzungen kurz hält.
 | **Keine Migration für den heutigen Bestand** | Er wird ersetzt. Jedes Umzugsskript für 96 Artikel, die danach gelöscht werden, ist verbranntes Kontingent. Nur der Prüfbestand muss die Tests bestehen |
 | **Ein PR je Paket, nicht je Änderung** | Weniger Runden aus Warten, CI lesen, Doku nachziehen. Die Commits darin bleiben klein |
 | **Keine Unteragenten, kein Workflow** | Jeder startet ohne Kontext und liest selbst nach |
-| **Keine Übersetzung durch das Modell** | 3,7 Mio. Tokens Text. In Claude Code wäre das ein Mehrfaches des ganzen Plans; und es wäre nicht offiziell (E3) |
+| **Keine Übersetzung durch das Modell** | 3,7 Mio. Tokens Text. In Claude Code wäre das ein Mehrfaches des ganzen Plans; Mike übersetzt selbst (E3) |
 | `CLAUDE.md` ist 39 KB (~10 000 Tokens) und steht in **jeder** Antwort jeder Sitzung | Dank Zwischenspeicher günstig, aber nicht gratis. Kürzen wäre ein eigener Schritt — nicht jetzt |
 
 ### 3.1 Spielt das Modell eine Rolle?
@@ -156,9 +236,7 @@ veröffentlicht Anthropic nicht, die Reihenfolge stimmt aber:
   `enumRef` auf eine Artikelart, gerechnete Zauber-SG). Effort `high`.
 - **Fable 5.1** nur, wenn eine Opus-Sitzung zweimal am selben Fehler
   hängen bleibt.
-- **Haiku 5.5** nicht für Code. Aber: soll der *Regeltext* später
-  deutsch werden, ist es der richtige Kandidat — über die Batch-API,
-  ausserhalb von Claude Code (Abschnitt 6).
+- **Haiku 5.5** nicht für Code.
 - Effort: `medium` für Sonnet-Pakete, `high` nur für den Importer-Kern.
 
 Wie viel ein Paket wirklich kostet, zeigt `/usage` nach der ersten
@@ -177,17 +255,19 @@ flowchart LR
   P5[P5 Importer<br/>Opus Kern, Sonnet Rest] --> P6
   H[Hetzner<br/>Wochenende] --> P6
   P6[P6 Probelauf, Löschen, Laden<br/>Sonnet] --> P7[P7 Nebelwacht neu<br/>du, im UI]
+  P6 --> P8[P8 Übersetzen<br/>du, mit Sonnet]
 ```
 
 | Paket | Inhalt (Abgleich §3) | Modell | Sitzungen |
 |---|---|---|---:|
 | **P1 Fundament** | M10 Markdown in langen Feldern (#61), M11 Verweise auf Id, M12 Würfel im Text | Opus | 1–2 |
-| **P2 Regeltypen** | Abschnitt 2 oben (`Condition`, `Disease`, `Feature`, `ItemProperty`, `RuleKind`), M7 `Hazard`, `Deity`, `Faction.goal`, M8 `Table` mit Spalten, M9 Systemebene und `Source.srd` | Sonnet | 1 |
+| **P2 Regeltypen** | Abschnitt 2 oben: `Condition` mit Stufen, `Disease`, `ActionType`, `Action` (ohne Angriffsfelder), `Feature`, `ItemProperty`, Kante `affects`, `RuleKind`; `Vitals.exhaustion` fällt weg. Dazu M7 `Hazard`, `Deity`, `Faction.goal`, M8 `Table` mit Spalten, M9 Systemebene und `Source.srd` | Sonnet | 1–2 |
 | **P3 Zauber und Gegenstände** | M2 `Spell` + `casts` + Zauberwirken am Statblock, M4 `Item` wächst | Opus für M2, Sonnet für M4 | 2 |
-| **P4 Statblock und Charakterbau** | M5 Statblock, M3 `Class`/`Subclass`/`Ancestry`/`Background`, M6 Übungen aus Artikeln (`enumRef` auf eine Art) | Opus | 2 |
-| **P5 Importer** | `packages/import-5etools`, Namentabelle, Bericht; `pnpm --filter @nw/server import <datei>` als Befehl statt Route (M13 schlanker); Lücke beim leeren Server schliessen (unten) | Opus Kern, Sonnet Zuordnungen | 2–3 |
+| **P4 Statblock und Charakterbau** | M5 Statblock, `Action` mit Angriffsfeldern, M3 `Class`/`Subclass`/`Ancestry`/`Background`, M6 Übungen aus Artikeln (`enumRef` auf eine Art) | Opus | 2 |
+| **P5 Importer** | `packages/import-5etools`, Bericht; `pnpm --filter @nw/server import <datei>` als Befehl statt Route (M13 schlanker); Lücke beim leeren Server schliessen (unten) | Opus Kern, Sonnet Zuordnungen | 2–3 |
 | **P6 Laden** | Probelauf auf `dev`, Sicherung, Liste, Bestand ersetzen, Prüfbestand neu (M14), Ausschnitt in den Prototyp | Sonnet | 1 |
 | **P7 Nebelwacht neu** | Welt, Kampagne, Gruppe, Figuren, Orte, Hausregeln — über der Systemebene | du, im UI; oder eine Sonnet-Sitzung aus der Sicherung | — |
+| **P8 Übersetzen** | Begriffsliste ausgeben, Mike füllt sie, Skript benennt um (§1.2); die Wirkungen der Zustände von Hand (§2.4) | Sonnet, mit dir | 1 |
 
 P1 und P2 hängen nicht voneinander ab und dürfen in beliebiger
 Reihenfolge laufen. P6 braucht den Server, also nach dem Wochenende.
@@ -220,8 +300,8 @@ Tests in packages/model. Doku: Datenmodell.md, Begriffe.md, „How it works". Ei
 ### P2 — Regeltypen (Sonnet 5.5, Effort medium)
 
 ```text
-Paket P2 aus docs/5etools-Arbeitsplan.md, Abschnitt 2 und M7, M8, M9 aus docs/5etools-Abgleich.md §3 (M9 in der Fassung des Arbeitsplans: eine Systemebene, Source.srd).
-Register in packages/registry/src (interfaces.ts, fieldgroups.ts, relations.ts, enums.ts), dann emit-seed und catalogue. Für einen Typ: node packages/registry/scripts/typ.mjs <Typ>.
+Paket P2 aus docs/5etools-Arbeitsplan.md: Abschnitt 2 ganz (Condition mit stage/stageOf/recovery, Disease, ActionType, Action ohne Angriffsfelder, Feature, ItemProperty, Kante affects, RuleKind als Zeile und nicht mehr Pflicht, Vitals.exhaustion fällt weg, höchstens eine Stufe je Grundzustand in der Zustandsliste) und M7, M8, M9 aus docs/5etools-Abgleich.md §3 (M9 in der Fassung des Arbeitsplans: eine Systemebene, Source.srd).
+Register in packages/registry/src (interfaces.ts, fieldgroups.ts, relations.ts, enums.ts), Prüfregel in packages/model, dann emit-seed und catalogue. Für einen Typ: node packages/registry/scripts/typ.mjs <Typ>.
 Den heutigen Bestand NICHT migrieren — er wird ersetzt. Nur prototype/test/dbdump so anpassen, dass pnpm test grün ist.
 Doku: Datenmodell.md, Begriffe.md, „How it works", Decision Log D48 auf decided. Ein PR nach preprod, selbst mergen.
 ```
@@ -246,8 +326,8 @@ Bestand nicht migrieren. Doku wie in CLAUDE.md. Ein PR nach preprod, selbst merg
 ### P5 — Importer (Opus 5.5 für den Kern, danach Sonnet)
 
 ```text
-Paket P5 aus docs/5etools-Arbeitsplan.md: Importer nach docs/5etools-Abgleich.md §4.2, mit den Entscheidungen aus Arbeitsplan §1 (2014-Basis, eine Systemebene, Namen deutsch nach §1.2, Text englisch, einmaliges Laden).
-Neues Paket packages/import-5etools, TypeScript, ohne Framework. Eingabe: Pfad zu einem Checkout von 5etools-src/data und zu foundryvtt-dnd5e-lang-de (beide ausserhalb des Repos). Ausgabe: Ausfuhrdatei (registry + entities) und ein Bericht (je Art: Anzahl, unübernommene Schlüssel mit Zähler, Namen ohne deutsche Übersetzung, Verweise ins Leere).
+Paket P5 aus docs/5etools-Arbeitsplan.md: Importer nach docs/5etools-Abgleich.md §4.2, mit den Entscheidungen aus Arbeitsplan §1 (2014-Basis, eine Systemebene, alles englisch, einmaliges Laden) und §2.5 (Statblock zerlegt in Action und Feature, gleichlautende Merkmale einmal).
+Neues Paket packages/import-5etools, TypeScript, ohne Framework. Eingabe: Pfad zu einem Checkout von 5etools-src/data (ausserhalb des Repos). Ausgabe: Ausfuhrdatei (registry + entities) und ein Bericht (je Art: Anzahl, unübernommene Schlüssel mit Zähler, Verweise ins Leere). Die Wirkungskanten affects legt der Importer nicht an.
 Kern zuerst (Opus): entries-Baum → Markdown, Inline-Marken → [[id|…]] / {{…}}, _copy auflösen. Die Zuordnung je Art danach (Sonnet).
 Nie ganze Datendateien lesen; ein Skript fasst zusammen.
 Dazu: Befehl pnpm --filter @nw/server import <datei> [--replace] (durch validateEntity; verweigert ohne Verwaltungskonto), und die Leseausnahme des leeren Servers nur bei leerem Bestand.
@@ -264,19 +344,12 @@ Prod erst, wenn ich dev angeschaut habe.
 
 ---
 
-## 6. Später: der Text auf Deutsch
+## 6. Später: der Regeltext auf Deutsch
 
-Nicht Teil dieses Plans, aber damit die Rechnung dasteht:
-
-- **SRD (2 101 Einträge):** der deutsche Text liegt im Foundry-Modul
-  unter freier Lizenz. Kostet nichts ausser einem Zuordnungsschritt im
-  Importer.
-- **Der Rest (~8 000 Einträge, rund 3 Mio. Tokens Text):** das wäre
-  eine Übersetzung, keine offizielle. Wenn gewünscht, über die
-  Batch-API ausserhalb von Claude Code — Haiku 5.5 rund 1–2 Dollar,
-  Sonnet 5.5 rund 20–25 Dollar für alles (Batch halbiert den Preis).
-  Mit der Namentabelle als Glossar, damit „frightened" überall
-  „verängstigt" heisst.
+Nicht Teil dieses Plans. P8 übersetzt Namen und Begriffe; der Regeltext
+bleibt englisch, bis Mike anders entscheidet. Wenn es so weit ist, ist
+die Begriffsliste aus P8 das Glossar, damit „frightened" überall gleich
+heisst.
 
 ---
 
@@ -284,10 +357,6 @@ Nicht Teil dieses Plans, aber damit die Rechnung dasteht:
 
 - **Hetzner am Wochenende** nach [Betrieb.md](Betrieb.md); P6 wartet
   darauf.
-- **dnddeutsch.de:** beim Betreiber fragen, ob die Namensliste genutzt
-  werden darf, und entweder die Domain in den Netzwerkeinstellungen der
-  Claude-Umgebung freigeben oder die Liste lokal ziehen und ins
-  Prüfverzeichnis legen.
 - **Je Paket eine neue Sitzung** mit dem Auftrag oben; das Modell vorher
   mit `/model` setzen.
 - Release-PR [atlas-mentis#1](https://github.com/Mrfudog/atlas-mentis/pull/1)
