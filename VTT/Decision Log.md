@@ -154,8 +154,10 @@ Seit dem Prototyp werden Modellentscheidungen dort festgehalten, wo das Modell s
 | D44 | A11 Welt mit Kalender | neue Art `World` mit `calendar`, Kante `inWorld` (Campaign → World); `Time.calendar` und die Einstellung `calendar` entfallen | **decided** 2026-10-07 |
 | D45 | A2 Stapel im Modell | `packages/model/src/stack.ts`; der Server siebt mit `inPlay` vor der Sichtbarkeit, für jeden | **decided** 2026-10-07 |
 | D46 | A4, A14, A15 | F1 ergänzt (gepflegte Wortlisten dürfen Zeilen sein); `Session.recap`, `Article.poem`/`song`, `followsFrom` entfallen; A9 Regeltypen später, A13 bestätigt | **decided** 2026-10-07 |
+| D47 | 5e.tools als Grundlage des Bestands | Umfang (E1), Ausgabe 2014/2024 als Ebenen (E2), englische Aufzählungswerte (E3), Vehikel/Bastionen/Decks später (E4), keine Bilder (E5), Reihenfolge (E6) — Vorschläge in `docs/5etools-Abgleich.md` §5 | **open** 2026-10-08 |
 
 ## Changelog
+- **0.7** (2026-10-08): D47 offen — 5e.tools-Abgleich.
 - **0.6** (2026-10-07): D25–D46 aus dem Bau nachgetragen; Modellentscheidungen leben seither in diesem Repo.
 - **0.5** (2026-09-05): AD-19 board-first v1; D16 placement kinds; D17 print & export via facets/media.
 - **0.4** (2026-09-04): AD-01 tech confirmed via D0. New D-series section consolidating the data-model decisions D0–D10 ([[Schemas]]) with post-walkthrough statuses (D1/D3/D4/D6 decided) and D11–D15 from the boards/display session.
