@@ -6,6 +6,12 @@ Skript über alle JSON-Dateien; die Zahlen unten sind gemessen, nicht
 geschätzt. Verglichen wurde gegen das Register in `packages/registry` nach
 PR #6 (31 Arten, 21 geteilte Typen, 42 Kantenarten).
 
+> **Entschieden am 2026-10-08** (D47): 2014 als Basis, alles ausser
+> 2024, einmaliges Laden, Namen deutsch nach offizieller Übersetzung.
+> Was das an diesem Dokument ändert und in welcher Reihenfolge gebaut
+> wird: [5etools-Arbeitsplan.md](5etools-Arbeitsplan.md). Wo beide
+> widersprechen, gilt der Arbeitsplan.
+
 Drei Fragen, in dieser Reihenfolge:
 
 1. **Was ist 5e.tools eigentlich** — welche Arten es gibt, wie ein Eintrag
@@ -455,7 +461,7 @@ danach.
 
 ---
 
-## 5. Was nur Mike entscheiden kann
+## 5. Was nur Mike entscheiden kann — entschieden, siehe Arbeitsplan §1
 
 | # | Frage | Vorschlag |
 |---|---|---|
