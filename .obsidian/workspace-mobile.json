@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "VTT/Umsetzung.md",
+                "file": "docs/5etools-Abgleich.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Umsetzung"
+              "title": "5etools-Abgleich"
             }
           }
         ]
@@ -117,7 +117,7 @@
         "state": {
           "type": "backlink",
           "state": {
-            "file": "Obsidian/35_Data_Architecture_Overview.html",
+            "file": "docs/5etools-Abgleich.md",
             "collapseAll": false,
             "extraContext": false,
             "sortOrder": "alphabetical",
@@ -177,6 +177,7 @@
   },
   "active": "0f563dc26f82184d",
   "lastOpenFiles": [
+    "VTT/Umsetzung.md",
     "vitest.config.ts",
     "tsconfig.base.json",
     "prototype/test/rechenwerk.mjs",
@@ -188,7 +189,6 @@
     "prototype/nebelwacht-artikel.html",
     "prototype/migration/stage-b.mjs",
     "prototype/migration/rename-map.json",
-    "prototype/migration/migrate.mjs",
     "packages/import/test/fixtures/statblock/Vethrissa die Phasenmatriarchin.md",
     "packages/import/test/fixtures/statblock/Kenku-Pfeifer.md",
     "packages/import/test/fixtures/statblock/Grimmhauer.md",
