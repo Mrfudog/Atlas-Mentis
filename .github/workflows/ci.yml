@@ -137,6 +137,7 @@ jobs:
       packages: read
     env:
       DIR: ${{ vars.DEPLOY_DIR || (github.ref_name == 'main' && '/srv/atlas/prod' || '/srv/atlas/dev') }}
+      PROXY_DIR: ${{ vars.PROXY_DIR || '/srv/atlas/proxy' }}
       COMPOSE: ${{ github.ref_name == 'main' && 'docker-compose.yml' || 'docker-compose.preprod.yml' }}
       TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
     steps:
@@ -154,9 +155,17 @@ jobs:
           printf 'Host *\n  IdentityFile ~/.ssh/id_deploy\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' > ~/.ssh/config
       - name: Dateien
         run: |
-          ssh "$TARGET" "mkdir -p '$DIR'"
+          ssh "$TARGET" "mkdir -p '$DIR' '$PROXY_DIR'"
           scp "$COMPOSE" "$TARGET:$DIR/compose.yml"
           scp deploy/deploy.sh "$TARGET:$DIR/deploy.sh"
+          scp deploy/proxy/compose.yml deploy/proxy/Caddyfile "$TARGET:$PROXY_DIR/"
+      # Der Reverse Proxy kommt aus dem Repository mit: Caddyfile und Compose
+      # werden bei jedem Ausrollen frisch hingelegt, Caddy lädt sie ohne
+      # Unterbruch neu. Die Namen stehen in .env auf dem Server (bootstrap.sh).
+      - name: Proxy
+        run: |
+          ssh "$TARGET" "cd '$PROXY_DIR' && docker compose up -d --remove-orphans \
+            && docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile"
       - name: Ausrollen
         env:
           IMAGE: ${{ needs.image.outputs.ref }}

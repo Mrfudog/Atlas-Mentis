@@ -8,7 +8,8 @@ Ein Server, zwei Umgebungen, beide aus CI ausgerollt:
 | `main` | `prod` | `atlas.<domain>` | `127.0.0.1:8080` | `/srv/atlas/prod` |
 
 Jede Umgebung hat ihre eigene Datenbank, ihr eigenes Volume und ihre eigenen
-Konten. Davor steht Caddy und macht TLS.
+Konten. Davor steht Caddy als Container (`deploy/proxy/`, Host-Netz) und
+macht TLS; auch er kommt aus dem Repository.
 
 > **Schalter:** der Job `deploy` läuft nur, wenn die Repo-Variable
 > `DEPLOY_ENABLED` auf `true` steht (Settings › Secrets and variables ›
@@ -50,113 +51,128 @@ hätte. Gemerkt hätte man es beim ersten Aufsetzen hier.
 5. warten, bis `/api/health` antwortet, sonst die letzten Logzeilen zeigen
    und mit Fehler enden.
 
-## Den Server einrichten (einmal)
+## Den Server einrichten — Schritt für Schritt (einmal)
 
-### Maschine
+Alles, was auf dem Server liegt, kommt aus diesem Repository: die
+Compose-Dateien der beiden Umgebungen, `deploy/deploy.sh`, und der Reverse
+Proxy aus `deploy/proxy/` (Caddy als Container, Host-Netz, holt seine
+Zertifikate selbst). Von Hand wird einmal die Maschine vorbereitet
+(`deploy/bootstrap.sh`), danach rollt jeder Push aus.
 
-- **Hetzner Cloud**, eine kleine x86-Instanz mit 2 vCPU und 4 GB RAM reicht
-  für beide Umgebungen; gebaut wird nicht hier. Standort nach Wahl
-  (Falkenstein, Nürnberg, Helsinki).
-- Ubuntu 24.04, beim Anlegen den eigenen SSH-Schlüssel hinterlegen.
-- **Cloud Firewall:** eingehend 80 und 443 für alle, 22 für alle. Port 22
-  muss offen sein, weil GitHubs Läufer von wechselnden Adressen kommen;
-  dafür gibt es keine Passwortanmeldung (unten).
-- Optional die Hetzner-Sicherung der ganzen Maschine einschalten — sie
-  ersetzt die Datenbanksicherung nicht, macht aber eine kaputte Maschine zu
-  einem Klick.
+### 1. Maschine bei Hetzner
 
-### System
+- **Hetzner Cloud** → Server anlegen: Ubuntu 24.04, Typ CX22 oder CPX11
+  (2 vCPU, 4 GB) reicht für beide Umgebungen — gebaut wird nicht hier.
+  Standort nach Wahl; IPv4 **und** IPv6.
+- Beim Anlegen deinen eigenen SSH-Schlüssel hinterlegen (damit du als
+  `root` hineinkommst; Passwörter sind gleich abgeschaltet).
+- **Firewall** (Hetzner Cloud → Firewalls) anlegen und dem Server zuweisen:
+  eingehend TCP 22, 80, 443 von überall; sonst nichts. Port 22 muss offen
+  bleiben, weil GitHubs Läufer von wechselnden Adressen kommen.
+- Optional **Backups** der Maschine einschalten (20 % Aufpreis): ersetzt
+  die Datenbanksicherung nicht, macht aber eine kaputte Maschine zu einem
+  Klick.
 
-```bash
-# als root
-apt update && apt -y upgrade
-apt -y install unattended-upgrades
-# Docker aus dem Docker-Repository (docs.docker.com/engine/install/ubuntu)
-# Caddy aus dem Caddy-Repository (caddyserver.com/docs/install#debian-ubuntu-raspbian)
+### 2. DNS
 
-# Keine Passwortanmeldung, kein root über SSH
-sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/;
-        s/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
-systemctl reload ssh
+Zwei Namen auf die Maschine, A- und AAAA-Eintrag, beim Anbieter der
+Domain (oder in Hetzner DNS):
 
-# Der Benutzer, mit dem CI ausrollt
-adduser --disabled-password --gecos "" deploy
-usermod -aG docker deploy
-install -d -o deploy -g deploy /srv/atlas /srv/atlas/prod /srv/atlas/dev
-```
+| Name | zeigt auf |
+| --- | --- |
+| `atlas.<domain>` | IPv4 und IPv6 des Servers |
+| `dev.atlas.<domain>` | dieselben |
 
-Wer in der Gruppe `docker` ist, ist auf dieser Maschine faktisch root. Das
-ist hier hingenommen — ein Schlüssel nur für CI, nur für diesen Benutzer,
-und auf der Maschine läuft sonst nichts.
+Erst wenn beide auflösen, bekommt Caddy Zertifikate. Prüfen:
+`dig +short atlas.<domain>`.
 
-### Schlüssel für CI
+### 3. Schlüssel für CI (auf deiner Maschine)
 
-Ein eigener Schlüssel, nur für das Ausrollen, auf der eigenen Maschine
-erzeugt:
+Ein eigener Schlüssel nur fürs Ausrollen:
 
 ```bash
 ssh-keygen -t ed25519 -N "" -C "atlas-deploy" -f atlas-deploy
-# atlas-deploy.pub → /home/deploy/.ssh/authorized_keys auf dem Server
-# atlas-deploy     → GitHub-Secret DEPLOY_SSH_KEY (danach lokal löschen)
-ssh-keyscan -t ed25519 <server-ip>   # → DEPLOY_KNOWN_HOSTS
+cat atlas-deploy.pub      # → Argument 4 von bootstrap.sh (Schritt 4)
+cat atlas-deploy          # → GitHub-Secret DEPLOY_SSH_KEY (Schritt 5), danach lokal löschen
 ```
 
-Den Fingerabdruck aus `ssh-keyscan` einmal mit dem vergleichen, den die
-Maschine selbst nennt (`ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`
-in der Hetzner-Konsole). Ein fester Hostschlüssel ist der Grund, warum CI
-`StrictHostKeyChecking yes` fährt: sonst rollte es auf die erste Maschine
-aus, die sich unter der Adresse meldet.
-
-### Je Umgebung
+### 4. Server vorbereiten (als root, einmal)
 
 ```bash
-# als deploy, in /srv/atlas/prod und /srv/atlas/dev
-umask 077
-echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)" > .env
+ssh root@<server-ip>
+curl -fsSL https://raw.githubusercontent.com/Mrfudog/atlas-mentis/preprod/deploy/bootstrap.sh -o bootstrap.sh
+sh bootstrap.sh atlas.<domain> dev.atlas.<domain> <mail@domain> "$(cat <<'K'
+ssh-ed25519 AAAA… atlas-deploy
+K
+)"
 ```
 
-`compose.yml` und `deploy.sh` legt CI beim ersten Lauf selbst hin. Das
-Passwort hat **keinen Vorgabewert** mehr: fehlt es, bricht Compose ab,
-statt still mit `nebelwacht` zu starten.
+Das Skript installiert Docker und `unattended-upgrades`, schaltet
+Passwort-Anmeldung und root-Login per SSH ab, legt den Benutzer `deploy`
+an (in der Gruppe `docker` — auf dieser Maschine faktisch root, hingenommen,
+weil sonst nichts darauf läuft), schreibt je Umgebung ein zufälliges
+`POSTGRES_PASSWORD` nach `/srv/atlas/{prod,dev}/.env`, die beiden Namen
+nach `/srv/atlas/proxy/.env`, und richtet die nächtliche Sicherung als
+Cron für `deploy` ein. **Am Ende druckt es, was nach GitHub gehört**, samt
+der `known_hosts`-Zeile. Den Fingerabdruck dort einmal mit der
+Hetzner-Konsole vergleichen (`ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`):
+ein fester Hostschlüssel ist der Grund, warum CI `StrictHostKeyChecking yes`
+fährt — sonst rollte es auf die erste Maschine aus, die sich unter der
+Adresse meldet.
 
-### DNS und Caddy
+Noch einmal laufen lassen ist ungefährlich: vorhandene Passwörter bleiben.
 
-- A- (und AAAA-)Einträge für `atlas.<domain>` und `dev.atlas.<domain>` auf
-  die Maschine.
-- [`deploy/Caddyfile.example`](../deploy/Caddyfile.example) nach
-  `/etc/caddy/Caddyfile`, die Namen anpassen, `systemctl reload caddy`.
-  Caddy holt die Zertifikate selbst.
+### 5. GitHub einrichten
 
-Der Server im Container vertraut `X-Forwarded-*` nur von `loopback` und
-den privaten Netzen (`TRUST_PROXY: loopback,uniquelocal` in Compose) — von
-dort kommt Caddy über die Docker-Brücke. Ohne das bekäme das
-Sitzungs-Cookie nie `Secure`, und die Anmeldebremse zählte die Fehlversuche
-aller Gäste der einen Adresse des Proxys zu: acht Fehlversuche irgendwo, und
-niemand käme mehr hinein. Nach aussen veröffentlicht ist nur
-`127.0.0.1:<port>`; `HOST=0.0.0.0` gilt **nur im Container**.
-
-### GitHub
-
-Unter *Settings → Environments* zwei Umgebungen anlegen:
+**Settings → Environments**, zwei anlegen:
 
 | Environment | Deployment branches | Secrets | Variables |
 | --- | --- | --- | --- |
-| `dev` | nur `preprod` | `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS` | `PUBLIC_URL` (`https://dev.atlas.<domain>`) |
-| `prod` | nur `main` | dieselben vier | `PUBLIC_URL` (`https://atlas.<domain>`) |
+| `dev` | nur `preprod` | `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS` | `PUBLIC_URL` = `https://dev.atlas.<domain>` |
+| `prod` | nur `main` | dieselben vier (gleicher Server, gleicher Schlüssel) | `PUBLIC_URL` = `https://atlas.<domain>` |
 
 **Die Zweigregel ist der Schutz**, nicht der Workflow: ohne sie könnte ein
-Lauf von einem anderen Zweig die Geheimnisse von `prod` lesen. Wer vor dem
-Ausrollen nach `prod` noch einmal bestätigen will, setzt dort *Required
-reviewers*. `DEPLOY_DIR` als Variable überschreibt das Verzeichnis, wenn es
-nicht `/srv/atlas/<env>` sein soll.
+Lauf von einem anderen Zweig die Geheimnisse von `prod` lesen. Wer vor
+dem Ausrollen nach `prod` noch einmal bestätigen will, setzt dort
+*Required reviewers*.
 
-Das Abbild liegt unter `ghcr.io/<owner>/atlas-mentis` und ist privat. Der
-Server meldet sich dafür nicht dauerhaft an: CI reicht seinen eigenen,
-kurzlebigen `GITHUB_TOKEN` über stdin weiter (nicht über die Befehlszeile —
-die stünde in der Prozessliste), `deploy.sh` meldet sich an, holt und meldet
-sich wieder ab.
+**Settings → Secrets and variables → Actions → Variables** (Repository):
+`DEPLOY_ENABLED` = `true`. Ohne diese Variable bleibt der Job `deploy`
+absichtlich aus. `DEPLOY_DIR` und `PROXY_DIR` überschreiben die
+Verzeichnisse, wenn es nicht `/srv/atlas/…` sein soll.
 
-## Das erste Konto
+**Settings → Actions → General**: *Workflow permissions* auf „Read and
+write" ist **nicht** nötig — der Job `image` bringt `packages: write`
+selbst mit. Das Paket `ghcr.io/mrfudog/atlas-mentis` entsteht beim ersten
+Lauf und ist privat; `deploy.sh` meldet sich mit dem kurzlebigen
+`GITHUB_TOKEN` des Laufs an (über stdin, nicht über die Befehlszeile).
+
+### 6. Der erste Lauf
+
+Ein Push auf `preprod` (oder *Re-run* des letzten Laufs unter *Actions*).
+Reihenfolge, die man im Lauf sieht: `check` → `postgres` → `image` →
+`deploy (dev)`. Beim ersten Mal:
+
+1. `deploy` legt `/srv/atlas/dev/compose.yml`, `deploy.sh` und
+   `/srv/atlas/proxy/{compose.yml,Caddyfile}` hin.
+2. Der Proxy startet (`docker compose up -d` in `/srv/atlas/proxy`) und
+   holt Zertifikate für beide Namen — dauert eine Minute, braucht DNS aus
+   Schritt 2 und Port 80/443 aus Schritt 1.
+3. `deploy.sh` holt das Abbild, startet Postgres und die Anwendung; die
+   Migrationen laufen beim Start; `/api/health` muss innert 90 s antworten.
+
+Prüfen: `https://dev.atlas.<domain>/api/health` antwortet, das Schloss
+ist grün. Dann `main` über einen Pull Request von `preprod` nachziehen —
+derselbe Commit landet auf `prod`.
+
+Wenn etwas hängt, auf dem Server als `deploy`:
+
+```bash
+cd /srv/atlas/dev && docker compose ps && docker compose logs --tail 80 app
+cd /srv/atlas/proxy && docker compose logs --tail 40 caddy     # Zertifikate, DNS
+```
+
+### 7. Das erste Konto
 
 ```bash
 cd /srv/atlas/prod
@@ -174,13 +190,9 @@ Vor jedem Ausrollen sichert `deploy.sh`. Dazu gehört eine nächtliche
 Sicherung, und eine Kopie **ausserhalb** der Maschine — eine Sicherung auf
 derselben Platte hilft gegen einen Fehler und nicht gegen einen Verlust.
 
-```cron
-# mkdir -p /srv/atlas/prod/backups/nacht; dann crontab -e als deploy:
-# jede Nacht, eine je Wochentag
-17 3 * * * cd /srv/atlas/prod && docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > backups/nacht/$(date +\%u).dump
-```
-
-Eigenes Verzeichnis, weil `deploy.sh` in `backups/` nur die letzten 20
+`bootstrap.sh` richtet sie als Cron für `deploy` ein (03:17, eine je
+Wochentag, `backups/nacht/<1–7>.dump`); nachsehen mit `crontab -l` als
+`deploy`. Eigenes Verzeichnis, weil `deploy.sh` in `backups/` nur die letzten 20
 behält — nach einer Woche mit vielen Ausrollungen wäre sonst keine
 nächtliche mehr da.
 
@@ -236,5 +248,5 @@ Bestand von einer Umgebung in die andere geholt, ohne ihre Konten.
   ein externer Prüfer auf `/api/health` wäre der kleinste Schritt.
 - **Alte Abbilder in GHCR** bleiben liegen. Bei einem Abbild je Push
   wächst das; aufräumen, wenn es stört.
-- **Die nächtliche Sicherung** und die Kopie nach aussen stehen hier nur
-  als Rezept, nicht als Datei im Repository.
+- **Die Kopie der Sicherung nach aussen** (Storage Box) steht hier nur als
+  Rezept; die nächtliche Sicherung selbst richtet `bootstrap.sh` ein.
