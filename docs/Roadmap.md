@@ -369,12 +369,10 @@ A, B und D stehen. Was bleibt, in der Reihenfolge, in der es sich lohnt:
    und Kanten ändern geht seit 2026-09-20. Als Nächstes die Bereiche, die der
    Prototyp schon kann — Karte, Bogen, Inventar, Boards, Handwerk —, in
    derselben Reihenfolge, in der sie dort entstanden sind.
-5. **5e.tools als Grundlage des Bestands.** Der Abgleich steht in
-   [5etools-Abgleich.md](5etools-Abgleich.md): 85 Arten gegen das Register,
-   14 Modelländerungen (M1–M14), ein Importer `packages/import-5etools`
-   und der Weg, den heutigen Bestand dadurch zu ersetzen. Blockiert durch
-   die Entscheidungen E1–E6 dort (Umfang, Ausgabe, Sprache der
-   Aufzählungen, Bilder).
+5. **5e.tools als Grundlage des Bestands.** Abgleich in
+   [5etools-Abgleich.md](5etools-Abgleich.md), Entscheidungen (D47) und
+   Reihenfolge in [5etools-Arbeitsplan.md](5etools-Arbeitsplan.md):
+   sieben Pakete P1–P7, je Paket eine Sitzung mit fertigem Auftrag.
 6. **Der Ortsimporter als TypeScript** (C4, Rest). Das Register steht seit
    2026-09-20 nur noch einmal: `pnpm --filter @nw/registry emit-seed`
    erzeugt die Zeilen des Prototyps aus `packages/registry`.
