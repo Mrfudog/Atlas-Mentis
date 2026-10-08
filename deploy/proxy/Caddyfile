@@ -1,0 +1,20 @@
+# Caddy vor den beiden Umgebungen. Die Namen kommen aus .env neben der
+# compose.yml (PROD_HOST, DEV_HOST); beide müssen per DNS auf den Server
+# zeigen, sonst bekommt Caddy kein Zertifikat.
+{
+	email {$ACME_EMAIL}
+}
+
+{$PROD_HOST} {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8080
+}
+
+{$DEV_HOST} {
+	encode zstd gzip
+	# Die Testinstanz ist nicht für die Öffentlichkeit: Suchmaschinen
+	# draussen halten. Wer sie ganz zumachen will, nimmt basic_auth dazu:
+	#   basic_auth { <name> <hash aus: docker compose exec caddy caddy hash-password> }
+	header X-Robots-Tag "noindex, nofollow"
+	reverse_proxy 127.0.0.1:8081
+}
