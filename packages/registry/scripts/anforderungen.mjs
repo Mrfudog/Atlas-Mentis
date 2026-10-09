@@ -155,7 +155,7 @@ const STAND = {
   'REQ-112': ['ersetzt', 'Platzierungen auf dem Board'],
   'REQ-113': ['offen', 'Aufgabe #58'],
   'REQ-114': ['teils', 'Anlegen aus dem Board'],
-  'REQ-115': ['steht', '`participates` mit init, hp, conditions (je Eintrag ein Regelartikel `kind: condition`, Runden, Quelle)'],
+  'REQ-115': ['steht', '`participates` mit init, hp, conditions (je Eintrag ein Artikel der Art `Condition`, Runden, Quelle)'],
   'REQ-116': ['steht', '`Session.activeMap/activeEncounter/activeScene`; Raum-Kanal für Augenblicke'],
   'REQ-117': ['steht', '`Session.stewardship` gm/table'],
   'REQ-118': ['steht', 'Begegnung mit Teilnehmern und Tabellen'],

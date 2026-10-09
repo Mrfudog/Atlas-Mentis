@@ -58,13 +58,65 @@ export const relations: Record<string, RelationDef> = {
     asField: 'to',
   },
 
+  /**
+   * **Die Stufe eines Zustands** (D48): „Exhaustion 3" ist Stufe 3 von
+   * „Exhaustion". Dasselbe Muster trägt die Stadien einer Krankheit. Die
+   * Zustandsliste hält höchstens eine Stufe je Grundzustand; ändert sich
+   * die Stufe, wird ersetzt (gleicher `stageOf`, `stage ± 1`).
+   */
+  stageOf: {
+    type: 'stageOf',
+    label: 'stage of',
+    inverseLabel: 'has stages',
+    from: ['Condition'],
+    to: ['Condition'],
+    cardinality: 'one',
+  },
+
+  /**
+   * **Wirkungen zwischen Regeln** (D48): gelähmt *bewirkt* kampfunfähig,
+   * kampfunfähig *verbietet* Reaktionen. Gespeichert wird vorwärts; die
+   * Gegenfrage („was verbietet mir Reaktionen?") ist eine Abfrage.
+   * **Ausgewertet wird vorerst nichts** — die Kanten sind Daten, die der
+   * Bogen anzeigt. Der Importer legt sie nicht an: dass ein Text einen
+   * anderen Zustand nennt, heisst nicht, dass er ihn bewirkt.
+   */
+  affects: {
+    type: 'affects',
+    label: 'affects',
+    inverseLabel: 'affected by',
+    from: ['Rule'],
+    to: ['Rule'],
+    props: {
+      type: 'object',
+      properties: {
+        effect: {
+          type: 'string',
+          title: 'Effect',
+          enum: ['imposes', 'prevents', 'limits', 'advantage', 'disadvantage', 'triggers'],
+        },
+        on: { type: 'string', suggest: true, title: 'On' },
+        note: { type: 'string', title: 'Note' },
+      },
+    },
+  },
+
+  /** Wer an eine Gottheit glaubt (M7). Die Anhänger sind die Gegenrichtung. */
+  worships: {
+    type: 'worships',
+    label: 'worships',
+    inverseLabel: 'worshipped by',
+    from: ['Creature', 'Faction'],
+    to: ['Deity'],
+  },
+
   /** Weapon properties are pooled rules, referenced rather than copied. */
   hasProperty: {
     type: 'hasProperty',
     label: 'has property',
     inverseLabel: 'property of',
     from: ['Weapon', 'Item', 'Armor'],
-    to: ['Rule'],
+    to: ['ItemProperty'],
   },
 
   /* `NPC` stand hier, solange es die Art gab. Jetzt ist eine Kreatur die
@@ -516,8 +568,10 @@ export const relations: Record<string, RelationDef> = {
         hpMax: { type: 'number', title: 'Maximum' },
         ally: { type: 'boolean', title: 'On the party’s side' },
         /* Zeitlich begrenzte Zustände (REQ-115): je Eintrag `rule` (Id
-           eines Regelartikels mit `kind: condition`), `rounds` (zählt am
-           Zugende herunter) und `source` (wer ihn verhängt hat). */
+           eines Artikels der Art `Condition`; der Schlüssel heisst aus
+           alter Zeit so), `rounds` (zählt am Zugende herunter) und `source`
+           (wer ihn verhängt hat). Wie in `Vitals.conditions` höchstens eine
+           Stufe je Grundzustand. */
         conditions: { type: 'array', title: 'Conditions', items: { type: 'object' } },
         note: { type: 'string', title: 'Note' },
       },
