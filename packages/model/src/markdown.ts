@@ -52,18 +52,33 @@ function blank(line: string | undefined): boolean {
   return line === undefined || line.trim() === '';
 }
 
-/** Die Zellen einer Tabellenzeile. `\|` ist ein Strich im Text, kein Zellrand. */
+/**
+ * Die Zellen einer Tabellenzeile. `\|` ist ein Strich im Text, kein
+ * Zellrand — und ebenso der Strich in einem Verweis: `[[npc-0042|Volo]]`
+ * in einer Zelle ist ein Verweis, nicht zwei Zellen (M11).
+ */
 export function splitRow(line: string): string[] {
   let s = line.trim();
   if (s.startsWith('|')) s = s.slice(1);
   if (s.endsWith('|') && !s.endsWith('\\|')) s = s.slice(0, -1);
   const cells: string[] = [];
   let cur = '';
+  let imVerweis = false;
   for (let i = 0; i < s.length; i++) {
     const c = s[i];
-    if (c === '\\' && s[i + 1] === '|') {
+    if (c === '[' && s[i + 1] === '[') {
+      imVerweis = true;
+      cur += '[[';
+      i++;
+    } else if (c === ']' && s[i + 1] === ']') {
+      imVerweis = false;
+      cur += ']]';
+      i++;
+    } else if (c === '\\' && s[i + 1] === '|') {
       cur += '|';
       i++;
+    } else if (c === '|' && imVerweis) {
+      cur += c;
     } else if (c === '|') {
       cells.push(cur.trim());
       cur = '';

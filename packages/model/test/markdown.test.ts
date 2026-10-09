@@ -100,6 +100,10 @@ describe('splitRow', () => {
   it('honours an escaped pipe', () => {
     expect(splitRow('| a \\| b | c |')).toEqual(['a | b', 'c']);
   });
+
+  it('keeps the pipe inside a link in its cell', () => {
+    expect(splitRow('| 4–6 | [[npc-0001|Volo]] notices |')).toEqual(['4–6', '[[npc-0001|Volo]] notices']);
+  });
 });
 
 describe('blockTexts', () => {
