@@ -31,6 +31,9 @@ jobs:
       # Build order matters: the apps compile against @nw/model's emitted types.
       - run: pnpm --filter @nw/model build
       - run: pnpm --filter @nw/registry build
+      # Der Importer läuft nicht in der Anwendung, aber er übersetzt gegen
+      # dieselben Typen — ein Register, das ihn bricht, soll hier rot werden.
+      - run: pnpm --filter @nw/import-5etools typecheck
 
       - run: pnpm lint
       - run: pnpm test

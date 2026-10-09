@@ -62,7 +62,8 @@ try {
   const berichtPfad = wert('--bericht');
   if (berichtPfad !== undefined) {
     const ziel = resolve(berichtPfad || 'bericht-5etools.md');
-    const aufruf = ['node packages/import-5etools/dist/cli.js', '<data>', ...args.filter((a) => a !== pfad && a !== out && a !== berichtPfad)].join(' ');
+    /* Die Pfade gehören dem, der den Lauf macht; im Bericht stehen Platzhalter. */
+    const aufruf = ['node packages/import-5etools/dist/cli.js', '<data>', ...args.slice(1).map((a, i, alle) => (i > 0 && ['--out', '--bericht', '--sample'].includes(alle[i - 1]!) && !a.startsWith('--') ? '<datei>' : a))].join(' ');
     writeFileSync(ziel, berichtMarkdown(bericht, { stand: stand(daten), aufruf, artikel: datei.entities.length }));
     console.log(`Bericht: ${ziel}`);
   }
