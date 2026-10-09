@@ -131,7 +131,7 @@ export interface PropertySchema {
   alwaysEdit?: boolean;
   /**
    * **Schlägt vor, was schon dasteht.** Für ein freies Wort, das eine
-   * Sorte benennt (`Creature.kind`, `Item.itemType`): die Eingabe bietet
+   * Sorte benennt (`Creature.kind`, `Deity.pantheon`): die Eingabe bietet
    * die Werte an, die andere Artikel in diesem Feld tragen, damit dieselbe
    * Sorte nicht dreimal anders geschrieben wird. Eine Aufzählung wäre zu
    * starr — eine neue Sorte soll ein Eintrag sein und keine

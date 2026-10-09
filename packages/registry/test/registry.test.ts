@@ -186,9 +186,12 @@ describe('shared choice lists', () => {
 
   /* Die sechs Attributkürzel standen wörtlich an der Fertigkeit und am
      Rezept. Dass beide jetzt dieselbe Zeile nennen, ist der ganze Punkt. */
-  it('the ability list is named by the skill, the recipe, the disease and the saving throws', () => {
+  it('the ability list is named by the skill, the recipe, the disease, the spell and the saving throws', () => {
     const wer = felderMitRef.filter((f) => f.nennt === 'Ability').map((f) => f.ref).sort();
-    expect(wer).toEqual(['Disease.save', 'Proficiencies.saves', 'Recipe.ability', 'Skill.ability']);
+    expect(wer).toEqual([
+      'Disease.save', 'Proficiencies.saves', 'Recipe.ability', 'Skill.ability',
+      'Spell.save', 'Statblock.spellAbility',
+    ]);
     expect(enumOptions(seedRegistry, { enumRef: 'Ability' })).toEqual([
       'str', 'dex', 'con', 'int', 'wis', 'cha',
     ]);
@@ -648,7 +651,8 @@ describe('seed registry, referential integrity', () => {
     const fehlt: string[] = [];
     Object.entries(relations).forEach(([n, r]) => {
       [...(r.from ?? []), ...(r.to ?? [])].forEach((t) => {
-        if (t !== '*' && !interfaces[t]) fehlt.push(`${n} → ${t}`);
+        /* `same` heisst „die Art der Quelle" (`relationAccepts`). */
+        if (t !== '*' && t !== 'same' && !interfaces[t]) fehlt.push(`${n} → ${t}`);
       });
     });
     expect(fehlt).toEqual([]);
@@ -862,13 +866,13 @@ describe('one registry of types', () => {
     expect(voll.some((x) => x.el === 'linked')).toBe(true);
   });
 
-  /* Die Vorlage, aus der eine Instanz liest: Statblock zu Statblock, und
-     eine Instanz hat genau eine. Mehrere Vorlagen wären eine Mischung, die
-     niemand geschrieben hat. */
-  it('lets a statblock read a template', () => {
+  /* Die Vorlage, aus der eine Instanz liest: Statblock zu Statblock,
+     Gegenstand zu Gegenstand (M4), und eine Instanz hat genau eine.
+     Mehrere Vorlagen wären eine Mischung, die niemand geschrieben hat. */
+  it('lets a statblock and an item read a template of their own kind', () => {
     const r = seedRegistry.relations['instanceOf'];
-    expect(r?.from).toEqual(['Statblock']);
-    expect(r?.to).toEqual(['Statblock']);
+    expect(r?.from).toEqual(['Statblock', 'Item']);
+    expect(r?.to).toEqual(['same']);
     expect(r?.cardinality).toBe('one');
     expect(r?.asField).toBeUndefined();
   });

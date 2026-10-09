@@ -79,7 +79,9 @@ Moment, in dem er eigene Felder braucht. Dasselbe geschah am 7.10. mit
 Zeile, weil sie den Sitzungszustand trägt), mit `Event` (`Era`,
 `Cataclysm`, `Milestone`) und mit `Item` (`Consumable` ist ein
 `itemType`). Sechs Zeilen weniger, und keine davon hatte je ein Feld
-gebraucht.
+gebraucht. (`itemType` ist seit P3 eine Aufzählung am Feld, die
+Gegenstandsarten von 5e.tools; ein Verbrauchsgut ist dort `potion`,
+`scroll` oder `food and drink`.)
 
 ### Der erste Bestandteil zählt anders
 
@@ -143,7 +145,7 @@ Eine Tatsache, die ein Typ festhält. Ein Feld hat
   war es ein Schalter für zwanzig Felder auf einmal, und an `Vitals` sind
   die Trefferpunkte ein Stand, die Zustandsliste aber ein Satz Häkchen,
 - bei einem freien Wort, ob es **vorschlägt, was schon dasteht** (`suggest`)
-  — für eine Sorte wie `Creature.kind` oder `Item.itemType`, damit sie nicht
+  — für eine Sorte wie `Creature.kind` oder `Deity.pantheon`, damit sie nicht
   dreimal anders geschrieben wird, und **nicht** für einen Namen: der
   Deckname bot einmal die Decknamen anderer Artikel an, weil jedes freie
   Textfeld vorschlug. Angeboten wird nur aus Artikeln, die man sehen darf,
@@ -347,6 +349,23 @@ eine Regelmaschine wäre ein eigenes Vorhaben. Das Warum der Familie
 (Messlatte: eine Regelart wird ein Typ, wenn ein Feld oder eine Kante sie
 als Art verlangt oder sie eigene Felder trägt) steht in D48.
 
+### Ein Zauber steht einmal da, wer ihn kann, an der Kante
+
+Ein Zauber ist eine Regel mit eigenen Feldern (`Spell` unter `Rule`):
+Grad, Schule, Wirkzeit, Reichweite, Komponenten, Dauer. **Wer ihn wirkt,
+steht nicht am Zauber**, sondern an der Kante `casts` vom Wirkenden —
+vom Statblock, vom Spielercharakter, vom Gegenstand. Derselbe Feuerball ist
+bei der Magierin vorbereitet, beim Kultisten angeboren und dreimal am Tag,
+im Stab drei Ladungen wert; drei Felder am Zauber könnten das nicht sagen,
+drei Kanten schon (`mode`, `uses`, `charges`).
+
+Die **Wirkzeit nennt ihre Aktionsart** (`castingAction` → `ActionType`):
+„1 bonus action" als Wort wäre neben `Action.actionType` die zweite
+Schreibweise derselben Sache. Und **welche Zustände ein Zauber bewirkt**,
+sagt `affects` (`imposes`) und kein Feld `conditions` — die Kante sagt das
+zwischen zwei Regeln schon, und ein Feld daneben wäre die zweite Antwort,
+die als erste veraltet (D49).
+
 ---
 
 ## Wissen
@@ -500,8 +519,17 @@ ist, sagt `belongsTo`; gespeichert wird nur vorwärts, und „welchen Statblock
 hat Rook" ist der Rückbezug.
 
 `Vitals` bleibt bei der Figur: das ist, was sich **während** der Sitzung
-ändert — Trefferpunkte jetzt, Erschöpfung, Zustände, Todesretter. Es gehört
-ihr und nicht ihrem Bogen.
+ändert — Trefferpunkte jetzt, Zustände, Todesretter, verbrauchte
+Zauberplätze. Es gehört ihr und nicht ihrem Bogen.
+
+**Zauberwirken steht am Statblock** (`spellAbility`, `casterLevel`,
+`spellSlots`), und **SG und Angriffsbonus werden gerechnet**:
+`8+prof+modOf(spellAbility)`. `prof` steht in der Statblock-Karte, der Wert
+in `Abilities` — darum fragt eine Rechnung erst ihre eigene Karte und dann
+die übrigen Karten desselben Artikels. Was die eigene Karte trägt, gewinnt;
+ohne Attribut gibt es keinen SG, denn 8 + Übung sähe aus wie einer. Wie viele
+Plätze es gibt, ist die Festlegung am Statblock; wie viele verbraucht sind,
+der Stand an der Figur (`Vitals.slotsUsed`) — wie `hp` an beiden.
 
 Damit heisst `hp` am Statblock das Maximum und an der Figur, was sie gerade
 noch hat. Die Namensgleichheit ist keine Falle mehr, sondern die Wahrheit:
@@ -632,6 +660,13 @@ nicht in jedem Beutel gleich liegen. Ein Stück **vom Raster** zu nehmen und
 es **aus dem Behälter** zu nehmen sind zwei Dinge, und beide braucht man:
 das eine räumt um, das andere gibt her.
 
+**Ein Gegenstand darf selbst ein Behälter sein** (M4): der Rucksack
+`carries` sein Inventar wie eine Figur, mit derselben Kante und derselben
+Darstellung. Und **das Stück am Tisch darf eine Instanz** des Gegenstands im
+Buch sein (`instanceOf`, wie beim Statblock): das +1-Langschwert speichert
+nur, was es vom Langschwert unterscheidet, und eine Korrektur am Langschwert
+erreicht es.
+
 ---
 
 ## Was nirgends steht
@@ -720,8 +755,9 @@ Feldern, von der Rüstungsklasse bis zu den Immunitäten — ein Sammelname für
 „alles, was an einem Statblock steht", und damit keine Auskunft. Jetzt trägt
 der Statblock seine eigenen Felder und nimmt `Abilities` dazu; eine andere
 Art, die die sechs Werte braucht, nimmt dieselbe Zeile. Die Modifikatoren
-stehen **bei** den Werten, weil `mod(dex)` gegen die Nachbarn derselben
-Karte auflöst.
+stehen **bei** den Werten, weil `mod(dex)` zuerst gegen die Nachbarn
+derselben Karte auflöst; der Zauber-SG in der Statblock-Karte findet `int`
+über den Rückgriff auf die übrigen Karten.
 
 **Ein Feld, sechs Listen.** `proficient` zieht aus `Skill`, `Tool`,
 `Language`, `WeaponTraining`, `ArmorTraining` und `KnowledgeField`. Vorher

@@ -438,6 +438,18 @@ export const interfaces: Record<string, InterfaceDef> = {
     schema: merge(g.ItemPropertyInfo),
   },
 
+  /**
+   * Ein Zauber (M2): eine Regel mit Grad, Schule, Wirkzeit, Reichweite,
+   * Komponenten, Dauer. Wer ihn wirkt, sagt die Kante `casts`.
+   */
+  Spell: {
+    name: 'Spell',
+    area: 'rules',
+    label: 'Spell',
+    extends: ['Rule'],
+    schema: merge(g.SpellInfo),
+  },
+
   /** Falle oder Gefahr (M7). Auf der Karte über `marker`. */
   Hazard: {
     name: 'Hazard',
@@ -462,7 +474,10 @@ export const interfaces: Record<string, InterfaceDef> = {
     area: 'rules',
     label: 'Statblock',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Abilities', 'Vars', 'Tactics'],
-    schema: merge(g.StatblockCore),
+    /* Das Zauberwirken trägt der Statblock selbst (M2): es braucht
+       `prof` aus derselben Karte, und eine eigene Art dafür hätte keinen
+       zweiten Nutzer. */
+    schema: merge(g.StatblockCore, g.Spellcasting),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {

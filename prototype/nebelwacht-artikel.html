@@ -12687,7 +12687,9 @@ var BEGRIFFE=[
    "the type is a rule, because a tag removed later would make a stored "+
    "link wrong in hindsight. A measure names the unit it is stored in. A "+
    "calculated field takes no input "+
-   "and is never stored. Values are kept one card per type, named after the "+
+   "and is never stored; it reads its own card first and then the "+
+   "article's other cards, which is how a statblock's spell save DC finds "+
+   "the INT score in Abilities. Values are kept one card per type, named after the "+
    "type that declares the field — that is what keeps hp at the creature "+
    "apart from hp at the statblock. A type may rename a field it inherits: "+
    "the same Time.until is when an event ends and when a quest is too late, "+
@@ -12736,7 +12738,13 @@ var BEGRIFFE=[
    "the one below. There is no counter, because the same number in two "+
    "places drifts apart. What one rule does to another (paralysed imposes "+
    "incapacitated, incapacitated prevents reactions) is an edge too "+
-   "(affects), stored forward; nothing evaluates it yet."],
+   "(affects), stored forward; nothing evaluates it yet. A spell is "+
+   "written once; who casts it, and how, sits on an edge from the caster "+
+   "(casts: prepared, known, innate or from an item, with uses, level and "+
+   "charges) — the same Fireball is prepared by the mage and worth three "+
+   "charges in the staff. An item may carry an inventory of its own (a "+
+   "backpack), and the piece at the table may be an instance of the item "+
+   "in the book (the +1 longsword stores only what differs)."],
   ["Unit",
    "How a measure is written and converted. The vault is imperial because "+
    "the rules are; at the table sit people for whom forty feet means "+
@@ -13074,6 +13082,39 @@ function renderHowto(v){
   bsp.appendChild(el("pre",{class:"code",text:probe}));
   bsp.appendChild(para(probe));
   v.appendChild(bsp);
+
+  /* ---- Zauberwirken, durchgerechnet (M2) ----
+     Mit den Feldern, wie sie im Register stehen, und mit derselben
+     Rechnung, die jede Ansicht nimmt: ändert jemand die Formel am
+     Statblock, ändert sich das Beispiel mit. */
+  var sbP=((REG.interfaces.Statblock||{}).schema||{}).properties||{};
+  if(sbP.spellDc&&sbP.spellAttack){
+    v.appendChild(el("div",{class:"rsec",text:"A spell, who casts it, and the save DC"}));
+    v.appendChild(el("p",{class:"hint"},
+      "A spell is a rule with fields of its own: level, school, casting "+
+      "time, range, components, duration. For an action, a bonus action or "+
+      "a reaction the casting time names the action type — the same article "+
+      "an action names. Which conditions a spell imposes is an affects edge, "+
+      "not a field. Who casts it is a casts edge from the statblock, the "+
+      "character or the item. The statblock gives the ability, the caster "+
+      "level and the slots per level; the save DC and the attack bonus are "+
+      "worked out on read, from the proficiency on the statblock's own card "+
+      "and the score on its Abilities card. Slots spent are a state on the "+
+      "creature, like its current hit points."));
+    var sbBsp={prof:3,spellAbility:"int",casterLevel:9,spellSlots:[4,3,3,3,1]};
+    var abBsp={int:17};
+    var kartenBsp={Statblock:sbBsp,Abilities:abBsp};
+    var dcB=derivedValue(sbP.spellDc,sbBsp,kartenBsp);
+    var atB=derivedValue(sbP.spellAttack,sbBsp,kartenBsp);
+    var rechnung=
+      "Statblock  prof 3 · spellAbility int · casterLevel 9 · spellSlots 4,3,3,3,1\n"+
+      "Abilities  int 17   (mod +3)\n\n"+
+      "spellDc      = "+sbP.spellDc.derived+"  →  "+(dcB==null?"—":dcB)+"\n"+
+      "spellAttack  = "+sbP.spellAttack.derived+"  →  "+fmtVal(sbP.spellAttack,atB)+"\n\n"+
+      "casts → Fireball      mode prepared\n"+
+      "Wand of Magic Missiles  casts → Magic Missile   mode item · charges 1";
+    v.appendChild(el("pre",{class:"code",text:rechnung}));
+  }
 
   /* ---- Wer einen Artikel sehen darf ----
      Die **grobe** Frage, und sie kommt vor der feinen: das Wissen sagt,
@@ -14323,9 +14364,11 @@ function fieldMore(cn,k,within,w,saveC){
   hinweis("**A sum instead of a value.** Write a formula and the field is "
     +"worked out every time the article is read \u2014 never stored, and it "
     +"gets no input (D8). The names in it are the **other fields of this "
-    +"same type**: `mod(dex)` reads `dex` next door, `10+mod(wis)` is the "
-    +"passive perception. Two places that can disagree are worse than one "
-    +"that has to think.");
+    +"same type** first, then those of the article's other cards: `mod(dex)` "
+    +"reads `dex` next door, `10+mod(wis)` is the passive perception, and a "
+    +"statblock's `8+prof+modOf(spellAbility)` takes `prof` from its own card "
+    +"and the INT score from Abilities. `modOf` reads the ability a field "
+    +"names. Two places that can disagree are worse than one that has to think.");
 
   text("belongs to field",p.of||"",function(v){
     if(v)p.of=v; else delete p.of;
