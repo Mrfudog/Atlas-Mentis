@@ -191,7 +191,14 @@ export interface ValidationIssue {
     | 'link_wrong_type'
     | 'dangling_link'
     | 'dangling_relation'
-    | 'unknown_relation';
+    | 'unknown_relation'
+    /* Zwei Stufen desselben Grundzustands in einer Zustandsliste (D48):
+       „Exhaustion 2" und „Exhaustion 3" zugleich sind ein Zähler, der
+       zweimal zählt. */
+    | 'condition_stage_twice'
+    /* `overrides` ersetzt eine Fassung durch eine andere **derselben Art**
+       (M9); über Arten hinweg wäre es eine Verwechslung. */
+    | 'overrides_other_type';
   message: string;
   /** Die Art, deren Karte es betrifft. */
   component?: string;
@@ -210,6 +217,27 @@ export interface ValidateOptions {
    * `knownIds` — zwei Listen derselben Artikel wären eine, die veraltet.
    */
   knownTypes?: ReadonlyMap<string, string>;
+  /**
+   * Zustand (Id) → Grundzustand (Id), aus den `stageOf`-Kanten (siehe
+   * `stageBases`). Ohne sie bleibt die Regel „höchstens eine Stufe je
+   * Grundzustand" ungeprüft — die Prüfung kann den Grundzustand nicht raten.
+   */
+  stageOf?: ReadonlyMap<string, string>;
+}
+
+/**
+ * Die Zuordnung Stufe → Grundzustand aus den gespeicherten `stageOf`-Kanten.
+ * Die Kante steht an der Stufe, die Gegenrichtung ist eine Abfrage — diese
+ * Karte ist die Abfrage, einmal gerechnet und nicht gespeichert (D8).
+ */
+export function stageBases(entities: Iterable<Entity>): Map<string, string> {
+  const raus = new Map<string, string>();
+  for (const e of entities) {
+    for (const r of e.relations ?? []) {
+      if (r.type === 'stageOf') raus.set(e.id, r.to);
+    }
+  }
+  return raus;
 }
 
 /** Check one entity against the registry. An empty array means it is valid. */
@@ -383,6 +411,48 @@ export function validateEntity(
     }
   }
 
+  /* **Höchstens eine Stufe je Grundzustand** (D48), in jeder Liste von
+     Zuständen: in einem Verweisfeld, das auf `Condition` zeigt, und in den
+     Zuständen einer Teilnahme am Kampf. */
+  if (options.stageOf) {
+    const stufen = options.stageOf;
+    const pruefe = (ids: string[], wo: { component?: string; property?: string; relation?: string }) => {
+      const gesehen = new Map<string, string>();
+      for (const id of ids) {
+        const grund = stufen.get(id);
+        if (!grund) continue;
+        const frueher = gesehen.get(grund);
+        if (frueher !== undefined && frueher !== id) {
+          issues.push({
+            code: 'condition_stage_twice',
+            ...wo,
+            message: `${frueher} and ${id} are two stages of ${grund}; a list holds at most one`,
+          });
+        }
+        gesehen.set(grund, id);
+      }
+    };
+    for (const type of kette) {
+      const schema = registry.interfaces[type]?.schema;
+      const card = entity.components?.[type];
+      if (!schema || !card) continue;
+      for (const [property, prop] of Object.entries(schema.properties)) {
+        if (prop.format !== 'link' || prop.type !== 'array' || !Array.isArray(card[property])) continue;
+        if (!linkTargets(prop)?.some((t) => t === 'Condition')) continue;
+        pruefe((card[property] as unknown[]).map(String), { component: type, property });
+      }
+    }
+    for (const relation of entity.relations ?? []) {
+      if (relation.type !== 'participates') continue;
+      const liste = (relation.props as { conditions?: unknown } | undefined)?.conditions;
+      if (!Array.isArray(liste)) continue;
+      pruefe(
+        liste.map((c) => (c as { rule?: unknown } | null)?.rule).filter((r): r is string => typeof r === 'string'),
+        { relation: 'participates', property: 'conditions' },
+      );
+    }
+  }
+
   /* Wer die Arten mitgibt, hat die Ids mitgegeben. Zwei Listen derselben
      Artikel wären eine, die veraltet. */
   const bekannt = options.knownIds
@@ -395,6 +465,16 @@ export function validateEntity(
         relation: relation.type,
         message: `Relation type ${relation.type} is not in the registry`,
       });
+    }
+    if (relation.type === 'overrides' && options.knownTypes) {
+      const ziel = options.knownTypes.get(relation.to);
+      if (ziel && ziel !== name) {
+        issues.push({
+          code: 'overrides_other_type',
+          relation: relation.type,
+          message: `${name} replaces a ${ziel}; an override stays within one type`,
+        });
+      }
     }
     if (bekannt && !bekannt.has(relation.to)) {
       issues.push({

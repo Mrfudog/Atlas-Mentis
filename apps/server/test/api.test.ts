@@ -124,19 +124,19 @@ describe('entities', () => {
     expect(ctx.repo.events.map((e) => e.name)).toContain('entity.written');
   });
 
-  /* Pflicht steht je Feld. Eine Regel ohne `kind` ist eine Regel, von der
-     niemand weiss, wann sie gilt. */
+  /* Pflicht steht je Feld. Eine Aktion ohne Aktionsart ist eine Aktion, von
+     der niemand weiss, wann sie dran ist (D48). */
   it('refuses an article whose type leaves a required field empty', async () => {
     const broken: Entity = {
       ...volo,
       id: '22222222-2222-4222-8222-222222222222',
-      interfaces: ['Rule'],
+      interfaces: ['Action'],
     };
     const res = await ctx.inject({ method: 'PUT', url: `/api/entities/${broken.id}`, payload: broken });
     expect(res.statusCode).toBe(422);
     const issues = res.json().issues as { code: string; component?: string; property?: string }[];
     expect(issues.map((i) => i.code)).toContain('missing_property');
-    expect(issues.find((i) => i.property === 'kind')?.component).toBe('Rule');
+    expect(issues.find((i) => i.property === 'actionType')?.component).toBe('Action');
   });
 
   /* Und eine Karte, deren Art der Artikel gar nicht ist, ist kein Tippfehler
@@ -191,7 +191,7 @@ describe('entities', () => {
 describe('POST /api/validate', () => {
   it('reports the same issues as a write, without writing', async () => {
     const { inject, repo } = await makeApp();
-    const broken: Entity = { ...volo, interfaces: ['Rule'] };
+    const broken: Entity = { ...volo, interfaces: ['Action'] };
     const res = await inject({ method: 'POST', url: '/api/validate', payload: broken });
     expect(res.statusCode).toBe(200);
     expect(res.json().issues.length).toBeGreaterThan(0);
