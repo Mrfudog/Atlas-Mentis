@@ -9,6 +9,7 @@ import {
   entryRef,
   enumOptions,
   fieldTitle,
+  idLinks,
   proseFields,
   relationAccepts,
   relationsFrom,
@@ -18,11 +19,12 @@ import {
   showField,
   viewKeys,
 } from '@nw/model';
-import type { Entity, PropertySchema, Registry, ViewDef } from '@nw/model';
+import type { Entity, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
 import { ausEingabe, eingabeArt, inEingabe, kantenAusEntwurf, type Eingabe } from './felder';
+import { Text } from './text';
 
 interface Zelle {
   ref: string;
@@ -30,6 +32,8 @@ interface Zelle {
   wert: string;
   /** An einer Instanz: der Wert kommt von der Vorlage. */
   geerbt?: boolean;
+  /** Ein langes Textfeld: gezeichnet als Markdown (M10), nicht als Zeile. */
+  lang?: boolean;
 }
 
 interface Feld {
@@ -65,7 +69,7 @@ interface Feld {
  */
 @Component({
   selector: 'nw-artikel',
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, FormsModule, Text],
   template: `
     @if (artikel(); as e) {
       <article>
@@ -223,15 +227,26 @@ interface Feld {
           </div>
         } @else {
 
+        @if (offeneVerweise().length) {
+          <p class="hinweis" role="status">
+            Links not tied to an article (none or several match): {{ offeneVerweise().join(', ') }}
+          </p>
+        }
         @if (beschreibung(); as text) {
-          <p class="beschreibung">{{ text }}</p>
+          <nw-text class="beschreibung" [text]="text" [scopes]="scopes()" />
         }
 
         @if (zellen().length) {
           <dl class="felder">
             @for (z of zellen(); track z.ref) {
               <dt>{{ z.label }}</dt>
-              <dd [class.geerbt]="z.geerbt" [attr.title]="z.geerbt ? 'From the template' : null">{{ z.wert }}</dd>
+              <dd [class.geerbt]="z.geerbt" [attr.title]="z.geerbt ? 'From the template' : null">
+                @if (z.lang) {
+                  <nw-text [text]="z.wert" [scopes]="scopes()" />
+                } @else {
+                  {{ z.wert }}
+                }
+              </dd>
             }
           </dl>
         }
@@ -241,7 +256,7 @@ interface Feld {
             @if (b.key !== 'paragraph') {
               <div class="bl">{{ b.label }}</div>
             }
-            <p>{{ b.wert }}</p>
+            <nw-text [text]="b.wert" [scopes]="scopes()" />
           </section>
         }
 
@@ -323,6 +338,17 @@ export class Artikel {
     return primaryInterface(e);
   }
 
+  /**
+   * Woraus `{VAR}` im Text aufgelöst wird: der Artikel, dann das Register
+   * (REQ-174). Die Bindung an einer Kante kennt nur, wer den Text über die
+   * Kante hereinzieht — die Artikelseite zeigt ihn für sich.
+   */
+  protected readonly scopes = computed<VarScopes>(() => {
+    const e = this.artikel();
+    const vars = e?.components?.['Vars'] as { bindings?: Record<string, string> } | undefined;
+    return { entity: vars?.bindings, campaign: this.reg()?.vars };
+  });
+
   protected readonly beschreibung = computed<string | null>(() => {
     const e = this.artikel();
     const v = this.view();
@@ -348,8 +374,10 @@ export class Artikel {
         if (comp === 'Description' && prop === 'description' && v.description) continue;
         if (!showField(v, comp, prop)) continue;
         if (wert === null || wert === undefined || wert === '') continue;
-        const titel = def?.schema?.properties?.[prop]?.title ?? prop;
+        const schema = def?.schema?.properties?.[prop];
+        const titel = schema?.title ?? prop;
         out.push({
+          lang: schema?.format === 'long' && typeof wert === 'string',
           ref: `${comp}.${prop}`,
           label: titel,
           wert: Array.isArray(wert) ? wert.join(', ') : String(wert),
@@ -408,6 +436,8 @@ export class Artikel {
   protected readonly speichert = signal(false);
   protected readonly problem = signal<string | null>(null);
   protected readonly maengel = signal<string[]>([]);
+  /** Verweise, die beim letzten Speichern keine Id bekamen (M11). */
+  protected readonly offeneVerweise = signal<string[]>([]);
   protected readonly felder = signal<Feld[]>([]);
   protected readonly entwurfProsa = signal<
     { id: string; type: string; key: string; label: string; wert: string }[]
@@ -483,6 +513,7 @@ export class Artikel {
     );
     this.problem.set(null);
     this.maengel.set([]);
+    this.offeneVerweise.set([]);
     this.bearbeitet.set(true);
   }
 
@@ -620,10 +651,22 @@ export class Artikel {
     this.problem.set(null);
     this.maengel.set([]);
 
+    /* `[[Name]]` wird beim Speichern zur Id, wo genau ein Artikel so
+       heisst (M11). Hier und nicht beim Lesen: danach überlebt der Verweis
+       das Umbenennen des Ziels. Was nichts oder mehreres trifft, bleibt
+       stehen und wird gesagt. */
+    const offen = new Set<string>();
+    const mitIds = (text: string): string => {
+      const r = idLinks(text, this.bestand.entities());
+      r.open.forEach((o) => offen.add(o));
+      return r.text;
+    };
+
     const components: Record<string, Record<string, unknown>> = {};
     for (const f of this.felder()) {
-      const wert = ausEingabe(f.schema, f.art === 'jaNein' ? f.jaNein : f.wert);
+      let wert = ausEingabe(f.schema, f.art === 'jaNein' ? f.jaNein : f.wert);
       if (wert === undefined) continue;
+      if (f.schema?.format === 'long' && typeof wert === 'string') wert = mitIds(wert);
       (components[f.comp] ??= {})[f.prop] = wert;
     }
     /* Die Prosa wandert in die Karten, aus denen sie kommt. Die Id bleibt
@@ -633,7 +676,10 @@ export class Artikel {
       if (b.wert.trim() === '') continue;
       const id = b.id.split('#')[1] ?? b.id;
       ((components[b.type] ??= {})[b.key] ??= [] as { id: string; value: string }[]);
-      (components[b.type][b.key] as { id: string; value: string }[]).push({ id, value: b.wert });
+      (components[b.type][b.key] as { id: string; value: string }[]).push({
+        id,
+        value: mitIds(b.wert),
+      });
     }
 
     const relations = kantenAusEntwurf(this.entwurfKanten());
@@ -644,6 +690,7 @@ export class Artikel {
       const gespeichert = await this.api.putEntity(neu);
       await this.bestand.load(true);
       this.bearbeitet.set(false);
+      this.offeneVerweise.set([...offen]);
       /* Was der Server zurückgibt, gilt — er setzt `updatedAt` und darf
          mehr ändern, als hier geschickt wurde. */
       void gespeichert;
