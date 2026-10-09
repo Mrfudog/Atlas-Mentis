@@ -119,13 +119,15 @@ export const relations: Record<string, RelationDef> = {
    * dafür verbraucht (der Zauberstab der Magischen Geschosse: 1).
    *
    * Vom Statblock und nicht von der Kreatur: die Zahlen und das
-   * Zauberwirken wohnen dort. Die Unterklasse kommt mit P4 dazu.
+   * Zauberwirken wohnen dort. Seit P4 auch von der Unterklasse und der
+   * Abstammung: Domänenzauber des Klerikers, das angeborene Thaumaturgy
+   * des Tieflings — mit `fromLevel`, ab welcher Klassen- bzw. Figurenstufe.
    */
   casts: {
     type: 'casts',
     label: 'casts',
     inverseLabel: 'cast by',
-    from: ['Statblock', 'PlayerCharacter', 'Item'],
+    from: ['Statblock', 'PlayerCharacter', 'Item', 'Subclass', 'Ancestry'],
     to: ['Spell'],
     props: {
       type: 'object',
@@ -138,6 +140,113 @@ export const relations: Record<string, RelationDef> = {
         uses: { type: 'string', suggest: true, title: 'Uses' },
         level: { type: 'number', min: 0, max: 9, title: 'At level' },
         charges: { type: 'number', min: 0, title: 'Charges per cast' },
+        fromLevel: { type: 'number', min: 1, max: 20, title: 'From level' },
+      },
+    },
+  },
+
+  /**
+   * **Was ein Statblock in der Hand hat** (M5): der Goblin führt Krummsäbel
+   * und Kurzbogen. Ein Verweis auf den Gegenstand aus dem Buch und kein
+   * Inventar — das hat eine Figur am Tisch (`carries`), nicht eine Vorlage.
+   */
+  equips: {
+    type: 'equips',
+    label: 'equips',
+    inverseLabel: 'equipped by',
+    from: ['Statblock'],
+    to: ['Item'],
+  },
+
+  // ------------------------------------------------------------ charakterbau
+
+  /** Zu welcher Klasse eine Unterklasse gehört (M3). */
+  subclassOf: {
+    type: 'subclassOf',
+    label: 'subclass of',
+    inverseLabel: 'subclasses',
+    from: ['Subclass'],
+    to: ['Class'],
+    cardinality: 'one',
+  },
+
+  /** Hill Dwarf ist eine Unterart von Dwarf (M3). */
+  subraceOf: {
+    type: 'subraceOf',
+    label: 'subrace of',
+    inverseLabel: 'subraces',
+    from: ['Ancestry'],
+    to: ['Ancestry'],
+    cardinality: 'one',
+  },
+
+  /**
+   * **Eine Figur hat Klassen, jede mit ihrer Stufe** (M3). Mehrklassig ist
+   * zwei Kanten: Kämpfer 3 und Magier 2. Die Stufe der Figur ist die Summe
+   * (`sum(hasClass.level)`, gerechnet, D8); die Unterklasse steht an der
+   * Kante, weil sie zu **dieser** Klasse der Figur gehört.
+   */
+  hasClass: {
+    type: 'hasClass',
+    label: 'class',
+    inverseLabel: 'taken by',
+    from: ['PlayerCharacter'],
+    to: ['Class'],
+    props: {
+      type: 'object',
+      required: ['level'],
+      properties: {
+        level: { type: 'number', min: 1, max: 20, title: 'Level' },
+        subclass: {
+          type: 'string',
+          format: 'link',
+          title: 'Subclass',
+          target: { interfaces: ['Subclass'] },
+        },
+      },
+    },
+  },
+
+  /** Die Abstammung einer Figur — eine (M3). */
+  hasAncestry: {
+    type: 'hasAncestry',
+    label: 'ancestry',
+    inverseLabel: 'ancestry of',
+    from: ['PlayerCharacter'],
+    to: ['Ancestry'],
+    cardinality: 'one',
+  },
+
+  /** Der Hintergrund einer Figur — einer (M3). */
+  hasBackground: {
+    type: 'hasBackground',
+    label: 'background',
+    inverseLabel: 'background of',
+    from: ['PlayerCharacter'],
+    to: ['Background'],
+    cardinality: 'one',
+  },
+
+  /**
+   * **Was Klasse, Abstammung, Hintergrund oder Talent mitbringen** (M3):
+   * Merkmale, Aktionen, Zustände — jede Regel. Die Stufe steht an der
+   * Kante, nicht am Merkmal: „Ability Score Improvement" ist ein Artikel,
+   * den der Kämpfer auf Stufe 4, 6, 8, 12, 14, 16 und 19 bekommt (D50).
+   *
+   * Das ist die Kante, die der Arbeitsplan `featureOf` nannte — nur
+   * vorwärts vom Gebenden aus. Beide Richtungen als eigene Kanten wären
+   * ein Gegenstück, das verwaist.
+   */
+  grants: {
+    type: 'grants',
+    label: 'grants',
+    inverseLabel: 'granted by',
+    from: ['Class', 'Subclass', 'Ancestry', 'Background', 'Feat'],
+    to: ['Rule'],
+    props: {
+      type: 'object',
+      properties: {
+        level: { type: 'number', min: 1, max: 20, title: 'At level' },
       },
     },
   },
@@ -686,11 +795,14 @@ export const relations: Record<string, RelationDef> = {
   },
 
   /** Welche Tabelle an diesem Ort gilt (REQ-172). */
+  /* Seit M3 auch die Stufentabelle einer Klasse und die vier
+     Charakterzug-Tabellen eines Hintergrunds: eine Tabelle ist ein Artikel
+     mit Spalten (M8), und eine Liste am Typ wäre die zweite Tabelle. */
   tableFor: {
     type: 'tableFor',
     label: 'rolls on',
     inverseLabel: 'used at',
-    from: ['Place', 'Story', 'Encounter'],
+    from: ['Place', 'Story', 'Encounter', 'Class', 'Subclass', 'Ancestry', 'Background'],
     to: ['Table'],
   },
 

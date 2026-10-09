@@ -51,12 +51,14 @@ Eine Registerzeile. Sie hat drei Formen:
   ohne Felder. `Ability` ist eine: `str`, `dex`, `con`, `int`, `wis`, `cha`.
   Sie steht im Register, weil **mehrere Felder dieselbe Liste brauchen** —
   die sechs Kürzel standen wörtlich an der Fertigkeit und am Rezept, und
-  wer eins nachzog, zog das andere nicht nach. Neun gibt es: `Ability`,
-  `Skill`, `Tool`, `Language`, `WeaponTraining`, `ArmorTraining`,
-  `KnowledgeField`, `State`, `DrawTime`.
+  wer eins nachzog, zog das andere nicht nach. Sechs gibt es: `Ability`,
+  `Size`, `DamageType`, `DrawTime`, `RuleKind`, `State`. Fertigkeiten,
+  Sprachen, Werkzeuge, Waffen- und Rüstungsgruppen und Wissensgebiete
+  standen bis P4 auch hier; sie sind jetzt Artikel oder die Liste eines
+  Feldes (M6, siehe Feld).
 
 Ein Zusammenschluss darf aus Zusammenschlüssen bestehen; `PlayerCharacter`
-besteht aus `Creature`, und `Creature` besteht aus siebzehn anderen.
+besteht aus `Creature`, und `Creature` besteht aus fünfzehn anderen.
 
 **Text, Zahl, Datum, Farbe sind keine Registerzeilen.** Sie sind die *Form*
 eines Feldes (`type` und `format`) — es gibt nichts an ihnen zu
@@ -116,10 +118,17 @@ Eine Tatsache, die ein Typ festhält. Ein Feld hat
   Aufzählungszeile (`enumRef`), nie beides: zwei Listen an einem Feld wären
   zwei Antworten auf dieselbe Frage. **Mehrere Zeilen sind erlaubt** und
   gelten zusammen — worin jemand geübt ist, kommt aus Fertigkeiten,
-  Werkzeugen, Sprachen, Waffen, Rüstungen und Wissensgebieten. Ein Feld je
-  Sorte hiesse, dieselbe Frage sechsmal zu stellen, und die siebte Sorte
-  bräuchte ein siebtes Feld; woher ein Wert kommt, sagt die Liste, in der
-  er steht,
+  Werkzeugen, Sprachen, Waffen und Rüstungen. Ein Feld je Sorte hiesse,
+  dieselbe Frage sechsmal zu stellen, und die siebte Sorte bräuchte ein
+  siebtes Feld; woher ein Wert kommt, sagt die Liste, in der er steht.
+  **Statt einer Zeile darf das Feld eine Artikelart nennen** (M6): dann
+  sind die Werte die Namen der Artikel dieser Art, die man sehen darf. Eine
+  Fertigkeit ist ein Artikel mit Regeltext und Attribut, eine Sprache einer
+  mit Schrift; als Wort in einer Zeile konnte sie beides nicht tragen, und
+  die Zuordnung „Stealth rechnet auf DEX" stand darum in einer Einstellung
+  daneben — die zweite Stelle für dieselbe Sache. **Die Zeile hält, die Art
+  schlägt vor:** ein Artikelname ist der heutige Stand, und eine
+  Umbenennung machte eine gespeicherte Übung sonst rückwirkend falsch,
 - **eines oder mehrere**: dasselbe Feld mit `type: 'array'` hält mehrere
   Werte aus denselben Listen. „Welches Attribut trägt die Probe" ist eines,
   „auf welche Rettungswürfe ist sie geübt" sind mehrere,
@@ -513,8 +522,11 @@ Beschreibung.
 ## Die Zahlen einer Kreatur
 
 **Sie wohnen am Statblock** — auch die eines Spielercharakters. Er hat mehr
-darüber hinaus (Stufe, Klasse, Hintergrund), aber AC, HP-Maximum und die
-sechs Werte sind dieselbe Sache wie bei jedem Monster. Welcher Statblock es
+darüber hinaus (Stufe, Klasse, Hintergrund), aber AC, HP-Maximum, die
+sechs Werte und die **Übungen** sind dieselbe Sache wie bei jedem Monster.
+Die Übungen standen bis P4 an der Kreatur; seither nimmt der Statblock
+`Proficiencies` dazu, denn worin jemand geübt ist, rechnet mit seinem
+Übungsbonus und seinen Werten — an zwei Stellen wären es zwei Antworten. Welcher Statblock es
 ist, sagt `belongsTo`; gespeichert wird nur vorwärts, und „welchen Statblock
 hat Rook" ist der Rückbezug.
 
@@ -530,6 +542,35 @@ die übrigen Karten desselben Artikels. Was die eigene Karte trägt, gewinnt;
 ohne Attribut gibt es keinen SG, denn 8 + Übung sähe aus wie einer. Wie viele
 Plätze es gibt, ist die Festlegung am Statblock; wie viele verbraucht sind,
 der Stand an der Figur (`Vitals.slotsUsed`) — wie `hp` an beiden.
+
+**Was im Buch steht und nicht aus Übung folgt, ist ein fester Bonus**
+(`Statblock.bonuses`, `{"Stealth": 6}`): der Goblin hat Heimlichkeit +6, wo
+DEX und Übung +4 ergäben. Der Bogen nimmt ihn statt der Rechnung. Was ein
+Monster führt, sagt die Kante `equips` zum Gegenstand aus dem Buch; ein
+Inventar hat erst die Figur am Tisch.
+
+### Klasse, Stufe und was gewährt wird
+
+Klasse, Unterklasse, Abstammung und Hintergrund sind **Regeln mit eigenen
+Feldern** und darum Arten unter `Rule`. Die Figur zeigt auf sie: `hasClass`
+einmal je Klasse, **mit der Stufe an der Kante** — Kämpfer 3 und Magier 2
+sind zwei Kanten, und die Unterklasse steht an der Kante, weil sie zu
+dieser Klasse der Figur gehört. `PlayerCharacter.class` war ein Wort; ein
+Wort kann nicht sagen, welche Trefferwürfel die Figur hat oder auf welche
+Rettungswürfe sie geübt ist.
+
+**Die Stufe der Figur wird gerechnet** — die Summe der Klassenkanten
+(`sum(hasClass.level)`), und der Übungsbonus aus ihr. Eingetippt wäre sie
+die dritte Stelle neben den Kanten und nach dem ersten Aufstieg falsch.
+
+**Was eine Klasse gewährt, ist eine Kante, und die Stufe steht an ihr**
+(`grants`, `props.level`). „Ability Score Improvement" kommt beim Kämpfer
+auf Stufe 4, 6, 8, 12, 14, 16 und 19: ein Artikel, sieben Kanten. Ein Feld
+`level` am Merkmal hätte eine davon gewählt und die anderen verschwiegen —
+darum gibt es `Feature.level` nicht mehr (D50). Was gewählt wird statt
+gewährt („zwei aus Acrobatics, Athletics …"), steht als Angebot an der
+Klasse (`ProficiencyChoice`); getroffen wird die Wahl am Statblock der
+Figur, als gewöhnliche Übung.
 
 Damit heisst `hp` am Statblock das Maximum und an der Figur, was sie gerade
 noch hat. Die Namensgleichheit ist keine Falle mehr, sondern die Wahrheit:
@@ -722,21 +763,20 @@ Daran hängt alles, was dieses Dokument erklärt:
   Statblock hat, hat ihn über `belongsTo` — und nicht, weil die Art es
   verlangt.
 
-Und eine Figur, weil an ihr die Listen hängen:
+Und eine Figur, weil an ihr Klasse und Stufe hängen (so, wie sie seit P4
+aussähe — der Bestand wird nicht umgezogen, sondern ersetzt):
 
 ```
 Artikel  pc_rook
-  ist    PlayerCharacter                ← erbt Creature, dazu Stufe und Klasse
+  ist    PlayerCharacter                ← erbt Creature
   Karten
-    Proficiencies
-      proficient  stealth, sleightOfHand, investigation, …   ← aus Skill
-                  Gemeinsprache, Diebeszinken, Elfisch        ← aus Language
-                  Diebeswerkzeug, Fälscherwerkzeug, …         ← aus Tool
-      expertise   stealth, sleightOfHand
-      saves       dex, int                                    ← aus Ability
+    PlayerCharacter  level* 5, proficiency* +3   ← gerechnet aus den Kanten
     Vitals        hp 19/24, conditions …    ← was sich in der Sitzung ändert
   Kanten
-    belongsTo ← sb_rook                 ← dort wohnen die sechs Werte
+    hasClass      → Rogue    level 5 · subclass Thief
+    hasAncestry   → Lightfoot Halfling
+    hasBackground → Criminal
+    belongsTo ← sb_rook                 ← dort wohnen Werte und Übungen
 ```
 
 Und der Bogen, auf den `belongsTo` zeigt:
@@ -748,6 +788,13 @@ Artikel  sb_rook
     Abilities     str 10, dex 18, con 12, int 14, wis 12, cha 13
                   strMod … chaMod, initiative, passivePerception  ← gerechnet
     Statblock     system, size, ac, hp, speed, cr, prof, senses …
+    Proficiencies
+      proficient  Stealth, Sleight of Hand, Investigation, …  ← Skill-Artikel
+                  Common, Thieves' Cant, Halfling             ← Language-Artikel
+                  Thieves' tools                              ← Item (Werkzeug)
+                  simple, light                               ← Weapon.category, Armor.armorType
+      expertise   Stealth, Sleight of Hand
+      saves       dex, int                                    ← Zeile Ability
 ```
 
 **`StatblockInfo` gibt es nicht mehr.** Es war eine Karte mit dreissig
@@ -759,12 +806,14 @@ stehen **bei** den Werten, weil `mod(dex)` zuerst gegen die Nachbarn
 derselben Karte auflöst; der Zauber-SG in der Statblock-Karte findet `int`
 über den Rückgriff auf die übrigen Karten.
 
-**Ein Feld, sechs Listen.** `proficient` zieht aus `Skill`, `Tool`,
-`Language`, `WeaponTraining`, `ArmorTraining` und `KnowledgeField`. Vorher
-stand je Sorte ein Feld — also dieselbe Frage sechsmal, und die siebte
-Sorte hätte ein siebtes Feld gebraucht. Woher ein Wert kommt, sagt die
-Liste, in der er steht: der Bogen gruppiert danach, und das Handwerk liest
-sich die Werkzeugübungen daraus heraus.
+**Ein Feld, sechs Quellen.** `proficient` zieht aus den Artikeln der Arten
+`Skill`, `Language`, `Item` (nur Werkzeuge) und `Weapon` und aus den Listen
+von `Weapon.category` und `Armor.armorType`. Vorher stand je Sorte ein Feld
+— also dieselbe Frage sechsmal, und die siebte Sorte hätte ein siebtes Feld
+gebraucht —, und danach sechs Wortlisten, von denen keine sagen konnte,
+worauf eine Fertigkeit rechnet. Woher ein Wert kommt, sagt die Quelle: der
+Bogen gruppiert danach, und was keine Quelle kennt (eine Hausregel ohne
+Artikel), steht unter „Other" und bleibt gespeichert.
 
 **Die sechs Werte stehen nicht an der Figur.** Sie wohnen am Statblock
 (`sb_rook`), und `belongsTo` sagt, an welchem — auch bei einem

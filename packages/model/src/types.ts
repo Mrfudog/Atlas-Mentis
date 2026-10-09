@@ -89,8 +89,36 @@ export interface PropertySchema {
    * Zusammen mit `type: 'array'` heisst das: **mehrere Werte aus diesen
    * Listen.** Das ist der Unterschied zwischen „welches Attribut trägt die
    * Probe" (eines) und „auf welche Rettungswürfe ist sie geübt" (mehrere).
+   *
+   * **Ein Name darf auch eine Artikelart sein (M6, D50)** — dann sind die
+   * Werte die Namen der sichtbaren Artikel dieser Art, Untertypen
+   * eingeschlossen, Instanzen nicht. Gesucht wird erst eine
+   * Aufzählungszeile, dann eine Art: `['Skill', 'Language']` meint die
+   * Fertigkeiten und Sprachen, die es als Artikel gibt. Eine Fertigkeit
+   * trägt ihr Attribut und ihren Regeltext selbst; eine Zeile mit ihrem
+   * Wort konnte das nicht, und die Zuordnung stand deshalb in einer
+   * Einstellung daneben.
+   *
+   * **`Typ.feld` nennt die Liste eines Feldes** (`Weapon.category` →
+   * simple, martial): eine Waffengattung ist kein Artikel, und eine Zeile
+   * mit denselben zwei Wörtern wäre die zweite Stelle für sie.
+   *
+   * **Die Art schlägt vor, die Zeile hält.** Artikelnamen lesen den
+   * heutigen Bestand: wer einen Artikel umbenennt oder verbirgt, machte
+   * sonst eine längst gespeicherte Übung rückwirkend falsch. Ein Feld, das
+   * eine Art nennt, prüft `validateEntity` darum nicht gegen die Liste —
+   * dieselbe Regel wie bei `LinkTarget.tags`.
    */
   enumRef?: string | string[];
+  /**
+   * **Welche Artikel einer genannten Art in Frage kommen** — je Art ein
+   * Feld und die Werte, die es haben darf. `{ Item: { itemType: ['tool',
+   * 'artisan tools'] } }` heisst: von den Gegenständen nur die Werkzeuge.
+   * Werkzeuge sind Gegenstände (M6); eine eigene Art „Werkzeug" ohne ein
+   * eigenes Feld wäre ein Wort und keine Zeile. Wie `LinkTarget.where` ein
+   * Vorschlag für die Maske.
+   */
+  enumWhere?: Record<string, Record<string, string[]>>;
   /**
    * Die Spanne einer Zahl, beide Grenzen eingeschlossen. Eine Stufe von 1
    * bis 20 ist eine Spanne und keine Aufzählung von zwanzig Wörtern: die

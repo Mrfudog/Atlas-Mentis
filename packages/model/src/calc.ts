@@ -8,9 +8,11 @@
  * `eval`, because registry rows are data that viewers can edit.
  * What the own card does not carry is looked up in the article's other
  * cards (`derivedValue`), and `modOf(field)` reads the ability a field names.
+ * `sum(edge.prop)` adds a number over the article's own forward edges of one
+ * type — the level of a character is the sum of its `hasClass` levels (M3).
  */
 
-import type { ComponentValue, PropertySchema } from './types.js';
+import type { ComponentValue, PropertySchema, Relation } from './types.js';
 
 /** 5e ability modifier. Floors toward negative infinity: 1 → -5, 16 → +3. */
 export function abilityMod(score: number): number {
@@ -131,7 +133,15 @@ const ABILITY_KEYS = new Set(['str', 'dex', 'con', 'int', 'wis', 'cha']);
  * Extending the Calculation engine is adding an entry here — no consumer
  * changes, which is the same promise the registry makes for data.
  */
-const FUNCTIONS: Record<string, (raw: unknown, look: Lookup) => number | null> = {
+/** Was eine Funktion ausser dem Wert noch sehen darf. */
+interface FnContext {
+  /** Das Argument, wie es dasteht — bei `sum` ein Pfad, kein Feldname. */
+  key: string;
+  /** Die eigenen Vorwärtskanten des Artikels. */
+  relations: readonly Relation[];
+}
+
+const FUNCTIONS: Record<string, (raw: unknown, look: Lookup, ctx: FnContext) => number | null> = {
   /** 5e ability modifier from a score. */
   mod: (raw) => {
     const n = Number(raw);
@@ -151,6 +161,30 @@ const FUNCTIONS: Record<string, (raw: unknown, look: Lookup) => number | null> =
     if (score === AMBIGUOUS || score === undefined || score === null || score === '') return null;
     const n = Number(score);
     return Number.isFinite(n) ? abilityMod(n) : null;
+  },
+  /**
+   * **Eine Summe über die eigenen Kanten** (M3): `sum(hasClass.level)` ist
+   * die Stufe einer Figur — Kämpfer 3 und Magier 2 sind Stufe 5, und die
+   * Zahl steht an keiner dritten Stelle, an der sie veralten könnte (D8).
+   * Gelesen werden die Vorwärtskanten dieses Artikels mit dem Typ vor dem
+   * Punkt und darin `props` mit dem Namen danach. Keine solche Kante heisst
+   * **kein Wert**: eine Figur ohne Klasse hat keine Stufe 0, sondern keine.
+   */
+  sum: (_raw, _look, ctx) => {
+    const punkt = ctx.key.indexOf('.');
+    if (punkt <= 0) return null;
+    const typ = ctx.key.slice(0, punkt);
+    const feld = ctx.key.slice(punkt + 1);
+    let summe = 0;
+    let treffer = 0;
+    for (const r of ctx.relations) {
+      if (r.type !== typ) continue;
+      const n = Number(r.props?.[feld]);
+      if (!Number.isFinite(n)) continue;
+      summe += n;
+      treffer++;
+    }
+    return treffer ? summe : null;
   },
   /** Row count of a grid. */
   rowCount: (raw) => asRows(raw).length,
@@ -182,6 +216,7 @@ export function derivedValue(
   prop: PropertySchema,
   value: ComponentValue | undefined,
   cards?: Record<string, ComponentValue | undefined>,
+  relations?: readonly Relation[],
 ): number | undefined {
   if (!prop?.derived) return undefined;
   const siblings = value ?? {};
@@ -201,18 +236,18 @@ export function derivedValue(
   let expr = String(prop.derived);
   let void_ = false;
 
-  // Functions first: their argument is a field name, not an expression.
+  // Functions first: their argument is a field name (or an edge path), not an expression.
   expr = expr.replace(
-    /([A-Za-z_][A-Za-z0-9_]*)\(\s*([A-Za-z0-9_]+)\s*\)/g,
+    /([A-Za-z_][A-Za-z0-9_]*)\(\s*([A-Za-z0-9_.]+)\s*\)/g,
     (whole, fn: string, key: string) => {
       const apply = FUNCTIONS[fn];
       if (!apply) return whole;
-      const raw = look(key);
+      const raw = key.includes('.') ? undefined : look(key);
       if (raw === AMBIGUOUS) {
         void_ = true;
         return '(0)';
       }
-      const n = apply(raw, look);
+      const n = apply(raw, look, { key, relations: relations ?? [] });
       if (n === null) void_ = true;
       return `(${n ?? 0})`;
     },
@@ -249,6 +284,7 @@ export function effectiveValue(
   key: string,
   value: ComponentValue | undefined,
   cards?: Record<string, ComponentValue | undefined>,
+  relations?: readonly Relation[],
 ): unknown {
-  return prop.derived ? derivedValue(prop, value, cards) : value?.[key];
+  return prop.derived ? derivedValue(prop, value, cards, relations) : value?.[key];
 }

@@ -478,7 +478,11 @@ export class Artikel {
            Zweimal dasselbe anzubieten hiesse, dass der zweite Eingang den
            ersten überschreibt, und keiner der beiden sagte das. */
         if (schema.many && schema.format === 'long') continue;
-        const art = eingabeArt(schema);
+        const werte = enumOptions(r, schema, this.bestand.entities()) ?? [];
+        /* Eine Auswahl ohne Werte ist ein freies Wort: nennt das Feld eine
+           Art, von der noch nichts sichtbar ist (M6), soll man trotzdem
+           etwas eintragen können. */
+        const art = eingabeArt(schema) === 'auswahl' && !werte.length ? 'text' : eingabeArt(schema);
         out.push({
           ref: `${comp}.${prop}`,
           comp,
@@ -488,7 +492,9 @@ export class Artikel {
           label: `${def.label ?? comp} · ${fieldTitle(r, primaryInterface(e), { type: comp, key: prop, prop: schema })}`,
           art,
           schema,
-          werte: enumOptions(r, schema) ?? [],
+          /* Nennt das Feld eine Artikelart (M6), sind die Werte die Namen
+             der Artikel, die hier angekommen sind — gesiebt hat der Server. */
+          werte,
           wert: art === 'jaNein' ? '' : inEingabe(karte[prop]),
           jaNein: karte[prop] === true,
           pflicht: pflicht.has(`${comp}.${prop}`),
@@ -608,7 +614,7 @@ export class Artikel {
       label: schema.title ?? prop,
       art: eingabeArt(schema),
       schema,
-      werte: enumOptions(r, schema) ?? [],
+      werte: enumOptions(r, schema, this.bestand.entities()) ?? [],
     }));
   }
 
