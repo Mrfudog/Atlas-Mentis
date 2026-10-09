@@ -1,6 +1,6 @@
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-07. Jede Nummer aus dem Vault (`VTT/Requirements.md` in diesem Repo, v0.7) und aus der Ernte
+Stand 2026-10-09. Jede Nummer aus dem Vault (`VTT/Requirements.md` in diesem Repo, v0.7) und aus der Ernte
 ([Requirements from Kanalgang.md](Requirements%20from%20Kanalgang.md)), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs` aus einer Zuordnung, die ein Urteil ist:
 wer eine Zeile anders sieht, ändert sie dort und lässt das Skript laufen.
@@ -152,7 +152,7 @@ Was nicht als Nummer im Vault steht, sondern hier entschieden wurde — alles ge
 | REQ-112 | Widget: reference box holding multiple open articles with inner tabs | 2 | **ersetzt** | Platzierungen auf dem Board |
 | REQ-113 | Widget: notes | 2 | **offen** | Aufgabe #58 |
 | REQ-114 | Widget: quick-create (creates entries in the campaign layer inline) | 2 | **teils** | Anlegen aus dem Board |
-| REQ-115 | Widget: initiative tracker — session-aware, conditions with durations, damage attributed to current actor by default | 2 | **steht** | `participates` mit init, hp, conditions (je Eintrag ein Regelartikel `kind: condition`, Runden, Quelle) |
+| REQ-115 | Widget: initiative tracker — session-aware, conditions with durations, damage attributed to current actor by default | 2 | **steht** | `participates` mit init, hp, conditions (je Eintrag ein Artikel der Art `Condition`, Runden, Quelle) |
 | REQ-116 | Session state objects (initiative, now-playing, active scene, party note) + realtime channel per session | 2 | **steht** | `Session.activeMap/activeEncounter/activeScene`; Raum-Kanal für Augenblicke |
 | REQ-117 | Stewardship: write permission on a state object per user, GM override configurable | 3 | **steht** | `Session.stewardship` gm/table |
 | REQ-118 | Widget: encounter runner — instantiate participants, roll random entries, raw statblocks trackable | 3 | **steht** | Begegnung mit Teilnehmern und Tabellen |
