@@ -110,6 +110,38 @@ export const relations: Record<string, RelationDef> = {
     to: ['Deity'],
   },
 
+  /**
+   * **Wer einen Zauber wirkt, und wie (M2).** Der Zauber steht einmal da;
+   * die Kante sagt, was er beim Wirkenden ist: vorbereitet, bekannt,
+   * angeboren oder in einem Gegenstand gespeichert. `uses` ist die
+   * Häufigkeit, wie sie im Statblock steht („at will", „3/day"), `level`
+   * der Grad, auf dem er so gewirkt wird, `charges` was ein Gegenstand
+   * dafür verbraucht (der Zauberstab der Magischen Geschosse: 1).
+   *
+   * Vom Statblock und nicht von der Kreatur: die Zahlen und das
+   * Zauberwirken wohnen dort. Die Unterklasse kommt mit P4 dazu.
+   */
+  casts: {
+    type: 'casts',
+    label: 'casts',
+    inverseLabel: 'cast by',
+    from: ['Statblock', 'PlayerCharacter', 'Item'],
+    to: ['Spell'],
+    props: {
+      type: 'object',
+      properties: {
+        mode: {
+          type: 'string',
+          title: 'How',
+          enum: ['prepared', 'known', 'innate', 'item'],
+        },
+        uses: { type: 'string', suggest: true, title: 'Uses' },
+        level: { type: 'number', min: 0, max: 9, title: 'At level' },
+        charges: { type: 'number', min: 0, title: 'Charges per cast' },
+      },
+    },
+  },
+
   /** Weapon properties are pooled rules, referenced rather than copied. */
   hasProperty: {
     type: 'hasProperty',
@@ -222,7 +254,9 @@ export const relations: Record<string, RelationDef> = {
     type: 'carries',
     label: 'carries',
     inverseLabel: 'carried by',
-    from: ['Creature', 'Party'],
+    /* Ein Gegenstand trägt eins, wenn er ein Behälter ist (M4): der
+       Rucksack hat sein Raster, der Köcher seine Form. */
+    from: ['Creature', 'Party', 'Item'],
     to: ['Inventory'],
     cardinality: 'one',
     /* Dasselbe am anderen Ende: das Inventar ist ein eigener Artikel, weil
@@ -754,16 +788,19 @@ export const relations: Record<string, RelationDef> = {
    * selbst gesetzt hat. Wer den Wert der Vorlage einträgt, folgt ihr wieder.
    *
    * Anders als `variantOf`, das eine Kopie mit Herkunft ist und nichts
-   * nachliest. Erlaubt ist es heute am Statblock; eine weitere Art, die
-   * Vorlagen braucht, kommt hier in `from` und `to` dazu und braucht keine
+   * nachliest. Erlaubt ist es am Statblock und am Gegenstand (M4): das
+   * +1-Langschwert am Tisch ist eine Instanz des Langschwerts, die nur
+   * `bonusWeapon` und `rarity` selbst trägt. **Eine Instanz ist von
+   * derselben Art wie ihre Vorlage** (`same`): ein Statblock liest keinen
+   * Gegenstand. Eine weitere Art kommt in `from` dazu und braucht keine
    * Codeänderung.
    */
   instanceOf: {
     type: 'instanceOf',
     label: 'instance of',
     inverseLabel: 'instances',
-    from: ['Statblock'],
-    to: ['Statblock'],
+    from: ['Statblock', 'Item'],
+    to: ['same'],
     cardinality: 'one',
   },
 

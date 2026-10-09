@@ -1208,23 +1208,55 @@ function asRows(raw){
    makes for data. The names avoid the property keys they are used on
    (`width`, `height`, `cells`): a function and a field of the same name read
    as the same thing and are not. */
+var AMBIG={};
+var ABIL_KEYS={str:1,dex:1,con:1,int:1,wis:1,cha:1};
+/* Eine Funktion gibt eine Zahl zurück — oder `null` für „diese Rechnung
+   hat keinen Wert", und dann gilt der ganze Ausdruck nicht. */
 var DERIVED_FN={
   mod:function(raw){ var n=Number(raw); return isFinite(n)?Math.floor((n-10)/2):0; },
+  /* Der Modifikator des Attributs, das ein Feld nennt (M2):
+     `modOf(spellAbility)` mit `spellAbility: "int"` ist `mod(int)`. Ohne
+     Attribut keine Zahl — ein SG von 8 + Übung sähe richtig aus. */
+  modOf:function(raw,look){
+    var k=String(raw==null?"":raw); if(!ABIL_KEYS[k])return null;
+    var w=look(k); if(w===AMBIG||w==null||w==="")return null;
+    var n=Number(w); return isFinite(n)?Math.floor((n-10)/2):null; },
   rowCount:function(raw){ return asRows(raw).length; },
   colCount:function(raw){ return asRows(raw).reduce(function(m,r){return Math.max(m,r.length);},0); },
   cellCount:function(raw){ return asRows(raw).reduce(function(sum,r){
     return sum+r.split("").filter(function(g){return !EMPTY_CELL[g];}).length; },0); }
 };
-function derivedValue(pd,val){
+/* **Erst die eigene Karte, dann der Artikel** (`karten`, alle Karten des
+   Artikels): der Statblock trägt `prof` und das Zauberwirken, `Abilities`
+   die sechs Werte, und der SG braucht beide. Was die eigene Karte trägt,
+   gewinnt; tragen zwei andere denselben Namen verschieden, gibt es keinen
+   Wert. Wie `derivedValue` im Paket. */
+function derivedValue(pd,val,karten){
   if(!pd||!pd.derived)return undefined;
-  var siblings=val||{};
+  var siblings=val||{}, leer=false;
+  function look(k){
+    if(Object.prototype.hasOwnProperty.call(siblings,k))return siblings[k];
+    var w, n=0;
+    Object.keys(karten||{}).forEach(function(cn){
+      var c=karten[cn];
+      if(w===AMBIG||!c||c===val||!Object.prototype.hasOwnProperty.call(c,k))return;
+      if(n&&c[k]!==w){ w=AMBIG; return; }
+      w=c[k]; n++;
+    });
+    return w;
+  }
   /* Funktionen zuerst: ihr Argument ist ein Feldname, kein Ausdruck. */
   var expr=String(pd.derived).replace(/([A-Za-z_][A-Za-z0-9_]*)\(\s*([A-Za-z0-9_]+)\s*\)/g,
     function(whole,fn,key){
-      return DERIVED_FN[fn]?"("+DERIVED_FN[fn](siblings[key])+")":whole;
+      if(!DERIVED_FN[fn])return whole;
+      var raw=look(key); if(raw===AMBIG){ leer=true; return "(0)"; }
+      var r=DERIVED_FN[fn](raw,look); if(r===null){ leer=true; return "(0)"; }
+      return "("+r+")";
     });
   expr=expr.replace(/[A-Za-z_][A-Za-z0-9_]*/g,function(k){
-    var n=Number(siblings[k]); return isFinite(n)?"("+n+")":"(0)"; });
+    var raw=look(k); if(raw===AMBIG){ leer=true; return "(0)"; }
+    var n=Number(raw); return isFinite(n)?"("+n+")":"(0)"; });
+  if(leer)return undefined;
   var r=evalArith(expr);
   return r==null?undefined:Math.trunc(r);
 }
@@ -4347,7 +4379,7 @@ function fieldPlan(e,ifn,want,ausser){
          ausgegeben — eine Zeile mehr, die niemand anfassen darf. */
       if(cn==="Identity"&&(p==="name"||p==="id"))return;
       var titel=fieldTitle(ifn,cn,p,pd);
-      var txt=fmtVal(pd, pd.derived?derivedValue(pd,val):val[p], ifn);
+      var txt=fmtVal(pd, pd.derived?derivedValue(pd,val,e.components):val[p], ifn);
       if(txt===""){
         if(!pd.derived&&!pd.readOnly) frei.push({cn:cn,p:p,pd:pd,ref:cn+"."+p,titel:titel,
           label:(REG.interfaces[cn].label||cn)+" · "+titel});
@@ -4359,7 +4391,7 @@ function fieldPlan(e,ifn,want,ausser){
         if(!gewaehlt&&!(UI.inline&&canWrite()&&!pd.derived&&!pd.readOnly))return;
       }
       (attach[p]||[]).forEach(function(dp){
-        var dv=fmtVal(props[dp],derivedValue(props[dp],val), ifn);
+        var dv=fmtVal(props[dp],derivedValue(props[dp],val,e.components), ifn);
         if(dv!=="") txt+=" ("+dv+")";
       });
       cells.push({cn:cn,p:p,pd:pd,val:val,txt:txt,ref:cn+"."+p,titel:titel,
@@ -12655,7 +12687,9 @@ var BEGRIFFE=[
    "the type is a rule, because a tag removed later would make a stored "+
    "link wrong in hindsight. A measure names the unit it is stored in. A "+
    "calculated field takes no input "+
-   "and is never stored. Values are kept one card per type, named after the "+
+   "and is never stored; it reads its own card first and then the "+
+   "article's other cards, which is how a statblock's spell save DC finds "+
+   "the INT score in Abilities. Values are kept one card per type, named after the "+
    "type that declares the field — that is what keeps hp at the creature "+
    "apart from hp at the statblock. A type may rename a field it inherits: "+
    "the same Time.until is when an event ends and when a quest is too late, "+
@@ -12704,7 +12738,13 @@ var BEGRIFFE=[
    "the one below. There is no counter, because the same number in two "+
    "places drifts apart. What one rule does to another (paralysed imposes "+
    "incapacitated, incapacitated prevents reactions) is an edge too "+
-   "(affects), stored forward; nothing evaluates it yet."],
+   "(affects), stored forward; nothing evaluates it yet. A spell is "+
+   "written once; who casts it, and how, sits on an edge from the caster "+
+   "(casts: prepared, known, innate or from an item, with uses, level and "+
+   "charges) — the same Fireball is prepared by the mage and worth three "+
+   "charges in the staff. An item may carry an inventory of its own (a "+
+   "backpack), and the piece at the table may be an instance of the item "+
+   "in the book (the +1 longsword stores only what differs)."],
   ["Unit",
    "How a measure is written and converted. The vault is imperial because "+
    "the rules are; at the table sit people for whom forty feet means "+
@@ -13042,6 +13082,39 @@ function renderHowto(v){
   bsp.appendChild(el("pre",{class:"code",text:probe}));
   bsp.appendChild(para(probe));
   v.appendChild(bsp);
+
+  /* ---- Zauberwirken, durchgerechnet (M2) ----
+     Mit den Feldern, wie sie im Register stehen, und mit derselben
+     Rechnung, die jede Ansicht nimmt: ändert jemand die Formel am
+     Statblock, ändert sich das Beispiel mit. */
+  var sbP=((REG.interfaces.Statblock||{}).schema||{}).properties||{};
+  if(sbP.spellDc&&sbP.spellAttack){
+    v.appendChild(el("div",{class:"rsec",text:"A spell, who casts it, and the save DC"}));
+    v.appendChild(el("p",{class:"hint"},
+      "A spell is a rule with fields of its own: level, school, casting "+
+      "time, range, components, duration. For an action, a bonus action or "+
+      "a reaction the casting time names the action type — the same article "+
+      "an action names. Which conditions a spell imposes is an affects edge, "+
+      "not a field. Who casts it is a casts edge from the statblock, the "+
+      "character or the item. The statblock gives the ability, the caster "+
+      "level and the slots per level; the save DC and the attack bonus are "+
+      "worked out on read, from the proficiency on the statblock's own card "+
+      "and the score on its Abilities card. Slots spent are a state on the "+
+      "creature, like its current hit points."));
+    var sbBsp={prof:3,spellAbility:"int",casterLevel:9,spellSlots:[4,3,3,3,1]};
+    var abBsp={int:17};
+    var kartenBsp={Statblock:sbBsp,Abilities:abBsp};
+    var dcB=derivedValue(sbP.spellDc,sbBsp,kartenBsp);
+    var atB=derivedValue(sbP.spellAttack,sbBsp,kartenBsp);
+    var rechnung=
+      "Statblock  prof 3 · spellAbility int · casterLevel 9 · spellSlots 4,3,3,3,1\n"+
+      "Abilities  int 17   (mod +3)\n\n"+
+      "spellDc      = "+sbP.spellDc.derived+"  →  "+(dcB==null?"—":dcB)+"\n"+
+      "spellAttack  = "+sbP.spellAttack.derived+"  →  "+fmtVal(sbP.spellAttack,atB)+"\n\n"+
+      "casts → Fireball      mode prepared\n"+
+      "Wand of Magic Missiles  casts → Magic Missile   mode item · charges 1";
+    v.appendChild(el("pre",{class:"code",text:rechnung}));
+  }
 
   /* ---- Wer einen Artikel sehen darf ----
      Die **grobe** Frage, und sie kommt vor der feinen: das Wissen sagt,
@@ -14291,9 +14364,11 @@ function fieldMore(cn,k,within,w,saveC){
   hinweis("**A sum instead of a value.** Write a formula and the field is "
     +"worked out every time the article is read \u2014 never stored, and it "
     +"gets no input (D8). The names in it are the **other fields of this "
-    +"same type**: `mod(dex)` reads `dex` next door, `10+mod(wis)` is the "
-    +"passive perception. Two places that can disagree are worse than one "
-    +"that has to think.");
+    +"same type** first, then those of the article's other cards: `mod(dex)` "
+    +"reads `dex` next door, `10+mod(wis)` is the passive perception, and a "
+    +"statblock's `8+prof+modOf(spellAbility)` takes `prof` from its own card "
+    +"and the INT score from Abilities. `modOf` reads the ability a field "
+    +"names. Two places that can disagree are worse than one that has to think.");
 
   text("belongs to field",p.of||"",function(v){
     if(v)p.of=v; else delete p.of;
@@ -14555,7 +14630,7 @@ function editEntity(e){
         var v=readInput(it); if(v!==undefined) live[it.cn][it.p]=v;
       });
       drvCells.forEach(function(c){
-        c.node.textContent=fmtVal(c.pd,derivedValue(c.pd,live[c.cn]||{}))||"—";
+        c.node.textContent=fmtVal(c.pd,derivedValue(c.pd,live[c.cn]||{},live))||"—";
       });
     }
     compsFor(ifn).forEach(function(cn){

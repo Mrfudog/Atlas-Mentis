@@ -323,7 +323,9 @@ wiederkommen, werden sie neu geschrieben.
 - **Was eine Einstellung auslöst, steht dabei.** Unter `Display`,
   `Derived from` und `belongs to field` steht eine Zeile, die sagt, was
   passiert: `signed` druckt +3, `measure` rechnet um, eine Rechnung löst
-  gegen die **Nachbarfelder derselben Karte** auf, und `of` heisst, dass
+  gegen die **Nachbarfelder derselben Karte** auf und erst dann gegen die
+  übrigen Karten des Artikels (der Zauber-SG am Statblock liest `int` aus
+  `Abilities`, D49), und `of` heisst, dass
   der gerechnete Wert in der Zelle des Nachbarn reitet (**DEX 16 (+3)**).
   Wer nicht weiss, was eine Angabe tut, lässt sie leer — dann ist sie kein
   Werkzeug, sondern ein Rätsel.

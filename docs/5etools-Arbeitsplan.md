@@ -321,6 +321,15 @@ Feldliste aus §2.2 und §2.4 dort. Vorlage für die 5e.tools-Form: ein Eintrag 
 Bestand nicht migrieren. Doku wie in CLAUDE.md. Ein PR nach preprod, selbst mergen.
 ```
 
+**Stand 2026-10-09: steht.** `Spell` unter `Rule`, Kante `casts`
+(Statblock, PlayerCharacter, Item → Spell), Zauberwirken am Statblock mit
+gerechnetem SG und Angriffsbonus (`modOf`, und eine Rechnung fragt nach der
+eigenen Karte den Artikel), `Vitals.slotsUsed`; `Item`, `Weapon`, `Armor`
+mit den Feldern aus M4, `carries` und `instanceOf` am Gegenstand. Regeln Z1–Z6
+und G1–G3 in [Datenmodell.md](Datenmodell.md) §5.6, Entscheidung D49.
+Offen: der Stand der Ladungen am Stück, die Unterklasse an `casts` (P4),
+der Bogen zeigt das Zauberwirken noch als Feldtabelle.
+
 ### P4 — Statblock und Charakterbau (Opus 5.5, Effort high)
 
 ```text
