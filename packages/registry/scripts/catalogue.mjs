@@ -104,7 +104,9 @@ function kantenVon(name) {
   const passt = (liste) => (liste ?? []).some((x) => x === '*' || x === name || kette(name).includes(x));
   return {
     raus: alle.filter((r) => passt(r.from)),
-    rein: alle.filter((r) => passt(r.to)),
+    /* `same` heisst „die Art der Quelle": hierher kommt die Kante, wenn
+       sie von hier ausgehen darf (`instanceOf`). */
+    rein: alle.filter((r) => passt(r.to) || ((r.to ?? []).includes('same') && passt(r.from))),
   };
 }
 /* Die Anordnung wohnt am Typ. Gesucht wird die `extends`-Kette hoch — eine
