@@ -293,6 +293,25 @@ Eine Kante mit `section` **setzt ein**, statt zu verweisen: die drei
 gepoolten Regeln eines Statblocks stehen im Artikel und nicht als Links
 daneben.
 
+### Eine Stufe ist ein Zustand, eine Wirkung ist eine Kante
+
+„Exhaustion 3" ist ein Artikel der Art `Condition` mit `stage` 3 und einer
+Kante `stageOf` auf den Grundzustand „Exhaustion". Das sieht nach mehr aus
+als ein Zähler und ist weniger: eine Zahl `Vitals.exhaustion` neben einer
+Zustandsliste wären zwei Stellen für dieselbe Auskunft, und die eine
+stimmte irgendwann nicht mehr. Der Preis ist eine Prüfregel — höchstens
+eine Stufe je Grundzustand in der Liste — und ein Ersetzen statt Zählen.
+Dafür kann eine andere Regel „Exhaustion 3" **nennen** (`affects`:
+Nachteil bei Angriffen), und der Bogen kann es anzeigen.
+
+`affects` ist eine Kante mit Art der Wirkung (`imposes`, `prevents`,
+`limits`, `advantage`, `disadvantage`, `triggers`): gelähmt *bewirkt*
+kampfunfähig, kampfunfähig *verbietet* Reaktionen. Gespeichert wird
+vorwärts, die Gegenfrage ist eine Abfrage, und ausgewertet wird nichts —
+eine Regelmaschine wäre ein eigenes Vorhaben. Das Warum der Familie
+(Messlatte: eine Regelart wird ein Typ, wenn ein Feld oder eine Kante sie
+als Art verlangt oder sie eigene Felder trägt) steht in D48.
+
 ---
 
 ## Wissen

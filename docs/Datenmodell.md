@@ -101,7 +101,7 @@ Was dabei immer gilt:
 |---|---|---|
 | A1 | **Die erste Art ist die Art.** `interfaces[0]` sagt, was der Artikel ist; alles, was er festhält, erklärt dieser Typ und seine Kette. | `validateEntity` (`unknown_interface`) |
 | A2 | **Eine Karte je Typ**, und nur für Typen der `extends`-Kette. Das hält `hp` am Statblock von `hp` an der Figur auseinander. | `validateEntity` (`unknown_card`, `card_not_inherited`) |
-| A3 | **Pflicht steht je Feld** (`schema.required`), und sie gilt für die ganze Kette. Heute: `Identity.name`, `Identity.id`, `Rule.kind`, `Asset.ref`. | `validateEntity` (`missing_property`) |
+| A3 | **Pflicht steht je Feld** (`schema.required`), und sie gilt für die ganze Kette. Heute: `Identity.name`, `Identity.id`, `Action.actionType`, `Asset.ref`. (`Rule.kind` ist es seit D48 nicht mehr: ein Zauber braucht kein zweites Wort für das, was sein Typ sagt.) | `validateEntity` (`missing_property`) |
 | A4 | **Was dasteht, muss das Feld zulassen:** eine Aufzählung hält, eine Spanne hält, eine Zahl ist eine Zahl, ein Verweis zeigt auf seinen Zieltyp. | `validateEntity` (`value_not_allowed`, `value_out_of_range`, `value_not_a_number`, `link_wrong_type`) |
 | A5 | **Gerechnetes wird nie gespeichert** (D8): ein Feld mit `derived` hat keine Eingabe und keine Spalte. | Prüfung weist es nicht ab; die Maske gibt keine Eingabe, die Rechnung liest beim Zeichnen |
 | A6 | **Kanten nur vorwärts.** Die Gegenrichtung ist eine Abfrage (`backlinks`); ein gespiegeltes Gegenstück verwaist. `cardinality: 'one'` wird geprüft. | `validateEntity`, Server |
@@ -248,7 +248,7 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | F7 | **Vorgeschlagen wird nur, wo das Feld es sagt** (`suggest`), und nur aus Artikeln, die man sehen darf. |
 | F8 | **Status ist der Vorbereitungsstand** (`idea` · `prepared` · `ready`). Wie weit eine Sache am Tisch ist, sagt das Feld der Art (`Quest.progress`, `Encounter.phase`, `Place.state`). |
 | F9 | **Beim Bearbeiten steht jedes Feld als Eingabe da**, auch die aus `Identity`; nur der Name bleibt Überschrift. |
-| F10 | **Was eine Beschreibung braucht, ist ein Artikel und keine Wortliste.** Zustände und Reisehandlungen sind Regelartikel (`Rule.kind` `condition`, `travel`); Felder, die sie brauchen, verweisen (`Vitals.conditions`, `Party.actions`). Eine Einstellung hält nur, was ein Wort oder eine Zahl ist (`skills`, `gridSize`). |
+| F10 | **Was eine Beschreibung braucht, ist ein Artikel und keine Wortliste.** Zustände sind Artikel der Art `Condition`, Reisehandlungen Regelartikel mit `Rule.kind` `travel`; Felder, die sie brauchen, verweisen (`Vitals.conditions` auf `Condition`, `Party.actions`). Eine Einstellung hält nur, was ein Wort oder eine Zahl ist (`skills`, `gridSize`). |
 
 ---
 
@@ -296,13 +296,39 @@ nicht — den gäbe es auch ohne das Rezept.
 | Struktur | `partOf`, `insideMap` | Ort, Rahmen — die Reihenfolge sagt `Time.sort` |
 | Teil | `belongsTo`, `carries` | `asField` |
 | Einsetzen | `composedOf`, `hasProperty` | `section`, `vars` |
-| Verweis | `livesIn`, `memberOf`, `memberOfParty`, `owes`, `regards`, `controls`, `questGiver`, `questAbout`, `describedIn`, `happensAt`, `features`, `involves`, `mapOf`, `onMap`, `tableFor`, `yields`, `needs`, `playedBy` | Marken, Mengen |
+| Regel | `stageOf`, `affects` | Stufe eines Zustands; Wirkung zwischen Regeln (`effect`, `on`, `note`) |
+| Verweis | `worships`, `livesIn`, `memberOf`, `memberOfParty`, `owes`, `regards`, `controls`, `questGiver`, `questAbout`, `describedIn`, `happensAt`, `features`, `involves`, `mapOf`, `onMap`, `tableFor`, `yields`, `needs`, `playedBy` | Marken, Mengen |
 | Platzierung | `marker`, `territory`, `placed`, `holds` | Koordinaten, Grösse, Drehung, Lage |
 | Vorgang | `crafting`, `participates`, `entry`, `route` | Stand eines Gangs, Initiative, Gewicht, Wegdauer |
 | Ebene | `inLayer`, `activates`, `overrides`, `variantOf`, `instanceOf` | Modus, Reihenfolge |
 | Wissen | `knowledge` (owned), `includes`, `knownBy` | — |
 
 Die vollständige Tabelle mit `from`, `to` und Eigenschaften steht in §13.
+
+### 5.5 Regeltypen, Stufen und Wirkungen (D48)
+
+**Die Messlatte:** eine Regelart wird ein eigener Typ, wenn ein Verweisfeld
+oder eine Kante sie *als Art* verlangt oder wenn sie eigene Felder trägt;
+sonst bleibt sie ein Wort in `Rule.kind` (Zeile `RuleKind`: `rule`,
+`travel`, `sense`, `reward`, `boon`, `option`). Unter `Rule` stehen
+`Condition` (`Disease` erbt von ihr), `ActionType`, `Action`, `Feature`,
+`ItemProperty`, `Feat` und `Skill`.
+
+| | Regel | Geprüft durch |
+|---|---|---|
+| R1 | **Was man einer Kreatur zuweist, ist eine Art:** `Vitals.conditions` zeigt auf `Condition`, und die Prüfung hält es. Ein Filter nach `kind` schlüge bloss vor. | `validateEntity` (`link_wrong_type`) |
+| R2 | **Eine Stufe ist ein Zustand für sich:** „Exhaustion 3" hat `Condition.stage` 3 und die Kante `stageOf` auf „Exhaustion". Der Grundzustand trägt die allgemeine Regel und `recovery` (`longRestStep`: eine lange Rast senkt um eine Stufe). Dasselbe Muster trägt die Stadien einer Krankheit. | — |
+| R3 | **Höchstens eine Stufe je Grundzustand** in `Vitals.conditions` und in `participates.props.conditions`. Die Stufe ändern heisst ersetzen (gleicher `stageOf`, `stage ± 1`), nicht zählen. Darum gibt es `Vitals.exhaustion` nicht mehr: dieselbe Zahl an zwei Stellen läuft auseinander. | `validateEntity` (`condition_stage_twice`), mit `stageOf` aus `stageBases` |
+| R4 | **Wirkungen zwischen Regeln sind Kanten** (`affects`, `props.effect`: `imposes`, `prevents`, `limits`, `advantage`, `disadvantage`, `triggers`; `on`: worauf). Gespeichert wird vorwärts; „was verbietet mir Reaktionen?" ist eine Abfrage. **Ausgewertet wird vorerst nichts** — die Kanten sind Daten, die der Bogen zeigt. Der Importer legt sie nicht an: dass ein Text einen Zustand nennt, heisst nicht, dass er ihn bewirkt. | — |
+| R5 | **Eine Aktion nennt ihre Aktionsart** (`Action.actionType`, Pflicht, Verweis auf `ActionType`). Angriffsfelder (`attack`, `toHit`, `reach`, `damage`) kommen mit dem Statblock (P4). | `validateEntity` (`missing_property`, `link_wrong_type`) |
+| R6 | **`overrides` zeigt nur auf eine Fassung derselben Art** (M9). Eine Systemebene („D&D 5e (2014)", `Layer.kind` `system`) hält den importierten Regelbestand; welches Buch und welche Seite, sagt `Source.publication` mit `page`, die Lizenzflagge `Source.srd`. | `validateEntity` (`overrides_other_type`) |
+
+Dazu aus M7 und M8: `Hazard` (Falle oder Gefahr, auf der Karte über
+`marker`), `Deity` (Anhänger über `worships` von Kreatur und Fraktion),
+`Faction.goal`, und `Table.columns` — mit Spalten ist eine Zeile in
+`rows` eine Liste von Zellen; die gewichteten Einträge bleiben
+`entry`-Kanten. Noch nicht da: `featureOf` (braucht `Class`, P4) und
+`Spell` (P3).
 
 ---
 
@@ -761,7 +787,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Regel | Gehalten durch |
 |---|---|
-| A1–A4, A6 (one), F1–F4 (Werte, Spanne, Einheit, Zieltyp) | `validateEntity`, am Server und im Prototyp |
+| A1–A4, A6 (one), F1–F4 (Werte, Spanne, Einheit, Zieltyp), R3 und R6 | `validateEntity`, am Server und im Prototyp (R3 und R6 nur mit mitgegebenen Arten und `stageOf`; im Prototyp setzt `withCondition` die Stufe um, statt sie abzulehnen) |
 | Schema des Registers (welche Angaben eine Zeile tragen darf) | `RegistrySchema` (zod) am Server |
 | `measure` ohne `unit`, `link` ohne `target`, `asField` ist `one`, Grundausstattung, Bereiche aus dem Register, Bezugstreue des Seeds | `packages/registry/test` |
-| T2 (Wort statt Zeile), T6, F7, K2, K3, die Familien, E1–E4, §9, §10 | **nur dokumentiert** — darum der Abgleich in [Durchgang.md](Durchgang.md) |
+| T2 (Wort statt Zeile), T6, F7, K2, K3, R2, R4, die Familien, E1–E4, §9, §10 | **nur dokumentiert** — darum der Abgleich in [Durchgang.md](Durchgang.md) |
