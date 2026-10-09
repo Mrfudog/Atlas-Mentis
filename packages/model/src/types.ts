@@ -58,8 +58,11 @@ export interface PropertySchema {
   items?: { type: PropertyType };
   /**
    * Calculation engine: an expression evaluated on read and never stored (D8).
-   * Names resolve against sibling fields of the same component.
-   * Examples: `mod(str)`, `10+mod(wis)`, `mod(dex)+prof`.
+   * Names resolve against sibling fields of the same component first, then
+   * against the article's other cards (a statblock's `prof` and its
+   * `Abilities` are read as one).
+   * Examples: `mod(str)`, `10+mod(wis)`, `mod(dex)+prof`,
+   * `8+prof+modOf(spellAbility)` — `modOf` takes the ability a field names.
    */
   derived?: string;
   /** Render this derived value inside the named sibling's cell: STÄ 16 (+3). */

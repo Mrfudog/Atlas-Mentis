@@ -1208,23 +1208,55 @@ function asRows(raw){
    makes for data. The names avoid the property keys they are used on
    (`width`, `height`, `cells`): a function and a field of the same name read
    as the same thing and are not. */
+var AMBIG={};
+var ABIL_KEYS={str:1,dex:1,con:1,int:1,wis:1,cha:1};
+/* Eine Funktion gibt eine Zahl zurück — oder `null` für „diese Rechnung
+   hat keinen Wert", und dann gilt der ganze Ausdruck nicht. */
 var DERIVED_FN={
   mod:function(raw){ var n=Number(raw); return isFinite(n)?Math.floor((n-10)/2):0; },
+  /* Der Modifikator des Attributs, das ein Feld nennt (M2):
+     `modOf(spellAbility)` mit `spellAbility: "int"` ist `mod(int)`. Ohne
+     Attribut keine Zahl — ein SG von 8 + Übung sähe richtig aus. */
+  modOf:function(raw,look){
+    var k=String(raw==null?"":raw); if(!ABIL_KEYS[k])return null;
+    var w=look(k); if(w===AMBIG||w==null||w==="")return null;
+    var n=Number(w); return isFinite(n)?Math.floor((n-10)/2):null; },
   rowCount:function(raw){ return asRows(raw).length; },
   colCount:function(raw){ return asRows(raw).reduce(function(m,r){return Math.max(m,r.length);},0); },
   cellCount:function(raw){ return asRows(raw).reduce(function(sum,r){
     return sum+r.split("").filter(function(g){return !EMPTY_CELL[g];}).length; },0); }
 };
-function derivedValue(pd,val){
+/* **Erst die eigene Karte, dann der Artikel** (`karten`, alle Karten des
+   Artikels): der Statblock trägt `prof` und das Zauberwirken, `Abilities`
+   die sechs Werte, und der SG braucht beide. Was die eigene Karte trägt,
+   gewinnt; tragen zwei andere denselben Namen verschieden, gibt es keinen
+   Wert. Wie `derivedValue` im Paket. */
+function derivedValue(pd,val,karten){
   if(!pd||!pd.derived)return undefined;
-  var siblings=val||{};
+  var siblings=val||{}, leer=false;
+  function look(k){
+    if(Object.prototype.hasOwnProperty.call(siblings,k))return siblings[k];
+    var w, n=0;
+    Object.keys(karten||{}).forEach(function(cn){
+      var c=karten[cn];
+      if(w===AMBIG||!c||c===val||!Object.prototype.hasOwnProperty.call(c,k))return;
+      if(n&&c[k]!==w){ w=AMBIG; return; }
+      w=c[k]; n++;
+    });
+    return w;
+  }
   /* Funktionen zuerst: ihr Argument ist ein Feldname, kein Ausdruck. */
   var expr=String(pd.derived).replace(/([A-Za-z_][A-Za-z0-9_]*)\(\s*([A-Za-z0-9_]+)\s*\)/g,
     function(whole,fn,key){
-      return DERIVED_FN[fn]?"("+DERIVED_FN[fn](siblings[key])+")":whole;
+      if(!DERIVED_FN[fn])return whole;
+      var raw=look(key); if(raw===AMBIG){ leer=true; return "(0)"; }
+      var r=DERIVED_FN[fn](raw,look); if(r===null){ leer=true; return "(0)"; }
+      return "("+r+")";
     });
   expr=expr.replace(/[A-Za-z_][A-Za-z0-9_]*/g,function(k){
-    var n=Number(siblings[k]); return isFinite(n)?"("+n+")":"(0)"; });
+    var raw=look(k); if(raw===AMBIG){ leer=true; return "(0)"; }
+    var n=Number(raw); return isFinite(n)?"("+n+")":"(0)"; });
+  if(leer)return undefined;
   var r=evalArith(expr);
   return r==null?undefined:Math.trunc(r);
 }
@@ -4347,7 +4379,7 @@ function fieldPlan(e,ifn,want,ausser){
          ausgegeben — eine Zeile mehr, die niemand anfassen darf. */
       if(cn==="Identity"&&(p==="name"||p==="id"))return;
       var titel=fieldTitle(ifn,cn,p,pd);
-      var txt=fmtVal(pd, pd.derived?derivedValue(pd,val):val[p], ifn);
+      var txt=fmtVal(pd, pd.derived?derivedValue(pd,val,e.components):val[p], ifn);
       if(txt===""){
         if(!pd.derived&&!pd.readOnly) frei.push({cn:cn,p:p,pd:pd,ref:cn+"."+p,titel:titel,
           label:(REG.interfaces[cn].label||cn)+" · "+titel});
@@ -4359,7 +4391,7 @@ function fieldPlan(e,ifn,want,ausser){
         if(!gewaehlt&&!(UI.inline&&canWrite()&&!pd.derived&&!pd.readOnly))return;
       }
       (attach[p]||[]).forEach(function(dp){
-        var dv=fmtVal(props[dp],derivedValue(props[dp],val), ifn);
+        var dv=fmtVal(props[dp],derivedValue(props[dp],val,e.components), ifn);
         if(dv!=="") txt+=" ("+dv+")";
       });
       cells.push({cn:cn,p:p,pd:pd,val:val,txt:txt,ref:cn+"."+p,titel:titel,
@@ -14555,7 +14587,7 @@ function editEntity(e){
         var v=readInput(it); if(v!==undefined) live[it.cn][it.p]=v;
       });
       drvCells.forEach(function(c){
-        c.node.textContent=fmtVal(c.pd,derivedValue(c.pd,live[c.cn]||{}))||"—";
+        c.node.textContent=fmtVal(c.pd,derivedValue(c.pd,live[c.cn]||{},live))||"—";
       });
     }
     compsFor(ifn).forEach(function(cn){

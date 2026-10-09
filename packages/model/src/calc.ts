@@ -6,6 +6,8 @@
  * `mod(field)`, and bare field names that resolve against the component's
  * own siblings. Evaluation is a shunting-yard pass over a token list — not
  * `eval`, because registry rows are data that viewers can edit.
+ * What the own card does not carry is looked up in the article's other
+ * cards (`derivedValue`), and `modOf(field)` reads the ability a field names.
  */
 
 import type { ComponentValue, PropertySchema } from './types.js';
@@ -106,7 +108,20 @@ function asRows(raw: unknown): string[] {
 }
 
 /**
- * Unary functions over a sibling field, each returning a number.
+ * Wie eine Rechnung einen Namen nachschlägt: erst in der eigenen Karte,
+ * dann in den übrigen Karten desselben Artikels (siehe `derivedValue`).
+ * `AMBIGUOUS` heisst: zwei andere Karten tragen den Namen verschieden —
+ * dann rechnet nichts, statt still die falsche zu nehmen.
+ */
+const AMBIGUOUS = Symbol('ambiguous');
+type Lookup = (key: string) => unknown;
+
+/** Die sechs Attributkürzel — was `modOf` als Feldnamen annimmt. */
+const ABILITY_KEYS = new Set(['str', 'dex', 'con', 'int', 'wis', 'cha']);
+
+/**
+ * Unary functions over a sibling field, each returning a number — or `null`
+ * for "this calculation has no value", which voids the whole expression.
  *
  * The names deliberately avoid the property keys they are used on (`width`,
  * `height`, `cells`): `derivedValue` resolves functions before bare field
@@ -116,11 +131,26 @@ function asRows(raw: unknown): string[] {
  * Extending the Calculation engine is adding an entry here — no consumer
  * changes, which is the same promise the registry makes for data.
  */
-const FUNCTIONS: Record<string, (raw: unknown) => number> = {
+const FUNCTIONS: Record<string, (raw: unknown, look: Lookup) => number | null> = {
   /** 5e ability modifier from a score. */
   mod: (raw) => {
     const n = Number(raw);
     return Number.isFinite(n) ? abilityMod(n) : 0;
+  },
+  /**
+   * **Der Modifikator des Attributs, das ein Feld nennt** (M2): an einem
+   * Statblock steht `spellAbility: 'int'`, und `modOf(spellAbility)` ist
+   * `mod(int)`. Anders als `mod` gibt es hier keine 0 für „fehlt": ein
+   * Zauber-SG ohne Attribut wäre 8 + Übung, eine Zahl, die aussieht, als
+   * stimmte sie.
+   */
+  modOf: (raw, look) => {
+    const key = String(raw ?? '');
+    if (!ABILITY_KEYS.has(key)) return null;
+    const score = look(key);
+    if (score === AMBIGUOUS || score === undefined || score === null || score === '') return null;
+    const n = Number(score);
+    return Number.isFinite(n) ? abilityMod(n) : null;
   },
   /** Row count of a grid. */
   rowCount: (raw) => asRows(raw).length,
@@ -138,28 +168,68 @@ const FUNCTIONS: Record<string, (raw: unknown) => number> = {
  * Resolve a property's `derived` expression against its sibling fields.
  * An unknown or non-numeric name contributes 0 rather than failing the whole
  * expression — a half-filled statblock should still render.
+ *
+ * **Die Nachbarn sind zuerst die eigene Karte, dann der Artikel** (`cards`,
+ * alle Karten des Artikels). Der Statblock trägt `prof` und das
+ * Zauberwirken in seiner Karte, die sechs Werte in `Abilities` — und der
+ * Bogen liest beide ohnehin als eine. Ein Zauber-SG `8+prof+modOf(spellAbility)`
+ * braucht beide; ohne den Rückgriff müsste `prof` in zwei Karten stehen.
+ * Was die eigene Karte trägt, gewinnt immer, also rechnet jede bisherige
+ * Rechnung wie vorher. Tragen zwei **andere** Karten denselben Namen
+ * verschieden, gibt es keinen Wert.
  */
-export function derivedValue(prop: PropertySchema, value: ComponentValue | undefined): number | undefined {
+export function derivedValue(
+  prop: PropertySchema,
+  value: ComponentValue | undefined,
+  cards?: Record<string, ComponentValue | undefined>,
+): number | undefined {
   if (!prop?.derived) return undefined;
   const siblings = value ?? {};
+  const look: Lookup = (key) => {
+    if (key in siblings) return siblings[key];
+    let found: unknown;
+    let hits = 0;
+    for (const card of Object.values(cards ?? {})) {
+      if (!card || card === value || !(key in card)) continue;
+      if (hits && card[key] !== found) return AMBIGUOUS;
+      found = card[key];
+      hits++;
+    }
+    return found;
+  };
 
   let expr = String(prop.derived);
+  let void_ = false;
 
   // Functions first: their argument is a field name, not an expression.
   expr = expr.replace(
     /([A-Za-z_][A-Za-z0-9_]*)\(\s*([A-Za-z0-9_]+)\s*\)/g,
     (whole, fn: string, key: string) => {
       const apply = FUNCTIONS[fn];
-      return apply ? `(${apply(siblings[key])})` : whole;
+      if (!apply) return whole;
+      const raw = look(key);
+      if (raw === AMBIGUOUS) {
+        void_ = true;
+        return '(0)';
+      }
+      const n = apply(raw, look);
+      if (n === null) void_ = true;
+      return `(${n ?? 0})`;
     },
   );
 
   // Then bare field names as numbers.
   expr = expr.replace(/[A-Za-z_][A-Za-z0-9_]*/g, (key) => {
-    const n = Number(siblings[key]);
+    const raw = look(key);
+    if (raw === AMBIGUOUS) {
+      void_ = true;
+      return '(0)';
+    }
+    const n = Number(raw);
     return Number.isFinite(n) ? `(${n})` : '(0)';
   });
 
+  if (void_) return undefined;
   const result = evalArith(expr);
   return result === null ? undefined : Math.trunc(result);
 }
@@ -178,6 +248,7 @@ export function effectiveValue(
   prop: PropertySchema,
   key: string,
   value: ComponentValue | undefined,
+  cards?: Record<string, ComponentValue | undefined>,
 ): unknown {
-  return prop.derived ? derivedValue(prop, value) : value?.[key];
+  return prop.derived ? derivedValue(prop, value, cards) : value?.[key];
 }
