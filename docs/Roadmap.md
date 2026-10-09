@@ -373,6 +373,7 @@ A, B und D stehen. Was bleibt, in der Reihenfolge, in der es sich lohnt:
    [5etools-Abgleich.md](5etools-Abgleich.md), Entscheidungen (D47) und
    Reihenfolge in [5etools-Arbeitsplan.md](5etools-Arbeitsplan.md):
    sieben Pakete P1–P7, je Paket eine Sitzung mit fertigem Auftrag.
+   P1 (Markdown, Id-Verweise, Würfel im Text) steht seit 2026-10-09.
 6. **Der Ortsimporter als TypeScript** (C4, Rest). Das Register steht seit
    2026-09-20 nur noch einmal: `pnpm --filter @nw/registry emit-seed`
    erzeugt die Zeilen des Prototyps aus `packages/registry`.

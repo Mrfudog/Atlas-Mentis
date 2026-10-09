@@ -215,7 +215,7 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | `type` + `format` | Was es ist | Gespeichert | Eingabe |
 |---|---|---|---|
 | `string` | Text | `"…"` | eine Zeile |
-| `string` `long` | langer Text | `"…"` | mehrzeilig |
+| `string` `long` | langer Text, **Markdown** (4.4) | `"…"` | mehrzeilig |
 | `string` `long` + `many` | **Prosa**: Einträge mit Id; die Id kommt aus dem Text, Freigabe je Eintrag `Typ.feld#id` | `[{id, value}]` | Element `prose`, nicht die Feldtabelle |
 | `string` + `enum`/`enumRef` | Auswahl, ein Wort | `"idea"` | Auswahlliste |
 | `array` + `enumRef` | Auswahl, mehrere Wörter aus einer oder mehreren Zeilen; woher ein Wort kommt, sagt die Zeile (`enumSource`) | `["stealth","Elfisch"]` | Häkchen, nach Zeile gruppiert |
@@ -249,6 +249,40 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | F8 | **Status ist der Vorbereitungsstand** (`idea` · `prepared` · `ready`). Wie weit eine Sache am Tisch ist, sagt das Feld der Art (`Quest.progress`, `Encounter.phase`, `Place.state`). |
 | F9 | **Beim Bearbeiten steht jedes Feld als Eingabe da**, auch die aus `Identity`; nur der Name bleibt Überschrift. |
 | F10 | **Was eine Beschreibung braucht, ist ein Artikel und keine Wortliste.** Zustände und Reisehandlungen sind Regelartikel (`Rule.kind` `condition`, `travel`); Felder, die sie brauchen, verweisen (`Vitals.conditions`, `Party.actions`). Eine Einstellung hält nur, was ein Wort oder eine Zahl ist (`skills`, `gridSize`). |
+| F11 | **Ein langer Text ist Markdown, und nichts darin wird HTML** (M10). Verweise nennen die Nummer, nicht den Namen (M11); Würfel sind `{{…}}`, Platzhalter `{VAR}` (M12). Siehe 4.4. |
+
+### 4.4 Langer Text
+
+Jedes Feld mit `format: 'long'` — die Beschreibung, jeder Prosaeintrag,
+ein langes Feld in der Feldliste — wird als **Markdown** gelesen (M10,
+#61). Zwei Stufen, zwei Funktionen in `packages/model`:
+
+```mermaid
+flowchart LR
+  T["gespeicherter Text<br/>(bleibt, wie er ist)"] --> M["parseMarkdown<br/>Blöcke"]
+  M --> B["Überschrift · Absatz · Liste<br/>Tabelle · Einschub · Linie"]
+  B -->|je Zeile, Zelle, Punkt| I["parseInline<br/>Segmente"]
+  I --> S["Text · fett/kursiv<br/>Verweis · {VAR} · Würfel"]
+  S --> R["Renderer baut Elemente<br/>Text als Textknoten"]
+```
+
+| Im Text | Was es wird |
+|---|---|
+| `# …` bis `###### …` | Überschrift |
+| `- …`, `* …`, `1. …` | Liste; tiefer eingerückt: eine Liste im Punkt |
+| `\| a \| b \|` mit `\|---\|` darunter | Tabelle; `:-:` und `--:` richten aus; ein `\|` in `[[…]]` ist kein Zellrand |
+| `> …` | Einschub |
+| `---` | Trennlinie |
+| Leerzeile | neuer Absatz; ein einfacher Zeilenwechsel ist ein Leerzeichen, zwei Leerzeichen oder `\` am Ende ein harter Umbruch |
+| `**fett**`, `*kursiv*` | Hervorhebung, schachtelbar; `2 * 3 * 4` bleibt Rechnung |
+| `[[npc-0042\|Volo]]` | Verweis über die Nummer (11) |
+| `{VAR}` | Platzhalter (6) |
+| `{{1d6+2}}`, `{{+4}}` | Würfel zum Anklicken (6) |
+
+**Kein HTML aus dem Text.** Ein Block ist ein Datum und kein Markup; die
+Oberfläche baut Elemente (`nw-text`), der Prototyp ebenso (`para`,
+`mdDraw`), und `<b>` im Feld steht als `<b>` da. Bewusst nicht dabei:
+Codeblöcke, Bilder, Fussnoten — kein Text, der hierher kommt, braucht sie.
 
 ---
 
@@ -322,6 +356,13 @@ Karte `Vars.bindings` → die gerechneten Kampagnenwerte (`{PARTY}`,
 `{PARTYSIZE}`, `{PARTYLEVEL}`, `{PARTYTIER}`, `{PARTYWHERE}`, `{TODAY}`,
 `{CALENDAR}`) → die Registerzeile `vars`. **Nie in den gespeicherten Text
 eingesetzt**; ein unaufgelöster Platzhalter bleibt sichtbar stehen.
+
+**Würfel** `{{1d6+2}}` (M12, REQ-070). Ein Ausdruck aus Würfeln und
+Zahlen, `d` oder `W`; ein blosser Modifikator `{{+4}}` ist ein Wurf auf
+den W20 mit diesem Bonus. Ein `{VAR}` darin wird zuerst aufgelöst
+(`{{1d8+{STR}}}`). Gewürfelt wird beim Klick, ohne `eval` (`rollDice`);
+was kein Ausdruck ist oder einen offenen Platzhalter hat, bleibt Text,
+wie es dasteht.
 
 **Der Kalender** steht an der **Welt** (`World.calendar`), und jede Kampagne
 hängt über `inWorld` an genau einer: alle Runden in derselben Welt lesen
@@ -557,7 +598,7 @@ sind Zeilen, Darstellung ist Code.**
 | der Name | `entity.name` und `Identity.name` | die Überschrift; beide gleich |
 | Aliasse | `Identity.aliases` | Vorschläge und Verweise finden sie |
 | Deckname | `Identity.cover` | steht statt des Namens, solange der Name beansprucht und ungewusst ist |
-| Verweis im Text | `[[Name]]`, `[[Name|Anzeige]]` | nach Name und Alias aufgelöst; ein Name ohne Artikel bietet das Anlegen an |
+| Verweis im Text | `[[npc-0042|Anzeige]]`; als Eingabe auch `[[Name]]` | zuerst über die Nummer (`Identity.id`), sonst über Name und Alias (`linkCandidates`, ohne Instanzen). Beim Speichern wird ein eindeutiger Name zur Nummer (`idLinks`, M11); ein mehrdeutiger bleibt stehen und sagt es, statt den ersten Treffer zu nehmen; einer ohne Artikel bietet das Anlegen an |
 | Eintrags-Id | `Typ.feld#id` | aus dem Text gebildet, eindeutig je Artikel, übersteht einen Import |
 
 ---

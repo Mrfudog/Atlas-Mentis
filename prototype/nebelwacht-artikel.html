@@ -187,6 +187,9 @@ button.pill.instof{cursor:pointer;border:1px dashed var(--line2)}
 .tdice .dice{padding:0 5px;font:inherit;font-variant-numeric:tabular-nums}
 .tdr{margin-left:4px;font-weight:600;font-variant-numeric:tabular-nums}
 .tdr:empty{display:none}
+.howtomd{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;margin:6px 0 14px}
+.howtomd pre{margin:0;white-space:pre-wrap;font-family:var(--ff-mono);font-size:12px;border-left:2px solid var(--line2);padding-left:10px}
+@media (max-width:700px){.howtomd{grid-template-columns:1fr}}
 .gone{color:var(--dim);font-style:italic}
 
 /* ---------- relations ---------- */
@@ -2714,9 +2717,13 @@ function mdRow(line){
   var s=String(line).trim();
   if(s.charAt(0)==="|")s=s.slice(1);
   if(s.slice(-1)==="|"&&s.slice(-2)!=="\\|")s=s.slice(0,-1);
-  var cells=[],cur="";
+  /* Der Strich in einem Verweis (`[[npc-0042|Volo]]`) ist kein Zellrand. */
+  var cells=[],cur="",imVerweis=false;
   for(var i=0;i<s.length;i++){ var c=s.charAt(i);
-    if(c==="\\"&&s.charAt(i+1)==="|"){cur+="|";i++;}
+    if(c==="["&&s.charAt(i+1)==="["){imVerweis=true;cur+="[[";i++;}
+    else if(c==="]"&&s.charAt(i+1)==="]"){imVerweis=false;cur+="]]";i++;}
+    else if(c==="\\"&&s.charAt(i+1)==="|"){cur+="|";i++;}
+    else if(c==="|"&&imVerweis)cur+=c;
     else if(c==="|"){cells.push(cur.trim());cur="";}
     else cur+=c; }
   cells.push(cur.trim());
@@ -12954,6 +12961,29 @@ function renderHowto(v){
     dl.appendChild(el("dd",{text:r[1]}));
   });
   v.appendChild(dl);
+
+  /* ---- Langer Text (M10–M12) ----
+     Ein Beispiel, das mit derselben Funktion gezeichnet wird wie jedes
+     lange Feld — nicht ein Bild davon. Der Verweis zeigt auf einen Artikel,
+     den es gibt (den gerade verfolgten), damit er auch hier aufgeht. */
+  v.appendChild(el("div",{class:"rsec",text:"What a long text can say"}));
+  v.appendChild(el("p",{class:"hint"},
+    "Every long text field reads Markdown: headings, lists, tables, quotes, "+
+    "**bold** and *italic*. Nothing in it becomes HTML — a tag in a field "+
+    "stays text. [[id|shown]] links by the article's number, which survives "+
+    "a rename and does not mix up two articles of the same name; [[Name]] "+
+    "may be typed and turns into the number on save when exactly one article "+
+    "is called that — otherwise it stays and says it is ambiguous. "+
+    "{{1d6+2}} is a die to click, {{+4}} a d20 with that bonus, and {VAR} is "+
+    "filled in when read and never written into the text."));
+  var nr=e?((e.components||{}).Identity||{}).id||e.id:"";
+  var probe="**Scimitar.** *Melee:* {{+4}} to hit, {{1d6+2}} slashing.\n\n"+
+    "| d6 | What happens |\n|:-:|---|\n| 1–3 | nothing |\n| 4–6 | "+
+    (e?"[["+nr+"|"+nameOf(e)+"]] notices":"someone notices")+" |";
+  var bsp=el("div",{class:"howtomd"});
+  bsp.appendChild(el("pre",{class:"code",text:probe}));
+  bsp.appendChild(para(probe));
+  v.appendChild(bsp);
 
   /* ---- Wer einen Artikel sehen darf ----
      Die **grobe** Frage, und sie kommt vor der feinen: das Wissen sagt,

@@ -297,6 +297,13 @@ Paket P1 aus docs/5etools-Arbeitsplan.md: M10, M11, M12 aus docs/5etools-Abgleic
 Tests in packages/model. Doku: Datenmodell.md, Begriffe.md, „How it works". Ein PR nach preprod, selbst mergen.
 ```
 
+**Stand 2026-10-09: steht.** `parseMarkdown` (`markdown.ts`), `rollDice`
+(`dice.ts`), `idLinks` und `linkCandidates`; gezeichnet in `apps/web`
+(`nw-text`) und im Prototyp (`para`). Regel und Tabelle in
+[Datenmodell.md](Datenmodell.md) §4.4. Offen: der Server schreibt
+`[[Name]]` nicht selbst um — das tun die beiden Masken; der Importer
+(P5, Schritt 15) schreibt die Nummer ohnehin direkt.
+
 ### P2 — Regeltypen (Sonnet 5.5, Effort medium)
 
 ```text

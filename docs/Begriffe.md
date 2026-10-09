@@ -195,6 +195,41 @@ Ein Prosafeld — `many` und lange Eingabe — steht **nicht** in der Feldtabell
 Es gehört dem Prosa-Element der Ansicht; zweimal dasselbe zu zeigen, oben als
 Zeile und unten als Absatz, war genau das, was an den Blöcken störte.
 
+### Langer Text
+
+Ein langes Feld ist **Markdown**: Überschriften, Listen, Tabellen,
+Einschübe, fett und kursiv. Was aus 5e.tools kommt, ist so gebaut — ein
+Zauber mit einer Tabelle je Stufe, ein Monster mit einer Liste von
+Optionen —, und als Fliesstext wäre jeder davon ein Absatzbrei. Gelesen
+wird in zwei Stufen: `parseMarkdown` findet die Blöcke, `parseInline`
+liest jede Zeile darin. Eine Stufe für beides hiesse zwei Stellen, an
+denen `{VAR}` aufgelöst wird, und eine davon vergässe die Bindung an der
+Kante.
+
+**Nichts im Text wird HTML.** Ein Block ist ein Datum, und der Renderer
+setzt Text als Text. Ein Feld kann jeder bearbeiten, der schreiben darf,
+und ein Import schreibt, was in der Quelle stand — eine Stelle, an der
+Text Markup wird, ist die Stelle, an der jemand Skript einschleust.
+
+**Ein Verweis nennt die Nummer**, nicht den Namen: `[[npc-0042|Volo]]`.
+Ein Name war eindeutig, solange jeder Artikel von Hand angelegt wurde;
+mit zwei Ausgaben desselben Monsters heissen zwei Artikel „Goblin", und
+`[[Goblin]]` meint einen von beiden, ohne zu sagen, welchen. Getippt
+werden darf weiter der Name — beim Speichern wird er zur Nummer, wenn
+genau ein Artikel so heisst (`idLinks`). Trifft er mehrere, bleibt er
+stehen und sagt es; den ersten Treffer zu nehmen wäre bei zwei Goblins in
+der Hälfte der Fälle der falsche, und niemand merkte es. Die Nummer
+übersteht ausserdem das Umbenennen des Ziels. Eine Instanz ist kein
+Verweisziel und zählt nicht als Namensvetter ihrer Vorlage.
+
+**Ein Würfel steht in doppelten geschweiften Klammern**: `{{1d6+2}}`.
+Einfache gehören den Platzhaltern, eckige den Verweisen; so bleibt jede
+Klammer eine Sache. `{{+4}}` ist ein Wurf auf den W20 mit Bonus — so
+steht der Angriffsbonus in jedem Statblock, und am Tisch heisst „+4"
+genau das. Ein Platzhalter darf im Ausdruck stehen und wird zuerst
+eingesetzt; ein Ausdruck, der keiner ist, bleibt Text. Gewürfelt wird ohne
+`eval`, aus demselben Grund wie beim Rechenwerk.
+
 ---
 
 ## Bezeichner
