@@ -151,6 +151,11 @@ export class PgRepository implements Repository {
     return out;
   }
 
+  async countEntities(): Promise<number> {
+    const { rows } = await this.pool.query<Row>('select count(*)::int as n from entity');
+    return Number(rows[0]?.['n'] ?? 0);
+  }
+
   async getEntity(id: string): Promise<Entity | undefined> {
     const base = await this.pool.query<Row>('select * from entity where id = $1', [id]);
     if (!base.rows.length) return undefined;

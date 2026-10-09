@@ -98,8 +98,10 @@ describe('a fresh server', () => {
     expect(res.json().setup).toMatch(/user add/);
   });
 
-  it('reads without an account, and writes nothing at all', async () => {
-    expect((await app.inject({ method: 'GET', url: '/api/entities' })).statusCode).toBe(200);
+  it('reads without an account while there is nothing to read, and writes nothing at all', async () => {
+    const leer = buildApp({ repo: new InMemoryRepository(seedRegistry, []) });
+    expect((await leer.inject({ method: 'GET', url: '/api/entities' })).statusCode).toBe(200);
+    expect((await leer.inject({ method: 'GET', url: '/api/registry' })).statusCode).toBe(200);
     const schreiben = await app.inject({
       method: 'PUT',
       url: '/api/entities/n_volo',
@@ -107,6 +109,15 @@ describe('a fresh server', () => {
     });
     expect(schreiben.statusCode).toBe(401);
     expect(await repo.countUsers()).toBe(0);
+  });
+
+  /* Die Ausnahme gilt nur, solange auch der Bestand leer ist (P5): ein
+     Server mit Artikeln und ohne Konto — das letzte gelöscht, oder ein
+     Bestand vor dem Konto eingespielt — ist keine offene Bibliothek. */
+  it('does not read without an account once there are articles', async () => {
+    expect((await app.inject({ method: 'GET', url: '/api/entities' })).statusCode).toBe(401);
+    expect((await app.inject({ method: 'GET', url: '/api/entities/n_volo' })).statusCode).toBe(401);
+    expect((await app.inject({ method: 'GET', url: '/api/registry' })).statusCode).toBe(401);
   });
 });
 
