@@ -71,10 +71,15 @@ REQ-Nummern stehen in `VTT/Requirements.md`, ihr Stand in
   Vorlage je Artikelart. **Zurückgehalten wird am Server** (`redactEntity`) —
   was hier ankommt, darf angezeigt werden, und eine zweite Prüfung in der
   Maske lüde nur dazu ein, die erste wegzulassen.
+- `packages/import-5etools` — der Importer für 5e.tools (P5): liest einen
+  Checkout von `5etools-src/data`, schreibt eine Ausfuhrdatei und den
+  Bericht [docs/5etools-Bericht.md](docs/5etools-Bericht.md). Kein
+  Framework; läuft einmal, nicht im Server. Laden:
+  [docs/Betrieb.md › 5e.tools laden](docs/Betrieb.md#5etools-laden).
 - `legacy/` — die alte React-App. Nicht weiterentwickeln; sie läuft, bis die
   neue Karte und Initiative kann.
 
-Was es **nicht** mehr gibt: `packages/import` und der Importer im Prototyp. Die Obsidian-Importer für
+Was es **nicht** mehr gibt: `packages/import` und der Importer im Prototyp (der für 5e.tools ist neu geschrieben, oben). Die Obsidian-Importer für
 Gegenstände und Statblocks sind weg (2026-09-20); der Prototyp hat seinen
 Mit ihnen fiel der Bestandteil `Imported` weg — er trug den Wortlaut, wie er
 aus dem Vault kam, und füllt ihn jetzt niemand mehr. Wenn die Importer

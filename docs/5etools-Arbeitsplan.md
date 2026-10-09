@@ -366,6 +366,27 @@ Dazu: Befehl pnpm --filter @nw/server import <datei> [--replace] (durch validate
 Ein PR nach preprod, selbst mergen.
 ```
 
+**Stand 2026-10-09: steht.** `packages/import-5etools` (Kern:
+`text.ts` Textbaum → Markdown und Inline-Marken → `[[id|…]]`/`{{…}}`,
+`copy.ts` `_copy`/`_mod`; Zuordnungen je Art unter `src/arten/`), Bericht
+[5etools-Bericht.md](5etools-Bericht.md). Ein Lauf gegen 5etools-src vom
+2026-10-08: **27 838 Artikel**, alle geprüft — davon 9 130 Aktionen und
+8 204 Merkmale, die die Statblöcke zerlegen (§2.5; 1 893 davon stehen an
+mehr als einem Statblock, 5 705 Doppel nicht angelegt), und 2 159
+Tabellen. Am Server `pnpm --filter @nw/server run import <datei>
+[--replace]` (verweigert ohne Verwaltungskonto), die Leseausnahme gilt
+nur noch bei leerem Bestand. Betrieb: [Betrieb.md › 5e.tools
+laden](Betrieb.md#5etools-laden).
+Abweichend vom Abgleich: keine `ids.json` (§1: keine stabile Zuordnung
+über Läufe), keine Ebene je Buch, `overrides` entfällt (kein 2024).
+Offen: die Klassenlisten der Zauber (keine Kante von `Class` zu `Spell`),
+Schatztabellen (`hoard`, `individual`, `dragon`) und „This Is Your Life",
+Behälter (`containerCapacity` → `carries` ein Inventar), Spielarten in
+`_versions`, `entry`-Kanten aus Tabellenzeilen; die Ablage speichert
+`enums` nicht (Prüfung am Server ohne Aufzählungszeilen); `listEntities`
+am Server lädt Artikel einzeln — bei 28 000 vor P6 ansehen; der
+Prüfaufbau des Prototyps (`pruefe.mjs`) erwartet den alten Bestand (M14).
+
 ### P6 — Laden (Sonnet 5.5, Effort medium)
 
 ```text

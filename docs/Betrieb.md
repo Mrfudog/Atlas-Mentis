@@ -215,6 +215,68 @@ docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB
 ./deploy.sh "$(cat previous-image)"
 ```
 
+## 5e.tools laden
+
+**Einmal** (Arbeitsplan §1, E7): danach gehören die Artikel uns und werden
+direkt bearbeitet. Der volle Bestand geht an den Server, nicht in den
+Prototyp; zuerst auf `dev`, `prod` erst, wenn dev angeschaut ist (P6).
+Was hereinkommt und was nicht, sagt [5etools-Bericht.md](5etools-Bericht.md).
+
+**1. Daten holen** — ausserhalb des Repos (112 MB, nicht unsere Daten):
+
+```bash
+git clone --depth 1 --filter=blob:none --sparse https://github.com/5etools-mirror-3/5etools-src.git ~/5etools-src
+git -C ~/5etools-src sparse-checkout set data
+```
+
+**2. Die Datei erzeugen** — lokal, nicht auf dem Server:
+
+```bash
+pnpm --filter @nw/model build && pnpm --filter @nw/registry build && pnpm --filter @nw/import-5etools build
+node packages/import-5etools/dist/cli.js ~/5etools-src/data --out 5etools-2014.json --bericht docs/5etools-Bericht.md
+```
+
+Jeder Artikel geht dabei durch `validateEntity`; besteht einer nicht,
+bricht der Lauf ab und schreibt keine Datei. Die Datei (rund 35 MB,
+28 000 Artikel) wird **nicht** eingecheckt, der Bericht schon. `--srd`
+nimmt nur, was im SRD steht; `--sources PHB,MM` nur diese Bücher.
+`--sample` schreibt einen Ausschnitt als Prüfbestand nach
+`prototype/test/dbdump/entities` (das Register dazu: `emit-seed`).
+
+**3. Sichern** — auf dem Server, vor dem Laden. Die Sicherung wird nicht
+gelöscht, auch wenn der Bestand neu steht: sie ist der einzige Ort, an dem
+der alte Bestand danach noch steht.
+
+```bash
+cd /srv/atlas/dev
+docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > backups/vor-5etools-$(date +%F).dump
+```
+
+**4. Laden.** Der Befehl verweigert, solange kein Verwaltungskonto
+existiert (Schritt 7 oben): ein Server ohne Konto liest ohne Anmeldung,
+solange sein Bestand leer ist — mit einem Bestand nicht mehr.
+
+```bash
+scp 5etools-2014.json deploy@<host>:/srv/atlas/dev/
+cd /srv/atlas/dev
+docker compose cp 5etools-2014.json app:/tmp/5etools-2014.json
+docker compose exec app node apps/server/dist/import.js /tmp/5etools-2014.json             # dazulegen
+docker compose exec app node apps/server/dist/import.js /tmp/5etools-2014.json --replace   # Bestand ersetzen
+docker compose exec app rm /tmp/5etools-2014.json
+```
+
+Lokal gegen die eigene Datenbank: `pnpm --filter @nw/server run import
+<datei> [--replace]` — mit `run`, denn `pnpm import` ist ein eingebauter
+Befehl von pnpm und liefe sonst statt des Skripts.
+
+Geprüft wird alles, **bevor** etwas geschrieben wird; ein Fehler lässt den
+Bestand, wie er war. `--replace` löscht, was nicht in der Datei steht, und
+nennt danach die Figuren, die an einem Konto stehen und nicht mehr da sind
+(die Konten bleiben, REQ-199). Eine Datei mit `registry` und ohne
+`entities` bringt nur die Registerzeilen. Die Ablage speichert heute
+`interfaces`, `relations`, `views`, `units` und `vars`; `enums` und
+`settings` nennt der Befehl als nicht gespeichert.
+
 ## Den Bestand von prod nach dev holen
 
 **Ohne Konten** (REQ-199): ein `pg_dump` der ganzen Produktion trägt
