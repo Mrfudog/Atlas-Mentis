@@ -6,6 +6,7 @@
  * ergänzt ein `+x` die geerbte Menge, eine blosse Liste ersetzt sie.
  */
 
+import { isInstance } from './instance.js';
 import type {
   Backlink,
   Entity,
@@ -486,6 +487,41 @@ export function findByName(entities: Iterable<Entity>, name: string): Entity | u
     }
   }
   return undefined;
+}
+
+/**
+ * Worauf ein Verweis `[[ziel]]` zeigen könnte (M11).
+ *
+ * **Zuerst die Id**: trifft `ziel` die ausgegebene Nummer (`Identity.id`)
+ * oder die Peg-Id eines Artikels, ist das der eine — eine Id ist eindeutig,
+ * auch wenn ein anderer Artikel zufällig so heisst. Sonst alle, deren Name
+ * oder Alias passt; mehr als einer heisst **mehrdeutig**, und das zu
+ * entscheiden ist Sache dessen, der schreibt, nicht der Reihenfolge im
+ * Bestand.
+ */
+export function linkCandidates(entities: Iterable<Entity>, target: string): Entity[] {
+  const roh = String(target ?? '').trim();
+  const needle = roh.toLowerCase();
+  if (!needle) return [];
+  const namen: Entity[] = [];
+  const alle = [...entities];
+  for (const entity of alle) {
+    if (articleId(entity).toLowerCase() === needle || entity.id === roh) return [entity];
+  }
+  for (const entity of alle) {
+    /* Eine Instanz ist kein Verweisziel (D82); sie hiesse wie ihre Vorlage
+       und machte jeden Namen mehrdeutig. */
+    if (isInstance(entity)) continue;
+    if (entityName(entity).toLowerCase() === needle) {
+      namen.push(entity);
+      continue;
+    }
+    const aliases = entity.components?.['Identity']?.['aliases'];
+    if (Array.isArray(aliases) && aliases.some((a) => String(a).toLowerCase() === needle)) {
+      namen.push(entity);
+    }
+  }
+  return namen;
 }
 
 /**

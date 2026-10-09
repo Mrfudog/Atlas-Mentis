@@ -79,6 +79,24 @@ async function seite(datei, warten) {
   pruefe('not stuck on Loading…', !s.laedt, s);
   pruefe('no exception', errs.length === 0, errs);
 
+  /* Lange Textfelder (M10–M12): dieselbe Lesart wie `packages/model`.
+     Geprüft an den Funktionen und nicht am Bestand — der Prüfbestand muss
+     dafür nichts Bestimmtes enthalten. */
+  const text = await p.evaluate(() => {
+    const T = window.__T__;
+    const md = T.parseMarkdown('## A\n- b\n  - c\n\n| x | y |\n|:-:|--|\n| 1 | 2 |\n\n> q');
+    const wurf = T.rollDice('+4');
+    return {
+      arten: md.map((b) => b.kind),
+      tief: md[1]?.items?.[0]?.[1]?.kind,
+      w20: wurf && wurf.rolls[0]?.d,
+      zeile: T.summaryText('[[npc-0001|Volo]] {{1d6}}'),
+    };
+  });
+  pruefe('long text reads as Markdown blocks', text.arten.join() === 'heading,list,table,quote' && text.tief === 'list', text);
+  pruefe('{{+4}} rolls a d20', text.w20 === 20, text);
+  pruefe('a list row shows what a link says, not its id', text.zeile === 'Volo 1d6', text);
+
   /* 2 — Register: Baum, Felder, Subtyp anlegen.
      **Oben die Reiter, links die Zeilen.** Der Reiter sagt, in welchem Teil
      des Registers man ist; die Leiste zeigt, was darin steht. Beides in der

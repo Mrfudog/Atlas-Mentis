@@ -246,6 +246,16 @@ wiederkommen, werden sie neu geschrieben.
   Wissensfreigabe hängt (`Secrets.secret#id`). Die Id kommt aus dem Text, denn
   eine durchgezählte hält nur, solange die Reihenfolge hält. Ein Prosafeld
   steht **nicht** in der Feldtabelle — es gehört dem Element `prose`.
+- **Ein langer Text ist Markdown, und nichts darin wird HTML** (M10).
+  `parseMarkdown` liest die Blöcke, `parseInline` jede Zeile darin — ein
+  Zerleger für Inline-Text, nicht zwei. Gezeichnet wird mit Elementen und
+  Textknoten (`nw-text`, im Prototyp `para`), nie mit `innerHTML`.
+  **Ein Verweis nennt die Nummer** (`[[npc-0042|Volo]]`, M11): `[[Name]]`
+  darf getippt werden und wird beim Speichern zur Nummer, wenn genau ein
+  Artikel so heisst (`idLinks`); ein mehrdeutiger bleibt stehen und sagt
+  es — der erste Treffer wäre bei zwei Goblins der falsche. **Ein Würfel
+  ist `{{1d6+2}}`** (M12), `{{+4}}` ein W20 mit Bonus; einfache Klammern
+  bleiben den Platzhaltern, eckige den Verweisen.
 - **Ein Untertyp ohne eigene Felder ist ein Wort und keine Zeile.** `NPC`,
   `Companion` und `Retainer` waren drei Artikelarten, die zusammen kein
   einziges eigenes Feld trugen; eine Kreatur ist jetzt selbst eine Art, und
