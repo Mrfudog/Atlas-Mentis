@@ -353,7 +353,7 @@ export const interfaces: Record<string, InterfaceDef> = {
        Felder, die niemand füllte (A14, 7.10.). */
   },
 
-  /** The reuse pool: traits, actions, conditions, feats — all one interface. */
+  /** The reuse pool: the shared root of conditions, actions, features, feats … (D48). */
   Rule: {
     name: 'Rule',
     area: 'rules',
@@ -382,6 +382,78 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Skill',
     extends: ['Rule'],
     schema: merge(g.SkillInfo),
+  },
+
+  /** Ein Zustand, den man hat — und die Art, die `Vitals.conditions` verlangt (D48). */
+  Condition: {
+    name: 'Condition',
+    area: 'rules',
+    label: 'Condition',
+    extends: ['Rule'],
+    schema: merge(g.ConditionInfo),
+  },
+
+  /** Eine Krankheit: zuweisbar wie ein Zustand, mit eigenen Feldern (D48). */
+  Disease: {
+    name: 'Disease',
+    area: 'rules',
+    label: 'Disease',
+    extends: ['Condition'],
+    schema: merge(g.DiseaseInfo),
+  },
+
+  /** Aktionsart: Action, Bonus Action, Reaction, Movement … (D48). */
+  ActionType: {
+    name: 'ActionType',
+    area: 'rules',
+    label: 'Action type',
+    extends: ['Rule'],
+    schema: merge(g.ActionTypeInfo),
+  },
+
+  /** Eine Aktion; ihre Art ist ein Verweis und Pflicht (D48). */
+  Action: {
+    name: 'Action',
+    area: 'rules',
+    label: 'Action',
+    extends: ['Rule'],
+    schema: merge(g.ActionInfo),
+  },
+
+  /** Merkmal: alles Dauerhafte — Klasse, Volk, Monster, Region (D48). */
+  Feature: {
+    name: 'Feature',
+    area: 'rules',
+    label: 'Feature',
+    extends: ['Rule'],
+    schema: merge(g.FeatureInfo),
+  },
+
+  /** Gegenstandseigenschaft: Finesse, Versatile, Heavy (D48). */
+  ItemProperty: {
+    name: 'ItemProperty',
+    area: 'rules',
+    label: 'Item property',
+    extends: ['Rule'],
+    schema: merge(g.ItemPropertyInfo),
+  },
+
+  /** Falle oder Gefahr (M7). Auf der Karte über `marker`. */
+  Hazard: {
+    name: 'Hazard',
+    area: 'world',
+    label: 'Hazard',
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Secrets'],
+    schema: merge(g.HazardInfo),
+  },
+
+  /** Gottheit (M7); Anhänger über die Kante `worships`. */
+  Deity: {
+    name: 'Deity',
+    area: 'world',
+    label: 'Deity',
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Lore', 'Secrets'],
+    schema: merge(g.DeityInfo),
   },
 
   /** An entity of its own (D4), referenced by creatures, never embedded. */

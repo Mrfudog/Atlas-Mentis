@@ -7026,7 +7026,7 @@ function elInitiative(e,ifn,item){
       add.addEventListener("change",function(){
         if(!add.value)return;
         p2.rel.props=Object.assign({},p2.rel.props,{conditions:
-          (p2.conditions||[]).concat([{rule:add.value,rounds:1,source:dran?dran.label:""}])});
+          withConditionRows(p2.conditions,{rule:add.value,rounds:1,source:dran?dran.label:""})});
         persist(e);
       });
       cc.appendChild(add);
@@ -8675,7 +8675,60 @@ function rulesOfKind(kind){
   });
   return raus.sort(function(a,b){ return nameOf(a).localeCompare(nameOf(b),"en"); });
 }
-function conditionList(){ return rulesOfKind("condition"); }
+/* Zustände sind eine Art (`Condition`, D48), kein Wort an einer Regel: die
+   Liste nimmt jede Art, die von ihr erbt — auch `Disease`. */
+function conditionList(){
+  var raus=[];
+  ENT.forEach(function(e){
+    if(selfAndAncestors((e.interfaces||[])[0]||"").indexOf("Condition")<0)return;
+    if(!articleVisible(e))return;
+    raus.push(e);
+  });
+  return raus.sort(function(a,b){ return nameOf(a).localeCompare(nameOf(b),"en"); });
+}
+/* Der Grundzustand einer Stufe: die `stageOf`-Kante, nur vorwärts gespeichert.
+   Höchstens eine Stufe je Grundzustand in einer Zustandsliste (D48) — wer eine
+   zweite setzt, ersetzt die erste. */
+function stageBase(id){
+  var e=ENT.get(id); if(!e)return null;
+  var k=(e.relations||[]).filter(function(r){ return r.type==="stageOf"; })[0];
+  return k?k.to:null;
+}
+function withConditionRows(zeilen,neu){
+  var grund=stageBase(neu.rule);
+  var rest=(zeilen||[]).filter(function(x){ return !grund||stageBase(x.rule)!==grund; });
+  return rest.concat([neu]);
+}
+function stageOfCond(id){
+  var e=ENT.get(id);
+  return Number((((e||{}).components||{}).Condition||{}).stage)||0;
+}
+/* Eine Zustandsliste mit `id` darin; eine andere Stufe desselben
+   Grundzustands fällt heraus. */
+function withCondition(liste,id){
+  var grund=stageBase(id);
+  var rest=(liste||[]).filter(function(x){ return !grund||stageBase(x)!==grund; });
+  return rest.concat([id]);
+}
+/* Eine lange Rast senkt jeden Zustand mit `recovery: longRestStep` um eine
+   Stufe: ersetzen durch `stage − 1` desselben Grundzustands, bei Stufe 1
+   entfernen. */
+function afterLongRest(liste){
+  var raus=[];
+  (liste||[]).forEach(function(id){
+    var e=ENT.get(id);
+    var c=((e||{}).components||{}).Condition||{};
+    var grund=stageBase(id);
+    if(c.recovery!=="longRestStep"||!grund){ raus.push(id); return; }
+    var tiefer=null, ziel=stageOfCond(id)-1;
+    ENT.forEach(function(o){
+      if(tiefer)return;
+      if(stageBase(o.id)===grund&&stageOfCond(o.id)===ziel) tiefer=o.id;
+    });
+    if(tiefer) raus.push(tiefer);
+  });
+  return raus;
+}
 /* aus `animalHandling` wird „Animal handling" — Titel aus dem Schlüssel,
    damit eine neue Fertigkeit nur eine Einstellung ist. */
 function humanKey(k){
@@ -8997,8 +9050,6 @@ function elSheet(e,ifn,item){
   strip.appendChild(vitalPlain("Prof",sgn(prof)));
   strip.appendChild(vitalPlain("Pass. per.",10+modOf(sb,"wis")+
     ((sk.proficient||[]).indexOf("perception")>=0?prof:0)));
-  strip.appendChild(vitalStepper("Exhaustion",vit.exhaustion||0,
-    function(d,roh){ stepper("exhaustion",d,roh); }));
 
   /* Trefferwürfel als Punkte: wie viele noch da sind, sieht man, ohne zu
      rechnen — und eine kurze Rast ist ein Tipp, kein Formular. */
@@ -9042,12 +9093,12 @@ function elSheet(e,ifn,item){
         schreibVit({hitDiceLeft:links-1,hp:Math.min(hpMax||jetzt+heil,jetzt+heil)});
       }},"Short rest"));
     rest.appendChild(el("button",{class:"btn sm",type:"button",
-      title:"Full HP, half the hit dice back, death saves cleared, one step less exhaustion",
+      title:"Full HP, half the hit dice back, death saves cleared, one step less on every stage condition that eases with a long rest",
       onclick:function(){
         schreibVit({hp:hpMax||undefined,hpTemp:0,
           hitDiceLeft:Math.min(hdMax,(vit.hitDiceLeft===undefined?hdMax:Number(vit.hitDiceLeft))+Math.max(1,Math.floor(hdMax/2))),
           deathSuccess:0,deathFail:0,
-          exhaustion:Math.max(0,(Number(vit.exhaustion)||0)-1)});
+          conditions:afterLongRest(vit.conditions)});
       }},"Long rest"));
     rest.appendChild(el("button",{class:"btn sm gh",type:"button",
       title:"One more natural 1 for the tally",
@@ -9065,14 +9116,14 @@ function elSheet(e,ifn,item){
     var b=el("button",{class:"chip pick"+(an?" on":""),type:"button","aria-pressed":String(an),
       title:((r.components||{}).Description||{}).description||""},nameOf(r));
     if(canWrite()) b.addEventListener("click",function(){
-      var neu=an?aktiv.filter(function(x){return x!==r.id;}):aktiv.concat([r.id]);
+      var neu=an?aktiv.filter(function(x){return x!==r.id;}):withCondition(aktiv,r.id);
       schreibVit({conditions:neu});
     });
     else b.disabled=true;
     zust.appendChild(b);
   });
   if(!regeln.length) zust.appendChild(el("span",{class:"hint",
-    text:"No condition articles yet — a condition is a rule with kind “condition”."}));
+    text:"No condition articles yet — create one of the type “Condition”."}));
   wrap.appendChild(el("div",{class:"sec",text:"Conditions"}));
   wrap.appendChild(zust);
 
@@ -12646,7 +12697,14 @@ var BEGRIFFE=[
    "template fills in the rest on read, and a value typed back to the "+
    "template's follows the template again. Instances stand at their "+
    "creature and in no list. Without a statblock a creature shows no "+
-   "numbers at all."],
+   "numbers at all. Conditions show the other use: “Exhaustion 3” is an "+
+   "article of its own with a stage and an edge (stageOf) to “Exhaustion”, "+
+   "and a list of conditions holds at most one stage per base condition — "+
+   "a new stage replaces the old one, and a long rest swaps each stage for "+
+   "the one below. There is no counter, because the same number in two "+
+   "places drifts apart. What one rule does to another (paralysed imposes "+
+   "incapacitated, incapacitated prevents reactions) is an edge too "+
+   "(affects), stored forward; nothing evaluates it yet."],
   ["Unit",
    "How a measure is written and converted. The vault is imperial because "+
    "the rules are; at the table sit people for whom forty feet means "+

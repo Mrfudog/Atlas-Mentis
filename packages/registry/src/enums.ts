@@ -108,6 +108,18 @@ export const enums: Record<string, EnumDef> = {
     values: ['free action', 'bonus action', 'action', 'turn', 'round'],
   },
 
+  /**
+   * **Die Regeln ohne Träger (D48).** Zustand, Aktion, Merkmal, Talent,
+   * Fertigkeit, Zauber haben eigene Arten; was übrig bleibt, trägt hier ein
+   * Wort: `rule` (Variantregeln), `travel` (was eine Figur an einem
+   * Reiseknoten tun kann, REQ-171), `sense`, `reward`, `boon`, `option`.
+   */
+  RuleKind: {
+    name: 'RuleKind',
+    label: 'Rule kind',
+    values: ['rule', 'travel', 'sense', 'reward', 'boon', 'option'],
+  },
+
   State: {
     name: 'State',
     label: 'State',

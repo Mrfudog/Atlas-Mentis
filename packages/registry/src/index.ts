@@ -62,7 +62,7 @@ export const settings: Record<string, string> = {
   travelLightEvery: '4',
   travelWatchesPerDay: '3',
   /* `travelActions` und `conditions` standen hier als Wortlisten. Beides
-     sind seit dem 7.10. Regelartikel (`Rule.kind` travel bzw. condition,
+     sind seit dem 7.10. Regelartikel (`Rule.kind` travel bzw. seit D48 die Art `Condition`,
      Abgleich A3): ein Wort hat keine Beschreibung und keine Quelle, ein
      Artikel schon. Wanderung: `prototype/migration/zustaende-als-regeln.mjs`. */
 };

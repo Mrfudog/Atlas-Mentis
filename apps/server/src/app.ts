@@ -23,6 +23,7 @@ import {
   redactEntity,
   resolveInstance,
   thinInstance,
+  stageBases,
   validateEntity,
 } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
@@ -558,6 +559,9 @@ export function buildApp({
         (await repo.listEntities()).map((e) => [e.id, e.interfaces?.[0] ?? ''] as const),
       );
       known.set(entity.id, entity.interfaces?.[0] ?? '');
+      /* Welche Zustände Stufen eines Grundzustands sind (D48) — gerechnet
+         aus den Kanten, nicht gespeichert. */
+      const stufen = stageBases([...(await repo.listEntities()), entity]);
 
       /* **Eine Instanz wird aufgelöst geprüft und ausgedünnt gespeichert.**
          Ihre Pflichtfelder stehen an der Vorlage; gespeichert wird nur, was
@@ -573,7 +577,7 @@ export function buildApp({
         zuSchreiben = thinInstance(alle, entity);
       }
 
-      const issues = validateEntity(registry, zuPruefen, { knownTypes: known });
+      const issues = validateEntity(registry, zuPruefen, { knownTypes: known, stageOf: stufen });
       if (issues.length) {
         return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
       }
@@ -636,7 +640,8 @@ export function buildApp({
       alle.set(pruefling.id, pruefling);
       pruefling = resolveInstance(alle, pruefling);
     }
-    return { issues: validateEntity(registry, pruefling, { knownTypes: known }) };
+    const stufen = stageBases([...(await repo.listEntities()), pruefling]);
+    return { issues: validateEntity(registry, pruefling, { knownTypes: known, stageOf: stufen }) };
   });
 
   return app;
