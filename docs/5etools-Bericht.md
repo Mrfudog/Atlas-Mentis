@@ -3,7 +3,7 @@
 Erzeugt von `packages/import-5etools` (Paket P5, [5etools-Arbeitsplan.md](5etools-Arbeitsplan.md)). **Nicht von Hand ändern** — ein neuer Lauf schreibt die Datei neu.
 
 - Datenstand: 5etools-src 8c026b8 2026-10-08
-- Aufruf: `node packages/import-5etools/dist/cli.js <data> --out <datei> --bericht <datei>`
+- Aufruf: `node packages/import-5etools/dist/cli.js <data> --bericht <datei>`
 - **27’838 Artikel**, alle durch `validateEntity` mit `knownTypes`
 - Gleichlautende Merkmale der Statblöcke (Arbeitsplan §2.5): 1’893 Aktionen und Merkmale stehen an mehr als einem Statblock; 5’705 Doppel wurden dadurch nicht angelegt
 
@@ -130,9 +130,11 @@ Erzeugt von `packages/import-5etools` (Paket P5, [5etools-Arbeitsplan.md](5etool
 
 Nach Arbeitsplan §1, E2: 2014 als Basis. Je Grund die Quellen mit Anzahl Einträgen, über alle Arten.
 
-- **2024-Kernbuch** (3’637): XPHB 1’704, XDMG 1’008, XMM 558, PHB 69, AU 66, FRHoF 64, XGE 43, RHW 42, TCE 41, PSA 14, SCAG 9, EGW 5, DMG 4, VRGR 3, DSotDQ 2, FTD 2, PSK 2, BGG 1
-- **2024-Regeln (seit 2024-09)** (1’129): AU 243, RHW 211, EFA 185, FRHoF 185, FRAiF 128, WttHC 39, ABH 28, LFL 23, NF 22, AUD 21, XScreen 17, HotB 13, HBTD 6, TCE 4, DrDe-BD 1, RWG 1, UtHftLH 1, XScreenRHW 1
+- **2024-Kernbuch** (3’270): XPHB 1’704, XDMG 1’008, XMM 558
+- **2024-Regeln (seit 2024-09)** (1’116): AU 243, RHW 202, EFA 185, FRHoF 185, FRAiF 128, WttHC 39, ABH 28, LFL 23, NF 22, AUD 21, XScreen 17, HotB 13, HBTD 6, DrDe-BD 1, RWG 1, UtHftLH 1, XScreenRHW 1
 - **Unearthed Arcana** (66): UATheMysticClass 66
+- **hängt an einer Klasse oder Abstammung aus EFA (2024-Regeln (seit 2024-09))** (13): RHW 9, TCE 4
+- **hängt an einer Klasse oder Abstammung aus XPHB (2024-Kernbuch)** (367): PHB 69, AU 66, FRHoF 64, XGE 43, RHW 42, TCE 41, PSA 14, SCAG 9, EGW 5, DMG 4, VRGR 3, DSotDQ 2, FTD 2, PSK 2, BGG 1
 
 Quellen, die in keiner Bücher- oder Abenteuerliste stehen und hereinkamen (nicht nach Datum geprüft):
 

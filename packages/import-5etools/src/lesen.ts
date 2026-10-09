@@ -153,7 +153,7 @@ export function ausschluss(e: Knoten, stand: Datenstand, auswahl: Auswahl = {}):
     const q = e[feld];
     if (typeof q === 'string' && q && q !== quelleVon(e)) {
       const grund = ausschluss({ source: q }, stand, { ...auswahl, nurSrd: false });
-      if (grund) return grund;
+      if (grund) return `hängt an einer Klasse oder Abstammung aus ${q} (${grund})`;
     }
   }
   const quelle = quelleVon(e);
