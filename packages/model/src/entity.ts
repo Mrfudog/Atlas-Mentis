@@ -6,6 +6,7 @@
  * ergänzt ein `+x` die geerbte Menge, eine blosse Liste ersetzt sie.
  */
 
+import { isInstance } from './instance.js';
 import type {
   Backlink,
   Entity,
@@ -508,6 +509,9 @@ export function linkCandidates(entities: Iterable<Entity>, target: string): Enti
     if (articleId(entity).toLowerCase() === needle || entity.id === roh) return [entity];
   }
   for (const entity of alle) {
+    /* Eine Instanz ist kein Verweisziel (D82); sie hiesse wie ihre Vorlage
+       und machte jeden Namen mehrdeutig. */
+    if (isInstance(entity)) continue;
     if (entityName(entity).toLowerCase() === needle) {
       namen.push(entity);
       continue;

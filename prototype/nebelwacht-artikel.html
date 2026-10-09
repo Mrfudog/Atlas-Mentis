@@ -170,6 +170,23 @@ button.pill.instof{cursor:pointer;border:1px dashed var(--line2)}
 .refpop > b{font-family:var(--ff-disp);font-size:15px;margin-right:6px}
 .refpop .pbody{padding:4px 0 0}
 .ref.dead{color:var(--warn);text-decoration-style:wavy;cursor:help}
+/* Markdown in langen Textfeldern (M10) und Würfel im Text (M12) */
+.md>:first-child{margin-top:0}
+.md p{margin:.35em 0 0}
+.md p,.blk p{white-space:pre-line}
+.md ul,.md ol{margin:.35em 0 0;padding-left:1.4em}
+.md li>p{margin:0}
+.mdh{font-family:var(--ff-disp);font-weight:700;margin:.7em 0 .2em}
+.mdh1{font-size:1.25em}.mdh2{font-size:1.15em}.mdh3{font-size:1.05em}
+.mdq{margin:.5em 0;padding-left:.8em;border-left:2px solid var(--line2)}
+.mdtw{overflow-x:auto;margin:.5em 0}
+.mdt{border-collapse:collapse;font-size:.95em}
+.mdt th,.mdt td{border-bottom:1px solid var(--line);padding:2px 9px;vertical-align:top;text-align:left}
+.mdt th{font-weight:600}
+.md hr{border:0;border-top:1px solid var(--line);margin:.7em 0}
+.tdice .dice{padding:0 5px;font:inherit;font-variant-numeric:tabular-nums}
+.tdr{margin-left:4px;font-weight:600;font-variant-numeric:tabular-nums}
+.tdr:empty{display:none}
 .gone{color:var(--dim);font-style:italic}
 
 /* ---------- relations ---------- */
@@ -2558,6 +2575,43 @@ function findByName(n){
     for(var i=0;i<al.length;i++) if(String(al[i]).toLowerCase()===t){hit=id;return;} });
   return hit;
 }
+/* Worauf ein Verweis zeigen könnte (M11), wie `linkCandidates` im Paket
+   (hier `linkHits` — `linkCandidates` heisst schon die Auswahl der Maske):
+   **zuerst die Id** (`Identity.id`, dann die Peg-Id) — eine Id ist eindeutig,
+   auch wenn ein anderer Artikel zufällig so heisst. Sonst jeder, dessen
+   Name oder Alias passt; mehr als einer heisst mehrdeutig, und das
+   entscheidet, wer schreibt, nicht die Reihenfolge im Bestand. */
+function linkHits(n){
+  var roh=String(n||"").trim(), t=roh.toLowerCase();
+  if(!t)return [];
+  var perId=null;
+  ENT.forEach(function(e,id){ if(perId)return;
+    var nr=(e.components&&e.components.Identity&&e.components.Identity.id)||"";
+    if(String(nr).toLowerCase()===t||id===roh) perId=id; });
+  if(perId)return [perId];
+  var out=[];
+  ENT.forEach(function(e,id){
+    /* Eine Instanz ist kein Verweisziel; sie hiesse wie ihre Vorlage und
+       machte jeden Namen mehrdeutig. */
+    if(isInstance(e))return;
+    if(rawName(e).toLowerCase()===t){out.push(id);return;}
+    var al=(e.components&&e.components.Identity&&e.components.Identity.aliases)||[];
+    for(var i=0;i<al.length;i++) if(String(al[i]).toLowerCase()===t){out.push(id);return;} });
+  return out;
+}
+/* `[[Name]]` → `[[npc-0042|Name]]`, wo genau ein Artikel so heisst (M11).
+   Beim Speichern, nicht beim Lesen: danach überlebt der Verweis das
+   Umbenennen des Ziels. Was nichts oder mehreres trifft, bleibt stehen. */
+function idLinks(text){
+  return String(text==null?"":text).replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,function(roh,ziel,zeige){
+    var treffer=linkHits(ziel);
+    if(treffer.length!==1)return roh;
+    var e=ENT.get(treffer[0]);
+    var nr=(e&&e.components&&e.components.Identity&&e.components.Identity.id)||treffer[0];
+    if(nr===ziel.trim())return roh;
+    return "[["+nr+"|"+String(zeige!=null?zeige:ziel).trim()+"]]";
+  });
+}
 /* Ein Verweis im Text führt zum Artikel — und zeigt vorher, worauf er
    zeigt. **Immer die Übersicht**: Name und Beschreibung, wie ein Hover.
    Mehr hat neben einem Satz keinen Platz, und wer mehr will, klickt.
@@ -2586,32 +2640,223 @@ function refWithPeek(id,show){
   return w;
 }
 
+/* Inline-Text (M10–M12), wie `parseInline` im Paket: `[[Verweise]]`,
+   aufgelöste `{VAR}` (als \u0001…\u0002 aus fillVars), `{{Würfel}}`,
+   **fett** und *kursiv*. Die Reihenfolge der Alternativen zählt: `**` vor
+   `*`; kursiv beginnt und endet nicht mit Leerzeichen — „2 * 3" ist
+   Rechnung. */
 function inline(text,into){
   var s=String(text==null?"":text);
-  var re=/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|\u0001([^\u0002]*)\u0002|\*\*([^*]+)\*\*/g;
+  var re=/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|\{\{([^{}]+)\}\}|\u0001([^\u0002]*)\u0002|\*\*((?:[^*]|\*(?!\*))+?)\*\*|\*([^*\s](?:[^*]*[^*\s])?)\*/g;
   var last=0,m;
   while((m=re.exec(s))){
     if(m.index>last) into.appendChild(document.createTextNode(s.slice(last,m.index)));
     if(m[1]!==undefined){
-      var target=m[1].trim(), show=(m[2]||m[1]).trim(), id=findByName(target);
-      if(id) into.appendChild(refWithPeek(id,show));
+      var target=m[1].trim(), show=(m[2]||m[1]).trim(), treffer=linkHits(target);
+      if(treffer.length===1) into.appendChild(refWithPeek(treffer[0],show));
+      /* Mehrdeutig wird nicht geraten (M11): bei zwei Goblins wäre der
+         erste Treffer in der Hälfte der Fälle der falsche. */
+      else if(treffer.length) into.appendChild(el("span",{class:"ref dead",
+               title:"Ambiguous: "+treffer.length+" articles are called “"+target+"”"},show));
       // A dead link is an invitation, not an error: klicken legt den Artikel an.
       else   into.appendChild(el("button",{class:"ref dead",type:"button",
                title:canWrite()?"No article yet — create one":"No article named “"+target+"“",
                onclick:function(t){return function(){ if(canWrite())newEntity(t); };}(target)},show));
     } else if(m[3]!==undefined){
-      into.appendChild(el("span",{class:"vr"},m[3]));
-    } else {
+      /* Ein Platzhalter im Ausdruck ist schon eingesetzt (Sentinels weg);
+         einer, der offen blieb, enthält Klammern und kommt gar nicht hier an. */
+      var expr=m[3].replace(/[\u0001\u0002]/g,"").trim();
+      if(rollDice(expr)) into.appendChild(diceInText(expr));
+      else into.appendChild(document.createTextNode(m[0].replace(/[\u0001\u0002]/g,"")));
+    } else if(m[4]!==undefined){
+      into.appendChild(el("span",{class:"vr"},m[4]));
+    } else if(m[5]!==undefined){
       // Auszeichnung schachtelt: **{NAME}.** ist eine fette *Variable*.
       // Ohne Rekursion landet der Platzhalter als Rohtext im <strong>.
-      into.appendChild(inline(m[4],el("strong")));
+      into.appendChild(inline(m[5],el("strong")));
+    } else {
+      into.appendChild(inline(m[6],el("em")));
     }
     last=re.lastIndex;
   }
   if(last<s.length) into.appendChild(document.createTextNode(s.slice(last)));
   return into;
 }
-function para(text,cls){ return markRules(inline(text,el("p",cls?{class:cls}:null))); }
+/* Ein Würfel im Text (M12, REQ-070): ein Knopf, und das Ergebnis steht
+   gleich daneben — wer den Wurf nicht sieht, glaubt ihn nicht. Er landet
+   auch im Verlauf. Kein render(): das Ergebnis neben dem Knopf ginge sonst
+   mit dem Neuzeichnen weg; der Verlauf zeigt ihn beim nächsten. */
+function diceInText(expr){
+  var w=el("span",{class:"tdice"});
+  var out=el("output",{class:"tdr"});
+  w.appendChild(el("button",{class:"btn sm gh dice",type:"button",title:"Roll "+expr,
+    onclick:function(){
+      var r=rollDice(expr); if(!r)return;
+      logRoll(expr,r);
+      out.textContent=rollText(r);
+    }},expr));
+  w.appendChild(out);
+  return w;
+}
+
+/* ---------- Markdown in langen Textfeldern (M10) ----------
+   Wie `parseMarkdown` im Paket: Überschriften, Listen (verschachtelt durch
+   Einrückung), Tabellen, Einschübe, Trennlinien, Absätze. Jede Zeile geht
+   weiter durch inline(). **Kein HTML aus dem Text**: gebaut wird mit el()
+   und Textknoten, `<b>` im Feld steht als `<b>` da. */
+var MD_H=/^(#{1,6})\s+(.*?)\s*#*\s*$/, MD_HR=/^\s{0,3}([-*_])(\s*\1){2,}\s*$/,
+    MD_LI=/^(\s*)([-*+]|\d{1,9}[.)])\s+(.*)$/, MD_Q=/^\s{0,3}>\s?(.*)$/,
+    MD_SEP=/^\s*\|?\s*:?-{1,}:?\s*(\|\s*:?-{1,}:?\s*)*\|?\s*$/;
+function mdIndent(l){ var n=0; for(var i=0;i<l.length;i++){ var c=l.charAt(i);
+  if(c===" ")n++; else if(c==="\t")n+=4; else break; } return n; }
+function mdBlank(l){ return l===undefined||String(l).trim()===""; }
+function mdRow(line){
+  var s=String(line).trim();
+  if(s.charAt(0)==="|")s=s.slice(1);
+  if(s.slice(-1)==="|"&&s.slice(-2)!=="\\|")s=s.slice(0,-1);
+  var cells=[],cur="";
+  for(var i=0;i<s.length;i++){ var c=s.charAt(i);
+    if(c==="\\"&&s.charAt(i+1)==="|"){cur+="|";i++;}
+    else if(c==="|"){cells.push(cur.trim());cur="";}
+    else cur+=c; }
+  cells.push(cur.trim());
+  return cells;
+}
+function mdAlign(c){ c=String(c).trim(); var l=c.charAt(0)===":", r=c.slice(-1)===":";
+  return l&&r?"center":(r?"right":(l?"left":null)); }
+function mdIsTable(l,n){ return l.indexOf("|")>=0&&n!==undefined&&MD_SEP.test(n)&&n.indexOf("-")>=0; }
+function mdStarts(l,n){ return MD_H.test(l.trim())||MD_HR.test(l)||MD_LI.test(l)||MD_Q.test(l)||mdIsTable(l,n); }
+function mdPara(lines){
+  return lines.map(function(raw,i){
+    var hard=/( {2,}|\\)$/.test(raw), t=raw.replace(/( {2,}|\\)$/,"").trim();
+    return t+(i===lines.length-1?"":(hard?"\n":" "));
+  }).join("");
+}
+function mdParse(lines){
+  var out=[], i=0;
+  while(i<lines.length){
+    var line=lines[i]||"";
+    if(mdBlank(line)){i++;continue;}
+    var h=MD_H.exec(line.trim());
+    if(h&&mdIndent(line)<4){ out.push({kind:"heading",level:h[1].length,text:h[2]}); i++; continue; }
+    if(MD_HR.test(line)){ out.push({kind:"rule"}); i++; continue; }
+    if(MD_Q.test(line)){
+      var inner=[];
+      while(i<lines.length&&!mdBlank(lines[i])){ var q=MD_Q.exec(lines[i]); inner.push(q?q[1]:lines[i]); i++; }
+      out.push({kind:"quote",blocks:mdParse(inner)}); continue;
+    }
+    if(mdIsTable(line,lines[i+1])){
+      var head=mdRow(line), align=mdRow(lines[i+1]).map(mdAlign), rows=[];
+      i+=2;
+      while(i<lines.length&&!mdBlank(lines[i])&&lines[i].indexOf("|")>=0){
+        var cells=mdRow(lines[i]);
+        while(cells.length<head.length)cells.push("");
+        rows.push(cells.slice(0,Math.max(head.length,1))); i++;
+      }
+      while(align.length<head.length)align.push(null);
+      out.push({kind:"table",head:head,align:align.slice(0,head.length),rows:rows}); continue;
+    }
+    var it=MD_LI.exec(line);
+    if(it){
+      var base=mdIndent(line), ordered=/\d/.test(it[2]), items=[];
+      var start=ordered?parseInt(it[2],10):1;
+      while(i<lines.length){
+        var cur=lines[i]||"", m=MD_LI.exec(cur);
+        if(!m||mdIndent(cur)!==base||/\d/.test(m[2])!==ordered)break;
+        var body=[m[3]], innen=mdIndent(cur)+m[2].length+1;
+        i++;
+        while(i<lines.length){
+          var l=lines[i]||"";
+          if(mdBlank(l)){
+            var nach=lines[i+1];
+            if(nach!==undefined&&!mdBlank(nach)&&mdIndent(nach)>base){ body.push(""); i++; continue; }
+            break;
+          }
+          if(mdIndent(l)>base){ body.push(l.slice(Math.min(mdIndent(l),innen))); i++; continue; }
+          if(MD_LI.test(l)||mdStarts(l,lines[i+1]))break;
+          body.push(l.trim()); i++;
+        }
+        items.push(mdParse(body));
+        if(mdBlank(lines[i])){
+          var n2=lines[i+1], am=n2!==undefined?MD_LI.exec(n2):null;
+          if(am&&mdIndent(n2)===base&&/\d/.test(am[2])===ordered){ i++; continue; }
+        }
+      }
+      out.push({kind:"list",ordered:ordered,start:start,items:items}); continue;
+    }
+    var para=[line]; i++;
+    while(i<lines.length&&!mdBlank(lines[i])&&!mdStarts(lines[i],lines[i+1])){ para.push(lines[i]); i++; }
+    out.push({kind:"paragraph",text:mdPara(para)});
+  }
+  return out;
+}
+function parseMarkdown(text){ return mdParse(String(text==null?"":text).replace(/\r\n?/g,"\n").split("\n")); }
+function mdDraw(blocks,into){
+  blocks.forEach(function(b){
+    if(b.kind==="heading") into.appendChild(inline(b.text,el("div",{class:"mdh mdh"+b.level,role:"heading","aria-level":b.level+2})));
+    else if(b.kind==="paragraph") into.appendChild(inline(b.text,el("p")));
+    else if(b.kind==="rule") into.appendChild(el("hr"));
+    else if(b.kind==="quote") into.appendChild(mdDraw(b.blocks,el("blockquote",{class:"mdq"})));
+    else if(b.kind==="list"){
+      var l=el(b.ordered?"ol":"ul",b.ordered&&b.start!==1?{start:b.start}:null);
+      b.items.forEach(function(item){ l.appendChild(mdDraw(item,el("li"))); });
+      into.appendChild(l);
+    } else if(b.kind==="table"){
+      var t=el("table",{class:"mdt"}), th=el("tr");
+      b.head.forEach(function(c,k){ var z=inline(c,el("th")); if(b.align[k])z.style.textAlign=b.align[k]; th.appendChild(z); });
+      t.appendChild(el("thead",null,th));
+      var tb=el("tbody");
+      b.rows.forEach(function(r){ var tr=el("tr");
+        r.forEach(function(c,k){ var z=inline(c,el("td")); if(b.align[k])z.style.textAlign=b.align[k]; tr.appendChild(z); });
+        tb.appendChild(tr); });
+      t.appendChild(tb);
+      into.appendChild(el("div",{class:"mdtw"},t));
+    }
+  });
+  return into;
+}
+/* Ein Absatz bleibt ein <p>, wie bisher — die Stile der Blöcke hängen
+   daran. Erst wo der Text mehr ist als ein Absatz, wird er ein Kasten mit
+   Blöcken. */
+function para(text,cls){
+  var bl=parseMarkdown(text);
+  if(bl.length<=1&&(!bl.length||bl[0].kind==="paragraph"))
+    return markRules(inline(bl.length?bl[0].text:"",el("p",cls?{class:cls}:null)));
+  return markRules(mdDraw(bl,el("div",{class:"md"+(cls?" "+cls:"")})));
+}
+
+/* Für eine Listenzeile: was ein Verweis **zeigt**, nicht worauf er zeigt —
+   seit Verweise eine Id nennen (M11), wäre das sonst `npc-0042`. Und der
+   Würfelausdruck ohne Klammern, die Hervorhebung ohne Sterne. */
+function summaryText(t){
+  return String(t==null?"":t)
+    .replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,function(m,a,b){ return (b||a).trim(); })
+    .replace(/\{\{([^{}]+)\}\}/g,"$1")
+    .replace(/\*\*([^*]+)\*\*/g,"$1");
+}
+/* `[[Name]]` wird beim Speichern zur Id (M11) — in jedem langen Feld, an
+   einer Stelle und nicht an jeder Maske. Geändert wird auf Kopien: die
+   Karten können eingefrorene Schnappschüsse aus dem Speicher sein. */
+function linksToIds(e){
+  Object.keys(e.components||{}).forEach(function(cn){
+    var karte=e.components[cn], props=propsOf(cn), neu=null;
+    if(!karte||typeof karte!=="object")return;
+    Object.keys(karte).forEach(function(k){
+      var pd=props[k];
+      if(!pd||pd.format!=="long")return;
+      var v=karte[k], w=v;
+      if(typeof v==="string") w=idLinks(v);
+      else if(Array.isArray(v)) w=v.map(function(x){
+        if(typeof x==="string")return idLinks(x);
+        if(x&&typeof x.value==="string"){ var t=idLinks(x.value);
+          return t===x.value?x:Object.assign({},x,{value:t}); }
+        return x; });
+      if(JSON.stringify(w)!==JSON.stringify(v)){ neu=neu||Object.assign({},karte); neu[k]=w; }
+    });
+    if(neu){ e.components=Object.assign({},e.components); e.components[cn]=neu; }
+  });
+  return e;
+}
 
 /* ---------- db wiring ---------- */
 function persist(e){
@@ -2625,6 +2870,7 @@ function persist(e){
      und eine, die das vergässe, schriebe alle Werte der Vorlage fest. */
   if(isInstance(e)) e=thinned(e);
   ensureAnchors(e);
+  linksToIds(e);
   e.updatedAt=new Date().toISOString();
   lastWroteAt[e.id]=e.updatedAt;
   ENT.set(e.id,e);
@@ -3405,7 +3651,7 @@ function renderList(v){
       if(b) row.appendChild(el("img",{class:"thumb",src:b,alt:"",loading:"lazy"}));
     }
     if(vw.description!==false&&summary(e))
-      row.appendChild(el("div",{class:"rs",text:String(summary(e)).replace(/\[\[([^\]|]+)(\|[^\]]+)?\]\]/g,"$1").slice(0,220)}));
+      row.appendChild(el("div",{class:"rs",text:summaryText(summary(e)).slice(0,220)}));
     rows.appendChild(row);
   });
   v.appendChild(rows);
@@ -3859,8 +4105,16 @@ function fieldCell(e,cn,p,pd,val,txt,titel){
         onclick:function(ev){ ev.stopPropagation(); go({k:"art",id:ziel.id}); }},nameOf(ziel)));
       else dd2.appendChild(el("span",{class:"gone",text:String(v)}));
     });
+  } else if(pd.format==="long"&&typeof val[p]==="string"&&val[p].trim()){
+    /* Ein langes Feld ist Markdown (M10) — gezeichnet wie die Prosa, mit
+       Verweisen und Würfeln, nicht als eine Zeile voller Striche. */
+    dd2.appendChild(para(fillVars(val[p],null,e)));
   } else dd2.textContent=txt===""?"—":txt;
-  if(editable) dd2.addEventListener("click",function(){ UI.editField=id; render(); });
+  /* Ein Klick auf einen Verweis oder Würfel im Text ist kein Klick zum
+     Bearbeiten. */
+  if(editable) dd2.addEventListener("click",function(ev){
+    if(ev.target&&ev.target.closest&&ev.target.closest("button,a"))return;
+    UI.editField=id; render(); });
   cell.appendChild(dd2);
   return cell;
 }
@@ -4221,7 +4475,9 @@ function elProse(e,ifn,item){
       var text=para(fillVars(x.value,null,e));
       if(canWrite()&&!inPlacement){
         text.classList.add("editable");
-        text.addEventListener("click",function(){ UI.editField=x.ref; render(); });
+        text.addEventListener("click",function(ev){
+          if(ev.target&&ev.target.closest&&ev.target.closest("button,a"))return;
+          UI.editField=x.ref; render(); });
       }
       box.appendChild(text);
     }
@@ -6524,8 +6780,11 @@ function elLive(e,ifn,item){
    Wurf nicht sieht, glaubt ihn nicht. Kein `eval` — dieselbe Regel wie beim
    Rechenwerk: Registerzeilen und Eingaben sind Daten. */
 function rollDice(ausdruck){
-  var txt=String(ausdruck||"").replace(/\s+/g,"").toLowerCase();
+  var txt=String(ausdruck||"").replace(/\s+/g,"").replace(/−/g,"-").toLowerCase();
   if(!txt)return null;
+  /* Nur ein Modifikator (`{{+4}}`, aus `{@hit 4}`) ist ein Wurf auf den W20
+     mit diesem Bonus — wie `parseDice` im Paket (M12). */
+  if(/^[+-]\d+$/.test(txt)) txt="1d20"+txt;
   var teile=txt.match(/[+-]?[^+-]+/g);
   if(!teile)return null;
   var summe=0, wuerfe=[], ok=true;
@@ -6533,7 +6792,7 @@ function rollDice(ausdruck){
     var vz=1;
     if(t.charAt(0)==="+")t=t.slice(1);
     else if(t.charAt(0)==="-"){ vz=-1; t=t.slice(1); }
-    var m=/^(\d*)d(\d+)$/.exec(t);
+    var m=/^(\d*)[dw](\d+)$/.exec(t);
     if(m){
       var n=Math.min(100,Math.max(1,parseInt(m[1]||"1",10)));
       /* Mindestens eine Seite, nicht zwei: ein W1 ist albern, aber er

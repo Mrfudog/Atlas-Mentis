@@ -146,4 +146,11 @@ describe('idLinks (M11)', () => {
     expect(linkCandidates(bestand, 'goblin').map((e) => e.id)).toEqual(['p2', 'p3']);
     expect(linkCandidates(bestand, '')).toEqual([]);
   });
+
+  it('does not count an instance as a namesake of its template', () => {
+    const instanz = { ...art('p4', 'Goblin', 'sb-0419'), relations: [{ id: 'r', type: 'instanceOf', to: 'p2' }] };
+    expect(linkCandidates([bestand[0]!, bestand[1]!, instanz as Entity], 'Goblin').map((e) => e.id)).toEqual([
+      'p2',
+    ]);
+  });
 });
