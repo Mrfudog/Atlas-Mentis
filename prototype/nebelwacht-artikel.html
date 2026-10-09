@@ -1221,6 +1221,19 @@ var DERIVED_FN={
     var k=String(raw==null?"":raw); if(!ABIL_KEYS[k])return null;
     var w=look(k); if(w===AMBIG||w==null||w==="")return null;
     var n=Number(w); return isFinite(n)?Math.floor((n-10)/2):null; },
+  /* **Eine Summe über die eigenen Kanten** (M3): `sum(hasClass.level)` ist
+     die Stufe einer Figur, Kämpfer 3 und Magier 2 sind Stufe 5. Keine
+     solche Kante heisst kein Wert — eine Figur ohne Klasse hat keine
+     Stufe 0. Wie `sum` im Paket. */
+  sum:function(raw,look,key,kanten){
+    var i=String(key).indexOf("."); if(i<=0)return null;
+    var typ=key.slice(0,i), feld=key.slice(i+1), summe=0, n=0;
+    (kanten||[]).forEach(function(r){
+      if(r.type!==typ)return;
+      var z=Number((r.props||{})[feld]); if(!isFinite(z))return;
+      summe+=z; n++;
+    });
+    return n?summe:null; },
   rowCount:function(raw){ return asRows(raw).length; },
   colCount:function(raw){ return asRows(raw).reduce(function(m,r){return Math.max(m,r.length);},0); },
   cellCount:function(raw){ return asRows(raw).reduce(function(sum,r){
@@ -1231,7 +1244,7 @@ var DERIVED_FN={
    die sechs Werte, und der SG braucht beide. Was die eigene Karte trägt,
    gewinnt; tragen zwei andere denselben Namen verschieden, gibt es keinen
    Wert. Wie `derivedValue` im Paket. */
-function derivedValue(pd,val,karten){
+function derivedValue(pd,val,karten,kanten){
   if(!pd||!pd.derived)return undefined;
   var siblings=val||{}, leer=false;
   function look(k){
@@ -1246,11 +1259,11 @@ function derivedValue(pd,val,karten){
     return w;
   }
   /* Funktionen zuerst: ihr Argument ist ein Feldname, kein Ausdruck. */
-  var expr=String(pd.derived).replace(/([A-Za-z_][A-Za-z0-9_]*)\(\s*([A-Za-z0-9_]+)\s*\)/g,
+  var expr=String(pd.derived).replace(/([A-Za-z_][A-Za-z0-9_]*)\(\s*([A-Za-z0-9_.]+)\s*\)/g,
     function(whole,fn,key){
       if(!DERIVED_FN[fn])return whole;
-      var raw=look(key); if(raw===AMBIG){ leer=true; return "(0)"; }
-      var r=DERIVED_FN[fn](raw,look); if(r===null){ leer=true; return "(0)"; }
+      var raw=key.indexOf(".")>=0?undefined:look(key); if(raw===AMBIG){ leer=true; return "(0)"; }
+      var r=DERIVED_FN[fn](raw,look,key,kanten); if(r===null){ leer=true; return "(0)"; }
       return "("+r+")";
     });
   expr=expr.replace(/[A-Za-z_][A-Za-z0-9_]*/g,function(k){
@@ -1556,33 +1569,84 @@ function enumWerte(p){
   return raus.length?raus:null;
 }
 /* Dieselben Werte, aber **je Zeile getrennt**: worin jemand geübt ist, kommt
-   aus sechs Listen, und eine Maske, die sie in einen Topf wirft, macht aus
-   fünfunddreissig Wörtern eine Wand. Genannte Zeilen, die es nicht gibt,
-   fallen weg — eine fehlende Zeile ist keine leere Liste. */
+   aus sechs Quellen, und eine Maske, die sie in einen Topf wirft, macht aus
+   ihnen eine Wand. Genannte Zeilen, die es nicht gibt, fallen weg — eine
+   fehlende Zeile ist keine leere Liste.
+
+   **Ein Name darf eine Artikelart sein (M6, D50):** dann sind die Werte
+   die Namen der sichtbaren Artikel dieser Art, Untertypen ja, Instanzen
+   nein, und `enumWhere` engt ein (von den Gegenständen nur die Werkzeuge).
+   `Typ.feld` nennt die Liste eines Feldes (`Weapon.category`). Dieselbe
+   Regel wie `enumGroups` im Paket. */
+function enumRefArt(n){
+  if((REG.enums||{})[n]) return "enum";
+  if(REG.interfaces[n]) return "type";
+  var i=String(n).indexOf(".");
+  if(i>0){
+    var pd=((REG.interfaces[n.slice(0,i)]||{}).schema||{}).properties||{};
+    if(pd[n.slice(i+1)]) return "field";
+  }
+  return null;
+}
 function enumGruppen(p){
   var refs=p&&p.enumRef;
   if(!refs) return [];
   var namen=Array.isArray(refs)?refs:[refs];
   var raus=[];
   namen.forEach(function(n){
-    var z=(REG.enums||{})[n];
-    if(!z||!Array.isArray(z.values)||!z.values.length)return;
-    raus.push({name:n,label:z.label||n,values:z.values});
+    var art=enumRefArt(n);
+    if(art==="enum"){
+      var z=REG.enums[n];
+      if(!Array.isArray(z.values)||!z.values.length)return;
+      raus.push({name:n,label:z.label||n,values:z.values,from:"enum"});
+    } else if(art==="type"){
+      var filter=(p.enumWhere||{})[n]||null, werte=[];
+      ENT.forEach(function(e){
+        if(!articleVisible(e)||isInstance(e))return;
+        if(selfAndAncestors((e.interfaces||[])[0]).indexOf(n)<0)return;
+        if(filter&&!passtWhere(e,filter))return;
+        var nm=rawName(e);
+        if(nm&&werte.indexOf(nm)<0) werte.push(nm);
+      });
+      werte.sort(function(a,b){ return a.localeCompare(b); });
+      raus.push({name:n,label:(REG.interfaces[n]||{}).label||n,values:werte,from:"type"});
+    } else if(art==="field"){
+      var i=n.indexOf("."), typ=n.slice(0,i), feld=n.slice(i+1);
+      var fd=REG.interfaces[typ].schema.properties[feld];
+      if(!Array.isArray(fd["enum"])||!fd["enum"].length)return;
+      raus.push({name:n,label:(REG.interfaces[typ].label||typ)+" \u00b7 "+(fd.title||feld),
+        values:fd["enum"],from:"field"});
+    }
   });
   return raus;
+}
+/* Ein Filter aus `enumWhere`: je Feld die Werte, von denen einer stehen
+   muss. Gesucht wird in jeder Karte des Artikels. */
+function passtWhere(e,filter){
+  return Object.keys(filter).every(function(feld){
+    var w;
+    Object.keys(e.components||{}).some(function(cn){
+      var c=e.components[cn]||{};
+      if(Object.prototype.hasOwnProperty.call(c,feld)){ w=c[feld]; return true; }
+      return false;
+    });
+    var werte=Array.isArray(w)?w.map(String):(w==null?[]:[String(w)]);
+    return werte.some(function(x){ return filter[feld].indexOf(x)>=0; });
+  });
+}
+/* **Die Art schlägt vor, die Zeile hält** (D50): ein Feld, das eine
+   Artikelart nennt, nimmt auch einen Namen an, den die Liste heute nicht
+   kennt. */
+function enumHaelt(p){
+  if(!p) return false;
+  if(Array.isArray(p["enum"])&&p["enum"].length) return true;
+  var refs=p.enumRef; if(!refs) return false;
+  return (Array.isArray(refs)?refs:[refs]).every(function(n){ return enumRefArt(n)!=="type"; });
 }
 /** Aus welcher genannten Zeile dieser Wert kommt. */
 function enumQuelle(p,wert){
   var g=enumGruppen(p).filter(function(x){ return x.values.indexOf(wert)>=0; })[0];
   return g?g.name:null;
-}
-/** Die Werte eines Feldes, die aus **dieser** Zeile kommen. */
-function werteAusZeile(karte,typ,feld,zeile){
-  var p=((REG.interfaces[typ]||{}).schema||{}).properties||{};
-  var pd=p[feld]||{};
-  var drin=(karte||{})[feld];
-  if(!Array.isArray(drin)) return [];
-  return drin.filter(function(v){ return enumQuelle(pd,v)===zeile; });
 }
 function fieldKind(p){
   if(!p) return "text";
@@ -2213,9 +2277,9 @@ function zonesInput(pd,cur){
  *
  * Häkchen und kein Mehrfach-Auswahlfeld: fünfunddreissig Wörter in einem
  * `select multiple` sind eine Liste, in der man mit der Maus rutscht und
- * seine Wahl wieder verliert. Gruppiert nach Zeile, weil „geübt in" aus
- * Fertigkeiten, Werkzeugen, Sprachen, Waffen, Rüstungen und Wissensgebieten
- * kommt und die Herkunft die halbe Auskunft ist.
+ * seine Wahl wieder verliert. Gruppiert nach Zeile oder Art, weil „geübt
+ * in" aus Fertigkeiten, Sprachen, Werkzeugen, Waffen und den Waffen- und
+ * Rüstungsgruppen kommt und die Herkunft die halbe Auskunft ist.
  *
  * Nach ausserhalb sieht der Kasten aus wie ein Textfeld: `value` gibt die
  * Werte durch Komma getrennt zurück, und damit liest `fieldValue` ihn wie
@@ -2226,7 +2290,9 @@ function choiceListInput(pd,cur){
   var gewaehlt=Array.isArray(cur)?cur.slice():(cur==null||cur===""?[]:String(cur)
     .split(",").map(function(x){return x.trim();}).filter(Boolean));
   var box=el("div",{class:"choicebox"});
-  var gruppen=enumGruppen(pd);
+  /* Eine genannte Art ohne sichtbaren Artikel ist eine leere Gruppe — sie
+     zeigt nichts an (M6). */
+  var gruppen=enumGruppen(pd).filter(function(g){ return g.values.length; });
   var eigene=Array.isArray(pd["enum"])&&pd["enum"].length?pd["enum"]:null;
   if(eigene) gruppen=[{name:"",label:"",values:eigene}].concat(gruppen);
   if(!gruppen.length){
@@ -2259,8 +2325,28 @@ function choiceListInput(pd,cur){
     });
     box.appendChild(reihe);
   });
+  /* **Was keine Liste kennt, bleibt stehen** (D50): nennt das Feld eine
+     Artikelart, ist ein Name der heutige Stand — die Hausregel
+     „Nebelkunde" bekommt ihren Artikel vielleicht erst morgen. Solche
+     Werte stehen in einem Textfeld darunter, statt beim nächsten
+     Speichern still zu verschwinden. */
+  var bekannt={};
+  gruppen.forEach(function(g){ g.values.forEach(function(v){ bekannt[v]=1; }); });
+  var weitere=null;
+  if(!enumHaelt(pd)){
+    var uebrig=gewaehlt.filter(function(v){ return !bekannt[v]; });
+    gewaehlt=gewaehlt.filter(function(v){ return bekannt[v]; });
+    box.appendChild(el("div",{class:"cgroup",text:"Other"}));
+    weitere=el("input",{class:"i",type:"text",value:uebrig.join(", "),
+      placeholder:"names without an article yet, comma separated"});
+    box.appendChild(weitere);
+  }
   Object.defineProperty(box,"value",{
-    get:function(){ return gewaehlt.join(", "); },
+    get:function(){
+      var frei=weitere?String(weitere.value||"").split(",").map(function(x){ return x.trim(); })
+        .filter(Boolean):[];
+      return gewaehlt.concat(frei.filter(function(v){ return gewaehlt.indexOf(v)<0; })).join(", ");
+    },
     set:function(v){ /* Die Wahl steht in den Häkchen; ein Setzen von
                         aussen käme nur vom Zurücksetzen der Maske. */ },
   });
@@ -4379,7 +4465,7 @@ function fieldPlan(e,ifn,want,ausser){
          ausgegeben — eine Zeile mehr, die niemand anfassen darf. */
       if(cn==="Identity"&&(p==="name"||p==="id"))return;
       var titel=fieldTitle(ifn,cn,p,pd);
-      var txt=fmtVal(pd, pd.derived?derivedValue(pd,val,e.components):val[p], ifn);
+      var txt=fmtVal(pd, pd.derived?derivedValue(pd,val,e.components,e.relations):val[p], ifn);
       if(txt===""){
         if(!pd.derived&&!pd.readOnly) frei.push({cn:cn,p:p,pd:pd,ref:cn+"."+p,titel:titel,
           label:(REG.interfaces[cn].label||cn)+" · "+titel});
@@ -4391,7 +4477,7 @@ function fieldPlan(e,ifn,want,ausser){
         if(!gewaehlt&&!(UI.inline&&canWrite()&&!pd.derived&&!pd.readOnly))return;
       }
       (attach[p]||[]).forEach(function(dp){
-        var dv=fmtVal(props[dp],derivedValue(props[dp],val,e.components), ifn);
+        var dv=fmtVal(props[dp],derivedValue(props[dp],val,e.components,e.relations), ifn);
         if(dv!=="") txt+=" ("+dv+")";
       });
       cells.push({cn:cn,p:p,pd:pd,val:val,txt:txt,ref:cn+"."+p,titel:titel,
@@ -7650,13 +7736,13 @@ function craftMod(traeger,info){
   var sb=statsOf(traeger).card;
   var m=modOf(sb,(info.ability||"int"));
   var teile=[(info.ability||"int").toUpperCase()+" "+sgn(m)];
-  /* Die Werkzeugübungen stehen nicht mehr in einem eigenen Feld: sie sind
-     die Einträge in `proficient`, die aus der Zeile `Tool` kommen. Ein Feld
-     je Sorte hiesse dieselbe Frage sechsmal. */
-  var werkzeuge=werteAusZeile((traeger.components||{}).Proficiencies,
-    "Proficiencies","proficient","Tool");
-  var geuebt=info.tool&&werkzeuge.some(function(t){
-    return String(t).toLowerCase()===String(info.tool).toLowerCase(); });
+  /* Die Werkzeugübungen stehen nicht in einem eigenen Feld: sie sind die
+     Einträge in `proficient`. Seit M6 ist ein Werkzeug ein Gegenstand
+     (`itemType: tool`), und seit M5 stehen die Übungen am Statblock —
+     gefragt wird darum, ob der Name dort steht, egal aus welcher Gruppe. */
+  var sbT=statsOf(traeger).from;
+  var werkzeuge=(((sbT?resolvedOf(sbT):{}).components||{}).Proficiencies||{}).proficient||[];
+  var geuebt=info.tool&&nennt(werkzeuge,info.tool);
   if(geuebt){ var p=profOf(traeger); m+=p; teile.push("proficient "+sgn(p)); }
   return {mod:m,parts:teile,proficient:!!geuebt};
 }
@@ -8662,33 +8748,33 @@ function sbCard(o){
 }
 var ATTR6=["str","dex","con","int","wis","cha"];
 
-/* Fertigkeit zu Attribut: eine Kampagneneinstellung mit Rückfall, damit die
-   Seite auch ohne die Zeile rechnet. Fest im Code hiesse: eine Kampagne mit
-   anderen Fertigkeiten wäre eine Codeänderung. */
-var SKILLS_FALLBACK="acrobatics:dex,animalHandling:wis,arcana:int,athletics:str,"+
-  "deception:cha,history:int,insight:wis,intimidation:cha,investigation:int,"+
-  "medicine:wis,nature:int,perception:wis,performance:cha,persuasion:cha,"+
-  "religion:int,sleightOfHand:dex,stealth:dex,survival:wis";
 /**
- * Die Fertigkeiten: **welche es gibt**, sagt die Aufzählungszeile `Skill`;
- * **worauf jede rechnet**, sagt die Einstellung `skills` (`stealth:dex`).
+ * **Die Fertigkeiten sind Artikel** (M6, D50): welche es gibt, sagen die
+ * sichtbaren `Skill`-Artikel, **worauf jede rechnet**, ihr Feld `ability`.
+ * Das stand an zwei Stellen — die Aufzählungszeile `Skill` sagte, was es
+ * gibt, die Einstellung `skills` (`stealth:dex`), wie gerechnet wird —,
+ * weil ein Wort in einer Liste keine Zuordnung tragen kann. Ein Artikel
+ * kann es, und er trägt den Regeltext gleich mit.
  *
- * Zwei Stellen, aber nicht zweimal dasselbe — eine Liste von Wörtern kann
- * keine Zuordnung tragen, und eine Zuordnung, die auch die Liste wäre,
- * liesse sich in der Maske nicht ankreuzen. Steht eine Fertigkeit nur in
- * der Einstellung, kommt sie mit; steht sie nur in der Zeile, rechnet sie
- * auf `dex`. Keine der beiden verschwindet still.
+ * Der Schlüssel ist der Name, wie er in `Proficiencies.proficient` steht.
+ * Eine Fertigkeit ohne Attribut rechnet auf `dex` und steht trotzdem da.
  */
 function skillList(){
-  var zu={};
-  String(setting("skills",SKILLS_FALLBACK)).split(",").forEach(function(p){
-    var t=p.split(":"); var k=(t[0]||"").trim();
-    if(k) zu[k]=(t[1]||"dex").trim();
+  var raus=[];
+  ENT.forEach(function(e){
+    if(!articleVisible(e)||isInstance(e))return;
+    if(selfAndAncestors((e.interfaces||[])[0]).indexOf("Skill")<0)return;
+    var ab=String(((e.components||{}).Skill||{}).ability||"dex");
+    raus.push({key:rawName(e),attr:ATTR6.indexOf(ab)>=0?ab:"dex",id:e.id});
   });
-  var zeile=((REG.enums||{}).Skill||{}).values;
-  var keys=Array.isArray(zeile)&&zeile.length?zeile.slice():Object.keys(zu);
-  Object.keys(zu).forEach(function(k){ if(keys.indexOf(k)<0) keys.push(k); });
-  return keys.map(function(k){ return {key:k,attr:zu[k]||"dex"}; });
+  return raus.sort(function(a,b){ return a.key.localeCompare(b.key); });
+}
+/* Steht dieser Name in der Liste? Ohne Rücksicht auf Gross und klein:
+   „Perception" und „perception" sind dieselbe Übung, und eine Liste aus
+   der Zeit vor M6 schrieb sie klein. */
+function nennt(liste,name){
+  var n=String(name).toLowerCase();
+  return (liste||[]).some(function(x){ return String(x).toLowerCase()===n; });
 }
 /**
  * **Ein Zustand ist ein Regelartikel** (`Rule.kind = condition`), eine
@@ -8986,11 +9072,19 @@ function modOf(card,attr){
   var n=Number(card[attr]);
   return isFinite(n)?Math.floor((n-10)/2):0;
 }
+/* **Die Stufe einer Figur ist gerechnet** (M3, D8): die Summe ihrer
+   `hasClass`-Stufen, mit der Formel aus dem Register. Ohne Klasse keine
+   Stufe — `undefined`, nicht 0. */
+function charLevel(e){
+  var pd=((REG.interfaces.PlayerCharacter||{}).schema||{}).properties||{};
+  if(!pd.level)return undefined;
+  return derivedValue(pd.level,(e.components||{}).PlayerCharacter||{},e.components,e.relations);
+}
 function profOf(e){
   var ch=(e.components||{}).PlayerCharacter||{};
-  if(ch.level!==undefined){
-    var pd=((REG.interfaces.PlayerCharacter||{}).schema||{}).properties||{};
-    var d=pd.proficiency&&derivedValue(pd.proficiency,ch);
+  var pd=((REG.interfaces.PlayerCharacter||{}).schema||{}).properties||{};
+  if(pd.proficiency){
+    var d=derivedValue(pd.proficiency,ch,e.components,e.relations);
     if(d!==undefined)return d;
   }
   var sb=statsOf(e).card;
@@ -9049,7 +9143,17 @@ function elSheet(e,ifn,item){
   if(!statblockOf(e))return null;
   var st=statsOf(e), sb=st.card;
   var vit=(e.components||{})[VIT_COMP]||{};
-  var sk=(e.components||{})[SKILL_COMP]||{};
+  /* **Die Übungen wohnen am Statblock** (M5), wie die Zahlen: gelesen aus
+     dem aufgelösten (eine Instanz liest ihre Vorlage mit), geschrieben in
+     ihn — `persist` dünnt eine Instanz danach wieder aus. */
+  var sbE=st.from?resolvedOf(st.from):null;
+  var sk=sbE?((sbE.components||{})[SKILL_COMP]||{}):{};
+  function schreibSk(patch){
+    if(!sbE)return;
+    sbE.components=Object.assign({},sbE.components||{});
+    sbE.components[SKILL_COMP]=Object.assign({},sk,patch);
+    persist(sbE);
+  }
   var ch=(e.components||{}).PlayerCharacter||{};
   var prof=profOf(e);
   var wrap=el("div",{class:"sheet"});
@@ -9081,11 +9185,12 @@ function elSheet(e,ifn,item){
   strip.appendChild(vitalPlain("Speed",sb.speed||"—"));
   strip.appendChild(vitalPlain("Prof",sgn(prof)));
   strip.appendChild(vitalPlain("Pass. per.",10+modOf(sb,"wis")+
-    ((sk.proficient||[]).indexOf("perception")>=0?prof:0)));
+    /* Expertise zählt doppelt, wie in der Fertigkeitenliste darunter. */
+    (nennt(sk.expertise,"perception")?2*prof:(nennt(sk.proficient,"perception")?prof:0))));
 
   /* Trefferwürfel als Punkte: wie viele noch da sind, sieht man, ohne zu
      rechnen — und eine kurze Rast ist ein Tipp, kein Formular. */
-  var hdMax=Number(ch.level)||Number(sb.hitDice)||0;
+  var hdMax=Number(charLevel(e))||Number(sb.hitDice)||0;
   if(hdMax){
     var hdBox=el("div",{class:"vital"});
     hdBox.appendChild(el("div",{class:"vk",text:"Hit dice"}));
@@ -9174,8 +9279,7 @@ function elSheet(e,ifn,item){
     if(canWrite()) sv.addEventListener("click",function(){
       var liste=sk.saves||[];
       var neu=geuebt?liste.filter(function(x){return x!==a;}):liste.concat([a]);
-      e.components[SKILL_COMP]=Object.assign({},sk,{saves:neu});
-      persist(e);
+      schreibSk({saves:neu});
     });
     else sv.disabled=true;
     box.appendChild(sv);
@@ -9188,18 +9292,21 @@ function elSheet(e,ifn,item){
   var sg=el("div",{class:"skillgrid"});
   var pl=sk.proficient||[], ex=sk.expertise||[];
   skillList().forEach(function(s2){
-    var stufe=ex.indexOf(s2.key)>=0?2:(pl.indexOf(s2.key)>=0?1:0);
-    var wert=modOf(sb,s2.attr)+prof*stufe;
+    var stufe=nennt(ex,s2.key)?2:(nennt(pl,s2.key)?1:0);
+    /* Ein fester Bonus aus dem Buch (`Statblock.bonuses`) gilt statt der
+       Rechnung: der Goblin hat Heimlichkeit +6, wo DEX und Übung +4 ergäben. */
+    var fest=(sb.bonuses||{})[s2.key];
+    var wert=isFinite(Number(fest))&&fest!==null&&fest!==""?Number(fest):modOf(sb,s2.attr)+prof*stufe;
     var row=el("div",{class:"skillrow"});
     var dot=el("button",{class:"sdot s"+stufe,type:"button",
       title:["not proficient","proficient","expertise"][stufe]});
-    if(canWrite()) dot.addEventListener("click",function(){
-      var np=pl.filter(function(x){return x!==s2.key;});
-      var ne=ex.filter(function(x){return x!==s2.key;});
+    if(canWrite()&&sbE) dot.addEventListener("click",function(){
+      var gleich=function(x){ return String(x).toLowerCase()!==s2.key.toLowerCase(); };
+      var np=pl.filter(gleich);
+      var ne=ex.filter(gleich);
       if(stufe===0) np.push(s2.key);
       else if(stufe===1) ne.push(s2.key);
-      e.components[SKILL_COMP]=Object.assign({},sk,{proficient:np,expertise:ne});
-      persist(e);
+      schreibSk({proficient:np,expertise:ne});
     });
     else dot.disabled=true;
     row.appendChild(dot);
@@ -9209,6 +9316,8 @@ function elSheet(e,ifn,item){
     row.appendChild(el("span",{class:"smod",text:sgn(wert)}));
     sg.appendChild(row);
   });
+  if(!skillList().length) wrap.appendChild(el("span",{class:"hint",
+    text:"No skill articles yet — create one of the type “Skill” with its ability."}));
   wrap.appendChild(sg);
 
   /* ---- Die übrigen Übungen ----
@@ -9224,6 +9333,13 @@ function elSheet(e,ifn,item){
       werte:(sk.proficient||[]).filter(function(v){ return g.values.indexOf(v)>=0; }),
       exp:(sk.expertise||[]).filter(function(v){ return g.values.indexOf(v)>=0; })};
   }).filter(function(x){ return x.werte.length; });
+  /* Was keine Liste kennt (eine Fertigkeit ohne Artikel, eine Hausregel),
+     steht trotzdem da — gespeichert ist es, also wird es gezeigt (D50). */
+  var irgendwo=function(v){ return skillList().some(function(x){ return x.key.toLowerCase()===String(v).toLowerCase(); })
+    ||uebrig.some(function(g){ return g.values.indexOf(v)>=0; }); };
+  var sonst=(sk.proficient||[]).filter(function(v){ return !irgendwo(v); });
+  if(sonst.length) zeilenMitWerten.push({label:"Other",werte:sonst,
+    exp:(sk.expertise||[]).filter(function(v){ return sonst.indexOf(v)>=0; })});
   if(zeilenMitWerten.length){
     wrap.appendChild(el("div",{class:"sec",text:"Also proficient in"}));
     var pl2=el("div",{class:"proflist"});
@@ -11576,8 +11692,9 @@ function campaignVars(){
   var sig=ENT.size+"|"+JSON.stringify(REG.settings||{});
   if(sig===computedSig&&computedCache)return computedCache;
   var p=theParty(), mit=partyMembers(p);
+  /* Die Stufe ist gerechnet (M3): die Summe der Klassenkanten. */
   var stufen=mit.map(function(m){
-    return Number(((m.components||{}).PlayerCharacter||{}).level);
+    return Number(charLevel(m));
   }).filter(function(n){ return isFinite(n)&&n>0; });
   var mittel=stufen.length?Math.round(stufen.reduce(function(a,b){return a+b;},0)/stufen.length):0;
   var ort=partyPlace(p);
@@ -12450,7 +12567,9 @@ function renderEnumEditor(v){
     var props=((REG.interfaces[t]||{}).schema||{}).properties||{};
     Object.keys(props).forEach(function(k){
       var ref=(props[k]||{}).enumRef; if(!ref)return;
-      (nutzer[ref]=nutzer[ref]||[]).push(t+"."+k);
+      /* Ein Feld darf mehrere nennen — dann zählt es bei jeder. */
+      (Array.isArray(ref)?ref:[ref]).forEach(function(r){
+        (nutzer[r]=nutzer[r]||[]).push(t+"."+k); });
     });
   });
 
@@ -12670,9 +12789,14 @@ var BEGRIFFE=[
    "A type in one place — the fact it records there: a key, a label, a "+
    "kind, required or optional, maybe a default, maybe a calculation. A "+
    "choice either carries its own words or names choice lists, never "+
-   "both — several lists count together, which is how “proficient in” "+
-   "draws on skills, tools, languages, weapons, armour and fields of "+
-   "knowledge at once. As an array the same field holds several of them: "+
+   "both — several lists count together. A choice may also name an "+
+   "article type: its values are then the names of the articles of that "+
+   "type you can see, which is how “proficient in” draws on the skills and "+
+   "languages, the tools among the items and the weapons, plus the words of "+
+   "Weapon.category and Armor.armorType. A skill carries its own ability, "+
+   "so no setting has to say that Stealth runs on DEX. Names from articles "+
+   "suggest and do not hold: a renamed article would otherwise make a "+
+   "stored proficiency wrong in hindsight. As an array the same field holds several of them: "+
    "one ability carries a check, several abilities are saving throws. A "+
    "number may carry a range (1 to 20 is a range, not twenty words). A "+
    "A field may say it is always an input (a state set mid-turn: current "+
@@ -12744,7 +12868,13 @@ var BEGRIFFE=[
    "charges) — the same Fireball is prepared by the mage and worth three "+
    "charges in the staff. An item may carry an inventory of its own (a "+
    "backpack), and the piece at the table may be an instance of the item "+
-   "in the book (the +1 longsword stores only what differs)."],
+   "in the book (the +1 longsword stores only what differs). A character "+
+   "has its classes as edges, each with its level (hasClass: Fighter 3, "+
+   "Wizard 2 with the subclass on the edge), and one ancestry and one "+
+   "background; its level is the sum of those edges, worked out on read. "+
+   "What a class, an ancestry or a background gives is an edge as well "+
+   "(grants), with the level on the edge — the same Ability Score "+
+   "Improvement comes at 4, 6 and 8, one article and three edges."],
   ["Unit",
    "How a measure is written and converted. The vault is imperial because "+
    "the rules are; at the table sit people for whom forty feet means "+
@@ -13114,6 +13244,49 @@ function renderHowto(v){
       "casts → Fireball      mode prepared\n"+
       "Wand of Magic Missiles  casts → Magic Missile   mode item · charges 1";
     v.appendChild(el("pre",{class:"code",text:rechnung}));
+  }
+
+  /* ---- Charakterbau, durchgerechnet (M3, M6) ----
+     Mit den Formeln aus dem Register und derselben Rechnung, die der
+     Bogen nimmt: ändert jemand `level` oder `proficiency` an der Figur,
+     ändert sich das Beispiel mit. Die Übungsgruppen kommen aus dem
+     Register, die Namen darin aus dem Bestand, den man gerade sieht. */
+  var pcP=((REG.interfaces.PlayerCharacter||{}).schema||{}).properties||{};
+  if(pcP.level&&pcP.level.derived){
+    v.appendChild(el("div",{class:"rsec",text:"A character, its classes, and what it is proficient in"}));
+    v.appendChild(el("p",{class:"hint"},
+      "Class, subclass, ancestry and background are rules with fields of "+
+      "their own. A character points at them: hasClass once per class with "+
+      "the level on the edge (and the subclass with it), hasAncestry and "+
+      "hasBackground once. Its level is never typed — it is the sum of the "+
+      "class edges, worked out on read, and the proficiency bonus follows "+
+      "from it. What a class or an ancestry gives is a grants edge with the "+
+      "level it comes at. Proficiencies live on the statblock with the "+
+      "other numbers, and they are names: of skill and language articles, "+
+      "of the items that are tools, of weapons, and the words of the weapon "+
+      "and armour groups. A skill says which ability it runs on."));
+    var kantenBsp=[
+      {type:"hasClass",to:"Fighter",props:{level:3,subclass:"Champion"}},
+      {type:"hasClass",to:"Wizard",props:{level:2}},
+      {type:"hasAncestry",to:"Hill Dwarf",props:{}},
+      {type:"hasBackground",to:"Acolyte",props:{}}];
+    var lvB=derivedValue(pcP.level,{},{},kantenBsp);
+    var pfB=pcP.proficiency?derivedValue(pcP.proficiency,{},{},kantenBsp):undefined;
+    var profP=((REG.interfaces.Proficiencies||{}).schema||{}).properties||{};
+    var quellen=enumGruppen(profP.proficient).map(function(g){
+      return "  "+g.name+(g.from==="type"?"  ("+g.values.length+" visible)":"  "+g.values.join(", "));
+    }).join("\n");
+    var rechnung2=
+      "hasClass → Fighter    level 3 · subclass Champion\n"+
+      "hasClass → Wizard     level 2\n"+
+      "hasAncestry → Hill Dwarf   (subraceOf → Dwarf)\n"+
+      "hasBackground → Acolyte\n\n"+
+      "level        = "+pcP.level.derived+"  →  "+(lvB==null?"—":lvB)+"\n"+
+      (pcP.proficiency?"proficiency  = "+pcP.proficiency.derived+"  →  "+fmtVal(pcP.proficiency,pfB)+"\n":"")+
+      "\nFighter  grants → Second Wind  at 1\n"+
+      "Fighter  grants → Ability Score Improvement  at 4, 6, 8 …\n\n"+
+      "Statblock · Proficiencies.proficient draws on\n"+(quellen||"  —");
+    v.appendChild(el("pre",{class:"code",text:rechnung2}));
   }
 
   /* ---- Wer einen Artikel sehen darf ----
@@ -14317,10 +14490,10 @@ function fieldMore(cn,k,within,w,saveC){
 
   var art=fieldKind(p);
   if(art==="choice"||art==="choices"){
-    /* **Woher die Werte kommen**: aus Aufzählungszeilen oder vom Feld
-       selbst. Mehrere Zeilen sind erlaubt und gelten zusammen — worin
-       jemand geübt ist, kommt aus Fertigkeiten, Werkzeugen, Sprachen,
-       Waffen, Rüstungen und Wissensgebieten. Eigene Wörter am Feld gibt es
+    /* **Woher die Werte kommen**: aus Aufzählungszeilen, aus Artikeln
+       einer Art (M6) oder vom Feld selbst. Mehreres ist erlaubt und gilt
+       zusammen — worin jemand geübt ist, kommt aus Fertigkeiten, Sprachen,
+       Werkzeugen, Waffen und den Waffen- und Rüstungsgruppen. Eigene Wörter am Feld gibt es
        nur, solange keine Zeile genannt ist: beides zugleich wären zwei
        Antworten auf dieselbe Frage. */
     var genannt=p.enumRef?(Array.isArray(p.enumRef)?p.enumRef.slice():[p.enumRef]):[];
@@ -14348,6 +14521,25 @@ function fieldMore(cn,k,within,w,saveC){
       reihe.appendChild(lab);
     });
     kasten.appendChild(reihe);
+    /* **Oder aus Artikeln** (M6, D50): eine Art nennt die Namen ihrer
+       sichtbaren Artikel, `Typ.feld` die Liste eines Feldes. Ein Feld, das
+       eine Art nennt, schlägt vor und hält nicht — ein Name ist der heutige
+       Stand. */
+    var ausArtikeln=el("input",{class:"i",type:"text",
+      value:genannt.filter(function(n){ return !(REG.enums||{})[n]; }).join(", "),
+      placeholder:"Skill, Language, Weapon.category"});
+    if(!w) ausArtikeln.disabled=true;
+    ausArtikeln.addEventListener("change",function(){
+      var neu=ausArtikeln.value.split(",").map(function(x){ return x.trim(); }).filter(Boolean);
+      var fehlt=neu.filter(function(n){ return !enumRefArt(n); });
+      if(fehlt.length){ UI.err="Not a type or a field: "+fehlt.join(", "); render(); return; }
+      genannt=genannt.filter(function(n){ return (REG.enums||{})[n]; }).concat(neu);
+      if(genannt.length){ p.enumRef=genannt.length===1?genannt[0]:genannt.slice(); delete p["enum"]; }
+      else delete p.enumRef;
+      saveC(); render();
+    });
+    kasten.appendChild(el("div",{class:"cgroup",text:"or the names of articles"}));
+    kasten.appendChild(ausArtikeln);
     box.appendChild(field("Choices from",kasten));
     if(!genannt.length) text("Choices (comma separated)",(p["enum"]||[]).join(", "),function(v){
       var xs=v.split(",").map(function(x){return x.trim();}).filter(Boolean);
@@ -14630,7 +14822,7 @@ function editEntity(e){
         var v=readInput(it); if(v!==undefined) live[it.cn][it.p]=v;
       });
       drvCells.forEach(function(c){
-        c.node.textContent=fmtVal(c.pd,derivedValue(c.pd,live[c.cn]||{},live))||"—";
+        c.node.textContent=fmtVal(c.pd,derivedValue(c.pd,live[c.cn]||{},live,e.relations))||"—";
       });
     }
     compsFor(ifn).forEach(function(cn){

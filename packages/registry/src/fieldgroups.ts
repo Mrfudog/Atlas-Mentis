@@ -15,6 +15,17 @@ interface FieldGroup {
   schema: ObjectSchema;
 }
 
+/**
+ * **Woraus eine Übung kommt** (M6, D50): Fertigkeiten und Sprachen als
+ * Artikel, Werkzeuge als Gegenstände (nur die mit einer Werkzeugart, siehe
+ * `TOOLS_ONLY`), einzelne Waffen als Artikel, Waffen- und Rüstungsgruppen
+ * als die Listen zweier Felder. Einmal hier, weil drei Felder sie nennen:
+ * `proficient`, `expertise` und die Wahl an Klasse, Abstammung,
+ * Hintergrund.
+ */
+const PROFICIENCY_SOURCES = ['Skill', 'Language', 'Item', 'Weapon', 'Weapon.category', 'Armor.armorType'];
+const TOOLS_ONLY = { Item: { itemType: ['tool', 'artisan tools', 'gaming set', 'instrument'] } };
+
 /* `satisfies` statt einer Annotation: so kennt der Übersetzer die Namen
    und `g.Vitals` ist nicht „vielleicht undefiniert". */
 export const fieldGroups = {
@@ -382,11 +393,9 @@ export const fieldGroups = {
       type: 'object',
       properties: {
         system: { type: 'string', suggest: true, title: 'System', default: 'dnd5e' },
-        size: {
-          type: 'string',
-          title: 'Size',
-          enum: ['winzig', 'klein', 'mittel', 'gross', 'riesig', 'gewaltig'],
-        },
+        /* Englisch wie das Regelwerk (E3), und eine Zeile, weil die
+           Abstammung dieselbe Liste nennt (M5). */
+        size: { type: 'string', title: 'Size', enumRef: 'Size' },
         /* Hiess `kind` und stand in der verlinkten Gruppe neben
            `Creature.kind` — zwei Felder „Kind", die nichts miteinander zu
            tun haben: dort die Sorte (npc, companion), hier der Kreaturentyp
@@ -408,10 +417,39 @@ export const fieldGroups = {
         /* `languages`, `saves` und `skills` standen hier als freier Text
            und zugleich als Listen an `Proficiencies` — dieselbe Sache
            zweimal, einmal zum Rechnen und einmal zum Lesen. Die Listen
-           gewinnen: darauf rechnet der Bogen. */
+           gewinnen: darauf rechnet der Bogen, und seit M5 nimmt der
+           Statblock `Proficiencies` selbst dazu. Welche Sprachen, steht
+           dort (aus den `Language`-Artikeln); was keine Sprache ist —
+           „telepathy 120 ft.", „understands Common but can't speak",
+           „any four languages" —, steht hier als Satz. */
+        languageNote: { type: 'string', title: 'Languages, besides' },
+        /* Die drei Schadensfelder bleiben Sätze: „bludgeoning, piercing,
+           and slashing from nonmagical attacks" ist keine Liste von Arten. */
         resistances: { type: 'string', title: 'Resistances' },
         vulnerabilities: { type: 'string', title: 'Vulnerabilities' },
         immunities: { type: 'string', title: 'Immunities' },
+        /* **Zustandsimmunitäten nennen Zustände** (M5): die Namen der
+           `Condition`-Artikel. Ein Vorschlag aus dem Bestand, keine Regel
+           (D50). */
+        conditionImmunities: {
+          type: 'array',
+          title: 'Condition immunities',
+          items: { type: 'string' },
+          enumRef: 'Condition',
+        },
+        /* Wie viele Legendäre Aktionen je Runde; die Aktionen selbst sind
+           `Action`-Artikel mit der Aktionsart „Legendary Action" über
+           `composedOf`. */
+        legendaryActions: { type: 'number', min: 1, title: 'Legendary actions per round' },
+        /* **Boni, die nicht aus Übung und Übungsbonus folgen** — bei Monstern
+           häufig: der Goblin hat Heimlichkeit +6, wo DEX und Übung +4 ergäben.
+           `{ "Stealth": 6, "dex": 4 }`: Fertigkeit oder Attribut (für den
+           Rettungswurf) auf den ganzen Bonus. Was hier nicht steht, rechnet
+           der Bogen. */
+        bonuses: { type: 'object', title: 'Fixed bonuses' },
+        /* Das Bild auf der Karte. Ein Asset und keine URL: die Bilder von
+           5e.tools kommen nicht herein (E5). */
+        token: { type: 'string', format: 'asset', title: 'Token' },
       },
     },
   },
@@ -505,9 +543,14 @@ export const fieldGroups = {
   },
 
   /**
-   * Eine Aktion: Dodge, Dash, und jede Aktion eines Statblocks. **Ohne
-   * Angriffsfelder** — `attack`, `toHit`, `reach`, `damage` kommen mit dem
-   * Statblock (P4). Die Art der Aktion ist Pflicht und ein Verweis.
+   * Eine Aktion: Dodge, Dash, und jede Aktion eines Statblocks. Die Art der
+   * Aktion ist Pflicht und ein Verweis.
+   *
+   * **Ein Angriff trägt seine Zahlen** (P4, Arbeitsplan §2.2): Treffer,
+   * Reichweite, Schaden und Schadensart stehen als Felder und nicht nur im
+   * Satz „{@hit 4} to hit, reach 5 ft." — dann kann die Initiative damit
+   * würfeln, statt Text zu lesen. Der Text bleibt daneben; er sagt, was die
+   * Felder nicht sagen („one target", „and the target is grappled").
    */
   ActionInfo: {
     schema: {
@@ -522,6 +565,24 @@ export const fieldGroups = {
         },
         recharge: { type: 'string', title: 'Recharge' },
         uses: { type: 'string', title: 'Uses' },
+        /* Welche Sorte Angriff — mehrere, wenn ein Dolch geworfen und
+           gestochen wird (5e.tools `{@atk mw,rw}`). Leer: kein Angriff. */
+        attack: {
+          type: 'array',
+          title: 'Attack',
+          items: { type: 'string' },
+          enum: ['melee weapon', 'ranged weapon', 'melee spell', 'ranged spell'],
+        },
+        /* Gegeben und nicht gerechnet: der Statblock nennt die Zahl, und
+           bei Monstern folgt sie oft nicht aus Attribut und Übung. */
+        toHit: { type: 'number', title: 'To hit', format: 'signed' },
+        reach: { type: 'number', min: 0, unit: 'ft', title: 'Reach' },
+        /* „80/320": normal und weit, wie an der Waffe. */
+        range: { type: 'string', format: 'measure', unit: 'ft', title: 'Range' },
+        /* Ein Würfelausdruck wie `1d6+2`, ohne {{…}}: das Feld ist die
+           Angabe selbst und kein Text. */
+        damage: { type: 'string', title: 'Damage' },
+        damageType: { type: 'string', title: 'Damage type', enumRef: 'DamageType' },
       },
     },
   },
@@ -529,13 +590,18 @@ export const fieldGroups = {
   /**
    * Merkmal — alles Dauerhafte: Klassen-, Volks-, Monstermerkmal,
    * Regionaleffekt. Dieselbe Sache an verschiedenen Trägern; welcher Träger,
-   * sagen Kanten (`composedOf` am Statblock, später `featureOf`).
+   * sagen Kanten (`composedOf` am Statblock, `grants` von Klasse,
+   * Abstammung, Hintergrund).
+   *
+   * **Die Stufe steht an der Kante** (`grants.props.level`, D50), nicht
+   * hier: „Ability Score Improvement" kommt beim Kämpfer auf Stufe 4, 6, 8
+   * … — ein Artikel, sieben Kanten. Ein Feld `level` am Merkmal hätte eine
+   * davon gewählt und die anderen verschwiegen.
    */
   FeatureInfo: {
     schema: {
       type: 'object',
       properties: {
-        level: { type: 'number', min: 1, max: 20, title: 'Level' },
         featureType: { type: 'string', suggest: true, title: 'Feature type' },
       },
     },
@@ -634,7 +700,7 @@ export const fieldGroups = {
         /* Ein Rettungswurf, selten zwei (5e.tools führt eine Liste). */
         save: { type: 'array', title: 'Saving throw', items: { type: 'string' }, enumRef: 'Ability' },
         attack: { type: 'string', title: 'Spell attack', enum: ['melee', 'ranged'] },
-        damageTypes: { type: 'array', title: 'Damage types', items: { type: 'string' } },
+        damageTypes: { type: 'array', title: 'Damage types', items: { type: 'string' }, enumRef: 'DamageType' },
       },
     },
   },
@@ -684,10 +750,175 @@ export const fieldGroups = {
     },
   },
 
-  /* Eine Fertigkeit ist auch das Werkzeug, mit dem jemand umgehen kann: in
-     5e stehen beide auf derselben Liste und werden gleich geprüft. `tool`
-     sagt, welche von beiden es ist — nicht zwei Artikelarten, die sich in
-     nichts unterscheiden ausser im Wort. */
+  /**
+   * **Eine Sprache (M6).** Sie stand als Wort in einer Aufzählungszeile;
+   * jetzt trägt sie, was 5e.tools von ihr weiss: Sorte, Schrift, wer sie
+   * spricht. Wer sie kann, steht in `Proficiencies.proficient`.
+   */
+  LanguageInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        languageType: {
+          type: 'string',
+          title: 'Language type',
+          enum: ['standard', 'exotic', 'rare', 'secret'],
+        },
+        script: { type: 'string', suggest: true, title: 'Script' },
+        typicalSpeakers: { type: 'string', title: 'Typical speakers' },
+      },
+    },
+  },
+
+  /**
+   * **Eine Wahl unter Übungen** (M3): „zwei aus Acrobatics, Athletics, …",
+   * „eines der Handwerkszeuge", „zwei Sprachen nach Wahl". Was fest
+   * gewährt wird, steht in `Proficiencies.proficient`; was gewählt wird,
+   * hier — `chooseFrom` aus denselben Listen, `chooseCount` wie viele, und
+   * `chooseNote` für die Wahl, die keine Liste hat („any two standard
+   * languages"). Klasse, Unterklasse, Abstammung und Hintergrund nehmen
+   * sie dazu; eine zweite Wahl an derselben Art ist ein Satz in der Notiz.
+   */
+  ProficiencyChoice: {
+    schema: {
+      type: 'object',
+      properties: {
+        chooseFrom: {
+          type: 'array',
+          title: 'Choose from',
+          items: { type: 'string' },
+          enumRef: PROFICIENCY_SOURCES,
+          enumWhere: TOOLS_ONLY,
+        },
+        chooseCount: { type: 'number', min: 1, title: 'How many to choose' },
+        chooseNote: { type: 'string', title: 'Choice' },
+      },
+    },
+  },
+
+  /**
+   * **Eine Klasse (M3).** Was sie festlegt: Trefferwürfel, Hauptattribut,
+   * Startausrüstung, die Voraussetzung für den Mehrklassen-Einstieg, wie
+   * sie zaubert und wie ihre Unterklassen heissen. Rettungswürfe und
+   * Startübungen nimmt sie über `Proficiencies` dazu, die Wahl über
+   * `ProficiencyChoice`.
+   *
+   * **Ihre Merkmale sind Kanten** (`grants` mit Stufe), ihre Stufentabelle
+   * (Wutanfälle, Hinterhältiger Angriff, Plätze je Grad) ist ein
+   * `Table`-Artikel über `tableFor` — beides stünde sonst als Liste hier,
+   * und die Klassentabelle entstünde zweimal.
+   */
+  ClassInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        hitDie: { type: 'number', min: 4, max: 12, title: 'Hit die' },
+        primaryAbility: {
+          type: 'array',
+          title: 'Primary ability',
+          items: { type: 'string' },
+          enumRef: 'Ability',
+        },
+        startingEquipment: { type: 'string', format: 'long', title: 'Starting equipment' },
+        /* „STR 13 or DEX 13" — ein Satz; die Regel wertet niemand aus. */
+        multiclassRequirement: { type: 'string', title: 'Multiclass requirement' },
+        /* Was beim Einstieg als zweite Klasse dazukommt — weniger als beim
+           Start (der Kämpfer bringt dann keine schwere Rüstung). */
+        multiclassProficient: {
+          type: 'array',
+          title: 'Proficiencies when multiclassing',
+          items: { type: 'string' },
+          enumRef: PROFICIENCY_SOURCES,
+          enumWhere: TOOLS_ONLY,
+        },
+        /* „Martial Archetype", „Divine Domain" — wie die Unterklassen
+           dieser Klasse heissen. */
+        subclassTitle: { type: 'string', title: 'Subclass title' },
+      },
+    },
+  },
+
+  /**
+   * **Wie eine Klasse oder Unterklasse zaubert** (M3): voll, halb, ein
+   * Drittel, Pakt — und mit welchem Attribut. Die Unterklasse trägt es
+   * auch: der Eldritch Knight zaubert, der Kämpfer nicht.
+   */
+  ClassCasting: {
+    schema: {
+      type: 'object',
+      properties: {
+        casterProgression: {
+          type: 'string',
+          title: 'Caster progression',
+          enum: ['full', 'half', 'third', 'pact', 'artificer'],
+        },
+        spellAbility: { type: 'string', title: 'Spellcasting ability', enumRef: 'Ability' },
+      },
+    },
+  },
+
+  /** Unterklasse (M3); zu welcher Klasse, sagt die Kante `subclassOf`. */
+  SubclassInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        /* Wie sie in einer Tabelle heisst: „Champion" statt „Path of the
+           Champion". */
+        shortName: { type: 'string', title: 'Short name' },
+      },
+    },
+  },
+
+  /**
+   * **Eine Abstammung (M3)** — spielbar, mit Zahlen: Grösse, Tempo,
+   * Attributsboni, Alter, Dunkelsicht. Ihre Merkmale (Dwarven Resilience)
+   * sind `Feature`-Artikel über `grants`, ihre Sprachen und Übungen stehen
+   * in `Proficiencies`. Eine Unterart (Hill Dwarf) ist eine Abstammung mit
+   * `subraceOf`.
+   *
+   * `Creature.species` bleibt daneben ein Wort: eine Goblinfigur ist keine
+   * spielbare Abstammung.
+   */
+  AncestryInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        /* Eine, selten zwei (Small oder Medium nach Wahl). */
+        size: { type: 'array', title: 'Size', items: { type: 'string' }, enumRef: 'Size' },
+        speed: { type: 'string', format: 'measure', unit: 'ft', title: 'Speed' },
+        /* `{ "con": 2 }` — Attribut auf Bonus. Eine Wahl („two different
+           +1") steht in `abilityNote`. */
+        abilityBonus: { type: 'object', title: 'Ability score increase' },
+        abilityNote: { type: 'string', title: 'Ability choice' },
+        /* Ein Satz: „mature at 20, live about 350 years". */
+        age: { type: 'string', title: 'Age' },
+        darkvision: { type: 'number', min: 0, unit: 'ft', title: 'Darkvision' },
+        creatureType: { type: 'string', suggest: true, title: 'Creature type', default: 'humanoid' },
+        resistances: { type: 'array', title: 'Damage resistances', items: { type: 'string' }, enumRef: 'DamageType' },
+      },
+    },
+  },
+
+  /**
+   * **Ein Hintergrund (M3).** Übungen und Sprachen über `Proficiencies`
+   * und `ProficiencyChoice`, das Merkmal (Shelter of the Faithful) über
+   * `grants`, die vier Charakterzug-Tabellen über `tableFor`. Eigen ist ihm
+   * nur die Startausrüstung.
+   */
+  BackgroundInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        startingEquipment: { type: 'string', format: 'long', title: 'Starting equipment' },
+      },
+    },
+  },
+
+  /* **Eine Fertigkeit ist ein Artikel, und ihr Attribut steht an ihr**
+     (M6). Es stand in der Einstellung `skills` (`stealth:dex`), weil eine
+     Zeile mit dem Wort keine Zuordnung tragen konnte. `tool` stand hier
+     auch: ein Werkzeug ist seit M6 ein Gegenstand (`itemType: tool`), und
+     wer mit ihm umgehen kann, steht in derselben Übungsliste. */
   SkillInfo: {
     schema: {
       type: 'object',
@@ -700,7 +931,6 @@ export const fieldGroups = {
           title: 'Ability',
           enumRef: 'Ability',
         },
-        tool: { type: 'boolean', title: 'A tool, not a skill', default: false },
       },
     },
   },
@@ -903,7 +1133,7 @@ export const fieldGroups = {
         damage: { type: 'string', title: 'Damage' },
         /* Der Schaden mit zwei Händen, wenn die Waffe `versatile` ist. */
         damage2: { type: 'string', title: 'Two-handed damage' },
-        damageType: { type: 'string', suggest: true, title: 'Damage type' },
+        damageType: { type: 'string', title: 'Damage type', enumRef: 'DamageType' },
         range: { type: 'string', format: 'measure', unit: 'ft', title: 'Range' },
         /* Was sie verschiesst: arrow, bolt, sling bullet — ein Wort, kein
            Verweis; welcher Pfeil, entscheidet das Inventar. */
@@ -1044,15 +1274,24 @@ export const fieldGroups = {
            Abgleich A1, REQ-199). Hier stand ein Feld `player` als freier
            Text — eine Kontoangabe im Artikel, die mit jeder Ausfuhr
            wanderte, und im Bestand zweimal „—". */
-        ancestry: { type: 'string', suggest: true, title: 'Ancestry' },
-        class: { type: 'string', suggest: true, title: 'Class' },
-        level: { type: 'number', title: 'Level', default: 1 },
+        /* **Klasse, Abstammung und Hintergrund sind Kanten** (M3):
+           `hasClass` mit der Stufe in `props.level` (und der Unterklasse in
+           `props.subclass`), `hasAncestry`, `hasBackground`. Hier standen
+           `class` und `ancestry` als freie Wörter — „Kämpfer 3 / Magier 2"
+           liess sich so nur als Satz schreiben, und kein Bogen konnte daraus
+           Trefferwürfel oder Rettungswürfe lesen. */
+        /* **Die Stufe wird gerechnet** (D8): die Summe der Klassenstufen.
+           Eingetippt wäre sie die dritte Stelle neben den Kanten und nach der
+           ersten Stufe falsch. Ohne Klasse keine Stufe. */
+        level: { type: 'number', title: 'Level', derived: 'sum(hasClass.level)' },
         /* The 5e proficiency bonus follows from the level, so it is computed
-           on read (D8) and never stored — truncated, like every derived value. */
+           on read (D8) and never stored — truncated, like every derived value.
+           Es liest die Kanten selbst: eine Rechnung sieht gespeicherte
+           Nachbarn, keinen gerechneten. */
         proficiency: {
           type: 'number',
           title: 'Proficiency',
-          derived: '2+(level-1)/4',
+          derived: '2+(sum(hasClass.level)-1)/4',
           format: 'signed',
         },
       },
@@ -1348,14 +1587,20 @@ export const fieldGroups = {
 
   /**
    * Übung und Expertise als Listen, nicht als Feld je Fertigkeit. Eine
-   * Kampagne mit anderen Fertigkeiten ist damit eine andere Einstellung und
-   * kein Schemawechsel — die Liste der Fertigkeiten steht in den
-   * Kampagneneinstellungen, wo sie jemand ändern kann.
+   * Kampagne mit anderen Fertigkeiten legt andere `Skill`-Artikel an — kein
+   * Schemawechsel und keine Einstellung (M6).
    */
   /**
    * **Worin jemand geübt ist** — eine Gruppe und nicht sechs Felder an
    * sechs Stellen: Fertigkeiten, Sprachen, Werkzeuge, Rüstungen, Waffen
    * und (Hausregel) Wissensgebiete.
+   *
+   * **Seit M6 aus Artikeln** (D50): Fertigkeiten und Sprachen sind Arten,
+   * Werkzeuge und einzelne Waffen sind Gegenstände, die Waffen- und
+   * Rüstungsgruppen sind die Listen von `Weapon.category` und
+   * `Armor.armorType`. Ein Wissensgebiet ist eine Fertigkeit mit eigenem
+   * Artikel. Gespeichert wird der Name; die Prüfung hält ihn nicht fest,
+   * denn ein Name ist der heutige Stand.
    *
    * Sie hiess `Skills` und trug nur die Hälfte davon. Die andere Hälfte
    * stand als freier Text am Statblock (`languages`, `saves`, `skills`) —
@@ -1387,14 +1632,16 @@ export const fieldGroups = {
           type: 'array',
           title: 'Proficient in',
           items: { type: 'string' },
-          enumRef: ['Skill', 'Tool', 'Language', 'WeaponTraining', 'ArmorTraining', 'KnowledgeField'],
+          enumRef: PROFICIENCY_SOURCES,
+          enumWhere: TOOLS_ONLY,
         },
         /* Dieselben Listen: Expertise ist eine Übung, die doppelt zählt. */
         expertise: {
           type: 'array',
           title: 'Expertise in',
           items: { type: 'string' },
-          enumRef: ['Skill', 'Tool', 'Language', 'WeaponTraining', 'ArmorTraining', 'KnowledgeField'],
+          enumRef: PROFICIENCY_SOURCES,
+          enumWhere: TOOLS_ONLY,
         },
         /* Rettungswürfe sind Attribute und sonst nichts — eine Liste aus
            **einer** Zeile, und genau das ist der Unterschied zur Probe am

@@ -104,7 +104,7 @@ flowchart TB
 | **`Disease`** erbt `Condition` | je Krankheit ein Artikel: Sewer Plague, Sight Rot | `save` (Attribut), `dc`, `incubation`, `transmission`; `kind` frei (mundane, magical …). Stadien wie bei Erschöpfung über `stageOf`, Spielarten über `variantOf` | eine Krankheit *hat* man, also ist sie zuweisbar wie ein Zustand, und sie trägt eigene Felder |
 | **`ActionType`** | Aktionsart: Action, Bonus Action, Reaction, Free Object Interaction, Movement, Legendary Action, Lair Action | `per` (`turn` · `round`), `count` (wie oft) | vier Stellen verlangen ihn: `Action.actionType`, die Wirkzeit eines Zaubers, Einschränkungen durch Zustände (`affects`), später die Zonen im Inventar (heute Zeile `DrawTime`) |
 | **`Action`** | Aktion: Dodge, Dash, Help, und jede Aktion eines Statblocks (Bite, Multiattack, Fire Breath) | **`actionType`** (Verweis, Pflicht); `recharge`, `uses`; für Angriffe `attack` (melee/ranged, weapon/spell), `toHit`, `reach`, `range`, `damage`, `damageType` | hat eigene Felder, und die Initiative kann damit rechnen statt Text zu lesen |
-| **`Feature`** | Merkmal, also alles Dauerhafte: Klassenmerkmal, Volksmerkmal, Monstermerkmal (Nimble Escape), Regionaleffekt | `level`, `featureType`; Kante `featureOf` (→ Klasse, Unterklasse, mit Stufe) | `featureOf` verlangt es; Monster-, Volks- und Klassenmerkmale sind dieselbe Sache an verschiedenen Trägern |
+| **`Feature`** | Merkmal, also alles Dauerhafte: Klassenmerkmal, Volksmerkmal, Monstermerkmal (Nimble Escape), Regionaleffekt | `featureType`; wer es gewährt und ab welcher Stufe, sagt seit P4 die Kante `grants` vom Gebenden (D50; hier stand `level` und `featureOf`) | `grants` verlangt es; Monster-, Volks- und Klassenmerkmale sind dieselbe Sache an verschiedenen Trägern |
 | **`ItemProperty`** | Finesse, Versatile, Heavy; Waffenmeisterschaft gibt es erst 2024 | `abbreviation` | `hasProperty` (Gegenstand → Eigenschaft) verlangt es |
 | **`Spell`** | Zauber | Abgleich M2; die Wirkzeit nennt bei Aktion, Bonusaktion und Reaktion den `ActionType` | Kante `casts`, zwanzig eigene Felder |
 | `Feat`, `Skill` | gibt es schon | — | `Rule.kind` hatte die Wörter `feat` und `skill` zusätzlich: das war doppelt und fällt weg |
@@ -338,6 +338,22 @@ M6 ist eine Modelländerung in packages/model: enumRef darf eine Artikelart nenn
 PlayerCharacter.level wird gerechnet (Summe der hasClass-Stufen).
 Bestand nicht migrieren. Doku wie in CLAUDE.md. Ein PR nach preprod, selbst mergen.
 ```
+
+**Stand 2026-10-09: steht.** M5: Statblock mit `languageNote`,
+`conditionImmunities`, `legendaryActions`, `bonuses`, `token`, Kante
+`equips`; nimmt `Proficiencies` (von der Kreatur herüber), `Lore`, `Image`.
+`Action` mit `attack`, `toHit`, `reach`, `range`, `damage`, `damageType`.
+M3: `Class`, `Subclass`, `Ancestry`, `Background` unter `Rule`, Kanten
+`subclassOf`, `subraceOf`, `hasClass` (`level`, `subclass`), `hasAncestry`,
+`hasBackground`, `grants` (mit `level`; das ist `featureOf` aus §2.2,
+vorwärts), `PlayerCharacter.level` gerechnet über `sum(hasClass.level)`.
+M6: `enumRef` nennt Arten und `Typ.feld`, `Language` ist eine Art, die
+sechs Zeilen und `skills` sind weg. Zeilen `Size` und `DamageType`.
+Entscheidung D50, Regeln S1–S3, C1–C4, Ü1–Ü3 in
+[Datenmodell.md](Datenmodell.md) §5.7. Offen: der Bogen in `apps/web`
+zeichnet Klasse und Stufe noch nicht; die Wahl aus `ProficiencyChoice`
+trifft niemand für die Figur; eine umbenannte Fertigkeit nimmt die
+gespeicherten Übungen nicht mit.
 
 ### P5 — Importer (Opus 5.5 für den Kern, danach Sonnet)
 

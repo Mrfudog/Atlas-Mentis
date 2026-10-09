@@ -6,7 +6,9 @@ import type { EnumDef } from '@nw/model';
  * Eine Aufzählungszeile trägt keine Felder, also ist sie kein Typ mit
  * Schema; sie ist trotzdem eine Zeile im Register wie jede andere, und ein
  * Feld nennt sie über `enumRef`. Damit hat `Skill.ability` einen **Typ**
- * (`Ability`) statt einer eigenen Kopie derselben sechs Wörter.
+ * (`Ability`) statt einer eigenen Kopie derselben sechs Wörter. Ein Feld
+ * darf statt einer Zeile auch eine **Artikelart** nennen (M6): dann sind
+ * die Werte die Namen ihrer Artikel.
  *
  * Hier stehen nur die Listen, die **mehr als ein Feld** braucht. Was einem
  * Feld allein gehört, bleibt an ihm (`enum: [...]`): eine Zeile für eine
@@ -23,66 +25,38 @@ export const enums: Record<string, EnumDef> = {
     values: ['str', 'dex', 'con', 'int', 'wis', 'cha'],
   },
 
+  /* **Fertigkeiten, Sprachen, Werkzeuge, Waffen- und Rüstungsgruppen und
+     Wissensgebiete standen hier als Zeilen** (`Skill`, `Language`, `Tool`,
+     `WeaponTraining`, `ArmorTraining`, `KnowledgeField`). Seit M6 (D50)
+     zieht `Proficiencies` aus Artikeln: eine Fertigkeit trägt ihr Attribut
+     selbst (`Skill.ability`), eine Sprache ihre Schrift, ein Werkzeug ist
+     ein Gegenstand, und die Gruppen sind die Listen von `Weapon.category`
+     und `Armor.armorType`. Ein Wissensgebiet (Hausregel) ist eine
+     Fertigkeit mit eigenem Artikel. Eine Zeile mit dem Wort daneben wäre
+     die zweite Stelle für dieselbe Sache. */
+
   /**
-   * **Die Fertigkeiten.** Welche es gibt, steht hier; **welches Attribut**
-   * jede benutzt, steht in der Einstellung `skills` (`stealth:dex`). Zwei
-   * Stellen, aber nicht zweimal dasselbe: die Zeile sagt, was es gibt, die
-   * Einstellung sagt, wie gerechnet wird. Eine Fertigkeit ohne Eintrag in
-   * der Einstellung rechnet auf `dex` und steht trotzdem in der Liste.
-   *
-   * Eines Tages ist eine Fertigkeit ein Artikel — dann hat sie ihren
-   * Regeltext, ihr Attribut und ihre Kanten an einer Stelle, und beide hier
-   * fallen weg. Bis dahin ist sie ein Wort in einer Liste.
+   * **Die Grösse einer Kreatur**, englisch wie das Regelwerk (E3). Zwei
+   * Felder nennen sie: der Statblock und die Abstammung (M3, M5).
    */
-  Skill: {
-    name: 'Skill',
-    label: 'Skill',
+  Size: {
+    name: 'Size',
+    label: 'Size',
+    values: ['tiny', 'small', 'medium', 'large', 'huge', 'gargantuan'],
+  },
+
+  /**
+   * **Die Schadensarten.** Waffe, Aktion und Zauber nennen sie — drei
+   * Felder, und an der Waffe stand bis P4 ein freies Wort, das anbot, was
+   * schon dastand.
+   */
+  DamageType: {
+    name: 'DamageType',
+    label: 'Damage type',
     values: [
-      'acrobatics', 'animalHandling', 'arcana', 'athletics', 'deception',
-      'history', 'insight', 'intimidation', 'investigation', 'medicine',
-      'nature', 'perception', 'performance', 'persuasion', 'religion',
-      'sleightOfHand', 'stealth', 'survival',
+      'acid', 'bludgeoning', 'cold', 'fire', 'force', 'lightning', 'necrotic',
+      'piercing', 'poison', 'psychic', 'radiant', 'slashing', 'thunder',
     ],
-  },
-
-  /* Werkzeuge, Sprachen, Waffen- und Rüstungsgruppen: **Regelvokabular**,
-     aus dem sich Übungen zusammensetzen. Sie stehen als Listen und nicht als
-     Artikel, weil an einem Werkzeugnamen nichts weiter hängt als der Name;
-     sobald ein Werkzeug einen Regeltext hätte, wäre es ein Artikel. */
-  Tool: {
-    name: 'Tool',
-    label: 'Tool',
-    values: [
-      'Alchemistenwerkzeug', 'Diebeswerkzeug', 'Fälscherwerkzeug',
-      'Kerzenzieherwerkzeug',
-    ],
-  },
-
-  Language: {
-    name: 'Language',
-    label: 'Language',
-    values: ['Gemeinsprache', 'Diebeszinken', 'Elfisch', 'Halblingisch'],
-  },
-
-  WeaponTraining: {
-    name: 'WeaponTraining',
-    label: 'Weapon training',
-    values: ['Einfache Waffen', 'Kriegswaffen'],
-  },
-
-  ArmorTraining: {
-    name: 'ArmorTraining',
-    label: 'Armour training',
-    values: ['Leichte Rüstung', 'Mittlere Rüstung', 'Schwere Rüstung', 'Schilde'],
-  },
-
-  /* Die Hausregel: worin sich jemand **auskennt**. Ein Anfang, der ersetzt
-     werden soll — die Liste gehört der Kampagne, und sie steht hier, damit
-     sie an einer Stelle steht und nicht in jedem Bogen neu erfunden wird. */
-  KnowledgeField: {
-    name: 'KnowledgeField',
-    label: 'Field of knowledge',
-    values: ['Kräuterkunde', 'Stadtgeschichte', 'Nebelkunde'],
   },
 
   /**

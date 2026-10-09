@@ -37,15 +37,9 @@ export const settings: Record<string, string> = {
      ausdrücklich NICHT — sie werden gerechnet (B3, D8), und eine
      eingetippte Gruppenstufe ist nach der ersten Stufe falsch. */
   today: '',
-  /* Fertigkeit zu Attribut. Steht hier und nicht im Code, damit eine
-     Kampagne mit anderen Fertigkeiten eine Einstellung ist und kein
-     Schemawechsel. Die Seite hat denselben Satz als Rückfall, damit sie
-     auch ohne diese Zeile rechnet. */
-  skills:
-    'acrobatics:dex,animalHandling:wis,arcana:int,athletics:str,deception:cha,' +
-    'history:int,insight:wis,intimidation:cha,investigation:int,medicine:wis,' +
-    'nature:int,perception:wis,performance:cha,persuasion:cha,religion:int,' +
-    'sleightOfHand:dex,stealth:dex,survival:wis',
+  /* `skills` stand hier: Fertigkeit zu Attribut (`stealth:dex`). Seit M6
+     ist eine Fertigkeit ein Artikel und trägt ihr Attribut selbst
+     (`Skill.ability`) — die Einstellung wäre die zweite Stelle dafür. */
   /* Felder, die ein Spieler nicht sieht, solange keine bekannte
      Information sie ausdrücklich freigibt. Als Einstellung, weil eine
      Kampagne das anders halten darf. Es hiess `gmBlockTypes` und nannte

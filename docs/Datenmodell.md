@@ -172,7 +172,7 @@ Jede Artikelart nimmt diese sieben Grundtypen (gemessen: 36 von 36):
 
 Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 `Facts`, `ReadAloud`, `Tactics`, `Vars`, `Vitals`, `Proficiencies`,
-`Abilities`, `Difficulty`, `Story`. Welche Art was nimmt, steht in §13.
+`ProficiencyChoice`, `Abilities`, `Difficulty`, `Story`. Welche Art was nimmt, steht in §13.
 
 ### 3.5 Regeln für Typen
 
@@ -197,7 +197,8 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | `title` | die Beschriftung; ein Typ darf sie über `titles` ersetzen |
 | `type` | `string` · `number` · `boolean` · `array` · `object` |
 | `format` | die Form, siehe 4.2 |
-| `enum` **oder** `enumRef` | eigene Wörter oder der Name einer Aufzählungszeile — nie beides; `enumRef` darf mehrere Zeilen nennen, die dann zusammen gelten |
+| `enum` **oder** `enumRef` | eigene Wörter oder der Name einer Aufzählungszeile — nie beides; `enumRef` darf mehrere Zeilen nennen, die dann zusammen gelten, und seit M6 auch eine **Artikelart** (die Namen ihrer sichtbaren Artikel) oder `Typ.feld` (die Liste dieses Feldes) |
+| `enumWhere` | je genannter Art ein Filter `{feld: [werte]}` — welche Artikel davon in Frage kommen (`Item` nur mit `itemType` tool …); Vorschlag für die Maske |
 | `items` | bei `array`: die Form der Einträge |
 | `many` | mehrere Einträge mit Id: `[{id, value}]` |
 | `derived` | eine Rechnung gegen die Nachbarfelder derselben Karte, dann gegen die übrigen Karten des Artikels (§6) |
@@ -218,7 +219,7 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | `string` `long` | langer Text, **Markdown** (4.4) | `"…"` | mehrzeilig |
 | `string` `long` + `many` | **Prosa**: Einträge mit Id; die Id kommt aus dem Text, Freigabe je Eintrag `Typ.feld#id` | `[{id, value}]` | Element `prose`, nicht die Feldtabelle |
 | `string` + `enum`/`enumRef` | Auswahl, ein Wort | `"idea"` | Auswahlliste |
-| `array` + `enumRef` | Auswahl, mehrere Wörter aus einer oder mehreren Zeilen; woher ein Wort kommt, sagt die Zeile (`enumSource`) | `["stealth","Elfisch"]` | Häkchen, nach Zeile gruppiert |
+| `array` + `enumRef` | Auswahl, mehrere Wörter aus einer oder mehreren Zeilen, Arten oder Feldlisten; woher ein Wort kommt, sagt die Quelle (`enumSource`) | `["Stealth","Dwarvish","martial"]` | Häkchen, nach Quelle gruppiert; was keine Liste kennt, als Text darunter |
 | `string` + `suggest` | freies Wort mit Vorschlägen | `"npc"` | Text mit Liste |
 | `string` `date` | Weltdatum als Text; `Time.sort` daneben zum Ordnen | `"Mirtul 12, 1492 DR"` | Text |
 | `string` `color` | Farbe | `"#8a4b2a"` | Farbwähler |
@@ -239,7 +240,7 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 
 | | Regel |
 |---|---|
-| F1 | **Eine Aufzählung, die zwei Felder brauchen, ist eine Zeile** (`enums`), und die Felder nennen sie mit `enumRef` — **oder wenn die Wörter Kampagneninhalt sind, den jemand pflegt** (`State`, `DrawTime`: ein Nutzer, aber die Wörter stehen im Register, damit man sie ändern kann, ohne Code anzufassen; A4). Gelesen wird immer über `enumOptions()`, nie `enum` direkt. |
+| F1 | **Eine Aufzählung, die zwei Felder brauchen, ist eine Zeile** (`enums`), und die Felder nennen sie mit `enumRef` — **oder wenn die Wörter Kampagneninhalt sind, den jemand pflegt** (`State`, `DrawTime`: ein Nutzer, aber die Wörter stehen im Register, damit man sie ändern kann, ohne Code anzufassen; A4). Gelesen wird immer über `enumOptions()`, nie `enum` direkt; wer eine Art nennt, gibt die sichtbaren Artikel mit. |
 | F2 | **Eine Zahl mit Grenzen ist eine Spanne**, keine Aufzählung von Wörtern. |
 | F3 | **Ein Mass ohne Einheit ist keines:** jedes `measure`-Feld trägt `unit`. |
 | F4 | **Ein Verweis nennt seinen Zieltyp.** `target.interfaces` ist Regel, `tags` und `where` sind Vorschlag. |
@@ -248,8 +249,9 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | F7 | **Vorgeschlagen wird nur, wo das Feld es sagt** (`suggest`), und nur aus Artikeln, die man sehen darf. |
 | F8 | **Status ist der Vorbereitungsstand** (`idea` · `prepared` · `ready`). Wie weit eine Sache am Tisch ist, sagt das Feld der Art (`Quest.progress`, `Encounter.phase`, `Place.state`). |
 | F9 | **Beim Bearbeiten steht jedes Feld als Eingabe da**, auch die aus `Identity`; nur der Name bleibt Überschrift. |
-| F10 | **Was eine Beschreibung braucht, ist ein Artikel und keine Wortliste.** Zustände sind Artikel der Art `Condition`, Reisehandlungen Regelartikel mit `Rule.kind` `travel`; Felder, die sie brauchen, verweisen (`Vitals.conditions` auf `Condition`, `Party.actions`). Eine Einstellung hält nur, was ein Wort oder eine Zahl ist (`skills`, `gridSize`). |
+| F10 | **Was eine Beschreibung braucht, ist ein Artikel und keine Wortliste.** Zustände sind Artikel der Art `Condition`, Reisehandlungen Regelartikel mit `Rule.kind` `travel`; Felder, die sie brauchen, verweisen (`Vitals.conditions` auf `Condition`, `Party.actions`). Eine Einstellung hält nur, was ein Wort oder eine Zahl ist (`gridSize`, `units`). `skills` (Fertigkeit → Attribut) war eine solche und ist seit M6 weg: die Fertigkeit ist ein Artikel und trägt ihr Attribut selbst. |
 | F11 | **Ein langer Text ist Markdown, und nichts darin wird HTML** (M10). Verweise nennen die Nummer, nicht den Namen (M11); Würfel sind `{{…}}`, Platzhalter `{VAR}` (M12). Siehe 4.4. |
+| F12 | **Die Zeile hält, die Art schlägt vor** (M6, D50). Nennt `enumRef` eine Artikelart, sind die Werte die Namen ihrer sichtbaren Artikel (Untertypen ja, Instanzen nein), und gespeichert wird der Name. Die Prüfung hält ein solches Feld **nicht** an der Liste fest (`enumHolds`): ein Name ist der heutige Stand, und eine Umbenennung machte eine gespeicherte Übung sonst rückwirkend falsch — dieselbe Regel wie bei `target.tags` (F4). Eine Liste mit Wörtern, die nur ein Wort sind (Waffengruppen), nennt das Feld, das sie trägt (`Weapon.category`), statt einer zweiten Zeile. |
 
 ### 4.4 Langer Text
 
@@ -330,8 +332,9 @@ nicht — den gäbe es auch ohne das Rezept.
 | Struktur | `partOf`, `insideMap` | Ort, Rahmen — die Reihenfolge sagt `Time.sort` |
 | Teil | `belongsTo`, `carries` | `asField` |
 | Einsetzen | `composedOf`, `hasProperty` | `section`, `vars` |
-| Regel | `stageOf`, `affects` | Stufe eines Zustands; Wirkung zwischen Regeln (`effect`, `on`, `note`) |
-| Verweis | `worships`, `livesIn`, `memberOf`, `memberOfParty`, `owes`, `regards`, `controls`, `questGiver`, `questAbout`, `describedIn`, `happensAt`, `features`, `involves`, `mapOf`, `onMap`, `tableFor`, `yields`, `needs`, `playedBy` | Marken, Mengen |
+| Regel | `stageOf`, `affects`, `grants`, `subclassOf`, `subraceOf` | Stufe eines Zustands; Wirkung zwischen Regeln (`effect`, `on`, `note`); was Klasse, Abstammung, Hintergrund gewähren (`level`) |
+| Charakterbau | `hasClass`, `hasAncestry`, `hasBackground` | Klassenstufe, Unterklasse |
+| Verweis | `equips`, `worships`, `livesIn`, `memberOf`, `memberOfParty`, `owes`, `regards`, `controls`, `questGiver`, `questAbout`, `describedIn`, `happensAt`, `features`, `involves`, `mapOf`, `onMap`, `tableFor`, `yields`, `needs`, `playedBy` | Marken, Mengen |
 | Platzierung | `marker`, `territory`, `placed`, `holds` | Koordinaten, Grösse, Drehung, Lage |
 | Vorgang | `crafting`, `participates`, `entry`, `route` | Stand eines Gangs, Initiative, Gewicht, Wegdauer |
 | Ebene | `inLayer`, `activates`, `overrides`, `variantOf`, `instanceOf` | Modus, Reihenfolge |
@@ -354,14 +357,15 @@ sonst bleibt sie ein Wort in `Rule.kind` (Zeile `RuleKind`: `rule`,
 | R2 | **Eine Stufe ist ein Zustand für sich:** „Exhaustion 3" hat `Condition.stage` 3 und die Kante `stageOf` auf „Exhaustion". Der Grundzustand trägt die allgemeine Regel und `recovery` (`longRestStep`: eine lange Rast senkt um eine Stufe). Dasselbe Muster trägt die Stadien einer Krankheit. | — |
 | R3 | **Höchstens eine Stufe je Grundzustand** in `Vitals.conditions` und in `participates.props.conditions`. Die Stufe ändern heisst ersetzen (gleicher `stageOf`, `stage ± 1`), nicht zählen. Darum gibt es `Vitals.exhaustion` nicht mehr: dieselbe Zahl an zwei Stellen läuft auseinander. | `validateEntity` (`condition_stage_twice`), mit `stageOf` aus `stageBases` |
 | R4 | **Wirkungen zwischen Regeln sind Kanten** (`affects`, `props.effect`: `imposes`, `prevents`, `limits`, `advantage`, `disadvantage`, `triggers`; `on`: worauf). Gespeichert wird vorwärts; „was verbietet mir Reaktionen?" ist eine Abfrage. **Ausgewertet wird vorerst nichts** — die Kanten sind Daten, die der Bogen zeigt. Der Importer legt sie nicht an: dass ein Text einen Zustand nennt, heisst nicht, dass er ihn bewirkt. | — |
-| R5 | **Eine Aktion nennt ihre Aktionsart** (`Action.actionType`, Pflicht, Verweis auf `ActionType`). Angriffsfelder (`attack`, `toHit`, `reach`, `damage`) kommen mit dem Statblock (P4). | `validateEntity` (`missing_property`, `link_wrong_type`) |
+| R5 | **Eine Aktion nennt ihre Aktionsart** (`Action.actionType`, Pflicht, Verweis auf `ActionType`) **und trägt ihren Angriff** (P4): `attack` (mehrere aus melee/ranged weapon/spell — ein Dolch sticht und wird geworfen), `toHit` (gegeben, nicht gerechnet), `reach` und `range` in Fuss, `damage` als Würfelausdruck, `damageType` aus der Zeile `DamageType`. Der Text bleibt daneben für das, was die Felder nicht sagen. | `validateEntity` (`missing_property`, `link_wrong_type`, `value_not_allowed`) |
 | R6 | **`overrides` zeigt nur auf eine Fassung derselben Art** (M9). Eine Systemebene („D&D 5e (2014)", `Layer.kind` `system`) hält den importierten Regelbestand; welches Buch und welche Seite, sagt `Source.publication` mit `page`, die Lizenzflagge `Source.srd`. | `validateEntity` (`overrides_other_type`) |
 
 Dazu aus M7 und M8: `Hazard` (Falle oder Gefahr, auf der Karte über
 `marker`), `Deity` (Anhänger über `worships` von Kreatur und Fraktion),
 `Faction.goal`, und `Table.columns` — mit Spalten ist eine Zeile in
 `rows` eine Liste von Zellen; die gewichteten Einträge bleiben
-`entry`-Kanten. Noch nicht da: `featureOf` (braucht `Class`, P4).
+`entry`-Kanten. Wer ein Merkmal gewährt, sagt seit P4 `grants` (§5.7) —
+das, was der Arbeitsplan `featureOf` nannte, vorwärts vom Gebenden aus.
 
 ### 5.6 Zauber und Gegenstände (M2, M4)
 
@@ -379,15 +383,50 @@ flowchart LR
 | Z1 | **Ein Zauber ist eine Regel mit eigenen Feldern** (`Spell` erbt `Rule`): Grad 0–9 (0 ist ein Zaubertrick), Schule, Wirkzeit, Reichweite (`rangeKind` + `range` in Fuss), Komponenten `v`/`s`/`m` mit Material, Kosten in Kupfer und ob es verbraucht wird, Dauer (`instant`/`timed`/`permanent`/`special`, mit `durationAmount`/`durationUnit`), Konzentration, Ritual, „At higher levels" (langer Text, Würfel darin), Rettungswurf (`enumRef: Ability`), Zauberangriff, Schadensarten. | `validateEntity` (`value_not_allowed`, `value_out_of_range`) |
 | Z2 | **Die Wirkzeit nennt ihre Aktionsart:** bei Aktion, Bonusaktion und Reaktion zeigt `castingAction` auf den `ActionType` (D48); längere Wirkzeiten sind `castingTime` mit `castingUnit` (`minute`, `hour`). Der Auslöser einer Reaktion steht in `castingCondition`. | `validateEntity` (`link_wrong_type`) |
 | Z3 | **Welche Zustände ein Zauber bewirkt, ist die Kante `affects`** (`effect: imposes`) zur `Condition` — kein Feld daneben (D49). | — |
-| Z4 | **Wer einen Zauber wirkt, ist die Kante `casts`** (Statblock, PlayerCharacter, Item → Spell) mit `mode` (`prepared`, `known`, `innate`, `item`), `uses` („at will", „3/day"), `level` und `charges` (was ein Gegenstand je Wirken verbraucht). Gespeichert vorwärts; „wer kann Feuerball?" ist eine Abfrage. Die Unterklasse kommt mit P4 dazu. | Kantenprüfung (`from`/`to`) |
+| Z4 | **Wer einen Zauber wirkt, ist die Kante `casts`** (Statblock, PlayerCharacter, Item, Subclass, Ancestry → Spell) mit `mode` (`prepared`, `known`, `innate`, `item`), `uses` („at will", „3/day"), `level`, `charges` (was ein Gegenstand je Wirken verbraucht) und `fromLevel` (Domänenzauber ab Klassenstufe 3, Thaumaturgy des Tieflings ab Stufe 1). Gespeichert vorwärts; „wer kann Feuerball?" ist eine Abfrage. | Kantenprüfung (`from`/`to`) |
 | Z5 | **Zauberwirken steht am Statblock** (`spellAbility`, `casterLevel`, `spellSlots` je Grad, der erste ist der 1.). **SG und Angriffsbonus werden gerechnet** (D8): `spellDc = 8+prof+modOf(spellAbility)`, `spellAttack = prof+modOf(spellAbility)`. Ohne Attribut gibt es keinen Wert — 8 + Übung sähe aus wie ein SG. | Rechenwerk (`derivedValue`) |
 | Z6 | **Verbrauchte Plätze sind ein Stand** (`Vitals.slotsUsed` je Grad), an der Figur und nicht am Statblock — wie `hp` an beiden. | — |
 | G1 | **Ein Gegenstand trägt, was 5e.tools kennt:** `tier` (minor/major), Einstimmung (`attunement`, `attunementNote`), Ladungen (`charges`, `recharge`, `rechargeAmount`), Boni (`bonusWeapon`, `bonusAc`, `bonusSpellAttack`, `bonusSave`), `appliesTo` (Marken, woran eine Variante passt). `itemType` und `rarity` sind englische Aufzählungen am Feld (E3); `rarity` kennt `none` und `varies`. | `validateEntity` (`value_not_allowed`) |
-| G2 | **Waffe und Rüstung:** `Weapon.category` (simple/martial), `damage2` (zweihändig, bei `versatile`), `ammoType`; `Armor.armorType` (light/medium/heavy/shield), `strength`, `stealthDisadvantage`. Eigenschaften bleiben die Kante `hasProperty` → `ItemProperty`. | `validateEntity` |
+| G2 | **Waffe und Rüstung:** `Weapon.category` (simple/martial), `damage2` (zweihändig, bei `versatile`), `ammoType`, `damageType` aus der Zeile `DamageType` (seit P4); `Armor.armorType` (light/medium/heavy/shield), `strength`, `stealthDisadvantage`. Eigenschaften bleiben die Kante `hasProperty` → `ItemProperty`. | `validateEntity` |
 | G3 | **Ein Gegenstand darf ein Behälter sein** (`carries` → `Inventory`, wie an Kreatur und Gruppe) und **ein Stück am Tisch eine Instanz** des Gegenstands im Buch (`instanceOf`, §7): das +1-Langschwert speichert nur, was abweicht. Eine Instanz ist von derselben Art wie ihre Vorlage (`to: same`). | Kantenprüfung |
 
 Offen: wie viele Ladungen ein Stück am Tisch noch hat (ein Stand am
-Gegenstand oder an `holds`), und die Unterklasse an `casts` (P4).
+Gegenstand oder an `holds`).
+
+### 5.7 Statblock, Charakterbau und Übungen aus Artikeln (M5, M3, M6)
+
+```mermaid
+flowchart LR
+  PC["PlayerCharacter: Brana<br/>level* = 3 + 2 = 5<br/>proficiency* = +3"] -- "hasClass<br/>level 3 · subclass Champion" --> F["Class: Fighter<br/>hitDie 10 · saves str, con"]
+  PC -- "hasClass · level 2" --> W["Class: Wizard"]
+  PC -- "hasAncestry" --> HD["Ancestry: Hill Dwarf"]
+  HD -- "subraceOf" --> D["Ancestry: Dwarf<br/>speed 25 · con +2"]
+  PC -- "hasBackground" --> AC["Background: Acolyte"]
+  C["Subclass: Champion"] -- "subclassOf" --> F
+  F -- "grants · level 4, 6, 8 …" --> ASI["Feature: Ability Score Improvement"]
+  D -- "grants" --> DR["Feature: Dwarven Resilience"]
+  SB["Statblock: Brana<br/>Proficiencies: Stealth, Dwarvish,<br/>Smith's tools, martial"] -- "belongsTo" --> PC
+  SB -. "Name" .-> SK["Skill: Stealth · ability dex"]
+  SB -. "Name" .-> L["Language: Dwarvish"]
+```
+
+| | Regel | Geprüft durch |
+|---|---|---|
+| S1 | **Der Statblock wächst** (M5): `languageNote` (was keine Sprache ist: „telepathy 120 ft.", „any four languages"), `conditionImmunities` (Namen der `Condition`-Artikel), `legendaryActions` (Anzahl je Runde), `bonuses` (`{"Stealth": 6}` — feste Boni, die nicht aus Übung folgen; der Bogen nimmt sie statt der Rechnung), `token` (Asset). `size` liest die Zeile `Size`, englisch. Er nimmt `Proficiencies`, `Lore` und `Image` dazu; die Umgebung eines Monsters sind Marken. | `validateEntity` |
+| S2 | **Die Übungen wohnen am Statblock**, nicht an der Kreatur: sie gehören zu den Zahlen (Übungsbonus, Attribut). An beiden Stellen wären sie zwei Antworten auf „worin ist sie geübt". | Register (`typeChain`) |
+| S3 | **Was ein Statblock führt, ist die Kante `equips`** (Statblock → Item): der Gegenstand aus dem Buch, kein Inventar. | Kantenprüfung |
+| C1 | **Klasse, Unterklasse, Abstammung, Hintergrund sind Arten unter `Rule`** (Bereich `rules`). Jede nimmt `Proficiencies` (was sie fest gewährt — die Beschriftung heisst dort „Grants proficiency in") und `ProficiencyChoice` (`chooseFrom`, `chooseCount`, `chooseNote`: „zwei aus …", „zwei Sprachen nach Wahl"). Die Klasse trägt `hitDie`, `primaryAbility`, `startingEquipment`, `multiclassRequirement`, `multiclassProficient`, `subclassTitle`, mit der Unterklasse `casterProgression` und `spellAbility`; die Abstammung `size`, `speed`, `abilityBonus` (`{"con": 2}`), `age`, `darkvision`, `resistances`. | `validateEntity` |
+| C2 | **Die Figur zeigt darauf:** `hasClass` (mehrmals, `props.level` Pflicht, `props.subclass` → `Subclass`), `hasAncestry` und `hasBackground` (je eine). `PlayerCharacter.class` und `.ancestry` sind weg. | Kantenprüfung |
+| C3 | **Die Stufe wird gerechnet:** `level = sum(hasClass.level)`, `proficiency = 2+(sum(hasClass.level)-1)/4` (D8). Ohne Klasse keine Stufe — kein Wert statt 0. | Rechenwerk (`derivedValue` mit Kanten) |
+| C4 | **Was eine Klasse, Abstammung, ein Hintergrund oder Talent gewährt, ist die Kante `grants`** (→ `Rule`) mit `props.level`. Die Stufe steht an der Kante und nicht am Merkmal: „Ability Score Improvement" ist ein Artikel und sieben Kanten. `Feature.level` ist deshalb weg (D50). `subclassOf` und `subraceOf` sagen, wozu eine Unterklasse oder Unterart gehört. Die Stufentabelle einer Klasse und die Charakterzug-Tabellen eines Hintergrunds sind `Table`-Artikel über `tableFor`. | Kantenprüfung |
+| Ü1 | **Übungen kommen aus Artikeln** (M6): `Proficiencies.proficient` und `expertise` nennen `Skill`, `Language`, `Item` (nur Werkzeuge, `enumWhere` auf `itemType`), `Weapon`, `Weapon.category`, `Armor.armorType`. Die Zeilen `Skill`, `Language`, `Tool`, `WeaponTraining`, `ArmorTraining`, `KnowledgeField` und die Einstellung `skills` sind weg; worauf eine Fertigkeit rechnet, sagt `Skill.ability`. Ein Wissensgebiet (Hausregel) ist eine Fertigkeit mit Artikel. | F12 |
+| Ü2 | **`Language` ist eine Art** (`languageType` standard/exotic/rare/secret, `script`, `typicalSpeakers`). | — |
+| Ü3 | **`DamageType` und `Size` sind Zeilen** (F1): drei Felder nennen die Schadensarten (Waffe, Aktion, Zauber; die Abstammung für Resistenzen), zwei die Grösse. | `validateEntity` (`value_not_allowed`) |
+
+Offen: der Bogen der Oberfläche (`apps/web`) zeichnet Klasse und Stufe
+noch nicht; die Wahl aus `ProficiencyChoice` trifft niemand für die Figur
+(sie steht als Angebot an der Klasse); eine umbenannte Fertigkeit nimmt
+die gespeicherten Übungen nicht mit (F12).
 
 ---
 
@@ -399,7 +438,9 @@ Drei Dinge entstehen beim Lesen und stehen nie in den Daten (D8):
 Operatorvorrang, kein `eval`; Namen lösen **erst gegen die Nachbarfelder
 derselben Karte, dann gegen die übrigen Karten des Artikels** auf, dazu
 `mod(feld)`, `modOf(feld)` (der Modifikator des Attributs, das ein Feld
-nennt) und die Formfunktionen `rowCount`, `colCount`, `cellCount`. Unsinn
+nennt), `sum(kante.feld)` (die Summe einer Kanteneigenschaft über die
+eigenen Vorwärtskanten — die Stufe einer Figur aus `hasClass`, §5.7) und
+die Formfunktionen `rowCount`, `colCount`, `cellCount`. Unsinn
 ergibt `null`, nie eine irreführende 0. `of` lässt den Wert in der Zelle
 des Nachbarn reiten. Der Rückgriff auf den Artikel ist für den Statblock
 da: `prof` und das Zauberwirken stehen in seiner Karte, die sechs Werte in
@@ -685,7 +726,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-09: 40 Artikelarten, 21 Grundtypen, 46 Kantenarten, 10 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-09: 45 Artikelarten, 22 Grundtypen, 53 Kantenarten, 6 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -696,10 +737,11 @@ Stand 2026-10-09: 40 Artikelarten, 21 Grundtypen, 46 Kantenarten, 10 Aufzählung
 | `Difficulty` | `difficulty` | `Scene` `Encounter` |
 | `Facts` | `fact` | `Creature` `Item` `Information` |
 | `Identity` | `name` `id` `aliases` `cover` | 24 |
-| `Image` | `image` `caption` `alt` | 10 |
-| `Lore` | `lore` | 12 |
+| `Image` | `image` `caption` `alt` | 15 |
+| `Lore` | `lore` | 17 |
 | `Notes` | `note` | 24 |
-| `Proficiencies` | `proficient` `expertise` `saves` | `Creature` |
+| `Proficiencies` | `proficient` `expertise` `saves` | 5 |
+| `ProficiencyChoice` | `chooseFrom` `chooseCount` `chooseNote` | 4 |
 | `Prose` | `paragraph` | 24 |
 | `ReadAloud` | `readaloud` | 6 |
 | `Secrets` | `secret` | 15 |
@@ -723,18 +765,18 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Armor` | `Item` | `ac` `armorType` `strength` `stealthDisadvantage` | `casts` `hasProperty` `carries` `instanceOf` | `holds` `needs` `yields` `loot` `instanceOf` | — |
+| `Armor` | `Item` | `ac` `armorType` `strength` `stealthDisadvantage` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `loot` `instanceOf` | — |
 | `Article` | `Source` `Todos` `Lore` `Secrets` | — | — | `describedIn` | — |
-| `Creature` | `Image` `Source` `Vars` `Vitals` `Proficiencies` `Lore` `Facts` `Secrets` `ReadAloud` | `appearance` `personality` `species` `kind` `role` `attitude` | `worships` `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | full |
+| `Creature` | `Image` `Source` `Vars` `Vitals` `Lore` `Facts` `Secrets` `ReadAloud` | `appearance` `personality` `species` `kind` `role` `attitude` | `worships` `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | full |
 | `Deity` | `Image` `Source` `Lore` `Secrets` | `pantheon` `title` `alignment` `domains` `symbol` `province` `plane` | — | `worships` | — |
 | `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` `goal` | `worships` `controls` `regards` | `memberOf` `questGiver` `features` `knownBy` `regards` | — |
 | `Hazard` | `Image` `Source` `Secrets` | `kind` `category` `tier` `threat` `trigger` `duration` `effect` `countermeasures` `initiative` | — | — | — |
-| `Item` | `Image` `Source` `Lore` `Secrets` `Facts` | `itemType` `rarity` `tier` `attunement` `attunementNote` `charges` `recharge` `rechargeAmount` `bonusWeapon` `bonusAc` `bonusSpellAttack` `bonusSave` `appliesTo` `availability` `copperPrice` `stackSize` `weight` `rows` `width*` `height*` `cells*` | `casts` `hasProperty` `carries` `instanceOf` | `holds` `needs` `yields` `loot` `instanceOf` | — |
-| `Material` | `Item` | `materialType` `trades` | `casts` `hasProperty` `carries` `instanceOf` | `holds` `needs` `yields` `loot` `instanceOf` | — |
+| `Item` | `Image` `Source` `Lore` `Secrets` `Facts` | `itemType` `rarity` `tier` `attunement` `attunementNote` `charges` `recharge` `rechargeAmount` `bonusWeapon` `bonusAc` `bonusSpellAttack` `bonusSave` `appliesTo` `availability` `copperPrice` `stackSize` `weight` `rows` `width*` `height*` `cells*` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `loot` `instanceOf` | — |
+| `Material` | `Item` | `materialType` `trades` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `loot` `instanceOf` | — |
 | `Party` | `Image` `Lore` | `level` `motto` `day` `watch` `sinceRation` `sinceLight` `actions` | `partyOf` `carries` `crafting` `regards` | `memberOfParty` `knownBy` `participates` `regards` | full |
 | `Place` | `Image` `Lore` `ReadAloud` `Secrets` | `kind` `environment` `state` `arrival` | `partOf` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | full |
-| `PlayerCharacter` | `Creature` | `backstory` `ancestry` `class` `level` `proficiency*` | `worships` `casts` `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | — |
-| `Weapon` | `Item` | `category` `damage` `damage2` `damageType` `range` `ammoType` | `casts` `hasProperty` `carries` `instanceOf` | `holds` `needs` `yields` `loot` `instanceOf` | — |
+| `PlayerCharacter` | `Creature` | `backstory` `level*` `proficiency*` | `worships` `casts` `hasClass` `hasAncestry` `hasBackground` `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | — |
+| `Weapon` | `Item` | `category` `damage` `damage2` `damageType` `range` `ammoType` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `loot` `instanceOf` | — |
 | `World` | `Image` `Lore` | `calendar` | — | `inWorld` | — |
 
 **History**
@@ -752,21 +794,26 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Action` | `Rule` | `actionType` `recharge` `uses` | `affects` | `composedOf` `affects` | — |
-| `ActionType` | `Rule` | `per` `count` | `affects` | `composedOf` `affects` | — |
-| `Condition` | `Rule` | `kind` `stage` `recovery` | `stageOf` `affects` | `composedOf` `stageOf` `affects` | — |
-| `Disease` | `Condition` | `kind` `save` `dc` `incubation` `transmission` | `stageOf` `affects` | `composedOf` `stageOf` `affects` | — |
-| `Feat` | `Rule` | `prerequisite` `repeatable` | `affects` | `composedOf` `affects` `loot` | — |
-| `Feature` | `Rule` | `level` `featureType` | `affects` | `composedOf` `affects` | — |
+| `Action` | `Rule` | `actionType` `recharge` `uses` `attack` `toHit` `reach` `range` `damage` `damageType` | `affects` | `composedOf` `affects` `grants` | — |
+| `ActionType` | `Rule` | `per` `count` | `affects` | `composedOf` `affects` `grants` | — |
+| `Ancestry` | `Rule` `Proficiencies` `ProficiencyChoice` `Lore` `Image` | `size` `speed` `abilityBonus` `abilityNote` `age` `darkvision` `creatureType` `resistances` | `affects` `casts` `subraceOf` `grants` `tableFor` | `composedOf` `affects` `subraceOf` `hasAncestry` `grants` | — |
+| `Background` | `Rule` `Proficiencies` `ProficiencyChoice` `Lore` `Image` | `startingEquipment` | `affects` `grants` `tableFor` | `composedOf` `affects` `hasBackground` `grants` | — |
+| `Class` | `Rule` `Proficiencies` `ProficiencyChoice` `Lore` `Image` | `hitDie` `primaryAbility` `startingEquipment` `multiclassRequirement` `multiclassProficient` `subclassTitle` `casterProgression` `spellAbility` | `affects` `grants` `tableFor` | `composedOf` `affects` `subclassOf` `hasClass` `grants` | — |
+| `Condition` | `Rule` | `kind` `stage` `recovery` | `stageOf` `affects` | `composedOf` `stageOf` `affects` `grants` | — |
+| `Disease` | `Condition` | `kind` `save` `dc` `incubation` `transmission` | `stageOf` `affects` | `composedOf` `stageOf` `affects` `grants` | — |
+| `Feat` | `Rule` | `prerequisite` `repeatable` | `affects` `grants` | `composedOf` `affects` `grants` `loot` | — |
+| `Feature` | `Rule` | `featureType` | `affects` | `composedOf` `affects` `grants` | — |
 | `Information` | `Secrets` `Facts` | `fields` `tier` | `knownBy` | `knowledge` `includes` `loot` | — |
 | `Inventory` | — | `capacity` `copper` `grid` `zones` | `holds` | `carries` | full |
-| `ItemProperty` | `Rule` | `abbreviation` | `affects` | `composedOf` `affects` `hasProperty` | — |
+| `ItemProperty` | `Rule` | `abbreviation` | `affects` | `composedOf` `affects` `grants` `hasProperty` | — |
 | `Knowledge` | — | — | `knownBy` `includes` | — | — |
+| `Language` | `Rule` | `languageType` `script` `typicalSpeakers` | `affects` | `composedOf` `affects` `grants` | — |
 | `Recipe` | `Source` `Secrets` `Lore` | `trade` `tool` `ability` `dc` `time` `days` `yieldCount` `onFailure` | `needs` `yields` | `crafting` | full |
-| `Rule` | `Source` `Vars` | `kind` `autolink` | `affects` | `composedOf` `affects` | — |
-| `Skill` | `Rule` | `ability` `tool` | `affects` | `composedOf` `affects` `loot` | — |
-| `Spell` | `Rule` | `level` `school` `castingTime` `castingAction` `castingUnit` `castingCondition` `rangeKind` `range` `components` `material` `materialCost` `materialConsumed` `duration` `durationAmount` `durationUnit` `concentration` `ritual` `higherLevels` `save` `attack` `damageTypes` | `affects` | `composedOf` `affects` `casts` | — |
-| `Statblock` | `Source` `Abilities` `Vars` `Tactics` | `system` `size` `creatureType` `alignment` `ac` `acNote` `hp` `hpFormula` `speed` `cr` `prof` `combatRole` `senses` `resistances` `vulnerabilities` `immunities` `spellAbility` `casterLevel` `spellSlots` `spellDc*` `spellAttack*` | `composedOf` `belongsTo` `casts` `instanceOf` | `features` `participates` `instanceOf` | full |
+| `Rule` | `Source` `Vars` | `kind` `autolink` | `affects` | `composedOf` `affects` `grants` | — |
+| `Skill` | `Rule` | `ability` | `affects` | `composedOf` `affects` `grants` `loot` | — |
+| `Spell` | `Rule` | `level` `school` `castingTime` `castingAction` `castingUnit` `castingCondition` `rangeKind` `range` `components` `material` `materialCost` `materialConsumed` `duration` `durationAmount` `durationUnit` `concentration` `ritual` `higherLevels` `save` `attack` `damageTypes` | `affects` | `composedOf` `affects` `casts` `grants` | — |
+| `Statblock` | `Source` `Abilities` `Proficiencies` `Vars` `Tactics` `Lore` `Image` | `system` `size` `creatureType` `alignment` `ac` `acNote` `hp` `hpFormula` `speed` `cr` `prof` `combatRole` `senses` `languageNote` `resistances` `vulnerabilities` `immunities` `conditionImmunities` `legendaryActions` `bonuses` `token` `spellAbility` `casterLevel` `spellSlots` `spellDc*` `spellAttack*` | `composedOf` `belongsTo` `casts` `equips` `instanceOf` | `features` `participates` `instanceOf` | full |
+| `Subclass` | `Rule` `Proficiencies` `ProficiencyChoice` `Lore` `Image` | `shortName` `casterProgression` `spellAbility` | `affects` `casts` `subclassOf` `grants` `tableFor` | `composedOf` `affects` `grants` | — |
 | `Table` | `Source` `Secrets` | `kind` `die` `columns` `rows` | `entry` | `tableFor` | full |
 
 **Play**
@@ -792,14 +839,19 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `affects` | Rule → Rule |  | — | `effect` `on` `note` |
 | `belongsTo` | Statblock → Creature | ja | Feld am `to`-Ende | — |
 | `carries` | Creature \| Party \| Item → Inventory | ja | Feld am `from`-Ende | — |
-| `casts` | Statblock \| PlayerCharacter \| Item → Spell |  | — | `mode` `uses` `level` `charges` |
+| `casts` | Statblock \| PlayerCharacter \| Item \| Subclass \| Ancestry → Spell |  | — | `mode` `uses` `level` `charges` `fromLevel` |
 | `composedOf` | Statblock → Rule |  | Abschnitt „Actions & traits" | `vars` |
 | `controls` | Faction → Place |  | — | — |
 | `crafting` | Creature \| PlayerCharacter \| Party → Recipe |  | — | `day` `days` `put` `rolls` |
 | `describedIn` | * → Article |  | — | — |
 | `entry` | Table → * |  | — | `weight` `qty` `label` `requiresTag` `note` |
+| `equips` | Statblock → Item |  | — | — |
 | `features` | Story → Creature \| Statblock \| Faction |  | — | — |
+| `grants` | Class \| Subclass \| Ancestry \| Background \| Feat → Rule |  | — | `level` |
 | `happensAt` | Story → Place |  | — | — |
+| `hasAncestry` | PlayerCharacter → Ancestry | ja | — | — |
+| `hasBackground` | PlayerCharacter → Background | ja | — | — |
+| `hasClass` | PlayerCharacter → Class |  | — | `level` `subclass` |
 | `hasProperty` | Weapon \| Item \| Armor → ItemProperty |  | — | — |
 | `holds` | Inventory → Item |  | — | `qty` `tier` `slot` `gx` `gy` `attuned` `note` |
 | `includes` | Knowledge → Information |  | — | — |
@@ -829,7 +881,9 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `regards` | Creature \| Party \| Faction → Creature \| Party \| Faction |  | — | `tags` `note` |
 | `route` | Place → Place |  | — | `hours` `terrain` `signal` `hidden` `oneWay` |
 | `stageOf` | Condition → Condition | ja | — | — |
-| `tableFor` | Place \| Story \| Encounter → Table |  | — | — |
+| `subclassOf` | Subclass → Class | ja | — | — |
+| `subraceOf` | Ancestry → Ancestry | ja | — | — |
+| `tableFor` | Place \| Story \| Encounter \| Class \| Subclass \| Ancestry \| Background → Table |  | — | — |
 | `territory` | Map → * |  | — | `kind` `x` `y` `w` `h` `r` `pts` `color` `opacity` |
 | `variantOf` | * → * | ja | — | — |
 | `worships` | Creature \| Faction → Deity |  | — | — |
@@ -839,22 +893,18 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Zeile | Wörter | genannt von |
 |---|---|---|
-| `Ability` | str · dex · con · int · wis · cha | `Proficiencies.saves` `Skill.ability` `Disease.save` `Spell.save` `Statblock.spellAbility` `Recipe.ability` |
-| `ArmorTraining` | Leichte Rüstung · Mittlere Rüstung · Schwere Rüstung · Schilde | `Proficiencies.proficient` `Proficiencies.expertise` |
+| `Ability` | str · dex · con · int · wis · cha | `Proficiencies.saves` `Skill.ability` `Class.primaryAbility` `Class.spellAbility` `Subclass.spellAbility` `Disease.save` `Spell.save` `Statblock.spellAbility` `Recipe.ability` |
+| `DamageType` | 13: acid · bludgeoning · cold · fire … | `Ancestry.resistances` `Action.damageType` `Spell.damageTypes` `Weapon.damageType` |
 | `DrawTime` | free action · bonus action · action · turn · round | `Inventory.zones` |
-| `KnowledgeField` | Kräuterkunde · Stadtgeschichte · Nebelkunde | `Proficiencies.proficient` `Proficiencies.expertise` |
-| `Language` | Gemeinsprache · Diebeszinken · Elfisch · Halblingisch | `Proficiencies.proficient` `Proficiencies.expertise` |
 | `RuleKind` | rule · travel · sense · reward · boon · option | `Rule.kind` |
-| `Skill` | 18: acrobatics · animalHandling · arcana · athletics … | `Proficiencies.proficient` `Proficiencies.expertise` |
+| `Size` | tiny · small · medium · large · huge · gargantuan | `Ancestry.size` `Statblock.size` |
 | `State` | idea · prepared · ready | `Status.status` |
-| `Tool` | Alchemistenwerkzeug · Diebeswerkzeug · Fälscherwerkzeug · Kerzenzieherwerkzeug | `Proficiencies.proficient` `Proficiencies.expertise` |
-| `WeaponTraining` | Einfache Waffen · Kriegswaffen | `Proficiencies.proficient` `Proficiencies.expertise` |
 
 ### Einheiten, Variablen, Einstellungen
 
 - Einheiten: length · imperial: `ft` `in` `mi`; length · metric: `cm` `m` `km`; weight · imperial: `lb` `oz`; weight · metric: `g` `kg`; volume · imperial: `gal` `pt`; volume · metric: `ml` `l`
 - Variablen: `ATK` `DMG` `DMG2` `DMGTYP` `DMGTYP2` `RNG`
-- Einstellungen: `gridSize` `gridUnit` `inventoryCols` `inventoryRows` `today` `skills` `gmFields` `units` `travelRationEvery` `travelLightEvery` `travelWatchesPerDay`
+- Einstellungen: `gridSize` `gridUnit` `inventoryCols` `inventoryRows` `today` `gmFields` `units` `travelRationEvery` `travelLightEvery` `travelWatchesPerDay`
 <!-- register:ende -->
 
 ---

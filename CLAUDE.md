@@ -209,7 +209,8 @@ wiederkommen, werden sie neu geschrieben.
   Figur: das ist, was sich während der Sitzung ändert. Damit heisst `hp` am
   Statblock das Maximum und an der Figur der Stand.
   Der Statblock trägt seine Felder **selbst** (`ac`, `hp`, `speed`, `cr`,
-  `prof`, `senses`, `resistances` …) und nimmt `Abilities` dazu — die sechs
+  `prof`, `senses`, `resistances`, `bonuses` …) und nimmt `Abilities` und
+  `Proficiencies` dazu — die sechs
   Werte samt ihren gerechneten Nachbarn, denn `mod(dex)` löst gegen
   dieselbe Karte auf. `StatblockInfo` gibt es nicht mehr: dreissig Felder
   unter einem Sammelnamen sind keine Auskunft. Der Bogen liest beide Karten
@@ -274,27 +275,41 @@ wiederkommen, werden sie neu geschrieben.
   Gelesen wird **immer** über `enumOptions()` (Paket) bzw. `enumWerte()`
   (Prototyp) und nie `p.enum` direkt. Eine Liste mit genau einem Nutzer
   bleibt am Feld — eine Zeile dafür wäre der Umweg ohne den Gewinn.
-  **Mehrere Zeilen darf ein Feld nennen** (`enumRef: ['Skill', 'Tool', …]`),
+  **Mehrere Zeilen darf ein Feld nennen** (`enumRef: ['Skill', 'Language', …]`),
   und dann gelten sie zusammen: `Proficiencies.proficient` zieht aus sechs
-  Listen, weil ein Feld je Sorte dieselbe Frage sechsmal stellte und die
+  Quellen, weil ein Feld je Sorte dieselbe Frage sechsmal stellte und die
   siebte Sorte ein siebtes Feld gebraucht hätte. Woher ein Wert kommt, sagt
-  die Liste, in der er steht (`enumSource` / `enumQuelle`) — der Bogen
-  gruppiert danach, und das Handwerk liest die Werkzeugübungen so heraus.
+  die Quelle, in der er steht (`enumSource`) — der Bogen gruppiert danach.
   Getrennt gebraucht: `enumGroups()` / `enumGruppen()`.
   Mit `type: 'array'` hält dasselbe Feld **mehrere** Werte aus diesen
-  Listen; die Maske zeigt dann Häkchen, nach Zeile gruppiert.
+  Listen; die Maske zeigt dann Häkchen, nach Quelle gruppiert.
+  **Ein Name darf eine Artikelart sein** (M6, D50): dann sind die Werte die
+  Namen ihrer sichtbaren Artikel (Untertypen ja, Instanzen nein; `enumWhere`
+  engt ein), und `Typ.feld` nennt die Liste eines Feldes
+  (`Weapon.category`). Wer eine Art nennt, gibt `enumOptions()` die
+  sichtbaren Artikel mit. **Die Zeile hält, die Art schlägt vor:** ein
+  Feld, das eine Art nennt, prüft `validateEntity` nicht gegen die Liste
+  (`enumHolds`) — ein Name ist der heutige Stand.
 - **Eine Zahl mit Grenzen ist eine Spanne** (`min`, `max`), keine
   Aufzählung von zwanzig Wörtern. Die Schwierigkeit war fünf Wörter an der
   Begegnung und freier Text an der Szene; sie ist jetzt eine Stufe von 1
   bis 20 im Typ `Difficulty`, und beide nehmen ihn dazu.
-- **Übungen stehen in einem Feld, nicht in sechs.**
-  `Proficiencies.proficient` (und `expertise`) ziehen aus `Skill`, `Tool`,
-  `Language`, `WeaponTraining`, `ArmorTraining` und `KnowledgeField`;
-  `saves` zieht aus `Ability`. Welche Fertigkeiten es gibt, sagt die Zeile
-  `Skill`; **worauf jede rechnet**, sagt die Einstellung `skills`
-  (`stealth:dex`) — zwei Stellen, aber nicht zweimal dasselbe, denn eine
-  Liste von Wörtern kann keine Zuordnung tragen. Wird eine Fertigkeit
-  einmal ein Artikel, fallen beide weg.
+- **Übungen stehen in einem Feld, nicht in sechs, und am Statblock.**
+  `Proficiencies.proficient` (und `expertise`) ziehen aus den Artikeln von
+  `Skill`, `Language`, `Item` (nur Werkzeuge) und `Weapon` und aus den
+  Listen von `Weapon.category` und `Armor.armorType`; `saves` zieht aus
+  `Ability`. Welche Fertigkeiten es gibt, sagen die `Skill`-Artikel,
+  **worauf jede rechnet**, ihr `ability` — die Zeilen `Skill`, `Tool`,
+  `Language`, `WeaponTraining`, `ArmorTraining`, `KnowledgeField` und die
+  Einstellung `skills` sind seit P4 weg (M6). `Proficiencies` nimmt der
+  Statblock, nicht die Kreatur (M5): die Übungen gehören zu den Zahlen.
+- **Klasse, Abstammung, Hintergrund sind Kanten von der Figur** (M3):
+  `hasClass` je Klasse mit `props.level` und `props.subclass`,
+  `hasAncestry`, `hasBackground`. **Die Stufe wird gerechnet**
+  (`sum(hasClass.level)`, eine Rechnung über die eigenen Kanten), nicht
+  eingetippt. Was eine Klasse gewährt, ist `grants` mit der Stufe **an der
+  Kante** — „Ability Score Improvement" ist ein Artikel und sieben Kanten,
+  darum gibt es `Feature.level` nicht (D50).
 - **`Status` ist der Vorbereitungsstand und sonst nichts:** `idea`,
   `prepared`, `ready` (Aufzählungszeile `State`). Gelesen wird die Zeile
   (`statusWerte()`), nicht ein Gedächtnis: „Unfinished" zählte nach der

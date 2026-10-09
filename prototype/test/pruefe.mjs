@@ -1557,14 +1557,15 @@ async function seite(datei, warten) {
     vorschlag.frei && vorschlag.vor.includes('npc'), vorschlag);
   pruefe('a name does not suggest the names of other articles', vorschlag.deckListe === false, vorschlag);
 
-  /* ---- Mehrere Werte aus mehreren Listen ----
-     Worin jemand geübt ist, kommt aus sechs Listen und steht in **einem**
-     Feld. Ein Feld je Sorte hiesse, dieselbe Frage sechsmal zu stellen —
-     und die siebte Sorte bräuchte ein siebtes Feld. */
+  /* ---- Mehrere Werte aus mehreren Quellen ----
+     Worin jemand geübt ist, kommt aus sechs Quellen und steht in **einem**
+     Feld. Seit M6 sind es Artikel (Fertigkeiten, Sprachen, Werkzeuge,
+     Waffen) und die Listen zweier Felder (Waffen- und Rüstungsgruppen);
+     was keine Quelle kennt, bleibt als Text stehen (D50). */
   const mehrfach = await p.evaluate(() => {
     const T = window.__T__;
     const pd = T.REG.interfaces.Proficiencies.schema.properties.proficient;
-    const node = T.fieldInput(pd, ['stealth', 'Elfisch']);
+    const node = T.fieldInput(pd, ['martial', 'Nebelkunde']);
     return {
       gruppen: [...node.querySelectorAll('.cgroup')].map((x) => x.textContent),
       an: [...node.querySelectorAll('.cchk.on span')].map((x) => x.textContent),
@@ -1573,15 +1574,16 @@ async function seite(datei, warten) {
       wert: node.value,
       /* Und die Rettungswürfe ziehen aus **einer** Liste. */
       saves: T.enumWerte(T.REG.interfaces.Proficiencies.schema.properties.saves),
-      quelle: T.enumQuelle(pd, 'Diebeswerkzeug'),
+      quelle: T.enumQuelle(pd, 'heavy'),
     };
   });
-  pruefe('one field draws on several lists, grouped by where they come from',
-    mehrfach.gruppen.length === 6 && mehrfach.gruppen.includes('Skill')
-    && mehrfach.gruppen.includes('Language')
-    && mehrfach.quelle === 'Tool', mehrfach);
-  pruefe('and what is picked reads back as a plain list',
-    mehrfach.wert === 'stealth, Elfisch' && mehrfach.an.length === 2
+  pruefe('one field draws on several sources, grouped by where they come from',
+    mehrfach.gruppen.includes('Weapon \u00b7 Category')
+    && mehrfach.gruppen.includes('Armor \u00b7 Armour type')
+    && mehrfach.quelle === 'Armor.armorType', mehrfach);
+  pruefe('and what is picked reads back as a plain list, the unknown name included',
+    mehrfach.wert === 'martial, Nebelkunde' && mehrfach.an.length === 1
+    && mehrfach.gruppen.includes('Other')
     && mehrfach.saves.join() === 'str,dex,con,int,wis,cha', mehrfach);
 
   const anlegen = async (name) => {
@@ -1649,20 +1651,24 @@ async function seite(datei, warten) {
     document.querySelectorAll('.fld').forEach((f) => { o[f.querySelector('dt').textContent] = f.querySelector('dd').textContent; });
     return o;
   });
-  pruefe('a required component arrives with its defaults',
-    pcFelder.Level === '1' && pcFelder.Proficiency === '+2', pcFelder);
+  /* Ohne Klasse keine Stufe (M3): sie ist die Summe der `hasClass`-Kanten
+     und wird nie eingetippt — eine neue Figur hat darum keine, statt einer
+     Stufe 1, die nach dem ersten Aufstieg falsch wäre. */
+  pruefe('a new character has no level until it has a class',
+    !/\d/.test(pcFelder.Level || '') && !/\d/.test(pcFelder.Proficiency || ''), pcFelder);
 
   /* Der Übungsbonus ist abgeleitet, nicht gespeichert — er muss der Stufe
-     folgen, ohne dass jemand ihn nachträgt. */
+     folgen, und die Stufe den Klassenkanten, ohne dass jemand etwas
+     nachträgt. Kämpfer 5 und Magier 4 sind Stufe 9. */
   await p.evaluate(() => {
-    const dt = [...document.querySelectorAll('.fld dt')].find((d) => d.textContent === 'Level');
-    dt.nextElementSibling.click();
-  });
-  await p.waitForTimeout(250);
-  await p.evaluate(() => {
-    const i = document.querySelector('.fld dd.editing input');
-    i.value = '9';
-    i.dispatchEvent(new Event('change', { bubbles: true }));
+    const T = window.__T__;
+    const e = [...T.ENT.values()].find((x) => x.name === 'Probe hero');
+    const neu = JSON.parse(JSON.stringify(e));
+    neu.relations = (neu.relations || []).concat([
+      { id: 'k1', type: 'hasClass', to: 'probe-fighter', props: { level: 5 } },
+      { id: 'k2', type: 'hasClass', to: 'probe-wizard', props: { level: 4 } },
+    ]);
+    T.persist(neu);
   });
   await p.waitForTimeout(400);
   const nachStufe = await p.evaluate(() => {
@@ -4235,17 +4241,19 @@ async function seite(datei, warten) {
       ohneWerkzeug);
 
     /* Der Übungsbonus kommt aus den Werkzeugübungen in
-       `Proficiencies.proficient` — den Einträgen, die aus der Liste `Tool`
-       kommen —, nicht aus einer Annahme.
+       `Proficiencies.proficient` — am Statblock (M5), unter dem Namen des
+       Werkzeugs (M6) —, nicht aus einer Annahme.
        Rook ist in Alchemie geübt, die Gruppe als solche nicht. */
     const boni = await p.evaluate(() => {
       const T = window.__T__;
       const rez = [...T.ENT.values()].find((e) =>
         ((e.components || {}).Recipe || {}).tool === 'Alchemistenwerkzeug');
       const info = rez.components.Recipe;
-      const rook = [...T.ENT.values()].find((e) =>
+      const bogen = [...T.ENT.values()].find((e) =>
         (((e.components || {}).Proficiencies || {}).proficient || [])
-          .indexOf('Alchemistenwerkzeug') >= 0);
+          .indexOf('Alchemistenwerkzeug') >= 0 && (e.interfaces || [])[0] === 'Statblock');
+      const an = bogen && (bogen.relations || []).find((r) => r.type === 'belongsTo');
+      const rook = an && T.ENT.get(an.to);
       const andere = [...T.ENT.values()].find((e) =>
         (e.interfaces || [])[0] === 'Party');
       return { rook: T.craftMod(rook, info), andere: T.craftMod(andere, info) };

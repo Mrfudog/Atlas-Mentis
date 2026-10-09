@@ -79,9 +79,16 @@ function felderVon(art) {
        fünfunddreissig Wörter daraus. */
     const refs = p.enumRef ? (Array.isArray(p.enumRef) ? p.enumRef : [p.enumRef]) : [];
     const zeilen = refs.map((r) => R.enums?.[r]).filter(Boolean);
-    const zeile = zeilen.length === 1 ? zeilen[0] : null;
-    const viele = zeilen.length > 1
-      ? `${refs.join(' + ')}: ${zeilen.reduce((n, z) => n + (z.values?.length ?? 0), 0)} words`
+    /* Seit M6 darf ein Name eine Artikelart sein (die Namen ihrer Artikel)
+       oder `Typ.feld` (dessen Liste). Dann steht da, woher — Wörter gibt es
+       bei einer Art erst mit dem Bestand. */
+    const nichtZeile = refs.some((r) => !R.enums?.[r]);
+    const zeile = zeilen.length === 1 && !nichtZeile ? zeilen[0] : null;
+    const quelle = (r) => R.enums?.[r] ? r
+      : R.interfaces?.[r] ? `${r} articles`
+      : r;
+    const viele = zeilen.length > 1 || nichtZeile
+      ? refs.map(quelle).join(' + ')
       : null;
     const spanne = (p.min !== undefined || p.max !== undefined)
       ? `${p.min ?? '−∞'}…${p.max ?? '∞'}` : null;
