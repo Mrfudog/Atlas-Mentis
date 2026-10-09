@@ -246,9 +246,30 @@ export function linkedTypes(
   return raus;
 }
 
+/** Was ein Feld mit `enumRef` liest — die Felder, die dafür zählen. */
+type EnumProp = Pick<PropertySchema, 'enum' | 'enumRef' | 'enumWhere'>;
+
+/** Eine Werteliste je genanntem Namen, mit ihrer Herkunft. */
+export interface EnumGroup {
+  name: string;
+  label: string;
+  values: string[];
+  /**
+   * Woher die Werte kommen: eine Aufzählungszeile, die Namen der Artikel
+   * einer Art (M6) oder die eigene Liste eines Feldes (`Typ.feld`).
+   */
+  from: 'enum' | 'type' | 'field';
+}
+
+function enumRefs(prop: Pick<PropertySchema, 'enumRef'> | undefined): string[] {
+  const refs = prop?.enumRef;
+  if (!refs) return [];
+  return Array.isArray(refs) ? refs : [refs];
+}
+
 /**
  * Die Werte, die in dieses Feld dürfen — die eigenen oder die der
- * Aufzählungszeile, die es nennt.
+ * Zeilen, Arten und Felder, die es nennt.
  *
  * Ein Feld nennt seine Werte selbst (`enum`) **oder** eine Zeile
  * (`enumRef`), nie beides: zwei Listen für ein Feld wären zwei Antworten
@@ -256,14 +277,19 @@ export function linkedTypes(
  * keine Werte — und ein Feld ohne Werte ist ein freies Wort, nicht ein
  * Feld mit einer leeren Liste. Genau das soll die Maske zeigen, statt
  * eine Auswahl anzubieten, in der nichts steht.
+ *
+ * `articles` sind die Artikel, **die der Fragende sehen darf** — gesiebt
+ * hat der Aufrufer (`redactEntity`, `inPlay`). Ohne sie trägt eine
+ * genannte Art nichts bei (M6).
  */
 export function enumOptions(
-  registry: Pick<Registry, 'enums'>,
-  prop: Pick<PropertySchema, 'enum' | 'enumRef'> | undefined,
+  registry: Pick<Registry, 'enums' | 'interfaces'>,
+  prop: EnumProp | undefined,
+  articles?: Iterable<Entity>,
 ): string[] | undefined {
   if (!prop) return undefined;
   if (prop.enum?.length) return prop.enum;
-  const gruppen = enumGroups(registry, prop);
+  const gruppen = enumGroups(registry, prop, articles);
   if (!gruppen.length) return undefined;
   /* Mehrere Zeilen gelten zusammen, in der Reihenfolge, in der das Feld sie
      nennt. Doppelte fallen weg — zwei Listen, die dasselbe Wort führen,
@@ -274,6 +300,39 @@ export function enumOptions(
 }
 
 /**
+ * Hält die Prüfung dieses Feld an seiner Liste fest?
+ *
+ * Nur, wenn **alles**, was es nennt, eine Zeile oder eine Feldliste ist.
+ * Nennt es eine Artikelart, schlägt die Liste vor und hält nicht (M6, D50):
+ * ein Artikelname ist der heutige Stand, und eine Umbenennung machte eine
+ * gespeicherte Übung sonst rückwirkend falsch.
+ */
+export function enumHolds(
+  registry: Pick<Registry, 'enums' | 'interfaces'>,
+  prop: EnumProp | undefined,
+): boolean {
+  if (!prop) return false;
+  if (prop.enum?.length) return true;
+  return enumRefs(prop).every((n) => enumRefKind(registry, n) !== 'type');
+}
+
+/** Was ein Name in `enumRef` meint — oder `undefined`, wenn nichts. */
+export function enumRefKind(
+  registry: Pick<Registry, 'enums' | 'interfaces'>,
+  name: string,
+): EnumGroup['from'] | undefined {
+  if (registry.enums?.[name]) return 'enum';
+  if (registry.interfaces?.[name]) return 'type';
+  const punkt = name.indexOf('.');
+  if (punkt > 0) {
+    const typ = name.slice(0, punkt);
+    const feld = name.slice(punkt + 1);
+    if (registry.interfaces?.[typ]?.schema?.properties?.[feld]) return 'field';
+  }
+  return undefined;
+}
+
+/**
  * Dasselbe, aber **je Zeile getrennt** — für eine Maske, die die Werte
  * gruppiert zeigen soll, und für die Frage, aus welcher Liste ein Wert
  * kommt.
@@ -281,31 +340,85 @@ export function enumOptions(
  * Genannte Zeilen, die es nicht gibt, fallen weg: eine fehlende Zeile ist
  * keine leere Liste. Eigene Werte am Feld (`enum`) sind keine Zeile und
  * stehen deshalb nicht hier — sie haben keinen Namen, unter dem man sie
- * gruppieren könnte.
+ * gruppieren könnte. Eine genannte **Art** steht auch dann da, wenn noch
+ * kein Artikel von ihr sichtbar ist: die Gruppe gibt es, nur ist sie leer,
+ * und die Maske soll sagen können, wo die Werte herkämen.
  */
 export function enumGroups(
-  registry: Pick<Registry, 'enums'>,
-  prop: Pick<PropertySchema, 'enumRef'> | undefined,
-): { name: string; label: string; values: string[] }[] {
-  const refs = prop?.enumRef;
-  if (!refs) return [];
-  const namen = Array.isArray(refs) ? refs : [refs];
-  const raus: { name: string; label: string; values: string[] }[] = [];
+  registry: Pick<Registry, 'enums' | 'interfaces'>,
+  prop: Pick<PropertySchema, 'enumRef' | 'enumWhere'> | undefined,
+  articles?: Iterable<Entity>,
+): EnumGroup[] {
+  const namen = enumRefs(prop);
+  if (!namen.length) return [];
+  const bestand = articles ? [...articles] : [];
+  const raus: EnumGroup[] = [];
   for (const n of namen) {
-    const zeile = registry.enums?.[n];
-    if (!zeile?.values?.length) continue;
-    raus.push({ name: n, label: zeile.label ?? n, values: zeile.values });
+    const art = enumRefKind(registry, n);
+    if (art === 'enum') {
+      const zeile = registry.enums?.[n];
+      if (!zeile?.values?.length) continue;
+      raus.push({ name: n, label: zeile.label ?? n, values: zeile.values, from: 'enum' });
+    } else if (art === 'type') {
+      const def = registry.interfaces[n];
+      const filter = prop?.enumWhere?.[n];
+      const werte: string[] = [];
+      for (const e of bestand) {
+        if (!articleOfType(registry, e, n) || isInstance(e)) continue;
+        if (filter && !matchesWhere(e, filter)) continue;
+        const name = e.name || String(e.components?.['Identity']?.['name'] ?? '');
+        if (name && !werte.includes(name)) werte.push(name);
+      }
+      werte.sort((a, b) => a.localeCompare(b));
+      raus.push({ name: n, label: def?.label ?? n, values: werte, from: 'type' });
+    } else if (art === 'field') {
+      const punkt = n.indexOf('.');
+      const typ = n.slice(0, punkt);
+      const feld = registry.interfaces[typ]?.schema?.properties?.[n.slice(punkt + 1)];
+      /* Nur die **eigene** Liste des Feldes; nennt es selbst Zeilen, wäre
+         das ein Umweg über zwei Namen für dieselbe Sache. */
+      if (!feld?.enum?.length) continue;
+      const label = `${registry.interfaces[typ]?.label ?? typ} · ${feld.title ?? n.slice(punkt + 1)}`;
+      raus.push({ name: n, label, values: feld.enum, from: 'field' });
+    }
   }
   return raus;
 }
 
-/** Aus welcher genannten Zeile dieser Wert kommt — oder `undefined`. */
+/** Gehört dieser Artikel zu der Art — sie selbst oder ein Untertyp? */
+function articleOfType(
+  registry: Pick<Registry, 'interfaces'>,
+  entity: Entity,
+  type: string,
+): boolean {
+  const eigene = entity.interfaces?.[0];
+  return !!eigene && typeChain(registry, eigene).includes(type);
+}
+
+/** Trifft der Filter aus `enumWhere`? Gelesen wird jede Karte des Artikels. */
+function matchesWhere(entity: Entity, filter: Record<string, string[]>): boolean {
+  for (const [feld, erlaubt] of Object.entries(filter)) {
+    let wert: unknown;
+    for (const karte of Object.values(entity.components ?? {})) {
+      if (karte && feld in karte) {
+        wert = karte[feld];
+        break;
+      }
+    }
+    const werte = Array.isArray(wert) ? wert.map(String) : wert == null ? [] : [String(wert)];
+    if (!werte.some((w) => erlaubt.includes(w))) return false;
+  }
+  return true;
+}
+
+/** Aus welcher genannten Zeile oder Art dieser Wert kommt — oder `undefined`. */
 export function enumSource(
-  registry: Pick<Registry, 'enums'>,
-  prop: Pick<PropertySchema, 'enumRef'> | undefined,
+  registry: Pick<Registry, 'enums' | 'interfaces'>,
+  prop: Pick<PropertySchema, 'enumRef' | 'enumWhere'> | undefined,
   value: string,
+  articles?: Iterable<Entity>,
 ): string | undefined {
-  for (const g of enumGroups(registry, prop)) if (g.values.includes(value)) return g.name;
+  for (const g of enumGroups(registry, prop, articles)) if (g.values.includes(value)) return g.name;
   return undefined;
 }
 

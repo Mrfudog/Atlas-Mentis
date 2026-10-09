@@ -11,7 +11,7 @@
  */
 
 import { z } from 'zod';
-import { enumOptions, linkAccepts, linkTargets, typeChain } from './entity.js';
+import { enumHolds, enumOptions, linkAccepts, linkTargets, typeChain } from './entity.js';
 import type { Entity, LayoutElement, Registry } from './types.js';
 
 const propertyType = z.enum(['string', 'number', 'integer', 'boolean', 'array', 'object']);
@@ -33,6 +33,8 @@ const propertySchema = z
     enum: z.array(z.string()).optional(),
     /* Die Werte stehen einmal in einer Aufzählungszeile, und das Feld nennt sie. */
     enumRef: z.union([z.string(), z.array(z.string())]).optional(),
+    /* Je genannter Art: welche Artikel davon in Frage kommen (M6). */
+    enumWhere: z.record(z.string(), z.record(z.string(), z.array(z.string()))).optional(),
     min: z.number().optional(),
     max: z.number().optional(),
     format: z.string().optional(),
@@ -318,7 +320,9 @@ export function validateEntity(
       if (prop.derived) continue;
       const wert = card[property];
       if (wert === undefined || wert === '' || wert === null) continue;
-      const erlaubteWerte = enumOptions(registry, prop);
+      /* Nennt das Feld eine Artikelart, schlägt die Liste vor und hält
+         nicht (M6, D50): ein Artikelname ist der heutige Stand. */
+      const erlaubteWerte = enumHolds(registry, prop) ? enumOptions(registry, prop) : undefined;
       if (erlaubteWerte) {
         /* **Eine Karte nennt ihre Werte, nicht sich selbst.** `zones`
            hält `{"x,y": "action"}`: die Zeile gilt für die Einträge, und

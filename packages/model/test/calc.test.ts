@@ -126,3 +126,27 @@ describe('derivedValue across the cards of one article', () => {
     expect(derivedValue({ type: 'number', derived: 'mod(str)' }, {}, cards)).toBe(0);
   });
 });
+
+describe('sum über die eigenen Kanten (M3)', () => {
+  const level = { type: 'number' as const, derived: 'sum(hasClass.level)' };
+  const prof = { type: 'number' as const, derived: '2+(sum(hasClass.level)-1)/4' };
+  const kanten = [
+    { id: 'r1', type: 'hasClass', to: 'fighter', props: { level: 3 } },
+    { id: 'r2', type: 'hasClass', to: 'wizard', props: { level: 2 } },
+    { id: 'r3', type: 'memberOf', to: 'zirkel', props: { level: 9 } },
+  ];
+
+  it('zählt die Stufen aller Klassen und nur die', () => {
+    expect(derivedValue(level, {}, {}, kanten)).toBe(5);
+    expect(derivedValue(prof, {}, {}, kanten)).toBe(3);
+  });
+
+  it('ohne Klasse keine Stufe — und kein Übungsbonus, der aussieht, als stimmte er', () => {
+    expect(derivedValue(level, {}, {}, [])).toBeUndefined();
+    expect(derivedValue(prof, {}, {})).toBeUndefined();
+  });
+
+  it('ein Pfad ohne Punkt rechnet nichts', () => {
+    expect(derivedValue({ type: 'number', derived: 'sum(hasClass)' }, {}, {}, kanten)).toBeUndefined();
+  });
+});
