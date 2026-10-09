@@ -16,10 +16,14 @@ export function eingabeArt(p: PropertySchema | undefined): Eingabe {
   /* Auch ein Feld, das seine Werte in einer Aufzählungszeile nennt, ist
      eine Auswahl. Die Werte holt die Maske über `enumOptions()`; hier geht
      es nur um die Form der Eingabe. */
+  /* Mehrere Werte passen in keine einfache Auswahl: ein `select` schrieb
+     ein Wort in ein Feld, das eine Liste hält. Bis eine Mehrfachwahl da
+     ist, ist es eine Liste — Übungen tragen seit M6 auch Namen, die keine
+     Liste kennt (D50). */
+  if (p.type === 'array') return 'liste';
   if ((Array.isArray(p.enum) && p.enum.length) || p.enumRef) return 'auswahl';
   if (p.type === 'boolean') return 'jaNein';
   if (p.type === 'number' || p.type === 'integer') return 'zahl';
-  if (p.type === 'array') return 'liste';
   if (p.format === 'long') return 'lang';
   return 'text';
 }

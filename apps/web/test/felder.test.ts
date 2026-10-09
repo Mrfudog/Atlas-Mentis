@@ -23,6 +23,15 @@ describe('eingabeArt', () => {
     expect(eingabeArt(beschr['description'])).toBe('lang'); // format: long
   });
 
+  /* Übungen halten mehrere Namen (M6) — ein `select` schrieb ein Wort in
+     ein Feld, das eine Liste hält. */
+  it('gives a list, not a single choice, to a field that holds several values', () => {
+    const prof = seedRegistry.interfaces.Proficiencies.schema?.properties ?? {};
+    expect(eingabeArt(prof['proficient'])).toBe('liste');
+    expect(eingabeArt(prof['saves'])).toBe('liste');
+    expect(ausEingabe(prof['saves'], 'str, con')).toEqual(['str', 'con']);
+  });
+
   it('falls back to plain text rather than guessing', () => {
     expect(eingabeArt(undefined)).toBe('text');
   });
