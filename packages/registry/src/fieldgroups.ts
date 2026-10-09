@@ -416,39 +416,137 @@ export const fieldGroups = {
     },
   },
 
+  /* **`kind` ist nur noch für Regeln ohne Träger.** Zustand, Aktion, Merkmal,
+     Talent und Fertigkeit sind eigene Arten (D48): ein Zauber braucht kein
+     zweites Wort für das, was sein Typ schon sagt, und darum ist `kind` auch
+     nicht mehr Pflicht. Die Wörter stehen als Aufzählungszeile `RuleKind`. */
   RuleInfo: {
     schema: {
       type: 'object',
-      required: ['kind'],
       properties: {
-        kind: {
-          type: 'string',
-          title: 'Rule kind',
-          enum: [
-            'action',
-            'bonus',
-            'reaction',
-            'feature',
-            'trait',
-            'condition',
-            'legendary',
-            'lair',
-            'feat',
-            'skill',
-            /* Was eine Figur an einem Reiseknoten tun kann (REQ-171):
-               kundschaften, sammeln, rasten. Es war die Einstellung
-               `travelActions`, eine Wortliste — ein Wort hat aber keine
-               Beschreibung, keine Probe und keine Quelle. Eine Handlung ist
-               eine Regel (Abgleich A3, 7.10.). */
-            'travel',
-          ],
-        },
-        uses: { type: 'string', title: 'Uses' },
+        kind: { type: 'string', title: 'Rule kind', enumRef: 'RuleKind' },
         /* Ob der Name dieser Regel im Fliesstext erkannt werden darf
            (REQ-175). Ein falscher Treffer kostet mehr Vertrauen, als zehn
            richtige einbringen — deshalb lässt er sich hier abschalten. */
         autolink: { type: 'boolean', title: 'Spot it in prose', default: true },
+      },
+    },
+  },
+
+  /**
+   * **Ein Zustand, den man hat** (D48). Eine Kreatur bekommt ihn zugewiesen
+   * (`Vitals.conditions`, `participates.conditions`) — das verlangt eine
+   * Art, denn die Prüfung hält, was ein Verweisfeld nennt, und ein Filter
+   * schlüge bloss vor.
+   *
+   * **Stufen sind eigene Zustände:** „Exhaustion 3" ist ein Artikel mit
+   * `stage: 3` und der Kante `stageOf` auf den Grundzustand „Exhaustion".
+   * Die Zustandsliste hält **höchstens eine Stufe je Grundzustand**; ändert
+   * sich die Stufe, wird der Zustand ersetzt, nicht gezählt. Deshalb gibt es
+   * `Vitals.exhaustion` nicht mehr — dieselbe Zahl an zwei Stellen läuft
+   * auseinander.
+   */
+  ConditionInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        kind: {
+          type: 'string',
+          title: 'Condition kind',
+          enum: ['condition', 'status'],
+          default: 'condition',
+        },
+        /* Nur an einer Stufe gesetzt; der Grundzustand hat keine. */
+        stage: { type: 'number', min: 1, title: 'Stage' },
+        /* Wie er endet. `longRestStep` senkt um **eine Stufe** (ersetzen:
+           gleicher `stageOf`, `stage − 1`); `save` heisst, ein Wurf löst ihn. */
+        recovery: {
+          type: 'string',
+          title: 'Recovery',
+          enum: ['none', 'shortRest', 'longRest', 'longRestStep', 'save', 'special'],
+        },
+      },
+    },
+  },
+
+  /**
+   * Eine Krankheit *hat* man, also ist sie zuweisbar wie ein Zustand und
+   * erbt `Condition`; sie trägt eigene Felder. Stadien laufen über
+   * `stageOf`, Spielarten über `variantOf`.
+   */
+  DiseaseInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        /* Frei: mundane, magical, … — eine neue Sorte ist ein Eintrag. */
+        kind: { type: 'string', suggest: true, title: 'Disease kind' },
+        save: { type: 'string', title: 'Saving throw', enumRef: 'Ability' },
+        dc: { type: 'number', min: 1, max: 30, title: 'Save DC' },
+        incubation: { type: 'string', title: 'Incubation' },
+        transmission: { type: 'string', title: 'Transmission' },
+      },
+    },
+  },
+
+  /**
+   * Aktionsart: Action, Bonus Action, Reaction, Movement, Legendary Action …
+   * Vier Stellen verlangen sie als Art: `Action.actionType`, die Wirkzeit
+   * eines Zaubers, die Einschränkungen eines Zustands (`affects`) und
+   * später die Zonen im Inventar (heute die Zeile `DrawTime`).
+   */
+  ActionTypeInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        per: { type: 'string', title: 'Per', enum: ['turn', 'round'] },
+        count: { type: 'number', min: 1, title: 'How often' },
+      },
+    },
+  },
+
+  /**
+   * Eine Aktion: Dodge, Dash, und jede Aktion eines Statblocks. **Ohne
+   * Angriffsfelder** — `attack`, `toHit`, `reach`, `damage` kommen mit dem
+   * Statblock (P4). Die Art der Aktion ist Pflicht und ein Verweis.
+   */
+  ActionInfo: {
+    schema: {
+      type: 'object',
+      required: ['actionType'],
+      properties: {
+        actionType: {
+          type: 'string',
+          format: 'link',
+          title: 'Action type',
+          target: { interfaces: ['ActionType'] },
+        },
         recharge: { type: 'string', title: 'Recharge' },
+        uses: { type: 'string', title: 'Uses' },
+      },
+    },
+  },
+
+  /**
+   * Merkmal — alles Dauerhafte: Klassen-, Volks-, Monstermerkmal,
+   * Regionaleffekt. Dieselbe Sache an verschiedenen Trägern; welcher Träger,
+   * sagen Kanten (`composedOf` am Statblock, später `featureOf`).
+   */
+  FeatureInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        level: { type: 'number', min: 1, max: 20, title: 'Level' },
+        featureType: { type: 'string', suggest: true, title: 'Feature type' },
+      },
+    },
+  },
+
+  /** Finesse, Versatile, Heavy — `hasProperty` verlangt eine Art. */
+  ItemPropertyInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        abbreviation: { type: 'string', title: 'Abbreviation' },
       },
     },
   },
@@ -522,6 +620,53 @@ export const fieldGroups = {
            weiss der Novize noch nicht. Ohne Rang an der Zuteilung erreicht
            sie jedes Mitglied. */
         ranks: { type: 'array', items: { type: 'string' }, title: 'Ranks (lowest first)' },
+        /* Wohin sie will (M7): bei einem Kult der Grund, warum es ihn gibt. */
+        goal: { type: 'string', format: 'long', title: 'Goal' },
+      },
+    },
+  },
+
+  /**
+   * **Eine Gefahr (M7):** Falle oder Gelände-/Wettergefahr. Auf der Karte
+   * steht sie über `marker`; hier steht, was sie tut. Die Stufe ist eine
+   * Zahl mit Grenzen (wie `Difficulty`), der Gefahrgrad eine Aufzählung.
+   */
+  HazardInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', title: 'Kind', enum: ['trap', 'hazard'], default: 'trap' },
+        category: {
+          type: 'string',
+          title: 'Category',
+          enum: ['MECH', 'MAG', 'WTH', 'ENV', 'WLD'],
+        },
+        tier: { type: 'number', min: 1, max: 20, title: 'Level' },
+        threat: { type: 'string', title: 'Threat', enum: ['setback', 'dangerous', 'deadly'] },
+        trigger: { type: 'string', format: 'long', title: 'Trigger' },
+        duration: { type: 'string', title: 'Duration' },
+        effect: { type: 'string', format: 'long', title: 'Effect' },
+        countermeasures: { type: 'string', format: 'long', title: 'Countermeasures' },
+        initiative: { type: 'number', title: 'Initiative' },
+      },
+    },
+  },
+
+  /**
+   * **Eine Gottheit (M7).** Anhänger sind Kanten (`worships` von Kreatur
+   * und Fraktion), kein Feld; Beinamen stehen in `aliases`.
+   */
+  DeityInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        pantheon: { type: 'string', suggest: true, title: 'Pantheon' },
+        title: { type: 'string', title: 'Title' },
+        alignment: { type: 'string', suggest: true, title: 'Alignment' },
+        domains: { type: 'array', items: { type: 'string' }, title: 'Domains' },
+        symbol: { type: 'string', title: 'Symbol' },
+        province: { type: 'string', title: 'Province' },
+        plane: { type: 'string', suggest: true, title: 'Plane' },
       },
     },
   },
@@ -854,6 +999,10 @@ export const fieldGroups = {
         page: { type: 'string', title: 'Page' },
         anchor: { type: 'string', title: 'Anchor' },
         url: { type: 'string', title: 'URL' },
+        /* Die Lizenzflagge (E1, M9): steht der Inhalt im frei lizenzierten
+           SRD? Eine spätere Demo zeigt nur das, und die Seite selbst ist
+           nicht öffentlich. */
+        srd: { type: 'boolean', title: 'In the SRD' },
       },
     },
   },
@@ -989,7 +1138,7 @@ export const fieldGroups = {
       type: 'object',
       properties: {
         /* **Die Zahlen, die am Tisch gesetzt werden** (`alwaysEdit`):
-           Trefferpunkte, zeitweilige, Erschöpfung. Erst „Bearbeiten" zu
+           Trefferpunkte, zeitweilige. Erst „Bearbeiten" zu
            sagen sind drei Klicks für eine Zahl, und das mitten im Zug. Die
            Zustandsliste und die Trefferwürfel stehen nicht dabei: die eine
            ist ein Satz Häkchen, die anderen Punkte, und beides zeichnet der
@@ -1000,15 +1149,16 @@ export const fieldGroups = {
         deathSuccess: { type: 'number', title: 'Death saves passed', default: 0 },
         deathFail: { type: 'number', title: 'Death saves failed', default: 0 },
         inspiration: { type: 'boolean', title: 'Inspiration' },
-        exhaustion: { type: 'number', title: 'Exhaustion', default: 0, alwaysEdit: true },
-        /* **Ein Zustand ist ein Regelartikel** (`Rule.kind = condition`),
-           kein Wort aus einer Einstellung (Abgleich A3, 7.10.): „prone"
-           hat eine Beschreibung, die am Tisch jemand lesen will, und eine
-           Hausregel dazu ist ein zweiter Artikel, kein zweites Wort. Hier
-           stehen die Ids; der Bogen zeichnet sie als Häkchen (REQ-115). */
+        /* **Ein Zustand ist ein Artikel der Art `Condition`**, kein Wort aus
+           einer Einstellung (Abgleich A3, 7.10.; D48): „prone" hat eine
+           Beschreibung, die am Tisch jemand lesen will. Hier stehen die Ids;
+           der Bogen zeichnet sie als Häkchen (REQ-115). **Höchstens eine
+           Stufe je Grundzustand** — die Prüfung hält es (`stageOf`). Die
+           Erschöpfung ist deshalb kein Zähler mehr, sondern „Exhaustion 1"
+           bis „Exhaustion 6" in dieser Liste. */
         conditions: {
           type: 'array', format: 'link', title: 'Conditions', items: { type: 'string' },
-          target: { interfaces: ['Rule'], where: { component: 'Rule', property: 'kind', value: 'condition' } },
+          target: { interfaces: ['Condition'] },
         },
         nat1: { type: 'number', title: 'Natural 1s', default: 0 },
       },
@@ -1292,6 +1442,12 @@ export const fieldGroups = {
           default: 'generic',
         },
         die: { type: 'string', suggest: true, title: 'Die', default: '1d100' },
+        /* **Spalten (M8):** die Beschriftungen einer Nachschlagetabelle. Mit
+           ihnen ist eine Zeile in `rows` eine Liste von Zellen (`cells`),
+           nicht nur ein Satz mit Gewicht; ohne sie bleibt die Tabelle ein
+           Würfeltopf. Die gewichteten Einträge, die auf Artikel zeigen,
+           bleiben `entry`-Kanten. */
+        columns: { type: 'array', title: 'Columns', items: { type: 'string' } },
         rows: { type: 'array', title: 'Plain entries', items: { type: 'object' } },
         /* Eine Notiz zur Tabelle ist eine Notiz — `Notes.note` kann mehrere
            und lange. Zwei Felder namens „Note" untereinander hiesse, beide

@@ -585,33 +585,33 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-07: 31 Artikelarten, 21 Grundtypen, 42 Kantenarten, 9 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-09: 39 Artikelarten, 21 Grundtypen, 45 Kantenarten, 10 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
 | Grundtyp | Felder | genommen von |
 |---|---|---|
 | `Abilities` | `str` `strMod*` `dex` `dexMod*` `con` `conMod*` `int` `intMod*` `wis` `wisMod*` `cha` `chaMod*` `initiative*` `passivePerception*` | `Statblock` |
-| `Description` | `description` | 22 |
+| `Description` | `description` | 24 |
 | `Difficulty` | `difficulty` | `Scene` `Encounter` |
 | `Facts` | `fact` | `Creature` `Item` `Information` |
-| `Identity` | `name` `id` `aliases` `cover` | 22 |
-| `Image` | `image` `caption` `alt` | 8 |
-| `Lore` | `lore` | 11 |
-| `Notes` | `note` | 22 |
+| `Identity` | `name` `id` `aliases` `cover` | 24 |
+| `Image` | `image` `caption` `alt` | 10 |
+| `Lore` | `lore` | 12 |
+| `Notes` | `note` | 24 |
 | `Proficiencies` | `proficient` `expertise` `saves` | `Creature` |
-| `Prose` | `paragraph` | 22 |
+| `Prose` | `paragraph` | 24 |
 | `ReadAloud` | `readaloud` | 6 |
-| `Secrets` | `secret` | 13 |
-| `Source` | `publication` `page` `anchor` `url` | 8 |
-| `Status` | `status` | 21 |
+| `Secrets` | `secret` | 15 |
+| `Source` | `publication` `page` `anchor` `url` `srd` | 10 |
+| `Status` | `status` | 23 |
 | `Tactics` | `tactics` | `Statblock` `Scene` `Encounter` |
-| `Tags` | `tags` | 22 |
+| `Tags` | `tags` | 24 |
 | `Time` | `sort` `display` `untilSort` `until` `duration` | `Story` `Quest` `Event` |
 | `Todos` | `items` | 4 |
 | `Vars` | `bindings` | `Creature` `Rule` `Statblock` |
-| `Visibility` | `audience` `revealedTo` `hiddenFrom` | 22 |
-| `Vitals` | `hp` `hpTemp` `hitDiceLeft` `deathSuccess` `deathFail` `inspiration` `exhaustion` `conditions` `nat1` | `Creature` |
+| `Visibility` | `audience` `revealedTo` `hiddenFrom` | 24 |
+| `Vitals` | `hp` `hpTemp` `hitDiceLeft` `deathSuccess` `deathFail` `inspiration` `conditions` `nat1` | `Creature` |
 
 Ein `*` am Feld heisst gerechnet.
 
@@ -625,13 +625,15 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 |---|---|---|---|---|---|
 | `Armor` | `Item` | `ac` `armorType` | `hasProperty` | `holds` `needs` `yields` `loot` | — |
 | `Article` | `Source` `Todos` `Lore` `Secrets` | — | — | `describedIn` | — |
-| `Creature` | `Image` `Source` `Vars` `Vitals` `Proficiencies` `Lore` `Facts` `Secrets` `ReadAloud` | `appearance` `personality` `species` `kind` `role` `attitude` | `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | full |
-| `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` | `controls` `regards` | `memberOf` `questGiver` `features` `knownBy` `regards` | — |
+| `Creature` | `Image` `Source` `Vars` `Vitals` `Proficiencies` `Lore` `Facts` `Secrets` `ReadAloud` | `appearance` `personality` `species` `kind` `role` `attitude` | `worships` `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | full |
+| `Deity` | `Image` `Source` `Lore` `Secrets` | `pantheon` `title` `alignment` `domains` `symbol` `province` `plane` | — | `worships` | — |
+| `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` `goal` | `worships` `controls` `regards` | `memberOf` `questGiver` `features` `knownBy` `regards` | — |
+| `Hazard` | `Image` `Source` `Secrets` | `kind` `category` `tier` `threat` `trigger` `duration` `effect` `countermeasures` `initiative` | — | — | — |
 | `Item` | `Image` `Source` `Lore` `Secrets` `Facts` | `itemType` `rarity` `availability` `copperPrice` `stackSize` `weight` `rows` `width*` `height*` `cells*` | `hasProperty` | `holds` `needs` `yields` `loot` | — |
 | `Material` | `Item` | `materialType` `trades` | `hasProperty` | `holds` `needs` `yields` `loot` | — |
 | `Party` | `Image` `Lore` | `level` `motto` `day` `watch` `sinceRation` `sinceLight` `actions` | `partyOf` `carries` `crafting` `regards` | `memberOfParty` `knownBy` `participates` `regards` | full |
 | `Place` | `Image` `Lore` `ReadAloud` `Secrets` | `kind` `environment` `state` `arrival` | `partOf` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | full |
-| `PlayerCharacter` | `Creature` | `backstory` `ancestry` `class` `level` `proficiency*` | `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | — |
+| `PlayerCharacter` | `Creature` | `backstory` `ancestry` `class` `level` `proficiency*` | `worships` `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | — |
 | `Weapon` | `Item` | `damage` `damageType` `range` | `hasProperty` | `holds` `needs` `yields` `loot` | — |
 | `World` | `Image` `Lore` | `calendar` | — | `inWorld` | — |
 
@@ -650,15 +652,21 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Feat` | `Rule` | `prerequisite` `repeatable` | — | `composedOf` `hasProperty` `loot` | — |
+| `Action` | `Rule` | `actionType` `recharge` `uses` | `affects` | `composedOf` `affects` | — |
+| `ActionType` | `Rule` | `per` `count` | `affects` | `composedOf` `affects` | — |
+| `Condition` | `Rule` | `kind` `stage` `recovery` | `stageOf` `affects` | `composedOf` `stageOf` `affects` | — |
+| `Disease` | `Condition` | `kind` `save` `dc` `incubation` `transmission` | `stageOf` `affects` | `composedOf` `stageOf` `affects` | — |
+| `Feat` | `Rule` | `prerequisite` `repeatable` | `affects` | `composedOf` `affects` `loot` | — |
+| `Feature` | `Rule` | `level` `featureType` | `affects` | `composedOf` `affects` | — |
 | `Information` | `Secrets` `Facts` | `fields` `tier` | `knownBy` | `knowledge` `includes` `loot` | — |
 | `Inventory` | — | `capacity` `copper` `grid` `zones` | `holds` | `carries` | full |
+| `ItemProperty` | `Rule` | `abbreviation` | `affects` | `composedOf` `affects` `hasProperty` | — |
 | `Knowledge` | — | — | `knownBy` `includes` | — | — |
 | `Recipe` | `Source` `Secrets` `Lore` | `trade` `tool` `ability` `dc` `time` `days` `yieldCount` `onFailure` | `needs` `yields` | `crafting` | full |
-| `Rule` | `Source` `Vars` | `kind` `uses` `autolink` `recharge` | — | `composedOf` `hasProperty` | — |
-| `Skill` | `Rule` | `ability` `tool` | — | `composedOf` `hasProperty` `loot` | — |
+| `Rule` | `Source` `Vars` | `kind` `autolink` | `affects` | `composedOf` `affects` | — |
+| `Skill` | `Rule` | `ability` `tool` | `affects` | `composedOf` `affects` `loot` | — |
 | `Statblock` | `Source` `Abilities` `Vars` `Tactics` | `system` `size` `creatureType` `alignment` `ac` `acNote` `hp` `hpFormula` `speed` `cr` `prof` `combatRole` `senses` `resistances` `vulnerabilities` `immunities` | `composedOf` `belongsTo` `instanceOf` | `features` `participates` `instanceOf` | full |
-| `Table` | `Source` `Secrets` | `kind` `die` `rows` | `entry` | `tableFor` | full |
+| `Table` | `Source` `Secrets` | `kind` `die` `columns` `rows` | `entry` | `tableFor` | full |
 
 **Play**
 
@@ -680,6 +688,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | Kante | von → nach | eins | liest sich / setzt ein | Eigenschaften |
 |---|---|---|---|---|
 | `activates` | Campaign → Layer |  | — | `order` |
+| `affects` | Rule → Rule |  | — | `effect` `on` `note` |
 | `belongsTo` | Statblock → Creature | ja | Feld am `to`-Ende | — |
 | `carries` | Creature \| Party → Inventory | ja | Feld am `from`-Ende | — |
 | `composedOf` | Statblock → Rule |  | Abschnitt „Actions & traits" | `vars` |
@@ -689,7 +698,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `entry` | Table → * |  | — | `weight` `qty` `label` `requiresTag` `note` |
 | `features` | Story → Creature \| Statblock \| Faction |  | — | — |
 | `happensAt` | Story → Place |  | — | — |
-| `hasProperty` | Weapon \| Item \| Armor → Rule |  | — | — |
+| `hasProperty` | Weapon \| Item \| Armor → ItemProperty |  | — | — |
 | `holds` | Inventory → Item |  | — | `qty` `tier` `slot` `gx` `gy` `attuned` `note` |
 | `includes` | Knowledge → Information |  | — | — |
 | `inLayer` | * → Layer |  | — | `mode` `addedAt` |
@@ -717,20 +726,23 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `questGiver` | Quest → Creature \| Faction |  | — | — |
 | `regards` | Creature \| Party \| Faction → Creature \| Party \| Faction |  | — | `tags` `note` |
 | `route` | Place → Place |  | — | `hours` `terrain` `signal` `hidden` `oneWay` |
+| `stageOf` | Condition → Condition | ja | — | — |
 | `tableFor` | Place \| Story \| Encounter → Table |  | — | — |
 | `territory` | Map → * |  | — | `kind` `x` `y` `w` `h` `r` `pts` `color` `opacity` |
 | `variantOf` | * → * | ja | — | — |
+| `worships` | Creature \| Faction → Deity |  | — | — |
 | `yields` | Recipe → Item | ja | — | — |
 
 ### Aufzählungszeilen
 
 | Zeile | Wörter | genannt von |
 |---|---|---|
-| `Ability` | str · dex · con · int · wis · cha | `Proficiencies.saves` `Skill.ability` `Recipe.ability` |
+| `Ability` | str · dex · con · int · wis · cha | `Proficiencies.saves` `Skill.ability` `Disease.save` `Recipe.ability` |
 | `ArmorTraining` | Leichte Rüstung · Mittlere Rüstung · Schwere Rüstung · Schilde | `Proficiencies.proficient` `Proficiencies.expertise` |
 | `DrawTime` | free action · bonus action · action · turn · round | `Inventory.zones` |
 | `KnowledgeField` | Kräuterkunde · Stadtgeschichte · Nebelkunde | `Proficiencies.proficient` `Proficiencies.expertise` |
 | `Language` | Gemeinsprache · Diebeszinken · Elfisch · Halblingisch | `Proficiencies.proficient` `Proficiencies.expertise` |
+| `RuleKind` | rule · travel · sense · reward · boon · option | `Rule.kind` |
 | `Skill` | 18: acrobatics · animalHandling · arcana · athletics … | `Proficiencies.proficient` `Proficiencies.expertise` |
 | `State` | idea · prepared · ready | `Status.status` |
 | `Tool` | Alchemistenwerkzeug · Diebeswerkzeug · Fälscherwerkzeug · Kerzenzieherwerkzeug | `Proficiencies.proficient` `Proficiencies.expertise` |

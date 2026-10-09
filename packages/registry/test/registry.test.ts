@@ -186,9 +186,9 @@ describe('shared choice lists', () => {
 
   /* Die sechs Attributkürzel standen wörtlich an der Fertigkeit und am
      Rezept. Dass beide jetzt dieselbe Zeile nennen, ist der ganze Punkt. */
-  it('the ability list is named by the skill, the recipe and the saving throws', () => {
+  it('the ability list is named by the skill, the recipe, the disease and the saving throws', () => {
     const wer = felderMitRef.filter((f) => f.nennt === 'Ability').map((f) => f.ref).sort();
-    expect(wer).toEqual(['Proficiencies.saves', 'Recipe.ability', 'Skill.ability']);
+    expect(wer).toEqual(['Disease.save', 'Proficiencies.saves', 'Recipe.ability', 'Skill.ability']);
     expect(enumOptions(seedRegistry, { enumRef: 'Ability' })).toEqual([
       'str', 'dex', 'con', 'int', 'wis', 'cha',
     ]);
@@ -402,7 +402,7 @@ describe('a field says whether it is always edited', () => {
     const v = seedRegistry.interfaces['Vitals']?.schema?.properties;
     expect(v?.['hp']?.alwaysEdit).toBe(true);
     expect(v?.['hpTemp']?.alwaysEdit).toBe(true);
-    expect(v?.['exhaustion']?.alwaysEdit).toBe(true);
+    expect(v?.['exhaustion']).toBeUndefined();
     /* Häkchen und Punkte zeichnet der Bogen ohnehin anklickbar. */
     expect(v?.['conditions']?.alwaysEdit).toBeUndefined();
     expect(v?.['hitDiceLeft']?.alwaysEdit).toBeUndefined();
@@ -798,12 +798,16 @@ describe('loot is more than items', () => {
     expect(seedRegistry.interfaces['Skill']).toBeTruthy();
   });
 
-  /* `RuleInfo.kind` ist Pflicht. Gäbe es die beiden Werte nicht, liesse sich
-     kein Talent anlegen, das die Validierung besteht. */
-  it('leaves a feat and a skill a kind they may carry', () => {
-    const kind = seedRegistry.interfaces['Rule'].schema.properties['kind'];
-    expect(kind.enum).toEqual(expect.arrayContaining(['feat', 'skill']));
+  /* D48: `Rule.kind` ist nicht mehr Pflicht und kennt kein `feat` und kein
+     `skill` mehr — beides sind Arten. Die Wörter stehen als Zeile. */
+  it('keeps kind for rules without a bearer, and no longer requires it', () => {
+    const rule = seedRegistry.interfaces['Rule'].schema;
+    expect(rule.required ?? []).not.toContain('kind');
+    expect(enumOptions(seedRegistry, rule.properties['kind'])).toEqual([
+      'rule', 'travel', 'sense', 'reward', 'boon', 'option',
+    ]);
   });
+
 });
 
 /* Was der Umbau erreicht hat, als Zusicherung und nicht als Behauptung. */
@@ -908,5 +912,41 @@ describe('one registry of types', () => {
     for (const n of arten) {
       expect(fieldsOf(seedRegistry, n).some((f) => f.type === 'Tags' && f.key === 'tags')).toBe(true);
     }
+  });
+});
+
+/* D48: die Regelfamilie. Was man einer Kreatur zuweist, ist eine Art. */
+describe('the rule family', () => {
+  const i = seedRegistry.interfaces;
+
+  it('puts every rule kind below Rule, and Disease below Condition', () => {
+    for (const n of ['Condition', 'ActionType', 'Action', 'Feature', 'ItemProperty']) {
+      expect(i[n]?.extends).toContain('Rule');
+    }
+    expect(i['Disease']?.extends).toEqual(['Condition']);
+  });
+
+  it('assigns conditions by type, not by filter', () => {
+    const c = i['Vitals'].schema.properties['conditions'];
+    expect(c.target).toEqual({ interfaces: ['Condition'] });
+  });
+
+  it('requires the action type of an action, and no attack fields yet', () => {
+    const a = i['Action'].schema;
+    expect(a.required).toEqual(['actionType']);
+    expect(Object.keys(a.properties)).not.toContain('toHit');
+  });
+
+  it('stores a stage as an edge between conditions, and effects between rules', () => {
+    expect(seedRegistry.relations['stageOf']).toMatchObject({ from: ['Condition'], to: ['Condition'], cardinality: 'one' });
+    expect(seedRegistry.relations['affects']).toMatchObject({ from: ['Rule'], to: ['Rule'] });
+    expect(seedRegistry.relations['hasProperty']?.to).toEqual(['ItemProperty']);
+    expect(seedRegistry.relations['worships']?.to).toEqual(['Deity']);
+  });
+
+  it('carries the licence flag, the faction goal and the table columns', () => {
+    expect(i['Source'].schema.properties['srd']?.type).toBe('boolean');
+    expect(i['Faction'].schema.properties['goal']).toBeTruthy();
+    expect(i['Table'].schema.properties['columns']).toBeTruthy();
   });
 });
