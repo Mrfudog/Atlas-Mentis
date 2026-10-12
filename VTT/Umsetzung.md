@@ -26,7 +26,7 @@ wer eine Zeile anders sieht, ändert sie dort und lässt das Skript laufen.
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: **117** steht · **10** ersetzt · **30** teils · **63** offen · **6** verworfen — 226 Anforderungen.
+Zusammen: **120** steht · **10** ersetzt · **29** teils · **61** offen · **6** verworfen — 226 Anforderungen.
 
 ## Aus den Gesprächen (September und Oktober 2026)
 
@@ -263,7 +263,7 @@ Was nicht als Nummer im Vault steht, sondern hier entschieden wurde — alles ge
 | REQ-210 | Karte und Initiative je als Vollbild, je mit SL- und Spieleransicht; Spielende bewegen ihre eigenen Tokens und prüfen die Reichweite selbst | 3 | **teils** | Prototyp: Vollbild für Karte und Initiative, SL-/Spieleransicht der Karte, Spielende bewegen eigene Tokens; offen: `redactEntity` hält versteckte Marker am Server nicht zurück (D56) |
 | REQ-211 | Initiative wie Improved Initiative: je Zeile Initiative, RK, TP und Zustände, aus der Zeile der Statblock | 2 | **steht** | Prototyp: RK und TP-Maximum vom Statblock der Instanz (`participantStats`), Statblock in `quick` neben der Reihe (D53) |
 | REQ-212 | Zustände und Notizen mit Dauer: Anzahl Runden, Anker (wessen Zug) und Zeitpunkt (Anfang oder Ende dieses Zuges); eine Notiz ist ein freier Text mit derselben Dauer | 2 | **steht** | `anchor`/`at` an `participates.props.conditions`, Notiz mit `text`; `tickEntries`, `expiresAt` (D53) |
-| REQ-213 | Initiative der Spielenden: die eigene Reihenfolge und jede Kreatur, die aufgedeckt oder schon beteiligt ist; nicht erkannte Kreaturen mit Decknamen, TP von Gegnern als Wort | 3 | **teils** | `redactParticipants` in `redactEntity` und im Prototyp; offen: `turn` als Index zählt Verborgene mit (D53) |
+| REQ-213 | Initiative der Spielenden: die eigene Reihenfolge und jede Kreatur, die aufgedeckt oder schon beteiligt ist; nicht erkannte Kreaturen mit Decknamen, TP von Gegnern als Wort | 3 | **steht** | `redactParticipants` in `redactEntity` und im Prototyp; `turn` geht nicht an Spielende, `props.current` statt dessen (D53, D58) |
 | REQ-214 | Ausrüstungsfigur nach dem Inventarblatt: Figur je Kreatur wählbar (männlich, weiblich, neutral) und dort gespeichert; Plätze Kopf, Schulter, Torso, rechte und linke Hand, Beine, Stiefel, Gurt mit zwei Holstern, Ringe je Hand, Halskette | 4 | **steht** | `Creature.figure`, Plätze des Blatts an `holds.props.slot`, Reiter „Worn“ mit Figur (Prototyp, D54) |
 | REQ-215 | Tragraster aus Grösse und Statblock: ein Grundquadrat nach Grösse (Tiny 3 … Large 6) und ein Zusatzquadrat in der Grösse des Stärkemodifikators (+1 … +5) aus dem Statblock des Trägers — beim Lesen gerechnet, nie eingetippt | 3 | **steht** | `Statblock.carryExtra` gerechnet, Grundquadrat aus `carrySquares`; `carryGrid` im Modell, Prototyp (D54) |
 | REQ-216 | Behälter in Behältern: jeder Behälter gibt eine Ziehstufe dazu, ausgehend davon, wo er selbst liegt; die Basiszonen kommen aus dem Blatt und sind je Behälter änderbar | 3 | **steht** | Ziehstufe die Kette hinauf (`drawStage`), `slotDraw`, Basiszonen `carryZones` und Vorlagen `container:*` (D54) |
@@ -275,8 +275,8 @@ Was nicht als Nummer im Vault steht, sondern hier entschieden wurde — alles ge
 | REQ-222 | Stufenaufstieg: Schritte aus Klassen- und Unterklassentabellen (TP, Attributsverbesserung oder Talent, Zauber), Folgewerte gerechnet | 4 | **offen** |  |
 | REQ-223 | Regelsysteme als Rahmen (Taverne, Alley, Kanalisation): ein Ort, seine Kennzahlen, ein Wochenwurf und ein Protokoll | 4 | **offen** |  |
 | REQ-224 | Kreaturen nehmen auf der Karte Felder nach ihrer Grösse ein (Regeln 2014): Tiny, Small, Medium, Large 2 × 2, Huge 3 × 3, Gargantuan 4 × 4; Bewegung, Wege, Sicht und Reichweite rechnen mit dem ganzen Platz | 3 | **offen** |  |
-| REQ-225 | Fallenlassen ist eine freie Aktion, Verstauen eine Bonusaktion, egal wohin; der Gurt ist eine freie Aktion | 3 | **offen** |  |
-| REQ-226 | In der ersten Runde erscheinen Gegner in der Initiative der Spielenden erst, wenn sie an der Reihe sind; ab der zweiten Runde stehen die bereits gezeigten fest | 3 | **offen** |  |
+| REQ-225 | Fallenlassen ist eine freie Aktion, Verstauen eine Bonusaktion, egal wohin; der Gurt ist eine freie Aktion | 3 | **steht** | „Drop“/„Stow“ am Bogen in der Zeile ihrer Kosten (Einstellung `handActions`), `tier: ground`, Gurt frei in `slotDraw`; `handActions`/`inHand` im Modell (Prototyp, D58) |
+| REQ-226 | In der ersten Runde erscheinen Gegner in der Initiative der Spielenden erst, wenn sie an der Reihe sind; ab der zweiten Runde stehen die bereits gezeigten fest | 3 | **steht** | Runde 1: Gegner erst in ihrem Zug (`turnHasCome`, `initiativeOrder`), in `redactParticipants`/`redactEntity` und im Prototyp (D58) |
 
 ## Was offen ist und wehtut
 
@@ -334,9 +334,6 @@ Offene Anforderungen mit Priorität 1 bis 3, nach Bereich:
 - **REQ-205** (3, offen) — Ein Board je Geschichtsartikel (Kampagne, Kapitel, Sitzung, nicht Szene) und Regel-Boards; der Schirm schaltet zwischen ihnen, die Artikelansicht filtert nach Artikeln aus den offenen Boards
 - **REQ-208** (3, teils) — Zonen mit eigenen Regeln: eine Zonenart ist ein Regelartikel; Bewegungskosten, Licht, Sicht und „versteckt bis passive Wahrnehmung n“ rechnet die Karte, Schaden, Rettungswurf, Zustand und freie Regeln zeigt sie und schreibt sie beim Betreten ins Protokoll — *`ZoneKind` (Regelartikel) + Kante `zone`: Kosten, Licht und Verdeckung in Weg und Sicht, versteckt bis PP n; Schaden/Rettungswurf/Zustand gezeigt und beim Betreten in `Session.log`. Offen: Auslöser zu Zugbeginn/-ende, Zonenlicht in der Dunkelheitsmaske (D56)*
 - **REQ-210** (3, teils) — Karte und Initiative je als Vollbild, je mit SL- und Spieleransicht; Spielende bewegen ihre eigenen Tokens und prüfen die Reichweite selbst — *Prototyp: Vollbild für Karte und Initiative, SL-/Spieleransicht der Karte, Spielende bewegen eigene Tokens; offen: `redactEntity` hält versteckte Marker am Server nicht zurück (D56)*
-- **REQ-213** (3, teils) — Initiative der Spielenden: die eigene Reihenfolge und jede Kreatur, die aufgedeckt oder schon beteiligt ist; nicht erkannte Kreaturen mit Decknamen, TP von Gegnern als Wort — *`redactParticipants` in `redactEntity` und im Prototyp; offen: `turn` als Index zählt Verborgene mit (D53)*
 - **REQ-221** (3, offen) — Begegnungsbau: Schwierigkeit aus den XP-Schwellen der Gruppe mit Multiplikator nach Anzahl (2014), Kreaturen aus dem Kompendium, dann auf die Karte setzen und Initiative starten
 - **REQ-224** (3, offen) — Kreaturen nehmen auf der Karte Felder nach ihrer Grösse ein (Regeln 2014): Tiny, Small, Medium, Large 2 × 2, Huge 3 × 3, Gargantuan 4 × 4; Bewegung, Wege, Sicht und Reichweite rechnen mit dem ganzen Platz
-- **REQ-225** (3, offen) — Fallenlassen ist eine freie Aktion, Verstauen eine Bonusaktion, egal wohin; der Gurt ist eine freie Aktion
-- **REQ-226** (3, offen) — In der ersten Runde erscheinen Gegner in der Initiative der Spielenden erst, wenn sie an der Reihe sind; ab der zweiten Runde stehen die bereits gezeigten fest
 
