@@ -55,6 +55,9 @@ REQ-Nummern stehen in `VTT/Requirements.md`, ihr Stand in
 
 ## Wo was liegt
 
+Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
+[docs/Architektur.md](docs/Architektur.md).
+
 - `packages/model` — Typen, Validierung, `calc.ts` (abgeleitete Werte),
   `views.ts` (Feldauswahl je Darstellungsstufe), `inline.ts` (`[[Verweise]]`,
   `{VAR}`), `entity.ts` (Registerzugriff, Rückbezüge). **Kein Framework-Import.**
