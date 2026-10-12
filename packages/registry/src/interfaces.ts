@@ -575,6 +575,14 @@ export const interfaces: Record<string, InterfaceDef> = {
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {
+      /* Der Statblock neben der Initiative (REQ-211, D53) ist `quick`: die
+         Zahlen und was er kann, ohne Beziehungen und Fliesstext. Die
+         Grundanordnung von `quick` (Bild, Beschreibung, Passagen) zeigte an
+         einem Statblock nichts. */
+      quick: [
+        { id: 's-q-f', el: 'fields', fields: 'all' },
+        { id: 's-q-c', el: 'composed' },
+      ],
       full: [
         { id: 's-f', el: 'fields', fields: 'all' },
         { id: 's-c', el: 'composed' },

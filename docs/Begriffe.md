@@ -375,6 +375,35 @@ sagt `affects` (`imposes`) und kein Feld `conditions` — die Kante sagt das
 zwischen zwei Regeln schon, und ein Feld daneben wäre die zweite Antwort,
 die als erste veraltet (D49).
 
+
+### Eine Dauer hängt an einem Zug, nicht an einer Runde
+
+„Bis zum Ende deines nächsten Zuges", sagt der Zauberer zum Goblin. Ein
+Rundenzähler am Goblin zählt am Ende des Goblin-Zuges, und der kommt vor
+oder nach dem des Zauberers — je nachdem, wer besser gewürfelt hat. Die
+Dauer gehört also nicht dem Ziel, sondern einem **Zeitpunkt**: dem Anfang
+oder Ende eines bestimmten Zuges. Darum trägt der Eintrag einen Anker (die
+Kante des Teilnehmers, an dessen Zug gezählt wird) und `at`. Ohne beides
+bleibt es der eigene Zug, Ende — so zählte der Tisch bisher, und kein
+gespeicherter Kampf muss dafür angefasst werden (D53).
+
+Ob „1 Runde" im eigenen Zug schon an dessen Ende abläuft, beantwortet
+jeder Tisch anders. Statt eine Antwort zu verstecken, sagt die Maske beim
+Setzen, wann es so weit ist. Eine **Notiz** ist derselbe Eintrag mit Text
+statt Zustand — „konzentriert sich auf Segen" läuft genauso ab.
+
+Die Zahlen stehen nicht an der Kante: RK und Maximum sind die des
+Statblocks, und eine Abschrift daneben wäre die zweite Stelle, die beim
+ersten Stufenaufstieg falsch steht. Die Kante hält den Stand — wie viel
+von diesem Maximum in diesem Kampf noch übrig ist.
+
+**Was die Spielenden sehen, siebt das Modell, nicht die Maske.** Eine
+Reihe, die alles schickt und im Browser die Hälfte ausblendet, verrät den
+Rest jedem, der die Entwicklerwerkzeuge öffnet. Also geht nur die Gruppe
+hinaus und wer aufgedeckt oder beteiligt ist; ein Gegner, den niemand
+erkannt hat, heisst wie sein Deckname, und seine Trefferpunkte sind ein
+Wort — „angeschlagen" ist, was man am Tisch sieht, „7 von 18" nicht.
+
 ---
 
 ## Wissen
@@ -723,6 +752,32 @@ Darstellung. Und **das Stück am Tisch darf eine Instanz** des Gegenstands im
 Buch sein (`instanceOf`, wie beim Statblock): das +1-Langschwert speichert
 nur, was es vom Langschwert unterscheidet, und eine Korrektur am Langschwert
 erreicht es.
+
+---
+
+## Blaupause und Gang
+
+Eine **Blaupause** ist ein Rezept, das jemand **gelernt** hat — und gelernt
+heisst zugeteilt: eine Information über das Rezept geht über `knownBy` an
+die Figur, ihre Gruppe oder ihre Fraktion. Ein Feld „gelernt von" am Rezept
+wäre ein zweites, schwächeres Wissensmodell neben dem, das es schon gibt.
+Bis D52 lag ein Rezept ohne Information offen, und jeder konnte es; jetzt
+werden Blaupausen gelernt, also kann ein Rezept, das niemandem zugeteilt
+ist, auch niemand. **Sehen** darf man es trotzdem — ob etwas dasteht, ist
+die Frage der Sichtbarkeit, nicht des Wissens —, nur gestrichelt und mit
+„must still be learned". Einen Fundort nennt die Werkbank nicht: wo man
+eine Blaupause lernt, ist Kampagneninhalt.
+
+Ein **Gang** ist ein laufendes Handwerk und eine Kante (`crafting`) von dem,
+der arbeitet, zum Rezept. **Beim Start wird gebunden**, was das Rezept
+braucht: es verlässt das Inventar und steht am Gang. Bis dahin ging nichts
+hinein, und man legte unterwegs nach — dann lag dieselbe Zange im Beutel und
+im Gang zugleich und reichte für zwei Gänge. Gebunden wird auch, was nicht
+verbraucht wird; es kommt am Ende immer zurück. Das Nachlegen bleibt für
+das, was erst unterwegs dazukommt.
+
+Was beim Misslingen und beim Abbruch zurückkommt, sagt das Rezept
+(`onFailure`) — sonst entschiede es jedes Mal die Laune am Tisch.
 
 ---
 

@@ -31,6 +31,7 @@
  * diese Abfrage über die Kanten.
  */
 
+import { PARTICIPATES, redactParticipants } from './initiative.js';
 import type { Entity, EntityId, Registry } from './types.js';
 import { entityName, entriesOf, entryRef } from './entity.js';
 
@@ -398,5 +399,11 @@ export function redactEntity(
      der Name im Klartext. */
   const name = (components['Identity']?.['name'] as string | undefined) ?? article.name;
 
-  return { ...article, name, components } as Entity;
+  /* Die Initiative an einer Begegnung (REQ-213, D53): was Spielende von
+     den Teilnehmern nicht sehen, geht gar nicht erst hinaus. */
+  const relations = article.relations?.some((r) => r.type === PARTICIPATES)
+    ? redactParticipants(entities, article.relations)
+    : article.relations;
+
+  return { ...article, name, components, ...(relations ? { relations } : {}) } as Entity;
 }
