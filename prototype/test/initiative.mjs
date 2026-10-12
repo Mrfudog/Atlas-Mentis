@@ -107,11 +107,49 @@ await p.waitForTimeout(300);
 z = await zeilen();
 pruefe('wer getroffen wird, steht in der Reihe — unter Decknamen', z.length === 3 && /Soldier/.test(z.join('|')) && /bloodied/i.test(z.join('|')), z);
 
+/* Erste Runde (REQ-226, D58): ein Gegner erscheint, wenn sein Zug beginnt. */
+const setze = (round, turn) => p.evaluate(([r, t]) => {
+  const e = window.__T__.ENT.get('t_enc');
+  e.components = { ...e.components, Encounter: { ...(e.components.Encounter || {}), round: r, turn: t } };
+  window.__T__.persist(e);
+  window.__T__.render();
+}, [round, turn]);
+const zeiger = () => p.evaluate(() =>
+  [...document.querySelectorAll('#main table.initt tr.now')].map((r) => r.innerText.replace(/\s+/g, ' ').trim()));
+await setze(0, 0);
+await p.waitForTimeout(300);
+z = await zeilen();
+pruefe('vor Runde 1 steht nur die Gruppe', z.length === 1 && /Rook/.test(z[0] ?? ''), z);
+await setze(1, 0);
+await p.waitForTimeout(300);
+z = await zeilen();
+pruefe('Runde 1, Rook dran: noch kein Gegner', z.length === 1, z);
+await setze(1, 1);
+await p.waitForTimeout(300);
+z = await zeilen();
+const zg = await zeiger();
+pruefe('Runde 1, Vex dran: er erscheint', z.length === 2 && /Robed figure/.test(z[1] ?? ''), z);
+pruefe('der Zeiger steht auf ihm', zg.length === 1 && /Robed figure/.test(zg[0] ?? ''), zg);
+await setze(1, 3);
+await p.waitForTimeout(300);
+z = await zeilen();
+const zg2 = await zeiger();
+pruefe('Runde 1, Wache 2 (verborgen) dran: sie bleibt verborgen, die anderen stehen', z.length === 3 && !/Guard 2/.test(z.join('|')), z);
+pruefe('wer verborgen dran ist, hat keinen Zeiger', zg2.length === 0, zg2);
+const daten = await p.evaluate(() => JSON.stringify(window.__T__.participants(window.__T__.ENT.get('t_enc')).map((x) => x.rel)));
+pruefe('zurückgehalten in den Daten', !/"p4"/.test(daten), daten);
+await setze(2, 0);
+await p.waitForTimeout(300);
+z = await zeilen();
+pruefe('ab Runde 2 gilt aufgedeckt/beteiligt', z.length === 3, z);
+
 /* Das Beispiel auf „How it works" rechnet mit derselben Funktion. */
 await p.evaluate(() => { const T = window.__T__; T.UI.asActor = ''; T.UI.regtab = 'howto'; T.go({ k: 'reg' }); });
 await p.waitForTimeout(500);
 const howto = await p.evaluate(() => document.getElementById('main').innerText);
 pruefe('How it works zeigt den Kampf durchgerechnet', /A fight, its durations/i.test(howto) && /ends round 2, end of p-vex/.test(howto) && /round 12, end of p-rook/.test(howto), howto.slice(howto.search(/A fight/i), howto.search(/A fight/i) + 900));
+
+pruefe('How it works rechnet die erste Runde durch', /Rook's turn.*players see rook\n/.test(howto) && /Vex's turn.*players see rook, vex\n/.test(howto), howto.slice(howto.search(/Round 1, Rook/), howto.search(/Round 1, Rook/) + 400));
 
 pruefe('keine Fehler im Skript', fehlerImSkript.length === 0, fehlerImSkript);
 await browser.close();

@@ -3,6 +3,7 @@ import {
   entryTiming,
   expiresAt,
   hpWord,
+  initiativeOrder,
   isNote,
   participantStats,
   redactParticipants,
@@ -140,7 +141,7 @@ describe('Spieleransicht (REQ-213)', () => {
   });
 
   it('greift in redactEntity, nicht erst in der Maske', () => {
-    const begegnung = ent('enc', 'Encounter', { relations: kampf });
+    const begegnung = ent('enc', 'Encounter', { relations: kampf, components: { Encounter: { round: 2, turn: 0 } } });
     const alle2 = new Map(alle);
     alle2.set('enc', begegnung);
     const fuerSpieler = redactEntity({ interfaces: {} }, alle2, begegnung, 'rook');
@@ -149,5 +150,66 @@ describe('Spieleransicht (REQ-213)', () => {
     expect(JSON.stringify(fuerSpieler)).not.toContain('flees');
     /* Die Leitung bekommt alles. */
     expect(redactEntity({ interfaces: {} }, alle2, begegnung)).toBe(begegnung);
+  });
+});
+
+describe('Erste Runde (REQ-226, D58)', () => {
+  /* Reihe: Rook 18, Wache 1 15, Vex 12, Wache 2 8, Wache 3 5 (nie aufgedeckt). */
+  const kampf = [
+    teil('p1', 'rook', { label: 'Rook', init: 18 }),
+    teil('p2', 'mage', { label: 'Vex', init: 12, revealed: true }),
+    teil('p3', 'guard1', { label: 'Guard 1', init: 15, revealed: true }),
+    teil('p4', 'guard2', { label: 'Guard 2', init: 8, revealed: true }),
+    teil('p5', 'guard1', { label: 'Guard 3', init: 5 }),
+  ];
+  const ids = (r: Relation[]) => r.map((x) => x.id);
+
+  it('sortiert wie der Prototyp', () => {
+    expect(ids(initiativeOrder(alle, kampf))).toEqual(['p1', 'p3', 'p2', 'p4', 'p5']);
+  });
+
+  it('vor Runde 1 steht nur die Gruppe', () => {
+    expect(ids(redactParticipants(alle, kampf, { round: 0, turn: 0 }))).toEqual(['p1']);
+  });
+
+  it('in Runde 1 erscheint ein Gegner, wenn sein Zug beginnt, und bleibt', () => {
+    expect(ids(redactParticipants(alle, kampf, { round: 1, turn: 0 }))).toEqual(['p1']);
+    expect(ids(redactParticipants(alle, kampf, { round: 1, turn: 1 }))).toEqual(['p1', 'p3']);
+    expect(ids(redactParticipants(alle, kampf, { round: 1, turn: 3 }))).toEqual(['p1', 'p2', 'p3', 'p4']);
+  });
+
+  it('wer nie aufgedeckt wurde, bleibt verborgen, auch in seinem Zug', () => {
+    expect(ids(redactParticipants(alle, kampf, { round: 1, turn: 4 }))).not.toContain('p5');
+    expect(ids(redactParticipants(alle, kampf, { round: 3, turn: 4 }))).not.toContain('p5');
+  });
+
+  it('ab Runde 2 gilt aufgedeckt/beteiligt wie in U1', () => {
+    expect(ids(redactParticipants(alle, kampf, { round: 2, turn: 0 }))).toEqual(['p1', 'p2', 'p3', 'p4']);
+  });
+
+  it('ein Verbündeter ist kein Gegner und steht gleich', () => {
+    const mit = [...kampf, teil('p6', 'guard2', { label: 'Ally', init: 1, ally: true, revealed: true })];
+    expect(ids(redactParticipants(alle, mit, { round: 1, turn: 0 }))).toContain('p6');
+  });
+
+  it('wer dran ist, trägt die Marke — und nur, wenn er gezeigt wird', () => {
+    const r = redactParticipants(alle, kampf, { round: 1, turn: 1 });
+    expect(r.filter((x) => (x.props as ParticipantProps).current).map((x) => x.id)).toEqual(['p3']);
+    const verborgen = redactParticipants(alle, kampf, { round: 2, turn: 4 });
+    expect(verborgen.some((x) => (x.props as ParticipantProps).current)).toBe(false);
+  });
+
+  it('redactEntity schickt keine Zugnummer, die Verborgene mitzählt', () => {
+    const begegnung = ent('enc', 'Encounter', {
+      relations: kampf,
+      components: { Encounter: { round: 1, turn: 2, phase: 'running' } },
+    });
+    const alle2 = new Map(alle);
+    alle2.set('enc', begegnung);
+    const fuerSpieler = redactEntity({ interfaces: {} }, alle2, begegnung, 'rook');
+    expect(fuerSpieler.components!['Encounter']).toEqual({ round: 1, phase: 'running' });
+    expect(ids(fuerSpieler.relations!)).toEqual(['p1', 'p2', 'p3']);
+    expect((fuerSpieler.relations!.find((x) => x.id === 'p2')!.props as ParticipantProps).current).toBe(true);
+    expect(redactEntity({ interfaces: {} }, alle2, begegnung).components!['Encounter']).toMatchObject({ turn: 2 });
   });
 });

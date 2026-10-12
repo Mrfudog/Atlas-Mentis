@@ -7543,7 +7543,7 @@ function participants(e,roh){
   /* Spielende bekommen die Kanten schon gesiebt (REQ-213, D53) — hier, weil
      die Seite keinen Server hat; im echten Stapel tut es `redactEntity`
      mit `redactParticipants`, und beide rechnen gleich. */
-  if(!roh&&!isGM()) rels=fightForPlayers(rels);
+  if(!roh&&!isGM()) rels=fightForPlayers(rels,encCard(e));
   return rels.map(function(r){
       var t=r.to?ENT.get(r.to):null;
       var pr=r.props||{};
@@ -7557,7 +7557,7 @@ function participants(e,roh){
         hpState:pr.hpState||"",
         ally:!!pr.ally,conditions:Array.isArray(pr.conditions)?pr.conditions:[],
         note:pr.note||"",revealed:!!pr.revealed,involved:!!pr.involved,
-        identified:!!pr.identified};
+        identified:!!pr.identified,current:!!pr.current};
     });
 }
 /* ---- Dauer (REQ-212, D53) ----
@@ -7607,8 +7607,30 @@ function inPartyFight(to){
   if(((t.interfaces||[])[0])==="Party")return true;
   return (t.relations||[]).some(function(r){ return r.type==="memberOfParty"; });
 }
-function fightForPlayers(rels){
-  var zeigt=function(r){ var p=r.props||{}; return inPartyFight(r.to)||!!p.revealed||!!p.involved; };
+/* **Erste Runde** (REQ-226, D58): ein Gegner steht erst in der Reihe der
+   Spielenden, wenn sein Zug gekommen ist — in Runde 1, sobald er beginnt,
+   und danach bleibt er; vor Runde 1 keiner. Sonst verriete die Reihe, wer
+   noch kommt. Ab Runde 2 gilt aufgedeckt/beteiligt. Wie `turnHasCome` und
+   `redactParticipants(…, fight)` im Paket. */
+function turnHasCome(order,id,card){
+  var runde=Number(card.round)||0;
+  if(runde>=2)return true;
+  if(runde<1)return false;
+  var i=order.indexOf(id);
+  return i>=0&&i<=(Number(card.turn)||0);
+}
+function fightForPlayers(rels,card){
+  card=card||{};
+  /* Die ganze Reihe, wie die Leitung sie sieht: `turn` ist ein Index darin. */
+  var reihe=sortFight(rels.map(function(r){
+    var t=r.to?ENT.get(r.to):null, pr=r.props||{};
+    return {rel:r,init:Number(pr.init),ally:!!pr.ally,label:pr.label||(t?nameOf(t):"(missing)")};
+  })).map(function(p){ return p.rel.id; });
+  var dranId=(Number(card.round)||0)>0?reihe[Number(card.turn)||0]:"";
+  var zeigt=function(r){ var p=r.props||{};
+    if(inPartyFight(r.to))return true;
+    if(!p.revealed&&!p.involved)return false;
+    return !!p.ally||turnHasCome(reihe,r.id,card); };
   var deck=function(r){ var t=ENT.get(r.to);
     return (((t||{}).components||{}).Identity||{}).cover||"Unknown creature"; };
   var oft={}, schon={};
@@ -7622,6 +7644,8 @@ function fightForPlayers(rels){
     if(!isFinite(mx)) mx=Number(p.hpMax);
     var neu={init:p.init,ally:p.ally,revealed:p.revealed,involved:p.involved,identified:p.identified,
       conditions:(Array.isArray(p.conditions)?p.conditions:[]).filter(function(c){ return !c.hidden; })};
+    /* Statt der Zugnummer die Marke (D58): die Nummer zählte Verborgene mit. */
+    if(r.id===dranId) neu.current=true;
     var to=r.to;
     if(inPartyFight(r.to)){ neu.label=p.label; neu.hp=p.hp; neu.note=p.note; }
     else {
@@ -7640,9 +7664,6 @@ function fightForPlayers(rels){
    das ist eine Hausregel, und sie steht hier, damit sie jedes Mal gleich
    ausgeht statt jedes Mal neu verhandelt zu werden. */
 function initOrder(e){ return sortFight(participants(e)); }
-/* Die ganze Reihe, wie die Leitung sie sieht — nur um den laufenden Zug zu
-   finden, der in der Begegnung als Index steht. */
-function initOrderRaw(e){ return sortFight(participants(e,true)); }
 function sortFight(xs){
   return xs.sort(function(a,b){
     var d=(isFinite(b.init)?b.init:-99)-(isFinite(a.init)?a.init:-99);
@@ -7656,15 +7677,18 @@ function elInitiative(e,ifn,item){
   var card=encCard(e);
   var liste=initOrder(e);
   var runde=Number(card.round)||0, zug=Number(card.turn)||0;
-  /* Der laufende Zug zählt in der ganzen Reihe — auch für Spielende, die
-     nur einen Teil davon sehen. Wer gerade dran ist und nicht gezeigt
-     wird, hat eben keinen Zeiger. */
-  var ganz=isGM()?liste:initOrderRaw(e);
-  if(zug>=ganz.length) zug=0;
-  var dranId=ganz[zug]?ganz[zug].rel.id:"";
+  /* Der laufende Zug ist ein Index in die ganze Reihe. Spielende bekommen
+     ihn nicht (REQ-226, D58: er zählte Verborgene und noch nicht
+     Erschienene mit), sondern die Marke `current` an dem, der dran ist —
+     wird der nicht gezeigt, gibt es keinen Zeiger. */
+  if(zug>=liste.length) zug=0;
+  var dranId=isGM()?(liste[zug]?liste[zug].rel.id:"")
+    :((liste.filter(function(p){ return p.current; })[0]||{rel:{}}).rel.id||"");
   var dran=liste.filter(function(p){ return p.rel.id===dranId; })[0]||null;
   UI.turnActor=dran&&dran.art?dran.art.id:"";
-  var order=ganz.map(function(p){ return p.rel.id; });
+  var order=liste.map(function(p){ return p.rel.id; });
+  /* Für Spielende rechnet „läuft ab“ in der Reihe, die sie sehen. */
+  var zugSicht=isGM()?zug:(dran?liste.indexOf(dran):-1);
   var wrap=el("div",{class:"fight"});
 
   function schreib(patch){
@@ -7679,7 +7703,9 @@ function elInitiative(e,ifn,item){
   function naechster(){
     if(!liste.length)return;
     if(dranId) tickFight(e,dranId,"end");
-    var n=zug+1, r3=runde;
+    /* Vor Runde 1 fängt „Next turn“ Runde 1 an — sonst bliebe der Kampf
+       in Runde 0 stehen, und dort steht für Spielende kein Gegner (D58). */
+    var n=zug+1, r3=Math.max(1,runde);
     if(n>=liste.length){ n=0; r3=runde+1; }
     var neu=liste[n];
     if(neu) tickFight(e,neu.rel.id,"start");
@@ -7822,7 +7848,7 @@ function elInitiative(e,ifn,item){
       var notiz=!c.rule&&!c.name&&typeof c.text==="string";
       var regel=c.rule?ENT.get(c.rule):null;
       var dt=dauerText(c,p2);
-      var ende=expiresAt(c,p2.rel.id,order,runde,zug);
+      var ende=expiresAt(c,p2.rel.id,order,runde,zugSicht);
       var tip=(regel?(((regel.components||{}).Description||{}).description||""):"")+
         (ende?(regel?"\n":"")+"Ends at the "+ende.at+" of "+(ende.anchor===p2.rel.id?p2.label:ankerName(ende.anchor))+"’s turn, round "+ende.round:"")+
         (c.source?"\nFrom "+c.source:"");
@@ -7837,7 +7863,7 @@ function elInitiative(e,ifn,item){
     });
     if(canWrite()) cc.appendChild(el("button",{class:"btn sm gh",type:"button",
       title:"Add a condition or a note with a duration",
-      onclick:function(){ addTimedEntry(e,p2,liste,dran,order,runde,zug); }},"+"));
+      onclick:function(){ addTimedEntry(e,p2,liste,dran,order,runde,zugSicht); }},"+"));
     row.appendChild(cc);
 
     var cx=el("td");
@@ -15623,7 +15649,17 @@ function renderHowto(v){
       "same entry with text instead of a condition. Players see the party and "+
       "every creature that is revealed or involved (hit, or marked by hand); "+
       "one not yet identified shows its cover name and no link, and foes show "+
-      "their hit points as a word. Hidden entries and the GM note never leave."));
+      "their hit points as a word. Hidden entries and the GM note never leave. "+
+      "In the first round a foe joins the players' list only when its turn "+
+      "begins, and stays; before round 1 no foe is there. The turn number "+
+      "never leaves either — it counts the hidden ones too; the fighter whose "+
+      "turn it is carries a mark instead."));
+    /* Erste Runde (REQ-226, D58), mit derselben Funktion wie die Reihe. */
+    var reiheBsp=["p-rook","p-vex","p-guard"];
+    var sichtR1=function(turn){
+      return reiheBsp.filter(function(id){ return id==="p-rook"||turnHasCome(reiheBsp,id,{round:1,turn:turn}); })
+        .map(function(id){ return id.slice(2); }).join(", ");
+    };
     var ordBsp=["p-rook","p-vex","p-guard"];
     var bless={text:"Bless",rounds:10,anchor:"p-rook",at:"end"};
     var angst={rule:"Frightened",rounds:1,anchor:"p-vex",at:"end"};
@@ -15639,7 +15675,10 @@ function renderHowto(v){
       "Rook   text Bless · rounds 10 · anchor p-rook · at end     →  ends "+zeile(bless,"p-rook")+"\n"+
       "Guard  rule Prone · rounds 1   (stored before D53)        →  ends "+zeile(alt,"p-guard")+"\n\n"+
       "Guard  Statblock instance hp 18 (template 11) · edge hp 7  →  players read “"+hpWord(7,18)+"”\n"+
-      "Guard  cover “Soldier”, not identified                    →  players read “Soldier”"}));
+      "Guard  cover “Soldier”, not identified                    →  players read “Soldier”\n\n"+
+      "Round 1, Rook's turn   (Vex and Guard revealed)          →  players see "+sichtR1(0)+"\n"+
+      "Round 1, Vex's turn                                      →  players see "+sichtR1(1)+"\n"+
+      "Round 1, Guard's turn                                    →  players see "+sichtR1(2)}));
   }
 
   /* ---- Charakterbau, durchgerechnet (M3, M6) ----

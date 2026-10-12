@@ -403,6 +403,16 @@ Rest jedem, der die Entwicklerwerkzeuge öffnet. Also geht nur die Gruppe
 hinaus und wer aufgedeckt oder beteiligt ist; ein Gegner, den niemand
 erkannt hat, heisst wie sein Deckname, und seine Trefferpunkte sind ein
 Wort — „angeschlagen" ist, was man am Tisch sieht, „7 von 18" nicht.
+
+**Auch die Reihe selbst verrät etwas** (D58). Steht ein aufgedeckter
+Gegner schon vor Kampfbeginn auf Platz drei, wissen alle, dass er nach der
+Magierin kommt und vor dem Kämpfer — eine Auskunft, die am Tisch niemand
+hat, bevor er handelt. Also erscheint ein Gegner in der ersten Runde erst,
+wenn sein Zug beginnt, und bleibt dann stehen; ab der zweiten Runde ist die
+Reihe ohnehin bekannt. Aus demselben Grund geht die **Zugnummer** nicht
+hinaus: „der siebte ist dran" bei vier sichtbaren Zeilen zählt die
+Verborgenen mit. Stattdessen trägt der Teilnehmer, der dran ist, eine
+Marke — und wer verborgen dran ist, hat eben keinen Zeiger.
 ### Eine Spur hält, was zu ihr gehört, nicht was in ihre Zeit fällt
 
 Die Weltgeschichte steht in **Spuren**: ein Krieg, eine Dynastie, ein

@@ -401,9 +401,18 @@ export function redactEntity(
 
   /* Die Initiative an einer Begegnung (REQ-213, D53): was Spielende von
      den Teilnehmern nicht sehen, geht gar nicht erst hinaus. */
-  const relations = article.relations?.some((r) => r.type === PARTICIPATES)
-    ? redactParticipants(entities, article.relations)
+  const kampf = article.relations?.some((r) => r.type === PARTICIPATES);
+  const karte = ((article.components ?? {})['Encounter'] ?? {}) as { round?: number; turn?: number };
+  const relations = kampf
+    ? redactParticipants(entities, article.relations!, { round: karte.round, turn: karte.turn })
     : article.relations;
+  /* REQ-226, D58: die Zugnummer zählt die ganze Reihe, auch was verborgen
+     ist oder noch nicht erschien — sie geht nicht hinaus; wer dran ist,
+     sagt die Marke `current` am Teilnehmer. */
+  if (kampf && components['Encounter'] && 'turn' in components['Encounter']) {
+    const { turn: _turn, ...ohne } = components['Encounter'];
+    components['Encounter'] = ohne;
+  }
 
   return { ...article, name, components, ...(relations ? { relations } : {}) } as Entity;
 }
