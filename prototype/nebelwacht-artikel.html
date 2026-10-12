@@ -539,6 +539,40 @@ ul.tlayout li.d3{padding-left:48px}
 .mprev.area{border-style:solid;border-width:2px}
 .maptools.sub{padding-top:2px;border-top:1px dashed var(--line);margin-top:-2px}
 
+/* Bewegung, Zonen, Aufdecken (D56). Die Zonen liegen unter dem Nebel, der
+   Weg darüber und unter den Tokens. */
+.mzones{z-index:1}
+.mzone.hid{stroke-dasharray:.006 .004}
+.mmove{z-index:2}
+.mreach{fill:var(--ok);fill-opacity:.18}
+.mpath{stroke:var(--accent);stroke-linecap:round;stroke-linejoin:round;opacity:.9}
+.mpath.pre{stroke-dasharray:.01 .006;opacity:.75}
+.mpath.over{stroke:var(--warn)}
+.mwp{fill:var(--accent);opacity:.85}
+.mnogo{fill:var(--warn);fill-opacity:.25}
+.mcost{fill:var(--ink,#222);font-family:var(--ff-mono);paint-order:stroke;
+  stroke:var(--surface);stroke-width:.004}
+.mcost.over{fill:var(--warn)}
+.mtoken.hid{border-style:dashed;opacity:.5}
+.mtoken.sel{box-shadow:0 0 0 3px var(--ok),0 1px 4px rgba(0,0,0,.35);z-index:4}
+.movepanel{border:1px solid var(--line);border-radius:var(--r);padding:6px 8px;
+  margin-bottom:8px;background:var(--surface2)}
+.movepanel .maptools{margin-bottom:4px}
+.sightrow{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:12px;margin-top:2px}
+.sightrow .co{flex:0 0 64px}
+.sightrow .chip.dim{opacity:.55}
+.sightrow .chip.hid{border-style:dashed}
+.zonechip{border-color:var(--warn)}
+.hint.warn{color:var(--warn)}
+.maplog{font-size:12px;font-family:var(--ff-mono);border-left:2px solid var(--line2);
+  padding-left:8px;margin:6px 0;display:flex;flex-direction:column;gap:2px}
+/* Vollbild (REQ-210): der Kasten füllt das Fenster. Die Seite geht in den
+   Vollbildmodus des Browsers, nicht der Kasten — der wird bei jedem
+   Zeichnen neu gebaut und verliesse ihn sonst. */
+.mapbox.mapfull,.panefull{position:fixed;inset:0;z-index:900;background:var(--bg,var(--surface));
+  overflow:auto;padding:10px 14px;margin:0}
+.mapbox.mapfull .mapstage{max-height:none;height:calc(100vh - 150px)}
+
 /* Die Werkbank: ein laufender Gang ist ein Balken und zwei Knöpfe. */
 .bench{margin:8px 0}
 .job{border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;
@@ -1106,6 +1140,9 @@ var UI={route:{k:"list"}, view:"quick", area:"", iface:"", tag:"", q:"", offen:f
         trail:[], inline:false, editField:"", pick:false, picked:{}, status:"",
         aside:"rel", info:"", assetBusy:"",
         mapZoom:1, mapLock:false, mapKind:"", mapDrag:null, mapTool:"",
+        /* Bewegung auf der Karte (D56): Modus, gewähltes Token, Wegpunkte,
+           was gemieden wird; die Spieleransicht der Leitung; Vollbild. */
+        moveMode:"path", moveSel:"", movePts:[], moveAvoid:{}, mapPlayers:false, full:"",
         wallKind:"wall", playTab:"map", playBoard:"", tab:"", typePick:"",
         invView:"tiers", invPick:"", craftOnly:false, craftLog:[],
         boardZoom:1, boardPick:"", boardTool:"",
@@ -3551,11 +3588,13 @@ function renderPlay(v){
      ist, muss man sehen, ohne umzuschalten. */
   var kampf=card.activeEncounter&&ENT.get(card.activeEncounter);
   if(kampf&&articleVisible(kampf)){
-    var kb=el("section",{class:"playpane"});
+    var kb=el("section",{class:"playpane"+(UI.full==="fight"?" panefull":"")});
     var kk=el("div",{class:"sec"});
     kk.appendChild(el("span",{text:"Initiative"}));
     kk.appendChild(el("button",{class:"ref",type:"button",
       onclick:function(){go({k:"art",id:kampf.id});}},nameOf(kampf)));
+    /* Vollbild auch für die Initiative (REQ-210), mit demselben Schalter. */
+    kk.appendChild(fullButton("fight"));
     kb.appendChild(kk);
     kb.appendChild(elInitiative(kampf,(kampf.interfaces||[])[0],{}));
     v.appendChild(kb);
@@ -9890,7 +9929,7 @@ function mapSheets(e,card){
    die der Spielleitung gehören. Zurückgehalten wird hier in der Seite, weil
    die Seite keinen Server hat — im echten Stapel tut es `redactEntity`. */
 function drawnSheets(e,card){
-  var gm=isGM();
+  var gm=mapGM();
   return mapSheets(e,card).filter(function(s){
     return s.visible&&s.image&&(gm||!s.gmOnly);
   });
@@ -9904,12 +9943,14 @@ function visionOverlay(e,card,nat){
   /* Die Sperren sieht nur, wer sie setzen darf. Sie sind aber auch bei
      Tageslicht zu zeichnen — wer eine Battlemap baut, baut sie am hellen
      Tag und will sehen, wo die Wände stehen. */
-  var bau=isGM()&&canWrite()&&(card.walls||[]).length>0;
+  var bau=mapGM()&&canWrite()&&(card.walls||[]).length>0;
   if(!nebel&&licht==="bright"&&!terr.length&&!bau)return null;
 
   var svg=sv("svg",{"class":"mvis",viewBox:"0 0 1 "+ar,preserveAspectRatio:"none"});
   var defs=sv("defs"); svg.appendChild(defs);
-  var gm=isGM();
+  /* Die Spieleransicht der Leitung zeigt den Nebel so, wie ihn der Tisch
+     sieht (REQ-210) — sonst prüft sie etwas anderes, als der Beamer zeigt. */
+  var gm=mapGM();
 
   /* Gebiete zuerst, damit Nebel und Dunkelheit darüber liegen — wem ein Feld
      gehört, ist eine Frage der Karte und keine des Augenblicks. */
@@ -9991,7 +10032,7 @@ function visionOverlay(e,card,nat){
 
 /* ---- Zeichnen: was die Spielleitung aufdeckt und zumauert ---- */
 var MAP_TOOLS=[["reveal","Reveal"],["hide","Hide"],["wall","Barrier"],
-               ["area","Sub-map"],["erase","Erase"]];
+               ["zone","Zone"],["area","Sub-map"],["erase","Erase"]];
 function mapToolLayer(e,card,img){
   var lay=el("div",{class:"mdraw t-"+UI.mapTool});
   var von=null, vorschau=null;
@@ -10006,7 +10047,7 @@ function mapToolLayer(e,card,img){
     von=p; ev.preventDefault();
     try{ lay.setPointerCapture(ev.pointerId); }catch(x){}
     vorschau=el("div",{class:"mprev"+(UI.mapTool==="wall"?" line":"")+
-      (UI.mapTool==="area"?" area":"")});
+      (UI.mapTool==="area"||UI.mapTool==="zone"?" area":"")});
     lay.appendChild(vorschau);
   });
   lay.addEventListener("pointermove",function(ev){
@@ -10102,6 +10143,13 @@ function applyMapTool(e,card,a,b){
     addSubmap(e,{x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),
       w:Math.abs(b.x-a.x),h:Math.abs(b.y-a.y)});
     return;
+  } else if(t==="zone"){
+    /* Eine Zone wird aufgezogen wie ein aufgedeckter Bereich; welche
+       Regel dort gilt, fragt der Dialog (REQ-208). */
+    if(winzig)return;
+    addZone(e,{x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),
+      w:Math.abs(b.x-a.x),h:Math.abs(b.y-a.y)});
+    return;
   } else if(t==="reveal"){
     if(winzig)return;
     card.reveal=(card.reveal||[]).concat([{id:uid("s"),kind:"rect",
@@ -10128,6 +10176,12 @@ function applyMapTool(e,card,a,b){
     if(!best) (card.reveal||[]).forEach(function(s){
       if(inShape(s,a.x,a.y)) best={art:"reveal",id:s.id};
     });
+    /* Eine Zone geht vor dem aufgedeckten Bereich darunter: sie ist das,
+       was man zuletzt hingelegt hat. */
+    var zone=null;
+    (e.relations||[]).forEach(function(r){
+      if(r.type===REL_ZONE&&inShape(r.props||{},a.x,a.y)) zone=r; });
+    if(zone){ e.relations=e.relations.filter(function(r){ return r.id!==zone.id; }); persist(e); return; }
     if(!best)return;
     if(best.art==="wall") card.walls=(card.walls||[]).filter(function(w){return w.id!==best.id;});
     else card.reveal=(card.reveal||[]).filter(function(s){return s.id!==best.id;});
@@ -10297,6 +10351,7 @@ function fogTools(e,card){
   var tuer=(card.walls||[]).filter(function(x){return (x.kind||"wall")==="door";}).length;
   var wie=UI.mapTool==="wall"?" · drag to build, click a door to open or shut it":
           UI.mapTool==="area"?" · drag a new frame, or move one you have \u2014 its corner resizes it":
+          UI.mapTool==="zone"?" · drag where a zone kind's rules apply (ice, fire, fog)":
           UI.mapTool?" · drag on the map":"";
   bar.appendChild(el("span",{class:"hint",style:"margin:0;align-self:center",
     text:n+" uncovered · "+w+" barrier"+(w===1?"":"s")+
@@ -10342,6 +10397,9 @@ function tokenSetup(e,r,art){
       value:pr.light==null?"":String(pr.light)});
     var matt=el("input",{class:"i",type:"number",min:"0",step:"1",
       value:pr.dim==null?"":String(pr.dim)});
+    var versteckt=el("input",{type:"checkbox"}); versteckt.checked=!!pr.hidden;
+    var heiml=el("input",{class:"i",type:"number",min:"0",step:"1",
+      placeholder:"passive Stealth",value:pr.stealth==null?"":String(pr.stealth)});
 
     host.appendChild(field("Kind",artSel));
     host.appendChild(field("Width in squares",size));
@@ -10354,6 +10412,11 @@ function tokenSetup(e,r,art){
     host.appendChild(field("Note",note));
     host.appendChild(field("Bright light in squares",hell));
     host.appendChild(field("Dim light in squares",matt));
+    /* Versteckt (REQ-209): Spielende sehen es erst, wenn es bemerkt wird. */
+    var vl=el("label",{class:"task"}); vl.appendChild(versteckt);
+    vl.appendChild(el("span",{text:"Hidden from the players until noticed"}));
+    host.appendChild(vl);
+    host.appendChild(field("Stealth to beat (empty: passive Stealth)",heiml));
     function zeig(){ vz.style.display=artSel.value==="scenery"?"":"none"; }
     artSel.addEventListener("change",zeig); zeig();
 
@@ -10374,7 +10437,9 @@ function tokenSetup(e,r,art){
           ?Number(ratio.value):undefined,
         note:note.value.trim()||undefined,
         light:hell.value===""?undefined:Number(hell.value),
-        dim:matt.value===""?undefined:Number(matt.value)});
+        dim:matt.value===""?undefined:Number(matt.value),
+        hidden:versteckt.checked||undefined,
+        stealth:heiml.value===""?undefined:Number(heiml.value)});
       r.props=neu;
       persist(e);
     },"Save");
@@ -10454,13 +10519,820 @@ function mapZoomBy(schritt,e,nat){
   render();
 }
 
+/* ---------- Bewegung, Zonen und Sicht (REQ-206 bis 210, D52, D56) ----------
+   **Der Rechner rechnet, die Karte speichert das Ergebnis.** Ein Weg ist,
+   solange er nicht bestätigt ist, eine Frage an die Karte und nirgends
+   gespeichert (`UI.movePts`); erst das Bestätigen setzt das Token um,
+   schreibt den Verbrauch in den Sitzungszustand und deckt entlang des
+   Pfads auf. Während des Ziehens deckt nichts auf (D52): eine Karte, die
+   beim Suchen schon zeigt, was hinter der Ecke liegt, verrät es.
+
+   Gerechnet wird wie in `packages/model` (`movement.ts`, `sight.ts`) —
+   dieselbe Regel, hier noch einmal, weil die Seite keinen Bau kennt. Die
+   Tests stehen am Modell; was hier abweicht, ist ein Fehler hier.
+
+   Tempo, Verbrauch und Parität liegen im **Sitzungszustand**
+   (`Session.moves`), nicht an der Kreatur und nicht an der Kante: die
+   Kreatur ist nicht „schon 20 Fuss gelaufen", nur ihr Zug ist es. */
+var REL_ZONE="zone", ZONE_IFACE="ZoneKind";
+
+/* Die Spieleransicht ist eine Frage an die Karte, nicht an das Konto: die
+   Leitung schaut, was der Beamer zeigt, ohne in eine Figur zu schlüpfen. */
+function mapGM(){ return isGM()&&!UI.mapPlayers; }
+
+/* ---- Das Raster ---- */
+function mapGeom(card,nat){
+  if((card.gridShape||"none")!=="square"||!nat||!(Number(nat.w)>0))return null;
+  var g=Math.max(4,Number(card.gridSize)||70);
+  var ox=((Number(card.gridOffsetX)||0)%g+g)%g, oy=((Number(card.gridOffsetY)||0)%g+g)%g;
+  var cols=Math.ceil((nat.w-ox)/g), rows=Math.ceil((nat.h-oy)/g);
+  if(cols<1||rows<1||cols*rows>40000)return null;
+  return {g:g,ox:ox,oy:oy,cols:cols,rows:rows,w:nat.w,h:nat.h};
+}
+function cellOf(geo,fx,fy){
+  return {x:Math.max(0,Math.min(geo.cols-1,Math.floor((fx*geo.w-geo.ox)/geo.g))),
+          y:Math.max(0,Math.min(geo.rows-1,Math.floor((fy*geo.h-geo.oy)/geo.g)))};
+}
+function cellMid(geo,c){
+  return {x:(geo.ox+(c.x+0.5)*geo.g)/geo.w, y:(geo.oy+(c.y+0.5)*geo.g)/geo.h};
+}
+/* Anteile → Feldeinheiten (Feld (0,0) reicht von 0 bis 1). */
+function toCellUnits(geo,fx,fy){
+  return {x:(fx*geo.w-geo.ox)/geo.g, y:(fy*geo.h-geo.oy)/geo.g};
+}
+function cellWalls(card,geo,pred){
+  return (card.walls||[]).filter(pred).map(function(w){
+    var a=toCellUnits(geo,Number(w.x1)||0,Number(w.y1)||0);
+    var b=toCellUnits(geo,Number(w.x2)||0,Number(w.y2)||0);
+    return {x1:a.x,y1:a.y,x2:b.x,y2:b.y};
+  });
+}
+function ck(c){ return c.x+","+c.y; }
+
+/* ---- Der Rechner (wie `movement.ts`) ---- */
+function mvStep(diag,par,f){
+  f=(isFinite(f)&&f>0)?f:1;
+  if(!diag) return {feet:5*f,parity:par};
+  return par===0?{feet:5*f,parity:1}:{feet:10*f,parity:0};
+}
+function mvCross(ax,ay,bx,by,w){
+  var rx=bx-ax, ry=by-ay, sx=w.x2-w.x1, sy=w.y2-w.y1, E=1e-9;
+  var den=rx*sy-ry*sx, qx=w.x1-ax, qy=w.y1-ay;
+  if(Math.abs(den)<E){
+    if(Math.abs(qx*ry-qy*rx)>E)return false;
+    var len=rx*rx+ry*ry; if(len<E)return false;
+    var t0=(qx*rx+qy*ry)/len, t1=((w.x2-ax)*rx+(w.y2-ay)*ry)/len;
+    return Math.max(t0,t1)>=-E&&Math.min(t0,t1)<=1+E;
+  }
+  var t=(qx*sy-qy*sx)/den, u=(qx*ry-qy*rx)/den;
+  return t>=-E&&t<=1+E&&u>=-E&&u<=1+E;
+}
+function mvLos(a,b,walls){
+  for(var i=0;i<walls.length;i++) if(mvCross(a.x,a.y,b.x,b.y,walls[i]))return false;
+  return true;
+}
+var MV_NB=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]];
+function mvLess(a,b){ return a[0]!==b[0]?a[0]<b[0]:a[1]<b[1]; }
+/* Dijkstra über (Feld, Parität): die Parität gehört zum Suchzustand und
+   nicht zum Feld, sonst gewinnt der Weg, der zuerst ankommt, und nicht der,
+   der am wenigsten kostet. Rang: gemiedene Felder, dann Fuss. */
+function mvSearch(gr,from,par,avoidOn,budget,target){
+  var cols=gr.cols, rows=gr.rows, n=cols*rows*2, i;
+  var pen=new Float64Array(n), feet=new Float64Array(n), prev=new Int32Array(n);
+  for(i=0;i<n;i++){ pen[i]=Infinity; feet[i]=Infinity; prev[i]=-1; }
+  if(from.x<0||from.y<0||from.x>=cols||from.y>=rows) return {pen:pen,feet:feet,prev:prev};
+  var s=(from.y*cols+from.x)*2+par;
+  pen[s]=0; feet[s]=0;
+  var heap=[[0,0,s]], wand={};
+  function push(it){
+    heap.push(it); var j=heap.length-1;
+    while(j>0){ var p=(j-1)>>1; if(!mvLess(heap[j],heap[p]))break;
+      var t=heap[j]; heap[j]=heap[p]; heap[p]=t; j=p; }
+  }
+  function pop(){
+    var top=heap[0], last=heap.pop();
+    if(heap.length){ heap[0]=last; var j=0;
+      for(;;){ var l=2*j+1, r=l+1, m=j;
+        if(l<heap.length&&mvLess(heap[l],heap[m]))m=l;
+        if(r<heap.length&&mvLess(heap[r],heap[m]))m=r;
+        if(m===j)break; var t=heap[j]; heap[j]=heap[m]; heap[m]=t; j=m; } }
+    return top;
+  }
+  while(heap.length){
+    var it=pop(), p=it[0], f=it[1], idx=it[2];
+    if(p!==pen[idx]||f!==feet[idx])continue;
+    var cell=idx>>1, pa=idx&1, x=cell%cols, y=(cell-x)/cols;
+    if(target&&x===target.x&&y===target.y)break;
+    for(var k=0;k<8;k++){
+      var nx=x+MV_NB[k][0], ny=y+MV_NB[k][1];
+      if(nx<0||ny<0||nx>=cols||ny>=rows)continue;
+      var key=nx+","+ny;
+      if(gr.blocked[key])continue;
+      var fac=gr.cost[key]||1;
+      if(fac===Infinity)continue;
+      var nc=ny*cols+nx, wk=cell<nc?cell+"|"+nc:nc+"|"+cell;
+      if(wand[wk]===undefined){
+        var h=false;
+        for(var w=0;w<gr.walls.length&&!h;w++)
+          h=mvCross(x+0.5,y+0.5,nx+0.5,ny+0.5,gr.walls[w]);
+        wand[wk]=h;
+      }
+      if(wand[wk])continue;
+      var st=mvStep(MV_NB[k][0]!==0&&MV_NB[k][1]!==0,pa,fac);
+      var nf=f+st.feet;
+      if(budget!=null&&nf>budget+1e-9)continue;
+      var np=p+(avoidOn&&gr.avoid[key]?1:0), ni=nc*2+st.parity;
+      if(np<pen[ni]||(np===pen[ni]&&nf<feet[ni])){
+        pen[ni]=np; feet[ni]=nf; prev[ni]=idx; push([np,nf,ni]);
+      }
+    }
+  }
+  return {pen:pen,feet:feet,prev:prev};
+}
+function mvPath(gr,from,to,par,avoidOn){
+  if(to.x<0||to.y<0||to.x>=gr.cols||to.y>=gr.rows)return null;
+  if(from.x===to.x&&from.y===to.y) return {cells:[{x:from.x,y:from.y}],feet:0,parity:par,avoided:0};
+  if(gr.blocked[ck(to)]||gr.noStop[ck(to)])return null;
+  var s=mvSearch(gr,from,par,avoidOn,null,to);
+  var b=(to.y*gr.cols+to.x)*2, best=-1;
+  [b,b+1].forEach(function(i){
+    if(s.feet[i]===Infinity)return;
+    if(best<0||mvLess([s.pen[i],s.feet[i]],[s.pen[best],s.feet[best]])) best=i;
+  });
+  if(best<0)return null;
+  var cells=[];
+  for(var i=best;i>=0;i=s.prev[i]){ var c=i>>1; cells.push({x:c%gr.cols,y:Math.floor(c/gr.cols)}); }
+  cells.reverse();
+  return {cells:cells,feet:s.feet[best],parity:best&1,avoided:s.pen[best]};
+}
+/* Über Wegpunkte (REQ-207): die Parität läuft weiter. */
+function mvVia(gr,from,pts,par,avoidOn){
+  var at=from, feet=0, avoided=0, cells=[{x:from.x,y:from.y}];
+  for(var i=0;i<pts.length;i++){
+    var r=mvPath(gr,at,pts[i],par,avoidOn);
+    if(!r) return {failedLeg:i};
+    cells=cells.concat(r.cells.slice(1));
+    feet+=r.feet; avoided+=r.avoided; par=r.parity; at=pts[i];
+  }
+  return {cells:cells,feet:feet,parity:par,avoided:avoided};
+}
+function mvReach(gr,from,budget,par){
+  var s=mvSearch(gr,from,par,false,budget,null), out={};
+  for(var c=0;c<gr.cols*gr.rows;c++){
+    var f=Math.min(s.feet[2*c],s.feet[2*c+1]);
+    if(f===Infinity)continue;
+    var k=(c%gr.cols)+","+Math.floor(c/gr.cols);
+    if(gr.noStop[k]&&f>0)continue;
+    out[k]=f;
+  }
+  return out;
+}
+/* Tempo aus dem Statblock: „30 ft., climb 20 ft." → {walk:30, climb:20}. */
+function mvSpeedModes(t){
+  var out={};
+  if(t==null)return out;
+  if(typeof t==="number") return isFinite(t)?{walk:t}:out;
+  String(t).split(/[,;]/).forEach(function(part){
+    var m=/^\s*([a-z]+)?\s*(\d+(?:[.,]\d+)?)\s*(ft\.?|feet|foot|m\b|meters?|metres?)?/i.exec(part);
+    if(!m)return;
+    var n=Number(m[2].replace(",","."));
+    if(m[3]&&/^m/i.test(m[3])) n=Math.round(n/0.3048/5)*5;
+    var mode=(m[1]||"walk").toLowerCase();
+    if(!(mode in out)) out[mode]=n;
+  });
+  return out;
+}
+/* Die Kurzwahl (D52): eine Zahl statt eines Spurt-Schalters. */
+function mvPresets(modes){
+  var walk=modes.walk!=null?modes.walk:30, half=Math.floor(walk/2);
+  var out=[{key:"walk",label:"Speed",feet:walk},{key:"dash",label:"Dash ×2",feet:walk*2},
+    {key:"climb",label:modes.climb!=null?"Climb":"Climb ½",feet:modes.climb!=null?modes.climb:half},
+    {key:"swim",label:modes.swim!=null?"Swim":"Swim ½",feet:modes.swim!=null?modes.swim:half}];
+  if(modes.fly!=null) out.push({key:"fly",label:"Fly",feet:modes.fly});
+  if(modes.burrow!=null) out.push({key:"burrow",label:"Burrow",feet:modes.burrow});
+  return out;
+}
+/* Wie `sight.ts`: Sichtlinie, Licht, passive Wahrnehmung. */
+var MV_LICHT={dark:0,dim:1,bright:2};
+function mvLightAt(p,mapLight,lights,walls,zoneLight){
+  if(zoneLight)return zoneLight;
+  var best=mapLight||"bright";
+  lights.forEach(function(l){
+    if(best==="bright")return;
+    var d=Math.sqrt((p.x-l.x)*(p.x-l.x)+(p.y-l.y)*(p.y-l.y));
+    if(d>Math.max(l.bright,l.dim))return;
+    if(!mvLos({x:l.x,y:l.y},p,walls))return;
+    var hier=d<=l.bright?"bright":"dim";
+    if(MV_LICHT[hier]>MV_LICHT[best]) best=hier;
+  });
+  return best;
+}
+function mvNotices(obs,o){
+  var light=o.light;
+  if(light==="dark"&&(obs.darkvision||0)>=o.distanceFeet) light="dim";
+  var ob=o.obscured||"none";
+  var pp=obs.pp-((light==="dim"||ob==="light")?5:0);
+  if(!o.los) return {seen:false,pp:pp,light:light,why:"wall"};
+  if(ob==="heavy") return {seen:false,pp:pp,light:light,why:"obscured"};
+  if(light==="dark") return {seen:false,pp:pp,light:light,why:"dark"};
+  if(o.dc!=null&&isFinite(o.dc)&&pp<o.dc) return {seen:false,pp:pp,light:light,why:"stealth"};
+  return {seen:true,pp:pp,light:light};
+}
+
+/* ---- Was auf der Karte steht ---- */
+function zoneCard(a){ return a?((a.components||{})[ZONE_IFACE]||{}):{}; }
+function mapZones(e){
+  return (e.relations||[]).filter(function(r){ return r.type===REL_ZONE; })
+    .map(function(r){ return {rel:r,art:ENT.get(r.to)}; })
+    .filter(function(z){ return z.art&&articleVisible(z.art); });
+}
+/* Eine Zone mit `hiddenUntil` ist versteckt, bis jemand sie bemerkt. */
+function zoneShown(z){
+  var k=zoneCard(z.art);
+  return mapGM()||!(Number(k.hiddenUntil)>0)||!!(z.rel.props||{}).found;
+}
+/* Aufs Gitter gerastert, wie die Gebiete: ein Feld gehört zur Zone, wenn
+   seine Mitte in der Form liegt. `alle` nimmt auch die versteckten — die
+   Wahrheit für das Aufdecken; die Ansicht sieht nur, was sie sehen darf. */
+function zoneCells(e,geo,alle){
+  var out={};
+  mapZones(e).forEach(function(z){
+    if(!alle&&!zoneShown(z))return;
+    var pr=z.rel.props||{};
+    for(var y=0;y<geo.rows;y++)for(var x=0;x<geo.cols;x++){
+      var m=cellMid(geo,{x:x,y:y});
+      if(!inShape(pr,m.x,m.y))continue;
+      (out[x+","+y]=out[x+","+y]||[]).push(z);
+    }
+  });
+  return out;
+}
+/* Was eine Zone dem antut, der hineingeht — gezeigt, nicht gewürfelt. */
+function zoneHurts(a){
+  var k=zoneCard(a);
+  return !!(k.damage||k.save||k.condition);
+}
+function zoneLine(a){
+  var k=zoneCard(a), teile=[];
+  if(Number(k.moveCost)>1) teile.push("movement ×"+k.moveCost);
+  if(k.save) teile.push((k.saveDC?"DC "+k.saveDC+" ":"")+String(k.save).toUpperCase()+" save");
+  if(k.damage) teile.push(k.damage+(k.damageType?" "+k.damageType:""));
+  var z=k.condition&&ENT.get(k.condition);
+  if(z) teile.push(nameOf(z));
+  if(k.light) teile.push(k.light+" light");
+  if(k.obscured&&k.obscured!=="none") teile.push(k.obscured+"ly obscured");
+  var regel=((a.components||{}).Description||{}).description||"";
+  if(regel) teile.push(String(regel).split(/\n/)[0].slice(0,140));
+  return teile.join(" · ");
+}
+
+function tokenArt(r){ return r&&r.to?ENT.get(r.to):null; }
+/* Spielende sehen keine versteckten Tokens (REQ-210). Zurückgehalten wird
+   hier in der Seite, weil sie keinen Server hat — im echten Stapel muss es
+   `redactEntity` tun. */
+function tokenShown(r){ return mapGM()||!(r.props||{}).hidden; }
+function isCreatureToken(r){
+  var a=tokenArt(r);
+  if(!a||tokenKind(r)==="scenery")return false;
+  return ifaceInList(["Creature","Party","Statblock"],(a.interfaces||[])[0]);
+}
+function isHazardToken(r){
+  var a=tokenArt(r);
+  return !!a&&ifaceInList(["Hazard"],(a.interfaces||[])[0]);
+}
+/* Wer ein Token bewegt: die Leitung jedes, Spielende ihre eigenen. */
+function canMoveToken(r){
+  var a=tokenArt(r);
+  if(isGM())return canWrite();
+  var ich=viewerActor();
+  return !!(a&&ich&&ownedByViewer(a,ich));
+}
+/* Die Zahlen, mit denen die Karte rechnet: aus dem Statblock, sonst die
+   Vorgaben der Regel (30 Fuss, Wahrnehmung 10). */
+function tokenNums(a){
+  var st=a?statsOf(a):{card:{},from:null};
+  var c=st.card||{}, prof=Number(c.prof)||0;
+  var pf=((resolvedOf(st.from||{}).components||{}).Proficiencies)||{};
+  var kann=[].concat(pf.proficient||[]), exp=[].concat(pf.expertise||[]);
+  function fert(n,attr){
+    var b=modOf(c,attr);
+    if(exp.indexOf(n)>=0) b+=2*prof; else if(kann.indexOf(n)>=0) b+=prof;
+    return b;
+  }
+  var m=/passive\s+perception\s+(\d+)/i.exec(String(c.senses||""));
+  var dv=/darkvision\s+(\d+)/i.exec(String(c.senses||""));
+  return {pp:m?Number(m[1]):10+fert("Perception","wis"),
+    darkvision:dv?Number(dv[1]):0,
+    stealth:10+fert("Stealth","dex"),
+    modes:mvSpeedModes(c.speed)};
+}
+function fightNow(){
+  var ses=playingSession();
+  var c=(ses&&(ses.components||{}).Session)||{};
+  var k=c.activeEncounter&&ENT.get(c.activeEncounter);
+  return k&&articleVisible(k)?k:null;
+}
+/* Auf welcher Seite: true die der Spielenden, false dagegen, null unbekannt. */
+function sideOf(a){
+  if(!a)return null;
+  var k=fightNow();
+  if(k){
+    var p=participants(k).filter(function(x){ return x.art&&x.art.id===a.id; })[0];
+    if(p) return p.ally;
+  }
+  var party=theParty();
+  if(party&&(a.id===party.id||partyMembers(party).some(function(m){ return m.id===a.id; })))return true;
+  if(ifaceInList(["PlayerCharacter"],(a.interfaces||[])[0]))return true;
+  return null;
+}
+/* **Mit jedem Zug neu** (D52): der Zug ist die laufende Begegnung, ihre
+   Runde und wer dran ist. Ohne Kampf gibt es keinen Zug; dann setzt die
+   Leitung von Hand zurück. */
+function turnKey(){
+  var k=fightNow();
+  if(!k)return "free";
+  var c=encCard(k);
+  return k.id+":"+(Number(c.round)||0)+":"+(Number(c.turn)||0);
+}
+function sessionCard(){
+  var ses=playingSession();
+  return {ses:ses,card:(ses&&(ses.components||{}).Session)||{}};
+}
+function movesList(){
+  var s=sessionCard();
+  return s.ses?(s.card.moves||[]):(UI.movesLocal||[]);
+}
+function moveOf(r){
+  var base=tokenNums(tokenArt(r)).modes.walk;
+  if(base==null) base=30;
+  var hit=movesList().filter(function(m){ return m&&m.token===r.id; })[0];
+  if(!hit||hit.turn!==turnKey()) return {token:r.id,turn:turnKey(),speed:base,used:0,parity:0,base:base};
+  return {token:r.id,turn:hit.turn,speed:isFinite(Number(hit.speed))?Number(hit.speed):base,
+    used:Number(hit.used)||0,parity:hit.parity===1?1:0,base:base};
+}
+/* Schreibt den Zug und das Protokoll in die Sitzung — ein Schreiben, nicht
+   zwei, damit beides zusammen ankommt. Ohne Sitzung bleibt es in der Seite. */
+function saveMove(m,zeilen){
+  var neu={token:m.token,turn:m.turn,speed:m.speed,used:m.used,parity:m.parity};
+  var s=sessionCard();
+  var jetzt=new Date().toISOString();
+  var log=(zeilen||[]).map(function(t){ return {at:jetzt,text:t}; });
+  if(!s.ses){
+    UI.movesLocal=(UI.movesLocal||[]).filter(function(x){ return x.token!==m.token; }).concat([neu]);
+    UI.mapLogLocal=log.concat(UI.mapLogLocal||[]).slice(0,50);
+    render(); return;
+  }
+  var card=Object.assign({},s.card);
+  card.moves=(card.moves||[]).filter(function(x){ return x&&x.token!==m.token; }).concat([neu]);
+  if(log.length) card.log=log.concat(card.log||[]).slice(0,50);
+  s.ses.components=Object.assign({},s.ses.components||{},{Session:card});
+  persist(s.ses);
+}
+function mapLogList(){
+  var s=sessionCard();
+  return s.ses?(s.card.log||[]):(UI.mapLogLocal||[]);
+}
+
+/* ---- Das Netz für einen, der sich bewegt ----
+   Gebaut aus dem, was der Betrachter sieht: ein Weg, der um eine Falle
+   herumführt, die die Spielenden nicht kennen, hätte sie verraten. */
+function moveGrid(e,card,geo,mover){
+  var gr={cols:geo.cols,rows:geo.rows,walls:cellWalls(card,geo,blocksMove),
+          cost:{},blocked:{},noStop:{},avoid:{}};
+  var av=UI.moveAvoid||{};
+  var zc=zoneCells(e,geo,false);
+  Object.keys(zc).forEach(function(k){
+    var f=1;
+    zc[k].forEach(function(z){
+      var m=Number(zoneCard(z.art).moveCost)||1;
+      if(m>f) f=m;
+      if(av.hazard&&zoneHurts(z.art)) gr.avoid[k]=1;
+    });
+    if(f>1) gr.cost[k]=f;
+  });
+  var meine=sideOf(tokenArt(mover));
+  (e.relations||[]).forEach(function(r){
+    if(r.type!==REL_MARKER||r.id===mover.id||!tokenShown(r))return;
+    var pr=r.props||{};
+    var c=cellOf(geo,Number(pr.x)||0.5,Number(pr.y)||0.5), k=ck(c);
+    if(isHazardToken(r)){ if(av.hazard) gr.avoid[k]=1; return; }
+    if(!isCreatureToken(r))return;
+    var seite=sideOf(tokenArt(r));
+    var feind=meine!=null&&seite!=null&&seite!==meine;
+    if(!feind){ gr.noStop[k]=1; return; }
+    gr.blocked[k]=1;
+    if(av.reach) MV_NB.forEach(function(d){ gr.avoid[(c.x+d[0])+","+(c.y+d[1])]=1; });
+  });
+  return gr;
+}
+function tokenCell(geo,r){
+  var pr=r.props||{};
+  return cellOf(geo,Number(pr.x)||0.5,Number(pr.y)||0.5);
+}
+/* Der Weg, der gerade gefragt ist: vom Token über die Wegpunkte. */
+function pendingPath(e,card,geo,r,mv,extra){
+  var pts=(UI.movePts||[]).slice();
+  if(extra) pts.push(extra);
+  if(!pts.length)return null;
+  var gr=moveGrid(e,card,geo,r);
+  var av=UI.moveAvoid||{};
+  return mvVia(gr,tokenCell(geo,r),pts,mv.parity,!!(av.hazard||av.reach));
+}
+
+/* ---- Sicht ---- */
+function lightsInCells(e,geo){
+  var out=[];
+  (e.relations||[]).forEach(function(r){
+    if(r.type!==REL_MARKER)return;
+    var pr=r.props||{}, hell=Number(pr.light)||0, matt=Number(pr.dim)||0;
+    if(hell<=0&&matt<=0)return;
+    var p=toCellUnits(geo,Number(pr.x)||0.5,Number(pr.y)||0.5);
+    out.push({x:p.x,y:p.y,bright:hell,dim:Math.max(hell,matt)});
+  });
+  return out;
+}
+/* Das Stärkste auf der Linie: alle Felder, die sie streift, Enden dabei. */
+function obscuredOn(zc,a,b){
+  var n=Math.max(1,Math.ceil(Math.max(Math.abs(b.x-a.x),Math.abs(b.y-a.y))*3)), w="none";
+  for(var i=0;i<=n;i++){
+    var x=Math.floor(a.x+(b.x-a.x)*i/n), y=Math.floor(a.y+(b.y-a.y)*i/n);
+    (zc[x+","+y]||[]).forEach(function(z){
+      var o=zoneCard(z.art).obscured||"none";
+      if(o==="heavy"||(o==="light"&&w==="none")) w=o;
+    });
+  }
+  return w;
+}
+/* Bemerkt `wer` (Feld) das Ziel (Feld)? `dc` null: nicht versteckt. */
+function sightFrom(ctx,obs,von,nach,dc){
+  var a={x:von.x+0.5,y:von.y+0.5}, b={x:nach.x+0.5,y:nach.y+0.5};
+  var zl=null;
+  (ctx.zc[ck(nach)]||[]).forEach(function(z){ var l=zoneCard(z.art).light; if(l) zl=l; });
+  var light=mvLightAt(b,ctx.card.lighting||"bright",ctx.lights,ctx.sicht,zl);
+  var d=5*Math.sqrt((a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y));
+  return mvNotices(obs,{los:mvLos(a,b,ctx.sicht),light:light,distanceFeet:d,dc:dc,
+    obscured:obscuredOn(ctx.zc,a,b)});
+}
+function sightCtx(e,card,geo){
+  return {card:card,geo:geo,zc:zoneCells(e,geo,true),lights:lightsInCells(e,geo),
+    sicht:cellWalls(card,geo,blocksSight)};
+}
+function tokenDC(r){
+  var pr=r.props||{};
+  if(!pr.hidden)return null;
+  return isFinite(Number(pr.stealth))&&pr.stealth!==""&&pr.stealth!=null
+    ?Number(pr.stealth):tokenNums(tokenArt(r)).stealth;
+}
+/* „Sieht / wird gesehen von" (REQ-209): dieselbe Prüfung in beide Richtungen. */
+function sightLists(e,card,geo,r){
+  var ctx=sightCtx(e,card,geo), meins=tokenCell(geo,r), ich=tokenNums(tokenArt(r));
+  var sieht=[], gesehen=[];
+  (e.relations||[]).forEach(function(o){
+    if(o.type!==REL_MARKER||o.id===r.id||!tokenShown(o))return;
+    if(!isCreatureToken(o)&&!isHazardToken(o))return;
+    var dort=tokenCell(geo,o);
+    var hin=sightFrom(ctx,ich,meins,dort,tokenDC(o));
+    sieht.push({rel:o,res:hin});
+    if(isCreatureToken(o))
+      gesehen.push({rel:o,res:sightFrom(ctx,tokenNums(tokenArt(o)),dort,meins,tokenDC(r))});
+  });
+  return {sieht:sieht,gesehen:gesehen};
+}
+var WARUM={wall:"no line of sight",obscured:"heavily obscured",dark:"too dark",stealth:"not noticed"};
+function sightText(x){
+  var a=tokenArt(x.rel), n=a?nameOf(a):"?";
+  if(x.res.seen) return n+((x.rel.props||{}).hidden?" (hidden, PP "+x.res.pp+" vs "+tokenDC(x.rel)+")":"");
+  return n+" — "+WARUM[x.res.why]+(x.res.why==="stealth"?" (PP "+x.res.pp+" vs "+tokenDC(x.rel)+")":"");
+}
+
+/* ---- Bestätigen: umsetzen, verbuchen, aufdecken ----
+   Schritt für Schritt den Pfad entlang (REQ-209): an jedem Feld fragt die
+   Karte, was die Figur von dort bemerkt — Versteckte, versteckte Zonen,
+   und mit Nebel den Sichtkreis. Und welche Zone sie betritt (REQ-208). */
+function confirmMove(e,card,geo,r,mv,weg,frei){
+  var a=tokenArt(r), wer=a?nameOf(a):"Token";
+  var ctx=sightCtx(e,card,geo), ich=tokenNums(a);
+  var spielerSeite=sideOf(a)===true;
+  var zeilen=[], ar=geo.h/geo.w;
+  var sw=card.fog?mapWalls(card,ar):null;
+  var hell=(card.lighting||"bright")!=="dark";
+  var radius=Math.max(1,hell?24:Math.max(ich.darkvision/5,Number((r.props||{}).dim)||0,
+    Number((r.props||{}).light)||0));
+  var zonen=mapZones(e);
+  var cellsVon={};
+  zonen.forEach(function(z){ cellsVon[z.rel.id]=[]; });
+  Object.keys(ctx.zc).forEach(function(k){
+    ctx.zc[k].forEach(function(z){ cellsVon[z.rel.id].push(k); });
+  });
+  var vorher={};
+  (ctx.zc[ck(weg.cells[0])]||[]).forEach(function(z){ vorher[z.rel.id]=1; });
+  var neuAuf=[];
+  weg.cells.forEach(function(c,i){
+    if(i===0)return;
+    var hier={};
+    (ctx.zc[ck(c)]||[]).forEach(function(z){
+      hier[z.rel.id]=1;
+      if(vorher[z.rel.id])return;
+      var k=zoneCard(z.art);
+      if((k.trigger||"enter")==="enter"||zoneHurts(z.art)||Number(k.moveCost)>1)
+        zeilen.push(wer+" enters "+nameOf(z.art)+(zoneLine(z.art)?": "+zoneLine(z.art):""));
+    });
+    vorher=hier;
+    if(!spielerSeite)return;
+    /* Versteckte Tokens, die von hier aus bemerkt werden. */
+    (e.relations||[]).forEach(function(o){
+      if(o.type!==REL_MARKER||o.id===r.id||!(o.props||{}).hidden)return;
+      var dc=tokenDC(o), res=sightFrom(ctx,ich,c,tokenCell(geo,o),dc);
+      if(!res.seen)return;
+      o.props=Object.assign({},o.props,{hidden:undefined});
+      var oa=tokenArt(o);
+      zeilen.push(wer+" spots "+(oa?nameOf(oa):"something")+" (PP "+res.pp+" vs "+dc+")");
+    });
+    /* Versteckte Zonen: ein Feld davon in Sicht, und die Wahrnehmung reicht. */
+    zonen.forEach(function(z){
+      var n=Number(zoneCard(z.art).hiddenUntil)||0;
+      if(!n||(z.rel.props||{}).found)return;
+      var treffer=cellsVon[z.rel.id].some(function(k){
+        var p=k.split(","); return sightFrom(ctx,ich,c,{x:+p[0],y:+p[1]},n).seen; });
+      if(!treffer)return;
+      z.rel.props=Object.assign({},z.rel.props,{found:true});
+      zeilen.push(wer+" notices "+nameOf(z.art));
+    });
+    /* Der Nebel weicht im Sichtkreis — dasselbe Polygon wie das Licht. */
+    if(sw){
+      var m=cellMid(geo,c);
+      var poly=visionPoly(m.x,m.y*ar,radius*geo.g/geo.w,sw);
+      neuAuf.push({id:uid("s"),kind:"poly",pts:poly.map(function(p){
+        return [Math.round(p[0]*10000)/10000,Math.round(p[1]/ar*10000)/10000]; })});
+    }
+  });
+  var ziel=cellMid(geo,weg.cells[weg.cells.length-1]);
+  r.props=Object.assign({},r.props,{x:ziel.x,y:ziel.y});
+  if(neuAuf.length){ card.reveal=(card.reveal||[]).concat(neuAuf); e.components[MAP_COMP]=card; }
+  var neu=Object.assign({},mv,{used:frei?mv.used:mv.used+weg.feet,parity:frei?mv.parity:weg.parity});
+  zeilen.unshift(wer+(frei?" is placed (GM, no cost)":" moves "+weg.feet+" ft ("+neu.used+" of "+mv.speed+")"));
+  UI.movePts=[];
+  persist(e);
+  saveMove(neu,zeilen);
+}
+
+/* Von Hand aufdecken: die Leitung nimmt das Versteckt vom Token. */
+function revealToken(e,o,durch){
+  var oa=tokenArt(o);
+  o.props=Object.assign({},o.props,{hidden:undefined});
+  persist(e);
+  var mv=moveOf(durch);
+  saveMove(mv,[(tokenArt(durch)?nameOf(tokenArt(durch)):"Someone")+" spots "+(oa?nameOf(oa):"something")]);
+}
+
+/* ---- Was gezeichnet wird ---- */
+/* Zonen unter dem Nebel: wer sie nicht sieht, sieht auch ihre Farbe nicht. */
+function zoneOverlay(e,card,nat,geo){
+  var zonen=mapZones(e).filter(zoneShown);
+  if(!zonen.length)return null;
+  var ar=nat.h/nat.w;
+  var svg=sv("svg",{"class":"mvis mzones",viewBox:"0 0 1 "+ar,preserveAspectRatio:"none"});
+  zonen.forEach(function(z){
+    var k=zoneCard(z.art);
+    var farbe=k.light==="dark"?"#1b1530":zoneHurts(z.art)?"#d4472f":
+      Number(k.moveCost)>1?"#5aa9d6":k.obscured&&k.obscured!=="none"?"#8a8f99":"#b58cff";
+    var versteckt=Number(k.hiddenUntil)>0&&!(z.rel.props||{}).found;
+    var grp=sv("g",{"class":"mzone"+(versteckt?" hid":""),fill:farbe,"fill-opacity":0.28,
+      stroke:farbe,"stroke-opacity":0.7,"stroke-width":0.0015});
+    if(geo){
+      var pr=z.rel.props||{};
+      for(var y=0;y<geo.rows;y++)for(var x=0;x<geo.cols;x++){
+        var m=cellMid(geo,{x:x,y:y});
+        if(!inShape(pr,m.x,m.y))continue;
+        grp.appendChild(sv("rect",{x:(geo.ox+x*geo.g)/geo.w,y:(geo.oy+y*geo.g)/geo.w,
+          width:geo.g/geo.w,height:geo.g/geo.w}));
+      }
+    } else grp.appendChild(shapeNode(z.rel.props||{},ar,{}));
+    var tt=sv("title"); tt.textContent=nameOf(z.art)+(zoneLine(z.art)?" — "+zoneLine(z.art):"")+
+      (versteckt?" (hidden until PP "+k.hiddenUntil+")":"");
+    grp.appendChild(tt);
+    svg.appendChild(grp);
+  });
+  return svg;
+}
+/* Die Bewegungsebene: Reichweite als Felder, der Weg als Linie, die
+   Wegpunkte als Punkte. Der Zeiger zeichnet nur die Vorschau neu — ein
+   ganzes Neuzeichnen je Mausbewegung wäre eine Karte, die ruckelt. */
+function moveOverlay(e,card,nat,geo,r,mv){
+  var ar=nat.h/nat.w;
+  var svg=sv("svg",{"class":"mvis mmove",viewBox:"0 0 1 "+ar,preserveAspectRatio:"none"});
+  function rect(c,cls){
+    return sv("rect",{"class":cls,x:(geo.ox+c.x*geo.g)/geo.w,y:(geo.oy+c.y*geo.g)/geo.w,
+      width:geo.g/geo.w,height:geo.g/geo.w});
+  }
+  function pt(c){ return [(geo.ox+(c.x+0.5)*geo.g)/geo.w,(geo.oy+(c.y+0.5)*geo.g)/geo.w]; }
+  var rest=Math.max(0,mv.speed-mv.used);
+  if(UI.moveMode==="reach"){
+    var reich=mvReach(moveGrid(e,card,geo,r),tokenCell(geo,r),rest,mv.parity);
+    Object.keys(reich).forEach(function(k){
+      var p=k.split(",");
+      svg.appendChild(rect({x:+p[0],y:+p[1]},"mreach"));
+    });
+  }
+  var weg=pendingPath(e,card,geo,r,mv,null);
+  function linie(w,cls){
+    return sv("polyline",{"class":cls,points:w.cells.map(function(c){ return pt(c).join(","); }).join(" "),
+      fill:"none","stroke-width":Math.max(0.002,geo.g/geo.w*0.12)});
+  }
+  if(weg&&weg.cells) svg.appendChild(linie(weg,"mpath"+(weg.feet>rest?" over":"")));
+  (UI.movePts||[]).forEach(function(c){
+    var p=pt(c);
+    svg.appendChild(sv("circle",{"class":"mwp",cx:p[0],cy:p[1],r:geo.g/geo.w*0.18}));
+  });
+  var vor=sv("g",{"class":"mhover"});
+  svg.appendChild(vor);
+  svg.__hover=function(c){
+    while(vor.firstChild) vor.removeChild(vor.firstChild);
+    if(!c||UI.moveMode==="off")return;
+    var w=pendingPath(e,card,geo,r,mv,c);
+    if(!w||!w.cells){ vor.appendChild(rect(c,"mnogo")); return; }
+    vor.appendChild(linie(w,"mpath pre"+(w.feet>rest?" over":"")));
+    var p=pt(c);
+    var t=sv("text",{x:p[0],y:p[1]-geo.g/geo.w*0.55,"font-size":geo.g/geo.w*0.36,
+      "text-anchor":"middle","class":"mcost"+(w.feet>rest?" over":"")});
+    t.textContent=w.feet+" ft";
+    vor.appendChild(t);
+  };
+  return svg;
+}
+
+/* ---- Die Leiste für den, der dran ist ---- */
+function movePanel(e,card,geo,r){
+  var a=tokenArt(r), mv=moveOf(r), nums=tokenNums(a);
+  var box=el("div",{class:"movepanel"});
+  var kopf=el("div",{class:"maptools"});
+  kopf.appendChild(el("button",{class:"ref",type:"button",title:"Open the article",
+    onclick:function(){ if(a) go({k:"art",id:a.id}); }},a?nameOf(a):"Token"));
+  var rest=mv.speed-mv.used;
+  kopf.appendChild(el("span",{class:"hint",style:"margin:0;align-self:center",
+    text:mv.used+" of "+mv.speed+" ft used · "+Math.max(0,rest)+" left · next diagonal "+
+      (mv.parity?"10":"5")+" ft"}));
+  kopf.appendChild(el("button",{class:"btn sm gh",type:"button",title:"Stop moving this token",
+    onclick:function(){ UI.moveSel=""; UI.movePts=[]; render(); }},"×"));
+  box.appendChild(kopf);
+
+  /* Das Tempo des Zuges: eine Zahl (D52). Die Kurzwahl setzt nur sie. */
+  var tempo=el("div",{class:"maptools"});
+  var darf=canMoveToken(r);
+  var zahl=el("input",{class:"i",type:"number",min:"0",step:"5",style:"width:5em",
+    title:"Speed this turn, in feet",value:String(mv.speed)});
+  zahl.disabled=!darf;
+  zahl.addEventListener("change",function(){
+    var n=Number(zahl.value); if(!isFinite(n)||n<0)return;
+    saveMove(Object.assign({},mv,{speed:n}),[]);
+  });
+  tempo.appendChild(el("span",{class:"co",text:"Speed"}));
+  tempo.appendChild(zahl);
+  if(darf) mvPresets(nums.modes).forEach(function(p){
+    tempo.appendChild(el("button",{class:"btn sm"+(mv.speed===p.feet?" pri":" gh"),type:"button",
+      title:p.label+": "+p.feet+" ft",
+      onclick:function(){ saveMove(Object.assign({},mv,{speed:p.feet}),[]); }},p.label+" "+p.feet));
+  });
+  /* Die Leitung übersteuert: Zug zurücksetzen, frei setzen. */
+  if(isGM()&&canWrite()) tempo.appendChild(el("button",{class:"btn sm gh",type:"button",
+    title:"Start this token's turn afresh: nothing used, next diagonal 5 ft",
+    onclick:function(){ saveMove(Object.assign({},mv,{used:0,parity:0}),[]); }},"New turn"));
+  box.appendChild(tempo);
+
+  /* Der gefragte Weg. */
+  var weg=pendingPath(e,card,geo,r,mv,null);
+  var wz=el("div",{class:"maptools"});
+  if(!(UI.movePts||[]).length){
+    wz.appendChild(el("span",{class:"hint",style:"margin:0",
+      text:UI.moveMode==="reach"?"Shaded: where it can still get. Click a square to plan the way there.":
+        "Click squares to set waypoints; between them the cheapest way."}));
+  } else if(!weg||!weg.cells){
+    wz.appendChild(el("span",{class:"hint warn",style:"margin:0",
+      text:"No way to waypoint "+((weg&&weg.failedLeg||0)+1)+"."}));
+  } else {
+    var drueber=weg.feet>rest;
+    wz.appendChild(el("span",{class:"hint"+(drueber?" warn":""),style:"margin:0;align-self:center",
+      text:"Path "+weg.feet+" ft over "+(UI.movePts.length)+" point"+(UI.movePts.length===1?"":"s")+
+        (drueber?" — "+(weg.feet-rest)+" ft too far":" — fits")+
+        (weg.avoided?" · crosses "+weg.avoided+" square"+(weg.avoided===1?"":"s")+" it tried to avoid":"")}));
+    if(darf&&(!drueber||(isGM()&&canWrite())))
+      wz.appendChild(el("button",{class:"btn sm pri",type:"button",
+        title:drueber?"The GM may overrule the speed":"Move along this path",
+        onclick:function(){ confirmMove(e,card,geo,r,mv,weg,false); }},drueber?"Confirm anyway":"Confirm"));
+    if(isGM()&&canWrite())
+      wz.appendChild(el("button",{class:"btn sm gh",type:"button",
+        title:"Put it there without counting the movement",
+        onclick:function(){ confirmMove(e,card,geo,r,mv,weg,true); }},"Place (no cost)"));
+    wz.appendChild(el("button",{class:"btn sm gh",type:"button",
+      onclick:function(){ UI.movePts=(UI.movePts||[]).slice(0,-1); render(); }},"Undo point"));
+    wz.appendChild(el("button",{class:"btn sm gh",type:"button",
+      onclick:function(){ UI.movePts=[]; render(); }},"Clear"));
+    /* Was der Weg betritt, steht vorher da — nicht erst im Protokoll. */
+    var zc=zoneCells(e,geo,false), gesehen={};
+    weg.cells.slice(1).forEach(function(c){
+      (zc[ck(c)]||[]).forEach(function(z){
+        if(gesehen[z.rel.id])return; gesehen[z.rel.id]=1;
+        wz.appendChild(el("span",{class:"chip zonechip",title:zoneLine(z.art),text:nameOf(z.art)}));
+      });
+    });
+  }
+  box.appendChild(wz);
+
+  /* Sieht / wird gesehen von (REQ-209). */
+  var sl=sightLists(e,card,geo,r);
+  function zeile(titel,liste,aufdecken){
+    var z=el("div",{class:"sightrow"});
+    z.appendChild(el("span",{class:"co",text:titel}));
+    if(!liste.length) z.appendChild(el("span",{class:"hint",style:"margin:0",text:"—"}));
+    liste.forEach(function(x){
+      var c=el("span",{class:"chip"+(x.res.seen?"":" dim")+((x.rel.props||{}).hidden?" hid":""),
+        text:sightText(x)});
+      z.appendChild(c);
+      if(aufdecken&&x.res.seen&&(x.rel.props||{}).hidden&&isGM()&&canWrite())
+        z.appendChild(el("button",{class:"btn sm gh",type:"button",
+          title:"Reveal it to the players",
+          onclick:function(){ revealToken(e,x.rel,r); }},"reveal"));
+    });
+    return z;
+  }
+  box.appendChild(zeile("Sees",sl.sieht.filter(function(x){ return x.res.seen||mapGM(); }),true));
+  if(mapGM()) box.appendChild(zeile("Seen by",sl.gesehen,false));
+  return box;
+}
+function mapLogBox(){
+  var l=mapLogList().slice(0,6);
+  if(!l.length)return null;
+  var box=el("div",{class:"maplog"});
+  l.forEach(function(x){ box.appendChild(el("div",{text:x.text})); });
+  return box;
+}
+
+/* ---- Vollbild (REQ-210) ----
+   Die Seite zeichnet sich bei jeder Änderung neu; ein Element im
+   Vollbildmodus des Browsers wäre danach weg. Also geht das Dokument in
+   den Vollbildmodus, und der Kasten füllt es. */
+function fullButton(key,label){
+  var an=UI.full===key;
+  return el("button",{class:"btn sm"+(an?" pri":" gh"),type:"button",
+    title:an?"Leave full screen":"Full screen",
+    onclick:function(){
+      UI.full=an?"":key;
+      var d=document.documentElement;
+      try{
+        if(UI.full&&d.requestFullscreen&&!document.fullscreenElement) d.requestFullscreen()["catch"](function(){});
+        if(!UI.full&&document.fullscreenElement) document.exitFullscreen()["catch"](function(){});
+      }catch(x){}
+      render();
+    }},(an?"✕ ":"⛶ ")+(label||"Full screen"));
+}
+document.addEventListener("fullscreenchange",function(){
+  if(!document.fullscreenElement&&UI.full){ UI.full=""; render(); }
+});
+document.addEventListener("keydown",function(ev){
+  if(ev.key==="Escape"&&UI.full&&!document.fullscreenElement){ UI.full=""; render(); }
+});
+
+/* Eine Zone aufziehen: die Form ist die Kante, die Regel der Artikel. */
+function addZone(e,kasten){
+  dialog("Zone on the map",function(host,close){
+    var sel=el("select",{class:"i"});
+    byName().forEach(function(c){
+      if(((c.interfaces||[])[0])!==ZONE_IFACE||!articleVisible(c))return;
+      sel.appendChild(el("option",{value:c.id},nameOf(c)));
+    });
+    var neu=el("input",{class:"i",type:"text",placeholder:"or a new zone kind, e.g. Ice"});
+    host.appendChild(field("Zone kind",sel));
+    host.appendChild(field("New",neu));
+    actions(host,close,function(){
+      var ziel=sel.value;
+      if(neu.value.trim()){
+        var nm=neu.value.trim();
+        var art={id:uid("e"),interfaces:[ZONE_IFACE],name:nm,
+          components:{Identity:{name:nm,id:nextId(ZONE_IFACE),aliases:[]}},
+          adhoc:[],relations:[],createdAt:new Date().toISOString()};
+        applyDefaults(art,ZONE_IFACE);
+        ENT.set(art.id,art); persist(art); ziel=art.id;
+      }
+      if(!ziel)return;
+      e.relations=(e.relations||[]).concat([{id:uid("r"),type:REL_ZONE,to:ziel,
+        props:Object.assign({kind:"rect"},kasten)}]);
+      persist(e);
+    },"Place");
+  });
+}
+
 function elMap(e,ifn,item){
   var card=mapCard(e);
   var src=assetSrc(mapImage(e));
-  var wrap=el("div",{class:"mapbox"});
+  var wrap=el("div",{class:"mapbox"+(UI.full==="map"?" mapfull":"")});
   /* Die beiden werden weiter unten gefüllt; die Leiste braucht sie nur,
      wenn jemand klickt, und dann stehen sie. */
   var stage=null, img=null, nat=null;   /* erst weiter unten gefüllt */
+  var kacheln=tileGrid(card);
+  /* Die natürliche Grösse steht vor dem Bild fest, wenn das Register sie
+     kennt — die Bewegungsleiste braucht das Raster, bevor die Bühne steht. */
+  nat=kacheln?kacheln.nat:natFor(card,src,e);
+  var geo=mapGeom(card,nat);
 
   /* Werkzeugleiste: Zoom, Gitter, Tokenfilter. Der Filter ist kein Zierrat —
      eine vorbereitete Karte und eine im Spiel laufende sind dieselbe Karte,
@@ -10488,18 +11360,49 @@ function elMap(e,ifn,item){
   var eltern=parentMap(e);
   if(eltern) bar.appendChild(el("button",{class:"btn sm gh",type:"button",
     onclick:function(){ go({k:"art",id:eltern.id}); }},"↑ "+nameOf(eltern)));
+  /* Der Bewegungsrechner (REQ-206): genau, grösste Reichweite, aus. Nur auf
+     dem Quadratraster — auf Hexfeldern gilt eine andere Zählung. */
+  if((card.gridShape||"none")==="square"){
+    var modus=el("select",{class:"i",style:"width:auto",title:"Movement"});
+    [["path","Exact path"],["reach","Greatest reach"],["off","Movement off"]].forEach(function(o){
+      modus.appendChild(el("option",{value:o[0]},o[1])); });
+    modus.value=UI.moveMode||"path";
+    modus.addEventListener("change",function(){ UI.moveMode=modus.value; UI.movePts=[]; render(); });
+    bar.appendChild(modus);
+    /* Meiden (REQ-207): was gefährlich ist, und wo ein Gegner zuschlägt. */
+    [["hazard","avoid hazards"],["reach","avoid enemy reach"]].forEach(function(o){
+      var lb=el("label",{class:"task"});
+      var cb=el("input",{type:"checkbox"});
+      cb.checked=!!(UI.moveAvoid||{})[o[0]];
+      cb.addEventListener("change",function(){
+        UI.moveAvoid=Object.assign({},UI.moveAvoid||{}); UI.moveAvoid[o[0]]=cb.checked; render(); });
+      lb.appendChild(cb); lb.appendChild(el("span",{text:o[1]}));
+      bar.appendChild(lb);
+    });
+  }
+  /* SL- und Spieleransicht (REQ-210): dieselbe Karte, einmal mit allem,
+     einmal mit dem, was der Tisch sieht. */
+  if(isGM()) bar.appendChild(el("button",{class:"btn sm"+(UI.mapPlayers?" pri":" gh"),type:"button",
+    title:UI.mapPlayers?"Showing what the players see":"Showing everything",
+    onclick:function(){ UI.mapPlayers=!UI.mapPlayers; render(); }},UI.mapPlayers?"Player view":"GM view"));
+  bar.appendChild(fullButton("map"));
   wrap.appendChild(bar);
 
-  var kacheln=tileGrid(card);
   if(!src&&!kacheln){
     wrap.appendChild(el("div",{class:"empty",
       text:canWrite()?"This map has no image yet — set MapInfo · Image.":"No image."}));
     return wrap;
   }
-  if(canWrite()&&!inPlacement){
+  if(canWrite()&&!inPlacement&&mapGM()){
     wrap.appendChild(sheetTools(e,card));
     wrap.appendChild(fogTools(e,card));
   }
+  /* Das gewählte Token und sein Zug. Eines, das nicht mehr da ist oder das
+     der Betrachter nicht sieht, ist nicht gewählt. */
+  var marker=(e.relations||[]).filter(function(r){ return r.type===REL_MARKER; });
+  var gewaehlt=UI.moveSel&&geo&&UI.moveMode!=="off"?marker.filter(function(r){
+    return r.id===UI.moveSel&&tokenShown(r); })[0]:null;
+  if(gewaehlt&&!inPlacement) wrap.appendChild(movePanel(e,card,geo,gewaehlt));
 
   stage=el("div",{class:"mapstage"});
   var inner=el("div",{class:"mapinner"});
@@ -10513,9 +11416,18 @@ function elMap(e,ifn,item){
   /* Alt-Klick zeigt auf eine Stelle. Das ist der einzige Grund, warum es den
      Echtzeitkanal überhaupt braucht: „da" lässt sich nicht speichern. */
   inner.addEventListener("click",function(ev){
-    if(!ev.altKey)return;
     var rect=img.getBoundingClientRect();
     if(!rect.width)return;
+    if(!ev.altKey){
+      /* Ein Klick auf die Karte setzt einen Wegpunkt (REQ-207) — in der
+         grössten Reichweite ersetzt er das Ziel. Ein Klick auf ein Token
+         gehört dem Token. */
+      if(!gewaehlt||UI.mapTool||(ev.target.closest&&ev.target.closest(".mtoken,.maparea")))return;
+      var c=cellOf(geo,(ev.clientX-rect.left)/rect.width,(ev.clientY-rect.top)/rect.height);
+      UI.movePts=UI.moveMode==="reach"?[c]:(UI.movePts||[]).concat([c]);
+      render();
+      return;
+    }
     pingMap(e.id,(ev.clientX-rect.left)/rect.width,(ev.clientY-rect.top)/rect.height);
   });
   /* Gezoomt wird der **Kasten** und nicht das Bild darin: so bleiben Bild,
@@ -10541,7 +11453,7 @@ function elMap(e,ifn,item){
      liegen darüber und fangen keine Maus. */
   if(!kacheln){
     var basis=mapSheets(e,card)[0];
-    if(!(basis.visible&&(isGM()||!basis.gmOnly))) img.style.opacity="0";
+    if(!(basis.visible&&(mapGM()||!basis.gmOnly))) img.style.opacity="0";
     drawnSheets(e,card).forEach(function(sh){
       if(sh.base)return;
       var u=assetSrc(sh.image); if(!u)return;
@@ -10554,7 +11466,8 @@ function elMap(e,ifn,item){
   var raster=gridOverlay(card,UI.mapZoom);
   if(raster) inner.appendChild(raster);
 
-  nat=kacheln?kacheln.nat:natFor(card,src,e);
+  var zonen=nat?zoneOverlay(e,card,nat,geo):null;
+  if(zonen) inner.appendChild(zonen);
   var sicht=nat?visionOverlay(e,card,nat):null;
   if(sicht) inner.appendChild(sicht);
   else if(!nat&&(card.fog||(card.lighting&&card.lighting!=="bright")))
@@ -10578,11 +11491,29 @@ function elMap(e,ifn,item){
     inner.appendChild(box);
   });
 
-  var marker=(e.relations||[]).filter(function(r){ return r.type===REL_MARKER; });
+  /* Der Weg über der Dunkelheit und unter den Tokens: wer plant, muss den
+     Weg auch dort sehen, wo es dunkel ist. */
+  var bewegung=gewaehlt&&!inPlacement?moveOverlay(e,card,nat,geo,gewaehlt,moveOf(gewaehlt)):null;
+  if(bewegung){
+    inner.appendChild(bewegung);
+    var zuletzt="";
+    inner.addEventListener("pointermove",function(ev){
+      var rect=img.getBoundingClientRect();
+      if(!rect.width||UI.mapTool)return;
+      var c=cellOf(geo,(ev.clientX-rect.left)/rect.width,(ev.clientY-rect.top)/rect.height);
+      if(ck(c)===zuletzt)return;
+      zuletzt=ck(c); bewegung.__hover(c);
+    });
+    inner.addEventListener("pointerleave",function(){ zuletzt=""; bewegung.__hover(null); });
+  }
+
   marker.forEach(function(r){
     var art=r.to?ENT.get(r.to):null;
     var kind=tokenKind(r);
     if(UI.mapKind&&kind!==UI.mapKind)return;
+    /* Versteckt heisst für den Tisch: nicht da (REQ-210). Die Leitung sieht
+       es blass und gestrichelt. */
+    if(!tokenShown(r))return;
     var pr=r.props||{};
     /* Der Zeiger auf dem, der dran ist (REQ-144): derselbe Zeichner, nur
        ein Ring mehr. */
@@ -10591,9 +11522,11 @@ function elMap(e,ifn,item){
        stehen. Deshalb ohne Kreis, mit Drehung und mit einem Seitenverhältnis
        — ein Tisch ist kein Quadrat. */
     var moebel=kind==="scenery";
-    var t=el("button",{class:"mtoken k-"+kind+(dran?" now":"")+(moebel?" asset":""),
+    var t=el("button",{class:"mtoken k-"+kind+(dran?" now":"")+(moebel?" asset":"")+
+        (pr.hidden?" hid":"")+(gewaehlt&&gewaehlt.id===r.id?" sel":""),
       type:"button",
       title:(art?nameOf(art):"(missing)")+(pr.note?" — "+pr.note:"")+
+        (pr.hidden?" · hidden from the players":"")+
         (canWrite()?" · right-click to set it up":"")});
     t.style.left=((pr.x||0.5)*100)+"%";
     t.style.top=((pr.y||0.5)*100)+"%";
@@ -10612,8 +11545,17 @@ function elMap(e,ifn,item){
        Knopf: ein Token, das sich nur über ein Menü bewegen liesse, bewegt
        niemand mitten im Kampf. */
     var von=null;
+    /* Mit dem Rechner (REQ-206): ein Klick wählt das Token, ein zweiter
+       öffnet den Artikel; Ziehen plant einen Weg, gesetzt wird erst beim
+       Bestätigen. Ohne Rechner — kein Quadratraster, Modus aus, ein Möbel —
+       bleibt es beim freien Ziehen. */
+    var rechnet=!!geo&&UI.moveMode!=="off"&&isCreatureToken(r)&&canMoveToken(r)&&!inPlacement;
+    function klick(){
+      if(rechnet&&UI.moveSel!==r.id){ UI.moveSel=r.id; UI.movePts=[]; render(); return; }
+      if(art) go({k:"art",id:art.id});
+    }
     t.addEventListener("pointerdown",function(ev){
-      if(!canWrite())return;
+      if(!(canWrite()||canMoveToken(r)))return;
       von={x:ev.clientX,y:ev.clientY,moved:false};
       try{ t.setPointerCapture(ev.pointerId); }catch(x){}
     });
@@ -10629,10 +11571,16 @@ function elMap(e,ifn,item){
       von.nx=nx; von.ny=ny;
     });
     t.addEventListener("pointerup",function(ev){
-      if(!von){ if(art) go({k:"art",id:art.id}); return; }
+      if(!von){ klick(); return; }
       var war=von; von=null;
       try{ t.releasePointerCapture(ev.pointerId); }catch(x){}
-      if(!war.moved){ if(art) go({k:"art",id:art.id}); return; }
+      if(!war.moved){ klick(); return; }
+      if(rechnet){
+        /* Gezogen ist geplant, nicht gesetzt: das Token springt zurück, und
+           der Weg dorthin steht zum Bestätigen da. */
+        UI.moveSel=r.id; UI.movePts=[cellOf(geo,war.nx,war.ny)];
+        render(); return;
+      }
       r.props=Object.assign({},r.props,{x:war.nx,y:war.ny});
       persist(e);
     });
@@ -10675,6 +11623,8 @@ function elMap(e,ifn,item){
   stage.appendChild(inner);
   wrap.appendChild(stage);
 
+  var tagebuch=mapLogBox();
+  if(tagebuch&&!inPlacement) wrap.appendChild(tagebuch);
   var zahl=marker.length;
   wrap.appendChild(el("p",{class:"hint",
     text:zahl?(zahl+" token"+(zahl===1?"":"s")+
@@ -13060,7 +14010,11 @@ var BEGRIFFE=[
    "background; its level is the sum of those edges, worked out on read. "+
    "What a class, an ancestry or a background gives is an edge as well "+
    "(grants), with the level on the edge — the same Ability Score "+
-   "Improvement comes at 4, 6 and 8, one article and three edges."],
+   "Improvement comes at 4, 6 and 8, one article and three edges. On a "+
+   "map, a token is an edge with coordinates, and whether it is hidden "+
+   "from the players and how stealthy it is sit on that edge too — the same "+
+   "trap lies open on one map and under leaves on the next. A zone is an "+
+   "edge with a shape, pointing at its rule (Zone kind)."],
   ["Unit",
    "How a measure is written and converted. The vault is imperial because "+
    "the rules are; at the table sit people for whom forty feet means "+
@@ -13457,6 +14411,45 @@ function renderHowto(v){
     "  to hit = prof + mod(dex)  →  "+sgn(nW.toHit)+"     damage  "+nW.damage+"  ("+nW.average+")\n"+
     "Odd beast     prof 2 · STR 18 (+4)        edge: toHit 7 (book)\n"+
     "  to hit "+sgn(nB.toHit)+" fixed — the sum would give "+sgn(nB.toHitComputed)}));
+
+  /* ---- Ein Zug auf der Karte, durchgerechnet (D56) ----
+     Mit demselben Rechner, den die Karte nimmt, und dem Faktor, den die
+     Zonenart im Register trägt: ändert jemand die Regel, ändert sich das
+     Beispiel mit. */
+  var zkP=((REG.interfaces[ZONE_IFACE]||{}).schema||{}).properties||{};
+  if(zkP.moveCost){
+    v.appendChild(el("div",{class:"rsec",text:"A turn on the map"}));
+    v.appendChild(el("p",{class:"hint"},
+      "Diagonals count 5-10-5, per creature and per turn: the first costs one "+
+      "square, the second two, the third one again, and every new turn starts "+
+      "over. Which one is next belongs to the search and not to the square, "+
+      "so the calculator looks for the cheapest way over square and parity. "+
+      "The speed of the turn is a number in the session state, not a field "+
+      "of the creature: dash, climb and swim only set that number. A zone is "+
+      "a rule article (Zone kind) placed on the map by a zone edge; the map "+
+      "works out movement cost, light, sight and “hidden until passive "+
+      "perception n”, and shows damage, save and condition, writing them to "+
+      "the table log when someone walks in. Revealing happens when a move is "+
+      "confirmed, square by square along the path, with the same check as by "+
+      "hand: line of sight, light, passive perception against stealth, −5 in "+
+      "dim light."));
+    var bspGr={cols:6,rows:4,walls:[],cost:{"1,0":2,"1,1":2},blocked:{},noStop:{},avoid:{}};
+    var gerade=mvPath(bspGr,{x:0,y:0},{x:4,y:0},0,false);
+    var schraeg=mvPath({cols:6,rows:6,walls:[],cost:{},blocked:{},noStop:{},avoid:{}},{x:0,y:0},{x:3,y:3},0,false);
+    var weiter=mvVia({cols:6,rows:6,walls:[],cost:{},blocked:{},noStop:{},avoid:{}},{x:0,y:0},[{x:1,y:1},{x:2,y:2}],0,false);
+    var bspSicht=mvNotices({pp:14},{los:true,light:"dim",distanceFeet:20,dc:11});
+    v.appendChild(el("pre",{class:"code",text:
+      "Speed 30 ft (Statblock.speed \u201c30 ft., climb 20 ft.\u201d) → presets "+
+        mvPresets(mvSpeedModes("30 ft., climb 20 ft.")).map(function(p){ return p.label+" "+p.feet; }).join(" · ")+"\n\n"+
+      "3 squares diagonal       5 + 10 + 5          = "+schraeg.feet+" ft\n"+
+      "via a waypoint           5 | 10              = "+weiter.feet+" ft   (the count runs on)\n"+
+      "4 squares across ice     ZoneKind."+"moveCost 2 on square 1\n"+
+      "                         10 + 5 + 5 + 5      = "+gerade.feet+" ft\n\n"+
+      "Session.moves  {token, turn: \u201cfight:round:turn\u201d, speed 30, used "+gerade.feet+", parity "+gerade.parity+"}\n"+
+      "               another turn → fresh: used 0, next diagonal 5 ft\n\n"+
+      "Hidden goblin, stealth 11 · watcher PP 14, dim light (−5)\n"+
+      "               "+bspSicht.pp+" < 11 → "+(bspSicht.seen?"spotted":"not noticed")}));
+  }
 
   /* ---- Charakterbau, durchgerechnet (M3, M6) ----
      Mit den Formeln aus dem Register und derselben Rechnung, die der

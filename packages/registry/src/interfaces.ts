@@ -539,6 +539,18 @@ export const interfaces: Record<string, InterfaceDef> = {
     schema: merge(g.HazardInfo),
   },
 
+  /**
+   * Eine Zonenart (REQ-208, D56): eine Regel, die an Orten auf der Karte
+   * gilt. Wo, sagt die Kante `zone`.
+   */
+  ZoneKind: {
+    name: 'ZoneKind',
+    area: 'rules',
+    label: 'Zone kind',
+    extends: ['Rule'],
+    schema: merge(g.ZoneInfo),
+  },
+
   /** Gottheit (M7); Anhänger über die Kante `worships`. */
   Deity: {
     name: 'Deity',

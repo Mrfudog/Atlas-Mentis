@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-12. 67 Schnittstellen, 53 Kantenarten.
+Stand 2026-10-12. 68 Schnittstellen, 54 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -902,7 +902,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `activeScene` *link → Scene*, `activeEncounter` *link → Encounter*, `activeMap` *link → Map*, `nowPlaying` *string*, `partyNote` *long*, `stewardship` *gm | table*
+- `activeScene` *link → Scene*, `activeEncounter` *link → Encounter*, `activeMap` *link → Map*, `nowPlaying` *string*, `moves` *array*, `log` *array*, `partyNote` *long*, `stewardship` *gm | table*
 
 **Geerbte Felder**
 
@@ -1005,7 +1005,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## Rules
 
-*Woran man sich hält.* — 21 Arten.
+*Woran man sich hält.* — 22 Arten.
 
 ### Action
 
@@ -2004,6 +2004,53 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Gezeichnet** (aus `Table`): `table`, `description`, `fields` (ohne Table.rows), `prose`
 
+### Zone kind
+
+`ZoneKind` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `moveCost` *1…10*, `light` *bright | dim | dark*, `obscured` *none | light | heavy*, `hiddenUntil` *1…30*, `damage` *string*, `damageType` *string*, `save` *Ability: str | dex | con | int | wis | cha*, `saveDC` *1…30*, `condition` *link → Condition*, `trigger` *enter | start | end*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `zone` → „lies on"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+
 ---
 
 ## Play
@@ -2126,6 +2173,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `mapOf` → Place | Story — „map of"
 - `insideMap` → Map — „inside"
 - `marker` → * — „marker"
+- `zone` → ZoneKind — „zone"
 - `territory` → * — „territory"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"

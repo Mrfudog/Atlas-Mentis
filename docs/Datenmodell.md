@@ -335,7 +335,7 @@ nicht — den gäbe es auch ohne das Rezept.
 | Regel | `stageOf`, `affects`, `grants`, `subclassOf`, `subraceOf` | Stufe eines Zustands; Wirkung zwischen Regeln (`effect`, `on`, `note`); was Klasse, Abstammung, Hintergrund gewähren (`level`) |
 | Charakterbau | `hasClass`, `hasAncestry`, `hasBackground` | Klassenstufe, Unterklasse |
 | Verweis | `equips`, `worships`, `livesIn`, `memberOf`, `memberOfParty`, `owes`, `regards`, `controls`, `questGiver`, `questAbout`, `describedIn`, `happensAt`, `features`, `involves`, `mapOf`, `onMap`, `tableFor`, `yields`, `needs`, `playedBy` | Marken, Mengen |
-| Platzierung | `marker`, `territory`, `placed`, `holds` | Koordinaten, Grösse, Drehung, Lage |
+| Platzierung | `marker`, `territory`, `zone`, `placed`, `holds` | Koordinaten, Grösse, Drehung, Lage, versteckt |
 | Vorgang | `crafting`, `participates`, `entry`, `route` | Stand eines Gangs, Initiative, Gewicht, Wegdauer |
 | Ebene | `inLayer`, `activates`, `overrides`, `variantOf`, `instanceOf` | Modus, Reihenfolge |
 | Wissen | `knowledge` (owned), `includes`, `knownBy` | — |
@@ -498,6 +498,17 @@ Punktreise ist dieser Ort oder der Knoten, in dem er liegt (`partOf`); jede
 gröbere Karte bildet das Token durch den Rahmen ihrer Unterkarte ab
 (`insideMap`), ohne ein zweites zu halten. Weiterziehen setzt das Token um.
 `Party.at` war ein Feld daneben und ist seit dem 7.10. weg (A6).
+
+**Der Zug auf der Karte (D56, REQ-206–210).** Gerechnet wird beim Lesen,
+gespeichert nur, was danach gilt:
+
+| | Regel | Wo |
+|---|---|---|
+| Z1 | **Diagonalen 5-10-5 je Kreatur und Zug** (D52). Die Parität gehört zum Suchzustand des Weges (Dijkstra über Feld × Parität), läuft über Wegpunkte und über mehrere Bewegungen desselben Zuges weiter und fängt mit jedem Zug neu an. Wände (`blocksMove`) halten den Schritt von Feldmitte zu Feldmitte, eine Ecke hält mit; Gegner sind nicht passierbar, Verbündete passierbar, aber kein Ziel. | `packages/model` `movement.ts` (`cheapestPath`, `pathVia`, `reachable`), Prototyp `moveGrid` |
+| Z2 | **Das Tempo des Zuges ist eine Zahl** und steht im **Sitzungszustand** (`SessionState.moves`: `token`, `turn`, `speed`, `used`, `parity`), nicht an der Kreatur. Die Kurzwahl (Grundtempo, Spurt ×2, Klettern/Schwimmen mit eigenem Tempo oder ½) setzt nur die Zahl (`speedPresets`); jede weitere Ausnahme ist eine andere Zahl. Ein Eintrag mit einem anderen `turn` gilt als frisch (`currentMove`). | Modell, Prototyp `turnKey` |
+| Z3 | **Eine Zonenart ist ein Regelartikel** (`ZoneKind` erbt von `Rule`), wo sie liegt, sagt die Kante `zone` (Form wie `territory`, aufs Gitter gerastert). Gerechnet werden `moveCost` (Faktor auf das betretene Feld), `light`, `obscured` und `hiddenUntil` (versteckt bis passive Wahrnehmung n, `zone.props.found`); gezeigt und beim Betreten in `SessionState.log` geschrieben werden Schaden, Rettungswurf, Zustand und die Beschreibung als freie Regel. | Prototyp `zonesAt` |
+| Z4 | **Gesehen wird mit Sichtlinie, Licht und passiver Wahrnehmung** gegen `marker.props.stealth` (−5 im Dämmerlicht und in leicht verdeckten Feldern, im Dunkeln nur mit Dunkelsicht). Dieselbe Prüfung dient dem Aufdecken von Hand („sees / seen by“) und **entlang des bestätigten Pfads**, Schritt für Schritt; dabei weicht auch der Nebel im Sichtkreis. | `sight.ts` (`notices`, `lightAt`), Prototyp `sightCheck` |
+| Z5 | **Versteckt ist eine Angabe an der Kante** (`marker.props.hidden`): Spielende sehen versteckte Tokens und unentdeckte Zonen nicht, und der Weg, den sie sich rechnen lassen, kennt nur, was sie sehen. Zurückhalten muss am Server `redactEntity` (offen). | Prototyp `tokenShown` |
 
 Dazu die beiden Abfragen, die wie Daten aussehen: die **Gegenrichtung einer
 Kante** (`backlinks`) und **was gerade gilt** (§8).
@@ -728,7 +739,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-12: 45 Artikelarten, 22 Grundtypen, 53 Kantenarten, 6 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-12: 46 Artikelarten, 22 Grundtypen, 54 Kantenarten, 6 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -789,7 +800,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `involves` | — | — |
 | `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | full |
 | `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `mapOf` | — |
-| `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `nowPlaying` `partyNote` `stewardship` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `mapOf` | full |
+| `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `nowPlaying` `moves` `log` `partyNote` `stewardship` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `mapOf` | full |
 | `Story` | `Todos` `Time` `Lore` `Secrets` `ReadAloud` | `kind` `played` `summary` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `mapOf` | — |
 
 **Rules**
@@ -817,6 +828,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Statblock` | `Source` `Abilities` `Proficiencies` `Vars` `Tactics` `Lore` `Image` | `system` `size` `creatureType` `alignment` `ac` `acNote` `hp` `hpFormula` `speed` `cr` `prof` `combatRole` `senses` `languageNote` `resistances` `vulnerabilities` `immunities` `conditionImmunities` `legendaryActions` `bonuses` `token` `spellAbility` `casterLevel` `spellSlots` `spellDc*` `spellAttack*` | `composedOf` `belongsTo` `casts` `equips` `instanceOf` | `features` `participates` `instanceOf` | full |
 | `Subclass` | `Rule` `Proficiencies` `ProficiencyChoice` `Lore` `Image` | `shortName` `casterProgression` `spellAbility` | `affects` `casts` `subclassOf` `grants` `tableFor` | `composedOf` `affects` `grants` | — |
 | `Table` | `Source` `Secrets` | `kind` `die` `columns` `rows` | `entry` | `tableFor` | full |
+| `ZoneKind` | `Rule` | `moveCost` `light` `obscured` `hiddenUntil` `damage` `damageType` `save` `saveDC` `condition` `trigger` | `affects` | `composedOf` `affects` `grants` `zone` | — |
 
 **Play**
 
@@ -824,7 +836,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 |---|---|---|---|---|---|
 | `Board` | — | `width` `height` `snap` `background` `rules` `shapes` `anchors` | `placed` | — | full |
 | `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` | `xpBudget` `phase` `round` `turn` `surprise` | `participates` `onMap` `loot` `tableFor` | — | full |
-| `Map` | `Image` `Secrets` `ReadAloud` | `sheets` `baseHidden` `baseGmOnly` `kind` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `scale` `lighting` `fog` `reveal` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `territory` | `insideMap` `onMap` | full |
+| `Map` | `Image` `Secrets` `ReadAloud` | `sheets` `baseHidden` `baseGmOnly` `kind` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `scale` `lighting` `fog` `reveal` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `zone` `territory` | `insideMap` `onMap` | full |
 
 **Ohne Bereich**
 
@@ -867,7 +879,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `livesIn` | Creature → Place |  | — | — |
 | `loot` | Encounter \| Story \| Quest → Item \| Information \| Feat \| Skill |  | — | `qty` `chance` |
 | `mapOf` | Map → Place \| Story |  | — | — |
-| `marker` | Map → * |  | — | `x` `y` `kind` `size` `rot` `ratio` `note` `light` `dim` |
+| `marker` | Map → * |  | — | `x` `y` `kind` `size` `rot` `ratio` `note` `light` `dim` `hidden` `stealth` |
 | `memberOf` | Creature → Faction |  | — | `rank` `note` |
 | `memberOfParty` | Creature → Party |  | — | — |
 | `needs` | Recipe → Item |  | — | `qty` `consumed` `note` |
@@ -890,12 +902,13 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `variantOf` | * → * | ja | — | — |
 | `worships` | Creature \| Faction → Deity |  | — | — |
 | `yields` | Recipe → Item | ja | — | — |
+| `zone` | Map → ZoneKind |  | — | `kind` `x` `y` `w` `h` `found` `note` |
 
 ### Aufzählungszeilen
 
 | Zeile | Wörter | genannt von |
 |---|---|---|
-| `Ability` | str · dex · con · int · wis · cha | `Proficiencies.saves` `Skill.ability` `Class.primaryAbility` `Class.spellAbility` `Subclass.spellAbility` `Disease.save` `Spell.save` `Statblock.spellAbility` `Recipe.ability` |
+| `Ability` | str · dex · con · int · wis · cha | `Proficiencies.saves` `Skill.ability` `Class.primaryAbility` `Class.spellAbility` `Subclass.spellAbility` `Disease.save` `Spell.save` `ZoneKind.save` `Statblock.spellAbility` `Recipe.ability` |
 | `DamageType` | 13: acid · bludgeoning · cold · fire … | `Ancestry.resistances` `Action.damageType` `Action.extraDamageType` `Spell.damageTypes` `Weapon.damageType` |
 | `DrawTime` | free action · bonus action · action · turn · round | `Inventory.zones` |
 | `RuleKind` | rule · travel · sense · reward · boon · option | `Rule.kind` |

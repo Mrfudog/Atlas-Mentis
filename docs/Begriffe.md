@@ -726,6 +726,40 @@ erreicht es.
 
 ---
 
+## Zug, Tempo und Zone auf der Karte
+
+**Ein Zug ist kein Feld der Kreatur.** Dass der Kämpfer schon 20 Fuss
+gelaufen ist, stimmt für diesen Zug und in einer Minute nicht mehr; an der
+Kreatur stünde es noch, wenn sie längst in einer anderen Sitzung ist. Darum
+steht es an der Sitzung (`SessionState.moves`), zusammen mit dem Zug, für
+den es gilt — und ein Eintrag aus einem anderen Zug ist einfach alt. Ein
+Zähler, den jemand zurücksetzen muss, setzt am Tisch niemand zurück.
+
+**Das Tempo ist eine Zahl und kein Schalter.** Spurt, Klettern, Schwimmen,
+ein Bonusaktions-Spurt, ein Zauber, der das Tempo halbiert: jede Ausnahme
+ist eine andere Zahl. Ein Schalter je Ausnahme wäre eine Regel im Code je
+Ausnahme, und die nächste fehlt. Die Kurzwahl schreibt nur die Zahl.
+
+**Die Diagonale zählt der Weg und nicht das Feld.** Ob ein schräger
+Schritt fünf oder zehn Fuss kostet, hängt davon ab, wie viele schräge
+Schritte vorher kamen — also sucht der Rechner über Feld *und* Parität. Wer
+nur über Felder sucht, nimmt den ersten Weg, der ein Feld erreicht, und der
+ist mit der falschen Parität dort angekommen.
+
+**Eine Zone ist eine Regel, die an einem Ort gilt.** Eis ist kein Feld der
+Karte, sondern ein Artikel mit Regeln (rutschig, schwieriges Gelände,
+Geschicklichkeitswurf), und jede Stelle, an der Eis liegt, zeigt darauf —
+wie ein Token auf seinen Artikel. Was die Karte selbst rechnen kann (Kosten,
+Licht, Sicht, wer es bemerkt), rechnet sie; was der Tisch würfelt, zeigt sie
+und schreibt es ins Protokoll, wenn jemand hineinläuft.
+
+**Aufgedeckt wird, wenn die Bewegung feststeht.** Während jemand noch den
+Weg sucht, verrät eine Karte, die schon aufdeckt, was hinter der Ecke
+liegt. Erst beim Bestätigen wird der Weg Schritt für Schritt abgelaufen,
+und an jedem Schritt gilt dieselbe Prüfung wie von Hand.
+
+---
+
 ## Was nirgends steht
 
 Zwei Dinge werden nie gespeichert, und beide aus demselben Grund — zwei

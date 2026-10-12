@@ -190,12 +190,12 @@ describe('shared choice lists', () => {
 
   /* Die sechs Attributkürzel standen wörtlich an der Fertigkeit und am
      Rezept. Dass beide jetzt dieselbe Zeile nennen, ist der ganze Punkt. */
-  it('the ability list is named by the skill, the recipe, the disease, the spell and the saving throws', () => {
+  it('the ability list is named by the skill, the recipe, the disease, the spell, the zone and the saving throws', () => {
     const wer = felderMitRef.filter((f) => f.nennt === 'Ability').map((f) => f.ref).sort();
     expect(wer).toEqual([
       'Class.primaryAbility', 'Class.spellAbility', 'Disease.save', 'Proficiencies.saves',
       'Recipe.ability', 'Skill.ability', 'Spell.save', 'Statblock.spellAbility',
-      'Subclass.spellAbility',
+      'Subclass.spellAbility', 'ZoneKind.save',
     ]);
     expect(enumOptions(seedRegistry, { enumRef: 'Ability' })).toEqual([
       'str', 'dex', 'con', 'int', 'wis', 'cha',
