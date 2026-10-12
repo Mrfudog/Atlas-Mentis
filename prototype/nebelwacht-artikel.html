@@ -827,6 +827,38 @@ svg.dg path.dgar-on{fill:var(--accent)}
   flex:0 0 120px;padding-top:2px}
 .tl .tbody{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px;align-items:baseline}
 .tl .tbody p{flex-basis:100%;margin:2px 0 0;font-size:12.5px;color:var(--dim)}
+/* Weltgeschichte: Spuren auf einer Achse (REQ-220, D57). */
+.tltoggles{display:flex;flex-direction:column;gap:2px;margin:0 0 10px;font-size:13px}
+.tltog{display:flex;gap:6px;align-items:center;cursor:pointer}
+.tltog.camp span{color:var(--accent);font-weight:600}
+.tlw{display:flex;flex-direction:column;gap:4px}
+.tlaxis,.tllane{display:grid;grid-template-columns:minmax(90px,160px) 1fr;gap:8px;align-items:start}
+.tlaxis .tltrack{height:18px;border-bottom:1px solid var(--line)}
+.tltick{position:absolute;top:0;transform:translateX(-50%);font-family:var(--ff-mono);font-size:10.5px;color:var(--dim)}
+.tllab{display:flex;flex-direction:column;gap:1px;min-width:0;font-size:13px;padding-top:4px}
+.tllab .ref{text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tllab .co{font-family:var(--ff-mono);font-size:10.5px;color:var(--dim)}
+.tltrack{position:relative;min-width:0;overflow:hidden;border-bottom:1px dashed var(--line)}
+.tlband{position:absolute;top:0;bottom:0;border:0;padding:0;cursor:pointer;
+  background:var(--line);opacity:.45;border-radius:3px}
+.tllane.camp .tlband{background:var(--accent-soft);opacity:1}
+.tllane.here .tllab .ref{font-weight:700}
+.tlitem{position:absolute;height:18px;padding:0 6px;border:1px solid var(--line2);border-radius:9px;
+  background:var(--surface);color:var(--fg);font-size:11.5px;line-height:16px;cursor:pointer;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%;
+  text-transform:none;letter-spacing:normal}
+.tlitem.point{transform:translateX(-7px)}
+.tlitem.point.left{transform:translateX(7px)}
+.tlitem.point.left::before{display:none}
+.tlitem.point.left::after{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--accent);margin-left:5px;vertical-align:1px}
+.tlhead{display:flex;gap:4px;align-items:baseline;min-width:0}
+.tlzoom{padding:0 5px;line-height:1.2}
+.tlitem.point::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--accent);margin-right:5px;vertical-align:1px}
+.tlitem.span{border-color:var(--accent);background:var(--accent-soft)}
+.tlitem.sub{font-weight:600}
+.tlitem.out{border-style:dashed;opacity:.75}
 
 /* Kampf: die Reihe, der Zeiger, die Würfel. */
 .initt{width:100%;border-collapse:collapse;font-size:13.5px;margin:8px 0}
@@ -6324,16 +6356,145 @@ function elQuests(e,ifn,item){
   return wrap;
 }
 
-/* ---------- Zeitleiste (REQ-106) ----------
+/* ---------- Zeitleiste (REQ-106, REQ-220, D57) ----------
    Jeder Artikel mit einem Weltdatum steht darauf, nicht nur Ereignisse:
    eine Sitzung, ein Vertrag, ein Todesfall sind dasselbe für die Zeitleiste.
-   Sortiert nach `sort`, gelesen `display` — deshalb stehen beide im Schema. */
-function worldDated(){
+   Sortiert nach `sort`, gelesen `display` — deshalb stehen beide im Schema.
+   `sort` ist der Wert im **Weltkalender** (`World.calendar`): alle
+   Kampagnen einer Welt lesen ihre Daten so, also liegen alle Spuren auf
+   einer Achse.
+
+   **Zwei Reiter** (REQ-220): die Kampagne als Liste, die Weltgeschichte
+   als Spuren. Eine **Spur** ist ein Ereignis mit Spanne (`Time.sort` …
+   `Time.untilSort`); was darin liegt, sagt die Kante `partOf` und nicht
+   der Zeitraum (D57) — sonst läge jede Hochzeit im Norden im Krieg im
+   Süden. Die Spanne prüft nur mit: was über die Kante drinliegt und
+   ausserhalb fällt, markiert die Leitung. Was keine Spur enthält, gehört
+   der Kampagne, und **die Kampagne ist eine Spur** unter den anderen.
+   Dieselbe Rechnung wie `worldHistory` in packages/model/src/timeline.ts.
+
+   Was Spielende nicht sehen dürfen, fehlt (`articleVisible`); wessen Zeit
+   sie nicht kennen (Wissen um `Time.sort`/`Time.display`), steht nicht auf
+   der Leiste — man wüsste nicht, wo. */
+var TL_EVENT="Event", TL_PARTOF="partOf";
+function tlNum(v){
+  if(v===null||v===undefined||v==="")return null;
+  var n=Number(v); return isFinite(n)?n:null;
+}
+function tlSpan(e){
+  var t=(e.components||{}).Time; if(!t)return null;
+  var s=tlNum(t.sort); if(s===null)return null;
+  var u=tlNum(t.untilSort), out={sort:s};
+  if(u!==null&&u>=s) out.until=u;                 /* Ende vor Anfang: Tippfehler */
+  if(t.display) out.display=String(t.display);
+  if(t.until) out.untilDisplay=String(t.until);
+  return out;
+}
+function tlIsTrack(e){
+  if(((e.interfaces||[])[0])!==TL_EVENT)return false;
+  var s=tlSpan(e); return !!s&&s.until!==undefined;
+}
+/* Kennt der Betrachter die Zeit? Beides muss frei sein: wer den Ort auf der
+   Leiste sieht, kennt den Wert, auch wenn das Wort verborgen ist. */
+function tlDated(e){
+  if(isGM())return true;
+  return visibleRefs(e,["Time.sort","Time.display"]).length===2;
+}
+/* Die Weltgeschichte: Spuren und Kampagne, in Baumreihenfolge (D57).
+   `opt` ersetzt Bestand und Prüfungen — für das Beispiel unter „How it
+   works", das mit derselben Rechnung läuft wie die Seite. */
+function worldHistory(camp,opt){
+  opt=opt||{};
+  var src=opt.src||ENT;
+  var vis=opt.visible||articleVisible, dated=opt.dated||tlDated;
+  var inCamp=opt.inCampaign||function(e){
+    var k=campaignOf(e); return !k||k===camp.id; };   /* nicht die einer anderen Runde */
+  var seen=function(e){ return vis(e)&&dated(e); };
+  var tracks={};
+  src.forEach(function(e){ if(seen(e)&&tlIsTrack(e)) tracks[e.id]=true; });
+  /* Die nächsten Spuren über `partOf`. Ein Glied dazwischen, das keine Spur
+     ist oder nicht gesehen wird, wird übersprungen — ein verborgener Krieg
+     verrät sich nicht, und seine Schlachten fallen nicht heraus. */
+  var parentsOf=function(e){
+    var out=[], war={}; war[e.id]=1;
+    (function walk(x){
+      edgesOf(x,TL_PARTOF).forEach(function(r){
+        if(war[r.to])return; war[r.to]=1;
+        if(tracks[r.to]){ if(out.indexOf(r.to)<0) out.push(r.to); return; }
+        if(camp&&r.to===camp.id)return;          /* in der Kampagne bleibt es dort */
+        var n=src.get(r.to); if(n) walk(n);
+      });
+    })(e);
+    return out;
+  };
+  var lanes={};
+  Object.keys(tracks).forEach(function(id){
+    var s=tlSpan(src.get(id));
+    lanes[id]={id:id,kind:"track",parent:null,depth:0,from:s.sort,to:s.until,
+      derived:false,items:[],outside:[]};
+  });
+  var campItems=[];
+  src.forEach(function(e){
+    if(camp&&e.id===camp.id)return;
+    if(!seen(e))return;
+    var s=tlSpan(e); if(!s)return;
+    var ps=parentsOf(e), it={id:e.id,span:s,track:!!tracks[e.id]};
+    if(ps.length){
+      ps.forEach(function(p){ lanes[p].items.push(it); });
+      if(it.track) lanes[e.id].parent=ps[0];
+    } else if(!it.track&&camp&&inCamp(e)){
+      campItems.push(it);
+    }
+  });
+  if(camp){
+    var own=seen(camp)?tlSpan(camp):null;
+    var from=own?own.sort:null, to=own?(own.until!==undefined?own.until:own.sort):null, derived=false;
+    if(!own||own.until===undefined){
+      /* Ohne eigene Spanne: die des Inhalts, beim Lesen gerechnet (D8). */
+      campItems.forEach(function(it){
+        var end=it.span.until!==undefined?it.span.until:it.span.sort;
+        if(!own&&(from===null||it.span.sort<from)) from=it.span.sort;
+        if(to===null||end>to) to=end;
+      });
+      derived=campItems.length>0;
+    }
+    if(from!==null&&to!==null){
+      var cps=vis(camp)?parentsOf(camp):[];
+      cps.forEach(function(p){ lanes[p].items.push({id:camp.id,span:{sort:from,until:to},track:true}); });
+      lanes[camp.id]={id:camp.id,kind:"campaign",parent:cps[0]||null,depth:0,from:from,to:to,
+        derived:derived,items:campItems,outside:[]};
+    }
+  }
+  var nm=function(id){ return nameOf(src.get(id)); };
+  var bySort=function(a,b){ return a.from-b.from||nm(a.id).localeCompare(nm(b.id),"de"); };
+  var alle=Object.keys(lanes).map(function(k){ return lanes[k]; });
+  alle.forEach(function(l){
+    l.items.sort(function(a,b){ return a.span.sort-b.span.sort||
+      nm(a.id).localeCompare(nm(b.id),"de"); });
+    if(l.kind==="track"||!l.derived) l.outside=l.items.filter(function(it){
+      var end=it.span.until!==undefined?it.span.until:it.span.sort;
+      return it.span.sort<l.from||end>l.to; }).map(function(it){ return it.id; });
+  });
+  var out=[], placed={};
+  var kids=function(id){ return alle.filter(function(l){ return l.parent===id; }).sort(bySort); };
+  var place=function(l,d){
+    if(placed[l.id])return; placed[l.id]=1; l.depth=d; out.push(l);
+    kids(l.id).forEach(function(k){ place(k,d+1); });
+  };
+  kids(null).forEach(function(l){ place(l,0); });
+  alle.sort(bySort).forEach(function(l){ if(!placed[l.id]){ l.parent=null; place(l,0); } });
+  return out;
+}
+/* Die Liste der Kampagne: alles Datierte, was keine Spur der Welt hält. */
+function worldDated(camp){
+  var lane=null;
+  if(camp) worldHistory(camp).forEach(function(l){ if(l.kind==="campaign") lane=l; });
   var out=[];
-  ENT.forEach(function(o){
+  if(lane) lane.items.forEach(function(it){ out.push({e:ENT.get(it.id),wd:ENT.get(it.id).components.Time,sort:it.span.sort}); });
+  else ENT.forEach(function(o){
     var wd=(o.components||{}).Time;
-    if(!wd)return;
-    if(wd.sort===undefined&&!wd.display)return;
+    if(!wd||(wd.sort===undefined&&!wd.display))return;
+    if(!articleVisible(o)||!tlDated(o))return;
     out.push({e:o,wd:wd,sort:Number(wd.sort)});
   });
   out.sort(function(a,b){
@@ -6343,16 +6504,35 @@ function worldDated(){
   });
   return out;
 }
+function tlDateText(s){
+  var a=s.display||String(s.sort);
+  if(s.until===undefined)return a;
+  return a+" – "+(s.untilDisplay||String(s.until));
+}
 function elTimeline(e,ifn,item){
+  var wrap=el("div",{class:"tline-wrap"});
+  if(!UI.tlTab) UI.tlTab="campaign";
+  if(!UI.tlHidden) UI.tlHidden={};
+  var camp=((e.interfaces||[])[0])==="Campaign"?e:currentCampaign();
+  var tabs=el("div",{class:"tabs",role:"tablist"});
+  [["campaign","Campaign"],["world","World history"]].forEach(function(t){
+    tabs.appendChild(el("button",{type:"button",role:"tab","aria-selected":String(UI.tlTab===t[0]),
+      onclick:function(){ UI.tlTab=t[0]; render(); }},t[1]));
+  });
+  wrap.appendChild(tabs);
+  var kal=campaignCalendar();
+  if(kal) wrap.appendChild(el("p",{class:"hint",text:"Calendar: "+kal+" (the world's)"}));
+  wrap.appendChild(UI.tlTab==="world"?tlWorld(e,camp):tlCampaign(e,camp));
+  return wrap;
+}
+function tlCampaign(e,camp){
   var wrap=el("div",{class:"tline"});
-  var alle=worldDated();
+  var alle=worldDated(camp);
   if(!alle.length){
     wrap.appendChild(el("p",{class:"hint",
       text:"Nothing carries a world date yet. Fill `sort` and `display` on an article — `sort` orders it, `display` is what gets read out."}));
     return wrap;
   }
-  var kal=campaignCalendar();
-  if(kal) wrap.appendChild(el("p",{class:"hint",text:"Calendar: "+kal+" (the world's)"}));
   alle.forEach(function(x){
     var row=el("div",{class:"tl"+(x.e.id===e.id?" here":"")});
     row.appendChild(el("span",{class:"tdate",text:x.wd.display||String(x.wd.sort||"")}));
@@ -6361,11 +6541,114 @@ function elTimeline(e,ifn,item){
       onclick:function(){go({k:"art",id:x.e.id});}},nameOf(x.e)));
     b.appendChild(el("span",{class:"pill q",text:ifaceName(x.e)}));
     var d=((x.e.components||{}).Description||{}).description;
-    if(d) b.appendChild(para(fillVars(d,null,x.e),"co"));
+    if(d&&visibleRefs(x.e,["Description.description"]).length) b.appendChild(para(fillVars(d,null,x.e),"co"));
     if(x.wd.duration) b.appendChild(el("span",{class:"co",text:x.wd.duration}));
     row.appendChild(b);
     wrap.appendChild(row);
   });
+  return wrap;
+}
+/* Die Spuren nebeneinander auf einer Achse. Einträge, die sich überdecken
+   würden, rücken in eine weitere Zeile derselben Spur; die Breite eines
+   Namens ist geschätzt, denn gemessen wird erst nach dem Zeichnen. */
+function tlWorld(e,camp){
+  var wrap=el("div",{class:"tlw"});
+  var lanes=worldHistory(camp);
+  if(!lanes.length){
+    wrap.appendChild(el("p",{class:"hint",
+      text:"No tracks yet. A track is an Event with a span — fill `sort` and `untilSort` — and what lies in it points there with `part of`."}));
+    return wrap;
+  }
+  /* Ein- und ausblenden: je Spur ein Häkchen, eingerückt wie der Baum. */
+  var schalter=el("div",{class:"tltoggles"});
+  lanes.forEach(function(l){
+    var lab=el("label",{class:"tltog"+(l.kind==="campaign"?" camp":""),style:"margin-left:"+(l.depth*14)+"px"});
+    var cb=el("input",{type:"checkbox"}); cb.checked=!UI.tlHidden[l.id];
+    cb.addEventListener("change",function(){
+      if(cb.checked) delete UI.tlHidden[l.id]; else UI.tlHidden[l.id]=1;
+      render(); });
+    lab.appendChild(cb);
+    lab.appendChild(el("span",{text:nameOf(ENT.get(l.id))}));
+    schalter.appendChild(lab);
+  });
+  wrap.appendChild(schalter);
+  var shown=lanes.filter(function(l){ return !UI.tlHidden[l.id]; });
+  if(!shown.length){ wrap.appendChild(el("p",{class:"hint",text:"All tracks are hidden."})); return wrap; }
+  /* Die Achse umfasst alle gezeigten Spuren — oder, herangezoomt, eine
+     davon samt ihrem Inhalt. Ein Zeitalter neben einem Krieg von zehn
+     Jahren liesse den Krieg sonst zu einem Strich werden. */
+  var fokus=UI.tlZoom&&shown.filter(function(l){ return l.id===UI.tlZoom; })[0];
+  var lo=Infinity, hi=-Infinity;
+  (fokus?[fokus]:shown).forEach(function(l){
+    lo=Math.min(lo,l.from); hi=Math.max(hi,l.to);
+    l.items.forEach(function(it){ lo=Math.min(lo,it.span.sort);
+      hi=Math.max(hi,it.span.until!==undefined?it.span.until:it.span.sort); });
+  });
+  if(fokus) wrap.appendChild(el("div",{class:"addbar"},[
+    el("span",{class:"hint",text:"Zoomed to "+nameOf(ENT.get(fokus.id))+"."}),
+    el("button",{class:"btn gh sm",type:"button",onclick:function(){ UI.tlZoom=""; render(); }},"Show all")]));
+  var weite=hi-lo; if(weite<=0){ weite=1; lo-=0.5; }
+  lo-=weite*0.02; hi=lo+weite*1.04; weite=hi-lo;
+  var pct=function(x){ return (x-lo)/weite*100; };
+  /* Die Achse: runde Schritte, etwa sechs. */
+  var schritt=Math.pow(10,Math.floor(Math.log10(weite/6)));
+  [1,2,5,10].some(function(f){ if(weite/(schritt*f)<=7){ schritt*=f; return true; } return false; });
+  var achse=el("div",{class:"tlaxis"});
+  achse.appendChild(el("div",{class:"tllab"}));
+  var skala=el("div",{class:"tltrack"});
+  for(var t=Math.ceil(lo/schritt)*schritt;t<=hi;t+=schritt){
+    skala.appendChild(el("span",{class:"tltick",style:"left:"+pct(t)+"%",
+      text:String(Math.round(t*1000)/1000)}));
+  }
+  achse.appendChild(skala);
+  wrap.appendChild(achse);
+  var BREITE=700, ZEICHEN=7;                       /* geschätzt, px */
+  shown.forEach(function(l){
+    var art=ENT.get(l.id);
+    var row=el("div",{class:"tllane"+(l.kind==="campaign"?" camp":"")+(l.id===e.id?" here":"")});
+    var lab=el("div",{class:"tllab",style:"padding-left:"+(l.depth*12)+"px"});
+    var kopf=el("div",{class:"tlhead"});
+    kopf.appendChild(el("button",{class:"ref",type:"button",onclick:function(){go({k:"art",id:l.id});}},nameOf(art)));
+    if(!fokus||fokus.id!==l.id) kopf.appendChild(el("button",{class:"btn gh sm tlzoom",type:"button",
+      title:"Zoom the axis to this track",onclick:function(){ UI.tlZoom=l.id; render(); }},"⤢"));
+    lab.appendChild(kopf);
+    var s=tlSpan(art);
+    lab.appendChild(el("span",{class:"co",text:s&&s.until!==undefined?tlDateText(s):
+      (l.derived?"as far as known":(s?tlDateText(s):""))}));
+    row.appendChild(lab);
+    var spur=el("div",{class:"tltrack"});
+    var b0=Math.max(0,pct(l.from)), b1=Math.min(100,pct(l.to));
+    if(b1>=0&&b0<=100) spur.appendChild(el("button",{class:"tlband",type:"button",title:nameOf(art),
+      style:"left:"+b0+"%;width:"+Math.max(0.5,b1-b0)+"%",
+      onclick:function(){go({k:"art",id:l.id});}}));
+    var zeilen=[];
+    l.items.forEach(function(it){
+      var a=ENT.get(it.id), name=nameOf(a);
+      var x0=pct(it.span.sort), x1=it.span.until!==undefined?pct(it.span.until):x0;
+      if(x1<0||x0>100)return;                       /* ausserhalb des Ausschnitts */
+      x0=Math.max(0,x0); x1=Math.min(100,x1);
+      var w=(name.length*ZEICHEN+20)/BREITE*100;
+      /* Ein Punkt rechts der Mitte schreibt seinen Namen nach links — sonst
+         schneidet ihn der Rand ab. */
+      var links=it.span.until===undefined&&x0>60;
+      var anfang=links?x0-w:x0, ende=links?x0:Math.max(x1,x0+w);
+      var z=0; while(zeilen[z]!==undefined&&zeilen[z]>anfang) z++;
+      zeilen[z]=ende+0.5;
+      var aus=isGM()&&l.outside.indexOf(it.id)>=0;
+      var cls="tlitem"+(it.span.until!==undefined?" span":" point")+(links?" left":"")+(it.track?" sub":"")+(aus?" out":"");
+      var tip=name+" · "+tlDateText(it.span)+(aus?" · outside the span of "+nameOf(art):"");
+      var b=el("button",{class:cls,type:"button",title:tip,
+        style:(links?"right:"+(100-x0)+"%;":"left:"+x0+"%;")+"top:"+(z*22+4)+"px;"+
+          (it.span.until!==undefined?"min-width:"+Math.max(0.5,x1-x0)+"%":""),
+        onclick:function(){go({k:"art",id:it.id});}},name);
+      spur.appendChild(b);
+    });
+    spur.style.height=(Math.max(1,zeilen.length)*22+8)+"px";
+    row.appendChild(spur);
+    wrap.appendChild(row);
+  });
+  if(isGM()&&shown.some(function(l){ return l.outside.length; }))
+    wrap.appendChild(el("p",{class:"hint",text:"Dashed: part of a track, but dated outside its span."}));
   return wrap;
 }
 
@@ -13500,6 +13783,51 @@ function renderHowto(v){
       "Statblock · Proficiencies.proficient draws on\n"+(quellen||"  —");
     v.appendChild(el("pre",{class:"code",text:rechnung2}));
   }
+
+  /* ---- Weltgeschichte in Spuren (REQ-220, D57) ----
+     Mit derselben Rechnung wie das Element `timeline` (`worldHistory`),
+     auf einem kleinen Bestand, der nur hier steht: ändert jemand die
+     Regel, ändert sich das Beispiel mit. */
+  v.appendChild(el("div",{class:"rsec",text:"A world history in tracks"}));
+  v.appendChild(el("p",{class:"hint"},
+    "A track is an Event with a span — a war, a dynasty, an age. What lies "+
+    "in it is said by the part of edge, not by the dates: by the dates, "+
+    "every wedding in the north would sit in the war in the south. A track "+
+    "inside a track is both a bar in the outer one and a track of its own. "+
+    "What no track holds belongs to the campaign, and the campaign is a "+
+    "track among them; without a span of its own, its span is worked out "+
+    "from what it holds. The span still checks: something that is part of "+
+    "a track but dated outside it is shown dashed to the lead. Everything "+
+    "sits on one axis, Time.sort in the world's calendar. What a player "+
+    "may not see is not there, and what they do not know the date of has "+
+    "no place on the line."));
+  var tz=function(sort,until){ return {Time:{sort:sort,untilSort:until,display:String(sort),until:until?String(until):undefined}}; };
+  var tk=function(to){ return [{id:"p"+to,type:"partOf",to:to}]; };
+  var tlBsp=new Map([
+    ["age",{id:"age",name:"Third Age",interfaces:["Event"],components:tz(1000,1500)}],
+    ["war",{id:"war",name:"Dragon War",interfaces:["Event"],components:tz(1480,1490),relations:tk("age")}],
+    ["ash",{id:"ash",name:"Battle of Ash",interfaces:["Event"],components:tz(1485),relations:tk("war")}],
+    ["late",{id:"late",name:"Late skirmish",interfaces:["Event"],components:tz(1495),relations:tk("war")}],
+    ["wed",{id:"wed",name:"Royal wedding",interfaces:["Event"],components:tz(1486)}],
+    ["camp",{id:"camp",name:"Nebelwacht",interfaces:["Campaign"],components:{}}],
+    ["s1",{id:"s1",name:"Session one",interfaces:["Session"],components:tz(1492),relations:tk("camp")}]]);
+  var alle1=function(){ return true; };
+  var spurenBsp=worldHistory(tlBsp.get("camp"),{src:tlBsp,visible:alle1,dated:alle1,inCampaign:alle1});
+  v.appendChild(el("pre",{class:"code",text:
+    "Third Age      Event · 1000 – 1500\n"+
+    "Dragon War     Event · 1480 – 1490 · partOf → Third Age\n"+
+    "Battle of Ash  Event · 1485        · partOf → Dragon War\n"+
+    "Late skirmish  Event · 1495        · partOf → Dragon War\n"+
+    "Royal wedding  Event · 1486        · (no edge)\n"+
+    "Session one    Session · 1492      · partOf → Nebelwacht\n\n"+
+    spurenBsp.map(function(l){
+      var pad=new Array(l.depth*2+1).join(" ");
+      return pad+rawName(tlBsp.get(l.id))+"  "+l.from+" – "+l.to+(l.derived?" (worked out)":"")+"\n"+
+        l.items.map(function(it){
+          return pad+"  · "+rawName(tlBsp.get(it.id))+(it.track?" (track)":"")+
+            (l.outside.indexOf(it.id)>=0?"  — outside the span":"");
+        }).join("\n");
+    }).join("\n")}));
 
   /* ---- Wer einen Artikel sehen darf ----
      Die **grobe** Frage, und sie kommt vor der feinen: das Wissen sagt,
