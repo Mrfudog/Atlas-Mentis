@@ -38,6 +38,10 @@ export function berichtMarkdown(b: Bericht, kopf: BerichtKopf): string {
   if (kopf.aufruf) z.push(`- Aufruf: \`${kopf.aufruf}\``);
   z.push(`- **${zahl(kopf.artikel)} Artikel**, alle durch \`validateEntity\` mit \`knownTypes\``);
   z.push(`- Gleichlautende Merkmale der Statblöcke (Arbeitsplan §2.5): ${zahl(b.geteilt.merkmale)} Aktionen und Merkmale stehen an mehr als einem Statblock; ${zahl(b.geteilt.verwendungen)} Doppel wurden dadurch nicht angelegt`);
+  const summe = (m: Map<string, number>) => [...m.values()].reduce((s, n) => s + n, 0);
+  const jeArt = (m: Map<string, number>) => [...m.entries()].sort((a, c) => c[1] - a[1]).map(([t, n]) => `${zahl(n)} ${t}`).join(', ');
+  if (b.vereint.size) z.push(`- Gleiche Merkmale an verschiedenen Trägern (\`doppel.ts\`): ${zahl(summe(b.vereint))} Artikel mit einem gleichen vereint (${jeArt(b.vereint)})`);
+  if (b.fassungen.size) z.push(`- Fassungen aus mehreren Büchern (\`doppel.ts\`): ${zahl(summe(b.fassungen))} Artikel sind Variante der geltenden Fassung und tragen ihr Buch im Namen (${jeArt(b.fassungen)})`);
   z.push('');
 
   z.push('## Artikel je Art (unsere)');

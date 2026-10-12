@@ -25,6 +25,8 @@ Was daraus folgt, gegenüber dem Abgleich:
   welches Buch, sagt `Source.publication` mit Seite. Hundert Ebenen für
   hundert Bücher wären ein Stapel, den niemand umschaltet.
 - **Kein `overrides` aus `reprintedAs`**, weil 2024 nicht hereinkommt.
+  Innerhalb von 2014 sagt `reprintedAs` aber, welche **Fassung gilt**
+  (unten, Doppel).
 - **Keine stabile Id-Zuordnung über Läufe hinweg.** Der Importer darf
   während der Entwicklung beliebig oft gegen den Prüfbestand laufen; in
   den echten Bestand geht er einmal.
@@ -386,6 +388,33 @@ Behälter (`containerCapacity` → `carries` ein Inventar), Spielarten in
 `enums` nicht (Prüfung am Server ohne Aufzählungszeilen); `listEntities`
 am Server lädt Artikel einzeln — bei 28 000 vor P6 ansehen; der
 Prüfaufbau des Prototyps (`pruefe.mjs`) erwartet den alten Bestand (M14).
+
+**Doppel (Entscheidung 12.10.2026, `src/doppel.ts`).** Drei Sorten, die
+der erste Lauf stehen liess:
+
+| Doppel | Warum | Was gilt |
+|---|---|---|
+| **Gleiches Merkmal an mehreren Klassen** — Ability Score Improvement zwölfmal | Klassenmerkmale wurden nur innerhalb einer Klasse vereint; nach dem Ersetzen der Stufen ist der Text bei allen gleich | **Ein Artikel**, jede Klasse zeigt mit `grants` und ihren Stufen darauf (D50). Gleiche Art, gleicher Name, gleiche Karten ausser Nummer und Fundstelle |
+| **Monster-Merkmal, das den Namen nicht trifft** — Pack Tactics am Giant Rat sagt „the rat" | `{CREATURE}` wurde nur für den vollen Namen eingesetzt | Auch `shortName`, der Name ohne Klammer, das letzte und das erste Wort. **Ein Name je Text** und die Kante trägt genau ihn — gelesen wird jeder Text wie im Buch (geprüft über alle 3 820 Statblöcke) |
+| **Fassungen aus mehreren Büchern** — MPMM druckt Volo und Mordenkainen neu, Common steht in sechs Settingbüchern | eine Fassung je Buch | Es gilt der **Nachdruck** (aus `reprintedAs`), sonst das **Kernbuch** (PHB, DMG, MM), sonst das **neuste** Buch. Die anderen bleiben als **Variante** (`variantOf`) mit dem Buch im Namen — „Kobold Inventor (VGM)" ist wählbar, `[[Kobold Inventor]]` eindeutig |
+
+Warum Variante und nicht Instanz (nur die Abweichung speichern): beide
+Fassungen sind Buchtext und ändern sich nicht, also gewinnt die Instanz
+nichts — und eine Hausregel an der geltenden Fassung soll die alte nicht
+still mitändern. Eine Instanz ist für das Stück am Tisch da, das von
+seiner Vorlage abweicht.
+
+Ein Lauf danach: **26 404 Artikel** (−1 434): 6 816 Monster-Doppel nicht
+angelegt (vorher 5 705), 323 Merkmale über Klassen vereint, 635 Fassungen
+als Variante (301 Statblöcke, 171 Gottheiten, 49 Abstammungen, 44
+Sprachen …).
+
+**Der Ausschnitt** (`--sample`, `PROBE` in `lauf.ts`) ist der Prüfbestand
+und das, was ins Artefakt geht: jede Art, die Grenzfälle (Legendär mit
+Hort, Schwarm, benannte Figur, Zustand mit Stufen, Fassung und Variante,
+Buchtext ausserhalb des SRD) und durchgängige Beispiele (der Zauberer von
+der Klasse bis zu Fireball, der Goblin vom Statblock bis zur Sprache).
+459 Artikel; ein Name, der nichts trifft, lässt den Lauf fehlschlagen.
 
 ### P6 — Laden (Sonnet 5.5, Effort medium)
 

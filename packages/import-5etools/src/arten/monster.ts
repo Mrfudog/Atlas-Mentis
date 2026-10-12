@@ -112,14 +112,20 @@ function angriff(wb: Werkbank, ent: Entity, entries: unknown): void {
   }
 }
 
-/** Ersetzt den Namen des Monsters im Text durch `{CREATURE}`. */
-function platzhalter(text: string, namen: string[]): string {
-  let out = text;
+/**
+ * Ersetzt den Namen des Monsters im Text durch `{CREATURE}` und sagt, mit
+ * welchem Namen der Text es nennt — „the rat" am Giant Rat bleibt beim
+ * Lesen „the rat" und wird nicht „the giant rat". **Ein Name je Text**,
+ * der längste, der vorkommt: stünden zwei verschiedene unter demselben
+ * Platzhalter, läse einer davon falsch.
+ */
+function platzhalter(text: string, namen: string[]): { text: string; wort?: string } {
   for (const n of namen.filter((x) => x.length > 2).sort((a, b) => b.length - a.length)) {
     const re = new RegExp(`\\b([Tt]he) ${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
-    out = out.replace(re, '$1 {CREATURE}');
+    const neu = text.replace(re, '$1 {CREATURE}');
+    if (neu !== text) return { text: neu, wort: n };
   }
-  return out;
+  return { text };
 }
 
 /**
@@ -137,7 +143,7 @@ function teil(
 ): void {
   const typ = wort ? 'Action' : 'Feature';
   const { name, recharge, uses } = aktionsname(String(roh['name'] ?? (wort ? 'Action' : 'Trait')));
-  const text = platzhalter(wb.text(roh['entries'] ?? roh['entry'], 5), namen);
+  const { text, wort: genannt } = platzhalter(wb.text(roh['entries'] ?? roh['entry'], 5), namen);
   const benutzt = text.includes('{CREATURE}');
   const schluessel = `${typ}|${wort ?? ''}|${name}|${text}`;
   let ziel = geteilt.get(schluessel);
@@ -162,7 +168,7 @@ function teil(
     geteilt.set(schluessel, ziel);
   }
   const vars: Record<string, string> = {};
-  if (benutzt) vars['CREATURE'] = namen[0] ?? sb.name.toLowerCase();
+  if (benutzt) vars['CREATURE'] = genannt ?? namen[0] ?? sb.name.toLowerCase();
   wb.kante(sb, 'composedOf', ziel.id, Object.keys(vars).length ? { vars } : undefined);
 }
 
@@ -207,11 +213,11 @@ function zauber(wb: Werkbank, sb: Entity, e: Knoten, namen: string[]): void {
        geteilt — zwei Magier mit derselben Liste sind selten. */
     const f = wb.anlegen('Feature', aktionsname(String(sc['name'] ?? 'Spellcasting')).name, `spellcasting|${sb.id}|${i}`, e);
     wb.feld(f, 'Feature', 'featureType', 'spellcasting');
-    const text = platzhalter(zauberwirken(sc, wb.ctx), namen);
+    const { text, wort: genannt } = platzhalter(zauberwirken(sc, wb.ctx), namen);
     wb.prosa(f, text);
     if (text.includes('{CREATURE}')) {
       wb.feld(f, 'Vars', 'bindings', { CREATURE: 'creature' });
-      wb.kante(sb, 'composedOf', f.id, { vars: { CREATURE: namen[0] ?? sb.name.toLowerCase() } });
+      wb.kante(sb, 'composedOf', f.id, { vars: { CREATURE: genannt ?? namen[0] ?? sb.name.toLowerCase() } });
     } else wb.kante(sb, 'composedOf', f.id);
   }
 }
@@ -232,7 +238,7 @@ function abschnitte(wb: Werkbank, sb: Entity, e: Knoten, namen: string[], geteil
      ist ein Feld; der Satz bleibt am Statblock. */
   const kopf: string[] = [];
   for (const k of ['actionHeader', 'bonusHeader', 'reactionHeader', 'legendaryHeader', 'mythicHeader']) {
-    if (e[k]) kopf.push(platzhalter(wb.text(e[k], 5), namen).replace(/\{CREATURE\}/g, namen[0] ?? 'creature'));
+    if (e[k]) kopf.push(wb.text(e[k], 5));
   }
   if (kopf.length) wb.prosa(sb, kopf.join('\n\n'));
 }
@@ -357,10 +363,24 @@ function statblock(wb: Werkbank, sb: Entity, e: Knoten): void {
 }
 
 /** Die Namen, unter denen ein Monster in seinem eigenen Text steht. */
+/**
+ * Unter welchen Namen der Text ein Monster nennt. Der volle Name zuerst,
+ * dann `shortName`, der Name ohne Klammer; und weil das Buch beim Giant
+ * Rat „the rat" schreibt, beim Swarm of Rats „the swarm" und beim Kobold
+ * Inventor „the kobold", auch das letzte und das erste Wort. Ersetzt wird nur im Text dieses Statblocks — ohne
+ * die kurzen Namen stünden Pack Tactics und Keen Smell je Kreatur einmal.
+ */
 function selbstnamen(e: Knoten): string[] {
-  const namen = [String(e['name']).toLowerCase()];
+  const voll = String(e['name']).toLowerCase();
+  const namen = [voll];
   if (typeof e['shortName'] === 'string') namen.push(e['shortName'].toLowerCase());
-  else if (e['shortName'] === true || e['isNamedCreature']) namen.push(String(e['name']).toLowerCase());
+  else if (e['shortName'] === true || e['isNamedCreature']) namen.push(voll);
+  if (!e['isNamedCreature']) {
+    const ohne = voll.replace(/\s*\(.*\)\s*$/, '');
+    const woerter = ohne.split(/\s+/);
+    namen.push(ohne);
+    if (woerter.length > 1) namen.push(woerter[woerter.length - 1]!, woerter[0]!);
+  }
   return [...new Set(namen)];
 }
 

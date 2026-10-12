@@ -14,6 +14,7 @@ import { CHARAKTERBAU } from './arten/charakterbau.js';
 import { LEGENDAER, MONSTER } from './arten/monster.js';
 import { WELT } from './arten/welt.js';
 import type { Knoten } from './copy.js';
+import { fassungen, vereineGleiche } from './doppel.js';
 import { KOPIE_VON, loeseKopien } from './copy.js';
 import type { Auswahl, Datenstand } from './lesen.js';
 import { ARTEN_WEG, ausschluss, quelleVon } from './lesen.js';
@@ -168,6 +169,12 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
         nachKopie.set(`${z.art}|${kopieSchluessel(z.art)(e)}`, neu);
         ent = neu;
         if (v) vereint.set(v, ent);
+        /* Wohin 5e.tools den Eintrag neu gedruckt hat — das Buch zählt
+           (`doppel.ts`, welche Fassung gilt). */
+        const nachdruck = (Array.isArray(e['reprintedAs']) ? e['reprintedAs'] : [])
+          .map((r) => String(typeof r === 'string' ? r : ((r as Knoten)['uid'] ?? '')).split('|')[1] ?? '')
+          .filter(Boolean);
+        if (nachdruck.length) wb.nachdrucke.set(neu.id, nachdruck);
         zuFuellen.push([z, ent, e]);
         zaehle(b.artikel, typ);
       } else {
@@ -209,6 +216,14 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
 
   for (const e of wb.entities) aufraeumen(e);
 
+  /* Doppel, die erst gefüllt zu erkennen sind: gleiche Merkmale an
+     verschiedenen Trägern werden einer, Fassungen aus mehreren Büchern
+     Varianten der geltenden (Entscheidung 12.10.2026). */
+  const entities = vereineGleiche(wb.entities, wb.bericht);
+  wb.entities.splice(0, wb.entities.length, ...entities);
+  for (const [t, n] of wb.bericht.vereint) zaehle(wb.bericht.typen, t, -n);
+  fassungen(wb.entities, stand, wb.bericht, (e) => wb.nachdrucke.get(e.id) ?? []);
+
   /* 4. Prüfen, mit Art und Stufen — wie der Server beim Schreiben. */
   const bekannteArten = new Map(wb.entities.map((e) => [e.id, e.interfaces[0] ?? ''] as const));
   /* Die Ids einmal: ohne sie baut die Prüfung je Artikel ein neues Set
@@ -236,11 +251,14 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
 }
 
 /**
- * Ein kleiner Ausschnitt für den Prüfbestand (M14): ein paar Statblöcke,
- * Zauber, zwei Klassen, die Zustände — und alles, worauf deren Kanten
- * zeigen, damit jeder Artikel für sich die Prüfung besteht.
+ * Ein Ausschnitt für den Prüfbestand und das Artefakt (M14): jede Art,
+ * die Grenzfälle und ein paar Beispiele, die man von Artikel zu Artikel
+ * durchgehen kann — und alles, worauf deren Kanten zeigen, damit jeder
+ * Artikel für sich die Prüfung besteht. Ein Name, der nichts trifft, steht
+ * in `fehlt`: ein stiller Tippfehler sähe aus wie ein Ausschnitt, der
+ * etwas zeigt, was er nicht zeigt.
  */
-export function ausschnitt(entities: Entity[], wunsch: { typ: string; namen?: string[]; anzahl?: number }[]): Entity[] {
+export function ausschnitt(entities: Entity[], wunsch: Wunsch[]): Entity[] & { fehlt: string[] } {
   const nachId = new Map(entities.map((e) => [e.id, e]));
   const drin = new Map<string, Entity>();
   const nimm = (e: Entity) => {
@@ -256,35 +274,80 @@ export function ausschnitt(entities: Entity[], wunsch: { typ: string; namen?: st
       }
     }
   };
+  const fehlt: string[] = [];
   for (const w of wunsch) {
     const passend = entities.filter((e) => e.interfaces[0] === w.typ);
-    const gewaehlt = w.namen
-      ? passend.filter((e) => w.namen!.includes(e.name))
-      : passend.slice(0, w.anzahl ?? passend.length);
-    for (const e of gewaehlt) nimm(e);
+    if (w.namen) {
+      for (const n of w.namen) {
+        const treffer = passend.filter((e) => e.name === n);
+        if (!treffer.length) fehlt.push(`${w.typ} „${n}"`);
+        treffer.forEach(nimm);
+      }
+    } else passend.slice(0, w.anzahl ?? passend.length).forEach(nimm);
   }
   /* Was eine Stufe ist, braucht ihren Grundzustand — und umgekehrt sollen
      die Stufen da sein, wenn der Grundzustand da ist. */
   for (const e of entities) {
     if ((e.relations ?? []).some((r) => r.type === 'stageOf' && drin.has(r.to))) nimm(e);
   }
-  return [...drin.values()];
+  return Object.assign([...drin.values()], { fehlt });
 }
 
-/** Was der Prüfbestand aus einem Lauf bekommt (Abgleich §4.3, M14). */
-export const PROBE: { typ: string; namen?: string[]; anzahl?: number }[] = [
-  { typ: 'Statblock', namen: ['Goblin', 'Mage', 'Adult Red Dragon', 'Wolf', 'Bandit', 'Guard', 'Ogre', 'Zombie', 'Skeleton', 'Gelatinous Cube', 'Owlbear', 'Veteran', 'Priest', 'Kobold', 'Orc', 'Giant Rat', 'Swarm of Rats', 'Bugbear', 'Hobgoblin', 'Ghoul'] },
-  { typ: 'Spell', namen: ['Fireball', 'Magic Missile', 'Cure Wounds', 'Shield', 'Mage Armor', 'Fire Bolt', 'Light', 'Detect Magic', 'Misty Step', 'Counterspell', 'Bless', 'Healing Word', 'Sleep', 'Thunderwave', 'Hold Person', 'Invisibility', 'Fly', 'Haste', 'Lightning Bolt', 'Spirit Guardians', 'Guidance', 'Sacred Flame', 'Eldritch Blast', 'Hex', 'Hunter\'s Mark', 'Wall of Fire', 'Polymorph', 'Banishment', 'Cone of Cold', 'Raise Dead'] },
-  { typ: 'Class', namen: ['Fighter', 'Wizard'] },
-  { typ: 'Subclass', namen: ['Champion', 'School of Evocation'] },
+export interface Wunsch {
+  typ: string;
+  namen?: string[];
+  anzahl?: number;
+}
+
+/**
+ * Was der Prüfbestand aus einem Lauf bekommt (Abgleich §4.3, M14;
+ * Auswahl 12.10.2026). Drei Sorten, und jede Art kommt vor:
+ *
+ *  - **Grundbestand:** was am Tisch ständig gebraucht wird — die
+ *    Zustände, Fertigkeiten, Aktionsarten, Waffeneigenschaften ganz, dazu
+ *    die bekannten Monster, Zauber, Waffen, Abstammungen.
+ *  - **Grenzfälle:** Legendär mit Hort (Adult Red Dragon, Beholder),
+ *    Schwarm, benannte Figur (Bosco Daggerhand), Zustand mit Stufen
+ *    (Exhaustion), Nachdruck und Variante (Duergar Soulblade aus MPMM und
+ *    MTF, Aasimar dreimal, Common im Setting), Buchtext ausserhalb des SRD.
+ *  - **Durchgängig:** der Zauberer von der Klasse über die Schule bis zu
+ *    Fireball, den der Mage und der Zauberstab wirken; der Goblin vom
+ *    Statblock über seine Waffen bis zur Sprache und Abstammung; Pack
+ *    Tactics an Kobold, Wolf und Riesenratte als ein Artikel; Ability Score
+ *    Improvement an drei Klassen als ein Artikel.
+ */
+export const PROBE: Wunsch[] = [
+  /* Grundbestand */
   { typ: 'Condition' },
   { typ: 'Skill' },
-  { typ: 'Language', namen: ['Common', 'Elvish', 'Dwarvish', 'Goblin', 'Draconic', 'Orc', 'Giant'] },
-  { typ: 'Weapon', namen: ['Longsword', 'Shortsword', 'Scimitar', 'Shortbow', 'Dagger', 'Hand Crossbow'] },
+  { typ: 'ActionType' },
+  { typ: 'ItemProperty' },
+  { typ: 'Statblock', namen: ['Goblin', 'Goblin Boss', 'Orc', 'Wolf', 'Bandit', 'Guard', 'Veteran', 'Zombie', 'Skeleton', 'Ogre', 'Owlbear', 'Priest', 'Kobold', 'Giant Rat', 'Bugbear', 'Hobgoblin', 'Ghoul', 'Mage'] },
+  { typ: 'Spell', namen: ['Fireball', 'Magic Missile', 'Cure Wounds', 'Shield', 'Mage Armor', 'Fire Bolt', 'Light', 'Detect Magic', 'Misty Step', 'Counterspell', 'Bless', 'Healing Word', 'Sleep', 'Thunderwave', 'Hold Person', 'Invisibility', 'Fly', 'Haste', 'Lightning Bolt', 'Spirit Guardians', 'Guidance', 'Sacred Flame', 'Eldritch Blast', 'Hex', "Hunter's Mark", 'Toll the Dead', 'Booming Blade'] },
+  { typ: 'Class', namen: ['Fighter', 'Wizard', 'Rogue'] },
+  { typ: 'Subclass', namen: ['Champion', 'Battle Master', 'School of Evocation', 'Arcane Trickster'] },
+  { typ: 'Language', namen: ['Common', 'Elvish', 'Dwarvish', 'Goblin', 'Draconic', 'Orc', 'Giant', 'Deep Speech', 'Thieves\' Cant'] },
+  { typ: 'Weapon', namen: ['Longsword', 'Shortsword', 'Scimitar', 'Shortbow', 'Dagger', 'Hand Crossbow', 'Staff of Power'] },
   { typ: 'Armor', namen: ['Leather Armor', 'Chain Mail', 'Shield'] },
-  { typ: 'Item', namen: ['+1 Weapon', 'Bag of Holding', 'Potion of Healing', 'Rope, Hempen (50 feet)', 'Wand of Magic Missiles'] },
-  { typ: 'Ancestry', namen: ['Elf', 'Elf (High)', 'Dwarf', 'Human'] },
-  { typ: 'Background', namen: ['Acolyte', 'Criminal'] },
-  { typ: 'Feat', namen: ['Alert', 'Lucky'] },
+  { typ: 'Item', namen: ['+1 Weapon', 'Bag of Holding', 'Potion of Healing', 'Hempen Rope (50 feet)', 'Wand of Magic Missiles', "Thieves' Tools"] },
+  { typ: 'Ancestry', namen: ['Elf', 'Elf (High)', 'Dwarf', 'Human', 'Tiefling'] },
+  { typ: 'Background', namen: ['Acolyte', 'Criminal', 'Haunted One'] },
+  { typ: 'Feat', namen: ['Alert', 'Lucky', 'Grappler', 'War Caster'] },
   { typ: 'Rule', namen: ['Darkvision', 'Flanking'] },
+  { typ: 'Disease', namen: ['Sewer Plague', 'Sight Rot', 'Cackle Fever'] },
+  { typ: 'Hazard', namen: ['Brown Mold', 'Green Slime'] },
+  { typ: 'Faction', namen: ['Cult of the Black Earth', 'Cult of Asmodeus'] },
+  { typ: 'Table', namen: ['Wild Magic Surge', 'Standard Languages'] },
+  { typ: 'Deity', namen: ['Tiamat'] },
+  /* Grenzfälle */
+  { typ: 'Statblock', namen: ['Adult Red Dragon', 'Beholder', 'Swarm of Rats', 'Gelatinous Cube', 'Mind Flayer', 'Yuan-ti Abomination', 'Drow Mage', 'Bosco Daggerhand', 'Booyahg Booyahg Booyahg'] },
+  /* Fassungen: die geltende und ihre Varianten */
+  { typ: 'Statblock', namen: ['Duergar Soulblade', 'Duergar Soulblade (MTF)', 'Kobold Inventor', 'Kobold Inventor (VGM)', 'Harpy', 'Harpy (PSX)'] },
+  { typ: 'Ancestry', namen: ['Aasimar', 'Aasimar (VGM)', 'Aasimar (DMG)', 'Goblin', 'Goblin (VGM)', 'Goblin (ERLW)'] },
+  { typ: 'Language', namen: ['Common (ERLW)', 'Common (GGR)'] },
+  { typ: 'Deity', namen: ['Auril', 'Auril (SCAG)', 'Bahamut', 'Bahamut (DMG)'] },
+  { typ: 'Rule', namen: ['Inspiration', 'Inspiration (DMG)'] },
+  { typ: 'Hazard', namen: ['Avalanche', 'Avalanche (IDRotF)'] },
+  { typ: 'Item', namen: ['Trinket', 'Trinket (CoS)'] },
+  { typ: 'Table', namen: ['Random Height and Weight', 'Random Height and Weight (GGR)'] },
 ];
