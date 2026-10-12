@@ -144,6 +144,8 @@ window.__T__={derivedValue:derivedValue,assetSrc:assetSrc,UI:UI,
   inventoryOf:inventoryOf,containerGrid:containerGrid,drawCost:drawCost,
   footprintOf:footprintOf,gridTurn:gridTurn,fitsAt:fitsAt,
   dgTypen:dgTypen,dgLinien:dgLinien,
+  mvPath:mvPath,mvVia:mvVia,mvReach:mvReach,mapGeom:mapGeom,moveGrid:moveGrid,
+  moveOf:moveOf,sightLists:sightLists,confirmMove:confirmMove,pendingPath:pendingPath,
   ifaceInList:ifaceInList};
 Object.defineProperty(window.__T__,'REG',{get:function(){return REG;}});
 Object.defineProperty(window.__T__,'ENT',{get:function(){return ENT;}});
