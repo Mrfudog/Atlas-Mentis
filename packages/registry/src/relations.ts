@@ -990,14 +990,17 @@ export const relations: Record<string, RelationDef> = {
    * er vorbei ist, und ein Artikel, den man anschliessend löscht, war
    * keiner.
    *
-   * `put` ist das Stück, an dem alles hängt: **das Material wird
-   * angehängt, während der Gang läuft**, nicht am Anfang hineingelegt. Es
-   * ging einmal am Anfang hinein, und das hiess, dass anfangen nur konnte,
-   * wer schon alles hatte — am Tisch ist es andersherum. Tage lassen sich
-   * von Anfang an arbeiten; fertig wird es nicht, bevor alles drin ist.
+   * `put` ist das Stück, an dem alles hängt: **das Material wird beim
+   * Start gebunden** (REQ-219, D55). Was das Rezept braucht und dabei ist,
+   * verlässt das Inventar und steht hier — auch, was nicht verbraucht wird,
+   * denn gebunden heisst: nicht zugleich für etwas anderes da. Bis D52 ging
+   * nichts hinein, und angehängt wurde unterwegs (Aufgabe #34); das bleibt
+   * für Material, das erst später dazukommt, und ein Gang aus der Zeit davor
+   * ist dieselbe Kante mit weniger in `put`. Tage lassen sich von Anfang an
+   * arbeiten; fertig wird es nicht, bevor alles drin ist.
    *
-   * Und nur weil etwas drin liegt, kann ein Fehlschlag etwas kosten und
-   * `onFailure` mehr sein als eine Zeile.
+   * Was am Ende zurückkommt: was nicht verbraucht wird, immer; das Übrige
+   * beim Misslingen und beim Abbruch nach `Recipe.onFailure`.
    */
   crafting: {
     type: 'crafting',
@@ -1010,7 +1013,7 @@ export const relations: Record<string, RelationDef> = {
       properties: {
         day: { type: 'number', title: 'Days done', default: 0 },
         days: { type: 'number', title: 'Days needed', default: 1 },
-        put: { type: 'array', title: 'Materials put in so far' },
+        put: { type: 'array', title: 'Materials bound to it' },
         rolls: { type: 'array', title: 'Rolls' },
       },
     },

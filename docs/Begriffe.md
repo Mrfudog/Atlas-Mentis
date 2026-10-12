@@ -755,6 +755,32 @@ erreicht es.
 
 ---
 
+## Blaupause und Gang
+
+Eine **Blaupause** ist ein Rezept, das jemand **gelernt** hat — und gelernt
+heisst zugeteilt: eine Information über das Rezept geht über `knownBy` an
+die Figur, ihre Gruppe oder ihre Fraktion. Ein Feld „gelernt von" am Rezept
+wäre ein zweites, schwächeres Wissensmodell neben dem, das es schon gibt.
+Bis D52 lag ein Rezept ohne Information offen, und jeder konnte es; jetzt
+werden Blaupausen gelernt, also kann ein Rezept, das niemandem zugeteilt
+ist, auch niemand. **Sehen** darf man es trotzdem — ob etwas dasteht, ist
+die Frage der Sichtbarkeit, nicht des Wissens —, nur gestrichelt und mit
+„must still be learned". Einen Fundort nennt die Werkbank nicht: wo man
+eine Blaupause lernt, ist Kampagneninhalt.
+
+Ein **Gang** ist ein laufendes Handwerk und eine Kante (`crafting`) von dem,
+der arbeitet, zum Rezept. **Beim Start wird gebunden**, was das Rezept
+braucht: es verlässt das Inventar und steht am Gang. Bis dahin ging nichts
+hinein, und man legte unterwegs nach — dann lag dieselbe Zange im Beutel und
+im Gang zugleich und reichte für zwei Gänge. Gebunden wird auch, was nicht
+verbraucht wird; es kommt am Ende immer zurück. Das Nachlegen bleibt für
+das, was erst unterwegs dazukommt.
+
+Was beim Misslingen und beim Abbruch zurückkommt, sagt das Rezept
+(`onFailure`) — sonst entschiede es jedes Mal die Laune am Tisch.
+
+---
+
 ## Was nirgends steht
 
 Zwei Dinge werden nie gespeichert, und beide aus demselben Grund — zwei

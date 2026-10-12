@@ -675,6 +675,41 @@ Die Verwaltung schreibt alles. Ein Spieler schreibt seine Figuren und was an
 ihnen hängt (`carries`, `holds`, `crafting`). Das Register schreibt nur die
 Verwaltung. Die Leitung einer Kampagne kennt `mayWrite` noch nicht (offen).
 
+### 9.5 Handwerk: gelernt und gebunden (D55)
+
+```mermaid
+flowchart LR
+  R["Recipe<br/>trade · tool · onFailure"] -- "knowledge" --> I["Information"]
+  I -- "knownBy" --> F["Creature | Party"]
+  R -- "needs · qty · consumed" --> M["Item"]
+  F -- "crafting · day · days · put" --> R
+  F -- "carries" --> Inv["Inventory"] -- "holds · qty" --> M
+```
+
+- **Eine Blaupause wird gelernt, und gelernt heisst zugeteilt** (REQ-218):
+  jede Information am Rezept erreicht die Figur über `knownBy` (selbst,
+  Gruppe, Fraktion — dieselbe Abfrage wie in 9.3). Ein Rezept **ohne**
+  Information hat niemand gelernt; bis D52 hiess das „offen". Teilwissen
+  ist nicht gelernt. Ob ein Rezept **dasteht**, sagt weiter
+  `articleVisible`; ungelernte stehen gestrichelt mit „must still be
+  learned", ohne Fundort. „Lehren" legt, wo nötig, eine Information ohne
+  Felder an — sie hütet nichts, sie ist das, was man lernen kann.
+- **Filter der Werkbank:** gelernt · alle; machbar · fast (1–2 fehlende
+  **Posten**: je Zutat einer, das Werkzeug einer); nach Material (welche
+  Rezepte es über `needs` nennen); nach Beruf (`Recipe.trade`) oder
+  Werkzeug (`Recipe.tool`).
+- **Material wird beim Start gebunden** (REQ-219): was das Rezept braucht
+  und dabei ist, verlässt das Inventar und steht in `crafting.props.put` —
+  auch, was nicht verbraucht wird. Fehlt etwas, darf trotzdem begonnen und
+  unterwegs nachgelegt werden (Aufgabe #34); Vorgabe ist das nicht mehr.
+  Das Werkzeug wird geprüft, nicht gebunden (es ist ein Wort, keine Kante).
+- **Was zurückkommt:** was nicht verbraucht wird, immer; das Übrige beim
+  Misslingen und beim Abbruch nach `Recipe.onFailure` (`nothingLost` alles,
+  `halfLost` die abgerundete Hälfte, `materialsLost` nichts); beim Gelingen
+  nichts davon. Ein Gang aus der Zeit vor D55 ist dieselbe Kante mit
+  weniger in `put`: nicht Verbrauchtes zählt dann in der Hand, und er
+  läuft weiter.
+
 ---
 
 ## 10. Ansichten und Anordnung
