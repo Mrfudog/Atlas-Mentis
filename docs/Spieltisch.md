@@ -24,7 +24,7 @@ Stelle, um Code zu schreiben.
 | Bereich | Zeilen | Element |
 |---|---|---|
 | Assets | `Asset` | — (im Bildfeld) |
-| Karten | `Map`, `mapOf` / `insideMap` / `marker` | `map` |
+| Karten | `Map`, `mapOf` / `insideMap` / `marker` / `zone`, `ZoneKind`, Zug in `Session.moves` (D56) | `map` |
 | Charakterbogen | `Vitals`, `Proficiencies` | `sheet` |
 | Inventar | `holds`-Eigenschaften | `inventory` |
 | Handwerk | `Recipe`, `needs` / `yields` | `crafting` |
