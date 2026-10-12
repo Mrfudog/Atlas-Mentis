@@ -143,6 +143,8 @@ window.__T__={derivedValue:derivedValue,assetSrc:assetSrc,UI:UI,
   persist:persist,
   inventoryOf:inventoryOf,containerGrid:containerGrid,drawCost:drawCost,
   footprintOf:footprintOf,gridTurn:gridTurn,fitsAt:fitsAt,
+  carryGridOf:carryGridOf,zonesOf:zonesOf,drawList:drawList,drawPath:drawPath,
+  drawStage:drawStage,liegtInForm:liegtInForm,slotList:slotList,containerPresets:containerPresets,
   dgTypen:dgTypen,dgLinien:dgLinien,
   ifaceInList:ifaceInList};
 Object.defineProperty(window.__T__,'REG',{get:function(){return REG;}});
