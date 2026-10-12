@@ -1,6 +1,8 @@
 /* Prüflauf für D56: der Bewegungsrechner auf der Karte — Diagonalen
    5-10-5 je Zug, Wegpunkte, das Tempo im Sitzungszustand, eine Zone mit
    Kosten, Aufdecken entlang des bestätigten Pfads und die Spieleransicht.
+   Und für D58 (REQ-224): ein Large-Token — Platz aus dem Statblock einer
+   Instanz, Engstelle, Sicht um die Ecke, gespeicherte Mitte.
    `node build-harness.mjs` vorher; der Bestand darf leer sein, der Lauf
    legt an, was er braucht. */
 import { chromium } from 'playwright';
@@ -194,6 +196,115 @@ const knoepfe = await p.evaluate(() => [...document.querySelectorAll('.movepanel
 pruefe('als Spielerin: bestätigen ja, frei setzen und neuer Zug nein', knoepfe.includes('Confirm') && !knoepfe.includes('Place (no cost)') && !knoepfe.includes('New turn'), knoepfe);
 await p.evaluate(() => { window.__T__.UI.asActor = ''; window.__T__.render(); });
 await p.waitForTimeout(300);
+
+/* REQ-224: ein Oger (Large, als Instanz einer Vorlage) auf einer zweiten
+   Karte. Eine Wand bei Spalte 5 mit einer Lücke von einem Feld in Zeile 3;
+   der Oger steht mit dem Anker (3,2) links davon, ein Wolf (ohne
+   Statblock: ein Feld) bei (7,2) rechts. */
+await p.evaluate(() => {
+  const T = window.__T__;
+  const jetzt = new Date().toISOString();
+  const svg = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    "<svg xmlns='http://www.w3.org/2000/svg' width='700' height='490'><rect width='700' height='490' fill='#bcd'/></svg>");
+  const art = (id, typ, name, comps, rels) => T.persist({ id, interfaces: [typ], name,
+    components: Object.assign({ Identity: { name, id: T.nextId(typ) } }, comps || {}),
+    adhoc: [], relations: rels || [], createdAt: jetzt });
+  art('sb_oger_v', 'Statblock', 'Ogre', { Statblock: { size: 'large', speed: '40 ft.' } });
+  art('c_oger', 'Creature', 'Grukk', {});
+  art('s_oger', 'Statblock', 'Grukk stats', { Statblock: { hp: 70 } }, [
+    { id: 'r_oi', type: 'instanceOf', to: 'sb_oger_v', props: {} },
+    { id: 'r_ob', type: 'belongsTo', to: 'c_oger', props: {} }]);
+  art('c_wolf', 'Creature', 'Wolf', {});
+  art('m_gang', 'Map', 'Gate', {
+    Image: { image: svg },
+    Map: { gridShape: 'square', gridSize: 70, fog: false, lighting: 'bright',
+      walls: [{ id: 'g1', kind: 'wall', x1: 0.5, y1: 0, x2: 0.5, y2: 3 / 7 },
+              { id: 'g2', kind: 'wall', x1: 0.5, y1: 4 / 7, x2: 0.5, y2: 1 }] },
+  }, [
+    /* Gespeichert ist die Mitte des Platzes: Anker (3,2) + 1 → (4,3). */
+    { id: 'tk_oger', type: 'marker', to: 'c_oger', props: { x: 0.4, y: 3 / 7, kind: 'play' } },
+    { id: 'tk_wolf', type: 'marker', to: 'c_wolf', props: { x: 0.75, y: 2.5 / 7, kind: 'play' } },
+  ]);
+  const s = T.ENT.get('s_ses');
+  T.persist(Object.assign({}, s, { components: Object.assign({}, s.components, { Session: Object.assign({}, s.components.Session, { activeMap: 'm_gang' }) }) }));
+});
+await p.waitForTimeout(500);
+const gross = await p.evaluate(() => {
+  const T = window.__T__, k = T.ENT.get('m_gang');
+  const geo = T.mapGeom(k.components.Map, { w: 700, h: 490 });
+  const og = k.relations.find((r) => r.id === 'tk_oger'), wo = k.relations.find((r) => r.id === 'tk_wolf');
+  const breite = (n) => [...document.querySelectorAll('.mtoken')].find((t) => t.title.startsWith(n))?.getBoundingClientRect().width;
+  return { span: T.tokenSpan(og), wolf: T.tokenSpan(wo), zellen: T.tokenCells(geo, og).map((c) => c.x + ',' + c.y),
+    verh: breite('Grukk') / breite('Wolf') };
+});
+pruefe('der Oger nimmt 2 × 2 aus der Vorlage seiner Instanz, der Wolf ohne Statblock eines', gross.span === 2 && gross.wolf === 1 && gross.zellen.join(' ') === '3,2 4,2 3,3 4,3', gross);
+pruefe('… und wird doppelt so gross gezeichnet', Math.abs(gross.verh - 2) < 0.01, gross);
+
+await p.evaluate(() => [...document.querySelectorAll('.mtoken')].find((t) => t.title.startsWith('Grukk')).dispatchEvent(new PointerEvent('pointerup', { bubbles: true })));
+await p.waitForTimeout(300);
+text = await ansicht();
+pruefe('der Oger sieht den Wolf mit seiner unteren Hälfte durch die Lücke', /Sees[\s\S]*Wolf/.test(text) && !/Wolf — no line of sight/.test(text), text.slice(0, 900));
+const mitte = await p.evaluate(() => {
+  /* Dieselbe Kreatur als ein Feld (die Instanz überschreibt die Grösse) im
+     oberen linken Feld ihres Platzes: die Wand ist im Weg. */
+  const T = window.__T__, sb = T.ENT.get('s_oger');
+  T.persist(Object.assign({}, sb, { components: Object.assign({}, sb.components, { Statblock: { hp: 70, size: 'medium' } }) }));
+  const k = T.ENT.get('m_gang'), geo = T.mapGeom(k.components.Map, { w: 700, h: 490 });
+  const og = k.relations.find((r) => r.id === 'tk_oger');
+  /* Ein Feld, und zwar das obere linke des Platzes, (3,2). */
+  const da = og.props;
+  og.props = Object.assign({}, da, { x: 0.35, y: 2.5 / 7 });
+  const l = T.sightLists(k, k.components.Map, geo, og);
+  const r = { span: T.tokenSpan(og), wolf: l.sieht.find((x) => x.rel.id === 'tk_wolf').res };
+  og.props = da;
+  T.persist(Object.assign({}, T.ENT.get('s_oger'), { components: Object.assign({}, sb.components, { Statblock: { hp: 70 } }) }));
+  return r;
+});
+pruefe('als Medium in seinem oberen linken Feld sähe er ihn nicht', mitte.span === 1 && mitte.wolf.seen === false && mitte.wolf.why === 'wall', mitte);
+
+/* Ein Klick meint die Mitte des Platzes: bei 2 × 2 die nächste Rasterecke.
+   Die Ecke (8,6) heisst Anker (7,5), der Platz (7–8, 5–6). */
+const ecke = (cx, cy) => p.evaluate(([x, y]) => {
+  const img = document.querySelector('.mapinner');
+  const r = img.getBoundingClientRect();
+  img.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: r.left + x / 10 * r.width, clientY: r.top + y / 7 * r.height }));
+}, [cx, cy]);
+await ecke(8, 6);
+await p.waitForTimeout(300);
+pruefe('der Klick auf die Ecke setzt den Anker oben links davon', await p.evaluate(() => JSON.stringify(window.__T__.UI.movePts) === '[{"x":7,"y":5}]'), await p.evaluate(() => window.__T__.UI.movePts));
+text = await ansicht();
+pruefe('durch die Lücke von einem Feld kommt der Oger nicht', /No way to waypoint 1/.test(text), text.slice(0, 900));
+const wolfGeht = await p.evaluate(() => {
+  const T = window.__T__, k = T.ENT.get('m_gang'), geo = T.mapGeom(k.components.Map, { w: 700, h: 490 });
+  const wo = k.relations.find((r) => r.id === 'tk_wolf');
+  const gr = T.moveGrid(k, k.components.Map, geo, wo);
+  /* Der Wolf zurück nach links, durch die Lücke: der Platz des Ogers ist für ihn kein Halt. */
+  return { weg: T.mvPath(gr, T.tokenCells(geo, wo)[0], { x: 2, y: 3 }, 0, false), halt: Object.keys(gr.noStop).sort() };
+});
+pruefe('der Wolf passt durch, und der Oger hält ihn mit seinem ganzen Platz', !!wolfGeht.weg && wolfGeht.halt.join(' ') === '3,2 3,3 4,2 4,3', wolfGeht);
+
+/* Die Lücke auf zwei Felder: jetzt passt er, und gespeichert wird die Mitte. */
+await p.evaluate(() => {
+  const T = window.__T__, k = T.ENT.get('m_gang'), c = k.components.Map;
+  T.persist(Object.assign({}, k, { components: Object.assign({}, k.components, { Map: Object.assign({}, c, {
+    walls: [c.walls[0], Object.assign({}, c.walls[1], { y1: 5 / 7 })] }) }) }));
+});
+await p.waitForTimeout(300);
+text = await ansicht();
+pruefe('mit zwei Feldern Lücke findet er einen Weg', /Path \d+ ft over 1 point/.test(text), text.slice(0, 900));
+await p.evaluate(() => [...document.querySelectorAll('.movepanel button')].find((b) => /^Confirm/.test(b.textContent)).click());
+await p.waitForTimeout(400);
+const ogerNach = await p.evaluate(() => window.__T__.ENT.get('m_gang').relations.find((r) => r.id === 'tk_oger').props);
+pruefe('gespeichert ist die Mitte des Platzes (Anker 7,5 → 8,6)', Math.abs(ogerNach.x - 0.8) < 1e-6 && Math.abs(ogerNach.y - 6 / 7) < 1e-6, ogerNach);
+
+/* Das Beispiel auf „How it works" rechnet mit derselben Funktion. */
+await p.evaluate(() => { const T = window.__T__; T.UI.regtab = 'howto'; T.go({ k: 'reg' }); });
+await p.waitForTimeout(500);
+const howto = await p.evaluate(() => document.getElementById('main').innerText);
+const bsp = howto.slice(howto.search(/Statblock.size large/), howto.search(/Statblock.size large/) + 700);
+pruefe('How it works rechnet ein Large-Token um die Ecke', /large 2×2/.test(howto) && /from \(3,0\) alone\s+no line of sight/.test(bsp) && /2×2 space at \(3,0\)\s+sees it/.test(bsp) && /large\s+\(0,0\) → \(6,6\)\s+\d+ ft/.test(bsp), bsp);
+await p.evaluate(() => { const T = window.__T__; T.go({ k: 'play' }); });
+await p.waitForTimeout(500);
 
 /* Vollbild: der Kasten füllt das Fenster. */
 await p.evaluate(() => [...document.querySelectorAll('.mapbox .maptools button')].find((b) => /Full screen/.test(b.textContent)).click());
