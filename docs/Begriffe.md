@@ -775,6 +775,17 @@ nicht in jedem Beutel gleich liegen. Ein Stück **vom Raster** zu nehmen und
 es **aus dem Behälter** zu nehmen sind zwei Dinge, und beide braucht man:
 das eine räumt um, das andere gibt her.
 
+**Fallen lassen heisst nicht weggeben** (D58). Ein Schwert, das mitten im
+Kampf aus der Hand fällt, gehört der Figur weiter und liegt zu ihren
+Füssen; nach dem Kampf hebt sie es auf. Darum bleibt die `holds`-Kante,
+verliert Platz und Rasterlage und sagt `tier: ground`. Es auf die Karte zu
+legen hiesse, die Kante zu löschen und einen Marker anzulegen — zwei
+Schritte, ein zweiter Ort, und ohne laufende Karte fiele das Schwert ins
+Nichts. **Verstauen** ist die Gegenrichtung zum Ziehen: aus der Hand an
+einen freien Platz oder ins Raster, und es kostet dasselbe, wohin auch
+immer. Beide Kosten stehen wie `slotDraw` als Einstellung (`handActions`):
+sie sind das Blatt der Kampagne und rechnen nichts.
+
 **Ein Gegenstand darf selbst ein Behälter sein** (M4): der Rucksack
 `carries` sein Inventar wie eine Figur, mit derselben Kante und derselben
 Darstellung. **Und jeder Behälter gibt eine Ziehstufe dazu** (D54): was in

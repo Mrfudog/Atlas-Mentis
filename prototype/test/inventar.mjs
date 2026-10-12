@@ -1,6 +1,6 @@
 /* Prüflauf für D54 (REQ-214–217): das Tragraster aus Grösse und Statblock,
    die Basiszonen, Behälter in Behältern, die Figur im Reiter „Worn“ und
-   „Draw“ am Bogen. `node build-harness.mjs` vorher; die Artikel legt der
+   „Draw“ am Bogen; dazu D58 (REQ-225): der Gurt frei, „Drop“ und „Stow“. `node build-harness.mjs` vorher; die Artikel legt der
    Lauf selbst an, `dbdump/entities` darf leer sein. */
 import { chromium } from 'playwright';
 import { existsSync } from 'node:fs';
@@ -93,6 +93,79 @@ await p.waitForTimeout(400);
 const bogen = await p.evaluate(() => document.getElementById('main').innerText);
 pruefe('am Bogen je Stufe ein Draw', /Draw/.test(bogen) && /bonus action/i.test(bogen), bogen.slice(0, 300));
 pruefe('Draw zeigt Stück, Weg und Stufe', /Rope[\s\S]{0,80}Bag of Holding in the action zone → turn/.test(bogen), bogen.slice(bogen.indexOf('Actions'), bogen.indexOf('Actions') + 600));
+
+/* REQ-225, D58: der Gurt ist frei, Drop kostet eine freie Aktion, Stow eine Bonusaktion. */
+const kosten = await p.evaluate(() => ({ h: window.__T__.handActionsCost(), belt: window.__T__.setting('slotDraw', '') }));
+pruefe('Drop frei, Stow Bonusaktion (Einstellung handActions)', kosten.h.drop === 'free action' && kosten.h.stow === 'bonus action', kosten.h);
+pruefe('der Gurt ist eine freie Aktion (slotDraw)', /belt:free action/.test(kosten.belt), kosten.belt);
+await p.evaluate(() => {
+  const T = window.__T__;
+  T.persist({ id: 'it_schwert', interfaces: ['Item'], name: 'Longsword', components: { Identity: { name: 'Longsword' } }, adhoc: [], relations: [], createdAt: new Date().toISOString() });
+  const inv = T.ENT.get('inv_brom');
+  T.persist(Object.assign({}, inv, { relations: inv.relations.concat([
+    { id: 'h7', type: 'holds', to: 'it_schwert', props: { qty: 1, slot: 'mainHand', tier: 'held' } },
+    { id: 'h8', type: 'holds', to: 'it_fackel', props: { qty: 1, slot: 'belt', tier: 'belt' } },
+  ]) }));
+  T.UI.drawOpen = ''; T.render();
+});
+await p.waitForTimeout(400);
+const zeilenText = await p.evaluate(() => [...document.querySelectorAll('#main .drawrow')].map((r) => r.innerText.replace(/\s+/g, ' ')));
+const zeileVon = (w) => zeilenText.find((t) => t.startsWith(w)) || '';
+pruefe('Drop steht in der Zeile der freien Aktion', /Drop · 1/.test(zeileVon('free action')), zeilenText);
+pruefe('Stow steht in der Zeile der Bonusaktion', /Stow · 1/.test(zeileVon('bonus action')) && !/Stow/.test(zeileVon('free action')), zeilenText);
+const gurt = await p.evaluate(() => (window.__T__.drawList(window.__T__.ENT.get('cr_brom')).find((d) => d.rel ? d.rel.id === 'h8' : d.st.rel.id === 'h8') || {}).stage);
+pruefe('was am Gurt hängt, kommt mit einer freien Aktion', gurt === 'free action', gurt);
+
+const klick = (text) => p.evaluate((t) => {
+  const b = [...document.querySelectorAll('#main .drawrows button')].find((x) => x.textContent.trim().startsWith(t));
+  if (b) b.click();
+  return !!b;
+}, text);
+await klick('Drop');
+await p.waitForTimeout(300);
+await p.evaluate(() => [...document.querySelectorAll('#main .drawlist button')].find((b) => b.textContent === 'Drop').click());
+await p.waitForTimeout(300);
+const fallen = await p.evaluate(() => {
+  const h = window.__T__.ENT.get('inv_brom').relations.find((x) => x.id === 'h7');
+  return { props: h.props, text: document.getElementById('main').innerText };
+});
+pruefe('Drop: das Schwert liegt am Boden und bleibt im Inventar', fallen.props.tier === 'ground' && !fallen.props.slot, fallen.props);
+pruefe('der Bogen sagt, was am Boden liegt', /On the ground: Longsword/.test(fallen.text), '');
+
+/* Wieder in die Hand, dann verstauen: erst ins Raster, dann an den Platz. */
+const inDieHand = () => p.evaluate(() => {
+  const T = window.__T__;
+  const inv = T.ENT.get('inv_brom');
+  T.persist(Object.assign({}, inv, { relations: inv.relations.map((x) => x.id === 'h7'
+    ? Object.assign({}, x, { props: { qty: 1, slot: 'offHand', tier: 'held' } }) : x) }));
+  T.UI.drawOpen = 'stow'; T.render();
+});
+await inDieHand();
+await p.waitForTimeout(300);
+const ziele = await p.evaluate(() => [...document.querySelectorAll('#main .drawlist select option')].map((o) => o.value));
+pruefe('Stow bietet das Raster und freie Plätze, keine Hand und keinen belegten', ziele[0] === 'grid' && ziele.includes('head') && !ziele.includes('mainHand') && !ziele.includes('belt') && !ziele.includes('holster1'), ziele);
+await p.evaluate(() => [...document.querySelectorAll('#main .drawlist button')].find((b) => b.textContent === 'Stow').click());
+await p.waitForTimeout(300);
+let verstaut = await p.evaluate(() => window.__T__.ENT.get('inv_brom').relations.find((x) => x.id === 'h7').props);
+pruefe('Stow ins Raster: Lage gesetzt, aus der Hand, im Gepäck', verstaut.gx != null && verstaut.gy != null && !verstaut.slot && verstaut.tier === 'pack', verstaut);
+await inDieHand();
+await p.waitForTimeout(300);
+await p.evaluate(() => {
+  const sel = document.querySelector('#main .drawlist select');
+  sel.value = 'holster2';
+  [...document.querySelectorAll('#main .drawlist button')].find((b) => b.textContent === 'Stow').click();
+});
+await p.waitForTimeout(300);
+verstaut = await p.evaluate(() => window.__T__.ENT.get('inv_brom').relations.find((x) => x.id === 'h7').props);
+pruefe('Stow an einen Platz: Holster, Stufe Gurt', verstaut.slot === 'holster2' && verstaut.tier === 'belt' && verstaut.gx == null, verstaut);
+
+/* „How it works“ rechnet Gurt, Drop und Stow aus den Einstellungen. */
+await p.evaluate(() => { const T = window.__T__; T.UI.regtab = 'howto'; T.go({ k: 'reg' }); });
+await p.waitForTimeout(500);
+const howto = await p.evaluate(() => document.getElementById('main').innerText);
+pruefe('How it works: Gurt frei, Drop frei, Stow Bonusaktion', /Dagger at the belt\s+slotDraw\s+→\s+free action/.test(howto) && /Drop\s+handActions\s+→\s+free action/.test(howto) && /Stow\s+handActions\s+→\s+bonus action/.test(howto), howto.slice(howto.indexOf('Dagger at the belt') - 50, howto.indexOf('Dagger at the belt') + 300));
+await p.evaluate(() => window.__T__.go({ k: 'art', id: 'cr_brom' }));
+await p.waitForTimeout(300);
 
 /* Wird Brom klein, liegt die Bag ausserhalb der Form — ihre Lage bleibt. */
 await p.evaluate(() => {

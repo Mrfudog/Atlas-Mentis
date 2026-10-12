@@ -9166,6 +9166,9 @@ var TIERS=[
   ["worn","Worn","On the body — armour, cloak, rings."],
   ["belt","At the belt","An interact: pouch, sheath, bandolier."],
   ["pack","In the pack","A whole action of rummaging."],
+  /* Fallen gelassen (REQ-225, D58): gehört weiter der Figur, liegt ihr zu
+     Füssen. Wie `holds.props.tier` im Register. */
+  ["ground","On the ground","Dropped at your feet — put it in a hand or stow it to carry it again."],
   ["stored","Stored","Not here. At an inn, on a cart, at home."]
 ];
 /* **Die Plätze stehen im Register** (`holds.props.slot`, REQ-214, D54),
@@ -9193,6 +9196,45 @@ function slotList(){
   return enumWerte(pd)||[];
 }
 function slotLabel(s){ return SLOT_LABELS[s]||s; }
+/* Welche Stufe ein Platz bedeutet — die Hände halten, Gurt und Holster
+   sind am Gürtel, alles andere wird getragen. */
+function tierForSlot(sl){
+  return HAND_SLOTS.indexOf(sl)>=0?"held":(sl==="belt"||/^holster/.test(sl)?"belt":"worn");
+}
+/* ---------- Fallenlassen und Verstauen (REQ-225, D58) ----------
+   Wie `HAND_SLOTS`, `inHand` und `handActions` im Paket. Die Kosten stehen
+   in der Einstellung `handActions`, nicht hier — und ein Wert, der nicht
+   auf der Leiter steht, gilt nicht. */
+var HAND_SLOTS=["mainHand","offHand"];
+function inHand(st){ return st.slot?HAND_SLOTS.indexOf(st.slot)>=0:st.tier==="held"; }
+function handActionsCost(){
+  var leiter=zonenListe(), p=parsePairs(setting("handActions",""));
+  var auf=function(v){ return v&&leiter.indexOf(v)>=0?v:null; };
+  return {drop:auf(p.drop),stow:auf(p.stow)};
+}
+/* Der erste freie Platz im Raster des Behälters, zeilenweise von oben
+   links, erst wie es liegt, dann gedreht. Null, wenn nichts passt. */
+function firstFreeSpot(stuecke,st){
+  var form=containerGrid(st.inv), rots=[st.rot||0,((st.rot||0)+90)%360];
+  for(var i=0;i<rots.length;i++)
+    for(var y=0;y<form.rows;y++)for(var x=0;x<form.cols;x++)
+      if(fitsAt(stuecke,st,x,y,rots[i])) return {gx:x,gy:y,rot:rots[i]};
+  return null;
+}
+/* Wohin ein Stück aus der Hand verstaut werden kann: ins Raster, wenn dort
+   Platz ist, und an jeden freien Platz, der keine Hand ist. */
+function stowTargets(stuecke,st){
+  var out=[], spot=firstFreeSpot(stuecke,st);
+  if(spot) out.push({key:"grid",label:"Into the grid",patch:{slot:undefined,tier:"pack",
+    gx:spot.gx,gy:spot.gy,rot:spot.rot||undefined}});
+  var belegt={};
+  stuecke.forEach(function(x){ if(x.slot) belegt[x.slot]=1; });
+  slotList().forEach(function(sl){
+    if(HAND_SLOTS.indexOf(sl)>=0||belegt[sl])return;
+    out.push({key:sl,label:slotLabel(sl),patch:{slot:sl,tier:tierForSlot(sl),gx:undefined,gy:undefined}});
+  });
+  return out;
+}
 function tierLabel(t){ var h=TIERS.filter(function(x){return x[0]===t;})[0]; return h?h[1]:t; }
 
 /* Das Inventar einer Figur — oder der Artikel selbst, wenn er eines ist. */
@@ -9460,7 +9502,8 @@ function drawList(e){
     gesehen[inv.id]=1;
     var form=containerGrid(inv);
     carriedItems(inv).forEach(function(st){
-      if(st.tier==="stored")return;
+      /* Was gelagert ist oder am Boden liegt, holt man nicht hervor. */
+      if(st.tier==="stored"||st.tier==="ground")return;
       var p={via:nameOf(inv),what:nameOf(st.item),
         zone:liegtInForm(st,form)?(drawCost(inv,st)||null):null,
         slot:kette.length?null:(st.slot||null)};
@@ -9708,10 +9751,7 @@ function elInventory(e,ifn,item){
           title:"Take off",onclick:function(ev){ ev.stopPropagation();
             lege(st,{slot:undefined,tier:"pack"}); }},"×"));
       });
-      dropZiel(inhalt,function(st){
-        var tier=sl==="mainHand"||sl==="offHand"?"held"
-          :(sl==="belt"||/^holster/.test(sl)?"belt":"worn");
-        lege(st,{slot:sl,tier:tier}); });
+      dropZiel(inhalt,function(st){ lege(st,{slot:sl,tier:tierForSlot(sl)}); });
       box.appendChild(inhalt);
       return box;
     }
@@ -9828,7 +9868,8 @@ function elInventory(e,ifn,item){
       if(zone) c.title=zone;
       if(da) dropZiel(c,function(st){
         if(!fitsAt(stuecke,st,x,y)){ UI.err="It does not fit there."; render(); return; }
-        lege(st,{gx:x,gy:y});
+        /* Vom Boden aufgehoben liegt es wieder im Gepäck (REQ-225). */
+        lege(st,st.tier==="ground"?{gx:x,gy:y,tier:"pack"}:{gx:x,gy:y});
       });
       g.appendChild(c);
     })(x,y);
@@ -10685,6 +10726,48 @@ function elSheet(e,ifn,item){
     wrap.appendChild(tb);
   }
 
+  /* Was in der Hand ist, mit „Drop“ bzw. „Stow“ je Stück (REQ-225, D58).
+     Fallen gelassen wird an Ort und Stelle: das Stück bleibt im Inventar,
+     verliert Platz und Rasterlage und liegt `ground` — es gehört der Figur
+     weiter, und niemand muss es auf einer Karte suchen, die es vielleicht
+     nicht gibt. Verstaut wird an einen freien Platz oder ins Raster. */
+  function handList(was){
+    var ul=el("ul",{class:"drawlist"});
+    var stuecke=carriedItems(e), hier=stuecke.filter(inHand);
+    if(!hier.length) ul.appendChild(el("li",{class:"hint",text:"Nothing in hand."}));
+    hier.forEach(function(st){
+      var li=el("li");
+      li.appendChild(el("button",{class:"ref",type:"button",
+        onclick:function(){ go({k:"art",id:st.item.id}); }},nameOf(st.item)+(st.qty>1?" ×"+st.qty:"")));
+      li.appendChild(el("span",{class:"co",text:st.slot?slotLabel(st.slot):"in hand"}));
+      var leg=function(patch){
+        st.rel.props=Object.assign({},st.rel.props,patch);
+        persist(st.inv);
+      };
+      if(!canWrite(e)){ ul.appendChild(li); return; }
+      if(was==="drop"){
+        li.appendChild(el("button",{class:"btn sm",type:"button",
+          onclick:function(){ leg({slot:undefined,gx:undefined,gy:undefined,tier:"ground"}); }},"Drop"));
+      } else {
+        var ziele=stowTargets(stuecke,st);
+        if(!ziele.length) li.appendChild(el("span",{class:"hint",style:"margin:0",
+          text:"no free slot, and it does not fit the grid"}));
+        else {
+          var sel=el("select",{class:"i sm","aria-label":"Stow where"});
+          ziele.forEach(function(z){ sel.appendChild(el("option",{value:z.key},z.label)); });
+          li.appendChild(sel);
+          li.appendChild(el("button",{class:"btn sm",type:"button",
+            onclick:function(){
+              var z=ziele.filter(function(x){ return x.key===sel.value; })[0];
+              if(z) leg(z.patch);
+            }},"Stow"));
+        }
+      }
+      ul.appendChild(li);
+    });
+    return ul;
+  }
+
   /* ---- Aktionen, und was mit jeder herauskommt (REQ-217, D54) ----
      Je Stufe der Zeile `DrawTime` eine Zeile: die Aktionen des Statblocks
      dieser Art (wo eine `ActionType` so heisst) und ein Eintrag „Draw“.
@@ -10693,6 +10776,10 @@ function elSheet(e,ifn,item){
      gespeichert. */
   if(inventoryOf(e)){
     var leiter=zonenListe(), ziehbar=drawList(e);
+    /* Die Gegenrichtung (REQ-225, D58): „Drop“ und „Stow“ stehen in der
+       Zeile ihrer Kosten (Einstellung `handActions`), neben „Draw“. */
+    var handK=handActionsCost(), stueckeH=carriedItems(e);
+    var inHandH=stueckeH.filter(inHand);
     var nachArt={}, sbA=statblockOf(e);
     ((sbA&&resolvedOf(sbA).relations)||[]).forEach(function(r){
       var t=ENT.get(r.to); if(!t)return;
@@ -10720,7 +10807,18 @@ function elSheet(e,ifn,item){
         title:"What comes out with a "+w,
         onclick:function(){ UI.drawOpen=offen?"":w; render(); }},
         "Draw"+(drin.length?" · "+drin.length:"")));
+      [["drop","Drop","Let go of what is in hand — it lies at your feet"],
+       ["stow","Stow","Put what is in hand at a free slot or into the grid"]].forEach(function(h){
+        if(handK[h[0]]!==w)return;
+        var auf=UI.drawOpen===h[0];
+        row.appendChild(el("button",{class:"btn sm"+(auf?" pri":""),type:"button",
+          "aria-expanded":String(auf),title:h[2]+" ("+w+")",
+          onclick:function(){ UI.drawOpen=auf?"":h[0]; render(); }},
+          h[1]+(inHandH.length?" · "+inHandH.length:"")));
+      });
       akt.appendChild(row);
+      if(UI.drawOpen==="drop"&&handK.drop===w) akt.appendChild(handList("drop"));
+      if(UI.drawOpen==="stow"&&handK.stow===w) akt.appendChild(handList("stow"));
       if(offen){
         var ul=el("ul",{class:"drawlist"});
         if(!drin.length) ul.appendChild(el("li",{class:"hint",text:"Nothing comes out with a "+w+"."}));
@@ -10736,6 +10834,10 @@ function elSheet(e,ifn,item){
     });
     wrap.appendChild(akt);
     var ohne=ziehbar.filter(function(d){ return !d.stage; }).length;
+    var amBoden=stueckeH.filter(function(st){ return st.tier==="ground"; });
+    if(amBoden.length) wrap.appendChild(el("p",{class:"hint",
+      text:"On the ground: "+amBoden.map(function(st){ return nameOf(st.item); }).join(", ")+
+        " — put it in a hand on the inventory to pick it up."}));
     if(ohne) wrap.appendChild(el("p",{class:"hint",
       text:ohne+" carried item"+(ohne===1?" has":"s have")+
         " no draw time — not on the grid, not at a slot with a draw time, or inside a container that has none."}));
@@ -14977,6 +15079,7 @@ var SETTING_HINTS={
   carrySquares:"Carry grid: base square per size, e.g. medium:5 (sizes not listed keep the rectangle)",
   carryZones:"Zones of the carry grid by column, e.g. 0-1:bonus action, 2-4:action",
   slotDraw:"Draw time per body slot; a container at a slot adds one step to what is inside",
+  handActions:"What letting go costs: drop (in hand → on the ground) and stow (in hand → a free slot or the grid)",
   today:"The world date the campaign stands at — empty means the newest used event"
 };
 function renderSettingsEditor(v){
@@ -15617,7 +15720,11 @@ function renderHowto(v){
     "its own zone and the container's draw time plus one, all the way up. "+
     "A container at a body slot takes the slot's draw time (setting slotDraw). "+
     "Where the figure on the Worn tab is male, female or neutral is a field "+
-    "of the creature, not of the inventory."));
+    "of the creature, not of the inventory. Letting go has a fixed price "+
+    "wherever it goes (setting handActions): dropping leaves the item in the "+
+    "inventory, on the ground at the creature's feet; stowing puts it from "+
+    "the hand at a free slot or into the grid."));
+  var hkB=handActionsCost();
   var leiterB=zonenListe(), sqB=carrySquares(), plB=parsePairs(setting("slotDraw",""));
   var sbB={size:"medium"}, abB={str:16};
   var extraB=cxP?derivedValue(cxP,sbB,{Statblock:sbB,Abilities:abB}):undefined;
@@ -15631,7 +15738,10 @@ function renderHowto(v){
     "Rope in a Bag of Holding, the bag in the action zone\n"+
     "  "+drawPath(bag)+"\n"+
     "Torch in the action zone of a backpack worn at the shoulders"+(plB.shoulders?" ("+plB.shoulders+")":"")+"\n"+
-    "  "+drawPath(pack)}));
+    "  "+drawPath(pack)+"\n\n"+
+    "Dagger at the belt                    slotDraw     →  "+(plB.belt||"—")+"\n"+
+    "Longsword in the right hand: Drop     handActions  →  "+(hkB.drop||"—")+", then tier ground, still carried\n"+
+    "Longsword in the right hand: Stow     handActions  →  "+(hkB.stow||"—")+", to a free slot or the grid"}));
   /* ---- Ein Kampf, durchgerechnet (REQ-211–213, D53) ----
      Mit denselben Funktionen, die die Initiative nimmt (`expiresAt`,
      `hpWord`), und den Eigenschaften der Kante aus dem Register: ändert

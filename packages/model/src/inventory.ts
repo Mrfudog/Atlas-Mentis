@@ -208,3 +208,29 @@ export function drawStage(
   });
   return { stage: stufe, steps };
 }
+
+/**
+ * Die Hände (REQ-225, D58): was an diesen Plätzen liegt, ist „in der Hand“
+ * und kann fallen gelassen oder verstaut werden. Ein Stück ohne Platz mit
+ * `tier: 'held'` zählt auch — so stand es vor dem Blatt.
+ */
+export const HAND_SLOTS: readonly string[] = ['mainHand', 'offHand'];
+
+export function inHand(p: { slot?: string | null; tier?: string | null }): boolean {
+  return p.slot ? HAND_SLOTS.includes(p.slot) : p.tier === 'held';
+}
+
+/**
+ * Was Fallenlassen und Verstauen kosten (REQ-225, D58), aus der
+ * Einstellung `handActions` (`drop:free action, stow:bonus action`). Ein
+ * Wert, der nicht auf der Leiter (`DrawTime`) steht, gilt nicht — dann
+ * steht die Handlung am Bogen nicht, statt auf einer erfundenen Stufe.
+ */
+export function handActions(
+  spec: string | undefined | null,
+  ladder: readonly string[],
+): { drop: string | null; stow: string | null } {
+  const p = parsePairs(spec);
+  const auf = (v: string | undefined): string | null => (v && ladder.includes(v) ? v : null);
+  return { drop: auf(p['drop']), stow: auf(p['stow']) };
+}

@@ -396,6 +396,7 @@ flowchart LR
 | G5 | **Die Figur steht an der Kreatur** (`Creature.figure`: male · female · neutral, Liste am Feld), nicht am Inventar: das Inventar wechselt den Träger, die Figur nicht. | `validateEntity` (`value_not_allowed`) |
 | G6 | **Das Tragraster wird gerechnet** (D54, REQ-215): ein Inventar einer Kreatur **ohne eigenes `grid`** liest seine Form aus der Grösse des Statblocks (Grundquadrat, Einstellung `carrySquares`) und aus `Statblock.carryExtra` (Zusatzquadrat, `derived`, Spanne 0…5). Eine Grösse, die die Einstellung nicht kennt, behält das Rechteck (`inventoryCols`, `inventoryRows`). Die Basiszonen kommen nach Spalten aus `carryZones`, bis der Behälter eigene malt. | Rechenwerk (`carryGrid`, `columnZones`) |
 | G7 | **Jeder Behälter gibt eine Ziehstufe dazu** (D54, REQ-216): die Stufe eines Stücks ist das Langsamere aus seiner Zone und der Stufe seines Behälters + 1, die Kette hinauf (`carries` von einem Gegenstand). Aussen gilt der Platz (`slotDraw`) oder die Zone. Kennt ein Schritt keine Stufe, hat das Stück keine. | Rechenwerk (`drawStage`) |
+| G8 | **Fallenlassen und Verstauen haben feste Kosten, egal wohin** (D58, REQ-225): Einstellung `handActions` (`drop:free action, stow:bonus action`, Werte aus `DrawTime`; ein Wert ausserhalb der Leiter gilt nicht). **In der Hand** ist, was an `mainHand`/`offHand` liegt, oder ohne Platz `tier: held`. **Fallen gelassen** wird an Ort und Stelle: die `holds`-Kante bleibt, verliert Platz und Rasterlage und bekommt `tier: ground` — das Stück gehört der Figur weiter und hat keine Ziehstufe. **Verstaut** wird an einen freien Platz, der keine Hand ist, oder an die erste freie Stelle im Raster (`tier: pack`). Der Gurt ist eine freie Aktion (`slotDraw` `belt`). | Rechenwerk (`handActions`, `inHand`) |
 
 Offen: wie viele Ladungen ein Stück am Tisch noch hat (ein Stand am
 Gegenstand oder an `holds`).
@@ -1031,7 +1032,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 - Einheiten: length · imperial: `ft` `in` `mi`; length · metric: `cm` `m` `km`; weight · imperial: `lb` `oz`; weight · metric: `g` `kg`; volume · imperial: `gal` `pt`; volume · metric: `ml` `l`
 - Variablen: `ATK` `DMG` `DMG2` `DMGTYP` `DMGTYP2` `RNG`
-- Einstellungen: `gridSize` `gridUnit` `inventoryCols` `inventoryRows` `carrySquares` `carryZones` `slotDraw` `container:Backpack` `container:Bag of Holding` `today` `gmFields` `units` `travelRationEvery` `travelLightEvery` `travelWatchesPerDay`
+- Einstellungen: `gridSize` `gridUnit` `inventoryCols` `inventoryRows` `carrySquares` `carryZones` `slotDraw` `handActions` `container:Backpack` `container:Bag of Holding` `today` `gmFields` `units` `travelRationEvery` `travelLightEvery` `travelWatchesPerDay`
 <!-- register:ende -->
 
 ---
