@@ -114,7 +114,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 | **REQ-053** | Statblock as composition of RuleElement references (traits, feats, actions) | 2 | 5 | prep | none | done |
 | **REQ-060** | Companions / summons as regular creatures via companionOf + overrides | 3 | 2 | both | none | in progress |
 | **REQ-105** | NPC directory as filtered view over creatures with relations | 3 | 2 | both | none | done |
-| **REQ-215** | Tragraster aus Grösse und Statblock: ein Grundquadrat nach Grösse (Tiny 3 … Large 6) und ein Zusatzquadrat, das eine Rechnung gegen den Statblock des Trägers ergibt — beim Lesen gerechnet, nie eingetippt | 3 | 2 | play | none | planned |
+| **REQ-215** | Tragraster aus Grösse und Statblock: ein Grundquadrat nach Grösse (Tiny 3 … Large 6) und ein Zusatzquadrat in der Grösse des Stärkemodifikators (+1 … +5) aus dem Statblock des Trägers — beim Lesen gerechnet, nie eingetippt | 3 | 2 | play | none | done |
 | **REQ-052** | Detailed statblock viewer | 3 | 3 | play | none | done |
 | **REQ-055** | Inline trait reuse & variant creation while typing | 3 | 3 | prep | none | defined |
 | **REQ-059** | Creature knowledge facts: gated ContentBlocks on type / species / faction | 3 | 3 | play | low | done |
@@ -143,9 +143,9 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 | **REQ-060** | Companions / summons as regular creatures via companionOf + overrides | 3 | 2 | both | none | in progress |
 | **REQ-183** | Party-owned inventory as a shared container distinct from character inventories | 3 | 2 | both | none | done |
 | **REQ-213** | Initiative der Spielenden: die eigene Reihenfolge und jede Kreatur, die aufgedeckt oder schon beteiligt ist; nicht erkannte Kreaturen mit Decknamen, TP von Gegnern als Wort | 3 | 2 | play | none | planned |
-| **REQ-215** | Tragraster aus Grösse und Statblock: ein Grundquadrat nach Grösse (Tiny 3 … Large 6) und ein Zusatzquadrat, das eine Rechnung gegen den Statblock des Trägers ergibt — beim Lesen gerechnet, nie eingetippt | 3 | 2 | play | none | planned |
-| **REQ-216** | Behälter in Behältern: jeder Behälter gibt eine Ziehstufe dazu, ausgehend davon, wo er selbst liegt; die Basiszonen kommen aus dem Blatt und sind je Behälter änderbar | 3 | 2 | play | none | planned |
-| **REQ-217** | Ziehen am Bogen: unter Aktion, Bonusaktion usw. je ein Eintrag „Ziehen“; ein Klick zeigt, was sich mit dieser Aktion herausnehmen lässt, mit Dauer | 3 | 2 | play | none | planned |
+| **REQ-215** | Tragraster aus Grösse und Statblock: ein Grundquadrat nach Grösse (Tiny 3 … Large 6) und ein Zusatzquadrat in der Grösse des Stärkemodifikators (+1 … +5) aus dem Statblock des Trägers — beim Lesen gerechnet, nie eingetippt | 3 | 2 | play | none | done |
+| **REQ-216** | Behälter in Behältern: jeder Behälter gibt eine Ziehstufe dazu, ausgehend davon, wo er selbst liegt; die Basiszonen kommen aus dem Blatt und sind je Behälter änderbar | 3 | 2 | play | none | done |
+| **REQ-217** | Ziehen am Bogen: unter Aktion, Bonusaktion usw. je ein Eintrag „Ziehen“; ein Klick zeigt, was sich mit dieser Aktion herausnehmen lässt, mit Dauer | 3 | 2 | play | none | done |
 | **REQ-218** | Blaupausen werden gelernt: alle Rezepte sind sichtbar, ungelernte mit „muss noch gelernt werden“ (ohne festen Fundort); Filter „kann der Charakter“ und „alle“, „machbar“ und „fast“, nach Material und nach Beruf | 3 | 2 | both | none | planned |
 | **REQ-219** | Material wird beim Start an den Vorgang gebunden: es verlässt den Vorrat und kann nicht doppelt oder anderweitig gebraucht werden; was beim Misslingen zurückkommt, sagt `Recipe.onFailure` | 3 | 2 | play | none | planned |
 | **REQ-119** | Player boards | 3 | 3 | play | none | defined |
@@ -154,7 +154,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 | **REQ-066** | Character sheet: Combat tab (initiative, actions, companions) | 3 | 5 | play | none | done |
 | **REQ-067** | Character sheet: Spellcasting tab (slots/points, concentration, active spells, list) | 3 | 5 | play | none | defined |
 | **REQ-200** | Chat: Fäden zwischen SL und einzelnen Spielern und zwischen Spielern untereinander, an der Kampagne und nicht an einer Sitzung | 3 | 5 | both | none | idea |
-| **REQ-214** | Ausrüstungsfigur nach dem Inventarblatt: Figur je Kreatur wählbar (männlich, weiblich, neutral) und dort gespeichert; Plätze Kopf, Schulter, Torso, rechte und linke Hand, Beine, Stiefel, Gurt mit zwei Holstern, Ringe je Hand, Halskette | 4 | 2 | play | none | planned |
+| **REQ-214** | Ausrüstungsfigur nach dem Inventarblatt: Figur je Kreatur wählbar (männlich, weiblich, neutral) und dort gespeichert; Plätze Kopf, Schulter, Torso, rechte und linke Hand, Beine, Stiefel, Gurt mit zwei Holstern, Ringe je Hand, Halskette | 4 | 2 | play | none | done |
 | **REQ-068** | Character sheet: Freeplay tab | 4 | 3 | play | none | defined |
 | **REQ-071** | Shared rolls & roll log per session | 4 | 3 | play | none | done |
 | **REQ-073** | Custom / reorderable sheet layout | 4 | 5 | play | none | dropped |
@@ -298,7 +298,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 | **REQ-190** | Quick capture during play: one field that files a seed, todo or idea against the current session without leaving the view | 3 | 2 | play | none | done |
 | **REQ-207** | Wählbarer Pfad: Wegpunkte setzen (um eine Falle herum, nicht an einem Gegner vorbei), zwischen ihnen der günstigste Weg; die Diagonalenzählung läuft über die Wegpunkte weiter; Gefahren und Reichweite von Gegnern können gemieden werden | 3 | 2 | play | none | planned |
 | **REQ-213** | Initiative der Spielenden: die eigene Reihenfolge und jede Kreatur, die aufgedeckt oder schon beteiligt ist; nicht erkannte Kreaturen mit Decknamen, TP von Gegnern als Wort | 3 | 2 | play | none | planned |
-| **REQ-217** | Ziehen am Bogen: unter Aktion, Bonusaktion usw. je ein Eintrag „Ziehen“; ein Klick zeigt, was sich mit dieser Aktion herausnehmen lässt, mit Dauer | 3 | 2 | play | none | planned |
+| **REQ-217** | Ziehen am Bogen: unter Aktion, Bonusaktion usw. je ein Eintrag „Ziehen“; ein Klick zeigt, was sich mit dieser Aktion herausnehmen lässt, mit Dauer | 3 | 2 | play | none | done |
 | **REQ-086** | Party view: passive perception, feats, inventory overview | 3 | 3 | play | none | in progress |
 | **REQ-117** | Stewardship: write permission on a state object per user, GM override configurable | 3 | 3 | play | none | done |
 | **REQ-119** | Player boards | 3 | 3 | play | none | defined |

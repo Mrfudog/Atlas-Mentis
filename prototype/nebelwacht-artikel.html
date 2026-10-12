@@ -939,7 +939,14 @@ table.craftm td.num.short{color:var(--warn);font-weight:600}
 table.craftm td.num.ok{color:var(--ok)}
 table.craftm td.note{color:var(--dim);font-size:12.5px}
 table.craftm tr.crfoot td{border-bottom:0;padding-top:8px}
-table.craftm tr.crrow.unknown td{color:var(--dim);font-style:italic}
+/* Ungelernt gestrichelt (REQ-218): sichtbar, aber noch nicht gekonnt. */
+table.craftm tr.crrow.unlearned td{color:var(--dim);border-top:1px dashed var(--line2);
+  border-bottom:1px dashed var(--line2)}
+table.craftm tr.crrow.unlearned td:first-child{border-left:1px dashed var(--line2)}
+table.craftm tr.crrow.unlearned td:last-child{border-right:1px dashed var(--line2)}
+.crfilter{align-items:center}
+.crfilter select.i{width:auto;min-width:130px;padding:3px 6px;font-size:12.5px}
+.crsep{width:1px;align-self:stretch;background:var(--line);margin:0 4px}
 .cdot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px}
 .cdot.d-ok{background:var(--ok)}
 .cdot.d-no{background:var(--accent)}
@@ -1127,7 +1134,7 @@ var UI={route:{k:"list"}, view:"quick", area:"", iface:"", tag:"", q:"", offen:f
         aside:"rel", info:"", assetBusy:"",
         mapZoom:1, mapLock:false, mapKind:"", mapDrag:null, mapTool:"",
         wallKind:"wall", playTab:"map", playBoard:"", tab:"", typePick:"",
-        invView:"tiers", invPick:"", drawOpen:"", craftOnly:false, craftLog:[],
+        invView:"tiers", invPick:"", drawOpen:"", craftKnow:"", craftReady:"", craftMat:"", craftTrade:"", craftLog:[],
         boardZoom:1, boardPick:"", boardTool:"",
         turnActor:"", rollLog:[], asActor:"", peers:[], pings:[],
         ruleQ:"", ruleKind:"",
@@ -7858,20 +7865,58 @@ function amountHeld(traeger,itemId){
   carriedItems(traeger).forEach(function(st){ if(st.item.id===itemId) n+=st.qty; });
   return n;
 }
-/* Kennt der Betrachter das Rezept? Alle Informationen daran müssen bekannt
-   sein; keine Information heisst offen. Teilwissen ist ein eigener Zustand —
-   „du kennst das Rezept, aber nicht die letzte Zutat" ist eine Lage, die am
-   Tisch vorkommt, und sie soll sichtbar sein. */
-function recipeKnowledge(rec,viewerId){
+/* Hat diese Figur die Blaupause gelernt (REQ-218, D55)? **Gelernt heisst
+   zugeteilt**: jede Information am Rezept reicht über `knownBy` bis zu ihr —
+   selbst, über ihre Gruppe oder ihre Fraktion, dieselbe Abfrage wie überall
+   (`knowsInfo`). Ein Feld „gelernt von" am Rezept wäre ein zweites,
+   schwächeres Wissensmodell neben dem vorhandenen.
+
+   Ein Rezept **ohne** Information hat niemand gelernt. Bis D52 hiess das
+   „offen, jeder kann es"; D52 dreht es um: Blaupausen werden gelernt. Sehen
+   darf man es trotzdem — ob es dasteht, sagt `articleVisible`, nicht das
+   Wissen —, nur eben gestrichelt. Teilwissen zählt nicht als gelernt: das
+   fehlende Stück ist ein Teil der Blaupause, und „du kennst das Rezept,
+   aber nicht die letzte Zutat" soll sichtbar bleiben. */
+function recipeLearned(rec,actorId){
   var infos=infosOf(rec);
-  if(!infos.length)return "open";
-  var bekannt=infos.filter(function(i){ return knowsInfo(i,viewerId); }).length;
-  if(bekannt===infos.length)return "known";
-  return bekannt?"partial":"hidden";
+  if(!infos.length)return "unlearned";
+  var bekannt=infos.filter(function(i){ return knowsInfo(i,actorId); }).length;
+  if(bekannt===infos.length)return "learned";
+  return bekannt?"partial":"unlearned";
+}
+/* Lehren: die Leitung teilt zu, was fehlt. Hat das Rezept noch keine
+   Information, bekommt es eine ohne Felder — sie hütet nichts, sie ist
+   nur das, was man lernen kann. Felder, die jemand wirklich verbergen
+   will, ordnet er ihr danach im Seitenpanel zu (REQ-218, D55). */
+function craftTeach(rec,traeger){
+  var infos=infosOf(rec);
+  if(!infos.length){
+    if(!REG.interfaces[INFO_IFACE]){ UI.err="The interface “"+INFO_IFACE+"” is missing from the registry."; render(); return; }
+    var name="Blueprint: "+nameOf(rec);
+    var info={ id:uid("i"), interfaces:[INFO_IFACE], name:name,
+      components:{ Identity:{name:name,id:nextId(INFO_IFACE),aliases:[]} },
+      adhoc:[], relations:[], createdAt:new Date().toISOString() };
+    applyDefaults(info,INFO_IFACE);
+    info.components[INFO_COMP]=Object.assign({fields:[]},info.components[INFO_COMP]||{},{tier:"secret"});
+    ENT.set(info.id,info);
+    rec.relations=rec.relations||[];
+    rec.relations.push({id:uid("r"),type:REL_KNOW,to:info.id,props:{}});
+    infos=[info];
+    persist(rec);
+  }
+  infos.forEach(function(i){
+    if(knowsInfo(i,traeger.id))return;
+    i.relations=i.relations||[];
+    i.relations.push({id:uid("r"),type:REL_KNOWNBY,to:traeger.id,props:{}});
+    persist(i);
+  });
 }
 /* Was fehlt — Material **und** Werkzeug. Die beiden auseinanderzuhalten
    hiesse, dass die Matrix „ja" sagt und das Anfangen „nein": genau die Art
-   Widerspruch, die man am Tisch der Software nicht mehr verzeiht. */
+   Widerspruch, die man am Tisch der Software nicht mehr verzeiht.
+   `short` zählt die fehlenden **Posten** (je Zutat einer, das Werkzeug
+   einer), nicht die Stücke: „fast" heisst „noch zwei Besorgungen", und
+   zwölf fehlende Pfeile sind eine (REQ-218, D55). */
 function craftStatus(rec,traeger){
   var fehlt=[], ok=true;
   recipeNeeds(rec).forEach(function(n){
@@ -7881,10 +7926,35 @@ function craftStatus(rec,traeger){
   var info=(rec.components||{})[RECIPE_COMP]||{};
   var werkzeug=!info.tool||(traeger&&hasTool(traeger,info));
   if(!werkzeug){ ok=false; }
-  return {ok:ok,missing:fehlt,tool:werkzeug?"":info.tool};
+  return {ok:ok,missing:fehlt,tool:werkzeug?"":info.tool,
+    short:fehlt.length+(werkzeug?0:1)};
+}
+/* Die Filter der Werkbank (REQ-218, D55), alle zugleich:
+   `know` — „learned" nur, was diese Figur kann, sonst alle Blaupausen;
+   `ready` — „ready" alles da, „almost" ein oder zwei Posten fehlen;
+   `material` — eine Gegenstands-Id: was sich daraus machen lässt;
+   `trade` — „trade:Schmied" oder „tool:Alchemist's supplies": der Beruf
+   steht als Wort am Rezept, das Werkzeug auch, und beide sind Fragen,
+   die am Tisch gestellt werden. */
+function craftMatches(rec,traeger,f){
+  f=f||{};
+  if(f.know==="learned"&&recipeLearned(rec,traeger.id)!=="learned")return false;
+  if(f.ready){
+    var st=craftStatus(rec,traeger);
+    if(f.ready==="ready"&&!st.ok)return false;
+    if(f.ready==="almost"&&(st.short<1||st.short>2))return false;
+  }
+  if(f.material&&!recipeNeeds(rec).some(function(n){ return n.item.id===f.material; }))return false;
+  if(f.trade){
+    var info=(rec.components||{})[RECIPE_COMP]||{};
+    var i=String(f.trade).indexOf(":");
+    var feld=String(f.trade).slice(0,i)==="tool"?"tool":"trade";
+    if(String(info[feld]||"")!==String(f.trade).slice(i+1))return false;
+  }
+  return true;
 }
 
-/* ---------- Ein laufender Handwerksgang (REQ-184, Rest) ----------
+/* ---------- Ein laufender Handwerksgang (REQ-184, 219) ----------
    Bis hierher stand am Rezept, was es kostet, wie lange es dauert und
    gegen welchen Wert man würfelt — und niemand würfelte und niemand zählte.
    Eine Zeit, die nur dasteht, ist eine Notiz; eine Probe, die nur dasteht,
@@ -7896,19 +7966,21 @@ function craftStatus(rec,traeger){
    ein Gang ist vorbei, wenn er vorbei ist, und ein Artikel, den man
    anschliessend löscht, war keiner.
 
-   **Das Material wird angehängt, während der Gang läuft.** Es ging einmal
-   am Anfang hinein, und das hiess: anfangen konnte nur, wer schon alles
-   hatte. Am Tisch ist es andersherum — man fängt an, weil man etwas
-   vorhat, und sammelt dabei. Der Gang trägt deshalb, was schon drin ist
-   (`put`), und man legt jederzeit nach.
+   **Das Material wird beim Start gebunden** (REQ-219, D55). Was das Rezept
+   braucht und dabei ist, verlässt das Inventar und steht am Gang (`put`) —
+   auch, was nicht verbraucht wird: die Zange, die im Gang steckt, liegt
+   nicht zugleich im Beutel und kann nicht für einen zweiten Gang herhalten.
+   Bis D52 ging nichts hinein, und angehängt wurde unterwegs (Aufgabe #34);
+   das bleibt für Material, das erst unterwegs dazukommt, ist aber nicht
+   mehr die Vorgabe. Ein Gang aus der Zeit davor ist dieselbe Kante mit
+   weniger in `put` und läuft weiter wie bisher.
 
    Tage lassen sich von Anfang an arbeiten. **Fertig wird es nicht, bevor
    alles drin ist**: der letzte Tag ist der Wurf, und ein Wurf auf halbes
    Material wäre ein Wurf auf nichts.
 
-   Weil etwas drin liegt, kann ein Gang scheitern und etwas kosten — und
-   deshalb ist `onFailure` mehr als eine Zeile im Register. Was übrig
-   bleibt, wandert zurück ins Inventar; was verloren ist, ist verloren.
+   Was am Ende zurückkommt, sagt `craftReturns`: was nicht verbraucht wird,
+   immer; das Übrige beim Misslingen und beim Abbruch nach `onFailure`.
 
    Gewürfelt wird **einmal am Ende**, mit demselben Würfelwerk wie alles
    andere, und der Wurf bleibt an der Kante stehen. Ein Ergebnis, das nicht
@@ -7954,7 +8026,9 @@ function craftMod(traeger,info){
 }
 /* Hat der Arbeiter das Werkzeug dabei? Ein Rezept, das Alchemistenwerkzeug
    verlangt, lässt sich ohne nicht anfangen — und das ist eine Frage an das
-   Inventar, nicht an eine Häkchenliste. */
+   Inventar, nicht an eine Häkchenliste. Gebunden wird es nicht: es steht
+   als Wort am Rezept, nicht als Kante, und ein Name, der auf drei Stücke
+   passt, sagt nicht, welches in den Gang gehört (D55, offen). */
 function hasTool(traeger,info){
   if(!info.tool)return true;
   var gesucht=String(info.tool).toLowerCase();
@@ -7964,28 +8038,62 @@ function hasTool(traeger,info){
   });
 }
 
-/* Was dieser Gang noch braucht. Drei Zahlen je Zutat: wie viel das Rezept
-   verlangt, wie viel schon drin liegt, wie viel der Arbeiter dabei hat. */
+/* Was dieser Gang noch braucht. Je Zutat: wie viel das Rezept verlangt,
+   wie viel gebunden ist, wie viel der Arbeiter noch dabei hat — und `have`,
+   was davon zählt. Verbrauchtes zählt nur, wenn es drin ist; was nicht
+   verbraucht wird, auch in der Hand, denn ein Gang aus der Zeit vor D55
+   hat es nie gebunden. */
 function jobNeeds(traeger,job){
   var drin={};
   ((job.rel.props||{}).put||[]).forEach(function(p){
     drin[p.item]=(drin[p.item]||0)+(Number(p.qty)||0); });
   return recipeNeeds(job.recipe).map(function(n){
-    return {item:n.item,need:n.qty,consumed:n.consumed,
-      put:drin[n.item.id]||0,held:amountHeld(traeger,n.item.id)};
+    var put=drin[n.item.id]||0, held=amountHeld(traeger,n.item.id);
+    return {item:n.item,need:n.qty,consumed:n.consumed,put:put,held:held,
+      have:n.consumed?put:put+held};
   });
 }
-/* Fertig werden kann nur, was vollständig ist — Material und Werkzeug.
-   Was nicht verbraucht wird, muss dabei sein und nicht hinein. */
+/* Fertig werden kann nur, was vollständig ist — Material und Werkzeug. */
 function jobReady(traeger,job){
   var info=(job.recipe.components||{})[RECIPE_COMP]||{};
-  var fehlt=jobNeeds(traeger,job).filter(function(n){
-    return n.consumed?n.put<n.need:n.held<n.need; });
+  var fehlt=jobNeeds(traeger,job).filter(function(n){ return n.have<n.need; });
   var werkzeug=!info.tool||hasTool(traeger,info);
   return {ok:!fehlt.length&&werkzeug,missing:fehlt,tool:werkzeug?"":info.tool};
 }
-/* Nachlegen. Was hineingeht, ist aus dem Inventar weg — sonst läge dieselbe
-   Zutat zweimal da, einmal im Beutel und einmal im Kessel. */
+/* Was der Start bindet: je Zutat so viel, wie das Rezept verlangt und der
+   Arbeiter hat (REQ-219). Mehr nicht — der Rest bleibt im Inventar und für
+   anderes frei. */
+function craftBind(traeger,rec){
+  return recipeNeeds(rec).map(function(n){
+    return {item:n.item,need:n.qty,consumed:n.consumed,
+      qty:Math.min(n.qty,amountHeld(traeger,n.item.id))};
+  });
+}
+/* Was zurück ins Inventar geht, wenn ein Gang endet (REQ-219, D55).
+   Was nicht verbraucht wird, kommt immer zurück — es war nur gebunden.
+   Gelingt der Gang, ist das Übrige aufgebraucht; misslingt er oder wird er
+   abgebrochen, entscheidet `onFailure`. `halfLost` rundet zugunsten des
+   Arbeiters ab — die Hälfte einer einzelnen Zutat ist keine halbe Zutat,
+   sondern Glück. Was das Rezept nicht mehr nennt, zählt als verbraucht:
+   so verhielt sich jeder Gang vor D55. */
+function craftReturns(rec,put,ok){
+  var info=(rec.components||{})[RECIPE_COMP]||{};
+  var regel=info.onFailure||"halfLost";
+  var bleibt={};
+  recipeNeeds(rec).forEach(function(n){ if(!n.consumed) bleibt[n.item.id]=true; });
+  var out=[];
+  (put||[]).forEach(function(p){
+    var q=Number(p.qty)||0, zurueck;
+    if(bleibt[p.item]) zurueck=q;
+    else if(ok) zurueck=0;
+    else zurueck=regel==="nothingLost"?q:(regel==="halfLost"?Math.floor(q/2):0);
+    if(zurueck>0) out.push({item:p.item,qty:zurueck});
+  });
+  return out;
+}
+/* Nachlegen — für Material, das erst unterwegs dazukommt (Aufgabe #34).
+   Was hineingeht, ist aus dem Inventar weg — sonst läge dieselbe Zutat
+   zweimal da, einmal im Beutel und einmal im Kessel. */
 function craftPut(traeger,job,itemId,menge){
   var inv=inventoryOf(traeger);
   if(!inv)return;
@@ -7999,28 +8107,48 @@ function craftPut(traeger,job,itemId,menge){
   persist(inv);
   if(inv.id!==traeger.id) persist(traeger);
 }
+function stueckListe(liste){
+  return liste.map(function(b){
+    var it=b.item&&b.item.id?b.item:ENT.get(b.item);
+    return (it?nameOf(it):"?")+" ×"+b.qty; }).join(", ");
+}
 
-/* Anfangen: die Kante anlegen, und sonst nichts. Das Werkzeug muss dabei
-   sein — ohne Kessel fängt niemand an —, das Material nicht: es wird
-   angehängt, während der Gang läuft. */
+/* Anfangen (REQ-219, D55): wer die Blaupause gelernt und das Werkzeug dabei
+   hat, fängt an, und **was das Rezept braucht, wird gebunden** — es
+   verlässt das Inventar und steht am Gang. Fehlt etwas, darf man trotzdem
+   anfangen und es unterwegs nachlegen; der Dialog sagt, was. */
 function craftStart(rec,traeger){
   var inv=inventoryOf(traeger);
   if(!inv){ UI.err="No inventory to take from."; render(); return; }
   var info=(rec.components||{})[RECIPE_COMP]||{};
+  if(recipeLearned(rec,traeger.id)!=="learned"){
+    UI.err=nameOf(traeger)+" must still learn “"+nameOf(rec)+"”."; render(); return; }
   if(info.tool&&!hasTool(traeger,info)){
     UI.err="Needs "+info.tool+" to work with."; render(); return; }
   if(jobFor(traeger,rec.id)){ UI.err="Already working on that one."; render(); return; }
   var tage=recipeDays(info);
-  confirmDialog("Start “"+nameOf(rec)+"”? Nothing goes in yet — put the "+
-    "materials in as you get them. "+tage+" day"+(tage===1?"":"s")+" of work, "+
-    "then a "+(info.ability||"int").toUpperCase()+" check against DC "+
-    (info.dc||12)+".",
+  var bindet=craftBind(traeger,rec);
+  var rein=bindet.filter(function(b){ return b.qty>0; });
+  var fehlt=bindet.filter(function(b){ return b.qty<b.need; })
+    .map(function(b){ return {item:b.item,qty:b.need-b.qty}; });
+  confirmDialog("Start “"+nameOf(rec)+"”? "+
+    (rein.length?"Takes "+stueckListe(rein)+" out of the pack and binds it to the work — "+
+      "it cannot be used for anything else until the work ends. ":"")+
+    (fehlt.length?"Still missing: "+stueckListe(fehlt)+" — put it in on the bench when you get it. ":"")+
+    tage+" day"+(tage===1?"":"s")+" of work, then a "+
+    (info.ability||"int").toUpperCase()+" check against DC "+(info.dc||12)+".",
     function(){
+      var put=[];
+      rein.forEach(function(b){
+        var g=takeFromInventory(inv,traeger,b.item.id,b.qty);
+        if(g>0) put.push({item:b.item.id,qty:g});
+      });
       traeger.relations=traeger.relations||[];
       traeger.relations.push({id:uid("r"),type:REL_CRAFTING,to:rec.id,
-        props:{day:0,days:tage,rolls:[],put:[]}});
-      persist(traeger);
-    },"Start");
+        props:{day:0,days:tage,rolls:[],put:put}});
+      persist(inv);
+      if(inv.id!==traeger.id) persist(traeger);
+    },fehlt.length?"Start anyway":"Start");
 }
 /* Material abtragen. Von hinten: was eingelagert ist, geht zuerst, was in
    der Hand liegt, zuletzt — sonst nimmt das Handwerk die Waffe weg. */
@@ -8059,7 +8187,7 @@ function craftDay(traeger,job){
     if(!bereit.ok){
       UI.err="Not finished yet — still missing: "+
         bereit.missing.map(function(m){
-          return nameOf(m.item)+" ("+(m.consumed?m.put:m.held)+"/"+m.need+")"; })
+          return nameOf(m.item)+" ("+m.have+"/"+m.need+")"; })
         .concat(bereit.tool?[bereit.tool]:[]).join(", ");
       render(); return;
     }
@@ -8080,17 +8208,8 @@ function craftDay(traeger,job){
   var zurueck=[];
 
   if(geschafft&&inv&&ergebnis) putIntoInventory(inv,ergebnis.id,Number(info.yieldCount)||1);
-  if(!geschafft&&inv){
-    /* Was bei einem Fehlschlag übrig bleibt (REQ-184). `halfLost` rundet
-       zugunsten des Arbeiters ab — die Hälfte einer einzelnen Zutat ist
-       keine halbe Zutat, sondern Glück. */
-    var regel=info.onFailure||"halfLost";
-    (job.rel.props.put||[]).forEach(function(p){
-      var behalten=regel==="nothingLost"?p.qty:
-        (regel==="halfLost"?Math.floor(p.qty/2):0);
-      if(behalten>0){ putIntoInventory(inv,p.item,behalten); zurueck.push({item:p.item,qty:behalten}); }
-    });
-  }
+  if(inv) craftReturns(job.recipe,(job.rel.props||{}).put,!!geschafft).forEach(function(z){
+    putIntoInventory(inv,z.item,z.qty); zurueck.push(z); });
   traeger.relations=(traeger.relations||[]).filter(function(r){ return r.id!==job.rel.id; });
   UI.craftLog=(UI.craftLog||[]).concat([{recipe:job.recipe.id,who:traeger.id,
     roll:eintrag,back:zurueck,
@@ -8098,20 +8217,17 @@ function craftDay(traeger,job){
   if(inv) persist(inv);
   if(!inv||inv.id!==traeger.id) persist(traeger);
 }
+/* Abbrechen: wie ein Misslingen, nur ohne Wurf (REQ-219). Der Dialog
+   nennt, was zurückkommt — eine Regel, die erst hinterher sichtbar wird,
+   ist eine Überraschung. */
 function craftAbort(traeger,job){
-  var info=(job.recipe.components||{})[RECIPE_COMP]||{};
+  var zurueck=craftReturns(job.recipe,(job.rel.props||{}).put,false);
   confirmDialog("Stop working on “"+nameOf(job.recipe)+"”? "+
-    (info.onFailure==="nothingLost"?"The materials come back."
-      :"What is already in it is spoilt — "+
-       (info.onFailure==="materialsLost"?"nothing comes back.":"half comes back.")),
+    (zurueck.length?"Back into the pack: "+stueckListe(zurueck)+"; the rest is spoilt."
+      :"Nothing comes back."),
     function(){
       var inv=inventoryOf(traeger);
-      var regel=info.onFailure||"halfLost";
-      if(inv)(job.rel.props.put||[]).forEach(function(p){
-        var behalten=regel==="nothingLost"?p.qty:
-          (regel==="halfLost"?Math.floor(p.qty/2):0);
-        if(behalten>0) putIntoInventory(inv,p.item,behalten);
-      });
+      if(inv) zurueck.forEach(function(z){ putIntoInventory(inv,z.item,z.qty); });
       traeger.relations=(traeger.relations||[]).filter(function(r){ return r.id!==job.rel.id; });
       if(inv) persist(inv);
       if(!inv||inv.id!==traeger.id) persist(traeger);
@@ -8143,24 +8259,25 @@ function craftBench(traeger){
     var fill=el("i"); fill.style.width=Math.min(100,(j.day/j.days)*100)+"%";
     bar.appendChild(fill); row.appendChild(bar);
 
-    /* Was drin ist und was fehlt — je Zutat eine Zeile, und der Knopf, der
-       sie hineinlegt, steht daneben. Eine Liste, die nur zählt, schickt
-       einen zum Inventar und wieder zurück. */
+    /* Was gebunden ist und was fehlt — je Zutat eine Zeile, und der Knopf,
+       der Nachgekommenes hineinlegt, steht daneben. Eine Liste, die nur
+       zählt, schickt einen zum Inventar und wieder zurück. */
     var bedarf=jobNeeds(traeger,j);
     var bereit=jobReady(traeger,j);
     if(bedarf.length){
       var liste=el("ul",{class:"jmat"});
       bedarf.forEach(function(n){
-        var voll=n.consumed?n.put>=n.need:n.held>=n.need;
+        var voll=n.have>=n.need;
         var li=el("li",{class:voll?"ok":"short"});
         li.appendChild(el("button",{class:"ref",type:"button",
           onclick:function(){go({k:"art",id:n.item.id});}},nameOf(n.item)));
         li.appendChild(el("span",{class:"co",
-          text:n.consumed?(n.put+"/"+n.need+" in"):(n.held+"/"+n.need+" to hand")}));
-        if(!voll&&n.consumed){
-          var kann=Math.min(n.need-n.put,n.held);
-          if(kann>0&&canWrite()) li.appendChild(el("button",{class:"btn sm",type:"button",
-            title:"Take it out of the pack and put it in",
+          text:n.consumed?(n.put+"/"+n.need+" bound")
+            :(n.put?(n.put+"/"+n.need+" bound, comes back"):(n.held+"/"+n.need+" to hand"))}));
+        if(!voll){
+          var kann=Math.min(n.need-n.have,n.held);
+          if(kann>0&&n.consumed&&canWrite()) li.appendChild(el("button",{class:"btn sm",type:"button",
+            title:"Take it out of the pack and bind it to the work",
             onclick:function(){ craftPut(traeger,j,n.item.id,kann); }},
             "put in "+kann));
           else li.appendChild(el("span",{class:"gone",
@@ -8187,12 +8304,12 @@ function craftBench(traeger){
           return nameOf(m.item); }).concat(bereit.tool?[bereit.tool]:[]).join(", ");
       }
       btns.appendChild(knopf);
-      if(bedarf.some(function(n){ return n.consumed&&n.put<n.need&&n.held>0; }))
+      if(bedarf.some(function(n){ return n.consumed&&n.have<n.need&&n.held>0; }))
         btns.appendChild(el("button",{class:"btn sm",type:"button",
           onclick:function(){
             bedarf.forEach(function(n){
-              if(!n.consumed||n.put>=n.need)return;
-              var kann=Math.min(n.need-n.put,n.held);
+              if(!n.consumed||n.have>=n.need)return;
+              var kann=Math.min(n.need-n.have,n.held);
               if(kann>0) craftPut(traeger,j,n.item.id,kann);
             });
           }},"Put everything in"));
@@ -8278,15 +8395,16 @@ function elCrafting(e,ifn,item){
       traeger.forEach(function(t){
         var st=craftStatus(e,t);
         var cell=el("td");
-        /* Anfangen darf, wer das Werkzeug hat — das Material wird
-           angehängt. Die Zeile darüber sagt weiter, wer genug hat: das ist
-           die Frage „können wir das jetzt durchziehen?", und sie bleibt
-           eine andere als „dürfen wir anfangen?". */
+        /* Anfangen darf, wer die Blaupause gelernt und das Werkzeug dabei
+           hat; das Material wird dabei gebunden, und was fehlt, kommt
+           unterwegs dazu (REQ-218, 219). */
         var laeuft=!!jobFor(t,e.id);
+        var gelernt=recipeLearned(e,t.id)==="learned";
         var werkzeug=!rinfo.tool||hasTool(t,rinfo);
-        if(canWrite()&&werkzeug) cell.appendChild(el("button",
+        if(!gelernt) cell.appendChild(el("span",{class:"gone",text:"not learned"}));
+        else if(canWrite()&&werkzeug) cell.appendChild(el("button",
           {class:"btn sm"+(st.ok?" pri":""),type:"button",
-           title:st.ok?"":"Start now and add the materials as you get them",
+           title:st.ok?"Binds the materials to the work":"Start now and put the rest in as you get it",
            onclick:function(){ if(!laeuft) craftStart(e,t); }},
           laeuft?"on the bench":"start"));
         else cell.appendChild(el("span",{class:st.ok?"ok":"gone",
@@ -8297,11 +8415,11 @@ function elCrafting(e,ifn,item){
       wrap.appendChild(tb);
     }
 
-    /* Wer es kennt: der Rückbezug über die Informationen am Rezept. */
+    /* Wer es gelernt hat: der Rückbezug über die Informationen am Rezept. */
     var infos=infosOf(e);
-    wrap.appendChild(el("div",{class:"sec",text:"Who knows it"}));
+    wrap.appendChild(el("div",{class:"sec",text:"Who has learned it"}));
     if(!infos.length) wrap.appendChild(el("p",{class:"hint",
-      text:"Nothing about this recipe is guarded — everyone can read it. Bundle its fields into an information in the side panel to hand it out deliberately."}));
+      text:"Nobody yet — teach it from a character’s crafting tab, or hand out an information about it in the side panel."}));
     else{
       var wl=el("div",{class:"chips"});
       var wer={};
@@ -8327,61 +8445,120 @@ function elCrafting(e,ifn,item){
   var werkbank=craftBench(e);
   if(werkbank) wrap.appendChild(werkbank);
 
+  /* Alle Blaupausen, die der Betrachter sehen darf — gelernte und
+     ungelernte (REQ-218). Ob eine dasteht, sagt `articleVisible`; ob die
+     Figur sie kann, sagt das Wissen. Zwei Fragen, und die grobe zuerst. */
   var rezepte=[];
-  ENT.forEach(function(o){ if(((o.interfaces||[])[0])===RECIPE_IFACE) rezepte.push(o); });
+  ENT.forEach(function(o){
+    if(((o.interfaces||[])[0])===RECIPE_IFACE&&articleVisible(o)) rezepte.push(o); });
   rezepte.sort(function(a,b){return nameOf(a).localeCompare(nameOf(b),"de");});
   if(!rezepte.length){ wrap.appendChild(el("p",{class:"hint",text:"No recipes in the registry yet."}));
     return wrap; }
 
-  var bar=el("div",{class:"ktabs"});
-  bar.appendChild(el("button",{class:"btn sm"+(UI.craftOnly?" pri":""),type:"button",
-    "aria-pressed":String(UI.craftOnly),
-    onclick:function(){ UI.craftOnly=!UI.craftOnly; render(); }},"Only what works"));
+  var filter={know:UI.craftKnow||"all",ready:UI.craftReady||"",
+    material:UI.craftMat||"",trade:UI.craftTrade||""};
+  var bar=el("div",{class:"ktabs crfilter"});
+  var schalter=function(key,wert,text){
+    var an=(UI[key]||"")===wert;
+    bar.appendChild(el("button",{class:"btn sm"+(an?" pri":""),type:"button",
+      "aria-pressed":String(an),
+      onclick:function(){ UI[key]=wert; render(); }},text));
+  };
+  schalter("craftKnow","","all blueprints");
+  schalter("craftKnow","learned","this character knows");
+  bar.appendChild(el("span",{class:"crsep"}));
+  schalter("craftReady","","any");
+  schalter("craftReady","ready","ready");
+  schalter("craftReady","almost","almost (1–2 missing)");
+
+  /* Nach Material: was sich aus diesem Stück machen lässt. Angeboten wird,
+     was ein sichtbares Rezept braucht; was die Figur dabei hat, steht mit
+     seiner Zahl dabei, denn das ist meist die Frage. */
+  var mats={};
+  rezepte.forEach(function(r){ recipeNeeds(r).forEach(function(n){ mats[n.item.id]=n.item; }); });
+  var matSel=el("select",{class:"i sm","aria-label":"Material",
+    onchange:function(){ UI.craftMat=matSel.value; render(); }});
+  matSel.appendChild(el("option",{value:""},"any material"));
+  Object.keys(mats).map(function(k){ return mats[k]; })
+    .sort(function(a,b){ return nameOf(a).localeCompare(nameOf(b),"de"); })
+    .forEach(function(it){
+      var n=amountHeld(e,it.id);
+      matSel.appendChild(el("option",{value:it.id},nameOf(it)+(n?" · "+n+" in the pack":"")));
+    });
+  matSel.value=filter.material;
+  bar.appendChild(matSel);
+
+  /* Nach Beruf: das Wort am Rezept und das Werkzeug, getrennt gruppiert —
+     „was kann ein Schmied" und „was geht mit dem Alchemistenwerkzeug" sind
+     zwei Fragen. */
+  var berufe={}, werkzeuge={};
+  rezepte.forEach(function(r){
+    var i=(r.components||{})[RECIPE_COMP]||{};
+    if(i.trade) berufe[i.trade]=true;
+    if(i.tool) werkzeuge[i.tool]=true;
+  });
+  var trSel=el("select",{class:"i sm","aria-label":"Trade",
+    onchange:function(){ UI.craftTrade=trSel.value; render(); }});
+  trSel.appendChild(el("option",{value:""},"any trade"));
+  [["trade","Trade",berufe],["tool","Tool",werkzeuge]].forEach(function(g){
+    var ks=Object.keys(g[2]).sort(); if(!ks.length)return;
+    var og=el("optgroup",{label:g[1]});
+    ks.forEach(function(k){ og.appendChild(el("option",{value:g[0]+":"+k},k)); });
+    trSel.appendChild(og);
+  });
+  trSel.value=filter.trade;
+  bar.appendChild(trSel);
   wrap.appendChild(bar);
 
   var tb2=el("table",{class:"craftm"});
   var hd2=el("tr");
-  ["Recipe","Knowledge","Materials","Yields",""].forEach(function(h){ hd2.appendChild(el("th",{text:h})); });
+  ["Recipe","Blueprint","Materials","Yields",""].forEach(function(h){ hd2.appendChild(el("th",{text:h})); });
   tb2.appendChild(hd2);
   var gezeigt=0;
   rezepte.forEach(function(rec){
-    var wissen=recipeKnowledge(rec,e.id);
-    var st=craftStatus(rec,e);
-    if(UI.craftOnly&&(!st.ok||wissen==="hidden"))return;
+    if(!craftMatches(rec,e,filter))return;
     gezeigt++;
-    var row=el("tr",{class:"crrow "+(wissen==="hidden"?"unknown":(st.ok?"ready":"short"))});
+    var gelernt=recipeLearned(rec,e.id);
+    var st=craftStatus(rec,e);
+    var row=el("tr",{class:"crrow "+(gelernt!=="learned"?"unlearned":(st.ok?"ready":"short"))});
     var c1=el("td");
-    c1.appendChild(el("span",{class:"cdot "+(wissen==="hidden"?"d-un":(st.ok?"d-ok":"d-no"))}));
+    c1.appendChild(el("span",{class:"cdot "+(gelernt!=="learned"?"d-un":(st.ok?"d-ok":"d-no"))}));
     c1.appendChild(el("button",{class:"ref",type:"button",
-      onclick:function(){go({k:"art",id:rec.id});}},
-      wissen==="hidden"?"(unknown recipe)":nameOf(rec)));
+      onclick:function(){go({k:"art",id:rec.id});}},nameOf(rec)));
     row.appendChild(c1);
+    /* Kein Fundort: wo man eine Blaupause lernt, ist Kampagneninhalt und
+       steht nicht fest (D52). */
     row.appendChild(el("td",{class:"note",
-      text:{open:"open",known:"known",partial:"partly known",hidden:"not known"}[wissen]}));
+      text:{learned:"learned",partial:"partly learned",unlearned:"must still be learned"}[gelernt]}));
     var c3=el("td",{class:"note"});
-    if(wissen==="hidden") c3.textContent="—";
-    else if(st.ok) c3.textContent="all there";
+    if(st.ok) c3.textContent="all there";
     else c3.textContent=st.missing.map(function(m){
       return nameOf(m.item)+" "+m.have+"/"+m.need; })
       .concat(st.tool?["no "+st.tool]:[]).join(", ");
     row.appendChild(c3);
     var erg2=recipeYield(rec);
     var c4=el("td");
-    if(wissen!=="hidden"&&erg2) c4.appendChild(el("button",{class:"ref",type:"button",
+    if(erg2) c4.appendChild(el("button",{class:"ref",type:"button",
       onclick:function(){go({k:"art",id:erg2.id});}},nameOf(erg2)));
     else c4.textContent="—";
     row.appendChild(c4);
     var c5=el("td");
-    if(st.ok&&wissen!=="hidden"&&canWrite())
-      c5.appendChild(el("button",{class:"btn sm pri",type:"button",
-        onclick:function(){ craftStart(rec,e); }},
-        jobFor(e,rec.id)?"On the bench":"Start"));
+    var laeuft=!!jobFor(e,rec.id);
+    if(gelernt!=="learned"){
+      if(isGM()) c5.appendChild(el("button",{class:"btn sm",type:"button",
+        title:"Hand the blueprint to "+nameOf(e),
+        onclick:function(){ craftTeach(rec,e); }},"Teach"));
+    }else if(laeuft) c5.appendChild(el("span",{class:"co",text:"on the bench"}));
+    else if(canWrite()&&!st.tool) c5.appendChild(el("button",
+      {class:"btn sm"+(st.ok?" pri":""),type:"button",
+       title:st.ok?"Binds the materials to the work":"Start now and put the rest in as you get it",
+       onclick:function(){ craftStart(rec,e); }},"Start"));
     row.appendChild(c5);
     tb2.appendChild(row);
   });
   wrap.appendChild(tb2);
   if(!gezeigt) wrap.appendChild(el("p",{class:"hint",
-    text:"Nothing craftable right now."}));
+    text:"No blueprint matches these filters."}));
   return wrap;
 }
 
@@ -13473,7 +13650,16 @@ var BEGRIFFE=[
    "background; its level is the sum of those edges, worked out on read. "+
    "What a class, an ancestry or a background gives is an edge as well "+
    "(grants), with the level on the edge — the same Ability Score "+
-   "Improvement comes at 4, 6 and 8, one article and three edges."],
+   "Improvement comes at 4, 6 and 8, one article and three edges. A "+
+   "blueprint is learned, and learned means handed out: every information "+
+   "about the recipe reaches the character over knownBy. Everyone sees "+
+   "the recipes they may see; the ones not learned stand dashed with "+
+   "“must still be learned”, and nothing says where to learn them. Work "+
+   "under way is an edge from the crafter to the recipe (crafting), and "+
+   "starting it binds the materials: they leave the pack and sit on the "+
+   "edge, so they cannot go into a second piece of work. What comes back "+
+   "is the edge's business too — what is not consumed always, the rest "+
+   "on a failure or a stop as the recipe's onFailure says."],
   ["Unit",
    "How a measure is written and converted. The vault is imperial because "+
    "the rules are; at the table sit people for whom forty feet means "+
