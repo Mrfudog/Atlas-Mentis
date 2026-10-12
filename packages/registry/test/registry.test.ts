@@ -951,10 +951,12 @@ describe('the rule family', () => {
     expect(c.target).toEqual({ interfaces: ['Condition'] });
   });
 
-  it('requires the action type of an action, and carries its attack (P4)', () => {
+  it('requires the action type of an action, and carries what its attack reckons on (P4, D51)', () => {
     const a = i['Action'].schema;
     expect(a.required).toEqual(['actionType']);
-    expect(Object.keys(a.properties)).toEqual(expect.arrayContaining(['attack', 'toHit', 'reach', 'range', 'damage', 'damageType']));
+    expect(Object.keys(a.properties)).toEqual(expect.arrayContaining(['attack', 'ability', 'reach', 'range', 'damageDice', 'damageType', 'extraDamageDice']));
+    /* Trefferbonus und Schaden rechnet der Statblock — kein Feld dafür. */
+    expect(a.properties['toHit']).toBeUndefined();
     expect(a.properties['damageType']?.enumRef).toBe('DamageType');
     expect(a.properties['range']?.unit).toBe('ft');
   });

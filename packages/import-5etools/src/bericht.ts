@@ -42,6 +42,12 @@ export function berichtMarkdown(b: Bericht, kopf: BerichtKopf): string {
   const jeArt = (m: Map<string, number>) => [...m.entries()].sort((a, c) => c[1] - a[1]).map(([t, n]) => `${zahl(n)} ${t}`).join(', ');
   if (b.vereint.size) z.push(`- Gleiche Merkmale an verschiedenen Trägern (\`doppel.ts\`): ${zahl(summe(b.vereint))} Artikel mit einem gleichen vereint (${jeArt(b.vereint)})`);
   if (b.fassungen.size) z.push(`- Fassungen aus mehreren Büchern (\`doppel.ts\`): ${zahl(summe(b.fassungen))} Artikel sind Variante der geltenden Fassung und tragen ihr Buch im Namen (${jeArt(b.fassungen)})`);
+  if (b.herkunft) z.push(`- Monstermerkmale mit Herkunft (\`doppel.ts\`): ${zahl(b.herkunft)} zeigen mit \`variantOf\` auf das Volksmerkmal ihres Volks`);
+  const an = b.angriffe;
+  if (an.artikel) {
+    const oft = [...an.jeName.entries()].sort((a, c) => c[1] - a[1]).slice(0, 8).map(([n, k]) => `${n} ${zahl(k)}`).join(', ');
+    z.push(`- Angriffe der Statblöcke, einer für alle (D51, \`arten/angriff.ts\`): ${zahl(an.verwendungen)} Verwendungen auf ${zahl(an.artikel)} Angriffe (${oft} …); die Buchzahl steht an der Kante, wo sie nicht aus der Rechnung folgt — Treffer ${zahl(an.buchTreffer)}-mal, Schaden ${zahl(an.buchSchaden)}-mal; ${zahl(an.alsText)} Angriffe anders gebaut und als Text belassen`);
+  }
   z.push('');
 
   z.push('## Artikel je Art (unsere)');

@@ -354,6 +354,8 @@ export type LayoutElementKind =
   | 'prose'
   | 'description'
   | 'composed'
+  /** Wer diesen Artikel zusammensetzt, nach Kreaturentyp (D51) — gerechnet. */
+  | 'usedBy'
   | 'relations'
   | 'image'
   /**

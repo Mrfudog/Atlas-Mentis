@@ -110,7 +110,12 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
     expect(goblin.components['Proficiencies']).toMatchObject({ proficient: ['Common', 'Goblin'], expertise: ['Stealth'] });
     const teile = (goblin.relations ?? []).filter((r) => r.type === 'composedOf').map((r) => es.find((e) => e.id === r.to)!);
     expect(teile.map((t) => `${t.interfaces[0]} ${t.name}`)).toEqual(['Feature Nimble Escape', 'Action Scimitar']);
-    expect(teile[1]!.components['Action']).toMatchObject({ attack: ['melee weapon'], toHit: 4, reach: 5, damage: '1d6 + 2', damageType: 'slashing' });
+    /* Die Zahlen rechnet der Statblock (D51): +4 ist Übung 2 und DEX 14,
+       also rechnet der Krummsäbel des Goblins auf DEX und nichts steht fest. */
+    expect(teile[1]!.components['Action']).toMatchObject({ attack: ['melee weapon'], ability: 'dex', reach: 5, target: 'one target', damageDice: '1d6', damageType: 'slashing' });
+    expect(teile[1]!.components['Action']?.['toHit']).toBeUndefined();
+    const kante = goblin.relations!.find((r) => r.to === teile[1]!.id)!;
+    expect(kante.props).toBeUndefined();
     expect(prosa(teile[0]!)).toBe('The {CREATURE} can take the [[action-0001|Disengage]] action as a bonus action.');
     expect(goblin.relations?.some((r) => r.type === 'equips')).toBe(true);
   });

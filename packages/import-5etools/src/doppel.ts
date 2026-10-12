@@ -173,3 +173,58 @@ export function fassungen(
     }
   }
 }
+
+/**
+ * **Woher ein Monstermerkmal kommt** (Entscheidung 12.10.2026). Der Ork im
+ * Monster Manual ist „Aggressive", weil Orks es sind — das Volksmerkmal
+ * steht an der Abstammung. Das Merkmal des Statblocks zeigt darum mit
+ * `variantOf` auf das gleichnamige Volksmerkmal, aber nur, wenn ein
+ * Statblock, der es trägt, zu diesem Volk gehört (`humanoid (orc)` und
+ * Orc, Half-Orc). Ohne die Bedingung hätte jedes amphibische Krokodil
+ * seine Herkunft bei den Tritonen.
+ *
+ * Gezeigt wird die Herkunft auch in der anderen Richtung, ohne dass etwas
+ * gespeichert wird: wer ein gemeinsames Merkmal aufschlägt, sieht seine
+ * Träger nach Kreaturentyp (Prototyp, `usedByType`).
+ */
+export function herkunft(
+  entities: Entity[],
+  stand: Pick<Datenstand, 'quellen'>,
+  bericht: Bericht,
+  nachdruck: (e: Entity) => string[] = () => [],
+): void {
+  const nachId = new Map(entities.map((e) => [e.id, e]));
+  const volk = (name: string) => name.toLowerCase().replace(/\s*\(.*\)\s*$/, '').replace(/^half-/, '').split(/[\s-]+/).pop() ?? '';
+  /* Volksmerkmale nach Name, mit den Völkern, die sie gewähren. */
+  const voelkerVon = new Map<string, string[]>();
+  const nutzer = new Map<string, Entity[]>();
+  for (const e of entities) {
+    for (const r of e.relations ?? []) {
+      if (r.type === 'grants' && e.interfaces[0] === 'Ancestry') voelkerVon.set(r.to, [...(voelkerVon.get(r.to) ?? []), volk(e.name)]);
+      if (r.type === 'composedOf' && e.interfaces[0] === 'Statblock') nutzer.set(r.to, [...(nutzer.get(r.to) ?? []), e]);
+    }
+  }
+  const volksmerkmale = new Map<string, Entity[]>();
+  for (const id of voelkerVon.keys()) {
+    const f = nachId.get(id);
+    if (!f || f.interfaces[0] !== 'Feature') continue;
+    const k = f.name.toLowerCase();
+    volksmerkmale.set(k, [...(volksmerkmale.get(k) ?? []), f]);
+  }
+  for (const [id, traeger] of nutzer) {
+    const m = nachId.get(id);
+    if (!m || (m.relations ?? []).some((r) => r.type === 'variantOf')) continue;
+    /* Ein Angriff kommt nicht von einem Volk — der Biss des Wolfs ist nicht
+       der der Echsenmenschen. */
+    if (Array.isArray((m.components['Action'] as Record<string, unknown> | undefined)?.['attack'])) continue;
+    const kandidaten = volksmerkmale.get(m.name.toLowerCase());
+    if (!kandidaten) continue;
+    const typen = traeger.map((s) => String((s.components['Statblock'] as Record<string, unknown> | undefined)?.['creatureType'] ?? '').toLowerCase());
+    const passend = kandidaten.filter((f) => (voelkerVon.get(f.id) ?? []).some((v) => v && typen.some((t) => new RegExp(`\\b${v}\\b`).test(t))));
+    if (!passend.length) continue;
+    const gilt = geltendeFassung(passend, stand, nachdruck);
+    const liste = (m.relations ??= []);
+    liste.push({ id: `variantOf-${liste.length + 1}`, type: 'variantOf', to: gilt.id });
+    bericht.herkunft += 1;
+  }
+}

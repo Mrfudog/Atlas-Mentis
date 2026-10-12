@@ -30,6 +30,7 @@ Repo ist öffentlich, die Daten sind Kampagneninhalt. `.gitignore` deckt
     pnpm install                             # bringt Playwright mit
     node prototype/test/build-harness.mjs
     node prototype/test/pruefe.mjs
+    node prototype/test/angriffe.mjs   # D51, mit einem Importer-Ausschnitt in dbdump/entities
 
 Die Pfade hängen an den Dateien, nicht am Arbeitsverzeichnis — der Lauf geht
 von überall. Liegt unter `/opt/pw-browsers/chromium` ein Chromium (so in der

@@ -559,6 +559,22 @@ dieser Klasse der Figur gehört. `PlayerCharacter.class` war ein Wort; ein
 Wort kann nicht sagen, welche Trefferwürfel die Figur hat oder auf welche
 Rettungswürfe sie geübt ist.
 
+**Ein Angriff gehört allen, die so angreifen, und seine Zahlen dem, der
+angreift** (D51). „Bite" stand im Bestand 870-mal, jedes Mal mit eigenen
+Zahlen im Satz: der Wolf mit +4 und 2d4 + 2, der Hai mit +5 und 1d8 + 3.
+Die Zahlen folgen aber fast immer aus dem, was am Statblock steht —
+Übung plus Attributmodifikator, Würfel plus derselbe Modifikator; nachgerechnet
+bei 83 % der Monster genau. Also sagt der Biss, worauf gerechnet wird
+(Attribut, Würfel, Schadensart), und der Statblock rechnet. Was ein Wolf
+anders macht als die anderen Beisser, steht an **seiner** Kante: dieselbe
+Regel wie bei der Instanz, die nur ihre Abweichung speichert, nur eine
+Ebene tiefer. Wo das Buch eine Zahl nennt, die aus der Rechnung nicht
+folgt, steht **die Buchzahl** an der Kante, und man sieht ihr an, dass sie
+fest ist — sonst wiche jeder sechste Monsterangriff still vom Buch ab.
+Und woher ein Merkmal kommt, sagt am ehesten, wer es hat: der Biss zeigt
+seine Träger nach Kreaturentyp, das „Aggressive" des Orks zeigt auf das
+Volksmerkmal der Orks.
+
 **Die Stufe der Figur wird gerechnet** — die Summe der Klassenkanten
 (`sum(hasClass.level)`), und der Übungsbonus aus ihr. Eingetippt wäre sie
 die dritte Stelle neben den Kanten und nach dem ersten Aufstieg falsch.

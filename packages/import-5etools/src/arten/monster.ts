@@ -22,17 +22,13 @@ import type { Werkbank } from '../werkbank.js';
 import type { Zuordnung } from '../zuordnung.js';
 import { ATTRIBUTE, gesinnung, GROESSE, liste, zahl } from '../zuordnung.js';
 import { aktionsart, fertigkeit } from './regeln.js';
+import { zerlegeAngriff } from './angriff.js';
 
 const ATTR_VON_SKILL: Record<string, string> = {
   acrobatics: 'dex', 'animal handling': 'wis', arcana: 'int', athletics: 'str', deception: 'cha',
   history: 'int', insight: 'wis', intimidation: 'cha', investigation: 'int', medicine: 'wis',
   nature: 'int', perception: 'wis', performance: 'cha', persuasion: 'cha', religion: 'int',
   'sleight of hand': 'dex', stealth: 'dex', survival: 'wis',
-};
-
-const ANGRIFF: Record<string, string[]> = {
-  mw: ['melee weapon'], rw: ['ranged weapon'], ms: ['melee spell'], rs: ['ranged spell'],
-  'mw,rw': ['melee weapon', 'ranged weapon'], 'ms,rs': ['melee spell', 'ranged spell'],
 };
 
 /* Die Abschnitte eines Statblocks und ihre Aktionsart. `trait` ist ein
@@ -88,30 +84,6 @@ function aktionsname(roh: string): { name: string; recharge?: string; uses?: str
   return { name, recharge, uses: u?.[1] };
 }
 
-/** Die Felder einer Angriffsaktion aus ihrem ersten Satz. */
-function angriff(wb: Werkbank, ent: Entity, entries: unknown): void {
-  const roh = JSON.stringify(entries ?? '');
-  const atk = /\{@atkr? ([a-z,]+)\}/.exec(roh);
-  if (!atk) return;
-  const A = 'Action';
-  const art = ANGRIFF[atk[1]!] ?? (atk[1] === 'm' ? ['melee weapon'] : atk[1] === 'r' ? ['ranged weapon'] : undefined);
-  wb.feld(ent, A, 'attack', art);
-  const hit = /\{@hit ([+-]?\d+)/.exec(roh);
-  if (hit) wb.feld(ent, A, 'toHit', Number(hit[1]));
-  const reach = /reach (\d+) ft/.exec(roh);
-  if (reach) wb.feld(ent, A, 'reach', Number(reach[1]));
-  const range = /range (\d+(?:\/\d+)?) ft/.exec(roh);
-  if (range) wb.feld(ent, A, 'range', range[1]);
-  const dmg = /\{@damage ([^}|]+)\}\)?\s+(\w+) damage/.exec(roh);
-  if (dmg) {
-    wb.feld(ent, A, 'damage', dmg[1]!.trim());
-    const typ = dmg[2]!.toLowerCase();
-    if (['acid', 'bludgeoning', 'cold', 'fire', 'force', 'lightning', 'necrotic', 'piercing', 'poison', 'psychic', 'radiant', 'slashing', 'thunder'].includes(typ)) {
-      wb.feld(ent, A, 'damageType', typ);
-    }
-  }
-}
-
 /**
  * Ersetzt den Namen des Monsters im Text durch `{CREATURE}` und sagt, mit
  * welchem Namen der Text es nennt — „the rat" am Giant Rat bleibt beim
@@ -143,6 +115,37 @@ function teil(
 ): void {
   const typ = wort ? 'Action' : 'Feature';
   const { name, recharge, uses } = aktionsname(String(roh['name'] ?? (wort ? 'Action' : 'Trait')));
+  /* Ein Angriff ist einer für alle, die so angreifen; die Zahlen rechnet
+     der Statblock (D51, `angriff.ts`). */
+  const z = wort ? zerlegeAngriff(roh['entries'] ?? roh['entry']) : null;
+  if (wort && z) {
+    const schluessel = `Angriff|${wort}|${name}|${z.sorten.join(',')}|${z.schadensart}|${recharge ?? ''}|${uses ?? ''}`;
+    let ziel = geteilt.get(schluessel);
+    if (ziel) {
+      wb.bericht.geteilt.verwendungen += 1;
+      if (e['srd'] || e['srd52']) wb.karte(ziel, 'Source')['srd'] = true;
+      if (!wb.geteiltGezaehlt.has(ziel.id)) {
+        wb.bericht.geteilt.merkmale += 1;
+        wb.geteiltGezaehlt.add(ziel.id);
+      }
+    } else {
+      ziel = wb.anlegen('Action', name, schluessel, e);
+      wb.feld(ziel, 'Action', 'actionType', aktionsart(wb, wort).id);
+      wb.feld(ziel, 'Action', 'recharge', recharge);
+      wb.feld(ziel, 'Action', 'uses', uses);
+      wb.feld(ziel, 'Action', 'attack', z.sorten);
+      wb.feld(ziel, 'Action', 'damageType', z.schadensart);
+      geteilt.set(schluessel, ziel);
+    }
+    /* Die Kante bekommt eine Marke, damit die Vereinigung sie findet —
+       zwei gleichnamige Angriffe an einem Statblock sind zwei Kanten. */
+    const marke = wb.angriffe.length;
+    wb.kante(sb, 'composedOf', ziel.id, { _angriff: marke });
+    const kante = sb.relations!.find((r) => r.props?.['_angriff'] === marke)!;
+    wb.angriffe.push({ sb, ziel, kante, z, satz: z.rest.length ? wb.text(z.rest, 5) : '' });
+    return;
+  }
+  if (wort && JSON.stringify(roh['entries'] ?? '').includes('{@atk')) wb.bericht.angriffe.alsText += 1;
   const { text, wort: genannt } = platzhalter(wb.text(roh['entries'] ?? roh['entry'], 5), namen);
   const benutzt = text.includes('{CREATURE}');
   const schluessel = `${typ}|${wort ?? ''}|${name}|${text}`;
@@ -161,7 +164,6 @@ function teil(
       wb.feld(ziel, 'Action', 'actionType', aktionsart(wb, wort).id);
       wb.feld(ziel, 'Action', 'recharge', recharge);
       wb.feld(ziel, 'Action', 'uses', uses);
-      angriff(wb, ziel, roh['entries']);
     } else wb.feld(ziel, 'Feature', 'featureType', 'monster');
     wb.prosa(ziel, text);
     if (benutzt) wb.feld(ziel, 'Vars', 'bindings', { CREATURE: 'creature' });
