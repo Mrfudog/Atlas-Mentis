@@ -16,9 +16,30 @@ export const relations: Record<string, RelationDef> = {
     from: ['Statblock'],
     to: ['Rule'],
     section: 'Actions & traits',
+    /* **Was dieser Statblock anders macht** (D51): ein Biss ist ein Artikel
+       für alle, die beissen; die Kante trägt nur, was hier abweicht —
+       andere Würfel, Reichweite, ein Zusatzschaden, ein Satz nur für
+       diesen. `toHit` und `damageFlat` sind die **Buchzahl**, wo sie nicht
+       aus der Rechnung folgt: gezeigt wird das Buch, und dass die Zahl
+       fest steht, sieht man ihr an (`attackNumbers` im Modell). */
     props: {
       type: 'object',
-      properties: { vars: { type: 'object', title: 'Variable bindings' } },
+      properties: {
+        vars: { type: 'object', title: 'Variable bindings' },
+        ability: { type: 'string', title: 'Ability', enum: ['str', 'dex', 'con', 'int', 'wis', 'cha', 'finesse', 'spell'] },
+        damageDice: { type: 'string', title: 'Damage dice' },
+        damageType: { type: 'string', title: 'Damage type', enumRef: 'DamageType' },
+        reach: { type: 'number', min: 0, unit: 'ft', title: 'Reach' },
+        range: { type: 'string', format: 'measure', unit: 'ft', title: 'Range' },
+        target: { type: 'string', title: 'Target' },
+        toHitBonus: { type: 'number', title: 'To-hit bonus', format: 'signed' },
+        damageBonus: { type: 'number', title: 'Damage bonus', format: 'signed' },
+        extraDamageDice: { type: 'string', title: 'Extra damage dice' },
+        extraDamageType: { type: 'string', title: 'Extra damage type', enumRef: 'DamageType' },
+        toHit: { type: 'number', title: 'To hit (book, fixed)', format: 'signed' },
+        damageFlat: { type: 'number', title: 'Damage modifier (book, fixed)', format: 'signed' },
+        note: { type: 'string', format: 'long', title: 'Only here' },
+      },
     },
   },
 

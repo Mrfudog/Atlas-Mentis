@@ -546,11 +546,12 @@ export const fieldGroups = {
    * Eine Aktion: Dodge, Dash, und jede Aktion eines Statblocks. Die Art der
    * Aktion ist Pflicht und ein Verweis.
    *
-   * **Ein Angriff trägt seine Zahlen** (P4, Arbeitsplan §2.2): Treffer,
-   * Reichweite, Schaden und Schadensart stehen als Felder und nicht nur im
+   * **Ein Angriff trägt, worauf er rechnet** (P4, D51): Sorte, Attribut,
+   * Reichweite, Würfel und Schadensart stehen als Felder und nicht nur im
    * Satz „{@hit 4} to hit, reach 5 ft." — dann kann die Initiative damit
-   * würfeln, statt Text zu lesen. Der Text bleibt daneben; er sagt, was die
-   * Felder nicht sagen („one target", „and the target is grappled").
+   * würfeln, statt Text zu lesen. Trefferbonus und Schaden rechnet der
+   * Statblock, der ihn benutzt; der Text sagt nur noch, was die Felder
+   * nicht sagen.
    */
   ActionInfo: {
     schema: {
@@ -573,16 +574,31 @@ export const fieldGroups = {
           items: { type: 'string' },
           enum: ['melee weapon', 'ranged weapon', 'melee spell', 'ranged spell'],
         },
-        /* Gegeben und nicht gerechnet: der Statblock nennt die Zahl, und
-           bei Monstern folgt sie oft nicht aus Attribut und Übung. */
-        toHit: { type: 'number', title: 'To hit', format: 'signed' },
+        /* **Gerechnet am Statblock, nicht gegeben** (D51): ein Biss ist
+           ein Artikel für alle, die beissen, und die Zahlen gehören dem,
+           der beisst — Übung und Attribut stehen am Statblock. Hier steht,
+           worauf gerechnet wird; was ein Statblock anders macht, steht an
+           seiner Kante `composedOf` (`attackNumbers` im Modell).
+           `finesse` nimmt das bessere von STR und DEX, `spell` das
+           Zauberattribut; leer heisst Nahkampf STR, Fernkampf DEX. */
+        ability: {
+          type: 'string',
+          title: 'Ability',
+          enum: ['str', 'dex', 'con', 'int', 'wis', 'cha', 'finesse', 'spell'],
+        },
+        toHitBonus: { type: 'number', title: 'To-hit bonus', format: 'signed' },
         reach: { type: 'number', min: 0, unit: 'ft', title: 'Reach' },
         /* „80/320": normal und weit, wie an der Waffe. */
         range: { type: 'string', format: 'measure', unit: 'ft', title: 'Range' },
-        /* Ein Würfelausdruck wie `1d6+2`, ohne {{…}}: das Feld ist die
-           Angabe selbst und kein Text. */
-        damage: { type: 'string', title: 'Damage' },
+        target: { type: 'string', title: 'Target' },
+        /* Die Würfel ohne Modifikator (`2d4`) — der kommt vom Statblock. */
+        damageDice: { type: 'string', title: 'Damage dice' },
+        damageBonus: { type: 'number', title: 'Damage bonus', format: 'signed' },
         damageType: { type: 'string', title: 'Damage type', enumRef: 'DamageType' },
+        /* Zusatzschaden („plus 7 (2d6) poison damage"): ein zweiter Wurf
+           ohne Modifikator, mitgewürfelt. */
+        extraDamageDice: { type: 'string', title: 'Extra damage dice' },
+        extraDamageType: { type: 'string', title: 'Extra damage type', enumRef: 'DamageType' },
       },
     },
   },

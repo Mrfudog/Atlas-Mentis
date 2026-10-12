@@ -63,24 +63,22 @@ const scimitarHieb = art('action-0001', 'Action', 'Scimitar', {
   Action: {
     actionType: 'actiontype-0001',
     attack: ['melee weapon'],
-    toHit: 4,
     reach: 5,
-    damage: '1d6+2',
+    damageDice: '1d6',
     damageType: 'slashing',
   },
   Prose: { paragraph: ['{{+4}} to hit, reach 5 ft., one target. Hit: 5 ({{1d6+2}}) slashing damage.'] },
 });
 const kurzbogen = art('action-0002', 'Action', 'Shortbow', {
-  Action: { actionType: 'actiontype-0001', attack: ['ranged weapon'], toHit: 4, range: '80/320', damage: '1d6+2', damageType: 'piercing' },
+  Action: { actionType: 'actiontype-0001', attack: ['ranged weapon'], range: '80/320', damageDice: '1d6', damageType: 'piercing' },
 });
 const dolch = art('action-0003', 'Action', 'Dagger', {
   Action: {
     actionType: 'actiontype-0001',
     attack: ['melee weapon', 'ranged weapon'],
-    toHit: 5,
     reach: 5,
     range: '20/60',
-    damage: '1d4+2',
+    damageDice: '1d4',
     damageType: 'piercing',
   },
 });

@@ -4292,7 +4292,7 @@ function renderTrail(){
 var LAYOUT_ELEMENTS=[
   ["heading","Heading"],["text","Paragraph"],["fields","Field table"],
   ["description","Description"],["prose","Passages"],
-  ["composed","Composed rules"],["relations","Relations"],["image","Image"],
+  ["composed","Composed rules"],["usedBy","Used by"],["relations","Relations"],["image","Image"],
   ["linked","Linked articles"],
   ["knowledge","Knowledge groups"],["map","Map"],["sheet","Character sheet"],["inventory","Inventory"],["crafting","Crafting"],["board","Board"],["initiative","Initiative"],
   ["quests","Quest board"],["timeline","Timeline"],["live","Live"],["table","Table"],["prep","Prep board"],["crawl","Point-crawl"],["stack","Layer stack"],["members","Members"],["standing","Standing"],
@@ -4368,6 +4368,7 @@ function renderLayoutItem(item,e,ifn,vw){
     case "linked":      return elLinked(e,ifn,item);
     case "prose":       return elProse(e,ifn,item);
     case "composed":    return elComposed(e);
+    case "usedBy":      return elUsedBy(e);
     case "relations":   return elRelations(e);
     case "knowledge":   return elKnowledge(e,ifn,item);
     case "map":         return elMap(e,ifn,item);
@@ -4816,9 +4817,143 @@ function elLinked(e,ifn,item){
   return etwas?wrap:null;
 }
 
+/* ---------- Angriffe, am Statblock gerechnet (D51) ----------
+   Ein Biss ist ein Artikel für alle, die beissen. Er sagt, worauf
+   gerechnet wird und was gewöhnlich gewürfelt wird; Übung und Attribut
+   stehen am Statblock, also rechnet dieser:
+
+     Treffer = Übung + Mod(Attribut) + toHitBonus
+     Schaden = Würfel + Mod(Attribut) + damageBonus
+
+   Was ein Statblock anders macht, steht an seiner Kante `composedOf` und
+   nur dort; `toHit` und `damageFlat` dort sind die Buchzahl, wo sie nicht
+   aus der Rechnung folgt. Dieselben Regeln wie `attack.ts` im Paket. */
+var ATK_ABIL=["str","dex","con","int","wis","cha"];
+var ATK_ART={"melee weapon":"Melee Weapon Attack","ranged weapon":"Ranged Weapon Attack",
+  "melee spell":"Melee Spell Attack","ranged spell":"Ranged Spell Attack"};
+var ATK_EDGE=[["ability","Ability"],["damageDice","Damage dice"],["damageType","Damage type"],
+  ["reach","Reach (ft)"],["range","Range (ft)"],["target","Target"],["toHitBonus","To-hit bonus"],
+  ["damageBonus","Damage bonus"],["extraDamageDice","Extra damage dice"],
+  ["extraDamageType","Extra damage type"],["toHit","To hit (book, fixed)"],
+  ["damageFlat","Damage modifier (book, fixed)"],["note","Only here"]];
+function isAttackCard(a){ return !!a&&Array.isArray(a.attack)&&a.attack.length>0; }
+function atkNum(v){ var n=typeof v==="number"?v:(typeof v==="string"&&v.trim()?Number(v):NaN); return isFinite(n)?n:null; }
+function atkAbility(wanted,kinds,stats){
+  var w=typeof wanted==="string"?wanted:"";
+  if(ATK_ABIL.indexOf(w)>=0)return w;
+  if(w==="spell"){ var sa=stats.spellAbility; return ATK_ABIL.indexOf(sa)>=0?sa:null; }
+  if(w==="finesse") return (atkNum(stats.dex)||-99)>(atkNum(stats.str)||-99)?"dex":"str";
+  if(kinds.some(function(k){return k.indexOf("spell")>=0;})) return atkAbility("spell",kinds,stats);
+  var fern=kinds.some(function(k){return k.indexOf("ranged")===0;}),
+      nah=kinds.some(function(k){return k.indexOf("melee")===0;});
+  return fern&&!nah?"dex":"str";
+}
+function atkAverage(expr,flat){
+  var t=String(expr||"").replace(/\s+/g,""); if(!t)return null;
+  var teile=t.match(/[+-]?[^+-]+/g); if(!teile)return null;
+  var sum=flat||0;
+  for(var i=0;i<teile.length;i++){
+    var m=/^([+-]?)(\d*)d(\d+)$/i.exec(teile[i]);
+    if(m){ sum+=(m[1]==="-"?-1:1)*Number(m[2]||1)*(Number(m[3])+1)/2; continue; }
+    var f=Number(teile[i]); if(!isFinite(f))return null; sum+=f;
+  }
+  return Math.floor(sum);
+}
+function attackNumbers(a,stats,edge){
+  if(!isAttackCard(a))return null;
+  edge=edge||{};
+  function eff(k){ return edge[k]!==undefined&&edge[k]!==""?edge[k]:a[k]; }
+  var kinds=a.attack.map(String);
+  var ab=atkAbility(eff("ability"),kinds,stats);
+  var mod=ab&&atkNum(stats[ab])!==null?Math.floor((atkNum(stats[ab])-10)/2):null;
+  var prof=atkNum(stats.prof);
+  var gerechnet=prof!==null&&mod!==null?prof+mod+(atkNum(eff("toHitBonus"))||0):null;
+  var fest=atkNum(edge.toHit);
+  var dice=String(eff("damageDice")||"").trim();
+  var flat=atkNum(edge.damageFlat);
+  var bonus=flat!==null?flat:(mod!==null?mod+(atkNum(eff("damageBonus"))||0):null);
+  var dmg=dice?dice+(bonus?(bonus<0?" - "+(-bonus):" + "+bonus):""):(bonus!==null?String(bonus):"");
+  var x=String(eff("extraDamageDice")||"").trim();
+  return {kinds:kinds,ability:ab,toHit:fest!==null?fest:gerechnet,toHitFixed:fest!==null,
+    toHitComputed:gerechnet,damageDice:dice,damageBonus:bonus,damageFixed:flat!==null,damage:dmg,
+    average:dice?atkAverage(dice,bonus||0):bonus,damageType:String(eff("damageType")||""),
+    extra:x?{dice:x,type:String(eff("extraDamageType")||""),average:atkAverage(x,0)}:null,
+    reach:atkNum(eff("reach")),range:eff("range")!=null&&eff("range")!==""?String(eff("range")):null,
+    target:String(eff("target")||""),note:String(edge.note||"")};
+}
+function attackLine(n){
+  var art=n.kinds.map(function(k){return ATK_ART[k]||k;}).join(" or ");
+  var teile=[n.toHit!==null?"{{"+(n.toHit<0?n.toHit:"+"+n.toHit)+"}} to hit":"— to hit"];
+  if(n.reach!==null) teile.push("reach "+n.reach+" ft.");
+  if(n.range) teile.push("range "+n.range+" ft.");
+  if(n.target) teile.push(n.target);
+  var schaden=n.damage?(n.average==null?"—":n.average)+" ({{"+n.damage+"}})"+(n.damageType?" "+n.damageType:"")+" damage":"";
+  var plus=n.extra?" plus "+(n.extra.average==null?"—":n.extra.average)+" ({{"+n.extra.dice+"}})"+(n.extra.type?" "+n.extra.type:"")+" damage":"";
+  return "*"+art+":* "+teile.join(", ")+"."+(schaden?" *Hit:* "+schaden+plus+".":"");
+}
+/* Die Zahlen eines Statblocks, wie der Bogen sie liest: beide Karten als eine. */
+function atkStats(sb){
+  var c=(sb&&sb.components)||{};
+  return Object.assign({},c.Abilities||{},c.Statblock||{});
+}
+
+/* Was dieser Statblock am Angriff anders macht — geschrieben an seine
+   Kante, nicht in den Angriff: der gehört allen, die so angreifen. Leer
+   heisst „wie der Angriff". */
+function adjustAttack(owner,r,t){
+  dialog("“"+nameOf(t)+"” on "+nameOf(owner),function(host,close){
+    var a=(t.components||{}).Action||{}, p=r.props||{}, felder={};
+    host.appendChild(el("p",{class:"hint",
+      text:"Empty means: as the attack says. The two book fields fix a number the sum would not give; the rest changes what is reckoned."}));
+    ATK_EDGE.forEach(function(f){
+      var k=f[0], node;
+      if(k==="ability"){
+        node=el("select",{class:"i"});
+        node.appendChild(el("option",{value:""},"as the attack ("+(a.ability||"by kind")+")"));
+        ATK_ABIL.concat(["finesse","spell"]).forEach(function(x){ node.appendChild(el("option",{value:x},x)); });
+        node.value=p[k]||"";
+      } else if(k==="damageType"||k==="extraDamageType"){
+        node=el("select",{class:"i"});
+        node.appendChild(el("option",{value:""},a[k]?"as the attack ("+a[k]+")":"—"));
+        (enumWerte({enumRef:"DamageType"})||[]).forEach(function(x){ node.appendChild(el("option",{value:x},x)); });
+        node.value=p[k]||"";
+      } else if(k==="note"){
+        node=el("textarea",{class:"i"}); node.value=p[k]||"";
+      } else {
+        node=el("input",{class:"i",type:"text",value:p[k]==null?"":String(p[k]),
+          placeholder:a[k]==null?"":String(a[k])});
+      }
+      felder[k]=node;
+      host.appendChild(field(f[1],node));
+    });
+    actions(host,close,function(){
+      var neu=Object.assign({},r.props||{});
+      ATK_EDGE.forEach(function(f){
+        var k=f[0], v=String(felder[k].value||"").trim();
+        if(!v){ delete neu[k]; return; }
+        var zahl=["reach","toHitBonus","damageBonus","toHit","damageFlat"].indexOf(k)>=0;
+        if(zahl){ var n=Number(v); if(!isFinite(n))return; neu[k]=n; } else neu[k]=v;
+      });
+      if(Object.keys(neu).length) r.props=neu; else delete r.props;
+      persist(owner);
+    },"Save");
+  });
+}
+
 function elComposed(e){
+  var owner=e;
   var comp=(e.relations||[]).filter(function(r){ var rd=REG.relations[r.type]; return rd&&rd.section; });
+  /* Eine Kreatur trägt ihre Aktionen nicht selbst — sie stehen an ihrem
+     Statblock. Dann zeichnet der Kampfreiter die seinen. */
+  if(!comp.length){
+    var sb=statblockOf(e);
+    if(sb&&sb!==e){
+      owner=resolvedOf(sb);
+      comp=(owner.relations||[]).filter(function(r){ var rd=REG.relations[r.type]; return rd&&rd.section; });
+    }
+  }
   if(!comp.length)return null;
+  var stats=atkStats(resolvedOf(owner));
   var wrap=el("div");
   var groups={};
   comp.forEach(function(r){ var s=REG.relations[r.type].section; (groups[s]=groups[s]||[]).push(r); });
@@ -4832,15 +4967,61 @@ function elComposed(e){
       var tn=el("div",{class:"cn"});
       tn.appendChild(el("button",{class:"ref",type:"button",onclick:function(){go({k:"art",id:t.id});}},
         (r.props&&r.props.vars&&r.props.vars.NAME)||nameOf(t)));
+      var n=attackNumbers(((t.components||{}).Action||{}),stats,r.props||{});
+      if(n){
+        /* Woran man eine Buchzahl erkennt: sie steht fest, und die Rechnung
+           steht im Titel daneben. */
+        if(n.toHitFixed||n.damageFixed) tn.appendChild(el("span",{class:"pill q",
+          title:"The book's number, fixed at this statblock"+
+            (n.toHitFixed?" — the sum would give "+(n.toHitComputed==null?"nothing":sgn(n.toHitComputed))+" to hit":""),
+          text:"book"}));
+        if(canWrite()&&!inPlacement) tn.appendChild(el("button",{class:"btn sm gh",type:"button",
+          title:"What this statblock does differently",onclick:function(){ adjustAttack(owner,r,t); }},"adjust"));
+      }
       box.appendChild(tn);
+      if(n) box.appendChild(para(attackLine(n),"cb"));
       var body=((t.components||{}).Description||{}).description||(allProse(t)[0]||{}).value||"";
       /* Reihenfolge nach REQ-174: Bindung an der Kante → der *nutzende*
          Artikel → Kampagnenregister. Der Statblock trägt DC=12, nicht die
          Regel — gegen die Regel aufzulösen lässt {DC} stehen. */
-      box.appendChild(para(fillVars(body,(r.props&&r.props.vars)||null,e),"cb"));
+      if(body) box.appendChild(para(fillVars(body,(r.props&&r.props.vars)||null,owner),"cb"));
+      if(n&&n.note) box.appendChild(para(fillVars(n.note,(r.props&&r.props.vars)||null,owner),"cb"));
       wrap.appendChild(box);
     });
   });
+  return wrap;
+}
+
+/* **Wer es trägt, nach Kreaturentyp** (Entscheidung 12.10.2026). Ein Biss,
+   ein Merkmal, eine Regel, die viele Statblöcke zusammensetzen: woher es
+   kommt, sagt am ehesten, wer es hat — die Tiere, die Drachen. Gerechnet
+   aus den Rückbezügen und nicht gespeichert. */
+function elUsedBy(e){
+  var nutzer=[];
+  ENT.forEach(function(o){
+    if(!articleVisible(o)||isInstance(o))return;
+    if((o.relations||[]).some(function(r){ return r.to===e.id&&relDef(r.type).section; })) nutzer.push(o);
+  });
+  if(!nutzer.length)return null;
+  var gruppen={};
+  nutzer.forEach(function(o){
+    var ct=String(((o.components||{}).Statblock||{}).creatureType||"").toLowerCase();
+    var g=ct?ct.split(/[\s(]/)[0]:ifaceName(o);
+    (gruppen[g]=gruppen[g]||[]).push(o);
+  });
+  var wrap=el("div",{class:"usedby"});
+  wrap.appendChild(el("div",{class:"sec",text:"Used by ("+nutzer.length+")"}));
+  Object.keys(gruppen).sort(function(a,b){ return gruppen[b].length-gruppen[a].length||a.localeCompare(b); })
+    .forEach(function(g){
+      var liste=gruppen[g].sort(function(a,b){ return nameOf(a).localeCompare(nameOf(b)); });
+      var zeile=el("div",{class:"rusers"});
+      zeile.appendChild(el("span",{class:"rl",text:g+" · "+liste.length}));
+      liste.slice(0,24).forEach(function(o){
+        zeile.appendChild(el("button",{class:"ref",type:"button",onclick:function(){go({k:"art",id:o.id});}},nameOf(o)));
+      });
+      if(liste.length>24) zeile.appendChild(el("span",{class:"co",text:"and "+(liste.length-24)+" more"}));
+      wrap.appendChild(zeile);
+    });
   return wrap;
 }
 
@@ -12862,7 +13043,12 @@ var BEGRIFFE=[
    "the one below. There is no counter, because the same number in two "+
    "places drifts apart. What one rule does to another (paralysed imposes "+
    "incapacitated, incapacitated prevents reactions) is an edge too "+
-   "(affects), stored forward; nothing evaluates it yet. A spell is "+
+   "(affects), stored forward; nothing evaluates it yet. An attack is "+
+   "written once for everyone who attacks that way — one Bite — and its "+
+   "numbers belong to whoever bites: to hit and damage are worked out from "+
+   "the statblock's proficiency and ability, and what one statblock does "+
+   "differently (other dice, a rider, the book's own number where the sum "+
+   "would give another) sits on its composedOf edge. A spell is "+
    "written once; who casts it, and how, sits on an edge from the caster "+
    "(casts: prepared, known, innate or from an item, with uses, level and "+
    "charges) — the same Fireball is prepared by the mage and worth three "+
@@ -13245,6 +13431,32 @@ function renderHowto(v){
       "Wand of Magic Missiles  casts → Magic Missile   mode item · charges 1";
     v.appendChild(el("pre",{class:"code",text:rechnung}));
   }
+
+  /* ---- Ein Angriff, am Statblock gerechnet (D51) ----
+     Mit derselben Rechnung, die jeder Statblock nimmt: ändert jemand
+     `attackNumbers`, ändert sich das Beispiel mit. */
+  v.appendChild(el("div",{class:"rsec",text:"An attack, and the statblock that makes it"}));
+  v.appendChild(el("p",{class:"hint"},
+    "One Bite for everyone who bites. The attack says what kind it is, which "+
+    "ability it reckons on, the dice it usually rolls and the damage type; the "+
+    "statblock using it supplies proficiency and the ability score, and to hit "+
+    "and damage are worked out on read. What one statblock does differently "+
+    "sits on its composedOf edge and nowhere else — other dice, a rider, or "+
+    "the book's own number where the sum would give another, marked as fixed. "+
+    "The attack's page shows who uses it, by creature type."));
+  var bissBsp={attack:["melee weapon"],damageDice:"2d8",damageType:"piercing",reach:5,target:"one target"};
+  var wolfBsp={prof:2,str:12,dex:15}, haiBsp={prof:2,str:18,dex:13};
+  var kanteWolf={ability:"dex",damageDice:"2d4",note:"If the target is a creature, it must succeed on a DC 11 Strength saving throw or be knocked prone."};
+  var nW=attackNumbers(bissBsp,wolfBsp,kanteWolf), nH=attackNumbers(bissBsp,haiBsp,{});
+  var nB=attackNumbers(bissBsp,haiBsp,{toHit:7});
+  v.appendChild(el("pre",{class:"code",text:
+    "Bite        attack melee weapon · damageDice 2d8 · piercing · reach 5 ft.\n\n"+
+    "Hunter Shark  prof 2 · STR 18 (+4)        edge: —\n"+
+    "  to hit = prof + mod(str)  →  "+sgn(nH.toHit)+"     damage  "+nH.damage+"  ("+nH.average+")\n"+
+    "Wolf          prof 2 · DEX 15 (+2)        edge: ability dex · damageDice 2d4 · note\n"+
+    "  to hit = prof + mod(dex)  →  "+sgn(nW.toHit)+"     damage  "+nW.damage+"  ("+nW.average+")\n"+
+    "Odd beast     prof 2 · STR 18 (+4)        edge: toHit 7 (book)\n"+
+    "  to hit "+sgn(nB.toHit)+" fixed — the sum would give "+sgn(nB.toHitComputed)}));
 
   /* ---- Charakterbau, durchgerechnet (M3, M6) ----
      Mit den Formeln aus dem Register und derselben Rechnung, die der
