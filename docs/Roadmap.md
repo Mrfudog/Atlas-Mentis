@@ -374,6 +374,11 @@ A, B und D stehen. Was bleibt, in der Reihenfolge, in der es sich lohnt:
    Reihenfolge in [5etools-Arbeitsplan.md](5etools-Arbeitsplan.md):
    sieben Pakete P1–P7, je Paket eine Sitzung mit fertigem Auftrag.
    P1 (Markdown, Id-Verweise, Würfel im Text) steht seit 2026-10-09.
-6. **Der Ortsimporter als TypeScript** (C4, Rest). Das Register steht seit
+6. **Die UI-Runde** (REQ-204–223, D52): Initiative wie Improved
+   Initiative, Inventar nach Basils Blatt, Ziehen am Bogen, gelernte
+   Blaupausen, Bewegungsrechner und Zonen mit Regeln auf der Karte,
+   Zeitleisten der Weltgeschichte — fünf Pakete U1–U5 in
+   [UI-Arbeitsplan.md](UI-Arbeitsplan.md).
+7. **Der Ortsimporter als TypeScript** (C4, Rest). Das Register steht seit
    2026-09-20 nur noch einmal: `pnpm --filter @nw/registry emit-seed`
    erzeugt die Zeilen des Prototyps aus `packages/registry`.

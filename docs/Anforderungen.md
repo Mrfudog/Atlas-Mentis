@@ -1,6 +1,6 @@
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-09. Jede Nummer aus dem Vault (`VTT/Requirements.md` in diesem Repo, v0.7) und aus der Ernte
+Stand 2026-10-12. Jede Nummer aus dem Vault (`VTT/Requirements.md` in diesem Repo, v0.7) und aus der Ernte
 ([Requirements from Kanalgang.md](Requirements%20from%20Kanalgang.md)), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs` aus einer Zuordnung, die ein Urteil ist:
 wer eine Zeile anders sieht, ändert sie dort und lässt das Skript laufen.
@@ -13,7 +13,7 @@ wer eine Zeile anders sieht, ändert sie dort und lässt das Skript laufen.
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: **105** steht · **10** ersetzt · **27** teils · **55** offen · **6** verworfen — 203 Anforderungen.
+Zusammen: **105** steht · **10** ersetzt · **27** teils · **75** offen · **6** verworfen — 223 Anforderungen.
 
 ## Aus den Gesprächen (September und Oktober 2026)
 
@@ -241,6 +241,26 @@ Was nicht als Nummer im Vault steht, sondern hier entschieden wurde — alles ge
 | REQ-201 | Aus einer Stelle im Chat wird Kampagneninhalt: eine Nachricht (oder ein markierter Abschnitt) wird zur Idee, zum Todo, zum Faden oder zu einem ContentBlock an einem Artikel, mit Rückverweis auf die Stelle | 3 | **offen** |  |
 | REQ-202 | Chats stehen ausserhalb von Abzug, Ausfuhr und Recap: ein Faden zwischen zwei Spielern gehört weder in den Prod-nach-preprod-Abzug noch in eine Kampagnenausfuhr, und die SL liest nicht mit | 2 | **offen** |  |
 | REQ-203 | Fraktionen mit Rängen: `Faction.ranks` als Leiter (niedrigster zuerst), der Rang eines Mitglieds an der Kante `memberOf`, und eine Wissenszuteilung an die Fraktion darf einen Mindestrang nennen — was der Zirkel weiss, weiss der Novize noch nicht | 2 | **steht** | `Faction.ranks`, `memberOf.props.rank`, `knownBy.props.rank` als Mindestrang (7.10., A7) |
+| REQ-204 | Spielleiter-Schirm je Kampagne: Fenster (mehrere Bildschirme als Browser-Reiter), darin Plätze, die ein Board oder ein Werkzeug zeigen; zuklappbar, umstellbar, zwischen Fenstern verschiebbar | 3 | **offen** |  |
+| REQ-205 | Ein Board je Geschichtsartikel (Kampagne, Kapitel, Sitzung, nicht Szene) und Regel-Boards; der Schirm schaltet zwischen ihnen, die Artikelansicht filtert nach Artikeln aus den offenen Boards | 3 | **offen** |  |
+| REQ-206 | Bewegungsrechner auf der Karte: Diagonalen 5-10-5, gezählt je Kreatur und Zug und mit jedem Zug neu; Modi „genauer Weg“, „grösste Reichweite“, „aus“; das Tempo des Zuges ist eine Zahl, die man ändert (Spurt, Klettern, Schwimmen, Sonderfälle), und die SL darf übersteuern | 3 | **offen** |  |
+| REQ-207 | Wählbarer Pfad: Wegpunkte setzen (um eine Falle herum, nicht an einem Gegner vorbei), zwischen ihnen der günstigste Weg; die Diagonalenzählung läuft über die Wegpunkte weiter; Gefahren und Reichweite von Gegnern können gemieden werden | 3 | **offen** |  |
+| REQ-208 | Zonen mit eigenen Regeln: eine Zonenart ist ein Regelartikel; Bewegungskosten, Licht, Sicht und „versteckt bis passive Wahrnehmung n“ rechnet die Karte, Schaden, Rettungswurf, Zustand und freie Regeln zeigt sie und schreibt sie beim Betreten ins Protokoll | 3 | **offen** |  |
+| REQ-209 | Aufdecken: von Hand oder beim Bestätigen einer Bewegung, dann **entlang des Pfads** Schritt für Schritt; von Hand zeigt das Token, wen es sieht und von wem es gesehen wird (Sichtlinie, passive Wahrnehmung gegen Heimlichkeit, −5 im Dämmerlicht) | 3 | **offen** |  |
+| REQ-210 | Karte und Initiative je als Vollbild, je mit SL- und Spieleransicht; Spielende bewegen ihre eigenen Tokens und prüfen die Reichweite selbst | 3 | **offen** |  |
+| REQ-211 | Initiative wie Improved Initiative: je Zeile Initiative, RK, TP und Zustände, aus der Zeile der Statblock | 2 | **offen** |  |
+| REQ-212 | Zustände und Notizen mit Dauer: Anzahl Runden, Anker (wessen Zug) und Zeitpunkt (Anfang oder Ende dieses Zuges); eine Notiz ist ein freier Text mit derselben Dauer | 2 | **offen** |  |
+| REQ-213 | Initiative der Spielenden: die eigene Reihenfolge und jede Kreatur, die aufgedeckt oder schon beteiligt ist; nicht erkannte Kreaturen mit Decknamen, TP von Gegnern als Wort | 3 | **offen** |  |
+| REQ-214 | Ausrüstungsfigur nach dem Inventarblatt: Figur je Kreatur wählbar (männlich, weiblich, neutral) und dort gespeichert; Plätze Kopf, Schulter, Torso, rechte und linke Hand, Beine, Stiefel, Gurt mit zwei Holstern, Ringe je Hand, Halskette | 4 | **offen** |  |
+| REQ-215 | Tragraster aus Grösse und Statblock: ein Grundquadrat nach Grösse (Tiny 3 … Large 6) und ein Zusatzquadrat, das eine Rechnung gegen den Statblock des Trägers ergibt — beim Lesen gerechnet, nie eingetippt | 3 | **offen** |  |
+| REQ-216 | Behälter in Behältern: jeder Behälter gibt eine Ziehstufe dazu, ausgehend davon, wo er selbst liegt; die Basiszonen kommen aus dem Blatt und sind je Behälter änderbar | 3 | **offen** |  |
+| REQ-217 | Ziehen am Bogen: unter Aktion, Bonusaktion usw. je ein Eintrag „Ziehen“; ein Klick zeigt, was sich mit dieser Aktion herausnehmen lässt, mit Dauer | 3 | **offen** |  |
+| REQ-218 | Blaupausen werden gelernt: alle Rezepte sind sichtbar, ungelernte mit „muss noch gelernt werden“ (ohne festen Fundort); Filter „kann der Charakter“ und „alle“, „machbar“ und „fast“, nach Material und nach Beruf | 3 | **offen** |  |
+| REQ-219 | Material wird beim Start an den Vorgang gebunden: es verlässt den Vorrat und kann nicht doppelt oder anderweitig gebraucht werden; was beim Misslingen zurückkommt, sagt `Recipe.onFailure` | 3 | **offen** |  |
+| REQ-220 | Zeitleisten der Weltgeschichte: mehrere Spuren (ein Krieg, eine Dynastie, Zeitalter) neben der Kampagnenzeitleiste; ein Ereignis mit Spanne enthält seine Ereignisse, und die Kampagne ist eine Spur unter ihnen | 3 | **offen** |  |
+| REQ-221 | Begegnungsbau: Schwierigkeit aus den XP-Schwellen der Gruppe mit Multiplikator nach Anzahl (2014), Kreaturen aus dem Kompendium, dann auf die Karte setzen und Initiative starten | 3 | **offen** |  |
+| REQ-222 | Stufenaufstieg: Schritte aus Klassen- und Unterklassentabellen (TP, Attributsverbesserung oder Talent, Zauber), Folgewerte gerechnet | 4 | **offen** |  |
+| REQ-223 | Regelsysteme als Rahmen (Taverne, Alley, Kanalisation): ein Ort, seine Kennzahlen, ein Wochenwurf und ein Protokoll | 4 | **offen** |  |
 
 ## Was offen ist und wehtut
 
@@ -266,6 +286,8 @@ Offene Anforderungen mit Priorität 1 bis 3, nach Bereich:
 - **REQ-166** (2, teils) — Board-first authoring: create entities directly on the canvas (into the campaign layer), choose their facet and place them in one flow — *Anlegen auf dem Board*
 - **REQ-192** (2, teils) — Optimistic concurrency for non-realtime edits: per-entity revision check; the second writer is rejected with a merge prompt rather than silently winning — *Prototyp; Server ohne Revisionsprüfung*
 - **REQ-202** (2, offen) — Chats stehen ausserhalb von Abzug, Ausfuhr und Recap: ein Faden zwischen zwei Spielern gehört weder in den Prod-nach-preprod-Abzug noch in eine Kampagnenausfuhr, und die SL liest nicht mit
+- **REQ-211** (2, offen) — Initiative wie Improved Initiative: je Zeile Initiative, RK, TP und Zustände, aus der Zeile der Statblock
+- **REQ-212** (2, offen) — Zustände und Notizen mit Dauer: Anzahl Runden, Anker (wessen Zug) und Zeitpunkt (Anfang oder Ende dieses Zuges); eine Notiz ist ein freier Text mit derselben Dauer
 - **REQ-007** (3, offen) — Stack expert settings: layer priority, per-entry pick, disable single override, flatten into independent layer
 - **REQ-022** (3, offen) — Derived asset variants: thumbnails, map tiles, PDF page renders, stored app-side
 - **REQ-025** (3, offen) — CalendarSystem definition: months, eras, moons, configurable per world/system — *nur die Einstellung `calendar`; keine Kalenderzeile*
@@ -294,4 +316,19 @@ Offene Anforderungen mit Priorität 1 bis 3, nach Bereich:
 - **REQ-187** (3, offen) — Table display mode: a shared read-only presentation view for a screen at the table, distinct from per-player accounts
 - **REQ-200** (3, offen) — Chat: Fäden zwischen SL und einzelnen Spielern und zwischen Spielern untereinander, an der Kampagne und nicht an einer Sitzung
 - **REQ-201** (3, offen) — Aus einer Stelle im Chat wird Kampagneninhalt: eine Nachricht (oder ein markierter Abschnitt) wird zur Idee, zum Todo, zum Faden oder zu einem ContentBlock an einem Artikel, mit Rückverweis auf die Stelle
+- **REQ-204** (3, offen) — Spielleiter-Schirm je Kampagne: Fenster (mehrere Bildschirme als Browser-Reiter), darin Plätze, die ein Board oder ein Werkzeug zeigen; zuklappbar, umstellbar, zwischen Fenstern verschiebbar
+- **REQ-205** (3, offen) — Ein Board je Geschichtsartikel (Kampagne, Kapitel, Sitzung, nicht Szene) und Regel-Boards; der Schirm schaltet zwischen ihnen, die Artikelansicht filtert nach Artikeln aus den offenen Boards
+- **REQ-206** (3, offen) — Bewegungsrechner auf der Karte: Diagonalen 5-10-5, gezählt je Kreatur und Zug und mit jedem Zug neu; Modi „genauer Weg“, „grösste Reichweite“, „aus“; das Tempo des Zuges ist eine Zahl, die man ändert (Spurt, Klettern, Schwimmen, Sonderfälle), und die SL darf übersteuern
+- **REQ-207** (3, offen) — Wählbarer Pfad: Wegpunkte setzen (um eine Falle herum, nicht an einem Gegner vorbei), zwischen ihnen der günstigste Weg; die Diagonalenzählung läuft über die Wegpunkte weiter; Gefahren und Reichweite von Gegnern können gemieden werden
+- **REQ-208** (3, offen) — Zonen mit eigenen Regeln: eine Zonenart ist ein Regelartikel; Bewegungskosten, Licht, Sicht und „versteckt bis passive Wahrnehmung n“ rechnet die Karte, Schaden, Rettungswurf, Zustand und freie Regeln zeigt sie und schreibt sie beim Betreten ins Protokoll
+- **REQ-209** (3, offen) — Aufdecken: von Hand oder beim Bestätigen einer Bewegung, dann **entlang des Pfads** Schritt für Schritt; von Hand zeigt das Token, wen es sieht und von wem es gesehen wird (Sichtlinie, passive Wahrnehmung gegen Heimlichkeit, −5 im Dämmerlicht)
+- **REQ-210** (3, offen) — Karte und Initiative je als Vollbild, je mit SL- und Spieleransicht; Spielende bewegen ihre eigenen Tokens und prüfen die Reichweite selbst
+- **REQ-213** (3, offen) — Initiative der Spielenden: die eigene Reihenfolge und jede Kreatur, die aufgedeckt oder schon beteiligt ist; nicht erkannte Kreaturen mit Decknamen, TP von Gegnern als Wort
+- **REQ-215** (3, offen) — Tragraster aus Grösse und Statblock: ein Grundquadrat nach Grösse (Tiny 3 … Large 6) und ein Zusatzquadrat, das eine Rechnung gegen den Statblock des Trägers ergibt — beim Lesen gerechnet, nie eingetippt
+- **REQ-216** (3, offen) — Behälter in Behältern: jeder Behälter gibt eine Ziehstufe dazu, ausgehend davon, wo er selbst liegt; die Basiszonen kommen aus dem Blatt und sind je Behälter änderbar
+- **REQ-217** (3, offen) — Ziehen am Bogen: unter Aktion, Bonusaktion usw. je ein Eintrag „Ziehen“; ein Klick zeigt, was sich mit dieser Aktion herausnehmen lässt, mit Dauer
+- **REQ-218** (3, offen) — Blaupausen werden gelernt: alle Rezepte sind sichtbar, ungelernte mit „muss noch gelernt werden“ (ohne festen Fundort); Filter „kann der Charakter“ und „alle“, „machbar“ und „fast“, nach Material und nach Beruf
+- **REQ-219** (3, offen) — Material wird beim Start an den Vorgang gebunden: es verlässt den Vorrat und kann nicht doppelt oder anderweitig gebraucht werden; was beim Misslingen zurückkommt, sagt `Recipe.onFailure`
+- **REQ-220** (3, offen) — Zeitleisten der Weltgeschichte: mehrere Spuren (ein Krieg, eine Dynastie, Zeitalter) neben der Kampagnenzeitleiste; ein Ereignis mit Spanne enthält seine Ereignisse, und die Kampagne ist eine Spur unter ihnen
+- **REQ-221** (3, offen) — Begegnungsbau: Schwierigkeit aus den XP-Schwellen der Gruppe mit Multiplikator nach Anzahl (2014), Kreaturen aus dem Kompendium, dann auf die Karte setzen und Initiative starten
 
