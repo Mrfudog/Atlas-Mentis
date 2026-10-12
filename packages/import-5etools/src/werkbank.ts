@@ -44,6 +44,10 @@ export interface Bericht {
   typen: Map<string, number>;
   /** Gleichlautende Merkmale, die einmal angelegt und mehrfach verwendet werden. */
   geteilt: { merkmale: number; verwendungen: number };
+  /** Art → Artikel, die mit einem gleichen vereint wurden (`doppel.ts`). */
+  vereint: Map<string, number>;
+  /** Art → Fassungen, die Variante einer geltenden wurden (`doppel.ts`). */
+  fassungen: Map<string, number>;
 }
 
 export function neuerBericht(): Bericht {
@@ -54,6 +58,8 @@ export function neuerBericht(): Bericht {
     fremdeQuellen: new Map(),
     typen: new Map(),
     geteilt: { merkmale: 0, verwendungen: 0 },
+    vereint: new Map(),
+    fassungen: new Map(),
   };
 }
 
@@ -91,6 +97,8 @@ export class Werkbank {
   private readonly nummern = new Map<string, number>();
   private readonly nachSchluessel = new Map<string, Entity>();
   private readonly nachName = new Map<string, Entity[]>();
+  /** Peg → Bücher, in die der Eintrag neu gedruckt wurde (`reprintedAs`, `doppel.ts`). */
+  readonly nachdrucke = new Map<string, string[]>();
   /** Die Systemebene, in der alles liegt (Arbeitsplan §1). */
   ebene: Entity | undefined;
   /** Die Art, die gerade gefüllt wird — für Zählungen aus dem Text. */

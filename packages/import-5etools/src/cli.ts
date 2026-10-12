@@ -74,6 +74,10 @@ try {
     mkdirSync(ziel, { recursive: true });
     for (const e of teil) writeFileSync(join(ziel, `${e.id}.json`), `${JSON.stringify(e, null, 1)}\n`);
     console.log(`Ausschnitt: ${teil.length} Artikel nach ${ziel}`);
+    if (teil.fehlt.length) {
+      console.error(`Im Ausschnitt nicht gefunden: ${teil.fehlt.join(', ')}`);
+      process.exitCode = 1;
+    }
   }
 } catch (x) {
   if (x instanceof Prueffehler) {
