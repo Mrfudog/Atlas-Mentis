@@ -13,7 +13,7 @@ wer eine Zeile anders sieht, ändert sie dort und lässt das Skript laufen.
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: **105** steht · **10** ersetzt · **27** teils · **75** offen · **6** verworfen — 223 Anforderungen.
+Zusammen: **107** steht · **10** ersetzt · **28** teils · **72** offen · **6** verworfen — 223 Anforderungen.
 
 ## Aus den Gesprächen (September und Oktober 2026)
 
@@ -248,9 +248,9 @@ Was nicht als Nummer im Vault steht, sondern hier entschieden wurde — alles ge
 | REQ-208 | Zonen mit eigenen Regeln: eine Zonenart ist ein Regelartikel; Bewegungskosten, Licht, Sicht und „versteckt bis passive Wahrnehmung n“ rechnet die Karte, Schaden, Rettungswurf, Zustand und freie Regeln zeigt sie und schreibt sie beim Betreten ins Protokoll | 3 | **offen** |  |
 | REQ-209 | Aufdecken: von Hand oder beim Bestätigen einer Bewegung, dann **entlang des Pfads** Schritt für Schritt; von Hand zeigt das Token, wen es sieht und von wem es gesehen wird (Sichtlinie, passive Wahrnehmung gegen Heimlichkeit, −5 im Dämmerlicht) | 3 | **offen** |  |
 | REQ-210 | Karte und Initiative je als Vollbild, je mit SL- und Spieleransicht; Spielende bewegen ihre eigenen Tokens und prüfen die Reichweite selbst | 3 | **offen** |  |
-| REQ-211 | Initiative wie Improved Initiative: je Zeile Initiative, RK, TP und Zustände, aus der Zeile der Statblock | 2 | **offen** |  |
-| REQ-212 | Zustände und Notizen mit Dauer: Anzahl Runden, Anker (wessen Zug) und Zeitpunkt (Anfang oder Ende dieses Zuges); eine Notiz ist ein freier Text mit derselben Dauer | 2 | **offen** |  |
-| REQ-213 | Initiative der Spielenden: die eigene Reihenfolge und jede Kreatur, die aufgedeckt oder schon beteiligt ist; nicht erkannte Kreaturen mit Decknamen, TP von Gegnern als Wort | 3 | **offen** |  |
+| REQ-211 | Initiative wie Improved Initiative: je Zeile Initiative, RK, TP und Zustände, aus der Zeile der Statblock | 2 | **steht** | Prototyp: RK und TP-Maximum vom Statblock der Instanz (`participantStats`), Statblock in `quick` neben der Reihe (D53) |
+| REQ-212 | Zustände und Notizen mit Dauer: Anzahl Runden, Anker (wessen Zug) und Zeitpunkt (Anfang oder Ende dieses Zuges); eine Notiz ist ein freier Text mit derselben Dauer | 2 | **steht** | `anchor`/`at` an `participates.props.conditions`, Notiz mit `text`; `tickEntries`, `expiresAt` (D53) |
+| REQ-213 | Initiative der Spielenden: die eigene Reihenfolge und jede Kreatur, die aufgedeckt oder schon beteiligt ist; nicht erkannte Kreaturen mit Decknamen, TP von Gegnern als Wort | 3 | **teils** | `redactParticipants` in `redactEntity` und im Prototyp; offen: `turn` als Index zählt Verborgene mit (D53) |
 | REQ-214 | Ausrüstungsfigur nach dem Inventarblatt: Figur je Kreatur wählbar (männlich, weiblich, neutral) und dort gespeichert; Plätze Kopf, Schulter, Torso, rechte und linke Hand, Beine, Stiefel, Gurt mit zwei Holstern, Ringe je Hand, Halskette | 4 | **offen** |  |
 | REQ-215 | Tragraster aus Grösse und Statblock: ein Grundquadrat nach Grösse (Tiny 3 … Large 6) und ein Zusatzquadrat, das eine Rechnung gegen den Statblock des Trägers ergibt — beim Lesen gerechnet, nie eingetippt | 3 | **offen** |  |
 | REQ-216 | Behälter in Behältern: jeder Behälter gibt eine Ziehstufe dazu, ausgehend davon, wo er selbst liegt; die Basiszonen kommen aus dem Blatt und sind je Behälter änderbar | 3 | **offen** |  |
@@ -286,8 +286,6 @@ Offene Anforderungen mit Priorität 1 bis 3, nach Bereich:
 - **REQ-166** (2, teils) — Board-first authoring: create entities directly on the canvas (into the campaign layer), choose their facet and place them in one flow — *Anlegen auf dem Board*
 - **REQ-192** (2, teils) — Optimistic concurrency for non-realtime edits: per-entity revision check; the second writer is rejected with a merge prompt rather than silently winning — *Prototyp; Server ohne Revisionsprüfung*
 - **REQ-202** (2, offen) — Chats stehen ausserhalb von Abzug, Ausfuhr und Recap: ein Faden zwischen zwei Spielern gehört weder in den Prod-nach-preprod-Abzug noch in eine Kampagnenausfuhr, und die SL liest nicht mit
-- **REQ-211** (2, offen) — Initiative wie Improved Initiative: je Zeile Initiative, RK, TP und Zustände, aus der Zeile der Statblock
-- **REQ-212** (2, offen) — Zustände und Notizen mit Dauer: Anzahl Runden, Anker (wessen Zug) und Zeitpunkt (Anfang oder Ende dieses Zuges); eine Notiz ist ein freier Text mit derselben Dauer
 - **REQ-007** (3, offen) — Stack expert settings: layer priority, per-entry pick, disable single override, flatten into independent layer
 - **REQ-022** (3, offen) — Derived asset variants: thumbnails, map tiles, PDF page renders, stored app-side
 - **REQ-025** (3, offen) — CalendarSystem definition: months, eras, moons, configurable per world/system — *nur die Einstellung `calendar`; keine Kalenderzeile*
@@ -323,7 +321,7 @@ Offene Anforderungen mit Priorität 1 bis 3, nach Bereich:
 - **REQ-208** (3, offen) — Zonen mit eigenen Regeln: eine Zonenart ist ein Regelartikel; Bewegungskosten, Licht, Sicht und „versteckt bis passive Wahrnehmung n“ rechnet die Karte, Schaden, Rettungswurf, Zustand und freie Regeln zeigt sie und schreibt sie beim Betreten ins Protokoll
 - **REQ-209** (3, offen) — Aufdecken: von Hand oder beim Bestätigen einer Bewegung, dann **entlang des Pfads** Schritt für Schritt; von Hand zeigt das Token, wen es sieht und von wem es gesehen wird (Sichtlinie, passive Wahrnehmung gegen Heimlichkeit, −5 im Dämmerlicht)
 - **REQ-210** (3, offen) — Karte und Initiative je als Vollbild, je mit SL- und Spieleransicht; Spielende bewegen ihre eigenen Tokens und prüfen die Reichweite selbst
-- **REQ-213** (3, offen) — Initiative der Spielenden: die eigene Reihenfolge und jede Kreatur, die aufgedeckt oder schon beteiligt ist; nicht erkannte Kreaturen mit Decknamen, TP von Gegnern als Wort
+- **REQ-213** (3, teils) — Initiative der Spielenden: die eigene Reihenfolge und jede Kreatur, die aufgedeckt oder schon beteiligt ist; nicht erkannte Kreaturen mit Decknamen, TP von Gegnern als Wort — *`redactParticipants` in `redactEntity` und im Prototyp; offen: `turn` als Index zählt Verborgene mit (D53)*
 - **REQ-215** (3, offen) — Tragraster aus Grösse und Statblock: ein Grundquadrat nach Grösse (Tiny 3 … Large 6) und ein Zusatzquadrat, das eine Rechnung gegen den Statblock des Trägers ergibt — beim Lesen gerechnet, nie eingetippt
 - **REQ-216** (3, offen) — Behälter in Behältern: jeder Behälter gibt eine Ziehstufe dazu, ausgehend davon, wo er selbst liegt; die Basiszonen kommen aus dem Blatt und sind je Behälter änderbar
 - **REQ-217** (3, offen) — Ziehen am Bogen: unter Aktion, Bonusaktion usw. je ein Eintrag „Ziehen“; ein Klick zeigt, was sich mit dieser Aktion herausnehmen lässt, mit Dauer
