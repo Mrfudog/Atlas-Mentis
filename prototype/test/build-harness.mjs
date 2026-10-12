@@ -149,6 +149,8 @@ window.__T__={derivedValue:derivedValue,assetSrc:assetSrc,UI:UI,
   carryGridOf:carryGridOf,zonesOf:zonesOf,drawList:drawList,drawPath:drawPath,
   drawStage:drawStage,liegtInForm:liegtInForm,slotList:slotList,containerPresets:containerPresets,
   dgTypen:dgTypen,dgLinien:dgLinien,
+  mvPath:mvPath,mvVia:mvVia,mvReach:mvReach,mapGeom:mapGeom,moveGrid:moveGrid,
+  moveOf:moveOf,sightLists:sightLists,confirmMove:confirmMove,pendingPath:pendingPath,
   ifaceInList:ifaceInList};
 /* Die Initiative (D53): Reihe, Dauer, Spieleransicht. */
 Object.assign(window.__T__,{participants:participants,tickFight:tickFight,

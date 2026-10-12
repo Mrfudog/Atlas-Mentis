@@ -1035,6 +1035,45 @@ export const fieldGroups = {
   },
 
   /**
+   * **Eine Zonenart ist ein Regelartikel** (REQ-208, D56). Eis, Feuer,
+   * Dornengestrüpp sind Artikel und keine Liste im Code; wo eine Zone auf
+   * einer Karte liegt, sagt die Kante `zone` mit ihrer Form.
+   *
+   * Was die Karte **rechnet**, steht als Zahl oder Wort: Bewegungskosten,
+   * Licht, Verdeckung, „versteckt bis passive Wahrnehmung n“. Was sie nur
+   * **zeigt** und beim Betreten ins Protokoll schreibt, steht daneben:
+   * Schaden, Rettungswurf, Zustand — und die freie Regel ist die
+   * Beschreibung des Artikels. Rechnen liesse sich auch der Schaden; ihn
+   * würfelt aber der Tisch, und eine Karte, die selbst würfelt, nimmt der
+   * Leitung die Entscheidung, ob die Falle diesmal greift.
+   */
+  ZoneInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        /* Ein Faktor auf das Feld, das man betritt: 2 ist schwieriges
+           Gelände, 3 Schlamm bis zur Hüfte. Unpassierbar ist keine Zone,
+           sondern eine Sperre. */
+        moveCost: { type: 'number', min: 1, max: 10, title: 'Movement cost ×', default: 1 },
+        light: { type: 'string', title: 'Light inside', enum: ['bright', 'dim', 'dark'] },
+        obscured: { type: 'string', title: 'Obscured', enum: ['none', 'light', 'heavy'], default: 'none' },
+        hiddenUntil: { type: 'number', min: 1, max: 30, title: 'Hidden until passive perception' },
+        damage: { type: 'string', title: 'Damage' },
+        damageType: { type: 'string', suggest: true, title: 'Damage type' },
+        save: { type: 'string', title: 'Saving throw', enumRef: 'Ability' },
+        saveDC: { type: 'number', min: 1, max: 30, title: 'Save DC' },
+        condition: {
+          type: 'string', format: 'link', title: 'Condition',
+          target: { interfaces: ['Condition'] },
+        },
+        trigger: {
+          type: 'string', title: 'Applies', enum: ['enter', 'start', 'end'], default: 'enter',
+        },
+      },
+    },
+  },
+
+  /**
    * **Eine Gottheit (M7).** Anhänger sind Kanten (`worships` von Kreatur
    * und Fraktion), kein Feld; Beinamen stehen in `aliases`.
    */
@@ -1862,6 +1901,18 @@ export const fieldGroups = {
           target: { interfaces: ['Map'] },
         },
         nowPlaying: { type: 'string', title: 'Now playing' },
+        /* **Der Zug auf der Karte** (REQ-206, D56): je Token das Tempo
+           dieses Zuges, was davon verbraucht ist und die Parität der
+           Diagonalen — `{token, turn, speed, used, parity}`. Das ist
+           Sitzungszustand und gehört nicht an die Kreatur: sie ist nicht
+           „schon 20 Fuss gelaufen“, nur ihr Zug ist es. `turn` nennt den
+           Zug; ein Eintrag aus einem anderen gilt als frisch (D52: mit
+           jedem Zug neu). */
+        moves: { type: 'array', title: 'Movement this turn', items: { type: 'object' } },
+        /* Was auf der Karte geschah — eine Zone betreten, ein Versteckter
+           entdeckt (REQ-208, 209). `{at, text}`, neueste zuerst. Es steht
+           an der Sitzung, damit wer später dazukommt es lesen kann. */
+        log: { type: 'array', title: 'Table log', items: { type: 'object' } },
         partyNote: { type: 'string', format: 'long', title: 'Note for the table' },
         /* Wer schreiben darf (REQ-117). `gm` ist die Vorgabe; `table` heisst,
            dass auch die Spieler die Notiz führen dürfen. Feiner wird es

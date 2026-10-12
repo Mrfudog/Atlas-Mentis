@@ -629,6 +629,48 @@ export const relations: Record<string, RelationDef> = {
         // ein anderes ist. Also steht der Radius an der Kante (REQ-140).
         light: { type: 'number', title: 'Bright light in squares' },
         dim: { type: 'number', title: 'Dim light in squares' },
+        /* Versteckt (REQ-209): Spielende sehen das Token nicht, bis es
+           aufgedeckt wird — von Hand oder entlang eines bestätigten Pfads.
+           `stealth` ist, was die passive Wahrnehmung schlagen muss: der
+           Heimlichkeitswurf einer Kreatur, der SG einer Falle. Es steht an
+           der Kante, weil dieselbe Falle auf einer Karte offen liegt und
+           auf der nächsten unter Laub. */
+        hidden: { type: 'boolean', title: 'Hidden from players' },
+        stealth: { type: 'number', title: 'Stealth (to notice)' },
+      },
+    },
+  },
+
+  /**
+   * **Wo eine Zone liegt** (REQ-208, D56). Eine Form auf der Karte, die auf
+   * ihre Zonenart zeigt — wie `territory`, und wie dort aufs Gitter
+   * gerastert: am Tisch zählt, welche Quadrate Eis sind. Die Regel steht am
+   * Artikel und gilt für jede Stelle, die auf ihn zeigt; was nur hier
+   * gilt (schon entdeckt), steht an der Kante.
+   */
+  zone: {
+    type: 'zone',
+    label: 'zone',
+    inverseLabel: 'lies on',
+    from: ['Map'],
+    to: ['ZoneKind'],
+    props: {
+      type: 'object',
+      properties: {
+        kind: {
+          type: 'string',
+          title: 'Shape',
+          enum: ['rect', 'circle', 'poly'],
+          default: 'rect',
+        },
+        x: { type: 'number', title: 'X (0–1)' },
+        y: { type: 'number', title: 'Y (0–1)' },
+        w: { type: 'number', title: 'Width (0–1)' },
+        h: { type: 'number', title: 'Height (0–1)' },
+        /* Eine Zone mit `hiddenUntil` ist versteckt, bis jemand sie
+           bemerkt; dann steht hier, dass sie es nicht mehr ist. */
+        found: { type: 'boolean', title: 'Found' },
+        note: { type: 'string', title: 'Note' },
       },
     },
   },
