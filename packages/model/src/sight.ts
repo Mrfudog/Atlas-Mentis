@@ -18,9 +18,15 @@
  *    in leicht verdeckten Feldern (das ist der Nachteil der Regel als Zahl).
  *
  * Wer nicht versteckt ist, braucht nur 1 und 2.
+ *
+ * **Vom ganzen Platz aus** (REQ-224, D58): eine grosse Kreatur sieht von
+ * irgendeinem ihrer Felder zu irgendeinem Feld des Ziels — ein Oger, der
+ * mit einer Hälfte um die Ecke steht, sieht, was dahinter steht. Gefragt
+ * wird jedes Paar Feldmitten (`pairsOf`), und gilt das erste, das gesehen
+ * wird; sonst sagt `bestNotice`, woran es am knappsten scheiterte.
  */
 
-import { segmentsCross, type Seg } from './movement.js';
+import { segmentsCross, type Cell, type Seg } from './movement.js';
 
 export type LightLevel = 'bright' | 'dim' | 'dark';
 export type Obscured = 'none' | 'light' | 'heavy';
@@ -127,4 +133,41 @@ export function notices(
 export function worseObscured(a: Obscured, b: Obscured): Obscured {
   const r = { none: 0, light: 1, heavy: 2 } as const;
   return r[a] >= r[b] ? a : b;
+}
+
+/** Die Feldmitten zweier Plätze, je Paar — von jedem Feld zu jedem (REQ-224). */
+export function pairsOf(a: readonly Cell[], b: readonly Cell[]): Array<[Pt, Pt]> {
+  const out: Array<[Pt, Pt]> = [];
+  for (const p of a) for (const q of b) out.push([{ x: p.x + 0.5, y: p.y + 0.5 }, { x: q.x + 0.5, y: q.y + 0.5 }]);
+  return out;
+}
+
+/** Sieht irgendein Feld des einen Platzes irgendein Feld des anderen? */
+export function spaceLineOfSight(a: readonly Cell[], b: readonly Cell[], walls: readonly Seg[]): boolean {
+  return pairsOf(a, b).some(([p, q]) => lineOfSight(p, q, walls));
+}
+
+/* Wie weit eine Prüfung kam: die Wand ist die erste Hürde, die
+   Heimlichkeit die letzte. Scheitert jedes Paar, zählt das, das am
+   weitesten kam — „nicht bemerkt" sagt mehr als „keine Sichtlinie", wenn
+   eines der Felder freie Sicht hatte. */
+const REACHED: Record<NonNullable<NoticeResult['why']>, number> = { wall: 0, obscured: 1, dark: 2, stealth: 3 };
+
+/**
+ * Das Ergebnis über alle Paare (REQ-224): das erste, das gesehen wird; sonst
+ * das, das am weitesten kam, bei Gleichstand mit der besseren Wahrnehmung.
+ * Ohne Paare: keine Sichtlinie.
+ */
+export function bestNotice(results: readonly NoticeResult[]): NoticeResult {
+  let best: NoticeResult | null = null;
+  for (const r of results) {
+    if (r.seen) return r;
+    if (
+      !best ||
+      REACHED[r.why!] > REACHED[best.why!] ||
+      (REACHED[r.why!] === REACHED[best.why!] && r.pp > best.pp)
+    )
+      best = r;
+  }
+  return best ?? { seen: false, pp: 0, light: 'dark', why: 'wall' };
 }

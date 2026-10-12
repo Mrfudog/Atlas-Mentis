@@ -264,7 +264,7 @@ const STAND = {
   'REQ-221': ['offen', ''],
   'REQ-222': ['offen', ''],
   'REQ-223': ['offen', ''],
-  'REQ-224': ['offen', ''],
+  'REQ-224': ['steht', 'Platz nach `Statblock.size` beim Lesen (`sizeSpan`, Instanz über `resolveInstance`), gespeichert die Mitte, gerechnet über den Anker; Rechner mit `MoveGrid.span` (ganzer Platz passt, Wände je Feld, teuerstes neu betretenes Feld), Sperren und Reichweite vom ganzen Platz, Sicht Feld zu Feld (`bestNotice`); tiny teilt (D58)'],
   'REQ-225': ['steht', '„Drop“/„Stow“ am Bogen in der Zeile ihrer Kosten (Einstellung `handActions`), `tier: ground`, Gurt frei in `slotDraw`; `handActions`/`inHand` im Modell (Prototyp, D58)'],
   'REQ-226': ['steht', 'Runde 1: Gegner erst in ihrem Zug (`turnHasCome`, `initiativeOrder`), in `redactParticipants`/`redactEntity` und im Prototyp (D58)'],
 };

@@ -550,6 +550,7 @@ ul.tlayout li.d3{padding-left:48px}
 .mpath.over{stroke:var(--warn)}
 .mwp{fill:var(--accent);opacity:.85}
 .mnogo{fill:var(--warn);fill-opacity:.25}
+.mfoot{fill:var(--accent);fill-opacity:.12;stroke:var(--accent);stroke-opacity:.5;stroke-width:.0015}
 .mcost{fill:var(--ink,#222);font-family:var(--ff-mono);paint-order:stroke;
   stroke:var(--surface);stroke-width:.004}
 .mcost.over{fill:var(--warn)}
@@ -11639,7 +11640,15 @@ function tokenSetup(e,r,art){
       placeholder:"passive Stealth",value:pr.stealth==null?"":String(pr.stealth)});
 
     host.appendChild(field("Kind",artSel));
-    host.appendChild(field("Width in squares",size));
+    /* Eine Kreatur nimmt ihren Platz aus dem Statblock (REQ-224, D8): eine
+       Breite hier wäre die zweite Stelle für ihre Grösse. */
+    var kreatur=isCreatureToken(r);
+    if(kreatur){
+      var sz=tokenSize(r), n=tokenSpan(r);
+      host.appendChild(el("p",{class:"hint",text:"Size "+(sz||"not set — one square")+
+        (sz?" · "+n+" × "+n+" square"+(n===1?"":"s")+(mvShares(sz)?", shares its square":""):"")+
+        " — read from the statblock."}));
+    } else host.appendChild(field("Width in squares",size));
     /* Seitenverhältnis nur beim Möbel: eine Kreatur belegt Felder und kein
        Rechteck, und ein Feld, das für sie nichts heisst, fragt nach einer
        Antwort, die es nicht gibt. */
@@ -11668,7 +11677,7 @@ function tokenSetup(e,r,art){
     actions(host,close,function(){
       var neu=Object.assign({},pr,{
         kind:artSel.value,
-        size:Number(size.value)||1,
+        size:kreatur?pr.size:(Number(size.value)||1),
         rot:Number(rot.value)||undefined,
         ratio:artSel.value==="scenery"&&Number(ratio.value)>0&&Number(ratio.value)!==1
           ?Number(ratio.value):undefined,
@@ -11830,17 +11839,102 @@ function mvLos(a,b,walls){
 }
 var MV_NB=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]];
 function mvLess(a,b){ return a[0]!==b[0]?a[0]<b[0]:a[1]<b[1]; }
-/* Dijkstra über (Feld, Parität): die Parität gehört zum Suchzustand und
+/* ---- Der Platz nach Grösse (REQ-224, D58; wie `movement.ts`) ----
+   Tiny, small, medium ein Feld, large 2 × 2, huge 3 × 3, gargantuan 4 × 4.
+   Gespeichert wird die **Mitte** des Platzes (wie bisher die Feldmitte);
+   gerechnet über den **Anker**, die Ecke oben links. Die Grösse liest die
+   Karte beim Zeichnen vom Statblock (D8) — am Token steht sie nicht. */
+var MV_SPAN={tiny:1,small:1,medium:1,large:2,huge:3,gargantuan:4};
+function mvSizeSpan(sz){ return MV_SPAN[String(sz==null?"":sz).trim().toLowerCase()]||1; }
+function mvShares(sz){ return String(sz==null?"":sz).trim().toLowerCase()==="tiny"; }
+function mvFootprint(a,n){
+  var out=[]; n=n||1;
+  for(var dy=0;dy<n;dy++)for(var dx=0;dx<n;dx++) out.push({x:a.x+dx,y:a.y+dy});
+  return out;
+}
+/* Die Felder um den Platz, `reach` weit — die Reichweite geht vom ganzen Platz aus. */
+function mvRing(a,n,reach){
+  var out=[]; n=n||1; reach=reach==null?1:reach;
+  for(var y=a.y-reach;y<a.y+n+reach;y++)for(var x=a.x-reach;x<a.x+n+reach;x++){
+    if(x>=a.x&&x<a.x+n&&y>=a.y&&y<a.y+n)continue;
+    out.push({x:x,y:y});
+  }
+  return out;
+}
+function mvCentre(a,n){ n=n||1; return {x:a.x+n/2,y:a.y+n/2}; }
+function mvAnchorAt(c,n,cols,rows){
+  n=n||1;
+  function kl(v,m){ return m==null?v:Math.max(0,Math.min(m-n,v)); }
+  return {x:kl(Math.round(c.x-n/2),cols),y:kl(Math.round(c.y-n/2),rows)};
+}
+/* Das Gelände für einen Platz: passt er, hält eine Wand den Schritt, was
+   kostet er, welche Felder betritt er neu. Ein Feld ist der Fall n = 1. */
+function mvTerrain(gr){
+  var cols=gr.cols, rows=gr.rows, n=Math.max(1,Math.floor(gr.span||1)), N=cols*rows;
+  var wand={}, passt={};
+  function zw(ax,ay,bx,by){
+    var ca=ay*cols+ax, cb=by*cols+bx, k=ca<cb?ca*N+cb:cb*N+ca;
+    if(wand[k]===undefined){
+      var h=false;
+      for(var w=0;w<gr.walls.length&&!h;w++) h=mvCross(ax+0.5,ay+0.5,bx+0.5,by+0.5,gr.walls[w]);
+      wand[k]=h;
+    }
+    return wand[k];
+  }
+  function inside(x,y){ return x>=0&&y>=0&&x+n<=cols&&y+n<=rows; }
+  /* Der ganze Platz: kein Feld gesperrt oder unbetretbar, keine Wand quer durch. */
+  function fits(x,y){
+    if(!inside(x,y))return false;
+    var k=y*cols+x;
+    if(passt[k]!==undefined)return passt[k];
+    var ok=true;
+    for(var dy=0;dy<n&&ok;dy++)for(var dx=0;dx<n&&ok;dx++){
+      var cx=x+dx, cy=y+dy, key=cx+","+cy;
+      if(gr.blocked[key]||gr.cost[key]===Infinity) ok=false;
+      else if(dx+1<n&&zw(cx,cy,cx+1,cy)) ok=false;
+      else if(dy+1<n&&zw(cx,cy,cx,cy+1)) ok=false;
+    }
+    passt[k]=ok;
+    return ok;
+  }
+  function stepWall(x,y,dx,dy){
+    for(var oy=0;oy<n;oy++)for(var ox=0;ox<n;ox++)
+      if(zw(x+ox,y+oy,x+ox+dx,y+oy+dy))return true;
+    return false;
+  }
+  function entered(x,y,dx,dy){
+    var out=[], nx=x+dx, ny=y+dy;
+    for(var oy=0;oy<n;oy++)for(var ox=0;ox<n;ox++){
+      var cx=nx+ox, cy=ny+oy;
+      if(cx>=x&&cx<x+n&&cy>=y&&cy<y+n)continue;
+      out.push(cx+","+cy);
+    }
+    return out;
+  }
+  /* D58: der Faktor des teuersten neu betretenen Feldes, nicht die Summe. */
+  function factor(keys){
+    var f=1;
+    keys.forEach(function(k){ var c=gr.cost[k]||1; if(isFinite(c)&&c>f) f=c; });
+    return f;
+  }
+  function touches(x,y,set){
+    for(var dy=0;dy<n;dy++)for(var dx=0;dx<n;dx++) if(set[(x+dx)+","+(y+dy)])return true;
+    return false;
+  }
+  return {span:n,inside:inside,fits:fits,stepWall:stepWall,entered:entered,factor:factor,touches:touches};
+}
+/* Dijkstra über (Anker, Parität): die Parität gehört zum Suchzustand und
    nicht zum Feld, sonst gewinnt der Weg, der zuerst ankommt, und nicht der,
    der am wenigsten kostet. Rang: gemiedene Felder, dann Fuss. */
 function mvSearch(gr,from,par,avoidOn,budget,target){
   var cols=gr.cols, rows=gr.rows, n=cols*rows*2, i;
   var pen=new Float64Array(n), feet=new Float64Array(n), prev=new Int32Array(n);
   for(i=0;i<n;i++){ pen[i]=Infinity; feet[i]=Infinity; prev[i]=-1; }
-  if(from.x<0||from.y<0||from.x>=cols||from.y>=rows) return {pen:pen,feet:feet,prev:prev};
+  var T=mvTerrain(gr);
+  if(!T.inside(from.x,from.y)) return {pen:pen,feet:feet,prev:prev};
   var s=(from.y*cols+from.x)*2+par;
   pen[s]=0; feet[s]=0;
-  var heap=[[0,0,s]], wand={};
+  var heap=[[0,0,s]];
   function push(it){
     heap.push(it); var j=heap.length-1;
     while(j>0){ var p=(j-1)>>1; if(!mvLess(heap[j],heap[p]))break;
@@ -11861,24 +11955,16 @@ function mvSearch(gr,from,par,avoidOn,budget,target){
     var cell=idx>>1, pa=idx&1, x=cell%cols, y=(cell-x)/cols;
     if(target&&x===target.x&&y===target.y)break;
     for(var k=0;k<8;k++){
-      var nx=x+MV_NB[k][0], ny=y+MV_NB[k][1];
-      if(nx<0||ny<0||nx>=cols||ny>=rows)continue;
-      var key=nx+","+ny;
-      if(gr.blocked[key])continue;
-      var fac=gr.cost[key]||1;
-      if(fac===Infinity)continue;
-      var nc=ny*cols+nx, wk=cell<nc?cell+"|"+nc:nc+"|"+cell;
-      if(wand[wk]===undefined){
-        var h=false;
-        for(var w=0;w<gr.walls.length&&!h;w++)
-          h=mvCross(x+0.5,y+0.5,nx+0.5,ny+0.5,gr.walls[w]);
-        wand[wk]=h;
-      }
-      if(wand[wk])continue;
-      var st=mvStep(MV_NB[k][0]!==0&&MV_NB[k][1]!==0,pa,fac);
+      var dx=MV_NB[k][0], dy=MV_NB[k][1], nx=x+dx, ny=y+dy;
+      if(!T.fits(nx,ny))continue;
+      if(T.stepWall(x,y,dx,dy))continue;
+      var neu=T.entered(x,y,dx,dy);
+      var st=mvStep(dx!==0&&dy!==0,pa,T.factor(neu));
       var nf=f+st.feet;
       if(budget!=null&&nf>budget+1e-9)continue;
-      var np=p+(avoidOn&&gr.avoid[key]?1:0), ni=nc*2+st.parity;
+      var np=p;
+      if(avoidOn) neu.forEach(function(q){ if(gr.avoid[q]) np++; });
+      var ni=(ny*cols+nx)*2+st.parity;
       if(np<pen[ni]||(np===pen[ni]&&nf<feet[ni])){
         pen[ni]=np; feet[ni]=nf; prev[ni]=idx; push([np,nf,ni]);
       }
@@ -11887,9 +11973,11 @@ function mvSearch(gr,from,par,avoidOn,budget,target){
   return {pen:pen,feet:feet,prev:prev};
 }
 function mvPath(gr,from,to,par,avoidOn){
-  if(to.x<0||to.y<0||to.x>=gr.cols||to.y>=gr.rows)return null;
+  var T=mvTerrain(gr);
+  if(!T.inside(to.x,to.y))return null;
   if(from.x===to.x&&from.y===to.y) return {cells:[{x:from.x,y:from.y}],feet:0,parity:par,avoided:0};
-  if(gr.blocked[ck(to)]||gr.noStop[ck(to)])return null;
+  if(!T.fits(to.x,to.y))return null;
+  if(!gr.share&&T.touches(to.x,to.y,gr.noStop))return null;
   var s=mvSearch(gr,from,par,avoidOn,null,to);
   var b=(to.y*gr.cols+to.x)*2, best=-1;
   [b,b+1].forEach(function(i){
@@ -11914,13 +12002,13 @@ function mvVia(gr,from,pts,par,avoidOn){
   return {cells:cells,feet:feet,parity:par,avoided:avoided};
 }
 function mvReach(gr,from,budget,par){
-  var s=mvSearch(gr,from,par,false,budget,null), out={};
+  var s=mvSearch(gr,from,par,false,budget,null), out={}, T=mvTerrain(gr);
   for(var c=0;c<gr.cols*gr.rows;c++){
     var f=Math.min(s.feet[2*c],s.feet[2*c+1]);
     if(f===Infinity)continue;
-    var k=(c%gr.cols)+","+Math.floor(c/gr.cols);
-    if(gr.noStop[k]&&f>0)continue;
-    out[k]=f;
+    var x=c%gr.cols, y=Math.floor(c/gr.cols);
+    if(f>0&&!gr.share&&T.touches(x,y,gr.noStop))continue;
+    out[x+","+y]=f;
   }
   return out;
 }
@@ -11974,6 +12062,18 @@ function mvNotices(obs,o){
   if(light==="dark") return {seen:false,pp:pp,light:light,why:"dark"};
   if(o.dc!=null&&isFinite(o.dc)&&pp<o.dc) return {seen:false,pp:pp,light:light,why:"stealth"};
   return {seen:true,pp:pp,light:light};
+}
+/* Über alle Paare von Feldern (REQ-224): das erste, das sieht; sonst das,
+   das am weitesten kam (Wand < verdeckt < dunkel < Heimlichkeit). */
+var MV_WEIT={wall:0,obscured:1,dark:2,stealth:3};
+function mvBestNotice(rs){
+  var best=null;
+  for(var i=0;i<rs.length;i++){
+    var r=rs[i];
+    if(r.seen)return r;
+    if(!best||MV_WEIT[r.why]>MV_WEIT[best.why]||(MV_WEIT[r.why]===MV_WEIT[best.why]&&r.pp>best.pp)) best=r;
+  }
+  return best||{seen:false,pp:0,light:"dark",why:"wall"};
 }
 
 /* ---- Was auf der Karte steht ---- */
@@ -12061,7 +12161,25 @@ function tokenNums(a){
   return {pp:m?Number(m[1]):10+fert("Perception","wis"),
     darkvision:dv?Number(dv[1]):0,
     stealth:10+fert("Stealth","dex"),
-    modes:mvSpeedModes(c.speed)};
+    modes:mvSpeedModes(c.speed),
+    size:c.size||null};
+}
+/* Der Platz eines Tokens in Feldern je Seite (REQ-224): bei einer Kreatur
+   aus ihrem Statblock, beim Lesen (D8) — eine Instanz liest ihre Vorlage
+   mit (`sbCard` → `resolvedOf`). Ohne Statblock oder Grösse ein Feld. Alles
+   andere (Möbel, Gegenstände) behält seine eingestellte Breite und rechnet
+   nicht. */
+function tokenSize(r){ return isCreatureToken(r)?tokenNums(tokenArt(r)).size:null; }
+function tokenSpan(r){ return isCreatureToken(r)?mvSizeSpan(tokenSize(r)):1; }
+/* Der Anker eines Tokens: die Ecke oben links seines Platzes, aus der
+   gespeicherten Mitte. */
+function tokenAnchorAt(geo,r,fx,fy){
+  return mvAnchorAt(toCellUnits(geo,fx,fy),tokenSpan(r),geo.cols,geo.rows);
+}
+/* Die Mitte eines Platzes als Anteil der Karte — das, was gespeichert wird. */
+function anchorMid(geo,a,n){
+  var m=mvCentre(a,n);
+  return {x:(geo.ox+m.x*geo.g)/geo.w, y:(geo.oy+m.y*geo.g)/geo.h};
 }
 function fightNow(){
   var ses=playingSession();
@@ -12148,23 +12266,37 @@ function moveGrid(e,card,geo,mover){
     if(f>1) gr.cost[k]=f;
   });
   var meine=sideOf(tokenArt(mover));
+  /* Der Platz dessen, der sich bewegt (REQ-224); tiny teilt sich ein Feld. */
+  gr.span=tokenSpan(mover);
+  gr.share=mvShares(tokenSize(mover));
   (e.relations||[]).forEach(function(r){
     if(r.type!==REL_MARKER||r.id===mover.id||!tokenShown(r))return;
     var pr=r.props||{};
-    var c=cellOf(geo,Number(pr.x)||0.5,Number(pr.y)||0.5), k=ck(c);
-    if(isHazardToken(r)){ if(av.hazard) gr.avoid[k]=1; return; }
+    if(isHazardToken(r)){
+      if(av.hazard) gr.avoid[ck(cellOf(geo,Number(pr.x)||0.5,Number(pr.y)||0.5))]=1;
+      return;
+    }
     if(!isCreatureToken(r))return;
+    /* Andere sperren mit ihrem ganzen Platz, und ihre Reichweite geht vom
+       ganzen Platz aus, ein Feld weit (5 ft). */
+    var n=tokenSpan(r), a=tokenCell(geo,r), platz=mvFootprint(a,n);
     var seite=sideOf(tokenArt(r));
     var feind=meine!=null&&seite!=null&&seite!==meine;
-    if(!feind){ gr.noStop[k]=1; return; }
-    gr.blocked[k]=1;
-    if(av.reach) MV_NB.forEach(function(d){ gr.avoid[(c.x+d[0])+","+(c.y+d[1])]=1; });
+    if(!feind){
+      /* Ein winziger Verbündeter teilt sein Feld: auf ihm darf man stehen. */
+      if(!mvShares(tokenSize(r))) platz.forEach(function(c){ gr.noStop[ck(c)]=1; });
+      return;
+    }
+    platz.forEach(function(c){ gr.blocked[ck(c)]=1; });
+    if(av.reach) mvRing(a,n,1).forEach(function(c){ gr.avoid[ck(c)]=1; });
   });
   return gr;
 }
+/* Wo ein Token steht: der Anker seines Platzes (REQ-224). Bei einem Feld
+   ist das das Feld, in dem seine Mitte liegt — wie vor U7. */
 function tokenCell(geo,r){
   var pr=r.props||{};
-  return cellOf(geo,Number(pr.x)||0.5,Number(pr.y)||0.5);
+  return tokenAnchorAt(geo,r,Number(pr.x)||0.5,Number(pr.y)||0.5);
 }
 /* Der Weg, der gerade gefragt ist: vom Token über die Wegpunkte. */
 function pendingPath(e,card,geo,r,mv,extra){
@@ -12201,7 +12333,7 @@ function obscuredOn(zc,a,b){
   return w;
 }
 /* Bemerkt `wer` (Feld) das Ziel (Feld)? `dc` null: nicht versteckt. */
-function sightFrom(ctx,obs,von,nach,dc){
+function sightCell(ctx,obs,von,nach,dc){
   var a={x:von.x+0.5,y:von.y+0.5}, b={x:nach.x+0.5,y:nach.y+0.5};
   var zl=null;
   (ctx.zc[ck(nach)]||[]).forEach(function(z){ var l=zoneCard(z.art).light; if(l) zl=l; });
@@ -12210,6 +12342,19 @@ function sightFrom(ctx,obs,von,nach,dc){
   return mvNotices(obs,{los:mvLos(a,b,ctx.sicht),light:light,distanceFeet:d,dc:dc,
     obscured:obscuredOn(ctx.zc,a,b)});
 }
+/* Vom ganzen Platz zum ganzen Platz (REQ-224): von irgendeinem Feld zu
+   irgendeinem; `von`/`nach` sind Listen von Feldern. */
+function sightFrom(ctx,obs,von,nach,dc){
+  var rs=[];
+  for(var i=0;i<von.length;i++)for(var j=0;j<nach.length;j++){
+    var r=sightCell(ctx,obs,von[i],nach[j],dc);
+    if(r.seen)return r;
+    rs.push(r);
+  }
+  return mvBestNotice(rs);
+}
+/* Die Felder, die ein Token einnimmt. */
+function tokenCells(geo,r){ return mvFootprint(tokenCell(geo,r),tokenSpan(r)); }
 function sightCtx(e,card,geo){
   return {card:card,geo:geo,zc:zoneCells(e,geo,true),lights:lightsInCells(e,geo),
     sicht:cellWalls(card,geo,blocksSight)};
@@ -12222,12 +12367,12 @@ function tokenDC(r){
 }
 /* „Sieht / wird gesehen von" (REQ-209): dieselbe Prüfung in beide Richtungen. */
 function sightLists(e,card,geo,r){
-  var ctx=sightCtx(e,card,geo), meins=tokenCell(geo,r), ich=tokenNums(tokenArt(r));
+  var ctx=sightCtx(e,card,geo), meins=tokenCells(geo,r), ich=tokenNums(tokenArt(r));
   var sieht=[], gesehen=[];
   (e.relations||[]).forEach(function(o){
     if(o.type!==REL_MARKER||o.id===r.id||!tokenShown(o))return;
     if(!isCreatureToken(o)&&!isHazardToken(o))return;
-    var dort=tokenCell(geo,o);
+    var dort=tokenCells(geo,o);
     var hin=sightFrom(ctx,ich,meins,dort,tokenDC(o));
     sieht.push({rel:o,res:hin});
     if(isCreatureToken(o))
@@ -12261,13 +12406,23 @@ function confirmMove(e,card,geo,r,mv,weg,frei){
   Object.keys(ctx.zc).forEach(function(k){
     ctx.zc[k].forEach(function(z){ cellsVon[z.rel.id].push(k); });
   });
+  /* Die Felder des Weges sind Anker; der Platz ist n × n (REQ-224). Eine
+     Zone betritt, wer mit irgendeinem Feld hineinkommt. */
+  var n=tokenSpan(r);
+  function zonenIm(c){
+    var out=[], da={};
+    mvFootprint(c,n).forEach(function(q){
+      (ctx.zc[ck(q)]||[]).forEach(function(z){ if(!da[z.rel.id]){ da[z.rel.id]=1; out.push(z); } });
+    });
+    return out;
+  }
   var vorher={};
-  (ctx.zc[ck(weg.cells[0])]||[]).forEach(function(z){ vorher[z.rel.id]=1; });
+  zonenIm(weg.cells[0]).forEach(function(z){ vorher[z.rel.id]=1; });
   var neuAuf=[];
   weg.cells.forEach(function(c,i){
     if(i===0)return;
-    var hier={};
-    (ctx.zc[ck(c)]||[]).forEach(function(z){
+    var hier={}, platz=mvFootprint(c,n);
+    zonenIm(c).forEach(function(z){
       hier[z.rel.id]=1;
       if(vorher[z.rel.id])return;
       var k=zoneCard(z.art);
@@ -12279,7 +12434,7 @@ function confirmMove(e,card,geo,r,mv,weg,frei){
     /* Versteckte Tokens, die von hier aus bemerkt werden. */
     (e.relations||[]).forEach(function(o){
       if(o.type!==REL_MARKER||o.id===r.id||!(o.props||{}).hidden)return;
-      var dc=tokenDC(o), res=sightFrom(ctx,ich,c,tokenCell(geo,o),dc);
+      var dc=tokenDC(o), res=sightFrom(ctx,ich,platz,tokenCells(geo,o),dc);
       if(!res.seen)return;
       o.props=Object.assign({},o.props,{hidden:undefined});
       var oa=tokenArt(o);
@@ -12287,23 +12442,25 @@ function confirmMove(e,card,geo,r,mv,weg,frei){
     });
     /* Versteckte Zonen: ein Feld davon in Sicht, und die Wahrnehmung reicht. */
     zonen.forEach(function(z){
-      var n=Number(zoneCard(z.art).hiddenUntil)||0;
-      if(!n||(z.rel.props||{}).found)return;
+      var nz=Number(zoneCard(z.art).hiddenUntil)||0;
+      if(!nz||(z.rel.props||{}).found)return;
       var treffer=cellsVon[z.rel.id].some(function(k){
-        var p=k.split(","); return sightFrom(ctx,ich,c,{x:+p[0],y:+p[1]},n).seen; });
+        var p=k.split(","); return sightFrom(ctx,ich,platz,[{x:+p[0],y:+p[1]}],nz).seen; });
       if(!treffer)return;
       z.rel.props=Object.assign({},z.rel.props,{found:true});
       zeilen.push(wer+" notices "+nameOf(z.art));
     });
     /* Der Nebel weicht im Sichtkreis — dasselbe Polygon wie das Licht. */
     if(sw){
-      var m=cellMid(geo,c);
-      var poly=visionPoly(m.x,m.y*ar,radius*geo.g/geo.w,sw);
+      /* Aus der Mitte des Platzes, um seine halbe Breite weiter. */
+      var m=anchorMid(geo,c,n);
+      var poly=visionPoly(m.x,m.y*ar,(radius+(n-1)/2)*geo.g/geo.w,sw);
       neuAuf.push({id:uid("s"),kind:"poly",pts:poly.map(function(p){
         return [Math.round(p[0]*10000)/10000,Math.round(p[1]/ar*10000)/10000]; })});
     }
   });
-  var ziel=cellMid(geo,weg.cells[weg.cells.length-1]);
+  /* Gespeichert wird die Mitte des Platzes (D58). */
+  var ziel=anchorMid(geo,weg.cells[weg.cells.length-1],n);
   r.props=Object.assign({},r.props,{x:ziel.x,y:ziel.y});
   if(neuAuf.length){ card.reveal=(card.reveal||[]).concat(neuAuf); e.components[MAP_COMP]=card; }
   var neu=Object.assign({},mv,{used:frei?mv.used:mv.used+weg.feet,parity:frei?mv.parity:weg.parity});
@@ -12358,18 +12515,24 @@ function zoneOverlay(e,card,nat,geo){
 function moveOverlay(e,card,nat,geo,r,mv){
   var ar=nat.h/nat.w;
   var svg=sv("svg",{"class":"mvis mmove",viewBox:"0 0 1 "+ar,preserveAspectRatio:"none"});
-  function rect(c,cls){
+  /* Die Zellen des Weges sind Anker: gezeichnet wird der ganze Platz,
+     die Linie läuft durch seine Mitte (REQ-224). */
+  var n=tokenSpan(r);
+  function rect(c,cls,m){
+    m=m||1;
     return sv("rect",{"class":cls,x:(geo.ox+c.x*geo.g)/geo.w,y:(geo.oy+c.y*geo.g)/geo.w,
-      width:geo.g/geo.w,height:geo.g/geo.w});
+      width:m*geo.g/geo.w,height:m*geo.g/geo.w});
   }
-  function pt(c){ return [(geo.ox+(c.x+0.5)*geo.g)/geo.w,(geo.oy+(c.y+0.5)*geo.g)/geo.w]; }
+  function pt(c){ return [(geo.ox+(c.x+n/2)*geo.g)/geo.w,(geo.oy+(c.y+n/2)*geo.g)/geo.w]; }
   var rest=Math.max(0,mv.speed-mv.used);
   if(UI.moveMode==="reach"){
-    var reich=mvReach(moveGrid(e,card,geo,r),tokenCell(geo,r),rest,mv.parity);
+    /* Schattiert, was ein erreichbarer Platz bedeckt — jedes Feld einmal. */
+    var reich=mvReach(moveGrid(e,card,geo,r),tokenCell(geo,r),rest,mv.parity), bedeckt={};
     Object.keys(reich).forEach(function(k){
       var p=k.split(",");
-      svg.appendChild(rect({x:+p[0],y:+p[1]},"mreach"));
+      mvFootprint({x:+p[0],y:+p[1]},n).forEach(function(q){ bedeckt[ck(q)]=q; });
     });
+    Object.keys(bedeckt).forEach(function(k){ svg.appendChild(rect(bedeckt[k],"mreach")); });
   }
   var weg=pendingPath(e,card,geo,r,mv,null);
   function linie(w,cls){
@@ -12387,10 +12550,11 @@ function moveOverlay(e,card,nat,geo,r,mv){
     while(vor.firstChild) vor.removeChild(vor.firstChild);
     if(!c||UI.moveMode==="off")return;
     var w=pendingPath(e,card,geo,r,mv,c);
-    if(!w||!w.cells){ vor.appendChild(rect(c,"mnogo")); return; }
+    if(!w||!w.cells){ vor.appendChild(rect(c,"mnogo",n)); return; }
+    vor.appendChild(rect(c,"mfoot",n));
     vor.appendChild(linie(w,"mpath pre"+(w.feet>rest?" over":"")));
     var p=pt(c);
-    var t=sv("text",{x:p[0],y:p[1]-geo.g/geo.w*0.55,"font-size":geo.g/geo.w*0.36,
+    var t=sv("text",{x:p[0],y:p[1]-geo.g/geo.w*(0.05+n/2),"font-size":geo.g/geo.w*0.36,
       "text-anchor":"middle","class":"mcost"+(w.feet>rest?" over":"")});
     t.textContent=w.feet+" ft";
     vor.appendChild(t);
@@ -12660,7 +12824,9 @@ function elMap(e,ifn,item){
          grössten Reichweite ersetzt er das Ziel. Ein Klick auf ein Token
          gehört dem Token. */
       if(!gewaehlt||UI.mapTool||(ev.target.closest&&ev.target.closest(".mtoken,.maparea")))return;
-      var c=cellOf(geo,(ev.clientX-rect.left)/rect.width,(ev.clientY-rect.top)/rect.height);
+      /* Der Klick meint die Mitte des Platzes (REQ-224): bei einem Feld
+         das Feld darunter, bei 2 × 2 die nächste Rasterecke. */
+      var c=tokenAnchorAt(geo,gewaehlt,(ev.clientX-rect.left)/rect.width,(ev.clientY-rect.top)/rect.height);
       UI.movePts=UI.moveMode==="reach"?[c]:(UI.movePts||[]).concat([c]);
       render();
       return;
@@ -12737,7 +12903,7 @@ function elMap(e,ifn,item){
     inner.addEventListener("pointermove",function(ev){
       var rect=img.getBoundingClientRect();
       if(!rect.width||UI.mapTool)return;
-      var c=cellOf(geo,(ev.clientX-rect.left)/rect.width,(ev.clientY-rect.top)/rect.height);
+      var c=tokenAnchorAt(geo,gewaehlt,(ev.clientX-rect.left)/rect.width,(ev.clientY-rect.top)/rect.height);
       if(ck(c)===zuletzt)return;
       zuletzt=ck(c); bewegung.__hover(c);
     });
@@ -12767,7 +12933,11 @@ function elMap(e,ifn,item){
         (canWrite()?" · right-click to set it up":"")});
     t.style.left=((pr.x||0.5)*100)+"%";
     t.style.top=((pr.y||0.5)*100)+"%";
-    var d=Math.max(14,(Number(card.gridSize)||70)*(Number(pr.size)||1)*UI.mapZoom);
+    /* Eine Kreatur in der Grösse ihres Platzes (REQ-224), aus dem
+       Statblock; tiny halb so gross, weil sie sich ihr Feld teilt. Alles
+       andere in der eingestellten Breite. */
+    var breite=isCreatureToken(r)?(mvShares(tokenSize(r))?0.5:tokenSpan(r)):(Number(pr.size)||1);
+    var d=Math.max(14,(Number(card.gridSize)||70)*breite*UI.mapZoom);
     var hoch=moebel?d*(Number(pr.ratio)>0?Number(pr.ratio):1):d;
     t.style.width=d+"px"; t.style.height=hoch+"px";
     /* Die Drehung kommt hinter die Zentrierung, sonst dreht sich der Punkt
@@ -12815,7 +12985,7 @@ function elMap(e,ifn,item){
       if(rechnet){
         /* Gezogen ist geplant, nicht gesetzt: das Token springt zurück, und
            der Weg dorthin steht zum Bestätigen da. */
-        UI.moveSel=r.id; UI.movePts=[cellOf(geo,war.nx,war.ny)];
+        UI.moveSel=r.id; UI.movePts=[tokenAnchorAt(geo,r,war.nx,war.ny)];
         render(); return;
       }
       r.props=Object.assign({},r.props,{x:war.nx,y:war.ny});
@@ -15701,6 +15871,41 @@ function renderHowto(v){
       "               another turn → fresh: used 0, next diagonal 5 ft\n\n"+
       "Hidden goblin, stealth 11 · watcher PP 14, dim light (−5)\n"+
       "               "+bspSicht.pp+" < 11 → "+(bspSicht.seen?"spotted":"not noticed")}));
+
+    /* ---- Ein Large-Token um eine Ecke (REQ-224, D58) ----
+       Mit denselben Funktionen wie die Karte und der Zeile `Size` aus dem
+       Register: ändert jemand die Liste, ändert sich das Beispiel mit. */
+    var szW=enumWerte({enumRef:"Size"});
+    v.appendChild(el("p",{class:"hint"},
+      "A creature takes squares by the size on its statblock (rules 2014): "+
+      szW.map(function(w){ var n=mvSizeSpan(w); return w+" "+n+"×"+n; }).join(", ")+
+      "; tiny shares its square. The size is read from the statblock, not "+
+      "kept on the token. The token stores the middle of its space; the "+
+      "calculator works with the top-left square (the anchor). The whole "+
+      "space must fit, a wall stops a step if it stops it for any square of "+
+      "the space, and a step costs by the dearest square it newly enters. "+
+      "It sees from any of its squares to any square of the target."));
+    /* Ein Gang, der bei Spalte 4 nach unten abknickt: Wand oben über die
+       ganze Breite bei y = 2 bis x = 4, dann senkrecht. */
+    var eckW=[{x1:0,y1:2,x2:4,y2:2},{x1:4,y1:2,x2:4,y2:6}];
+    var eckG={cols:8,rows:8,walls:eckW,cost:{"4,0":2},blocked:{},noStop:{},avoid:{}};
+    var ogerG=Object.assign({},eckG,{span:2});
+    var einerW=mvPath(eckG,{x:0,y:0},{x:6,y:6},0,false);
+    var ogerW=mvPath(ogerG,{x:0,y:0},{x:6,y:6},0,false);
+    var goblin=[{x:4,y:5}];
+    var allein=mvFootprint({x:3,y:0},1), platz=mvFootprint({x:3,y:0},2);
+    function sieht(von){ return von.some(function(a){ return goblin.some(function(b){
+      return mvLos({x:a.x+0.5,y:a.y+0.5},{x:b.x+0.5,y:b.y+0.5},eckW); }); }); }
+    v.appendChild(el("pre",{class:"code",text:
+      "Statblock.size large → "+mvSizeSpan("large")+"×"+mvSizeSpan("large")+
+        "   stored: the middle, anchor (3,0) → middle "+JSON.stringify(mvCentre({x:3,y:0},2))+"\n\n"+
+      "corridor 2 squares high, turning down at column 4–7; ice ×2 on (4,0)\n"+
+      "medium   (0,0) → (6,6)   "+(einerW?einerW.feet+" ft (round the ice on row 1)":"no way")+"\n"+
+      "large    (0,0) → (6,6)   "+(ogerW?ogerW.feet+" ft (the space cannot miss the ice: one step pays ×2, once, not per square)":"no way")+"\n\n"+
+      "goblin at (4,5), round the corner\n"+
+      "  from (3,0) alone             "+(sieht(allein)?"sees it":"no line of sight")+"\n"+
+      "  from the 2×2 space at (3,0)  "+(sieht(platz)?"sees it — from square "+
+        ck(platz.filter(function(a){ return sieht([a]); })[0]):"no line of sight")}));
   }
 
   /* ---- Das Inventar nach dem Blatt, durchgerechnet (D54) ----
