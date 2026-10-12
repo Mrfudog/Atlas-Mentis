@@ -15,6 +15,17 @@ interface FieldGroup {
   schema: ObjectSchema;
 }
 
+/**
+ * **Woraus eine Übung kommt** (M6, D50): Fertigkeiten und Sprachen als
+ * Artikel, Werkzeuge als Gegenstände (nur die mit einer Werkzeugart, siehe
+ * `TOOLS_ONLY`), einzelne Waffen als Artikel, Waffen- und Rüstungsgruppen
+ * als die Listen zweier Felder. Einmal hier, weil drei Felder sie nennen:
+ * `proficient`, `expertise` und die Wahl an Klasse, Abstammung,
+ * Hintergrund.
+ */
+const PROFICIENCY_SOURCES = ['Skill', 'Language', 'Item', 'Weapon', 'Weapon.category', 'Armor.armorType'];
+const TOOLS_ONLY = { Item: { itemType: ['tool', 'artisan tools', 'gaming set', 'instrument'] } };
+
 /* `satisfies` statt einer Annotation: so kennt der Übersetzer die Namen
    und `g.Vitals` ist nicht „vielleicht undefiniert". */
 export const fieldGroups = {
@@ -382,11 +393,9 @@ export const fieldGroups = {
       type: 'object',
       properties: {
         system: { type: 'string', suggest: true, title: 'System', default: 'dnd5e' },
-        size: {
-          type: 'string',
-          title: 'Size',
-          enum: ['winzig', 'klein', 'mittel', 'gross', 'riesig', 'gewaltig'],
-        },
+        /* Englisch wie das Regelwerk (E3), und eine Zeile, weil die
+           Abstammung dieselbe Liste nennt (M5). */
+        size: { type: 'string', title: 'Size', enumRef: 'Size' },
         /* Hiess `kind` und stand in der verlinkten Gruppe neben
            `Creature.kind` — zwei Felder „Kind", die nichts miteinander zu
            tun haben: dort die Sorte (npc, companion), hier der Kreaturentyp
@@ -408,47 +417,325 @@ export const fieldGroups = {
         /* `languages`, `saves` und `skills` standen hier als freier Text
            und zugleich als Listen an `Proficiencies` — dieselbe Sache
            zweimal, einmal zum Rechnen und einmal zum Lesen. Die Listen
-           gewinnen: darauf rechnet der Bogen. */
+           gewinnen: darauf rechnet der Bogen, und seit M5 nimmt der
+           Statblock `Proficiencies` selbst dazu. Welche Sprachen, steht
+           dort (aus den `Language`-Artikeln); was keine Sprache ist —
+           „telepathy 120 ft.", „understands Common but can't speak",
+           „any four languages" —, steht hier als Satz. */
+        languageNote: { type: 'string', title: 'Languages, besides' },
+        /* Die drei Schadensfelder bleiben Sätze: „bludgeoning, piercing,
+           and slashing from nonmagical attacks" ist keine Liste von Arten. */
         resistances: { type: 'string', title: 'Resistances' },
         vulnerabilities: { type: 'string', title: 'Vulnerabilities' },
         immunities: { type: 'string', title: 'Immunities' },
+        /* **Zustandsimmunitäten nennen Zustände** (M5): die Namen der
+           `Condition`-Artikel. Ein Vorschlag aus dem Bestand, keine Regel
+           (D50). */
+        conditionImmunities: {
+          type: 'array',
+          title: 'Condition immunities',
+          items: { type: 'string' },
+          enumRef: 'Condition',
+        },
+        /* Wie viele Legendäre Aktionen je Runde; die Aktionen selbst sind
+           `Action`-Artikel mit der Aktionsart „Legendary Action" über
+           `composedOf`. */
+        legendaryActions: { type: 'number', min: 1, title: 'Legendary actions per round' },
+        /* **Boni, die nicht aus Übung und Übungsbonus folgen** — bei Monstern
+           häufig: der Goblin hat Heimlichkeit +6, wo DEX und Übung +4 ergäben.
+           `{ "Stealth": 6, "dex": 4 }`: Fertigkeit oder Attribut (für den
+           Rettungswurf) auf den ganzen Bonus. Was hier nicht steht, rechnet
+           der Bogen. */
+        bonuses: { type: 'object', title: 'Fixed bonuses' },
+        /* Das Bild auf der Karte. Ein Asset und keine URL: die Bilder von
+           5e.tools kommen nicht herein (E5). */
+        token: { type: 'string', format: 'asset', title: 'Token' },
       },
     },
   },
 
+  /* **`kind` ist nur noch für Regeln ohne Träger.** Zustand, Aktion, Merkmal,
+     Talent und Fertigkeit sind eigene Arten (D48): ein Zauber braucht kein
+     zweites Wort für das, was sein Typ schon sagt, und darum ist `kind` auch
+     nicht mehr Pflicht. Die Wörter stehen als Aufzählungszeile `RuleKind`. */
   RuleInfo: {
     schema: {
       type: 'object',
-      required: ['kind'],
       properties: {
-        kind: {
-          type: 'string',
-          title: 'Rule kind',
-          enum: [
-            'action',
-            'bonus',
-            'reaction',
-            'feature',
-            'trait',
-            'condition',
-            'legendary',
-            'lair',
-            'feat',
-            'skill',
-            /* Was eine Figur an einem Reiseknoten tun kann (REQ-171):
-               kundschaften, sammeln, rasten. Es war die Einstellung
-               `travelActions`, eine Wortliste — ein Wort hat aber keine
-               Beschreibung, keine Probe und keine Quelle. Eine Handlung ist
-               eine Regel (Abgleich A3, 7.10.). */
-            'travel',
-          ],
-        },
-        uses: { type: 'string', title: 'Uses' },
+        kind: { type: 'string', title: 'Rule kind', enumRef: 'RuleKind' },
         /* Ob der Name dieser Regel im Fliesstext erkannt werden darf
            (REQ-175). Ein falscher Treffer kostet mehr Vertrauen, als zehn
            richtige einbringen — deshalb lässt er sich hier abschalten. */
         autolink: { type: 'boolean', title: 'Spot it in prose', default: true },
+      },
+    },
+  },
+
+  /**
+   * **Ein Zustand, den man hat** (D48). Eine Kreatur bekommt ihn zugewiesen
+   * (`Vitals.conditions`, `participates.conditions`) — das verlangt eine
+   * Art, denn die Prüfung hält, was ein Verweisfeld nennt, und ein Filter
+   * schlüge bloss vor.
+   *
+   * **Stufen sind eigene Zustände:** „Exhaustion 3" ist ein Artikel mit
+   * `stage: 3` und der Kante `stageOf` auf den Grundzustand „Exhaustion".
+   * Die Zustandsliste hält **höchstens eine Stufe je Grundzustand**; ändert
+   * sich die Stufe, wird der Zustand ersetzt, nicht gezählt. Deshalb gibt es
+   * `Vitals.exhaustion` nicht mehr — dieselbe Zahl an zwei Stellen läuft
+   * auseinander.
+   */
+  ConditionInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        kind: {
+          type: 'string',
+          title: 'Condition kind',
+          enum: ['condition', 'status'],
+          default: 'condition',
+        },
+        /* Nur an einer Stufe gesetzt; der Grundzustand hat keine. */
+        stage: { type: 'number', min: 1, title: 'Stage' },
+        /* Wie er endet. `longRestStep` senkt um **eine Stufe** (ersetzen:
+           gleicher `stageOf`, `stage − 1`); `save` heisst, ein Wurf löst ihn. */
+        recovery: {
+          type: 'string',
+          title: 'Recovery',
+          enum: ['none', 'shortRest', 'longRest', 'longRestStep', 'save', 'special'],
+        },
+      },
+    },
+  },
+
+  /**
+   * Eine Krankheit *hat* man, also ist sie zuweisbar wie ein Zustand und
+   * erbt `Condition`; sie trägt eigene Felder. Stadien laufen über
+   * `stageOf`, Spielarten über `variantOf`.
+   */
+  DiseaseInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        /* Frei: mundane, magical, … — eine neue Sorte ist ein Eintrag. */
+        kind: { type: 'string', suggest: true, title: 'Disease kind' },
+        save: { type: 'string', title: 'Saving throw', enumRef: 'Ability' },
+        dc: { type: 'number', min: 1, max: 30, title: 'Save DC' },
+        incubation: { type: 'string', title: 'Incubation' },
+        transmission: { type: 'string', title: 'Transmission' },
+      },
+    },
+  },
+
+  /**
+   * Aktionsart: Action, Bonus Action, Reaction, Movement, Legendary Action …
+   * Vier Stellen verlangen sie als Art: `Action.actionType`, die Wirkzeit
+   * eines Zaubers, die Einschränkungen eines Zustands (`affects`) und
+   * später die Zonen im Inventar (heute die Zeile `DrawTime`).
+   */
+  ActionTypeInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        per: { type: 'string', title: 'Per', enum: ['turn', 'round'] },
+        count: { type: 'number', min: 1, title: 'How often' },
+      },
+    },
+  },
+
+  /**
+   * Eine Aktion: Dodge, Dash, und jede Aktion eines Statblocks. Die Art der
+   * Aktion ist Pflicht und ein Verweis.
+   *
+   * **Ein Angriff trägt seine Zahlen** (P4, Arbeitsplan §2.2): Treffer,
+   * Reichweite, Schaden und Schadensart stehen als Felder und nicht nur im
+   * Satz „{@hit 4} to hit, reach 5 ft." — dann kann die Initiative damit
+   * würfeln, statt Text zu lesen. Der Text bleibt daneben; er sagt, was die
+   * Felder nicht sagen („one target", „and the target is grappled").
+   */
+  ActionInfo: {
+    schema: {
+      type: 'object',
+      required: ['actionType'],
+      properties: {
+        actionType: {
+          type: 'string',
+          format: 'link',
+          title: 'Action type',
+          target: { interfaces: ['ActionType'] },
+        },
         recharge: { type: 'string', title: 'Recharge' },
+        uses: { type: 'string', title: 'Uses' },
+        /* Welche Sorte Angriff — mehrere, wenn ein Dolch geworfen und
+           gestochen wird (5e.tools `{@atk mw,rw}`). Leer: kein Angriff. */
+        attack: {
+          type: 'array',
+          title: 'Attack',
+          items: { type: 'string' },
+          enum: ['melee weapon', 'ranged weapon', 'melee spell', 'ranged spell'],
+        },
+        /* Gegeben und nicht gerechnet: der Statblock nennt die Zahl, und
+           bei Monstern folgt sie oft nicht aus Attribut und Übung. */
+        toHit: { type: 'number', title: 'To hit', format: 'signed' },
+        reach: { type: 'number', min: 0, unit: 'ft', title: 'Reach' },
+        /* „80/320": normal und weit, wie an der Waffe. */
+        range: { type: 'string', format: 'measure', unit: 'ft', title: 'Range' },
+        /* Ein Würfelausdruck wie `1d6+2`, ohne {{…}}: das Feld ist die
+           Angabe selbst und kein Text. */
+        damage: { type: 'string', title: 'Damage' },
+        damageType: { type: 'string', title: 'Damage type', enumRef: 'DamageType' },
+      },
+    },
+  },
+
+  /**
+   * Merkmal — alles Dauerhafte: Klassen-, Volks-, Monstermerkmal,
+   * Regionaleffekt. Dieselbe Sache an verschiedenen Trägern; welcher Träger,
+   * sagen Kanten (`composedOf` am Statblock, `grants` von Klasse,
+   * Abstammung, Hintergrund).
+   *
+   * **Die Stufe steht an der Kante** (`grants.props.level`, D50), nicht
+   * hier: „Ability Score Improvement" kommt beim Kämpfer auf Stufe 4, 6, 8
+   * … — ein Artikel, sieben Kanten. Ein Feld `level` am Merkmal hätte eine
+   * davon gewählt und die anderen verschwiegen.
+   */
+  FeatureInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        featureType: { type: 'string', suggest: true, title: 'Feature type' },
+      },
+    },
+  },
+
+  /** Finesse, Versatile, Heavy — `hasProperty` verlangt eine Art. */
+  ItemPropertyInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        abbreviation: { type: 'string', title: 'Abbreviation' },
+      },
+    },
+  },
+
+  /**
+   * **Ein Zauber (M2)** — eine Regel mit eigenen Feldern, darum eine Art
+   * unter `Rule`. Wer ihn kann, steht nicht hier, sondern an der Kante
+   * `casts` vom Wirkenden: derselbe Feuerball ist bei der Magierin
+   * vorbereitet und im Stab drei Ladungen wert.
+   *
+   * **Die Wirkzeit nennt ihre Aktionsart.** Bei Aktion, Bonusaktion und
+   * Reaktion zeigt `castingAction` auf den `ActionType` (D48) — dieselbe
+   * Art, die eine Aktion nennt und ein Zustand einschränkt; „1 bonus
+   * action" als Wort wäre die dritte Schreibweise derselben Sache. Längere
+   * Wirkzeiten sind eine Zahl mit `castingUnit` (10 minutes, 8 hours).
+   *
+   * **Welche Zustände er bewirkt**, steht nicht als Feld da, sondern als
+   * Kante `affects` (`effect: imposes`) auf die `Condition`: genau das sagt
+   * die Kante schon zwischen zwei Regeln, und ein Feld daneben wäre die
+   * zweite Antwort (D49).
+   */
+  SpellInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        /* 0 ist ein Zaubertrick: eine Stufe, kein eigenes Feld. */
+        level: { type: 'number', min: 0, max: 9, title: 'Spell level' },
+        school: {
+          type: 'string',
+          title: 'School',
+          enum: [
+            'abjuration', 'conjuration', 'divination', 'enchantment',
+            'evocation', 'illusion', 'necromancy', 'transmutation',
+          ],
+        },
+        castingTime: { type: 'number', min: 1, title: 'Casting time', default: 1 },
+        castingAction: {
+          type: 'string',
+          format: 'link',
+          title: 'Cast as',
+          target: { interfaces: ['ActionType'] },
+        },
+        castingUnit: { type: 'string', title: 'Casting unit', enum: ['minute', 'hour'] },
+        /* Wann eine Reaktion ausgelöst wird: „when you see a creature …". */
+        castingCondition: { type: 'string', title: 'Reaction trigger' },
+        /* **Die Reichweite ist eine Zahl in Fuss** und eine Form: `point`
+           mit 150 ist „150 feet", `cone` mit 15 ist „Self (15-foot cone)",
+           `touch` und `self` brauchen keine Zahl. */
+        rangeKind: {
+          type: 'string',
+          title: 'Range kind',
+          enum: [
+            'point', 'touch', 'self', 'sight', 'unlimited', 'special',
+            'radius', 'sphere', 'cone', 'line', 'cube', 'cylinder', 'hemisphere', 'emanation',
+          ],
+        },
+        range: { type: 'number', min: 0, unit: 'ft', title: 'Range' },
+        components: {
+          type: 'array',
+          title: 'Components',
+          items: { type: 'string' },
+          enum: ['v', 's', 'm'],
+        },
+        material: { type: 'string', title: 'Material' },
+        /* In Kupfer wie `Item.copperPrice`: eine Währung, eine Zahl. */
+        materialCost: { type: 'number', min: 0, title: 'Material cost in copper' },
+        materialConsumed: { type: 'boolean', title: 'Material consumed' },
+        duration: {
+          type: 'string',
+          title: 'Duration',
+          enum: ['instant', 'timed', 'permanent', 'special'],
+          default: 'instant',
+        },
+        durationAmount: { type: 'number', min: 1, title: 'Lasts' },
+        durationUnit: {
+          type: 'string',
+          title: 'Duration unit',
+          enum: ['round', 'minute', 'hour', 'day'],
+        },
+        concentration: { type: 'boolean', title: 'Concentration' },
+        ritual: { type: 'boolean', title: 'Ritual' },
+        /* „At Higher Levels" — ein langer Text, denn er trägt Würfel
+           (`{{1d6}}`) wie der Haupttext. */
+        higherLevels: { type: 'string', format: 'long', title: 'At higher levels' },
+        /* Ein Rettungswurf, selten zwei (5e.tools führt eine Liste). */
+        save: { type: 'array', title: 'Saving throw', items: { type: 'string' }, enumRef: 'Ability' },
+        attack: { type: 'string', title: 'Spell attack', enum: ['melee', 'ranged'] },
+        damageTypes: { type: 'array', title: 'Damage types', items: { type: 'string' }, enumRef: 'DamageType' },
+      },
+    },
+  },
+
+  /**
+   * **Zauberwirken am Statblock (M2).** Was gegeben ist, steht hier:
+   * welches Attribut, welche Zauberstufe, wie viele Plätze je Grad. **SG und
+   * Angriffsbonus werden gerechnet** (D8) — `8+prof+modOf(spellAbility)`
+   * liest `prof` aus derselben Karte und den Wert aus `Abilities`, weil
+   * eine Rechnung erst die eigene Karte und dann den Artikel fragt. Was
+   * davon am Tisch verbraucht ist, steht am Stand (`Vitals.slotsUsed`),
+   * nicht hier: der Statblock ist die Festlegung.
+   *
+   * Welche Zauber, steht an den Kanten `casts` — mit `mode` (vorbereitet,
+   * bekannt, angeboren) und `uses` („1/day").
+   */
+  Spellcasting: {
+    schema: {
+      type: 'object',
+      properties: {
+        spellAbility: { type: 'string', title: 'Spellcasting ability', enumRef: 'Ability' },
+        casterLevel: { type: 'number', min: 1, max: 20, title: 'Caster level' },
+        /* Ein Eintrag je Grad, der erste ist der 1. Grad: `[4, 3, 2]`. */
+        spellSlots: { type: 'array', title: 'Spell slots by level', items: { type: 'number' } },
+        spellDc: {
+          type: 'number',
+          title: 'Spell save DC',
+          derived: '8+prof+modOf(spellAbility)',
+        },
+        spellAttack: {
+          type: 'number',
+          title: 'Spell attack',
+          derived: 'prof+modOf(spellAbility)',
+          format: 'signed',
+        },
       },
     },
   },
@@ -463,10 +750,175 @@ export const fieldGroups = {
     },
   },
 
-  /* Eine Fertigkeit ist auch das Werkzeug, mit dem jemand umgehen kann: in
-     5e stehen beide auf derselben Liste und werden gleich geprüft. `tool`
-     sagt, welche von beiden es ist — nicht zwei Artikelarten, die sich in
-     nichts unterscheiden ausser im Wort. */
+  /**
+   * **Eine Sprache (M6).** Sie stand als Wort in einer Aufzählungszeile;
+   * jetzt trägt sie, was 5e.tools von ihr weiss: Sorte, Schrift, wer sie
+   * spricht. Wer sie kann, steht in `Proficiencies.proficient`.
+   */
+  LanguageInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        languageType: {
+          type: 'string',
+          title: 'Language type',
+          enum: ['standard', 'exotic', 'rare', 'secret'],
+        },
+        script: { type: 'string', suggest: true, title: 'Script' },
+        typicalSpeakers: { type: 'string', title: 'Typical speakers' },
+      },
+    },
+  },
+
+  /**
+   * **Eine Wahl unter Übungen** (M3): „zwei aus Acrobatics, Athletics, …",
+   * „eines der Handwerkszeuge", „zwei Sprachen nach Wahl". Was fest
+   * gewährt wird, steht in `Proficiencies.proficient`; was gewählt wird,
+   * hier — `chooseFrom` aus denselben Listen, `chooseCount` wie viele, und
+   * `chooseNote` für die Wahl, die keine Liste hat („any two standard
+   * languages"). Klasse, Unterklasse, Abstammung und Hintergrund nehmen
+   * sie dazu; eine zweite Wahl an derselben Art ist ein Satz in der Notiz.
+   */
+  ProficiencyChoice: {
+    schema: {
+      type: 'object',
+      properties: {
+        chooseFrom: {
+          type: 'array',
+          title: 'Choose from',
+          items: { type: 'string' },
+          enumRef: PROFICIENCY_SOURCES,
+          enumWhere: TOOLS_ONLY,
+        },
+        chooseCount: { type: 'number', min: 1, title: 'How many to choose' },
+        chooseNote: { type: 'string', title: 'Choice' },
+      },
+    },
+  },
+
+  /**
+   * **Eine Klasse (M3).** Was sie festlegt: Trefferwürfel, Hauptattribut,
+   * Startausrüstung, die Voraussetzung für den Mehrklassen-Einstieg, wie
+   * sie zaubert und wie ihre Unterklassen heissen. Rettungswürfe und
+   * Startübungen nimmt sie über `Proficiencies` dazu, die Wahl über
+   * `ProficiencyChoice`.
+   *
+   * **Ihre Merkmale sind Kanten** (`grants` mit Stufe), ihre Stufentabelle
+   * (Wutanfälle, Hinterhältiger Angriff, Plätze je Grad) ist ein
+   * `Table`-Artikel über `tableFor` — beides stünde sonst als Liste hier,
+   * und die Klassentabelle entstünde zweimal.
+   */
+  ClassInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        hitDie: { type: 'number', min: 4, max: 12, title: 'Hit die' },
+        primaryAbility: {
+          type: 'array',
+          title: 'Primary ability',
+          items: { type: 'string' },
+          enumRef: 'Ability',
+        },
+        startingEquipment: { type: 'string', format: 'long', title: 'Starting equipment' },
+        /* „STR 13 or DEX 13" — ein Satz; die Regel wertet niemand aus. */
+        multiclassRequirement: { type: 'string', title: 'Multiclass requirement' },
+        /* Was beim Einstieg als zweite Klasse dazukommt — weniger als beim
+           Start (der Kämpfer bringt dann keine schwere Rüstung). */
+        multiclassProficient: {
+          type: 'array',
+          title: 'Proficiencies when multiclassing',
+          items: { type: 'string' },
+          enumRef: PROFICIENCY_SOURCES,
+          enumWhere: TOOLS_ONLY,
+        },
+        /* „Martial Archetype", „Divine Domain" — wie die Unterklassen
+           dieser Klasse heissen. */
+        subclassTitle: { type: 'string', title: 'Subclass title' },
+      },
+    },
+  },
+
+  /**
+   * **Wie eine Klasse oder Unterklasse zaubert** (M3): voll, halb, ein
+   * Drittel, Pakt — und mit welchem Attribut. Die Unterklasse trägt es
+   * auch: der Eldritch Knight zaubert, der Kämpfer nicht.
+   */
+  ClassCasting: {
+    schema: {
+      type: 'object',
+      properties: {
+        casterProgression: {
+          type: 'string',
+          title: 'Caster progression',
+          enum: ['full', 'half', 'third', 'pact', 'artificer'],
+        },
+        spellAbility: { type: 'string', title: 'Spellcasting ability', enumRef: 'Ability' },
+      },
+    },
+  },
+
+  /** Unterklasse (M3); zu welcher Klasse, sagt die Kante `subclassOf`. */
+  SubclassInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        /* Wie sie in einer Tabelle heisst: „Champion" statt „Path of the
+           Champion". */
+        shortName: { type: 'string', title: 'Short name' },
+      },
+    },
+  },
+
+  /**
+   * **Eine Abstammung (M3)** — spielbar, mit Zahlen: Grösse, Tempo,
+   * Attributsboni, Alter, Dunkelsicht. Ihre Merkmale (Dwarven Resilience)
+   * sind `Feature`-Artikel über `grants`, ihre Sprachen und Übungen stehen
+   * in `Proficiencies`. Eine Unterart (Hill Dwarf) ist eine Abstammung mit
+   * `subraceOf`.
+   *
+   * `Creature.species` bleibt daneben ein Wort: eine Goblinfigur ist keine
+   * spielbare Abstammung.
+   */
+  AncestryInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        /* Eine, selten zwei (Small oder Medium nach Wahl). */
+        size: { type: 'array', title: 'Size', items: { type: 'string' }, enumRef: 'Size' },
+        speed: { type: 'string', format: 'measure', unit: 'ft', title: 'Speed' },
+        /* `{ "con": 2 }` — Attribut auf Bonus. Eine Wahl („two different
+           +1") steht in `abilityNote`. */
+        abilityBonus: { type: 'object', title: 'Ability score increase' },
+        abilityNote: { type: 'string', title: 'Ability choice' },
+        /* Ein Satz: „mature at 20, live about 350 years". */
+        age: { type: 'string', title: 'Age' },
+        darkvision: { type: 'number', min: 0, unit: 'ft', title: 'Darkvision' },
+        creatureType: { type: 'string', suggest: true, title: 'Creature type', default: 'humanoid' },
+        resistances: { type: 'array', title: 'Damage resistances', items: { type: 'string' }, enumRef: 'DamageType' },
+      },
+    },
+  },
+
+  /**
+   * **Ein Hintergrund (M3).** Übungen und Sprachen über `Proficiencies`
+   * und `ProficiencyChoice`, das Merkmal (Shelter of the Faithful) über
+   * `grants`, die vier Charakterzug-Tabellen über `tableFor`. Eigen ist ihm
+   * nur die Startausrüstung.
+   */
+  BackgroundInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        startingEquipment: { type: 'string', format: 'long', title: 'Starting equipment' },
+      },
+    },
+  },
+
+  /* **Eine Fertigkeit ist ein Artikel, und ihr Attribut steht an ihr**
+     (M6). Es stand in der Einstellung `skills` (`stealth:dex`), weil eine
+     Zeile mit dem Wort keine Zuordnung tragen konnte. `tool` stand hier
+     auch: ein Werkzeug ist seit M6 ein Gegenstand (`itemType: tool`), und
+     wer mit ihm umgehen kann, steht in derselben Übungsliste. */
   SkillInfo: {
     schema: {
       type: 'object',
@@ -479,7 +931,6 @@ export const fieldGroups = {
           title: 'Ability',
           enumRef: 'Ability',
         },
-        tool: { type: 'boolean', title: 'A tool, not a skill', default: false },
       },
     },
   },
@@ -522,6 +973,53 @@ export const fieldGroups = {
            weiss der Novize noch nicht. Ohne Rang an der Zuteilung erreicht
            sie jedes Mitglied. */
         ranks: { type: 'array', items: { type: 'string' }, title: 'Ranks (lowest first)' },
+        /* Wohin sie will (M7): bei einem Kult der Grund, warum es ihn gibt. */
+        goal: { type: 'string', format: 'long', title: 'Goal' },
+      },
+    },
+  },
+
+  /**
+   * **Eine Gefahr (M7):** Falle oder Gelände-/Wettergefahr. Auf der Karte
+   * steht sie über `marker`; hier steht, was sie tut. Die Stufe ist eine
+   * Zahl mit Grenzen (wie `Difficulty`), der Gefahrgrad eine Aufzählung.
+   */
+  HazardInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', title: 'Kind', enum: ['trap', 'hazard'], default: 'trap' },
+        category: {
+          type: 'string',
+          title: 'Category',
+          enum: ['MECH', 'MAG', 'WTH', 'ENV', 'WLD'],
+        },
+        tier: { type: 'number', min: 1, max: 20, title: 'Level' },
+        threat: { type: 'string', title: 'Threat', enum: ['setback', 'dangerous', 'deadly'] },
+        trigger: { type: 'string', format: 'long', title: 'Trigger' },
+        duration: { type: 'string', title: 'Duration' },
+        effect: { type: 'string', format: 'long', title: 'Effect' },
+        countermeasures: { type: 'string', format: 'long', title: 'Countermeasures' },
+        initiative: { type: 'number', title: 'Initiative' },
+      },
+    },
+  },
+
+  /**
+   * **Eine Gottheit (M7).** Anhänger sind Kanten (`worships` von Kreatur
+   * und Fraktion), kein Feld; Beinamen stehen in `aliases`.
+   */
+  DeityInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        pantheon: { type: 'string', suggest: true, title: 'Pantheon' },
+        title: { type: 'string', title: 'Title' },
+        alignment: { type: 'string', suggest: true, title: 'Alignment' },
+        domains: { type: 'array', items: { type: 'string' }, title: 'Domains' },
+        symbol: { type: 'string', title: 'Symbol' },
+        province: { type: 'string', title: 'Province' },
+        plane: { type: 'string', suggest: true, title: 'Plane' },
       },
     },
   },
@@ -532,11 +1030,56 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        itemType: { type: 'string', suggest: true, title: 'Item type' },
+        /* **Eine Aufzählung am Feld (M4)**, die Gegenstandsarten von
+           5e.tools, englisch (E3). Sie war frei und bot an, was schon
+           dastand — „Trank" und „potion" standen so nebeneinander. Eine
+           Zeile wird sie, sobald ein zweites Feld sie braucht (P4: die
+           Werkzeugübung); mit einem Nutzer wäre das der Umweg ohne Gewinn. */
+        itemType: {
+          type: 'string',
+          title: 'Item type',
+          enum: [
+            'adventuring gear', 'ammunition', 'artisan tools', 'explosive',
+            'food and drink', 'gaming set', 'instrument', 'tool', 'tack and harness',
+            'light armor', 'medium armor', 'heavy armor', 'shield',
+            'melee weapon', 'ranged weapon',
+            'potion', 'scroll', 'ring', 'rod', 'staff', 'wand', 'wondrous item',
+            'spellcasting focus', 'mount', 'vehicle', 'trade good',
+            'treasure', 'art object', 'gemstone', 'coinage', 'other',
+          ],
+        },
         // Two different scales, deliberately kept apart: `rarity` is the 5e
         // magic-item rarity, `availability` is how hard the thing is to buy.
+        /* Englisch wie das Original (E3), dazu `none` (ein Seil ist nicht
+           „gewöhnlich", es ist nicht magisch) und `varies` (die Gruppe,
+           deren Mitglieder verschieden selten sind). */
         rarity: { type: 'string', title: 'Rarity',
-          enum: ['gewöhnlich', 'ungewöhnlich', 'selten', 'sehr selten', 'legendär', 'artefakt'] },
+          enum: ['none', 'common', 'uncommon', 'rare', 'very rare', 'legendary', 'artifact', 'varies', 'unknown'] },
+        /* DMG 2014: kleiner oder grosser Gegenstand, für die Schatztabellen. */
+        tier: { type: 'string', title: 'Tier', enum: ['minor', 'major'] },
+        attunement: { type: 'boolean', title: 'Requires attunement' },
+        /* „by a wizard", „by a cleric or paladin" — ein Satz, keine Liste. */
+        attunementNote: { type: 'string', title: 'Attunement by' },
+        /* **Ladungen sind die Festlegung**: wie viele der Stab hat, nicht
+           wie viele noch übrig sind. Der Stand gehört dem Stück am Tisch
+           und kommt mit dem Inventar dort (offen). */
+        charges: { type: 'number', min: 0, title: 'Charges' },
+        recharge: {
+          type: 'string',
+          title: 'Recharges at',
+          enum: ['dawn', 'dusk', 'midnight', 'shortRest', 'longRest', 'special'],
+        },
+        /* Ein Würfelausdruck wie `1d6+1`; ohne {{…}}, denn das Feld ist
+           kein Text, sondern die Angabe selbst. */
+        rechargeAmount: { type: 'string', title: 'Recharge amount' },
+        bonusWeapon: { type: 'number', title: 'Attack and damage bonus', format: 'signed' },
+        bonusAc: { type: 'number', title: 'AC bonus', format: 'signed' },
+        bonusSpellAttack: { type: 'number', title: 'Spell attack bonus', format: 'signed' },
+        bonusSave: { type: 'number', title: 'Saving throw bonus', format: 'signed' },
+        /* **Woran eine Variante passt** („+1 Weapon" an jede Waffe): Marken
+           wie `weapon`, `armor`, `ammunition`, `sword`. Das konkrete
+           +1-Langschwert entsteht am Tisch als Instanz des Grundgegenstands. */
+        appliesTo: { type: 'array', title: 'Variant applies to', items: { type: 'string' } },
         /* **Nicht dasselbe wie `rarity`.** Die ist die Seltenheit des
            magischen Gegenstands („selten", „legendär"); das hier ist, wie
            schwer er zu *kaufen* ist — im Vault die Hausregel-Leiter
@@ -586,9 +1129,15 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
+        category: { type: 'string', title: 'Category', enum: ['simple', 'martial'] },
         damage: { type: 'string', title: 'Damage' },
-        damageType: { type: 'string', suggest: true, title: 'Damage type' },
+        /* Der Schaden mit zwei Händen, wenn die Waffe `versatile` ist. */
+        damage2: { type: 'string', title: 'Two-handed damage' },
+        damageType: { type: 'string', title: 'Damage type', enumRef: 'DamageType' },
         range: { type: 'string', format: 'measure', unit: 'ft', title: 'Range' },
+        /* Was sie verschiesst: arrow, bolt, sling bullet — ein Wort, kein
+           Verweis; welcher Pfeil, entscheidet das Inventar. */
+        ammoType: { type: 'string', suggest: true, title: 'Ammunition' },
         /* **Die Eigenschaften sind Kanten**, keine Aufzählung im Text:
            `hasProperty` zeigt auf gepoolte Regelartikel. Genau darum ging
            es beim Import — „Versatil" als Text zu übernehmen kopiert, was
@@ -604,7 +1153,10 @@ export const fieldGroups = {
       type: 'object',
       properties: {
         ac: { type: 'number', title: 'Armour class' },
-        armorType: { type: 'string', suggest: true, title: 'Armour type' },
+        armorType: { type: 'string', title: 'Armour type', enum: ['light', 'medium', 'heavy', 'shield'] },
+        /* Die Stärke, unter der das Tempo sinkt. */
+        strength: { type: 'number', min: 1, max: 30, title: 'Strength required' },
+        stealthDisadvantage: { type: 'boolean', title: 'Stealth disadvantage' },
       },
     },
   },
@@ -722,15 +1274,24 @@ export const fieldGroups = {
            Abgleich A1, REQ-199). Hier stand ein Feld `player` als freier
            Text — eine Kontoangabe im Artikel, die mit jeder Ausfuhr
            wanderte, und im Bestand zweimal „—". */
-        ancestry: { type: 'string', suggest: true, title: 'Ancestry' },
-        class: { type: 'string', suggest: true, title: 'Class' },
-        level: { type: 'number', title: 'Level', default: 1 },
+        /* **Klasse, Abstammung und Hintergrund sind Kanten** (M3):
+           `hasClass` mit der Stufe in `props.level` (und der Unterklasse in
+           `props.subclass`), `hasAncestry`, `hasBackground`. Hier standen
+           `class` und `ancestry` als freie Wörter — „Kämpfer 3 / Magier 2"
+           liess sich so nur als Satz schreiben, und kein Bogen konnte daraus
+           Trefferwürfel oder Rettungswürfe lesen. */
+        /* **Die Stufe wird gerechnet** (D8): die Summe der Klassenstufen.
+           Eingetippt wäre sie die dritte Stelle neben den Kanten und nach der
+           ersten Stufe falsch. Ohne Klasse keine Stufe. */
+        level: { type: 'number', title: 'Level', derived: 'sum(hasClass.level)' },
         /* The 5e proficiency bonus follows from the level, so it is computed
-           on read (D8) and never stored — truncated, like every derived value. */
+           on read (D8) and never stored — truncated, like every derived value.
+           Es liest die Kanten selbst: eine Rechnung sieht gespeicherte
+           Nachbarn, keinen gerechneten. */
         proficiency: {
           type: 'number',
           title: 'Proficiency',
-          derived: '2+(level-1)/4',
+          derived: '2+(sum(hasClass.level)-1)/4',
           format: 'signed',
         },
       },
@@ -854,6 +1415,10 @@ export const fieldGroups = {
         page: { type: 'string', title: 'Page' },
         anchor: { type: 'string', title: 'Anchor' },
         url: { type: 'string', title: 'URL' },
+        /* Die Lizenzflagge (E1, M9): steht der Inhalt im frei lizenzierten
+           SRD? Eine spätere Demo zeigt nur das, und die Seite selbst ist
+           nicht öffentlich. */
+        srd: { type: 'boolean', title: 'In the SRD' },
       },
     },
   },
@@ -989,7 +1554,7 @@ export const fieldGroups = {
       type: 'object',
       properties: {
         /* **Die Zahlen, die am Tisch gesetzt werden** (`alwaysEdit`):
-           Trefferpunkte, zeitweilige, Erschöpfung. Erst „Bearbeiten" zu
+           Trefferpunkte, zeitweilige. Erst „Bearbeiten" zu
            sagen sind drei Klicks für eine Zahl, und das mitten im Zug. Die
            Zustandsliste und die Trefferwürfel stehen nicht dabei: die eine
            ist ein Satz Häkchen, die anderen Punkte, und beides zeichnet der
@@ -1000,31 +1565,42 @@ export const fieldGroups = {
         deathSuccess: { type: 'number', title: 'Death saves passed', default: 0 },
         deathFail: { type: 'number', title: 'Death saves failed', default: 0 },
         inspiration: { type: 'boolean', title: 'Inspiration' },
-        exhaustion: { type: 'number', title: 'Exhaustion', default: 0, alwaysEdit: true },
-        /* **Ein Zustand ist ein Regelartikel** (`Rule.kind = condition`),
-           kein Wort aus einer Einstellung (Abgleich A3, 7.10.): „prone"
-           hat eine Beschreibung, die am Tisch jemand lesen will, und eine
-           Hausregel dazu ist ein zweiter Artikel, kein zweites Wort. Hier
-           stehen die Ids; der Bogen zeichnet sie als Häkchen (REQ-115). */
+        /* **Ein Zustand ist ein Artikel der Art `Condition`**, kein Wort aus
+           einer Einstellung (Abgleich A3, 7.10.; D48): „prone" hat eine
+           Beschreibung, die am Tisch jemand lesen will. Hier stehen die Ids;
+           der Bogen zeichnet sie als Häkchen (REQ-115). **Höchstens eine
+           Stufe je Grundzustand** — die Prüfung hält es (`stageOf`). Die
+           Erschöpfung ist deshalb kein Zähler mehr, sondern „Exhaustion 1"
+           bis „Exhaustion 6" in dieser Liste. */
         conditions: {
           type: 'array', format: 'link', title: 'Conditions', items: { type: 'string' },
-          target: { interfaces: ['Rule'], where: { component: 'Rule', property: 'kind', value: 'condition' } },
+          target: { interfaces: ['Condition'] },
         },
         nat1: { type: 'number', title: 'Natural 1s', default: 0 },
+        /* **Verbrauchte Zauberplätze je Grad** (M2), der erste ist der 1.
+           Grad. Wie viele es gibt, steht am Statblock (`spellSlots`): das
+           ist die Festlegung, das hier der Stand — wie `hp` an beiden. */
+        slotsUsed: { type: 'array', title: 'Spell slots used', items: { type: 'number' } },
       },
     },
   },
 
   /**
    * Übung und Expertise als Listen, nicht als Feld je Fertigkeit. Eine
-   * Kampagne mit anderen Fertigkeiten ist damit eine andere Einstellung und
-   * kein Schemawechsel — die Liste der Fertigkeiten steht in den
-   * Kampagneneinstellungen, wo sie jemand ändern kann.
+   * Kampagne mit anderen Fertigkeiten legt andere `Skill`-Artikel an — kein
+   * Schemawechsel und keine Einstellung (M6).
    */
   /**
    * **Worin jemand geübt ist** — eine Gruppe und nicht sechs Felder an
    * sechs Stellen: Fertigkeiten, Sprachen, Werkzeuge, Rüstungen, Waffen
    * und (Hausregel) Wissensgebiete.
+   *
+   * **Seit M6 aus Artikeln** (D50): Fertigkeiten und Sprachen sind Arten,
+   * Werkzeuge und einzelne Waffen sind Gegenstände, die Waffen- und
+   * Rüstungsgruppen sind die Listen von `Weapon.category` und
+   * `Armor.armorType`. Ein Wissensgebiet ist eine Fertigkeit mit eigenem
+   * Artikel. Gespeichert wird der Name; die Prüfung hält ihn nicht fest,
+   * denn ein Name ist der heutige Stand.
    *
    * Sie hiess `Skills` und trug nur die Hälfte davon. Die andere Hälfte
    * stand als freier Text am Statblock (`languages`, `saves`, `skills`) —
@@ -1033,9 +1609,8 @@ export const fieldGroups = {
    *
    * Der **Übungsbonus** steht hier bewusst nicht: an einem Statblock ist
    * er gegeben (`Statblock.prof`), an einer Figur gerechnet
-   * (`CharacterInfo.proficiency` aus der Stufe). Ein gerechneter Wert sieht
-   * nur seine Nachbarn in derselben Karte (D8) — ein drittes Feld hier
-   * könnte nichts rechnen und wäre die Zahl, die als erste veraltet.
+   * (`CharacterInfo.proficiency` aus der Stufe). Ein drittes Feld hier
+   * wäre die Zahl, die als erste veraltet.
    */
   Proficiencies: {
     schema: {
@@ -1057,14 +1632,16 @@ export const fieldGroups = {
           type: 'array',
           title: 'Proficient in',
           items: { type: 'string' },
-          enumRef: ['Skill', 'Tool', 'Language', 'WeaponTraining', 'ArmorTraining', 'KnowledgeField'],
+          enumRef: PROFICIENCY_SOURCES,
+          enumWhere: TOOLS_ONLY,
         },
         /* Dieselben Listen: Expertise ist eine Übung, die doppelt zählt. */
         expertise: {
           type: 'array',
           title: 'Expertise in',
           items: { type: 'string' },
-          enumRef: ['Skill', 'Tool', 'Language', 'WeaponTraining', 'ArmorTraining', 'KnowledgeField'],
+          enumRef: PROFICIENCY_SOURCES,
+          enumWhere: TOOLS_ONLY,
         },
         /* Rettungswürfe sind Attribute und sonst nichts — eine Liste aus
            **einer** Zeile, und genau das ist der Unterschied zur Probe am
@@ -1292,6 +1869,12 @@ export const fieldGroups = {
           default: 'generic',
         },
         die: { type: 'string', suggest: true, title: 'Die', default: '1d100' },
+        /* **Spalten (M8):** die Beschriftungen einer Nachschlagetabelle. Mit
+           ihnen ist eine Zeile in `rows` eine Liste von Zellen (`cells`),
+           nicht nur ein Satz mit Gewicht; ohne sie bleibt die Tabelle ein
+           Würfeltopf. Die gewichteten Einträge, die auf Artikel zeigen,
+           bleiben `entry`-Kanten. */
+        columns: { type: 'array', title: 'Columns', items: { type: 'string' } },
         rows: { type: 'array', title: 'Plain entries', items: { type: 'object' } },
         /* Eine Notiz zur Tabelle ist eine Notiz — `Notes.note` kann mehrere
            und lange. Zwei Felder namens „Note" untereinander hiesse, beide

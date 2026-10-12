@@ -99,6 +99,7 @@ const GRIFF = `
 window.__T__={derivedValue:derivedValue,assetSrc:assetSrc,UI:UI,
   LAYOUT_ELEMENTS:LAYOUT_ELEMENTS,rollDice:rollDice,go:go,rollTable:rollTable,
   exportState:exportState,importReport:importReport,findByName:findByName,
+  parseMarkdown:parseMarkdown,idLinks:idLinks,linkHits:linkHits,summaryText:summaryText,persist:persist,
   articleVisible:articleVisible,activeStack:activeStack,
   tableRole:tableRole,audienceAllows:audienceAllows,fieldKind:fieldKind,
   kampagnenVon:kampagnenVon,campaignOf:campaignOf,gmAccounts:gmAccounts,

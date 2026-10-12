@@ -72,8 +72,14 @@ function wieFeld(p) {
   if (p.derived) return `gerechnet: ${p.derived}`;
   const refs = p.enumRef ? (Array.isArray(p.enumRef) ? p.enumRef : [p.enumRef]) : [];
   if (refs.length) {
-    const woerter = refs.reduce((n, r) => n + (R.enums?.[r]?.values?.length ?? 0), 0);
-    return `${p.type === 'array' ? 'mehrere aus ' : 'aus '}${refs.join(' + ')} (${woerter} Wörter)`;
+    /* Eine Zeile hat Wörter; eine Artikelart (M6) hat Artikel, deren Namen
+       erst der Bestand kennt; `Typ.feld` die Liste dieses Feldes. */
+    const teile = refs.map((r) => {
+      if (R.enums?.[r]) return `${r} (${R.enums[r].values?.length ?? 0} Wörter)`;
+      if (R.interfaces?.[r]) return `${r}-Artikel`;
+      return r;
+    });
+    return `${p.type === 'array' ? 'mehrere aus ' : 'aus '}${teile.join(' + ')}`;
   }
   if (p.enum) return p.enum.join(' | ');
   if ((p.target?.interfaces ?? []).length) return `Verweis → ${p.target.interfaces.join(' | ')}`;

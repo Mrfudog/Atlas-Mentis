@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-07. 52 Schnittstellen, 42 Kantenarten.
+Stand 2026-10-09. 67 Schnittstellen, 53 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -14,7 +14,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## World
 
-*Wer und was es gibt.* — 11 Arten.
+*Wer und was es gibt.* — 13 Arten.
 
 ### Armor
 
@@ -22,11 +22,11 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `ac` *number*, `armorType` *string*
+- `ac` *number*, `armorType` *light | medium | heavy | shield*, `strength` *1…30*, `stealthDisadvantage` *boolean*
 
 **Geerbte Felder**
 
-- *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
+- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `appliesTo` *array*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -35,22 +35,26 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
-- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Lore`* — `lore` *long*
 - *`Secrets`* — `secret` *long*
 - *`Facts`* — `fact` *long*
 
 **Kanten von hier**
 
-- `hasProperty` → Rule — „has property"
+- `casts` → Spell — „casts"
+- `hasProperty` → ItemProperty — „has property"
 - `describedIn` → Article — „described in"
+- `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
+- `instanceOf` → same — „instance of"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
 
 **Kanten hierher**
 
+- Statblock — `equips` → „equipped by"
 - Inventory — `holds` → „held in"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -61,6 +65,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Statblock | Item — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -79,7 +84,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Description`* — `description` *long*
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
-- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Todos`* — `items` *array*
 - *`Lore`* — `lore` *long*
 - *`Secrets`* — `secret` *long*
@@ -108,7 +113,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Creature
 
-`Creature` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Vars` ← `Vitals` ← `Proficiencies` ← `Lore` ← `Facts` ← `Secrets` ← `ReadAloud`
+`Creature` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Vars` ← `Vitals` ← `Lore` ← `Facts` ← `Secrets` ← `ReadAloud`
 
 **Eigene Felder**
 
@@ -124,10 +129,9 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
-- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
-- *`Vitals`* — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `exhaustion` *number*, `conditions` *link → Rule*, `nat1` *number*
-- *`Proficiencies`* — `proficient` *Skill + Tool + Language + WeaponTraining + ArmorTraining + KnowledgeField: 35 words*, `expertise` *Skill + Tool + Language + WeaponTraining + ArmorTraining + KnowledgeField: 35 words*, `saves` *Ability: str | dex | con | int | wis | cha*
+- *`Vitals`* — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `conditions` *link → Condition*, `nat1` *number*, `slotsUsed` *array*
 - *`Lore`* — `lore` *long*
 - *`Facts`* — `fact` *long*
 - *`Secrets`* — `secret` *long*
@@ -135,6 +139,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `worships` → Deity — „worships"
 - `owes` → Creature — „owes"
 - `memberOf` → Faction — „member of"
 - `livesIn` → Place — „lives in"
@@ -167,11 +172,55 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Creature | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
-  - **Overview** — `image`, `description`, `linked` (ohne Inventory), `fields` (ohne Vitals, Proficiencies), `prose`
+  - **Overview** — `image`, `description`, `linked` (ohne Inventory), `fields` (ohne Vitals), `prose`
   - **Combat** — `composed`
   - **Gear** — `inventory`
   - **Craft** — `crafting`
   - **Ties** — `standing`, `relations`
+
+### Deity
+
+`Deity` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets`
+
+**Eigene Felder**
+
+- `pantheon` *string*, `title` *string*, `alignment` *string*, `domains` *array*, `symbol` *string*, `province` *string*, `plane` *string*
+
+**Geerbte Felder**
+
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Lore`* — `lore` *long*
+- *`Secrets`* — `secret` *long*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Creature | Faction — `worships` → „worshipped by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Faction
 
@@ -179,7 +228,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `kind` *string*, `color` *color*, `ranks` *array*
+- `kind` *string*, `color` *color*, `ranks` *array*, `goal` *long*
 
 **Geerbte Felder**
 
@@ -196,6 +245,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `worships` → Deity — „worships"
 - `controls` → Place — „controls"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -222,13 +272,13 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
-### Item
+### Hazard
 
-`Item` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts`
+`Hazard` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Secrets`
 
 **Eigene Felder**
 
-- `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
+- `kind` *trap | hazard*, `category` *MECH | MAG | WTH | ENV | WLD*, `tier` *1…20*, `threat` *setback | dangerous | deadly*, `trigger` *long*, `duration` *string*, `effect` *long*, `countermeasures` *long*, `initiative` *number*
 
 **Geerbte Felder**
 
@@ -240,14 +290,11 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
-- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
-- *`Lore`* — `lore` *long*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Secrets`* — `secret` *long*
-- *`Facts`* — `fact` *long*
 
 **Kanten von hier**
 
-- `hasProperty` → Rule — „has property"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -256,6 +303,55 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
+
+### Item
+
+`Item` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts`
+
+**Eigene Felder**
+
+- `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `appliesTo` *array*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
+
+**Geerbte Felder**
+
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Lore`* — `lore` *long*
+- *`Secrets`* — `secret` *long*
+- *`Facts`* — `fact` *long*
+
+**Kanten von hier**
+
+- `casts` → Spell — „casts"
+- `hasProperty` → ItemProperty — „has property"
+- `describedIn` → Article — „described in"
+- `carries` → Inventory — „carries"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `instanceOf` → same — „instance of"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `equips` → „equipped by"
 - Inventory — `holds` → „held in"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -266,6 +362,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Statblock | Item — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -281,7 +378,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
+- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `appliesTo` *array*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -290,22 +387,26 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
-- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Lore`* — `lore` *long*
 - *`Secrets`* — `secret` *long*
 - *`Facts`* — `fact` *long*
 
 **Kanten von hier**
 
-- `hasProperty` → Rule — „has property"
+- `casts` → Spell — „casts"
+- `hasProperty` → ItemProperty — „has property"
 - `describedIn` → Article — „described in"
+- `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
+- `instanceOf` → same — „instance of"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
 
 **Kanten hierher**
 
+- Statblock — `equips` → „equipped by"
 - Inventory — `holds` → „held in"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -316,6 +417,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Statblock | Item — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -424,11 +526,11 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Player character
 
-`PlayerCharacter` · erbt von `Creature` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Vars` ← `Vitals` ← `Proficiencies` ← `Lore` ← `Facts` ← `Secrets` ← `ReadAloud`
+`PlayerCharacter` · erbt von `Creature` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Vars` ← `Vitals` ← `Lore` ← `Facts` ← `Secrets` ← `ReadAloud`
 
 **Eigene Felder**
 
-- `backstory` *long*, `ancestry` *string*, `class` *string*, `level` *number*, `proficiency` *gerechnet*
+- `backstory` *long*, `level` *gerechnet*, `proficiency` *gerechnet*
 
 **Geerbte Felder**
 
@@ -441,10 +543,9 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
-- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
-- *`Vitals`* — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `exhaustion` *number*, `conditions` *link → Rule*, `nat1` *number*
-- *`Proficiencies`* — `proficient` *Skill + Tool + Language + WeaponTraining + ArmorTraining + KnowledgeField: 35 words*, `expertise` *Skill + Tool + Language + WeaponTraining + ArmorTraining + KnowledgeField: 35 words*, `saves` *Ability: str | dex | con | int | wis | cha*
+- *`Vitals`* — `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `conditions` *link → Condition*, `nat1` *number*, `slotsUsed` *array*
 - *`Lore`* — `lore` *long*
 - *`Facts`* — `fact` *long*
 - *`Secrets`* — `secret` *long*
@@ -452,6 +553,11 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `worships` → Deity — „worships"
+- `casts` → Spell — „casts"
+- `hasClass` → Class — „class"
+- `hasAncestry` → Ancestry — „ancestry"
+- `hasBackground` → Background — „background"
 - `owes` → Creature — „owes"
 - `memberOf` → Faction — „member of"
 - `livesIn` → Place — „lives in"
@@ -484,7 +590,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Creature | Party | Faction — `regards` → „judged by"
 
 **Gezeichnet** (aus `Creature`): `sheet`, Reiter:
-  - **Overview** — `image`, `description`, `linked` (ohne Inventory), `fields` (ohne Vitals, Proficiencies), `prose`
+  - **Overview** — `image`, `description`, `linked` (ohne Inventory), `fields` (ohne Vitals), `prose`
   - **Combat** — `composed`
   - **Gear** — `inventory`
   - **Craft** — `crafting`
@@ -496,11 +602,11 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `damage` *string*, `damageType` *string*, `range` *measure in ft*
+- `category` *simple | martial*, `damage` *string*, `damage2` *string*, `damageType` *DamageType: acid | bludgeoning | cold | fire | force | lightning | necrotic | piercing | poison | psychic | radiant | slashing | thunder*, `range` *measure in ft*, `ammoType` *string*
 
 **Geerbte Felder**
 
-- *`Item`* — `itemType` *string*, `rarity` *gewöhnlich | ungewöhnlich | selten | sehr selten | legendär | artefakt*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
+- *`Item`* — `itemType` *adventuring gear | ammunition | artisan tools | explosive | food and drink | gaming set | instrument | tool | tack and harness | light armor | medium armor | heavy armor | shield | melee weapon | ranged weapon | potion | scroll | ring | rod | staff | wand | wondrous item | spellcasting focus | mount | vehicle | trade good | treasure | art object | gemstone | coinage | other*, `rarity` *none | common | uncommon | rare | very rare | legendary | artifact | varies | unknown*, `tier` *minor | major*, `attunement` *boolean*, `attunementNote` *string*, `charges` *0…∞*, `recharge` *dawn | dusk | midnight | shortRest | longRest | special*, `rechargeAmount` *string*, `bonusWeapon` *signed*, `bonusAc` *signed*, `bonusSpellAttack` *signed*, `bonusSave` *signed*, `appliesTo` *array*, `availability` *string*, `copperPrice` *number*, `stackSize` *number*, `weight` *number in lb*, `rows` *grid*, `width` *gerechnet*, `height` *gerechnet*, `cells` *gerechnet*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -509,22 +615,26 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
-- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Lore`* — `lore` *long*
 - *`Secrets`* — `secret` *long*
 - *`Facts`* — `fact` *long*
 
 **Kanten von hier**
 
-- `hasProperty` → Rule — „has property"
+- `casts` → Spell — „casts"
+- `hasProperty` → ItemProperty — „has property"
 - `describedIn` → Article — „described in"
+- `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
+- `instanceOf` → same — „instance of"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
 
 **Kanten hierher**
 
+- Statblock — `equips` → „equipped by"
 - Inventory — `holds` → „held in"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -535,6 +645,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
+- Statblock | Item — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -894,7 +1005,359 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## Rules
 
-*Woran man sich hält.* — 9 Arten.
+*Woran man sich hält.* — 21 Arten.
+
+### Action
+
+`Action` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `actionType` **Pflicht** *link → ActionType*, `recharge` *string*, `uses` *string*, `attack` *melee weapon | ranged weapon | melee spell | ranged spell*, `toHit` *signed*, `reach` *number in ft*, `range` *measure in ft*, `damage` *string*, `damageType` *DamageType: acid | bludgeoning | cold | fire | force | lightning | necrotic | piercing | poison | psychic | radiant | slashing | thunder*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
+
+### Action type
+
+`ActionType` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `per` *turn | round*, `count` *1…∞*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
+
+### Ancestry
+
+`Ancestry` · erbt von `Rule` ← `Proficiencies` ← `ProficiencyChoice` ← `Lore` ← `Image` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `size` *Size: tiny | small | medium | large | huge | gargantuan*, `speed` *measure in ft*, `abilityBonus` *object*, `abilityNote` *string*, `age` *string*, `darkvision` *number in ft*, `creatureType` *string*, `resistances` *DamageType: acid | bludgeoning | cold | fire | force | lightning | necrotic | piercing | poison | psychic | radiant | slashing | thunder*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- *`Proficiencies`* — `proficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `expertise` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `saves` *Ability: str | dex | con | int | wis | cha*
+- *`ProficiencyChoice`* — `chooseFrom` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `chooseCount` *1…∞*, `chooseNote` *string*
+- *`Lore`* — `lore` *long*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
+- `subraceOf` → Ancestry — „subrace of"
+- `grants` → Rule — „grants"
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `tableFor` → Table — „rolls on"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- Ancestry — `subraceOf` → „subraces"
+- PlayerCharacter — `hasAncestry` → „ancestry of"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
+
+### Background
+
+`Background` · erbt von `Rule` ← `Proficiencies` ← `ProficiencyChoice` ← `Lore` ← `Image` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `startingEquipment` *long*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- *`Proficiencies`* — `proficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `expertise` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `saves` *Ability: str | dex | con | int | wis | cha*
+- *`ProficiencyChoice`* — `chooseFrom` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `chooseCount` *1…∞*, `chooseNote` *string*
+- *`Lore`* — `lore` *long*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `grants` → Rule — „grants"
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `tableFor` → Table — „rolls on"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- PlayerCharacter — `hasBackground` → „background of"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
+
+### Class
+
+`Class` · erbt von `Rule` ← `Proficiencies` ← `ProficiencyChoice` ← `Lore` ← `Image` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `hitDie` *4…12*, `primaryAbility` *Ability: str | dex | con | int | wis | cha*, `startingEquipment` *long*, `multiclassRequirement` *string*, `multiclassProficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `subclassTitle` *string*, `casterProgression` *full | half | third | pact | artificer*, `spellAbility` *Ability: str | dex | con | int | wis | cha*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- *`Proficiencies`* — `proficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `expertise` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `saves` *Ability: str | dex | con | int | wis | cha*
+- *`ProficiencyChoice`* — `chooseFrom` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `chooseCount` *1…∞*, `chooseNote` *string*
+- *`Lore`* — `lore` *long*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `grants` → Rule — „grants"
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `tableFor` → Table — „rolls on"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- Subclass — `subclassOf` → „subclasses"
+- PlayerCharacter — `hasClass` → „taken by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
+
+### Condition
+
+`Condition` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `kind` *condition | status*, `stage` *1…∞*, `recovery` *none | shortRest | longRest | longRestStep | save | special*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `stageOf` → Condition — „stage of"
+- `affects` → Rule — „affects"
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Condition — `stageOf` → „has stages"
+- Rule — `affects` → „affected by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
+
+### Disease
+
+`Disease` · erbt von `Condition` ← `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `kind` *string*, `save` *Ability: str | dex | con | int | wis | cha*, `dc` *1…30*, `incubation` *string*, `transmission` *string*
+
+**Geerbte Felder**
+
+- *`Condition`* — `kind` *condition | status*, `stage` *1…∞*, `recovery` *none | shortRest | longRest | longRestStep | save | special*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `stageOf` → Condition — „stage of"
+- `affects` → Rule — „affects"
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Condition — `stageOf` → „has stages"
+- Rule — `affects` → „affected by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Feat
 
@@ -906,7 +1369,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` **Pflicht** *action | bonus | reaction | feature | trait | condition | legendary | lair | feat | skill | travel*, `uses` *string*, `autolink` *boolean*, `recharge` *string*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -914,11 +1377,13 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Description`* — `description` *long*
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
-- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
 
 **Kanten von hier**
 
+- `affects` → Rule — „affects"
+- `grants` → Rule — „grants"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -928,12 +1393,59 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Statblock — `composedOf` → „used in"
-- Weapon | Item | Armor — `hasProperty` → „property of"
+- Rule — `affects` → „affected by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
 - Board — `placed` → „lies on"
 - Encounter | Story | Quest — `loot` → „found in"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
+
+### Feature
+
+`Feature` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `featureType` *string*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - * — `variantOf` → „has variants"
@@ -1015,7 +1527,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Creature | Party — `carries` → „carried by"
+- Creature | Party | Item — `carries` → „carried by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1026,6 +1538,53 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `overrides` → „replaced by"
 
 **Gezeichnet** (aus `Inventory`): `inventory`, `description`, `fields` (ohne Inventory.copper), `relations`
+
+### Item property
+
+`ItemProperty` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `abbreviation` *string*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Weapon | Item | Armor — `hasProperty` → „property of"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Knowledge
 
@@ -1064,6 +1623,52 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
+### Language
+
+`Language` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `languageType` *standard | exotic | rare | secret*, `script` *string*, `typicalSpeakers` *string*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
+
 ### Recipe
 
 `Recipe` · erbt von `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Notes` ← `Secrets` ← `Lore`
@@ -1080,7 +1685,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Description`* — `description` *long*
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
-- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Notes`* — `note` *long*
 - *`Secrets`* — `secret` *long*
 - *`Lore`* — `lore` *long*
@@ -1115,7 +1720,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `kind` **Pflicht** *action | bonus | reaction | feature | trait | condition | legendary | lair | feat | skill | travel*, `uses` *string*, `autolink` *boolean*, `recharge` *string*
+- `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
 
 **Geerbte Felder**
 
@@ -1126,11 +1731,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Description`* — `description` *long*
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
-- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
 
 **Kanten von hier**
 
+- `affects` → Rule — „affects"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1140,7 +1746,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Statblock — `composedOf` → „used in"
-- Weapon | Item | Armor — `hasProperty` → „property of"
+- Rule — `affects` → „affected by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1158,11 +1765,11 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `ability` *Ability: str | dex | con | int | wis | cha*, `tool` *boolean*
+- `ability` *Ability: str | dex | con | int | wis | cha*
 
 **Geerbte Felder**
 
-- *`Rule`* — `kind` **Pflicht** *action | bonus | reaction | feature | trait | condition | legendary | lair | feat | skill | travel*, `uses` *string*, `autolink` *boolean*, `recharge` *string*
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -1170,11 +1777,12 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Description`* — `description` *long*
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
-- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Vars`* — `bindings` *object*
 
 **Kanten von hier**
 
+- `affects` → Rule — „affects"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1184,7 +1792,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Statblock — `composedOf` → „used in"
-- Weapon | Item | Armor — `hasProperty` → „property of"
+- Rule — `affects` → „affected by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -1197,13 +1806,60 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
-### Statblock
+### Spell
 
-`Statblock` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Abilities` ← `Vars` ← `Tactics`
+`Spell` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
-- `system` *string*, `size` *winzig | klein | mittel | gross | riesig | gewaltig*, `creatureType` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *measure in ft*, `cr` *string*, `prof` *number*, `combatRole` *string*, `senses` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*
+- `level` *0…9*, `school` *abjuration | conjuration | divination | enchantment | evocation | illusion | necromancy | transmutation*, `castingTime` *1…∞*, `castingAction` *link → ActionType*, `castingUnit` *minute | hour*, `castingCondition` *string*, `rangeKind` *point | touch | self | sight | unlimited | special | radius | sphere | cone | line | cube | cylinder | hemisphere | emanation*, `range` *number in ft*, `components` *v | s | m*, `material` *string*, `materialCost` *0…∞*, `materialConsumed` *boolean*, `duration` *instant | timed | permanent | special*, `durationAmount` *1…∞*, `durationUnit` *round | minute | hour | day*, `concentration` *boolean*, `ritual` *boolean*, `higherLevels` *long*, `save` *Ability: str | dex | con | int | wis | cha*, `attack` *melee | ranged*, `damageTypes` *DamageType: acid | bludgeoning | cold | fire | force | lightning | necrotic | piercing | poison | psychic | radiant | slashing | thunder*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- Statblock | PlayerCharacter | Item | Subclass | Ancestry — `casts` → „cast by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
+
+### Statblock
+
+`Statblock` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Abilities` ← `Proficiencies` ← `Vars` ← `Tactics` ← `Lore` ← `Image`
+
+**Eigene Felder**
+
+- `system` *string*, `size` *Size: tiny | small | medium | large | huge | gargantuan*, `creatureType` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *measure in ft*, `cr` *string*, `prof` *number*, `combatRole` *string*, `senses` *string*, `languageNote` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*, `conditionImmunities` *Condition articles*, `legendaryActions` *1…∞*, `bonuses` *object*, `token` *asset*, `spellAbility` *Ability: str | dex | con | int | wis | cha*, `casterLevel` *1…20*, `spellSlots` *array*, `spellDc` *gerechnet*, `spellAttack` *gerechnet*
 
 **Geerbte Felder**
 
@@ -1214,19 +1870,24 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Description`* — `description` *long*
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
-- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Abilities`* — `str` *number*, `strMod` *gerechnet*, `dex` *number*, `dexMod` *gerechnet*, `con` *number*, `conMod` *gerechnet*, `int` *number*, `intMod` *gerechnet*, `wis` *number*, `wisMod` *gerechnet*, `cha` *number*, `chaMod` *gerechnet*, `initiative` *gerechnet*, `passivePerception` *gerechnet*
+- *`Proficiencies`* — `proficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `expertise` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `saves` *Ability: str | dex | con | int | wis | cha*
 - *`Vars`* — `bindings` *object*
 - *`Tactics`* — `tactics` *long*
+- *`Lore`* — `lore` *long*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 
 **Kanten von hier**
 
 - `composedOf` → Rule — „composed of"
 - `belongsTo` → Creature — „belongs to"
+- `casts` → Spell — „casts"
+- `equips` → Item — „equips"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
-- `instanceOf` → Statblock — „instance of"
+- `instanceOf` → same — „instance of"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
 
@@ -1240,11 +1901,65 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter — `participates` → „fights in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
-- Statblock — `instanceOf` → „instances"
+- Statblock | Item — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
 **Gezeichnet** (aus `Statblock`): `fields`, `composed`, `prose`, `relations`
+
+### Subclass
+
+`Subclass` · erbt von `Rule` ← `Proficiencies` ← `ProficiencyChoice` ← `Lore` ← `Image` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `shortName` *string*, `casterProgression` *full | half | third | pact | artificer*, `spellAbility` *Ability: str | dex | con | int | wis | cha*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- *`Proficiencies`* — `proficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `expertise` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `saves` *Ability: str | dex | con | int | wis | cha*
+- *`ProficiencyChoice`* — `chooseFrom` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `chooseCount` *1…∞*, `chooseNote` *string*
+- *`Lore`* — `lore` *long*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
+- `subclassOf` → Class — „subclass of"
+- `grants` → Rule — „grants"
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `tableFor` → Table — „rolls on"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
 
 ### Table
 
@@ -1252,7 +1967,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `kind` *loot | encounter | name | shop | event | generic*, `die` *string*, `rows` *array*
+- `kind` *loot | encounter | name | shop | event | generic*, `die` *string*, `columns` *array*, `rows` *array*
 
 **Geerbte Felder**
 
@@ -1262,7 +1977,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Description`* — `description` *long*
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
-- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 - *`Notes`* — `note` *long*
 - *`Secrets`* — `secret` *long*
 
@@ -1283,7 +1998,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
-- Place | Story | Encounter — `tableFor` → „used at"
+- Place | Story | Encounter | Class | Subclass | Ancestry | Background — `tableFor` → „used at"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -1435,7 +2150,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## Ohne Bereich
 
-*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 23 Arten.
+*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 24 Arten.
 
 ### Abilities — *abstrakt*
 
@@ -1484,7 +2199,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
 - *`Tags`* — `tags` *tags*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
-- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 
 **Kanten von hier**
 
@@ -1757,7 +2472,36 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `proficient` *Skill + Tool + Language + WeaponTraining + ArmorTraining + KnowledgeField: 35 words*, `expertise` *Skill + Tool + Language + WeaponTraining + ArmorTraining + KnowledgeField: 35 words*, `saves` *Ability: str | dex | con | int | wis | cha*
+- `proficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `expertise` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `saves` *Ability: str | dex | con | int | wis | cha*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `standing`, `relations`
+
+### Proficiency choice — *abstrakt*
+
+`ProficiencyChoice`
+
+**Eigene Felder**
+
+- `chooseFrom` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `chooseCount` *1…∞*, `chooseNote` *string*
 
 **Kanten von hier**
 
@@ -1873,7 +2617,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*
+- `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
 
 **Kanten von hier**
 
@@ -2105,7 +2849,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `exhaustion` *number*, `conditions` *link → Rule*, `nat1` *number*
+- `hp` *number*, `hpTemp` *number*, `hitDiceLeft` *number*, `deathSuccess` *number*, `deathFail` *number*, `inspiration` *boolean*, `conditions` *link → Condition*, `nat1` *number*, `slotsUsed` *array*
 
 **Kanten von hier**
 

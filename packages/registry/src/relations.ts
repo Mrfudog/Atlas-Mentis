@@ -58,13 +58,206 @@ export const relations: Record<string, RelationDef> = {
     asField: 'to',
   },
 
+  /**
+   * **Die Stufe eines Zustands** (D48): „Exhaustion 3" ist Stufe 3 von
+   * „Exhaustion". Dasselbe Muster trägt die Stadien einer Krankheit. Die
+   * Zustandsliste hält höchstens eine Stufe je Grundzustand; ändert sich
+   * die Stufe, wird ersetzt (gleicher `stageOf`, `stage ± 1`).
+   */
+  stageOf: {
+    type: 'stageOf',
+    label: 'stage of',
+    inverseLabel: 'has stages',
+    from: ['Condition'],
+    to: ['Condition'],
+    cardinality: 'one',
+  },
+
+  /**
+   * **Wirkungen zwischen Regeln** (D48): gelähmt *bewirkt* kampfunfähig,
+   * kampfunfähig *verbietet* Reaktionen. Gespeichert wird vorwärts; die
+   * Gegenfrage („was verbietet mir Reaktionen?") ist eine Abfrage.
+   * **Ausgewertet wird vorerst nichts** — die Kanten sind Daten, die der
+   * Bogen anzeigt. Der Importer legt sie nicht an: dass ein Text einen
+   * anderen Zustand nennt, heisst nicht, dass er ihn bewirkt.
+   */
+  affects: {
+    type: 'affects',
+    label: 'affects',
+    inverseLabel: 'affected by',
+    from: ['Rule'],
+    to: ['Rule'],
+    props: {
+      type: 'object',
+      properties: {
+        effect: {
+          type: 'string',
+          title: 'Effect',
+          enum: ['imposes', 'prevents', 'limits', 'advantage', 'disadvantage', 'triggers'],
+        },
+        on: { type: 'string', suggest: true, title: 'On' },
+        note: { type: 'string', title: 'Note' },
+      },
+    },
+  },
+
+  /** Wer an eine Gottheit glaubt (M7). Die Anhänger sind die Gegenrichtung. */
+  worships: {
+    type: 'worships',
+    label: 'worships',
+    inverseLabel: 'worshipped by',
+    from: ['Creature', 'Faction'],
+    to: ['Deity'],
+  },
+
+  /**
+   * **Wer einen Zauber wirkt, und wie (M2).** Der Zauber steht einmal da;
+   * die Kante sagt, was er beim Wirkenden ist: vorbereitet, bekannt,
+   * angeboren oder in einem Gegenstand gespeichert. `uses` ist die
+   * Häufigkeit, wie sie im Statblock steht („at will", „3/day"), `level`
+   * der Grad, auf dem er so gewirkt wird, `charges` was ein Gegenstand
+   * dafür verbraucht (der Zauberstab der Magischen Geschosse: 1).
+   *
+   * Vom Statblock und nicht von der Kreatur: die Zahlen und das
+   * Zauberwirken wohnen dort. Seit P4 auch von der Unterklasse und der
+   * Abstammung: Domänenzauber des Klerikers, das angeborene Thaumaturgy
+   * des Tieflings — mit `fromLevel`, ab welcher Klassen- bzw. Figurenstufe.
+   */
+  casts: {
+    type: 'casts',
+    label: 'casts',
+    inverseLabel: 'cast by',
+    from: ['Statblock', 'PlayerCharacter', 'Item', 'Subclass', 'Ancestry'],
+    to: ['Spell'],
+    props: {
+      type: 'object',
+      properties: {
+        mode: {
+          type: 'string',
+          title: 'How',
+          enum: ['prepared', 'known', 'innate', 'item'],
+        },
+        uses: { type: 'string', suggest: true, title: 'Uses' },
+        level: { type: 'number', min: 0, max: 9, title: 'At level' },
+        charges: { type: 'number', min: 0, title: 'Charges per cast' },
+        fromLevel: { type: 'number', min: 1, max: 20, title: 'From level' },
+      },
+    },
+  },
+
+  /**
+   * **Was ein Statblock in der Hand hat** (M5): der Goblin führt Krummsäbel
+   * und Kurzbogen. Ein Verweis auf den Gegenstand aus dem Buch und kein
+   * Inventar — das hat eine Figur am Tisch (`carries`), nicht eine Vorlage.
+   */
+  equips: {
+    type: 'equips',
+    label: 'equips',
+    inverseLabel: 'equipped by',
+    from: ['Statblock'],
+    to: ['Item'],
+  },
+
+  // ------------------------------------------------------------ charakterbau
+
+  /** Zu welcher Klasse eine Unterklasse gehört (M3). */
+  subclassOf: {
+    type: 'subclassOf',
+    label: 'subclass of',
+    inverseLabel: 'subclasses',
+    from: ['Subclass'],
+    to: ['Class'],
+    cardinality: 'one',
+  },
+
+  /** Hill Dwarf ist eine Unterart von Dwarf (M3). */
+  subraceOf: {
+    type: 'subraceOf',
+    label: 'subrace of',
+    inverseLabel: 'subraces',
+    from: ['Ancestry'],
+    to: ['Ancestry'],
+    cardinality: 'one',
+  },
+
+  /**
+   * **Eine Figur hat Klassen, jede mit ihrer Stufe** (M3). Mehrklassig ist
+   * zwei Kanten: Kämpfer 3 und Magier 2. Die Stufe der Figur ist die Summe
+   * (`sum(hasClass.level)`, gerechnet, D8); die Unterklasse steht an der
+   * Kante, weil sie zu **dieser** Klasse der Figur gehört.
+   */
+  hasClass: {
+    type: 'hasClass',
+    label: 'class',
+    inverseLabel: 'taken by',
+    from: ['PlayerCharacter'],
+    to: ['Class'],
+    props: {
+      type: 'object',
+      required: ['level'],
+      properties: {
+        level: { type: 'number', min: 1, max: 20, title: 'Level' },
+        subclass: {
+          type: 'string',
+          format: 'link',
+          title: 'Subclass',
+          target: { interfaces: ['Subclass'] },
+        },
+      },
+    },
+  },
+
+  /** Die Abstammung einer Figur — eine (M3). */
+  hasAncestry: {
+    type: 'hasAncestry',
+    label: 'ancestry',
+    inverseLabel: 'ancestry of',
+    from: ['PlayerCharacter'],
+    to: ['Ancestry'],
+    cardinality: 'one',
+  },
+
+  /** Der Hintergrund einer Figur — einer (M3). */
+  hasBackground: {
+    type: 'hasBackground',
+    label: 'background',
+    inverseLabel: 'background of',
+    from: ['PlayerCharacter'],
+    to: ['Background'],
+    cardinality: 'one',
+  },
+
+  /**
+   * **Was Klasse, Abstammung, Hintergrund oder Talent mitbringen** (M3):
+   * Merkmale, Aktionen, Zustände — jede Regel. Die Stufe steht an der
+   * Kante, nicht am Merkmal: „Ability Score Improvement" ist ein Artikel,
+   * den der Kämpfer auf Stufe 4, 6, 8, 12, 14, 16 und 19 bekommt (D50).
+   *
+   * Das ist die Kante, die der Arbeitsplan `featureOf` nannte — nur
+   * vorwärts vom Gebenden aus. Beide Richtungen als eigene Kanten wären
+   * ein Gegenstück, das verwaist.
+   */
+  grants: {
+    type: 'grants',
+    label: 'grants',
+    inverseLabel: 'granted by',
+    from: ['Class', 'Subclass', 'Ancestry', 'Background', 'Feat'],
+    to: ['Rule'],
+    props: {
+      type: 'object',
+      properties: {
+        level: { type: 'number', min: 1, max: 20, title: 'At level' },
+      },
+    },
+  },
+
   /** Weapon properties are pooled rules, referenced rather than copied. */
   hasProperty: {
     type: 'hasProperty',
     label: 'has property',
     inverseLabel: 'property of',
     from: ['Weapon', 'Item', 'Armor'],
-    to: ['Rule'],
+    to: ['ItemProperty'],
   },
 
   /* `NPC` stand hier, solange es die Art gab. Jetzt ist eine Kreatur die
@@ -170,7 +363,9 @@ export const relations: Record<string, RelationDef> = {
     type: 'carries',
     label: 'carries',
     inverseLabel: 'carried by',
-    from: ['Creature', 'Party'],
+    /* Ein Gegenstand trägt eins, wenn er ein Behälter ist (M4): der
+       Rucksack hat sein Raster, der Köcher seine Form. */
+    from: ['Creature', 'Party', 'Item'],
     to: ['Inventory'],
     cardinality: 'one',
     /* Dasselbe am anderen Ende: das Inventar ist ein eigener Artikel, weil
@@ -516,8 +711,10 @@ export const relations: Record<string, RelationDef> = {
         hpMax: { type: 'number', title: 'Maximum' },
         ally: { type: 'boolean', title: 'On the party’s side' },
         /* Zeitlich begrenzte Zustände (REQ-115): je Eintrag `rule` (Id
-           eines Regelartikels mit `kind: condition`), `rounds` (zählt am
-           Zugende herunter) und `source` (wer ihn verhängt hat). */
+           eines Artikels der Art `Condition`; der Schlüssel heisst aus
+           alter Zeit so), `rounds` (zählt am Zugende herunter) und `source`
+           (wer ihn verhängt hat). Wie in `Vitals.conditions` höchstens eine
+           Stufe je Grundzustand. */
         conditions: { type: 'array', title: 'Conditions', items: { type: 'object' } },
         note: { type: 'string', title: 'Note' },
       },
@@ -598,11 +795,14 @@ export const relations: Record<string, RelationDef> = {
   },
 
   /** Welche Tabelle an diesem Ort gilt (REQ-172). */
+  /* Seit M3 auch die Stufentabelle einer Klasse und die vier
+     Charakterzug-Tabellen eines Hintergrunds: eine Tabelle ist ein Artikel
+     mit Spalten (M8), und eine Liste am Typ wäre die zweite Tabelle. */
   tableFor: {
     type: 'tableFor',
     label: 'rolls on',
     inverseLabel: 'used at',
-    from: ['Place', 'Story', 'Encounter'],
+    from: ['Place', 'Story', 'Encounter', 'Class', 'Subclass', 'Ancestry', 'Background'],
     to: ['Table'],
   },
 
@@ -700,16 +900,19 @@ export const relations: Record<string, RelationDef> = {
    * selbst gesetzt hat. Wer den Wert der Vorlage einträgt, folgt ihr wieder.
    *
    * Anders als `variantOf`, das eine Kopie mit Herkunft ist und nichts
-   * nachliest. Erlaubt ist es heute am Statblock; eine weitere Art, die
-   * Vorlagen braucht, kommt hier in `from` und `to` dazu und braucht keine
+   * nachliest. Erlaubt ist es am Statblock und am Gegenstand (M4): das
+   * +1-Langschwert am Tisch ist eine Instanz des Langschwerts, die nur
+   * `bonusWeapon` und `rarity` selbst trägt. **Eine Instanz ist von
+   * derselben Art wie ihre Vorlage** (`same`): ein Statblock liest keinen
+   * Gegenstand. Eine weitere Art kommt in `from` dazu und braucht keine
    * Codeänderung.
    */
   instanceOf: {
     type: 'instanceOf',
     label: 'instance of',
     inverseLabel: 'instances',
-    from: ['Statblock'],
-    to: ['Statblock'],
+    from: ['Statblock', 'Item'],
+    to: ['same'],
     cardinality: 'one',
   },
 

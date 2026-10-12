@@ -23,6 +23,7 @@ import {
   redactEntity,
   resolveInstance,
   thinInstance,
+  stageBases,
   validateEntity,
 } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
@@ -388,10 +389,15 @@ export function buildApp({
    * Die Wache. Sie steht vor allem unter `/api`, ausser vor dem, was man
    * braucht, um sich überhaupt anzumelden.
    *
-   * Solange kein Konto angelegt ist, ist der Server **offen zum Lesen und
-   * zu zu zum Schreiben**: sonst käme man an einen frisch aufgesetzten
-   * Server nicht heran, und ein offener Schreibweg wäre das Schlimmste von
-   * beidem.
+   * Solange kein Konto angelegt ist **und der Bestand leer ist**, ist der
+   * Server offen zum Lesen und zu zum Schreiben: sonst käme man an einen
+   * frisch aufgesetzten Server nicht heran, und ein offener Schreibweg wäre
+   * das Schlimmste von beidem.
+   *
+   * Die Ausnahme hing bis P5 nur an den Konten. Mit leerem Bestand war das
+   * harmlos; mit zehntausend geladenen Artikeln wäre es eine offene
+   * Bibliothek, sobald jemand das letzte Konto löscht (Arbeitsplan §4). Der
+   * Ladebefehl verweigert ohnehin ohne Verwaltungskonto (`import.ts`).
    */
   const OPEN = new Set(['/api/health', '/api/login', '/api/register', '/api/logout', '/api/me']);
   app.addHook('preHandler', async (request, reply) => {
@@ -403,8 +409,8 @@ export function buildApp({
     const schreibt = request.method !== 'GET' && request.method !== 'HEAD';
 
     if (!user) {
-      const leer = (await repo.countUsers()) === 0;
-      if (leer && !schreibt) return; // frischer Server: lesen ja, schreiben nie
+      const frisch = (await repo.countUsers()) === 0 && (await repo.countEntities()) === 0;
+      if (frisch && !schreibt) return; // frischer Server: lesen ja, schreiben nie
       return reply.code(401).send({ error: 'Nicht angemeldet.' });
     }
     if (!schreibt) return;
@@ -558,6 +564,9 @@ export function buildApp({
         (await repo.listEntities()).map((e) => [e.id, e.interfaces?.[0] ?? ''] as const),
       );
       known.set(entity.id, entity.interfaces?.[0] ?? '');
+      /* Welche Zustände Stufen eines Grundzustands sind (D48) — gerechnet
+         aus den Kanten, nicht gespeichert. */
+      const stufen = stageBases([...(await repo.listEntities()), entity]);
 
       /* **Eine Instanz wird aufgelöst geprüft und ausgedünnt gespeichert.**
          Ihre Pflichtfelder stehen an der Vorlage; gespeichert wird nur, was
@@ -573,7 +582,7 @@ export function buildApp({
         zuSchreiben = thinInstance(alle, entity);
       }
 
-      const issues = validateEntity(registry, zuPruefen, { knownTypes: known });
+      const issues = validateEntity(registry, zuPruefen, { knownTypes: known, stageOf: stufen });
       if (issues.length) {
         return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
       }
@@ -636,7 +645,8 @@ export function buildApp({
       alle.set(pruefling.id, pruefling);
       pruefling = resolveInstance(alle, pruefling);
     }
-    return { issues: validateEntity(registry, pruefling, { knownTypes: known }) };
+    const stufen = stageBases([...(await repo.listEntities()), pruefling]);
+    return { issues: validateEntity(registry, pruefling, { knownTypes: known, stageOf: stufen }) };
   });
 
   return app;

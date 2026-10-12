@@ -2,6 +2,8 @@ export * from './types.js';
 export * from './calc.js';
 export * from './views.js';
 export * from './inline.js';
+export * from './markdown.js';
+export * from './dice.js';
 export * from './entity.js';
 export * from './knowledge.js';
 export * from './visibility.js';

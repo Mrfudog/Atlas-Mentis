@@ -170,6 +170,26 @@ button.pill.instof{cursor:pointer;border:1px dashed var(--line2)}
 .refpop > b{font-family:var(--ff-disp);font-size:15px;margin-right:6px}
 .refpop .pbody{padding:4px 0 0}
 .ref.dead{color:var(--warn);text-decoration-style:wavy;cursor:help}
+/* Markdown in langen Textfeldern (M10) und Würfel im Text (M12) */
+.md>:first-child{margin-top:0}
+.md p{margin:.35em 0 0}
+.md p,.blk p{white-space:pre-line}
+.md ul,.md ol{margin:.35em 0 0;padding-left:1.4em}
+.md li>p{margin:0}
+.mdh{font-family:var(--ff-disp);font-weight:700;margin:.7em 0 .2em}
+.mdh1{font-size:1.25em}.mdh2{font-size:1.15em}.mdh3{font-size:1.05em}
+.mdq{margin:.5em 0;padding-left:.8em;border-left:2px solid var(--line2)}
+.mdtw{overflow-x:auto;margin:.5em 0}
+.mdt{border-collapse:collapse;font-size:.95em}
+.mdt th,.mdt td{border-bottom:1px solid var(--line);padding:2px 9px;vertical-align:top;text-align:left}
+.mdt th{font-weight:600}
+.md hr{border:0;border-top:1px solid var(--line);margin:.7em 0}
+.tdice .dice{padding:0 5px;font:inherit;font-variant-numeric:tabular-nums}
+.tdr{margin-left:4px;font-weight:600;font-variant-numeric:tabular-nums}
+.tdr:empty{display:none}
+.howtomd{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;margin:6px 0 14px}
+.howtomd pre{margin:0;white-space:pre-wrap;font-family:var(--ff-mono);font-size:12px;border-left:2px solid var(--line2);padding-left:10px}
+@media (max-width:700px){.howtomd{grid-template-columns:1fr}}
 .gone{color:var(--dim);font-style:italic}
 
 /* ---------- relations ---------- */
@@ -1188,23 +1208,68 @@ function asRows(raw){
    makes for data. The names avoid the property keys they are used on
    (`width`, `height`, `cells`): a function and a field of the same name read
    as the same thing and are not. */
+var AMBIG={};
+var ABIL_KEYS={str:1,dex:1,con:1,int:1,wis:1,cha:1};
+/* Eine Funktion gibt eine Zahl zurück — oder `null` für „diese Rechnung
+   hat keinen Wert", und dann gilt der ganze Ausdruck nicht. */
 var DERIVED_FN={
   mod:function(raw){ var n=Number(raw); return isFinite(n)?Math.floor((n-10)/2):0; },
+  /* Der Modifikator des Attributs, das ein Feld nennt (M2):
+     `modOf(spellAbility)` mit `spellAbility: "int"` ist `mod(int)`. Ohne
+     Attribut keine Zahl — ein SG von 8 + Übung sähe richtig aus. */
+  modOf:function(raw,look){
+    var k=String(raw==null?"":raw); if(!ABIL_KEYS[k])return null;
+    var w=look(k); if(w===AMBIG||w==null||w==="")return null;
+    var n=Number(w); return isFinite(n)?Math.floor((n-10)/2):null; },
+  /* **Eine Summe über die eigenen Kanten** (M3): `sum(hasClass.level)` ist
+     die Stufe einer Figur, Kämpfer 3 und Magier 2 sind Stufe 5. Keine
+     solche Kante heisst kein Wert — eine Figur ohne Klasse hat keine
+     Stufe 0. Wie `sum` im Paket. */
+  sum:function(raw,look,key,kanten){
+    var i=String(key).indexOf("."); if(i<=0)return null;
+    var typ=key.slice(0,i), feld=key.slice(i+1), summe=0, n=0;
+    (kanten||[]).forEach(function(r){
+      if(r.type!==typ)return;
+      var z=Number((r.props||{})[feld]); if(!isFinite(z))return;
+      summe+=z; n++;
+    });
+    return n?summe:null; },
   rowCount:function(raw){ return asRows(raw).length; },
   colCount:function(raw){ return asRows(raw).reduce(function(m,r){return Math.max(m,r.length);},0); },
   cellCount:function(raw){ return asRows(raw).reduce(function(sum,r){
     return sum+r.split("").filter(function(g){return !EMPTY_CELL[g];}).length; },0); }
 };
-function derivedValue(pd,val){
+/* **Erst die eigene Karte, dann der Artikel** (`karten`, alle Karten des
+   Artikels): der Statblock trägt `prof` und das Zauberwirken, `Abilities`
+   die sechs Werte, und der SG braucht beide. Was die eigene Karte trägt,
+   gewinnt; tragen zwei andere denselben Namen verschieden, gibt es keinen
+   Wert. Wie `derivedValue` im Paket. */
+function derivedValue(pd,val,karten,kanten){
   if(!pd||!pd.derived)return undefined;
-  var siblings=val||{};
+  var siblings=val||{}, leer=false;
+  function look(k){
+    if(Object.prototype.hasOwnProperty.call(siblings,k))return siblings[k];
+    var w, n=0;
+    Object.keys(karten||{}).forEach(function(cn){
+      var c=karten[cn];
+      if(w===AMBIG||!c||c===val||!Object.prototype.hasOwnProperty.call(c,k))return;
+      if(n&&c[k]!==w){ w=AMBIG; return; }
+      w=c[k]; n++;
+    });
+    return w;
+  }
   /* Funktionen zuerst: ihr Argument ist ein Feldname, kein Ausdruck. */
-  var expr=String(pd.derived).replace(/([A-Za-z_][A-Za-z0-9_]*)\(\s*([A-Za-z0-9_]+)\s*\)/g,
+  var expr=String(pd.derived).replace(/([A-Za-z_][A-Za-z0-9_]*)\(\s*([A-Za-z0-9_.]+)\s*\)/g,
     function(whole,fn,key){
-      return DERIVED_FN[fn]?"("+DERIVED_FN[fn](siblings[key])+")":whole;
+      if(!DERIVED_FN[fn])return whole;
+      var raw=key.indexOf(".")>=0?undefined:look(key); if(raw===AMBIG){ leer=true; return "(0)"; }
+      var r=DERIVED_FN[fn](raw,look,key,kanten); if(r===null){ leer=true; return "(0)"; }
+      return "("+r+")";
     });
   expr=expr.replace(/[A-Za-z_][A-Za-z0-9_]*/g,function(k){
-    var n=Number(siblings[k]); return isFinite(n)?"("+n+")":"(0)"; });
+    var raw=look(k); if(raw===AMBIG){ leer=true; return "(0)"; }
+    var n=Number(raw); return isFinite(n)?"("+n+")":"(0)"; });
+  if(leer)return undefined;
   var r=evalArith(expr);
   return r==null?undefined:Math.trunc(r);
 }
@@ -1504,33 +1569,84 @@ function enumWerte(p){
   return raus.length?raus:null;
 }
 /* Dieselben Werte, aber **je Zeile getrennt**: worin jemand geübt ist, kommt
-   aus sechs Listen, und eine Maske, die sie in einen Topf wirft, macht aus
-   fünfunddreissig Wörtern eine Wand. Genannte Zeilen, die es nicht gibt,
-   fallen weg — eine fehlende Zeile ist keine leere Liste. */
+   aus sechs Quellen, und eine Maske, die sie in einen Topf wirft, macht aus
+   ihnen eine Wand. Genannte Zeilen, die es nicht gibt, fallen weg — eine
+   fehlende Zeile ist keine leere Liste.
+
+   **Ein Name darf eine Artikelart sein (M6, D50):** dann sind die Werte
+   die Namen der sichtbaren Artikel dieser Art, Untertypen ja, Instanzen
+   nein, und `enumWhere` engt ein (von den Gegenständen nur die Werkzeuge).
+   `Typ.feld` nennt die Liste eines Feldes (`Weapon.category`). Dieselbe
+   Regel wie `enumGroups` im Paket. */
+function enumRefArt(n){
+  if((REG.enums||{})[n]) return "enum";
+  if(REG.interfaces[n]) return "type";
+  var i=String(n).indexOf(".");
+  if(i>0){
+    var pd=((REG.interfaces[n.slice(0,i)]||{}).schema||{}).properties||{};
+    if(pd[n.slice(i+1)]) return "field";
+  }
+  return null;
+}
 function enumGruppen(p){
   var refs=p&&p.enumRef;
   if(!refs) return [];
   var namen=Array.isArray(refs)?refs:[refs];
   var raus=[];
   namen.forEach(function(n){
-    var z=(REG.enums||{})[n];
-    if(!z||!Array.isArray(z.values)||!z.values.length)return;
-    raus.push({name:n,label:z.label||n,values:z.values});
+    var art=enumRefArt(n);
+    if(art==="enum"){
+      var z=REG.enums[n];
+      if(!Array.isArray(z.values)||!z.values.length)return;
+      raus.push({name:n,label:z.label||n,values:z.values,from:"enum"});
+    } else if(art==="type"){
+      var filter=(p.enumWhere||{})[n]||null, werte=[];
+      ENT.forEach(function(e){
+        if(!articleVisible(e)||isInstance(e))return;
+        if(selfAndAncestors((e.interfaces||[])[0]).indexOf(n)<0)return;
+        if(filter&&!passtWhere(e,filter))return;
+        var nm=rawName(e);
+        if(nm&&werte.indexOf(nm)<0) werte.push(nm);
+      });
+      werte.sort(function(a,b){ return a.localeCompare(b); });
+      raus.push({name:n,label:(REG.interfaces[n]||{}).label||n,values:werte,from:"type"});
+    } else if(art==="field"){
+      var i=n.indexOf("."), typ=n.slice(0,i), feld=n.slice(i+1);
+      var fd=REG.interfaces[typ].schema.properties[feld];
+      if(!Array.isArray(fd["enum"])||!fd["enum"].length)return;
+      raus.push({name:n,label:(REG.interfaces[typ].label||typ)+" \u00b7 "+(fd.title||feld),
+        values:fd["enum"],from:"field"});
+    }
   });
   return raus;
+}
+/* Ein Filter aus `enumWhere`: je Feld die Werte, von denen einer stehen
+   muss. Gesucht wird in jeder Karte des Artikels. */
+function passtWhere(e,filter){
+  return Object.keys(filter).every(function(feld){
+    var w;
+    Object.keys(e.components||{}).some(function(cn){
+      var c=e.components[cn]||{};
+      if(Object.prototype.hasOwnProperty.call(c,feld)){ w=c[feld]; return true; }
+      return false;
+    });
+    var werte=Array.isArray(w)?w.map(String):(w==null?[]:[String(w)]);
+    return werte.some(function(x){ return filter[feld].indexOf(x)>=0; });
+  });
+}
+/* **Die Art schlägt vor, die Zeile hält** (D50): ein Feld, das eine
+   Artikelart nennt, nimmt auch einen Namen an, den die Liste heute nicht
+   kennt. */
+function enumHaelt(p){
+  if(!p) return false;
+  if(Array.isArray(p["enum"])&&p["enum"].length) return true;
+  var refs=p.enumRef; if(!refs) return false;
+  return (Array.isArray(refs)?refs:[refs]).every(function(n){ return enumRefArt(n)!=="type"; });
 }
 /** Aus welcher genannten Zeile dieser Wert kommt. */
 function enumQuelle(p,wert){
   var g=enumGruppen(p).filter(function(x){ return x.values.indexOf(wert)>=0; })[0];
   return g?g.name:null;
-}
-/** Die Werte eines Feldes, die aus **dieser** Zeile kommen. */
-function werteAusZeile(karte,typ,feld,zeile){
-  var p=((REG.interfaces[typ]||{}).schema||{}).properties||{};
-  var pd=p[feld]||{};
-  var drin=(karte||{})[feld];
-  if(!Array.isArray(drin)) return [];
-  return drin.filter(function(v){ return enumQuelle(pd,v)===zeile; });
 }
 function fieldKind(p){
   if(!p) return "text";
@@ -2161,9 +2277,9 @@ function zonesInput(pd,cur){
  *
  * Häkchen und kein Mehrfach-Auswahlfeld: fünfunddreissig Wörter in einem
  * `select multiple` sind eine Liste, in der man mit der Maus rutscht und
- * seine Wahl wieder verliert. Gruppiert nach Zeile, weil „geübt in" aus
- * Fertigkeiten, Werkzeugen, Sprachen, Waffen, Rüstungen und Wissensgebieten
- * kommt und die Herkunft die halbe Auskunft ist.
+ * seine Wahl wieder verliert. Gruppiert nach Zeile oder Art, weil „geübt
+ * in" aus Fertigkeiten, Sprachen, Werkzeugen, Waffen und den Waffen- und
+ * Rüstungsgruppen kommt und die Herkunft die halbe Auskunft ist.
  *
  * Nach ausserhalb sieht der Kasten aus wie ein Textfeld: `value` gibt die
  * Werte durch Komma getrennt zurück, und damit liest `fieldValue` ihn wie
@@ -2174,7 +2290,9 @@ function choiceListInput(pd,cur){
   var gewaehlt=Array.isArray(cur)?cur.slice():(cur==null||cur===""?[]:String(cur)
     .split(",").map(function(x){return x.trim();}).filter(Boolean));
   var box=el("div",{class:"choicebox"});
-  var gruppen=enumGruppen(pd);
+  /* Eine genannte Art ohne sichtbaren Artikel ist eine leere Gruppe — sie
+     zeigt nichts an (M6). */
+  var gruppen=enumGruppen(pd).filter(function(g){ return g.values.length; });
   var eigene=Array.isArray(pd["enum"])&&pd["enum"].length?pd["enum"]:null;
   if(eigene) gruppen=[{name:"",label:"",values:eigene}].concat(gruppen);
   if(!gruppen.length){
@@ -2207,8 +2325,28 @@ function choiceListInput(pd,cur){
     });
     box.appendChild(reihe);
   });
+  /* **Was keine Liste kennt, bleibt stehen** (D50): nennt das Feld eine
+     Artikelart, ist ein Name der heutige Stand — die Hausregel
+     „Nebelkunde" bekommt ihren Artikel vielleicht erst morgen. Solche
+     Werte stehen in einem Textfeld darunter, statt beim nächsten
+     Speichern still zu verschwinden. */
+  var bekannt={};
+  gruppen.forEach(function(g){ g.values.forEach(function(v){ bekannt[v]=1; }); });
+  var weitere=null;
+  if(!enumHaelt(pd)){
+    var uebrig=gewaehlt.filter(function(v){ return !bekannt[v]; });
+    gewaehlt=gewaehlt.filter(function(v){ return bekannt[v]; });
+    box.appendChild(el("div",{class:"cgroup",text:"Other"}));
+    weitere=el("input",{class:"i",type:"text",value:uebrig.join(", "),
+      placeholder:"names without an article yet, comma separated"});
+    box.appendChild(weitere);
+  }
   Object.defineProperty(box,"value",{
-    get:function(){ return gewaehlt.join(", "); },
+    get:function(){
+      var frei=weitere?String(weitere.value||"").split(",").map(function(x){ return x.trim(); })
+        .filter(Boolean):[];
+      return gewaehlt.concat(frei.filter(function(v){ return gewaehlt.indexOf(v)<0; })).join(", ");
+    },
     set:function(v){ /* Die Wahl steht in den Häkchen; ein Setzen von
                         aussen käme nur vom Zurücksetzen der Maske. */ },
   });
@@ -2558,6 +2696,43 @@ function findByName(n){
     for(var i=0;i<al.length;i++) if(String(al[i]).toLowerCase()===t){hit=id;return;} });
   return hit;
 }
+/* Worauf ein Verweis zeigen könnte (M11), wie `linkCandidates` im Paket
+   (hier `linkHits` — `linkCandidates` heisst schon die Auswahl der Maske):
+   **zuerst die Id** (`Identity.id`, dann die Peg-Id) — eine Id ist eindeutig,
+   auch wenn ein anderer Artikel zufällig so heisst. Sonst jeder, dessen
+   Name oder Alias passt; mehr als einer heisst mehrdeutig, und das
+   entscheidet, wer schreibt, nicht die Reihenfolge im Bestand. */
+function linkHits(n){
+  var roh=String(n||"").trim(), t=roh.toLowerCase();
+  if(!t)return [];
+  var perId=null;
+  ENT.forEach(function(e,id){ if(perId)return;
+    var nr=(e.components&&e.components.Identity&&e.components.Identity.id)||"";
+    if(String(nr).toLowerCase()===t||id===roh) perId=id; });
+  if(perId)return [perId];
+  var out=[];
+  ENT.forEach(function(e,id){
+    /* Eine Instanz ist kein Verweisziel; sie hiesse wie ihre Vorlage und
+       machte jeden Namen mehrdeutig. */
+    if(isInstance(e))return;
+    if(rawName(e).toLowerCase()===t){out.push(id);return;}
+    var al=(e.components&&e.components.Identity&&e.components.Identity.aliases)||[];
+    for(var i=0;i<al.length;i++) if(String(al[i]).toLowerCase()===t){out.push(id);return;} });
+  return out;
+}
+/* `[[Name]]` → `[[npc-0042|Name]]`, wo genau ein Artikel so heisst (M11).
+   Beim Speichern, nicht beim Lesen: danach überlebt der Verweis das
+   Umbenennen des Ziels. Was nichts oder mehreres trifft, bleibt stehen. */
+function idLinks(text){
+  return String(text==null?"":text).replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,function(roh,ziel,zeige){
+    var treffer=linkHits(ziel);
+    if(treffer.length!==1)return roh;
+    var e=ENT.get(treffer[0]);
+    var nr=(e&&e.components&&e.components.Identity&&e.components.Identity.id)||treffer[0];
+    if(nr===ziel.trim())return roh;
+    return "[["+nr+"|"+String(zeige!=null?zeige:ziel).trim()+"]]";
+  });
+}
 /* Ein Verweis im Text führt zum Artikel — und zeigt vorher, worauf er
    zeigt. **Immer die Übersicht**: Name und Beschreibung, wie ein Hover.
    Mehr hat neben einem Satz keinen Platz, und wer mehr will, klickt.
@@ -2586,32 +2761,227 @@ function refWithPeek(id,show){
   return w;
 }
 
+/* Inline-Text (M10–M12), wie `parseInline` im Paket: `[[Verweise]]`,
+   aufgelöste `{VAR}` (als \u0001…\u0002 aus fillVars), `{{Würfel}}`,
+   **fett** und *kursiv*. Die Reihenfolge der Alternativen zählt: `**` vor
+   `*`; kursiv beginnt und endet nicht mit Leerzeichen — „2 * 3" ist
+   Rechnung. */
 function inline(text,into){
   var s=String(text==null?"":text);
-  var re=/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|\u0001([^\u0002]*)\u0002|\*\*([^*]+)\*\*/g;
+  var re=/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|\{\{([^{}]+)\}\}|\u0001([^\u0002]*)\u0002|\*\*((?:[^*]|\*(?!\*))+?)\*\*|\*([^*\s](?:[^*]*[^*\s])?)\*/g;
   var last=0,m;
   while((m=re.exec(s))){
     if(m.index>last) into.appendChild(document.createTextNode(s.slice(last,m.index)));
     if(m[1]!==undefined){
-      var target=m[1].trim(), show=(m[2]||m[1]).trim(), id=findByName(target);
-      if(id) into.appendChild(refWithPeek(id,show));
+      var target=m[1].trim(), show=(m[2]||m[1]).trim(), treffer=linkHits(target);
+      if(treffer.length===1) into.appendChild(refWithPeek(treffer[0],show));
+      /* Mehrdeutig wird nicht geraten (M11): bei zwei Goblins wäre der
+         erste Treffer in der Hälfte der Fälle der falsche. */
+      else if(treffer.length) into.appendChild(el("span",{class:"ref dead",
+               title:"Ambiguous: "+treffer.length+" articles are called “"+target+"”"},show));
       // A dead link is an invitation, not an error: klicken legt den Artikel an.
       else   into.appendChild(el("button",{class:"ref dead",type:"button",
                title:canWrite()?"No article yet — create one":"No article named “"+target+"“",
                onclick:function(t){return function(){ if(canWrite())newEntity(t); };}(target)},show));
     } else if(m[3]!==undefined){
-      into.appendChild(el("span",{class:"vr"},m[3]));
-    } else {
+      /* Ein Platzhalter im Ausdruck ist schon eingesetzt (Sentinels weg);
+         einer, der offen blieb, enthält Klammern und kommt gar nicht hier an. */
+      var expr=m[3].replace(/[\u0001\u0002]/g,"").trim();
+      if(rollDice(expr)) into.appendChild(diceInText(expr));
+      else into.appendChild(document.createTextNode(m[0].replace(/[\u0001\u0002]/g,"")));
+    } else if(m[4]!==undefined){
+      into.appendChild(el("span",{class:"vr"},m[4]));
+    } else if(m[5]!==undefined){
       // Auszeichnung schachtelt: **{NAME}.** ist eine fette *Variable*.
       // Ohne Rekursion landet der Platzhalter als Rohtext im <strong>.
-      into.appendChild(inline(m[4],el("strong")));
+      into.appendChild(inline(m[5],el("strong")));
+    } else {
+      into.appendChild(inline(m[6],el("em")));
     }
     last=re.lastIndex;
   }
   if(last<s.length) into.appendChild(document.createTextNode(s.slice(last)));
   return into;
 }
-function para(text,cls){ return markRules(inline(text,el("p",cls?{class:cls}:null))); }
+/* Ein Würfel im Text (M12, REQ-070): ein Knopf, und das Ergebnis steht
+   gleich daneben — wer den Wurf nicht sieht, glaubt ihn nicht. Er landet
+   auch im Verlauf. Kein render(): das Ergebnis neben dem Knopf ginge sonst
+   mit dem Neuzeichnen weg; der Verlauf zeigt ihn beim nächsten. */
+function diceInText(expr){
+  var w=el("span",{class:"tdice"});
+  var out=el("output",{class:"tdr"});
+  w.appendChild(el("button",{class:"btn sm gh dice",type:"button",title:"Roll "+expr,
+    onclick:function(){
+      var r=rollDice(expr); if(!r)return;
+      logRoll(expr,r);
+      out.textContent=rollText(r);
+    }},expr));
+  w.appendChild(out);
+  return w;
+}
+
+/* ---------- Markdown in langen Textfeldern (M10) ----------
+   Wie `parseMarkdown` im Paket: Überschriften, Listen (verschachtelt durch
+   Einrückung), Tabellen, Einschübe, Trennlinien, Absätze. Jede Zeile geht
+   weiter durch inline(). **Kein HTML aus dem Text**: gebaut wird mit el()
+   und Textknoten, `<b>` im Feld steht als `<b>` da. */
+var MD_H=/^(#{1,6})\s+(.*?)\s*#*\s*$/, MD_HR=/^\s{0,3}([-*_])(\s*\1){2,}\s*$/,
+    MD_LI=/^(\s*)([-*+]|\d{1,9}[.)])\s+(.*)$/, MD_Q=/^\s{0,3}>\s?(.*)$/,
+    MD_SEP=/^\s*\|?\s*:?-{1,}:?\s*(\|\s*:?-{1,}:?\s*)*\|?\s*$/;
+function mdIndent(l){ var n=0; for(var i=0;i<l.length;i++){ var c=l.charAt(i);
+  if(c===" ")n++; else if(c==="\t")n+=4; else break; } return n; }
+function mdBlank(l){ return l===undefined||String(l).trim()===""; }
+function mdRow(line){
+  var s=String(line).trim();
+  if(s.charAt(0)==="|")s=s.slice(1);
+  if(s.slice(-1)==="|"&&s.slice(-2)!=="\\|")s=s.slice(0,-1);
+  /* Der Strich in einem Verweis (`[[npc-0042|Volo]]`) ist kein Zellrand. */
+  var cells=[],cur="",imVerweis=false;
+  for(var i=0;i<s.length;i++){ var c=s.charAt(i);
+    if(c==="["&&s.charAt(i+1)==="["){imVerweis=true;cur+="[[";i++;}
+    else if(c==="]"&&s.charAt(i+1)==="]"){imVerweis=false;cur+="]]";i++;}
+    else if(c==="\\"&&s.charAt(i+1)==="|"){cur+="|";i++;}
+    else if(c==="|"&&imVerweis)cur+=c;
+    else if(c==="|"){cells.push(cur.trim());cur="";}
+    else cur+=c; }
+  cells.push(cur.trim());
+  return cells;
+}
+function mdAlign(c){ c=String(c).trim(); var l=c.charAt(0)===":", r=c.slice(-1)===":";
+  return l&&r?"center":(r?"right":(l?"left":null)); }
+function mdIsTable(l,n){ return l.indexOf("|")>=0&&n!==undefined&&MD_SEP.test(n)&&n.indexOf("-")>=0; }
+function mdStarts(l,n){ return MD_H.test(l.trim())||MD_HR.test(l)||MD_LI.test(l)||MD_Q.test(l)||mdIsTable(l,n); }
+function mdPara(lines){
+  return lines.map(function(raw,i){
+    var hard=/( {2,}|\\)$/.test(raw), t=raw.replace(/( {2,}|\\)$/,"").trim();
+    return t+(i===lines.length-1?"":(hard?"\n":" "));
+  }).join("");
+}
+function mdParse(lines){
+  var out=[], i=0;
+  while(i<lines.length){
+    var line=lines[i]||"";
+    if(mdBlank(line)){i++;continue;}
+    var h=MD_H.exec(line.trim());
+    if(h&&mdIndent(line)<4){ out.push({kind:"heading",level:h[1].length,text:h[2]}); i++; continue; }
+    if(MD_HR.test(line)){ out.push({kind:"rule"}); i++; continue; }
+    if(MD_Q.test(line)){
+      var inner=[];
+      while(i<lines.length&&!mdBlank(lines[i])){ var q=MD_Q.exec(lines[i]); inner.push(q?q[1]:lines[i]); i++; }
+      out.push({kind:"quote",blocks:mdParse(inner)}); continue;
+    }
+    if(mdIsTable(line,lines[i+1])){
+      var head=mdRow(line), align=mdRow(lines[i+1]).map(mdAlign), rows=[];
+      i+=2;
+      while(i<lines.length&&!mdBlank(lines[i])&&lines[i].indexOf("|")>=0){
+        var cells=mdRow(lines[i]);
+        while(cells.length<head.length)cells.push("");
+        rows.push(cells.slice(0,Math.max(head.length,1))); i++;
+      }
+      while(align.length<head.length)align.push(null);
+      out.push({kind:"table",head:head,align:align.slice(0,head.length),rows:rows}); continue;
+    }
+    var it=MD_LI.exec(line);
+    if(it){
+      var base=mdIndent(line), ordered=/\d/.test(it[2]), items=[];
+      var start=ordered?parseInt(it[2],10):1;
+      while(i<lines.length){
+        var cur=lines[i]||"", m=MD_LI.exec(cur);
+        if(!m||mdIndent(cur)!==base||/\d/.test(m[2])!==ordered)break;
+        var body=[m[3]], innen=mdIndent(cur)+m[2].length+1;
+        i++;
+        while(i<lines.length){
+          var l=lines[i]||"";
+          if(mdBlank(l)){
+            var nach=lines[i+1];
+            if(nach!==undefined&&!mdBlank(nach)&&mdIndent(nach)>base){ body.push(""); i++; continue; }
+            break;
+          }
+          if(mdIndent(l)>base){ body.push(l.slice(Math.min(mdIndent(l),innen))); i++; continue; }
+          if(MD_LI.test(l)||mdStarts(l,lines[i+1]))break;
+          body.push(l.trim()); i++;
+        }
+        items.push(mdParse(body));
+        if(mdBlank(lines[i])){
+          var n2=lines[i+1], am=n2!==undefined?MD_LI.exec(n2):null;
+          if(am&&mdIndent(n2)===base&&/\d/.test(am[2])===ordered){ i++; continue; }
+        }
+      }
+      out.push({kind:"list",ordered:ordered,start:start,items:items}); continue;
+    }
+    var para=[line]; i++;
+    while(i<lines.length&&!mdBlank(lines[i])&&!mdStarts(lines[i],lines[i+1])){ para.push(lines[i]); i++; }
+    out.push({kind:"paragraph",text:mdPara(para)});
+  }
+  return out;
+}
+function parseMarkdown(text){ return mdParse(String(text==null?"":text).replace(/\r\n?/g,"\n").split("\n")); }
+function mdDraw(blocks,into){
+  blocks.forEach(function(b){
+    if(b.kind==="heading") into.appendChild(inline(b.text,el("div",{class:"mdh mdh"+b.level,role:"heading","aria-level":b.level+2})));
+    else if(b.kind==="paragraph") into.appendChild(inline(b.text,el("p")));
+    else if(b.kind==="rule") into.appendChild(el("hr"));
+    else if(b.kind==="quote") into.appendChild(mdDraw(b.blocks,el("blockquote",{class:"mdq"})));
+    else if(b.kind==="list"){
+      var l=el(b.ordered?"ol":"ul",b.ordered&&b.start!==1?{start:b.start}:null);
+      b.items.forEach(function(item){ l.appendChild(mdDraw(item,el("li"))); });
+      into.appendChild(l);
+    } else if(b.kind==="table"){
+      var t=el("table",{class:"mdt"}), th=el("tr");
+      b.head.forEach(function(c,k){ var z=inline(c,el("th")); if(b.align[k])z.style.textAlign=b.align[k]; th.appendChild(z); });
+      t.appendChild(el("thead",null,th));
+      var tb=el("tbody");
+      b.rows.forEach(function(r){ var tr=el("tr");
+        r.forEach(function(c,k){ var z=inline(c,el("td")); if(b.align[k])z.style.textAlign=b.align[k]; tr.appendChild(z); });
+        tb.appendChild(tr); });
+      t.appendChild(tb);
+      into.appendChild(el("div",{class:"mdtw"},t));
+    }
+  });
+  return into;
+}
+/* Ein Absatz bleibt ein <p>, wie bisher — die Stile der Blöcke hängen
+   daran. Erst wo der Text mehr ist als ein Absatz, wird er ein Kasten mit
+   Blöcken. */
+function para(text,cls){
+  var bl=parseMarkdown(text);
+  if(bl.length<=1&&(!bl.length||bl[0].kind==="paragraph"))
+    return markRules(inline(bl.length?bl[0].text:"",el("p",cls?{class:cls}:null)));
+  return markRules(mdDraw(bl,el("div",{class:"md"+(cls?" "+cls:"")})));
+}
+
+/* Für eine Listenzeile: was ein Verweis **zeigt**, nicht worauf er zeigt —
+   seit Verweise eine Id nennen (M11), wäre das sonst `npc-0042`. Und der
+   Würfelausdruck ohne Klammern, die Hervorhebung ohne Sterne. */
+function summaryText(t){
+  return String(t==null?"":t)
+    .replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,function(m,a,b){ return (b||a).trim(); })
+    .replace(/\{\{([^{}]+)\}\}/g,"$1")
+    .replace(/\*\*([^*]+)\*\*/g,"$1");
+}
+/* `[[Name]]` wird beim Speichern zur Id (M11) — in jedem langen Feld, an
+   einer Stelle und nicht an jeder Maske. Geändert wird auf Kopien: die
+   Karten können eingefrorene Schnappschüsse aus dem Speicher sein. */
+function linksToIds(e){
+  Object.keys(e.components||{}).forEach(function(cn){
+    var karte=e.components[cn], props=propsOf(cn), neu=null;
+    if(!karte||typeof karte!=="object")return;
+    Object.keys(karte).forEach(function(k){
+      var pd=props[k];
+      if(!pd||pd.format!=="long")return;
+      var v=karte[k], w=v;
+      if(typeof v==="string") w=idLinks(v);
+      else if(Array.isArray(v)) w=v.map(function(x){
+        if(typeof x==="string")return idLinks(x);
+        if(x&&typeof x.value==="string"){ var t=idLinks(x.value);
+          return t===x.value?x:Object.assign({},x,{value:t}); }
+        return x; });
+      if(JSON.stringify(w)!==JSON.stringify(v)){ neu=neu||Object.assign({},karte); neu[k]=w; }
+    });
+    if(neu){ e.components=Object.assign({},e.components); e.components[cn]=neu; }
+  });
+  return e;
+}
 
 /* ---------- db wiring ---------- */
 function persist(e){
@@ -2625,6 +2995,7 @@ function persist(e){
      und eine, die das vergässe, schriebe alle Werte der Vorlage fest. */
   if(isInstance(e)) e=thinned(e);
   ensureAnchors(e);
+  linksToIds(e);
   e.updatedAt=new Date().toISOString();
   lastWroteAt[e.id]=e.updatedAt;
   ENT.set(e.id,e);
@@ -3405,7 +3776,7 @@ function renderList(v){
       if(b) row.appendChild(el("img",{class:"thumb",src:b,alt:"",loading:"lazy"}));
     }
     if(vw.description!==false&&summary(e))
-      row.appendChild(el("div",{class:"rs",text:String(summary(e)).replace(/\[\[([^\]|]+)(\|[^\]]+)?\]\]/g,"$1").slice(0,220)}));
+      row.appendChild(el("div",{class:"rs",text:summaryText(summary(e)).slice(0,220)}));
     rows.appendChild(row);
   });
   v.appendChild(rows);
@@ -3859,8 +4230,16 @@ function fieldCell(e,cn,p,pd,val,txt,titel){
         onclick:function(ev){ ev.stopPropagation(); go({k:"art",id:ziel.id}); }},nameOf(ziel)));
       else dd2.appendChild(el("span",{class:"gone",text:String(v)}));
     });
+  } else if(pd.format==="long"&&typeof val[p]==="string"&&val[p].trim()){
+    /* Ein langes Feld ist Markdown (M10) — gezeichnet wie die Prosa, mit
+       Verweisen und Würfeln, nicht als eine Zeile voller Striche. */
+    dd2.appendChild(para(fillVars(val[p],null,e)));
   } else dd2.textContent=txt===""?"—":txt;
-  if(editable) dd2.addEventListener("click",function(){ UI.editField=id; render(); });
+  /* Ein Klick auf einen Verweis oder Würfel im Text ist kein Klick zum
+     Bearbeiten. */
+  if(editable) dd2.addEventListener("click",function(ev){
+    if(ev.target&&ev.target.closest&&ev.target.closest("button,a"))return;
+    UI.editField=id; render(); });
   cell.appendChild(dd2);
   return cell;
 }
@@ -4086,7 +4465,7 @@ function fieldPlan(e,ifn,want,ausser){
          ausgegeben — eine Zeile mehr, die niemand anfassen darf. */
       if(cn==="Identity"&&(p==="name"||p==="id"))return;
       var titel=fieldTitle(ifn,cn,p,pd);
-      var txt=fmtVal(pd, pd.derived?derivedValue(pd,val):val[p], ifn);
+      var txt=fmtVal(pd, pd.derived?derivedValue(pd,val,e.components,e.relations):val[p], ifn);
       if(txt===""){
         if(!pd.derived&&!pd.readOnly) frei.push({cn:cn,p:p,pd:pd,ref:cn+"."+p,titel:titel,
           label:(REG.interfaces[cn].label||cn)+" · "+titel});
@@ -4098,7 +4477,7 @@ function fieldPlan(e,ifn,want,ausser){
         if(!gewaehlt&&!(UI.inline&&canWrite()&&!pd.derived&&!pd.readOnly))return;
       }
       (attach[p]||[]).forEach(function(dp){
-        var dv=fmtVal(props[dp],derivedValue(props[dp],val), ifn);
+        var dv=fmtVal(props[dp],derivedValue(props[dp],val,e.components,e.relations), ifn);
         if(dv!=="") txt+=" ("+dv+")";
       });
       cells.push({cn:cn,p:p,pd:pd,val:val,txt:txt,ref:cn+"."+p,titel:titel,
@@ -4221,7 +4600,9 @@ function elProse(e,ifn,item){
       var text=para(fillVars(x.value,null,e));
       if(canWrite()&&!inPlacement){
         text.classList.add("editable");
-        text.addEventListener("click",function(){ UI.editField=x.ref; render(); });
+        text.addEventListener("click",function(ev){
+          if(ev.target&&ev.target.closest&&ev.target.closest("button,a"))return;
+          UI.editField=x.ref; render(); });
       }
       box.appendChild(text);
     }
@@ -6524,8 +6905,11 @@ function elLive(e,ifn,item){
    Wurf nicht sieht, glaubt ihn nicht. Kein `eval` — dieselbe Regel wie beim
    Rechenwerk: Registerzeilen und Eingaben sind Daten. */
 function rollDice(ausdruck){
-  var txt=String(ausdruck||"").replace(/\s+/g,"").toLowerCase();
+  var txt=String(ausdruck||"").replace(/\s+/g,"").replace(/−/g,"-").toLowerCase();
   if(!txt)return null;
+  /* Nur ein Modifikator (`{{+4}}`, aus `{@hit 4}`) ist ein Wurf auf den W20
+     mit diesem Bonus — wie `parseDice` im Paket (M12). */
+  if(/^[+-]\d+$/.test(txt)) txt="1d20"+txt;
   var teile=txt.match(/[+-]?[^+-]+/g);
   if(!teile)return null;
   var summe=0, wuerfe=[], ok=true;
@@ -6533,7 +6917,7 @@ function rollDice(ausdruck){
     var vz=1;
     if(t.charAt(0)==="+")t=t.slice(1);
     else if(t.charAt(0)==="-"){ vz=-1; t=t.slice(1); }
-    var m=/^(\d*)d(\d+)$/.exec(t);
+    var m=/^(\d*)[dw](\d+)$/.exec(t);
     if(m){
       var n=Math.min(100,Math.max(1,parseInt(m[1]||"1",10)));
       /* Mindestens eine Seite, nicht zwei: ein W1 ist albern, aber er
@@ -6760,7 +7144,7 @@ function elInitiative(e,ifn,item){
       add.addEventListener("change",function(){
         if(!add.value)return;
         p2.rel.props=Object.assign({},p2.rel.props,{conditions:
-          (p2.conditions||[]).concat([{rule:add.value,rounds:1,source:dran?dran.label:""}])});
+          withConditionRows(p2.conditions,{rule:add.value,rounds:1,source:dran?dran.label:""})});
         persist(e);
       });
       cc.appendChild(add);
@@ -7352,13 +7736,13 @@ function craftMod(traeger,info){
   var sb=statsOf(traeger).card;
   var m=modOf(sb,(info.ability||"int"));
   var teile=[(info.ability||"int").toUpperCase()+" "+sgn(m)];
-  /* Die Werkzeugübungen stehen nicht mehr in einem eigenen Feld: sie sind
-     die Einträge in `proficient`, die aus der Zeile `Tool` kommen. Ein Feld
-     je Sorte hiesse dieselbe Frage sechsmal. */
-  var werkzeuge=werteAusZeile((traeger.components||{}).Proficiencies,
-    "Proficiencies","proficient","Tool");
-  var geuebt=info.tool&&werkzeuge.some(function(t){
-    return String(t).toLowerCase()===String(info.tool).toLowerCase(); });
+  /* Die Werkzeugübungen stehen nicht in einem eigenen Feld: sie sind die
+     Einträge in `proficient`. Seit M6 ist ein Werkzeug ein Gegenstand
+     (`itemType: tool`), und seit M5 stehen die Übungen am Statblock —
+     gefragt wird darum, ob der Name dort steht, egal aus welcher Gruppe. */
+  var sbT=statsOf(traeger).from;
+  var werkzeuge=(((sbT?resolvedOf(sbT):{}).components||{}).Proficiencies||{}).proficient||[];
+  var geuebt=info.tool&&nennt(werkzeuge,info.tool);
   if(geuebt){ var p=profOf(traeger); m+=p; teile.push("proficient "+sgn(p)); }
   return {mod:m,parts:teile,proficient:!!geuebt};
 }
@@ -8364,33 +8748,33 @@ function sbCard(o){
 }
 var ATTR6=["str","dex","con","int","wis","cha"];
 
-/* Fertigkeit zu Attribut: eine Kampagneneinstellung mit Rückfall, damit die
-   Seite auch ohne die Zeile rechnet. Fest im Code hiesse: eine Kampagne mit
-   anderen Fertigkeiten wäre eine Codeänderung. */
-var SKILLS_FALLBACK="acrobatics:dex,animalHandling:wis,arcana:int,athletics:str,"+
-  "deception:cha,history:int,insight:wis,intimidation:cha,investigation:int,"+
-  "medicine:wis,nature:int,perception:wis,performance:cha,persuasion:cha,"+
-  "religion:int,sleightOfHand:dex,stealth:dex,survival:wis";
 /**
- * Die Fertigkeiten: **welche es gibt**, sagt die Aufzählungszeile `Skill`;
- * **worauf jede rechnet**, sagt die Einstellung `skills` (`stealth:dex`).
+ * **Die Fertigkeiten sind Artikel** (M6, D50): welche es gibt, sagen die
+ * sichtbaren `Skill`-Artikel, **worauf jede rechnet**, ihr Feld `ability`.
+ * Das stand an zwei Stellen — die Aufzählungszeile `Skill` sagte, was es
+ * gibt, die Einstellung `skills` (`stealth:dex`), wie gerechnet wird —,
+ * weil ein Wort in einer Liste keine Zuordnung tragen kann. Ein Artikel
+ * kann es, und er trägt den Regeltext gleich mit.
  *
- * Zwei Stellen, aber nicht zweimal dasselbe — eine Liste von Wörtern kann
- * keine Zuordnung tragen, und eine Zuordnung, die auch die Liste wäre,
- * liesse sich in der Maske nicht ankreuzen. Steht eine Fertigkeit nur in
- * der Einstellung, kommt sie mit; steht sie nur in der Zeile, rechnet sie
- * auf `dex`. Keine der beiden verschwindet still.
+ * Der Schlüssel ist der Name, wie er in `Proficiencies.proficient` steht.
+ * Eine Fertigkeit ohne Attribut rechnet auf `dex` und steht trotzdem da.
  */
 function skillList(){
-  var zu={};
-  String(setting("skills",SKILLS_FALLBACK)).split(",").forEach(function(p){
-    var t=p.split(":"); var k=(t[0]||"").trim();
-    if(k) zu[k]=(t[1]||"dex").trim();
+  var raus=[];
+  ENT.forEach(function(e){
+    if(!articleVisible(e)||isInstance(e))return;
+    if(selfAndAncestors((e.interfaces||[])[0]).indexOf("Skill")<0)return;
+    var ab=String(((e.components||{}).Skill||{}).ability||"dex");
+    raus.push({key:rawName(e),attr:ATTR6.indexOf(ab)>=0?ab:"dex",id:e.id});
   });
-  var zeile=((REG.enums||{}).Skill||{}).values;
-  var keys=Array.isArray(zeile)&&zeile.length?zeile.slice():Object.keys(zu);
-  Object.keys(zu).forEach(function(k){ if(keys.indexOf(k)<0) keys.push(k); });
-  return keys.map(function(k){ return {key:k,attr:zu[k]||"dex"}; });
+  return raus.sort(function(a,b){ return a.key.localeCompare(b.key); });
+}
+/* Steht dieser Name in der Liste? Ohne Rücksicht auf Gross und klein:
+   „Perception" und „perception" sind dieselbe Übung, und eine Liste aus
+   der Zeit vor M6 schrieb sie klein. */
+function nennt(liste,name){
+  var n=String(name).toLowerCase();
+  return (liste||[]).some(function(x){ return String(x).toLowerCase()===n; });
 }
 /**
  * **Ein Zustand ist ein Regelartikel** (`Rule.kind = condition`), eine
@@ -8409,7 +8793,60 @@ function rulesOfKind(kind){
   });
   return raus.sort(function(a,b){ return nameOf(a).localeCompare(nameOf(b),"en"); });
 }
-function conditionList(){ return rulesOfKind("condition"); }
+/* Zustände sind eine Art (`Condition`, D48), kein Wort an einer Regel: die
+   Liste nimmt jede Art, die von ihr erbt — auch `Disease`. */
+function conditionList(){
+  var raus=[];
+  ENT.forEach(function(e){
+    if(selfAndAncestors((e.interfaces||[])[0]||"").indexOf("Condition")<0)return;
+    if(!articleVisible(e))return;
+    raus.push(e);
+  });
+  return raus.sort(function(a,b){ return nameOf(a).localeCompare(nameOf(b),"en"); });
+}
+/* Der Grundzustand einer Stufe: die `stageOf`-Kante, nur vorwärts gespeichert.
+   Höchstens eine Stufe je Grundzustand in einer Zustandsliste (D48) — wer eine
+   zweite setzt, ersetzt die erste. */
+function stageBase(id){
+  var e=ENT.get(id); if(!e)return null;
+  var k=(e.relations||[]).filter(function(r){ return r.type==="stageOf"; })[0];
+  return k?k.to:null;
+}
+function withConditionRows(zeilen,neu){
+  var grund=stageBase(neu.rule);
+  var rest=(zeilen||[]).filter(function(x){ return !grund||stageBase(x.rule)!==grund; });
+  return rest.concat([neu]);
+}
+function stageOfCond(id){
+  var e=ENT.get(id);
+  return Number((((e||{}).components||{}).Condition||{}).stage)||0;
+}
+/* Eine Zustandsliste mit `id` darin; eine andere Stufe desselben
+   Grundzustands fällt heraus. */
+function withCondition(liste,id){
+  var grund=stageBase(id);
+  var rest=(liste||[]).filter(function(x){ return !grund||stageBase(x)!==grund; });
+  return rest.concat([id]);
+}
+/* Eine lange Rast senkt jeden Zustand mit `recovery: longRestStep` um eine
+   Stufe: ersetzen durch `stage − 1` desselben Grundzustands, bei Stufe 1
+   entfernen. */
+function afterLongRest(liste){
+  var raus=[];
+  (liste||[]).forEach(function(id){
+    var e=ENT.get(id);
+    var c=((e||{}).components||{}).Condition||{};
+    var grund=stageBase(id);
+    if(c.recovery!=="longRestStep"||!grund){ raus.push(id); return; }
+    var tiefer=null, ziel=stageOfCond(id)-1;
+    ENT.forEach(function(o){
+      if(tiefer)return;
+      if(stageBase(o.id)===grund&&stageOfCond(o.id)===ziel) tiefer=o.id;
+    });
+    if(tiefer) raus.push(tiefer);
+  });
+  return raus;
+}
 /* aus `animalHandling` wird „Animal handling" — Titel aus dem Schlüssel,
    damit eine neue Fertigkeit nur eine Einstellung ist. */
 function humanKey(k){
@@ -8635,11 +9072,19 @@ function modOf(card,attr){
   var n=Number(card[attr]);
   return isFinite(n)?Math.floor((n-10)/2):0;
 }
+/* **Die Stufe einer Figur ist gerechnet** (M3, D8): die Summe ihrer
+   `hasClass`-Stufen, mit der Formel aus dem Register. Ohne Klasse keine
+   Stufe — `undefined`, nicht 0. */
+function charLevel(e){
+  var pd=((REG.interfaces.PlayerCharacter||{}).schema||{}).properties||{};
+  if(!pd.level)return undefined;
+  return derivedValue(pd.level,(e.components||{}).PlayerCharacter||{},e.components,e.relations);
+}
 function profOf(e){
   var ch=(e.components||{}).PlayerCharacter||{};
-  if(ch.level!==undefined){
-    var pd=((REG.interfaces.PlayerCharacter||{}).schema||{}).properties||{};
-    var d=pd.proficiency&&derivedValue(pd.proficiency,ch);
+  var pd=((REG.interfaces.PlayerCharacter||{}).schema||{}).properties||{};
+  if(pd.proficiency){
+    var d=derivedValue(pd.proficiency,ch,e.components,e.relations);
     if(d!==undefined)return d;
   }
   var sb=statsOf(e).card;
@@ -8698,7 +9143,17 @@ function elSheet(e,ifn,item){
   if(!statblockOf(e))return null;
   var st=statsOf(e), sb=st.card;
   var vit=(e.components||{})[VIT_COMP]||{};
-  var sk=(e.components||{})[SKILL_COMP]||{};
+  /* **Die Übungen wohnen am Statblock** (M5), wie die Zahlen: gelesen aus
+     dem aufgelösten (eine Instanz liest ihre Vorlage mit), geschrieben in
+     ihn — `persist` dünnt eine Instanz danach wieder aus. */
+  var sbE=st.from?resolvedOf(st.from):null;
+  var sk=sbE?((sbE.components||{})[SKILL_COMP]||{}):{};
+  function schreibSk(patch){
+    if(!sbE)return;
+    sbE.components=Object.assign({},sbE.components||{});
+    sbE.components[SKILL_COMP]=Object.assign({},sk,patch);
+    persist(sbE);
+  }
   var ch=(e.components||{}).PlayerCharacter||{};
   var prof=profOf(e);
   var wrap=el("div",{class:"sheet"});
@@ -8730,13 +9185,12 @@ function elSheet(e,ifn,item){
   strip.appendChild(vitalPlain("Speed",sb.speed||"—"));
   strip.appendChild(vitalPlain("Prof",sgn(prof)));
   strip.appendChild(vitalPlain("Pass. per.",10+modOf(sb,"wis")+
-    ((sk.proficient||[]).indexOf("perception")>=0?prof:0)));
-  strip.appendChild(vitalStepper("Exhaustion",vit.exhaustion||0,
-    function(d,roh){ stepper("exhaustion",d,roh); }));
+    /* Expertise zählt doppelt, wie in der Fertigkeitenliste darunter. */
+    (nennt(sk.expertise,"perception")?2*prof:(nennt(sk.proficient,"perception")?prof:0))));
 
   /* Trefferwürfel als Punkte: wie viele noch da sind, sieht man, ohne zu
      rechnen — und eine kurze Rast ist ein Tipp, kein Formular. */
-  var hdMax=Number(ch.level)||Number(sb.hitDice)||0;
+  var hdMax=Number(charLevel(e))||Number(sb.hitDice)||0;
   if(hdMax){
     var hdBox=el("div",{class:"vital"});
     hdBox.appendChild(el("div",{class:"vk",text:"Hit dice"}));
@@ -8776,12 +9230,12 @@ function elSheet(e,ifn,item){
         schreibVit({hitDiceLeft:links-1,hp:Math.min(hpMax||jetzt+heil,jetzt+heil)});
       }},"Short rest"));
     rest.appendChild(el("button",{class:"btn sm",type:"button",
-      title:"Full HP, half the hit dice back, death saves cleared, one step less exhaustion",
+      title:"Full HP, half the hit dice back, death saves cleared, one step less on every stage condition that eases with a long rest",
       onclick:function(){
         schreibVit({hp:hpMax||undefined,hpTemp:0,
           hitDiceLeft:Math.min(hdMax,(vit.hitDiceLeft===undefined?hdMax:Number(vit.hitDiceLeft))+Math.max(1,Math.floor(hdMax/2))),
           deathSuccess:0,deathFail:0,
-          exhaustion:Math.max(0,(Number(vit.exhaustion)||0)-1)});
+          conditions:afterLongRest(vit.conditions)});
       }},"Long rest"));
     rest.appendChild(el("button",{class:"btn sm gh",type:"button",
       title:"One more natural 1 for the tally",
@@ -8799,14 +9253,14 @@ function elSheet(e,ifn,item){
     var b=el("button",{class:"chip pick"+(an?" on":""),type:"button","aria-pressed":String(an),
       title:((r.components||{}).Description||{}).description||""},nameOf(r));
     if(canWrite()) b.addEventListener("click",function(){
-      var neu=an?aktiv.filter(function(x){return x!==r.id;}):aktiv.concat([r.id]);
+      var neu=an?aktiv.filter(function(x){return x!==r.id;}):withCondition(aktiv,r.id);
       schreibVit({conditions:neu});
     });
     else b.disabled=true;
     zust.appendChild(b);
   });
   if(!regeln.length) zust.appendChild(el("span",{class:"hint",
-    text:"No condition articles yet — a condition is a rule with kind “condition”."}));
+    text:"No condition articles yet — create one of the type “Condition”."}));
   wrap.appendChild(el("div",{class:"sec",text:"Conditions"}));
   wrap.appendChild(zust);
 
@@ -8825,8 +9279,7 @@ function elSheet(e,ifn,item){
     if(canWrite()) sv.addEventListener("click",function(){
       var liste=sk.saves||[];
       var neu=geuebt?liste.filter(function(x){return x!==a;}):liste.concat([a]);
-      e.components[SKILL_COMP]=Object.assign({},sk,{saves:neu});
-      persist(e);
+      schreibSk({saves:neu});
     });
     else sv.disabled=true;
     box.appendChild(sv);
@@ -8839,18 +9292,21 @@ function elSheet(e,ifn,item){
   var sg=el("div",{class:"skillgrid"});
   var pl=sk.proficient||[], ex=sk.expertise||[];
   skillList().forEach(function(s2){
-    var stufe=ex.indexOf(s2.key)>=0?2:(pl.indexOf(s2.key)>=0?1:0);
-    var wert=modOf(sb,s2.attr)+prof*stufe;
+    var stufe=nennt(ex,s2.key)?2:(nennt(pl,s2.key)?1:0);
+    /* Ein fester Bonus aus dem Buch (`Statblock.bonuses`) gilt statt der
+       Rechnung: der Goblin hat Heimlichkeit +6, wo DEX und Übung +4 ergäben. */
+    var fest=(sb.bonuses||{})[s2.key];
+    var wert=isFinite(Number(fest))&&fest!==null&&fest!==""?Number(fest):modOf(sb,s2.attr)+prof*stufe;
     var row=el("div",{class:"skillrow"});
     var dot=el("button",{class:"sdot s"+stufe,type:"button",
       title:["not proficient","proficient","expertise"][stufe]});
-    if(canWrite()) dot.addEventListener("click",function(){
-      var np=pl.filter(function(x){return x!==s2.key;});
-      var ne=ex.filter(function(x){return x!==s2.key;});
+    if(canWrite()&&sbE) dot.addEventListener("click",function(){
+      var gleich=function(x){ return String(x).toLowerCase()!==s2.key.toLowerCase(); };
+      var np=pl.filter(gleich);
+      var ne=ex.filter(gleich);
       if(stufe===0) np.push(s2.key);
       else if(stufe===1) ne.push(s2.key);
-      e.components[SKILL_COMP]=Object.assign({},sk,{proficient:np,expertise:ne});
-      persist(e);
+      schreibSk({proficient:np,expertise:ne});
     });
     else dot.disabled=true;
     row.appendChild(dot);
@@ -8860,6 +9316,8 @@ function elSheet(e,ifn,item){
     row.appendChild(el("span",{class:"smod",text:sgn(wert)}));
     sg.appendChild(row);
   });
+  if(!skillList().length) wrap.appendChild(el("span",{class:"hint",
+    text:"No skill articles yet — create one of the type “Skill” with its ability."}));
   wrap.appendChild(sg);
 
   /* ---- Die übrigen Übungen ----
@@ -8875,6 +9333,13 @@ function elSheet(e,ifn,item){
       werte:(sk.proficient||[]).filter(function(v){ return g.values.indexOf(v)>=0; }),
       exp:(sk.expertise||[]).filter(function(v){ return g.values.indexOf(v)>=0; })};
   }).filter(function(x){ return x.werte.length; });
+  /* Was keine Liste kennt (eine Fertigkeit ohne Artikel, eine Hausregel),
+     steht trotzdem da — gespeichert ist es, also wird es gezeigt (D50). */
+  var irgendwo=function(v){ return skillList().some(function(x){ return x.key.toLowerCase()===String(v).toLowerCase(); })
+    ||uebrig.some(function(g){ return g.values.indexOf(v)>=0; }); };
+  var sonst=(sk.proficient||[]).filter(function(v){ return !irgendwo(v); });
+  if(sonst.length) zeilenMitWerten.push({label:"Other",werte:sonst,
+    exp:(sk.expertise||[]).filter(function(v){ return sonst.indexOf(v)>=0; })});
   if(zeilenMitWerten.length){
     wrap.appendChild(el("div",{class:"sec",text:"Also proficient in"}));
     var pl2=el("div",{class:"proflist"});
@@ -11227,8 +11692,9 @@ function campaignVars(){
   var sig=ENT.size+"|"+JSON.stringify(REG.settings||{});
   if(sig===computedSig&&computedCache)return computedCache;
   var p=theParty(), mit=partyMembers(p);
+  /* Die Stufe ist gerechnet (M3): die Summe der Klassenkanten. */
   var stufen=mit.map(function(m){
-    return Number(((m.components||{}).PlayerCharacter||{}).level);
+    return Number(charLevel(m));
   }).filter(function(n){ return isFinite(n)&&n>0; });
   var mittel=stufen.length?Math.round(stufen.reduce(function(a,b){return a+b;},0)/stufen.length):0;
   var ort=partyPlace(p);
@@ -12101,7 +12567,9 @@ function renderEnumEditor(v){
     var props=((REG.interfaces[t]||{}).schema||{}).properties||{};
     Object.keys(props).forEach(function(k){
       var ref=(props[k]||{}).enumRef; if(!ref)return;
-      (nutzer[ref]=nutzer[ref]||[]).push(t+"."+k);
+      /* Ein Feld darf mehrere nennen — dann zählt es bei jeder. */
+      (Array.isArray(ref)?ref:[ref]).forEach(function(r){
+        (nutzer[r]=nutzer[r]||[]).push(t+"."+k); });
     });
   });
 
@@ -12321,9 +12789,14 @@ var BEGRIFFE=[
    "A type in one place — the fact it records there: a key, a label, a "+
    "kind, required or optional, maybe a default, maybe a calculation. A "+
    "choice either carries its own words or names choice lists, never "+
-   "both — several lists count together, which is how “proficient in” "+
-   "draws on skills, tools, languages, weapons, armour and fields of "+
-   "knowledge at once. As an array the same field holds several of them: "+
+   "both — several lists count together. A choice may also name an "+
+   "article type: its values are then the names of the articles of that "+
+   "type you can see, which is how “proficient in” draws on the skills and "+
+   "languages, the tools among the items and the weapons, plus the words of "+
+   "Weapon.category and Armor.armorType. A skill carries its own ability, "+
+   "so no setting has to say that Stealth runs on DEX. Names from articles "+
+   "suggest and do not hold: a renamed article would otherwise make a "+
+   "stored proficiency wrong in hindsight. As an array the same field holds several of them: "+
    "one ability carries a check, several abilities are saving throws. A "+
    "number may carry a range (1 to 20 is a range, not twenty words). A "+
    "A field may say it is always an input (a state set mid-turn: current "+
@@ -12338,7 +12811,9 @@ var BEGRIFFE=[
    "the type is a rule, because a tag removed later would make a stored "+
    "link wrong in hindsight. A measure names the unit it is stored in. A "+
    "calculated field takes no input "+
-   "and is never stored. Values are kept one card per type, named after the "+
+   "and is never stored; it reads its own card first and then the "+
+   "article's other cards, which is how a statblock's spell save DC finds "+
+   "the INT score in Abilities. Values are kept one card per type, named after the "+
    "type that declares the field — that is what keeps hp at the creature "+
    "apart from hp at the statblock. A type may rename a field it inherits: "+
    "the same Time.until is when an event ends and when a quest is too late, "+
@@ -12380,7 +12855,26 @@ var BEGRIFFE=[
    "template fills in the rest on read, and a value typed back to the "+
    "template's follows the template again. Instances stand at their "+
    "creature and in no list. Without a statblock a creature shows no "+
-   "numbers at all."],
+   "numbers at all. Conditions show the other use: “Exhaustion 3” is an "+
+   "article of its own with a stage and an edge (stageOf) to “Exhaustion”, "+
+   "and a list of conditions holds at most one stage per base condition — "+
+   "a new stage replaces the old one, and a long rest swaps each stage for "+
+   "the one below. There is no counter, because the same number in two "+
+   "places drifts apart. What one rule does to another (paralysed imposes "+
+   "incapacitated, incapacitated prevents reactions) is an edge too "+
+   "(affects), stored forward; nothing evaluates it yet. A spell is "+
+   "written once; who casts it, and how, sits on an edge from the caster "+
+   "(casts: prepared, known, innate or from an item, with uses, level and "+
+   "charges) — the same Fireball is prepared by the mage and worth three "+
+   "charges in the staff. An item may carry an inventory of its own (a "+
+   "backpack), and the piece at the table may be an instance of the item "+
+   "in the book (the +1 longsword stores only what differs). A character "+
+   "has its classes as edges, each with its level (hasClass: Fighter 3, "+
+   "Wizard 2 with the subclass on the edge), and one ancestry and one "+
+   "background; its level is the sum of those edges, worked out on read. "+
+   "What a class, an ancestry or a background gives is an edge as well "+
+   "(grants), with the level on the edge — the same Ability Score "+
+   "Improvement comes at 4, 6 and 8, one article and three edges."],
   ["Unit",
    "How a measure is written and converted. The vault is imperial because "+
    "the rules are; at the table sit people for whom forty feet means "+
@@ -12695,6 +13189,105 @@ function renderHowto(v){
     dl.appendChild(el("dd",{text:r[1]}));
   });
   v.appendChild(dl);
+
+  /* ---- Langer Text (M10–M12) ----
+     Ein Beispiel, das mit derselben Funktion gezeichnet wird wie jedes
+     lange Feld — nicht ein Bild davon. Der Verweis zeigt auf einen Artikel,
+     den es gibt (den gerade verfolgten), damit er auch hier aufgeht. */
+  v.appendChild(el("div",{class:"rsec",text:"What a long text can say"}));
+  v.appendChild(el("p",{class:"hint"},
+    "Every long text field reads Markdown: headings, lists, tables, quotes, "+
+    "**bold** and *italic*. Nothing in it becomes HTML — a tag in a field "+
+    "stays text. [[id|shown]] links by the article's number, which survives "+
+    "a rename and does not mix up two articles of the same name; [[Name]] "+
+    "may be typed and turns into the number on save when exactly one article "+
+    "is called that — otherwise it stays and says it is ambiguous. "+
+    "{{1d6+2}} is a die to click, {{+4}} a d20 with that bonus, and {VAR} is "+
+    "filled in when read and never written into the text."));
+  var nr=e?((e.components||{}).Identity||{}).id||e.id:"";
+  var probe="**Scimitar.** *Melee:* {{+4}} to hit, {{1d6+2}} slashing.\n\n"+
+    "| d6 | What happens |\n|:-:|---|\n| 1–3 | nothing |\n| 4–6 | "+
+    (e?"[["+nr+"|"+nameOf(e)+"]] notices":"someone notices")+" |";
+  var bsp=el("div",{class:"howtomd"});
+  bsp.appendChild(el("pre",{class:"code",text:probe}));
+  bsp.appendChild(para(probe));
+  v.appendChild(bsp);
+
+  /* ---- Zauberwirken, durchgerechnet (M2) ----
+     Mit den Feldern, wie sie im Register stehen, und mit derselben
+     Rechnung, die jede Ansicht nimmt: ändert jemand die Formel am
+     Statblock, ändert sich das Beispiel mit. */
+  var sbP=((REG.interfaces.Statblock||{}).schema||{}).properties||{};
+  if(sbP.spellDc&&sbP.spellAttack){
+    v.appendChild(el("div",{class:"rsec",text:"A spell, who casts it, and the save DC"}));
+    v.appendChild(el("p",{class:"hint"},
+      "A spell is a rule with fields of its own: level, school, casting "+
+      "time, range, components, duration. For an action, a bonus action or "+
+      "a reaction the casting time names the action type — the same article "+
+      "an action names. Which conditions a spell imposes is an affects edge, "+
+      "not a field. Who casts it is a casts edge from the statblock, the "+
+      "character or the item. The statblock gives the ability, the caster "+
+      "level and the slots per level; the save DC and the attack bonus are "+
+      "worked out on read, from the proficiency on the statblock's own card "+
+      "and the score on its Abilities card. Slots spent are a state on the "+
+      "creature, like its current hit points."));
+    var sbBsp={prof:3,spellAbility:"int",casterLevel:9,spellSlots:[4,3,3,3,1]};
+    var abBsp={int:17};
+    var kartenBsp={Statblock:sbBsp,Abilities:abBsp};
+    var dcB=derivedValue(sbP.spellDc,sbBsp,kartenBsp);
+    var atB=derivedValue(sbP.spellAttack,sbBsp,kartenBsp);
+    var rechnung=
+      "Statblock  prof 3 · spellAbility int · casterLevel 9 · spellSlots 4,3,3,3,1\n"+
+      "Abilities  int 17   (mod +3)\n\n"+
+      "spellDc      = "+sbP.spellDc.derived+"  →  "+(dcB==null?"—":dcB)+"\n"+
+      "spellAttack  = "+sbP.spellAttack.derived+"  →  "+fmtVal(sbP.spellAttack,atB)+"\n\n"+
+      "casts → Fireball      mode prepared\n"+
+      "Wand of Magic Missiles  casts → Magic Missile   mode item · charges 1";
+    v.appendChild(el("pre",{class:"code",text:rechnung}));
+  }
+
+  /* ---- Charakterbau, durchgerechnet (M3, M6) ----
+     Mit den Formeln aus dem Register und derselben Rechnung, die der
+     Bogen nimmt: ändert jemand `level` oder `proficiency` an der Figur,
+     ändert sich das Beispiel mit. Die Übungsgruppen kommen aus dem
+     Register, die Namen darin aus dem Bestand, den man gerade sieht. */
+  var pcP=((REG.interfaces.PlayerCharacter||{}).schema||{}).properties||{};
+  if(pcP.level&&pcP.level.derived){
+    v.appendChild(el("div",{class:"rsec",text:"A character, its classes, and what it is proficient in"}));
+    v.appendChild(el("p",{class:"hint"},
+      "Class, subclass, ancestry and background are rules with fields of "+
+      "their own. A character points at them: hasClass once per class with "+
+      "the level on the edge (and the subclass with it), hasAncestry and "+
+      "hasBackground once. Its level is never typed — it is the sum of the "+
+      "class edges, worked out on read, and the proficiency bonus follows "+
+      "from it. What a class or an ancestry gives is a grants edge with the "+
+      "level it comes at. Proficiencies live on the statblock with the "+
+      "other numbers, and they are names: of skill and language articles, "+
+      "of the items that are tools, of weapons, and the words of the weapon "+
+      "and armour groups. A skill says which ability it runs on."));
+    var kantenBsp=[
+      {type:"hasClass",to:"Fighter",props:{level:3,subclass:"Champion"}},
+      {type:"hasClass",to:"Wizard",props:{level:2}},
+      {type:"hasAncestry",to:"Hill Dwarf",props:{}},
+      {type:"hasBackground",to:"Acolyte",props:{}}];
+    var lvB=derivedValue(pcP.level,{},{},kantenBsp);
+    var pfB=pcP.proficiency?derivedValue(pcP.proficiency,{},{},kantenBsp):undefined;
+    var profP=((REG.interfaces.Proficiencies||{}).schema||{}).properties||{};
+    var quellen=enumGruppen(profP.proficient).map(function(g){
+      return "  "+g.name+(g.from==="type"?"  ("+g.values.length+" visible)":"  "+g.values.join(", "));
+    }).join("\n");
+    var rechnung2=
+      "hasClass → Fighter    level 3 · subclass Champion\n"+
+      "hasClass → Wizard     level 2\n"+
+      "hasAncestry → Hill Dwarf   (subraceOf → Dwarf)\n"+
+      "hasBackground → Acolyte\n\n"+
+      "level        = "+pcP.level.derived+"  →  "+(lvB==null?"—":lvB)+"\n"+
+      (pcP.proficiency?"proficiency  = "+pcP.proficiency.derived+"  →  "+fmtVal(pcP.proficiency,pfB)+"\n":"")+
+      "\nFighter  grants → Second Wind  at 1\n"+
+      "Fighter  grants → Ability Score Improvement  at 4, 6, 8 …\n\n"+
+      "Statblock · Proficiencies.proficient draws on\n"+(quellen||"  —");
+    v.appendChild(el("pre",{class:"code",text:rechnung2}));
+  }
 
   /* ---- Wer einen Artikel sehen darf ----
      Die **grobe** Frage, und sie kommt vor der feinen: das Wissen sagt,
@@ -13897,10 +14490,10 @@ function fieldMore(cn,k,within,w,saveC){
 
   var art=fieldKind(p);
   if(art==="choice"||art==="choices"){
-    /* **Woher die Werte kommen**: aus Aufzählungszeilen oder vom Feld
-       selbst. Mehrere Zeilen sind erlaubt und gelten zusammen — worin
-       jemand geübt ist, kommt aus Fertigkeiten, Werkzeugen, Sprachen,
-       Waffen, Rüstungen und Wissensgebieten. Eigene Wörter am Feld gibt es
+    /* **Woher die Werte kommen**: aus Aufzählungszeilen, aus Artikeln
+       einer Art (M6) oder vom Feld selbst. Mehreres ist erlaubt und gilt
+       zusammen — worin jemand geübt ist, kommt aus Fertigkeiten, Sprachen,
+       Werkzeugen, Waffen und den Waffen- und Rüstungsgruppen. Eigene Wörter am Feld gibt es
        nur, solange keine Zeile genannt ist: beides zugleich wären zwei
        Antworten auf dieselbe Frage. */
     var genannt=p.enumRef?(Array.isArray(p.enumRef)?p.enumRef.slice():[p.enumRef]):[];
@@ -13928,6 +14521,25 @@ function fieldMore(cn,k,within,w,saveC){
       reihe.appendChild(lab);
     });
     kasten.appendChild(reihe);
+    /* **Oder aus Artikeln** (M6, D50): eine Art nennt die Namen ihrer
+       sichtbaren Artikel, `Typ.feld` die Liste eines Feldes. Ein Feld, das
+       eine Art nennt, schlägt vor und hält nicht — ein Name ist der heutige
+       Stand. */
+    var ausArtikeln=el("input",{class:"i",type:"text",
+      value:genannt.filter(function(n){ return !(REG.enums||{})[n]; }).join(", "),
+      placeholder:"Skill, Language, Weapon.category"});
+    if(!w) ausArtikeln.disabled=true;
+    ausArtikeln.addEventListener("change",function(){
+      var neu=ausArtikeln.value.split(",").map(function(x){ return x.trim(); }).filter(Boolean);
+      var fehlt=neu.filter(function(n){ return !enumRefArt(n); });
+      if(fehlt.length){ UI.err="Not a type or a field: "+fehlt.join(", "); render(); return; }
+      genannt=genannt.filter(function(n){ return (REG.enums||{})[n]; }).concat(neu);
+      if(genannt.length){ p.enumRef=genannt.length===1?genannt[0]:genannt.slice(); delete p["enum"]; }
+      else delete p.enumRef;
+      saveC(); render();
+    });
+    kasten.appendChild(el("div",{class:"cgroup",text:"or the names of articles"}));
+    kasten.appendChild(ausArtikeln);
     box.appendChild(field("Choices from",kasten));
     if(!genannt.length) text("Choices (comma separated)",(p["enum"]||[]).join(", "),function(v){
       var xs=v.split(",").map(function(x){return x.trim();}).filter(Boolean);
@@ -13944,9 +14556,11 @@ function fieldMore(cn,k,within,w,saveC){
   hinweis("**A sum instead of a value.** Write a formula and the field is "
     +"worked out every time the article is read \u2014 never stored, and it "
     +"gets no input (D8). The names in it are the **other fields of this "
-    +"same type**: `mod(dex)` reads `dex` next door, `10+mod(wis)` is the "
-    +"passive perception. Two places that can disagree are worse than one "
-    +"that has to think.");
+    +"same type** first, then those of the article's other cards: `mod(dex)` "
+    +"reads `dex` next door, `10+mod(wis)` is the passive perception, and a "
+    +"statblock's `8+prof+modOf(spellAbility)` takes `prof` from its own card "
+    +"and the INT score from Abilities. `modOf` reads the ability a field "
+    +"names. Two places that can disagree are worse than one that has to think.");
 
   text("belongs to field",p.of||"",function(v){
     if(v)p.of=v; else delete p.of;
@@ -14208,7 +14822,7 @@ function editEntity(e){
         var v=readInput(it); if(v!==undefined) live[it.cn][it.p]=v;
       });
       drvCells.forEach(function(c){
-        c.node.textContent=fmtVal(c.pd,derivedValue(c.pd,live[c.cn]||{}))||"—";
+        c.node.textContent=fmtVal(c.pd,derivedValue(c.pd,live[c.cn]||{},live,e.relations))||"—";
       });
     }
     compsFor(ifn).forEach(function(cn){

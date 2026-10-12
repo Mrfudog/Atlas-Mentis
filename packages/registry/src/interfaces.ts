@@ -76,12 +76,23 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   /* Worin jemand geübt ist. Es hiess `Skills` und trug nur Fertigkeiten,
      Sprachen und Werkzeuge; Rüstungen, Waffen und Wissensgebiete standen
-     nirgends oder als freier Text am Statblock. */
+     nirgends oder als freier Text am Statblock. Seit M5 nimmt es der
+     Statblock und nicht mehr die Kreatur: die Übungen gehören zu den
+     Zahlen, und die wohnen dort. Klasse, Abstammung und Hintergrund nehmen
+     es für das, was sie gewähren (M3). */
   Proficiencies: {
     name: 'Proficiencies',
     label: 'Proficiencies',
     abstract: true,
     schema: g.Proficiencies.schema,
+  },
+
+  /* Eine Wahl unter Übungen: Klasse, Unterklasse, Abstammung, Hintergrund (M3). */
+  ProficiencyChoice: {
+    name: 'ProficiencyChoice',
+    label: 'Proficiency choice',
+    abstract: true,
+    schema: g.ProficiencyChoice.schema,
   },
 
   /* Eine Stufe von 1 bis 20, die Begegnung und Szene teilen. */
@@ -210,11 +221,15 @@ export const interfaces: Record<string, InterfaceDef> = {
      * einen Begleiter zum Begleiter machen, stehen am Statblock und an der
      * Regel, auf die er zeigt.
      *
-     * `PlayerCharacter` bleibt eine eigene Art: er trägt Stufe, Klasse,
-     * Herkunft und den gerechneten Übungsbonus — Felder, die keine andere
-     * Kreatur hat.
+     * `PlayerCharacter` bleibt eine eigene Art: er trägt die gerechnete
+     * Stufe, den Übungsbonus und die Kanten zu Klasse, Abstammung und
+     * Hintergrund — was keine andere Kreatur hat.
+     *
+     * `Proficiencies` stand hier bis P4. Die Übungen gehören zu den Zahlen,
+     * und die wohnen am Statblock (M5) — an beiden Stellen wären sie zwei
+     * Antworten auf „worin ist sie geübt".
      */
-    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Vars', 'Vitals', 'Proficiencies', 'Lore', 'Facts', 'Secrets', 'ReadAloud'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Vars', 'Vitals', 'Lore', 'Facts', 'Secrets', 'ReadAloud'],
     schema: g.CreatureInfo.schema,
     /* **Die Zahlen wohnen am Statblock**, auch die eines Spielercharakters.
        Er hat mehr darüber hinaus — Stufe, Klasse, Hintergrund —, aber AC,
@@ -276,8 +291,9 @@ export const interfaces: Record<string, InterfaceDef> = {
                   /* Die Statblockzahlen stehen hier nicht mehr: sie
                      wohnen am Statblock, also hat die Kreatur sie gar
                      nicht. Eine Ausnahme für etwas, das es nicht gibt,
-                     wird am Tag des Umzugs still falsch. */
-                  except: ['Vitals', 'Proficiencies'],
+                     wird am Tag des Umzugs still falsch — darum steht
+                     `Proficiencies` seit M5 auch nicht mehr hier. */
+                  except: ['Vitals'],
                 },
                 { id: 'c-b', el: 'prose', fields: 'all' },
               ],
@@ -353,7 +369,7 @@ export const interfaces: Record<string, InterfaceDef> = {
        Felder, die niemand füllte (A14, 7.10.). */
   },
 
-  /** The reuse pool: traits, actions, conditions, feats — all one interface. */
+  /** The reuse pool: the shared root of conditions, actions, features, feats … (D48). */
   Rule: {
     name: 'Rule',
     area: 'rules',
@@ -384,13 +400,166 @@ export const interfaces: Record<string, InterfaceDef> = {
     schema: merge(g.SkillInfo),
   },
 
+  /** Eine Sprache (M6): war ein Wort in einer Aufzählungszeile. */
+  Language: {
+    name: 'Language',
+    area: 'rules',
+    label: 'Language',
+    extends: ['Rule'],
+    schema: merge(g.LanguageInfo),
+  },
+
+  /* ---------- Charakterbau (M3) ----------
+     Klasse, Unterklasse, Abstammung, Hintergrund: Regeln mit eigenen
+     Feldern, also Arten unter `Rule`. Was sie gewähren, steht dreifach
+     getrennt da, je nach Sorte: Übungen in `Proficiencies` (dieselbe Gruppe
+     wie am Statblock, nur heisst sie hier „gewährt"), Wahlen in
+     `ProficiencyChoice`, Merkmale an der Kante `grants` mit Stufe. Die
+     Figur zeigt über `hasClass`, `hasAncestry`, `hasBackground` darauf. */
+  Class: {
+    name: 'Class',
+    area: 'rules',
+    label: 'Class',
+    extends: ['Rule', 'Proficiencies', 'ProficiencyChoice', 'Lore', 'Image'],
+    schema: merge(g.ClassInfo, g.ClassCasting),
+    titles: {
+      'Proficiencies.proficient': 'Grants proficiency in',
+      'Proficiencies.expertise': 'Grants expertise in',
+    },
+  },
+
+  Subclass: {
+    name: 'Subclass',
+    area: 'rules',
+    label: 'Subclass',
+    extends: ['Rule', 'Proficiencies', 'ProficiencyChoice', 'Lore', 'Image'],
+    schema: merge(g.SubclassInfo, g.ClassCasting),
+    titles: {
+      'Proficiencies.proficient': 'Grants proficiency in',
+      'Proficiencies.expertise': 'Grants expertise in',
+    },
+  },
+
+  Ancestry: {
+    name: 'Ancestry',
+    area: 'rules',
+    label: 'Ancestry',
+    extends: ['Rule', 'Proficiencies', 'ProficiencyChoice', 'Lore', 'Image'],
+    schema: merge(g.AncestryInfo),
+    titles: {
+      'Proficiencies.proficient': 'Grants proficiency in',
+      'Proficiencies.expertise': 'Grants expertise in',
+    },
+  },
+
+  Background: {
+    name: 'Background',
+    area: 'rules',
+    label: 'Background',
+    extends: ['Rule', 'Proficiencies', 'ProficiencyChoice', 'Lore', 'Image'],
+    schema: merge(g.BackgroundInfo),
+    titles: {
+      'Proficiencies.proficient': 'Grants proficiency in',
+      'Proficiencies.expertise': 'Grants expertise in',
+    },
+  },
+
+  /** Ein Zustand, den man hat — und die Art, die `Vitals.conditions` verlangt (D48). */
+  Condition: {
+    name: 'Condition',
+    area: 'rules',
+    label: 'Condition',
+    extends: ['Rule'],
+    schema: merge(g.ConditionInfo),
+  },
+
+  /** Eine Krankheit: zuweisbar wie ein Zustand, mit eigenen Feldern (D48). */
+  Disease: {
+    name: 'Disease',
+    area: 'rules',
+    label: 'Disease',
+    extends: ['Condition'],
+    schema: merge(g.DiseaseInfo),
+  },
+
+  /** Aktionsart: Action, Bonus Action, Reaction, Movement … (D48). */
+  ActionType: {
+    name: 'ActionType',
+    area: 'rules',
+    label: 'Action type',
+    extends: ['Rule'],
+    schema: merge(g.ActionTypeInfo),
+  },
+
+  /** Eine Aktion; ihre Art ist ein Verweis und Pflicht (D48). */
+  Action: {
+    name: 'Action',
+    area: 'rules',
+    label: 'Action',
+    extends: ['Rule'],
+    schema: merge(g.ActionInfo),
+  },
+
+  /** Merkmal: alles Dauerhafte — Klasse, Volk, Monster, Region (D48). */
+  Feature: {
+    name: 'Feature',
+    area: 'rules',
+    label: 'Feature',
+    extends: ['Rule'],
+    schema: merge(g.FeatureInfo),
+  },
+
+  /** Gegenstandseigenschaft: Finesse, Versatile, Heavy (D48). */
+  ItemProperty: {
+    name: 'ItemProperty',
+    area: 'rules',
+    label: 'Item property',
+    extends: ['Rule'],
+    schema: merge(g.ItemPropertyInfo),
+  },
+
+  /**
+   * Ein Zauber (M2): eine Regel mit Grad, Schule, Wirkzeit, Reichweite,
+   * Komponenten, Dauer. Wer ihn wirkt, sagt die Kante `casts`.
+   */
+  Spell: {
+    name: 'Spell',
+    area: 'rules',
+    label: 'Spell',
+    extends: ['Rule'],
+    schema: merge(g.SpellInfo),
+  },
+
+  /** Falle oder Gefahr (M7). Auf der Karte über `marker`. */
+  Hazard: {
+    name: 'Hazard',
+    area: 'world',
+    label: 'Hazard',
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Secrets'],
+    schema: merge(g.HazardInfo),
+  },
+
+  /** Gottheit (M7); Anhänger über die Kante `worships`. */
+  Deity: {
+    name: 'Deity',
+    area: 'world',
+    label: 'Deity',
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Lore', 'Secrets'],
+    schema: merge(g.DeityInfo),
+  },
+
   /** An entity of its own (D4), referenced by creatures, never embedded. */
   Statblock: {
     name: 'Statblock',
     area: 'rules',
     label: 'Statblock',
-    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Abilities', 'Vars', 'Tactics'],
-    schema: merge(g.StatblockCore),
+    /* M5: `Proficiencies` (von der Kreatur herüber), `Lore` und `Image`
+       (5e.tools `monsterFluff`). */
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Abilities', 'Proficiencies', 'Vars', 'Tactics', 'Lore', 'Image'],
+    /* Das Zauberwirken trägt der Statblock selbst (M2): es braucht
+       `prof` aus derselben Karte, und eine eigene Art dafür hätte keinen
+       zweiten Nutzer. */
+    schema: merge(g.StatblockCore, g.Spellcasting),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {

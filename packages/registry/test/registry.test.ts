@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   RegistrySchema,
   enumGroups,
+  enumHolds,
   enumOptions,
+  enumRefKind,
   linkedTypes,
   linkAccepts,
   linkTargets,
@@ -177,18 +179,24 @@ describe('shared choice lists', () => {
       }),
   );
 
+  /* Ein Name ist eine Zeile, eine Artikelart oder `Typ.feld` (M6) — und
+     etwas davon muss es geben. */
   it('every named row exists, and every row is named', () => {
     const zeilen = new Set(Object.keys(seedRegistry.enums ?? {}));
-    expect(felderMitRef.filter((f) => !zeilen.has(f.nennt))).toEqual([]);
+    expect(felderMitRef.filter((f) => !enumRefKind(seedRegistry, f.nennt))).toEqual([]);
     const genannt = new Set(felderMitRef.map((f) => f.nennt));
     expect([...zeilen].filter((z) => !genannt.has(z))).toEqual([]);
   });
 
   /* Die sechs Attributkürzel standen wörtlich an der Fertigkeit und am
      Rezept. Dass beide jetzt dieselbe Zeile nennen, ist der ganze Punkt. */
-  it('the ability list is named by the skill, the recipe and the saving throws', () => {
+  it('the ability list is named by the skill, the recipe, the disease, the spell and the saving throws', () => {
     const wer = felderMitRef.filter((f) => f.nennt === 'Ability').map((f) => f.ref).sort();
-    expect(wer).toEqual(['Proficiencies.saves', 'Recipe.ability', 'Skill.ability']);
+    expect(wer).toEqual([
+      'Class.primaryAbility', 'Class.spellAbility', 'Disease.save', 'Proficiencies.saves',
+      'Recipe.ability', 'Skill.ability', 'Spell.save', 'Statblock.spellAbility',
+      'Subclass.spellAbility',
+    ]);
     expect(enumOptions(seedRegistry, { enumRef: 'Ability' })).toEqual([
       'str', 'dex', 'con', 'int', 'wis', 'cha',
     ]);
@@ -205,37 +213,48 @@ describe('shared choice lists', () => {
     expect(beides).toEqual([]);
   });
 
-  /* **Ein Feld, sechs Listen.** Worin jemand geübt ist, kommt aus
-     Fertigkeiten, Werkzeugen, Sprachen, Waffen, Rüstungen und
-     Wissensgebieten. Vorher stand je Sorte ein Feld — dieselbe Frage
-     sechsmal, und die siebte Sorte hätte ein siebtes Feld gebraucht. */
-  it('proficiencies draw on several lists, saving throws on one', () => {
+  /* **Ein Feld, sechs Quellen** — und seit M6 sind es Artikel (D50):
+     Fertigkeiten und Sprachen als Arten, Werkzeuge und Waffen als
+     Gegenstände, die Gruppen als Listen zweier Felder. Ohne Bestand trägt
+     eine Art nichts bei; mit einem kommen die Namen. */
+  it('proficiencies draw on articles and field lists, saving throws on one row', () => {
     const p = seedRegistry.interfaces['Proficiencies']?.schema?.properties ?? {};
     expect(Object.keys(p)).toEqual(['proficient', 'expertise', 'saves']);
     expect(p['proficient']?.type).toBe('array');
-    expect(enumGroups(seedRegistry, p['proficient']).map((g) => g.name)).toEqual([
-      'Skill', 'Tool', 'Language', 'WeaponTraining', 'ArmorTraining', 'KnowledgeField',
+    expect(enumGroups(seedRegistry, p['proficient']).map((g) => [g.name, g.from])).toEqual([
+      ['Skill', 'type'], ['Language', 'type'], ['Item', 'type'], ['Weapon', 'type'],
+      ['Weapon.category', 'field'], ['Armor.armorType', 'field'],
     ]);
-    /* Die Vereinigung hat jedes Wort einmal, und woher es kommt, bleibt
-       lesbar — daran hängt, dass der Bogen gruppieren kann. */
-    const alle = enumOptions(seedRegistry, p['proficient']) ?? [];
+    const bestand = [
+      { id: 'a', interfaces: ['Skill'], name: 'Stealth', components: { Skill: { ability: 'dex' } } },
+      { id: 'b', interfaces: ['Language'], name: 'Dwarvish', components: {} },
+      { id: 'c', interfaces: ['Item'], name: "Thieves' tools", components: { Item: { itemType: 'tool' } } },
+      { id: 'd', interfaces: ['Item'], name: 'Rope', components: { Item: { itemType: 'adventuring gear' } } },
+    ];
+    const alle = enumOptions(seedRegistry, p['proficient'], bestand) ?? [];
+    expect(alle).toEqual(expect.arrayContaining(['Stealth', 'Dwarvish', "Thieves' tools", 'martial', 'shield']));
+    expect(alle).not.toContain('Rope');
     expect(new Set(alle).size).toBe(alle.length);
-    expect(enumSource(seedRegistry, p['proficient'], 'stealth')).toBe('Skill');
-    expect(enumSource(seedRegistry, p['proficient'], 'Elfisch')).toBe('Language');
+    expect(enumSource(seedRegistry, p['proficient'], 'Dwarvish', bestand)).toBe('Language');
+    expect(enumSource(seedRegistry, p['proficient'], 'heavy', bestand)).toBe('Armor.armorType');
+    /* Die Art schlägt vor, die Zeile hält. */
+    expect(enumHolds(seedRegistry, p['proficient'])).toBe(false);
     /* Rettungswürfe sind Attribute und sonst nichts. */
     expect(p['saves']?.enumRef).toBe('Ability');
     expect(p['saves']?.type).toBe('array');
+    expect(enumHolds(seedRegistry, p['saves'])).toBe(true);
   });
 
-  /* Die Fertigkeiten stehen als Liste **und** in der Einstellung, die sagt,
-     worauf jede rechnet. Nicht zweimal dasselbe — aber die eine darf der
-     anderen nicht widersprechen. */
-  it('every skill in the setting is in the list', () => {
-    const werte = seedRegistry.enums?.['Skill']?.values ?? [];
-    const ausEinstellung = String(seedRegistry.settings?.['skills'] ?? '')
-      .split(',').map((x) => x.split(':')[0]?.trim()).filter(Boolean);
-    expect(ausEinstellung.filter((k) => !werte.includes(k as string))).toEqual([]);
-    expect(werte.filter((k) => !ausEinstellung.includes(k))).toEqual([]);
+  /* Die Fertigkeit trägt ihr Attribut selbst; die Einstellung `skills` und
+     die sechs Zeilen sind weg (M6). */
+  it('a skill carries its ability; the word lists and the skills setting are gone', () => {
+    for (const z of ['Skill', 'Language', 'Tool', 'WeaponTraining', 'ArmorTraining', 'KnowledgeField']) {
+      expect(seedRegistry.enums?.[z]).toBeUndefined();
+    }
+    expect(seedRegistry.settings?.['skills']).toBeUndefined();
+    expect(seedRegistry.interfaces['Skill']?.schema?.properties['ability']?.enumRef).toBe('Ability');
+    expect(seedRegistry.interfaces['Skill']?.schema?.properties['tool']).toBeUndefined();
+    expect(seedRegistry.interfaces['Language']?.extends).toEqual(['Rule']);
   });
 
   /* **Der Sammelname ist weg.** `StatblockInfo` trug dreissig Felder von
@@ -402,7 +421,7 @@ describe('a field says whether it is always edited', () => {
     const v = seedRegistry.interfaces['Vitals']?.schema?.properties;
     expect(v?.['hp']?.alwaysEdit).toBe(true);
     expect(v?.['hpTemp']?.alwaysEdit).toBe(true);
-    expect(v?.['exhaustion']?.alwaysEdit).toBe(true);
+    expect(v?.['exhaustion']).toBeUndefined();
     /* Häkchen und Punkte zeichnet der Bogen ohnehin anklickbar. */
     expect(v?.['conditions']?.alwaysEdit).toBeUndefined();
     expect(v?.['hitDiceLeft']?.alwaysEdit).toBeUndefined();
@@ -648,7 +667,8 @@ describe('seed registry, referential integrity', () => {
     const fehlt: string[] = [];
     Object.entries(relations).forEach(([n, r]) => {
       [...(r.from ?? []), ...(r.to ?? [])].forEach((t) => {
-        if (t !== '*' && !interfaces[t]) fehlt.push(`${n} → ${t}`);
+        /* `same` heisst „die Art der Quelle" (`relationAccepts`). */
+        if (t !== '*' && t !== 'same' && !interfaces[t]) fehlt.push(`${n} → ${t}`);
       });
     });
     expect(fehlt).toEqual([]);
@@ -798,12 +818,16 @@ describe('loot is more than items', () => {
     expect(seedRegistry.interfaces['Skill']).toBeTruthy();
   });
 
-  /* `RuleInfo.kind` ist Pflicht. Gäbe es die beiden Werte nicht, liesse sich
-     kein Talent anlegen, das die Validierung besteht. */
-  it('leaves a feat and a skill a kind they may carry', () => {
-    const kind = seedRegistry.interfaces['Rule'].schema.properties['kind'];
-    expect(kind.enum).toEqual(expect.arrayContaining(['feat', 'skill']));
+  /* D48: `Rule.kind` ist nicht mehr Pflicht und kennt kein `feat` und kein
+     `skill` mehr — beides sind Arten. Die Wörter stehen als Zeile. */
+  it('keeps kind for rules without a bearer, and no longer requires it', () => {
+    const rule = seedRegistry.interfaces['Rule'].schema;
+    expect(rule.required ?? []).not.toContain('kind');
+    expect(enumOptions(seedRegistry, rule.properties['kind'])).toEqual([
+      'rule', 'travel', 'sense', 'reward', 'boon', 'option',
+    ]);
   });
+
 });
 
 /* Was der Umbau erreicht hat, als Zusicherung und nicht als Behauptung. */
@@ -858,13 +882,13 @@ describe('one registry of types', () => {
     expect(voll.some((x) => x.el === 'linked')).toBe(true);
   });
 
-  /* Die Vorlage, aus der eine Instanz liest: Statblock zu Statblock, und
-     eine Instanz hat genau eine. Mehrere Vorlagen wären eine Mischung, die
-     niemand geschrieben hat. */
-  it('lets a statblock read a template', () => {
+  /* Die Vorlage, aus der eine Instanz liest: Statblock zu Statblock,
+     Gegenstand zu Gegenstand (M4), und eine Instanz hat genau eine.
+     Mehrere Vorlagen wären eine Mischung, die niemand geschrieben hat. */
+  it('lets a statblock and an item read a template of their own kind', () => {
     const r = seedRegistry.relations['instanceOf'];
-    expect(r?.from).toEqual(['Statblock']);
-    expect(r?.to).toEqual(['Statblock']);
+    expect(r?.from).toEqual(['Statblock', 'Item']);
+    expect(r?.to).toEqual(['same']);
     expect(r?.cardinality).toBe('one');
     expect(r?.asField).toBeUndefined();
   });
@@ -908,5 +932,43 @@ describe('one registry of types', () => {
     for (const n of arten) {
       expect(fieldsOf(seedRegistry, n).some((f) => f.type === 'Tags' && f.key === 'tags')).toBe(true);
     }
+  });
+});
+
+/* D48: die Regelfamilie. Was man einer Kreatur zuweist, ist eine Art. */
+describe('the rule family', () => {
+  const i = seedRegistry.interfaces;
+
+  it('puts every rule kind below Rule, and Disease below Condition', () => {
+    for (const n of ['Condition', 'ActionType', 'Action', 'Feature', 'ItemProperty']) {
+      expect(i[n]?.extends).toContain('Rule');
+    }
+    expect(i['Disease']?.extends).toEqual(['Condition']);
+  });
+
+  it('assigns conditions by type, not by filter', () => {
+    const c = i['Vitals'].schema.properties['conditions'];
+    expect(c.target).toEqual({ interfaces: ['Condition'] });
+  });
+
+  it('requires the action type of an action, and carries its attack (P4)', () => {
+    const a = i['Action'].schema;
+    expect(a.required).toEqual(['actionType']);
+    expect(Object.keys(a.properties)).toEqual(expect.arrayContaining(['attack', 'toHit', 'reach', 'range', 'damage', 'damageType']));
+    expect(a.properties['damageType']?.enumRef).toBe('DamageType');
+    expect(a.properties['range']?.unit).toBe('ft');
+  });
+
+  it('stores a stage as an edge between conditions, and effects between rules', () => {
+    expect(seedRegistry.relations['stageOf']).toMatchObject({ from: ['Condition'], to: ['Condition'], cardinality: 'one' });
+    expect(seedRegistry.relations['affects']).toMatchObject({ from: ['Rule'], to: ['Rule'] });
+    expect(seedRegistry.relations['hasProperty']?.to).toEqual(['ItemProperty']);
+    expect(seedRegistry.relations['worships']?.to).toEqual(['Deity']);
+  });
+
+  it('carries the licence flag, the faction goal and the table columns', () => {
+    expect(i['Source'].schema.properties['srd']?.type).toBe('boolean');
+    expect(i['Faction'].schema.properties['goal']).toBeTruthy();
+    expect(i['Table'].schema.properties['columns']).toBeTruthy();
   });
 });
