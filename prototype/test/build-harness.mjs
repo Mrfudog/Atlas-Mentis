@@ -146,6 +146,8 @@ window.__T__={derivedValue:derivedValue,assetSrc:assetSrc,UI:UI,
   persist:persist,
   inventoryOf:inventoryOf,containerGrid:containerGrid,drawCost:drawCost,
   footprintOf:footprintOf,gridTurn:gridTurn,fitsAt:fitsAt,
+  carryGridOf:carryGridOf,zonesOf:zonesOf,drawList:drawList,drawPath:drawPath,
+  drawStage:drawStage,liegtInForm:liegtInForm,slotList:slotList,containerPresets:containerPresets,
   dgTypen:dgTypen,dgLinien:dgLinien,
   mvPath:mvPath,mvVia:mvVia,mvReach:mvReach,mapGeom:mapGeom,moveGrid:moveGrid,
   moveOf:moveOf,sightLists:sightLists,confirmMove:confirmMove,pendingPath:pendingPath,
@@ -155,6 +157,7 @@ Object.assign(window.__T__,{participants:participants,tickFight:tickFight,
   fightExpiresAt:expiresAt,fightForPlayers:fightForPlayers,hpWord:hpWord});
 Object.defineProperty(window.__T__,'REG',{get:function(){return REG;}});
 Object.defineProperty(window.__T__,'ENT',{get:function(){return ENT;}});
+Object.defineProperty(window.__T__,'worldHistory',{get:function(){return worldHistory;}});
 Object.defineProperty(window.__T__,'MEMBERS',{get:function(){return MEMBERS;}});
 `;
 const mitGriff = page.replace(/\n\}\)\(\);\n<\/script>\s*$/, `${GRIFF}})();\n<\/script>\n`);

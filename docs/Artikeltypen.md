@@ -117,7 +117,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `appearance` *long*, `personality` *long*, `species` *string*, `kind` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
+- `appearance` *long*, `personality` *long*, `species` *string*, `kind` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*, `figure` *male | female | neutral*
 
 **Geerbte Felder**
 
@@ -496,7 +496,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story — „part of"
+- `partOf` → Place | Story | Event — „part of"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `tableFor` → Table — „rolls on"
@@ -508,7 +508,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Creature — `livesIn` → „residents"
-- Place | Story | Quest — `partOf` → „contains"
+- Place | Story | Quest | Event — `partOf` → „contains"
 - Faction — `controls` → „controlled by"
 - Quest — `questAbout` → „concerned by"
 - Story — `happensAt` → „scenes here"
@@ -534,7 +534,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Creature`* — `appearance` *long*, `personality` *long*, `species` *string*, `kind` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
+- *`Creature`* — `appearance` *long*, `personality` *long*, `species` *string*, `kind` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*, `figure` *male | female | neutral*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -720,7 +720,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story — „part of"
+- `partOf` → Place | Story | Event — „part of"
 - `describedIn` → Article — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
@@ -736,7 +736,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest — `partOf` → „contains"
+- Place | Story | Quest | Event — `partOf` → „contains"
 - Party — `partyOf` → „parties"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
@@ -774,6 +774,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `partOf` → Place | Story | Event — „part of"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `involves` → * — „involves"
@@ -783,6 +784,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- Place | Story | Quest | Event — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -818,7 +820,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story — „part of"
+- `partOf` → Place | Story | Event — „part of"
 - `describedIn` → Article — „described in"
 - `questGiver` → Creature | Faction — „given by"
 - `questAbout` → * — „concerns"
@@ -869,7 +871,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story — „part of"
+- `partOf` → Place | Story | Event — „part of"
 - `describedIn` → Article — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
@@ -883,7 +885,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest — `partOf` → „contains"
+- Place | Story | Quest | Event — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -922,7 +924,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story — „part of"
+- `partOf` → Place | Story | Event — „part of"
 - `describedIn` → Article — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
@@ -936,7 +938,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest — `partOf` → „contains"
+- Place | Story | Quest | Event — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -974,7 +976,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story — „part of"
+- `partOf` → Place | Story | Event — „part of"
 - `describedIn` → Article — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
@@ -988,7 +990,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest — `partOf` → „contains"
+- Place | Story | Quest | Event — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -1859,7 +1861,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `system` *string*, `size` *Size: tiny | small | medium | large | huge | gargantuan*, `creatureType` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *measure in ft*, `cr` *string*, `prof` *number*, `combatRole` *string*, `senses` *string*, `languageNote` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*, `conditionImmunities` *Condition articles*, `legendaryActions` *1…∞*, `bonuses` *object*, `token` *asset*, `spellAbility` *Ability: str | dex | con | int | wis | cha*, `casterLevel` *1…20*, `spellSlots` *array*, `spellDc` *gerechnet*, `spellAttack` *gerechnet*
+- `system` *string*, `size` *Size: tiny | small | medium | large | huge | gargantuan*, `creatureType` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *measure in ft*, `cr` *string*, `prof` *number*, `carryExtra` *gerechnet*, `combatRole` *string*, `senses` *string*, `languageNote` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*, `conditionImmunities` *Condition articles*, `legendaryActions` *1…∞*, `bonuses` *object*, `token` *asset*, `spellAbility` *Ability: str | dex | con | int | wis | cha*, `casterLevel` *1…20*, `spellSlots` *array*, `spellDc` *gerechnet*, `spellAttack` *gerechnet*
 
 **Geerbte Felder**
 

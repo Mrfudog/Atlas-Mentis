@@ -323,13 +323,19 @@ export const relations: Record<string, RelationDef> = {
    * hierarchy beside it: a chapter sits in an arc the way a room sits in a
    * building, and a quest hangs off the story it belongs to. Widening the
    * ends of an existing edge keeps one set of backlinks, one `contains`.
+   *
+   * **Eine Spur der Weltgeschichte enthält ihre Ereignisse über diese
+   * Kante** (REQ-220, D57): eine Schlacht ist Teil des Kriegs, der Krieg
+   * Teil des Zeitalters, und ein Ereignis am Tisch Teil der Kampagne. Nicht
+   * über den Zeitraum — sonst läge jede Hochzeit im Norden im Krieg im
+   * Süden.
    */
   partOf: {
     type: 'partOf',
     label: 'part of',
     inverseLabel: 'contains',
-    from: ['Place', 'Story', 'Quest'],
-    to: ['Place', 'Story'],
+    from: ['Place', 'Story', 'Quest', 'Event'],
+    to: ['Place', 'Story', 'Event'],
   },
 
   controls: {
@@ -422,14 +428,28 @@ export const relations: Record<string, RelationDef> = {
           enum: ['held', 'worn', 'belt', 'pack', 'stored'],
           default: 'pack',
         },
+        /* **Die Plätze nach Basils Blatt** (REQ-214, D54): Kopf, Schultern,
+           Torso, rechte und linke Hand (beide nehmen alles), Beine,
+           Stiefel, Gurt mit zwei Holstern, je vier Ringe an jeder Hand,
+           vier Halsketten. `hands` (Handschuhe) steht nicht auf dem Blatt
+           und bleibt, bis die Verwaltung es anders sagt. Aus `cloak`,
+           `neck`, `ring1`, `ring2` wurden `shoulders`, `neck1`, `ringR1`,
+           `ringL1` — Wanderung: `prototype/migration/plaetze-nach-dem-blatt.mjs`.
+           Wie schnell etwas von einem Platz kommt, sagt die Einstellung
+           `slotDraw`, nicht diese Liste. */
         slot: {
           type: 'string',
           title: 'Body slot',
-          enum: ['head', 'neck', 'cloak', 'torso', 'hands', 'mainHand', 'offHand',
-            'belt', 'legs', 'feet', 'ring1', 'ring2'],
+          enum: ['head', 'shoulders', 'torso', 'hands', 'mainHand', 'offHand',
+            'legs', 'feet', 'belt', 'holster1', 'holster2',
+            'ringR1', 'ringR2', 'ringR3', 'ringR4', 'ringL1', 'ringL2', 'ringL3', 'ringL4',
+            'neck1', 'neck2', 'neck3', 'neck4'],
         },
         gx: { type: 'number', title: 'Grid column' },
         gy: { type: 'number', title: 'Grid row' },
+        /* Die Drehung im Raster schrieb der Prototyp schon immer; hier
+           stand sie nicht (D54 zieht sie nach). */
+        rot: { type: 'number', title: 'Rotation in degrees', default: 0 },
         attuned: { type: 'boolean', title: 'Attuned' },
         note: { type: 'string', title: 'Note' },
       },

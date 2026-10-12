@@ -338,6 +338,12 @@ export const fieldGroups = {
           title: 'Attitude',
           enum: ['freundlich', 'neutral', 'feindlich', 'unbekannt'],
         },
+        /* **Die Figur im Reiter „Worn"** (REQ-214, D54): nach Basils
+           Blatt männlich, weiblich oder neutral, an der Kreatur und nicht
+           am Inventar — dasselbe Inventar wechselt den Träger, die Figur
+           nicht. Eine Liste mit genau einem Nutzer bleibt am Feld (F1);
+           ohne Angabe zeichnet der Reiter die neutrale. */
+        figure: { type: 'string', title: 'Figure', enum: ['male', 'female', 'neutral'] },
       },
     },
   },
@@ -412,6 +418,13 @@ export const fieldGroups = {
         speed: { type: 'string', format: 'measure', unit: 'ft', title: 'Speed' },
         cr: { type: 'string', title: 'Challenge rating' },
         prof: { type: 'number', title: 'Proficiency bonus' },
+        /* **Das Zusatzquadrat im Tragraster** (REQ-215, D54): gerechnet
+           am Statblock, der es liest, wie ein Angriff seinen Treffer aus
+           Attribut und Übung rechnet — darum ein Feld mit Rechnung und
+           keine Einstellung: es steht dort, wo seine Nachbarn stehen, und
+           der Bogen zeigt die Zahl. Die Spanne sagt, wie weit das Quadrat
+           auf dem Blatt reicht; das Inventar klemmt darauf. */
+        carryExtra: { type: 'number', title: 'Extra carry square', derived: 'mod(str)', min: 0, max: 5 },
         combatRole: { type: 'string', suggest: true, title: 'Combat role' },
         senses: { type: 'string', title: 'Senses' },
         /* `languages`, `saves` und `skills` standen hier als freier Text

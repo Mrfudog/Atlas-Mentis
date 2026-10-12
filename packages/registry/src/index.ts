@@ -30,6 +30,25 @@ export const settings: Record<string, string> = {
   gridUnit: '1,5 m',
   inventoryCols: '10',
   inventoryRows: '6',
+  /* **Basils Blatt** (REQ-214–216, D54). Das Tragraster einer Kreatur
+     ohne eigene Form: Seitenlänge des Grundquadrats je Grösse (eine
+     Grösse, die hier fehlt, behält das Rechteck oben), und die Zonen nach
+     Spalten. Das Zusatzquadrat rechnet der Statblock (`carryExtra`). */
+  carrySquares: 'tiny:3, small:4, medium:5, large:6',
+  carryZones: '0-1:bonus action, 2-4:action, 5-8:turn, 9-10:round',
+  /* Wie schnell etwas von einem Körperplatz kommt — und ein Behälter an
+     diesem Platz gibt seinem Inhalt eine Stufe dazu. Ein Platz, der hier
+     fehlt, hat keine Stufe. */
+  slotDraw: 'mainHand:free action, offHand:free action, holster1:free action, holster2:free action, '
+    + 'belt:bonus action, shoulders:bonus action, head:action, torso:action, hands:action, '
+    + 'legs:action, feet:action, ringR1:action, ringR2:action, ringR3:action, ringR4:action, '
+    + 'ringL1:action, ringL2:action, ringL3:action, ringL4:action, '
+    + 'neck1:action, neck2:action, neck3:action, neck4:action',
+  /* Vorlagen beim Anlegen eines Behälters, `container:<Name>`: Zeilen mit
+     `/`, nach dem Strich die Zonen nach Spalten. Eine neue Vorlage ist
+     eine neue Einstellung. */
+  'container:Backpack': '.###../######/######/######/.###.. | 0-1:action, 2-3:turn, 4-5:round',
+  'container:Bag of Holding': '####/####/####/####/####/####/####/####',
   /* `calendar` stand hier: der Kalender hängt seit dem 7.10. an der Welt
      (`World.calendar`, Kante `inWorld` von der Kampagne), A11. */
   /* Der Tag, an dem die Kampagne steht. Leer heisst: das jüngste benutzte

@@ -712,6 +712,26 @@ ul.pstock .pbei{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
   background:var(--surface2);padding:6px;display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 .sbox.over{border-color:var(--accent);background:var(--accent-soft)}
 .bodyrig.picking .sbox{border-color:var(--accent);border-style:solid}
+/* Basils Blatt (REQ-214): links der Körper, in der Mitte die Figur,
+   rechts Hände und Gurt; darunter die Accessoires zu je vier. */
+.wornsheet{display:grid;grid-template-columns:1fr minmax(80px,120px) 1fr;gap:10px;align-items:start}
+.wornsheet .wcol{display:flex;flex-direction:column;gap:6px}
+.wornfig svg{width:100%;height:auto;display:block}
+/* Ziehen am Bogen (REQ-217): eine Zeile je Stufe, aufgeklappt die Stücke. */
+.drawrows{display:flex;flex-direction:column;gap:4px}
+.drawrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.drawrow .dname{min-width:96px;font-size:12.5px;padding:1px 6px;border-radius:var(--r)}
+.drawrow .dacts{flex:1;display:flex;gap:8px;flex-wrap:wrap;font-size:12.5px}
+.drawlist{margin:0 0 6px 0;padding-left:18px;font-size:12.5px}
+.drawlist li{margin:2px 0}
+.drawlist li .co{margin-left:8px;color:var(--dim)}
+.wacc{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.wornsheet.picking .sbox,.wacc.picking .sbox{border-color:var(--accent);border-style:solid}
+@media (max-width:560px){
+  .wornsheet{grid-template-columns:1fr 1fr}
+  .wornfig{grid-column:1/-1;order:-1;max-width:90px;margin:0 auto}
+  .wacc{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 .invgrid{display:grid;gap:2px;background:var(--line);border:1px solid var(--line);
   border-radius:var(--r);padding:2px;margin:8px 0;aspect-ratio:auto}
 .gcell{background:var(--surface2);min-height:38px;border-radius:2px}
@@ -861,6 +881,38 @@ svg.dg path.dgar-on{fill:var(--accent)}
   flex:0 0 120px;padding-top:2px}
 .tl .tbody{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px;align-items:baseline}
 .tl .tbody p{flex-basis:100%;margin:2px 0 0;font-size:12.5px;color:var(--dim)}
+/* Weltgeschichte: Spuren auf einer Achse (REQ-220, D57). */
+.tltoggles{display:flex;flex-direction:column;gap:2px;margin:0 0 10px;font-size:13px}
+.tltog{display:flex;gap:6px;align-items:center;cursor:pointer}
+.tltog.camp span{color:var(--accent);font-weight:600}
+.tlw{display:flex;flex-direction:column;gap:4px}
+.tlaxis,.tllane{display:grid;grid-template-columns:minmax(90px,160px) 1fr;gap:8px;align-items:start}
+.tlaxis .tltrack{height:18px;border-bottom:1px solid var(--line)}
+.tltick{position:absolute;top:0;transform:translateX(-50%);font-family:var(--ff-mono);font-size:10.5px;color:var(--dim)}
+.tllab{display:flex;flex-direction:column;gap:1px;min-width:0;font-size:13px;padding-top:4px}
+.tllab .ref{text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tllab .co{font-family:var(--ff-mono);font-size:10.5px;color:var(--dim)}
+.tltrack{position:relative;min-width:0;overflow:hidden;border-bottom:1px dashed var(--line)}
+.tlband{position:absolute;top:0;bottom:0;border:0;padding:0;cursor:pointer;
+  background:var(--line);opacity:.45;border-radius:3px}
+.tllane.camp .tlband{background:var(--accent-soft);opacity:1}
+.tllane.here .tllab .ref{font-weight:700}
+.tlitem{position:absolute;height:18px;padding:0 6px;border:1px solid var(--line2);border-radius:9px;
+  background:var(--surface);color:var(--fg);font-size:11.5px;line-height:16px;cursor:pointer;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%;
+  text-transform:none;letter-spacing:normal}
+.tlitem.point{transform:translateX(-7px)}
+.tlitem.point.left{transform:translateX(7px)}
+.tlitem.point.left::before{display:none}
+.tlitem.point.left::after{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--accent);margin-left:5px;vertical-align:1px}
+.tlhead{display:flex;gap:4px;align-items:baseline;min-width:0}
+.tlzoom{padding:0 5px;line-height:1.2}
+.tlitem.point::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--accent);margin-right:5px;vertical-align:1px}
+.tlitem.span{border-color:var(--accent);background:var(--accent-soft)}
+.tlitem.sub{font-weight:600}
+.tlitem.out{border-style:dashed;opacity:.75}
 
 /* Kampf: die Reihe, der Zeiger, die Würfel. */
 .initt{width:100%;border-collapse:collapse;font-size:13.5px;margin:8px 0}
@@ -1170,7 +1222,7 @@ var UI={route:{k:"list"}, view:"quick", area:"", iface:"", tag:"", q:"", offen:f
            was gemieden wird; die Spieleransicht der Leitung; Vollbild. */
         moveMode:"path", moveSel:"", movePts:[], moveAvoid:{}, mapPlayers:false, full:"",
         wallKind:"wall", playTab:"map", playBoard:"", tab:"", typePick:"",
-        invView:"tiers", invPick:"", craftKnow:"", craftReady:"", craftMat:"", craftTrade:"", craftLog:[],
+        invView:"tiers", invPick:"", drawOpen:"", craftKnow:"", craftReady:"", craftMat:"", craftTrade:"", craftLog:[],
         boardZoom:1, boardPick:"", boardTool:"",
         turnActor:"", fightPick:"", rollLog:[], asActor:"", peers:[], pings:[],
         ruleQ:"", ruleKind:"",
@@ -2303,6 +2355,11 @@ function zonesInput(pd,cur){
      eine Zone auf einem Feld, das es nicht gibt, wäre eine Angabe über
      nichts. Ohne eigenes Raster: das Rechteck aus den Einstellungen. */
   function netz(){ return containerGrid(writeCtx); }
+  /* Ohne eigene Zonen beginnt das Malen mit den Basiszonen des Blatts
+     (D54) — sie sind die Vorgabe und werden erst mit dem Speichern zu
+     den eigenen. */
+  if(!Object.keys(karte).length&&writeCtx&&((writeCtx.interfaces||[])[0])===INV_IFACE)
+    karte=Object.assign({},zonesOf(writeCtx));
   function zeichne(){
     box.textContent="";
     var form=netz();
@@ -6389,16 +6446,145 @@ function elQuests(e,ifn,item){
   return wrap;
 }
 
-/* ---------- Zeitleiste (REQ-106) ----------
+/* ---------- Zeitleiste (REQ-106, REQ-220, D57) ----------
    Jeder Artikel mit einem Weltdatum steht darauf, nicht nur Ereignisse:
    eine Sitzung, ein Vertrag, ein Todesfall sind dasselbe für die Zeitleiste.
-   Sortiert nach `sort`, gelesen `display` — deshalb stehen beide im Schema. */
-function worldDated(){
+   Sortiert nach `sort`, gelesen `display` — deshalb stehen beide im Schema.
+   `sort` ist der Wert im **Weltkalender** (`World.calendar`): alle
+   Kampagnen einer Welt lesen ihre Daten so, also liegen alle Spuren auf
+   einer Achse.
+
+   **Zwei Reiter** (REQ-220): die Kampagne als Liste, die Weltgeschichte
+   als Spuren. Eine **Spur** ist ein Ereignis mit Spanne (`Time.sort` …
+   `Time.untilSort`); was darin liegt, sagt die Kante `partOf` und nicht
+   der Zeitraum (D57) — sonst läge jede Hochzeit im Norden im Krieg im
+   Süden. Die Spanne prüft nur mit: was über die Kante drinliegt und
+   ausserhalb fällt, markiert die Leitung. Was keine Spur enthält, gehört
+   der Kampagne, und **die Kampagne ist eine Spur** unter den anderen.
+   Dieselbe Rechnung wie `worldHistory` in packages/model/src/timeline.ts.
+
+   Was Spielende nicht sehen dürfen, fehlt (`articleVisible`); wessen Zeit
+   sie nicht kennen (Wissen um `Time.sort`/`Time.display`), steht nicht auf
+   der Leiste — man wüsste nicht, wo. */
+var TL_EVENT="Event", TL_PARTOF="partOf";
+function tlNum(v){
+  if(v===null||v===undefined||v==="")return null;
+  var n=Number(v); return isFinite(n)?n:null;
+}
+function tlSpan(e){
+  var t=(e.components||{}).Time; if(!t)return null;
+  var s=tlNum(t.sort); if(s===null)return null;
+  var u=tlNum(t.untilSort), out={sort:s};
+  if(u!==null&&u>=s) out.until=u;                 /* Ende vor Anfang: Tippfehler */
+  if(t.display) out.display=String(t.display);
+  if(t.until) out.untilDisplay=String(t.until);
+  return out;
+}
+function tlIsTrack(e){
+  if(((e.interfaces||[])[0])!==TL_EVENT)return false;
+  var s=tlSpan(e); return !!s&&s.until!==undefined;
+}
+/* Kennt der Betrachter die Zeit? Beides muss frei sein: wer den Ort auf der
+   Leiste sieht, kennt den Wert, auch wenn das Wort verborgen ist. */
+function tlDated(e){
+  if(isGM())return true;
+  return visibleRefs(e,["Time.sort","Time.display"]).length===2;
+}
+/* Die Weltgeschichte: Spuren und Kampagne, in Baumreihenfolge (D57).
+   `opt` ersetzt Bestand und Prüfungen — für das Beispiel unter „How it
+   works", das mit derselben Rechnung läuft wie die Seite. */
+function worldHistory(camp,opt){
+  opt=opt||{};
+  var src=opt.src||ENT;
+  var vis=opt.visible||articleVisible, dated=opt.dated||tlDated;
+  var inCamp=opt.inCampaign||function(e){
+    var k=campaignOf(e); return !k||k===camp.id; };   /* nicht die einer anderen Runde */
+  var seen=function(e){ return vis(e)&&dated(e); };
+  var tracks={};
+  src.forEach(function(e){ if(seen(e)&&tlIsTrack(e)) tracks[e.id]=true; });
+  /* Die nächsten Spuren über `partOf`. Ein Glied dazwischen, das keine Spur
+     ist oder nicht gesehen wird, wird übersprungen — ein verborgener Krieg
+     verrät sich nicht, und seine Schlachten fallen nicht heraus. */
+  var parentsOf=function(e){
+    var out=[], war={}; war[e.id]=1;
+    (function walk(x){
+      edgesOf(x,TL_PARTOF).forEach(function(r){
+        if(war[r.to])return; war[r.to]=1;
+        if(tracks[r.to]){ if(out.indexOf(r.to)<0) out.push(r.to); return; }
+        if(camp&&r.to===camp.id)return;          /* in der Kampagne bleibt es dort */
+        var n=src.get(r.to); if(n) walk(n);
+      });
+    })(e);
+    return out;
+  };
+  var lanes={};
+  Object.keys(tracks).forEach(function(id){
+    var s=tlSpan(src.get(id));
+    lanes[id]={id:id,kind:"track",parent:null,depth:0,from:s.sort,to:s.until,
+      derived:false,items:[],outside:[]};
+  });
+  var campItems=[];
+  src.forEach(function(e){
+    if(camp&&e.id===camp.id)return;
+    if(!seen(e))return;
+    var s=tlSpan(e); if(!s)return;
+    var ps=parentsOf(e), it={id:e.id,span:s,track:!!tracks[e.id]};
+    if(ps.length){
+      ps.forEach(function(p){ lanes[p].items.push(it); });
+      if(it.track) lanes[e.id].parent=ps[0];
+    } else if(!it.track&&camp&&inCamp(e)){
+      campItems.push(it);
+    }
+  });
+  if(camp){
+    var own=seen(camp)?tlSpan(camp):null;
+    var from=own?own.sort:null, to=own?(own.until!==undefined?own.until:own.sort):null, derived=false;
+    if(!own||own.until===undefined){
+      /* Ohne eigene Spanne: die des Inhalts, beim Lesen gerechnet (D8). */
+      campItems.forEach(function(it){
+        var end=it.span.until!==undefined?it.span.until:it.span.sort;
+        if(!own&&(from===null||it.span.sort<from)) from=it.span.sort;
+        if(to===null||end>to) to=end;
+      });
+      derived=campItems.length>0;
+    }
+    if(from!==null&&to!==null){
+      var cps=vis(camp)?parentsOf(camp):[];
+      cps.forEach(function(p){ lanes[p].items.push({id:camp.id,span:{sort:from,until:to},track:true}); });
+      lanes[camp.id]={id:camp.id,kind:"campaign",parent:cps[0]||null,depth:0,from:from,to:to,
+        derived:derived,items:campItems,outside:[]};
+    }
+  }
+  var nm=function(id){ return nameOf(src.get(id)); };
+  var bySort=function(a,b){ return a.from-b.from||nm(a.id).localeCompare(nm(b.id),"de"); };
+  var alle=Object.keys(lanes).map(function(k){ return lanes[k]; });
+  alle.forEach(function(l){
+    l.items.sort(function(a,b){ return a.span.sort-b.span.sort||
+      nm(a.id).localeCompare(nm(b.id),"de"); });
+    if(l.kind==="track"||!l.derived) l.outside=l.items.filter(function(it){
+      var end=it.span.until!==undefined?it.span.until:it.span.sort;
+      return it.span.sort<l.from||end>l.to; }).map(function(it){ return it.id; });
+  });
+  var out=[], placed={};
+  var kids=function(id){ return alle.filter(function(l){ return l.parent===id; }).sort(bySort); };
+  var place=function(l,d){
+    if(placed[l.id])return; placed[l.id]=1; l.depth=d; out.push(l);
+    kids(l.id).forEach(function(k){ place(k,d+1); });
+  };
+  kids(null).forEach(function(l){ place(l,0); });
+  alle.sort(bySort).forEach(function(l){ if(!placed[l.id]){ l.parent=null; place(l,0); } });
+  return out;
+}
+/* Die Liste der Kampagne: alles Datierte, was keine Spur der Welt hält. */
+function worldDated(camp){
+  var lane=null;
+  if(camp) worldHistory(camp).forEach(function(l){ if(l.kind==="campaign") lane=l; });
   var out=[];
-  ENT.forEach(function(o){
+  if(lane) lane.items.forEach(function(it){ out.push({e:ENT.get(it.id),wd:ENT.get(it.id).components.Time,sort:it.span.sort}); });
+  else ENT.forEach(function(o){
     var wd=(o.components||{}).Time;
-    if(!wd)return;
-    if(wd.sort===undefined&&!wd.display)return;
+    if(!wd||(wd.sort===undefined&&!wd.display))return;
+    if(!articleVisible(o)||!tlDated(o))return;
     out.push({e:o,wd:wd,sort:Number(wd.sort)});
   });
   out.sort(function(a,b){
@@ -6408,16 +6594,35 @@ function worldDated(){
   });
   return out;
 }
+function tlDateText(s){
+  var a=s.display||String(s.sort);
+  if(s.until===undefined)return a;
+  return a+" – "+(s.untilDisplay||String(s.until));
+}
 function elTimeline(e,ifn,item){
+  var wrap=el("div",{class:"tline-wrap"});
+  if(!UI.tlTab) UI.tlTab="campaign";
+  if(!UI.tlHidden) UI.tlHidden={};
+  var camp=((e.interfaces||[])[0])==="Campaign"?e:currentCampaign();
+  var tabs=el("div",{class:"tabs",role:"tablist"});
+  [["campaign","Campaign"],["world","World history"]].forEach(function(t){
+    tabs.appendChild(el("button",{type:"button",role:"tab","aria-selected":String(UI.tlTab===t[0]),
+      onclick:function(){ UI.tlTab=t[0]; render(); }},t[1]));
+  });
+  wrap.appendChild(tabs);
+  var kal=campaignCalendar();
+  if(kal) wrap.appendChild(el("p",{class:"hint",text:"Calendar: "+kal+" (the world's)"}));
+  wrap.appendChild(UI.tlTab==="world"?tlWorld(e,camp):tlCampaign(e,camp));
+  return wrap;
+}
+function tlCampaign(e,camp){
   var wrap=el("div",{class:"tline"});
-  var alle=worldDated();
+  var alle=worldDated(camp);
   if(!alle.length){
     wrap.appendChild(el("p",{class:"hint",
       text:"Nothing carries a world date yet. Fill `sort` and `display` on an article — `sort` orders it, `display` is what gets read out."}));
     return wrap;
   }
-  var kal=campaignCalendar();
-  if(kal) wrap.appendChild(el("p",{class:"hint",text:"Calendar: "+kal+" (the world's)"}));
   alle.forEach(function(x){
     var row=el("div",{class:"tl"+(x.e.id===e.id?" here":"")});
     row.appendChild(el("span",{class:"tdate",text:x.wd.display||String(x.wd.sort||"")}));
@@ -6426,11 +6631,114 @@ function elTimeline(e,ifn,item){
       onclick:function(){go({k:"art",id:x.e.id});}},nameOf(x.e)));
     b.appendChild(el("span",{class:"pill q",text:ifaceName(x.e)}));
     var d=((x.e.components||{}).Description||{}).description;
-    if(d) b.appendChild(para(fillVars(d,null,x.e),"co"));
+    if(d&&visibleRefs(x.e,["Description.description"]).length) b.appendChild(para(fillVars(d,null,x.e),"co"));
     if(x.wd.duration) b.appendChild(el("span",{class:"co",text:x.wd.duration}));
     row.appendChild(b);
     wrap.appendChild(row);
   });
+  return wrap;
+}
+/* Die Spuren nebeneinander auf einer Achse. Einträge, die sich überdecken
+   würden, rücken in eine weitere Zeile derselben Spur; die Breite eines
+   Namens ist geschätzt, denn gemessen wird erst nach dem Zeichnen. */
+function tlWorld(e,camp){
+  var wrap=el("div",{class:"tlw"});
+  var lanes=worldHistory(camp);
+  if(!lanes.length){
+    wrap.appendChild(el("p",{class:"hint",
+      text:"No tracks yet. A track is an Event with a span — fill `sort` and `untilSort` — and what lies in it points there with `part of`."}));
+    return wrap;
+  }
+  /* Ein- und ausblenden: je Spur ein Häkchen, eingerückt wie der Baum. */
+  var schalter=el("div",{class:"tltoggles"});
+  lanes.forEach(function(l){
+    var lab=el("label",{class:"tltog"+(l.kind==="campaign"?" camp":""),style:"margin-left:"+(l.depth*14)+"px"});
+    var cb=el("input",{type:"checkbox"}); cb.checked=!UI.tlHidden[l.id];
+    cb.addEventListener("change",function(){
+      if(cb.checked) delete UI.tlHidden[l.id]; else UI.tlHidden[l.id]=1;
+      render(); });
+    lab.appendChild(cb);
+    lab.appendChild(el("span",{text:nameOf(ENT.get(l.id))}));
+    schalter.appendChild(lab);
+  });
+  wrap.appendChild(schalter);
+  var shown=lanes.filter(function(l){ return !UI.tlHidden[l.id]; });
+  if(!shown.length){ wrap.appendChild(el("p",{class:"hint",text:"All tracks are hidden."})); return wrap; }
+  /* Die Achse umfasst alle gezeigten Spuren — oder, herangezoomt, eine
+     davon samt ihrem Inhalt. Ein Zeitalter neben einem Krieg von zehn
+     Jahren liesse den Krieg sonst zu einem Strich werden. */
+  var fokus=UI.tlZoom&&shown.filter(function(l){ return l.id===UI.tlZoom; })[0];
+  var lo=Infinity, hi=-Infinity;
+  (fokus?[fokus]:shown).forEach(function(l){
+    lo=Math.min(lo,l.from); hi=Math.max(hi,l.to);
+    l.items.forEach(function(it){ lo=Math.min(lo,it.span.sort);
+      hi=Math.max(hi,it.span.until!==undefined?it.span.until:it.span.sort); });
+  });
+  if(fokus) wrap.appendChild(el("div",{class:"addbar"},[
+    el("span",{class:"hint",text:"Zoomed to "+nameOf(ENT.get(fokus.id))+"."}),
+    el("button",{class:"btn gh sm",type:"button",onclick:function(){ UI.tlZoom=""; render(); }},"Show all")]));
+  var weite=hi-lo; if(weite<=0){ weite=1; lo-=0.5; }
+  lo-=weite*0.02; hi=lo+weite*1.04; weite=hi-lo;
+  var pct=function(x){ return (x-lo)/weite*100; };
+  /* Die Achse: runde Schritte, etwa sechs. */
+  var schritt=Math.pow(10,Math.floor(Math.log10(weite/6)));
+  [1,2,5,10].some(function(f){ if(weite/(schritt*f)<=7){ schritt*=f; return true; } return false; });
+  var achse=el("div",{class:"tlaxis"});
+  achse.appendChild(el("div",{class:"tllab"}));
+  var skala=el("div",{class:"tltrack"});
+  for(var t=Math.ceil(lo/schritt)*schritt;t<=hi;t+=schritt){
+    skala.appendChild(el("span",{class:"tltick",style:"left:"+pct(t)+"%",
+      text:String(Math.round(t*1000)/1000)}));
+  }
+  achse.appendChild(skala);
+  wrap.appendChild(achse);
+  var BREITE=700, ZEICHEN=7;                       /* geschätzt, px */
+  shown.forEach(function(l){
+    var art=ENT.get(l.id);
+    var row=el("div",{class:"tllane"+(l.kind==="campaign"?" camp":"")+(l.id===e.id?" here":"")});
+    var lab=el("div",{class:"tllab",style:"padding-left:"+(l.depth*12)+"px"});
+    var kopf=el("div",{class:"tlhead"});
+    kopf.appendChild(el("button",{class:"ref",type:"button",onclick:function(){go({k:"art",id:l.id});}},nameOf(art)));
+    if(!fokus||fokus.id!==l.id) kopf.appendChild(el("button",{class:"btn gh sm tlzoom",type:"button",
+      title:"Zoom the axis to this track",onclick:function(){ UI.tlZoom=l.id; render(); }},"⤢"));
+    lab.appendChild(kopf);
+    var s=tlSpan(art);
+    lab.appendChild(el("span",{class:"co",text:s&&s.until!==undefined?tlDateText(s):
+      (l.derived?"as far as known":(s?tlDateText(s):""))}));
+    row.appendChild(lab);
+    var spur=el("div",{class:"tltrack"});
+    var b0=Math.max(0,pct(l.from)), b1=Math.min(100,pct(l.to));
+    if(b1>=0&&b0<=100) spur.appendChild(el("button",{class:"tlband",type:"button",title:nameOf(art),
+      style:"left:"+b0+"%;width:"+Math.max(0.5,b1-b0)+"%",
+      onclick:function(){go({k:"art",id:l.id});}}));
+    var zeilen=[];
+    l.items.forEach(function(it){
+      var a=ENT.get(it.id), name=nameOf(a);
+      var x0=pct(it.span.sort), x1=it.span.until!==undefined?pct(it.span.until):x0;
+      if(x1<0||x0>100)return;                       /* ausserhalb des Ausschnitts */
+      x0=Math.max(0,x0); x1=Math.min(100,x1);
+      var w=(name.length*ZEICHEN+20)/BREITE*100;
+      /* Ein Punkt rechts der Mitte schreibt seinen Namen nach links — sonst
+         schneidet ihn der Rand ab. */
+      var links=it.span.until===undefined&&x0>60;
+      var anfang=links?x0-w:x0, ende=links?x0:Math.max(x1,x0+w);
+      var z=0; while(zeilen[z]!==undefined&&zeilen[z]>anfang) z++;
+      zeilen[z]=ende+0.5;
+      var aus=isGM()&&l.outside.indexOf(it.id)>=0;
+      var cls="tlitem"+(it.span.until!==undefined?" span":" point")+(links?" left":"")+(it.track?" sub":"")+(aus?" out":"");
+      var tip=name+" · "+tlDateText(it.span)+(aus?" · outside the span of "+nameOf(art):"");
+      var b=el("button",{class:cls,type:"button",title:tip,
+        style:(links?"right:"+(100-x0)+"%;":"left:"+x0+"%;")+"top:"+(z*22+4)+"px;"+
+          (it.span.until!==undefined?"min-width:"+Math.max(0.5,x1-x0)+"%":""),
+        onclick:function(){go({k:"art",id:it.id});}},name);
+      spur.appendChild(b);
+    });
+    spur.style.height=(Math.max(1,zeilen.length)*22+8)+"px";
+    row.appendChild(spur);
+    wrap.appendChild(row);
+  });
+  if(isGM()&&shown.some(function(l){ return l.outside.length; }))
+    wrap.appendChild(el("p",{class:"hint",text:"Dashed: part of a track, but dated outside its span."}));
   return wrap;
 }
 
@@ -8834,11 +9142,31 @@ var TIERS=[
   ["pack","In the pack","A whole action of rummaging."],
   ["stored","Stored","Not here. At an inn, on a cart, at home."]
 ];
-var SLOTS=[
-  ["head","Head"],["neck","Neck"],["cloak","Cloak"],["torso","Torso"],
-  ["mainHand","Main hand"],["offHand","Off hand"],["hands","Hands"],
-  ["belt","Belt"],["legs","Legs"],["feet","Feet"],["ring1","Ring I"],["ring2","Ring II"]
+/* **Die Plätze stehen im Register** (`holds.props.slot`, REQ-214, D54),
+   nicht hier: hier stehen nur ihre Beschriftungen und wo sie am Blatt
+   sitzen. Ein Platz, den jemand im Register dazunimmt, erscheint unter
+   „Other“ mit seinem Wort als Namen — er geht nicht verloren, weil der
+   Code ihn nicht kennt. */
+var SLOT_LABELS={head:"Head",shoulders:"Shoulders",torso:"Torso",hands:"Gloves",
+  mainHand:"Right hand ✱",offHand:"Left hand ✱",legs:"Legs",feet:"Boots",
+  belt:"Belt",holster1:"Holster I",holster2:"Holster II",
+  ringR1:"R1",ringR2:"R2",ringR3:"R3",ringR4:"R4",
+  ringL1:"L1",ringL2:"L2",ringL3:"L3",ringL4:"L4",
+  neck1:"N1",neck2:"N2",neck3:"N3",neck4:"N4"};
+/* Wo am Blatt: links der Körper von oben nach unten, rechts die Hände und
+   der Gurt, unten die Accessoires in drei Reihen. */
+var SLOT_SIDES=[
+  ["left",["head","shoulders","torso","hands","legs","feet"]],
+  ["right",["mainHand","offHand","belt","holster1","holster2"]],
+  ["Rings, right hand",["ringR1","ringR2","ringR3","ringR4"]],
+  ["Rings, left hand",["ringL1","ringL2","ringL3","ringL4"]],
+  ["Necklaces",["neck1","neck2","neck3","neck4"]]
 ];
+function slotList(){
+  var pd=(((REG.relations[REL_HOLDS]||{}).props||{}).properties||{}).slot;
+  return enumWerte(pd)||[];
+}
+function slotLabel(s){ return SLOT_LABELS[s]||s; }
 function tierLabel(t){ var h=TIERS.filter(function(x){return x[0]===t;})[0]; return h?h[1]:t; }
 
 /* Das Inventar einer Figur — oder der Artikel selbst, wenn er eines ist. */
@@ -8899,6 +9227,88 @@ function fpFilled(fp,x,y){
   var g=row.charAt(x);
   return !!g&&!EMPTY_CELL[g];
 }
+/* ---------- Basils Blatt (REQ-214–217, D54) ----------
+   Wie im Paket (`packages/model/src/inventory.ts`); die Zahlen stehen als
+   Einstellung und nicht hier. Fehlt eine Einstellung, rechnet nichts —
+   dann gilt, was vorher galt (das Rechteck, keine Platzstufe). */
+function parsePairs(spec){
+  var out={};
+  String(spec==null?"":spec).split(",").forEach(function(t){
+    var i=t.indexOf(":"); if(i<=0)return;
+    var k=t.slice(0,i).trim(), v=t.slice(i+1).trim();
+    if(k&&v) out[k]=v;
+  });
+  return out;
+}
+function carrySquares(){
+  var out={}, p=parsePairs(setting("carrySquares",""));
+  Object.keys(p).forEach(function(k){ var n=Number(p[k]); if(isFinite(n)&&n>0) out[k.toLowerCase()]=Math.floor(n); });
+  return out;
+}
+function columnZones(spec,rows){
+  var spalte={}, p=parsePairs(spec);
+  Object.keys(p).forEach(function(k){
+    var m=/^(\d+)(?:\s*-\s*(\d+))?$/.exec(k); if(!m)return;
+    var a=Number(m[1]), b=m[2]===undefined?a:Number(m[2]);
+    for(var x=Math.min(a,b);x<=Math.max(a,b);x++) spalte[x]=p[k];
+  });
+  var out={};
+  rows.forEach(function(r,y){ for(var x=0;x<r.length;x++){
+    if(EMPTY_CELL[r.charAt(x)])continue;
+    if(spalte[x]) out[x+","+y]=spalte[x];
+  }});
+  return out;
+}
+/** Wer ein Inventar trägt — die Kreatur, die Gruppe, der Gegenstand. */
+function carrierOf(inv){
+  var hit=null;
+  if(!inv)return null;
+  ENT.forEach(function(o){
+    if(hit)return;
+    if((o.relations||[]).some(function(r){ return r.type===REL_CARRIES&&r.to===inv.id; })) hit=o;
+  });
+  return hit;
+}
+/**
+ * **Das Tragraster aus Grösse und Statblock** (REQ-215, D54): links das
+ * Grundquadrat nach Grösse, rechts das Zusatzquadrat, das der Statblock
+ * rechnet (`carryExtra`, beim Lesen, D8). Nur für das Inventar einer
+ * Kreatur und nur, wenn die Grösse in `carrySquares` steht.
+ */
+function carryGridOf(inv){
+  var t=carrierOf(inv);
+  if(!t||!ifaceInList(["Creature"],(t.interfaces||[])[0]))return null;
+  var sbE=statblockOf(t); if(!sbE)return null;
+  var sbR=resolvedOf(sbE), karten=sbR.components||{};
+  var core=karten.Statblock||{};
+  var squares=carrySquares();
+  var base=squares[String(core.size||"").toLowerCase()];
+  if(!base)return null;
+  var pd=(((REG.interfaces.Statblock||{}).schema||{}).properties||{}).carryExtra;
+  var max=pd&&typeof pd.max==="number"?pd.max:5, min=pd&&typeof pd.min==="number"?pd.min:0;
+  var roh=pd?derivedValue(pd,core,karten,sbR.relations||[]):0;
+  var extra=Math.max(min,Math.min(max,Math.trunc(Number(roh)||0)));
+  var links=Math.max.apply(null,Object.keys(squares).map(function(k){ return squares[k]; }));
+  var breite=links+max, hoehe=Math.max(links,max), rows=[];
+  for(var y=0;y<hoehe;y++){
+    var r="";
+    for(var x=0;x<breite;x++)
+      r+=(x<base&&y<base)||(x>=links&&x-links<extra&&y<extra)?"#":".";
+    rows.push(r);
+  }
+  return {rows:rows,base:base,extra:extra,size:core.size,formula:pd&&pd.derived||"",from:sbE};
+}
+/** Die Zonen eines Behälters: seine eigenen, oder beim Tragraster die
+ *  Basiszonen aus dem Blatt (`carryZones`) — gelesen, nicht gespeichert;
+ *  wer sie malt, speichert seine eigenen. */
+function zonesOf(inv){
+  var card=(inv&&(inv.components||{})[INV_IFACE])||{};
+  var z=card.zones;
+  if(z&&typeof z==="object"&&Object.keys(z).length)return z;
+  if(Array.isArray(card.grid)&&card.grid.length)return {};
+  var cg=carryGridOf(inv);
+  return cg?columnZones(setting("carryZones",""),cg.rows):{};
+}
 function invSize(){
   return {cols:Math.max(2,settingNum("inventoryCols",10)),
           rows:Math.max(2,settingNum("inventoryRows",6))};
@@ -8918,31 +9328,33 @@ function containerGrid(e){
   var rows=Array.isArray(card.grid)?card.grid.map(String)
     :(typeof card.grid==="string"&&card.grid!==""?String(card.grid).split(/[,\n]/):[]);
   rows=rows.filter(function(r){ return String(r).trim()!==""; });
+  /* Ohne eigene Form das Tragraster nach dem Blatt (D54), sonst das
+     Rechteck. Ein Behälter, der seine Form selbst sagt, gewinnt immer. */
+  var cg=rows.length?null:carryGridOf(inv);
+  if(cg) rows=cg.rows;
   if(rows.length){
     var cols=rows.reduce(function(m,r){ return Math.max(m,r.length); },1);
-    return {cols:cols,rows:rows.length,form:rows,frei:false,
+    return {cols:cols,rows:rows.length,form:rows,frei:false,carry:cg,
       at:function(x,y){ var c=String(rows[y]||"").charAt(x); return !!c&&!EMPTY_CELL[c]; }};
   }
   var s=invSize();
   return {cols:s.cols,rows:s.rows,form:null,frei:true,at:function(){ return true; }};
 }
 /** Die Zone eines Feldes: was es kostet, von dort etwas zu holen. */
-function zoneAt(inv,x,y){
-  var card=(inv&&(inv.components||{})[INV_IFACE])||{};
-  var z=card.zones;
-  if(!z||typeof z!=="object")return "";
+function zoneAt(inv,x,y,z){
+  z=z||zonesOf(inv);
   return z[x+","+y]||"";
 }
 /** Die **langsamste** Zone, die ein Stück bedeckt: man muss das Ganze
  *  herausbekommen, nicht nur eine Ecke. */
 function drawCost(inv,st){
   if(st.gx==null||st.gy==null)return "";
-  var werte=zonenListe();
+  var werte=zonenListe(), zz=zonesOf(inv);
   var fp=footprintOf(st.item,st.rot);
   var best=-1;
   for(var y=0;y<fp.h;y++)for(var x=0;x<fp.w;x++){
     if(!fpFilled(fp,x,y))continue;
-    var i=werte.indexOf(zoneAt(inv,st.gx+x,st.gy+y));
+    var i=werte.indexOf(zoneAt(inv,st.gx+x,st.gy+y,zz));
     if(i>best) best=i;
   }
   return best<0?"":werte[best];
@@ -8968,6 +9380,81 @@ function fitsAt(stuecke,ich,gx,gy,rot){
     if(belegt[(gx+x2)+":"+(gy+y2)])return false;
   }
   return true;
+}
+
+/* Liegt ein Stück noch in der Form seines Behälters? Das Tragraster
+   wächst und schrumpft mit dem Statblock (D54) — ein Stück, das gestern
+   passte, liegt heute vielleicht im gesperrten Teil. Seine Lage bleibt
+   gespeichert (wächst die Kreatur wieder, liegt es wieder da); gezeigt
+   wird es im Fach, und eine Ziehstufe hat es dort keine. */
+function liegtInForm(st,form){
+  if(st.gx==null||st.gy==null)return false;
+  var fp=footprintOf(st.item,st.rot);
+  if(st.gx<0||st.gy<0||st.gx+fp.w>form.cols||st.gy+fp.h>form.rows)return false;
+  for(var y=0;y<fp.h;y++)for(var x=0;x<fp.w;x++)
+    if(fpFilled(fp,x,y)&&!form.at(st.gx+x,st.gy+y))return false;
+  return true;
+}
+
+/* ---------- Die Ziehstufe die Kette hinauf (REQ-216, D54) ----------
+   Wie `drawStage` im Paket. Aussen gilt der Platz (Einstellung `slotDraw`)
+   oder die Zone; jeder Behälter weiter innen gibt eine Stufe dazu — das
+   Langsamere aus seiner Zone und der Stufe des Behälters + 1. Eine Bag of
+   Holding im Aktionsbereich: was darin liegt, braucht einen Zug. */
+function nextDraw(a,leiter){
+  var i=a?leiter.indexOf(a):-1;
+  return i<0?null:leiter[Math.min(i+1,leiter.length-1)];
+}
+function slowerDraw(a,b,leiter){
+  var ia=a?leiter.indexOf(a):-1, ib=b?leiter.indexOf(b):-1;
+  if(ia<0&&ib<0)return null;
+  return leiter[Math.max(ia,ib)];
+}
+function drawStage(kette,leiter,plaetze){
+  var stufe=null, steps=[];
+  kette.forEach(function(p,i){
+    if(i===0){
+      var amPlatz=p.slot?plaetze[p.slot]:"";
+      stufe=amPlatz&&leiter.indexOf(amPlatz)>=0?amPlatz
+        :(p.zone&&leiter.indexOf(p.zone)>=0?p.zone:null);
+    } else if(stufe!==null){
+      stufe=slowerDraw(p.zone&&leiter.indexOf(p.zone)>=0?p.zone:null,nextDraw(stufe,leiter),leiter);
+    }
+    steps.push(Object.assign({},p,{stage:stufe}));
+  });
+  return {stage:stufe,steps:steps};
+}
+/** Alles, was eine Kreatur aus ihren Behältern holen kann — mit Stufe und
+ *  Weg, durch jeden Behälter, der selbst ein Gegenstand ist (`carries`). */
+function drawList(e){
+  var root=inventoryOf(e); if(!root)return [];
+  var leiter=zonenListe(), plaetze=parsePairs(setting("slotDraw","")), out=[], gesehen={};
+  function lauf(inv,kette){
+    if(gesehen[inv.id])return;
+    gesehen[inv.id]=1;
+    var form=containerGrid(inv);
+    carriedItems(inv).forEach(function(st){
+      if(st.tier==="stored")return;
+      var p={via:nameOf(inv),what:nameOf(st.item),
+        zone:liegtInForm(st,form)?(drawCost(inv,st)||null):null,
+        slot:kette.length?null:(st.slot||null)};
+      var k=kette.concat([p]);
+      var r=drawStage(k,leiter,plaetze);
+      out.push({st:st,item:st.item,stage:r.stage,steps:r.steps});
+      var innen=inventoryOf(st.item);
+      if(innen) lauf(innen,k);
+    });
+  }
+  lauf(root,[]);
+  return out;
+}
+/* Der Weg in Worten: „Bag of Holding in the action zone → turn". */
+function drawPath(d){
+  var teile=d.steps.map(function(s,i){
+    var wo=s.slot?"at "+slotLabel(s.slot):(s.zone?"in the "+s.zone+" zone":(i?"":"not placed"));
+    return i<d.steps.length-1?s.what+(wo?" "+wo:""):wo;
+  }).filter(function(t){ return t; });
+  return teile.join(" → ")+(d.stage?" → "+d.stage:"");
 }
 
 /* ---- Das Inventar einer Gruppe ist gerechnet ----
@@ -9038,6 +9525,28 @@ function elPartyStock(e){
   });
   wrap.appendChild(ul);
   return wrap;
+}
+
+/* Die Figur im Reiter „Worn“: drei Umrisse nach dem Blatt. Gezeichnet
+   und nicht als Bild geladen — die Seite hat keine Bilder, und ein Umriss
+   folgt den Farben des Themas. */
+function figureSvg(f){
+  var rumpf={
+    male:"M20 46 L80 46 L72 122 L28 122 Z",
+    female:"M31 46 L69 46 L61 84 L72 122 L28 122 L39 84 Z",
+    neutral:"M26 46 L74 46 L68 122 L32 122 Z"
+  }[f]||"M26 46 L74 46 L68 122 L32 122 Z";
+  var arme={male:[16,84],female:[26,74],neutral:[21,79]}[f]||[21,79];
+  var stil={fill:"var(--surface2)",stroke:"var(--dim)","stroke-width":"1.5","stroke-linejoin":"round"};
+  var g=sv("svg",{viewBox:"0 0 100 230",role:"img","aria-label":"Figure: "+f});
+  g.appendChild(sv("circle",Object.assign({cx:50,cy:22,r:14},stil)));
+  g.appendChild(sv("rect",Object.assign({x:45,y:35,width:10,height:11},stil)));
+  g.appendChild(sv("path",Object.assign({d:"M"+(arme[0]+4)+" 48 L"+(arme[0]-4)+" 118 L"+(arme[0]+4)+" 120 L"+(arme[0]+10)+" 56 Z"},stil)));
+  g.appendChild(sv("path",Object.assign({d:"M"+(arme[1]-4)+" 48 L"+(arme[1]+4)+" 118 L"+(arme[1]-4)+" 120 L"+(arme[1]-10)+" 56 Z"},stil)));
+  g.appendChild(sv("path",Object.assign({d:rumpf},stil)));
+  g.appendChild(sv("path",Object.assign({d:"M32 122 L49 122 L47 222 L35 222 Z"},stil)));
+  g.appendChild(sv("path",Object.assign({d:"M51 122 L68 122 L65 222 L53 222 Z"},stil)));
+  return g;
 }
 
 function elInventory(e,ifn,item){
@@ -9135,13 +9644,38 @@ function elInventory(e,ifn,item){
   }
 
   if(UI.invView==="body"){
-    var rig=el("div",{class:"bodyrig"+(gewaehlt?" picking":"")});
-    SLOTS.forEach(function(sl){
+    /* **Die Figur nach Basils Blatt** (REQ-214, D54): sie steht an der
+       Kreatur (`Creature.figure`), nicht am Inventar — dasselbe Inventar
+       wechselt den Träger, die Figur nicht. Die Plätze kommen aus dem
+       Register; wo sie am Blatt sitzen, sagt `SLOT_SIDES`. */
+    var traeger=ifaceInList(["Creature"],(e.interfaces||[])[0])?e:carrierOf(inv);
+    if(traeger&&!ifaceInList(["Creature"],(traeger.interfaces||[])[0])) traeger=null;
+    var figPd=(((REG.interfaces.Creature||{}).schema||{}).properties||{}).figure;
+    var figuren=enumWerte(figPd)||[];
+    var fig=traeger?(((traeger.components||{}).Creature||{}).figure||""):"";
+    if(traeger&&figuren.length){
+      var fw=el("div",{class:"ktabs"});
+      fw.appendChild(el("span",{class:"co",text:"Figure"}));
+      figuren.forEach(function(f){
+        fw.appendChild(el("button",{class:"btn sm"+((fig||"neutral")===f?" pri":""),type:"button",
+          "aria-pressed":String((fig||"neutral")===f),disabled:canWrite(traeger)?null:"disabled",
+          onclick:function(){
+            traeger.components=Object.assign({},traeger.components||{});
+            traeger.components.Creature=Object.assign({},traeger.components.Creature||{},{figure:f});
+            persist(traeger);
+          }},f));
+      });
+      wrap.appendChild(fw);
+    }
+    var plaetze=slotList(), stufen=parsePairs(setting("slotDraw","")), gezeigt={};
+    function platz(sl){
+      gezeigt[sl]=1;
       var box=el("div",{class:"slot"});
-      box.appendChild(el("div",{class:"slabel",text:sl[1]}));
+      box.appendChild(el("div",{class:"slabel",text:slotLabel(sl)+(stufen[sl]?" · "+stufen[sl]:""),
+        title:sl}));
       var inhalt=el("div",{class:"sbox"});
-      var drin=stuecke.filter(function(st){ return st.slot===sl[0]; });
-      if(!drin.length) inhalt.appendChild(el("span",{class:"hint",style:"margin:0",text:"empty"}));
+      var drin=stuecke.filter(function(st){ return st.slot===sl; });
+      if(!drin.length) inhalt.appendChild(el("span",{class:"hint",style:"margin:0",text:"—"}));
       drin.forEach(function(st){
         inhalt.appendChild(chip(st));
         if(canWrite()) inhalt.appendChild(el("button",{class:"btn gh sm",type:"button",
@@ -9149,11 +9683,51 @@ function elInventory(e,ifn,item){
             lege(st,{slot:undefined,tier:"pack"}); }},"×"));
       });
       dropZiel(inhalt,function(st){
-        lege(st,{slot:sl[0],tier:sl[0]==="mainHand"||sl[0]==="offHand"?"held":"worn"}); });
+        var tier=sl==="mainHand"||sl==="offHand"?"held"
+          :(sl==="belt"||/^holster/.test(sl)?"belt":"worn");
+        lege(st,{slot:sl,tier:tier}); });
       box.appendChild(inhalt);
-      rig.appendChild(box);
+      return box;
+    }
+    var blatt=el("div",{class:"wornsheet"+(gewaehlt?" picking":"")});
+    var spalten={};
+    SLOT_SIDES.slice(0,2).forEach(function(seite){
+      var col=el("div",{class:"wcol"});
+      seite[1].forEach(function(sl){ if(plaetze.indexOf(sl)>=0) col.appendChild(platz(sl)); });
+      spalten[seite[0]]=col;
     });
-    wrap.appendChild(rig);
+    blatt.appendChild(spalten.left);
+    var figBox=el("div",{class:"wornfig",title:"Figure: "+(fig||"neutral")});
+    figBox.appendChild(figureSvg(fig||"neutral"));
+    blatt.appendChild(figBox);
+    blatt.appendChild(spalten.right);
+    wrap.appendChild(blatt);
+    SLOT_SIDES.slice(2).forEach(function(reihe){
+      var da=reihe[1].filter(function(sl){ return plaetze.indexOf(sl)>=0; });
+      if(!da.length)return;
+      wrap.appendChild(el("div",{class:"sec",text:reihe[0]}));
+      var r=el("div",{class:"wacc"+(gewaehlt?" picking":"")});
+      da.forEach(function(sl){ r.appendChild(platz(sl)); });
+      wrap.appendChild(r);
+    });
+    /* Ein Platz, den das Register kennt und das Blatt nicht. */
+    var andere=plaetze.filter(function(sl){ return !gezeigt[sl]; });
+    if(andere.length){
+      wrap.appendChild(el("div",{class:"sec",text:"Other"}));
+      var ra=el("div",{class:"wacc"+(gewaehlt?" picking":"")});
+      andere.forEach(function(sl){ ra.appendChild(platz(sl)); });
+      wrap.appendChild(ra);
+    }
+    /* Ein Stück an einem Platz, den das Register nicht mehr kennt: es
+       bleibt, wo es ist, und steht hier, damit es jemand umhängt. */
+    var verwaist=stuecke.filter(function(st){ return st.slot&&plaetze.indexOf(st.slot)<0; });
+    if(verwaist.length){
+      wrap.appendChild(el("p",{class:"hint",
+        text:"Worn at a slot the registry no longer knows — pick it and put it somewhere:"}));
+      var vb=el("div",{class:"chips"});
+      verwaist.forEach(function(st){ vb.appendChild(chip(st)); vb.appendChild(el("span",{class:"co",text:st.slot})); });
+      wrap.appendChild(vb);
+    }
     var frei=stuecke.filter(function(st){ return !st.slot; });
     if(frei.length){
       wrap.appendChild(el("div",{class:"sec",text:"Not worn"}));
@@ -9218,10 +9792,11 @@ function elInventory(e,ifn,item){
       if(werkzeug.childNodes.length) wrap.appendChild(werkzeug);
     }
     var g=el("div",{class:"invgrid"+(gewaehlt?" picking":"")});
+    var zonenKarte=zonesOf(inv);
     g.style.gridTemplateColumns="repeat("+form.cols+",1fr)";
     for(var y=0;y<form.rows;y++)for(var x=0;x<form.cols;x++)(function(x,y){
       var da=form.at(x,y);
-      var zone=zoneAt(inv,x,y);
+      var zone=da?zoneAt(inv,x,y,zonenKarte):"";
       var c=el("div",{class:"gcell"+(da?"":" blocked")+(zone?" "+zonenFarbe(zone):"")});
       c.style.gridColumn=(x+1); c.style.gridRow=(y+1);
       if(zone) c.title=zone;
@@ -9233,7 +9808,7 @@ function elInventory(e,ifn,item){
     })(x,y);
 
     stuecke.forEach(function(st){
-      if(st.gx==null||st.gy==null)return;
+      if(!liegtInForm(st,form))return;
       var fp=footprintOf(st.item,st.rot);
       var box=el("div",{class:"gitem"+(st.rel.id===UI.invPick?" selected":"")});
       box.style.gridColumn=(st.gx+1)+" / span "+fp.w;
@@ -9263,7 +9838,15 @@ function elInventory(e,ifn,item){
     });
     wrap.appendChild(g);
 
-    var lose=stuecke.filter(function(st){ return st.gx==null||st.gy==null; });
+    var lose=stuecke.filter(function(st){ return !liegtInForm(st,form); });
+    /* Was eine Lage hat und nicht mehr in die Form passt (das Tragraster
+       ist mit dem Statblock kleiner geworden), sagt es — seine Lage bleibt
+       gespeichert, bis jemand es neu hinlegt. */
+    var draussen=lose.filter(function(st){ return st.gx!=null&&st.gy!=null; });
+    if(draussen.length) wrap.appendChild(el("p",{class:"hint",
+      text:draussen.length+" item"+(draussen.length===1?" lies":"s lie")+
+        " outside this shape now — kept where "+(draussen.length===1?"it was":"they were")+
+        " until placed again."}));
     if(lose.length){
       wrap.appendChild(el("p",{class:"hint",
         text:lose.length+" item"+(lose.length===1?"":"s")+" not placed yet — pick one, then click a free cell."}));
@@ -9275,12 +9858,19 @@ function elInventory(e,ifn,item){
        Einstellung, die man nur findet, wenn man weiss, dass es sie gibt,
        ist keine. */
     var fuss=el("p",{class:"hint"});
+    var cg=form.carry;
     fuss.appendChild(document.createTextNode(form.cols+"×"+form.rows+
       (form.frei?" from the campaign setting (inventoryCols, inventoryRows). "
-               :" — this container’s own grid. ")));
+       :cg?" — the carry grid from the sheet: "+cg.size+" "+cg.base+"×"+cg.base+
+          ", plus "+cg.extra+"×"+cg.extra+" worked out by the statblock ("+
+          (cg.formula||"no formula")+"). "
+       :" — this container’s own grid. ")));
+    if(cg) fuss.appendChild(el("button",{class:"ref",type:"button",
+      onclick:function(){ go({k:"art",id:cg.from.id}); }},"Statblock"));
+    if(cg&&canWrite()) fuss.appendChild(document.createTextNode(" · "));
     if(canWrite()) fuss.appendChild(el("button",{class:"ref",type:"button",
       onclick:function(){ go({k:"art",id:inv.id}); }},
-      form.frei?"Give it a grid of its own":"Change grid and zones"));
+      form.frei||cg?"Give it a grid of its own":"Change grid and zones"));
     wrap.appendChild(fuss);
   }
   return wrap;
@@ -9300,13 +9890,58 @@ function nimmHeraus(st){
 
 /* Ein Inventar anlegen und an die Figur hängen. Ein Behälter, den man erst
    im Register verdrahten müsste, legt niemand an. */
+/* **Vorlagen aus dem Blatt** (REQ-216, D54): Einstellungen
+   `container:<Name>` mit Form und Zonen nach Spalten. Gewählt wird beim
+   Anlegen; danach gehören Form und Zonen dem Behälter und sind änderbar
+   wie jede andere. */
+function containerPresets(){
+  var out=[];
+  Object.keys(REG.settings||{}).sort().forEach(function(k){
+    if(k.indexOf("container:")!==0)return;
+    var teile=String(REG.settings[k]).split("|");
+    var grid=String(teile[0]||"").split("/").map(function(r){ return r.trim(); })
+      .filter(function(r){ return r!==""; });
+    if(!grid.length)return;
+    out.push({name:k.slice(10).trim(),grid:grid,zones:columnZones(teile[1]||"",grid)});
+  });
+  return out;
+}
 function newInventory(e){
-  var name=nameOf(e)+" — gear";
+  var vorlagen=containerPresets();
+  if(!vorlagen.length){ legeInventarAn(e,null); return; }
+  var kreatur=ifaceInList(["Creature"],(e.interfaces||[])[0]);
+  dialog("New inventory",function(host,close){
+    var sel=el("select",{class:"i"});
+    sel.appendChild(el("option",{value:""},kreatur
+      ?"Carry grid — from size and statblock"
+      :"No shape of its own — the campaign rectangle"));
+    vorlagen.forEach(function(v,i){
+      var w=v.grid.reduce(function(m,r){ return Math.max(m,r.length); },0);
+      sel.appendChild(el("option",{value:String(i)},v.name+" — "+w+"×"+v.grid.length+
+        (Object.keys(v.zones).length?", with zones":"")));
+    });
+    /* Ein Gegenstand namens Rucksack bekommt die Rucksackform vorgeschlagen. */
+    vorlagen.forEach(function(v,i){
+      if(!kreatur&&nameOf(e).toLowerCase().indexOf(v.name.toLowerCase())>=0) sel.value=String(i);
+    });
+    host.appendChild(field("Shape",sel));
+    host.appendChild(el("p",{class:"hint",text:"Templates are campaign settings named container:<name>. Grid and zones stay editable on the inventory."}));
+    actions(host,close,function(){
+      legeInventarAn(e,sel.value===""?null:vorlagen[Number(sel.value)]);
+    },"Create");
+  });
+}
+function legeInventarAn(e,vorlage){
+  var name=nameOf(e)+" — "+(vorlage?vorlage.name.toLowerCase():"gear");
   var inv={ id:uid("inv"), interfaces:[INV_IFACE], name:name,
     components:{ Identity:{name:name,id:nextId("Inventory"),aliases:[]} },
     adhoc:[], relations:[], createdAt:new Date().toISOString() };
   reqFor(INV_IFACE).forEach(function(c){ if(!inv.components[c]&&REG.interfaces[c]) inv.components[c]={}; });
   applyDefaults(inv,INV_IFACE);
+  if(vorlage){
+    inv.components[INV_IFACE]=Object.assign({},inv.components[INV_IFACE]||{},
+      {grid:vorlage.grid.slice()},Object.keys(vorlage.zones).length?{zones:Object.assign({},vorlage.zones)}:{});
+  }
   ENT.set(inv.id,inv);
   persist(inv);
   e.relations=e.relations||[];
@@ -10022,6 +10657,62 @@ function elSheet(e,ifn,item){
       tb.appendChild(row);
     });
     wrap.appendChild(tb);
+  }
+
+  /* ---- Aktionen, und was mit jeder herauskommt (REQ-217, D54) ----
+     Je Stufe der Zeile `DrawTime` eine Zeile: die Aktionen des Statblocks
+     dieser Art (wo eine `ActionType` so heisst) und ein Eintrag „Draw“.
+     Ein Klick zeigt, was sich mit genau dieser Aktion herausnehmen lässt,
+     mit Stufe und Weg — gerechnet die Behälterkette hinauf, nie
+     gespeichert. */
+  if(inventoryOf(e)){
+    var leiter=zonenListe(), ziehbar=drawList(e);
+    var nachArt={}, sbA=statblockOf(e);
+    ((sbA&&resolvedOf(sbA).relations)||[]).forEach(function(r){
+      var t=ENT.get(r.to); if(!t)return;
+      var at=((t.components||{}).Action||{}).actionType;
+      var art=at&&ENT.get(at);
+      if(!art)return;
+      var k=nameOf(art).toLowerCase();
+      (nachArt[k]=nachArt[k]||[]).push(t);
+    });
+    wrap.appendChild(el("div",{class:"sec",text:"Actions"}));
+    var akt=el("div",{class:"drawrows"});
+    leiter.forEach(function(w){
+      var drin=ziehbar.filter(function(d){ return d.stage===w; });
+      var offen=UI.drawOpen===w;
+      var row=el("div",{class:"drawrow"});
+      row.appendChild(el("b",{class:"chip dname "+zonenFarbe(w),text:w}));
+      var acts=el("span",{class:"dacts"});
+      (nachArt[w]||[]).forEach(function(t){
+        acts.appendChild(el("button",{class:"ref",type:"button",
+          onclick:function(){ go({k:"art",id:t.id}); }},nameOf(t)));
+      });
+      row.appendChild(acts);
+      row.appendChild(el("button",{class:"btn sm"+(offen?" pri":""),type:"button",
+        "aria-expanded":String(offen),
+        title:"What comes out with a "+w,
+        onclick:function(){ UI.drawOpen=offen?"":w; render(); }},
+        "Draw"+(drin.length?" · "+drin.length:"")));
+      akt.appendChild(row);
+      if(offen){
+        var ul=el("ul",{class:"drawlist"});
+        if(!drin.length) ul.appendChild(el("li",{class:"hint",text:"Nothing comes out with a "+w+"."}));
+        drin.forEach(function(d){
+          var li=el("li");
+          li.appendChild(el("button",{class:"ref",type:"button",
+            onclick:function(){ go({k:"art",id:d.item.id}); }},nameOf(d.item)+(d.st.qty>1?" ×"+d.st.qty:"")));
+          li.appendChild(el("span",{class:"co",text:drawPath(d)}));
+          ul.appendChild(li);
+        });
+        akt.appendChild(ul);
+      }
+    });
+    wrap.appendChild(akt);
+    var ohne=ziehbar.filter(function(d){ return !d.stage; }).length;
+    if(ohne) wrap.appendChild(el("p",{class:"hint",
+      text:ohne+" carried item"+(ohne===1?" has":"s have")+
+        " no draw time — not on the grid, not at a slot with a draw time, or inside a container that has none."}));
   }
 
   if(!Object.keys(sb).length) wrap.appendChild(el("p",{class:"hint",
@@ -14257,6 +14948,9 @@ var SETTING_HINTS={
   gridUnit:"What one square means, e.g. 1,5 m",
   inventoryCols:"Columns of the tile inventory",
   inventoryRows:"Rows of the tile inventory",
+  carrySquares:"Carry grid: base square per size, e.g. medium:5 (sizes not listed keep the rectangle)",
+  carryZones:"Zones of the carry grid by column, e.g. 0-1:bonus action, 2-4:action",
+  slotDraw:"Draw time per body slot; a container at a slot adds one step to what is inside",
   today:"The world date the campaign stands at — empty means the newest used event"
 };
 function renderSettingsEditor(v){
@@ -14421,7 +15115,9 @@ var BEGRIFFE=[
    "(casts: prepared, known, innate or from an item, with uses, level and "+
    "charges) — the same Fireball is prepared by the mage and worth three "+
    "charges in the staff. An item may carry an inventory of its own (a "+
-   "backpack), and the piece at the table may be an instance of the item "+
+   "backpack), and each container adds a draw step to what lies in it; "+
+   "a creature's own inventory without a shape takes the carry grid from "+
+   "its size and its statblock. The piece at the table may be an instance of the item "+
    "in the book (the +1 longsword stores only what differs). A character "+
    "has its classes as edges, each with its level (hasClass: Fighter 3, "+
    "Wizard 2 with the subclass on the edge), and one ancestry and one "+
@@ -14878,6 +15574,38 @@ function renderHowto(v){
       "               "+bspSicht.pp+" < 11 → "+(bspSicht.seen?"spotted":"not noticed")}));
   }
 
+  /* ---- Das Inventar nach dem Blatt, durchgerechnet (D54) ----
+     Mit den Einstellungen und der Rechnung, wie sie im Register stehen,
+     und mit denselben Funktionen wie das Inventar: ändert jemand
+     `carryExtra`, `carrySquares` oder `slotDraw`, ändert sich das
+     Beispiel mit. */
+  var cxP=(((REG.interfaces.Statblock||{}).schema||{}).properties||{}).carryExtra;
+  v.appendChild(el("div",{class:"rsec",text:"A carry grid, a bag inside it, and how long it takes"}));
+  v.appendChild(el("p",{class:"hint"},
+    "An inventory with no shape of its own takes the carry grid from the "+
+    "sheet: a base square by the creature's size and an extra square its "+
+    "statblock works out on read, like an attack works out its bonus. The "+
+    "zones come from the sheet by column and can be painted over. A "+
+    "container may lie in another one — an item that carries an inventory — "+
+    "and every container adds a step: what lies inside takes the slower of "+
+    "its own zone and the container's draw time plus one, all the way up. "+
+    "A container at a body slot takes the slot's draw time (setting slotDraw). "+
+    "Where the figure on the Worn tab is male, female or neutral is a field "+
+    "of the creature, not of the inventory."));
+  var leiterB=zonenListe(), sqB=carrySquares(), plB=parsePairs(setting("slotDraw",""));
+  var sbB={size:"medium"}, abB={str:16};
+  var extraB=cxP?derivedValue(cxP,sbB,{Statblock:sbB,Abilities:abB}):undefined;
+  var bag=drawStage([{via:"gear",what:"Bag of Holding",zone:"action"},{via:"Bag of Holding",what:"Rope"}],leiterB,plB);
+  var pack=drawStage([{via:"gear",what:"Backpack",slot:"shoulders"},{via:"Backpack",what:"Torch",zone:"action"}],leiterB,plB);
+  v.appendChild(el("pre",{class:"code",text:
+    "Statblock   size medium · STR 16\n"+
+    "base square    carrySquares  "+(setting("carrySquares","")||"(not set — the rectangle stays)")+"  →  "+(sqB.medium||"—")+"×"+(sqB.medium||"—")+"\n"+
+    "extra square   carryExtra = "+(cxP&&cxP.derived||"—")+"  →  "+(extraB==null?"—":extraB)+
+      (cxP&&typeof cxP.max==="number"?"   (clamped to "+(cxP.min||0)+"…"+cxP.max+")":"")+"\n\n"+
+    "Rope in a Bag of Holding, the bag in the action zone\n"+
+    "  "+drawPath(bag)+"\n"+
+    "Torch in the action zone of a backpack worn at the shoulders"+(plB.shoulders?" ("+plB.shoulders+")":"")+"\n"+
+    "  "+drawPath(pack)}));
   /* ---- Ein Kampf, durchgerechnet (REQ-211–213, D53) ----
      Mit denselben Funktionen, die die Initiative nimmt (`expiresAt`,
      `hpWord`), und den Eigenschaften der Kante aus dem Register: ändert
@@ -14956,6 +15684,51 @@ function renderHowto(v){
       "Statblock · Proficiencies.proficient draws on\n"+(quellen||"  —");
     v.appendChild(el("pre",{class:"code",text:rechnung2}));
   }
+
+  /* ---- Weltgeschichte in Spuren (REQ-220, D57) ----
+     Mit derselben Rechnung wie das Element `timeline` (`worldHistory`),
+     auf einem kleinen Bestand, der nur hier steht: ändert jemand die
+     Regel, ändert sich das Beispiel mit. */
+  v.appendChild(el("div",{class:"rsec",text:"A world history in tracks"}));
+  v.appendChild(el("p",{class:"hint"},
+    "A track is an Event with a span — a war, a dynasty, an age. What lies "+
+    "in it is said by the part of edge, not by the dates: by the dates, "+
+    "every wedding in the north would sit in the war in the south. A track "+
+    "inside a track is both a bar in the outer one and a track of its own. "+
+    "What no track holds belongs to the campaign, and the campaign is a "+
+    "track among them; without a span of its own, its span is worked out "+
+    "from what it holds. The span still checks: something that is part of "+
+    "a track but dated outside it is shown dashed to the lead. Everything "+
+    "sits on one axis, Time.sort in the world's calendar. What a player "+
+    "may not see is not there, and what they do not know the date of has "+
+    "no place on the line."));
+  var tz=function(sort,until){ return {Time:{sort:sort,untilSort:until,display:String(sort),until:until?String(until):undefined}}; };
+  var tk=function(to){ return [{id:"p"+to,type:"partOf",to:to}]; };
+  var tlBsp=new Map([
+    ["age",{id:"age",name:"Third Age",interfaces:["Event"],components:tz(1000,1500)}],
+    ["war",{id:"war",name:"Dragon War",interfaces:["Event"],components:tz(1480,1490),relations:tk("age")}],
+    ["ash",{id:"ash",name:"Battle of Ash",interfaces:["Event"],components:tz(1485),relations:tk("war")}],
+    ["late",{id:"late",name:"Late skirmish",interfaces:["Event"],components:tz(1495),relations:tk("war")}],
+    ["wed",{id:"wed",name:"Royal wedding",interfaces:["Event"],components:tz(1486)}],
+    ["camp",{id:"camp",name:"Nebelwacht",interfaces:["Campaign"],components:{}}],
+    ["s1",{id:"s1",name:"Session one",interfaces:["Session"],components:tz(1492),relations:tk("camp")}]]);
+  var alle1=function(){ return true; };
+  var spurenBsp=worldHistory(tlBsp.get("camp"),{src:tlBsp,visible:alle1,dated:alle1,inCampaign:alle1});
+  v.appendChild(el("pre",{class:"code",text:
+    "Third Age      Event · 1000 – 1500\n"+
+    "Dragon War     Event · 1480 – 1490 · partOf → Third Age\n"+
+    "Battle of Ash  Event · 1485        · partOf → Dragon War\n"+
+    "Late skirmish  Event · 1495        · partOf → Dragon War\n"+
+    "Royal wedding  Event · 1486        · (no edge)\n"+
+    "Session one    Session · 1492      · partOf → Nebelwacht\n\n"+
+    spurenBsp.map(function(l){
+      var pad=new Array(l.depth*2+1).join(" ");
+      return pad+rawName(tlBsp.get(l.id))+"  "+l.from+" – "+l.to+(l.derived?" (worked out)":"")+"\n"+
+        l.items.map(function(it){
+          return pad+"  · "+rawName(tlBsp.get(it.id))+(it.track?" (track)":"")+
+            (l.outside.indexOf(it.id)>=0?"  — outside the span":"");
+        }).join("\n");
+    }).join("\n")}));
 
   /* ---- Wer einen Artikel sehen darf ----
      Die **grobe** Frage, und sie kommt vor der feinen: das Wissen sagt,

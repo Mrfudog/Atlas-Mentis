@@ -403,6 +403,25 @@ Rest jedem, der die Entwicklerwerkzeuge öffnet. Also geht nur die Gruppe
 hinaus und wer aufgedeckt oder beteiligt ist; ein Gegner, den niemand
 erkannt hat, heisst wie sein Deckname, und seine Trefferpunkte sind ein
 Wort — „angeschlagen" ist, was man am Tisch sieht, „7 von 18" nicht.
+### Eine Spur hält, was zu ihr gehört, nicht was in ihre Zeit fällt
+
+Die Weltgeschichte steht in **Spuren**: ein Krieg, eine Dynastie, ein
+Zeitalter — jedes ein Ereignis mit Spanne (`Time.sort` bis `untilSort`).
+Was darin liegt, sagt die Kante `partOf`, dieselbe, die das Zimmer ins Haus
+und das Kapitel in den Arc legt (D57).
+
+Die andere Antwort lag nahe: was in die Spanne fällt, liegt in der Spur.
+Sie kostet keine Kante, aber sie weiss nicht, wovon die Rede ist — die
+Hochzeit im Norden fiele in den Krieg im Süden, und jedes Ereignis läge in
+jeder Spur, die gerade läuft. Eine Spur ist eine Geschichte und kein
+Zeitfenster. Die Spanne bleibt trotzdem nützlich: was über die Kante
+drinliegt und ausserhalb fällt, ist vermutlich ein Tippfehler, und die
+Leitung sieht es gestrichelt.
+
+**Die Kampagne ist eine Spur wie die anderen** und hält, was keine andere
+hält: Sitzungen, Aufträge, Ereignisse am Tisch. Ihre Spanne wird beim
+Lesen gerechnet, wenn sie keine eigene trägt (D8) — eine gespeicherte
+wäre nach der nächsten Sitzung falsch.
 
 ---
 
@@ -748,7 +767,33 @@ das eine räumt um, das andere gibt her.
 
 **Ein Gegenstand darf selbst ein Behälter sein** (M4): der Rucksack
 `carries` sein Inventar wie eine Figur, mit derselben Kante und derselben
-Darstellung. Und **das Stück am Tisch darf eine Instanz** des Gegenstands im
+Darstellung. **Und jeder Behälter gibt eine Ziehstufe dazu** (D54): was in
+einer Bag of Holding liegt, ist weiter weg als die Bag selbst — die Stufe
+eines Stücks ist das Langsamere aus seiner Zone und der Stufe des Behälters
++ 1, die Kette hinauf. Eine eigene Kante „Inventar in Inventar" braucht es
+dafür nicht: die Bag ist ein Gegenstand, der ein Inventar trägt, und genau
+das sagte `carries` schon. Ein Behälter an einem Körperplatz nimmt die
+Stufe des Platzes, und welche das ist, steht als Einstellung (`slotDraw`)
+und nicht im Code: eine Runde, in der ein Holster eine Bonusaktion kostet,
+ändert eine Zeile.
+
+**Das Tragraster wird gerechnet und nicht gemalt** (D54). Basils Blatt
+hat links ein Quadrat nach Grösse und rechts eines, das mit der Stärke
+wächst. Das Zusatzquadrat steht als **Feld mit Rechnung am Statblock**
+(`carryExtra`, `mod(str)`) und nicht als Einstellung: es rechnet gegen die
+Nachbarn des Statblocks wie der Zauber-SG und ein Angriff, der Bogen zeigt
+die Zahl, und wer die Regel ändert, ändert die Formel an einer Stelle. Eine
+Einstellung wäre ein ungeprüfter Text ohne Ort, an dem man die Zahl sieht.
+Die Grundquadrate je Grösse und die Zonen nach Spalten sind dagegen
+Einstellungen (`carrySquares`, `carryZones`): sie sind das Blatt der
+Kampagne und rechnen nichts. Ein Stück, das nach einem Schrumpfen
+ausserhalb der Form liegt, behält seine Lage; es liegt im Fach, bis es
+jemand neu hinlegt, und hat bis dahin keine Ziehstufe.
+
+**Die Figur gehört der Kreatur, die Plätze der Kante.** Männlich, weiblich
+oder neutral ist eine Angabe darüber, wie eine Figur aussieht, und das
+Inventar wechselt den Träger. Welche Plätze es gibt, sagt die Liste an
+`holds.props.slot`; wo sie auf dem Blatt sitzen, ist Darstellung. Und **das Stück am Tisch darf eine Instanz** des Gegenstands im
 Buch sein (`instanceOf`, wie beim Statblock): das +1-Langschwert speichert
 nur, was es vom Langschwert unterscheidet, und eine Korrektur am Langschwert
 erreicht es.
