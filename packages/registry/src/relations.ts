@@ -728,8 +728,10 @@ export const relations: Record<string, RelationDef> = {
    * Anzahl: drei Goblins haben drei Mal Trefferpunkte, und eine Zahl an
    * einer Kante könnte nur einen davon verletzen.
    *
-   * Zustände tragen ihre Dauer mit; sie zählt am Ende des Zuges herunter,
-   * der sie gesetzt hat. Ohne Dauer vergisst sie der Tisch.
+   * Zustände und Notizen tragen ihre Dauer mit (REQ-212, D53): `rounds`
+   * zählt herunter, wenn der Zug des Ankers anfängt oder endet. Ohne Dauer
+   * vergisst sie der Tisch. RK und TP-Maximum stehen **nicht** hier, sondern
+   * am Statblock der Instanz (REQ-211); `hp` ist der Stand im Kampf.
    */
   participates: {
     type: 'participates',
@@ -743,15 +745,26 @@ export const relations: Record<string, RelationDef> = {
         label: { type: 'string', title: 'Name at the table' },
         init: { type: 'number', title: 'Initiative' },
         hp: { type: 'number', title: 'Hit points' },
-        hpMax: { type: 'number', title: 'Maximum' },
+        /* Abschrift aus der Zeit vor D53. Gelesen wird das Maximum am
+           Statblock (`participantStats`); dieses Feld nur, wo keiner hängt. */
+        hpMax: { type: 'number', title: 'Maximum (without statblock)' },
         ally: { type: 'boolean', title: 'On the party’s side' },
-        /* Zeitlich begrenzte Zustände (REQ-115): je Eintrag `rule` (Id
-           eines Artikels der Art `Condition`; der Schlüssel heisst aus
-           alter Zeit so), `rounds` (zählt am Zugende herunter) und `source`
-           (wer ihn verhängt hat). Wie in `Vitals.conditions` höchstens eine
-           Stufe je Grundzustand. */
-        conditions: { type: 'array', title: 'Conditions', items: { type: 'object' } },
-        note: { type: 'string', title: 'Note' },
+        /* Zustände und Notizen mit Dauer (REQ-115, REQ-212, D53). Je Eintrag
+           entweder `rule` (Id eines Artikels der Art `Condition`; der
+           Schlüssel heisst aus alter Zeit so) oder `text` (eine Notiz), dazu
+           `rounds` (wie oft der Zeitpunkt noch vorbeikommt), `anchor` (Id
+           der Teilnehmerkante, an deren Zug gezählt wird; leer: der eigene),
+           `at` (`start` | `end`; leer: `end`), `source` (wer ihn verhängt
+           hat, als Text) und `hidden` (nicht für Spielende). Ohne `anchor`
+           und `at` verhält sich ein Eintrag wie vor D53. Wie in
+           `Vitals.conditions` höchstens eine Stufe je Grundzustand. */
+        conditions: { type: 'array', title: 'Conditions and notes', items: { type: 'object' } },
+        note: { type: 'string', title: 'GM note' },
+        /* Die Spieleransicht (REQ-213, D53): gezeigt wird die Gruppe und wer
+           `revealed` oder `involved` ist; ohne `identified` der Deckname. */
+        revealed: { type: 'boolean', title: 'Revealed to the players' },
+        involved: { type: 'boolean', title: 'Involved (has acted or been hit)' },
+        identified: { type: 'boolean', title: 'Identified by the players' },
       },
     },
   },

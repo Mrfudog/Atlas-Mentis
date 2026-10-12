@@ -31,6 +31,7 @@ Repo ist öffentlich, die Daten sind Kampagneninhalt. `.gitignore` deckt
     node prototype/test/build-harness.mjs
     node prototype/test/pruefe.mjs
     node prototype/test/angriffe.mjs   # D51, mit einem Importer-Ausschnitt in dbdump/entities
+    node prototype/test/initiative.mjs # D53, legt seine Daten selbst an
     node prototype/test/inventar.mjs   # D54, legt seine Artikel selbst an
     node prototype/test/handwerk.mjs   # D55, legt seine Artikel selbst an
 
