@@ -114,7 +114,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 | **REQ-053** | Statblock as composition of RuleElement references (traits, feats, actions) | 2 | 5 | prep | none | done |
 | **REQ-060** | Companions / summons as regular creatures via companionOf + overrides | 3 | 2 | both | none | in progress |
 | **REQ-105** | NPC directory as filtered view over creatures with relations | 3 | 2 | both | none | done |
-| **REQ-215** | Tragraster aus Grösse und Statblock: ein Grundquadrat nach Grösse (Tiny 3 … Large 6) und ein Zusatzquadrat, das eine Rechnung gegen den Statblock des Trägers ergibt — beim Lesen gerechnet, nie eingetippt | 3 | 2 | play | none | planned |
+| **REQ-215** | Tragraster aus Grösse und Statblock: ein Grundquadrat nach Grösse (Tiny 3 … Large 6) und ein Zusatzquadrat in der Grösse des Stärkemodifikators (+1 … +5) aus dem Statblock des Trägers — beim Lesen gerechnet, nie eingetippt | 3 | 2 | play | none | planned |
 | **REQ-052** | Detailed statblock viewer | 3 | 3 | play | none | done |
 | **REQ-055** | Inline trait reuse & variant creation while typing | 3 | 3 | prep | none | defined |
 | **REQ-059** | Creature knowledge facts: gated ContentBlocks on type / species / faction | 3 | 3 | play | low | done |
@@ -143,7 +143,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 | **REQ-060** | Companions / summons as regular creatures via companionOf + overrides | 3 | 2 | both | none | in progress |
 | **REQ-183** | Party-owned inventory as a shared container distinct from character inventories | 3 | 2 | both | none | done |
 | **REQ-213** | Initiative der Spielenden: die eigene Reihenfolge und jede Kreatur, die aufgedeckt oder schon beteiligt ist; nicht erkannte Kreaturen mit Decknamen, TP von Gegnern als Wort | 3 | 2 | play | none | planned |
-| **REQ-215** | Tragraster aus Grösse und Statblock: ein Grundquadrat nach Grösse (Tiny 3 … Large 6) und ein Zusatzquadrat, das eine Rechnung gegen den Statblock des Trägers ergibt — beim Lesen gerechnet, nie eingetippt | 3 | 2 | play | none | planned |
+| **REQ-215** | Tragraster aus Grösse und Statblock: ein Grundquadrat nach Grösse (Tiny 3 … Large 6) und ein Zusatzquadrat in der Grösse des Stärkemodifikators (+1 … +5) aus dem Statblock des Trägers — beim Lesen gerechnet, nie eingetippt | 3 | 2 | play | none | planned |
 | **REQ-216** | Behälter in Behältern: jeder Behälter gibt eine Ziehstufe dazu, ausgehend davon, wo er selbst liegt; die Basiszonen kommen aus dem Blatt und sind je Behälter änderbar | 3 | 2 | play | none | planned |
 | **REQ-217** | Ziehen am Bogen: unter Aktion, Bonusaktion usw. je ein Eintrag „Ziehen“; ein Klick zeigt, was sich mit dieser Aktion herausnehmen lässt, mit Dauer | 3 | 2 | play | none | planned |
 | **REQ-218** | Blaupausen werden gelernt: alle Rezepte sind sichtbar, ungelernte mit „muss noch gelernt werden“ (ohne festen Fundort); Filter „kann der Charakter“ und „alle“, „machbar“ und „fast“, nach Material und nach Beruf | 3 | 2 | both | none | planned |
