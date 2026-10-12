@@ -12,3 +12,5 @@ export * from './validate.js';
 export * from './instance.js';
 export * from './stack.js';
 export * from './attack.js';
+export * from './movement.js';
+export * from './sight.js';
