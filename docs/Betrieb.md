@@ -237,11 +237,15 @@ node packages/import-5etools/dist/cli.js ~/5etools-src/data --out 5etools-2014.j
 ```
 
 Jeder Artikel geht dabei durch `validateEntity`; besteht einer nicht,
-bricht der Lauf ab und schreibt keine Datei. Die Datei (rund 35 MB,
-28 000 Artikel) wird **nicht** eingecheckt, der Bericht schon. `--srd`
+bricht der Lauf ab und schreibt keine Datei. Die Datei (rund 33 MB,
+26 400 Artikel) wird **nicht** eingecheckt, der Bericht schon. `--srd`
 nimmt nur, was im SRD steht; `--sources PHB,MM` nur diese Bücher.
 `--sample` schreibt einen Ausschnitt als Prüfbestand nach
-`prototype/test/dbdump/entities` (das Register dazu: `emit-seed`).
+`prototype/test/dbdump/entities` (das Register dazu: `emit-seed`) —
+derselbe Ausschnitt geht ins Artefakt. Das Verzeichnis vorher leeren:
+der Lauf schreibt hinzu und löscht nichts. Gleiche Merkmale und
+Fassungen aus mehreren Büchern löst der Lauf selbst auf
+([Arbeitsplan › Doppel](5etools-Arbeitsplan.md)).
 
 **3. Sichern** — auf dem Server, vor dem Laden. Die Sicherung wird nicht
 gelöscht, auch wenn der Bestand neu steht: sie ist der einzige Ort, an dem

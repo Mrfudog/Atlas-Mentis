@@ -4,14 +4,16 @@ Erzeugt von `packages/import-5etools` (Paket P5, [5etools-Arbeitsplan.md](5etool
 
 - Datenstand: 5etools-src 8c026b8 2026-10-08
 - Aufruf: `node packages/import-5etools/dist/cli.js <data> --bericht <datei>`
-- **27’838 Artikel**, alle durch `validateEntity` mit `knownTypes`
-- Gleichlautende Merkmale der Statblöcke (Arbeitsplan §2.5): 1’893 Aktionen und Merkmale stehen an mehr als einem Statblock; 5’705 Doppel wurden dadurch nicht angelegt
+- **26’404 Artikel**, alle durch `validateEntity` mit `knownTypes`
+- Gleichlautende Merkmale der Statblöcke (Arbeitsplan §2.5): 1’753 Aktionen und Merkmale stehen an mehr als einem Statblock; 6’816 Doppel wurden dadurch nicht angelegt
+- Gleiche Merkmale an verschiedenen Trägern (`doppel.ts`): 323 Artikel mit einem gleichen vereint (323 Feature)
+- Fassungen aus mehreren Büchern (`doppel.ts`): 635 Artikel sind Variante der geltenden Fassung und tragen ihr Buch im Namen (301 Statblock, 171 Deity, 49 Ancestry, 44 Language, 29 Table, 27 Rule, 7 Item, 4 Weapon, 2 Armor, 1 Hazard)
 
 ## Artikel je Art (unsere)
 
 | Art | Artikel |
 | --- | ---: |
-| `Action` | 9’130 |
+| `Action` | 8’787 |
 | `ActionType` | 7 |
 | `Ancestry` | 227 |
 | `Armor` | 76 |
@@ -22,7 +24,7 @@ Erzeugt von `packages/import-5etools` (Paket P5, [5etools-Arbeitsplan.md](5etool
 | `Disease` | 22 |
 | `Faction` | 30 |
 | `Feat` | 108 |
-| `Feature` | 8’204 |
+| `Feature` | 7’113 |
 | `Hazard` | 57 |
 | `Item` | 1’638 |
 | `ItemProperty` | 14 |
