@@ -13,3 +13,4 @@ export * from './instance.js';
 export * from './stack.js';
 export * from './attack.js';
 export * from './initiative.js';
+export * from './inventory.js';
