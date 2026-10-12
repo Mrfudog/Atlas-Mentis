@@ -155,6 +155,7 @@ Object.assign(window.__T__,{participants:participants,tickFight:tickFight,
   fightExpiresAt:expiresAt,fightForPlayers:fightForPlayers,hpWord:hpWord});
 Object.defineProperty(window.__T__,'REG',{get:function(){return REG;}});
 Object.defineProperty(window.__T__,'ENT',{get:function(){return ENT;}});
+Object.defineProperty(window.__T__,'worldHistory',{get:function(){return worldHistory;}});
 Object.defineProperty(window.__T__,'MEMBERS',{get:function(){return MEMBERS;}});
 `;
 const mitGriff = page.replace(/\n\}\)\(\);\n<\/script>\s*$/, `${GRIFF}})();\n<\/script>\n`);

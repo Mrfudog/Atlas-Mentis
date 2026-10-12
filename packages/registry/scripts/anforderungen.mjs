@@ -260,7 +260,7 @@ const STAND = {
   'REQ-217': ['steht', 'Abschnitt „Actions“ am Bogen, je `DrawTime`-Stufe „Draw“ mit Weg (Prototyp, D54)'],
   'REQ-218': ['steht', 'gelernt über `knownBy`, Werkbank mit Filtern (Prototyp, D55)'],
   'REQ-219': ['steht', 'beim Start gebunden in `crafting.props.put`, `onFailure` (D55)'],
-  'REQ-220': ['offen', ''],
+  'REQ-220': ['steht', 'Spuren = `Event` mit Spanne, Inhalt über `partOf` (D57), Kampagne als Spur; `worldHistory` im Modell, Reiter im Element `timeline` (Prototyp)'],
   'REQ-221': ['offen', ''],
   'REQ-222': ['offen', ''],
   'REQ-223': ['offen', ''],

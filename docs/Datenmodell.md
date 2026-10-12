@@ -329,7 +329,7 @@ nicht — den gäbe es auch ohne das Rezept.
 
 | Familie | Kanten | Trägt |
 |---|---|---|
-| Struktur | `partOf`, `insideMap` | Ort, Rahmen — die Reihenfolge sagt `Time.sort` |
+| Struktur | `partOf`, `insideMap` | Ort, Rahmen, Spur der Weltgeschichte (§5.9) — die Reihenfolge sagt `Time.sort` |
 | Teil | `belongsTo`, `carries` | `asField` |
 | Einsetzen | `composedOf`, `hasProperty` | `section`, `vars` |
 | Regel | `stageOf`, `affects`, `grants`, `subclassOf`, `subraceOf` | Stufe eines Zustands; Wirkung zwischen Regeln (`effect`, `on`, `note`); was Klasse, Abstammung, Hintergrund gewähren (`level`) |
@@ -446,6 +446,18 @@ flowchart LR
   S[Statblock-Instanz] -- belongsTo --> C
   S -- instanceOf --> V[Statblock-Vorlage]
   E -. "ac, hpMax: participantStats" .-> S
+### 5.9 Zeitleisten und Spuren (D57, REQ-220)
+
+```mermaid
+flowchart LR
+  AGE["Event: Third Age<br/>Time 1000 – 1500"]
+  WAR["Event: Dragon War<br/>Time 1480 – 1490"] -- "partOf" --> AGE
+  B["Event: Battle of Ash · 1485"] -- "partOf" --> WAR
+  L["Event: Late skirmish · 1495"] -- "partOf" --> WAR
+  W["Event: Royal wedding · 1486<br/>(keine Kante)"]
+  C["Campaign: Nebelwacht<br/>Spanne gerechnet: 1486 – 1492"]
+  S["Session one · 1492"] -- "partOf" --> C
+  W -. "hält keine Spur → Kampagne" .-> C
 ```
 
 | | Regel | Geprüft durch |
@@ -459,6 +471,23 @@ flowchart LR
 Offen: der laufende Zug steht als Index an der Begegnung (`turn`) und
 zählt damit auch die verborgenen Teilnehmer mit; dass `bloodied` schon
 unter dem Maximum gilt und nicht erst ab der Hälfte.
+| Z1 | **Eine Spur ist ein Ereignis mit Spanne** (`Event`, `Time.sort` … `Time.untilSort`). Ein Ende vor dem Anfang ist keine Spanne. Eine neue Art gibt es dafür nicht: ein Krieg, eine Dynastie, ein Zeitalter sind Ereignisse, die dauern (`Event.kind` sagt, welche Sorte). | `isTrack` |
+| Z2 | **Was in einer Spur liegt, sagt `partOf`**, nicht der Zeitraum (D57): die Schlacht ist Teil des Kriegs, der Krieg Teil des Zeitalters. Die Kante ist dafür auf `Event` verbreitert (`from`/`to`). Ein Artikel liegt in der **nächsten** Spur über seine Kette; ein Glied, das keine Spur ist oder nicht gesehen wird, wird übersprungen. | Kantenprüfung, `worldHistory` |
+| Z3 | **Die Spanne prüft mit, sie ordnet nicht ein.** Was über die Kante drinliegt und ausserhalb fällt, nennt die Rechnung (`outside`) — die Leitung sieht es gestrichelt; verschoben oder abgelehnt wird nichts. | `worldHistory` |
+| Z4 | **Eine Spur in einer Spur ist beides**: ein Balken in der äusseren und eine eigene Spur darunter. Ihr Inhalt steht nur in ihr. | `worldHistory` |
+| Z5 | **Die Kampagne ist eine Spur.** Was keine Spur hält, gehört ihr (ausser es gehört über seine Ebene einer anderen Kampagne). Ihre Spanne ist ihre `Time`, sonst die ihres Inhalts — beim Lesen gerechnet (D8). Liegt sie selbst über `partOf` in einer Spur, hängt sie darunter. | `worldHistory` |
+| Z6 | **Eine Achse für alle**: `sort` ist der Wert im Weltkalender (`World.calendar`), und alle Kampagnen einer Welt lesen so. | — |
+| Z7 | **Was man nicht sieht, steht nicht da**: Sichtbarkeit (`articleVisible`) zuerst; wessen Zeit man nicht weiss (eine unbekannte Information nennt `Time`), der steht nicht auf der Leiste — man wüsste nicht, wo. | `worldHistory` (`visible`, `dated`) |
+
+Gezeichnet wird im Element `timeline` an der Kampagne, in zwei Reitern:
+**Campaign** (die Liste der Kampagnenspur) und **World history** (die
+Spuren auf einer Achse, je Spur ein- und ausblendbar, herangezoomt auf
+eine; ein Klick auf einen Balken öffnet den Artikel).
+
+Offen: der Kalender ist ein Name und keine Rechnung — `sort` tippt die
+Leitung selbst, aus „Mirtul 12, 1492 DR" wird keine Zahl. Ein Zeitalter
+als Hintergrund **über allen** Spuren (alles in seiner Spanne, ohne Kante)
+gibt es nicht; es ist eine Spur wie die anderen.
 
 ---
 
@@ -866,7 +895,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
 | `Campaign` | `Story` | — | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` `inWorld` `activates` | `partOf` `partyOf` `mapOf` | full |
-| `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `involves` | — | — |
+| `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `partOf` `involves` | `partOf` | — |
 | `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | full |
 | `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `mapOf` | — |
 | `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `nowPlaying` `partyNote` `stewardship` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `mapOf` | full |
@@ -955,7 +984,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `overrides` | * → * | ja | — | `scope` `note` |
 | `owes` | Creature → Creature |  | — | — |
 | `participates` | Encounter → Creature \| Statblock \| Party |  | — | `label` `init` `hp` `hpMax` `ally` `conditions` `note` `revealed` `involved` `identified` |
-| `partOf` | Place \| Story \| Quest → Place \| Story |  | — | — |
+| `partOf` | Place \| Story \| Quest \| Event → Place \| Story \| Event |  | — | — |
 | `partyOf` | Party → Campaign | ja | — | — |
 | `placed` | Board → * |  | — | `x` `y` `w` `h` `view` `z` `locked` `note` |
 | `questAbout` | Quest → * |  | — | — |

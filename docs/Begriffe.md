@@ -403,6 +403,25 @@ Rest jedem, der die Entwicklerwerkzeuge öffnet. Also geht nur die Gruppe
 hinaus und wer aufgedeckt oder beteiligt ist; ein Gegner, den niemand
 erkannt hat, heisst wie sein Deckname, und seine Trefferpunkte sind ein
 Wort — „angeschlagen" ist, was man am Tisch sieht, „7 von 18" nicht.
+### Eine Spur hält, was zu ihr gehört, nicht was in ihre Zeit fällt
+
+Die Weltgeschichte steht in **Spuren**: ein Krieg, eine Dynastie, ein
+Zeitalter — jedes ein Ereignis mit Spanne (`Time.sort` bis `untilSort`).
+Was darin liegt, sagt die Kante `partOf`, dieselbe, die das Zimmer ins Haus
+und das Kapitel in den Arc legt (D57).
+
+Die andere Antwort lag nahe: was in die Spanne fällt, liegt in der Spur.
+Sie kostet keine Kante, aber sie weiss nicht, wovon die Rede ist — die
+Hochzeit im Norden fiele in den Krieg im Süden, und jedes Ereignis läge in
+jeder Spur, die gerade läuft. Eine Spur ist eine Geschichte und kein
+Zeitfenster. Die Spanne bleibt trotzdem nützlich: was über die Kante
+drinliegt und ausserhalb fällt, ist vermutlich ein Tippfehler, und die
+Leitung sieht es gestrichelt.
+
+**Die Kampagne ist eine Spur wie die anderen** und hält, was keine andere
+hält: Sitzungen, Aufträge, Ereignisse am Tisch. Ihre Spanne wird beim
+Lesen gerechnet, wenn sie keine eigene trägt (D8) — eine gespeicherte
+wäre nach der nächsten Sitzung falsch.
 
 ---
 

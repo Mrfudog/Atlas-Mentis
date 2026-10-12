@@ -323,13 +323,19 @@ export const relations: Record<string, RelationDef> = {
    * hierarchy beside it: a chapter sits in an arc the way a room sits in a
    * building, and a quest hangs off the story it belongs to. Widening the
    * ends of an existing edge keeps one set of backlinks, one `contains`.
+   *
+   * **Eine Spur der Weltgeschichte enthält ihre Ereignisse über diese
+   * Kante** (REQ-220, D57): eine Schlacht ist Teil des Kriegs, der Krieg
+   * Teil des Zeitalters, und ein Ereignis am Tisch Teil der Kampagne. Nicht
+   * über den Zeitraum — sonst läge jede Hochzeit im Norden im Krieg im
+   * Süden.
    */
   partOf: {
     type: 'partOf',
     label: 'part of',
     inverseLabel: 'contains',
-    from: ['Place', 'Story', 'Quest'],
-    to: ['Place', 'Story'],
+    from: ['Place', 'Story', 'Quest', 'Event'],
+    to: ['Place', 'Story', 'Event'],
   },
 
   controls: {

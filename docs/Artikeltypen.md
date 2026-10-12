@@ -496,7 +496,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story — „part of"
+- `partOf` → Place | Story | Event — „part of"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `tableFor` → Table — „rolls on"
@@ -508,7 +508,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Creature — `livesIn` → „residents"
-- Place | Story | Quest — `partOf` → „contains"
+- Place | Story | Quest | Event — `partOf` → „contains"
 - Faction — `controls` → „controlled by"
 - Quest — `questAbout` → „concerned by"
 - Story — `happensAt` → „scenes here"
@@ -720,7 +720,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story — „part of"
+- `partOf` → Place | Story | Event — „part of"
 - `describedIn` → Article — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
@@ -736,7 +736,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest — `partOf` → „contains"
+- Place | Story | Quest | Event — `partOf` → „contains"
 - Party — `partyOf` → „parties"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
@@ -774,6 +774,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `partOf` → Place | Story | Event — „part of"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `involves` → * — „involves"
@@ -783,6 +784,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- Place | Story | Quest | Event — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -818,7 +820,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story — „part of"
+- `partOf` → Place | Story | Event — „part of"
 - `describedIn` → Article — „described in"
 - `questGiver` → Creature | Faction — „given by"
 - `questAbout` → * — „concerns"
@@ -869,7 +871,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story — „part of"
+- `partOf` → Place | Story | Event — „part of"
 - `describedIn` → Article — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
@@ -883,7 +885,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest — `partOf` → „contains"
+- Place | Story | Quest | Event — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -922,7 +924,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story — „part of"
+- `partOf` → Place | Story | Event — „part of"
 - `describedIn` → Article — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
@@ -936,7 +938,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest — `partOf` → „contains"
+- Place | Story | Quest | Event — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -974,7 +976,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story — „part of"
+- `partOf` → Place | Story | Event — „part of"
 - `describedIn` → Article — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
@@ -988,7 +990,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest — `partOf` → „contains"
+- Place | Story | Quest | Event — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
