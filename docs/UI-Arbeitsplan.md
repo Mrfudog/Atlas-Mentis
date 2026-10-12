@@ -26,7 +26,7 @@ oder Namen zeigt, die nicht im Bestand stehen, sind es Beispiele.
 | Dauer | Zustände und Notizen mit **Runden, Anker (wessen Zug) und Zeitpunkt (Anfang/Ende)** |
 | Spieler-Initiative | aufgedeckte oder beteiligte Kreaturen; ungekannte mit **Decknamen** |
 | Inventar | nach **Basils Blatt**; Figur männlich/weiblich/neutral **an der Kreatur** gespeichert |
-| Tragraster | Grundquadrat nach Grösse (Tiny 3, Small 4, Medium 5, Large 6), **Zusatzquadrat aus dem Statblock gerechnet** (wie ein Merkmal seinen Trefferbonus aus STR + Übung rechnet) |
+| Tragraster | Grundquadrat nach Grösse (Tiny 3, Small 4, Medium 5, Large 6), **Zusatzquadrat = Stärkemodifikator** des Statblocks (`mod(str)`, 0 … 5; ein negativer zählt als 0), beim Lesen gerechnet (präzisiert 12.10.) |
 | Zonen im Inventar | Basiszonen aus dem Blatt, änderbar, gespeichert in `Inventory.zones` |
 | Behälter | **jeder Behälter gibt eine Ziehstufe dazu**, ausgehend davon, wo er selbst liegt |
 | Ziehen | am Bogen je Aktionsart ein Eintrag „Ziehen“; Klick zeigt, was herauskommt, mit Dauer |
@@ -38,7 +38,8 @@ oder Namen zeigt, die nicht im Bestand stehen, sind es Beispiele.
 
 - **Tragraster** 11 × 6: links ein Quadrat 6 × 6, gestuft nach Grösse
   (Tiny 3 × 3, Small 4 × 4, Medium 5 × 5, Large 6 × 6); rechts ein Quadrat
-  5 × 5, gestuft +1 … +5 (das Zusatzquadrat).
+  5 × 5, gestuft +1 … +5 (das Zusatzquadrat): **die Stufe ist der
+  Stärkemodifikator** des Trägers.
 - **Zonen im Tragraster** nach Spalten: 0–1 Bonusaktion, 2–4 Aktion,
   5–8 Zug, 9–10 Runde (Werte der Zeile `DrawTime`).
 - **Rucksack**: Form `.###..` / `######` × 3 / `.###..`; Zonen nach Spalten
@@ -97,11 +98,12 @@ REQ-223 (Regelsysteme als Rahmen).
   umbenannt wird, wandert mit einem Skript in `prototype/migration/`; was
   niemand mehr trägt, wird aufgezählt.
 - **Tragraster**: hat das Inventar einer Kreatur kein eigenes `grid`, kommt
-  seine Form aus der Grösse des Statblocks (Grundquadrat) und einer
-  **Rechnung gegen den Statblock** (Zusatzquadrat, 0 … 5) — beim Lesen
-  gerechnet (D8), mit `evalArith`, kein `eval`. Wo die Rechnung steht
-  (Einstellung oder Feld am Inventar), entscheidet das Paket; ohne Angabe
-  bleibt das heutige Rechteck.
+  seine Form aus der Grösse des Statblocks (Grundquadrat) und dem
+  **Stärkemodifikator** (Zusatzquadrat, `mod(str)`, 0 … 5, negativ = 0) —
+  beim Lesen gerechnet (D8), mit den vorhandenen Rechenfunktionen, kein
+  `eval`. Ob die Rechnung `mod(str)` fest im Code oder als änderbare
+  Einstellung steht, entscheidet das Paket; ohne Statblock bleibt das
+  heutige Rechteck.
 - **Behälter in Behältern**: ein Inventar darf in einem anderen liegen
   (z. B. `holds` auch auf `Inventory`, oder ein Verweis vom Inventar auf
   seinen Gegenstand für die Form). Die Ziehstufe eines Stücks ist das
