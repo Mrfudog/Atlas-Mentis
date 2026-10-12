@@ -220,7 +220,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 | **REQ-106** | Events & timelines sorted by WorldDate | 3 | 3 | prep | none | done |
 | **REQ-108** | Campaign-specific lore divergence via campaign-scoped blocks and overrides | 3 | 3 | prep | none | done |
 | **REQ-109** | Player-authored ContentBlocks with per-view block-type whitelist | 3 | 3 | both | none | in progress |
-| **REQ-220** | Zeitleisten der Weltgeschichte: mehrere Spuren (ein Krieg, eine Dynastie, Zeitalter) neben der Kampagnenzeitleiste; ein Ereignis mit Spanne enthält seine Ereignisse, und die Kampagne ist eine Spur unter ihnen | 3 | 3 | prep | low | planned |
+| **REQ-220** | Zeitleisten der Weltgeschichte: mehrere Spuren (ein Krieg, eine Dynastie, Zeitalter) neben der Kampagnenzeitleiste; ein Ereignis mit Spanne enthält seine Ereignisse, und die Kampagne ist eine Spur unter ihnen | 3 | 3 | prep | low | done |
 | **REQ-025** | CalendarSystem definition: months, eras, moons, configurable per world/system | 3 | 5 | prep | low | defined |
 | **REQ-168** | Point-crawl travel: node/edge graph attached to a Location, with per-edge sensory read-aloud text and per-node arrival state | 3 | 5 | both | none | done |
 | **REQ-107** | Pantheons / deities as article subtype | 4 | 1 | prep | none | defined |
