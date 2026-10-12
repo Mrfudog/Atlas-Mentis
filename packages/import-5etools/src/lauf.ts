@@ -14,7 +14,8 @@ import { CHARAKTERBAU } from './arten/charakterbau.js';
 import { LEGENDAER, MONSTER } from './arten/monster.js';
 import { WELT } from './arten/welt.js';
 import type { Knoten } from './copy.js';
-import { fassungen, vereineGleiche } from './doppel.js';
+import { fassungen, herkunft, vereineGleiche } from './doppel.js';
+import { angriffeVereinen } from './arten/angriff.js';
 import { KOPIE_VON, loeseKopien } from './copy.js';
 import type { Auswahl, Datenstand } from './lesen.js';
 import { ARTEN_WEG, ausschluss, quelleVon } from './lesen.js';
@@ -214,6 +215,11 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
     wb.kante(ent, 'variantOf', original.id);
   }
 
+  /* Die Angriffe der Statblöcke: je Angriff die Vorgaben, an jeder Kante
+     die Abweichung (D51). Vor dem Aufräumen — eine Kante ohne Abweichung
+     verliert dabei ihre leere Karte. */
+  angriffeVereinen(wb, wb.angriffe);
+
   for (const e of wb.entities) aufraeumen(e);
 
   /* Doppel, die erst gefüllt zu erkennen sind: gleiche Merkmale an
@@ -223,6 +229,7 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
   wb.entities.splice(0, wb.entities.length, ...entities);
   for (const [t, n] of wb.bericht.vereint) zaehle(wb.bericht.typen, t, -n);
   fassungen(wb.entities, stand, wb.bericht, (e) => wb.nachdrucke.get(e.id) ?? []);
+  herkunft(wb.entities, stand, wb.bericht, (e) => wb.nachdrucke.get(e.id) ?? []);
 
   /* 4. Prüfen, mit Art und Stufen — wie der Server beim Schreiben. */
   const bekannteArten = new Map(wb.entities.map((e) => [e.id, e.interfaces[0] ?? ''] as const));

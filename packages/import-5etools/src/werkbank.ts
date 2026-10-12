@@ -18,6 +18,7 @@ import type { Knoten } from './copy.js';
 import { quelleVon } from './lesen.js';
 import { inline, markdown } from './text.js';
 import type { TextKontext } from './text.js';
+import type { Verwendung } from './arten/angriff.js';
 
 /** Was der Bericht je 5e.tools-Art festhält. */
 export interface ArtBericht {
@@ -48,6 +49,10 @@ export interface Bericht {
   vereint: Map<string, number>;
   /** Art → Fassungen, die Variante einer geltenden wurden (`doppel.ts`). */
   fassungen: Map<string, number>;
+  /** Monstermerkmale, die auf ihr Volksmerkmal zeigen (`doppel.ts`). */
+  herkunft: number;
+  /** Angriffe der Statblöcke, einer für alle (`arten/angriff.ts`, D51). */
+  angriffe: { artikel: number; verwendungen: number; buchTreffer: number; buchSchaden: number; alsText: number; jeName: Map<string, number> };
 }
 
 export function neuerBericht(): Bericht {
@@ -60,6 +65,8 @@ export function neuerBericht(): Bericht {
     geteilt: { merkmale: 0, verwendungen: 0 },
     vereint: new Map(),
     fassungen: new Map(),
+    herkunft: 0,
+    angriffe: { artikel: 0, verwendungen: 0, buchTreffer: 0, buchSchaden: 0, alsText: 0, jeName: new Map() },
   };
 }
 
@@ -294,6 +301,8 @@ export class Werkbank {
   /** Gleichlautende Merkmale der Statblöcke (Arbeitsplan §2.5). */
   readonly geteilt = new Map<string, Entity>();
   readonly geteiltGezaehlt = new Set<string>();
+  /** Jede Verwendung eines gemeinsamen Angriffs — nach dem Füllen vereint (D51). */
+  readonly angriffe: Verwendung[] = [];
   /** Wie viele Einträge in einem Artikel aufgingen (`Zuordnung.vereinen`). */
   readonly vereint = new Map<string, number>();
   /** Je legendärer Gruppe ihre Teile, für `composedOf` vom Statblock. */

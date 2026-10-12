@@ -409,6 +409,20 @@ angelegt (vorher 5 705), 323 Merkmale über Klassen vereint, 635 Fassungen
 als Variante (301 Statblöcke, 171 Gottheiten, 49 Abstammungen, 44
 Sprachen …).
 
+**Angriffe, einer für alle (Entscheidung 12.10.2026, D51,
+`src/arten/angriff.ts`).** Der Angriffssatz eines Statblocks wird in
+Felder zerlegt; je Name, Sorte, Schadensart (und Aufladung) gibt es
+**einen** Angriff, dessen Vorgaben der häufigste Fall sind. Jede Kante
+`composedOf` trägt nur, was ihr Statblock anders macht, dazu die
+Buchzahl, wo die Rechnung etwas anderes ergäbe, und den Satz nur dieses
+Statblocks. Ein Lauf: 5 685 Verwendungen auf 1 093 Angriffe, die
+Buchzahl steht beim Treffer 394-mal und beim Schaden 505-mal an der
+Kante — **jeder** der 5 685 Angriffe rechnet am Statblock genau die
+Zahl des Buchs (nachgerechnet gegen den Lauf davor). 311 Angriffe sind
+anders gebaut (kein Würfel, zwei Schadensarten, Shillelagh) und bleiben
+Text. Monstermerkmale zeigen auf ihr Volksmerkmal (279), wenn ein Träger
+zu dem Volk gehört. Insgesamt **24 157 Artikel**.
+
 **Der Ausschnitt** (`--sample`, `PROBE` in `lauf.ts`) ist der Prüfbestand
 und das, was ins Artefakt geht: jede Art, die Grenzfälle (Legendär mit
 Hort, Schwarm, benannte Figur, Zustand mit Stufen, Fassung und Variante,
