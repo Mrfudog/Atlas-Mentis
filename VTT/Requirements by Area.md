@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, view]
 status: derived
-updated: 2026-10-07
+updated: 2026-10-12
 ---
 
 # Requirements by Area
@@ -99,7 +99,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 
 ## Creatures & Characters
 
-20 requirements · 89 points · area definition: [[Areas#Creatures & Characters]]
+22 requirements · 96 points · area definition: [[Areas#Creatures & Characters]]
 
 | ID | Requirement | Prio | Effort | Phase | Prep cost | Status |
 |---|---|---|---|---|---|---|
@@ -114,10 +114,12 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 | **REQ-053** | Statblock as composition of RuleElement references (traits, feats, actions) | 2 | 5 | prep | none | done |
 | **REQ-060** | Companions / summons as regular creatures via companionOf + overrides | 3 | 2 | both | none | in progress |
 | **REQ-105** | NPC directory as filtered view over creatures with relations | 3 | 2 | both | none | done |
+| **REQ-215** | Tragraster aus Grösse und Statblock: ein Grundquadrat nach Grösse (Tiny 3 … Large 6) und ein Zusatzquadrat, das eine Rechnung gegen den Statblock des Trägers ergibt — beim Lesen gerechnet, nie eingetippt | 3 | 2 | play | none | planned |
 | **REQ-052** | Detailed statblock viewer | 3 | 3 | play | none | done |
 | **REQ-055** | Inline trait reuse & variant creation while typing | 3 | 3 | prep | none | defined |
 | **REQ-059** | Creature knowledge facts: gated ContentBlocks on type / species / faction | 3 | 3 | play | low | done |
 | **REQ-057** | Point-buy ability setting | 4 | 2 | prep | none | defined |
+| **REQ-222** | Stufenaufstieg: Schritte aus Klassen- und Unterklassentabellen (TP, Attributsverbesserung oder Talent, Zauber), Folgewerte gerechnet | 4 | 5 | play | none | idea |
 | **REQ-095** | Effects interpreter for grants (first consumer: creature builder) | 4 | 8 | prep | none | defined |
 | **REQ-056** | Creature builder with suggestions (origin + fightingtype filter, grants applied via effects) | 4 | 13 | prep | none | defined |
 | **REQ-058** | Monster scaling | 5 | 5 | prep | none | idea |
@@ -126,7 +128,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 
 ## Player Experience
 
-20 requirements · 69 points · area definition: [[Areas#Player Experience]]
+29 requirements · 91 points · area definition: [[Areas#Player Experience]]
 
 | ID | Requirement | Prio | Effort | Phase | Prep cost | Status |
 |---|---|---|---|---|---|---|
@@ -140,20 +142,29 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 | **REQ-083** | Player-created quests and personal goals | 3 | 1 | play | none | defined |
 | **REQ-060** | Companions / summons as regular creatures via companionOf + overrides | 3 | 2 | both | none | in progress |
 | **REQ-183** | Party-owned inventory as a shared container distinct from character inventories | 3 | 2 | both | none | done |
+| **REQ-213** | Initiative der Spielenden: die eigene Reihenfolge und jede Kreatur, die aufgedeckt oder schon beteiligt ist; nicht erkannte Kreaturen mit Decknamen, TP von Gegnern als Wort | 3 | 2 | play | none | planned |
+| **REQ-215** | Tragraster aus Grösse und Statblock: ein Grundquadrat nach Grösse (Tiny 3 … Large 6) und ein Zusatzquadrat, das eine Rechnung gegen den Statblock des Trägers ergibt — beim Lesen gerechnet, nie eingetippt | 3 | 2 | play | none | planned |
+| **REQ-216** | Behälter in Behältern: jeder Behälter gibt eine Ziehstufe dazu, ausgehend davon, wo er selbst liegt; die Basiszonen kommen aus dem Blatt und sind je Behälter änderbar | 3 | 2 | play | none | planned |
+| **REQ-217** | Ziehen am Bogen: unter Aktion, Bonusaktion usw. je ein Eintrag „Ziehen“; ein Klick zeigt, was sich mit dieser Aktion herausnehmen lässt, mit Dauer | 3 | 2 | play | none | planned |
+| **REQ-218** | Blaupausen werden gelernt: alle Rezepte sind sichtbar, ungelernte mit „muss noch gelernt werden“ (ohne festen Fundort); Filter „kann der Charakter“ und „alle“, „machbar“ und „fast“, nach Material und nach Beruf | 3 | 2 | both | none | planned |
+| **REQ-219** | Material wird beim Start an den Vorgang gebunden: es verlässt den Vorrat und kann nicht doppelt oder anderweitig gebraucht werden; was beim Misslingen zurückkommt, sagt `Recipe.onFailure` | 3 | 2 | play | none | planned |
 | **REQ-119** | Player boards | 3 | 3 | play | none | defined |
 | **REQ-128** | Combat player view: own initiative, conditions, health comments | 3 | 3 | play | none | in progress |
+| **REQ-210** | Karte und Initiative je als Vollbild, je mit SL- und Spieleransicht; Spielende bewegen ihre eigenen Tokens und prüfen die Reichweite selbst | 3 | 3 | play | none | planned |
 | **REQ-066** | Character sheet: Combat tab (initiative, actions, companions) | 3 | 5 | play | none | done |
 | **REQ-067** | Character sheet: Spellcasting tab (slots/points, concentration, active spells, list) | 3 | 5 | play | none | defined |
 | **REQ-200** | Chat: Fäden zwischen SL und einzelnen Spielern und zwischen Spielern untereinander, an der Kampagne und nicht an einer Sitzung | 3 | 5 | both | none | idea |
+| **REQ-214** | Ausrüstungsfigur nach dem Inventarblatt: Figur je Kreatur wählbar (männlich, weiblich, neutral) und dort gespeichert; Plätze Kopf, Schulter, Torso, rechte und linke Hand, Beine, Stiefel, Gurt mit zwei Holstern, Ringe je Hand, Halskette | 4 | 2 | play | none | planned |
 | **REQ-068** | Character sheet: Freeplay tab | 4 | 3 | play | none | defined |
 | **REQ-071** | Shared rolls & roll log per session | 4 | 3 | play | none | done |
 | **REQ-073** | Custom / reorderable sheet layout | 4 | 5 | play | none | dropped |
 | **REQ-184** | Crafting: recipes with material inputs, skill checks and DC, time, and output; consumption on completion | 4 | 5 | both | none | done |
+| **REQ-222** | Stufenaufstieg: Schritte aus Klassen- und Unterklassentabellen (TP, Attributsverbesserung oder Talent, Zauber), Folgewerte gerechnet | 4 | 5 | play | none | idea |
 | **REQ-065** | Tile-based visual inventory (alternative view over same data) | 4 | 8 | play | low | done |
 
 ## Campaign & Sessions
 
-27 requirements · 101 points · area definition: [[Areas#Campaign & Sessions]]
+30 requirements · 112 points · area definition: [[Areas#Campaign & Sessions]]
 
 | ID | Requirement | Prio | Effort | Phase | Prep cost | Status |
 |---|---|---|---|---|---|---|
@@ -177,9 +188,12 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 | **REQ-172** | Weighted encounter tables per region, with per-location type constraints and safety states that restrict the pool | 3 | 3 | both | none | done |
 | **REQ-180** | Narrative seeds: planted threads with category (Backstory · Geheimnis · Faden · Idee · Versprechen · Konsequenz) and status (offen · gepflanzt · aufgegangen · verworfen), bound to a character and the session planted in | 3 | 3 | both | none | idea |
 | **REQ-201** | Aus einer Stelle im Chat wird Kampagneninhalt: eine Nachricht (oder ein markierter Abschnitt) wird zur Idee, zum Todo, zum Faden oder zu einem ContentBlock an einem Artikel, mit Rückverweis auf die Stelle | 3 | 3 | both | none | idea |
+| **REQ-205** | Ein Board je Geschichtsartikel (Kampagne, Kapitel, Sitzung, nicht Szene) und Regel-Boards; der Schirm schaltet zwischen ihnen, die Artikelansicht filtert nach Artikeln aus den offenen Boards | 3 | 3 | both | low | idea |
+| **REQ-221** | Begegnungsbau: Schwierigkeit aus den XP-Schwellen der Gruppe mit Multiplikator nach Anzahl (2014), Kreaturen aus dem Kompendium, dann auf die Karte setzen und Initiative starten | 3 | 3 | prep | none | idea |
 | **REQ-200** | Chat: Fäden zwischen SL und einzelnen Spielern und zwischen Spielern untereinander, an der Kampagne und nicht an einer Sitzung | 3 | 5 | both | none | idea |
 | **REQ-173** | World-state decay between sessions: roll to degrade secured locations, weighted by adjacency to faction territory | 4 | 3 | prep | none | idea |
 | **REQ-196** | Sitzungsmitschnitt: Audio einer Sitzung aufnehmen oder eine fertige Aufnahme anhängen, als Asset am Sitzungs-Container, mit Startzeit und Kapitelmarken | 4 | 5 | play | none | idea |
+| **REQ-223** | Regelsysteme als Rahmen (Taverne, Alley, Kanalisation): ein Ort, seine Kennzahlen, ein Wochenwurf und ein Protokoll | 4 | 5 | both | low | idea |
 | **REQ-081** | Reputation & relationship system: interaction tags propagate NPC → faction → city with renown thresholds and status | 4 | 8 | play | none | dropped |
 | **REQ-197** | Transkription und Recap-Entwurf: Mitschnitt transkribieren, am Sitzungsverlauf ausrichten und daraus einen Recap-Entwurf erzeugen, den die SL bearbeitet | 4 | 8 | prep | none | idea |
 | **REQ-198** | Sprecherzuordnung im Transkript: Abschnitte einer Figur oder der SL zuordnen, damit „was hat meine Figur mitbekommen“ beantwortbar wird | 5 | 5 | prep | low | idea |
@@ -187,7 +201,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 
 ## World & Lore
 
-24 requirements · 91 points · area definition: [[Areas#World & Lore]]
+25 requirements · 94 points · area definition: [[Areas#World & Lore]]
 
 | ID | Requirement | Prio | Effort | Phase | Prep cost | Status |
 |---|---|---|---|---|---|---|
@@ -206,6 +220,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 | **REQ-106** | Events & timelines sorted by WorldDate | 3 | 3 | prep | none | done |
 | **REQ-108** | Campaign-specific lore divergence via campaign-scoped blocks and overrides | 3 | 3 | prep | none | done |
 | **REQ-109** | Player-authored ContentBlocks with per-view block-type whitelist | 3 | 3 | both | none | in progress |
+| **REQ-220** | Zeitleisten der Weltgeschichte: mehrere Spuren (ein Krieg, eine Dynastie, Zeitalter) neben der Kampagnenzeitleiste; ein Ereignis mit Spanne enthält seine Ereignisse, und die Kampagne ist eine Spur unter ihnen | 3 | 3 | prep | low | planned |
 | **REQ-025** | CalendarSystem definition: months, eras, moons, configurable per world/system | 3 | 5 | prep | low | defined |
 | **REQ-168** | Point-crawl travel: node/edge graph attached to a Location, with per-edge sensory read-aloud text and per-node arrival state | 3 | 5 | both | none | done |
 | **REQ-107** | Pantheons / deities as article subtype | 4 | 1 | prep | none | defined |
@@ -218,7 +233,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 
 ## Rules & Reference
 
-20 requirements · 82 points · area definition: [[Areas#Rules & Reference]]
+24 requirements · 96 points · area definition: [[Areas#Rules & Reference]]
 
 | ID | Requirement | Prio | Effort | Phase | Prep cost | Status |
 |---|---|---|---|---|---|---|
@@ -234,18 +249,22 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 | **REQ-099** | Pinnable rules: bookmark object (user + context + rule) | 3 | 1 | play | none | done |
 | **REQ-097** | Spell lists as relations (class ↔ spell) | 3 | 2 | prep | none | defined |
 | **REQ-175** | Inline rule reference panel: text scanned against RuleElement names and aliases, matches shown as an expandable block in the view | 3 | 2 | play | none | done |
+| **REQ-218** | Blaupausen werden gelernt: alle Rezepte sind sichtbar, ungelernte mit „muss noch gelernt werden“ (ohne festen Fundort); Filter „kann der Charakter“ und „alle“, „machbar“ und „fast“, nach Material und nach Beruf | 3 | 2 | both | none | planned |
+| **REQ-219** | Material wird beim Start an den Vorgang gebunden: es verlässt den Vorrat und kann nicht doppelt oder anderweitig gebraucht werden; was beim Misslingen zurückkommt, sagt `Recipe.onFailure` | 3 | 2 | play | none | planned |
 | **REQ-055** | Inline trait reuse & variant creation while typing | 3 | 3 | prep | none | defined |
+| **REQ-208** | Zonen mit eigenen Regeln: eine Zonenart ist ein Regelartikel; Bewegungskosten, Licht, Sicht und „versteckt bis passive Wahrnehmung n“ rechnet die Karte, Schaden, Rettungswurf, Zustand und freie Regeln zeigt sie und schreibt sie beim Betreten ins Protokoll | 3 | 5 | both | low | planned |
 | **REQ-195** | Statblock export back to Obsidian markdown, preserving `{VAR}` placeholders unresolved | 4 | 2 | prep | none | idea |
 | **REQ-017** | Term engine bindings: system-specific semantic evaluation of rule terms | 4 | 5 | play | none | defined |
 | **REQ-149** | PDF viewer with page-anchor jump from SourceRef | 4 | 5 | both | none | defined |
 | **REQ-184** | Crafting: recipes with material inputs, skill checks and DC, time, and output; consumption on completion | 4 | 5 | both | none | done |
+| **REQ-223** | Regelsysteme als Rahmen (Taverne, Alley, Kanalisation): ein Ort, seine Kennzahlen, ein Wochenwurf und ein Protokoll | 4 | 5 | both | low | idea |
 | **REQ-095** | Effects interpreter for grants (first consumer: creature builder) | 4 | 8 | prep | none | defined |
 | **REQ-096** | Constraint interpreter (first consumer: settlement / building validation) | 5 | 8 | prep | none | idea |
 | **REQ-093** | Rule engine per system evaluating rules against entity data (constraints, terms) | 5 | 13 | play | none | idea |
 
 ## Live Play
 
-45 requirements · 161 points · area definition: [[Areas#Live Play]]
+56 requirements · 192 points · area definition: [[Areas#Live Play]]
 
 | ID | Requirement | Prio | Effort | Phase | Prep cost | Status |
 |---|---|---|---|---|---|---|
@@ -254,6 +273,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 | **REQ-098** | Sub-5-second rule lookup during play | 2 | 2 | play | none | done |
 | **REQ-113** | Widget: notes | 2 | 2 | play | none | defined |
 | **REQ-166** | Board-first authoring: create entities directly on the canvas (into the campaign layer), choose their facet and place them in one flow | 2 | 2 | both | none | in progress |
+| **REQ-212** | Zustände und Notizen mit Dauer: Anzahl Runden, Anker (wessen Zug) und Zeitpunkt (Anfang oder Ende dieses Zuges); eine Notiz ist ein freier Text mit derselben Dauer | 2 | 2 | play | none | planned |
 | **REQ-079** | DM session quick actions: grant knowledge, reveal block, mark encounter occurred — one tap | 2 | 3 | play | none | in progress |
 | **REQ-085** | Encounter entity: links notes, maps, NPCs, loot tables; attachable to any container level; dice-table semantics | 2 | 3 | prep | none | done |
 | **REQ-112** | Widget: reference box holding multiple open articles with inner tabs | 2 | 3 | play | none | dropped |
@@ -261,6 +281,7 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 | **REQ-158** | Placement rendering: each placement resolves to a facet/renderer via the display resolution; explicit per-placement override always wins | 2 | 3 | both | none | done |
 | **REQ-164** | Facets (Darstellungsstufen): system-wide set short/description/full/image/token/map/link, reusable across boards, sheets, statblocks, notes; `renderer_def` analogous to `projection_def` | 2 | 3 | both | none | dropped |
 | **REQ-165** | Board placements beyond content entities: assets (images, icons), geometric/mathematical shapes as inline canvas objects, and tool objects (interactive widgets such as creature creator or generators) on the canvas | 2 | 3 | both | none | done |
+| **REQ-211** | Initiative wie Improved Initiative: je Zeile Initiative, RK, TP und Zustände, aus der Zeile der Statblock | 2 | 3 | play | none | planned |
 | **REQ-044** | Scope inspector sidebar, slim: effective source layer per block/property | 2 | 5 | both | none | done |
 | **REQ-115** | Widget: initiative tracker — session-aware, conditions with durations, damage attributed to current actor by default | 2 | 5 | play | none | done |
 | **REQ-161** | Display resolution as priority system: entity profile proposes, board rules (per interface / attribute value) decide, user overrides; placement override wins; ties → board rule; works board-only | 2 | 5 | both | none | done |
@@ -275,6 +296,9 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 | **REQ-186** | Nested loot tables: a table entry may reference another table, with cycle protection | 3 | 2 | both | none | done |
 | **REQ-187** | Table display mode: a shared read-only presentation view for a screen at the table, distinct from per-player accounts | 3 | 2 | play | none | idea |
 | **REQ-190** | Quick capture during play: one field that files a seed, todo or idea against the current session without leaving the view | 3 | 2 | play | none | done |
+| **REQ-207** | Wählbarer Pfad: Wegpunkte setzen (um eine Falle herum, nicht an einem Gegner vorbei), zwischen ihnen der günstigste Weg; die Diagonalenzählung läuft über die Wegpunkte weiter; Gefahren und Reichweite von Gegnern können gemieden werden | 3 | 2 | play | none | planned |
+| **REQ-213** | Initiative der Spielenden: die eigene Reihenfolge und jede Kreatur, die aufgedeckt oder schon beteiligt ist; nicht erkannte Kreaturen mit Decknamen, TP von Gegnern als Wort | 3 | 2 | play | none | planned |
+| **REQ-217** | Ziehen am Bogen: unter Aktion, Bonusaktion usw. je ein Eintrag „Ziehen“; ein Klick zeigt, was sich mit dieser Aktion herausnehmen lässt, mit Dauer | 3 | 2 | play | none | planned |
 | **REQ-086** | Party view: passive perception, feats, inventory overview | 3 | 3 | play | none | in progress |
 | **REQ-117** | Stewardship: write permission on a state object per user, GM override configurable | 3 | 3 | play | none | done |
 | **REQ-119** | Player boards | 3 | 3 | play | none | defined |
@@ -282,9 +306,15 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 | **REQ-128** | Combat player view: own initiative, conditions, health comments | 3 | 3 | play | none | in progress |
 | **REQ-159** | Frames / viewpoint anchors: named canvas viewports (position, zoom depth, target facet, visible layers), persisted in the board config | 3 | 3 | both | low | done |
 | **REQ-172** | Weighted encounter tables per region, with per-location type constraints and safety states that restrict the pool | 3 | 3 | both | none | done |
+| **REQ-205** | Ein Board je Geschichtsartikel (Kampagne, Kapitel, Sitzung, nicht Szene) und Regel-Boards; der Schirm schaltet zwischen ihnen, die Artikelansicht filtert nach Artikeln aus den offenen Boards | 3 | 3 | both | low | idea |
+| **REQ-206** | Bewegungsrechner auf der Karte: Diagonalen 5-10-5, gezählt je Kreatur und Zug und mit jedem Zug neu; Modi „genauer Weg“, „grösste Reichweite“, „aus“; das Tempo des Zuges ist eine Zahl, die man ändert (Spurt, Klettern, Schwimmen, Sonderfälle), und die SL darf übersteuern | 3 | 3 | play | none | planned |
+| **REQ-209** | Aufdecken: von Hand oder beim Bestätigen einer Bewegung, dann **entlang des Pfads** Schritt für Schritt; von Hand zeigt das Token, wen es sieht und von wem es gesehen wird (Sichtlinie, passive Wahrnehmung gegen Heimlichkeit, −5 im Dämmerlicht) | 3 | 3 | play | none | planned |
+| **REQ-210** | Karte und Initiative je als Vollbild, je mit SL- und Spieleransicht; Spielende bewegen ihre eigenen Tokens und prüfen die Reichweite selbst | 3 | 3 | play | none | planned |
+| **REQ-221** | Begegnungsbau: Schwierigkeit aus den XP-Schwellen der Gruppe mit Multiplikator nach Anzahl (2014), Kreaturen aus dem Kompendium, dann auf die Karte setzen und Initiative starten | 3 | 3 | prep | none | idea |
 | **REQ-118** | Widget: encounter runner — instantiate participants, roll random entries, raw statblocks trackable | 3 | 5 | play | none | done |
 | **REQ-125** | Widget: random tables & generators (names, shops, loot, cities) | 3 | 5 | play | low | done |
 | **REQ-135** | Play tokens: session- or campaign-scoped state objects (combat positions, temporary changes) | 3 | 5 | play | none | in progress |
+| **REQ-204** | Spielleiter-Schirm je Kampagne: Fenster (mehrere Bildschirme als Browser-Reiter), darin Plätze, die ein Board oder ein Werkzeug zeigen; zuklappbar, umstellbar, zwischen Fenstern verschiebbar | 3 | 5 | play | low | idea |
 | **REQ-126** | Widget: sound — embed/link external tool, native now-playing state only | 4 | 2 | play | high | in progress |
 | **REQ-144** | Initiative indicator on battlemap (current / next) | 4 | 2 | play | none | done |
 | **REQ-170** | Travel resource cadence: consumables consumed every N nodes or watches, configurable per travel ruleset | 4 | 2 | play | none | done |
@@ -297,17 +327,22 @@ Derived view over [[Requirements]] — regenerate rather than edit. Sorted by pr
 
 ## Maps
 
-18 requirements · 97 points · area definition: [[Areas#Maps]]
+23 requirements · 113 points · area definition: [[Areas#Maps]]
 
 | ID | Requirement | Prio | Effort | Phase | Prep cost | Status |
 |---|---|---|---|---|---|---|
 | **REQ-132** | Level lock: pin current map level while zooming | 3 | 1 | play | none | defined |
 | **REQ-130** | Map entity: image asset, scale, grid config (size, offset, square/hex), link to Location | 3 | 2 | prep | low | done |
 | **REQ-136** | Party and quest markers on region maps (campaign-scoped play tokens) | 3 | 2 | play | none | done |
+| **REQ-207** | Wählbarer Pfad: Wegpunkte setzen (um eine Falle herum, nicht an einem Gegner vorbei), zwischen ihnen der günstigste Weg; die Diagonalenzählung läuft über die Wegpunkte weiter; Gefahren und Reichweite von Gegnern können gemieden werden | 3 | 2 | play | none | planned |
 | **REQ-133** | Static tokens: reference markers linked to entities (pin opens article) | 3 | 3 | prep | low | done |
 | **REQ-169** | Exploration state ladder per map feature (verborgen → entdeckt → erkundet) with cascade: exploring a node reveals its edges as discovered | 3 | 3 | play | none | done |
+| **REQ-206** | Bewegungsrechner auf der Karte: Diagonalen 5-10-5, gezählt je Kreatur und Zug und mit jedem Zug neu; Modi „genauer Weg“, „grösste Reichweite“, „aus“; das Tempo des Zuges ist eine Zahl, die man ändert (Spurt, Klettern, Schwimmen, Sonderfälle), und die SL darf übersteuern | 3 | 3 | play | none | planned |
+| **REQ-209** | Aufdecken: von Hand oder beim Bestätigen einer Bewegung, dann **entlang des Pfads** Schritt für Schritt; von Hand zeigt das Token, wen es sieht und von wem es gesehen wird (Sichtlinie, passive Wahrnehmung gegen Heimlichkeit, −5 im Dämmerlicht) | 3 | 3 | play | none | planned |
+| **REQ-210** | Karte und Initiative je als Vollbild, je mit SL- und Spieleransicht; Spielende bewegen ihre eigenen Tokens und prüfen die Reichweite selbst | 3 | 3 | play | none | planned |
 | **REQ-135** | Play tokens: session- or campaign-scoped state objects (combat positions, temporary changes) | 3 | 5 | play | none | in progress |
 | **REQ-168** | Point-crawl travel: node/edge graph attached to a Location, with per-edge sensory read-aloud text and per-node arrival state | 3 | 5 | both | none | done |
+| **REQ-208** | Zonen mit eigenen Regeln: eine Zonenart ist ein Regelartikel; Bewegungskosten, Licht, Sicht und „versteckt bis passive Wahrnehmung n“ rechnet die Karte, Schaden, Rettungswurf, Zustand und freie Regeln zeigt sie und schreibt sie beim Betreten ins Protokoll | 3 | 5 | both | low | planned |
 | **REQ-131** | Nested maps: parent + anchor region, zoom-through transitions world → region → city → district → battlemap | 3 | 8 | both | high | done |
 | **REQ-144** | Initiative indicator on battlemap (current / next) | 4 | 2 | play | none | done |
 | **REQ-134** | Static tokens: scenery / props as part of prepared map state | 4 | 3 | prep | low | done |
