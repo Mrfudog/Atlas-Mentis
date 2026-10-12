@@ -264,6 +264,9 @@ const STAND = {
   'REQ-221': ['offen', ''],
   'REQ-222': ['offen', ''],
   'REQ-223': ['offen', ''],
+  'REQ-224': ['offen', ''],
+  'REQ-225': ['offen', ''],
+  'REQ-226': ['offen', ''],
 };
 
 const z = [];
