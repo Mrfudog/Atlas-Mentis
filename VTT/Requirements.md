@@ -26,12 +26,12 @@ Per-area views are derived: see [[Requirements by Area]]. **Was davon steht**, s
 |---|---|---|
 | 1 | 32 | 88 |
 | 2 | 60 | 188 |
-| 3 | 78 | 236 |
+| 3 | 81 | 241 |
 | 4 | 36 | 167 |
 | 5 | 17 | 148 |
-| **Total** | **223** | **827** |
+| **Total** | **226** | **832** |
 
-Effort per area (a requirement spanning several areas counts in each): Content Backbone 183, Platform & Access 83, Creatures & Characters 96, Player Experience 91, Campaign & Sessions 112, World & Lore 94, Rules & Reference 96, Live Play 192, Maps 113, Media & Assets 84, Cross-cutting 23.
+Effort per area (a requirement spanning several areas counts in each): Content Backbone 183, Platform & Access 83, Creatures & Characters 96, Player Experience 93, Campaign & Sessions 112, World & Lore 94, Rules & Reference 96, Live Play 197, Maps 116, Media & Assets 84, Cross-cutting 23.
 
 ## Registry
 
@@ -260,6 +260,9 @@ Effort per area (a requirement spanning several areas counts in each): Content B
 | **REQ-221** | Begegnungsbau: Schwierigkeit aus den XP-Schwellen der Gruppe mit Multiplikator nach Anzahl (2014), Kreaturen aus dem Kompendium, dann auf die Karte setzen und Initiative starten | 3 | 3 | – | – | Live Play, Campaign & Sessions | prep | efficiency | none | REQ-118 | idea | Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
 | **REQ-222** | Stufenaufstieg: Schritte aus Klassen- und Unterklassentabellen (TP, Attributsverbesserung oder Talent, Zauber), Folgewerte gerechnet | 4 | 5 | – | – | Player Experience, Creatures & Characters | play | efficiency | none | REQ-063 | idea | Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
 | **REQ-223** | Regelsysteme als Rahmen (Taverne, Alley, Kanalisation): ein Ort, seine Kennzahlen, ein Wochenwurf und ein Protokoll | 4 | 5 | – | – | Campaign & Sessions, Rules & Reference | both | enables | low | REQ-184 | idea | Gemeinsamer Rahmen oder je ein eigenes Layout ist offen. Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
+| **REQ-224** | Kreaturen nehmen auf der Karte Felder nach ihrer Grösse ein (Regeln 2014): Tiny, Small, Medium, Large 2 × 2, Huge 3 × 3, Gargantuan 4 × 4; Bewegung, Wege, Sicht und Reichweite rechnen mit dem ganzen Platz | 3 | 3 | – | – | Maps, Live Play | play | enables | none | REQ-206, REQ-209 | planned | Die Grösse steht am Statblock (`size`, Zeile `Size`). Tiny teilt sich ein Feld. Festgelegt von der Leitung, 12.10.2026 (D58). |
+| **REQ-225** | Fallenlassen ist eine freie Aktion, Verstauen eine Bonusaktion, egal wohin; der Gurt ist eine freie Aktion | 3 | 1 | – | – | Player Experience, Live Play | play | efficiency | none | REQ-216, REQ-217 | planned | Ergänzt das Ziehen am Bogen um die Gegenrichtung. Festgelegt von der Leitung, 12.10.2026 (D58). |
+| **REQ-226** | In der ersten Runde erscheinen Gegner in der Initiative der Spielenden erst, wenn sie an der Reihe sind; ab der zweiten Runde stehen die bereits gezeigten fest | 3 | 1 | – | – | Live Play, Player Experience | play | enables | none | REQ-213 | planned | Die Reihenfolge verrät sonst, wer noch kommt. Festgelegt von der Leitung, 12.10.2026 (D58). |
 
 ## Changelog
 - **0.7** (2026-10-07): REQ-168 … REQ-203 aus der Ernte des Repos übernommen (alte App, Gespräche, Fraktionsränge); Spalte *Status* aus [[Umsetzung]] nachgezogen; Summen neu gezählt (203 requirements · 768 points).

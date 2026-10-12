@@ -150,3 +150,10 @@ REQ-223 (Regelsysteme als Rahmen).
   oder Zeitraum — das Paket entscheidet). Spuren ein- und ausblendbar; die
   Kampagne ist eine Spur der Weltgeschichte. Was Spielende nicht wissen,
   sehen sie nicht.
+
+## 3. Nachträge (D58, REQ-224–226)
+
+| Paket | Anforderungen | Inhalt |
+|---|---|---|
+| **U6 Initiative und Ziehen** | REQ-225, REQ-226 | In der ersten Runde erscheint ein Gegner in der Spieleransicht erst, wenn sein Zug beginnt; danach bleibt er stehen. Fallenlassen kostet eine freie Aktion, Verstauen eine Bonusaktion, egal wohin; `slotDraw` setzt den Gurt auf freie Aktion. Am Bogen stehen neben „Draw“ auch „Drop“ und „Stow“. |
+| **U7 Kreaturgrössen** | REQ-224 | Ein Token nimmt Felder nach der Grösse seines Statblocks ein (2014): Tiny, Small, Medium ein Feld (Tiny darf es teilen), Large 2 × 2, Huge 3 × 3, Gargantuan 4 × 4. Bewegungsrechner, Wegpunkte, Sperren durch andere, Sicht und „sieht / wird gesehen von“ rechnen mit dem ganzen Platz; gezeichnet wird das Token in seiner Grösse. |
