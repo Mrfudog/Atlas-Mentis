@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  carryGrid, clampExtra, columnZones, drawStage, nextDraw, parseCarrySquares,
+  carryGrid, clampExtra, columnZones, drawStage, handActions, inHand, nextDraw, parseCarrySquares,
   parseContainerPreset, parsePairs, slowerDraw,
 } from '../src/inventory.js';
 import { derivedValue } from '../src/calc.js';
@@ -95,5 +95,22 @@ describe('Die Ziehstufe die Kette hinauf (REQ-216, D54)', () => {
     expect(nextDraw('round', LEITER)).toBe('round');
     expect(slowerDraw('nope', null, LEITER)).toBeNull();
     expect(drawStage([{ via: 'gear' }, { via: 'Bag', zone: 'action' }], LEITER, PLAETZE).stage).toBeNull();
+  });
+});
+
+describe('Fallenlassen und Verstauen (REQ-225, D58)', () => {
+  const leiter = ['free action', 'bonus action', 'action', 'turn', 'round'];
+  it('liest die Kosten aus der Einstellung', () => {
+    expect(handActions('drop:free action, stow:bonus action', leiter)).toEqual({ drop: 'free action', stow: 'bonus action' });
+  });
+  it('ein Wert ausserhalb der Leiter gilt nicht', () => {
+    expect(handActions('drop:sneeze, stow:bonus action', leiter)).toEqual({ drop: null, stow: 'bonus action' });
+    expect(handActions(undefined, leiter)).toEqual({ drop: null, stow: null });
+  });
+  it('in der Hand ist, was an einer Hand liegt — oder ohne Platz „held“', () => {
+    expect(inHand({ slot: 'mainHand' })).toBe(true);
+    expect(inHand({ slot: 'belt', tier: 'held' })).toBe(false);
+    expect(inHand({ tier: 'held' })).toBe(true);
+    expect(inHand({ tier: 'pack' })).toBe(false);
   });
 });

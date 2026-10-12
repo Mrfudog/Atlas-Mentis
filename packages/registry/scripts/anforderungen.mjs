@@ -253,7 +253,7 @@ const STAND = {
   'REQ-210': ['teils', 'Prototyp: Vollbild für Karte und Initiative, SL-/Spieleransicht der Karte, Spielende bewegen eigene Tokens; offen: `redactEntity` hält versteckte Marker am Server nicht zurück (D56)'],
   'REQ-211': ['steht', 'Prototyp: RK und TP-Maximum vom Statblock der Instanz (`participantStats`), Statblock in `quick` neben der Reihe (D53)'],
   'REQ-212': ['steht', '`anchor`/`at` an `participates.props.conditions`, Notiz mit `text`; `tickEntries`, `expiresAt` (D53)'],
-  'REQ-213': ['teils', '`redactParticipants` in `redactEntity` und im Prototyp; offen: `turn` als Index zählt Verborgene mit (D53)'],
+  'REQ-213': ['steht', '`redactParticipants` in `redactEntity` und im Prototyp; `turn` geht nicht an Spielende, `props.current` statt dessen (D53, D58)'],
   'REQ-214': ['steht', '`Creature.figure`, Plätze des Blatts an `holds.props.slot`, Reiter „Worn“ mit Figur (Prototyp, D54)'],
   'REQ-215': ['steht', '`Statblock.carryExtra` gerechnet, Grundquadrat aus `carrySquares`; `carryGrid` im Modell, Prototyp (D54)'],
   'REQ-216': ['steht', 'Ziehstufe die Kette hinauf (`drawStage`), `slotDraw`, Basiszonen `carryZones` und Vorlagen `container:*` (D54)'],
@@ -265,8 +265,8 @@ const STAND = {
   'REQ-222': ['offen', ''],
   'REQ-223': ['offen', ''],
   'REQ-224': ['steht', 'Platz nach `Statblock.size` beim Lesen (`sizeSpan`, Instanz über `resolveInstance`), gespeichert die Mitte, gerechnet über den Anker; Rechner mit `MoveGrid.span` (ganzer Platz passt, Wände je Feld, teuerstes neu betretenes Feld), Sperren und Reichweite vom ganzen Platz, Sicht Feld zu Feld (`bestNotice`); tiny teilt (D58)'],
-  'REQ-225': ['offen', ''],
-  'REQ-226': ['offen', ''],
+  'REQ-225': ['steht', '„Drop“/„Stow“ am Bogen in der Zeile ihrer Kosten (Einstellung `handActions`), `tier: ground`, Gurt frei in `slotDraw`; `handActions`/`inHand` im Modell (Prototyp, D58)'],
+  'REQ-226': ['steht', 'Runde 1: Gegner erst in ihrem Zug (`turnHasCome`, `initiativeOrder`), in `redactParticipants`/`redactEntity` und im Prototyp (D58)'],
 };
 
 const z = [];

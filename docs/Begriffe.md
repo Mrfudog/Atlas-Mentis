@@ -403,6 +403,16 @@ Rest jedem, der die Entwicklerwerkzeuge öffnet. Also geht nur die Gruppe
 hinaus und wer aufgedeckt oder beteiligt ist; ein Gegner, den niemand
 erkannt hat, heisst wie sein Deckname, und seine Trefferpunkte sind ein
 Wort — „angeschlagen" ist, was man am Tisch sieht, „7 von 18" nicht.
+
+**Auch die Reihe selbst verrät etwas** (D58). Steht ein aufgedeckter
+Gegner schon vor Kampfbeginn auf Platz drei, wissen alle, dass er nach der
+Magierin kommt und vor dem Kämpfer — eine Auskunft, die am Tisch niemand
+hat, bevor er handelt. Also erscheint ein Gegner in der ersten Runde erst,
+wenn sein Zug beginnt, und bleibt dann stehen; ab der zweiten Runde ist die
+Reihe ohnehin bekannt. Aus demselben Grund geht die **Zugnummer** nicht
+hinaus: „der siebte ist dran" bei vier sichtbaren Zeilen zählt die
+Verborgenen mit. Stattdessen trägt der Teilnehmer, der dran ist, eine
+Marke — und wer verborgen dran ist, hat eben keinen Zeiger.
 ### Eine Spur hält, was zu ihr gehört, nicht was in ihre Zeit fällt
 
 Die Weltgeschichte steht in **Spuren**: ein Krieg, eine Dynastie, ein
@@ -764,6 +774,17 @@ Gegenstand: derselbe Bogen liegt quer oder längs, und dieselbe Fackel soll
 nicht in jedem Beutel gleich liegen. Ein Stück **vom Raster** zu nehmen und
 es **aus dem Behälter** zu nehmen sind zwei Dinge, und beide braucht man:
 das eine räumt um, das andere gibt her.
+
+**Fallen lassen heisst nicht weggeben** (D58). Ein Schwert, das mitten im
+Kampf aus der Hand fällt, gehört der Figur weiter und liegt zu ihren
+Füssen; nach dem Kampf hebt sie es auf. Darum bleibt die `holds`-Kante,
+verliert Platz und Rasterlage und sagt `tier: ground`. Es auf die Karte zu
+legen hiesse, die Kante zu löschen und einen Marker anzulegen — zwei
+Schritte, ein zweiter Ort, und ohne laufende Karte fiele das Schwert ins
+Nichts. **Verstauen** ist die Gegenrichtung zum Ziehen: aus der Hand an
+einen freien Platz oder ins Raster, und es kostet dasselbe, wohin auch
+immer. Beide Kosten stehen wie `slotDraw` als Einstellung (`handActions`):
+sie sind das Blatt der Kampagne und rechnen nichts.
 
 **Ein Gegenstand darf selbst ein Behälter sein** (M4): der Rucksack
 `carries` sein Inventar wie eine Figur, mit derselben Kante und derselben

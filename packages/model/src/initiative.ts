@@ -46,6 +46,20 @@ export interface ParticipantProps {
   identified?: boolean;
   /** Nur in der Spieleransicht: die Trefferpunkte als Wort. */
   hpState?: HpWord;
+  /**
+   * Nur in der Spieleransicht: dieser Teilnehmer ist dran (D58). Die
+   * Zugnummer der Begegnung zählt die ganze Reihe und verriete, wie viele
+   * davor verborgen sind — sie geht darum nicht hinaus, diese Marke schon.
+   */
+  current?: boolean;
+}
+
+/** Wo der Kampf steht — `Encounter.round` und `Encounter.turn`. */
+export interface FightState {
+  /** 0 = noch nicht begonnen. */
+  round?: number;
+  /** Index in der ganzen Reihe (`initiativeOrder`). */
+  turn?: number;
 }
 
 export const PARTICIPATES = 'participates';
@@ -172,21 +186,83 @@ export function inParty(entities: Lookup, to: EntityId): boolean {
   return (e.relations ?? []).some((r) => r.type === 'memberOfParty');
 }
 
+/** Der Tischname eines Teilnehmers: die Angabe an der Kante, sonst der Name des Artikels. */
+function tableName(entities: Lookup, r: Relation): string {
+  const p = (r.props ?? {}) as ParticipantProps;
+  if (p.label) return p.label;
+  const t = entities.get(r.to);
+  const id = ((t?.components ?? {})['Identity'] as { name?: string } | undefined)?.name;
+  return id || (t as { name?: string } | undefined)?.name || '(missing)';
+}
+
 /**
- * Was die Spielenden von der Initiative sehen (REQ-213, D53). Wird am
+ * Die Zugreihenfolge, wie die Leitung sie sieht: hohe Initiative zuerst,
+ * bei Gleichstand die Verbündeten, dann der Name. `Encounter.turn` ist
+ * ein Index in genau diese Reihe — der Prototyp sortiert gleich
+ * (`sortFight`). Eine Hausregel, die hier steht, damit sie jedes Mal
+ * gleich ausgeht.
+ */
+export function initiativeOrder(entities: Lookup, relations: readonly Relation[]): Relation[] {
+  const init = (r: Relation): number => {
+    const n = Number((r.props as ParticipantProps | undefined)?.init);
+    return (r.props as ParticipantProps | undefined)?.init != null && Number.isFinite(n) ? n : -99;
+  };
+  const ally = (r: Relation): boolean => !!(r.props as ParticipantProps | undefined)?.ally;
+  return relations
+    .filter((r) => r.type === PARTICIPATES)
+    .sort((a, b) => {
+      const d = init(b) - init(a);
+      if (d) return d;
+      if (ally(a) !== ally(b)) return ally(a) ? -1 : 1;
+      return tableName(entities, a).localeCompare(tableName(entities, b), 'de');
+    });
+}
+
+/**
+ * Ist der Zug dieses Teilnehmers in diesem Kampf schon gekommen (REQ-226,
+ * D58)? Ab Runde 2 ja, für jeden; in Runde 1, wenn er in der Reihe nicht
+ * nach dem laufenden steht; vor Runde 1 für niemanden.
+ */
+export function turnHasCome(order: readonly Relation[], edgeId: string, fight: FightState): boolean {
+  const runde = Number(fight.round) || 0;
+  if (runde >= 2) return true;
+  if (runde < 1) return false;
+  const idx = order.findIndex((r) => r.id === edgeId);
+  return idx >= 0 && idx <= (Number(fight.turn) || 0);
+}
+
+/**
+ * Was die Spielenden von der Initiative sehen (REQ-213, D53; REQ-226, D58). Wird am
  * Server in `redactEntity` angewandt, nicht erst in der Maske:
  *
  * - die Gruppe und jede Kreatur mit `revealed` oder `involved`, sonst nichts;
+ * - **ein Gegner erst, wenn sein Zug gekommen ist** (D58, mit `fight`):
+ *   in Runde 1 steht er dort, sobald sein Zug beginnt, und bleibt; vor
+ *   Runde 1 steht keiner. Sonst verriete die Reihe, wer noch kommt.
+ *   Verbündete (`ally`) und die Gruppe sind keine Gegner und stehen gleich;
+ *   ein Zug allein deckt weiterhin nicht auf (D53);
+ * - statt der Zugnummer eine Marke `current` am Teilnehmer, der dran ist —
+ *   und nur, wenn er gezeigt wird;
  * - ohne `identified` der Deckname des Artikels (`Identity.cover`, REQ-178)
  *   statt des Tischnamens, und kein Verweis auf den Artikel;
  * - Trefferpunkte nur von der Gruppe als Zahl, von allen anderen als Wort;
  * - Einträge mit `hidden` und die Notiz der Leitung an der Kante nie.
  */
-export function redactParticipants(entities: Lookup, relations: readonly Relation[]): Relation[] {
+export function redactParticipants(
+  entities: Lookup,
+  relations: readonly Relation[],
+  fight?: FightState,
+): Relation[] {
   const raus: Relation[] = [];
+  const order = fight ? initiativeOrder(entities, relations) : [];
+  const runde = Number(fight?.round) || 0;
+  const dranId = fight && runde > 0 ? order[Number(fight.turn) || 0]?.id : undefined;
   const zeigt = (r: Relation): boolean => {
     const p = (r.props ?? {}) as ParticipantProps;
-    return inParty(entities, r.to) || !!p.revealed || !!p.involved;
+    if (inParty(entities, r.to)) return true;
+    if (!p.revealed && !p.involved) return false;
+    /* REQ-226, D58: ein Gegner steht erst, wenn sein Zug gekommen ist. */
+    return !fight || !!p.ally || turnHasCome(order, r.id, fight);
   };
   const deckOf = (r: Relation): string => {
     const t = entities.get(r.to);
@@ -218,6 +294,7 @@ export function redactParticipants(entities: Lookup, relations: readonly Relatio
       involved: p.involved,
       identified: p.identified,
     };
+    if (dranId === r.id) neu.current = true;
     let to = r.to;
     if (gruppe) {
       Object.assign(neu, { label: p.label, hp: p.hp, hpMax: participantStats(entities, r).hpMax, note: p.note });
