@@ -145,6 +145,9 @@ window.__T__={derivedValue:derivedValue,assetSrc:assetSrc,UI:UI,
   footprintOf:footprintOf,gridTurn:gridTurn,fitsAt:fitsAt,
   dgTypen:dgTypen,dgLinien:dgLinien,
   ifaceInList:ifaceInList};
+/* Die Initiative (D53): Reihe, Dauer, Spieleransicht. */
+Object.assign(window.__T__,{participants:participants,tickFight:tickFight,
+  fightExpiresAt:expiresAt,fightForPlayers:fightForPlayers,hpWord:hpWord});
 Object.defineProperty(window.__T__,'REG',{get:function(){return REG;}});
 Object.defineProperty(window.__T__,'ENT',{get:function(){return ENT;}});
 Object.defineProperty(window.__T__,'MEMBERS',{get:function(){return MEMBERS;}});
