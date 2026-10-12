@@ -853,6 +853,26 @@ wie ein Token auf seinen Artikel. Was die Karte selbst rechnen kann (Kosten,
 Licht, Sicht, wer es bemerkt), rechnet sie; was der Tisch würfelt, zeigt sie
 und schreibt es ins Protokoll, wenn jemand hineinläuft.
 
+**Ein Oger ist vier Felder und nicht ein grosses** (D58). Ein Token nimmt
+nach der Grösse seines Statblocks einen Platz ein — large 2 × 2, huge 3 × 3,
+gargantuan 4 × 4 —, und alles, was die Karte rechnet, rechnet mit dem
+ganzen Platz: er muss durch die Lücke passen, eine Wand hält ihn, wenn sie
+eines seiner Felder hält, und er sieht von jedem seiner Felder aus. Die
+Grösse steht am Statblock und wird beim Lesen geholt; am Token stünde sie
+ein zweites Mal und wäre nach der ersten Korrektur falsch. Gespeichert wird
+die **Mitte** des Platzes, weil sie für jede Grösse dasselbe meint (wo das
+Token steht); gerechnet wird über seine **Ecke**, weil sich ein Platz so
+Feld für Feld verschieben lässt.
+
+**Teuer ist der Schritt, nicht der Körper.** Tritt der Oger mit einem Fuss
+ins Eis, ist sein Schritt langsam — aber nicht doppelt so langsam, weil
+zwei seiner Felder darin landen, und nicht noch einmal, weil er beim
+nächsten Schritt mit dem anderen Fuss nachzieht. Gezählt wird das
+teuerste Feld, das der Schritt **neu** betritt: so zählt die Regel
+(„jeder Fuss in schwierigem Gelände kostet einen mehr“) für eine Kreatur,
+die sich als Ganzes bewegt, und so kostet der Schritt aus dem Eis heraus
+nichts extra, wie bei einem Feld.
+
 **Aufgedeckt wird, wenn die Bewegung feststeht.** Während jemand noch den
 Weg sucht, verrät eine Karte, die schon aufdeckt, was hinter der Ecke
 liegt. Erst beim Bestätigen wird der Weg Schritt für Schritt abgelaufen,

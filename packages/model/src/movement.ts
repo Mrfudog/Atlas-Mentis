@@ -16,11 +16,22 @@
  * am Artikel — eine Kreatur ist nicht „schon 20 Fuss gelaufen", nur ihr
  * Zug in dieser Sitzung ist es.
  *
+ * **Der Platz einer Kreatur** (REQ-224, D58): ein Token nimmt nach der
+ * Grösse seines Statblocks (Regeln 2014) ein Quadrat von `span` × `span`
+ * Feldern ein — tiny, small, medium eins, large zwei, huge drei,
+ * gargantuan vier. Gesucht wird dann über die **Ecke oben links** des
+ * Platzes (den Anker): der ganze Platz muss passen, eine Wand hält den
+ * Schritt, wenn sie ihn für irgendein Feld des Platzes hält, und ein
+ * Schritt kostet nach dem teuersten Feld, das er neu betritt.
+ *
  * Kein Framework, keine Karte: was hereinkommt, ist ein Raster mit Wänden
  * in Feldeinheiten (Feld (0,0) reicht von 0 bis 1), Kosten je Feld und die
  * Felder, die besetzt sind. Wie man aus einer Karte dahin kommt, weiss der
  * Aufrufer.
  */
+
+import type { Entity, EntityId } from './types.js';
+import { resolveInstance } from './instance.js';
 
 /** Ein Feld im Raster: Spalte und Zeile. */
 export interface Cell {
@@ -66,6 +77,18 @@ export interface MoveGrid {
   avoid?: CellSet;
   /** Fuss je Feld; die Regel rechnet mit 5. */
   square?: number;
+  /**
+   * Wie viele Felder breit der Platz dessen ist, der sich bewegt (REQ-224,
+   * `sizeSpan`). Fehlt es, ein Feld. Mit mehr als einem Feld sind alle
+   * Zellen, die hereinkommen und herausgehen, **Anker** — die Ecke oben
+   * links des Platzes.
+   */
+  span?: number;
+  /**
+   * Darf auf `noStop` stehen bleiben — eine winzige Kreatur teilt sich ein
+   * Feld (D58).
+   */
+  share?: boolean;
 }
 
 export interface PathResult {
@@ -80,6 +103,91 @@ export interface PathResult {
 }
 
 export const cellKey = (c: Cell): string => `${c.x},${c.y}`;
+
+/* ---------- Der Platz nach Grösse (REQ-224, D58) ---------- */
+
+/** Die Grössen der Zeile `Size`, englisch wie das Regelwerk. */
+export type CreatureSize = 'tiny' | 'small' | 'medium' | 'large' | 'huge' | 'gargantuan';
+
+/** Felder je Seite nach den Regeln 2014; tiny teilt sich sein Feld. */
+export const SIZE_SPAN: Readonly<Record<CreatureSize, number>> = {
+  tiny: 1, small: 1, medium: 1, large: 2, huge: 3, gargantuan: 4,
+};
+
+/**
+ * Wie breit der Platz zu einer Grösse ist. Was keine bekannte Grösse ist —
+ * kein Statblock, ein leeres Feld, ein Tippfehler —, nimmt ein Feld: ein
+ * Token ohne Zahlen steht trotzdem auf der Karte.
+ */
+export function sizeSpan(size: unknown): number {
+  const k = String(size ?? '').trim().toLowerCase() as CreatureSize;
+  return SIZE_SPAN[k] ?? 1;
+}
+
+/**
+ * Die Grösse eines Statblocks, **beim Lesen** (D8): eine Instanz liest sie
+ * über ihre Vorlage (`resolveInstance`). Am Token steht sie nicht — eine
+ * zweite Stelle dafür wäre die, an der der Oger auf der Karte noch medium
+ * ist, nachdem jemand den Statblock korrigiert hat. Ohne Statblock `null`.
+ */
+export function statblockSize(entities: ReadonlyMap<EntityId, Entity>, statblock: Entity | null | undefined): string | null {
+  if (!statblock) return null;
+  const v = resolveInstance(entities, statblock).components?.Statblock?.size;
+  return typeof v === 'string' && v ? v : null;
+}
+
+/** Darf sich ein Feld mit anderen teilen (D58: nur tiny). */
+export function sharesSquare(size: unknown): boolean {
+  return String(size ?? '').trim().toLowerCase() === 'tiny';
+}
+
+/** Die Felder eines Platzes, Anker oben links. */
+export function footprint(anchor: Cell, span = 1): Cell[] {
+  const out: Cell[] = [];
+  for (let dy = 0; dy < span; dy++) for (let dx = 0; dx < span; dx++) out.push({ x: anchor.x + dx, y: anchor.y + dy });
+  return out;
+}
+
+/**
+ * Die Felder um einen Platz herum, `reach` Felder weit (Schachbrettmass),
+ * ohne den Platz selbst — die Reichweite einer Kreatur geht vom ganzen
+ * Platz aus, nicht von seiner Ecke (REQ-224).
+ */
+export function footprintRing(anchor: Cell, span = 1, reach = 1): Cell[] {
+  const out: Cell[] = [];
+  for (let y = anchor.y - reach; y < anchor.y + span + reach; y++) {
+    for (let x = anchor.x - reach; x < anchor.x + span + reach; x++) {
+      if (x >= anchor.x && x < anchor.x + span && y >= anchor.y && y < anchor.y + span) continue;
+      out.push({ x, y });
+    }
+  }
+  return out;
+}
+
+/**
+ * **Was die gespeicherte Position meint** (D58): die **Mitte** des Platzes
+ * in Feldeinheiten. Bei einem Feld ist das die Feldmitte wie bisher, bei
+ * 2 × 2 eine Rasterecke. Gerechnet wird über den Anker; beides geht
+ * eindeutig ineinander über, und ein Token, das von Hand neben das Raster
+ * gezogen wurde, rastet auf den nächsten Anker ein.
+ */
+export function footprintCentre(anchor: Cell, span = 1): { x: number; y: number } {
+  return { x: anchor.x + span / 2, y: anchor.y + span / 2 };
+}
+
+/**
+ * Der Anker zu einer Mitte; mit `cols`/`rows` so geklemmt, dass der Platz
+ * im Raster liegt. Gerundet wird `Mitte − span/2`: an den Stellen, an
+ * denen ein Token richtig steht, ist das eine ganze Zahl, und ein
+ * Rechenrest wie 2.9999 kippt nicht zum Nachbarn.
+ */
+export function anchorAt(centre: { x: number; y: number }, span = 1, cols?: number, rows?: number): Cell {
+  const clamp = (v: number, n?: number) => (n === undefined ? v : Math.max(0, Math.min(n - span, v)));
+  return {
+    x: clamp(Math.round(centre.x - span / 2), cols),
+    y: clamp(Math.round(centre.y - span / 2), rows),
+  };
+}
 
 function asSet(s: CellSet | undefined): ReadonlySet<string> {
   if (!s) return new Set();
@@ -187,7 +295,96 @@ interface Search {
 }
 
 /**
- * Dijkstra über (Feld, Parität). Rang: zuerst gemiedene Felder (wenn
+ * Das Gelände für einen Platz von `span` Feldern (REQ-224): ob ein Anker
+ * passt, ob eine Wand einen Schritt hält, was er kostet und wie viele
+ * gemiedene Felder er neu betritt. Ein Feld ist der Sonderfall `span` 1 —
+ * dieselbe Rechnung, nicht eine zweite.
+ */
+function terrain(g: MoveGrid) {
+  const { cols, rows } = g;
+  const span = Math.max(1, Math.floor(g.span ?? 1));
+  const blocked = asSet(g.blocked);
+  const cost = g.cost ?? {};
+  const wallCache = new Map<number, boolean>();
+  const fitCache = new Map<number, boolean>();
+  const n = cols * rows;
+  /* Hält eine Wand den Schritt von Feld a nach Feld b (Mitte zu Mitte)? */
+  const wallBetween = (ax: number, ay: number, bx: number, by: number): boolean => {
+    const ca = ay * cols + ax, cb = by * cols + bx;
+    const key = ca < cb ? ca * n + cb : cb * n + ca;
+    let w = wallCache.get(key);
+    if (w === undefined) {
+      w = stepBlocked({ x: ax, y: ay }, { x: bx, y: by }, g.walls);
+      wallCache.set(key, w);
+    }
+    return w;
+  };
+  const inside = (x: number, y: number) => x >= 0 && y >= 0 && x + span <= cols && y + span <= rows;
+  /* Passt der ganze Platz? Kein Feld gesperrt oder unbetretbar, und keine
+     Wand quer durch ihn — sonst stünde ein Oger mit einer Wand im Bauch. */
+  const fits = (x: number, y: number): boolean => {
+    if (!inside(x, y)) return false;
+    const k = y * cols + x;
+    let ok = fitCache.get(k);
+    if (ok !== undefined) return ok;
+    ok = true;
+    for (let dy = 0; dy < span && ok; dy++) {
+      for (let dx = 0; dx < span && ok; dx++) {
+        const cx = x + dx, cy = y + dy, ck = `${cx},${cy}`;
+        if (blocked.has(ck) || (cost[ck] ?? 1) === Infinity) ok = false;
+        else if (dx + 1 < span && wallBetween(cx, cy, cx + 1, cy)) ok = false;
+        else if (dy + 1 < span && wallBetween(cx, cy, cx, cy + 1)) ok = false;
+      }
+    }
+    fitCache.set(k, ok);
+    return ok;
+  };
+  /* Ein Schritt um (dx, dy): jedes Feld des Platzes geht denselben Schritt,
+     und hält eine Wand einen davon, hält sie den Platz. */
+  const stepWall = (x: number, y: number, dx: number, dy: number): boolean => {
+    for (let oy = 0; oy < span; oy++) {
+      for (let ox = 0; ox < span; ox++) {
+        if (wallBetween(x + ox, y + oy, x + ox + dx, y + oy + dy)) return true;
+      }
+    }
+    return false;
+  };
+  /* Die Felder, die der Schritt **neu** betritt: im neuen Platz, nicht im alten. */
+  const entered = (x: number, y: number, dx: number, dy: number): string[] => {
+    const out: string[] = [];
+    const nx = x + dx, ny = y + dy;
+    for (let oy = 0; oy < span; oy++) {
+      for (let ox = 0; ox < span; ox++) {
+        const cx = nx + ox, cy = ny + oy;
+        if (cx >= x && cx < x + span && cy >= y && cy < y + span) continue;
+        out.push(`${cx},${cy}`);
+      }
+    }
+    return out;
+  };
+  /* D58: der Faktor des **teuersten** neu betretenen Feldes. Ein Schritt
+     ist eine Bewegung eines Körpers — steht ein Fuss im Schlamm, ist der
+     Schritt langsam, aber nicht viermal so langsam, weil der Körper vier
+     Felder breit ist. Was der Platz schon belegt, betritt er nicht neu:
+     aus dem Schlamm heraus kostet nichts extra, wie bei einem Feld. */
+  const factor = (keys: readonly string[]): number => {
+    let f = 1;
+    for (const k of keys) {
+      const c = cost[k] ?? 1;
+      if (Number.isFinite(c) && c > f) f = c;
+    }
+    return f;
+  };
+  const touches = (x: number, y: number, set: ReadonlySet<string>): boolean => {
+    if (!set.size) return false;
+    for (let dy = 0; dy < span; dy++) for (let dx = 0; dx < span; dx++) if (set.has(`${x + dx},${y + dy}`)) return true;
+    return false;
+  };
+  return { span, inside, fits, stepWall, entered, factor, touches };
+}
+
+/**
+ * Dijkstra über (Anker, Parität). Rang: zuerst gemiedene Felder (wenn
  * `avoid` gilt), dann Fuss. `budget` bricht ab, was teurer wird.
  */
 function search(
@@ -202,17 +399,14 @@ function search(
   const pen = new Float64Array(n).fill(Infinity);
   const feet = new Float64Array(n).fill(Infinity);
   const prev = new Int32Array(n).fill(-1);
-  const blocked = asSet(g.blocked);
   const avoid = opts.avoid ? asSet(g.avoid) : new Set<string>();
-  const cost = g.cost ?? {};
-  const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < cols && y < rows;
-  if (!inside(from.x, from.y)) return { pen, feet, prev };
+  const t = terrain(g);
+  if (!t.inside(from.x, from.y)) return { pen, feet, prev };
   const start = (from.y * cols + from.x) * 2 + parity;
   pen[start] = 0;
   feet[start] = 0;
   const heap = new Heap();
   heap.push(0, 0, start);
-  const wallCache = new Map<number, boolean>();
   while (heap.size) {
     const [p, f, idx] = heap.pop()!;
     if (p !== pen[idx] || f !== feet[idx]) continue;
@@ -221,24 +415,15 @@ function search(
     if (opts.target && x === opts.target.x && y === opts.target.y) break;
     for (const [dx, dy] of NEIGHBOURS) {
       const nx = x + dx, ny = y + dy;
-      if (!inside(nx, ny)) continue;
-      const k = `${nx},${ny}`;
-      if (blocked.has(k)) continue;
-      const factor = cost[k] ?? 1;
-      if (factor === Infinity) continue;
-      const ncell = ny * cols + nx;
-      const ck = cell < ncell ? cell * cols * rows + ncell : ncell * cols * rows + cell;
-      let wall = wallCache.get(ck);
-      if (wall === undefined) {
-        wall = stepBlocked({ x, y }, { x: nx, y: ny }, g.walls);
-        wallCache.set(ck, wall);
-      }
-      if (wall) continue;
-      const st = stepFeet(dx !== 0 && dy !== 0, par, factor, square);
+      if (!t.fits(nx, ny)) continue;
+      if (t.stepWall(x, y, dx, dy)) continue;
+      const neu = t.entered(x, y, dx, dy);
+      const st = stepFeet(dx !== 0 && dy !== 0, par, t.factor(neu), square);
       const nf = f + st.feet;
       if (opts.budget !== undefined && nf > opts.budget + EPS) continue;
-      const np = p + (avoid.has(k) ? 1 : 0);
-      const ni = ncell * 2 + st.parity;
+      let np = p;
+      for (const k of neu) if (avoid.has(k)) np++;
+      const ni = (ny * cols + nx) * 2 + st.parity;
       if (np < pen[ni]! || (np === pen[ni] && nf < feet[ni]!)) {
         pen[ni] = np;
         feet[ni] = nf;
@@ -253,7 +438,8 @@ function search(
 /**
  * Der günstigste Weg von einem Feld zu einem anderen (REQ-206). `null`,
  * wenn keiner hinführt oder das Ziel besetzt ist. Mit `avoid` meidet er,
- * was `grid.avoid` nennt — die Fuss zählt er trotzdem ehrlich.
+ * was `grid.avoid` nennt — die Fuss zählt er trotzdem ehrlich. Mit `span`
+ * sind `from`, `to` und die Felder des Weges Anker (REQ-224).
  */
 export function cheapestPath(
   g: MoveGrid,
@@ -262,11 +448,12 @@ export function cheapestPath(
   parity: Parity = 0,
   opts: { avoid?: boolean } = {},
 ): PathResult | null {
-  const { cols, rows } = g;
-  if (to.x < 0 || to.y < 0 || to.x >= cols || to.y >= rows) return null;
-  const tk = cellKey(to);
+  const { cols } = g;
+  const t = terrain(g);
+  if (!t.inside(to.x, to.y)) return null;
   if (from.x === to.x && from.y === to.y) return { cells: [{ ...from }], feet: 0, parity, avoided: 0 };
-  if (asSet(g.blocked).has(tk) || asSet(g.noStop).has(tk)) return null;
+  if (!t.fits(to.x, to.y)) return null;
+  if (!g.share && t.touches(to.x, to.y, asSet(g.noStop))) return null;
   const s = search(g, from, parity, { avoid: !!opts.avoid, target: to });
   const base = (to.y * cols + to.x) * 2;
   let best = -1;
@@ -313,8 +500,8 @@ export function pathVia(
 }
 
 /**
- * Wie weit es reicht (Modus „grösste Reichweite“): je erreichbarem Feld,
- * was es mindestens kostet. Felder, auf denen man nicht stehen bleibt,
+ * Wie weit es reicht (Modus „grösste Reichweite“): je erreichbarem Anker,
+ * was er mindestens kostet. Anker, auf denen man nicht stehen bleibt,
  * fehlen — man kommt durch, aber nicht an.
  */
 export function reachable(
@@ -324,14 +511,15 @@ export function reachable(
   parity: Parity = 0,
 ): Record<string, number> {
   const s = search(g, from, parity, { avoid: false, budget });
-  const noStop = asSet(g.noStop);
+  const noStop = g.share ? new Set<string>() : asSet(g.noStop);
+  const t = terrain(g);
   const out: Record<string, number> = {};
   for (let c = 0; c < g.cols * g.rows; c++) {
     const f = Math.min(s.feet[2 * c]!, s.feet[2 * c + 1]!);
     if (f === Infinity) continue;
-    const k = `${c % g.cols},${Math.floor(c / g.cols)}`;
-    if (noStop.has(k) && f > 0) continue;
-    out[k] = f;
+    const x = c % g.cols, y = Math.floor(c / g.cols);
+    if (f > 0 && t.touches(x, y, noStop)) continue;
+    out[`${x},${y}`] = f;
   }
   return out;
 }

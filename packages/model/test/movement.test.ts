@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  cheapestPath, currentMove, pathVia, putMove, reachable, speedModes, speedPresets, stepFeet,
+  anchorAt, cellKey, cheapestPath, currentMove, footprint, footprintCentre, footprintRing, pathVia, putMove,
+  reachable, sharesSquare, sizeSpan, speedModes, speedPresets, statblockSize, stepFeet,
   type MoveGrid,
 } from '../src/movement.js';
-import { darkvisionOf, lightAt, lineOfSight, notices } from '../src/sight.js';
+import { bestNotice, darkvisionOf, lightAt, lineOfSight, notices, pairsOf, spaceLineOfSight } from '../src/sight.js';
 
 const offen = (cols = 10, rows = 10): MoveGrid => ({ cols, rows, walls: [] });
 
@@ -124,5 +125,144 @@ describe('Sicht (REQ-209)', () => {
     expect(notices({ pp: 14 }, { los: true, light: 'dark', distanceFeet: 20 })).toMatchObject({ seen: false, why: 'dark' });
     expect(notices(wache, { los: false, light: 'bright', distanceFeet: 5 }).why).toBe('wall');
     expect(darkvisionOf('darkvision 60 ft., passive Perception 10')).toBe(60);
+  });
+});
+
+/* ---------- Kreaturgrössen (REQ-224, D58) ---------- */
+
+describe('Der Platz nach Grösse (REQ-224)', () => {
+  it('nimmt Felder nach den Regeln 2014', () => {
+    expect(['tiny', 'small', 'medium', 'large', 'huge', 'gargantuan'].map(sizeSpan)).toEqual([1, 1, 1, 2, 3, 4]);
+    expect(sizeSpan(undefined)).toBe(1);
+    expect(sizeSpan('Large')).toBe(2);
+    expect(sharesSquare('tiny')).toBe(true);
+    expect(sharesSquare('small')).toBe(false);
+  });
+
+  it('speichert die Mitte und rechnet über die Ecke', () => {
+    expect(footprintCentre({ x: 3, y: 4 }, 2)).toEqual({ x: 4, y: 5 });
+    expect(anchorAt({ x: 4, y: 5 }, 2)).toEqual({ x: 3, y: 4 });
+    expect(anchorAt({ x: 3.5, y: 4.5 }, 1)).toEqual({ x: 3, y: 4 });
+    expect(anchorAt({ x: 4.5, y: 4.5 }, 3)).toEqual({ x: 3, y: 3 });
+    expect(anchorAt({ x: 3.9999, y: 5.0001 }, 2)).toEqual({ x: 3, y: 4 });
+    /* Am Rand geklemmt: der Platz liegt im Raster. */
+    expect(anchorAt({ x: 0.5, y: 9.5 }, 4, 10, 10)).toEqual({ x: 0, y: 6 });
+    expect(footprint({ x: 1, y: 1 }, 2).map(cellKey)).toEqual(['1,1', '2,1', '1,2', '2,2']);
+    expect(footprintRing({ x: 1, y: 1 }, 2)).toHaveLength(12);
+  });
+
+  it('liest die Grösse vom Statblock, eine Instanz über ihre Vorlage', () => {
+    const vorlage = { id: 'sb-oger', interfaces: ['Statblock'], components: { Statblock: { size: 'large' } } };
+    const instanz = {
+      id: 'sb-oger-1', interfaces: ['Statblock'], components: { Statblock: { hp: 50 } },
+      relations: [{ id: 'r1', type: 'instanceOf', to: 'sb-oger' }],
+    };
+    const alle = new Map([[vorlage.id, vorlage], [instanz.id, instanz]]) as never;
+    expect(statblockSize(alle, instanz as never)).toBe('large');
+    expect(statblockSize(alle, null)).toBeNull();
+  });
+});
+
+describe('Grosse Kreaturen im Bewegungsrechner (REQ-224)', () => {
+  it('kommt als Large nicht durch eine Engstelle von einem Feld', () => {
+    /* Eine Mauer von Zeile 0 bis 9 in Spalte 5, nur Feld (5,4) frei. */
+    const blocked = Array.from({ length: 10 }, (_, y) => `5,${y}`).filter((k) => k !== '5,4');
+    const g: MoveGrid = { ...offen(10, 10), blocked };
+    expect(cheapestPath(g, { x: 3, y: 4 }, { x: 7, y: 4 })).not.toBeNull();
+    expect(cheapestPath({ ...g, span: 2 }, { x: 2, y: 4 }, { x: 7, y: 4 })).toBeNull();
+    /* Zwei Felder offen: jetzt passt der Oger. */
+    const breit = blocked.filter((k) => k !== '5,5');
+    expect(cheapestPath({ ...g, blocked: breit, span: 2 }, { x: 2, y: 4 }, { x: 7, y: 4 })!.feet).toBe(25);
+  });
+
+  it('hält eine Wand, die nur ein Feld des Platzes kreuzt', () => {
+    /* Kurze Wand zwischen Spalte 2 und 3, nur in Zeile 1. */
+    const g: MoveGrid = { cols: 6, rows: 4, walls: [{ x1: 3, y1: 1, x2: 3, y2: 2 }] };
+    /* Ein Feld in Zeile 0 kommt geradeaus, ein 2 × 2 über Zeile 0–1 nicht. */
+    expect(cheapestPath(g, { x: 1, y: 0 }, { x: 4, y: 0 })!.feet).toBe(15);
+    const gross = cheapestPath({ ...g, span: 2 }, { x: 1, y: 0 }, { x: 3, y: 0 })!;
+    expect(gross.feet).toBeGreaterThan(10);
+    expect(gross.cells.some((c) => c.y === 2)).toBe(true);
+  });
+
+  it('steht nicht mit einer Wand im Bauch', () => {
+    const g: MoveGrid = { cols: 4, rows: 4, walls: [{ x1: 2, y1: 0, x2: 2, y2: 1 }] };
+    expect(cheapestPath({ ...g, span: 2 }, { x: 0, y: 2 }, { x: 1, y: 0 })).toBeNull();
+    expect(cheapestPath({ ...g, span: 2 }, { x: 0, y: 2 }, { x: 2, y: 0 })).not.toBeNull();
+  });
+
+  it('zählt 5-10-5 auch für Huge und Gargantuan schräg', () => {
+    expect(cheapestPath({ ...offen(12, 12), span: 3 }, { x: 0, y: 0 }, { x: 3, y: 3 })!.feet).toBe(20);
+    expect(cheapestPath({ ...offen(12, 12), span: 4 }, { x: 0, y: 0 }, { x: 2, y: 2 })!.feet).toBe(15);
+    /* Am Rand: ein Gargantuan-Anker bei (9,9) liegt nicht mehr im Raster. */
+    expect(cheapestPath({ ...offen(12, 12), span: 4 }, { x: 0, y: 0 }, { x: 9, y: 9 })).toBeNull();
+  });
+
+  it('schneidet keine Ecke mit dem ganzen Platz', () => {
+    /* Eine Ecke aus zwei Wänden bei (3,2): ein 2 × 2 bei (1,0) kommt nicht
+       schräg nach (2,1), weil sein Feld (2,1) die Ecke streift. */
+    const g: MoveGrid = { cols: 6, rows: 6, span: 2, walls: [{ x1: 3, y1: 0, x2: 3, y2: 2 }, { x1: 3, y1: 2, x2: 4, y2: 2 }] };
+    expect(cheapestPath(g, { x: 1, y: 0 }, { x: 2, y: 1 })).toBeNull();
+    const um = cheapestPath(g, { x: 0, y: 0 }, { x: 2, y: 2 })!;
+    expect(um.feet).toBe(15);
+  });
+
+  it('zahlt nach dem teuersten neu betretenen Feld, nicht nach der Summe (D58)', () => {
+    /* Schlamm (×2) nur auf (2,1): der Oger bei (0,0) betritt ihn mit dem Schritt nach (1,0). */
+    const g: MoveGrid = { ...offen(6, 4), span: 2, cost: { '2,1': 2 } };
+    expect(cheapestPath(g, { x: 0, y: 0 }, { x: 1, y: 0 })!.feet).toBe(10);
+    /* Der nächste Schritt verlässt ihn nur — die Felder (3,0), (3,1) sind trocken. */
+    expect(cheapestPath(g, { x: 1, y: 0 }, { x: 2, y: 0 })!.feet).toBe(5);
+    /* Ein ganzer Streifen Schlamm kostet ×2 je Schritt, nicht ×4. */
+    const streifen: MoveGrid = { ...offen(6, 4), span: 2, cost: { '2,0': 2, '2,1': 2 } };
+    expect(cheapestPath(streifen, { x: 0, y: 0 }, { x: 1, y: 0 })!.feet).toBe(10);
+  });
+
+  it('wird vom ganzen Platz eines Gegners gesperrt und meidet seine Reichweite', () => {
+    /* Ein Large-Gegner auf (2,0)–(3,1) in einem Gang von zwei Zeilen. */
+    const feind = footprint({ x: 2, y: 0 }, 2).map(cellKey);
+    const g: MoveGrid = { ...offen(6, 3), blocked: feind };
+    expect(cheapestPath(g, { x: 0, y: 1 }, { x: 5, y: 1 })!.cells.every((c) => c.y === 2 || c.x < 2 || c.x > 3)).toBe(true);
+    const ring = footprintRing({ x: 2, y: 0 }, 2).map(cellKey);
+    expect(ring).toContain('4,2');
+    expect(ring).toContain('1,2');
+    const r = cheapestPath({ ...g, avoid: ring }, { x: 0, y: 1 }, { x: 5, y: 1 }, 0, { avoid: true })!;
+    expect(r.avoided).toBeGreaterThan(0);
+  });
+
+  it('lässt durch Verbündete, aber nicht darauf stehen — ausser tiny', () => {
+    const g: MoveGrid = { ...offen(4, 1), noStop: ['1,0'] };
+    expect(cheapestPath(g, { x: 0, y: 0 }, { x: 1, y: 0 })).toBeNull();
+    expect(cheapestPath({ ...g, share: true }, { x: 0, y: 0 }, { x: 1, y: 0 })!.feet).toBe(5);
+    /* Ein Large bleibt nicht so stehen, dass ein Verbündeter unter ihm steht. */
+    const h: MoveGrid = { ...offen(6, 4), span: 2, noStop: ['3,1'] };
+    expect(cheapestPath(h, { x: 0, y: 0 }, { x: 2, y: 0 })).toBeNull();
+    expect(cheapestPath(h, { x: 0, y: 0 }, { x: 4, y: 0 })!.feet).toBe(20);
+    expect(reachable(h, { x: 0, y: 0 }, 30)['2,0']).toBeUndefined();
+    expect(reachable(h, { x: 0, y: 0 }, 30)['4,0']).toBe(20);
+  });
+});
+
+describe('Sicht vom ganzen Platz (REQ-224)', () => {
+  /* Eine Wand von (2,0) nach (2,2): ein Feld in Zeile 0–1 links sieht nicht
+     nach rechts, ein Large über Zeile 1–2 schon — mit seiner unteren Hälfte. */
+  const wand = [{ x1: 2, y1: 0, x2: 2, y2: 2 }];
+  const ziel = [{ x: 4, y: 0 }];
+  it('sieht um eine Ecke, wenn ein Feld des Platzes freie Sicht hat', () => {
+    expect(spaceLineOfSight([{ x: 0, y: 1 }], ziel, wand)).toBe(false);
+    expect(spaceLineOfSight(footprint({ x: 0, y: 1 }, 2), ziel, wand)).toBe(true);
+    /* Und umgekehrt: das Ziel sieht den Oger. */
+    expect(spaceLineOfSight(ziel, footprint({ x: 0, y: 1 }, 2), wand)).toBe(true);
+  });
+
+  it('nimmt das beste Paar und sagt sonst, woran es am knappsten scheiterte', () => {
+    const pp = { pp: 12 };
+    const res = pairsOf(footprint({ x: 0, y: 1 }, 2), ziel).map(([a, b]) =>
+      notices(pp, { los: lineOfSight(a, b, wand), light: 'bright', distanceFeet: 20, dc: 14 }));
+    expect(bestNotice(res)).toMatchObject({ seen: false, why: 'stealth' });
+    const hell = pairsOf(footprint({ x: 0, y: 1 }, 2), ziel).map(([a, b]) =>
+      notices(pp, { los: lineOfSight(a, b, wand), light: 'bright', distanceFeet: 20 }));
+    expect(bestNotice(hell).seen).toBe(true);
+    expect(bestNotice([])).toMatchObject({ seen: false, why: 'wall' });
   });
 });
