@@ -678,6 +678,26 @@ ul.pstock .pbei{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
   background:var(--surface2);padding:6px;display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 .sbox.over{border-color:var(--accent);background:var(--accent-soft)}
 .bodyrig.picking .sbox{border-color:var(--accent);border-style:solid}
+/* Basils Blatt (REQ-214): links der Körper, in der Mitte die Figur,
+   rechts Hände und Gurt; darunter die Accessoires zu je vier. */
+.wornsheet{display:grid;grid-template-columns:1fr minmax(80px,120px) 1fr;gap:10px;align-items:start}
+.wornsheet .wcol{display:flex;flex-direction:column;gap:6px}
+.wornfig svg{width:100%;height:auto;display:block}
+/* Ziehen am Bogen (REQ-217): eine Zeile je Stufe, aufgeklappt die Stücke. */
+.drawrows{display:flex;flex-direction:column;gap:4px}
+.drawrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.drawrow .dname{min-width:96px;font-size:12.5px;padding:1px 6px;border-radius:var(--r)}
+.drawrow .dacts{flex:1;display:flex;gap:8px;flex-wrap:wrap;font-size:12.5px}
+.drawlist{margin:0 0 6px 0;padding-left:18px;font-size:12.5px}
+.drawlist li{margin:2px 0}
+.drawlist li .co{margin-left:8px;color:var(--dim)}
+.wacc{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.wornsheet.picking .sbox,.wacc.picking .sbox{border-color:var(--accent);border-style:solid}
+@media (max-width:560px){
+  .wornsheet{grid-template-columns:1fr 1fr}
+  .wornfig{grid-column:1/-1;order:-1;max-width:90px;margin:0 auto}
+  .wacc{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 .invgrid{display:grid;gap:2px;background:var(--line);border:1px solid var(--line);
   border-radius:var(--r);padding:2px;margin:8px 0;aspect-ratio:auto}
 .gcell{background:var(--surface2);min-height:38px;border-radius:2px}
@@ -877,9 +897,28 @@ svg.dg path.dgar-on{fill:var(--accent)}
   -moz-appearance:textfield}
 .initt .tin::-webkit-outer-spin-button,.initt .tin::-webkit-inner-spin-button{
   -webkit-appearance:none;margin:0}
-.initt td.hpcell{display:flex;align-items:center;gap:1px}
-.initt td.conds{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.initt td.hpcell{white-space:nowrap}
+.initt td.conds .chip{margin:1px 2px}
 .chip.cond{font-size:11px;padding:1px 6px;gap:4px}
+.chip.cond.note{font-style:italic}
+.chip.cond.hidden{border-style:dashed;opacity:.75}
+.fightgrid{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.fightgrid>.initt{flex:1 1 380px;min-width:0;width:auto}
+@media (min-width:1100px){.fightgrid{flex-wrap:nowrap}.fightside{position:sticky;top:8px}}
+.fightside{flex:0 1 300px;min-width:220px;border:1px solid var(--line);border-radius:4px;
+  padding:8px 10px;background:var(--bg)}
+.fightsidehead{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:6px}
+.initt tr.foe,.initt tr.ally{cursor:pointer}
+.initt tr.picked{outline:1px solid var(--accent);outline-offset:-1px}
+.initt td.who{min-width:110px}
+.initt .pname.anon{font-style:italic}
+.initt .pflags{display:inline-flex;gap:2px;margin-left:6px}
+.initt .pflag{background:none;border:1px solid var(--line);border-radius:2px;color:var(--dim);
+  cursor:pointer;font-size:11px;padding:0 3px;opacity:.55}
+.initt .pflag.on{color:var(--accent);border-color:var(--accent);opacity:1}
+.hpword{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em}
+.hpword.bloodied{color:var(--warn)}
+.hpword.down{color:var(--dim);text-decoration:line-through}
 .chip.cond .x{background:none;border:0;color:var(--dim);cursor:pointer;padding:0;line-height:1}
 .chip.cond .x:hover{color:var(--warn)}
 .btn.dice{font-family:var(--ff-mono)}
@@ -951,7 +990,14 @@ table.craftm td.num.short{color:var(--warn);font-weight:600}
 table.craftm td.num.ok{color:var(--ok)}
 table.craftm td.note{color:var(--dim);font-size:12.5px}
 table.craftm tr.crfoot td{border-bottom:0;padding-top:8px}
-table.craftm tr.crrow.unknown td{color:var(--dim);font-style:italic}
+/* Ungelernt gestrichelt (REQ-218): sichtbar, aber noch nicht gekonnt. */
+table.craftm tr.crrow.unlearned td{color:var(--dim);border-top:1px dashed var(--line2);
+  border-bottom:1px dashed var(--line2)}
+table.craftm tr.crrow.unlearned td:first-child{border-left:1px dashed var(--line2)}
+table.craftm tr.crrow.unlearned td:last-child{border-right:1px dashed var(--line2)}
+.crfilter{align-items:center}
+.crfilter select.i{width:auto;min-width:130px;padding:3px 6px;font-size:12.5px}
+.crsep{width:1px;align-self:stretch;background:var(--line);margin:0 4px}
 .cdot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px}
 .cdot.d-ok{background:var(--ok)}
 .cdot.d-no{background:var(--accent)}
@@ -1139,9 +1185,9 @@ var UI={route:{k:"list"}, view:"quick", area:"", iface:"", tag:"", q:"", offen:f
         aside:"rel", info:"", assetBusy:"",
         mapZoom:1, mapLock:false, mapKind:"", mapDrag:null, mapTool:"",
         wallKind:"wall", playTab:"map", playBoard:"", tab:"", typePick:"",
-        invView:"tiers", invPick:"", craftOnly:false, craftLog:[],
+        invView:"tiers", invPick:"", drawOpen:"", craftKnow:"", craftReady:"", craftMat:"", craftTrade:"", craftLog:[],
         boardZoom:1, boardPick:"", boardTool:"",
-        turnActor:"", rollLog:[], asActor:"", peers:[], pings:[],
+        turnActor:"", fightPick:"", rollLog:[], asActor:"", peers:[], pings:[],
         ruleQ:"", ruleKind:"",
         howto:"", typeView:"full", dgPick:"", dgAll:false, err:""};
 
@@ -2272,6 +2318,11 @@ function zonesInput(pd,cur){
      eine Zone auf einem Feld, das es nicht gibt, wäre eine Angabe über
      nichts. Ohne eigenes Raster: das Rechteck aus den Einstellungen. */
   function netz(){ return containerGrid(writeCtx); }
+  /* Ohne eigene Zonen beginnt das Malen mit den Basiszonen des Blatts
+     (D54) — sie sind die Vorgabe und werden erst mit dem Speichern zu
+     den eigenen. */
+  if(!Object.keys(karte).length&&writeCtx&&((writeCtx.interfaces||[])[0])===INV_IFACE)
+    karte=Object.assign({},zonesOf(writeCtx));
   function zeichne(){
     box.textContent="";
     var form=netz();
@@ -7436,9 +7487,10 @@ function rollButton(label,ausdruck,titel){
    Mal Trefferpunkte, und eine Zahl an einer Kante könnte nur einen davon
    verletzen.
 
-   Zustände tragen ihre Dauer mit und zählen am Ende des Zuges herunter, der
-   sie gesetzt hat. Ohne Dauer vergisst sie der Tisch — das ist der Grund,
-   warum sie überhaupt hier stehen und nicht an der Figur.
+   Zustände und Notizen tragen ihre Dauer mit und zählen am Anfang oder Ende
+   des Zuges ihres Ankers herunter (REQ-212, D53). Ohne Dauer vergisst sie
+   der Tisch — das ist der Grund, warum sie überhaupt hier stehen und nicht
+   an der Figur. RK und TP-Maximum liest die Zeile vom Statblock (REQ-211).
 
    `round` und `turn` liegen vorläufig an der Begegnung. Richtig wären
    Sitzungszustände mit Echtzeitkanal (REQ-116); das ist die Stelle, die
@@ -7447,22 +7499,113 @@ var ENC_IFACE="Encounter", ENC_COMP="Encounter",
     REL_PART="participates", REL_ONMAP="onMap", REL_LOOT="loot";
 
 function encCard(e){ return (e.components||{})[ENC_COMP]||{}; }
-function participants(e){
-  return (e.relations||[]).filter(function(r){return r.type===REL_PART;})
-    .map(function(r){
-      var t=ENT.get(r.to);
+function participants(e,roh){
+  var rels=(e.relations||[]).filter(function(r){return r.type===REL_PART;});
+  /* Spielende bekommen die Kanten schon gesiebt (REQ-213, D53) — hier, weil
+     die Seite keinen Server hat; im echten Stapel tut es `redactEntity`
+     mit `redactParticipants`, und beide rechnen gleich. */
+  if(!roh&&!isGM()) rels=fightForPlayers(rels);
+  return rels.map(function(r){
+      var t=r.to?ENT.get(r.to):null;
       var pr=r.props||{};
+      /* RK und Maximum vom Statblock der Instanz (REQ-211), nicht aus einer
+         Abschrift an der Kante. `hpMax` dort gilt nur ohne Statblock. */
+      var sb=t?statsOf(t).card:{};
+      var ac=Number(sb.ac), mx=Number(sb.hp);
+      if(!isFinite(mx)) mx=Number(pr.hpMax);
       return {rel:r,art:t,label:pr.label||(t?nameOf(t):"(missing)"),
-        init:Number(pr.init),hp:Number(pr.hp),hpMax:Number(pr.hpMax),
+        init:Number(pr.init),hp:Number(pr.hp),hpMax:mx,ac:ac,
+        hpState:pr.hpState||"",
         ally:!!pr.ally,conditions:Array.isArray(pr.conditions)?pr.conditions:[],
-        note:pr.note||""};
+        note:pr.note||"",revealed:!!pr.revealed,involved:!!pr.involved,
+        identified:!!pr.identified};
     });
+}
+/* ---- Dauer (REQ-212, D53) ----
+   Ein Eintrag zählt herunter, wenn der Zug seines Ankers anfängt oder
+   endet. Ohne Anker der eigene Zug, ohne Zeitpunkt das Ende: so verhielt
+   sich der Bestand, und so bleibt er gültig. Dieselbe Rechnung steht als
+   `entryTiming`/`tickEntries`/`expiresAt` in packages/model. */
+function entryTiming(c,ownId){
+  return {anchor:c.anchor||ownId, at:c.at==="start"?"start":"end"};
+}
+function tickFight(e,edgeId,at){
+  (e.relations||[]).forEach(function(r){
+    if(r.type!==REL_PART)return;
+    var liste=Array.isArray((r.props||{}).conditions)?r.props.conditions:[];
+    var neu=[], anders=false;
+    liste.forEach(function(c){
+      var t=entryTiming(c,r.id), n=Number(c.rounds);
+      if(t.anchor!==edgeId||t.at!==at||c.rounds==null||!isFinite(n)){ neu.push(c); return; }
+      anders=true;
+      if(n-1>0) neu.push(Object.assign({},c,{rounds:n-1}));
+    });
+    if(anders) r.props=Object.assign({},r.props,{conditions:neu});
+  });
+}
+function expiresAt(c,ownId,order,round,turn){
+  var n=Number(c.rounds);
+  if(c.rounds==null||!isFinite(n)||n<=0)return null;
+  var t=entryTiming(c,ownId), idx=order.indexOf(t.anchor);
+  if(idx<0)return null;
+  var r0=Math.max(1,round||0), lauf=round>0?turn:-1;
+  var nochDiese=idx>lauf||(idx===lauf&&t.at==="end");
+  return {round:(nochDiese?r0:r0+1)+n-1, anchor:t.anchor, at:t.at};
+}
+/* ---- Spieleransicht (REQ-213, D53) ----
+   Die Gruppe und wer aufgedeckt oder beteiligt ist; ohne `identified` der
+   Deckname und kein Verweis auf den Artikel; Trefferpunkte von Gegnern als
+   Wort; versteckte Einträge und die Notiz der Leitung nie. */
+function hpWord(hp,max){
+  var h=Number(hp), m=Number(max);
+  if(hp==null||!isFinite(h)) return isFinite(m)?"unhurt":"";
+  if(h<=0)return "down";
+  if(isFinite(m)&&h<m)return "bloodied";
+  return "unhurt";
+}
+function inPartyFight(to){
+  var t=ENT.get(to); if(!t)return false;
+  if(((t.interfaces||[])[0])==="Party")return true;
+  return (t.relations||[]).some(function(r){ return r.type==="memberOfParty"; });
+}
+function fightForPlayers(rels){
+  var zeigt=function(r){ var p=r.props||{}; return inPartyFight(r.to)||!!p.revealed||!!p.involved; };
+  var deck=function(r){ var t=ENT.get(r.to);
+    return (((t||{}).components||{}).Identity||{}).cover||"Unknown creature"; };
+  var oft={}, schon={};
+  rels.forEach(function(r){
+    if(!zeigt(r)||inPartyFight(r.to)||(r.props||{}).identified)return;
+    oft[deck(r)]=(oft[deck(r)]||0)+1;
+  });
+  return rels.filter(zeigt).map(function(r){
+    var p=r.props||{}, t=ENT.get(r.to);
+    var sb=t?statsOf(t).card:{}, mx=Number(sb.hp);
+    if(!isFinite(mx)) mx=Number(p.hpMax);
+    var neu={init:p.init,ally:p.ally,revealed:p.revealed,involved:p.involved,identified:p.identified,
+      conditions:(Array.isArray(p.conditions)?p.conditions:[]).filter(function(c){ return !c.hidden; })};
+    var to=r.to;
+    if(inPartyFight(r.to)){ neu.label=p.label; neu.hp=p.hp; neu.note=p.note; }
+    else {
+      neu.hpState=hpWord(p.hp,mx);
+      if(p.identified) neu.label=p.label;
+      else {
+        var b=deck(r); schon[b]=(schon[b]||0)+1;
+        neu.label=oft[b]>1?b+" "+schon[b]:b;
+        to="";
+      }
+    }
+    return {id:r.id,type:r.type,to:to,props:neu};
+  });
 }
 /* Die Reihenfolge: hohe Initiative zuerst, bei Gleichstand die Verbündeten —
    das ist eine Hausregel, und sie steht hier, damit sie jedes Mal gleich
    ausgeht statt jedes Mal neu verhandelt zu werden. */
-function initOrder(e){
-  return participants(e).sort(function(a,b){
+function initOrder(e){ return sortFight(participants(e)); }
+/* Die ganze Reihe, wie die Leitung sie sieht — nur um den laufenden Zug zu
+   finden, der in der Begegnung als Index steht. */
+function initOrderRaw(e){ return sortFight(participants(e,true)); }
+function sortFight(xs){
+  return xs.sort(function(a,b){
     var d=(isFinite(b.init)?b.init:-99)-(isFinite(a.init)?a.init:-99);
     if(d)return d;
     if(a.ally!==b.ally)return a.ally?-1:1;
@@ -7474,9 +7617,15 @@ function elInitiative(e,ifn,item){
   var card=encCard(e);
   var liste=initOrder(e);
   var runde=Number(card.round)||0, zug=Number(card.turn)||0;
-  if(zug>=liste.length) zug=0;
-  var dran=liste[zug]||null;
+  /* Der laufende Zug zählt in der ganzen Reihe — auch für Spielende, die
+     nur einen Teil davon sehen. Wer gerade dran ist und nicht gezeigt
+     wird, hat eben keinen Zeiger. */
+  var ganz=isGM()?liste:initOrderRaw(e);
+  if(zug>=ganz.length) zug=0;
+  var dranId=ganz[zug]?ganz[zug].rel.id:"";
+  var dran=liste.filter(function(p){ return p.rel.id===dranId; })[0]||null;
   UI.turnActor=dran&&dran.art?dran.art.id:"";
+  var order=ganz.map(function(p){ return p.rel.id; });
   var wrap=el("div",{class:"fight"});
 
   function schreib(patch){
@@ -7484,23 +7633,17 @@ function elInitiative(e,ifn,item){
     e.components[ENC_COMP]=Object.assign({},e.components[ENC_COMP]||{},patch);
     persist(e);
   }
-  /* Am Ende eines Zuges laufen die Zustände ab, die in diesem Zug gesetzt
-     wurden. Sie dort zu zählen und nicht am Rundenwechsel ist der
-     Unterschied zwischen „bis zum Ende deines nächsten Zuges" und „bis
-     irgendwann". */
+  /* Ein Zug endet, der nächste fängt an (REQ-212, D53): erst zählen die
+     Einträge, deren Anker am Ende des laufenden Zuges steht, dann die am
+     Anfang des neuen. Ohne Anker ist das der eigene Zug, Ende — so zählte
+     der Bestand, und so zählt er weiter. */
   function naechster(){
     if(!liste.length)return;
-    var aktuell=liste[zug];
-    if(aktuell){
-      var rest=(aktuell.conditions||[]).map(function(c){
-        var r2=Object.assign({},c);
-        if(isFinite(Number(r2.rounds))) r2.rounds=Number(r2.rounds)-1;
-        return r2;
-      }).filter(function(c){ return !isFinite(Number(c.rounds))||Number(c.rounds)>0; });
-      aktuell.rel.props=Object.assign({},aktuell.rel.props,{conditions:rest});
-    }
+    if(dranId) tickFight(e,dranId,"end");
     var n=zug+1, r3=runde;
     if(n>=liste.length){ n=0; r3=runde+1; }
+    var neu=liste[n];
+    if(neu) tickFight(e,neu.rel.id,"start");
     schreib({turn:n,round:r3,phase:"running"});
   }
 
@@ -7527,7 +7670,7 @@ function elInitiative(e,ifn,item){
     bar.appendChild(el("button",{class:"btn sm gh",type:"button",
       title:"Back to round zero, initiative cleared",
       onclick:function(){
-        confirmDialog("Reset the fight? Initiative and conditions are cleared, hit points stay.",function(){
+        confirmDialog("Reset the fight? Initiative, conditions and notes are cleared, hit points stay.",function(){
           (e.relations||[]).forEach(function(r5){
             if(r5.type!==REL_PART)return;
             r5.props=Object.assign({},r5.props,{init:undefined,conditions:[]});
@@ -7543,14 +7686,38 @@ function elInitiative(e,ifn,item){
     return wrap;
   }
 
+  /* Wie heisst ein Anker? Der Tischname des Teilnehmers — für Spielende
+     nur, wenn sie ihn sehen. */
+  function ankerName(id){
+    var p=liste.filter(function(x){ return x.rel.id===id; })[0];
+    return p?p.label:"another turn";
+  }
+  function dauerText(c,p2){
+    var t=entryTiming(c,p2.rel.id), n=Number(c.rounds);
+    if(c.rounds==null||!isFinite(n))return "";
+    var eigen=t.anchor===p2.rel.id;
+    return n+(eigen&&t.at==="end"?"":" · "+t.at+" of "+(eigen?"own turn":ankerName(t.anchor)));
+  }
+
+  /* Die Tabelle und daneben der Statblock der gewählten Zeile (REQ-211):
+     ein Klick auf die Zeile, und die Seite bleibt, wo sie ist. */
+  var grid=el("div",{class:"fightgrid"});
   var tb=el("table",{class:"initt"});
   var hd=el("tr");
-  ["","Init","Who","HP","Conditions",""].forEach(function(h){ hd.appendChild(el("th",{text:h})); });
+  ["","Init","Who","AC","HP","Conditions & notes",""].forEach(function(h){ hd.appendChild(el("th",{text:h})); });
   tb.appendChild(hd);
-  liste.forEach(function(p2,i){
-    var row=el("tr",{class:(i===zug?"now ":"")+(p2.ally?"ally":"foe")+
-      ((isFinite(p2.hp)&&p2.hp<=0)?" down":"")});
-    row.appendChild(el("td",{class:"turn",text:i===zug?"▶":""}));
+  var gewaehlt=liste.filter(function(p){ return p.rel.id===UI.fightPick; })[0]||null;
+  liste.forEach(function(p2){
+    var istDran=p2.rel.id===dranId;
+    var unten=isFinite(p2.hp)?p2.hp<=0:p2.hpState==="down";
+    var row=el("tr",{class:(istDran?"now ":"")+(p2.ally||inPartyFight(p2.rel.to)?"ally":"foe")+
+      (unten?" down":"")+(gewaehlt===p2?" picked":"")});
+    if(p2.art) row.addEventListener("click",function(ev){
+      var tag=(ev.target&&ev.target.tagName)||"";
+      if(/^(INPUT|SELECT|BUTTON|OPTION)$/.test(tag))return;
+      UI.fightPick=UI.fightPick===p2.rel.id?"":p2.rel.id; render();
+    });
+    row.appendChild(el("td",{class:"turn",text:istDran?"▶":""}));
 
     var ci=el("td",{class:"num"});
     if(canWrite()){
@@ -7563,12 +7730,32 @@ function elInitiative(e,ifn,item){
     } else ci.textContent=isFinite(p2.init)?String(p2.init):"—";
     row.appendChild(ci);
 
-    var cw=el("td");
-    if(p2.art) cw.appendChild(el("button",{class:"ref",type:"button",
-      onclick:function(){go({k:"art",id:p2.art.id});}},p2.label));
-    else cw.appendChild(el("span",{class:"gone",text:p2.label}));
+    var cw=el("td",{class:"who"});
+    cw.appendChild(el("span",{class:p2.art?"pname":"pname anon",text:p2.label}));
+    if(p2.art&&!inPlacement) cw.appendChild(el("button",{class:"ref sm",type:"button",
+      title:"Open the article",onclick:function(){go({k:"art",id:p2.art.id});}},"↗"));
     if(p2.note) cw.appendChild(el("span",{class:"bind",text:p2.note}));
+    /* Was die Spielenden sehen (REQ-213): drei Schalter je Zeile, nur für
+       die Leitung. Die Gruppe sehen sie ohnehin. */
+    if(isGM()&&canWrite()&&!inPartyFight(p2.rel.to)){
+      var sch=el("span",{class:"pflags"});
+      [["revealed","👁","Revealed to the players"],
+       ["involved","⚔","Involved — set by itself when hit"],
+       ["identified","✓","Identified — players see the name, not the cover"]].forEach(function(f){
+        var an=!!p2[f[0]];
+        sch.appendChild(el("button",{class:"pflag"+(an?" on":""),type:"button",title:f[2],
+          "aria-pressed":String(an),
+          onclick:function(){
+            var patch={}; patch[f[0]]=an?undefined:true;
+            p2.rel.props=Object.assign({},p2.rel.props,patch);
+            persist(e);
+          }},f[1]));
+      });
+      cw.appendChild(sch);
+    }
     row.appendChild(cw);
+
+    row.appendChild(el("td",{class:"num",text:isFinite(p2.ac)?String(p2.ac):"—"}));
 
     var ch=el("td",{class:"num hpcell"});
     if(canWrite()){
@@ -7579,21 +7766,29 @@ function elInitiative(e,ifn,item){
       var hv=el("input",{class:"tin",type:"number",value:isFinite(p2.hp)?String(p2.hp):""});
       hv.addEventListener("change",function(){
         p2.rel.props=Object.assign({},p2.rel.props,
-          {hp:hv.value===""?undefined:Number(hv.value)});
+          {hp:hv.value===""?undefined:Number(hv.value),involved:true});
         persist(e); });
       ch.appendChild(hv);
       if(isFinite(p2.hpMax)) ch.appendChild(el("span",{class:"vmax",text:"/"+p2.hpMax}));
       ch.appendChild(el("button",{class:"vbtn",type:"button",title:"Heal 1",
         onclick:function(){ traf(p2,1); }},"+"));
-    } else ch.textContent=(isFinite(p2.hp)?p2.hp:"—")+(isFinite(p2.hpMax)?"/"+p2.hpMax:"");
+    } else if(p2.hpState) ch.appendChild(el("span",{class:"hpword "+p2.hpState,text:p2.hpState}));
+    else ch.textContent=(isFinite(p2.hp)?p2.hp:(isFinite(p2.hpMax)?p2.hpMax:"—"))+(isFinite(p2.hpMax)?"/"+p2.hpMax:"");
     row.appendChild(ch);
 
     var cc=el("td",{class:"conds"});
     (p2.conditions||[]).forEach(function(c){
-      /* `rule` ist die Id des Regelartikels; `name` trug ein älterer Bestand. */
+      /* `rule` ist die Id des Regelartikels; `name` trug ein älterer
+         Bestand; `text` ist eine Notiz (REQ-212). */
+      var notiz=!c.rule&&!c.name&&typeof c.text==="string";
       var regel=c.rule?ENT.get(c.rule):null;
-      var chip=el("span",{class:"chip cond",title:regel?(((regel.components||{}).Description||{}).description||""):""},
-        (regel?nameOf(regel):(c.name||"?"))+(isFinite(Number(c.rounds))?" ("+c.rounds+")":""));
+      var dt=dauerText(c,p2);
+      var ende=expiresAt(c,p2.rel.id,order,runde,zug);
+      var tip=(regel?(((regel.components||{}).Description||{}).description||""):"")+
+        (ende?(regel?"\n":"")+"Ends at the "+ende.at+" of "+(ende.anchor===p2.rel.id?p2.label:ankerName(ende.anchor))+"’s turn, round "+ende.round:"")+
+        (c.source?"\nFrom "+c.source:"");
+      var chip=el("span",{class:"chip cond"+(notiz?" note":"")+(c.hidden?" hidden":""),title:tip},
+        (notiz?c.text:(regel?nameOf(regel):(c.name||"?")))+(dt?" ("+dt+")":""));
       if(canWrite()) chip.appendChild(el("button",{class:"x",type:"button",
         onclick:function(){
           p2.rel.props=Object.assign({},p2.rel.props,
@@ -7601,18 +7796,9 @@ function elInitiative(e,ifn,item){
           persist(e); }},"×"));
       cc.appendChild(chip);
     });
-    if(canWrite()){
-      var add=el("select",{class:"bsel"});
-      add.appendChild(el("option",{value:""},"+ condition"));
-      conditionList().forEach(function(r){ add.appendChild(el("option",{value:r.id},nameOf(r))); });
-      add.addEventListener("change",function(){
-        if(!add.value)return;
-        p2.rel.props=Object.assign({},p2.rel.props,{conditions:
-          withConditionRows(p2.conditions,{rule:add.value,rounds:1,source:dran?dran.label:""})});
-        persist(e);
-      });
-      cc.appendChild(add);
-    }
+    if(canWrite()) cc.appendChild(el("button",{class:"btn sm gh",type:"button",
+      title:"Add a condition or a note with a duration",
+      onclick:function(){ addTimedEntry(e,p2,liste,dran,order,runde,zug); }},"+"));
     row.appendChild(cc);
 
     var cx=el("td");
@@ -7623,11 +7809,32 @@ function elInitiative(e,ifn,item){
     row.appendChild(cx);
     tb.appendChild(row);
   });
-  wrap.appendChild(tb);
+  grid.appendChild(tb);
+
+  /* Der Statblock in der Ansicht `quick`, gezeichnet wie eine Kachel auf dem
+     Board — derselbe Weg, dieselben Elemente. Für Spielende nur, was sie
+     ohnehin sehen dürften. */
+  if(gewaehlt&&gewaehlt.art&&!inPlacement){
+    var ziel=statblockOf(gewaehlt.art)||gewaehlt.art;
+    if(articleVisible(ziel)){
+      var side=el("aside",{class:"fightside"});
+      var kopf=el("div",{class:"fightsidehead"});
+      kopf.appendChild(el("button",{class:"ref",type:"button",
+        onclick:function(){go({k:"art",id:ziel.id});}},gewaehlt.label));
+      kopf.appendChild(el("button",{class:"btn sm gh",type:"button",title:"Close",
+        onclick:function(){ UI.fightPick=""; render(); }},"×"));
+      side.appendChild(kopf);
+      side.appendChild(renderPlacement(ziel,VIEW_QUICK,1));
+      grid.appendChild(side);
+    }
+  }
+  wrap.appendChild(grid);
 
   function traf(p2,d){
     var jetzt=isFinite(p2.hp)?p2.hp:(isFinite(p2.hpMax)?p2.hpMax:0);
-    p2.rel.props=Object.assign({},p2.rel.props,{hp:jetzt+d});
+    /* Wer getroffen wird, ist beteiligt (REQ-213) — die Spielenden haben es
+       gesehen, also steht es jetzt in ihrer Reihe. */
+    p2.rel.props=Object.assign({},p2.rel.props,{hp:jetzt+d,involved:true});
     logRoll((dran?dran.label+" → ":"")+p2.label+(d<0?" damage":" healed"),
       {total:Math.abs(d),rolls:[{flat:Math.abs(d)}],expr:"manual"});
     persist(e);
@@ -7705,6 +7912,70 @@ function elInitiative(e,ifn,item){
   return wrap;
 }
 
+/* Einen Zustand oder eine Notiz mit Dauer setzen (REQ-212, D53). Gespeichert
+   wird nur, was vom Bestand abweicht: der eigene Zug als Anker und das Ende
+   als Zeitpunkt bleiben weg — so liest sich ein neuer Eintrag wie ein alter,
+   solange er dasselbe meint. Die Zeile unten sagt, wann er abläuft; „1 Runde"
+   ist sonst eine Frage, die jeder am Tisch anders beantwortet. */
+function addTimedEntry(e,p2,liste,dran,order,runde,zug){
+  dialog("Condition or note — "+p2.label,function(host,close){
+    var art=el("select",{class:"i"});
+    art.appendChild(el("option",{value:"cond"},"Condition"));
+    art.appendChild(el("option",{value:"note"},"Note"));
+    var regel=el("select",{class:"i"});
+    conditionList().forEach(function(r){ regel.appendChild(el("option",{value:r.id},nameOf(r))); });
+    var text=el("input",{class:"i",type:"text",placeholder:"Concentrating on Bless"});
+    var runden=el("input",{class:"i",type:"number",min:"1",value:"1",placeholder:"until removed"});
+    var anker=el("select",{class:"i"});
+    liste.forEach(function(x){
+      anker.appendChild(el("option",{value:x.rel.id},x.rel.id===p2.rel.id?x.label+" (own turn)":x.label));
+    });
+    anker.value=p2.rel.id;
+    var wann=el("select",{class:"i"});
+    wann.appendChild(el("option",{value:"end"},"End of turn"));
+    wann.appendChild(el("option",{value:"start"},"Start of turn"));
+    var versteckt=el("input",{type:"checkbox"});
+    var fRegel=field("Condition",regel), fText=field("Text",text);
+    var vorschau=el("p",{class:"hint"});
+    function eintrag(){
+      var c={};
+      if(art.value==="note") c.text=text.value.trim(); else c.rule=regel.value;
+      if(runden.value!=="") c.rounds=Math.max(1,Number(runden.value)||1);
+      if(anker.value&&anker.value!==p2.rel.id) c.anchor=anker.value;
+      if(wann.value==="start") c.at="start";
+      if(dran) c.source=dran.label;
+      if(versteckt.checked) c.hidden=true;
+      return c;
+    }
+    function zeig(){
+      fRegel.style.display=art.value==="note"?"none":"";
+      fText.style.display=art.value==="note"?"":"none";
+      var ende=expiresAt(eintrag(),p2.rel.id,order,runde,zug);
+      var wer=liste.filter(function(x){ return x.rel.id===(ende&&ende.anchor); })[0];
+      vorschau.textContent=ende?"Ends at the "+ende.at+" of "+(wer?wer.label:"?")+"’s turn in round "+ende.round+".":
+        "No duration — stays until someone removes it.";
+    }
+    [art,regel,text,runden,anker,wann].forEach(function(n){
+      n.addEventListener("change",zeig); n.addEventListener("input",zeig); });
+    host.appendChild(field("Kind",art));
+    host.appendChild(fRegel);
+    host.appendChild(fText);
+    host.appendChild(field("Rounds (empty: until removed)",runden));
+    host.appendChild(field("Counted on whose turn",anker));
+    host.appendChild(field("At",wann));
+    host.appendChild(field("Hidden from the players",versteckt));
+    host.appendChild(vorschau);
+    zeig();
+    actions(host,close,function(){
+      var c=eintrag();
+      if(c.text===""||(art.value!=="note"&&!c.rule))return false;
+      p2.rel.props=Object.assign({},p2.rel.props,{conditions:
+        c.rule?withConditionRows(p2.conditions,c):(p2.conditions||[]).concat([c])});
+      persist(e);
+    },"Add");
+  });
+}
+
 /* Kämpfer dazunehmen. Eine Anzahl legt mehrere Kanten an, nicht eine mit
    Zahl — jeder Goblin hat eigene Trefferpunkte. */
 function addParticipants(e){
@@ -7741,7 +8012,9 @@ function addParticipants(e){
       for(var i=0;i<n;i++){
         e.relations.push({id:uid("r"),type:REL_PART,to:art.id,props:{
           label:n>1?nameOf(art)+" "+(i+1):nameOf(art),
-          hp:isFinite(hp)?hp:undefined, hpMax:isFinite(hp)?hp:undefined,
+          /* Das Maximum steht am Statblock (REQ-211); die Kante hält nur
+             den Stand, und der fängt voll an. */
+          hp:isFinite(hp)?hp:undefined,
           ally:seite.value==="ally", conditions:[]}});
       }
       persist(e);
@@ -8116,20 +8389,58 @@ function amountHeld(traeger,itemId){
   carriedItems(traeger).forEach(function(st){ if(st.item.id===itemId) n+=st.qty; });
   return n;
 }
-/* Kennt der Betrachter das Rezept? Alle Informationen daran müssen bekannt
-   sein; keine Information heisst offen. Teilwissen ist ein eigener Zustand —
-   „du kennst das Rezept, aber nicht die letzte Zutat" ist eine Lage, die am
-   Tisch vorkommt, und sie soll sichtbar sein. */
-function recipeKnowledge(rec,viewerId){
+/* Hat diese Figur die Blaupause gelernt (REQ-218, D55)? **Gelernt heisst
+   zugeteilt**: jede Information am Rezept reicht über `knownBy` bis zu ihr —
+   selbst, über ihre Gruppe oder ihre Fraktion, dieselbe Abfrage wie überall
+   (`knowsInfo`). Ein Feld „gelernt von" am Rezept wäre ein zweites,
+   schwächeres Wissensmodell neben dem vorhandenen.
+
+   Ein Rezept **ohne** Information hat niemand gelernt. Bis D52 hiess das
+   „offen, jeder kann es"; D52 dreht es um: Blaupausen werden gelernt. Sehen
+   darf man es trotzdem — ob es dasteht, sagt `articleVisible`, nicht das
+   Wissen —, nur eben gestrichelt. Teilwissen zählt nicht als gelernt: das
+   fehlende Stück ist ein Teil der Blaupause, und „du kennst das Rezept,
+   aber nicht die letzte Zutat" soll sichtbar bleiben. */
+function recipeLearned(rec,actorId){
   var infos=infosOf(rec);
-  if(!infos.length)return "open";
-  var bekannt=infos.filter(function(i){ return knowsInfo(i,viewerId); }).length;
-  if(bekannt===infos.length)return "known";
-  return bekannt?"partial":"hidden";
+  if(!infos.length)return "unlearned";
+  var bekannt=infos.filter(function(i){ return knowsInfo(i,actorId); }).length;
+  if(bekannt===infos.length)return "learned";
+  return bekannt?"partial":"unlearned";
+}
+/* Lehren: die Leitung teilt zu, was fehlt. Hat das Rezept noch keine
+   Information, bekommt es eine ohne Felder — sie hütet nichts, sie ist
+   nur das, was man lernen kann. Felder, die jemand wirklich verbergen
+   will, ordnet er ihr danach im Seitenpanel zu (REQ-218, D55). */
+function craftTeach(rec,traeger){
+  var infos=infosOf(rec);
+  if(!infos.length){
+    if(!REG.interfaces[INFO_IFACE]){ UI.err="The interface “"+INFO_IFACE+"” is missing from the registry."; render(); return; }
+    var name="Blueprint: "+nameOf(rec);
+    var info={ id:uid("i"), interfaces:[INFO_IFACE], name:name,
+      components:{ Identity:{name:name,id:nextId(INFO_IFACE),aliases:[]} },
+      adhoc:[], relations:[], createdAt:new Date().toISOString() };
+    applyDefaults(info,INFO_IFACE);
+    info.components[INFO_COMP]=Object.assign({fields:[]},info.components[INFO_COMP]||{},{tier:"secret"});
+    ENT.set(info.id,info);
+    rec.relations=rec.relations||[];
+    rec.relations.push({id:uid("r"),type:REL_KNOW,to:info.id,props:{}});
+    infos=[info];
+    persist(rec);
+  }
+  infos.forEach(function(i){
+    if(knowsInfo(i,traeger.id))return;
+    i.relations=i.relations||[];
+    i.relations.push({id:uid("r"),type:REL_KNOWNBY,to:traeger.id,props:{}});
+    persist(i);
+  });
 }
 /* Was fehlt — Material **und** Werkzeug. Die beiden auseinanderzuhalten
    hiesse, dass die Matrix „ja" sagt und das Anfangen „nein": genau die Art
-   Widerspruch, die man am Tisch der Software nicht mehr verzeiht. */
+   Widerspruch, die man am Tisch der Software nicht mehr verzeiht.
+   `short` zählt die fehlenden **Posten** (je Zutat einer, das Werkzeug
+   einer), nicht die Stücke: „fast" heisst „noch zwei Besorgungen", und
+   zwölf fehlende Pfeile sind eine (REQ-218, D55). */
 function craftStatus(rec,traeger){
   var fehlt=[], ok=true;
   recipeNeeds(rec).forEach(function(n){
@@ -8139,10 +8450,35 @@ function craftStatus(rec,traeger){
   var info=(rec.components||{})[RECIPE_COMP]||{};
   var werkzeug=!info.tool||(traeger&&hasTool(traeger,info));
   if(!werkzeug){ ok=false; }
-  return {ok:ok,missing:fehlt,tool:werkzeug?"":info.tool};
+  return {ok:ok,missing:fehlt,tool:werkzeug?"":info.tool,
+    short:fehlt.length+(werkzeug?0:1)};
+}
+/* Die Filter der Werkbank (REQ-218, D55), alle zugleich:
+   `know` — „learned" nur, was diese Figur kann, sonst alle Blaupausen;
+   `ready` — „ready" alles da, „almost" ein oder zwei Posten fehlen;
+   `material` — eine Gegenstands-Id: was sich daraus machen lässt;
+   `trade` — „trade:Schmied" oder „tool:Alchemist's supplies": der Beruf
+   steht als Wort am Rezept, das Werkzeug auch, und beide sind Fragen,
+   die am Tisch gestellt werden. */
+function craftMatches(rec,traeger,f){
+  f=f||{};
+  if(f.know==="learned"&&recipeLearned(rec,traeger.id)!=="learned")return false;
+  if(f.ready){
+    var st=craftStatus(rec,traeger);
+    if(f.ready==="ready"&&!st.ok)return false;
+    if(f.ready==="almost"&&(st.short<1||st.short>2))return false;
+  }
+  if(f.material&&!recipeNeeds(rec).some(function(n){ return n.item.id===f.material; }))return false;
+  if(f.trade){
+    var info=(rec.components||{})[RECIPE_COMP]||{};
+    var i=String(f.trade).indexOf(":");
+    var feld=String(f.trade).slice(0,i)==="tool"?"tool":"trade";
+    if(String(info[feld]||"")!==String(f.trade).slice(i+1))return false;
+  }
+  return true;
 }
 
-/* ---------- Ein laufender Handwerksgang (REQ-184, Rest) ----------
+/* ---------- Ein laufender Handwerksgang (REQ-184, 219) ----------
    Bis hierher stand am Rezept, was es kostet, wie lange es dauert und
    gegen welchen Wert man würfelt — und niemand würfelte und niemand zählte.
    Eine Zeit, die nur dasteht, ist eine Notiz; eine Probe, die nur dasteht,
@@ -8154,19 +8490,21 @@ function craftStatus(rec,traeger){
    ein Gang ist vorbei, wenn er vorbei ist, und ein Artikel, den man
    anschliessend löscht, war keiner.
 
-   **Das Material wird angehängt, während der Gang läuft.** Es ging einmal
-   am Anfang hinein, und das hiess: anfangen konnte nur, wer schon alles
-   hatte. Am Tisch ist es andersherum — man fängt an, weil man etwas
-   vorhat, und sammelt dabei. Der Gang trägt deshalb, was schon drin ist
-   (`put`), und man legt jederzeit nach.
+   **Das Material wird beim Start gebunden** (REQ-219, D55). Was das Rezept
+   braucht und dabei ist, verlässt das Inventar und steht am Gang (`put`) —
+   auch, was nicht verbraucht wird: die Zange, die im Gang steckt, liegt
+   nicht zugleich im Beutel und kann nicht für einen zweiten Gang herhalten.
+   Bis D52 ging nichts hinein, und angehängt wurde unterwegs (Aufgabe #34);
+   das bleibt für Material, das erst unterwegs dazukommt, ist aber nicht
+   mehr die Vorgabe. Ein Gang aus der Zeit davor ist dieselbe Kante mit
+   weniger in `put` und läuft weiter wie bisher.
 
    Tage lassen sich von Anfang an arbeiten. **Fertig wird es nicht, bevor
    alles drin ist**: der letzte Tag ist der Wurf, und ein Wurf auf halbes
    Material wäre ein Wurf auf nichts.
 
-   Weil etwas drin liegt, kann ein Gang scheitern und etwas kosten — und
-   deshalb ist `onFailure` mehr als eine Zeile im Register. Was übrig
-   bleibt, wandert zurück ins Inventar; was verloren ist, ist verloren.
+   Was am Ende zurückkommt, sagt `craftReturns`: was nicht verbraucht wird,
+   immer; das Übrige beim Misslingen und beim Abbruch nach `onFailure`.
 
    Gewürfelt wird **einmal am Ende**, mit demselben Würfelwerk wie alles
    andere, und der Wurf bleibt an der Kante stehen. Ein Ergebnis, das nicht
@@ -8212,7 +8550,9 @@ function craftMod(traeger,info){
 }
 /* Hat der Arbeiter das Werkzeug dabei? Ein Rezept, das Alchemistenwerkzeug
    verlangt, lässt sich ohne nicht anfangen — und das ist eine Frage an das
-   Inventar, nicht an eine Häkchenliste. */
+   Inventar, nicht an eine Häkchenliste. Gebunden wird es nicht: es steht
+   als Wort am Rezept, nicht als Kante, und ein Name, der auf drei Stücke
+   passt, sagt nicht, welches in den Gang gehört (D55, offen). */
 function hasTool(traeger,info){
   if(!info.tool)return true;
   var gesucht=String(info.tool).toLowerCase();
@@ -8222,28 +8562,62 @@ function hasTool(traeger,info){
   });
 }
 
-/* Was dieser Gang noch braucht. Drei Zahlen je Zutat: wie viel das Rezept
-   verlangt, wie viel schon drin liegt, wie viel der Arbeiter dabei hat. */
+/* Was dieser Gang noch braucht. Je Zutat: wie viel das Rezept verlangt,
+   wie viel gebunden ist, wie viel der Arbeiter noch dabei hat — und `have`,
+   was davon zählt. Verbrauchtes zählt nur, wenn es drin ist; was nicht
+   verbraucht wird, auch in der Hand, denn ein Gang aus der Zeit vor D55
+   hat es nie gebunden. */
 function jobNeeds(traeger,job){
   var drin={};
   ((job.rel.props||{}).put||[]).forEach(function(p){
     drin[p.item]=(drin[p.item]||0)+(Number(p.qty)||0); });
   return recipeNeeds(job.recipe).map(function(n){
-    return {item:n.item,need:n.qty,consumed:n.consumed,
-      put:drin[n.item.id]||0,held:amountHeld(traeger,n.item.id)};
+    var put=drin[n.item.id]||0, held=amountHeld(traeger,n.item.id);
+    return {item:n.item,need:n.qty,consumed:n.consumed,put:put,held:held,
+      have:n.consumed?put:put+held};
   });
 }
-/* Fertig werden kann nur, was vollständig ist — Material und Werkzeug.
-   Was nicht verbraucht wird, muss dabei sein und nicht hinein. */
+/* Fertig werden kann nur, was vollständig ist — Material und Werkzeug. */
 function jobReady(traeger,job){
   var info=(job.recipe.components||{})[RECIPE_COMP]||{};
-  var fehlt=jobNeeds(traeger,job).filter(function(n){
-    return n.consumed?n.put<n.need:n.held<n.need; });
+  var fehlt=jobNeeds(traeger,job).filter(function(n){ return n.have<n.need; });
   var werkzeug=!info.tool||hasTool(traeger,info);
   return {ok:!fehlt.length&&werkzeug,missing:fehlt,tool:werkzeug?"":info.tool};
 }
-/* Nachlegen. Was hineingeht, ist aus dem Inventar weg — sonst läge dieselbe
-   Zutat zweimal da, einmal im Beutel und einmal im Kessel. */
+/* Was der Start bindet: je Zutat so viel, wie das Rezept verlangt und der
+   Arbeiter hat (REQ-219). Mehr nicht — der Rest bleibt im Inventar und für
+   anderes frei. */
+function craftBind(traeger,rec){
+  return recipeNeeds(rec).map(function(n){
+    return {item:n.item,need:n.qty,consumed:n.consumed,
+      qty:Math.min(n.qty,amountHeld(traeger,n.item.id))};
+  });
+}
+/* Was zurück ins Inventar geht, wenn ein Gang endet (REQ-219, D55).
+   Was nicht verbraucht wird, kommt immer zurück — es war nur gebunden.
+   Gelingt der Gang, ist das Übrige aufgebraucht; misslingt er oder wird er
+   abgebrochen, entscheidet `onFailure`. `halfLost` rundet zugunsten des
+   Arbeiters ab — die Hälfte einer einzelnen Zutat ist keine halbe Zutat,
+   sondern Glück. Was das Rezept nicht mehr nennt, zählt als verbraucht:
+   so verhielt sich jeder Gang vor D55. */
+function craftReturns(rec,put,ok){
+  var info=(rec.components||{})[RECIPE_COMP]||{};
+  var regel=info.onFailure||"halfLost";
+  var bleibt={};
+  recipeNeeds(rec).forEach(function(n){ if(!n.consumed) bleibt[n.item.id]=true; });
+  var out=[];
+  (put||[]).forEach(function(p){
+    var q=Number(p.qty)||0, zurueck;
+    if(bleibt[p.item]) zurueck=q;
+    else if(ok) zurueck=0;
+    else zurueck=regel==="nothingLost"?q:(regel==="halfLost"?Math.floor(q/2):0);
+    if(zurueck>0) out.push({item:p.item,qty:zurueck});
+  });
+  return out;
+}
+/* Nachlegen — für Material, das erst unterwegs dazukommt (Aufgabe #34).
+   Was hineingeht, ist aus dem Inventar weg — sonst läge dieselbe Zutat
+   zweimal da, einmal im Beutel und einmal im Kessel. */
 function craftPut(traeger,job,itemId,menge){
   var inv=inventoryOf(traeger);
   if(!inv)return;
@@ -8257,28 +8631,48 @@ function craftPut(traeger,job,itemId,menge){
   persist(inv);
   if(inv.id!==traeger.id) persist(traeger);
 }
+function stueckListe(liste){
+  return liste.map(function(b){
+    var it=b.item&&b.item.id?b.item:ENT.get(b.item);
+    return (it?nameOf(it):"?")+" ×"+b.qty; }).join(", ");
+}
 
-/* Anfangen: die Kante anlegen, und sonst nichts. Das Werkzeug muss dabei
-   sein — ohne Kessel fängt niemand an —, das Material nicht: es wird
-   angehängt, während der Gang läuft. */
+/* Anfangen (REQ-219, D55): wer die Blaupause gelernt und das Werkzeug dabei
+   hat, fängt an, und **was das Rezept braucht, wird gebunden** — es
+   verlässt das Inventar und steht am Gang. Fehlt etwas, darf man trotzdem
+   anfangen und es unterwegs nachlegen; der Dialog sagt, was. */
 function craftStart(rec,traeger){
   var inv=inventoryOf(traeger);
   if(!inv){ UI.err="No inventory to take from."; render(); return; }
   var info=(rec.components||{})[RECIPE_COMP]||{};
+  if(recipeLearned(rec,traeger.id)!=="learned"){
+    UI.err=nameOf(traeger)+" must still learn “"+nameOf(rec)+"”."; render(); return; }
   if(info.tool&&!hasTool(traeger,info)){
     UI.err="Needs "+info.tool+" to work with."; render(); return; }
   if(jobFor(traeger,rec.id)){ UI.err="Already working on that one."; render(); return; }
   var tage=recipeDays(info);
-  confirmDialog("Start “"+nameOf(rec)+"”? Nothing goes in yet — put the "+
-    "materials in as you get them. "+tage+" day"+(tage===1?"":"s")+" of work, "+
-    "then a "+(info.ability||"int").toUpperCase()+" check against DC "+
-    (info.dc||12)+".",
+  var bindet=craftBind(traeger,rec);
+  var rein=bindet.filter(function(b){ return b.qty>0; });
+  var fehlt=bindet.filter(function(b){ return b.qty<b.need; })
+    .map(function(b){ return {item:b.item,qty:b.need-b.qty}; });
+  confirmDialog("Start “"+nameOf(rec)+"”? "+
+    (rein.length?"Takes "+stueckListe(rein)+" out of the pack and binds it to the work — "+
+      "it cannot be used for anything else until the work ends. ":"")+
+    (fehlt.length?"Still missing: "+stueckListe(fehlt)+" — put it in on the bench when you get it. ":"")+
+    tage+" day"+(tage===1?"":"s")+" of work, then a "+
+    (info.ability||"int").toUpperCase()+" check against DC "+(info.dc||12)+".",
     function(){
+      var put=[];
+      rein.forEach(function(b){
+        var g=takeFromInventory(inv,traeger,b.item.id,b.qty);
+        if(g>0) put.push({item:b.item.id,qty:g});
+      });
       traeger.relations=traeger.relations||[];
       traeger.relations.push({id:uid("r"),type:REL_CRAFTING,to:rec.id,
-        props:{day:0,days:tage,rolls:[],put:[]}});
-      persist(traeger);
-    },"Start");
+        props:{day:0,days:tage,rolls:[],put:put}});
+      persist(inv);
+      if(inv.id!==traeger.id) persist(traeger);
+    },fehlt.length?"Start anyway":"Start");
 }
 /* Material abtragen. Von hinten: was eingelagert ist, geht zuerst, was in
    der Hand liegt, zuletzt — sonst nimmt das Handwerk die Waffe weg. */
@@ -8317,7 +8711,7 @@ function craftDay(traeger,job){
     if(!bereit.ok){
       UI.err="Not finished yet — still missing: "+
         bereit.missing.map(function(m){
-          return nameOf(m.item)+" ("+(m.consumed?m.put:m.held)+"/"+m.need+")"; })
+          return nameOf(m.item)+" ("+m.have+"/"+m.need+")"; })
         .concat(bereit.tool?[bereit.tool]:[]).join(", ");
       render(); return;
     }
@@ -8338,17 +8732,8 @@ function craftDay(traeger,job){
   var zurueck=[];
 
   if(geschafft&&inv&&ergebnis) putIntoInventory(inv,ergebnis.id,Number(info.yieldCount)||1);
-  if(!geschafft&&inv){
-    /* Was bei einem Fehlschlag übrig bleibt (REQ-184). `halfLost` rundet
-       zugunsten des Arbeiters ab — die Hälfte einer einzelnen Zutat ist
-       keine halbe Zutat, sondern Glück. */
-    var regel=info.onFailure||"halfLost";
-    (job.rel.props.put||[]).forEach(function(p){
-      var behalten=regel==="nothingLost"?p.qty:
-        (regel==="halfLost"?Math.floor(p.qty/2):0);
-      if(behalten>0){ putIntoInventory(inv,p.item,behalten); zurueck.push({item:p.item,qty:behalten}); }
-    });
-  }
+  if(inv) craftReturns(job.recipe,(job.rel.props||{}).put,!!geschafft).forEach(function(z){
+    putIntoInventory(inv,z.item,z.qty); zurueck.push(z); });
   traeger.relations=(traeger.relations||[]).filter(function(r){ return r.id!==job.rel.id; });
   UI.craftLog=(UI.craftLog||[]).concat([{recipe:job.recipe.id,who:traeger.id,
     roll:eintrag,back:zurueck,
@@ -8356,20 +8741,17 @@ function craftDay(traeger,job){
   if(inv) persist(inv);
   if(!inv||inv.id!==traeger.id) persist(traeger);
 }
+/* Abbrechen: wie ein Misslingen, nur ohne Wurf (REQ-219). Der Dialog
+   nennt, was zurückkommt — eine Regel, die erst hinterher sichtbar wird,
+   ist eine Überraschung. */
 function craftAbort(traeger,job){
-  var info=(job.recipe.components||{})[RECIPE_COMP]||{};
+  var zurueck=craftReturns(job.recipe,(job.rel.props||{}).put,false);
   confirmDialog("Stop working on “"+nameOf(job.recipe)+"”? "+
-    (info.onFailure==="nothingLost"?"The materials come back."
-      :"What is already in it is spoilt — "+
-       (info.onFailure==="materialsLost"?"nothing comes back.":"half comes back.")),
+    (zurueck.length?"Back into the pack: "+stueckListe(zurueck)+"; the rest is spoilt."
+      :"Nothing comes back."),
     function(){
       var inv=inventoryOf(traeger);
-      var regel=info.onFailure||"halfLost";
-      if(inv)(job.rel.props.put||[]).forEach(function(p){
-        var behalten=regel==="nothingLost"?p.qty:
-          (regel==="halfLost"?Math.floor(p.qty/2):0);
-        if(behalten>0) putIntoInventory(inv,p.item,behalten);
-      });
+      if(inv) zurueck.forEach(function(z){ putIntoInventory(inv,z.item,z.qty); });
       traeger.relations=(traeger.relations||[]).filter(function(r){ return r.id!==job.rel.id; });
       if(inv) persist(inv);
       if(!inv||inv.id!==traeger.id) persist(traeger);
@@ -8401,24 +8783,25 @@ function craftBench(traeger){
     var fill=el("i"); fill.style.width=Math.min(100,(j.day/j.days)*100)+"%";
     bar.appendChild(fill); row.appendChild(bar);
 
-    /* Was drin ist und was fehlt — je Zutat eine Zeile, und der Knopf, der
-       sie hineinlegt, steht daneben. Eine Liste, die nur zählt, schickt
-       einen zum Inventar und wieder zurück. */
+    /* Was gebunden ist und was fehlt — je Zutat eine Zeile, und der Knopf,
+       der Nachgekommenes hineinlegt, steht daneben. Eine Liste, die nur
+       zählt, schickt einen zum Inventar und wieder zurück. */
     var bedarf=jobNeeds(traeger,j);
     var bereit=jobReady(traeger,j);
     if(bedarf.length){
       var liste=el("ul",{class:"jmat"});
       bedarf.forEach(function(n){
-        var voll=n.consumed?n.put>=n.need:n.held>=n.need;
+        var voll=n.have>=n.need;
         var li=el("li",{class:voll?"ok":"short"});
         li.appendChild(el("button",{class:"ref",type:"button",
           onclick:function(){go({k:"art",id:n.item.id});}},nameOf(n.item)));
         li.appendChild(el("span",{class:"co",
-          text:n.consumed?(n.put+"/"+n.need+" in"):(n.held+"/"+n.need+" to hand")}));
-        if(!voll&&n.consumed){
-          var kann=Math.min(n.need-n.put,n.held);
-          if(kann>0&&canWrite()) li.appendChild(el("button",{class:"btn sm",type:"button",
-            title:"Take it out of the pack and put it in",
+          text:n.consumed?(n.put+"/"+n.need+" bound")
+            :(n.put?(n.put+"/"+n.need+" bound, comes back"):(n.held+"/"+n.need+" to hand"))}));
+        if(!voll){
+          var kann=Math.min(n.need-n.have,n.held);
+          if(kann>0&&n.consumed&&canWrite()) li.appendChild(el("button",{class:"btn sm",type:"button",
+            title:"Take it out of the pack and bind it to the work",
             onclick:function(){ craftPut(traeger,j,n.item.id,kann); }},
             "put in "+kann));
           else li.appendChild(el("span",{class:"gone",
@@ -8445,12 +8828,12 @@ function craftBench(traeger){
           return nameOf(m.item); }).concat(bereit.tool?[bereit.tool]:[]).join(", ");
       }
       btns.appendChild(knopf);
-      if(bedarf.some(function(n){ return n.consumed&&n.put<n.need&&n.held>0; }))
+      if(bedarf.some(function(n){ return n.consumed&&n.have<n.need&&n.held>0; }))
         btns.appendChild(el("button",{class:"btn sm",type:"button",
           onclick:function(){
             bedarf.forEach(function(n){
-              if(!n.consumed||n.put>=n.need)return;
-              var kann=Math.min(n.need-n.put,n.held);
+              if(!n.consumed||n.have>=n.need)return;
+              var kann=Math.min(n.need-n.have,n.held);
               if(kann>0) craftPut(traeger,j,n.item.id,kann);
             });
           }},"Put everything in"));
@@ -8536,15 +8919,16 @@ function elCrafting(e,ifn,item){
       traeger.forEach(function(t){
         var st=craftStatus(e,t);
         var cell=el("td");
-        /* Anfangen darf, wer das Werkzeug hat — das Material wird
-           angehängt. Die Zeile darüber sagt weiter, wer genug hat: das ist
-           die Frage „können wir das jetzt durchziehen?", und sie bleibt
-           eine andere als „dürfen wir anfangen?". */
+        /* Anfangen darf, wer die Blaupause gelernt und das Werkzeug dabei
+           hat; das Material wird dabei gebunden, und was fehlt, kommt
+           unterwegs dazu (REQ-218, 219). */
         var laeuft=!!jobFor(t,e.id);
+        var gelernt=recipeLearned(e,t.id)==="learned";
         var werkzeug=!rinfo.tool||hasTool(t,rinfo);
-        if(canWrite()&&werkzeug) cell.appendChild(el("button",
+        if(!gelernt) cell.appendChild(el("span",{class:"gone",text:"not learned"}));
+        else if(canWrite()&&werkzeug) cell.appendChild(el("button",
           {class:"btn sm"+(st.ok?" pri":""),type:"button",
-           title:st.ok?"":"Start now and add the materials as you get them",
+           title:st.ok?"Binds the materials to the work":"Start now and put the rest in as you get it",
            onclick:function(){ if(!laeuft) craftStart(e,t); }},
           laeuft?"on the bench":"start"));
         else cell.appendChild(el("span",{class:st.ok?"ok":"gone",
@@ -8555,11 +8939,11 @@ function elCrafting(e,ifn,item){
       wrap.appendChild(tb);
     }
 
-    /* Wer es kennt: der Rückbezug über die Informationen am Rezept. */
+    /* Wer es gelernt hat: der Rückbezug über die Informationen am Rezept. */
     var infos=infosOf(e);
-    wrap.appendChild(el("div",{class:"sec",text:"Who knows it"}));
+    wrap.appendChild(el("div",{class:"sec",text:"Who has learned it"}));
     if(!infos.length) wrap.appendChild(el("p",{class:"hint",
-      text:"Nothing about this recipe is guarded — everyone can read it. Bundle its fields into an information in the side panel to hand it out deliberately."}));
+      text:"Nobody yet — teach it from a character’s crafting tab, or hand out an information about it in the side panel."}));
     else{
       var wl=el("div",{class:"chips"});
       var wer={};
@@ -8585,61 +8969,120 @@ function elCrafting(e,ifn,item){
   var werkbank=craftBench(e);
   if(werkbank) wrap.appendChild(werkbank);
 
+  /* Alle Blaupausen, die der Betrachter sehen darf — gelernte und
+     ungelernte (REQ-218). Ob eine dasteht, sagt `articleVisible`; ob die
+     Figur sie kann, sagt das Wissen. Zwei Fragen, und die grobe zuerst. */
   var rezepte=[];
-  ENT.forEach(function(o){ if(((o.interfaces||[])[0])===RECIPE_IFACE) rezepte.push(o); });
+  ENT.forEach(function(o){
+    if(((o.interfaces||[])[0])===RECIPE_IFACE&&articleVisible(o)) rezepte.push(o); });
   rezepte.sort(function(a,b){return nameOf(a).localeCompare(nameOf(b),"de");});
   if(!rezepte.length){ wrap.appendChild(el("p",{class:"hint",text:"No recipes in the registry yet."}));
     return wrap; }
 
-  var bar=el("div",{class:"ktabs"});
-  bar.appendChild(el("button",{class:"btn sm"+(UI.craftOnly?" pri":""),type:"button",
-    "aria-pressed":String(UI.craftOnly),
-    onclick:function(){ UI.craftOnly=!UI.craftOnly; render(); }},"Only what works"));
+  var filter={know:UI.craftKnow||"all",ready:UI.craftReady||"",
+    material:UI.craftMat||"",trade:UI.craftTrade||""};
+  var bar=el("div",{class:"ktabs crfilter"});
+  var schalter=function(key,wert,text){
+    var an=(UI[key]||"")===wert;
+    bar.appendChild(el("button",{class:"btn sm"+(an?" pri":""),type:"button",
+      "aria-pressed":String(an),
+      onclick:function(){ UI[key]=wert; render(); }},text));
+  };
+  schalter("craftKnow","","all blueprints");
+  schalter("craftKnow","learned","this character knows");
+  bar.appendChild(el("span",{class:"crsep"}));
+  schalter("craftReady","","any");
+  schalter("craftReady","ready","ready");
+  schalter("craftReady","almost","almost (1–2 missing)");
+
+  /* Nach Material: was sich aus diesem Stück machen lässt. Angeboten wird,
+     was ein sichtbares Rezept braucht; was die Figur dabei hat, steht mit
+     seiner Zahl dabei, denn das ist meist die Frage. */
+  var mats={};
+  rezepte.forEach(function(r){ recipeNeeds(r).forEach(function(n){ mats[n.item.id]=n.item; }); });
+  var matSel=el("select",{class:"i sm","aria-label":"Material",
+    onchange:function(){ UI.craftMat=matSel.value; render(); }});
+  matSel.appendChild(el("option",{value:""},"any material"));
+  Object.keys(mats).map(function(k){ return mats[k]; })
+    .sort(function(a,b){ return nameOf(a).localeCompare(nameOf(b),"de"); })
+    .forEach(function(it){
+      var n=amountHeld(e,it.id);
+      matSel.appendChild(el("option",{value:it.id},nameOf(it)+(n?" · "+n+" in the pack":"")));
+    });
+  matSel.value=filter.material;
+  bar.appendChild(matSel);
+
+  /* Nach Beruf: das Wort am Rezept und das Werkzeug, getrennt gruppiert —
+     „was kann ein Schmied" und „was geht mit dem Alchemistenwerkzeug" sind
+     zwei Fragen. */
+  var berufe={}, werkzeuge={};
+  rezepte.forEach(function(r){
+    var i=(r.components||{})[RECIPE_COMP]||{};
+    if(i.trade) berufe[i.trade]=true;
+    if(i.tool) werkzeuge[i.tool]=true;
+  });
+  var trSel=el("select",{class:"i sm","aria-label":"Trade",
+    onchange:function(){ UI.craftTrade=trSel.value; render(); }});
+  trSel.appendChild(el("option",{value:""},"any trade"));
+  [["trade","Trade",berufe],["tool","Tool",werkzeuge]].forEach(function(g){
+    var ks=Object.keys(g[2]).sort(); if(!ks.length)return;
+    var og=el("optgroup",{label:g[1]});
+    ks.forEach(function(k){ og.appendChild(el("option",{value:g[0]+":"+k},k)); });
+    trSel.appendChild(og);
+  });
+  trSel.value=filter.trade;
+  bar.appendChild(trSel);
   wrap.appendChild(bar);
 
   var tb2=el("table",{class:"craftm"});
   var hd2=el("tr");
-  ["Recipe","Knowledge","Materials","Yields",""].forEach(function(h){ hd2.appendChild(el("th",{text:h})); });
+  ["Recipe","Blueprint","Materials","Yields",""].forEach(function(h){ hd2.appendChild(el("th",{text:h})); });
   tb2.appendChild(hd2);
   var gezeigt=0;
   rezepte.forEach(function(rec){
-    var wissen=recipeKnowledge(rec,e.id);
-    var st=craftStatus(rec,e);
-    if(UI.craftOnly&&(!st.ok||wissen==="hidden"))return;
+    if(!craftMatches(rec,e,filter))return;
     gezeigt++;
-    var row=el("tr",{class:"crrow "+(wissen==="hidden"?"unknown":(st.ok?"ready":"short"))});
+    var gelernt=recipeLearned(rec,e.id);
+    var st=craftStatus(rec,e);
+    var row=el("tr",{class:"crrow "+(gelernt!=="learned"?"unlearned":(st.ok?"ready":"short"))});
     var c1=el("td");
-    c1.appendChild(el("span",{class:"cdot "+(wissen==="hidden"?"d-un":(st.ok?"d-ok":"d-no"))}));
+    c1.appendChild(el("span",{class:"cdot "+(gelernt!=="learned"?"d-un":(st.ok?"d-ok":"d-no"))}));
     c1.appendChild(el("button",{class:"ref",type:"button",
-      onclick:function(){go({k:"art",id:rec.id});}},
-      wissen==="hidden"?"(unknown recipe)":nameOf(rec)));
+      onclick:function(){go({k:"art",id:rec.id});}},nameOf(rec)));
     row.appendChild(c1);
+    /* Kein Fundort: wo man eine Blaupause lernt, ist Kampagneninhalt und
+       steht nicht fest (D52). */
     row.appendChild(el("td",{class:"note",
-      text:{open:"open",known:"known",partial:"partly known",hidden:"not known"}[wissen]}));
+      text:{learned:"learned",partial:"partly learned",unlearned:"must still be learned"}[gelernt]}));
     var c3=el("td",{class:"note"});
-    if(wissen==="hidden") c3.textContent="—";
-    else if(st.ok) c3.textContent="all there";
+    if(st.ok) c3.textContent="all there";
     else c3.textContent=st.missing.map(function(m){
       return nameOf(m.item)+" "+m.have+"/"+m.need; })
       .concat(st.tool?["no "+st.tool]:[]).join(", ");
     row.appendChild(c3);
     var erg2=recipeYield(rec);
     var c4=el("td");
-    if(wissen!=="hidden"&&erg2) c4.appendChild(el("button",{class:"ref",type:"button",
+    if(erg2) c4.appendChild(el("button",{class:"ref",type:"button",
       onclick:function(){go({k:"art",id:erg2.id});}},nameOf(erg2)));
     else c4.textContent="—";
     row.appendChild(c4);
     var c5=el("td");
-    if(st.ok&&wissen!=="hidden"&&canWrite())
-      c5.appendChild(el("button",{class:"btn sm pri",type:"button",
-        onclick:function(){ craftStart(rec,e); }},
-        jobFor(e,rec.id)?"On the bench":"Start"));
+    var laeuft=!!jobFor(e,rec.id);
+    if(gelernt!=="learned"){
+      if(isGM()) c5.appendChild(el("button",{class:"btn sm",type:"button",
+        title:"Hand the blueprint to "+nameOf(e),
+        onclick:function(){ craftTeach(rec,e); }},"Teach"));
+    }else if(laeuft) c5.appendChild(el("span",{class:"co",text:"on the bench"}));
+    else if(canWrite()&&!st.tool) c5.appendChild(el("button",
+      {class:"btn sm"+(st.ok?" pri":""),type:"button",
+       title:st.ok?"Binds the materials to the work":"Start now and put the rest in as you get it",
+       onclick:function(){ craftStart(rec,e); }},"Start"));
     row.appendChild(c5);
     tb2.appendChild(row);
   });
   wrap.appendChild(tb2);
   if(!gezeigt) wrap.appendChild(el("p",{class:"hint",
-    text:"Nothing craftable right now."}));
+    text:"No blueprint matches these filters."}));
   return wrap;
 }
 
@@ -8660,11 +9103,31 @@ var TIERS=[
   ["pack","In the pack","A whole action of rummaging."],
   ["stored","Stored","Not here. At an inn, on a cart, at home."]
 ];
-var SLOTS=[
-  ["head","Head"],["neck","Neck"],["cloak","Cloak"],["torso","Torso"],
-  ["mainHand","Main hand"],["offHand","Off hand"],["hands","Hands"],
-  ["belt","Belt"],["legs","Legs"],["feet","Feet"],["ring1","Ring I"],["ring2","Ring II"]
+/* **Die Plätze stehen im Register** (`holds.props.slot`, REQ-214, D54),
+   nicht hier: hier stehen nur ihre Beschriftungen und wo sie am Blatt
+   sitzen. Ein Platz, den jemand im Register dazunimmt, erscheint unter
+   „Other“ mit seinem Wort als Namen — er geht nicht verloren, weil der
+   Code ihn nicht kennt. */
+var SLOT_LABELS={head:"Head",shoulders:"Shoulders",torso:"Torso",hands:"Gloves",
+  mainHand:"Right hand ✱",offHand:"Left hand ✱",legs:"Legs",feet:"Boots",
+  belt:"Belt",holster1:"Holster I",holster2:"Holster II",
+  ringR1:"R1",ringR2:"R2",ringR3:"R3",ringR4:"R4",
+  ringL1:"L1",ringL2:"L2",ringL3:"L3",ringL4:"L4",
+  neck1:"N1",neck2:"N2",neck3:"N3",neck4:"N4"};
+/* Wo am Blatt: links der Körper von oben nach unten, rechts die Hände und
+   der Gurt, unten die Accessoires in drei Reihen. */
+var SLOT_SIDES=[
+  ["left",["head","shoulders","torso","hands","legs","feet"]],
+  ["right",["mainHand","offHand","belt","holster1","holster2"]],
+  ["Rings, right hand",["ringR1","ringR2","ringR3","ringR4"]],
+  ["Rings, left hand",["ringL1","ringL2","ringL3","ringL4"]],
+  ["Necklaces",["neck1","neck2","neck3","neck4"]]
 ];
+function slotList(){
+  var pd=(((REG.relations[REL_HOLDS]||{}).props||{}).properties||{}).slot;
+  return enumWerte(pd)||[];
+}
+function slotLabel(s){ return SLOT_LABELS[s]||s; }
 function tierLabel(t){ var h=TIERS.filter(function(x){return x[0]===t;})[0]; return h?h[1]:t; }
 
 /* Das Inventar einer Figur — oder der Artikel selbst, wenn er eines ist. */
@@ -8725,6 +9188,88 @@ function fpFilled(fp,x,y){
   var g=row.charAt(x);
   return !!g&&!EMPTY_CELL[g];
 }
+/* ---------- Basils Blatt (REQ-214–217, D54) ----------
+   Wie im Paket (`packages/model/src/inventory.ts`); die Zahlen stehen als
+   Einstellung und nicht hier. Fehlt eine Einstellung, rechnet nichts —
+   dann gilt, was vorher galt (das Rechteck, keine Platzstufe). */
+function parsePairs(spec){
+  var out={};
+  String(spec==null?"":spec).split(",").forEach(function(t){
+    var i=t.indexOf(":"); if(i<=0)return;
+    var k=t.slice(0,i).trim(), v=t.slice(i+1).trim();
+    if(k&&v) out[k]=v;
+  });
+  return out;
+}
+function carrySquares(){
+  var out={}, p=parsePairs(setting("carrySquares",""));
+  Object.keys(p).forEach(function(k){ var n=Number(p[k]); if(isFinite(n)&&n>0) out[k.toLowerCase()]=Math.floor(n); });
+  return out;
+}
+function columnZones(spec,rows){
+  var spalte={}, p=parsePairs(spec);
+  Object.keys(p).forEach(function(k){
+    var m=/^(\d+)(?:\s*-\s*(\d+))?$/.exec(k); if(!m)return;
+    var a=Number(m[1]), b=m[2]===undefined?a:Number(m[2]);
+    for(var x=Math.min(a,b);x<=Math.max(a,b);x++) spalte[x]=p[k];
+  });
+  var out={};
+  rows.forEach(function(r,y){ for(var x=0;x<r.length;x++){
+    if(EMPTY_CELL[r.charAt(x)])continue;
+    if(spalte[x]) out[x+","+y]=spalte[x];
+  }});
+  return out;
+}
+/** Wer ein Inventar trägt — die Kreatur, die Gruppe, der Gegenstand. */
+function carrierOf(inv){
+  var hit=null;
+  if(!inv)return null;
+  ENT.forEach(function(o){
+    if(hit)return;
+    if((o.relations||[]).some(function(r){ return r.type===REL_CARRIES&&r.to===inv.id; })) hit=o;
+  });
+  return hit;
+}
+/**
+ * **Das Tragraster aus Grösse und Statblock** (REQ-215, D54): links das
+ * Grundquadrat nach Grösse, rechts das Zusatzquadrat, das der Statblock
+ * rechnet (`carryExtra`, beim Lesen, D8). Nur für das Inventar einer
+ * Kreatur und nur, wenn die Grösse in `carrySquares` steht.
+ */
+function carryGridOf(inv){
+  var t=carrierOf(inv);
+  if(!t||!ifaceInList(["Creature"],(t.interfaces||[])[0]))return null;
+  var sbE=statblockOf(t); if(!sbE)return null;
+  var sbR=resolvedOf(sbE), karten=sbR.components||{};
+  var core=karten.Statblock||{};
+  var squares=carrySquares();
+  var base=squares[String(core.size||"").toLowerCase()];
+  if(!base)return null;
+  var pd=(((REG.interfaces.Statblock||{}).schema||{}).properties||{}).carryExtra;
+  var max=pd&&typeof pd.max==="number"?pd.max:5, min=pd&&typeof pd.min==="number"?pd.min:0;
+  var roh=pd?derivedValue(pd,core,karten,sbR.relations||[]):0;
+  var extra=Math.max(min,Math.min(max,Math.trunc(Number(roh)||0)));
+  var links=Math.max.apply(null,Object.keys(squares).map(function(k){ return squares[k]; }));
+  var breite=links+max, hoehe=Math.max(links,max), rows=[];
+  for(var y=0;y<hoehe;y++){
+    var r="";
+    for(var x=0;x<breite;x++)
+      r+=(x<base&&y<base)||(x>=links&&x-links<extra&&y<extra)?"#":".";
+    rows.push(r);
+  }
+  return {rows:rows,base:base,extra:extra,size:core.size,formula:pd&&pd.derived||"",from:sbE};
+}
+/** Die Zonen eines Behälters: seine eigenen, oder beim Tragraster die
+ *  Basiszonen aus dem Blatt (`carryZones`) — gelesen, nicht gespeichert;
+ *  wer sie malt, speichert seine eigenen. */
+function zonesOf(inv){
+  var card=(inv&&(inv.components||{})[INV_IFACE])||{};
+  var z=card.zones;
+  if(z&&typeof z==="object"&&Object.keys(z).length)return z;
+  if(Array.isArray(card.grid)&&card.grid.length)return {};
+  var cg=carryGridOf(inv);
+  return cg?columnZones(setting("carryZones",""),cg.rows):{};
+}
 function invSize(){
   return {cols:Math.max(2,settingNum("inventoryCols",10)),
           rows:Math.max(2,settingNum("inventoryRows",6))};
@@ -8744,31 +9289,33 @@ function containerGrid(e){
   var rows=Array.isArray(card.grid)?card.grid.map(String)
     :(typeof card.grid==="string"&&card.grid!==""?String(card.grid).split(/[,\n]/):[]);
   rows=rows.filter(function(r){ return String(r).trim()!==""; });
+  /* Ohne eigene Form das Tragraster nach dem Blatt (D54), sonst das
+     Rechteck. Ein Behälter, der seine Form selbst sagt, gewinnt immer. */
+  var cg=rows.length?null:carryGridOf(inv);
+  if(cg) rows=cg.rows;
   if(rows.length){
     var cols=rows.reduce(function(m,r){ return Math.max(m,r.length); },1);
-    return {cols:cols,rows:rows.length,form:rows,frei:false,
+    return {cols:cols,rows:rows.length,form:rows,frei:false,carry:cg,
       at:function(x,y){ var c=String(rows[y]||"").charAt(x); return !!c&&!EMPTY_CELL[c]; }};
   }
   var s=invSize();
   return {cols:s.cols,rows:s.rows,form:null,frei:true,at:function(){ return true; }};
 }
 /** Die Zone eines Feldes: was es kostet, von dort etwas zu holen. */
-function zoneAt(inv,x,y){
-  var card=(inv&&(inv.components||{})[INV_IFACE])||{};
-  var z=card.zones;
-  if(!z||typeof z!=="object")return "";
+function zoneAt(inv,x,y,z){
+  z=z||zonesOf(inv);
   return z[x+","+y]||"";
 }
 /** Die **langsamste** Zone, die ein Stück bedeckt: man muss das Ganze
  *  herausbekommen, nicht nur eine Ecke. */
 function drawCost(inv,st){
   if(st.gx==null||st.gy==null)return "";
-  var werte=zonenListe();
+  var werte=zonenListe(), zz=zonesOf(inv);
   var fp=footprintOf(st.item,st.rot);
   var best=-1;
   for(var y=0;y<fp.h;y++)for(var x=0;x<fp.w;x++){
     if(!fpFilled(fp,x,y))continue;
-    var i=werte.indexOf(zoneAt(inv,st.gx+x,st.gy+y));
+    var i=werte.indexOf(zoneAt(inv,st.gx+x,st.gy+y,zz));
     if(i>best) best=i;
   }
   return best<0?"":werte[best];
@@ -8794,6 +9341,81 @@ function fitsAt(stuecke,ich,gx,gy,rot){
     if(belegt[(gx+x2)+":"+(gy+y2)])return false;
   }
   return true;
+}
+
+/* Liegt ein Stück noch in der Form seines Behälters? Das Tragraster
+   wächst und schrumpft mit dem Statblock (D54) — ein Stück, das gestern
+   passte, liegt heute vielleicht im gesperrten Teil. Seine Lage bleibt
+   gespeichert (wächst die Kreatur wieder, liegt es wieder da); gezeigt
+   wird es im Fach, und eine Ziehstufe hat es dort keine. */
+function liegtInForm(st,form){
+  if(st.gx==null||st.gy==null)return false;
+  var fp=footprintOf(st.item,st.rot);
+  if(st.gx<0||st.gy<0||st.gx+fp.w>form.cols||st.gy+fp.h>form.rows)return false;
+  for(var y=0;y<fp.h;y++)for(var x=0;x<fp.w;x++)
+    if(fpFilled(fp,x,y)&&!form.at(st.gx+x,st.gy+y))return false;
+  return true;
+}
+
+/* ---------- Die Ziehstufe die Kette hinauf (REQ-216, D54) ----------
+   Wie `drawStage` im Paket. Aussen gilt der Platz (Einstellung `slotDraw`)
+   oder die Zone; jeder Behälter weiter innen gibt eine Stufe dazu — das
+   Langsamere aus seiner Zone und der Stufe des Behälters + 1. Eine Bag of
+   Holding im Aktionsbereich: was darin liegt, braucht einen Zug. */
+function nextDraw(a,leiter){
+  var i=a?leiter.indexOf(a):-1;
+  return i<0?null:leiter[Math.min(i+1,leiter.length-1)];
+}
+function slowerDraw(a,b,leiter){
+  var ia=a?leiter.indexOf(a):-1, ib=b?leiter.indexOf(b):-1;
+  if(ia<0&&ib<0)return null;
+  return leiter[Math.max(ia,ib)];
+}
+function drawStage(kette,leiter,plaetze){
+  var stufe=null, steps=[];
+  kette.forEach(function(p,i){
+    if(i===0){
+      var amPlatz=p.slot?plaetze[p.slot]:"";
+      stufe=amPlatz&&leiter.indexOf(amPlatz)>=0?amPlatz
+        :(p.zone&&leiter.indexOf(p.zone)>=0?p.zone:null);
+    } else if(stufe!==null){
+      stufe=slowerDraw(p.zone&&leiter.indexOf(p.zone)>=0?p.zone:null,nextDraw(stufe,leiter),leiter);
+    }
+    steps.push(Object.assign({},p,{stage:stufe}));
+  });
+  return {stage:stufe,steps:steps};
+}
+/** Alles, was eine Kreatur aus ihren Behältern holen kann — mit Stufe und
+ *  Weg, durch jeden Behälter, der selbst ein Gegenstand ist (`carries`). */
+function drawList(e){
+  var root=inventoryOf(e); if(!root)return [];
+  var leiter=zonenListe(), plaetze=parsePairs(setting("slotDraw","")), out=[], gesehen={};
+  function lauf(inv,kette){
+    if(gesehen[inv.id])return;
+    gesehen[inv.id]=1;
+    var form=containerGrid(inv);
+    carriedItems(inv).forEach(function(st){
+      if(st.tier==="stored")return;
+      var p={via:nameOf(inv),what:nameOf(st.item),
+        zone:liegtInForm(st,form)?(drawCost(inv,st)||null):null,
+        slot:kette.length?null:(st.slot||null)};
+      var k=kette.concat([p]);
+      var r=drawStage(k,leiter,plaetze);
+      out.push({st:st,item:st.item,stage:r.stage,steps:r.steps});
+      var innen=inventoryOf(st.item);
+      if(innen) lauf(innen,k);
+    });
+  }
+  lauf(root,[]);
+  return out;
+}
+/* Der Weg in Worten: „Bag of Holding in the action zone → turn". */
+function drawPath(d){
+  var teile=d.steps.map(function(s,i){
+    var wo=s.slot?"at "+slotLabel(s.slot):(s.zone?"in the "+s.zone+" zone":(i?"":"not placed"));
+    return i<d.steps.length-1?s.what+(wo?" "+wo:""):wo;
+  }).filter(function(t){ return t; });
+  return teile.join(" → ")+(d.stage?" → "+d.stage:"");
 }
 
 /* ---- Das Inventar einer Gruppe ist gerechnet ----
@@ -8864,6 +9486,28 @@ function elPartyStock(e){
   });
   wrap.appendChild(ul);
   return wrap;
+}
+
+/* Die Figur im Reiter „Worn“: drei Umrisse nach dem Blatt. Gezeichnet
+   und nicht als Bild geladen — die Seite hat keine Bilder, und ein Umriss
+   folgt den Farben des Themas. */
+function figureSvg(f){
+  var rumpf={
+    male:"M20 46 L80 46 L72 122 L28 122 Z",
+    female:"M31 46 L69 46 L61 84 L72 122 L28 122 L39 84 Z",
+    neutral:"M26 46 L74 46 L68 122 L32 122 Z"
+  }[f]||"M26 46 L74 46 L68 122 L32 122 Z";
+  var arme={male:[16,84],female:[26,74],neutral:[21,79]}[f]||[21,79];
+  var stil={fill:"var(--surface2)",stroke:"var(--dim)","stroke-width":"1.5","stroke-linejoin":"round"};
+  var g=sv("svg",{viewBox:"0 0 100 230",role:"img","aria-label":"Figure: "+f});
+  g.appendChild(sv("circle",Object.assign({cx:50,cy:22,r:14},stil)));
+  g.appendChild(sv("rect",Object.assign({x:45,y:35,width:10,height:11},stil)));
+  g.appendChild(sv("path",Object.assign({d:"M"+(arme[0]+4)+" 48 L"+(arme[0]-4)+" 118 L"+(arme[0]+4)+" 120 L"+(arme[0]+10)+" 56 Z"},stil)));
+  g.appendChild(sv("path",Object.assign({d:"M"+(arme[1]-4)+" 48 L"+(arme[1]+4)+" 118 L"+(arme[1]-4)+" 120 L"+(arme[1]-10)+" 56 Z"},stil)));
+  g.appendChild(sv("path",Object.assign({d:rumpf},stil)));
+  g.appendChild(sv("path",Object.assign({d:"M32 122 L49 122 L47 222 L35 222 Z"},stil)));
+  g.appendChild(sv("path",Object.assign({d:"M51 122 L68 122 L65 222 L53 222 Z"},stil)));
+  return g;
 }
 
 function elInventory(e,ifn,item){
@@ -8961,13 +9605,38 @@ function elInventory(e,ifn,item){
   }
 
   if(UI.invView==="body"){
-    var rig=el("div",{class:"bodyrig"+(gewaehlt?" picking":"")});
-    SLOTS.forEach(function(sl){
+    /* **Die Figur nach Basils Blatt** (REQ-214, D54): sie steht an der
+       Kreatur (`Creature.figure`), nicht am Inventar — dasselbe Inventar
+       wechselt den Träger, die Figur nicht. Die Plätze kommen aus dem
+       Register; wo sie am Blatt sitzen, sagt `SLOT_SIDES`. */
+    var traeger=ifaceInList(["Creature"],(e.interfaces||[])[0])?e:carrierOf(inv);
+    if(traeger&&!ifaceInList(["Creature"],(traeger.interfaces||[])[0])) traeger=null;
+    var figPd=(((REG.interfaces.Creature||{}).schema||{}).properties||{}).figure;
+    var figuren=enumWerte(figPd)||[];
+    var fig=traeger?(((traeger.components||{}).Creature||{}).figure||""):"";
+    if(traeger&&figuren.length){
+      var fw=el("div",{class:"ktabs"});
+      fw.appendChild(el("span",{class:"co",text:"Figure"}));
+      figuren.forEach(function(f){
+        fw.appendChild(el("button",{class:"btn sm"+((fig||"neutral")===f?" pri":""),type:"button",
+          "aria-pressed":String((fig||"neutral")===f),disabled:canWrite(traeger)?null:"disabled",
+          onclick:function(){
+            traeger.components=Object.assign({},traeger.components||{});
+            traeger.components.Creature=Object.assign({},traeger.components.Creature||{},{figure:f});
+            persist(traeger);
+          }},f));
+      });
+      wrap.appendChild(fw);
+    }
+    var plaetze=slotList(), stufen=parsePairs(setting("slotDraw","")), gezeigt={};
+    function platz(sl){
+      gezeigt[sl]=1;
       var box=el("div",{class:"slot"});
-      box.appendChild(el("div",{class:"slabel",text:sl[1]}));
+      box.appendChild(el("div",{class:"slabel",text:slotLabel(sl)+(stufen[sl]?" · "+stufen[sl]:""),
+        title:sl}));
       var inhalt=el("div",{class:"sbox"});
-      var drin=stuecke.filter(function(st){ return st.slot===sl[0]; });
-      if(!drin.length) inhalt.appendChild(el("span",{class:"hint",style:"margin:0",text:"empty"}));
+      var drin=stuecke.filter(function(st){ return st.slot===sl; });
+      if(!drin.length) inhalt.appendChild(el("span",{class:"hint",style:"margin:0",text:"—"}));
       drin.forEach(function(st){
         inhalt.appendChild(chip(st));
         if(canWrite()) inhalt.appendChild(el("button",{class:"btn gh sm",type:"button",
@@ -8975,11 +9644,51 @@ function elInventory(e,ifn,item){
             lege(st,{slot:undefined,tier:"pack"}); }},"×"));
       });
       dropZiel(inhalt,function(st){
-        lege(st,{slot:sl[0],tier:sl[0]==="mainHand"||sl[0]==="offHand"?"held":"worn"}); });
+        var tier=sl==="mainHand"||sl==="offHand"?"held"
+          :(sl==="belt"||/^holster/.test(sl)?"belt":"worn");
+        lege(st,{slot:sl,tier:tier}); });
       box.appendChild(inhalt);
-      rig.appendChild(box);
+      return box;
+    }
+    var blatt=el("div",{class:"wornsheet"+(gewaehlt?" picking":"")});
+    var spalten={};
+    SLOT_SIDES.slice(0,2).forEach(function(seite){
+      var col=el("div",{class:"wcol"});
+      seite[1].forEach(function(sl){ if(plaetze.indexOf(sl)>=0) col.appendChild(platz(sl)); });
+      spalten[seite[0]]=col;
     });
-    wrap.appendChild(rig);
+    blatt.appendChild(spalten.left);
+    var figBox=el("div",{class:"wornfig",title:"Figure: "+(fig||"neutral")});
+    figBox.appendChild(figureSvg(fig||"neutral"));
+    blatt.appendChild(figBox);
+    blatt.appendChild(spalten.right);
+    wrap.appendChild(blatt);
+    SLOT_SIDES.slice(2).forEach(function(reihe){
+      var da=reihe[1].filter(function(sl){ return plaetze.indexOf(sl)>=0; });
+      if(!da.length)return;
+      wrap.appendChild(el("div",{class:"sec",text:reihe[0]}));
+      var r=el("div",{class:"wacc"+(gewaehlt?" picking":"")});
+      da.forEach(function(sl){ r.appendChild(platz(sl)); });
+      wrap.appendChild(r);
+    });
+    /* Ein Platz, den das Register kennt und das Blatt nicht. */
+    var andere=plaetze.filter(function(sl){ return !gezeigt[sl]; });
+    if(andere.length){
+      wrap.appendChild(el("div",{class:"sec",text:"Other"}));
+      var ra=el("div",{class:"wacc"+(gewaehlt?" picking":"")});
+      andere.forEach(function(sl){ ra.appendChild(platz(sl)); });
+      wrap.appendChild(ra);
+    }
+    /* Ein Stück an einem Platz, den das Register nicht mehr kennt: es
+       bleibt, wo es ist, und steht hier, damit es jemand umhängt. */
+    var verwaist=stuecke.filter(function(st){ return st.slot&&plaetze.indexOf(st.slot)<0; });
+    if(verwaist.length){
+      wrap.appendChild(el("p",{class:"hint",
+        text:"Worn at a slot the registry no longer knows — pick it and put it somewhere:"}));
+      var vb=el("div",{class:"chips"});
+      verwaist.forEach(function(st){ vb.appendChild(chip(st)); vb.appendChild(el("span",{class:"co",text:st.slot})); });
+      wrap.appendChild(vb);
+    }
     var frei=stuecke.filter(function(st){ return !st.slot; });
     if(frei.length){
       wrap.appendChild(el("div",{class:"sec",text:"Not worn"}));
@@ -9044,10 +9753,11 @@ function elInventory(e,ifn,item){
       if(werkzeug.childNodes.length) wrap.appendChild(werkzeug);
     }
     var g=el("div",{class:"invgrid"+(gewaehlt?" picking":"")});
+    var zonenKarte=zonesOf(inv);
     g.style.gridTemplateColumns="repeat("+form.cols+",1fr)";
     for(var y=0;y<form.rows;y++)for(var x=0;x<form.cols;x++)(function(x,y){
       var da=form.at(x,y);
-      var zone=zoneAt(inv,x,y);
+      var zone=da?zoneAt(inv,x,y,zonenKarte):"";
       var c=el("div",{class:"gcell"+(da?"":" blocked")+(zone?" "+zonenFarbe(zone):"")});
       c.style.gridColumn=(x+1); c.style.gridRow=(y+1);
       if(zone) c.title=zone;
@@ -9059,7 +9769,7 @@ function elInventory(e,ifn,item){
     })(x,y);
 
     stuecke.forEach(function(st){
-      if(st.gx==null||st.gy==null)return;
+      if(!liegtInForm(st,form))return;
       var fp=footprintOf(st.item,st.rot);
       var box=el("div",{class:"gitem"+(st.rel.id===UI.invPick?" selected":"")});
       box.style.gridColumn=(st.gx+1)+" / span "+fp.w;
@@ -9089,7 +9799,15 @@ function elInventory(e,ifn,item){
     });
     wrap.appendChild(g);
 
-    var lose=stuecke.filter(function(st){ return st.gx==null||st.gy==null; });
+    var lose=stuecke.filter(function(st){ return !liegtInForm(st,form); });
+    /* Was eine Lage hat und nicht mehr in die Form passt (das Tragraster
+       ist mit dem Statblock kleiner geworden), sagt es — seine Lage bleibt
+       gespeichert, bis jemand es neu hinlegt. */
+    var draussen=lose.filter(function(st){ return st.gx!=null&&st.gy!=null; });
+    if(draussen.length) wrap.appendChild(el("p",{class:"hint",
+      text:draussen.length+" item"+(draussen.length===1?" lies":"s lie")+
+        " outside this shape now — kept where "+(draussen.length===1?"it was":"they were")+
+        " until placed again."}));
     if(lose.length){
       wrap.appendChild(el("p",{class:"hint",
         text:lose.length+" item"+(lose.length===1?"":"s")+" not placed yet — pick one, then click a free cell."}));
@@ -9101,12 +9819,19 @@ function elInventory(e,ifn,item){
        Einstellung, die man nur findet, wenn man weiss, dass es sie gibt,
        ist keine. */
     var fuss=el("p",{class:"hint"});
+    var cg=form.carry;
     fuss.appendChild(document.createTextNode(form.cols+"×"+form.rows+
       (form.frei?" from the campaign setting (inventoryCols, inventoryRows). "
-               :" — this container’s own grid. ")));
+       :cg?" — the carry grid from the sheet: "+cg.size+" "+cg.base+"×"+cg.base+
+          ", plus "+cg.extra+"×"+cg.extra+" worked out by the statblock ("+
+          (cg.formula||"no formula")+"). "
+       :" — this container’s own grid. ")));
+    if(cg) fuss.appendChild(el("button",{class:"ref",type:"button",
+      onclick:function(){ go({k:"art",id:cg.from.id}); }},"Statblock"));
+    if(cg&&canWrite()) fuss.appendChild(document.createTextNode(" · "));
     if(canWrite()) fuss.appendChild(el("button",{class:"ref",type:"button",
       onclick:function(){ go({k:"art",id:inv.id}); }},
-      form.frei?"Give it a grid of its own":"Change grid and zones"));
+      form.frei||cg?"Give it a grid of its own":"Change grid and zones"));
     wrap.appendChild(fuss);
   }
   return wrap;
@@ -9126,13 +9851,58 @@ function nimmHeraus(st){
 
 /* Ein Inventar anlegen und an die Figur hängen. Ein Behälter, den man erst
    im Register verdrahten müsste, legt niemand an. */
+/* **Vorlagen aus dem Blatt** (REQ-216, D54): Einstellungen
+   `container:<Name>` mit Form und Zonen nach Spalten. Gewählt wird beim
+   Anlegen; danach gehören Form und Zonen dem Behälter und sind änderbar
+   wie jede andere. */
+function containerPresets(){
+  var out=[];
+  Object.keys(REG.settings||{}).sort().forEach(function(k){
+    if(k.indexOf("container:")!==0)return;
+    var teile=String(REG.settings[k]).split("|");
+    var grid=String(teile[0]||"").split("/").map(function(r){ return r.trim(); })
+      .filter(function(r){ return r!==""; });
+    if(!grid.length)return;
+    out.push({name:k.slice(10).trim(),grid:grid,zones:columnZones(teile[1]||"",grid)});
+  });
+  return out;
+}
 function newInventory(e){
-  var name=nameOf(e)+" — gear";
+  var vorlagen=containerPresets();
+  if(!vorlagen.length){ legeInventarAn(e,null); return; }
+  var kreatur=ifaceInList(["Creature"],(e.interfaces||[])[0]);
+  dialog("New inventory",function(host,close){
+    var sel=el("select",{class:"i"});
+    sel.appendChild(el("option",{value:""},kreatur
+      ?"Carry grid — from size and statblock"
+      :"No shape of its own — the campaign rectangle"));
+    vorlagen.forEach(function(v,i){
+      var w=v.grid.reduce(function(m,r){ return Math.max(m,r.length); },0);
+      sel.appendChild(el("option",{value:String(i)},v.name+" — "+w+"×"+v.grid.length+
+        (Object.keys(v.zones).length?", with zones":"")));
+    });
+    /* Ein Gegenstand namens Rucksack bekommt die Rucksackform vorgeschlagen. */
+    vorlagen.forEach(function(v,i){
+      if(!kreatur&&nameOf(e).toLowerCase().indexOf(v.name.toLowerCase())>=0) sel.value=String(i);
+    });
+    host.appendChild(field("Shape",sel));
+    host.appendChild(el("p",{class:"hint",text:"Templates are campaign settings named container:<name>. Grid and zones stay editable on the inventory."}));
+    actions(host,close,function(){
+      legeInventarAn(e,sel.value===""?null:vorlagen[Number(sel.value)]);
+    },"Create");
+  });
+}
+function legeInventarAn(e,vorlage){
+  var name=nameOf(e)+" — "+(vorlage?vorlage.name.toLowerCase():"gear");
   var inv={ id:uid("inv"), interfaces:[INV_IFACE], name:name,
     components:{ Identity:{name:name,id:nextId("Inventory"),aliases:[]} },
     adhoc:[], relations:[], createdAt:new Date().toISOString() };
   reqFor(INV_IFACE).forEach(function(c){ if(!inv.components[c]&&REG.interfaces[c]) inv.components[c]={}; });
   applyDefaults(inv,INV_IFACE);
+  if(vorlage){
+    inv.components[INV_IFACE]=Object.assign({},inv.components[INV_IFACE]||{},
+      {grid:vorlage.grid.slice()},Object.keys(vorlage.zones).length?{zones:Object.assign({},vorlage.zones)}:{});
+  }
   ENT.set(inv.id,inv);
   persist(inv);
   e.relations=e.relations||[];
@@ -9848,6 +10618,62 @@ function elSheet(e,ifn,item){
       tb.appendChild(row);
     });
     wrap.appendChild(tb);
+  }
+
+  /* ---- Aktionen, und was mit jeder herauskommt (REQ-217, D54) ----
+     Je Stufe der Zeile `DrawTime` eine Zeile: die Aktionen des Statblocks
+     dieser Art (wo eine `ActionType` so heisst) und ein Eintrag „Draw“.
+     Ein Klick zeigt, was sich mit genau dieser Aktion herausnehmen lässt,
+     mit Stufe und Weg — gerechnet die Behälterkette hinauf, nie
+     gespeichert. */
+  if(inventoryOf(e)){
+    var leiter=zonenListe(), ziehbar=drawList(e);
+    var nachArt={}, sbA=statblockOf(e);
+    ((sbA&&resolvedOf(sbA).relations)||[]).forEach(function(r){
+      var t=ENT.get(r.to); if(!t)return;
+      var at=((t.components||{}).Action||{}).actionType;
+      var art=at&&ENT.get(at);
+      if(!art)return;
+      var k=nameOf(art).toLowerCase();
+      (nachArt[k]=nachArt[k]||[]).push(t);
+    });
+    wrap.appendChild(el("div",{class:"sec",text:"Actions"}));
+    var akt=el("div",{class:"drawrows"});
+    leiter.forEach(function(w){
+      var drin=ziehbar.filter(function(d){ return d.stage===w; });
+      var offen=UI.drawOpen===w;
+      var row=el("div",{class:"drawrow"});
+      row.appendChild(el("b",{class:"chip dname "+zonenFarbe(w),text:w}));
+      var acts=el("span",{class:"dacts"});
+      (nachArt[w]||[]).forEach(function(t){
+        acts.appendChild(el("button",{class:"ref",type:"button",
+          onclick:function(){ go({k:"art",id:t.id}); }},nameOf(t)));
+      });
+      row.appendChild(acts);
+      row.appendChild(el("button",{class:"btn sm"+(offen?" pri":""),type:"button",
+        "aria-expanded":String(offen),
+        title:"What comes out with a "+w,
+        onclick:function(){ UI.drawOpen=offen?"":w; render(); }},
+        "Draw"+(drin.length?" · "+drin.length:"")));
+      akt.appendChild(row);
+      if(offen){
+        var ul=el("ul",{class:"drawlist"});
+        if(!drin.length) ul.appendChild(el("li",{class:"hint",text:"Nothing comes out with a "+w+"."}));
+        drin.forEach(function(d){
+          var li=el("li");
+          li.appendChild(el("button",{class:"ref",type:"button",
+            onclick:function(){ go({k:"art",id:d.item.id}); }},nameOf(d.item)+(d.st.qty>1?" ×"+d.st.qty:"")));
+          li.appendChild(el("span",{class:"co",text:drawPath(d)}));
+          ul.appendChild(li);
+        });
+        akt.appendChild(ul);
+      }
+    });
+    wrap.appendChild(akt);
+    var ohne=ziehbar.filter(function(d){ return !d.stage; }).length;
+    if(ohne) wrap.appendChild(el("p",{class:"hint",
+      text:ohne+" carried item"+(ohne===1?" has":"s have")+
+        " no draw time — not on the grid, not at a slot with a draw time, or inside a container that has none."}));
   }
 
   if(!Object.keys(sb).length) wrap.appendChild(el("p",{class:"hint",
@@ -13172,6 +13998,9 @@ var SETTING_HINTS={
   gridUnit:"What one square means, e.g. 1,5 m",
   inventoryCols:"Columns of the tile inventory",
   inventoryRows:"Rows of the tile inventory",
+  carrySquares:"Carry grid: base square per size, e.g. medium:5 (sizes not listed keep the rectangle)",
+  carryZones:"Zones of the carry grid by column, e.g. 0-1:bonus action, 2-4:action",
+  slotDraw:"Draw time per body slot; a container at a slot adds one step to what is inside",
   today:"The world date the campaign stands at — empty means the newest used event"
 };
 function renderSettingsEditor(v){
@@ -13336,14 +14165,25 @@ var BEGRIFFE=[
    "(casts: prepared, known, innate or from an item, with uses, level and "+
    "charges) — the same Fireball is prepared by the mage and worth three "+
    "charges in the staff. An item may carry an inventory of its own (a "+
-   "backpack), and the piece at the table may be an instance of the item "+
+   "backpack), and each container adds a draw step to what lies in it; "+
+   "a creature's own inventory without a shape takes the carry grid from "+
+   "its size and its statblock. The piece at the table may be an instance of the item "+
    "in the book (the +1 longsword stores only what differs). A character "+
    "has its classes as edges, each with its level (hasClass: Fighter 3, "+
    "Wizard 2 with the subclass on the edge), and one ancestry and one "+
    "background; its level is the sum of those edges, worked out on read. "+
    "What a class, an ancestry or a background gives is an edge as well "+
    "(grants), with the level on the edge — the same Ability Score "+
-   "Improvement comes at 4, 6 and 8, one article and three edges."],
+   "Improvement comes at 4, 6 and 8, one article and three edges. A "+
+   "blueprint is learned, and learned means handed out: every information "+
+   "about the recipe reaches the character over knownBy. Everyone sees "+
+   "the recipes they may see; the ones not learned stand dashed with "+
+   "“must still be learned”, and nothing says where to learn them. Work "+
+   "under way is an edge from the crafter to the recipe (crafting), and "+
+   "starting it binds the materials: they leave the pack and sit on the "+
+   "edge, so they cannot go into a second piece of work. What comes back "+
+   "is the edge's business too — what is not consumed always, the rest "+
+   "on a failure or a stop as the recipe's onFailure says."],
   ["Unit",
    "How a measure is written and converted. The vault is imperial because "+
    "the rules are; at the table sit people for whom forty feet means "+
@@ -13740,6 +14580,74 @@ function renderHowto(v){
     "  to hit = prof + mod(dex)  →  "+sgn(nW.toHit)+"     damage  "+nW.damage+"  ("+nW.average+")\n"+
     "Odd beast     prof 2 · STR 18 (+4)        edge: toHit 7 (book)\n"+
     "  to hit "+sgn(nB.toHit)+" fixed — the sum would give "+sgn(nB.toHitComputed)}));
+
+  /* ---- Das Inventar nach dem Blatt, durchgerechnet (D54) ----
+     Mit den Einstellungen und der Rechnung, wie sie im Register stehen,
+     und mit denselben Funktionen wie das Inventar: ändert jemand
+     `carryExtra`, `carrySquares` oder `slotDraw`, ändert sich das
+     Beispiel mit. */
+  var cxP=(((REG.interfaces.Statblock||{}).schema||{}).properties||{}).carryExtra;
+  v.appendChild(el("div",{class:"rsec",text:"A carry grid, a bag inside it, and how long it takes"}));
+  v.appendChild(el("p",{class:"hint"},
+    "An inventory with no shape of its own takes the carry grid from the "+
+    "sheet: a base square by the creature's size and an extra square its "+
+    "statblock works out on read, like an attack works out its bonus. The "+
+    "zones come from the sheet by column and can be painted over. A "+
+    "container may lie in another one — an item that carries an inventory — "+
+    "and every container adds a step: what lies inside takes the slower of "+
+    "its own zone and the container's draw time plus one, all the way up. "+
+    "A container at a body slot takes the slot's draw time (setting slotDraw). "+
+    "Where the figure on the Worn tab is male, female or neutral is a field "+
+    "of the creature, not of the inventory."));
+  var leiterB=zonenListe(), sqB=carrySquares(), plB=parsePairs(setting("slotDraw",""));
+  var sbB={size:"medium"}, abB={str:16};
+  var extraB=cxP?derivedValue(cxP,sbB,{Statblock:sbB,Abilities:abB}):undefined;
+  var bag=drawStage([{via:"gear",what:"Bag of Holding",zone:"action"},{via:"Bag of Holding",what:"Rope"}],leiterB,plB);
+  var pack=drawStage([{via:"gear",what:"Backpack",slot:"shoulders"},{via:"Backpack",what:"Torch",zone:"action"}],leiterB,plB);
+  v.appendChild(el("pre",{class:"code",text:
+    "Statblock   size medium · STR 16\n"+
+    "base square    carrySquares  "+(setting("carrySquares","")||"(not set — the rectangle stays)")+"  →  "+(sqB.medium||"—")+"×"+(sqB.medium||"—")+"\n"+
+    "extra square   carryExtra = "+(cxP&&cxP.derived||"—")+"  →  "+(extraB==null?"—":extraB)+
+      (cxP&&typeof cxP.max==="number"?"   (clamped to "+(cxP.min||0)+"…"+cxP.max+")":"")+"\n\n"+
+    "Rope in a Bag of Holding, the bag in the action zone\n"+
+    "  "+drawPath(bag)+"\n"+
+    "Torch in the action zone of a backpack worn at the shoulders"+(plB.shoulders?" ("+plB.shoulders+")":"")+"\n"+
+    "  "+drawPath(pack)}));
+  /* ---- Ein Kampf, durchgerechnet (REQ-211–213, D53) ----
+     Mit denselben Funktionen, die die Initiative nimmt (`expiresAt`,
+     `hpWord`), und den Eigenschaften der Kante aus dem Register: ändert
+     jemand die Rechnung oder die Zeile, ändert sich das Beispiel mit. */
+  var partP=(((REG.relations||{}).participates||{}).props||{}).properties||{};
+  if(partP.conditions){
+    v.appendChild(el("div",{class:"rsec",text:"A fight, its durations, and what the players see"}));
+    v.appendChild(el("p",{class:"hint"},
+      "One participates edge per fighter. Armour class and maximum hit points "+
+      "are read from the fighter's statblock — its instance, with the template "+
+      "underneath — and the edge holds only the hit points in this fight. A "+
+      "condition or a note carries its duration: rounds, an anchor (whose turn "+
+      "it is counted on) and start or end of that turn. Without an anchor it "+
+      "is the fighter's own turn, at the end — as it always was. A note is the "+
+      "same entry with text instead of a condition. Players see the party and "+
+      "every creature that is revealed or involved (hit, or marked by hand); "+
+      "one not yet identified shows its cover name and no link, and foes show "+
+      "their hit points as a word. Hidden entries and the GM note never leave."));
+    var ordBsp=["p-rook","p-vex","p-guard"];
+    var bless={text:"Bless",rounds:10,anchor:"p-rook",at:"end"};
+    var angst={rule:"Frightened",rounds:1,anchor:"p-vex",at:"end"};
+    var alt={rule:"Prone",rounds:1};
+    var zeile=function(c,own){
+      var x=expiresAt(c,own,ordBsp,2,1);
+      return x?"round "+x.round+", "+x.at+" of "+x.anchor:"—";
+    };
+    v.appendChild(el("pre",{class:"code",text:
+      "Edge props   "+Object.keys(partP).join(" · ")+"\n\n"+
+      "Order        Rook (p-rook) · Vex (p-vex) · Guard (p-guard)   now: round 2, Vex\n\n"+
+      "Guard  rule Frightened · rounds 1 · anchor p-vex · at end  →  ends "+zeile(angst,"p-guard")+"\n"+
+      "Rook   text Bless · rounds 10 · anchor p-rook · at end     →  ends "+zeile(bless,"p-rook")+"\n"+
+      "Guard  rule Prone · rounds 1   (stored before D53)        →  ends "+zeile(alt,"p-guard")+"\n\n"+
+      "Guard  Statblock instance hp 18 (template 11) · edge hp 7  →  players read “"+hpWord(7,18)+"”\n"+
+      "Guard  cover “Soldier”, not identified                    →  players read “Soldier”"}));
+  }
 
   /* ---- Charakterbau, durchgerechnet (M3, M6) ----
      Mit den Formeln aus dem Register und derselben Rechnung, die der

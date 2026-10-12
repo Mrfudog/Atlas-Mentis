@@ -117,7 +117,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `appearance` *long*, `personality` *long*, `species` *string*, `kind` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
+- `appearance` *long*, `personality` *long*, `species` *string*, `kind` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*, `figure` *male | female | neutral*
 
 **Geerbte Felder**
 
@@ -534,7 +534,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Geerbte Felder**
 
-- *`Creature`* — `appearance` *long*, `personality` *long*, `species` *string*, `kind` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*
+- *`Creature`* — `appearance` *long*, `personality` *long*, `species` *string*, `kind` *string*, `role` *string*, `attitude` *freundlich | neutral | feindlich | unbekannt*, `figure` *male | female | neutral*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -1861,7 +1861,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `system` *string*, `size` *Size: tiny | small | medium | large | huge | gargantuan*, `creatureType` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *measure in ft*, `cr` *string*, `prof` *number*, `combatRole` *string*, `senses` *string*, `languageNote` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*, `conditionImmunities` *Condition articles*, `legendaryActions` *1…∞*, `bonuses` *object*, `token` *asset*, `spellAbility` *Ability: str | dex | con | int | wis | cha*, `casterLevel` *1…20*, `spellSlots` *array*, `spellDc` *gerechnet*, `spellAttack` *gerechnet*
+- `system` *string*, `size` *Size: tiny | small | medium | large | huge | gargantuan*, `creatureType` *string*, `alignment` *string*, `ac` *number*, `acNote` *string*, `hp` *number*, `hpFormula` *string*, `speed` *measure in ft*, `cr` *string*, `prof` *number*, `carryExtra` *gerechnet*, `combatRole` *string*, `senses` *string*, `languageNote` *string*, `resistances` *string*, `vulnerabilities` *string*, `immunities` *string*, `conditionImmunities` *Condition articles*, `legendaryActions` *1…∞*, `bonuses` *object*, `token` *asset*, `spellAbility` *Ability: str | dex | con | int | wis | cha*, `casterLevel` *1…20*, `spellSlots` *array*, `spellDc` *gerechnet*, `spellAttack` *gerechnet*
 
 **Geerbte Felder**
 

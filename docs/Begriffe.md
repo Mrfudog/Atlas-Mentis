@@ -375,6 +375,34 @@ sagt `affects` (`imposes`) und kein Feld `conditions` — die Kante sagt das
 zwischen zwei Regeln schon, und ein Feld daneben wäre die zweite Antwort,
 die als erste veraltet (D49).
 
+
+### Eine Dauer hängt an einem Zug, nicht an einer Runde
+
+„Bis zum Ende deines nächsten Zuges", sagt der Zauberer zum Goblin. Ein
+Rundenzähler am Goblin zählt am Ende des Goblin-Zuges, und der kommt vor
+oder nach dem des Zauberers — je nachdem, wer besser gewürfelt hat. Die
+Dauer gehört also nicht dem Ziel, sondern einem **Zeitpunkt**: dem Anfang
+oder Ende eines bestimmten Zuges. Darum trägt der Eintrag einen Anker (die
+Kante des Teilnehmers, an dessen Zug gezählt wird) und `at`. Ohne beides
+bleibt es der eigene Zug, Ende — so zählte der Tisch bisher, und kein
+gespeicherter Kampf muss dafür angefasst werden (D53).
+
+Ob „1 Runde" im eigenen Zug schon an dessen Ende abläuft, beantwortet
+jeder Tisch anders. Statt eine Antwort zu verstecken, sagt die Maske beim
+Setzen, wann es so weit ist. Eine **Notiz** ist derselbe Eintrag mit Text
+statt Zustand — „konzentriert sich auf Segen" läuft genauso ab.
+
+Die Zahlen stehen nicht an der Kante: RK und Maximum sind die des
+Statblocks, und eine Abschrift daneben wäre die zweite Stelle, die beim
+ersten Stufenaufstieg falsch steht. Die Kante hält den Stand — wie viel
+von diesem Maximum in diesem Kampf noch übrig ist.
+
+**Was die Spielenden sehen, siebt das Modell, nicht die Maske.** Eine
+Reihe, die alles schickt und im Browser die Hälfte ausblendet, verrät den
+Rest jedem, der die Entwicklerwerkzeuge öffnet. Also geht nur die Gruppe
+hinaus und wer aufgedeckt oder beteiligt ist; ein Gegner, den niemand
+erkannt hat, heisst wie sein Deckname, und seine Trefferpunkte sind ein
+Wort — „angeschlagen" ist, was man am Tisch sieht, „7 von 18" nicht.
 ### Eine Spur hält, was zu ihr gehört, nicht was in ihre Zeit fällt
 
 Die Weltgeschichte steht in **Spuren**: ein Krieg, eine Dynastie, ein
@@ -739,10 +767,62 @@ das eine räumt um, das andere gibt her.
 
 **Ein Gegenstand darf selbst ein Behälter sein** (M4): der Rucksack
 `carries` sein Inventar wie eine Figur, mit derselben Kante und derselben
-Darstellung. Und **das Stück am Tisch darf eine Instanz** des Gegenstands im
+Darstellung. **Und jeder Behälter gibt eine Ziehstufe dazu** (D54): was in
+einer Bag of Holding liegt, ist weiter weg als die Bag selbst — die Stufe
+eines Stücks ist das Langsamere aus seiner Zone und der Stufe des Behälters
++ 1, die Kette hinauf. Eine eigene Kante „Inventar in Inventar" braucht es
+dafür nicht: die Bag ist ein Gegenstand, der ein Inventar trägt, und genau
+das sagte `carries` schon. Ein Behälter an einem Körperplatz nimmt die
+Stufe des Platzes, und welche das ist, steht als Einstellung (`slotDraw`)
+und nicht im Code: eine Runde, in der ein Holster eine Bonusaktion kostet,
+ändert eine Zeile.
+
+**Das Tragraster wird gerechnet und nicht gemalt** (D54). Basils Blatt
+hat links ein Quadrat nach Grösse und rechts eines, das mit der Stärke
+wächst. Das Zusatzquadrat steht als **Feld mit Rechnung am Statblock**
+(`carryExtra`, `mod(str)`) und nicht als Einstellung: es rechnet gegen die
+Nachbarn des Statblocks wie der Zauber-SG und ein Angriff, der Bogen zeigt
+die Zahl, und wer die Regel ändert, ändert die Formel an einer Stelle. Eine
+Einstellung wäre ein ungeprüfter Text ohne Ort, an dem man die Zahl sieht.
+Die Grundquadrate je Grösse und die Zonen nach Spalten sind dagegen
+Einstellungen (`carrySquares`, `carryZones`): sie sind das Blatt der
+Kampagne und rechnen nichts. Ein Stück, das nach einem Schrumpfen
+ausserhalb der Form liegt, behält seine Lage; es liegt im Fach, bis es
+jemand neu hinlegt, und hat bis dahin keine Ziehstufe.
+
+**Die Figur gehört der Kreatur, die Plätze der Kante.** Männlich, weiblich
+oder neutral ist eine Angabe darüber, wie eine Figur aussieht, und das
+Inventar wechselt den Träger. Welche Plätze es gibt, sagt die Liste an
+`holds.props.slot`; wo sie auf dem Blatt sitzen, ist Darstellung. Und **das Stück am Tisch darf eine Instanz** des Gegenstands im
 Buch sein (`instanceOf`, wie beim Statblock): das +1-Langschwert speichert
 nur, was es vom Langschwert unterscheidet, und eine Korrektur am Langschwert
 erreicht es.
+
+---
+
+## Blaupause und Gang
+
+Eine **Blaupause** ist ein Rezept, das jemand **gelernt** hat — und gelernt
+heisst zugeteilt: eine Information über das Rezept geht über `knownBy` an
+die Figur, ihre Gruppe oder ihre Fraktion. Ein Feld „gelernt von" am Rezept
+wäre ein zweites, schwächeres Wissensmodell neben dem, das es schon gibt.
+Bis D52 lag ein Rezept ohne Information offen, und jeder konnte es; jetzt
+werden Blaupausen gelernt, also kann ein Rezept, das niemandem zugeteilt
+ist, auch niemand. **Sehen** darf man es trotzdem — ob etwas dasteht, ist
+die Frage der Sichtbarkeit, nicht des Wissens —, nur gestrichelt und mit
+„must still be learned". Einen Fundort nennt die Werkbank nicht: wo man
+eine Blaupause lernt, ist Kampagneninhalt.
+
+Ein **Gang** ist ein laufendes Handwerk und eine Kante (`crafting`) von dem,
+der arbeitet, zum Rezept. **Beim Start wird gebunden**, was das Rezept
+braucht: es verlässt das Inventar und steht am Gang. Bis dahin ging nichts
+hinein, und man legte unterwegs nach — dann lag dieselbe Zange im Beutel und
+im Gang zugleich und reichte für zwei Gänge. Gebunden wird auch, was nicht
+verbraucht wird; es kommt am Ende immer zurück. Das Nachlegen bleibt für
+das, was erst unterwegs dazukommt.
+
+Was beim Misslingen und beim Abbruch zurückkommt, sagt das Rezept
+(`onFailure`) — sonst entschiede es jedes Mal die Laune am Tisch.
 
 ---
 

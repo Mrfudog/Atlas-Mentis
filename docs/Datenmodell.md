@@ -329,7 +329,7 @@ nicht — den gäbe es auch ohne das Rezept.
 
 | Familie | Kanten | Trägt |
 |---|---|---|
-| Struktur | `partOf`, `insideMap` | Ort, Rahmen, Spur der Weltgeschichte (§5.8) — die Reihenfolge sagt `Time.sort` |
+| Struktur | `partOf`, `insideMap` | Ort, Rahmen, Spur der Weltgeschichte (§5.9) — die Reihenfolge sagt `Time.sort` |
 | Teil | `belongsTo`, `carries` | `asField` |
 | Einsetzen | `composedOf`, `hasProperty` | `section`, `vars` |
 | Regel | `stageOf`, `affects`, `grants`, `subclassOf`, `subraceOf` | Stufe eines Zustands; Wirkung zwischen Regeln (`effect`, `on`, `note`); was Klasse, Abstammung, Hintergrund gewähren (`level`) |
@@ -392,6 +392,11 @@ flowchart LR
 | G2 | **Waffe und Rüstung:** `Weapon.category` (simple/martial), `damage2` (zweihändig, bei `versatile`), `ammoType`, `damageType` aus der Zeile `DamageType` (seit P4); `Armor.armorType` (light/medium/heavy/shield), `strength`, `stealthDisadvantage`. Eigenschaften bleiben die Kante `hasProperty` → `ItemProperty`. | `validateEntity` |
 | G3 | **Ein Gegenstand darf ein Behälter sein** (`carries` → `Inventory`, wie an Kreatur und Gruppe) und **ein Stück am Tisch eine Instanz** des Gegenstands im Buch (`instanceOf`, §7): das +1-Langschwert speichert nur, was abweicht. Eine Instanz ist von derselben Art wie ihre Vorlage (`to: same`). | Kantenprüfung |
 
+| G4 | **Die Plätze nach Basils Blatt** (D54, REQ-214): `holds.props.slot` kennt Kopf, Schultern, Torso, Handschuhe, rechte und linke Hand (`mainHand`, `offHand`, beide nehmen alles), Beine, Stiefel, Gurt, zwei Holster, je vier Ringe an jeder Hand (`ringR1`…`ringL4`) und vier Halsketten (`neck1`…`neck4`). Gelesen aus der Zeile, nicht aus dem Code; ein Platz, den die Zeile nicht kennt, bleibt am Stück stehen und wird gezeigt. Umbenennung: `prototype/migration/plaetze-nach-dem-blatt.mjs`. | — |
+| G5 | **Die Figur steht an der Kreatur** (`Creature.figure`: male · female · neutral, Liste am Feld), nicht am Inventar: das Inventar wechselt den Träger, die Figur nicht. | `validateEntity` (`value_not_allowed`) |
+| G6 | **Das Tragraster wird gerechnet** (D54, REQ-215): ein Inventar einer Kreatur **ohne eigenes `grid`** liest seine Form aus der Grösse des Statblocks (Grundquadrat, Einstellung `carrySquares`) und aus `Statblock.carryExtra` (Zusatzquadrat, `derived`, Spanne 0…5). Eine Grösse, die die Einstellung nicht kennt, behält das Rechteck (`inventoryCols`, `inventoryRows`). Die Basiszonen kommen nach Spalten aus `carryZones`, bis der Behälter eigene malt. | Rechenwerk (`carryGrid`, `columnZones`) |
+| G7 | **Jeder Behälter gibt eine Ziehstufe dazu** (D54, REQ-216): die Stufe eines Stücks ist das Langsamere aus seiner Zone und der Stufe seines Behälters + 1, die Kette hinauf (`carries` von einem Gegenstand). Aussen gilt der Platz (`slotDraw`) oder die Zone. Kennt ein Schritt keine Stufe, hat das Stück keine. | Rechenwerk (`drawStage`) |
+
 Offen: wie viele Ladungen ein Stück am Tisch noch hat (ein Stand am
 Gegenstand oder an `holds`).
 
@@ -430,7 +435,18 @@ noch nicht; die Wahl aus `ProficiencyChoice` trifft niemand für die Figur
 (sie steht als Angebot an der Klasse); eine umbenannte Fertigkeit nimmt
 die gespeicherten Übungen nicht mit (F12).
 
-### 5.8 Zeitleisten und Spuren (D57, REQ-220)
+### 5.8 Initiative (D53)
+
+Ein Teilnehmer ist eine `participates`-Kante an der Begegnung; die Kante
+hält den **Stand** im Kampf, nicht die Zahlen der Kreatur.
+
+```mermaid
+flowchart LR
+  E[Encounter] -- "participates<br/>init · hp · conditions[]<br/>revealed · involved · identified" --> C[Creature]
+  S[Statblock-Instanz] -- belongsTo --> C
+  S -- instanceOf --> V[Statblock-Vorlage]
+  E -. "ac, hpMax: participantStats" .-> S
+### 5.9 Zeitleisten und Spuren (D57, REQ-220)
 
 ```mermaid
 flowchart LR
@@ -446,6 +462,15 @@ flowchart LR
 
 | | Regel | Geprüft durch |
 |---|---|---|
+| I1 | **RK und TP-Maximum stehen am Statblock** (der Instanz, mit der Vorlage darunter), `props.hp` ist der Stand. `props.hpMax` ist eine Abschrift aus der Zeit davor und gilt nur, wo kein Statblock hängt. | Modell (`participantStats`) |
+| I2 | **Ein Eintrag in `props.conditions` trägt seine Dauer:** `rounds`, `anchor` (Id einer Teilnehmerkante derselben Begegnung) und `at` (`start`/`end`). Er zählt herunter, wenn der Zug des Ankers anfängt bzw. endet, und fällt bei null weg. **Ohne `anchor` der eigene Zug, ohne `at` das Ende** — so zählte der Bestand, und er bleibt gültig. Ohne `rounds` bleibt er, bis ihn jemand entfernt. | Modell (`tickEntries`) |
+| I3 | **Gezählt wird ab jetzt:** das Ende des laufenden Zuges kommt noch, sein Anfang ist vorbei. Die Maske sagt beim Setzen, wann ein Eintrag abläuft. | Modell (`expiresAt`) |
+| I4 | **Eine Notiz ist ein Eintrag mit `text` statt `rule`**, mit derselben Dauer. `hidden` hält einen Eintrag von den Spielenden fern. | — |
+| I5 | **Spielende sehen die Gruppe und wer `revealed` oder `involved` ist**; ohne `identified` den Decknamen (`Identity.cover`) und keinen Verweis auf den Artikel; die Trefferpunkte aller ausser der Gruppe als Wort (`unhurt`, `bloodied`, `down`); `hidden`-Einträge und `props.note` nie. Zurückgehalten wird in `redactEntity`, nicht in der Maske. Wer getroffen wird, ist `involved`. | Modell (`redactParticipants`, in `redactEntity`) |
+
+Offen: der laufende Zug steht als Index an der Begegnung (`turn`) und
+zählt damit auch die verborgenen Teilnehmer mit; dass `bloodied` schon
+unter dem Maximum gilt und nicht erst ab der Hälfte.
 | Z1 | **Eine Spur ist ein Ereignis mit Spanne** (`Event`, `Time.sort` … `Time.untilSort`). Ein Ende vor dem Anfang ist keine Spanne. Eine neue Art gibt es dafür nicht: ein Krieg, eine Dynastie, ein Zeitalter sind Ereignisse, die dauern (`Event.kind` sagt, welche Sorte). | `isTrack` |
 | Z2 | **Was in einer Spur liegt, sagt `partOf`**, nicht der Zeitraum (D57): die Schlacht ist Teil des Kriegs, der Krieg Teil des Zeitalters. Die Kante ist dafür auf `Event` verbreitert (`from`/`to`). Ein Artikel liegt in der **nächsten** Spur über seine Kette; ein Glied, das keine Spur ist oder nicht gesehen wird, wird übersprungen. | Kantenprüfung, `worldHistory` |
 | Z3 | **Die Spanne prüft mit, sie ordnet nicht ein.** Was über die Kante drinliegt und ausserhalb fällt, nennt die Rechnung (`outside`) — die Leitung sieht es gestrichelt; verschoben oder abgelehnt wird nichts. | `worldHistory` |
@@ -497,6 +522,21 @@ den W20 mit diesem Bonus. Ein `{VAR}` darin wird zuerst aufgelöst
 (`{{1d8+{STR}}}`). Gewürfelt wird beim Klick, ohne `eval` (`rollDice`);
 was kein Ausdruck ist oder einen offenen Platzhalter hat, bleibt Text,
 wie es dasteht.
+
+**Das Tragraster und die Ziehstufe** (D54). Ein Inventar ohne eigene
+Form, das eine Kreatur trägt, ist nach Basils Blatt 11 × 6: links das
+Grundquadrat nach Grösse, rechts das Zusatzquadrat, das der Statblock als
+`carryExtra` rechnet (`mod(str)`, geklemmt auf 0…5) — wie ein Angriff
+seinen Treffer am Statblock rechnet. Was ein Stück zum Herausholen kostet,
+wird die Behälterkette hinauf gerechnet:
+
+```mermaid
+flowchart LR
+  K["Kreatur"] -- carries --> I["Tragraster<br/>Zone action"]
+  I -- "holds (gx, gy)" --> B["Bag of Holding<br/>Stufe: action"]
+  B -- carries --> BI["Inventar der Bag"]
+  BI -- holds --> S["Seil<br/>Stufe: max(eigene Zone, action + 1) = turn"]
+```
 
 **Der Kalender** steht an der **Welt** (`World.calendar`), und jede Kampagne
 hängt über `inWorld` an genau einer: alle Runden in derselben Welt lesen
@@ -684,6 +724,41 @@ Die Verwaltung schreibt alles. Ein Spieler schreibt seine Figuren und was an
 ihnen hängt (`carries`, `holds`, `crafting`). Das Register schreibt nur die
 Verwaltung. Die Leitung einer Kampagne kennt `mayWrite` noch nicht (offen).
 
+### 9.5 Handwerk: gelernt und gebunden (D55)
+
+```mermaid
+flowchart LR
+  R["Recipe<br/>trade · tool · onFailure"] -- "knowledge" --> I["Information"]
+  I -- "knownBy" --> F["Creature | Party"]
+  R -- "needs · qty · consumed" --> M["Item"]
+  F -- "crafting · day · days · put" --> R
+  F -- "carries" --> Inv["Inventory"] -- "holds · qty" --> M
+```
+
+- **Eine Blaupause wird gelernt, und gelernt heisst zugeteilt** (REQ-218):
+  jede Information am Rezept erreicht die Figur über `knownBy` (selbst,
+  Gruppe, Fraktion — dieselbe Abfrage wie in 9.3). Ein Rezept **ohne**
+  Information hat niemand gelernt; bis D52 hiess das „offen". Teilwissen
+  ist nicht gelernt. Ob ein Rezept **dasteht**, sagt weiter
+  `articleVisible`; ungelernte stehen gestrichelt mit „must still be
+  learned", ohne Fundort. „Lehren" legt, wo nötig, eine Information ohne
+  Felder an — sie hütet nichts, sie ist das, was man lernen kann.
+- **Filter der Werkbank:** gelernt · alle; machbar · fast (1–2 fehlende
+  **Posten**: je Zutat einer, das Werkzeug einer); nach Material (welche
+  Rezepte es über `needs` nennen); nach Beruf (`Recipe.trade`) oder
+  Werkzeug (`Recipe.tool`).
+- **Material wird beim Start gebunden** (REQ-219): was das Rezept braucht
+  und dabei ist, verlässt das Inventar und steht in `crafting.props.put` —
+  auch, was nicht verbraucht wird. Fehlt etwas, darf trotzdem begonnen und
+  unterwegs nachgelegt werden (Aufgabe #34); Vorgabe ist das nicht mehr.
+  Das Werkzeug wird geprüft, nicht gebunden (es ist ein Wort, keine Kante).
+- **Was zurückkommt:** was nicht verbraucht wird, immer; das Übrige beim
+  Misslingen und beim Abbruch nach `Recipe.onFailure` (`nothingLost` alles,
+  `halfLost` die abgerundete Hälfte, `materialsLost` nichts); beim Gelingen
+  nichts davon. Ein Gang aus der Zeit vor D55 ist dieselbe Kante mit
+  weniger in `put`: nicht Verbrauchtes zählt dann in der Hand, und er
+  läuft weiter.
+
 ---
 
 ## 10. Ansichten und Anordnung
@@ -803,7 +878,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 |---|---|---|---|---|---|
 | `Armor` | `Item` | `ac` `armorType` `strength` `stealthDisadvantage` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `loot` `instanceOf` | — |
 | `Article` | `Source` `Todos` `Lore` `Secrets` | — | — | `describedIn` | — |
-| `Creature` | `Image` `Source` `Vars` `Vitals` `Lore` `Facts` `Secrets` `ReadAloud` | `appearance` `personality` `species` `kind` `role` `attitude` | `worships` `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | full |
+| `Creature` | `Image` `Source` `Vars` `Vitals` `Lore` `Facts` `Secrets` `ReadAloud` | `appearance` `personality` `species` `kind` `role` `attitude` `figure` | `worships` `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | full |
 | `Deity` | `Image` `Source` `Lore` `Secrets` | `pantheon` `title` `alignment` `domains` `symbol` `province` `plane` | — | `worships` | — |
 | `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` `goal` | `worships` `controls` `regards` | `memberOf` `questGiver` `features` `knownBy` `regards` | — |
 | `Hazard` | `Image` `Source` `Secrets` | `kind` `category` `tier` `threat` `trigger` `duration` `effect` `countermeasures` `initiative` | — | — | — |
@@ -848,7 +923,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Rule` | `Source` `Vars` | `kind` `autolink` | `affects` | `composedOf` `affects` `grants` | — |
 | `Skill` | `Rule` | `ability` | `affects` | `composedOf` `affects` `grants` `loot` | — |
 | `Spell` | `Rule` | `level` `school` `castingTime` `castingAction` `castingUnit` `castingCondition` `rangeKind` `range` `components` `material` `materialCost` `materialConsumed` `duration` `durationAmount` `durationUnit` `concentration` `ritual` `higherLevels` `save` `attack` `damageTypes` | `affects` | `composedOf` `affects` `casts` `grants` | — |
-| `Statblock` | `Source` `Abilities` `Proficiencies` `Vars` `Tactics` `Lore` `Image` | `system` `size` `creatureType` `alignment` `ac` `acNote` `hp` `hpFormula` `speed` `cr` `prof` `combatRole` `senses` `languageNote` `resistances` `vulnerabilities` `immunities` `conditionImmunities` `legendaryActions` `bonuses` `token` `spellAbility` `casterLevel` `spellSlots` `spellDc*` `spellAttack*` | `composedOf` `belongsTo` `casts` `equips` `instanceOf` | `features` `participates` `instanceOf` | full |
+| `Statblock` | `Source` `Abilities` `Proficiencies` `Vars` `Tactics` `Lore` `Image` | `system` `size` `creatureType` `alignment` `ac` `acNote` `hp` `hpFormula` `speed` `cr` `prof` `carryExtra*` `combatRole` `senses` `languageNote` `resistances` `vulnerabilities` `immunities` `conditionImmunities` `legendaryActions` `bonuses` `token` `spellAbility` `casterLevel` `spellSlots` `spellDc*` `spellAttack*` | `composedOf` `belongsTo` `casts` `equips` `instanceOf` | `features` `participates` `instanceOf` | quick, full |
 | `Subclass` | `Rule` `Proficiencies` `ProficiencyChoice` `Lore` `Image` | `shortName` `casterProgression` `spellAbility` | `affects` `casts` `subclassOf` `grants` `tableFor` | `composedOf` `affects` `grants` | — |
 | `Table` | `Source` `Secrets` | `kind` `die` `columns` `rows` | `entry` | `tableFor` | full |
 
@@ -889,7 +964,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `hasBackground` | PlayerCharacter → Background | ja | — | — |
 | `hasClass` | PlayerCharacter → Class |  | — | `level` `subclass` |
 | `hasProperty` | Weapon \| Item \| Armor → ItemProperty |  | — | — |
-| `holds` | Inventory → Item |  | — | `qty` `tier` `slot` `gx` `gy` `attuned` `note` |
+| `holds` | Inventory → Item |  | — | `qty` `tier` `slot` `gx` `gy` `rot` `attuned` `note` |
 | `includes` | Knowledge → Information |  | — | — |
 | `inLayer` | * → Layer |  | — | `mode` `addedAt` |
 | `insideMap` | Map → Map | ja | — | `x` `y` `w` `h` |
@@ -908,7 +983,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `onMap` | Encounter \| Story → Map | ja | — | — |
 | `overrides` | * → * | ja | — | `scope` `note` |
 | `owes` | Creature → Creature |  | — | — |
-| `participates` | Encounter → Creature \| Statblock \| Party |  | — | `label` `init` `hp` `hpMax` `ally` `conditions` `note` |
+| `participates` | Encounter → Creature \| Statblock \| Party |  | — | `label` `init` `hp` `hpMax` `ally` `conditions` `note` `revealed` `involved` `identified` |
 | `partOf` | Place \| Story \| Quest \| Event → Place \| Story \| Event |  | — | — |
 | `partyOf` | Party → Campaign | ja | — | — |
 | `placed` | Board → * |  | — | `x` `y` `w` `h` `view` `z` `locked` `note` |
@@ -940,7 +1015,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 - Einheiten: length · imperial: `ft` `in` `mi`; length · metric: `cm` `m` `km`; weight · imperial: `lb` `oz`; weight · metric: `g` `kg`; volume · imperial: `gal` `pt`; volume · metric: `ml` `l`
 - Variablen: `ATK` `DMG` `DMG2` `DMGTYP` `DMGTYP2` `RNG`
-- Einstellungen: `gridSize` `gridUnit` `inventoryCols` `inventoryRows` `today` `gmFields` `units` `travelRationEvery` `travelLightEvery` `travelWatchesPerDay`
+- Einstellungen: `gridSize` `gridUnit` `inventoryCols` `inventoryRows` `carrySquares` `carryZones` `slotDraw` `container:Backpack` `container:Bag of Holding` `today` `gmFields` `units` `travelRationEvery` `travelLightEvery` `travelWatchesPerDay`
 <!-- register:ende -->
 
 ---

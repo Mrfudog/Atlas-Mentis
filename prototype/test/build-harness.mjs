@@ -111,6 +111,9 @@ window.__T__={derivedValue:derivedValue,assetSrc:assetSrc,UI:UI,
   breakLoad:function(t){ loadFailed=t||'the articles failed (test).'; },
   visionPoly:visionPoly,rayHit:rayHit,inShape:inShape,mapLights:mapLights,
   noteNat:noteNat,craftMod:craftMod,recipeDays:recipeDays,craftStatus:craftStatus,
+  recipeLearned:recipeLearned,craftTeach:craftTeach,craftMatches:craftMatches,
+  craftBind:craftBind,craftReturns:craftReturns,craftStart:craftStart,craftAbort:craftAbort,
+  craftJobs:craftJobs,jobNeeds:jobNeeds,jobReady:jobReady,amountHeld:amountHeld,
   entryAnchor:entryAnchor,ensureAnchors:ensureAnchors,
   anchorlessProse:anchorlessProse,backfillAnchors:backfillAnchors,
   proseFields:proseFields,proseOf:proseOf,allProse:allProse,
@@ -143,8 +146,13 @@ window.__T__={derivedValue:derivedValue,assetSrc:assetSrc,UI:UI,
   persist:persist,
   inventoryOf:inventoryOf,containerGrid:containerGrid,drawCost:drawCost,
   footprintOf:footprintOf,gridTurn:gridTurn,fitsAt:fitsAt,
+  carryGridOf:carryGridOf,zonesOf:zonesOf,drawList:drawList,drawPath:drawPath,
+  drawStage:drawStage,liegtInForm:liegtInForm,slotList:slotList,containerPresets:containerPresets,
   dgTypen:dgTypen,dgLinien:dgLinien,
   ifaceInList:ifaceInList};
+/* Die Initiative (D53): Reihe, Dauer, Spieleransicht. */
+Object.assign(window.__T__,{participants:participants,tickFight:tickFight,
+  fightExpiresAt:expiresAt,fightForPlayers:fightForPlayers,hpWord:hpWord});
 Object.defineProperty(window.__T__,'REG',{get:function(){return REG;}});
 Object.defineProperty(window.__T__,'ENT',{get:function(){return ENT;}});
 Object.defineProperty(window.__T__,'worldHistory',{get:function(){return worldHistory;}});
