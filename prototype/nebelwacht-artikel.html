@@ -845,9 +845,28 @@ svg.dg path.dgar-on{fill:var(--accent)}
   -moz-appearance:textfield}
 .initt .tin::-webkit-outer-spin-button,.initt .tin::-webkit-inner-spin-button{
   -webkit-appearance:none;margin:0}
-.initt td.hpcell{display:flex;align-items:center;gap:1px}
-.initt td.conds{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.initt td.hpcell{white-space:nowrap}
+.initt td.conds .chip{margin:1px 2px}
 .chip.cond{font-size:11px;padding:1px 6px;gap:4px}
+.chip.cond.note{font-style:italic}
+.chip.cond.hidden{border-style:dashed;opacity:.75}
+.fightgrid{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.fightgrid>.initt{flex:1 1 380px;min-width:0;width:auto}
+@media (min-width:1100px){.fightgrid{flex-wrap:nowrap}.fightside{position:sticky;top:8px}}
+.fightside{flex:0 1 300px;min-width:220px;border:1px solid var(--line);border-radius:4px;
+  padding:8px 10px;background:var(--bg)}
+.fightsidehead{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:6px}
+.initt tr.foe,.initt tr.ally{cursor:pointer}
+.initt tr.picked{outline:1px solid var(--accent);outline-offset:-1px}
+.initt td.who{min-width:110px}
+.initt .pname.anon{font-style:italic}
+.initt .pflags{display:inline-flex;gap:2px;margin-left:6px}
+.initt .pflag{background:none;border:1px solid var(--line);border-radius:2px;color:var(--dim);
+  cursor:pointer;font-size:11px;padding:0 3px;opacity:.55}
+.initt .pflag.on{color:var(--accent);border-color:var(--accent);opacity:1}
+.hpword{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em}
+.hpword.bloodied{color:var(--warn)}
+.hpword.down{color:var(--dim);text-decoration:line-through}
 .chip.cond .x{background:none;border:0;color:var(--dim);cursor:pointer;padding:0;line-height:1}
 .chip.cond .x:hover{color:var(--warn)}
 .btn.dice{font-family:var(--ff-mono)}
@@ -1116,7 +1135,7 @@ var UI={route:{k:"list"}, view:"quick", area:"", iface:"", tag:"", q:"", offen:f
         wallKind:"wall", playTab:"map", playBoard:"", tab:"", typePick:"",
         invView:"tiers", invPick:"", craftKnow:"", craftReady:"", craftMat:"", craftTrade:"", craftLog:[],
         boardZoom:1, boardPick:"", boardTool:"",
-        turnActor:"", rollLog:[], asActor:"", peers:[], pings:[],
+        turnActor:"", fightPick:"", rollLog:[], asActor:"", peers:[], pings:[],
         ruleQ:"", ruleKind:"",
         howto:"", typeView:"full", dgPick:"", dgAll:false, err:""};
 
@@ -7160,9 +7179,10 @@ function rollButton(label,ausdruck,titel){
    Mal Trefferpunkte, und eine Zahl an einer Kante könnte nur einen davon
    verletzen.
 
-   Zustände tragen ihre Dauer mit und zählen am Ende des Zuges herunter, der
-   sie gesetzt hat. Ohne Dauer vergisst sie der Tisch — das ist der Grund,
-   warum sie überhaupt hier stehen und nicht an der Figur.
+   Zustände und Notizen tragen ihre Dauer mit und zählen am Anfang oder Ende
+   des Zuges ihres Ankers herunter (REQ-212, D53). Ohne Dauer vergisst sie
+   der Tisch — das ist der Grund, warum sie überhaupt hier stehen und nicht
+   an der Figur. RK und TP-Maximum liest die Zeile vom Statblock (REQ-211).
 
    `round` und `turn` liegen vorläufig an der Begegnung. Richtig wären
    Sitzungszustände mit Echtzeitkanal (REQ-116); das ist die Stelle, die
@@ -7171,22 +7191,113 @@ var ENC_IFACE="Encounter", ENC_COMP="Encounter",
     REL_PART="participates", REL_ONMAP="onMap", REL_LOOT="loot";
 
 function encCard(e){ return (e.components||{})[ENC_COMP]||{}; }
-function participants(e){
-  return (e.relations||[]).filter(function(r){return r.type===REL_PART;})
-    .map(function(r){
-      var t=ENT.get(r.to);
+function participants(e,roh){
+  var rels=(e.relations||[]).filter(function(r){return r.type===REL_PART;});
+  /* Spielende bekommen die Kanten schon gesiebt (REQ-213, D53) — hier, weil
+     die Seite keinen Server hat; im echten Stapel tut es `redactEntity`
+     mit `redactParticipants`, und beide rechnen gleich. */
+  if(!roh&&!isGM()) rels=fightForPlayers(rels);
+  return rels.map(function(r){
+      var t=r.to?ENT.get(r.to):null;
       var pr=r.props||{};
+      /* RK und Maximum vom Statblock der Instanz (REQ-211), nicht aus einer
+         Abschrift an der Kante. `hpMax` dort gilt nur ohne Statblock. */
+      var sb=t?statsOf(t).card:{};
+      var ac=Number(sb.ac), mx=Number(sb.hp);
+      if(!isFinite(mx)) mx=Number(pr.hpMax);
       return {rel:r,art:t,label:pr.label||(t?nameOf(t):"(missing)"),
-        init:Number(pr.init),hp:Number(pr.hp),hpMax:Number(pr.hpMax),
+        init:Number(pr.init),hp:Number(pr.hp),hpMax:mx,ac:ac,
+        hpState:pr.hpState||"",
         ally:!!pr.ally,conditions:Array.isArray(pr.conditions)?pr.conditions:[],
-        note:pr.note||""};
+        note:pr.note||"",revealed:!!pr.revealed,involved:!!pr.involved,
+        identified:!!pr.identified};
     });
+}
+/* ---- Dauer (REQ-212, D53) ----
+   Ein Eintrag zählt herunter, wenn der Zug seines Ankers anfängt oder
+   endet. Ohne Anker der eigene Zug, ohne Zeitpunkt das Ende: so verhielt
+   sich der Bestand, und so bleibt er gültig. Dieselbe Rechnung steht als
+   `entryTiming`/`tickEntries`/`expiresAt` in packages/model. */
+function entryTiming(c,ownId){
+  return {anchor:c.anchor||ownId, at:c.at==="start"?"start":"end"};
+}
+function tickFight(e,edgeId,at){
+  (e.relations||[]).forEach(function(r){
+    if(r.type!==REL_PART)return;
+    var liste=Array.isArray((r.props||{}).conditions)?r.props.conditions:[];
+    var neu=[], anders=false;
+    liste.forEach(function(c){
+      var t=entryTiming(c,r.id), n=Number(c.rounds);
+      if(t.anchor!==edgeId||t.at!==at||c.rounds==null||!isFinite(n)){ neu.push(c); return; }
+      anders=true;
+      if(n-1>0) neu.push(Object.assign({},c,{rounds:n-1}));
+    });
+    if(anders) r.props=Object.assign({},r.props,{conditions:neu});
+  });
+}
+function expiresAt(c,ownId,order,round,turn){
+  var n=Number(c.rounds);
+  if(c.rounds==null||!isFinite(n)||n<=0)return null;
+  var t=entryTiming(c,ownId), idx=order.indexOf(t.anchor);
+  if(idx<0)return null;
+  var r0=Math.max(1,round||0), lauf=round>0?turn:-1;
+  var nochDiese=idx>lauf||(idx===lauf&&t.at==="end");
+  return {round:(nochDiese?r0:r0+1)+n-1, anchor:t.anchor, at:t.at};
+}
+/* ---- Spieleransicht (REQ-213, D53) ----
+   Die Gruppe und wer aufgedeckt oder beteiligt ist; ohne `identified` der
+   Deckname und kein Verweis auf den Artikel; Trefferpunkte von Gegnern als
+   Wort; versteckte Einträge und die Notiz der Leitung nie. */
+function hpWord(hp,max){
+  var h=Number(hp), m=Number(max);
+  if(hp==null||!isFinite(h)) return isFinite(m)?"unhurt":"";
+  if(h<=0)return "down";
+  if(isFinite(m)&&h<m)return "bloodied";
+  return "unhurt";
+}
+function inPartyFight(to){
+  var t=ENT.get(to); if(!t)return false;
+  if(((t.interfaces||[])[0])==="Party")return true;
+  return (t.relations||[]).some(function(r){ return r.type==="memberOfParty"; });
+}
+function fightForPlayers(rels){
+  var zeigt=function(r){ var p=r.props||{}; return inPartyFight(r.to)||!!p.revealed||!!p.involved; };
+  var deck=function(r){ var t=ENT.get(r.to);
+    return (((t||{}).components||{}).Identity||{}).cover||"Unknown creature"; };
+  var oft={}, schon={};
+  rels.forEach(function(r){
+    if(!zeigt(r)||inPartyFight(r.to)||(r.props||{}).identified)return;
+    oft[deck(r)]=(oft[deck(r)]||0)+1;
+  });
+  return rels.filter(zeigt).map(function(r){
+    var p=r.props||{}, t=ENT.get(r.to);
+    var sb=t?statsOf(t).card:{}, mx=Number(sb.hp);
+    if(!isFinite(mx)) mx=Number(p.hpMax);
+    var neu={init:p.init,ally:p.ally,revealed:p.revealed,involved:p.involved,identified:p.identified,
+      conditions:(Array.isArray(p.conditions)?p.conditions:[]).filter(function(c){ return !c.hidden; })};
+    var to=r.to;
+    if(inPartyFight(r.to)){ neu.label=p.label; neu.hp=p.hp; neu.note=p.note; }
+    else {
+      neu.hpState=hpWord(p.hp,mx);
+      if(p.identified) neu.label=p.label;
+      else {
+        var b=deck(r); schon[b]=(schon[b]||0)+1;
+        neu.label=oft[b]>1?b+" "+schon[b]:b;
+        to="";
+      }
+    }
+    return {id:r.id,type:r.type,to:to,props:neu};
+  });
 }
 /* Die Reihenfolge: hohe Initiative zuerst, bei Gleichstand die Verbündeten —
    das ist eine Hausregel, und sie steht hier, damit sie jedes Mal gleich
    ausgeht statt jedes Mal neu verhandelt zu werden. */
-function initOrder(e){
-  return participants(e).sort(function(a,b){
+function initOrder(e){ return sortFight(participants(e)); }
+/* Die ganze Reihe, wie die Leitung sie sieht — nur um den laufenden Zug zu
+   finden, der in der Begegnung als Index steht. */
+function initOrderRaw(e){ return sortFight(participants(e,true)); }
+function sortFight(xs){
+  return xs.sort(function(a,b){
     var d=(isFinite(b.init)?b.init:-99)-(isFinite(a.init)?a.init:-99);
     if(d)return d;
     if(a.ally!==b.ally)return a.ally?-1:1;
@@ -7198,9 +7309,15 @@ function elInitiative(e,ifn,item){
   var card=encCard(e);
   var liste=initOrder(e);
   var runde=Number(card.round)||0, zug=Number(card.turn)||0;
-  if(zug>=liste.length) zug=0;
-  var dran=liste[zug]||null;
+  /* Der laufende Zug zählt in der ganzen Reihe — auch für Spielende, die
+     nur einen Teil davon sehen. Wer gerade dran ist und nicht gezeigt
+     wird, hat eben keinen Zeiger. */
+  var ganz=isGM()?liste:initOrderRaw(e);
+  if(zug>=ganz.length) zug=0;
+  var dranId=ganz[zug]?ganz[zug].rel.id:"";
+  var dran=liste.filter(function(p){ return p.rel.id===dranId; })[0]||null;
   UI.turnActor=dran&&dran.art?dran.art.id:"";
+  var order=ganz.map(function(p){ return p.rel.id; });
   var wrap=el("div",{class:"fight"});
 
   function schreib(patch){
@@ -7208,23 +7325,17 @@ function elInitiative(e,ifn,item){
     e.components[ENC_COMP]=Object.assign({},e.components[ENC_COMP]||{},patch);
     persist(e);
   }
-  /* Am Ende eines Zuges laufen die Zustände ab, die in diesem Zug gesetzt
-     wurden. Sie dort zu zählen und nicht am Rundenwechsel ist der
-     Unterschied zwischen „bis zum Ende deines nächsten Zuges" und „bis
-     irgendwann". */
+  /* Ein Zug endet, der nächste fängt an (REQ-212, D53): erst zählen die
+     Einträge, deren Anker am Ende des laufenden Zuges steht, dann die am
+     Anfang des neuen. Ohne Anker ist das der eigene Zug, Ende — so zählte
+     der Bestand, und so zählt er weiter. */
   function naechster(){
     if(!liste.length)return;
-    var aktuell=liste[zug];
-    if(aktuell){
-      var rest=(aktuell.conditions||[]).map(function(c){
-        var r2=Object.assign({},c);
-        if(isFinite(Number(r2.rounds))) r2.rounds=Number(r2.rounds)-1;
-        return r2;
-      }).filter(function(c){ return !isFinite(Number(c.rounds))||Number(c.rounds)>0; });
-      aktuell.rel.props=Object.assign({},aktuell.rel.props,{conditions:rest});
-    }
+    if(dranId) tickFight(e,dranId,"end");
     var n=zug+1, r3=runde;
     if(n>=liste.length){ n=0; r3=runde+1; }
+    var neu=liste[n];
+    if(neu) tickFight(e,neu.rel.id,"start");
     schreib({turn:n,round:r3,phase:"running"});
   }
 
@@ -7251,7 +7362,7 @@ function elInitiative(e,ifn,item){
     bar.appendChild(el("button",{class:"btn sm gh",type:"button",
       title:"Back to round zero, initiative cleared",
       onclick:function(){
-        confirmDialog("Reset the fight? Initiative and conditions are cleared, hit points stay.",function(){
+        confirmDialog("Reset the fight? Initiative, conditions and notes are cleared, hit points stay.",function(){
           (e.relations||[]).forEach(function(r5){
             if(r5.type!==REL_PART)return;
             r5.props=Object.assign({},r5.props,{init:undefined,conditions:[]});
@@ -7267,14 +7378,38 @@ function elInitiative(e,ifn,item){
     return wrap;
   }
 
+  /* Wie heisst ein Anker? Der Tischname des Teilnehmers — für Spielende
+     nur, wenn sie ihn sehen. */
+  function ankerName(id){
+    var p=liste.filter(function(x){ return x.rel.id===id; })[0];
+    return p?p.label:"another turn";
+  }
+  function dauerText(c,p2){
+    var t=entryTiming(c,p2.rel.id), n=Number(c.rounds);
+    if(c.rounds==null||!isFinite(n))return "";
+    var eigen=t.anchor===p2.rel.id;
+    return n+(eigen&&t.at==="end"?"":" · "+t.at+" of "+(eigen?"own turn":ankerName(t.anchor)));
+  }
+
+  /* Die Tabelle und daneben der Statblock der gewählten Zeile (REQ-211):
+     ein Klick auf die Zeile, und die Seite bleibt, wo sie ist. */
+  var grid=el("div",{class:"fightgrid"});
   var tb=el("table",{class:"initt"});
   var hd=el("tr");
-  ["","Init","Who","HP","Conditions",""].forEach(function(h){ hd.appendChild(el("th",{text:h})); });
+  ["","Init","Who","AC","HP","Conditions & notes",""].forEach(function(h){ hd.appendChild(el("th",{text:h})); });
   tb.appendChild(hd);
-  liste.forEach(function(p2,i){
-    var row=el("tr",{class:(i===zug?"now ":"")+(p2.ally?"ally":"foe")+
-      ((isFinite(p2.hp)&&p2.hp<=0)?" down":"")});
-    row.appendChild(el("td",{class:"turn",text:i===zug?"▶":""}));
+  var gewaehlt=liste.filter(function(p){ return p.rel.id===UI.fightPick; })[0]||null;
+  liste.forEach(function(p2){
+    var istDran=p2.rel.id===dranId;
+    var unten=isFinite(p2.hp)?p2.hp<=0:p2.hpState==="down";
+    var row=el("tr",{class:(istDran?"now ":"")+(p2.ally||inPartyFight(p2.rel.to)?"ally":"foe")+
+      (unten?" down":"")+(gewaehlt===p2?" picked":"")});
+    if(p2.art) row.addEventListener("click",function(ev){
+      var tag=(ev.target&&ev.target.tagName)||"";
+      if(/^(INPUT|SELECT|BUTTON|OPTION)$/.test(tag))return;
+      UI.fightPick=UI.fightPick===p2.rel.id?"":p2.rel.id; render();
+    });
+    row.appendChild(el("td",{class:"turn",text:istDran?"▶":""}));
 
     var ci=el("td",{class:"num"});
     if(canWrite()){
@@ -7287,12 +7422,32 @@ function elInitiative(e,ifn,item){
     } else ci.textContent=isFinite(p2.init)?String(p2.init):"—";
     row.appendChild(ci);
 
-    var cw=el("td");
-    if(p2.art) cw.appendChild(el("button",{class:"ref",type:"button",
-      onclick:function(){go({k:"art",id:p2.art.id});}},p2.label));
-    else cw.appendChild(el("span",{class:"gone",text:p2.label}));
+    var cw=el("td",{class:"who"});
+    cw.appendChild(el("span",{class:p2.art?"pname":"pname anon",text:p2.label}));
+    if(p2.art&&!inPlacement) cw.appendChild(el("button",{class:"ref sm",type:"button",
+      title:"Open the article",onclick:function(){go({k:"art",id:p2.art.id});}},"↗"));
     if(p2.note) cw.appendChild(el("span",{class:"bind",text:p2.note}));
+    /* Was die Spielenden sehen (REQ-213): drei Schalter je Zeile, nur für
+       die Leitung. Die Gruppe sehen sie ohnehin. */
+    if(isGM()&&canWrite()&&!inPartyFight(p2.rel.to)){
+      var sch=el("span",{class:"pflags"});
+      [["revealed","👁","Revealed to the players"],
+       ["involved","⚔","Involved — set by itself when hit"],
+       ["identified","✓","Identified — players see the name, not the cover"]].forEach(function(f){
+        var an=!!p2[f[0]];
+        sch.appendChild(el("button",{class:"pflag"+(an?" on":""),type:"button",title:f[2],
+          "aria-pressed":String(an),
+          onclick:function(){
+            var patch={}; patch[f[0]]=an?undefined:true;
+            p2.rel.props=Object.assign({},p2.rel.props,patch);
+            persist(e);
+          }},f[1]));
+      });
+      cw.appendChild(sch);
+    }
     row.appendChild(cw);
+
+    row.appendChild(el("td",{class:"num",text:isFinite(p2.ac)?String(p2.ac):"—"}));
 
     var ch=el("td",{class:"num hpcell"});
     if(canWrite()){
@@ -7303,21 +7458,29 @@ function elInitiative(e,ifn,item){
       var hv=el("input",{class:"tin",type:"number",value:isFinite(p2.hp)?String(p2.hp):""});
       hv.addEventListener("change",function(){
         p2.rel.props=Object.assign({},p2.rel.props,
-          {hp:hv.value===""?undefined:Number(hv.value)});
+          {hp:hv.value===""?undefined:Number(hv.value),involved:true});
         persist(e); });
       ch.appendChild(hv);
       if(isFinite(p2.hpMax)) ch.appendChild(el("span",{class:"vmax",text:"/"+p2.hpMax}));
       ch.appendChild(el("button",{class:"vbtn",type:"button",title:"Heal 1",
         onclick:function(){ traf(p2,1); }},"+"));
-    } else ch.textContent=(isFinite(p2.hp)?p2.hp:"—")+(isFinite(p2.hpMax)?"/"+p2.hpMax:"");
+    } else if(p2.hpState) ch.appendChild(el("span",{class:"hpword "+p2.hpState,text:p2.hpState}));
+    else ch.textContent=(isFinite(p2.hp)?p2.hp:(isFinite(p2.hpMax)?p2.hpMax:"—"))+(isFinite(p2.hpMax)?"/"+p2.hpMax:"");
     row.appendChild(ch);
 
     var cc=el("td",{class:"conds"});
     (p2.conditions||[]).forEach(function(c){
-      /* `rule` ist die Id des Regelartikels; `name` trug ein älterer Bestand. */
+      /* `rule` ist die Id des Regelartikels; `name` trug ein älterer
+         Bestand; `text` ist eine Notiz (REQ-212). */
+      var notiz=!c.rule&&!c.name&&typeof c.text==="string";
       var regel=c.rule?ENT.get(c.rule):null;
-      var chip=el("span",{class:"chip cond",title:regel?(((regel.components||{}).Description||{}).description||""):""},
-        (regel?nameOf(regel):(c.name||"?"))+(isFinite(Number(c.rounds))?" ("+c.rounds+")":""));
+      var dt=dauerText(c,p2);
+      var ende=expiresAt(c,p2.rel.id,order,runde,zug);
+      var tip=(regel?(((regel.components||{}).Description||{}).description||""):"")+
+        (ende?(regel?"\n":"")+"Ends at the "+ende.at+" of "+(ende.anchor===p2.rel.id?p2.label:ankerName(ende.anchor))+"’s turn, round "+ende.round:"")+
+        (c.source?"\nFrom "+c.source:"");
+      var chip=el("span",{class:"chip cond"+(notiz?" note":"")+(c.hidden?" hidden":""),title:tip},
+        (notiz?c.text:(regel?nameOf(regel):(c.name||"?")))+(dt?" ("+dt+")":""));
       if(canWrite()) chip.appendChild(el("button",{class:"x",type:"button",
         onclick:function(){
           p2.rel.props=Object.assign({},p2.rel.props,
@@ -7325,18 +7488,9 @@ function elInitiative(e,ifn,item){
           persist(e); }},"×"));
       cc.appendChild(chip);
     });
-    if(canWrite()){
-      var add=el("select",{class:"bsel"});
-      add.appendChild(el("option",{value:""},"+ condition"));
-      conditionList().forEach(function(r){ add.appendChild(el("option",{value:r.id},nameOf(r))); });
-      add.addEventListener("change",function(){
-        if(!add.value)return;
-        p2.rel.props=Object.assign({},p2.rel.props,{conditions:
-          withConditionRows(p2.conditions,{rule:add.value,rounds:1,source:dran?dran.label:""})});
-        persist(e);
-      });
-      cc.appendChild(add);
-    }
+    if(canWrite()) cc.appendChild(el("button",{class:"btn sm gh",type:"button",
+      title:"Add a condition or a note with a duration",
+      onclick:function(){ addTimedEntry(e,p2,liste,dran,order,runde,zug); }},"+"));
     row.appendChild(cc);
 
     var cx=el("td");
@@ -7347,11 +7501,32 @@ function elInitiative(e,ifn,item){
     row.appendChild(cx);
     tb.appendChild(row);
   });
-  wrap.appendChild(tb);
+  grid.appendChild(tb);
+
+  /* Der Statblock in der Ansicht `quick`, gezeichnet wie eine Kachel auf dem
+     Board — derselbe Weg, dieselben Elemente. Für Spielende nur, was sie
+     ohnehin sehen dürften. */
+  if(gewaehlt&&gewaehlt.art&&!inPlacement){
+    var ziel=statblockOf(gewaehlt.art)||gewaehlt.art;
+    if(articleVisible(ziel)){
+      var side=el("aside",{class:"fightside"});
+      var kopf=el("div",{class:"fightsidehead"});
+      kopf.appendChild(el("button",{class:"ref",type:"button",
+        onclick:function(){go({k:"art",id:ziel.id});}},gewaehlt.label));
+      kopf.appendChild(el("button",{class:"btn sm gh",type:"button",title:"Close",
+        onclick:function(){ UI.fightPick=""; render(); }},"×"));
+      side.appendChild(kopf);
+      side.appendChild(renderPlacement(ziel,VIEW_QUICK,1));
+      grid.appendChild(side);
+    }
+  }
+  wrap.appendChild(grid);
 
   function traf(p2,d){
     var jetzt=isFinite(p2.hp)?p2.hp:(isFinite(p2.hpMax)?p2.hpMax:0);
-    p2.rel.props=Object.assign({},p2.rel.props,{hp:jetzt+d});
+    /* Wer getroffen wird, ist beteiligt (REQ-213) — die Spielenden haben es
+       gesehen, also steht es jetzt in ihrer Reihe. */
+    p2.rel.props=Object.assign({},p2.rel.props,{hp:jetzt+d,involved:true});
     logRoll((dran?dran.label+" → ":"")+p2.label+(d<0?" damage":" healed"),
       {total:Math.abs(d),rolls:[{flat:Math.abs(d)}],expr:"manual"});
     persist(e);
@@ -7429,6 +7604,70 @@ function elInitiative(e,ifn,item){
   return wrap;
 }
 
+/* Einen Zustand oder eine Notiz mit Dauer setzen (REQ-212, D53). Gespeichert
+   wird nur, was vom Bestand abweicht: der eigene Zug als Anker und das Ende
+   als Zeitpunkt bleiben weg — so liest sich ein neuer Eintrag wie ein alter,
+   solange er dasselbe meint. Die Zeile unten sagt, wann er abläuft; „1 Runde"
+   ist sonst eine Frage, die jeder am Tisch anders beantwortet. */
+function addTimedEntry(e,p2,liste,dran,order,runde,zug){
+  dialog("Condition or note — "+p2.label,function(host,close){
+    var art=el("select",{class:"i"});
+    art.appendChild(el("option",{value:"cond"},"Condition"));
+    art.appendChild(el("option",{value:"note"},"Note"));
+    var regel=el("select",{class:"i"});
+    conditionList().forEach(function(r){ regel.appendChild(el("option",{value:r.id},nameOf(r))); });
+    var text=el("input",{class:"i",type:"text",placeholder:"Concentrating on Bless"});
+    var runden=el("input",{class:"i",type:"number",min:"1",value:"1",placeholder:"until removed"});
+    var anker=el("select",{class:"i"});
+    liste.forEach(function(x){
+      anker.appendChild(el("option",{value:x.rel.id},x.rel.id===p2.rel.id?x.label+" (own turn)":x.label));
+    });
+    anker.value=p2.rel.id;
+    var wann=el("select",{class:"i"});
+    wann.appendChild(el("option",{value:"end"},"End of turn"));
+    wann.appendChild(el("option",{value:"start"},"Start of turn"));
+    var versteckt=el("input",{type:"checkbox"});
+    var fRegel=field("Condition",regel), fText=field("Text",text);
+    var vorschau=el("p",{class:"hint"});
+    function eintrag(){
+      var c={};
+      if(art.value==="note") c.text=text.value.trim(); else c.rule=regel.value;
+      if(runden.value!=="") c.rounds=Math.max(1,Number(runden.value)||1);
+      if(anker.value&&anker.value!==p2.rel.id) c.anchor=anker.value;
+      if(wann.value==="start") c.at="start";
+      if(dran) c.source=dran.label;
+      if(versteckt.checked) c.hidden=true;
+      return c;
+    }
+    function zeig(){
+      fRegel.style.display=art.value==="note"?"none":"";
+      fText.style.display=art.value==="note"?"":"none";
+      var ende=expiresAt(eintrag(),p2.rel.id,order,runde,zug);
+      var wer=liste.filter(function(x){ return x.rel.id===(ende&&ende.anchor); })[0];
+      vorschau.textContent=ende?"Ends at the "+ende.at+" of "+(wer?wer.label:"?")+"’s turn in round "+ende.round+".":
+        "No duration — stays until someone removes it.";
+    }
+    [art,regel,text,runden,anker,wann].forEach(function(n){
+      n.addEventListener("change",zeig); n.addEventListener("input",zeig); });
+    host.appendChild(field("Kind",art));
+    host.appendChild(fRegel);
+    host.appendChild(fText);
+    host.appendChild(field("Rounds (empty: until removed)",runden));
+    host.appendChild(field("Counted on whose turn",anker));
+    host.appendChild(field("At",wann));
+    host.appendChild(field("Hidden from the players",versteckt));
+    host.appendChild(vorschau);
+    zeig();
+    actions(host,close,function(){
+      var c=eintrag();
+      if(c.text===""||(art.value!=="note"&&!c.rule))return false;
+      p2.rel.props=Object.assign({},p2.rel.props,{conditions:
+        c.rule?withConditionRows(p2.conditions,c):(p2.conditions||[]).concat([c])});
+      persist(e);
+    },"Add");
+  });
+}
+
 /* Kämpfer dazunehmen. Eine Anzahl legt mehrere Kanten an, nicht eine mit
    Zahl — jeder Goblin hat eigene Trefferpunkte. */
 function addParticipants(e){
@@ -7465,7 +7704,9 @@ function addParticipants(e){
       for(var i=0;i<n;i++){
         e.relations.push({id:uid("r"),type:REL_PART,to:art.id,props:{
           label:n>1?nameOf(art)+" "+(i+1):nameOf(art),
-          hp:isFinite(hp)?hp:undefined, hpMax:isFinite(hp)?hp:undefined,
+          /* Das Maximum steht am Statblock (REQ-211); die Kante hält nur
+             den Stand, und der fängt voll an. */
+          hp:isFinite(hp)?hp:undefined,
           ally:seite.value==="ally", conditions:[]}});
       }
       persist(e);
@@ -13643,6 +13884,42 @@ function renderHowto(v){
     "  to hit = prof + mod(dex)  →  "+sgn(nW.toHit)+"     damage  "+nW.damage+"  ("+nW.average+")\n"+
     "Odd beast     prof 2 · STR 18 (+4)        edge: toHit 7 (book)\n"+
     "  to hit "+sgn(nB.toHit)+" fixed — the sum would give "+sgn(nB.toHitComputed)}));
+
+  /* ---- Ein Kampf, durchgerechnet (REQ-211–213, D53) ----
+     Mit denselben Funktionen, die die Initiative nimmt (`expiresAt`,
+     `hpWord`), und den Eigenschaften der Kante aus dem Register: ändert
+     jemand die Rechnung oder die Zeile, ändert sich das Beispiel mit. */
+  var partP=(((REG.relations||{}).participates||{}).props||{}).properties||{};
+  if(partP.conditions){
+    v.appendChild(el("div",{class:"rsec",text:"A fight, its durations, and what the players see"}));
+    v.appendChild(el("p",{class:"hint"},
+      "One participates edge per fighter. Armour class and maximum hit points "+
+      "are read from the fighter's statblock — its instance, with the template "+
+      "underneath — and the edge holds only the hit points in this fight. A "+
+      "condition or a note carries its duration: rounds, an anchor (whose turn "+
+      "it is counted on) and start or end of that turn. Without an anchor it "+
+      "is the fighter's own turn, at the end — as it always was. A note is the "+
+      "same entry with text instead of a condition. Players see the party and "+
+      "every creature that is revealed or involved (hit, or marked by hand); "+
+      "one not yet identified shows its cover name and no link, and foes show "+
+      "their hit points as a word. Hidden entries and the GM note never leave."));
+    var ordBsp=["p-rook","p-vex","p-guard"];
+    var bless={text:"Bless",rounds:10,anchor:"p-rook",at:"end"};
+    var angst={rule:"Frightened",rounds:1,anchor:"p-vex",at:"end"};
+    var alt={rule:"Prone",rounds:1};
+    var zeile=function(c,own){
+      var x=expiresAt(c,own,ordBsp,2,1);
+      return x?"round "+x.round+", "+x.at+" of "+x.anchor:"—";
+    };
+    v.appendChild(el("pre",{class:"code",text:
+      "Edge props   "+Object.keys(partP).join(" · ")+"\n\n"+
+      "Order        Rook (p-rook) · Vex (p-vex) · Guard (p-guard)   now: round 2, Vex\n\n"+
+      "Guard  rule Frightened · rounds 1 · anchor p-vex · at end  →  ends "+zeile(angst,"p-guard")+"\n"+
+      "Rook   text Bless · rounds 10 · anchor p-rook · at end     →  ends "+zeile(bless,"p-rook")+"\n"+
+      "Guard  rule Prone · rounds 1   (stored before D53)        →  ends "+zeile(alt,"p-guard")+"\n\n"+
+      "Guard  Statblock instance hp 18 (template 11) · edge hp 7  →  players read “"+hpWord(7,18)+"”\n"+
+      "Guard  cover “Soldier”, not identified                    →  players read “Soldier”"}));
+  }
 
   /* ---- Charakterbau, durchgerechnet (M3, M6) ----
      Mit den Formeln aus dem Register und derselben Rechnung, die der
