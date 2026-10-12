@@ -425,7 +425,10 @@ export const relations: Record<string, RelationDef> = {
         tier: {
           type: 'string',
           title: 'Within reach',
-          enum: ['held', 'worn', 'belt', 'pack', 'stored'],
+          /* `ground`: fallen gelassen (REQ-225, D58) — liegt der Figur zu
+             Füssen, gehört ihr weiter und steht weiter in ihrem Inventar,
+             ohne Platz und ohne Raster. Aufheben heisst: wieder hinlegen. */
+          enum: ['held', 'worn', 'belt', 'pack', 'ground', 'stored'],
           default: 'pack',
         },
         /* **Die Plätze nach Basils Blatt** (REQ-214, D54): Kopf, Schultern,
