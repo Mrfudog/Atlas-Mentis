@@ -13,7 +13,7 @@ wer eine Zeile anders sieht, ändert sie dort und lässt das Skript laufen.
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: **117** steht · **10** ersetzt · **30** teils · **63** offen · **6** verworfen — 226 Anforderungen.
+Zusammen: **118** steht · **10** ersetzt · **30** teils · **62** offen · **6** verworfen — 226 Anforderungen.
 
 ## Aus den Gesprächen (September und Oktober 2026)
 
@@ -261,7 +261,7 @@ Was nicht als Nummer im Vault steht, sondern hier entschieden wurde — alles ge
 | REQ-221 | Begegnungsbau: Schwierigkeit aus den XP-Schwellen der Gruppe mit Multiplikator nach Anzahl (2014), Kreaturen aus dem Kompendium, dann auf die Karte setzen und Initiative starten | 3 | **offen** |  |
 | REQ-222 | Stufenaufstieg: Schritte aus Klassen- und Unterklassentabellen (TP, Attributsverbesserung oder Talent, Zauber), Folgewerte gerechnet | 4 | **offen** |  |
 | REQ-223 | Regelsysteme als Rahmen (Taverne, Alley, Kanalisation): ein Ort, seine Kennzahlen, ein Wochenwurf und ein Protokoll | 4 | **offen** |  |
-| REQ-224 | Kreaturen nehmen auf der Karte Felder nach ihrer Grösse ein (Regeln 2014): Tiny, Small, Medium, Large 2 × 2, Huge 3 × 3, Gargantuan 4 × 4; Bewegung, Wege, Sicht und Reichweite rechnen mit dem ganzen Platz | 3 | **offen** |  |
+| REQ-224 | Kreaturen nehmen auf der Karte Felder nach ihrer Grösse ein (Regeln 2014): Tiny, Small, Medium, Large 2 × 2, Huge 3 × 3, Gargantuan 4 × 4; Bewegung, Wege, Sicht und Reichweite rechnen mit dem ganzen Platz | 3 | **steht** | Platz nach `Statblock.size` beim Lesen (`sizeSpan`, Instanz über `resolveInstance`), gespeichert die Mitte, gerechnet über den Anker; Rechner mit `MoveGrid.span` (ganzer Platz passt, Wände je Feld, teuerstes neu betretenes Feld), Sperren und Reichweite vom ganzen Platz, Sicht Feld zu Feld (`bestNotice`); tiny teilt (D58) |
 | REQ-225 | Fallenlassen ist eine freie Aktion, Verstauen eine Bonusaktion, egal wohin; der Gurt ist eine freie Aktion | 3 | **offen** |  |
 | REQ-226 | In der ersten Runde erscheinen Gegner in der Initiative der Spielenden erst, wenn sie an der Reihe sind; ab der zweiten Runde stehen die bereits gezeigten fest | 3 | **offen** |  |
 
@@ -323,7 +323,6 @@ Offene Anforderungen mit Priorität 1 bis 3, nach Bereich:
 - **REQ-210** (3, teils) — Karte und Initiative je als Vollbild, je mit SL- und Spieleransicht; Spielende bewegen ihre eigenen Tokens und prüfen die Reichweite selbst — *Prototyp: Vollbild für Karte und Initiative, SL-/Spieleransicht der Karte, Spielende bewegen eigene Tokens; offen: `redactEntity` hält versteckte Marker am Server nicht zurück (D56)*
 - **REQ-213** (3, teils) — Initiative der Spielenden: die eigene Reihenfolge und jede Kreatur, die aufgedeckt oder schon beteiligt ist; nicht erkannte Kreaturen mit Decknamen, TP von Gegnern als Wort — *`redactParticipants` in `redactEntity` und im Prototyp; offen: `turn` als Index zählt Verborgene mit (D53)*
 - **REQ-221** (3, offen) — Begegnungsbau: Schwierigkeit aus den XP-Schwellen der Gruppe mit Multiplikator nach Anzahl (2014), Kreaturen aus dem Kompendium, dann auf die Karte setzen und Initiative starten
-- **REQ-224** (3, offen) — Kreaturen nehmen auf der Karte Felder nach ihrer Grösse ein (Regeln 2014): Tiny, Small, Medium, Large 2 × 2, Huge 3 × 3, Gargantuan 4 × 4; Bewegung, Wege, Sicht und Reichweite rechnen mit dem ganzen Platz
 - **REQ-225** (3, offen) — Fallenlassen ist eine freie Aktion, Verstauen eine Bonusaktion, egal wohin; der Gurt ist eine freie Aktion
 - **REQ-226** (3, offen) — In der ersten Runde erscheinen Gegner in der Initiative der Spielenden erst, wenn sie an der Reihe sind; ab der zweiten Runde stehen die bereits gezeigten fest
 

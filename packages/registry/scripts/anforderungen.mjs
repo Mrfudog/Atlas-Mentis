@@ -264,7 +264,7 @@ const STAND = {
   'REQ-221': ['offen', ''],
   'REQ-222': ['offen', ''],
   'REQ-223': ['offen', ''],
-  'REQ-224': ['offen', ''],
+  'REQ-224': ['steht', 'Platz nach `Statblock.size` beim Lesen (`sizeSpan`, Instanz über `resolveInstance`), gespeichert die Mitte, gerechnet über den Anker; Rechner mit `MoveGrid.span` (ganzer Platz passt, Wände je Feld, teuerstes neu betretenes Feld), Sperren und Reichweite vom ganzen Platz, Sicht Feld zu Feld (`bestNotice`); tiny teilt (D58)'],
   'REQ-225': ['offen', ''],
   'REQ-226': ['offen', ''],
 };
