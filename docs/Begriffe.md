@@ -305,6 +305,12 @@ er sieht dieselbe Ansicht wie alle anderen — nur steht weniger darin.
 Rezept, und das steht bei der Kreatur. Untertypen erben sie, bis einer etwas
 Eigenes sagt.
 
+**Wie im Buch** (W2, 13.10.2026) ist darum auch eine Anordnung und kein
+Sonderfall: ein Statblock liest sich wie im Monster Manual, weil am Typ
+`Statblock` das Element `statblock` steht — nicht, weil der Code nach dem
+Namen „Statblock" fragt. Eine eigene Art, die von `Statblock` erbt, liest
+sich ebenso; eine, die etwas anderes will, sagt es an sich.
+
 ---
 
 ## Block

@@ -528,6 +528,21 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Spell',
     extends: ['Rule'],
     schema: merge(g.SpellInfo),
+    /* **Wie im Spielerhandbuch** (W2): Grad und Schule kursiv, die vier
+       Kopfzeilen, der Text, „At Higher Levels". Das Element `spell`
+       zeichnet die Karte `Spell` ganz und den Haupttext (Beschreibung und
+       `Prose.paragraph`) dazu, weil „At Higher Levels" hinter ihm steht —
+       darum nehmen Feldtabelle und Prosa beides heraus. */
+    views: {
+      full: [
+        { id: 'sp-book', el: 'spell' },
+        { id: 'sp-f', el: 'fields', fields: 'all', except: ['Spell'] },
+        { id: 'sp-b', el: 'prose', fields: 'all', except: ['Prose.paragraph'] },
+        { id: 'sp-c', el: 'composed' },
+        { id: 'sp-used', el: 'usedBy' },
+        { id: 'sp-r', el: 'relations' },
+      ],
+    },
   },
 
   /** Falle oder Gefahr (M7). Auf der Karte über `marker`. */
@@ -579,14 +594,18 @@ export const interfaces: Record<string, InterfaceDef> = {
          Zahlen und was er kann, ohne Beziehungen und Fliesstext. Die
          Grundanordnung von `quick` (Bild, Beschreibung, Passagen) zeigte an
          einem Statblock nichts. */
-      quick: [
-        { id: 's-q-f', el: 'fields', fields: 'all' },
-        { id: 's-q-c', el: 'composed' },
-      ],
+      quick: [{ id: 's-q-sb', el: 'statblock' }],
+      /* **Wie im Monster Manual** (W2, Leitung 13.10.): das Element
+         `statblock` zeichnet Kopf, Werte und die Abschnitte aus
+         `composedOf` — es ersetzt Feldtabelle und `composed` für die
+         Karten `Statblock`, `Abilities` und `Proficiencies`. Was der
+         Statblock sonst trägt (Marken, Stand, Quelle …), steht weiter in
+         der Feldtabelle darunter. */
       full: [
-        { id: 's-f', el: 'fields', fields: 'all' },
-        { id: 's-c', el: 'composed' },
+        { id: 's-sb', el: 'statblock' },
+        { id: 's-f', el: 'fields', fields: 'all', except: ['Statblock', 'Abilities', 'Proficiencies'] },
         { id: 's-b', el: 'prose', fields: 'all' },
+        { id: 's-used', el: 'usedBy' },
         { id: 's-r', el: 'relations' },
       ],
     },
@@ -603,6 +622,24 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Item',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Lore', 'Secrets', 'Facts'],
     schema: merge(g.ItemInfo, g.Footprint),
+    /* **Wie im Spielleiterhandbuch** (W2): Art, Seltenheit und Einstimmung
+       kursiv unter dem Namen, Rüstungsklasse, Schaden, Preis und Gewicht
+       als Kopfzeilen. Waffe, Rüstung und Material erben die Anordnung;
+       das Element zeichnet ihre Karten mit. */
+    views: {
+      full: [
+        { id: 'it-img', el: 'image' },
+        { id: 'it-book', el: 'item' },
+        { id: 'it-desc', el: 'description' },
+        { id: 'it-f', el: 'fields', fields: 'all', except: ['Item', 'Weapon', 'Armor', 'Material'] },
+        { id: 'it-linked', el: 'linked' },
+        { id: 'it-b', el: 'prose', fields: 'all' },
+        { id: 'it-c', el: 'composed' },
+        { id: 'it-used', el: 'usedBy' },
+        { id: 'it-stand', el: 'standing' },
+        { id: 'it-r', el: 'relations' },
+      ],
+    },
   },
 
   Weapon: {
