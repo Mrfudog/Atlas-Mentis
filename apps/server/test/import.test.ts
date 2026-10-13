@@ -43,7 +43,8 @@ describe('pnpm --filter @nw/server run import', () => {
     const r = await runImport(repo, { format: 'nebelwacht/1', registry: seedRegistry, entities: [ebene, inEbene(regel('neu', 'Neu'))] });
     expect(r.geschrieben).toBe(2);
     expect((await repo.listEntities()).map((e) => e.id).sort()).toEqual(['e5_layer', 'alt', 'neu'].sort());
-    expect(r.text).toMatch(/Nicht gespeichert.*enums/);
+    /* Seit Migration 019 kennt die Ablage auch enums und settings. */
+    expect(r.text).not.toMatch(/Nicht gespeichert/);
   });
 
   it('ersetzt mit --replace den Bestand und sagt, welche Figur an einem Konto verwaist', async () => {
@@ -74,6 +75,15 @@ describe('pnpm --filter @nw/server run import', () => {
     const repo = await mitKonto();
     await expect(runImport(repo, { format: 'foundry/9', entities: [] })).rejects.toThrow(/Unbekanntes Format/);
     await expect(runImport(repo, { entities: [ebene, ebene] })).rejects.toThrow(/zweimal/);
+  });
+
+  it('übernimmt Aufzählungen und Einstellungen und nennt sie nicht mehr als liegengeblieben', async () => {
+    const repo = await mitKonto();
+    const r = await runImport(repo, { format: 'nebelwacht/1', registry: seedRegistry, entities: [ebene] });
+    expect(r.text).not.toMatch(/Nicht gespeichert/);
+    const reg = await repo.getRegistry();
+    expect(reg.enums?.['Size']?.values).toContain('gargantuan');
+    expect(reg.settings?.['slotDraw']).toBe(seedRegistry.settings?.['slotDraw']);
   });
 
   it('lehnt zwei Kanten mit derselben Id ab, bevor etwas geschrieben ist', async () => {

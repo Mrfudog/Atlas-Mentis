@@ -97,3 +97,14 @@ describe('every registry part has a table, and is written and read', () => {
     expect([...benutzt].filter((k) => !new RegExp(`r\\['${k}'\\]`).test(pgQuelle))).toEqual([]);
   });
 });
+
+describe('Aufzählungen und Einstellungen haben eine Tabelle (Migration 019)', () => {
+  it('liest und schreibt enum_def und setting_def', () => {
+    expect(ddl).toMatch(/create table if not exists enum_def/);
+    expect(ddl).toMatch(/create table if not exists setting_def/);
+    expect(pgQuelle).toMatch(/select \* from enum_def/);
+    expect(pgQuelle).toMatch(/insert into enum_def\(name,config\)/);
+    expect(pgQuelle).toMatch(/select \* from setting_def/);
+    expect(pgQuelle).toMatch(/insert into setting_def\(key,value\)/);
+  });
+});
