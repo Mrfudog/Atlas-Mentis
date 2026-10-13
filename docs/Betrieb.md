@@ -234,9 +234,38 @@ dem Server liegen. Was hereinkommt und was nicht, sagt
 [5etools-Bericht.md](5etools-Bericht.md). Zuerst auf `dev`, `prod` erst,
 wenn dev angeschaut ist (P6).
 
+### Einmal einlesen, danach nur ergänzen
+
+Der Import ist **ein einmaliger Lauf, der die Basis bildet** (D71). Danach
+legt die Leitung selbst Artikel an, oder es wird gezielt ergänzt — ein
+Modul, ein Buch. Neu geladen wird nicht.
+
+Darum ist `only-new` die Vorgabe (`import.js <datei> --only-new`):
+angelegt wird nur, wessen Id es noch nicht gibt. Was schon steht, bleibt,
+wie es ist — auch wenn die Leitung es seither geändert hat (Kampfrolle,
+Marken, Text). Gelöscht wird nichts. Vom Register kommen nur Zeilen dazu,
+die es noch nicht gibt; eine Art, die jemand am Server angepasst hat,
+bleibt angepasst. Der Lauf sagt `Nur ergänzt: 120 neu, 23 880
+übersprungen (gibt es schon).` — beim zweiten Lauf mit derselben Datei
+also `0 neu`. Geprüft wird wie immer alles, bevor etwas geschrieben wird.
+
+**Ein Modul ergänzen:** Pipeline mit `mode` = `only-new` und `sources` =
+dem Kürzel aus 5e.tools (z. B. `CoS`, oder `PHB,MM`); zuerst `dry-run`
+mit denselben Angaben. Was das Modul an Bekanntem mitbringt (ein Monster
+aus dem MM), steht schon und wird übersprungen.
+
+**Wann `replace-layer`:** nur, wenn die Ebene wirklich neu geladen werden
+soll — etwa weil der Importer etwas an *bestehenden* Artikeln anders
+schreibt und das überall ankommen soll. **Was es kostet:** jeder Artikel
+der Ebene wird aus der Datei neu geschrieben, eigene Änderungen an
+5e.tools-Artikeln (Werkbank, D70) gehen dabei verloren; was die Ebene
+bringt und die Datei nicht mehr, wird gelöscht. Die Pipeline verlangt
+dafür `confirm` = `ersetzen` und bricht sonst ab. Vor dem Lauf sichert
+`import.sh` die Datenbank — das ist der Weg zurück.
+
 ### Ersetzen je Ebene
 
-Ein neuer Lauf **ersetzt die Ebene**, nicht den Bestand
+`replace-layer` **ersetzt die Ebene**, nicht den Bestand
 (`import.js <datei> --replace-layer`, W8): gelöscht wird nur, was die Ebene
 der Datei bringt — `inLayer` auf sie und auf keine andere — und in der
 Datei fehlt. Eigene Artikel ohne Ebene oder in einer Kampagnenebene
@@ -269,7 +298,9 @@ nennt sie ausdrücklich.
 | --- | --- |
 | *Use workflow from* | `preprod` für dev, `main` für prod — die Zweigregel der Environments verlangt es, ein Lauf vom falschen Zweig bricht gleich ab |
 | `environment` | `dev` oder `prod` |
-| `mode` | `replace-layer` (Vorgabe): Ebene ersetzen · `dry-run`: nur sagen · `add`: nur dazulegen |
+| `mode` | `only-new` (Vorgabe): nur anlegen, was es noch nicht gibt · `dry-run`: nur sagen, was `only-new` täte (mit `confirm` = `ersetzen`: was `replace-layer` täte) · `replace-layer`: Ebene neu laden, nur mit `confirm` = `ersetzen` · `add`: dazulegen und Bestehendes überschreiben |
+| `sources` | nur diese Quellen, z. B. `PHB,MM` oder ein Modulkürzel; leer heisst alles |
+| `confirm` | `ersetzen` für `replace-layer`, sonst leer |
 | `source-ref` | Stand von `5etools-src` (Zweig oder Tag); leer heisst der neueste |
 
 Der Lauf klont `5etools-src` (nur `data`, nach `$RUNNER_TEMP`), baut
@@ -283,18 +314,19 @@ danach — im Container und auf der Platte, auch wenn etwas scheitert. Die
 Ausgabe des Imports steht im Log und in der Zusammenfassung des Laufs; der
 Bericht hängt als Artefakt daran (30 Tage).
 
-**Von selbst** läuft es nur für dev: nach einem Push auf `preprod`, der
-`packages/import-5etools/**` ändert, hängt `ci.yml` den Lauf an das
-Ausrollen an (Job `import-5etools`, mit dem Abbild, das gerade gestartet
-ist). Ohne Commit, mit Ausrollen davor: **Actions › CI › Run workflow**
+**Von selbst** läuft es nie (D71) — auch nicht, wenn sich
+`packages/import-5etools` ändert: ein geänderter Importer ist kein Grund,
+alles neu zu laden. Mit Ausrollen davor: **Actions › CI › Run workflow**
 mit dem Häkchen „5e.tools danach einlesen" — auf `preprod` für dev, auf
-`main` für prod. Prod liest nie von selbst ein.
+`main` für prod; das liest mit `only-new` ein (Job `import-5etools`, mit
+dem Abbild, das gerade gestartet ist).
 
 Der Lauf braucht ein Verwaltungskonto auf der Umgebung (Schritt 7 oben):
 ein Server ohne Konto liest ohne Anmeldung, solange sein Bestand leer ist
 — mit einem Bestand nicht mehr. Und er braucht ein Abbild, das
-`--replace-layer` kennt; `import.sh` prüft das und verweigert sonst, statt
-einen Probelauf schreiben zu lassen.
+die Schalter kennt (`--only-new`, `--replace-layer`, `--dry-run`);
+`import.sh` prüft das und verweigert sonst, statt einen Probelauf schreiben
+oder ein Ergänzen überschreiben zu lassen.
 
 ### Von Hand (Notlösung)
 
@@ -352,12 +384,12 @@ gzip -9 5etools-2014.json
 scp 5etools-2014.json.gz deploy/import.sh deploy@<host>:/srv/atlas/dev/
 ssh deploy@<host>
 cd /srv/atlas/dev && chmod +x import.sh
-./import.sh 5etools-2014.json.gz --replace-layer --dry-run   # erst ansehen (löscht die Datei danach)
-./import.sh 5etools-2014.json.gz --replace-layer             # dann einlesen (Datei noch einmal hinlegen)
+./import.sh 5etools-2014.json.gz --only-new --dry-run   # erst ansehen (löscht die Datei danach)
+./import.sh 5etools-2014.json.gz --only-new             # dann einlesen (Datei noch einmal hinlegen)
 ```
 
 Lokal gegen die eigene Datenbank: `pnpm --filter @nw/server run import
-<datei> [--replace-layer | --replace] [--dry-run]` — mit `run`, denn `pnpm
+<datei> [--only-new | --replace-layer | --replace] [--dry-run]` — mit `run`, denn `pnpm
 import` ist ein eingebauter Befehl von pnpm und liefe sonst statt des
 Skripts.
 

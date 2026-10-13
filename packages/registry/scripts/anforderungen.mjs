@@ -273,7 +273,7 @@ const STAND = {
   'REQ-230': ['steht', 'Registerseite `/registry` mit Zählung (`registryUsage`, `GET /api/registry/usage`); schreiben Verwaltung und `gm` der laufenden Kampagne (W5, D64)'],
   'REQ-231': ['steht', '`/classes`: Stufentabelle, Merkmale je Stufe, optionale zuschaltbar, Unterklassen filtern und vergleichen (`classes.ts`, W6, D65)'],
   'REQ-232': ['steht', '`GET /api/list` mit Spalten aus `overview` und Facetten, 2 KB je Blatt in 15–40 ms; erster Aufruf eines Spielers nach einer Änderung ≈370 ms (W7, D66)'],
-  'REQ-233': ['steht', '`import-5etools.yml` und `deploy/import.sh`, `--replace-layer`, `--dry-run`; dev von selbst, prod von Hand (W8, D67)'],
+  'REQ-233': ['steht', '`import-5etools.yml` und `deploy/import.sh`, `--only-new` (Vorgabe), `--replace-layer` nur ausdrücklich, `--dry-run`; nur von Hand, dev wie prod (W8, D67, D71)'],
   'REQ-234': ['steht', '`app_token`, Bearer `atm_…`, `read`/`write` mit Ablauf; `scripts/atlas.mjs` (W9)'],
   'REQ-235': ['steht', '`/werkbank`: Prüfungen (`CHECKS`), `POST /api/bulk` mit Vorschau, `event_log` und Rückgängig (W9, D68)'],
 };
