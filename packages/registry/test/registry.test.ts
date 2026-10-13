@@ -294,11 +294,18 @@ describe('shared choice lists', () => {
    nichts, nimmt alles; ein Feld, das „measure" heisst und sonst nichts,
    rechnet nichts — und das sieht aus wie eine richtige Zahl. */
 describe('links name their target, measures name their unit', () => {
+  /* Auch die Felder an Kanten (`hasClass.subclass`): eine Auswahl ohne
+     Zieltyp wäre dort wieder offen (T-068). */
   const felder = (): { art: string; feld: string; p: PropertySchema }[] => {
     const out: { art: string; feld: string; p: PropertySchema }[] = [];
     Object.entries(seedRegistry.interfaces).forEach(([art, def]) => {
       Object.entries(def.schema?.properties ?? {}).forEach(([feld, p]) => {
         out.push({ art, feld, p });
+      });
+    });
+    Object.values(seedRegistry.relations).forEach((def) => {
+      Object.entries(def.props?.properties ?? {}).forEach(([feld, p]) => {
+        out.push({ art: `(${def.type})`, feld, p });
       });
     });
     return out;
