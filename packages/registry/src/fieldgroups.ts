@@ -800,27 +800,57 @@ export const fieldGroups = {
   },
 
   /**
-   * **Eine Wahl unter Übungen** (M3): „zwei aus Acrobatics, Athletics, …",
-   * „eines der Handwerkszeuge", „zwei Sprachen nach Wahl". Was fest
-   * gewährt wird, steht in `Proficiencies.proficient`; was gewählt wird,
-   * hier — `chooseFrom` aus denselben Listen, `chooseCount` wie viele, und
-   * `chooseNote` für die Wahl, die keine Liste hat („any two standard
-   * languages"). Klasse, Unterklasse, Abstammung und Hintergrund nehmen
-   * sie dazu; eine zweite Wahl an derselben Art ist ein Satz in der Notiz.
+   * **Was zu wählen ist** (REQ-238, E-015 a): je Eintrag eine Wahl — was
+   * (`kind`), wie viele (`count`), woraus (`from`), ab welcher Stufe
+   * (`level`). Klasse, Unterklasse, Abstammung, Hintergrund und Talent
+   * nehmen es dazu. Was fest gewährt wird, steht nicht hier: Übungen in
+   * `Proficiencies`, Merkmale an `grants`, Attributsboni der Abstammung in
+   * `abilityBonus`.
+   *
+   * Es hiess `ProficiencyChoice` und trug genau **eine** Wahl
+   * (`chooseFrom`, `chooseCount`, `chooseNote`); jede weitere — „+1 auf
+   * zwei Attribute", Ausrüstung (a) oder (b), ein Talent — war ein Satz im
+   * Text, aus dem kein Assistent einen Schritt bauen kann. Die Antworten
+   * stehen an der Figur, an der Kante `chose`, je `id` (`choices.ts`).
+   *
+   * `from` ist eine von drei Formen: `values` (Namen aus Listen wie bei
+   * den Übungen, `enumRef` nennt die Listen), Artikel (`interfaces` mit
+   * den Filtern von `LinkTarget`, dazu `edge`: nur Unterklassen dieser
+   * Klasse) oder `options` (`[{key, label}]`, die Ausrüstung a/b). Ohne
+   * `from` ist die Wahl frei, und `note` sagt, was gemeint ist.
    */
-  ProficiencyChoice: {
+  Choices: {
     schema: {
       type: 'object',
       properties: {
-        chooseFrom: {
+        choices: {
           type: 'array',
-          title: 'Choose from',
-          items: { type: 'string' },
-          enumRef: PROFICIENCY_SOURCES,
-          enumWhere: TOOLS_ONLY,
+          many: true,
+          title: 'Choices',
+          items: { type: 'object' },
+          entry: {
+            type: 'object',
+            required: ['id', 'kind'],
+            properties: {
+              id: { type: 'string', title: 'Id' },
+              kind: {
+                type: 'string',
+                title: 'Kind',
+                enum: ['proficiency', 'ability', 'feat', 'spell', 'equipment', 'feature', 'subclass'],
+              },
+              level: { type: 'number', min: 1, max: 20, title: 'From level' },
+              /* Nur für die erste Klasse einer Figur (`start`: Fertigkeiten,
+                 Ausrüstung) oder nur beim Einstieg als weitere
+                 (`multiclass`). Ohne Angabe: immer. */
+              when: { type: 'string', title: 'Only when', enum: ['start', 'multiclass'] },
+              from: { type: 'object', title: 'Choose from' },
+              count: { type: 'number', min: 1, title: 'How many' },
+              /* Bei `ability`: der Bonus je Wahl, +2 und +1 heisst [2, 1]. */
+              bonus: { type: 'array', items: { type: 'number' }, title: 'Bonus per pick' },
+              note: { type: 'string', title: 'Note' },
+            },
+          },
         },
-        chooseCount: { type: 'number', min: 1, title: 'How many to choose' },
-        chooseNote: { type: 'string', title: 'Choice' },
       },
     },
   },
@@ -829,8 +859,8 @@ export const fieldGroups = {
    * **Eine Klasse (M3).** Was sie festlegt: Trefferwürfel, Hauptattribut,
    * Startausrüstung, die Voraussetzung für den Mehrklassen-Einstieg, wie
    * sie zaubert und wie ihre Unterklassen heissen. Rettungswürfe und
-   * Startübungen nimmt sie über `Proficiencies` dazu, die Wahl über
-   * `ProficiencyChoice`.
+   * Startübungen nimmt sie über `Proficiencies` dazu, was zu wählen ist
+   * über `Choices`.
    *
    * **Ihre Merkmale sind Kanten** (`grants` mit Stufe), ihre Stufentabelle
    * (Wutanfälle, Hinterhältiger Angriff, Plätze je Grad) ist ein
@@ -915,8 +945,9 @@ export const fieldGroups = {
         /* Eine, selten zwei (Small oder Medium nach Wahl). */
         size: { type: 'array', title: 'Size', items: { type: 'string' }, enumRef: 'Size' },
         speed: { type: 'string', format: 'measure', unit: 'ft', title: 'Speed' },
-        /* `{ "con": 2 }` — Attribut auf Bonus. Eine Wahl („two different
-           +1") steht in `abilityNote`. */
+        /* `{ "con": 2 }` — Attribut auf Bonus, fest. Eine Wahl („two
+           different +1") ist ein Eintrag in `Choices.choices` (REQ-238);
+           `abilityNote` hält, was sich nicht als Wahl schreiben lässt. */
         abilityBonus: { type: 'object', title: 'Ability score increase' },
         abilityNote: { type: 'string', title: 'Ability choice' },
         /* Ein Satz: „mature at 20, live about 350 years". */
@@ -930,7 +961,7 @@ export const fieldGroups = {
 
   /**
    * **Ein Hintergrund (M3).** Übungen und Sprachen über `Proficiencies`
-   * und `ProficiencyChoice`, das Merkmal (Shelter of the Faithful) über
+   * und `Choices`, das Merkmal (Shelter of the Faithful) über
    * `grants`, die vier Charakterzug-Tabellen über `tableFor`. Eigen ist ihm
    * nur die Startausrüstung.
    */

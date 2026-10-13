@@ -156,9 +156,16 @@ const fighter = art(
       subclassTitle: 'Martial Archetype',
     },
     Proficiencies: { proficient: ['light', 'medium', 'heavy', 'shield', 'simple', 'martial'], saves: ['str', 'con'] },
-    ProficiencyChoice: {
-      chooseFrom: ['Acrobatics', 'Animal Handling', 'Athletics', 'History', 'Insight', 'Intimidation', 'Perception', 'Survival'],
-      chooseCount: 2,
+    Choices: {
+      choices: [
+        {
+          id: 'skills',
+          kind: 'proficiency',
+          count: 2,
+          from: { values: ['Acrobatics', 'Animal Handling', 'Athletics', 'History', 'Insight', 'Intimidation', 'Perception', 'Survival'] },
+        },
+        { id: 'martial-archetype', kind: 'subclass', level: 3, from: { interfaces: ['Subclass'], edge: { type: 'subclassOf', to: 'class-0001' } } },
+      ],
     },
     Source: { publication: 'PHB', page: '70', srd: true },
   },
@@ -199,7 +206,7 @@ const dwarf = art(
       resistances: ['poison'],
     },
     Proficiencies: { proficient: ['Common', 'Dwarvish', 'Battleaxe', 'Handaxe', 'Light Hammer', 'Warhammer'] },
-    ProficiencyChoice: { chooseFrom: ["Smith's tools", "Brewer's supplies", "Mason's tools"], chooseCount: 1 },
+    Choices: { choices: [{ id: 'tools', kind: 'proficiency', count: 1, from: { values: ["Smith's tools", "Brewer's supplies", "Mason's tools"] } }] },
     Source: { publication: 'PHB', page: '18', srd: true },
   },
   [{ id: 'r1', type: 'grants', to: 'feature-0005' }],
@@ -220,7 +227,7 @@ const acolyte = art(
   {
     Background: { startingEquipment: 'A holy symbol, a prayer book or prayer wheel, 5 sticks of incense, vestments, common clothes, and 15 gp' },
     Proficiencies: { proficient: ['Insight', 'Religion'] },
-    ProficiencyChoice: { chooseCount: 2, chooseNote: 'two standard languages of your choice' },
+    Choices: { choices: [{ id: 'languages', kind: 'proficiency', count: 2, note: 'two standard languages of your choice' }] },
     Source: { publication: 'PHB', page: '127', srd: true },
   },
 );
@@ -288,8 +295,31 @@ describe('character building (M3)', () => {
     for (const t of ['Class', 'Subclass', 'Ancestry', 'Background']) {
       expect(r.interfaces[t]?.extends?.[0]).toBe('Rule');
       expect(r.interfaces[t]?.area).toBe('rules');
-      expect(typeChain(r, t)).toEqual(expect.arrayContaining(['Proficiencies', 'ProficiencyChoice']));
+      expect(typeChain(r, t)).toEqual(expect.arrayContaining(['Proficiencies', 'Choices']));
     }
+    expect(typeChain(r, 'Feat')).toContain('Choices');
+  });
+
+  /* Eine Wahl ist ein Eintrag mit Form (REQ-238): was nicht passt, sagt
+     die Prüfung, und eine Id zweimal hiesse, die Antwort fände zwei Wahlen. */
+  it('checks each choice like a small card', () => {
+    const falsch = art('class-0009', 'Class', 'Broken', {
+      Choices: {
+        choices: [
+          { id: 'a', kind: 'proficiency', count: 0 },
+          { id: 'a', kind: 'wish', level: 25 },
+          { kind: 'ability' },
+        ],
+      },
+    });
+    const codes = validateEntity(r, falsch).map((i) => i.code).sort();
+    expect(codes).toEqual(['entry_id_twice', 'missing_property', 'value_not_allowed', 'value_out_of_range', 'value_out_of_range']);
+  });
+
+  it('answers a choice with an edge from the character', () => {
+    expect(relationAccepts(r.relations['chose']!, 'PlayerCharacter', 'Feat', r)).toBe(true);
+    expect(relationAccepts(r.relations['chose']!, 'PlayerCharacter', 'Class', r)).toBe(true);
+    expect(relationAccepts(r.relations['chose']!, 'PlayerCharacter', 'Spell', r)).toBe(false);
   });
 
   /* An der Klasse gewährt die Übungsgruppe, an der Figur hätte sie

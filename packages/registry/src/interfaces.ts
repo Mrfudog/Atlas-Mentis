@@ -87,12 +87,13 @@ export const interfaces: Record<string, InterfaceDef> = {
     schema: g.Proficiencies.schema,
   },
 
-  /* Eine Wahl unter Übungen: Klasse, Unterklasse, Abstammung, Hintergrund (M3). */
-  ProficiencyChoice: {
-    name: 'ProficiencyChoice',
-    label: 'Proficiency choice',
+  /* Was zu wählen ist: Klasse, Unterklasse, Abstammung, Hintergrund,
+     Talent (REQ-238, E-015 a). Die Antworten stehen an der Figur (`chose`). */
+  Choices: {
+    name: 'Choices',
+    label: 'Choices',
     abstract: true,
-    schema: g.ProficiencyChoice.schema,
+    schema: g.Choices.schema,
   },
 
   /* Eine Stufe von 1 bis 20, die Begegnung und Szene teilen. */
@@ -393,7 +394,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Feat',
     area: 'rules',
     label: 'Feat',
-    extends: ['Rule'],
+    /* Ein Talent fragt selbst (+1 auf welches Attribut?, REQ-238). */
+    extends: ['Rule', 'Choices'],
     schema: merge(g.FeatInfo),
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
@@ -425,13 +427,13 @@ export const interfaces: Record<string, InterfaceDef> = {
      Feldern, also Arten unter `Rule`. Was sie gewähren, steht dreifach
      getrennt da, je nach Sorte: Übungen in `Proficiencies` (dieselbe Gruppe
      wie am Statblock, nur heisst sie hier „gewährt"), Wahlen in
-     `ProficiencyChoice`, Merkmale an der Kante `grants` mit Stufe. Die
+     `Choices` (die Antworten an der Figur, `chose`), Merkmale an der Kante `grants` mit Stufe. Die
      Figur zeigt über `hasClass`, `hasAncestry`, `hasBackground` darauf. */
   Class: {
     name: 'Class',
     area: 'rules',
     label: 'Class',
-    extends: ['Rule', 'Proficiencies', 'ProficiencyChoice', 'Lore', 'Image'],
+    extends: ['Rule', 'Proficiencies', 'Choices', 'Lore', 'Image'],
     schema: merge(g.ClassInfo, g.ClassCasting),
     titles: {
       'Proficiencies.proficient': 'Grants proficiency in',
@@ -446,7 +448,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Subclass',
     area: 'rules',
     label: 'Subclass',
-    extends: ['Rule', 'Proficiencies', 'ProficiencyChoice', 'Lore', 'Image'],
+    extends: ['Rule', 'Proficiencies', 'Choices', 'Lore', 'Image'],
     schema: merge(g.SubclassInfo, g.ClassCasting),
     titles: {
       'Proficiencies.proficient': 'Grants proficiency in',
@@ -461,7 +463,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Ancestry',
     area: 'rules',
     label: 'Ancestry',
-    extends: ['Rule', 'Proficiencies', 'ProficiencyChoice', 'Lore', 'Image'],
+    extends: ['Rule', 'Proficiencies', 'Choices', 'Lore', 'Image'],
     schema: merge(g.AncestryInfo),
     titles: {
       'Proficiencies.proficient': 'Grants proficiency in',
@@ -476,7 +478,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Background',
     area: 'rules',
     label: 'Background',
-    extends: ['Rule', 'Proficiencies', 'ProficiencyChoice', 'Lore', 'Image'],
+    extends: ['Rule', 'Proficiencies', 'Choices', 'Lore', 'Image'],
     schema: merge(g.BackgroundInfo),
     titles: {
       'Proficiencies.proficient': 'Grants proficiency in',

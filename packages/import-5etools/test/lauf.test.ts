@@ -173,7 +173,9 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
     const stufen = (fighter.relations ?? []).filter((r) => r.type === 'grants' && r.to === asi[0]!.id).map((r) => r.props?.['level']);
     expect(stufen).toEqual([4, 6]);
     expect(fighter.components['Class']).toMatchObject({ hitDie: 10, multiclassRequirement: 'STR 13 or DEX 13', subclassTitle: 'Martial Archetype' });
-    expect(fighter.components['ProficiencyChoice']).toMatchObject({ chooseFrom: ['Stealth'], chooseCount: 1 });
+    expect(fighter.components['Choices']?.['choices']).toEqual([
+      { id: 'skills', kind: 'proficiency', when: 'start', count: 1, from: { values: ['Stealth'] } },
+    ]);
     const champion = finde(es, 'Subclass', 'Champion');
     expect(champion.relations?.find((r) => r.type === 'subclassOf')?.to).toBe(fighter.id);
   });
