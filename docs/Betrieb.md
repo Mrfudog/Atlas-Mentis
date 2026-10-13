@@ -745,6 +745,52 @@ rm /tmp/bestand.dump
 
 Die Konten auf dev bleiben dabei, wie sie sind.
 
+## Wie schnell antwortet die Seite?
+
+Gemessen wird am Server, bei jeder Antwort (T-086, REQ-246). Das Ziel:
+ein Seitenwechsel unter einer Sekunde, der erste Aufruf nach einem
+Neustart unter drei, und kein Einfrieren im Browser über 200 ms.
+
+**Wo man es sieht:**
+
+- **Im Browser:** jede Antwort trägt `Server-Timing: app;dur=<ms>` — in
+  den Entwicklerwerkzeugen unter Network › eine Anfrage › Timing, als
+  „Server Timing". Steht dort wenig und die Anfrage dauert trotzdem, liegt
+  es am Netz oder am Browser, nicht am Server.
+- **Auf dem Server:** je Anfrage an `/api/` eine Logzeile `dauer` mit
+  `route` und `ms`; die langsamen findet man so:
+
+  ```bash
+  cd /srv/atlas/dev && docker compose logs --since 1h app | grep '"msg":"dauer"' \
+    | grep -o '"route":"[^"]*","ms":[0-9]*' | awk -F'"ms":' '$2 > 500'
+  ```
+
+- **Nach einem Neustart** sagt die Zeile `Bestand gelesen`, wie lange das
+  Vorlesen des ganzen Bestands dauerte (`artikel`, `ms`).
+
+**Was die Seite tut, wenn es dauert:** läuft eine Anfrage länger als
+300 ms, steht unten „Loading…". Liefert der Server nach einem Deploy eine
+andere Oberfläche aus (`X-Atlas-Build`, ein Hash ihrer `index.html`),
+steht oben „New version available" mit „Reload" — die Seite lädt nicht
+still neu, damit niemand eine Eingabe verliert.
+
+**Was am 13.10. eingefroren war:** mit dem ganzen 5e.tools-Bestand und
+einer Kampagne, die ihre Bücher aufschaltet, suchte `inPlay` je Artikel
+im ganzen Bestand nach Überschreibungen — jeder gegen jeden. Die Zählung
+des Registers (`/api/registry/usage`) brauchte so bei jedem Öffnen rund
+40 s, die erste Liste nach jeder Änderung am Bestand ebenso. Jetzt rechnet
+`playStack` den Stapel einmal je Anfrage, und die Zählung wird je
+Bestandsstand behalten. Ein Test (`apps/server/test/tempo.test.ts`) hält
+die Liste über 20 000 Artikel unter einer Grenze.
+
+**Selbst nachmessen** — lokal mit dem vollen Bestand (die Datei nie
+einchecken): Postgres starten, Konto anlegen, die Datei aus
+[5e.tools laden › Von Hand](#von-hand-notlösung) mit
+`pnpm --filter @nw/server run import <datei> --only-new` einlesen, eine
+Kampagne anlegen und ihre Bücher aufschalten, dann die Routen der Wege
+Register, Kompendium, Artikel und Board je zweimal abrufen (kalt nach
+einem Neustart, dann warm) und `Server-Timing` lesen.
+
 ## Lokal durchspielen
 
 Alles oben lief einmal ausserhalb von Hetzner durch (2026-10-01): Abbild
