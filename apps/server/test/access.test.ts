@@ -675,6 +675,22 @@ describe('what a player gets to read', () => {
     expect(await liest(app, 'Sela')).toEqual({ code: 404, inListe: false });
   });
 
+  /* Wer die Teile eines Statblocks holt (`?ids=`, W2), bekommt nur, was
+     er sehen darf — dasselbe Sieb, nicht ein zweites. */
+  it('keeps an article marked gm out of ?ids= for a player', async () => {
+    const app = await mitStufe({ audience: 'gm' });
+    const holt = async (wer: string) =>
+      (
+        (await app.inject({
+          method: 'GET',
+          url: '/api/entities?ids=n_plan',
+          headers: { cookie: cookieOf(await login(app, wer)) },
+        })).json() as Entity[]
+      ).map((e) => e.id);
+    expect(await holt('Basil')).toEqual(['n_plan']);
+    expect(await holt('Sela')).toEqual([]);
+  });
+
   it('treats an article nobody classified as public', async () => {
     const app = await mitStufe({});
     expect(await liest(app, 'Sela')).toEqual({ code: 200, inListe: true });

@@ -117,6 +117,41 @@ export class Bestand {
   }
 
   /**
+   * **Die Teile eines geöffneten Artikels, ganz und in einer Anfrage** —
+   * die Merkmale und Aktionen eines Statblocks (W2). Die Kurzfassung trägt
+   * ihren Namen, aber nicht ihren Text und nicht ihre Angriffswerte; ein
+   * Drache hat dreizehn Teile, und dreizehn Anfragen wären dreizehnmal das
+   * Sieb über den ganzen Bestand. Geholt wird nur, was noch nicht da ist;
+   * was nicht kommt, fehlt für diesen Betrachter.
+   */
+  async holen(ids: readonly string[]): Promise<void> {
+    const offen = [...new Set(ids)].filter(
+      (id) => id && !this._voll().has(id) && !this._fehlt().has(id) && !this.holt.has(id),
+    );
+    if (!offen.length) return;
+    offen.forEach((id) => this.holt.add(id));
+    try {
+      const da = await this.api.entitiesById(offen);
+      const gekommen = new Set(da.map((e) => e.id));
+      this._voll.update((m) => {
+        const n = new Map(m);
+        for (const e of da) n.set(e.id, e);
+        return n;
+      });
+      this._fehlt.update((s) => {
+        const n = new Set(s);
+        for (const id of offen) if (!gekommen.has(id)) n.add(id);
+        return n;
+      });
+    } catch (error: unknown) {
+      this._fehler.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      offen.forEach((id) => this.holt.delete(id));
+    }
+  }
+  private readonly holt = new Set<string>();
+
+  /**
    * **Einen Registerteil schreiben** und, wenn der Server ihn nimmt, hier
    * einsetzen. Erst nach seiner Antwort: eine Zeile, die er abweist, soll
    * auch hier nicht stehen — sonst zeigte die Seite ein Register, das es

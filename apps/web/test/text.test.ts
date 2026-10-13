@@ -22,7 +22,10 @@ const art = (id: string, name: string, nr: string) =>
    ersetzt; die Komponente liest es ohnehin nur als Funktion. */
 function erzeuge(text: string, mehr: Record<string, unknown> = {}) {
   const fixture = TestBed.createComponent(Text);
-  Object.assign(fixture.componentInstance, { text: signal(text), scopes: signal({}), ...mehr });
+  Object.assign(fixture.componentInstance, {
+    text: signal(text), scopes: signal({}), inline: signal(false), vorspann: signal(''), vorspannZiel: signal(''),
+    ...mehr,
+  });
   fixture.detectChanges();
   return fixture;
 }
@@ -64,7 +67,7 @@ describe('nw-text', () => {
 
   it('draws one line without blocks when asked, links and placeholders included', () => {
     const el = erzeuge('[[npc-0001|slaad tadpoles]], {CREATURE}', {
-      einzeilig: signal(true),
+      inline: signal(true),
       scopes: signal({ reference: { CREATURE: 'the dragon' } }),
     }).nativeElement as HTMLElement;
     expect(el.querySelector('p')).toBeNull();
@@ -102,5 +105,32 @@ describe('nw-text', () => {
     fixture.detectChanges();
     expect(el.querySelector('output')?.textContent?.trim()).toBe('6 (4 +2)');
     vi.restoreAllMocks();
+  });
+
+  /* W2: eine Kopfzeile des Statblocks ist ein Satzteil, kein Absatz — und
+     ohne Leerzeichen, die der Zeilenumbruch im Template setzen würde. */
+  it('draws one line without paragraphs or stray spaces', () => {
+    const fixture = TestBed.createComponent(Text);
+    Object.assign(fixture.componentInstance, {
+      text: signal('7 ({{2d6}})'), scopes: signal({}), inline: signal(true),
+      vorspann: signal(''), vorspannZiel: signal(''),
+    });
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('p')).toBeNull();
+    expect(el.textContent).toBe('7 (2d6)');
+  });
+
+  it('runs the name into the first paragraph, as the book does', () => {
+    const fixture = TestBed.createComponent(Text);
+    Object.assign(fixture.componentInstance, {
+      text: signal('The goblin hides.\n\nSecond.'), scopes: signal({}), inline: signal(false),
+      vorspann: signal('Nimble Escape.'), vorspannZiel: signal('p1'),
+    });
+    fixture.detectChanges();
+    const ps = (fixture.nativeElement as HTMLElement).querySelectorAll('p');
+    expect(ps).toHaveLength(2);
+    expect(ps[0]?.querySelector('.vorspann a')?.getAttribute('href')).toBe('/artikel/p1');
+    expect(ps[0]?.textContent?.replace(/\s+/g, ' ').trim()).toBe('Nimble Escape. The goblin hides.');
   });
 });

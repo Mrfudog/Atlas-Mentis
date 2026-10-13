@@ -65,6 +65,16 @@ describe('units', () => {
     expect(convertText(seedRegistry, '40', 'metric', 'zorp')).toBe('40');
   });
 
+  /* „30/120" ist eine Angabe: die Einheit steht einmal, und beide Zahlen
+     stehen in derselben. Der Punkt einer Abkürzung geht mit der Einheit,
+     ein Satzende nach einem ausgeschriebenen Wort bleibt. */
+  it('writes a range once and keeps a sentence end', () => {
+    expect(convertText(seedRegistry, '30/120', 'both', 'ft')).toBe('30/120\u202fft (9.1/36.6\u202fm)');
+    expect(convertText(seedRegistry, '30/120', 'imperial', 'ft')).toBe('30/120\u202fft');
+    expect(convertText(seedRegistry, '40 ft., climb 20 ft.', 'metric')).toBe('12.2\u202fm, climb 6.1\u202fm');
+    expect(convertText(seedRegistry, 'within 60 feet.', 'imperial')).toBe('within 60\u202fft.');
+  });
+
   /* Eine Kreatur darf imperial bleiben, weil ihre Zahlen aus dem Regelwerk
      kommen, während der Rest der Kampagne metrisch dasteht. */
   it('takes the system from the type, then the campaign, then both', () => {

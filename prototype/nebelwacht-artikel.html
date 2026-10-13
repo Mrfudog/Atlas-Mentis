@@ -4425,6 +4425,7 @@ var LAYOUT_ELEMENTS=[
   ["linked","Linked articles"],
   ["knowledge","Knowledge groups"],["map","Map"],["sheet","Character sheet"],["inventory","Inventory"],["crafting","Crafting"],["board","Board"],["initiative","Initiative"],
   ["quests","Quest board"],["timeline","Timeline"],["live","Live"],["table","Table"],["prep","Prep board"],["crawl","Point-crawl"],["stack","Layer stack"],["members","Members"],["standing","Standing"],
+  ["statblock","Statblock (book)"],["spell","Spell (book)"],["item","Item (book)"],
   ["tabs","Tabs"]
 ];
 /* **Die Anordnung wohnt am Typ.** Gesucht wird die `extends`-Kette hoch:
@@ -4487,6 +4488,24 @@ function elTabs(e,ifn,item,vw){
   return wrap;
 }
 
+/* **Wie im Buch** (W2): die Elemente `statblock`, `spell` und `item`
+   zeichnet die Oberfläche (apps/web) im Satz des Regelbuchs, aus
+   `book.ts` im Modell. Der Prototyp zeichnet dieselben Karten als
+   Feldtabelle — der Statblock mit seinen Abschnitten, der Zauber mit
+   seinem Text —, damit nichts fehlt, was die Anordnung der Feldtabelle
+   daneben mit `except` herausnimmt. */
+function elBuch(e,ifn,karten,teile,text){
+  var wrap=el("div");
+  var f=elFields(e,ifn,{fields:karten});
+  if(f) wrap.appendChild(f);
+  if(text){
+    var d=elDescription(e); if(d) wrap.appendChild(d);
+    var p=elProse(e,ifn,{fields:["Prose.paragraph"]}); if(p) wrap.appendChild(p);
+  }
+  if(teile){ var c=elComposed(e); if(c) wrap.appendChild(c); }
+  return wrap.childNodes.length?wrap:null;
+}
+
 function renderLayoutItem(item,e,ifn,vw){
   switch(item.el){
     case "heading":     return item.text?el("div",{class:"sec",text:fillVars(item.text,null,e)}):null;
@@ -4515,6 +4534,9 @@ function renderLayoutItem(item,e,ifn,vw){
     case "stack":       return elStack(e,ifn,item);
     case "members":     return elMembers(e);
     case "standing":    return elStanding(e,ifn,item);
+    case "statblock":   return elBuch(e,ifn,["Statblock","Abilities","Proficiencies"],true,false);
+    case "spell":       return elBuch(e,ifn,["Spell"],false,true);
+    case "item":        return elBuch(e,ifn,["Item","Weapon","Armor","Material"],false,false);
     case "tabs":        return elTabs(e,ifn,item,vw);
     default:            return null;
   }

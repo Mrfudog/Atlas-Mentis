@@ -230,6 +230,7 @@ Durchstich in CI prüft `PgRepository` gegen eine echte Postgres.
 | `GET /api/registry/usage` | was der Bestand an jeder Zeile trägt (`registryUsage`: je Art, Karte, Feld, Listenwert, Kante) — gezählt, bevor das Register etwas löscht; nur für wer es ändert |
 | `GET /api/entities` · `GET /api/entities/:id` | Artikel, **gesiebt** |
 | `GET /api/entities?as=summary` | die Kurzfassung aller Artikel (`summaryOf`) — für Liste, Verweise, Auswahlen |
+| `GET /api/entities?ids=a,b,c` | diese Artikel ganz, gesiebt (höchstens 500) — die Teile eines Statblocks in einer Anfrage (W2) |
 | `GET /api/entities/:id/backlinks` | wer auf den Artikel zeigt (Kurzfassung + Kante), gesiebt |
 | `GET /api/classes/:id` | eine Klasse samt Unterklassen, Stufentabellen und den Merkmalen, die eine davon gewährt oder einbettet (`classParts`), gesiebt — die Klassenansicht (W6) in einer Antwort |
 | `PUT /api/entities/:id` · `DELETE /api/entities/:id` | schreiben, immer durch `validateEntity` |
@@ -299,6 +300,7 @@ flowchart TB
       artikel[artikel/artikel.ts<br/>Artikelansicht, Bearbeiten]
       felder[artikel/felder.ts<br/>Felder aus dem Register]
       text[artikel/text.ts<br/>Markdown, Verweise, Würfel]
+      buch[artikel/statblock.ts · zauber.ts · gegenstand.ts · abschnitte.ts<br/>wie im Buch]
       register[register/register.ts<br/>Typen · Kanten · Listen]
       regtyp[register/typ.ts · feld.ts<br/>ein Typ auf einer Fläche]
       verwaltung[verwaltung/verwaltung.ts<br/>Mitglieder, Rollen, Einladungen]
@@ -310,17 +312,18 @@ flowchart TB
       session[session.ts<br/>wer ist angemeldet]
     end
   end
-  model[["@nw/model<br/>views · calc · markdown · inline"]]
+  model[["@nw/model<br/>views · calc · book · markdown · inline"]]
   router --> wache --> session
   router --> login & liste & artikel & verwaltung & register & klassen
   verwaltung --> api
   register --> regtyp --> bestand
-  artikel --> felder & text
+  artikel --> felder & text & buch
+  buch --> text
   klassen --> text
   klassen -->|"GET /api/classes/:id"| api
   liste & artikel --> bestand --> api
   login --> session --> api
-  felder & text --> model
+  felder & text & buch --> model
   api -->|"/api · im Dev über proxy.conf.json"| srv[Fastify]
 ```
 
@@ -328,7 +331,10 @@ flowchart TB
 `felder.ts` liest die Felder einer Art aus dem Register und das Modell
 sagt, was in welcher Ansicht steht (`views`), was gerechnet wird
 (`calc`) und wie Text aussieht (`markdown`, `inline`). Eine neue
-Artikelart erscheint ohne Codeänderung.
+Artikelart erscheint ohne Codeänderung. Die Artikelseite zeichnet die
+Anordnung der Art (`layoutFor`); die Buch-Elemente `statblock`, `spell`
+und `item` bauen ihre Zeilen in `book.ts` und holen die Teile eines
+Statblocks über `Bestand.holen` (`?ids=`) in einer Anfrage.
 
 **Das Register** (`/registry`, W5) bearbeitet dieselben Zeilen, aus
 denen gezeichnet wird: Typen (eigene Felder offen, geerbte zugeklappt,
