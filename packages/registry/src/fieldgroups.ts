@@ -2153,6 +2153,18 @@ export const fieldGroups = {
     },
   },
 
+  /**
+   * **Eine Ebene beschreibt sich selbst** (T-088, REQ-245): voller Titel
+   * ist ihr Name, dazu das Kürzel, unter dem ihre Artikel ihre Quelle
+   * nennen („XGE"), Erscheinen, Autor und Regelstand (`version`); bei
+   * einem Abenteuer die Stufen und der Handlungsstrang. Der Importer
+   * füllt sie, die Leitung darf sie ändern. Was sie enthält, wird
+   * gerechnet und nicht gespeichert (D8).
+   *
+   * `kind: 'group'` (E-022 b): die Ebene enthält andere Ebenen, die mit
+   * `partOf` an ihr hängen; schaltet eine Kampagne sie auf, sind alle
+   * Mitglieder im Spiel.
+   */
   LayerInfo: {
     schema: {
       type: 'object',
@@ -2160,11 +2172,16 @@ export const fieldGroups = {
         kind: {
           type: 'string',
           title: 'Kind',
-          enum: ['system', 'expansion', 'book', 'adventure', 'world', 'pack', 'campaign', 'overrides'],
+          enum: ['system', 'expansion', 'book', 'adventure', 'world', 'pack', 'campaign', 'overrides', 'group'],
           default: 'pack',
         },
         order: { type: 'number', title: 'Specificity', default: 10 },
-        version: { type: 'string', title: 'Version' },
+        abbreviation: { type: 'string', title: 'Abbreviation' },
+        published: { type: 'string', title: 'Published' },
+        author: { type: 'string', title: 'Author' },
+        version: { type: 'string', title: 'Rules version' },
+        levels: { type: 'string', title: 'Levels' },
+        storyline: { type: 'string', title: 'Storyline', suggest: true },
       },
     },
   },

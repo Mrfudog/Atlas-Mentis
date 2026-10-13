@@ -246,7 +246,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event — „part of"
+- `partOf` → Place | Story | Event | Layer — „part of"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `involves` → * — „involves"
@@ -256,7 +256,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event | Board | Encounter — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -543,7 +543,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event — „part of"
+- `partOf` → Place | Story | Event | Layer — „part of"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `tableFor` → Table — „rolls on"
@@ -555,7 +555,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Creature — `livesIn` → „residents"
-- Place | Story | Quest | Event | Board | Encounter — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer — `partOf` → „contains"
 - Faction — `controls` → „controlled by"
 - Quest — `questAbout` → „concerned by"
 - Story — `happensAt` → „scenes here"
@@ -773,7 +773,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `allowsMethod` → AbilityMethod — „allows ability method"
-- `partOf` → Place | Story | Event — „part of"
+- `partOf` → Place | Story | Event | Layer — „part of"
 - `describedIn` → Article — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
@@ -789,7 +789,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event | Board | Encounter — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer — `partOf` → „contains"
 - Party — `partyOf` → „parties"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
@@ -827,7 +827,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event — „part of"
+- `partOf` → Place | Story | Event | Layer — „part of"
 - `describedIn` → Article — „described in"
 - `questGiver` → Creature | Faction — „given by"
 - `questAbout` → * — „concerns"
@@ -878,7 +878,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event — „part of"
+- `partOf` → Place | Story | Event | Layer — „part of"
 - `describedIn` → Article — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
@@ -892,7 +892,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event | Board | Encounter — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -931,7 +931,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event — „part of"
+- `partOf` → Place | Story | Event | Layer — „part of"
 - `describedIn` → Article — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
@@ -945,7 +945,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event | Board | Encounter — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -983,7 +983,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event — „part of"
+- `partOf` → Place | Story | Event | Layer — „part of"
 - `describedIn` → Article — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
@@ -997,7 +997,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event | Board | Encounter — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -2140,7 +2140,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event — „part of"
+- `partOf` → Place | Story | Event | Layer — „part of"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `placed` → * — „on the board"
@@ -2186,7 +2186,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event — „part of"
+- `partOf` → Place | Story | Event | Layer — „part of"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `participates` → Creature | Statblock | Party — „in the fight"
@@ -2516,7 +2516,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `kind` *system | expansion | book | adventure | world | pack | campaign | overrides*, `order` *number*, `version` *string*
+- `kind` *system | expansion | book | adventure | world | pack | campaign | overrides | group*, `order` *number*, `abbreviation` *string*, `published` *string*, `author` *string*, `version` *string*, `levels` *string*, `storyline` *string*
 
 **Geerbte Felder**
 
@@ -2530,6 +2530,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `partOf` → Place | Story | Event | Layer — „part of"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -2538,6 +2539,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- Place | Story | Quest | Event | Board | Encounter | Layer — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"

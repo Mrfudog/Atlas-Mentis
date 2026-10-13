@@ -16177,6 +16177,36 @@ function renderHowto(v){
     "Article Fireball range 150  \u00b7 XGE 120;  At higher levels \u00b7 XPHB [compare]\n"+
     "Use XPHB         copy \u201cFireball\u201d in the campaign layer, overrides \u2192 Fireball (PHB)"}));
 
+  /* ---- Gruppen von Ebenen (T-088, E-022 b) ----
+     Eine Gruppe ist selbst eine Ebene (Layer.kind group), ihre Mitglieder
+     hängen mit partOf an ihr. Gerechnet wird in packages/model/src/stack.ts
+     (resolvedStack). */
+  v.appendChild(el("div",{class:"rsec",text:"Groups of layers"}));
+  v.appendChild(el("p",{class:"hint"},
+    "A group is a layer that holds other layers (Layer.kind: group): Core "+
+    "rules, Supplements, Settings, Adventures, Unearthed Arcana, 2024 rules, "+
+    "Screens & other \u2014 and any group the lead makes. A member hangs on "+
+    "its group with partOf; a layer may sit in several groups, and a group "+
+    "in a group. A campaign that turns a group on has every member in play, "+
+    "nested ones too (never in a circle). The group gives the rank; inside "+
+    "it the members stand by publication date, the newer one higher. An "+
+    "edge of the campaign to the single layer beats the group: a layer the "+
+    "campaign turns on itself stands where that edge puts it, and one it "+
+    "turns off (activates with mode: off) is out although its group is on "+
+    "\u2014 off beats on."));
+  v.appendChild(el("p",{class:"hint"},
+    "A layer describes itself: its name is the full title, beside it the "+
+    "abbreviation its articles name as their source (XGE), publication "+
+    "date, author and rules version, for an adventure the levels and the "+
+    "storyline. What it holds per type is counted when read, never stored. "+
+    "Wherever an article names its source, the full title shows on hover "+
+    "and on a tap."));
+  v.appendChild(el("pre",{class:"code",text:
+    "Stack:    Core rules (group) \u00b7 Supplements (group), XGE off\n"+
+    "Resolved: Core rules \u00b7 PHB 2014-08 \u00b7 MM 2014-09 \u00b7 DMG 2014-12 \u00b7 Supplements \u00b7 VGM \u00b7 TCE \u2026\n"+
+    "Article in XGE    not in play (off beats the group)\n"+
+    "Article in TCE    in play, rank from Supplements"}));
+
   v.appendChild(el("div",{class:"rsec",text:"Who gets to see an article"}));
   v.appendChild(el("p",{class:"hint"},
     "Two questions, and the coarse one comes first: visibility decides "+

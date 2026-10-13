@@ -730,6 +730,27 @@ Kante am Buchartikel wäre kürzer und falsch: das Buch liegt in einer
 geteilten Ebene, und eine Überschreibung dort gälte in jeder Runde, die es
 aufschaltet.
 
+**Gruppen sind Ebenen** (E-022 b, T-088). Mit einer Ebene je Buch werden
+es über hundert Ebenen, und die Kampagnenseite braucht Abschnitte:
+Grundregeln, Ergänzungen, Settings, Abenteuer, Unearthed Arcana. Ein Feld
+`Layer.group` hätte gereicht, um zu ordnen — aber eine Ebene stünde dann in
+genau einer Gruppe, und „alle Abenteuer an" wäre siebzig Kanten, die beim
+nächsten Abenteuer eine zu wenig sind. Also ist eine Gruppe selbst eine
+Ebene (`kind: 'group'`), ihre Mitglieder hängen mit `partOf` an ihr, und wer
+sie aufschaltet, hat alle — auch das nächste Buch, das der Importer
+einhängt. Dafür braucht die Stapelauflösung eine Regel für „Gruppe an, ein
+Buch darin aus": **die ausdrückliche Kante schlägt die Gruppe, aus schlägt
+an** (`activates` mit `mode: 'off'`). Eigentum folgt der Gruppe nicht — wem
+eine Ebene gehört, sagt weiter nur, wer sie selbst aufschaltet; sonst
+machte eine geteilte Gruppe eine Kampagnenebene still gemeinsam.
+
+**Eine Ebene erklärt ihr Kürzel.** „XGE" steht an jedem Artikel aus
+Xanathar's Guide; wer das Buch nicht kennt, liest drei Buchstaben. Darum
+trägt die Ebene ihr Kürzel (`Layer.abbreviation`) neben dem vollen Titel,
+und wo ein Kürzel steht, zeigt die Seite den Titel beim Darüberfahren und
+auf dem Telefon beim Antippen. Was eine Ebene enthält, wird gezählt, wenn
+man fragt — gespeichert wäre es nach dem ersten neuen Artikel falsch (D8).
+
 > **Die dritte Zeile der Tabelle ist die, die heute zählt.** Von
 > fünfundsiebzig Artikeln tragen fünfundsechzig keine Ebenenkante — die
 > Regel „ohne Ebene gehört er der Kampagne und ist immer da" (siehe
