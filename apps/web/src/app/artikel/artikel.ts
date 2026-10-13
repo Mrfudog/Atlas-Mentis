@@ -16,13 +16,14 @@ import {
   entryRef,
   enumOptions,
   fieldTitle,
+  mergeEntity,
   proseFields,
   relationsFrom,
   primaryInterface,
   relationDef,
   resolveView,
 } from '@nw/model';
-import type { Entity, LayoutElement, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
+import type { Entity, LayoutElement, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
@@ -200,8 +201,48 @@ interface Feld {
                 <div class="linie" aria-hidden="true"></div>
               }
             @if (bearbeitet()) {
+              <!-- REQ-192: jemand anders hat gespeichert, seit die Maske
+                   offen ist. Nichts ist geschrieben; zusammengeführt wird
+                   hier, gefragt nur, wo beide dasselbe verschieden änderten. -->
+              @if (zusammen(); as z) {
+                <section class="zusammen" role="alert">
+                  <p>
+                    <strong>Changed elsewhere.</strong>
+                    Someone saved this article while you were editing. Nothing of yours is lost — it is not saved yet.
+                    @if (z.taken) {
+                      {{ z.taken }} of their changes {{ z.taken === 1 ? 'was' : 'were' }} merged into yours.
+                    }
+                  </p>
+                  @if (z.conflicts.length) {
+                    <p>Both of you changed {{ z.conflicts.length === 1 ? 'this' : 'these' }} — choose what to keep:</p>
+                    <ul class="konflikte">
+                      @for (k of z.conflicts; track k.key) {
+                        <li>
+                          <span class="was">{{ k.label }}</span>
+                          <label><input type="radio" [name]="'k-' + k.key" [checked]="k.wahl === 'mine'" (change)="waehleSeite(k.key, 'mine')" /> Yours: <em>{{ k.mine }}</em></label>
+                          <label><input type="radio" [name]="'k-' + k.key" [checked]="k.wahl === 'theirs'" (change)="waehleSeite(k.key, 'theirs')" /> Theirs: <em>{{ k.theirs }}</em></label>
+                        </li>
+                      }
+                    </ul>
+                  } @else {
+                    <p>None of your changes collide with theirs.</p>
+                  }
+                  <div class="werkzeuge">
+                    <button type="button" class="pri" [disabled]="speichert()" (click)="zusammenSpeichern()">
+                      {{ speichert() ? 'Saving…' : 'Save merged' }}
+                    </button>
+                    <button type="button" [disabled]="speichert()" (click)="verwerfen()">Discard mine, show theirs</button>
+                    <button type="button" (click)="herunterladen()">Download my version</button>
+                  </div>
+                </section>
+              }
               @if (problem(); as p) {
-                <p class="fehler" role="alert">{{ p }}</p>
+                <p class="fehler" role="alert">
+                  {{ p }}
+                  @if (entwurf()) {
+                    <button type="button" class="klein" (click)="herunterladen()">Download my version</button>
+                  }
+                </p>
               }
               @if (maengel().length) {
                 <ul class="maengel" role="alert">
@@ -987,6 +1028,14 @@ export class Artikel {
     this.problem.set(null);
     this.maengel.set([]);
     this.offeneVerweise.set([]);
+    /* Wovon die Maske ausgeht (REQ-192): gegen diese Revision wird
+       geschrieben, und gegen diesen Stand wird zusammengeführt, falls
+       inzwischen jemand anders gespeichert hat. Festgehalten und nicht
+       aus dem Bestand gelesen — der lädt den Artikel womöglich neu, und
+       dann wäre die eigene Ausgangslage still eine andere. */
+    this.basis.set(structuredClone(e));
+    this.zusammen.set(null);
+    this.entwurf.set(null);
     this.bearbeitet.set(true);
   }
 
@@ -994,7 +1043,22 @@ export class Artikel {
     this.bearbeitet.set(false);
     this.problem.set(null);
     this.maengel.set([]);
+    this.zusammen.set(null);
+    this.entwurf.set(null);
   }
+
+  /** Der Stand, von dem die Maske ausging. */
+  private readonly basis = signal<Entity | null>(null);
+  /** Was zuletzt geschickt und nicht gespeichert wurde — zum Herunterladen. */
+  protected readonly entwurf = signal<Entity | null>(null);
+  /** Abgewiesen, weil jemand anders gespeichert hat: drei Fassungen und die Wahl je Konflikt. */
+  protected readonly zusammen = signal<{
+    base: Entity;
+    mine: Entity;
+    theirs: Entity;
+    taken: number;
+    conflicts: { key: string; label: string; mine: string; theirs: string; wahl: MergeSide }[];
+  } | null>(null);
 
   protected prosaArten(): { ref: string; label: string }[] {
     const e = this.artikel();
@@ -1171,20 +1235,49 @@ export class Artikel {
 
     const relations = kantenAusEntwurf(this.entwurfKanten());
 
-    const neu = { ...alt, components, relations } as Entity;
+    const basis = this.basis() ?? alt;
+    const neu = { ...basis, components, relations } as Entity;
+    await this.schreibe(neu, basis, offen);
+  }
 
+  /**
+   * **Schreiben gegen die gelesene Revision** (REQ-192). Gelingt es, gilt
+   * der Stand des Servers; weist er ab, weil jemand anders gespeichert hat,
+   * wird zusammengeführt (`mergeEntity`) und gefragt — geschrieben wird
+   * erst, wenn jemand „Save merged" sagt. Was nicht gespeichert werden
+   * konnte, bleibt als Entwurf und lässt sich herunterladen (REQ-191).
+   */
+  private async schreibe(neu: Entity, basis: Entity, offen: Set<string> = new Set()): Promise<void> {
+    this.speichert.set(true);
+    this.problem.set(null);
+    this.maengel.set([]);
+    const { refs: _refs, fromTemplate: _ft, ...ohne } = neu as Entity & { refs?: unknown };
+    this.entwurf.set(ohne as Entity);
     try {
-      const gespeichert = await this.api.putEntity(neu);
+      const gespeichert = await this.api.putEntity(ohne as Entity);
       /* Neu geholt und nicht das Zurückgeschickte eingesetzt: was die Seite
          zeigt, ist gesiebt und aufgelöst, und das Gespeicherte ist es nicht.
          Die Zeile in der Liste zieht dabei mit. */
-      await this.bestand.oeffnen(alt.id, true);
+      await this.bestand.oeffnen(neu.id, true);
       this.bearbeitet.set(false);
+      this.zusammen.set(null);
+      this.entwurf.set(null);
       this.offeneVerweise.set([...offen]);
-      /* Was der Server zurückgibt, gilt — er setzt `updatedAt` und darf
-         mehr ändern, als hier geschickt wurde. */
+      /* Was der Server zurückgibt, gilt — er setzt `updatedAt` und
+         `revision` und darf mehr ändern, als hier geschickt wurde. */
       void gespeichert;
     } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        const jetzt = (error.body as { current?: (Entity & { refs?: unknown }) | null } | null)?.current;
+        if (!jetzt) {
+          this.zusammen.set(null);
+          this.problem.set('This article no longer exists, or you can no longer see it. Your version is not saved.');
+          return;
+        }
+        const { refs: _r, ...theirs } = jetzt;
+        this.zeigeZusammen(basis, ohne as Entity, theirs as Entity);
+        return;
+      }
       if (error instanceof ApiError) {
         this.problem.set(error.message);
         /* Die Liste wird gezeigt und nicht zusammengefasst: „ungültig" ohne
@@ -1206,6 +1299,96 @@ export class Artikel {
     } finally {
       this.speichert.set(false);
     }
+  }
+
+  /** Drei Fassungen nebeneinander; was nur eine Seite änderte, ist schon drin. */
+  private zeigeZusammen(base: Entity, mine: Entity, theirs: Entity): void {
+    const r = mergeEntity(base, mine, theirs);
+    this.zusammen.set({
+      base,
+      mine,
+      theirs,
+      taken: r.taken.length,
+      conflicts: r.conflicts.map((k) => ({
+        key: k.key,
+        label: this.konfliktName(k.key),
+        mine: this.konfliktWert(k.mine),
+        theirs: this.konfliktWert(k.theirs),
+        wahl: 'mine' as MergeSide,
+      })),
+    });
+  }
+
+  protected waehleSeite(key: string, wahl: MergeSide): void {
+    this.zusammen.update((z) =>
+      z ? { ...z, conflicts: z.conflicts.map((k) => (k.key === key ? { ...k, wahl } : k)) } : z,
+    );
+  }
+
+  /** Die Wahl angewandt, gegen den Stand der anderen geschrieben. Hat
+   *  inzwischen noch jemand gespeichert, wird von dort aus wieder gefragt. */
+  protected async zusammenSpeichern(): Promise<void> {
+    const z = this.zusammen();
+    if (!z || this.speichert()) return;
+    const prefer = Object.fromEntries(z.conflicts.map((k) => [k.key, k.wahl]));
+    const { merged } = mergeEntity(z.base, z.mine, z.theirs, prefer);
+    await this.schreibe(merged, z.theirs);
+  }
+
+  /** Den eigenen Stand aufgeben und zeigen, was gilt. */
+  protected async verwerfen(): Promise<void> {
+    const e = this.artikel();
+    this.zusammen.set(null);
+    this.entwurf.set(null);
+    this.problem.set(null);
+    this.bearbeitet.set(false);
+    if (e) await this.bestand.oeffnen(e.id, true);
+  }
+
+  /** Der ungespeicherte Stand als Datei — er geht nicht verloren, auch wenn
+   *  er hier nicht unterkommt (REQ-191). */
+  protected herunterladen(): void {
+    const e = this.zusammen()?.mine ?? this.entwurf();
+    if (!e) return;
+    const blob = new Blob([JSON.stringify(e, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(entityName(e) || e.id).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'article'}-unsaved.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  private konfliktName(key: string): string {
+    if (key === 'name') return 'Name';
+    if (key === 'interfaces') return 'Type';
+    if (key === 'adhoc') return 'Extra fields';
+    const r = this.reg();
+    if (key.startsWith('edge:')) {
+      const id = key.slice(5);
+      const kante = [...(this.zusammen()?.theirs.relations ?? []), ...(this.basis()?.relations ?? [])]
+        .find((k) => k.id === id);
+      return kante && r ? `Link · ${relationDef(r, kante.type).label}` : 'Link';
+    }
+    if (key.startsWith('card:')) {
+      const t = key.slice(5);
+      return r?.interfaces[t]?.label ?? t;
+    }
+    const f = this.felder().find((x) => x.ref === key);
+    if (f) return f.label;
+    const [t, k] = key.split('.');
+    return `${(t && r?.interfaces[t]?.label) || t} · ${k}`;
+  }
+
+  private konfliktWert(v: unknown): string {
+    if (v === undefined || v === null || v === '') return '(empty)';
+    if (typeof v === 'boolean') return v ? 'yes' : 'no';
+    if (v && typeof v === 'object' && 'type' in v && 'to' in v) {
+      const k = v as { type: string; to: string };
+      return `→ ${this.bestand.name()(k.to) ?? k.to}`;
+    }
+    const text = inEingabe(v);
+    return text.length > 160 ? `${text.slice(0, 160)}…` : text;
   }
 
   protected readonly rueckbezuege = computed(() => {
