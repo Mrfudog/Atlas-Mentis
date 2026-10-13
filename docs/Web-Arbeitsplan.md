@@ -1,5 +1,10 @@
 # Web-Arbeitsplan: die Oberfläche in `apps/web` nachziehen
 
+**Seit D59 (13.10.) wird nur noch die Seite weiterentwickelt; der Prototyp
+ist die Vorlage für den Port.** Aufgaben und Prioritäten stehen auf dem
+Projektbrett (W1–W9 und die Port-Aufgaben „Prototyp → Web: …"); dieser Plan
+beschreibt die Pakete, die gerade laufen.
+
 Stand 2026-10-13. Auf dev stehen die 24 157 Artikel aus 5e.tools, und die
 neue Oberfläche (Kopfleiste, Kompendium, Artikel im Buchstil, Pergament)
 läuft. Was die Leitung danach gesehen und verlangt hat, steht hier als

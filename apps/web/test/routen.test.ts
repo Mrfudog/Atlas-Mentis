@@ -31,4 +31,10 @@ describe('routes', () => {
   it('names the article id the way the article page reads it', () => {
     expect(routes.some((r) => r.path === 'artikel/:id')).toBe(true);
   });
+
+  /* Das Board liest seine Id wie die Artikelseite — als Eingabe aus dem Pfad. */
+  it('has the board list and a board by id', () => {
+    expect(routes.some((r) => r.path === 'boards')).toBe(true);
+    expect(routes.some((r) => r.path === 'boards/:id')).toBe(true);
+  });
 });

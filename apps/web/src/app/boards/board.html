@@ -1,0 +1,186 @@
+@if (board(); as b) {
+  <div class="seite">
+    <header class="kopf">
+      <div class="titel">
+        <nav aria-label="Breadcrumb" class="brot">
+          <a routerLink="/boards">Boards</a>
+          @for (p of pfad(); track p.id) {
+            <span aria-hidden="true">›</span>
+            <a [routerLink]="p.link">{{ p.art }} · {{ p.name }}</a>
+          }
+        </nav>
+        <h1>{{ name(b) }}</h1>
+      </div>
+      <div class="werkzeuge">
+        <span class="zoom" role="group" aria-label="Zoom">
+          <button type="button" (click)="zoomen(-0.1)" aria-label="Zoom out">−</button>
+          <span>{{ (zoom() * 100).toFixed(0) }}%</span>
+          <button type="button" (click)="zoomen(0.1)" aria-label="Zoom in">+</button>
+        </span>
+        <a class="knopf" [routerLink]="['/artikel', b.id]">Article</a>
+        @if (darfSchreiben()) {
+          <button
+            type="button"
+            class="pri"
+            [attr.aria-expanded]="suchtOffen()"
+            (click)="suchtOffen.set(!suchtOffen())"
+          >
+            Add article
+          </button>
+        }
+      </div>
+    </header>
+
+    @if (suchtOffen() && darfSchreiben()) {
+      <nw-board-suche [ohne]="liegt()" (gewaehlt)="hinlegen($event)" />
+    }
+
+    <p class="stand" role="status">
+      @if (speichert()) {
+        Saving…
+      } @else if (fehler(); as f) {
+        <span class="fehler">{{ f.text }}</span>
+        @for (m of f.einzeln; track m) {
+          <span class="fehler"> · {{ m }}</span>
+        }
+      } @else {
+        {{ karten().length }} on the board
+        @if (darfSchreiben()) {
+          · drag the title bar to move, the corner to resize
+        }
+      }
+    </p>
+
+    <div class="spalten">
+      <div #buehne class="buehne" tabindex="0" aria-label="Board canvas">
+        @if (karte(); as c) {
+          <div class="flaeche" [style.width.px]="c.width * zoom()" [style.height.px]="c.height * zoom()">
+            <div
+              class="leinwand"
+              [style.width.px]="c.width"
+              [style.height.px]="c.height"
+              [style.transform]="'scale(' + zoom() + ')'"
+              (pointerdown)="gewaehlt.set(null)"
+            >
+              @for (k of karten(); track k.rel.id) {
+                <article
+                  class="kachel"
+                  [class.gewaehlt]="gewaehlt() === k.rel.id"
+                  [class]="'b-' + (k.bereich || 'keiner')"
+                  [style.left.px]="k.platz.x"
+                  [style.top.px]="k.platz.y"
+                  [style.width.px]="k.platz.w"
+                  [style.height.px]="k.platz.h"
+                  [style.z-index]="gewaehlt() === k.rel.id ? 10000 : k.platz.z"
+                  (pointerdown)="$event.stopPropagation(); gewaehlt.set(k.rel.id)"
+                >
+                  <header
+                    class="kkopf"
+                    [class.ziehbar]="darfSchreiben() && !k.platz.locked"
+                    (pointerdown)="greifen($event, k, 'schieben')"
+                  >
+                    <span class="kart">{{ typLabel(k.kurz) }}</span>
+                    @if (darfSchreiben()) {
+                      <select
+                        class="kview"
+                        (change)="ansichtSetzen(k.rel, $any($event.target).value)"
+                        [attr.aria-label]="'View of ' + name(k.kurz)"
+                        [title]="'Shown as ' + viewLabel(k.ansicht)"
+                      >
+                        <!-- [selected] an der Option, nicht [value] am select: die
+                             Optionen entstehen erst nach dem Wert, und dann stünde
+                             nach dem Neuladen „Auto" da, wo „Overview" gespeichert ist. -->
+                        <option value="" [selected]="!k.rel.props?.['view']">
+                          Auto · {{ viewLabel(k.ansicht) }}
+                        </option>
+                        @for (v of ansichten(); track v) {
+                          <option [value]="v" [selected]="k.rel.props?.['view'] === v">
+                            {{ viewLabel(v) }}
+                          </option>
+                        }
+                      </select>
+                      <button
+                        type="button"
+                        class="weg"
+                        (click)="wegnehmen(k.rel)"
+                        [attr.aria-label]="'Take ' + name(k.kurz) + ' off the board'"
+                        title="Take off the board"
+                      >
+                        ×
+                      </button>
+                    } @else {
+                      <span class="kview fest">{{ viewLabel(k.ansicht) }}</span>
+                    }
+                  </header>
+                  @if (k.kurz) {
+                    <a class="kname" [routerLink]="['/artikel', k.kurz.id]">{{ name(k.kurz) }}</a>
+                  } @else {
+                    <p class="kname weg-da">Not here — gone, or not yours to see.</p>
+                  }
+                  @if (k.platz.note) {
+                    <p class="knotiz">{{ k.platz.note }}</p>
+                  }
+                  <div class="kinhalt">
+                    @if (k.ziel) {
+                      <nw-kachel [artikel]="k.ziel" [ansicht]="k.ansicht" />
+                    } @else if (k.kurz) {
+                      <p class="laedt">Loading…</p>
+                    }
+                  </div>
+                  @if (darfSchreiben() && !k.platz.locked) {
+                    <div
+                      class="griff"
+                      title="Resize"
+                      aria-hidden="true"
+                      (pointerdown)="$event.stopPropagation(); greifen($event, k, 'groesse')"
+                    ></div>
+                  }
+                </article>
+              }
+            </div>
+          </div>
+        }
+        @if (!karten().length) {
+          <p class="leerbrett">
+            Nothing on this board yet.
+            @if (darfSchreiben()) {
+              Add an article to place the first card.
+            }
+          </p>
+        }
+      </div>
+
+      <aside class="rand" aria-label="Around the board">
+        <section class="kasten">
+          <h2>Linked, not on the board</h2>
+          <p class="hinweis">Connected to cards above but missing here.</p>
+          @for (v of verbunden(); track v.id) {
+            <div class="zeile">
+              <a [routerLink]="['/artikel', v.id]">{{ name(v) }}</a>
+              @if (darfSchreiben()) {
+                <button type="button" class="klein" (click)="hinlegen(v)">+ add</button>
+              }
+            </div>
+          } @empty {
+            <p class="leer">Nothing — the board holds everything its cards point to.</p>
+          }
+        </section>
+        @if (offen().length) {
+          <section class="kasten">
+            <h2>Still to prepare</h2>
+            @for (o of offen(); track o.e.id) {
+              <div class="zeile">
+                <a [routerLink]="['/artikel', o.e.id]">{{ name(o.e) }}</a>
+                <span class="dim">{{ o.stand }}</span>
+              </div>
+            }
+          </section>
+        }
+      </aside>
+    </div>
+  </div>
+} @else if (keinBoard()) {
+  <p class="seite fehler">No such board — or not one you may see. <a routerLink="/boards">All boards</a></p>
+} @else {
+  <p class="seite leer">Loading…</p>
+}

@@ -329,7 +329,7 @@ nicht — den gäbe es auch ohne das Rezept.
 
 | Familie | Kanten | Trägt |
 |---|---|---|
-| Struktur | `partOf`, `insideMap` | Ort, Rahmen, Spur der Weltgeschichte (§5.9) — die Reihenfolge sagt `Time.sort` |
+| Struktur | `partOf`, `insideMap` | Ort, Rahmen, Spur der Weltgeschichte (§5.9), das Board eines Geschichtsartikels (REQ-205) — die Reihenfolge sagt `Time.sort` |
 | Teil | `belongsTo`, `carries` | `asField` |
 | Einsetzen | `composedOf`, `hasProperty` | `section`, `vars` |
 | Regel | `stageOf`, `affects`, `grants`, `subclassOf`, `subraceOf` | Stufe eines Zustands; Wirkung zwischen Regeln (`effect`, `on`, `note`); was Klasse, Abstammung, Hintergrund gewähren (`level`) |
@@ -519,6 +519,14 @@ Karte `Vars.bindings` → die gerechneten Kampagnenwerte (`{PARTY}`,
 `{PARTYSIZE}`, `{PARTYLEVEL}`, `{PARTYTIER}`, `{PARTYWHERE}`, `{TODAY}`,
 `{CALENDAR}`) → die Registerzeile `vars`. **Nie in den gespeicherten Text
 eingesetzt**; ein unaufgelöster Platzhalter bleibt sichtbar stehen.
+**Am Satzanfang schreibt ein eingesetzter Wert gross** (Textanfang oder
+nach `.`, `!`, `?`, `:` und Zeilenumbruch; Hervorhebung zählt nicht) —
+gespeichert bleibt die Bindung, wie sie ist. Darum **trägt ein
+Platzhalter seinen Artikel**: das Merkmal heisst „{CREATURE} can breathe
+air and water.", die Kante bindet `CREATURE` an „the dragon" oder
+„Venomfang", und die Vorgabe an der Vorlage ist `Vars.bindings.CREATURE`
+= „the creature". So teilen sich Drache, Riese und benannte Kreatur einen
+Text (W1).
 
 **Würfel** `{{1d6+2}}` (M12, REQ-070). Ein Ausdruck aus Würfeln und
 Zahlen, `d` oder `W`; ein blosser Modifikator `{{+4}}` ist ein Wurf auf
@@ -790,6 +798,22 @@ Drei Ansichten, und der Ort wählt sie:
 | `quick` | eine Kachel auf dem Board, die Schnellanlage | Bild, Beschreibung, Felder, Prosa |
 | `full` | die Artikelseite | alles |
 
+**Nur die Kachel auf dem Board wählt** (REQ-161, `placementView`): zuerst
+die Platzierung (`placed.props.view`), dann die Regel des Boards je Art
+(`Board.rules`, die `extends`-Kette hoch), und sagt keiner etwas, **die
+Grösse** — eine Kachel bis 110 px Höhe ist eine Zeile und zeigt `overview`,
+eine höhere eine Karte und zeigt `quick`. Wer sie grösser zieht, bekommt
+die Karte, ohne etwas auszuwählen.
+
+**Ein Board gehört über `partOf` zu seinem Geschichtsartikel** (REQ-205):
+Kampagne, Kapitel (`Story.kind`), Sitzung — nicht Szene, die ist eine
+Karte auf dem Board ihrer Sitzung. Ein Board ohne die Kante ist ein
+Regel-Board. Eine eigene Kante `boardOf` wäre eine zweite Hierarchie neben
+`partOf`, mit Rückbezügen, die niemand neben „contains" sucht. Die
+Kurzfassung (`summaryOf`) trägt `partOf` mit, damit die Liste der Boards
+und ihr Pfad „Kampagne › Kapitel › Sitzung" ohne einen ganzen Artikel
+auskommen.
+
 Eine Spieleransicht gibt es nicht: gesiebt wird am Server, alle sehen
 dieselbe Ansicht. Für `overview` und `quick` wählt eine Art **nach Gruppe**
 (ein Typname in `except`), nicht Feld für Feld.
@@ -951,7 +975,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Board` | — | `width` `height` `snap` `background` `rules` `shapes` `anchors` | `placed` | — | full |
+| `Board` | — | `width` `height` `snap` `background` `rules` `shapes` `anchors` | `partOf` `placed` | — | full |
 | `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` | `xpBudget` `phase` `round` `turn` `surprise` | `participates` `onMap` `loot` `tableFor` | — | full |
 | `Map` | `Image` `Secrets` `ReadAloud` | `sheets` `baseHidden` `baseGmOnly` `kind` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `scale` `lighting` `fog` `reveal` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `zone` `territory` | `insideMap` `onMap` | full |
 
@@ -1004,7 +1028,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `overrides` | * → * | ja | — | `scope` `note` |
 | `owes` | Creature → Creature |  | — | — |
 | `participates` | Encounter → Creature \| Statblock \| Party |  | — | `label` `init` `hp` `hpMax` `ally` `conditions` `note` `revealed` `involved` `identified` |
-| `partOf` | Place \| Story \| Quest \| Event → Place \| Story \| Event |  | — | — |
+| `partOf` | Place \| Story \| Quest \| Event \| Board → Place \| Story \| Event |  | — | — |
 | `partyOf` | Party → Campaign | ja | — | — |
 | `placed` | Board → * |  | — | `x` `y` `w` `h` `view` `z` `locked` `note` |
 | `questAbout` | Quest → * |  | — | — |
