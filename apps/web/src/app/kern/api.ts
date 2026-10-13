@@ -10,7 +10,7 @@
  * beides gleich behandelt, sagt dem Nutzer das Falsche.
  */
 
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import type { Entity, Registry, RegistryUsage, Relation } from '@nw/model';
 
 export class ApiError extends Error {
@@ -324,13 +324,40 @@ export class Api {
    *  Oberfläche selbst aus, in der Entwicklung steht ein Proxy davor. */
   readonly base = '';
 
+  /** Wie viele Anfragen gerade unterwegs sind — die Kopfleiste zeigt ab
+   *  300 ms einen Ladehinweis, statt still zu stehen (T-086, REQ-246). */
+  readonly unterwegs = signal(0);
+  /** Der Server liefert eine neuere Oberfläche aus als die, die hier läuft
+   *  (`X-Atlas-Build`, T-086): nach einem Deploy fehlen die alten Teile,
+   *  und ein Seitenwechsel lädt ins Leere. Die Seite sagt es, statt still
+   *  neu zu laden — wer gerade tippt, verlöre sonst seine Eingabe. */
+  readonly neueVersion = signal(false);
+  private bau: string | null = null;
+
   private async call<T>(path: string, init: RequestInit = {}): Promise<T> {
+    this.unterwegs.update((n) => n + 1);
+    try {
+      return await this.rufe<T>(path, init);
+    } finally {
+      this.unterwegs.update((n) => n - 1);
+    }
+  }
+
+  private merkeBau(res: Response): void {
+    const bau = res.headers?.get?.('x-atlas-build');
+    if (!bau) return;
+    if (this.bau === null) this.bau = bau;
+    else if (bau !== this.bau) this.neueVersion.set(true);
+  }
+
+  private async rufe<T>(path: string, init: RequestInit): Promise<T> {
     const res = await fetch(this.base + path, {
       ...init,
       credentials: 'include',
       /* Der Typ nur mit Körper: Fastify lehnt ein leeres JSON ab (DELETE). */
       headers: { ...(init.body ? { 'content-type': 'application/json' } : {}), ...(init.headers ?? {}) },
     });
+    this.merkeBau(res);
     const text = await res.text();
     const body: unknown = text ? JSON.parse(text) : null;
     if (!res.ok) {

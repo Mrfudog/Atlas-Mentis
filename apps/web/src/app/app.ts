@@ -1,4 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
+import { Api } from './kern/api';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Session } from './kern/session';
 import { BEREICHE } from './kern/bereiche';
@@ -82,6 +83,15 @@ import { BEREICHE } from './kern/bereiche';
     @if (warnung()) {
       <p class="warnung" role="alert">{{ warnung() }}</p>
     }
+    @if (api.neueVersion()) {
+      <p class="neu" role="status">
+        New version available.
+        <button type="button" (click)="neuLaden()">Reload</button>
+      </p>
+    }
+    @if (wartet()) {
+      <p class="wartet" role="status" aria-live="polite">Loading…</p>
+    }
     <router-outlet />
   `,
   styles: `
@@ -154,6 +164,33 @@ import { BEREICHE } from './kern/bereiche';
       border-bottom: 1px solid var(--warn);
       color: var(--warn);
     }
+    .neu {
+      margin: 0;
+      padding: 0.4rem 1.5rem;
+      background: var(--chip);
+      border-bottom: 1px solid var(--accent);
+      text-align: center;
+    }
+    .neu button {
+      margin-left: 0.5rem;
+    }
+    /* Ein Hinweis, der über der Seite liegt und nichts verschiebt — sonst
+       spränge der Inhalt bei jeder langsamen Antwort. */
+    .wartet {
+      position: fixed;
+      bottom: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      margin: 0;
+      padding: 0.25rem 0.9rem;
+      border: 1px solid var(--accent);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--ink);
+      font-size: 0.85rem;
+      box-shadow: 0 1px 4px rgb(0 0 0 / 0.15);
+    }
     /* Am Telefon: Marke und Abmelden in einer Zeile, die Bereiche darunter
        in einer Zeile, die sich schieben lässt, statt in drei umzubrechen. */
     @media (max-width: 640px) {
@@ -183,8 +220,24 @@ export class App {
     'https://github.com/Mrfudog/Atlas-Mentis/blob/preprod/docs/Betrieb.md#was-daten-löschen-kann';
   protected readonly bereiche = BEREICHE.filter((b) => b.weg !== 'play');
 
+  protected readonly api = inject(Api);
+  /** Ob gerade sichtbar gewartet wird: erst wenn eine Anfrage länger als
+   *  300 ms läuft (REQ-246). Darunter wäre der Hinweis nur ein Flackern. */
+  protected readonly wartet = signal(false);
+  private uhr: ReturnType<typeof setTimeout> | undefined;
+
   constructor() {
     void this.session.load();
+    effect(() => {
+      const laeuft = this.api.unterwegs() > 0;
+      clearTimeout(this.uhr);
+      if (!laeuft) this.wartet.set(false);
+      else if (!this.wartet()) this.uhr = setTimeout(() => this.wartet.set(true), 300);
+    });
+  }
+
+  protected neuLaden(): void {
+    location.reload();
   }
 
   protected readonly warnung = signal<string | null>(null);

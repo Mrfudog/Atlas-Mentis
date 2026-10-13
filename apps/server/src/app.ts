@@ -7,7 +7,9 @@
  * package defines them — front and back share one definition.
  */
 
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyCookie from '@fastify/cookie';
@@ -147,6 +149,22 @@ export function buildApp({
   if (staticRoot) {
     // The Angular app, plus a catch-all so client-side routes survive a reload.
     void app.register(fastifyStatic, { root: staticRoot });
+    /* **Welche Oberfläche dieser Server ausliefert** (T-086): ein Hash von
+       `index.html`, die die gehashten Teile nennt. Steht an jeder Antwort
+       der Schnittstelle; ändert er sich unter einer offenen Seite, sagt
+       sie „New version" — nach einem Deploy gibt es ihre alten Teile
+       nicht mehr. */
+    let bau = '';
+    try {
+      bau = createHash('sha256').update(readFileSync(join(staticRoot, 'index.html'))).digest('hex').slice(0, 12);
+    } catch {
+      /* Ohne gebaute Oberfläche gibt es nichts zu vergleichen. */
+    }
+    if (bau) {
+      app.addHook('onSend', async (request, reply) => {
+        if (request.url.startsWith('/api/')) void reply.header('X-Atlas-Build', bau);
+      });
+    }
     app.setNotFoundHandler((request, reply) => {
       if (request.url.startsWith('/api/')) {
         return reply.code(404).send({ error: 'Nicht gefunden' });

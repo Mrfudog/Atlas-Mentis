@@ -9,6 +9,9 @@
  * Vielfaches überschritten.
  */
 
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { seedRegistry } from '@nw/registry';
 import type { Entity } from '@nw/model';
@@ -93,4 +96,20 @@ describe('a list over 20 000 articles (REQ-246)', () => {
     expect(msListe).toBeLessThan(5000);
     expect(msUsage).toBeLessThan(5000);
   }, 60_000);
+});
+
+describe('the build the server ships (T-086)', () => {
+  it('names it on every API answer, so an open page can tell it is outdated', async () => {
+    const ort = mkdtempSync(join(tmpdir(), 'atlas-bau-'));
+    writeFileSync(join(ort, 'index.html'), '<script src="main-ABC123.js"></script>');
+    const app = buildApp({ repo: new InMemoryRepository(seedRegistry, []), staticRoot: ort });
+    const a = await app.inject({ method: 'GET', url: '/api/health' });
+    expect(a.headers['x-atlas-build']).toMatch(/^[0-9a-f]{12}$/);
+    writeFileSync(join(ort, 'index.html'), '<script src="main-DEF456.js"></script>');
+    const b = await buildApp({ repo: new InMemoryRepository(seedRegistry, []), staticRoot: ort }).inject({
+      method: 'GET',
+      url: '/api/health',
+    });
+    expect(b.headers['x-atlas-build']).not.toBe(a.headers['x-atlas-build']);
+  });
 });
