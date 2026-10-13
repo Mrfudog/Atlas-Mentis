@@ -123,3 +123,17 @@ export function carry(n: number): string {
 export function articles(n: number): string {
   return n === 0 ? 'no article' : n === 1 ? '1 article' : `${n.toLocaleString('en')} articles`;
 }
+
+/**
+ * **Gespeichert und sichtbar** (T-069): wie viele Artikel einer Art in der
+ * laufenden Kampagne im Stapel stehen, und wie viele gespeichert sind. Eine
+ * Zahl allein widersprach der Liste, sobald eine Ebene nicht aufgeschaltet
+ * war. Ohne Kampagne ist alles da, und es bleibt bei einer Zahl.
+ */
+export function inPlayText(u: RegistryUsage | null, typ: string): string | null {
+  if (!u) return null;
+  const gespeichert = u.types[typ] ?? 0;
+  if (!u.inPlay || !u.campaign) return articles(gespeichert);
+  const da = u.inPlay[typ] ?? 0;
+  return `${da.toLocaleString('en')} in play in ‘${u.campaign.name}’ · ${articles(gespeichert)} stored`;
+}

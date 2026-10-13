@@ -5,6 +5,7 @@ import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
 import { BEREICHE, bereichLabel } from '../kern/bereiche';
 import { ListenFilter } from '../kern/filter';
+import { AusgeblendetHinweis } from '../kern/ausgeblendet';
 import { Anlegen } from './anlegen';
 import { Vorschau } from './vorschau';
 
@@ -37,7 +38,7 @@ const OFFEN = 8;
  */
 @Component({
   selector: 'nw-kompendium',
-  imports: [RouterLink, Vorschau, Anlegen],
+  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis],
   template: `
     <div class="seite" [class.mitvorschau]="!!filter.vorschau()">
       <aside class="filter" [class.offen]="filterOffen()" aria-label="Filters">
@@ -194,6 +195,8 @@ const OFFEN = 8;
         @if (fehler(); as f) {
           <p class="fehler" role="alert">{{ f }}</p>
         }
+
+        <nw-ausgeblendet [info]="liste()?.unactivated" (geaendert)="neuFragen()" />
 
         @if (!liste()) {
           <p class="leer">Loading…</p>
@@ -362,6 +365,11 @@ export class Kompendium {
     } finally {
       if (nr === this.lauf) this.laedt.set(false);
     }
+  }
+
+  /** Nach dem Aufschalten einer Ebene (T-069): dieselbe Frage noch einmal. */
+  protected neuFragen(): void {
+    void this.hole(this.frage());
   }
 
   protected readonly titel = computed(() => bereichLabel(this.bereich()) ?? 'Compendium');

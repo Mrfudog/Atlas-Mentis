@@ -985,10 +985,18 @@ export const relations: Record<string, RelationDef> = {
     cardinality: 'one',
   },
 
+  /**
+   * **Was eine Kampagne zeigt** (E2, T-069): die Ebenen, die sie
+   * aufschaltet, von unten nach oben (`props.order`). Was keine davon
+   * bringt, steht nicht in ihren Listen — gelöscht ist es nicht. Die Kante
+   * hiess „runs on", und die Leitung fand sie nicht, als nach dem Anlegen
+   * einer Kampagne alle Artikel aus 5e.tools fehlten. Gepflegt wird sie
+   * auf der Kampagnenseite (Liste mit Häkchen und Reihenfolge).
+   */
   activates: {
     type: 'activates',
-    label: 'runs on',
-    inverseLabel: 'used by',
+    label: 'Layers in play',
+    inverseLabel: 'In play in',
     from: ['Campaign'],
     to: ['Layer'],
     props: {
