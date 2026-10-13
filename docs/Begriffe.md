@@ -92,6 +92,16 @@ Eintrag zeichnet den Baum und entscheidet den Bereich (`area`); alle anderen
 bringen nur ihre Felder und Kanten mit. Sonst gäbe es zwei Antworten auf die
 Frage, wo eine Art hingehört, und die eine wäre still falsch.
 
+### Story ist nicht History
+
+Der Bereich hiess bis 13.10. `history` und hielt zweierlei: was in der
+Kampagne geschah (Sitzungen, Szenen, Aufträge) und was der Welt widerfuhr,
+bevor jemand sie bespielte. Das sind zwei Fragen — „was haben wir gespielt"
+und „was ist hier einmal passiert" —, und wer die eine stellt, will die
+Antworten der anderen nicht dazwischen. Jetzt heisst der eine Bereich
+`story` und ist nur die Kampagne; die Weltgeschichte (`World`, `Event`)
+steht unter `world`, bei der Welt, zu der sie gehört.
+
 ---
 
 ## Bestandteil

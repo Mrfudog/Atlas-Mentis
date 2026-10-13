@@ -46,7 +46,7 @@ const AREA_TITEL = {
   play: ['Play', 'Worauf man während der Sitzung schaut.'],
   '': ['Ohne Bereich', 'Abstrakte Oberbegriffe — sie tragen keine Artikel.'],
 };
-const AREA_ORDER = ['world', 'history', 'rules', 'play', ''];
+const AREA_ORDER = ['world', 'story', 'rules', 'play', ''];
 
 function areas() {
   const da = new Set(Object.keys(R.interfaces).map((n) => areaOf(n) || ''));

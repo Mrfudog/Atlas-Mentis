@@ -1132,14 +1132,14 @@ async function seite(datei, warten) {
   const seiten = await p.evaluate(() =>
     [...document.querySelectorAll('#pages button')].map((b) => b.textContent));
   pruefe('six pages stand at the top',
-    ['Registry', 'Compendium', 'World', 'History', 'Rules', 'Play']
+    ['Registry', 'Compendium', 'World', 'Story', 'Rules', 'Play']
       .every((n, i) => seiten[i] === n) && seiten.length === 6, seiten);
 
   /* Und die Leiste zeigt genau die Seite, auf der man steht. Im Register
      sagen die Reiter oben, in welchem Teil man ist, und die Leiste zeigt
      die Zeilen darin — beim Teil „Types" also die Artikelarten. */
   const leisten = {};
-  for (const n of ['Registry', 'World', 'History', 'Play']) {
+  for (const n of ['Registry', 'World', 'Story', 'Play']) {
     if (n === 'Registry') await zumRegister(p, 'Types');
     else await zurSeite(p, n);
     leisten[n] = await p.evaluate(() => ({
@@ -1184,8 +1184,8 @@ async function seite(datei, warten) {
       && leisten.Registry.zeilen.some((x) => /^Article/.test(x))
       && leisten.World.zeilen.some((x) => /^Creature/.test(x))
       && !leisten.World.reiter.length
-      && leisten.History.zeilen.some((x) => /^Quest/.test(x))
-      && !leisten.History.zeilen.some((x) => /^Creature/.test(x))
+      && leisten.Story.zeilen.some((x) => /^Quest/.test(x))
+      && !leisten.Story.zeilen.some((x) => /^Creature/.test(x))
       && leisten.Play.zeilen.some((x) => /^Map/.test(x)),
     { r: leisten.Registry, w: leisten.World.zeilen.slice(0, 3) });
 
@@ -1214,7 +1214,7 @@ async function seite(datei, warten) {
     })(),
   }));
   pruefe('an article kind finds its area in the registry, and inherits it',
-    bereiche.npc === 'world' && bereiche.quest === 'history'
+    bereiche.npc === 'world' && bereiche.quest === 'story'
       && bereiche.rule === 'rules' && bereiche.map === 'play'
       && bereiche.item === 'world'
       && bereiche.geerbt === 'world', bereiche);
