@@ -5,15 +5,17 @@ name: 5e.tools einlesen
 # entsteht sie im Lauf, und die Daten von 5e.tools kommen nie ins
 # Repository und bleiben nicht auf dem Server liegen.
 #
-# Ausgelöst wird
-# - von Hand (Actions › 5e.tools einlesen › Run workflow): dev vom Zweig
-#   preprod, prod vom Zweig main — die Zweigregel der Environments verlangt
-#   es, und ein Lauf vom falschen Zweig sagt das gleich am Anfang;
-# - aus CI (ci.yml, Job `import-5etools`): für dev nach einem Ausrollen von
-#   preprod, wenn sich packages/import-5etools geändert hat, und nach
-#   „Run workflow" von CI mit dem Häkchen „5e.tools danach einlesen".
+# Der Import ist ein einmaliger Lauf, der die Basis bildet; danach wird
+# ergänzt (D71). Darum ist `only-new` die Vorgabe: angelegt wird nur, was
+# es noch nicht gibt, und was die Leitung seither geändert hat, bleibt.
+# Ein Modul ergänzt man mit `sources` (z. B. `CoS`).
 #
-# Prod nie von selbst.
+# Ausgelöst wird nur von Hand, nie von selbst:
+# - Actions › 5e.tools einlesen › Run workflow: dev vom Zweig preprod, prod
+#   vom Zweig main — die Zweigregel der Environments verlangt es, und ein
+#   Lauf vom falschen Zweig sagt das gleich am Anfang;
+# - CI › Run workflow mit dem Häkchen „5e.tools danach einlesen" (ci.yml,
+#   Job `import-5etools`): dasselbe mit `only-new`, nach dem Ausrollen.
 
 on:
   workflow_dispatch:
@@ -24,10 +26,18 @@ on:
         options: [dev, prod]
         default: dev
       mode:
-        description: "replace-layer: die Ebene D&D 5e (2014) ersetzen, eigene Artikel bleiben · dry-run: nur sagen, was geschähe · add: nur dazulegen"
+        description: "only-new: nur anlegen, was es noch nicht gibt · dry-run: nur sagen, was only-new (mit confirm=ersetzen: replace-layer) täte · replace-layer: die Ebene D&D 5e (2014) neu laden — eigene Änderungen an 5e.tools-Artikeln gehen dabei verloren, braucht confirm=ersetzen · add: dazulegen und Bestehendes überschreiben"
         type: choice
-        options: [replace-layer, dry-run, add]
-        default: replace-layer
+        options: [only-new, dry-run, replace-layer, add]
+        default: only-new
+      sources:
+        description: "Nur diese Quellen, z. B. PHB,MM oder ein Modulkürzel (leer = alles)"
+        type: string
+        default: ""
+      confirm:
+        description: "Für replace-layer: ersetzen eintippen"
+        type: string
+        default: ""
       source-ref:
         description: "Stand von 5etools-src (Zweig oder Tag, leer = neuester)"
         type: string
@@ -39,7 +49,13 @@ on:
         required: true
       mode:
         type: string
-        default: replace-layer
+        default: only-new
+      sources:
+        type: string
+        default: ""
+      confirm:
+        type: string
+        default: ""
       source-ref:
         type: string
         default: ""
@@ -62,6 +78,8 @@ jobs:
     env:
       ENVIRONMENT: ${{ inputs.environment }}
       MODE: ${{ inputs.mode }}
+      SOURCES: ${{ inputs.sources }}
+      CONFIRM: ${{ inputs.confirm }}
       SOURCE_REF: ${{ inputs.source-ref }}
       DIR: ${{ vars.DEPLOY_DIR || (inputs.environment == 'prod' && '/srv/atlas/prod' || '/srv/atlas/dev') }}
       TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
@@ -75,11 +93,24 @@ jobs:
               exit 1 ;;
             *) echo "::error::Unbekannte Umgebung: $ENVIRONMENT"; exit 1 ;;
           esac
+          # Ersetzen nur ausdrücklich (D67, D71): es nimmt der Leitung, was
+          # sie an 5e.tools-Artikeln geändert hat.
           case "$MODE" in
-            replace-layer) echo "FLAGS=--replace-layer" >> "$GITHUB_ENV" ;;
-            dry-run) echo "FLAGS=--replace-layer --dry-run" >> "$GITHUB_ENV" ;;
+            only-new) echo "FLAGS=--only-new" >> "$GITHUB_ENV" ;;
+            dry-run)
+              if [ "$CONFIRM" = ersetzen ]; then echo "FLAGS=--replace-layer --dry-run" >> "$GITHUB_ENV"
+              else echo "FLAGS=--only-new --dry-run" >> "$GITHUB_ENV"; fi ;;
+            replace-layer)
+              [ "$CONFIRM" = ersetzen ] || {
+                echo "::error::replace-layer lädt die Ebene neu, eigene Änderungen an 5e.tools-Artikeln gehen dabei verloren. Wer das will, tippt bei confirm „ersetzen“ ein."
+                exit 1
+              }
+              echo "FLAGS=--replace-layer" >> "$GITHUB_ENV" ;;
             add) echo "FLAGS=" >> "$GITHUB_ENV" ;;
-            *) echo "::error::Unbekannte Art: $MODE (replace-layer, dry-run, add)"; exit 1 ;;
+            *) echo "::error::Unbekannte Art: $MODE (only-new, dry-run, replace-layer, add)"; exit 1 ;;
+          esac
+          case "$SOURCES" in
+            *[!A-Za-z0-9,_\ -]*) echo "::error::sources: nur Kürzel, durch Kommas getrennt (z. B. PHB,MM)"; exit 1 ;;
           esac
 
       - uses: actions/checkout@v5
@@ -108,7 +139,7 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=6144
         run: |
           node packages/import-5etools/dist/cli.js "$RUNNER_TEMP/5etools-src/data" \
-            --out "$RUNNER_TEMP/5etools-2014.json" --bericht "$RUNNER_TEMP/5etools-Bericht.md"
+            ${SOURCES:+--sources "$SOURCES"} --out "$RUNNER_TEMP/5etools-2014.json" --bericht "$RUNNER_TEMP/5etools-Bericht.md"
           gzip -9 "$RUNNER_TEMP/5etools-2014.json"
           ls -l "$RUNNER_TEMP/5etools-2014.json.gz"
 
@@ -149,7 +180,7 @@ jobs:
         if: always()
         run: |
           {
-            echo "### 5e.tools → $ENVIRONMENT ($MODE)"
+            echo "### 5e.tools → $ENVIRONMENT ($MODE${SOURCES:+, $SOURCES})"
             echo
             echo '```'
             cat "$RUNNER_TEMP/ausgabe.txt" 2>/dev/null || echo "(keine Ausgabe — siehe Log)"

@@ -2,8 +2,8 @@
  * **Eine Ausfuhrdatei einlesen** — von der Kommandozeile, nicht über das
  * Netz (Arbeitsplan §4, P5; M13 schlanker).
  *
- *   pnpm --filter @nw/server run import <datei> [--replace | --replace-layer[=<id|Name>]] [--dry-run]
- *   docker compose exec app node apps/server/dist/import.js <datei> --replace-layer
+ *   pnpm --filter @nw/server run import <datei> [--only-new | --replace | --replace-layer[=<id|Name>]] [--dry-run]
+ *   docker compose exec app node apps/server/dist/import.js <datei> --only-new
  *
  * Dieselbe Semantik wie die Einfuhr des Prototyps: eine Datei mit
  * `registry` und **ohne** `entities` bringt nur die Zeilen; mit `entities`
@@ -16,7 +16,15 @@
  * Ebene, auf die die Artikel der Datei zeigen. Was gelöscht wird, wird
  * gezählt, und Kanten aus bleibenden Artikeln, die danach ins Leere zeigen,
  * werden aufgezählt — in Postgres bleiben sie stehen (Migration 012a) und
- * wären sonst ein stiller `dangling_relation`. `--dry-run` sagt dasselbe
+ * wären sonst ein stiller `dangling_relation`.
+ *
+ * **Nur ergänzen** (`--only-new`, D71): der 5e.tools-Import ist ein
+ * einmaliger Lauf, danach wird ergänzt. Angelegt wird nur, wessen Id es
+ * noch nicht gibt; was schon steht, bleibt, wie es ist — auch wenn die
+ * Leitung es seither geändert hat. Ebenso das Register: nur Zeilen, die
+ * es noch nicht gibt, kommen dazu. Gelöscht wird nichts.
+ *
+ * `--dry-run` sagt dasselbe
  * und schreibt nichts. Jeder Artikel geht durch `validateEntity` mit `knownTypes`, **bevor**
  * irgendetwas geschrieben wird: eine halb eingelesene Datei wäre ein
  * Bestand, den niemand mehr erklären kann.
@@ -51,6 +59,8 @@ export interface ImportErgebnis {
   text: string;
   geschrieben: number;
   geloescht: number;
+  /** Mit `onlyNew`: Artikel der Datei, deren Id es schon gab. */
+  uebersprungen?: number;
   /** Kanten aus bleibenden Artikeln auf gelöschte, als `Artikel —typ→ Ziel`. */
   verwaisteKanten?: string[];
 }
@@ -63,6 +73,11 @@ export interface ImportOptionen {
    * Name der Ebene, `true` für die eine Ebene der Datei.
    */
   replaceLayer?: string | true;
+  /**
+   * Nur anlegen, was es noch nicht gibt (D71): bestehende Artikel und
+   * Registerzeilen werden übersprungen, nichts wird gelöscht.
+   */
+  onlyNew?: boolean;
   /** Alles prüfen und sagen, nichts schreiben. */
   dryRun?: boolean;
 }
@@ -76,6 +91,9 @@ export async function runImport(
 ): Promise<ImportErgebnis> {
   if (optionen.replace && optionen.replaceLayer) {
     throw new ImportFehler('`--replace` und `--replace-layer` schliessen sich aus: das eine löscht alles, was fehlt, das andere nur die Ebene.');
+  }
+  if (optionen.onlyNew && (optionen.replace || optionen.replaceLayer)) {
+    throw new ImportFehler('`--only-new` schliesst `--replace` und `--replace-layer` aus: das eine lässt Bestehendes stehen, die anderen ersetzen es.');
   }
   const verwaltung = (await repo.listUsers()).filter((u) => u.isAdmin && !u.disabledAt);
   if (!verwaltung.length) {
@@ -99,7 +117,9 @@ export async function runImport(
   let registry: Registry = aktuell;
   if (d.registry !== undefined) {
     const { components: _alt, ...roh } = d.registry as Record<string, unknown>;
-    const geprueft = RegistrySchema.safeParse({ ...aktuell, ...roh });
+    /* Mit `--only-new` gewinnt je Teil die Zeile, die schon steht. */
+    const zusammen = optionen.onlyNew ? nurNeueZeilen(aktuell, roh) : { ...aktuell, ...roh };
+    const geprueft = RegistrySchema.safeParse(zusammen);
     if (!geprueft.success) {
       throw new ImportFehler(`Register ungültig: ${geprueft.error.issues.slice(0, 5).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`);
     }
@@ -116,23 +136,28 @@ export async function runImport(
     return { text: `Register übernommen. Die Artikel bleiben, wie sie sind.${liegenText(liegen)}`, geschrieben: 0, geloescht: 0 };
   }
 
-  const neu: Entity[] = [];
+  const ausDatei: Entity[] = [];
   const fehler: string[] = [];
   for (const [i, roh] of (d.entities as unknown[]).entries()) {
     const p = EntitySchema.safeParse(roh);
     if (!p.success) fehler.push(`#${i}: ${p.error.issues[0]?.message ?? 'ungültig'}`);
-    else neu.push(p.data as Entity);
+    else ausDatei.push(p.data as Entity);
   }
-  const ids = new Set<string>();
-  for (const e of neu) {
-    if (ids.has(e.id)) fehler.push(`${e.id}: steht zweimal in der Datei`);
-    ids.add(e.id);
+  const dateiIds = new Set<string>();
+  for (const e of ausDatei) {
+    if (dateiIds.has(e.id)) fehler.push(`${e.id}: steht zweimal in der Datei`);
+    dateiIds.add(e.id);
   }
 
   /* Was es danach gibt: mit `--replace` nur die Datei, mit
      `--replace-layer` der Bestand ohne das, was die Ebene brachte und die
-     Datei nicht mehr bringt, sonst der Bestand und die Datei darüber. */
+     Datei nicht mehr bringt, mit `--only-new` der Bestand und dazu, was
+     er noch nicht kennt, sonst der Bestand und die Datei darüber. */
   const bestand = await repo.listEntities();
+  const bestandIds = new Set(bestand.map((e) => e.id));
+  const neu = optionen.onlyNew ? ausDatei.filter((e) => !bestandIds.has(e.id)) : ausDatei;
+  const uebersprungen = ausDatei.length - neu.length;
+  const ids = new Set(neu.map((e) => e.id));
   let weg: Entity[] = [];
   let ebenenText = '';
   if (optionen.replace) weg = bestand.filter((e) => !ids.has(e.id));
@@ -203,10 +228,12 @@ export async function runImport(
   }
 
   if (optionen.dryRun) {
-    const zeilen = [`Probelauf, nichts geschrieben${ebenenText ? ` — ${ebenenText}` : ''}: ${zuSchreiben.length} Artikel würden geschrieben, ${weg.length} gelöscht${weg.length ? ` (${jeArt(weg)})` : ''}.`];
+    const zeilen = [optionen.onlyNew
+      ? `Probelauf, nichts geschrieben — nur ergänzen: ${zuSchreiben.length} neu, ${uebersprungen} übersprungen (gibt es schon).`
+      : `Probelauf, nichts geschrieben${ebenenText ? ` — ${ebenenText}` : ''}: ${zuSchreiben.length} Artikel würden geschrieben, ${weg.length} gelöscht${weg.length ? ` (${jeArt(weg)})` : ''}.`];
     if (geloest.length) zeilen.push(`${geloest.length} Instanzen würden von ihrer Vorlage gelöst: ${geloest.map((e) => `${entityName(e)} (${e.id})`).join(', ')}`);
     if (verwaisteKanten.length) zeilen.push(kantenText(verwaisteKanten, 'würden ins Leere zeigen'));
-    return { text: zeilen.join('\n'), geschrieben: 0, geloescht: 0, verwaisteKanten };
+    return { text: zeilen.join('\n'), geschrieben: 0, geloescht: 0, ...(optionen.onlyNew ? { uebersprungen } : {}), verwaisteKanten };
   }
 
   /* Erst löschen, dann schreiben: geprüft ist der Stand danach, und eine
@@ -224,6 +251,7 @@ export async function runImport(
     written: zuSchreiben.length,
     removed: geloescht,
     replace: Boolean(optionen.replace),
+    ...(optionen.onlyNew ? { onlyNew: true, skipped: uebersprungen } : {}),
     ...(optionen.replaceLayer ? { replaceLayer: ebenenText } : {}),
     ...(verwaisteKanten.length ? { danglingRelations: verwaisteKanten.length } : {}),
   });
@@ -236,11 +264,29 @@ export async function runImport(
     const weg = (u.actorIds ?? []).filter((a) => !danach.has(a));
     if (weg.length) verwaist.push(`${u.name}: ${weg.join(', ')}`);
   }
-  const zeilen = [`${ebenenText ? `${ebenenText}: ` : ''}${zuSchreiben.length} Artikel geschrieben${geloescht ? `, ${geloescht} gelöscht (${jeArt(weg)})` : ''}.`];
+  const zeilen = [optionen.onlyNew
+    ? `Nur ergänzt: ${zuSchreiben.length} neu, ${uebersprungen} übersprungen (gibt es schon).`
+    : `${ebenenText ? `${ebenenText}: ` : ''}${zuSchreiben.length} Artikel geschrieben${geloescht ? `, ${geloescht} gelöscht (${jeArt(weg)})` : ''}.`];
   if (geloest.length) zeilen.push(`${geloest.length} Instanzen von ihrer gelöschten Vorlage gelöst (sie tragen jetzt, was sie lasen): ${geloest.map((e) => `${entityName(e)} (${e.id})`).join(', ')}`);
   if (verwaisteKanten.length) zeilen.push(kantenText(verwaisteKanten, 'zeigen jetzt ins Leere'));
   if (verwaist.length) zeilen.push(`Figuren, die es nicht mehr gibt, an Konten:\n  ${verwaist.join('\n  ')}`);
-  return { text: zeilen.join('\n') + liegenText(liegen), geschrieben: zuSchreiben.length, geloescht, verwaisteKanten };
+  return { text: zeilen.join('\n') + liegenText(liegen), geschrieben: zuSchreiben.length, geloescht, ...(optionen.onlyNew ? { uebersprungen } : {}), verwaisteKanten };
+}
+
+/**
+ * Das Register mit `--only-new` (D71): je Teil die Zeilen der Datei, die
+ * es noch nicht gibt, und darüber die bestehenden — eine Art, die die
+ * Leitung am Server angepasst hat, bleibt angepasst.
+ */
+function nurNeueZeilen(aktuell: Registry, roh: Record<string, unknown>): Record<string, unknown> {
+  const zusammen: Record<string, unknown> = { ...aktuell };
+  for (const [teil, zeilen] of Object.entries(roh)) {
+    const da = (aktuell as unknown as Record<string, unknown>)[teil];
+    zusammen[teil] = zeilen && typeof zeilen === 'object' && !Array.isArray(zeilen) && da && typeof da === 'object'
+      ? { ...(zeilen as Record<string, unknown>), ...(da as Record<string, unknown>) }
+      : da ?? zeilen;
+  }
+  return zusammen;
 }
 
 /**
@@ -325,7 +371,7 @@ if (direkt) {
   const args = process.argv.slice(2);
   const datei = args.find((a) => !a.startsWith('--'));
   if (!datei) {
-    console.error('import <datei> [--replace | --replace-layer[=<id|Name>]] [--dry-run]');
+    console.error('import <datei> [--only-new | --replace | --replace-layer[=<id|Name>]] [--dry-run]');
     process.exit(2);
   }
   const ebenenArg = args.find((a) => a === '--replace-layer' || a.startsWith('--replace-layer='));
@@ -342,7 +388,7 @@ if (direkt) {
   const repo = new PgRepository(getPool());
   try {
     const daten = JSON.parse(readFileSync(pfad, 'utf8')) as unknown;
-    const r = await runImport(repo, daten, { replace: args.includes('--replace'), replaceLayer, dryRun: args.includes('--dry-run') });
+    const r = await runImport(repo, daten, { replace: args.includes('--replace'), replaceLayer, onlyNew: args.includes('--only-new'), dryRun: args.includes('--dry-run') });
     console.log(r.text);
   } catch (x) {
     console.error((x as Error).message);

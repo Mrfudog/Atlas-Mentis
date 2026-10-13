@@ -92,8 +92,10 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   Checkout von `5etools-src/data`, schreibt eine Ausfuhrdatei und den
   Bericht [docs/5etools-Bericht.md](docs/5etools-Bericht.md). Kein
   Framework; läuft nicht im Server, sondern in der Pipeline
-  `import-5etools.yml`, die die Ebene „D&D 5e (2014)" **je Ebene ersetzt**
-  (`import.js --replace-layer`: eigene Artikel bleiben, W8). Laden:
+  `import-5etools.yml`, nur von Hand. **Einmal einlesen, danach nur
+  ergänzen** (`import.js --only-new`, D71): angelegt wird nur, was es noch
+  nicht gibt; die Ebene „D&D 5e (2014)" neu laden (`--replace-layer`) geht
+  nur ausdrücklich und nimmt eigene Änderungen an ihren Artikeln mit. Laden:
   [docs/Betrieb.md › 5e.tools laden](docs/Betrieb.md#5etools-laden).
 - `legacy/` — die alte React-App. Nicht weiterentwickeln; sie läuft, bis die
   neue Karte und Initiative kann.
