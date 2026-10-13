@@ -55,6 +55,22 @@ describe('Session', () => {
     expect(s.user()?.name).toBe('Basil');
   });
 
+  /* Der Eintrag „Campaign" steht nur für wen die Seite etwas zeigt (W3):
+     Verwaltung, Leitung, Mitleitung — nicht für Spielende. */
+  it('knows whether the campaign page shows this viewer anything', async () => {
+    const fall = async (user: unknown) => {
+      TestBed.resetTestingModule();
+      stubFetch({ '/api/me': { status: 200, body: { user, writable: [], setup: null } } });
+      const s = TestBed.inject(Session);
+      await s.load();
+      return s.verwaltet();
+    };
+    expect(await fall({ id: 'a', name: 'A', isAdmin: true, roles: {} })).toBe(true);
+    expect(await fall({ id: 'g', name: 'G', isAdmin: false, roles: { c: 'gm' } })).toBe(true);
+    expect(await fall({ id: 'm', name: 'M', isAdmin: false, roles: { c: 'co-gm' } })).toBe(true);
+    expect(await fall({ id: 'p', name: 'P', isAdmin: false, roles: { c: 'player' } })).toBe(false);
+  });
+
   /* Der frische Server sagt, wie man das erste Konto anlegt — und die Maske
      zeigt dann keinen Anmeldeschlitz, sondern den Satz. Ein Anmeldefeld
      ohne Konto ist eine Sackgasse mit Aufforderung. */

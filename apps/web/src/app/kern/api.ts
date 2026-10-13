@@ -29,6 +29,9 @@ export interface Rueckbezug {
   relation: Relation;
 }
 
+export type TableRole = 'gm' | 'co-gm' | 'player' | 'spectator';
+export const TABLE_ROLES: readonly TableRole[] = ['gm', 'co-gm', 'player', 'spectator'];
+
 /**
  * Eine Klasse samt allem, was ihre Ansicht braucht (W6, `GET /api/classes/:id`):
  * ihre Unterklassen, die Stufentabellen und die Merkmale, die eine davon
@@ -46,9 +49,9 @@ export interface Me {
     id: string;
     name: string;
     isAdmin: boolean;
-    actorId?: string;
+    actorIds?: string[];
     /** Kampagnen-Id → Rolle darin. Steht am Konto und in keinem Artikel. */
-    roles?: Record<string, 'gm' | 'co-gm' | 'player' | 'spectator'>;
+    roles?: Record<string, TableRole>;
   } | null;
   /**
    * Welche Artikel dieser Betrachter schreiben darf. **`null` heisst alles**
@@ -59,6 +62,75 @@ export interface Me {
   writable: string[] | null;
   /** Steht nur auf einem frischen Server: wie man das erste Konto anlegt. */
   setup: string | null;
+  /** Ob es überhaupt eine offene Einladung gibt — nur dann lohnt „Sign up". */
+  invites?: boolean;
+}
+
+/* ---- Verwaltung (W3). Was ein Konto an einer Kampagne darf, sagt der
+   Server (`may`): `manage` ändert, `see` liest nur (co-gm). ---- */
+export type Recht = 'manage' | 'see' | null;
+export interface Figur {
+  id: string;
+  /** `null`: die Figur gibt es als Artikel nicht mehr. */
+  name: string | null;
+}
+export interface KampagneKurz {
+  id: string;
+  name: string;
+  exists: boolean;
+  role: TableRole | null;
+  may: Recht;
+}
+export interface Kampagnen {
+  campaigns: KampagneKurz[];
+  canCreate: boolean;
+  isAdmin: boolean;
+}
+export interface Mitglied {
+  id: string;
+  name: string;
+  role: TableRole;
+  isAdmin: boolean;
+  disabled: boolean;
+  self: boolean;
+  actors: Figur[];
+}
+export interface Mitglieder {
+  campaign: { id: string; name: string; exists: boolean };
+  may: Recht;
+  members: Mitglied[];
+  /** Die Figuren, die diese Kampagne vergeben darf. */
+  characters: { id: string; name: string }[];
+}
+export interface Einladung {
+  label: string | null;
+  isAdmin: boolean;
+  actorId: string | null;
+  actorName: string | null;
+  campaignId: string | null;
+  role: TableRole | null;
+  usesLeft: number | null;
+  expiresAt: string | null;
+  createdAt: string | null;
+  may: Recht;
+  handle: string;
+}
+export interface NeueEinladung {
+  campaignId?: string;
+  role?: TableRole;
+  actorId?: string;
+  label?: string;
+  uses?: number;
+  days?: number;
+}
+export interface Konto {
+  id: string;
+  name: string;
+  isAdmin: boolean;
+  disabled: boolean;
+  self: boolean;
+  actors: Figur[];
+  roles: { campaign: string; name: string; role: TableRole }[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -94,6 +166,12 @@ export class Api {
   login(name: string, password: string): Promise<{ user: Me['user'] }> {
     return this.call('/api/login', { method: 'POST', body: JSON.stringify({ name, password }) });
   }
+  register(name: string, password: string, invite: string): Promise<{ user: Me['user'] }> {
+    return this.call('/api/register', {
+      method: 'POST',
+      body: JSON.stringify({ name, password, invite }),
+    });
+  }
   logout(): Promise<{ ok: true }> {
     return this.call('/api/logout', { method: 'POST' });
   }
@@ -112,5 +190,61 @@ export class Api {
   }
   entity(id: string): Promise<Entity> {
     return this.call<Entity>(`/api/entities/${encodeURIComponent(id)}`);
+  }
+
+  // ------------------------------------------------------- Verwaltung
+  campaigns(): Promise<Kampagnen> {
+    return this.call<Kampagnen>('/api/campaigns');
+  }
+  createCampaign(name: string, lead: boolean): Promise<{ id: string; name: string }> {
+    return this.call('/api/campaigns', { method: 'POST', body: JSON.stringify({ name, lead }) });
+  }
+  members(campaign: string): Promise<Mitglieder> {
+    return this.call<Mitglieder>(`/api/campaigns/${encodeURIComponent(campaign)}/members`);
+  }
+  addMember(
+    campaign: string,
+    wer: { name?: string; user?: string },
+    role: TableRole,
+  ): Promise<unknown> {
+    return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ ...wer, role }),
+    });
+  }
+  setRole(campaign: string, user: string, role: TableRole): Promise<unknown> {
+    return this.call(
+      `/api/campaigns/${encodeURIComponent(campaign)}/members/${encodeURIComponent(user)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ role }),
+      },
+    );
+  }
+  removeMember(campaign: string, user: string): Promise<unknown> {
+    return this.call(
+      `/api/campaigns/${encodeURIComponent(campaign)}/members/${encodeURIComponent(user)}`,
+      {
+        method: 'DELETE',
+      },
+    );
+  }
+  setActors(campaign: string, user: string, actorIds: string[]): Promise<unknown> {
+    return this.call(
+      `/api/campaigns/${encodeURIComponent(campaign)}/members/${encodeURIComponent(user)}/actors`,
+      { method: 'PUT', body: JSON.stringify({ actorIds }) },
+    );
+  }
+  users(): Promise<Konto[]> {
+    return this.call<Konto[]>('/api/users');
+  }
+  invites(): Promise<Einladung[]> {
+    return this.call<Einladung[]>('/api/invites');
+  }
+  createInvite(neu: NeueEinladung): Promise<{ code: string; handle: string }> {
+    return this.call('/api/invites', { method: 'POST', body: JSON.stringify(neu) });
+  }
+  dropInvite(handle: string): Promise<unknown> {
+    return this.call(`/api/invites/${encodeURIComponent(handle)}`, { method: 'DELETE' });
   }
 }

@@ -199,6 +199,63 @@ try {
   pruefe('gm-Artikel: die Leitung der anderen Runde nicht', (await status('probe-fremd')) === 404);
   pruefe('gm-Artikel: wer mitspielt, nicht', (await status('probe-spiel')) === 404);
 
+  /* Verwaltung (W3): Rollen und Figuren über die Routen statt die
+     Kommandozeile, und eine Einladung, die in eine Kampagne führt — die
+     Spalten `campaign_id` und `role` an `app_invite` gibt es nur in
+     Postgres. */
+  const leitung = await anmelden('probe-leitung');
+  const mitglieder = async () =>
+    (await (await get(leitung, '/api/campaigns/camp_probe_a/members')).json()).members ?? [];
+  const spiel = (await mitglieder()).find((m) => m.name === 'probe-spiel');
+  pruefe('Mitglieder: die Leitung sieht, wer mitspielt', spiel?.role === 'player');
+  const setze = (pfad, body) =>
+    fetch(`${BASE}${pfad}`, {
+      method: 'PUT',
+      headers: { ...json, cookie: leitung },
+      body: JSON.stringify(body),
+    });
+  const r4 = await setze(`/api/campaigns/camp_probe_a/members/${spiel?.id}`, { role: 'spectator' });
+  pruefe(
+    'Rolle über die Route gesetzt',
+    r4.ok && (await mitglieder()).find((m) => m.name === 'probe-spiel')?.role === 'spectator',
+    String(r4.status),
+  );
+  await setze(`/api/campaigns/camp_probe_a/members/${spiel?.id}`, { role: 'player' });
+  const r5 = await setze(`/api/campaigns/camp_probe_a/members/${spiel?.id}/actors`, {
+    actorIds: ['pc_probe'],
+  });
+  pruefe('Figuren über die Route gesetzt', r5.ok, `${r5.status} ${(await r5.text()).slice(0, 200)}`);
+  const einladung = await (
+    await fetch(`${BASE}/api/invites`, {
+      method: 'POST',
+      headers: { ...json, cookie: leitung },
+      body: JSON.stringify({ campaignId: 'camp_probe_a', role: 'spectator', uses: 1, days: 3 }),
+    })
+  ).json();
+  const offen = await (await get(leitung, '/api/invites')).json();
+  pruefe(
+    'Einladung der Leitung, mit Kampagne und Rolle',
+    !!einladung.code && offen.some((i) => i.campaignId === 'camp_probe_a' && i.role === 'spectator'),
+    JSON.stringify(offen).slice(0, 300),
+  );
+  const gastName = `probe-gast-${Date.now()}`;
+  const r6 = await fetch(`${BASE}/api/register`, {
+    method: 'POST',
+    headers: json,
+    body: JSON.stringify({ name: gastName, password: PASSWORT, invite: einladung.code }),
+  });
+  const gast = r6.ok ? (await r6.json()).user : null;
+  pruefe(
+    'eingelöst kommt die Rolle mit',
+    gast?.roles?.camp_probe_a === 'spectator' &&
+      (await mitglieder()).some((m) => m.name === gastName && m.role === 'spectator'),
+    `${r6.status} ${JSON.stringify(gast)}`,
+  );
+  pruefe(
+    'die Kontoliste sieht nur die Verwaltung',
+    (await get(leitung, '/api/users')).status === 403 && (await get(admin, '/api/users')).ok,
+  );
+
   for (const e of [...ARTIKEL].reverse()) {
     const r = await fetch(`${BASE}/api/entities/${e.id}`, {
       method: 'DELETE',

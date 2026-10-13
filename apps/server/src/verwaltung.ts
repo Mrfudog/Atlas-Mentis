@@ -1,0 +1,435 @@
+/**
+ * Verwaltung (W3): Kampagnen, ihre Mitglieder, die Figuren eines Kontos und
+ * die Konten der Installation.
+ *
+ * Bis hierher setzte die Rollen nur die Kommandozeile (`user role`), und die
+ * Leitung fragte zu Recht, wo sie Spieler einlädt. Die Regel steht in
+ * CLAUDE.md und wird hier nur angewandt:
+ *
+ *  - **Die Rolle am Tisch steht am Konto, je Kampagne** (`campaign_member`),
+ *    welche Figuren ein Konto führt, daneben (`app_user_actor`).
+ *  - **Ändern** dürfen die Verwaltung der Installation (`is_admin`) und die
+ *    Leitung dieser Kampagne (`gm`). Ein Mitleiter (`co-gm`) **sieht**
+ *    dieselbe Liste und ändert sie nicht — das trennt `gm` und `co-gm`.
+ *  - **Die Kontoliste der Installation** sieht nur die Verwaltung. Eine
+ *    Leitung lädt ein oder nimmt ein Konto beim Namen dazu; durch alle
+ *    Konten blättern, auch die anderer Runden, geht sie nichts an.
+ *
+ * Die Wache in `app.ts` lässt Schreibwege hierher durch; jede Route prüft
+ * selbst, denn das Recht hängt an der Kampagne im Pfad.
+ */
+
+import { randomUUID } from 'node:crypto';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import {
+  CAMPAIGN_TYPE,
+  campaignsOf,
+  entityName,
+  isTableRole,
+  nextId,
+  validateEntity,
+  type Entity,
+  type TableRole,
+} from '@nw/model';
+import type { Repository, StoredUser } from './repo.js';
+import { foldName, hashToken, newInviteCode, type Invite, type User } from './auth.js';
+
+/** Was ein Konto an einer Kampagne darf: ändern, nur sehen, oder nichts. */
+export type Recht = 'manage' | 'see' | null;
+
+export function rechtAn(user: User | null, campaignId: string): Recht {
+  if (!user || user.disabledAt) return null;
+  if (user.isAdmin) return 'manage';
+  const rolle = user.roles?.[campaignId];
+  if (rolle === 'gm') return 'manage';
+  if (rolle === 'co-gm') return 'see';
+  return null;
+}
+
+interface Deps {
+  repo: Repository;
+  viewerOf(request: FastifyRequest): Promise<User | null>;
+}
+
+export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Deps): void {
+  const nein = (reply: FastifyReply, code: number, error: string) => reply.code(code).send({ error });
+
+  const kampagnen = async (): Promise<Map<string, Entity>> =>
+    new Map(
+      (await repo.listEntities())
+        .filter((e) => (e.interfaces ?? [])[0] === CAMPAIGN_TYPE)
+        .map((e) => [e.id, e]),
+    );
+
+  /**
+   * **Darf diese Kampagne diese Figur vergeben?** Ja, wenn der Artikel da
+   * ist und keiner anderen Runde gehört: eine Ebene, die genau eine andere
+   * Kampagne aufschaltet, macht ihn zu deren Figur (`campaignsOf`). Ohne
+   * Ebenenkante gehört er niemandem besonders — heute der Normalfall.
+   *
+   * Das ist mehr als Ordnung: wer eine Figur führt, darf sie schreiben
+   * (`mayWrite`). Ohne die Prüfung gäbe die Leitung der einen Runde ihrem
+   * Spieler die Feder für die Figur einer anderen.
+   */
+  function vergebbar(alle: Map<string, Entity>, actorId: string, campaignId: string): boolean {
+    const figur = alle.get(actorId);
+    if (!figur) return false;
+    const besitzer = campaignsOf(alle, figur);
+    return !besitzer || besitzer.size === 0 || besitzer.has(campaignId);
+  }
+
+  const figurenMitNamen = (alle: Map<string, Entity>, ids: string[]) =>
+    ids.map((id) => ({ id, name: alle.has(id) ? entityName(alle.get(id)) : null }));
+
+  // ---------------------------------------------------------- Kampagnen
+
+  /** Die Kampagnen, an denen dieser Betrachter etwas verwaltet oder sieht.
+   *  Spielende bekommen eine leere Liste — die Kopfleiste zeigt den
+   *  Eintrag dann nicht. */
+  app.get('/api/campaigns', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return nein(reply, 401, 'Nicht angemeldet.');
+    const da = await kampagnen();
+    const ids = new Set<string>(user.isAdmin ? da.keys() : []);
+    for (const [c, r] of Object.entries(user.roles ?? {})) if (r === 'gm' || r === 'co-gm') ids.add(c);
+    return {
+      campaigns: [...ids]
+        .map((id) => ({
+          id,
+          /* Eine Rolle an einer Kampagne, die es (noch) nicht als Artikel
+             gibt, steht trotzdem da — mit ihrer Id und dem Hinweis. Sie zu
+             verschweigen hiesse, eine Rolle zu haben, die niemand sieht. */
+          name: da.has(id) ? entityName(da.get(id)) : id,
+          exists: da.has(id),
+          role: user.roles?.[id] ?? null,
+          may: rechtAn(user, id),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'de')),
+      /* Anlegen ist ein Artikel, und Artikel ohne Figur schreibt nur die
+         Verwaltung (`mayWrite`). */
+      canCreate: user.isAdmin,
+      isAdmin: user.isAdmin,
+    };
+  });
+
+  /** Eine Kampagne anlegen — wenn es noch keine gibt, kann sonst niemand
+   *  eingeladen werden. Ein Artikel wie jeder andere, also über
+   *  `validateEntity`. Wer anlegt, leitet sie, wenn er das sagt. */
+  app.post<{ Body: { name?: string; lead?: boolean } }>('/api/campaigns', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user?.isAdmin) return nein(reply, 403, 'Eine Kampagne legt die Verwaltung an.');
+    const name = String(request.body?.name ?? '').trim();
+    if (!name) return nein(reply, 400, 'Wie heisst sie?');
+    const alle = await repo.listEntities();
+    const entity: Entity = {
+      id: randomUUID(),
+      interfaces: [CAMPAIGN_TYPE],
+      name,
+      components: { Identity: { name, id: nextId(alle, CAMPAIGN_TYPE), aliases: [] } },
+      relations: [],
+    };
+    const registry = await repo.getRegistry();
+    const issues = validateEntity(registry, entity, {});
+    if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+    await repo.putEntity(entity);
+    await repo.appendEvent('entity.written', entity.id, { interfaces: entity.interfaces, cards: ['Identity'] });
+    if (request.body?.lead === true) {
+      const ich = await repo.getUser(user.id);
+      if (ich) await repo.putUser({ ...ich, roles: { ...(ich.roles ?? {}), [entity.id]: 'gm' } });
+      await repo.appendEvent('member.role', user.id, { campaign: entity.id, role: 'gm', by: user.id });
+    }
+    return reply.code(201).send({ id: entity.id, name });
+  });
+
+  // ---------------------------------------------------------- Mitglieder
+
+  app.get<{ Params: { c: string } }>('/api/campaigns/:c/members', async (request, reply) => {
+    const user = await viewerOf(request);
+    const c = request.params.c;
+    const recht = rechtAn(user, c);
+    if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
+    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const kampagne = alle.get(c);
+    const members = (await repo.listUsers())
+      .filter((u) => isTableRole(u.roles?.[c]))
+      .map((u) => ({
+        id: u.id,
+        name: u.name,
+        role: u.roles[c] as TableRole,
+        isAdmin: u.isAdmin,
+        disabled: !!u.disabledAt,
+        self: u.id === user.id,
+        actors: figurenMitNamen(alle, u.actorIds ?? []),
+      }))
+      .sort((a, b) => ORDNUNG[a.role] - ORDNUNG[b.role] || a.name.localeCompare(b.name, 'de'));
+    /* Die Figuren, die diese Kampagne vergeben darf — für die Auswahl beim
+       Zuteilen und beim Einladen. Nur Spielerfiguren: bei vierundzwanzig-
+       tausend Kreaturen aus 5e.tools wäre die Liste keine Auswahl mehr. */
+    const characters =
+      recht === 'manage'
+        ? [...alle.values()]
+            .filter((e) => (e.interfaces ?? [])[0] === 'PlayerCharacter' && vergebbar(alle, e.id, c))
+            .map((e) => ({ id: e.id, name: entityName(e) }))
+            .sort((a, b) => a.name.localeCompare(b.name, 'de'))
+        : [];
+    return {
+      campaign: { id: c, name: kampagne ? entityName(kampagne) : c, exists: !!kampagne },
+      may: recht,
+      members,
+      characters,
+    };
+  });
+
+  /** Wer ändert, und an wem. Ein Konto, das nicht Verwaltung ist, ändert
+   *  **sich selbst** hier nicht: eine Leitung, die sich zum Zuschauer macht,
+   *  hat sich ausgesperrt, und zurück käme sie nur über die Verwaltung. */
+  async function aendern(
+    request: FastifyRequest<{ Params: { c: string; u?: string } }>,
+    reply: FastifyReply,
+    zielId?: string,
+  ): Promise<{ user: User; ziel?: StoredUser } | null> {
+    const user = await viewerOf(request);
+    const c = request.params.c;
+    const recht = rechtAn(user, c);
+    if (!user || !recht) {
+      await nein(reply, 403, 'Nicht für dich.');
+      return null;
+    }
+    if (recht !== 'manage') {
+      await nein(reply, 403, 'Die Mitglieder ändert die Leitung; ein Mitleiter sieht sie nur.');
+      return null;
+    }
+    if (zielId === undefined) return { user };
+    const ziel = await repo.getUser(zielId);
+    if (!ziel) {
+      await nein(reply, 404, 'Kein solches Konto.');
+      return null;
+    }
+    if (ziel.id === user.id && !user.isAdmin) {
+      await nein(reply, 403, 'Die eigene Rolle ändert die Verwaltung.');
+      return null;
+    }
+    return { user, ziel };
+  }
+
+  /** Ein Konto dazunehmen, das es schon gibt — beim Namen, oder (für die
+   *  Verwaltung aus der Kontoliste) bei der Id. */
+  app.post<{ Params: { c: string }; Body: { name?: string; user?: string; role?: string } }>(
+    '/api/campaigns/:c/members',
+    async (request, reply) => {
+      const ok = await aendern(request, reply);
+      if (!ok) return reply;
+      const role = request.body?.role ?? 'player';
+      if (!isTableRole(role)) return nein(reply, 400, 'Rolle: gm, co-gm, player oder spectator.');
+      const ziel = request.body?.user
+        ? await repo.getUser(String(request.body.user))
+        : await repo.findUserByName(foldName(String(request.body?.name ?? '')));
+      if (!ziel) return nein(reply, 404, 'Kein Konto mit diesem Namen.');
+      if (ziel.id === ok.user.id && !ok.user.isAdmin) {
+        return nein(reply, 403, 'Die eigene Rolle ändert die Verwaltung.');
+      }
+      const c = request.params.c;
+      await repo.putUser({ ...ziel, roles: { ...(ziel.roles ?? {}), [c]: role } });
+      await repo.appendEvent('member.role', ziel.id, { campaign: c, role, by: ok.user.id });
+      return reply.code(201).send({ id: ziel.id, name: ziel.name, role });
+    },
+  );
+
+  app.put<{ Params: { c: string; u: string }; Body: { role?: string } }>(
+    '/api/campaigns/:c/members/:u',
+    async (request, reply) => {
+      const ok = await aendern(request, reply, request.params.u);
+      if (!ok?.ziel) return reply;
+      const role = request.body?.role;
+      if (!isTableRole(role)) return nein(reply, 400, 'Rolle: gm, co-gm, player oder spectator.');
+      const c = request.params.c;
+      await repo.putUser({ ...ok.ziel, roles: { ...(ok.ziel.roles ?? {}), [c]: role } });
+      await repo.appendEvent('member.role', ok.ziel.id, { campaign: c, role, by: ok.user.id });
+      return { id: ok.ziel.id, role };
+    },
+  );
+
+  /** Aus der Kampagne nehmen. Das Konto bleibt, seine Figuren auch — die
+   *  hängen am Konto und nicht an der Runde. */
+  app.delete<{ Params: { c: string; u: string } }>(
+    '/api/campaigns/:c/members/:u',
+    async (request, reply) => {
+      const ok = await aendern(request, reply, request.params.u);
+      if (!ok?.ziel) return reply;
+      const c = request.params.c;
+      if (!ok.ziel.roles?.[c]) return nein(reply, 404, 'Nicht in dieser Kampagne.');
+      const roles = { ...ok.ziel.roles };
+      delete roles[c];
+      await repo.putUser({ ...ok.ziel, roles });
+      await repo.appendEvent('member.role', ok.ziel.id, { campaign: c, role: null, by: ok.user.id });
+      return { ok: true };
+    },
+  );
+
+  /**
+   * Welche Figuren ein Mitglied führt. Gesetzt wird die ganze Liste; geändert
+   * wird nur, was diese Kampagne vergeben darf (`vergebbar`) — eine Figur
+   * einer anderen Runde bleibt, wo sie ist, auch wenn sie in der Liste fehlt.
+   */
+  app.put<{ Params: { c: string; u: string }; Body: { actorIds?: unknown } }>(
+    '/api/campaigns/:c/members/:u/actors',
+    async (request, reply) => {
+      const ok = await aendern(request, reply, request.params.u);
+      if (!ok?.ziel) return reply;
+      const c = request.params.c;
+      if (!ok.ziel.roles?.[c]) return nein(reply, 404, 'Nicht in dieser Kampagne.');
+      const roh = request.body?.actorIds;
+      if (!Array.isArray(roh) || roh.some((x) => typeof x !== 'string')) {
+        return nein(reply, 400, 'actorIds: eine Liste von Artikel-Ids.');
+      }
+      const gewollt = new Set(roh as string[]);
+      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      const bisher = ok.ziel.actorIds ?? [];
+      const admin = ok.user.isAdmin;
+      for (const id of gewollt) {
+        if (bisher.includes(id)) continue;
+        if (!alle.has(id)) return nein(reply, 404, `Keine Figur ${id}.`);
+        if (!admin && !vergebbar(alle, id, c)) {
+          return nein(reply, 403, `${entityName(alle.get(id))} gehört einer anderen Kampagne.`);
+        }
+      }
+      /* Weggenommen wird nur, was diese Kampagne vergeben darf — oder was
+         es als Artikel nicht mehr gibt: eine Bindung an nichts ist keine. */
+      const bleibt = bisher.filter(
+        (id) => gewollt.has(id) || (!admin && alle.has(id) && !vergebbar(alle, id, c)),
+      );
+      const neu = [...bleibt, ...[...gewollt].filter((id) => !bisher.includes(id))];
+      await repo.putUser({ ...ok.ziel, actorIds: neu });
+      await repo.appendEvent('member.actors', ok.ziel.id, { campaign: c, actors: neu, by: ok.user.id });
+      return { id: ok.ziel.id, actors: figurenMitNamen(alle, neu) };
+    },
+  );
+
+  // ---------------------------------------------------- Konten (Verwaltung)
+
+  /** Alle Konten der Installation — nur für die Verwaltung. Der Hash bleibt
+   *  hier, wie überall. */
+  app.get('/api/users', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user?.isAdmin) return nein(reply, 403, 'Die Kontoliste sieht die Verwaltung.');
+    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const da = await kampagnen();
+    return (await repo.listUsers()).map((u) => ({
+      id: u.id,
+      name: u.name,
+      isAdmin: u.isAdmin,
+      disabled: !!u.disabledAt,
+      self: u.id === user.id,
+      actors: figurenMitNamen(alle, u.actorIds ?? []),
+      roles: Object.entries(u.roles ?? {}).map(([id, role]) => ({
+        campaign: id,
+        name: da.has(id) ? entityName(da.get(id)) : id,
+        role,
+      })),
+    }));
+  });
+
+  // ---------------------------------------------------------- Einladungen
+
+  /**
+   * Einladungen sehen: die Verwaltung alle, Leitung und Mitleitung die ihrer
+   * Kampagnen. Der Code steht **genau einmal** in der Antwort auf das
+   * Anlegen: gespeichert ist nur sein Hash.
+   */
+  app.get('/api/invites', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return nein(reply, 401, 'Nicht angemeldet.');
+    const leitet = Object.values(user.roles ?? {}).some((r) => r === 'gm' || r === 'co-gm');
+    if (!user.isAdmin && !leitet) return nein(reply, 403, 'Nicht für dich.');
+    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    return (await repo.listInvites())
+      .filter((i) => user.isAdmin || (i.campaignId && rechtAn(user, i.campaignId)))
+      .map((i) => ({
+        label: i.label ?? null,
+        isAdmin: i.isAdmin,
+        actorId: i.actorId ?? null,
+        actorName: i.actorId && alle.has(i.actorId) ? entityName(alle.get(i.actorId)) : null,
+        campaignId: i.campaignId ?? null,
+        role: i.role ?? null,
+        usesLeft: i.usesLeft ?? null,
+        expiresAt: i.expiresAt ?? null,
+        createdAt: i.createdAt ?? null,
+        may: user.isAdmin ? 'manage' : rechtAn(user, i.campaignId ?? ''),
+        /* Der Hash geht mit, damit sich eine Einladung zurücknehmen lässt.
+           Aus ihm kommt man nicht auf den Code zurück. */
+        handle: i.codeHash,
+      }));
+  });
+
+  app.post<{
+    Body: {
+      label?: string;
+      admin?: boolean;
+      actorId?: string;
+      uses?: number;
+      days?: number;
+      campaignId?: string;
+      role?: string;
+    };
+  }>('/api/invites', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return nein(reply, 401, 'Nicht angemeldet.');
+    const b = request.body ?? {};
+    const c = b.campaignId?.trim() || undefined;
+    /* Ohne Kampagne lädt nur die Verwaltung ein — eine Einladung ins
+       Nirgendwo ist eine in die Installation. Die Leitung lädt in **ihre**
+       Kampagne ein, und Verwaltungskonten vergibt sie nie. */
+    if (!user.isAdmin) {
+      if (!c || rechtAn(user, c) !== 'manage') return nein(reply, 403, 'Nicht für dich.');
+      if (b.admin === true) return nein(reply, 403, 'Verwaltungskonten lädt die Verwaltung ein.');
+    }
+    const role = b.role ?? (c ? 'player' : undefined);
+    if (role !== undefined && !isTableRole(role)) {
+      return nein(reply, 400, 'Rolle: gm, co-gm, player oder spectator.');
+    }
+    if (role && !c) return nein(reply, 400, 'Eine Rolle gilt in einer Kampagne.');
+    const actorId = b.actorId?.trim() || undefined;
+    if (actorId && !user.isAdmin) {
+      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      if (!c || !vergebbar(alle, actorId, c)) {
+        return nein(reply, 403, 'Diese Figur vergibt diese Kampagne nicht.');
+      }
+    }
+    const code = newInviteCode();
+    const uses = b.uses == null ? undefined : Math.max(1, Math.floor(Number(b.uses) || 1));
+    const days = b.days == null ? undefined : Math.max(1, Math.floor(Number(b.days) || 1));
+    const invite: Invite = {
+      codeHash: hashToken(code),
+      label: b.label?.trim() || undefined,
+      isAdmin: b.admin === true,
+      actorId,
+      usesLeft: uses,
+      expiresAt: days ? new Date(Date.now() + days * 86400000).toISOString() : undefined,
+      createdBy: user.id,
+      campaignId: c,
+      role,
+    };
+    await repo.putInvite(invite);
+    await repo.appendEvent('invite.created', user.id, { label: invite.label ?? null, campaign: c ?? null });
+    /* Einmal und nie wieder. */
+    return reply.code(201).send({ code, handle: invite.codeHash });
+  });
+
+  app.delete<{ Params: { handle: string } }>('/api/invites/:handle', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return nein(reply, 401, 'Nicht angemeldet.');
+    const invite = await repo.getInvite(request.params.handle);
+    /* Eine fremde Einladung beantwortet dieselbe Frage wie eine, die es nicht
+       gibt — dass da eine ist, geht die Leitung einer anderen Runde nichts
+       an. */
+    const recht = user.isAdmin ? 'manage' : invite?.campaignId ? rechtAn(user, invite.campaignId) : null;
+    if (!invite || !recht) return nein(reply, 404, 'Nicht gefunden');
+    if (recht !== 'manage') return nein(reply, 403, 'Einladungen nimmt die Leitung zurück.');
+    await repo.dropInvite(invite.codeHash);
+    await repo.appendEvent('invite.dropped', user.id, { label: invite.label ?? null });
+    return { ok: true };
+  });
+}
+
+/** Die Leitung zuerst, dann wer mitspielt, dann wer zuschaut. */
+const ORDNUNG: Record<TableRole, number> = { gm: 0, 'co-gm': 1, player: 2, spectator: 3 };
