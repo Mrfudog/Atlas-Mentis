@@ -25,3 +25,4 @@ export * from './choices.js';
 export * from './board.js';
 export * from './checks.js';
 export * from './bulk.js';
+export * from './reading.js';

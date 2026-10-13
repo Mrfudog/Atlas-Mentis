@@ -664,6 +664,7 @@ Vorlage. Ein eigener Typ dafür wäre derselbe Typ ein zweites Mal.
 | E3 | **Wem ein Artikel gehört, sagt der Stapel** (`campaignsOf`): eine Ebene, die genau eine Kampagne aufschaltet, gehört ihr; eine, die mehrere aufschalten, ist gemeinsam; ohne Ebene ist er niemandem zuzuordnen. `removes` zählt nicht. |
 | E4 | **Instanzen und Varianten** erben die Ebene nicht (V3). |
 | E5 | **Ein Verweis aufs Original führt zur Fassung, die gilt** (E-018, T-082): der Server liefert beim Öffnen, in den Namen der Kantenziele und in den Treffern von `[[…]]` die Fassung, die in der laufenden Kampagne das Original ersetzt (`resolveArticle`), und die Rückbezüge einer Fassung sammeln auch, was aufs Original zeigt (`replacedIds`) — die Szenen eines angepassten Kapitels bleiben seine. Die Seite zieht die Adresse nach. Das Original selbst sieht in dieser Kampagne niemand; es bleibt für jede andere. |
+| E6 | **Eine Ebene liest sich als Buch** (T-091, REQ-247, `readingOrder` in `packages/model/src/reading.ts`): ihr Text sind die Artikel der Ebene von einer Leseart (`READING_TYPES`: heute `Story` und `Scene`; die Art für Buchtext entscheidet E-024), verbunden über `partOf`; Geschwister stehen nach ihrer Nummer (`Identity.id`), gelesen wird Tiefe zuerst. Gezeigt wird **ein Stück am Stück**: hat die Ebene genau eine Wurzel (das Abenteuer), ist sie die Titelseite und jedes Kapitel darunter ein Stück, sonst jede Wurzel. Karten (`mapOf`) und Begegnungen (`partOf`) stehen an ihrem Abschnitt. Gesiebt wird wie überall (E2, Sichtbarkeit, Wissen); eine Fassung steht an der Stelle ihres Originals (E5), der Baum bleibt der des Originals. Die Seite eines Abschnitts ist `Source.page`, bei `Story`/`Scene` (ohne `Source`) die Notiz `source` des Importers — darüber springt „XGE p. 12" an die Stelle (`nodeAtPage`). |
 
 Offen und benannt: der Server kennt heute nur E3; E2 läuft im Prototyp
 (siehe [Durchgang.md](Durchgang.md), Abgleich). Mit einer zweiten Kampagne
@@ -949,6 +950,7 @@ verschweigen.
 | welche Figuren ein Konto führt | `app_user_actor` | nein |
 | wer einen Artikel angelegt hat (D72) | `app_user_article` | nein |
 | der letzte fertige Stand eines zurückgefallenen Artikels (D74) | `entity_ready` | nein |
+| wo ein Konto in einem Buch stehen blieb (T-091) | `reading_position` (Konto, Ebene, Abschnitt) | nein |
 | Rolle je Kampagne | `campaign_member`; Prototyp: Sammlung `members` | nein |
 | Verwaltung der Installation | `app_user.is_admin` | nein |
 | das Register | Tabellen `interface_def`, `relation_def`, `view_def`, `unit_def`, `var_def`, `enum_def` (Aufzählungen), `setting_def` (Einstellungen, seit Migration 019); Prototyp: Sammlung `registry` | ja — allein weiterreichbar (`register-datei.mjs`) |
