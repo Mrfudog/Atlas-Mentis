@@ -306,6 +306,12 @@ Einen Wähler „welche Ansicht hätten Sie gern" gibt es nicht. Ein Verweis ist
 ein Verweis, und eine Artikelseite ist eine Artikelseite — wer das jedes Mal
 sagen muss, sagt es irgendwann falsch.
 
+Nur auf dem Board wählt die **Kachel**: dort liegen Karten nebeneinander,
+und wie gross eine davon ist, ist eine Frage an sie. Sagt weder die
+Platzierung noch das Board etwas, entscheidet die Grösse — flach ist eine
+Zeile (Overview), höher eine Karte (Quick). Wer die Kachel grösser zieht,
+hat damit schon gewählt.
+
 **Es gibt keine Spieleransicht.** Es gab einmal eine, und sie war die zweite
 Stelle, an der stand, was ein Spieler nicht sehen darf. Zurückgehalten wird
 am Server (`redactEntity`): was bei einem Spieler ankommt, darf er sehen, und

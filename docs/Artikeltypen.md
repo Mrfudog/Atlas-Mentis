@@ -256,7 +256,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event — `partOf` → „contains"
+- Place | Story | Quest | Event | Board — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -554,7 +554,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Creature — `livesIn` → „residents"
-- Place | Story | Quest | Event — `partOf` → „contains"
+- Place | Story | Quest | Event | Board — `partOf` → „contains"
 - Faction — `controls` → „controlled by"
 - Quest — `questAbout` → „concerned by"
 - Story — `happensAt` → „scenes here"
@@ -782,7 +782,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event — `partOf` → „contains"
+- Place | Story | Quest | Event | Board — `partOf` → „contains"
 - Party — `partyOf` → „parties"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
@@ -885,7 +885,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event — `partOf` → „contains"
+- Place | Story | Quest | Event | Board — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -938,7 +938,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event — `partOf` → „contains"
+- Place | Story | Quest | Event | Board — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -990,7 +990,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event — `partOf` → „contains"
+- Place | Story | Quest | Event | Board — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -2079,6 +2079,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `partOf` → Place | Story | Event — „part of"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `placed` → * — „on the board"

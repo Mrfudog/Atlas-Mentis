@@ -17,6 +17,10 @@
  *   kein Verweisziel und steht in keiner Liste.
  * - **Woher:** die Kanten `inLayer` und die Karte `Source` — das Kompendium
  *   filtert nach Ebene und zeigt die Quelle in der Zeile.
+ * - **Wo hinein:** die Kante `partOf`. Die Boards hängen über sie an ihrem
+ *   Geschichtsartikel (REQ-205), und ihr Brotkrumenpfad „Kampagne › Kapitel
+ *   › Sitzung" ist dieselbe Kette — ohne sie müsste die Liste der Boards
+ *   jedes Board und jede Sprosse darüber einzeln öffnen.
  * - **Auswahlen, die eine Art nennen (M6):** die Felder, nach denen ein
  *   `enumWhere` filtert. Sie werden aus dem Register gelesen und nicht hier
  *   aufgezählt — ein Filter, der morgen dazukommt, bringt sein Feld mit.
@@ -26,12 +30,13 @@
  */
 import { INSTANCE_RELATION } from './instance.js';
 import { LAYER_RELATION } from './visibility.js';
+import { PART_OF_RELATION } from './timeline.js';
 import type { Entity, Registry } from './types.js';
 
 /** Diese Karten gehen ganz mit; sie sind klein und tragen, wonach gesucht wird. */
 const GANZE_KARTEN = ['Identity', 'Tags', 'Status', 'Source'];
 /** Diese Kanten gehen mit; alle anderen fragt erst der geöffnete Artikel. */
-const KANTEN = [INSTANCE_RELATION, LAYER_RELATION];
+const KANTEN = [INSTANCE_RELATION, LAYER_RELATION, PART_OF_RELATION];
 
 /** Die Felder, nach denen irgendeine Auswahl filtert (`enumWhere`). */
 export function summaryFields(registry: Pick<Registry, 'interfaces'>): Set<string> {
