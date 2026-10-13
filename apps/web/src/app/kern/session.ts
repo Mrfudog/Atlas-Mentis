@@ -25,6 +25,13 @@ export class Session {
   readonly user = computed(() => this._me()?.user ?? null);
   readonly setupHint = computed(() => this._me()?.setup ?? null);
   readonly isAdmin = computed(() => this.user()?.isAdmin === true);
+  /** Leitung (`gm`/`co-gm` irgendwo) oder Verwaltung — wem die Werkbank etwas zeigt.
+   *  Anzeige, keine Kontrolle: der Server prüft dasselbe (`isLeitung`). */
+  readonly leitung = computed(() => {
+    const u = this.user();
+    if (!u) return false;
+    return u.isAdmin || Object.values(u.roles ?? {}).some((r) => r === 'gm' || r === 'co-gm');
+  });
   readonly angemeldet = computed(() => this.user() !== null);
 
   /**

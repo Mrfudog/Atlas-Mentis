@@ -15,6 +15,10 @@ import { BEREICHE } from './kern/bereiche';
  * Eintrag, der ins Leere führt, ist schlechter als keiner. Sie kommen mit
  * ihren Seiten.
  *
+ * Die **Werkbank** (W9) steht nur für Leitung und Verwaltung da — für
+ * alle anderen wäre sie ein Eintrag, der „nicht für dich" sagt. Der eigene
+ * Name führt zum Konto (API-Tokens).
+ *
  * Die Kopfleiste bleibt weg, solange die Sitzung noch nicht gefragt ist.
  * Ein Balken, der erst „nicht angemeldet" zeigt und einen Wimpernschlag
  * später den Namen, sieht nach einem Fehler aus, auch wenn keiner vorliegt.
@@ -36,13 +40,16 @@ import { BEREICHE } from './kern/bereiche';
           <a routerLink="/compendium" routerLinkActive="an" ariaCurrentWhenActive="page"
             >Compendium</a
           >
+          @if (session.leitung()) {
+            <a routerLink="/werkbank" routerLinkActive="an" ariaCurrentWhenActive="page">Workbench</a>
+          }
         </nav>
-        <span class="wer">
+        <a class="wer" routerLink="/account" title="Account and API tokens">
           {{ session.user()?.name }}
           @if (session.isAdmin()) {
             <span class="rolle">admin</span>
           }
-        </span>
+        </a>
         <button type="button" (click)="abmelden()">Sign out</button>
       </header>
     }
@@ -89,6 +96,10 @@ import { BEREICHE } from './kern/bereiche';
     .wer {
       margin-left: auto;
       color: var(--dim);
+      text-decoration: none;
+    }
+    .wer:hover {
+      color: var(--accent);
     }
     .rolle {
       margin-left: 0.35rem;

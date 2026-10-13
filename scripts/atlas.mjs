@@ -115,7 +115,7 @@ switch (cmd) {
     for (const c of r.checks) {
       console.log(`${String(c.count).padStart(6)}  ${c.label}  [${c.key}]`);
       for (const h of c.hits) {
-        console.log(`        ${h.name} (${h.type}, ${h.id}) — ${h.reason}${h.group ? `\n          Gruppe: ${h.group.join(' ')}` : ''}`);
+        console.log(`        ${h.name} (${h.type}, ${h.id}) — ${h.reason}${h.group ? `\n          Gruppe: ${h.group.slice(0, 12).join(' ')}${h.group.length > 12 ? ` … (+${h.group.length - 12})` : ''}` : ''}`);
       }
     }
     if (!rest[0]) console.log('\nTreffer einer Prüfung: node scripts/atlas.mjs checks <schlüssel> --limit 20');

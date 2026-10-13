@@ -73,7 +73,10 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   Kopfleiste mit den Bereichen, Kompendium und Bereiche (Filter in der
   Seitenleiste, aus der Kurzfassung `?as=summary`) und der Artikel im
   Buchstil (geholt beim Öffnen, Ansicht `full`) stehen, dazu die Boards
-  (`boards/`: je Geschichtsartikel eines, Karten als `placed`-Kanten);
+  (`boards/`: je Geschichtsartikel eines, Karten als `placed`-Kanten),
+  die **Werkbank** für Leitung und Verwaltung (`werkbank/`: Prüfungen aus
+  `checks.ts`, Massenänderungen aus `bulk.ts` mit Vorschau und
+  Rückgängig, W9) und das Konto mit seinen API-Tokens (`konto/`);
   Karte, Initiative und Spiel noch nicht;
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
   Vorlage je Artikelart. **Zurückgehalten wird am Server** (`redactEntity`) —

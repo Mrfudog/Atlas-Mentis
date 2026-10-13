@@ -62,6 +62,22 @@ export const routes: Routes = [
     loadComponent: () => import('./boards/board').then((m) => m.Board),
     title: 'Board · Atlas Mentis',
   },
+  /* Werkbank (W9): Prüfungen und Massenänderungen. Die Wache lässt jeden
+     Angemeldeten hinein; was er sieht, entscheidet der Server — die Seite
+     sagt nur, wem sie etwas zeigt. */
+  {
+    path: 'werkbank',
+    canActivate: [wache],
+    loadComponent: () => import('./werkbank/werkbank').then((m) => m.Werkbank),
+    title: 'Workbench · Atlas Mentis',
+  },
+  /* Das eigene Konto mit seinen API-Tokens. */
+  {
+    path: 'account',
+    canActivate: [wache],
+    loadComponent: () => import('./konto/konto').then((m) => m.Konto),
+    title: 'Account · Atlas Mentis',
+  },
   {
     path: 'artikel/:id',
     canActivate: [wache],
