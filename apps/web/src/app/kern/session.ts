@@ -33,6 +33,9 @@ export class Session {
     return u.isAdmin || Object.values(u.roles ?? {}).some((r) => r === 'gm' || r === 'co-gm');
   });
   readonly angemeldet = computed(() => this.user() !== null);
+  /** **Die Sicht eines Mitglieds** (REQ-241): wer gesehen wird und wer
+   *  schaut, vom Server. `null`: man sieht als man selbst. */
+  readonly viewAs = computed(() => this._me()?.viewAs ?? null);
   /** Darf das Register ändern — Anzeige, keine Kontrolle; der Server prüft. */
   readonly darfRegister = computed(() => this._me()?.registry === true);
   /** Testumgebung: Daten können beim Ausrollen oder Einlesen ersetzt werden (T-070). */
@@ -101,6 +104,9 @@ export class Session {
     this.laeuft ??= this.api
       .me()
       .then((me) => {
+        /* Gilt die Sicht nicht mehr (Rolle weg, Kampagne gewechselt),
+           antwortet der Server als man selbst — und der Tab vergisst sie. */
+        if (me.viewAsRefused) this.api.setViewAs(null);
         this._me.set(me);
       })
       .catch(() => {
@@ -150,7 +156,18 @@ export class Session {
    * die Sitzung am Server weiterlebt, ist es auch. Also wird lokal geleert
    * **und** hingeschrieben, dass es vielleicht nicht angekommen ist.
    */
+  /**
+   * Die Sicht eines Mitglieds einnehmen oder verlassen (REQ-241). Danach
+   * fragt die Sitzung neu: erst der Server sagt, ob es gilt.
+   */
+  async viewAsUser(id: string | null): Promise<void> {
+    this.api.setViewAs(id);
+    await this.load(true);
+  }
+
   async logout(): Promise<string | null> {
+    /* Die Sicht hält nicht über das Abmelden (REQ-241). */
+    this.api.setViewAs(null);
     let warnung: string | null = null;
     try {
       await this.api.logout();

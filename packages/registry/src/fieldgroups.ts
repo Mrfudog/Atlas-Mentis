@@ -2103,6 +2103,27 @@ export const fieldGroups = {
    * mitbringt. Die Kampagne schaltet es auf wie ein Buch und passt es über
    * `overrides` in ihrer eigenen Ebene an (E-018) — das Original bleibt.
    */
+  /**
+   * **Wer die Vergleichsebenen einer Kampagne sieht** (T-092, E-021 d).
+   * Vergleichsebenen sind nicht im Spiel; ihre Fassungen stehen auf Wunsch
+   * an den Feldern. Vorgabe: nur die Leitung — ein Spieler, der die
+   * 2024-Fassung eines Zaubers sieht, den die Runde nach 2014 spielt, sieht
+   * etwas, das am Tisch nicht gilt. Die Leitung kann es freigeben.
+   */
+  CampaignInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        compareFor: {
+          type: 'string',
+          title: 'Compare layers visible to',
+          enum: ['gm', 'players'],
+          default: 'gm',
+        },
+      },
+    },
+  },
+
   LayerInfo: {
     schema: {
       type: 'object',

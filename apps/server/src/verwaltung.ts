@@ -28,6 +28,7 @@ import {
   activeStack,
   campaignsActivating,
   campaignsOf,
+  currentCampaign,
   inStack,
   isOverridden,
   READING_TYPES,
@@ -37,11 +38,13 @@ import {
   nextId,
   validateEntity,
   withStack,
+  withCompare,
+  compareLayers,
   type Entity,
   type TableRole,
 } from '@nw/model';
 import type { Repository, StoredUser } from './repo.js';
-import { foldName, hashToken, newInviteCode, type Invite, type User } from './auth.js';
+import { foldName, hashToken, mayViewAs, newInviteCode, type Invite, type User } from './auth.js';
 
 /** Was ein Konto an einer Kampagne darf: ändern, nur sehen, oder nichts. */
 export type Recht = 'manage' | 'see' | null;
@@ -224,6 +227,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       }
     }
     const stapel = activeStack(alle, kampagne).map((x) => x.layer.id);
+    const vergleich = compareLayers(alle, kampagne).map((x) => x.id);
     const zeile = (e: Entity) => {
       const andere = campaignsActivating(alle, e.id)
         .filter((k) => k !== c)
@@ -236,6 +240,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
         articles: zahl.get(e.id) ?? 0,
         readable: text.has(e.id),
         active: stapel.includes(e.id),
+        compare: vergleich.includes(e.id),
         alsoIn: andere,
         canActivate: mayActivate(user, alle, e.id, c),
       };
@@ -245,7 +250,14 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       .filter((e) => !stapel.includes(e.id))
       .map(zeile)
       .sort((a, b) => a.name.localeCompare(b.name, 'de'));
-    return { campaign: { id: c, name: entityName(kampagne) }, may: recht, layers: [...an, ...aus] };
+    const compareFor = (kampagne.components?.[CAMPAIGN_TYPE] as { compareFor?: unknown } | undefined)?.compareFor;
+    return {
+      campaign: { id: c, name: entityName(kampagne) },
+      may: recht,
+      layers: [...an, ...aus],
+      /* Wer die Vergleichsebenen sieht (T-092): `gm` (Vorgabe) oder `players`. */
+      compareFor: compareFor === 'players' ? 'players' : 'gm',
+    };
   });
 
   /** Die Kanten `activates` schreiben — der ganze Stapel, von unten nach
@@ -312,6 +324,56 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
   );
 
   /**
+   * **Die Vergleichsebenen schreiben** (T-092, E-021 d): `{ layers, players? }`
+   * — die Ebenen, deren Fassungen auf Wunsch an den Feldern stehen, ohne
+   * im Spiel zu sein (`activates` mit `mode: 'compare'`). `players` sagt,
+   * ob auch die Spielenden sie sehen (`Campaign.compareFor`); Vorgabe ist
+   * nur die Leitung. Dieselben Rechte wie der Stapel: die Leitung ändert,
+   * ein Mitleiter sieht; eine Ebene, die einer anderen Kampagne gehört,
+   * nimmt nur die Verwaltung — ihr Inhalt ist die Arbeit einer anderen Runde.
+   */
+  app.put<{ Params: { c: string }; Body: { layers?: unknown; players?: unknown } }>(
+    '/api/campaigns/:c/compare',
+    async (request, reply) => {
+      const user = await viewerOf(request);
+      const c = request.params.c;
+      const recht = rechtAn(user, c);
+      if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
+      if (recht !== 'manage') return nein(reply, 403, 'Die Vergleichsebenen wählt die Leitung; ein Mitleiter sieht sie nur.');
+      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      const kampagne = alle.get(c);
+      if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
+        return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+      }
+      const l = request.body?.layers;
+      if (l !== undefined && (!Array.isArray(l) || !l.every((x) => typeof x === 'string'))) {
+        return nein(reply, 400, 'layers: eine Liste von Ebenen-Ids.');
+      }
+      const ids = (l as string[] | undefined) ?? compareLayers(alle, kampagne).map((x) => x.id);
+      const vorher = new Set(compareLayers(alle, kampagne).map((x) => x.id));
+      for (const id of ids) {
+        if ((alle.get(id)?.interfaces ?? [])[0] !== LAYER_COMPONENT) return nein(reply, 400, `Keine Ebene: ${id}`);
+        if (!vorher.has(id) && !mayActivate(user, alle, id, c)) {
+          return nein(reply, 403, `„${entityName(alle.get(id))}" gehört einer anderen Kampagne; vergleichen kann damit die Verwaltung.`);
+        }
+      }
+      let geschrieben = withCompare(kampagne, ids);
+      const players = request.body?.players;
+      if (players !== undefined) {
+        if (typeof players !== 'boolean') return nein(reply, 400, 'players: ja oder nein.');
+        const karte = { ...((geschrieben.components?.[CAMPAIGN_TYPE] ?? {}) as Record<string, unknown>) };
+        karte['compareFor'] = players ? 'players' : 'gm';
+        geschrieben = { ...geschrieben, components: { ...geschrieben.components, [CAMPAIGN_TYPE]: karte } };
+      }
+      const issues = validateEntity(await repo.getRegistry(), geschrieben, {});
+      if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+      await repo.putEntity(geschrieben);
+      await repo.appendEvent('campaign.compare', c, { layers: ids, ...(players !== undefined ? { players } : {}), by: user.id });
+      return { ok: true, layers: compareLayers(new Map([...alle, [c, geschrieben]]), geschrieben).map((x) => x.id) };
+    },
+  );
+
+  /**
    * **Die Geschichte der Kampagne** (T-082, REQ-240): ihre eigenen
    * Geschichtsartikel (`partOf` die Kampagne) und, je aufgeschaltetes
    * Abenteuer, dessen Kapitel — in der Fassung, die in **dieser** Kampagne
@@ -370,9 +432,14 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
     const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
     const kampagne = alle.get(c);
+    /* „View as" nur in der laufenden Kampagne (REQ-241): gerechnet wird mit
+       ihrem Stapel, und eine andere zu zeigen hiesse, etwas anderes zu
+       zeigen, als der Spieler sieht. Der Server sagt es je Mitglied. */
+    const laufend = currentCampaign(alle, (await repo.getRegistry()).settings ?? null)?.id ?? null;
     const members = (await repo.listUsers())
       .filter((u) => isTableRole(u.roles?.[c]))
       .map((u) => ({
+        viewAs: laufend === c && u.id !== user.id && mayViewAs(user, u, laufend),
         id: u.id,
         name: u.name,
         role: u.roles[c] as TableRole,

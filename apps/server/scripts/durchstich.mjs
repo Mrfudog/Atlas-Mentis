@@ -205,6 +205,29 @@ try {
     `${r3.status} ${JSON.stringify(wieder).slice(0, 300)}`,
   );
 
+  /* REQ-192: zwei Geräte schreiben gleichzeitig gegen dieselbe Revision.
+     Genau eines kommt durch; das andere bekommt 409 und den neuen Stand.
+     Die Sperre (`for update`) gibt es nur in Postgres. */
+  {
+    const pc = await (await get(admin, '/api/entities/pc_probe')).json();
+    delete pc.refs;
+    const zwei = await Promise.all(
+      ['Probefigur A', 'Probefigur B'].map((n) =>
+        put(admin, { ...pc, components: { ...pc.components, Identity: { ...pc.components.Identity, aliases: [n] } } }),
+      ),
+    );
+    const codes = zwei.map((r) => r.status).sort();
+    const abgewiesen = zwei.find((r) => r.status === 409);
+    const body = abgewiesen ? await abgewiesen.json() : null;
+    pruefe(
+      'gleichzeitig gegen dieselbe Revision: eines schreibt, eines bekommt 409',
+      codes.join() === '200,409' && body?.revision === pc.revision + 1 && body?.current?.id === 'pc_probe',
+      `${codes.join()} ${JSON.stringify(body).slice(0, 200)}`,
+    );
+    const blind = await put(admin, { ...pc, revision: undefined });
+    pruefe('ohne Revision wird nichts überschrieben', blind.status === 409, String(blind.status));
+  }
+
   /* Das Register speichern, während Artikel darauf zeigen — scheiterte
      einmal an einem Fremdschlüssel, den nur Postgres kennt. */
   const reg = await (await get(admin, '/api/registry')).json();
@@ -686,8 +709,8 @@ try {
   await loeschen('');
 
   /* Zurück auf demselben Weg: der Ladebefehl gegen Postgres, dann noch
-     einmal ausgeführt — derselbe Bestand. `createdAt` und `updatedAt` setzt
-     die Ablage beim Schreiben. */
+     einmal ausgeführt — derselbe Bestand. `createdAt`, `updatedAt` und
+     `revision` setzt die Ablage beim Schreiben. */
   const datei1 = join(tmpdir(), `durchstich-ausfuhr-${process.pid}.json`);
   writeFileSync(datei1, text);
   const imp = spawnSync(process.execPath, [join(DIST, 'import.js'), datei1], { env: process.env, encoding: 'utf8' });
@@ -695,7 +718,7 @@ try {
   const gleich = (l) =>
     JSON.stringify(
       (l ?? [])
-        .map(({ updatedAt: _t, createdAt: _c, ...e }) => ({ ...e, relations: [...(e.relations ?? [])].sort((a, b) => a.id.localeCompare(b.id)) }))
+        .map(({ updatedAt: _t, createdAt: _c, revision: _r, ...e }) => ({ ...e, relations: [...(e.relations ?? [])].sort((a, b) => a.id.localeCompare(b.id)) }))
         .sort((a, b) => a.id.localeCompare(b.id)),
       (_k, v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v),
     );

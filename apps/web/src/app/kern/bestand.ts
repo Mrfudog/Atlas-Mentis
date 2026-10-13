@@ -38,6 +38,9 @@ export class Bestand {
   private readonly _anpassbar = signal<ReadonlySet<string>>(new Set());
   private readonly _fertig = signal<ReadonlyMap<string, string>>(new Map());
   private readonly _lesen = signal<ReadonlyMap<string, LeseZiel>>(new Map());
+  /** Artikel aus einer Vergleichsebene (T-092): nicht im Spiel, auf Wunsch sichtbar. */
+  private readonly _vergleich = signal<ReadonlySet<string>>(new Set());
+  readonly vergleich = this._vergleich.asReadonly();
 
   readonly registry = this._registry.asReadonly();
   readonly fehler = this._fehler.asReadonly();
@@ -164,6 +167,13 @@ export class Bestand {
         this._fertig.update((m) => {
           const n = new Map(m);
           if (refs?.ready) n.set(id, refs.ready.at);
+          else n.delete(id);
+          return n;
+        });
+        this._vergleich.update((v) => {
+          if (!!refs?.compare === v.has(id)) return v;
+          const n = new Set(v);
+          if (refs?.compare) n.add(id);
           else n.delete(id);
           return n;
         });

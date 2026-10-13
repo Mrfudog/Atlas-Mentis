@@ -184,6 +184,9 @@ export function campaignsOf(
   for (const e of entities.values()) {
     if ((e.interfaces ?? [])[0] !== CAMPAIGN_TYPE) continue;
     for (const r of e.relations ?? []) {
+      /* Ein Vergleich schaltet nicht auf (T-092): wer eine Ebene nur zum
+         Vergleichen nennt, macht sie nicht zu seiner oder zu einer gemeinsamen. */
+      if ((r.props as { mode?: unknown } | undefined)?.mode === 'compare') continue;
       if (r.type === ACTIVATES_RELATION && ebenen.has(r.to)) out.add(e.id);
     }
   }

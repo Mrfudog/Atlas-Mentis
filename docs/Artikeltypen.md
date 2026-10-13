@@ -749,6 +749,10 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 `Campaign` · erbt von `Story` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud` ← `Notes`
 
+**Eigene Felder**
+
+- `compareFor` *gm | players*
+
 **Geerbte Felder**
 
 - *`Story`* — `kind` *string*, `played` *string*, `summary` *long*

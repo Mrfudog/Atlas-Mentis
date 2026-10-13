@@ -34,6 +34,7 @@ import {
   primaryInterface,
   tagsOf,
   typeChain,
+  versionGroups,
 } from '@nw/model';
 import type { Entity, PropertySchema, Registry } from '@nw/model';
 
@@ -67,6 +68,11 @@ interface IndexZeile {
   tags: string[];
   /** Die Kanten des Artikels (geteilt, nicht kopiert) — für `rel=`. */
   relations: NonNullable<Entity['relations']>;
+  /** Die Gruppe seiner Fassungen (T-092), wenn er welche hat. */
+  fassung?: string;
+  /** Der Rang der obersten aufgeschalteten Ebene, die ihn bringt — die
+   *  Fassung mit dem höchsten steht als Kopfzeile. */
+  rang: number;
 }
 
 export interface ListIndex {
@@ -83,7 +89,14 @@ export interface ListIndex {
  * `sieve` gegangen: was hier liegt, darf dieser Betrachter sehen, mit den
  * Feldern, die er sehen darf, und dem Decknamen statt des Namens.
  */
-export function buildListIndex(registry: Registry, visible: Entity[]): ListIndex {
+export function buildListIndex(
+  registry: Registry,
+  visible: Entity[],
+  /** Der Rang der obersten Spielebene je Artikel (`playStack().rank`). */
+  rank: (e: Entity) => number = () => 0,
+): ListIndex {
+  /* Fassungen derselben Sache (T-092): einmal über das Gesiebte. */
+  const fassungen = versionGroups(visible);
   const names = new Map<string, string>();
   for (const e of visible) names.set(e.id, entityName(e));
 
@@ -162,6 +175,8 @@ export function buildListIndex(registry: Registry, visible: Entity[]): ListIndex
       cols,
       tags: tagsOf(e),
       relations: e.relations ?? [],
+      ...(fassungen.has(e.id) ? { fassung: fassungen.get(e.id)! } : {}),
+      rang: rank(e),
     });
   }
   rows.sort((a, b) => (a.sortName < b.sortName ? -1 : a.sortName > b.sortName ? 1 : a.id < b.id ? -1 : 1));
@@ -216,6 +231,9 @@ export interface ListQuery {
   nolayer?: string[] | undefined;
   /** Teile von Statblöcken einblenden. */
   parts?: boolean | undefined;
+  /** Fassungen derselben Sache als eine Zeile (T-092): die aus der
+   *  obersten Spielebene oben, die anderen unter `versions`. */
+  versions?: boolean | undefined;
   /** Nur diese Artikel (Peg-Ids) — für eine Seite, die Namen und Arten zu
    *  Ids braucht, die sie schon kennt. Teile stehen dann mit da. */
   ids?: string[] | undefined;
@@ -256,6 +274,8 @@ export interface ListResult {
     cols: Record<string, unknown>;
     tags?: string[];
     rels?: Record<string, string[]>;
+    /** Die übrigen Fassungen dieser Sache (T-092, mit `versions=1`). */
+    versions?: { id: string; name: string; layers: string[]; source: string }[];
   }[];
   facets: {
     types: { type: string; label: string; area: string; count: number }[];
@@ -441,6 +461,32 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
     });
   }
 
+  /* **Fassungen als eine Zeile** (T-092, E-021 d): je Gruppe bleibt die
+     Fassung aus der obersten Spielebene stehen, an der Stelle, an der sie
+     in der Sortierung steht; die übrigen hängen an ihr. Gruppiert wird
+     über die Treffer — wer nach „(VGM)" sucht, findet die Fassung als
+     eigene Zeile, wenn die geltende nicht trifft. */
+  const unter = new Map<string, IndexZeile[]>();
+  if (q.versions) {
+    const kopf = new Map<string, IndexZeile>();
+    for (const z of liste) {
+      if (!z.fassung) continue;
+      const k = kopf.get(z.fassung);
+      if (!k || z.rang > k.rang) kopf.set(z.fassung, z);
+    }
+    const gruppiert: IndexZeile[] = [];
+    for (const z of liste) {
+      if (!z.fassung) {
+        gruppiert.push(z);
+        continue;
+      }
+      const k = kopf.get(z.fassung)!;
+      if (k === z) gruppiert.push(z);
+      else (unter.get(k.id) ?? unter.set(k.id, []).get(k.id)!).push(z);
+    }
+    liste = gruppiert;
+  }
+
   const offset = Math.max(0, Math.min(q.offset, Math.max(0, liste.length - 1)));
   const blatt = liste.slice(offset, offset + q.limit);
 
@@ -476,6 +522,16 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
       ...(z.users ? { users: z.users } : {}),
       cols: z.cols,
       ...(z.tags.length ? { tags: z.tags } : {}),
+      ...(unter.has(z.id)
+        ? {
+            versions: unter.get(z.id)!.map((v) => ({
+              id: v.id,
+              name: v.name,
+              layers: v.layers.map((l) => idx.names.get(l) ?? l),
+              source: v.source,
+            })),
+          }
+        : {}),
       ...(q.rel?.length
         ? {
             rels: Object.fromEntries(
@@ -542,6 +598,7 @@ export function parseListQuery(raw: Record<string, unknown>): ListQuery {
     ids: liste(raw['ids']),
     rel: liste(raw['rel']),
     parts: raw['parts'] === '1' || raw['parts'] === 'true',
+    versions: raw['versions'] === '1' || raw['versions'] === 'true',
     sort: typeof raw['sort'] === 'string' && raw['sort'] ? raw['sort'] : undefined,
     offset: Math.max(0, zahl(raw['offset'], 0)),
     /* Höchstens 200 je Blatt: wer mehr will, blättert. */

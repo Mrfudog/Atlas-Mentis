@@ -217,3 +217,39 @@ export function isLeitung(user: User | null): boolean {
   if (user.isAdmin) return true;
   return Object.values(user.roles ?? {}).some((r) => r === 'gm' || r === 'co-gm');
 }
+
+// ------------------------------------------------------------ Spielersicht
+
+/** Der Anfragekopf, mit dem die Leitung die Sicht eines Mitglieds einnimmt
+ *  (REQ-241, E-019 a). Die Oberfläche setzt ihn je Tab. */
+export const VIEW_AS_HEADER = 'x-view-as';
+
+/**
+ * **Wer wessen Sicht einnehmen darf** (REQ-241, E-019 a): die Leitung
+ * (`gm`, `co-gm`) der laufenden Kampagne und die Verwaltung, und nur für
+ * ein Mitglied dieser Kampagne. Ohne laufende Kampagne niemand.
+ *
+ * Die Verwaltung sieht ohnehin alles; die Leitung nicht. Darum darf die
+ * Leitung keine Verwaltung einnehmen — sie sähe sonst mehr als sich selbst.
+ */
+export function mayViewAs(user: User | null, target: User | null, campaignId: string | null): boolean {
+  if (!user || user.disabledAt || !target || target.disabledAt || !campaignId) return false;
+  if (!target.roles?.[campaignId]) return false;
+  if (user.isAdmin) return true;
+  if (target.isAdmin) return false;
+  const rolle = user.roles?.[campaignId];
+  return rolle === 'gm' || rolle === 'co-gm';
+}
+
+/**
+ * **Das Zielkonto, wie die Leitung es sieht** (REQ-241): dieselben
+ * Figuren, dasselbe Eigene, aber nur die Rolle in der laufenden Kampagne.
+ * Leitet das Ziel anderswo, sähe die Leitung über die geteilten Ebenen
+ * sonst, was dort nur dessen Leitung sieht. Die Verwaltung bekommt das
+ * Konto ganz.
+ */
+export function viewedAs(user: User, target: User, campaignId: string): User {
+  if (user.isAdmin) return target;
+  const rolle = target.roles[campaignId];
+  return { ...target, roles: rolle ? { [campaignId]: rolle } : {} };
+}

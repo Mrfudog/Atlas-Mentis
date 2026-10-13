@@ -20,6 +20,29 @@ export interface SessionRow {
   expiresAt: string;
 }
 
+/**
+ * **Die Revision stimmt nicht mehr** (REQ-192): seit dem Lesen hat jemand
+ * anders geschrieben, oder es gibt den Artikel schon, obwohl er neu sein
+ * sollte. Geschrieben ist nichts; `current` ist die Revision, die gilt
+ * (`null`: es gibt ihn nicht mehr).
+ */
+export class RevisionConflict extends Error {
+  constructor(
+    readonly id: string,
+    readonly expected: number | null,
+    readonly current: number | null,
+  ) {
+    super(`Revision von ${id}: erwartet ${expected ?? 'keine'}, steht ${current ?? 'keine'}`);
+  }
+}
+
+/** Wogegen geschrieben wird: eine Revision, oder `null` für „neu". Ohne
+ *  Angabe wird nicht geprüft — das tun Einfuhr, Massenänderung und die
+ *  Folgeschreiben einer Route, die selbst schon geprüft hat. */
+export interface PutOptions {
+  expectRevision?: number | null;
+}
+
 /** Ein Eintrag im Protokoll (`event_log`). */
 export interface StoredEvent {
   id: string;
@@ -60,7 +83,9 @@ export interface Repository {
   /** Wie viele Artikel es gibt — ohne sie alle zu laden. */
   countEntities(): Promise<number>;
   getEntity(id: string): Promise<Entity | undefined>;
-  putEntity(entity: Entity): Promise<Entity>;
+  /** Schreibt und zählt die Revision hoch. Mit `expectRevision` atomar
+   *  geprüft — wirft `RevisionConflict`, ohne etwas zu schreiben. */
+  putEntity(entity: Entity, options?: PutOptions): Promise<Entity>;
   deleteEntity(id: string): Promise<boolean>;
 
   /** REQ-003: append-only change chain. Gibt die Id des Eintrags zurück. */
@@ -111,6 +136,12 @@ export interface Repository {
    *  Lesezeichen wandert nicht mit der Ausfuhr (wie `app_session`). */
   readingPosition(userId: string, layerId: string): Promise<string | undefined>;
   keepReadingPosition(userId: string, layerId: string, entityId: string): Promise<void>;
+  /** **Einstellungen je Konto** (T-092): Schlüssel → Wert, wie die Seite
+   *  sie schreibt. Wie jemand liest, nicht was gilt — darum am Konto und
+   *  in keinem Artikel. */
+  getPrefs(userId: string): Promise<Record<string, unknown>>;
+  /** `null` nimmt die Einstellung weg. */
+  putPref(userId: string, key: string, value: unknown): Promise<void>;
 
   /* Einladungen. Ein Code erlaubt eine Registrierung und sonst nichts; ein
      offener Registrierungsendpunkt wäre ein Loch, und ein Passwort, das die
@@ -193,8 +224,16 @@ export class InMemoryRepository implements Repository {
     return found ? structuredClone(found) : undefined;
   }
 
-  async putEntity(entity: Entity): Promise<Entity> {
-    const stored: Entity = { ...structuredClone(entity), updatedAt: new Date().toISOString() };
+  async putEntity(entity: Entity, options: PutOptions = {}): Promise<Entity> {
+    const vorher = this.entities.get(entity.id)?.revision ?? null;
+    if (options.expectRevision !== undefined && options.expectRevision !== vorher) {
+      throw new RevisionConflict(entity.id, options.expectRevision, vorher);
+    }
+    const stored: Entity = {
+      ...structuredClone(entity),
+      updatedAt: new Date().toISOString(),
+      revision: (vorher ?? 0) + 1,
+    };
     this.entities.set(stored.id, stored);
     this.rev += 1;
     return structuredClone(stored);
@@ -288,6 +327,17 @@ export class InMemoryRepository implements Repository {
   }
   async keepReadingPosition(userId: string, layerId: string, entityId: string): Promise<void> {
     this.lesestand.set(`${userId}|${layerId}`, entityId);
+  }
+  private readonly prefs = new Map<string, Record<string, unknown>>();
+  async getPrefs(userId: string): Promise<Record<string, unknown>> {
+    return structuredClone(this.prefs.get(userId) ?? {});
+  }
+  async putPref(userId: string, key: string, value: unknown): Promise<void> {
+    if (!this.users.has(userId)) return;
+    const p = this.prefs.get(userId) ?? {};
+    if (value === null || value === undefined) delete p[key];
+    else p[key] = structuredClone(value);
+    this.prefs.set(userId, p);
   }
   async usersOfActor(actorId: string): Promise<User[]> {
     return [...this.users.values()]

@@ -10,7 +10,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyCookie from '@fastify/cookie';
 import {
@@ -39,6 +39,14 @@ import {
   replacedIds,
   resolveArticle,
   playStack,
+  compareLayers,
+  activeLayerRanks,
+  layerShort,
+  layersOf,
+  versionsOf,
+  LAYER_RELATION,
+  OVERRIDES_RELATION,
+  VARIANT_RELATION,
   detachInstance,
   registryUsage,
   instancesOf,
@@ -59,6 +67,7 @@ import {
   typeChain,
 } from '@nw/model';
 import type { BulkChange, Entity, Registry } from '@nw/model';
+import { RevisionConflict } from './repo.js';
 import type { ReadyStand, Repository } from './repo.js';
 import type { AtlasEnv } from './config.js';
 import { NO_LAYER, buildListIndex, listProjection, parseListQuery, queryList, type ListIndex } from './liste.js';
@@ -82,6 +91,9 @@ import {
   newSessionToken,
   passwordProblem,
   sessionExpiry,
+  VIEW_AS_HEADER,
+  mayViewAs,
+  viewedAs,
   type ApiToken,
   type TokenScope,
   type User,
@@ -303,7 +315,68 @@ export function buildApp({
     return { user: rest };
   }
   async function viewerOf(request: FastifyRequest): Promise<User | null> {
+    const sicht = await sichtVon(request);
+    if (sicht === 'nein') return null;
+    if (sicht) return sicht.als;
     return (await werIst(request))?.user ?? null;
+  }
+
+  /**
+   * **Die Sicht eines Mitglieds** (REQ-241, E-019 a): steht `X-View-As`
+   * mit einer Konto-Id da und darf der Fragende das (`mayViewAs`), rechnet
+   * jede Route mit diesem Konto — Sichtbarkeit, Wissen, Status, Liste,
+   * Suche, Board. Es ist keine eigene Spieleransicht, sondern dieselbe
+   * Rechnung mit einem anderen Konto; darum steht es hier, an der einen
+   * Stelle, an der jede Route fragt, wer fragt. Geschrieben wird in dieser
+   * Sicht nichts (die Wache).
+   *
+   * `null`: kein Kopf. `'nein'`: ein Kopf, der nicht gilt — dann ist
+   * niemand angemeldet, statt still als man selbst weiterzulesen.
+   */
+  interface Sicht {
+    als: User;
+    von: User;
+    kampagne: string;
+  }
+  const gesehen = new WeakMap<FastifyRequest, Promise<Sicht | 'nein' | null>>();
+  function sichtVon(request: FastifyRequest): Promise<Sicht | 'nein' | null> {
+    let p = gesehen.get(request);
+    if (!p) {
+      p = ermittleSicht(request);
+      gesehen.set(request, p);
+    }
+    return p;
+  }
+  async function ermittleSicht(request: FastifyRequest): Promise<Sicht | 'nein' | null> {
+    const roh = request.headers[VIEW_AS_HEADER];
+    const zielId = String(Array.isArray(roh) ? roh[0] : (roh ?? '')).trim();
+    if (!zielId) return null;
+    const wer = await werIst(request);
+    if (!wer) return 'nein';
+    const gespeichert = await repo.getUser(zielId);
+    const ziel = gespeichert ? (({ passwordHash: _h, ...r }) => r)(gespeichert) : null;
+    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const kampagne = currentCampaign(alle, (await repo.getRegistry()).settings ?? null)?.id ?? null;
+    if (!ziel || !kampagne || !mayViewAs(wer.user, ziel, kampagne)) return 'nein';
+    await merkeBeginn(wer.user, ziel, kampagne);
+    return { als: viewedAs(wer.user, ziel, kampagne), von: wer.user, kampagne };
+  }
+
+  /**
+   * **Wer wann wessen Sicht eingenommen hat** (REQ-241): eine Zeile im
+   * Protokoll (`event_log`, `view_as.start`) je Beginn. Ein Beginn ist die
+   * erste Anfrage mit diesem Ziel, oder die erste nach einer halben Stunde
+   * ohne — eine Zeile je Anfrage wären hundert je Seite, und eine Zeile je
+   * Beginn reicht für die Frage „wer hat bei Mara hineingeschaut?".
+   */
+  const PAUSE_MS = 30 * 60 * 1000;
+  const zuletzt = new Map<string, { ziel: string; at: number }>();
+  async function merkeBeginn(von: User, ziel: User, kampagne: string): Promise<void> {
+    const jetzt = Date.now();
+    const vorher = zuletzt.get(von.id);
+    zuletzt.set(von.id, { ziel: ziel.id, at: jetzt });
+    if (vorher && vorher.ziel === ziel.id && jetzt - vorher.at < PAUSE_MS) return;
+    await repo.appendEvent('view_as.start', von.id, { target: ziel.id, campaign: kampagne });
   }
 
   /** Was ein Spieler schreiben darf: seine Figur und was an ihr hängt, und
@@ -412,8 +485,42 @@ export function buildApp({
 
   app.get('/api/me', async (request) => {
     const wer = await werIst(request);
-    const user = wer?.user ?? null;
     const count = await repo.countUsers();
+    /* **In der Sicht eines Mitglieds** (REQ-241) sagt `/api/me`, wer
+       gesehen wird und wer schaut. Geschrieben wird darin nichts, also
+       bietet die Maske nichts an: kein Schreibbares, kein Anlegen, kein
+       `ready`, kein Register. Gilt der Kopf nicht, sagt es `viewAsRefused`,
+       und die Maske vergisst ihn. */
+    const sicht = await sichtVon(request);
+    if (sicht && sicht !== 'nein') {
+      const actors: { id: string; name: string }[] = [];
+      for (const id of sicht.als.actorIds ?? []) {
+        const e = await repo.getEntity(id);
+        if (e) actors.push({ id, name: entityName(e) });
+      }
+      return {
+        user: sicht.als,
+        actors,
+        writable: [],
+        env,
+        registry: false,
+        create: false,
+        ready: false,
+        character: [],
+        setup: null,
+        invites: (await repo.listInvites()).length > 0,
+        token: wer?.token
+          ? { name: wer.token.name, scope: wer.token.scope, expiresAt: wer.token.expiresAt }
+          : null,
+        viewAs: {
+          id: sicht.als.id,
+          name: sicht.als.name,
+          role: sicht.als.roles?.[sicht.kampagne] ?? null,
+          by: { id: sicht.von.id, name: sicht.von.name },
+        },
+      };
+    }
+    const user = wer?.user ?? null;
     /* **Der Server sagt, was jemand schreiben darf** — die Oberfläche rechnet
        es nicht zum zweiten Mal aus. Eine zweite Rechnung wäre die zweite
        Stelle, an der jemand eine Kante vergisst, und dann zeigt die Maske
@@ -481,6 +588,8 @@ export function buildApp({
       token: wer?.token
         ? { name: wer.token.name, scope: wer.token.scope, expiresAt: wer.token.expiresAt }
         : null,
+      viewAs: null,
+      ...(sicht === 'nein' ? { viewAsRefused: true } : {}),
     };
   });
 
@@ -691,6 +800,27 @@ export function buildApp({
       if (frisch && !schreibt) return; // frischer Server: lesen ja, schreiben nie
       return reply.code(401).send({ error: 'Nicht angemeldet.' });
     }
+    /* **Die Sicht eines Mitglieds ist nur zum Schauen** (REQ-241, E-019 a):
+       was die Leitung ändert, ändert sie als sie selbst. Die eigenen
+       Tokens des Ziels gehen sie nichts an — sie gehören zum Konto, nicht
+       zur Kampagne. Danach rechnet alles mit dem Zielkonto. */
+    const sicht = await sichtVon(request);
+    if (sicht === 'nein') {
+      return reply.code(403).send({ error: 'Diese Sicht darfst du nicht einnehmen.', code: 'view_as_forbidden' });
+    }
+    if (sicht) {
+      if (schreibt) {
+        return reply.code(403).send({ error: 'In dieser Sicht wird nur gelesen.', code: 'view_as_read_only' });
+      }
+      if (url === '/api/tokens' || url.startsWith('/api/tokens/')) {
+        return reply.code(403).send({ error: 'Die Tokens gehören dem Konto.', code: 'view_as_read_only' });
+      }
+      (request as FastifyRequest & { viewer?: User | null }).viewer = sicht.als;
+      if (url.startsWith('/api/registry/usage') && !(await mayEditRegistry(sicht.als))) {
+        return reply.code(403).send({ error: 'Das Register ändert die Spielleitung.' });
+      }
+      return;
+    }
     /* Vor jeder anderen Regel: ein Lesetoken schreibt nirgends — auch
        nicht dort, wo das Konto es dürfte (Register, Verwaltung). */
     if (schreibt && wer?.token && wer.token.scope !== 'write') {
@@ -708,6 +838,8 @@ export function buildApp({
     /* Die eigenen Tokens verwaltet jedes Konto; die Massenänderung prüft
        je Artikel selbst, ob geschrieben werden darf (`mayWrite`). */
     if (url === '/api/tokens' || url.startsWith('/api/tokens/')) return;
+    /* Die eigenen Einstellungen (T-092) schreibt jedes Konto. */
+    if (url.startsWith('/api/me/prefs/')) return;
     if ((url === '/api/bulk' || url.startsWith('/api/bulk/')) && isLeitung(user)) return;
     /* Verwaltung und Einladungen prüfen selbst: das Recht hängt an der
        Kampagne im Pfad (gm ändert, co-gm sieht), nicht am Konto allein. */
@@ -828,6 +960,20 @@ export function buildApp({
    * steht im Modellpaket, weil es für Server und Oberfläche gleichermassen
    * gilt und es nur einmal geben darf.
    */
+  /**
+   * **Wer die Vergleichsebenen sieht** (T-092, E-021 d): die Verwaltung,
+   * die Leitung der laufenden Kampagne (`gm`, `co-gm`) und — wenn die
+   * Kampagne es sagt (`Campaign.compareFor: 'players'`) — wer am Tisch
+   * sitzt. Vorgabe ist nur die Leitung.
+   */
+  function siehtVergleich(user: User | null, kampagne: Entity | null): boolean {
+    if (!kampagne) return false;
+    if (!user) return true;
+    if (rechtAn(user, kampagne.id)) return true;
+    const fuer = (kampagne.components?.[CAMPAIGN_TYPE] as { compareFor?: unknown } | undefined)?.compareFor;
+    return fuer === 'players' && !!user.roles?.[kampagne.id];
+  }
+
   async function sieve(
     request: FastifyRequest,
     entities: Entity[],
@@ -840,7 +986,10 @@ export function buildApp({
      *  weil ihre Ebene nicht aufgeschaltet ist (T-069) — gesiebt, als
      *  wären sie da. Gezählt wird so nur, was dieser Betrachter nach dem
      *  Aufschalten sähe. */
-    stapel: 'inPlay' | 'unactivated' = 'inPlay',
+    /* `'versions'` (T-092): die Fassungen eines Artikels — was im Stapel
+       steht, auch überschrieben, und was eine Vergleichsebene bringt, wenn
+       dieser Betrachter Vergleichsebenen sehen darf (`siehtVergleich`). */
+    stapel: 'inPlay' | 'unactivated' | 'versions' | 'compare' = 'inPlay',
   ): Promise<Entity[]> {
     const user = await viewerOf(request);
     /* **Eine Instanz geht aufgelöst hinaus**, mit ihrer Vorlage darin und
@@ -859,8 +1008,17 @@ export function buildApp({
     const kampagne = currentCampaign(roh, registry.settings ?? null);
     /* Einmal je Aufruf gerechnet, nicht je Artikel (T-086). */
     const sicht = playStack(roh, kampagne);
+    const vergleich = (stapel === 'versions' || stapel === 'compare') && siehtVergleich(user, kampagne);
     entities = entities
-      .filter((e) => (stapel === 'inPlay' ? sicht.inPlay(e) : sicht.unactivated(e).length > 0))
+      .filter((e) =>
+        stapel === 'inPlay'
+          ? sicht.inPlay(e)
+          : stapel === 'versions'
+            ? sicht.inStack(e) || (vergleich && sicht.inCompare(e))
+            : stapel === 'compare'
+              ? vergleich && !sicht.inStack(e) && sicht.inCompare(e)
+              : sicht.unactivated(e).length > 0,
+      )
       .map((e) => readInstance(roh, e));
     if (!user || user.isAdmin) return entities;
     /* Der Zusammenhang ist immer der ganze Bestand, auch wenn nur ein
@@ -1041,8 +1199,11 @@ export function buildApp({
       indizes.set(key, lauf); // zuletzt gebraucht steht hinten
       return lauf;
     }
+    /* Der Rang je Artikel für die Kopfzeile der Fassungen (T-092) —
+       derselbe Stapel, einmal gerechnet. */
+    const rang = playStack(stand.map, currentCampaign(stand.map, registry.settings ?? null));
     lauf = sieve(request, stand.alle, stand.map, listProjection(registry), stapel).then((gesiebt) =>
-      buildListIndex(registry, gesiebt),
+      buildListIndex(registry, gesiebt, (e) => rang.rank(stand.map.get(e.id) ?? e)),
     );
     indizes.set(key, lauf);
     lauf.catch(() => indizes.delete(key));
@@ -1233,6 +1394,199 @@ export function buildApp({
   });
 
   /**
+   * **Die Fassungen eines Artikels** (T-092, E-021 d): was über `variantOf`
+   * oder `overrides` dieselbe Sache ist (`versionsOf`), aus Spiel- und —
+   * wer sie sehen darf — Vergleichsebenen, gesiebt wie jeder Artikel. Die
+   * Seite vergleicht selbst (`versionDiff`); hier steht, woher jede Fassung
+   * kommt, ob sie im Spiel ist und ob die Leitung sie als Überschreibung
+   * übernehmen kann (`adoptable`) oder schon übernommen hat (`adoptedAs`).
+   *
+   * Ein Gang über den Bestand je Anfrage (`versionsOf`), der Stapel einmal
+   * (`playStack`) — nie jeder Artikel gegen jeden (T-086).
+   */
+  app.get<{ Params: { id: string } }>('/api/entities/:id/versions', async (request, reply) => {
+    const stand = await roh();
+    const basis = stand.map.get(request.params.id);
+    const sichtbar = basis
+      ? (await sieve(request, [basis], stand.map)).length ||
+        (await sieve(request, [basis], stand.map, undefined, 'compare')).length
+      : 0;
+    if (!basis || !sichtbar) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const registry = await repo.getRegistry();
+    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const sicht = playStack(stand.map, kampagne);
+    const roheFassungen = versionsOf(stand.map, basis.id);
+    const gesiebt = roheFassungen.length
+      ? await sieve(request, roheFassungen, stand.map, undefined, 'versions')
+      : [];
+    const user = await viewerOf(request);
+    const eigene = kampagne && rechtAn(user, kampagne.id) === 'manage' ? campaignLayer(stand.map, kampagne) : null;
+    const vergleichsIds = new Set(compareLayers(stand.map, kampagne).map((l) => l.id));
+    const imSpiel = activeLayerRanks(stand.map, kampagne);
+    /* Übernommen ist eine Fassung, wenn eine Kopie in der Kampagnenebene
+       mit `variantOf` auf sie zeigt und etwas überschreibt (`adopt`). */
+    const kopieVon = new Map<string, string>();
+    if (eigene) {
+      for (const e of [basis, ...roheFassungen]) {
+        if (!istUebernahme(e, eigene.id)) continue;
+        const von = (e.relations ?? []).find((r) => r.type === VARIANT_RELATION)?.to;
+        if (von) kopieVon.set(von, e.id);
+      }
+    }
+    const basisImSpiel = sicht.inPlay(basis);
+    const ebenenIds = new Set(layersOf(basis));
+    const versions = gesiebt.map((v) => {
+      const r = stand.map.get(v.id) ?? v;
+      for (const l of layersOf(r)) ebenenIds.add(l);
+      const compare = !sicht.inStack(r) && sicht.inCompare(r);
+      const adoptedAs = kopieVon.get(v.id);
+      return {
+        entity: v,
+        layers: layersOf(r),
+        play: sicht.inPlay(r),
+        compare,
+        ...(adoptedAs ? { adoptedAs } : {}),
+        adoptable: !!eigene && compare && !adoptedAs && basisImSpiel,
+      };
+    });
+    const ebenen = await sieve(
+      request,
+      [...ebenenIds].map((id) => stand.map.get(id)).filter((e): e is Entity => !!e),
+      stand.map,
+    );
+    return {
+      layers: ebenen.map((l) => ({
+        id: l.id,
+        name: entityName(l),
+        short: layerShort(l),
+        compare: vergleichsIds.has(l.id),
+        play: imSpiel.has(l.id),
+      })),
+      versions,
+      ...(kampagne ? { campaign: { id: kampagne.id, name: entityName(kampagne) } } : {}),
+    };
+  });
+
+  /** Ist dieser Artikel eine übernommene Fassung in dieser Ebene (T-092)? */
+  function istUebernahme(e: Entity, ebene: string): boolean {
+    const rs = e.relations ?? [];
+    return (
+      rs.some((r) => r.type === LAYER_RELATION && r.to === ebene) &&
+      rs.some((r) => r.type === OVERRIDES_RELATION) &&
+      rs.some((r) => r.type === VARIANT_RELATION)
+    );
+  }
+
+  /**
+   * **Eine Fassung als Überschreibung übernehmen** (T-092, E-021 d):
+   * „use this in my campaign" an einer Fassung aus einer Vergleichsebene.
+   * Es entsteht eine **Kopie** in der Ebene der Kampagne (`campaignLayer`)
+   * mit `overrides` auf die Fassung, die gerade gilt, und `variantOf` auf
+   * die übernommene — die Herkunft. Eine Kopie und keine Kante an der
+   * Fassung selbst: die liegt in einer geteilten Ebene, und eine
+   * Überschreibung dort gälte in jeder Kampagne, die das Buch aufschaltet.
+   * Die Kopie trägt den Namen der Fassung, die sie ersetzt, damit Verweise
+   * und Suche dasselbe finden.
+   *
+   * Nur die Leitung (`rechtAn` = `manage`), nur in der laufenden Kampagne.
+   */
+  app.post<{ Params: { c: string }; Body: { version?: unknown; over?: unknown } }>(
+    '/api/campaigns/:c/adopt',
+    async (request, reply) => {
+      const user = await viewerOf(request);
+      const c = request.params.c;
+      if (rechtAn(user, c) !== 'manage') return reply.code(403).send({ error: 'Übernehmen darf die Leitung.' });
+      const stand = await roh();
+      const registry = await repo.getRegistry();
+      const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+      if (!kampagne || kampagne.id !== c) {
+        return reply.code(409).send({ error: 'Übernehmen geht nur in der laufenden Kampagne.' });
+      }
+      const ebene = campaignLayer(stand.map, kampagne);
+      if (!ebene) {
+        return reply.code(409).send({ error: 'Diese Kampagne hat keine eigene Ebene, in die eine Überschreibung käme.' });
+      }
+      const quelle = stand.map.get(String(request.body?.version ?? ''));
+      const ueber = stand.map.get(String(request.body?.over ?? ''));
+      if (!quelle || !ueber) return reply.code(404).send({ error: 'Nicht gefunden' });
+      const sicht = playStack(stand.map, kampagne);
+      if (!sicht.inPlay(ueber)) return reply.code(409).send({ error: 'Überschrieben wird, was gerade gilt.' });
+      if (sicht.inStack(quelle) || !sicht.inCompare(quelle)) {
+        return reply.code(409).send({ error: 'Übernommen wird eine Fassung aus einer Vergleichsebene.' });
+      }
+      if (!versionsOf(stand.map, ueber.id).some((v) => v.id === quelle.id)) {
+        return reply.code(409).send({ error: 'Das ist keine Fassung derselben Sache.' });
+      }
+      const type = quelle.interfaces?.[0] ?? '';
+      const neueId = (): string => `e_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+      let id = neueId();
+      while (stand.map.has(id)) id = neueId();
+      const name = entityName(ueber);
+      const components = structuredClone(quelle.components ?? {});
+      components['Identity'] = { ...(components['Identity'] ?? {}), name, id: nextId(stand.alle, type) };
+      const STRUKTUR = new Set([LAYER_RELATION, OVERRIDES_RELATION, VARIANT_RELATION]);
+      const relations: NonNullable<Entity['relations']> = [
+        ...(quelle.relations ?? [])
+          .filter((r) => !STRUKTUR.has(r.type))
+          .map((r, i) => ({ ...structuredClone(r), id: `${id}~${r.type}-${i + 1}` })),
+        { id: `${id}~inLayer-1`, type: LAYER_RELATION, to: ebene.id, props: {} },
+        { id: `${id}~overrides-1`, type: OVERRIDES_RELATION, to: ueber.id, props: {} },
+        { id: `${id}~variantOf-1`, type: VARIANT_RELATION, to: quelle.id, props: {} },
+      ];
+      const kopie: Entity = { id, interfaces: [...(quelle.interfaces ?? [])], name, components, relations };
+      const known = new Map(stand.alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
+      known.set(id, type);
+      const issues = validateEntity(registry, kopie, { knownTypes: known });
+      if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+      const stored = await repo.putEntity(kopie);
+      await repo.appendEvent('version.adopted', id, { version: quelle.id, over: ueber.id, campaign: c, by: user?.id });
+      return reply.code(201).send(stored);
+    },
+  );
+
+  /** **Rückgängig** (T-092): die übernommene Kopie geht wieder; es gilt,
+   *  was vorher galt. Nur eine Kopie, die `adopt` angelegt haben könnte. */
+  app.delete<{ Params: { c: string; id: string } }>('/api/campaigns/:c/adopt/:id', async (request, reply) => {
+    const user = await viewerOf(request);
+    const c = request.params.c;
+    if (rechtAn(user, c) !== 'manage') return reply.code(403).send({ error: 'Rückgängig macht die Leitung.' });
+    const stand = await roh();
+    const kampagne = stand.map.get(c);
+    const ebene = kampagne ? campaignLayer(stand.map, kampagne) : null;
+    const kopie = stand.map.get(request.params.id);
+    if (!kopie || !ebene || !istUebernahme(kopie, ebene.id)) {
+      return reply.code(404).send({ error: 'Keine übernommene Fassung dieser Kampagne.' });
+    }
+    const ueber = (kopie.relations ?? []).find((r) => r.type === OVERRIDES_RELATION)?.to;
+    await repo.dropReadyStand(kopie.id);
+    await repo.deleteEntity(kopie.id);
+    await repo.appendEvent('version.dropped', kopie.id, { campaign: c, by: user?.id });
+    return { ok: true, over: ueber };
+  });
+
+  /**
+   * **Einstellungen je Konto** (T-092): `GET` alle, `PUT …/:key` eine
+   * (`{ value }`, `null` nimmt sie weg). Was die Seite sich merkt — ob die
+   * Fassungen an den Feldern stehen und welche Ebenen —, gilt auf jedem
+   * Gerät desselben Kontos.
+   */
+  app.get('/api/me/prefs', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+    return repo.getPrefs(user.id);
+  });
+  app.put<{ Params: { key: string }; Body: { value?: unknown } }>('/api/me/prefs/:key', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+    const key = request.params.key;
+    if (!/^[a-z][a-zA-Z0-9.-]{0,63}$/.test(key)) return reply.code(400).send({ error: 'Unbekannter Schlüssel.' });
+    const value = request.body?.value ?? null;
+    if (JSON.stringify(value).length > 8000) return reply.code(400).send({ error: 'Zu gross.' });
+    await repo.putPref(user.id, key, value);
+    return { ok: true };
+  });
+
+  /**
    * Wer auf diesen Artikel zeigt. Die Gegenrichtung ist eine Abfrage (K1);
    * gestellt wurde sie bisher in der Oberfläche, über den ganzen Bestand —
    * den hat sie jetzt nicht mehr. Gefragt wird nur unter dem, was der
@@ -1243,7 +1597,12 @@ export function buildApp({
     const stand = await roh();
     const gefunden = stand.map.get(request.params.id);
     const ziel = gefunden ? await geltend(gefunden, stand.map) : undefined;
-    if (!ziel || !(await sieve(request, [ziel], stand.map)).length) {
+    /* Auch eine Fassung aus einer Vergleichsebene hat Rückbezüge (T-092). */
+    const sichtbar =
+      ziel &&
+      ((await sieve(request, [ziel], stand.map)).length ||
+        (await sieve(request, [ziel], stand.map, undefined, 'compare')).length);
+    if (!ziel || !sichtbar) {
       return reply.code(404).send({ error: 'Nicht gefunden' });
     }
     /* Eine Fassung (E-018) sammelt auch, was aufs Original zeigt: die
@@ -1329,7 +1688,16 @@ export function buildApp({
         if (alt) zeige = fertig.entity;
       }
     }
-    const [einer] = await sieve(request, [zeige], stand.map);
+    let [gesiebt] = await sieve(request, [zeige], stand.map);
+    /* **Eine Fassung aus einer Vergleichsebene** (T-092) ist nicht im
+       Spiel, aber auf Wunsch sichtbar — wer Vergleichsebenen sehen darf,
+       öffnet sie wie jeden Artikel, mit dem Hinweis `refs.compare`. */
+    let vergleich = false;
+    if (!gesiebt) {
+      [gesiebt] = await sieve(request, [zeige], stand.map, undefined, 'compare');
+      vergleich = !!gesiebt;
+    }
+    const einer = gesiebt;
     /* Fällt er durchs Sieb, gibt es ihn für diesen Betrachter nicht.
        „Verboten" wäre die genauere Auskunft und die falsche: sie sagt, dass
        da etwas ist. Vorher stand hier `einer ?? entity` — der Rückfall
@@ -1340,7 +1708,12 @@ export function buildApp({
        hält keinen Bestand mehr, aus dem er sie nachschlagen könnte. */
     /* „Im Buch lesen" (T-091): wohin die Quellenangabe führt, wenn seine Ebene Text hat. */
     const reading = await leseZiel(einer);
-    const refs = { ...(await bezuegeVon(request, einer)), ...(ready ? { ready } : {}), ...(reading ? { reading } : {}) };
+    const refs = {
+      ...(await bezuegeVon(request, einer)),
+      ...(ready ? { ready } : {}),
+      ...(vergleich ? { compare: true } : {}),
+      ...(reading ? { reading } : {}),
+    };
     /* Ob „Adapt" angeboten wird (E-018, T-082): dieselbe Frage wie die
        Route, damit die Seite nichts anbietet, was der Server ablehnt. */
     return { ...einer, refs: (await anpassbar(request, einer, stand.map)) ? { ...refs, adaptable: true } : refs };
@@ -1482,6 +1855,16 @@ export function buildApp({
         return reply.code(400).send({ error: 'id im Pfad und im Körper stimmen nicht überein' });
       }
 
+      /* **Gegen welchen Stand wird geschrieben?** (REQ-192) Die Revision,
+         die gelesen wurde; ohne sie nur gegen „keinen" — anlegen ja,
+         überschreiben nein. Ein Schreiben ohne gelesenen Stand gewänne
+         sonst still gegen alles, was seither geschah. Hier zuerst
+         geprüft, damit nichts anderes geschieht (der fertige Stand unten),
+         und beim Schreiben noch einmal, gesperrt (`putEntity`). */
+      const erwartet = entity.revision ?? null;
+      const steht = (await repo.getEntity(entity.id))?.revision ?? null;
+      if (steht !== erwartet) return konflikt(request, reply, entity.id, erwartet);
+
       /* **`ready` setzt die Leitung** (REQ-237, E-011): wer nicht
          `maySetReady` ist, macht aus einem unfertigen Artikel keinen
          fertigen — auch nicht, indem er die Status-Karte weglässt (ohne
@@ -1516,12 +1899,18 @@ export function buildApp({
         }
       }
 
-      const ergebnis = await schreibeGeprueft(entity, async () => {
-        /* Vor dem Artikel: mit ihm ändert sich der Stempel, und erst dann
-           liest jemand den neuen Stand (`fertigeStaende`). */
-        if (zurueck) await repo.keepReadyStand(zurueck);
-        else if (isReady(entity)) await repo.dropReadyStand(entity.id);
-      });
+      let ergebnis: Awaited<ReturnType<typeof schreibeGeprueft>>;
+      try {
+        ergebnis = await schreibeGeprueft(entity, async () => {
+          /* Vor dem Artikel: mit ihm ändert sich der Stempel, und erst dann
+             liest jemand den neuen Stand (`fertigeStaende`). */
+          if (zurueck) await repo.keepReadyStand(zurueck);
+          else if (isReady(entity)) await repo.dropReadyStand(entity.id);
+        }, erwartet);
+      } catch (error) {
+        if (error instanceof RevisionConflict) return konflikt(request, reply, entity.id, erwartet);
+        throw error;
+      }
       if ('issues' in ergebnis) {
         return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues: ergebnis.issues });
       }
@@ -1542,6 +1931,8 @@ export function buildApp({
   async function schreibeGeprueft(
     entity: Entity,
     vorher?: () => Promise<void>,
+    /** Die gelesene Revision (`null`: neu); ohne Angabe ungeprüft. */
+    erwartet?: number | null,
   ): Promise<{ stored: Entity } | { issues: ReturnType<typeof validateEntity> }> {
     const registry = await repo.getRegistry();
     /* Id **und Art**: daran prüft ein Verweisfeld seinen Zieltyp. Der
@@ -1571,7 +1962,36 @@ export function buildApp({
     const issues = validateEntity(registry, zuPruefen, { knownTypes: known, stageOf: stufen });
     if (issues.length) return { issues };
     if (vorher) await vorher();
-    return { stored: await repo.putEntity(zuSchreiben) };
+    return {
+      stored: await repo.putEntity(zuSchreiben, erwartet === undefined ? {} : { expectRevision: erwartet }),
+    };
+  }
+
+  /**
+   * **Abgewiesen, mit dem Stand, der gilt** (REQ-192). Die Antwort trägt
+   * den Artikel so, wie dieser Betrachter ihn sieht — gesiebt, aufgelöst,
+   * mit seinen Namen —, damit die Maske ohne zweite Anfrage
+   * zusammenführen kann (`mergeEntity`). Sieht er ihn nicht mehr, steht
+   * `current: null` da und nicht mehr.
+   */
+  async function konflikt(
+    request: FastifyRequest,
+    reply: FastifyReply,
+    id: string,
+    erwartet: number | null,
+  ): Promise<FastifyReply> {
+    const stand = await roh();
+    const jetzt = stand.map.get(id) ?? (await repo.getEntity(id));
+    const [gesiebt] = jetzt ? await sieve(request, [jetzt], stand.map) : [];
+    const current = gesiebt ? { ...gesiebt, refs: await bezuegeVon(request, gesiebt) } : null;
+    return reply.code(409).send({
+      error:
+        erwartet === null
+          ? 'Diesen Artikel gibt es schon. Schicke die Revision mit, die du gelesen hast.'
+          : 'Der Artikel wurde seit dem Lesen anderswo geändert.',
+      revision: current?.revision ?? null,
+      current,
+    });
   }
 
   /**
@@ -1810,8 +2230,11 @@ export function buildApp({
    * geht durch `validateEntity`.
    */
   async function werkbankFuer(request: FastifyRequest): Promise<Wer | string> {
-    const wer = await werIst(request);
-    if (!wer) return 'Nicht angemeldet.';
+    const echt = await werIst(request);
+    if (!echt) return 'Nicht angemeldet.';
+    /* In der Sicht eines Mitglieds rechnet auch die Werkbank mit ihm (REQ-241). */
+    const sicht = await sichtVon(request);
+    const wer = sicht && sicht !== 'nein' ? { ...echt, user: sicht.als } : echt;
     if (!isLeitung(wer.user)) return 'Die Werkbank ist für Leitung und Verwaltung.';
     return wer;
   }

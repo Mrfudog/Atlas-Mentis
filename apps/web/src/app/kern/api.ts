@@ -124,6 +124,38 @@ export interface Bezuege {
   ready?: { at: string; old: boolean };
   /** „Im Buch lesen" (T-091): die Ebene mit Text und die Stelle — der Abschnitt selbst oder die Seite. */
   reading?: LeseZiel;
+  /** Eine Fassung aus einer Vergleichsebene (T-092): nicht im Spiel, auf Wunsch sichtbar. */
+  compare?: boolean;
+}
+
+/** Eine Ebene, aus der eine Fassung kommt (`GET /api/entities/:id/versions`). */
+export interface FassungsEbene {
+  id: string;
+  name: string;
+  /** Das Kürzel am Feld; der Name steht im Tooltip. */
+  short: string;
+  compare: boolean;
+  play: boolean;
+}
+
+/** Eine andere Fassung derselben Sache (T-092, E-021 d). */
+export interface Fassung {
+  entity: Entity;
+  layers: string[];
+  /** Im Spiel (eine aufgeschaltete Ebene bringt sie, nichts überschreibt sie). */
+  play: boolean;
+  /** Aus einer Vergleichsebene. */
+  compare: boolean;
+  /** Die Leitung kann sie als Überschreibung übernehmen. */
+  adoptable: boolean;
+  /** Schon übernommen: die Kopie in der Kampagnenebene. */
+  adoptedAs?: string;
+}
+
+export interface Fassungen {
+  layers: FassungsEbene[];
+  versions: Fassung[];
+  campaign?: { id: string; name: string };
 }
 
 /** Wohin „im Buch lesen" führt (`refs.reading`, T-091). */
@@ -216,6 +248,8 @@ export interface KampagnenEbene {
   group: string;
   articles: number;
   active: boolean;
+  /** Eine Vergleichsebene (T-092): nicht im Spiel, ihre Fassungen auf Wunsch sichtbar. */
+  compare?: boolean;
   /** Die anderen Kampagnen, die sie aufschalten. */
   alsoIn: string[];
   canActivate: boolean;
@@ -242,6 +276,8 @@ export interface KampagnenEbenen {
   may: Recht;
   /** Die aufgeschalteten von unten nach oben, darunter die übrigen. */
   layers: KampagnenEbene[];
+  /** Wer die Vergleichsebenen sieht (T-092). */
+  compareFor?: 'gm' | 'players';
 }
 
 export interface ListenZeile {
@@ -257,6 +293,8 @@ export interface ListenZeile {
   tags?: string[];
   /** Die Ziele der Kantenarten, nach denen `rel=` fragte. */
   rels?: Record<string, string[]>;
+  /** Die übrigen Fassungen derselben Sache (T-092, mit `versions`). */
+  versions?: { id: string; name: string; layers: string[]; source: string }[];
 }
 
 /** Was die Liste gefragt wird. Leere Angaben fallen weg. */
@@ -272,6 +310,8 @@ export interface ListenFrage {
   layer?: string[] | undefined;
   nolayer?: string[] | undefined;
   parts?: boolean | undefined;
+  /** Fassungen derselben Sache als eine Zeile (T-092). */
+  versions?: boolean | undefined;
   sort?: string | undefined;
   offset?: number | undefined;
   limit?: number | undefined;
@@ -330,6 +370,22 @@ export interface Me {
   /** Die eigene Figur samt Statblock und Inventar: dort setzt auch ein
    *  Spieler `ready` (E-014 d). */
   character?: string[];
+  /** **In der Sicht eines Mitglieds** (REQ-241): wer gesehen wird und wer
+   *  schaut. `user` ist dann das gesehene Konto, und nichts ist schreibbar. */
+  viewAs?: { id: string; name: string; role: TableRole | null; by: { id: string; name: string } } | null;
+  /** Der Kopf `X-View-As` galt nicht (mehr) — die Maske vergisst ihn. */
+  viewAsRefused?: boolean;
+}
+
+/** Wo der Tab sich merkt, wessen Sicht er einnimmt: über Seitenwechsel und
+ *  Neuladen, nicht über das Schliessen des Tabs (REQ-241). */
+const SICHT_SCHLUESSEL = 'atlas.viewAs';
+function leseSicht(): string | null {
+  try {
+    return globalThis.sessionStorage?.getItem(SICHT_SCHLUESSEL) || null;
+  } catch {
+    return null;
+  }
 }
 
 /* ---- Verwaltung (W3). Was ein Konto an einer Kampagne darf, sagt der
@@ -360,6 +416,8 @@ export interface Mitglied {
   disabled: boolean;
   self: boolean;
   actors: Figur[];
+  /** Ob „View as" angeboten wird — der Server sagt es (`mayViewAs`, REQ-241). */
+  viewAs?: boolean;
 }
 export interface Mitglieder {
   campaign: { id: string; name: string; exists: boolean };
@@ -438,6 +496,26 @@ export class Api {
   readonly neueVersion = signal(false);
   private bau: string | null = null;
 
+  /**
+   * **Wessen Sicht dieser Tab einnimmt** (REQ-241, E-019 a): eine Konto-Id,
+   * die als `X-View-As` an jeder Anfrage steht. Gerechnet wird am Server —
+   * hier steht nur, wen man fragt.
+   */
+  readonly viewAs = signal<string | null>(leseSicht());
+  setViewAs(id: string | null): void {
+    this.viewAs.set(id);
+    try {
+      if (id) globalThis.sessionStorage?.setItem(SICHT_SCHLUESSEL, id);
+      else globalThis.sessionStorage?.removeItem(SICHT_SCHLUESSEL);
+    } catch {
+      /* Ohne Speicher hält die Sicht nur bis zum Neuladen. */
+    }
+  }
+  private sichtKopf(): Record<string, string> {
+    const id = this.viewAs();
+    return id ? { 'x-view-as': id } : {};
+  }
+
   /** `halten: false` — ein Ausfall geht gleich an den Aufrufer, statt auf
    *  „Retry" zu warten: die Sitzung muss sich auch ohne Server festlegen,
    *  sonst bliebe die Seite ohne Kopfleiste stehen. */
@@ -487,7 +565,11 @@ export class Api {
       ...init,
       credentials: 'include',
       /* Der Typ nur mit Körper: Fastify lehnt ein leeres JSON ab (DELETE). */
-      headers: { ...(init.body ? { 'content-type': 'application/json' } : {}), ...(init.headers ?? {}) },
+      headers: {
+        ...(init.body ? { 'content-type': 'application/json' } : {}),
+        ...this.sichtKopf(),
+        ...(init.headers ?? {}),
+      },
     });
     this.merkeBau(res);
     const text = await res.text();
@@ -595,6 +677,35 @@ export class Api {
     return this.call(`/api/entities/${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
 
+  /** Die übrigen Fassungen dieses Artikels (T-092). */
+  versions(id: string): Promise<Fassungen> {
+    return this.call<Fassungen>(`/api/entities/${encodeURIComponent(id)}/versions`);
+  }
+  /** Was sich das Konto merkt (T-092). */
+  prefs(): Promise<Record<string, unknown>> {
+    return this.call<Record<string, unknown>>('/api/me/prefs', {}, false);
+  }
+  setPref(key: string, value: unknown): Promise<{ ok: true }> {
+    return this.call(`/api/me/prefs/${encodeURIComponent(key)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ value }),
+    });
+  }
+  /** Eine Fassung aus einer Vergleichsebene als Überschreibung übernehmen (T-092). */
+  adopt(campaign: string, version: string, over: string): Promise<Entity> {
+    return this.call<Entity>(`/api/campaigns/${encodeURIComponent(campaign)}/adopt`, {
+      method: 'POST',
+      body: JSON.stringify({ version, over }),
+    });
+  }
+  /** Die Übernahme zurücknehmen; `over` ist, was danach wieder gilt. */
+  unadopt(campaign: string, copy: string): Promise<{ ok: true; over?: string }> {
+    return this.call(
+      `/api/campaigns/${encodeURIComponent(campaign)}/adopt/${encodeURIComponent(copy)}`,
+      { method: 'DELETE' },
+    );
+  }
+
   /** Der letzte fertige Stand (E-012) — für Verfasserin und Leitung. */
   readyVersion(id: string): Promise<Entity & { refs?: Bezuege }> {
     return this.call<Entity & { refs?: Bezuege }>(`/api/entities/${encodeURIComponent(id)}?stand=ready`);
@@ -647,6 +758,7 @@ export class Api {
   async exportCampaign(campaign: string): Promise<{ blob: Blob; name: string }> {
     const res = await fetch(`${this.base}/api/export?campaign=${encodeURIComponent(campaign)}`, {
       credentials: 'include',
+      headers: this.sichtKopf(),
     });
     if (!res.ok) {
       const b = (await res.json().catch(() => null)) as { error?: string } | null;
@@ -710,6 +822,16 @@ export class Api {
     return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/layers`, {
       method: 'PUT',
       body: JSON.stringify({ layers }),
+    });
+  }
+  /** Die Vergleichsebenen und wer sie sieht (T-092); was fehlt, bleibt, wie es ist. */
+  setCampaignCompare(
+    campaign: string,
+    neu: { layers?: string[]; players?: boolean },
+  ): Promise<{ ok: true; layers: string[] }> {
+    return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/compare`, {
+      method: 'PUT',
+      body: JSON.stringify(neu),
     });
   }
   /** Eine Ebene dazuschalten; der Server sucht ihr den Platz im Stapel. */

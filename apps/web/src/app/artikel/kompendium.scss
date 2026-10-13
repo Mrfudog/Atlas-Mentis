@@ -314,3 +314,25 @@ tbody tr.gewaehlt {
     display: none;
   }
 }
+
+/* Fassungen derselben Sache (T-092): der Knopf an der Kopfzeile, darunter
+   je Fassung eine eingerückte Zeile. */
+.fassungen {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.45rem;
+  min-height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--dim);
+  font-size: 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+tr.unter td.name {
+  padding-left: 1.6rem;
+}
+tr.unter td {
+  font-size: 0.9rem;
+  border-top-style: dashed;
+}
