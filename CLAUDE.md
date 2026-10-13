@@ -407,7 +407,9 @@ wiederkommen, werden sie neu geschrieben.
   Prototyp steht dasselbe unter Registry › How it works, aus dem laufenden
   Register gezogen.
 - **Sechs Seiten, vier davon Bereiche.** Register und Kompendium sind
-  Seiten; `world`, `history`, `rules` und `play` sind Bereiche. Wohin eine
+  Seiten; `world`, `story`, `rules` und `play` sind Bereiche (`story`
+  ist nur die Kampagne — die Weltgeschichte, `World` und `Event`, steht
+  unter `world`; bis 13.10. hiess `story` `history` und hielt beides). Wohin eine
   Artikelart gehört, steht als `area` an ihrem Typ und wird wie alles andere
   geerbt. Im Code steht keine Liste davon — sonst bräuchte eine neue
   Artikelart eine Codeänderung, um auffindbar zu sein.

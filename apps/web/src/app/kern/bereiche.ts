@@ -13,7 +13,7 @@ export interface Bereich {
 
 export const BEREICHE: readonly Bereich[] = [
   { weg: 'world', label: 'World' },
-  { weg: 'history', label: 'History' },
+  { weg: 'story', label: 'Story' },
   { weg: 'rules', label: 'Rules' },
   { weg: 'play', label: 'Play' },
 ];
