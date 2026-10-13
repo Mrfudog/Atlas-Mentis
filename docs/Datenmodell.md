@@ -841,7 +841,7 @@ sind Zeilen, Darstellung ist Code.**
 | welche Figuren ein Konto führt | `app_user_actor` | nein |
 | Rolle je Kampagne | `campaign_member`; Prototyp: Sammlung `members` | nein |
 | Verwaltung der Installation | `app_user.is_admin` | nein |
-| das Register | Tabellen `interface_def`, `relation_def`, `view_def`, `unit_def`, `var_def`; Prototyp: Sammlung `registry` | ja — allein weiterreichbar (`register-datei.mjs`) |
+| das Register | Tabellen `interface_def`, `relation_def`, `view_def`, `unit_def`, `var_def`, `enum_def` (Aufzählungen), `setting_def` (Einstellungen, seit Migration 019); Prototyp: Sammlung `registry` | ja — allein weiterreichbar (`register-datei.mjs`) |
 | Einstellungen | Registerteil `settings` | ja |
 | Dateien | Asset-Ablage; der Artikel `Asset` trägt `backend`, `ref`, `mime`, Masse | der Artikel ja, die Bytes nein |
 | Ereignisse | `event_log` | nein |

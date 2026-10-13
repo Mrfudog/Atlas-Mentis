@@ -308,9 +308,11 @@ da. Dann denselben Befehl mit `--replace` noch einmal — er räumt auf, was
 nicht in der Datei steht. `--replace` löscht, was nicht in der Datei steht, und
 nennt danach die Figuren, die an einem Konto stehen und nicht mehr da sind
 (die Konten bleiben, REQ-199). Eine Datei mit `registry` und ohne
-`entities` bringt nur die Registerzeilen. Die Ablage speichert heute
-`interfaces`, `relations`, `views`, `units` und `vars`; `enums` und
-`settings` nennt der Befehl als nicht gespeichert.
+`entities` bringt nur die Registerzeilen. Die Ablage speichert
+`interfaces`, `relations`, `views`, `units`, `vars`, `enums` und
+`settings` (die letzten beiden seit Migration 019; eine ältere Datenbank
+bekommt sie beim nächsten Start aus den Startzeilen nachgefüllt, solange
+sie dort leer sind).
 
 ## Den Bestand von prod nach dev holen
 

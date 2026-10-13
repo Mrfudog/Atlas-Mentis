@@ -18,12 +18,14 @@ export class PgRepository implements Repository {
   constructor(private readonly pool: Pool) {}
 
   async getRegistry(): Promise<Registry> {
-    const [interfaces, relations, views, units, vars] = await Promise.all([
+    const [interfaces, relations, views, units, vars, enums, settings] = await Promise.all([
       this.pool.query<Row>('select * from interface_def'),
       this.pool.query<Row>('select * from relation_def'),
       this.pool.query<Row>('select * from view_def order by ord'),
       this.pool.query<Row>('select * from unit_def'),
       this.pool.query<Row>('select * from var_def'),
+      this.pool.query<Row>('select * from enum_def'),
+      this.pool.query<Row>('select * from setting_def'),
     ]);
 
     const registry: Registry = { interfaces: {}, relations: {}, views: {}, units: {}, vars: {} };
@@ -77,6 +79,18 @@ export class PgRepository implements Repository {
       };
     }
     for (const r of vars.rows) registry.vars[r['name'] as string] = r['value'] as string;
+    /* Aufzählungen und Einstellungen (Migration 019): ohne sie bleiben
+       Auswahllisten leer und jede Einstellung gilt mit ihrer Vorgabe. */
+    if (enums.rows.length) {
+      registry.enums = {};
+      for (const r of enums.rows) {
+        registry.enums[r['name'] as string] = { ...(r['config'] as object), name: r['name'] as string } as NonNullable<Registry['enums']>[string];
+      }
+    }
+    if (settings.rows.length) {
+      registry.settings = {};
+      for (const r of settings.rows) registry.settings[r['key'] as string] = r['value'] as string;
+    }
 
     return registry;
   }
@@ -130,6 +144,16 @@ export class PgRepository implements Repository {
         await client.query('delete from var_def');
         for (const [name, v] of Object.entries(value as Registry['vars'])) {
           await client.query('insert into var_def(name,value) values ($1,$2)', [name, v]);
+        }
+      } else if (part === 'enums') {
+        await client.query('delete from enum_def');
+        for (const [name, def] of Object.entries((value ?? {}) as NonNullable<Registry['enums']>)) {
+          await client.query('insert into enum_def(name,config) values ($1,$2)', [name, JSON.stringify(def)]);
+        }
+      } else if (part === 'settings') {
+        await client.query('delete from setting_def');
+        for (const [key, v] of Object.entries((value ?? {}) as NonNullable<Registry['settings']>)) {
+          await client.query('insert into setting_def(key,value) values ($1,$2)', [key, String(v)]);
         }
       }
       await client.query('commit');
