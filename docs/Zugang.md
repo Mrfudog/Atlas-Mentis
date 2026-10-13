@@ -118,6 +118,13 @@ Die Regel ist kurz, weil eine lange niemand mehr nachliest:
   einer anderen Runde auch nicht — dieselbe Trennung wie bei den
   Mitgliedern. Die Zählung `/api/registry/usage` gehört denselben: sie
   zählt ungesiebt.
+- **Die eigene Kampagne als Datei** (`GET /api/export?campaign=<id>`,
+  T-077) holen die Verwaltung und die Leitung dieser Kampagne (`gm` und
+  `co-gm` — sehen tun beide dasselbe, und Ausführen ist Lesen). Gesiebt
+  wird nach der Sichtbarkeit (`articleVisible`); die Felder der Leitung
+  (`gmFields`) bleiben drin, denn eine Sicherung ohne die Geheimnisse wäre
+  keine. Den ganzen Bestand (`&layers=all`) holt nur die Verwaltung. Was in
+  der Datei steht: [Betrieb.md › Die eigene Ausfuhr](Betrieb.md#die-eigene-ausfuhr).
 
 ### Verwaltung ist keine Rolle am Tisch
 
@@ -312,6 +319,8 @@ mit ihr; ein Zugang gehört der Instanz. `app_user`, `app_session`, `app_token` 
 `login_attempt` sind eigene Tabellen und dürfen beim Spiegeln von prod nach
 preprod ausdrücklich **nicht** mitwandern (REQ-199). In der Artikeltabelle
 steht davon nichts — nur beim Nutzer steht die Id der Figur, die er spielt.
+Darum steht auch in der eigenen Ausfuhr (`/api/export`) keins davon: sie
+liest nur Register und Artikel.
 
 `actor_id` hat bewusst keinen Fremdschlüssel: die Figur kann gelöscht und neu
 eingelesen werden, und ein Zugang, der daran zerbricht, sperrt jemanden mitten

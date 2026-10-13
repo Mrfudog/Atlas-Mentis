@@ -211,7 +211,46 @@ nächtliche mehr da.
 Für die Kopie nach aussen eignet sich eine Hetzner Storage Box
 (`rsync -a /srv/atlas/prod/backups/ u…@u….your-storagebox.de:atlas/`).
 
+### Die eigene Ausfuhr
+
+Unabhängig von den Sicherungen des Servers lädt die Leitung ihre Kampagne
+jederzeit als Datei herunter (T-077): auf der Seite **Campaign** der Knopf
+„Export campaign", oder `GET /api/export?campaign=<id>` (mit einem
+Lesetoken auch aus einem Werkzeug). Die Datei heisst
+`<kampagne>-<datum>.json` und hat das Format, das der Ladebefehl liest
+(`format`, `registry`, `entities`).
+
+Darin stehen das **Register** und die **Artikel der Kampagne**: was in
+einer Kampagnenebene liegt (eine Ebene, die nur diese Kampagne aufschaltet
+und kein Regelwerk ist — `Layer.kind` nicht `system`/`expansion`), was
+keine Ebene hat, die Kampagne selbst und die Ebenen, die sie aufschaltet,
+als Artikel. Gesiebt nach dem, was der Aufrufer sieht. **Nicht** darin:
+Konten, Sitzungen, Tokens, Einladungen und die Rollen am Tisch (REQ-199),
+und die Artikel aus 5e.tools oder einer geteilten Ebene. Die ganze Ausfuhr
+mit allem holt nur die Verwaltung: `&layers=all`.
+
+Wer sie ausführen darf: [Zugang.md › Wer was darf](Zugang.md#wer-was-darf).
+
 ## Zurück
+
+### Aus der eigenen Ausfuhr
+
+Die Datei kommt über den Ladebefehl zurück, wie jede Ausfuhrdatei:
+
+```bash
+docker compose exec app node apps/server/dist/import.js /pfad/nebelwacht-2026-10-13.json --dry-run
+docker compose exec app node apps/server/dist/import.js /pfad/nebelwacht-2026-10-13.json
+```
+
+Ohne Schalter schreibt er die Artikel der Datei über den Bestand und
+löscht nichts. Zeigt ein Artikel der Kampagne auf etwas aus 5e.tools (eine
+Klasse, eine Vorlage), muss 5e.tools **vorher** da sein — sonst lehnt die
+Prüfung die Datei ab (`dangling_relation`) und schreibt nichts. Auf einen
+frischen Server also erst [5e.tools laden](#5etools-laden), dann die
+Datei. Konten und Rollen kommen nicht mit; die legt die Verwaltung neu an
+(`user add`, `user role`, oder die Seite **Campaign**).
+
+### Aus der Sicherung des Servers
 
 Migrationen laufen nur vorwärts. Wer auf das vorige Abbild zurück will,
 nimmt die Datenbank von davor mit — die Sicherung, die `deploy.sh` vor dem
