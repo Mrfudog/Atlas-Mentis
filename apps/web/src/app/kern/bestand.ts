@@ -73,15 +73,25 @@ export class Bestand {
    * Artikel; `neu` holt ihn wieder, etwa nach dem Speichern — was der Server
    * ausliefert, ist gesiebt und aufgelöst, und das ist nicht unbedingt das,
    * was geschickt wurde.
+   *
+   * `rueck: false` holt den Artikel ohne das, was auf ihn zeigt — eine
+   * Kachel auf dem Board zeigt keine Rückbezüge, und jede Rückfrage siebt
+   * am Server den ganzen Bestand. Wer ihn danach als Seite öffnet, bekommt
+   * sie nachgeholt.
    */
-  async oeffnen(id: string, neu = false): Promise<void> {
-    if (!neu && (this._voll().has(id) || this._fehlt().has(id))) return;
-    const schon = this.oeffnet.get(id);
+  async oeffnen(id: string, neu = false, rueck = true): Promise<void> {
+    const da = this._voll().has(id) && (!rueck || this._rueck().has(id));
+    if (!neu && (da || this._fehlt().has(id))) return;
+    const schluessel = rueck ? `${id} +rueck` : id;
+    const schon = this.oeffnet.get(schluessel) ?? this.oeffnet.get(`${id} +rueck`);
     if (schon) return schon;
-    const lauf = Promise.all([this.api.entity(id), this.api.backlinks(id)])
-      .then(([e, rueck]) => {
+    const lauf = Promise.all([
+      this.api.entity(id),
+      rueck ? this.api.backlinks(id) : Promise.resolve(null),
+    ])
+      .then(([e, zeigt]) => {
         this._voll.update((m) => new Map(m).set(id, e));
-        this._rueck.update((m) => new Map(m).set(id, rueck));
+        if (zeigt) this._rueck.update((m) => new Map(m).set(id, zeigt));
         this._fehlt.update((s) => {
           const n = new Set(s);
           n.delete(id);
@@ -101,8 +111,8 @@ export class Bestand {
           this._fehler.set(error instanceof Error ? error.message : String(error));
         }
       })
-      .finally(() => this.oeffnet.delete(id));
-    this.oeffnet.set(id, lauf);
+      .finally(() => this.oeffnet.delete(schluessel));
+    this.oeffnet.set(schluessel, lauf);
     return lauf;
   }
 
