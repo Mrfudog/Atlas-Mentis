@@ -180,4 +180,11 @@ describe('what an instance stores', () => {
     expect(los.components['Statblock']).toEqual({ ac: 16, hp: 18, speed: '30' });
     expect(los.relations?.filter((x) => x.type === 'composedOf')).toHaveLength(2);
   });
+
+  it('gives what it read from its template ids of its own, so both can stand at once', () => {
+    const los = detachInstance(alle, w2);
+    const vorlagenIds = new Set((vorlage.relations ?? []).map((x) => x.id));
+    expect(los.relations?.some((x) => vorlagenIds.has(x.id))).toBe(false);
+    expect(los.relations?.filter((x) => x.type === 'composedOf').map((x) => x.id)).toEqual(['c1@w2', 'c2@w2']);
+  });
 });

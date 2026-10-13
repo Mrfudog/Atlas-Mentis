@@ -82,7 +82,9 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
 - `packages/import-5etools` — der Importer für 5e.tools (P5): liest einen
   Checkout von `5etools-src/data`, schreibt eine Ausfuhrdatei und den
   Bericht [docs/5etools-Bericht.md](docs/5etools-Bericht.md). Kein
-  Framework; läuft einmal, nicht im Server. Laden:
+  Framework; läuft nicht im Server, sondern in der Pipeline
+  `import-5etools.yml`, die die Ebene „D&D 5e (2014)" **je Ebene ersetzt**
+  (`import.js --replace-layer`: eigene Artikel bleiben, W8). Laden:
   [docs/Betrieb.md › 5e.tools laden](docs/Betrieb.md#5etools-laden).
 - `legacy/` — die alte React-App. Nicht weiterentwickeln; sie läuft, bis die
   neue Karte und Initiative kann.
