@@ -188,7 +188,7 @@ Server nur die Kommandozeile.
 
 | Was | Entscheidung |
 |---|---|
-| `ProficiencyChoice` (`chooseFrom`, `chooseCount`, `chooseNote`) trug **eine** Wahl; jede weitere stand als Satz im Text | **`Choices.choices`**: je Wahl ein Eintrag mit Form (`entry`), `{id, kind, level, when, from, count, bonus, note}`. Klasse, Unterklasse, Abstammung, Hintergrund und **Talent** nehmen es. Migration 026 macht aus jeder alten Karte einen Eintrag `proficiencies`. |
+| `ProficiencyChoice` (`chooseFrom`, `chooseCount`, `chooseNote`) trug **eine** Wahl; jede weitere stand als Satz im Text | **`Choices.choices`**: je Wahl ein Eintrag mit Form (`entry`), `{id, kind, level, when, from, count, bonus, note}`. Klasse, Unterklasse, Abstammung, Hintergrund und **Talent** nehmen es. Migration 027 macht aus jeder alten Karte einen Eintrag `proficiencies`. |
 | Wo die Figur ihre Entscheide hält | **Kante `chose`** (PlayerCharacter → der fragende Artikel), `props.choice` = die `id`, `props.picks` = die Antworten. Keine Karte an der Figur: die Kante sagt schon, welcher Artikel fragte, und ihre Gegenrichtung („wer hat das gewählt") ist eine Abfrage. |
 | Was die Antworten ergeben | **beim Lesen** (`chosenResult`, D8). Eine Änderung am Artikel wirkt auf jede Figur; eine Antwort auf eine verschwundene Wahl ist verwaist (`orphanAnswers`). |
 | `Ancestry.abilityNote` | bleibt, hält aber nur noch, was keine Wahl ist (`lineage`); die Wahl „+1 auf zwei" ist ein Eintrag. |
