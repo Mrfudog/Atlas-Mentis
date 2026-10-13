@@ -52,7 +52,7 @@
     </p>
 
     <div class="spalten">
-      <div class="buehne" tabindex="0" aria-label="Board canvas">
+      <div #buehne class="buehne" tabindex="0" aria-label="Board canvas">
         @if (karte(); as c) {
           <div class="flaeche" [style.width.px]="c.width * zoom()" [style.height.px]="c.height * zoom()">
             <div
@@ -83,14 +83,20 @@
                     @if (darfSchreiben()) {
                       <select
                         class="kview"
-                        [value]="k.rel.props?.['view'] ?? ''"
                         (change)="ansichtSetzen(k.rel, $any($event.target).value)"
                         [attr.aria-label]="'View of ' + name(k.kurz)"
                         [title]="'Shown as ' + viewLabel(k.ansicht)"
                       >
-                        <option value="">Auto · {{ viewLabel(k.ansicht) }}</option>
+                        <!-- [selected] an der Option, nicht [value] am select: die
+                             Optionen entstehen erst nach dem Wert, und dann stünde
+                             nach dem Neuladen „Auto" da, wo „Overview" gespeichert ist. -->
+                        <option value="" [selected]="!k.rel.props?.['view']">
+                          Auto · {{ viewLabel(k.ansicht) }}
+                        </option>
                         @for (v of ansichten(); track v) {
-                          <option [value]="v">{{ viewLabel(v) }}</option>
+                          <option [value]="v" [selected]="k.rel.props?.['view'] === v">
+                            {{ viewLabel(v) }}
+                          </option>
                         }
                       </select>
                       <button

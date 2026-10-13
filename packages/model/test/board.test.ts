@@ -62,6 +62,12 @@ describe('placements', () => {
     expect(n.x).toBeGreaterThanOrEqual(300);
   });
 
+  it('keeps new cards inside the width one can see', () => {
+    const b = brett([platz('a', { x: 40, y: 40, w: 260, h: 180 })]);
+    /* 500 px sichtbar: neben der ersten ist kein Platz, also die nächste Reihe. */
+    expect(nextPlacement(b, 260, 180, 500)).toMatchObject({ x: 40, y: 240 });
+  });
+
   it('snaps to the grid and never off the canvas', () => {
     expect(snapTo(47, 10)).toBe(50);
     expect(snapTo(-30, 10)).toBe(0);

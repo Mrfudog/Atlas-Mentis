@@ -1,4 +1,5 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, viewChild } from '@angular/core';
+import type { ElementRef } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   areaOf,
@@ -123,6 +124,7 @@ export class Board {
   });
 
   protected readonly zoom = signal(1);
+  private readonly buehne = viewChild<ElementRef<HTMLElement>>('buehne');
   protected readonly gewaehlt = signal<string | null>(null);
   private readonly zug = signal<Zug | null>(null);
 
@@ -239,7 +241,9 @@ export class Board {
   protected hinlegen(e: Entity): void {
     const b = this.board();
     if (!b) return;
-    const platz = nextPlacement({ ...b, relations: this.kanten() });
+    const buehne = this.buehne()?.nativeElement;
+    const sichtbar = buehne ? buehne.clientWidth / this.zoom() : undefined;
+    const platz = nextPlacement({ ...b, relations: this.kanten() }, undefined, undefined, sichtbar);
     const neu: Relation = {
       id: `r-${crypto.randomUUID()}`,
       type: PLACED_RELATION,

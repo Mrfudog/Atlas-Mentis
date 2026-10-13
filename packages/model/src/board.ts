@@ -133,12 +133,19 @@ export function snapTo(value: number, snap: number, min = 0): number {
 
 /**
  * Wohin eine neue Karte kommt: in die erste freie Zelle eines Rasters aus
- * Kachelgrössen, Zeile für Zeile — nicht auf eine schon liegende. Wie im
- * Prototyp: sechs nebeneinander, dann die nächste Reihe.
+ * Kachelgrössen, Zeile für Zeile — nicht auf eine schon liegende. `sichtbar`
+ * ist die Breite, die man gerade sieht (in px der Leinwand): eine neue Karte
+ * rechts ausserhalb des Schirms ist eine, die man nicht hingelegt zu haben
+ * glaubt.
  */
-export function nextPlacement(board: Entity, w: number = PLACEMENT_DEFAULTS.w, h: number = PLACEMENT_DEFAULTS.h): BoardPlacement {
+export function nextPlacement(
+  board: Entity,
+  w: number = PLACEMENT_DEFAULTS.w,
+  h: number = PLACEMENT_DEFAULTS.h,
+  sichtbar?: number,
+): BoardPlacement {
   const liegt = placementsOf(board).map(placementOf);
-  const { width } = boardCard(board);
+  const width = Math.min(boardCard(board).width, sichtbar ?? Infinity);
   const rand = 40;
   const spalten = Math.max(1, Math.floor((width - rand) / (w + 20)));
   const frei = (x: number, y: number) =>
