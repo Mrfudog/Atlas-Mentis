@@ -104,6 +104,14 @@ export const routes: Routes = [
     loadComponent: () => import('./verwaltung/verwaltung').then((m) => m.Verwaltung),
     title: 'Campaign · Atlas Mentis',
   },
+  /* Die Leseansicht (T-091): eine Ebene als Buch; `?at=` oder `?page=`
+     springen an die Stelle. */
+  {
+    path: 'read/:layer',
+    canActivate: [wache],
+    loadComponent: () => import('./lesen/lesen').then((m) => m.Lesen),
+    title: 'Read · Atlas Mentis',
+  },
   {
     path: 'artikel/:id',
     canActivate: [wache],

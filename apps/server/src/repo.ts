@@ -131,6 +131,11 @@ export interface Repository {
   /** Der neue Stand gilt (die Leitung nannte ihn fertig) oder der Artikel ist weg. */
   dropReadyStand(entityId: string): Promise<void>;
 
+  /** **Wo ein Konto in einem Buch stehen blieb** (T-091, REQ-247): je
+   *  Konto und Ebene der zuletzt gelesene Abschnitt. Kein Artikel — ein
+   *  Lesezeichen wandert nicht mit der Ausfuhr (wie `app_session`). */
+  readingPosition(userId: string, layerId: string): Promise<string | undefined>;
+  keepReadingPosition(userId: string, layerId: string, entityId: string): Promise<void>;
   /** **Einstellungen je Konto** (T-092): Schlüssel → Wert, wie die Seite
    *  sie schreibt. Wie jemand liest, nicht was gilt — darum am Konto und
    *  in keinem Artikel. */
@@ -315,6 +320,13 @@ export class InMemoryRepository implements Repository {
   }
   async dropReadyStand(entityId: string): Promise<void> {
     this.fertig.delete(entityId);
+  }
+  private readonly lesestand = new Map<string, string>();
+  async readingPosition(userId: string, layerId: string): Promise<string | undefined> {
+    return this.lesestand.get(`${userId}|${layerId}`);
+  }
+  async keepReadingPosition(userId: string, layerId: string, entityId: string): Promise<void> {
+    this.lesestand.set(`${userId}|${layerId}`, entityId);
   }
   private readonly prefs = new Map<string, Record<string, unknown>>();
   async getPrefs(userId: string): Promise<Record<string, unknown>> {

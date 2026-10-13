@@ -72,6 +72,7 @@ import type { ReadyStand, Repository } from './repo.js';
 import type { AtlasEnv } from './config.js';
 import { NO_LAYER, buildListIndex, listProjection, parseListQuery, queryList, type ListIndex } from './liste.js';
 import { mayActivate, rechtAn, registerVerwaltung } from './verwaltung.js';
+import { registerLesen } from './lesen.js';
 import { ausfuhrName, kampagnenAusfuhr } from './ausfuhr.js';
 import {
   ATTEMPT_WINDOW_MINUTES,
@@ -844,6 +845,8 @@ export function buildApp({
        Kampagne im Pfad (gm ändert, co-gm sieht), nicht am Konto allein. */
     if (url.startsWith('/api/campaigns') || url.startsWith('/api/invites')) return;
 
+    /* Den eigenen Lesestand merken (T-091): die Route schreibt nur am Konto. */
+    if (/^\/api\/read\/[^/]+\/position$/.test(url) && request.method === 'PUT') return;
     /* „ready" per Knopf (REQ-237): die Route prüft je Artikel (`maySetReady`). */
     if (/^\/api\/entities\/[^/]+\/ready$/.test(url) && request.method === 'POST') return;
     /* Anlegen: Spielende der laufenden Kampagne (REQ-237). */
@@ -1655,6 +1658,9 @@ export function buildApp({
     };
   });
 
+  /* Die Leseansicht (T-091, REQ-247): eine Ebene als Buch. */
+  const { leseZiel } = registerLesen(app, { repo, viewerOf, roh, sieve, geltend, bezuegeVon });
+
   app.get<{ Params: { id: string }; Querystring: { stand?: string } }>('/api/entities/:id', async (request, reply) => {
     const stand = await roh();
     const gefunden = stand.map.get(request.params.id) ?? (await repo.getEntity(request.params.id));
@@ -1700,10 +1706,13 @@ export function buildApp({
     if (!einer) return reply.code(404).send({ error: 'Nicht gefunden' });
     /* Die Namen, die der Artikel braucht, kommen mit (W7) — der Browser
        hält keinen Bestand mehr, aus dem er sie nachschlagen könnte. */
+    /* „Im Buch lesen" (T-091): wohin die Quellenangabe führt, wenn seine Ebene Text hat. */
+    const reading = await leseZiel(einer);
     const refs = {
       ...(await bezuegeVon(request, einer)),
       ...(ready ? { ready } : {}),
       ...(vergleich ? { compare: true } : {}),
+      ...(reading ? { reading } : {}),
     };
     /* Ob „Adapt" angeboten wird (E-018, T-082): dieselbe Frage wie die
        Route, damit die Seite nichts anbietet, was der Server ablehnt. */
