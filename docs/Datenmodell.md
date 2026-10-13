@@ -123,7 +123,7 @@ Was dabei immer gilt:
 | **Aufzählung** | eine Zeile in `enums`: Name, Beschriftung, Wörter | `Ability`, `State` |
 
 Ein Grundtyp darf einen Bereich tragen, damit seine Unterarten ihn erben
-(`Story` → `history`). Eine Artikelart ohne Bereich (`Asset`, `Layer`) steht in
+(`Story` → `story`). Eine Artikelart ohne Bereich (`Asset`, `Layer`) steht in
 keiner Liste und wird über den Artikel erreicht, der sie braucht.
 
 ### 3.2 Was eine Typzeile trägt
@@ -136,7 +136,7 @@ keiner Liste und wird über den Artikel erreicht, der sie braucht.
 | `extends[]` | die Typen, aus denen er gemacht ist — **der erste zeichnet den Baum und entscheidet den Bereich**, alle bringen Felder, Kanten, Beschriftungen und Anordnungen mit |
 | `schema.properties` | die eigenen Felder (§4) |
 | `schema.required[]` | welche davon Pflicht sind |
-| `area` | `world` · `history` · `rules` · `play` — geerbt |
+| `area` | `world` · `story` · `rules` · `play` — geerbt. `story` ist, was nur die Kampagne betrifft (Kampagne, Sitzung, Szene, Auftrag); die Weltgeschichte (`World`, `Event`) steht unter `world` (bis 13.10. hiess `story` `history` und hielt beides) |
 | `units` | `imperial` · `metric` · `both`; überschreibt die Einstellung — geerbt |
 | `titles` | `Typ.feld` → eigene Beschriftung eines geerbten Feldes (`Time.until` → „Deadline" am Auftrag) — geerbt |
 | `views` | eigene Anordnung je Ansicht (`full`, `quick`, `overview`) — geerbt über `layoutFor` |
@@ -864,7 +864,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-12: 46 Artikelarten, 22 Grundtypen, 54 Kantenarten, 6 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-13: 46 Artikelarten, 22 Grundtypen, 54 Kantenarten, 6 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -907,6 +907,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Article` | `Source` `Todos` `Lore` `Secrets` | — | — | `describedIn` | — |
 | `Creature` | `Image` `Source` `Vars` `Vitals` `Lore` `Facts` `Secrets` `ReadAloud` | `appearance` `personality` `species` `kind` `role` `attitude` `figure` | `worships` `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | full |
 | `Deity` | `Image` `Source` `Lore` `Secrets` | `pantheon` `title` `alignment` `domains` `symbol` `province` `plane` | — | `worships` | — |
+| `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `partOf` `involves` | `partOf` | — |
 | `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` `goal` | `worships` `controls` `regards` | `memberOf` `questGiver` `features` `knownBy` `regards` | — |
 | `Hazard` | `Image` `Source` `Secrets` | `kind` `category` `tier` `threat` `trigger` `duration` `effect` `countermeasures` `initiative` | — | — | — |
 | `Item` | `Image` `Source` `Lore` `Secrets` `Facts` | `itemType` `rarity` `tier` `attunement` `attunementNote` `charges` `recharge` `rechargeAmount` `bonusWeapon` `bonusAc` `bonusSpellAttack` `bonusSave` `appliesTo` `availability` `copperPrice` `stackSize` `weight` `rows` `width*` `height*` `cells*` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `loot` `instanceOf` | — |
@@ -917,12 +918,11 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Weapon` | `Item` | `category` `damage` `damage2` `damageType` `range` `ammoType` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `loot` `instanceOf` | — |
 | `World` | `Image` `Lore` | `calendar` | — | `inWorld` | — |
 
-**History**
+**story**
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
 | `Campaign` | `Story` | — | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` `inWorld` `activates` | `partOf` `partyOf` `mapOf` | full |
-| `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `partOf` `involves` | `partOf` | — |
 | `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | full |
 | `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `mapOf` | — |
 | `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `nowPlaying` `moves` `log` `partyNote` `stewardship` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `mapOf` | full |
