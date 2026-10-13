@@ -105,6 +105,17 @@ export async function runImport(
   const danach = new Map<string, Entity>();
   if (!optionen.replace) for (const e of bestand) danach.set(e.id, e);
   for (const e of neu) danach.set(e.id, e);
+  /* Eine Kanten-Id ist Schlüssel der ganzen Tabelle, nicht je Artikel:
+     zwei gleiche schreiben bis zur zweiten und brechen dann ab. Darum
+     hier, vor dem ersten Schreiben, über alles, was danach steht. */
+  const kantenIds = new Map<string, string>();
+  for (const e of danach.values()) {
+    for (const r of e.relations ?? []) {
+      const schon = kantenIds.get(r.id);
+      if (schon !== undefined) fehler.push(`Kante ${r.id}: steht an ${schon} und an ${e.id}`);
+      else kantenIds.set(r.id, e.id);
+    }
+  }
   const arten = new Map([...danach.values()].map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
   /* Die Ids einmal: ohne sie baut die Prüfung je Artikel ein Set aus
      allen Schlüsseln, und bei zehntausend Artikeln sind das Minuten. */
