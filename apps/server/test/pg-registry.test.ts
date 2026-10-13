@@ -108,3 +108,12 @@ describe('Aufzählungen und Einstellungen haben eine Tabelle (Migration 019)', (
     expect(pgQuelle).toMatch(/insert into setting_def\(key,value\)/);
   });
 });
+
+/* `jsonb` sortiert Schlüssel; die Reihenfolge der Felder ist aber Teil der
+   Art (Migration 020). Die letzte Angabe zum Spaltentyp muss `json` sein. */
+describe('field order survives Postgres', () => {
+  it('stores interface_def.schema as json, not jsonb', () => {
+    const angaben = [...ddl.matchAll(/schema\s+(?:type\s+)?(jsonb|json)\b/gi)].map((m) => m[1]);
+    expect(angaben.at(-1)?.toLowerCase()).toBe('json');
+  });
+});

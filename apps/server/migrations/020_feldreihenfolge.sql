@@ -1,0 +1,13 @@
+-- Die Reihenfolge der Felder ist Teil der Art.
+--
+-- `jsonb` sortiert die Schlüssel eines Objekts (nach Länge, dann nach
+-- Alphabet). Ein Zauber las sich deshalb am Server als „Spell level,
+-- Range, School, Duration, Range kind, Casting time" statt in der
+-- Reihenfolge, in der die Art ihre Felder erklärt — und jede Maske, die
+-- aus dem Register zeichnet, zeichnete das nach. `json` hält den Text, wie
+-- er geschrieben wurde. Abgefragt wird `schema` nirgends mit
+-- jsonb-Operatoren; gelesen wird es ganz.
+--
+-- Was schon gespeichert ist, ist schon umsortiert; die Startzeilen bringen
+-- ihre Reihenfolge beim nächsten Start zurück (`ordneFelder` in seed.ts).
+alter table interface_def alter column schema type json using schema::text::json;
