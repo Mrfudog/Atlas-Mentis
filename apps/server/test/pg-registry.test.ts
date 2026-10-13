@@ -99,7 +99,7 @@ describe('every registry part has a table, and is written and read', () => {
 });
 
 /* Dasselbe für die Kantenarten: `asField` hatte keine Spalte, `props` wurde
-   geschrieben und nie gelesen (Migration 021). Erst das Register (W5), das
+   geschrieben und nie gelesen (Migration 022). Erst das Register (W5), das
    Kantenarten speichert, hätte beides still gelöscht. */
 describe('an edge kind survives a round trip through Postgres', () => {
   const benutzt = new Set<string>();

@@ -56,10 +56,10 @@ export class PgRepository implements Repository {
         owned: Boolean(r['owned']),
         cardinality: (r['cardinality'] as 'one' | 'many') ?? 'many',
         section: (r['section'] as string) ?? undefined,
-        /* An welchem Ende sie sich wie ein Feld liest (Migration 021). */
+        /* An welchem Ende sie sich wie ein Feld liest (Migration 022). */
         asField: (r['as_field'] as RelationDef['asField']) ?? undefined,
         /* Was die Kante selbst trägt — geschrieben wurde es immer, gelesen
-           bis zur Migration 021 nie. Ein leeres Schema ist keines. */
+           bis zur Migration 022 nie. Ein leeres Schema ist keines. */
         props: Object.keys((r['props'] as { properties?: object } | null)?.properties ?? {}).length
           ? (r['props'] as RelationDef['props'])
           : undefined,
