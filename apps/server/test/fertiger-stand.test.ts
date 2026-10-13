@@ -146,13 +146,14 @@ describe('the own player character is exempt from the status gate (E-014 d)', ()
   });
 
   it('lets a player create her character as ready', async () => {
-    const { als } = await aufbau();
+    const { als, stand } = await aufbau();
     const res = await als('Tom', 'POST', '/api/entities', {
       type: 'PlayerCharacter',
       name: 'Bran',
       fields: { 'Status.status': 'ready' },
     });
     expect(res.statusCode).toBe(201);
+    expect(stand(res.json() as Entity)).toBe('ready');
   });
 });
 
