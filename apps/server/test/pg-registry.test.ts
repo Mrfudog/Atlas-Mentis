@@ -117,3 +117,19 @@ describe('field order survives Postgres', () => {
     expect(angaben.at(-1)?.toLowerCase()).toBe('json');
   });
 });
+
+/* Der Zwischenspeicher des Bestands (repo.pg.ts) erkennt fremde Schreiber
+   am Stempel aus der Datenbank; ein Schreiben am Server leert ihn sofort.
+   Ohne laufendes Postgres hier am Quelltext geprüft — der Durchstich in CI
+   liest und schreibt durch ihn. */
+describe('entity cache', () => {
+  it('asks the database whether anything changed, and drops itself on every write', () => {
+    expect(pgQuelle).toMatch(/max\(updated_at\)/);
+    const schreiber = ['async putEntity', 'async deleteEntity'];
+    for (const s of schreiber) {
+      const ab = pgQuelle.indexOf(s);
+      expect(ab).toBeGreaterThan(-1);
+      expect(pgQuelle.slice(ab, ab + 200)).toContain('this.bestand = null');
+    }
+  });
+});

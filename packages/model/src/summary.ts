@@ -63,8 +63,8 @@ export function summaryOf(entity: Entity, felder: Set<string>): Entity {
     interfaces: entity.interfaces,
     name: entity.name,
     components,
+    /* Ohne Zeitstempel: keine Liste fragt danach, und bei 24 000 Zeilen
+       sind sie anderthalb Megabyte. */
     relations: (entity.relations ?? []).filter((r) => KANTEN.includes(r.type)),
-    ...(entity.createdAt ? { createdAt: entity.createdAt } : {}),
-    ...(entity.updatedAt ? { updatedAt: entity.updatedAt } : {}),
   };
 }

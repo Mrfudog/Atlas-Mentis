@@ -176,6 +176,54 @@ export class PgRepository implements Repository {
    * geschrieben wird, stünde sonst ohne seine Karten da.
    */
   async listEntities(): Promise<Entity[]> {
+    const stempel = await this.stempel();
+    if (this.bestand?.stempel === stempel) return [...this.bestand.liste];
+    if (this.laedt?.stempel !== stempel) {
+      const lauf = this.ladeBestand().then((liste) => {
+        this.bestand = { stempel, liste };
+        return liste;
+      });
+      this.laedt = { stempel, lauf };
+      /* Ein Fehlschlag bleibt nicht als Antwort für alle Späteren liegen. */
+      lauf.catch(() => undefined).finally(() => {
+        if (this.laedt?.lauf === lauf) this.laedt = null;
+      });
+    }
+    return [...(await this.laedt!.lauf)];
+  }
+
+  /**
+   * Woran man sieht, dass sich der Bestand geändert hat: wie viele Artikel
+   * es gibt und wann zuletzt einer geschrieben wurde. Jedes Schreiben geht
+   * durch `putEntity` und setzt `updated_at`; ein Löschen ändert die Zahl.
+   * Gefragt wird die Datenbank und nicht ein Merker im Prozess, denn die
+   * Einfuhr läuft als eigener Prozess (`import.js`) und schreibt an diesem
+   * Server vorbei.
+   */
+  private async stempel(): Promise<string> {
+    const { rows } = await this.pool.query<Row>(
+      `select count(*)::text || '/' || coalesce(max(updated_at)::text, '') as s from entity`,
+    );
+    return String(rows[0]?.['s'] ?? '');
+  }
+
+  /**
+   * Der gelesene Bestand, solange sich nichts geändert hat (`stempel`).
+   *
+   * Jede Anfrage braucht den ganzen Bestand — das Sieb fragt Stapel,
+   * Vorlagen und Wissen über alle Artikel, auch wenn nur einer geöffnet
+   * wird. Mit den 24 157 Artikeln aus 5e.tools hiess das je Anfrage gut eine
+   * Sekunde Datenbank, auf dem kleinen Server mehrere, und eine Artikelseite
+   * stellt zwei Anfragen. Die Artikel darin werden geteilt und **nicht
+   * verändert** — wer einen ändern will, baut einen neuen (`readInstance`,
+   * `redactEntity`, `detachInstance` tun das schon). Das Feld ist eine
+   * Kopie, damit niemand die Liste selbst umstellt.
+   */
+  private bestand: { stempel: string; liste: Entity[] } | null = null;
+  /** Ein Lesen, das gerade läuft — zwei gleichzeitige Anfragen lesen einmal. */
+  private laedt: { stempel: string; lauf: Promise<Entity[]> } | null = null;
+
+  private async ladeBestand(): Promise<Entity[]> {
     const client = await this.pool.connect();
     try {
       await client.query('begin isolation level repeatable read read only');
@@ -227,6 +275,7 @@ export class PgRepository implements Repository {
   }
 
   async putEntity(entity: Entity): Promise<Entity> {
+    this.bestand = null;
     const client = await this.pool.connect();
     try {
       await client.query('begin');
@@ -275,6 +324,7 @@ export class PgRepository implements Repository {
   }
 
   async deleteEntity(id: string): Promise<boolean> {
+    this.bestand = null;
     const { rowCount } = await this.pool.query('delete from entity where id = $1', [id]);
     return (rowCount ?? 0) > 0;
   }
