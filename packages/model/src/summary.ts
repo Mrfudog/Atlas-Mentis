@@ -15,6 +15,8 @@
  *   und Aliasse.
  * - **Instanz oder nicht:** die Kante `instanceOf` (D82); eine Instanz ist
  *   kein Verweisziel und steht in keiner Liste.
+ * - **Woher:** die Kanten `inLayer` und die Karte `Source` — das Kompendium
+ *   filtert nach Ebene und zeigt die Quelle in der Zeile.
  * - **Auswahlen, die eine Art nennen (M6):** die Felder, nach denen ein
  *   `enumWhere` filtert. Sie werden aus dem Register gelesen und nicht hier
  *   aufgezählt — ein Filter, der morgen dazukommt, bringt sein Feld mit.
@@ -23,10 +25,13 @@
  * Betrachter sehen darf, samt Deckname statt Name.
  */
 import { INSTANCE_RELATION } from './instance.js';
+import { LAYER_RELATION } from './visibility.js';
 import type { Entity, Registry } from './types.js';
 
 /** Diese Karten gehen ganz mit; sie sind klein und tragen, wonach gesucht wird. */
-const GANZE_KARTEN = ['Identity', 'Tags', 'Status'];
+const GANZE_KARTEN = ['Identity', 'Tags', 'Status', 'Source'];
+/** Diese Kanten gehen mit; alle anderen fragt erst der geöffnete Artikel. */
+const KANTEN = [INSTANCE_RELATION, LAYER_RELATION];
 
 /** Die Felder, nach denen irgendeine Auswahl filtert (`enumWhere`). */
 export function summaryFields(registry: Pick<Registry, 'interfaces'>): Set<string> {
@@ -58,7 +63,7 @@ export function summaryOf(entity: Entity, felder: Set<string>): Entity {
     interfaces: entity.interfaces,
     name: entity.name,
     components,
-    relations: (entity.relations ?? []).filter((r) => r.type === INSTANCE_RELATION),
+    relations: (entity.relations ?? []).filter((r) => KANTEN.includes(r.type)),
     ...(entity.createdAt ? { createdAt: entity.createdAt } : {}),
     ...(entity.updatedAt ? { updatedAt: entity.updatedAt } : {}),
   };

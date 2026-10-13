@@ -69,8 +69,11 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   Artikelart im Prototyp anzulegen ist der Sinn der Sache und kein Fehler.
 - `apps/server` — Fastify. Routen sprechen mit `Repository`, nie mit Postgres;
   deshalb sind sie ohne Datenbank testbar (`InMemoryRepository`).
-- `apps/web` — Angular. Anmeldung, Artikelliste und Artikelansicht stehen
-  (die Liste aus der Kurzfassung `?as=summary`, der Artikel beim Öffnen);
+- `apps/web` — Angular, im Pergament des Design-Canvas. Anmeldung, die
+  Kopfleiste mit den Bereichen, Kompendium und Bereiche (Filter in der
+  Seitenleiste, aus der Kurzfassung `?as=summary`) und der Artikel im
+  Buchstil (geholt beim Öffnen, Ansicht `full`) stehen; Boards, Karte,
+  Initiative und Spiel noch nicht;
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
   Vorlage je Artikelart. **Zurückgehalten wird am Server** (`redactEntity`) —
   was hier ankommt, darf angezeigt werden, und eine zweite Prüfung in der
