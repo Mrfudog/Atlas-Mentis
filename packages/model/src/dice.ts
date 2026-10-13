@@ -10,16 +10,22 @@
  * (`{@hit 4}` → `{{+4}}`), und am Tisch heisst „+4" genau das. Eine Zahl
  * ohne Vorzeichen (`{{5}}`) bleibt eine Zahl — ein Wurf, der immer 5
  * ergibt, ist eine merkwürdige, aber ehrliche Angabe.
+ *
+ * **Behalten** (`4d6kh3`, `2d20kl1`): von den Würfeln eines Glieds zählen
+ * nur die höchsten bzw. tiefsten; die übrigen stehen im Wurf, gestrichen
+ * (`drop`). So würfelt man Attribute (E-016) und mit Vorteil.
  */
 
-export type DiceTerm = { count: number; sides: number; sign: 1 | -1 } | { flat: number };
+export type DiceTerm =
+  | { count: number; sides: number; sign: 1 | -1; keep?: { high: boolean; n: number } }
+  | { flat: number };
 
 export interface DiceRoll {
   /** Der Ausdruck, wie er dastand. */
   expr: string;
   total: number;
   /** Die Einzelwürfe — „18" und „1 + 17" sind am Tisch zweierlei. */
-  rolls: ({ d: number; v: number; vz: 1 | -1 } | { flat: number })[];
+  rolls: ({ d: number; v: number; vz: 1 | -1; drop?: true } | { flat: number })[];
 }
 
 /** Obergrenzen, damit `{{9999d9999}}` keine Seite anhält. */
@@ -48,13 +54,18 @@ export function parseDice(expr: string): DiceTerm[] | null {
       sign = -1;
       t = t.slice(1);
     }
-    const m = /^(\d*)[dw](\d+)$/.exec(t);
+    const m = /^(\d*)[dw](\d+)(?:k([hl])(\d+))?$/.exec(t);
     if (m) {
       const count = parseInt(m[1] || '1', 10);
       const sides = parseInt(m[2] ?? '0', 10);
       /* Ein W0 oder null Würfel sind kein Wurf, sondern ein Tippfehler. */
       if (count < 1 || sides < 1 || count > MAX_COUNT || sides > MAX_SIDES) return null;
-      out.push({ count, sides, sign });
+      if (m[3]) {
+        const n = parseInt(m[4] ?? '0', 10);
+        /* Mehr behalten, als gewürfelt wird, oder keinen: ein Tippfehler. */
+        if (n < 1 || n > count) return null;
+        out.push({ count, sides, sign, keep: { high: m[3] === 'h', n } });
+      } else out.push({ count, sides, sign });
       continue;
     }
     if (/^\d+$/.test(t)) {
@@ -86,10 +97,18 @@ export function rollDice(expr: string, random: () => number = Math.random): Dice
       rolls.push({ flat: t.flat });
       continue;
     }
-    for (let i = 0; i < t.count; i++) {
-      const v = 1 + Math.floor(random() * t.sides);
-      rolls.push({ d: t.sides, v, vz: t.sign });
-      total += t.sign * v;
+    const glied: { d: number; v: number; vz: 1 | -1; drop?: true }[] = [];
+    for (let i = 0; i < t.count; i++) glied.push({ d: t.sides, v: 1 + Math.floor(random() * t.sides), vz: t.sign });
+    if (t.keep) {
+      /* Gestrichen werden die übrigen, bei Gleichstand die späteren. */
+      const rang = glied
+        .map((w, i) => ({ v: w.v, i }))
+        .sort((a, z) => (t.keep!.high ? z.v - a.v : a.v - z.v) || a.i - z.i);
+      for (const { i } of rang.slice(t.keep.n)) glied[i]!.drop = true;
+    }
+    for (const w of glied) {
+      rolls.push(w);
+      if (!w.drop) total += t.sign * w.v;
     }
   }
   return { expr, total, rolls };
@@ -99,8 +118,8 @@ export function rollDice(expr: string, random: () => number = Math.random): Dice
 export function rollText(r: DiceRoll | null): string {
   if (!r) return '?';
   const wuerfe = r.rolls
-    .filter((x): x is { d: number; v: number; vz: 1 | -1 } => 'd' in x)
-    .map((x) => (x.vz < 0 ? '−' : '') + x.v)
+    .filter((x): x is { d: number; v: number; vz: 1 | -1; drop?: true } => 'd' in x)
+    .map((x) => (x.vz < 0 ? '−' : '') + (x.drop ? `~${x.v}~` : x.v))
     .join(', ');
   const flach = r.rolls.reduce((a, x) => a + ('flat' in x ? x.flat : 0), 0);
   const mod = flach ? (flach > 0 ? ` +${flach}` : ` ${flach}`) : '';
