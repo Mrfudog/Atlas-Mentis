@@ -14,7 +14,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## World
 
-*Wer und was es gibt.* — 13 Arten.
+*Wer und was es gibt.* — 14 Arten.
 
 ### Armor
 
@@ -211,6 +211,52 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Creature | Faction — `worships` → „worshipped by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+
+### Event
+
+`Event` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud`
+
+**Eigene Felder**
+
+- `kind` *string*
+
+**Geerbte Felder**
+
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `duration` *string*
+- *`Lore`* — `lore` *long*
+- *`Secrets`* — `secret` *long*
+- *`ReadAloud`* — `readaloud` *long*
+
+**Kanten von hier**
+
+- `partOf` → Place | Story | Event — „part of"
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `involves` → * — „involves"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Place | Story | Quest | Event | Board — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -694,9 +740,9 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ---
 
-## History
+## story
 
-*Was passiert und passiert ist.* — 6 Arten.
+5 Arten.
 
 ### Campaign
 
@@ -749,52 +795,6 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `overrides` → „replaced by"
 
 **Gezeichnet** (aus `Campaign`): `description`, `fields`, `stack`, `members`, `quests`, `timeline`, `prep`, `prose`, `relations`
-
-### Event
-
-`Event` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud`
-
-**Eigene Felder**
-
-- `kind` *string*
-
-**Geerbte Felder**
-
-- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
-- *`Prose`* — `paragraph` *long*
-- *`Notes`* — `note` *long*
-- *`Status`* — `status` *State: idea | prepared | ready*
-- *`Description`* — `description` *long*
-- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
-- *`Tags`* — `tags` *tags*
-- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `duration` *string*
-- *`Lore`* — `lore` *long*
-- *`Secrets`* — `secret` *long*
-- *`ReadAloud`* — `readaloud` *long*
-
-**Kanten von hier**
-
-- `partOf` → Place | Story | Event — „part of"
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `involves` → * — „involves"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- Place | Story | Quest | Event | Board — `partOf` → „contains"
-- Quest — `questAbout` → „concerned by"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Quest
 

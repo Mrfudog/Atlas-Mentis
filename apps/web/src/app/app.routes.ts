@@ -32,12 +32,14 @@ export const routes: Routes = [
     title: 'World · Atlas Mentis',
   },
   {
-    path: 'history',
+    path: 'story',
     canActivate: [wache],
     loadComponent: kompendium,
-    data: { bereich: 'history' },
-    title: 'History · Atlas Mentis',
+    data: { bereich: 'story' },
+    title: 'Story · Atlas Mentis',
   },
+  /* Hiess bis 13.10. so; ein gespeicherter Link soll nicht ins Leere gehen. */
+  { path: 'history', redirectTo: 'story' },
   {
     path: 'rules',
     canActivate: [wache],

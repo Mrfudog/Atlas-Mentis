@@ -2653,7 +2653,7 @@ function typeList(){
 /* Vier **Bereiche** für Artikel. Register und Kompendium stehen daneben und
    sind keine: das eine zeigt die Zeilen, aus denen alles besteht, das andere
    alle Artikel ohne Rücksicht darauf, wo sie hingehören. */
-var AREAS=[["world","World"],["history","History"],["rules","Rules"],["play","Play"]];
+var AREAS=[["world","World"],["story","Story"],["rules","Rules"],["play","Play"]];
 function areaOf(n){
   var kette=selfAndAncestors(n);
   for(var i=0;i<kette.length;i++){
@@ -15498,7 +15498,7 @@ function howtoBeispiel(){
    Also stehen alle blass da und die eines gewählten Kastens kräftig —
    das Ganze als Übersicht, das Einzelne auf Klick. */
 var DG_W=124, DG_H=30, DG_VGAP=9, DG_COL=176, DG_TOP=26, DG_PAD=12;
-var DG_SPALTEN=[["world","World"],["history","History"],["rules","Rules"],
+var DG_SPALTEN=[["world","World"],["story","Story"],["rules","Rules"],
   ["play","Play"],["","Shared"]];
 
 /** Welche Typen ins Diagramm gehören, und in welcher Spalte sie stehen. */

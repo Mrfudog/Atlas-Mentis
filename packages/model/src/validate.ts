@@ -96,7 +96,7 @@ export const InterfaceDefSchema = z.object({
   abstract: z.boolean().optional(),
   extends: z.array(z.string()).optional(),
   schema: objectSchema.optional(),
-  area: z.enum(['world', 'history', 'rules', 'play']).optional(),
+  area: z.enum(['world', 'story', 'rules', 'play']).optional(),
   views: z.record(z.string(), z.array(LayoutElementSchema)).optional(),
   units: z.enum(['imperial', 'metric', 'both']).optional(),
   /* `Typ.feld` → Beschriftung. Eine Beschriftung und keine Feldliste. */
