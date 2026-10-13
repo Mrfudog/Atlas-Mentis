@@ -67,7 +67,7 @@ export interface AppOptions {
   trustProxy?: boolean | string;
 }
 
-const REGISTRY_PARTS = ['interfaces', 'relations', 'views', 'vars'] as const;
+const REGISTRY_PARTS = ['interfaces', 'relations', 'views', 'vars', 'enums', 'settings'] as const;
 type RegistryPart = (typeof REGISTRY_PARTS)[number];
 
 function isRegistryPart(value: string): value is RegistryPart {
@@ -457,6 +457,8 @@ export function buildApp({
         case 'relations': await repo.putRegistryPart('relations', parsed.data.relations); break;
         case 'views': await repo.putRegistryPart('views', parsed.data.views); break;
         case 'vars': await repo.putRegistryPart('vars', parsed.data.vars); break;
+        case 'enums': await repo.putRegistryPart('enums', parsed.data.enums ?? {}); break;
+        case 'settings': await repo.putRegistryPart('settings', parsed.data.settings ?? {}); break;
       }
       await repo.appendEvent('registry.written', undefined, { part });
       return { ok: true, part };
