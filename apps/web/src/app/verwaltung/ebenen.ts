@@ -1,6 +1,13 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { Api, type KampagnenEbene, type KampagnenEbenen } from '../kern/api';
 
+/** Die Gruppen der Bücher, wie der Server sie nennt (`BUCHGRUPPEN`, T-081). */
+const BUCHGRUPPEN: [string, string][] = [
+  ['core', 'Core rules'],
+  ['sourcebook', 'Sourcebooks'],
+  ['adventure', 'Adventures'],
+];
+
 /**
  * **Die Ebenen einer Kampagne** (T-069, E-008) — auf der Kampagnenseite,
  * unter den Mitgliedern: je Ebene ein Häkchen (aufgeschaltet ja/nein) und
@@ -15,6 +22,11 @@ import { Api, type KampagnenEbene, type KampagnenEbenen } from '../kern/api';
  * Oben steht die spezifischste Ebene — sie gewinnt, wenn zwei dasselbe
  * sagen. Was der Server nicht annähme, bietet die Seite nicht an
  * (`may`, `canActivate`).
+ *
+ * **Bücher stehen für sich** (T-081, E-017): je Buch aus 5e.tools eine
+ * Ebene, gruppiert nach Grundregelwerk, Quellenbuch und Abenteuer, mit
+ * Häkchen und ohne Pfeile — zwischen Büchern gibt es nichts zu ordnen, und
+ * siebzig Zeilen mit Pfeilen verdeckten den Stapel, um den es geht.
  */
 @Component({
   selector: 'nw-kampagnen-ebenen',
@@ -77,9 +89,44 @@ import { Api, type KampagnenEbene, type KampagnenEbenen } from '../kern/api';
               }
             </li>
           } @empty {
-            <li class="dim">There is no layer yet. Everything is in play.</li>
+            @if (!buecher().length) {
+              <li class="dim">There is no layer yet. Everything is in play.</li>
+            }
           }
         </ul>
+        @if (buecher().length) {
+          <h3>Books</h3>
+          <p class="fuss">Each book from 5e.tools is a layer of its own. Turn on the books this campaign uses.</p>
+          @for (g of buecher(); track g.key) {
+            <details class="gruppe" [open]="g.key === 'core' || offen().has(g.key)" (toggle)="merke(g.key, $event)">
+              <summary>
+                <span class="gname">{{ g.label }}</span>
+                <span class="dim">{{ g.an }} of {{ g.books.length }} on</span>
+              </summary>
+              <ul class="ebenen buecher">
+                @for (l of g.books; track l.id) {
+                  <li [class.aus]="!l.active">
+                    <label class="haken">
+                      <input
+                        type="checkbox"
+                        [checked]="l.active"
+                        [disabled]="!aenderbar(l) || laeuft()"
+                        (change)="umschalten(l)"
+                      />
+                      <span class="name">{{ l.name }}</span>
+                    </label>
+                    <span class="dim">
+                      {{ zahl(l.articles) }} {{ l.articles === 1 ? 'article' : 'articles' }}
+                      @if (l.alsoIn.length) {
+                        · also in {{ l.alsoIn.join(', ') }}
+                      }
+                    </span>
+                  </li>
+                }
+              </ul>
+            </details>
+          }
+        }
         @if (d.may === 'see') {
           <p class="fuss">A co-GM sees the layers; the GM turns them on.</p>
         }
@@ -177,6 +224,39 @@ import { Api, type KampagnenEbene, type KampagnenEbenen } from '../kern/api';
     .fehler {
       color: var(--warn);
     }
+    h3 {
+      margin: 0.75rem 0 0;
+      font-family: var(--caps);
+      font-size: 1.05rem;
+      color: var(--accent);
+    }
+    .gruppe {
+      border-top: 1px solid var(--line2);
+    }
+    .gruppe summary {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.25rem 0.75rem;
+      min-height: 40px;
+      cursor: pointer;
+    }
+    .gruppe summary::-webkit-details-marker {
+      display: none;
+    }
+    .gruppe summary::before {
+      content: '▸';
+      color: var(--dim);
+    }
+    .gruppe[open] > summary::before {
+      content: '▾';
+    }
+    .gname {
+      font-weight: 700;
+    }
+    .buecher {
+      margin: 0 0 0.25rem 1.1rem;
+    }
   `,
 })
 export class KampagnenEbenenListe {
@@ -206,11 +286,31 @@ export class KampagnenEbenenListe {
     }
   }
 
-  /** Die aufgeschalteten, oben die spezifischste; darunter die übrigen. */
+  /** Die aufgeschalteten, oben die spezifischste; darunter die übrigen. Ohne Bücher. */
   protected readonly oben = computed(() => {
-    const l = this.daten()?.layers ?? [];
+    const l = (this.daten()?.layers ?? []).filter((x) => !x.group);
     return [...l.filter((x) => x.active).reverse(), ...l.filter((x) => !x.active)];
   });
+
+  /** Die Bücher je Gruppe, in der Reihenfolge der Gruppen, nach Name (T-081). */
+  protected readonly buecher = computed(() => {
+    const l = (this.daten()?.layers ?? []).filter((x) => x.group);
+    return BUCHGRUPPEN.map(([key, label]) => {
+      const books = l.filter((x) => x.group === key).sort((a, b) => a.name.localeCompare(b.name, 'en'));
+      return { key, label, books, an: books.filter((x) => x.active).length };
+    }).filter((g) => g.books.length);
+  });
+
+  /** Welche Gruppen aufgeklappt sind — über ein Neuladen nach dem Schalten. */
+  protected readonly offen = signal(new Set<string>());
+
+  protected merke(key: string, ev: Event): void {
+    const auf = (ev.target as HTMLDetailsElement).open;
+    const s = new Set(this.offen());
+    if (auf) s.add(key);
+    else s.delete(key);
+    this.offen.set(s);
+  }
 
   /** Der Stapel von unten nach oben, wie der Server ihn will. */
   private stapel(): string[] {
@@ -240,11 +340,15 @@ export class KampagnenEbenenListe {
     }
   }
 
-  /** `um` 1 heisst nach oben (spezifischer), −1 nach unten. */
+  /** `um` 1 heisst nach oben (spezifischer), −1 nach unten. Getauscht wird
+   *  mit der nächsten Ebene, die im Stapel steht; die Bücher dazwischen
+   *  bleiben, wo sie sind. */
   protected schieben(l: KampagnenEbene, um: 1 | -1): void {
     const s = this.stapel();
+    const buch = new Set((this.daten()?.layers ?? []).filter((x) => x.group).map((x) => x.id));
     const i = s.indexOf(l.id);
-    const j = i + um;
+    let j = i + um;
+    while (j >= 0 && j < s.length && buch.has(s[j]!)) j += um;
     if (i < 0 || j < 0 || j >= s.length) return;
     [s[i], s[j]] = [s[j]!, s[i]!];
     void this.schreiben(s);

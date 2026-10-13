@@ -147,6 +147,20 @@ describe('the campaign page switches layers on', () => {
     expect((await rufe('Sela', 'GET', '/api/campaigns/camp_a/layers')).statusCode).toBe(403);
   });
 
+  it('names the group of a book layer, from its tag (T-081)', async () => {
+    const { rufe, repo } = await aufbau();
+    const buch = (id: string, name: string, n: number, tags?: string[]): Entity => ({
+      ...ebene(id, name, n, 0),
+      components: { ...ident(name, `layer-00${n}`), Layer: { kind: 'book', order: 0 }, ...(tags ? { Tags: { tags } } : {}) },
+    });
+    await repo.putEntity(buch('e5_book_phb', "Player's Handbook", 7, ['core']));
+    await repo.putEntity(buch('e5_book_cos', 'Curse of Strahd', 8, ['adventure']));
+    await repo.putEntity(buch('e5_book_x', 'X', 9));
+    const l = (await rufe('Basil', 'GET', '/api/campaigns/camp_a/layers')).json();
+    const gruppe = (id: string) => l.layers.find((x: { id: string }) => x.id === id)?.group;
+    expect([gruppe('e5_book_phb'), gruppe('e5_book_cos'), gruppe('e5_book_x'), gruppe('ly_a')]).toEqual(['core', 'adventure', 'sourcebook', '']);
+  });
+
   it('turns one on at the place its own order says, and the articles are back', async () => {
     const { rufe, repo } = await aufbau();
     const res = await rufe('Basil', 'POST', '/api/campaigns/camp_a/layers/ly_5e');
