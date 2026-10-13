@@ -405,6 +405,23 @@ export class Api {
   }
 
   // ------------------------------------------------------- Verwaltung
+  /**
+   * Die Kampagne als Datei (T-077): der Körper als Blob, der Name aus
+   * `content-disposition` — den Namen sagt der Server, nicht ein zweites
+   * Mal die Seite.
+   */
+  async exportCampaign(campaign: string): Promise<{ blob: Blob; name: string }> {
+    const res = await fetch(`${this.base}/api/export?campaign=${encodeURIComponent(campaign)}`, {
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      const b = (await res.json().catch(() => null)) as { error?: string } | null;
+      throw new ApiError(res.status, b?.error ?? `Request failed (${res.status})`, undefined, b);
+    }
+    const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? 'campaign.json';
+    return { blob: await res.blob(), name };
+  }
+
   campaigns(): Promise<Kampagnen> {
     return this.call<Kampagnen>('/api/campaigns');
   }
