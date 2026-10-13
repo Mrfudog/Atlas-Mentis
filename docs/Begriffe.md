@@ -298,7 +298,7 @@ Ort und kein Schalter:
 
 | Ansicht | Wo sie gilt | Was sie zeigt |
 |---|---|---|
-| **Overview** | Ein Verweis im Text, eine Listenzeile | Name und die Beschreibung — eine Handvoll Zeilen, wie ein Hover |
+| **Overview** | Ein Verweis im Text, eine Listenzeile | Name und die Beschreibung — eine Handvoll Zeilen, wie ein Hover; die Felder darin sind die Spalten im Kompendium |
 | **Quick** | Eine Karte auf dem Board, die Schnellanlage aus einem anderen Artikel | Das Nötigste, um zu wissen, was man vor sich hat |
 | **Full** | Die Artikelseite | Alles, was dieser Artikel trägt |
 
@@ -314,6 +314,14 @@ er sieht dieselbe Ansicht wie alle anderen — nur steht weniger darin.
 **Die Anordnung wohnt am Typ.** Eine Kreatur ordnet ihre Full anders als ein
 Rezept, und das steht bei der Kreatur. Untertypen erben sie, bis einer etwas
 Eigenes sagt.
+
+**Eine Listenzeile ist ein Verweis**, also Overview (W7). Darum sagt die
+Overview einer Art auch, welche Spalten das Kompendium für sie zeigt und
+wonach es filtert — Grad und Schule beim Zauber, HG beim Statblock,
+Seltenheit beim Gegenstand. Eine Spaltenliste im Code wäre eine zweite
+Stelle, die am Tag der nächsten Art falsch ist; so bringt die neue Art ihre
+Spalten mit. Und weil die Vorschau neben der Liste eine Karte ist, zeigt
+sie Quick.
 
 ---
 

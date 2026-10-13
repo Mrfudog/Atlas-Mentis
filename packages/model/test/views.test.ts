@@ -86,3 +86,39 @@ describe('view ordering', () => {
     expect(resolveView({ views: {} }, 'egal').label).toBe('Full');
   });
 });
+
+describe('listColumns', () => {
+  const reg = {
+    interfaces: {
+      Rule: { name: 'Rule', schema: { type: 'object', properties: { kind: { type: 'string' } } } },
+      Spell: {
+        name: 'Spell',
+        extends: ['Rule'],
+        schema: {
+          type: 'object',
+          properties: {
+            level: { type: 'number', min: 0, max: 9 },
+            school: { type: 'string', enum: ['Evocation', 'Illusion'] },
+            dc: { type: 'number', derived: '8+level' },
+          },
+        },
+        views: {
+          overview: [{ id: 'o', el: 'fields', fields: ['Spell.level', 'Spell.dc', 'Rule', 'Spell.school', 'Other.x'] }],
+        },
+      },
+      Cantrip: { name: 'Cantrip', extends: ['Spell'] },
+    },
+    views: { overview: { label: 'Overview', layout: [{ id: 'x', el: 'fields', fields: [] }] } },
+  } as unknown as Registry;
+
+  it('reads the overview layout in order, drops derived and foreign fields', async () => {
+    const { listColumns } = await import('../src/views.js');
+    expect(listColumns(reg, 'Spell').map((c) => c.ref)).toEqual(['Spell.level', 'Rule.kind', 'Spell.school']);
+  });
+
+  it('inherits the layout up the chain and gives nothing without one', async () => {
+    const { listColumns } = await import('../src/views.js');
+    expect(listColumns(reg, 'Cantrip').map((c) => c.ref)).toEqual(['Spell.level', 'Rule.kind', 'Spell.school']);
+    expect(listColumns(reg, 'Rule')).toEqual([]);
+  });
+});
