@@ -54,7 +54,9 @@ import type { Entity, Registry } from '@nw/model';
 import type { User } from './auth.js';
 
 /** Ebenenarten, die ein Regelwerk sind und nicht die Arbeit einer Runde. */
-const REGELWERK = new Set(['system', 'expansion', 'book']);
+/* Ein Abenteuer aus 5e.tools (T-082) ist Buchtext wie ein Buch: was die
+   Runde daraus macht, liegt als Fassung in ihrer eigenen Ebene (E-018). */
+const REGELWERK = new Set(['system', 'expansion', 'book', 'adventure']);
 
 export interface Ausfuhr {
   format: 'nebelwacht/1';

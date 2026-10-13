@@ -114,6 +114,8 @@ export const TABLE_ROLES: readonly TableRole[] = ['gm', 'co-gm', 'player', 'spec
 export interface Bezuege {
   names: Record<string, string>;
   links: Record<string, { id: string; name: string }[]>;
+  /** Lässt sich für die laufende Kampagne anpassen (E-018, T-082) — die Regeln der Route `adapt`. */
+  adaptable?: boolean;
   /**
    * **Ein älterer fertiger Stand gilt** (REQ-237, E-012): nur für wen den
    * Arbeitsstand sieht (Verfasserin, Leitung). `at` ist das Datum des
@@ -176,6 +178,21 @@ export interface KampagnenEbene {
   alsoIn: string[];
   canActivate: boolean;
 }
+/** Ein Geschichtsartikel auf der Kampagnenseite (`GET /api/campaigns/:c/story`, T-082). */
+export interface GeschichtsZeile {
+  id: string;
+  name: string;
+  type: string;
+  kind: string;
+  /** Eine Fassung dieser Kampagne über dem Original (E-018). */
+  adapted: boolean;
+}
+export interface KampagnenGeschichte {
+  campaign: string;
+  own: GeschichtsZeile[];
+  adventures: (GeschichtsZeile & { layer: string; chapters: GeschichtsZeile[] })[];
+}
+
 export interface KampagnenEbenen {
   campaign: { id: string; name: string };
   may: Recht;
@@ -522,6 +539,14 @@ export class Api {
   entity(id: string): Promise<Entity & { refs?: Bezuege }> {
     return this.call<Entity & { refs?: Bezuege }>(`/api/entities/${encodeURIComponent(id)}`);
   }
+  /** Eine Fassung in der Ebene der Kampagne, die das Original ersetzt (E-018, T-082). */
+  adapt(id: string): Promise<{ id: string; created: boolean }> {
+    return this.call(`/api/entities/${encodeURIComponent(id)}/adapt`, { method: 'POST' });
+  }
+  /** Einen Artikel löschen — hier: eine Fassung, zurück zum Original. */
+  deleteEntity(id: string): Promise<{ ok: true }> {
+    return this.call(`/api/entities/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
 
   /** Der letzte fertige Stand (E-012) — für Verfasserin und Leitung. */
   readyVersion(id: string): Promise<Entity & { refs?: Bezuege }> {
@@ -627,6 +652,9 @@ export class Api {
     );
   }
   /** Die Ebenen einer Kampagne, aufgeschaltet oder nicht (T-069). */
+  campaignStory(campaign: string): Promise<KampagnenGeschichte> {
+    return this.call<KampagnenGeschichte>(`/api/campaigns/${encodeURIComponent(campaign)}/story`);
+  }
   campaignLayers(campaign: string): Promise<KampagnenEbenen> {
     return this.call<KampagnenEbenen>(`/api/campaigns/${encodeURIComponent(campaign)}/layers`);
   }

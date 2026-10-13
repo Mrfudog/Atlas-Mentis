@@ -7,7 +7,7 @@
 -- Punktekauf. Ein Gruppenpool steht an der Gruppe (`abilityPool`).
 --
 -- Der Seed schreibt nur in eine leere Datenbank, also kommen die Zeilen
--- hier nach — **nur, wo schon ein Register steht** (wie 028). Entfernt
+-- hier nach — **nur, wo schon ein Register steht** (wie 028); nach 029 aus T-082 hereingemerged. Entfernt
 -- wird nichts.
 
 insert into interface_def (name, label, abstract, extends, schema, area, views)
