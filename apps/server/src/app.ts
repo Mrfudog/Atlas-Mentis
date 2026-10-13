@@ -30,8 +30,7 @@ import {
   STATUS_COMPONENT,
   classParts,
   currentCampaign,
-  inPlay,
-  unactivatedLayers,
+  playStack,
   detachInstance,
   registryUsage,
   instancesOf,
@@ -120,6 +119,25 @@ export function buildApp({
   const app = Fastify({ logger, trustProxy });
 
   void app.register(fastifyCookie);
+
+  /* **Wie lange eine Antwort brauchte** (T-086, REQ-246): als
+     `Server-Timing` an jeder Antwort — die Entwicklerwerkzeuge des Browsers
+     zeigen es unter „Timing" neben der Wartezeit im Netz — und als Zeile im
+     Log, damit man auf dem Server sieht, welche Route wartet. Gemessen wird
+     von der Ankunft bis zum Absenden, ohne die Übertragung. */
+  const beginn = new WeakMap<FastifyRequest, bigint>();
+  app.addHook('onRequest', async (request) => {
+    beginn.set(request, process.hrtime.bigint());
+  });
+  app.addHook('onSend', async (request, reply) => {
+    const t0 = beginn.get(request);
+    if (t0 === undefined) return;
+    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+    void reply.header('Server-Timing', `app;dur=${ms.toFixed(1)}`);
+    if (request.url.startsWith('/api/')) {
+      request.log.info({ route: request.routeOptions.url ?? request.url, ms: Math.round(ms) }, 'dauer');
+    }
+  });
 
   /* `env` sagt, welche Umgebung antwortet (T-070) — Werkzeuge fragen hier,
      die Oberfläche über `/api/me`. Es ist keine Auskunft, die jemandem
@@ -579,6 +597,10 @@ export function buildApp({
 
   app.get('/api/registry', async () => repo.getRegistry());
 
+  /* Je Bestandsstempel und Register einmal gezählt (T-086): das Register
+     fragt bei jedem Öffnen, und gezählt wird über den ganzen Bestand. */
+  let gezaehlt: { key: string; lauf: Promise<unknown> } | null = null;
+
   /**
    * **Was der Bestand an jeder Zeile trägt** — je Art, Karte, Feld,
    * Listenwert und Kantenart (`registryUsage`). Das Register fragt es,
@@ -588,22 +610,33 @@ export function buildApp({
    * für die, die das Register ändern (Wache oben).
    */
   app.get('/api/registry/usage', async () => {
-    const [registry, alle] = await Promise.all([repo.getRegistry(), repo.listEntities()]);
+    const [stand, registry] = await Promise.all([roh(), repo.getRegistry()]);
+    const key = `${stand.stempel}|${registerStempel(registry)}`;
+    if (gezaehlt?.key !== key) {
+      const lauf = Promise.resolve().then(() => zaehle(registry, stand.alle, stand.map));
+      gezaehlt = { key, lauf };
+      lauf.catch(() => {
+        if (gezaehlt?.lauf === lauf) gezaehlt = null;
+      });
+    }
+    return gezaehlt.lauf;
+  });
+  function zaehle(registry: Registry, alle: Entity[], map: Map<string, Entity>) {
     const usage = registryUsage(registry, alle);
     /* **Gespeichert und sichtbar sind zwei Zahlen** (T-069). Das Register
        zählte den ganzen Bestand und widersprach damit der Liste, die nur
        zeigt, was die laufende Kampagne aufschaltet. Beides steht jetzt da;
        „sichtbar" heisst im Stapel, vor Sichtbarkeit und Wissen. */
-    const map = new Map(alle.map((e) => [e.id, e]));
     const kampagne = currentCampaign(map, registry.settings ?? null);
     if (!kampagne) return usage;
     const inPlayJeArt: Record<string, number> = {};
+    const stapel = playStack(map, kampagne);
     for (const e of alle) {
       const typ = e.interfaces?.[0];
-      if (typ && inPlay(map, e, kampagne)) inPlayJeArt[typ] = (inPlayJeArt[typ] ?? 0) + 1;
+      if (typ && stapel.inPlay(e)) inPlayJeArt[typ] = (inPlayJeArt[typ] ?? 0) + 1;
     }
     return { ...usage, inPlay: inPlayJeArt, campaign: { id: kampagne.id, name: entityName(kampagne) } };
-  });
+  }
 
   app.put<{ Params: { part: string }; Body: unknown }>(
     '/api/registry/:part',
@@ -679,10 +712,10 @@ export function buildApp({
        Bis zum 7.10. rechnete das nur der Prototyp, und der Server schickte
        solche Artikel trotzdem hinaus. */
     const kampagne = currentCampaign(roh, registry.settings ?? null);
+    /* Einmal je Aufruf gerechnet, nicht je Artikel (T-086). */
+    const sicht = playStack(roh, kampagne);
     entities = entities
-      .filter((e) =>
-        stapel === 'inPlay' ? inPlay(roh, e, kampagne) : unactivatedLayers(roh, e, kampagne).length > 0,
-      )
+      .filter((e) => (stapel === 'inPlay' ? sicht.inPlay(e) : sicht.unactivated(e).length > 0))
       .map((e) => readInstance(roh, e));
     if (!user || user.isAdmin) return entities;
     /* Der Zusammenhang ist immer der ganze Bestand, auch wenn nur ein
