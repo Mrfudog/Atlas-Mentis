@@ -140,7 +140,14 @@ dem Ausrollen nach `prod` noch einmal bestätigen will, setzt dort
 
 **Settings → Secrets and variables → Actions → Variables** (Repository):
 `DEPLOY_ENABLED` = `true`. Ohne diese Variable bleibt der Job `deploy`
-absichtlich aus. `DEPLOY_DIR` und `PROXY_DIR` überschreiben die
+absichtlich aus. **Als Repository-Variable**, nicht als Secret und nicht
+im Environment: die Bedingung des Jobs wird geprüft, bevor das Environment
+geladen ist, und sieht nur Variablen des Repositorys.
+
+**Wann ausgerollt wird:** beim **Push** auf `preprod` bzw. `main` — also
+beim Merge eines Pull Requests, nicht in seinem Lauf. Der Lauf eines Pull
+Requests prüft nur; ungemergter Code kommt nie auf dev. Ohne neuen Merge:
+*Actions → CI → Run workflow* auf dem Zweig. `DEPLOY_DIR` und `PROXY_DIR` überschreiben die
 Verzeichnisse, wenn es nicht `/srv/atlas/…` sein soll.
 
 **Settings → Actions → General**: *Workflow permissions* auf „Read and
