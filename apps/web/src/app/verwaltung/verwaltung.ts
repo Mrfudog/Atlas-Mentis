@@ -15,6 +15,7 @@ import {
 } from '../kern/api';
 import { Session } from '../kern/session';
 import { KampagnenEbenenListe } from './ebenen';
+import { KampagnenGeschichteListe } from './geschichte';
 
 /** Was jede Rolle heisst — dieselben Sätze wie auf der Tafel (`Members.dc.html`). */
 const ROLLEN: { role: TableRole; text: string }[] = [
@@ -39,7 +40,7 @@ const ROLLEN: { role: TableRole; text: string }[] = [
  */
 @Component({
   selector: 'nw-verwaltung',
-  imports: [FormsModule, NgTemplateOutlet, KampagnenEbenenListe],
+  imports: [FormsModule, NgTemplateOutlet, KampagnenEbenenListe, KampagnenGeschichteListe],
   template: `
     <div class="kopf">
       @if (mitglieder()) {
@@ -304,7 +305,8 @@ const ROLLEN: { role: TableRole; text: string }[] = [
       </div>
 
       @if (m.campaign.exists) {
-        <nw-kampagnen-ebenen [kampagne]="m.campaign.id" />
+        <nw-kampagnen-ebenen [kampagne]="m.campaign.id" (geschaltet)="geschichte.laden()" />
+        <nw-kampagnen-geschichte #geschichte [kampagne]="m.campaign.id" />
       }
 
       <section class="kasten" aria-label="Open invitations">

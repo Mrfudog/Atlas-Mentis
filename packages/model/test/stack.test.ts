@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   activeStack,
+  adaptedVersion,
+  replacedIds,
   campaignLayer,
   campaignsActivating,
   currentCampaign,
@@ -138,6 +140,42 @@ describe('what is missing only because its layer is off (T-069)', () => {
     expect(neu.relations?.find((r) => r.to === 'ly_system')?.id).toBe('a1');
     expect(neu.relations?.some((r) => r.type === 'partOf')).toBe(true);
     expect(withStack(c, []).relations?.filter((r) => r.type === 'activates')).toEqual([]);
+  });
+});
+
+describe('a version over the template (E-018, T-082)', () => {
+  const szene: Entity = {
+    id: 'sc_mund', name: '1. Mouth', interfaces: ['Scene'],
+    components: { Identity: { name: '1. Mouth', id: 'scene-0007' }, ReadAloud: { readaloud: [{ id: 'read', value: 'Drip.' }] } },
+    relations: [
+      { id: 'sc_mund~inLayer-1', type: 'inLayer', to: 'ly_system' },
+      { id: 'sc_mund~partOf-2', type: 'partOf', to: 'ch_eins' },
+    ],
+  };
+  const fassung = adaptedVersion(szene, { id: 'sc_neu', number: 'scene-0099', layer: 'ly_nebel' });
+
+  it('copies cards and edges, lies in the campaign layer and replaces the original', () => {
+    expect(fassung.components['ReadAloud']).toEqual(szene.components['ReadAloud']);
+    expect(fassung.components['Identity']).toEqual({ name: '1. Mouth', id: 'scene-0099' });
+    expect(fassung.relations?.map((r) => [r.type, r.to])).toEqual([
+      ['partOf', 'ch_eins'],
+      ['inLayer', 'ly_nebel'],
+      ['overrides', 'sc_mund'],
+    ]);
+    expect(new Set(fassung.relations?.map((r) => r.id)).size).toBe(3);
+    /* Das Original bleibt, wie es war. */
+    expect(szene.components['Identity']).toEqual({ name: '1. Mouth', id: 'scene-0007' });
+  });
+
+  it('wins in the campaign that runs its layer, not in another', () => {
+    const m = new Map(entities);
+    m.set(szene.id, szene).set(fassung.id, fassung);
+    const nebel = m.get('camp_nebel')!;
+    expect(resolveArticle(m, szene, nebel).id).toBe('sc_neu');
+    expect(inPlay(m, szene, nebel)).toBe(false);
+    expect(resolveArticle(m, szene, m.get('camp_salz')!).id).toBe('sc_mund');
+    expect(replacedIds(m, fassung)).toEqual(['sc_mund']);
+    expect(replacedIds(m, szene)).toEqual([]);
   });
 });
 

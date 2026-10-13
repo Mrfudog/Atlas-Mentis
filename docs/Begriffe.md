@@ -661,6 +661,27 @@ Büchern gibt es nichts zu ordnen. `book` ist wie jedes `kind`
 Beschreibung: es gruppiert und hält die Ausfuhr klein, aber wer etwas
 sieht, sagt es nicht.
 
+**Ein Abenteuer ist eine Ebene, und anpassen heisst darüberlegen** (T-082,
+E-018, REQ-240). Bis T-082 übersprang der Importer den Abenteuertext;
+von *Lost Mine of Phandelver* kamen nur die NSC herein. Jetzt bringt ein
+Abenteuer seine Geschichte mit — Kapitel, Abschnitte, Begegnungen, Karten
+— als Artikel in seiner Ebene (`kind: adventure`), und die Kampagne zeigt
+die Kapitel jedes aufgeschalteten Abenteuers in ihrer Geschichte. Was
+darin vorkommt, ist ein Verweis auf den Buchartikel und keine Kopie: der
+Goblin in Raum 2 *ist* der Goblin aus dem Monster Manual.
+
+Wie eine Runde ein Kapitel ändert, ohne das Original zu verlieren, war die
+Frage von E-018. **Kopieren** wäre einfach, und die Kopie gehörte der
+Kampagne — aber die Verbindung zum Original wäre weg, und jeder Verweis im
+Abenteuer zeigte weiter darauf. **Darüberlegen** (`overrides`, gewählt)
+heisst: „Adapt" legt eine Fassung in die Ebene der Kampagne, und solange
+die läuft, gilt die Fassung. Das Original bleibt darunter, für jede andere
+Runde unverändert; eine Korrektur daran erreicht jede, die es nicht
+angepasst hat, und zurück heisst, die Fassung zu löschen. Damit ein Verweis
+aufs Original nicht ins Leere führt, liefert der Server die Fassung, die
+gilt (E5) — dieselbe Frage, die der Stapel ohnehin stellt (`resolveArticle`),
+nur jetzt auch beim Öffnen und bei den Namen.
+
 > **Die dritte Zeile der Tabelle ist die, die heute zählt.** Von
 > fünfundsiebzig Artikeln tragen fünfundsechzig keine Ebenenkante — die
 > Regel „ohne Ebene gehört er der Kampagne und ist immer da" (siehe

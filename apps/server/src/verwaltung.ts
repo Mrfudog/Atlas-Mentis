@@ -29,6 +29,9 @@ import {
   campaignsActivating,
   campaignsOf,
   currentCampaign,
+  inStack,
+  isOverridden,
+  resolveArticle,
   entityName,
   isTableRole,
   nextId,
@@ -177,11 +180,14 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
   /**
    * Unter welcher Gruppe ein Buch auf der Kampagnenseite steht (T-081):
    * die Marke, die der Importer und die Migration setzen (`core`,
-   * `sourcebook`, `adventure`). Nur für `kind: 'book'`; eine andere Ebene
-   * steht im Stapel und hat keine Gruppe. Beschreibung, keine Regel.
+   * `sourcebook`, `adventure`). Nur für `kind: 'book'` und `'adventure'`
+   * (T-082) — ein Abenteuer steht immer unter den Abenteuern; eine andere
+   * Ebene steht im Stapel und hat keine Gruppe. Beschreibung, keine Regel.
    */
   const buchGruppe = (e: Entity): string => {
-    if ((e.components?.[LAYER_COMPONENT] as { kind?: unknown } | undefined)?.kind !== 'book') return '';
+    const kind = (e.components?.[LAYER_COMPONENT] as { kind?: unknown } | undefined)?.kind;
+    if (kind === 'adventure') return 'adventure';
+    if (kind !== 'book') return '';
     const marken = (e.components?.['Tags'] as { tags?: unknown } | undefined)?.tags;
     const g = Array.isArray(marken) ? marken.find((m) => BUCHGRUPPEN.includes(m as string)) : undefined;
     return typeof g === 'string' ? g : 'sourcebook';
@@ -299,6 +305,56 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       return ids;
     }),
   );
+
+  /**
+   * **Die Geschichte der Kampagne** (T-082, REQ-240): ihre eigenen
+   * Geschichtsartikel (`partOf` die Kampagne) und, je aufgeschaltetes
+   * Abenteuer, dessen Kapitel — in der Fassung, die in **dieser** Kampagne
+   * gilt (`resolveArticle`, E-018): ein angepasstes Kapitel steht als ihre
+   * Fassung da. Ein Abenteuer ist eine `Story` mit `kind: 'adventure'` in
+   * einer aufgeschalteten Ebene; meist ist es eine Abenteuerebene, manchmal
+   * ein Quellenbuch, das eines enthält. Sehen dürfen es wie die Ebenen
+   * Verwaltung, Leitung und Mitleitung.
+   */
+  app.get<{ Params: { c: string } }>('/api/campaigns/:c/story', async (request, reply) => {
+    const user = await viewerOf(request);
+    const c = request.params.c;
+    if (!user || !rechtAn(user, c)) return nein(reply, 403, 'Nicht für dich.');
+    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const kampagne = alle.get(c);
+    if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
+      return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+    }
+    const ebenen = new Set(activeStack(alle, kampagne).map((x) => x.layer.id));
+    const art = (e: Entity) => (e.interfaces ?? [])[0] ?? '';
+    const sorte = (e: Entity) => String((e.components?.['Story'] as { kind?: unknown } | undefined)?.kind ?? '');
+    const nummer = (e: Entity) => String((e.components?.['Identity'] as { id?: unknown } | undefined)?.id ?? '');
+    const nachNummer = (a: Entity, b: Entity) => nummer(a).localeCompare(nummer(b), 'en', { numeric: true });
+    const teilVon = (e: Entity, ziel: string) => (e.relations ?? []).some((r) => r.type === 'partOf' && r.to === ziel);
+    const zeile = (e: Entity) => {
+      const gilt = resolveArticle(alle, e, kampagne);
+      /* Angepasst ist, was eine Fassung ist — ob sie hier über das Original
+         oder für sich in die Liste kam. */
+      const adapted = (gilt.relations ?? []).some((r) => r.type === 'overrides');
+      return { id: gilt.id, name: entityName(gilt), type: art(gilt), kind: sorte(gilt), adapted };
+    };
+    const geschichte = [...alle.values()].filter((e) => inStack(alle, e, kampagne));
+    const eigene = geschichte.filter((e) => teilVon(e, c) && !isOverridden(alle, e, kampagne)).sort(nachNummer).map(zeile);
+    const abenteuer = geschichte
+      .filter((e) => art(e) === 'Story' && sorte(e) === 'adventure' && (e.relations ?? []).some((r) => r.type === LAYER_RELATION && ebenen.has(r.to)))
+      .sort((a, b) => entityName(a).localeCompare(entityName(b), 'en'))
+      .map((a) => ({
+        ...zeile(a),
+        layer: (a.relations ?? []).find((r) => r.type === LAYER_RELATION && ebenen.has(r.to))?.to ?? '',
+        chapters: geschichte
+          /* Die Originale, nach ihrer Nummer — eine Fassung steht an der
+             Stelle dessen, was sie ersetzt (`zeile`), nicht am Ende. */
+          .filter((k) => art(k) === 'Story' && teilVon(k, a.id) && !(k.relations ?? []).some((r) => r.type === 'overrides'))
+          .sort(nachNummer)
+          .map(zeile),
+      }));
+    return { campaign: c, own: eigene, adventures: abenteuer };
+  });
 
   // ---------------------------------------------------------- Mitglieder
 

@@ -2097,6 +2097,11 @@ export const fieldGroups = {
    * damit eine Kampagne die Bücher aufschaltet, die sie nutzt. Wie jedes
    * `kind` beschreibt es nur — die Kampagnenseite gruppiert danach, die
    * Ausfuhr lässt es als Regelwerk weg; wer was sieht, sagt es nicht.
+   *
+   * `adventure` ist ein Abenteuer aus 5e.tools (T-082, REQ-240): seine
+   * Kapitel, Abschnitte, Begegnungen und Karten, dazu die NSC, die es
+   * mitbringt. Die Kampagne schaltet es auf wie ein Buch und passt es über
+   * `overrides` in ihrer eigenen Ebene an (E-018) — das Original bleibt.
    */
   LayerInfo: {
     schema: {
@@ -2105,7 +2110,7 @@ export const fieldGroups = {
         kind: {
           type: 'string',
           title: 'Kind',
-          enum: ['system', 'expansion', 'book', 'world', 'pack', 'campaign', 'overrides'],
+          enum: ['system', 'expansion', 'book', 'adventure', 'world', 'pack', 'campaign', 'overrides'],
           default: 'pack',
         },
         order: { type: 'number', title: 'Specificity', default: 10 },
