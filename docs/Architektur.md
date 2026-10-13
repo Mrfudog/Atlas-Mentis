@@ -235,7 +235,7 @@ sequenceDiagram
 ```
 
 **Die Oberfläche hält nur die Kurzfassung** (`?as=summary`): Name, Art,
-`Identity`, Marken, Stand, die Kante `instanceOf` und die Felder, nach
+`Identity`, Marken, Stand, Quelle, die Kanten `instanceOf` und `inLayer` und die Felder, nach
 denen eine Auswahl filtert (`enumWhere`, aus dem Register gelesen). Den
 ganzen Artikel holt sie beim Öffnen, die Rückbezüge dazu über
 `/backlinks` — die Gegenrichtung braucht jede Kante im Bestand, und die

@@ -30,6 +30,7 @@ const hammer: Entity = {
   relations: [
     { id: 'r1', type: 'instanceOf', to: 'e0', props: {} },
     { id: 'r2', type: 'inLayer', to: 'ly', props: {} },
+    { id: 'r3', type: 'owes', to: 'e9', props: {} },
   ],
 };
 
@@ -38,12 +39,12 @@ describe('summaryOf', () => {
     expect([...summaryFields(registry)]).toEqual(['itemType']);
   });
 
-  it('keeps identity, the filter fields and instanceOf, and nothing else', () => {
+  it('keeps identity, the filter fields, instanceOf and inLayer, and nothing else', () => {
     const k = summaryOf(hammer, summaryFields(registry));
     expect(k.components).toEqual({
       Identity: { name: 'Hammer', id: 'itm-0001', aliases: ['Klopfer'] },
       Item: { itemType: 'tool' },
     });
-    expect(k.relations?.map((r) => r.type)).toEqual(['instanceOf']);
+    expect(k.relations?.map((r) => r.type)).toEqual(['instanceOf', 'inLayer']);
   });
 });
