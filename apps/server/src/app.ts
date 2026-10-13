@@ -1432,7 +1432,12 @@ export function buildApp({
   app.get<{ Params: { id: string } }>('/api/entities/:id/backlinks', async (request, reply) => {
     const stand = await roh();
     const ziel = stand.map.get(request.params.id);
-    if (!ziel || !(await sieve(request, [ziel], stand.map)).length) {
+    /* Auch eine Fassung aus einer Vergleichsebene hat Rückbezüge (T-092). */
+    const sichtbar =
+      ziel &&
+      ((await sieve(request, [ziel], stand.map)).length ||
+        (await sieve(request, [ziel], stand.map, undefined, 'compare')).length);
+    if (!ziel || !sichtbar) {
       return reply.code(404).send({ error: 'Nicht gefunden' });
     }
     /* Gesiebt wird nur, wer überhaupt auf ihn zeigt — nicht der ganze

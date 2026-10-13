@@ -127,6 +127,7 @@ describe('the versions of an article (T-092)', () => {
     /* Die Fassung lässt sich öffnen, mit dem Hinweis. */
     const offen = (await rufe('Basil', 'GET', '/api/entities/f24')).json();
     expect(offen.refs.compare).toBe(true);
+    expect((await rufe('Basil', 'GET', '/api/entities/f24/backlinks')).statusCode).toBe(200);
   });
 
   it('keeps compare layers from players unless the campaign allows it', async () => {
