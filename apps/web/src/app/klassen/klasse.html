@@ -68,6 +68,7 @@
                 class="chip"
                 [class.an]="quellFilter().has(q.q)"
                 [attr.aria-pressed]="quellFilter().has(q.q)"
+                [title]="quellTitel(q.q)"
                 (click)="quelleUmschalten(q.q)"
               >
                 {{ q.q }} <span class="dim">{{ q.n }}</span>
@@ -89,7 +90,7 @@
                   nummer().get(u.e.id)! + 1
                 }}</span>
               }
-              {{ u.name }} <span class="quelle">{{ u.quelle }}</span>
+              {{ u.name }} <span class="quelle" [title]="quellTitel(u.quelle)">{{ u.quelle }}</span>
             </button>
           } @empty {
             <span class="dim">No subclass matches.</span>
@@ -147,7 +148,7 @@
                   <div class="spaltenkopf">
                     <span class="nr" aria-hidden="true">{{ i + 1 }}</span>
                     <a [routerLink]="['/artikel', x.u.e.id]">{{ x.u.name }}</a>
-                    <span class="quelle">{{ x.u.quelle }}</span>
+                    <span class="quelle"><nw-quelle [text]="x.u.quelle" /></span>
                   </div>
                   @for (f of x.merkmale; track f.feature.id) {
                     @for (n of f.names; track n.id) {

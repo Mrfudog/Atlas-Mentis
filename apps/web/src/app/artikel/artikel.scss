@@ -434,3 +434,10 @@ details.fassung > :not(summary) {
     white-space: pre-wrap;
   }
 }
+
+/* Das Quellenkürzel ausgeschrieben (T-088). */
+.quelltitel {
+  margin: 0.25rem 0 0;
+  font-style: italic;
+  color: var(--dim);
+}
