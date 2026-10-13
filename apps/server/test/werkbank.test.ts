@@ -105,6 +105,9 @@ describe('API tokens', () => {
     expect(me.token).toEqual(expect.objectContaining({ scope: 'read' }));
     const put = await app.inject({ method: 'PUT', url: '/api/entities/s4', headers: lesen, payload: bestand()[3] });
     expect(put.statusCode).toBe(403);
+    /* Auch nicht dort, wo das Konto eine eigene Regel hat (Register). */
+    const reg = await app.inject({ method: 'PUT', url: '/api/registry/vars', headers: lesen, payload: {} });
+    expect(reg.statusCode).toBe(403);
     const schreiben = await token(admin, 'write');
     expect((await app.inject({ method: 'PUT', url: '/api/entities/s4', headers: schreiben, payload: bestand()[3] })).statusCode).toBe(200);
   });

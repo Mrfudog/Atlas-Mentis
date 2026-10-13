@@ -19,6 +19,10 @@ import { BEREICHE } from './kern/bereiche';
  * alle anderen wäre sie ein Eintrag, der „nicht für dich" sagt. Der eigene
  * Name führt zum Konto (API-Tokens).
  *
+ * Das Register steht nur für wen es ändern darf (Verwaltung, Leitung der
+ * laufenden Kampagne) — lesen kann es jeder über die Adresse, aber ein
+ * Eintrag für etwas, das man nur ansehen kann, lenkt am Tisch ab.
+ *
  * Die Kopfleiste bleibt weg, solange die Sitzung noch nicht gefragt ist.
  * Ein Balken, der erst „nicht angemeldet" zeigt und einen Wimpernschlag
  * später den Namen, sieht nach einem Fehler aus, auch wenn keiner vorliegt.
@@ -43,6 +47,9 @@ import { BEREICHE } from './kern/bereiche';
           >
           @if (session.leitung()) {
             <a routerLink="/werkbank" routerLinkActive="an" ariaCurrentWhenActive="page">Workbench</a>
+          }
+          @if (session.darfRegister()) {
+            <a routerLink="/registry" routerLinkActive="an" ariaCurrentWhenActive="page">Registry</a>
           }
           <!-- Nur für wen die Seite etwas zeigt: Verwaltung, Leitung, Mitleitung (W3). -->
           @if (session.verwaltet()) {

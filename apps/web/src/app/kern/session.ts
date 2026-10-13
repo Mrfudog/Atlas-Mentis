@@ -33,6 +33,8 @@ export class Session {
     return u.isAdmin || Object.values(u.roles ?? {}).some((r) => r === 'gm' || r === 'co-gm');
   });
   readonly angemeldet = computed(() => this.user() !== null);
+  /** Darf das Register ändern — Anzeige, keine Kontrolle; der Server prüft. */
+  readonly darfRegister = computed(() => this._me()?.registry === true);
   readonly hatEinladungen = computed(() => this._me()?.invites === true);
   /**
    * Ob die Verwaltungsseite diesem Konto etwas zeigt: der Verwaltung immer,

@@ -75,6 +75,20 @@ export function typeChain(registry: Pick<Registry, 'interfaces'>, name: string):
 }
 
 /**
+ * **Alle Typen, flach und alphabetisch nach Beschriftung** — die Auswahl im
+ * Register, die Leiste, der Filter im Kompendium.
+ *
+ * Sie waren Bäume aus `extends`. Weil `extends` ein Array ist, musste ein
+ * Baum eine Herkunft wählen und die andere verschweigen: eine Art, die von
+ * zweien erbt, hing unter einer davon und unter der anderen nicht. Woher
+ * eine Art erbt, steht auf ihrer Seite im Register.
+ */
+export function typeList(registry: Pick<Registry, 'interfaces'>): string[] {
+  const label = (n: string) => registry.interfaces[n]?.label ?? n;
+  return Object.keys(registry.interfaces).sort((a, b) => label(a).localeCompare(label(b), 'en'));
+}
+
+/**
  * **In welchen Bereich der Oberfläche eine Artikelart gehört.**
  *
  * Gesucht wird die ganze Kette (`typeChain`, Breite zuerst) und der erste

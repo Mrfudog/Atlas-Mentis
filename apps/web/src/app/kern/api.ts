@@ -11,7 +11,7 @@
  */
 
 import { Injectable } from '@angular/core';
-import type { Entity, Registry, Relation } from '@nw/model';
+import type { Entity, Registry, RegistryUsage, Relation } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -137,6 +137,12 @@ export interface Me {
   setup: string | null;
   /** Über welches API-Token gefragt wurde, sonst `null`. */
   token?: { name: string; scope: 'read' | 'write'; expiresAt: string } | null;
+  /**
+   * Ob dieser Betrachter das Register ändern darf (die Verwaltung und die
+   * Leitung der laufenden Kampagne). Vom Server, der es beim Schreiben
+   * ohnehin prüft.
+   */
+  registry?: boolean;
   /** Ob es überhaupt eine offene Einladung gibt — nur dann lohnt „Sign up". */
   invites?: boolean;
 }
@@ -208,6 +214,9 @@ export interface Konto {
   roles: { campaign: string; name: string; role: TableRole }[];
 }
 
+/** Die Teile des Registers, die `PUT /api/registry/:part` nimmt. */
+export type RegisterTeil = 'interfaces' | 'relations' | 'views' | 'vars' | 'enums' | 'settings';
+
 @Injectable({ providedIn: 'root' })
 export class Api {
   /** Leer heisst: derselbe Ursprung. Im Betrieb liefert der Server die
@@ -253,6 +262,14 @@ export class Api {
   }
   registry(): Promise<Registry> {
     return this.call<Registry>('/api/registry');
+  }
+  /** Einen Teil des Registers ganz schreiben; der Server prüft ihn im Zusammenhang. */
+  putRegistry<T extends RegisterTeil>(part: T, value: Registry[T]): Promise<{ ok: true; part: T }> {
+    return this.call(`/api/registry/${part}`, { method: 'PUT', body: JSON.stringify(value ?? {}) });
+  }
+  /** Was der Bestand an jeder Zeile trägt — nur für wer das Register ändert. */
+  registryUsage(): Promise<RegistryUsage> {
+    return this.call<RegistryUsage>('/api/registry/usage');
   }
   /** Die Kurzfassung des Bestands (`summaryOf`), nicht die Artikel selbst. */
   entities(): Promise<Entity[]> {
