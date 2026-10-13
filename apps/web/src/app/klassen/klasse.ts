@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { classTable, entityName, levelFeatures, linkIndex, proficiencyBonus } from '@nw/model';
+import { choiceText, choicesOf, classTable, entityName, levelFeatures, linkIndex, proficiencyBonus } from '@nw/model';
 import type { Entity, LevelFeature, VarScopes } from '@nw/model';
 import { Api, ApiError, type KlassenBuendel } from '../kern/api';
 import { Bestand } from '../kern/bestand';
@@ -307,25 +307,23 @@ export class Klasse {
       proficient?: string[];
       saves?: string[];
     };
-    const w = (k.components?.['ProficiencyChoice'] ?? {}) as {
-      chooseFrom?: string[];
-      chooseCount?: number;
-      chooseNote?: string;
-    };
+    /* Was zu wählen ist, steht als Wahl am Artikel (REQ-238). Hier stehen
+       die Übungswahlen; Unterklasse, Talente und Zusatzmerkmale stehen
+       mit ihrer Stufe in der Tabelle, die Ausrüstung im Text darunter. */
+    const wahlen = choicesOf(k).filter((x) => x.kind === 'proficiency');
     const zeilen: { label: string; wert: string; lang?: boolean }[] = [];
     const liste = (l?: unknown) => (Array.isArray(l) ? l.map(String).join(', ') : '');
     if (p.saves?.length)
       zeilen.push({ label: 'Saving throws', wert: p.saves.map((s) => s.toUpperCase()).join(', ') });
     if (p.proficient?.length) zeilen.push({ label: 'Proficiencies', wert: liste(p.proficient) });
-    if (w.chooseFrom?.length) {
-      zeilen.push({
-        label: 'Skills',
-        wert: `Choose ${w.chooseCount ?? 1} from ${w.chooseFrom.join(', ')}`,
-      });
+    for (const x of wahlen.filter((x) => x.when !== 'multiclass')) {
+      zeilen.push({ label: x.id === 'skills' ? 'Skills' : 'Choose', wert: choiceText(x) });
     }
-    if (w.chooseNote) zeilen.push({ label: 'Also', wert: w.chooseNote });
     if (c['multiclassRequirement']) {
-      const mit = liste(c['multiclassProficient']);
+      const mit = [
+        liste(c['multiclassProficient']),
+        ...wahlen.filter((x) => x.when === 'multiclass').map(choiceText),
+      ].filter(Boolean).join('; ');
       zeilen.push({
         label: 'Multiclassing',
         wert: `${String(c['multiclassRequirement'])}${mit ? ` · gains ${mit}` : ''}`,

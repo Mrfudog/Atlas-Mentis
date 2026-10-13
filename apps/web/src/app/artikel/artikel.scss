@@ -305,3 +305,30 @@ h1 {
   font-size: 0.85rem;
   margin: 0 0 0.75rem;
 }
+
+/* Ein älterer fertiger Stand gilt für alle anderen (REQ-237, E-012): ein
+   Band über dem Blatt, nur für Verfasserin und Leitung. */
+.band-fertig {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.8rem;
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.8rem;
+  border: 1px dashed var(--gold);
+  border-left: 4px solid var(--gold);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 0.9rem;
+
+  span {
+    flex: 1 1 16rem;
+  }
+
+  .klein {
+    font-size: 0.8rem;
+    padding: 0.15rem 0.6rem;
+  }
+}

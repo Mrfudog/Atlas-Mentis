@@ -163,6 +163,7 @@ try {
     ['probe-leitung'],
     ['probe-fremd'],
     ['probe-spiel', '--actor', 'pc_probe'],
+    ['probe-mit'],
   ]) {
     const r = user('add', name, ...rest);
     pruefe(`Konto ${name}`, r.ok || /gibt es schon/.test(r.out), r.out);
@@ -170,6 +171,7 @@ try {
   pruefe('Rolle gm in Runde A', user('role', 'probe-leitung', 'camp_probe_a', 'gm').ok);
   pruefe('Rolle gm in Runde B', user('role', 'probe-fremd', 'camp_probe_b', 'gm').ok);
   pruefe('Rolle player in Runde A', user('role', 'probe-spiel', 'camp_probe_a', 'player').ok);
+  pruefe('Rolle player in Runde A (ohne Figur)', user('role', 'probe-mit', 'camp_probe_a', 'player').ok);
 
   const admin = await anmelden('probe-admin');
   pruefe('Anmelden', !!admin);
@@ -256,6 +258,39 @@ try {
     pruefe('„ready" setzt sie nicht selbst', (await put(spielerin, fertig)).status === 403);
     const rL = await put(await anmelden('probe-leitung'), fertig);
     pruefe('„ready" setzt die Leitung', rL.ok, `${rL.status} ${(await rL.text()).slice(0, 200)}`);
+
+    /* Teil 2 (E-012): ändert sie den fertigen Artikel, fällt er zurück,
+       und für alle anderen gilt der fertige Stand aus `entity_ready` — die
+       Tabelle gibt es nur in Postgres. */
+    const mit = await anmelden('probe-mit');
+    const leitung = await anmelden('probe-leitung');
+    const jetzt = await (await get(spielerin, `/api/entities/${entwurf.id}`)).json();
+    delete jetzt.refs;
+    const geaendert = { ...jetzt, name: 'Probeentwurf, neu', components: { ...jetzt.components, Identity: { ...jetzt.components.Identity, name: 'Probeentwurf, neu' } } };
+    const rG = await put(spielerin, geaendert);
+    const nachG = rG.ok ? await rG.json() : null;
+    pruefe('eine Änderung der Spielerin lässt ihn zurückfallen', nachG?.components?.Status?.status === 'prepared', `${rG.status} ${JSON.stringify(nachG).slice(0, 200)}`);
+    const beiMit = await (await get(mit, `/api/entities/${entwurf.id}`)).json();
+    pruefe('ein Mitspieler sieht den fertigen Stand', beiMit.name === 'Probeentwurf' && beiMit.components?.Status?.status === 'ready', JSON.stringify(beiMit).slice(0, 200));
+    const beiL = await (await get(leitung, `/api/entities/${entwurf.id}`)).json();
+    pruefe('die Leitung sieht den neuen, mit Datum des alten', beiL.name === 'Probeentwurf, neu' && !!beiL.refs?.ready?.at, JSON.stringify(beiL.refs ?? {}).slice(0, 200));
+    const wartet = await (await get(leitung, '/api/unready')).json();
+    pruefe('die Leitung sieht, was wartet', wartet.rows?.some((r) => r.id === entwurf.id && r.authors?.includes('probe-spiel')), JSON.stringify(wartet).slice(0, 300));
+    const rR = await fetch(`${BASE}/api/entities/${entwurf.id}/ready`, { method: 'POST', headers: { cookie: leitung } });
+    pruefe('„ready" per Knopf', rR.ok, `${rR.status} ${(await rR.text()).slice(0, 200)}`);
+    const nachR = await (await get(mit, `/api/entities/${entwurf.id}`)).json();
+    pruefe('danach gilt der neue Stand für alle', nachR.name === 'Probeentwurf, neu', JSON.stringify(nachR).slice(0, 200));
+
+    /* Die eigene Figur (E-014 d): die Spielerin setzt sie selbst fertig,
+       auch ihren Statblock. */
+    const figur = await (await get(spielerin, '/api/entities/pc_probe')).json();
+    delete figur.refs;
+    const rF = await put(spielerin, { ...figur, components: { ...figur.components, Status: { status: 'ready' } } });
+    pruefe('die eigene Figur nennt die Spielerin selbst fertig', rF.ok, `${rF.status} ${(await rF.text()).slice(0, 200)}`);
+    const sb = await (await get(spielerin, '/api/entities/sb_probe_instanz')).json();
+    delete sb.refs;
+    const rS = await put(spielerin, { ...sb, components: { ...sb.components, Statblock: { ...(sb.components?.Statblock ?? {}), ac: 17 } } });
+    pruefe('ihren Statblock (eine Instanz) schreibt sie selbst', rS.ok, `${rS.status} ${(await rS.text()).slice(0, 200)}`);
     const rW = await fetch(`${BASE}/api/entities/${entwurf.id}`, { method: 'DELETE', headers: { cookie: admin } });
     pruefe('DELETE des Entwurfs', rW.ok, String(rW.status));
   }
@@ -566,7 +601,7 @@ try {
         pruefe(`Probeartikel ${e.id}`, r.ok, `${r.status} ${await r.text()}`);
       }
       const { readFileSync } = await import('node:fs');
-      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '027_abenteuer_ebene.sql'), 'utf8'));
+      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '029_abenteuer_ebene.sql'), 'utf8'));
       await migrate(pool, { env: {} }, ordner);
       const art = async (id) => (await repo.getEntity(id))?.components['Layer']?.kind;
       pruefe('Abenteuer als Ebene: die Migration setzt kind adventure, ein Quellenbuch bleibt book',

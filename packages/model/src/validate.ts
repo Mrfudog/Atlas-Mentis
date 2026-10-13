@@ -12,7 +12,7 @@
 
 import { z } from 'zod';
 import { enumHolds, enumOptions, linkAccepts, linkTargets, typeChain } from './entity.js';
-import type { Entity, LayoutElement, Registry } from './types.js';
+import type { Entity, LayoutElement, ObjectSchema, Registry } from './types.js';
 
 const propertyType = z.enum(['string', 'number', 'integer', 'boolean', 'array', 'object']);
 
@@ -48,6 +48,9 @@ const propertySchema = z
     many: z.boolean().optional(),
     readOnly: z.boolean().optional(),
     default: z.unknown().optional(),
+    /* Die Form eines Eintrags in einem `many`-Feld (REQ-238). Rekursiv,
+       weil ein Eintrag Felder hat und jedes davon ein Feld ist. */
+    entry: z.lazy(() => objectSchema).optional(),
   })
   /* **`measure` ohne `unit` rechnet nichts.** Umgerechnet wird aus der
      gespeicherten Einheit (D8); nennt das Feld keine, sieht das Ergebnis
@@ -59,12 +62,16 @@ const propertySchema = z
     path: ['unit'],
   });
 
-const objectSchema = z.object({
-  type: z.literal('object'),
-  required: z.array(z.string()).optional(),
-  properties: z.record(z.string(), propertySchema),
-  additionalProperties: z.boolean().optional(),
-});
+/* Rekursiv über `PropertySchema.entry` (REQ-238); der Typ steht dabei,
+   weil zod eine Schleife sonst nicht ableiten kann. */
+const objectSchema: z.ZodType<ObjectSchema> = z.lazy(() =>
+  z.object({
+    type: z.literal('object'),
+    required: z.array(z.string()).optional(),
+    properties: z.record(z.string(), propertySchema),
+    additionalProperties: z.boolean().optional(),
+  }),
+);
 
 /* Ein Reiter enthält ein Layout, und ein Layout kann Reiter enthalten —
    also ist das Schema rekursiv. `z.lazy` ist dafür da; die Tiefe begrenzt
@@ -200,7 +207,10 @@ export interface ValidationIssue {
     | 'condition_stage_twice'
     /* `overrides` ersetzt eine Fassung durch eine andere **derselben Art**
        (M9); über Arten hinweg wäre es eine Verwechslung. */
-    | 'overrides_other_type';
+    | 'overrides_other_type'
+    /* Zwei Einträge eines Feldes mit derselben `id` (REQ-238): was an
+       der Id hängt, wüsste nicht, welcher gemeint ist. */
+    | 'entry_id_twice';
   message: string;
   /** Die Art, deren Karte es betrifft. */
   component?: string;
@@ -368,6 +378,59 @@ export function validateEntity(
             property,
             message: `${type}.${property} is ${zahl}, outside ${prop.min ?? '−∞'}…${prop.max ?? '∞'}`,
           });
+        }
+      }
+    }
+  }
+
+  /* **Ein Eintrag mit Form wird geprüft wie eine kleine Karte** (REQ-238):
+     Pflicht, Aufzählung, Spanne — und jede `id` nur einmal, denn an ihr
+     hängt, was anderswo auf genau diesen Eintrag zeigt (die Antwort
+     einer Figur auf eine Wahl). */
+  for (const type of kette) {
+    const schema = registry.interfaces[type]?.schema;
+    const card = entity.components?.[type];
+    if (!schema || !card) continue;
+    for (const [property, prop] of Object.entries(schema.properties)) {
+      if (!prop.entry || !Array.isArray(card[property])) continue;
+      const ids = new Set<string>();
+      for (const eintrag of card[property] as unknown[]) {
+        const o = (eintrag && typeof eintrag === 'object' ? eintrag : {}) as Record<string, unknown>;
+        const id = typeof o['id'] === 'string' ? o['id'] : '';
+        const wo = `${type}.${property}#${id || '?'}`;
+        if (id && ids.has(id)) {
+          issues.push({ code: 'entry_id_twice', component: type, property, message: `${wo} appears twice` });
+        }
+        if (id) ids.add(id);
+        for (const pflicht of prop.entry.required ?? []) {
+          if (o[pflicht] === undefined || o[pflicht] === '' || o[pflicht] === null) {
+            issues.push({ code: 'missing_property', component: type, property, message: `${wo}: ${pflicht} is required` });
+          }
+        }
+        for (const [k, p] of Object.entries(prop.entry.properties)) {
+          const wert = o[k];
+          if (wert === undefined || wert === '' || wert === null) continue;
+          const erlaubt = enumHolds(registry, p) ? enumOptions(registry, p) : undefined;
+          if (erlaubt) {
+            for (const einer of Array.isArray(wert) ? wert : [wert]) {
+              if (!erlaubt.includes(String(einer))) {
+                issues.push({
+                  code: 'value_not_allowed', component: type, property,
+                  message: `${wo}: ${k} is ${String(einer)}, which is not one of ${erlaubt.join(', ')}`,
+                });
+              }
+            }
+          }
+          if (typeof p.min === 'number' || typeof p.max === 'number') {
+            for (const einer of Array.isArray(wert) ? wert : [wert]) {
+              const zahl = Number(einer);
+              if (!Number.isFinite(zahl)) {
+                issues.push({ code: 'value_not_a_number', component: type, property, message: `${wo}: ${k} is ${String(einer)}, which is not a number` });
+              } else if ((typeof p.min === 'number' && zahl < p.min) || (typeof p.max === 'number' && zahl > p.max)) {
+                issues.push({ code: 'value_out_of_range', component: type, property, message: `${wo}: ${k} is ${zahl}, outside ${p.min ?? '−∞'}…${p.max ?? '∞'}` });
+              }
+            }
+          }
         }
       }
     }

@@ -142,6 +142,59 @@ export function inPlay(entities: Map<EntityId, Entity>, entity: Entity, campaign
   return inStack(entities, entity, campaign) && !isOverridden(entities, entity, campaign);
 }
 
+export interface PlayStack {
+  /** Wie `inPlay`, ohne den Bestand je Artikel neu zu durchsuchen. */
+  inPlay(entity: Entity): boolean;
+  /** Wie `unactivatedLayers`. */
+  unactivated(entity: Entity): EntityId[];
+}
+
+/**
+ * **Der Stapel einmal gerechnet, für viele Artikel** (T-086, REQ-246).
+ *
+ * `inPlay` je Artikel fragt `overriderOf`, und das sucht im ganzen Bestand
+ * nach einer Überschreibung — für eine Liste über alle Artikel also jeder
+ * gegen jeden. Mit 21 576 Artikeln aus 5e.tools und einer Kampagne, die
+ * ihre Bücher aufschaltet, waren das gut 35 Sekunden je Liste und je
+ * Registerzählung; die Seite stand still. Hier stehen die Ränge der Ebenen
+ * und die Ziele aller geltenden Überschreibungen einmal vorab, danach ist
+ * jede Frage ein Nachschlagen. Gleiche Regeln wie oben: eine Überschreibung
+ * zählt nur aus einer aufgeschalteten Ebene heraus.
+ */
+export function playStack(entities: Map<EntityId, Entity>, campaign: Entity | null): PlayStack {
+  if (!campaign) return { inPlay: () => true, unactivated: () => [] };
+  const rang = activeLayerRanks(entities, campaign);
+  const ueberschrieben = new Set<EntityId>();
+  for (const o of entities.values()) {
+    const ziele = kanten(o, OVERRIDES_RELATION);
+    if (!ziele.length) continue;
+    if (!kanten(o, LAYER_RELATION).some((x) => (rang.get(x.to) ?? 0) > 0)) continue;
+    for (const r of ziele) ueberschrieben.add(r.to);
+  }
+  const imStapel = (entity: Entity): boolean => {
+    const ebenen = kanten(entity, LAYER_RELATION);
+    if (!ebenen.length) return true;
+    let addAt = 0;
+    let remAt = 0;
+    for (const r of ebenen) {
+      const x = rang.get(r.to);
+      if (!x) continue;
+      if ((r.props as { mode?: unknown } | undefined)?.mode === 'removes') remAt = Math.max(remAt, x);
+      else addAt = Math.max(addAt, x);
+    }
+    return addAt > remAt;
+  };
+  return {
+    inPlay: (entity) => imStapel(entity) && !ueberschrieben.has(entity.id),
+    unactivated: (entity) => {
+      const ebenen = kanten(entity, LAYER_RELATION);
+      if (!ebenen.length || ebenen.some((r) => rang.has(r.to))) return [];
+      const bringen = ebenen.filter((r) => (r.props as { mode?: unknown } | undefined)?.mode !== 'removes');
+      return [...new Set(bringen.map((r) => r.to))];
+    },
+  };
+}
+
 /**
  * **Die Ebene, die dieser Kampagne gehört** (REQ-237): die spezifischste
  * aufgeschaltete Ebene, die keine andere Kampagne aufschaltet. Dorthin legt

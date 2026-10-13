@@ -9,7 +9,8 @@
  * und fünf Kanten.
  */
 
-import type { Entity } from '@nw/model';
+import type { Choice, Entity } from '@nw/model';
+import { choiceId, typeChain } from '@nw/model';
 import type { Knoten } from '../copy.js';
 import type { Werkbank } from '../werkbank.js';
 import type { Zuordnung } from '../zuordnung.js';
@@ -42,17 +43,47 @@ function uebungsName(wb: Werkbank, art: 'skill' | 'language' | 'weapon' | 'armor
   }
 }
 
-/** Übungen aus den Listen von 5e.tools: was fest ist, was zur Wahl steht. */
+/**
+ * **Eine Wahl an den Artikel hängen** (REQ-238, E-015 a). Die Id kommt aus
+ * dem Text (`skills`, `fighting-style-1`), nicht aus einer Zählung — an
+ * ihr hängt später die Antwort der Figur.
+ */
+export function wahl(wb: Werkbank, ent: Entity, text: string, c: Omit<Choice, 'id'>): void {
+  const karte = wb.karte(ent, 'Choices');
+  const alle = (karte['choices'] as Choice[] | undefined) ?? [];
+  const eintrag: Choice = { id: choiceId(text, alle.map((x) => x.id)), ...c };
+  /* Leere Angaben stehen nicht in der Karte. */
+  for (const k of Object.keys(eintrag) as (keyof Choice)[]) {
+    const v = eintrag[k];
+    if (v === undefined || v === '' || (Array.isArray(v) && !v.length)) delete eintrag[k];
+  }
+  karte['choices'] = [...alle, eintrag];
+}
+
+type UebungsArt = 'skill' | 'language' | 'weapon' | 'armor' | 'tool';
+
+/* Wie eine Wahl heisst (ihre Id) und woraus sie ohne Liste zieht. */
+const WAHL_NAME: Record<UebungsArt, string> = { skill: 'skills', language: 'languages', weapon: 'weapons', armor: 'armor', tool: 'tools' };
+const WAHL_LISTE: Record<UebungsArt, string[]> = { skill: ['Skill'], language: ['Language'], weapon: ['Weapon', 'Weapon.category'], armor: ['Armor.armorType'], tool: ['Item'] };
+
+/**
+ * Übungen aus den Listen von 5e.tools: was fest ist, steht in
+ * `Proficiencies`, was zur Wahl steht, wird eine Wahl (REQ-238) — auch
+ * „any 3" und „anyStandard 2", die keine Liste haben; dann sagt `note`,
+ * was gemeint ist. `when` sagt bei einer Klasse, ob die Wahl nur für die
+ * erste Klasse oder nur beim Mehrklassen-Einstieg gilt.
+ */
 export function uebungen(
   wb: Werkbank,
   ent: Entity,
-  quellen: Partial<Record<'skill' | 'language' | 'weapon' | 'armor' | 'tool', unknown>>,
+  quellen: Partial<Record<UebungsArt, unknown>>,
   feld = 'proficient',
+  when?: Choice['when'],
 ): void {
   const fest: string[] = [];
-  const wahl: { from: string[]; count: number; note: string }[] = [];
   const notizen: string[] = [];
-  for (const [art, roh] of Object.entries(quellen) as ['skill' | 'language' | 'weapon' | 'armor' | 'tool', unknown][]) {
+  const praefix = when === 'multiclass' ? 'multiclass ' : '';
+  for (const [art, roh] of Object.entries(quellen) as [UebungsArt, unknown][]) {
     for (const block of liste(roh)) {
       if (typeof block === 'string') {
         const n = uebungsName(wb, art, block);
@@ -63,59 +94,195 @@ export function uebungen(
       for (const [k, v] of Object.entries((block as Knoten) ?? {})) {
         if (k === 'choose') {
           const c = v as Knoten;
-          const von = liste(c['from']).map((x) => (typeof x === 'string' ? uebungsName(wb, art, x) : undefined)).filter((x): x is string => !!x);
-          wahl.push({ from: von, count: Number(c['count'] ?? 1), note: `${String(c['count'] ?? 1)} ${art === 'skill' ? 'skill' : art} of your choice` });
+          const roheWerte = liste(c['from']).filter((x): x is string => typeof x === 'string');
+          const von = roheWerte.map((x) => uebungsName(wb, art, x)).filter((x): x is string => !!x);
+          const fehlt = roheWerte.filter((x) => !uebungsName(wb, art, x));
+          if (fehlt.length) wb.notiz('Wahl mit Werten ohne Artikel (als Notiz an der Wahl)');
+          wahl(wb, ent, `${praefix}${WAHL_NAME[art]}`, {
+            kind: 'proficiency',
+            when,
+            count: Number(c['count'] ?? 1),
+            from: von.length ? { values: von } : { enumRef: WAHL_LISTE[art] },
+            note: fehlt.length ? `also: ${fehlt.map((x) => wb.zeile(x)).join(', ')}` : undefined,
+          });
         } else if (v === true) {
           const n = uebungsName(wb, art, k);
           if (n) fest.push(n);
           else notizen.push(titel(k));
         } else if (typeof v === 'number') {
           /* `anyStandard: 2`, `any: 1` — eine Wahl ohne Liste. */
-          notizen.push(`${v} ${k.replace(/([A-Z])/g, ' $1').toLowerCase()} ${art === 'tool' ? 'tool' : art}${v === 1 ? '' : 's'} of your choice`);
+          wahl(wb, ent, `${praefix}${WAHL_NAME[art]}`, {
+            kind: 'proficiency',
+            when,
+            count: v,
+            from: { enumRef: WAHL_LISTE[art] },
+            note: `${v} ${k.replace(/([A-Z])/g, ' $1').toLowerCase()} ${art === 'tool' ? 'tool' : art}${v === 1 ? '' : 's'} of your choice`,
+          });
         }
       }
     }
+  }
+  /* Ein Talent führt keine festen Übungen (`Proficiencies` gehört ihm
+     nicht); was es fest gibt, steht in seinem Text. */
+  if (!typeChain(wb.registry, ent.interfaces[0] ?? '').includes('Proficiencies')) {
+    if (fest.length || notizen.length) wb.notiz('feste Übung eines Talents (im Text belassen)');
+    return;
   }
   const P = 'Proficiencies';
   const alt = (wb.karte(ent, P)[feld] as string[] | undefined) ?? [];
   const neu = [...new Set([...alt, ...fest])];
   if (neu.length) wb.karte(ent, P)[feld] = neu;
   else if (!Object.keys(wb.karte(ent, P)).length) delete ent.components[P];
-  if (!ent.interfaces.some((t) => ['Class', 'Subclass', 'Ancestry', 'Background'].includes(t))) return;
-  const C = 'ProficiencyChoice';
-  const [erste, ...weitere] = wahl;
-  const karte = wb.karte(ent, C);
-  if (erste && !karte['chooseFrom']) {
-    wb.feld(ent, C, 'chooseFrom', erste.from);
-    wb.feld(ent, C, 'chooseCount', erste.count);
-  } else if (erste) weitere.unshift(erste);
-  const satz = [...((karte['chooseNote'] as string | undefined) ? [karte['chooseNote'] as string] : []), ...weitere.map((w) => `${w.note}: ${w.from.join(', ')}`), ...notizen];
-  if (satz.length) karte['chooseNote'] = satz.join('; ');
-  if (!Object.keys(karte).length) delete ent.components[C];
+  /* Was weder Name noch Wahl ist („one type of artisan's tools" als
+     Wort), bleibt als freie Wahl mit Notiz stehen. */
+  if (notizen.length) wahl(wb, ent, `${praefix}other proficiencies`, { kind: 'proficiency', when, note: notizen.join('; ') });
+  if (ent.components['Choices'] && !Object.keys(ent.components['Choices']).length) delete ent.components['Choices'];
+}
+
+/**
+ * **Attributsboni**: `{dex: 2}` ist fest, `choose` eine Wahl — mit
+ * `amount` (+1 je Wahl) oder `weighted` (+2 auf eines, +1 auf ein
+ * anderes). Mehrere Blöcke sind bei 5e.tools **Alternativen** (+2/+1 oder
+ * +1/+1/+1); die erste wird die Wahl, die übrigen stehen als Satz in
+ * `note` und im Bericht.
+ */
+function attributsWahl(wb: Werkbank, ent: Entity, roh: unknown): Record<string, number> {
+  const fest: Record<string, number> = {};
+  const bloecke = liste(roh) as Knoten[];
+  const satz = (b: Knoten): string => {
+    const c = (b['choose'] as Knoten | undefined) ?? {};
+    const w = c['weighted'] as Knoten | undefined;
+    const von = liste(w?.['from'] ?? c['from']).map(String).join(', ');
+    return w ? `${liste(w['weights']).map((x) => `+${String(x)}`).join('/')} from ${von}` : `+${String(c['amount'] ?? 1)} to ${String(c['count'] ?? 1)} from ${von}`;
+  };
+  bloecke.forEach((b, i) => {
+    for (const [k, v] of Object.entries(b ?? {})) {
+      if (ATTR.includes(k) && typeof v === 'number') {
+        if (i === 0) fest[k] = v;
+      } else if (k === 'choose' && i === 0) {
+        const c = v as Knoten;
+        const w = c['weighted'] as Knoten | undefined;
+        const von = liste(w?.['from'] ?? c['from']).map(String).filter((a) => ATTR.includes(a));
+        const bonus = w ? liste(w['weights']).map(Number) : Array.from({ length: Number(c['count'] ?? 1) }, () => Number(c['amount'] ?? 1));
+        const anders = bloecke.slice(1).filter((x) => x && x['choose']).map(satz);
+        if (anders.length) wb.notiz('Attributswahl mit Alternativen (erste als Wahl, Rest als Notiz)');
+        wahl(wb, ent, 'ability scores', {
+          kind: 'ability',
+          count: bonus.length,
+          bonus,
+          from: { values: von.length ? von : [...ATTR] },
+          note: anders.length ? `or instead: ${anders.join('; ')}` : undefined,
+        });
+      }
+    }
+  });
+  return fest;
+}
+
+/* Die Talentkategorien von 5e.tools als Marken: woraus eine Wahl zieht. */
+const TALENT_KATEGORIE: Record<string, string> = { G: 'general', O: 'origin', FS: 'fighting style', 'FS:P': 'fighting style', 'FS:R': 'fighting style', EB: 'epic boon' };
+
+/**
+ * **Talente einer Abstammung oder eines Hintergrunds**: `{"alert|xphb":
+ * true}` ist fest (eine Kante `grants`), `any` und `anyFromCategory`
+ * sind Wahlen. Mehrere Blöcke sind Alternativen; die erste gilt, die
+ * übrigen stehen im Bericht.
+ */
+function talente(wb: Werkbank, ent: Entity, roh: unknown): void {
+  const bloecke = liste(roh) as Knoten[];
+  if (bloecke.length > 1) wb.notiz('Talente mit Alternativen (erste übernommen)');
+  const b = bloecke[0];
+  if (!b) return;
+  for (const [k, v] of Object.entries(b)) {
+    if (k === 'any' && typeof v === 'number') {
+      wahl(wb, ent, 'feat', { kind: 'feat', count: v, from: { interfaces: ['Feat'] } });
+    } else if (k === 'anyFromCategory') {
+      const c = v as Knoten;
+      const marken = [...new Set(liste(c['category']).map((x) => TALENT_KATEGORIE[String(x)]).filter((x): x is string => !!x))];
+      wahl(wb, ent, `${marken[0] ?? 'feat'} feat`, { kind: 'feat', count: Number(c['count'] ?? 1), from: { interfaces: ['Feat'], tags: marken } });
+    } else if (v === true) {
+      const [n = '', q = ''] = k.split('|');
+      const ziel = wb.finde('feat', [n, q.toUpperCase()]);
+      if (ziel) wb.kante(ent, 'grants', ziel.id);
+      else wb.ctx.insLeere('feat', k);
+    } else wb.notiz(`Talentangabe ${k} (nicht abgebildet)`);
+  }
+}
+
+/**
+ * **Fortschritte einer Klasse** (`featProgression`,
+ * `optionalfeatureProgression`): wie viele Talente oder Zusatzmerkmale
+ * man auf welcher Stufe **insgesamt** hat — als Liste je Stufe oder als
+ * `{"3": 3, "7": 5}`. Daraus wird je Stufe, auf der es mehr werden, eine
+ * Wahl mit dem Zuwachs.
+ */
+function fortschritt(wb: Werkbank, ent: Entity, roh: unknown, art: 'feat' | 'feature'): void {
+  for (const p of liste(roh)) {
+    const o = p as Knoten;
+    const name = String(o['name'] ?? (art === 'feat' ? 'Feat' : 'Feature'));
+    const prog = o['progression'];
+    const stufen: [number, number][] = Array.isArray(prog)
+      ? prog.map((n, i) => [i + 1, Number(n)] as [number, number])
+      : Object.entries((prog as Knoten | undefined) ?? {}).map(([l, n]) => [Number(l), Number(n)] as [number, number]).sort((a, b) => a[0] - b[0]);
+    let bisher = 0;
+    for (const [stufe, gesamt] of stufen) {
+      if (!Number.isFinite(gesamt) || gesamt <= bisher || stufe < 1 || stufe > 20) continue;
+      const from =
+        art === 'feat'
+          ? { interfaces: ['Feat'], tags: [...new Set(liste(o['category']).map((x) => TALENT_KATEGORIE[String(x)]).filter((x): x is string => !!x))] }
+          : {
+              interfaces: ['Feature'],
+              where: { component: 'Feature', property: 'featureType', value: liste(o['featureType']).map((t) => FEATURE_TYPE[String(t)] ?? String(t)).join(', ') },
+            };
+      if (!from.tags?.length) delete from.tags;
+      wahl(wb, ent, `${name} ${stufe}`, { kind: art, level: stufe, count: gesamt - bisher, from, note: name });
+      bisher = gesamt;
+    }
+  }
+}
+
+/**
+ * **Ausrüstung (a) oder (b)** als Wahlen: je Block mit Buchstaben eine
+ * Wahl, deren Möglichkeiten die Buchstaben sind. Was fest ist (`_`),
+ * steht weiter im Text von `startingEquipment`.
+ */
+function ausruestungsWahl(wb: Werkbank, ent: Entity, roh: unknown, when?: Choice['when']): void {
+  for (const block of liste(roh)) {
+    const b = (block as Knoten) ?? {};
+    const keys = Object.keys(b).filter((k) => k !== '_').sort();
+    if (keys.length < 2) continue;
+    wahl(wb, ent, 'equipment', {
+      kind: 'equipment',
+      when,
+      from: { options: keys.map((k) => ({ key: k.toLowerCase(), label: liste(b[k]).map((x) => stueck(wb, x)).filter(Boolean).join(', ') })) },
+    });
+  }
+}
+
+/** Ein Stück Ausrüstung als Text. */
+function stueck(wb: Werkbank, x: unknown): string {
+  if (typeof x === 'string') return wb.zeile(`{@item ${x}}`);
+  const o = x as Knoten;
+  const menge = o['quantity'] ? ` (${String(o['quantity'])})` : '';
+  if (o['item']) {
+    const name = o['displayName'] ? `|${String(o['displayName'])}` : '';
+    const [n = '', q = ''] = String(o['item']).split('|');
+    return `${wb.zeile(`{@item ${n}|${q}${name}}`)}${menge}${o['containsValue'] ? ` containing ${Number(o['containsValue']) / 100} gp` : ''}`;
+  }
+  if (o['special']) return `${wb.zeile(String(o['special']))}${menge}`;
+  if (o['value'] !== undefined) return `${Number(o['value']) / 100} gp`;
+  if (o['equipmentType']) return `one ${String(o['equipmentType']).replace(/([A-Z])/g, ' $1').toLowerCase()} of your choice`;
+  return '';
 }
 
 /** Die Startausrüstung eines Hintergrunds: was fest ist, und die Wahl a/b. */
 function ausruestung(wb: Werkbank, roh: unknown): string {
-  const stueck = (x: unknown): string => {
-    if (typeof x === 'string') return wb.zeile(`{@item ${x}}`);
-    const o = x as Knoten;
-    const menge = o['quantity'] ? ` (${String(o['quantity'])})` : '';
-    if (o['item']) {
-      const name = o['displayName'] ? `|${String(o['displayName'])}` : '';
-      const [n = '', q = ''] = String(o['item']).split('|');
-      return `${wb.zeile(`{@item ${n}|${q}${name}}`)}${menge}${o['containsValue'] ? ` containing ${Number(o['containsValue']) / 100} gp` : ''}`;
-    }
-    if (o['special']) return `${wb.zeile(String(o['special']))}${menge}`;
-    if (o['value'] !== undefined) return `${Number(o['value']) / 100} gp`;
-    if (o['equipmentType']) return `one ${String(o['equipmentType']).replace(/([A-Z])/g, ' $1').toLowerCase()} of your choice`;
-    return '';
-  };
   const zeilen: string[] = [];
   for (const block of liste(roh)) {
     const b = block as Knoten;
-    if (b['_']) zeilen.push(`- ${liste(b['_']).map(stueck).filter(Boolean).join(', ')}`);
+    if (b['_']) zeilen.push(`- ${liste(b['_']).map((x) => stueck(wb, x)).filter(Boolean).join(', ')}`);
     const wahl = Object.keys(b).filter((k) => k !== '_').sort();
-    if (wahl.length) zeilen.push(`- ${wahl.map((k) => `(${k}) ${liste(b[k]).map(stueck).filter(Boolean).join(', ')}`).join(' or ')}`);
+    if (wahl.length) zeilen.push(`- ${wahl.map((k) => `(${k}) ${liste(b[k]).map((x) => stueck(wb, x)).filter(Boolean).join(', ')}`).join(' or ')}`);
   }
   return zeilen.join('\n');
 }
@@ -142,7 +309,18 @@ function zusatzzauber(wb: Werkbank, ent: Entity, roh: unknown): void {
         }
         for (const [s, uses] of eintraege) {
           if (typeof s !== 'string') {
-            wb.notiz('Zauber zur Wahl (als Text belassen)');
+            /* `{choose: "level=0|class=Wizard", count: 1}` ist eine Wahl
+               (REQ-238); der Filter steht als Satz in `note`. */
+            const c = (s as Knoten | null)?.['choose'];
+            if (typeof c === 'string') {
+              wahl(wb, ent, 'spells', {
+                kind: 'spell',
+                level: ab && ab >= 1 && ab <= 20 ? ab : undefined,
+                count: Number((s as Knoten)['count'] ?? 1),
+                from: { interfaces: ['Spell'] },
+                note: [c.split('|').map((t) => t.replace('=', ' ').replace(/;/g, ' or ')).join(', '), uses].filter(Boolean).join(' · '),
+              });
+            } else wb.notiz('Zauber ohne Wahl und ohne Namen (als Text belassen)');
             continue;
           }
           const [n = '', q = ''] = s.replace(/#c$/, '').split('|');
@@ -323,7 +501,7 @@ export const CHARAKTERBAU: Zuordnung[] = [
       const haupt = liste(e['primaryAbility']).flatMap((x) => Object.keys(x as Knoten)).filter((a) => ATTR.includes(a));
       wb.feld(ent, C, 'primaryAbility', [...new Set(haupt)]);
       const prof = (e['startingProficiencies'] as Knoten | undefined) ?? {};
-      uebungen(wb, ent, { armor: prof['armor'], weapon: prof['weapons'], tool: prof['tools'], skill: prof['skills'] });
+      uebungen(wb, ent, { armor: prof['armor'], weapon: prof['weapons'], tool: prof['tools'], skill: prof['skills'] }, 'proficient', 'start');
       wb.feld(ent, 'Proficiencies', 'saves', liste(e['proficiency']).map(String).filter((a) => ATTR.includes(a)));
       const ausr = (e['startingEquipment'] as Knoten | undefined) ?? {};
       const ausrText = [
@@ -331,6 +509,7 @@ export const CHARAKTERBAU: Zuordnung[] = [
         ausr['goldAlternative'] ? `Alternatively, ${wb.zeile(ausr['goldAlternative'])} gp to buy your own equipment.` : '',
       ].filter(Boolean).join('\n\n');
       wb.feld(ent, C, 'startingEquipment', ausrText);
+      ausruestungsWahl(wb, ent, ausr['defaultData'], 'start');
       const mc = (e['multiclassing'] as Knoten | undefined) ?? {};
       const req = (mc['requirements'] as Knoten | undefined) ?? {};
       const reqText = (r: Knoten): string =>
@@ -344,7 +523,7 @@ export const CHARAKTERBAU: Zuordnung[] = [
           .join(', ');
       wb.feld(ent, C, 'multiclassRequirement', reqText(req));
       const mp = (mc['proficienciesGained'] as Knoten | undefined) ?? {};
-      uebungen(wb, ent, { armor: mp['armor'], weapon: mp['weapons'], tool: mp['tools'], skill: mp['skills'] }, 'multiclassProficient');
+      uebungen(wb, ent, { armor: mp['armor'], weapon: mp['weapons'], tool: mp['tools'], skill: mp['skills'] }, 'multiclassProficient', 'multiclass');
       if (ent.components['Proficiencies']?.['multiclassProficient']) {
         wb.feld(ent, C, 'multiclassProficient', ent.components['Proficiencies']['multiclassProficient']);
         delete ent.components['Proficiencies']['multiclassProficient'];
@@ -354,6 +533,21 @@ export const CHARAKTERBAU: Zuordnung[] = [
       if (e['spellcastingAbility']) wb.feld(ent, C, 'spellAbility', e['spellcastingAbility']);
       if (e['isSidekick']) wb.marke(ent, 'sidekick');
       gewaehrt(wb, ent, e['classFeatures'], 'classFeature');
+      /* Auf welcher Stufe die Unterklasse gewählt wird: das Merkmal mit
+         `gainSubclassFeature` (Martial Archetype, 3). */
+      for (const f of liste(e['classFeatures'])) {
+        const o = f as Knoten;
+        if (typeof f !== 'object' || !o['gainSubclassFeature']) continue;
+        const stufe = Number(String(o['classFeature'] ?? '').split('|')[3]);
+        wahl(wb, ent, String(e['subclassTitle'] ?? 'subclass'), {
+          kind: 'subclass',
+          level: Number.isInteger(stufe) && stufe >= 1 && stufe <= 20 ? stufe : undefined,
+          from: { interfaces: ['Subclass'], edge: { type: 'subclassOf', to: ent.id } },
+        });
+        break;
+      }
+      fortschritt(wb, ent, e['featProgression'], 'feat');
+      fortschritt(wb, ent, e['optionalfeatureProgression'], 'feature');
       klassentabelle(wb, ent, e);
       lore(wb, ent, 'classFluff', e);
     },
@@ -379,6 +573,7 @@ export const CHARAKTERBAU: Zuordnung[] = [
       if (klasse) wb.kante(ent, 'subclassOf', klasse.id);
       else wb.ctx.insLeere('class', `${String(e['className'])}|${String(e['classSource'])}`);
       gewaehrt(wb, ent, e['subclassFeatures'], 'subclassFeature');
+      fortschritt(wb, ent, e['optionalfeatureProgression'], 'feature');
       klassentabelle(wb, ent, e, 'subclassTableGroups');
       zusatzzauber(wb, ent, e['additionalSpells']);
       const f = wb.fluff('subclassFluff', String(e['name']), String(e['source']));
@@ -439,7 +634,7 @@ export const CHARAKTERBAU: Zuordnung[] = [
     name: (e) => String(e['name']),
     genutzt: [
       'name', 'entries', 'skillProficiencies', 'languageProficiencies', 'toolProficiencies',
-      'weaponProficiencies', 'armorProficiencies', 'startingEquipment', 'feats', 'additionalSpells',
+      'weaponProficiencies', 'armorProficiencies', 'startingEquipment', 'feats', 'additionalSpells', 'ability',
     ],
     fuellen(wb, ent, e) {
       uebungen(wb, ent, {
@@ -460,6 +655,10 @@ export const CHARAKTERBAU: Zuordnung[] = [
       }
       wb.prosa(ent, wb.text(rest));
       wb.feld(ent, 'Background', 'startingEquipment', ausruestung(wb, e['startingEquipment']));
+      ausruestungsWahl(wb, ent, e['startingEquipment']);
+      const fest = attributsWahl(wb, ent, e['ability']);
+      if (Object.keys(fest).length) wb.notiz('fester Attributsbonus eines Hintergrunds (nicht abgebildet)');
+      talente(wb, ent, e['feats']);
       lore(wb, ent, 'backgroundFluff', e);
     },
   },
@@ -468,10 +667,24 @@ export const CHARAKTERBAU: Zuordnung[] = [
     tag: 'feat',
     typ: () => 'Feat',
     name: (e) => String(e['name']),
-    genutzt: ['name', 'entries', 'prerequisite', 'repeatable', 'repeatableHidden', 'additionalSpells', 'ability', 'category'],
+    genutzt: [
+      'name', 'entries', 'prerequisite', 'repeatable', 'repeatableHidden', 'additionalSpells', 'ability', 'category',
+      'skillProficiencies', 'toolProficiencies', 'languageProficiencies', 'weaponProficiencies', 'armorProficiencies',
+    ],
     fuellen(wb, ent, e) {
       wb.feld(ent, 'Feat', 'prerequisite', e['prerequisite'] ? voraussetzung(wb, e['prerequisite']) : undefined);
       if (e['repeatable']) wb.feld(ent, 'Feat', 'repeatable', true);
+      /* Die Kategorie wird eine Marke: daraus zieht eine Wahl „ein
+         Origin-Talent" (REQ-238). */
+      wb.marke(ent, ...liste(e['category']).map((c) => TALENT_KATEGORIE[String(c)]));
+      /* Ein fester Bonus (+1 Con) ist eine Wahl ohne Spielraum: sie
+         beantwortet sich selbst (`fixedPicks`). */
+      const fest = attributsWahl(wb, ent, e['ability']);
+      for (const [a, n] of Object.entries(fest)) wahl(wb, ent, `${a} increase`, { kind: 'ability', count: 1, bonus: [n], from: { values: [a] } });
+      uebungen(wb, ent, {
+        skill: e['skillProficiencies'], language: e['languageProficiencies'], tool: e['toolProficiencies'],
+        weapon: e['weaponProficiencies'], armor: e['armorProficiencies'],
+      });
       wb.prosa(ent, wb.text(e['entries']));
     },
   },
@@ -488,20 +701,9 @@ function abstammung(wb: Werkbank, ent: Entity, e: Knoten, fluff: string): void {
   else if (sp && typeof sp === 'object') {
     wb.feld(ent, A, 'speed', Object.entries(sp as Knoten).filter(([, v]) => typeof v === 'number' || v === true).map(([k, v]) => (k === 'walk' ? `${String(v)} ft.` : `${k} ${v === true ? 'equal to walking speed' : `${String(v)} ft.`}`)).join(', '));
   }
-  const bonus: Record<string, number> = {};
-  const wahl: string[] = [];
-  for (const a of liste(e['ability'])) {
-    for (const [k, v] of Object.entries(a as Knoten)) {
-      if (ATTR.includes(k) && typeof v === 'number') bonus[k] = v;
-      else if (k === 'choose') {
-        const c = v as Knoten;
-        wahl.push(`choose ${String(c['count'] ?? 1)} from ${liste(c['from']).join(', ')}${c['amount'] ? ` (+${String(c['amount'])})` : ''}`);
-      }
-    }
-  }
+  const bonus = attributsWahl(wb, ent, e['ability']);
   if (Object.keys(bonus).length) wb.feld(ent, A, 'abilityBonus', bonus);
-  wb.feld(ent, A, 'abilityNote', wahl.join('; '));
-  if (e['lineage']) wb.feld(ent, A, 'abilityNote', [wahl.join('; '), `lineage: ${String(e['lineage'])}`].filter(Boolean).join('; '));
+  if (e['lineage']) wb.feld(ent, A, 'abilityNote', `lineage: ${String(e['lineage'])}`);
   const alter = e['age'] as Knoten | undefined;
   if (alter) wb.feld(ent, A, 'age', [alter['mature'] ? `mature at ${String(alter['mature'])}` : '', alter['max'] ? `live to about ${String(alter['max'])}` : ''].filter(Boolean).join(', '));
   wb.feld(ent, A, 'darkvision', zahl(e['darkvision']));
@@ -512,6 +714,7 @@ function abstammung(wb: Werkbank, ent: Entity, e: Knoten, fluff: string): void {
     weapon: e['weaponProficiencies'], armor: e['armorProficiencies'],
   });
   zusatzzauber(wb, ent, e['additionalSpells']);
+  talente(wb, ent, e['feats']);
   /* Merkmale der Abstammung werden Artikel, die sie gewährt (M3); was ein
      Feld schon sagt (Alter, Grösse, Tempo …), bleibt Text. */
   const rest: unknown[] = [];

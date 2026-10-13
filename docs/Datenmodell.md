@@ -172,7 +172,7 @@ Jede Artikelart nimmt diese sieben Grundtypen (gemessen: 36 von 36):
 
 Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 `Facts`, `ReadAloud`, `Tactics`, `Vars`, `Vitals`, `Proficiencies`,
-`ProficiencyChoice`, `Abilities`, `Difficulty`, `Story`. Welche Art was nimmt, steht in §13.
+`Choices`, `Abilities`, `Difficulty`, `Story`. Welche Art was nimmt, steht in §13.
 
 ### 3.5 Regeln für Typen
 
@@ -232,6 +232,7 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | `boolean` | Häkchen | `true` | Häkchen |
 | `array` `grid` | eine Form: ein Zeichen je Feld, `.` ist frei (`Item.rows`, `Inventory.grid`) | `["##.","##."]` | gemalt, nicht getippt |
 | `object` `zones` + `enumRef` | je Feld ein Wort aus einer Zeile (`Inventory.zones`) | `{"0,0":"action"}` | gemalt |
+| `array` + `many` + `entry` | **Einträge mit Form**: jeder Eintrag ist eine kleine Karte mit `id` (aus dem Text) und den Feldern aus `entry`; geprüft wie eine Karte (Pflicht, Aufzählung, Spanne), jede `id` nur einmal (`entry_id_twice`). Heute `Choices.choices` (REQ-238) | `[{id, kind, count, …}]` | JSON |
 | `array` `tags` | Marken | `["händler"]` | Text, kommagetrennt |
 | `array` (`items: string`) | eine Liste | `[…]` | Text, kommagetrennt |
 | `object` | freie Struktur mit eigenem Element (`Vars.bindings`, `Party.actions`, `Board.rules`, `Map.walls`) | `{…}` | das Element oder JSON |
@@ -425,19 +426,22 @@ flowchart LR
 | S1 | **Der Statblock wächst** (M5): `languageNote` (was keine Sprache ist: „telepathy 120 ft.", „any four languages"), `conditionImmunities` (Verweise auf `Condition`-Artikel, seit T-078; vorher ihre Namen), `legendaryActions` (Anzahl je Runde), `bonuses` (`{"Stealth": 6}` — feste Boni, die nicht aus Übung folgen; der Bogen nimmt sie statt der Rechnung), `token` (Asset). `size` liest die Zeile `Size`, englisch. Er nimmt `Proficiencies`, `Lore` und `Image` dazu; die Umgebung eines Monsters sind Marken. | `validateEntity` |
 | S2 | **Die Übungen wohnen am Statblock**, nicht an der Kreatur: sie gehören zu den Zahlen (Übungsbonus, Attribut). An beiden Stellen wären sie zwei Antworten auf „worin ist sie geübt". | Register (`typeChain`) |
 | S3 | **Was ein Statblock führt, ist die Kante `equips`** (Statblock → Item): der Gegenstand aus dem Buch, kein Inventar. | Kantenprüfung |
-| C1 | **Klasse, Unterklasse, Abstammung, Hintergrund sind Arten unter `Rule`** (Bereich `rules`). Jede nimmt `Proficiencies` (was sie fest gewährt — die Beschriftung heisst dort „Grants proficiency in") und `ProficiencyChoice` (`chooseFrom`, `chooseCount`, `chooseNote`: „zwei aus …", „zwei Sprachen nach Wahl"). Die Klasse trägt `hitDie`, `primaryAbility`, `startingEquipment`, `multiclassRequirement`, `multiclassProficient`, `subclassTitle`, mit der Unterklasse `casterProgression` und `spellAbility`; die Abstammung `size`, `speed`, `abilityBonus` (`{"con": 2}`), `age`, `darkvision`, `resistances`. | `validateEntity` |
+| C1 | **Klasse, Unterklasse, Abstammung, Hintergrund sind Arten unter `Rule`** (Bereich `rules`). Jede nimmt `Proficiencies` (was sie fest gewährt — die Beschriftung heisst dort „Grants proficiency in") und `Choices` (was zu wählen ist, C6). Die Klasse trägt `hitDie`, `primaryAbility`, `startingEquipment`, `multiclassRequirement`, `multiclassProficient`, `subclassTitle`, mit der Unterklasse `casterProgression` und `spellAbility`; die Abstammung `size`, `speed`, `abilityBonus` (`{"con": 2}`), `age`, `darkvision`, `resistances`. | `validateEntity` |
 | C2 | **Die Figur zeigt darauf:** `hasClass` (mehrmals, `props.level` Pflicht, `props.subclass` → `Subclass`), `hasAncestry` und `hasBackground` (je eine). `PlayerCharacter.class` und `.ancestry` sind weg. | Kantenprüfung |
 | C3 | **Die Stufe wird gerechnet:** `level = sum(hasClass.level)`, `proficiency = 2+(sum(hasClass.level)-1)/4` (D8). Ohne Klasse keine Stufe — kein Wert statt 0. | Rechenwerk (`derivedValue` mit Kanten) |
 | C4 | **Was eine Klasse, Abstammung, ein Hintergrund oder Talent gewährt, ist die Kante `grants`** (→ `Rule`) mit `props.level`. Die Stufe steht an der Kante und nicht am Merkmal: „Ability Score Improvement" ist ein Artikel und sieben Kanten. `Feature.level` ist deshalb weg (D50). `subclassOf` und `subraceOf` sagen, wozu eine Unterklasse oder Unterart gehört. Die Stufentabelle einer Klasse und die Charakterzug-Tabellen eines Hintergrunds sind `Table`-Artikel über `tableFor`. | Kantenprüfung |
 | C5 | **Ein Merkmal bettet ein, was allein in einem Absatz steht** (W6): ein Absatz, der nur aus einem Verweis auf ein `Feature` besteht (`[[feature-0479\|Abjuration Savant]]`), heisst „hier steht dieses Merkmal" — so schreibt der Importer `refSubclassFeature` und `refOptionalfeature`. Die Klassenansicht zeichnet es an dieser Stelle aus; ein Kopf, der Merkmale **seiner Sorte** einbettet („School of Abjuration"), heisst in der Tabelle nach seinen Teilen, einer mit Optionen („Fighting Style" › „Archery") nach sich. Optionale Merkmale und Variantenregeln tragen die Marke `optional`. Bringt eine Unterklasse eigene Spalten (`subclassTableGroups`: Eldritch Knight), ist das ein `Table` über `tableFor` an ihr. | `classParts`, `levelFeatures` (`packages/model/src/classes.ts`) |
+| C6 | **Was zu wählen ist, ist ein Feld; was gewählt wurde, eine Kante** (REQ-238, E-015 a). Klasse, Unterklasse, Abstammung, Hintergrund und Talent nehmen `Choices`: `choices` hält je Wahl `{id, kind, level, when, from, count, bonus, note}` — `kind` ist proficiency · ability · feat · spell · equipment · feature · subclass; `from` ist **eine** von drei Formen: `values` (Namen aus Listen, `enumRef` nennt sie, wenn es keine feste Aufzählung gibt), Artikel (`interfaces` mit den Filtern von `LinkTarget` und `edge`: nur Unterklassen dieser Klasse) oder `options` (`[{key, label}]`, Ausrüstung a/b); `when` sagt an einer Klasse „nur als erste Klasse" (`start`) oder „nur beim Mehrklassen-Einstieg" (`multiclass`); `bonus` bei `ability` je Wahl (+2/+1 heisst `[2, 1]`). Die `id` kommt aus dem Text (`skills`, `fighting-style-2`). Die Figur speichert **nur ihre Antworten**: je Wahl eine Kante `chose` (PlayerCharacter → der fragende Artikel) mit `props.choice` und `props.picks` (Namen, Artikel-Ids oder Schlüssel). **Gerechnet beim Lesen** (D8): `chosenResult` ergibt Übungen, Attributsboni (dazu fest aus `Ancestry.abilityBonus`), gewählte Artikel und Ausrüstung; `pendingChoices` was offen ist, `orphanAnswers` Antworten auf Wahlen, die es nicht mehr gibt. **Eine Wahl ohne Spielraum ist beantwortet** (`fixedPicks`: „eines aus [con]"). Feste Gaben bleiben, was sie sind: `Proficiencies`, `grants` mit `props.level`, `abilityBonus`. | `validateEntity` (`entry`), `packages/model/src/choices.ts` |
 | Ü1 | **Übungen kommen aus Artikeln** (M6): `Proficiencies.proficient` und `expertise` nennen `Skill`, `Language`, `Item` (nur Werkzeuge, `enumWhere` auf `itemType`), `Weapon`, `Weapon.category`, `Armor.armorType`. Die Zeilen `Skill`, `Language`, `Tool`, `WeaponTraining`, `ArmorTraining`, `KnowledgeField` und die Einstellung `skills` sind weg; worauf eine Fertigkeit rechnet, sagt `Skill.ability`. Ein Wissensgebiet (Hausregel) ist eine Fertigkeit mit Artikel. | F12 |
 | Ü2 | **`Language` ist eine Art** (`languageType` standard/exotic/rare/secret, `script`, `typicalSpeakers`). | — |
 | Ü3 | **`DamageType` und `Size` sind Zeilen** (F1): drei Felder nennen die Schadensarten (Waffe, Aktion, Zauber; die Abstammung für Resistenzen), zwei die Grösse. | `validateEntity` (`value_not_allowed`) |
 
 Offen: der Bogen der Oberfläche (`apps/web`) zeichnet Klasse und Stufe
-noch nicht (die Klasse selbst steht unter `/classes/:id`, W6); die Wahl aus `ProficiencyChoice` trifft niemand für die Figur
-(sie steht als Angebot an der Klasse); eine umbenannte Fertigkeit nimmt
-die gespeicherten Übungen nicht mit (F12).
+noch nicht (die Klasse selbst steht unter `/classes/:id`, W6); die Wahlen
+aus `Choices` beantwortet noch keine Maske — das ist der Assistent
+(T-080), der seine Schritte aus `pendingChoices` baut; eine umbenannte
+Fertigkeit nimmt die gespeicherten Übungen nicht mit (F12), und eine
+Antwort mit Namen ebenso wenig.
 
 ### 5.8 Initiative (D53)
 
@@ -721,6 +725,27 @@ hat (`app_user_article`) oder schreiben darf (seine Figuren samt dem, was an
 ihnen hängt) — der Server gibt es als `Viewer.own` mit. Das gilt überall,
 wo gesiebt wird: Liste, Artikel, Verweise, Rückbezüge, Auswahlen.
 
+**Die eigene Figur ist ausgenommen** (E-014 d, D74): ein Spielercharakter,
+der einem Konto zugeteilt ist (`app_user_actor`), samt seinem Statblock
+(`belongsTo`, auch eine Instanz) und seinem Inventar (`carries`) geht nach
+der gewöhnlichen Sichtbarkeit an die Mitspielenden, in jedem Stand — der
+Server gibt die Figuren *aller* Konten als `Viewer.ungated` mit.
+
+**Der letzte fertige Stand gilt** (E-012, D74): fiel ein Artikel nach einer
+Änderung einer Spielerin auf `prepared` zurück, bekommt, wer den
+Arbeitsstand nicht sieht (`seesUnfinished`: nicht Leitung, nicht Eigenes),
+die Kopie von vorher aus `entity_ready` — in Liste, Artikel und als
+Zusammenhang des Siebs. Wer ihn sieht, bekommt den neuen Stand mit dem
+Datum des alten (`refs.ready`) und mit `?stand=ready` den alten.
+
+```mermaid
+flowchart LR
+  F["ready"] -- "Spielerin ändert" --> P["prepared<br/>+ Kopie in entity_ready"]
+  P -- "Spielerin ändert weiter" --> P
+  P -- "gm: ready" --> F2["ready<br/>Kopie weg, der neue gilt"]
+  P -. "alle anderen lesen" .-> K["die Kopie"]
+```
+
 ### 9.2 Rollen
 
 Die Rolle am Tisch steht **am Konto, je Kampagne**: `gm` · `co-gm` · `player`
@@ -778,7 +803,16 @@ die Verfasserin neben dem Konto (`app_user_article`), nicht im Artikel
 (REQ-199). Eine angelegte Spielerfigur führt sie gleich. **`ready` setzen
 die Verwaltung und `gm` der Kampagne, der der Artikel gehört**, nicht
 Spielende und nicht `co-gm`; der Server prüft es, auch wenn die Status-Karte
-fehlt. Dafür schreibt `gm` die Artikel, die Spielende angelegt haben. Das
+fehlt. Dafür schreibt `gm` die Artikel, die Spielende angelegt haben.
+**Ausgenommen ist die eigene Figur** (E-014 d, D74): der Spieler schreibt
+auch ihren Statblock (`belongsTo`) und setzt bei Figur, Statblock und
+Inventar den Stand selbst, auch `ready`. **Ändert eine Spielerin einen
+anderen fertigen Artikel, fällt er auf `prepared`** (E-012, D74), und der
+Stand davor bleibt als Kopie (`entity_ready`, Migration 027) — jede
+Änderung zählt, ein Speichern ohne Änderung nicht. Setzt `gm` wieder
+`ready` (in der Maske oder per `POST /api/entities/:id/ready`), gilt der
+neue und die Kopie fällt weg; ändert `gm` selbst, fällt nichts zurück. Was
+wartet, listet `GET /api/unready` (Werkbank, „Not ready, by players"). Das
 Register schreiben die Verwaltung und `gm` der laufenden Kampagne. Was die
 Leitung sonst schreibt, ist offen (D69).
 
@@ -914,6 +948,7 @@ verschweigen.
 | Konten, Passwörter, Sitzungen, Einladungen, Fehlversuche | Server: `app_user`, `app_session`, `app_invite`, `login_attempt` | nein (REQ-199) |
 | welche Figuren ein Konto führt | `app_user_actor` | nein |
 | wer einen Artikel angelegt hat (D72) | `app_user_article` | nein |
+| der letzte fertige Stand eines zurückgefallenen Artikels (D74) | `entity_ready` | nein |
 | Rolle je Kampagne | `campaign_member`; Prototyp: Sammlung `members` | nein |
 | Verwaltung der Installation | `app_user.is_admin` | nein |
 | das Register | Tabellen `interface_def`, `relation_def`, `view_def`, `unit_def`, `var_def`, `enum_def` (Aufzählungen), `setting_def` (Einstellungen, seit Migration 019); Prototyp: Sammlung `registry` | ja — allein weiterreichbar (`register-datei.mjs`) |
@@ -931,13 +966,14 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-13: 46 Artikelarten, 22 Grundtypen, 54 Kantenarten, 6 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-13: 46 Artikelarten, 22 Grundtypen, 55 Kantenarten, 6 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
 | Grundtyp | Felder | genommen von |
 |---|---|---|
 | `Abilities` | `str` `strMod*` `dex` `dexMod*` `con` `conMod*` `int` `intMod*` `wis` `wisMod*` `cha` `chaMod*` `initiative*` `passivePerception*` | `Statblock` |
+| `Choices` | `choices` | 5 |
 | `Description` | `description` | 24 |
 | `Difficulty` | `difficulty` | `Scene` `Encounter` |
 | `Facts` | `fact` | `Creature` `Item` `Information` |
@@ -946,7 +982,6 @@ Stand 2026-10-13: 46 Artikelarten, 22 Grundtypen, 54 Kantenarten, 6 Aufzählungs
 | `Lore` | `lore` | 17 |
 | `Notes` | `note` | 24 |
 | `Proficiencies` | `proficient` `expertise` `saves` | 5 |
-| `ProficiencyChoice` | `chooseFrom` `chooseCount` `chooseNote` | 4 |
 | `Prose` | `paragraph` | 24 |
 | `ReadAloud` | `readaloud` | 6 |
 | `Secrets` | `secret` | 15 |
@@ -981,7 +1016,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Material` | `Item` | `materialType` `trades` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `loot` `instanceOf` | — |
 | `Party` | `Image` `Lore` | `level` `motto` `day` `watch` `sinceRation` `sinceLight` `actions` | `partyOf` `carries` `crafting` `regards` | `memberOfParty` `knownBy` `participates` `regards` | full |
 | `Place` | `Image` `Lore` `ReadAloud` `Secrets` | `kind` `environment` `state` `arrival` | `partOf` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | full |
-| `PlayerCharacter` | `Creature` | `backstory` `level*` `proficiency*` | `worships` `casts` `hasClass` `hasAncestry` `hasBackground` `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | — |
+| `PlayerCharacter` | `Creature` | `backstory` `level*` `proficiency*` | `worships` `casts` `hasClass` `hasAncestry` `hasBackground` `chose` `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | — |
 | `Weapon` | `Item` | `category` `damage` `damage2` `damageType` `range` `ammoType` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `loot` `instanceOf` | overview |
 | `World` | `Image` `Lore` | `calendar` | — | `inWorld` | — |
 
@@ -1001,12 +1036,12 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 |---|---|---|---|---|---|
 | `Action` | `Rule` | `actionType` `recharge` `uses` `attack` `ability` `toHitBonus` `reach` `range` `target` `damageDice` `damageBonus` `damageType` `extraDamageDice` `extraDamageType` | `affects` | `composedOf` `affects` `grants` | overview |
 | `ActionType` | `Rule` | `per` `count` | `affects` | `composedOf` `affects` `grants` | — |
-| `Ancestry` | `Rule` `Proficiencies` `ProficiencyChoice` `Lore` `Image` | `size` `speed` `abilityBonus` `abilityNote` `age` `darkvision` `creatureType` `resistances` | `affects` `casts` `subraceOf` `grants` `tableFor` | `composedOf` `affects` `subraceOf` `hasAncestry` `grants` | overview |
-| `Background` | `Rule` `Proficiencies` `ProficiencyChoice` `Lore` `Image` | `startingEquipment` | `affects` `grants` `tableFor` | `composedOf` `affects` `hasBackground` `grants` | — |
-| `Class` | `Rule` `Proficiencies` `ProficiencyChoice` `Lore` `Image` | `hitDie` `primaryAbility` `startingEquipment` `multiclassRequirement` `multiclassProficient` `subclassTitle` `casterProgression` `spellAbility` | `affects` `grants` `tableFor` | `composedOf` `affects` `subclassOf` `hasClass` `grants` | overview |
+| `Ancestry` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `size` `speed` `abilityBonus` `abilityNote` `age` `darkvision` `creatureType` `resistances` | `affects` `casts` `subraceOf` `grants` `tableFor` | `composedOf` `affects` `subraceOf` `hasAncestry` `chose` `grants` | overview |
+| `Background` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `startingEquipment` | `affects` `grants` `tableFor` | `composedOf` `affects` `hasBackground` `chose` `grants` | — |
+| `Class` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `hitDie` `primaryAbility` `startingEquipment` `multiclassRequirement` `multiclassProficient` `subclassTitle` `casterProgression` `spellAbility` | `affects` `grants` `tableFor` | `composedOf` `affects` `subclassOf` `hasClass` `chose` `grants` | overview |
 | `Condition` | `Rule` | `kind` `stage` `recovery` | `stageOf` `affects` | `composedOf` `stageOf` `affects` `grants` | overview |
 | `Disease` | `Condition` | `kind` `save` `dc` `incubation` `transmission` | `stageOf` `affects` | `composedOf` `stageOf` `affects` `grants` | — |
-| `Feat` | `Rule` | `prerequisite` `repeatable` | `affects` `grants` | `composedOf` `affects` `grants` `loot` | overview |
+| `Feat` | `Rule` `Choices` | `prerequisite` `repeatable` | `affects` `grants` | `composedOf` `affects` `chose` `grants` `loot` | overview |
 | `Feature` | `Rule` | `featureType` | `affects` | `composedOf` `affects` `grants` | overview |
 | `Information` | `Secrets` `Facts` | `fields` `tier` | `knownBy` | `knowledge` `includes` `loot` | — |
 | `Inventory` | — | `capacity` `copper` `grid` `zones` | `holds` | `carries` | full |
@@ -1018,7 +1053,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Skill` | `Rule` | `ability` | `affects` | `composedOf` `affects` `grants` `loot` | — |
 | `Spell` | `Rule` | `level` `school` `castingTime` `castingAction` `castingUnit` `castingCondition` `rangeKind` `range` `components` `material` `materialCost` `materialConsumed` `duration` `durationAmount` `durationUnit` `concentration` `ritual` `higherLevels` `save` `attack` `damageTypes` | `affects` | `composedOf` `affects` `casts` `grants` | overview, full |
 | `Statblock` | `Source` `Abilities` `Proficiencies` `Vars` `Tactics` `Lore` `Image` | `system` `size` `creatureType` `alignment` `ac` `acNote` `hp` `hpFormula` `speed` `cr` `prof` `carryExtra*` `combatRole` `senses` `languageNote` `resistances` `vulnerabilities` `immunities` `conditionImmunities` `legendaryActions` `bonuses` `token` `spellAbility` `casterLevel` `spellSlots` `spellDc*` `spellAttack*` | `composedOf` `belongsTo` `casts` `equips` `instanceOf` | `features` `participates` `instanceOf` | overview, quick, full |
-| `Subclass` | `Rule` `Proficiencies` `ProficiencyChoice` `Lore` `Image` | `shortName` `casterProgression` `spellAbility` | `affects` `casts` `subclassOf` `grants` `tableFor` | `composedOf` `affects` `grants` | overview |
+| `Subclass` | `Rule` `Proficiencies` `Choices` `Lore` `Image` | `shortName` `casterProgression` `spellAbility` | `affects` `casts` `subclassOf` `grants` `tableFor` | `composedOf` `affects` `chose` `grants` | overview |
 | `Table` | `Source` `Secrets` | `kind` `die` `columns` `rows` | `entry` | `tableFor` | overview, full |
 | `ZoneKind` | `Rule` | `moveCost` `light` `obscured` `hiddenUntil` `damage` `damageType` `save` `saveDC` `condition` `trigger` | `affects` | `composedOf` `affects` `grants` `zone` | — |
 
@@ -1046,6 +1081,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `belongsTo` | Statblock → Creature | ja | Feld am `to`-Ende | — |
 | `carries` | Creature \| Party \| Item → Inventory | ja | Feld am `from`-Ende | — |
 | `casts` | Statblock \| PlayerCharacter \| Item \| Subclass \| Ancestry → Spell |  | — | `mode` `uses` `level` `charges` `fromLevel` |
+| `chose` | PlayerCharacter → Choices |  | — | `choice` `picks` |
 | `composedOf` | Statblock → Rule |  | Abschnitt „Actions & traits" | `vars` `ability` `damageDice` `damageType` `reach` `range` `target` `toHitBonus` `damageBonus` `extraDamageDice` `extraDamageType` `toHit` `damageFlat` `note` |
 | `controls` | Faction → Place |  | — | — |
 | `crafting` | Creature \| PlayerCharacter \| Party → Recipe |  | — | `day` `days` `put` `rolls` |

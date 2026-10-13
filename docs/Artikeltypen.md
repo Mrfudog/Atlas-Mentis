@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-13. 68 Schnittstellen, 54 Kantenarten.
+Stand 2026-10-13. 68 Schnittstellen, 55 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -604,6 +604,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `hasClass` → Class — „class"
 - `hasAncestry` → Ancestry — „ancestry"
 - `hasBackground` → Background — „background"
+- `chose` → Choices — „chose"
 - `owes` → Creature — „owes"
 - `memberOf` → Faction — „member of"
 - `livesIn` → Place — „lives in"
@@ -1103,7 +1104,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Ancestry
 
-`Ancestry` · erbt von `Rule` ← `Proficiencies` ← `ProficiencyChoice` ← `Lore` ← `Image` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`Ancestry` · erbt von `Rule` ← `Proficiencies` ← `Choices` ← `Lore` ← `Image` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
@@ -1113,7 +1114,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
 - *`Proficiencies`* — `proficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `expertise` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `saves` *Ability: str | dex | con | int | wis | cha*
-- *`ProficiencyChoice`* — `chooseFrom` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `chooseCount` *1…∞*, `chooseNote` *string*
+- *`Choices`* — `choices` *array*
 - *`Lore`* — `lore` *long*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
@@ -1145,6 +1146,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Rule — `affects` → „affected by"
 - Ancestry — `subraceOf` → „subraces"
 - PlayerCharacter — `hasAncestry` → „ancestry of"
+- PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -1159,7 +1161,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Background
 
-`Background` · erbt von `Rule` ← `Proficiencies` ← `ProficiencyChoice` ← `Lore` ← `Image` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`Background` · erbt von `Rule` ← `Proficiencies` ← `Choices` ← `Lore` ← `Image` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
@@ -1169,7 +1171,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
 - *`Proficiencies`* — `proficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `expertise` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `saves` *Ability: str | dex | con | int | wis | cha*
-- *`ProficiencyChoice`* — `chooseFrom` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `chooseCount` *1…∞*, `chooseNote` *string*
+- *`Choices`* — `choices` *array*
 - *`Lore`* — `lore` *long*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
@@ -1198,6 +1200,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
 - PlayerCharacter — `hasBackground` → „background of"
+- PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -1212,7 +1215,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Class
 
-`Class` · erbt von `Rule` ← `Proficiencies` ← `ProficiencyChoice` ← `Lore` ← `Image` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`Class` · erbt von `Rule` ← `Proficiencies` ← `Choices` ← `Lore` ← `Image` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
@@ -1222,7 +1225,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
 - *`Proficiencies`* — `proficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `expertise` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `saves` *Ability: str | dex | con | int | wis | cha*
-- *`ProficiencyChoice`* — `chooseFrom` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `chooseCount` *1…∞*, `chooseNote` *string*
+- *`Choices`* — `choices` *array*
 - *`Lore`* — `lore` *long*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
@@ -1252,6 +1255,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Rule — `affects` → „affected by"
 - Subclass — `subclassOf` → „subclasses"
 - PlayerCharacter — `hasClass` → „taken by"
+- PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -1363,7 +1367,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Feat
 
-`Feat` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`Feat` · erbt von `Rule` ← `Choices` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
@@ -1372,6 +1376,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Geerbte Felder**
 
 - *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- *`Choices`* — `choices` *array*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
 - *`Prose`* — `paragraph` *long*
 - *`Notes`* — `note` *long*
@@ -1396,6 +1401,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -1911,7 +1917,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Subclass
 
-`Subclass` · erbt von `Rule` ← `Proficiencies` ← `ProficiencyChoice` ← `Lore` ← `Image` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+`Subclass` · erbt von `Rule` ← `Proficiencies` ← `Choices` ← `Lore` ← `Image` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
 
 **Eigene Felder**
 
@@ -1921,7 +1927,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
 - *`Proficiencies`* — `proficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `expertise` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `saves` *Ability: str | dex | con | int | wis | cha*
-- *`ProficiencyChoice`* — `chooseFrom` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `chooseCount` *1…∞*, `chooseNote` *string*
+- *`Choices`* — `choices` *array*
 - *`Lore`* — `lore` *long*
 - *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
 - *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
@@ -1951,6 +1957,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
+- PlayerCharacter — `chose` → „chosen by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -2274,6 +2281,36 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
 
+### Choices — *abstrakt*
+
+`Choices`
+
+**Eigene Felder**
+
+- `choices` *array*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- PlayerCharacter — `chose` → „chosen by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+
 ### Description — *abstrakt*
 
 `Description`
@@ -2525,35 +2562,6 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Eigene Felder**
 
 - `proficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `expertise` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `saves` *Ability: str | dex | con | int | wis | cha*
-
-**Kanten von hier**
-
-- `describedIn` → Article — „described in"
-- `knowledge` → Information — „knowledge about it"
-- `inLayer` → Layer — „from"
-- `variantOf` → * — „variant of"
-- `overrides` → * — „replaces"
-
-**Kanten hierher**
-
-- Quest — `questAbout` → „concerned by"
-- Map — `marker` → „on the map"
-- Map — `territory` → „holds ground on"
-- Board — `placed` → „lies on"
-- Event — `involves` → „took part in"
-- Table — `entry` → „rolled on"
-- * — `variantOf` → „has variants"
-- * — `overrides` → „replaced by"
-
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
-
-### Proficiency choice — *abstrakt*
-
-`ProficiencyChoice`
-
-**Eigene Felder**
-
-- `chooseFrom` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `chooseCount` *1…∞*, `chooseNote` *string*
 
 **Kanten von hier**
 

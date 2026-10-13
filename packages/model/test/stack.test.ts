@@ -9,6 +9,7 @@ import {
   inPlay,
   inStack,
   isOverridden,
+  playStack,
   resolveArticle,
   unactivatedLayers,
   withStack,
@@ -175,5 +176,17 @@ describe('a version over the template (E-018, T-082)', () => {
     expect(resolveArticle(m, szene, m.get('camp_salz')!).id).toBe('sc_mund');
     expect(replacedIds(m, fassung)).toEqual(['sc_mund']);
     expect(replacedIds(m, szene)).toEqual([]);
+  });
+});
+
+describe('the stack computed once for many articles (T-086)', () => {
+  it('answers like inPlay and unactivatedLayers, for every article and campaign', () => {
+    for (const c of [E('camp_nebel'), E('camp_salz'), null]) {
+      const s = playStack(entities, c);
+      for (const e of entities.values()) {
+        expect([e.id, s.inPlay(e)]).toEqual([e.id, inPlay(entities, e, c)]);
+        expect([e.id, s.unactivated(e)]).toEqual([e.id, unactivatedLayers(entities, e, c)]);
+      }
+    }
   });
 });

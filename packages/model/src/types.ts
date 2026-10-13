@@ -57,6 +57,19 @@ export interface PropertySchema {
   many?: boolean;
   items?: { type: PropertyType };
   /**
+   * **Die Form eines Eintrags**, wenn ein Feld mit `many` nicht Text
+   * trägt, sondern Einträge mit eigenen Feldern (REQ-238, E-015): eine
+   * Wahl an einer Klasse ist `{id, level, kind, from, count, note}`. Die
+   * `id` bleibt, was sie bei jedem `many`-Feld ist — der Halt, an dem
+   * etwas anderes hängt (hier die Antwort einer Figur) —, und kommt wie
+   * dort aus dem Text, nicht aus einer Zählung.
+   *
+   * Geprüft wird jeder Eintrag wie eine kleine Karte: Pflichtfelder,
+   * Aufzählung, Spanne, und dass keine `id` zweimal vorkommt. Ein
+   * Eintrag ohne diese Form wäre JSON, das niemand erklärt.
+   */
+  entry?: ObjectSchema;
+  /**
    * Calculation engine: an expression evaluated on read and never stored (D8).
    * Names resolve against sibling fields of the same component first, then
    * against the article's other cards (a statblock's `prof` and its

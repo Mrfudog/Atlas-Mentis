@@ -21,6 +21,7 @@ export * from './timeline.js';
 export * from './summary.js';
 export * from './usage.js';
 export * from './classes.js';
+export * from './choices.js';
 export * from './board.js';
 export * from './checks.js';
 export * from './bulk.js';

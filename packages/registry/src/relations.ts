@@ -249,6 +249,31 @@ export const relations: Record<string, RelationDef> = {
   },
 
   /**
+   * **Was eine Figur gewählt hat** (REQ-238, E-015 a): je Wahl eine Kante
+   * auf den Artikel, der fragt, mit der `id` der Wahl und den Antworten
+   * (Namen, Artikel-Ids oder der Schlüssel einer Möglichkeit). Die Figur
+   * kopiert nichts — was die Antworten ergeben, wird beim Lesen gerechnet
+   * (`chosenResult`, D8), also erreicht eine Änderung am Artikel jede
+   * Figur. Eine Antwort, deren Wahl es nicht mehr gibt, ist verwaist und
+   * bleibt stehen, bis jemand sie löscht.
+   */
+  chose: {
+    type: 'chose',
+    label: 'chose',
+    inverseLabel: 'chosen by',
+    from: ['PlayerCharacter'],
+    to: ['Choices'],
+    props: {
+      type: 'object',
+      required: ['choice'],
+      properties: {
+        choice: { type: 'string', title: 'Choice' },
+        picks: { type: 'array', items: { type: 'string' }, title: 'Picks' },
+      },
+    },
+  },
+
+  /**
    * **Was Klasse, Abstammung, Hintergrund oder Talent mitbringen** (M3):
    * Merkmale, Aktionen, Zustände — jede Regel. Die Stufe steht an der
    * Kante, nicht am Merkmal: „Ability Score Improvement" ist ein Artikel,

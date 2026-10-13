@@ -16051,7 +16051,13 @@ function renderHowto(v){
       "level it comes at. Proficiencies live on the statblock with the "+
       "other numbers, and they are names: of skill and language articles, "+
       "of the items that are tools, of weapons, and the words of the weapon "+
-      "and armour groups. A skill says which ability it runs on."));
+      "and armour groups. A skill says which ability it runs on. What is to "+
+      "be chosen is a field on the article that asks (Choices: what kind, how "+
+      "many, from what, from which level); the character keeps only its "+
+      "answers, one chose edge per choice. What the answers give — skills, "+
+      "ability bonuses, feats — is worked out on read, so a change to the "+
+      "class reaches every character, and an answer to a choice that is gone "+
+      "shows as orphaned."));
     var kantenBsp=[
       {type:"hasClass",to:"Fighter",props:{level:3,subclass:"Champion"}},
       {type:"hasClass",to:"Wizard",props:{level:2}},
@@ -16071,7 +16077,15 @@ function renderHowto(v){
       "level        = "+pcP.level.derived+"  →  "+(lvB==null?"—":lvB)+"\n"+
       (pcP.proficiency?"proficiency  = "+pcP.proficiency.derived+"  →  "+fmtVal(pcP.proficiency,pfB)+"\n":"")+
       "\nFighter  grants → Second Wind  at 1\n"+
-      "Fighter  grants → Ability Score Improvement  at 4, 6, 8 …\n\n"+
+      "Fighter  grants → Ability Score Improvement  at 4, 6, 8 …\n"+
+      (REG.interfaces.Choices?
+        "Fighter  choices: skills — choose 2 from Athletics, Perception, …  (start only)\n"+
+        "                  martial-archetype — a Subclass of Fighter  from 3\n"+
+        "Hill Dwarf  choices: tools — choose 1 from Smith's tools, Mason's tools\n"+
+        "chose → Fighter     skills: Athletics, Perception\n"+
+        "chose → Fighter     martial-archetype: Champion\n"+
+        "chose → Hill Dwarf  tools: Smith's tools\n"+
+        "  → proficient (worked out on read): Athletics, Perception, Smith's tools\n":"")+"\n"+
       "Statblock · Proficiencies.proficient draws on\n"+(quellen||"  —");
     v.appendChild(el("pre",{class:"code",text:rechnung2}));
   }

@@ -557,6 +557,18 @@ fertig**: eine Ebene oder ein Regelteil ohne Status-Karte verschwände sonst
 für alle Spielenden, und niemand wüsste, warum — dieselbe Überlegung wie bei
 `public` als Vorgabe.
 
+**Ändert eine Spielerin etwas Fertiges, gilt für die anderen der fertige
+Stand weiter** (E-012, D74). Er fällt auf `prepared`, und der Stand davor
+bleibt als Kopie am Server (`entity_ready`) — nicht als zweite Karte im
+Artikel: die wanderte mit jeder Ausfuhr mit, und jede Prüfung müsste zwei
+Fassungen kennen. Wer den Arbeitsstand sieht (Verfasserin, Leitung), sieht
+den neuen mit einem Band „not ready yet — the version from … applies";
+alle anderen merken nichts, bis die Leitung `ready` setzt. **Die eigene
+Figur ist ausgenommen** (E-014 d): sie gehört dem Spieler, er setzt ihren
+Stand selbst, und am Tisch fiele sie sonst beim ersten Treffer zurück. Was
+an ihr die Leitung prüfen soll, kommt später Feld für Feld (REQ-242),
+nicht als Liste je Figur.
+
 **Vererbt wird nichts.** Ein Artikel sagt für sich, wer ihn sehen darf; dass
 das Zimmer zum Haus gehört, sagt nichts darüber, wer das Zimmer kennt. Es
 gab dafür ein Feld (`inherit`, Vorgabe `true`), und es war nie ausgewertet —
@@ -739,9 +751,23 @@ die dritte Stelle neben den Kanten und nach dem ersten Aufstieg falsch.
 auf Stufe 4, 6, 8, 12, 14, 16 und 19: ein Artikel, sieben Kanten. Ein Feld
 `level` am Merkmal hätte eine davon gewählt und die anderen verschwiegen —
 darum gibt es `Feature.level` nicht mehr (D50). Was gewählt wird statt
-gewährt („zwei aus Acrobatics, Athletics …"), steht als Angebot an der
-Klasse (`ProficiencyChoice`); getroffen wird die Wahl am Statblock der
-Figur, als gewöhnliche Übung.
+gewährt („zwei aus Acrobatics, Athletics …"), steht als **Wahl** an der
+Klasse (`Choices.choices`), und getroffen wird sie an der Figur: eine
+Kante `chose` mit der `id` der Wahl und den Antworten.
+
+**Die Figur kopiert nicht, sie antwortet** (REQ-238, E-015 a). Es stand
+einmal genau eine Wahl je Klasse in drei Feldern (`ProficiencyChoice`),
+und alles Weitere — „+1 auf zwei Attribute", Ausrüstung (a) oder (b), ein
+Talent, die Unterklasse auf Stufe 3 — war ein Satz im Text. Aus einem Satz
+baut kein Assistent einen Schritt. Hätte die Figur beim Erstellen
+übernommen, was die Wahl ergibt, erreichte eine Korrektur an der Klasse
+keine bestehende Figur mehr. Also: die Wahl ist ein Eintrag mit Form am
+Artikel, die Antwort eine Kante an der Figur, und was beides ergibt, wird
+beim Lesen gerechnet (D8). Die `id` einer Wahl kommt aus dem Text
+(`skills`, `fighting-style-2`) — wie bei jedem `many`-Feld, weil eine
+durchgezählte beim Umsortieren still zur falschen Wahl gehörte. **Eine
+Wahl ohne Spielraum ist beantwortet**: „+1 auf Con" an einem Talent ist
+eine Wahl aus einem Wert und fragt niemanden.
 
 **Ein Merkmal, das allein in einem Absatz steht, ist eingebettet** (W6).
 5e.tools zieht Merkmale in andere hinein — der Battle Master beginnt mit

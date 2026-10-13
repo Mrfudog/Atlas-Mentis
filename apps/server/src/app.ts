@@ -7,7 +7,9 @@
  * package defines them — front and back share one definition.
  */
 
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyCookie from '@fastify/cookie';
@@ -26,16 +28,17 @@ import {
   campaignLayer,
   campaignOf,
   isReady,
+  primaryInterface,
+  seesUnfinished,
   tableRole,
   STATUS_COMPONENT,
   classParts,
   currentCampaign,
-  inPlay,
   inStack,
   adaptedVersion,
   replacedIds,
   resolveArticle,
-  unactivatedLayers,
+  playStack,
   detachInstance,
   registryUsage,
   instancesOf,
@@ -56,7 +59,7 @@ import {
   typeChain,
 } from '@nw/model';
 import type { BulkChange, Entity, Registry } from '@nw/model';
-import type { Repository } from './repo.js';
+import type { ReadyStand, Repository } from './repo.js';
 import type { AtlasEnv } from './config.js';
 import { NO_LAYER, buildListIndex, listProjection, parseListQuery, queryList, type ListIndex } from './liste.js';
 import { mayActivate, rechtAn, registerVerwaltung } from './verwaltung.js';
@@ -89,6 +92,55 @@ import {
    nimmt sie hier dazu und sieht dabei, was er tut. */
 const OWNING_RELATIONS = new Set(['carries', 'holds', 'crafting']);
 
+/* **Die eigene Figur** (E-014 d): ein Spielercharakter, der einem Konto
+   zugeteilt ist, samt seinem Statblock (`belongsTo`, am Statblock; auch
+   eine Instanz) und seinem Inventar (`carries`; was darin liegt, sind die
+   `holds`-Kanten des Inventars). Die verwaltet ihr Spieler vollständig:
+   er setzt den Stand selbst, nichts fällt zurück, und die Mitspielenden
+   sehen sie nach der gewöhnlichen Sichtbarkeit. Das Handwerk (`crafting`)
+   gehört nicht dazu — ein Rezept ist kein Teil der Figur. */
+const PLAYER_CHARACTER = 'PlayerCharacter';
+const STATBLOCK_RELATION = 'belongsTo';
+const FIGUR_KANTEN = new Set(['carries']);
+
+/** Was an diesen Figuren hängt: über `kanten` von der Figur aus, und der
+ *  Statblock, dessen `belongsTo` auf sie zeigt. */
+function teileVon(figuren: ReadonlySet<string>, bestand: Iterable<Entity>, kanten: ReadonlySet<string>): Set<string> {
+  const teile = new Set(figuren);
+  if (!figuren.size) return teile;
+  for (const e of bestand) {
+    for (const r of e.relations ?? []) {
+      if (!r.to) continue;
+      if (figuren.has(e.id) && kanten.has(r.type)) teile.add(r.to);
+      if (r.type === STATBLOCK_RELATION && figuren.has(r.to)) teile.add(e.id);
+    }
+  }
+  return teile;
+}
+
+/** Die Felder, an denen man eine Änderung erkennt — ohne Zeitstempel und
+ *  ohne leere Werte: eine Maske, die `aliases: []` mitschickt, wo nichts
+ *  stand, hat nichts geändert. Schlüssel sortiert. */
+function kern(e: Entity): string {
+  const leer = (v: unknown): boolean =>
+    v === undefined || v === null || v === '' ||
+    (Array.isArray(v) && v.length === 0) ||
+    (typeof v === 'object' && !Array.isArray(v) && Object.keys(v as object).length === 0);
+  const ordne = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(ordne);
+    if (v && typeof v === 'object') {
+      const raus: Record<string, unknown> = {};
+      for (const k of Object.keys(v as object).sort()) {
+        const w = ordne((v as Record<string, unknown>)[k]);
+        if (!leer(w)) raus[k] = w;
+      }
+      return raus;
+    }
+    return v;
+  };
+  return JSON.stringify(ordne({ name: e.name, interfaces: e.interfaces, components: e.components, relations: e.relations }));
+}
+
 /* Ein Hash, gegen den auch dann geprüft wird, wenn es den Namen nicht gibt:
    sonst verrät die Antwortzeit, welche Konten existieren. Das Passwort dazu
    kennt niemand — es wird nie gesetzt, nur dagegen gerechnet. */
@@ -105,6 +157,9 @@ export interface AppOptions {
   trustProxy?: boolean | string;
   /** Siehe `Config.env`; in Tests ungesetzt. */
   env?: AtlasEnv | null;
+  /** Solange gesetzt, liest der Server nach dem Start seinen Bestand vor
+   *  (`index.ts`); `artikel` sagt, wie viele. Ungesetzt: er ist bereit. */
+  anlauf?: () => { artikel: number } | null;
 }
 
 const REGISTRY_PARTS = ['interfaces', 'relations', 'views', 'vars', 'enums', 'settings'] as const;
@@ -120,10 +175,44 @@ export function buildApp({
   staticRoot,
   trustProxy = false,
   env = null,
+  anlauf,
 }: AppOptions): FastifyInstance {
   const app = Fastify({ logger, trustProxy });
 
   void app.register(fastifyCookie);
+
+  /* **Wie lange eine Antwort brauchte** (T-086, REQ-246): als
+     `Server-Timing` an jeder Antwort — die Entwicklerwerkzeuge des Browsers
+     zeigen es unter „Timing" neben der Wartezeit im Netz — und als Zeile im
+     Log, damit man auf dem Server sieht, welche Route wartet. Gemessen wird
+     von der Ankunft bis zum Absenden, ohne die Übertragung. */
+  const beginn = new WeakMap<FastifyRequest, bigint>();
+  app.addHook('onRequest', async (request) => {
+    beginn.set(request, process.hrtime.bigint());
+  });
+  /* **Der Server sagt, dass er startet** (T-086, REQ-246), statt eine
+     Anfrage hängen zu lassen, bis der Bestand gelesen ist: 503 mit der
+     Zahl der Artikel, und die Oberfläche fragt nach einer Sekunde wieder.
+     Anmelden und `health` gehen schon, sie brauchen den Bestand nicht. */
+  const STARTFREI = new Set(['/api/health', '/api/login', '/api/logout', '/api/register']);
+  app.addHook('onRequest', async (request, reply) => {
+    const jetzt = anlauf?.();
+    if (!jetzt || !request.url.startsWith('/api/')) return;
+    if (STARTFREI.has(request.url.split('?')[0] ?? '')) return;
+    return reply
+      .code(503)
+      .header('Retry-After', '1')
+      .send({ error: 'Server is starting', starting: { articles: jetzt.artikel } });
+  });
+  app.addHook('onSend', async (request, reply) => {
+    const t0 = beginn.get(request);
+    if (t0 === undefined) return;
+    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+    void reply.header('Server-Timing', `app;dur=${ms.toFixed(1)}`);
+    if (request.url.startsWith('/api/')) {
+      request.log.info({ route: request.routeOptions.url ?? request.url, ms: Math.round(ms) }, 'dauer');
+    }
+  });
 
   /* `env` sagt, welche Umgebung antwortet (T-070) — Werkzeuge fragen hier,
      die Oberfläche über `/api/me`. Es ist keine Auskunft, die jemandem
@@ -133,6 +222,22 @@ export function buildApp({
   if (staticRoot) {
     // The Angular app, plus a catch-all so client-side routes survive a reload.
     void app.register(fastifyStatic, { root: staticRoot });
+    /* **Welche Oberfläche dieser Server ausliefert** (T-086): ein Hash von
+       `index.html`, die die gehashten Teile nennt. Steht an jeder Antwort
+       der Schnittstelle; ändert er sich unter einer offenen Seite, sagt
+       sie „New version" — nach einem Deploy gibt es ihre alten Teile
+       nicht mehr. */
+    let bau = '';
+    try {
+      bau = createHash('sha256').update(readFileSync(join(staticRoot, 'index.html'))).digest('hex').slice(0, 12);
+    } catch {
+      /* Ohne gebaute Oberfläche gibt es nichts zu vergleichen. */
+    }
+    if (bau) {
+      app.addHook('onSend', async (request, reply) => {
+        if (request.url.startsWith('/api/')) void reply.header('X-Atlas-Build', bau);
+      });
+    }
     app.setNotFoundHandler((request, reply) => {
       if (request.url.startsWith('/api/')) {
         return reply.code(404).send({ error: 'Nicht gefunden' });
@@ -205,15 +310,56 @@ export function buildApp({
    *  also wird sie dort nachgesehen. */
   async function ownedBy(user: User, bestand?: Iterable<Entity>): Promise<Set<string>> {
     const figuren = new Set<string>(user.actorIds ?? []);
-    const own = new Set<string>([...figuren, ...(user.authoredIds ?? [])]);
-    if (!figuren.size) return own;
-    for (const e of bestand ?? (await repo.listEntities())) {
-      if (!figuren.has(e.id)) continue;
-      for (const r of e.relations ?? []) {
-        if (OWNING_RELATIONS.has(r.type) && r.to) own.add(r.to);
-      }
-    }
+    /* Dazu der Statblock der Figur (E-014 d: alle Felder und Kanten). */
+    const own = teileVon(figuren, figuren.size ? (bestand ?? (await repo.listEntities())) : [], OWNING_RELATIONS);
+    for (const id of user.authoredIds ?? []) own.add(id);
     return own;
+  }
+
+  /** Die Spielercharaktere unter diesen Ids — nur sie sind ausgenommen
+   *  (E-014 d), nicht jede Kreatur, die einem Konto zugeteilt ist. */
+  function spielerfiguren(ids: Iterable<string>, bestand: Map<string, Entity>, registry: Registry): Set<string> {
+    const raus = new Set<string>();
+    for (const id of ids) {
+      const e = bestand.get(id);
+      if (e && typeChain(registry, primaryInterface(e)).includes(PLAYER_CHARACTER)) raus.add(id);
+    }
+    return raus;
+  }
+
+  /** **Die eigene Figur dieses Kontos** samt Statblock und Inventar (E-014 d). */
+  function eigeneFigur(user: User, bestand: Map<string, Entity>, registry: Registry): Set<string> {
+    return teileVon(spielerfiguren(user.actorIds ?? [], bestand, registry), bestand.values(), FIGUR_KANTEN);
+  }
+
+  /** **Vom Status-Gate ausgenommen** (E-014 d): die eigenen Figuren *aller*
+   *  Konten — wer welche führt, steht am Server (`app_user_actor`). */
+  async function ausgenommen(bestand: Map<string, Entity>, registry: Registry): Promise<Set<string>> {
+    const ids = (await repo.listUsers()).filter((u) => !u.disabledAt).flatMap((u) => u.actorIds ?? []);
+    return teileVon(spielerfiguren(ids, bestand, registry), bestand.values(), FIGUR_KANTEN);
+  }
+
+  /** Mit wessen Augen gesiebt wird: Figuren, Rollen, Eigenes, Ausgenommenes. */
+  async function augeVon(user: User, bestand: Map<string, Entity>, registry: Registry) {
+    return {
+      actors: user.actorIds ?? [],
+      roles: user.roles ?? {},
+      own: await ownedBy(user, bestand.values()),
+      ungated: await ausgenommen(bestand, registry),
+    };
+  }
+
+  /**
+   * **Die letzten fertigen Stände** (REQ-237, E-012), je Bestand-Stempel
+   * einmal gelesen. Geschrieben wird ein Stand **vor** dem Artikel, der ihn
+   * auslöst — der Stempel ändert sich mit dem Artikel, und erst dann gilt
+   * der neue.
+   */
+  let staende: { stempel: string; lauf: Promise<Map<string, ReadyStand>> } | null = null;
+  async function fertigeStaende(): Promise<Map<string, ReadyStand>> {
+    const stempel = await repo.version();
+    if (staende?.stempel !== stempel) staende = { stempel, lauf: repo.readyStands() };
+    return staende.lauf;
   }
 
   /**
@@ -236,8 +382,10 @@ export function buildApp({
    * ein Mitleiter. Gehört er keiner einzelnen, zählt `gm` irgendwo, wie bei
    * der Sichtbarkeit (`campaignOf`).
    */
-  function maySetReady(user: User, alle: Map<string, Entity>, article: Entity): boolean {
+  function maySetReady(user: User, alle: Map<string, Entity>, article: Entity, figur?: ReadonlySet<string>): boolean {
     if (user.isAdmin) return true;
+    /* Die eigene Figur nennt ihr Spieler selbst fertig (E-014 d). */
+    if (figur?.has(article.id)) return true;
     return tableRole({ roles: user.roles ?? {} }, campaignOf(alle, article)) === 'gm';
   }
 
@@ -287,6 +435,9 @@ export function buildApp({
       }
       writable = [...eigen];
     }
+    /* Was dieses Konto als eigene Figur verwaltet und selbst `ready` setzt
+       (E-014 d) — die Maske bietet `ready` dort an. */
+    const character = user && bestand ? [...eigeneFigur(user, bestand, await repo.getRegistry())] : [];
     /* Die Figuren mit Namen, nicht nur mit Id. Die Maske müsste sie sonst
        einzeln nachladen, bevor sie „meine Figuren" überhaupt beschriften
        kann — und täte es beim ersten Mal falsch. */
@@ -312,6 +463,9 @@ export function buildApp({
       /* Ob die Maske `ready` anbietet: die Verwaltung, und wer irgendwo
          leitet (`gm`). Je Artikel prüft der Server genauer (`maySetReady`). */
       ready: !!user && (user.isAdmin || Object.values(user.roles ?? {}).includes('gm')),
+      /* Die eigene Figur samt Statblock und Inventar: dort setzt auch ein
+         Spieler `ready` (E-014 d). */
+      character,
       /* Ein frischer Server sagt es geradeheraus. Das ist keine Auskunft,
          die jemandem nützt, den es nichts angeht: wer den Port erreicht,
          sieht ohnehin, dass nichts eingerichtet ist. */
@@ -558,6 +712,8 @@ export function buildApp({
        Kampagne im Pfad (gm ändert, co-gm sieht), nicht am Konto allein. */
     if (url.startsWith('/api/campaigns') || url.startsWith('/api/invites')) return;
 
+    /* „ready" per Knopf (REQ-237): die Route prüft je Artikel (`maySetReady`). */
+    if (/^\/api\/entities\/[^/]+\/ready$/.test(url) && request.method === 'POST') return;
     /* Anlegen: Spielende der laufenden Kampagne (REQ-237). */
     if (url === '/api/entities' && request.method === 'POST') {
       if (await mayCreate(user)) return;
@@ -583,6 +739,10 @@ export function buildApp({
 
   app.get('/api/registry', async () => repo.getRegistry());
 
+  /* Je Bestandsstempel und Register einmal gezählt (T-086): das Register
+     fragt bei jedem Öffnen, und gezählt wird über den ganzen Bestand. */
+  let gezaehlt: { key: string; lauf: Promise<unknown> } | null = null;
+
   /**
    * **Was der Bestand an jeder Zeile trägt** — je Art, Karte, Feld,
    * Listenwert und Kantenart (`registryUsage`). Das Register fragt es,
@@ -592,22 +752,33 @@ export function buildApp({
    * für die, die das Register ändern (Wache oben).
    */
   app.get('/api/registry/usage', async () => {
-    const [registry, alle] = await Promise.all([repo.getRegistry(), repo.listEntities()]);
+    const [stand, registry] = await Promise.all([roh(), repo.getRegistry()]);
+    const key = `${stand.stempel}|${registerStempel(registry)}`;
+    if (gezaehlt?.key !== key) {
+      const lauf = Promise.resolve().then(() => zaehle(registry, stand.alle, stand.map));
+      gezaehlt = { key, lauf };
+      lauf.catch(() => {
+        if (gezaehlt?.lauf === lauf) gezaehlt = null;
+      });
+    }
+    return gezaehlt.lauf;
+  });
+  function zaehle(registry: Registry, alle: Entity[], map: Map<string, Entity>) {
     const usage = registryUsage(registry, alle);
     /* **Gespeichert und sichtbar sind zwei Zahlen** (T-069). Das Register
        zählte den ganzen Bestand und widersprach damit der Liste, die nur
        zeigt, was die laufende Kampagne aufschaltet. Beides steht jetzt da;
        „sichtbar" heisst im Stapel, vor Sichtbarkeit und Wissen. */
-    const map = new Map(alle.map((e) => [e.id, e]));
     const kampagne = currentCampaign(map, registry.settings ?? null);
     if (!kampagne) return usage;
     const inPlayJeArt: Record<string, number> = {};
+    const stapel = playStack(map, kampagne);
     for (const e of alle) {
       const typ = e.interfaces?.[0];
-      if (typ && inPlay(map, e, kampagne)) inPlayJeArt[typ] = (inPlayJeArt[typ] ?? 0) + 1;
+      if (typ && stapel.inPlay(e)) inPlayJeArt[typ] = (inPlayJeArt[typ] ?? 0) + 1;
     }
     return { ...usage, inPlay: inPlayJeArt, campaign: { id: kampagne.id, name: entityName(kampagne) } };
-  });
+  }
 
   app.put<{ Params: { part: string }; Body: unknown }>(
     '/api/registry/:part',
@@ -683,10 +854,10 @@ export function buildApp({
        Bis zum 7.10. rechnete das nur der Prototyp, und der Server schickte
        solche Artikel trotzdem hinaus. */
     const kampagne = currentCampaign(roh, registry.settings ?? null);
+    /* Einmal je Aufruf gerechnet, nicht je Artikel (T-086). */
+    const sicht = playStack(roh, kampagne);
     entities = entities
-      .filter((e) =>
-        stapel === 'inPlay' ? inPlay(roh, e, kampagne) : unactivatedLayers(roh, e, kampagne).length > 0,
-      )
+      .filter((e) => (stapel === 'inPlay' ? sicht.inPlay(e) : sicht.unactivated(e).length > 0))
       .map((e) => readInstance(roh, e));
     if (!user || user.isAdmin) return entities;
     /* Der Zusammenhang ist immer der ganze Bestand, auch wenn nur ein
@@ -694,7 +865,7 @@ export function buildApp({
        wem sie gehört, steht an anderen Artikeln. Mit einer Karte aus nur
        diesem einen fände das Sieb keine einzige Information — und liesse
        alles durch, ohne dass irgendwo etwas schiefginge. */
-    const alle = roh;
+    let alle = roh;
     const gmFields = String(registry.settings?.['gmFields'] ?? 'Secrets.secret,Tactics.tactics')
       .split(',')
       .map((x) => x.trim())
@@ -718,14 +889,31 @@ export function buildApp({
        niemand auswertete: `audience: 'gm'` stand da, und der Server
        schickte den Artikel. */
     const augen = user.actorIds ?? [];
-    /* Eigenes geht in jedem Stand an ihn (REQ-237): was er angelegt hat
-       oder schreiben darf. */
-    const eigen = await ownedBy(user, roh.values());
     /* **Die Rollen gehen mit, nicht nur die Figuren.** Wer eine Kampagne
        leitet, hat keine Figur — seine Rolle steht am Konto, je Kampagne
        (`campaign_member`). Das Wissen fragt weiter nur nach den Figuren:
-       was jemand erfahren hat, hat eine Figur erfahren. */
-    const auge = { actors: augen, roles: user.roles ?? {}, own: eigen };
+       was jemand erfahren hat, hat eine Figur erfahren. Eigenes geht in
+       jedem Stand an ihn (REQ-237), und die Figuren der Mitspielenden sind
+       vom Stand ausgenommen (E-014 d). */
+    const auge = await augeVon(user, roh, registry);
+    /* **Der letzte fertige Stand gilt für alle anderen** (REQ-237, E-012):
+       fiel ein Artikel nach einer Änderung einer Spielerin auf `prepared`,
+       bekommt, wer den Arbeitsstand nicht sieht (`seesUnfinished`), die
+       Kopie von vorher — in der Liste, als Artikel und als Zusammenhang
+       des Siebs. Nennt die Leitung ihn wieder fertig, gilt der neue. */
+    const fertig = await fertigeStaende();
+    if (fertig.size) {
+      const statt = new Map<string, Entity>();
+      for (const [id, st] of fertig) {
+        const jetzt = roh.get(id);
+        if (jetzt && !isReady(jetzt) && !seesUnfinished(roh, jetzt, auge)) statt.set(id, st.entity);
+      }
+      if (statt.size) {
+        alle = new Map(roh);
+        for (const [id, e] of statt) alle.set(id, e);
+        entities = entities.map((e) => (statt.has(e.id) ? readInstance(alle, statt.get(e.id)!) : e));
+      }
+    }
     return entities
       .filter((e) => articleVisible(alle, e, auge))
       .map((e) => redactEntity(registry, alle, schmal ? schmal(e) : e, augen, gmFields));
@@ -837,10 +1025,12 @@ export function buildApp({
     stapel: 'inPlay' | 'unactivated' = 'inPlay',
   ): Promise<ListIndex> {
     const [stand, registry, user] = await Promise.all([roh(), repo.getRegistry(), viewerOf(request)]);
+    /* Die ausgenommenen Figuren gehören in den Schlüssel: wer eine Figur
+       zugeteilt bekommt, ändert keinen Artikel und damit keinen Stempel. */
     const wer =
       !user || user.isAdmin
         ? '*'
-        : `${user.id}|${(user.actorIds ?? []).join(',')}|${(user.authoredIds ?? []).join(',')}|${JSON.stringify(user.roles ?? {})}`;
+        : `${user.id}|${(user.actorIds ?? []).join(',')}|${(user.authoredIds ?? []).join(',')}|${JSON.stringify(user.roles ?? {})}|${[...(await ausgenommen(stand.map, registry))].sort().join(',')}`;
     const key = `${stand.stempel}|${stapel}|${registerStempel(registry)}|${wer}`;
     let lauf = indizes.get(key);
     if (lauf) {
@@ -1106,7 +1296,7 @@ export function buildApp({
     };
   });
 
-  app.get<{ Params: { id: string } }>('/api/entities/:id', async (request, reply) => {
+  app.get<{ Params: { id: string }; Querystring: { stand?: string } }>('/api/entities/:id', async (request, reply) => {
     const stand = await roh();
     const gefunden = stand.map.get(request.params.id) ?? (await repo.getEntity(request.params.id));
     if (!gefunden) return reply.code(404).send({ error: 'Nicht gefunden' });
@@ -1115,7 +1305,25 @@ export function buildApp({
        Kampagne, die es angepasst hat, ist die Fassung die Sache. Die
        Seite sieht an der Id, dass sie umgeleitet wurde. */
     const entity = await geltend(gefunden, stand.map);
-    const [einer] = await sieve(request, [entity], stand.map);
+    /* **Gilt ein älterer fertiger Stand?** (REQ-237, E-012) Wer den
+       Arbeitsstand sieht — Verfasserin, Leitung —, bekommt ihn mit dem
+       Datum des fertigen Stands (`refs.ready`), für das Band; mit
+       `?stand=ready` den fertigen Stand selbst. Alle anderen bekommen ohnehin
+       nur ihn (`sieve`) und erfahren nicht, dass es einen neueren gibt. */
+    const fertig = isReady(entity) ? undefined : (await fertigeStaende()).get(entity.id);
+    let ready: { at: string; old: boolean } | undefined;
+    let zeige = entity;
+    if (fertig) {
+      const user = await viewerOf(request);
+      const registry = await repo.getRegistry();
+      const sieht = !user || user.isAdmin || seesUnfinished(stand.map, entity, await augeVon(user, stand.map, registry));
+      if (sieht) {
+        const alt = request.query.stand === 'ready';
+        ready = { at: fertig.at, old: alt };
+        if (alt) zeige = fertig.entity;
+      }
+    }
+    const [einer] = await sieve(request, [zeige], stand.map);
     /* Fällt er durchs Sieb, gibt es ihn für diesen Betrachter nicht.
        „Verboten" wäre die genauere Auskunft und die falsche: sie sagt, dass
        da etwas ist. Vorher stand hier `einer ?? entity` — der Rückfall
@@ -1124,7 +1332,7 @@ export function buildApp({
     if (!einer) return reply.code(404).send({ error: 'Nicht gefunden' });
     /* Die Namen, die der Artikel braucht, kommen mit (W7) — der Browser
        hält keinen Bestand mehr, aus dem er sie nachschlagen könnte. */
-    const refs = await bezuegeVon(request, einer);
+    const refs = { ...(await bezuegeVon(request, einer)), ...(ready ? { ready } : {}) };
     /* Ob „Adapt" angeboten wird (E-018, T-082): dieselbe Frage wie die
        Route, damit die Seite nichts anbietet, was der Server ablehnt. */
     return { ...einer, refs: (await anpassbar(request, einer, stand.map)) ? { ...refs, adaptable: true } : refs };
@@ -1217,7 +1425,8 @@ export function buildApp({
         }
         const karte = (components[STATUS_COMPONENT] ??= {});
         const wert = karte['status'];
-        if (wert === 'ready') {
+        /* Die eigene Figur nennt ihr Spieler selbst fertig (E-014 d). */
+        if (wert === 'ready' && !kette.includes(PLAYER_CHARACTER)) {
           return reply.code(403).send({ error: '„ready" setzt die Leitung.' });
         }
         if (wert !== 'idea' && wert !== 'prepared') karte['status'] = 'idea';
@@ -1241,7 +1450,7 @@ export function buildApp({
       if (spielerin && user) {
         await repo.addAuthored(user.id, id);
         /* Eine Figur, die sie anlegt, führt sie auch (REQ-237). */
-        if (kette.includes('PlayerCharacter')) {
+        if (kette.includes(PLAYER_CHARACTER)) {
           const konto = await repo.getUser(user.id);
           if (konto && !konto.actorIds.includes(id)) {
             await repo.putUser({ ...konto, actorIds: [...konto.actorIds, id] });
@@ -1268,56 +1477,158 @@ export function buildApp({
       /* **`ready` setzt die Leitung** (REQ-237, E-011): wer nicht
          `maySetReady` ist, macht aus einem unfertigen Artikel keinen
          fertigen — auch nicht, indem er die Status-Karte weglässt (ohne
-         Karte gilt er als fertig, `isReady`). */
+         Karte gilt er als fertig, `isReady`). Die eigene Figur ist
+         ausgenommen (E-014 d).
+
+         **Ändert eine Spielerin einen fertigen Artikel, fällt er auf
+         `prepared`** (E-012), und der Stand davor bleibt als Kopie
+         (`entity_ready`): für alle anderen gilt er weiter, bis die Leitung
+         wieder `ready` setzt. Jede Änderung zählt — Lore hat keinen
+         Spielstand. Ändert die Leitung selbst, fällt nichts zurück. */
       const schreiber = await viewerOf(request);
+      const registry = await repo.getRegistry();
+      let zurueck: ReadyStand | null = null;
       if (schreiber && !schreiber.isAdmin) {
         const bestand = new Map((await repo.listEntities()).map((e) => [e.id, e]));
         const vorher = bestand.get(entity.id);
-        const warFertig = vorher ? isReady(vorher) : false;
-        if (!warFertig && isReady(entity) && !maySetReady(schreiber, bestand, vorher ?? entity)) {
-          return reply.code(403).send({ error: '„ready" setzt die Leitung.' });
+        const figur = eigeneFigur(schreiber, bestand, registry);
+        if (!maySetReady(schreiber, bestand, vorher ?? entity, figur)) {
+          const warFertig = vorher ? isReady(vorher) : false;
+          /* Ohne Stand in der Art gibt es nichts, worauf er fallen könnte. */
+          const traegtStand = typeChain(registry, primaryInterface(entity)).includes(STATUS_COMPONENT);
+          if (warFertig && vorher && traegtStand && kern(vorher) !== kern(entity)) {
+            entity.components = {
+              ...(entity.components ?? {}),
+              [STATUS_COMPONENT]: { ...(entity.components?.[STATUS_COMPONENT] ?? {}), status: 'prepared' },
+            };
+            zurueck = { entity: vorher, at: typeof vorher.updatedAt === 'string' ? vorher.updatedAt : new Date().toISOString() };
+          } else if (!warFertig && isReady(entity)) {
+            return reply.code(403).send({ error: '„ready" setzt die Leitung.' });
+          }
         }
       }
 
-      const registry = await repo.getRegistry();
-      /* Id **und Art**: daran prüft ein Verweisfeld seinen Zieltyp. Der
-         Artikel selbst kommt dazu, weil er in diesem Augenblick noch nicht
-         im Bestand steht und ein Verweis auf sich selbst kein Bruch ist. */
-      const known = new Map(
-        (await repo.listEntities()).map((e) => [e.id, e.interfaces?.[0] ?? ''] as const),
-      );
-      known.set(entity.id, entity.interfaces?.[0] ?? '');
-      /* Welche Zustände Stufen eines Grundzustands sind (D48) — gerechnet
-         aus den Kanten, nicht gespeichert. */
-      const stufen = stageBases([...(await repo.listEntities()), entity]);
-
-      /* **Eine Instanz wird aufgelöst geprüft und ausgedünnt gespeichert.**
-         Ihre Pflichtfelder stehen an der Vorlage; gespeichert wird nur, was
-         abweicht. Eine Maske, die den aufgelösten Artikel zurückschickt,
-         schreibt so nicht still jeden Wert der Vorlage fest — und wer den
-         Wert der Vorlage einträgt, folgt ihr wieder. */
-      let zuSchreiben = entity;
-      let zuPruefen = entity;
-      if (isInstance(entity)) {
-        const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
-        alle.set(entity.id, entity);
-        zuPruefen = resolveInstance(alle, entity);
-        zuSchreiben = thinInstance(alle, entity);
+      const ergebnis = await schreibeGeprueft(entity, async () => {
+        /* Vor dem Artikel: mit ihm ändert sich der Stempel, und erst dann
+           liest jemand den neuen Stand (`fertigeStaende`). */
+        if (zurueck) await repo.keepReadyStand(zurueck);
+        else if (isReady(entity)) await repo.dropReadyStand(entity.id);
+      });
+      if ('issues' in ergebnis) {
+        return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues: ergebnis.issues });
       }
-
-      const issues = validateEntity(registry, zuPruefen, { knownTypes: known, stageOf: stufen });
-      if (issues.length) {
-        return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
-      }
-
-      const stored = await repo.putEntity(zuSchreiben);
       await repo.appendEvent('entity.written', entity.id, {
         interfaces: entity.interfaces,
         cards: Object.keys(entity.components ?? {}),
+        ...(zurueck ? { fellBack: true } : {}),
       });
-      return stored;
+      return ergebnis.stored;
     },
   );
+
+  /**
+   * **Prüfen und schreiben** — für `PUT` und den Knopf „ready". Eine
+   * Instanz wird aufgelöst geprüft und ausgedünnt gespeichert. `vorher`
+   * läuft nach der Prüfung und vor dem Schreiben.
+   */
+  async function schreibeGeprueft(
+    entity: Entity,
+    vorher?: () => Promise<void>,
+  ): Promise<{ stored: Entity } | { issues: ReturnType<typeof validateEntity> }> {
+    const registry = await repo.getRegistry();
+    /* Id **und Art**: daran prüft ein Verweisfeld seinen Zieltyp. Der
+       Artikel selbst kommt dazu, weil er in diesem Augenblick noch nicht
+       im Bestand steht und ein Verweis auf sich selbst kein Bruch ist. */
+    const liste = await repo.listEntities();
+    const known = new Map(liste.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
+    known.set(entity.id, entity.interfaces?.[0] ?? '');
+    /* Welche Zustände Stufen eines Grundzustands sind (D48) — gerechnet
+       aus den Kanten, nicht gespeichert. */
+    const stufen = stageBases([...liste, entity]);
+
+    /* **Eine Instanz wird aufgelöst geprüft und ausgedünnt gespeichert.**
+       Ihre Pflichtfelder stehen an der Vorlage; gespeichert wird nur, was
+       abweicht. Eine Maske, die den aufgelösten Artikel zurückschickt,
+       schreibt so nicht still jeden Wert der Vorlage fest — und wer den
+       Wert der Vorlage einträgt, folgt ihr wieder. */
+    let zuSchreiben = entity;
+    let zuPruefen = entity;
+    if (isInstance(entity)) {
+      const alle = new Map(liste.map((e) => [e.id, e]));
+      alle.set(entity.id, entity);
+      zuPruefen = resolveInstance(alle, entity);
+      zuSchreiben = thinInstance(alle, entity);
+    }
+
+    const issues = validateEntity(registry, zuPruefen, { knownTypes: known, stageOf: stufen });
+    if (issues.length) return { issues };
+    if (vorher) await vorher();
+    return { stored: await repo.putEntity(zuSchreiben) };
+  }
+
+  /**
+   * **„ready" per Knopf** (REQ-237, E-014 d): die Liste „not ready, by
+   * players" setzt damit, ohne den Artikel zu öffnen. Wer darf, sagt
+   * `maySetReady`; der neue Stand gilt, ein älterer fertiger fällt weg.
+   */
+  app.post<{ Params: { id: string } }>('/api/entities/:id/ready', async (request, reply) => {
+    const user = await viewerOf(request);
+    const registry = await repo.getRegistry();
+    const bestand = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const e = bestand.get(request.params.id);
+    if (!e) return reply.code(404).send({ error: 'Nicht gefunden' });
+    if (user && !maySetReady(user, bestand, e, eigeneFigur(user, bestand, registry))) {
+      return reply.code(403).send({ error: '„ready" setzt die Leitung.' });
+    }
+    if (!typeChain(registry, primaryInterface(e)).includes(STATUS_COMPONENT)) {
+      return reply.code(400).send({ error: 'Diese Art trägt keinen Stand.' });
+    }
+    const neu: Entity = {
+      ...e,
+      components: { ...(e.components ?? {}), [STATUS_COMPONENT]: { ...(e.components?.[STATUS_COMPONENT] ?? {}), status: 'ready' } },
+    };
+    const ergebnis = await schreibeGeprueft(neu, () => repo.dropReadyStand(e.id));
+    if ('issues' in ergebnis) {
+      return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues: ergebnis.issues });
+    }
+    await repo.appendEvent('entity.ready', e.id, { by: user?.id ?? null });
+    return ergebnis.stored;
+  });
+
+  /**
+   * **Was wartet** (REQ-237, Punkt 7): was Spielende angelegt haben und
+   * nicht `ready` ist — für die Leitung, mit den Namen der Verfasser und,
+   * wenn schon ein fertiger Stand gilt, seinem Datum. Die eigene Figur
+   * wartet auf niemanden (E-014 d) und steht nicht darin. `canReady` sagt,
+   * ob dieser Betrachter den Knopf hat (`gm`, nicht `co-gm`).
+   */
+  app.get('/api/unready', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user || !isLeitung(user)) return reply.code(403).send({ error: 'Das sieht die Leitung.' });
+    const registry = await repo.getRegistry();
+    const bestand = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const frei = await ausgenommen(bestand, registry);
+    const fertig = await fertigeStaende();
+    const namen = new Map((await repo.listUsers()).map((u) => [u.id, u.name]));
+    const rows = [];
+    for (const id of await repo.authoredArticles()) {
+      const e = bestand.get(id);
+      if (!e || isReady(e) || frei.has(id)) continue;
+      if (!user.isAdmin && !seesUnfinished(bestand, e, { roles: user.roles ?? {} })) continue;
+      rows.push({
+        id,
+        name: entityName(e),
+        type: primaryInterface(e),
+        status: String((e.components?.[STATUS_COMPONENT] as { status?: unknown } | undefined)?.status ?? ''),
+        authors: (await repo.authorsOf(id)).map((a) => namen.get(a) ?? a),
+        readyAt: fertig.get(id)?.at ?? null,
+        updatedAt: e.updatedAt ?? null,
+        canReady: maySetReady(user, bestand, e),
+      });
+    }
+    rows.sort((a, b) => String(b.updatedAt ?? '').localeCompare(String(a.updatedAt ?? '')));
+    return { rows };
+  });
 
   app.delete<{ Params: { id: string } }>('/api/entities/:id', async (request, reply) => {
     const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
@@ -1341,6 +1652,8 @@ export function buildApp({
         }
       }
     }
+    /* Ein fertiger Stand geht mit (REQ-237) — vor dem Artikel, siehe `fertigeStaende`. */
+    await repo.dropReadyStand(request.params.id);
     const removed = await repo.deleteEntity(request.params.id);
     if (!removed) return reply.code(404).send({ error: 'Nicht gefunden' });
     await repo.appendEvent('entity.deleted', request.params.id, {});
