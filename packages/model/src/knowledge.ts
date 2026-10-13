@@ -331,53 +331,78 @@ export function redactEntity(
   gmFields: string[] = ['Secrets.secret', 'Tactics.tactics'],
 ): Entity {
   if (!viewerId) return article;
+  const gmSet = new Set(gmFields);
 
   /* Ein Feld mit `many` zählt je **Eintrag**: `Creature.secret#anchor`. Ein
      Geheimnis von dreien freizugeben heisst, genau dieses freizugeben. */
   const vieleFelder = (component: string, property: string): boolean =>
     registry.interfaces[component]?.schema?.properties?.[property]?.many === true;
 
-  const allFields: FieldRef[] = [];
-  for (const [component, card] of Object.entries(article.components ?? {})) {
-    for (const [property, value] of Object.entries((card ?? {}) as Record<string, unknown>)) {
-      if (vieleFelder(component, property)) {
-        for (const e of entriesOf(value)) allFields.push(entryRef(component, property, e.id));
-      } else {
-        allFields.push(`${component}.${property}`);
-      }
-    }
-  }
-  const groups = knowledgeGroups(registry, entities, article, allFields, viewerId);
-  const erlaubtF = new Set<FieldRef>();
-  const beansprucht = new Set<FieldRef>();
-  for (const g of groups) {
-    if (!g.info) continue; /* die offene Restgruppe beansprucht nichts */
-    g.fields.forEach((f) => beansprucht.add(f));
-    if (!g.known) continue;
-    g.fields.forEach((f) => erlaubtF.add(f));
-  }
   /* Was keine Information beansprucht, ist offen — das ist die Restgruppe,
      und ihre Felder gelten ohne weiteres. Nur die Felder, die nie an einen
      Spieler gehen, gelten auch dann nicht: sonst wäre jeder unbeanspruchte
      `secret`-Eintrag offen, und das Feld hiesse gar nichts mehr. */
+  /* Je Feld gefragt, also über eine Menge und ohne zweimal zu teilen: bei
+     den 24 000 Artikeln einer Liste war das ein Fünftel des Siebs (W7). */
   const nurSL = (ref: FieldRef): boolean => {
-    const ohne = ref.split('#')[0] as string;
-    return gmFields.includes(ohne) || gmFields.includes(ohne.split('.')[1] ?? '');
+    const raute = ref.indexOf('#');
+    const ohne = raute < 0 ? ref : ref.slice(0, raute);
+    if (gmSet.has(ohne)) return true;
+    const punkt = ohne.indexOf('.');
+    return gmSet.has(punkt < 0 ? '' : ohne.slice(punkt + 1).split('.')[0] ?? '');
   };
-  const rest = groups.find((g) => !g.info);
-  rest?.fields.forEach((f) => { if (!nurSL(f)) erlaubtF.add(f); });
+
+  /* **Ohne Information ist alles die Restgruppe** — offen bis auf die
+     Felder der Leitung. Das ist der häufige Fall (fast jeder der 24 000
+     Artikel aus 5e.tools), und für ihn braucht es weder die Feldliste noch
+     die Gruppen: dieselbe Antwort, ohne sie zu bauen (W7). */
+  /* Im kurzen Weg ohne Zeichenkette je Feld: ein Eintrag der Liste mit
+     Punkt meint genau ein Feld, einer ohne Punkt dieses Feld an jeder
+     Karte — dasselbe, was `nurSL` aus `Typ.feld` liest. */
+  const gmBlank = new Set(gmFields.filter((f) => !f.includes('.')));
+  const gmJe = new Map<string, Set<string>>();
+  for (const f of gmFields) {
+    const punkt = f.indexOf('.');
+    if (punkt > 0) (gmJe.get(f.slice(0, punkt)) ?? gmJe.set(f.slice(0, punkt), new Set()).get(f.slice(0, punkt))!).add(f.slice(punkt + 1));
+  }
+  let feldErlaubt = (component: string, property: string, _eintrag?: string): boolean =>
+    !gmBlank.has(property) && !gmJe.get(component)?.has(property);
+  let erlaubt: (ref: FieldRef) => boolean = (ref) => !nurSL(ref);
+  if (informationsOf(entities, article).length) {
+    const allFields: FieldRef[] = [];
+    for (const [component, card] of Object.entries(article.components ?? {})) {
+      for (const [property, value] of Object.entries((card ?? {}) as Record<string, unknown>)) {
+        if (vieleFelder(component, property)) {
+          for (const e of entriesOf(value)) allFields.push(entryRef(component, property, e.id));
+        } else {
+          allFields.push(`${component}.${property}`);
+        }
+      }
+    }
+    const groups = knowledgeGroups(registry, entities, article, allFields, viewerId);
+    const erlaubtF = new Set<FieldRef>();
+    for (const g of groups) {
+      if (!g.info) continue; /* die offene Restgruppe beansprucht nichts */
+      if (!g.known) continue;
+      g.fields.forEach((f) => erlaubtF.add(f));
+    }
+    const rest = groups.find((g) => !g.info);
+    rest?.fields.forEach((f) => { if (!nurSL(f)) erlaubtF.add(f); });
+    erlaubt = (ref) => erlaubtF.has(ref);
+    feldErlaubt = (component, property, eintrag) =>
+      erlaubtF.has(eintrag === undefined ? `${component}.${property}` : entryRef(component, property, eintrag));
+  }
 
   const components: Record<string, Record<string, unknown>> = {};
   for (const [component, card] of Object.entries(article.components ?? {})) {
     const behalten: Record<string, unknown> = {};
     for (const [property, value] of Object.entries((card ?? {}) as Record<string, unknown>)) {
       if (vieleFelder(component, property)) {
-        const uebrig = entriesOf(value)
-          .filter((e) => erlaubtF.has(entryRef(component, property, e.id)));
+        const uebrig = entriesOf(value).filter((e) => feldErlaubt(component, property, e.id));
         if (uebrig.length) behalten[property] = uebrig;
         continue;
       }
-      if (erlaubtF.has(`${component}.${property}`)) behalten[property] = value;
+      if (feldErlaubt(component, property)) behalten[property] = value;
     }
     /* Eine Karte, von der nichts übrig bleibt, wird weggelassen und nicht
        leer mitgeschickt: „da ist eine Karte, aber sie ist leer" wäre eine
@@ -389,7 +414,10 @@ export function redactEntity(
      nicht weggelassen wird — ein Artikel ohne Namen wäre unbrauchbar, und
      „jemand" ist ehrlicher als nichts. */
   const wer = (article.components ?? {})['Identity'] as { cover?: string } | undefined;
-  if (!erlaubtF.has('Identity.name')) {
+  /* Ein Name, der gar nicht in der Karte steht, ist nicht gewusst — wie im
+     langen Weg, wo er in keiner Feldliste vorkommt. */
+  const hatName = 'name' in ((article.components ?? {})['Identity'] ?? {});
+  if (!hatName || !erlaubt('Identity.name')) {
     const cover = wer?.cover;
     components['Identity'] = { ...(components['Identity'] ?? {}), name: cover || 'jemand' };
   }
