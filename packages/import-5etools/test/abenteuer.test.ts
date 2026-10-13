@@ -56,7 +56,7 @@ function datenstand(): Datenstand {
     quellen: new Map([
       ['mm', { id: 'MM', name: 'Monster Manual', published: '2014-09-30', art: 'book' }],
       ['phb', { id: 'PHB', name: "Player's Handbook", published: '2014-08-19', art: 'book' }],
-      ['tst', { id: 'TST', name: 'The Sunken Test', published: '2015-01-01', art: 'adventure' }],
+      ['tst', { id: 'TST', name: 'The Sunken Test', published: '2015-01-01', art: 'adventure', storyline: 'Reeds', level: { start: 1, end: 3 } }],
     ]),
     abenteuer: new Map([
       ['tst', {
@@ -81,7 +81,9 @@ describe('Abenteuer als Ebene (T-082)', () => {
   const ebene = es.find((e) => e.id === buchEbeneId('TST'))!;
 
   it('legt je Abenteuer eine Ebene mit kind adventure an', () => {
-    expect(ebene.components['Layer']).toMatchObject({ kind: 'adventure' });
+    expect(ebene.components['Layer']).toMatchObject({ kind: 'adventure', abbreviation: 'TST', levels: '1–3', storyline: 'Reeds' });
+    /* In der Gruppe der Abenteuer (T-088). */
+    expect(kanten(ebene, 'partOf').map((r) => r.to)).toEqual(['e5_group_adventure']);
     expect(es.find((e) => e.id === buchEbeneId('MM'))!.components['Layer']).toMatchObject({ kind: 'book' });
   });
 

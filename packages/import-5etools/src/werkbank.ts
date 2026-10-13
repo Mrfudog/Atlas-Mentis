@@ -108,6 +108,11 @@ export function buchEbeneId(quelle: string): string {
   return `e5_book_${quelle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')}`;
 }
 
+/** Die Id einer Gruppen-Ebene (T-088) — dieselbe in der Migration, damit ein Lauf sie wiederfindet. */
+export function gruppeEbeneId(gruppe: string): string {
+  return `e5_group_${gruppe}`;
+}
+
 export class Werkbank {
   readonly entities: Entity[] = [];
   readonly bericht: Bericht = neuerBericht();
