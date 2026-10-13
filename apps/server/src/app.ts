@@ -477,12 +477,12 @@ export function buildApp({
    * steht im Modellpaket, weil es für Server und Oberfläche gleichermassen
    * gilt und es nur einmal geben darf.
    */
-  async function sieve(request: FastifyRequest, entities: Entity[]): Promise<Entity[]> {
+  async function sieve(request: FastifyRequest, entities: Entity[], bestand?: Entity[]): Promise<Entity[]> {
     const user = await viewerOf(request);
     /* **Eine Instanz geht aufgelöst hinaus**, mit ihrer Vorlage darin und
        der Angabe, welche Felder von dort kommen. Gespeichert ist an ihr nur,
        was abweicht; ohne Auflösung hätte Wache 1 keine Trefferpunkte. */
-    const roh = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const roh = new Map((bestand ?? (await repo.listEntities())).map((e) => [e.id, e]));
     const registry = await repo.getRegistry();
     /* **Die nullte Frage: steht der Artikel im Stapel?** (E2, A2) Was eine
        aufgeschaltete Ebene herausnimmt oder eine spezifischere Fassung
@@ -531,7 +531,12 @@ export function buildApp({
       .map((e) => redactEntity(registry, alle, e, augen, gmFields));
   }
 
-  app.get('/api/entities', async (request) => sieve(request, await repo.listEntities()));
+  app.get('/api/entities', async (request) => {
+    /* Die Liste ist zugleich der Zusammenhang, gegen den gesiebt wird —
+       einmal holen, nicht zweimal. */
+    const alle = await repo.listEntities();
+    return sieve(request, alle, alle);
+  });
 
   app.get<{ Params: { id: string } }>('/api/entities/:id', async (request, reply) => {
     const entity = await repo.getEntity(request.params.id);

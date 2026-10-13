@@ -165,14 +165,45 @@ export class PgRepository implements Repository {
     }
   }
 
+  /**
+   * Der ganze Bestand in drei Abfragen, nicht in dreien je Artikel.
+   *
+   * Bis zum 13.10. holte das jeden Artikel über `getEntity` — bei 24 157
+   * Artikeln aus 5e.tools gut 72 000 Abfragen, und die Liste wird je
+   * Anfrage zweimal gebraucht (Sieb und Antwort). Die Seite blieb leer,
+   * weil die Antwort nicht kam. Gelesen wird in einer Transaktion, damit die
+   * drei Abfragen denselben Stand sehen: ein Artikel, der dazwischen
+   * geschrieben wird, stünde sonst ohne seine Karten da.
+   */
   async listEntities(): Promise<Entity[]> {
-    const { rows } = await this.pool.query<Row>('select id from entity order by created_at');
-    const out: Entity[] = [];
-    for (const row of rows) {
-      const entity = await this.getEntity(row['id'] as string);
-      if (entity) out.push(entity);
+    const client = await this.pool.connect();
+    try {
+      await client.query('begin isolation level repeatable read read only');
+      const base = await client.query<Row>('select * from entity order by created_at');
+      const components = await client.query<Row>('select entity_id, type, payload from component');
+      const relations = await client.query<Row>(
+        'select from_id, id, type, to_id, props from relation order by from_id, ord nulls last',
+      );
+      await client.query('commit');
+      const kartenVon = new Map<string, Row[]>();
+      for (const r of components.rows) {
+        const id = r['entity_id'] as string;
+        (kartenVon.get(id) ?? kartenVon.set(id, []).get(id)!).push(r);
+      }
+      const kantenVon = new Map<string, Row[]>();
+      for (const r of relations.rows) {
+        const id = r['from_id'] as string;
+        (kantenVon.get(id) ?? kantenVon.set(id, []).get(id)!).push(r);
+      }
+      return base.rows.map((b) =>
+        zusammensetzen(b, kartenVon.get(b['id'] as string) ?? [], kantenVon.get(b['id'] as string) ?? []),
+      );
+    } catch (error) {
+      await client.query('rollback').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
     }
-    return out;
   }
 
   async countEntities(): Promise<number> {
@@ -192,29 +223,7 @@ export class PgRepository implements Repository {
       ),
     ]);
 
-    const byType: Record<string, Record<string, unknown>> = {};
-    for (const r of components.rows) {
-      byType[r['type'] as string] = r['payload'] as Record<string, unknown>;
-    }
-
-    const meta = (byType['__meta'] ?? {}) as Record<string, unknown>;
-    delete byType['__meta'];
-
-    return {
-      id,
-      interfaces: (meta['interfaces'] as string[]) ?? [],
-      name: (byType['Name']?.['text'] as string) ?? '',
-      components: byType,
-      adhoc: (meta['adhoc'] as Entity['adhoc']) ?? [],
-      relations: relations.rows.map((r) => ({
-        id: r['id'] as string,
-        type: r['type'] as string,
-        to: r['to_id'] as string,
-        props: (r['props'] as Relation['props']) ?? {},
-      })),
-      createdAt: (base.rows[0]?.['created_at'] as Date)?.toISOString(),
-      updatedAt: (base.rows[0]?.['updated_at'] as Date)?.toISOString(),
-    };
+    return zusammensetzen(base.rows[0]!, components.rows, relations.rows);
   }
 
   async putEntity(entity: Entity): Promise<Entity> {
@@ -564,4 +573,31 @@ export class PgRepository implements Repository {
       origin,
     ]);
   }
+}
+
+/** Ein Artikel aus seiner Zeile, seinen Karten und seinen Kanten (in Reihenfolge). */
+function zusammensetzen(base: Row, components: Row[], relations: Row[]): Entity {
+  const byType: Record<string, Record<string, unknown>> = {};
+  for (const r of components) {
+    byType[r['type'] as string] = r['payload'] as Record<string, unknown>;
+  }
+
+  const meta = (byType['__meta'] ?? {}) as Record<string, unknown>;
+  delete byType['__meta'];
+
+  return {
+    id: base['id'] as string,
+    interfaces: (meta['interfaces'] as string[]) ?? [],
+    name: (byType['Name']?.['text'] as string) ?? '',
+    components: byType,
+    adhoc: (meta['adhoc'] as Entity['adhoc']) ?? [],
+    relations: relations.map((r) => ({
+      id: r['id'] as string,
+      type: r['type'] as string,
+      to: r['to_id'] as string,
+      props: (r['props'] as Relation['props']) ?? {},
+    })),
+    createdAt: (base['created_at'] as Date)?.toISOString(),
+    updatedAt: (base['updated_at'] as Date)?.toISOString(),
+  };
 }
