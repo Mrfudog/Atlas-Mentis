@@ -23,7 +23,7 @@ import {
   resolveView,
 } from '@nw/model';
 import type { Entity, LayoutElement, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
-import { Api, ApiError } from '../kern/api';
+import { Api, ApiError, type LeseZiel } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
 import {
@@ -153,6 +153,15 @@ interface Feld {
               <div class="werkzeuge">
                 @if (art(e) === 'Class' && !bearbeitet()) {
                   <a class="knopf" [routerLink]="['/classes', e.id]">Class view</a>
+                }
+                <!-- Die Leseansicht (T-091): an der Stelle im Buch, oder bei
+                     einer Ebene von vorn. -->
+                @if (leseZiel(); as z) {
+                  @if (!bearbeitet()) {
+                    <a class="knopf" [routerLink]="['/read', z.layer]" [queryParams]="leseParams(z)">
+                      {{ art(e) === 'Layer' ? 'Read' : 'Read in book' }}
+                    </a>
+                  }
                 }
                 <!-- Anpassen über der Vorlage (E-018, T-082): eine Fassung in
                      der Ebene der Kampagne, das Original bleibt. -->
@@ -524,6 +533,9 @@ interface Feld {
                 <h2>Source</h2>
                 @if (q.url) {
                   <a [href]="q.url" target="_blank" rel="noopener">{{ q.text }}</a>
+                } @else if (leseZiel(); as z) {
+                  <!-- „XGE p. 12" springt an die Stelle im Buch (T-091). -->
+                  <a [routerLink]="['/read', z.layer]" [queryParams]="leseParams(z)">{{ q.text }}</a>
                 } @else {
                   <span>{{ q.text }}</span>
                 }
@@ -931,6 +943,12 @@ export class Artikel {
 
   private readonly api = inject(Api);
   private readonly router = inject(Router);
+
+  /** „Im Buch lesen" — der Server sagt es mit dem Artikel (`refs.reading`, T-091). */
+  protected readonly leseZiel = computed(() => this.bestand.lesen().get(this.id()));
+  protected leseParams(z: LeseZiel): Record<string, string> {
+    return z.at ? { at: z.at } : z.page ? { page: z.page } : {};
+  }
 
   /** „Adapt" anbieten — der Server hat es mit dem Artikel gesagt (`refs.adaptable`). */
   protected readonly anpassbar = computed(() => this.bestand.anpassbar().has(this.id()));

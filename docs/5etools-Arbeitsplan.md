@@ -27,6 +27,11 @@ Was daraus folgt, gegenüber dem Abgleich:
   aus hundert Ebenen, den niemand umschaltet; die Kampagnenseite zeigt die
   Bücher darum getrennt vom Stapel, gruppiert, mit Häkchen und ohne
   Reihenfolge. Welche Seite, sagt weiter `Source.publication` mit `page`.
+- **Buchtext für die Leseansicht** (T-091, REQ-247): die Leseansicht
+  (`/read/:layer`) liest heute die Abenteuer (T-082). Der Text der Bücher
+  (`book/`, bisher nach E1 nicht gelesen) kommt herein, sobald E-024
+  entschieden hat, als welche Art seine Kapitel stehen; Struktur wie beim
+  Abenteuer (Kapitel → Abschnitte über `partOf`, Reihenfolge nach Nummer).
 - **Kein `overrides` aus `reprintedAs`**, weil 2024 nicht hereinkommt.
   Innerhalb von 2014 sagt `reprintedAs` aber, welche **Fassung gilt**
   (unten, Doppel).

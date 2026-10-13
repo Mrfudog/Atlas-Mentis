@@ -21,7 +21,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { entityName } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
-import { Api, ApiError, type Bezuege, type ListenFrage, type Liste, type ListenZeile, type RegisterTeil, type Rueckbezug } from './api';
+import { Api, ApiError, type Bezuege, type LeseZiel, type ListenFrage, type Liste, type ListenZeile, type RegisterTeil, type Rueckbezug } from './api';
 
 @Injectable({ providedIn: 'root' })
 export class Bestand {
@@ -37,6 +37,7 @@ export class Bestand {
   private readonly _verweise = signal<ReadonlyMap<string, Bezuege['links'][string]>>(new Map());
   private readonly _anpassbar = signal<ReadonlySet<string>>(new Set());
   private readonly _fertig = signal<ReadonlyMap<string, string>>(new Map());
+  private readonly _lesen = signal<ReadonlyMap<string, LeseZiel>>(new Map());
 
   readonly registry = this._registry.asReadonly();
   readonly fehler = this._fehler.asReadonly();
@@ -63,6 +64,8 @@ export class Bestand {
    * sieht; die Artikelseite zeigt dann das Band.
    */
   readonly fertig = this._fertig.asReadonly();
+  /** Wohin „im Buch lesen" von einem geöffneten Artikel führt (`refs.reading`, T-091). */
+  readonly lesen = this._lesen.asReadonly();
 
   private readonly _kurz = signal<ReadonlyMap<string, Entity>>(new Map());
   /**
@@ -152,6 +155,12 @@ export class Bestand {
           else n.delete(id);
           return n;
         });
+        this._lesen.update((m) => {
+          const n = new Map(m);
+          if (refs?.reading) n.set(id, refs.reading);
+          else n.delete(id);
+          return n;
+        });
         this._fertig.update((m) => {
           const n = new Map(m);
           if (refs?.ready) n.set(id, refs.ready.at);
@@ -181,6 +190,24 @@ export class Bestand {
       .finally(() => this.oeffnet.delete(schluessel));
     this.oeffnet.set(schluessel, lauf);
     return lauf;
+  }
+
+  /**
+   * Die Namen und Verweisziele eines Stücks der Leseansicht aufnehmen
+   * (T-091): der Server rechnet sie für das ganze Kapitel auf einmal, und
+   * `nw-text` liest sie hier wie die eines geöffneten Artikels.
+   */
+  bezuegeAufnehmen(refs: Bezuege): void {
+    if (Object.keys(refs.names).length) {
+      const namen = new Map(this._namen());
+      for (const [id, name] of Object.entries(refs.names)) namen.set(id, name);
+      this._namen.set(namen);
+    }
+    if (Object.keys(refs.links).length) {
+      const v = new Map(this._verweise());
+      for (const [ziel, treffer] of Object.entries(refs.links)) v.set(ziel, treffer);
+      this._verweise.set(v);
+    }
   }
 
   /** Namen und Verweise aufnehmen — auch die eines Rückbezugs und des Artikels selbst. */

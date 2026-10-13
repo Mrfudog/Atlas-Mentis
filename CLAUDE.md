@@ -81,7 +81,9 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   Kampagne; gezählt wird vorher über `/api/registry/usage`), die
   **Werkbank** für Leitung und Verwaltung (`werkbank/`: Prüfungen aus
   `checks.ts`, Massenänderungen aus `bulk.ts` mit Vorschau und
-  Rückgängig, W9) und das Konto mit seinen API-Tokens (`konto/`); die
+  Rückgängig, W9), die **Leseansicht** (`lesen/`, `/read/:layer`: eine
+  Ebene als Buch mit Inhaltsverzeichnis, Suche und Lesestand je Konto,
+  T-091) und das Konto mit seinen API-Tokens (`konto/`); die
   Oberfläche hält **keinen Bestand** (W7). Karte, Initiative und Spiel
   noch nicht;
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer

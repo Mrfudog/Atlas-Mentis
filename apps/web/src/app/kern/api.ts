@@ -122,6 +122,48 @@ export interface Bezuege {
    * fertigen Stands, `old`, ob die Antwort dieser Stand ist (`?stand=ready`).
    */
   ready?: { at: string; old: boolean };
+  /** „Im Buch lesen" (T-091): die Ebene mit Text und die Stelle — der Abschnitt selbst oder die Seite. */
+  reading?: LeseZiel;
+}
+
+/** Wohin „im Buch lesen" führt (`refs.reading`, T-091). */
+export interface LeseZiel {
+  layer: string;
+  at?: string;
+  page?: string;
+}
+
+/** Ein Eintrag im Inhaltsverzeichnis der Leseansicht (`GET /api/read/:layer`, T-091). */
+export interface LeseZeile {
+  /** Die Id des Originals — Anker, Lesestand und Stück nennen sie. */
+  id: string;
+  /** Die Fassung dieser Kampagne, wenn sie gilt (E-018). */
+  article?: string;
+  name: string;
+  type: string;
+  depth: number;
+  /** Das Stück (Kapitel), in dem er steht. */
+  unit: string;
+  page?: string;
+}
+export interface LeseBuch {
+  layer: { id: string; name: string; kind: string };
+  toc: LeseZeile[];
+  /** Wo dieses Konto zuletzt stand. */
+  position: string | null;
+}
+/** Ein Stück am Stück (`GET /api/read/:layer/unit/:unit`). */
+export interface LeseStueck {
+  layer: string;
+  unit: string;
+  sections: { id: string; depth: number; entity: Entity; embeds: Entity[] }[];
+  refs: Bezuege;
+}
+export interface LeseTreffer {
+  id: string;
+  unit: string;
+  name: string;
+  snippet: string;
 }
 
 /** Eine Zeile „not ready, by players" (`GET /api/unready`, REQ-237). */
@@ -177,6 +219,8 @@ export interface KampagnenEbene {
   /** Die anderen Kampagnen, die sie aufschalten. */
   alsoIn: string[];
   canActivate: boolean;
+  /** Hat Text, den die Leseansicht zeigt (T-091). */
+  readable?: boolean;
 }
 /** Ein Geschichtsartikel auf der Kampagnenseite (`GET /api/campaigns/:c/story`, T-082). */
 export interface GeschichtsZeile {
@@ -366,6 +410,7 @@ export function wasLaedt(path: string): string {
   if (path.startsWith('/api/classes')) return 'classes';
   if (path.startsWith('/api/campaigns')) return 'campaign';
   if (path.startsWith('/api/checks') || path.startsWith('/api/bulk')) return 'workbench';
+  if (path.startsWith('/api/read')) return 'book';
   return 'data';
 }
 
@@ -526,6 +571,21 @@ export class Api {
   entity(id: string): Promise<Entity & { refs?: Bezuege }> {
     return this.call<Entity & { refs?: Bezuege }>(`/api/entities/${encodeURIComponent(id)}`);
   }
+  // ------------------------------------------------------- Leseansicht (T-091)
+  readBook(layer: string): Promise<LeseBuch> {
+    return this.call<LeseBuch>(`/api/read/${encodeURIComponent(layer)}`);
+  }
+  readUnit(layer: string, unit: string): Promise<LeseStueck> {
+    return this.call<LeseStueck>(`/api/read/${encodeURIComponent(layer)}/unit/${encodeURIComponent(unit)}`);
+  }
+  searchBook(layer: string, q: string): Promise<{ q: string; hits: LeseTreffer[] }> {
+    return this.call(`/api/read/${encodeURIComponent(layer)}/search?q=${encodeURIComponent(q)}`);
+  }
+  /** Den Lesestand merken — leise: ein verlorenes Lesezeichen ist kein Fehler, den man melden muss. */
+  keepPosition(layer: string, id: string): Promise<void> {
+    return this.call<void>(`/api/read/${encodeURIComponent(layer)}/position`, { method: 'PUT', body: JSON.stringify({ id }) }, false);
+  }
+
   /** Eine Fassung in der Ebene der Kampagne, die das Original ersetzt (E-018, T-082). */
   adapt(id: string): Promise<{ id: string; created: boolean }> {
     return this.call(`/api/entities/${encodeURIComponent(id)}/adapt`, { method: 'POST' });

@@ -1,4 +1,5 @@
 import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { Api, type KampagnenEbene, type KampagnenEbenen } from '../kern/api';
 
 /** Die Gruppen der Bücher, wie der Server sie nennt (`BUCHGRUPPEN`, T-081). */
@@ -30,6 +31,7 @@ const BUCHGRUPPEN: [string, string][] = [
  */
 @Component({
   selector: 'nw-kampagnen-ebenen',
+  imports: [RouterLink],
   template: `
     <section class="kasten" aria-label="Layers in play">
       <h2>Layers in play</h2>
@@ -53,6 +55,9 @@ const BUCHGRUPPEN: [string, string][] = [
                 />
                 <span class="name">{{ l.name }}</span>
               </label>
+              @if (l.readable && l.active) {
+                <a class="lesen" [routerLink]="['/read', l.id]">Read</a>
+              }
               <span class="dim">
                 @if (l.kind) {
                   {{ l.kind }} ·
@@ -115,6 +120,9 @@ const BUCHGRUPPEN: [string, string][] = [
                       />
                       <span class="name">{{ l.name }}</span>
                     </label>
+                    @if (l.readable && l.active) {
+                      <a class="lesen" [routerLink]="['/read', l.id]">Read</a>
+                    }
                     <span class="dim">
                       {{ zahl(l.articles) }} {{ l.articles === 1 ? 'article' : 'articles' }}
                       @if (l.alsoIn.length) {
@@ -184,6 +192,13 @@ const BUCHGRUPPEN: [string, string][] = [
     }
     li.aus .name {
       color: var(--dim);
+    }
+    /* „Read" (T-091): die Leseansicht des Buchs. */
+    .lesen {
+      display: inline-flex;
+      align-items: center;
+      min-height: 40px;
+      font-weight: 600;
     }
     .haken {
       display: inline-flex;
