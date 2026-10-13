@@ -2055,6 +2055,11 @@ export const fieldGroups = {
    *
    * `order` ist die Spezifität: höher schlägt niedriger, wenn zwei Ebenen
    * dasselbe anfassen. Das Grundregelwerk steht unten, die Kampagne oben.
+   *
+   * `book` ist ein Buch aus 5e.tools (T-081, E-017): je Buch eine Ebene,
+   * damit eine Kampagne die Bücher aufschaltet, die sie nutzt. Wie jedes
+   * `kind` beschreibt es nur — die Kampagnenseite gruppiert danach, die
+   * Ausfuhr lässt es als Regelwerk weg; wer was sieht, sagt es nicht.
    */
   LayerInfo: {
     schema: {
@@ -2063,7 +2068,7 @@ export const fieldGroups = {
         kind: {
           type: 'string',
           title: 'Kind',
-          enum: ['system', 'expansion', 'world', 'pack', 'campaign', 'overrides'],
+          enum: ['system', 'expansion', 'book', 'world', 'pack', 'campaign', 'overrides'],
           default: 'pack',
         },
         order: { type: 'number', title: 'Specificity', default: 10 },

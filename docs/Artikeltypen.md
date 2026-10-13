@@ -2424,7 +2424,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `kind` *system | expansion | world | pack | campaign | overrides*, `order` *number*, `version` *string*
+- `kind` *system | expansion | book | world | pack | campaign | overrides*, `order` *number*, `version` *string*
 
 **Geerbte Felder**
 

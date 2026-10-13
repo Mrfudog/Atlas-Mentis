@@ -12,7 +12,7 @@
  *  - jeder Artikel mit einer Ebenenkante (auch `mode: 'removes'`) auf eine
  *    **Kampagnenebene** — eine Ebene, die diese Kampagne aufschaltet und
  *    keine andere (die Regel aus CLAUDE.md, „die Ebene sagt wessen") und
- *    die kein Regelwerk ist (`Layer.kind` nicht `system`/`expansion`).
+ *    die kein Regelwerk ist (`Layer.kind` nicht `system`/`expansion`/`book`).
  *    Ein Regelwerk, das nur diese Runde aufschaltet, gehört ihr zwar, ist
  *    aber nicht ihre Arbeit: 5e.tools kommt aus seiner eigenen Pipeline
  *    zurück und machte die Datei hundertmal so gross. `kind` entscheidet
@@ -54,7 +54,7 @@ import type { Entity, Registry } from '@nw/model';
 import type { User } from './auth.js';
 
 /** Ebenenarten, die ein Regelwerk sind und nicht die Arbeit einer Runde. */
-const REGELWERK = new Set(['system', 'expansion']);
+const REGELWERK = new Set(['system', 'expansion', 'book']);
 
 export interface Ausfuhr {
   format: 'nebelwacht/1';
