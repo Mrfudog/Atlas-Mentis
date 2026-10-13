@@ -646,6 +646,15 @@ gewährt („zwei aus Acrobatics, Athletics …"), steht als Angebot an der
 Klasse (`ProficiencyChoice`); getroffen wird die Wahl am Statblock der
 Figur, als gewöhnliche Übung.
 
+**Ein Merkmal, das allein in einem Absatz steht, ist eingebettet** (W6).
+5e.tools zieht Merkmale in andere hinein — der Battle Master beginnt mit
+einem Kopf, der „Student of War" und „Combat Superiority" enthält, und
+„Fighting Style" enthält die Stile. Der Importer schreibt dafür einen
+Absatz, der nur aus dem Verweis besteht. Eine eigene Kante dafür wäre eine
+zweite Stelle neben dem Text, die sagt, wo das Merkmal steht — und die
+Reihenfolge im Text sagt es schon. Ein Verweis mitten im Satz bleibt ein
+Verweis; nur der allein stehende wird in der Klassenansicht ausgeschrieben.
+
 Damit heisst `hp` am Statblock das Maximum und an der Figur, was sie gerade
 noch hat. Die Namensgleichheit ist keine Falle mehr, sondern die Wahrheit:
 zwei Karten an zwei Artikeln.
