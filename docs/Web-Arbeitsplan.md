@@ -70,9 +70,9 @@ Entschieden (12.10. und 13.10.):
   Alle Stellen finden (Suche im erzeugten Bestand nach `[object Object]`),
   richtig ausschreiben; prüfen, dass `[[…]]`-Verweise in Tabellenzellen und
   Listen auflösen.
-- Bericht (`docs/5etools-Bericht.md`) neu erzeugen. Nach dem Mergen muss dev
-  neu eingelesen werden (`--replace`); die Anleitung gehört in die
-  PR-Beschreibung.
+- Bericht (`docs/5etools-Bericht.md`) neu erzeugen. Nach dem Mergen liest
+  die Pipeline dev von selbst neu ein (W8: Änderung an
+  `packages/import-5etools`, Ersetzen je Ebene).
 
 ### W2 — Artikel wie im Buch: Statblock, Zauber, Telefon
 `apps/web/src/app/artikel/` (neue Bausteine daneben).
@@ -159,3 +159,16 @@ Server-Route der Kurzfassung.
   die Kurzfassung, wie viele Artikel über eine Abschnittskante
   (`RelationDef.section`) auf diesen zeigen — am Server gerechnet.
 - „New article" (Anlegen-Dialog) und „Edit type" (→ W5).
+
+### W8 — Einlesen als Pipeline, Ersetzen je Ebene
+`apps/server/src/import.ts`, `deploy/import.sh`,
+`.github/workflows/import-5etools.yml`, `ci.yml`.
+- `--replace` löschte alles, was nicht in der Datei steht — mit eigenen
+  Kampagnenartikeln auf dem Server wären sie beim nächsten Lauf weg.
+  `--replace-layer` löscht nur, was die Ebene der Datei bringt und in ihr
+  fehlt, zählt es, löst Instanzen gelöschter Vorlagen und zählt Kanten aus
+  bleibenden Artikeln auf, die ins Leere zeigen; `--dry-run` sagt es nur.
+- Die Pipeline klont 5e.tools zur Laufzeit, erzeugt die Datei und liest sie
+  auf dem Server ein: von Hand (dev/prod), für dev von selbst nach einem
+  Ausrollen, das den Importer ändert. Anleitung:
+  [Betrieb › 5e.tools laden](Betrieb.md#5etools-laden).
