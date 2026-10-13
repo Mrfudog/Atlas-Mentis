@@ -154,6 +154,10 @@ interface Feld {
                 @if (art(e) === 'Class' && !bearbeitet()) {
                   <a class="knopf" [routerLink]="['/classes', e.id]">Class view</a>
                 }
+                <!-- Der Stufenaufstieg ist derselbe Assistent wie das Anlegen (T-080). -->
+                @if (art(e) === 'PlayerCharacter' && darfSchreiben() && !bearbeitet() && !zeigtAlten()) {
+                  <a class="knopf" [routerLink]="['/characters', e.id, 'level-up']">Level up</a>
+                }
                 @if (darfSchreiben() && !zeigtAlten()) {
                   <button type="button" (click)="bearbeitet() ? abbrechen() : beginnen()">
                     {{ bearbeitet() ? 'Cancel' : 'Edit' }}

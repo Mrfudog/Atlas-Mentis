@@ -1,5 +1,5 @@
 import { Component, computed, effect, inject, input, linkedSignal, output, signal, untracked } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { areaOf, enumOptions, fieldTitle, typeChain } from '@nw/model';
 import type { PropertySchema } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
@@ -25,7 +25,7 @@ interface Pflicht {
  */
 @Component({
   selector: 'nw-anlegen',
-  imports: [Wahl],
+  imports: [Wahl, RouterLink],
   template: `
     <div class="schleier" (click)="zu.emit()"></div>
     <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="anlegen-titel">
@@ -70,6 +70,13 @@ interface Pflicht {
             <input type="text" (input)="setze(p.ref, $any($event.target).value)" />
           }
         </label>
+      }
+      @if (typ() === 'PlayerCharacter') {
+        <!-- Klasse, Herkunft, Hintergrund und ihre Wahlen (T-080). -->
+        <p class="hinweis">
+          <a routerLink="/characters/new" (click)="zu.emit()">Use the character builder</a> — ancestry, background,
+          class and their choices, step by step.
+        </p>
       }
       @if (problem(); as f) {
         <p class="fehler" role="alert">{{ f }}</p>
@@ -141,6 +148,10 @@ interface Pflicht {
     .fehler {
       margin: 0;
       color: var(--warn);
+    }
+    .hinweis {
+      margin: 0;
+      color: var(--dim);
     }
   `,
 })
