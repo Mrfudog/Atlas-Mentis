@@ -86,6 +86,14 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   [docs/Betrieb.md › 5e.tools laden](docs/Betrieb.md#5etools-laden).
 - `legacy/` — die alte React-App. Nicht weiterentwickeln; sie läuft, bis die
   neue Karte und Initiative kann.
+- `prototype/` — **eingefroren seit 13.10.2026 (D59).** Genutzt wird nur noch
+  die Seite (`apps/web` mit `apps/server`). Der Prototyp bleibt als Vorlage:
+  was er kann, wird in die Seite übernommen, mit seinen Erkenntnissen
+  (Regeln oben, Entscheidungen im Decision Log), aber er bekommt keine neuen
+  Funktionen mehr. Welche Anforderung im Prototyp steht und in der Seite noch
+  nicht, zeigt das Projektbrett (Spalten „Prototyp" und „Web") und
+  `VTT/Projektbrett.md`. `emit-seed` schreibt sein Register weiter, solange
+  seine Prüfungen laufen.
 
 Was es **nicht** mehr gibt: `packages/import` und der Importer im Prototyp (der für 5e.tools ist neu geschrieben, oben). Die Obsidian-Importer für
 Gegenstände und Statblocks sind weg (2026-09-20); der Prototyp hat seinen
