@@ -181,4 +181,58 @@ describe('pnpm --filter @nw/server run import', () => {
       expect(await repo.countEntities()).toBe(10);
     });
   });
+
+  describe('--only-new: nur ergänzen, was es noch nicht gibt (D71)', () => {
+    /* Je Artikel eine eigene Kanten-Id, wie der Importer sie schreibt. */
+    const inEbene = (e: Entity): Entity => ({ ...e, relations: [{ id: `${e.id}-inLayer`, type: 'inLayer', to: ebene.id }] });
+    const datei = { format: 'nebelwacht/1', registry: seedRegistry, entities: [ebene, inEbene(regel('a', 'A')), inEbene(regel('b', 'B'))] };
+
+    it('legt beim zweiten Lauf mit derselben Datei nichts an, und ein geänderter Artikel bleibt geändert', async () => {
+      const repo = await mitKonto();
+      const erst = await runImport(repo, datei, { onlyNew: true });
+      expect(erst).toMatchObject({ geschrieben: 3, uebersprungen: 0, geloescht: 0 });
+      const a = (await repo.getEntity('a'))!;
+      await repo.putEntity({ ...a, name: 'A, von der Leitung', components: { ...a.components, Identity: { ...a.components['Identity'] as object, name: 'A, von der Leitung' } } });
+      const eigen = regel('eigen', 'Eigen');
+      await repo.putEntity(eigen);
+
+      const zweit = await runImport(repo, datei, { onlyNew: true });
+      expect(zweit).toMatchObject({ geschrieben: 0, uebersprungen: 3, geloescht: 0 });
+      expect(zweit.text).toMatch(/Nur ergänzt: 0 neu, 3 übersprungen/);
+      expect((await repo.getEntity('a'))?.name).toBe('A, von der Leitung');
+      expect(await repo.countEntities()).toBe(4);
+    });
+
+    it('ergänzt einen neuen Artikel neben bestehenden und sagt im Probelauf dasselbe, ohne zu schreiben', async () => {
+      const repo = await mitKonto([ebene, inEbene(regel('a', 'A, geändert'))]);
+      const mehr = { ...datei, entities: [...datei.entities, inEbene(regel('c', 'C'))] };
+      const probe = await runImport(repo, mehr, { onlyNew: true, dryRun: true });
+      expect(probe.text).toMatch(/nur ergänzen: 2 neu, 2 übersprungen/);
+      expect(await repo.countEntities()).toBe(2);
+      const r = await runImport(repo, mehr, { onlyNew: true });
+      expect(r).toMatchObject({ geschrieben: 2, uebersprungen: 2 });
+      expect((await repo.listEntities()).map((e) => e.id).sort()).toEqual(['a', 'b', 'c', 'e5_layer']);
+      expect((await repo.getEntity('a'))?.name).toBe('A, geändert');
+    });
+
+    it('lässt eine angepasste Registerzeile stehen und nimmt nur fehlende dazu', async () => {
+      const repo = await mitKonto();
+      const { Spell: _weg, ...ohneSpell } = seedRegistry.interfaces;
+      const rule = { ...seedRegistry.interfaces['Rule']!, label: 'Regel der Leitung' };
+      await repo.putRegistryPart('interfaces', { ...ohneSpell, Rule: rule });
+      await runImport(repo, datei, { onlyNew: true });
+      const danach = (await repo.getRegistry()).interfaces;
+      expect(danach['Rule']?.label).toBe('Regel der Leitung');
+      expect(danach['Spell']).toBeDefined();
+    });
+
+    it('prüft vor dem ersten Schreiben und schliesst --replace und --replace-layer aus', async () => {
+      const repo = await mitKonto();
+      const kaputt: Entity = { ...regel('x', 'X'), relations: [{ id: 'r', type: 'inLayer', to: 'gibt-es-nicht' }] };
+      await expect(runImport(repo, { entities: [ebene, kaputt] }, { onlyNew: true })).rejects.toThrow(/nichts geschrieben/);
+      expect(await repo.countEntities()).toBe(0);
+      await expect(runImport(repo, datei, { onlyNew: true, replace: true })).rejects.toThrow(/schliesst/);
+      await expect(runImport(repo, datei, { onlyNew: true, replaceLayer: true })).rejects.toThrow(/schliesst/);
+    });
+  });
 });
