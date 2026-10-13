@@ -75,9 +75,12 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   **gerechnet am Server**, `GET /api/list`), „New article" und der
   Artikel im Buchstil (geholt beim Öffnen, Ansicht `full`, mit den Namen
   seiner Kantenziele und Verweise in `refs`) stehen, dazu die Boards
-  (`boards/`: je Geschichtsartikel eines, Karten als `placed`-Kanten) und
-  die Klassen (`klassen/`); die Oberfläche hält **keinen Bestand** (W7).
-  Karte, Initiative und Spiel noch nicht;
+  (`boards/`: je Geschichtsartikel eines, Karten als `placed`-Kanten),
+  die Klassen (`klassen/`) und das Register (`/registry`: Typen, Kanten,
+  Listen anlegen und ändern — Verwaltung und Leitung der laufenden
+  Kampagne; gezählt wird vorher über `/api/registry/usage`); die
+  Oberfläche hält **keinen Bestand** (W7). Karte, Initiative und Spiel
+  noch nicht;
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
   Vorlage je Artikelart. **Zurückgehalten wird am Server** (`redactEntity`) —
   was hier ankommt, darf angezeigt werden, und eine zweite Prüfung in der
@@ -599,7 +602,8 @@ Zum Entwickeln: `pnpm dev:server` und `pnpm dev:web` nebeneinander; die
 Oberfläche schickt `/api` über `apps/web/proxy.conf.json` an den Server.
 Das erste Konto legt `pnpm --filter @nw/server user add <name> --admin` an
 (`is_admin` ist die Verwaltungsrolle der Installation, nicht die Leitung
-einer Kampagne — die setzt `user role <name> <kampagne> gm`).
+einer Kampagne — die setzt `user role <name> <kampagne> gm` oder die Seite
+`/campaign`, siehe [docs/Zugang.md](docs/Zugang.md)).
 
 Die Reihenfolge ist notwendig: die übrigen Pakete übersetzen gegen die von
 `model` erzeugten `.d.ts`, nicht gegen dessen Quelltext. In `tsconfig.json` der

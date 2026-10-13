@@ -2,9 +2,9 @@ import { Component, DestroyRef, computed, effect, inject, input, signal, untrack
 import { Router, RouterLink } from '@angular/router';
 import { Api, type ListenFrage, type Liste, type ListenZeile } from '../kern/api';
 import { Bestand } from '../kern/bestand';
+import { Session } from '../kern/session';
 import { BEREICHE, bereichLabel } from '../kern/bereiche';
 import { ListenFilter } from '../kern/filter';
-import { Session } from '../kern/session';
 import { Anlegen } from './anlegen';
 import { Vorschau } from './vorschau';
 
@@ -176,8 +176,11 @@ const OFFEN = 8;
                 <button type="button" [attr.aria-label]="'Remove ' + c.text" (click)="feldWeg(c.ref)">×</button></span
               >
             }
-            @if (type() && session.isAdmin()) {
-              <a class="knopf" [routerLink]="'/registry'" [queryParams]="{ type: type() }">Edit type</a>
+            @if (session.darfRegister()) {
+              @if (type(); as t) {
+                <a class="knopf" routerLink="/registry" [queryParams]="{ type: t }">Edit type</a>
+              }
+              <a class="knopf" routerLink="/registry" [queryParams]="{ create: 1, from: type() ?? null }">New type</a>
             }
             @if (session.darfAnlegen()) {
               <button type="button" class="pri" (click)="anlegenOffen.set(true)">New article</button>

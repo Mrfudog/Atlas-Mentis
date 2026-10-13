@@ -1,6 +1,6 @@
 # Zugang
 
-Stand 2026-09-20. REQ-031 und REQ-032 aus
+Stand 2026-10-13. REQ-031 und REQ-032 aus
 [`VTT/`](../VTT/) in diesem Repo (überholt durch [Datenmodell.md](Datenmodell.md)).
 
 Das hier betrifft den **Server** (`apps/server`), nicht den Artefakt-Prototyp.
@@ -111,8 +111,13 @@ Die Regel ist kurz, weil eine lange niemand mehr nachliest:
   eine Kante aus `OWNING_RELATIONS` — `carries`, `holds`, `crafting`. Die
   Kante steht in den Daten, also wird sie dort nachgesehen und nicht im
   Server behauptet.
-- **Das Register gehört der Verwaltung.** Eine Registerzeile zu ändern
-  heisst, die Regeln zu ändern, und die Antwort sagt das auch so.
+- **Das Register gehört der Verwaltung und der Leitung der laufenden
+  Kampagne** (`gm` in der Kampagne, die `currentCampaign` nennt; seit W5).
+  Eine Registerzeile zu ändern heisst, die Regeln zu ändern, und die
+  Antwort sagt das auch so. Ein Mitleiter ändert es nicht, eine Leitung
+  einer anderen Runde auch nicht — dieselbe Trennung wie bei den
+  Mitgliedern. Die Zählung `/api/registry/usage` gehört denselben: sie
+  zählt ungesiebt.
 
 ### Verwaltung ist keine Rolle am Tisch
 
@@ -131,7 +136,8 @@ campaign_member (campaign_id, user_id, role)   -- gm | co-gm | player | spectato
 ```
 
 Eine Zeile je Konto und Kampagne, neben `app_user_actor` (welche Figuren ein
-Konto führt). Gesetzt wird sie von der Kommandozeile:
+Konto führt). Gesetzt wird sie auf der Seite **Campaign** (`/campaign`, W3)
+oder von der Kommandozeile:
 
 ```bash
 pnpm --filter @nw/server user role basil camp_nebel gm
@@ -156,6 +162,48 @@ fragt weiter nur nach den Figuren — was jemand erfahren hat, hat eine Figur
 erfahren.
 
 ---
+
+### Die Seite „Campaign" (W3)
+
+Was die Kommandozeile mit `user role` und `user actor` tut, geht seit dem
+13.10. auch über die Oberfläche (`/campaign`, Routen in
+`apps/server/src/verwaltung.ts`). Die Regel ist dieselbe wie in CLAUDE.md:
+
+| | sieht Mitglieder und Einladungen | ändert Rollen, Figuren, lädt ein, widerruft | sieht alle Konten, legt Kampagnen an |
+|---|---|---|---|
+| Verwaltung (`is_admin`) | jede Kampagne | jede Kampagne | ja |
+| `gm` der Kampagne | ja | ja | nein |
+| `co-gm` der Kampagne | ja | **nein** | nein |
+| `player`, `spectator` | nein | nein | nein |
+
+Drei Grenzen, die man leicht übersieht:
+
+- **Eine Leitung ändert sich selbst nicht.** Wer sich zum Zuschauer macht,
+  hat sich ausgesperrt; zurück käme er nur über die Verwaltung. Die
+  Verwaltung darf es.
+- **Keine Figur einer anderen Runde.** Wer eine Figur führt, darf sie
+  schreiben (`mayWrite`). Vergeben darf eine Kampagne nur Figuren ohne
+  Ebenenkante oder solche, deren Ebenen sie aufschaltet (`campaignsOf`);
+  eine fremde Figur, die ein Mitglied schon führt, bleibt, auch wenn die
+  Liste sie nicht nennt. Eine Leitung gibt sich selbst keine Figur — ob die
+  Leitung schreibt, ist eine eigene, offene Entscheidung (unten).
+- **Die Kontoliste sieht nur die Verwaltung.** Eine Leitung nimmt ein
+  bestehendes Konto beim Namen dazu oder lädt ein.
+
+**Eine Einladung führt in eine Kampagne, mit der Rolle darin** (Migration
+022: `app_invite.campaign_id`, `role`). Die Leitung, die nicht Verwaltung
+ist, fände ein eingeladenes Konto sonst nirgends. Nach dem Einlösen steht
+die Rolle am Konto (`campaign_member`) und nicht mehr an der Einladung — die
+ist mit dem letzten Gebrauch weg. Der Link heisst `/login?invite=<code>` und
+steht **einmal** da: gespeichert ist nur der Hash. Wer ihn verliert,
+widerruft und legt einen neuen an.
+
+```bash
+pnpm --filter @nw/server user invite new --campaign camp_nebel --role player --uses 1 --days 7
+```
+
+Gibt es noch keine Kampagne (`Campaign`-Artikel), legt die Verwaltung auf
+der Seite eine an und leitet sie auf Wunsch gleich selbst.
 
 ## Konten anlegen
 
@@ -227,10 +275,6 @@ in der Sitzung aus.
 - **Die Bereiche in der Oberfläche.** Anmeldung, Liste, Artikelansicht und
   Bearbeiten stehen; Karten, Bogen, Inventar, Boards und Handwerk sind im
   Prototyp und noch nicht dort.
-- **Rollen setzt am Server nur die Kommandozeile.** Im Prototyp pflegt die
-  Leitung sie auf der Kampagnenseite (Element `members`); die Oberfläche in
-  `apps/web` hat dafür noch keine Maske und keinen Endpunkt. Eine Einladung
-  bindet an eine Figur, nicht an eine Rolle — die setzt danach die Leitung.
 - **Schreiben kennt die Leitung noch nicht.** `mayWrite` ist „Verwaltung oder
   eigene Figur". Eine Leitung, die nicht Verwaltung ist, darf ihre eigene
   Kampagne lesen und nichts daran ändern. Die Ableitung dafür steht schon

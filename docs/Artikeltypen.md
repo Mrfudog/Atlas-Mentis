@@ -69,7 +69,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Item`): `image`, `item`, `description`, `fields` (ohne Item, Weapon, Armor, Material), `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Article
 
@@ -412,7 +412,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Item`): `image`, `item`, `description`, `fields` (ohne Item, Weapon, Armor, Material), `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Material
 
@@ -467,7 +467,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Item`): `image`, `item`, `description`, `fields` (ohne Item, Weapon, Armor, Material), `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Party
 
@@ -695,7 +695,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Item`): `image`, `item`, `description`, `fields` (ohne Item, Weapon, Armor, Material), `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
 
 ### World
 
@@ -1853,7 +1853,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+**Gezeichnet** (aus `Spell`): `spell`, `fields` (ohne Spell), `prose` (ohne Prose.paragraph), `composed`, `usedBy`, `relations`
 
 ### Statblock
 
@@ -1907,7 +1907,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
-**Gezeichnet** (aus `Statblock`): `fields`, `composed`, `prose`, `relations`
+**Gezeichnet** (aus `Statblock`): `statblock`, `fields` (ohne Statblock, Abilities, Proficiencies), `prose`, `usedBy`, `relations`
 
 ### Subclass
 

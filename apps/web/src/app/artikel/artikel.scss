@@ -107,33 +107,42 @@ h1 {
   font-size: 1.05rem;
   max-width: 68ch;
 }
+/* **Die Felder nebeneinander, nicht untereinander** (W2, Leitung 13.10.):
+   ein Raster aus kleinen Kästen, Beschriftung über dem Wert, so viele
+   Spalten, wie die Breite hergibt — am Telefon zwei. Ein langer Text nimmt
+   die ganze Breite. */
 .felder {
   margin: 0;
   display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0.15rem 0.75rem;
-  color: var(--heading);
+  grid-template-columns: repeat(auto-fill, minmax(min(11rem, 100%), 1fr));
+  gap: 0.5rem 1rem;
+}
+@media (max-width: 480px) {
+  .felder {
+    grid-template-columns: repeat(auto-fill, minmax(min(8.5rem, 100%), 1fr));
+  }
+}
+.feld {
+  min-width: 0;
+}
+.feld.lang {
+  grid-column: 1 / -1;
 }
 .felder dt {
-  font-weight: 700;
+  font-family: var(--caps);
+  font-size: 0.85rem;
+  color: var(--dim);
 }
 .felder dd {
   margin: 0;
   min-width: 0;
   overflow-wrap: anywhere;
+  color: var(--heading);
 }
 /* Von der Vorlage gelesen, nicht hier gesetzt. */
-.felder dd.geerbt {
+.feld.geerbt dd {
   font-style: italic;
   opacity: 0.8;
-}
-@media (max-width: 480px) {
-  .felder {
-    grid-template-columns: 1fr;
-  }
-  .felder dd {
-    margin-bottom: 0.4rem;
-  }
 }
 /* Was nur die Leitung liest, steht abgesetzt — wie der Kasten im Buch. */
 .block.secret,

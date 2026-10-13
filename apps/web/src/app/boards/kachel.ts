@@ -10,13 +10,18 @@ import {
 import type { Entity, LayoutElement, Registry, VarScopes } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { Text } from '../artikel/text';
+import { Statblock } from '../artikel/statblock';
+import { Zauber } from '../artikel/zauber';
+import { Gegenstand } from '../artikel/gegenstand';
 
 /** Was die Kachel aus einem Element des Layouts macht. */
 type Stueck =
   | { art: 'text'; id: string; text: string }
   | { art: 'felder'; id: string; zellen: { ref: string; label: string; wert: string }[] }
   | { art: 'prosa'; id: string; absaetze: { ref: string; label: string; text: string }[] }
-  | { art: 'teile'; id: string; gruppen: { label: string; namen: string[] }[] };
+  | { art: 'teile'; id: string; gruppen: { label: string; namen: string[] }[] }
+  /* Wie im Buch (W2): der Baustein der Artikelseite, derselbe Satz. */
+  | { art: 'statblock' | 'spell' | 'item'; id: string };
 
 /* Was die Kachel nicht noch einmal zeigt: der Name steht im Kopf, Nummer,
    Sichtbarkeit und Quelle gehören auf die Artikelseite. */
@@ -38,7 +43,7 @@ const NICHT_AUF_DER_KACHEL = ['Identity', 'Visibility', 'Source'];
  */
 @Component({
   selector: 'nw-kachel',
-  imports: [Text],
+  imports: [Text, Statblock, Zauber, Gegenstand],
   template: `
     @for (s of stuecke(); track s.id) {
       @switch (s.art) {
@@ -59,6 +64,15 @@ const NICHT_AUF_DER_KACHEL = ['Identity', 'Visibility', 'Source'];
           @for (a of s.absaetze; track a.ref) {
             <nw-text class="prosa" [text]="a.text" [scopes]="scopes()" />
           }
+        }
+        @case ('statblock') {
+          <nw-statblock [artikel]="artikel()" />
+        }
+        @case ('spell') {
+          <nw-zauber [artikel]="artikel()" [scopes]="scopes()" />
+        }
+        @case ('item') {
+          <nw-gegenstand [artikel]="artikel()" />
         }
         @case ('teile') {
           @for (g of s.gruppen; track g.label) {
@@ -179,6 +193,10 @@ export class Kachel {
           ? { art: 'teile', id: el.id, gruppen: [...gruppen].map(([label, namen]) => ({ label, namen })) }
           : null;
       }
+      case 'statblock':
+      case 'spell':
+      case 'item':
+        return { art: el.el, id: el.id };
       default:
         return null;
     }

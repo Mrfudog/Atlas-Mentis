@@ -184,7 +184,10 @@ export class InMemoryRepository implements Repository {
   }
 
   async putInvite(invite: Invite): Promise<void> {
-    this.invites.set(invite.codeHash, { ...invite });
+    this.invites.set(invite.codeHash, {
+      createdAt: new Date().toISOString(),
+      ...invite,
+    });
   }
   async getInvite(codeHash: string): Promise<Invite | undefined> {
     const i = this.invites.get(codeHash);

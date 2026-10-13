@@ -20,6 +20,7 @@ import {
   currentCampaign,
   inPlay,
   detachInstance,
+  registryUsage,
   instancesOf,
   isInstance,
   readInstance,
@@ -40,6 +41,7 @@ import {
 import type { Entity, Registry } from '@nw/model';
 import type { Repository } from './repo.js';
 import { buildListIndex, listProjection, parseListQuery, queryList, type ListIndex } from './liste.js';
+import { registerVerwaltung } from './verwaltung.js';
 import {
   ATTEMPT_WINDOW_MINUTES,
   MAX_ATTEMPTS,
@@ -49,11 +51,9 @@ import {
   hashPassword,
   hashToken,
   mayWrite,
-  newInviteCode,
   newSessionToken,
   passwordProblem,
   sessionExpiry,
-  type Invite,
   type User,
 } from './auth.js';
 
@@ -144,6 +144,26 @@ export function buildApp({
     return own;
   }
 
+  /**
+   * **Wer das Register ändert:** die Verwaltung der Installation und die
+   * Leitung (`gm`) der laufenden Kampagne. Das Register gilt für den ganzen
+   * Tisch — eine Zeile zu ändern heisst, die Regeln zu ändern. Ein
+   * Mitleiter sieht es und ändert es nicht; dieselbe Trennung wie bei den
+   * Mitgliedern (CLAUDE.md, Rolle am Konto).
+   *
+   * Gefragt wird die **laufende** Kampagne (`currentCampaign`), weil das
+   * Register keiner Ebene gehört: wer in einer anderen Runde leitet und
+   * in dieser mitspielt, schreibt hier die Regeln nicht.
+   */
+  async function mayEditRegistry(user: User): Promise<boolean> {
+    if (user.isAdmin) return true;
+    const rollen = user.roles ?? {};
+    if (!Object.values(rollen).includes('gm')) return false;
+    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const kampagne = currentCampaign(alle, (await repo.getRegistry()).settings ?? null);
+    return !!kampagne && rollen[kampagne.id] === 'gm';
+  }
+
   app.get('/api/me', async (request) => {
     const user = await viewerOf(request);
     const count = await repo.countUsers();
@@ -161,12 +181,15 @@ export function buildApp({
     const actors: { id: string; name: string }[] = [];
     for (const id of user?.actorIds ?? []) {
       const e = await repo.getEntity(id);
-      if (e) actors.push({ id, name: String(e.name ?? id) });
+      if (e) actors.push({ id, name: entityName(e) });
     }
     return {
       user,
       actors,
       writable,
+      /* Ob dieser Betrachter das Register ändern darf — gesagt vom Server,
+         der es beim Schreiben ohnehin prüft (`mayEditRegistry`). */
+      registry: user ? await mayEditRegistry(user) : false,
       /* Ein frischer Server sagt es geradeheraus. Das ist keine Auskunft,
          die jemandem nützt, den es nichts angeht: wer den Port erreicht,
          sieht ohnehin, dass nichts eingerichtet ist. */
@@ -298,9 +321,10 @@ export function buildApp({
         passwordHash: await hashPassword(password),
         isAdmin: invite.isAdmin,
         actorIds: invite.actorId ? [invite.actorId] : [],
-        /* Eine Einladung bindet an eine Figur, nicht an eine Rolle: wer
-           am Tisch was ist, setzt die Leitung danach. */
-        roles: {},
+        /* Eine Einladung führt in eine Kampagne, mit der Rolle darin (W3).
+           Danach steht die Rolle am Konto und nicht mehr an der Einladung —
+           die ist mit dem letzten Gebrauch weg. */
+        roles: invite.campaignId && invite.role ? { [invite.campaignId]: invite.role } : {},
       });
       await repo.clearAttempts(fold, origin);
       await repo.appendEvent('register.ok', id, { invite: invite.label ?? null });
@@ -328,58 +352,8 @@ export function buildApp({
     },
   );
 
-  /**
-   * Einladungen anlegen und ansehen. Nur die Spielleitung, und der Code
-   * steht **genau einmal** in der Antwort auf das Anlegen: gespeichert ist
-   * nur sein Hash, und was hier nicht mitgeschrieben wird, ist weg.
-   */
-  app.get('/api/invites', async (request, reply) => {
-    const user = await viewerOf(request);
-    if (!user?.isAdmin) return reply.code(403).send({ error: 'Nicht für dich.' });
-    return (await repo.listInvites()).map((i) => ({
-      label: i.label ?? null,
-      isAdmin: i.isAdmin,
-      actorId: i.actorId ?? null,
-      usesLeft: i.usesLeft ?? null,
-      expiresAt: i.expiresAt ?? null,
-      /* Der Hash geht mit, damit sich eine Einladung zurücknehmen lässt.
-         Aus ihm kommt man nicht auf den Code zurück. */
-      handle: i.codeHash,
-    }));
-  });
-
-  app.post<{ Body: { label?: string; admin?: boolean; actorId?: string; uses?: number; days?: number } }>(
-    '/api/invites',
-    async (request, reply) => {
-      const user = await viewerOf(request);
-      if (!user?.isAdmin) return reply.code(403).send({ error: 'Nicht für dich.' });
-      const b = request.body ?? {};
-      const code = newInviteCode();
-      const uses = b.uses == null ? undefined : Math.max(1, Math.floor(Number(b.uses) || 1));
-      const days = b.days == null ? undefined : Math.max(1, Math.floor(Number(b.days) || 1));
-      const invite: Invite = {
-        codeHash: hashToken(code),
-        label: b.label?.trim() || undefined,
-        isAdmin: b.admin === true,
-        actorId: b.actorId?.trim() || undefined,
-        usesLeft: uses,
-        expiresAt: days ? new Date(Date.now() + days * 86400000).toISOString() : undefined,
-        createdBy: user.id,
-      };
-      await repo.putInvite(invite);
-      await repo.appendEvent('invite.created', user.id, { label: invite.label ?? null });
-      /* Einmal und nie wieder. */
-      return reply.code(201).send({ code, handle: invite.codeHash });
-    },
-  );
-
-  app.delete<{ Params: { handle: string } }>('/api/invites/:handle', async (request, reply) => {
-    const user = await viewerOf(request);
-    if (!user?.isAdmin) return reply.code(403).send({ error: 'Nicht für dich.' });
-    const weg = await repo.dropInvite(request.params.handle);
-    if (!weg) return reply.code(404).send({ error: 'Nicht gefunden' });
-    return { ok: true };
-  });
+  /* Einladungen, Kampagnen, Mitglieder und Konten: `verwaltung.ts` (W3). */
+  registerVerwaltung(app, { repo, viewerOf });
 
   app.post('/api/logout', async (request, reply) => {
     const token = request.cookies?.[COOKIE];
@@ -427,15 +401,21 @@ export function buildApp({
       if (frisch && !schreibt) return; // frischer Server: lesen ja, schreiben nie
       return reply.code(401).send({ error: 'Nicht angemeldet.' });
     }
-    if (!schreibt) return;
-    if (user.isAdmin) return;
-
-    /* Ein Spieler schreibt seine Figur und was an ihr hängt — und sonst
-       nichts. Das Register gehört der Spielleitung: eine Registerzeile zu
-       ändern heisst, die Regeln zu ändern. */
-    if (url.startsWith('/api/registry')) {
+    /* Das Register gehört der Spielleitung: eine Registerzeile zu ändern
+       heisst, die Regeln zu ändern. Auch die Zählung des Bestands gehört
+       ihr — sie zählt über alles, auch über Verborgenes. */
+    if (url.startsWith('/api/registry') && (schreibt || url.startsWith('/api/registry/usage'))) {
+      if (await mayEditRegistry(user)) return;
       return reply.code(403).send({ error: 'Das Register ändert die Spielleitung.' });
     }
+    if (!schreibt) return;
+    if (user.isAdmin) return;
+    /* Verwaltung und Einladungen prüfen selbst: das Recht hängt an der
+       Kampagne im Pfad (gm ändert, co-gm sieht), nicht am Konto allein. */
+    if (url.startsWith('/api/campaigns') || url.startsWith('/api/invites')) return;
+
+    /* Ein Spieler schreibt seine Figur und was an ihr hängt — und sonst
+       nichts. */
     const id = url.startsWith('/api/entities/') ? decodeURIComponent(url.slice(14)) : '';
     if (!id || !mayWrite(user, await ownedBy(user), id)) {
       return reply.code(403).send({ error: 'Das gehört dir nicht.' });
@@ -445,6 +425,18 @@ export function buildApp({
   // ---------------------------------------------------------------- registry
 
   app.get('/api/registry', async () => repo.getRegistry());
+
+  /**
+   * **Was der Bestand an jeder Zeile trägt** — je Art, Karte, Feld,
+   * Listenwert und Kantenart (`registryUsage`). Das Register fragt es,
+   * bevor es ein Feld löscht, einen Typ herausnimmt oder einen Wert
+   * streicht: was dabei verloren ginge oder beim nächsten Speichern
+   * abgewiesen würde, wird vorher gezählt und gesagt. Ungesiebt, darum nur
+   * für die, die das Register ändern (Wache oben).
+   */
+  app.get('/api/registry/usage', async () =>
+    registryUsage(await repo.getRegistry(), await repo.listEntities()),
+  );
 
   app.put<{ Params: { part: string }; Body: unknown }>(
     '/api/registry/:part',
@@ -556,13 +548,23 @@ export function buildApp({
       .map((e) => redactEntity(registry, alle, schmal ? schmal(e) : e, augen, gmFields));
   }
 
-  app.get('/api/entities', async (request) => {
+  app.get<{ Querystring: { ids?: string } }>('/api/entities', async (request, reply) => {
     /* Der ganze Bestand, gesiebt — für Ausfuhr und Prüfungen. Die
        Oberfläche fragt ihn nicht mehr: Listen kommen aus `/api/list`, ein
        Artikel aus `/api/entities/:id`. Die Kurzfassung `?as=summary` ist
        am 13.10. weggefallen (W7) — sie war genau der Weg, auf dem der
        Browser 7,7 MB lud, bevor er eine Zeile zeigte. */
     const alle = await repo.listEntities();
+    /* `?ids=a,b,c`: **diese Artikel ganz**, in einer Anfrage — die Teile
+       eines Statblocks (die Ziele seiner `composedOf`-Kanten), die ein
+       geöffneter Artikel zeichnet (W2). Ein Drache hat dreizehn Teile;
+       dreizehn Anfragen wären dreizehnmal das Sieb. Gesiebt wird wie
+       sonst: was der Betrachter nicht sehen darf, fehlt in der Antwort. */
+    if (request.query.ids !== undefined) {
+      const ids = new Set(request.query.ids.split(',').map((x) => x.trim()).filter(Boolean));
+      if (ids.size > 500) return reply.code(400).send({ error: 'Höchstens 500 Ids je Anfrage' });
+      return sieve(request, alle.filter((e) => ids.has(e.id)), alle);
+    }
     return sieve(request, alle, alle);
   });
 

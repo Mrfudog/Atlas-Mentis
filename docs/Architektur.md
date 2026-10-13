@@ -136,7 +136,7 @@ Ein Repo für Code **und** Vault (D42). Was Obsidian liest, liegt in
 atlas-mentis/
 ├── apps/
 │   ├── server/          @nw/server   Fastify-API, Postgres, Befehle user/import/migrate
-│   │   ├── src/                      app.ts (Routen), auth.ts, repo.ts, repo.pg.ts, …
+│   │   ├── src/                      app.ts (Routen), verwaltung.ts (Kampagnen, Mitglieder, Einladungen), auth.ts, repo.ts, repo.pg.ts, …
 │   │   └── migrations/               001_backbone.sql … 009_blocks_are_fields.sql
 │   └── web/             web          Angular-Oberfläche (Anmeldung, Liste, Artikel)
 ├── packages/
@@ -220,8 +220,15 @@ Durchstich in CI prüft `PgRepository` gegen eine echte Postgres.
 | `GET /api/health` | lebt der Prozess (für Docker und deploy.sh) |
 | `POST /api/login` · `/api/register` · `/api/logout` · `/api/logout-everywhere` | Konto und Sitzung; Registrieren nur mit Einladung |
 | `GET /api/me` | wer bin ich, welche Rollen, welche Figuren |
-| `GET/POST/DELETE /api/invites` | Einladungen (Verwaltung, Leitung) |
-| `GET /api/registry` · `PUT /api/registry/:part` | das Register lesen; ändern nur die Leitung |
+| `GET/POST/DELETE /api/invites` | Einladungen, mit Kampagne und Rolle; die Verwaltung alle, die Leitung in ihre Kampagne (`gm` legt an und widerruft, `co-gm` sieht) |
+| `GET /api/campaigns` · `POST /api/campaigns` | die Kampagnen, an denen jemand leitet oder mitleitet (Verwaltung: alle); anlegen nur die Verwaltung |
+| `GET /api/campaigns/:c/members` | Mitglieder mit Rolle und Figuren, dazu die Figuren, die diese Kampagne vergeben darf — `gm`, `co-gm`, Verwaltung |
+| `POST /api/campaigns/:c/members` · `PUT`/`DELETE …/members/:user` | Konto beim Namen dazunehmen, Rolle setzen, herausnehmen — `gm` und Verwaltung, nie die eigene Rolle (ausser Verwaltung) |
+| `PUT /api/campaigns/:c/members/:user/actors` | welche Figuren ein Mitglied führt (`app_user_actor`); keine Figur einer anderen Kampagne |
+| `GET /api/users` | die Konten der Installation — nur die Verwaltung |
+| `GET /api/registry` · `PUT /api/registry/:part` | das Register lesen; ändern die Verwaltung und die Leitung (`gm`) der laufenden Kampagne — `/api/me` sagt es mit `registry` |
+| `GET /api/registry/usage` | was der Bestand an jeder Zeile trägt (`registryUsage`: je Art, Karte, Feld, Listenwert, Kante) — gezählt, bevor das Register etwas löscht; nur für wer es ändert |
+| `GET /api/entities?ids=a,b,c` | diese Artikel ganz, gesiebt (höchstens 500) — die Teile eines Statblocks in einer Anfrage (W2) |
 | `GET /api/list?area=&type=&of=&q=&layer=&nolayer=&parts=&sort=&offset=&limit=&f=` | **ein Blatt der Liste** mit Facetten (`{ total, columns, rows, facets }`) — Kompendium, Bereiche und jede Auswahl (W7) |
 | `GET /api/entities` | der ganze Bestand, **gesiebt** — für Ausfuhr und Prüfungen, nicht für die Oberfläche |
 | `GET /api/entities/:id` | ein Artikel, gesiebt, mit `refs`: die Namen seiner Kantenziele und die Treffer seiner `[[Verweise]]` (beim Ausliefern gerechnet, nie gespeichert) |
@@ -317,7 +324,7 @@ Zeilen daneben. Eine neue Artikelart ist eine Zeile, keine Migration.
 ```mermaid
 flowchart TB
   subgraph angular[apps/web · Angular 21, Standalone, Signals]
-    router[app.routes.ts<br/>/login · / · /artikel/:id · /classes · /classes/:id]
+    router[app.routes.ts<br/>/login · / · /artikel/:id · /campaign · /registry · /classes · /classes/:id]
     wache[kern/wache.ts<br/>Route-Guard: angemeldet?]
     subgraph seiten[Seiten, lazy geladen]
       login[login/login.ts]
@@ -328,6 +335,10 @@ flowchart TB
       artikel[artikel/artikel.ts<br/>Artikelansicht, Bearbeiten]
       felder[artikel/felder.ts<br/>Felder aus dem Register]
       text[artikel/text.ts<br/>Markdown, Verweise, Würfel]
+      buch[artikel/statblock.ts · zauber.ts · gegenstand.ts · abschnitte.ts<br/>wie im Buch]
+      register[register/register.ts<br/>Typen · Kanten · Listen]
+      regtyp[register/typ.ts · feld.ts<br/>ein Typ auf einer Fläche]
+      verwaltung[verwaltung/verwaltung.ts<br/>Mitglieder, Rollen, Einladungen]
       klassen[klassen/klasse.ts<br/>Klassenansicht: Tabelle, Merkmale je Stufe,<br/>Unterklassen filtern und vergleichen]
     end
     subgraph kern[kern/ · Dienste]
@@ -336,10 +347,13 @@ flowchart TB
       session[session.ts<br/>wer ist angemeldet]
     end
   end
-  model[["@nw/model<br/>views · calc · markdown · inline"]]
+  model[["@nw/model<br/>views · calc · book · markdown · inline"]]
   router --> wache --> session
-  router --> login & liste & artikel & klassen
-  artikel --> felder & text
+  router --> login & liste & artikel & verwaltung & register & klassen
+  verwaltung --> api
+  register --> regtyp --> bestand
+  artikel --> felder & text & buch
+  buch --> text
   liste --> vorschau & anlegen
   artikel & anlegen --> wahl --> api
   liste --> api
@@ -347,7 +361,7 @@ flowchart TB
   klassen --> text
   klassen -->|"GET /api/classes/:id"| api
   login --> session --> api
-  felder & text --> model
+  felder & text & buch --> model
   api -->|"/api · im Dev über proxy.conf.json"| srv[Fastify]
 ```
 
@@ -355,7 +369,22 @@ flowchart TB
 `felder.ts` liest die Felder einer Art aus dem Register und das Modell
 sagt, was in welcher Ansicht steht (`views`), was gerechnet wird
 (`calc`) und wie Text aussieht (`markdown`, `inline`). Eine neue
-Artikelart erscheint ohne Codeänderung.
+Artikelart erscheint ohne Codeänderung. Die Artikelseite zeichnet die
+Anordnung der Art (`layoutFor`); die Buch-Elemente `statblock`, `spell`
+und `item` bauen ihre Zeilen in `book.ts` und holen die Teile eines
+Statblocks über `Bestand.holen` (`?ids=`) in einer Anfrage.
+
+**Das Register** (`/registry`, W5) bearbeitet dieselben Zeilen, aus
+denen gezeichnet wird: Typen (eigene Felder offen, geerbte zugeklappt,
+verlinkte und Kanten von hier), Kantenarten und Listen. Geschrieben wird
+ein ganzer Teil über `PUT /api/registry/:part` und erst übernommen, wenn
+der Server ihn nimmt (`register/arbeit.ts`). Was eine Änderung im Bestand
+träfe — ein gelöschtes Feld, ein herausgenommener Typ, ein gestrichener
+Listenwert —, wird vorher über `/api/registry/usage` gezählt und in der
+Rückfrage gesagt; was der Bestand beim nächsten Speichern nicht mehr
+bestünde (eine Karte ohne Typ, ein Typ mit Artikeln), lässt die Seite gar
+nicht erst zu. Die reinen Regeln (Feldarten, Zyklen, Umbenennen samt aller
+Nennungen) stehen in `register/regeln.ts`.
 
 **Die Oberfläche hält keinen Bestand** (W7): das Register und die
 geöffneten Artikel samt den Namen, die sie mitbrachten (`Bestand.namen`,
@@ -387,6 +416,7 @@ Artikel in `Bestand.kurz`.
 | `stack.ts` | Ebenen: `inPlay`, `overriderOf` |
 | `visibility.ts` | `articleVisible`: Rolle am Tisch, `audience`, `revealedTo`, `hiddenFrom` |
 | `knowledge.ts` | `redactEntity`: welche Felder ein Träger kennt, Fraktionsränge |
+| `usage.ts` | `registryUsage`: was der Bestand an jeder Registerzeile trägt — für das Register vor dem Löschen |
 | `classes.ts` | die Klassenansicht (W6): Merkmale je Stufe aus `grants`, Übungsbonus, eingebettete Merkmale (ein Verweis allein im Absatz), Stufentabelle mit Zusatzspalten |
 
 ---

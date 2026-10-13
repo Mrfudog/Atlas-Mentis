@@ -1,0 +1,79 @@
+/* Der Satz des Buchs, geteilt von Statblock, Zauber, Gegenstand und den
+   Abschnitten (W2, `Article.dc.html`). Nur Marken, keine Farben. */
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.byline {
+  margin: -0.35rem 0 0;
+  font-family: var(--serif);
+  font-style: italic;
+}
+.linie {
+  height: 3px;
+  background: var(--rule);
+}
+/* Eine Kopfzeile wie im Buch: „**Armor Class** 15 (natural armor)". Der
+   Wert läuft hinter der Beschriftung weiter und bricht um, statt eine
+   zweite Spalte aufzumachen — so passt es auch auf ein Telefon. */
+.zeilen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  color: var(--heading);
+}
+.zeilen p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.zeilen strong {
+  font-weight: 700;
+  /* Der Abstand zum Wert: zwischen zwei Elementen lässt Angular kein
+     Leerzeichen stehen. */
+  margin-right: 0.3em;
+}
+.zusatz {
+  color: var(--dim);
+  font-size: 0.9rem;
+}
+/* Die sechs Werte in einer Reihe, am Telefon drei mal zwei. */
+.werte {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.25rem 0.5rem;
+  text-align: center;
+  color: var(--heading);
+}
+.werte .k {
+  font-weight: 700;
+}
+@media (max-width: 480px) {
+  .werte {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+h2 {
+  margin: 0.5rem 0 0;
+  font-family: var(--caps);
+  font-size: 1.35rem;
+  font-weight: 500;
+  color: var(--heading);
+  border-bottom: 1px solid var(--heading);
+}
+.eintrag {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.02rem;
+}
+.text {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  max-width: 68ch;
+}
+.fehlt {
+  margin: 0;
+  color: var(--dim);
+  font-style: italic;
+}

@@ -365,6 +365,49 @@ describe('who may write what', () => {
     expect(res.json().error).toMatch(/Spielleitung/);
   });
 
+  /* **Die Leitung der laufenden Kampagne ändert das Register**, ein
+     Mitleiter nicht, und die Leitung einer anderen Runde auch nicht. Der
+     Server sagt es der Oberfläche (`registry` in `/api/me`), damit sie
+     keinen Knopf zeigt, den er danach abweist. */
+  it('lets the gm of the running campaign change the registry, and nobody else at the table', async () => {
+    const runde = (id: string): Entity => ({
+      id, interfaces: ['Campaign'], name: id,
+      components: { Identity: { name: id, id: `campaign-${id}`, aliases: [] } }, relations: [],
+    });
+    const repo = new InMemoryRepository(
+      { ...seedRegistry, settings: { ...(seedRegistry.settings ?? {}), campaign: 'camp_nebel' } },
+      [runde('camp_nebel'), runde('camp_salz')],
+    );
+    const app = buildApp({ repo });
+    await addUser(repo, 'Lea', { roles: { camp_nebel: 'gm' } });
+    await addUser(repo, 'Cora', { roles: { camp_nebel: 'co-gm' } });
+    await addUser(repo, 'Mira', { roles: { camp_salz: 'gm', camp_nebel: 'player' } });
+    for (const [name, darf] of [['Lea', true], ['Cora', false], ['Mira', false]] as const) {
+      const keks = cookieOf(await login(app, name));
+      const me = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie: keks } });
+      expect(me.json().registry).toBe(darf);
+      const put = await app.inject({
+        method: 'PUT', url: '/api/registry/views', headers: { cookie: keks }, payload: seedRegistry.views,
+      });
+      expect(put.statusCode).toBe(darf ? 200 : 403);
+      const zahl = await app.inject({ method: 'GET', url: '/api/registry/usage', headers: { cookie: keks } });
+      expect(zahl.statusCode).toBe(darf ? 200 : 403);
+    }
+  });
+
+  /* Gezählt wird, was eine Änderung verlöre: je Feld die Artikel, die
+     etwas darin tragen, je Art die Artikel, je Kante die Kanten. */
+  it('counts what the stock carries before the registry changes', async () => {
+    const keks = cookieOf(await login(app, 'Basil'));
+    const res = await app.inject({ method: 'GET', url: '/api/registry/usage', headers: { cookie: keks } });
+    expect(res.statusCode).toBe(200);
+    const u = res.json();
+    expect(u.types.PlayerCharacter).toBe(1);
+    expect(u.cards.PlayerCharacter.fields.level).toBe(1);
+    expect(u.cards.Identity.fields.aliases).toBeUndefined(); // eine leere Liste trägt nichts
+    expect(u.relations.carries).toBe(1);
+  });
+
   /**
    * Der Server sagt der Oberfläche, was jemand schreiben darf — sie rechnet
    * es nicht zum zweiten Mal aus. Eine zweite Rechnung wäre die zweite
@@ -630,6 +673,22 @@ describe('what a player gets to read', () => {
     /* 404 und nicht 403: „verboten" wäre die genauere Auskunft und die
        falsche — sie sagt, dass da etwas ist. */
     expect(await liest(app, 'Sela')).toEqual({ code: 404, inListe: false });
+  });
+
+  /* Wer die Teile eines Statblocks holt (`?ids=`, W2), bekommt nur, was
+     er sehen darf — dasselbe Sieb, nicht ein zweites. */
+  it('keeps an article marked gm out of ?ids= for a player', async () => {
+    const app = await mitStufe({ audience: 'gm' });
+    const holt = async (wer: string) =>
+      (
+        (await app.inject({
+          method: 'GET',
+          url: '/api/entities?ids=n_plan',
+          headers: { cookie: cookieOf(await login(app, wer)) },
+        })).json() as Entity[]
+      ).map((e) => e.id);
+    expect(await holt('Basil')).toEqual(['n_plan']);
+    expect(await holt('Sela')).toEqual([]);
   });
 
   it('treats an article nobody classified as public', async () => {

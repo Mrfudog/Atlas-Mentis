@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { booleanAttribute, Component, computed, inject, input, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import {
@@ -94,46 +94,43 @@ type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
       }
     </ng-template>
 
+    <!-- Eng gesetzt und mit Absicht: jeder Zeilenumbruch hier würde ein
+         Leerzeichen vor „leather armor" und in „( 2d6 )" setzen. -->
     <ng-template #zeile let-text>
-      @for (s of stuecke(text); track $index) {
-        <span [class.b]="s.bold" [class.i]="s.italic">
-          @switch (s.kind) {
-            @case ('link') {
-              @if (s.ziel) {
-                <a [routerLink]="['/artikel', s.ziel]" [attr.title]="s.titel">{{ s.text }}</a>
-              } @else {
-                <span class="tot" [attr.title]="s.titel">{{ s.text }}</span>
-              }
-            }
-            @case ('var') {
-              <span class="vr" [class.offen]="!s.resolved">{{ s.text }}</span>
-            }
-            @case ('dice') {
-              <button type="button" class="wurf" [attr.title]="'Roll ' + s.expr" (click)="wirf(s.schluessel, s.expr)">
-                {{ s.text }}
-              </button>
-              @if (wuerfe()[s.schluessel]; as w) {
-                <output class="ergebnis">{{ w }}</output>
-              }
-            }
-            @default {
-              {{ s.text }}
-            }
-          }
-        </span>
-      }
+      @for (s of stuecke(text); track $index) {<span [class.b]="s.bold" [class.i]="s.italic">@switch (s.kind) {@case ('link') {@if (s.ziel) {<a [routerLink]="['/artikel', s.ziel]" [attr.title]="s.titel">{{ s.text }}</a>} @else {<span class="tot" [attr.title]="s.titel">{{ s.text }}</span>}}@case ('var') {<span class="vr" [class.offen]="!s.resolved">{{ s.text }}</span>}@case ('dice') {<button type="button" class="wurf" [attr.title]="'Roll ' + s.expr" (click)="wirf(s.schluessel, s.expr)">{{ s.text }}</button>@if (wuerfe()[s.schluessel]; as w) {<output class="ergebnis">{{ w }}</output>}}@default {<ng-container>{{ s.text }}</ng-container>}}</span>}
     </ng-template>
 
-    @if (einzeilig()) {
+    <ng-template #vorspannT>
+      <strong class="vorspann">@if (vorspannZiel()) {<a [routerLink]="['/artikel', vorspannZiel()]">{{ vorspann() }}</a>} @else {<ng-container>{{ vorspann() }}</ng-container>}</strong>
+    </ng-template>
+
+    @if (inline()) {
       <ng-container *ngTemplateOutlet="zeile; context: { $implicit: text() }" />
+    } @else if (vorspann() && bloeckeVon()[0]?.kind === 'paragraph') {
+      <!-- Der Name läuft in den ersten Absatz hinein, wie im Buch:
+           „Nimble Escape. The goblin can …" -->
+      <p>
+        <ng-container *ngTemplateOutlet="vorspannT" />
+        {{ ' ' }}<ng-container *ngTemplateOutlet="zeile; context: { $implicit: $any(bloeckeVon()[0]).text }" />
+      </p>
+      <ng-container *ngTemplateOutlet="bloecke; context: { $implicit: bloeckeVon().slice(1) }" />
     } @else {
+      @if (vorspann()) {
+        <p><ng-container *ngTemplateOutlet="vorspannT" /></p>
+      }
       <ng-container *ngTemplateOutlet="bloecke; context: { $implicit: bloeckeVon() }" />
     }
   `,
+  host: { '[class.inline]': 'inline()' },
   styles: `
     :host {
       display: block;
       line-height: 1.55;
+    }
+    /* Eine Zeile im Satz — der Wert neben „Armor Class", die Angriffszeile
+       hinter dem Namen —, kein Absatz. */
+    :host(.inline) {
+      display: inline;
     }
     p {
       margin: 0.25rem 0 0;
@@ -175,6 +172,17 @@ type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
     .b {
       font-weight: 600;
     }
+    .vorspann {
+      font-style: italic;
+      font-weight: 700;
+    }
+    .vorspann a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .vorspann a:hover {
+      text-decoration: underline;
+    }
     .i {
       font-style: italic;
     }
@@ -185,12 +193,17 @@ type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
     .vr.offen {
       color: var(--warn);
     }
+    /* Wie im Design-Canvas: ein Würfel ist ein Knopf in Gold. Die
+       Mindesthöhe der Knöpfe gilt hier nicht — er steht mitten im Satz. */
     .wurf {
       font: inherit;
-      padding: 0 0.3rem;
-      border: 1px solid var(--line);
+      min-height: 0;
+      padding: 0 0.35rem;
+      border: 1px solid var(--gold);
       border-radius: 4px;
-      background: none;
+      background: var(--hover);
+      color: var(--ink);
+      line-height: 1.35;
       cursor: pointer;
     }
     .ergebnis {
@@ -202,12 +215,12 @@ type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
 export class Text {
   readonly text = input<string>('');
   readonly scopes = input<VarScopes>({});
-  /**
-   * Eine Zeile statt eines langen Textes: ein kurzes Feld kennt keine
-   * Blöcke, aber Verweise, Würfel und Platzhalter wie jeder Text —
-   * „Typical speakers" nennt `[[statblock-0366|slaad tadpoles]]`.
-   */
-  readonly einzeilig = input(false);
+  /** Eine Zeile statt Absätzen: kein `parseMarkdown`, nur `parseInline`. */
+  readonly inline = input(false, { transform: booleanAttribute });
+  /** Ein Name, fett und kursiv in den ersten Absatz gestellt („Bite."). */
+  readonly vorspann = input('');
+  /** Wohin der Name führt — der Artikel des Merkmals. */
+  readonly vorspannZiel = input('');
 
   private readonly bestand = inject(Bestand);
 
