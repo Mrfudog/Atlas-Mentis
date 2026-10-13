@@ -534,10 +534,21 @@ export function buildApp({
       .map((e) => redactEntity(registry, alle, e, augen, gmFields));
   }
 
-  app.get<{ Querystring: { as?: string } }>('/api/entities', async (request) => {
+  app.get<{ Querystring: { as?: string; ids?: string } }>('/api/entities', async (request, reply) => {
     /* Die Liste ist zugleich der Zusammenhang, gegen den gesiebt wird —
        einmal holen, nicht zweimal. */
     const alle = await repo.listEntities();
+    /* `?ids=a,b,c`: **diese Artikel ganz**, in einer Anfrage — die Teile
+       eines Statblocks (die Ziele seiner `composedOf`-Kanten), die ein
+       geöffneter Artikel zeichnet (W2). Am Client liegt nur die
+       Kurzfassung, und ein Drache hat dreizehn Teile; dreizehn Anfragen
+       wären dreizehnmal das Sieb über den ganzen Bestand. Gesiebt wird wie
+       sonst: was der Betrachter nicht sehen darf, fehlt in der Antwort. */
+    if (request.query.ids !== undefined) {
+      const ids = new Set(request.query.ids.split(',').map((x) => x.trim()).filter(Boolean));
+      if (ids.size > 500) return reply.code(400).send({ error: 'Höchstens 500 Ids je Anfrage' });
+      return sieve(request, alle.filter((e) => ids.has(e.id)), alle);
+    }
     const gesiebt = await sieve(request, alle, alle);
     /* `?as=summary`: die Kurzfassung für Liste, Verweise und Auswahlen.
        Gekürzt wird nach dem Sieb, damit ein Deckname der Deckname bleibt.

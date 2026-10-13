@@ -250,6 +250,17 @@ describe('summaries and backlinks', () => {
     expect(b?.relation.type).toBe('owes');
   });
 
+  /* Die Teile eines Statblocks kommen in einer Anfrage, ganz (W2). */
+  it('sends the named articles whole with ?ids=', async () => {
+    const ctx = await makeApp([volo, schuldner]);
+    const res = await ctx.inject({ method: 'GET', url: `/api/entities?ids=${schuldner.id},gibt-es-nicht` });
+    expect(res.statusCode).toBe(200);
+    const liste = res.json() as Entity[];
+    expect(liste.map((e) => e.id)).toEqual([schuldner.id]);
+    expect(liste[0]?.components['Description']).toEqual({ description: 'Schuldet Volo Geld.' });
+    expect(liste[0]?.relations?.length).toBe(1);
+  });
+
   it('404s backlinks of an unknown article', async () => {
     const ctx = await makeApp([volo]);
     const res = await ctx.inject({ method: 'GET', url: '/api/entities/gibt-es-nicht/backlinks' });
