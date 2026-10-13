@@ -519,6 +519,14 @@ Karte `Vars.bindings` → die gerechneten Kampagnenwerte (`{PARTY}`,
 `{PARTYSIZE}`, `{PARTYLEVEL}`, `{PARTYTIER}`, `{PARTYWHERE}`, `{TODAY}`,
 `{CALENDAR}`) → die Registerzeile `vars`. **Nie in den gespeicherten Text
 eingesetzt**; ein unaufgelöster Platzhalter bleibt sichtbar stehen.
+**Am Satzanfang schreibt ein eingesetzter Wert gross** (Textanfang oder
+nach `.`, `!`, `?`, `:` und Zeilenumbruch; Hervorhebung zählt nicht) —
+gespeichert bleibt die Bindung, wie sie ist. Darum **trägt ein
+Platzhalter seinen Artikel**: das Merkmal heisst „{CREATURE} can breathe
+air and water.", die Kante bindet `CREATURE` an „the dragon" oder
+„Venomfang", und die Vorgabe an der Vorlage ist `Vars.bindings.CREATURE`
+= „the creature". So teilen sich Drache, Riese und benannte Kreatur einen
+Text (W1).
 
 **Würfel** `{{1d6+2}}` (M12, REQ-070). Ein Ausdruck aus Würfeln und
 Zahlen, `d` oder `W`; ein blosser Modifikator `{{+4}}` ist ein Wurf auf

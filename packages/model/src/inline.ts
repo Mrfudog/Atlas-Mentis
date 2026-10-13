@@ -19,6 +19,13 @@
  *   3. the campaign register
  * An unresolved placeholder is returned intact, so it is visible rather than
  * silently blank — and, unlike the old app, never baked into the stored text.
+ *
+ * **Am Satzanfang schreibt ein eingesetzter Wert gross** — am Textanfang
+ * und nach `.`, `!`, `?`, `:` oder einem Zeilenumbruch. Der Platzhalter
+ * trägt den Artikel („{CREATURE} can breathe air and water." mit „the
+ * dragon" an der Kante), und so liest derselbe Text am Satzanfang „The
+ * dragon" und mitten im Satz „the dragon". Gespeichert bleibt die Bindung,
+ * wie sie ist.
  */
 
 import { isDice } from './dice.js';
@@ -72,10 +79,26 @@ export function varNames(text: string): string[] {
   return [...names];
 }
 
+/**
+ * Steht an dieser Stelle ein Satzanfang? Leerraum und Hervorhebung zählen
+ * nicht; ein Zeilenanfang zählt, auch nach einem Listen-, Zitat- oder
+ * Überschriftzeichen, und eine Tabellenzelle — wer einen ganzen Text auf
+ * einmal liest (`plainText`), soll dasselbe lesen wie `parseMarkdown`.
+ */
+function satzanfang(vorher: string, anfang: boolean): boolean {
+  const rest = vorher.replace(/[\s*_]+$/, '');
+  if (rest === '') return anfang;
+  return /[.!?:|]$/.test(rest) || /\n[ \t]*(?:[-*+>]|\d{1,9}[.)]|#{1,6})?[\s*_]*$/.test(vorher);
+}
+
+const gross = (s: string) => s.replace(/^\p{Ll}/u, (c) => c.toUpperCase());
+
 export function parseInline(
   text: string,
   scopes: VarScopes = {},
   emphasis: Emphasis | boolean = {},
+  /** Ob der Anfang dieses Textes ein Satzanfang ist — für Hervorhebung mitten im Satz. */
+  anfang = true,
 ): Segment[] {
   const source = String(text ?? '');
   const segments: Segment[] = [];
@@ -106,14 +129,18 @@ export function parseInline(
     } else if (m[4] !== undefined) {
       const name = m[4];
       const value = resolveVar(name, scopes);
+      const shown =
+        value !== undefined && satzanfang(source.slice(0, at), anfang) ? gross(value) : value;
       segments.push(
-        mark({ kind: 'var', name, text: value ?? `{${name}}`, resolved: value !== undefined }),
+        mark({ kind: 'var', name, text: shown ?? `{${name}}`, resolved: value !== undefined }),
       );
     } else if (m[5] !== undefined) {
       // Recurse, so a placeholder or link inside emphasis still resolves.
-      segments.push(...parseInline(m[5], scopes, { ...em, bold: true }));
+      const innen = satzanfang(source.slice(0, at), anfang);
+      segments.push(...parseInline(m[5], scopes, { ...em, bold: true }, innen));
     } else if (m[6] !== undefined) {
-      segments.push(...parseInline(m[6], scopes, { ...em, italic: true }));
+      const innen = satzanfang(source.slice(0, at), anfang);
+      segments.push(...parseInline(m[6], scopes, { ...em, italic: true }, innen));
     }
     last = at + m[0].length;
   }

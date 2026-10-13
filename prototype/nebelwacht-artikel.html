@@ -2796,12 +2796,18 @@ function fillVars(text,refVars,ent){
      Sonst überdeckte eine einmal eingetippte Gruppenstufe für immer die
      richtige, und niemand bemerkte es (B3, D8). */
   var rechnung=campaignVars();
-  return String(text==null?"":text).replace(/\{([A-Z0-9_ÄÖÜ]+)\}/g,function(m,k){
+  return String(text==null?"":text).replace(/\{([A-Z0-9_ÄÖÜ]+)\}/g,function(m,k,at,ganz){
     var v=(refVars&&refVars[k])!=null?refVars[k]
          :(entVars[k]!=null?entVars[k]
          :(rechnung[k]!=null&&rechnung[k]!==""?rechnung[k]
          :(REG.vars[k]!=null?REG.vars[k]:null)));
-    return v==null?m:"\u0001"+v+"\u0002";   // sentinels -> <span class=vr> at render
+    if(v==null) return m;
+    /* Am Satzanfang gross, wie `parseInline` im Paket: der Platzhalter
+       trägt den Artikel („{CREATURE} can …" mit „the dragon"). */
+    v=String(v);
+    var vorher=ganz.slice(0,at), rest=vorher.replace(/[\s*_]+$/,"");
+    if(rest===""||/[.!?:|]$/.test(rest)||/\n[ \t]*(?:[-*+>]|\d{1,9}[.)]|#{1,6})?[\s*_]*$/.test(vorher)) v=v.charAt(0).toUpperCase()+v.slice(1);
+    return "\u0001"+v+"\u0002";   // sentinels -> <span class=vr> at render
   });
 }
 
@@ -15770,7 +15776,11 @@ function renderHowto(v){
     "may be typed and turns into the number on save when exactly one article "+
     "is called that — otherwise it stays and says it is ambiguous. "+
     "{{1d6+2}} is a die to click, {{+4}} a d20 with that bonus, and {VAR} is "+
-    "filled in when read and never written into the text."));
+    "filled in when read and never written into the text. A placeholder "+
+    "carries its article — “{CREATURE} can breathe air and water.” with "+
+    "“the dragon” on the edge — and a value at the start of a sentence is "+
+    "capitalised when read, so one text serves the dragon, the giant and "+
+    "Venomfang alike."));
   var nr=e?((e.components||{}).Identity||{}).id||e.id:"";
   var probe="**Scimitar.** *Melee:* {{+4}} to hit, {{1d6+2}} slashing.\n\n"+
     "| d6 | What happens |\n|:-:|---|\n| 1–3 | nothing |\n| 4–6 | "+

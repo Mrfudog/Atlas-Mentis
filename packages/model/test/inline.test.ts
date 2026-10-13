@@ -71,6 +71,43 @@ describe('parseInline', () => {
   });
 });
 
+describe('parseInline — Satzanfang', () => {
+  const text = (src: string, v = 'the dragon') =>
+    plainText(src, { reference: { CREATURE: v } });
+
+  it('schreibt einen eingesetzten Wert am Satzanfang gross', () => {
+    expect(text('{CREATURE} can breathe air and water.')).toBe('The dragon can breathe air and water.');
+    expect(text('It hisses. {CREATURE} bites! {CREATURE} flees? {CREATURE}')).toBe(
+      'It hisses. The dragon bites! The dragon flees? The dragon',
+    );
+    expect(text('Hit: {CREATURE} roars.')).toBe('Hit: The dragon roars.');
+    expect(text('First line\n{CREATURE} roars.')).toBe('First line\nThe dragon roars.');
+    expect(text('It gains:\n\n- {CREATURE} has advantage.')).toBe('It gains:\n\n- The dragon has advantage.');
+    expect(text('| 1 | {CREATURE} flees |')).toBe('| 1 | The dragon flees |');
+  });
+
+  it('lässt ihn mitten im Satz, wie er gebunden ist', () => {
+    expect(text('If {CREATURE} dies, {CREATURE} drops its hoard.')).toBe(
+      'If the dragon dies, the dragon drops its hoard.',
+    );
+    expect(text('Magical darkness doesn’t impede {CREATURE}’s darkvision.', 'Venomfang')).toBe(
+      'Magical darkness doesn’t impede Venomfang’s darkvision.',
+    );
+  });
+
+  it('sieht durch die Hervorhebung hindurch, auch hinein', () => {
+    const segs = parseInline('**{CREATURE}** can fly. *Then {CREATURE} lands.*', {
+      reference: { CREATURE: 'the dragon' },
+    });
+    expect(segs.filter((s) => s.kind === 'var').map((s) => s.text)).toEqual(['The dragon', 'the dragon']);
+  });
+
+  it('ändert nichts an einem offenen Platzhalter oder einem gross gebundenen Wert', () => {
+    expect(plainText('{CREATURE} can fly.')).toBe('{CREATURE} can fly.');
+    expect(text('{CREATURE} can fly.', 'Venomfang')).toBe('Venomfang can fly.');
+  });
+});
+
 describe('parseInline — dice (M12)', () => {
   it('makes {{…}} a dice segment and leaves {VAR} alone', () => {
     const segments = parseInline('Treffer {{+4}}, Schaden {{1d6+2}} {DMG}');

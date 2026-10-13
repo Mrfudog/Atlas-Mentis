@@ -251,6 +251,15 @@ genau das. Ein Platzhalter darf im Ausdruck stehen und wird zuerst
 eingesetzt; ein Ausdruck, der keiner ist, bleibt Text. Gewürfelt wird ohne
 `eval`, aus demselben Grund wie beim Rechenwerk.
 
+**Ein Platzhalter trägt seinen Artikel**: „{CREATURE} can breathe air and
+water." mit „the dragon" an der einen Kante und „Venomfang" an der
+anderen. Stünde der Artikel im Text („The {CREATURE} can …"), wäre der
+Text einer benannten Kreatur ein anderer als der eines Drachen, und
+Amphibious stünde vierundsechzigmal da. Dass „the dragon" am Satzanfang
+„The dragon" heisst, ist eine Frage des Lesens und nicht der Bindung —
+also schreibt `parseInline` den Wert dort gross, und gespeichert bleibt,
+was gemeint ist.
+
 ---
 
 ## Bezeichner
