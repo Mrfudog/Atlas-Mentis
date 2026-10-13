@@ -152,7 +152,7 @@ interface Feld {
                 @if (art(e) === 'Class' && !bearbeitet()) {
                   <a class="knopf" [routerLink]="['/classes', e.id]">Class view</a>
                 }
-                @if (darfSchreiben()) {
+                @if (darfSchreiben() && !zeigtAlten()) {
                   <button type="button" (click)="bearbeitet() ? abbrechen() : beginnen()">
                     {{ bearbeitet() ? 'Cancel' : 'Edit' }}
                   </button>
@@ -164,6 +164,26 @@ interface Feld {
                 }
               </div>
             </div>
+
+            <!-- Ein älterer fertiger Stand gilt für alle anderen (REQ-237,
+                 E-012). Das Band sieht nur, wer den Arbeitsstand sieht. -->
+            @if (fertigAm(); as am) {
+              <p class="band-fertig" role="status">
+                @if (zeigtAlten()) {
+                  <span>You are looking at the ready version from {{ am }}.</span>
+                  <button type="button" class="klein" (click)="zeigeNeuen()">Show the current version</button>
+                } @else {
+                  <span>Not ready yet — the version from {{ am }} applies.</span>
+                  <button type="button" class="klein" [disabled]="laedtAlten()" (click)="zeigeAlten()">Show that version</button>
+                  @if (session.darfReady()(e.id) && !bearbeitet()) {
+                    <button type="button" class="klein" (click)="fertigNennen()">Mark ready</button>
+                  }
+                }
+                @if (!bearbeitet() && problem(); as p) {
+                  <span class="fehler" role="alert">{{ p }}</span>
+                }
+              </p>
+            }
 
             <article class="blatt">
               <div>
@@ -523,9 +543,50 @@ export class Artikel {
   }
 
   private readonly reg = computed<Registry | null>(() => this.bestand.registry());
-  protected readonly artikel = computed<Entity | undefined>(() =>
-    this.bestand.voll().get(this.id()),
-  );
+  /** Der letzte fertige Stand, wenn er gerade angesehen wird (E-012) —
+   *  nur zum Lesen, gemerkt mit der Id, zu der er gehört. */
+  private readonly alterStand = signal<{ id: string; e: Entity } | null>(null);
+  protected readonly laedtAlten = signal(false);
+  protected readonly zeigtAlten = computed(() => this.alterStand()?.id === this.id());
+  protected readonly artikel = computed<Entity | undefined>(() => {
+    const alt = this.alterStand();
+    if (alt && alt.id === this.id()) return alt.e;
+    return this.bestand.voll().get(this.id());
+  });
+  /** Das Datum des fertigen Stands, der noch gilt — für das Band. */
+  protected readonly fertigAm = computed(() => {
+    const at = this.bestand.fertig().get(this.id());
+    return at ? new Date(at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+  });
+
+  protected async zeigeAlten(): Promise<void> {
+    const id = this.id();
+    this.laedtAlten.set(true);
+    try {
+      const { refs: _refs, ...e } = await this.api.readyVersion(id);
+      if (this.id() === id) this.alterStand.set({ id, e: e as Entity });
+    } catch (error) {
+      this.problem.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.laedtAlten.set(false);
+    }
+  }
+
+  protected zeigeNeuen(): void {
+    this.alterStand.set(null);
+  }
+
+  /** „ready" ohne die Maske: der neue Stand gilt (REQ-237). */
+  protected async fertigNennen(): Promise<void> {
+    const id = this.id();
+    try {
+      await this.api.setReady(id);
+      this.alterStand.set(null);
+      await this.bestand.oeffnen(id, true);
+    } catch (error) {
+      this.problem.set(error instanceof Error ? error.message : String(error));
+    }
+  }
   /* **Der Ort wählt die Ansicht** (CLAUDE.md): die Artikelseite zeigt
      `full`. Hier stand ein Wähler — einen gibt es nicht, und wer weniger
      sehen darf, sieht dieselbe Ansicht mit weniger darin. */
@@ -873,7 +934,7 @@ export class Artikel {
         /* **`ready` setzt die Leitung** (REQ-237, E-011): Spielenden bietet
            die Maske es nicht an — ausser es steht schon da, sonst zeigte
            die Auswahl einen fertigen Artikel als leer. Der Server prüft. */
-        if (comp === 'Status' && prop === 'status' && !this.session.darfReady() && karte[prop] !== 'ready') {
+        if (comp === 'Status' && prop === 'status' && !this.session.darfReady()(e.id) && karte[prop] !== 'ready') {
           werte = werte.filter((w) => w !== 'ready');
         }
         /* Eine Auswahl ohne Werte ist ein freies Wort: nennt das Feld eine

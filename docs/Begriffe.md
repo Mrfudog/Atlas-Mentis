@@ -557,6 +557,18 @@ fertig**: eine Ebene oder ein Regelteil ohne Status-Karte verschwände sonst
 für alle Spielenden, und niemand wüsste, warum — dieselbe Überlegung wie bei
 `public` als Vorgabe.
 
+**Ändert eine Spielerin etwas Fertiges, gilt für die anderen der fertige
+Stand weiter** (E-012, D74). Er fällt auf `prepared`, und der Stand davor
+bleibt als Kopie am Server (`entity_ready`) — nicht als zweite Karte im
+Artikel: die wanderte mit jeder Ausfuhr mit, und jede Prüfung müsste zwei
+Fassungen kennen. Wer den Arbeitsstand sieht (Verfasserin, Leitung), sieht
+den neuen mit einem Band „not ready yet — the version from … applies";
+alle anderen merken nichts, bis die Leitung `ready` setzt. **Die eigene
+Figur ist ausgenommen** (E-014 d): sie gehört dem Spieler, er setzt ihren
+Stand selbst, und am Tisch fiele sie sonst beim ersten Treffer zurück. Was
+an ihr die Leitung prüfen soll, kommt später Feld für Feld (REQ-242),
+nicht als Liste je Figur.
+
 **Vererbt wird nichts.** Ein Artikel sagt für sich, wer ihn sehen darf; dass
 das Zimmer zum Haus gehört, sagt nichts darüber, wer das Zimmer kennt. Es
 gab dafür ein Feld (`inherit`, Vorgabe `true`), und es war nie ausgewertet —

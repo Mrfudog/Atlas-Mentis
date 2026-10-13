@@ -35,6 +35,7 @@ export class Bestand {
   private readonly _fehlt = signal<ReadonlySet<string>>(new Set());
   private readonly _namen = signal<ReadonlyMap<string, string>>(new Map());
   private readonly _verweise = signal<ReadonlyMap<string, Bezuege['links'][string]>>(new Map());
+  private readonly _fertig = signal<ReadonlyMap<string, string>>(new Map());
 
   readonly registry = this._registry.asReadonly();
   readonly fehler = this._fehler.asReadonly();
@@ -53,6 +54,12 @@ export class Bestand {
   readonly namen = this._namen.asReadonly();
   /** `[[ziel]]` → die Artikel, die es treffen könnten (M11). */
   readonly verweise = this._verweise.asReadonly();
+  /**
+   * Id → Datum des fertigen Stands, der für alle anderen noch gilt
+   * (REQ-237, E-012). Kommt nur an, wenn der Betrachter den Arbeitsstand
+   * sieht; die Artikelseite zeigt dann das Band.
+   */
+  readonly fertig = this._fertig.asReadonly();
 
   private readonly _kurz = signal<ReadonlyMap<string, Entity>>(new Map());
   /**
@@ -136,6 +143,12 @@ export class Bestand {
       .then(([mitBezug, zeigt]) => {
         const { refs, ...e } = mitBezug;
         this.merke(refs, zeigt ?? [], e as Entity);
+        this._fertig.update((m) => {
+          const n = new Map(m);
+          if (refs?.ready) n.set(id, refs.ready.at);
+          else n.delete(id);
+          return n;
+        });
         this._voll.update((m) => new Map(m).set(id, e as Entity));
         if (zeigt) this._rueck.update((m) => new Map(m).set(id, zeigt));
         this._fehlt.update((s) => {

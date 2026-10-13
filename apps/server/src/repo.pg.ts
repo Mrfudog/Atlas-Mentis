@@ -9,7 +9,7 @@
 import type { Pool } from 'pg';
 import { isTableRole } from '@nw/model';
 import type { Entity, InterfaceDef, Registry, Relation, RelationDef, TableRole } from '@nw/model';
-import type { EventFilter, Repository, SessionRow, StoredEvent, StoredUser } from './repo.js';
+import type { EventFilter, ReadyStand, Repository, SessionRow, StoredEvent, StoredUser } from './repo.js';
 import type { ApiToken, Invite, TokenScope, User } from './auth.js';
 
 type Row = Record<string, unknown>;
@@ -504,6 +504,29 @@ export class PgRepository implements Repository {
   async authoredArticles(): Promise<string[]> {
     const { rows } = await this.pool.query<Row>('select distinct entity_id from app_user_article');
     return rows.map((r) => String(r['entity_id']));
+  }
+
+  /* Der letzte fertige Stand (REQ-237, E-012), als JSON-Kopie. Wenige
+     Zeilen; gelesen wird alles auf einmal. */
+  async readyStands(): Promise<Map<string, ReadyStand>> {
+    const { rows } = await this.pool.query<Row>('select entity_id, data, ready_at from entity_ready');
+    return new Map(
+      rows.map((r) => [
+        String(r['entity_id']),
+        { entity: r['data'] as Entity, at: new Date(r['ready_at'] as string).toISOString() },
+      ]),
+    );
+  }
+
+  async keepReadyStand(stand: ReadyStand): Promise<void> {
+    await this.pool.query(
+      `insert into entity_ready(entity_id, data, ready_at) values ($1, $2, $3) on conflict do nothing`,
+      [stand.entity.id, JSON.stringify(stand.entity), stand.at],
+    );
+  }
+
+  async dropReadyStand(entityId: string): Promise<void> {
+    await this.pool.query('delete from entity_ready where entity_id = $1', [entityId]);
   }
 
   /* Konto und Figuren gehen zusammen hinein. In einer Transaktion, weil

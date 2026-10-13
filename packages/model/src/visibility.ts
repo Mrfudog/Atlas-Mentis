@@ -83,6 +83,20 @@ export interface Viewer {
    * Artikel (REQ-199).
    */
   own?: readonly EntityId[] | ReadonlySet<EntityId>;
+  /**
+   * **Vom Status-Gate ausgenommen** (E-014 d): die Spielercharaktere, die
+   * einem Konto zugeteilt sind, samt Statblock und Inventar — die Figuren
+   * *aller* Konten, nicht nur dieses. Sie verwaltet ihr Spieler selbst,
+   * und für die Mitspielenden gilt die gewöhnliche Sichtbarkeit, nicht der
+   * Vorbereitungsstand. Wer welche Figur führt, steht am Server
+   * (`app_user_actor`), also gibt der Server die Liste mit.
+   */
+  ungated?: readonly EntityId[] | ReadonlySet<EntityId>;
+}
+
+function enthaelt(l: readonly EntityId[] | ReadonlySet<EntityId> | undefined, id: EntityId): boolean {
+  if (!l) return false;
+  return Array.isArray(l) ? l.includes(id) : (l as ReadonlySet<EntityId>).has(id);
 }
 
 /** Wen auch immer der Aufrufer mitgibt. `undefined` heisst: die Verwaltung. */
@@ -108,6 +122,22 @@ export const READY = 'ready';
 export function isReady(article: Entity): boolean {
   const s = (article.components?.[STATUS_COMPONENT] as { status?: unknown } | undefined)?.status;
   return s === undefined || s === null || s === '' || s === READY;
+}
+
+/**
+ * **Sieht dieser Betrachter den Arbeitsstand?** (REQ-237, E-011, E-012)
+ * Die Leitung der Kampagne des Artikels (`gm`, `co-gm`) und wer ihn
+ * angelegt hat oder schreiben darf (`own`). Alle anderen sehen nur, was
+ * `ready` ist — und von einem Artikel, der nach einer Änderung auf
+ * `prepared` zurückfiel, den letzten fertigen Stand (am Server,
+ * `entity_ready`). Ohne Betrachter: die Verwaltung, ja.
+ */
+export function seesUnfinished(entities: Map<EntityId, Entity>, article: Entity, viewerId?: ViewerRef): boolean {
+  if (viewerId === undefined) return true;
+  const v = alsViewer(viewerId);
+  if (enthaelt(v.own, article.id)) return true;
+  const rolle = tableRole(v, campaignOf(entities, article));
+  return rolle === 'gm' || rolle === 'co-gm';
 }
 
 /** Von innen nach aussen — wer zwei Rollen hält, gilt als die stärkere. */
@@ -254,18 +284,15 @@ export function articleVisible(
   /* **Eigenes sieht man immer, in jedem Stand** (REQ-237, E-011): wer
      einen Artikel angelegt hat oder schreiben darf, verliert ihn nicht aus
      den Augen, nur weil die Leitung ihn noch nicht fertig nennt. */
-  const own = v.own;
-  if (own && (Array.isArray(own) ? own.includes(article.id) : (own as ReadonlySet<EntityId>).has(article.id))) {
-    return true;
-  }
+  if (enthaelt(v.own, article.id)) return true;
   /* **Unfertiges sieht nur die Leitung** (REQ-237, E-011). Wer nicht `gm`
      oder `co-gm` der Kampagne ist, der der Artikel gehört, bekommt nur,
      was `ready` ist. Das ist die grobe Frage: ein Entwurf stünde sonst mit
      Namen in der Liste, auch wenn das Wissen jedes Feld zurückhielte. Die
-     Rolle wird gefragt wie bei der Stufe unten. */
-  if (!isReady(article)) {
-    const rolle = tableRole(v, campaignOf(entities, article));
-    if (rolle !== 'gm' && rolle !== 'co-gm') return false;
+     eigene Figur eines Spielers ist ausgenommen (E-014 d, `ungated`): für
+     sie gilt, was darunter steht. */
+  if (!isReady(article) && !enthaelt(v.ungated, article.id) && !seesUnfinished(entities, article, v)) {
+    return false;
   }
   /* Die Reihenfolge ist die Regel: Verbot, Freigabe, Stufe. */
   if (nennt(vis.hiddenFrom)) return false;

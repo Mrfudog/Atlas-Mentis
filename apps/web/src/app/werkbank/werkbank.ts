@@ -11,6 +11,7 @@ import {
   type CheckResult,
   type ChecksAntwort,
   type UndoAntwort,
+  type Wartend,
 } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
@@ -45,6 +46,43 @@ import { BEDINGUNGEN, OPS, auftragAus, formularFehlt, leeresFormular, type Formu
       @if (!session.leitung()) {
         <p class="leer">The workbench is for game masters and the administration.</p>
       } @else {
+        <!-- REQ-237: was Spielende angelegt haben und nicht ready ist. Die
+             eigene Figur wartet auf niemanden (E-014 d) und steht nicht da. -->
+        <section class="block" aria-labelledby="h-wartet">
+          <div class="titel">
+            <h2 id="h-wartet">Not ready, by players</h2>
+            <span class="dim">{{ wartend().length }}</span>
+          </div>
+          @if (wartetFehler()) {
+            <p class="fehler" role="alert">{{ wartetFehler() }}</p>
+          }
+          @if (wartend().length) {
+            <ul class="treffer wartet">
+              @for (w of wartend(); track w.id) {
+                <li>
+                  <a [routerLink]="['/artikel', w.id]">{{ w.name || w.id }}</a>
+                  <span class="art">{{ w.type }}</span>
+                  <span class="grund">
+                    {{ w.status || 'no status' }} · by {{ w.authors.join(', ') || '?' }}
+                    @if (w.readyAt) {
+                      · the version from {{ datum(w.readyAt) }} applies
+                    } @else {
+                      · never ready
+                    }
+                  </span>
+                  @if (w.canReady) {
+                    <button type="button" class="klein" [disabled]="setzt() === w.id" (click)="fertigNennen(w)">
+                      {{ setzt() === w.id ? 'Saving…' : 'ready' }}
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
+          } @else if (!wartetFehler()) {
+            <p class="leer">Nothing waits — every article players made is ready.</p>
+          }
+        </section>
+
         <section class="block" aria-labelledby="h-checks">
           <div class="titel">
             <h2 id="h-checks">Checks</h2>
@@ -709,6 +747,37 @@ export class Werkbank {
   protected readonly offen = signal<string | null>(null);
   protected readonly treffer = signal<CheckResult | null>(null);
 
+  /* ------------------------------------------- Was wartet (REQ-237) */
+  protected readonly wartend = signal<Wartend[]>([]);
+  protected readonly wartetFehler = signal<string | null>(null);
+  protected readonly setzt = signal<string | null>(null);
+
+  async wartendLaden(): Promise<void> {
+    try {
+      this.wartend.set((await this.api.unready()).rows);
+      this.wartetFehler.set(null);
+    } catch (error) {
+      this.wartetFehler.set(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  /** „ready" per Knopf: der neue Stand gilt, die Zeile geht. */
+  async fertigNennen(w: Wartend): Promise<void> {
+    this.setzt.set(w.id);
+    try {
+      await this.api.setReady(w.id);
+      await this.wartendLaden();
+    } catch (error) {
+      this.wartetFehler.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.setzt.set(null);
+    }
+  }
+
+  protected datum(at: string): string {
+    return new Date(at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
   /* ------------------------------------------------------ Massenänderung */
   protected f: Formular = leeresFormular();
   protected readonly jsonText = signal<string | null>(null);
@@ -746,6 +815,7 @@ export class Werkbank {
       .then((l) => this.ebenen.set(l.rows.map((z) => ({ id: z.id, name: z.name }))))
       .catch(() => undefined);
     if (this.session.leitung()) {
+      void this.wartendLaden();
       void this.pruefen();
       void this.laeufeLaden();
     }
