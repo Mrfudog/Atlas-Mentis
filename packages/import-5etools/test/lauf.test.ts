@@ -61,7 +61,8 @@ function datenstand(): Datenstand {
     classFeatures: ['Second Wind|Fighter||1', 'Ability Score Improvement|Fighter||4', 'Ability Score Improvement|Fighter||6'],
     subclassTitle: 'Martial Archetype',
   });
-  add('subclass', { name: 'Champion', shortName: 'Champion', source: 'PHB', className: 'Fighter', classSource: 'PHB', subclassFeatures: ['Improved Critical|Fighter||Champion||3'] });
+  add('subclass', { name: 'Champion', shortName: 'Champion', source: 'PHB', className: 'Fighter', classSource: 'PHB', subclassFeatures: ['Improved Critical|Fighter||Champion||3'],
+    subclassTableGroups: [{ subclasses: [{ name: 'Champion', source: 'PHB' }], colLabels: ['{@filter Spells Known|spells}'], rows: Array.from({ length: 20 }, (_, i) => [i < 2 ? 0 : i + 1]) }] });
   add('table', { name: 'Trinkets', source: 'PHB', colLabels: ['d6', 'Trinket'], rows: [['1-3', 'A {@item scimitar|phb}'], ['4-6', 'A button']] });
   add('vehicle', { name: 'Galley', source: 'GoS' });
   return {
@@ -175,6 +176,16 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
     expect(fighter.components['ProficiencyChoice']).toMatchObject({ chooseFrom: ['Stealth'], chooseCount: 1 });
     const champion = finde(es, 'Subclass', 'Champion');
     expect(champion.relations?.find((r) => r.type === 'subclassOf')?.to).toBe(fighter.id);
+  });
+
+  it('legt die Zusatzspalten einer Unterklasse als eigene Tabelle an (W6)', () => {
+    const champion = finde(es, 'Subclass', 'Champion');
+    const t = finde(es, 'Table', 'Champion Table');
+    expect(champion.relations?.find((r) => r.type === 'tableFor')?.to).toBe(t.id);
+    expect(t.components['Table']).toMatchObject({ columns: ['Level', 'Spells Known'] });
+    const zeilen = t.components['Table']!['rows'] as { cells: string[] }[];
+    expect(zeilen[0]!.cells).toEqual(['1', '—']);
+    expect(zeilen[2]!.cells).toEqual(['3', '3']);
   });
 
   it('gibt einer Würfeltabelle Spalten, Gewichte und den Würfel', () => {
