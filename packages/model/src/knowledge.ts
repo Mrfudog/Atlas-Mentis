@@ -398,7 +398,15 @@ export function redactEntity(
     const behalten: Record<string, unknown> = {};
     for (const [property, value] of Object.entries((card ?? {}) as Record<string, unknown>)) {
       if (vieleFelder(component, property)) {
-        const uebrig = entriesOf(value).filter((e) => feldErlaubt(component, property, e.id));
+        /* **Ein Eintrag mit Form bleibt ganz** (`entry`, `Choices.choices`):
+           gesiebt wird je Id, hinaus geht der Eintrag, wie er steht. Bis
+           T-080 ging `{id, value}` hinaus, und an einer Wahl stand für
+           Spielende danach nichts mehr. */
+        const roh = Array.isArray(value) ? value : [value];
+        const uebrig = entriesOf(value)
+          .map((e, i) => ({ e, x: roh[i] as unknown }))
+          .filter(({ e }) => feldErlaubt(component, property, e.id))
+          .map(({ e, x }) => (x && typeof x === 'object' ? x : e));
         if (uebrig.length) behalten[property] = uebrig;
         continue;
       }
