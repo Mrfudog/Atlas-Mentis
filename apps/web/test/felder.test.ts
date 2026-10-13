@@ -15,9 +15,12 @@ import {
   ausEingabe,
   eingabeArt,
   inEingabe,
+  inListe,
   kantenAusEntwurf,
   sindZeilen,
+  suchgruppen,
   tabelleAlsText,
+  verweisZiele,
 } from '../src/app/artikel/felder';
 
 describe('eingabeArt', () => {
@@ -33,12 +36,21 @@ describe('eingabeArt', () => {
   });
 
   /* Übungen halten mehrere Namen (M6) — ein `select` schrieb ein Wort in
-     ein Feld, das eine Liste hält. */
-  it('gives a list, not a single choice, to a field that holds several values', () => {
+     ein Feld, das eine Liste hält. Seit T-068 sind es Chips. */
+  it('gives chips, not a single choice, to a field that holds several values', () => {
     const prof = seedRegistry.interfaces.Proficiencies.schema?.properties ?? {};
-    expect(eingabeArt(prof['proficient'])).toBe('liste');
-    expect(eingabeArt(prof['saves'])).toBe('liste');
-    expect(ausEingabe(prof['saves'], 'str, con')).toEqual(['str', 'con']);
+    expect(eingabeArt(prof['proficient'])).toBe('mehrfach');
+    expect(eingabeArt(prof['saves'])).toBe('mehrfach');
+    expect(ausEingabe(prof['saves'], ['str', 'con', 'str', ' '])).toEqual(['str', 'con']);
+    expect(ausEingabe(prof['saves'], [])).toBeUndefined();
+  });
+
+  /* „Revealed to" war eine freie Liste und nahm jedes Wort (T-068). */
+  it('gives a chip picker of articles to a field with several links', () => {
+    const sicht = seedRegistry.interfaces.Visibility.schema?.properties ?? {};
+    expect(eingabeArt(sicht['revealedTo'])).toBe('verweise');
+    expect(eingabeArt(sicht['hiddenFrom'])).toBe('verweise');
+    expect(ausEingabe(sicht['revealedTo'], ['e_1', 'e_2'])).toEqual(['e_1', 'e_2']);
   });
 
   /* Ein Verweisfeld hält eine Id; gewählt wird über die Suche (W7). */
@@ -207,5 +219,61 @@ describe('Objektfelder in der Maske', () => {
   it('keeps unreadable JSON as text so validation can say so', () => {
     expect(ausEingabe(ancestry['abilityBonus'], '{str: 2')).toBe('{str: 2');
     expect(ausEingabe(ancestry['abilityBonus'], '  ')).toBeUndefined();
+  });
+});
+
+/* ---- Woher eine Auswahl vorschlägt (T-068) ---- */
+describe('suchgruppen', () => {
+  it('searches only the target types of a link, and takes no free word', () => {
+    const sicht = seedRegistry.interfaces.Visibility.schema?.properties ?? {};
+    expect(suchgruppen(seedRegistry, sicht['revealedTo'])).toEqual({
+      gruppen: [{ of: ['Creature', 'Party', 'Faction'] }],
+      feste: [],
+      frei: false,
+    });
+    const sitzung = seedRegistry.interfaces.Session.schema?.properties ?? {};
+    expect(suchgruppen(seedRegistry, sitzung['activeMap']).gruppen).toEqual([{ of: ['Map'] }]);
+  });
+
+  /* `enumRef` auf eine Art (D66 offen): die Artikel dieser Art werden
+     vorgeschlagen, die Listen bleiben fest, ein freies Wort bleibt erlaubt. */
+  it('suggests the articles of a named type, next to the fixed lists', () => {
+    const prof = seedRegistry.interfaces.Proficiencies.schema?.properties ?? {};
+    const s = suchgruppen(seedRegistry, prof['proficient']);
+    expect(s.frei).toBe(true);
+    expect(s.gruppen[0]).toEqual({ of: ['Skill', 'Language', 'Weapon'] });
+    /* Werkzeuge sind Gegenstände mit einer bestimmten Art (`enumWhere`). */
+    const werkzeug = s.gruppen.find((g) => g.type === 'Item');
+    expect(werkzeug?.f?.[0]).toMatch(/^\w+\.itemType:tool\|/);
+    expect(s.feste.length).toBeGreaterThan(0); // Weapon.category, Armor.armorType
+  });
+
+  it('keeps a plain enumeration closed', () => {
+    const prof = seedRegistry.interfaces.Proficiencies.schema?.properties ?? {};
+    const s = suchgruppen(seedRegistry, prof['saves']);
+    expect(s.gruppen).toEqual([]);
+    expect(s.frei).toBe(false);
+    expect(s.feste).toContain('dex');
+  });
+});
+
+describe('verweisZiele', () => {
+  const namen = new Map([['e_1', 'Mia'], ['e_2', 'Die Wache']]);
+  const name = (id: string) => namen.get(id);
+
+  it('shows names that lead to their article, for one link and for a list', () => {
+    expect(verweisZiele('e_1', name)).toEqual([{ ziel: 'e_1', text: 'Mia' }]);
+    expect(verweisZiele(['e_1', 'e_2'], name).map((l) => l.text)).toEqual(['Mia', 'Die Wache']);
+  });
+
+  /* Ein Ziel, das der Betrachter nicht kennt, ist kein Link und keine Id. */
+  it('says so when the target is not here, and shows no id', () => {
+    expect(verweisZiele(['e_weg'], name)).toEqual([{ ziel: '', text: '(not here)' }]);
+  });
+
+  it('reads nothing out of an empty field', () => {
+    expect(inListe(undefined)).toEqual([]);
+    expect(inListe('')).toEqual([]);
+    expect(inListe('e_1')).toEqual(['e_1']);
   });
 });

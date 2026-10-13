@@ -34,6 +34,8 @@ services:
       # Caddy auf derselben Maschine spricht über die Docker-Brücke herein
       # (172.16/12 gehört zu uniquelocal). Nur ihm wird X-Forwarded-* geglaubt.
       TRUST_PROXY: loopback,uniquelocal
+      # Welche Umgebung das ist: prod zeigt kein Band (T-070).
+      ATLAS_ENV: prod
       # Gibt für genau einen Start frei, was eine Migration oder der Seed
       # entfernen würde (T-076): `ATLAS_ALLOW_DATA_LOSS=024_x.sql ./deploy.sh …`.
       # Nicht in .env — eine Freigabe, die stehen bleibt, gilt auch beim nächsten.

@@ -53,7 +53,13 @@ describe('GET /api/health', () => {
     const { inject } = await makeApp();
     const res = await inject({ method: 'GET', url: '/api/health' });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ ok: true });
+    expect(res.json()).toEqual({ ok: true, env: null });
+  });
+
+  it('says which environment answers (T-070)', async () => {
+    const app = buildApp({ repo: new InMemoryRepository(seedRegistry, []), env: 'dev' });
+    expect((await app.inject({ method: 'GET', url: '/api/health' })).json()).toEqual({ ok: true, env: 'dev' });
+    expect((await app.inject({ method: 'GET', url: '/api/me' })).json().env).toBe('dev');
   });
 });
 
@@ -160,6 +166,37 @@ describe('entities', () => {
     const res = await ctx.inject({ method: 'PUT', url: `/api/entities/${volo.id}`, payload: dangling });
     expect(res.statusCode).toBe(422);
     expect(res.json().issues.map((i: { code: string }) => i.code)).toContain('dangling_relation');
+  });
+
+  /* „Revealed to" nennt Träger — Figur, Gruppe, Fraktion —, und jeder
+     Eintrag der Liste wird geprüft, nicht nur ein einzelnes Feld (T-068). */
+  it('refuses a list of links that names an article of the wrong type', async () => {
+    const ruestung: Entity = {
+      id: '44444444-4444-4444-8444-444444444444',
+      interfaces: ['Armor'],
+      name: 'Kettenhemd',
+      components: { Identity: { name: 'Kettenhemd', id: 'item-0001' } },
+      relations: [],
+    };
+    const mia: Entity = {
+      ...volo,
+      id: '55555555-5555-4555-8555-555555555555',
+      name: 'Mia',
+      components: { ...volo.components, Identity: { name: 'Mia', id: 'npc-0002' } },
+    };
+    ctx = await makeApp([ruestung, mia]);
+    const falsch: Entity = {
+      ...volo,
+      components: { ...volo.components, Visibility: { revealedTo: [mia.id, ruestung.id] } },
+    };
+    const res = await ctx.inject({ method: 'PUT', url: `/api/entities/${volo.id}`, payload: falsch });
+    expect(res.statusCode).toBe(422);
+    const issues = res.json().issues as { code: string; property?: string }[];
+    expect(issues.find((i) => i.code === 'link_wrong_type')?.property).toBe('revealedTo');
+
+    const richtig: Entity = { ...volo, components: { ...volo.components, Visibility: { revealedTo: [mia.id] } } };
+    const ok = await ctx.inject({ method: 'PUT', url: `/api/entities/${volo.id}`, payload: richtig });
+    expect(ok.statusCode).toBe(200);
   });
 
   it('refuses a body whose id disagrees with the path', async () => {

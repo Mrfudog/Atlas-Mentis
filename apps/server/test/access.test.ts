@@ -238,6 +238,13 @@ describe('behind the reverse proxy', () => {
     expect(loadConfig({ TRUST_PROXY: 'true' }).trustProxy).toBe(true);
     expect(loadConfig({ TRUST_PROXY: 'false' }).trustProxy).toBe(false);
   });
+
+  it('reads ATLAS_ENV, and a typo means no answer rather than prod (T-070)', () => {
+    expect(loadConfig({}).env).toBeNull();
+    expect(loadConfig({ ATLAS_ENV: 'dev' }).env).toBe('dev');
+    expect(loadConfig({ ATLAS_ENV: ' PROD ' }).env).toBe('prod');
+    expect(loadConfig({ ATLAS_ENV: 'prd' }).env).toBeNull();
+  });
 });
 
 /* ---------------------------------------------------------------------

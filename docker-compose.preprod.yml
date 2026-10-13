@@ -26,6 +26,9 @@ services:
       HOST: 0.0.0.0
       PORT: 8080
       TRUST_PROXY: loopback,uniquelocal
+      # Die Oberfläche zeigt oben ein Band: Daten können hier ersetzt
+      # werden (T-070, docs/Betrieb.md › Was Daten löschen kann).
+      ATLAS_ENV: dev
       # Gibt für genau einen Start frei, was eine Migration oder der Seed
       # entfernen würde (T-076): `ATLAS_ALLOW_DATA_LOSS=024_x.sql ./deploy.sh …`.
       # Nicht in .env — eine Freigabe, die stehen bleibt, gilt auch beim nächsten.

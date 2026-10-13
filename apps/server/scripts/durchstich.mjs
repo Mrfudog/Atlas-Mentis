@@ -449,13 +449,64 @@ try {
     }
   }
 
-  for (const e of [...ARTIKEL].reverse()) {
-    const r = await fetch(`${BASE}/api/entities/${e.id}`, {
-      method: 'DELETE',
-      headers: { cookie: admin },
-    });
-    pruefe(`DELETE ${e.id}`, r.ok, String(r.status));
-  }
+
+  /* ------------------------------------------- Eigene Ausfuhr (T-077) */
+  const ausfuhr = async (keks) => {
+    const r = await get(keks, '/api/export?campaign=camp_probe_a');
+    return { r, datei: r.ok ? await r.json() : null };
+  };
+  const { r: ra, datei } = await ausfuhr(leitung);
+  const drin = new Set((datei?.entities ?? []).map((e) => e.id));
+  pruefe(
+    'Ausfuhr der Leitung: ihre Kampagne, nicht die andere',
+    ra.ok && /attachment; filename="runde-a-\d{4}-\d{2}-\d{2}\.json"/.test(ra.headers.get('content-disposition') ?? '')
+      && ['camp_probe_a', 'ly_probe_a', 'pc_probe', 'npc_probe_geheim', 'sb_probe_instanz'].every((id) => drin.has(id))
+      && !drin.has('camp_probe_b') && !drin.has('ly_probe_b'),
+    `${ra.status} ${[...drin].join(', ')}`,
+  );
+  const konten = await (await get(admin, '/api/users')).json();
+  const text = JSON.stringify(datei);
+  pruefe(
+    'Ausfuhr ohne Konto-Ids',
+    konten.length > 0 && konten.every((k) => !text.includes(k.id)),
+    `${konten.length} Konten`,
+  );
+  pruefe('Ausfuhr: wer mitspielt, bekommt sie nicht', (await ausfuhr(await anmelden('probe-spiel'))).r.status === 403);
+  pruefe('Ausfuhr: `layers=all` nur die Verwaltung', (await get(leitung, '/api/export?campaign=camp_probe_a&layers=all')).status === 403);
+
+  const loeschen = async (wann, nur = null) => {
+    for (const e of [...ARTIKEL].reverse().filter((x) => !nur || nur.has(x.id))) {
+      const r = await fetch(`${BASE}/api/entities/${e.id}`, {
+        method: 'DELETE',
+        headers: { cookie: admin },
+      });
+      pruefe(`DELETE ${e.id}${wann}`, r.ok, String(r.status));
+    }
+  };
+  await loeschen('');
+
+  /* Zurück auf demselben Weg: der Ladebefehl gegen Postgres, dann noch
+     einmal ausgeführt — derselbe Bestand. `createdAt` und `updatedAt` setzt
+     die Ablage beim Schreiben. */
+  const datei1 = join(tmpdir(), `durchstich-ausfuhr-${process.pid}.json`);
+  writeFileSync(datei1, text);
+  const imp = spawnSync(process.execPath, [join(DIST, 'import.js'), datei1], { env: process.env, encoding: 'utf8' });
+  pruefe('Einfuhr der Ausfuhr', imp.status === 0, `${imp.stdout}${imp.stderr}`.trim().slice(0, 600));
+  const gleich = (l) =>
+    JSON.stringify(
+      (l ?? [])
+        .map(({ updatedAt: _t, createdAt: _c, ...e }) => ({ ...e, relations: [...(e.relations ?? [])].sort((a, b) => a.id.localeCompare(b.id)) }))
+        .sort((a, b) => a.id.localeCompare(b.id)),
+      (_k, v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v),
+    );
+  const { datei: wieder2 } = await ausfuhr(leitung);
+  pruefe(
+    'Ausfuhr → Einfuhr → Ausfuhr: derselbe Bestand',
+    gleich(wieder2?.entities) === gleich(datei?.entities),
+    `${gleich(datei?.entities).slice(0, 1500)}\n→\n${gleich(wieder2?.entities).slice(0, 1500)}`,
+  );
+  rmSync(datei1, { force: true });
+  await loeschen(' (nach der Einfuhr)', drin);
 } catch (error) {
   if (String(error?.message) !== 'abgebrochen') pruefe('Durchstich', false, String(error));
 } finally {
