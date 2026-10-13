@@ -4,6 +4,7 @@ import { areaOf, enumOptions, fieldTitle, typeChain } from '@nw/model';
 import type { PropertySchema } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
+import { Session } from '../kern/session';
 import { Wahl } from './wahl';
 
 interface Pflicht {
@@ -153,6 +154,7 @@ export class Anlegen {
   private readonly api = inject(Api);
   private readonly bestand = inject(Bestand);
   private readonly router = inject(Router);
+  private readonly session = inject(Session);
 
   protected readonly name = signal('');
   protected readonly werte = signal<Partial<Record<string, string>>>({});
@@ -163,8 +165,12 @@ export class Anlegen {
     const r = this.bestand.registry();
     if (!r) return [];
     const b = this.bereich();
+    /* Spielende legen nur Arten mit Stand an (REQ-237): ohne Status-Karte
+       wäre ein Entwurf sofort für alle fertig. Der Server lehnt es ab. */
+    const mitStand = !this.session.isAdmin();
     return Object.values(r.interfaces)
       .filter((d) => !d.abstract && (!b || areaOf(r, d.name) === b))
+      .filter((d) => !mitStand || typeChain(r, d.name).includes('Status'))
       .map((d) => ({ name: d.name, label: d.label ?? d.name }))
       .sort((a, z) => a.label.localeCompare(z.label, 'en'));
   });
@@ -226,6 +232,9 @@ export class Anlegen {
         felder[p.ref] = p.prop.type === 'number' || p.prop.type === 'integer' ? Number(roh) : roh;
       }
       const e = await this.api.createEntity(typ, name, felder);
+      /* Was eine Spielerin anlegt, darf sie schreiben (REQ-237) — das weiss
+         erst ein neues `/api/me`. Ohne es öffnete der Artikel schreibgeschützt. */
+      if (!this.session.isAdmin()) await this.session.load(true);
       this.zu.emit();
       await this.router.navigate(['/artikel', e.id], { queryParams: { edit: 1 } });
     } catch (error) {
