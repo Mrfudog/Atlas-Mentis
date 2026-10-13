@@ -30,6 +30,7 @@ import {
   campaignsOf,
   inStack,
   isOverridden,
+  READING_TYPES,
   resolveArticle,
   entityName,
   isTableRole,
@@ -212,10 +213,14 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     }
     const ebenen = [...alle.values()].filter((e) => (e.interfaces ?? [])[0] === LAYER_COMPONENT);
     const zahl = new Map<string, number>();
+    /* Ebenen mit Text (T-091): nur an ihnen steht „Read". */
+    const text = new Set<string>();
     for (const e of alle.values()) {
+      const lesbar = READING_TYPES.includes((e.interfaces ?? [])[0] ?? '');
       for (const r of e.relations ?? []) {
         if (r.type !== LAYER_RELATION || (r.props as { mode?: unknown } | undefined)?.mode === 'removes') continue;
         zahl.set(r.to, (zahl.get(r.to) ?? 0) + 1);
+        if (lesbar) text.add(r.to);
       }
     }
     const stapel = activeStack(alle, kampagne).map((x) => x.layer.id);
@@ -229,6 +234,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
         kind: String((e.components?.[LAYER_COMPONENT] as { kind?: unknown } | undefined)?.kind ?? ''),
         group: buchGruppe(e),
         articles: zahl.get(e.id) ?? 0,
+        readable: text.has(e.id),
         active: stapel.includes(e.id),
         alsoIn: andere,
         canActivate: mayActivate(user, alle, e.id, c),

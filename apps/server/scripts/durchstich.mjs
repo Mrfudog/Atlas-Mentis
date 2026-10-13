@@ -626,12 +626,24 @@ try {
       pruefe('Anpassen: das Original öffnen heisst, die Fassung zu bekommen', offen.id === fassung, offen.id);
       const original = await repo.getEntity('st_probe_t082');
       pruefe('Anpassen: das Original bleibt unberührt', (original?.relations ?? []).length === 1, JSON.stringify(original?.relations));
+      /* Die Leseansicht (T-091): das Kapitel steht im Inhaltsverzeichnis, als
+         Fassung der Kampagne, und der Lesestand liegt in `reading_position`. */
+      const buch = await (await get(admin, '/api/read/e5_book_t082a')).json();
+      pruefe('Leseansicht: das Kapitel als Fassung im Inhaltsverzeichnis',
+        buch.toc?.some((z) => z.id === 'st_probe_t082' && z.article === fassung), JSON.stringify(buch));
+      const merk = await fetch(`${BASE}/api/read/e5_book_t082a/position`, {
+        method: 'PUT', headers: { cookie: admin, 'content-type': 'application/json' }, body: JSON.stringify({ id: 'st_probe_t082' }),
+      });
+      pruefe('Leseansicht: Lesestand gemerkt', merk.status === 204, `${merk.status} ${await merk.text()}`);
+      const wieder = await (await get(admin, '/api/read/e5_book_t082a')).json();
+      pruefe('Leseansicht: Lesestand gelesen', wieder.position === 'st_probe_t082', String(wieder.position));
       /* Zurück zum alten Stapel — die übrigen Prüfungen rechnen mit ihm. */
       await fetch(`${BASE}/api/campaigns/camp_probe_a/layers`, {
         method: 'PUT', headers: { cookie: admin, 'content-type': 'application/json' }, body: JSON.stringify({ layers: stapel.filter((x) => x !== 'e5_book_t082a') }),
       });
     } finally {
       await pool.query('delete from entity where id = any($1)', [[...probe.map((e) => e.id), ...(fassung ? [fassung] : [])]]);
+      await pool.query('delete from reading_position where layer_id = $1', ['e5_book_t082a']);
       await pool.query('delete from schema_migrations where name = $1', [name]);
       await pool.end();
       rmSync(ordner, { recursive: true, force: true });

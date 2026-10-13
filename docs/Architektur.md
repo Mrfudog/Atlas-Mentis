@@ -323,6 +323,7 @@ Zeilen daneben. Eine neue Artikelart ist eine Zeile, keine Migration.
 | Bestand | `entity` (die Id), `component` (eine Karte je Art und Artikel), `relation` (Kanten, vorwärts) |
 | Register | `interface_def`, `component_def`, `relation_def`, `view_def`, `var_def`, `unit_def`, `enum_def`, `setting_def` |
 | Zugang | `app_user`, `app_session`, `app_token`, `app_invite`, `login_attempt`, `campaign_member`, `app_user_actor` |
+| Lesen | `reading_position` — der Lesestand je Konto und Buch (T-091) |
 | Protokoll | `event_log` — auch jede Massenänderung (`bulk`, mit den alten Fassungen) und ihr Zurücknehmen (`bulk.undone`) |
 
 ---
