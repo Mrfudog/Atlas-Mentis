@@ -77,12 +77,15 @@ export class Session {
     if (!me?.user) return false;
     return me.create ?? me.writable === null;
   });
-  /** Darf `ready` angeboten werden? Verwaltung und Leitung (`gm`), nicht
-   *  Spielende (REQ-237). Anzeige, keine Kontrolle. */
+  /** Darf `ready` an diesem Artikel angeboten werden? Verwaltung und
+   *  Leitung (`gm`), und ein Spieler an seiner eigenen Figur samt Statblock
+   *  und Inventar (REQ-237, E-014 d). Anzeige, keine Kontrolle. */
   readonly darfReady = computed(() => {
     const me = this._me();
-    if (!me?.user) return false;
-    return me.ready ?? me.writable === null;
+    if (!me?.user) return () => false;
+    if (me.ready ?? me.writable === null) return () => true;
+    const figur = new Set(me.character ?? []);
+    return (id: string) => figur.has(id);
   });
 
   private laeuft: Promise<void> | null = null;

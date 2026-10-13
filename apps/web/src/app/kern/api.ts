@@ -114,6 +114,26 @@ export const TABLE_ROLES: readonly TableRole[] = ['gm', 'co-gm', 'player', 'spec
 export interface Bezuege {
   names: Record<string, string>;
   links: Record<string, { id: string; name: string }[]>;
+  /**
+   * **Ein älterer fertiger Stand gilt** (REQ-237, E-012): nur für wen den
+   * Arbeitsstand sieht (Verfasserin, Leitung). `at` ist das Datum des
+   * fertigen Stands, `old`, ob die Antwort dieser Stand ist (`?stand=ready`).
+   */
+  ready?: { at: string; old: boolean };
+}
+
+/** Eine Zeile „not ready, by players" (`GET /api/unready`, REQ-237). */
+export interface Wartend {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  authors: string[];
+  /** Gilt schon ein fertiger Stand, sein Datum. */
+  readyAt: string | null;
+  updatedAt: string | null;
+  /** Ob dieser Betrachter „ready" setzen darf (`gm`, nicht `co-gm`). */
+  canReady: boolean;
 }
 
 /** Ein Blatt der Liste (`GET /api/list`) — die Form steht in `apps/server/src/liste.ts`. */
@@ -244,6 +264,9 @@ export interface Me {
   /** Ob die Maske `ready` anbietet: die Verwaltung und die Leitung (`gm`).
    *  Spielende setzen es nicht (REQ-237, E-011); der Server prüft je Artikel. */
   ready?: boolean;
+  /** Die eigene Figur samt Statblock und Inventar: dort setzt auch ein
+   *  Spieler `ready` (E-014 d). */
+  character?: string[];
 }
 
 /* ---- Verwaltung (W3). Was ein Konto an einer Kampagne darf, sagt der
@@ -409,6 +432,21 @@ export class Api {
   /** Der ganze Artikel, gesiebt, mit den Namen, die er braucht (`refs`). */
   entity(id: string): Promise<Entity & { refs?: Bezuege }> {
     return this.call<Entity & { refs?: Bezuege }>(`/api/entities/${encodeURIComponent(id)}`);
+  }
+
+  /** Der letzte fertige Stand (E-012) — für Verfasserin und Leitung. */
+  readyVersion(id: string): Promise<Entity & { refs?: Bezuege }> {
+    return this.call<Entity & { refs?: Bezuege }>(`/api/entities/${encodeURIComponent(id)}?stand=ready`);
+  }
+
+  /** Was Spielende angelegt haben und noch nicht `ready` ist (REQ-237). */
+  unready(): Promise<{ rows: Wartend[] }> {
+    return this.call<{ rows: Wartend[] }>('/api/unready');
+  }
+
+  /** „ready" per Knopf (REQ-237); der Server prüft, wer darf. */
+  setReady(id: string): Promise<Entity> {
+    return this.call<Entity>(`/api/entities/${encodeURIComponent(id)}/ready`, { method: 'POST' });
   }
 
   /** Prüfungen; `limit` 0 heisst nur die Zahlen, `'all'` jeden Treffer. */
