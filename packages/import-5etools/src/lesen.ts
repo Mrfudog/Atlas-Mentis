@@ -19,8 +19,9 @@ import type { Knoten } from './copy.js';
 export const STICHTAG_2024 = '2024-09-01';
 
 /* Verzeichnisse und Dateien ohne Einträge, die Artikel werden könnten:
-   Buch- und Abenteuertext (E1: nur die Regeln daraus), Werkzeugdaten der
-   Seite (Abgleich §2.7). */
+   Buchtext (E1: nur die Regeln daraus), Werkzeugdaten der Seite (Abgleich
+   §2.7). Der Abenteuertext kommt seit T-082 herein, aber nicht als Liste
+   je Art: `liesAbenteuer` liest ihn für sich (`arten/abenteuer.ts`). */
 const NICHT_LESEN = /^(adventure|book|foundry.*|changelog|renderdemo|converter|makecards|makebrew-creature|msbcr|encounterbuilder|bookref-.*|gendata-(maps|nav-adventure-book-index|spell-source-lookup|subclass-lookup|tag-redirects)|index|fluff-index|sources|bookref)(\.json)?$/;
 
 /** Arten, die nicht hereinkommen, und warum (Abgleich §2, Arbeitsplan E4). */
@@ -60,7 +61,7 @@ export const ARTEN_WEG: Record<string, string> = {
   lifeClass: 'Tabellen aus „This Is Your Life" — noch nicht zugeordnet',
   _meta: 'Dateikopf',
   book: 'Buch-Metadaten: eine Systemebene statt einer je Buch (Arbeitsplan §1)',
-  adventure: 'Abenteuer-Metadaten: eine Systemebene statt einer je Buch (Arbeitsplan §1)',
+  adventure: 'Abenteuer-Metadaten: Name und Erscheinen der Ebene (T-082); der Text kommt aus adventure/',
   itemMastery: 'Waffenmeisterschaft gibt es erst 2024',
   languageScript: 'die Schrift steht als Wort an Language.script',
   hoard: 'Schatztabellen mit verschachtelten Würfen — noch nicht zugeordnet',
@@ -80,6 +81,17 @@ export interface Datenstand {
   /** Je 5e.tools-Art alle Einträge, ungesiebt. */
   arten: Map<string, Knoten[]>;
   quellen: Map<string, Quelle>;
+  /** Je Abenteuer (Kürzel, klein) sein Textbaum aus `adventure/` (T-082). */
+  abenteuer?: Map<string, Abenteuer>;
+}
+
+/** Ein Abenteuer aus `adventure/adventure-*.json` mit seinem Kopf aus `adventures.json`. */
+export interface Abenteuer {
+  id: string;
+  /** Der Kopf: Name, Stufen, Erscheinen, `contents` mit den Ordnungszahlen der Kapitel. */
+  kopf: Knoten;
+  /** Die Kapitel, wie 5e.tools sie hält (`data`). */
+  daten: Knoten[];
 }
 
 function sammle(dir: string, out: string[]): void {
@@ -126,7 +138,44 @@ export function lies(datenPfad: string): Datenstand {
   };
   meta('books.json', 'book', 'book');
   meta('adventures.json', 'adventure', 'adventure');
-  return { arten, quellen };
+  return { arten, quellen, abenteuer: liesAbenteuer(datenPfad) };
+}
+
+/**
+ * Die Abenteuer (T-082, REQ-240): je Datei in `adventure/` ein Textbaum,
+ * dazu der Kopf aus `adventures.json`. Ohne Verzeichnis keine — ein
+ * Datenstand ohne Abenteuer ist kein Fehler.
+ */
+export function liesAbenteuer(datenPfad: string): Map<string, Abenteuer> {
+  const out = new Map<string, Abenteuer>();
+  const koepfe = new Map<string, Knoten>();
+  try {
+    const j = JSON.parse(readFileSync(join(datenPfad, 'adventures.json'), 'utf8')) as Record<string, Knoten[]>;
+    for (const a of j['adventure'] ?? []) koepfe.set(String(a['id'] ?? '').toLowerCase(), a);
+  } catch {
+    return out;
+  }
+  let dateien: string[];
+  try {
+    dateien = readdirSync(join(datenPfad, 'adventure')).filter((f) => /^adventure-.*\.json$/.test(f)).sort();
+  } catch {
+    return out;
+  }
+  for (const f of dateien) {
+    let j: Record<string, Knoten[]>;
+    try {
+      j = JSON.parse(readFileSync(join(datenPfad, 'adventure', f), 'utf8')) as Record<string, Knoten[]>;
+    } catch {
+      continue;
+    }
+    for (const a of j['adventureData'] ?? []) {
+      const id = String(a['id'] ?? a['source'] ?? '');
+      const kopf = koepfe.get(id.toLowerCase());
+      if (!id || !kopf || !Array.isArray(a['data'])) continue;
+      out.set(id.toLowerCase(), { id: String(kopf['id'] ?? id), kopf, daten: a['data'] as Knoten[] });
+    }
+  }
+  return out;
 }
 
 /** Die Quelle eines Eintrags. Magische Varianten tragen sie in `inherits`. */

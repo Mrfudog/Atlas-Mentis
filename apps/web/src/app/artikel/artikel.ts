@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import {
   areaOf,
   choicesOf,
@@ -154,6 +154,22 @@ interface Feld {
                 @if (art(e) === 'Class' && !bearbeitet()) {
                   <a class="knopf" [routerLink]="['/classes', e.id]">Class view</a>
                 }
+                <!-- Anpassen über der Vorlage (E-018, T-082): eine Fassung in
+                     der Ebene der Kampagne, das Original bleibt. -->
+                @if (anpassbar() && !bearbeitet()) {
+                  <button type="button" [disabled]="passtAn()" (click)="anpassen()"
+                          title="Make a version for this campaign. The original stays as it is.">
+                    {{ passtAn() ? 'Adapting…' : 'Adapt for this campaign' }}
+                  </button>
+                }
+                @if (original(); as o) {
+                  @if (session.isAdmin() && !bearbeitet()) {
+                    <button type="button" [disabled]="passtAn()" (click)="zumOriginal(o.id)"
+                            title="Delete this version; the campaign sees the original again.">
+                      Back to the original
+                    </button>
+                  }
+                }
                 @if (darfSchreiben() && !zeigtAlten()) {
                   <button type="button" (click)="bearbeitet() ? abbrechen() : beginnen()">
                     {{ bearbeitet() ? 'Cancel' : 'Edit' }}
@@ -167,6 +183,15 @@ interface Feld {
               </div>
             </div>
 
+            @if (anpassFehler(); as f) {
+              <p class="fehler" role="alert">{{ f }}</p>
+            }
+            @if (original(); as o) {
+              <p class="hinweis" role="status">
+                This campaign’s version of “{{ o.name }}”. Links to the original lead here; the
+                original stays as it was.
+              </p>
+            }
             <!-- Ein älterer fertiger Stand gilt für alle anderen (REQ-237,
                  E-012). Das Band sieht nur, wer den Arbeitsstand sieht. -->
             @if (fertigAm(); as am) {
@@ -530,6 +555,13 @@ export class Artikel {
        der nächste geholt. */
     effect(() => {
       void this.bestand.oeffnen(this.id());
+    });
+    /* **Wer das Original öffnet, landet bei der Fassung** (E-018, T-082):
+       der Server liefert, was in der laufenden Kampagne gilt. Die Adresse
+       zieht nach, damit Speichern und Verweise die Fassung meinen. */
+    effect(() => {
+      const e = this.artikel();
+      if (e && e.id !== this.id()) void untracked(() => this.router.navigate(['/artikel', e.id], { replaceUrl: true }));
     });
     /* Einmal je Artikel: nach dem Speichern steht `?edit=1` noch in der
        Adresse, und die Seite soll dann lesen, nicht wieder bearbeiten. */
@@ -898,6 +930,52 @@ export class Artikel {
   >([]);
 
   private readonly api = inject(Api);
+  private readonly router = inject(Router);
+
+  /** „Adapt" anbieten — der Server hat es mit dem Artikel gesagt (`refs.adaptable`). */
+  protected readonly anpassbar = computed(() => this.bestand.anpassbar().has(this.id()));
+  protected readonly passtAn = signal(false);
+  protected readonly anpassFehler = signal<string | null>(null);
+
+  /** Ist das eine Fassung (E-018)? Dann das Original, das sie ersetzt. */
+  protected readonly original = computed(() => {
+    const e = this.artikel();
+    const ziel = (e?.relations ?? []).find((r) => r.type === 'overrides')?.to;
+    return ziel ? { id: ziel, name: this.bestand.name()(ziel) ?? 'the original' } : null;
+  });
+
+  protected async anpassen(): Promise<void> {
+    const e = this.artikel();
+    if (!e) return;
+    this.passtAn.set(true);
+    this.anpassFehler.set(null);
+    try {
+      const { id } = await this.api.adapt(e.id);
+      /* Das Original zeigt ab jetzt auf die Fassung; was offen war, gilt nicht mehr. */
+      await this.bestand.oeffnen(this.id(), true);
+      await this.router.navigate(['/artikel', id]);
+    } catch (x) {
+      this.anpassFehler.set(x instanceof Error ? x.message : String(x));
+    } finally {
+      this.passtAn.set(false);
+    }
+  }
+
+  protected async zumOriginal(original: string): Promise<void> {
+    const e = this.artikel();
+    if (!e || !confirm('Delete this version? The campaign sees the original again.')) return;
+    this.passtAn.set(true);
+    this.anpassFehler.set(null);
+    try {
+      await this.api.deleteEntity(e.id);
+      await this.bestand.oeffnen(original, true);
+      await this.router.navigate(['/artikel', original]);
+    } catch (x) {
+      this.anpassFehler.set(x instanceof Error ? x.message : String(x));
+    } finally {
+      this.passtAn.set(false);
+    }
+  }
 
   protected readonly darfSchreiben = computed(() => {
     const e = this.artikel();

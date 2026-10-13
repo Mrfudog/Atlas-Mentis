@@ -571,6 +571,73 @@ try {
     }
   }
 
+  /* Abenteuer als Ebene (T-082): die Migration macht aus einer Buchebene mit
+     der Marke `adventure` eine Ebene `kind: adventure` und lässt die übrigen
+     Bücher, wie sie sind. Danach, gegen die echte Datenbank: „Adapt" legt
+     eine Fassung in die Ebene der Kampagne, und das Original öffnen heisst,
+     die Fassung zu bekommen. */
+  {
+    const { migrate } = await import(join(DIST, 'migrate.js'));
+    const { PgRepository } = await import(join(DIST, 'repo.pg.js'));
+    const { default: pg } = await import('pg');
+    const pool = new pg.Pool({ connectionString: process.env['DATABASE_URL'] });
+    const repo = new PgRepository(pool);
+    const ebene = (id, name, tag, n) => ({
+      id, name, interfaces: ['Layer'],
+      components: { ...ident(name, `layer-09${n}`), Layer: { kind: 'book', order: 0, version: '2014' }, Tags: { tags: [tag] } },
+      relations: [],
+    });
+    const probe = [
+      ebene('e5_book_t082a', 'Probe Adventure', 'adventure', 81),
+      ebene('e5_book_t082b', 'Probe Sourcebook', 'sourcebook', 82),
+      { id: 'st_probe_t082', name: 'Probe Chapter', interfaces: ['Story'], components: { ...ident('Probe Chapter', 'story-0981'), Story: { kind: 'chapter' } }, relations: [{ id: 'st_probe_t082~in', type: 'inLayer', to: 'e5_book_t082a', props: {} }] },
+    ];
+    const ordner = mkdtempSync(join(tmpdir(), 'durchstich-abenteuer-'));
+    const name = 'zzz_durchstich_abenteuer_ebene.sql';
+    let fassung = '';
+    try {
+      for (const e of probe) {
+        const r = await put(admin, e);
+        pruefe(`Probeartikel ${e.id}`, r.ok, `${r.status} ${await r.text()}`);
+      }
+      const { readFileSync } = await import('node:fs');
+      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '029_abenteuer_ebene.sql'), 'utf8'));
+      await migrate(pool, { env: {} }, ordner);
+      const art = async (id) => (await repo.getEntity(id))?.components['Layer']?.kind;
+      pruefe('Abenteuer als Ebene: die Migration setzt kind adventure, ein Quellenbuch bleibt book',
+        (await art('e5_book_t082a')) === 'adventure' && (await art('e5_book_t082b')) === 'book',
+        `${await art('e5_book_t082a')} / ${await art('e5_book_t082b')}`);
+      /* Die laufende Kampagne schaltet das Abenteuer auf; ihre eigene Ebene hat sie schon. */
+      const k = await (await get(admin, '/api/campaigns/camp_probe_a/layers')).json();
+      const stapel = [...k.layers.filter((l) => l.active).map((l) => l.id), 'e5_book_t082a'];
+      stapel.sort((a, b) => (a === 'e5_book_t082a' ? -1 : b === 'e5_book_t082a' ? 1 : 0));
+      const gesetzt = await fetch(`${BASE}/api/campaigns/camp_probe_a/layers`, {
+        method: 'PUT', headers: { cookie: admin, 'content-type': 'application/json' }, body: JSON.stringify({ layers: stapel }),
+      });
+      pruefe('Abenteuer als Ebene: aufgeschaltet', gesetzt.ok, `${gesetzt.status} ${await gesetzt.text()}`);
+      const g = await (await get(admin, '/api/campaigns/camp_probe_a/layers')).json();
+      pruefe('Abenteuer als Ebene: steht unter den Abenteuern',
+        g.layers.some((l) => l.id === 'e5_book_t082a' && l.group === 'adventure' && l.active), JSON.stringify(g.layers.map((l) => [l.id, l.group, l.active])));
+      const a = await fetch(`${BASE}/api/entities/st_probe_t082/adapt`, { method: 'POST', headers: { cookie: admin } });
+      const aj = await a.json();
+      fassung = aj.id ?? '';
+      pruefe('Anpassen: eine Fassung in der Ebene der Kampagne', a.status === 201 && !!fassung, `${a.status} ${JSON.stringify(aj)}`);
+      const offen = await (await get(admin, '/api/entities/st_probe_t082')).json();
+      pruefe('Anpassen: das Original öffnen heisst, die Fassung zu bekommen', offen.id === fassung, offen.id);
+      const original = await repo.getEntity('st_probe_t082');
+      pruefe('Anpassen: das Original bleibt unberührt', (original?.relations ?? []).length === 1, JSON.stringify(original?.relations));
+      /* Zurück zum alten Stapel — die übrigen Prüfungen rechnen mit ihm. */
+      await fetch(`${BASE}/api/campaigns/camp_probe_a/layers`, {
+        method: 'PUT', headers: { cookie: admin, 'content-type': 'application/json' }, body: JSON.stringify({ layers: stapel.filter((x) => x !== 'e5_book_t082a') }),
+      });
+    } finally {
+      await pool.query('delete from entity where id = any($1)', [[...probe.map((e) => e.id), ...(fassung ? [fassung] : [])]]);
+      await pool.query('delete from schema_migrations where name = $1', [name]);
+      await pool.end();
+      rmSync(ordner, { recursive: true, force: true });
+    }
+  }
+
   /* ------------------------------------------- Eigene Ausfuhr (T-077) */
   const ausfuhr = async (keks) => {
     const r = await get(keks, '/api/export?campaign=camp_probe_a');
