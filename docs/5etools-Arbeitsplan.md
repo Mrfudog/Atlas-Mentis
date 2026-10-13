@@ -357,7 +357,8 @@ sechs Zeilen und `skills` sind weg. Zeilen `Size` und `DamageType`.
 Entscheidung D50, Regeln S1–S3, C1–C4, Ü1–Ü3 in
 [Datenmodell.md](Datenmodell.md) §5.7. Offen: der Bogen in `apps/web`
 zeichnet Klasse und Stufe noch nicht; die Wahl aus `ProficiencyChoice`
-trifft niemand für die Figur; eine umbenannte Fertigkeit nimmt die
+trifft niemand für die Figur (seit T-079: `Choices.choices` am Artikel,
+die Antwort als Kante `chose`; die Maske dafür ist T-080); eine umbenannte Fertigkeit nimmt die
 gespeicherten Übungen nicht mit.
 
 ### P5 — Importer (Opus 5.5 für den Kern, danach Sonnet)

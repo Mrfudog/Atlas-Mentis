@@ -184,6 +184,16 @@ globale Einstellung, 65 von 75 Artikeln ohne Ebene, `gmFields` gilt
 installationsweit); `mayWrite` kennt die Leitung nicht; Rollen setzt am
 Server nur die Kommandozeile.
 
+### Wahlen als Feld — entschieden am 13.10. (E-015 a, T-079)
+
+| Was | Entscheidung |
+|---|---|
+| `ProficiencyChoice` (`chooseFrom`, `chooseCount`, `chooseNote`) trug **eine** Wahl; jede weitere stand als Satz im Text | **`Choices.choices`**: je Wahl ein Eintrag mit Form (`entry`), `{id, kind, level, when, from, count, bonus, note}`. Klasse, Unterklasse, Abstammung, Hintergrund und **Talent** nehmen es. Migration 028 macht aus jeder alten Karte einen Eintrag `proficiencies`. |
+| Wo die Figur ihre Entscheide hält | **Kante `chose`** (PlayerCharacter → der fragende Artikel), `props.choice` = die `id`, `props.picks` = die Antworten. Keine Karte an der Figur: die Kante sagt schon, welcher Artikel fragte, und ihre Gegenrichtung („wer hat das gewählt") ist eine Abfrage. |
+| Was die Antworten ergeben | **beim Lesen** (`chosenResult`, D8). Eine Änderung am Artikel wirkt auf jede Figur; eine Antwort auf eine verschwundene Wahl ist verwaist (`orphanAnswers`). |
+| `Ancestry.abilityNote` | bleibt, hält aber nur noch, was keine Wahl ist (`lineage`); die Wahl „+1 auf zwei" ist ein Eintrag. |
+| Attributsverfahren (E-016) | nicht hier: sie sind Artikel/Zeilen der Leitung (T-080). Ein Verfahren kann dieselbe Form nutzen (Feld mit `entry`). |
+
 ---
 
 ## Noch nicht durchgegangen
