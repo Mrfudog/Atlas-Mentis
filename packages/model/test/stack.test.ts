@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { activeStack, currentCampaign, inPlay, inStack, isOverridden, resolveArticle } from '../src/stack.js';
+import { activeStack, campaignLayer, currentCampaign, inPlay, inStack, isOverridden, resolveArticle } from '../src/stack.js';
 import type { Entity, EntityId } from '../src/types.js';
 
 /* Zwei Kampagnen in einem Speicher: Nebelwacht schaltet das Regelwerk und
@@ -83,5 +83,17 @@ describe('what is in play', () => {
   it('without any campaign, everything is in play', () => {
     expect(inStack(entities, E('r_salz'), null)).toBe(true);
     expect(isOverridden(entities, E('r_grund'), null)).toBe(false);
+  });
+});
+
+/* REQ-237: wohin der Server legt, was Spielende anlegen — die
+   spezifischste Ebene, die nur diese Kampagne aufschaltet. */
+describe('campaignLayer', () => {
+  it('nimmt die eigene Ebene der Kampagne, nicht das geteilte Regelwerk', () => {
+    expect(campaignLayer(entities, entities.get('camp_nebel')!)?.id).toBe('ly_nebel');
+    expect(campaignLayer(entities, entities.get('camp_salz')!)?.id).toBe('ly_salz');
+  });
+  it('gibt null ohne Kampagne', () => {
+    expect(campaignLayer(entities, null)).toBeNull();
   });
 });

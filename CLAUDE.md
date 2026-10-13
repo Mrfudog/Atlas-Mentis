@@ -186,7 +186,10 @@ wiederkommen, werden sie neu geschrieben.
   `Access`-Karte an der Figur (und für einen Tag an der Kampagne): der
   Server las sie nie, `userIds` war in keinem Artikel gefüllt, eine Figur
   sagt nicht, in welcher Runde ihr Konto was ist, und eine Konto-Id in
-  einem Artikel wandert beim Export mit (REQ-199). Die Sammlung `members`
+  einem Artikel wandert beim Export mit (REQ-199). **Wer einen Artikel
+  angelegt hat, steht ebenso am Server** (`app_user_article`, D72):
+  Spielende der laufenden Kampagne legen an, schreiben, was sie angelegt
+  haben, und sehen es in jedem Stand. Die Sammlung `members`
   steht darum **nicht** in der Ausfuhr. Gepflegt wird auf der
   Kampagnenseite (Element `members`): von der Verwaltung und der Leitung
   dieser Kampagne; ein Mitleiter sieht die Liste und ändert sie nicht —
@@ -206,8 +209,9 @@ wiederkommen, werden sie neu geschrieben.
   ein Feld, das gleichzeitig Regel ist, leckt beim ersten Tippfehler.
   **Offen:** ohne Ebenenkante gehört ein Artikel niemandem besonders (65 von
   75 heute) — das stimmt bei *einer* Kampagne und nicht mehr bei zweien.
-  Ebenso offen: `mayWrite` kennt die Leitung noch nicht, und die laufende
-  Kampagne ist eine globale Einstellung.
+  Ebenso offen: `mayWrite` kennt die Leitung noch nicht (D69; nur was
+  Spielende angelegt haben, schreibt `gm`, um es `ready` zu setzen, D72),
+  und die laufende Kampagne ist eine globale Einstellung.
 - **Drei Ansichten, und der Ort wählt sie.** `overview` steht in einem
   Verweis oder einer Listenzeile, `quick` auf einer Karte, `full` auf der
   Artikelseite. Einen Wähler gibt es nicht — ein Verweis ist ein Verweis,
@@ -352,6 +356,13 @@ wiederkommen, werden sie neu geschrieben.
   Feld für immer festhielt. Wie weit eine Sache am Tisch ist, sagt das Feld
   der Art: `Quest.progress`, `Encounter.phase`, `Explored.state`. Drei
   Felder hiessen einmal alle `state` und meinten Verschiedenes.
+  **Seit D72 ist er auch die grobe Sichtbarkeit für Spielende**
+  (`articleVisible`, `isReady`): wer nicht `gm`/`co-gm` der Kampagne des
+  Artikels ist, sieht nur `ready` — ausser Eigenem (angelegt oder
+  schreibbar, `Viewer.own`). **Ohne Status-Karte zählt ein Artikel als
+  fertig.** `ready` setzen nur die Verwaltung und `gm`; der Server prüft
+  es, die Maske bietet es Spielenden nicht an. Kein eigenes Feld „zur
+  Abnahme" (E-011) — das wäre ein zweiter Stand.
 - **Eine Seite, ein Scroll.** Der Registerkörper hatte sein eigenes
   Fenster (`overflow-y:auto; max-height:72vh`) — die Feldliste scrollte im
   Kasten, während die Seite stillstand, und wer unten etwas aufklappte,

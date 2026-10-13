@@ -67,14 +67,22 @@ export class Session {
   });
 
   /**
-   * Darf dieser Betrachter Artikel anlegen? Wer alles schreiben darf
-   * (`writable: null`, die Verwaltung) — einen Artikel, den es noch nicht
-   * gibt, besitzt kein Spieler. Der Server prüft es beim Anlegen noch
-   * einmal; das hier spart nur den Knopf, der danach Nein sagt.
+   * Darf dieser Betrachter Artikel anlegen? Die Verwaltung, und Spielende
+   * der laufenden Kampagne (REQ-237) — das sagt der Server (`create`). Er
+   * prüft es beim Anlegen noch einmal; das hier spart nur den Knopf, der
+   * danach Nein sagt.
    */
   readonly darfAnlegen = computed(() => {
     const me = this._me();
-    return !!me?.user && me.writable === null;
+    if (!me?.user) return false;
+    return me.create ?? me.writable === null;
+  });
+  /** Darf `ready` angeboten werden? Verwaltung und Leitung (`gm`), nicht
+   *  Spielende (REQ-237). Anzeige, keine Kontrolle. */
+  readonly darfReady = computed(() => {
+    const me = this._me();
+    if (!me?.user) return false;
+    return me.ready ?? me.writable === null;
   });
 
   private laeuft: Promise<void> | null = null;

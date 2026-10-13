@@ -211,6 +211,12 @@ export interface Me {
   registry?: boolean;
   /** Ob es überhaupt eine offene Einladung gibt — nur dann lohnt „Sign up". */
   invites?: boolean;
+  /** Ob „New article" angeboten wird: die Verwaltung und Spielende der
+   *  laufenden Kampagne (REQ-237). Vom Server, der es beim Anlegen prüft. */
+  create?: boolean;
+  /** Ob die Maske `ready` anbietet: die Verwaltung und die Leitung (`gm`).
+   *  Spielende setzen es nicht (REQ-237, E-011); der Server prüft je Artikel. */
+  ready?: boolean;
 }
 
 /* ---- Verwaltung (W3). Was ein Konto an einer Kampagne darf, sagt der
