@@ -23,6 +23,12 @@ import { BEREICHE } from './kern/bereiche';
  * laufenden Kampagne) — lesen kann es jeder über die Adresse, aber ein
  * Eintrag für etwas, das man nur ansehen kann, lenkt am Tisch ab.
  *
+ * Auf **dev** steht über allem ein schmales Band (T-070): dort ersetzen
+ * Ausrollen und Einlesen den Bestand, und wer das nicht weiss, pflegt auf
+ * der Spielwiese, was am Tisch fehlen wird. Es steht auch vor der
+ * Anmeldung — gerade dann, wenn man noch nicht weiss, wo man ist. Auf prod
+ * und ohne `ATLAS_ENV` kein Band.
+ *
  * Die Kopfleiste bleibt weg, solange die Sitzung noch nicht gefragt ist.
  * Ein Balken, der erst „nicht angemeldet" zeigt und einen Wimpernschlag
  * später den Namen, sieht nach einem Fehler aus, auch wenn keiner vorliegt.
@@ -31,6 +37,12 @@ import { BEREICHE } from './kern/bereiche';
   selector: 'app-root',
   imports: [RouterOutlet, RouterLink, RouterLinkActive],
   template: `
+    @if (session.dev()) {
+      <p class="umgebung" role="note">
+        <strong>DEV</strong> — Test environment. Data may be replaced when deploying or importing.
+        <a [href]="betrieb" target="_blank" rel="noopener">What can delete data</a>
+      </p>
+    }
     @if (session.stand() === 'bereit' && session.angemeldet()) {
       <header class="leiste">
         <a routerLink="/" class="marke">Atlas Mentis</a>
@@ -73,6 +85,18 @@ import { BEREICHE } from './kern/bereiche';
     <router-outlet />
   `,
   styles: `
+    .umgebung {
+      margin: 0;
+      padding: 0.2rem 1.5rem;
+      background: var(--warn);
+      color: var(--surface);
+      font-size: 0.85rem;
+      text-align: center;
+    }
+    .umgebung a {
+      margin-left: 0.5rem;
+      color: inherit;
+    }
     .leiste {
       display: flex;
       flex-wrap: wrap;
@@ -154,6 +178,9 @@ import { BEREICHE } from './kern/bereiche';
 export class App {
   protected readonly session = inject(Session);
   private readonly router = inject(Router);
+  /** Wo steht, was Daten löschen kann und wie man es rückgängig macht. */
+  protected readonly betrieb =
+    'https://github.com/Mrfudog/Atlas-Mentis/blob/preprod/docs/Betrieb.md#was-daten-löschen-kann';
   protected readonly bereiche = BEREICHE.filter((b) => b.weg !== 'play');
 
   constructor() {

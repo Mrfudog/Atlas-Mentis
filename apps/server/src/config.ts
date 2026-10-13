@@ -4,6 +4,19 @@ export interface Config {
   databaseUrl: string;
   /** Wem `X-Forwarded-*` geglaubt wird. Ungesetzt: niemandem. */
   trustProxy: boolean | string;
+  /** Welche Umgebung das ist (`ATLAS_ENV`); ungesetzt: keine Angabe. */
+  env: AtlasEnv | null;
+}
+
+export type AtlasEnv = 'dev' | 'prod';
+
+/* Die Leitung soll auf einen Blick sehen, ob die Daten hier sicher sind
+   (T-070): auf dev ersetzen Ausrollen und Einlesen den Bestand, auf prod
+   nicht. Nur die zwei Wörter zählen — ein Tippfehler heisst „keine
+   Angabe" und nicht still „prod". */
+function atlasEnv(raw: string | undefined): AtlasEnv | null {
+  const v = raw?.trim().toLowerCase();
+  return v === 'dev' || v === 'prod' ? v : null;
 }
 
 /* Hinter Caddy kommt jede Anfrage als http vom Proxy. Ohne Vertrauen
@@ -26,5 +39,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     databaseUrl:
       env['DATABASE_URL'] ?? 'postgres://nebelwacht:nebelwacht@localhost:5432/nebelwacht',
     trustProxy: trustProxy(env['TRUST_PROXY']),
+    env: atlasEnv(env['ATLAS_ENV']),
   };
 }

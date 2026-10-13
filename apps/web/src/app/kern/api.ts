@@ -199,6 +199,8 @@ export interface Me {
   writable: string[] | null;
   /** Steht nur auf einem frischen Server: wie man das erste Konto anlegt. */
   setup: string | null;
+  /** Welche Umgebung antwortet (`ATLAS_ENV`); auf `dev` steht oben ein Band (T-070). */
+  env?: 'dev' | 'prod' | null;
   /** Über welches API-Token gefragt wurde, sonst `null`. */
   token?: { name: string; scope: 'read' | 'write'; expiresAt: string } | null;
   /**

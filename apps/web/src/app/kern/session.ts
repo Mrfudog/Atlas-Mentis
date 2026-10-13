@@ -35,6 +35,8 @@ export class Session {
   readonly angemeldet = computed(() => this.user() !== null);
   /** Darf das Register ändern — Anzeige, keine Kontrolle; der Server prüft. */
   readonly darfRegister = computed(() => this._me()?.registry === true);
+  /** Testumgebung: Daten können beim Ausrollen oder Einlesen ersetzt werden (T-070). */
+  readonly dev = computed(() => this._me()?.env === 'dev');
   readonly hatEinladungen = computed(() => this._me()?.invites === true);
   /**
    * Ob die Verwaltungsseite diesem Konto etwas zeigt: der Verwaltung immer,
