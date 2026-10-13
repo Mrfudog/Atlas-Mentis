@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Factions and relationships</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&amp;family=Alegreya+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#8C1C13}a:hover{color:#5E120C}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #EFE4CC; color: #2B1D12; font-family: 'Alegreya Sans', system-ui, sans-serif; font-size: 15px; display: flex; flex-direction: column">
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 10px 24px; background: #F8F1E1; border-bottom: 3px solid #8C1C13">
+    <span style="font-family: 'Alegreya SC', serif; font-size: 22px; font-weight: 700; color: #8C1C13">Atlas Mentis</span>
+    <span style="color: #6A5642">World › Factions › [Faction]</span>
+    <span style="margin-left: auto; color: #6A5642">Relationships are edges with tags, one per direction</span>
+  </header>
+
+  <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 16px; padding: 16px 24px; align-items: flex-start">
+    <section aria-label="Ranks" style="flex: 1 1 300px; max-width: 360px; background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 20px; color: #8C1C13">Ranks and members</h2>
+      <div style="border-left: 4px solid #8C1C13; padding: 6px 10px; background: #FDF1DC"><strong>[Rank 3]</strong><div style="font-size: 13px; color: #6A5642">[member] · knows: [n] secrets</div></div>
+      <div style="border-left: 4px solid #C8822E; padding: 6px 10px; background: #FDF1DC"><strong>[Rank 2]</strong><div style="font-size: 13px; color: #6A5642">[member], [member] · knows: [n]</div></div>
+      <div style="border-left: 4px solid #CDBB98; padding: 6px 10px; background: #FDF1DC"><strong>[Rank 1]</strong><div style="font-size: 13px; color: #6A5642">Rook · knows: [n]</div></div>
+      <span style="font-size: 13px; color: #6A5642">A faction knows nothing, its members do. A grant to the faction names a minimum rank: what the circle knows, the novice does not yet.</span>
+    </section>
+
+    <section aria-label="Relationship web" style="flex: 999 1 560px; min-width: 0; background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 20px; color: #8C1C13">Who thinks what of whom</h2>
+      <svg viewBox="0 0 640 380" width="100%" role="img" aria-label="Relationship web around the party" style="background: #FDF1DC; border-radius: 6px">
+        <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#6A5642"></path></marker></defs>
+        <path d="M200 190 Q 320 150 430 110" fill="none" stroke="#34502A" stroke-width="3" marker-end="url(#arr)"></path>
+        <path d="M430 130 Q 320 190 210 205" fill="none" stroke="#8C1C13" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arr)"></path>
+        <path d="M200 210 Q 320 280 440 290" fill="none" stroke="#C8822E" stroke-width="3" marker-end="url(#arr)"></path>
+        <g font-family="Alegreya Sans, sans-serif" font-size="14" text-anchor="middle">
+          <rect x="110" y="170" width="100" height="48" rx="6" fill="#8C1C13"></rect><text x="160" y="199" fill="#FBF6EC" font-weight="700">Die Nebelwacht</text>
+          <rect x="430" y="90" width="150" height="48" rx="6" fill="#EADCC0" stroke="#6A5642"></rect><text x="505" y="119">Volothamp Geddarm</text>
+          <rect x="440" y="268" width="130" height="48" rx="6" fill="#EADCC0" stroke="#6A5642"></rect><text x="505" y="297">[Faction]</text>
+          <text x="320" y="140" fill="#34502A">[tag]</text>
+          <text x="330" y="205" fill="#8C1C13">friendly</text>
+          <text x="320" y="300" fill="#9A5B0B">[tag]</text>
+        </g>
+      </svg>
+      <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px 12px; font-size: 14px; align-items: center">
+        <strong>Die Nebelwacht → Volothamp</strong><span style="padding: 1px 8px; border-radius: 10px; background: #CFE0C6">[tag]</span><span style="color: #6A5642">since session [n]</span>
+        <strong>Volothamp → Die Nebelwacht</strong><span style="padding: 1px 8px; border-radius: 10px; background: #F0D3A6">friendly</span><span style="color: #6A5642">GM only</span>
+      </div>
+      <span style="font-size: 13px; color: #6A5642">Tags are words, not a scale. Each side states its own view; the reverse edge can say something else. The judged side may not know what is thought of it.</span>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

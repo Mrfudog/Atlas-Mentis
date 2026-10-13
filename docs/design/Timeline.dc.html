@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Timelines</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&amp;family=Alegreya+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#8C1C13}a:hover{color:#5E120C}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #EFE4CC; color: #2B1D12; font-family: 'Alegreya Sans', system-ui, sans-serif; font-size: 15px; display: flex; flex-direction: column">
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 10px 24px; background: #F8F1E1; border-bottom: 3px solid #8C1C13">
+    <span style="font-family: 'Alegreya SC', serif; font-size: 22px; font-weight: 700; color: #8C1C13">Atlas Mentis</span>
+    <span style="color: #6A5642">History › Timelines</span>
+    <div role="group" aria-label="Timeline" style="margin-left: auto; display: flex; gap: 4px">
+      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="2">
+        <button type="button" onClick="{{t.pick}}" aria-pressed="{{t.pressed}}" style="min-height: 34px; padding: 0 12px; border-radius: 6px; font: inherit; font-size: 14px; cursor: pointer; {{t.style}}">{{t.label}}</button>
+      </sc-for>
+    </div>
+  </header>
+
+  <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 16px; padding: 16px 24px; align-items: flex-start">
+    <aside aria-label="Lanes" style="flex: 0 0 250px; background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px">
+      <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">{{laneTitle}}</h2>
+      <sc-for list="{{laneToggles}}" as="l" hint-placeholder-count="4">
+        <button type="button" onClick="{{l.pick}}" aria-pressed="{{l.pressed}}" style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 8px; border: 1px solid #CDBB98; border-radius: 6px; background: #FDF1DC; font: inherit; font-size: 14px; text-align: left; cursor: pointer">
+          <span aria-hidden="true" style="width: 14px; height: 14px; border-radius: 3px; {{l.swatch}}"></span>{{l.label}}
+        </button>
+      </sc-for>
+      <button type="button" style="min-height: 36px; border: 1px dashed #B9876A; border-radius: 6px; background: transparent; color: #8C1C13; font: inherit; font-weight: 700; cursor: pointer">{{addLabel}}</button>
+      <span style="font-size: 13px; color: #6A5642">{{laneNote}}</span>
+    </aside>
+
+    <section aria-label="Timeline" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+      <div style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px">
+          <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 22px; color: #8C1C13">{{title}}</h2>
+          <span style="font-size: 13px; color: #6A5642">{{scale}}</span>
+        </div>
+        <div style="position: relative; height: {{height}}px; border-radius: 6px; background: #FDF1DC; overflow: hidden">
+          <sc-for list="{{lanes}}" as="ln" hint-placeholder-count="3">
+            <div style="position: absolute; left: 0; right: 0; top: {{ln.y}}px; height: 1px; background: #E6D3B0"></div>
+            <span style="position: absolute; left: 8px; top: {{ln.ly}}px; font-size: 12px; font-weight: 700; color: #6A5642">{{ln.label}}</span>
+            <sc-for list="{{ln.spans}}" as="sp" hint-placeholder-count="2">
+              <div style="position: absolute; left: {{sp.x}}%; width: {{sp.w}}%; top: {{sp.y}}px; padding: 4px 8px; box-sizing: border-box; font-size: 13px; overflow: hidden; white-space: nowrap; {{sp.style}}"><strong>{{sp.label}}</strong> <span style="color: #6A5642">{{sp.when}}</span></div>
+            </sc-for>
+          </sc-for>
+          <div style="position: absolute; left: {{nowX}}%; top: 0; bottom: 0; width: 2px; background: #C8822E"></div>
+          <span style="position: absolute; left: calc({{nowX}}% + 6px); bottom: 6px; font-size: 13px; font-weight: 700; color: #9A5B0B">today · [world date]</span>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px"><span style="padding: 2px 8px; border-radius: 10px; background: #EADCC0">solid: happened</span><span style="padding: 2px 8px; border-radius: 10px; border: 1px dashed #6A5642">dashed: planned or deadline</span><span style="color: #6A5642">{{legend}}</span></div>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 14px">
+        <div style="flex: 1 1 320px; background: #FDF1DC; border-top: 6px solid #C8822E; border-bottom: 6px solid #C8822E; padding: 12px 16px; display: flex; flex-direction: column; gap: 6px">
+          <h3 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 20px; color: #7A200D">{{detail.title}}</h3>
+          <span>{{detail.text}}</span>
+          <span style="font-size: 13px; color: #6A5642">{{detail.note}}</span>
+        </div>
+        <div style="flex: 1 1 280px; background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px">
+          <h3 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">Advance time</h3>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px">
+            <button type="button" style="min-height: 36px; padding: 0 10px; border: 1px solid #C8822E; border-radius: 6px; background: #F6E2BF; font: inherit; cursor: pointer">+1 watch</button>
+            <button type="button" style="min-height: 36px; padding: 0 10px; border: 1px solid #C8822E; border-radius: 6px; background: #F6E2BF; font: inherit; cursor: pointer">Long rest</button>
+            <button type="button" style="min-height: 36px; padding: 0 10px; border: 1px solid #C8822E; border-radius: 6px; background: #F6E2BF; font: inherit; cursor: pointer">+1 day</button>
+            <button type="button" style="min-height: 36px; padding: 0 10px; border: 1px solid #C8822E; border-radius: 6px; background: #F6E2BF; font: inherit; cursor: pointer">Time skip …</button>
+          </div>
+          <span style="font-size: 13px; color: #6A5642">One world date for both timelines. Deadlines that pass are listed, nothing changes silently.</span>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: 'campaign', off: {} };
+  }
+
+  renderVals() {
+    const st = this.state;
+    const on = (b) => b ? 'border: 1px solid #8C1C13; background: #8C1C13; color: #FBF6EC; font-weight: 700' : 'border: 1px solid #CDBB98; background: #FDF1DC; color: #2B1D12';
+    const solid = (c) => 'background: ' + c + '; border-left: 4px solid #6A5642';
+    const dashed = 'background: transparent; border: 1px dashed #8C1C13; color: #8C1C13';
+    // Eine Spur ist ein Artikel mit Zeitspanne; was darin liegt, sind Ereignisse mit Time-Feld.
+    const data = {
+      campaign: {
+        title: 'Campaign · Aus Nebel wacht', scale: 'sessions and in-world days', now: 72,
+        lanes: [
+          { id: 'chapters', label: 'Chapters', color: '#EADCC0', spans: [['Chapter [1]', 3, 30, '[from] – [until]'], ['Chapter [2]', 34, 40, '[from] – ongoing']] },
+          { id: 'sessions', label: 'Sessions', color: '#FBF6EC', spans: [['Session [n]', 12, 9, ''], ['Session [n]', 30, 9, ''], ['Session [n]', 52, 9, '']] },
+          { id: 'events', label: 'Events and quests', color: '#F0D3A6', spans: [['Die Kerzengassen-Seuche', 40, 22, '[date]'], ['Wo ist Floon? · deadline', 76, 20, '[deadline]', true]] },
+          { id: 'world', label: 'World events meanwhile', color: '#D9E3CC', spans: [['[World event]', 20, 26, '[date]']] }
+        ]
+      },
+      world: {
+        title: 'World history · [world name]', scale: 'years and ages', now: 92,
+        lanes: [
+          { id: 'ages', label: 'Ages', color: '#EADCC0', spans: [['[Age]', 2, 44, '[years]'], ['[Age]', 47, 51, '[years] – today']] },
+          { id: 'war', label: '[A war]', color: '#E3A070', spans: [['[War of …]', 54, 18, '[from] – [until]'], ['[Battle]', 58, 8, '[year]'], ['[Treaty]', 72, 10, '[year]']] },
+          { id: 'dynasty', label: '[A dynasty]', color: '#D9E3CC', spans: [['[Ruler]', 30, 20, '[reign]'], ['[Ruler]', 51, 30, '[reign]']] },
+          { id: 'campaign', label: 'This campaign', color: '#F0D3A6', spans: [['Aus Nebel wacht', 90, 8, '[from] – today']] }
+        ]
+      }
+    }[st.tab];
+
+    const shown = data.lanes.filter((l) => !st.off[l.id]);
+    const LANE = 92;
+    const lanes = shown.map((l, i) => ({
+      label: l.label, y: i * LANE + 4, ly: i * LANE + 8,
+      spans: l.spans.map(([label, x, w, when, plan], k) => ({
+        label, x, w, when, y: i * LANE + 28 + (k % 2) * 30,
+        style: plan ? dashed : solid(l.color)
+      }))
+    }));
+    return {
+      tabs: [['campaign', 'Campaign'], ['world', 'World history']].map(([k, label]) => ({
+        label, pressed: String(st.tab === k), style: on(st.tab === k), pick: () => this.setState({ tab: k, off: {} })
+      })),
+      laneTitle: st.tab === 'campaign' ? 'Lanes' : 'Timelines',
+      laneToggles: data.lanes.map((l) => ({
+        label: l.label + (st.off[l.id] ? ' · hidden' : ''), pressed: String(!st.off[l.id]),
+        swatch: 'background: ' + l.color + '; border: 1px solid #6A5642; opacity: ' + (st.off[l.id] ? '0.3' : '1'),
+        pick: () => this.setState({ off: { ...st.off, [l.id]: !st.off[l.id] } })
+      })),
+      addLabel: st.tab === 'campaign' ? '+ Event' : '+ Timeline (e.g. a war)',
+      laneNote: st.tab === 'campaign'
+        ? 'Everything with a Time field lands here on its own. World events can be shown alongside.'
+        : 'A war, a dynasty, a plague: each is an article with a span, and its events sit inside it. The campaign is one lane among them.',
+      title: data.title, scale: data.scale, height: Math.max(1, shown.length) * LANE + 30, lanes, nowX: data.now,
+      legend: st.tab === 'campaign' ? 'Players see sessions and what was revealed to them.' : 'Lore the players have not learned stays hidden from them.',
+      detail: st.tab === 'campaign'
+        ? { title: 'Die Kerzengassen-Seuche', text: 'Event · disease linked · [date]', note: 'Click any bar to open its article in the article viewer.' }
+        : { title: '[War of …]', text: '[from] – [until] · [sides]', note: 'Its battles and the treaty are events inside the war; a campaign event can link back to it.' }
+    };
+  }
+}
+</script>
+</body>
+</html>

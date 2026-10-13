@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rook Nebelfinger · Character</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,700;1,400&amp;family=Alegreya+SC:wght@500;700&amp;family=Alegreya+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#8C1C13}a:hover{color:#5E120C}
+</style>
+</helmet>
+<div style="min-height: 1100px; background: #EFE4CC; color: #2B1D12; font-family: 'Alegreya Sans', system-ui, sans-serif; font-size: 15px; display: flex; flex-direction: column">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 10px 24px; background: #F8F1E1; border-bottom: 3px solid #8C1C13">
+    <span style="font-family: 'Alegreya SC', serif; font-size: 22px; font-weight: 700; color: #8C1C13">Atlas Mentis</span>
+    <nav aria-label="Player" style="display: flex; flex-wrap: wrap; gap: 2px">
+      <a href="#" aria-current="page" style="padding: 8px 12px; border-radius: 6px; background: #EADCC0; color: #2B1D12; text-decoration: none; font-weight: 700">Character</a>
+      <a href="#" style="padding: 8px 12px; color: #2B1D12; text-decoration: none">Party</a>
+      <a href="#" style="padding: 8px 12px; color: #2B1D12; text-decoration: none">Compendium</a>
+    </nav>
+    <span style="margin-left: auto; color: #6A5642">Nebelwacht · Mike (player)</span>
+  </header>
+
+  <div style="width: 100%; max-width: 1320px; margin: 0 auto; padding: 18px 24px 40px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px">
+
+    <section aria-label="Character" style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 14px 18px">
+      <div aria-hidden="true" style="width: 72px; height: 72px; border-radius: 6px; background: #2B1D12; color: #E3C9A0; display: flex; align-items: center; justify-content: center; font-family: 'Alegreya SC', serif; font-size: 30px; font-weight: 700">RN</div>
+      <div style="display: flex; flex-direction: column; gap: 2px; flex: 1 1 280px">
+        <h1 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 30px; color: #8C1C13">Rook „Nebelfinger“</h1>
+        <span>Lightfoot Halfling · Rogue 3 · Arcane Trickster · Marksman</span>
+        <span style="font-size: 13px; color: #6A5642">Unterwacht, Wasserfeste · Party: Die Nebelwacht</span>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+        <div style="display: flex; align-items: center; border: 1px solid #8C1C13; border-radius: 6px; overflow: hidden">
+          <span style="padding: 0 10px; font-size: 13px; color: #8C1C13; font-weight: 700">Nat 1s</span>
+          <button type="button" aria-label="One less" style="width: 36px; height: 40px; border: 0; border-left: 1px solid #CDBB98; background: #FBF6EC; color: #2B1D12; font: inherit; cursor: pointer">−</button>
+          <span style="min-width: 40px; text-align: center; font-family: 'Alegreya SC', serif; font-size: 20px; font-weight: 700; color: #8C1C13">{{nat1}}</span>
+          <button type="button" aria-label="One more" onClick="{{addNat1}}" style="width: 36px; height: 40px; border: 0; border-left: 1px solid #CDBB98; background: #FBF6EC; color: #2B1D12; font: inherit; cursor: pointer">+</button>
+        </div>
+        <button type="button" style="min-height: 40px; padding: 0 14px; border: 1px solid #CDBB98; border-radius: 6px; background: #FBF6EC; color: #2B1D12; font: inherit; cursor: pointer">Short rest</button>
+        <button type="button" style="min-height: 40px; padding: 0 14px; border: 1px solid #CDBB98; border-radius: 6px; background: #FBF6EC; color: #2B1D12; font: inherit; cursor: pointer">Long rest</button>
+      </div>
+    </section>
+
+    <section aria-label="Core numbers" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch">
+      <div style="flex: 3 1 520px; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px">
+        <sc-for list="{{abilities}}" as="ab" hint-placeholder-count="6">
+          <div style="background: #FDF1DC; border: 2px solid #C8822E; border-radius: 8px; padding: 6px 4px; text-align: center; display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: #7A200D">{{ab.k}}</span>
+            <span style="font-family: 'Alegreya SC', serif; font-size: 28px; font-weight: 700; line-height: 1">{{ab.mod}}</span>
+            <span style="align-self: center; min-width: 32px; border: 1px solid #C8822E; border-radius: 10px; background: #FBF6EC; font-size: 13px">{{ab.score}}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="flex: 2 1 380px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+        <div style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 6px; text-align: center"><div style="font-size: 12px; color: #6A5642">Proficiency</div><div style="font-family: 'Alegreya SC', serif; font-size: 24px; font-weight: 700">+2</div></div>
+        <div style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 6px; text-align: center"><div style="font-size: 12px; color: #6A5642">Speed</div><div style="font-family: 'Alegreya SC', serif; font-size: 24px; font-weight: 700">7.5 m</div></div>
+        <div style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 6px; text-align: center"><div style="font-size: 12px; color: #6A5642">Armor Class</div><div style="font-family: 'Alegreya SC', serif; font-size: 24px; font-weight: 700">15</div></div>
+        <div style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 6px; text-align: center"><div style="font-size: 12px; color: #6A5642">Initiative</div><div style="font-family: 'Alegreya SC', serif; font-size: 24px; font-weight: 700">+4</div></div>
+        <div style="grid-column: 1 / -1; background: #FBF6EC; border: 2px solid #8C1C13; border-radius: 8px; padding: 8px 10px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px">
+          <div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 12px; color: #6A5642">Hit points</span><span style="font-family: 'Alegreya SC', serif; font-size: 26px; font-weight: 700; color: #8C1C13">{{hp}} / 22</span><span style="font-size: 13px; color: #6A5642">Temp 0 · Hit dice 3d8</span></div>
+          <div style="display: flex; gap: 6px">
+            <button type="button" onClick="{{heal}}" style="min-height: 40px; padding: 0 12px; border: 1px solid #4F6B3A; border-radius: 6px; background: #FBF6EC; color: #34502A; font: inherit; font-weight: 700; cursor: pointer">Heal</button>
+            <button type="button" onClick="{{hurt}}" style="min-height: 40px; padding: 0 12px; border: 0; border-radius: 6px; background: #8C1C13; color: #FBF6EC; font: inherit; font-weight: 700; cursor: pointer">Damage</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start">
+      <aside aria-label="Saves, senses, proficiencies" style="flex: 1 1 220px; max-width: 250px; display: flex; flex-direction: column; gap: 12px">
+        <section style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px">
+          <h2 style="margin: 0 0 4px; font-family: 'Alegreya SC', serif; font-size: 16px; color: #7A200D">Saving throws</h2>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 10px">
+            <span>STR +0</span><span style="font-weight: 700">DEX +6 ●</span><span>CON +0</span><span style="font-weight: 700">INT +4 ●</span><span>WIS +0</span><span>CHA +3</span>
+          </div>
+        </section>
+        <section style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px">
+          <h2 style="margin: 0 0 4px; font-family: 'Alegreya SC', serif; font-size: 16px; color: #7A200D">Senses</h2>
+          <div style="display: flex; justify-content: space-between"><span>Passive Perception</span><strong>10</strong></div>
+          <div style="display: flex; justify-content: space-between"><span>Passive Insight</span><strong>10</strong></div>
+          <div style="display: flex; justify-content: space-between"><span>Passive Investigation</span><strong>12</strong></div>
+        </section>
+        <section style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 14px">
+          <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 16px; color: #7A200D">Proficiencies</h2>
+          <span><strong>Armor</strong> light</span>
+          <span><strong>Weapons</strong> simple, hand crossbows, longsword, rapier, shortsword</span>
+          <span><strong>Tools</strong> alchemist's supplies, poisoner's kit, thieves' tools</span>
+          <span><strong>Languages</strong> Common, Halfling, Thieves' Cant</span>
+        </section>
+      </aside>
+
+      <section aria-label="Skills" style="flex: 1 1 240px; max-width: 270px; background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 2px">
+        <h2 style="margin: 0 0 4px; font-family: 'Alegreya SC', serif; font-size: 16px; color: #7A200D">Skills</h2>
+        <sc-for list="{{skills}}" as="sk" hint-placeholder-count="18">
+          <div style="display: flex; align-items: center; gap: 8px; min-height: 26px; border-bottom: 1px solid #EFE4CC">
+            <span aria-label="{{sk.profLabel}}" style="width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #8C1C13; background: {{sk.dot}}"></span>
+            <span style="flex: 1">{{sk.name}} <span style="font-size: 12px; color: #6A5642">{{sk.ab}}</span></span>
+            <strong>{{sk.mod}}</strong>
+          </div>
+        </sc-for>
+        <span style="margin-top: 6px; font-size: 12px; color: #6A5642">● proficient · filled red: expertise</span>
+      </section>
+
+      <section aria-label="Sheet" style="flex: 999 1 520px; min-width: 0; background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; display: flex; flex-direction: column">
+        <div role="tablist" aria-label="Sheet sections" style="display: flex; flex-wrap: wrap; gap: 2px; padding: 8px 10px 0; border-bottom: 2px solid #C8822E">
+          <sc-for list="{{tabs}}" as="t" hint-placeholder-count="8">
+            <button type="button" role="tab" aria-selected="{{t.selected}}" onClick="{{t.pick}}" style="min-height: 42px; padding: 0 12px; border: 0; border-radius: 6px 6px 0 0; font: inherit; cursor: pointer; {{t.style}}">{{t.label}}</button>
+          </sc-for>
+        </div>
+
+        <div style="padding: 14px 16px; display: flex; flex-direction: column; gap: 12px">
+          <sc-if value="{{show.actions}}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <div style="display: flex; flex-wrap: wrap; gap: 6px">
+                <span style="padding: 4px 10px; border-radius: 14px; background: #8C1C13; color: #FBF6EC; font-weight: 700">All</span>
+                <span style="padding: 4px 10px; border-radius: 14px; background: #EADCC0">Attack</span>
+                <span style="padding: 4px 10px; border-radius: 14px; background: #EADCC0">Bonus action</span>
+                <span style="padding: 4px 10px; border-radius: 14px; background: #EADCC0">Reaction</span>
+              </div>
+              <table style="width: 100%; border-collapse: collapse">
+                <thead><tr style="text-align: left; font-family: 'Alegreya SC', serif; color: #7A200D"><th style="padding: 6px; border-bottom: 1px solid #C8822E">Attack</th><th style="padding: 6px; border-bottom: 1px solid #C8822E">Range</th><th style="padding: 6px; border-bottom: 1px solid #C8822E">Hit</th><th style="padding: 6px; border-bottom: 1px solid #C8822E">Damage</th></tr></thead>
+                <tbody>
+                  <tr><td style="padding: 6px; border-bottom: 1px solid #EFE4CC"><strong>Rapier</strong> <span style="font-size: 12px; color: #34502A">● in hand</span></td><td style="padding: 6px; border-bottom: 1px solid #EFE4CC">1.5 m</td><td style="padding: 6px; border-bottom: 1px solid #EFE4CC"><button type="button" style="border: 1px solid #C8822E; border-radius: 4px; background: #F6E2BF; padding: 2px 8px; font: inherit; cursor: pointer">+6</button></td><td style="padding: 6px; border-bottom: 1px solid #EFE4CC"><button type="button" style="border: 1px solid #C8822E; border-radius: 4px; background: #F6E2BF; padding: 2px 8px; font: inherit; cursor: pointer">1d8+4</button> piercing</td></tr>
+                  <tr><td style="padding: 6px; border-bottom: 1px solid #EFE4CC"><strong>Dagger, +1</strong> <span style="font-size: 12px; color: #6A5642">○ on the belt</span></td><td style="padding: 6px; border-bottom: 1px solid #EFE4CC">6/18 m</td><td style="padding: 6px; border-bottom: 1px solid #EFE4CC"><button type="button" style="border: 1px solid #C8822E; border-radius: 4px; background: #F6E2BF; padding: 2px 8px; font: inherit; cursor: pointer">+7</button></td><td style="padding: 6px; border-bottom: 1px solid #EFE4CC"><button type="button" style="border: 1px solid #C8822E; border-radius: 4px; background: #F6E2BF; padding: 2px 8px; font: inherit; cursor: pointer">1d4+5</button> piercing</td></tr>
+                  <tr><td style="padding: 6px"><strong>Shortbow</strong> <span style="font-size: 12px; color: #6A5642">· in the pack</span></td><td style="padding: 6px">24/96 m</td><td style="padding: 6px"><button type="button" style="border: 1px solid #C8822E; border-radius: 4px; background: #F6E2BF; padding: 2px 8px; font: inherit; cursor: pointer">+6</button></td><td style="padding: 6px"><button type="button" style="border: 1px solid #C8822E; border-radius: 4px; background: #F6E2BF; padding: 2px 8px; font: inherit; cursor: pointer">1d6+4</button> piercing</td></tr>
+                </tbody>
+              </table>
+              <div style="display: flex; flex-direction: column; gap: 6px">
+                <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center">
+                  <strong style="font-family: 'Alegreya SC', serif; color: #7A200D">Draw</strong>
+                  <sc-for list="{{draws}}" as="dw" hint-placeholder-count="4">
+                    <button type="button" onClick="{{dw.pick}}" aria-expanded="{{dw.open}}" style="min-height: 34px; padding: 0 10px; border-radius: 6px; font: inherit; font-size: 14px; cursor: pointer; {{dw.style}}">{{dw.label}} <span style="font-size: 12px; opacity: 0.8">· {{dw.count}}</span></button>
+                  </sc-for>
+                </div>
+                <sc-for list="{{drawItems}}" as="di" hint-placeholder-count="3">
+                  <div style="display: flex; justify-content: space-between; gap: 10px; padding: 4px 10px; background: #FDF1DC; border-left: 3px solid #C8822E; font-size: 14px"><strong>{{di.name}}</strong><span style="color: #6A5642">{{di.how}}</span></div>
+                </sc-for>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px">
+                <div style="background: #FDF1DC; border-left: 4px solid #8C1C13; padding: 10px 12px"><strong style="font-family: 'Alegreya SC', serif; color: #7A200D">Sneak Attack · 2d6</strong><div style="font-size: 14px">Once per turn, with advantage or an ally next to the target.</div></div>
+                <div style="background: #FDF1DC; border-left: 4px solid #C8822E; padding: 10px 12px"><strong style="font-family: 'Alegreya SC', serif; color: #7A200D">Cunning Action · bonus</strong><div style="font-size: 14px">Dash, Disengage or Hide. Or steer the mage hand.</div></div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{show.spells}}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <div style="display: flex; flex-wrap: wrap; gap: 16px"><span><strong>Ability</strong> INT +2</span><span><strong>Save DC</strong> 12</span><span><strong>Spell attack</strong> +4</span><span><strong>1st-level slots</strong> ○ ○</span></div>
+              <div style="background: #FDF1DC; border-left: 4px solid #C8822E; padding: 10px 12px"><strong style="font-family: 'Alegreya SC', serif; color: #7A200D">Mage Hand</strong> <span style="font-size: 13px; color: #6A5642">cantrip · conjuration · 1 action · 9 m</span><div style="font-size: 14px">A spectral hand appears; with Legerdemain it can be invisible and pick locks or pockets.</div></div>
+              <span style="color: #6A5642">[Other cantrips and 1st-level spells as Rook learns them]</span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{show.inventory}}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 6px">
+              <span style="color: #6A5642">On Rook · grouped by how fast it is to hand</span>
+              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #EFE4CC; padding: 4px 0"><span>Reinforced Healing Potion</span><span>1</span></div>
+              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #EFE4CC; padding: 4px 0"><span>Oil (flask)</span><span>2</span></div>
+              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #EFE4CC; padding: 4px 0"><span>Ball Bearings (1,000)</span><span>1</span></div>
+              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #EFE4CC; padding: 4px 0"><span>Ring Rijkmon</span><span>1</span></div>
+              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #EFE4CC; padding: 4px 0"><span>Arrows</span><span>20</span></div>
+              <div style="display: flex; justify-content: space-between; padding: 4px 0"><span>Rations</span><span>8</span></div>
+              <a href="#">Party inventory and the grid view</a>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{show.features}}" hint-placeholder-val="{{ false }}">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px">
+              <div style="background: #FDF1DC; padding: 10px 12px"><strong style="font-family: 'Alegreya SC', serif; color: #7A200D">Thieves' Cant</strong><div style="font-size: 14px">A secret dialect of the underworld.</div></div>
+              <div style="background: #FDF1DC; padding: 10px 12px"><strong style="font-family: 'Alegreya SC', serif; color: #7A200D">Mage Hand Legerdemain</strong><div style="font-size: 14px">Arcane Trickster, 3rd level.</div></div>
+              <div style="background: #FDF1DC; padding: 10px 12px"><strong style="font-family: 'Alegreya SC', serif; color: #7A200D">Lucky</strong><div style="font-size: 14px">Halfling: reroll a natural 1 on an attack, check or save.</div></div>
+              <div style="background: #FDF1DC; padding: 10px 12px"><strong style="font-family: 'Alegreya SC', serif; color: #7A200D">Naturally Stealthy</strong><div style="font-size: 14px">Lightfoot: hide behind a creature one size larger.</div></div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{show.background}}" hint-placeholder-val="{{ false }}">
+            <span style="color: #6A5642">[Who Rook is: portrait, traits, ideals, bonds, flaws and the chronicle of key moments]</span>
+          </sc-if>
+
+          <sc-if value="{{show.notes}}" hint-placeholder-val="{{ false }}">
+            <label style="display: flex; flex-direction: column; gap: 6px"><span style="color: #6A5642">Private notes · only you and the GM</span><textarea rows="6" style="font: inherit; padding: 8px; border: 1px solid #CDBB98; border-radius: 6px; background: #FDF1DC; color: #2B1D12"></textarea></label>
+          </sc-if>
+
+          <sc-if value="{{show.story}}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <span style="color: #6A5642">What the party has lived through · one entry per session, newest first</span>
+              <sc-for list="{{sessions}}" as="se" hint-placeholder-count="5">
+                <div style="display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 8px 10px; background: #FDF1DC; border-left: 4px solid #C8822E">
+                  <strong style="font-family: 'Alegreya SC', serif; color: #7A200D">{{se.n}}</strong><span style="flex: 1 1 260px; font-family: 'Alegreya', serif; font-size: 16px">{{se.title}}</span><span style="font-size: 13px; color: #6A5642">{{se.date}}</span>
+                </div>
+              </sc-for>
+              <div style="display: flex; gap: 12px; flex-wrap: wrap"><a href="#">People we have met</a><a href="#">Places</a><a href="#">Open threads</a></div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{show.systems}}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <div role="tablist" aria-label="Rule systems" style="display: flex; flex-wrap: wrap; gap: 6px">
+                <sc-for list="{{systems}}" as="sy" hint-placeholder-count="4">
+                  <button type="button" role="tab" aria-selected="{{sy.selected}}" onClick="{{sy.pick}}" style="min-height: 38px; padding: 0 12px; border-radius: 18px; font: inherit; cursor: pointer; {{sy.style}}">{{sy.label}}</button>
+                </sc-for>
+              </div>
+              <sc-if value="{{sys.crafting}}" hint-placeholder-val="{{ true }}">
+                <div style="display: flex; flex-direction: column; gap: 8px">
+                  <h3 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 20px; color: #7A200D">Poisoncraft &amp; Alchemy</h3>
+                  <span>Craft check <strong>+4</strong> (proficiency +2, Intelligence +2) with alchemist's supplies or a poisoner's kit.</span>
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px">
+                    <div style="background: #FDF1DC; padding: 10px 12px"><strong>Reagents</strong><div style="font-size: 14px">Curative · Poisonous · Reactive</div></div>
+                    <div style="background: #FDF1DC; padding: 10px 12px"><strong>Essences</strong><div style="font-size: 14px">Primal · Arcane · Divine</div></div>
+                    <div style="background: #FDF1DC; padding: 10px 12px"><strong>Containers</strong><div style="font-size: 14px">Vial · Flask · Crystal vial</div></div>
+                  </div>
+                  <span style="font-size: 14px; color: #6A5642">Five grades of rarity each; the recipe needs the exact grade. Ready to craft and almost there are listed from what the party carries.</span>
+                </div>
+              </sc-if>
+              <sc-if value="{{sys.tavern}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; flex-direction: column; gap: 8px">
+                  <h3 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 20px; color: #7A200D">Gasthaus Nebelfinger <span style="font-size: 14px; color: #6A5642">working title</span></h3>
+                  <span>The deed came from Renear Neverember with the citizenship in session 7. The house was called Trollgrind before.</span>
+                  <span style="color: #6A5642">[Rooms, staff, upkeep and income get their own cards once there is something to write in]</span>
+                </div>
+              </sc-if>
+              <sc-if value="{{sys.alley}}" hint-placeholder-val="{{ false }}">
+                <span style="color: #6A5642">[Alley: the rules for moving through the Nebeldistrikt's lanes, shown once the GM enables them]</span>
+              </sc-if>
+              <sc-if value="{{sys.sewers}}" hint-placeholder-val="{{ false }}">
+                <span style="color: #6A5642">[Sewers: point crawl under Wasserfeste, explored nodes and what the party knows about them]</span>
+              </sc-if>
+            </div>
+          </sc-if>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: 'actions', sys: 'crafting', hp: 22, nat1: 0, draw: 'bonus action' };
+  }
+
+  renderVals() {
+    const tabDefs = [
+      ['actions', 'Actions'], ['spells', 'Spells'], ['inventory', 'Inventory'], ['features', 'Features & traits'],
+      ['background', 'Background'], ['notes', 'Notes'], ['story', 'Story'], ['systems', 'Rule systems']
+    ];
+    const tabs = tabDefs.map(([key, label]) => ({
+      label, selected: String(this.state.tab === key),
+      style: this.state.tab === key ? 'background: #8C1C13; color: #FBF6EC; font-weight: 700' : 'background: transparent; color: #2B1D12',
+      pick: () => this.setState({ tab: key })
+    }));
+    const show = {};
+    tabDefs.forEach(([key]) => { show[key] = this.state.tab === key; });
+
+    const sysDefs = [['crafting', 'Crafting'], ['tavern', 'Tavern'], ['alley', 'Alley'], ['sewers', 'Sewers']];
+    const systems = sysDefs.map(([key, label]) => ({
+      label, selected: String(this.state.sys === key),
+      style: this.state.sys === key ? 'border: 1px solid #8C1C13; background: #8C1C13; color: #FBF6EC; font-weight: 700' : 'border: 1px solid #CDBB98; background: #FDF1DC; color: #2B1D12',
+      pick: () => this.setState({ sys: key })
+    }));
+    const sys = {};
+    sysDefs.forEach(([key]) => { sys[key] = this.state.sys === key; });
+
+    const abilities = [
+      { k: 'STR', mod: '+0', score: 10 }, { k: 'DEX', mod: '+4', score: 18 }, { k: 'CON', mod: '+0', score: 10 },
+      { k: 'INT', mod: '+2', score: 14 }, { k: 'WIS', mod: '+0', score: 11 }, { k: 'CHA', mod: '+3', score: 17 }
+    ];
+    const raw = [
+      ['Acrobatics', 'DEX', 4, 0], ['Animal Handling', 'WIS', 0, 0], ['Arcana', 'INT', 4, 1], ['Athletics', 'STR', 0, 0],
+      ['Deception', 'CHA', 5, 1], ['History', 'INT', 2, 0], ['Insight', 'WIS', 0, 0], ['Intimidation', 'CHA', 3, 0],
+      ['Investigation', 'INT', 2, 0], ['Medicine', 'WIS', 0, 0], ['Nature', 'INT', 2, 0], ['Perception', 'WIS', 0, 0],
+      ['Performance', 'CHA', 5, 1], ['Persuasion', 'CHA', 5, 1], ['Religion', 'INT', 2, 0], ['Sleight of Hand', 'DEX', 8, 2],
+      ['Stealth', 'DEX', 8, 2], ['Survival', 'WIS', 0, 0]
+    ];
+    const skills = raw.map(([name, ab, mod, tier]) => ({
+      name, ab, mod: (mod >= 0 ? '+' : '') + mod,
+      dot: tier === 2 ? '#8C1C13' : (tier === 1 ? '#E3B7A8' : 'transparent'),
+      profLabel: tier === 2 ? 'expertise' : (tier === 1 ? 'proficient' : 'not proficient')
+    }));
+
+    const sessions = [
+      { n: 'Session 8', date: '18 Sep 2026', title: 'Der Graue Schleim und das Tor unter Wasserfeste' },
+      { n: 'Session 7', date: '10 Sep 2026', title: 'Der Ring, der Erbe und der Papiervogel' },
+      { n: 'Session 6', date: '27 Aug 2026', title: 'Federn, Blut und ein flüsternder Ring' },
+      { n: 'Session 5', date: '13 Aug 2026', title: 'Ein Matrosenanzug, ein gestohlenes Buch und vier Tavernen' },
+      { n: 'Session 4', date: '2 Jul 2026', title: 'Die Spinne und der erste Tag oben' }
+    ];
+
+    // Was mit welcher Aktion aus dem Inventar kommt (REQ-217): dieselben Stufen wie im Inventar.
+    const drawable = {
+      'free action': [['Dagger, +1', 'belt holster'], ['Dagger ×2', 'belt holster']],
+      'bonus action': [['Rations ×8', 'Carried, bonus zone'], ['Healing potion', 'Carried, bonus zone'], ['Oil ×2', 'Carried, bonus zone']],
+      action: [['Shortbow', 'Carried, action zone'], ['Arrows ×20', 'Carried'], ['Rope 50 ft', 'Carried'], ['Crowbar', 'Carried'], ['Bag of Holding', 'Carried'], ['Pitons ×10', 'Backpack on the shoulder → action']],
+      turn: [['Candles ×5', 'Backpack, turn zone'], ['Ball bearings', 'Backpack, turn zone'], ['[item]', 'Bag of Holding in the action zone → turn']]
+    };
+    const openDraw = this.state.draw;
+    const draws = Object.keys(drawable).map((k) => ({
+      label: k, count: drawable[k].length, open: String(openDraw === k),
+      style: openDraw === k ? 'border: 1px solid #8C1C13; background: #8C1C13; color: #FBF6EC; font-weight: 700' : 'border: 1px solid #C8822E; background: #F6E2BF; color: #2B1D12',
+      pick: () => this.setState({ draw: openDraw === k ? null : k })
+    }));
+    const drawItems = openDraw ? drawable[openDraw].map(([name, how]) => ({ name, how: openDraw + ' · ' + how })) : [];
+
+    return {
+      tabs, show, systems, sys, abilities, skills, sessions, draws, drawItems,
+      hp: this.state.hp, nat1: this.state.nat1,
+      heal: () => this.setState({ hp: Math.min(22, this.state.hp + 1) }),
+      hurt: () => this.setState({ hp: Math.max(0, this.state.hp - 1) }),
+      addNat1: () => this.setState({ nat1: this.state.nat1 + 1 })
+    };
+  }
+}
+</script>
+</body>
+</html>

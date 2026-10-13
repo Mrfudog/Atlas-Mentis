@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DM screen · Play</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,700;1,400&amp;family=Alegreya+SC:wght@500;700&amp;family=Alegreya+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#8C1C13}a:hover{color:#5E120C}
+</style>
+</helmet>
+<div style="min-height: 1000px; background: #EFE4CC; color: #2B1D12; font-family: 'Alegreya Sans', system-ui, sans-serif; font-size: 15px; display: flex; flex-direction: column">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 10px 24px; background: #8C1C13; color: #FBF6EC">
+    <span style="font-family: 'Alegreya SC', serif; font-size: 22px; font-weight: 700">Atlas Mentis</span>
+    <div role="group" aria-label="Mode" style="display: flex; border: 1px solid #FBF6EC; border-radius: 22px; overflow: hidden">
+      <a href="Board.dc.html" style="min-height: 40px; padding: 0 18px; display: inline-flex; align-items: center; color: #FBF6EC; text-decoration: none; font-weight: 500">Prep</a>
+      <button type="button" aria-pressed="true" style="min-height: 40px; padding: 0 18px; border: 0; background: #FBF6EC; color: #8C1C13; font: inherit; font-weight: 700; cursor: pointer">Play</button>
+    </div>
+    <span style="padding: 4px 12px; border-radius: 14px; background: #6E140E">Session 12 · Round 3 · Rook Nebelfinger</span>
+    <div style="margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px">
+      <button type="button" style="min-height: 44px; padding: 0 14px; border-radius: 6px; border: 1px solid #FBF6EC; background: transparent; color: #FBF6EC; font: inherit; cursor: pointer">Table view</button>
+      <button type="button" style="min-height: 44px; padding: 0 16px; border-radius: 6px; border: 0; background: #FBF6EC; color: #8C1C13; font: inherit; font-weight: 700; cursor: pointer">Next turn</button>
+    </div>
+  </header>
+
+  <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 16px; background: #F8F1E1; border-bottom: 1px solid #CDBB98">
+    <span style="font-family: 'Alegreya SC', serif; font-weight: 700; color: #8C1C13; margin-right: 6px">DM screen · Nebelwacht</span>
+    <div role="tablist" aria-label="Windows" style="display: flex; flex-wrap: wrap; gap: 4px">
+      <sc-for list="{{windows}}" as="w" hint-placeholder-count="2">
+        <button type="button" role="tab" aria-selected="{{w.selected}}" onClick="{{w.pick}}" style="min-height: 40px; padding: 0 14px; border-radius: 6px; font: inherit; cursor: pointer; {{w.style}}">{{w.label}} <span style="font-size: 12px; opacity: 0.8">· {{w.count}}</span></button>
+      </sc-for>
+      <button type="button" style="min-height: 40px; padding: 0 12px; border: 1px dashed #B9876A; border-radius: 6px; background: transparent; color: #8C1C13; font: inherit; cursor: pointer">+ Window</button>
+    </div>
+    <div style="margin-left: auto; display: flex; flex-wrap: wrap; gap: 6px">
+      <button type="button" style="min-height: 40px; padding: 0 12px; border: 1px solid #CDBB98; border-radius: 6px; background: #FBF6EC; color: #2B1D12; font: inherit; cursor: pointer">Open “{{winLabel}}” in a new browser tab</button>
+      <button type="button" style="min-height: 40px; padding: 0 12px; border: 1px solid #CDBB98; border-radius: 6px; background: #FBF6EC; color: #2B1D12; font: inherit; cursor: pointer">+ Board or tool</button>
+    </div>
+  </div>
+
+  <main style="flex: 1; padding: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 12px; align-content: start">
+    <sc-for list="{{slots}}" as="s" hint-placeholder-count="3">
+      <section style="display: flex; flex-direction: column; background: #FDF1DC; border: 1px solid #CDBB98; border-top: 5px solid {{s.accent}}; align-self: start">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: #F8F1E1; border-bottom: 1px solid #CDBB98">
+          <span aria-hidden="true" title="Drag to reorder" style="cursor: grab; color: #6A5642; font-size: 18px; letter-spacing: -2px">⋮⋮</span>
+          <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #7A200D">{{s.title}}</h2>
+          <span style="font-size: 12px; padding: 1px 8px; border-radius: 10px; background: #EADCC0; color: #6A5642">{{s.kind}}</span>
+          <div style="margin-left: auto; display: flex; gap: 4px">
+            <button type="button" onClick="{{s.move}}" style="min-height: 36px; padding: 0 10px; border: 1px solid #CDBB98; border-radius: 6px; background: #FBF6EC; color: #2B1D12; font: inherit; font-size: 13px; cursor: pointer">→ {{s.otherLabel}}</button>
+            <button type="button" onClick="{{s.toggle}}" aria-expanded="{{s.expanded}}" aria-label="{{s.toggleLabel}}" style="width: 36px; min-height: 36px; border: 1px solid #CDBB98; border-radius: 6px; background: #FBF6EC; color: #2B1D12; font: inherit; cursor: pointer">{{s.chevron}}</button>
+          </div>
+        </div>
+        <sc-if value="{{s.open}}" hint-placeholder-val="{{ true }}">
+          <div style="padding: 12px 14px">
+            <sc-if value="{{s.isRules}}" hint-placeholder-val="{{ false }}">
+              <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+                <div style="display: flex; flex-direction: column; gap: 3px">
+                  <strong style="font-family: 'Alegreya SC', serif; color: #7A200D">Typical DCs</strong>
+                  <span>Very easy 5 · Easy 10</span><span>Medium 15 · Hard 20</span><span>Very hard 25 · Nearly impossible 30</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 3px">
+                  <strong style="font-family: 'Alegreya SC', serif; color: #7A200D">Cover</strong>
+                  <span>Half +2 AC and Dex saves</span><span>Three-quarters +5</span><span>Total: can't be targeted</span>
+                </div>
+                <div style="grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 10px">
+                  <strong style="font-family: 'Alegreya SC', serif; color: #7A200D; width: 100%">Conditions</strong>
+                  <a href="#">Blinded</a><a href="#">Charmed</a><a href="#">Frightened</a><a href="#">Grappled</a><a href="#">Incapacitated</a><a href="#">Invisible</a><a href="#">Paralyzed</a><a href="#">Poisoned</a><a href="#">Prone</a><a href="#">Restrained</a><a href="#">Stunned</a><a href="#">Unconscious</a>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{s.isStory}}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; flex-direction: column; gap: 8px">
+                <div style="display: flex; gap: 4px; flex-wrap: wrap"><span style="padding: 2px 10px; border-radius: 12px; background: #EADCC0">Campaign</span><span style="padding: 2px 10px; border-radius: 12px; background: #EADCC0">Chapter</span><span style="padding: 2px 10px; border-radius: 12px; background: #8C1C13; color: #FBF6EC; font-weight: 700">Session 12</span></div>
+                <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+                  <div style="padding: 6px 8px; background: #FBF6EC; border: 1px solid #CDBB98; border-top: 3px solid #8C1C13; opacity: 0.55"><span style="font-size: 12px; color: #6A5642">Place · done</span><div style="font-weight: 700">Kerzengasse</div></div>
+                  <div style="padding: 6px 8px; background: #FBF6EC; border: 3px solid #8C1C13"><span style="font-size: 12px; color: #8C1C13; font-weight: 700">Encounter · now</span><div style="font-weight: 700">Was aus dem Gully kommt</div></div>
+                  <div style="padding: 6px 8px; background: #FBF6EC; border: 1px solid #CDBB98; border-top: 3px solid #8C1C13"><span style="font-size: 12px; color: #6A5642">Place · next</span><div style="font-weight: 700">Der Lampenkeller</div></div>
+                  <div style="padding: 6px 8px; background: #FBF6EC; border: 1px solid #CDBB98; border-top: 3px solid #4F6B3A"><span style="font-size: 12px; color: #6A5642">NPC</span><div style="font-weight: 700">Volothamp Geddarm</div></div>
+                  <div style="padding: 6px 8px; background: #FBF6EC; border: 1px solid #CDBB98; border-top: 3px solid #8C1C13"><span style="font-size: 12px; color: #6A5642">Quest</span><div style="font-weight: 700">Wo ist Floon?</div></div>
+                  <div style="padding: 6px 8px; background: #2B1D12; color: #F8F1E1"><span style="font-size: 12px; color: #E3C9A0">GM only</span><div style="font-weight: 700">Wer die Essenz genommen hat</div></div>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{s.isArticles}}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; flex-direction: column; gap: 6px">
+                <div style="display: flex; gap: 6px; flex-wrap: wrap"><span style="padding: 2px 10px; border-radius: 12px; background: #8C1C13; color: #FBF6EC; font-weight: 700">From open boards</span><span style="padding: 2px 10px; border-radius: 12px; background: #EADCC0">All articles</span></div>
+                <h3 style="margin: 4px 0 0; font-family: 'Alegreya SC', serif; font-size: 22px; color: #7A200D">Goblin</h3>
+                <em>Small humanoid (goblinoid), neutral evil</em>
+                <span style="color: #7A200D"><strong>AC</strong> 15 · <strong>HP</strong> 7 (2d6) · <strong>Speed</strong> 9 m · <strong>Stealth</strong> +6</span>
+                <span><strong><em>Nimble Escape.</em></strong> Disengage or Hide as a bonus action.</span>
+                <span><strong><em>Scimitar.</em></strong> +4 to hit, reach 1.5 m. Hit: 5 (1d6 + 2) slashing.</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{s.isInitiative}}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; flex-direction: column; gap: 3px">
+                <div style="display: flex; justify-content: space-between; padding: 4px 8px; background: #F6E2BF; border-left: 3px solid #8C1C13; font-weight: 700"><span>18 Rook Nebelfinger</span><span>now</span></div>
+                <div style="display: flex; justify-content: space-between; padding: 4px 8px"><span>15 Goblin 1</span><span>7/7</span></div>
+                <div style="display: flex; justify-content: space-between; padding: 4px 8px"><span>14 Sela Kerzendocht</span><span></span></div>
+                <div style="display: flex; justify-content: space-between; padding: 4px 8px"><span>11 Goblin 2 · prone</span><span style="color: #8C1C13; font-weight: 700">2/7</span></div>
+                <div style="display: flex; justify-content: space-between; padding: 4px 8px; color: #6A5642"><span>9 Goblin 3 · hidden from players</span><span>7/7</span></div>
+                <a href="Initiative.dc.html" style="align-self: flex-start; min-height: 32px; padding: 0 10px; display: inline-flex; align-items: center; border: 1px solid #CDBB98; border-radius: 6px; background: #FBF6EC; text-decoration: none; color: #2B1D12">Open full screen</a>
+              </div>
+            </sc-if>
+            <sc-if value="{{s.isMap}}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; flex-direction: column; gap: 6px">
+                <div role="img" aria-label="Thumbnail of the Kerzengasse map" style="height: 150px; border: 3px solid #6A5642; background-color: #D9C49B; background-image: repeating-linear-gradient(0deg, rgba(43,29,18,0.15) 0 1px, transparent 1px 16px), repeating-linear-gradient(90deg, rgba(43,29,18,0.15) 0 1px, transparent 1px 16px)"></div>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap"><a href="Map.dc.html" style="min-height: 36px; padding: 0 10px; display: inline-flex; align-items: center; border: 1px solid #CDBB98; border-radius: 6px; background: #FBF6EC; text-decoration: none; color: #2B1D12">Open full screen</a><span style="align-self: center; font-size: 13px; color: #6A5642">On the table screen · fog on</span></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{s.isQuick}}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; flex-wrap: wrap; gap: 6px">
+                <button type="button" style="min-height: 40px; padding: 0 12px; border: 0; border-radius: 6px; background: #8C1C13; color: #FBF6EC; font: inherit; font-weight: 700; cursor: pointer">+ NPC</button>
+                <button type="button" style="min-height: 40px; padding: 0 12px; border: 0; border-radius: 6px; background: #8C1C13; color: #FBF6EC; font: inherit; font-weight: 700; cursor: pointer">+ Place</button>
+                <button type="button" style="min-height: 40px; padding: 0 12px; border: 0; border-radius: 6px; background: #8C1C13; color: #FBF6EC; font: inherit; font-weight: 700; cursor: pointer">+ Item</button>
+                <button type="button" style="min-height: 40px; padding: 0 12px; border: 0; border-radius: 6px; background: #8C1C13; color: #FBF6EC; font: inherit; font-weight: 700; cursor: pointer">+ Note</button>
+                <button type="button" style="min-height: 40px; padding: 0 12px; border: 0; border-radius: 6px; background: #8C1C13; color: #FBF6EC; font: inherit; font-weight: 700; cursor: pointer">+ Map</button>
+                <span style="width: 100%; font-size: 13px; color: #6A5642">New articles open in the article viewer, wherever it sits.</span>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </section>
+    </sc-for>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      win: 'main',
+      place: { rules: 'main', story: 'main', articles: 'main', initiative: 'second', map: 'second', quick: 'second' },
+      closed: { quick: true }
+    };
+  }
+
+  renderVals() {
+    const defs = [
+      { id: 'rules', title: 'Rule board', kind: 'Board · rules', accent: '#C8822E' },
+      { id: 'story', title: 'Story board', kind: 'Board · history', accent: '#8C1C13' },
+      { id: 'articles', title: 'Article viewer', kind: 'Tool', accent: '#6A5642' },
+      { id: 'initiative', title: 'Initiative', kind: 'Tool', accent: '#6A5642' },
+      { id: 'map', title: 'Map', kind: 'Tool', accent: '#3E5C76' },
+      { id: 'quick', title: 'Quick create', kind: 'Tool', accent: '#6A5642' }
+    ];
+    const names = { main: 'Laptop', second: 'Monitor 2' };
+    const other = (w) => (w === 'main' ? 'second' : 'main');
+    const place = this.state.place;
+    const closed = this.state.closed;
+
+    const windows = ['main', 'second'].map((w) => ({
+      label: names[w],
+      count: defs.filter((d) => place[d.id] === w).length,
+      selected: String(this.state.win === w),
+      style: this.state.win === w ? 'border: 1px solid #8C1C13; background: #8C1C13; color: #FBF6EC; font-weight: 700' : 'border: 1px solid #CDBB98; background: #FBF6EC; color: #2B1D12',
+      pick: () => this.setState({ win: w })
+    }));
+
+    const slots = defs.filter((d) => place[d.id] === this.state.win).map((d) => {
+      const open = !closed[d.id];
+      return {
+        title: d.title, kind: d.kind, accent: d.accent, open,
+        expanded: String(open), chevron: open ? '▾' : '▸',
+        toggleLabel: (open ? 'Collapse ' : 'Expand ') + d.title,
+        otherLabel: names[other(this.state.win)],
+        isRules: d.id === 'rules', isStory: d.id === 'story', isArticles: d.id === 'articles',
+        isInitiative: d.id === 'initiative', isMap: d.id === 'map', isQuick: d.id === 'quick',
+        toggle: () => this.setState({ closed: { ...closed, [d.id]: open } }),
+        move: () => this.setState({ place: { ...place, [d.id]: other(this.state.win) } })
+      };
+    });
+
+    return { windows, slots, winLabel: names[this.state.win] };
+  }
+}
+</script>
+</body>
+</html>

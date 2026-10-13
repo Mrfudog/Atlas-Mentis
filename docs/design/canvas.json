@@ -1,0 +1,310 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Article.dc.html": {
+      "expand": "fill",
+      "h": 1100,
+      "is_interactive": true,
+      "title": "Prep · Article in book style",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    },
+    "Board.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Prep · Session board",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "Compendium.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Prep · Compendium with side filters",
+      "w": 1440,
+      "x": 0,
+      "y": 3000
+    },
+    "Crafting.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Feature · Crafting: obtainable blueprints, filters, bound materials",
+      "w": 1440,
+      "x": 1520,
+      "y": 4600,
+      "is_interactive": true
+    },
+    "Encounter.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Feature · Encounter builder",
+      "w": 1440,
+      "x": 3040,
+      "y": 4600
+    },
+    "Factions.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Feature · Factions and relationships",
+      "w": 1440,
+      "x": 4560,
+      "y": 5620
+    },
+    "Graph.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Feature · Graph view",
+      "w": 1440,
+      "x": 3040,
+      "y": 7660
+    },
+    "Inventory.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Feature · Inventory after Basil’s sheet: figure, size grid, zones",
+      "w": 1440,
+      "x": 0,
+      "y": 4600,
+      "is_interactive": true
+    },
+    "Knowledge.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Feature · Knowledge, secrets, handouts",
+      "w": 1440,
+      "x": 0,
+      "y": 5620
+    },
+    "LevelUp.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Feature · Level up",
+      "w": 1440,
+      "x": 4560,
+      "y": 7660
+    },
+    "Main.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Round 1 · Navigation A",
+      "w": 1440,
+      "x": 0,
+      "y": 9000
+    },
+    "Map.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Play · Map: speed, waypoints, zone rules, reveal along the path · GM and player view",
+      "w": 1440,
+      "x": 1520,
+      "y": 1460
+    },
+    "Members.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Feature · Campaign, members, invites",
+      "w": 1440,
+      "x": 0,
+      "y": 7660
+    },
+    "Mobile.dc.html": {
+      "h": 844,
+      "title": "Round 1 · Phone",
+      "w": 390,
+      "x": 3040,
+      "y": 9000
+    },
+    "NavB.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Round 1 · Navigation B",
+      "w": 1440,
+      "x": 1520,
+      "y": 9000
+    },
+    "Play.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "is_interactive": true,
+      "title": "Play · DM screen: windows, slots, boards and tools",
+      "w": 1440,
+      "x": 0,
+      "y": 1460
+    },
+    "Player.dc.html": {
+      "expand": "fill",
+      "h": 1100,
+      "is_interactive": true,
+      "title": "Player · Rook, character in focus",
+      "w": 1440,
+      "x": 1520,
+      "y": 3000
+    },
+    "PlayerPhone.dc.html": {
+      "h": 844,
+      "title": "Player · Rook on the phone",
+      "w": 390,
+      "x": 3040,
+      "y": 3000
+    },
+    "Prep.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Feature · Prep cockpit",
+      "w": 1440,
+      "x": 1520,
+      "y": 6640
+    },
+    "Quests.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Feature · Quest board",
+      "w": 1440,
+      "x": 1488,
+      "y": 5654
+    },
+    "Registry.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Feature · Registry: type editor",
+      "w": 1440,
+      "x": 4560,
+      "y": 6640
+    },
+    "Settlement.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Feature · Settlement: the tavern",
+      "w": 1440,
+      "x": 1520,
+      "y": 7660
+    },
+    "TableView.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Feature · Table screen: map and initiative in player view",
+      "w": 1440,
+      "x": 3040,
+      "y": 6640
+    },
+    "Tables.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Feature · Random tables and loot",
+      "w": 1440,
+      "x": 0,
+      "y": 6640
+    },
+    "Timeline.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Feature · Timelines: campaign and world history",
+      "w": 1440,
+      "x": 3040,
+      "y": 5620,
+      "is_interactive": true
+    },
+    "Travel.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Feature · Travel and point crawl",
+      "w": 1440,
+      "x": 4560,
+      "y": 4600
+    },
+    "Initiative.dc.html": {
+      "x": 3040,
+      "y": 1460,
+      "w": 1440,
+      "h": 900,
+      "title": "Play · Initiative: GM and player view, cover names",
+      "expand": "fill",
+      "is_interactive": true
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-12T09:00:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "nav": {
+      "kind": "title1",
+      "maxW": 2960,
+      "text": "Round 2 · Prep mode",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "round1": {
+      "kind": "title1",
+      "maxW": 3430,
+      "text": "Round 1 · earlier look, kept for comparison",
+      "w": 240,
+      "x": 0,
+      "y": 8700
+    },
+    "round3": {
+      "kind": "title1",
+      "maxW": 3430,
+      "text": "Round 3 · Compendium and player view",
+      "w": 240,
+      "x": 0,
+      "y": 2700
+    },
+    "round4": {
+      "kind": "title1",
+      "maxW": 5990,
+      "text": "Round 4 · One proposal per feature (round 5 feedback applied)",
+      "w": 240,
+      "x": 0,
+      "y": 4300
+    },
+    "screens": {
+      "kind": "title1",
+      "maxW": 4480,
+      "text": "Round 2 · Play mode",
+      "w": 240,
+      "x": 0,
+      "y": 1160
+    }
+  },
+  "order": [
+    "Board.dc.html",
+    "Article.dc.html",
+    "Play.dc.html",
+    "Map.dc.html",
+    "Initiative.dc.html",
+    "Compendium.dc.html",
+    "Player.dc.html",
+    "PlayerPhone.dc.html",
+    "Inventory.dc.html",
+    "Crafting.dc.html",
+    "Encounter.dc.html",
+    "Travel.dc.html",
+    "Knowledge.dc.html",
+    "Quests.dc.html",
+    "Timeline.dc.html",
+    "Factions.dc.html",
+    "Tables.dc.html",
+    "Prep.dc.html",
+    "TableView.dc.html",
+    "Registry.dc.html",
+    "Members.dc.html",
+    "Settlement.dc.html",
+    "Graph.dc.html",
+    "LevelUp.dc.html",
+    "Main.dc.html",
+    "NavB.dc.html",
+    "Mobile.dc.html"
+  ],
+  "pages": [],
+  "title": "Atlas Mentis UI"
+}

@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Crafting · Rook</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&amp;family=Alegreya+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#8C1C13}a:hover{color:#5E120C}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #EFE4CC; color: #2B1D12; font-family: 'Alegreya Sans', system-ui, sans-serif; font-size: 15px; display: flex; flex-direction: column">
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 10px 24px; background: #F8F1E1; border-bottom: 3px solid #8C1C13">
+    <span style="font-family: 'Alegreya SC', serif; font-size: 22px; font-weight: 700; color: #8C1C13">Atlas Mentis</span>
+    <span style="color: #6A5642">Rook „Nebelfinger“ › Rule systems › Crafting</span>
+    <span style="margin-left: auto; color: #6A5642">Tools: alchemist's supplies, poisoner's kit · which recipe needs what is sample data</span>
+  </header>
+
+  <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 16px; padding: 14px 24px; align-items: flex-start">
+    <aside aria-label="Filters" style="flex: 0 0 230px; background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px">
+      <span style="font-size: 12px; color: #6A5642">Blueprints</span>
+      <sc-for list="{{scopes}}" as="f" hint-placeholder-count="2">
+        <button type="button" onClick="{{f.pick}}" aria-pressed="{{f.pressed}}" style="min-height: 34px; padding: 0 10px; border-radius: 6px; font: inherit; font-size: 14px; text-align: left; cursor: pointer; {{f.style}}">{{f.label}}</button>
+      </sc-for>
+      <span style="font-size: 12px; color: #6A5642; margin-top: 4px">Can make</span>
+      <sc-for list="{{readies}}" as="f" hint-placeholder-count="3">
+        <button type="button" onClick="{{f.pick}}" aria-pressed="{{f.pressed}}" style="min-height: 34px; padding: 0 10px; border-radius: 6px; font: inherit; font-size: 14px; text-align: left; cursor: pointer; {{f.style}}">{{f.label}}</button>
+      </sc-for>
+      <span style="font-size: 12px; color: #6A5642; margin-top: 4px">Uses material</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 4px">
+        <sc-for list="{{materials}}" as="f" hint-placeholder-count="6">
+          <button type="button" onClick="{{f.pick}}" aria-pressed="{{f.pressed}}" style="min-height: 30px; padding: 0 8px; border-radius: 14px; font: inherit; font-size: 13px; cursor: pointer; {{f.style}}">{{f.label}}</button>
+        </sc-for>
+      </div>
+      <span style="font-size: 12px; color: #6A5642; margin-top: 4px">Trade</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 4px">
+        <sc-for list="{{trades}}" as="f" hint-placeholder-count="3">
+          <button type="button" onClick="{{f.pick}}" aria-pressed="{{f.pressed}}" style="min-height: 30px; padding: 0 8px; border-radius: 14px; font: inherit; font-size: 13px; cursor: pointer; {{f.style}}">{{f.label}}</button>
+        </sc-for>
+      </div>
+    </aside>
+
+    <section aria-label="Recipes" style="flex: 1 1 320px; max-width: 400px; background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px">
+      <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 20px; color: #8C1C13">{{listTitle}}</h2>
+      <sc-for list="{{recipes}}" as="r" hint-placeholder-count="5">
+        <button type="button" onClick="{{r.pick}}" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 48px; padding: 4px 10px; border-radius: 6px; font: inherit; color: #2B1D12; text-align: left; cursor: pointer; {{r.style}}">
+          <span style="display: flex; flex-direction: column"><strong>{{r.name}}</strong><span style="font-size: 12px; color: #6A5642">{{r.sub}}</span></span>
+          <span style="font-size: 13px; font-weight: 700; {{r.stateStyle}}">{{r.state}}</span>
+        </button>
+      </sc-for>
+      <span style="font-size: 13px; color: #6A5642">{{emptyNote}}</span>
+    </section>
+
+    <section aria-label="Workbench" style="flex: 999 1 460px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+      <div style="background: #FDF1DC; border-top: 6px solid #C8822E; border-bottom: 6px solid #C8822E; padding: 14px 18px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px">
+          <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 28px; color: #7A200D">{{cur.name}}</h2>
+          <span style="color: #6A5642">{{cur.meta}}</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px">
+          <sc-for list="{{cur.needs}}" as="n" hint-placeholder-count="3">
+            <div style="border-radius: 6px; padding: 8px; {{n.style}}"><strong>{{n.name}}</strong><div style="font-size: 13px">{{n.text}}</div></div>
+          </sc-for>
+        </div>
+        <span style="font-size: 14px">{{cur.note}}</span>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+          <button type="button" onClick="{{cur.start}}" style="min-height: 44px; padding: 0 16px; border: 0; border-radius: 6px; font: inherit; font-weight: 700; {{cur.startStyle}}">{{cur.startLabel}}</button>
+          <span style="color: #6A5642; font-size: 14px">Starting binds the materials to the work: they leave the stock and cannot be used twice.</span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 14px">
+        <div style="flex: 1 1 260px; background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px">
+          <h3 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">In progress</h3>
+          <sc-for list="{{jobs}}" as="j" hint-placeholder-count="1">
+            <div style="padding: 8px 10px; background: #FDF1DC; border-left: 4px solid #C8822E; display: flex; flex-direction: column; gap: 4px">
+              <strong>{{j.name}}</strong>
+              <span style="font-size: 13px">🔒 {{j.bound}}</span>
+              <span style="font-size: 13px; color: #6A5642">Checks [n] · DC [n] · one per work session</span>
+              <div style="display: flex; gap: 6px">
+                <button type="button" onClick="{{j.finish}}" style="min-height: 34px; padding: 0 10px; border: 1px solid #34502A; border-radius: 6px; background: #E4ECD8; font: inherit; cursor: pointer">Succeeds</button>
+                <button type="button" onClick="{{j.fail}}" style="min-height: 34px; padding: 0 10px; border: 1px solid #8C1C13; border-radius: 6px; background: transparent; color: #8C1C13; font: inherit; cursor: pointer">Fails</button>
+              </div>
+            </div>
+          </sc-for>
+          <span style="font-size: 13px; color: #6A5642">{{jobNote}}</span>
+        </div>
+        <div style="flex: 1 1 220px; background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px">
+          <h3 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">Party stock</h3>
+          <sc-for list="{{stock}}" as="s" hint-placeholder-count="6">
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #EFE4CC; font-size: 14px"><span>{{s.name}}</span><span>{{s.text}}</span></div>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      scope: 'all', ready: 'all', material: null, trade: null, sel: 'burning', log: [],
+      stock: { 'Poisonous reagent': 1, 'Curative reagent': 1, Essence: 1, Vial: 0, 'Crawler Mucus': 2, 'Leather Scrap': 2, 'Large Carapaces': 1 },
+      jobs: [{ id: 'j1', recipe: 'dizzy', bound: { 'Poisonous reagent': 1, 'Crawler Mucus': 1, Vial: 1 } }],
+      made: {}
+    };
+  }
+
+  renderVals() {
+    const st = this.state;
+    // Ein Rezept ist Wissen: bekannt heisst, Rook hat die Blaupause erhalten (knownBy).
+    const recipes = [
+      { id: 'burning', name: 'Burning Wound', trade: "Poisoner's kit", kind: 'poison', known: true, needs: { 'Poisonous reagent': 1, Essence: 1, Vial: 1 } },
+      { id: 'dizzy', name: 'Dizzying Touch', trade: "Poisoner's kit", kind: 'poison', known: true, needs: { 'Poisonous reagent': 1, 'Crawler Mucus': 1, Vial: 1 } },
+      { id: 'lightning', name: 'Liquid Lightnings', trade: "Alchemist's supplies", kind: 'alchemy', known: true, needs: { Essence: 2, Vial: 1 } },
+      { id: 'dreams', name: 'Endless Dreams', trade: "Poisoner's kit", kind: 'poison', known: false, needs: { 'Poisonous reagent': 2, 'Curative reagent': 1, Vial: 1 } },
+      { id: 'damnation', name: 'Draught of Damnation', trade: "Poisoner's kit", kind: 'poison', known: false, needs: { 'Poisonous reagent': 3, Essence: 1, Vial: 1 } },
+      { id: 'carapace', name: '[Carapace recipe]', trade: "Leatherworker's tools", kind: 'gear', known: false, needs: { 'Large Carapaces': 1, 'Leather Scrap': 2 } }
+    ];
+    const rookTools = ["Poisoner's kit", "Alchemist's supplies"];
+    const missing = (r) => Object.entries(r.needs).reduce((n, [m, q]) => n + Math.max(0, q - (st.stock[m] || 0)), 0);
+    const statusOf = (r) => {
+      if (st.jobs.some((j) => j.recipe === r.id)) return ['in progress', 'color: #9A5B0B'];
+      if (!r.known) return ['must still be learned', 'color: #6A5642'];
+      const n = missing(r);
+      if (n === 0) return ['ready', 'color: #34502A'];
+      return [n + ' missing', n <= 1 ? 'color: #9A5B0B' : 'color: #6A5642'];
+    };
+    const on = (b) => b ? 'border: 1px solid #8C1C13; background: #8C1C13; color: #FBF6EC; font-weight: 700' : 'border: 1px solid #CDBB98; background: #FDF1DC; color: #2B1D12';
+    const chip = (key, value, label) => ({ label, pressed: String(st[key] === value), style: on(st[key] === value), pick: () => this.setState({ [key]: st[key] === value && value !== 'all' ? null : value }) });
+
+    const list = recipes.filter((r) => {
+      if (st.scope === 'known' && !r.known) return false;
+      if (st.ready !== 'all' && st.jobs.some((j) => j.recipe === r.id)) return false;
+      if (st.ready === 'ready' && !(r.known && missing(r) === 0)) return false;
+      if (st.ready === 'almost' && !(r.known && missing(r) > 0 && missing(r) <= 2)) return false;
+      if (st.material && !r.needs[st.material]) return false;
+      if (st.trade && r.trade !== st.trade) return false;
+      return true;
+    });
+    const sel = recipes.find((r) => r.id === st.sel) || recipes[0];
+
+    const rows = list.map((r) => {
+      const [state, stateStyle] = statusOf(r);
+      return {
+        name: r.name, sub: r.kind + ' · ' + r.trade + (rookTools.includes(r.trade) ? '' : ' · no proficiency'),
+        state, stateStyle,
+        style: (r.id === sel.id ? 'border: 2px solid #8C1C13; background: #F6E2BF; ' : 'border: 1px solid #CDBB98; background: #FDF1DC; ') + (r.known ? '' : 'opacity: 0.7; border-style: dashed'),
+        pick: () => this.setState({ sel: r.id })
+      };
+    });
+
+    const busy = st.jobs.some((j) => j.recipe === sel.id);
+    const can = sel.known && !busy && missing(sel) === 0;
+    const needs = Object.entries(sel.needs).map(([m, q]) => {
+      const have = st.stock[m] || 0, ok = have >= q;
+      return {
+        name: m,
+        text: q + ' needed · ' + have + ' free' + (ok ? ' ✓' : ' · ' + (q - have) + ' missing'),
+        style: ok ? 'border: 2px dashed #34502A; background: #F3F6EC' : 'border: 2px dashed #C8822E; background: #FBF1E0'
+      };
+    });
+    const start = () => {
+      if (!can) return;
+      const stock = { ...st.stock };
+      Object.entries(sel.needs).forEach(([m, q]) => { stock[m] -= q; });
+      this.setState({ stock, jobs: [...st.jobs, { id: 'j' + Date.now(), recipe: sel.id, bound: { ...sel.needs } }] });
+    };
+    const cur = {
+      name: sel.name,
+      meta: sel.kind + ' · ' + sel.trade + ' · [rarity] · [time]',
+      needs,
+      note: !sel.known ? 'Must still be learned. Visible so the party knows the blueprint exists; Rook cannot start it until it is learned.'
+        : busy ? 'Already on the workbench; its materials are bound to the work.'
+        : 'Exact rarity required, no substituting up or down.',
+      start, startLabel: busy ? 'In progress' : sel.known ? 'Start crafting' : 'Locked',
+      startStyle: can ? 'background: #8C1C13; color: #FBF6EC; cursor: pointer' : 'background: #D8CDB6; color: #6A5642; cursor: not-allowed'
+    };
+
+    const jobs = st.jobs.map((j) => {
+      const r = recipes.find((x) => x.id === j.recipe);
+      const end = (ok) => {
+        const stock = { ...st.stock };
+        // Fehlschlag: was zurückkommt, sagt Recipe.onFailure; hier „nothing lost“ als Beispiel.
+        if (!ok) Object.entries(j.bound).forEach(([m, q]) => { stock[m] = (stock[m] || 0) + q; });
+        const made = { ...st.made };
+        if (ok) made[r.name] = (made[r.name] || 0) + 1;
+        this.setState({ stock, made, jobs: st.jobs.filter((x) => x.id !== j.id) });
+      };
+      return { name: r.name, bound: Object.entries(j.bound).map(([m, q]) => m + ' ×' + q).join(', '), finish: () => end(true), fail: () => end(false) };
+    });
+
+    const allMaterials = [...new Set(recipes.flatMap((r) => Object.keys(r.needs)))];
+    const stock = [
+      ...allMaterials.map((m) => {
+        const bound = st.jobs.reduce((n, j) => n + (j.bound[m] || 0), 0);
+        return { name: m, text: (st.stock[m] || 0) + ' free' + (bound ? ' · ' + bound + ' bound' : '') };
+      }),
+      ...Object.entries(st.made).map(([n, q]) => ({ name: n, text: q + ' made' }))
+    ];
+
+    return {
+      scopes: [chip('scope', 'all', 'All blueprints'), chip('scope', 'known', 'Rook knows')],
+      readies: [chip('ready', 'all', 'Everything'), chip('ready', 'ready', 'Ready now'), chip('ready', 'almost', 'Almost (1–2 missing)')],
+      materials: allMaterials.map((m) => chip('material', m, m)),
+      trades: [...new Set(recipes.map((r) => r.trade))].map((t) => chip('trade', t, t)),
+      listTitle: (st.scope === 'known' ? 'Rook knows' : 'All blueprints') + ' · ' + list.length,
+      recipes: rows, emptyNote: list.length ? 'Dashed: must still be learned. Learning a blueprint is a grant of knowledge to the character.' : 'Nothing matches these filters.',
+      cur, jobs, stock,
+      jobNote: st.jobs.length ? 'Bound materials come back or are lost by the recipe’s „On a failure“ rule.' : 'Nothing on the workbench.'
+    };
+  }
+}
+</script>
+</body>
+</html>

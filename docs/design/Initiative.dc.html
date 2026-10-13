@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Initiative</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&amp;family=Alegreya+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#8C1C13}a:hover{color:#5E120C}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #EFE4CC; color: #2B1D12; font-family: 'Alegreya Sans', system-ui, sans-serif; font-size: 15px; display: flex; flex-direction: column">
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 8px 20px; background: #8C1C13; color: #FBF6EC">
+    <a href="Play.dc.html" style="min-height: 40px; display: inline-flex; align-items: center; color: #FBF6EC">‹ Screen</a>
+    <h1 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 22px; font-weight: 700">Initiative · Ambush at the cistern stairs</h1>
+    <span style="padding: 4px 12px; border-radius: 14px; background: #6E140E">Round {{round}}</span>
+    <div role="group" aria-label="View" style="display: flex; gap: 4px">
+      <sc-for list="{{views}}" as="v" hint-placeholder-count="2">
+        <button type="button" onClick="{{v.pick}}" aria-pressed="{{v.pressed}}" style="min-height: 36px; padding: 0 12px; border-radius: 6px; font: inherit; cursor: pointer; {{v.style}}">{{v.label}}</button>
+      </sc-for>
+    </div>
+    <sc-if value="{{isGm}}" hint-placeholder-val="{{ true }}">
+      <button type="button" onClick="{{advance}}" style="min-height: 36px; padding: 0 14px; border: 0; border-radius: 6px; background: #FBF6EC; color: #8C1C13; font: inherit; font-weight: 700; cursor: pointer">Next turn ▸</button>
+    </sc-if>
+    <a href="Map.dc.html" style="margin-left: auto; color: #FBF6EC">Map ›</a>
+  </header>
+
+  <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 14px; padding: 14px 20px; align-items: flex-start">
+    <section aria-label="Order" style="flex: 999 1 640px; min-width: 0; background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; overflow: hidden">
+      <div style="display: grid; grid-template-columns: 28px 52px minmax(140px, 1.2fr) 52px 150px minmax(180px, 2fr); gap: 0 10px; padding: 8px 12px; background: #F3E6CC; font-size: 13px; font-weight: 700; color: #6A5642">
+        <span></span><span>Init</span><span>Combatant</span><span>AC</span><span>HP</span><span>Conditions and notes</span>
+      </div>
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+        <div role="button" tabindex="0" onClick="{{r.pick}}" style="display: grid; grid-template-columns: 28px 52px minmax(140px, 1.2fr) 52px 150px minmax(180px, 2fr); gap: 0 10px; align-items: center; padding: 8px 12px; border-top: 1px solid #E6D3B0; cursor: pointer; {{r.style}}">
+          <span style="color: #8C1C13; font-weight: 700">{{r.marker}}</span>
+          <span style="font-family: 'Alegreya SC', serif; font-size: 20px; font-weight: 700">{{r.init}}</span>
+          <div style="display: flex; flex-direction: column"><strong>{{r.name}}</strong><span style="font-size: 12px; color: #6A5642">{{r.sub}}</span></div>
+          <span style="font-weight: 700">{{r.ac}}</span>
+          <div style="display: flex; flex-direction: column; gap: 3px">
+            <span style="font-size: 14px">{{r.hp}}</span>
+            <div aria-hidden="true" style="height: 6px; border-radius: 3px; background: #E6D3B0"><div style="height: 6px; border-radius: 3px; width: {{r.hpPct}}%; background: {{r.hpColor}}"></div></div>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px">
+            <sc-for list="{{r.effects}}" as="ef" hint-placeholder-count="1">
+              <span title="{{ef.title}}" style="padding: 2px 8px; border-radius: 10px; font-size: 12px; {{ef.style}}">{{ef.label}}</span>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+      <div style="padding: 8px 12px; font-size: 13px; color: #6A5642; border-top: 1px solid #E6D3B0">{{footnote}}</div>
+    </section>
+
+    <aside aria-label="Selected" style="flex: 1 1 340px; max-width: 420px; display: flex; flex-direction: column; gap: 12px">
+      <div style="background: #FDF1DC; border-top: 6px solid #C8822E; border-bottom: 6px solid #C8822E; padding: 12px 16px; display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 24px; color: #7A200D">{{sb.name}}</h2>
+        <em>{{sb.kind}}</em>
+        <div style="height: 2px; background: #C8822E; margin: 4px 0"></div>
+        <span style="color: #7A200D">{{sb.line1}}</span>
+        <span style="color: #7A200D">{{sb.line2}}</span>
+        <div style="height: 2px; background: #C8822E; margin: 4px 0"></div>
+        <sc-for list="{{sb.traits}}" as="tr" hint-placeholder-count="2">
+          <span><strong><em>{{tr.k}}</em></strong> {{tr.v}}</span>
+        </sc-for>
+        <span style="font-size: 12px; color: #6A5642">{{sb.note}}</span>
+      </div>
+
+      <sc-if value="{{isGm}}" hint-placeholder-val="{{ true }}">
+        <div style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px">
+          <h3 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">Add to {{sb.short}}</h3>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px">
+            <sc-for list="{{kinds}}" as="k" hint-placeholder-count="5">
+              <button type="button" onClick="{{k.pick}}" aria-pressed="{{k.pressed}}" style="min-height: 30px; padding: 0 8px; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer; {{k.style}}">{{k.label}}</button>
+            </sc-for>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap">
+            <span>for</span>
+            <button type="button" onClick="{{roundsDown}}" aria-label="Fewer rounds" style="width: 30px; height: 30px; border: 1px solid #CDBB98; border-radius: 6px; background: #FDF1DC; font: inherit; cursor: pointer">−</button>
+            <strong>{{roundsText}}</strong>
+            <button type="button" onClick="{{roundsUp}}" aria-label="More rounds" style="width: 30px; height: 30px; border: 1px solid #CDBB98; border-radius: 6px; background: #FDF1DC; font: inherit; cursor: pointer">+</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap">
+            <span>ends at the</span>
+            <sc-for list="{{ats}}" as="a" hint-placeholder-count="2">
+              <button type="button" onClick="{{a.pick}}" aria-pressed="{{a.pressed}}" style="min-height: 30px; padding: 0 8px; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer; {{a.style}}">{{a.label}}</button>
+            </sc-for>
+            <span>of</span>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px">
+            <sc-for list="{{anchors}}" as="an" hint-placeholder-count="5">
+              <button type="button" onClick="{{an.pick}}" aria-pressed="{{an.pressed}}" style="min-height: 30px; padding: 0 8px; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer; {{an.style}}">{{an.label}}</button>
+            </sc-for>
+          </div>
+          <button type="button" onClick="{{addEffect}}" style="min-height: 40px; border: 0; border-radius: 6px; background: #8C1C13; color: #FBF6EC; font: inherit; font-weight: 700; cursor: pointer">Add · {{preview}}</button>
+          <span style="font-size: 12px; color: #6A5642">A note is free text with the same duration — „concentrating on Web“, „owes Sela a favour“.</span>
+        </div>
+      </sc-if>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      view: 'gm', turn: 0, round: 3, sel: 'g2', kind: 'Poisoned', rounds: 1, at: 'end', anchor: 'sela',
+      list: [
+        { id: 'rook', name: 'Rook', init: 19, party: true, ac: 15, hp: 22, max: 22, effects: [] },
+        { id: 'g1', name: 'Goblin 1', cover: '[cover name]', init: 16, ac: 15, hp: 7, max: 7, revealed: true, involved: true, identified: true, effects: [] },
+        { id: 'sela', name: 'Sela', init: 14, party: true, ac: null, hp: null, max: null, effects: [{ label: 'Note: [note]', rounds: null }] },
+        { id: 'g3', name: 'Goblin 3', cover: '[cover name]', init: 13, ac: 15, hp: 7, max: 7, revealed: false, involved: false, identified: false, effects: [{ label: 'Hidden', rounds: null }] },
+        { id: 'g2', name: 'Goblin 2', cover: '[cover name]', init: 11, ac: 15, hp: 3, max: 7, revealed: true, involved: true, identified: false, effects: [{ label: 'Prone', rounds: null }] },
+        { id: 'slime', name: 'Kanalschleim', cover: '[cover name]', init: 6, ac: null, hp: null, max: null, revealed: true, involved: false, identified: false, effects: [] }
+      ]
+    };
+  }
+
+  renderVals() {
+    const st = this.state, gm = st.view === 'gm';
+    const byId = Object.fromEntries(st.list.map((e) => [e.id, e]));
+    const shown = (e) => e.party || e.revealed || e.involved;
+    const label = (e) => gm || e.party || e.identified ? e.name : e.cover;
+    const on = (b) => b ? 'border: 1px solid #8C1C13; background: #8C1C13; color: #FBF6EC; font-weight: 700' : 'border: 1px solid #CDBB98; background: #FDF1DC; color: #2B1D12';
+    const word = (e) => e.hp == null ? 'unknown' : e.hp <= 0 ? 'down' : e.hp * 2 <= e.max ? 'bloodied' : 'unhurt';
+    const effText = (f) => f.rounds == null ? '' : ' · ' + f.rounds + ' rd · ' + f.at + ' of ' + (byId[f.anchor] ? label(byId[f.anchor]) : '?');
+
+    const cur = st.list[st.turn];
+    const rows = st.list.filter((e) => gm || shown(e)).map((e) => {
+      const pct = e.hp == null || !e.max ? 100 : Math.max(0, Math.round(e.hp / e.max * 100));
+      return {
+        marker: e.id === cur.id ? '▶' : '', init: e.init, name: label(e),
+        sub: e.party ? 'party' : gm ? [e.revealed ? 'revealed' : 'hidden from players', e.involved ? 'involved' : 'not involved', e.identified ? 'identified' : 'cover name'].join(' · ') : (e.identified ? '' : 'not identified'),
+        ac: gm || e.party ? (e.ac == null ? '[n]' : e.ac) : '—',
+        hp: gm || e.party ? (e.hp == null ? '[n] / [n]' : e.hp + ' / ' + e.max) : word(e),
+        hpPct: gm || e.party ? pct : (word(e) === 'bloodied' ? 40 : word(e) === 'down' ? 0 : 100),
+        hpColor: pct <= 50 ? '#C7614C' : '#4F6B3A',
+        effects: e.effects.map((f) => ({ label: f.label + effText(f), title: f.label, style: f.label.startsWith('Note') ? 'background: #EADCC0' : 'background: #F0D3A6' })),
+        style: (e.id === cur.id ? 'background: #F6E2BF; ' : '') + (e.id === st.sel ? 'box-shadow: inset 4px 0 0 #8C1C13; ' : '') + (gm && !e.party && !e.revealed ? 'opacity: 0.6' : ''),
+        pick: () => this.setState({ sel: e.id, anchor: st.anchor })
+      };
+    });
+
+    // Am Anfang bzw. Ende des Zuges des Ankers zählt eine Dauer herunter (REQ-212).
+    const tick = (list, anchorId, at) => list.map((e) => ({ ...e, effects: e.effects
+      .map((f) => (f.rounds != null && f.anchor === anchorId && f.at === at ? { ...f, rounds: f.rounds - 1 } : f))
+      .filter((f) => f.rounds == null || f.rounds > 0) }));
+    const advance = () => {
+      const n = (st.turn + 1) % st.list.length;
+      let list = tick(st.list, cur.id, 'end');
+      list = tick(list, st.list[n].id, 'start');
+      this.setState({ list, turn: n, round: n === 0 ? st.round + 1 : st.round });
+    };
+
+    const selE = byId[st.sel] && (gm || shown(byId[st.sel])) ? byId[st.sel] : st.list[0];
+    const goblin = selE.name.startsWith('Goblin');
+    const sb = selE.party
+      ? { name: selE.name, short: selE.name, kind: 'Player character', line1: 'AC ' + (selE.ac == null ? '[n]' : selE.ac) + ' · HP ' + (selE.hp == null ? '[n]' : selE.hp + '/' + selE.max), line2: 'Opens the character sheet', traits: [], note: 'Numbers come from the statblock that belongs to the character.' }
+      : goblin && (gm || selE.identified)
+        ? { name: label(selE), short: label(selE), kind: 'Small humanoid (goblinoid), neutral evil', line1: 'AC 15 · HP ' + selE.hp + ' / 7 (2d6) · Speed 9 m', line2: 'Stealth +6 · Passive Perception 9', traits: [{ k: 'Nimble Escape.', v: 'Disengage or Hide as a bonus action.' }, { k: 'Scimitar.', v: '+4 to hit, reach 1.5 m. Hit: 5 (1d6 + 2) slashing.' }], note: 'Instance of „Goblin“: only what differs is stored on the instance.' }
+        : { name: label(selE), short: label(selE), kind: gm ? '[creature type]' : 'Not identified', line1: gm ? 'AC [n] · HP [n]' : 'What the party has seen so far', line2: '', traits: [], note: gm ? 'Statblock not linked yet.' : 'The statblock opens once the creature is identified.' };
+
+    const kinds = ['Poisoned', 'Prone', 'Frightened', 'Restrained', 'Note'].map((k) => ({ label: k, pressed: String(st.kind === k), style: on(st.kind === k), pick: () => this.setState({ kind: k }) }));
+    const ats = [['start', 'start'], ['end', 'end']].map(([k, l]) => ({ label: l, pressed: String(st.at === k), style: on(st.at === k), pick: () => this.setState({ at: k }) }));
+    const anchors = st.list.filter((e) => gm || shown(e)).map((e) => ({ label: label(e) + '’s turn', pressed: String(st.anchor === e.id), style: on(st.anchor === e.id), pick: () => this.setState({ anchor: e.id }) }));
+    const effLabel = st.kind === 'Note' ? 'Note: [text]' : st.kind;
+    const preview = effLabel + ' · ' + st.rounds + ' rd · ' + st.at + ' of ' + label(byId[st.anchor]) + '’s turn';
+    const addEffect = () => this.setState({ list: st.list.map((e) => (e.id === selE.id ? { ...e, effects: [...e.effects, { label: effLabel, rounds: st.rounds, at: st.at, anchor: st.anchor }] } : e)) });
+
+    return {
+      views: [['gm', 'GM view'], ['player', 'Player view']].map(([k, l]) => ({
+        label: l, pressed: String(st.view === k), pick: () => this.setState({ view: k }),
+        style: st.view === k ? 'border: 1px solid #FBF6EC; background: #FBF6EC; color: #8C1C13; font-weight: 700' : 'border: 1px solid #FBF6EC; background: transparent; color: #FBF6EC'
+      })),
+      isGm: gm, round: st.round, rows, sb, kinds, ats, anchors, preview, addEffect, advance,
+      roundsText: st.rounds + (st.rounds === 1 ? ' round' : ' rounds'),
+      roundsDown: () => this.setState({ rounds: Math.max(1, st.rounds - 1) }), roundsUp: () => this.setState({ rounds: st.rounds + 1 }),
+      footnote: gm ? 'Click a row for its statblock. AC and HP maximum are read from the statblock; dashed rows are hidden from the players.' : 'Only creatures that are revealed or have acted are listed; unidentified ones show their cover name.'
+    };
+  }
+}
+</script>
+</body>
+</html>

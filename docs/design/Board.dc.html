@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Session board · Prep</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&amp;family=Alegreya+SC:wght@500;700&amp;family=Alegreya+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#8C1C13}a:hover{color:#5E120C}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #EFE4CC; color: #2B1D12; font-family: 'Alegreya Sans', system-ui, sans-serif; font-size: 15px; display: flex; flex-direction: column">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 10px 24px; background: #F8F1E1; border-bottom: 3px solid #8C1C13">
+    <span style="font-family: 'Alegreya SC', serif; font-size: 22px; font-weight: 700; color: #8C1C13">Atlas Mentis</span>
+    <div role="group" aria-label="Mode" style="display: flex; border: 1px solid #8C1C13; border-radius: 22px; overflow: hidden">
+      <button type="button" aria-pressed="true" style="min-height: 40px; padding: 0 18px; border: 0; background: #8C1C13; color: #FBF6EC; font: inherit; font-weight: 700; cursor: pointer">Prep</button>
+      <a href="Play.dc.html" style="min-height: 40px; padding: 0 18px; display: inline-flex; align-items: center; color: #8C1C13; text-decoration: none; font-weight: 500">Play</a>
+    </div>
+    <nav aria-label="Areas" style="display: flex; flex-wrap: wrap; gap: 2px">
+      <a href="#" aria-current="page" style="padding: 8px 12px; border-radius: 6px; background: #EADCC0; color: #2B1D12; text-decoration: none; font-weight: 700">Boards</a>
+      <a href="#" style="padding: 8px 12px; color: #2B1D12; text-decoration: none">World</a>
+      <a href="#" style="padding: 8px 12px; color: #2B1D12; text-decoration: none">History</a>
+      <a href="Article.dc.html" style="padding: 8px 12px; color: #2B1D12; text-decoration: none">Rules</a>
+      <a href="Map.dc.html" style="padding: 8px 12px; color: #2B1D12; text-decoration: none">Maps</a>
+    </nav>
+    <button type="button" style="flex: 1 1 220px; max-width: 360px; min-height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid #CDBB98; border-radius: 6px; background: #FBF6EC; color: #6A5642; font: inherit; cursor: pointer">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"></circle><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
+      <span style="flex: 1; text-align: left">Search or add to board…</span><span style="font-size: 12px">Ctrl K</span>
+    </button>
+    <span style="margin-left: auto; color: #6A5642">Nebelwacht · Mike (GM)</span>
+  </header>
+
+  <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px 8px">
+    <div style="display: flex; flex-direction: column">
+      <nav aria-label="Story boards" style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 14px; color: #6A5642">
+        <span>Boards:</span><a href="#">Campaign · Aus Nebel wacht</a><span aria-hidden="true">›</span><a href="#">Chapter · [Chapter name]</a><span aria-hidden="true">›</span><span>Session 12</span>
+      </nav>
+      <h1 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 30px; font-weight: 700; color: #8C1C13">Session 12 · Die Kerzengasse</h1>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px">
+      <button type="button" style="min-height: 44px; padding: 0 14px; border-radius: 6px; border: 1px solid #CDBB98; background: #FBF6EC; color: #2B1D12; font: inherit; cursor: pointer">Note</button>
+      <button type="button" style="min-height: 44px; padding: 0 14px; border-radius: 6px; border: 1px solid #CDBB98; background: #FBF6EC; color: #2B1D12; font: inherit; cursor: pointer">Area</button>
+      <button type="button" style="min-height: 44px; padding: 0 14px; border-radius: 6px; border: 1px solid #CDBB98; background: #FBF6EC; color: #2B1D12; font: inherit; cursor: pointer">Connect</button>
+      <button type="button" style="min-height: 44px; padding: 0 16px; border-radius: 6px; border: 0; background: #8C1C13; color: #FBF6EC; font: inherit; font-weight: 700; cursor: pointer">Add article</button>
+    </div>
+  </div>
+
+  <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 16px; padding: 8px 24px 24px">
+    <section aria-label="Board" style="flex: 999 1 640px; min-width: 0; overflow: auto; border: 1px solid #CDBB98; border-radius: 8px; background-color: #F6EEDB; background-image: radial-gradient(#D9C8A6 1px, transparent 1px); background-size: 24px 24px">
+      <div style="position: relative; width: 1120px; height: 680px">
+
+        <div style="position: absolute; left: 20px; top: 20px; width: 640px; height: 380px; border: 2px dashed #B9876A; border-radius: 12px; background: rgba(140, 28, 19, 0.04)"></div>
+        <span style="position: absolute; left: 36px; top: 28px; font-family: 'Alegreya SC', serif; font-weight: 700; color: #8C1C13">Kerzengasse</span>
+        <div style="position: absolute; left: 20px; top: 430px; width: 640px; height: 230px; border: 2px dashed #9C8A6E; border-radius: 12px; background: rgba(43, 29, 18, 0.04)"></div>
+        <span style="position: absolute; left: 36px; top: 438px; font-family: 'Alegreya SC', serif; font-weight: 700; color: #6A5642">Unterwacht</span>
+
+        <div style="position: absolute; left: 250px; top: 118px; width: 50px; height: 2px; background: #8C1C13"></div>
+        <span style="position: absolute; left: 254px; top: 96px; font-size: 12px; color: #8C1C13">at</span>
+        <div style="position: absolute; left: 799px; top: 180px; width: 2px; height: 70px; background: #8C1C13"></div>
+        <span style="position: absolute; left: 806px; top: 204px; font-size: 12px; color: #8C1C13">gives</span>
+        <div style="position: absolute; left: 900px; top: 300px; width: 40px; height: 2px; background: #8C1C13"></div>
+        <span style="position: absolute; left: 902px; top: 278px; font-size: 12px; color: #8C1C13">about</span>
+        <div style="position: absolute; left: 399px; top: 360px; width: 2px; height: 120px; background: #6A5642"></div>
+        <span style="position: absolute; left: 406px; top: 404px; font-size: 12px; color: #6A5642">rolls on</span>
+        <div style="position: absolute; left: 799px; top: 360px; width: 2px; height: 120px; border-left: 2px dashed #6A5642"></div>
+        <span style="position: absolute; left: 806px; top: 404px; font-size: 12px; color: #6A5642">answers</span>
+
+        <a href="#" style="position: absolute; left: 50px; top: 70px; width: 200px; min-height: 110px; box-sizing: border-box; padding: 10px 12px; background: #FBF6EC; border: 1px solid #CDBB98; border-top: 4px solid #8C1C13; border-radius: 6px; text-decoration: none; color: #2B1D12; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; color: #6A5642">Place · street</span><span style="font-family: 'Alegreya', serif; font-size: 18px; font-weight: 700">Kerzengasse</span><span style="font-size: 13px; color: #6A5642">Candle-makers' lane in the Nebeldistrikt.</span></a>
+        <a href="#" style="position: absolute; left: 300px; top: 70px; width: 200px; min-height: 110px; box-sizing: border-box; padding: 10px 12px; background: #FBF6EC; border: 1px solid #CDBB98; border-top: 4px solid #B5651D; border-radius: 6px; text-decoration: none; color: #2B1D12; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; color: #6A5642">Event</span><span style="font-family: 'Alegreya', serif; font-size: 18px; font-weight: 700">Die Kerzengassen-Seuche</span><span style="font-size: 13px; color: #6A5642">Disease: [linked]</span></a>
+        <a href="#" style="position: absolute; left: 50px; top: 250px; width: 200px; min-height: 110px; box-sizing: border-box; padding: 10px 12px; background: #FBF6EC; border: 1px solid #CDBB98; border-top: 4px solid #8C1C13; border-radius: 6px; text-decoration: none; color: #2B1D12; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; color: #6A5642">Place · cellar</span><span style="font-family: 'Alegreya', serif; font-size: 18px; font-weight: 700">Der Lampenkeller</span><span style="font-size: 13px; color: #6A5642">prepared</span></a>
+        <a href="#" style="position: absolute; left: 300px; top: 250px; width: 200px; min-height: 110px; box-sizing: border-box; padding: 10px 12px; background: #FBF6EC; border: 1px solid #CDBB98; border-top: 4px solid #2B1D12; border-radius: 6px; text-decoration: none; color: #2B1D12; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; color: #6A5642">Encounter · idea</span><span style="font-family: 'Alegreya', serif; font-size: 18px; font-weight: 700">Was aus dem Gully kommt</span><span style="font-size: 13px; color: #6A5642">Kanalschleim · 2 Goblins</span></a>
+
+        <a href="#" style="position: absolute; left: 700px; top: 70px; width: 200px; min-height: 110px; box-sizing: border-box; padding: 10px 12px; background: #FBF6EC; border: 1px solid #CDBB98; border-top: 4px solid #4F6B3A; border-radius: 6px; text-decoration: none; color: #2B1D12; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; color: #6A5642">Creature · NPC</span><span style="font-family: 'Alegreya', serif; font-size: 18px; font-weight: 700">Volothamp Geddarm</span><span style="font-size: 13px; color: #6A5642">attitude: friendly</span></a>
+        <a href="#" style="position: absolute; left: 700px; top: 250px; width: 200px; min-height: 110px; box-sizing: border-box; padding: 10px 12px; background: #FBF6EC; border: 1px solid #CDBB98; border-top: 4px solid #8C1C13; border-radius: 6px; text-decoration: none; color: #2B1D12; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; color: #6A5642">Quest · accepted</span><span style="font-family: 'Alegreya', serif; font-size: 18px; font-weight: 700">Wo ist Floon?</span><span style="font-size: 13px; color: #6A5642">Reward: [set]</span></a>
+        <a href="#" style="position: absolute; left: 940px; top: 250px; width: 160px; min-height: 110px; box-sizing: border-box; padding: 10px 12px; background: #FBF6EC; border: 1px solid #CDBB98; border-top: 4px solid #4F6B3A; border-radius: 6px; text-decoration: none; color: #2B1D12; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; color: #6A5642">Creature · NPC</span><span style="font-family: 'Alegreya', serif; font-size: 18px; font-weight: 700">Floon Blagmaar</span><span style="font-size: 13px; color: #6A5642">missing</span></a>
+        <a href="Map.dc.html" style="position: absolute; left: 940px; top: 70px; width: 160px; min-height: 110px; box-sizing: border-box; padding: 10px 12px; background: #FBF6EC; border: 1px solid #CDBB98; border-top: 4px solid #3E5C76; border-radius: 6px; text-decoration: none; color: #2B1D12; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; color: #6A5642">Map · battle</span><span style="font-family: 'Alegreya', serif; font-size: 18px; font-weight: 700">Karte: Kerzengasse</span><span style="font-size: 13px; color: #8C1C13">Open map view</span></a>
+
+        <a href="#" style="position: absolute; left: 50px; top: 480px; width: 200px; min-height: 110px; box-sizing: border-box; padding: 10px 12px; background: #FBF6EC; border: 1px solid #CDBB98; border-top: 4px solid #8C1C13; border-radius: 6px; text-decoration: none; color: #2B1D12; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; color: #6A5642">Place · cistern</span><span style="font-family: 'Alegreya', serif; font-size: 18px; font-weight: 700">Die Grosse Zisterne</span><span style="font-size: 13px; color: #6A5642">hidden</span></a>
+        <a href="#" style="position: absolute; left: 300px; top: 480px; width: 200px; min-height: 110px; box-sizing: border-box; padding: 10px 12px; background: #FBF6EC; border: 1px solid #CDBB98; border-top: 4px solid #6A5642; border-radius: 6px; text-decoration: none; color: #2B1D12; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; color: #6A5642">Table · encounter</span><span style="font-family: 'Alegreya', serif; font-size: 18px; font-weight: 700">Wer aus dem Kanal kommt</span><span style="font-size: 13px; color: #6A5642">d8</span></a>
+        <a href="#" style="position: absolute; left: 700px; top: 480px; width: 200px; min-height: 110px; box-sizing: border-box; padding: 10px 12px; background: #2B1D12; border: 1px solid #2B1D12; border-radius: 6px; text-decoration: none; color: #F8F1E1; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; color: #E3C9A0">Information · GM only</span><span style="font-family: 'Alegreya', serif; font-size: 18px; font-weight: 700">Wer die Essenz genommen hat</span><span style="font-size: 13px; color: #E3C9A0">Known by: nobody yet</span></a>
+      </div>
+    </section>
+
+    <aside aria-label="Session" style="flex: 1 1 260px; max-width: 320px; display: flex; flex-direction: column; gap: 14px">
+      <section style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 8px">
+        <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">Running order</h2>
+        <ol style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px">
+          <li>Kerzengasse <span style="color: #6A5642">· arrival</span></li>
+          <li>Was aus dem Gully kommt <span style="color: #6A5642">· combat</span></li>
+          <li>Der Lampenkeller <span style="color: #6A5642">· exploration</span></li>
+        </ol>
+      </section>
+      <section style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 8px">
+        <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">Linked, not on the board</h2>
+        <p style="margin: 0; font-size: 13px; color: #6A5642">Connected to cards above but missing here.</p>
+        <button type="button" style="min-height: 40px; display: flex; justify-content: space-between; align-items: center; padding: 0 10px; border: 1px solid #CDBB98; border-radius: 6px; background: #F8F1E1; color: #2B1D12; font: inherit; cursor: pointer">Der Wachsmann <span style="color: #8C1C13">+ add</span></button>
+        <button type="button" style="min-height: 40px; display: flex; justify-content: space-between; align-items: center; padding: 0 10px; border: 1px solid #CDBB98; border-radius: 6px; background: #F8F1E1; color: #2B1D12; font: inherit; cursor: pointer">Nebeldistrikt <span style="color: #8C1C13">+ add</span></button>
+        <button type="button" style="min-height: 40px; display: flex; justify-content: space-between; align-items: center; padding: 0 10px; border: 1px solid #CDBB98; border-radius: 6px; background: #F8F1E1; color: #2B1D12; font: inherit; cursor: pointer">Kanalschleim <span style="color: #8C1C13">+ add</span></button>
+      </section>
+      <section style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 6px">
+        <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">Still to prepare</h2>
+        <span>Was aus dem Gully kommt <span style="color: #6A5642">· idea</span></span>
+        <span>Wer aus dem Kanal kommt <span style="color: #6A5642">· idea</span></span>
+      </section>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
