@@ -31,6 +31,10 @@ import {
   classParts,
   currentCampaign,
   inPlay,
+  inStack,
+  adaptedVersion,
+  replacedIds,
+  resolveArticle,
   unactivatedLayers,
   detachInstance,
   registryUsage,
@@ -782,6 +786,8 @@ export function buildApp({
     stempel: string;
     alle: Entity[];
     map: Map<string, Entity>;
+    /** Was eine Fassung ersetzt (`overrides`) — nur dafür lohnt `geltend` die Rechnung. */
+    ersetzt: Set<string>;
     namen: Map<string, Entity[]>;
   } | null = null;
   async function roh(): Promise<NonNullable<typeof rohStand>> {
@@ -804,7 +810,9 @@ export function buildApp({
       const aliases = e.components?.['Identity']?.['aliases'];
       if (Array.isArray(aliases)) for (const a of aliases) merke(String(a), e);
     }
-    rohStand = { stempel, alle, map, namen };
+    const ersetzt = new Set<string>();
+    for (const e of alle) for (const r of e.relations ?? []) if (r.type === 'overrides' && r.to) ersetzt.add(r.to);
+    rohStand = { stempel, alle, map, namen, ersetzt };
     return rohStand;
   }
 
@@ -918,14 +926,36 @@ export function buildApp({
    * den Artikel gibt. Dieselbe Regel wie `linkCandidates` (M11), nur über
    * die Nachschlagetafel statt über den ganzen Bestand.
    */
+  /**
+   * **Die Fassung, die in der laufenden Kampagne gilt** (E2, E-018):
+   * ersetzt eine aufgeschaltete Ebene den Artikel über `overrides`, die
+   * Fassung, sonst er selbst. Gesiebt wird danach wie immer.
+   */
+  async function geltend(e: Entity, map: Map<string, Entity>): Promise<Entity> {
+    if (!(await roh()).ersetzt.has(e.id)) return e;
+    const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
+    return kampagne ? resolveArticle(map, e, kampagne) : e;
+  }
+
   async function kandidaten(request: FastifyRequest, ziele: Iterable<string>): Promise<Map<string, Entity[]>> {
     const stand = await roh();
     const ziel = [...new Set([...ziele].map((t) => t.trim()).filter(Boolean))];
     const sammel = new Map<string, Entity>();
     for (const t of ziel) for (const e of stand.namen.get(t.toLowerCase()) ?? []) sammel.set(e.id, e);
-    const gesiebt = sammel.size ? await sieve(request, [...sammel.values()], stand.map) : [];
+    /* Ein Treffer, den eine Fassung ersetzt, ist die Fassung (E-018): erst
+       gegen das Original suchen — die Nummer im Text ist seine —, dann
+       umleiten und sieben. */
+    const gilt = new Map<string, Entity>();
+    for (const e of sammel.values()) gilt.set(e.id, await geltend(e, stand.map));
+    const ausgeliefert = gilt.size ? await sieve(request, [...new Map([...gilt.values()].map((e) => [e.id, e])).values()], stand.map) : [];
+    const sichtbar = new Map(ausgeliefert.map((e) => [e.id, e]));
     const raus = new Map<string, Entity[]>();
-    for (const t of ziel) raus.set(t, linkCandidates(gesiebt, t));
+    for (const t of ziel) {
+      const treffer = linkCandidates([...sammel.values()], t)
+        .map((e) => sichtbar.get(gilt.get(e.id)?.id ?? e.id))
+        .filter((e): e is Entity => !!e);
+      raus.set(t, [...new Map(treffer.map((e) => [e.id, e])).values()]);
+    }
     return raus;
   }
 
@@ -964,9 +994,18 @@ export function buildApp({
       }
     }
     const stand = await roh();
-    const ziele = [...ids].map((i) => stand.map.get(i)).filter((x): x is Entity => !!x);
+    /* Ein Ziel, das eine Fassung ersetzt (E-018), heisst wie die Fassung —
+       der Verweis führt dorthin (`GET /api/entities/:id`). */
+    const paare = await Promise.all(
+      [...ids].map(async (i) => {
+        const z = stand.map.get(i);
+        return z ? ([i, await geltend(z, stand.map)] as const) : undefined;
+      }),
+    );
+    const ziele = paare.filter((x): x is readonly [string, Entity] => !!x);
     const names: Record<string, string> = {};
-    for (const z of ziele.length ? await sieve(request, ziele, stand.map) : []) names[z.id] = entityName(z);
+    const gesiebt = new Set((ziele.length ? await sieve(request, ziele.map(([, z]) => z), stand.map) : []).map((z) => z.id));
+    for (const [i, z] of ziele) if (gesiebt.has(z.id)) names[i] = entityName(z);
     const texte = new Set<string>();
     verweiseIn(e.components, texte);
     const links: Record<string, { id: string; name: string }[]> = {};
@@ -1009,18 +1048,25 @@ export function buildApp({
    */
   app.get<{ Params: { id: string } }>('/api/entities/:id/backlinks', async (request, reply) => {
     const stand = await roh();
-    const ziel = stand.map.get(request.params.id);
+    const gefunden = stand.map.get(request.params.id);
+    const ziel = gefunden ? await geltend(gefunden, stand.map) : undefined;
     if (!ziel || !(await sieve(request, [ziel], stand.map)).length) {
       return reply.code(404).send({ error: 'Nicht gefunden' });
     }
+    /* Eine Fassung (E-018) sammelt auch, was aufs Original zeigt: die
+       Szenen eines angepassten Kapitels hängen weiter am Original. Ihre
+       eigene Kante `overrides` zählt nicht. */
+    const auch = new Set([ziel.id, ...replacedIds(stand.map, ziel)]);
     /* Gesiebt wird nur, wer überhaupt auf ihn zeigt — nicht der ganze
        Bestand (W7: für einen Spieler eine halbe Sekunde je Artikelseite).
        Das Sieb nimmt Kanten nur weg, nie dazu; die Antwort ist dieselbe. */
-    const zeigen = stand.alle.filter((e) => (e.relations ?? []).some((r) => r.to === request.params.id));
+    const zeigen = stand.alle
+      .filter((e) => e.id !== ziel.id && (e.relations ?? []).some((r) => auch.has(r.to)))
+      .map((e) => (auch.size > 1 ? { ...e, relations: (e.relations ?? []).map((r) => (auch.has(r.to) ? { ...r, to: ziel.id } : r)) } : e));
     const gesiebt = zeigen.length ? await sieve(request, zeigen, stand.map) : [];
     const registry = await repo.getRegistry();
     const felder = summaryFields(registry);
-    return backlinks(registry, gesiebt, request.params.id).map((b) => ({
+    return backlinks(registry, gesiebt, ziel.id).map((b) => ({
       from: summaryOf(b.from, felder),
       relation: b.relation,
     }));
@@ -1062,8 +1108,13 @@ export function buildApp({
 
   app.get<{ Params: { id: string } }>('/api/entities/:id', async (request, reply) => {
     const stand = await roh();
-    const entity = stand.map.get(request.params.id) ?? (await repo.getEntity(request.params.id));
-    if (!entity) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const gefunden = stand.map.get(request.params.id) ?? (await repo.getEntity(request.params.id));
+    if (!gefunden) return reply.code(404).send({ error: 'Nicht gefunden' });
+    /* **Wer das Original öffnet, bekommt die Fassung, die gilt** (E-018,
+       T-082): ein Verweis im Abenteuer zeigt aufs Original, und in einer
+       Kampagne, die es angepasst hat, ist die Fassung die Sache. Die
+       Seite sieht an der Id, dass sie umgeleitet wurde. */
+    const entity = await geltend(gefunden, stand.map);
     const [einer] = await sieve(request, [entity], stand.map);
     /* Fällt er durchs Sieb, gibt es ihn für diesen Betrachter nicht.
        „Verboten" wäre die genauere Auskunft und die falsche: sie sagt, dass
@@ -1073,8 +1124,22 @@ export function buildApp({
     if (!einer) return reply.code(404).send({ error: 'Nicht gefunden' });
     /* Die Namen, die der Artikel braucht, kommen mit (W7) — der Browser
        hält keinen Bestand mehr, aus dem er sie nachschlagen könnte. */
-    return { ...einer, refs: await bezuegeVon(request, einer) };
+    const refs = await bezuegeVon(request, einer);
+    /* Ob „Adapt" angeboten wird (E-018, T-082): dieselbe Frage wie die
+       Route, damit die Seite nichts anbietet, was der Server ablehnt. */
+    return { ...einer, refs: (await anpassbar(request, einer, stand.map)) ? { ...refs, adaptable: true } : refs };
   });
+
+  /** Lässt sich dieser Artikel für die laufende Kampagne anpassen? Die Regeln der Route `adapt`. */
+  async function anpassbar(request: FastifyRequest, e: Entity, map: Map<string, Entity>): Promise<boolean> {
+    const user = await viewerOf(request);
+    if (!user?.isAdmin) return false;
+    const ebenen = (e.relations ?? []).filter((r) => r.type === 'inLayer').map((r) => r.to);
+    if (!ebenen.length || (e.relations ?? []).some((r) => r.type === 'overrides')) return false;
+    const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
+    const ebene = campaignLayer(map, kampagne);
+    return !!kampagne && !!ebene && !ebenen.includes(ebene.id) && inStack(map, e, kampagne);
+  }
 
   /**
    * **Einen Artikel anlegen** (W7). Die Oberfläche nennt Art und Name, der
@@ -1280,6 +1345,57 @@ export function buildApp({
     if (!removed) return reply.code(404).send({ error: 'Nicht gefunden' });
     await repo.appendEvent('entity.deleted', request.params.id, {});
     return { ok: true };
+  });
+
+  /**
+   * **Anpassen über der Vorlage** (E-018 a, T-082, REQ-240): aus einem
+   * Artikel einer geteilten Ebene — einem Kapitel, einer Szene, einer
+   * Begegnung, einer Karte aus einem Abenteuer — wird eine Fassung in der
+   * Ebene der laufenden Kampagne (`campaignLayer`), die ihn über
+   * `overrides` ersetzt (`adaptedVersion`). Das Original bleibt; eine
+   * Korrektur daran erreicht jede Runde, die es nicht angepasst hat, und
+   * zurück heisst, die Fassung zu löschen. Gibt es die Fassung schon,
+   * kommt sie zurück und keine zweite.
+   *
+   * Heute nur die Verwaltung: ob die Leitung Artikel anlegt, ist E-001 und
+   * offen. Der Vorfilter oben lässt ohnehin nur sie durch.
+   */
+  app.post<{ Params: { id: string } }>('/api/entities/:id/adapt', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user?.isAdmin) return reply.code(403).send({ error: 'Anpassen darf heute die Verwaltung (E-001).' });
+    const registry = await repo.getRegistry();
+    const stand = await roh();
+    const original = stand.map.get(request.params.id);
+    if (!original) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const ebene = campaignLayer(stand.map, kampagne);
+    if (!kampagne || !ebene) {
+      return reply.code(409).send({ error: 'Die laufende Kampagne hat keine eigene Ebene, in der die Fassung liegen könnte.' });
+    }
+    const ebenenVon = (e: Entity) => (e.relations ?? []).filter((r) => r.type === 'inLayer').map((r) => r.to);
+    if (ebenenVon(original).includes(ebene.id)) {
+      return reply.code(409).send({ error: 'Das liegt schon in der Ebene der Kampagne — hier wird direkt bearbeitet.' });
+    }
+    if (!inStack(stand.map, original, kampagne)) {
+      return reply.code(409).send({ error: 'Seine Ebene ist in dieser Kampagne nicht aufgeschaltet.' });
+    }
+    const schon = stand.alle.find(
+      (e) => ebenenVon(e).includes(ebene.id) && (e.relations ?? []).some((r) => r.type === 'overrides' && r.to === original.id),
+    );
+    if (schon) return reply.code(200).send({ id: schon.id, created: false });
+
+    const neueId = (): string => `e_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+    let id = neueId();
+    while (stand.map.has(id)) id = neueId();
+    const typ = original.interfaces?.[0] ?? '';
+    const fassung = adaptedVersion(original, { id, number: nextId(stand.alle, typ), layer: ebene.id });
+    const known = new Map(stand.alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
+    known.set(id, typ);
+    const issues = validateEntity(registry, fassung, { knownTypes: known, stageOf: stageBases([...stand.alle, fassung]) });
+    if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+    await repo.putEntity(fassung);
+    await repo.appendEvent('entity.created', id, { interfaces: fassung.interfaces, adapts: original.id, by: user.id });
+    return reply.code(201).send({ id, created: true });
   });
 
   /**
