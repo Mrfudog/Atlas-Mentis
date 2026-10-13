@@ -20,6 +20,7 @@ import {
   runChecks,
   selectEntities,
   storedKey,
+  CAMPAIGN_TYPE,
   articleVisible,
   backlinks,
   campaignLayer,
@@ -53,7 +54,8 @@ import type { BulkChange, Entity, Registry } from '@nw/model';
 import type { Repository } from './repo.js';
 import type { AtlasEnv } from './config.js';
 import { buildListIndex, listProjection, parseListQuery, queryList, type ListIndex } from './liste.js';
-import { registerVerwaltung } from './verwaltung.js';
+import { rechtAn, registerVerwaltung } from './verwaltung.js';
+import { ausfuhrName, kampagnenAusfuhr } from './ausfuhr.js';
 import {
   ATTEMPT_WINDOW_MINUTES,
   MAX_ATTEMPTS,
@@ -719,6 +721,30 @@ export function buildApp({
       return sieve(request, alle.filter((e) => ids.has(e.id)), alle);
     }
     return sieve(request, alle, alle);
+  });
+
+  /* **Die eigene Kampagne als Datei** (T-077, REQ-199): Register und die
+     Artikel der Kampagne, im Format, das `import.ts` liest. Herunterladen
+     dürfen die Verwaltung und die Leitung dieser Kampagne (`gm`, `co-gm` —
+     sehen tun beide dasselbe); `layers=all` mit 5e.tools und allem nur die
+     Verwaltung. Was hineingeht und warum: `ausfuhr.ts`. */
+  app.get<{ Querystring: { campaign?: string; layers?: string } }>('/api/export', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+    const c = String(request.query.campaign ?? '').trim();
+    if (!c) return reply.code(400).send({ error: 'Welche Kampagne? `?campaign=<id>`' });
+    if (!rechtAn(user, c)) return reply.code(403).send({ error: 'Ausführen darf die Leitung dieser Kampagne.' });
+    const layers = request.query.layers ?? 'campaign';
+    if (layers !== 'campaign' && layers !== 'all') return reply.code(400).send({ error: '`layers` ist `campaign` oder `all`.' });
+    if (layers === 'all' && !user.isAdmin) return reply.code(403).send({ error: 'Den ganzen Bestand führt die Verwaltung aus.' });
+    const alle = await repo.listEntities();
+    const kampagne = alle.find((e) => e.id === c && (e.interfaces ?? [])[0] === CAMPAIGN_TYPE);
+    if (!kampagne) return reply.code(404).send({ error: 'Diese Kampagne gibt es nicht als Artikel.' });
+    const datei = kampagnenAusfuhr(alle, await repo.getRegistry(), kampagne, { all: layers === 'all', user });
+    await repo.appendEvent('export', c, { by: user.id, layers, entities: datei.entities.length });
+    return reply
+      .header('content-disposition', `attachment; filename="${ausfuhrName(datei.campaign.name, datei.at)}"`)
+      .send(datei);
   });
 
   // ------------------------------------------------------------ Liste (W7)
