@@ -20,7 +20,7 @@ import { KOPIE_VON, loeseKopien } from './copy.js';
 import type { Auswahl, Datenstand } from './lesen.js';
 import { ARTEN_WEG, ausschluss, quelleVon } from './lesen.js';
 import type { Bericht } from './werkbank.js';
-import { Werkbank, zaehle } from './werkbank.js';
+import { buchEbeneId, Werkbank, zaehle } from './werkbank.js';
 import type { Zuordnung } from './zuordnung.js';
 
 /** Die Reihenfolge aus Abgleich §4.2 — jede spätere Art zeigt auf frühere. */
@@ -34,8 +34,12 @@ export const ZUORDNUNGEN: Zuordnung[] = [
   ...WELT,
 ];
 
-/** Die Ebene, in der der ganze Bestand liegt (Arbeitsplan §1, M9). */
+/** Die Systemebene (Arbeitsplan §1, M9). Seit T-081 liegt darin nur, was
+ *  kein Buch nennt; alles andere liegt in der Ebene seines Buchs. */
 export const EBENE = 'D&D 5e (2014)';
+
+/** Die drei Grundregelwerke — je eine Ebene wie jedes Buch, gruppiert als `core`. */
+export const KERN = ['PHB', 'MM', 'DMG'];
 
 /** Begleittexte, die an einen Artikel gehen (`Lore`). */
 const FLUFF = ['monsterFluff', 'raceFluff', 'backgroundFluff', 'classFluff', 'subclassFluff'];
@@ -88,8 +92,30 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
   wb.feld(ebene, 'Layer', 'kind', 'system');
   wb.feld(ebene, 'Layer', 'order', 0);
   wb.feld(ebene, 'Layer', 'version', '2014');
-  wb.prosa(ebene, 'The 2014 rules of the fifth edition and everything built on them, taken over once from 5e.tools. Which book and page an article comes from is in its source.');
+  wb.prosa(ebene, 'The 2014 rules of the fifth edition, taken over from 5e.tools: what no single book brings (the action types). Every book has its own layer; which page an article comes from is in its source.');
   wb.ebene = ebene;
+
+  /* Je Buch eine Ebene (T-081, E-017), angelegt beim ersten Eintrag
+     daraus. Der Name kommt aus `books.json`/`adventures.json`; die Marke
+     sagt der Kampagnenseite, unter welcher Gruppe das Buch steht. */
+  const buecher = new Map<string, Entity>();
+  wb.buchEbene = (q) => {
+    if (!q) return undefined;
+    const k = q.toLowerCase();
+    let l = buecher.get(k);
+    if (l) return l;
+    const meta = stand.quellen.get(k);
+    const name = meta?.name ?? q;
+    l = wb.anlegen('Layer', name, `book|${k}`);
+    l.id = buchEbeneId(q);
+    wb.feld(l, 'Layer', 'kind', 'book');
+    wb.feld(l, 'Layer', 'order', 0);
+    wb.feld(l, 'Layer', 'version', '2014');
+    wb.feld(l, 'Tags', 'tags', [KERN.includes(meta?.id ?? q) ? 'core' : meta?.art === 'adventure' ? 'adventure' : 'sourcebook']);
+    wb.prosa(l, `${name} (${meta?.id ?? q}${meta?.published ? `, ${meta.published.slice(0, 4)}` : ''}), taken over from 5e.tools. Turn it on for a campaign to bring its articles into play.`);
+    buecher.set(k, l);
+    return l;
+  };
   legeAktionsartenAn(wb);
 
   /* Begleittexte, nach Name und Quelle. Sie stehen selbst manchmal als
@@ -156,12 +182,12 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
       let ent = v ? vereint.get(v) : undefined;
       if (!ent) {
         const herkunft = `${z.art}|${kl(z.name(e))}|${kl(q)}|${z.herkunft?.(e) ?? ''}`;
-        const vorher = wb.entities.length;
         const neu = wb.anlegen(typ, z.name(e), herkunft, e);
         if (pegs.has(neu.id)) {
           /* Derselbe Eintrag zweimal (dieselbe Art, derselbe Name, dieselbe
-             Quelle): der zweite fällt weg und wird gezählt. */
-          wb.entities.splice(vorher, 1);
+             Quelle): der zweite fällt weg und wird gezählt. Nach Id, nicht
+             nach Stelle — davor kann eben eine Buchebene dazugekommen sein. */
+          wb.entities.splice(wb.entities.lastIndexOf(neu), 1);
           zaehle(wb.bericht.typen, typ, -1);
           wb.notiz('doppelter Eintrag', z.art);
           continue;
@@ -228,6 +254,13 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
   const entities = vereineGleiche(wb.entities, wb.bericht);
   wb.entities.splice(0, wb.entities.length, ...entities);
   for (const [t, n] of wb.bericht.vereint) zaehle(wb.bericht.typen, t, -n);
+  /* Eine Buchebene, deren Einträge alle in andere aufgingen, bringt nichts. */
+  const belegt = new Set(wb.entities.flatMap((e) => (e.relations ?? []).filter((r) => r.type === 'inLayer').map((r) => r.to)));
+  for (const l of buecher.values()) {
+    if (belegt.has(l.id)) continue;
+    wb.entities.splice(wb.entities.indexOf(l), 1);
+    zaehle(wb.bericht.typen, 'Layer', -1);
+  }
   fassungen(wb.entities, stand, wb.bericht, (e) => wb.nachdrucke.get(e.id) ?? []);
   herkunft(wb.entities, stand, wb.bericht, (e) => wb.nachdrucke.get(e.id) ?? []);
 

@@ -450,6 +450,92 @@ try {
   }
 
 
+  /* Eine Ebene je Buch (T-081): die Migration hängt den Bestand der alten
+     Ebene „D&D 5e (2014)" nach seiner Quelle um und schaltet die Bücher für
+     jede Kampagne auf, die die alte Ebene aufschaltete. Gelaufen ist sie
+     beim Start schon (auf leerem Bestand); hier läuft sie ein zweites Mal
+     unter einem Probenamen gegen Probeartikel. Die Prüfung: **keine
+     Kampagne verliert einen Artikel** (`inPlay` vorher und nachher). */
+  {
+    const { migrate } = await import(join(DIST, 'migrate.js'));
+    const { PgRepository } = await import(join(DIST, 'repo.pg.js'));
+    const { inPlay } = await import('@nw/model');
+    const { default: pg } = await import('pg');
+    const pool = new pg.Pool({ connectionString: process.env['DATABASE_URL'] });
+    const repo = new PgRepository(pool);
+    const ALT = 'e5_367c46d7f4ff';
+    const in_ = (to) => [{ id: `~in-${to}`, type: 'inLayer', to, props: {} }];
+    const quelle = (publication) => ({ Source: { publication, srd: false } });
+    const probe = [
+      { id: ALT, name: 'D&D 5e (2014)', interfaces: ['Layer'], components: { ...ident('D&D 5e (2014)', 'layer-0001'), Layer: { kind: 'system', order: 0, version: '2014' } }, relations: [] },
+      { id: 'e5_probe_r1', name: 'Probe Darkvision', interfaces: ['Rule'], components: { ...ident('Probe Darkvision', 'rule-0901'), ...quelle('PHB') }, relations: in_(ALT) },
+      { id: 'e5_probe_r2', name: 'Probe Tool Rule', interfaces: ['Rule'], components: { ...ident('Probe Tool Rule', 'rule-0902'), ...quelle('XGE') }, relations: in_(ALT) },
+      { id: 'e5_probe_c1', name: 'Probe Blinded', interfaces: ['Condition'], components: { ...ident('Probe Blinded', 'condition-0901'), ...quelle('PHB') }, relations: in_(ALT) },
+      { id: 'e5_probe_f1', name: 'Probe Harpers', interfaces: ['Faction'], components: { ...ident('Probe Harpers', 'faction-0901'), Notes: { note: [{ id: 'source', value: 'Source: SCAG, p. 3' }] } }, relations: in_(ALT) },
+      { id: 'e5_probe_a1', name: 'Probe Action', interfaces: ['ActionType'], components: ident('Probe Action', 'actiontype-0901'), relations: in_(ALT) },
+      { id: 'camp_probe_c', name: 'Runde C', interfaces: ['Campaign'], components: ident('Runde C', 'campaign-0903'), relations: [{ id: 'camp_probe_c_ac', type: 'activates', to: ALT, props: { order: 0 } }, { id: 'camp_probe_c_ac2', type: 'activates', to: 'ly_probe_a', props: { order: 50 } }] },
+    ].map((e) => ({ ...e, relations: e.relations.map((r) => ({ ...r, id: r.id.startsWith('~') ? `${e.id}${r.id}` : r.id })) }));
+    const ordner = mkdtempSync(join(tmpdir(), 'durchstich-buch-'));
+    const name = 'zzz_durchstich_ebene_je_buch.sql';
+    const BUECHER = ['e5_book_phb', 'e5_book_xge', 'e5_book_scag'];
+    const sicht = async () => {
+      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      const je = new Map();
+      for (const k of [...alle.values()].filter((e) => e.interfaces[0] === 'Campaign')) {
+        je.set(k.id, new Set([...alle.values()].filter((e) => inPlay(alle, e, k)).map((e) => e.id)));
+      }
+      return { alle, je };
+    };
+    try {
+      for (const e of probe) {
+        const r = await put(admin, e);
+        pruefe(`Probeartikel ${e.id}`, r.ok, `${r.status} ${await r.text()}`);
+      }
+      const vorher = await sicht();
+      const { readFileSync } = await import('node:fs');
+      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '026_ebene_je_buch.sql'), 'utf8'));
+      const gemeldet = [];
+      const logAlt = console.log;
+      console.log = (...a) => gemeldet.push(a.join(' '));
+      try {
+        await migrate(pool, { env: {} }, ordner);
+      } finally {
+        console.log = logAlt;
+      }
+      const nachher = await sicht();
+      const verloren = [...vorher.je].flatMap(([k, ids]) => [...ids].filter((id) => !nachher.je.get(k)?.has(id)).map((id) => `${k}: ${id}`));
+      pruefe('Eine Ebene je Buch: keine Kampagne verliert einen Artikel', verloren.length === 0 && vorher.je.get('camp_probe_c')?.has('e5_probe_r1'), verloren.join(', '));
+      const ziel = (id) => (nachher.alle.get(id)?.relations ?? []).find((r) => r.type === 'inLayer')?.to;
+      pruefe(
+        'Eine Ebene je Buch: nach Source.publication und Fundstelle umgehängt, ohne Quelle geblieben',
+        ziel('e5_probe_r1') === 'e5_book_phb' && ziel('e5_probe_c1') === 'e5_book_phb' && ziel('e5_probe_r2') === 'e5_book_xge'
+          && ziel('e5_probe_f1') === 'e5_book_scag' && ziel('e5_probe_a1') === ALT,
+        ['e5_probe_r1', 'e5_probe_c1', 'e5_probe_r2', 'e5_probe_f1', 'e5_probe_a1'].map((id) => `${id}→${ziel(id)}`).join(', '),
+      );
+      const phb = nachher.alle.get('e5_book_phb');
+      pruefe(
+        'Eine Ebene je Buch: die Buchebene heisst wie das Buch',
+        phb?.components['Identity']?.name === "Player's Handbook" && phb.components['Layer']?.kind === 'book' && phb.components['Tags']?.tags?.[0] === 'core'
+          && nachher.alle.get('e5_book_scag')?.components['Identity']?.name === "Sword Coast Adventurer's Guide",
+        JSON.stringify(phb),
+      );
+      const auf = (k) => new Set((nachher.alle.get(k)?.relations ?? []).filter((r) => r.type === 'activates').map((r) => r.to));
+      pruefe(
+        'Eine Ebene je Buch: wer die alte Ebene aufschaltete, hat die Bücher; die anderen nicht',
+        BUECHER.every((b) => auf('camp_probe_c').has(b)) && auf('camp_probe_c').has(ALT) && !BUECHER.some((b) => auf('camp_probe_a').has(b)),
+        [...auf('camp_probe_c')].join(', '),
+      );
+      pruefe('Eine Ebene je Buch: was ohne Quelle blieb, wird aufgezählt', gemeldet.some((m) => /Ohne Quelle.*\(1\): Probe Action/.test(m)), gemeldet.join(' | '));
+      const gelesen = await get(admin, '/api/campaigns/camp_probe_c/layers');
+      pruefe('Eine Ebene je Buch: die Kampagnenseite liest die Bücher', gelesen.ok && (await gelesen.json()).layers.some((l) => l.id === 'e5_book_phb' && l.group === 'core' && l.active), String(gelesen.status));
+    } finally {
+      await pool.query('delete from entity where id = any($1)', [[...probe.map((e) => e.id), ...BUECHER]]);
+      await pool.query('delete from schema_migrations where name = $1', [name]);
+      await pool.end();
+      rmSync(ordner, { recursive: true, force: true });
+    }
+  }
+
   /* ------------------------------------------- Eigene Ausfuhr (T-077) */
   const ausfuhr = async (keks) => {
     const r = await get(keks, '/api/export?campaign=camp_probe_a');

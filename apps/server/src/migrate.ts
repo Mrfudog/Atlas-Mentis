@@ -40,6 +40,13 @@ export async function migrate(
     if (done.has(file)) continue;
     const sql = await readFile(join(dir, file), 'utf8');
     const client = await pool.connect();
+    /* Was eine Migration aufzählt (`raise notice`), steht im Startprotokoll:
+       ein stiller Rest sähe später aus wie ein Fehler (T-081). */
+    const melden = (n: { message?: string; code?: string }) => {
+      /* Nur, was die Migration selbst sagt — nicht Postgres' „… skipping". */
+      if (n.code === '00000') console.log(`${file}: ${n.message ?? ''}`);
+    };
+    client.on('notice', melden);
     try {
       await client.query('begin');
       const betroffen = [];
@@ -57,6 +64,7 @@ export async function migrate(
       if (error instanceof DatenverlustError) throw error;
       throw new Error(`Migration ${file} fehlgeschlagen: ${(error as Error).message}`);
     } finally {
+      client.off('notice', melden);
       client.release();
     }
   }

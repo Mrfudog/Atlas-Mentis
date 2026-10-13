@@ -253,7 +253,7 @@ Lesetoken auch aus einem Werkzeug). Die Datei heisst
 
 Darin stehen das **Register** und die **Artikel der Kampagne**: was in
 einer Kampagnenebene liegt (eine Ebene, die nur diese Kampagne aufschaltet
-und kein Regelwerk ist — `Layer.kind` nicht `system`/`expansion`), was
+und kein Regelwerk ist — `Layer.kind` nicht `system`/`expansion`/`book`), was
 keine Ebene hat, die Kampagne selbst und die Ebenen, die sie aufschaltet,
 als Artikel. Gesiebt nach dem, was der Aufrufer sieht. **Nicht** darin:
 Konten, Sitzungen, Tokens, Einladungen und die Rollen am Tisch (REQ-199),
@@ -377,8 +377,13 @@ tut es mit einer Probemigration vor).
 
 ## 5e.tools laden
 
-Die Artikel aus 5e.tools stehen in einer eigenen **Ebene**, „D&D 5e
-(2014)" (`inLayer` an jedem). Eingelesen wird über eine **Pipeline**; die
+Die Artikel aus 5e.tools stehen **je Buch in einer eigenen Ebene**
+(T-081, E-017): „Player's Handbook", „Monster Manual", „Curse of Strahd" …
+(`kind: book`, Id `e5_book_<kürzel>`, `inLayer` an jedem Artikel). Was kein
+Buch nennt (die Aktionsarten), liegt in der Systemebene „D&D 5e (2014)".
+Eine Kampagne schaltet auf der Kampagnenseite die Bücher auf, die sie
+nutzt (Liste mit Häkchen, nach Grundregelwerk, Quellenbuch und Abenteuer
+gruppiert). Eingelesen wird über eine **Pipeline**; die
 Daten von 5e.tools kommen dabei nie ins Repository und bleiben nicht auf
 dem Server liegen. Was hereinkommt und was nicht, sagt
 [5etools-Bericht.md](5etools-Bericht.md). Zuerst auf `dev`, `prod` erst,
@@ -402,7 +407,22 @@ also `0 neu`. Geprüft wird wie immer alles, bevor etwas geschrieben wird.
 **Ein Modul ergänzen:** Pipeline mit `mode` = `only-new` und `sources` =
 dem Kürzel aus 5e.tools (z. B. `CoS`, oder `PHB,MM`); zuerst `dry-run`
 mit denselben Angaben. Was das Modul an Bekanntem mitbringt (ein Monster
-aus dem MM), steht schon und wird übersprungen.
+aus dem MM), steht schon und wird übersprungen. **Ein neues Buch bringt
+eine neue Ebene, und die ist in keiner Kampagne aufgeschaltet** — nach dem
+Lauf auf der Kampagnenseite das Häkchen setzen, sonst stehen seine
+Artikel in keiner Liste (die Listen sagen es mit „Turn on").
+
+**Vom Bestand mit einer Ebene zu einer je Buch** (Migration
+`026_ebene_je_buch.sql`, T-081): beim Start hängt der Server jeden Artikel
+der alten Ebene „D&D 5e (2014)" an die Ebene seines Buchs
+(`Source.publication`, sonst die Fundstelle in den Notizen) — kein
+Neueinlesen, Ids und eigene Änderungen bleiben. Jede Kampagne, die die
+alte Ebene aufschaltete, schaltet danach alle Bücher auf, in die etwas
+umzog, auf derselben Höhe: sie sieht genau, was sie vorher sah, und die
+Leitung schaltet ab, was sie nicht braucht. Was keine Quelle trägt, bleibt
+in der alten Ebene und steht im Startprotokoll (`Ohne Quelle in der alten
+Ebene geblieben (n): …`). Ein Buch, das die Migration nicht beim Namen
+kennt, heisst wie sein Kürzel, bis jemand die Ebene umbenennt.
 
 **Wann `replace-layer`:** nur, wenn die Ebene wirklich neu geladen werden
 soll — etwa weil der Importer etwas an *bestehenden* Artikeln anders
@@ -416,7 +436,10 @@ dafür `confirm` = `ersetzen` und bricht sonst ab. Vor dem Lauf sichert
 ### Ersetzen je Ebene
 
 `replace-layer` **ersetzt die Ebene**, nicht den Bestand
-(`import.js <datei> --replace-layer`, W8): gelöscht wird nur, was die Ebene
+(`import.js <datei> --replace-layer=<Id oder Name>`, W8). Seit es je Buch
+eine Ebene gibt, bringt die Datei viele; welche ersetzt wird, sagt der
+Name (`--replace-layer="Monster Manual"`), ohne ihn bricht der Lauf ab
+und zählt die Ebenen auf. Gelöscht wird nur, was die Ebene
 der Datei bringt — `inLayer` auf sie und auf keine andere — und in der
 Datei fehlt. Eigene Artikel ohne Ebene oder in einer Kampagnenebene
 bleiben, auch einer, der zusätzlich in der 5e-Ebene steht. Der Lauf sagt:
@@ -695,7 +718,7 @@ steht er als Konflikt da und es geschieht nichts; `undo <id> --force` lässt
 die alte Fassung gewinnen.
 
 **Was beim Neu-Einlesen passiert:** die Pipeline (oben, W8) schreibt jeden
-Artikel der Ebene „D&D 5e (2014)" so, wie die Datei ihn bringt. Eine
+Artikel der ersetzten Buchebene so, wie die Datei ihn bringt. Eine
 Massenänderung an einem 5e.tools-Artikel — eine Kampfrolle, ein
 zusammengeführtes Doppel — ist nach dem nächsten Lauf wieder weg (das
 gelöschte Doppel steht wieder da). Was bleiben soll, gehört in den

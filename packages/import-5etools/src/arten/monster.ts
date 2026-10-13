@@ -405,17 +405,27 @@ function statblock(wb: Werkbank, sb: Entity, e: Knoten): void {
   wb.feld(sb, S, 'resistances', schadenSatz(wb, e['resist'], 'resist'));
   wb.feld(sb, S, 'immunities', schadenSatz(wb, e['immune'], 'immune'));
   wb.feld(sb, S, 'vulnerabilities', schadenSatz(wb, e['vulnerable'], 'vulnerable'));
+  /* Zustandsimmunitäten zeigen auf `Condition`-Artikel (T-078). Was
+     keiner ist — „disease" —, steht als Notiz am Statblock, nicht als
+     Verweis ins Leere. */
   const zustaende: string[] = [];
+  const keinZustand: string[] = [];
   const zustandNoten: string[] = [];
+  const zustand = (roh: string) => {
+    const ziel = wb.finde('condition', [roh]);
+    if (ziel) zustaende.push(ziel.id);
+    else keinZustand.push(roh.replace(/^./, (x) => x.toUpperCase()));
+  };
   for (const c of liste(e['conditionImmune'])) {
-    if (typeof c === 'string') zustaende.push(wb.finde('condition', [c])?.name ?? c.replace(/^./, (x) => x.toUpperCase()));
+    if (typeof c === 'string') zustand(c);
     else {
       const o = c as Knoten;
-      for (const x of liste(o['conditionImmune'])) zustaende.push(wb.finde('condition', [String(x)])?.name ?? String(x));
+      for (const x of liste(o['conditionImmune'])) zustand(String(x));
       if (o['note']) zustandNoten.push(wb.zeile(String(o['note'])));
     }
   }
   wb.feld(sb, S, 'conditionImmunities', [...new Set(zustaende)]);
+  if (keinZustand.length) wb.anmerkung(sb, 'condition-immunities', `Condition immunities: ${[...new Set(keinZustand)].join(', ')}`);
   if (zustandNoten.length) wb.notiz('Zustandsimmunität mit Bedingung (Bedingung entfällt)');
   wb.feld(sb, S, 'legendaryActions', zahl(e['legendaryActions']) ?? (e['legendary'] ? 3 : undefined));
 

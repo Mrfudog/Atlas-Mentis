@@ -109,6 +109,16 @@ export class Statblock {
     effect(() => {
       void this.bestand.holen([...this.uebungen().values()].map((k) => k.id));
     });
+    /* Die Zustandsimmunitäten sind Verweise (T-078). Am eigenen Artikel
+       bringt `refs` ihre Namen mit; ein Statblock, der an einer Kreatur
+       steht, kam ohne — dann holt er die Zustände selbst. */
+    effect(() => {
+      const sb = this.artikel().components?.['Statblock'] as Record<string, unknown> | undefined;
+      const ids = Array.isArray(sb?.['conditionImmunities']) ? (sb['conditionImmunities'] as unknown[]) : [];
+      const name = this.bestand.name();
+      const offen = ids.filter((id): id is string => typeof id === 'string' && !name(id));
+      if (offen.length) untracked(() => void this.bestand.holen(offen));
+    });
   }
 
   protected readonly buch = computed<StatblockBook | null>(() => {
@@ -116,7 +126,9 @@ export class Statblock {
     if (!r) return null;
     const uebungen = this.uebungen();
     const voll = this.bestand.voll();
+    const name = this.bestand.name();
     return statblockBook(r, this.artikel(), {
+      nameOf: (id) => name(id),
       kindOf: (n) => {
         const k = uebungen.get(n.toLowerCase());
         return k ? primaryInterface(k) : undefined;
