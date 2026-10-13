@@ -329,7 +329,7 @@ nicht — den gäbe es auch ohne das Rezept.
 
 | Familie | Kanten | Trägt |
 |---|---|---|
-| Struktur | `partOf`, `insideMap` | Ort, Rahmen, Spur der Weltgeschichte (§5.9) — die Reihenfolge sagt `Time.sort` |
+| Struktur | `partOf`, `insideMap` | Ort, Rahmen, Spur der Weltgeschichte (§5.9), das Board eines Geschichtsartikels (REQ-205) — die Reihenfolge sagt `Time.sort` |
 | Teil | `belongsTo`, `carries` | `asField` |
 | Einsetzen | `composedOf`, `hasProperty` | `section`, `vars` |
 | Regel | `stageOf`, `affects`, `grants`, `subclassOf`, `subraceOf` | Stufe eines Zustands; Wirkung zwischen Regeln (`effect`, `on`, `note`); was Klasse, Abstammung, Hintergrund gewähren (`level`) |
@@ -427,12 +427,13 @@ flowchart LR
 | C2 | **Die Figur zeigt darauf:** `hasClass` (mehrmals, `props.level` Pflicht, `props.subclass` → `Subclass`), `hasAncestry` und `hasBackground` (je eine). `PlayerCharacter.class` und `.ancestry` sind weg. | Kantenprüfung |
 | C3 | **Die Stufe wird gerechnet:** `level = sum(hasClass.level)`, `proficiency = 2+(sum(hasClass.level)-1)/4` (D8). Ohne Klasse keine Stufe — kein Wert statt 0. | Rechenwerk (`derivedValue` mit Kanten) |
 | C4 | **Was eine Klasse, Abstammung, ein Hintergrund oder Talent gewährt, ist die Kante `grants`** (→ `Rule`) mit `props.level`. Die Stufe steht an der Kante und nicht am Merkmal: „Ability Score Improvement" ist ein Artikel und sieben Kanten. `Feature.level` ist deshalb weg (D50). `subclassOf` und `subraceOf` sagen, wozu eine Unterklasse oder Unterart gehört. Die Stufentabelle einer Klasse und die Charakterzug-Tabellen eines Hintergrunds sind `Table`-Artikel über `tableFor`. | Kantenprüfung |
+| C5 | **Ein Merkmal bettet ein, was allein in einem Absatz steht** (W6): ein Absatz, der nur aus einem Verweis auf ein `Feature` besteht (`[[feature-0479\|Abjuration Savant]]`), heisst „hier steht dieses Merkmal" — so schreibt der Importer `refSubclassFeature` und `refOptionalfeature`. Die Klassenansicht zeichnet es an dieser Stelle aus; ein Kopf, der Merkmale **seiner Sorte** einbettet („School of Abjuration"), heisst in der Tabelle nach seinen Teilen, einer mit Optionen („Fighting Style" › „Archery") nach sich. Optionale Merkmale und Variantenregeln tragen die Marke `optional`. Bringt eine Unterklasse eigene Spalten (`subclassTableGroups`: Eldritch Knight), ist das ein `Table` über `tableFor` an ihr. | `classParts`, `levelFeatures` (`packages/model/src/classes.ts`) |
 | Ü1 | **Übungen kommen aus Artikeln** (M6): `Proficiencies.proficient` und `expertise` nennen `Skill`, `Language`, `Item` (nur Werkzeuge, `enumWhere` auf `itemType`), `Weapon`, `Weapon.category`, `Armor.armorType`. Die Zeilen `Skill`, `Language`, `Tool`, `WeaponTraining`, `ArmorTraining`, `KnowledgeField` und die Einstellung `skills` sind weg; worauf eine Fertigkeit rechnet, sagt `Skill.ability`. Ein Wissensgebiet (Hausregel) ist eine Fertigkeit mit Artikel. | F12 |
 | Ü2 | **`Language` ist eine Art** (`languageType` standard/exotic/rare/secret, `script`, `typicalSpeakers`). | — |
 | Ü3 | **`DamageType` und `Size` sind Zeilen** (F1): drei Felder nennen die Schadensarten (Waffe, Aktion, Zauber; die Abstammung für Resistenzen), zwei die Grösse. | `validateEntity` (`value_not_allowed`) |
 
 Offen: der Bogen der Oberfläche (`apps/web`) zeichnet Klasse und Stufe
-noch nicht; die Wahl aus `ProficiencyChoice` trifft niemand für die Figur
+noch nicht (die Klasse selbst steht unter `/classes/:id`, W6); die Wahl aus `ProficiencyChoice` trifft niemand für die Figur
 (sie steht als Angebot an der Klasse); eine umbenannte Fertigkeit nimmt
 die gespeicherten Übungen nicht mit (F12).
 
@@ -519,6 +520,14 @@ Karte `Vars.bindings` → die gerechneten Kampagnenwerte (`{PARTY}`,
 `{PARTYSIZE}`, `{PARTYLEVEL}`, `{PARTYTIER}`, `{PARTYWHERE}`, `{TODAY}`,
 `{CALENDAR}`) → die Registerzeile `vars`. **Nie in den gespeicherten Text
 eingesetzt**; ein unaufgelöster Platzhalter bleibt sichtbar stehen.
+**Am Satzanfang schreibt ein eingesetzter Wert gross** (Textanfang oder
+nach `.`, `!`, `?`, `:` und Zeilenumbruch; Hervorhebung zählt nicht) —
+gespeichert bleibt die Bindung, wie sie ist. Darum **trägt ein
+Platzhalter seinen Artikel**: das Merkmal heisst „{CREATURE} can breathe
+air and water.", die Kante bindet `CREATURE` an „the dragon" oder
+„Venomfang", und die Vorgabe an der Vorlage ist `Vars.bindings.CREATURE`
+= „the creature". So teilen sich Drache, Riese und benannte Kreatur einen
+Text (W1).
 
 **Würfel** `{{1d6+2}}` (M12, REQ-070). Ein Ausdruck aus Würfeln und
 Zahlen, `d` oder `W`; ein blosser Modifikator `{{+4}}` ist ein Wurf auf
@@ -790,6 +799,22 @@ Drei Ansichten, und der Ort wählt sie:
 | `quick` | eine Kachel auf dem Board, die Schnellanlage | Bild, Beschreibung, Felder, Prosa |
 | `full` | die Artikelseite | alles |
 
+**Nur die Kachel auf dem Board wählt** (REQ-161, `placementView`): zuerst
+die Platzierung (`placed.props.view`), dann die Regel des Boards je Art
+(`Board.rules`, die `extends`-Kette hoch), und sagt keiner etwas, **die
+Grösse** — eine Kachel bis 110 px Höhe ist eine Zeile und zeigt `overview`,
+eine höhere eine Karte und zeigt `quick`. Wer sie grösser zieht, bekommt
+die Karte, ohne etwas auszuwählen.
+
+**Ein Board gehört über `partOf` zu seinem Geschichtsartikel** (REQ-205):
+Kampagne, Kapitel (`Story.kind`), Sitzung — nicht Szene, die ist eine
+Karte auf dem Board ihrer Sitzung. Ein Board ohne die Kante ist ein
+Regel-Board. Eine eigene Kante `boardOf` wäre eine zweite Hierarchie neben
+`partOf`, mit Rückbezügen, die niemand neben „contains" sucht. Die
+Kurzfassung (`summaryOf`) trägt `partOf` mit, damit die Liste der Boards
+und ihr Pfad „Kampagne › Kapitel › Sitzung" ohne einen ganzen Artikel
+auskommen.
+
 Eine Spieleransicht gibt es nicht: gesiebt wird am Server, alle sehen
 dieselbe Ansicht. Für `overview` und `quick` wählt eine Art **nach Gruppe**
 (ein Typname in `except`), nicht Feld für Feld.
@@ -951,7 +976,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Board` | — | `width` `height` `snap` `background` `rules` `shapes` `anchors` | `placed` | — | full |
+| `Board` | — | `width` `height` `snap` `background` `rules` `shapes` `anchors` | `partOf` `placed` | — | full |
 | `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` | `xpBudget` `phase` `round` `turn` `surprise` | `participates` `onMap` `loot` `tableFor` | — | full |
 | `Map` | `Image` `Secrets` `ReadAloud` | `sheets` `baseHidden` `baseGmOnly` `kind` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `scale` `lighting` `fog` `reveal` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `zone` `territory` | `insideMap` `onMap` | full |
 
@@ -1004,7 +1029,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `overrides` | * → * | ja | — | `scope` `note` |
 | `owes` | Creature → Creature |  | — | — |
 | `participates` | Encounter → Creature \| Statblock \| Party |  | — | `label` `init` `hp` `hpMax` `ally` `conditions` `note` `revealed` `involved` `identified` |
-| `partOf` | Place \| Story \| Quest \| Event → Place \| Story \| Event |  | — | — |
+| `partOf` | Place \| Story \| Quest \| Event \| Board → Place \| Story \| Event |  | — | — |
 | `partyOf` | Party → Campaign | ja | — | — |
 | `placed` | Board → * |  | — | `x` `y` `w` `h` `view` `z` `locked` `note` |
 | `questAbout` | Quest → * |  | — | — |

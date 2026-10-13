@@ -36,4 +36,10 @@ describe('routes', () => {
     const r = routes.find((x) => x.path === 'campaign');
     expect(r?.canActivate?.length).toBe(1);
   });
+
+  /* Das Board liest seine Id wie die Artikelseite — als Eingabe aus dem Pfad. */
+  it('has the board list and a board by id', () => {
+    expect(routes.some((r) => r.path === 'boards')).toBe(true);
+    expect(routes.some((r) => r.path === 'boards/:id')).toBe(true);
+  });
 });

@@ -1,0 +1,303 @@
+/* Die Klassenansicht (W6) im Pergament der Artikelseite: ein Blatt, darin
+   Eckdaten, die Leiste der Unterklassen, die Stufentabelle und die
+   Merkmale je Stufe. Nur Marken, keine Farben. */
+.buch {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.brot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  color: var(--dim);
+  font-size: 0.9rem;
+}
+.blatt {
+  background: var(--paper);
+  border-top: 6px solid var(--gold);
+  border-bottom: 6px solid var(--gold);
+  box-shadow: 0 1px 6px rgba(43, 29, 18, 0.25);
+  padding: 1.25rem 1.75rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.titelzeile {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+h1 {
+  margin: 0;
+  font-family: var(--caps);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--heading);
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+.untertitel {
+  margin: 0.15rem 0 0;
+  font-family: var(--serif);
+  font-style: italic;
+}
+.linie {
+  height: 3px;
+  background: var(--rule);
+}
+h2 {
+  margin: 0.75rem 0 0;
+  font-family: var(--caps);
+  font-size: 1.45rem;
+  font-weight: 500;
+  color: var(--heading);
+  border-bottom: 1px solid var(--heading);
+}
+.dim {
+  color: var(--dim);
+}
+
+/* ---- Eckdaten ---- */
+.eckdaten {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.2rem 0.9rem;
+  font-family: var(--serif);
+}
+.eckdaten dt {
+  font-weight: 700;
+  color: var(--heading);
+}
+.eckdaten dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ---- Die Leiste der Unterklassen ---- */
+.leiste {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.leistenkopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+.leistenkopf h2 {
+  margin: 0;
+  border: 0;
+  font-size: 1.2rem;
+  color: var(--accent);
+}
+.suche {
+  flex: 1 1 12rem;
+  max-width: 20rem;
+  min-height: 36px;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+}
+.schalter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+.chips,
+.unterliste,
+.auswahlzeile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+.chip {
+  min-height: 30px;
+  padding: 0 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: var(--chip);
+  font-size: 0.85rem;
+}
+.chip.an {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.chip.an .dim {
+  color: inherit;
+  opacity: 0.8;
+}
+.unter {
+  min-height: 34px;
+  padding: 0 0.7rem;
+  border-radius: 6px;
+  background: var(--paper);
+  font-family: var(--serif);
+}
+.unter:hover {
+  background: var(--hover);
+}
+.unter.an {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+.quelle {
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+.auswahlzeile {
+  justify-content: flex-end;
+  font-size: 0.9rem;
+}
+.auswahlzeile .dim {
+  margin-right: auto;
+}
+.auswahlzeile button {
+  min-height: 32px;
+}
+
+/* Je gewählter Unterklasse eine Farbe der Marken — dieselbe in der Tabelle
+   und über ihrer Spalte, damit man sie über die Seite hinweg wiederfindet. */
+.u0 {
+  --u: var(--sub-1);
+}
+.u1 {
+  --u: var(--sub-2);
+}
+.u2 {
+  --u: var(--sub-3);
+}
+.u3 {
+  --u: var(--sub-4);
+}
+.u4 {
+  --u: var(--sub-5);
+}
+.u5 {
+  --u: var(--sub-6);
+}
+
+/* ---- Merkmale je Stufe ---- */
+.stufe-abschnitt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.25rem 0 0.75rem;
+  border-bottom: 1px solid var(--line2);
+}
+.stufe-abschnitt h3 {
+  margin: 0.75rem 0 0;
+  font-family: var(--caps);
+  font-size: 1.25rem;
+  color: var(--heading);
+}
+.stufe-abschnitt h3 .dim {
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+.anker {
+  display: block;
+  scroll-margin-top: 1rem;
+}
+.vergleich {
+  display: grid;
+  grid-template-columns: repeat(var(--spalten, 1), minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.spalte {
+  min-width: 0;
+  border-top: 3px solid var(--u);
+  background: var(--surface);
+  border-radius: 0 0 6px 6px;
+  padding: 0.5rem 0.75rem 0.75rem;
+}
+.spaltenkopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.5rem;
+  margin-bottom: 0.25rem;
+}
+.spaltenkopf a {
+  font-family: var(--caps);
+  font-weight: 700;
+  color: var(--u);
+  text-decoration: none;
+}
+.spaltenkopf .nr,
+.unter .nr {
+  display: inline-grid;
+  place-items: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 50%;
+  background: var(--u);
+  color: var(--paper);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.unter .nr {
+  margin-right: 0.15rem;
+  background: var(--paper);
+  color: var(--u);
+}
+.nichts {
+  margin: 0;
+  font-style: italic;
+}
+
+.leer,
+.fehler {
+  color: var(--dim);
+}
+.fehler {
+  color: var(--warn);
+}
+
+/* Am Telefon gestapelt: die Vergleichsspalten untereinander, jede mit
+   ihrem Namen; die Tabelle schiebt sich in ihrem Kasten, nicht die Seite. */
+@media (max-width: 860px) {
+  .buch {
+    padding: 1rem;
+  }
+  .vergleich {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .blatt {
+    padding: 1rem 0.85rem;
+  }
+  h1 {
+    font-size: 2rem;
+  }
+  .eckdaten {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .eckdaten dd {
+    margin-bottom: 0.35rem;
+  }
+  .suche {
+    max-width: none;
+  }
+}

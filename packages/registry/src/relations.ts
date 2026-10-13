@@ -329,12 +329,19 @@ export const relations: Record<string, RelationDef> = {
    * Teil des Zeitalters, und ein Ereignis am Tisch Teil der Kampagne. Nicht
    * über den Zeitraum — sonst läge jede Hochzeit im Norden im Krieg im
    * Süden.
+   *
+   * **Ein Board gehört über diese Kante zu seinem Geschichtsartikel**
+   * (REQ-205): das Board der Sitzung ist Teil der Sitzung, und der
+   * Brotkrumenpfad „Kampagne › Kapitel › Sitzung" ist dieselbe Kette, an
+   * der auch das Board hängt. Eine eigene Kante `boardOf` wäre eine zweite
+   * Hierarchie neben dieser — mit eigenen Rückbezügen, die niemand neben
+   * „contains" sucht. Ein Board ohne die Kante ist ein Regel-Board.
    */
   partOf: {
     type: 'partOf',
     label: 'part of',
     inverseLabel: 'contains',
-    from: ['Place', 'Story', 'Quest', 'Event'],
+    from: ['Place', 'Story', 'Quest', 'Event', 'Board'],
     to: ['Place', 'Story', 'Event'],
   },
 

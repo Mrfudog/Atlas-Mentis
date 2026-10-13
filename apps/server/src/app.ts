@@ -15,6 +15,7 @@ import {
   RegistrySchema,
   articleVisible,
   backlinks,
+  classParts,
   currentCampaign,
   inPlay,
   detachInstance,
@@ -521,6 +522,40 @@ export function buildApp({
       from: summaryOf(b.from, felder),
       relation: b.relation,
     }));
+  });
+
+  /**
+   * **Eine Klasse samt allem, was ihre Ansicht braucht** (W6): die Klasse,
+   * ihre Unterklassen, die Stufentabellen und jedes Merkmal, das eine davon
+   * gewährt oder einbettet (`classParts`). Eine Antwort statt einer Anfrage
+   * je Merkmal — und nicht die 7 000 Merkmale des ganzen Bestands, von
+   * denen die Kurzfassung ohnehin keinen Text trägt.
+   *
+   * Gesiebt wird wie überall (`sieve`). Danach wird **auf dem Gesiebten**
+   * noch einmal gesammelt: ein Merkmal, das nur eine verborgene Unterklasse
+   * gewährt, verriete sonst, dass es sie gibt.
+   */
+  app.get<{ Params: { id: string } }>('/api/classes/:id', async (request, reply) => {
+    const alle = await repo.listEntities();
+    const roh = classParts(alle, request.params.id);
+    if (!roh) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const byId = new Map(alle.map((e) => [e.id, e]));
+    const ids = [roh.klass, ...roh.subclasses, ...roh.tables, ...roh.features];
+    const gesiebt = await sieve(
+      request,
+      ids.map((i) => byId.get(i)).filter((e): e is Entity => !!e),
+      alle,
+    );
+    const teile = classParts(gesiebt, request.params.id);
+    if (!teile) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const nach = new Map(gesiebt.map((e) => [e.id, e]));
+    const nimm = (l: string[]) => l.map((i) => nach.get(i)).filter((e): e is Entity => !!e);
+    return {
+      class: nach.get(teile.klass),
+      subclasses: nimm(teile.subclasses),
+      tables: nimm(teile.tables),
+      features: nimm(teile.features),
+    };
   });
 
   app.get<{ Params: { id: string } }>('/api/entities/:id', async (request, reply) => {

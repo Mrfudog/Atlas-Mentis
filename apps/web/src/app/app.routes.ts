@@ -47,6 +47,33 @@ export const routes: Routes = [
     data: { bereich: 'rules' },
     title: 'Rules · Atlas Mentis',
   },
+  /* Boards (REQ-157, 205): die Liste je Geschichtsartikel und ein Board
+     als Leinwand. Sie sind kein Bereich — ein Board ist ein Schirm, keine
+     Liste von Artikeln (CLAUDE.md, „Play ist ein Schirm"). */
+  {
+    path: 'boards',
+    canActivate: [wache],
+    loadComponent: () => import('./boards/boards').then((m) => m.Boards),
+    title: 'Boards · Atlas Mentis',
+  },
+  {
+    path: 'boards/:id',
+    canActivate: [wache],
+    loadComponent: () => import('./boards/board').then((m) => m.Board),
+    title: 'Board · Atlas Mentis',
+  },
+  {
+    path: 'classes',
+    canActivate: [wache],
+    loadComponent: () => import('./klassen/klassen').then((m) => m.Klassen),
+    title: 'Classes · Atlas Mentis',
+  },
+  {
+    path: 'classes/:id',
+    canActivate: [wache],
+    loadComponent: () => import('./klassen/klasse').then((m) => m.Klasse),
+    title: 'Class · Atlas Mentis',
+  },
   {
     /* Verwaltung (W3): Mitglieder, Rollen, Einladungen. Wer sie sieht,
        sagt der Server; die Wache fragt nur, ob jemand angemeldet ist. */
