@@ -219,12 +219,12 @@ Dazu nach Bedarf: `Image`, `Source`, `Time`, `Todos`, `Lore`, `Secrets`,
 | `string` `long` | langer Text, **Markdown** (4.4) | `"…"` | mehrzeilig |
 | `string` `long` + `many` | **Prosa**: Einträge mit Id; die Id kommt aus dem Text, Freigabe je Eintrag `Typ.feld#id` | `[{id, value}]` | Element `prose`, nicht die Feldtabelle |
 | `string` + `enum`/`enumRef` | Auswahl, ein Wort | `"idea"` | Auswahlliste |
-| `array` + `enumRef` | Auswahl, mehrere Wörter aus einer oder mehreren Zeilen, Arten oder Feldlisten; woher ein Wort kommt, sagt die Quelle (`enumSource`) | `["Stealth","Dwarvish","martial"]` | Häkchen, nach Quelle gruppiert; was keine Liste kennt, als Text darunter |
+| `array` + `enumRef` | Auswahl, mehrere Wörter aus einer oder mehreren Zeilen, Arten oder Feldlisten; woher ein Wort kommt, sagt die Quelle (`enumSource`) | `["Stealth","Dwarvish","martial"]` | Chips mit × und Suche: die Werte der Listen und die Namen der Artikel jeder genannten Art (`enumWhere` engt ein); ein freies Wort nur, wo eine Art genannt ist (T-068) |
 | `string` + `suggest` | freies Wort mit Vorschlägen | `"npc"` | Text mit Liste |
 | `string` `date` | Weltdatum als Text; `Time.sort` daneben zum Ordnen | `"Mirtul 12, 1492 DR"` | Text |
 | `string` `color` | Farbe | `"#8a4b2a"` | Farbwähler |
-| `string` `link` + `target` | ein Artikel eines Zieltyps | Artikel-Id | Suche nach Name und Alias |
-| `array` `links` + `target` | mehrere Artikel | `[id, …]` | Marken mit × und Suche |
+| `string` `link` + `target` | ein Artikel eines Zieltyps | Artikel-Id | Suche nach Name und Alias, nur im Zieltyp; `target.tags` zuerst; gelesen als Name mit Link |
+| `array` + `link` + `target` | mehrere Artikel eines Zieltyps; jeder Eintrag wird geprüft (`link_wrong_type`) | `[id, …]` | Chips mit × und Suche, nur im Zieltyp; gelesen als Namen mit Link (T-068) |
 | `string` `asset` | ein `Asset`-Artikel | Artikel-Id | Bildwahl |
 | `string` `measure` + `unit` | Masse im Text („40 ft, climb 20 ft"); umgerechnet beim Lesen, nur Zahlen mit bekannter oder keiner Einheit | `"30/120"` | Text |
 | `number` (+ `unit`) | Zahl; `signed` druckt +3; `min`/`max` halten | `16` | Zahl |

@@ -7,9 +7,21 @@
  * den Zeilen liest.
  */
 
-import type { PropertySchema } from '@nw/model';
+import { enumGroups, enumRefKind, fieldsOf } from '@nw/model';
+import type { PropertySchema, Registry } from '@nw/model';
+import type { Suchgruppe } from './mehrfach';
 
-export type Eingabe = 'text' | 'lang' | 'zahl' | 'jaNein' | 'auswahl' | 'liste' | 'json' | 'verweis';
+export type Eingabe =
+  | 'text'
+  | 'lang'
+  | 'zahl'
+  | 'jaNein'
+  | 'auswahl'
+  | 'liste'
+  | 'json'
+  | 'verweis'
+  | 'verweise'
+  | 'mehrfach';
 
 export function eingabeArt(p: PropertySchema | undefined): Eingabe {
   if (!p) return 'text';
@@ -21,10 +33,15 @@ export function eingabeArt(p: PropertySchema | undefined): Eingabe {
   /* Auch ein Feld, das seine Werte in einer Aufzählungszeile nennt, ist
      eine Auswahl. Die Werte holt die Maske über `enumOptions()`; hier geht
      es nur um die Form der Eingabe. */
-  /* Mehrere Werte passen in keine einfache Auswahl: ein `select` schrieb
-     ein Wort in ein Feld, das eine Liste hält. Bis eine Mehrfachwahl da
-     ist, ist es eine Liste — Übungen tragen seit M6 auch Namen, die keine
-     Liste kennt (D50). */
+  /* Mehrere Verweise sind eine Auswahl mit Chips (T-068): „Revealed to"
+     schlug hier eine freie Liste vor, in die man Ids tippen musste, und
+     nahm jedes Wort. Zuerst gefragt, weil `type: 'array'` sonst gewönne. */
+  if (p.type === 'array' && p.format === 'link') return 'verweise';
+  /* Mehrere Werte aus Listen oder Arten (Übungen, D50): Chips mit
+     Vorschlägen, aber ein freies Wort bleibt erlaubt — Übungen tragen seit
+     M6 auch Namen, die keine Liste kennt. Ein `select` schrieb ein Wort in
+     ein Feld, das eine Liste hält. */
+  if (p.type === 'array' && (p.enumRef || (Array.isArray(p.enum) && p.enum.length))) return 'mehrfach';
   if (p.type === 'array') return 'liste';
   /* Ein Verweisfeld hält eine Artikel-Id; gewählt wird über die Suche der
      Liste (`nw-wahl`, W7), nicht durch Abtippen einer Id. */
@@ -37,8 +54,14 @@ export function eingabeArt(p: PropertySchema | undefined): Eingabe {
 }
 
 /** Der Wert aus dem Formular zurück in die Form, die das Register verlangt. */
-export function ausEingabe(p: PropertySchema | undefined, roh: string | boolean): unknown {
+export function ausEingabe(p: PropertySchema | undefined, roh: string | boolean | string[]): unknown {
   const art = eingabeArt(p);
+  /* Chips halten ihre Werte als Liste: ein Name darf ein Komma tragen, und
+     eine Id soll nicht erst zu Text und zurück. */
+  if (Array.isArray(roh)) {
+    const teile = [...new Set(roh.map((x) => x.trim()).filter(Boolean))];
+    return teile.length ? teile : undefined;
+  }
   if (art === 'jaNein') return roh === true || roh === 'true';
   if (art === 'zahl') {
     const s = String(roh).trim();
@@ -69,6 +92,72 @@ export function ausEingabe(p: PropertySchema | undefined, roh: string | boolean)
   }
   const s = String(roh);
   return s === '' ? undefined : s;
+}
+
+/** Die Werte eines Feldes mit Chips (`verweise`, `mehrfach`) — immer eine Liste. */
+export function inListe(wert: unknown): string[] {
+  if (wert === null || wert === undefined || wert === '') return [];
+  return (Array.isArray(wert) ? wert : [wert]).filter((x) => x !== null && x !== undefined && x !== '').map(String);
+}
+
+/**
+ * Ein Verweisfeld zum Lesen: je Id der Name und das Ziel, damit die Zelle
+ * Links zeichnet statt Ids (T-068). Was der Betrachter nicht kennt, steht
+ * ohne Ziel da — wie bei einer Kante, deren Ziel er nicht sehen darf.
+ */
+export function verweisZiele(
+  wert: unknown,
+  name: (id: string) => string | undefined,
+): { ziel: string; text: string }[] {
+  return inListe(wert).map((id) => {
+    const n = name(id);
+    return n === undefined ? { ziel: '', text: '(not here)' } : { ziel: id, text: n };
+  });
+}
+
+/**
+ * Woher eine Auswahl mit Chips ihre Vorschläge nimmt (T-068).
+ *
+ * - Ein Verweisfeld sucht in `target.interfaces` (die `extends`-Kette hoch,
+ *   am Server über `of=`), und nur dort: die Art hält.
+ * - Ein Feld mit `enumRef` nimmt die Werte seiner Listen und `Typ.feld` fest
+ *   und sucht die Artikel jeder **Art**, die es nennt (D66 offen, M6) —
+ *   eine Art mit `enumWhere` für sich, mit dem Filter als Feldfilter. Den
+ *   kennt die Liste nur, wo das Feld eine Spalte der Art ist; sonst kommt
+ *   die ganze Art, denn auch `enumWhere` ist ein Vorschlag (`enumHolds`).
+ *
+ * `frei` sagt, ob ein Wort ohne Vorschlag stehen darf: nur wo eine Art
+ * genannt ist — ein Name ist der heutige Stand, und die Prüfung hält ihn
+ * nicht fest. Eine reine Aufzählung hält, und ein Verweis braucht eine Id.
+ */
+export function suchgruppen(
+  r: Pick<Registry, 'enums' | 'interfaces'>,
+  p: PropertySchema | undefined,
+): { gruppen: Suchgruppe[]; feste: string[]; frei: boolean } {
+  if (!p) return { gruppen: [], feste: [], frei: true };
+  if (p.format === 'link') return { gruppen: [{ of: p.target?.interfaces ?? [] }], feste: [], frei: false };
+  const feste = [...(p.enum ?? [])];
+  const offen: string[] = [];
+  const gruppen: Suchgruppe[] = [];
+  for (const g of enumGroups(r, p)) {
+    if (g.from !== 'type') {
+      for (const w of g.values) if (!feste.includes(w)) feste.push(w);
+      continue;
+    }
+    const wo = p.enumWhere?.[g.name];
+    if (!wo) {
+      offen.push(g.name);
+      continue;
+    }
+    const f = Object.entries(wo).flatMap(([feld, werte]) => {
+      const def = fieldsOf(r, g.name).find((x) => x.key === feld);
+      return def ? [`${def.type}.${feld}:${werte.join('|')}`] : [];
+    });
+    gruppen.push({ type: g.name, f });
+  }
+  if (offen.length) gruppen.unshift({ of: offen });
+  const arten = [p.enumRef ?? []].flat().some((n) => enumRefKind(r, n) === 'type');
+  return { gruppen, feste, frei: arten };
 }
 
 /** Und hinein: ein Feld zeigt, was drinsteht, und nicht „undefined". */
