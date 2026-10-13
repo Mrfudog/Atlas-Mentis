@@ -225,6 +225,7 @@ Durchstich in CI prüft `PgRepository` gegen eine echte Postgres.
 | `GET /api/entities` · `GET /api/entities/:id` | Artikel, **gesiebt** |
 | `GET /api/entities?as=summary` | die Kurzfassung aller Artikel (`summaryOf`) — für Liste, Verweise, Auswahlen |
 | `GET /api/entities/:id/backlinks` | wer auf den Artikel zeigt (Kurzfassung + Kante), gesiebt |
+| `GET /api/classes/:id` | eine Klasse samt Unterklassen, Stufentabellen und den Merkmalen, die eine davon gewährt oder einbettet (`classParts`), gesiebt — die Klassenansicht (W6) in einer Antwort |
 | `PUT /api/entities/:id` · `DELETE /api/entities/:id` | schreiben, immer durch `validateEntity` |
 | `POST /api/validate` | prüfen ohne zu speichern |
 
@@ -284,7 +285,7 @@ Zeilen daneben. Eine neue Artikelart ist eine Zeile, keine Migration.
 ```mermaid
 flowchart TB
   subgraph angular[apps/web · Angular 21, Standalone, Signals]
-    router[app.routes.ts<br/>/login · / · /artikel/:id]
+    router[app.routes.ts<br/>/login · / · /artikel/:id · /classes · /classes/:id]
     wache[kern/wache.ts<br/>Route-Guard: angemeldet?]
     subgraph seiten[Seiten, lazy geladen]
       login[login/login.ts]
@@ -292,6 +293,7 @@ flowchart TB
       artikel[artikel/artikel.ts<br/>Artikelansicht, Bearbeiten]
       felder[artikel/felder.ts<br/>Felder aus dem Register]
       text[artikel/text.ts<br/>Markdown, Verweise, Würfel]
+      klassen[klassen/klasse.ts<br/>Klassenansicht: Tabelle, Merkmale je Stufe,<br/>Unterklassen filtern und vergleichen]
     end
     subgraph kern[kern/ · Dienste]
       api[api.ts<br/>HttpClient → /api]
@@ -301,8 +303,10 @@ flowchart TB
   end
   model[["@nw/model<br/>views · calc · markdown · inline"]]
   router --> wache --> session
-  router --> login & liste & artikel
+  router --> login & liste & artikel & klassen
   artikel --> felder & text
+  klassen --> text
+  klassen -->|"GET /api/classes/:id"| api
   liste & artikel --> bestand --> api
   login --> session --> api
   felder & text --> model
@@ -338,6 +342,7 @@ nicht mehr; Seitenweise laden ist eine offene Frage für die Zeit nach P6.
 | `stack.ts` | Ebenen: `inPlay`, `overriderOf` |
 | `visibility.ts` | `articleVisible`: Rolle am Tisch, `audience`, `revealedTo`, `hiddenFrom` |
 | `knowledge.ts` | `redactEntity`: welche Felder ein Träger kennt, Fraktionsränge |
+| `classes.ts` | die Klassenansicht (W6): Merkmale je Stufe aus `grants`, Übungsbonus, eingebettete Merkmale (ein Verweis allein im Absatz), Stufentabelle mit Zusatzspalten |
 
 ---
 

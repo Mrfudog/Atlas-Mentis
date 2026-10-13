@@ -33,6 +33,7 @@ import { BEREICHE } from './kern/bereiche';
               b.label
             }}</a>
           }
+          <a routerLink="/classes" routerLinkActive="an" ariaCurrentWhenActive="page">Classes</a>
           <a routerLink="/compendium" routerLinkActive="an" ariaCurrentWhenActive="page"
             >Compendium</a
           >

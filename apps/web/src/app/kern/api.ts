@@ -29,6 +29,18 @@ export interface Rueckbezug {
   relation: Relation;
 }
 
+/**
+ * Eine Klasse samt allem, was ihre Ansicht braucht (W6, `GET /api/classes/:id`):
+ * ihre Unterklassen, die Stufentabellen und die Merkmale, die eine davon
+ * gewährt oder einbettet — ganz, gesiebt.
+ */
+export interface KlassenBuendel {
+  class: Entity;
+  subclasses: Entity[];
+  tables: Entity[];
+  features: Entity[];
+}
+
 export interface Me {
   user: {
     id: string;
@@ -94,6 +106,9 @@ export class Api {
   }
   backlinks(id: string): Promise<Rueckbezug[]> {
     return this.call<Rueckbezug[]>(`/api/entities/${encodeURIComponent(id)}/backlinks`);
+  }
+  klasse(id: string): Promise<KlassenBuendel> {
+    return this.call<KlassenBuendel>(`/api/classes/${encodeURIComponent(id)}`);
   }
   entity(id: string): Promise<Entity> {
     return this.call<Entity>(`/api/entities/${encodeURIComponent(id)}`);
