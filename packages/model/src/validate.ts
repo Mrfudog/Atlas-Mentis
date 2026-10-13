@@ -181,6 +181,7 @@ export const EntitySchema = z.object({
   relations: z.array(RelationSchema).optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
+  revision: z.number().int().positive().optional(),
 });
 
 export interface ValidationIssue {

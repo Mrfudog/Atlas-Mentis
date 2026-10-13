@@ -10,7 +10,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyCookie from '@fastify/cookie';
 import {
@@ -55,6 +55,7 @@ import {
   typeChain,
 } from '@nw/model';
 import type { BulkChange, Entity, Registry } from '@nw/model';
+import { RevisionConflict } from './repo.js';
 import type { ReadyStand, Repository } from './repo.js';
 import type { AtlasEnv } from './config.js';
 import { NO_LAYER, buildListIndex, listProjection, parseListQuery, queryList, type ListIndex } from './liste.js';
@@ -1410,6 +1411,16 @@ export function buildApp({
         return reply.code(400).send({ error: 'id im Pfad und im Körper stimmen nicht überein' });
       }
 
+      /* **Gegen welchen Stand wird geschrieben?** (REQ-192) Die Revision,
+         die gelesen wurde; ohne sie nur gegen „keinen" — anlegen ja,
+         überschreiben nein. Ein Schreiben ohne gelesenen Stand gewänne
+         sonst still gegen alles, was seither geschah. Hier zuerst
+         geprüft, damit nichts anderes geschieht (der fertige Stand unten),
+         und beim Schreiben noch einmal, gesperrt (`putEntity`). */
+      const erwartet = entity.revision ?? null;
+      const steht = (await repo.getEntity(entity.id))?.revision ?? null;
+      if (steht !== erwartet) return konflikt(request, reply, entity.id, erwartet);
+
       /* **`ready` setzt die Leitung** (REQ-237, E-011): wer nicht
          `maySetReady` ist, macht aus einem unfertigen Artikel keinen
          fertigen — auch nicht, indem er die Status-Karte weglässt (ohne
@@ -1444,12 +1455,18 @@ export function buildApp({
         }
       }
 
-      const ergebnis = await schreibeGeprueft(entity, async () => {
-        /* Vor dem Artikel: mit ihm ändert sich der Stempel, und erst dann
-           liest jemand den neuen Stand (`fertigeStaende`). */
-        if (zurueck) await repo.keepReadyStand(zurueck);
-        else if (isReady(entity)) await repo.dropReadyStand(entity.id);
-      });
+      let ergebnis: Awaited<ReturnType<typeof schreibeGeprueft>>;
+      try {
+        ergebnis = await schreibeGeprueft(entity, async () => {
+          /* Vor dem Artikel: mit ihm ändert sich der Stempel, und erst dann
+             liest jemand den neuen Stand (`fertigeStaende`). */
+          if (zurueck) await repo.keepReadyStand(zurueck);
+          else if (isReady(entity)) await repo.dropReadyStand(entity.id);
+        }, erwartet);
+      } catch (error) {
+        if (error instanceof RevisionConflict) return konflikt(request, reply, entity.id, erwartet);
+        throw error;
+      }
       if ('issues' in ergebnis) {
         return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues: ergebnis.issues });
       }
@@ -1470,6 +1487,8 @@ export function buildApp({
   async function schreibeGeprueft(
     entity: Entity,
     vorher?: () => Promise<void>,
+    /** Die gelesene Revision (`null`: neu); ohne Angabe ungeprüft. */
+    erwartet?: number | null,
   ): Promise<{ stored: Entity } | { issues: ReturnType<typeof validateEntity> }> {
     const registry = await repo.getRegistry();
     /* Id **und Art**: daran prüft ein Verweisfeld seinen Zieltyp. Der
@@ -1499,7 +1518,36 @@ export function buildApp({
     const issues = validateEntity(registry, zuPruefen, { knownTypes: known, stageOf: stufen });
     if (issues.length) return { issues };
     if (vorher) await vorher();
-    return { stored: await repo.putEntity(zuSchreiben) };
+    return {
+      stored: await repo.putEntity(zuSchreiben, erwartet === undefined ? {} : { expectRevision: erwartet }),
+    };
+  }
+
+  /**
+   * **Abgewiesen, mit dem Stand, der gilt** (REQ-192). Die Antwort trägt
+   * den Artikel so, wie dieser Betrachter ihn sieht — gesiebt, aufgelöst,
+   * mit seinen Namen —, damit die Maske ohne zweite Anfrage
+   * zusammenführen kann (`mergeEntity`). Sieht er ihn nicht mehr, steht
+   * `current: null` da und nicht mehr.
+   */
+  async function konflikt(
+    request: FastifyRequest,
+    reply: FastifyReply,
+    id: string,
+    erwartet: number | null,
+  ): Promise<FastifyReply> {
+    const stand = await roh();
+    const jetzt = stand.map.get(id) ?? (await repo.getEntity(id));
+    const [gesiebt] = jetzt ? await sieve(request, [jetzt], stand.map) : [];
+    const current = gesiebt ? { ...gesiebt, refs: await bezuegeVon(request, gesiebt) } : null;
+    return reply.code(409).send({
+      error:
+        erwartet === null
+          ? 'Diesen Artikel gibt es schon. Schicke die Revision mit, die du gelesen hast.'
+          : 'Der Artikel wurde seit dem Lesen anderswo geändert.',
+      revision: current?.revision ?? null,
+      current,
+    });
   }
 
   /**
