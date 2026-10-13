@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       import5etools:
-        description: "5e.tools danach einlesen (Ebene ersetzen, eigene Artikel bleiben)"
+        description: "5e.tools danach einlesen (nur ergänzen, was es noch nicht gibt)"
         type: boolean
         default: false
 
@@ -184,42 +184,13 @@ jobs:
           printf '%s\n' "$TOKEN" | ssh "$TARGET" \
             "cd '$DIR' && chmod +x deploy.sh && read -r GHCR_TOKEN && export GHCR_TOKEN GHCR_USER='${{ github.actor }}' && ./deploy.sh '$IMAGE'"
 
-  # Hat ein Push auf preprod den Importer geändert? Dann liest dev nach dem
-  # Ausrollen neu ein (W8). Verglichen wird mit dem Stand vor dem Push —
-  # bei einem Merge also alles, was der Pull Request brachte.
-  importer:
-    if: github.event_name == 'push' && github.ref_name == 'preprod'
-    runs-on: ubuntu-latest
-    outputs:
-      changed: ${{ steps.diff.outputs.changed }}
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-      - id: diff
-        env:
-          BEFORE: ${{ github.event.before }}
-        run: |
-          if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
-            echo "Kein Stand vor dem Push ($BEFORE) — nichts zu vergleichen."
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          elif git diff --quiet "$BEFORE" "$GITHUB_SHA" -- packages/import-5etools; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
-            git diff --stat "$BEFORE" "$GITHUB_SHA" -- packages/import-5etools
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
-  # Nach dem Ausrollen, mit dem Abbild, das gerade gestartet ist: dev von
-  # selbst, wenn sich der Importer geändert hat; dev oder prod, wenn jemand
-  # CI von Hand mit dem Häkchen startet. Prod nie von selbst.
+  # Nach dem Ausrollen, mit dem Abbild, das gerade gestartet ist — nur,
+  # wenn jemand CI von Hand mit dem Häkchen startet. Von selbst nie mehr:
+  # der Import ist einmalig, danach wird ergänzt (D71); ein geänderter
+  # Importer ist kein Grund, alles neu zu laden.
   import-5etools:
-    needs: [deploy, importer]
-    if: >-
-      always() && needs.deploy.result == 'success' && (
-        (github.event_name == 'push' && needs.importer.outputs.changed == 'true') ||
-        (github.event_name == 'workflow_dispatch' && inputs.import5etools)
-      )
+    needs: deploy
+    if: github.event_name == 'workflow_dispatch' && inputs.import5etools && needs.deploy.result == 'success'
     uses: ./.github/workflows/import-5etools.yml
     # Ein aufgerufener Workflow sieht die Secrets des Aufrufers nicht von
     # selbst — ohne `inherit` war DEPLOY_USER@DEPLOY_HOST leer und ssh brach
@@ -227,4 +198,4 @@ jobs:
     secrets: inherit
     with:
       environment: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
-      mode: replace-layer
+      mode: only-new
