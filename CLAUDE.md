@@ -152,7 +152,10 @@ wiederkommen, werden sie neu geschrieben.
   laufenden Kampagne bringt, eine spezifischere herausnimmt oder eine
   Fassung aus einer aufgeschalteten Ebene überschreibt, ist nicht da — für
   jeden, auch die Verwaltung. Der Server siebt damit zuerst, der Prototyp
-  rechnet gleich (A2).
+  rechnet gleich (A2). **Eine Gruppe ist eine Ebene, die Ebenen enthält**
+  (`kind: 'group'`, Mitglieder über `partOf`, E-022 b): aufgeschaltet bringt
+  sie alle Mitglieder, und die ausdrückliche Kante schlägt die Gruppe —
+  `activates` mit `mode: 'off'` nimmt ein Buch heraus (`resolvedStack`).
 - **Zwei Fragen, und die grobe kommt zuerst.** Die **Sichtbarkeit**
   (`articleVisible`) sagt, ob ein Artikel überhaupt an jemanden geht; das
   **Wissen** (`redactEntity`) sagt, welche Felder darin. Beides zu einer
