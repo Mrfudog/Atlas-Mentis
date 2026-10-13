@@ -46,6 +46,18 @@ export const routes: Routes = [
     title: 'Rules · Atlas Mentis',
   },
   {
+    path: 'classes',
+    canActivate: [wache],
+    loadComponent: () => import('./klassen/klassen').then((m) => m.Klassen),
+    title: 'Classes · Atlas Mentis',
+  },
+  {
+    path: 'classes/:id',
+    canActivate: [wache],
+    loadComponent: () => import('./klassen/klasse').then((m) => m.Klasse),
+    title: 'Class · Atlas Mentis',
+  },
+  {
     path: 'artikel/:id',
     canActivate: [wache],
     loadComponent: () => import('./artikel/artikel').then((m) => m.Artikel),

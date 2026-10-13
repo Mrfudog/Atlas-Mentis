@@ -141,7 +141,7 @@ const BLATT = 100;
                 @for (z of blattZeilen(); track z.e.id) {
                   <tr>
                     <td class="name">
-                      <a [routerLink]="['/artikel', z.e.id]">{{ z.name }}</a>
+                      <a [routerLink]="z.typ === 'Class' ? ['/classes', z.e.id] : ['/artikel', z.e.id]">{{ z.name }}</a>
                       @if (z.stand && z.stand !== 'ready') {
                         <span class="stand">{{ z.stand }}</span>
                       }

@@ -91,6 +91,9 @@ interface Feld {
             <div class="werkzeugzeile">
               <span class="meta">{{ meta() }}</span>
               <div class="werkzeuge">
+                @if (art(e) === 'Class' && !bearbeitet()) {
+                  <a class="knopf" [routerLink]="['/classes', e.id]">Class view</a>
+                }
                 @if (darfSchreiben()) {
                   <button type="button" (click)="bearbeitet() ? abbrechen() : beginnen()">
                     {{ bearbeitet() ? 'Cancel' : 'Edit' }}
