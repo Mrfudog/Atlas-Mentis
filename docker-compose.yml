@@ -34,5 +34,9 @@ services:
       # Caddy auf derselben Maschine spricht über die Docker-Brücke herein
       # (172.16/12 gehört zu uniquelocal). Nur ihm wird X-Forwarded-* geglaubt.
       TRUST_PROXY: loopback,uniquelocal
+      # Gibt für genau einen Start frei, was eine Migration oder der Seed
+      # entfernen würde (T-076): `ATLAS_ALLOW_DATA_LOSS=024_x.sql ./deploy.sh …`.
+      # Nicht in .env — eine Freigabe, die stehen bleibt, gilt auch beim nächsten.
+      ATLAS_ALLOW_DATA_LOSS: ${ATLAS_ALLOW_DATA_LOSS:-}
     # Nur auf loopback veröffentlicht: davor steht der Reverse Proxy.
     ports: ["127.0.0.1:${APP_PORT:-8080}:8080"]

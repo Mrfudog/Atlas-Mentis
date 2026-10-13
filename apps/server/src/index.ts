@@ -15,9 +15,12 @@ const staticRoot = join(dirname(fileURLToPath(import.meta.url)), '..', 'public')
 const app = buildApp({ repo, logger: true, staticRoot, trustProxy: config.trustProxy });
 
 async function main(): Promise<void> {
-  const applied = await migrate();
+  /* Was eine Migration oder der Seed entfernen würde, wird vorher gezählt;
+     ohne Freigabe bricht der Start hier ab (T-076). */
+  const verlust = { log: (m: string) => app.log.warn(m) };
+  const applied = await migrate(getPool(), verlust);
   if (applied.length) app.log.info({ applied }, 'Migrationen angewandt');
-  await seedRegistryInto(repo);
+  await seedRegistryInto(repo, verlust);
   await app.listen({ port: config.port, host: config.host });
   /* Den Bestand einmal lesen, bevor jemand fragt: die erste Anfrage nach
      einem Neustart wartete sonst auf das Lesen aller Artikel (24 157 aus
