@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quest board</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&amp;family=Alegreya+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#8C1C13}a:hover{color:#5E120C}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #EFE4CC; color: #2B1D12; font-family: 'Alegreya Sans', system-ui, sans-serif; font-size: 15px; display: flex; flex-direction: column">
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 10px 24px; background: #F8F1E1; border-bottom: 3px solid #8C1C13">
+    <span style="font-family: 'Alegreya SC', serif; font-size: 22px; font-weight: 700; color: #8C1C13">Atlas Mentis</span>
+    <span style="color: #6A5642">History › Quests</span>
+    <span style="margin-left: auto; display: flex; gap: 6px; font-size: 13px"><span style="padding: 2px 10px; border-radius: 12px; background: #8C1C13; color: #FBF6EC; font-weight: 700">GM</span><span style="padding: 2px 10px; border-radius: 12px; background: #EADCC0">As Rook sees it</span></span>
+  </header>
+
+  <div style="flex: 1; padding: 16px 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; align-content: start">
+    <section aria-label="Rumoured and offered" style="background: #F6EEDC; border: 1px solid #CDBB98; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 600px">
+      <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #6A5642">Rumoured · offered <span style="font-weight: 400">· [n]</span></h2>
+      <article style="background: #FBF6EC; border: 1px solid #CDBB98; border-top: 4px solid #C8822E; border-radius: 4px; padding: 10px; display: flex; flex-direction: column; gap: 4px">
+        <strong style="font-family: 'Alegreya SC', serif; font-size: 17px">[Quest title]</strong>
+        <span style="font-size: 13px; color: #6A5642">Giver: [NPC] · Reward: [reward]</span>
+      </article>
+      <span style="font-size: 13px; color: #6A5642">Rumours land here from quick capture during play.</span>
+    </section>
+
+    <section aria-label="Accepted" style="background: #F6EEDC; border: 1px solid #CDBB98; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">Accepted <span style="font-weight: 400">· [n]</span></h2>
+      <article style="background: #FDF1DC; border: 2px solid #8C1C13; border-top: 6px solid #8C1C13; border-radius: 4px; padding: 10px; display: flex; flex-direction: column; gap: 6px">
+        <strong style="font-family: 'Alegreya SC', serif; font-size: 19px">Wo ist Floon?</strong>
+        <span style="font-size: 13px; color: #6A5642">Giver: Volothamp Geddarm · Reward: [set]</span>
+        <div style="display: flex; flex-direction: column; gap: 3px; font-size: 14px">
+          <label style="display: flex; gap: 6px"><input type="checkbox" checked> [Step 1]</label>
+          <label style="display: flex; gap: 6px"><input type="checkbox"> [Step 2]</label>
+          <label style="display: flex; gap: 6px"><input type="checkbox"> Find Floon Blagmaar</label>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 4px; font-size: 12px"><span style="padding: 1px 8px; border-radius: 10px; background: #EADCC0">Floon Blagmaar</span><span style="padding: 1px 8px; border-radius: 10px; background: #EADCC0">Der Lampenkeller</span></div>
+        <span style="font-size: 13px; color: #6A5642">Deadline: [deadline]</span>
+      </article>
+      <article style="background: #FBF6EC; border: 1px solid #CDBB98; border-top: 4px solid #8C1C13; border-radius: 4px; padding: 10px; display: flex; flex-direction: column; gap: 4px">
+        <strong style="font-family: 'Alegreya SC', serif; font-size: 17px">[Quest title]</strong>
+        <span style="font-size: 13px; color: #6A5642">Giver: [NPC]</span>
+      </article>
+    </section>
+
+    <section aria-label="Done" style="background: #F6EEDC; border: 1px solid #CDBB98; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #34502A">Done <span style="font-weight: 400">· [n]</span></h2>
+      <article style="background: #FBF6EC; border: 1px solid #CDBB98; border-top: 4px solid #34502A; border-radius: 4px; padding: 10px; display: flex; flex-direction: column; gap: 4px">
+        <strong style="font-family: 'Alegreya SC', serif; font-size: 17px">[Quest title]</strong>
+        <span style="font-size: 13px; color: #6A5642">Closed in session [n] · reward handed out</span>
+      </article>
+    </section>
+
+    <section aria-label="Failed or abandoned" style="background: #F6EEDC; border: 1px solid #CDBB98; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #6A5642">Failed · abandoned <span style="font-weight: 400">· [n]</span></h2>
+      <span style="font-size: 13px; color: #6A5642">Columns are the values of Quest.progress (rumoured, offered, accepted, done, failed, abandoned); dragging a card sets it. Players see accepted and done quests they were part of, and only the steps revealed to them.</span>
+    </section>
+  </div>
+
+  <footer style="padding: 10px 24px; background: #F8F1E1; border-top: 1px solid #CDBB98; display: flex; flex-wrap: wrap; gap: 16px; font-size: 14px; color: #6A5642">
+    <span><strong style="color: #2B1D12">Seeds</strong> · threads planted per character, with status open · planted · paid off · dropped</span>
+    <span style="margin-left: auto">[n] seeds waiting for a payoff</span>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

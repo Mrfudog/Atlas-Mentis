@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Map · Kerzengasse</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&amp;family=Alegreya+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#8C1C13}a:hover{color:#5E120C}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #EFE4CC; color: #2B1D12; font-family: 'Alegreya Sans', system-ui, sans-serif; font-size: 15px; display: flex; flex-direction: column">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 8px 20px; background: #8C1C13; color: #FBF6EC">
+    <a href="Play.dc.html" style="min-height: 40px; display: inline-flex; align-items: center; color: #FBF6EC">‹ Screen</a>
+    <h1 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 22px; font-weight: 700">Map · Kerzengasse</h1>
+    <a href="Initiative.dc.html" style="padding: 4px 12px; border-radius: 14px; background: #6E140E; color: #FBF6EC; text-decoration: none">Round 3 · initiative ›</a>
+    <div role="group" aria-label="View" style="display: flex; gap: 4px">
+      <sc-for list="{{views}}" as="v" hint-placeholder-count="2">
+        <button type="button" onClick="{{v.pick}}" aria-pressed="{{v.pressed}}" style="min-height: 36px; padding: 0 12px; border-radius: 6px; font: inherit; cursor: pointer; {{v.style}}">{{v.label}}</button>
+      </sc-for>
+    </div>
+    <sc-if value="{{isGm}}" hint-placeholder-val="{{ true }}">
+      <div role="group" aria-label="Reveal hidden things" style="display: flex; align-items: center; gap: 4px">
+        <span>Reveal</span>
+        <sc-for list="{{revealModes}}" as="m" hint-placeholder-count="2">
+          <button type="button" onClick="{{m.pick}}" aria-pressed="{{m.pressed}}" style="min-height: 36px; padding: 0 12px; border-radius: 6px; font: inherit; cursor: pointer; {{m.style}}">{{m.label}}</button>
+        </sc-for>
+      </div>
+    </sc-if>
+    <button type="button" onClick="{{toggleFull}}" style="margin-left: auto; min-height: 36px; padding: 0 12px; border: 1px solid #FBF6EC; border-radius: 6px; background: transparent; color: #FBF6EC; font: inherit; font-weight: 700; cursor: pointer">{{fullLabel}}</button>
+  </header>
+
+  <div style="flex: 1; display: flex; flex-wrap: wrap">
+    <sc-if value="{{showTools}}" hint-placeholder-val="{{ true }}">
+      <nav aria-label="Map tools" style="flex: 0 0 104px; display: flex; flex-direction: column; gap: 4px; padding: 10px 6px; background: #F8F1E1; border-right: 1px solid #CDBB98">
+        <span style="font-size: 12px; color: #6A5642; text-align: center">Tools</span>
+        <button type="button" aria-pressed="true" style="min-height: 44px; border: 0; border-radius: 6px; background: #EADCC0; color: #2B1D12; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer">Move</button>
+        <button type="button" style="min-height: 44px; border: 0; border-radius: 6px; background: transparent; color: #2B1D12; font: inherit; font-size: 13px; cursor: pointer">Measure</button>
+        <button type="button" style="min-height: 44px; border: 0; border-radius: 6px; background: transparent; color: #2B1D12; font: inherit; font-size: 13px; cursor: pointer">Fog</button>
+        <span style="font-size: 12px; color: #6A5642; text-align: center; margin-top: 8px">Zone types</span>
+        <sc-for list="{{brushes}}" as="b" hint-placeholder-count="6">
+          <button type="button" style="min-height: 44px; border: 0; border-radius: 6px; background: transparent; color: #2B1D12; font: inherit; font-size: 13px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px">
+            <span aria-hidden="true" style="width: 22px; height: 14px; border-radius: 3px; {{b.swatch}}"></span>{{b.label}}</button>
+        </sc-for>
+        <button type="button" style="min-height: 44px; border: 1px dashed #B9876A; border-radius: 6px; background: transparent; color: #8C1C13; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer">+ New type</button>
+      </nav>
+    </sc-if>
+
+    <section aria-label="Map" style="flex: 999 1 600px; min-width: 0; padding: 12px; box-sizing: border-box; overflow: auto; position: relative">
+      <div role="img" aria-label="Map of the Kerzengasse with houses, zones and tokens" style="position: relative; width: 1040px; height: 760px; border: 6px solid #6A5642; background-color: #D9C49B; background-image: repeating-linear-gradient(0deg, rgba(43,29,18,0.14) 0 1px, transparent 1px 40px), repeating-linear-gradient(90deg, rgba(43,29,18,0.14) 0 1px, transparent 1px 40px)">
+        <sc-for list="{{houses}}" as="h" hint-placeholder-count="6">
+          <div style="position: absolute; left: {{h.x}}px; top: {{h.y}}px; width: {{h.w}}px; height: {{h.h}}px; background: #8E6E4E; border: 3px solid #4A3626; box-sizing: border-box"></div>
+        </sc-for>
+
+        <sc-for list="{{zones}}" as="z" hint-placeholder-count="4">
+          <button type="button" onClick="{{z.pick}}" aria-label="{{z.label}}" style="position: absolute; left: {{z.x}}px; top: {{z.y}}px; width: {{z.w}}px; height: {{z.h}}px; padding: 0; font: inherit; cursor: pointer; {{z.style}}"><span style="position: absolute; left: 4px; top: 2px; font-size: 12px; font-weight: 700">{{z.short}}</span></button>
+        </sc-for>
+
+        <sc-for list="{{reach}}" as="r" hint-placeholder-count="40">
+          <button type="button" onClick="{{r.pick}}" aria-label="{{r.label}}" style="position: absolute; left: {{r.x}}px; top: {{r.y}}px; width: 40px; height: 40px; padding: 0; border: 1px solid rgba(52, 80, 42, 0.3); box-sizing: border-box; cursor: pointer; background: {{r.fill}}"></button>
+        </sc-for>
+
+        <sc-for list="{{sight}}" as="l" hint-placeholder-count="3">
+          <div style="position: absolute; left: {{l.x}}px; top: {{l.y}}px; width: {{l.len}}px; height: 0; border-top: 2px {{l.dash}} {{l.color}}; transform-origin: 0 0; transform: rotate({{l.deg}}deg); pointer-events: none"></div>
+        </sc-for>
+
+        <sc-for list="{{path}}" as="p" hint-placeholder-count="6">
+          <div style="position: absolute; left: {{p.x}}px; top: {{p.y}}px; width: 40px; height: 40px; box-sizing: border-box; display: grid; place-items: center; pointer-events: none; {{p.style}}"><span style="font-size: 11px; font-weight: 700">{{p.text}}</span></div>
+        </sc-for>
+
+        <sc-for list="{{tokens}}" as="t" hint-placeholder-count="5">
+          <button type="button" onClick="{{t.pick}}" title="{{t.name}}" aria-label="{{t.name}}" style="position: absolute; left: {{t.x}}px; top: {{t.y}}px; width: 36px; height: 36px; margin: 2px; border-radius: 50%; padding: 0; font: inherit; font-size: 12px; font-weight: 700; {{t.style}}">{{t.short}}</button>
+        </sc-for>
+        <div style="position: absolute; right: 8px; bottom: 8px; padding: 4px 10px; border-radius: 4px; background: #FBF6EC; border: 1px solid #CDBB98; font-size: 13px">1 square = 1.5 m · dim light unless a zone says otherwise</div>
+      </div>
+
+      <sc-if value="{{isFull}}" hint-placeholder-val="{{ false }}">
+        <div style="position: absolute; left: 24px; bottom: 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(251, 246, 236, 0.95); border: 1px solid #CDBB98; border-radius: 8px; box-shadow: 0 2px 8px rgba(43, 29, 18, 0.25)">
+          <strong>{{sel.name}}</strong><span>{{moveSummary}}</span>
+          <button type="button" onClick="{{confirm}}" style="min-height: 36px; padding: 0 12px; border: 0; border-radius: 6px; background: #8C1C13; color: #FBF6EC; font: inherit; font-weight: 700; cursor: pointer">Confirm move</button>
+          <button type="button" onClick="{{undo}}" style="min-height: 36px; padding: 0 10px; border: 1px solid #CDBB98; border-radius: 6px; background: #FDF1DC; font: inherit; cursor: pointer">Undo point</button>
+        </div>
+      </sc-if>
+    </section>
+
+    <sc-if value="{{showAside}}" hint-placeholder-val="{{ true }}">
+      <aside aria-label="Details" style="flex: 1 1 300px; max-width: 350px; padding: 12px 12px 12px 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px">
+        <section style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px">
+          <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">Movement · {{sel.name}}</h2>
+          <div role="group" aria-label="Movement calculation" style="display: flex; flex-wrap: wrap; gap: 4px">
+            <sc-for list="{{moveModes}}" as="mm" hint-placeholder-count="3">
+              <button type="button" onClick="{{mm.pick}}" aria-pressed="{{mm.pressed}}" style="min-height: 34px; padding: 0 10px; border-radius: 6px; font: inherit; font-size: 14px; cursor: pointer; {{mm.style}}">{{mm.label}}</button>
+            </sc-for>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap">
+            <span style="font-size: 14px">Speed this turn</span>
+            <button type="button" onClick="{{speedDown}}" aria-label="Less speed" style="width: 34px; height: 34px; border: 1px solid #CDBB98; border-radius: 6px; background: #FDF1DC; font: inherit; font-weight: 700; cursor: pointer">−</button>
+            <strong style="min-width: 64px; text-align: center; font-size: 18px">{{speedText}}</strong>
+            <button type="button" onClick="{{speedUp}}" aria-label="More speed" style="width: 34px; height: 34px; border: 1px solid #CDBB98; border-radius: 6px; background: #FDF1DC; font: inherit; font-weight: 700; cursor: pointer">+</button>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px">
+            <sc-for list="{{speedPresets}}" as="sp" hint-placeholder-count="4">
+              <button type="button" onClick="{{sp.pick}}" style="min-height: 32px; padding: 0 8px; border: 1px solid #CDBB98; border-radius: 6px; background: #FDF1DC; font: inherit; font-size: 13px; cursor: pointer">{{sp.label}}</button>
+            </sc-for>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px">
+            <sc-for list="{{avoids}}" as="av" hint-placeholder-count="2">
+              <button type="button" onClick="{{av.pick}}" aria-pressed="{{av.pressed}}" style="min-height: 32px; padding: 0 8px; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer; {{av.style}}">{{av.label}}</button>
+            </sc-for>
+            <sc-if value="{{isGm}}" hint-placeholder-val="{{ true }}">
+              <button type="button" onClick="{{toggleFree}}" aria-pressed="{{freePressed}}" style="min-height: 32px; padding: 0 8px; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer; {{freeStyle}}">Override: move freely</button>
+            </sc-if>
+          </div>
+          <span style="font-size: 14px">{{moveSummary}}</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px">
+            <button type="button" onClick="{{confirm}}" style="min-height: 38px; padding: 0 12px; border: 0; border-radius: 6px; background: #8C1C13; color: #FBF6EC; font: inherit; font-weight: 700; cursor: pointer">Confirm move</button>
+            <button type="button" onClick="{{undo}}" style="min-height: 38px; padding: 0 10px; border: 1px solid #CDBB98; border-radius: 6px; background: #FDF1DC; font: inherit; cursor: pointer">Undo point</button>
+            <button type="button" onClick="{{endTurn}}" style="min-height: 38px; padding: 0 10px; border: 1px solid #CDBB98; border-radius: 6px; background: #FDF1DC; font: inherit; cursor: pointer">End turn</button>
+          </div>
+          <span style="font-size: 13px; color: #6A5642">Click squares to set waypoints — around the trap, away from a goblin. The route between points is the cheapest one. Diagonals alternate 1.5 m / 3 m; the count starts again every turn and runs on across waypoints.</span>
+        </section>
+
+        <section style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px">
+          <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">Sight · {{sel.name}}</h2>
+          <span style="font-size: 13px; color: #6A5642">{{sel.senseNote}}</span>
+          <span style="font-weight: 700">Sees</span>
+          <sc-for list="{{sees}}" as="v" hint-placeholder-count="3">
+            <span style="font-size: 14px">{{v.text}}</span>
+          </sc-for>
+          <sc-if value="{{isGm}}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-direction: column; gap: 4px">
+              <span style="font-weight: 700; margin-top: 4px">Seen by</span>
+              <sc-for list="{{seenBy}}" as="v" hint-placeholder-count="3">
+                <span style="font-size: 14px">{{v.text}}</span>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-for list="{{pending}}" as="pd" hint-placeholder-count="1">
+            <div style="display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: #FDF1DC; border-left: 3px solid #8C1C13">
+              <span style="flex: 1; font-size: 14px">{{pd.text}}</span>
+              <button type="button" onClick="{{pd.reveal}}" style="min-height: 32px; padding: 0 10px; border: 0; border-radius: 6px; background: #8C1C13; color: #FBF6EC; font: inherit; font-weight: 700; cursor: pointer">Reveal</button>
+            </div>
+          </sc-for>
+        </section>
+
+        <section style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px">
+          <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">Zone · {{zone.label}}</h2>
+          <sc-for list="{{zone.rules}}" as="ru" hint-placeholder-count="3">
+            <button type="button" onClick="{{ru.cycle}}" style="display: flex; flex-direction: column; align-items: flex-start; padding: 5px 8px; border: 0; border-left: 3px solid #C8822E; background: #FDF1DC; font: inherit; text-align: left; cursor: pointer">
+              <span style="font-size: 12px; color: #6A5642">{{ru.k}}{{ru.hint}}</span><span style="font-size: 14px">{{ru.v}}</span>
+            </button>
+          </sc-for>
+          <sc-if value="{{isGm}}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-wrap: wrap; gap: 4px">
+              <sc-for list="{{addRules}}" as="ar" hint-placeholder-count="4">
+                <button type="button" onClick="{{ar.pick}}" style="min-height: 30px; padding: 0 8px; border: 1px dashed #B9876A; border-radius: 6px; background: transparent; color: #8C1C13; font: inherit; font-size: 13px; cursor: pointer">+ {{ar.label}}</button>
+              </sc-for>
+            </div>
+          </sc-if>
+          <span style="font-size: 12px; color: #6A5642">Movement, light, sight and „hidden until“ are calculated; damage, saves, conditions and custom rules are shown and logged when someone enters. A zone type is a rule article — save it once, paint it anywhere.</span>
+        </section>
+
+        <section style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 3px">
+          <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">Log</h2>
+          <sc-for list="{{log}}" as="lg" hint-placeholder-count="3">
+            <span style="font-size: 13px">{{lg.text}}</span>
+          </sc-for>
+        </section>
+      </aside>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      view: 'gm', full: false, sel: 'rook', move: 'exact', free: false, revealAuto: true,
+      speed: {}, turn: {}, points: [], avoidHazard: false, avoidEnemy: false,
+      pos: { rook: [3, 9], sela: [2, 11], g1: [12, 8], g2: [13, 9], g3: [7, 4] },
+      hidden: { g1: 'unseen', g2: 'unseen', g3: 'stealth' }, zoneHidden: { trap: true }, zone: 'ice',
+      zones: {
+        ice: { label: 'Ice', short: 'Ice', c: 5, r: 10, w: 2, h: 2, fill: 'background: rgba(150, 190, 220, 0.55); border: 2px solid #3E5C76',
+          rules: [{ k: 'Movement', v: '×2' }, { k: 'Save', v: 'Dexterity save, DC [n], or fall prone' }] },
+        fire: { label: 'Fire', short: 'Fire', c: 14, r: 6, w: 2, h: 2, fill: 'background: rgba(214, 90, 40, 0.5); border: 2px solid #8C1C13',
+          rules: [{ k: 'Damage', v: '[n] fire damage on entering or starting a turn here' }, { k: 'Light', v: 'bright' }] },
+        fog: { label: 'Fog cloud', short: 'Fog', c: 16, r: 9, w: 3, h: 3, fill: 'background: rgba(200, 196, 188, 0.75); border: 2px solid #6A5642',
+          rules: [{ k: 'Sight', v: 'heavily obscured' }] },
+        trap: { label: 'Hidden trap', short: 'Trap', c: 7, r: 11, w: 1, h: 1, fill: 'background: rgba(43, 29, 18, 0.18); border: 2px dashed #2B1D12',
+          rules: [{ k: 'Hidden until', v: 'passive Perception 15' }, { k: 'Custom', v: '[Effect of the trap]' }] }
+      },
+      log: ['Turn starts: Rook, round 3']
+    };
+  }
+
+  renderVals() {
+    const S = 40, COLS = 26, ROWS = 19, M = 1.5;
+    const st = this.state, gm = st.view === 'gm';
+    const houses = [
+      { c: 1, r: 2, w: 5, h: 4 }, { c: 8, r: 6, w: 3, h: 5 }, { c: 13, r: 2, w: 6, h: 3 },
+      { c: 2, r: 13, w: 6, h: 4 }, { c: 12, r: 13, w: 4, h: 4 }, { c: 20, r: 10, w: 5, h: 6 }
+    ];
+    const wall = new Set();
+    houses.forEach((h) => { for (let c = h.c; c < h.c + h.w; c++) for (let r = h.r; r < h.r + h.h; r++) wall.add(c + ',' + r); });
+
+    const toks = [
+      { id: 'rook', name: 'Rook', short: 'R', speed: 5, pp: 10, party: true, color: '#3E5C76' },
+      { id: 'sela', name: 'Sela', short: 'S', speed: 6, pp: null, party: true, color: '#4F6B3A' },
+      { id: 'g1', name: 'Goblin 1', short: 'G1', speed: 6, pp: 9, color: '#B85C4A' },
+      { id: 'g2', name: 'Goblin 2', short: 'G2', speed: 6, pp: 9, color: '#B85C4A' },
+      { id: 'g3', name: 'Goblin 3', short: 'G3', speed: 6, pp: 9, stealth: 17, color: '#B85C4A' }
+    ].map((t) => ({ ...t, c: st.pos[t.id][0], r: st.pos[t.id][1] }));
+    const byId = Object.fromEntries(toks.map((t) => [t.id, t]));
+    const knownTo = (t) => t.party || !st.hidden[t.id];
+    let sel = byId[st.sel] || toks[0];
+    if (!gm && !sel.party) sel = byId.rook;
+
+    // Zonen: jede Regel ist eine Zeile; vier Arten rechnet die Karte selbst.
+    const zoneList = Object.entries(st.zones).map(([id, z]) => ({ id, ...z }));
+    const zonesAt = (c, r) => zoneList.filter((z) => c >= z.c && c < z.c + z.w && r >= z.r && r < z.r + z.h);
+    const rule = (z, k) => (z.rules.find((x) => x.k === k) || {}).v;
+    const cellInfo = (c, r) => {
+      let mult = 1, light = 'dim', sight = 'clear', hazard = false;
+      zonesAt(c, r).forEach((z) => {
+        const mv = rule(z, 'Movement');
+        if (mv === 'impassable') mult = Infinity; else if (mv) mult = Math.max(mult, Number(mv.slice(1)));
+        const li = rule(z, 'Light'); if (li) light = li;
+        const si = rule(z, 'Sight'); if (si) sight = si;
+        if ((gm || !st.zoneHidden[z.id]) && (rule(z, 'Damage') || rule(z, 'Hidden until') || rule(z, 'Save'))) hazard = true;
+      });
+      return { mult, light, sight, hazard };
+    };
+    const blocksSight = (c, r) => wall.has(c + ',' + r) || cellInfo(c, r).sight === 'heavily obscured';
+    const los = (a, b) => {
+      let x0 = a.c, y0 = a.r; const x1 = b.c, y1 = b.r;
+      const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+      let err = dx + dy;
+      while (!(x0 === x1 && y0 === y1)) {
+        const e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x0 += sx; }
+        if (e2 <= dx) { err += dx; y0 += sy; }
+        if (blocksSight(x0, y0)) return false;
+      }
+      return true;
+    };
+    const penalty = (c, r) => {
+      const i = cellInfo(c, r);
+      return (i.light === 'dim' || i.sight === 'lightly obscured') && i.light !== 'bright' ? 5 : 0;
+    };
+    const verdict = (viewer, target) => {
+      if (!los(viewer, target)) return { ok: false, why: 'no line of sight' };
+      if (cellInfo(target.c, target.r).light === 'darkness') return { ok: false, why: 'in darkness' };
+      const h = st.hidden[target.id];
+      if (h !== 'stealth') return { ok: true, why: 'line of sight' };
+      if (viewer.pp == null) return { ok: false, why: 'line of sight, passive Perception not set' };
+      const pp = viewer.pp - penalty(target.c, target.r);
+      return pp >= target.stealth
+        ? { ok: true, why: 'passive ' + pp + ' ≥ Stealth ' + target.stealth }
+        : { ok: false, why: 'passive ' + pp + ' < Stealth ' + target.stealth };
+    };
+    const trapSpotted = (viewer, z) => {
+      const need = parseInt(String(rule(z, 'Hidden until')).replace(/\D+/g, ''), 10);
+      if (viewer.pp == null || !los(viewer, { c: z.c, r: z.r })) return false;
+      return viewer.pp - penalty(z.c, z.r) >= need;
+    };
+
+    // Wege: Dijkstra über (Feld, Diagonalen-Parität), damit 5-10-5 auch über Wegpunkte weiterzählt.
+    const enemyReach = new Set();
+    toks.filter((t) => !t.party && knownTo(t) && t.id !== sel.id).forEach((t) => {
+      for (let dc = -1; dc <= 1; dc++) for (let dr = -1; dr <= 1; dr++) enemyReach.add((t.c + dc) + ',' + (t.r + dr));
+    });
+    const occupied = new Set(toks.filter((t) => t.id !== sel.id).map((t) => t.c + ',' + t.r));
+    const passable = (c, r) => {
+      const k = c + ',' + r;
+      if (c < 0 || r < 0 || c >= COLS || r >= ROWS || wall.has(k) || occupied.has(k)) return false;
+      const i = cellInfo(c, r);
+      if (i.mult === Infinity) return false;
+      if (st.avoidHazard && i.hazard) return false;
+      if (st.avoidEnemy && enemyReach.has(k)) return false;
+      return true;
+    };
+    const search = (c0, r0, p0, limit, goal) => {
+      const dist = new Map(), prev = new Map(), best = new Map();
+      const k0 = c0 + ',' + r0 + ',' + p0;
+      dist.set(k0, 0);
+      const queue = [[0, c0, r0, p0]];
+      while (queue.length) {
+        queue.sort((a, b) => a[0] - b[0]);
+        const [d, c, r, p] = queue.shift();
+        const key = c + ',' + r + ',' + p;
+        if (d > dist.get(key)) continue;
+        if (goal && c === goal[0] && r === goal[1]) {
+          const cells = []; let k = key;
+          while (k !== k0) { const [cc, rr] = k.split(',').map(Number); cells.unshift({ c: cc, r: rr, d: dist.get(k) }); k = prev.get(k); }
+          return { cells, cost: d, p };
+        }
+        for (let dc = -1; dc <= 1; dc++) for (let dr = -1; dr <= 1; dr++) {
+          if (!dc && !dr) continue;
+          const nc = c + dc, nr = r + dr;
+          if (!passable(nc, nr)) continue;
+          const diag = dc && dr;
+          const step = (diag ? (p ? 2 : 1) : 1) * cellInfo(nc, nr).mult;
+          const np = diag ? 1 - p : p, nd = d + step;
+          if (nd > limit) continue;
+          const nk = nc + ',' + nr + ',' + np;
+          if (!dist.has(nk) || nd < dist.get(nk)) { dist.set(nk, nd); prev.set(nk, key); queue.push([nd, nc, nr, np]); }
+          const cell = nc + ',' + nr;
+          if (!best.has(cell) || nd < best.get(cell)) best.set(cell, nd);
+        }
+      }
+      return goal ? null : best;
+    };
+
+    const turn = st.turn[sel.id] || { used: 0, p: 0 };
+    const speed = st.speed[sel.id] != null ? st.speed[sel.id] : sel.speed;
+    const left = Math.max(0, speed - turn.used);
+    let at = { c: sel.c, r: sel.r, p: turn.p, d: 0 };
+    const route = [];
+    st.points.forEach((pt) => {
+      const seg = search(at.c, at.r, at.p, Infinity, pt);
+      if (!seg) return;
+      seg.cells.forEach((x) => route.push({ ...x, d: x.d + at.d }));
+      at = { c: pt[0], r: pt[1], p: seg.p, d: at.d + seg.cost };
+    });
+    const pathCost = at.d;
+
+    const reach = [];
+    if (st.move !== 'off') {
+      const limit = st.free ? Infinity : Math.max(0, left - pathCost);
+      const add = (c, r, inside) => reach.push({
+        x: c * S, y: r * S, label: 'Waypoint ' + (c + 1) + '/' + (r + 1),
+        fill: inside ? 'rgba(79, 107, 58, 0.38)' : 'rgba(79, 107, 58, 0.12)',
+        pick: () => this.setState({ points: [...st.points, [c, r]] })
+      });
+      if (st.move === 'exact') {
+        const best = search(at.c, at.r, at.p, limit, null);
+        best.forEach((d, cell) => { const [c, r] = cell.split(',').map(Number); if (!(c === at.c && r === at.r)) add(c, r, d <= limit); });
+      } else {
+        for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) {
+          const dx = Math.abs(c - at.c), dy = Math.abs(r - at.r);
+          if ((!dx && !dy) || wall.has(c + ',' + r)) continue;
+          const d = Math.max(dx, dy) + Math.floor(Math.min(dx, dy) / 2);
+          if (d <= limit) add(c, r, true);
+        }
+      }
+    }
+
+    const m = (n) => (n * M).toLocaleString('en-US') + ' m';
+    const over = !st.free && pathCost > left;
+    const path = route.map((x, i) => {
+      const isPoint = st.points.some((pt) => pt[0] === x.c && pt[1] === x.r);
+      const bad = !st.free && x.d > left;
+      return {
+        x: x.c * S, y: x.r * S, text: isPoint || i === route.length - 1 ? m(x.d) : '',
+        style: (bad ? 'background: rgba(140, 28, 19, 0.45); ' : 'background: rgba(251, 246, 236, 0.55); ')
+          + (isPoint ? 'border: 3px solid #8C1C13' : 'border: 2px dotted #8C1C13')
+      };
+    });
+
+    let moveSummary;
+    if (st.move === 'off') moveSummary = 'Calculation off · ' + m(left) + ' left this turn';
+    else if (!route.length) moveSummary = m(left) + ' left this turn · click a square to start a path';
+    else moveSummary = 'Path ' + m(pathCost) + ' of ' + m(left) + ' left' + (over ? ' · too far' : '') + (st.free ? ' · override on' : '');
+
+    const views = [['gm', 'GM view'], ['player', 'Player view · Rook']].map(([k, label]) => ({
+      label, pressed: String(st.view === k), pick: () => this.setState({ view: k, points: [] }),
+      style: st.view === k ? 'border: 1px solid #FBF6EC; background: #FBF6EC; color: #8C1C13; font-weight: 700' : 'border: 1px solid #FBF6EC; background: transparent; color: #FBF6EC'
+    }));
+    const revealModes = [[false, 'Manual'], [true, 'On confirmed move']].map(([v, label]) => ({
+      label, pressed: String(st.revealAuto === v), pick: () => this.setState({ revealAuto: v }),
+      style: st.revealAuto === v ? 'border: 1px solid #FBF6EC; background: #FBF6EC; color: #8C1C13; font-weight: 700' : 'border: 1px solid #FBF6EC; background: transparent; color: #FBF6EC'
+    }));
+    const on = (b) => b ? 'border: 1px solid #34502A; background: #4F6B3A; color: #FBF6EC; font-weight: 700' : 'border: 1px solid #CDBB98; background: #FDF1DC; color: #2B1D12';
+    const moveModes = [['exact', 'Exact path'], ['simple', 'Max range'], ['off', 'Off']].map(([k, label]) => ({
+      label, pressed: String(st.move === k), style: on(st.move === k), pick: () => this.setState({ move: k, points: [] })
+    }));
+    const setSpeed = (v) => this.setState({ speed: { ...st.speed, [sel.id]: Math.max(0, v) } });
+    const speedPresets = [
+      ['Base ' + m(sel.speed), sel.speed], ['Dash ×2', speed * 2], ['Climb / swim ½', Math.floor(speed / 2)], ['Grappling ½', Math.floor(speed / 2)]
+    ].map(([label, v]) => ({ label, pick: () => setSpeed(v) }));
+    const avoids = [['avoidHazard', 'Avoid hazards'], ['avoidEnemy', 'Avoid enemy reach']].map(([k, label]) => ({
+      label, pressed: String(st[k]), style: on(st[k]), pick: () => this.setState({ [k]: !st[k], points: [] })
+    }));
+
+    // Bestätigen: Schritt für Schritt den Pfad ablaufen; aufgedeckt wird, was unterwegs in Sicht kommt.
+    const confirm = () => {
+      if (!route.length || over) return;
+      const hidden = { ...st.hidden }, zoneHidden = { ...st.zoneHidden }, log = [...st.log];
+      const entered = new Set();
+      route.forEach((x, i) => {
+        const mover = { ...sel, c: x.c, r: x.r };
+        zonesAt(x.c, x.r).forEach((z) => {
+          if (!entered.has(z.id) && !(zoneHidden[z.id] && !gm)) {
+            entered.add(z.id);
+            z.rules.filter((ru) => !['Movement', 'Light', 'Sight', 'Hidden until'].includes(ru.k)).forEach((ru) => log.push(sel.name + ' enters ' + z.label + ': ' + ru.v));
+          }
+        });
+        if (!st.revealAuto || !sel.party) return;
+        toks.filter((t) => !t.party && hidden[t.id]).forEach((t) => {
+          const v = verdict(mover, t);
+          if (v.ok) { delete hidden[t.id]; log.push(t.name + ' revealed at step ' + (i + 1) + ' (' + v.why + ')'); }
+        });
+        zoneList.filter((z) => zoneHidden[z.id]).forEach((z) => {
+          if (trapSpotted(mover, z)) { delete zoneHidden[z.id]; log.push(z.label + ' spotted at step ' + (i + 1)); }
+        });
+      });
+      const end = route[route.length - 1];
+      log.push(sel.name + ' moves ' + m(pathCost) + ' to ' + (end.c + 1) + '/' + (end.r + 1));
+      this.setState({
+        pos: { ...st.pos, [sel.id]: [end.c, end.r] },
+        turn: { ...st.turn, [sel.id]: { used: turn.used + pathCost, p: at.p } },
+        points: [], hidden, zoneHidden, log: log.slice(-8)
+      });
+    };
+
+    const tokens = toks.filter((t) => gm || knownTo(t)).map((t) => {
+      const h = st.hidden[t.id];
+      const pickable = gm || t.party;
+      return {
+        name: t.name + (h ? ' (' + h + ')' : ''), short: t.short, x: t.c * S, y: t.r * S,
+        pick: pickable ? () => this.setState({ sel: t.id, points: [] }) : () => {},
+        style: 'background: ' + t.color + '; color: #FBF6EC; cursor: ' + (pickable ? 'pointer' : 'default') + '; '
+          + (h ? 'opacity: 0.55; border: 3px dashed #2B1D12; ' : 'border: 3px solid #FBF6EC; ')
+          + (t.id === sel.id ? 'box-shadow: 0 0 0 3px #8C1C13' : '')
+      };
+    });
+    const zones = zoneList.filter((z) => gm || !st.zoneHidden[z.id]).map((z) => ({
+      label: z.label, short: z.short + (st.zoneHidden[z.id] ? ' ·hidden' : ''), x: z.c * S, y: z.r * S, w: z.w * S, h: z.h * S,
+      style: z.fill + (st.zone === z.id ? '; outline: 3px solid #8C1C13; outline-offset: 1px' : ''),
+      pick: () => this.setState({ zone: z.id })
+    }));
+
+    const visibleZone = st.zones[st.zone] && (gm || !st.zoneHidden[st.zone]) ? st.zone : 'ice';
+    const zdef = st.zones[visibleZone];
+    const cycles = {
+      Movement: ['×1', '×2', '×3', 'impassable'], Light: ['bright', 'dim', 'darkness'],
+      Sight: ['clear', 'lightly obscured', 'heavily obscured'], 'Hidden until': ['passive Perception 10', 'passive Perception 15', 'passive Perception 20']
+    };
+    const setRules = (rules) => this.setState({ zones: { ...st.zones, [visibleZone]: { ...zdef, rules } } });
+    const zone = {
+      label: zdef.label,
+      rules: zdef.rules.map((ru, i) => ({
+        k: ru.k, v: ru.v, hint: gm && cycles[ru.k] ? ' · click to change' : '',
+        cycle: () => {
+          if (!gm || !cycles[ru.k]) return;
+          const list = cycles[ru.k];
+          const rules = zdef.rules.slice(); rules[i] = { k: ru.k, v: list[(list.indexOf(ru.v) + 1) % list.length] };
+          setRules(rules);
+        }
+      }))
+    };
+    const addRules = [['Movement', '×2'], ['Light', 'bright'], ['Sight', 'lightly obscured'], ['Damage', '[dice] [type]'], ['Save', '[ability] DC [n]'], ['Condition', '[condition]'], ['Custom', '[your rule]']]
+      .filter(([k]) => !zdef.rules.some((x) => x.k === k && cycles[k]))
+      .map(([k, v]) => ({ label: k, pick: () => setRules([...zdef.rules, { k, v }]) }));
+
+    const others = toks.filter((t) => t.id !== sel.id && (gm || knownTo(t)));
+    const sees = others.map((t) => { const v = verdict(sel, t); return { text: (v.ok ? '✓ ' : '✗ ') + t.name + ' · ' + v.why }; });
+    const seenBy = others.map((t) => { const v = verdict(t, sel); return { text: (v.ok ? '✓ ' : '✗ ') + t.name + ' · ' + v.why }; });
+    const sight = gm ? others.map((t) => {
+      const v = verdict(t, sel);
+      const x0 = t.c * S + 20, y0 = t.r * S + 20, x1 = sel.c * S + 20, y1 = sel.r * S + 20;
+      return { x: x0, y: y0, len: Math.hypot(x1 - x0, y1 - y0), deg: Math.atan2(y1 - y0, x1 - x0) * 180 / Math.PI,
+        color: v.ok ? 'rgba(52, 80, 42, 0.8)' : 'rgba(140, 28, 19, 0.5)', dash: v.ok ? 'solid' : 'dashed' };
+    }) : [];
+
+    const party = toks.filter((t) => t.party);
+    const pending = gm && !st.revealAuto ? [
+      ...toks.filter((t) => st.hidden[t.id]).map((t) => {
+        const who = party.filter((p) => verdict(p, t).ok).map((p) => p.name);
+        return who.length ? { text: t.name + ' · seen by ' + who.join(', '), reveal: () => { const hidden = { ...st.hidden }; delete hidden[t.id]; this.setState({ hidden }); } } : null;
+      }).filter(Boolean),
+      ...zoneList.filter((z) => st.zoneHidden[z.id]).map((z) => {
+        const who = party.filter((p) => trapSpotted(p, z)).map((p) => p.name);
+        return who.length ? { text: z.label + ' · spotted by ' + who.join(', '), reveal: () => { const zh = { ...st.zoneHidden }; delete zh[z.id]; this.setState({ zoneHidden: zh }); } } : null;
+      }).filter(Boolean)
+    ] : [];
+
+    const h = st.hidden[sel.id];
+    const senseNote = h
+      ? (h === 'stealth' ? 'Hidden · Stealth ' + sel.stealth : 'Not yet seen by the party') + '. ' + (st.revealAuto ? 'Revealed when a confirmed move brings it into sight.' : 'Stays hidden until you reveal it.')
+      : 'Passive Perception ' + (sel.pp == null ? 'not set' : sel.pp) + ', −5 against targets in dim light';
+
+    const brushes = [
+      ['Difficult', 'background: repeating-linear-gradient(45deg, #6A5642 0 2px, transparent 2px 5px); border: 1px solid #6A5642'],
+      ['Ice', 'background: #96BEDC'], ['Fire', 'background: #D65A28'], ['Fog cloud', 'background: #C8C4BC'],
+      ['Darkness', 'background: #2B1D12'], ['Trap', 'border: 2px dashed #2B1D12']
+    ].map(([label, swatch]) => ({ label, swatch }));
+
+    return {
+      views, revealModes, isGm: gm, isFull: st.full, showTools: gm && !st.full, showAside: !st.full,
+      fullLabel: st.full ? 'Exit full screen' : 'Full screen', toggleFull: () => this.setState({ full: !st.full }),
+      houses: houses.map((x) => ({ x: x.c * S, y: x.r * S, w: x.w * S, h: x.h * S })),
+      reach, sight, zones, tokens, path, brushes, moveModes, speedPresets, avoids, sees, seenBy, pending, moveSummary,
+      speedText: m(speed), speedDown: () => setSpeed(speed - 1), speedUp: () => setSpeed(speed + 1),
+      zone, addRules, sel: { name: sel.name, senseNote },
+      freePressed: String(st.free), freeStyle: on(st.free), toggleFree: () => this.setState({ free: !st.free }),
+      confirm, undo: () => this.setState({ points: st.points.slice(0, -1) }),
+      endTurn: () => this.setState({ turn: { ...st.turn, [sel.id]: { used: 0, p: 0 } }, speed: { ...st.speed, [sel.id]: null }, points: [], log: [...st.log, sel.name + ' ends the turn'].slice(-8) }),
+      log: st.log.slice().reverse().map((text) => ({ text }))
+    };
+  }
+}
+</script>
+</body>
+</html>

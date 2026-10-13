@@ -2,7 +2,7 @@ import js from '@eslint/js';
 import ts from 'typescript-eslint';
 
 export default ts.config(
-  { ignores: ['**/dist/**', '**/node_modules/**', '**/.angular/**', 'legacy/**', 'prototype/**', '.obsidian/**', '.trash/**'] },
+  { ignores: ['**/dist/**', '**/node_modules/**', '**/.angular/**', 'legacy/**', 'prototype/**', 'docs/design/**', 'apps/server/public/**', '.obsidian/**', '.trash/**'] },
   js.configs.recommended,
   ...ts.configs.recommended,
   {
