@@ -630,6 +630,20 @@ das gleichzeitig Regel ist, leckt beim ersten Tippfehler: ein Paket, das
 versehentlich `campaign` heisst, gehörte plötzlich wem? Das `kind` bleibt
 Beschreibung.
 
+**Je Buch eine Ebene** (T-081, E-017). Bis zum 13.10.2026 lag alles aus
+5e.tools in einer Ebene „D&D 5e (2014)", und welches Buch, stand nur am
+Artikel. Eine Runde, die *Curse of Strahd* spielt und keine anderen
+Abenteuer, sah trotzdem jedes Abenteuer — abschalten hiess, alles
+abzuschalten. Jetzt ist jedes Buch eine Ebene (`kind: book`), und eine
+Kampagne schaltet die Bücher auf, die sie nutzt. Die Sorge von damals,
+hundert Ebenen seien ein Stapel, den niemand umschaltet, trifft den
+Stapel und nicht die Liste: die Kampagnenseite zeigt die Bücher darum
+getrennt, gruppiert nach Grundregelwerk, Quellenbuch und Abenteuer
+(einer Marke an der Ebene), mit Häkchen und ohne Pfeile — zwischen zwei
+Büchern gibt es nichts zu ordnen. `book` ist wie jedes `kind`
+Beschreibung: es gruppiert und hält die Ausfuhr klein, aber wer etwas
+sieht, sagt es nicht.
+
 > **Die dritte Zeile der Tabelle ist die, die heute zählt.** Von
 > fünfundsiebzig Artikeln tragen fünfundsechzig keine Ebenenkante — die
 > Regel „ohne Ebene gehört er der Kampagne und ist immer da" (siehe

@@ -42,6 +42,9 @@ import { foldName, hashToken, newInviteCode, type Invite, type User } from './au
 /** Was ein Konto an einer Kampagne darf: ändern, nur sehen, oder nichts. */
 export type Recht = 'manage' | 'see' | null;
 
+/** Die Gruppen der Bücher auf der Kampagnenseite, in dieser Reihenfolge (T-081). */
+export const BUCHGRUPPEN = ['core', 'sourcebook', 'adventure'];
+
 export function rechtAn(user: User | null, campaignId: string): Recht {
   if (!user || user.disabledAt) return null;
   if (user.isAdmin) return 'manage';
@@ -171,6 +174,19 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
   // ---------------------------------------------------------- Ebenen
 
   /**
+   * Unter welcher Gruppe ein Buch auf der Kampagnenseite steht (T-081):
+   * die Marke, die der Importer und die Migration setzen (`core`,
+   * `sourcebook`, `adventure`). Nur für `kind: 'book'`; eine andere Ebene
+   * steht im Stapel und hat keine Gruppe. Beschreibung, keine Regel.
+   */
+  const buchGruppe = (e: Entity): string => {
+    if ((e.components?.[LAYER_COMPONENT] as { kind?: unknown } | undefined)?.kind !== 'book') return '';
+    const marken = (e.components?.['Tags'] as { tags?: unknown } | undefined)?.tags;
+    const g = Array.isArray(marken) ? marken.find((m) => BUCHGRUPPEN.includes(m as string)) : undefined;
+    return typeof g === 'string' ? g : 'sourcebook';
+  };
+
+  /**
    * **Die Ebenen einer Kampagne** (T-069, E-008): alle Ebenen des
    * Bestands, die aufgeschalteten von unten nach oben, darunter die
    * übrigen. Was eine Kampagne zeigt, ist ihre wichtigste Einstellung —
@@ -205,6 +221,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
         id: e.id,
         name: entityName(e),
         kind: String((e.components?.[LAYER_COMPONENT] as { kind?: unknown } | undefined)?.kind ?? ''),
+        group: buchGruppe(e),
         articles: zahl.get(e.id) ?? 0,
         active: stapel.includes(e.id),
         alsoIn: andere,

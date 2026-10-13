@@ -148,6 +148,8 @@ export interface KampagnenEbene {
   id: string;
   name: string;
   kind: string;
+  /** Bei einem Buch die Gruppe (`core`, `sourcebook`, `adventure`), sonst leer (T-081). */
+  group: string;
   articles: number;
   active: boolean;
   /** Die anderen Kampagnen, die sie aufschalten. */

@@ -6,6 +6,7 @@ import type { Knoten } from '../src/copy.js';
 import type { Datenstand } from '../src/lesen.js';
 import { ausschnitt, lauf } from '../src/lauf.js';
 import { berichtMarkdown } from '../src/bericht.js';
+import { buchEbeneId } from '../src/werkbank.js';
 
 /** Ein kleiner Datenstand in der Form von 5e.tools — genug, um jede Stufe zu berühren. */
 function datenstand(): Datenstand {
@@ -83,12 +84,28 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
   const { datei, bericht } = lauf(datenstand());
   const es = datei.entities;
 
-  it('legt alles in eine Systemebene und schreibt das Format der Einfuhr', () => {
+  it('legt jedes Buch in seine eigene Ebene und schreibt das Format der Einfuhr (T-081)', () => {
     expect(datei.format).toBe('nebelwacht/1');
     expect(datei.registry.interfaces['Spell']).toBeDefined();
     const ebene = finde(es, 'Layer', 'D&D 5e (2014)');
     expect(ebene.components['Layer']).toMatchObject({ kind: 'system' });
-    for (const e of es.filter((x) => x !== ebene)) expect(e.relations?.some((r) => r.type === 'inLayer' && r.to === ebene.id)).toBe(true);
+    const phb = finde(es, 'Layer', "Player's Handbook");
+    expect(phb.id).toBe(buchEbeneId('PHB'));
+    expect(phb.components['Layer']).toMatchObject({ kind: 'book', order: 0 });
+    expect(phb.components['Tags']).toEqual({ tags: ['core'] });
+    const ebenen = new Map(es.filter((e) => e.interfaces[0] === 'Layer').map((e) => [e.id, e]));
+    for (const e of es.filter((x) => !ebenen.has(x.id))) {
+      const in_ = (e.relations ?? []).filter((r) => r.type === 'inLayer');
+      expect(in_, `${e.name}`).toHaveLength(1);
+      const quelle = (e.components['Source'] as { publication?: string } | undefined)?.publication;
+      /* Mit Quelle in der Ebene ihres Buchs, ohne in der Systemebene. */
+      expect(in_[0]!.to, `${e.name}`).toBe(quelle ? buchEbeneId(quelle) : ebene.id);
+    }
+    /* Keine Ebene steht selbst in einer Ebene, und keine Buchebene ist leer. */
+    for (const l of ebenen.values()) {
+      expect(l.relations?.some((r) => r.type === 'inLayer') ?? false).toBe(false);
+      if (l !== ebene) expect(es.some((e) => e.relations?.some((r) => r.type === 'inLayer' && r.to === l.id))).toBe(true);
+    }
   });
 
   it('vergibt Kanten-Ids, die im ganzen Bestand nur einmal vorkommen', () => {
