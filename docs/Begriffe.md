@@ -153,7 +153,12 @@ Eine Tatsache, die ein Typ festhält. Ein Feld hat
   irgendetwas. Marken und Feldwert dürfen auch dastehen, aber die sind ein
   **Vorschlag für die Maske** und keine Regel: sie lesen den heutigen
   Zustand des Ziels, und ein entfernter Marker würde einen längst
-  gespeicherten Verweis rückwirkend falsch machen,
+  gespeicherten Verweis rückwirkend falsch machen. **Meint ein Feld einen
+  Artikel, ist es ein Verweis und kein Name** (T-078): die
+  Zustandsimmunitäten eines Statblocks hielten „Poisoned", und ein
+  umbenannter Zustand liess sie auf nichts zeigen; jetzt halten sie die
+  Id, wie die Zustände an der Figur. Ein Name bleibt nur, wo ein Feld
+  Artikel und Wörter mischt (die Übungen),
 - bei einem **Mass** die Einheit, in der es dasteht (`unit`),
 - bei einer **Form** (`format: 'grid'`) ein Zeichen je Feld — und die Maske
   malt sie als Raster. `##.,##.` als Text sagt der Eingabe nicht, was dabei

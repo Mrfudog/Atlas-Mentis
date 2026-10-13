@@ -97,7 +97,17 @@ function felder(wb: Werkbank, ent: Entity, e: Knoten): void {
     wb.feld(ent, W, 'damage2', e['dmg2']);
     wb.feld(ent, W, 'damageType', SCHADEN[String(e['dmgType'] ?? '')]);
     wb.feld(ent, W, 'range', e['range'] !== undefined ? String(e['range']) : undefined);
-    if (e['ammoType']) wb.feld(ent, W, 'ammoType', kurz(e['ammoType']));
+    /* Die Munition ist ein Verweis auf ihren Gegenstand (T-078); findet
+       sie keinen, steht das Wort als Notiz. */
+    if (e['ammoType']) {
+      const [n = '', q = ''] = String(e['ammoType']).split('|');
+      const munition = wb.finde('item', [n, q]);
+      if (munition) wb.feld(ent, W, 'ammoType', munition.id);
+      else {
+        wb.anmerkung(ent, 'ammunition', `Ammunition: ${n}`);
+        wb.ctx.insLeere('item', String(e['ammoType']));
+      }
+    }
   }
   if (typ === 'Armor') {
     const A = 'Armor';
