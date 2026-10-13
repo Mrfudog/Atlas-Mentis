@@ -4,7 +4,7 @@ import { areaOf, articlesTaking, fieldTitle, layoutFor, linkedTypes, ownFields, 
 import type { InterfaceDef, LayoutElement, Registry } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { BEREICHE } from '../kern/bereiche';
-import { RegisterArbeit, articles, carry } from './arbeit';
+import { RegisterArbeit, articles, carry, inPlayText } from './arbeit';
 import { RegFeld } from './feld';
 import {
   ancestorsOf,
@@ -54,7 +54,7 @@ interface Gruppe {
           <span>area <strong>{{ bereich() }}</strong></span>
         }
         @if (!d.abstract) {
-          <span class="dim">{{ zahlText(eigeneArtikel()) }}</span>
+          <span class="dim">{{ artikelText() }}</span>
         }
         @if (kinder().length) {
           <span class="dim"
@@ -327,6 +327,9 @@ export class RegTyp {
     return u ? (u.types[this.name()] ?? 0) : null;
   });
 
+  /** Im Stapel der laufenden Kampagne und gespeichert (T-069). */
+  protected readonly artikelText = computed(() => inPlayText(this.arbeit.usage(), this.name()) ?? '');
+
   protected readonly gruppen = computed<Gruppe[]>(() => {
     const r = this.reg();
     if (!r) return [];
@@ -409,9 +412,6 @@ export class RegTyp {
 
   protected label(t: string): string {
     return this.reg()?.interfaces[t]?.label ?? t;
-  }
-  protected zahlText(n: number | null): string {
-    return n === null ? '' : articles(n);
   }
   protected wert(ev: Event): string {
     return String((ev.target as HTMLInputElement).value ?? '').trim();

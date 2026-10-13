@@ -13,6 +13,8 @@ import {
 import { areaOf, entityName, primaryInterface, typeList } from '@nw/model';
 import type { Entity } from '@nw/model';
 import { Bestand, schmal } from '../kern/bestand';
+import { AusgeblendetHinweis } from '../kern/ausgeblendet';
+import type { Ausgeblendet } from '../kern/api';
 
 /** So viele Treffer zeigt die Suche — 24 157 liest niemand. */
 const TREFFER = 30;
@@ -31,6 +33,7 @@ const TREFFER = 30;
  */
 @Component({
   selector: 'nw-board-suche',
+  imports: [AusgeblendetHinweis],
   template: `
     <div class="zeile">
       <input
@@ -66,6 +69,7 @@ const TREFFER = 30;
       @if (mehr() > 0) {
         <p class="leer">{{ mehr() }} more — narrow the search or pick a type.</p>
       }
+      <nw-ausgeblendet [info]="ausgeblendet()" [knapp]="true" (geaendert)="fragen()" />
     }
   `,
   styles: `
@@ -145,6 +149,8 @@ export class BoardSuche {
   protected readonly laedt = signal(false);
   private readonly gefunden = signal<Entity[]>([]);
   private readonly gesamt = signal(0);
+  /** Was nur fehlt, weil seine Ebene nicht aufgeschaltet ist (T-069). */
+  protected readonly ausgeblendet = signal<Ausgeblendet | null>(null);
   private lauf = 0;
   private uhr: ReturnType<typeof setTimeout> | null = null;
 
@@ -178,7 +184,7 @@ export class BoardSuche {
     this.fragen();
   }
 
-  private fragen(): void {
+  protected fragen(): void {
     const nr = ++this.lauf;
     this.laedt.set(true);
     const q = this.suche().trim();
@@ -189,6 +195,7 @@ export class BoardSuche {
         this.fehler.set(null);
         this.gefunden.set(r.rows.map(schmal));
         this.gesamt.set(r.total);
+        this.ausgeblendet.set(r.unactivated ?? null);
       })
       .catch((e: unknown) => {
         if (nr === this.lauf) this.fehler.set(e instanceof Error ? e.message : String(e));

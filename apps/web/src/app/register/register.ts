@@ -253,11 +253,15 @@ export class Register {
         .sort((a, b) => a.label.localeCompare(b.label, 'en'));
     }
     const zahl = this.jeArt();
+    /* Im Stapel / gespeichert (T-069) — eine Zahl, wenn beide gleich sind. */
+    const da = this.arbeit.usage()?.inPlay;
     return typeList(r)
       .map((name) => {
         const d = r.interfaces[name]!;
         const n = zahl?.[name] ?? 0;
-        return { name, label: d.label ?? name, zusatz: d.abstract ? 'shared' : n ? n.toLocaleString('en') : '', query: { type: name } };
+        const sichtbar = da ? (da[name] ?? 0) : n;
+        const text = !n ? '' : sichtbar === n ? n.toLocaleString('en') : `${sichtbar.toLocaleString('en')} / ${n.toLocaleString('en')}`;
+        return { name, label: d.label ?? name, zusatz: d.abstract ? 'shared' : text, query: { type: name } };
       })
       .filter((z) => passt(z.name, z.label));
   });

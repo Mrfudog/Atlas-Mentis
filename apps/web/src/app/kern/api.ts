@@ -132,6 +132,33 @@ export interface Liste {
     )[];
     partsHidden: number;
   };
+  /** Was fehlt, weil die laufende Kampagne seine Ebene nicht aufschaltet
+   *  (T-069) — mit denselben Filtern gezählt; fehlt, wenn nichts fehlt. */
+  unactivated?: Ausgeblendet;
+}
+
+export interface Ausgeblendet {
+  campaign: { id: string; name: string };
+  total: number;
+  layers: { id: string; name: string; count: number; canActivate: boolean }[];
+}
+
+/** Eine Ebene auf der Kampagnenseite (`GET /api/campaigns/:c/layers`). */
+export interface KampagnenEbene {
+  id: string;
+  name: string;
+  kind: string;
+  articles: number;
+  active: boolean;
+  /** Die anderen Kampagnen, die sie aufschalten. */
+  alsoIn: string[];
+  canActivate: boolean;
+}
+export interface KampagnenEbenen {
+  campaign: { id: string; name: string };
+  may: Recht;
+  /** Die aufgeschalteten von unten nach oben, darunter die übrigen. */
+  layers: KampagnenEbene[];
 }
 
 export interface ListenZeile {
@@ -451,6 +478,24 @@ export class Api {
     return this.call(
       `/api/campaigns/${encodeURIComponent(campaign)}/members/${encodeURIComponent(user)}/actors`,
       { method: 'PUT', body: JSON.stringify({ actorIds }) },
+    );
+  }
+  /** Die Ebenen einer Kampagne, aufgeschaltet oder nicht (T-069). */
+  campaignLayers(campaign: string): Promise<KampagnenEbenen> {
+    return this.call<KampagnenEbenen>(`/api/campaigns/${encodeURIComponent(campaign)}/layers`);
+  }
+  /** Der ganze Stapel, von unten nach oben; was fehlt, ist danach aus. */
+  setCampaignLayers(campaign: string, layers: string[]): Promise<{ ok: true; layers: string[] }> {
+    return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/layers`, {
+      method: 'PUT',
+      body: JSON.stringify({ layers }),
+    });
+  }
+  /** Eine Ebene dazuschalten; der Server sucht ihr den Platz im Stapel. */
+  activateLayer(campaign: string, layer: string): Promise<{ ok: true; layers: string[] }> {
+    return this.call(
+      `/api/campaigns/${encodeURIComponent(campaign)}/layers/${encodeURIComponent(layer)}`,
+      { method: 'POST' },
     );
   }
   users(): Promise<Konto[]> {
