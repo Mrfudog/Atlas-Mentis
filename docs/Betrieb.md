@@ -11,6 +11,14 @@ Jede Umgebung hat ihre eigene Datenbank, ihr eigenes Volume und ihre eigenen
 Konten. Davor steht Caddy als Container (`deploy/proxy/`, Host-Netz) und
 macht TLS; auch er kommt aus dem Repository.
 
+**Welche Umgebung antwortet, sagt `ATLAS_ENV`** (`dev` oder `prod`, gesetzt
+in `docker-compose.preprod.yml` und `docker-compose.yml`). Der Server gibt
+es in `/api/health` und `/api/me` mit; auf `dev` steht in der Oberfläche
+oben ein schmales Band „DEV — Test environment", auf `prod` und ohne
+Angabe keines (T-070). Wer auf dev pflegt, pflegt auf der Spielwiese:
+was dort fehlt, wenn ausgerollt oder eingelesen wird, steht unten unter
+[Was Daten löschen kann](#was-daten-löschen-kann).
+
 > **Schalter:** der Job `deploy` läuft nur, wenn die Repo-Variable
 > `DEPLOY_ENABLED` auf `true` steht (Settings › Secrets and variables ›
 > Actions › Variables). Ohne ihn bleibt ein Push grün, auch wenn die
@@ -224,6 +232,33 @@ docker compose exec -T db sh -c 'dropdb -U "$POSTGRES_USER" "$POSTGRES_DB" && cr
 docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner' < backups/<zeit>.dump
 ./deploy.sh "$(cat previous-image)"
 ```
+
+## Was Daten löschen kann
+
+Diese Wege ersetzen oder löschen Bestand. Jeder hat einen Weg zurück —
+aber nur, solange die Sicherung von davor noch liegt (`backups/`, die
+letzten 20; nächtliche in `backups/nacht/`). **Auf dev** ist das Absicht:
+dort wird ausprobiert, und was zählt, steht auf prod.
+
+| Was | Was dabei verloren gehen kann | Sicherung davor | Zurück |
+| --- | --- | --- | --- |
+| **Ausrollen mit Migration** (Push auf `preprod`/`main`, `deploy.sh`) | Eine Migration baut Tabellen um; sie läuft nur vorwärts. Was sie falsch umbaut, ist danach so. | ja, `backups/<zeit>.dump` | [Zurück](#zurück): App anhalten, Datenbank aus dieser Sicherung, `./deploy.sh "$(cat previous-image)"` |
+| **Einlesen mit `--replace`** (`import.sh`, `import.js`) | **Alles**, was nicht in der Datei steht — auch die eigenen Kampagnenartikel. | ja, `backups/<zeit>-vor-import.dump` (nicht bei `--dry-run`) | wie [Zurück](#zurück), mit der Sicherung `…-vor-import.dump`; das Abbild bleibt, `deploy.sh` ist nicht nötig, nur `docker compose start app` |
+| **Einlesen mit `--replace-layer`** (Pipeline „5e.tools einlesen", Art `replace-layer`, verlangt `confirm=ersetzen`) | Was die Ebene der Datei bringt und in der Datei fehlt, **und eigene Änderungen an ihren Artikeln**. | ja, wie oben | wie oben |
+| **Massenänderung** (Werkbank › Bulk change, `POST /api/bulk`) | Felder, Marken, Kanten an vielen Artikeln; mit `merge` und `mode: delete` auch Artikel. | die alten Fassungen stehen im Lauf selbst | Werkbank › Undo (`POST /api/bulk/<id>/undo`). Wurde ein Artikel seither geändert, sagt es das (409) — mit `force` gewinnt die alte Fassung. |
+| **Wiederherstellen** einer Sicherung, auch [prod nach dev holen](#den-bestand-von-prod-nach-dev-holen) | Alles, was **nach** der Sicherung geschrieben wurde. Beim Holen von prod nach dev: der ganze Bestand von dev (die Konten bleiben). | nein — vorher von Hand sichern (unten) | die Sicherung, die man vorher gemacht hat |
+
+**Vor einem Wiederherstellen selbst sichern**, denn dort sichert kein
+Skript:
+
+```bash
+cd /srv/atlas/dev     # oder prod
+docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > backups/$(date -u +%Y%m%dT%H%M%SZ)-von-hand.dump
+```
+
+**Sicher** ist: `--only-new` (die Vorgabe der Pipeline, legt nur an, D71),
+`--dry-run` und die Vorschau einer Massenänderung — sie schreiben nichts
+oder nur Neues.
 
 ## 5e.tools laden
 

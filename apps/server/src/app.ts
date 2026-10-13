@@ -51,6 +51,7 @@ import {
 } from '@nw/model';
 import type { BulkChange, Entity, Registry } from '@nw/model';
 import type { Repository } from './repo.js';
+import type { AtlasEnv } from './config.js';
 import { buildListIndex, listProjection, parseListQuery, queryList, type ListIndex } from './liste.js';
 import { registerVerwaltung } from './verwaltung.js';
 import {
@@ -95,6 +96,8 @@ export interface AppOptions {
   staticRoot?: string;
   /** Siehe `Config.trustProxy`; in Tests ungesetzt. */
   trustProxy?: boolean | string;
+  /** Siehe `Config.env`; in Tests ungesetzt. */
+  env?: AtlasEnv | null;
 }
 
 const REGISTRY_PARTS = ['interfaces', 'relations', 'views', 'vars', 'enums', 'settings'] as const;
@@ -109,12 +112,16 @@ export function buildApp({
   logger = false,
   staticRoot,
   trustProxy = false,
+  env = null,
 }: AppOptions): FastifyInstance {
   const app = Fastify({ logger, trustProxy });
 
   void app.register(fastifyCookie);
 
-  app.get('/api/health', async () => ({ ok: true }));
+  /* `env` sagt, welche Umgebung antwortet (T-070) — Werkzeuge fragen hier,
+     die Oberfläche über `/api/me`. Es ist keine Auskunft, die jemandem
+     nützt, den es nichts angeht: die Adresse sagt dasselbe. */
+  app.get('/api/health', async () => ({ ok: true, env }));
 
   if (staticRoot) {
     // The Angular app, plus a catch-all so client-side routes survive a reload.
@@ -285,6 +292,9 @@ export function buildApp({
       user,
       actors,
       writable,
+      /* Welche Umgebung das ist: auf dev zeigt die Oberfläche ein Band,
+         dass Daten ersetzt werden können (T-070). */
+      env,
       /* Ob dieser Betrachter das Register ändern darf — gesagt vom Server,
          der es beim Schreiben ohnehin prüft (`mayEditRegistry`). */
       registry: user ? await mayEditRegistry(user) : false,

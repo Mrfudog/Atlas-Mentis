@@ -26,4 +26,7 @@ services:
       HOST: 0.0.0.0
       PORT: 8080
       TRUST_PROXY: loopback,uniquelocal
+      # Die Oberfläche zeigt oben ein Band: Daten können hier ersetzt
+      # werden (T-070, docs/Betrieb.md › Was Daten löschen kann).
+      ATLAS_ENV: dev
     ports: ["127.0.0.1:${APP_PORT:-8081}:8080"]

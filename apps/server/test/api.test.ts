@@ -53,7 +53,13 @@ describe('GET /api/health', () => {
     const { inject } = await makeApp();
     const res = await inject({ method: 'GET', url: '/api/health' });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ ok: true });
+    expect(res.json()).toEqual({ ok: true, env: null });
+  });
+
+  it('says which environment answers (T-070)', async () => {
+    const app = buildApp({ repo: new InMemoryRepository(seedRegistry, []), env: 'dev' });
+    expect((await app.inject({ method: 'GET', url: '/api/health' })).json()).toEqual({ ok: true, env: 'dev' });
+    expect((await app.inject({ method: 'GET', url: '/api/me' })).json().env).toBe('dev');
   });
 });
 
