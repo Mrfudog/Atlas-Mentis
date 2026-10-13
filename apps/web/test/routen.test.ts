@@ -32,6 +32,11 @@ describe('routes', () => {
     expect(routes.some((r) => r.path === 'artikel/:id')).toBe(true);
   });
 
+  it('has the campaign page behind the guard', () => {
+    const r = routes.find((x) => x.path === 'campaign');
+    expect(r?.canActivate?.length).toBe(1);
+  });
+
   /* Das Board liest seine Id wie die Artikelseite — als Eingabe aus dem Pfad. */
   it('has the board list and a board by id', () => {
     expect(routes.some((r) => r.path === 'boards')).toBe(true);

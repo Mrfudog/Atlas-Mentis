@@ -15,9 +15,11 @@ import {
   RegistrySchema,
   articleVisible,
   backlinks,
+  classParts,
   currentCampaign,
   inPlay,
   detachInstance,
+  entityName,
   instancesOf,
   isInstance,
   readInstance,
@@ -31,6 +33,7 @@ import {
 } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
 import type { Repository } from './repo.js';
+import { registerVerwaltung } from './verwaltung.js';
 import {
   ATTEMPT_WINDOW_MINUTES,
   MAX_ATTEMPTS,
@@ -40,11 +43,9 @@ import {
   hashPassword,
   hashToken,
   mayWrite,
-  newInviteCode,
   newSessionToken,
   passwordProblem,
   sessionExpiry,
-  type Invite,
   type User,
 } from './auth.js';
 
@@ -152,7 +153,7 @@ export function buildApp({
     const actors: { id: string; name: string }[] = [];
     for (const id of user?.actorIds ?? []) {
       const e = await repo.getEntity(id);
-      if (e) actors.push({ id, name: String(e.name ?? id) });
+      if (e) actors.push({ id, name: entityName(e) });
     }
     return {
       user,
@@ -289,9 +290,10 @@ export function buildApp({
         passwordHash: await hashPassword(password),
         isAdmin: invite.isAdmin,
         actorIds: invite.actorId ? [invite.actorId] : [],
-        /* Eine Einladung bindet an eine Figur, nicht an eine Rolle: wer
-           am Tisch was ist, setzt die Leitung danach. */
-        roles: {},
+        /* Eine Einladung führt in eine Kampagne, mit der Rolle darin (W3).
+           Danach steht die Rolle am Konto und nicht mehr an der Einladung —
+           die ist mit dem letzten Gebrauch weg. */
+        roles: invite.campaignId && invite.role ? { [invite.campaignId]: invite.role } : {},
       });
       await repo.clearAttempts(fold, origin);
       await repo.appendEvent('register.ok', id, { invite: invite.label ?? null });
@@ -319,58 +321,8 @@ export function buildApp({
     },
   );
 
-  /**
-   * Einladungen anlegen und ansehen. Nur die Spielleitung, und der Code
-   * steht **genau einmal** in der Antwort auf das Anlegen: gespeichert ist
-   * nur sein Hash, und was hier nicht mitgeschrieben wird, ist weg.
-   */
-  app.get('/api/invites', async (request, reply) => {
-    const user = await viewerOf(request);
-    if (!user?.isAdmin) return reply.code(403).send({ error: 'Nicht für dich.' });
-    return (await repo.listInvites()).map((i) => ({
-      label: i.label ?? null,
-      isAdmin: i.isAdmin,
-      actorId: i.actorId ?? null,
-      usesLeft: i.usesLeft ?? null,
-      expiresAt: i.expiresAt ?? null,
-      /* Der Hash geht mit, damit sich eine Einladung zurücknehmen lässt.
-         Aus ihm kommt man nicht auf den Code zurück. */
-      handle: i.codeHash,
-    }));
-  });
-
-  app.post<{ Body: { label?: string; admin?: boolean; actorId?: string; uses?: number; days?: number } }>(
-    '/api/invites',
-    async (request, reply) => {
-      const user = await viewerOf(request);
-      if (!user?.isAdmin) return reply.code(403).send({ error: 'Nicht für dich.' });
-      const b = request.body ?? {};
-      const code = newInviteCode();
-      const uses = b.uses == null ? undefined : Math.max(1, Math.floor(Number(b.uses) || 1));
-      const days = b.days == null ? undefined : Math.max(1, Math.floor(Number(b.days) || 1));
-      const invite: Invite = {
-        codeHash: hashToken(code),
-        label: b.label?.trim() || undefined,
-        isAdmin: b.admin === true,
-        actorId: b.actorId?.trim() || undefined,
-        usesLeft: uses,
-        expiresAt: days ? new Date(Date.now() + days * 86400000).toISOString() : undefined,
-        createdBy: user.id,
-      };
-      await repo.putInvite(invite);
-      await repo.appendEvent('invite.created', user.id, { label: invite.label ?? null });
-      /* Einmal und nie wieder. */
-      return reply.code(201).send({ code, handle: invite.codeHash });
-    },
-  );
-
-  app.delete<{ Params: { handle: string } }>('/api/invites/:handle', async (request, reply) => {
-    const user = await viewerOf(request);
-    if (!user?.isAdmin) return reply.code(403).send({ error: 'Nicht für dich.' });
-    const weg = await repo.dropInvite(request.params.handle);
-    if (!weg) return reply.code(404).send({ error: 'Nicht gefunden' });
-    return { ok: true };
-  });
+  /* Einladungen, Kampagnen, Mitglieder und Konten: `verwaltung.ts` (W3). */
+  registerVerwaltung(app, { repo, viewerOf });
 
   app.post('/api/logout', async (request, reply) => {
     const token = request.cookies?.[COOKIE];
@@ -418,6 +370,9 @@ export function buildApp({
     }
     if (!schreibt) return;
     if (user.isAdmin) return;
+    /* Verwaltung und Einladungen prüfen selbst: das Recht hängt an der
+       Kampagne im Pfad (gm ändert, co-gm sieht), nicht am Konto allein. */
+    if (url.startsWith('/api/campaigns') || url.startsWith('/api/invites')) return;
 
     /* Ein Spieler schreibt seine Figur und was an ihr hängt — und sonst
        nichts. Das Register gehört der Spielleitung: eine Registerzeile zu
@@ -578,6 +533,40 @@ export function buildApp({
       from: summaryOf(b.from, felder),
       relation: b.relation,
     }));
+  });
+
+  /**
+   * **Eine Klasse samt allem, was ihre Ansicht braucht** (W6): die Klasse,
+   * ihre Unterklassen, die Stufentabellen und jedes Merkmal, das eine davon
+   * gewährt oder einbettet (`classParts`). Eine Antwort statt einer Anfrage
+   * je Merkmal — und nicht die 7 000 Merkmale des ganzen Bestands, von
+   * denen die Kurzfassung ohnehin keinen Text trägt.
+   *
+   * Gesiebt wird wie überall (`sieve`). Danach wird **auf dem Gesiebten**
+   * noch einmal gesammelt: ein Merkmal, das nur eine verborgene Unterklasse
+   * gewährt, verriete sonst, dass es sie gibt.
+   */
+  app.get<{ Params: { id: string } }>('/api/classes/:id', async (request, reply) => {
+    const alle = await repo.listEntities();
+    const roh = classParts(alle, request.params.id);
+    if (!roh) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const byId = new Map(alle.map((e) => [e.id, e]));
+    const ids = [roh.klass, ...roh.subclasses, ...roh.tables, ...roh.features];
+    const gesiebt = await sieve(
+      request,
+      ids.map((i) => byId.get(i)).filter((e): e is Entity => !!e),
+      alle,
+    );
+    const teile = classParts(gesiebt, request.params.id);
+    if (!teile) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const nach = new Map(gesiebt.map((e) => [e.id, e]));
+    const nimm = (l: string[]) => l.map((i) => nach.get(i)).filter((e): e is Entity => !!e);
+    return {
+      class: nach.get(teile.klass),
+      subclasses: nimm(teile.subclasses),
+      tables: nimm(teile.tables),
+      features: nimm(teile.features),
+    };
   });
 
   app.get<{ Params: { id: string } }>('/api/entities/:id', async (request, reply) => {

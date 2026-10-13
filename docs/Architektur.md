@@ -88,6 +88,23 @@ flowchart LR
 antwortet. Das vorige Abbild steht in `previous-image`, zurück ist ein
 Befehl.
 
+**5e.tools einlesen** ist ein eigener Lauf (`import-5etools.yml`, W8): von
+Hand, oder aus `ci.yml` nach dem Ausrollen von dev, wenn sich
+`packages/import-5etools` geändert hat. Prod nie von selbst.
+
+```mermaid
+flowchart LR
+  ausl[von Hand: dev oder prod<br/>CI nach deploy: nur dev] --> job
+  subgraph gha[GitHub Actions · import-5etools.yml]
+    job[import<br/>model, registry, import-5etools bauen]
+    src[(5etools-src/data<br/>zur Laufzeit geklont,<br/>nie im Repository)]
+    src --> job
+  end
+  job -- scp import.sh,<br/>5etools-2014.json.gz --> srv[Hetzner]
+  job -- ssh: import.sh … --replace-layer --> srv
+  srv -- sichern, docker compose cp,<br/>exec import.js, Datei löschen --> app[app-Container]
+```
+
 ---
 
 ## 3. Frameworks und Werkzeuge
@@ -119,19 +136,19 @@ Ein Repo für Code **und** Vault (D42). Was Obsidian liest, liegt in
 atlas-mentis/
 ├── apps/
 │   ├── server/          @nw/server   Fastify-API, Postgres, Befehle user/import/migrate
-│   │   ├── src/                      app.ts (Routen), auth.ts, repo.ts, repo.pg.ts, …
+│   │   ├── src/                      app.ts (Routen), verwaltung.ts (Kampagnen, Mitglieder, Einladungen), auth.ts, repo.ts, repo.pg.ts, …
 │   │   └── migrations/               001_backbone.sql … 009_blocks_are_fields.sql
 │   └── web/             web          Angular-Oberfläche (Anmeldung, Liste, Artikel)
 ├── packages/
 │   ├── model/           @nw/model    Typen, Prüfung, Rechnen, Sichtbarkeit — kein Framework
 │   ├── registry/        @nw/registry die Registerzeilen (einzige Quelle) + Skripte
-│   └── import-5etools/  @nw/import-5etools  einmaliger Import aus 5e.tools (P5)
+│   └── import-5etools/  @nw/import-5etools  Import aus 5e.tools (P5), läuft in der Pipeline (W8)
 ├── prototype/           Einzeldatei-Prototyp (Artefakt auf claude.ai), Prüfbestand, Migrationsskripte
 ├── legacy/              alte React-App (Vite + Express) — läuft, bis Karte und Initiative neu stehen
-├── deploy/              bootstrap.sh, deploy.sh, proxy/ (Caddy)
+├── deploy/              bootstrap.sh, deploy.sh, import.sh, proxy/ (Caddy)
 ├── docs/                Datenmodell, Begriffe, Betrieb, Arbeitsplan, Bericht, diese Seite
 ├── VTT/  Ideen/  .obsidian/   der Obsidian-Vault (Anforderungen, Entscheidungen)
-├── .github/workflows/ci.yml
+├── .github/workflows/   ci.yml, import-5etools.yml
 ├── Dockerfile           mehrstufig: Build (alles) → Laufzeit (nur Server + gebaute Oberfläche)
 ├── docker-compose.yml           prod  (main,    Port 8080)
 └── docker-compose.preprod.yml   dev   (preprod, Port 8081)
@@ -203,12 +220,18 @@ Durchstich in CI prüft `PgRepository` gegen eine echte Postgres.
 | `GET /api/health` | lebt der Prozess (für Docker und deploy.sh) |
 | `POST /api/login` · `/api/register` · `/api/logout` · `/api/logout-everywhere` | Konto und Sitzung; Registrieren nur mit Einladung |
 | `GET /api/me` | wer bin ich, welche Rollen, welche Figuren |
-| `GET/POST/DELETE /api/invites` | Einladungen (Verwaltung, Leitung) |
+| `GET/POST/DELETE /api/invites` | Einladungen, mit Kampagne und Rolle; die Verwaltung alle, die Leitung in ihre Kampagne (`gm` legt an und widerruft, `co-gm` sieht) |
+| `GET /api/campaigns` · `POST /api/campaigns` | die Kampagnen, an denen jemand leitet oder mitleitet (Verwaltung: alle); anlegen nur die Verwaltung |
+| `GET /api/campaigns/:c/members` | Mitglieder mit Rolle und Figuren, dazu die Figuren, die diese Kampagne vergeben darf — `gm`, `co-gm`, Verwaltung |
+| `POST /api/campaigns/:c/members` · `PUT`/`DELETE …/members/:user` | Konto beim Namen dazunehmen, Rolle setzen, herausnehmen — `gm` und Verwaltung, nie die eigene Rolle (ausser Verwaltung) |
+| `PUT /api/campaigns/:c/members/:user/actors` | welche Figuren ein Mitglied führt (`app_user_actor`); keine Figur einer anderen Kampagne |
+| `GET /api/users` | die Konten der Installation — nur die Verwaltung |
 | `GET /api/registry` · `PUT /api/registry/:part` | das Register lesen; ändern nur die Leitung |
 | `GET /api/entities` · `GET /api/entities/:id` | Artikel, **gesiebt** |
 | `GET /api/entities?as=summary` | die Kurzfassung aller Artikel (`summaryOf`) — für Liste, Verweise, Auswahlen |
 | `GET /api/entities?ids=a,b,c` | diese Artikel ganz, gesiebt (höchstens 500) — die Teile eines Statblocks in einer Anfrage (W2) |
 | `GET /api/entities/:id/backlinks` | wer auf den Artikel zeigt (Kurzfassung + Kante), gesiebt |
+| `GET /api/classes/:id` | eine Klasse samt Unterklassen, Stufentabellen und den Merkmalen, die eine davon gewährt oder einbettet (`classParts`), gesiebt — die Klassenansicht (W6) in einer Antwort |
 | `PUT /api/entities/:id` · `DELETE /api/entities/:id` | schreiben, immer durch `validateEntity` |
 | `POST /api/validate` | prüfen ohne zu speichern |
 
@@ -268,7 +291,7 @@ Zeilen daneben. Eine neue Artikelart ist eine Zeile, keine Migration.
 ```mermaid
 flowchart TB
   subgraph angular[apps/web · Angular 21, Standalone, Signals]
-    router[app.routes.ts<br/>/login · / · /artikel/:id]
+    router[app.routes.ts<br/>/login · / · /artikel/:id · /campaign · /classes · /classes/:id]
     wache[kern/wache.ts<br/>Route-Guard: angemeldet?]
     subgraph seiten[Seiten, lazy geladen]
       login[login/login.ts]
@@ -277,6 +300,8 @@ flowchart TB
       felder[artikel/felder.ts<br/>Felder aus dem Register]
       text[artikel/text.ts<br/>Markdown, Verweise, Würfel]
       buch[artikel/statblock.ts · zauber.ts · gegenstand.ts · abschnitte.ts<br/>wie im Buch]
+      verwaltung[verwaltung/verwaltung.ts<br/>Mitglieder, Rollen, Einladungen]
+      klassen[klassen/klasse.ts<br/>Klassenansicht: Tabelle, Merkmale je Stufe,<br/>Unterklassen filtern und vergleichen]
     end
     subgraph kern[kern/ · Dienste]
       api[api.ts<br/>HttpClient → /api]
@@ -286,9 +311,12 @@ flowchart TB
   end
   model[["@nw/model<br/>views · calc · book · markdown · inline"]]
   router --> wache --> session
-  router --> login & liste & artikel
+  router --> login & liste & artikel & verwaltung & klassen
+  verwaltung --> api
   artikel --> felder & text & buch
   buch --> text
+  klassen --> text
+  klassen -->|"GET /api/classes/:id"| api
   liste & artikel --> bestand --> api
   login --> session --> api
   felder & text & buch --> model
@@ -327,6 +355,7 @@ nicht mehr; Seitenweise laden ist eine offene Frage für die Zeit nach P6.
 | `stack.ts` | Ebenen: `inPlay`, `overriderOf` |
 | `visibility.ts` | `articleVisible`: Rolle am Tisch, `audience`, `revealedTo`, `hiddenFrom` |
 | `knowledge.ts` | `redactEntity`: welche Felder ein Träger kennt, Fraktionsränge |
+| `classes.ts` | die Klassenansicht (W6): Merkmale je Stufe aus `grants`, Übungsbonus, eingebettete Merkmale (ein Verweis allein im Absatz), Stufentabelle mit Zusatzspalten |
 
 ---
 
@@ -338,7 +367,7 @@ flowchart LR
   reg -- catalogue --> docs1[docs/Artikeltypen.md<br/>Datenmodell.md › Register heute]
   vault[VTT/Requirements.md] -- anforderungen --> docs2[docs/Anforderungen.md<br/>VTT/Umsetzung.md]
   ft[(5etools-src/data<br/>ausserhalb des Repos)] -- import-5etools --> datei[Ausfuhrdatei<br/>~35 MB, nicht eingecheckt]
-  datei -->|"server import --replace"| pg[(Postgres)]
+  datei -->|"server import --replace-layer"| pg[(Postgres)]
   datei -->|"--sample"| seed
 ```
 

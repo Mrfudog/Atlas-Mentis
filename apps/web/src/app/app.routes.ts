@@ -63,6 +63,26 @@ export const routes: Routes = [
     title: 'Board · Atlas Mentis',
   },
   {
+    path: 'classes',
+    canActivate: [wache],
+    loadComponent: () => import('./klassen/klassen').then((m) => m.Klassen),
+    title: 'Classes · Atlas Mentis',
+  },
+  {
+    path: 'classes/:id',
+    canActivate: [wache],
+    loadComponent: () => import('./klassen/klasse').then((m) => m.Klasse),
+    title: 'Class · Atlas Mentis',
+  },
+  {
+    /* Verwaltung (W3): Mitglieder, Rollen, Einladungen. Wer sie sieht,
+       sagt der Server; die Wache fragt nur, ob jemand angemeldet ist. */
+    path: 'campaign',
+    canActivate: [wache],
+    loadComponent: () => import('./verwaltung/verwaltung').then((m) => m.Verwaltung),
+    title: 'Campaign · Atlas Mentis',
+  },
+  {
     path: 'artikel/:id',
     canActivate: [wache],
     loadComponent: () => import('./artikel/artikel').then((m) => m.Artikel),

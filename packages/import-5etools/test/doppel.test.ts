@@ -60,15 +60,15 @@ describe('Doppel nach dem Füllen (Entscheidung 12.10.2026)', () => {
     const pack = alle(es, 'Pack Tactics');
     expect(pack).toHaveLength(1);
     const namen = es.flatMap((e) => (e.relations ?? []).filter((r) => r.to === pack[0]!.id).map((r) => r.props?.vars?.['CREATURE']));
-    expect(namen.sort()).toEqual(['rat', 'wolf']);
+    expect(namen.sort()).toEqual(['the rat', 'the wolf']);
   });
 
   it('setzt je Text nur einen Namen ein — zwei verschiedene unter einem Platzhalter läsen falsch', () => {
     const redirect = alle(es, 'Redirect')[0]!;
     const text = ((redirect.components['Prose']?.['paragraph'] as { value: string }[])[0])!.value;
-    expect(text).toBe('The {CREATURE} swaps places; the boss stays.');
+    expect(text).toBe('{CREATURE} swaps places; the boss stays.');
     const kante = es.flatMap((e) => e.relations ?? []).find((r) => r.to === redirect.id)!;
-    expect(kante.props?.vars).toEqual({ CREATURE: 'goblin' });
+    expect(kante.props?.vars).toEqual({ CREATURE: 'the goblin' });
   });
 
   it('macht ältere Fassungen zu Varianten mit dem Buch im Namen', () => {

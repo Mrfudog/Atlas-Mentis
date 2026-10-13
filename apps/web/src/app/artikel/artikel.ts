@@ -26,7 +26,16 @@ import type { Entity, LayoutElement, PropertySchema, Registry, VarScopes, ViewDe
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
-import { ausEingabe, eingabeArt, inEingabe, kantenAusEntwurf, type Eingabe } from './felder';
+import {
+  anzeigeWert,
+  ausEingabe,
+  eingabeArt,
+  inEingabe,
+  kantenAusEntwurf,
+  sindZeilen,
+  tabelleAlsText,
+  type Eingabe,
+} from './felder';
 import { Text } from './text';
 import { Statblock } from './statblock';
 import { Zauber } from './zauber';
@@ -131,6 +140,9 @@ interface Feld {
             <div class="werkzeugzeile">
               <span class="meta">{{ meta() }}</span>
               <div class="werkzeuge">
+                @if (art(e) === 'Class' && !bearbeitet()) {
+                  <a class="knopf" [routerLink]="['/classes', e.id]">Class view</a>
+                }
                 @if (darfSchreiben()) {
                   <button type="button" (click)="bearbeitet() ? abbrechen() : beginnen()">
                     {{ bearbeitet() ? 'Cancel' : 'Edit' }}
@@ -186,6 +198,9 @@ interface Feld {
                       }
                       @case ('lang') {
                         <textarea rows="4" [(ngModel)]="f.wert" [name]="f.ref"></textarea>
+                      }
+                      @case ('json') {
+                        <textarea rows="6" spellcheck="false" style="font-family: monospace" [(ngModel)]="f.wert" [name]="f.ref"></textarea>
                       }
                       @case ('zahl') {
                         <input type="text" inputmode="decimal" [(ngModel)]="f.wert" [name]="f.ref" />
@@ -532,6 +547,9 @@ export class Artikel {
     if (!e || !r) return [];
     const mode = unitsFor(r, primaryInterface(e));
     const out: Zelle[] = [];
+    /* Ein Prosafeld steht nicht in der Feldtabelle, es gehört dem Absatz
+       darunter (`prosa`) — hier stand es als „[object Object]" (W1). */
+    const prosa = new Set(proseFields(r, primaryInterface(e)).map((f) => `${f.type}.${f.key}`));
     for (const [comp, karte] of Object.entries(e.components ?? {})) {
       /* Was schon anderswo steht: der Name als Überschrift, Aliasse und
          Nummer darüber und darunter, Sichtbarkeit und Quelle in der
@@ -543,19 +561,34 @@ export class Artikel {
         ...Object.keys(def?.schema?.properties ?? {}).filter((k) => k in werte),
         ...Object.keys(werte).filter((k) => !(k in (def?.schema?.properties ?? {}))),
       ];
+      /* Tabellenzeilen (`Table.rows`) werden eine Tabelle, ihr Kopf
+         (`columns`) steht darin und nicht noch einmal als Zeile. */
+      const zeilen = Object.keys(werte).find((k) => sindZeilen(werte[k]));
       for (const prop of reihe) {
         const wert = werte[prop];
+        if (prosa.has(`${comp}.${prop}`)) continue;
+        if (zeilen && prop === 'columns') continue;
         if (wert === null || wert === undefined || wert === '') continue;
         const schema = def?.schema?.properties?.[prop];
         /* Ein Prosafeld gehört dem Element `prose`, nicht der Tabelle. */
         if (schema?.many && schema.format === 'long') continue;
-        const text = fieldText(r, schema, wert, mode);
+        /* Tabellenzeilen und Objekte liest `anzeigeWert` — `fieldText`
+           kennt Masse und Einheiten, aber keine Karten in einer Liste (W1). */
+        const tabelle = prop === zeilen && sindZeilen(wert);
+        const objekt =
+          typeof wert === 'object' &&
+          (!Array.isArray(wert) || wert.some((x) => x !== null && typeof x === 'object'));
+        const text = tabelle
+          ? tabelleAlsText(werte['columns'], wert)
+          : objekt
+            ? anzeigeWert(wert)
+            : fieldText(r, schema, wert, mode);
         if (!text) continue;
         out.push({
           ref: `${comp}.${prop}`,
           comp,
           prop,
-          lang: schema?.format === 'long' && typeof wert === 'string',
+          lang: tabelle || (schema?.format === 'long' && typeof wert === 'string'),
           label: schema
             ? fieldTitle(r, primaryInterface(e), { type: comp, key: prop, prop: schema })
             : prop,

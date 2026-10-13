@@ -33,9 +33,16 @@ import { BEREICHE } from './kern/bereiche';
               b.label
             }}</a>
           }
+          <a routerLink="/classes" routerLinkActive="an" ariaCurrentWhenActive="page">Classes</a>
           <a routerLink="/compendium" routerLinkActive="an" ariaCurrentWhenActive="page"
             >Compendium</a
           >
+          <!-- Nur für wen die Seite etwas zeigt: Verwaltung, Leitung, Mitleitung (W3). -->
+          @if (session.verwaltet()) {
+            <a routerLink="/campaign" routerLinkActive="an" ariaCurrentWhenActive="page"
+              >Campaign</a
+            >
+          }
         </nav>
         <span class="wer">
           {{ session.user()?.name }}
