@@ -174,6 +174,10 @@ describe('pnpm --filter @nw/server run import', () => {
       await expect(runImport(repo, { entities: [regel('lose', 'Lose')] }, { replaceLayer: true })).rejects.toThrow(/steht in einer Ebene/);
       const zwei = { entities: [ebene, heim, in5e(regel('a', 'A')), inHeim(regel('b', 'B'))] };
       await expect(runImport(repo, zwei, { replaceLayer: true })).rejects.toThrow(/2 Ebenen \(e5_layer, heim_layer\)/);
+      /* Nach Id, Name oder Bezeichner — der Name steht in Postgres nur in der Identity-Karte. */
+      for (const wahl of ['e5_layer', 'D&D 5e (2014)', 'layer-0001']) {
+        expect((await runImport(repo, datei, { replaceLayer: wahl, dryRun: true })).text).toMatch(/\(e5_layer\)/);
+      }
       expect(await repo.countEntities()).toBe(10);
     });
   });
