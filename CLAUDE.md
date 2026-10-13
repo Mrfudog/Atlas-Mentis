@@ -76,9 +76,12 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   Artikel im Buchstil (geholt beim Öffnen, Ansicht `full`, mit den Namen
   seiner Kantenziele und Verweise in `refs`) stehen, dazu die Boards
   (`boards/`: je Geschichtsartikel eines, Karten als `placed`-Kanten),
-  die Klassen (`klassen/`) und das Register (`/registry`: Typen, Kanten,
+  die Klassen (`klassen/`), das Register (`/registry`: Typen, Kanten,
   Listen anlegen und ändern — Verwaltung und Leitung der laufenden
-  Kampagne; gezählt wird vorher über `/api/registry/usage`); die
+  Kampagne; gezählt wird vorher über `/api/registry/usage`), die
+  **Werkbank** für Leitung und Verwaltung (`werkbank/`: Prüfungen aus
+  `checks.ts`, Massenänderungen aus `bulk.ts` mit Vorschau und
+  Rückgängig, W9) und das Konto mit seinen API-Tokens (`konto/`); die
   Oberfläche hält **keinen Bestand** (W7). Karte, Initiative und Spiel
   noch nicht;
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer

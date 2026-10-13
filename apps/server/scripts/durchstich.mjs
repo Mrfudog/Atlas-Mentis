@@ -127,6 +127,24 @@ const ARTIKEL = [
       { id: 'sb_probe_b', type: 'belongsTo', to: 'pc_probe', props: {} },
     ],
   },
+  /* Werkbank (W9): zwei gleiche Merkmale und ein Statblock, der das
+     zweite nutzt — Zusammenführen hängt die Kante um, und in Postgres ist
+     eine Kanten-Id Schlüssel der ganzen Tabelle. */
+  {
+    id: 'ft_probe_1', name: 'Probemerkmal', interfaces: ['Feature'],
+    components: { ...ident('Probemerkmal', 'feature-0901'), Description: { description: 'Gleich.' } },
+    relations: [],
+  },
+  {
+    id: 'ft_probe_2', name: 'Probemerkmal', interfaces: ['Feature'],
+    components: { ...ident('Probemerkmal', 'feature-0902'), Description: { description: 'Gleich.' } },
+    relations: [],
+  },
+  {
+    id: 'sb_probe_nutzer', name: 'Probeoger', interfaces: ['Statblock'],
+    components: { ...ident('Probeoger', 'statblock-0903'), Statblock: { ac: 11, hp: 59 } },
+    relations: [{ id: 'sb_probe_nutzer~c', type: 'composedOf', to: 'ft_probe_2', props: {} }],
+  },
   {
     id: 'npc_probe_geheim', name: 'Geheim', interfaces: ['Creature'],
     components: { ...ident('Geheim', 'creature-0901'), Visibility: { audience: 'gm' } },
@@ -199,40 +217,103 @@ try {
   pruefe('gm-Artikel: die Leitung der anderen Runde nicht', (await status('probe-fremd')) === 404);
   pruefe('gm-Artikel: wer mitspielt, nicht', (await status('probe-spiel')) === 404);
 
-  /* Die Liste am Server (W7): gerechnet über den Zwischenspeicher je
-     Stempel — ein Schreiben muss ihn ungültig machen, auch in Postgres,
-     wo der Stempel aus `count`/`max(updated_at)` kommt. */
-  const liste = async (keks, frage) => (await get(keks, `/api/list?${frage}`)).json();
-  const l1 = await liste(admin, 'q=probe&limit=50');
+  {
+    /* Die Liste am Server (W7): gerechnet über den Zwischenspeicher je
+       Stempel — ein Schreiben muss ihn ungültig machen, auch in Postgres,
+       wo der Stempel aus `count`/`max(updated_at)` kommt. */
+    const liste = async (keks, frage) => (await get(keks, `/api/list?${frage}`)).json();
+    const l1 = await liste(admin, 'q=probe&limit=50');
+    pruefe(
+      'GET /api/list findet die Probeartikel, mit Arten und Ebenen',
+      l1.total >= 5 && l1.facets?.types?.some((t) => t.type === 'Statblock') &&
+        l1.facets?.layers?.some((l) => l.id === 'ly_probe_a'),
+      JSON.stringify(l1).slice(0, 300),
+    );
+    pruefe(
+      'die Instanz steht in keiner Liste',
+      !l1.rows.some((z) => z.id === 'sb_probe_instanz'),
+    );
+    const angelegt = await fetch(`${BASE}/api/entities`, {
+      method: 'POST',
+      headers: { ...json, cookie: admin },
+      body: JSON.stringify({ type: 'Creature', name: 'Probeneuling' }),
+    });
+    const neu = await angelegt.json();
+    pruefe(
+      'POST /api/entities vergibt Id und Nummer',
+      angelegt.status === 201 && /^e_/.test(neu.id) && /^creature-\d{4}$/.test(neu.components?.Identity?.id ?? ''),
+      `${angelegt.status} ${JSON.stringify(neu).slice(0, 300)}`,
+    );
+    const l2 = await liste(admin, 'q=probeneuling');
+    pruefe('die Liste sieht den neuen Artikel sofort', l2.total === 1 && l2.rows[0]?.id === neu.id, JSON.stringify(l2).slice(0, 200));
+    const offenSpiel = await liste(await anmelden('probe-spiel'), 'q=geheim');
+    pruefe('die Liste siebt je Betrachter', !offenSpiel.rows.some((z) => z.id === 'npc_probe_geheim'), JSON.stringify(offenSpiel).slice(0, 200));
+    const mitNamen = await (await get(admin, '/api/entities/pc_probe')).json();
+    pruefe('ein Artikel bringt die Namen seiner Kantenziele mit', mitNamen.refs?.names?.ly_probe_a === 'Probe A', JSON.stringify(mitNamen.refs));
+    const weg = await fetch(`${BASE}/api/entities/${neu.id}`, { method: 'DELETE', headers: { cookie: admin } });
+    pruefe('DELETE des neuen Artikels', weg.ok, String(weg.status));
+  }
+
+  /* ---------------------------------------------------- Werkbank (W9) */
+  const tokenAus = (out) => /atm_[\w-]+/.exec(out)?.[0] ?? '';
+  const lesen = tokenAus(user('token', 'probe-admin', 'new', 'durchstich-lesen', '--days', '1').out);
+  const schreiben = tokenAus(user('token', 'probe-admin', 'new', 'durchstich-schreiben', '--days', '1', '--write').out);
+  pruefe('Tokens über die Kommandozeile', !!lesen && !!schreiben);
+  const mit = (tok, pfad, body) =>
+    fetch(`${BASE}${pfad}`, {
+      method: body ? 'POST' : 'GET',
+      headers: { ...json, authorization: `Bearer ${tok}` },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+  const me = await (await mit(lesen, '/api/me')).json();
+  pruefe('Bearer wirkt wie das Konto', me.user?.name === 'probe-admin' && me.token?.scope === 'read', JSON.stringify(me).slice(0, 200));
+
+  const pr = await mit(lesen, '/api/checks?limit=5');
+  const prJ = await pr.json();
+  pruefe('GET /api/checks mit Lesetoken', pr.ok && prJ.checks?.some((c) => c.key === 'duplicates' && c.count >= 1), JSON.stringify(prJ).slice(0, 300));
+
+  const brute = {
+    select: { types: ['Statblock'], where: [{ field: 'name', op: 'endsWith', value: 'oger' }] },
+    ops: [{ op: 'set', field: 'Statblock.combatRole', value: 'Brute' }],
+  };
+  const vorschau = await (await mit(lesen, '/api/bulk', { ...brute, dryRun: true })).json();
+  pruefe('Massenänderung: Vorschau mit Lesetoken', vorschau.selected === 1 && vorschau.changed === 1, JSON.stringify(vorschau).slice(0, 300));
+  pruefe('Massenänderung: Lesetoken schreibt nicht', (await mit(lesen, '/api/bulk', brute)).status === 403);
+  const lauf = await mit(schreiben, '/api/bulk', brute);
+  const laufJ = await lauf.json();
+  const oger = async () => (await (await get(admin, '/api/entities/sb_probe_nutzer')).json()).components?.Statblock?.combatRole;
+  pruefe('Massenänderung schreibt', lauf.ok && (await oger()) === 'Brute', JSON.stringify(laufJ).slice(0, 300));
+  const undo = await mit(schreiben, `/api/bulk/${laufJ.id}/undo`, {});
+  pruefe('Massenänderung rückgängig', undo.ok && (await oger()) === undefined, `${undo.status} ${(await undo.text()).slice(0, 300)}`);
+
+  const merge = {
+    select: { types: ['Feature'], where: [{ field: 'name', op: 'eq', value: 'Probemerkmal' }] },
+    ops: [{ op: 'merge', mode: 'delete', by: 'content' }],
+  };
+  const zf = await mit(schreiben, '/api/bulk', merge);
+  const zfJ = await zf.json();
+  const kante = async () => (await (await get(admin, '/api/entities/sb_probe_nutzer')).json()).relations?.find((r) => r.type === 'composedOf')?.to;
   pruefe(
-    'GET /api/list findet die Probeartikel, mit Arten und Ebenen',
-    l1.total >= 5 && l1.facets?.types?.some((t) => t.type === 'Statblock') &&
-      l1.facets?.layers?.some((l) => l.id === 'ly_probe_a'),
-    JSON.stringify(l1).slice(0, 300),
+    'Zusammenführen hängt die Kante um und löscht das Doppel',
+    zf.ok && zfJ.deleted === 1 && (await kante()) === 'ft_probe_1' && (await get(admin, '/api/entities/ft_probe_2')).status === 404,
+    JSON.stringify(zfJ).slice(0, 300),
   );
+  const zfUndo = await mit(schreiben, `/api/bulk/${zfJ.id}/undo`, {});
   pruefe(
-    'die Instanz steht in keiner Liste',
-    !l1.rows.some((z) => z.id === 'sb_probe_instanz'),
+    'Zusammenführen rückgängig: das Doppel ist wieder da',
+    zfUndo.ok && (await kante()) === 'ft_probe_2' && (await get(admin, '/api/entities/ft_probe_2')).ok,
+    `${zfUndo.status} ${(await zfUndo.text()).slice(0, 300)}`,
   );
-  const angelegt = await fetch(`${BASE}/api/entities`, {
+
+  const neu = await fetch(`${BASE}/api/tokens`, {
     method: 'POST',
     headers: { ...json, cookie: admin },
-    body: JSON.stringify({ type: 'Creature', name: 'Probeneuling' }),
+    body: JSON.stringify({ name: 'durchstich-seite', scope: 'read', days: 1 }),
   });
-  const neu = await angelegt.json();
-  pruefe(
-    'POST /api/entities vergibt Id und Nummer',
-    angelegt.status === 201 && /^e_/.test(neu.id) && /^creature-\d{4}$/.test(neu.components?.Identity?.id ?? ''),
-    `${angelegt.status} ${JSON.stringify(neu).slice(0, 300)}`,
-  );
-  const l2 = await liste(admin, 'q=probeneuling');
-  pruefe('die Liste sieht den neuen Artikel sofort', l2.total === 1 && l2.rows[0]?.id === neu.id, JSON.stringify(l2).slice(0, 200));
-  const offenSpiel = await liste(await anmelden('probe-spiel'), 'q=geheim');
-  pruefe('die Liste siebt je Betrachter', !offenSpiel.rows.some((z) => z.id === 'npc_probe_geheim'), JSON.stringify(offenSpiel).slice(0, 200));
-  const mitNamen = await (await get(admin, '/api/entities/pc_probe')).json();
-  pruefe('ein Artikel bringt die Namen seiner Kantenziele mit', mitNamen.refs?.names?.ly_probe_a === 'Probe A', JSON.stringify(mitNamen.refs));
-  const weg = await fetch(`${BASE}/api/entities/${neu.id}`, { method: 'DELETE', headers: { cookie: admin } });
-  pruefe('DELETE des neuen Artikels', weg.ok, String(weg.status));
+  const neuJ = await neu.json();
+  pruefe('Token in der Sitzung angelegt', neu.status === 201 && /^atm_/.test(neuJ.token ?? ''));
+  const weg = await fetch(`${BASE}/api/tokens/${neuJ.id}`, { method: 'DELETE', headers: { cookie: admin } });
+  pruefe('widerrufenes Token gilt nicht mehr', weg.ok && (await mit(neuJ.token, '/api/me').then((r) => r.json())).user === null);
   /* Verwaltung (W3): Rollen und Figuren über die Routen statt die
      Kommandozeile, und eine Einladung, die in eine Kampagne führt — die
      Spalten `campaign_id` und `role` an `app_invite` gibt es nur in

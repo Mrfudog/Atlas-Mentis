@@ -238,9 +238,17 @@ Durchstich in CI prüft `PgRepository` gegen eine echte Postgres.
 | `PUT /api/entities/:id` · `DELETE /api/entities/:id` | schreiben, immer durch `validateEntity` |
 | `POST /api/links` | `[[Name]]` → `[[nummer\|Name]]` (M11), über das, was der Schreibende sieht; liest nur, darf also jeder |
 | `POST /api/validate` | prüfen ohne zu speichern |
+| `GET/POST /api/tokens` · `DELETE /api/tokens/:id` | eigene API-Tokens (W9); nur aus einer Sitzung, nie mit einem Token |
+| `GET /api/checks?check=…&limit=…` | Prüfungen über den gesiebten Bestand (`checks.ts`): Zahl und Beispiele je Prüfung; Leitung und Verwaltung |
+| `POST /api/bulk` | Massenänderung (`bulk.ts`): Auswahl → Operationen, `dryRun` zeigt, was geschähe; geschrieben wird durch `validateEntity`, protokolliert mit den alten Fassungen |
+| `GET /api/bulk` · `POST /api/bulk/:id/undo` | die letzten Massenänderungen; eine zurücknehmen (Konflikte nur mit `force`) |
 
 Ohne Anmeldung offen sind nur Gesundheit, Anmelden, Registrieren,
-Abmelden und `me`. Ein Server **ohne Konto und ohne Bestand** lässt
+Abmelden und `me`. **Angemeldet ist man über den Sitzungskeks oder über
+`Authorization: Bearer atm_…`** (ein API-Token, W9): das Token wirkt wie die
+Sitzung seines Kontos, beschränkt auf `read` oder `write` — ein Lesetoken
+darf zusätzlich die zwei POST, die nichts schreiben (`/api/validate` und
+`/api/bulk` mit `dryRun`). Ein Server **ohne Konto und ohne Bestand** lässt
 lesen; sobald ein Artikel da ist, nicht mehr (P5).
 
 ### 5.1 Was beim Lesen eines Artikels passiert
@@ -314,8 +322,8 @@ Zeilen daneben. Eine neue Artikelart ist eine Zeile, keine Migration.
 |---|---|
 | Bestand | `entity` (die Id), `component` (eine Karte je Art und Artikel), `relation` (Kanten, vorwärts) |
 | Register | `interface_def`, `component_def`, `relation_def`, `view_def`, `var_def`, `unit_def`, `enum_def`, `setting_def` |
-| Zugang | `app_user`, `app_session`, `app_invite`, `login_attempt`, `campaign_member`, `app_user_actor` |
-| Protokoll | `event_log` |
+| Zugang | `app_user`, `app_session`, `app_token`, `app_invite`, `login_attempt`, `campaign_member`, `app_user_actor` |
+| Protokoll | `event_log` — auch jede Massenänderung (`bulk`, mit den alten Fassungen) und ihr Zurücknehmen (`bulk.undone`) |
 
 ---
 
@@ -416,6 +424,8 @@ Artikel in `Bestand.kurz`.
 | `stack.ts` | Ebenen: `inPlay`, `overriderOf` |
 | `visibility.ts` | `articleVisible`: Rolle am Tisch, `audience`, `revealedTo`, `hiddenFrom` |
 | `knowledge.ts` | `redactEntity`: welche Felder ein Träger kennt, Fraktionsränge |
+| `checks.ts` | Prüfungen über einen Bestand (W9): eine erweiterbare Liste `CHECKS` reiner Funktionen |
+| `bulk.ts` | Massenänderungen (W9): Auswahl, Operationen, Zusammenführen als Vorher/Nachher (`planBulk`), `repoint` |
 | `usage.ts` | `registryUsage`: was der Bestand an jeder Registerzeile trägt — für das Register vor dem Löschen |
 | `classes.ts` | die Klassenansicht (W6): Merkmale je Stufe aus `grants`, Übungsbonus, eingebettete Merkmale (ein Verweis allein im Absatz), Stufentabelle mit Zusatzspalten |
 

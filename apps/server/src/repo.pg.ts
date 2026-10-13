@@ -9,8 +9,8 @@
 import type { Pool } from 'pg';
 import { isTableRole } from '@nw/model';
 import type { Entity, InterfaceDef, Registry, Relation, RelationDef, TableRole } from '@nw/model';
-import type { Repository, SessionRow, StoredUser } from './repo.js';
-import type { Invite, User } from './auth.js';
+import type { EventFilter, Repository, SessionRow, StoredEvent, StoredUser } from './repo.js';
+import type { ApiToken, Invite, TokenScope, User } from './auth.js';
 
 type Row = Record<string, unknown>;
 
@@ -340,11 +340,40 @@ export class PgRepository implements Repository {
     return (rowCount ?? 0) > 0;
   }
 
-  async appendEvent(name: string, subject: string | undefined, payload: unknown): Promise<void> {
-    await this.pool.query(
-      'insert into event_log(id,name,subject,payload) values (gen_random_uuid(),$1,$2,$3)',
+  async appendEvent(name: string, subject: string | undefined, payload: unknown): Promise<string> {
+    const { rows } = await this.pool.query<Row>(
+      'insert into event_log(id,name,subject,payload) values (gen_random_uuid(),$1,$2,$3) returning id',
       [name, subject ?? null, JSON.stringify(payload ?? {})],
     );
+    return String(rows[0]?.['id']);
+  }
+
+  private static toEvent(r: Row): StoredEvent {
+    return {
+      id: String(r['id']),
+      name: String(r['name']),
+      subject: (r['subject'] as string | null) ?? undefined,
+      payload: r['payload'],
+      at: new Date(r['at'] as string).toISOString(),
+    };
+  }
+
+  async getEvent(id: string): Promise<StoredEvent | undefined> {
+    const { rows } = await this.pool.query<Row>('select * from event_log where id = $1', [id]);
+    return rows[0] ? PgRepository.toEvent(rows[0]) : undefined;
+  }
+
+  async listEvents(filter: EventFilter): Promise<StoredEvent[]> {
+    /* `payload - 'changes'` am Server: die alten Fassungen einer
+       Massenänderung sind Megabytes, und eine Liste braucht sie nicht. */
+    const { rows } = await this.pool.query<Row>(
+      `select id, name, subject, at, ${filter.light ? "payload - 'changes' as payload" : 'payload'}
+         from event_log
+        where ($1::text is null or name = $1) and ($2::text is null or subject = $2)
+        order by at desc limit $3`,
+      [filter.name ?? null, filter.subject ?? null, filter.limit ?? 50],
+    );
+    return rows.map((r) => PgRepository.toEvent(r));
   }
 
   // ------------------------------------------------------------- Zugang
@@ -614,6 +643,56 @@ export class PgRepository implements Repository {
       userId,
     ]);
     return rowCount ?? 0;
+  }
+
+  // ------------------------------------------------------------- Tokens
+
+  private static toToken(r: Row): ApiToken {
+    return {
+      id: String(r['id']),
+      userId: String(r['user_id']),
+      name: String(r['name']),
+      tokenHash: String(r['token_hash'] ?? ''),
+      scope: r['scope'] as TokenScope,
+      expiresAt: new Date(r['expires_at'] as string).toISOString(),
+      createdAt: r['created_at'] ? new Date(r['created_at'] as string).toISOString() : undefined,
+      lastUsedAt: r['last_used_at'] ? new Date(r['last_used_at'] as string).toISOString() : undefined,
+    };
+  }
+
+  async createToken(token: ApiToken): Promise<void> {
+    await this.pool.query(
+      `insert into app_token(id,user_id,name,token_hash,scope,expires_at) values ($1,$2,$3,$4,$5,$6)`,
+      [token.id, token.userId, token.name, token.tokenHash, token.scope, token.expiresAt],
+    );
+  }
+
+  async listTokens(userId: string): Promise<ApiToken[]> {
+    const { rows } = await this.pool.query<Row>(
+      `select id, user_id, name, '' as token_hash, scope, expires_at, created_at, last_used_at
+         from app_token where user_id = $1 order by created_at desc`,
+      [userId],
+    );
+    return rows.map((r) => PgRepository.toToken(r));
+  }
+
+  async dropToken(userId: string, id: string): Promise<boolean> {
+    const { rowCount } = await this.pool.query('delete from app_token where id = $1 and user_id = $2', [id, userId]);
+    return (rowCount ?? 0) > 0;
+  }
+
+  async useToken(tokenHash: string): Promise<{ user: StoredUser; token: ApiToken } | undefined> {
+    /* Vermerken und lesen in einem Schritt, und nur, solange es gilt. */
+    const { rows } = await this.pool.query<Row>(
+      `update app_token set last_used_at = now()
+         where token_hash = $1 and expires_at > now()
+       returning *`,
+      [tokenHash],
+    );
+    if (!rows[0]) return undefined;
+    const token = PgRepository.toToken(rows[0]);
+    const user = await this.getUser(token.userId);
+    return user ? { user, token } : undefined;
   }
 
   async countAttempts(nameFold: string, origin: string, since: string): Promise<number> {
