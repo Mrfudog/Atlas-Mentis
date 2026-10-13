@@ -231,6 +231,13 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
   fassungen(wb.entities, stand, wb.bericht, (e) => wb.nachdrucke.get(e.id) ?? []);
   herkunft(wb.entities, stand, wb.bericht, (e) => wb.nachdrucke.get(e.id) ?? []);
 
+  /* Kanten-Ids über den ganzen Bestand eindeutig: die Werkbank zählt je
+     Artikel (`inLayer-1`), der Server hält die Id einer Kante aber als
+     Schlüssel der ganzen Tabelle — dreissigtausend Artikel in derselben
+     Ebene hiessen alle `inLayer-1`. Vorangestellt wird die Peg-Id; erst
+     hier, weil Doppel und Fassungen oben noch Kanten dazulegen. */
+  kantenEindeutig(wb.entities);
+
   /* 4. Prüfen, mit Art und Stufen — wie der Server beim Schreiben. */
   const bekannteArten = new Map(wb.entities.map((e) => [e.id, e.interfaces[0] ?? ''] as const));
   /* Die Ids einmal: ohne sie baut die Prüfung je Artikel ein neues Set
@@ -239,6 +246,8 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
   const stufen = stageBases(wb.entities);
   const fehler: string[] = [];
   if (bekannteArten.size !== wb.entities.length) fehler.push('Zwei Artikel tragen dieselbe Peg-Id.');
+  const kanten = wb.entities.flatMap((e) => (e.relations ?? []).map((r) => r.id));
+  if (new Set(kanten).size !== kanten.length) fehler.push('Zwei Kanten tragen dieselbe Id.');
   for (const e of wb.entities) {
     const issues = validateEntity(registry, e, { knownTypes: bekannteArten, knownIds: bekannteIds, stageOf: stufen });
     for (const i of issues) fehler.push(`${e.interfaces[0]} „${e.name}" (${(e.components['Identity'] as { id: string }).id}): ${i.message}`);
@@ -358,3 +367,13 @@ export const PROBE: Wunsch[] = [
   { typ: 'Item', namen: ['Trinket', 'Trinket (CoS)'] },
   { typ: 'Table', namen: ['Random Height and Weight', 'Random Height and Weight (GGR)'] },
 ];
+
+/** Jede Kanten-Id mit der Peg-Id ihres Artikels davor, damit sie im ganzen
+ *  Bestand nur einmal vorkommt. Wiederholbar: was schon so heisst, bleibt. */
+export function kantenEindeutig(entities: Entity[]): void {
+  for (const e of entities) {
+    for (const r of e.relations ?? []) {
+      if (!r.id.startsWith(`${e.id}~`)) r.id = `${e.id}~${r.id}`;
+    }
+  }
+}

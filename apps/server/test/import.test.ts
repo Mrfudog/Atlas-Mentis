@@ -75,4 +75,14 @@ describe('pnpm --filter @nw/server run import', () => {
     await expect(runImport(repo, { format: 'foundry/9', entities: [] })).rejects.toThrow(/Unbekanntes Format/);
     await expect(runImport(repo, { entities: [ebene, ebene] })).rejects.toThrow(/zweimal/);
   });
+
+  it('lehnt zwei Kanten mit derselben Id ab, bevor etwas geschrieben ist', async () => {
+    const repo = await mitKonto();
+    /* So kam die erste 5e.tools-Datei: je Artikel gezählt, `inLayer-1` an allen. */
+    const a = inEbene(regel('a', 'A'));
+    const b = inEbene(regel('b', 'B'));
+    await expect(runImport(repo, { format: 'nebelwacht/1', registry: seedRegistry, entities: [ebene, a, b] }))
+      .rejects.toThrow(/Kante inLayer-1: steht an a und an b/);
+    expect(await repo.countEntities()).toBe(0);
+  });
 });

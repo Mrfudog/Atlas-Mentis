@@ -90,6 +90,13 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
     for (const e of es.filter((x) => x !== ebene)) expect(e.relations?.some((r) => r.type === 'inLayer' && r.to === ebene.id)).toBe(true);
   });
 
+  it('vergibt Kanten-Ids, die im ganzen Bestand nur einmal vorkommen', () => {
+    const ids = es.flatMap((e) => (e.relations ?? []).map((r) => r.id));
+    expect(ids.length).toBeGreaterThan(0);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const e of es) for (const r of e.relations ?? []) expect(r.id.startsWith(`${e.id}~`)).toBe(true);
+  });
+
   it('lässt 2024 und Vehikel weg und zählt es', () => {
     expect(es.some((e) => e.name === 'Goblin Warrior')).toBe(false);
     expect(es.filter((e) => e.name === 'Blinded')).toHaveLength(1);

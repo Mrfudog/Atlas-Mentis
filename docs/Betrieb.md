@@ -254,6 +254,26 @@ der Lauf schreibt hinzu und löscht nichts. Gleiche Merkmale und
 Fassungen aus mehreren Büchern löst der Lauf selbst auf
 ([Arbeitsplan › Doppel](5etools-Arbeitsplan.md)).
 
+**Ohne eigenen Rechner** geht Schritt 1 und 2 auch auf dem Server, in einem
+Wegwerf-Container (als `deploy`; nichts davon bleibt installiert):
+
+```bash
+mkdir -p ~/5e && cd ~/5e
+docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
+  -e PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 -e NODE_OPTIONS=--max-old-space-size=3072 \
+  -v "$PWD":/w -w /w node:22 bash -c '
+    set -e
+    [ -d atlas-mentis ] || git clone --depth 1 -b preprod https://github.com/Mrfudog/atlas-mentis.git
+    [ -d 5etools-src ] || { git clone --depth 1 --filter=blob:none --sparse https://github.com/5etools-mirror-3/5etools-src.git && git -C 5etools-src sparse-checkout set data; }
+    mkdir -p /tmp/bin && corepack enable --install-directory /tmp/bin && export PATH=/tmp/bin:$PATH
+    cd atlas-mentis && pnpm install --frozen-lockfile
+    pnpm --filter @nw/model build && pnpm --filter @nw/registry build && pnpm --filter @nw/import-5etools build
+    node packages/import-5etools/dist/cli.js /w/5etools-src/data --out /w/5etools-2014.json'
+```
+
+Danach liegt die Datei in `~/5e/5etools-2014.json`; nach dem Laden
+`rm -rf ~/5e` — die Daten gehören nicht auf die Platte und nie ins Repo.
+
 **3. Sichern** — auf dem Server, vor dem Laden. Die Sicherung wird nicht
 gelöscht, auch wenn der Bestand neu steht: sie ist der einzige Ort, an dem
 der alte Bestand danach noch steht.
@@ -280,8 +300,12 @@ Lokal gegen die eigene Datenbank: `pnpm --filter @nw/server run import
 <datei> [--replace]` — mit `run`, denn `pnpm import` ist ein eingebauter
 Befehl von pnpm und liefe sonst statt des Skripts.
 
-Geprüft wird alles, **bevor** etwas geschrieben wird; ein Fehler lässt den
-Bestand, wie er war. `--replace` löscht, was nicht in der Datei steht, und
+Geprüft wird alles, **bevor** etwas geschrieben wird — auch, dass jede
+Kanten-Id im ganzen Bestand nur einmal vorkommt; ein Fehler lässt den
+Bestand, wie er war. Geschrieben wird danach Artikel für Artikel: bricht
+ein Lauf **beim Schreiben** ab (Datenbank weg, Platte voll), steht ein Teil
+da. Dann denselben Befehl mit `--replace` noch einmal — er räumt auf, was
+nicht in der Datei steht. `--replace` löscht, was nicht in der Datei steht, und
 nennt danach die Figuren, die an einem Konto stehen und nicht mehr da sind
 (die Konten bleiben, REQ-199). Eine Datei mit `registry` und ohne
 `entities` bringt nur die Registerzeilen. Die Ablage speichert heute
