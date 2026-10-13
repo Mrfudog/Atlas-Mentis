@@ -184,6 +184,19 @@ td.name a:hover {
 .nurklein {
   display: none;
 }
+/* „Edit type" / „New type": ins Register (W5), aussehend wie ein Knopf. */
+.knopf {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 700;
+}
 
 /* Am Telefon steht die Tabelle zuerst; die Filter klappen auf Knopfdruck
    darüber auf, statt die halbe Seite zu nehmen. */

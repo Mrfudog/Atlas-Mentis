@@ -19,6 +19,7 @@ import {
   currentCampaign,
   inPlay,
   detachInstance,
+  registryUsage,
   entityName,
   instancesOf,
   isInstance,
@@ -136,6 +137,26 @@ export function buildApp({
     return own;
   }
 
+  /**
+   * **Wer das Register ändert:** die Verwaltung der Installation und die
+   * Leitung (`gm`) der laufenden Kampagne. Das Register gilt für den ganzen
+   * Tisch — eine Zeile zu ändern heisst, die Regeln zu ändern. Ein
+   * Mitleiter sieht es und ändert es nicht; dieselbe Trennung wie bei den
+   * Mitgliedern (CLAUDE.md, Rolle am Konto).
+   *
+   * Gefragt wird die **laufende** Kampagne (`currentCampaign`), weil das
+   * Register keiner Ebene gehört: wer in einer anderen Runde leitet und
+   * in dieser mitspielt, schreibt hier die Regeln nicht.
+   */
+  async function mayEditRegistry(user: User): Promise<boolean> {
+    if (user.isAdmin) return true;
+    const rollen = user.roles ?? {};
+    if (!Object.values(rollen).includes('gm')) return false;
+    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const kampagne = currentCampaign(alle, (await repo.getRegistry()).settings ?? null);
+    return !!kampagne && rollen[kampagne.id] === 'gm';
+  }
+
   app.get('/api/me', async (request) => {
     const user = await viewerOf(request);
     const count = await repo.countUsers();
@@ -159,6 +180,9 @@ export function buildApp({
       user,
       actors,
       writable,
+      /* Ob dieser Betrachter das Register ändern darf — gesagt vom Server,
+         der es beim Schreiben ohnehin prüft (`mayEditRegistry`). */
+      registry: user ? await mayEditRegistry(user) : false,
       /* Ein frischer Server sagt es geradeheraus. Das ist keine Auskunft,
          die jemandem nützt, den es nichts angeht: wer den Port erreicht,
          sieht ohnehin, dass nichts eingerichtet ist. */
@@ -368,6 +392,13 @@ export function buildApp({
       if (frisch && !schreibt) return; // frischer Server: lesen ja, schreiben nie
       return reply.code(401).send({ error: 'Nicht angemeldet.' });
     }
+    /* Das Register gehört der Spielleitung: eine Registerzeile zu ändern
+       heisst, die Regeln zu ändern. Auch die Zählung des Bestands gehört
+       ihr — sie zählt über alles, auch über Verborgenes. */
+    if (url.startsWith('/api/registry') && (schreibt || url.startsWith('/api/registry/usage'))) {
+      if (await mayEditRegistry(user)) return;
+      return reply.code(403).send({ error: 'Das Register ändert die Spielleitung.' });
+    }
     if (!schreibt) return;
     if (user.isAdmin) return;
     /* Verwaltung und Einladungen prüfen selbst: das Recht hängt an der
@@ -375,11 +406,7 @@ export function buildApp({
     if (url.startsWith('/api/campaigns') || url.startsWith('/api/invites')) return;
 
     /* Ein Spieler schreibt seine Figur und was an ihr hängt — und sonst
-       nichts. Das Register gehört der Spielleitung: eine Registerzeile zu
-       ändern heisst, die Regeln zu ändern. */
-    if (url.startsWith('/api/registry')) {
-      return reply.code(403).send({ error: 'Das Register ändert die Spielleitung.' });
-    }
+       nichts. */
     const id = url.startsWith('/api/entities/') ? decodeURIComponent(url.slice(14)) : '';
     if (!id || !mayWrite(user, await ownedBy(user), id)) {
       return reply.code(403).send({ error: 'Das gehört dir nicht.' });
@@ -389,6 +416,18 @@ export function buildApp({
   // ---------------------------------------------------------------- registry
 
   app.get('/api/registry', async () => repo.getRegistry());
+
+  /**
+   * **Was der Bestand an jeder Zeile trägt** — je Art, Karte, Feld,
+   * Listenwert und Kantenart (`registryUsage`). Das Register fragt es,
+   * bevor es ein Feld löscht, einen Typ herausnimmt oder einen Wert
+   * streicht: was dabei verloren ginge oder beim nächsten Speichern
+   * abgewiesen würde, wird vorher gezählt und gesagt. Ungesiebt, darum nur
+   * für die, die das Register ändern (Wache oben).
+   */
+  app.get('/api/registry/usage', async () =>
+    registryUsage(await repo.getRegistry(), await repo.listEntities()),
+  );
 
   app.put<{ Params: { part: string }; Body: unknown }>(
     '/api/registry/:part',

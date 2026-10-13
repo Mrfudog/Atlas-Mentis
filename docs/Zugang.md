@@ -111,8 +111,13 @@ Die Regel ist kurz, weil eine lange niemand mehr nachliest:
   eine Kante aus `OWNING_RELATIONS` — `carries`, `holds`, `crafting`. Die
   Kante steht in den Daten, also wird sie dort nachgesehen und nicht im
   Server behauptet.
-- **Das Register gehört der Verwaltung.** Eine Registerzeile zu ändern
-  heisst, die Regeln zu ändern, und die Antwort sagt das auch so.
+- **Das Register gehört der Verwaltung und der Leitung der laufenden
+  Kampagne** (`gm` in der Kampagne, die `currentCampaign` nennt; seit W5).
+  Eine Registerzeile zu ändern heisst, die Regeln zu ändern, und die
+  Antwort sagt das auch so. Ein Mitleiter ändert es nicht, eine Leitung
+  einer anderen Runde auch nicht — dieselbe Trennung wie bei den
+  Mitgliedern. Die Zählung `/api/registry/usage` gehört denselben: sie
+  zählt ungesiebt.
 
 ### Verwaltung ist keine Rolle am Tisch
 
