@@ -801,6 +801,35 @@ export const fieldGroups = {
   },
 
   /**
+   * **Ein Verfahren für die sechs Attributswerte** (REQ-238, E-016 a):
+   * Daten und kein Code — die Leitung legt je Verfahren einen Artikel an,
+   * die Kampagne nennt die erlaubten (`allowsMethod`).
+   *
+   * `method` sagt die Art: `array` verteilt eine feste Reihe (`scores`,
+   * 15/14/13/12/10/8), `pointBuy` kauft mit einem Budget (`budget`) nach
+   * einer Kostentabelle (`costs`, `{"8": 0, "15": 9}` — welche Werte es
+   * gibt, sagen ihre Schlüssel), `roll` würfelt `count` Mal den Ausdruck
+   * `dice` (`4d6kh3`). `scope` sagt, für wen gewürfelt wird: je Figur oder
+   * **einmal für die Gruppe** — dann verteilt jede Figur der Gruppe
+   * dieselben Werte selbst (der Gruppenpool, `abilityPool`).
+   */
+  AbilityMethodInfo: {
+    schema: {
+      type: 'object',
+      required: ['method'],
+      properties: {
+        method: { type: 'string', title: 'Method', enum: ['array', 'pointBuy', 'roll'], default: 'array' },
+        scores: { type: 'array', items: { type: 'number' }, title: 'Scores to assign' },
+        budget: { type: 'number', min: 0, title: 'Point budget' },
+        costs: { type: 'object', title: 'Cost per score' },
+        dice: { type: 'string', title: 'Dice per score' },
+        count: { type: 'number', min: 1, max: 12, title: 'Scores rolled', default: 6 },
+        scope: { type: 'string', title: 'Rolled for', enum: ['character', 'party'], default: 'character' },
+      },
+    },
+  },
+
+  /**
    * **Was zu wählen ist** (REQ-238, E-015 a): je Eintrag eine Wahl — was
    * (`kind`), wie viele (`count`), woraus (`from`), ab welcher Stufe
    * (`level`). Klasse, Unterklasse, Abstammung, Hintergrund und Talent

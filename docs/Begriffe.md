@@ -748,6 +748,30 @@ durchgezählte beim Umsortieren still zur falschen Wahl gehörte. **Eine
 Wahl ohne Spielraum ist beantwortet**: „+1 auf Con" an einem Talent ist
 eine Wahl aus einem Wert und fragt niemanden.
 
+**Der Assistent zählt keine Schritte auf, er liest sie** (T-080). Fest ist
+nur, was das Modell selbst vorgibt: drei Kanten (Abstammung, Hintergrund,
+Klasse), sechs Werte, ein Name. Dazwischen steht je offene Wahl der
+gewählten Artikel ein Schritt (`builderSteps` über `choicesAtCharacter`),
+und was eine Wahl öffnet — die Unterklasse, ein Talent, das selbst fragt —,
+wird eine Quelle und hängt seinen Schritt dahinter an. Eine Liste der
+Schritte im Code wäre am Tag der ersten selbst angelegten Klasse falsch.
+Der **Stufenaufstieg ist derselbe Assistent**: der Entwurf ist die
+gespeicherte Figur mit einer Stufe mehr, und es fehlt, was sie schon
+beantwortet hat. Gespeichert werden die **Grundwerte** am Statblock; Boni
+aus Abstammung und Wahlen kommen beim Lesen dazu (`chosenResult`) — sonst
+erreichte „+2 statt +1" an der Abstammung keine bestehende Figur.
+
+**Ein Attributsverfahren ist ein Artikel** (E-016 a). Standardreihe,
+Punktekauf und Würfeln sind drei Formen derselben Frage, und die Leitung
+wollte eigene dazu erfinden — den Gruppenpool, bei dem alle dieselben sechs
+gewürfelten Werte verteilen. Als Code wäre jede neue Form ein Umbau; als
+Artikel (`AbilityMethod`: Art, Reihe, Budget und Kosten, Würfelausdruck,
+Geltung je Figur oder Gruppe) ist sie ein Eintrag, und die Kampagne nennt
+die erlaubten (`allowsMethod`). Nennt sie keines, gilt die Vorgabe der
+Grundregeln. **Gewürfelt wird am Server**, weil nur so jeder Wurf im
+Protokoll steht; der Pool einer Gruppe steht an ihr (`abilityPool`), und
+neu würfelt ihn nur die Leitung — sonst würfelte die Gruppe, bis es passt.
+
 **Ein Merkmal, das allein in einem Absatz steht, ist eingebettet** (W6).
 5e.tools zieht Merkmale in andere hinein — der Battle Master beginnt mit
 einem Kopf, der „Student of War" und „Combat Superiority" enthält, und

@@ -486,6 +486,16 @@ export const interfaces: Record<string, InterfaceDef> = {
     },
   },
 
+  /** Wie Spielende zu ihren Attributswerten kommen (E-016 a): ein Artikel je Verfahren. */
+  AbilityMethod: {
+    name: 'AbilityMethod',
+    area: 'rules',
+    label: 'Ability score method',
+    extends: ['Rule'],
+    schema: merge(g.AbilityMethodInfo),
+    views: { overview: [{ id: 'abm-ov', el: 'fields', fields: ['AbilityMethod.method', 'AbilityMethod.scope'] }] },
+  },
+
   /** Ein Zustand, den man hat — und die Art, die `Vitals.conditions` verlangt (D48). */
   Condition: {
     name: 'Condition',

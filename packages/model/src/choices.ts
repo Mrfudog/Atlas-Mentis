@@ -309,6 +309,7 @@ export function choiceText(c: Choice): string {
     satz = `${b.map((x) => `+${x}`).join('/')}${b.length < n ? ` to ${n}` : ''} from ${f.values.join(', ')}`;
   } else if (f.values?.length) satz = `Choose ${n} from ${f.values.join(', ')}`;
   else if (f.interfaces?.length) satz = `Choose ${n} ${[...(f.tags ?? []), f.interfaces.join(' or ').toLowerCase()].join(' ')}`;
+  else if (f.enumRef?.length) satz = `Choose ${n} from ${f.enumRef.join(', ')}`;
   else satz = c.note ?? `Choose ${n}`;
   const zusatz = [c.note && satz !== c.note ? c.note : '', c.when === 'start' ? 'first class only' : c.when === 'multiclass' ? 'when multiclassing' : '']
     .filter(Boolean)
