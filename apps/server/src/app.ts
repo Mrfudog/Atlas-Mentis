@@ -7,7 +7,9 @@
  * package defines them — front and back share one definition.
  */
 
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyCookie from '@fastify/cookie';
@@ -30,8 +32,7 @@ import {
   STATUS_COMPONENT,
   classParts,
   currentCampaign,
-  inPlay,
-  unactivatedLayers,
+  playStack,
   detachInstance,
   registryUsage,
   instancesOf,
@@ -101,6 +102,9 @@ export interface AppOptions {
   trustProxy?: boolean | string;
   /** Siehe `Config.env`; in Tests ungesetzt. */
   env?: AtlasEnv | null;
+  /** Solange gesetzt, liest der Server nach dem Start seinen Bestand vor
+   *  (`index.ts`); `artikel` sagt, wie viele. Ungesetzt: er ist bereit. */
+  anlauf?: () => { artikel: number } | null;
 }
 
 const REGISTRY_PARTS = ['interfaces', 'relations', 'views', 'vars', 'enums', 'settings'] as const;
@@ -116,10 +120,44 @@ export function buildApp({
   staticRoot,
   trustProxy = false,
   env = null,
+  anlauf,
 }: AppOptions): FastifyInstance {
   const app = Fastify({ logger, trustProxy });
 
   void app.register(fastifyCookie);
+
+  /* **Wie lange eine Antwort brauchte** (T-086, REQ-246): als
+     `Server-Timing` an jeder Antwort — die Entwicklerwerkzeuge des Browsers
+     zeigen es unter „Timing" neben der Wartezeit im Netz — und als Zeile im
+     Log, damit man auf dem Server sieht, welche Route wartet. Gemessen wird
+     von der Ankunft bis zum Absenden, ohne die Übertragung. */
+  const beginn = new WeakMap<FastifyRequest, bigint>();
+  app.addHook('onRequest', async (request) => {
+    beginn.set(request, process.hrtime.bigint());
+  });
+  /* **Der Server sagt, dass er startet** (T-086, REQ-246), statt eine
+     Anfrage hängen zu lassen, bis der Bestand gelesen ist: 503 mit der
+     Zahl der Artikel, und die Oberfläche fragt nach einer Sekunde wieder.
+     Anmelden und `health` gehen schon, sie brauchen den Bestand nicht. */
+  const STARTFREI = new Set(['/api/health', '/api/login', '/api/logout', '/api/register']);
+  app.addHook('onRequest', async (request, reply) => {
+    const jetzt = anlauf?.();
+    if (!jetzt || !request.url.startsWith('/api/')) return;
+    if (STARTFREI.has(request.url.split('?')[0] ?? '')) return;
+    return reply
+      .code(503)
+      .header('Retry-After', '1')
+      .send({ error: 'Server is starting', starting: { articles: jetzt.artikel } });
+  });
+  app.addHook('onSend', async (request, reply) => {
+    const t0 = beginn.get(request);
+    if (t0 === undefined) return;
+    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+    void reply.header('Server-Timing', `app;dur=${ms.toFixed(1)}`);
+    if (request.url.startsWith('/api/')) {
+      request.log.info({ route: request.routeOptions.url ?? request.url, ms: Math.round(ms) }, 'dauer');
+    }
+  });
 
   /* `env` sagt, welche Umgebung antwortet (T-070) — Werkzeuge fragen hier,
      die Oberfläche über `/api/me`. Es ist keine Auskunft, die jemandem
@@ -129,6 +167,22 @@ export function buildApp({
   if (staticRoot) {
     // The Angular app, plus a catch-all so client-side routes survive a reload.
     void app.register(fastifyStatic, { root: staticRoot });
+    /* **Welche Oberfläche dieser Server ausliefert** (T-086): ein Hash von
+       `index.html`, die die gehashten Teile nennt. Steht an jeder Antwort
+       der Schnittstelle; ändert er sich unter einer offenen Seite, sagt
+       sie „New version" — nach einem Deploy gibt es ihre alten Teile
+       nicht mehr. */
+    let bau = '';
+    try {
+      bau = createHash('sha256').update(readFileSync(join(staticRoot, 'index.html'))).digest('hex').slice(0, 12);
+    } catch {
+      /* Ohne gebaute Oberfläche gibt es nichts zu vergleichen. */
+    }
+    if (bau) {
+      app.addHook('onSend', async (request, reply) => {
+        if (request.url.startsWith('/api/')) void reply.header('X-Atlas-Build', bau);
+      });
+    }
     app.setNotFoundHandler((request, reply) => {
       if (request.url.startsWith('/api/')) {
         return reply.code(404).send({ error: 'Nicht gefunden' });
@@ -579,6 +633,10 @@ export function buildApp({
 
   app.get('/api/registry', async () => repo.getRegistry());
 
+  /* Je Bestandsstempel und Register einmal gezählt (T-086): das Register
+     fragt bei jedem Öffnen, und gezählt wird über den ganzen Bestand. */
+  let gezaehlt: { key: string; lauf: Promise<unknown> } | null = null;
+
   /**
    * **Was der Bestand an jeder Zeile trägt** — je Art, Karte, Feld,
    * Listenwert und Kantenart (`registryUsage`). Das Register fragt es,
@@ -588,22 +646,33 @@ export function buildApp({
    * für die, die das Register ändern (Wache oben).
    */
   app.get('/api/registry/usage', async () => {
-    const [registry, alle] = await Promise.all([repo.getRegistry(), repo.listEntities()]);
+    const [stand, registry] = await Promise.all([roh(), repo.getRegistry()]);
+    const key = `${stand.stempel}|${registerStempel(registry)}`;
+    if (gezaehlt?.key !== key) {
+      const lauf = Promise.resolve().then(() => zaehle(registry, stand.alle, stand.map));
+      gezaehlt = { key, lauf };
+      lauf.catch(() => {
+        if (gezaehlt?.lauf === lauf) gezaehlt = null;
+      });
+    }
+    return gezaehlt.lauf;
+  });
+  function zaehle(registry: Registry, alle: Entity[], map: Map<string, Entity>) {
     const usage = registryUsage(registry, alle);
     /* **Gespeichert und sichtbar sind zwei Zahlen** (T-069). Das Register
        zählte den ganzen Bestand und widersprach damit der Liste, die nur
        zeigt, was die laufende Kampagne aufschaltet. Beides steht jetzt da;
        „sichtbar" heisst im Stapel, vor Sichtbarkeit und Wissen. */
-    const map = new Map(alle.map((e) => [e.id, e]));
     const kampagne = currentCampaign(map, registry.settings ?? null);
     if (!kampagne) return usage;
     const inPlayJeArt: Record<string, number> = {};
+    const stapel = playStack(map, kampagne);
     for (const e of alle) {
       const typ = e.interfaces?.[0];
-      if (typ && inPlay(map, e, kampagne)) inPlayJeArt[typ] = (inPlayJeArt[typ] ?? 0) + 1;
+      if (typ && stapel.inPlay(e)) inPlayJeArt[typ] = (inPlayJeArt[typ] ?? 0) + 1;
     }
     return { ...usage, inPlay: inPlayJeArt, campaign: { id: kampagne.id, name: entityName(kampagne) } };
-  });
+  }
 
   app.put<{ Params: { part: string }; Body: unknown }>(
     '/api/registry/:part',
@@ -679,10 +748,10 @@ export function buildApp({
        Bis zum 7.10. rechnete das nur der Prototyp, und der Server schickte
        solche Artikel trotzdem hinaus. */
     const kampagne = currentCampaign(roh, registry.settings ?? null);
+    /* Einmal je Aufruf gerechnet, nicht je Artikel (T-086). */
+    const sicht = playStack(roh, kampagne);
     entities = entities
-      .filter((e) =>
-        stapel === 'inPlay' ? inPlay(roh, e, kampagne) : unactivatedLayers(roh, e, kampagne).length > 0,
-      )
+      .filter((e) => (stapel === 'inPlay' ? sicht.inPlay(e) : sicht.unactivated(e).length > 0))
       .map((e) => readInstance(roh, e));
     if (!user || user.isAdmin) return entities;
     /* Der Zusammenhang ist immer der ganze Bestand, auch wenn nur ein
