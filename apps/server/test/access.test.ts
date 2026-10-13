@@ -634,7 +634,9 @@ describe('what a player gets to read', () => {
     name: 'Der Plan hinter allem',
     components: {
       Identity: { name: 'Der Plan hinter allem', id: 'npc-0002', aliases: [] },
-      Status: { status: 'idea' },
+      /* `ready`: hier geht es um die Stufe. Unfertiges sehen Spielende
+         ohnehin nicht (REQ-237) — das prüft der Block weiter unten. */
+      Status: { status: 'ready' },
       Visibility: { audience: 'gm' },
     },
     relations: [],

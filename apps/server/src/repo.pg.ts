@@ -390,6 +390,9 @@ export class PgRepository implements Repository {
       isAdmin: row['is_admin'] === true,
       actorIds: raw.filter((x): x is string => typeof x === 'string' && x.length > 0),
       roles: PgRepository.rollen(row['roles']),
+      authoredIds: ((row['authored_ids'] as (string | null)[] | null) ?? []).filter(
+        (x): x is string => typeof x === 'string' && x.length > 0,
+      ),
       disabledAt: row['disabled_at'] ? new Date(row['disabled_at'] as string).toISOString() : undefined,
     };
   }
@@ -416,7 +419,9 @@ export class PgRepository implements Repository {
   private static readonly USER_SELECT = `
     select u.*, array_agg(a.actor_id order by a.added_at) as actor_ids,
            (select coalesce(jsonb_object_agg(m.campaign_id, m.role), '{}'::jsonb)
-              from campaign_member m where m.user_id = u.id) as roles
+              from campaign_member m where m.user_id = u.id) as roles,
+           array(select w.entity_id from app_user_article w
+                  where w.user_id = u.id order by w.added_at) as authored_ids
       from app_user u
       left join app_user_actor a on a.user_id = u.id`;
 
@@ -477,6 +482,28 @@ export class PgRepository implements Repository {
       const { passwordHash: _hash, ...rest } = PgRepository.toUser(r);
       return rest;
     });
+  }
+
+  /* Was jemand angelegt hat (REQ-237). Eine Zeile je Konto und Artikel;
+     ein zweites Anlegen derselben Zeile ändert nichts. */
+  async addAuthored(userId: string, entityId: string): Promise<void> {
+    await this.pool.query(
+      `insert into app_user_article(user_id, entity_id) values ($1, $2) on conflict do nothing`,
+      [userId, entityId],
+    );
+  }
+
+  async authorsOf(entityId: string): Promise<string[]> {
+    const { rows } = await this.pool.query<Row>(
+      'select user_id from app_user_article where entity_id = $1 order by added_at',
+      [entityId],
+    );
+    return rows.map((r) => String(r['user_id']));
+  }
+
+  async authoredArticles(): Promise<string[]> {
+    const { rows } = await this.pool.query<Row>('select distinct entity_id from app_user_article');
+    return rows.map((r) => String(r['entity_id']));
   }
 
   /* Konto und Figuren gehen zusammen hinein. In einer Transaktion, weil
