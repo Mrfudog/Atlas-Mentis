@@ -303,6 +303,24 @@ Karten mit den Feldwerten und die Kanten. Ein Artikel **ist** einen
 Artikeltyp; was er festhält, sagt dieser Typ und die Bestandteile, aus denen
 er gemacht ist.
 
+### Zwei Geräte, ein Artikel
+
+Ein Artikel trägt seine **Revision**: wie oft er geschrieben wurde. Wer ihn
+bearbeitet, hat eine Revision gelesen und schreibt gegen genau diese. Hat
+inzwischen jemand anders gespeichert — das Telefon am Tisch, der Laptop zu
+Hause —, gewinnt nicht still der Spätere: er wird abgewiesen, bekommt den
+neuen Stand und führt zusammen. Was nur eine Seite geändert hat, kommt
+ohne Frage zusammen; gefragt wird nur bei einem Feld, das beide verschieden
+geändert haben. `updatedAt` reicht dafür nicht: zwei Schreiben in derselben
+Millisekunde sehen gleich aus, und ein Zeitstempel sagt nicht, *wovon* eine
+Änderung ausging.
+
+Dahinter steht dieselbe Lehre wie hinter REQ-191: **was nicht sicher
+gelesen ist, wird nicht überschrieben.** Die alte App lud bei einem Fehler
+die Vorgaben und speicherte sie 700 ms später über alles. Darum schreibt
+die Seite nichts ohne gelesenen Stand, und ein Entwurf, der nicht
+gespeichert werden konnte, bleibt in der Maske und lässt sich herunterladen.
+
 ---
 
 ## Ansicht
@@ -330,6 +348,11 @@ hat damit schon gewählt.
 Stelle, an der stand, was ein Spieler nicht sehen darf. Zurückgehalten wird
 am Server (`redactEntity`): was bei einem Spieler ankommt, darf er sehen, und
 er sieht dieselbe Ansicht wie alle anderen — nur steht weniger darin.
+Will die Leitung wissen, was eine Spielerin sieht, **nimmt sie deren Sicht
+ein** („View as", REQ-241): der Server rechnet dann als dieses Konto, und
+geschrieben wird darin nichts. Hätte sie stattdessen eine allgemeine Rolle
+„Spieler" gewählt, fehlte gerade das, wonach gefragt wird — das Wissen an
+der Figur und die eigenen Entwürfe (E-019).
 
 **Die Anordnung wohnt am Typ.** Eine Kreatur ordnet ihre Full anders als ein
 Rezept, und das steht bei der Kreatur. Untertypen erben sie, bis einer etwas

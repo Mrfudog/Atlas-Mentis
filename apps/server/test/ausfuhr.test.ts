@@ -173,9 +173,10 @@ describe('GET /api/export', () => {
       await frisch.putUser({ id: randomUUID(), name: 'Verwaltung', passwordHash: 'x', isAdmin: true, actorIds: [], roles: {} });
       const r = await runImport(frisch, datei);
       expect(r.geschrieben).toBe(datei.entities.length);
-      /* `updatedAt` setzt die Ablage beim Schreiben; der Rest ist derselbe. */
+      /* `updatedAt` und `revision` setzt die Ablage beim Schreiben; der
+         Rest ist derselbe. */
       const ohneZeit = (l: Entity[]) =>
-        l.map(({ updatedAt: _t, ...e }: Entity & { updatedAt?: string }) => e).sort((a, b) => a.id.localeCompare(b.id));
+        l.map(({ updatedAt: _t, revision: _r, ...e }: Entity) => e).sort((a, b) => a.id.localeCompare(b.id));
       expect(ohneZeit(await frisch.listEntities())).toEqual(ohneZeit(datei.entities));
       expect(await frisch.getRegistry()).toEqual(await repo.getRegistry());
     }

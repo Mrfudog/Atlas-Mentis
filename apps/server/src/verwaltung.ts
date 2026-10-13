@@ -28,6 +28,7 @@ import {
   activeStack,
   campaignsActivating,
   campaignsOf,
+  currentCampaign,
   inStack,
   isOverridden,
   resolveArticle,
@@ -42,7 +43,7 @@ import {
   type TableRole,
 } from '@nw/model';
 import type { Repository, StoredUser } from './repo.js';
-import { foldName, hashToken, newInviteCode, type Invite, type User } from './auth.js';
+import { foldName, hashToken, mayViewAs, newInviteCode, type Invite, type User } from './auth.js';
 
 /** Was ein Konto an einer Kampagne darf: ändern, nur sehen, oder nichts. */
 export type Recht = 'manage' | 'see' | null;
@@ -425,9 +426,14 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
     const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
     const kampagne = alle.get(c);
+    /* „View as" nur in der laufenden Kampagne (REQ-241): gerechnet wird mit
+       ihrem Stapel, und eine andere zu zeigen hiesse, etwas anderes zu
+       zeigen, als der Spieler sieht. Der Server sagt es je Mitglied. */
+    const laufend = currentCampaign(alle, (await repo.getRegistry()).settings ?? null)?.id ?? null;
     const members = (await repo.listUsers())
       .filter((u) => isTableRole(u.roles?.[c]))
       .map((u) => ({
+        viewAs: laufend === c && u.id !== user.id && mayViewAs(user, u, laufend),
         id: u.id,
         name: u.name,
         role: u.roles[c] as TableRole,

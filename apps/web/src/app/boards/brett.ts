@@ -101,6 +101,13 @@ export class Brett {
       await this.bestand.oeffnen(e.id, true, false);
       return null;
     } catch (error) {
+      /* Jemand anders hat gespeichert (REQ-192): nichts ist geschrieben.
+         Das Board holt den Stand, der gilt — der nächste Zug geht von dort
+         aus, statt den der anderen still zu überschreiben. */
+      if (error instanceof ApiError && error.status === 409) {
+        await this.bestand.oeffnen(e.id, true, false);
+        return { text: 'Someone else changed this meanwhile — reloaded. Please try again.', einzeln: [] };
+      }
       if (error instanceof ApiError) {
         return {
           text: error.message,

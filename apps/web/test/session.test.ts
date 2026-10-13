@@ -186,4 +186,45 @@ describe('Session', () => {
     expect(await s.logout()).toBeNull();
     expect(s.angemeldet()).toBe(false);
   });
+
+  it('sends X-View-As while viewing as a member, and forgets it on sign-out (REQ-241)', async () => {
+    sessionStorage.clear();
+    const gesehen = stubFetch({
+      '/api/me': {
+        status: 200,
+        body: {
+          user: { id: 'u_sela', name: 'Sela', isAdmin: false },
+          writable: [],
+          setup: null,
+          viewAs: { id: 'u_sela', name: 'Sela', role: 'player', by: { id: 'u_mira', name: 'Mira' } },
+        },
+      },
+      '/api/logout': { status: 200, body: { ok: true } },
+    });
+    const session = TestBed.inject(Session);
+    await session.viewAsUser('u_sela');
+    const kopf = (gesehen.at(-1)?.init?.headers ?? {}) as Record<string, string>;
+    expect(kopf['x-view-as']).toBe('u_sela');
+    expect(session.viewAs()?.name).toBe('Sela');
+    expect(session.darfSchreiben()('anything')).toBe(false);
+    expect(sessionStorage.getItem('atlas.viewAs')).toBe('u_sela');
+    await session.logout();
+    expect(sessionStorage.getItem('atlas.viewAs')).toBeNull();
+    const ab = (gesehen.at(-1)?.init?.headers ?? {}) as Record<string, string>;
+    expect(ab['x-view-as']).toBeUndefined();
+  });
+
+  it('drops a view the server refuses', async () => {
+    sessionStorage.setItem('atlas.viewAs', 'u_weg');
+    stubFetch({
+      '/api/me': {
+        status: 200,
+        body: { user: { id: 'u_mira', name: 'Mira', isAdmin: false }, writable: [], setup: null, viewAs: null, viewAsRefused: true },
+      },
+    });
+    const session = TestBed.inject(Session);
+    await session.load();
+    expect(sessionStorage.getItem('atlas.viewAs')).toBeNull();
+    expect(session.viewAs()).toBeNull();
+  });
 });

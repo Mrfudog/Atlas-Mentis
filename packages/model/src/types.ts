@@ -572,6 +572,14 @@ export interface Entity {
   createdAt?: string;
   updatedAt?: string;
   /**
+   * **Die Revision des Artikels** (REQ-192): vom Server gezählt, je
+   * Schreiben eins mehr. Wer schreibt, schickt die Revision mit, die er
+   * gelesen hat; steht inzwischen eine andere da, wird nicht geschrieben,
+   * sondern zusammengeführt (`mergeEntity`). Ohne sie darf nur angelegt
+   * werden — ein Schreiben ohne gelesenen Stand gewänne sonst still.
+   */
+  revision?: number;
+  /**
    * Nur gelesen, nie gespeichert: an einer Instanz, aus welcher Vorlage sie
    * liest und welche Felder (`Karte.feld`) von dort kommen. Der Server setzt
    * es beim Ausliefern; beim Schreiben fällt es weg (`EntitySchema` kennt

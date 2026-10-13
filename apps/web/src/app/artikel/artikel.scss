@@ -396,3 +396,41 @@ details.fassung > :not(summary) {
   border-color: var(--line);
   border-left-color: var(--accent);
 }
+/* REQ-192: abgewiesen, weil jemand anders gespeichert hat. Wie das Band
+   des fertigen Stands, aber in der Warnfarbe — hier ist noch nichts
+   geschrieben. */
+.zusammen {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px dashed var(--warn);
+  border-left: 4px solid var(--warn);
+  font-size: 0.9rem;
+
+  p {
+    margin: 0 0 0.4rem;
+  }
+}
+.konflikte {
+  list-style: none;
+  margin: 0 0 0.6rem;
+  padding: 0;
+
+  li {
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.35rem 0;
+    border-top: 1px solid var(--line2);
+  }
+  .was {
+    font-weight: 600;
+  }
+  label {
+    display: flex;
+    gap: 0.4rem;
+    align-items: baseline;
+    overflow-wrap: anywhere;
+  }
+  em {
+    white-space: pre-wrap;
+  }
+}
