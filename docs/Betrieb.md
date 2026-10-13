@@ -23,9 +23,12 @@ push preprod ─┬─ check      lint, test, build (wie bisher)
               ├─ postgres   Durchstich gegen eine frische Postgres 17
               └─ image      Abbild bauen, nach GHCR: :preprod und :preprod-<sha>
                    └─ deploy   Environment „dev": SSH → deploy.sh :preprod-<sha>
+                        └─ import-5etools   nur wenn packages/import-5etools sich
+                                            geändert hat: 5e.tools neu einlesen
 ```
 
-`main` läuft genauso und rollt nach `prod` aus. Weil `main` nur aus `preprod`
+`main` läuft genauso und rollt nach `prod` aus — ohne `import-5etools`
+(siehe [5e.tools laden](#5etools-laden)). Weil `main` nur aus `preprod`
 vorgespult wird, ist es derselbe Commit, der auf dev schon lief.
 
 **Gebaut wird nur in CI.** Der Server holt das fertige Abbild und startet es;
@@ -224,10 +227,79 @@ docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB
 
 ## 5e.tools laden
 
-**Einmal** (Arbeitsplan §1, E7): danach gehören die Artikel uns und werden
-direkt bearbeitet. Der volle Bestand geht an den Server, nicht in den
-Prototyp; zuerst auf `dev`, `prod` erst, wenn dev angeschaut ist (P6).
-Was hereinkommt und was nicht, sagt [5etools-Bericht.md](5etools-Bericht.md).
+Die Artikel aus 5e.tools stehen in einer eigenen **Ebene**, „D&D 5e
+(2014)" (`inLayer` an jedem). Eingelesen wird über eine **Pipeline**; die
+Daten von 5e.tools kommen dabei nie ins Repository und bleiben nicht auf
+dem Server liegen. Was hereinkommt und was nicht, sagt
+[5etools-Bericht.md](5etools-Bericht.md). Zuerst auf `dev`, `prod` erst,
+wenn dev angeschaut ist (P6).
+
+### Ersetzen je Ebene
+
+Ein neuer Lauf **ersetzt die Ebene**, nicht den Bestand
+(`import.js <datei> --replace-layer`, W8): gelöscht wird nur, was die Ebene
+der Datei bringt — `inLayer` auf sie und auf keine andere — und in der
+Datei fehlt. Eigene Artikel ohne Ebene oder in einer Kampagnenebene
+bleiben, auch einer, der zusätzlich in der 5e-Ebene steht. Der Lauf sagt:
+
+- wie viele Artikel geschrieben und gelöscht wurden, die gelöschten je Art
+  (`3 gelöscht (Spell 2, Statblock 1)`);
+- welche **Kanten aus bleibenden Artikeln** danach ins Leere zeigen
+  (`Der Fall von Kanalgang (…) —involves→ Fireball (…)`) — sie bleiben
+  stehen und sind dann ein `dangling_relation`; wer sie nicht will, löscht
+  sie von Hand;
+- welche **Instanzen** von einer gelöschten Vorlage gelöst wurden — sie
+  tragen danach selbst, was sie von ihr lasen, wie beim Löschen über die
+  Oberfläche;
+- welche Figuren an einem Konto nicht mehr da sind (die Konten bleiben,
+  REQ-199).
+
+`--dry-run` sagt dasselbe und schreibt nichts. `--replace` (alles löschen,
+was nicht in der Datei steht) gibt es weiter — für eine Sicherung, die den
+ganzen Bestand ersetzen soll, nicht für 5e.tools: es nähme die eigenen
+Kampagnenartikel mit. Die Ebene wählt `--replace-layer` selbst (die eine,
+auf die die Artikel der Datei zeigen); `--replace-layer=<id oder Name>`
+nennt sie ausdrücklich.
+
+### Die Pipeline (der Normalweg)
+
+**Actions › 5e.tools einlesen › Run workflow**:
+
+| Eingabe | Werte |
+| --- | --- |
+| *Use workflow from* | `preprod` für dev, `main` für prod — die Zweigregel der Environments verlangt es, ein Lauf vom falschen Zweig bricht gleich ab |
+| `environment` | `dev` oder `prod` |
+| `mode` | `replace-layer` (Vorgabe): Ebene ersetzen · `dry-run`: nur sagen · `add`: nur dazulegen |
+| `source-ref` | Stand von `5etools-src` (Zweig oder Tag); leer heisst der neueste |
+
+Der Lauf klont `5etools-src` (nur `data`, nach `$RUNNER_TEMP`), baut
+`model`, `registry` und `import-5etools`, erzeugt die Datei (jeder Artikel
+geht durch `validateEntity`; besteht einer nicht, endet der Lauf hier),
+legt sie gepackt mit `deploy/import.sh` in das Verzeichnis der Umgebung
+und ruft dort `import.sh` auf. Das Skript **sichert die Datenbank**
+(`backups/<zeit>-vor-import.dump`, ausser beim Probelauf), kopiert die
+Datei in den laufenden `app`-Container, liest sie ein und löscht sie
+danach — im Container und auf der Platte, auch wenn etwas scheitert. Die
+Ausgabe des Imports steht im Log und in der Zusammenfassung des Laufs; der
+Bericht hängt als Artefakt daran (30 Tage).
+
+**Von selbst** läuft es nur für dev: nach einem Push auf `preprod`, der
+`packages/import-5etools/**` ändert, hängt `ci.yml` den Lauf an das
+Ausrollen an (Job `import-5etools`, mit dem Abbild, das gerade gestartet
+ist). Ohne Commit, mit Ausrollen davor: **Actions › CI › Run workflow**
+mit dem Häkchen „5e.tools danach einlesen" — auf `preprod` für dev, auf
+`main` für prod. Prod liest nie von selbst ein.
+
+Der Lauf braucht ein Verwaltungskonto auf der Umgebung (Schritt 7 oben):
+ein Server ohne Konto liest ohne Anmeldung, solange sein Bestand leer ist
+— mit einem Bestand nicht mehr. Und er braucht ein Abbild, das
+`--replace-layer` kennt; `import.sh` prüft das und verweigert sonst, statt
+einen Probelauf schreiben zu lassen.
+
+### Von Hand (Notlösung)
+
+Wenn die Pipeline nicht geht — GitHub Actions gestört, oder die Datei soll
+vor dem Laden lokal angeschaut werden.
 
 **1. Daten holen** — ausserhalb des Repos (112 MB, nicht unsere Daten):
 
@@ -236,26 +308,24 @@ git clone --depth 1 --filter=blob:none --sparse https://github.com/5etools-mirro
 git -C ~/5etools-src sparse-checkout set data
 ```
 
-**2. Die Datei erzeugen** — lokal, nicht auf dem Server:
+**2. Die Datei erzeugen** — lokal:
 
 ```bash
 pnpm --filter @nw/model build && pnpm --filter @nw/registry build && pnpm --filter @nw/import-5etools build
 node packages/import-5etools/dist/cli.js ~/5etools-src/data --out 5etools-2014.json --bericht docs/5etools-Bericht.md
 ```
 
-Jeder Artikel geht dabei durch `validateEntity`; besteht einer nicht,
-bricht der Lauf ab und schreibt keine Datei. Die Datei (rund 30 MB,
-24 000 Artikel) wird **nicht** eingecheckt, der Bericht schon. `--srd`
-nimmt nur, was im SRD steht; `--sources PHB,MM` nur diese Bücher.
-`--sample` schreibt einen Ausschnitt als Prüfbestand nach
+Die Datei (rund 35 MB, 24 000 Artikel) wird **nicht** eingecheckt, der
+Bericht schon. `--srd` nimmt nur, was im SRD steht; `--sources PHB,MM` nur
+diese Bücher. `--sample` schreibt einen Ausschnitt als Prüfbestand nach
 `prototype/test/dbdump/entities` (das Register dazu: `emit-seed`) —
-derselbe Ausschnitt geht ins Artefakt. Das Verzeichnis vorher leeren:
-der Lauf schreibt hinzu und löscht nichts. Gleiche Merkmale und
-Fassungen aus mehreren Büchern löst der Lauf selbst auf
+derselbe Ausschnitt geht ins Artefakt. Das Verzeichnis vorher leeren: der
+Lauf schreibt hinzu und löscht nichts. Gleiche Merkmale und Fassungen aus
+mehreren Büchern löst der Lauf selbst auf
 ([Arbeitsplan › Doppel](5etools-Arbeitsplan.md)).
 
-**Ohne eigenen Rechner** geht Schritt 1 und 2 auch auf dem Server, in einem
-Wegwerf-Container (als `deploy`; nichts davon bleibt installiert):
+**Ohne eigenen Rechner** gehen Schritt 1 und 2 auch auf dem Server, in
+einem Wegwerf-Container (als `deploy`; nichts davon bleibt installiert):
 
 ```bash
 mkdir -p ~/5e && cd ~/5e
@@ -269,50 +339,43 @@ docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e COREPACK_ENABLE_DOWNL
     cd atlas-mentis && pnpm install --frozen-lockfile
     pnpm --filter @nw/model build && pnpm --filter @nw/registry build && pnpm --filter @nw/import-5etools build
     node packages/import-5etools/dist/cli.js /w/5etools-src/data --out /w/5etools-2014.json'
+gzip -9 5etools-2014.json && cp 5etools-2014.json.gz atlas-mentis/deploy/import.sh /srv/atlas/dev/
 ```
 
-Danach liegt die Datei in `~/5e/5etools-2014.json`; nach dem Laden
-`rm -rf ~/5e` — die Daten gehören nicht auf die Platte und nie ins Repo.
+Nach dem Laden `rm -rf ~/5e` — die Daten gehören nicht auf die Platte.
 
-**3. Sichern** — auf dem Server, vor dem Laden. Die Sicherung wird nicht
-gelöscht, auch wenn der Bestand neu steht: sie ist der einzige Ort, an dem
-der alte Bestand danach noch steht.
+**3. Laden** — dasselbe Skript wie die Pipeline, es sichert vorher und
+räumt danach auf:
 
 ```bash
-cd /srv/atlas/dev
-docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > backups/vor-5etools-$(date +%F).dump
-```
-
-**4. Laden.** Der Befehl verweigert, solange kein Verwaltungskonto
-existiert (Schritt 7 oben): ein Server ohne Konto liest ohne Anmeldung,
-solange sein Bestand leer ist — mit einem Bestand nicht mehr.
-
-```bash
-scp 5etools-2014.json deploy@<host>:/srv/atlas/dev/
-cd /srv/atlas/dev
-docker compose cp 5etools-2014.json app:/tmp/5etools-2014.json
-docker compose exec app node apps/server/dist/import.js /tmp/5etools-2014.json             # dazulegen
-docker compose exec app node apps/server/dist/import.js /tmp/5etools-2014.json --replace   # Bestand ersetzen
-docker compose exec app rm /tmp/5etools-2014.json
+gzip -9 5etools-2014.json
+scp 5etools-2014.json.gz deploy/import.sh deploy@<host>:/srv/atlas/dev/
+ssh deploy@<host>
+cd /srv/atlas/dev && chmod +x import.sh
+./import.sh 5etools-2014.json.gz --replace-layer --dry-run   # erst ansehen (löscht die Datei danach)
+./import.sh 5etools-2014.json.gz --replace-layer             # dann einlesen (Datei noch einmal hinlegen)
 ```
 
 Lokal gegen die eigene Datenbank: `pnpm --filter @nw/server run import
-<datei> [--replace]` — mit `run`, denn `pnpm import` ist ein eingebauter
-Befehl von pnpm und liefe sonst statt des Skripts.
+<datei> [--replace-layer | --replace] [--dry-run]` — mit `run`, denn `pnpm
+import` ist ein eingebauter Befehl von pnpm und liefe sonst statt des
+Skripts.
 
-Geprüft wird alles, **bevor** etwas geschrieben wird — auch, dass jede
-Kanten-Id im ganzen Bestand nur einmal vorkommt; ein Fehler lässt den
-Bestand, wie er war. Geschrieben wird danach Artikel für Artikel: bricht
-ein Lauf **beim Schreiben** ab (Datenbank weg, Platte voll), steht ein Teil
-da. Dann denselben Befehl mit `--replace` noch einmal — er räumt auf, was
-nicht in der Datei steht. `--replace` löscht, was nicht in der Datei steht, und
-nennt danach die Figuren, die an einem Konto stehen und nicht mehr da sind
-(die Konten bleiben, REQ-199). Eine Datei mit `registry` und ohne
-`entities` bringt nur die Registerzeilen. Die Ablage speichert
-`interfaces`, `relations`, `views`, `units`, `vars`, `enums` und
-`settings` (die letzten beiden seit Migration 019; eine ältere Datenbank
-bekommt sie beim nächsten Start aus den Startzeilen nachgefüllt, solange
-sie dort leer sind).
+### Was beim Einlesen gilt
+
+Geprüft wird alles, **bevor** etwas geschrieben wird — jeder Artikel gegen
+das Register, und dass jede Kanten-Id im ganzen Bestand danach nur einmal
+vorkommt; ein Fehler lässt den Bestand, wie er war. Dann wird zuerst
+gelöscht, danach Artikel für Artikel geschrieben: bricht ein Lauf **beim
+Schreiben** ab (Datenbank weg, Platte voll), steht ein Teil da. Dann
+denselben Lauf noch einmal — er bringt den Rest. Die Sicherung von davor
+liegt in `backups/` (Zurück: wie oben, mit dieser Sicherung).
+
+Eine Datei mit `registry` und ohne `entities` bringt nur die
+Registerzeilen. Die Ablage speichert `interfaces`, `relations`, `views`,
+`units`, `vars`, `enums` und `settings` (die letzten beiden seit Migration
+019; eine ältere Datenbank bekommt sie beim nächsten Start aus den
+Startzeilen nachgefüllt, solange sie dort leer sind).
 
 ## Den Bestand von prod nach dev holen
 

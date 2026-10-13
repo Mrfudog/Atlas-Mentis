@@ -226,9 +226,16 @@ export function thinInstance(entities: Lookup, entity: Entity): Entity {
  */
 export function detachInstance(entities: Lookup, entity: Entity): Entity {
   const voll = resolveInstance(entities, entity);
+  /* Was sie von der Vorlage las, bekommt eine eigene Id, wie in
+     `thinInstance`: die Kanten-Id ist Schlüssel der ganzen Tabelle, und
+     solange die Vorlage noch steht, hält sie dieselbe — in Postgres
+     scheiterte das Speichern der gelösten Instanz daran. */
+  const eigen = new Set((entity.relations ?? []).map((r) => r.id));
   return {
     ...voll,
-    relations: (voll.relations ?? []).filter((r) => r.type !== INSTANCE_RELATION),
+    relations: (voll.relations ?? [])
+      .filter((r) => r.type !== INSTANCE_RELATION)
+      .map((r) => (eigen.has(r.id) ? r : { ...r, id: `${r.id}@${entity.id}` })),
   };
 }
 

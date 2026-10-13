@@ -1,0 +1,276 @@
+/* Das Board nach `Board.dc.html`: Kopf mit Pfad und Werkzeugen, links die
+   Leinwand, rechts was um sie herum liegt. Farben nur aus den Marken. */
+.seite {
+  padding: 1rem 1.5rem 2rem;
+}
+.kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+}
+.brot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  color: var(--dim);
+  font-size: 0.9rem;
+}
+h1 {
+  margin: 0.1rem 0 0;
+  font-family: var(--caps);
+  font-size: 1.9rem;
+  line-height: 1.15;
+  color: var(--accent);
+}
+.werkzeuge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--dim);
+}
+.zoom span {
+  min-width: 3rem;
+  text-align: center;
+}
+a.knopf {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.dim,
+.leer,
+.hinweis,
+.laedt {
+  margin: 0;
+  color: var(--dim);
+}
+
+.stand {
+  margin: 0.6rem 0;
+  min-height: 1.5em;
+  color: var(--dim);
+  font-size: 0.9rem;
+}
+.fehler,
+.weg-da {
+  color: var(--warn);
+}
+
+.spalten {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16.5rem;
+  gap: 1rem;
+  align-items: start;
+}
+
+/* Die Leinwand scrollt in ihrem Kasten — sie ist grösser als jeder Schirm,
+   und die Seite um sie herum soll dabei stehen bleiben. */
+.buehne {
+  position: relative;
+  overflow: auto;
+  max-height: calc(100vh - 13rem);
+  min-height: 20rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.flaeche {
+  position: relative;
+}
+.leinwand {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  background-image: radial-gradient(var(--line) 1px, transparent 1.2px);
+  background-size: 20px 20px;
+}
+.leerbrett {
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+  margin: 0;
+  color: var(--dim);
+}
+
+.kachel {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--dim);
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+}
+/* Die Farbe der Oberkante sagt den Bereich der Art (`area`) — dieselbe
+   Frage, die die Kopfleiste beantwortet, ohne eine Liste je Art. */
+.kachel.b-world {
+  border-top-color: var(--accent);
+}
+.kachel.b-story {
+  border-top-color: var(--gold);
+}
+.kachel.b-play {
+  border-top-color: var(--rule);
+}
+.kachel.b-rules {
+  border-top-color: var(--ink);
+}
+.kachel.gewaehlt {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--gold);
+}
+.kkopf {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 28px;
+  padding: 0.15rem 0.35rem 0 0.6rem;
+  touch-action: none;
+}
+.kkopf.ziehbar {
+  cursor: move;
+}
+.kart {
+  overflow: hidden;
+  color: var(--dim);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.kview {
+  margin-left: auto;
+  max-width: 7.5rem;
+  min-height: 24px;
+  border: 1px solid var(--line2);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--dim);
+  font-size: 0.75rem;
+}
+.kview.fest {
+  padding: 0 0.3rem;
+  border: 0;
+  background: none;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.weg {
+  min-height: 24px;
+  min-width: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--dim);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.weg:hover {
+  color: var(--accent);
+}
+.kname {
+  display: block;
+  padding: 0 0.6rem;
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink);
+  text-decoration: none;
+}
+a.kname:hover {
+  color: var(--accent);
+}
+.knotiz {
+  margin: 0.15rem 0.6rem 0;
+  color: var(--dim);
+  font-style: italic;
+  font-size: 0.85rem;
+}
+.kinhalt {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.3rem 0.6rem 0.5rem;
+}
+.griff {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background: linear-gradient(135deg, transparent 50%, var(--line) 50%);
+}
+
+.rand {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.kasten {
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.kasten h2 {
+  margin: 0 0 0.25rem;
+  font-family: var(--caps);
+  font-size: 1.05rem;
+  color: var(--accent);
+}
+.kasten .hinweis {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+}
+.zeile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.2rem 0;
+}
+button.klein {
+  flex: none;
+  min-height: 30px;
+  padding: 0 0.5rem;
+  font-size: 0.85rem;
+}
+
+/* Am Telefon steht der Rand unter der Leinwand, und die Leinwand nimmt die
+   Breite — eine Spalte daneben liesse ihr ein Drittel. */
+@media (max-width: 900px) {
+  .spalten {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .seite {
+    padding: 0.75rem 0.75rem 1.5rem;
+  }
+  h1 {
+    font-size: 1.5rem;
+  }
+  .buehne {
+    max-height: 70vh;
+  }
+}

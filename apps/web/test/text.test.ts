@@ -20,9 +20,9 @@ const art = (id: string, name: string, nr: string) =>
 /* Die Prüfumgebung übersetzt JIT, und JIT kennt `input()` nicht — `setInput`
    scheitert mit NG0303. Also wird das Signal vor dem ersten Zeichnen
    ersetzt; die Komponente liest es ohnehin nur als Funktion. */
-function erzeuge(text: string) {
+function erzeuge(text: string, mehr: Record<string, unknown> = {}) {
   const fixture = TestBed.createComponent(Text);
-  Object.assign(fixture.componentInstance, { text: signal(text), scopes: signal({}) });
+  Object.assign(fixture.componentInstance, { text: signal(text), scopes: signal({}), ...mehr });
   fixture.detectChanges();
   return fixture;
 }
@@ -51,6 +51,32 @@ describe('nw-text', () => {
     expect(el.querySelector('.h2')?.textContent?.trim()).toBe('Aktionen');
     expect(el.querySelectorAll('ul > li')).toHaveLength(2);
     expect(el.querySelectorAll('table td')).toHaveLength(2);
+  });
+
+  /* W1: Tabellenzeilen und kurze Felder hatten Verweise, die als
+     „[[item-0263|Black opal]]" dastanden oder die Zelle zerschnitten. */
+  it('resolves links inside table cells, the bar of the link is no cell border', () => {
+    const el = zeichne('| d8 | Stone |\n|---|---|\n| 1 | [[npc-0001|Volo]] (translucent) |');
+    const zellen = el.querySelectorAll('table td');
+    expect(zellen).toHaveLength(2);
+    expect(zellen[1]?.querySelector('a')?.textContent?.trim()).toBe('Volo');
+  });
+
+  it('draws one line without blocks when asked, links and placeholders included', () => {
+    const el = erzeuge('[[npc-0001|slaad tadpoles]], {CREATURE}', {
+      einzeilig: signal(true),
+      scopes: signal({ reference: { CREATURE: 'the dragon' } }),
+    }).nativeElement as HTMLElement;
+    expect(el.querySelector('p')).toBeNull();
+    expect(el.querySelector('a')?.textContent?.trim()).toBe('slaad tadpoles');
+    expect(el.textContent).toContain('the dragon');
+  });
+
+  it('capitalises a placeholder at the start of a sentence', () => {
+    const el = erzeuge('{CREATURE} can breathe air and water.', {
+      scopes: signal({ reference: { CREATURE: 'the dragon' } }),
+    }).nativeElement as HTMLElement;
+    expect(el.textContent?.replace(/\s+/g, ' ').trim()).toBe('The dragon can breathe air and water.');
   });
 
   it('keeps HTML in the field as text', () => {

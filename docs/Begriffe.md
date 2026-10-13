@@ -251,6 +251,15 @@ genau das. Ein Platzhalter darf im Ausdruck stehen und wird zuerst
 eingesetzt; ein Ausdruck, der keiner ist, bleibt Text. Gewürfelt wird ohne
 `eval`, aus demselben Grund wie beim Rechenwerk.
 
+**Ein Platzhalter trägt seinen Artikel**: „{CREATURE} can breathe air and
+water." mit „the dragon" an der einen Kante und „Venomfang" an der
+anderen. Stünde der Artikel im Text („The {CREATURE} can …"), wäre der
+Text einer benannten Kreatur ein anderer als der eines Drachen, und
+Amphibious stünde vierundsechzigmal da. Dass „the dragon" am Satzanfang
+„The dragon" heisst, ist eine Frage des Lesens und nicht der Bindung —
+also schreibt `parseInline` den Wert dort gross, und gespeichert bleibt,
+was gemeint ist.
+
 ---
 
 ## Bezeichner
@@ -305,6 +314,12 @@ Ort und kein Schalter:
 Einen Wähler „welche Ansicht hätten Sie gern" gibt es nicht. Ein Verweis ist
 ein Verweis, und eine Artikelseite ist eine Artikelseite — wer das jedes Mal
 sagen muss, sagt es irgendwann falsch.
+
+Nur auf dem Board wählt die **Kachel**: dort liegen Karten nebeneinander,
+und wie gross eine davon ist, ist eine Frage an sie. Sagt weder die
+Platzierung noch das Board etwas, entscheidet die Grösse — flach ist eine
+Zeile (Overview), höher eine Karte (Quick). Wer die Kachel grösser zieht,
+hat damit schon gewählt.
 
 **Es gibt keine Spieleransicht.** Es gab einmal eine, und sie war die zweite
 Stelle, an der stand, was ein Spieler nicht sehen darf. Zurückgehalten wird

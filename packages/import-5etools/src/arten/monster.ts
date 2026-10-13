@@ -10,8 +10,9 @@
  * **Gleichlautende Merkmale gibt es einmal.** „Pack Tactics" steht bei
  * fünfzig Monstern und sagt jedes Mal dasselbe, nur mit einem anderen
  * Namen darin („The wolf has advantage …"). Der Importer schreibt den
- * Namen als `{CREATURE}` und legt die Bindung an die Kante
- * (`composedOf.props.vars`) — die Vorlage bleibt die Vorlage (REQ-174).
+ * Namen samt Artikel als `{CREATURE}` („{CREATURE} has advantage …") und
+ * legt die Bindung an die Kante (`composedOf.props.vars`, „the wolf") —
+ * die Vorlage bleibt die Vorlage (REQ-174, W1).
  */
 
 import type { Entity } from '@nw/model';
@@ -85,19 +86,121 @@ function aktionsname(roh: string): { name: string; recharge?: string; uses?: str
 }
 
 /**
- * Ersetzt den Namen des Monsters im Text durch `{CREATURE}` und sagt, mit
- * welchem Namen der Text es nennt — „the rat" am Giant Rat bleibt beim
- * Lesen „the rat" und wird nicht „the giant rat". **Ein Name je Text**,
- * der längste, der vorkommt: stünden zwei verschiedene unter demselben
- * Platzhalter, läse einer davon falsch.
+ * Wie ein Monster in seinem eigenen Text heisst. `woerter` sind die Wörter
+ * aus Namen und Kreaturtyp (klein), aus denen „the …" bestehen darf;
+ * `gross` die Wörter, die der Name gross schreibt („the Scarlet
+ * Sentinel"); `eigen` die Namensteile, die ohne Artikel dastehen
+ * („Venomfang can …", „Gar can …") — leer, wenn die Kreatur keinen
+ * Eigennamen trägt.
  */
-function platzhalter(text: string, namen: string[]): { text: string; wort?: string } {
-  for (const n of namen.filter((x) => x.length > 2).sort((a, b) => b.length - a.length)) {
-    const re = new RegExp(`\\b([Tt]he) ${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
-    const neu = text.replace(re, '$1 {CREATURE}');
-    if (neu !== text) return { text: neu, wort: n };
+export interface Selbst {
+  woerter: Set<string>;
+  gross: Set<string>;
+  eigen: Set<string>;
+  /** Voller Name und `shortName` einer benannten Kreatur, wörtlich („Mr. Honeycutt"). */
+  ganz?: string[];
+}
+
+/* Wörter, auf die eine Folge nicht enden darf: „the swarm of" ist „the
+   swarm", und „the of" ist nichts. Mitten im Namen stehen sie („the
+   brain in a jar"). */
+const FUELL = new Set(['of', 'and', 'or', 'the', 'a', 'an', 'in', 'on', 'to', 'with', 'from', 'any', 'von', 'de', 'du', 'la', 'le']);
+
+const WORT = /^[\p{L}\p{N}'’-]+$/u;
+/* Wo ein Name endet: vor einem Zeichen, das kein Wort fortsetzt, oder vor
+   dem Genitiv („the dragon's breath"). */
+const ENDE = `(?=$|[^\\p{L}\\p{N}'’-]|['’]s(?![\\p{L}\\p{N}]))`;
+const ANFANG = `(?<![\\p{L}\\p{N}'’-])`;
+
+/* Verweise und Würfel bleiben, wie sie sind: „Dragon" in
+   `[[statblock-0012|Adult Black Dragon]]` ist kein Platzhalter. */
+const GESCHUETZT = /\[\[[^\]]*\]\]|\{\{(?:[^{}]|\{[^{}]*\})*\}\}|\{[A-Z0-9_]+\}/g;
+
+const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Ruft `f` für jedes Stück Text ausserhalb von Verweisen und Würfeln auf. */
+function ausserhalb(text: string, f: (stueck: string) => string): string {
+  let out = '';
+  let last = 0;
+  for (const m of text.matchAll(GESCHUETZT)) {
+    out += f(text.slice(last, m.index)) + m[0];
+    last = (m.index ?? 0) + m[0].length;
   }
-  return { text };
+  return out + f(text.slice(last));
+}
+
+/**
+ * Die längste Folge ab `woerter[0]`, die `passt`, ohne Füllwort am Ende.
+ * Ein Genitiv beendet sie („the dragon's" → „dragon").
+ */
+function folge(woerter: string[], passt: (w: string) => boolean): string[] {
+  const out: string[] = [];
+  for (const w of woerter) {
+    const genitiv = /^(.+)['’]s$/u.exec(w)?.[1];
+    if (genitiv && passt(genitiv)) {
+      out.push(genitiv);
+      break;
+    }
+    if (!WORT.test(w) || !passt(w)) break;
+    out.push(w);
+  }
+  while (out.length && FUELL.has(out[out.length - 1]!.toLowerCase())) out.pop();
+  return out;
+}
+
+/**
+ * Die Namen, unter denen dieser Text das Monster nennt: je „the"/„The"
+ * die längste folgende Wortfolge aus Namen oder Kreaturtyp („the dragon"
+ * am Black Dragon Wyrmling, „the guard drake" am Black Guard Drake), und
+ * jede Folge von Namensteilen ohne Artikel („Gar", „Wei Feng").
+ */
+function kandidaten(text: string, selbst: Selbst): string[] {
+  const gefunden = new Set<string>();
+  /* Klein, wie das Buch die Kreatur nennt — gross nur, wie der Name es
+     schreibt: „the Shapechanger trait" meint das Merkmal, nicht den Vampir. */
+  const imNamen = (w: string) => (/^\p{Lu}/u.test(w) ? selbst.gross.has(w) : selbst.woerter.has(w));
+  const eigen = (w: string) => selbst.eigen.has(w) || FUELL.has(w);
+  ausserhalb(text, (stueck) => {
+    for (const m of stueck.matchAll(/(?<![\p{L}\p{N}'’-])([Tt]he) (?=([\p{L}\p{N}'’ -]+))/gu)) {
+      const f = folge(m[2]!.split(' '), imNamen);
+      if (!f.length) continue;
+      /* Grossgeschrieben ist es ein Titel, und der Artikel gehört dazu, wie
+         er dasteht: „When The Abbot hits" bleibt so. */
+      gefunden.add(`${f.some((w) => /^\p{Lu}/u.test(w)) ? m[1] : 'the'} ${f.join(' ')}`);
+    }
+    if (selbst.eigen.size) {
+      for (const m of stueck.matchAll(/(?<![\p{L}\p{N}'’-])(?<!\b[Tt]he )(?=(\p{Lu}[\p{L}\p{N}'’ -]*))/gu)) {
+        const f = folge(m[1]!.split(' '), eigen);
+        if (f.length && selbst.eigen.has(f[0]!)) gefunden.add(f.join(' '));
+      }
+    }
+    for (const n of selbst.ganz ?? []) {
+      if (new RegExp(`${ANFANG}(?<!\\b[Tt]he )${escape(n)}${ENDE}`, 'u').test(stueck)) gefunden.add(n);
+    }
+    return stueck;
+  });
+  return [...gefunden];
+}
+
+/**
+ * Ersetzt das Monster im Text durch `{CREATURE}` und sagt, mit welchem
+ * Namen der Text es nennt. **Der Platzhalter trägt den Artikel** („{CREATURE}
+ * can breathe air and water." mit „the dragon" oder „Venomfang" an der
+ * Kante): so lesen sich Texte gleich, die sich nur im Namen unterscheiden,
+ * auch wenn der eine ein Eigenname ist. Gross am Satzanfang schreibt
+ * `parseInline`. **Ein Name je Text**, der längste, der vorkommt: stünden
+ * zwei verschiedene unter demselben Platzhalter, läse einer davon falsch
+ * (REQ-174).
+ */
+export function platzhalter(text: string, selbst: Selbst): { text: string; wort?: string } {
+  const [wort] = kandidaten(text, selbst).sort((a, b) => b.length - a.length);
+  if (!wort) return { text };
+  /* Klein heisst: „The dragon" und „the dragon" sind dasselbe, gross
+     geschrieben wird beim Lesen. Ein Titel steht wörtlich. */
+  const re = wort.startsWith('the ')
+    ? new RegExp(`${ANFANG}[Tt]he ${escape(wort.slice(4))}${ENDE}`, 'gu')
+    : new RegExp(`${ANFANG}(?<!\\b[Tt]he )${escape(wort)}(?! [\\p{Lu}])${ENDE}`, 'gu');
+  return { text: ausserhalb(text, (stueck) => stueck.replace(re, '{CREATURE}')), wort };
 }
 
 /**
@@ -110,7 +213,7 @@ function teil(
   e: Knoten,
   roh: Knoten,
   wort: string | undefined,
-  namen: string[],
+  selbst: Selbst,
   geteilt: Map<string, Entity>,
 ): void {
   const typ = wort ? 'Action' : 'Feature';
@@ -146,7 +249,7 @@ function teil(
     return;
   }
   if (wort && JSON.stringify(roh['entries'] ?? '').includes('{@atk')) wb.bericht.angriffe.alsText += 1;
-  const { text, wort: genannt } = platzhalter(wb.text(roh['entries'] ?? roh['entry'], 5), namen);
+  const { text, wort: genannt } = platzhalter(vorlagenwerte(wb.text(roh['entries'] ?? roh['entry'], 5), e), selbst);
   const benutzt = text.includes('{CREATURE}');
   const schluessel = `${typ}|${wort ?? ''}|${name}|${text}`;
   let ziel = geteilt.get(schluessel);
@@ -166,16 +269,16 @@ function teil(
       wb.feld(ziel, 'Action', 'uses', uses);
     } else wb.feld(ziel, 'Feature', 'featureType', 'monster');
     wb.prosa(ziel, text);
-    if (benutzt) wb.feld(ziel, 'Vars', 'bindings', { CREATURE: 'creature' });
+    if (benutzt) wb.feld(ziel, 'Vars', 'bindings', { CREATURE: 'the creature' });
     geteilt.set(schluessel, ziel);
   }
   const vars: Record<string, string> = {};
-  if (benutzt) vars['CREATURE'] = genannt ?? namen[0] ?? sb.name.toLowerCase();
+  if (benutzt && genannt) vars['CREATURE'] = genannt;
   wb.kante(sb, 'composedOf', ziel.id, Object.keys(vars).length ? { vars } : undefined);
 }
 
 /** Zauberwirken: Felder am Statblock, `casts` je Zauber, der Text als Merkmal. */
-function zauber(wb: Werkbank, sb: Entity, e: Knoten, namen: string[]): void {
+function zauber(wb: Werkbank, sb: Entity, e: Knoten, selbst: Selbst): void {
   const S = 'Statblock';
   for (const [i, sc] of (liste(e['spellcasting']) as Knoten[]).entries()) {
     if (i === 0) {
@@ -215,24 +318,24 @@ function zauber(wb: Werkbank, sb: Entity, e: Knoten, namen: string[]): void {
        geteilt — zwei Magier mit derselben Liste sind selten. */
     const f = wb.anlegen('Feature', aktionsname(String(sc['name'] ?? 'Spellcasting')).name, `spellcasting|${sb.id}|${i}`, e);
     wb.feld(f, 'Feature', 'featureType', 'spellcasting');
-    const { text, wort: genannt } = platzhalter(zauberwirken(sc, wb.ctx), namen);
+    const { text, wort: genannt } = platzhalter(vorlagenwerte(zauberwirken(sc, wb.ctx), e), selbst);
     wb.prosa(f, text);
-    if (text.includes('{CREATURE}')) {
-      wb.feld(f, 'Vars', 'bindings', { CREATURE: 'creature' });
-      wb.kante(sb, 'composedOf', f.id, { vars: { CREATURE: genannt ?? namen[0] ?? sb.name.toLowerCase() } });
+    if (genannt) {
+      wb.feld(f, 'Vars', 'bindings', { CREATURE: 'the creature' });
+      wb.kante(sb, 'composedOf', f.id, { vars: { CREATURE: genannt } });
     } else wb.kante(sb, 'composedOf', f.id);
   }
 }
 
 /** Die Abschnitte eines Statblocks über `composedOf`, in der Reihenfolge des Buchs. */
-function abschnitte(wb: Werkbank, sb: Entity, e: Knoten, namen: string[], geteilt: Map<string, Entity>): void {
+function abschnitte(wb: Werkbank, sb: Entity, e: Knoten, selbst: Selbst, geteilt: Map<string, Entity>): void {
   for (const [feld, wort] of ABSCHNITTE) {
     /* Das Zauberwirken steht bei 5e.tools zwischen den Merkmalen und den
        Aktionen, und dort steht es auch hier. */
-    if (feld === 'action') zauber(wb, sb, e, namen);
+    if (feld === 'action') zauber(wb, sb, e, selbst);
     for (const roh of liste(e[feld])) {
       if (!roh || typeof roh !== 'object') continue;
-      teil(wb, sb, e, roh as Knoten, wort, namen, geteilt);
+      teil(wb, sb, e, roh as Knoten, wort, selbst, geteilt);
     }
   }
   /* Was vor einem Abschnitt steht („The dragon can take 3 legendary
@@ -364,26 +467,76 @@ function statblock(wb: Werkbank, sb: Entity, e: Knoten): void {
   }
 }
 
-/** Die Namen, unter denen ein Monster in seinem eigenen Text steht. */
 /**
- * Unter welchen Namen der Text ein Monster nennt. Der volle Name zuerst,
- * dann `shortName`, der Name ohne Klammer; und weil das Buch beim Giant
- * Rat „the rat" schreibt, beim Swarm of Rats „the swarm" und beim Kobold
- * Inventor „the kobold", auch das letzte und das erste Wort. Ersetzt wird nur im Text dieses Statblocks — ohne
- * die kurzen Namen stünden Pack Tactics und Keen Smell je Kreatur einmal.
+ * Woraus der Text ein Monster nennt (`platzhalter`). Die Wörter: der Name
+ * ohne Klammer, `shortName` und der Kreaturtyp samt Marken — das Buch
+ * schreibt beim Giant Rat „the rat", beim Swarm of Rats „the swarm", beim
+ * Black Dragon Wyrmling „the dragon" und bei der Storm Giant Quintessent
+ * „the giant". Die Eigennamen nur bei benannten Kreaturen (`isNamedCreature`,
+ * `shortName`): der volle Name, `shortName` und jeder grossgeschriebene Teil
+ * („Gar" an Gar Shatterkeel, „Serissa" an Princess Serissa). Ersetzt wird
+ * nur im Text dieses Statblocks — ohne die kurzen Namen stünden Pack
+ * Tactics und Keen Smell je Kreatur einmal.
  */
-function selbstnamen(e: Knoten): string[] {
-  const voll = String(e['name']).toLowerCase();
-  const namen = [voll];
-  if (typeof e['shortName'] === 'string') namen.push(e['shortName'].toLowerCase());
-  else if (e['shortName'] === true || e['isNamedCreature']) namen.push(voll);
-  if (!e['isNamedCreature']) {
-    const ohne = voll.replace(/\s*\(.*\)\s*$/, '');
-    const woerter = ohne.split(/\s+/);
-    namen.push(ohne);
-    if (woerter.length > 1) namen.push(woerter[woerter.length - 1]!, woerter[0]!);
+export function selbst(e: Knoten): Selbst {
+  const voll = String(e['name']).replace(/\s*\(.*\)\s*$/, '');
+  const klammer = /\((.*)\)\s*$/.exec(String(e['name']))?.[1];
+  const kurz = typeof e['shortName'] === 'string' ? e['shortName'] : undefined;
+  const woerter = new Set<string>();
+  const gross = new Set<string>();
+  const eigen = new Set<string>();
+  const benannt = Boolean(e['isNamedCreature'] || e['shortName']);
+  const nimm = (s: string, name: boolean) => {
+    for (const w of s.split(/[\s,()]+/)) {
+      if (!w) continue;
+      woerter.add(w.toLowerCase());
+      if (!name || !/^\p{Lu}/u.test(w)) continue;
+      gross.add(w);
+      if (benannt && w.length > 2 && !FUELL.has(w.toLowerCase())) eigen.add(w);
+    }
+  };
+  nimm(voll, true);
+  if (kurz) nimm(kurz, true);
+  /* „Affliction Devil (Kocrachon)" heisst im Text „the kocrachon". */
+  if (klammer) nimm(klammer, false);
+  const typ = e['type'];
+  if (typeof typ === 'string') nimm(typ, false);
+  else if (typ && typeof typ === 'object') {
+    const t = typ as Knoten;
+    if (typeof t['type'] === 'string') nimm(t['type'], false);
+    else nimm(liste((t['type'] as Knoten | undefined)?.['choose']).join(' '), false);
+    for (const m of liste(t['tags'])) nimm(typeof m === 'string' ? m : String((m as Knoten)['tag'] ?? ''), false);
   }
-  return [...new Set(namen)];
+  const ganz = benannt ? [...new Set([voll, ...(kurz ? [kurz] : [])])] : [];
+  return { woerter, gross, eigen, ganz };
+}
+
+/**
+ * Was 5e.tools in Vorlagen (`_templates`, „Drow" an einem NSC) offen
+ * lässt: `<$short_name$>` ist „the drow" oder der Eigenname — genau, was
+ * `{CREATURE}` trägt —, `<$dc__con$>` und Verwandte sind Zahlen aus den
+ * Werten dieses Statblocks. Eingesetzt wird vor der Namenserkennung, die
+ * daraus wieder den Platzhalter macht.
+ */
+export function vorlagenwerte(text: string, e: Knoten): string {
+  if (!text.includes('<$')) return text;
+  const voll = String(e['name']);
+  const kurzRoh = e['shortName'] === true ? voll : typeof e['shortName'] === 'string' ? e['shortName'] : voll.replace(/\s*\(.*\)\s*$/, '');
+  const kurz = e['isNamedCreature'] ? kurzRoh : `the ${kurzRoh.toLowerCase()}`;
+  const prof = profAusCr(e['cr']);
+  const m = (a: string) => mod(Number(e[a] ?? 10));
+  const vz = (n: number) => `${n >= 0 ? '+' : ''}${n}`;
+  return text.replace(/<\$([a-z_]+)\$>/g, (roh, v: string) => {
+    if (v === 'name') return voll;
+    if (v === 'short_name') return kurz;
+    if (v === 'title_short_name') return kurz.charAt(0).toUpperCase() + kurz.slice(1);
+    const a = /(str|dex|con|int|wis|cha)/.exec(v)?.[1];
+    if (!a) return roh;
+    if (/(^|_)dc_/.test(v)) return String(8 + prof + m(a));
+    if (v.startsWith('to_hit')) return vz(prof + m(a));
+    if (v.includes('mod')) return vz(m(a));
+    return roh;
+  });
 }
 
 export const MONSTER: Zuordnung[] = [
@@ -396,8 +549,7 @@ export const MONSTER: Zuordnung[] = [
     fuellen(wb, sb, e) {
       const geteilt = wb.geteilt;
       statblock(wb, sb, e);
-      const namen = selbstnamen(e);
-      abschnitte(wb, sb, e, namen, geteilt);
+      abschnitte(wb, sb, e, selbst(e), geteilt);
       /* Spielarten („Variant: Familiars") bleiben Text am Statblock. */
       if (e['variant']) wb.prosa(sb, wb.text(e['variant'], 4));
       if (e['entries']) wb.prosa(sb, wb.text(e['entries'], 4));
@@ -425,7 +577,7 @@ export const MONSTER: Zuordnung[] = [
       wb.feld(sb, 'Statblock', 'creatureType', OBJ[String(e['objectType'])] ?? 'object');
       wb.prosa(sb, wb.text(e['entries']));
       for (const a of liste(e['actionEntries'])) {
-        if (a && typeof a === 'object') teil(wb, sb, e, a as Knoten, 'action', [String(e['name']).toLowerCase()], wb.geteilt);
+        if (a && typeof a === 'object') teil(wb, sb, e, a as Knoten, 'action', selbst({ name: e['name'] }), wb.geteilt);
       }
     },
   },

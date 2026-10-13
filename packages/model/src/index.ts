@@ -19,3 +19,4 @@ export * from './inventory.js';
 export * from './timeline.js';
 export * from './summary.js';
 export * from './classes.js';
+export * from './board.js';
