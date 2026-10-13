@@ -67,8 +67,8 @@ const STAND = {
   'REQ-024': ['steht', '`Time.sort` (sortierbar), `Time.display`, `Time.calendar`'],
   'REQ-025': ['offen', 'nur die Einstellung `calendar`; keine Kalenderzeile'],
   'REQ-026': ['steht', 'drei Ansichten, Anordnung am Typ (`InterfaceDef.views`)'],
-  'REQ-027': ['steht', 'das Register ist Daten mit Masken (Prototyp); keine Codeänderung je Art'],
-  'REQ-028': ['teils', 'Suche über Name, Marken und Feldwerte im Kompendium; keine Volltextindizierung am Server'],
+  'REQ-027': ['steht', 'das Register ist Daten mit Masken (Prototyp, Registerseite in der Web-Oberfläche: REQ-230); keine Codeänderung je Art'],
+  'REQ-028': ['teils', 'Suche am Server über Name, Alias, Deckname und Nummer, Feldfilter als Facetten (`GET /api/list`, W7); keine Volltextsuche'],
   'REQ-029': ['steht', 'Ausfuhr/Einfuhr als eine Datei; Register allein (`register-datei.mjs`)'],
   'REQ-030': ['ersetzt', 'Kante `regards` mit Marken (Beziehungen.md)'],
   'REQ-031': ['steht', 'Argon2id, Sitzung beim Server (Zugang.md)'],
@@ -197,15 +197,15 @@ const STAND = {
   'REQ-154': ['steht', 'Hetzner, Caddy, GHCR (Betrieb.md)'],
   'REQ-155': ['steht', 'Sicherung vor jedem Ausrollen; nächtliche als Rezept'],
   'REQ-156': ['verworfen', '`inherit` bewusst weg — kommt mit einer Tiefe wieder, wenn gebraucht'],
-  'REQ-157': ['steht', '`placed` mit x, y, w, h, z'],
+  'REQ-157': ['steht', '`placed` mit x, y, w, h, z; in der Seite die Leinwand `/boards` (W4)'],
   'REQ-158': ['steht', '`placed.view`'],
   'REQ-159': ['steht', '`Board.anchors`'],
   'REQ-160': ['teils', ''],
-  'REQ-161': ['steht', '`Board.rules`, `placed.view`'],
+  'REQ-161': ['steht', '`Board.rules`, `placed.view`; ohne beides wählt die Grösse der Kachel (`placementView`, D63)'],
   'REQ-162': ['offen', ''],
   'REQ-163': ['steht', 'undurchsichtige Id; `Identity.id` als Nummer'],
   'REQ-164': ['ersetzt', 'drei Ansichten; Bild, Token, Karte sind Elemente'],
-  'REQ-165': ['steht', '`Board.shapes`, Assets als Platzierung'],
+  'REQ-165': ['steht', '`Board.shapes`, Assets als Platzierung (Prototyp); die Seite zeichnet Formen und Anker noch nicht (W4)'],
   'REQ-166': ['teils', 'Anlegen auf dem Board'],
   'REQ-167': ['offen', ''],
   'REQ-168': ['steht', '`route` mit signal, `Place.state`'],
@@ -214,7 +214,7 @@ const STAND = {
   'REQ-171': ['steht', '`Party.actions`: Figur → Regelartikel `kind: travel`'],
   'REQ-172': ['steht', '`entry.weight`, `requiresTag`, `tableFor`'],
   'REQ-173': ['offen', ''],
-  'REQ-174': ['steht', '`{VAR}`: Kante → Artikel → Kampagnenwerte → Register'],
+  'REQ-174': ['steht', '`{VAR}`: Kante → Artikel → Kampagnenwerte → Register; ein Platzhalter trägt seinen Artikel, Satzanfang gross beim Lesen (D60)'],
   'REQ-175': ['steht', '`Rule.autolink`'],
   'REQ-176': ['teils', 'Vorschläge nach Name und Alias; keine Ähnlichkeit'],
   'REQ-177': ['steht', '`Information.fields` je Feld und je Eintrag'],
@@ -245,7 +245,7 @@ const STAND = {
   'REQ-202': ['offen', ''],
   'REQ-203': ['steht', '`Faction.ranks`, `memberOf.props.rank`, `knownBy.props.rank` als Mindestrang (7.10., A7)'],
   'REQ-204': ['offen', ''],
-  'REQ-205': ['offen', ''],
+  'REQ-205': ['teils', 'ein Board je Geschichtsartikel über `partOf`, Liste und Anlegen in der Seite (W4, D63); offen: Umschalten auf dem Schirm, Filter nach Artikeln aus offenen Boards'],
   'REQ-206': ['steht', 'Rechner 5-10-5 über Feld × Parität (`movement.ts`, Prototyp `mvSearch`), Modi genau · Reichweite · aus, Tempo als Zahl in `Session.moves` mit Kurzwahl, SL setzt frei und bestätigt über das Tempo hinaus; nur Quadratraster (D56)'],
   'REQ-207': ['steht', 'Wegpunkte per Klick, günstigster Weg dazwischen, Parität läuft weiter (`pathVia`); Gefahren und Reichweite von Gegnern meidbar (D56)'],
   'REQ-208': ['teils', '`ZoneKind` (Regelartikel) + Kante `zone`: Kosten, Licht und Verdeckung in Weg und Sicht, versteckt bis PP n; Schaden/Rettungswurf/Zustand gezeigt und beim Betreten in `Session.log`. Offen: Auslöser zu Zugbeginn/-ende, Zonenlicht in der Dunkelheitsmaske (D56)'],
@@ -267,6 +267,15 @@ const STAND = {
   'REQ-224': ['steht', 'Platz nach `Statblock.size` beim Lesen (`sizeSpan`, Instanz über `resolveInstance`), gespeichert die Mitte, gerechnet über den Anker; Rechner mit `MoveGrid.span` (ganzer Platz passt, Wände je Feld, teuerstes neu betretenes Feld), Sperren und Reichweite vom ganzen Platz, Sicht Feld zu Feld (`bestNotice`); tiny teilt (D58)'],
   'REQ-225': ['steht', '„Drop“/„Stow“ am Bogen in der Zeile ihrer Kosten (Einstellung `handActions`), `tier: ground`, Gurt frei in `slotDraw`; `handActions`/`inHand` im Modell (Prototyp, D58)'],
   'REQ-226': ['steht', 'Runde 1: Gegner erst in ihrem Zug (`turnHasCome`, `initiativeOrder`), in `redactParticipants`/`redactEntity` und im Prototyp (D58)'],
+  'REQ-227': ['offen', 'umgerechnet werden nur Felder mit `unit` und Angriffszeilen (`convertText`, W2)'],
+  'REQ-228': ['offen', 'heute widerrufen und neu anlegen (W3)'],
+  'REQ-229': ['offen', 'nur über `user` auf dem Server; die Kontoliste der Verwaltung steht in der Seite (W3)'],
+  'REQ-230': ['steht', 'Registerseite `/registry` mit Zählung (`registryUsage`, `GET /api/registry/usage`); schreiben Verwaltung und `gm` der laufenden Kampagne (W5, D64)'],
+  'REQ-231': ['steht', '`/classes`: Stufentabelle, Merkmale je Stufe, optionale zuschaltbar, Unterklassen filtern und vergleichen (`classes.ts`, W6, D65)'],
+  'REQ-232': ['steht', '`GET /api/list` mit Spalten aus `overview` und Facetten, 2 KB je Blatt in 15–40 ms; erster Aufruf eines Spielers nach einer Änderung ≈370 ms (W7, D66)'],
+  'REQ-233': ['steht', '`import-5etools.yml` und `deploy/import.sh`, `--replace-layer`, `--dry-run`; dev von selbst, prod von Hand (W8, D67)'],
+  'REQ-234': ['steht', '`app_token`, Bearer `atm_…`, `read`/`write` mit Ablauf; `scripts/atlas.mjs` (W9)'],
+  'REQ-235': ['steht', '`/werkbank`: Prüfungen (`CHECKS`), `POST /api/bulk` mit Vorschau, `event_log` und Rückgängig (W9, D68)'],
 };
 
 const z = [];
@@ -274,7 +283,7 @@ const w = (s = '') => z.push(s);
 w('# Anforderungen — was gefordert war und was steht');
 w();
 w(`Stand ${new Date().toISOString().slice(0, 10)}. Jede Nummer aus dem Vault ` +
-  '(`VTT/Requirements.md` in diesem Repo, v0.7) und aus der Ernte');
+  '(`VTT/Requirements.md` in diesem Repo, v0.8) und aus der Ernte');
 w('([Requirements from Kanalgang.md](Requirements%20from%20Kanalgang.md)), mit dem Stand im Repo.');
 w('Erzeugt von `packages/registry/scripts/anforderungen.mjs` aus einer Zuordnung, die ein Urteil ist:');
 w('wer eine Zeile anders sieht, ändert sie dort und lässt das Skript laufen.');
