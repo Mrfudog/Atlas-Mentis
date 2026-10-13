@@ -32,18 +32,35 @@ export const routes: Routes = [
     title: 'World · Atlas Mentis',
   },
   {
-    path: 'history',
+    path: 'story',
     canActivate: [wache],
     loadComponent: kompendium,
-    data: { bereich: 'history' },
-    title: 'History · Atlas Mentis',
+    data: { bereich: 'story' },
+    title: 'Story · Atlas Mentis',
   },
+  /* Hiess bis 13.10. so; ein gespeicherter Link soll nicht ins Leere gehen. */
+  { path: 'history', redirectTo: 'story' },
   {
     path: 'rules',
     canActivate: [wache],
     loadComponent: kompendium,
     data: { bereich: 'rules' },
     title: 'Rules · Atlas Mentis',
+  },
+  /* Boards (REQ-157, 205): die Liste je Geschichtsartikel und ein Board
+     als Leinwand. Sie sind kein Bereich — ein Board ist ein Schirm, keine
+     Liste von Artikeln (CLAUDE.md, „Play ist ein Schirm"). */
+  {
+    path: 'boards',
+    canActivate: [wache],
+    loadComponent: () => import('./boards/boards').then((m) => m.Boards),
+    title: 'Boards · Atlas Mentis',
+  },
+  {
+    path: 'boards/:id',
+    canActivate: [wache],
+    loadComponent: () => import('./boards/board').then((m) => m.Board),
+    title: 'Board · Atlas Mentis',
   },
   {
     path: 'artikel/:id',

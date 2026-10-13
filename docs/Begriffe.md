@@ -92,6 +92,16 @@ Eintrag zeichnet den Baum und entscheidet den Bereich (`area`); alle anderen
 bringen nur ihre Felder und Kanten mit. Sonst gäbe es zwei Antworten auf die
 Frage, wo eine Art hingehört, und die eine wäre still falsch.
 
+### Story ist nicht History
+
+Der Bereich hiess bis 13.10. `history` und hielt zweierlei: was in der
+Kampagne geschah (Sitzungen, Szenen, Aufträge) und was der Welt widerfuhr,
+bevor jemand sie bespielte. Das sind zwei Fragen — „was haben wir gespielt"
+und „was ist hier einmal passiert" —, und wer die eine stellt, will die
+Antworten der anderen nicht dazwischen. Jetzt heisst der eine Bereich
+`story` und ist nur die Kampagne; die Weltgeschichte (`World`, `Event`)
+steht unter `world`, bei der Welt, zu der sie gehört.
+
 ---
 
 ## Bestandteil
@@ -295,6 +305,12 @@ Ort und kein Schalter:
 Einen Wähler „welche Ansicht hätten Sie gern" gibt es nicht. Ein Verweis ist
 ein Verweis, und eine Artikelseite ist eine Artikelseite — wer das jedes Mal
 sagen muss, sagt es irgendwann falsch.
+
+Nur auf dem Board wählt die **Kachel**: dort liegen Karten nebeneinander,
+und wie gross eine davon ist, ist eine Frage an sie. Sagt weder die
+Platzierung noch das Board etwas, entscheidet die Grösse — flach ist eine
+Zeile (Overview), höher eine Karte (Quick). Wer die Kachel grösser zieht,
+hat damit schon gewählt.
 
 **Es gibt keine Spieleransicht.** Es gab einmal eine, und sie war die zweite
 Stelle, an der stand, was ein Spieler nicht sehen darf. Zurückgehalten wird

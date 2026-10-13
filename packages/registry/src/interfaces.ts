@@ -724,9 +724,12 @@ export const interfaces: Record<string, InterfaceDef> = {
    * Braucht eine Sprosse einmal eigene Felder, wird sie eine Zeile, die von
    * `Story` erbt — wie `Session`. Die Hierarchie trägt `partOf`.
    */
+  /* Bereich `story` (bis 13.10. `history`): was nur die Kampagne
+     betrifft — sie, ihre Sitzungen, Szenen und Aufträge. Die Weltgeschichte
+     (`World`, `Event`) steht unter `world`. */
   Story: {
     name: 'Story',
-    area: 'history',
+    area: 'story',
     label: 'Story',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time', 'Lore', 'Secrets', 'ReadAloud', 'Notes'],
     schema: merge(g.StoryInfo),
@@ -755,7 +758,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Campaign: {
     name: 'Campaign',
-    area: 'history',
+    area: 'story',
     label: 'Campaign',
     extends: ['Story'],
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
@@ -783,7 +786,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Session: {
     name: 'Session',
-    area: 'history',
+    area: 'story',
     label: 'Session',
     extends: ['Story'],
     schema: merge(g.SessionState),
@@ -807,7 +810,7 @@ export const interfaces: Record<string, InterfaceDef> = {
 
   Scene: {
     name: 'Scene',
-    area: 'history',
+    area: 'story',
     label: 'Scene / Encounter',
     extends: ['Story', 'Tactics', 'Difficulty'],
     schema: merge(g.SceneInfo),
@@ -819,7 +822,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
   Quest: {
     name: 'Quest',
-    area: 'history',
+    area: 'story',
     label: 'Quest',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time', 'Lore', 'Secrets'],
     schema: merge(g.QuestInfo),
@@ -1002,10 +1005,12 @@ export const interfaces: Record<string, InterfaceDef> = {
      hängt dagegen an `Event`: eine Ära dauert Jahrhunderte, ein Kataklysmus
      Tage, ein Meilenstein einen Nachmittag. `Era`, `Cataclysm` und
      `Milestone` waren drei Zeilen ohne ein eigenes Feld — jetzt sind sie
-     Wörter in `Event.kind` (Abgleich A5, Regel T2, 7.10.). */
+     Wörter in `Event.kind` (Abgleich A5, Regel T2, 7.10.).
+     **Bereich `world`** (13.10.): die Weltgeschichte steht bei der Welt;
+     `story` ist nur, was die Kampagne betrifft. */
   Event: {
     name: 'Event',
-    area: 'history',
+    area: 'world',
     label: 'Event',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Time', 'Lore', 'Secrets', 'ReadAloud'],
     schema: merge(g.EventInfo),

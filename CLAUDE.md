@@ -72,8 +72,9 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
 - `apps/web` — Angular, im Pergament des Design-Canvas. Anmeldung, die
   Kopfleiste mit den Bereichen, Kompendium und Bereiche (Filter in der
   Seitenleiste, aus der Kurzfassung `?as=summary`) und der Artikel im
-  Buchstil (geholt beim Öffnen, Ansicht `full`) stehen; Boards, Karte,
-  Initiative und Spiel noch nicht;
+  Buchstil (geholt beim Öffnen, Ansicht `full`) stehen, dazu die Boards
+  (`boards/`: je Geschichtsartikel eines, Karten als `placed`-Kanten);
+  Karte, Initiative und Spiel noch nicht;
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
   Vorlage je Artikelart. **Zurückgehalten wird am Server** (`redactEntity`) —
   was hier ankommt, darf angezeigt werden, und eine zweite Prüfung in der
@@ -407,7 +408,9 @@ wiederkommen, werden sie neu geschrieben.
   Prototyp steht dasselbe unter Registry › How it works, aus dem laufenden
   Register gezogen.
 - **Sechs Seiten, vier davon Bereiche.** Register und Kompendium sind
-  Seiten; `world`, `history`, `rules` und `play` sind Bereiche. Wohin eine
+  Seiten; `world`, `story`, `rules` und `play` sind Bereiche (`story`
+  ist nur die Kampagne — die Weltgeschichte, `World` und `Event`, steht
+  unter `world`; bis 13.10. hiess `story` `history` und hielt beides). Wohin eine
   Artikelart gehört, steht als `area` an ihrem Typ und wird wie alles andere
   geerbt. Im Code steht keine Liste davon — sonst bräuchte eine neue
   Artikelart eine Codeänderung, um auffindbar zu sein.

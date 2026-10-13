@@ -123,7 +123,7 @@ Was dabei immer gilt:
 | **Aufzählung** | eine Zeile in `enums`: Name, Beschriftung, Wörter | `Ability`, `State` |
 
 Ein Grundtyp darf einen Bereich tragen, damit seine Unterarten ihn erben
-(`Story` → `history`). Eine Artikelart ohne Bereich (`Asset`, `Layer`) steht in
+(`Story` → `story`). Eine Artikelart ohne Bereich (`Asset`, `Layer`) steht in
 keiner Liste und wird über den Artikel erreicht, der sie braucht.
 
 ### 3.2 Was eine Typzeile trägt
@@ -136,7 +136,7 @@ keiner Liste und wird über den Artikel erreicht, der sie braucht.
 | `extends[]` | die Typen, aus denen er gemacht ist — **der erste zeichnet den Baum und entscheidet den Bereich**, alle bringen Felder, Kanten, Beschriftungen und Anordnungen mit |
 | `schema.properties` | die eigenen Felder (§4) |
 | `schema.required[]` | welche davon Pflicht sind |
-| `area` | `world` · `history` · `rules` · `play` — geerbt |
+| `area` | `world` · `story` · `rules` · `play` — geerbt. `story` ist, was nur die Kampagne betrifft (Kampagne, Sitzung, Szene, Auftrag); die Weltgeschichte (`World`, `Event`) steht unter `world` (bis 13.10. hiess `story` `history` und hielt beides) |
 | `units` | `imperial` · `metric` · `both`; überschreibt die Einstellung — geerbt |
 | `titles` | `Typ.feld` → eigene Beschriftung eines geerbten Feldes (`Time.until` → „Deadline" am Auftrag) — geerbt |
 | `views` | eigene Anordnung je Ansicht (`full`, `quick`, `overview`) — geerbt über `layoutFor` |
@@ -329,7 +329,7 @@ nicht — den gäbe es auch ohne das Rezept.
 
 | Familie | Kanten | Trägt |
 |---|---|---|
-| Struktur | `partOf`, `insideMap` | Ort, Rahmen, Spur der Weltgeschichte (§5.9) — die Reihenfolge sagt `Time.sort` |
+| Struktur | `partOf`, `insideMap` | Ort, Rahmen, Spur der Weltgeschichte (§5.9), das Board eines Geschichtsartikels (REQ-205) — die Reihenfolge sagt `Time.sort` |
 | Teil | `belongsTo`, `carries` | `asField` |
 | Einsetzen | `composedOf`, `hasProperty` | `section`, `vars` |
 | Regel | `stageOf`, `affects`, `grants`, `subclassOf`, `subraceOf` | Stufe eines Zustands; Wirkung zwischen Regeln (`effect`, `on`, `note`); was Klasse, Abstammung, Hintergrund gewähren (`level`) |
@@ -790,6 +790,22 @@ Drei Ansichten, und der Ort wählt sie:
 | `quick` | eine Kachel auf dem Board, die Schnellanlage | Bild, Beschreibung, Felder, Prosa |
 | `full` | die Artikelseite | alles |
 
+**Nur die Kachel auf dem Board wählt** (REQ-161, `placementView`): zuerst
+die Platzierung (`placed.props.view`), dann die Regel des Boards je Art
+(`Board.rules`, die `extends`-Kette hoch), und sagt keiner etwas, **die
+Grösse** — eine Kachel bis 110 px Höhe ist eine Zeile und zeigt `overview`,
+eine höhere eine Karte und zeigt `quick`. Wer sie grösser zieht, bekommt
+die Karte, ohne etwas auszuwählen.
+
+**Ein Board gehört über `partOf` zu seinem Geschichtsartikel** (REQ-205):
+Kampagne, Kapitel (`Story.kind`), Sitzung — nicht Szene, die ist eine
+Karte auf dem Board ihrer Sitzung. Ein Board ohne die Kante ist ein
+Regel-Board. Eine eigene Kante `boardOf` wäre eine zweite Hierarchie neben
+`partOf`, mit Rückbezügen, die niemand neben „contains" sucht. Die
+Kurzfassung (`summaryOf`) trägt `partOf` mit, damit die Liste der Boards
+und ihr Pfad „Kampagne › Kapitel › Sitzung" ohne einen ganzen Artikel
+auskommen.
+
 Eine Spieleransicht gibt es nicht: gesiebt wird am Server, alle sehen
 dieselbe Ansicht. Für `overview` und `quick` wählt eine Art **nach Gruppe**
 (ein Typname in `except`), nicht Feld für Feld.
@@ -905,6 +921,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Article` | `Source` `Todos` `Lore` `Secrets` | — | — | `describedIn` | — |
 | `Creature` | `Image` `Source` `Vars` `Vitals` `Lore` `Facts` `Secrets` `ReadAloud` | `appearance` `personality` `species` `kind` `role` `attitude` `figure` | `worships` `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | full |
 | `Deity` | `Image` `Source` `Lore` `Secrets` | `pantheon` `title` `alignment` `domains` `symbol` `province` `plane` | — | `worships` | — |
+| `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `partOf` `involves` | `partOf` | — |
 | `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` `goal` | `worships` `controls` `regards` | `memberOf` `questGiver` `features` `knownBy` `regards` | — |
 | `Hazard` | `Image` `Source` `Secrets` | `kind` `category` `tier` `threat` `trigger` `duration` `effect` `countermeasures` `initiative` | — | — | — |
 | `Item` | `Image` `Source` `Lore` `Secrets` `Facts` | `itemType` `rarity` `tier` `attunement` `attunementNote` `charges` `recharge` `rechargeAmount` `bonusWeapon` `bonusAc` `bonusSpellAttack` `bonusSave` `appliesTo` `availability` `copperPrice` `stackSize` `weight` `rows` `width*` `height*` `cells*` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `loot` `instanceOf` | full |
@@ -915,12 +932,11 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `Weapon` | `Item` | `category` `damage` `damage2` `damageType` `range` `ammoType` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `loot` `instanceOf` | — |
 | `World` | `Image` `Lore` | `calendar` | — | `inWorld` | — |
 
-**History**
+**story**
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
 | `Campaign` | `Story` | — | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` `inWorld` `activates` | `partOf` `partyOf` `mapOf` | full |
-| `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `partOf` `involves` | `partOf` | — |
 | `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | full |
 | `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `mapOf` | — |
 | `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `nowPlaying` `moves` `log` `partyNote` `stewardship` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `mapOf` | full |
@@ -957,7 +973,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Board` | — | `width` `height` `snap` `background` `rules` `shapes` `anchors` | `placed` | — | full |
+| `Board` | — | `width` `height` `snap` `background` `rules` `shapes` `anchors` | `partOf` `placed` | — | full |
 | `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` | `xpBudget` `phase` `round` `turn` `surprise` | `participates` `onMap` `loot` `tableFor` | — | full |
 | `Map` | `Image` `Secrets` `ReadAloud` | `sheets` `baseHidden` `baseGmOnly` `kind` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `scale` `lighting` `fog` `reveal` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `zone` `territory` | `insideMap` `onMap` | full |
 
@@ -1010,7 +1026,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `overrides` | * → * | ja | — | `scope` `note` |
 | `owes` | Creature → Creature |  | — | — |
 | `participates` | Encounter → Creature \| Statblock \| Party |  | — | `label` `init` `hp` `hpMax` `ally` `conditions` `note` `revealed` `involved` `identified` |
-| `partOf` | Place \| Story \| Quest \| Event → Place \| Story \| Event |  | — | — |
+| `partOf` | Place \| Story \| Quest \| Event \| Board → Place \| Story \| Event |  | — | — |
 | `partyOf` | Party → Campaign | ja | — | — |
 | `placed` | Board → * |  | — | `x` `y` `w` `h` `view` `z` `locked` `note` |
 | `questAbout` | Quest → * |  | — | — |

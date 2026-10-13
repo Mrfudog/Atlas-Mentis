@@ -19,3 +19,4 @@ export * from './sight.js';
 export * from './inventory.js';
 export * from './timeline.js';
 export * from './summary.js';
+export * from './board.js';
