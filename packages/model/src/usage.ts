@@ -38,6 +38,14 @@ export interface RegistryUsage {
   values: Record<string, Record<string, number>>;
   /** Je Kantenart: wie viele Kanten es davon gibt. */
   relations: Record<string, number>;
+  /**
+   * Je Art: wie viele davon in der laufenden Kampagne im Stapel stehen
+   * (`inPlay`, T-069) — neben `types`, das alles Gespeicherte zählt. Fehlt,
+   * wenn es keine Kampagne gibt; dann ist alles da.
+   */
+  inPlay?: Record<string, number>;
+  /** Die laufende Kampagne, gegen die `inPlay` gezählt ist. */
+  campaign?: { id: string; name: string };
 }
 
 /** Leer heisst: nichts, was eine Änderung verlieren könnte. */

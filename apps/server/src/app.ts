@@ -30,6 +30,7 @@ import {
   classParts,
   currentCampaign,
   inPlay,
+  unactivatedLayers,
   detachInstance,
   registryUsage,
   instancesOf,
@@ -51,8 +52,8 @@ import {
 } from '@nw/model';
 import type { BulkChange, Entity, Registry } from '@nw/model';
 import type { Repository } from './repo.js';
-import { buildListIndex, listProjection, parseListQuery, queryList, type ListIndex } from './liste.js';
-import { registerVerwaltung } from './verwaltung.js';
+import { NO_LAYER, buildListIndex, listProjection, parseListQuery, queryList, type ListIndex } from './liste.js';
+import { mayActivate, rechtAn, registerVerwaltung } from './verwaltung.js';
 import {
   ATTEMPT_WINDOW_MINUTES,
   MAX_ATTEMPTS,
@@ -574,9 +575,23 @@ export function buildApp({
    * abgewiesen würde, wird vorher gezählt und gesagt. Ungesiebt, darum nur
    * für die, die das Register ändern (Wache oben).
    */
-  app.get('/api/registry/usage', async () =>
-    registryUsage(await repo.getRegistry(), await repo.listEntities()),
-  );
+  app.get('/api/registry/usage', async () => {
+    const [registry, alle] = await Promise.all([repo.getRegistry(), repo.listEntities()]);
+    const usage = registryUsage(registry, alle);
+    /* **Gespeichert und sichtbar sind zwei Zahlen** (T-069). Das Register
+       zählte den ganzen Bestand und widersprach damit der Liste, die nur
+       zeigt, was die laufende Kampagne aufschaltet. Beides steht jetzt da;
+       „sichtbar" heisst im Stapel, vor Sichtbarkeit und Wissen. */
+    const map = new Map(alle.map((e) => [e.id, e]));
+    const kampagne = currentCampaign(map, registry.settings ?? null);
+    if (!kampagne) return usage;
+    const inPlayJeArt: Record<string, number> = {};
+    for (const e of alle) {
+      const typ = e.interfaces?.[0];
+      if (typ && inPlay(map, e, kampagne)) inPlayJeArt[typ] = (inPlayJeArt[typ] ?? 0) + 1;
+    }
+    return { ...usage, inPlay: inPlayJeArt, campaign: { id: kampagne.id, name: entityName(kampagne) } };
+  });
 
   app.put<{ Params: { part: string }; Body: unknown }>(
     '/api/registry/:part',
@@ -631,6 +646,11 @@ export function buildApp({
      *  nur die Karten, die eine Zeile zeigt, und das Wissen gilt je Feld:
      *  was gekürzt wird, hätte keinen anderen Wert gesiebt. */
     schmal?: (e: Entity) => Entity,
+    /** `'unactivated'`: statt der Artikel im Stapel die, die nur fehlen,
+     *  weil ihre Ebene nicht aufgeschaltet ist (T-069) — gesiebt, als
+     *  wären sie da. Gezählt wird so nur, was dieser Betrachter nach dem
+     *  Aufschalten sähe. */
+    stapel: 'inPlay' | 'unactivated' = 'inPlay',
   ): Promise<Entity[]> {
     const user = await viewerOf(request);
     /* **Eine Instanz geht aufgelöst hinaus**, mit ihrer Vorlage darin und
@@ -647,7 +667,11 @@ export function buildApp({
        Bis zum 7.10. rechnete das nur der Prototyp, und der Server schickte
        solche Artikel trotzdem hinaus. */
     const kampagne = currentCampaign(roh, registry.settings ?? null);
-    entities = entities.filter((e) => inPlay(roh, e, kampagne)).map((e) => readInstance(roh, e));
+    entities = entities
+      .filter((e) =>
+        stapel === 'inPlay' ? inPlay(roh, e, kampagne) : unactivatedLayers(roh, e, kampagne).length > 0,
+      )
+      .map((e) => readInstance(roh, e));
     if (!user || user.isAdmin) return entities;
     /* Der Zusammenhang ist immer der ganze Bestand, auch wenn nur ein
        Artikel gesiebt wird: welche Information ein Feld beansprucht und
@@ -764,20 +788,23 @@ export function buildApp({
    * Leute gleichzeitig am Kompendium.
    */
   const indizes = new Map<string, Promise<ListIndex>>();
-  async function indexFor(request: FastifyRequest): Promise<ListIndex> {
+  async function indexFor(
+    request: FastifyRequest,
+    stapel: 'inPlay' | 'unactivated' = 'inPlay',
+  ): Promise<ListIndex> {
     const [stand, registry, user] = await Promise.all([roh(), repo.getRegistry(), viewerOf(request)]);
     const wer =
       !user || user.isAdmin
         ? '*'
         : `${user.id}|${(user.actorIds ?? []).join(',')}|${(user.authoredIds ?? []).join(',')}|${JSON.stringify(user.roles ?? {})}`;
-    const key = `${stand.stempel}|${registerStempel(registry)}|${wer}`;
+    const key = `${stand.stempel}|${stapel}|${registerStempel(registry)}|${wer}`;
     let lauf = indizes.get(key);
     if (lauf) {
       indizes.delete(key);
       indizes.set(key, lauf); // zuletzt gebraucht steht hinten
       return lauf;
     }
-    lauf = sieve(request, stand.alle, stand.map, listProjection(registry)).then((gesiebt) =>
+    lauf = sieve(request, stand.alle, stand.map, listProjection(registry), stapel).then((gesiebt) =>
       buildListIndex(registry, gesiebt),
     );
     indizes.set(key, lauf);
@@ -786,7 +813,7 @@ export function buildApp({
     for (const k of indizes.keys()) {
       if (!k.startsWith(`${stand.stempel}|`)) indizes.delete(k);
     }
-    while (indizes.size > 8) indizes.delete(indizes.keys().next().value as string);
+    while (indizes.size > 16) indizes.delete(indizes.keys().next().value as string);
     return lauf;
   }
 
@@ -797,8 +824,57 @@ export function buildApp({
    */
   app.get('/api/list', async (request) => {
     const idx = await indexFor(request);
-    return queryList(idx, parseListQuery(request.query as Record<string, unknown>));
+    const q = parseListQuery(request.query as Record<string, unknown>);
+    const blatt = queryList(idx, q);
+    /* Eine Auswahl nach Ids fragt nach Bekanntem; dort fehlt nichts. */
+    const aus = q.ids?.length ? null : await ausgeblendet(request, idx, q);
+    return aus ? { ...blatt, unactivated: aus } : blatt;
   });
+
+  /**
+   * **Was fehlt, weil seine Ebene nicht aufgeschaltet ist** (T-069) — mit
+   * denselben Filtern wie das Blatt, je Ebene gezählt. Auf dev verschwanden
+   * nach dem Anlegen einer Kampagne alle 5e.tools-Artikel, und die Seite
+   * sagte nicht warum; nichts war gelöscht. Gezählt wird nur, was dieser
+   * Betrachter nach dem Aufschalten sähe (gesiebt wie sonst), und
+   * `canActivate` sagt, wo er selbst aufschalten darf.
+   */
+  async function ausgeblendet(
+    request: FastifyRequest,
+    idx: ListIndex,
+    q: ReturnType<typeof parseListQuery>,
+  ): Promise<{
+    campaign: { id: string; name: string };
+    total: number;
+    layers: { id: string; name: string; count: number; canActivate: boolean }[];
+  } | null> {
+    const [stand, registry, user] = await Promise.all([roh(), repo.getRegistry(), viewerOf(request)]);
+    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    if (!kampagne) return null;
+    const aus = queryList(await indexFor(request, 'unactivated'), {
+      ...q,
+      layer: undefined,
+      nolayer: undefined,
+      offset: 0,
+      limit: 1,
+    });
+    if (!aus.total) return null;
+    const darf = rechtAn(user, kampagne.id) === 'manage';
+    return {
+      campaign: { id: kampagne.id, name: entityName(kampagne) },
+      total: aus.total,
+      layers: aus.facets.layers
+        .filter((l) => l.id !== NO_LAYER)
+        .map((l) => ({
+          id: l.id,
+          /* Den Namen der Ebene nur, wenn er sie sieht. */
+          name: idx.names.get(l.id) ?? 'another layer',
+          count: l.count,
+          canActivate: darf && mayActivate(user, stand.map, l.id, kampagne.id),
+        }))
+        .sort((a, b) => b.count - a.count),
+    };
+  }
 
   /**
    * Die Kandidaten eines Verweises `[[ziel]]`, gesiebt: was dieser Betrachter

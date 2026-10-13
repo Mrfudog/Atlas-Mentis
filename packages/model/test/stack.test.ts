@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { activeStack, campaignLayer, currentCampaign, inPlay, inStack, isOverridden, resolveArticle } from '../src/stack.js';
+import {
+  activeStack,
+  campaignLayer,
+  campaignsActivating,
+  currentCampaign,
+  inPlay,
+  inStack,
+  isOverridden,
+  resolveArticle,
+  unactivatedLayers,
+  withStack,
+} from '../src/stack.js';
 import type { Entity, EntityId } from '../src/types.js';
 
 /* Zwei Kampagnen in einem Speicher: Nebelwacht schaltet das Regelwerk und
@@ -95,5 +106,36 @@ describe('campaignLayer', () => {
   });
   it('gibt null ohne Kampagne', () => {
     expect(campaignLayer(entities, null)).toBeNull();
+  });
+});
+
+describe('what is missing only because its layer is off (T-069)', () => {
+  const nebel = E('camp_nebel');
+  it('names the layers that would bring it', () => {
+    expect(unactivatedLayers(entities, E('r_salz'), nebel)).toEqual(['ly_salz']);
+  });
+  it('says nothing for what is there, taken out on purpose, or has no layer', () => {
+    expect(unactivatedLayers(entities, E('r_grund'), nebel)).toEqual([]);
+    expect(unactivatedLayers(entities, E('r_weg'), nebel)).toEqual([]);
+    expect(unactivatedLayers(entities, E('r_frei'), nebel)).toEqual([]);
+    expect(unactivatedLayers(entities, E('r_salz'), null)).toEqual([]);
+  });
+  it('knows which campaigns run a layer', () => {
+    expect(campaignsActivating(entities, 'ly_system').sort()).toEqual(['camp_nebel', 'camp_salz']);
+    expect(campaignsActivating(entities, 'ly_salz')).toEqual(['camp_salz']);
+    expect(campaignsActivating(entities, 'ly_aus')).toEqual([]);
+  });
+  it('rewrites the stack in the given order and keeps the other edges', () => {
+    const c: Entity = {
+      ...nebel,
+      relations: [...(nebel.relations ?? []), { id: 'x', type: 'partOf', to: 'irgendwo' }],
+    };
+    const neu = withStack(c, ['ly_nebel', 'ly_salz', 'ly_system']);
+    const m = new Map(entities);
+    m.set(neu.id, neu);
+    expect(activeStack(m, neu).map((x) => x.layer.id)).toEqual(['ly_nebel', 'ly_salz', 'ly_system']);
+    expect(neu.relations?.find((r) => r.to === 'ly_system')?.id).toBe('a1');
+    expect(neu.relations?.some((r) => r.type === 'partOf')).toBe(true);
+    expect(withStack(c, []).relations?.filter((r) => r.type === 'activates')).toEqual([]);
   });
 });
