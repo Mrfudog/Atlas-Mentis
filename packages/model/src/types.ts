@@ -243,7 +243,7 @@ export interface InterfaceDef {
    * Register und Kompendium sind **keine** Bereiche: das eine zeigt die
    * Zeilen, das andere alle Artikel ohne Rücksicht darauf, wo sie hingehören.
    */
-  area?: 'world' | 'history' | 'rules' | 'play';
+  area?: 'world' | 'story' | 'rules' | 'play';
   /**
    * **Die Anordnung wohnt am Typ**, nicht an der Ansicht: eine Kreatur
    * ordnet ihre `full` anders als ein Rezept, und das steht bei der
