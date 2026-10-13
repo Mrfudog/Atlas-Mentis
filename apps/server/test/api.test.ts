@@ -198,3 +198,61 @@ describe('POST /api/validate', () => {
     expect(await repo.listEntities()).toEqual([]);
   });
 });
+
+/**
+ * Die Liste bekommt die Kurzfassung, der Artikel kommt beim Öffnen.
+ *
+ * Mit 24 157 Artikeln aus 5e.tools war der ganze Bestand mit jedem Feld zu
+ * viel für eine Liste von Namen. Die Kurzfassung muss aber tragen, was
+ * Suche, Verweise und Auswahlen lesen — sonst findet `[[Der Dicke]]` nichts
+ * mehr, und niemand merkt es, weil ein offener Verweis normal aussieht.
+ */
+describe('summaries and backlinks', () => {
+  const schuldner: Entity = {
+    id: '22222222-2222-4222-8222-222222222222',
+    interfaces: ['Creature'],
+    name: 'Mira',
+    components: {
+      Identity: { name: 'Mira', id: 'npc-0002' },
+      Description: { description: 'Schuldet Volo Geld.' },
+    },
+    relations: [{ id: 'r-schuld', type: 'owes', to: volo.id, props: {} }],
+  };
+
+  it('lists the short form: name, identity, tags, status — no prose, no edges', async () => {
+    const ctx = await makeApp([volo, schuldner]);
+    const res = await ctx.inject({ method: 'GET', url: '/api/entities?as=summary' });
+    expect(res.statusCode).toBe(200);
+    const mira = (res.json() as Entity[]).find((e) => e.id === schuldner.id)!;
+    expect(mira.name).toBe('Mira');
+    expect(mira.components['Identity']).toEqual({ name: 'Mira', id: 'npc-0002' });
+    expect(mira.components['Description']).toBeUndefined();
+    expect(mira.relations).toEqual([]);
+    const v = (res.json() as Entity[]).find((e) => e.id === volo.id)!;
+    expect(v.components['Identity']?.['aliases']).toEqual(['Der Dicke']);
+    expect(v.components['Tags']).toEqual({ tags: ['händler'] });
+  });
+
+  it('still sends whole articles without the flag', async () => {
+    const ctx = await makeApp([volo, schuldner]);
+    const res = await ctx.inject({ method: 'GET', url: '/api/entities' });
+    const mira = (res.json() as Entity[]).find((e) => e.id === schuldner.id)!;
+    expect(mira.relations?.length).toBe(1);
+  });
+
+  it('answers who points here, as short forms', async () => {
+    const ctx = await makeApp([volo, schuldner]);
+    const res = await ctx.inject({ method: 'GET', url: `/api/entities/${volo.id}/backlinks` });
+    expect(res.statusCode).toBe(200);
+    const [b] = res.json() as { from: Entity; relation: { type: string } }[];
+    expect(b?.from.id).toBe(schuldner.id);
+    expect(b?.from.components['Description']).toBeUndefined();
+    expect(b?.relation.type).toBe('owes');
+  });
+
+  it('404s backlinks of an unknown article', async () => {
+    const ctx = await makeApp([volo]);
+    const res = await ctx.inject({ method: 'GET', url: '/api/entities/gibt-es-nicht/backlinks' });
+    expect(res.statusCode).toBe(404);
+  });
+});

@@ -206,6 +206,8 @@ Durchstich in CI prüft `PgRepository` gegen eine echte Postgres.
 | `GET/POST/DELETE /api/invites` | Einladungen (Verwaltung, Leitung) |
 | `GET /api/registry` · `PUT /api/registry/:part` | das Register lesen; ändern nur die Leitung |
 | `GET /api/entities` · `GET /api/entities/:id` | Artikel, **gesiebt** |
+| `GET /api/entities?as=summary` | die Kurzfassung aller Artikel (`summaryOf`) — für Liste, Verweise, Auswahlen |
+| `GET /api/entities/:id/backlinks` | wer auf den Artikel zeigt (Kurzfassung + Kante), gesiebt |
 | `PUT /api/entities/:id` · `DELETE /api/entities/:id` | schreiben, immer durch `validateEntity` |
 | `POST /api/validate` | prüfen ohne zu speichern |
 
@@ -232,6 +234,16 @@ sequenceDiagram
   F-->>B: gesiebte Artikel
 ```
 
+**Die Oberfläche hält nur die Kurzfassung** (`?as=summary`): Name, Art,
+`Identity`, Marken, Stand, die Kante `instanceOf` und die Felder, nach
+denen eine Auswahl filtert (`enumWhere`, aus dem Register gelesen). Den
+ganzen Artikel holt sie beim Öffnen, die Rückbezüge dazu über
+`/backlinks` — die Gegenrichtung braucht jede Kante im Bestand, und die
+hat die Kurzfassung nicht. Gekürzt wird **nach** dem Sieb, damit ein
+Deckname der Deckname bleibt. Bis zum 13.10. ging der ganze Bestand an
+die Liste; mit den 24 157 Artikeln aus 5e.tools kam sie nicht mehr an.
+`listEntities` liest dafür in drei Abfragen statt in dreien je Artikel.
+
 Die Reihenfolge ist die Regel aus CLAUDE.md: erst ob überhaupt
 (Stapel, Sichtbarkeit), dann was darin (Wissen). Zurückgehalten wird
 **nur hier**; die Oberfläche zeigt, was ankommt.
@@ -244,7 +256,7 @@ Zeilen daneben. Eine neue Artikelart ist eine Zeile, keine Migration.
 | Gruppe | Tabellen |
 |---|---|
 | Bestand | `entity` (die Id), `component` (eine Karte je Art und Artikel), `relation` (Kanten, vorwärts) |
-| Register | `interface_def`, `component_def`, `relation_def`, `view_def`, `var_def`, `unit_def` |
+| Register | `interface_def`, `component_def`, `relation_def`, `view_def`, `var_def`, `unit_def`, `enum_def`, `setting_def` |
 | Zugang | `app_user`, `app_session`, `app_invite`, `login_attempt`, `campaign_member`, `app_user_actor` |
 | Protokoll | `event_log` |
 

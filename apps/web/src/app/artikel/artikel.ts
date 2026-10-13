@@ -1,9 +1,8 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
   typeChain,
-  backlinks,
   entityName,
   entriesOf,
   entryRef,
@@ -289,8 +288,10 @@ interface Feld {
         }
         }
       </article>
-    } @else if (bestand.geladen()) {
+    } @else if (bestand.fehlt().has(id())) {
       <p class="fehler">No such article — or not one you may see.</p>
+    } @else {
+      <p class="leer">Loading…</p>
     }
   `,
   styleUrl: './artikel.scss',
@@ -313,11 +314,17 @@ export class Artikel {
 
   constructor() {
     void this.bestand.load();
+    /* Der ganze Artikel kommt erst hier, beim Öffnen — die Liste trägt nur
+       seine Kurzfassung. Wechselt die Id (ein Verweis auf der Seite), wird
+       der nächste geholt. */
+    effect(() => {
+      void this.bestand.oeffnen(this.id());
+    });
   }
 
   private readonly reg = computed<Registry | null>(() => this.bestand.registry());
   protected readonly artikel = computed<Entity | undefined>(() =>
-    this.bestand.byId().get(this.id()),
+    this.bestand.voll().get(this.id()),
   );
   protected readonly stufen = computed<string[]>(() => {
     const r = this.reg();
@@ -694,7 +701,10 @@ export class Artikel {
 
     try {
       const gespeichert = await this.api.putEntity(neu);
-      await this.bestand.load(true);
+      /* Neu geholt und nicht das Zurückgeschickte eingesetzt: was die Seite
+         zeigt, ist gesiebt und aufgelöst, und das Gespeicherte ist es nicht.
+         Die Zeile in der Liste zieht dabei mit. */
+      await this.bestand.oeffnen(alt.id, true);
       this.bearbeitet.set(false);
       this.offeneVerweise.set([...offen]);
       /* Was der Server zurückgibt, gilt — er setzt `updatedAt` und darf
@@ -728,9 +738,11 @@ export class Artikel {
     const e = this.artikel();
     const r = this.reg();
     if (!e || !r || !this.view()?.relations) return [];
-    return backlinks(r, this.bestand.entities(), e.id).map((b) => ({
+    /* Die Gegenrichtung fragt der Server (K1): sie braucht jede Kante im
+       Bestand, und hier liegt nur die Kurzfassung. */
+    return (this.bestand.rueckbezuege().get(e.id) ?? []).map((b) => ({
       id: `${b.from.id}:${b.relation.id}`,
-      label: b.def.inverseLabel,
+      label: relationDef(r, b.relation.type).inverseLabel,
       ziel: b.from.id,
       text: entityName(b.from),
     }));

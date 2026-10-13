@@ -4,7 +4,7 @@ import { entityName, isInstance, primaryInterface } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 
 /**
- * Die Liste. Sie sucht über Name **und** Alias, weil am Tisch der Deckname
+ * Die Liste — aus der Kurzfassung des Bestands (`summaryOf`). Sie sucht über Name **und** Alias, weil am Tisch der Deckname
  * fällt und nicht der Eintrag im Register — und weil der Server einem
  * Spieler ohnehin nur zeigt, was er wissen darf, ist hier keine zweite
  * Sichtprüfung nötig. Eine zweite wäre auch die falsche: sie stünde an der
@@ -19,7 +19,7 @@ import { Bestand } from '../kern/bestand';
         type="search"
         placeholder="Search…"
         [value]="suche()"
-        (input)="suche.set($any($event.target).value)"
+        (input)="suche.set($any($event.target).value); bis.set(SCHRITT)"
       />
       <span class="zahl">{{ gefiltert().length }} of {{ gelistet().length }}</span>
     </header>
@@ -29,7 +29,7 @@ import { Bestand } from '../kern/bestand';
     }
 
     <ul class="liste">
-      @for (e of gefiltert(); track e.id) {
+      @for (e of gezeigt(); track e.id) {
         <li>
           <a [routerLink]="['/artikel', e.id]">{{ name(e) }}</a>
           <span class="art">{{ art(e) }}</span>
@@ -38,12 +38,29 @@ import { Bestand } from '../kern/bestand';
         <li class="leer">Nothing here.</li>
       }
     </ul>
+    @if (gefiltert().length > gezeigt().length) {
+      <p class="leer">
+        {{ gefiltert().length - gezeigt().length }} more —
+        <button type="button" (click)="mehr()">show {{ SCHRITT }} more</button>
+        or narrow the search.
+      </p>
+    }
   `,
   styleUrl: './artikel.scss',
 })
 export class Liste {
   protected readonly bestand = inject(Bestand);
   protected readonly suche = signal('');
+
+  /* Gezeichnet wird ein Stück, nicht alles: 24 157 Zeilen auf einmal
+     halten den Browser auf, und niemand liest sie. Wer sucht, findet trotzdem
+     in allen — gezählt wird oben immer der ganze Treffer. */
+  protected readonly SCHRITT = 200;
+  protected readonly bis = signal(this.SCHRITT);
+  protected readonly gezeigt = computed(() => this.gefiltert().slice(0, this.bis()));
+  protected mehr(): void {
+    this.bis.update((n) => n + this.SCHRITT);
+  }
 
   constructor() {
     void this.bestand.load();
