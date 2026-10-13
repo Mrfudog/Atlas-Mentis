@@ -141,3 +141,29 @@ export function resolveArticle(entities: Map<EntityId, Entity>, entity: Entity, 
 export function inPlay(entities: Map<EntityId, Entity>, entity: Entity, campaign: Entity | null): boolean {
   return inStack(entities, entity, campaign) && !isOverridden(entities, entity, campaign);
 }
+
+/**
+ * **Die Ebene, die dieser Kampagne gehört** (REQ-237): die spezifischste
+ * aufgeschaltete Ebene, die keine andere Kampagne aufschaltet. Dorthin legt
+ * der Server, was Spielende anlegen — so gehört der Artikel der Runde, in
+ * der er entstand, und deren Leitung sieht ihn (`campaignOf`). Gibt es
+ * keine solche Ebene, `null`: der Artikel liegt dann in keiner, wie heute
+ * die meisten.
+ */
+export function campaignLayer(entities: Map<EntityId, Entity>, campaign: Entity | null): Entity | null {
+  if (!campaign) return null;
+  const stapel = activeStack(entities, campaign);
+  for (let i = stapel.length - 1; i >= 0; i -= 1) {
+    const ebene = stapel[i]!.layer;
+    let andere = false;
+    for (const e of entities.values()) {
+      if (e.id === campaign.id || (e.interfaces ?? [])[0] !== CAMPAIGN_TYPE) continue;
+      if (kanten(e, ACTIVATES_RELATION).some((r) => r.to === ebene.id)) {
+        andere = true;
+        break;
+      }
+    }
+    if (!andere) return ebene;
+  }
+  return null;
+}

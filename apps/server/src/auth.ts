@@ -46,6 +46,13 @@ export interface User {
    *  einem Artikel wanderte beim Export mit (REQ-199). `isAdmin` ist etwas
    *  anderes — die Verwaltung der ganzen Installation. */
   roles: Record<string, TableRole>;
+  /** **Was dieses Konto angelegt hat** (REQ-237, E-011): die Artikel, die
+   *  es als Spielerin angelegt hat. Sie gehören ihr zum Schreiben, und sie
+   *  sieht sie in jedem Stand. Steht am Server neben dem Konto
+   *  (`app_user_article`), nicht im Artikel — eine Konto-Id im Artikel
+   *  wanderte beim Export mit (REQ-199). Gesetzt nur von der Ablage;
+   *  `putUser` schreibt es nicht. */
+  authoredIds?: string[] | undefined;
   disabledAt?: string | undefined;
 }
 
@@ -146,11 +153,13 @@ export function sessionExpiry(from: Date = new Date()): Date {
 /**
  * Wer was darf. Die Regel ist absichtlich kurz, weil eine lange Regel
  * niemand mehr nachliest: die Spielleitung darf alles, ein Spieler darf
- * lesen und genau die Artikel schreiben, die seiner Figur gehören.
+ * lesen und genau die Artikel schreiben, die seiner Figur gehören — und
+ * die er selbst angelegt hat (REQ-237).
  *
  * „Gehört" heisst: die Figur selbst, und was über eine Kante an ihr hängt —
  * ihr Inventar zum Beispiel. Die Kante steht in den Daten, also wird sie
- * dort nachgesehen und nicht hier behauptet.
+ * dort nachgesehen und nicht hier behauptet. Was er angelegt hat, steht
+ * neben dem Konto (`authoredIds`); `ownedIds` bringt beides mit.
  */
 export function mayWrite(user: User | null, ownedIds: Set<string>, id: string): boolean {
   if (!user || user.disabledAt) return false;
