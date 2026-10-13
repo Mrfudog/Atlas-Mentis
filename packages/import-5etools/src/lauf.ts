@@ -13,6 +13,7 @@ import { GEGENSTAENDE } from './arten/gegenstaende.js';
 import { CHARAKTERBAU } from './arten/charakterbau.js';
 import { LEGENDAER, MONSTER } from './arten/monster.js';
 import { WELT } from './arten/welt.js';
+import { abenteuer } from './arten/abenteuer.js';
 import type { Knoten } from './copy.js';
 import { fassungen, herkunft, vereineGleiche } from './doppel.js';
 import { angriffeVereinen } from './arten/angriff.js';
@@ -108,7 +109,9 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
     const name = meta?.name ?? q;
     l = wb.anlegen('Layer', name, `book|${k}`);
     l.id = buchEbeneId(q);
-    wb.feld(l, 'Layer', 'kind', 'book');
+    /* Ein Abenteuer ist eine eigene Art Ebene (T-082): es bringt seine
+       Kapitel und Abschnitte, nicht nur Regeln. */
+    wb.feld(l, 'Layer', 'kind', meta?.art === 'adventure' ? 'adventure' : 'book');
     wb.feld(l, 'Layer', 'order', 0);
     wb.feld(l, 'Layer', 'version', '2014');
     wb.feld(l, 'Tags', 'tags', [KERN.includes(meta?.id ?? q) ? 'core' : meta?.art === 'adventure' ? 'adventure' : 'sourcebook']);
@@ -224,6 +227,22 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
       wb.feld(ent, 'Identity', 'aliases', [...new Set([...alt, ...e['alias'].map(String)])]);
     }
     wb.liegen(z.art, e, [...z.genutzt, 'name', 'alias']);
+  }
+
+  /* Die Abenteuer (T-082, REQ-240): nach den Buchartikeln, damit jeder
+     Verweis im Abenteuertext sein Ziel findet. Gesiebt wird wie jeder
+     Eintrag — nach Quelle, 2024 bleibt draussen. */
+  for (const a of stand.abenteuer?.values() ?? []) {
+    const grund = ausschluss({ source: String(a.kopf['source'] ?? a.id) }, stand, auswahl);
+    if (grund) {
+      const b = wb.artBericht('adventureData');
+      b.gelesen += 1;
+      const m = b.ausgeschlossen.get(grund) ?? new Map<string, number>();
+      zaehle(m, a.id);
+      b.ausgeschlossen.set(grund, m);
+      continue;
+    }
+    abenteuer(wb, a);
   }
 
   /* Eine aufgelöste Kopie zeigt auf ihr Original, wenn es hereinkam und
