@@ -318,15 +318,34 @@ export interface Konto {
 /** Die Teile des Registers, die `PUT /api/registry/:part` nimmt. */
 export type RegisterTeil = 'interfaces' | 'relations' | 'views' | 'vars' | 'enums' | 'settings';
 
+/** Wie das Banner nennt, was eine Anfrage lädt. */
+export function wasLaedt(path: string): string {
+  if (path.startsWith('/api/registry')) return 'registry';
+  if (path.startsWith('/api/list')) return 'list';
+  if (path.startsWith('/api/entities') || path.startsWith('/api/links')) return 'articles';
+  if (path.startsWith('/api/classes')) return 'classes';
+  if (path.startsWith('/api/campaigns')) return 'campaign';
+  if (path.startsWith('/api/checks') || path.startsWith('/api/bulk')) return 'workbench';
+  return 'data';
+}
+
 @Injectable({ providedIn: 'root' })
 export class Api {
   /** Leer heisst: derselbe Ursprung. Im Betrieb liefert der Server die
    *  Oberfläche selbst aus, in der Entwicklung steht ein Proxy davor. */
   readonly base = '';
 
-  /** Wie viele Anfragen gerade unterwegs sind — die Kopfleiste zeigt ab
-   *  300 ms einen Ladehinweis, statt still zu stehen (T-086, REQ-246). */
-  readonly unterwegs = signal(0);
+  /** Was gerade geladen wird, je laufender Anfrage ein Wort (`registry`,
+   *  `articles`, `list` …) — das Banner nennt es ab 300 ms, statt die Seite
+   *  still stehen zu lassen (T-086, REQ-246). */
+  readonly laufend = signal<string[]>([]);
+  /** Der Server startet gerade und liest so viele Artikel (503 mit
+   *  `starting`). Die Anfrage wartet und fragt nach, statt zu scheitern. */
+  readonly anlauf = signal<number | null>(null);
+  /** Eine Leseanfrage kam nicht durch (Netz weg, Server 5xx). Sie wartet,
+   *  bis jemand „Retry" drückt, und wer sie gestellt hat, bekommt dann die
+   *  Antwort — die Seite muss dafür nichts wissen. */
+  readonly fehler = signal<{ was: string; nochmal: () => void } | null>(null);
   /** Der Server liefert eine neuere Oberfläche aus als die, die hier läuft
    *  (`X-Atlas-Build`, T-086): nach einem Deploy fehlen die alten Teile,
    *  und ein Seitenwechsel lädt ins Leere. Die Seite sagt es, statt still
@@ -334,12 +353,40 @@ export class Api {
   readonly neueVersion = signal(false);
   private bau: string | null = null;
 
-  private async call<T>(path: string, init: RequestInit = {}): Promise<T> {
-    this.unterwegs.update((n) => n + 1);
+  /** `halten: false` — ein Ausfall geht gleich an den Aufrufer, statt auf
+   *  „Retry" zu warten: die Sitzung muss sich auch ohne Server festlegen,
+   *  sonst bliebe die Seite ohne Kopfleiste stehen. */
+  private async call<T>(path: string, init: RequestInit = {}, halten = true): Promise<T> {
+    const was = wasLaedt(path);
+    this.laufend.update((l) => [...l, was]);
     try {
-      return await this.rufe<T>(path, init);
+      for (;;) {
+        try {
+          const antwort = await this.rufe<T>(path, init);
+          this.anlauf.set(null);
+          return antwort;
+        } catch (e) {
+          const start = (e as ApiError).body as { starting?: { articles?: number } } | undefined;
+          if (e instanceof ApiError && e.status === 503 && start?.starting) {
+            this.anlauf.set(start.starting.articles ?? 0);
+            await new Promise((r) => setTimeout(r, 1000));
+            continue;
+          }
+          /* Nur Lesen wird wiederholt: ein Schreiben zweimal zu schicken
+             könnte zweimal schreiben. Ein 4xx ist eine Antwort, kein
+             Ausfall. */
+          const ausfall = !(e instanceof ApiError) || e.status >= 500;
+          if (!halten || (init.method ?? 'GET') !== 'GET' || !ausfall) throw e;
+          this.anlauf.set(null);
+          await new Promise<void>((r) => this.fehler.set({ was, nochmal: r }));
+          this.fehler.set(null);
+        }
+      }
     } finally {
-      this.unterwegs.update((n) => n - 1);
+      this.laufend.update((l) => {
+        const i = l.indexOf(was);
+        return i < 0 ? l : [...l.slice(0, i), ...l.slice(i + 1)];
+      });
     }
   }
 
@@ -368,7 +415,7 @@ export class Api {
   }
 
   me(): Promise<Me> {
-    return this.call<Me>('/api/me');
+    return this.call<Me>('/api/me', {}, false);
   }
   putEntity(entity: Entity): Promise<Entity> {
     return this.call<Entity>(`/api/entities/${encodeURIComponent(entity.id)}`, {

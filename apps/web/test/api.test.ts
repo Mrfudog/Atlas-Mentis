@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
-import { Api } from '../src/app/kern/api';
+import { Api, wasLaedt } from '../src/app/kern/api';
 
 function stubFetch(bau: () => string | null, warte?: Promise<void>) {
   vi.stubGlobal('fetch', async () => {
@@ -30,11 +30,11 @@ describe('Api', () => {
     let los!: () => void;
     stubFetch(() => null, new Promise<void>((r) => (los = r)));
     const api = TestBed.inject(Api);
-    const lauf = api.me();
-    expect(api.unterwegs()).toBe(1);
+    const lauf = api.registry();
+    expect(api.laufend()).toEqual(['registry']);
     los();
     await lauf;
-    expect(api.unterwegs()).toBe(0);
+    expect(api.laufend()).toEqual([]);
   });
 
   it('notices when the server ships a different build than the one running', async () => {
@@ -55,5 +55,56 @@ describe('Api', () => {
     await api.me();
     await api.me();
     expect(api.neueVersion()).toBe(false);
+  });
+
+  it('names what is loading', () => {
+    expect(wasLaedt('/api/registry/usage')).toBe('registry');
+    expect(wasLaedt('/api/list?area=rules')).toBe('list');
+    expect(wasLaedt('/api/entities/x')).toBe('articles');
+  });
+
+  it('waits while the server starts, then answers', async () => {
+    const antworten = [
+      { status: 503, body: { error: 'Server is starting', starting: { articles: 42 } } },
+      { status: 200, body: { ok: 1 } },
+    ];
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', async () => {
+      const a = antworten.shift()!;
+      return { ok: a.status < 300, status: a.status, text: async () => JSON.stringify(a.body) } as Response;
+    });
+    const api = TestBed.inject(Api);
+    const lauf = api.registry();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(api.anlauf()).toBe(42);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(await lauf).toEqual({ ok: 1 });
+    expect(api.anlauf()).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it('holds a failed read until retry, then hands over the answer', async () => {
+    let n = 0;
+    vi.stubGlobal('fetch', async () => {
+      n += 1;
+      if (n === 1) throw new TypeError('Failed to fetch');
+      return { ok: true, status: 200, text: async () => JSON.stringify({ ok: 2 }) } as Response;
+    });
+    const api = TestBed.inject(Api);
+    const lauf = api.registry();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(api.fehler()?.was).toBe('registry');
+    api.fehler()!.nochmal();
+    expect(await lauf).toEqual({ ok: 2 });
+    expect(api.fehler()).toBeNull();
+  });
+
+  it('does not repeat a write that failed', async () => {
+    vi.stubGlobal('fetch', async () => {
+      throw new TypeError('Failed to fetch');
+    });
+    const api = TestBed.inject(Api);
+    await expect(api.logout()).rejects.toThrow('Failed to fetch');
+    expect(api.fehler()).toBeNull();
   });
 });

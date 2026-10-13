@@ -102,6 +102,9 @@ export interface AppOptions {
   trustProxy?: boolean | string;
   /** Siehe `Config.env`; in Tests ungesetzt. */
   env?: AtlasEnv | null;
+  /** Solange gesetzt, liest der Server nach dem Start seinen Bestand vor
+   *  (`index.ts`); `artikel` sagt, wie viele. Ungesetzt: er ist bereit. */
+  anlauf?: () => { artikel: number } | null;
 }
 
 const REGISTRY_PARTS = ['interfaces', 'relations', 'views', 'vars', 'enums', 'settings'] as const;
@@ -117,6 +120,7 @@ export function buildApp({
   staticRoot,
   trustProxy = false,
   env = null,
+  anlauf,
 }: AppOptions): FastifyInstance {
   const app = Fastify({ logger, trustProxy });
 
@@ -130,6 +134,20 @@ export function buildApp({
   const beginn = new WeakMap<FastifyRequest, bigint>();
   app.addHook('onRequest', async (request) => {
     beginn.set(request, process.hrtime.bigint());
+  });
+  /* **Der Server sagt, dass er startet** (T-086, REQ-246), statt eine
+     Anfrage hängen zu lassen, bis der Bestand gelesen ist: 503 mit der
+     Zahl der Artikel, und die Oberfläche fragt nach einer Sekunde wieder.
+     Anmelden und `health` gehen schon, sie brauchen den Bestand nicht. */
+  const STARTFREI = new Set(['/api/health', '/api/login', '/api/logout', '/api/register']);
+  app.addHook('onRequest', async (request, reply) => {
+    const jetzt = anlauf?.();
+    if (!jetzt || !request.url.startsWith('/api/')) return;
+    if (STARTFREI.has(request.url.split('?')[0] ?? '')) return;
+    return reply
+      .code(503)
+      .header('Retry-After', '1')
+      .send({ error: 'Server is starting', starting: { articles: jetzt.artikel } });
   });
   app.addHook('onSend', async (request, reply) => {
     const t0 = beginn.get(request);

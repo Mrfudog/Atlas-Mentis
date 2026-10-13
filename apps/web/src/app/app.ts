@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { Api } from './kern/api';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Session } from './kern/session';
@@ -89,9 +89,19 @@ import { BEREICHE } from './kern/bereiche';
         <button type="button" (click)="neuLaden()">Reload</button>
       </p>
     }
-    @if (wartet()) {
-      <p class="wartet" role="status" aria-live="polite">Loading…</p>
-    }
+    <!-- Das Ladebanner, eine Stelle für die ganze Seite (T-086, REQ-246). -->
+    <div class="banner-ort" role="status" aria-live="polite">
+      @if (api.fehler(); as f) {
+        <p class="banner fehler">
+          Could not load {{ f.was }}.
+          <button type="button" (click)="f.nochmal()">Retry</button>
+        </p>
+      } @else if (api.anlauf() !== null) {
+        <p class="banner">Server is starting, reading {{ api.anlauf() }} articles …</p>
+      } @else if (wartet()) {
+        <p class="banner">Loading … ({{ geladen() }})</p>
+      }
+    </div>
     <router-outlet />
   `,
   styles: `
@@ -174,22 +184,31 @@ import { BEREICHE } from './kern/bereiche';
     .neu button {
       margin-left: 0.5rem;
     }
-    /* Ein Hinweis, der über der Seite liegt und nichts verschiebt — sonst
+    /* Das Banner liegt über der Seite und verschiebt nichts — sonst
        spränge der Inhalt bei jeder langsamen Antwort. */
-    .wartet {
-      position: fixed;
-      bottom: 1rem;
-      left: 50%;
-      transform: translateX(-50%);
+    .banner-ort {
+      position: sticky;
+      top: 0;
       z-index: 10;
+      height: 0;
+    }
+    .banner {
       margin: 0;
-      padding: 0.25rem 0.9rem;
-      border: 1px solid var(--accent);
-      border-radius: 999px;
-      background: var(--surface);
+      padding: 0.35rem 1.5rem;
+      background: var(--chip);
+      border-bottom: 1px solid var(--accent);
       color: var(--ink);
-      font-size: 0.85rem;
-      box-shadow: 0 1px 4px rgb(0 0 0 / 0.15);
+      font-size: 0.9rem;
+      text-align: center;
+      box-shadow: 0 1px 4px rgb(0 0 0 / 0.12);
+    }
+    .banner.fehler {
+      background: var(--surface);
+      border-bottom-color: var(--warn);
+      color: var(--warn);
+    }
+    .banner button {
+      margin-left: 0.5rem;
     }
     /* Am Telefon: Marke und Abmelden in einer Zeile, die Bereiche darunter
        in einer Zeile, die sich schieben lässt, statt in drei umzubrechen. */
@@ -224,12 +243,14 @@ export class App {
   /** Ob gerade sichtbar gewartet wird: erst wenn eine Anfrage länger als
    *  300 ms läuft (REQ-246). Darunter wäre der Hinweis nur ein Flackern. */
   protected readonly wartet = signal(false);
+  /** Was geladen wird, jedes Wort einmal: „registry, list". */
+  protected readonly geladen = computed(() => [...new Set(this.api.laufend())].join(', '));
   private uhr: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
     void this.session.load();
     effect(() => {
-      const laeuft = this.api.unterwegs() > 0;
+      const laeuft = this.api.laufend().length > 0;
       clearTimeout(this.uhr);
       if (!laeuft) this.wartet.set(false);
       else if (!this.wartet()) this.uhr = setTimeout(() => this.wartet.set(true), 300);

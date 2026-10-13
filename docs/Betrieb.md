@@ -768,11 +768,25 @@ Neustart unter drei, und kein Einfrieren im Browser über 200 ms.
 - **Nach einem Neustart** sagt die Zeile `Bestand gelesen`, wie lange das
   Vorlesen des ganzen Bestands dauerte (`artikel`, `ms`).
 
-**Was die Seite tut, wenn es dauert:** läuft eine Anfrage länger als
-300 ms, steht unten „Loading…". Liefert der Server nach einem Deploy eine
-andere Oberfläche aus (`X-Atlas-Build`, ein Hash ihrer `index.html`),
-steht oben „New version available" mit „Reload" — die Seite lädt nicht
-still neu, damit niemand eine Eingabe verliert.
+**Was die Seite tut, wenn es dauert:** oben unter der Kopfleiste steht
+ein Banner, eine Stelle für alle Seiten, gespeist aus jeder Anfrage über
+`kern/api.ts`:
+
+- läuft eine Anfrage länger als 300 ms: „Loading … (registry / articles /
+  list)" — was gerade geladen wird; es verschwindet von selbst;
+- startet der Server gerade und liest seinen Bestand vor, antwortet er auf
+  `/api/` mit **503** und der Zahl (`starting.articles`, `Retry-After: 1`),
+  statt die Anfrage hängen zu lassen; das Banner sagt „Server is starting,
+  reading N articles …", und die Seite fragt jede Sekunde nach. Anmelden
+  und `/api/health` gehen schon vorher;
+- kommt eine Leseanfrage nicht durch (Netz weg, 5xx): „Could not load … —
+  Retry"; „Retry" schickt sie noch einmal, und die Seite bekommt die
+  Antwort, als wäre nichts gewesen. Schreiben wird nie von selbst
+  wiederholt;
+- liefert der Server nach einem Deploy eine andere Oberfläche aus
+  (`X-Atlas-Build`, ein Hash ihrer `index.html`): „New version available"
+  mit „Reload" — die Seite lädt nicht still neu, damit niemand eine
+  Eingabe verliert.
 
 **Was am 13.10. eingefroren war:** mit dem ganzen 5e.tools-Bestand und
 einer Kampagne, die ihre Bücher aufschaltet, suchte `inPlay` je Artikel

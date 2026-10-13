@@ -113,3 +113,17 @@ describe('the build the server ships (T-086)', () => {
     expect(b.headers['x-atlas-build']).not.toBe(a.headers['x-atlas-build']);
   });
 });
+
+describe('a server that is still reading its articles (T-086)', () => {
+  it('says so with 503 and the count, and lets sign-in through', async () => {
+    let anlauf: { artikel: number } | null = { artikel: 21576 };
+    const app = buildApp({ repo: new InMemoryRepository(seedRegistry, []), anlauf: () => anlauf });
+    const liste = await app.inject({ method: 'GET', url: '/api/list?limit=5' });
+    expect(liste.statusCode).toBe(503);
+    expect(liste.headers['retry-after']).toBe('1');
+    expect(liste.json()).toEqual({ error: 'Server is starting', starting: { articles: 21576 } });
+    expect((await app.inject({ method: 'GET', url: '/api/health' })).statusCode).toBe(200);
+    anlauf = null;
+    expect((await app.inject({ method: 'GET', url: '/api/list?limit=5' })).statusCode).not.toBe(503);
+  });
+});
