@@ -5,6 +5,7 @@ import {
   enumOptions,
   fieldTitle,
   fieldsOf,
+  linkAccepts,
   relationAccepts,
   typeChain,
   validateEntity,
@@ -257,9 +258,13 @@ describe('the statblock grows (M5)', () => {
     expect(typeChain(r, 'PlayerCharacter')).not.toContain('Proficiencies');
   });
 
-  it('names conditions it is immune to from the condition articles', () => {
+  /* T-078: ein Verweis auf den Zustandsartikel, kein Name mehr. */
+  it('links the conditions it is immune to', () => {
     const p = sb.schema?.properties['conditionImmunities'];
-    expect(enumOptions(r, p, bestand)).toEqual(['Poisoned']);
+    expect(p?.format).toBe('link');
+    expect(p?.enumRef).toBeUndefined();
+    expect(linkAccepts(r, p, 'Condition')).toBe(true);
+    expect(linkAccepts(r, p, 'Spell')).toBe(false);
   });
 
   it('equips items from the book', () => {

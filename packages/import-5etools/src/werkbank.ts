@@ -194,6 +194,13 @@ export class Werkbank {
     this.karte(e, typ)[feld] = wert;
   }
 
+  /** Eine Notiz am Artikel (`Notes.note`), für was kein Feld fasst. */
+  anmerkung(e: Entity, id: string, text: string): void {
+    const karte = this.karte(e, 'Notes');
+    const liste = Array.isArray(karte['note']) ? (karte['note'] as { id: string; value: string }[]) : [];
+    karte['note'] = [...liste.filter((n) => n.id !== id), { id, value: text }];
+  }
+
   kante(e: Entity, typ: string, ziel: string, props?: Relation['props']): void {
     const liste = (e.relations ??= []);
     if (liste.some((r) => r.type === typ && r.to === ziel && JSON.stringify(r.props ?? {}) === JSON.stringify(props ?? {}))) return;
