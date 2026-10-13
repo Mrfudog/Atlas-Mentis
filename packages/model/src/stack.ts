@@ -225,3 +225,57 @@ export function withStack(campaign: Entity, layerIds: readonly EntityId[]): Enti
   }));
   return { ...campaign, relations: [...andere, ...neu] };
 }
+
+/**
+ * **Was diese Fassung ersetzt** (E-018, T-082): die Artikel, auf die sie
+ * über `overrides` zeigt, und deren Originale — die ganze Kette zurück,
+ * nicht im Kreis. Wer auf das Original zeigt, zeigt in einer Kampagne mit
+ * dieser Fassung auf sie; die Rückbezüge der Fassung fragen darum auch
+ * nach diesen.
+ */
+export function replacedIds(entities: Map<EntityId, Entity>, entity: Entity): EntityId[] {
+  const out: EntityId[] = [];
+  const gesehen = new Set<EntityId>([entity.id]);
+  let at: Entity | undefined = entity;
+  for (let i = 0; i < 8 && at; i += 1) {
+    const ziel: EntityId | undefined = kanten(at, OVERRIDES_RELATION)[0]?.to;
+    if (!ziel || gesehen.has(ziel)) break;
+    gesehen.add(ziel);
+    out.push(ziel);
+    at = entities.get(ziel);
+  }
+  return out;
+}
+
+/** Kanten, die zum Original als Artikel gehören und an der Fassung neu entstehen. */
+const NICHT_MIT = new Set([LAYER_RELATION, OVERRIDES_RELATION, 'instanceOf', 'variantOf']);
+
+/**
+ * **Eine Fassung über der Vorlage** (E-018 a, T-082): ein neuer Artikel
+ * derselben Art mit denselben Karten und Kanten, der in der Ebene der
+ * Kampagne liegt und das Original über `overrides` ersetzt — solange diese
+ * Ebene aufgeschaltet ist (E2). Das Original bleibt, wie es ist; zurück
+ * heisst, die Fassung zu löschen.
+ *
+ * Die Kanten gehen mit (die Szene bleibt Teil ihres Kapitels, die
+ * Begegnung behält ihre Teilnehmer), ausser denen, die zum Original als
+ * Artikel gehören: Ebene, Überschreibung, Vorlage, Variante. Die Nummer
+ * vergibt der Aufrufer (`nextId`) — eine Fassung ist ein eigener Artikel.
+ */
+export function adaptedVersion(
+  original: Entity,
+  neu: { id: EntityId; number: string; layer: EntityId },
+): Entity {
+  /* Eine Kopie über JSON: das Modell kennt kein `structuredClone` (keine
+     Laufzeitbibliothek), und Karten sind ohnehin JSON. */
+  const kopie = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
+  const components = kopie(original.components ?? {});
+  components['Identity'] = { ...(components['Identity'] ?? {}), id: neu.number };
+  const mit = (original.relations ?? []).filter((r) => !NICHT_MIT.has(r.type));
+  const relations: Rel[] = [
+    ...mit.map((r, i) => ({ ...kopie(r), id: `${neu.id}~${r.type}-${i + 1}` })),
+    { id: `${neu.id}~${LAYER_RELATION}`, type: LAYER_RELATION, to: neu.layer, props: {} },
+    { id: `${neu.id}~${OVERRIDES_RELATION}`, type: OVERRIDES_RELATION, to: original.id, props: {} },
+  ];
+  return { id: neu.id, interfaces: [...(original.interfaces ?? [])], name: original.name, components, relations };
+}

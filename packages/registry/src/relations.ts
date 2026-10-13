@@ -341,7 +341,9 @@ export const relations: Record<string, RelationDef> = {
     type: 'partOf',
     label: 'part of',
     inverseLabel: 'contains',
-    from: ['Place', 'Story', 'Quest', 'Event', 'Board'],
+    /* `Encounter` (T-082): eine Begegnung hängt an ihrer Szene oder ihrem
+       Kapitel — so stand es am Typ, die Kante liess es nicht zu. */
+    from: ['Place', 'Story', 'Quest', 'Event', 'Board', 'Encounter'],
     to: ['Place', 'Story', 'Event'],
   },
 
