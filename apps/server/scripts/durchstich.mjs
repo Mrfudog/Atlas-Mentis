@@ -19,7 +19,7 @@
  */
 
 import { spawn, spawnSync } from 'node:child_process';
-import { rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -413,6 +413,42 @@ try {
     'die Kontoliste sieht nur die Verwaltung',
     (await get(leitung, '/api/users')).status === 403 && (await get(admin, '/api/users')).ok,
   );
+
+  /* Eine Migration, die entfernt, löscht nie still (T-076): eine
+     Probemigration nimmt der Probefigur ein Feld; ohne Freigabe bricht sie
+     ab und ändert nichts, mit Freigabe läuft sie und zählt den Verlust. */
+  {
+    const { migrate } = await import(join(DIST, 'migrate.js'));
+    const { default: pg } = await import('pg');
+    const pool = new pg.Pool({ connectionString: process.env['DATABASE_URL'] });
+    const ordner = mkdtempSync(join(tmpdir(), 'durchstich-verlust-'));
+    const name = 'zzz_durchstich_verlust.sql';
+    const wo = "entity_id = 'pc_probe' and type = 'PlayerCharacter'";
+    writeFileSync(
+      join(ordner, name),
+      `-- verlust: select count(*) from component where ${wo} and payload ? 'level'\n` +
+        `update component set payload = payload - 'level' where ${wo};\n`,
+    );
+    const traegt = async () =>
+      (await pool.query(`select count(*)::int n from component where ${wo} and payload ? 'level'`)).rows[0].n;
+    try {
+      let abbruch = '';
+      await migrate(pool, { env: {}, log: () => {} }, ordner).catch((e) => (abbruch = e.name));
+      pruefe('Migration, die entfernt, bricht ohne Freigabe ab', abbruch === 'DatenverlustError' && (await traegt()) === 1);
+      const gemeldet = [];
+      const lauf = await migrate(pool, { env: { ATLAS_ALLOW_DATA_LOSS: name }, log: (m) => gemeldet.push(m) }, ordner);
+      pruefe(
+        'mit Freigabe läuft sie und zählt den Verlust',
+        lauf.includes(name) && (await traegt()) === 0 && /1 Werte/.test(gemeldet.join()),
+        gemeldet.join(' | '),
+      );
+    } finally {
+      await pool.query('delete from schema_migrations where name = $1', [name]);
+      await pool.end();
+      rmSync(ordner, { recursive: true, force: true });
+    }
+  }
+
 
   /* ------------------------------------------- Eigene Ausfuhr (T-077) */
   const ausfuhr = async (keks) => {

@@ -609,6 +609,13 @@ wird — und den Abschnitt „Das Register heute" in
 Hand geändert**: eine Übersicht, die jemand abtippt, stimmt am Tag ihrer
 Entstehung und danach nie wieder.
 
+**Eine Migration, die entfernt, nennt ihre Prüfabfrage** im Kopf
+(`-- verlust: select count(*) from …`) und wird im Durchstich mit einem
+Probeartikel geprüft: ohne Freigabe bricht der Start ab, mit
+`ATLAS_ALLOW_DATA_LOSS=<migration>` läuft er und zählt den Verlust. Der
+Seed zählt selbst (`registryUsage`). Kein Schritt beim Start löscht still
+(T-076, [docs/Betrieb.md › Was Daten löschen kann](docs/Betrieb.md#was-daten-löschen-kann)).
+
 `pnpm test` läuft in zwei Projekten: `node` für Modell, Register und Server,
 `web` mit jsdom und Angulars aufgesetzter Prüfumgebung. Eine gemeinsame
 Aufsetzdatei wäre der Weg, auf dem ein Node-Test plötzlich von einem

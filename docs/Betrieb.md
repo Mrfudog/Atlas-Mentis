@@ -281,7 +281,7 @@ dort wird ausprobiert, und was zählt, steht auf prod.
 
 | Was | Was dabei verloren gehen kann | Sicherung davor | Zurück |
 | --- | --- | --- | --- |
-| **Ausrollen mit Migration** (Push auf `preprod`/`main`, `deploy.sh`) | Eine Migration baut Tabellen um; sie läuft nur vorwärts. Was sie falsch umbaut, ist danach so. | ja, `backups/<zeit>.dump` | [Zurück](#zurück): App anhalten, Datenbank aus dieser Sicherung, `./deploy.sh "$(cat previous-image)"` |
+| **Ausrollen mit Migration** (Push auf `preprod`/`main`, `deploy.sh`) | Eine Migration baut Tabellen um; sie läuft nur vorwärts. Was sie falsch umbaut, ist danach so. Entfernt sie gespeicherte Werte, bricht der Start ohne Freigabe ab ([unten](#migrationen-und-seed-löschen-nie-still)). | ja, `backups/<zeit>.dump` | [Zurück](#zurück): App anhalten, Datenbank aus dieser Sicherung, `./deploy.sh "$(cat previous-image)"` |
 | **Einlesen mit `--replace`** (`import.sh`, `import.js`) | **Alles**, was nicht in der Datei steht — auch die eigenen Kampagnenartikel. | ja, `backups/<zeit>-vor-import.dump` (nicht bei `--dry-run`) | wie [Zurück](#zurück), mit der Sicherung `…-vor-import.dump`; das Abbild bleibt, `deploy.sh` ist nicht nötig, nur `docker compose start app` |
 | **Einlesen mit `--replace-layer`** (Pipeline „5e.tools einlesen", Art `replace-layer`, verlangt `confirm=ersetzen`) | Was die Ebene der Datei bringt und in der Datei fehlt, **und eigene Änderungen an ihren Artikeln**. | ja, wie oben | wie oben |
 | **Massenänderung** (Werkbank › Bulk change, `POST /api/bulk`) | Felder, Marken, Kanten an vielen Artikeln; mit `merge` und `mode: delete` auch Artikel. | die alten Fassungen stehen im Lauf selbst | Werkbank › Undo (`POST /api/bulk/<id>/undo`). Wurde ein Artikel seither geändert, sagt es das (409) — mit `force` gewinnt die alte Fassung. |
@@ -298,6 +298,59 @@ docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"'
 **Sicher** ist: `--only-new` (die Vorgabe der Pipeline, legt nur an, D71),
 `--dry-run` und die Vorschau einer Massenänderung — sie schreiben nichts
 oder nur Neues.
+
+### Migrationen und Seed löschen nie still
+
+Beim Start gehen gespeicherte Werte auf drei Wegen verloren, und keiner davon still
+(T-076, REQ-191):
+
+- **Eine Migration**, die Karten, Felder, Kanten oder Zeilen entfernt
+  (`delete from`, `drop column`, `payload - '…'`). Sie nennt im Kopf ihre
+  **Prüfabfrage** — je Zeile `-- verlust: select count(*) from …`, eine Zahl:
+  wie viele gespeicherte Werte sie entfernt. Ein Test verlangt sie an jeder
+  neuen Migration, die entfernt.
+- **Der Seed beim Start**, wenn er einen Registerteil schreibt, der eine
+  Art, ein Feld, einen Listenwert oder eine Kantenart nicht mehr hat, die
+  der Bestand trägt (gezählt mit `registryUsage`). Heute füllt er nur nach
+  und ordnet um; der Schutz gilt für den Tag, an dem er mehr tut.
+- **Das Register von Hand** (`/registry`): dort zählt die Seite vorher und
+  fragt. Das ist eine Entscheidung im Moment und kein Start.
+
+Zählt eine Migration oder der Seed etwas, **bricht der Start ab**, und
+zwar bevor sie etwas ändert — die Migration läuft in ihrer Transaktion
+gar nicht erst an. Im Log steht, was betroffen ist und wie oft, und wie
+man freigibt:
+
+```
+024_beispiel.sql würde gespeicherte Werte entfernen:
+  - select count(*) from component where …: 12
+Abgebrochen, nichts geändert. Freigeben für genau diesen Lauf mit ATLAS_ALLOW_DATA_LOSS=024_beispiel.sql …
+```
+
+Auf dem Server heisst das: `deploy.sh` meldet „Nicht gesund", der
+Container startet immer wieder und bricht jedes Mal an derselben Stelle ab.
+Dann entweder **freigeben** — für genau diesen Lauf, nicht in `.env`:
+
+```bash
+cd /srv/atlas/prod
+ATLAS_ALLOW_DATA_LOSS=024_beispiel.sql ./deploy.sh "$(sed -n 's/^IMAGE=//p' .env)"
+```
+
+— der Start läuft dann und schreibt den Verlust als Warnung ins Log
+(`024_beispiel.sql: freigegebener Verlust, 12 Werte — …`). Oder **zurück**
+aufs vorige Abbild (unten). Die abgebrochene Migration hat nichts
+geändert; Migrationen *davor* im selben Lauf aber schon — dann gehört die
+Sicherung von davor mit zurück.
+
+`ATLAS_ALLOW_DATA_LOSS` ist eine Liste mit Kommas: Dateinamen der
+Migrationen (mit oder ohne `.sql`) und `seed`. Die Compose-Dateien reichen
+die Variable aus der Shell durch; steht sie nicht da, ist nichts
+freigegeben. Die Sicherung vor dem Ausrollen läuft ohnehin.
+
+Wer eine Migration schreibt, die entfernt, prüft sie im Durchstich mit
+einem Probeartikel: er hält ein Feld, die Migration bricht ohne Freigabe
+ab, mit Freigabe läuft sie und zählt (`apps/server/scripts/durchstich.mjs`
+tut es mit einer Probemigration vor).
 
 ## 5e.tools laden
 

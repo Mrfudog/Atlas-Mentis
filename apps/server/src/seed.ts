@@ -4,30 +4,60 @@
  */
 
 import { seedRegistry } from '@nw/registry';
-import type { InterfaceDef } from '@nw/model';
+import type { InterfaceDef, Registry } from '@nw/model';
 import type { Repository } from './repo.js';
+import { pruefeVerlust, registerVerlust, type VerlustOptionen } from './verlust.js';
 
-export async function seedRegistryInto(repo: Repository): Promise<void> {
+/**
+ * Einen Registerteil schreiben, aber nie still etwas wegnehmen, das der
+ * Bestand trägt (T-076): fällt eine Art, ein Feld, ein Listenwert oder
+ * eine Kantenart weg, die in Artikeln steht, bricht der Start ab — es sei
+ * denn, `ATLAS_ALLOW_DATA_LOSS` nennt `seed`. Dann wird gezählt und
+ * geschrieben.
+ */
+export async function schreibeRegisterteil<K extends keyof Registry>(
+  repo: Repository,
+  part: K,
+  value: Registry[K],
+  verlust: VerlustOptionen = {},
+): Promise<void> {
+  const betroffen = await registerVerlust(await repo.getRegistry(), part, value, () =>
+    repo.listEntities(),
+  );
+  pruefeVerlust('seed', betroffen, verlust);
+  await repo.putRegistryPart(part, value);
+}
+
+export async function seedRegistryInto(
+  repo: Repository,
+  verlust: VerlustOptionen = {},
+  seed: Registry = seedRegistry,
+): Promise<void> {
   const current = await repo.getRegistry();
+  const schreibe = <K extends keyof Registry>(part: K, value: Registry[K]) =>
+    schreibeRegisterteil(repo, part, value, verlust);
   /* Aufzählungen und Einstellungen kamen später an den Server (Migration
      019): eine Datenbank, die schon Arten hat, bekommt sie beim nächsten
      Start nachgefüllt — aber nur, solange der Teil leer ist. Was jemand
      am Server geändert hat, bleibt. */
-  if (!Object.keys(current.enums ?? {}).length && seedRegistry.enums) {
-    await repo.putRegistryPart('enums', seedRegistry.enums);
+  if (!Object.keys(current.enums ?? {}).length && seed.enums) {
+    await schreibe('enums', seed.enums);
   }
-  if (!Object.keys(current.settings ?? {}).length && seedRegistry.settings) {
-    await repo.putRegistryPart('settings', seedRegistry.settings);
+  if (!Object.keys(current.settings ?? {}).length && seed.settings) {
+    await schreibe('settings', seed.settings);
   }
   if (Object.keys(current.interfaces).length) {
-    await ordneFelder(repo, current.interfaces);
+    await ordneFelder(repo, current.interfaces, seed);
     return;
   }
 
-  await repo.putRegistryPart('interfaces', seedRegistry.interfaces);
-  await repo.putRegistryPart('relations', seedRegistry.relations);
-  await repo.putRegistryPart('views', seedRegistry.views);
-  await repo.putRegistryPart('vars', seedRegistry.vars);
+  /* Eine Datenbank ohne Arten bekommt die Startzeilen ganz — stehen dort
+     aber schon Kanten einer Art, die der Seed nicht kennt, wäre das ein
+     stiller Verlust. */
+  await schreibe('interfaces', seed.interfaces);
+  await schreibe('relations', seed.relations);
+  await schreibe('views', seed.views);
+  await schreibe('vars', seed.vars);
 }
 
 /**
@@ -44,12 +74,13 @@ export async function seedRegistryInto(repo: Repository): Promise<void> {
 export async function ordneFelder(
   repo: Repository,
   interfaces: Record<string, InterfaceDef>,
+  seed: Registry = seedRegistry,
 ): Promise<boolean> {
   let verschoben = false;
   const neu: Record<string, InterfaceDef> = {};
   for (const [name, def] of Object.entries(interfaces)) {
     const props = def.schema?.properties;
-    const vorbild = seedRegistry.interfaces[name]?.schema?.properties;
+    const vorbild = seed.interfaces[name]?.schema?.properties;
     if (!props || !vorbild) {
       neu[name] = def;
       continue;
