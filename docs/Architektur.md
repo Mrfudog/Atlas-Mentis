@@ -88,6 +88,23 @@ flowchart LR
 antwortet. Das vorige Abbild steht in `previous-image`, zurück ist ein
 Befehl.
 
+**5e.tools einlesen** ist ein eigener Lauf (`import-5etools.yml`, W8): von
+Hand, oder aus `ci.yml` nach dem Ausrollen von dev, wenn sich
+`packages/import-5etools` geändert hat. Prod nie von selbst.
+
+```mermaid
+flowchart LR
+  ausl[von Hand: dev oder prod<br/>CI nach deploy: nur dev] --> job
+  subgraph gha[GitHub Actions · import-5etools.yml]
+    job[import<br/>model, registry, import-5etools bauen]
+    src[(5etools-src/data<br/>zur Laufzeit geklont,<br/>nie im Repository)]
+    src --> job
+  end
+  job -- scp import.sh,<br/>5etools-2014.json.gz --> srv[Hetzner]
+  job -- ssh: import.sh … --replace-layer --> srv
+  srv -- sichern, docker compose cp,<br/>exec import.js, Datei löschen --> app[app-Container]
+```
+
 ---
 
 ## 3. Frameworks und Werkzeuge
@@ -125,13 +142,13 @@ atlas-mentis/
 ├── packages/
 │   ├── model/           @nw/model    Typen, Prüfung, Rechnen, Sichtbarkeit — kein Framework
 │   ├── registry/        @nw/registry die Registerzeilen (einzige Quelle) + Skripte
-│   └── import-5etools/  @nw/import-5etools  einmaliger Import aus 5e.tools (P5)
+│   └── import-5etools/  @nw/import-5etools  Import aus 5e.tools (P5), läuft in der Pipeline (W8)
 ├── prototype/           Einzeldatei-Prototyp (Artefakt auf claude.ai), Prüfbestand, Migrationsskripte
 ├── legacy/              alte React-App (Vite + Express) — läuft, bis Karte und Initiative neu stehen
-├── deploy/              bootstrap.sh, deploy.sh, proxy/ (Caddy)
+├── deploy/              bootstrap.sh, deploy.sh, import.sh, proxy/ (Caddy)
 ├── docs/                Datenmodell, Begriffe, Betrieb, Arbeitsplan, Bericht, diese Seite
 ├── VTT/  Ideen/  .obsidian/   der Obsidian-Vault (Anforderungen, Entscheidungen)
-├── .github/workflows/ci.yml
+├── .github/workflows/   ci.yml, import-5etools.yml
 ├── Dockerfile           mehrstufig: Build (alles) → Laufzeit (nur Server + gebaute Oberfläche)
 ├── docker-compose.yml           prod  (main,    Port 8080)
 └── docker-compose.preprod.yml   dev   (preprod, Port 8081)
@@ -209,6 +226,7 @@ Durchstich in CI prüft `PgRepository` gegen eine echte Postgres.
 | `GET /api/entities` · `GET /api/entities/:id` | Artikel, **gesiebt** |
 | `GET /api/entities?as=summary` | die Kurzfassung aller Artikel (`summaryOf`) — für Liste, Verweise, Auswahlen |
 | `GET /api/entities/:id/backlinks` | wer auf den Artikel zeigt (Kurzfassung + Kante), gesiebt |
+| `GET /api/classes/:id` | eine Klasse samt Unterklassen, Stufentabellen und den Merkmalen, die eine davon gewährt oder einbettet (`classParts`), gesiebt — die Klassenansicht (W6) in einer Antwort |
 | `PUT /api/entities/:id` · `DELETE /api/entities/:id` | schreiben, immer durch `validateEntity` |
 | `POST /api/validate` | prüfen ohne zu speichern |
 
@@ -268,7 +286,7 @@ Zeilen daneben. Eine neue Artikelart ist eine Zeile, keine Migration.
 ```mermaid
 flowchart TB
   subgraph angular[apps/web · Angular 21, Standalone, Signals]
-    router[app.routes.ts<br/>/login · / · /artikel/:id · /registry]
+    router[app.routes.ts<br/>/login · / · /artikel/:id · /registry · /classes · /classes/:id]
     wache[kern/wache.ts<br/>Route-Guard: angemeldet?]
     subgraph seiten[Seiten, lazy geladen]
       login[login/login.ts]
@@ -278,6 +296,7 @@ flowchart TB
       text[artikel/text.ts<br/>Markdown, Verweise, Würfel]
       register[register/register.ts<br/>Typen · Kanten · Listen]
       regtyp[register/typ.ts · feld.ts<br/>ein Typ auf einer Fläche]
+      klassen[klassen/klasse.ts<br/>Klassenansicht: Tabelle, Merkmale je Stufe,<br/>Unterklassen filtern und vergleichen]
     end
     subgraph kern[kern/ · Dienste]
       api[api.ts<br/>HttpClient → /api]
@@ -287,9 +306,11 @@ flowchart TB
   end
   model[["@nw/model<br/>views · calc · markdown · inline"]]
   router --> wache --> session
-  router --> login & liste & artikel & register
+  router --> login & liste & artikel & register & klassen
   register --> regtyp --> bestand
   artikel --> felder & text
+  klassen --> text
+  klassen -->|"GET /api/classes/:id"| api
   liste & artikel --> bestand --> api
   login --> session --> api
   felder & text --> model
@@ -338,6 +359,7 @@ nicht mehr; Seitenweise laden ist eine offene Frage für die Zeit nach P6.
 | `visibility.ts` | `articleVisible`: Rolle am Tisch, `audience`, `revealedTo`, `hiddenFrom` |
 | `knowledge.ts` | `redactEntity`: welche Felder ein Träger kennt, Fraktionsränge |
 | `usage.ts` | `registryUsage`: was der Bestand an jeder Registerzeile trägt — für das Register vor dem Löschen |
+| `classes.ts` | die Klassenansicht (W6): Merkmale je Stufe aus `grants`, Übungsbonus, eingebettete Merkmale (ein Verweis allein im Absatz), Stufentabelle mit Zusatzspalten |
 
 ---
 
@@ -349,7 +371,7 @@ flowchart LR
   reg -- catalogue --> docs1[docs/Artikeltypen.md<br/>Datenmodell.md › Register heute]
   vault[VTT/Requirements.md] -- anforderungen --> docs2[docs/Anforderungen.md<br/>VTT/Umsetzung.md]
   ft[(5etools-src/data<br/>ausserhalb des Repos)] -- import-5etools --> datei[Ausfuhrdatei<br/>~35 MB, nicht eingecheckt]
-  datei -->|"server import --replace"| pg[(Postgres)]
+  datei -->|"server import --replace-layer"| pg[(Postgres)]
   datei -->|"--sample"| seed
 ```
 

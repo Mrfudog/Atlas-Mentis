@@ -215,9 +215,15 @@ export function voraussetzung(wb: Werkbank, roh: unknown): string {
   return teile.filter(Boolean).join('; or ');
 }
 
-/** Die Stufentabelle einer Klasse als `Table` mit `tableFor` (M8). */
-function klassentabelle(wb: Werkbank, klasse: Entity, e: Knoten): void {
-  const gruppen = liste(e['classTableGroups']) as Knoten[];
+/**
+ * Die Stufentabelle einer Klasse als `Table` mit `tableFor` (M8) — und
+ * dieselbe für eine Unterklasse, wo sie eigene Spalten bringt
+ * (`subclassTableGroups`: Eldritch Knight, Arcane Trickster). Die
+ * Klassenansicht hängt diese Spalten an die Tabelle der Klasse, sobald die
+ * Unterklasse gewählt ist, wie 5e.tools es tut.
+ */
+function klassentabelle(wb: Werkbank, klasse: Entity, e: Knoten, feld: 'classTableGroups' | 'subclassTableGroups' = 'classTableGroups'): void {
+  const gruppen = liste(e[feld]) as Knoten[];
   if (!gruppen.length) return;
   const spalten = ['Level'];
   const zeilen: string[][] = Array.from({ length: 20 }, (_, i) => [String(i + 1)]);
@@ -238,7 +244,7 @@ function klassentabelle(wb: Werkbank, klasse: Entity, e: Knoten): void {
       }
     }
   }
-  const t = wb.anlegen('Table', `${klasse.name} Table`, `classTable|${klasse.id}`, e);
+  const t = wb.anlegen('Table', `${klasse.name} Table`, `${feld === 'classTableGroups' ? 'classTable' : 'subclassTable'}|${klasse.id}`, e);
   wb.feld(t, 'Table', 'kind', 'generic');
   wb.feld(t, 'Table', 'columns', spalten);
   wb.feld(t, 'Table', 'rows', zeilen.map((z) => ({ cells: z, text: z.slice(1).join(' · ') })));
@@ -373,6 +379,7 @@ export const CHARAKTERBAU: Zuordnung[] = [
       if (klasse) wb.kante(ent, 'subclassOf', klasse.id);
       else wb.ctx.insLeere('class', `${String(e['className'])}|${String(e['classSource'])}`);
       gewaehrt(wb, ent, e['subclassFeatures'], 'subclassFeature');
+      klassentabelle(wb, ent, e, 'subclassTableGroups');
       zusatzzauber(wb, ent, e['additionalSpells']);
       const f = wb.fluff('subclassFluff', String(e['name']), String(e['source']));
       if (f) wb.lore(ent, wb.text(f['entries']));

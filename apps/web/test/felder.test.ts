@@ -9,7 +9,16 @@
 
 import { describe, expect, it } from 'vitest';
 import { seedRegistry } from '@nw/registry';
-import { ausEingabe, eingabeArt, inEingabe, kantenAusEntwurf } from '../src/app/artikel/felder';
+import { parseMarkdown } from '@nw/model';
+import {
+  anzeigeWert,
+  ausEingabe,
+  eingabeArt,
+  inEingabe,
+  kantenAusEntwurf,
+  sindZeilen,
+  tabelleAlsText,
+} from '../src/app/artikel/felder';
 
 describe('eingabeArt', () => {
   it('reads the kind out of the registry, not out of the field name', () => {
@@ -17,7 +26,7 @@ describe('eingabeArt', () => {
     expect(eingabeArt(map['kind'])).toBe('auswahl'); // hat ein enum
     expect(eingabeArt(map['gridSize'])).toBe('zahl');
     expect(eingabeArt(map['fog'])).toBe('jaNein');
-    expect(eingabeArt(map['reveal'])).toBe('liste');
+    expect(eingabeArt(map['reveal'])).toBe('json'); // Liste von Objekten (W1)
     expect(eingabeArt(map['scale'])).toBe('text');
     const beschr = seedRegistry.interfaces.Description.schema?.properties ?? {};
     expect(eingabeArt(beschr['description'])).toBe('lang'); // format: long
@@ -113,5 +122,82 @@ describe('kantenAusEntwurf', () => {
     const raus = kantenAusEntwurf(entwurf);
     entwurf[0]!.props['qty'] = 99;
     expect(raus[0]?.props['qty']).toBe(2);
+  });
+});
+
+/* W1: was als „[object Object]" in der Feldtabelle stand. */
+describe('anzeigeWert', () => {
+  it('writes an object as its entries, a number with its sign', () => {
+    expect(anzeigeWert({ str: 2, cha: 1 })).toBe('str +2, cha +1');
+    expect(anzeigeWert({ int: 5, History: -1 })).toBe('int +5, History -1');
+    expect(anzeigeWert({ CREATURE: 'the creature' })).toBe('CREATURE: the creature');
+  });
+
+  it('keeps lists and plain values as they were', () => {
+    expect(anzeigeWert(['Common', 'Draconic'])).toBe('Common, Draconic');
+    expect(anzeigeWert(30)).toBe('30');
+    expect(anzeigeWert([{ a: 1 }, { b: 'x' }])).toBe('a +1; b: x');
+    expect(anzeigeWert(undefined)).toBe('');
+  });
+
+  it('never prints [object Object]', () => {
+    expect(anzeigeWert({ nested: { deep: [1, { x: 2 }] } })).not.toContain('[object Object]');
+  });
+});
+
+describe('tabelleAlsText', () => {
+  const zeilen = [
+    { cells: ['1', '[[item-0263|Black opal]] (dark green)'], text: '…', weight: 1 },
+    { cells: ['2', 'A | B'] },
+    { cells: ['3'] },
+  ];
+
+  it('recognises table rows and nothing else', () => {
+    expect(sindZeilen(zeilen)).toBe(true);
+    expect(sindZeilen(['a', 'b'])).toBe(false);
+    expect(sindZeilen([])).toBe(false);
+  });
+
+  it('reads back through parseMarkdown with the link whole and the bar in the text escaped', () => {
+    const [b] = parseMarkdown(tabelleAlsText(['d8', 'Stone Description'], zeilen));
+    expect(b).toMatchObject({
+      kind: 'table',
+      head: ['d8', 'Stone Description'],
+      rows: [
+        ['1', '[[item-0263|Black opal]] (dark green)'],
+        ['2', 'A | B'],
+        ['3', ''],
+      ],
+    });
+  });
+
+  it('keeps a row wider than the head', () => {
+    const [b] = parseMarkdown(tabelleAlsText(['d6'], [{ cells: ['1', 'extra'] }]));
+    expect(b).toMatchObject({ kind: 'table', rows: [['1', 'extra']] });
+  });
+});
+
+/* W1: ein Objekt in der Maske hiess „[object Object]" und wurde so gespeichert. */
+describe('Objektfelder in der Maske', () => {
+  const ancestry = seedRegistry.interfaces.Ancestry?.schema?.properties ?? {};
+  const table = seedRegistry.interfaces.Table?.schema?.properties ?? {};
+
+  it('offers JSON for an object or a list of objects', () => {
+    expect(eingabeArt(ancestry['abilityBonus'])).toBe('json');
+    expect(eingabeArt(table['rows'])).toBe('json');
+    expect(eingabeArt(table['columns'])).toBe('liste');
+  });
+
+  it('round-trips the value instead of writing [object Object]', () => {
+    const bonus = { str: 2, cha: 1 };
+    expect(ausEingabe(ancestry['abilityBonus'], inEingabe(bonus))).toEqual(bonus);
+    const zeilen = [{ cells: ['1', '[[item-0263|Black opal]]'], weight: 1 }];
+    expect(ausEingabe(table['rows'], inEingabe(zeilen))).toEqual(zeilen);
+    expect(inEingabe(['a', 'b'])).toBe('a, b');
+  });
+
+  it('keeps unreadable JSON as text so validation can say so', () => {
+    expect(ausEingabe(ancestry['abilityBonus'], '{str: 2')).toBe('{str: 2');
+    expect(ausEingabe(ancestry['abilityBonus'], '  ')).toBeUndefined();
   });
 });

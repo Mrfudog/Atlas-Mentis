@@ -9,9 +9,11 @@ import { BEREICHE } from './kern/bereiche';
  *
  * Die Kopfleiste trägt die Navigation für alles; das Kompendium und die
  * Bereiche engen **in ihrer Seitenleiste** ein (Wunsch der Leitung,
- * 12.10.). Boards, Karten und Spiel stehen noch nicht hier, weil es sie in
- * dieser Oberfläche noch nicht gibt — ein Eintrag, der ins Leere führt,
- * ist schlechter als keiner. Sie kommen mit ihren Seiten.
+ * 12.10.). Boards stehen vorne, wie auf `Board.dc.html` — sie sind, was
+ * man vor und während der Sitzung offen hat. Karten und Spiel stehen noch
+ * nicht hier, weil es sie in dieser Oberfläche noch nicht gibt — ein
+ * Eintrag, der ins Leere führt, ist schlechter als keiner. Sie kommen mit
+ * ihren Seiten.
  *
  * Das Register steht nur für wen es ändern darf (Verwaltung, Leitung der
  * laufenden Kampagne) — lesen kann es jeder über die Adresse, aber ein
@@ -29,11 +31,13 @@ import { BEREICHE } from './kern/bereiche';
       <header class="leiste">
         <a routerLink="/" class="marke">Atlas Mentis</a>
         <nav aria-label="Areas" class="bereiche">
+          <a routerLink="/boards" routerLinkActive="an" ariaCurrentWhenActive="page">Boards</a>
           @for (b of bereiche; track b.weg) {
             <a [routerLink]="'/' + b.weg" routerLinkActive="an" ariaCurrentWhenActive="page">{{
               b.label
             }}</a>
           }
+          <a routerLink="/classes" routerLinkActive="an" ariaCurrentWhenActive="page">Classes</a>
           <a routerLink="/compendium" routerLinkActive="an" ariaCurrentWhenActive="page"
             >Compendium</a
           >

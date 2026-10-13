@@ -1028,3 +1028,88 @@ describe('knowledge shared with the party', () => {
     expect(seedRegistry.relations.partyOf.cardinality).toBe('one');
   });
 });
+
+/* ---- Die Klassenansicht (W6) ----
+   Eine Antwort für die ganze Klasse — gesiebt wie jede andere. Ein
+   Merkmal, das nur eine verborgene Unterklasse gewährt, darf nicht
+   mitkommen: es verriete, dass es sie gibt. */
+describe('the class view', () => {
+  const merkmal = (id: string, name: string, text = 'Text.'): Entity => ({
+    id,
+    interfaces: ['Feature'],
+    name,
+    components: {
+      Identity: { name, id: `feature-${id}`, aliases: [] }, Status: { status: 'ready' },
+      Prose: { paragraph: [{ id: 'text', value: text }] },
+    },
+    relations: [],
+  });
+  const klasse: Entity = {
+    id: 'c_wiz',
+    interfaces: ['Class'],
+    name: 'Wizard',
+    components: { Identity: { name: 'Wizard', id: 'class-0001', aliases: [] }, Status: { status: 'ready' } },
+    relations: [{ id: 'g1', type: 'grants', to: 'f_rec', props: { level: 1 } }],
+  };
+  const offen: Entity = {
+    id: 's_abj',
+    interfaces: ['Subclass'],
+    name: 'School of Abjuration',
+    components: { Identity: { name: 'School of Abjuration', id: 'subclass-0001', aliases: [] }, Status: { status: 'ready' } },
+    relations: [
+      { id: 's1', type: 'subclassOf', to: 'c_wiz' },
+      { id: 's2', type: 'grants', to: 'f_kopf', props: { level: 2 } },
+    ],
+  };
+  const geheim: Entity = {
+    id: 's_geh',
+    interfaces: ['Subclass'],
+    name: 'School of Secrets',
+    components: {
+      Identity: { name: 'School of Secrets', id: 'subclass-0002', aliases: [] }, Status: { status: 'ready' },
+      Visibility: { audience: 'gm' },
+    },
+    relations: [
+      { id: 's3', type: 'subclassOf', to: 'c_wiz' },
+      { id: 's4', type: 'grants', to: 'f_geh', props: { level: 2 } },
+    ],
+  };
+  const bestand = [
+    rook, inv, klasse, offen, geheim,
+    merkmal('f_rec', 'Arcane Recovery'),
+    merkmal('f_kopf', 'School of Abjuration', 'Abjurers.\n\n[[feature-f_sav|Abjuration Savant]]'),
+    merkmal('f_sav', 'Abjuration Savant'),
+    merkmal('f_geh', 'Whisper'),
+    merkmal('f_los', 'Nobody grants this'),
+  ];
+
+  async function holt(wer: string, id = 'c_wiz') {
+    const repo = new InMemoryRepository(seedRegistry, bestand);
+    const app = buildApp({ repo });
+    await addUser(repo, 'Basil', { admin: true });
+    await addUser(repo, 'Sela', { actorId: 'pc_rook' });
+    const keks = cookieOf(await login(app, wer));
+    return app.inject({ method: 'GET', url: `/api/classes/${id}`, headers: { cookie: keks } });
+  }
+  const namen = (l: Entity[]) => l.map((e) => e.name).sort();
+
+  it('sends the class with its subclasses and the features they grant or embed', async () => {
+    const res = await holt('Basil');
+    expect(res.statusCode).toBe(200);
+    const b = res.json() as { class: Entity; subclasses: Entity[]; features: Entity[] };
+    expect(b.class.name).toBe('Wizard');
+    expect(namen(b.subclasses)).toEqual(['School of Abjuration', 'School of Secrets']);
+    expect(namen(b.features)).toEqual(['Abjuration Savant', 'Arcane Recovery', 'School of Abjuration', 'Whisper']);
+  });
+
+  it('keeps a hidden subclass and what only it grants away from a player', async () => {
+    const b = (await holt('Sela')).json() as { subclasses: Entity[]; features: Entity[] };
+    expect(namen(b.subclasses)).toEqual(['School of Abjuration']);
+    expect(namen(b.features)).not.toContain('Whisper');
+  });
+
+  it('404s what is not a class', async () => {
+    expect((await holt('Basil', 's_abj')).statusCode).toBe(404);
+    expect((await holt('Basil', 'gibt-es-nicht')).statusCode).toBe(404);
+  });
+});

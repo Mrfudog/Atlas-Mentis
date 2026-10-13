@@ -61,7 +61,8 @@ function datenstand(): Datenstand {
     classFeatures: ['Second Wind|Fighter||1', 'Ability Score Improvement|Fighter||4', 'Ability Score Improvement|Fighter||6'],
     subclassTitle: 'Martial Archetype',
   });
-  add('subclass', { name: 'Champion', shortName: 'Champion', source: 'PHB', className: 'Fighter', classSource: 'PHB', subclassFeatures: ['Improved Critical|Fighter||Champion||3'] });
+  add('subclass', { name: 'Champion', shortName: 'Champion', source: 'PHB', className: 'Fighter', classSource: 'PHB', subclassFeatures: ['Improved Critical|Fighter||Champion||3'],
+    subclassTableGroups: [{ subclasses: [{ name: 'Champion', source: 'PHB' }], colLabels: ['{@filter Spells Known|spells}'], rows: Array.from({ length: 20 }, (_, i) => [i < 2 ? 0 : i + 1]) }] });
   add('table', { name: 'Trinkets', source: 'PHB', colLabels: ['d6', 'Trinket'], rows: [['1-3', 'A {@item scimitar|phb}'], ['4-6', 'A button']] });
   add('vehicle', { name: 'Galley', source: 'GoS' });
   return {
@@ -123,7 +124,7 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
     expect(teile[1]!.components['Action']?.['toHit']).toBeUndefined();
     const kante = goblin.relations!.find((r) => r.to === teile[1]!.id)!;
     expect(kante.props).toBeUndefined();
-    expect(prosa(teile[0]!)).toBe('The {CREATURE} can take the [[action-0001|Disengage]] action as a bonus action.');
+    expect(prosa(teile[0]!)).toBe('{CREATURE} can take the [[action-0001|Disengage]] action as a bonus action.');
     expect(goblin.relations?.some((r) => r.type === 'equips')).toBe(true);
   });
 
@@ -131,7 +132,7 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
     const pack = es.filter((e) => e.name === 'Pack Tactics');
     expect(pack).toHaveLength(1);
     const kanten = es.flatMap((e) => (e.relations ?? []).filter((r) => r.to === pack[0]!.id).map((r) => r.props?.vars?.['CREATURE']));
-    expect(kanten.sort()).toEqual(['jackal', 'wolf']);
+    expect(kanten.sort()).toEqual(['the jackal', 'the wolf']);
     /* Der Goblin Boss ist eine Kopie des Goblins: „the goblin boss" wird
        ebenso `{CREATURE}`, also teilen beide Nimble Escape und Scimitar. */
     expect(bericht.geteilt).toMatchObject({ merkmale: 3, verwendungen: 3 });
@@ -175,6 +176,16 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
     expect(fighter.components['ProficiencyChoice']).toMatchObject({ chooseFrom: ['Stealth'], chooseCount: 1 });
     const champion = finde(es, 'Subclass', 'Champion');
     expect(champion.relations?.find((r) => r.type === 'subclassOf')?.to).toBe(fighter.id);
+  });
+
+  it('legt die Zusatzspalten einer Unterklasse als eigene Tabelle an (W6)', () => {
+    const champion = finde(es, 'Subclass', 'Champion');
+    const t = finde(es, 'Table', 'Champion Table');
+    expect(champion.relations?.find((r) => r.type === 'tableFor')?.to).toBe(t.id);
+    expect(t.components['Table']).toMatchObject({ columns: ['Level', 'Spells Known'] });
+    const zeilen = t.components['Table']!['rows'] as { cells: string[] }[];
+    expect(zeilen[0]!.cells).toEqual(['1', '—']);
+    expect(zeilen[2]!.cells).toEqual(['3', '3']);
   });
 
   it('gibt einer Würfeltabelle Spalten, Gewichte und den Würfel', () => {
