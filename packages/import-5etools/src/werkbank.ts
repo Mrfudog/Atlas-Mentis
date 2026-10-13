@@ -98,6 +98,16 @@ const VORGABE_QUELLE: Record<string, string> = {
 
 const klein = (s: unknown) => String(s ?? '').trim().toLowerCase();
 
+/**
+ * Die Peg-Id der Ebene eines Buchs (T-081): aus dem Kürzel und nicht aus
+ * einem Hash, damit die Server-Migration (`026_ebene_je_buch.sql`) dieselbe
+ * Id bildet — sonst legte ein späteres `--only-new` jedes Buch ein zweites
+ * Mal an.
+ */
+export function buchEbeneId(quelle: string): string {
+  return `e5_book_${quelle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')}`;
+}
+
 export class Werkbank {
   readonly entities: Entity[] = [];
   readonly bericht: Bericht = neuerBericht();
@@ -106,8 +116,10 @@ export class Werkbank {
   private readonly nachName = new Map<string, Entity[]>();
   /** Peg → Bücher, in die der Eintrag neu gedruckt wurde (`reprintedAs`, `doppel.ts`). */
   readonly nachdrucke = new Map<string, string[]>();
-  /** Die Systemebene, in der alles liegt (Arbeitsplan §1). */
+  /** Die Systemebene: was keine Quelle nennt (die Aktionsarten), liegt hier (Arbeitsplan §1). */
   ebene: Entity | undefined;
+  /** Die Ebene des Buchs, aus dem ein Eintrag kommt (T-081, E-017); angelegt beim ersten Eintrag. */
+  buchEbene: ((quelle: string) => Entity | undefined) | undefined;
   /** Die Art, die gerade gefüllt wird — für Zählungen aus dem Text. */
   aktuelleArt = '';
 
@@ -157,7 +169,12 @@ export class Werkbank {
       relations: [],
     };
     if (eintrag) this.quelle(e, eintrag);
-    if (this.ebene) this.kante(e, 'inLayer', this.ebene.id);
+    /* Je Buch eine Ebene (E-017): eine Kampagne schaltet die Bücher auf,
+       die sie nutzt. Ohne Quelle bleibt es die Systemebene. */
+    if (this.ebene && typ !== 'Layer') {
+      const buch = eintrag ? this.buchEbene?.(quelleVon(eintrag)) : undefined;
+      this.kante(e, 'inLayer', (buch ?? this.ebene).id);
+    }
     this.entities.push(e);
     zaehle(this.bericht.typen, typ);
     return e;
@@ -192,6 +209,13 @@ export class Werkbank {
     if (Array.isArray(wert) && !wert.length) return;
     if (typeof wert === 'number' && !Number.isFinite(wert)) return;
     this.karte(e, typ)[feld] = wert;
+  }
+
+  /** Eine Notiz am Artikel (`Notes.note`), für was kein Feld fasst. */
+  anmerkung(e: Entity, id: string, text: string): void {
+    const karte = this.karte(e, 'Notes');
+    const liste = Array.isArray(karte['note']) ? (karte['note'] as { id: string; value: string }[]) : [];
+    karte['note'] = [...liste.filter((n) => n.id !== id), { id, value: text }];
   }
 
   kante(e: Entity, typ: string, ziel: string, props?: Relation['props']): void {

@@ -196,6 +196,8 @@ export interface StatblockContext {
   skillAbility?: (name: string) => string | undefined;
   /** Welche Art ein Name aus `proficient` ist (`Skill`, `Language` …). */
   kindOf?: (name: string) => string | undefined;
+  /** Der Name eines Verweisziels (`conditionImmunities`, T-078). */
+  nameOf?: (id: string) => string | undefined;
 }
 
 const STATBLOCK_PLACED = new Set([
@@ -311,7 +313,10 @@ export function statblockBook(
   satz('Damage Vulnerabilities', 'vulnerabilities');
   satz('Damage Resistances', 'resistances');
   satz('Damage Immunities', 'immunities');
-  const zustaende = list(sb['conditionImmunities']);
+  /* Verweise auf `Condition`-Artikel (T-078); was keinen Namen bekommt,
+     steht, wie es dasteht — ein alter Name aus einer Sicherung liest sich
+     so weiter. */
+  const zustaende = list(sb['conditionImmunities']).map((z) => ctx.nameOf?.(z) ?? z);
   if (zustaende.length) {
     details.push({ label: 'Condition Immunities', text: zustaende.join(', '), ref: 'Statblock.conditionImmunities' });
   }
@@ -639,7 +644,12 @@ function wuerfel(expr: string): string {
 }
 
 /** Der Kopf eines Gegenstands, wie im Spielleiterhandbuch. */
-export function itemBook(registry: BookRegistry, entity: Entity, typeLabel = ''): ItemBook {
+export function itemBook(
+  registry: BookRegistry,
+  entity: Entity,
+  typeLabel = '',
+  nameOf: (id: string) => string | undefined = () => undefined,
+): ItemBook {
   const it = (entity.components?.['Item'] ?? {}) as Card;
   const wp = entity.components?.['Weapon'] as Card | undefined;
   const ar = entity.components?.['Armor'] as Card | undefined;
@@ -683,7 +693,9 @@ export function itemBook(registry: BookRegistry, entity: Entity, typeLabel = '')
       const p = registry.interfaces['Weapon']?.schema?.properties?.['range'];
       lines.push({ label: 'Range', text: fieldText(registry, p, wp['range'], mode), ref: 'Weapon.range' });
     }
-    if (str(wp['ammoType'])) lines.push({ label: 'Ammunition', text: str(wp['ammoType']), ref: 'Weapon.ammoType' });
+    /* Ein Verweis auf den Munitionsartikel (T-078). */
+    const munition = str(wp['ammoType']);
+    if (munition) lines.push({ label: 'Ammunition', text: nameOf(munition) ?? munition, ref: 'Weapon.ammoType' });
   }
 
   const boni: [string, string][] = [

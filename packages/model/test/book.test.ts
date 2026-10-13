@@ -255,6 +255,28 @@ describe('Der Gegenstand wie im Buch', () => {
   });
 });
 
+describe('Verweisfelder im Buch (T-078)', () => {
+  const namen: Record<string, string> = { c1: 'Poisoned', c2: 'Charmed', ar: 'Arrow' };
+  const nameOf = (id: string) => namen[id];
+
+  it('nennt die Zustände eines Statblocks beim Namen', () => {
+    const b = statblockBook(imperial, {
+      id: 'sk', interfaces: ['Statblock'], name: 'Skeleton',
+      components: { Statblock: { conditionImmunities: ['c1', 'c2', 'Exhaustion'] } },
+    }, { nameOf });
+    /* Was keinen Namen bekommt, steht, wie es dasteht. */
+    expect(b.details.find((l) => l.label === 'Condition Immunities')?.text).toBe('Poisoned, Charmed, Exhaustion');
+  });
+
+  it('nennt die Munition einer Waffe beim Namen', () => {
+    const b = itemBook(imperial, {
+      id: 'lb', interfaces: ['Weapon'], name: 'Longbow',
+      components: { Item: { itemType: 'ranged weapon' }, Weapon: { ammoType: 'ar' } },
+    }, 'Weapon', nameOf);
+    expect(b.lines.find((l) => l.label === 'Ammunition')?.text).toBe('Arrow');
+  });
+});
+
 describe('Kleinzeug', () => {
   it('zählt, zahlt und misst', () => {
     expect([1, 2, 3, 4, 11, 12, 21].map(ordinal)).toEqual(['1st', '2nd', '3rd', '4th', '11th', '12th', '21st']);

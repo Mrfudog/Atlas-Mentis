@@ -21,9 +21,12 @@ verbraucht.
 
 Was daraus folgt, gegenüber dem Abgleich:
 
-- **Eine Systemebene statt einer je Buch.** „D&D 5e (2014)", `kind: system`;
-  welches Buch, sagt `Source.publication` mit Seite. Hundert Ebenen für
-  hundert Bücher wären ein Stapel, den niemand umschaltet.
+- ~~**Eine Systemebene statt einer je Buch.**~~ Überholt am 13.10.2026
+  (E-017, T-081): **je Buch eine Ebene** (`kind: book`), die Systemebene
+  „D&D 5e (2014)" hält nur, was kein Buch nennt. Die Sorge war ein Stapel
+  aus hundert Ebenen, den niemand umschaltet; die Kampagnenseite zeigt die
+  Bücher darum getrennt vom Stapel, gruppiert, mit Häkchen und ohne
+  Reihenfolge. Welche Seite, sagt weiter `Source.publication` mit `page`.
 - **Kein `overrides` aus `reprintedAs`**, weil 2024 nicht hereinkommt.
   Innerhalb von 2014 sagt `reprintedAs` aber, welche **Fassung gilt**
   (unten, Doppel).
