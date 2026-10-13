@@ -211,6 +211,59 @@ nächtliche mehr da.
 Für die Kopie nach aussen eignet sich eine Hetzner Storage Box
 (`rsync -a /srv/atlas/prod/backups/ u…@u….your-storagebox.de:atlas/`).
 
+## Was Daten löschen kann
+
+Gespeicherte Werte gehen auf drei Wegen verloren, und keiner davon still
+(T-076, REQ-191):
+
+- **Eine Migration**, die Karten, Felder, Kanten oder Zeilen entfernt
+  (`delete from`, `drop column`, `payload - '…'`). Sie nennt im Kopf ihre
+  **Prüfabfrage** — je Zeile `-- verlust: select count(*) from …`, eine Zahl:
+  wie viele gespeicherte Werte sie entfernt. Ein Test verlangt sie an jeder
+  neuen Migration, die entfernt.
+- **Der Seed beim Start**, wenn er einen Registerteil schreibt, der eine
+  Art, ein Feld, einen Listenwert oder eine Kantenart nicht mehr hat, die
+  der Bestand trägt (gezählt mit `registryUsage`). Heute füllt er nur nach
+  und ordnet um; der Schutz gilt für den Tag, an dem er mehr tut.
+- **Das Register von Hand** (`/registry`): dort zählt die Seite vorher und
+  fragt. Das ist eine Entscheidung im Moment und kein Start.
+
+Zählt eine Migration oder der Seed etwas, **bricht der Start ab**, und
+zwar bevor sie etwas ändert — die Migration läuft in ihrer Transaktion
+gar nicht erst an. Im Log steht, was betroffen ist und wie oft, und wie
+man freigibt:
+
+```
+024_beispiel.sql würde gespeicherte Werte entfernen:
+  - select count(*) from component where …: 12
+Abgebrochen, nichts geändert. Freigeben für genau diesen Lauf mit ATLAS_ALLOW_DATA_LOSS=024_beispiel.sql …
+```
+
+Auf dem Server heisst das: `deploy.sh` meldet „Nicht gesund", der
+Container startet immer wieder und bricht jedes Mal an derselben Stelle ab.
+Dann entweder **freigeben** — für genau diesen Lauf, nicht in `.env`:
+
+```bash
+cd /srv/atlas/prod
+ATLAS_ALLOW_DATA_LOSS=024_beispiel.sql ./deploy.sh "$(sed -n 's/^IMAGE=//p' .env)"
+```
+
+— der Start läuft dann und schreibt den Verlust als Warnung ins Log
+(`024_beispiel.sql: freigegebener Verlust, 12 Werte — …`). Oder **zurück**
+aufs vorige Abbild (unten). Die abgebrochene Migration hat nichts
+geändert; Migrationen *davor* im selben Lauf aber schon — dann gehört die
+Sicherung von davor mit zurück.
+
+`ATLAS_ALLOW_DATA_LOSS` ist eine Liste mit Kommas: Dateinamen der
+Migrationen (mit oder ohne `.sql`) und `seed`. Die Compose-Dateien reichen
+die Variable aus der Shell durch; steht sie nicht da, ist nichts
+freigegeben. Die Sicherung vor dem Ausrollen läuft ohnehin.
+
+Wer eine Migration schreibt, die entfernt, prüft sie im Durchstich mit
+einem Probeartikel: er hält ein Feld, die Migration bricht ohne Freigabe
+ab, mit Freigabe läuft sie und zählt (`apps/server/scripts/durchstich.mjs`
+tut es mit einer Probemigration vor).
+
 ## Zurück
 
 Migrationen laufen nur vorwärts. Wer auf das vorige Abbild zurück will,
