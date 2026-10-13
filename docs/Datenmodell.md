@@ -893,7 +893,10 @@ ganzen Artikel aus: `/api/list?rel=partOf` schickt die Kante je Zeile mit
 (W7).
 
 Eine Spieleransicht gibt es nicht: gesiebt wird am Server, alle sehen
-dieselbe Ansicht. Für `overview` und `quick` wählt eine Art **nach Gruppe**
+dieselbe Ansicht. **Die Sicht eines Mitglieds** (REQ-241) ist darum keine
+Ansicht, sondern ein anderes Konto in derselben Rechnung: mit `X-View-As`
+siebt der Server für die Leitung als dieses Mitglied, nur zum Lesen
+(siehe [Zugang.md](Zugang.md#die-sicht-eines-mitglieds-req-241-e-019-a)). Für `overview` und `quick` wählt eine Art **nach Gruppe**
 (ein Typname in `except`), nicht Feld für Feld.
 
 **Die Anordnung wohnt am Typ** (`views.full` usw.) und ist eine geordnete

@@ -81,6 +81,9 @@ import {
   newSessionToken,
   passwordProblem,
   sessionExpiry,
+  VIEW_AS_HEADER,
+  mayViewAs,
+  viewedAs,
   type ApiToken,
   type TokenScope,
   type User,
@@ -302,7 +305,68 @@ export function buildApp({
     return { user: rest };
   }
   async function viewerOf(request: FastifyRequest): Promise<User | null> {
+    const sicht = await sichtVon(request);
+    if (sicht === 'nein') return null;
+    if (sicht) return sicht.als;
     return (await werIst(request))?.user ?? null;
+  }
+
+  /**
+   * **Die Sicht eines Mitglieds** (REQ-241, E-019 a): steht `X-View-As`
+   * mit einer Konto-Id da und darf der Fragende das (`mayViewAs`), rechnet
+   * jede Route mit diesem Konto — Sichtbarkeit, Wissen, Status, Liste,
+   * Suche, Board. Es ist keine eigene Spieleransicht, sondern dieselbe
+   * Rechnung mit einem anderen Konto; darum steht es hier, an der einen
+   * Stelle, an der jede Route fragt, wer fragt. Geschrieben wird in dieser
+   * Sicht nichts (die Wache).
+   *
+   * `null`: kein Kopf. `'nein'`: ein Kopf, der nicht gilt — dann ist
+   * niemand angemeldet, statt still als man selbst weiterzulesen.
+   */
+  interface Sicht {
+    als: User;
+    von: User;
+    kampagne: string;
+  }
+  const gesehen = new WeakMap<FastifyRequest, Promise<Sicht | 'nein' | null>>();
+  function sichtVon(request: FastifyRequest): Promise<Sicht | 'nein' | null> {
+    let p = gesehen.get(request);
+    if (!p) {
+      p = ermittleSicht(request);
+      gesehen.set(request, p);
+    }
+    return p;
+  }
+  async function ermittleSicht(request: FastifyRequest): Promise<Sicht | 'nein' | null> {
+    const roh = request.headers[VIEW_AS_HEADER];
+    const zielId = String(Array.isArray(roh) ? roh[0] : (roh ?? '')).trim();
+    if (!zielId) return null;
+    const wer = await werIst(request);
+    if (!wer) return 'nein';
+    const gespeichert = await repo.getUser(zielId);
+    const ziel = gespeichert ? (({ passwordHash: _h, ...r }) => r)(gespeichert) : null;
+    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const kampagne = currentCampaign(alle, (await repo.getRegistry()).settings ?? null)?.id ?? null;
+    if (!ziel || !kampagne || !mayViewAs(wer.user, ziel, kampagne)) return 'nein';
+    await merkeBeginn(wer.user, ziel, kampagne);
+    return { als: viewedAs(wer.user, ziel, kampagne), von: wer.user, kampagne };
+  }
+
+  /**
+   * **Wer wann wessen Sicht eingenommen hat** (REQ-241): eine Zeile im
+   * Protokoll (`event_log`, `view_as.start`) je Beginn. Ein Beginn ist die
+   * erste Anfrage mit diesem Ziel, oder die erste nach einer halben Stunde
+   * ohne — eine Zeile je Anfrage wären hundert je Seite, und eine Zeile je
+   * Beginn reicht für die Frage „wer hat bei Mara hineingeschaut?".
+   */
+  const PAUSE_MS = 30 * 60 * 1000;
+  const zuletzt = new Map<string, { ziel: string; at: number }>();
+  async function merkeBeginn(von: User, ziel: User, kampagne: string): Promise<void> {
+    const jetzt = Date.now();
+    const vorher = zuletzt.get(von.id);
+    zuletzt.set(von.id, { ziel: ziel.id, at: jetzt });
+    if (vorher && vorher.ziel === ziel.id && jetzt - vorher.at < PAUSE_MS) return;
+    await repo.appendEvent('view_as.start', von.id, { target: ziel.id, campaign: kampagne });
   }
 
   /** Was ein Spieler schreiben darf: seine Figur und was an ihr hängt, und
@@ -411,8 +475,42 @@ export function buildApp({
 
   app.get('/api/me', async (request) => {
     const wer = await werIst(request);
-    const user = wer?.user ?? null;
     const count = await repo.countUsers();
+    /* **In der Sicht eines Mitglieds** (REQ-241) sagt `/api/me`, wer
+       gesehen wird und wer schaut. Geschrieben wird darin nichts, also
+       bietet die Maske nichts an: kein Schreibbares, kein Anlegen, kein
+       `ready`, kein Register. Gilt der Kopf nicht, sagt es `viewAsRefused`,
+       und die Maske vergisst ihn. */
+    const sicht = await sichtVon(request);
+    if (sicht && sicht !== 'nein') {
+      const actors: { id: string; name: string }[] = [];
+      for (const id of sicht.als.actorIds ?? []) {
+        const e = await repo.getEntity(id);
+        if (e) actors.push({ id, name: entityName(e) });
+      }
+      return {
+        user: sicht.als,
+        actors,
+        writable: [],
+        env,
+        registry: false,
+        create: false,
+        ready: false,
+        character: [],
+        setup: null,
+        invites: (await repo.listInvites()).length > 0,
+        token: wer?.token
+          ? { name: wer.token.name, scope: wer.token.scope, expiresAt: wer.token.expiresAt }
+          : null,
+        viewAs: {
+          id: sicht.als.id,
+          name: sicht.als.name,
+          role: sicht.als.roles?.[sicht.kampagne] ?? null,
+          by: { id: sicht.von.id, name: sicht.von.name },
+        },
+      };
+    }
+    const user = wer?.user ?? null;
     /* **Der Server sagt, was jemand schreiben darf** — die Oberfläche rechnet
        es nicht zum zweiten Mal aus. Eine zweite Rechnung wäre die zweite
        Stelle, an der jemand eine Kante vergisst, und dann zeigt die Maske
@@ -480,6 +578,8 @@ export function buildApp({
       token: wer?.token
         ? { name: wer.token.name, scope: wer.token.scope, expiresAt: wer.token.expiresAt }
         : null,
+      viewAs: null,
+      ...(sicht === 'nein' ? { viewAsRefused: true } : {}),
     };
   });
 
@@ -689,6 +789,27 @@ export function buildApp({
       const frisch = (await repo.countUsers()) === 0 && (await repo.countEntities()) === 0;
       if (frisch && !schreibt) return; // frischer Server: lesen ja, schreiben nie
       return reply.code(401).send({ error: 'Nicht angemeldet.' });
+    }
+    /* **Die Sicht eines Mitglieds ist nur zum Schauen** (REQ-241, E-019 a):
+       was die Leitung ändert, ändert sie als sie selbst. Die eigenen
+       Tokens des Ziels gehen sie nichts an — sie gehören zum Konto, nicht
+       zur Kampagne. Danach rechnet alles mit dem Zielkonto. */
+    const sicht = await sichtVon(request);
+    if (sicht === 'nein') {
+      return reply.code(403).send({ error: 'Diese Sicht darfst du nicht einnehmen.', code: 'view_as_forbidden' });
+    }
+    if (sicht) {
+      if (schreibt) {
+        return reply.code(403).send({ error: 'In dieser Sicht wird nur gelesen.', code: 'view_as_read_only' });
+      }
+      if (url === '/api/tokens' || url.startsWith('/api/tokens/')) {
+        return reply.code(403).send({ error: 'Die Tokens gehören dem Konto.', code: 'view_as_read_only' });
+      }
+      (request as FastifyRequest & { viewer?: User | null }).viewer = sicht.als;
+      if (url.startsWith('/api/registry/usage') && !(await mayEditRegistry(sicht.als))) {
+        return reply.code(403).send({ error: 'Das Register ändert die Spielleitung.' });
+      }
+      return;
     }
     /* Vor jeder anderen Regel: ein Lesetoken schreibt nirgends — auch
        nicht dort, wo das Konto es dürfte (Register, Verwaltung). */
@@ -1802,8 +1923,11 @@ export function buildApp({
    * geht durch `validateEntity`.
    */
   async function werkbankFuer(request: FastifyRequest): Promise<Wer | string> {
-    const wer = await werIst(request);
-    if (!wer) return 'Nicht angemeldet.';
+    const echt = await werIst(request);
+    if (!echt) return 'Nicht angemeldet.';
+    /* In der Sicht eines Mitglieds rechnet auch die Werkbank mit ihm (REQ-241). */
+    const sicht = await sichtVon(request);
+    const wer = sicht && sicht !== 'nein' ? { ...echt, user: sicht.als } : echt;
     if (!isLeitung(wer.user)) return 'Die Werkbank ist für Leitung und Verwaltung.';
     return wer;
   }

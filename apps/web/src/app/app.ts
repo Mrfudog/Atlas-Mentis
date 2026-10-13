@@ -44,6 +44,16 @@ import { BEREICHE } from './kern/bereiche';
         <a [href]="betrieb" target="_blank" rel="noopener">What can delete data</a>
       </p>
     }
+    @if (session.viewAs(); as v) {
+      <p class="sicht" role="status">
+        Viewing as <strong>{{ v.name }}</strong>
+        @if (v.role) {
+          <span class="sicht-rolle">{{ v.role }}</span>
+        }
+        <span class="sicht-nur">— read only</span>
+        <button type="button" (click)="sichtVerlassen()">Exit</button>
+      </p>
+    }
     @if (session.stand() === 'bereit' && session.angemeldet()) {
       <header class="leiste">
         <a routerLink="/" class="marke">Atlas Mentis</a>
@@ -72,7 +82,8 @@ import { BEREICHE } from './kern/bereiche';
           }
         </nav>
         <a class="wer" routerLink="/account" title="Account and API tokens">
-          {{ session.user()?.name }}
+          <!-- In der Sicht eines Mitglieds bleibt hier, wer angemeldet ist (REQ-241). -->
+          {{ session.viewAs()?.by?.name ?? session.user()?.name }}
           @if (session.isAdmin()) {
             <span class="rolle">admin</span>
           }
@@ -116,6 +127,35 @@ import { BEREICHE } from './kern/bereiche';
     .umgebung a {
       margin-left: 0.5rem;
       color: inherit;
+    }
+    /* Die Sicht eines Mitglieds (REQ-241): fest oben, damit niemand
+       vergisst, durch wessen Augen er gerade schaut. */
+    .sicht {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem 0.5rem;
+      margin: 0;
+      padding: 0.35rem 1rem;
+      background: var(--accent);
+      color: var(--surface);
+      font-size: 0.9rem;
+    }
+    .sicht-rolle {
+      padding: 0 0.4rem;
+      border: 1px solid currentColor;
+      border-radius: 10px;
+      font-size: 0.75rem;
+    }
+    .sicht button {
+      margin-left: 0.5rem;
+      background: var(--surface);
+      color: var(--accent);
+      font-weight: 700;
     }
     .leiste {
       display: flex;
@@ -262,6 +302,12 @@ export class App {
   }
 
   protected readonly warnung = signal<string | null>(null);
+
+  /** Die Sicht verlassen und zurück auf die Kampagnenseite, von der man kam. */
+  protected async sichtVerlassen(): Promise<void> {
+    await this.session.viewAsUser(null);
+    await this.router.navigateByUrl('/campaign');
+  }
 
   protected async abmelden(): Promise<void> {
     this.warnung.set(await this.session.logout());
