@@ -9,7 +9,8 @@
 import type { Pool } from 'pg';
 import { isTableRole } from '@nw/model';
 import type { Entity, InterfaceDef, Registry, Relation, RelationDef, TableRole } from '@nw/model';
-import type { EventFilter, ReadyStand, Repository, SessionRow, StoredEvent, StoredUser } from './repo.js';
+import { RevisionConflict } from './repo.js';
+import type { EventFilter, PutOptions, ReadyStand, Repository, SessionRow, StoredEvent, StoredUser } from './repo.js';
 import type { ApiToken, Invite, TokenScope, User } from './auth.js';
 
 type Row = Record<string, unknown>;
@@ -285,14 +286,30 @@ export class PgRepository implements Repository {
     return zusammensetzen(base.rows[0]!, components.rows, relations.rows);
   }
 
-  async putEntity(entity: Entity): Promise<Entity> {
+  async putEntity(entity: Entity, options: PutOptions = {}): Promise<Entity> {
     this.bestand = null;
     const client = await this.pool.connect();
     try {
       await client.query('begin');
+      /* Die Zeile gesperrt gelesen (REQ-192): zwei gleichzeitige Schreiben
+         mit derselben Revision kommen sonst beide durch die Prüfung. Ein
+         Artikel, der noch nicht steht, hat nichts zu sperren — zwei, die
+         ihn gleichzeitig anlegen, trennt der Primärschlüssel. */
+      if (options.expectRevision !== undefined) {
+        const { rows } = await client.query<Row>(
+          'select revision from entity where id = $1 for update',
+          [entity.id],
+        );
+        const steht = rows.length ? Number(rows[0]!['revision']) : null;
+        if (steht !== options.expectRevision) {
+          throw new RevisionConflict(entity.id, options.expectRevision, steht);
+        }
+      }
       await client.query(
-        `insert into entity(id) values ($1)
-         on conflict (id) do update set updated_at = now()`,
+        options.expectRevision === null
+          ? 'insert into entity(id) values ($1)'
+          : `insert into entity(id) values ($1)
+             on conflict (id) do update set updated_at = now(), revision = entity.revision + 1`,
         [entity.id],
       );
 
@@ -326,6 +343,10 @@ export class PgRepository implements Repository {
       await client.query('commit');
     } catch (error) {
       await client.query('rollback');
+      /* Zwei legen denselben Artikel gleichzeitig an: der zweite ist zu spät. */
+      if (options.expectRevision === null && (error as { code?: string }).code === '23505') {
+        throw new RevisionConflict(entity.id, null, 1);
+      }
       throw error;
     } finally {
       client.release();
@@ -796,5 +817,6 @@ function zusammensetzen(base: Row, components: Row[], relations: Row[]): Entity 
     })),
     createdAt: (base['created_at'] as Date)?.toISOString(),
     updatedAt: (base['updated_at'] as Date)?.toISOString(),
+    ...(base['revision'] != null ? { revision: Number(base['revision']) } : {}),
   };
 }
