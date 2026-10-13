@@ -77,6 +77,16 @@ export interface Repository {
    *  hängt. */
   usersOfActor(actorId: string): Promise<User[]>;
 
+  /** **Wer diesen Artikel angelegt hat** (REQ-237): eine Zeile neben dem
+   *  Konto, nicht im Artikel (REQ-199). `putUser` lässt sie in Ruhe — sie
+   *  entsteht beim Anlegen und sonst nirgends. */
+  addAuthored(userId: string, entityId: string): Promise<void>;
+  /** Die Konten, die diesen Artikel angelegt haben (meist eines, oft keines). */
+  authorsOf(entityId: string): Promise<string[]>;
+  /** Alle Artikel, die irgendein Konto angelegt hat — was die Leitung
+   *  vorgelegt bekommt. */
+  authoredArticles(): Promise<string[]>;
+
   /* Einladungen. Ein Code erlaubt eine Registrierung und sonst nichts; ein
      offener Registrierungsendpunkt wäre ein Loch, und ein Passwort, das die
      Spielleitung für jeden ausdenkt und weitergibt, geht über einen Kanal,
@@ -205,13 +215,13 @@ export class InMemoryRepository implements Repository {
   }
   async findUserByName(nameFold: string): Promise<StoredUser | undefined> {
     for (const u of this.users.values()) {
-      if (u.name.trim().toLocaleLowerCase('de') === nameFold) return { ...u };
+      if (u.name.trim().toLocaleLowerCase('de') === nameFold) return { ...u, authoredIds: [...(u.authoredIds ?? [])] };
     }
     return undefined;
   }
   async getUser(id: string): Promise<StoredUser | undefined> {
     const u = this.users.get(id);
-    return u ? { ...u } : undefined;
+    return u ? { ...u, authoredIds: [...(u.authoredIds ?? [])] } : undefined;
   }
   async listUsers(): Promise<User[]> {
     return [...this.users.values()].map(({ passwordHash: _hash, ...rest }) => ({ ...rest }));
@@ -221,7 +231,21 @@ export class InMemoryRepository implements Repository {
       ...user,
       actorIds: [...(user.actorIds ?? [])],
       roles: { ...(user.roles ?? {}) },
+      /* Wie in Postgres: was jemand angelegt hat, schreibt `putUser` nicht. */
+      authoredIds: [...(this.users.get(user.id)?.authoredIds ?? [])],
     });
+  }
+  async addAuthored(userId: string, entityId: string): Promise<void> {
+    const u = this.users.get(userId);
+    if (!u) return;
+    const l = (u.authoredIds ??= []);
+    if (!l.includes(entityId)) l.push(entityId);
+  }
+  async authorsOf(entityId: string): Promise<string[]> {
+    return [...this.users.values()].filter((u) => (u.authoredIds ?? []).includes(entityId)).map((u) => u.id);
+  }
+  async authoredArticles(): Promise<string[]> {
+    return [...new Set([...this.users.values()].flatMap((u) => u.authoredIds ?? []))];
   }
   async usersOfActor(actorId: string): Promise<User[]> {
     return [...this.users.values()]

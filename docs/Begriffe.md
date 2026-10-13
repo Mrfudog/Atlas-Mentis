@@ -541,6 +541,17 @@ dieselben drei wie `knownBy`, denn es ist dieselbe Frage: wem gehört etwas.
 Ein Träger zählt einen Schritt weit auch als seine Gruppe: wer den
 Reisetrupp nennt, verbirgt es vor seinen Mitgliedern.
 
+**Unfertiges sehen Spielende nicht** (REQ-237, D72). Der Vorbereitungsstand
+(`Status`: `idea`, `prepared`, `ready`) ist seit dem 13.10. auch Teil der
+groben Frage: wer nicht hinter dem Schirm sitzt, bekommt nur, was `ready`
+ist — ausser seinen eigenen Artikeln, die er in jedem Stand sieht. Warum am
+Stand und nicht an einem eigenen Feld „zur Abnahme": ein zweites Feld wäre
+ein zweiter Stand, und die beiden liefen auseinander; die Leitung sagt
+ohnehin schon mit `ready`, dass etwas fertig ist (E-011). **Ohne Stand heisst
+fertig**: eine Ebene oder ein Regelteil ohne Status-Karte verschwände sonst
+für alle Spielenden, und niemand wüsste, warum — dieselbe Überlegung wie bei
+`public` als Vorgabe.
+
 **Vererbt wird nichts.** Ein Artikel sagt für sich, wer ihn sehen darf; dass
 das Zimmer zum Haus gehört, sagt nichts darüber, wer das Zimmer kennt. Es
 gab dafür ein Feld (`inherit`, Vorgabe `true`), und es war nie ausgewertet —

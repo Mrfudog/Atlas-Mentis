@@ -4,6 +4,7 @@ import {
   audienceAllows,
   campaignOf,
   campaignsOf,
+  isReady,
   tableRole,
   type Viewer,
 } from '../src/visibility.js';
@@ -250,5 +251,41 @@ describe('die Rolle zählt in der Kampagne, der der Artikel gehört', () => {
     const e = artikel({ audience: 'gm', hiddenFrom: ['pc_sela'] }, ['ly_nebel']);
     expect(articleVisible(entities, e, { actors: ['pc_sela'], roles: { camp_nebel: 'gm' } }))
       .toBe(false);
+  });
+});
+
+/* REQ-237, E-011: Unfertiges sieht nur die Leitung — und wer es angelegt
+   hat oder schreiben darf. Ein Artikel ohne Stand gilt als fertig. */
+describe('der Vorbereitungsstand als grobe Frage', () => {
+  const mitStand = (status: string | undefined, ebenen = ['ly_nebel']): Entity => ({
+    ...artikel(undefined, ebenen),
+    components: status ? { Status: { status } } : {},
+  });
+
+  it('zählt einen Artikel ohne Stand als fertig', () => {
+    expect(isReady(mitStand(undefined))).toBe(true);
+    expect(isReady(mitStand('ready'))).toBe(true);
+    expect(isReady(mitStand('prepared'))).toBe(false);
+  });
+
+  it('hält Unfertiges von Spielenden und Zuschauern fern, nicht von der Leitung', () => {
+    const idee = mitStand('idea');
+    expect(articleVisible(entities, idee, sela)).toBe(false);
+    expect(articleVisible(entities, idee, gast)).toBe(false);
+    expect(articleVisible(entities, idee, basil)).toBe(true);
+    expect(articleVisible(entities, idee)).toBe(true);
+    /* Die Leitung der anderen Runde ist hier niemand. */
+    expect(articleVisible(entities, idee, mira)).toBe(false);
+  });
+
+  it('zeigt Eigenes in jedem Stand', () => {
+    const idee = mitStand('idea');
+    expect(articleVisible(entities, idee, { ...sela, own: ['npc_baron'] })).toBe(true);
+    expect(articleVisible(entities, idee, { ...rook, own: new Set(['npc_baron']) })).toBe(true);
+  });
+
+  it('lässt Fertiges und Standloses durch wie bisher', () => {
+    expect(articleVisible(entities, mitStand('ready'), sela)).toBe(true);
+    expect(articleVisible(entities, mitStand(undefined), sela)).toBe(true);
   });
 });

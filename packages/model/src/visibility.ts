@@ -76,6 +76,13 @@ export interface Viewer {
   actors?: EntityId | readonly EntityId[];
   /** Kampagnen-Id → Rolle darin. Was fehlt, ist kein Platz am Tisch. */
   roles?: Readonly<Record<EntityId, TableRole>>;
+  /**
+   * **Die eigenen Artikel** — was dieses Konto angelegt hat oder schreiben
+   * darf (REQ-237, E-011). Die sieht es in jedem Stand, auch unfertig.
+   * Wer was angelegt hat, steht am Server neben dem Konto, nicht im
+   * Artikel (REQ-199).
+   */
+  own?: readonly EntityId[] | ReadonlySet<EntityId>;
 }
 
 /** Wen auch immer der Aufrufer mitgibt. `undefined` heisst: die Verwaltung. */
@@ -85,6 +92,22 @@ function alsViewer(ref: ViewerRef): Viewer {
   if (typeof ref === 'string') return { actors: [ref] };
   if (Array.isArray(ref)) return { actors: ref as readonly EntityId[] };
   return ref as Viewer;
+}
+
+/** Die Art, deren Karte den Vorbereitungsstand trägt (Zeile `State`). */
+export const STATUS_COMPONENT = 'Status';
+/** Der Stand, der für Spielende zählt. */
+export const READY = 'ready';
+
+/**
+ * **Ist der Artikel fertig?** (REQ-237, E-011) Ohne Status-Karte oder ohne
+ * Wert: ja. Sonst verschwände alles, was keinen Vorbereitungsstand trägt
+ * (Ebenen, Kampagnen, Regelteile) — ein Stand, den niemand gesetzt hat,
+ * ist keiner, der etwas zurückhält.
+ */
+export function isReady(article: Entity): boolean {
+  const s = (article.components?.[STATUS_COMPONENT] as { status?: unknown } | undefined)?.status;
+  return s === undefined || s === null || s === '' || s === READY;
 }
 
 /** Von innen nach aussen — wer zwei Rollen hält, gilt als die stärkere. */
@@ -228,6 +251,22 @@ export function articleVisible(
   const nennt = (wert: unknown): boolean =>
     Array.isArray(wert) && wert.some((x) => typeof x === 'string' && traeger.has(x));
 
+  /* **Eigenes sieht man immer, in jedem Stand** (REQ-237, E-011): wer
+     einen Artikel angelegt hat oder schreiben darf, verliert ihn nicht aus
+     den Augen, nur weil die Leitung ihn noch nicht fertig nennt. */
+  const own = v.own;
+  if (own && (Array.isArray(own) ? own.includes(article.id) : (own as ReadonlySet<EntityId>).has(article.id))) {
+    return true;
+  }
+  /* **Unfertiges sieht nur die Leitung** (REQ-237, E-011). Wer nicht `gm`
+     oder `co-gm` der Kampagne ist, der der Artikel gehört, bekommt nur,
+     was `ready` ist. Das ist die grobe Frage: ein Entwurf stünde sonst mit
+     Namen in der Liste, auch wenn das Wissen jedes Feld zurückhielte. Die
+     Rolle wird gefragt wie bei der Stufe unten. */
+  if (!isReady(article)) {
+    const rolle = tableRole(v, campaignOf(entities, article));
+    if (rolle !== 'gm' && rolle !== 'co-gm') return false;
+  }
   /* Die Reihenfolge ist die Regel: Verbot, Freigabe, Stufe. */
   if (nennt(vis.hiddenFrom)) return false;
   if (nennt(vis.revealedTo)) return true;

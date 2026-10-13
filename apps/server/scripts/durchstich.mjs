@@ -218,6 +218,47 @@ try {
   pruefe('gm-Artikel: wer mitspielt, nicht', (await status('probe-spiel')) === 404);
 
   {
+    /* Spielende legen an, „ready" setzt die Leitung (REQ-237). Wer etwas
+       angelegt hat, steht in `app_user_article` — die Tabelle gibt es nur
+       in Postgres. Die laufende Kampagne wird ausdrücklich gesetzt: ohne
+       Einstellung wäre es die erste im Bestand, und welche das ist, sagt
+       Postgres nicht verlässlich. */
+    const einst = { ...(reg.settings ?? {}), campaign: 'camp_probe_a' };
+    const rE = await fetch(`${BASE}/api/registry/settings`, {
+      method: 'PUT',
+      headers: { ...json, cookie: admin },
+      body: JSON.stringify(einst),
+    });
+    pruefe('laufende Kampagne gesetzt', rE.ok, String(rE.status));
+    const spielerin = await anmelden('probe-spiel');
+    const rA = await fetch(`${BASE}/api/entities`, {
+      method: 'POST',
+      headers: { ...json, cookie: spielerin },
+      body: JSON.stringify({ type: 'Place', name: 'Probeentwurf' }),
+    });
+    const entwurf = await rA.json();
+    pruefe(
+      'eine Spielerin legt an, unfertig, in der Ebene ihrer Runde',
+      rA.status === 201 && entwurf.components?.Status?.status === 'idea' &&
+        entwurf.relations?.some((r) => r.type === 'inLayer' && r.to === 'ly_probe_a'),
+      `${rA.status} ${JSON.stringify(entwurf).slice(0, 300)}`,
+    );
+    const meS = await (await get(spielerin, '/api/me')).json();
+    pruefe('was sie angelegt hat, darf sie schreiben', meS.writable?.includes(entwurf.id), JSON.stringify(meS).slice(0, 300));
+    const sieht = async (keks) => (await get(keks, `/api/entities/${entwurf.id}`)).status;
+    pruefe('den Entwurf sieht die Verfasserin', (await sieht(spielerin)) === 200);
+    pruefe('den Entwurf sieht die Leitung der Runde', (await sieht(await anmelden('probe-leitung'))) === 200);
+    pruefe('den Entwurf sieht die Leitung der anderen Runde nicht', (await sieht(await anmelden('probe-fremd'))) === 404);
+    const fertig = { ...entwurf, components: { ...entwurf.components, Status: { status: 'ready' } } };
+    delete fertig.refs;
+    pruefe('„ready" setzt sie nicht selbst', (await put(spielerin, fertig)).status === 403);
+    const rL = await put(await anmelden('probe-leitung'), fertig);
+    pruefe('„ready" setzt die Leitung', rL.ok, `${rL.status} ${(await rL.text()).slice(0, 200)}`);
+    const rW = await fetch(`${BASE}/api/entities/${entwurf.id}`, { method: 'DELETE', headers: { cookie: admin } });
+    pruefe('DELETE des Entwurfs', rW.ok, String(rW.status));
+  }
+
+  {
     /* Die Liste am Server (W7): gerechnet über den Zwischenspeicher je
        Stempel — ein Schreiben muss ihn ungültig machen, auch in Postgres,
        wo der Stempel aus `count`/`max(updated_at)` kommt. */
