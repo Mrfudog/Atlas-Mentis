@@ -103,7 +103,7 @@ interface Stueck {
           }
         }
         <div class="knoepfe">
-          <a class="knopf pri" [routerLink]="['/artikel', e.id]">Open</a>
+          <a class="knopf pri" [routerLink]="e.interfaces[0] === 'Class' ? ['/classes', e.id] : ['/artikel', e.id]">Open</a>
         </div>
       } @else if (bestand.fehlt().has(id())) {
         <p class="dim">No such article — or not one you may see.</p>

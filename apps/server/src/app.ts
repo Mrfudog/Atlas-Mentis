@@ -16,6 +16,7 @@ import {
   RegistrySchema,
   articleVisible,
   backlinks,
+  classParts,
   currentCampaign,
   inPlay,
   detachInstance,
@@ -645,7 +646,7 @@ export function buildApp({
   }
 
   /**
-   * Ein Blatt der Liste (W7): `GET /api/list?area=&type=&of=&q=&layer=&nolayer=&parts=&sort=&offset=&limit=&f=`.
+   * Ein Blatt der Liste (W7): `GET /api/list?area=&type=&of=&ids=&rel=&q=&layer=&nolayer=&parts=&sort=&offset=&limit=&f=`.
    * Antwort `{ total, offset, limit, columns, rows, facets }`. Dieselbe
    * Route sucht für Auswahlen (Kantenziel, Verweis): `of=Art&q=…&limit=20`.
    */
@@ -768,6 +769,40 @@ export function buildApp({
     }));
   });
 
+  /**
+   * **Eine Klasse samt allem, was ihre Ansicht braucht** (W6): die Klasse,
+   * ihre Unterklassen, die Stufentabellen und jedes Merkmal, das eine davon
+   * gewährt oder einbettet (`classParts`). Eine Antwort statt einer Anfrage
+   * je Merkmal — und nicht die 7 000 Merkmale des ganzen Bestands, von
+   * denen die Kurzfassung ohnehin keinen Text trägt.
+   *
+   * Gesiebt wird wie überall (`sieve`). Danach wird **auf dem Gesiebten**
+   * noch einmal gesammelt: ein Merkmal, das nur eine verborgene Unterklasse
+   * gewährt, verriete sonst, dass es sie gibt.
+   */
+  app.get<{ Params: { id: string } }>('/api/classes/:id', async (request, reply) => {
+    const alle = await repo.listEntities();
+    const roh = classParts(alle, request.params.id);
+    if (!roh) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const byId = new Map(alle.map((e) => [e.id, e]));
+    const ids = [roh.klass, ...roh.subclasses, ...roh.tables, ...roh.features];
+    const gesiebt = await sieve(
+      request,
+      ids.map((i) => byId.get(i)).filter((e): e is Entity => !!e),
+      alle,
+    );
+    const teile = classParts(gesiebt, request.params.id);
+    if (!teile) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const nach = new Map(gesiebt.map((e) => [e.id, e]));
+    const nimm = (l: string[]) => l.map((i) => nach.get(i)).filter((e): e is Entity => !!e);
+    return {
+      class: nach.get(teile.klass),
+      subclasses: nimm(teile.subclasses),
+      tables: nimm(teile.tables),
+      features: nimm(teile.features),
+    };
+  });
+
   app.get<{ Params: { id: string } }>('/api/entities/:id', async (request, reply) => {
     const stand = await roh();
     const entity = stand.map.get(request.params.id) ?? (await repo.getEntity(request.params.id));
@@ -797,7 +832,7 @@ export function buildApp({
    * darf (`mayWrite`) — einen Artikel, den es noch nicht gibt, besitzt
    * kein Spieler, also legt die Verwaltung an.
    */
-  app.post<{ Body: { type?: unknown; name?: unknown; fields?: unknown } }>(
+  app.post<{ Body: { type?: unknown; name?: unknown; fields?: unknown; relations?: unknown } }>(
     '/api/entities',
     async (request, reply) => {
       const type = String(request.body?.type ?? '');
@@ -838,7 +873,15 @@ export function buildApp({
       const neueId = (): string => `e_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
       let id = neueId();
       while (stand.map.has(id)) id = neueId();
-      const entity: Entity = { id, interfaces: [type], name, components, relations: [] };
+      /* Kanten gehen mit, wenn die Seite sie schon kennt — ein Board gehört
+         gleich zu seiner Sitzung (`partOf`). Die Ids vergibt der Server. */
+      const kanten = Array.isArray(request.body?.relations) ? (request.body.relations as unknown[]) : [];
+      const relations: NonNullable<Entity['relations']> = kanten
+        .filter((k): k is { type: string; to: string; props?: Record<string, unknown> } =>
+          !!k && typeof k === 'object' && typeof (k as { type?: unknown }).type === 'string' &&
+          typeof (k as { to?: unknown }).to === 'string')
+        .map((k, i) => ({ id: `${id}~${k.type}-${i + 1}`, type: k.type, to: k.to, props: k.props ?? {} }));
+      const entity: Entity = { id, interfaces: [type], name, components, relations };
 
       const known = new Map(stand.alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
       known.set(id, type);

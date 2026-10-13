@@ -219,7 +219,7 @@ const OFFEN = 8;
                 @for (z of liste()!.rows; track z.id) {
                   <tr [class.gewaehlt]="filter.vorschau() === z.id" (click)="zeile(z, $event)">
                     <td class="name">
-                      <a [routerLink]="['/artikel', z.id]" (click)="link(z, $event)">{{ z.name }}</a>
+                      <a [routerLink]="zielVon(z)" (click)="link(z, $event)">{{ z.name }}</a>
                       @if (z.status && z.status !== 'ready') {
                         <span class="stand">{{ z.status }}</span>
                       }
@@ -537,10 +537,14 @@ export class Kompendium {
   protected zeile(z: ListenZeile, ev: MouseEvent): void {
     if ((ev.target as HTMLElement | null)?.closest('a')) return;
     if (this.schmal()) {
-      void this.router.navigate(['/artikel', z.id]);
+      void this.router.navigate(this.zielVon(z));
       return;
     }
     this.filter.vorschau.set(this.filter.vorschau() === z.id ? null : z.id);
+  }
+  /** Wohin eine Zeile führt: eine Klasse hat ihre eigene Ansicht (W6). */
+  protected zielVon(z: Pick<ListenZeile, 'id' | 'type'>): string[] {
+    return z.type === 'Class' ? ['/classes', z.id] : ['/artikel', z.id];
   }
   /** Der Name ist ein echter Link (Mittelklick, neuer Reiter); ein schlichter Klick zeigt die Vorschau. */
   protected link(z: ListenZeile, ev: MouseEvent): void {

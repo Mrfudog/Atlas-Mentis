@@ -3,19 +3,19 @@
 Erzeugt von `packages/import-5etools` (Paket P5, [5etools-Arbeitsplan.md](5etools-Arbeitsplan.md)). **Nicht von Hand ändern** — ein neuer Lauf schreibt die Datei neu.
 
 - Datenstand: 5etools-src 8c026b8 2026-10-08
-- Aufruf: `node packages/import-5etools/dist/cli.js <data> --bericht <datei>`
-- **24’157 Artikel**, alle durch `validateEntity` mit `knownTypes`
-- Gleichlautende Merkmale der Statblöcke (Arbeitsplan §2.5): 1’404 Aktionen und Merkmale stehen an mehr als einem Statblock; 9’063 Doppel wurden dadurch nicht angelegt
-- Gleiche Merkmale an verschiedenen Trägern (`doppel.ts`): 323 Artikel mit einem gleichen vereint (323 Feature)
+- Aufruf: `node packages/import-5etools/dist/cli.js <data> --out <datei> --bericht <datei>`
+- **21’455 Artikel**, alle durch `validateEntity` mit `knownTypes`
+- Gleichlautende Merkmale der Statblöcke (Arbeitsplan §2.5): 1’669 Aktionen und Merkmale stehen an mehr als einem Statblock; 11’560 Doppel wurden dadurch nicht angelegt
+- Gleiche Merkmale an verschiedenen Trägern (`doppel.ts`): 528 Artikel mit einem gleichen vereint (528 Feature)
 - Fassungen aus mehreren Büchern (`doppel.ts`): 635 Artikel sind Variante der geltenden Fassung und tragen ihr Buch im Namen (301 Statblock, 171 Deity, 49 Ancestry, 44 Language, 29 Table, 27 Rule, 7 Item, 4 Weapon, 2 Armor, 1 Hazard)
-- Monstermerkmale mit Herkunft (`doppel.ts`): 279 zeigen mit `variantOf` auf das Volksmerkmal ihres Volks
+- Monstermerkmale mit Herkunft (`doppel.ts`): 113 zeigen mit `variantOf` auf das Volksmerkmal ihres Volks
 - Angriffe der Statblöcke, einer für alle (D51, `arten/angriff.ts`): 5’685 Verwendungen auf 1’093 Angriffe (Bite 815, Claw 380, Dagger 223, Claws 189, Shortsword 188, Slam 182, Tail 167, Longsword 130 …); die Buchzahl steht an der Kante, wo sie nicht aus der Rechnung folgt — Treffer 394-mal, Schaden 505-mal; 311 Angriffe anders gebaut und als Text belassen
 
 ## Artikel je Art (unsere)
 
 | Art | Artikel |
 | --- | ---: |
-| `Action` | 6’540 |
+| `Action` | 5’492 |
 | `ActionType` | 7 |
 | `Ancestry` | 227 |
 | `Armor` | 76 |
@@ -26,7 +26,7 @@ Erzeugt von `packages/import-5etools` (Paket P5, [5etools-Arbeitsplan.md](5etool
 | `Disease` | 22 |
 | `Faction` | 30 |
 | `Feat` | 108 |
-| `Feature` | 7’113 |
+| `Feature` | 5’459 |
 | `Hazard` | 57 |
 | `Item` | 1’638 |
 | `ItemProperty` | 14 |

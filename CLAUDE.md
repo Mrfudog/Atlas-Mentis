@@ -74,9 +74,10 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   Seitenleiste, Spalten aus der `overview` der Art, Vorschau `quick`;
   **gerechnet am Server**, `GET /api/list`), „New article" und der
   Artikel im Buchstil (geholt beim Öffnen, Ansicht `full`, mit den Namen
-  seiner Kantenziele und Verweise in `refs`) stehen; die Oberfläche hält
-  **keinen Bestand** (W7). Boards, Karte,
-  Initiative und Spiel noch nicht;
+  seiner Kantenziele und Verweise in `refs`) stehen, dazu die Boards
+  (`boards/`: je Geschichtsartikel eines, Karten als `placed`-Kanten) und
+  die Klassen (`klassen/`); die Oberfläche hält **keinen Bestand** (W7).
+  Karte, Initiative und Spiel noch nicht;
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
   Vorlage je Artikelart. **Zurückgehalten wird am Server** (`redactEntity`) —
   was hier ankommt, darf angezeigt werden, und eine zweite Prüfung in der
@@ -84,10 +85,20 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
 - `packages/import-5etools` — der Importer für 5e.tools (P5): liest einen
   Checkout von `5etools-src/data`, schreibt eine Ausfuhrdatei und den
   Bericht [docs/5etools-Bericht.md](docs/5etools-Bericht.md). Kein
-  Framework; läuft einmal, nicht im Server. Laden:
+  Framework; läuft nicht im Server, sondern in der Pipeline
+  `import-5etools.yml`, die die Ebene „D&D 5e (2014)" **je Ebene ersetzt**
+  (`import.js --replace-layer`: eigene Artikel bleiben, W8). Laden:
   [docs/Betrieb.md › 5e.tools laden](docs/Betrieb.md#5etools-laden).
 - `legacy/` — die alte React-App. Nicht weiterentwickeln; sie läuft, bis die
   neue Karte und Initiative kann.
+- `prototype/` — **eingefroren seit 13.10.2026 (D59).** Genutzt wird nur noch
+  die Seite (`apps/web` mit `apps/server`). Der Prototyp bleibt als Vorlage:
+  was er kann, wird in die Seite übernommen, mit seinen Erkenntnissen
+  (Regeln oben, Entscheidungen im Decision Log), aber er bekommt keine neuen
+  Funktionen mehr. Welche Anforderung im Prototyp steht und in der Seite noch
+  nicht, zeigt das Projektbrett (Spalten „Prototyp" und „Web") und
+  `VTT/Projektbrett.md`. `emit-seed` schreibt sein Register weiter, solange
+  seine Prüfungen laufen.
 
 Was es **nicht** mehr gibt: `packages/import` und der Importer im Prototyp (der für 5e.tools ist neu geschrieben, oben). Die Obsidian-Importer für
 Gegenstände und Statblocks sind weg (2026-09-20); der Prototyp hat seinen

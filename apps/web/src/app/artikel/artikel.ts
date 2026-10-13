@@ -21,7 +21,16 @@ import type { Entity, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/m
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
-import { ausEingabe, eingabeArt, inEingabe, kantenAusEntwurf, type Eingabe } from './felder';
+import {
+  anzeigeWert,
+  ausEingabe,
+  eingabeArt,
+  inEingabe,
+  kantenAusEntwurf,
+  sindZeilen,
+  tabelleAlsText,
+  type Eingabe,
+} from './felder';
 import { Text } from './text';
 import { Wahl } from './wahl';
 import { bereichLabel } from '../kern/bereiche';
@@ -90,6 +99,9 @@ interface Feld {
             <div class="werkzeugzeile">
               <span class="meta">{{ meta() }}</span>
               <div class="werkzeuge">
+                @if (art(e) === 'Class' && !bearbeitet()) {
+                  <a class="knopf" [routerLink]="['/classes', e.id]">Class view</a>
+                }
                 @if (darfSchreiben()) {
                   <button type="button" (click)="bearbeitet() ? abbrechen() : beginnen()">
                     {{ bearbeitet() ? 'Cancel' : 'Edit' }}
@@ -141,6 +153,9 @@ interface Feld {
                       }
                       @case ('lang') {
                         <textarea rows="4" [(ngModel)]="f.wert" [name]="f.ref"></textarea>
+                      }
+                      @case ('json') {
+                        <textarea rows="6" spellcheck="false" style="font-family: monospace" [(ngModel)]="f.wert" [name]="f.ref"></textarea>
                       }
                       @case ('verweis') {
                         <nw-wahl
@@ -258,11 +273,7 @@ interface Feld {
                   @for (z of zellen(); track z.ref) {
                     <dt>{{ z.label }}</dt>
                     <dd [class.geerbt]="z.geerbt" [attr.title]="z.geerbt ? 'From the template' : null">
-                      @if (z.lang) {
-                        <nw-text [text]="z.wert" [scopes]="scopes()" />
-                      } @else {
-                        {{ z.wert }}
-                      }
+                      <nw-text [text]="z.wert" [scopes]="scopes()" [einzeilig]="!z.lang" />
                     </dd>
                   }
                 </dl>
@@ -358,7 +369,7 @@ export class Artikel {
   constructor() {
     void this.bestand.load();
     /* Der ganze Artikel kommt erst hier, beim Öffnen — die Liste trägt nur
-       seine Kurzfassung. Wechselt die Id (ein Verweis auf der Seite), wird
+       seine Zeile. Wechselt die Id (ein Verweis auf der Seite), wird
        der nächste geholt. */
     effect(() => {
       void this.bestand.oeffnen(this.id());
@@ -482,6 +493,9 @@ export class Artikel {
     const v = this.view();
     if (!e || !r || !v) return [];
     const out: Zelle[] = [];
+    /* Ein Prosafeld steht nicht in der Feldtabelle, es gehört dem Absatz
+       darunter (`prosa`) — hier stand es als „[object Object]" (W1). */
+    const prosa = new Set(proseFields(r, primaryInterface(e)).map((f) => `${f.type}.${f.key}`));
     for (const [comp, karte] of Object.entries(e.components ?? {})) {
       /* Was schon anderswo steht: der Name als Überschrift, Aliasse und
          Nummer darüber und darunter, Sichtbarkeit und Quelle in der
@@ -495,18 +509,24 @@ export class Artikel {
         ...Object.keys(def?.schema?.properties ?? {}).filter((k) => k in werte),
         ...Object.keys(werte).filter((k) => !(k in (def?.schema?.properties ?? {}))),
       ];
+      /* Tabellenzeilen (`Table.rows`) werden eine Tabelle, ihr Kopf
+         (`columns`) steht darin und nicht noch einmal als Zeile. */
+      const zeilen = Object.keys(werte).find((k) => sindZeilen(werte[k]));
       for (const prop of reihe) {
         const wert = werte[prop];
         if (comp === 'Description' && prop === 'description' && v.description) continue;
+        if (prosa.has(`${comp}.${prop}`)) continue;
+        if (zeilen && prop === 'columns') continue;
         if (!showField(v, comp, prop)) continue;
         if (wert === null || wert === undefined || wert === '') continue;
         const schema = def?.schema?.properties?.[prop];
         const titel = schema?.title ?? prop;
+        const tabelle = prop === zeilen && sindZeilen(wert);
         out.push({
-          lang: schema?.format === 'long' && typeof wert === 'string',
+          lang: tabelle || (schema?.format === 'long' && typeof wert === 'string'),
           ref: `${comp}.${prop}`,
           label: titel,
-          wert: Array.isArray(wert) ? wert.join(', ') : String(wert),
+          wert: tabelle ? tabelleAlsText(werte['columns'], wert) : anzeigeWert(wert),
           geerbt: e.fromTemplate?.fields.includes(`${comp}.${prop}`) ?? false,
         });
       }
@@ -872,7 +892,7 @@ export class Artikel {
     const r = this.reg();
     if (!e || !r || !this.view()?.relations) return [];
     /* Die Gegenrichtung fragt der Server (K1): sie braucht jede Kante im
-       Bestand, und hier liegt nur die Kurzfassung. */
+       Bestand, und die Seite hält keinen (W7). */
     return (this.bestand.rueckbezuege().get(e.id) ?? []).map((b) => ({
       id: `${b.from.id}:${b.relation.id}`,
       label: relationDef(r, b.relation.type).inverseLabel,

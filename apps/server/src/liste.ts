@@ -32,6 +32,7 @@ import {
   LAYER_RELATION,
   listColumns,
   primaryInterface,
+  tagsOf,
   typeChain,
 } from '@nw/model';
 import type { Entity, PropertySchema, Registry } from '@nw/model';
@@ -63,6 +64,9 @@ interface IndexZeile {
   users: number;
   /** Die Werte der Spalten, Verweise schon als Namen. */
   cols: Record<string, unknown>;
+  tags: string[];
+  /** Die Kanten des Artikels (geteilt, nicht kopiert) — für `rel=`. */
+  relations: NonNullable<Entity['relations']>;
 }
 
 export interface ListIndex {
@@ -156,6 +160,8 @@ export function buildListIndex(registry: Registry, visible: Entity[]): ListIndex
         .toLowerCase(),
       users: nutzer.get(e.id)?.size ?? 0,
       cols,
+      tags: tagsOf(e),
+      relations: e.relations ?? [],
     });
   }
   rows.sort((a, b) => (a.sortName < b.sortName ? -1 : a.sortName > b.sortName ? 1 : a.id < b.id ? -1 : 1));
@@ -175,7 +181,7 @@ export function listProjection(registry: Registry): (e: Entity) => Entity {
     const typ = primaryInterface(e);
     let karten = je.get(typ);
     if (!karten) {
-      karten = [...new Set(['Identity', 'Source', 'Status', ...listColumns(registry, typ).map((c) => c.type)])];
+      karten = [...new Set(['Identity', 'Source', 'Status', 'Tags', ...listColumns(registry, typ).map((c) => c.type)])];
       je.set(typ, karten);
     }
     const components: Entity['components'] = {};
@@ -210,6 +216,12 @@ export interface ListQuery {
   nolayer?: string[] | undefined;
   /** Teile von Statblöcken einblenden. */
   parts?: boolean | undefined;
+  /** Nur diese Artikel (Peg-Ids) — für eine Seite, die Namen und Arten zu
+   *  Ids braucht, die sie schon kennt. Teile stehen dann mit da. */
+  ids?: string[] | undefined;
+  /** Diese Kantenarten gehen je Zeile mit (`rels`): wohin ein Board oder
+   *  eine Sitzung gehört (`partOf`), ohne den Artikel ganz zu holen. */
+  rel?: string[] | undefined;
   /** `name` (Vorgabe), `type` oder eine Spalte `Typ.feld`; `-` davor kehrt um. */
   sort?: string | undefined;
   offset: number;
@@ -242,6 +254,8 @@ export interface ListResult {
     status: string;
     users?: number;
     cols: Record<string, unknown>;
+    tags?: string[];
+    rels?: Record<string, string[]>;
   }[];
   facets: {
     types: { type: string; label: string; area: string; count: number }[];
@@ -302,6 +316,7 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
   const typSet = q.type?.length ? new Set(q.type) : null;
   const ebenen = q.layer?.length ? new Set(q.layer) : null;
   const ohneEbenen = q.nolayer?.length ? new Set(q.nolayer) : null;
+  const nurIds = q.ids?.length ? new Set(q.ids) : null;
   const einTyp = q.type?.length === 1 ? q.type[0]! : undefined;
   const spalten = einTyp ? (idx.types.get(einTyp)?.columns ?? listColumns(idx.registry, einTyp)) : [];
   const filter = Object.entries(q.fields).filter(([ref]) => spalten.some((c) => c.ref === ref));
@@ -315,6 +330,7 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
   /* Was für jede Facette gilt: Bereich, Auswahl-Arten, Suche. */
   const grund: IndexZeile[] = [];
   for (const z of idx.rows) {
+    if (nurIds && !nurIds.has(z.id)) continue;
     if (q.area && z.area !== q.area) continue;
     if (ofSet && !idx.types.get(z.type)?.chain.some((t) => ofSet.has(t))) continue;
     if (such && !z.such.includes(such)) continue;
@@ -322,7 +338,7 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
   }
 
   const istTeil = (z: IndexZeile): boolean => z.users === 1;
-  const teilOk = (z: IndexZeile): boolean => q.parts === true || !istTeil(z);
+  const teilOk = (z: IndexZeile): boolean => q.parts === true || !!nurIds || !istTeil(z);
   const felderOk = (z: IndexZeile, ausser?: string): boolean =>
     filter.every(([ref, f]) => ref === ausser || trifft(z, ref, f));
 
@@ -335,7 +351,7 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
     const ebeneOk = inEbene(z);
     const typOk = !typSet || typSet.has(z.type);
     const felder = !einTyp || felderOk(z);
-    if (ebeneOk && felder && typOk && istTeil(z) && q.parts !== true) partsHidden += 1;
+    if (ebeneOk && felder && typOk && istTeil(z) && !teilOk(z)) partsHidden += 1;
     if (!teilOk(z)) continue;
     /* Die Arten zählen ohne die Art und ohne die Feldfilter: die gelten
        nur für die gewählte. */
@@ -459,6 +475,14 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
       status: z.status,
       ...(z.users ? { users: z.users } : {}),
       cols: z.cols,
+      ...(z.tags.length ? { tags: z.tags } : {}),
+      ...(q.rel?.length
+        ? {
+            rels: Object.fromEntries(
+              q.rel.map((t) => [t, z.relations.filter((r) => r.type === t).map((r) => r.to)]),
+            ),
+          }
+        : {}),
     })),
     facets: {
       types: typen,
@@ -515,6 +539,8 @@ export function parseListQuery(raw: Record<string, unknown>): ListQuery {
     q: typeof raw['q'] === 'string' ? raw['q'] : undefined,
     layer: liste(raw['layer']),
     nolayer: liste(raw['nolayer']),
+    ids: liste(raw['ids']),
+    rel: liste(raw['rel']),
     parts: raw['parts'] === '1' || raw['parts'] === 'true',
     sort: typeof raw['sort'] === 'string' && raw['sort'] ? raw['sort'] : undefined,
     offset: Math.max(0, zahl(raw['offset'], 0)),

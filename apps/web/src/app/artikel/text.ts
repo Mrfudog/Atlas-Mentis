@@ -124,7 +124,11 @@ type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
       }
     </ng-template>
 
-    <ng-container *ngTemplateOutlet="bloecke; context: { $implicit: bloeckeVon() }" />
+    @if (einzeilig()) {
+      <ng-container *ngTemplateOutlet="zeile; context: { $implicit: text() }" />
+    } @else {
+      <ng-container *ngTemplateOutlet="bloecke; context: { $implicit: bloeckeVon() }" />
+    }
   `,
   styles: `
     :host {
@@ -198,6 +202,12 @@ type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
 export class Text {
   readonly text = input<string>('');
   readonly scopes = input<VarScopes>({});
+  /**
+   * Eine Zeile statt eines langen Textes: ein kurzes Feld kennt keine
+   * Blöcke, aber Verweise, Würfel und Platzhalter wie jeder Text —
+   * „Typical speakers" nennt `[[statblock-0366|slaad tadpoles]]`.
+   */
+  readonly einzeilig = input(false);
 
   private readonly bestand = inject(Bestand);
 

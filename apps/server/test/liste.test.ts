@@ -265,3 +265,28 @@ describe('leaving layers out', () => {
     expect(r.facets.layers.map((l: { id: string }) => l.id)).toEqual(['l1', '∅']);
   });
 });
+
+describe('lists for other pages', () => {
+  it('gives names and types for known ids, parts included, and edges on request', async () => {
+    const { get } = await makeApp();
+    const r = (await get('/api/list?ids=a1,s1&rel=composedOf,inLayer')).json();
+    expect(r.rows.map((z: { name: string }) => z.name)).toEqual(['Fireball', 'Multiattack']);
+    expect(r.rows[0].rels).toEqual({ composedOf: [], inLayer: ['l1'] });
+    const boss = (await get('/api/list?ids=b1&rel=composedOf')).json();
+    expect(boss.rows[0].rels.composedOf).toEqual(['a1', 'a2']);
+  });
+
+  it('creates an article with its edges', async () => {
+    const { app, gm, get } = await makeApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/entities',
+      headers: gm,
+      payload: { type: 'Spell', name: 'Ebenenzauber', relations: [{ type: 'inLayer', to: 'l1' }] },
+    });
+    expect(res.statusCode).toBe(201);
+    const e = res.json() as Entity;
+    expect(e.relations).toEqual([{ id: `${e.id}~inLayer-1`, type: 'inLayer', to: 'l1', props: {} }]);
+    expect((await get('/api/list?layer=l1&q=ebenen')).json().total).toBe(1);
+  });
+});

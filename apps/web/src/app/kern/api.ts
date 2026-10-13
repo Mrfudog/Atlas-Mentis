@@ -68,6 +68,9 @@ export interface ListenZeile {
   /** Wie viele Artikel diesen über eine Abschnittskante nutzen. */
   users?: number;
   cols: Record<string, unknown>;
+  tags?: string[];
+  /** Die Ziele der Kantenarten, nach denen `rel=` fragte. */
+  rels?: Record<string, string[]>;
 }
 
 /** Was die Liste gefragt wird. Leere Angaben fallen weg. */
@@ -75,6 +78,10 @@ export interface ListenFrage {
   area?: string | undefined;
   type?: string | undefined;
   of?: string[] | undefined;
+  /** Nur diese Artikel. */
+  ids?: string[] | undefined;
+  /** Diese Kantenarten je Zeile mitschicken. */
+  rel?: string[] | undefined;
   q?: string | undefined;
   layer?: string[] | undefined;
   nolayer?: string[] | undefined;
@@ -84,6 +91,18 @@ export interface ListenFrage {
   limit?: number | undefined;
   /** `Typ.feld:Wert|Wert` oder `Typ.feld:1..3`. */
   f?: string[] | undefined;
+}
+
+/**
+ * Eine Klasse samt allem, was ihre Ansicht braucht (W6, `GET /api/classes/:id`):
+ * ihre Unterklassen, die Stufentabellen und die Merkmale, die eine davon
+ * gewährt oder einbettet — ganz, gesiebt.
+ */
+export interface KlassenBuendel {
+  class: Entity;
+  subclasses: Entity[];
+  tables: Entity[];
+  features: Entity[];
 }
 
 export interface Me {
@@ -160,14 +179,22 @@ export class Api {
     return this.call('/api/links', { method: 'POST', body: JSON.stringify({ texts }) });
   }
   /** Einen Artikel anlegen; Id, Nummer und Vorgaben setzt der Server. */
-  createEntity(type: string, name: string, fields: Record<string, unknown> = {}): Promise<Entity> {
+  createEntity(
+    type: string,
+    name: string,
+    fields: Record<string, unknown> = {},
+    relations: { type: string; to: string; props?: Record<string, unknown> }[] = [],
+  ): Promise<Entity> {
     return this.call<Entity>('/api/entities', {
       method: 'POST',
-      body: JSON.stringify({ type, name, fields }),
+      body: JSON.stringify({ type, name, fields, relations }),
     });
   }
   backlinks(id: string): Promise<Rueckbezug[]> {
     return this.call<Rueckbezug[]>(`/api/entities/${encodeURIComponent(id)}/backlinks`);
+  }
+  klasse(id: string): Promise<KlassenBuendel> {
+    return this.call<KlassenBuendel>(`/api/classes/${encodeURIComponent(id)}`);
   }
   /** Der ganze Artikel, gesiebt, mit den Namen, die er braucht (`refs`). */
   entity(id: string): Promise<Entity & { refs?: Bezuege }> {

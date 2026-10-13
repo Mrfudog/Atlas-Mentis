@@ -21,7 +21,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { entityName } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
-import { Api, ApiError, type Bezuege, type Rueckbezug } from './api';
+import { Api, ApiError, type Bezuege, type ListenFrage, type Liste, type ListenZeile, type Rueckbezug } from './api';
 
 @Injectable({ providedIn: 'root' })
 export class Bestand {
@@ -53,6 +53,34 @@ export class Bestand {
   readonly namen = this._namen.asReadonly();
   /** `[[ziel]]` → die Artikel, die es treffen könnten (M11). */
   readonly verweise = this._verweise.asReadonly();
+
+  private readonly _kurz = signal<ReadonlyMap<string, Entity>>(new Map());
+  /**
+   * Was Listen schon brachten, als schmaler Artikel: Id, Art, Name, Marken
+   * und die Kanten, nach denen gefragt wurde (`rel=`). Genug für eine Seite,
+   * die Namen, Arten oder `partOf` braucht, ohne jeden Artikel ganz zu
+   * holen — Boards und Klassen lesen daraus mit denselben Hilfen wie aus
+   * einem ganzen Artikel.
+   */
+  readonly kurz = this._kurz.asReadonly();
+
+  /**
+   * Eine Liste fragen (`/api/list`) und ihre Zeilen in `kurz` und `namen`
+   * aufnehmen. Für Seiten, die eine Handvoll Artikel einer Art brauchen
+   * (die Boards, die Klassen, die Geschichte); das Kompendium fragt selbst.
+   */
+  async liste(frage: ListenFrage): Promise<Liste> {
+    const r = await this.api.list(frage);
+    const kurz = new Map(this._kurz());
+    const namen = new Map(this._namen());
+    for (const z of r.rows) {
+      kurz.set(z.id, schmal(z));
+      namen.set(z.id, z.name);
+    }
+    this._kurz.set(kurz);
+    this._namen.set(namen);
+    return r;
+  }
 
   /** Der Name zu einer Id, sofern ein geöffneter Artikel ihn mitbrachte. */
   readonly name = computed(() => {
@@ -89,17 +117,27 @@ export class Bestand {
    * Artikel; `neu` holt ihn wieder, etwa nach dem Speichern — was der Server
    * ausliefert, ist gesiebt und aufgelöst, und das ist nicht unbedingt das,
    * was geschickt wurde.
+   *
+   * `rueck: false` holt den Artikel ohne das, was auf ihn zeigt — eine
+   * Kachel auf dem Board zeigt keine Rückbezüge, und eine Anfrage weniger
+   * ist eine weniger. Wer ihn danach als Seite öffnet, bekommt sie
+   * nachgeholt.
    */
-  async oeffnen(id: string, neu = false): Promise<void> {
-    if (!neu && (this._voll().has(id) || this._fehlt().has(id))) return;
-    const schon = this.oeffnet.get(id);
+  async oeffnen(id: string, neu = false, rueck = true): Promise<void> {
+    const da = this._voll().has(id) && (!rueck || this._rueck().has(id));
+    if (!neu && (da || this._fehlt().has(id))) return;
+    const schluessel = rueck ? `${id} +rueck` : id;
+    const schon = this.oeffnet.get(schluessel) ?? this.oeffnet.get(`${id} +rueck`);
     if (schon) return schon;
-    const lauf = Promise.all([this.api.entity(id), this.api.backlinks(id)])
-      .then(([mitBezug, rueck]) => {
+    const lauf = Promise.all([
+      this.api.entity(id),
+      rueck ? this.api.backlinks(id) : Promise.resolve(null),
+    ])
+      .then(([mitBezug, zeigt]) => {
         const { refs, ...e } = mitBezug;
-        this.merke(refs, rueck, e);
+        this.merke(refs, zeigt ?? [], e as Entity);
         this._voll.update((m) => new Map(m).set(id, e as Entity));
-        this._rueck.update((m) => new Map(m).set(id, rueck));
+        if (zeigt) this._rueck.update((m) => new Map(m).set(id, zeigt));
         this._fehlt.update((s) => {
           const n = new Set(s);
           n.delete(id);
@@ -118,8 +156,8 @@ export class Bestand {
           this._fehler.set(error instanceof Error ? error.message : String(error));
         }
       })
-      .finally(() => this.oeffnet.delete(id));
-    this.oeffnet.set(id, lauf);
+      .finally(() => this.oeffnet.delete(schluessel));
+    this.oeffnet.set(schluessel, lauf);
     return lauf;
   }
 
@@ -138,3 +176,19 @@ export class Bestand {
   }
 }
 
+/** Eine Listenzeile als schmaler Artikel — mit den Kanten, die sie mitbrachte. */
+export function schmal(z: ListenZeile): Entity {
+  return {
+    id: z.id,
+    interfaces: [z.type],
+    name: z.name,
+    components: {
+      Identity: { name: z.name },
+      ...(z.tags?.length ? { Tags: { tags: z.tags } } : {}),
+      ...(z.source ? { Source: { publication: z.source } } : {}),
+    },
+    relations: Object.entries(z.rels ?? {}).flatMap(([type, ziele]) =>
+      ziele.map((to, i) => ({ id: `${z.id}~${type}-${i}`, type, to, props: {} })),
+    ),
+  };
+}
