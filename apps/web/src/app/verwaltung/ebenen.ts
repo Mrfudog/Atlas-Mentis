@@ -23,6 +23,10 @@ const BUCHGRUPPEN: [string, string][] = [
  * sagen. Was der Server nicht annähme, bietet die Seite nicht an
  * (`may`, `canActivate`).
  *
+ * **Vergleichsebenen** (T-092, E-021 d): an jeder Ebene, die nicht im
+ * Spiel ist, ein Häkchen „compare" — ihre Fassungen stehen dann auf Wunsch
+ * an den Feldern. Darunter, ob die Spielenden sie auch sehen.
+ *
  * **Bücher stehen für sich** (T-081, E-017): je Buch aus 5e.tools eine
  * Ebene, gruppiert nach Grundregelwerk, Quellenbuch und Abenteuer, mit
  * Häkchen und ohne Pfeile — zwischen Büchern gibt es nichts zu ordnen, und
@@ -65,6 +69,17 @@ const BUCHGRUPPEN: [string, string][] = [
                   · belongs to another campaign; the admin can turn it on
                 }
               </span>
+              @if (!l.active) {
+                <label class="vergleich" [title]="'Show versions from ' + l.name + ' on demand, without putting it in play'">
+                  <input
+                    type="checkbox"
+                    [checked]="!!l.compare"
+                    [disabled]="!aenderbar(l) || laeuft()"
+                    (change)="vergleichen(l)"
+                  />
+                  compare
+                </label>
+              }
               @if (l.active && d.may === 'manage') {
                 <span class="knoepfe">
                   <button
@@ -121,12 +136,42 @@ const BUCHGRUPPEN: [string, string][] = [
                         · also in {{ l.alsoIn.join(', ') }}
                       }
                     </span>
+                    @if (!l.active) {
+                      <label class="vergleich" [title]="'Show versions from ' + l.name + ' on demand, without putting it in play'">
+                        <input
+                          type="checkbox"
+                          [checked]="!!l.compare"
+                          [disabled]="!aenderbar(l) || laeuft()"
+                          (change)="vergleichen(l)"
+                        />
+                        compare
+                      </label>
+                    }
                   </li>
                 }
               </ul>
             </details>
           }
         }
+        <h3>Compare layers</h3>
+        <p class="fuss">
+          A layer marked <em>compare</em> is not in play and in no list. Its versions of an article show
+          on demand next to the fields that differ, and the GM can take one over into this campaign.
+          @if (vergleich().length) {
+            Now: {{ vergleich().join(', ') }}.
+          } @else {
+            None yet.
+          }
+        </p>
+        <label class="haken spieler">
+          <input
+            type="checkbox"
+            [checked]="d.compareFor === 'players'"
+            [disabled]="d.may !== 'manage' || laeuft()"
+            (change)="spielerSehen($event)"
+          />
+          <span>Players see the compare layers too</span>
+        </label>
         @if (d.may === 'see') {
           <p class="fuss">A co-GM sees the layers; the GM turns them on.</p>
         }
@@ -257,6 +302,22 @@ const BUCHGRUPPEN: [string, string][] = [
     .buecher {
       margin: 0 0 0.25rem 1.1rem;
     }
+    .vergleich {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      min-height: 36px;
+      margin-left: auto;
+      font-size: 0.85rem;
+      color: var(--dim);
+    }
+    .vergleich input {
+      width: 1rem;
+      height: 1rem;
+    }
+    .spieler {
+      flex: 0 0 auto;
+    }
   `,
 })
 export class KampagnenEbenenListe {
@@ -312,6 +373,35 @@ export class KampagnenEbenenListe {
     if (auf) s.add(key);
     else s.delete(key);
     this.offen.set(s);
+  }
+
+  /** Die Namen der Vergleichsebenen (T-092). */
+  protected readonly vergleich = computed(() =>
+    (this.daten()?.layers ?? []).filter((x) => x.compare).map((x) => x.name),
+  );
+
+  /** Eine Ebene zum Vergleich dazu oder weg (T-092) — nur eine, die nicht im Spiel ist. */
+  protected vergleichen(l: KampagnenEbene): void {
+    const jetzt = (this.daten()?.layers ?? []).filter((x) => x.compare).map((x) => x.id);
+    const neu = l.compare ? jetzt.filter((id) => id !== l.id) : [...jetzt, l.id];
+    void this.vergleichSchreiben({ layers: neu });
+  }
+
+  protected spielerSehen(ev: Event): void {
+    void this.vergleichSchreiben({ players: (ev.target as HTMLInputElement).checked });
+  }
+
+  private async vergleichSchreiben(neu: { layers?: string[]; players?: boolean }): Promise<void> {
+    const c = this.kampagne();
+    this.laeuft.set(true);
+    try {
+      await this.api.setCampaignCompare(c, neu);
+      await this.laden(c);
+    } catch (error) {
+      this.fehler.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.laeuft.set(false);
+    }
   }
 
   /** Der Stapel von unten nach oben, wie der Server ihn will. */

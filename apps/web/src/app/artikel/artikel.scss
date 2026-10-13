@@ -333,6 +333,69 @@ h1 {
   }
 }
 
+/* **Fassungen an den Feldern** (T-092, E-021 d): unter dem Wert, was eine
+   andere Fassung sagt — Kürzel der Ebene, der volle Name im Tooltip. Eine
+   Vergleichsebene hat einen gestrichelten Rahmen: nicht im Spiel. */
+.fassung {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.4rem;
+  margin-top: 0.15rem;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  color: var(--dim);
+}
+.fassung.lang {
+  display: block;
+}
+.fassung details,
+details.fassung {
+  margin-top: 0.25rem;
+}
+.fassung summary {
+  cursor: pointer;
+  min-height: 28px;
+}
+.fassung details > :not(summary),
+details.fassung > :not(summary) {
+  padding: 0.35rem 0.6rem;
+  border-left: 3px solid var(--line);
+  color: var(--ink);
+}
+.fwert {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.fhier {
+  display: block;
+}
+.kuerzel {
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 0 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+.kuerzel.vergleich {
+  border-style: dashed;
+}
+.fassungen-rest {
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--line);
+}
+.fassung-kante {
+  font-size: 0.85rem;
+}
+.band-vergleich {
+  border-color: var(--line);
+  border-left-color: var(--accent);
+}
 /* REQ-192: abgewiesen, weil jemand anders gespeichert hat. Wie das Band
    des fertigen Stands, aber in der Warnfarbe — hier ist noch nichts
    geschrieben. */

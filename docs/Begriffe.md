@@ -700,6 +700,36 @@ aufs Original nicht ins Leere führt, liefert der Server die Fassung, die
 gilt (E5) — dieselbe Frage, die der Stapel ohnehin stellt (`resolveArticle`),
 nur jetzt auch beim Öffnen und bei den Namen.
 
+**Fassungen stehen am Feld, nicht hinter einem Umschalter** (T-092,
+E-021 d). Fireball gibt es im PHB von 2014, im PHB von 2024 und mit
+Reichweite 120 in Xanathar's Guide. Ein Umschalter „2014 · 2024" oben am
+Artikel hiesse: eine Fassung lesen und die andere vergessen. Die Leitung
+will beides sehen, wo es sich unterscheidet — also bleiben die Fassungen
+eigene Artikel, und an jedem Feld, an dem eine andere Fassung etwas anderes
+sagt, steht ihr Wert dabei, mit dem Kürzel ihrer Ebene. Wer liest, schaltet
+das ein und aus und wählt die Ebenen; gemerkt wird es **am Konto**
+(`app_user_pref`), weil es eine Frage ist, wie jemand liest, und nicht, was
+gilt.
+
+*Was eine Fassung ist*, sagt nicht `variantOf` allein: die Kante verbindet
+auch den Oathbow mit dem Longbow und die Kopie „Goblin Boss" mit dem
+Goblin — das sind andere Dinge, und im Kompendium unter dem Longbow
+verschwände der Oathbow. Eine Fassung ist dieselbe Art mit demselben Namen,
+nachdem ein angehängtes „(Buch)" der eigenen Quelle weg ist — so nennt der
+Importer die Fassungen aus mehreren Büchern. Eine Überschreibung sagt es
+selbst und zählt immer.
+
+*Vergleichsebenen* sind Ebenen, die eine Kampagne nennt, ohne sie
+aufzuschalten (`activates` mit `mode: 'compare'`). Was sie bringen, steht
+in keiner Liste, ist an keinem Verweis und gehört der Kampagne nicht — es
+ist auf Wunsch sichtbar, für die Leitung und, wenn die Kampagne es sagt,
+für die Spielenden. Eine Fassung daraus **übernimmt** die Leitung als
+Kopie in die Ebene der Kampagne, mit `overrides` auf die geltende — wie „Adapt" eines Abenteuers, nur aus
+einer Vergleichsebene und mit der Herkunft in `variantOf`. Eine
+Kante am Buchartikel wäre kürzer und falsch: das Buch liegt in einer
+geteilten Ebene, und eine Überschreibung dort gälte in jeder Runde, die es
+aufschaltet.
+
 > **Die dritte Zeile der Tabelle ist die, die heute zählt.** Von
 > fünfundsiebzig Artikeln tragen fünfundsechzig keine Ebenenkante — die
 > Regel „ohne Ebene gehört er der Kampagne und ist immer da" (siehe

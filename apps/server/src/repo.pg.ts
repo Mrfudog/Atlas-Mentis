@@ -550,6 +550,23 @@ export class PgRepository implements Repository {
     await this.pool.query('delete from entity_ready where entity_id = $1', [entityId]);
   }
 
+  async getPrefs(userId: string): Promise<Record<string, unknown>> {
+    const { rows } = await this.pool.query<Row>('select key, value from app_user_pref where user_id = $1', [userId]);
+    return Object.fromEntries(rows.map((r) => [String(r['key']), r['value']]));
+  }
+
+  async putPref(userId: string, key: string, value: unknown): Promise<void> {
+    if (value === null || value === undefined) {
+      await this.pool.query('delete from app_user_pref where user_id = $1 and key = $2', [userId, key]);
+      return;
+    }
+    await this.pool.query(
+      `insert into app_user_pref(user_id, key, value, updated_at) values ($1, $2, $3, now())
+       on conflict (user_id, key) do update set value = excluded.value, updated_at = now()`,
+      [userId, key, JSON.stringify(value)],
+    );
+  }
+
   /* Konto und Figuren gehen zusammen hinein. In einer Transaktion, weil
      ein Konto ohne seine Figuren ein Spieler ohne Blatt ist — und wer das
      nach einem halben Schreiben sieht, meldet einen Fehler, den es nicht
