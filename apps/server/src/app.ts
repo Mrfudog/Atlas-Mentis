@@ -18,6 +18,7 @@ import {
   currentCampaign,
   inPlay,
   detachInstance,
+  entityName,
   instancesOf,
   isInstance,
   readInstance,
@@ -151,7 +152,7 @@ export function buildApp({
     const actors: { id: string; name: string }[] = [];
     for (const id of user?.actorIds ?? []) {
       const e = await repo.getEntity(id);
-      if (e) actors.push({ id, name: String(e.name ?? id) });
+      if (e) actors.push({ id, name: entityName(e) });
     }
     return {
       user,

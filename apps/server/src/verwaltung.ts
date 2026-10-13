@@ -24,6 +24,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
   CAMPAIGN_TYPE,
   campaignsOf,
+  entityName,
   isTableRole,
   nextId,
   validateEntity,
@@ -78,7 +79,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
   }
 
   const figurenMitNamen = (alle: Map<string, Entity>, ids: string[]) =>
-    ids.map((id) => ({ id, name: alle.has(id) ? String(alle.get(id)?.name ?? id) : null }));
+    ids.map((id) => ({ id, name: alle.has(id) ? entityName(alle.get(id)) : null }));
 
   // ---------------------------------------------------------- Kampagnen
 
@@ -98,7 +99,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
           /* Eine Rolle an einer Kampagne, die es (noch) nicht als Artikel
              gibt, steht trotzdem da — mit ihrer Id und dem Hinweis. Sie zu
              verschweigen hiesse, eine Rolle zu haben, die niemand sieht. */
-          name: da.has(id) ? String(da.get(id)?.name ?? id) : id,
+          name: da.has(id) ? entityName(da.get(id)) : id,
           exists: da.has(id),
           role: user.roles?.[id] ?? null,
           may: rechtAn(user, id),
@@ -168,11 +169,11 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       recht === 'manage'
         ? [...alle.values()]
             .filter((e) => (e.interfaces ?? [])[0] === 'PlayerCharacter' && vergebbar(alle, e.id, c))
-            .map((e) => ({ id: e.id, name: String(e.name ?? e.id) }))
+            .map((e) => ({ id: e.id, name: entityName(e) }))
             .sort((a, b) => a.name.localeCompare(b.name, 'de'))
         : [];
     return {
-      campaign: { id: c, name: kampagne ? String(kampagne.name ?? c) : c, exists: !!kampagne },
+      campaign: { id: c, name: kampagne ? entityName(kampagne) : c, exists: !!kampagne },
       may: recht,
       members,
       characters,
@@ -289,7 +290,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
         if (bisher.includes(id)) continue;
         if (!alle.has(id)) return nein(reply, 404, `Keine Figur ${id}.`);
         if (!admin && !vergebbar(alle, id, c)) {
-          return nein(reply, 403, `${String(alle.get(id)?.name ?? id)} gehört einer anderen Kampagne.`);
+          return nein(reply, 403, `${entityName(alle.get(id))} gehört einer anderen Kampagne.`);
         }
       }
       /* Weggenommen wird nur, was diese Kampagne vergeben darf — oder was
@@ -322,7 +323,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       actors: figurenMitNamen(alle, u.actorIds ?? []),
       roles: Object.entries(u.roles ?? {}).map(([id, role]) => ({
         campaign: id,
-        name: da.has(id) ? String(da.get(id)?.name ?? id) : id,
+        name: da.has(id) ? entityName(da.get(id)) : id,
         role,
       })),
     }));
@@ -347,7 +348,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
         label: i.label ?? null,
         isAdmin: i.isAdmin,
         actorId: i.actorId ?? null,
-        actorName: i.actorId && alle.has(i.actorId) ? String(alle.get(i.actorId)?.name ?? '') : null,
+        actorName: i.actorId && alle.has(i.actorId) ? entityName(alle.get(i.actorId)) : null,
         campaignId: i.campaignId ?? null,
         role: i.role ?? null,
         usesLeft: i.usesLeft ?? null,
