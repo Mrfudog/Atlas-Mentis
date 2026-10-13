@@ -3,6 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
   areaOf,
+  choicesOf,
+  choiceText,
   BOOK_CARDS,
   fieldText,
   layoutFor,
@@ -662,9 +664,13 @@ export class Artikel {
         const objekt =
           typeof wert === 'object' &&
           (!Array.isArray(wert) || wert.some((x) => x !== null && typeof x === 'object'));
+        /* Eine Wahl liest sich als Satz („Choose 2 from …", REQ-238),
+           nicht als ihre Schlüssel. */
         const text = tabelle
           ? tabelleAlsText(werte['columns'], wert)
-          : objekt
+          : comp === 'Choices' && prop === 'choices'
+            ? choicesOf(e).map((c) => `${c.level && c.level > 1 ? `Level ${c.level}: ` : ''}${choiceText(c)}`).join('; ')
+            : objekt
             ? anzeigeWert(wert)
             : fieldText(r, schema, wert, mode);
         if (!text) continue;
