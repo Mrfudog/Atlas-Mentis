@@ -34,6 +34,7 @@ import {
   RegistrySchema,
   INSTANCE_RELATION,
   detachInstance,
+  entityName,
   isInstance,
   resolveInstance,
   stageBases,
@@ -137,10 +138,10 @@ export async function runImport(
   if (optionen.replace) weg = bestand.filter((e) => !ids.has(e.id));
   else if (optionen.replaceLayer) {
     const ebene = findeEbene(optionen.replaceLayer, neu, bestand);
-    ebenenText = `Ebene „${ebene.name}" (${ebene.id})`;
+    ebenenText = `Ebene „${entityName(ebene)}" (${ebene.id})`;
     weg = bestand.filter((e) => !ids.has(e.id) && nurInEbene(e, ebene.id));
   }
-  const wegIds = new Map(weg.map((e) => [e.id, e.name] as const));
+  const wegIds = new Map(weg.map((e) => [e.id, entityName(e)] as const));
   const danach = new Map<string, Entity>();
   for (const e of bestand) if (!wegIds.has(e.id)) danach.set(e.id, e);
   for (const e of neu) danach.set(e.id, e);
@@ -196,25 +197,29 @@ export async function runImport(
     for (const e of danach.values()) {
       if (ids.has(e.id)) continue;
       for (const r of e.relations ?? []) {
-        if (wegIds.has(r.to)) verwaisteKanten.push(`${e.name} (${e.id}) —${r.type}→ ${wegIds.get(r.to)} (${r.to})`);
+        if (wegIds.has(r.to)) verwaisteKanten.push(`${entityName(e)} (${e.id}) —${r.type}→ ${wegIds.get(r.to)} (${r.to})`);
       }
     }
   }
 
   if (optionen.dryRun) {
     const zeilen = [`Probelauf, nichts geschrieben${ebenenText ? ` — ${ebenenText}` : ''}: ${zuSchreiben.length} Artikel würden geschrieben, ${weg.length} gelöscht${weg.length ? ` (${jeArt(weg)})` : ''}.`];
-    if (geloest.length) zeilen.push(`${geloest.length} Instanzen würden von ihrer Vorlage gelöst: ${geloest.map((e) => `${e.name} (${e.id})`).join(', ')}`);
+    if (geloest.length) zeilen.push(`${geloest.length} Instanzen würden von ihrer Vorlage gelöst: ${geloest.map((e) => `${entityName(e)} (${e.id})`).join(', ')}`);
     if (verwaisteKanten.length) zeilen.push(kantenText(verwaisteKanten, 'würden ins Leere zeigen'));
     return { text: zeilen.join('\n'), geschrieben: 0, geloescht: 0, verwaisteKanten };
   }
 
+  /* Erst löschen, dann schreiben: geprüft ist der Stand danach, und eine
+     Kanten-Id, die ein gehender Artikel noch hält, darf ein kommender
+     schon tragen — umgekehrt bräche das Schreiben an ihr ab. Bricht ein
+     Lauf mittendrin ab, bringt derselbe Befehl noch einmal den Rest. */
   const liegen = await schreibeRegister(repo, d.registry, registry);
-  for (const e of zuSchreiben) await repo.putEntity(e);
-  for (const e of geloest) await repo.putEntity(e);
   let geloescht = 0;
   for (const alt of weg) {
     if (await repo.deleteEntity(alt.id)) geloescht += 1;
   }
+  for (const e of zuSchreiben) await repo.putEntity(e);
+  for (const e of geloest) await repo.putEntity(e);
   await repo.appendEvent('import', undefined, {
     written: zuSchreiben.length,
     removed: geloescht,
@@ -232,7 +237,7 @@ export async function runImport(
     if (weg.length) verwaist.push(`${u.name}: ${weg.join(', ')}`);
   }
   const zeilen = [`${ebenenText ? `${ebenenText}: ` : ''}${zuSchreiben.length} Artikel geschrieben${geloescht ? `, ${geloescht} gelöscht (${jeArt(weg)})` : ''}.`];
-  if (geloest.length) zeilen.push(`${geloest.length} Instanzen von ihrer gelöschten Vorlage gelöst (sie tragen jetzt, was sie lasen): ${geloest.map((e) => `${e.name} (${e.id})`).join(', ')}`);
+  if (geloest.length) zeilen.push(`${geloest.length} Instanzen von ihrer gelöschten Vorlage gelöst (sie tragen jetzt, was sie lasen): ${geloest.map((e) => `${entityName(e)} (${e.id})`).join(', ')}`);
   if (verwaisteKanten.length) zeilen.push(kantenText(verwaisteKanten, 'zeigen jetzt ins Leere'));
   if (verwaist.length) zeilen.push(`Figuren, die es nicht mehr gibt, an Konten:\n  ${verwaist.join('\n  ')}`);
   return { text: zeilen.join('\n') + liegenText(liegen), geschrieben: zuSchreiben.length, geloescht, verwaisteKanten };
@@ -260,7 +265,7 @@ function findeEbene(wahl: string | true, neu: Entity[], bestand: Entity[]): Enti
   }
   const nachId = ebenen.get(wahl);
   if (nachId) return nachId;
-  const nachName = [...ebenen.values()].filter((e) => e.name === wahl || (e.components['Identity'] as { id?: unknown } | undefined)?.id === wahl);
+  const nachName = [...ebenen.values()].filter((e) => entityName(e) === wahl || (e.components['Identity'] as { id?: unknown } | undefined)?.id === wahl);
   if (nachName.length === 1) return nachName[0]!;
   if (nachName.length > 1) throw new ImportFehler(`Mehrere Ebenen heissen „${wahl}": ${nachName.map((e) => e.id).join(', ')} — die Id nennen.`);
   throw new ImportFehler(`Keine Ebene „${wahl}", weder in der Datei noch im Bestand.`);
