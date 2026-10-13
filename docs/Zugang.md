@@ -107,10 +107,26 @@ Die Regel ist kurz, weil eine lange niemand mehr nachliest:
 
 - **Die Verwaltung darf alles.**
 - **Ein Spieler liest alles** (was die Sichtbarkeit ihn lesen lässt) **und
-  schreibt genau seine Figur und was an ihr hängt.** „Hängt an" heisst: über
+  schreibt genau seine Figur und was an ihr hängt** — und was er selbst
+  angelegt hat (D72). „Hängt an" heisst: über
   eine Kante aus `OWNING_RELATIONS` — `carries`, `holds`, `crafting`. Die
   Kante steht in den Daten, also wird sie dort nachgesehen und nicht im
   Server behauptet.
+- **Spielende legen Artikel an, „ready" setzt die Leitung** (REQ-237, D72).
+  Wer in der laufenden Kampagne `player` ist, legt jede Art an, die einen
+  Stand trägt; sie landet in der Ebene der Kampagne, auf `idea` oder
+  `prepared`. Wer was angelegt hat, steht in `app_user_article` neben dem
+  Konto. **Unfertiges sieht nur die Leitung der Kampagne** — und wer es
+  angelegt hat oder schreiben darf; ein Artikel ohne Status-Karte zählt als
+  fertig.
+
+| | legt an | schreibt | setzt `ready` | sieht Unfertiges |
+|---|---|---|---|---|
+| Verwaltung (`is_admin`) | ja | alles | ja | alles |
+| `gm` der Kampagne | nein (D69) | was Spielende angelegt haben | ja | ja |
+| `co-gm` der Kampagne | nein (D69) | nein | nein | ja |
+| `player` der laufenden Kampagne | jede Art mit Stand | eigene Figur samt Anhang, eigene Artikel | nein | nur eigenes |
+| `spectator`, ohne Rolle | nein | nein | nein | nein |
 - **Das Register gehört der Verwaltung und der Leitung der laufenden
   Kampagne** (`gm` in der Kampagne, die `currentCampaign` nennt; seit W5).
   Eine Registerzeile zu ändern heisst, die Regeln zu ändern, und die
@@ -316,7 +332,8 @@ Die Vorschau zeigt ihr darum jeden Artikel als „Das gehört dir nicht."
 
 **Zugänge sind keine Artikel.** Ein Artikel gehört der Kampagne und wandert
 mit ihr; ein Zugang gehört der Instanz. `app_user`, `app_session`, `app_token` und
-`login_attempt` sind eigene Tabellen und dürfen beim Spiegeln von prod nach
+`login_attempt` sind eigene Tabellen (dazu `app_user_actor`,
+`campaign_member` und `app_user_article`, wer was angelegt hat) und dürfen beim Spiegeln von prod nach
 preprod ausdrücklich **nicht** mitwandern (REQ-199). In der Artikeltabelle
 steht davon nichts — nur beim Nutzer steht die Id der Figur, die er spielt.
 Darum steht auch in der eigenen Ausfuhr (`/api/export`) keins davon: sie

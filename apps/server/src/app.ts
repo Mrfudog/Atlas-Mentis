@@ -23,6 +23,11 @@ import {
   CAMPAIGN_TYPE,
   articleVisible,
   backlinks,
+  campaignLayer,
+  campaignOf,
+  isReady,
+  tableRole,
+  STATUS_COMPONENT,
   classParts,
   currentCampaign,
   inPlay,
@@ -183,17 +188,45 @@ export function buildApp({
     return (await werIst(request))?.user ?? null;
   }
 
-  /** Was ein Spieler schreiben darf: seine Figur und was an ihr hängt. Die
-   *  Kante steht in den Daten, also wird sie dort nachgesehen. */
-  async function ownedBy(user: User): Promise<Set<string>> {
-    const own = new Set<string>(user.actorIds ?? []);
-    if (!own.size) return own;
-    for (const e of await repo.listEntities()) {
+  /** Was ein Spieler schreiben darf: seine Figur und was an ihr hängt, und
+   *  was er selbst angelegt hat (REQ-237). Die Kante steht in den Daten,
+   *  also wird sie dort nachgesehen. */
+  async function ownedBy(user: User, bestand?: Iterable<Entity>): Promise<Set<string>> {
+    const figuren = new Set<string>(user.actorIds ?? []);
+    const own = new Set<string>([...figuren, ...(user.authoredIds ?? [])]);
+    if (!figuren.size) return own;
+    for (const e of bestand ?? (await repo.listEntities())) {
+      if (!figuren.has(e.id)) continue;
       for (const r of e.relations ?? []) {
-        if (OWNING_RELATIONS.has(r.type) && r.to && own.has(e.id)) own.add(r.to);
+        if (OWNING_RELATIONS.has(r.type) && r.to) own.add(r.to);
       }
     }
     return own;
+  }
+
+  /**
+   * **Wer Artikel anlegt** (REQ-237, E-011, E-013): die Verwaltung, und wer
+   * in der laufenden Kampagne `player` ist — jede Art. Ob die Leitung
+   * anlegt, ist eine eigene Frage (E-001) und hier nicht entschieden.
+   */
+  async function mayCreate(user: User, alle?: Map<string, Entity>): Promise<boolean> {
+    if (user.disabledAt) return false;
+    if (user.isAdmin) return true;
+    if (!Object.values(user.roles ?? {}).includes('player')) return false;
+    const map = alle ?? new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
+    return !!kampagne && user.roles?.[kampagne.id] === 'player';
+  }
+
+  /**
+   * **Wer `ready` setzt** (REQ-237, E-011): die Verwaltung und die Leitung
+   * (`gm`) der Kampagne, der der Artikel gehört — nicht Spielende, nicht
+   * ein Mitleiter. Gehört er keiner einzelnen, zählt `gm` irgendwo, wie bei
+   * der Sichtbarkeit (`campaignOf`).
+   */
+  function maySetReady(user: User, alle: Map<string, Entity>, article: Entity): boolean {
+    if (user.isAdmin) return true;
+    return tableRole({ roles: user.roles ?? {} }, campaignOf(alle, article)) === 'gm';
   }
 
   /**
@@ -227,7 +260,21 @@ export function buildApp({
 
        `null` heisst „alles" und nicht „nichts": die Spielleitung bekommt
        keine Liste über den ganzen Bestand geschickt. */
-    const writable = user && !user.isAdmin ? [...(await ownedBy(user))] : null;
+    const bestand = user ? new Map((await repo.listEntities()).map((e) => [e.id, e])) : null;
+    let writable: string[] | null = null;
+    if (user && !user.isAdmin && bestand) {
+      const eigen = await ownedBy(user, bestand.values());
+      /* Was Spielende angelegt haben, schreibt die Leitung ihrer Kampagne
+         mit (REQ-237) — sonst zeigte die Maske ihr keinen Knopf, um es
+         `ready` zu setzen. Dieselbe Regel wie in der Wache. */
+      if (Object.values(user.roles ?? {}).includes('gm')) {
+        for (const id of await repo.authoredArticles()) {
+          const e = bestand.get(id);
+          if (e && maySetReady(user, bestand, e)) eigen.add(id);
+        }
+      }
+      writable = [...eigen];
+    }
     /* Die Figuren mit Namen, nicht nur mit Id. Die Maske müsste sie sonst
        einzeln nachladen, bevor sie „meine Figuren" überhaupt beschriften
        kann — und täte es beim ersten Mal falsch. */
@@ -243,6 +290,13 @@ export function buildApp({
       /* Ob dieser Betrachter das Register ändern darf — gesagt vom Server,
          der es beim Schreiben ohnehin prüft (`mayEditRegistry`). */
       registry: user ? await mayEditRegistry(user) : false,
+      /* Ob „New article" angeboten wird (REQ-237) — Spielende der
+         laufenden Kampagne und die Verwaltung. Der Server prüft es beim
+         Anlegen noch einmal. */
+      create: user && bestand ? await mayCreate(user, bestand) : false,
+      /* Ob die Maske `ready` anbietet: die Verwaltung, und wer irgendwo
+         leitet (`gm`). Je Artikel prüft der Server genauer (`maySetReady`). */
+      ready: !!user && (user.isAdmin || Object.values(user.roles ?? {}).includes('gm')),
       /* Ein frischer Server sagt es geradeheraus. Das ist keine Auskunft,
          die jemandem nützt, den es nichts angeht: wer den Port erreicht,
          sieht ohnehin, dass nichts eingerichtet ist. */
@@ -489,12 +543,25 @@ export function buildApp({
        Kampagne im Pfad (gm ändert, co-gm sieht), nicht am Konto allein. */
     if (url.startsWith('/api/campaigns') || url.startsWith('/api/invites')) return;
 
-    /* Ein Spieler schreibt seine Figur und was an ihr hängt — und sonst
-       nichts. */
-    const id = url.startsWith('/api/entities/') ? decodeURIComponent(url.slice(14)) : '';
-    if (!id || !mayWrite(user, await ownedBy(user), id)) {
-      return reply.code(403).send({ error: 'Das gehört dir nicht.' });
+    /* Anlegen: Spielende der laufenden Kampagne (REQ-237). */
+    if (url === '/api/entities' && request.method === 'POST') {
+      if (await mayCreate(user)) return;
+      return reply.code(403).send({ error: 'Anlegen darfst du hier nicht.' });
     }
+    /* Ein Spieler schreibt seine Figur und was an ihr hängt, und was er
+       selbst angelegt hat — und sonst nichts. */
+    const id = url.startsWith('/api/entities/') ? decodeURIComponent(url.slice(14)) : '';
+    if (id && mayWrite(user, await ownedBy(user), id)) return;
+    /* **Die Leitung schreibt, was Spielende ihr vorlegen** (REQ-237): sonst
+       könnte sie es nicht `ready` setzen. Nur Artikel, die jemand angelegt
+       hat, und nur als `gm` ihrer Kampagne (`maySetReady`) — was die
+       Leitung sonst schreibt, ist E-001 und hier nicht entschieden. */
+    if (id && request.method === 'PUT' && (await repo.authorsOf(id)).length) {
+      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      const da = alle.get(id);
+      if (da && maySetReady(user, alle, da)) return;
+    }
+    return reply.code(403).send({ error: 'Das gehört dir nicht.' });
   });
 
   // ---------------------------------------------------------------- registry
@@ -613,11 +680,14 @@ export function buildApp({
        niemand auswertete: `audience: 'gm'` stand da, und der Server
        schickte den Artikel. */
     const augen = user.actorIds ?? [];
+    /* Eigenes geht in jedem Stand an ihn (REQ-237): was er angelegt hat
+       oder schreiben darf. */
+    const eigen = await ownedBy(user, roh.values());
     /* **Die Rollen gehen mit, nicht nur die Figuren.** Wer eine Kampagne
        leitet, hat keine Figur — seine Rolle steht am Konto, je Kampagne
        (`campaign_member`). Das Wissen fragt weiter nur nach den Figuren:
        was jemand erfahren hat, hat eine Figur erfahren. */
-    const auge = { actors: augen, roles: user.roles ?? {} };
+    const auge = { actors: augen, roles: user.roles ?? {}, own: eigen };
     return entities
       .filter((e) => articleVisible(alle, e, auge))
       .map((e) => redactEntity(registry, alle, schmal ? schmal(e) : e, augen, gmFields));
@@ -725,7 +795,7 @@ export function buildApp({
     const wer =
       !user || user.isAdmin
         ? '*'
-        : `${user.id}|${(user.actorIds ?? []).join(',')}|${JSON.stringify(user.roles ?? {})}`;
+        : `${user.id}|${(user.actorIds ?? []).join(',')}|${(user.authoredIds ?? []).join(',')}|${JSON.stringify(user.roles ?? {})}`;
     const key = `${stand.stempel}|${registerStempel(registry)}|${wer}`;
     let lauf = indizes.get(key);
     if (lauf) {
@@ -929,9 +999,12 @@ export function buildApp({
    * (`validateEntity`); was Pflicht ist und keine Vorgabe hat (die Art
    * einer Aktion), schickt die Maske in `fields` mit.
    *
-   * Rechte wie beim Schreiben: die Wache lässt nur durch, wer schreiben
-   * darf (`mayWrite`) — einen Artikel, den es noch nicht gibt, besitzt
-   * kein Spieler, also legt die Verwaltung an.
+   * Anlegen darf die Verwaltung und, wer in der laufenden Kampagne `player`
+   * ist (`mayCreate`, REQ-237, E-011, E-013) — jede Art, die einen Stand
+   * trägt. Was eine Spielerin anlegt, liegt in der Ebene ihrer Kampagne
+   * (`campaignLayer`), steht auf `idea` oder `prepared` und gehört ihr:
+   * vermerkt neben ihrem Konto (`app_user_article`), nicht im Artikel
+   * (REQ-199). Eine Spielerfigur wird ihr gleich zugeteilt.
    */
   app.post<{ Body: { type?: unknown; name?: unknown; fields?: unknown; relations?: unknown } }>(
     '/api/entities',
@@ -982,6 +1055,29 @@ export function buildApp({
           !!k && typeof k === 'object' && typeof (k as { type?: unknown }).type === 'string' &&
           typeof (k as { to?: unknown }).to === 'string')
         .map((k, i) => ({ id: `${id}~${k.type}-${i + 1}`, type: k.type, to: k.to, props: k.props ?? {} }));
+      const user = await viewerOf(request);
+      const spielerin = !!user && !user.isAdmin;
+      if (spielerin) {
+        /* Ein Stand muss da sein: ohne Status-Karte gilt ein Artikel als
+           fertig (`isReady`), und dann sähe jeder sofort, was eben erst
+           angelegt wurde. */
+        if (!kette.includes(STATUS_COMPONENT)) {
+          return reply.code(400).send({ error: `Diese Art trägt keinen Stand und bleibt bei der Leitung: ${type}` });
+        }
+        const karte = (components[STATUS_COMPONENT] ??= {});
+        const wert = karte['status'];
+        if (wert === 'ready') {
+          return reply.code(403).send({ error: '„ready" setzt die Leitung.' });
+        }
+        if (wert !== 'idea' && wert !== 'prepared') karte['status'] = 'idea';
+        /* Die Ebene gibt der Server, nicht die Maske: eine Spielerin legt
+           in ihre Runde an und nicht in ein geteiltes Regelwerk. */
+        for (let i = relations.length - 1; i >= 0; i -= 1) {
+          if (relations[i]!.type === 'inLayer') relations.splice(i, 1);
+        }
+        const ebene = campaignLayer(stand.map, currentCampaign(stand.map, registry.settings ?? null));
+        if (ebene) relations.push({ id: `${id}~inLayer-1`, type: 'inLayer', to: ebene.id, props: {} });
+      }
       const entity: Entity = { id, interfaces: [type], name, components, relations };
 
       const known = new Map(stand.alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
@@ -991,7 +1087,17 @@ export function buildApp({
         return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
       }
       const stored = await repo.putEntity(entity);
-      await repo.appendEvent('entity.created', id, { interfaces: [type] });
+      if (spielerin && user) {
+        await repo.addAuthored(user.id, id);
+        /* Eine Figur, die sie anlegt, führt sie auch (REQ-237). */
+        if (kette.includes('PlayerCharacter')) {
+          const konto = await repo.getUser(user.id);
+          if (konto && !konto.actorIds.includes(id)) {
+            await repo.putUser({ ...konto, actorIds: [...konto.actorIds, id] });
+          }
+        }
+      }
+      await repo.appendEvent('entity.created', id, { interfaces: [type], ...(spielerin && user ? { by: user.id } : {}) });
       return reply.code(201).send(stored);
     },
   );
@@ -1006,6 +1112,20 @@ export function buildApp({
       const entity = parsed.data as Entity;
       if (entity.id !== request.params.id) {
         return reply.code(400).send({ error: 'id im Pfad und im Körper stimmen nicht überein' });
+      }
+
+      /* **`ready` setzt die Leitung** (REQ-237, E-011): wer nicht
+         `maySetReady` ist, macht aus einem unfertigen Artikel keinen
+         fertigen — auch nicht, indem er die Status-Karte weglässt (ohne
+         Karte gilt er als fertig, `isReady`). */
+      const schreiber = await viewerOf(request);
+      if (schreiber && !schreiber.isAdmin) {
+        const bestand = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+        const vorher = bestand.get(entity.id);
+        const warFertig = vorher ? isReady(vorher) : false;
+        if (!warFertig && isReady(entity) && !maySetReady(schreiber, bestand, vorher ?? entity)) {
+          return reply.code(403).send({ error: '„ready" setzt die Leitung.' });
+        }
       }
 
       const registry = await repo.getRegistry();

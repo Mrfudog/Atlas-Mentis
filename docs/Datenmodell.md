@@ -672,7 +672,13 @@ Artikel an jemanden geht; das Wissen sagt, welche Felder darin.
 ```mermaid
 flowchart TD
   S{"läuft der Artikel<br/>im Stapel?"} -- nein --> N0["unsichtbar"]
-  S -- ja --> GM{"Leitung der Kampagne,<br/>der er gehört?"}
+  S -- ja --> O{"eigener Artikel?<br/>(angelegt oder schreibbar)"}
+  O -- ja --> J
+  O -- nein --> F{"fertig?<br/>Status ready oder ohne"}
+  F -- nein --> FG{"gm oder co-gm der<br/>Kampagne, der er gehört?"}
+  FG -- nein --> N3["unsichtbar"]
+  FG -- ja --> GM
+  F -- ja --> GM{"Leitung der Kampagne,<br/>der er gehört?"}
   GM -- ja --> J["sichtbar"]
   GM -- nein --> H{"hiddenFrom nennt<br/>einen Träger?"}
   H -- ja --> N1["unsichtbar"]
@@ -700,6 +706,15 @@ Rolle in **der** Kampagne, der der Artikel gehört (E3); gehört er keiner
 einzelnen, zählt die stärkste Rolle irgendwo. **Vererbt wird nichts.** Wer
 durchfällt, bekommt in der Liste nichts und beim Einzelabruf 404. Die
 Verwaltung (`is_admin`) sieht alles.
+
+**Der Vorbereitungsstand ist Teil der groben Frage** (REQ-237, D72): wer
+nicht `gm` oder `co-gm` der Kampagne ist, der der Artikel gehört, sieht nur
+Artikel mit `Status.status: ready` — **ein Artikel ohne Status-Karte oder
+ohne Wert zählt als fertig** (`isReady`), sonst verschwände, was keinen
+Stand trägt. **Eigenes sieht man in jedem Stand**: was das Konto angelegt
+hat (`app_user_article`) oder schreiben darf (seine Figuren samt dem, was an
+ihnen hängt) — der Server gibt es als `Viewer.own` mit. Das gilt überall,
+wo gesiebt wird: Liste, Artikel, Verweise, Rückbezüge, Auswahlen.
 
 ### 9.2 Rollen
 
@@ -749,8 +764,18 @@ Maske gibt es nicht.
 ### 9.4 Schreiben
 
 Die Verwaltung schreibt alles. Ein Spieler schreibt seine Figuren und was an
-ihnen hängt (`carries`, `holds`, `crafting`). Das Register schreibt nur die
-Verwaltung. Die Leitung einer Kampagne kennt `mayWrite` noch nicht (offen).
+ihnen hängt (`carries`, `holds`, `crafting`), **und was er selbst angelegt
+hat** (D72). **Anlegen** darf, wer in der laufenden Kampagne `player` ist —
+jede Art, die einen Stand trägt (E-013); der Server legt den Artikel in die
+Ebene der Kampagne (`campaignLayer`: die spezifischste aufgeschaltete, die
+keine andere Kampagne aufschaltet), auf `idea` oder `prepared`, und vermerkt
+die Verfasserin neben dem Konto (`app_user_article`), nicht im Artikel
+(REQ-199). Eine angelegte Spielerfigur führt sie gleich. **`ready` setzen
+die Verwaltung und `gm` der Kampagne, der der Artikel gehört**, nicht
+Spielende und nicht `co-gm`; der Server prüft es, auch wenn die Status-Karte
+fehlt. Dafür schreibt `gm` die Artikel, die Spielende angelegt haben. Das
+Register schreiben die Verwaltung und `gm` der laufenden Kampagne. Was die
+Leitung sonst schreibt, ist offen (D69).
 
 ### 9.5 Handwerk: gelernt und gebunden (D55)
 
@@ -883,6 +908,7 @@ verschweigen.
 |---|---|---|
 | Konten, Passwörter, Sitzungen, Einladungen, Fehlversuche | Server: `app_user`, `app_session`, `app_invite`, `login_attempt` | nein (REQ-199) |
 | welche Figuren ein Konto führt | `app_user_actor` | nein |
+| wer einen Artikel angelegt hat (D72) | `app_user_article` | nein |
 | Rolle je Kampagne | `campaign_member`; Prototyp: Sammlung `members` | nein |
 | Verwaltung der Installation | `app_user.is_admin` | nein |
 | das Register | Tabellen `interface_def`, `relation_def`, `view_def`, `unit_def`, `var_def`, `enum_def` (Aufzählungen), `setting_def` (Einstellungen, seit Migration 019); Prototyp: Sammlung `registry` | ja — allein weiterreichbar (`register-datei.mjs`) |

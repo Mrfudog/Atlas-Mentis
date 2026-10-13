@@ -803,7 +803,13 @@ export class Artikel {
            ganzen Bestand gebraucht, und den hält der Browser nicht mehr
            (W7). Sie wird ein freies Wort — heute nennt das nur Felder mit
            mehreren Werten, und die sind ohnehin eine Liste. */
-        const werte = enumOptions(r, schema) ?? [];
+        let werte = enumOptions(r, schema) ?? [];
+        /* **`ready` setzt die Leitung** (REQ-237, E-011): Spielenden bietet
+           die Maske es nicht an — ausser es steht schon da, sonst zeigte
+           die Auswahl einen fertigen Artikel als leer. Der Server prüft. */
+        if (comp === 'Status' && prop === 'status' && !this.session.darfReady() && karte[prop] !== 'ready') {
+          werte = werte.filter((w) => w !== 'ready');
+        }
         /* Eine Auswahl ohne Werte ist ein freies Wort: nennt das Feld eine
            Art, von der noch nichts sichtbar ist (M6), soll man trotzdem
            etwas eintragen können. */
