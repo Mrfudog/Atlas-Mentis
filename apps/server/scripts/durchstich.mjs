@@ -199,6 +199,41 @@ try {
   pruefe('gm-Artikel: die Leitung der anderen Runde nicht', (await status('probe-fremd')) === 404);
   pruefe('gm-Artikel: wer mitspielt, nicht', (await status('probe-spiel')) === 404);
 
+  /* Die Liste am Server (W7): gerechnet über den Zwischenspeicher je
+     Stempel — ein Schreiben muss ihn ungültig machen, auch in Postgres,
+     wo der Stempel aus `count`/`max(updated_at)` kommt. */
+  const liste = async (keks, frage) => (await get(keks, `/api/list?${frage}`)).json();
+  const l1 = await liste(admin, 'q=probe&limit=50');
+  pruefe(
+    'GET /api/list findet die Probeartikel, mit Arten und Ebenen',
+    l1.total >= 5 && l1.facets?.types?.some((t) => t.type === 'Statblock') &&
+      l1.facets?.layers?.some((l) => l.id === 'ly_probe_a'),
+    JSON.stringify(l1).slice(0, 300),
+  );
+  pruefe(
+    'die Instanz steht in keiner Liste',
+    !l1.rows.some((z) => z.id === 'sb_probe_instanz'),
+  );
+  const angelegt = await fetch(`${BASE}/api/entities`, {
+    method: 'POST',
+    headers: { ...json, cookie: admin },
+    body: JSON.stringify({ type: 'Creature', name: 'Probeneuling' }),
+  });
+  const neu = await angelegt.json();
+  pruefe(
+    'POST /api/entities vergibt Id und Nummer',
+    angelegt.status === 201 && /^e_/.test(neu.id) && /^creature-\d{4}$/.test(neu.components?.Identity?.id ?? ''),
+    `${angelegt.status} ${JSON.stringify(neu).slice(0, 300)}`,
+  );
+  const l2 = await liste(admin, 'q=probeneuling');
+  pruefe('die Liste sieht den neuen Artikel sofort', l2.total === 1 && l2.rows[0]?.id === neu.id, JSON.stringify(l2).slice(0, 200));
+  const offen = await liste(await anmelden('probe-spiel'), 'q=geheim');
+  pruefe('die Liste siebt je Betrachter', !offen.rows.some((z) => z.id === 'npc_probe_geheim'), JSON.stringify(offen).slice(0, 200));
+  const mitNamen = await (await get(admin, '/api/entities/pc_probe')).json();
+  pruefe('ein Artikel bringt die Namen seiner Kantenziele mit', mitNamen.refs?.names?.ly_probe_a === 'Probe A', JSON.stringify(mitNamen.refs));
+  const weg = await fetch(`${BASE}/api/entities/${neu.id}`, { method: 'DELETE', headers: { cookie: admin } });
+  pruefe('DELETE des neuen Artikels', weg.ok, String(weg.status));
+
   for (const e of [...ARTIKEL].reverse()) {
     const r = await fetch(`${BASE}/api/entities/${e.id}`, {
       method: 'DELETE',

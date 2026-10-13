@@ -7,6 +7,7 @@
  * package defines them — front and back share one definition.
  */
 
+import { randomUUID } from 'node:crypto';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyCookie from '@fastify/cookie';
@@ -28,9 +29,16 @@ import {
   summaryFields,
   summaryOf,
   validateEntity,
+  articleId,
+  entityName,
+  idLinks,
+  linkCandidates,
+  nextId,
+  typeChain,
 } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
 import type { Repository } from './repo.js';
+import { buildListIndex, listProjection, parseListQuery, queryList, type ListIndex } from './liste.js';
 import {
   ATTEMPT_WINDOW_MINUTES,
   MAX_ATTEMPTS,
@@ -409,7 +417,9 @@ export function buildApp({
 
     const user = await viewerOf(request);
     (request as FastifyRequest & { viewer?: User | null }).viewer = user;
-    const schreibt = request.method !== 'GET' && request.method !== 'HEAD';
+    /* `POST /api/links` liest nur — die Texte sind zu lang für eine
+       Adresse, darum kein GET. */
+    const schreibt = request.method !== 'GET' && request.method !== 'HEAD' && url !== '/api/links';
 
     if (!user) {
       const frisch = (await repo.countUsers()) === 0 && (await repo.countEntities()) === 0;
@@ -480,12 +490,23 @@ export function buildApp({
    * steht im Modellpaket, weil es für Server und Oberfläche gleichermassen
    * gilt und es nur einmal geben darf.
    */
-  async function sieve(request: FastifyRequest, entities: Entity[], bestand?: Entity[]): Promise<Entity[]> {
+  async function sieve(
+    request: FastifyRequest,
+    entities: Entity[],
+    bestand?: Entity[] | Map<string, Entity>,
+    /** Vor dem Wissen auf das Nötige kürzen — der Index der Liste braucht
+     *  nur die Karten, die eine Zeile zeigt, und das Wissen gilt je Feld:
+     *  was gekürzt wird, hätte keinen anderen Wert gesiebt. */
+    schmal?: (e: Entity) => Entity,
+  ): Promise<Entity[]> {
     const user = await viewerOf(request);
     /* **Eine Instanz geht aufgelöst hinaus**, mit ihrer Vorlage darin und
        der Angabe, welche Felder von dort kommen. Gespeichert ist an ihr nur,
        was abweicht; ohne Auflösung hätte Wache 1 keine Trefferpunkte. */
-    const roh = new Map((bestand ?? (await repo.listEntities())).map((e) => [e.id, e]));
+    const roh =
+      bestand instanceof Map
+        ? bestand
+        : new Map((bestand ?? (await repo.listEntities())).map((e) => [e.id, e]));
     const registry = await repo.getRegistry();
     /* **Die nullte Frage: steht der Artikel im Stapel?** (E2, A2) Was eine
        aufgeschaltete Ebene herausnimmt oder eine spezifischere Fassung
@@ -531,21 +552,194 @@ export function buildApp({
     const auge = { actors: augen, roles: user.roles ?? {} };
     return entities
       .filter((e) => articleVisible(alle, e, auge))
-      .map((e) => redactEntity(registry, alle, e, augen, gmFields));
+      .map((e) => redactEntity(registry, alle, schmal ? schmal(e) : e, augen, gmFields));
   }
 
-  app.get<{ Querystring: { as?: string } }>('/api/entities', async (request) => {
-    /* Die Liste ist zugleich der Zusammenhang, gegen den gesiebt wird —
-       einmal holen, nicht zweimal. */
+  app.get('/api/entities', async (request) => {
+    /* Der ganze Bestand, gesiebt — für Ausfuhr und Prüfungen. Die
+       Oberfläche fragt ihn nicht mehr: Listen kommen aus `/api/list`, ein
+       Artikel aus `/api/entities/:id`. Die Kurzfassung `?as=summary` ist
+       am 13.10. weggefallen (W7) — sie war genau der Weg, auf dem der
+       Browser 7,7 MB lud, bevor er eine Zeile zeigte. */
     const alle = await repo.listEntities();
-    const gesiebt = await sieve(request, alle, alle);
-    /* `?as=summary`: die Kurzfassung für Liste, Verweise und Auswahlen.
-       Gekürzt wird nach dem Sieb, damit ein Deckname der Deckname bleibt.
-       Ohne die Angabe bleibt es der ganze Bestand — Ausfuhr und Prüfungen
-       lesen ihn so. */
-    if (request.query.as !== 'summary') return gesiebt;
-    const felder = summaryFields(await repo.getRegistry());
-    return gesiebt.map((e) => summaryOf(e, felder));
+    return sieve(request, alle, alle);
+  });
+
+  // ------------------------------------------------------------ Liste (W7)
+
+  /**
+   * Der rohe Bestand je Stempel, mit den Nachschlagetafeln für Verweise:
+   * Nummer und Peg-Id → Artikel, Name und Alias → Artikel. Ungesiebt — wer
+   * daraus liest, siebt danach, was er gefunden hat.
+   */
+  let rohStand: {
+    stempel: string;
+    alle: Entity[];
+    map: Map<string, Entity>;
+    namen: Map<string, Entity[]>;
+  } | null = null;
+  async function roh(): Promise<NonNullable<typeof rohStand>> {
+    const stempel = await repo.version();
+    if (rohStand?.stempel === stempel) return rohStand;
+    const alle = await repo.listEntities();
+    const map = new Map(alle.map((e) => [e.id, e]));
+    const namen = new Map<string, Entity[]>();
+    const merke = (k: string, e: Entity): void => {
+      const key = k.trim().toLowerCase();
+      if (!key) return;
+      const l = namen.get(key);
+      if (!l) namen.set(key, [e]);
+      else if (!l.includes(e)) l.push(e);
+    };
+    for (const e of alle) {
+      merke(e.id, e);
+      merke(articleId(e), e);
+      merke(entityName(e), e);
+      const aliases = e.components?.['Identity']?.['aliases'];
+      if (Array.isArray(aliases)) for (const a of aliases) merke(String(a), e);
+    }
+    rohStand = { stempel, alle, map, namen };
+    return rohStand;
+  }
+
+  /** Ein kleiner Hash des Registers: ändert es sich, gilt kein Index mehr. */
+  function registerStempel(registry: Registry): string {
+    const s = JSON.stringify(registry);
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+    return `${s.length}:${(h >>> 0).toString(36)}`;
+  }
+
+  /**
+   * Der Index der Liste — je Bestand-Stempel, Register und Betrachter
+   * einmal gerechnet (`liste.ts`). Die Verwaltung teilt sich einen; ein
+   * Spieler hat seinen eigenen, weil das Sieb für ihn Wissen je Artikel
+   * rechnet. Gehalten werden die letzten acht: eine Runde hat selten mehr
+   * Leute gleichzeitig am Kompendium.
+   */
+  const indizes = new Map<string, Promise<ListIndex>>();
+  async function indexFor(request: FastifyRequest): Promise<ListIndex> {
+    const [stand, registry, user] = await Promise.all([roh(), repo.getRegistry(), viewerOf(request)]);
+    const wer =
+      !user || user.isAdmin
+        ? '*'
+        : `${user.id}|${(user.actorIds ?? []).join(',')}|${JSON.stringify(user.roles ?? {})}`;
+    const key = `${stand.stempel}|${registerStempel(registry)}|${wer}`;
+    let lauf = indizes.get(key);
+    if (lauf) {
+      indizes.delete(key);
+      indizes.set(key, lauf); // zuletzt gebraucht steht hinten
+      return lauf;
+    }
+    lauf = sieve(request, stand.alle, stand.map, listProjection(registry)).then((gesiebt) =>
+      buildListIndex(registry, gesiebt),
+    );
+    indizes.set(key, lauf);
+    lauf.catch(() => indizes.delete(key));
+    /* Alte Stempel fallen sofort, sonst die ältesten über acht. */
+    for (const k of indizes.keys()) {
+      if (!k.startsWith(`${stand.stempel}|`)) indizes.delete(k);
+    }
+    while (indizes.size > 8) indizes.delete(indizes.keys().next().value as string);
+    return lauf;
+  }
+
+  /**
+   * Ein Blatt der Liste (W7): `GET /api/list?area=&type=&of=&q=&layer=&nolayer=&parts=&sort=&offset=&limit=&f=`.
+   * Antwort `{ total, offset, limit, columns, rows, facets }`. Dieselbe
+   * Route sucht für Auswahlen (Kantenziel, Verweis): `of=Art&q=…&limit=20`.
+   */
+  app.get('/api/list', async (request) => {
+    const idx = await indexFor(request);
+    return queryList(idx, parseListQuery(request.query as Record<string, unknown>));
+  });
+
+  /**
+   * Die Kandidaten eines Verweises `[[ziel]]`, gesiebt: was dieser Betrachter
+   * nicht sehen darf, ist kein Ziel — sonst verriete ein Verweis, dass es
+   * den Artikel gibt. Dieselbe Regel wie `linkCandidates` (M11), nur über
+   * die Nachschlagetafel statt über den ganzen Bestand.
+   */
+  async function kandidaten(request: FastifyRequest, ziele: Iterable<string>): Promise<Map<string, Entity[]>> {
+    const stand = await roh();
+    const ziel = [...new Set([...ziele].map((t) => t.trim()).filter(Boolean))];
+    const sammel = new Map<string, Entity>();
+    for (const t of ziel) for (const e of stand.namen.get(t.toLowerCase()) ?? []) sammel.set(e.id, e);
+    const gesiebt = sammel.size ? await sieve(request, [...sammel.values()], stand.map) : [];
+    const raus = new Map<string, Entity[]>();
+    for (const t of ziel) raus.set(t, linkCandidates(gesiebt, t));
+    return raus;
+  }
+
+  const VERWEIS = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
+  function verweiseIn(wert: unknown, raus: Set<string>): void {
+    if (typeof wert === 'string') {
+      if (!wert.includes('[[')) return;
+      for (const m of wert.matchAll(VERWEIS)) raus.add((m[1] ?? '').trim());
+    } else if (Array.isArray(wert)) {
+      for (const w of wert) verweiseIn(w, raus);
+    } else if (wert && typeof wert === 'object') {
+      for (const w of Object.values(wert)) verweiseIn(w, raus);
+    }
+  }
+
+  /**
+   * Was ein geöffneter Artikel an Namen braucht, ohne dass der Browser den
+   * Bestand hält (W7): die Ziele seiner Kanten, Verweisfelder und
+   * Sichtbarkeitslisten (`names`) und die Treffer jedes `[[…]]` in seinen
+   * Texten (`links`). Gerechnet beim Ausliefern, **nie gespeichert** — ein
+   * Name von gestern wäre heute falsch.
+   */
+  async function bezuegeVon(
+    request: FastifyRequest,
+    e: Entity,
+  ): Promise<{ names: Record<string, string>; links: Record<string, { id: string; name: string }[]> }> {
+    const registry = await repo.getRegistry();
+    const ids = new Set<string>();
+    for (const r of e.relations ?? []) if (r.to) ids.add(r.to);
+    for (const [typ, karte] of Object.entries(e.components ?? {})) {
+      const props = registry.interfaces[typ]?.schema?.properties ?? {};
+      for (const [k, v] of Object.entries(karte ?? {})) {
+        const istVerweis = props[k]?.format === 'link' || (typ === 'Visibility' && k !== 'audience');
+        if (!istVerweis) continue;
+        for (const w of Array.isArray(v) ? v : [v]) if (typeof w === 'string' && w) ids.add(w);
+      }
+    }
+    const stand = await roh();
+    const ziele = [...ids].map((i) => stand.map.get(i)).filter((x): x is Entity => !!x);
+    const names: Record<string, string> = {};
+    for (const z of ziele.length ? await sieve(request, ziele, stand.map) : []) names[z.id] = entityName(z);
+    const texte = new Set<string>();
+    verweiseIn(e.components, texte);
+    const links: Record<string, { id: string; name: string }[]> = {};
+    for (const [t, treffer] of await kandidaten(request, texte)) {
+      links[t] = treffer.map((x) => ({ id: x.id, name: entityName(x) }));
+    }
+    return { names, links };
+  }
+
+  /**
+   * `[[Name]]` wird beim Speichern zur Nummer (M11) — über das, was der
+   * Schreibende sehen darf. `{ texts }` → `{ texts, open }`: die Texte mit
+   * Ids, und welche Verweise nichts oder mehreres trafen.
+   */
+  app.post<{ Body: { texts?: unknown } }>('/api/links', async (request, reply) => {
+    const texts = request.body?.texts;
+    if (!Array.isArray(texts) || texts.some((t) => typeof t !== 'string')) {
+      return reply.code(400).send({ error: 'texts: eine Liste von Texten' });
+    }
+    const ziele = new Set<string>();
+    for (const t of texts as string[]) verweiseIn(t, ziele);
+    const treffer = await kandidaten(request, ziele);
+    const pool = new Map<string, Entity>();
+    for (const l of treffer.values()) for (const e of l) pool.set(e.id, e);
+    const open = new Set<string>();
+    const raus = (texts as string[]).map((t) => {
+      const r = idLinks(t, pool.values());
+      r.open.forEach((o) => open.add(o));
+      return r.text;
+    });
+    return { texts: raus, open: [...open] };
   });
 
   /**
@@ -556,11 +750,16 @@ export function buildApp({
    * ihn.
    */
   app.get<{ Params: { id: string } }>('/api/entities/:id/backlinks', async (request, reply) => {
-    const alle = await repo.listEntities();
-    const gesiebt = await sieve(request, alle, alle);
-    if (!gesiebt.some((e) => e.id === request.params.id)) {
+    const stand = await roh();
+    const ziel = stand.map.get(request.params.id);
+    if (!ziel || !(await sieve(request, [ziel], stand.map)).length) {
       return reply.code(404).send({ error: 'Nicht gefunden' });
     }
+    /* Gesiebt wird nur, wer überhaupt auf ihn zeigt — nicht der ganze
+       Bestand (W7: für einen Spieler eine halbe Sekunde je Artikelseite).
+       Das Sieb nimmt Kanten nur weg, nie dazu; die Antwort ist dieselbe. */
+    const zeigen = stand.alle.filter((e) => (e.relations ?? []).some((r) => r.to === request.params.id));
+    const gesiebt = zeigen.length ? await sieve(request, zeigen, stand.map) : [];
     const registry = await repo.getRegistry();
     const felder = summaryFields(registry);
     return backlinks(registry, gesiebt, request.params.id).map((b) => ({
@@ -570,17 +769,88 @@ export function buildApp({
   });
 
   app.get<{ Params: { id: string } }>('/api/entities/:id', async (request, reply) => {
-    const entity = await repo.getEntity(request.params.id);
+    const stand = await roh();
+    const entity = stand.map.get(request.params.id) ?? (await repo.getEntity(request.params.id));
     if (!entity) return reply.code(404).send({ error: 'Nicht gefunden' });
-    const [einer] = await sieve(request, [entity]);
+    const [einer] = await sieve(request, [entity], stand.map);
     /* Fällt er durchs Sieb, gibt es ihn für diesen Betrachter nicht.
        „Verboten" wäre die genauere Auskunft und die falsche: sie sagt, dass
        da etwas ist. Vorher stand hier `einer ?? entity` — der Rückfall
        schickte genau den Artikel, den das Sieb gerade zurückgehalten
        hatte. */
     if (!einer) return reply.code(404).send({ error: 'Nicht gefunden' });
-    return einer;
+    /* Die Namen, die der Artikel braucht, kommen mit (W7) — der Browser
+       hält keinen Bestand mehr, aus dem er sie nachschlagen könnte. */
+    return { ...einer, refs: await bezuegeVon(request, einer) };
   });
+
+  /**
+   * **Einen Artikel anlegen** (W7). Die Oberfläche nennt Art und Name, der
+   * Server vergibt den Rest: die Peg-Id (undurchsichtig, wie jede), die
+   * Nummer (`nextId` über den ganzen Bestand — gezählt wird, was dasteht),
+   * die Karten, die Pflicht sind oder Vorgaben tragen, mit den Vorgaben
+   * (`default`) aus dem Register. Geprüft wird wie beim Schreiben
+   * (`validateEntity`); was Pflicht ist und keine Vorgabe hat (die Art
+   * einer Aktion), schickt die Maske in `fields` mit.
+   *
+   * Rechte wie beim Schreiben: die Wache lässt nur durch, wer schreiben
+   * darf (`mayWrite`) — einen Artikel, den es noch nicht gibt, besitzt
+   * kein Spieler, also legt die Verwaltung an.
+   */
+  app.post<{ Body: { type?: unknown; name?: unknown; fields?: unknown } }>(
+    '/api/entities',
+    async (request, reply) => {
+      const type = String(request.body?.type ?? '');
+      const name = String(request.body?.name ?? '').trim();
+      const registry = await repo.getRegistry();
+      const def = registry.interfaces[type];
+      if (!def || def.abstract) {
+        return reply.code(400).send({ error: `Diese Art lässt sich nicht anlegen: ${type || '—'}` });
+      }
+      if (!name) return reply.code(400).send({ error: 'Der Name fehlt.' });
+
+      const stand = await roh();
+      const kette = typeChain(registry, type);
+      const components: Record<string, Record<string, unknown>> = {};
+      for (const t of kette) {
+        const schema = registry.interfaces[t]?.schema;
+        if (!schema) continue;
+        const karte: Record<string, unknown> = {};
+        for (const [k, p] of Object.entries(schema.properties ?? {})) {
+          if (!p.derived && p.default !== undefined) karte[k] = structuredClone(p.default);
+        }
+        if (Object.keys(karte).length || (schema.required ?? []).length) components[t] = karte;
+      }
+      const extra = request.body?.fields;
+      if (extra && typeof extra === 'object') {
+        for (const [ref, wert] of Object.entries(extra as Record<string, unknown>)) {
+          const [t, k] = ref.split('.');
+          if (!t || !k || !kette.includes(t)) continue;
+          if (wert === undefined || wert === null || wert === '') continue;
+          (components[t] ??= {})[k] = wert;
+        }
+      }
+      components['Identity'] = {
+        ...(components['Identity'] ?? {}),
+        name,
+        id: nextId(stand.alle, type),
+      };
+      const neueId = (): string => `e_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+      let id = neueId();
+      while (stand.map.has(id)) id = neueId();
+      const entity: Entity = { id, interfaces: [type], name, components, relations: [] };
+
+      const known = new Map(stand.alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
+      known.set(id, type);
+      const issues = validateEntity(registry, entity, { knownTypes: known, stageOf: stageBases([...stand.alle, entity]) });
+      if (issues.length) {
+        return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+      }
+      const stored = await repo.putEntity(entity);
+      await repo.appendEvent('entity.created', id, { interfaces: [type] });
+      return reply.code(201).send(stored);
+    },
+  );
 
   app.put<{ Params: { id: string }; Body: unknown }>(
     '/api/entities/:id',

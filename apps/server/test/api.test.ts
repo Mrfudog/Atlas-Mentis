@@ -219,21 +219,8 @@ describe('summaries and backlinks', () => {
     relations: [{ id: 'r-schuld', type: 'owes', to: volo.id, props: {} }],
   };
 
-  it('lists the short form: name, identity, tags, status — no prose, no edges', async () => {
-    const ctx = await makeApp([volo, schuldner]);
-    const res = await ctx.inject({ method: 'GET', url: '/api/entities?as=summary' });
-    expect(res.statusCode).toBe(200);
-    const mira = (res.json() as Entity[]).find((e) => e.id === schuldner.id)!;
-    expect(mira.name).toBe('Mira');
-    expect(mira.components['Identity']).toEqual({ name: 'Mira', id: 'npc-0002' });
-    expect(mira.components['Description']).toBeUndefined();
-    expect(mira.relations).toEqual([]);
-    const v = (res.json() as Entity[]).find((e) => e.id === volo.id)!;
-    expect(v.components['Identity']?.['aliases']).toEqual(['Der Dicke']);
-    expect(v.components['Tags']).toEqual({ tags: ['händler'] });
-  });
-
-  it('still sends whole articles without the flag', async () => {
+  /* `?as=summary` ist weggefallen (W7): Listen kommen aus `/api/list`. */
+  it('sends whole articles, sieved', async () => {
     const ctx = await makeApp([volo, schuldner]);
     const res = await ctx.inject({ method: 'GET', url: '/api/entities' });
     const mira = (res.json() as Entity[]).find((e) => e.id === schuldner.id)!;

@@ -25,6 +25,12 @@ export interface Repository {
   putRegistryPart<K extends keyof Registry>(part: K, value: Registry[K]): Promise<void>;
 
   listEntities(): Promise<Entity[]>;
+  /**
+   * Woran man sieht, ob sich der Bestand seit dem letzten Mal geändert hat.
+   * Gleicher Stempel heisst gleicher Bestand — darauf baut der Index der
+   * Liste (`liste.ts`), der je Stempel und Betrachter einmal gerechnet wird.
+   */
+  version(): Promise<string>;
   /** Wie viele Artikel es gibt — ohne sie alle zu laden. */
   countEntities(): Promise<number>;
   getEntity(id: string): Promise<Entity | undefined>;
@@ -87,6 +93,8 @@ const emptyRegistry = (): Registry => ({
 export class InMemoryRepository implements Repository {
   private registry: Registry;
   private entities = new Map<string, Entity>();
+  /** Zählt jedes Schreiben und Löschen; das ist der Stempel. */
+  private rev = 0;
   readonly events: { name: string; subject?: string | undefined; payload: unknown }[] = [];
 
   constructor(registry: Registry = emptyRegistry(), entities: Entity[] = []) {
@@ -106,6 +114,10 @@ export class InMemoryRepository implements Repository {
     return [...this.entities.values()].map((e) => structuredClone(e));
   }
 
+  async version(): Promise<string> {
+    return String(this.rev);
+  }
+
   async countEntities(): Promise<number> {
     return this.entities.size;
   }
@@ -118,10 +130,12 @@ export class InMemoryRepository implements Repository {
   async putEntity(entity: Entity): Promise<Entity> {
     const stored: Entity = { ...structuredClone(entity), updatedAt: new Date().toISOString() };
     this.entities.set(stored.id, stored);
+    this.rev += 1;
     return structuredClone(stored);
   }
 
   async deleteEntity(id: string): Promise<boolean> {
+    this.rev += 1;
     return this.entities.delete(id);
   }
 
