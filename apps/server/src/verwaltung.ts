@@ -23,11 +23,16 @@ import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
   CAMPAIGN_TYPE,
+  LAYER_COMPONENT,
+  LAYER_RELATION,
+  activeStack,
+  campaignsActivating,
   campaignsOf,
   entityName,
   isTableRole,
   nextId,
   validateEntity,
+  withStack,
   type Entity,
   type TableRole,
 } from '@nw/model';
@@ -44,6 +49,28 @@ export function rechtAn(user: User | null, campaignId: string): Recht {
   if (rolle === 'gm') return 'manage';
   if (rolle === 'co-gm') return 'see';
   return null;
+}
+
+/**
+ * **Darf dieses Konto die Ebene in dieser Kampagne aufschalten?** (T-069)
+ * Die Verwaltung immer. Die Leitung, solange die Ebene nicht genau einer
+ * **anderen** Kampagne gehört: eine Ebene, die genau eine Kampagne
+ * aufschaltet, gehört ihr (`campaignsOf`). Schaltete die Leitung der
+ * einen Runde sie dazu, wäre sie gemeinsam, und die Leitung sähe, was in
+ * der anderen nur deren Leitung sieht. Eine schon gemeinsame Ebene oder
+ * eine, die niemand aufschaltet, darf sie nehmen.
+ */
+export function mayActivate(
+  user: User | null,
+  alle: Map<string, Entity>,
+  layerId: string,
+  campaignId: string,
+): boolean {
+  if (rechtAn(user, campaignId) !== 'manage') return false;
+  if (user?.isAdmin) return true;
+  const laufen = campaignsActivating(alle, layerId);
+  if (laufen.includes(campaignId)) return true;
+  return laufen.length !== 1;
 }
 
 interface Deps {
@@ -140,6 +167,120 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     }
     return reply.code(201).send({ id: entity.id, name });
   });
+
+  // ---------------------------------------------------------- Ebenen
+
+  /**
+   * **Die Ebenen einer Kampagne** (T-069, E-008): alle Ebenen des
+   * Bestands, die aufgeschalteten von unten nach oben, darunter die
+   * übrigen. Was eine Kampagne zeigt, ist ihre wichtigste Einstellung —
+   * die Kante `activates` hiess in der Maske „runs on", und die Leitung
+   * fand sie nicht. Sehen dürfen Verwaltung, Leitung und Mitleitung;
+   * ändern die Verwaltung und die Leitung (`rechtAn`).
+   */
+  app.get<{ Params: { c: string } }>('/api/campaigns/:c/layers', async (request, reply) => {
+    const user = await viewerOf(request);
+    const c = request.params.c;
+    const recht = rechtAn(user, c);
+    if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
+    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const kampagne = alle.get(c);
+    if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
+      return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+    }
+    const ebenen = [...alle.values()].filter((e) => (e.interfaces ?? [])[0] === LAYER_COMPONENT);
+    const zahl = new Map<string, number>();
+    for (const e of alle.values()) {
+      for (const r of e.relations ?? []) {
+        if (r.type !== LAYER_RELATION || (r.props as { mode?: unknown } | undefined)?.mode === 'removes') continue;
+        zahl.set(r.to, (zahl.get(r.to) ?? 0) + 1);
+      }
+    }
+    const stapel = activeStack(alle, kampagne).map((x) => x.layer.id);
+    const zeile = (e: Entity) => {
+      const andere = campaignsActivating(alle, e.id)
+        .filter((k) => k !== c)
+        .map((k) => entityName(alle.get(k)));
+      return {
+        id: e.id,
+        name: entityName(e),
+        kind: String((e.components?.[LAYER_COMPONENT] as { kind?: unknown } | undefined)?.kind ?? ''),
+        articles: zahl.get(e.id) ?? 0,
+        active: stapel.includes(e.id),
+        alsoIn: andere,
+        canActivate: mayActivate(user, alle, e.id, c),
+      };
+    };
+    const an = stapel.map((id) => alle.get(id)!).map(zeile);
+    const aus = ebenen
+      .filter((e) => !stapel.includes(e.id))
+      .map(zeile)
+      .sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    return { campaign: { id: c, name: entityName(kampagne) }, may: recht, layers: [...an, ...aus] };
+  });
+
+  /** Die Kanten `activates` schreiben — der ganze Stapel, von unten nach
+   *  oben. Was fehlt, ist danach abgeschaltet; gelöscht wird nichts. */
+  async function stapelSchreiben(
+    request: FastifyRequest<{ Params: { c: string } }>,
+    reply: FastifyReply,
+    neu: (alle: Map<string, Entity>, kampagne: Entity) => string[] | string,
+  ): Promise<unknown> {
+    const user = await viewerOf(request);
+    const c = request.params.c;
+    const recht = rechtAn(user, c);
+    if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
+    if (recht !== 'manage') return nein(reply, 403, 'Die Ebenen schaltet die Leitung auf; ein Mitleiter sieht sie nur.');
+    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const kampagne = alle.get(c);
+    if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
+      return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+    }
+    const ids = neu(alle, kampagne);
+    if (typeof ids === 'string') return nein(reply, 400, ids);
+    const vorher = new Set(activeStack(alle, kampagne).map((x) => x.layer.id));
+    for (const id of ids) {
+      if ((alle.get(id)?.interfaces ?? [])[0] !== LAYER_COMPONENT) return nein(reply, 400, `Keine Ebene: ${id}`);
+      if (!vorher.has(id) && !mayActivate(user, alle, id, c)) {
+        return nein(reply, 403, `„${entityName(alle.get(id))}" gehört einer anderen Kampagne; aufschalten kann sie die Verwaltung.`);
+      }
+    }
+    const geschrieben = withStack(kampagne, ids);
+    const issues = validateEntity(await repo.getRegistry(), geschrieben, {});
+    if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+    await repo.putEntity(geschrieben);
+    await repo.appendEvent('campaign.layers', c, { layers: ids, by: user.id });
+    return { ok: true, layers: ids };
+  }
+
+  app.put<{ Params: { c: string }; Body: { layers?: unknown } }>('/api/campaigns/:c/layers', (request, reply) =>
+    stapelSchreiben(request, reply, () => {
+      const l = request.body?.layers;
+      if (!Array.isArray(l) || !l.every((x) => typeof x === 'string')) return 'layers: eine Liste von Ebenen-Ids.';
+      return l as string[];
+    }),
+  );
+
+  /** Eine Ebene dazuschalten — der Knopf im Hinweis der Listen. Sie kommt
+   *  an die Stelle, die ihre eigene Spezifität (`Layer.order`) sagt: ein
+   *  Regelwerk nach unten, eine Kampagnenebene nach oben. */
+  app.post<{ Params: { c: string; layer: string } }>('/api/campaigns/:c/layers/:layer', (request, reply) =>
+    stapelSchreiben(request, reply, (alle, kampagne) => {
+      const stapel = activeStack(alle, kampagne);
+      const id = request.params.layer;
+      if (stapel.some((x) => x.layer.id === id)) return stapel.map((x) => x.layer.id);
+      const roh = (alle.get(id)?.components?.[LAYER_COMPONENT] as { order?: unknown } | undefined)?.order;
+      const eigene = roh != null && Number.isFinite(Number(roh)) ? Number(roh) : 10;
+      const spez = (e: Entity) => {
+        const o = (e.components?.[LAYER_COMPONENT] as { order?: unknown } | undefined)?.order;
+        return o != null && Number.isFinite(Number(o)) ? Number(o) : 10;
+      };
+      const ids = stapel.map((x) => x.layer.id);
+      const bei = stapel.findIndex((x) => spez(x.layer) > eigene);
+      ids.splice(bei < 0 ? ids.length : bei, 0, id);
+      return ids;
+    }),
+  );
 
   // ---------------------------------------------------------- Mitglieder
 

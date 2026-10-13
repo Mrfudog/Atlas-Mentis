@@ -617,6 +617,13 @@ Ein Grundregelwerk, das drei Runden aufschalten, gehört keiner davon — seine
 Spielleitungshinweise vor den anderen zwei zu verbergen wäre eine Sperre ohne
 Grund.
 
+**Aufschalten heisst auf der Seite „Layers in play".** Die Kante hiess
+„runs on" — und als nach dem Anlegen einer Kampagne alle Artikel aus
+5e.tools fehlten (nicht gelöscht, nur nicht aufgeschaltet), fand die
+Leitung sie nicht. Was eine Kampagne zeigt, ist ihre wichtigste
+Einstellung; sie steht jetzt auf der Kampagnenseite als Liste mit Häkchen
+und Reihenfolge, und die Listen sagen, was fehlt und warum (T-069).
+
 Dass die Zugehörigkeit so von selbst herausfällt, ist der Grund, dafür **kein
 Feld** zu setzen. `Layer.kind` kennt zwar ein Wort `campaign`, aber ein Feld,
 das gleichzeitig Regel ist, leckt beim ersten Tippfehler: ein Paket, das

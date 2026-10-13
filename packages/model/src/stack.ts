@@ -167,3 +167,61 @@ export function campaignLayer(entities: Map<EntityId, Entity>, campaign: Entity 
   }
   return null;
 }
+
+/**
+ * **Fehlt der Artikel nur, weil seine Ebene nicht aufgeschaltet ist?**
+ * (T-069) Dann die Ebenen, die ihn brächten; sonst eine leere Liste.
+ *
+ * Auf dev verschwanden nach dem Anlegen einer Kampagne alle Artikel aus
+ * 5e.tools, ohne dass die Seite sagte, warum: die Kampagne schaltete ihre
+ * Ebene nicht auf. Nimmt eine aufgeschaltete Ebene den Artikel heraus
+ * oder überschreibt ihn eine Fassung, ist das Absicht und zählt hier
+ * nicht — nur, was gar keine aufgeschaltete Ebene nennt.
+ */
+export function unactivatedLayers(
+  entities: Map<EntityId, Entity>,
+  entity: Entity,
+  campaign: Entity | null,
+): EntityId[] {
+  if (!campaign) return [];
+  const ebenen = kanten(entity, LAYER_RELATION);
+  if (!ebenen.length) return [];
+  const rang = activeLayerRanks(entities, campaign);
+  if (ebenen.some((r) => rang.has(r.to))) return [];
+  const bringen = ebenen.filter((r) => (r.props as { mode?: unknown } | undefined)?.mode !== 'removes');
+  return [...new Set(bringen.map((r) => r.to))];
+}
+
+/**
+ * **Die Kampagnen, die eine Ebene aufschalten.** Genau eine heisst: die
+ * Ebene gehört ihr (`campaignsOf`). Wer sie dann in einer zweiten
+ * aufschaltet, macht sie gemeinsam — und die Leitung der zweiten sähe,
+ * was in der ersten nur deren Leitung sieht.
+ */
+export function campaignsActivating(entities: Map<EntityId, Entity>, layerId: EntityId): EntityId[] {
+  const out: EntityId[] = [];
+  for (const e of entities.values()) {
+    if ((e.interfaces ?? [])[0] !== CAMPAIGN_TYPE) continue;
+    if (kanten(e, ACTIVATES_RELATION).some((r) => r.to === layerId)) out.push(e.id);
+  }
+  return out;
+}
+
+/**
+ * Die Kanten `activates` einer Kampagne neu, von unten nach oben
+ * (T-069): `props.order` zählt in Zehnern, damit die Reihenfolge an der
+ * Kante steht und nicht an der Spezifität der Ebene hängt. Die übrigen
+ * Kanten bleiben, wie sie sind.
+ */
+export function withStack(campaign: Entity, layerIds: readonly EntityId[]): Entity {
+  const alt = kanten(campaign, ACTIVATES_RELATION);
+  const andere = (campaign.relations ?? []).filter((r) => r.type !== ACTIVATES_RELATION);
+  const neu: Rel[] = [...new Set(layerIds)].map((to, i) => ({
+    /* Eine Kante, die bleibt, behält ihre Id. */
+    id: alt.find((r) => r.to === to)?.id ?? `${ACTIVATES_RELATION}-${to}`,
+    type: ACTIVATES_RELATION,
+    to,
+    props: { ...(alt.find((r) => r.to === to)?.props ?? {}), order: (i + 1) * 10 },
+  }));
+  return { ...campaign, relations: [...andere, ...neu] };
+}

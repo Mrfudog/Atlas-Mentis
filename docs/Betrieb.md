@@ -24,6 +24,29 @@ was dort fehlt, wenn ausgerollt oder eingelesen wird, steht unten unter
 > Actions › Variables). Ohne ihn bleibt ein Push grün, auch wenn die
 > Umgebungen noch keine Secrets haben.
 
+## Artikel weg? — zuerst die Ebenen prüfen
+
+Fehlen nach dem Anlegen einer Kampagne oder einem Einlesen auf einmal viele
+Artikel (auf dev einmal alle aus 5e.tools), sind sie fast immer **nicht
+gelöscht, sondern nicht aufgeschaltet**: sobald es eine Kampagne gibt, zeigt
+der Server nur, was ihre aufgeschalteten Ebenen bringen, und Artikel ohne
+Ebene (Datenmodell, E2a).
+
+1. **Kompendium ansehen.** Steht über der Liste „… articles are hidden in
+   layers that ‘…’ does not put in play", ist es das. Wer darf
+   (Verwaltung, Leitung der Kampagne), drückt dort **Turn on**.
+2. **Kampagnenseite** (`/campaign`, Kasten „Layers in play"): die Ebene
+   anhaken, die Reihenfolge prüfen — oben gewinnt.
+3. **Register:** je Art steht „N in play in ‘…’ · M stored". Weichen beide
+   Zahlen ab, liegt der Rest in einer Ebene, die nicht aufgeschaltet ist.
+4. Erst wenn auch „stored" zu klein ist, fehlt wirklich etwas — dann
+   [Zurück](#zurück) oder [5e.tools laden](#5etools-laden).
+
+Lesend von aussen, mit einem API-Token ([Werkzeugzugang](#werkzeugzugang)):
+`curl -s -H "Authorization: Bearer $ATLAS_DEV_TOKEN" "$ATLAS_URL/api/list?limit=1"`
+— das Feld `unactivated` nennt Kampagne, Ebenen und Zahlen; fehlt es,
+blendet keine Ebene etwas aus.
+
 ## Was bei einem Push passiert
 
 ```

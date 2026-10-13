@@ -776,7 +776,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `tableFor` → Table — „rolls on"
 - `inLayer` → Layer — „from"
 - `inWorld` → World — „in the world"
-- `activates` → Layer — „runs on"
+- `activates` → Layer — „Layers in play"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
 
@@ -2453,7 +2453,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
 - * — `inLayer` → „brings"
-- Campaign — `activates` → „used by"
+- Campaign — `activates` → „In play in"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
