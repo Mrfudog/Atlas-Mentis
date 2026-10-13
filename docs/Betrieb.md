@@ -383,7 +383,12 @@ Die Artikel aus 5e.tools stehen **je Buch in einer eigenen Ebene**
 Buch nennt (die Aktionsarten), liegt in der Systemebene „D&D 5e (2014)".
 Eine Kampagne schaltet auf der Kampagnenseite die Bücher auf, die sie
 nutzt (Liste mit Häkchen, nach Grundregelwerk, Quellenbuch und Abenteuer
-gruppiert). Eingelesen wird über eine **Pipeline**; die
+gruppiert). **Ein Abenteuer** (`kind: adventure`, T-082) bringt dabei
+seine Kapitel, Abschnitte, Begegnungen und Karten mit; die Kapitel stehen
+danach im Kasten „Story" der Kampagnenseite. Die Karten sind Adressen
+auf die Bilder bei 5e.tools — die Bilder selbst liegen nicht bei uns. Ein
+einzelnes Abenteuer ergänzt man mit `sources` (z. B. `LMoP`), `only-new`
+wie immer. Eingelesen wird über eine **Pipeline**; die
 Daten von 5e.tools kommen dabei nie ins Repository und bleiben nicht auf
 dem Server liegen. Was hereinkommt und was nicht, sagt
 [5etools-Bericht.md](5etools-Bericht.md). Zuerst auf `dev`, `prod` erst,
