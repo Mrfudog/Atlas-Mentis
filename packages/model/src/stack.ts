@@ -28,6 +28,13 @@ import type { Entity, EntityId } from './types.js';
 import { ACTIVATES_RELATION, CAMPAIGN_TYPE, LAYER_RELATION } from './visibility.js';
 
 export const OVERRIDES_RELATION = 'overrides';
+/**
+ * **Vergleichsebenen** (E-021 d, T-092): eine Kante `activates` mit
+ * `props.mode: 'compare'` bringt ihre Ebene nicht ins Spiel, sondern nur
+ * in den Vergleich — ihre Fassungen stehen auf Wunsch an den Feldern und
+ * lassen sich als Überschreibung übernehmen. Für `inPlay` zählt sie nicht.
+ */
+export const COMPARE_MODE = 'compare';
 export const LAYER_COMPONENT = 'Layer';
 /** Die Einstellung, die sagt, welche Kampagne läuft. */
 export const CAMPAIGN_SETTING = 'campaign';
@@ -36,6 +43,13 @@ type Rel = NonNullable<Entity['relations']>[number];
 
 const kanten = (e: Entity | undefined, type: string): Rel[] =>
   (e?.relations ?? []).filter((r) => r.type === type);
+
+/** Ist diese Kante `activates` nur ein Vergleich (T-092)? */
+export const isCompareEdge = (r: { type: string; props?: unknown }): boolean =>
+  r.type === ACTIVATES_RELATION && (r.props as { mode?: unknown } | undefined)?.mode === COMPARE_MODE;
+
+/** Die Kanten, die eine Ebene wirklich aufschalten — ohne die Vergleiche. */
+const aufschalten = (e: Entity | undefined): Rel[] => kanten(e, ACTIVATES_RELATION).filter((r) => !isCompareEdge(r));
 
 /** Die laufende Kampagne: die Einstellung, sonst die erste im Bestand, sonst keine. */
 export function currentCampaign(
@@ -60,7 +74,7 @@ export interface StackEntry {
 export function activeStack(entities: Map<EntityId, Entity>, campaign: Entity | null): StackEntry[] {
   if (!campaign) return [];
   const out: StackEntry[] = [];
-  for (const r of kanten(campaign, ACTIVATES_RELATION)) {
+  for (const r of aufschalten(campaign)) {
     const layer = entities.get(r.to);
     if (!layer) continue;
     const anKante = (r.props as { order?: unknown } | undefined)?.order;
@@ -71,6 +85,22 @@ export function activeStack(entities: Map<EntityId, Entity>, campaign: Entity | 
     out.push({ layer, order });
   }
   return out.sort((a, b) => a.order - b.order);
+}
+
+/**
+ * **Die Vergleichsebenen der Kampagne** (T-092), in ihrer Reihenfolge an
+ * der Kante. Eine Ebene, die schon im Spiel ist, ist hier nicht noch
+ * einmal — sie vergleicht sich ohnehin.
+ */
+export function compareLayers(entities: Map<EntityId, Entity>, campaign: Entity | null): Entity[] {
+  if (!campaign) return [];
+  const imSpiel = new Set(aufschalten(campaign).map((r) => r.to));
+  const order = (r: Rel) => Number((r.props as { order?: unknown } | undefined)?.order ?? 0) || 0;
+  return kanten(campaign, ACTIVATES_RELATION)
+    .filter((r) => isCompareEdge(r) && !imSpiel.has(r.to))
+    .sort((a, b) => order(a) - order(b))
+    .map((r) => entities.get(r.to))
+    .filter((e): e is Entity => !!e);
 }
 
 /** Ebenen-Id → Rang 1..n; höher heisst spezifischer. */
@@ -145,6 +175,12 @@ export function inPlay(entities: Map<EntityId, Entity>, entity: Entity, campaign
 export interface PlayStack {
   /** Wie `inPlay`, ohne den Bestand je Artikel neu zu durchsuchen. */
   inPlay(entity: Entity): boolean;
+  /** Wie `inStack`: da, auch wenn eine Fassung ihn überschreibt. */
+  inStack(entity: Entity): boolean;
+  /** Bringt eine Vergleichsebene ihn (T-092)? Nicht im Spiel, aber auf Wunsch sichtbar. */
+  inCompare(entity: Entity): boolean;
+  /** Der höchste Rang einer aufgeschalteten Ebene, die ihn bringt; 0 heisst keine. */
+  rank(entity: Entity): number;
   /** Wie `unactivatedLayers`. */
   unactivated(entity: Entity): EntityId[];
 }
@@ -162,8 +198,11 @@ export interface PlayStack {
  * zählt nur aus einer aufgeschalteten Ebene heraus.
  */
 export function playStack(entities: Map<EntityId, Entity>, campaign: Entity | null): PlayStack {
-  if (!campaign) return { inPlay: () => true, unactivated: () => [] };
+  if (!campaign) {
+    return { inPlay: () => true, inStack: () => true, inCompare: () => false, rank: () => 0, unactivated: () => [] };
+  }
   const rang = activeLayerRanks(entities, campaign);
+  const vergleich = new Set(compareLayers(entities, campaign).map((l) => l.id));
   const ueberschrieben = new Set<EntityId>();
   for (const o of entities.values()) {
     const ziele = kanten(o, OVERRIDES_RELATION);
@@ -186,6 +225,20 @@ export function playStack(entities: Map<EntityId, Entity>, campaign: Entity | nu
   };
   return {
     inPlay: (entity) => imStapel(entity) && !ueberschrieben.has(entity.id),
+    inStack: imStapel,
+    inCompare: (entity) =>
+      vergleich.size > 0 &&
+      kanten(entity, LAYER_RELATION).some(
+        (r) => vergleich.has(r.to) && (r.props as { mode?: unknown } | undefined)?.mode !== 'removes',
+      ),
+    rank: (entity) => {
+      let best = 0;
+      for (const r of kanten(entity, LAYER_RELATION)) {
+        if ((r.props as { mode?: unknown } | undefined)?.mode === 'removes') continue;
+        best = Math.max(best, rang.get(r.to) ?? 0);
+      }
+      return best;
+    },
     unactivated: (entity) => {
       const ebenen = kanten(entity, LAYER_RELATION);
       if (!ebenen.length || ebenen.some((r) => rang.has(r.to))) return [];
@@ -211,7 +264,7 @@ export function campaignLayer(entities: Map<EntityId, Entity>, campaign: Entity 
     let andere = false;
     for (const e of entities.values()) {
       if (e.id === campaign.id || (e.interfaces ?? [])[0] !== CAMPAIGN_TYPE) continue;
-      if (kanten(e, ACTIVATES_RELATION).some((r) => r.to === ebene.id)) {
+      if (aufschalten(e).some((r) => r.to === ebene.id)) {
         andere = true;
         break;
       }
@@ -255,7 +308,8 @@ export function campaignsActivating(entities: Map<EntityId, Entity>, layerId: En
   const out: EntityId[] = [];
   for (const e of entities.values()) {
     if ((e.interfaces ?? [])[0] !== CAMPAIGN_TYPE) continue;
-    if (kanten(e, ACTIVATES_RELATION).some((r) => r.to === layerId)) out.push(e.id);
+    /* Wer nur vergleicht, schaltet nicht auf (T-092): die Ebene bleibt, wem sie gehört. */
+    if (aufschalten(e).some((r) => r.to === layerId)) out.push(e.id);
   }
   return out;
 }
@@ -267,8 +321,13 @@ export function campaignsActivating(entities: Map<EntityId, Entity>, layerId: En
  * Kanten bleiben, wie sie sind.
  */
 export function withStack(campaign: Entity, layerIds: readonly EntityId[]): Entity {
-  const alt = kanten(campaign, ACTIVATES_RELATION);
-  const andere = (campaign.relations ?? []).filter((r) => r.type !== ACTIVATES_RELATION);
+  const alt = aufschalten(campaign);
+  const ins = new Set(layerIds);
+  /* Die Vergleiche bleiben stehen (T-092) — ausser für eine Ebene, die
+     jetzt im Spiel ist: die vergleicht sich ohnehin. */
+  const andere = (campaign.relations ?? []).filter(
+    (r) => r.type !== ACTIVATES_RELATION || (isCompareEdge(r) && !ins.has(r.to)),
+  );
   const neu: Rel[] = [...new Set(layerIds)].map((to, i) => ({
     /* Eine Kante, die bleibt, behält ihre Id. */
     id: alt.find((r) => r.to === to)?.id ?? `${ACTIVATES_RELATION}-${to}`,
@@ -276,5 +335,26 @@ export function withStack(campaign: Entity, layerIds: readonly EntityId[]): Enti
     to,
     props: { ...(alt.find((r) => r.to === to)?.props ?? {}), order: (i + 1) * 10 },
   }));
+  return { ...campaign, relations: [...andere, ...neu] };
+}
+
+/**
+ * Die Vergleichsebenen einer Kampagne neu (T-092): je Ebene eine Kante
+ * `activates` mit `mode: 'compare'`, in dieser Reihenfolge. Eine Ebene, die
+ * im Spiel ist, wird nicht noch einmal zum Vergleich; die übrigen Kanten
+ * bleiben, wie sie sind.
+ */
+export function withCompare(campaign: Entity, layerIds: readonly EntityId[]): Entity {
+  const imSpiel = new Set(aufschalten(campaign).map((r) => r.to));
+  const alt = kanten(campaign, ACTIVATES_RELATION).filter(isCompareEdge);
+  const andere = (campaign.relations ?? []).filter((r) => !isCompareEdge(r));
+  const neu: Rel[] = [...new Set(layerIds)]
+    .filter((to) => !imSpiel.has(to))
+    .map((to, i) => ({
+      id: alt.find((r) => r.to === to)?.id ?? `${ACTIVATES_RELATION}-${COMPARE_MODE}-${to}`,
+      type: ACTIVATES_RELATION,
+      to,
+      props: { mode: COMPARE_MODE, order: (i + 1) * 10 },
+    }));
   return { ...campaign, relations: [...andere, ...neu] };
 }

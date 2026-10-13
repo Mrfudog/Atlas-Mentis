@@ -16141,6 +16141,42 @@ function renderHowto(v){
      überhaupt an ihn geht. Die Stufen werden aus der Zeile gelesen und
      nicht abgetippt — eine Liste von Hand stimmte am Tag ihrer
      Entstehung. */
+  /* ---- Fassungen und Vergleichsebenen (T-092, E-021 d) ----
+     Kein Umschalter zwischen 2014 und 2024: die Fassungen bleiben eigene
+     Artikel, und an jedem Feld, an dem eine abweicht, steht ihr Wert
+     dabei. Gerechnet wird in packages/model/src/versions.ts. */
+  v.appendChild(el("div",{class:"rsec",text:"Versions of one thing, and compare layers"}));
+  v.appendChild(el("p",{class:"hint"},
+    "A version is another article about the same thing: the same type, the "+
+    "same name once a trailing \u201c(BOOK)\u201d naming its own source is cut "+
+    "off, joined by variantOf (either direction) or by overrides. variantOf "+
+    "alone is not enough \u2014 it also joins a magic item to its base item "+
+    "and a copy with a name of its own, and those are different things. "+
+    "There is no switch between versions. The article in play is shown, and "+
+    "next to every field where another version says something else, that "+
+    "value stands with the short name of its layer (the full name on hover); "+
+    "long texts open as a comparison. The reader turns this on and off and "+
+    "picks the layers, and the account remembers it."));
+  v.appendChild(el("p",{class:"hint"},
+    "Besides the layers in play, a campaign names compare layers "+
+    "(activates with mode: compare): not in play, never in a list, but their "+
+    "versions show on demand \u2014 to the lead by default, to the players if "+
+    "the campaign says so (Campaign.compareFor). A version from a compare "+
+    "layer can be taken over: \u201cuse this in my campaign\u201d puts a copy into "+
+    "the campaign\u2019s own layer that overrides the version in play. A copy "+
+    "and not an edge on the book: an override in a shared layer would count "+
+    "in every campaign that runs that book. Undo removes the copy. The "+
+    "compendium shows the versions of one thing as one row, headed by the "+
+    "one from the highest layer in play."));
+  v.appendChild(el("pre",{class:"code",text:
+    "Stack:    PHB (in play) \u00b7 XGE (in play, higher) \u00b7 XPHB (compare)\n"+
+    "Fireball         PHB   range 150\n"+
+    "Fireball (XGE)   XGE   range 120   variantOf \u2192 Fireball\n"+
+    "Fireball         XPHB  range 150   variantOf \u2192 Fireball, higherLevels differs\n\n"+
+    "Compendium       one row \u201cFireball (XGE)\u201d (XGE is higher), PHB below it\n"+
+    "Article Fireball range 150  \u00b7 XGE 120;  At higher levels \u00b7 XPHB [compare]\n"+
+    "Use XPHB         copy \u201cFireball\u201d in the campaign layer, overrides \u2192 Fireball (PHB)"}));
+
   v.appendChild(el("div",{class:"rsec",text:"Who gets to see an article"}));
   v.appendChild(el("p",{class:"hint"},
     "Two questions, and the coarse one comes first: visibility decides "+

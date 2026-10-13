@@ -1028,6 +1028,10 @@ export const relations: Record<string, RelationDef> = {
       type: 'object',
       properties: {
         order: { type: 'number', title: 'Order' },
+        /* `compare` (T-092, E-021 d): die Ebene ist nicht im Spiel, ihre
+           Fassungen stehen auf Wunsch an den Feldern und lassen sich als
+           Überschreibung übernehmen. Ohne Angabe: im Spiel. */
+        mode: { type: 'string', title: 'Mode', enum: ['compare'] },
       },
     },
   },
