@@ -107,9 +107,25 @@ export function formatMeasure(
   return mode === 'both' ? `${eigen} (${umgerechnet})` : umgerechnet;
 }
 
+/**
+ * Eine Spanne in einer Einheit: „30/120 ft", umgerechnet „9.1/36.6 m",
+ * beides „30/120 ft (9.1/36.6 m)". Die Zieleinheit wählt der grössere Wert,
+ * damit beide Zahlen in derselben stehen.
+ */
+function formatSpan(registry: UnitRegistry, a: number, b: number, from: UnitDef, mode: UnitMode): string {
+  const zahl = (n: number, u: UnitDef) => String(Number(n.toFixed(u.decimals ?? 1)));
+  const eigen = `${zahl(a, from)}/${zahl(b, from)}\u202f${from.code}`;
+  if (mode === from.system) return eigen;
+  const andere = from.system === 'imperial' ? 'metric' : 'imperial';
+  const ziel = targetUnit(registry, from, mode === 'both' ? andere : mode, Math.max(a, b) * from.base);
+  if (!ziel) return eigen;
+  const um = `${zahl((a * from.base) / ziel.base, ziel)}/${zahl((b * from.base) / ziel.base, ziel)}\u202f${ziel.code}`;
+  return mode === 'both' ? `${eigen} (${um})` : um;
+}
+
 /* Eine Zahl mit einer Einheit dahinter: `40ft`, `1,5 m`, `30 / 120 ft`.
    Das Komma ist Absicht — der Vault schreibt deutsch. */
-const MASS = /(-?\d+(?:[.,]\d+)?)\s*([A-Za-zäöü']{1,6})\b/g;
+const MASS = /(-?\d+(?:[.,]\d+)?)\s*([A-Za-zäöü']{1,6})\b(\.?)/g;
 
 /* Ein Text, in dem **kein Buchstabe** steht: `40`, `30/120`, `1,5`. Dort
    nennt keine Zahl ihre Einheit, weil es nichts gibt, was eine sein könnte
@@ -141,18 +157,26 @@ export function convertText(
   if (!text) return text;
   if (annahme && OHNE_WORT.test(text) && unitByCode(registry, annahme)) {
     const u = unitByCode(registry, annahme) as UnitDef;
+    /* „30/120" ist **eine** Angabe, normal und weit: die Einheit steht
+       einmal dahinter („30/120 ft (9.1/36.6 m)"), nicht an jeder Zahl. */
+    const spanne = /^\s*(\d+(?:[.,]\d+)?)\s*\/\s*(\d+(?:[.,]\d+)?)\s*$/.exec(text);
+    if (spanne) return formatSpan(registry, Number(spanne[1]!.replace(',', '.')), Number(spanne[2]!.replace(',', '.')), u, mode);
     return text.replace(NUR_ZAHL, (zahl: string) => {
       const wert = Number(String(zahl).replace(',', '.'));
       if (!Number.isFinite(wert)) return zahl;
       return formatMeasure(registry, wert, u.code, mode);
     });
   }
-  return text.replace(MASS, (ganz, zahl: string, code: string) => {
+  return text.replace(MASS, (ganz, zahl: string, code: string, punkt: string) => {
     const u = unitByCode(registry, code);
     if (!u) return ganz;
     const wert = Number(String(zahl).replace(',', '.'));
     if (!Number.isFinite(wert)) return ganz;
-    return formatMeasure(registry, wert, u.code, mode);
+    /* Der Punkt einer Abkürzung („30 ft.") gehört zur Einheit und geht mit
+       ihr: „9.1 m." wäre eine Abkürzung, die es nicht gibt. Nach einem
+       ausgeschriebenen Wort („60 feet.") endet dagegen ein Satz. */
+    const abkuerzung = punkt && kleiner(code) === kleiner(u.code);
+    return formatMeasure(registry, wert, u.code, mode) + (punkt && !abkuerzung ? punkt : '');
   });
 }
 
