@@ -61,7 +61,7 @@ Zertifikate selbst). Von Hand wird einmal die Maschine vorbereitet
 
 ### 1. Maschine bei Hetzner
 
-- **Hetzner Cloud** → Server anlegen: Ubuntu 24.04 oder 26.04 (beide geprüft), Typ **CPX22**
+- **Hetzner Cloud** → Server anlegen: Ubuntu 24.04 oder 26.04, Typ **CPX22**
   (2 vCPU AMD, 4 GB, 80 GB) — reicht für beide Umgebungen samt Proxy,
   gebaut wird nicht hier. CX23 (40 GB, ältere Intel-Generation) geht
   auch, ist aber bei Images, Dumps und Logs schneller voll.
