@@ -8,9 +8,9 @@
 
 import type { Pool } from 'pg';
 import { isTableRole } from '@nw/model';
-import type { Entity, InterfaceDef, Registry, Relation, TableRole } from '@nw/model';
-import type { Repository, SessionRow, StoredUser } from './repo.js';
-import type { Invite, User } from './auth.js';
+import type { Entity, InterfaceDef, Registry, Relation, RelationDef, TableRole } from '@nw/model';
+import type { EventFilter, Repository, SessionRow, StoredEvent, StoredUser } from './repo.js';
+import type { ApiToken, Invite, TokenScope, User } from './auth.js';
 
 type Row = Record<string, unknown>;
 
@@ -56,6 +56,13 @@ export class PgRepository implements Repository {
         owned: Boolean(r['owned']),
         cardinality: (r['cardinality'] as 'one' | 'many') ?? 'many',
         section: (r['section'] as string) ?? undefined,
+        /* An welchem Ende sie sich wie ein Feld liest (Migration 022). */
+        asField: (r['as_field'] as RelationDef['asField']) ?? undefined,
+        /* Was die Kante selbst trägt — geschrieben wurde es immer, gelesen
+           bis zur Migration 022 nie. Ein leeres Schema ist keines. */
+        props: Object.keys((r['props'] as { properties?: object } | null)?.properties ?? {}).length
+          ? (r['props'] as RelationDef['props'])
+          : undefined,
       };
     }
     for (const r of views.rows) {
@@ -116,11 +123,11 @@ export class PgRepository implements Repository {
         await client.query('delete from relation_def');
         for (const [type, def] of Object.entries(value as Registry['relations'])) {
           await client.query(
-            `insert into relation_def(type,label,inverse_label,from_ifaces,to_ifaces,owned,cardinality,section,props)
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+            `insert into relation_def(type,label,inverse_label,from_ifaces,to_ifaces,owned,cardinality,section,props,as_field)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
             [type, def.label, def.inverseLabel, def.from ?? ['*'], def.to ?? ['*'],
              def.owned ?? false, def.cardinality ?? 'many', def.section ?? null,
-             JSON.stringify(def.props ?? {})],
+             JSON.stringify(def.props ?? {}), def.asField ?? null],
           );
         }
       } else if (part === 'views') {
@@ -176,6 +183,58 @@ export class PgRepository implements Repository {
    * geschrieben wird, stünde sonst ohne seine Karten da.
    */
   async listEntities(): Promise<Entity[]> {
+    const stempel = await this.stempel();
+    if (this.bestand?.stempel === stempel) return [...this.bestand.liste];
+    if (this.laedt?.stempel !== stempel) {
+      const lauf = this.ladeBestand().then((liste) => {
+        this.bestand = { stempel, liste };
+        return liste;
+      });
+      this.laedt = { stempel, lauf };
+      /* Ein Fehlschlag bleibt nicht als Antwort für alle Späteren liegen. */
+      lauf.catch(() => undefined).finally(() => {
+        if (this.laedt?.lauf === lauf) this.laedt = null;
+      });
+    }
+    return [...(await this.laedt!.lauf)];
+  }
+
+  /**
+   * Woran man sieht, dass sich der Bestand geändert hat: wie viele Artikel
+   * es gibt und wann zuletzt einer geschrieben wurde. Jedes Schreiben geht
+   * durch `putEntity` und setzt `updated_at`; ein Löschen ändert die Zahl.
+   * Gefragt wird die Datenbank und nicht ein Merker im Prozess, denn die
+   * Einfuhr läuft als eigener Prozess (`import.js`) und schreibt an diesem
+   * Server vorbei.
+   */
+  async version(): Promise<string> {
+    return this.stempel();
+  }
+
+  private async stempel(): Promise<string> {
+    const { rows } = await this.pool.query<Row>(
+      `select count(*)::text || '/' || coalesce(max(updated_at)::text, '') as s from entity`,
+    );
+    return String(rows[0]?.['s'] ?? '');
+  }
+
+  /**
+   * Der gelesene Bestand, solange sich nichts geändert hat (`stempel`).
+   *
+   * Jede Anfrage braucht den ganzen Bestand — das Sieb fragt Stapel,
+   * Vorlagen und Wissen über alle Artikel, auch wenn nur einer geöffnet
+   * wird. Mit den 24 157 Artikeln aus 5e.tools hiess das je Anfrage gut eine
+   * Sekunde Datenbank, auf dem kleinen Server mehrere, und eine Artikelseite
+   * stellt zwei Anfragen. Die Artikel darin werden geteilt und **nicht
+   * verändert** — wer einen ändern will, baut einen neuen (`readInstance`,
+   * `redactEntity`, `detachInstance` tun das schon). Das Feld ist eine
+   * Kopie, damit niemand die Liste selbst umstellt.
+   */
+  private bestand: { stempel: string; liste: Entity[] } | null = null;
+  /** Ein Lesen, das gerade läuft — zwei gleichzeitige Anfragen lesen einmal. */
+  private laedt: { stempel: string; lauf: Promise<Entity[]> } | null = null;
+
+  private async ladeBestand(): Promise<Entity[]> {
     const client = await this.pool.connect();
     try {
       await client.query('begin isolation level repeatable read read only');
@@ -227,6 +286,7 @@ export class PgRepository implements Repository {
   }
 
   async putEntity(entity: Entity): Promise<Entity> {
+    this.bestand = null;
     const client = await this.pool.connect();
     try {
       await client.query('begin');
@@ -275,15 +335,45 @@ export class PgRepository implements Repository {
   }
 
   async deleteEntity(id: string): Promise<boolean> {
+    this.bestand = null;
     const { rowCount } = await this.pool.query('delete from entity where id = $1', [id]);
     return (rowCount ?? 0) > 0;
   }
 
-  async appendEvent(name: string, subject: string | undefined, payload: unknown): Promise<void> {
-    await this.pool.query(
-      'insert into event_log(id,name,subject,payload) values (gen_random_uuid(),$1,$2,$3)',
+  async appendEvent(name: string, subject: string | undefined, payload: unknown): Promise<string> {
+    const { rows } = await this.pool.query<Row>(
+      'insert into event_log(id,name,subject,payload) values (gen_random_uuid(),$1,$2,$3) returning id',
       [name, subject ?? null, JSON.stringify(payload ?? {})],
     );
+    return String(rows[0]?.['id']);
+  }
+
+  private static toEvent(r: Row): StoredEvent {
+    return {
+      id: String(r['id']),
+      name: String(r['name']),
+      subject: (r['subject'] as string | null) ?? undefined,
+      payload: r['payload'],
+      at: new Date(r['at'] as string).toISOString(),
+    };
+  }
+
+  async getEvent(id: string): Promise<StoredEvent | undefined> {
+    const { rows } = await this.pool.query<Row>('select * from event_log where id = $1', [id]);
+    return rows[0] ? PgRepository.toEvent(rows[0]) : undefined;
+  }
+
+  async listEvents(filter: EventFilter): Promise<StoredEvent[]> {
+    /* `payload - 'changes'` am Server: die alten Fassungen einer
+       Massenänderung sind Megabytes, und eine Liste braucht sie nicht. */
+    const { rows } = await this.pool.query<Row>(
+      `select id, name, subject, at, ${filter.light ? "payload - 'changes' as payload" : 'payload'}
+         from event_log
+        where ($1::text is null or name = $1) and ($2::text is null or subject = $2)
+        order by at desc limit $3`,
+      [filter.name ?? null, filter.subject ?? null, filter.limit ?? 50],
+    );
+    return rows.map((r) => PgRepository.toEvent(r));
   }
 
   // ------------------------------------------------------------- Zugang
@@ -339,6 +429,9 @@ export class PgRepository implements Repository {
       usesLeft: row['uses_left'] == null ? undefined : Number(row['uses_left']),
       expiresAt: row['expires_at'] ? new Date(row['expires_at'] as string).toISOString() : undefined,
       createdBy: (row['created_by'] as string | null) ?? undefined,
+      createdAt: row['created_at'] ? new Date(row['created_at'] as string).toISOString() : undefined,
+      campaignId: (row['campaign_id'] as string | null) ?? undefined,
+      role: isTableRole(row['role']) ? row['role'] : undefined,
     };
   }
 
@@ -452,11 +545,13 @@ export class PgRepository implements Repository {
 
   async putInvite(invite: Invite): Promise<void> {
     await this.pool.query(
-      `insert into app_invite(code_hash,label,is_admin,actor_id,uses_left,expires_at,created_by)
-       values ($1,$2,$3,$4,$5,$6,$7)
+      `insert into app_invite(code_hash,label,is_admin,actor_id,uses_left,expires_at,created_by,
+                              campaign_id,role)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
        on conflict (code_hash) do update set
          label = excluded.label, is_admin = excluded.is_admin, actor_id = excluded.actor_id,
-         uses_left = excluded.uses_left, expires_at = excluded.expires_at`,
+         uses_left = excluded.uses_left, expires_at = excluded.expires_at,
+         campaign_id = excluded.campaign_id, role = excluded.role`,
       [
         invite.codeHash,
         invite.label ?? null,
@@ -465,6 +560,8 @@ export class PgRepository implements Repository {
         invite.usesLeft ?? null,
         invite.expiresAt ?? null,
         invite.createdBy ?? null,
+        invite.campaignId ?? null,
+        invite.role ?? null,
       ],
     );
   }
@@ -546,6 +643,56 @@ export class PgRepository implements Repository {
       userId,
     ]);
     return rowCount ?? 0;
+  }
+
+  // ------------------------------------------------------------- Tokens
+
+  private static toToken(r: Row): ApiToken {
+    return {
+      id: String(r['id']),
+      userId: String(r['user_id']),
+      name: String(r['name']),
+      tokenHash: String(r['token_hash'] ?? ''),
+      scope: r['scope'] as TokenScope,
+      expiresAt: new Date(r['expires_at'] as string).toISOString(),
+      createdAt: r['created_at'] ? new Date(r['created_at'] as string).toISOString() : undefined,
+      lastUsedAt: r['last_used_at'] ? new Date(r['last_used_at'] as string).toISOString() : undefined,
+    };
+  }
+
+  async createToken(token: ApiToken): Promise<void> {
+    await this.pool.query(
+      `insert into app_token(id,user_id,name,token_hash,scope,expires_at) values ($1,$2,$3,$4,$5,$6)`,
+      [token.id, token.userId, token.name, token.tokenHash, token.scope, token.expiresAt],
+    );
+  }
+
+  async listTokens(userId: string): Promise<ApiToken[]> {
+    const { rows } = await this.pool.query<Row>(
+      `select id, user_id, name, '' as token_hash, scope, expires_at, created_at, last_used_at
+         from app_token where user_id = $1 order by created_at desc`,
+      [userId],
+    );
+    return rows.map((r) => PgRepository.toToken(r));
+  }
+
+  async dropToken(userId: string, id: string): Promise<boolean> {
+    const { rowCount } = await this.pool.query('delete from app_token where id = $1 and user_id = $2', [id, userId]);
+    return (rowCount ?? 0) > 0;
+  }
+
+  async useToken(tokenHash: string): Promise<{ user: StoredUser; token: ApiToken } | undefined> {
+    /* Vermerken und lesen in einem Schritt, und nur, solange es gilt. */
+    const { rows } = await this.pool.query<Row>(
+      `update app_token set last_used_at = now()
+         where token_hash = $1 and expires_at > now()
+       returning *`,
+      [tokenHash],
+    );
+    if (!rows[0]) return undefined;
+    const token = PgRepository.toToken(rows[0]);
+    const user = await this.getUser(token.userId);
+    return user ? { user, token } : undefined;
   }
 
   async countAttempts(nameFold: string, origin: string, since: string): Promise<number> {

@@ -175,12 +175,15 @@ const ART: Record<string, string> = {
  *   *Melee Weapon Attack:* {{+4}} to hit, reach 5 ft., one target.
  *   *Hit:* 5 ({{1d6 + 2}}) piercing damage.
  */
-export function attackLine(n: AttackNumbers): string {
+export function attackLine(n: AttackNumbers, measure?: (feet: string) => string): string {
+  /* Reichweite und Entfernung sind Fuss; wer umrechnet (D8, `units.ts`),
+     gibt die Umrechnung mit. Ohne steht die Zahl wie im Buch. */
+  const fuss = measure ?? ((x: string) => `${x} ft.`);
   const art = n.kinds.map((k) => ART[k] ?? k).join(' or ');
   const teile: string[] = [];
   teile.push(n.toHit !== null ? `{{${n.toHit < 0 ? n.toHit : `+${n.toHit}`}}} to hit` : '— to hit');
-  if (n.reach !== null) teile.push(`reach ${n.reach} ft.`);
-  if (n.range) teile.push(`range ${n.range} ft.`);
+  if (n.reach !== null) teile.push(`reach ${fuss(String(n.reach))}`);
+  if (n.range) teile.push(`range ${fuss(n.range)}`);
   if (n.target) teile.push(n.target);
   const schaden = n.damage
     ? `${n.average ?? '—'} ({{${n.damage}}})${n.damageType ? ` ${n.damageType}` : ''} damage`

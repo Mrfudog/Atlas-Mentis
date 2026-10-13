@@ -11,7 +11,7 @@
  * registry is edited.
  */
 
-import type { LayoutElement, ObjectSchema, Registry, ViewDef } from './types.js';
+import type { LayoutElement, ObjectSchema, PropertySchema, Registry, ViewDef } from './types.js';
 import { typeChain } from './entity.js';
 
 export const FALLBACK_VIEW: ViewDef = {
@@ -102,4 +102,49 @@ export function layoutFor(
     if (Array.isArray(eigen) && eigen.length) return { layout: eigen, from: name };
   }
   return { layout: registry.views[viewKey]?.layout ?? [], from: null };
+}
+
+/**
+ * **Die Spalten einer Listenzeile** — die Felder, die die `overview`-Anordnung
+ * dieser Art nennt (W7).
+ *
+ * Eine Zeile im Kompendium ist dieselbe Frage wie ein Verweis: „was ist das,
+ * auf einen Blick" — also die Ansicht `overview` (CLAUDE.md: drei Ansichten,
+ * der Ort wählt). Gelesen werden die `fields`-Elemente ihrer Anordnung, in
+ * der Reihenfolge, in der sie dastehen; ein blosser Typname nimmt alle
+ * Felder, die dieser Typ erklärt. `all` nennt keine Spalten — eine Zeile mit
+ * dreissig Spalten ist keine Zeile mehr. Gerechnete Felder bleiben draussen:
+ * sie stehen nicht in den Daten (D8), und eine Liste über 24 000 Artikel
+ * rechnet nicht jede Zeile durch.
+ *
+ * Im Code steht keine Spaltenliste je Art: eine neue Art bringt ihre
+ * Spalten mit, indem sie ihre `overview` sagt.
+ */
+export function listColumns(
+  registry: Pick<Registry, 'interfaces' | 'views'>,
+  type: string,
+): { type: string; key: string; ref: string; prop: PropertySchema }[] {
+  const { layout } = layoutFor(registry, 'overview', type);
+  const kette = typeChain(registry, type);
+  const raus: { type: string; key: string; ref: string; prop: PropertySchema }[] = [];
+  const dazu = (t: string, key: string): void => {
+    const prop = registry.interfaces[t]?.schema?.properties?.[key];
+    if (!prop || prop.derived || !kette.includes(t)) return;
+    const ref = `${t}.${key}`;
+    if (!raus.some((c) => c.ref === ref)) raus.push({ type: t, key, ref, prop });
+  };
+  for (const el of layout) {
+    if (el.el !== 'fields' || !Array.isArray(el.fields)) continue;
+    for (const name of el.fields) {
+      const punkt = name.indexOf('.');
+      if (punkt > 0) {
+        dazu(name.slice(0, punkt), name.slice(punkt + 1));
+      } else {
+        for (const key of Object.keys(registry.interfaces[name]?.schema?.properties ?? {})) {
+          if (!(el.except ?? []).includes(`${name}.${key}`)) dazu(name, key);
+        }
+      }
+    }
+  }
+  return raus;
 }

@@ -219,21 +219,8 @@ describe('summaries and backlinks', () => {
     relations: [{ id: 'r-schuld', type: 'owes', to: volo.id, props: {} }],
   };
 
-  it('lists the short form: name, identity, tags, status — no prose, no edges', async () => {
-    const ctx = await makeApp([volo, schuldner]);
-    const res = await ctx.inject({ method: 'GET', url: '/api/entities?as=summary' });
-    expect(res.statusCode).toBe(200);
-    const mira = (res.json() as Entity[]).find((e) => e.id === schuldner.id)!;
-    expect(mira.name).toBe('Mira');
-    expect(mira.components['Identity']).toEqual({ name: 'Mira', id: 'npc-0002' });
-    expect(mira.components['Description']).toBeUndefined();
-    expect(mira.relations).toEqual([]);
-    const v = (res.json() as Entity[]).find((e) => e.id === volo.id)!;
-    expect(v.components['Identity']?.['aliases']).toEqual(['Der Dicke']);
-    expect(v.components['Tags']).toEqual({ tags: ['händler'] });
-  });
-
-  it('still sends whole articles without the flag', async () => {
+  /* `?as=summary` ist weggefallen (W7): Listen kommen aus `/api/list`. */
+  it('sends whole articles, sieved', async () => {
     const ctx = await makeApp([volo, schuldner]);
     const res = await ctx.inject({ method: 'GET', url: '/api/entities' });
     const mira = (res.json() as Entity[]).find((e) => e.id === schuldner.id)!;
@@ -248,6 +235,17 @@ describe('summaries and backlinks', () => {
     expect(b?.from.id).toBe(schuldner.id);
     expect(b?.from.components['Description']).toBeUndefined();
     expect(b?.relation.type).toBe('owes');
+  });
+
+  /* Die Teile eines Statblocks kommen in einer Anfrage, ganz (W2). */
+  it('sends the named articles whole with ?ids=', async () => {
+    const ctx = await makeApp([volo, schuldner]);
+    const res = await ctx.inject({ method: 'GET', url: `/api/entities?ids=${schuldner.id},gibt-es-nicht` });
+    expect(res.statusCode).toBe(200);
+    const liste = res.json() as Entity[];
+    expect(liste.map((e) => e.id)).toEqual([schuldner.id]);
+    expect(liste[0]?.components['Description']).toEqual({ description: 'Schuldet Volo Geld.' });
+    expect(liste[0]?.relations?.length).toBe(1);
   });
 
   it('404s backlinks of an unknown article', async () => {

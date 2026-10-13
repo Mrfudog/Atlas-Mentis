@@ -7,6 +7,11 @@ on:
     branches: [main, preprod]
   # Dieselbe Umgebung noch einmal ausrollen, ohne einen Commit dafür.
   workflow_dispatch:
+    inputs:
+      import5etools:
+        description: "5e.tools danach einlesen (nur ergänzen, was es noch nicht gibt)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -178,3 +183,19 @@ jobs:
         run: |
           printf '%s\n' "$TOKEN" | ssh "$TARGET" \
             "cd '$DIR' && chmod +x deploy.sh && read -r GHCR_TOKEN && export GHCR_TOKEN GHCR_USER='${{ github.actor }}' && ./deploy.sh '$IMAGE'"
+
+  # Nach dem Ausrollen, mit dem Abbild, das gerade gestartet ist — nur,
+  # wenn jemand CI von Hand mit dem Häkchen startet. Von selbst nie mehr:
+  # der Import ist einmalig, danach wird ergänzt (D71); ein geänderter
+  # Importer ist kein Grund, alles neu zu laden.
+  import-5etools:
+    needs: deploy
+    if: github.event_name == 'workflow_dispatch' && inputs.import5etools && needs.deploy.result == 'success'
+    uses: ./.github/workflows/import-5etools.yml
+    # Ein aufgerufener Workflow sieht die Secrets des Aufrufers nicht von
+    # selbst — ohne `inherit` war DEPLOY_USER@DEPLOY_HOST leer und ssh brach
+    # beim ersten Lauf mit 255 ab.
+    secrets: inherit
+    with:
+      environment: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
+      mode: only-new

@@ -7,7 +7,7 @@
  */
 
 import type { Entity, Registry } from '@nw/model';
-import type { Invite, User } from './auth.js';
+import type { ApiToken, Invite, User } from './auth.js';
 
 /** Was die Ablage über einen Zugang weiss. Der Hash bleibt hier und geht
  *  nie an eine Route — deshalb trägt `User` ihn nicht. */
@@ -20,19 +20,46 @@ export interface SessionRow {
   expiresAt: string;
 }
 
+/** Ein Eintrag im Protokoll (`event_log`). */
+export interface StoredEvent {
+  id: string;
+  name: string;
+  subject?: string | undefined;
+  payload: unknown;
+  at: string;
+}
+
+export interface EventFilter {
+  name?: string;
+  subject?: string;
+  limit?: number;
+  /** Ohne `payload.changes` — die alten Fassungen einer Massenänderung
+   *  sind gross, und eine Liste braucht sie nicht. */
+  light?: boolean;
+}
+
 export interface Repository {
   getRegistry(): Promise<Registry>;
   putRegistryPart<K extends keyof Registry>(part: K, value: Registry[K]): Promise<void>;
 
   listEntities(): Promise<Entity[]>;
+  /**
+   * Woran man sieht, ob sich der Bestand seit dem letzten Mal geändert hat.
+   * Gleicher Stempel heisst gleicher Bestand — darauf baut der Index der
+   * Liste (`liste.ts`), der je Stempel und Betrachter einmal gerechnet wird.
+   */
+  version(): Promise<string>;
   /** Wie viele Artikel es gibt — ohne sie alle zu laden. */
   countEntities(): Promise<number>;
   getEntity(id: string): Promise<Entity | undefined>;
   putEntity(entity: Entity): Promise<Entity>;
   deleteEntity(id: string): Promise<boolean>;
 
-  /** REQ-003: append-only change chain. */
-  appendEvent(name: string, subject: string | undefined, payload: unknown): Promise<void>;
+  /** REQ-003: append-only change chain. Gibt die Id des Eintrags zurück. */
+  appendEvent(name: string, subject: string | undefined, payload: unknown): Promise<string>;
+  getEvent(id: string): Promise<StoredEvent | undefined>;
+  /** Die neusten zuerst. */
+  listEvents(filter: EventFilter): Promise<StoredEvent[]>;
 
   // ------------------------------------------------------------- Zugang
   /* Zugänge sind keine Artikel: ein Artikel gehört der Kampagne und wandert
@@ -69,6 +96,16 @@ export interface Repository {
   dropSession(tokenHash: string): Promise<void>;
   dropSessionsOf(userId: string): Promise<number>;
 
+  /* API-Tokens (W9). Wie die Sitzung: der Hash steht hier, der Klartext
+     nur in der Antwort auf das Anlegen. */
+  createToken(token: ApiToken): Promise<void>;
+  /** Die Tokens eines Kontos, ohne Hash. */
+  listTokens(userId: string): Promise<ApiToken[]>;
+  dropToken(userId: string, id: string): Promise<boolean>;
+  /** Das Konto zu einem gültigen Token, und vermerkt den Gebrauch. Ein
+   *  abgelaufenes gilt nicht. */
+  useToken(tokenHash: string): Promise<{ user: StoredUser; token: ApiToken } | undefined>;
+
   /** Fehlversuche im Fenster, je Konto UND Herkunft. */
   countAttempts(nameFold: string, origin: string, since: string): Promise<number>;
   noteAttempt(nameFold: string, origin: string): Promise<void>;
@@ -87,7 +124,9 @@ const emptyRegistry = (): Registry => ({
 export class InMemoryRepository implements Repository {
   private registry: Registry;
   private entities = new Map<string, Entity>();
-  readonly events: { name: string; subject?: string | undefined; payload: unknown }[] = [];
+  /** Zählt jedes Schreiben und Löschen; das ist der Stempel. */
+  private rev = 0;
+  readonly events: StoredEvent[] = [];
 
   constructor(registry: Registry = emptyRegistry(), entities: Entity[] = []) {
     this.registry = structuredClone(registry);
@@ -106,6 +145,10 @@ export class InMemoryRepository implements Repository {
     return [...this.entities.values()].map((e) => structuredClone(e));
   }
 
+  async version(): Promise<string> {
+    return String(this.rev);
+  }
+
   async countEntities(): Promise<number> {
     return this.entities.size;
   }
@@ -118,15 +161,36 @@ export class InMemoryRepository implements Repository {
   async putEntity(entity: Entity): Promise<Entity> {
     const stored: Entity = { ...structuredClone(entity), updatedAt: new Date().toISOString() };
     this.entities.set(stored.id, stored);
+    this.rev += 1;
     return structuredClone(stored);
   }
 
   async deleteEntity(id: string): Promise<boolean> {
+    this.rev += 1;
     return this.entities.delete(id);
   }
 
-  async appendEvent(name: string, subject: string | undefined, payload: unknown): Promise<void> {
-    this.events.push({ name, subject, payload });
+  async appendEvent(name: string, subject: string | undefined, payload: unknown): Promise<string> {
+    const id = `ev-${this.events.length + 1}`;
+    this.events.push({ id, name, subject, payload: structuredClone(payload), at: new Date().toISOString() });
+    return id;
+  }
+  async getEvent(id: string): Promise<StoredEvent | undefined> {
+    const e = this.events.find((x) => x.id === id);
+    return e ? structuredClone(e) : undefined;
+  }
+  async listEvents(filter: EventFilter): Promise<StoredEvent[]> {
+    return this.events
+      .filter((e) => (!filter.name || e.name === filter.name) && (!filter.subject || e.subject === filter.subject))
+      .reverse()
+      .slice(0, filter.limit ?? 50)
+      .map((e) => {
+        const kopie = structuredClone(e);
+        if (filter.light && kopie.payload && typeof kopie.payload === 'object') {
+          delete (kopie.payload as Record<string, unknown>)['changes'];
+        }
+        return kopie;
+      });
   }
 
   // ------------------------------------------------------------- Zugang
@@ -170,7 +234,10 @@ export class InMemoryRepository implements Repository {
   }
 
   async putInvite(invite: Invite): Promise<void> {
-    this.invites.set(invite.codeHash, { ...invite });
+    this.invites.set(invite.codeHash, {
+      createdAt: new Date().toISOString(),
+      ...invite,
+    });
   }
   async getInvite(codeHash: string): Promise<Invite | undefined> {
     const i = this.invites.get(codeHash);
@@ -219,6 +286,28 @@ export class InMemoryRepository implements Repository {
       }
     }
     return n;
+  }
+
+  private tokens = new Map<string, ApiToken>();
+  async createToken(token: ApiToken): Promise<void> {
+    this.tokens.set(token.id, { ...token, createdAt: token.createdAt ?? new Date().toISOString() });
+  }
+  async listTokens(userId: string): Promise<ApiToken[]> {
+    return [...this.tokens.values()]
+      .filter((t) => t.userId === userId)
+      .map(({ tokenHash: _h, ...t }) => ({ ...t, tokenHash: '' }));
+  }
+  async dropToken(userId: string, id: string): Promise<boolean> {
+    const t = this.tokens.get(id);
+    if (!t || t.userId !== userId) return false;
+    return this.tokens.delete(id);
+  }
+  async useToken(tokenHash: string): Promise<{ user: StoredUser; token: ApiToken } | undefined> {
+    const t = [...this.tokens.values()].find((x) => x.tokenHash === tokenHash);
+    if (!t || new Date(t.expiresAt).getTime() <= Date.now()) return undefined;
+    t.lastUsedAt = new Date().toISOString();
+    const user = await this.getUser(t.userId);
+    return user ? { user, token: { ...t } } : undefined;
   }
 
   async countAttempts(nameFold: string, origin: string, since: string): Promise<number> {

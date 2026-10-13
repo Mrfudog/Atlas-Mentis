@@ -2653,7 +2653,7 @@ function typeList(){
 /* Vier **Bereiche** für Artikel. Register und Kompendium stehen daneben und
    sind keine: das eine zeigt die Zeilen, aus denen alles besteht, das andere
    alle Artikel ohne Rücksicht darauf, wo sie hingehören. */
-var AREAS=[["world","World"],["history","History"],["rules","Rules"],["play","Play"]];
+var AREAS=[["world","World"],["story","Story"],["rules","Rules"],["play","Play"]];
 function areaOf(n){
   var kette=selfAndAncestors(n);
   for(var i=0;i<kette.length;i++){
@@ -2796,12 +2796,18 @@ function fillVars(text,refVars,ent){
      Sonst überdeckte eine einmal eingetippte Gruppenstufe für immer die
      richtige, und niemand bemerkte es (B3, D8). */
   var rechnung=campaignVars();
-  return String(text==null?"":text).replace(/\{([A-Z0-9_ÄÖÜ]+)\}/g,function(m,k){
+  return String(text==null?"":text).replace(/\{([A-Z0-9_ÄÖÜ]+)\}/g,function(m,k,at,ganz){
     var v=(refVars&&refVars[k])!=null?refVars[k]
          :(entVars[k]!=null?entVars[k]
          :(rechnung[k]!=null&&rechnung[k]!==""?rechnung[k]
          :(REG.vars[k]!=null?REG.vars[k]:null)));
-    return v==null?m:"\u0001"+v+"\u0002";   // sentinels -> <span class=vr> at render
+    if(v==null) return m;
+    /* Am Satzanfang gross, wie `parseInline` im Paket: der Platzhalter
+       trägt den Artikel („{CREATURE} can …" mit „the dragon"). */
+    v=String(v);
+    var vorher=ganz.slice(0,at), rest=vorher.replace(/[\s*_]+$/,"");
+    if(rest===""||/[.!?:|]$/.test(rest)||/\n[ \t]*(?:[-*+>]|\d{1,9}[.)]|#{1,6})?[\s*_]*$/.test(vorher)) v=v.charAt(0).toUpperCase()+v.slice(1);
+    return "\u0001"+v+"\u0002";   // sentinels -> <span class=vr> at render
   });
 }
 
@@ -4419,6 +4425,7 @@ var LAYOUT_ELEMENTS=[
   ["linked","Linked articles"],
   ["knowledge","Knowledge groups"],["map","Map"],["sheet","Character sheet"],["inventory","Inventory"],["crafting","Crafting"],["board","Board"],["initiative","Initiative"],
   ["quests","Quest board"],["timeline","Timeline"],["live","Live"],["table","Table"],["prep","Prep board"],["crawl","Point-crawl"],["stack","Layer stack"],["members","Members"],["standing","Standing"],
+  ["statblock","Statblock (book)"],["spell","Spell (book)"],["item","Item (book)"],
   ["tabs","Tabs"]
 ];
 /* **Die Anordnung wohnt am Typ.** Gesucht wird die `extends`-Kette hoch:
@@ -4481,6 +4488,24 @@ function elTabs(e,ifn,item,vw){
   return wrap;
 }
 
+/* **Wie im Buch** (W2): die Elemente `statblock`, `spell` und `item`
+   zeichnet die Oberfläche (apps/web) im Satz des Regelbuchs, aus
+   `book.ts` im Modell. Der Prototyp zeichnet dieselben Karten als
+   Feldtabelle — der Statblock mit seinen Abschnitten, der Zauber mit
+   seinem Text —, damit nichts fehlt, was die Anordnung der Feldtabelle
+   daneben mit `except` herausnimmt. */
+function elBuch(e,ifn,karten,teile,text){
+  var wrap=el("div");
+  var f=elFields(e,ifn,{fields:karten});
+  if(f) wrap.appendChild(f);
+  if(text){
+    var d=elDescription(e); if(d) wrap.appendChild(d);
+    var p=elProse(e,ifn,{fields:["Prose.paragraph"]}); if(p) wrap.appendChild(p);
+  }
+  if(teile){ var c=elComposed(e); if(c) wrap.appendChild(c); }
+  return wrap.childNodes.length?wrap:null;
+}
+
 function renderLayoutItem(item,e,ifn,vw){
   switch(item.el){
     case "heading":     return item.text?el("div",{class:"sec",text:fillVars(item.text,null,e)}):null;
@@ -4509,6 +4534,9 @@ function renderLayoutItem(item,e,ifn,vw){
     case "stack":       return elStack(e,ifn,item);
     case "members":     return elMembers(e);
     case "standing":    return elStanding(e,ifn,item);
+    case "statblock":   return elBuch(e,ifn,["Statblock","Abilities","Proficiencies"],true,false);
+    case "spell":       return elBuch(e,ifn,["Spell"],false,true);
+    case "item":        return elBuch(e,ifn,["Item","Weapon","Armor","Material"],false,false);
     case "tabs":        return elTabs(e,ifn,item,vw);
     default:            return null;
   }
@@ -8119,10 +8147,13 @@ function placementView(board,rel,target){
   var kette=selfAndAncestors((target.interfaces||[])[0]);
   for(var i=0;i<kette.length;i++)
     if(regeln[kette[i]]&&REG.views[regeln[kette[i]]]) return regeln[kette[i]];
-  /* Ohne Regel eine Karte: eine Kachel auf dem Board zeigt, was man
-     braucht, um zu wissen, was da liegt. Vorher stand hier „die erste
+  /* Ohne Regel wählt die Grösse (wie `placementView` im Modellpaket): eine
+     flache Kachel ist eine Zeile, eine höhere eine Karte — die zeigt, was
+     man braucht, um zu wissen, was da liegt. Vorher stand hier „die erste
      Ansicht in der Reihenfolge", und seit `overview` dazugekommen ist,
-     wäre das eine Zeile gewesen. */
+     wäre das immer eine Zeile gewesen. */
+  var hoch=Number(pr.h)||180;
+  if(hoch<=110&&REG.views[VIEW_OVERVIEW]) return VIEW_OVERVIEW;
   return REG.views[VIEW_QUICK]?VIEW_QUICK:viewKeys()[0];
 }
 /* Eine Platzierung zeichnen: dieselben Elemente wie die Artikelseite.
@@ -15375,8 +15406,10 @@ var BEGRIFFE=[
   ["View",
    "How an article is drawn. Three of them, and where you are decides which: "+
    "Overview for a reference in the text, Quick for a card, Full for the "+
-   "article page. There is no picker. The arrangement lives at the type, and "+
-   "subtypes inherit it."],
+   "article page. There is no picker — except on a board tile, where the "+
+   "size is the question: unless the placement or the board says otherwise, "+
+   "a flat tile is a line (Overview) and a taller one a card (Quick). The "+
+   "arrangement lives at the type, and subtypes inherit it."],
   ["Block",
    "One piece of a view — and the same piece in the type definition: the "+
    "fields of one part, a single field, the image, the edges. Definition and "+
@@ -15493,7 +15526,7 @@ function howtoBeispiel(){
    Also stehen alle blass da und die eines gewählten Kastens kräftig —
    das Ganze als Übersicht, das Einzelne auf Klick. */
 var DG_W=124, DG_H=30, DG_VGAP=9, DG_COL=176, DG_TOP=26, DG_PAD=12;
-var DG_SPALTEN=[["world","World"],["history","History"],["rules","Rules"],
+var DG_SPALTEN=[["world","World"],["story","Story"],["rules","Rules"],
   ["play","Play"],["","Shared"]];
 
 /** Welche Typen ins Diagramm gehören, und in welcher Spalte sie stehen. */
@@ -15765,7 +15798,11 @@ function renderHowto(v){
     "may be typed and turns into the number on save when exactly one article "+
     "is called that — otherwise it stays and says it is ambiguous. "+
     "{{1d6+2}} is a die to click, {{+4}} a d20 with that bonus, and {VAR} is "+
-    "filled in when read and never written into the text."));
+    "filled in when read and never written into the text. A placeholder "+
+    "carries its article — “{CREATURE} can breathe air and water.” with "+
+    "“the dragon” on the edge — and a value at the start of a sentence is "+
+    "capitalised when read, so one text serves the dragon, the giant and "+
+    "Venomfang alike."));
   var nr=e?((e.components||{}).Identity||{}).id||e.id:"";
   var probe="**Scimitar.** *Melee:* {{+4}} to hit, {{1d6+2}} slashing.\n\n"+
     "| d6 | What happens |\n|:-:|---|\n| 1–3 | nothing |\n| 4–6 | "+

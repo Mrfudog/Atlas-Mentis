@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Travel · Point crawl</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&amp;family=Alegreya+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#8C1C13}a:hover{color:#5E120C}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #EFE4CC; color: #2B1D12; font-family: 'Alegreya Sans', system-ui, sans-serif; font-size: 15px; display: flex; flex-direction: column">
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 10px 24px; background: #F8F1E1; border-bottom: 3px solid #8C1C13">
+    <span style="font-family: 'Alegreya SC', serif; font-size: 22px; font-weight: 700; color: #8C1C13">Atlas Mentis</span>
+    <span style="color: #6A5642">Play › Unterwacht › Travel</span>
+    <span style="margin-left: auto; display: flex; gap: 14px; color: #6A5642">
+      <span>Day <strong style="color: #2B1D12">[n]</strong></span>
+      <span>Watch <strong style="color: #2B1D12">[n]</strong></span>
+      <span>Since ration <strong style="color: #2B1D12">[n]</strong></span>
+      <span>Since light <strong style="color: #2B1D12">[n]</strong></span>
+    </span>
+  </header>
+
+  <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 16px; padding: 16px 24px; align-items: flex-start">
+    <section aria-label="Point crawl" style="flex: 999 1 640px; min-width: 0; background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 8px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline"><h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 20px; color: #8C1C13">Point crawl</h2><span style="font-size: 13px; color: #6A5642">a graph, not a picture · players see only what is discovered</span></div>
+      <svg viewBox="0 0 720 440" width="100%" role="img" aria-label="Point crawl with five nodes" style="background: #FDF1DC; border-radius: 6px">
+        <path d="M120 340 L300 250" stroke="#2B1D12" stroke-width="4"></path>
+        <path d="M300 250 L500 300" stroke="#2B1D12" stroke-width="4"></path>
+        <path d="M300 250 L360 90" stroke="#8C1C13" stroke-width="4" stroke-dasharray="10 8"></path>
+        <path d="M500 300 L640 160" stroke="#B9A88A" stroke-width="3" stroke-dasharray="3 7"></path>
+        <path d="M360 90 L640 160" stroke="#B9A88A" stroke-width="3" stroke-dasharray="3 7"></path>
+        <g font-family="Alegreya Sans, sans-serif" font-size="15" text-anchor="middle">
+          <circle cx="120" cy="340" r="26" fill="#34502A"></circle><text x="120" y="388" fill="#2B1D12">Kerzengasse</text><text x="120" y="345" fill="#FBF6EC" font-size="12">explored</text>
+          <circle cx="300" cy="250" r="30" fill="#8C1C13" stroke="#2B1D12" stroke-width="4"></circle><text x="300" y="302" fill="#2B1D12" font-weight="700">Der Lampenkeller</text><text x="300" y="255" fill="#FBF6EC" font-size="12">party</text>
+          <circle cx="500" cy="300" r="26" fill="#C8822E"></circle><text x="500" y="348" fill="#2B1D12">Die Grosse Zisterne</text><text x="500" y="305" fill="#FBF6EC" font-size="12">discovered</text>
+          <circle cx="360" cy="90" r="26" fill="#C8822E"></circle><text x="360" y="50" fill="#2B1D12">[Node]</text><text x="360" y="95" fill="#FBF6EC" font-size="12">discovered</text>
+          <circle cx="640" cy="160" r="22" fill="#D8CDB6" stroke="#B9A88A" stroke-width="2" stroke-dasharray="4 4"></circle><text x="640" y="205" fill="#6A5642">hidden</text>
+        </g>
+      </svg>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px">
+        <span style="padding: 2px 8px; border-radius: 10px; background: #D8CDB6">hidden</span>
+        <span style="padding: 2px 8px; border-radius: 10px; background: #F0D3A6">discovered</span>
+        <span style="padding: 2px 8px; border-radius: 10px; background: #CFE0C6">explored</span>
+        <span style="color: #6A5642">Exploring a node reveals its paths as discovered.</span>
+      </div>
+    </section>
+
+    <section aria-label="Selected path" style="flex: 1 1 320px; max-width: 420px; display: flex; flex-direction: column; gap: 14px">
+      <div style="background: #FDF1DC; border-top: 6px solid #C8822E; border-bottom: 6px solid #C8822E; padding: 14px 18px; display: flex; flex-direction: column; gap: 8px">
+        <span style="font-size: 13px; color: #6A5642">Path · Der Lampenkeller → [Node]</span>
+        <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 24px; color: #7A200D">[Path name]</h2>
+        <span>Length <strong>[n] watches</strong> · [terrain]</span>
+        <blockquote style="margin: 0; padding: 8px 12px; background: #F3E6CC; border-left: 4px solid #8C1C13; font-style: italic">[Signal: what the party hears or smells from here, read aloud]</blockquote>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <button type="button" style="min-height: 44px; padding: 0 14px; border: 0; border-radius: 6px; background: #8C1C13; color: #FBF6EC; font: inherit; font-weight: 700; cursor: pointer">Travel this path</button>
+          <button type="button" style="min-height: 44px; padding: 0 14px; border: 1px solid #8C1C13; border-radius: 6px; background: transparent; color: #8C1C13; font: inherit; font-weight: 700; cursor: pointer">Roll encounter</button>
+        </div>
+        <span style="font-size: 13px; color: #6A5642">Travelling advances the watch, counts rations and light, and rolls the region table.</span>
+      </div>
+
+      <div style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">At this node, one action each</h3>
+        <div style="display: grid; grid-template-columns: 1fr auto; gap: 4px 10px">
+          <span>Rook</span><span style="color: #34502A; font-weight: 700">sneak ahead</span>
+          <span>Sela</span><span style="color: #34502A; font-weight: 700">forage</span>
+          <span>[PC 3]</span><span style="color: #6A5642">[choose]</span>
+          <span>[PC 4]</span><span style="color: #6A5642">[choose]</span>
+        </div>
+        <span style="font-size: 13px; color: #6A5642">Options come from the travel rules: sneak, craft, forage, rest, [more].</span>
+      </div>
+
+      <div style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px">
+        <h3 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">Cadence</h3>
+        <span>Ration every <strong>[n]</strong> watches · light every <strong>[n]</strong></span>
+        <span style="font-size: 13px; color: #6A5642">Set per travel rule system, deducted from the party stock.</span>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

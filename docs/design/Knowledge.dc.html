@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Knowledge and secrets</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&amp;family=Alegreya+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#8C1C13}a:hover{color:#5E120C}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #EFE4CC; color: #2B1D12; font-family: 'Alegreya Sans', system-ui, sans-serif; font-size: 15px; display: flex; flex-direction: column">
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 10px 24px; background: #F8F1E1; border-bottom: 3px solid #8C1C13">
+    <span style="font-family: 'Alegreya SC', serif; font-size: 22px; font-weight: 700; color: #8C1C13">Atlas Mentis</span>
+    <span style="color: #6A5642">World › Der Wachsmann › Who knows what</span>
+    <span style="margin-left: auto; color: #6A5642">GM view · players see the same page with less in it</span>
+  </header>
+
+  <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 16px; padding: 16px 24px; align-items: flex-start">
+    <section aria-label="Fields and holders" style="flex: 999 1 560px; min-width: 0; background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 6px">
+      <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 20px; color: #8C1C13">Fields of this article</h2>
+      <div style="display: grid; grid-template-columns: 180px 1fr 220px; gap: 0; font-size: 14px">
+        <span style="font-weight: 700; padding: 6px 0; border-bottom: 2px solid #CDBB98">Field</span><span style="font-weight: 700; padding: 6px 0; border-bottom: 2px solid #CDBB98">Value</span><span style="font-weight: 700; padding: 6px 0; border-bottom: 2px solid #CDBB98">Known by</span>
+        <span style="padding: 8px 0; border-bottom: 1px solid #EFE4CC">Cover name</span><span style="padding: 8px 0; border-bottom: 1px solid #EFE4CC">[cover name]</span><span style="padding: 8px 0; border-bottom: 1px solid #EFE4CC"><span style="padding: 1px 8px; border-radius: 10px; background: #CFE0C6">everyone</span></span>
+        <span style="padding: 8px 0; border-bottom: 1px solid #EFE4CC">Name</span><span style="padding: 8px 0; border-bottom: 1px solid #EFE4CC">Der Wachsmann</span><span style="padding: 8px 0; border-bottom: 1px solid #EFE4CC"><span style="padding: 1px 8px; border-radius: 10px; background: #F0D3A6">Die Nebelwacht</span></span>
+        <span style="padding: 8px 0; border-bottom: 1px solid #EFE4CC">Appearance</span><span style="padding: 8px 0; border-bottom: 1px solid #EFE4CC">[appearance]</span><span style="padding: 8px 0; border-bottom: 1px solid #EFE4CC"><span style="padding: 1px 8px; border-radius: 10px; background: #F0D3A6">Die Nebelwacht</span></span>
+        <span style="padding: 8px 0; border-bottom: 1px solid #EFE4CC">Secret #wax</span><span style="padding: 8px 0; border-bottom: 1px solid #EFE4CC">[secret text]</span><span style="padding: 8px 0; border-bottom: 1px solid #EFE4CC"><span style="padding: 1px 8px; border-radius: 10px; background: #F0D3A6">Rook</span></span>
+        <span style="padding: 8px 0; border-bottom: 1px solid #EFE4CC">Secret #cellar</span><span style="padding: 8px 0; border-bottom: 1px solid #EFE4CC">[secret text]</span><span style="padding: 8px 0; border-bottom: 1px solid #EFE4CC"><span style="padding: 1px 8px; border-radius: 10px; background: #E6D3B0">[Faction] from rank [rank]</span></span>
+        <span style="padding: 8px 0">Secret #origin</span><span style="padding: 8px 0">[secret text]</span><span style="padding: 8px 0; color: #8C1C13; font-weight: 700">nobody yet</span>
+      </div>
+      <span style="font-size: 13px; color: #6A5642">Holders are creatures, the party and factions. A faction grant can name a minimum rank. Nothing is inherited: knowing the cellar is not knowing every room in it.</span>
+    </section>
+
+    <section aria-label="Grant" style="flex: 1 1 320px; max-width: 420px; display: flex; flex-direction: column; gap: 14px">
+      <div style="background: #FDF1DC; border-top: 6px solid #C8822E; border-bottom: 6px solid #C8822E; padding: 14px 18px; display: flex; flex-direction: column; gap: 8px">
+        <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 22px; color: #7A200D">Reveal Secret #origin</h2>
+        <span style="font-size: 13px; color: #6A5642">to</span>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px">
+          <button type="button" style="min-height: 40px; padding: 0 12px; border: 2px solid #8C1C13; border-radius: 6px; background: #F6E2BF; font: inherit; font-weight: 700; cursor: pointer">Die Nebelwacht</button>
+          <button type="button" style="min-height: 40px; padding: 0 12px; border: 1px solid #CDBB98; border-radius: 6px; background: transparent; font: inherit; cursor: pointer">Rook</button>
+          <button type="button" style="min-height: 40px; padding: 0 12px; border: 1px solid #CDBB98; border-radius: 6px; background: transparent; font: inherit; cursor: pointer">Sela</button>
+          <button type="button" style="min-height: 40px; padding: 0 12px; border: 1px solid #CDBB98; border-radius: 6px; background: transparent; font: inherit; cursor: pointer">[Faction]</button>
+        </div>
+        <label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" checked> Add to the bundle „[Knowledge bundle]“</label>
+        <label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" checked> Show as handout on the table screen</label>
+        <button type="button" style="min-height: 44px; border: 0; border-radius: 6px; background: #8C1C13; color: #FBF6EC; font: inherit; font-weight: 700; cursor: pointer">Reveal now</button>
+        <span style="font-size: 13px; color: #6A5642">Also reachable from the DM screen: right-click any field.</span>
+      </div>
+
+      <div style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">What Sela sees</h3>
+        <div style="background: #FDF1DC; border-left: 4px solid #8C1C13; padding: 8px 12px; display: flex; flex-direction: column; gap: 4px">
+          <strong style="font-family: 'Alegreya SC', serif; font-size: 18px">Der Wachsmann</strong>
+          <span>[appearance]</span>
+          <span style="color: #6A5642; font-style: italic">… and 3 more things to find out.</span>
+        </div>
+        <span style="font-size: 13px; color: #6A5642">The count of withheld secrets can be shown or hidden per article.</span>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

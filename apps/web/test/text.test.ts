@@ -10,19 +10,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
-import type { Entity } from '@nw/model';
 import { Text } from '../src/app/artikel/text';
 import { Bestand } from '../src/app/kern/bestand';
 
-const art = (id: string, name: string, nr: string) =>
-  ({ id, name, interfaces: ['Creature'], components: { Identity: { name, id: nr } } }) as unknown as Entity;
 
 /* Die Prüfumgebung übersetzt JIT, und JIT kennt `input()` nicht — `setInput`
    scheitert mit NG0303. Also wird das Signal vor dem ersten Zeichnen
    ersetzt; die Komponente liest es ohnehin nur als Funktion. */
-function erzeuge(text: string) {
+function erzeuge(text: string, mehr: Record<string, unknown> = {}) {
   const fixture = TestBed.createComponent(Text);
-  Object.assign(fixture.componentInstance, { text: signal(text), scopes: signal({}) });
+  Object.assign(fixture.componentInstance, {
+    text: signal(text), scopes: signal({}), inline: signal(false), vorspann: signal(''), vorspannZiel: signal(''),
+    ...mehr,
+  });
   fixture.detectChanges();
   return fixture;
 }
@@ -38,8 +38,15 @@ describe('nw-text', () => {
         provideRouter([]),
         {
           provide: Bestand,
+          /* Die Treffer rechnet der Server (`refs.links`, W7); hier stehen
+             sie, wie er sie schicken würde. */
           useValue: {
-            entities: signal([art('p1', 'Volo', 'npc-0001'), art('p2', 'Goblin', 'sb-1'), art('p3', 'Goblin', 'sb-2')]),
+            verweise: signal(
+              new Map([
+                ['npc-0001', [{ id: 'p1', name: 'Volo' }]],
+                ['Goblin', [{ id: 'p2', name: 'Goblin' }, { id: 'p3', name: 'Goblin' }]],
+              ]),
+            ),
           },
         },
       ],
@@ -51,6 +58,32 @@ describe('nw-text', () => {
     expect(el.querySelector('.h2')?.textContent?.trim()).toBe('Aktionen');
     expect(el.querySelectorAll('ul > li')).toHaveLength(2);
     expect(el.querySelectorAll('table td')).toHaveLength(2);
+  });
+
+  /* W1: Tabellenzeilen und kurze Felder hatten Verweise, die als
+     „[[item-0263|Black opal]]" dastanden oder die Zelle zerschnitten. */
+  it('resolves links inside table cells, the bar of the link is no cell border', () => {
+    const el = zeichne('| d8 | Stone |\n|---|---|\n| 1 | [[npc-0001|Volo]] (translucent) |');
+    const zellen = el.querySelectorAll('table td');
+    expect(zellen).toHaveLength(2);
+    expect(zellen[1]?.querySelector('a')?.textContent?.trim()).toBe('Volo');
+  });
+
+  it('draws one line without blocks when asked, links and placeholders included', () => {
+    const el = erzeuge('[[npc-0001|slaad tadpoles]], {CREATURE}', {
+      inline: signal(true),
+      scopes: signal({ reference: { CREATURE: 'the dragon' } }),
+    }).nativeElement as HTMLElement;
+    expect(el.querySelector('p')).toBeNull();
+    expect(el.querySelector('a')?.textContent?.trim()).toBe('slaad tadpoles');
+    expect(el.textContent).toContain('the dragon');
+  });
+
+  it('capitalises a placeholder at the start of a sentence', () => {
+    const el = erzeuge('{CREATURE} can breathe air and water.', {
+      scopes: signal({ reference: { CREATURE: 'the dragon' } }),
+    }).nativeElement as HTMLElement;
+    expect(el.textContent?.replace(/\s+/g, ' ').trim()).toBe('The dragon can breathe air and water.');
   });
 
   it('keeps HTML in the field as text', () => {
@@ -76,5 +109,32 @@ describe('nw-text', () => {
     fixture.detectChanges();
     expect(el.querySelector('output')?.textContent?.trim()).toBe('6 (4 +2)');
     vi.restoreAllMocks();
+  });
+
+  /* W2: eine Kopfzeile des Statblocks ist ein Satzteil, kein Absatz — und
+     ohne Leerzeichen, die der Zeilenumbruch im Template setzen würde. */
+  it('draws one line without paragraphs or stray spaces', () => {
+    const fixture = TestBed.createComponent(Text);
+    Object.assign(fixture.componentInstance, {
+      text: signal('7 ({{2d6}})'), scopes: signal({}), inline: signal(true),
+      vorspann: signal(''), vorspannZiel: signal(''),
+    });
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('p')).toBeNull();
+    expect(el.textContent).toBe('7 (2d6)');
+  });
+
+  it('runs the name into the first paragraph, as the book does', () => {
+    const fixture = TestBed.createComponent(Text);
+    Object.assign(fixture.componentInstance, {
+      text: signal('The goblin hides.\n\nSecond.'), scopes: signal({}), inline: signal(false),
+      vorspann: signal('Nimble Escape.'), vorspannZiel: signal('p1'),
+    });
+    fixture.detectChanges();
+    const ps = (fixture.nativeElement as HTMLElement).querySelectorAll('p');
+    expect(ps).toHaveLength(2);
+    expect(ps[0]?.querySelector('.vorspann a')?.getAttribute('href')).toBe('/artikel/p1');
+    expect(ps[0]?.textContent?.replace(/\s+/g, ' ').trim()).toBe('Nimble Escape. The goblin hides.');
   });
 });

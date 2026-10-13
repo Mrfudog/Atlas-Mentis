@@ -1,42 +1,88 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
   areaOf,
+  BOOK_CARDS,
+  fieldText,
+  layoutFor,
   LAYER_RELATION,
+  unitsFor,
   typeChain,
   entityName,
   entriesOf,
   entryRef,
   enumOptions,
   fieldTitle,
-  idLinks,
   proseFields,
-  relationAccepts,
   relationsFrom,
   primaryInterface,
   relationDef,
   resolveView,
-  showField,
 } from '@nw/model';
-import type { Entity, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
+import type { Entity, LayoutElement, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
-import { ausEingabe, eingabeArt, inEingabe, kantenAusEntwurf, type Eingabe } from './felder';
+import {
+  anzeigeWert,
+  ausEingabe,
+  eingabeArt,
+  inEingabe,
+  kantenAusEntwurf,
+  sindZeilen,
+  tabelleAlsText,
+  type Eingabe,
+} from './felder';
 import { Text } from './text';
+import { Wahl } from './wahl';
+import { Statblock } from './statblock';
+import { Zauber } from './zauber';
+import { Gegenstand } from './gegenstand';
+import { Abschnitte } from './abschnitte';
 import { bereichLabel } from '../kern/bereiche';
 
 const SCHON_ANDERSWO = ['Identity', 'Visibility', 'Source'];
 
 interface Zelle {
   ref: string;
+  comp: string;
+  prop: string;
   label: string;
   wert: string;
   /** An einer Instanz: der Wert kommt von der Vorlage. */
   geerbt?: boolean;
   /** Ein langes Textfeld: gezeichnet als Markdown (M10), nicht als Zeile. */
   lang?: boolean;
+}
+
+interface Prosa {
+  ref: string;
+  type: string;
+  key: string;
+  label: string;
+  wert: string;
+}
+
+/** Ein Stück der gezeichneten Seite — ein Layout-Element, aufgelöst. */
+interface Stueck {
+  id: string;
+  art: 'statblock' | 'spell' | 'item' | 'beschreibung' | 'felder' | 'prosa' | 'teile' | 'ueberschrift' | 'absatz';
+  text?: string;
+  zellen?: Zelle[];
+  prosa?: Prosa[];
+}
+
+/** Reiter gibt es auf der Artikelseite noch nicht: ihre Gruppen stehen nacheinander. */
+function flach(layout: readonly LayoutElement[]): LayoutElement[] {
+  return layout.flatMap((el) => (el.el === 'tabs' ? (el.tabs ?? []).flatMap((t) => flach(t.layout)) : [el]));
+}
+
+/** Nennt das Element dieses Feld — `fields`/`except` mit Typ oder `Typ.feld`? */
+function passt(el: LayoutElement, typ: string, feld: string): boolean {
+  if ((el.except ?? []).some((x) => x === typ || x === `${typ}.${feld}`)) return false;
+  if (el.fields === undefined || el.fields === 'all') return true;
+  return el.fields.some((x) => x === typ || x === `${typ}.${feld}`);
 }
 
 interface Feld {
@@ -60,10 +106,12 @@ interface Feld {
  * Ein Artikel.
  *
  * **Gezeichnet wird aus dem Register**, nicht aus einer Vorlage je
- * Artikelart: welche Felder eine Darstellungsstufe zeigt, steht in der
- * Ansicht, und die Auswahl macht `showField` aus `packages/model` — dieselbe
- * Funktion, die der Prototyp benutzt. Eine zweite Auswahl hier wäre die
- * zweite Stelle, an der jemand etwas vergisst.
+ * Artikelart: die Anordnung steht am Typ (`InterfaceDef.views`), und
+ * `layoutFor` aus `packages/model` sucht sie die `extends`-Kette hoch —
+ * dieselbe Funktion, die der Prototyp benutzt. Ein Statblock liest sich
+ * wie im Buch, weil das Register ihm das Element `statblock` gibt (W2);
+ * eine Abfrage nach dem Artnamen hier wäre die zweite Stelle, an der
+ * jemand etwas vergisst.
  *
  * **Zurückgehalten wird am Server** (`redactEntity`). Was hier ankommt, darf
  * angezeigt werden; die Seite prüft das nicht noch einmal. Eine zweite
@@ -72,7 +120,7 @@ interface Feld {
  */
 @Component({
   selector: 'nw-artikel',
-  imports: [RouterLink, FormsModule, Text],
+  imports: [RouterLink, FormsModule, Text, Wahl, Statblock, Zauber, Gegenstand, Abschnitte],
   template: `
     @if (artikel(); as e) {
       <div class="buch">
@@ -91,6 +139,9 @@ interface Feld {
             <div class="werkzeugzeile">
               <span class="meta">{{ meta() }}</span>
               <div class="werkzeuge">
+                @if (art(e) === 'Class' && !bearbeitet()) {
+                  <a class="knopf" [routerLink]="['/classes', e.id]">Class view</a>
+                }
                 @if (darfSchreiben()) {
                   <button type="button" (click)="bearbeitet() ? abbrechen() : beginnen()">
                     {{ bearbeitet() ? 'Cancel' : 'Edit' }}
@@ -111,7 +162,11 @@ interface Feld {
                   <p class="untertitel">{{ u }}</p>
                 }
               </div>
-              <div class="linie" aria-hidden="true"></div>
+              <!-- Ein Buch-Element setzt seine kursive Zeile unter den Namen
+                   und zieht die Linie selbst. -->
+              @if (bearbeitet() || !buchKopf()) {
+                <div class="linie" aria-hidden="true"></div>
+              }
             @if (bearbeitet()) {
               @if (problem(); as p) {
                 <p class="fehler" role="alert">{{ p }}</p>
@@ -142,6 +197,17 @@ interface Feld {
                       }
                       @case ('lang') {
                         <textarea rows="4" [(ngModel)]="f.wert" [name]="f.ref"></textarea>
+                      }
+                      @case ('json') {
+                        <textarea rows="6" spellcheck="false" style="font-family: monospace" [(ngModel)]="f.wert" [name]="f.ref"></textarea>
+                      }
+                      @case ('verweis') {
+                        <nw-wahl
+                          [wert]="f.wert"
+                          (wertChange)="f.wert = $event"
+                          [arten]="f.schema?.target?.interfaces ?? []"
+                          [label]="f.label"
+                        />
                       }
                       @case ('zahl') {
                         <input type="text" inputmode="decimal" [(ngModel)]="f.wert" [name]="f.ref" />
@@ -181,12 +247,13 @@ interface Feld {
                 <div class="kantenmaske">
                   <div class="bkopf">
                     <span class="rl">{{ kantenLabel(k.type) }}</span>
-                    <select [(ngModel)]="k.to" [name]="k.id + '-to'">
-                      <option value="">— pick an article —</option>
-                      @for (z of ziele(k.type); track z.id) {
-                        <option [value]="z.id">{{ z.name }}</option>
-                      }
-                    </select>
+                    <nw-wahl
+                      [wert]="k.to"
+                      (wertChange)="k.to = $event"
+                      [arten]="zielArten(k.type)"
+                      [ausser]="e.id"
+                      [label]="kantenLabel(k.type)"
+                    />
                     <button type="button" class="weg" (click)="kanteWeg(k.id)" title="Remove">×</button>
                   </div>
                   @if (kantenFelder(k.type).length) {
@@ -245,33 +312,60 @@ interface Feld {
                   {{ offeneVerweise().join(', ') }}
                 </p>
               }
-              @if (zellen().length) {
-                <dl class="felder">
-                  @for (z of zellen(); track z.ref) {
-                    <dt>{{ z.label }}</dt>
-                    <dd [class.geerbt]="z.geerbt" [attr.title]="z.geerbt ? 'From the template' : null">
-                      @if (z.lang) {
-                        <nw-text [text]="z.wert" [scopes]="scopes()" />
-                      } @else {
-                        {{ z.wert }}
+              <!-- Gezeichnet wird die Anordnung der Art (layoutFor): was ein
+                   Element nicht kennt, zeichnet hier noch niemand; was kein
+                   Element zeichnet, steht am Ende (rest). -->
+              @for (st of stuecke(); track st.id) {
+                @switch (st.art) {
+                  @case ('statblock') {
+                    <nw-statblock [artikel]="e" />
+                  }
+                  @case ('spell') {
+                    <nw-zauber [artikel]="e" [scopes]="scopes()" />
+                  }
+                  @case ('item') {
+                    <nw-gegenstand [artikel]="e" />
+                  }
+                  @case ('beschreibung') {
+                    <nw-text class="beschreibung" [text]="st.text ?? ''" [scopes]="scopes()" />
+                  }
+                  @case ('teile') {
+                    <nw-abschnitte [besitzer]="e" />
+                  }
+                  @case ('ueberschrift') {
+                    <h2>{{ st.text }}</h2>
+                  }
+                  @case ('absatz') {
+                    <p class="beschreibung">{{ st.text }}</p>
+                  }
+                  @case ('felder') {
+                    <dl class="felder">
+                      @for (z of st.zellen; track z.ref) {
+                        <div class="feld" [class.lang]="z.lang" [class.geerbt]="z.geerbt"
+                             [attr.title]="z.geerbt ? 'From the template' : null">
+                          <dt>{{ z.label }}</dt>
+                          <dd>
+                            @if (z.lang) {
+                              <nw-text [text]="z.wert" [scopes]="scopes()" />
+                            } @else {
+                              <nw-text inline [text]="z.wert" [scopes]="scopes()" />
+                            }
+                          </dd>
+                        </div>
                       }
-                    </dd>
+                    </dl>
                   }
-                </dl>
-              }
-              @if (beschreibung(); as text) {
-                @if (zellen().length) {
-                  <div class="linie" aria-hidden="true"></div>
+                  @case ('prosa') {
+                    @for (b of st.prosa; track b.ref) {
+                      <section class="block" [class]="b.key">
+                        @if (b.key !== 'paragraph') {
+                          <h2>{{ b.label }}</h2>
+                        }
+                        <nw-text [text]="b.wert" [scopes]="scopes()" />
+                      </section>
+                    }
+                  }
                 }
-                <nw-text class="beschreibung" [text]="text" [scopes]="scopes()" />
-              }
-              @for (b of prosa(); track b.ref) {
-                <section class="block" [class]="b.key">
-                  @if (b.key !== 'paragraph') {
-                    <h2>{{ b.label }}</h2>
-                  }
-                  <nw-text [text]="b.wert" [scopes]="scopes()" />
-                </section>
               }
             }
             </article>
@@ -341,6 +435,8 @@ interface Feld {
 })
 export class Artikel {
   readonly id = input.required<string>();
+  /** `?edit=1`: gleich bearbeiten — so öffnet „New article" den frischen Artikel (W7). */
+  readonly edit = input<string | undefined>(undefined);
 
   protected readonly bestand = inject(Bestand);
   protected readonly session = inject(Session);
@@ -348,10 +444,21 @@ export class Artikel {
   constructor() {
     void this.bestand.load();
     /* Der ganze Artikel kommt erst hier, beim Öffnen — die Liste trägt nur
-       seine Kurzfassung. Wechselt die Id (ein Verweis auf der Seite), wird
+       seine Zeile. Wechselt die Id (ein Verweis auf der Seite), wird
        der nächste geholt. */
     effect(() => {
       void this.bestand.oeffnen(this.id());
+    });
+    /* Einmal je Artikel: nach dem Speichern steht `?edit=1` noch in der
+       Adresse, und die Seite soll dann lesen, nicht wieder bearbeiten. */
+    let schonBearbeitet = '';
+    effect(() => {
+      const id = this.id();
+      if (!this.edit() || schonBearbeitet === id) return;
+      if (this.artikel() && this.reg() && this.darfSchreiben()) {
+        schonBearbeitet = id;
+        untracked(() => this.beginnen());
+      }
     });
   }
 
@@ -383,11 +490,12 @@ export class Artikel {
   protected readonly meta = computed(() => {
     const e = this.artikel();
     if (!e) return '';
-    const byId = this.bestand.byId();
+    /* Die Namen kommen mit dem Artikel (`refs`, W7). */
+    const name = this.bestand.name();
     const nummer = (e.components?.['Identity'] as { id?: string } | undefined)?.id;
     const ebenen = (e.relations ?? [])
       .filter((r) => r.type === LAYER_RELATION)
-      .map((r) => entityName(byId.get(r.to)));
+      .map((r) => name(r.to) ?? '');
     return [this.typLabel(primaryInterface(e)), nummer, ...ebenen].filter(Boolean).join(' · ');
   });
 
@@ -406,8 +514,8 @@ export class Artikel {
     const v = this.artikel()?.components?.['Visibility'] as
       | { audience?: string; revealedTo?: string[]; hiddenFrom?: string[] }
       | undefined;
-    const byId = this.bestand.byId();
-    const namen = (ids?: string[]) => (ids ?? []).map((i) => entityName(byId.get(i)) || i);
+    const name = this.bestand.name();
+    const namen = (ids?: string[]) => (ids ?? []).map((i) => name(i) ?? i);
     return {
       audience: v?.audience ?? 'public',
       revealedTo: namen(v?.revealedTo),
@@ -450,46 +558,153 @@ export class Artikel {
   });
 
   /**
-   * Die Feldzellen. `Description.description` bleibt draussen, weil sie schon
-   * als Absatz oben steht — sie zweimal zu zeigen wäre kein Fehler, aber es
-   * liest sich wie einer.
+   * **Jede Feldzelle des Artikels**, in der Reihenfolge, in der die Art ihre
+   * Felder erklärt. Welche davon wo stehen, sagt die Anordnung (`stuecke`).
+   * Ein Mass steht mit Einheit da, umgerechnet nach `units` (D8) — „Range
+   * 150" ohne Einheit gibt es nicht.
    */
-  protected readonly zellen = computed<Zelle[]>(() => {
+  private readonly alleZellen = computed<Zelle[]>(() => {
     const e = this.artikel();
     const r = this.reg();
-    const v = this.view();
-    if (!e || !r || !v) return [];
+    if (!e || !r) return [];
+    const mode = unitsFor(r, primaryInterface(e));
     const out: Zelle[] = [];
+    /* Ein Prosafeld steht nicht in der Feldtabelle, es gehört dem Absatz
+       darunter (`prosa`) — hier stand es als „[object Object]" (W1). */
+    const prosa = new Set(proseFields(r, primaryInterface(e)).map((f) => `${f.type}.${f.key}`));
     for (const [comp, karte] of Object.entries(e.components ?? {})) {
       /* Was schon anderswo steht: der Name als Überschrift, Aliasse und
          Nummer darüber und darunter, Sichtbarkeit und Quelle in der
          Seitenspalte. Zweimal dasselbe liest sich wie ein Fehler. */
       if (SCHON_ANDERSWO.includes(comp)) continue;
       const def = r.interfaces[comp];
-      /* In der Reihenfolge, in der die Art ihre Felder erklärt — nicht in
-         der, in der sie zuletzt gespeichert wurden. */
       const werte = (karte ?? {}) as Record<string, unknown>;
       const reihe = [
         ...Object.keys(def?.schema?.properties ?? {}).filter((k) => k in werte),
         ...Object.keys(werte).filter((k) => !(k in (def?.schema?.properties ?? {}))),
       ];
+      /* Tabellenzeilen (`Table.rows`) werden eine Tabelle, ihr Kopf
+         (`columns`) steht darin und nicht noch einmal als Zeile. */
+      const zeilen = Object.keys(werte).find((k) => sindZeilen(werte[k]));
       for (const prop of reihe) {
         const wert = werte[prop];
-        if (comp === 'Description' && prop === 'description' && v.description) continue;
-        if (!showField(v, comp, prop)) continue;
+        if (prosa.has(`${comp}.${prop}`)) continue;
+        if (zeilen && prop === 'columns') continue;
         if (wert === null || wert === undefined || wert === '') continue;
         const schema = def?.schema?.properties?.[prop];
-        const titel = schema?.title ?? prop;
+        /* Ein Prosafeld gehört dem Element `prose`, nicht der Tabelle. */
+        if (schema?.many && schema.format === 'long') continue;
+        /* Tabellenzeilen und Objekte liest `anzeigeWert` — `fieldText`
+           kennt Masse und Einheiten, aber keine Karten in einer Liste (W1). */
+        const tabelle = prop === zeilen && sindZeilen(wert);
+        const objekt =
+          typeof wert === 'object' &&
+          (!Array.isArray(wert) || wert.some((x) => x !== null && typeof x === 'object'));
+        const text = tabelle
+          ? tabelleAlsText(werte['columns'], wert)
+          : objekt
+            ? anzeigeWert(wert)
+            : fieldText(r, schema, wert, mode);
+        if (!text) continue;
         out.push({
-          lang: schema?.format === 'long' && typeof wert === 'string',
           ref: `${comp}.${prop}`,
-          label: titel,
-          wert: Array.isArray(wert) ? wert.join(', ') : String(wert),
+          comp,
+          prop,
+          lang: tabelle || (schema?.format === 'long' && typeof wert === 'string'),
+          label: schema
+            ? fieldTitle(r, primaryInterface(e), { type: comp, key: prop, prop: schema })
+            : prop,
+          wert: text,
           geerbt: e.fromTemplate?.fields.includes(`${comp}.${prop}`) ?? false,
         });
       }
     }
     return out;
+  });
+
+  /**
+   * **Die Seite, wie die Anordnung der Art sie sagt** (`layoutFor`, die
+   * `extends`-Kette hoch). Ein Statblock zeichnet sich wie im Buch, weil
+   * das Register an `Statblock` das Element `statblock` setzt — hier steht
+   * kein Artname (W2).
+   *
+   * Jedes Element nimmt, was es zeichnet, aus dem Rest; **was keines
+   * zeichnet, steht am Ende**. Die Seite kennt noch nicht jedes Element
+   * (Bogen, Inventar, Karte …), und ein Feld, das nur dort stünde, wäre
+   * sonst nirgends zu lesen.
+   */
+  protected readonly stuecke = computed<Stueck[]>(() => {
+    const e = this.artikel();
+    const r = this.reg();
+    if (!e || !r) return [];
+    const layout = flach(layoutFor(r, 'full', primaryInterface(e)).layout);
+    const zellen = this.alleZellen();
+    const prosa = this.prosa();
+    const felderDa = new Set<string>();
+    const prosaDa = new Set<string>();
+    const da = (typ: string, feld: string) => felderDa.has(typ) || felderDa.has(`${typ}.${feld}`);
+    const out: Stueck[] = [];
+
+    for (const el of layout) {
+      switch (el.el) {
+        case 'statblock':
+        case 'spell':
+        case 'item': {
+          for (const karte of BOOK_CARDS[el.el] ?? []) felderDa.add(karte);
+          /* Der Zauber zeichnet seinen Text selbst, weil „At Higher Levels"
+             dahinter steht. */
+          if (el.el === 'spell') {
+            felderDa.add('Description.description');
+            prosa.filter((b) => b.type === 'Prose' && b.key === 'paragraph').forEach((b) => prosaDa.add(b.ref));
+          }
+          out.push({ id: el.id, art: el.el });
+          break;
+        }
+        case 'description': {
+          const text = this.beschreibung();
+          felderDa.add('Description.description');
+          if (text) out.push({ id: el.id, art: 'beschreibung', text });
+          break;
+        }
+        case 'fields': {
+          const hier = zellen.filter((z) => !da(z.comp, z.prop) && passt(el, z.comp, z.prop));
+          hier.forEach((z) => felderDa.add(z.ref));
+          if (hier.length) out.push({ id: el.id, art: 'felder', zellen: hier });
+          break;
+        }
+        case 'prose': {
+          const hier = prosa.filter((b) => !prosaDa.has(b.ref) && passt(el, b.type, b.key));
+          hier.forEach((b) => prosaDa.add(b.ref));
+          if (hier.length) out.push({ id: el.id, art: 'prosa', prosa: hier });
+          break;
+        }
+        case 'composed':
+          out.push({ id: el.id, art: 'teile' });
+          break;
+        case 'heading':
+          if (el.text) out.push({ id: el.id, art: 'ueberschrift', text: el.text });
+          break;
+        case 'text':
+          if (el.text) out.push({ id: el.id, art: 'absatz', text: el.text });
+          break;
+        default:
+          /* Bogen, Inventar, Karte, Board … zeichnet die Artikelseite noch
+             nicht (W4 und später). Was sie tragen, steht unten im Rest. */
+          break;
+      }
+    }
+
+    const rest = zellen.filter((z) => !da(z.comp, z.prop));
+    if (rest.length) out.push({ id: 'rest-f', art: 'felder', zellen: rest });
+    const restProsa = prosa.filter((b) => !prosaDa.has(b.ref));
+    if (restProsa.length) out.push({ id: 'rest-p', art: 'prosa', prosa: restProsa });
+    return out;
+  });
+
+  /** Steht ein Buch-Element zuoberst, setzt es die Zeile unter den Namen. */
+  protected readonly buchKopf = computed(() => {
+    const erstes = this.stuecke()[0]?.art;
+    return erstes === 'statblock' || erstes === 'spell' || erstes === 'item';
   });
 
   /**
@@ -501,12 +716,13 @@ export class Artikel {
     const e = this.artikel();
     const r = this.reg();
     if (!e || !r) return [];
-    const out: { ref: string; key: string; label: string; wert: string }[] = [];
+    const out: Prosa[] = [];
     for (const f of proseFields(r, primaryInterface(e))) {
       const karte = (e.components?.[f.type] ?? {}) as Record<string, unknown>;
       for (const eintrag of entriesOf(karte[f.key])) {
         out.push({
           ref: entryRef(f.type, f.key, eintrag.id),
+          type: f.type,
           key: f.key,
           label: fieldTitle(r, primaryInterface(e), f),
           wert: eintrag.value,
@@ -520,17 +736,17 @@ export class Artikel {
     const e = this.artikel();
     const r = this.reg();
     if (!e || !r || !this.view()?.relations) return [];
-    const map = this.bestand.byId();
+    const name = this.bestand.name();
     /* Die Ebene steht schon in der Zeile über dem Blatt. */
     return (e.relations ?? []).filter((rel) => rel.type !== LAYER_RELATION).map((rel) => {
-      const ziel = map.get(rel.to);
+      const ziel = name(rel.to);
       return {
         id: rel.id,
         label: relationDef(r, rel.type).label,
-        ziel: ziel?.id ?? '',
+        ziel: ziel === undefined ? '' : rel.to,
         /* Ein Ziel, das es nicht gibt, wird gesagt und nicht verschwiegen —
            es kann auch heissen, dass der Betrachter es nicht sehen darf. */
-        text: ziel ? entityName(ziel) : '(not here)',
+        text: ziel ?? '(not here)',
       };
     });
   });
@@ -583,7 +799,11 @@ export class Artikel {
            Zweimal dasselbe anzubieten hiesse, dass der zweite Eingang den
            ersten überschreibt, und keiner der beiden sagte das. */
         if (schema.many && schema.format === 'long') continue;
-        const werte = enumOptions(r, schema, this.bestand.entities()) ?? [];
+        /* Ohne Artikel: eine Auswahl, die eine Art nennt (M6), hätte den
+           ganzen Bestand gebraucht, und den hält der Browser nicht mehr
+           (W7). Sie wird ein freies Wort — heute nennt das nur Felder mit
+           mehreren Werten, und die sind ohnehin eine Liste. */
+        const werte = enumOptions(r, schema) ?? [];
         /* Eine Auswahl ohne Werte ist ein freies Wort: nennt das Feld eine
            Art, von der noch nichts sichtbar ist (M6), soll man trotzdem
            etwas eintragen können. */
@@ -597,8 +817,6 @@ export class Artikel {
           label: `${def.label ?? comp} · ${fieldTitle(r, primaryInterface(e), { type: comp, key: prop, prop: schema })}`,
           art,
           schema,
-          /* Nennt das Feld eine Artikelart (M6), sind die Werte die Namen
-             der Artikel, die hier angekommen sind — gesiebt hat der Server. */
           werte,
           wert: art === 'jaNein' ? '' : inEingabe(karte[prop]),
           jaNein: karte[prop] === true,
@@ -684,22 +902,19 @@ export class Artikel {
   }
 
   /**
-   * Welche Artikel diese Kantenart überhaupt annimmt — aus dem Register,
-   * nicht aus einer Liste hier. Eine Kante, die auf etwas Unpassendes zeigt,
-   * weist der Server ohnehin ab; sie erst gar nicht anbieten ist die
-   * freundlichere Hälfte derselben Regel.
+   * Welche Arten diese Kantenart als Ziel annimmt — aus dem Register, nicht
+   * aus einer Liste hier; gesucht wird dann am Server (`nw-wahl`). Leer
+   * heisst jede. Eine Kante, die auf etwas Unpassendes zeigt, weist der
+   * Server ohnehin ab; sie erst gar nicht anbieten ist die freundlichere
+   * Hälfte derselben Regel.
    */
-  protected ziele(type: string): { id: string; name: string }[] {
+  protected zielArten(type: string): string[] {
     const e = this.artikel();
     const r = this.reg();
     if (!e || !r) return [];
-    const def = relationDef(r, type);
-    const quelle = primaryInterface(e);
-    return this.bestand
-      .entities()
-      .filter((o) => o.id !== e.id && relationAccepts(def, quelle, primaryInterface(o), r))
-      .map((o) => ({ id: o.id, name: entityName(o) }))
-      .sort((a2, b2) => a2.name.localeCompare(b2.name, 'de'));
+    const to = relationDef(r, type).to ?? ['*'];
+    if (to.includes('*')) return [];
+    return to.map((t) => (t === 'same' ? primaryInterface(e) : t));
   }
 
   protected kantenFelder(
@@ -719,7 +934,7 @@ export class Artikel {
       label: schema.title ?? prop,
       art: eingabeArt(schema),
       schema,
-      werte: enumOptions(r, schema, this.bestand.entities()) ?? [],
+      werte: enumOptions(r, schema) ?? [],
     }));
   }
 
@@ -766,12 +981,26 @@ export class Artikel {
        heisst (M11). Hier und nicht beim Lesen: danach überlebt der Verweis
        das Umbenennen des Ziels. Was nichts oder mehreres trifft, bleibt
        stehen und wird gesagt. */
+    /* Der Server schreibt um (`/api/links`): er kennt den Bestand, und er
+       weiss, was der Schreibende sehen darf. Ein Zug für alle Texte. */
+    const texte: string[] = [];
+    for (const f of this.felder()) {
+      if (f.schema?.format === 'long' && f.art !== 'jaNein' && f.wert.includes('[[')) texte.push(f.wert);
+    }
+    for (const b of this.entwurfProsa()) if (b.wert.includes('[[')) texte.push(b.wert);
     const offen = new Set<string>();
-    const mitIds = (text: string): string => {
-      const r = idLinks(text, this.bestand.entities());
-      r.open.forEach((o) => offen.add(o));
-      return r.text;
-    };
+    const umgeschrieben = new Map<string, string>();
+    if (texte.length) {
+      try {
+        const r = await this.api.links(texte);
+        texte.forEach((t, i) => umgeschrieben.set(t, r.texts[i] ?? t));
+        r.open.forEach((o) => offen.add(o));
+      } catch {
+        /* Ohne Antwort bleibt `[[Name]]` stehen — ein Verweis ohne Nummer
+           ist erlaubt und wird beim nächsten Speichern nachgezogen. */
+      }
+    }
+    const mitIds = (text: string): string => umgeschrieben.get(text) ?? text;
 
     const components: Record<string, Record<string, unknown>> = {};
     for (const f of this.felder()) {
@@ -837,7 +1066,7 @@ export class Artikel {
     const r = this.reg();
     if (!e || !r || !this.view()?.relations) return [];
     /* Die Gegenrichtung fragt der Server (K1): sie braucht jede Kante im
-       Bestand, und hier liegt nur die Kurzfassung. */
+       Bestand, und die Seite hält keinen (W7). */
     return (this.bestand.rueckbezuege().get(e.id) ?? []).map((b) => ({
       id: `${b.from.id}:${b.relation.id}`,
       label: relationDef(r, b.relation.type).inverseLabel,

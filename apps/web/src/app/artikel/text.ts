@@ -1,9 +1,7 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { booleanAttribute, Component, computed, inject, input, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import {
-  entityName,
-  linkCandidates,
   parseInline,
   parseMarkdown,
   rollDice,
@@ -96,42 +94,43 @@ type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
       }
     </ng-template>
 
+    <!-- Eng gesetzt und mit Absicht: jeder Zeilenumbruch hier würde ein
+         Leerzeichen vor „leather armor" und in „( 2d6 )" setzen. -->
     <ng-template #zeile let-text>
-      @for (s of stuecke(text); track $index) {
-        <span [class.b]="s.bold" [class.i]="s.italic">
-          @switch (s.kind) {
-            @case ('link') {
-              @if (s.ziel) {
-                <a [routerLink]="['/artikel', s.ziel]" [attr.title]="s.titel">{{ s.text }}</a>
-              } @else {
-                <span class="tot" [attr.title]="s.titel">{{ s.text }}</span>
-              }
-            }
-            @case ('var') {
-              <span class="vr" [class.offen]="!s.resolved">{{ s.text }}</span>
-            }
-            @case ('dice') {
-              <button type="button" class="wurf" [attr.title]="'Roll ' + s.expr" (click)="wirf(s.schluessel, s.expr)">
-                {{ s.text }}
-              </button>
-              @if (wuerfe()[s.schluessel]; as w) {
-                <output class="ergebnis">{{ w }}</output>
-              }
-            }
-            @default {
-              {{ s.text }}
-            }
-          }
-        </span>
-      }
+      @for (s of stuecke(text); track $index) {<span [class.b]="s.bold" [class.i]="s.italic">@switch (s.kind) {@case ('link') {@if (s.ziel) {<a [routerLink]="['/artikel', s.ziel]" [attr.title]="s.titel">{{ s.text }}</a>} @else {<span class="tot" [attr.title]="s.titel">{{ s.text }}</span>}}@case ('var') {<span class="vr" [class.offen]="!s.resolved">{{ s.text }}</span>}@case ('dice') {<button type="button" class="wurf" [attr.title]="'Roll ' + s.expr" (click)="wirf(s.schluessel, s.expr)">{{ s.text }}</button>@if (wuerfe()[s.schluessel]; as w) {<output class="ergebnis">{{ w }}</output>}}@default {<ng-container>{{ s.text }}</ng-container>}}</span>}
     </ng-template>
 
-    <ng-container *ngTemplateOutlet="bloecke; context: { $implicit: bloeckeVon() }" />
+    <ng-template #vorspannT>
+      <strong class="vorspann">@if (vorspannZiel()) {<a [routerLink]="['/artikel', vorspannZiel()]">{{ vorspann() }}</a>} @else {<ng-container>{{ vorspann() }}</ng-container>}</strong>
+    </ng-template>
+
+    @if (inline()) {
+      <ng-container *ngTemplateOutlet="zeile; context: { $implicit: text() }" />
+    } @else if (vorspann() && bloeckeVon()[0]?.kind === 'paragraph') {
+      <!-- Der Name läuft in den ersten Absatz hinein, wie im Buch:
+           „Nimble Escape. The goblin can …" -->
+      <p>
+        <ng-container *ngTemplateOutlet="vorspannT" />
+        {{ ' ' }}<ng-container *ngTemplateOutlet="zeile; context: { $implicit: $any(bloeckeVon()[0]).text }" />
+      </p>
+      <ng-container *ngTemplateOutlet="bloecke; context: { $implicit: bloeckeVon().slice(1) }" />
+    } @else {
+      @if (vorspann()) {
+        <p><ng-container *ngTemplateOutlet="vorspannT" /></p>
+      }
+      <ng-container *ngTemplateOutlet="bloecke; context: { $implicit: bloeckeVon() }" />
+    }
   `,
+  host: { '[class.inline]': 'inline()' },
   styles: `
     :host {
       display: block;
       line-height: 1.55;
+    }
+    /* Eine Zeile im Satz — der Wert neben „Armor Class", die Angriffszeile
+       hinter dem Namen —, kein Absatz. */
+    :host(.inline) {
+      display: inline;
     }
     p {
       margin: 0.25rem 0 0;
@@ -173,6 +172,17 @@ type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
     .b {
       font-weight: 600;
     }
+    .vorspann {
+      font-style: italic;
+      font-weight: 700;
+    }
+    .vorspann a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .vorspann a:hover {
+      text-decoration: underline;
+    }
     .i {
       font-style: italic;
     }
@@ -183,12 +193,17 @@ type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
     .vr.offen {
       color: var(--warn);
     }
+    /* Wie im Design-Canvas: ein Würfel ist ein Knopf in Gold. Die
+       Mindesthöhe der Knöpfe gilt hier nicht — er steht mitten im Satz. */
     .wurf {
       font: inherit;
-      padding: 0 0.3rem;
-      border: 1px solid var(--line);
+      min-height: 0;
+      padding: 0 0.35rem;
+      border: 1px solid var(--gold);
       border-radius: 4px;
-      background: none;
+      background: var(--hover);
+      color: var(--ink);
+      line-height: 1.35;
       cursor: pointer;
     }
     .ergebnis {
@@ -200,6 +215,12 @@ type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
 export class Text {
   readonly text = input<string>('');
   readonly scopes = input<VarScopes>({});
+  /** Eine Zeile statt Absätzen: kein `parseMarkdown`, nur `parseInline`. */
+  readonly inline = input(false, { transform: booleanAttribute });
+  /** Ein Name, fett und kursiv in den ersten Absatz gestellt („Bite."). */
+  readonly vorspann = input('');
+  /** Wohin der Name führt — der Artikel des Merkmals. */
+  readonly vorspannZiel = input('');
 
   private readonly bestand = inject(Bestand);
 
@@ -209,16 +230,21 @@ export class Text {
   protected readonly wuerfe = signal<Record<string, string>>({});
 
   protected stuecke(text: string): Stueck[] {
-    const bestand = this.bestand.entities();
+    /* Die Treffer jedes `[[ziel]]` rechnet der Server beim Ausliefern des
+       Artikels (`refs.links`, W7) — der Browser hält keinen Bestand mehr,
+       in dem er selbst suchen könnte. Dieselbe Regel wie `linkCandidates`:
+       die Id zuerst, sonst Name und Alias, und mehr als einer ist
+       mehrdeutig. */
+    const verweise = this.bestand.verweise();
     return parseInline(text, this.scopes()).map((s, i) => {
       /* Zeile und Stelle: zwei gleiche Ausdrücke in einer Zeile sind zwei
          Würfe, und ein neues Zeichnen verliert das Ergebnis nicht. */
       const schluessel = `${i}#${text}`;
       if (s.kind !== 'link') return { ...s, schluessel };
-      const treffer = linkCandidates(bestand, s.target);
+      const treffer = verweise.get(s.target.trim()) ?? [];
       if (treffer.length === 1) {
         const ziel = treffer[0]!;
-        return { ...s, schluessel, ziel: ziel.id, titel: entityName(ziel) };
+        return { ...s, schluessel, ziel: ziel.id, titel: ziel.name };
       }
       return {
         ...s,

@@ -75,6 +75,20 @@ export function typeChain(registry: Pick<Registry, 'interfaces'>, name: string):
 }
 
 /**
+ * **Alle Typen, flach und alphabetisch nach Beschriftung** — die Auswahl im
+ * Register, die Leiste, der Filter im Kompendium.
+ *
+ * Sie waren Bäume aus `extends`. Weil `extends` ein Array ist, musste ein
+ * Baum eine Herkunft wählen und die andere verschweigen: eine Art, die von
+ * zweien erbt, hing unter einer davon und unter der anderen nicht. Woher
+ * eine Art erbt, steht auf ihrer Seite im Register.
+ */
+export function typeList(registry: Pick<Registry, 'interfaces'>): string[] {
+  const label = (n: string) => registry.interfaces[n]?.label ?? n;
+  return Object.keys(registry.interfaces).sort((a, b) => label(a).localeCompare(label(b), 'en'));
+}
+
+/**
  * **In welchen Bereich der Oberfläche eine Artikelart gehört.**
  *
  * Gesucht wird die ganze Kette (`typeChain`, Breite zuerst) und der erste
@@ -635,6 +649,42 @@ export function linkCandidates(entities: Iterable<Entity>, target: string): Enti
     }
   }
   return namen;
+}
+
+/**
+ * `linkCandidates` für viele Verweise auf einmal: der Bestand wird einmal
+ * gelesen, danach ist jede Frage ein Nachschlagen. Die Regel ist dieselbe
+ * (Id vor Name, Instanzen sind kein Ziel, mehr als einer ist mehrdeutig) —
+ * über 24 000 Artikel und zehntausende Verweise hiesse die lineare Suche
+ * je Verweis Minuten statt Millisekunden (Werkbank, W9).
+ */
+export function linkFinder(entities: Iterable<Entity>): (target: string) => Entity[] {
+  const nachNummer = new Map<string, { at: number; e: Entity }>();
+  const nachPeg = new Map<string, { at: number; e: Entity }>();
+  const nachName = new Map<string, Entity[]>();
+  let at = 0;
+  for (const entity of entities) {
+    const nummer = articleId(entity).toLowerCase();
+    if (nummer && !nachNummer.has(nummer)) nachNummer.set(nummer, { at, e: entity });
+    if (!nachPeg.has(entity.id)) nachPeg.set(entity.id, { at, e: entity });
+    at += 1;
+    if (isInstance(entity)) continue;
+    const schluessel = new Set<string>([entityName(entity).toLowerCase()]);
+    const aliases = entity.components?.['Identity']?.['aliases'];
+    if (Array.isArray(aliases)) for (const a of aliases) schluessel.add(String(a).toLowerCase());
+    for (const k of schluessel) (nachName.get(k) ?? nachName.set(k, []).get(k)!).push(entity);
+  }
+  return (target: string) => {
+    const roh = String(target ?? '').trim();
+    const needle = roh.toLowerCase();
+    if (!needle) return [];
+    /* Wie in `linkCandidates`: der erste Artikel im Bestand, der die Nummer
+       oder die Peg-Id trägt. */
+    const a = nachNummer.get(needle);
+    const b = nachPeg.get(roh);
+    if (a || b) return [(a && (!b || a.at <= b.at) ? a : b)!.e];
+    return nachName.get(needle) ?? [];
+  };
 }
 
 /**

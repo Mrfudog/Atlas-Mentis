@@ -1,49 +1,45 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { areaOf, entityName, isInstance, LAYER_RELATION, primaryInterface } from '@nw/model';
-import type { Entity, Registry } from '@nw/model';
+import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { Api, type ListenFrage, type Liste, type ListenZeile } from '../kern/api';
 import { Bestand } from '../kern/bestand';
+import { Session } from '../kern/session';
 import { BEREICHE, bereichLabel } from '../kern/bereiche';
 import { ListenFilter } from '../kern/filter';
-
-interface Zeile {
-  e: Entity;
-  name: string;
-  typ: string;
-  typLabel: string;
-  ebenen: string[];
-  quelle: string;
-  stand: string;
-}
+import { Anlegen } from './anlegen';
+import { Vorschau } from './vorschau';
 
 interface TypGruppe {
   label: string;
   typen: { typ: string; label: string; anzahl: number }[];
 }
 
-/** So viele Zeilen je Blatt. 24 157 auf einmal hält den Browser auf und liest niemand. */
-const BLATT = 100;
+/** So viele Zeilen je Blatt. */
+const BLATT = 50;
+/** So viele Werte einer Aufzählung stehen offen; der Rest klappt auf. */
+const OFFEN = 8;
 
 /**
- * Das Kompendium und die Bereiche — eine Seite, wie auf dem Design-Canvas:
- * links die Filter, rechts die Tabelle.
+ * Das Kompendium und die Bereiche — eine Seite, wie auf dem Design-Canvas
+ * (`Compendium.dc.html`, Vorschau nach `Main.dc.html`): links die Filter,
+ * in der Mitte die Tabelle, rechts die Vorschau der angeklickten Zeile.
  *
- * Ein Bereich (`world`, `history`, `rules`) ist das Kompendium,
- * eingeschränkt auf die Arten, deren `area` dorthin zeigt (`areaOf`). Im
- * Code steht keine Liste, welche Art wohin gehört.
+ * **Gerechnet wird am Server** (`GET /api/list`, W7): Suche, Arten mit
+ * Zahl, Ebenen, Feldfilter und das Blatt. Bis zum 13.10. lud diese Seite
+ * die Kurzfassung aller 24 157 Artikel und rechnete hier — jetzt kommt ein
+ * Blatt mit 50 Zeilen und den Facetten, rund ein bis zwei Kilobyte gepackt.
  *
- * Gelesen wird aus der **Kurzfassung** (`summaryOf`): Name, Art, Ebenen,
- * Quelle, Stand. Spalten je Art (Grad und Schule bei Zaubern, HG bei
- * Statblocks) brauchen Felder, die die Kurzfassung nicht trägt — die kommen,
- * wenn eine Art sagen kann, welche Felder ihre Zeile zeigt.
+ * Ein Bereich (`world`, `story`, `rules`) ist das Kompendium, eingeschränkt
+ * auf die Arten, deren `area` dorthin zeigt — das sagt der Server
+ * (`areaOf`). Welche Spalten eine Art zeigt und wonach sie sich filtern
+ * lässt, sagt ihre `overview` (`listColumns`); im Code steht nichts davon.
  *
  * Der Server hat schon gesiebt; hier wird nichts zurückgehalten.
  */
 @Component({
   selector: 'nw-kompendium',
-  imports: [RouterLink],
+  imports: [RouterLink, Vorschau, Anlegen],
   template: `
-    <div class="seite">
+    <div class="seite" [class.mitvorschau]="!!filter.vorschau()">
       <aside class="filter" [class.offen]="filterOffen()" aria-label="Filters">
         <label class="suche">
           <span class="leg">Search</span>
@@ -57,8 +53,8 @@ const BLATT = 100;
 
         <fieldset>
           <legend class="leg">Type</legend>
-          @for (g of typGruppen(); track g.label) {
-            @if (typGruppen().length > 1) {
+          @for (g of sichtbareGruppen(); track g.label) {
+            @if (sichtbareGruppen().length > 1) {
               <span class="gruppe">{{ g.label }}</span>
             }
             @for (t of g.typen; track t.typ) {
@@ -72,9 +68,59 @@ const BLATT = 100;
               >
             }
           } @empty {
-            <span class="leer">No types here yet.</span>
+            @if (liste()) {
+              <span class="leer">No types here yet.</span>
+            }
+          }
+          @if (type() && typGruppen().length) {
+            <button type="button" class="mehr" (click)="typenOffen.set(!typenOffen())">
+              {{ typenOffen() ? 'Only ' + typLabel(type()!) : 'All types' }}
+            </button>
           }
         </fieldset>
+
+        @for (f of liste()?.facets?.fields ?? []; track f.ref) {
+          <fieldset>
+            <legend class="leg">{{ f.label }}</legend>
+            @if (f.kind === 'enum') {
+              @for (o of offeneWerte(f.ref, f.options); track o.value) {
+                <label class="haken">
+                  <input
+                    type="checkbox"
+                    [checked]="gewaehlt(f.ref, o.value)"
+                    (change)="wertUmschalten(f.ref, o.value)"
+                  />
+                  {{ o.value }} <span class="zahl">{{ o.count }}</span>
+                </label>
+              }
+              @if (f.options.length > OFFEN) {
+                <button type="button" class="mehr" (click)="aufklappen(f.ref)">
+                  {{ aufgeklappt().has(f.ref) ? 'Fewer' : f.options.length - OFFEN + ' more' }}
+                </button>
+              }
+            } @else {
+              <div class="spanne">
+                <input
+                  type="number"
+                  inputmode="decimal"
+                  [attr.aria-label]="f.label + ' from'"
+                  [placeholder]="f.min"
+                  [value]="filter.felder()[f.ref]?.min ?? ''"
+                  (change)="spanne(f.ref, 'min', $any($event.target).value)"
+                />
+                <span aria-hidden="true">–</span>
+                <input
+                  type="number"
+                  inputmode="decimal"
+                  [attr.aria-label]="f.label + ' to'"
+                  [placeholder]="f.max"
+                  [value]="filter.felder()[f.ref]?.max ?? ''"
+                  (change)="spanne(f.ref, 'max', $any($event.target).value)"
+                />
+              </div>
+            }
+          </fieldset>
+        }
 
         @if (ebenen().length > 1) {
           <fieldset>
@@ -86,10 +132,20 @@ const BLATT = 100;
                   [checked]="!filter.ohneEbenen().has(l.id)"
                   (change)="ebeneUmschalten(l.id)"
                 />
-                {{ l.name }} <span class="zahl">{{ l.anzahl }}</span>
+                {{ l.name }} <span class="zahl">{{ l.count }}</span>
               </label>
             }
           </fieldset>
+        }
+
+        @if ((liste()?.facets?.partsHidden ?? 0) > 0 || filter.teile()) {
+          <label class="haken teile">
+            <input type="checkbox" [checked]="filter.teile()" (change)="teileUmschalten()" />
+            Show statblock parts
+            @if (!filter.teile()) {
+              <span class="zahl">{{ liste()?.facets?.partsHidden }}</span>
+            }
+          </label>
         }
       </aside>
 
@@ -97,7 +153,7 @@ const BLATT = 100;
         <div class="kopf">
           <div>
             <h1>{{ titel() }}</h1>
-            <span class="unter">{{ gefiltert().length }} of {{ imBereich().length }}</span>
+            <span class="unter">{{ unterzeile() }}</span>
           </div>
           <div class="chips">
             @if (type(); as t) {
@@ -114,45 +170,79 @@ const BLATT = 100;
                 <button type="button" aria-label="Clear search" (click)="suchen('')">×</button></span
               >
             }
+            @for (c of feldChips(); track c.ref) {
+              <span class="chip"
+                >{{ c.text }}
+                <button type="button" [attr.aria-label]="'Remove ' + c.text" (click)="feldWeg(c.ref)">×</button></span
+              >
+            }
+            @if (session.darfRegister()) {
+              @if (type(); as t) {
+                <a class="knopf" routerLink="/registry" [queryParams]="{ type: t }">Edit type</a>
+              }
+              <a class="knopf" routerLink="/registry" [queryParams]="{ create: 1, from: type() ?? null }">New type</a>
+            }
+            @if (session.darfAnlegen()) {
+              <button type="button" class="pri" (click)="anlegenOffen.set(true)">New article</button>
+            }
             <button type="button" class="nurklein" (click)="filterOffen.set(!filterOffen())">
               {{ filterOffen() ? 'Hide filters' : 'Filters' }}
             </button>
           </div>
         </div>
 
-        @if (bestand.fehler(); as f) {
+        @if (fehler(); as f) {
           <p class="fehler" role="alert">{{ f }}</p>
         }
 
-        @if (!bestand.geladen()) {
+        @if (!liste()) {
           <p class="leer">Loading…</p>
         } @else {
-          <div class="tabelle">
+          <div class="tabelle" [class.laedt]="laedt()">
             <table>
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Type</th>
-                  <th>Where from</th>
+                  <th [attr.aria-sort]="ariaSort('name')">
+                    <button type="button" class="sort" (click)="sortiere('name')">Name{{ pfeil('name') }}</button>
+                  </th>
+                  @if (!type()) {
+                    <th [attr.aria-sort]="ariaSort('type')">
+                      <button type="button" class="sort" (click)="sortiere('type')">Type{{ pfeil('type') }}</button>
+                    </th>
+                  }
+                  @for (c of liste()!.columns; track c.ref) {
+                    <th [attr.aria-sort]="ariaSort(c.ref)" [class.zahlspalte]="c.kind === 'number'">
+                      <button type="button" class="sort" (click)="sortiere(c.ref)">{{ c.label }}{{ pfeil(c.ref) }}</button>
+                    </th>
+                  }
                   <th>Source</th>
                 </tr>
               </thead>
               <tbody>
-                @for (z of blattZeilen(); track z.e.id) {
-                  <tr>
+                @for (z of liste()!.rows; track z.id) {
+                  <tr [class.gewaehlt]="filter.vorschau() === z.id" (click)="zeile(z, $event)">
                     <td class="name">
-                      <a [routerLink]="['/artikel', z.e.id]">{{ z.name }}</a>
-                      @if (z.stand && z.stand !== 'ready') {
-                        <span class="stand">{{ z.stand }}</span>
+                      <a [routerLink]="zielVon(z)" (click)="link(z, $event)">{{ z.name }}</a>
+                      @if (z.status && z.status !== 'ready') {
+                        <span class="stand">{{ z.status }}</span>
+                      }
+                      @if ((z.users ?? 0) > 1) {
+                        <span class="stand" title="Statblocks using this">used by {{ z.users }}</span>
+                      } @else if (z.users === 1 && filter.teile()) {
+                        <span class="stand">part</span>
                       }
                     </td>
-                    <td>{{ z.typLabel }}</td>
-                    <td class="dim">{{ z.ebenen.join(', ') }}</td>
-                    <td class="dim">{{ z.quelle }}</td>
+                    @if (!type()) {
+                      <td>{{ typLabel(z.type) }}</td>
+                    }
+                    @for (c of liste()!.columns; track c.ref) {
+                      <td [class.zahlspalte]="c.kind === 'number'">{{ zelle(z.cols[c.ref], c.kind) }}</td>
+                    }
+                    <td class="dim quelle">{{ z.source || z.layers.join(', ') }}</td>
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="4" class="leer">Nothing here.</td>
+                    <td [attr.colspan]="spaltenZahl()" class="leer">Nothing here.</td>
                   </tr>
                 }
               </tbody>
@@ -161,11 +251,7 @@ const BLATT = 100;
               <div class="fuss">
                 <button type="button" [disabled]="blatt() === 0" (click)="blaettern(-1)">‹ Previous</button>
                 <span>Page {{ blatt() + 1 }} of {{ blaetter() }}</span>
-                <button
-                  type="button"
-                  [disabled]="blatt() + 1 >= blaetter()"
-                  (click)="blaettern(1)"
-                >
+                <button type="button" [disabled]="blatt() + 1 >= blaetter()" (click)="blaettern(1)">
                   Next ›
                 </button>
               </div>
@@ -173,21 +259,47 @@ const BLATT = 100;
           </div>
         }
       </main>
+
+      @if (filter.vorschau(); as v) {
+        <div class="rechts">
+          <nw-vorschau [id]="v" (zu)="filter.vorschau.set(null)" />
+        </div>
+      }
     </div>
+
+    @if (anlegenOffen()) {
+      <nw-anlegen [bereich]="bereich()" [vorgabe]="type()" (zu)="anlegenOffen.set(false)" />
+    }
   `,
   styleUrl: './kompendium.scss',
 })
 export class Kompendium {
-  /** Aus den Routendaten: `world`, `history`, `rules` — oder keiner (Kompendium). */
+  /** Aus den Routendaten: `world`, `story`, `rules` — oder keiner (Kompendium). */
   readonly bereich = input<string | undefined>(undefined);
   /** Aus der Adresse (`?type=`). */
   readonly type = input<string | undefined>(undefined);
 
+  protected readonly OFFEN = OFFEN;
   protected readonly bestand = inject(Bestand);
+  protected readonly session = inject(Session);
   protected readonly filter = inject(ListenFilter);
+  private readonly api = inject(Api);
+  private readonly router = inject(Router);
+
   protected readonly filterOffen = signal(false);
+  protected readonly anlegenOffen = signal(false);
+  protected readonly aufgeklappt = signal<ReadonlySet<string>>(new Set());
+  protected readonly liste = signal<Liste | null>(null);
+  protected readonly laedt = signal(false);
+  protected readonly fehler = signal<string | null>(null);
+
+  private lauf = 0;
+  private uhr: ReturnType<typeof setTimeout> | null = null;
+  private letzteSuche = '';
 
   constructor() {
+    /* Das Register braucht die Seite nur für Beschriftungen und den
+       Anlegen-Dialog; die Liste wartet nicht darauf. */
     void this.bestand.load();
     effect(() => {
       this.filter.betrete(this.bereich() ?? 'compendium');
@@ -196,124 +308,192 @@ export class Kompendium {
          Absicht. Zurück vom Artikel bleibt das Blatt, denn die Art ist
          dieselbe. */
       this.filter.typ(this.type());
+      untracked(() => this.typenOffen.set(false));
     });
+    /* Jede Änderung am Filter fragt den Server. Getippt wird mit einer
+       kurzen Pause, sonst ginge je Buchstabe eine Anfrage hinaus. */
+    effect(() => {
+      const frage = this.frage();
+      untracked(() => {
+        const getippt = (frage.q ?? '') !== this.letzteSuche;
+        this.letzteSuche = frage.q ?? '';
+        if (this.uhr) clearTimeout(this.uhr);
+        if (getippt && this.liste()) this.uhr = setTimeout(() => void this.hole(frage), 220);
+        else void this.hole(frage);
+      });
+    });
+    inject(DestroyRef).onDestroy(() => {
+      if (this.uhr) clearTimeout(this.uhr);
+    });
+  }
+
+  /** Was gefragt wird — aus Adresse und Filterzustand. */
+  private readonly frage = computed<ListenFrage>(() => {
+    const felder = this.filter.felder();
+    const f: string[] = [];
+    for (const [ref, w] of Object.entries(felder)) {
+      if (w.values?.length) f.push(`${ref}:${w.values.join('|')}`);
+      else if (w.min !== undefined || w.max !== undefined) f.push(`${ref}:${w.min ?? ''}..${w.max ?? ''}`);
+    }
+    return {
+      area: this.bereich(),
+      type: this.type(),
+      q: this.filter.suche().trim() || undefined,
+      nolayer: [...this.filter.ohneEbenen()],
+      parts: this.filter.teile(),
+      sort: this.filter.sortierung() || undefined,
+      offset: this.filter.blatt() * BLATT,
+      limit: BLATT,
+      f,
+    };
+  });
+
+  private async hole(frage: ListenFrage): Promise<void> {
+    const nr = ++this.lauf;
+    this.laedt.set(true);
+    try {
+      const r = await this.api.list(frage);
+      /* Eine ältere Antwort, die nach einer neueren ankommt, gilt nicht. */
+      if (nr !== this.lauf) return;
+      this.liste.set(r);
+      this.fehler.set(null);
+    } catch (error) {
+      if (nr === this.lauf) this.fehler.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      if (nr === this.lauf) this.laedt.set(false);
+    }
   }
 
   protected readonly titel = computed(() => bereichLabel(this.bereich()) ?? 'Compendium');
 
-  private readonly reg = computed<Registry | null>(() => this.bestand.registry());
-
-  /** Bereich je Art, einmal gerechnet — `areaOf` läuft die `extends`-Kette hoch. */
-  private readonly bereichVon = computed(() => {
-    const r = this.reg();
-    const m = new Map<string, string>();
-    return (typ: string): string => {
-      if (!r) return '';
-      let b = m.get(typ);
-      if (b === undefined) {
-        b = areaOf(r, typ);
-        m.set(typ, b);
-      }
-      return b;
-    };
+  protected readonly unterzeile = computed(() => {
+    const l = this.liste();
+    if (!l) return '';
+    const t = this.type();
+    const was = t ? this.typLabel(t) : 'articles';
+    return `${l.total.toLocaleString('en')} ${was} · sorted by ${this.sortLabel()}`;
   });
 
-  protected typLabel(typ: string): string {
-    return this.reg()?.interfaces[typ]?.label ?? typ;
+  private sortLabel(): string {
+    const s = this.filter.sortierung().replace(/^-/, '') || 'name';
+    if (s === 'name') return 'name';
+    if (s === 'type') return 'type';
+    return this.liste()?.columns.find((c) => c.ref === s)?.label.toLowerCase() ?? s;
   }
 
-  /** Die Zeilen des Bereichs, ohne Instanzen (sie stehen an ihrer Kreatur, D82). */
-  protected readonly imBereich = computed<Zeile[]>(() => {
-    const b = this.bereich();
-    const bereichVon = this.bereichVon();
-    const byId = this.bestand.byId();
-    const out: Zeile[] = [];
-    for (const e of this.bestand.entities()) {
-      if (isInstance(e)) continue;
-      const typ = primaryInterface(e);
-      if (b && bereichVon(typ) !== b) continue;
-      const quelle = e.components?.['Source'] as { publication?: string; page?: string } | undefined;
-      out.push({
-        e,
-        name: entityName(e),
-        typ,
-        typLabel: this.typLabel(typ),
-        ebenen: (e.relations ?? [])
-          .filter((r) => r.type === LAYER_RELATION)
-          .map((r) => entityName(byId.get(r.to)) || r.to),
-        quelle: [quelle?.publication, quelle?.page ? `p. ${quelle.page}` : '']
-          .filter(Boolean)
-          .join(' '),
-        stand: String((e.components?.['Status'] as { status?: string } | undefined)?.status ?? ''),
-      });
-    }
-    return out.sort((a, z) => a.name.localeCompare(z.name, 'en'));
-  });
+  protected typLabel(typ: string): string {
+    return (
+      this.bestand.registry()?.interfaces[typ]?.label ??
+      this.liste()?.facets.types.find((t) => t.type === typ)?.label ??
+      typ
+    );
+  }
 
-  /** Gesucht wird über Name, Alias und Nummer — am Tisch fällt der Deckname. */
-  private readonly gesucht = computed<Zeile[]>(() => {
-    const q = this.filter.suche().trim().toLocaleLowerCase();
-    const ohne = this.filter.ohneEbenen();
-    return this.imBereich().filter((z) => {
-      if (ohne.size && ebenenSchluessel(z.e).every((l) => ohne.has(l))) return false;
-      if (!q) return true;
-      if (z.name.toLocaleLowerCase().includes(q)) return true;
-      const id = z.e.components?.['Identity'] as { id?: string; aliases?: string[] } | undefined;
-      if (id?.id?.toLocaleLowerCase().includes(q)) return true;
-      return (id?.aliases ?? []).some((a) => String(a).toLocaleLowerCase().includes(q));
-    });
-  });
-
-  protected readonly gefiltert = computed<Zeile[]>(() => {
-    const t = this.type();
-    return t ? this.gesucht().filter((z) => z.typ === t) : this.gesucht();
-  });
-
-  /** Die Arten mit Zahl — gezählt nach Suche und Ebenen, vor der Art selbst. */
+  /** Die Arten mit Zahl — nach Bereich gruppiert, wenn kein Bereich gewählt ist. */
   protected readonly typGruppen = computed<TypGruppe[]>(() => {
-    const zaehler = new Map<string, number>();
-    for (const z of this.gesucht()) zaehler.set(z.typ, (zaehler.get(z.typ) ?? 0) + 1);
-    const t = this.type();
-    if (t && !zaehler.has(t)) zaehler.set(t, 0);
-    const bereichVon = this.bereichVon();
+    const typen = this.liste()?.facets.types ?? [];
     const gruppen = new Map<string, TypGruppe['typen']>();
-    for (const [typ, anzahl] of zaehler) {
-      const g = this.bereich() ? '' : bereichVon(typ);
+    for (const t of typen) {
+      const g = this.bereich() ? '' : t.area;
       if (!gruppen.has(g)) gruppen.set(g, []);
-      gruppen.get(g)!.push({ typ, label: this.typLabel(typ), anzahl });
+      gruppen.get(g)!.push({ typ: t.type, label: t.label, anzahl: t.count });
     }
     const reihe = [...BEREICHE.map((b) => b.weg), ''];
     return [...gruppen.entries()]
       .sort(([a], [b]) => reihe.indexOf(a) - reihe.indexOf(b))
-      .map(([g, typen]) => ({
+      .map(([g, ts]) => ({
         label: bereichLabel(g) ?? 'Other',
-        typen: typen.sort((a, b) => a.label.localeCompare(b.label, 'en')),
+        typen: ts.sort((a, b) => a.label.localeCompare(b.label, 'en')),
       }));
   });
 
-  /** Die Ebenen, aus denen die Artikel dieses Bereichs kommen — und „keine". */
-  protected readonly ebenen = computed(() => {
-    const byId = this.bestand.byId();
-    const zaehler = new Map<string, number>();
-    for (const z of this.imBereich()) {
-      for (const l of ebenenSchluessel(z.e)) zaehler.set(l, (zaehler.get(l) ?? 0) + 1);
-    }
-    return [...zaehler.entries()]
-      .map(([id, anzahl]) => ({
-        id,
-        anzahl,
-        name: id === KEINE ? 'No layer' : entityName(byId.get(id)) || id,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name, 'en'));
+  /**
+   * Mit einer gewählten Art steht nur sie da, bis jemand „All types" sagt:
+   * sonst stünden die Filter der Art unter vierundzwanzig anderen Arten,
+   * und am Telefon fände sie niemand.
+   */
+  protected readonly typenOffen = signal(false);
+  protected readonly sichtbareGruppen = computed<TypGruppe[]>(() => {
+    const t = this.type();
+    if (!t || this.typenOffen()) return this.typGruppen();
+    return this.typGruppen()
+      .map((g) => ({ ...g, typen: g.typen.filter((x) => x.typ === t) }))
+      .filter((g) => g.typen.length);
   });
 
-  protected readonly blatt = computed(() =>
-    Math.min(this.filter.blatt(), Math.max(0, this.blaetter() - 1)),
+  protected readonly ebenen = computed(() => this.liste()?.facets.layers ?? []);
+
+  protected readonly blatt = computed(() => this.filter.blatt());
+  protected readonly blaetter = computed(() => Math.ceil((this.liste()?.total ?? 0) / BLATT));
+  protected readonly spaltenZahl = computed(
+    () => 2 + (this.type() ? 0 : 1) + (this.liste()?.columns.length ?? 0),
   );
-  protected readonly blaetter = computed(() => Math.ceil(this.gefiltert().length / BLATT));
-  protected readonly blattZeilen = computed(() =>
-    this.gefiltert().slice(this.blatt() * BLATT, (this.blatt() + 1) * BLATT),
-  );
+
+  /** Die Feldfilter als Chips über der Tabelle. */
+  protected readonly feldChips = computed(() => {
+    const spalten = this.liste()?.facets.fields ?? [];
+    return Object.entries(this.filter.felder()).map(([ref, w]) => {
+      const label = spalten.find((s) => s.ref === ref)?.label ?? ref.split('.')[1] ?? ref;
+      const text = w.values?.length
+        ? `${label}: ${w.values.join(', ')}`
+        : `${label} ${w.min ?? '…'}–${w.max ?? '…'}`;
+      return { ref, text };
+    });
+  });
+
+  protected zelle(wert: unknown, art: string): string {
+    if (wert === undefined || wert === null) return '';
+    if (art === 'bool' || typeof wert === 'boolean') return wert ? '✓' : '';
+    if (Array.isArray(wert)) return wert.join(', ');
+    if (typeof wert === 'object') return JSON.stringify(wert);
+    return String(wert);
+  }
+
+  protected offeneWerte<T>(ref: string, werte: T[]): T[] {
+    return this.aufgeklappt().has(ref) ? werte : werte.slice(0, OFFEN);
+  }
+  protected aufklappen(ref: string): void {
+    this.aufgeklappt.update((s) => {
+      const n = new Set(s);
+      if (n.has(ref)) n.delete(ref);
+      else n.add(ref);
+      return n;
+    });
+  }
+  protected gewaehlt(ref: string, wert: string): boolean {
+    return this.filter.felder()[ref]?.values?.includes(wert) ?? false;
+  }
+
+  protected wertUmschalten(ref: string, wert: string): void {
+    this.filter.felder.update((f) => {
+      const alt = f[ref]?.values ?? [];
+      const neu = alt.includes(wert) ? alt.filter((w) => w !== wert) : [...alt, wert];
+      const { [ref]: _weg, ...rest } = f;
+      return neu.length ? { ...rest, [ref]: { values: neu } } : rest;
+    });
+    this.filter.blatt.set(0);
+  }
+
+  protected spanne(ref: string, seite: 'min' | 'max', roh: string): void {
+    const n = roh.trim() === '' ? undefined : Number(roh);
+    this.filter.felder.update((f) => {
+      const alt = { ...(f[ref] ?? {}) };
+      delete alt.values;
+      if (n === undefined || !Number.isFinite(n)) delete alt[seite];
+      else alt[seite] = n;
+      const { [ref]: _weg, ...rest } = f;
+      return alt.min !== undefined || alt.max !== undefined ? { ...rest, [ref]: alt } : rest;
+    });
+    this.filter.blatt.set(0);
+  }
+
+  protected feldWeg(ref: string): void {
+    this.filter.felder.update((f) => {
+      const { [ref]: _weg, ...rest } = f;
+      return rest;
+    });
+    this.filter.blatt.set(0);
+  }
 
   protected suchen(q: string): void {
     this.filter.suche.set(q);
@@ -328,16 +508,54 @@ export class Kompendium {
     });
     this.filter.blatt.set(0);
   }
+  protected teileUmschalten(): void {
+    this.filter.teile.update((t) => !t);
+    this.filter.blatt.set(0);
+  }
   protected blaettern(um: number): void {
-    this.filter.blatt.set(this.blatt() + um);
+    this.filter.blatt.set(Math.max(0, this.blatt() + um));
     if (typeof window !== 'undefined') window.scrollTo({ top: 0 });
   }
 
-}
+  /** Ein Klick auf den Kopf sortiert danach; ein zweiter kehrt um. */
+  protected sortiere(nach: string): void {
+    const jetzt = this.filter.sortierung() || 'name';
+    this.filter.sortierung.set(jetzt === nach ? `-${nach}` : nach === 'name' ? '' : nach);
+    this.filter.blatt.set(0);
+  }
+  protected pfeil(nach: string): string {
+    const s = this.filter.sortierung() || 'name';
+    return s === nach ? ' ↑' : s === `-${nach}` ? ' ↓' : '';
+  }
+  protected ariaSort(nach: string): string | null {
+    const s = this.filter.sortierung() || 'name';
+    return s === nach ? 'ascending' : s === `-${nach}` ? 'descending' : null;
+  }
 
-/** Ein Artikel ohne Ebenenkante steht unter „keine". */
-const KEINE = '∅';
-function ebenenSchluessel(e: Entity): string[] {
-  const l = (e.relations ?? []).filter((r) => r.type === LAYER_RELATION).map((r) => r.to);
-  return l.length ? l : [KEINE];
+  /**
+   * Eine Zeile anklicken zeigt die Vorschau rechts (`quick`); „Open" darin
+   * führt zum Artikel. Am Telefon ist neben der Tabelle kein Platz — dort
+   * führt die Zeile gleich hin.
+   */
+  protected zeile(z: ListenZeile, ev: MouseEvent): void {
+    if ((ev.target as HTMLElement | null)?.closest('a')) return;
+    if (this.schmal()) {
+      void this.router.navigate(this.zielVon(z));
+      return;
+    }
+    this.filter.vorschau.set(this.filter.vorschau() === z.id ? null : z.id);
+  }
+  /** Wohin eine Zeile führt: eine Klasse hat ihre eigene Ansicht (W6). */
+  protected zielVon(z: Pick<ListenZeile, 'id' | 'type'>): string[] {
+    return z.type === 'Class' ? ['/classes', z.id] : ['/artikel', z.id];
+  }
+  /** Der Name ist ein echter Link (Mittelklick, neuer Reiter); ein schlichter Klick zeigt die Vorschau. */
+  protected link(z: ListenZeile, ev: MouseEvent): void {
+    if (ev.button !== 0 || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey || this.schmal()) return;
+    ev.preventDefault();
+    this.filter.vorschau.set(z.id);
+  }
+  private schmal(): boolean {
+    return typeof window !== 'undefined' && window.matchMedia?.('(max-width: 1100px)').matches === true;
+  }
 }

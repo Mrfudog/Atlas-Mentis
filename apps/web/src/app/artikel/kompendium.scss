@@ -184,9 +184,107 @@ td.name a:hover {
 .nurklein {
   display: none;
 }
+/* „Edit type" / „New type": ins Register (W5), aussehend wie ein Knopf. */
+.knopf {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.teile {
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--line2);
+}
+.mehr {
+  align-self: flex-start;
+  min-height: 0;
+  padding: 0.15rem 0.5rem;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-weight: 700;
+}
+.spanne {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.spanne input {
+  width: 5.5rem;
+  min-height: 36px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.knopf {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+}
+th .sort {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+}
+td.quelle {
+  white-space: nowrap;
+}
+.zahlspalte {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+tbody tr {
+  cursor: pointer;
+}
+tbody tr.gewaehlt {
+  background: var(--hover);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.tabelle.laedt {
+  opacity: 0.65;
+  transition: opacity 0.15s 0.1s;
+}
+/* Die Vorschau rechts (`quick`) — wie in `Main.dc.html`, neben der Tabelle
+   und beim Scrollen stehend. */
+.rechts {
+  flex: 0 0 340px;
+  padding: 1.1rem 1.1rem 3rem 0;
+  min-width: 0;
+}
+.rechts nw-vorschau {
+  display: block;
+  position: sticky;
+  top: 1rem;
+}
 
 /* Am Telefon steht die Tabelle zuerst; die Filter klappen auf Knopfdruck
    darüber auf, statt die halbe Seite zu nehmen. */
+/* Unter 1100 px ist neben der Tabelle kein Platz für die Vorschau — die
+   Zeile führt dann gleich zum Artikel. */
+@media (max-width: 1100px) {
+  .rechts {
+    display: none;
+  }
+}
+
 @media (max-width: 760px) {
   .seite {
     flex-direction: column;

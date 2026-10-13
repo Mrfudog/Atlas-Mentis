@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settlement · the tavern</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&amp;family=Alegreya+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#8C1C13}a:hover{color:#5E120C}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #EFE4CC; color: #2B1D12; font-family: 'Alegreya Sans', system-ui, sans-serif; font-size: 15px; display: flex; flex-direction: column">
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 10px 24px; background: #F8F1E1; border-bottom: 3px solid #8C1C13">
+    <span style="font-family: 'Alegreya SC', serif; font-size: 22px; font-weight: 700; color: #8C1C13">Atlas Mentis</span>
+    <span style="color: #6A5642">Rook „Nebelfinger“ › Rule systems › Tavern</span>
+    <span style="margin-left: auto; color: #6A5642">Owned by Die Nebelwacht · shared with every member</span>
+  </header>
+
+  <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 16px; padding: 16px 24px; align-items: flex-start">
+    <section aria-label="Tavern" style="flex: 999 1 600px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+      <div style="background: #FDF1DC; border-top: 6px solid #C8822E; border-bottom: 6px solid #C8822E; padding: 14px 18px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px">
+          <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 28px; color: #7A200D">[Tavern name]</h2>
+          <span style="color: #6A5642">Place · building · [district]</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; text-align: center">
+          <div style="background: #FBF6EC; border: 1px solid #C8822E; border-radius: 6px; padding: 8px"><div style="font-size: 12px; color: #6A5642">Reputation</div><div style="font-family: 'Alegreya SC', serif; font-size: 24px; font-weight: 700">[n]</div></div>
+          <div style="background: #FBF6EC; border: 1px solid #C8822E; border-radius: 6px; padding: 8px"><div style="font-size: 12px; color: #6A5642">Income / week</div><div style="font-family: 'Alegreya SC', serif; font-size: 24px; font-weight: 700">[gp]</div></div>
+          <div style="background: #FBF6EC; border: 1px solid #C8822E; border-radius: 6px; padding: 8px"><div style="font-size: 12px; color: #6A5642">Upkeep / week</div><div style="font-family: 'Alegreya SC', serif; font-size: 24px; font-weight: 700">[gp]</div></div>
+          <div style="background: #FBF6EC; border: 1px solid #C8822E; border-radius: 6px; padding: 8px"><div style="font-size: 12px; color: #6A5642">Staff</div><div style="font-family: 'Alegreya SC', serif; font-size: 24px; font-weight: 700">[n]</div></div>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <button type="button" style="min-height: 44px; padding: 0 16px; border: 0; border-radius: 6px; background: #8C1C13; color: #FBF6EC; font: inherit; font-weight: 700; cursor: pointer">Run a week</button>
+          <span style="align-self: center; color: #6A5642">rolls income, upkeep and a tavern event, moves the money to the party stock</span>
+        </div>
+      </div>
+
+      <div style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px">
+        <h3 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">Rooms and upgrades</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px">
+          <div style="border: 2px solid #34502A; border-radius: 6px; padding: 8px; background: #F3F6EC"><strong>[Room]</strong><div style="font-size: 13px; color: #34502A">built</div></div>
+          <div style="border: 2px solid #34502A; border-radius: 6px; padding: 8px; background: #F3F6EC"><strong>[Room]</strong><div style="font-size: 13px; color: #34502A">built</div></div>
+          <div style="border: 2px dashed #C8822E; border-radius: 6px; padding: 8px; background: #FDF1DC"><strong>[Upgrade]</strong><div style="font-size: 13px; color: #9A5B0B">[cost] · [weeks]</div></div>
+          <div style="border: 2px dashed #CDBB98; border-radius: 6px; padding: 8px"><strong>[Upgrade]</strong><div style="font-size: 13px; color: #6A5642">needs [requirement]</div></div>
+        </div>
+        <span style="font-size: 13px; color: #6A5642">Rooms are articles of their own (places inside the tavern), upgrades are rules. The rule system decides what a week does.</span>
+      </div>
+    </section>
+
+    <section aria-label="People and log" style="flex: 1 1 320px; max-width: 420px; display: flex; flex-direction: column; gap: 14px">
+      <div style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">Staff and regulars</h3>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #EFE4CC; min-height: 32px; align-items: center"><span>[NPC]</span><span style="font-size: 13px; color: #6A5642">cook · [wage]</span></div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #EFE4CC; min-height: 32px; align-items: center"><span>[NPC]</span><span style="font-size: 13px; color: #6A5642">barkeep · [wage]</span></div>
+        <div style="display: flex; justify-content: space-between; min-height: 32px; align-items: center"><span>[NPC]</span><span style="font-size: 13px; color: #6A5642">regular · rumours</span></div>
+      </div>
+      <div style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px">
+        <h3 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">Weeks</h3>
+        <span style="font-size: 14px">Week [n] · +[gp] · event: [event]</span>
+        <span style="font-size: 14px">Week [n] · −[gp] · event: [event]</span>
+        <span style="font-size: 13px; color: #6A5642">The same frame serves Alley, Sewers and the other rule systems: a place, its numbers, a weekly roll, a log.</span>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

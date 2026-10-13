@@ -2,13 +2,30 @@
  * **Eine Ausfuhrdatei einlesen** — von der Kommandozeile, nicht über das
  * Netz (Arbeitsplan §4, P5; M13 schlanker).
  *
- *   pnpm --filter @nw/server run import <datei> [--replace]
- *   docker compose exec app node apps/server/dist/import.js <datei> [--replace]
+ *   pnpm --filter @nw/server run import <datei> [--only-new | --replace | --replace-layer[=<id|Name>]] [--dry-run]
+ *   docker compose exec app node apps/server/dist/import.js <datei> --only-new
  *
  * Dieselbe Semantik wie die Einfuhr des Prototyps: eine Datei mit
  * `registry` und **ohne** `entities` bringt nur die Zeilen; mit `entities`
  * kommen die Artikel dazu, und `--replace` löscht, was nicht in der Datei
- * steht. Jeder Artikel geht durch `validateEntity` mit `knownTypes`, **bevor**
+ * steht — **alles**, auch die eigenen Kampagnenartikel.
+ *
+ * **Ersetzen je Ebene** (`--replace-layer`, W8): gelöscht wird nur, was
+ * die Ebene der Datei bringt (`inLayer` auf sie und auf keine andere) und
+ * in der Datei fehlt; alles andere bleibt. Ohne Wert nimmt es die eine
+ * Ebene, auf die die Artikel der Datei zeigen. Was gelöscht wird, wird
+ * gezählt, und Kanten aus bleibenden Artikeln, die danach ins Leere zeigen,
+ * werden aufgezählt — in Postgres bleiben sie stehen (Migration 012a) und
+ * wären sonst ein stiller `dangling_relation`.
+ *
+ * **Nur ergänzen** (`--only-new`, D71): der 5e.tools-Import ist ein
+ * einmaliger Lauf, danach wird ergänzt. Angelegt wird nur, wessen Id es
+ * noch nicht gibt; was schon steht, bleibt, wie es ist — auch wenn die
+ * Leitung es seither geändert hat. Ebenso das Register: nur Zeilen, die
+ * es noch nicht gibt, kommen dazu. Gelöscht wird nichts.
+ *
+ * `--dry-run` sagt dasselbe
+ * und schreibt nichts. Jeder Artikel geht durch `validateEntity` mit `knownTypes`, **bevor**
  * irgendetwas geschrieben wird: eine halb eingelesene Datei wäre ein
  * Bestand, den niemand mehr erklären kann.
  *
@@ -23,6 +40,9 @@ import { resolve } from 'node:path';
 import {
   EntitySchema,
   RegistrySchema,
+  INSTANCE_RELATION,
+  detachInstance,
+  entityName,
   isInstance,
   resolveInstance,
   stageBases,
@@ -39,6 +59,27 @@ export interface ImportErgebnis {
   text: string;
   geschrieben: number;
   geloescht: number;
+  /** Mit `onlyNew`: Artikel der Datei, deren Id es schon gab. */
+  uebersprungen?: number;
+  /** Kanten aus bleibenden Artikeln auf gelöschte, als `Artikel —typ→ Ziel`. */
+  verwaisteKanten?: string[];
+}
+
+export interface ImportOptionen {
+  /** Alles löschen, was nicht in der Datei steht. */
+  replace?: boolean;
+  /**
+   * Nur löschen, was diese Ebene bringt und in der Datei fehlt — Id oder
+   * Name der Ebene, `true` für die eine Ebene der Datei.
+   */
+  replaceLayer?: string | true;
+  /**
+   * Nur anlegen, was es noch nicht gibt (D71): bestehende Artikel und
+   * Registerzeilen werden übersprungen, nichts wird gelöscht.
+   */
+  onlyNew?: boolean;
+  /** Alles prüfen und sagen, nichts schreiben. */
+  dryRun?: boolean;
 }
 
 export class ImportFehler extends Error {}
@@ -46,8 +87,14 @@ export class ImportFehler extends Error {}
 export async function runImport(
   repo: Repository,
   daten: unknown,
-  optionen: { replace?: boolean } = {},
+  optionen: ImportOptionen = {},
 ): Promise<ImportErgebnis> {
+  if (optionen.replace && optionen.replaceLayer) {
+    throw new ImportFehler('`--replace` und `--replace-layer` schliessen sich aus: das eine löscht alles, was fehlt, das andere nur die Ebene.');
+  }
+  if (optionen.onlyNew && (optionen.replace || optionen.replaceLayer)) {
+    throw new ImportFehler('`--only-new` schliesst `--replace` und `--replace-layer` aus: das eine lässt Bestehendes stehen, die anderen ersetzen es.');
+  }
   const verwaltung = (await repo.listUsers()).filter((u) => u.isAdmin && !u.disabledAt);
   if (!verwaltung.length) {
     throw new ImportFehler(
@@ -70,7 +117,9 @@ export async function runImport(
   let registry: Registry = aktuell;
   if (d.registry !== undefined) {
     const { components: _alt, ...roh } = d.registry as Record<string, unknown>;
-    const geprueft = RegistrySchema.safeParse({ ...aktuell, ...roh });
+    /* Mit `--only-new` gewinnt je Teil die Zeile, die schon steht. */
+    const zusammen = optionen.onlyNew ? nurNeueZeilen(aktuell, roh) : { ...aktuell, ...roh };
+    const geprueft = RegistrySchema.safeParse(zusammen);
     if (!geprueft.success) {
       throw new ImportFehler(`Register ungültig: ${geprueft.error.issues.slice(0, 5).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`);
     }
@@ -81,30 +130,57 @@ export async function runImport(
      leere Liste `entities: []` ist etwas anderes: eine Sicherung ohne
      Artikel, also „alles weg". */
   if (d.entities === undefined) {
+    if (optionen.dryRun) return { text: 'Probelauf: das Register würde übernommen, die Artikel blieben.', geschrieben: 0, geloescht: 0 };
     const liegen = await schreibeRegister(repo, d.registry, registry);
     await repo.appendEvent('import.registry', undefined, {});
     return { text: `Register übernommen. Die Artikel bleiben, wie sie sind.${liegenText(liegen)}`, geschrieben: 0, geloescht: 0 };
   }
 
-  const neu: Entity[] = [];
+  const ausDatei: Entity[] = [];
   const fehler: string[] = [];
   for (const [i, roh] of (d.entities as unknown[]).entries()) {
     const p = EntitySchema.safeParse(roh);
     if (!p.success) fehler.push(`#${i}: ${p.error.issues[0]?.message ?? 'ungültig'}`);
-    else neu.push(p.data as Entity);
+    else ausDatei.push(p.data as Entity);
   }
-  const ids = new Set<string>();
-  for (const e of neu) {
-    if (ids.has(e.id)) fehler.push(`${e.id}: steht zweimal in der Datei`);
-    ids.add(e.id);
+  const dateiIds = new Set<string>();
+  for (const e of ausDatei) {
+    if (dateiIds.has(e.id)) fehler.push(`${e.id}: steht zweimal in der Datei`);
+    dateiIds.add(e.id);
   }
 
-  /* Was es danach gibt: mit `--replace` nur die Datei, sonst der Bestand
-     und die Datei darüber. */
+  /* Was es danach gibt: mit `--replace` nur die Datei, mit
+     `--replace-layer` der Bestand ohne das, was die Ebene brachte und die
+     Datei nicht mehr bringt, mit `--only-new` der Bestand und dazu, was
+     er noch nicht kennt, sonst der Bestand und die Datei darüber. */
   const bestand = await repo.listEntities();
+  const bestandIds = new Set(bestand.map((e) => e.id));
+  const neu = optionen.onlyNew ? ausDatei.filter((e) => !bestandIds.has(e.id)) : ausDatei;
+  const uebersprungen = ausDatei.length - neu.length;
+  const ids = new Set(neu.map((e) => e.id));
+  let weg: Entity[] = [];
+  let ebenenText = '';
+  if (optionen.replace) weg = bestand.filter((e) => !ids.has(e.id));
+  else if (optionen.replaceLayer) {
+    const ebene = findeEbene(optionen.replaceLayer, neu, bestand);
+    ebenenText = `Ebene „${entityName(ebene)}" (${ebene.id})`;
+    weg = bestand.filter((e) => !ids.has(e.id) && nurInEbene(e, ebene.id));
+  }
+  const wegIds = new Map(weg.map((e) => [e.id, entityName(e)] as const));
   const danach = new Map<string, Entity>();
-  if (!optionen.replace) for (const e of bestand) danach.set(e.id, e);
+  for (const e of bestand) if (!wegIds.has(e.id)) danach.set(e.id, e);
   for (const e of neu) danach.set(e.id, e);
+  /* Eine Vorlage, die geht, nimmt nichts mit — wie beim Löschen über die
+     Route: ihre bleibenden Instanzen bekommen vorher, was sie lasen. */
+  const geloest: Entity[] = [];
+  if (wegIds.size) {
+    const vorher = new Map(bestand.map((e) => [e.id, e] as const));
+    for (const e of danach.values()) {
+      if (ids.has(e.id) || !isInstance(e)) continue;
+      if ((e.relations ?? []).some((r) => r.type === INSTANCE_RELATION && wegIds.has(r.to))) geloest.push(detachInstance(vorher, e));
+    }
+    for (const e of geloest) danach.set(e.id, e);
+  }
   /* Eine Kanten-Id ist Schlüssel der ganzen Tabelle, nicht je Artikel:
      zwei gleiche schreiben bis zur zweiten und brechen dann ab. Darum
      hier, vor dem ersten Schreiben, über alles, was danach steht. */
@@ -139,16 +215,46 @@ export async function runImport(
     throw new ImportFehler(`${fehler.length} Fehler, nichts geschrieben:\n${fehler.slice(0, 30).join('\n')}${fehler.length > 30 ? `\n… ${fehler.length - 30} weitere` : ''}`);
   }
 
-  const liegen = await schreibeRegister(repo, d.registry, registry);
-  for (const e of zuSchreiben) await repo.putEntity(e);
-  let geloescht = 0;
-  if (optionen.replace) {
-    for (const alt of bestand) {
-      if (ids.has(alt.id)) continue;
-      if (await repo.deleteEntity(alt.id)) geloescht += 1;
+  /* Kanten aus Artikeln, die bleiben und nicht aus der Datei kommen, auf
+     einen, der geht. Die aus der Datei hat die Prüfung oben schon. */
+  const verwaisteKanten: string[] = [];
+  if (wegIds.size) {
+    for (const e of danach.values()) {
+      if (ids.has(e.id)) continue;
+      for (const r of e.relations ?? []) {
+        if (wegIds.has(r.to)) verwaisteKanten.push(`${entityName(e)} (${e.id}) —${r.type}→ ${wegIds.get(r.to)} (${r.to})`);
+      }
     }
   }
-  await repo.appendEvent('import', undefined, { written: zuSchreiben.length, removed: geloescht, replace: Boolean(optionen.replace) });
+
+  if (optionen.dryRun) {
+    const zeilen = [optionen.onlyNew
+      ? `Probelauf, nichts geschrieben — nur ergänzen: ${zuSchreiben.length} neu, ${uebersprungen} übersprungen (gibt es schon).`
+      : `Probelauf, nichts geschrieben${ebenenText ? ` — ${ebenenText}` : ''}: ${zuSchreiben.length} Artikel würden geschrieben, ${weg.length} gelöscht${weg.length ? ` (${jeArt(weg)})` : ''}.`];
+    if (geloest.length) zeilen.push(`${geloest.length} Instanzen würden von ihrer Vorlage gelöst: ${geloest.map((e) => `${entityName(e)} (${e.id})`).join(', ')}`);
+    if (verwaisteKanten.length) zeilen.push(kantenText(verwaisteKanten, 'würden ins Leere zeigen'));
+    return { text: zeilen.join('\n'), geschrieben: 0, geloescht: 0, ...(optionen.onlyNew ? { uebersprungen } : {}), verwaisteKanten };
+  }
+
+  /* Erst löschen, dann schreiben: geprüft ist der Stand danach, und eine
+     Kanten-Id, die ein gehender Artikel noch hält, darf ein kommender
+     schon tragen — umgekehrt bräche das Schreiben an ihr ab. Bricht ein
+     Lauf mittendrin ab, bringt derselbe Befehl noch einmal den Rest. */
+  const liegen = await schreibeRegister(repo, d.registry, registry);
+  let geloescht = 0;
+  for (const alt of weg) {
+    if (await repo.deleteEntity(alt.id)) geloescht += 1;
+  }
+  for (const e of zuSchreiben) await repo.putEntity(e);
+  for (const e of geloest) await repo.putEntity(e);
+  await repo.appendEvent('import', undefined, {
+    written: zuSchreiben.length,
+    removed: geloescht,
+    replace: Boolean(optionen.replace),
+    ...(optionen.onlyNew ? { onlyNew: true, skipped: uebersprungen } : {}),
+    ...(optionen.replaceLayer ? { replaceLayer: ebenenText } : {}),
+    ...(verwaisteKanten.length ? { danglingRelations: verwaisteKanten.length } : {}),
+  });
 
   /* **Die eine Stelle, an der das Ersetzen etwas zurücklässt** (Abgleich
      §4.4, 5): Konten führen Figuren, und die Figur-Ids stehen am Konto,
@@ -158,9 +264,78 @@ export async function runImport(
     const weg = (u.actorIds ?? []).filter((a) => !danach.has(a));
     if (weg.length) verwaist.push(`${u.name}: ${weg.join(', ')}`);
   }
-  const zeilen = [`${zuSchreiben.length} Artikel geschrieben${geloescht ? `, ${geloescht} gelöscht` : ''}.`];
+  const zeilen = [optionen.onlyNew
+    ? `Nur ergänzt: ${zuSchreiben.length} neu, ${uebersprungen} übersprungen (gibt es schon).`
+    : `${ebenenText ? `${ebenenText}: ` : ''}${zuSchreiben.length} Artikel geschrieben${geloescht ? `, ${geloescht} gelöscht (${jeArt(weg)})` : ''}.`];
+  if (geloest.length) zeilen.push(`${geloest.length} Instanzen von ihrer gelöschten Vorlage gelöst (sie tragen jetzt, was sie lasen): ${geloest.map((e) => `${entityName(e)} (${e.id})`).join(', ')}`);
+  if (verwaisteKanten.length) zeilen.push(kantenText(verwaisteKanten, 'zeigen jetzt ins Leere'));
   if (verwaist.length) zeilen.push(`Figuren, die es nicht mehr gibt, an Konten:\n  ${verwaist.join('\n  ')}`);
-  return { text: zeilen.join('\n') + liegenText(liegen), geschrieben: zuSchreiben.length, geloescht };
+  return { text: zeilen.join('\n') + liegenText(liegen), geschrieben: zuSchreiben.length, geloescht, ...(optionen.onlyNew ? { uebersprungen } : {}), verwaisteKanten };
+}
+
+/**
+ * Das Register mit `--only-new` (D71): je Teil die Zeilen der Datei, die
+ * es noch nicht gibt, und darüber die bestehenden — eine Art, die die
+ * Leitung am Server angepasst hat, bleibt angepasst.
+ */
+function nurNeueZeilen(aktuell: Registry, roh: Record<string, unknown>): Record<string, unknown> {
+  const zusammen: Record<string, unknown> = { ...aktuell };
+  for (const [teil, zeilen] of Object.entries(roh)) {
+    const da = (aktuell as unknown as Record<string, unknown>)[teil];
+    zusammen[teil] = zeilen && typeof zeilen === 'object' && !Array.isArray(zeilen) && da && typeof da === 'object'
+      ? { ...(zeilen as Record<string, unknown>), ...(da as Record<string, unknown>) }
+      : da ?? zeilen;
+  }
+  return zusammen;
+}
+
+/**
+ * Die Ebene, die ersetzt wird: nach Id oder Name, unter den Artikeln der
+ * Datei und des Bestands; `true` heisst die eine Ebene, auf die die Datei
+ * zeigt. Zwei gleichnamige oder zwei in der Datei sind ein Fehler — die
+ * falsche zu nehmen hiesse, die falschen Artikel zu löschen.
+ */
+function findeEbene(wahl: string | true, neu: Entity[], bestand: Entity[]): Entity {
+  const ebenen = new Map<string, Entity>();
+  for (const e of [...bestand, ...neu]) if (e.interfaces?.includes('Layer')) ebenen.set(e.id, e);
+  if (wahl === true) {
+    const ziele = new Set<string>();
+    for (const e of neu) for (const r of e.relations ?? []) if (r.type === 'inLayer') ziele.add(r.to);
+    const treffer = [...ziele].filter((id) => ebenen.has(id));
+    if (treffer.length !== 1) {
+      throw new ImportFehler(treffer.length
+        ? `Die Datei bringt ${treffer.length} Ebenen (${treffer.join(', ')}) — welche ersetzt wird, sagt \`--replace-layer=<id oder Name>\`.`
+        : 'Kein Artikel der Datei steht in einer Ebene — mit `--replace-layer` gäbe es nichts, woran sich das Löschen hält.');
+    }
+    return ebenen.get(treffer[0]!)!;
+  }
+  const nachId = ebenen.get(wahl);
+  if (nachId) return nachId;
+  const nachName = [...ebenen.values()].filter((e) => entityName(e) === wahl || (e.components['Identity'] as { id?: unknown } | undefined)?.id === wahl);
+  if (nachName.length === 1) return nachName[0]!;
+  if (nachName.length > 1) throw new ImportFehler(`Mehrere Ebenen heissen „${wahl}": ${nachName.map((e) => e.id).join(', ')} — die Id nennen.`);
+  throw new ImportFehler(`Keine Ebene „${wahl}", weder in der Datei noch im Bestand.`);
+}
+
+/**
+ * Bringt die Ebene diesen Artikel — und keine andere? Einer, der auch in
+ * einer zweiten Ebene steht, bringt die auch; er bleibt.
+ */
+function nurInEbene(e: Entity, ebene: string): boolean {
+  const ziele = (e.relations ?? []).filter((r) => r.type === 'inLayer').map((r) => r.to);
+  return ziele.length > 0 && ziele.every((z) => z === ebene);
+}
+
+/** „Spell 12, Feature 3" — gelöscht je Art, die häufigste zuerst. */
+function jeArt(liste: Entity[]): string {
+  const n = new Map<string, number>();
+  for (const e of liste) n.set(e.interfaces?.[0] ?? '?', (n.get(e.interfaces?.[0] ?? '?') ?? 0) + 1);
+  return [...n].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([t, k]) => `${t} ${k}`).join(', ');
+}
+
+function kantenText(kanten: string[], was: string): string {
+  const zeigen = kanten.slice(0, 50);
+  return `${kanten.length} Kanten aus bleibenden Artikeln ${was}:\n  ${zeigen.join('\n  ')}${kanten.length > 50 ? `\n  … ${kanten.length - 50} weitere` : ''}`;
 }
 
 /**
@@ -196,7 +371,13 @@ if (direkt) {
   const args = process.argv.slice(2);
   const datei = args.find((a) => !a.startsWith('--'));
   if (!datei) {
-    console.error('import <datei> [--replace]');
+    console.error('import <datei> [--only-new | --replace | --replace-layer[=<id|Name>]] [--dry-run]');
+    process.exit(2);
+  }
+  const ebenenArg = args.find((a) => a === '--replace-layer' || a.startsWith('--replace-layer='));
+  const replaceLayer = ebenenArg === undefined ? undefined : ebenenArg.includes('=') ? ebenenArg.slice(ebenenArg.indexOf('=') + 1) : true;
+  if (replaceLayer === '') {
+    console.error('`--replace-layer=` ohne Ebene — Id oder Name nennen, oder `--replace-layer` allein für die Ebene der Datei.');
     process.exit(2);
   }
   /* pnpm startet im Paketverzeichnis; ein relativer Pfad meint das, von wo
@@ -207,7 +388,7 @@ if (direkt) {
   const repo = new PgRepository(getPool());
   try {
     const daten = JSON.parse(readFileSync(pfad, 'utf8')) as unknown;
-    const r = await runImport(repo, daten, { replace: args.includes('--replace') });
+    const r = await runImport(repo, daten, { replace: args.includes('--replace'), replaceLayer, onlyNew: args.includes('--only-new'), dryRun: args.includes('--dry-run') });
     console.log(r.text);
   } catch (x) {
     console.error((x as Error).message);

@@ -25,7 +25,27 @@ export class Session {
   readonly user = computed(() => this._me()?.user ?? null);
   readonly setupHint = computed(() => this._me()?.setup ?? null);
   readonly isAdmin = computed(() => this.user()?.isAdmin === true);
+  /** Leitung (`gm`/`co-gm` irgendwo) oder Verwaltung — wem die Werkbank etwas zeigt.
+   *  Anzeige, keine Kontrolle: der Server prüft dasselbe (`isLeitung`). */
+  readonly leitung = computed(() => {
+    const u = this.user();
+    if (!u) return false;
+    return u.isAdmin || Object.values(u.roles ?? {}).some((r) => r === 'gm' || r === 'co-gm');
+  });
   readonly angemeldet = computed(() => this.user() !== null);
+  /** Darf das Register ändern — Anzeige, keine Kontrolle; der Server prüft. */
+  readonly darfRegister = computed(() => this._me()?.registry === true);
+  readonly hatEinladungen = computed(() => this._me()?.invites === true);
+  /**
+   * Ob die Verwaltungsseite diesem Konto etwas zeigt: der Verwaltung immer,
+   * sonst wer irgendwo leitet oder mitleitet. Ein Eintrag für Spielende
+   * führte auf eine leere Seite (W3). Die Rechte prüft der Server.
+   */
+  readonly verwaltet = computed(() => {
+    const u = this.user();
+    if (!u) return false;
+    return u.isAdmin || Object.values(u.roles ?? {}).some((r) => r === 'gm' || r === 'co-gm');
+  });
 
   /**
    * Darf dieser Betrachter den Artikel schreiben? Die Antwort kommt vom
@@ -42,6 +62,17 @@ export class Session {
     if (liste === null) return () => true; // die Spielleitung
     const erlaubt = new Set(liste);
     return (id: string) => erlaubt.has(id);
+  });
+
+  /**
+   * Darf dieser Betrachter Artikel anlegen? Wer alles schreiben darf
+   * (`writable: null`, die Verwaltung) — einen Artikel, den es noch nicht
+   * gibt, besitzt kein Spieler. Der Server prüft es beim Anlegen noch
+   * einmal; das hier spart nur den Knopf, der danach Nein sagt.
+   */
+  readonly darfAnlegen = computed(() => {
+    const me = this._me();
+    return !!me?.user && me.writable === null;
   });
 
   private laeuft: Promise<void> | null = null;
@@ -79,6 +110,17 @@ export class Session {
          hiesse, es zu raten. */
       this._me.set({ user, writable: user?.isAdmin ? null : [], setup: null });
       this._stand.set('bereit');
+      await this.load(true);
+      return null;
+    } catch (error) {
+      return error instanceof ApiError ? error.message : 'Could not reach the server.';
+    }
+  }
+
+  /** Ein Konto gegen eine Einladung anlegen — der Server meldet gleich an. */
+  async register(name: string, password: string, invite: string): Promise<string | null> {
+    try {
+      await this.api.register(name, password, invite);
       await this.load(true);
       return null;
     } catch (error) {

@@ -92,6 +92,16 @@ Eintrag zeichnet den Baum und entscheidet den Bereich (`area`); alle anderen
 bringen nur ihre Felder und Kanten mit. Sonst gäbe es zwei Antworten auf die
 Frage, wo eine Art hingehört, und die eine wäre still falsch.
 
+### Story ist nicht History
+
+Der Bereich hiess bis 13.10. `history` und hielt zweierlei: was in der
+Kampagne geschah (Sitzungen, Szenen, Aufträge) und was der Welt widerfuhr,
+bevor jemand sie bespielte. Das sind zwei Fragen — „was haben wir gespielt"
+und „was ist hier einmal passiert" —, und wer die eine stellt, will die
+Antworten der anderen nicht dazwischen. Jetzt heisst der eine Bereich
+`story` und ist nur die Kampagne; die Weltgeschichte (`World`, `Event`)
+steht unter `world`, bei der Welt, zu der sie gehört.
+
 ---
 
 ## Bestandteil
@@ -241,6 +251,15 @@ genau das. Ein Platzhalter darf im Ausdruck stehen und wird zuerst
 eingesetzt; ein Ausdruck, der keiner ist, bleibt Text. Gewürfelt wird ohne
 `eval`, aus demselben Grund wie beim Rechenwerk.
 
+**Ein Platzhalter trägt seinen Artikel**: „{CREATURE} can breathe air and
+water." mit „the dragon" an der einen Kante und „Venomfang" an der
+anderen. Stünde der Artikel im Text („The {CREATURE} can …"), wäre der
+Text einer benannten Kreatur ein anderer als der eines Drachen, und
+Amphibious stünde vierundsechzigmal da. Dass „the dragon" am Satzanfang
+„The dragon" heisst, ist eine Frage des Lesens und nicht der Bindung —
+also schreibt `parseInline` den Wert dort gross, und gespeichert bleibt,
+was gemeint ist.
+
 ---
 
 ## Bezeichner
@@ -288,13 +307,19 @@ Ort und kein Schalter:
 
 | Ansicht | Wo sie gilt | Was sie zeigt |
 |---|---|---|
-| **Overview** | Ein Verweis im Text, eine Listenzeile | Name und die Beschreibung — eine Handvoll Zeilen, wie ein Hover |
+| **Overview** | Ein Verweis im Text, eine Listenzeile | Name und die Beschreibung — eine Handvoll Zeilen, wie ein Hover; die Felder darin sind die Spalten im Kompendium |
 | **Quick** | Eine Karte auf dem Board, die Schnellanlage aus einem anderen Artikel | Das Nötigste, um zu wissen, was man vor sich hat |
 | **Full** | Die Artikelseite | Alles, was dieser Artikel trägt |
 
 Einen Wähler „welche Ansicht hätten Sie gern" gibt es nicht. Ein Verweis ist
 ein Verweis, und eine Artikelseite ist eine Artikelseite — wer das jedes Mal
 sagen muss, sagt es irgendwann falsch.
+
+Nur auf dem Board wählt die **Kachel**: dort liegen Karten nebeneinander,
+und wie gross eine davon ist, ist eine Frage an sie. Sagt weder die
+Platzierung noch das Board etwas, entscheidet die Grösse — flach ist eine
+Zeile (Overview), höher eine Karte (Quick). Wer die Kachel grösser zieht,
+hat damit schon gewählt.
 
 **Es gibt keine Spieleransicht.** Es gab einmal eine, und sie war die zweite
 Stelle, an der stand, was ein Spieler nicht sehen darf. Zurückgehalten wird
@@ -304,6 +329,20 @@ er sieht dieselbe Ansicht wie alle anderen — nur steht weniger darin.
 **Die Anordnung wohnt am Typ.** Eine Kreatur ordnet ihre Full anders als ein
 Rezept, und das steht bei der Kreatur. Untertypen erben sie, bis einer etwas
 Eigenes sagt.
+
+**Eine Listenzeile ist ein Verweis**, also Overview (W7). Darum sagt die
+Overview einer Art auch, welche Spalten das Kompendium für sie zeigt und
+wonach es filtert — Grad und Schule beim Zauber, HG beim Statblock,
+Seltenheit beim Gegenstand. Eine Spaltenliste im Code wäre eine zweite
+Stelle, die am Tag der nächsten Art falsch ist; so bringt die neue Art ihre
+Spalten mit. Und weil die Vorschau neben der Liste eine Karte ist, zeigt
+sie Quick.
+
+**Wie im Buch** (W2, 13.10.2026) ist darum auch eine Anordnung und kein
+Sonderfall: ein Statblock liest sich wie im Monster Manual, weil am Typ
+`Statblock` das Element `statblock` steht — nicht, weil der Code nach dem
+Namen „Statblock" fragt. Eine eigene Art, die von `Statblock` erbt, liest
+sich ebenso; eine, die etwas anderes will, sagt es an sich.
 
 ---
 
@@ -645,6 +684,15 @@ darum gibt es `Feature.level` nicht mehr (D50). Was gewählt wird statt
 gewährt („zwei aus Acrobatics, Athletics …"), steht als Angebot an der
 Klasse (`ProficiencyChoice`); getroffen wird die Wahl am Statblock der
 Figur, als gewöhnliche Übung.
+
+**Ein Merkmal, das allein in einem Absatz steht, ist eingebettet** (W6).
+5e.tools zieht Merkmale in andere hinein — der Battle Master beginnt mit
+einem Kopf, der „Student of War" und „Combat Superiority" enthält, und
+„Fighting Style" enthält die Stile. Der Importer schreibt dafür einen
+Absatz, der nur aus dem Verweis besteht. Eine eigene Kante dafür wäre eine
+zweite Stelle neben dem Text, die sagt, wo das Merkmal steht — und die
+Reihenfolge im Text sagt es schon. Ein Verweis mitten im Satz bleibt ein
+Verweis; nur der allein stehende wird in der Klassenansicht ausgeschrieben.
 
 Damit heisst `hp` am Statblock das Maximum und an der Figur, was sie gerade
 noch hat. Die Namensgleichheit ist keine Falle mehr, sondern die Wahrheit:

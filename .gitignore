@@ -16,3 +16,6 @@ prototype/test/showcase/
 # Erzeugt: das Register als Einfuhrdatei (node prototype/migration/register-datei.mjs).
 # Es steht im Paket und im Prüfabzug — eine dritte Kopie im Baum wäre die, die veraltet.
 prototype/nebelwacht-registry.json
+
+# Gebaute Oberfläche: das Abbild kopiert sie hinein (Dockerfile), im Repo hat sie nichts zu suchen.
+apps/server/public/

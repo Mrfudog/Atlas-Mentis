@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Graph view</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&amp;family=Alegreya+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#8C1C13}a:hover{color:#5E120C}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #EFE4CC; color: #2B1D12; font-family: 'Alegreya Sans', system-ui, sans-serif; font-size: 15px; display: flex; flex-direction: column">
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 10px 24px; background: #F8F1E1; border-bottom: 3px solid #8C1C13">
+    <span style="font-family: 'Alegreya SC', serif; font-size: 22px; font-weight: 700; color: #8C1C13">Atlas Mentis</span>
+    <span style="color: #6A5642">World › Graph · around Wo ist Floon?</span>
+    <span style="margin-left: auto; color: #6A5642">Every line is a stored edge; nothing here is drawn by hand</span>
+  </header>
+
+  <div style="flex: 1; display: flex; gap: 16px; padding: 16px 24px; align-items: stretch">
+    <aside aria-label="Graph filters" style="flex: 0 0 240px; background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">Show</h2>
+      <label style="display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: #6A5642">Depth<input type="range" min="1" max="3" value="2" aria-label="Depth"></label>
+      <span style="font-size: 13px">2 steps from the centre</span>
+      <h3 style="margin: 6px 0 0; font-size: 14px">Edges</h3>
+      <label style="display: flex; gap: 8px"><input type="checkbox" checked> questGiver</label>
+      <label style="display: flex; gap: 8px"><input type="checkbox" checked> features</label>
+      <label style="display: flex; gap: 8px"><input type="checkbox" checked> livesIn</label>
+      <label style="display: flex; gap: 8px"><input type="checkbox"> inLayer</label>
+      <label style="display: flex; gap: 8px"><input type="checkbox"> tags</label>
+      <h3 style="margin: 6px 0 0; font-size: 14px">Types</h3>
+      <div style="display: flex; flex-wrap: wrap; gap: 4px; font-size: 13px"><span style="padding: 1px 8px; border-radius: 10px; background: #8C1C13; color: #FBF6EC">Quest</span><span style="padding: 1px 8px; border-radius: 10px; background: #34502A; color: #FBF6EC">Creature</span><span style="padding: 1px 8px; border-radius: 10px; background: #2F5D8A; color: #FBF6EC">Place</span><span style="padding: 1px 8px; border-radius: 10px; background: #C8822E; color: #FBF6EC">Story</span></div>
+      <span style="margin-top: auto; font-size: 13px; color: #6A5642">Players see the same graph with only the articles and edges they know.</span>
+    </aside>
+
+    <section aria-label="Graph" style="flex: 1; min-width: 0; background: #FDF1DC; border: 1px solid #CDBB98; border-radius: 8px; padding: 8px">
+      <svg viewBox="0 0 900 720" width="100%" height="100%" role="img" aria-label="Graph of articles around the quest Wo ist Floon">
+        <g stroke="#B9A88A" stroke-width="2">
+          <line x1="450" y1="360" x2="250" y2="220"></line>
+          <line x1="450" y1="360" x2="660" y2="230"></line>
+          <line x1="450" y1="360" x2="450" y2="560"></line>
+          <line x1="450" y1="360" x2="690" y2="470"></line>
+          <line x1="250" y1="220" x2="120" y2="120"></line>
+          <line x1="660" y1="230" x2="780" y2="110"></line>
+          <line x1="450" y1="560" x2="300" y2="640"></line>
+          <line x1="450" y1="560" x2="600" y2="650"></line>
+        </g>
+        <g font-family="Alegreya Sans, sans-serif" font-size="15" text-anchor="middle">
+          <circle cx="450" cy="360" r="34" fill="#8C1C13"></circle><text x="450" y="412" font-weight="700">Wo ist Floon?</text>
+          <circle cx="250" cy="220" r="24" fill="#34502A"></circle><text x="250" y="262">Volothamp Geddarm</text>
+          <circle cx="660" cy="230" r="24" fill="#34502A"></circle><text x="660" y="272">Floon Blagmaar</text>
+          <circle cx="450" cy="560" r="24" fill="#C8822E"></circle><text x="450" y="602">Session [n]</text>
+          <circle cx="690" cy="470" r="22" fill="#2F5D8A"></circle><text x="690" y="510">Der Lampenkeller</text>
+          <circle cx="120" cy="120" r="14" fill="#2F5D8A" opacity="0.6"></circle><text x="120" y="150" fill="#6A5642">[Place]</text>
+          <circle cx="780" cy="110" r="14" fill="#34502A" opacity="0.6"></circle><text x="780" y="140" fill="#6A5642">[Creature]</text>
+          <circle cx="300" cy="640" r="14" fill="#C8822E" opacity="0.6"></circle><text x="300" y="672" fill="#6A5642">Die Kerzengassen-Seuche</text>
+          <circle cx="600" cy="650" r="14" fill="#8C1C13" opacity="0.6"></circle><text x="600" y="682" fill="#6A5642">[Quest]</text>
+          <text x="350" y="280" fill="#6A5642" font-size="12">gives</text>
+          <text x="565" y="285" fill="#6A5642" font-size="12">features</text>
+        </g>
+      </svg>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

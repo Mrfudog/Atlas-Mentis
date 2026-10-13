@@ -11,16 +11,89 @@
  */
 
 import { Injectable } from '@angular/core';
-import type { Entity, Registry, Relation } from '@nw/model';
+import type { Entity, Registry, RegistryUsage, Relation } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
     readonly issues?: unknown,
+    /** Die ganze Antwort — eine abgelehnte Massenänderung sagt darin, was und warum. */
+    readonly body?: unknown,
   ) {
     super(message);
   }
+}
+
+/* ------------------------------------------------------------ Werkbank (W9) */
+
+export interface CheckHit {
+  id: string;
+  name: string;
+  type: string;
+  reason: string;
+  group?: string[];
+}
+export interface CheckResult {
+  key: string;
+  label: string;
+  description: string;
+  count: number;
+  hits: CheckHit[];
+  ms: number;
+}
+export interface ChecksAntwort {
+  total: number;
+  ms: number;
+  checks: CheckResult[];
+}
+export interface BulkZeile {
+  id: string;
+  name: string;
+  type: string;
+  change: 'update' | 'delete' | 'create';
+  summary: string[];
+}
+export interface BulkAntwort {
+  dryRun: boolean;
+  selected: number;
+  changed: number;
+  deleted: number;
+  examples: BulkZeile[];
+  rejected: { id: string; name: string; type: string; issues: string[] }[];
+  rejectedCount: number;
+  skipped: { id: string; name: string; type: string; reason: string }[];
+  skippedCount: number;
+  ms: number;
+  id?: string | null;
+  error?: string;
+}
+export interface BulkLauf {
+  id: string;
+  at: string;
+  undone: boolean;
+  by?: { id: string; name: string };
+  token?: string | null;
+  changed: number;
+  deleted: number;
+  summary?: string[];
+}
+export interface UndoAntwort {
+  dryRun?: boolean;
+  restored: number;
+  conflicts: { id: string; name: string; reason: string }[];
+  rejected: { id: string; name: string; issues: string[] }[];
+  error?: string;
+}
+export interface TokenZeile {
+  id: string;
+  name: string;
+  scope: 'read' | 'write';
+  expiresAt: string;
+  createdAt: string | null;
+  lastUsedAt: string | null;
+  /** Nur in der Antwort auf das Anlegen — einmal. */
+  token?: string;
 }
 
 /** Eine Kante, die auf einen Artikel zeigt — mit der Kurzfassung ihres Ursprungs. */
@@ -29,14 +102,93 @@ export interface Rueckbezug {
   relation: Relation;
 }
 
+export type TableRole = 'gm' | 'co-gm' | 'player' | 'spectator';
+export const TABLE_ROLES: readonly TableRole[] = ['gm', 'co-gm', 'player', 'spectator'];
+
+/**
+ * Die Namen, die ein geöffneter Artikel braucht (W7): Kantenziele,
+ * Verweisfelder, Sichtbarkeitslisten (`names`) und die Treffer jedes
+ * `[[…]]` (`links`). Der Server rechnet sie beim Ausliefern, gespeichert
+ * werden sie nie.
+ */
+export interface Bezuege {
+  names: Record<string, string>;
+  links: Record<string, { id: string; name: string }[]>;
+}
+
+/** Ein Blatt der Liste (`GET /api/list`) — die Form steht in `apps/server/src/liste.ts`. */
+export interface Liste {
+  total: number;
+  offset: number;
+  limit: number;
+  columns: { ref: string; label: string; kind: 'number' | 'bool' | 'list' | 'text' }[];
+  rows: ListenZeile[];
+  facets: {
+    types: { type: string; label: string; area: string; count: number }[];
+    layers: { id: string; name: string; count: number }[];
+    fields: (
+      | { ref: string; label: string; kind: 'enum'; options: { value: string; count: number }[] }
+      | { ref: string; label: string; kind: 'range'; min: number; max: number }
+    )[];
+    partsHidden: number;
+  };
+}
+
+export interface ListenZeile {
+  id: string;
+  name: string;
+  type: string;
+  layers: string[];
+  source: string;
+  status: string;
+  /** Wie viele Artikel diesen über eine Abschnittskante nutzen. */
+  users?: number;
+  cols: Record<string, unknown>;
+  tags?: string[];
+  /** Die Ziele der Kantenarten, nach denen `rel=` fragte. */
+  rels?: Record<string, string[]>;
+}
+
+/** Was die Liste gefragt wird. Leere Angaben fallen weg. */
+export interface ListenFrage {
+  area?: string | undefined;
+  type?: string | undefined;
+  of?: string[] | undefined;
+  /** Nur diese Artikel. */
+  ids?: string[] | undefined;
+  /** Diese Kantenarten je Zeile mitschicken. */
+  rel?: string[] | undefined;
+  q?: string | undefined;
+  layer?: string[] | undefined;
+  nolayer?: string[] | undefined;
+  parts?: boolean | undefined;
+  sort?: string | undefined;
+  offset?: number | undefined;
+  limit?: number | undefined;
+  /** `Typ.feld:Wert|Wert` oder `Typ.feld:1..3`. */
+  f?: string[] | undefined;
+}
+
+/**
+ * Eine Klasse samt allem, was ihre Ansicht braucht (W6, `GET /api/classes/:id`):
+ * ihre Unterklassen, die Stufentabellen und die Merkmale, die eine davon
+ * gewährt oder einbettet — ganz, gesiebt.
+ */
+export interface KlassenBuendel {
+  class: Entity;
+  subclasses: Entity[];
+  tables: Entity[];
+  features: Entity[];
+}
+
 export interface Me {
   user: {
     id: string;
     name: string;
     isAdmin: boolean;
-    actorId?: string;
+    actorIds?: string[];
     /** Kampagnen-Id → Rolle darin. Steht am Konto und in keinem Artikel. */
-    roles?: Record<string, 'gm' | 'co-gm' | 'player' | 'spectator'>;
+    roles?: Record<string, TableRole>;
   } | null;
   /**
    * Welche Artikel dieser Betrachter schreiben darf. **`null` heisst alles**
@@ -47,7 +199,87 @@ export interface Me {
   writable: string[] | null;
   /** Steht nur auf einem frischen Server: wie man das erste Konto anlegt. */
   setup: string | null;
+  /** Über welches API-Token gefragt wurde, sonst `null`. */
+  token?: { name: string; scope: 'read' | 'write'; expiresAt: string } | null;
+  /**
+   * Ob dieser Betrachter das Register ändern darf (die Verwaltung und die
+   * Leitung der laufenden Kampagne). Vom Server, der es beim Schreiben
+   * ohnehin prüft.
+   */
+  registry?: boolean;
+  /** Ob es überhaupt eine offene Einladung gibt — nur dann lohnt „Sign up". */
+  invites?: boolean;
 }
+
+/* ---- Verwaltung (W3). Was ein Konto an einer Kampagne darf, sagt der
+   Server (`may`): `manage` ändert, `see` liest nur (co-gm). ---- */
+export type Recht = 'manage' | 'see' | null;
+export interface Figur {
+  id: string;
+  /** `null`: die Figur gibt es als Artikel nicht mehr. */
+  name: string | null;
+}
+export interface KampagneKurz {
+  id: string;
+  name: string;
+  exists: boolean;
+  role: TableRole | null;
+  may: Recht;
+}
+export interface Kampagnen {
+  campaigns: KampagneKurz[];
+  canCreate: boolean;
+  isAdmin: boolean;
+}
+export interface Mitglied {
+  id: string;
+  name: string;
+  role: TableRole;
+  isAdmin: boolean;
+  disabled: boolean;
+  self: boolean;
+  actors: Figur[];
+}
+export interface Mitglieder {
+  campaign: { id: string; name: string; exists: boolean };
+  may: Recht;
+  members: Mitglied[];
+  /** Die Figuren, die diese Kampagne vergeben darf. */
+  characters: { id: string; name: string }[];
+}
+export interface Einladung {
+  label: string | null;
+  isAdmin: boolean;
+  actorId: string | null;
+  actorName: string | null;
+  campaignId: string | null;
+  role: TableRole | null;
+  usesLeft: number | null;
+  expiresAt: string | null;
+  createdAt: string | null;
+  may: Recht;
+  handle: string;
+}
+export interface NeueEinladung {
+  campaignId?: string;
+  role?: TableRole;
+  actorId?: string;
+  label?: string;
+  uses?: number;
+  days?: number;
+}
+export interface Konto {
+  id: string;
+  name: string;
+  isAdmin: boolean;
+  disabled: boolean;
+  self: boolean;
+  actors: Figur[];
+  roles: { campaign: string; name: string; role: TableRole }[];
+}
+
+/** Die Teile des Registers, die `PUT /api/registry/:part` nimmt. */
+export type RegisterTeil = 'interfaces' | 'relations' | 'views' | 'vars' | 'enums' | 'settings';
 
 @Injectable({ providedIn: 'root' })
 export class Api {
@@ -59,13 +291,14 @@ export class Api {
     const res = await fetch(this.base + path, {
       ...init,
       credentials: 'include',
-      headers: { 'content-type': 'application/json', ...(init.headers ?? {}) },
+      /* Der Typ nur mit Körper: Fastify lehnt ein leeres JSON ab (DELETE). */
+      headers: { ...(init.body ? { 'content-type': 'application/json' } : {}), ...(init.headers ?? {}) },
     });
     const text = await res.text();
     const body: unknown = text ? JSON.parse(text) : null;
     if (!res.ok) {
       const b = body as { error?: string; issues?: unknown } | null;
-      throw new ApiError(res.status, b?.error ?? `Request failed (${res.status})`, b?.issues);
+      throw new ApiError(res.status, b?.error ?? `Request failed (${res.status})`, b?.issues, body);
     }
     return body as T;
   }
@@ -82,20 +315,148 @@ export class Api {
   login(name: string, password: string): Promise<{ user: Me['user'] }> {
     return this.call('/api/login', { method: 'POST', body: JSON.stringify({ name, password }) });
   }
+  register(name: string, password: string, invite: string): Promise<{ user: Me['user'] }> {
+    return this.call('/api/register', {
+      method: 'POST',
+      body: JSON.stringify({ name, password, invite }),
+    });
+  }
   logout(): Promise<{ ok: true }> {
     return this.call('/api/logout', { method: 'POST' });
   }
   registry(): Promise<Registry> {
     return this.call<Registry>('/api/registry');
   }
-  /** Die Kurzfassung des Bestands (`summaryOf`), nicht die Artikel selbst. */
-  entities(): Promise<Entity[]> {
-    return this.call<Entity[]>('/api/entities?as=summary');
+  /** Einen Teil des Registers ganz schreiben; der Server prüft ihn im Zusammenhang. */
+  putRegistry<T extends RegisterTeil>(part: T, value: Registry[T]): Promise<{ ok: true; part: T }> {
+    return this.call(`/api/registry/${part}`, { method: 'PUT', body: JSON.stringify(value ?? {}) });
+  }
+  /** Was der Bestand an jeder Zeile trägt — nur für wer das Register ändert. */
+  registryUsage(): Promise<RegistryUsage> {
+    return this.call<RegistryUsage>('/api/registry/usage');
+  }
+  /** Ein Blatt der Liste — Kompendium, Bereiche und jede Auswahl (W7). */
+  list(frage: ListenFrage, init: RequestInit = {}): Promise<Liste> {
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries(frage)) {
+      if (v === undefined || v === '' || v === false || (Array.isArray(v) && !v.length)) continue;
+      if (k === 'f') for (const f of v as string[]) p.append('f', f);
+      else p.set(k, Array.isArray(v) ? v.join(',') : v === true ? '1' : String(v));
+    }
+    return this.call<Liste>(`/api/list?${p.toString()}`, init);
+  }
+  /** `[[Name]]` → `[[nummer|Name]]`, wo genau ein Artikel so heisst (M11). */
+  links(texts: string[]): Promise<{ texts: string[]; open: string[] }> {
+    return this.call('/api/links', { method: 'POST', body: JSON.stringify({ texts }) });
+  }
+  /** Einen Artikel anlegen; Id, Nummer und Vorgaben setzt der Server. */
+  createEntity(
+    type: string,
+    name: string,
+    fields: Record<string, unknown> = {},
+    relations: { type: string; to: string; props?: Record<string, unknown> }[] = [],
+  ): Promise<Entity> {
+    return this.call<Entity>('/api/entities', {
+      method: 'POST',
+      body: JSON.stringify({ type, name, fields, relations }),
+    });
+  }
+  /** Diese Artikel ganz, gesiebt — die Teile eines Statblocks (W2). */
+  entitiesById(ids: readonly string[]): Promise<Entity[]> {
+    return this.call<Entity[]>(`/api/entities?ids=${ids.map(encodeURIComponent).join(',')}`);
   }
   backlinks(id: string): Promise<Rueckbezug[]> {
     return this.call<Rueckbezug[]>(`/api/entities/${encodeURIComponent(id)}/backlinks`);
   }
-  entity(id: string): Promise<Entity> {
-    return this.call<Entity>(`/api/entities/${encodeURIComponent(id)}`);
+  klasse(id: string): Promise<KlassenBuendel> {
+    return this.call<KlassenBuendel>(`/api/classes/${encodeURIComponent(id)}`);
+  }
+  /** Der ganze Artikel, gesiebt, mit den Namen, die er braucht (`refs`). */
+  entity(id: string): Promise<Entity & { refs?: Bezuege }> {
+    return this.call<Entity & { refs?: Bezuege }>(`/api/entities/${encodeURIComponent(id)}`);
+  }
+
+  /** Prüfungen; `limit` 0 heisst nur die Zahlen, `'all'` jeden Treffer. */
+  checks(check?: string, limit: number | 'all' = 0): Promise<ChecksAntwort> {
+    const q = new URLSearchParams({ limit: String(limit) });
+    if (check) q.set('check', check);
+    return this.call<ChecksAntwort>(`/api/checks?${q.toString()}`);
+  }
+  bulk(auftrag: unknown): Promise<BulkAntwort> {
+    return this.call<BulkAntwort>('/api/bulk', { method: 'POST', body: JSON.stringify(auftrag) });
+  }
+  bulks(): Promise<BulkLauf[]> {
+    return this.call<BulkLauf[]>('/api/bulk?limit=20');
+  }
+  undo(id: string, force = false): Promise<UndoAntwort> {
+    return this.call<UndoAntwort>(`/api/bulk/${encodeURIComponent(id)}/undo`, {
+      method: 'POST',
+      body: JSON.stringify({ force }),
+    });
+  }
+  tokens(): Promise<TokenZeile[]> {
+    return this.call<TokenZeile[]>('/api/tokens');
+  }
+  createToken(name: string, scope: 'read' | 'write', days: number): Promise<TokenZeile> {
+    return this.call<TokenZeile>('/api/tokens', { method: 'POST', body: JSON.stringify({ name, scope, days }) });
+  }
+  dropToken(id: string): Promise<{ ok: true }> {
+    return this.call(`/api/tokens/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
+
+  // ------------------------------------------------------- Verwaltung
+  campaigns(): Promise<Kampagnen> {
+    return this.call<Kampagnen>('/api/campaigns');
+  }
+  createCampaign(name: string, lead: boolean): Promise<{ id: string; name: string }> {
+    return this.call('/api/campaigns', { method: 'POST', body: JSON.stringify({ name, lead }) });
+  }
+  members(campaign: string): Promise<Mitglieder> {
+    return this.call<Mitglieder>(`/api/campaigns/${encodeURIComponent(campaign)}/members`);
+  }
+  addMember(
+    campaign: string,
+    wer: { name?: string; user?: string },
+    role: TableRole,
+  ): Promise<unknown> {
+    return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ ...wer, role }),
+    });
+  }
+  setRole(campaign: string, user: string, role: TableRole): Promise<unknown> {
+    return this.call(
+      `/api/campaigns/${encodeURIComponent(campaign)}/members/${encodeURIComponent(user)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ role }),
+      },
+    );
+  }
+  removeMember(campaign: string, user: string): Promise<unknown> {
+    return this.call(
+      `/api/campaigns/${encodeURIComponent(campaign)}/members/${encodeURIComponent(user)}`,
+      {
+        method: 'DELETE',
+      },
+    );
+  }
+  setActors(campaign: string, user: string, actorIds: string[]): Promise<unknown> {
+    return this.call(
+      `/api/campaigns/${encodeURIComponent(campaign)}/members/${encodeURIComponent(user)}/actors`,
+      { method: 'PUT', body: JSON.stringify({ actorIds }) },
+    );
+  }
+  users(): Promise<Konto[]> {
+    return this.call<Konto[]>('/api/users');
+  }
+  invites(): Promise<Einladung[]> {
+    return this.call<Einladung[]>('/api/invites');
+  }
+  createInvite(neu: NeueEinladung): Promise<{ code: string; handle: string }> {
+    return this.call('/api/invites', { method: 'POST', body: JSON.stringify(neu) });
+  }
+  dropInvite(handle: string): Promise<unknown> {
+    return this.call(`/api/invites/${encodeURIComponent(handle)}`, { method: 'DELETE' });
   }
 }

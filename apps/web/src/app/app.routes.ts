@@ -32,18 +32,77 @@ export const routes: Routes = [
     title: 'World · Atlas Mentis',
   },
   {
-    path: 'history',
+    path: 'story',
     canActivate: [wache],
     loadComponent: kompendium,
-    data: { bereich: 'history' },
-    title: 'History · Atlas Mentis',
+    data: { bereich: 'story' },
+    title: 'Story · Atlas Mentis',
   },
+  /* Hiess bis 13.10. so; ein gespeicherter Link soll nicht ins Leere gehen. */
+  { path: 'history', redirectTo: 'story' },
   {
     path: 'rules',
     canActivate: [wache],
     loadComponent: kompendium,
     data: { bereich: 'rules' },
     title: 'Rules · Atlas Mentis',
+  },
+  /* Boards (REQ-157, 205): die Liste je Geschichtsartikel und ein Board
+     als Leinwand. Sie sind kein Bereich — ein Board ist ein Schirm, keine
+     Liste von Artikeln (CLAUDE.md, „Play ist ein Schirm"). */
+  {
+    path: 'boards',
+    canActivate: [wache],
+    loadComponent: () => import('./boards/boards').then((m) => m.Boards),
+    title: 'Boards · Atlas Mentis',
+  },
+  {
+    path: 'boards/:id',
+    canActivate: [wache],
+    loadComponent: () => import('./boards/board').then((m) => m.Board),
+    title: 'Board · Atlas Mentis',
+  },
+  /* Werkbank (W9): Prüfungen und Massenänderungen. Die Wache lässt jeden
+     Angemeldeten hinein; was er sieht, entscheidet der Server — die Seite
+     sagt nur, wem sie etwas zeigt. */
+  {
+    path: 'werkbank',
+    canActivate: [wache],
+    loadComponent: () => import('./werkbank/werkbank').then((m) => m.Werkbank),
+    title: 'Workbench · Atlas Mentis',
+  },
+  /* Das eigene Konto mit seinen API-Tokens. */
+  {
+    path: 'account',
+    canActivate: [wache],
+    loadComponent: () => import('./konto/konto').then((m) => m.Konto),
+    title: 'Account · Atlas Mentis',
+  },
+  {
+    path: 'classes',
+    canActivate: [wache],
+    loadComponent: () => import('./klassen/klassen').then((m) => m.Klassen),
+    title: 'Classes · Atlas Mentis',
+  },
+  {
+    path: 'classes/:id',
+    canActivate: [wache],
+    loadComponent: () => import('./klassen/klasse').then((m) => m.Klasse),
+    title: 'Class · Atlas Mentis',
+  },
+  {
+    path: 'registry',
+    canActivate: [wache],
+    loadComponent: () => import('./register/register').then((m) => m.Register),
+    title: 'Registry · Atlas Mentis',
+  },
+  {
+    /* Verwaltung (W3): Mitglieder, Rollen, Einladungen. Wer sie sieht,
+       sagt der Server; die Wache fragt nur, ob jemand angemeldet ist. */
+    path: 'campaign',
+    canActivate: [wache],
+    loadComponent: () => import('./verwaltung/verwaltung').then((m) => m.Verwaltung),
+    title: 'Campaign · Atlas Mentis',
   },
   {
     path: 'artikel/:id',

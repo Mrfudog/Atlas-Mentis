@@ -243,7 +243,7 @@ export interface InterfaceDef {
    * Register und Kompendium sind **keine** Bereiche: das eine zeigt die
    * Zeilen, das andere alle Artikel ohne Rücksicht darauf, wo sie hingehören.
    */
-  area?: 'world' | 'history' | 'rules' | 'play';
+  area?: 'world' | 'story' | 'rules' | 'play';
   /**
    * **Die Anordnung wohnt am Typ**, nicht an der Ansicht: eine Kreatur
    * ordnet ihre `full` anders als ein Rezept, und das steht bei der
@@ -387,6 +387,16 @@ export type LayoutElementKind =
    * und in keinem Artikel; gezeichnet werden sie dort, wo man sie pflegt.
    */
   | 'members'
+  /**
+   * **Wie im Buch** (W2): ein Statblock, ein Zauber, ein Gegenstand, wie
+   * sie im Regelbuch stehen — Kopfzeilen, die sechs Werte in einer Reihe,
+   * die Abschnitte aus `composedOf`. Jedes zeichnet alle Felder seiner
+   * Karten (`BOOK_CARDS` in `book.ts`); die Feldtabelle daneben nimmt sie
+   * mit `except` heraus.
+   */
+  | 'statblock'
+  | 'spell'
+  | 'item'
   | 'tabs';
 
 /**

@@ -98,6 +98,30 @@ describe('every registry part has a table, and is written and read', () => {
   });
 });
 
+/* Dasselbe für die Kantenarten: `asField` hatte keine Spalte, `props` wurde
+   geschrieben und nie gelesen (Migration 022). Erst das Register (W5), das
+   Kantenarten speichert, hätte beides still gelöscht. */
+describe('an edge kind survives a round trip through Postgres', () => {
+  const benutzt = new Set<string>();
+  for (const def of Object.values(seedRegistry.relations)) {
+    for (const [k, v] of Object.entries(def)) {
+      if (v === undefined || (Array.isArray(v) && v.length === 0)) continue;
+      benutzt.add(k);
+    }
+  }
+  /* So heissen sie in der Tabelle, wo es nicht einfach die Schreibweise ist. */
+  const name: Record<string, string> = { from: 'from_ifaces', to: 'to_ifaces' };
+  const sp = (k: string) => name[k] ?? spalte(k);
+
+  it('writes, keeps and reads every field the seed edges carry', () => {
+    expect(benutzt.has('asField')).toBe(true);
+    const insert = /insert into relation_def\(([^)]*)\)/.exec(pgQuelle)?.[1] ?? '';
+    expect([...benutzt].filter((k) => !insert.split(',').includes(sp(k)))).toEqual([]);
+    expect([...benutzt].filter((k) => !new RegExp(`\\b${sp(k)}\\b`).test(ddl))).toEqual([]);
+    expect([...benutzt].filter((k) => !new RegExp(`r\\['${sp(k)}'\\]`).test(pgQuelle))).toEqual([]);
+  });
+});
+
 describe('Aufzählungen und Einstellungen haben eine Tabelle (Migration 019)', () => {
   it('liest und schreibt enum_def und setting_def', () => {
     expect(ddl).toMatch(/create table if not exists enum_def/);
@@ -115,5 +139,21 @@ describe('field order survives Postgres', () => {
   it('stores interface_def.schema as json, not jsonb', () => {
     const angaben = [...ddl.matchAll(/schema\s+(?:type\s+)?(jsonb|json)\b/gi)].map((m) => m[1]);
     expect(angaben.at(-1)?.toLowerCase()).toBe('json');
+  });
+});
+
+/* Der Zwischenspeicher des Bestands (repo.pg.ts) erkennt fremde Schreiber
+   am Stempel aus der Datenbank; ein Schreiben am Server leert ihn sofort.
+   Ohne laufendes Postgres hier am Quelltext geprüft — der Durchstich in CI
+   liest und schreibt durch ihn. */
+describe('entity cache', () => {
+  it('asks the database whether anything changed, and drops itself on every write', () => {
+    expect(pgQuelle).toMatch(/max\(updated_at\)/);
+    const schreiber = ['async putEntity', 'async deleteEntity'];
+    for (const s of schreiber) {
+      const ab = pgQuelle.indexOf(s);
+      expect(ab).toBeGreaterThan(-1);
+      expect(pgQuelle.slice(ab, ab + 200)).toContain('this.bestand = null');
+    }
   });
 });

@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Inventory · Rook</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&amp;family=Alegreya+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#8C1C13}a:hover{color:#5E120C}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #EFE4CC; color: #2B1D12; font-family: 'Alegreya Sans', system-ui, sans-serif; font-size: 15px; display: flex; flex-direction: column">
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding: 10px 24px; background: #F8F1E1; border-bottom: 3px solid #8C1C13">
+    <span style="font-family: 'Alegreya SC', serif; font-size: 22px; font-weight: 700; color: #8C1C13">Atlas Mentis</span>
+    <span style="color: #6A5642">Rook „Nebelfinger“ › Inventory</span>
+    <div role="group" aria-label="Figure" style="margin-left: auto; display: flex; align-items: center; gap: 4px">
+      <span style="font-size: 13px; color: #6A5642">Figure</span>
+      <sc-for list="{{figures}}" as="f" hint-placeholder-count="3">
+        <button type="button" onClick="{{f.pick}}" aria-pressed="{{f.pressed}}" style="min-height: 32px; padding: 0 10px; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer; {{f.style}}">{{f.label}}</button>
+      </sc-for>
+    </div>
+  </header>
+
+  <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 16px; padding: 14px 24px; align-items: flex-start">
+    <section aria-label="On the body" style="flex: 0 1 500px; background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 20px; color: #8C1C13">On the body</h2>
+      <div style="position: relative; width: 476px; height: 430px">
+        <svg viewBox="0 0 120 250" width="150" height="312" role="img" aria-label="{{figureLabel}}" style="position: absolute; left: 163px; top: 46px">
+          <circle cx="60" cy="22" r="15" fill="#F3E6CC" stroke="#2B1D12" stroke-width="2"></circle>
+          <path d="{{figurePath}}" fill="#F3E6CC" stroke="#2B1D12" stroke-width="2" stroke-linejoin="round"></path>
+        </svg>
+        <sc-for list="{{slots}}" as="s" hint-placeholder-count="9">
+          <div style="position: absolute; left: {{s.x}}px; top: {{s.y}}px; width: {{s.w}}px; display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 12px; color: #6A5642">{{s.label}}</span>
+            <div style="min-height: 46px; padding: 4px 6px; box-sizing: border-box; border-radius: 4px; font-size: 13px; font-weight: 700; display: flex; align-items: center; {{s.style}}">{{s.item}}</div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 12px; color: #6A5642">Accessories</span>
+        <sc-for list="{{accessories}}" as="a" hint-placeholder-count="3">
+          <div style="display: grid; grid-template-columns: 110px repeat(4, 64px); gap: 4px; align-items: center">
+            <span style="font-size: 13px">{{a.label}}</span>
+            <sc-for list="{{a.cells}}" as="ac" hint-placeholder-count="4">
+              <div style="height: 34px; padding: 2px 4px; box-sizing: border-box; border: 1px solid #CDBB98; border-radius: 4px; background: #FDF1DC; font-size: 11px; font-weight: 700; overflow: hidden">{{ac.text}}</div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+      <span style="font-size: 12px; color: #6A5642">Slots and accessories follow your sheet. Hands hold anything (*); what sits in a hand or a belt holster shows up under Actions.</span>
+    </section>
+
+    <section aria-label="Containers" style="flex: 1 1 560px; min-width: 0; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 14px">
+      <div style="flex: 1 1 100%; background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+        <strong style="margin-right: 6px">Zones</strong>
+        <sc-for list="{{palette}}" as="p" hint-placeholder-count="6">
+          <button type="button" onClick="{{p.pick}}" aria-pressed="{{p.pressed}}" style="min-height: 32px; padding: 0 10px; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer; {{p.style}}">{{p.label}}</button>
+        </sc-for>
+        <button type="button" onClick="{{resetZones}}" style="min-height: 32px; padding: 0 10px; border: 1px solid #CDBB98; border-radius: 6px; background: transparent; font: inherit; font-size: 13px; cursor: pointer">Reset to sheet</button>
+        <span style="width: 100%; font-size: 13px; color: #6A5642">{{paintNote}}</span>
+      </div>
+
+      <sc-for list="{{containers}}" as="ct" hint-placeholder-count="3">
+        <div style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px">
+          <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px">
+            <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 20px; color: #8C1C13">{{ct.title}}</h2>
+            <span style="font-size: 13px; color: #6A5642">{{ct.note}}</span>
+          </div>
+          <sc-if value="{{ct.hasCapacity}}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px">
+              <span>Size</span>
+              <sc-for list="{{sizes}}" as="sz" hint-placeholder-count="4">
+                <button type="button" onClick="{{sz.pick}}" aria-pressed="{{sz.pressed}}" style="min-height: 30px; padding: 0 8px; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer; {{sz.style}}">{{sz.label}}</button>
+              </sc-for>
+              <span style="margin-left: 8px">Extra = mod(STR) from the statblock · preview</span>
+              <sc-for list="{{bonuses}}" as="bn" hint-placeholder-count="6">
+                <button type="button" onClick="{{bn.pick}}" aria-pressed="{{bn.pressed}}" style="min-height: 30px; min-width: 32px; padding: 0 6px; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer; {{bn.style}}">{{bn.label}}</button>
+              </sc-for>
+            </div>
+          </sc-if>
+          <div style="position: relative; width: {{ct.w}}px; height: {{ct.h}}px">
+            <sc-for list="{{ct.cells}}" as="c" hint-placeholder-count="20">
+              <button type="button" onClick="{{c.pick}}" aria-label="{{c.label}}" style="position: absolute; left: {{c.x}}px; top: {{c.y}}px; width: 38px; height: 38px; padding: 0; box-sizing: border-box; font: inherit; font-size: 10px; display: flex; align-items: flex-end; justify-content: flex-end; {{c.style}}">{{c.mark}}</button>
+            </sc-for>
+            <sc-for list="{{ct.items}}" as="it" hint-placeholder-count="4">
+              <div title="{{it.title}}" style="position: absolute; left: {{it.x}}px; top: {{it.y}}px; width: {{it.w}}px; height: {{it.h}}px; padding: 2px 4px; box-sizing: border-box; border: 2px solid #6A5642; background: rgba(200, 160, 106, 0.92); font-size: 11px; font-weight: 700; overflow: hidden; pointer-events: none">{{it.name}}</div>
+            </sc-for>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px">
+            <sc-for list="{{ct.draws}}" as="d" hint-placeholder-count="4">
+              <span>{{d}}</span>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { figure: 'neutral', size: 'Small', bonus: 0, paint: null, zones: null };
+  }
+
+  // Basiszonen aus dem Blatt: Spalten von links nach rechts, die Zeile `DrawTime` liefert die Namen.
+  sheetZones() {
+    const z = { carried: {}, backpack: {}, bag: {} };
+    const band = (bands, col) => bands.find(([a, b]) => col >= a && col <= b)[2];
+    const carried = [[0, 1, 'bonus action'], [2, 4, 'action'], [5, 8, 'turn'], [9, 10, 'round']];
+    const pack = [[0, 1, 'action'], [2, 3, 'turn'], [4, 5, 'round']];
+    for (let c = 0; c < 11; c++) for (let r = 0; r < 6; r++) z.carried[c + ',' + r] = band(carried, c);
+    for (let c = 0; c < 6; c++) for (let r = 0; r < 5; r++) z.backpack[c + ',' + r] = band(pack, c);
+    return z;
+  }
+
+  renderVals() {
+    const st = this.state, C = 40;
+    const zones = st.zones || this.sheetZones();
+    const order = ['free action', 'bonus action', 'action', 'turn', 'round'];
+    const short = { 'free action': 'F', 'bonus action': '+A', action: 'A', turn: 'T', round: 'R' };
+    const tint = { 'free action': '#E4ECD8', 'bonus action': '#CFE0C6', action: '#F3DDB4', turn: '#EBC08E', round: '#D98E74' };
+    const on = (b) => b ? 'border: 1px solid #8C1C13; background: #8C1C13; color: #FBF6EC; font-weight: 700' : 'border: 1px solid #CDBB98; background: #FDF1DC; color: #2B1D12';
+
+    const base = { Tiny: 3, Small: 4, Medium: 5, Large: 6 }[st.size];
+    const shapes = {
+      // Das Tragraster: links das Quadrat der Grösse, rechts das Zusatzquadrat +1 … +5.
+      carried: { cols: 11, rows: 6, has: (c, r) => (c < 6 ? c < base && r < base : c - 6 < st.bonus && r < st.bonus), frame: (c, r) => c < 6 || r < 5 },
+      backpack: { cols: 6, rows: 5, has: (c, r) => ['.###..', '######', '######', '######', '.###..'][r][c] === '#', frame: () => true },
+      bag: { cols: 4, rows: 8, has: () => true, frame: () => true }
+    };
+    const items = {
+      carried: [
+        ['Shortbow', 0, 0, 3, 1], ['Arrows ×20', 3, 0, 1, 2], ['Rations ×8', 0, 1, 2, 2], ['Rope 50 ft', 2, 1, 1, 2],
+        ['Crowbar', 3, 2, 1, 2], ['Healing potion', 0, 3, 1, 1], ['Oil ×2', 1, 3, 1, 1], ['Bag of Holding', 2, 3, 2, 1]
+      ],
+      backpack: [['Candles ×5', 1, 0, 2, 1], ['Pitons ×10', 0, 1, 2, 2], ['Ball bearings', 2, 1, 1, 1]],
+      bag: [['[item]', 0, 0, 2, 2]]
+    };
+    const titles = {
+      carried: ['Carried', 'Size square + extra square, as on the sheet'],
+      backpack: ['Backpack', 'on the shoulder slot (bonus action) → +1 step'],
+      bag: ['Bag of Holding', 'lies in Carried at action → +1 step']
+    };
+
+    // Jeder Behälter gibt eine Stufe dazu, ausgehend davon, wo er selbst liegt (REQ-216).
+    const step = (name) => order.indexOf(name);
+    const placement = {};
+    const containers = Object.keys(shapes).map((id) => {
+      const sh = shapes[id], zmap = zones[id] || {};
+      const cells = [];
+      for (let r = 0; r < sh.rows; r++) for (let c = 0; c < sh.cols; c++) {
+        if (!sh.frame(c, r)) continue;
+        const has = sh.has(c, r), z = zmap[c + ',' + r];
+        const style = has
+          ? 'border: 1px solid #B9A88A; background: ' + (z ? tint[z] : '#FDF1DC') + '; cursor: ' + (st.paint ? 'crosshair' : 'default')
+          : 'border: 1px dotted #CDBB98; background: repeating-linear-gradient(45deg, #E6D9BE 0 3px, #EFE4CC 3px 7px); cursor: default';
+        cells.push({
+          x: c * C, y: r * C, label: (has ? '' : 'Locked · ') + (z || 'no zone'), mark: has && z ? short[z] : '', style,
+          pick: () => {
+            if (!st.paint || !has) return;
+            const next = JSON.parse(JSON.stringify(zones));
+            next[id] = next[id] || {};
+            if (st.paint === 'none') delete next[id][c + ',' + r]; else next[id][c + ',' + r] = st.paint;
+            this.setState({ zones: next });
+          }
+        });
+      }
+      // Ein Stück kostet die langsamste Zone, die es bedeckt.
+      const placed = items[id].map(([name, c, r, w, h]) => {
+        let worst = -1;
+        for (let x = c; x < c + w; x++) for (let y = r; y < r + h; y++) worst = Math.max(worst, order.indexOf(zmap[x + ',' + y]));
+        const outer = placement[id];
+        const via = outer ? Math.min(order.length - 1, step(outer) + 1) : -1;
+        const total = Math.max(worst, via);
+        const why = outer ? ' (zone ' + (worst < 0 ? 'none' : order[worst]) + ', container ' + order[via] + ')' : '';
+        return { name, x: c * C + 1, y: r * C + 1, w: w * C - 2, h: h * C - 2, draw: total < 0 ? 'no zone' : order[total], why, title: name };
+      });
+      if (id === 'carried') {
+        placement.backpack = 'bonus action';
+        const bag = placed.find((p) => p.name === 'Bag of Holding');
+        placement.bag = bag ? bag.draw : 'action';
+      }
+      const width = sh.cols * C, height = sh.rows * C;
+      const note = id === 'carried' ? st.size + ' ' + base + '×' + base + (st.bonus ? ' + extra ' + st.bonus + '×' + st.bonus : '') : titles[id][1];
+      return {
+        title: titles[id][0], note, hasCapacity: id === 'carried', w: width, h: height, cells,
+        items: placed.map((p) => ({ ...p, title: p.name + ' · ' + p.draw })),
+        draws: placed.map((p) => p.name + ': ' + p.draw + p.why)
+      };
+    });
+
+    const figures = [['male', 'Male'], ['female', 'Female'], ['neutral', 'Neutral']].map(([k, label]) => ({
+      label, pressed: String(st.figure === k), style: on(st.figure === k), pick: () => this.setState({ figure: k })
+    }));
+    const paths = {
+      male: 'M40 40 L80 40 L96 52 L104 112 L94 114 L86 66 L82 120 L84 236 L66 236 L60 140 L54 236 L36 236 L38 120 L34 66 L26 114 L16 112 L24 52 Z',
+      female: 'M46 40 L74 40 L88 52 L96 110 L87 112 L80 68 L76 96 L88 138 L80 236 L64 236 L60 150 L56 236 L40 236 L32 138 L44 96 L40 68 L33 112 L24 110 L32 52 Z',
+      neutral: 'M44 40 L76 40 L90 52 L98 112 L89 113 L82 68 L80 124 L80 236 L64 236 L60 140 L56 236 L40 236 L40 124 L38 68 L31 113 L22 112 L30 52 Z'
+    };
+    const slot = (label, x, y, w, item) => ({
+      label, x, y, w, item: item || 'empty',
+      style: item ? 'border: 1px solid #C8822E; background: #FDF1DC' : 'border: 1px dashed #CDBB98; color: #6A5642; font-weight: 400'
+    });
+    const slots = [
+      slot('Head', 196, 0, 86, ''), slot('Shoulder', 40, 70, 110, ''), slot('Torso', 326, 70, 110, 'Leather Armor'),
+      slot('Right hand *', 40, 150, 110, 'Rapier'), slot('Left hand *', 326, 150, 110, 'free for somatic components'),
+      slot('Legs', 40, 230, 110, ''), slot('Boots', 326, 230, 110, ''),
+      slot('Belt · left holster', 96, 360, 130, 'Dagger, +1'), slot('Belt · right holster', 250, 360, 130, 'Dagger ×2')
+    ];
+    const accessories = [
+      ['Rings · right hand', ['Ring Rijkmon', '', '', '']], ['Rings · left hand', ['', '', '', '']], ['Necklace', ['', '', '', '']]
+    ].map(([label, cells]) => ({ label, cells: cells.map((text) => ({ text })) }));
+
+    const palette = [['none', 'Erase'], ...order.map((z) => [z, short[z] + ' · ' + z])].map(([k, label]) => ({
+      label, pressed: String(st.paint === k),
+      style: (st.paint === k ? 'border: 2px solid #8C1C13; font-weight: 700; ' : 'border: 1px solid #CDBB98; ') + 'background: ' + (tint[k] || '#FDF1DC') + '; color: #2B1D12',
+      pick: () => this.setState({ paint: st.paint === k ? null : k })
+    }));
+
+    return {
+      figures, figurePath: paths[st.figure], figureLabel: st.figure + ' figure with equipment slots',
+      slots, accessories, palette, containers,
+      sizes: ['Tiny', 'Small', 'Medium', 'Large'].map((s) => ({ label: s, pressed: String(st.size === s), style: on(st.size === s), pick: () => this.setState({ size: s }) })),
+      bonuses: [0, 1, 2, 3, 4, 5].map((b) => ({ label: b ? '+' + b : '0', pressed: String(st.bonus === b), style: on(st.bonus === b), pick: () => this.setState({ bonus: b }) })),
+      paintNote: st.paint ? 'Painting „' + st.paint + '“: click squares in any container. Click the button again to stop.' : 'Zones say what it costs to draw from a square; a piece costs the slowest zone it covers. Pick a zone to paint, or keep the sheet’s columns.',
+      resetZones: () => this.setState({ zones: null, paint: null })
+    };
+  }
+}
+</script>
+</body>
+</html>

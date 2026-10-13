@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Encounter builder</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&amp;family=Alegreya+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#8C1C13}a:hover{color:#5E120C}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #EFE4CC; color: #2B1D12; font-family: 'Alegreya Sans', system-ui, sans-serif; font-size: 15px; display: flex; flex-direction: column">
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 10px 24px; background: #F8F1E1; border-bottom: 3px solid #8C1C13">
+    <span style="font-family: 'Alegreya SC', serif; font-size: 22px; font-weight: 700; color: #8C1C13">Atlas Mentis</span>
+    <span style="color: #6A5642">Prep › Der Lampenkeller › Encounter</span>
+    <span style="margin-left: auto; color: #6A5642">Party: Die Nebelwacht · 4 characters · level 3</span>
+  </header>
+
+  <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 16px; padding: 16px 24px; align-items: flex-start">
+    <section aria-label="Add creatures" style="flex: 1 1 300px; max-width: 360px; background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 20px; color: #8C1C13">From the compendium</h2>
+      <input type="search" value="goblin" aria-label="Search creatures" style="min-height: 40px; padding: 0 10px; border: 1px solid #B9876A; border-radius: 6px; background: #FDF1DC; font: inherit">
+      <div style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px"><span style="padding: 2px 10px; border-radius: 12px; background: #8C1C13; color: #FBF6EC; font-weight: 700">CR ≤ 3</span><span style="padding: 2px 10px; border-radius: 12px; background: #EADCC0">Sewers</span><span style="padding: 2px 10px; border-radius: 12px; background: #EADCC0">Campaign only</span></div>
+      <div style="display: flex; justify-content: space-between; align-items: center; min-height: 40px; border-bottom: 1px solid #EFE4CC"><span><strong>Goblin</strong> <span style="font-size: 12px; color: #6A5642">CR 1/4 · 50 XP</span></span><button type="button" style="min-width: 40px; min-height: 36px; border: 1px solid #C8822E; border-radius: 6px; background: #F6E2BF; font: inherit; font-weight: 700; cursor: pointer">+</button></div>
+      <div style="display: flex; justify-content: space-between; align-items: center; min-height: 40px; border-bottom: 1px solid #EFE4CC"><span><strong>Goblin Boss</strong> <span style="font-size: 12px; color: #6A5642">CR 1 · 200 XP</span></span><button type="button" style="min-width: 40px; min-height: 36px; border: 1px solid #C8822E; border-radius: 6px; background: #F6E2BF; font: inherit; font-weight: 700; cursor: pointer">+</button></div>
+      <div style="display: flex; justify-content: space-between; align-items: center; min-height: 40px; border-bottom: 1px solid #EFE4CC"><span><strong>Hobgoblin</strong> <span style="font-size: 12px; color: #6A5642">CR 1/2 · 100 XP</span></span><button type="button" style="min-width: 40px; min-height: 36px; border: 1px solid #C8822E; border-radius: 6px; background: #F6E2BF; font: inherit; font-weight: 700; cursor: pointer">+</button></div>
+      <span style="font-size: 13px; color: #6A5642">Searches the same stock as the compendium, 5e.tools statblocks included. Drag onto the right to add.</span>
+    </section>
+
+    <section aria-label="Encounter" style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+      <div style="background: #FDF1DC; border-top: 6px solid #C8822E; border-bottom: 6px solid #C8822E; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px">
+          <h2 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 28px; color: #7A200D">Ambush at the cistern stairs</h2>
+          <span style="color: #6A5642">Encounter · status prepared · scene: Der Lampenkeller</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr auto auto auto; gap: 6px 16px; align-items: center">
+          <strong>Kanalschleim</strong><span style="color: #6A5642">CR 2</span><span>× 1</span><span style="text-align: right">450 XP</span>
+          <strong>Goblin</strong><span style="color: #6A5642">CR 1/4</span><span>× 3</span><span style="text-align: right">150 XP</span>
+          <span style="grid-column: 1 / 4; border-top: 1px solid #CDBB98; padding-top: 6px">Base XP</span><span style="text-align: right; border-top: 1px solid #CDBB98; padding-top: 6px">600 XP</span>
+          <span style="grid-column: 1 / 4; color: #6A5642">4 monsters → multiplier × 2</span><span style="text-align: right">× 2</span>
+          <strong style="grid-column: 1 / 4">Adjusted</strong><strong style="text-align: right">1,200 XP</strong>
+        </div>
+        <div aria-label="Difficulty scale" style="position: relative; height: 34px; border-radius: 6px; overflow: hidden; display: grid; grid-template-columns: 300fr 300fr 300fr 700fr 400fr; font-size: 12px; font-weight: 700">
+          <div style="background: #D9E3CC; padding: 2px 6px">trivial</div>
+          <div style="background: #E8E0B0; padding: 2px 6px">easy 300</div>
+          <div style="background: #EBC98E; padding: 2px 6px">medium 600</div>
+          <div style="background: #E3A070; padding: 2px 6px">hard 900</div>
+          <div style="background: #C7614C; color: #FBF6EC; padding: 2px 6px">deadly 1,600</div>
+          <div aria-hidden="true" style="position: absolute; left: 60%; top: 0; bottom: 0; width: 3px; background: #2B1D12"></div>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+          <span style="padding: 4px 12px; border-radius: 14px; background: #E3A070; font-weight: 700">Hard</span>
+          <span style="color: #6A5642">Thresholds per character × 4 (DMG 2014). Total XP to award: 600, 150 each.</span>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <button type="button" style="min-height: 44px; padding: 0 16px; border: 0; border-radius: 6px; background: #8C1C13; color: #FBF6EC; font: inherit; font-weight: 700; cursor: pointer">Place on the map</button>
+          <button type="button" style="min-height: 44px; padding: 0 16px; border: 1px solid #8C1C13; border-radius: 6px; background: transparent; color: #8C1C13; font: inherit; font-weight: 700; cursor: pointer">Start initiative</button>
+          <button type="button" style="min-height: 44px; padding: 0 16px; border: 1px solid #CDBB98; border-radius: 6px; background: transparent; font: inherit; cursor: pointer">Roll HP for instances</button>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px">
+        <div style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px">
+          <h3 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">Instances</h3>
+          <span>Goblin 1 · Goblin 2 · Goblin 3 — each a statblock instance of „Goblin“, only what differs is stored.</span>
+          <span style="font-size: 13px; color: #6A5642">Rename, change HP or gear on one without touching the others.</span>
+        </div>
+        <div style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px">
+          <h3 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">Terrain and tactics</h3>
+          <span>[Tactics note: goblins hide on the stairs, slime comes up from the water]</span>
+          <span style="font-size: 13px; color: #6A5642">Zones (difficult, ice, trap) come along when placed.</span>
+        </div>
+        <div style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px">
+          <h3 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #8C1C13">Loot</h3>
+          <span>[Loot table or items]</span>
+          <span style="font-size: 13px; color: #6A5642">Rolled at the end, lands in the party stock.</span>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

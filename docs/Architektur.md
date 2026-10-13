@@ -88,6 +88,23 @@ flowchart LR
 antwortet. Das vorige Abbild steht in `previous-image`, zurück ist ein
 Befehl.
 
+**5e.tools einlesen** ist ein eigener Lauf (`import-5etools.yml`, W8): von
+Hand, oder aus `ci.yml` nach dem Ausrollen von dev, wenn sich
+`packages/import-5etools` geändert hat. Prod nie von selbst.
+
+```mermaid
+flowchart LR
+  ausl[von Hand: dev oder prod<br/>CI nach deploy: nur dev] --> job
+  subgraph gha[GitHub Actions · import-5etools.yml]
+    job[import<br/>model, registry, import-5etools bauen]
+    src[(5etools-src/data<br/>zur Laufzeit geklont,<br/>nie im Repository)]
+    src --> job
+  end
+  job -- scp import.sh,<br/>5etools-2014.json.gz --> srv[Hetzner]
+  job -- ssh: import.sh … --only-new --> srv
+  srv -- sichern, docker compose cp,<br/>exec import.js, Datei löschen --> app[app-Container]
+```
+
 ---
 
 ## 3. Frameworks und Werkzeuge
@@ -119,19 +136,19 @@ Ein Repo für Code **und** Vault (D42). Was Obsidian liest, liegt in
 atlas-mentis/
 ├── apps/
 │   ├── server/          @nw/server   Fastify-API, Postgres, Befehle user/import/migrate
-│   │   ├── src/                      app.ts (Routen), auth.ts, repo.ts, repo.pg.ts, …
+│   │   ├── src/                      app.ts (Routen), verwaltung.ts (Kampagnen, Mitglieder, Einladungen), auth.ts, repo.ts, repo.pg.ts, …
 │   │   └── migrations/               001_backbone.sql … 009_blocks_are_fields.sql
 │   └── web/             web          Angular-Oberfläche (Anmeldung, Liste, Artikel)
 ├── packages/
 │   ├── model/           @nw/model    Typen, Prüfung, Rechnen, Sichtbarkeit — kein Framework
 │   ├── registry/        @nw/registry die Registerzeilen (einzige Quelle) + Skripte
-│   └── import-5etools/  @nw/import-5etools  einmaliger Import aus 5e.tools (P5)
+│   └── import-5etools/  @nw/import-5etools  Import aus 5e.tools (P5), läuft in der Pipeline (W8)
 ├── prototype/           Einzeldatei-Prototyp (Artefakt auf claude.ai), Prüfbestand, Migrationsskripte
 ├── legacy/              alte React-App (Vite + Express) — läuft, bis Karte und Initiative neu stehen
-├── deploy/              bootstrap.sh, deploy.sh, proxy/ (Caddy)
+├── deploy/              bootstrap.sh, deploy.sh, import.sh, proxy/ (Caddy)
 ├── docs/                Datenmodell, Begriffe, Betrieb, Arbeitsplan, Bericht, diese Seite
 ├── VTT/  Ideen/  .obsidian/   der Obsidian-Vault (Anforderungen, Entscheidungen)
-├── .github/workflows/ci.yml
+├── .github/workflows/   ci.yml, import-5etools.yml
 ├── Dockerfile           mehrstufig: Build (alles) → Laufzeit (nur Server + gebaute Oberfläche)
 ├── docker-compose.yml           prod  (main,    Port 8080)
 └── docker-compose.preprod.yml   dev   (preprod, Port 8081)
@@ -203,16 +220,35 @@ Durchstich in CI prüft `PgRepository` gegen eine echte Postgres.
 | `GET /api/health` | lebt der Prozess (für Docker und deploy.sh) |
 | `POST /api/login` · `/api/register` · `/api/logout` · `/api/logout-everywhere` | Konto und Sitzung; Registrieren nur mit Einladung |
 | `GET /api/me` | wer bin ich, welche Rollen, welche Figuren |
-| `GET/POST/DELETE /api/invites` | Einladungen (Verwaltung, Leitung) |
-| `GET /api/registry` · `PUT /api/registry/:part` | das Register lesen; ändern nur die Leitung |
-| `GET /api/entities` · `GET /api/entities/:id` | Artikel, **gesiebt** |
-| `GET /api/entities?as=summary` | die Kurzfassung aller Artikel (`summaryOf`) — für Liste, Verweise, Auswahlen |
+| `GET/POST/DELETE /api/invites` | Einladungen, mit Kampagne und Rolle; die Verwaltung alle, die Leitung in ihre Kampagne (`gm` legt an und widerruft, `co-gm` sieht) |
+| `GET /api/campaigns` · `POST /api/campaigns` | die Kampagnen, an denen jemand leitet oder mitleitet (Verwaltung: alle); anlegen nur die Verwaltung |
+| `GET /api/campaigns/:c/members` | Mitglieder mit Rolle und Figuren, dazu die Figuren, die diese Kampagne vergeben darf — `gm`, `co-gm`, Verwaltung |
+| `POST /api/campaigns/:c/members` · `PUT`/`DELETE …/members/:user` | Konto beim Namen dazunehmen, Rolle setzen, herausnehmen — `gm` und Verwaltung, nie die eigene Rolle (ausser Verwaltung) |
+| `PUT /api/campaigns/:c/members/:user/actors` | welche Figuren ein Mitglied führt (`app_user_actor`); keine Figur einer anderen Kampagne |
+| `GET /api/users` | die Konten der Installation — nur die Verwaltung |
+| `GET /api/registry` · `PUT /api/registry/:part` | das Register lesen; ändern die Verwaltung und die Leitung (`gm`) der laufenden Kampagne — `/api/me` sagt es mit `registry` |
+| `GET /api/registry/usage` | was der Bestand an jeder Zeile trägt (`registryUsage`: je Art, Karte, Feld, Listenwert, Kante) — gezählt, bevor das Register etwas löscht; nur für wer es ändert |
+| `GET /api/entities?ids=a,b,c` | diese Artikel ganz, gesiebt (höchstens 500) — die Teile eines Statblocks in einer Anfrage (W2) |
+| `GET /api/list?area=&type=&of=&q=&layer=&nolayer=&parts=&sort=&offset=&limit=&f=` | **ein Blatt der Liste** mit Facetten (`{ total, columns, rows, facets }`) — Kompendium, Bereiche und jede Auswahl (W7) |
+| `GET /api/entities` | der ganze Bestand, **gesiebt** — für Ausfuhr und Prüfungen, nicht für die Oberfläche |
+| `GET /api/entities/:id` | ein Artikel, gesiebt, mit `refs`: die Namen seiner Kantenziele und die Treffer seiner `[[Verweise]]` (beim Ausliefern gerechnet, nie gespeichert) |
 | `GET /api/entities/:id/backlinks` | wer auf den Artikel zeigt (Kurzfassung + Kante), gesiebt |
+| `POST /api/entities` | **anlegen**: `{ type, name, fields? }` → Peg-Id, Nummer (`nextId`), Vorgaben aus dem Register, geprüft mit `validateEntity` |
+| `GET /api/classes/:id` | eine Klasse samt Unterklassen, Stufentabellen und den Merkmalen, die eine davon gewährt oder einbettet (`classParts`), gesiebt — die Klassenansicht (W6) in einer Antwort |
 | `PUT /api/entities/:id` · `DELETE /api/entities/:id` | schreiben, immer durch `validateEntity` |
+| `POST /api/links` | `[[Name]]` → `[[nummer\|Name]]` (M11), über das, was der Schreibende sieht; liest nur, darf also jeder |
 | `POST /api/validate` | prüfen ohne zu speichern |
+| `GET/POST /api/tokens` · `DELETE /api/tokens/:id` | eigene API-Tokens (W9); nur aus einer Sitzung, nie mit einem Token |
+| `GET /api/checks?check=…&limit=…` | Prüfungen über den gesiebten Bestand (`checks.ts`): Zahl und Beispiele je Prüfung; Leitung und Verwaltung |
+| `POST /api/bulk` | Massenänderung (`bulk.ts`): Auswahl → Operationen, `dryRun` zeigt, was geschähe; geschrieben wird durch `validateEntity`, protokolliert mit den alten Fassungen |
+| `GET /api/bulk` · `POST /api/bulk/:id/undo` | die letzten Massenänderungen; eine zurücknehmen (Konflikte nur mit `force`) |
 
 Ohne Anmeldung offen sind nur Gesundheit, Anmelden, Registrieren,
-Abmelden und `me`. Ein Server **ohne Konto und ohne Bestand** lässt
+Abmelden und `me`. **Angemeldet ist man über den Sitzungskeks oder über
+`Authorization: Bearer atm_…`** (ein API-Token, W9): das Token wirkt wie die
+Sitzung seines Kontos, beschränkt auf `read` oder `write` — ein Lesetoken
+darf zusätzlich die zwei POST, die nichts schreiben (`/api/validate` und
+`/api/bulk` mit `dryRun`). Ein Server **ohne Konto und ohne Bestand** lässt
 lesen; sobald ein Artikel da ist, nicht mehr (P5).
 
 ### 5.1 Was beim Lesen eines Artikels passiert
@@ -234,15 +270,44 @@ sequenceDiagram
   F-->>B: gesiebte Artikel
 ```
 
-**Die Oberfläche hält nur die Kurzfassung** (`?as=summary`): Name, Art,
-`Identity`, Marken, Stand, Quelle, die Kanten `instanceOf` und `inLayer` und die Felder, nach
-denen eine Auswahl filtert (`enumWhere`, aus dem Register gelesen). Den
-ganzen Artikel holt sie beim Öffnen, die Rückbezüge dazu über
-`/backlinks` — die Gegenrichtung braucht jede Kante im Bestand, und die
-hat die Kurzfassung nicht. Gekürzt wird **nach** dem Sieb, damit ein
-Deckname der Deckname bleibt. Bis zum 13.10. ging der ganze Bestand an
-die Liste; mit den 24 157 Artikeln aus 5e.tools kam sie nicht mehr an.
-`listEntities` liest dafür in drei Abfragen statt in dreien je Artikel.
+**Die Oberfläche hält keinen Bestand** (W7, 13.10.). Bis dahin lud sie
+die Kurzfassung aller Artikel (`?as=summary`, 7,7 MB roh, 675 KB gepackt
+bei den 24 157 aus 5e.tools) und rechnete Liste, Filter und Verweise
+selbst — und weil Register und Kurzfassung in einem Zug kamen, wartete
+sogar die Artikelseite auf die ganze Liste. Die Route ist weggefallen.
+Jetzt:
+
+- **Das Register** kommt allein und sofort (`Bestand.load`, ≈11 KB gepackt).
+- **Ein Artikel** kommt beim Öffnen, gesiebt, mit `refs` (`names`: Id →
+  Name für Kantenziele, Verweisfelder, Sichtbarkeitslisten; `links`: die
+  Kandidaten jedes `[[ziel]]` nach `linkCandidates`). Die Artikelseite
+  wartet auf Register und Artikel, auf nichts sonst. Die Rückbezüge kommen
+  über `/backlinks`; gesiebt werden dort nur die Artikel, die auf ihn
+  zeigen.
+- **Listen und Auswahlen** fragen `/api/list`. Der Server baut dafür je
+  **Bestand-Stempel** (`Repository.version()`: Anzahl und letzte Änderung),
+  Register und Betrachter einmal einen **Index** (`apps/server/src/liste.ts`):
+  je sichtbarem Artikel eine schmale Zeile mit Name, Art, Bereich, Ebenen,
+  Quelle, Stand, Suchtext (Name, Aliasse, Deckname, Nummer), der Zahl der
+  Abschnittskanten, die auf ihn zeigen, und den **Spalten seiner Art** —
+  den Feldern ihrer `overview` (`listColumns`). Die Verwaltung teilt einen
+  Index, ein Spieler hat seinen eigenen (das Sieb rechnet Wissen je
+  Artikel); gehalten werden die letzten acht. Blättern, Suchen, Filtern
+  laufen über die Zeilen, nicht über die Artikel.
+- **Facetten** zählen über die Zeilen, die alle *anderen* Filter bestehen:
+  Arten (mit Bereich, das Kompendium gruppiert danach), Ebenen, und bei
+  einer gewählten Art je Spalte eine Aufzählung (`enum`/`enumRef` → Werte
+  mit Zahl) oder eine Spanne (eine Zahl — oder ein Text, der fast überall
+  eine Zahl ist wie der HG „1/4"). Im Code steht keine Spalte und kein
+  Filter je Art.
+- **Teile von Statblöcken**: ein Artikel, auf den genau einer über eine
+  Abschnittskante (`RelationDef.section`, heute `composedOf`) zeigt, ist
+  ein Teil davon und fehlt ohne `parts=1`; geteilte tragen die Zahl ihrer
+  Nutzer (`users`). Gezählt wird über das, was der Betrachter sieht.
+
+Gemessen mit dem vollen 5e.tools-Bestand (lokal, Postgres 16): ein Blatt
+20–40 ms und 2 KB gepackt; der erste Aufruf nach einer Änderung baut den
+Index neu (Verwaltung ≈300 ms samt Lesen aus Postgres, Spieler ≈370 ms).
 
 Die Reihenfolge ist die Regel aus CLAUDE.md: erst ob überhaupt
 (Stapel, Sichtbarkeit), dann was darin (Wissen). Zurückgehalten wird
@@ -257,8 +322,8 @@ Zeilen daneben. Eine neue Artikelart ist eine Zeile, keine Migration.
 |---|---|
 | Bestand | `entity` (die Id), `component` (eine Karte je Art und Artikel), `relation` (Kanten, vorwärts) |
 | Register | `interface_def`, `component_def`, `relation_def`, `view_def`, `var_def`, `unit_def`, `enum_def`, `setting_def` |
-| Zugang | `app_user`, `app_session`, `app_invite`, `login_attempt`, `campaign_member`, `app_user_actor` |
-| Protokoll | `event_log` |
+| Zugang | `app_user`, `app_session`, `app_token`, `app_invite`, `login_attempt`, `campaign_member`, `app_user_actor` |
+| Protokoll | `event_log` — auch jede Massenänderung (`bulk`, mit den alten Fassungen) und ihr Zurücknehmen (`bulk.undone`) |
 
 ---
 
@@ -267,28 +332,44 @@ Zeilen daneben. Eine neue Artikelart ist eine Zeile, keine Migration.
 ```mermaid
 flowchart TB
   subgraph angular[apps/web · Angular 21, Standalone, Signals]
-    router[app.routes.ts<br/>/login · / · /artikel/:id]
+    router[app.routes.ts<br/>/login · / · /artikel/:id · /campaign · /registry · /classes · /classes/:id]
     wache[kern/wache.ts<br/>Route-Guard: angemeldet?]
     subgraph seiten[Seiten, lazy geladen]
       login[login/login.ts]
-      liste[artikel/liste.ts<br/>Artikelliste]
+      liste[artikel/kompendium.ts<br/>Kompendium und Bereiche]
+      vorschau[artikel/vorschau.ts<br/>Vorschau quick]
+      anlegen[artikel/anlegen.ts<br/>New article]
+      wahl[artikel/wahl.ts<br/>Artikel suchen und wählen]
       artikel[artikel/artikel.ts<br/>Artikelansicht, Bearbeiten]
       felder[artikel/felder.ts<br/>Felder aus dem Register]
       text[artikel/text.ts<br/>Markdown, Verweise, Würfel]
+      buch[artikel/statblock.ts · zauber.ts · gegenstand.ts · abschnitte.ts<br/>wie im Buch]
+      register[register/register.ts<br/>Typen · Kanten · Listen]
+      regtyp[register/typ.ts · feld.ts<br/>ein Typ auf einer Fläche]
+      verwaltung[verwaltung/verwaltung.ts<br/>Mitglieder, Rollen, Einladungen]
+      klassen[klassen/klasse.ts<br/>Klassenansicht: Tabelle, Merkmale je Stufe,<br/>Unterklassen filtern und vergleichen]
     end
     subgraph kern[kern/ · Dienste]
       api[api.ts<br/>HttpClient → /api]
-      bestand[bestand.ts<br/>Register + Artikel als Signal]
+      bestand[bestand.ts<br/>Register + geöffnete Artikel als Signal]
       session[session.ts<br/>wer ist angemeldet]
     end
   end
-  model[["@nw/model<br/>views · calc · markdown · inline"]]
+  model[["@nw/model<br/>views · calc · book · markdown · inline"]]
   router --> wache --> session
-  router --> login & liste & artikel
-  artikel --> felder & text
-  liste & artikel --> bestand --> api
+  router --> login & liste & artikel & verwaltung & register & klassen
+  verwaltung --> api
+  register --> regtyp --> bestand
+  artikel --> felder & text & buch
+  buch --> text
+  liste --> vorschau & anlegen
+  artikel & anlegen --> wahl --> api
+  liste --> api
+  vorschau & artikel --> bestand --> api
+  klassen --> text
+  klassen -->|"GET /api/classes/:id"| api
   login --> session --> api
-  felder & text --> model
+  felder & text & buch --> model
   api -->|"/api · im Dev über proxy.conf.json"| srv[Fastify]
 ```
 
@@ -296,11 +377,33 @@ flowchart TB
 `felder.ts` liest die Felder einer Art aus dem Register und das Modell
 sagt, was in welcher Ansicht steht (`views`), was gerechnet wird
 (`calc`) und wie Text aussieht (`markdown`, `inline`). Eine neue
-Artikelart erscheint ohne Codeänderung.
+Artikelart erscheint ohne Codeänderung. Die Artikelseite zeichnet die
+Anordnung der Art (`layoutFor`); die Buch-Elemente `statblock`, `spell`
+und `item` bauen ihre Zeilen in `book.ts` und holen die Teile eines
+Statblocks über `Bestand.holen` (`?ids=`) in einer Anfrage.
 
-Der Bestand wird **einmal** geladen und als Signal gehalten — die
-Kampagne ist klein genug. Mit 28 000 importierten Artikeln stimmt das
-nicht mehr; Seitenweise laden ist eine offene Frage für die Zeit nach P6.
+**Das Register** (`/registry`, W5) bearbeitet dieselben Zeilen, aus
+denen gezeichnet wird: Typen (eigene Felder offen, geerbte zugeklappt,
+verlinkte und Kanten von hier), Kantenarten und Listen. Geschrieben wird
+ein ganzer Teil über `PUT /api/registry/:part` und erst übernommen, wenn
+der Server ihn nimmt (`register/arbeit.ts`). Was eine Änderung im Bestand
+träfe — ein gelöschtes Feld, ein herausgenommener Typ, ein gestrichener
+Listenwert —, wird vorher über `/api/registry/usage` gezählt und in der
+Rückfrage gesagt; was der Bestand beim nächsten Speichern nicht mehr
+bestünde (eine Karte ohne Typ, ein Typ mit Artikeln), lässt die Seite gar
+nicht erst zu. Die reinen Regeln (Feldarten, Zyklen, Umbenennen samt aller
+Nennungen) stehen in `register/regeln.ts`.
+
+**Die Oberfläche hält keinen Bestand** (W7): das Register und die
+geöffneten Artikel samt den Namen, die sie mitbrachten (`Bestand.namen`,
+`Bestand.verweise`). Das Kompendium fragt je Blatt den Server
+(`/api/list`); die Seitenzahl, die Feldfilter und die Vorschau stehen im
+Filterzustand der Seite (`ListenFilter`, „der Filter gehört der Seite"),
+die Art in der Adresse. Wer ein Kantenziel oder ein Verweisfeld wählt,
+sucht über dieselbe Route (`nw-wahl`, `of=Art&q=…&limit=20`). Boards und Klassen fragen sie ebenso
+(`Bestand.liste`): die Boards und die Geschichte mit `rel=partOf`, die
+Namen der verbundenen Artikel mit `ids=`; die Zeilen liegen als schmale
+Artikel in `Bestand.kurz`.
 
 ---
 
@@ -321,6 +424,10 @@ nicht mehr; Seitenweise laden ist eine offene Frage für die Zeit nach P6.
 | `stack.ts` | Ebenen: `inPlay`, `overriderOf` |
 | `visibility.ts` | `articleVisible`: Rolle am Tisch, `audience`, `revealedTo`, `hiddenFrom` |
 | `knowledge.ts` | `redactEntity`: welche Felder ein Träger kennt, Fraktionsränge |
+| `checks.ts` | Prüfungen über einen Bestand (W9): eine erweiterbare Liste `CHECKS` reiner Funktionen |
+| `bulk.ts` | Massenänderungen (W9): Auswahl, Operationen, Zusammenführen als Vorher/Nachher (`planBulk`), `repoint` |
+| `usage.ts` | `registryUsage`: was der Bestand an jeder Registerzeile trägt — für das Register vor dem Löschen |
+| `classes.ts` | die Klassenansicht (W6): Merkmale je Stufe aus `grants`, Übungsbonus, eingebettete Merkmale (ein Verweis allein im Absatz), Stufentabelle mit Zusatzspalten |
 
 ---
 
@@ -332,7 +439,7 @@ flowchart LR
   reg -- catalogue --> docs1[docs/Artikeltypen.md<br/>Datenmodell.md › Register heute]
   vault[VTT/Requirements.md] -- anforderungen --> docs2[docs/Anforderungen.md<br/>VTT/Umsetzung.md]
   ft[(5etools-src/data<br/>ausserhalb des Repos)] -- import-5etools --> datei[Ausfuhrdatei<br/>~35 MB, nicht eingecheckt]
-  datei -->|"server import --replace"| pg[(Postgres)]
+  datei -->|"server import --only-new"| pg[(Postgres)]
   datei -->|"--sample"| seed
 ```
 

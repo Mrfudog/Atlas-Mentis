@@ -9,9 +9,19 @@ import { BEREICHE } from './kern/bereiche';
  *
  * Die Kopfleiste trägt die Navigation für alles; das Kompendium und die
  * Bereiche engen **in ihrer Seitenleiste** ein (Wunsch der Leitung,
- * 12.10.). Boards, Karten und Spiel stehen noch nicht hier, weil es sie in
- * dieser Oberfläche noch nicht gibt — ein Eintrag, der ins Leere führt,
- * ist schlechter als keiner. Sie kommen mit ihren Seiten.
+ * 12.10.). Boards stehen vorne, wie auf `Board.dc.html` — sie sind, was
+ * man vor und während der Sitzung offen hat. Karten und Spiel stehen noch
+ * nicht hier, weil es sie in dieser Oberfläche noch nicht gibt — ein
+ * Eintrag, der ins Leere führt, ist schlechter als keiner. Sie kommen mit
+ * ihren Seiten.
+ *
+ * Die **Werkbank** (W9) steht nur für Leitung und Verwaltung da — für
+ * alle anderen wäre sie ein Eintrag, der „nicht für dich" sagt. Der eigene
+ * Name führt zum Konto (API-Tokens).
+ *
+ * Das Register steht nur für wen es ändern darf (Verwaltung, Leitung der
+ * laufenden Kampagne) — lesen kann es jeder über die Adresse, aber ein
+ * Eintrag für etwas, das man nur ansehen kann, lenkt am Tisch ab.
  *
  * Die Kopfleiste bleibt weg, solange die Sitzung noch nicht gefragt ist.
  * Ein Balken, der erst „nicht angemeldet" zeigt und einen Wimpernschlag
@@ -25,21 +35,35 @@ import { BEREICHE } from './kern/bereiche';
       <header class="leiste">
         <a routerLink="/" class="marke">Atlas Mentis</a>
         <nav aria-label="Areas" class="bereiche">
+          <a routerLink="/boards" routerLinkActive="an" ariaCurrentWhenActive="page">Boards</a>
           @for (b of bereiche; track b.weg) {
             <a [routerLink]="'/' + b.weg" routerLinkActive="an" ariaCurrentWhenActive="page">{{
               b.label
             }}</a>
           }
+          <a routerLink="/classes" routerLinkActive="an" ariaCurrentWhenActive="page">Classes</a>
           <a routerLink="/compendium" routerLinkActive="an" ariaCurrentWhenActive="page"
             >Compendium</a
           >
+          @if (session.leitung()) {
+            <a routerLink="/werkbank" routerLinkActive="an" ariaCurrentWhenActive="page">Workbench</a>
+          }
+          @if (session.darfRegister()) {
+            <a routerLink="/registry" routerLinkActive="an" ariaCurrentWhenActive="page">Registry</a>
+          }
+          <!-- Nur für wen die Seite etwas zeigt: Verwaltung, Leitung, Mitleitung (W3). -->
+          @if (session.verwaltet()) {
+            <a routerLink="/campaign" routerLinkActive="an" ariaCurrentWhenActive="page"
+              >Campaign</a
+            >
+          }
         </nav>
-        <span class="wer">
+        <a class="wer" routerLink="/account" title="Account and API tokens">
           {{ session.user()?.name }}
           @if (session.isAdmin()) {
             <span class="rolle">admin</span>
           }
-        </span>
+        </a>
         <button type="button" (click)="abmelden()">Sign out</button>
       </header>
     }
@@ -86,6 +110,10 @@ import { BEREICHE } from './kern/bereiche';
     .wer {
       margin-left: auto;
       color: var(--dim);
+      text-decoration: none;
+    }
+    .wer:hover {
+      color: var(--accent);
     }
     .rolle {
       margin-left: 0.35rem;

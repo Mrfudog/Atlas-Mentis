@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rook on the phone</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&amp;family=Alegreya+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#8C1C13}a:hover{color:#5E120C}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #EFE4CC; color: #2B1D12; font-family: 'Alegreya Sans', system-ui, sans-serif; font-size: 15px; display: flex; flex-direction: column">
+
+  <header style="padding: 14px 16px 10px; background: #F8F1E1; border-bottom: 3px solid #8C1C13; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; justify-content: space-between; align-items: baseline">
+      <h1 style="margin: 0; font-family: 'Alegreya SC', serif; font-size: 24px; color: #8C1C13">Rook „Nebelfinger“</h1>
+      <span style="font-size: 13px; color: #6A5642">Nat 1s [n]</span>
+    </div>
+    <span style="font-size: 13px; color: #6A5642">Halfling · Rogue 3 · Arcane Trickster</span>
+  </header>
+
+  <section aria-label="Vitals" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: #FBF6EC; border-bottom: 1px solid #CDBB98">
+    <div style="grid-column: span 2; padding: 8px; border-right: 1px solid #E6D3B0; display: flex; flex-direction: column; align-items: center">
+      <span style="font-size: 12px; color: #6A5642">Hit points</span>
+      <div style="display: flex; align-items: center; gap: 4px">
+        <button type="button" aria-label="Damage" style="width: 44px; height: 44px; border: 0; background: none; color: #8C1C13; font: inherit; font-size: 22px; cursor: pointer">−</button>
+        <span style="font-family: 'Alegreya SC', serif; font-size: 26px; font-weight: 700; color: #8C1C13">22</span><span style="color: #6A5642">/22</span>
+        <button type="button" aria-label="Heal" style="width: 44px; height: 44px; border: 0; background: none; color: #34502A; font: inherit; font-size: 22px; cursor: pointer">+</button>
+      </div>
+    </div>
+    <div style="padding: 8px; border-right: 1px solid #E6D3B0; text-align: center"><div style="font-size: 12px; color: #6A5642">AC</div><div style="font-family: 'Alegreya SC', serif; font-size: 24px; font-weight: 700">15</div></div>
+    <div style="padding: 8px; text-align: center"><div style="font-size: 12px; color: #6A5642">Init</div><div style="font-family: 'Alegreya SC', serif; font-size: 24px; font-weight: 700">+4</div></div>
+  </section>
+
+  <main style="flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; text-align: center">
+      <div style="background: #FDF1DC; border: 1px solid #C8822E; border-radius: 6px; padding: 4px 0"><div style="font-size: 11px; color: #7A200D; font-weight: 700">STR</div><div style="font-weight: 700">+0</div></div>
+      <div style="background: #FDF1DC; border: 1px solid #C8822E; border-radius: 6px; padding: 4px 0"><div style="font-size: 11px; color: #7A200D; font-weight: 700">DEX</div><div style="font-weight: 700">+4</div></div>
+      <div style="background: #FDF1DC; border: 1px solid #C8822E; border-radius: 6px; padding: 4px 0"><div style="font-size: 11px; color: #7A200D; font-weight: 700">CON</div><div style="font-weight: 700">+0</div></div>
+      <div style="background: #FDF1DC; border: 1px solid #C8822E; border-radius: 6px; padding: 4px 0"><div style="font-size: 11px; color: #7A200D; font-weight: 700">INT</div><div style="font-weight: 700">+2</div></div>
+      <div style="background: #FDF1DC; border: 1px solid #C8822E; border-radius: 6px; padding: 4px 0"><div style="font-size: 11px; color: #7A200D; font-weight: 700">WIS</div><div style="font-weight: 700">+0</div></div>
+      <div style="background: #FDF1DC; border: 1px solid #C8822E; border-radius: 6px; padding: 4px 0"><div style="font-size: 11px; color: #7A200D; font-weight: 700">CHA</div><div style="font-weight: 700">+3</div></div>
+    </div>
+
+    <h2 style="margin: 4px 0 0; font-family: 'Alegreya SC', serif; font-size: 18px; color: #7A200D">Attacks</h2>
+    <div style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px">
+      <div><strong>Rapier</strong><div style="font-size: 13px; color: #6A5642">in hand · 1.5 m</div></div>
+      <div style="display: flex; gap: 6px"><button type="button" style="min-width: 48px; min-height: 44px; border: 1px solid #C8822E; border-radius: 6px; background: #F6E2BF; font: inherit; font-weight: 700; cursor: pointer">+6</button><button type="button" style="min-height: 44px; padding: 0 8px; border: 1px solid #C8822E; border-radius: 6px; background: #F6E2BF; font: inherit; cursor: pointer">1d8+4</button></div>
+    </div>
+    <div style="background: #FBF6EC; border: 1px solid #CDBB98; border-radius: 8px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px">
+      <div><strong>Dagger, +1</strong><div style="font-size: 13px; color: #6A5642">on the belt · 6/18 m</div></div>
+      <div style="display: flex; gap: 6px"><button type="button" style="min-width: 48px; min-height: 44px; border: 1px solid #C8822E; border-radius: 6px; background: #F6E2BF; font: inherit; font-weight: 700; cursor: pointer">+7</button><button type="button" style="min-height: 44px; padding: 0 8px; border: 1px solid #C8822E; border-radius: 6px; background: #F6E2BF; font: inherit; cursor: pointer">1d4+5</button></div>
+    </div>
+    <div style="background: #FDF1DC; border-left: 4px solid #8C1C13; padding: 8px 12px"><strong style="font-family: 'Alegreya SC', serif; color: #7A200D">Sneak Attack · 2d6</strong><div style="font-size: 14px">Once per turn.</div></div>
+    <div style="background: #FDF1DC; border-left: 4px solid #C8822E; padding: 8px 12px"><strong style="font-family: 'Alegreya SC', serif; color: #7A200D">Cunning Action</strong><div style="font-size: 14px">Bonus action: Dash, Disengage or Hide.</div></div>
+  </main>
+
+  <nav aria-label="Sheet" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); background: #F8F1E1; border-top: 2px solid #8C1C13; padding: 4px 2px 16px">
+    <a href="#" aria-current="page" style="min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #8C1C13; font-weight: 700; text-decoration: none; font-size: 12px">
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 16L14 6M12 4l4 4M6 12l2 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>Actions</a>
+    <a href="#" style="min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #6A5642; text-decoration: none; font-size: 12px">
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5h10M5 10h10M5 15h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>Skills</a>
+    <a href="#" style="min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #6A5642; text-decoration: none; font-size: 12px">
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7h12l-1 9H5zM7 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path></svg>Gear</a>
+    <a href="#" style="min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #6A5642; text-decoration: none; font-size: 12px">
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h8a3 3 0 0 1 3 3v9H7a3 3 0 0 1-3-3z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path></svg>Story</a>
+    <a href="#" style="min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #6A5642; text-decoration: none; font-size: 12px">
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3" fill="none" stroke="currentColor" stroke-width="1.7"></circle><path d="M10 2v3M10 15v3M2 10h3M15 10h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>Systems</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

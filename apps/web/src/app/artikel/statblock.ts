@@ -1,0 +1,132 @@
+import { Component, computed, effect, inject, input, untracked } from '@angular/core';
+import { entityName, enumRefKind, primaryInterface, statblockBook } from '@nw/model';
+import type { Entity, StatblockBook } from '@nw/model';
+import { Bestand } from '../kern/bestand';
+import { Abschnitte } from './abschnitte';
+import { Text } from './text';
+
+/**
+ * **Der Statblock wie im Monster Manual** (W2, Leitung 13.10.: „mache es
+ * wie in D&D-Büchern"). Kopf mit Grösse, Typ und Gesinnung kursiv, rote
+ * Linien, Rüstungsklasse, Trefferpunkte, Bewegung, die sechs Werte in einer
+ * Reihe (am Telefon drei mal zwei), Rettungswürfe bis Herausforderung, dann
+ * die Abschnitte aus `composedOf`.
+ *
+ * Was dasteht, baut `statblockBook` im Modell; gerechnet wird beim Lesen
+ * (D8). Gezeichnet wird der Statblock, wo das Register das Element
+ * `statblock` setzt — am Typ `Statblock`, nicht nach einem Artnamen hier.
+ */
+@Component({
+  selector: 'nw-statblock',
+  imports: [Text, Abschnitte],
+  template: `
+    @if (buch(); as b) {
+      @if (b.byline) {
+        <p class="byline">{{ b.byline }}</p>
+      }
+      <div class="linie" aria-hidden="true"></div>
+      @if (b.top.length) {
+        <div class="zeilen">
+          @for (z of b.top; track z.label) {
+            <p><strong>{{ z.label }}</strong> <nw-text inline [text]="z.text" /></p>
+          }
+        </div>
+        <div class="linie" aria-hidden="true"></div>
+      }
+      <div class="werte" role="list" aria-label="Ability scores">
+        @for (a of b.abilities; track a.key) {
+          <div role="listitem">
+            <div class="k">{{ a.label }}</div>
+            <div>{{ a.score ?? '—' }} {{ a.mod }}</div>
+          </div>
+        }
+      </div>
+      <div class="linie" aria-hidden="true"></div>
+      <div class="zeilen">
+        @for (z of b.details; track z.label) {
+          <p><strong>{{ z.label }}</strong> <nw-text inline [text]="z.text" /></p>
+        }
+        @for (z of b.extra; track z.label) {
+          <p class="zusatz"><strong>{{ z.label }}</strong> <nw-text inline [text]="z.text" /></p>
+        }
+      </div>
+      <div class="linie" aria-hidden="true"></div>
+      <nw-abschnitte [besitzer]="artikel()" />
+    }
+  `,
+  styleUrl: './buch.scss',
+})
+export class Statblock {
+  readonly artikel = input.required<Entity>();
+
+  private readonly bestand = inject(Bestand);
+
+  /** Die Namen in `proficient` und `expertise`. */
+  private readonly uebungsNamen = computed(() => {
+    const pr = (this.artikel().components?.['Proficiencies'] ?? {}) as Record<string, unknown>;
+    return [pr['proficient'], pr['expertise']].flatMap((v) => (Array.isArray(v) ? v.map(String) : []));
+  });
+
+  /**
+   * Die Arten, aus denen das Feld seine Werte zieht (`enumRef`) und die
+   * Artikel sind — gesucht wird dort, nicht in einer Liste hier.
+   */
+  private readonly quellen = computed(() => {
+    const r = this.bestand.registry();
+    if (!r) return [];
+    const feld = r.interfaces['Proficiencies']?.schema?.properties?.['proficient'];
+    return [feld?.enumRef ?? []].flat().filter((q) => enumRefKind(r, q) === 'type');
+  });
+
+  /**
+   * Die Übungen als Artikel und welche Art sie sind. Der Browser hält keinen
+   * Bestand (W7): je Name fragt die Liste am Server, eingeschränkt auf die
+   * Quellarten, und ihre Zeilen landen in `kurz`.
+   */
+  private readonly uebungen = computed(() => {
+    const quellen = new Set(this.quellen());
+    const gesucht = new Set(this.uebungsNamen().map((n) => n.toLowerCase()));
+    const art = new Map<string, Entity>();
+    if (!gesucht.size) return art;
+    for (const k of this.bestand.kurz().values()) {
+      const n = entityName(k).toLowerCase();
+      if (gesucht.has(n) && quellen.has(primaryInterface(k)) && !art.has(n)) art.set(n, k);
+    }
+    return art;
+  });
+
+  constructor() {
+    effect(() => {
+      const namen = this.uebungsNamen();
+      const of = this.quellen();
+      if (!namen.length || !of.length) return;
+      untracked(() => {
+        for (const q of namen) void this.bestand.liste({ of, q, limit: 20 }).catch(() => undefined);
+      });
+    });
+    /* Worauf eine Fertigkeit rechnet, steht an ihrem Artikel — den holt,
+       wer ihn braucht, mit den Teilen in einer Anfrage. */
+    effect(() => {
+      void this.bestand.holen([...this.uebungen().values()].map((k) => k.id));
+    });
+  }
+
+  protected readonly buch = computed<StatblockBook | null>(() => {
+    const r = this.bestand.registry();
+    if (!r) return null;
+    const uebungen = this.uebungen();
+    const voll = this.bestand.voll();
+    return statblockBook(r, this.artikel(), {
+      kindOf: (n) => {
+        const k = uebungen.get(n.toLowerCase());
+        return k ? primaryInterface(k) : undefined;
+      },
+      skillAbility: (n) => {
+        const k = uebungen.get(n.toLowerCase());
+        const ganz = k ? voll.get(k.id) : undefined;
+        const karte = ganz?.components?.[primaryInterface(ganz)] as Record<string, unknown> | undefined;
+        return typeof karte?.['ability'] === 'string' ? karte['ability'] : undefined;
+      },
+    });
+  });
+}

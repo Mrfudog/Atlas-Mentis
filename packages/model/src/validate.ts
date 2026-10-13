@@ -73,7 +73,7 @@ const objectSchema = z.object({
 const LayoutElementSchema: z.ZodType<LayoutElement> = z.lazy(() =>
   z.object({
     id: z.string(),
-    el: z.enum(['heading', 'text', 'fields', 'prose', 'description', 'composed', 'usedBy', 'relations', 'image', 'linked', 'knowledge', 'map', 'sheet', 'inventory', 'crafting', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'members', 'standing', 'tabs']),
+    el: z.enum(['heading', 'text', 'fields', 'prose', 'description', 'composed', 'usedBy', 'relations', 'image', 'linked', 'knowledge', 'map', 'sheet', 'inventory', 'crafting', 'board', 'initiative', 'quests', 'timeline', 'live', 'table', 'prep', 'crawl', 'stack', 'members', 'standing', 'statblock', 'spell', 'item', 'tabs']),
     text: z.string().optional(),
     fields: z.union([z.literal('all'), z.array(z.string())]).optional(),
     except: z.array(z.string()).optional(),
@@ -96,7 +96,7 @@ export const InterfaceDefSchema = z.object({
   abstract: z.boolean().optional(),
   extends: z.array(z.string()).optional(),
   schema: objectSchema.optional(),
-  area: z.enum(['world', 'history', 'rules', 'play']).optional(),
+  area: z.enum(['world', 'story', 'rules', 'play']).optional(),
   views: z.record(z.string(), z.array(LayoutElementSchema)).optional(),
   units: z.enum(['imperial', 'metric', 'both']).optional(),
   /* `Typ.feld` → Beschriftung. Eine Beschriftung und keine Feldliste. */

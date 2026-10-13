@@ -7,17 +7,26 @@
  * package defines them — front and back share one definition.
  */
 
+import { randomUUID } from 'node:crypto';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyCookie from '@fastify/cookie';
 import {
+  BulkRequestSchema,
   EntitySchema,
   RegistrySchema,
+  conditionProblem,
+  planBulk,
+  runChecks,
+  selectEntities,
+  storedKey,
   articleVisible,
   backlinks,
+  classParts,
   currentCampaign,
   inPlay,
   detachInstance,
+  registryUsage,
   instancesOf,
   isInstance,
   readInstance,
@@ -28,23 +37,36 @@ import {
   summaryFields,
   summaryOf,
   validateEntity,
+  articleId,
+  entityName,
+  idLinks,
+  linkCandidates,
+  nextId,
+  typeChain,
 } from '@nw/model';
-import type { Entity, Registry } from '@nw/model';
+import type { BulkChange, Entity, Registry } from '@nw/model';
 import type { Repository } from './repo.js';
+import { buildListIndex, listProjection, parseListQuery, queryList, type ListIndex } from './liste.js';
+import { registerVerwaltung } from './verwaltung.js';
 import {
   ATTEMPT_WINDOW_MINUTES,
   MAX_ATTEMPTS,
   SESSION_DAYS,
+  TOKEN_SCOPES,
   checkPassword,
   foldName,
+  isLeitung,
+  newApiToken,
+  newInviteCode,
+  tokenExpiry,
   hashPassword,
   hashToken,
   mayWrite,
-  newInviteCode,
   newSessionToken,
   passwordProblem,
   sessionExpiry,
-  type Invite,
+  type ApiToken,
+  type TokenScope,
   type User,
 } from './auth.js';
 
@@ -113,13 +135,50 @@ export function buildApp({
    */
   const COOKIE = 'nw_session';
 
-  async function viewerOf(request: FastifyRequest): Promise<User | null> {
+  /**
+   * Wer fragt: über den Sitzungskeks — oder über `Authorization: Bearer`
+   * mit einem API-Token (W9). Ein Token wirkt wie die Sitzung seines
+   * Kontos, beschränkt auf seine Rechte; es sieht und darf nie mehr als das
+   * Konto, weil alles danach mit diesem `User` rechnet. Steht ein Token da
+   * und gilt nicht, ist niemand angemeldet — auch mit einem Keks daneben:
+   * ein Werkzeug, das still als jemand anderes weiterläuft, sucht man
+   * lange.
+   *
+   * Einmal je Anfrage gefragt (Wache, Sieb und Route fragen alle), sonst
+   * schöbe jede Frage die Sitzung nach.
+   */
+  interface Wer {
+    user: User;
+    token?: ApiToken | undefined;
+  }
+  const gefragt = new WeakMap<FastifyRequest, Promise<Wer | null>>();
+  function werIst(request: FastifyRequest): Promise<Wer | null> {
+    let p = gefragt.get(request);
+    if (!p) {
+      p = ermittle(request);
+      gefragt.set(request, p);
+    }
+    return p;
+  }
+  async function ermittle(request: FastifyRequest): Promise<Wer | null> {
+    const kopf = String(request.headers.authorization ?? '');
+    if (/^bearer\s/i.test(kopf)) {
+      const roh = kopf.slice(7).trim();
+      if (!roh) return null;
+      const treffer = await repo.useToken(hashToken(roh));
+      if (!treffer || treffer.user.disabledAt) return null;
+      const { passwordHash: _hash, ...user } = treffer.user;
+      return { user, token: treffer.token };
+    }
     const token = request.cookies?.[COOKIE];
     if (!token) return null;
     const user = await repo.touchSession(hashToken(token), sessionExpiry().toISOString());
     if (!user || user.disabledAt) return null;
     const { passwordHash: _hash, ...rest } = user;
-    return rest;
+    return { user: rest };
+  }
+  async function viewerOf(request: FastifyRequest): Promise<User | null> {
+    return (await werIst(request))?.user ?? null;
   }
 
   /** Was ein Spieler schreiben darf: seine Figur und was an ihr hängt. Die
@@ -135,8 +194,29 @@ export function buildApp({
     return own;
   }
 
+  /**
+   * **Wer das Register ändert:** die Verwaltung der Installation und die
+   * Leitung (`gm`) der laufenden Kampagne. Das Register gilt für den ganzen
+   * Tisch — eine Zeile zu ändern heisst, die Regeln zu ändern. Ein
+   * Mitleiter sieht es und ändert es nicht; dieselbe Trennung wie bei den
+   * Mitgliedern (CLAUDE.md, Rolle am Konto).
+   *
+   * Gefragt wird die **laufende** Kampagne (`currentCampaign`), weil das
+   * Register keiner Ebene gehört: wer in einer anderen Runde leitet und
+   * in dieser mitspielt, schreibt hier die Regeln nicht.
+   */
+  async function mayEditRegistry(user: User): Promise<boolean> {
+    if (user.isAdmin) return true;
+    const rollen = user.roles ?? {};
+    if (!Object.values(rollen).includes('gm')) return false;
+    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const kampagne = currentCampaign(alle, (await repo.getRegistry()).settings ?? null);
+    return !!kampagne && rollen[kampagne.id] === 'gm';
+  }
+
   app.get('/api/me', async (request) => {
-    const user = await viewerOf(request);
+    const wer = await werIst(request);
+    const user = wer?.user ?? null;
     const count = await repo.countUsers();
     /* **Der Server sagt, was jemand schreiben darf** — die Oberfläche rechnet
        es nicht zum zweiten Mal aus. Eine zweite Rechnung wäre die zweite
@@ -152,12 +232,15 @@ export function buildApp({
     const actors: { id: string; name: string }[] = [];
     for (const id of user?.actorIds ?? []) {
       const e = await repo.getEntity(id);
-      if (e) actors.push({ id, name: String(e.name ?? id) });
+      if (e) actors.push({ id, name: entityName(e) });
     }
     return {
       user,
       actors,
       writable,
+      /* Ob dieser Betrachter das Register ändern darf — gesagt vom Server,
+         der es beim Schreiben ohnehin prüft (`mayEditRegistry`). */
+      registry: user ? await mayEditRegistry(user) : false,
       /* Ein frischer Server sagt es geradeheraus. Das ist keine Auskunft,
          die jemandem nützt, den es nichts angeht: wer den Port erreicht,
          sieht ohnehin, dass nichts eingerichtet ist. */
@@ -167,6 +250,11 @@ export function buildApp({
          dann — einer, der bei jedem Versuch „Einladung fehlt" sagt, ist
          kein Knopf, sondern eine Enttäuschung. */
       invites: count === 0 ? false : (await repo.listInvites()).length > 0,
+      /* Über welches Token gefragt wird — ein Werkzeug soll sehen, was es
+         darf, ohne es auszuprobieren. */
+      token: wer?.token
+        ? { name: wer.token.name, scope: wer.token.scope, expiresAt: wer.token.expiresAt }
+        : null,
     };
   });
 
@@ -289,9 +377,10 @@ export function buildApp({
         passwordHash: await hashPassword(password),
         isAdmin: invite.isAdmin,
         actorIds: invite.actorId ? [invite.actorId] : [],
-        /* Eine Einladung bindet an eine Figur, nicht an eine Rolle: wer
-           am Tisch was ist, setzt die Leitung danach. */
-        roles: {},
+        /* Eine Einladung führt in eine Kampagne, mit der Rolle darin (W3).
+           Danach steht die Rolle am Konto und nicht mehr an der Einladung —
+           die ist mit dem letzten Gebrauch weg. */
+        roles: invite.campaignId && invite.role ? { [invite.campaignId]: invite.role } : {},
       });
       await repo.clearAttempts(fold, origin);
       await repo.appendEvent('register.ok', id, { invite: invite.label ?? null });
@@ -319,58 +408,8 @@ export function buildApp({
     },
   );
 
-  /**
-   * Einladungen anlegen und ansehen. Nur die Spielleitung, und der Code
-   * steht **genau einmal** in der Antwort auf das Anlegen: gespeichert ist
-   * nur sein Hash, und was hier nicht mitgeschrieben wird, ist weg.
-   */
-  app.get('/api/invites', async (request, reply) => {
-    const user = await viewerOf(request);
-    if (!user?.isAdmin) return reply.code(403).send({ error: 'Nicht für dich.' });
-    return (await repo.listInvites()).map((i) => ({
-      label: i.label ?? null,
-      isAdmin: i.isAdmin,
-      actorId: i.actorId ?? null,
-      usesLeft: i.usesLeft ?? null,
-      expiresAt: i.expiresAt ?? null,
-      /* Der Hash geht mit, damit sich eine Einladung zurücknehmen lässt.
-         Aus ihm kommt man nicht auf den Code zurück. */
-      handle: i.codeHash,
-    }));
-  });
-
-  app.post<{ Body: { label?: string; admin?: boolean; actorId?: string; uses?: number; days?: number } }>(
-    '/api/invites',
-    async (request, reply) => {
-      const user = await viewerOf(request);
-      if (!user?.isAdmin) return reply.code(403).send({ error: 'Nicht für dich.' });
-      const b = request.body ?? {};
-      const code = newInviteCode();
-      const uses = b.uses == null ? undefined : Math.max(1, Math.floor(Number(b.uses) || 1));
-      const days = b.days == null ? undefined : Math.max(1, Math.floor(Number(b.days) || 1));
-      const invite: Invite = {
-        codeHash: hashToken(code),
-        label: b.label?.trim() || undefined,
-        isAdmin: b.admin === true,
-        actorId: b.actorId?.trim() || undefined,
-        usesLeft: uses,
-        expiresAt: days ? new Date(Date.now() + days * 86400000).toISOString() : undefined,
-        createdBy: user.id,
-      };
-      await repo.putInvite(invite);
-      await repo.appendEvent('invite.created', user.id, { label: invite.label ?? null });
-      /* Einmal und nie wieder. */
-      return reply.code(201).send({ code, handle: invite.codeHash });
-    },
-  );
-
-  app.delete<{ Params: { handle: string } }>('/api/invites/:handle', async (request, reply) => {
-    const user = await viewerOf(request);
-    if (!user?.isAdmin) return reply.code(403).send({ error: 'Nicht für dich.' });
-    const weg = await repo.dropInvite(request.params.handle);
-    if (!weg) return reply.code(404).send({ error: 'Nicht gefunden' });
-    return { ok: true };
-  });
+  /* Einladungen, Kampagnen, Mitglieder und Konten: `verwaltung.ts` (W3). */
+  registerVerwaltung(app, { repo, viewerOf });
 
   app.post('/api/logout', async (request, reply) => {
     const token = request.cookies?.[COOKIE];
@@ -407,24 +446,49 @@ export function buildApp({
     const url = request.url.split('?')[0] ?? '';
     if (!url.startsWith('/api/') || OPEN.has(url)) return;
 
-    const user = await viewerOf(request);
+    const wer = await werIst(request);
+    const user = wer?.user ?? null;
     (request as FastifyRequest & { viewer?: User | null }).viewer = user;
-    const schreibt = request.method !== 'GET' && request.method !== 'HEAD';
+    /* Drei POST schreiben nichts: prüfen (`/api/validate`), Verweise
+       auflösen (`/api/links` — die Texte sind zu lang für eine Adresse,
+       darum kein GET) und die Vorschau einer Massenänderung (`dryRun`).
+       Ein Token mit `read` darf sie, sonst könnte ein Werkzeug nicht
+       fragen, was geschähe. */
+    const liestNur =
+      url === '/api/validate' ||
+      url === '/api/links' ||
+      (url === '/api/bulk' && (request.body as { dryRun?: unknown } | null)?.dryRun === true);
+    const schreibt = request.method !== 'GET' && request.method !== 'HEAD' && !liestNur;
 
     if (!user) {
       const frisch = (await repo.countUsers()) === 0 && (await repo.countEntities()) === 0;
       if (frisch && !schreibt) return; // frischer Server: lesen ja, schreiben nie
       return reply.code(401).send({ error: 'Nicht angemeldet.' });
     }
-    if (!schreibt) return;
-    if (user.isAdmin) return;
-
-    /* Ein Spieler schreibt seine Figur und was an ihr hängt — und sonst
-       nichts. Das Register gehört der Spielleitung: eine Registerzeile zu
-       ändern heisst, die Regeln zu ändern. */
-    if (url.startsWith('/api/registry')) {
+    /* Vor jeder anderen Regel: ein Lesetoken schreibt nirgends — auch
+       nicht dort, wo das Konto es dürfte (Register, Verwaltung). */
+    if (schreibt && wer?.token && wer.token.scope !== 'write') {
+      return reply.code(403).send({ error: 'Dieses Token darf nur lesen.' });
+    }
+    /* Das Register gehört der Spielleitung: eine Registerzeile zu ändern
+       heisst, die Regeln zu ändern. Auch die Zählung des Bestands gehört
+       ihr — sie zählt über alles, auch über Verborgenes. */
+    if (url.startsWith('/api/registry') && (schreibt || url.startsWith('/api/registry/usage'))) {
+      if (await mayEditRegistry(user)) return;
       return reply.code(403).send({ error: 'Das Register ändert die Spielleitung.' });
     }
+    if (!schreibt) return;
+    if (user.isAdmin) return;
+    /* Die eigenen Tokens verwaltet jedes Konto; die Massenänderung prüft
+       je Artikel selbst, ob geschrieben werden darf (`mayWrite`). */
+    if (url === '/api/tokens' || url.startsWith('/api/tokens/')) return;
+    if ((url === '/api/bulk' || url.startsWith('/api/bulk/')) && isLeitung(user)) return;
+    /* Verwaltung und Einladungen prüfen selbst: das Recht hängt an der
+       Kampagne im Pfad (gm ändert, co-gm sieht), nicht am Konto allein. */
+    if (url.startsWith('/api/campaigns') || url.startsWith('/api/invites')) return;
+
+    /* Ein Spieler schreibt seine Figur und was an ihr hängt — und sonst
+       nichts. */
     const id = url.startsWith('/api/entities/') ? decodeURIComponent(url.slice(14)) : '';
     if (!id || !mayWrite(user, await ownedBy(user), id)) {
       return reply.code(403).send({ error: 'Das gehört dir nicht.' });
@@ -434,6 +498,18 @@ export function buildApp({
   // ---------------------------------------------------------------- registry
 
   app.get('/api/registry', async () => repo.getRegistry());
+
+  /**
+   * **Was der Bestand an jeder Zeile trägt** — je Art, Karte, Feld,
+   * Listenwert und Kantenart (`registryUsage`). Das Register fragt es,
+   * bevor es ein Feld löscht, einen Typ herausnimmt oder einen Wert
+   * streicht: was dabei verloren ginge oder beim nächsten Speichern
+   * abgewiesen würde, wird vorher gezählt und gesagt. Ungesiebt, darum nur
+   * für die, die das Register ändern (Wache oben).
+   */
+  app.get('/api/registry/usage', async () =>
+    registryUsage(await repo.getRegistry(), await repo.listEntities()),
+  );
 
   app.put<{ Params: { part: string }; Body: unknown }>(
     '/api/registry/:part',
@@ -480,12 +556,23 @@ export function buildApp({
    * steht im Modellpaket, weil es für Server und Oberfläche gleichermassen
    * gilt und es nur einmal geben darf.
    */
-  async function sieve(request: FastifyRequest, entities: Entity[], bestand?: Entity[]): Promise<Entity[]> {
+  async function sieve(
+    request: FastifyRequest,
+    entities: Entity[],
+    bestand?: Entity[] | Map<string, Entity>,
+    /** Vor dem Wissen auf das Nötige kürzen — der Index der Liste braucht
+     *  nur die Karten, die eine Zeile zeigt, und das Wissen gilt je Feld:
+     *  was gekürzt wird, hätte keinen anderen Wert gesiebt. */
+    schmal?: (e: Entity) => Entity,
+  ): Promise<Entity[]> {
     const user = await viewerOf(request);
     /* **Eine Instanz geht aufgelöst hinaus**, mit ihrer Vorlage darin und
        der Angabe, welche Felder von dort kommen. Gespeichert ist an ihr nur,
        was abweicht; ohne Auflösung hätte Wache 1 keine Trefferpunkte. */
-    const roh = new Map((bestand ?? (await repo.listEntities())).map((e) => [e.id, e]));
+    const roh =
+      bestand instanceof Map
+        ? bestand
+        : new Map((bestand ?? (await repo.listEntities())).map((e) => [e.id, e]));
     const registry = await repo.getRegistry();
     /* **Die nullte Frage: steht der Artikel im Stapel?** (E2, A2) Was eine
        aufgeschaltete Ebene herausnimmt oder eine spezifischere Fassung
@@ -531,21 +618,204 @@ export function buildApp({
     const auge = { actors: augen, roles: user.roles ?? {} };
     return entities
       .filter((e) => articleVisible(alle, e, auge))
-      .map((e) => redactEntity(registry, alle, e, augen, gmFields));
+      .map((e) => redactEntity(registry, alle, schmal ? schmal(e) : e, augen, gmFields));
   }
 
-  app.get<{ Querystring: { as?: string } }>('/api/entities', async (request) => {
-    /* Die Liste ist zugleich der Zusammenhang, gegen den gesiebt wird —
-       einmal holen, nicht zweimal. */
+  app.get<{ Querystring: { ids?: string } }>('/api/entities', async (request, reply) => {
+    /* Der ganze Bestand, gesiebt — für Ausfuhr und Prüfungen. Die
+       Oberfläche fragt ihn nicht mehr: Listen kommen aus `/api/list`, ein
+       Artikel aus `/api/entities/:id`. Die Kurzfassung `?as=summary` ist
+       am 13.10. weggefallen (W7) — sie war genau der Weg, auf dem der
+       Browser 7,7 MB lud, bevor er eine Zeile zeigte. */
     const alle = await repo.listEntities();
-    const gesiebt = await sieve(request, alle, alle);
-    /* `?as=summary`: die Kurzfassung für Liste, Verweise und Auswahlen.
-       Gekürzt wird nach dem Sieb, damit ein Deckname der Deckname bleibt.
-       Ohne die Angabe bleibt es der ganze Bestand — Ausfuhr und Prüfungen
-       lesen ihn so. */
-    if (request.query.as !== 'summary') return gesiebt;
-    const felder = summaryFields(await repo.getRegistry());
-    return gesiebt.map((e) => summaryOf(e, felder));
+    /* `?ids=a,b,c`: **diese Artikel ganz**, in einer Anfrage — die Teile
+       eines Statblocks (die Ziele seiner `composedOf`-Kanten), die ein
+       geöffneter Artikel zeichnet (W2). Ein Drache hat dreizehn Teile;
+       dreizehn Anfragen wären dreizehnmal das Sieb. Gesiebt wird wie
+       sonst: was der Betrachter nicht sehen darf, fehlt in der Antwort. */
+    if (request.query.ids !== undefined) {
+      const ids = new Set(request.query.ids.split(',').map((x) => x.trim()).filter(Boolean));
+      if (ids.size > 500) return reply.code(400).send({ error: 'Höchstens 500 Ids je Anfrage' });
+      return sieve(request, alle.filter((e) => ids.has(e.id)), alle);
+    }
+    return sieve(request, alle, alle);
+  });
+
+  // ------------------------------------------------------------ Liste (W7)
+
+  /**
+   * Der rohe Bestand je Stempel, mit den Nachschlagetafeln für Verweise:
+   * Nummer und Peg-Id → Artikel, Name und Alias → Artikel. Ungesiebt — wer
+   * daraus liest, siebt danach, was er gefunden hat.
+   */
+  let rohStand: {
+    stempel: string;
+    alle: Entity[];
+    map: Map<string, Entity>;
+    namen: Map<string, Entity[]>;
+  } | null = null;
+  async function roh(): Promise<NonNullable<typeof rohStand>> {
+    const stempel = await repo.version();
+    if (rohStand?.stempel === stempel) return rohStand;
+    const alle = await repo.listEntities();
+    const map = new Map(alle.map((e) => [e.id, e]));
+    const namen = new Map<string, Entity[]>();
+    const merke = (k: string, e: Entity): void => {
+      const key = k.trim().toLowerCase();
+      if (!key) return;
+      const l = namen.get(key);
+      if (!l) namen.set(key, [e]);
+      else if (!l.includes(e)) l.push(e);
+    };
+    for (const e of alle) {
+      merke(e.id, e);
+      merke(articleId(e), e);
+      merke(entityName(e), e);
+      const aliases = e.components?.['Identity']?.['aliases'];
+      if (Array.isArray(aliases)) for (const a of aliases) merke(String(a), e);
+    }
+    rohStand = { stempel, alle, map, namen };
+    return rohStand;
+  }
+
+  /** Ein kleiner Hash des Registers: ändert es sich, gilt kein Index mehr. */
+  function registerStempel(registry: Registry): string {
+    const s = JSON.stringify(registry);
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+    return `${s.length}:${(h >>> 0).toString(36)}`;
+  }
+
+  /**
+   * Der Index der Liste — je Bestand-Stempel, Register und Betrachter
+   * einmal gerechnet (`liste.ts`). Die Verwaltung teilt sich einen; ein
+   * Spieler hat seinen eigenen, weil das Sieb für ihn Wissen je Artikel
+   * rechnet. Gehalten werden die letzten acht: eine Runde hat selten mehr
+   * Leute gleichzeitig am Kompendium.
+   */
+  const indizes = new Map<string, Promise<ListIndex>>();
+  async function indexFor(request: FastifyRequest): Promise<ListIndex> {
+    const [stand, registry, user] = await Promise.all([roh(), repo.getRegistry(), viewerOf(request)]);
+    const wer =
+      !user || user.isAdmin
+        ? '*'
+        : `${user.id}|${(user.actorIds ?? []).join(',')}|${JSON.stringify(user.roles ?? {})}`;
+    const key = `${stand.stempel}|${registerStempel(registry)}|${wer}`;
+    let lauf = indizes.get(key);
+    if (lauf) {
+      indizes.delete(key);
+      indizes.set(key, lauf); // zuletzt gebraucht steht hinten
+      return lauf;
+    }
+    lauf = sieve(request, stand.alle, stand.map, listProjection(registry)).then((gesiebt) =>
+      buildListIndex(registry, gesiebt),
+    );
+    indizes.set(key, lauf);
+    lauf.catch(() => indizes.delete(key));
+    /* Alte Stempel fallen sofort, sonst die ältesten über acht. */
+    for (const k of indizes.keys()) {
+      if (!k.startsWith(`${stand.stempel}|`)) indizes.delete(k);
+    }
+    while (indizes.size > 8) indizes.delete(indizes.keys().next().value as string);
+    return lauf;
+  }
+
+  /**
+   * Ein Blatt der Liste (W7): `GET /api/list?area=&type=&of=&ids=&rel=&q=&layer=&nolayer=&parts=&sort=&offset=&limit=&f=`.
+   * Antwort `{ total, offset, limit, columns, rows, facets }`. Dieselbe
+   * Route sucht für Auswahlen (Kantenziel, Verweis): `of=Art&q=…&limit=20`.
+   */
+  app.get('/api/list', async (request) => {
+    const idx = await indexFor(request);
+    return queryList(idx, parseListQuery(request.query as Record<string, unknown>));
+  });
+
+  /**
+   * Die Kandidaten eines Verweises `[[ziel]]`, gesiebt: was dieser Betrachter
+   * nicht sehen darf, ist kein Ziel — sonst verriete ein Verweis, dass es
+   * den Artikel gibt. Dieselbe Regel wie `linkCandidates` (M11), nur über
+   * die Nachschlagetafel statt über den ganzen Bestand.
+   */
+  async function kandidaten(request: FastifyRequest, ziele: Iterable<string>): Promise<Map<string, Entity[]>> {
+    const stand = await roh();
+    const ziel = [...new Set([...ziele].map((t) => t.trim()).filter(Boolean))];
+    const sammel = new Map<string, Entity>();
+    for (const t of ziel) for (const e of stand.namen.get(t.toLowerCase()) ?? []) sammel.set(e.id, e);
+    const gesiebt = sammel.size ? await sieve(request, [...sammel.values()], stand.map) : [];
+    const raus = new Map<string, Entity[]>();
+    for (const t of ziel) raus.set(t, linkCandidates(gesiebt, t));
+    return raus;
+  }
+
+  const VERWEIS = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
+  function verweiseIn(wert: unknown, raus: Set<string>): void {
+    if (typeof wert === 'string') {
+      if (!wert.includes('[[')) return;
+      for (const m of wert.matchAll(VERWEIS)) raus.add((m[1] ?? '').trim());
+    } else if (Array.isArray(wert)) {
+      for (const w of wert) verweiseIn(w, raus);
+    } else if (wert && typeof wert === 'object') {
+      for (const w of Object.values(wert)) verweiseIn(w, raus);
+    }
+  }
+
+  /**
+   * Was ein geöffneter Artikel an Namen braucht, ohne dass der Browser den
+   * Bestand hält (W7): die Ziele seiner Kanten, Verweisfelder und
+   * Sichtbarkeitslisten (`names`) und die Treffer jedes `[[…]]` in seinen
+   * Texten (`links`). Gerechnet beim Ausliefern, **nie gespeichert** — ein
+   * Name von gestern wäre heute falsch.
+   */
+  async function bezuegeVon(
+    request: FastifyRequest,
+    e: Entity,
+  ): Promise<{ names: Record<string, string>; links: Record<string, { id: string; name: string }[]> }> {
+    const registry = await repo.getRegistry();
+    const ids = new Set<string>();
+    for (const r of e.relations ?? []) if (r.to) ids.add(r.to);
+    for (const [typ, karte] of Object.entries(e.components ?? {})) {
+      const props = registry.interfaces[typ]?.schema?.properties ?? {};
+      for (const [k, v] of Object.entries(karte ?? {})) {
+        const istVerweis = props[k]?.format === 'link' || (typ === 'Visibility' && k !== 'audience');
+        if (!istVerweis) continue;
+        for (const w of Array.isArray(v) ? v : [v]) if (typeof w === 'string' && w) ids.add(w);
+      }
+    }
+    const stand = await roh();
+    const ziele = [...ids].map((i) => stand.map.get(i)).filter((x): x is Entity => !!x);
+    const names: Record<string, string> = {};
+    for (const z of ziele.length ? await sieve(request, ziele, stand.map) : []) names[z.id] = entityName(z);
+    const texte = new Set<string>();
+    verweiseIn(e.components, texte);
+    const links: Record<string, { id: string; name: string }[]> = {};
+    for (const [t, treffer] of await kandidaten(request, texte)) {
+      links[t] = treffer.map((x) => ({ id: x.id, name: entityName(x) }));
+    }
+    return { names, links };
+  }
+
+  /**
+   * `[[Name]]` wird beim Speichern zur Nummer (M11) — über das, was der
+   * Schreibende sehen darf. `{ texts }` → `{ texts, open }`: die Texte mit
+   * Ids, und welche Verweise nichts oder mehreres trafen.
+   */
+  app.post<{ Body: { texts?: unknown } }>('/api/links', async (request, reply) => {
+    const texts = request.body?.texts;
+    if (!Array.isArray(texts) || texts.some((t) => typeof t !== 'string')) {
+      return reply.code(400).send({ error: 'texts: eine Liste von Texten' });
+    }
+    const ziele = new Set<string>();
+    for (const t of texts as string[]) verweiseIn(t, ziele);
+    const treffer = await kandidaten(request, ziele);
+    const pool = new Map<string, Entity>();
+    for (const l of treffer.values()) for (const e of l) pool.set(e.id, e);
+    const open = new Set<string>();
+    const raus = (texts as string[]).map((t) => {
+      const r = idLinks(t, pool.values());
+      r.open.forEach((o) => open.add(o));
+      return r.text;
+    });
+    return { texts: raus, open: [...open] };
   });
 
   /**
@@ -556,11 +826,16 @@ export function buildApp({
    * ihn.
    */
   app.get<{ Params: { id: string } }>('/api/entities/:id/backlinks', async (request, reply) => {
-    const alle = await repo.listEntities();
-    const gesiebt = await sieve(request, alle, alle);
-    if (!gesiebt.some((e) => e.id === request.params.id)) {
+    const stand = await roh();
+    const ziel = stand.map.get(request.params.id);
+    if (!ziel || !(await sieve(request, [ziel], stand.map)).length) {
       return reply.code(404).send({ error: 'Nicht gefunden' });
     }
+    /* Gesiebt wird nur, wer überhaupt auf ihn zeigt — nicht der ganze
+       Bestand (W7: für einen Spieler eine halbe Sekunde je Artikelseite).
+       Das Sieb nimmt Kanten nur weg, nie dazu; die Antwort ist dieselbe. */
+    const zeigen = stand.alle.filter((e) => (e.relations ?? []).some((r) => r.to === request.params.id));
+    const gesiebt = zeigen.length ? await sieve(request, zeigen, stand.map) : [];
     const registry = await repo.getRegistry();
     const felder = summaryFields(registry);
     return backlinks(registry, gesiebt, request.params.id).map((b) => ({
@@ -569,18 +844,131 @@ export function buildApp({
     }));
   });
 
+  /**
+   * **Eine Klasse samt allem, was ihre Ansicht braucht** (W6): die Klasse,
+   * ihre Unterklassen, die Stufentabellen und jedes Merkmal, das eine davon
+   * gewährt oder einbettet (`classParts`). Eine Antwort statt einer Anfrage
+   * je Merkmal — und nicht die 7 000 Merkmale des ganzen Bestands, von
+   * denen die Kurzfassung ohnehin keinen Text trägt.
+   *
+   * Gesiebt wird wie überall (`sieve`). Danach wird **auf dem Gesiebten**
+   * noch einmal gesammelt: ein Merkmal, das nur eine verborgene Unterklasse
+   * gewährt, verriete sonst, dass es sie gibt.
+   */
+  app.get<{ Params: { id: string } }>('/api/classes/:id', async (request, reply) => {
+    const alle = await repo.listEntities();
+    const roh = classParts(alle, request.params.id);
+    if (!roh) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const byId = new Map(alle.map((e) => [e.id, e]));
+    const ids = [roh.klass, ...roh.subclasses, ...roh.tables, ...roh.features];
+    const gesiebt = await sieve(
+      request,
+      ids.map((i) => byId.get(i)).filter((e): e is Entity => !!e),
+      alle,
+    );
+    const teile = classParts(gesiebt, request.params.id);
+    if (!teile) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const nach = new Map(gesiebt.map((e) => [e.id, e]));
+    const nimm = (l: string[]) => l.map((i) => nach.get(i)).filter((e): e is Entity => !!e);
+    return {
+      class: nach.get(teile.klass),
+      subclasses: nimm(teile.subclasses),
+      tables: nimm(teile.tables),
+      features: nimm(teile.features),
+    };
+  });
+
   app.get<{ Params: { id: string } }>('/api/entities/:id', async (request, reply) => {
-    const entity = await repo.getEntity(request.params.id);
+    const stand = await roh();
+    const entity = stand.map.get(request.params.id) ?? (await repo.getEntity(request.params.id));
     if (!entity) return reply.code(404).send({ error: 'Nicht gefunden' });
-    const [einer] = await sieve(request, [entity]);
+    const [einer] = await sieve(request, [entity], stand.map);
     /* Fällt er durchs Sieb, gibt es ihn für diesen Betrachter nicht.
        „Verboten" wäre die genauere Auskunft und die falsche: sie sagt, dass
        da etwas ist. Vorher stand hier `einer ?? entity` — der Rückfall
        schickte genau den Artikel, den das Sieb gerade zurückgehalten
        hatte. */
     if (!einer) return reply.code(404).send({ error: 'Nicht gefunden' });
-    return einer;
+    /* Die Namen, die der Artikel braucht, kommen mit (W7) — der Browser
+       hält keinen Bestand mehr, aus dem er sie nachschlagen könnte. */
+    return { ...einer, refs: await bezuegeVon(request, einer) };
   });
+
+  /**
+   * **Einen Artikel anlegen** (W7). Die Oberfläche nennt Art und Name, der
+   * Server vergibt den Rest: die Peg-Id (undurchsichtig, wie jede), die
+   * Nummer (`nextId` über den ganzen Bestand — gezählt wird, was dasteht),
+   * die Karten, die Pflicht sind oder Vorgaben tragen, mit den Vorgaben
+   * (`default`) aus dem Register. Geprüft wird wie beim Schreiben
+   * (`validateEntity`); was Pflicht ist und keine Vorgabe hat (die Art
+   * einer Aktion), schickt die Maske in `fields` mit.
+   *
+   * Rechte wie beim Schreiben: die Wache lässt nur durch, wer schreiben
+   * darf (`mayWrite`) — einen Artikel, den es noch nicht gibt, besitzt
+   * kein Spieler, also legt die Verwaltung an.
+   */
+  app.post<{ Body: { type?: unknown; name?: unknown; fields?: unknown; relations?: unknown } }>(
+    '/api/entities',
+    async (request, reply) => {
+      const type = String(request.body?.type ?? '');
+      const name = String(request.body?.name ?? '').trim();
+      const registry = await repo.getRegistry();
+      const def = registry.interfaces[type];
+      if (!def || def.abstract) {
+        return reply.code(400).send({ error: `Diese Art lässt sich nicht anlegen: ${type || '—'}` });
+      }
+      if (!name) return reply.code(400).send({ error: 'Der Name fehlt.' });
+
+      const stand = await roh();
+      const kette = typeChain(registry, type);
+      const components: Record<string, Record<string, unknown>> = {};
+      for (const t of kette) {
+        const schema = registry.interfaces[t]?.schema;
+        if (!schema) continue;
+        const karte: Record<string, unknown> = {};
+        for (const [k, p] of Object.entries(schema.properties ?? {})) {
+          if (!p.derived && p.default !== undefined) karte[k] = structuredClone(p.default);
+        }
+        if (Object.keys(karte).length || (schema.required ?? []).length) components[t] = karte;
+      }
+      const extra = request.body?.fields;
+      if (extra && typeof extra === 'object') {
+        for (const [ref, wert] of Object.entries(extra as Record<string, unknown>)) {
+          const [t, k] = ref.split('.');
+          if (!t || !k || !kette.includes(t)) continue;
+          if (wert === undefined || wert === null || wert === '') continue;
+          (components[t] ??= {})[k] = wert;
+        }
+      }
+      components['Identity'] = {
+        ...(components['Identity'] ?? {}),
+        name,
+        id: nextId(stand.alle, type),
+      };
+      const neueId = (): string => `e_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+      let id = neueId();
+      while (stand.map.has(id)) id = neueId();
+      /* Kanten gehen mit, wenn die Seite sie schon kennt — ein Board gehört
+         gleich zu seiner Sitzung (`partOf`). Die Ids vergibt der Server. */
+      const kanten = Array.isArray(request.body?.relations) ? (request.body.relations as unknown[]) : [];
+      const relations: NonNullable<Entity['relations']> = kanten
+        .filter((k): k is { type: string; to: string; props?: Record<string, unknown> } =>
+          !!k && typeof k === 'object' && typeof (k as { type?: unknown }).type === 'string' &&
+          typeof (k as { to?: unknown }).to === 'string')
+        .map((k, i) => ({ id: `${id}~${k.type}-${i + 1}`, type: k.type, to: k.to, props: k.props ?? {} }));
+      const entity: Entity = { id, interfaces: [type], name, components, relations };
+
+      const known = new Map(stand.alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
+      known.set(id, type);
+      const issues = validateEntity(registry, entity, { knownTypes: known, stageOf: stageBases([...stand.alle, entity]) });
+      if (issues.length) {
+        return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+      }
+      const stored = await repo.putEntity(entity);
+      await repo.appendEvent('entity.created', id, { interfaces: [type] });
+      return reply.code(201).send(stored);
+    },
+  );
 
   app.put<{ Params: { id: string }; Body: unknown }>(
     '/api/entities/:id',
@@ -686,6 +1074,310 @@ export function buildApp({
     const stufen = stageBases([...(await repo.listEntities()), pruefling]);
     return { issues: validateEntity(registry, pruefling, { knownTypes: known, stageOf: stufen }) };
   });
+
+  // ---------------------------------------------------------- API-Tokens
+  /*
+   * Eigene Tokens anlegen, ansehen, widerrufen (W9). Nur aus einer
+   * angemeldeten Sitzung, nie mit einem Token: ein Token, das Tokens
+   * anlegt, machte aus `read` ein `write`, und aus einem verlorenen eines
+   * zehn.
+   */
+  async function nurSitzung(request: FastifyRequest): Promise<User | string> {
+    const wer = await werIst(request);
+    if (!wer) return 'Nicht angemeldet.';
+    if (wer.token) return 'Tokens werden in einer angemeldeten Sitzung verwaltet, nicht mit einem Token.';
+    return wer.user;
+  }
+  const tokenAus = (t: ApiToken) => ({
+    id: t.id,
+    name: t.name,
+    scope: t.scope,
+    expiresAt: t.expiresAt,
+    createdAt: t.createdAt ?? null,
+    lastUsedAt: t.lastUsedAt ?? null,
+  });
+
+  app.get('/api/tokens', async (request, reply) => {
+    const user = await nurSitzung(request);
+    if (typeof user === 'string') return reply.code(403).send({ error: user });
+    return (await repo.listTokens(user.id)).map(tokenAus);
+  });
+
+  app.post<{ Body: { name?: string; scope?: string; days?: number } }>('/api/tokens', async (request, reply) => {
+    const user = await nurSitzung(request);
+    if (typeof user === 'string') return reply.code(403).send({ error: user });
+    const name = String(request.body?.name ?? '').trim();
+    if (!name) return reply.code(400).send({ error: 'Ein Token braucht einen Namen — woran erkennst du es sonst?' });
+    const scope = (request.body?.scope ?? 'read') as TokenScope;
+    if (!TOKEN_SCOPES.includes(scope)) return reply.code(400).send({ error: 'Rechte: read oder write.' });
+    const klartext = newApiToken();
+    const token: ApiToken = {
+      id: `tok_${newInviteCode().slice(0, 12)}`,
+      userId: user.id,
+      name: name.slice(0, 80),
+      tokenHash: hashToken(klartext),
+      scope,
+      expiresAt: tokenExpiry(request.body?.days).toISOString(),
+    };
+    await repo.createToken(token);
+    await repo.appendEvent('token.created', user.id, { id: token.id, name: token.name, scope, expiresAt: token.expiresAt });
+    /* Einmal und nie wieder — gespeichert ist nur der Hash. */
+    return reply.code(201).send({ ...tokenAus(token), token: klartext });
+  });
+
+  app.delete<{ Params: { id: string } }>('/api/tokens/:id', async (request, reply) => {
+    const user = await nurSitzung(request);
+    if (typeof user === 'string') return reply.code(403).send({ error: user });
+    if (!(await repo.dropToken(user.id, request.params.id))) return reply.code(404).send({ error: 'Nicht gefunden' });
+    await repo.appendEvent('token.revoked', user.id, { id: request.params.id });
+    return { ok: true };
+  });
+
+  // ------------------------------------------------------------ Werkbank
+  /*
+   * Prüfungen und Massenänderungen (W9) — für Leitung und Verwaltung.
+   * Gerechnet wird über den Bestand, **wie ihn der Fragende sieht** (das
+   * Sieb), geschrieben nur, was `mayWrite` ihm erlaubt, und jeder Artikel
+   * geht durch `validateEntity`.
+   */
+  async function werkbankFuer(request: FastifyRequest): Promise<Wer | string> {
+    const wer = await werIst(request);
+    if (!wer) return 'Nicht angemeldet.';
+    if (!isLeitung(wer.user)) return 'Die Werkbank ist für Leitung und Verwaltung.';
+    return wer;
+  }
+
+  app.get<{ Querystring: { check?: string; limit?: string } }>('/api/checks', async (request, reply) => {
+    const wer = await werkbankFuer(request);
+    if (typeof wer === 'string') return reply.code(403).send({ error: wer });
+    const t0 = Date.now();
+    const alle = await repo.listEntities();
+    const gesiebt = await sieve(request, alle, alle);
+    const registry = await repo.getRegistry();
+    const exists = new Map(alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
+    const roh = String(request.query.limit ?? '50');
+    const limit = roh === 'all' ? Number.MAX_SAFE_INTEGER : Math.max(0, Math.floor(Number(roh)) || 0);
+    const only = request.query.check ? request.query.check.split(',').map((x) => x.trim()).filter(Boolean) : undefined;
+    const checks = runChecks({ registry, entities: gesiebt, exists }, { limit, ...(only ? { only } : {}) });
+    return { total: gesiebt.length, ms: Date.now() - t0, checks };
+  });
+
+  /** Ein Artikel in einer Antwort der Werkbank: wer, was, was sich ändert. */
+  const zeile = (c: BulkChange) => {
+    const e = c.after ?? c.before!;
+    return {
+      id: c.id,
+      name: String(e.components?.['Identity']?.['name'] ?? e.name ?? c.id),
+      type: e.interfaces?.[0] ?? '',
+      change: c.after === null ? 'delete' : c.before === null ? 'create' : 'update',
+      summary: c.summary,
+    };
+  };
+
+  /**
+   * Prüft die Nachher-Fassungen eines Laufs, als stünden sie schon da:
+   * Instanzen aufgelöst geprüft und ausgedünnt gespeichert (wie `PUT`),
+   * Rechte je Artikel. Gibt die Änderungen zurück, wie sie geschrieben
+   * würden, und die Abgelehnten.
+   */
+  async function pruefeLauf(user: User, registry: Registry, roh: Map<string, Entity>, changes: BulkChange[]) {
+    const danach = new Map(roh);
+    for (const c of changes) {
+      if (c.after) danach.set(c.id, c.after);
+      else danach.delete(c.id);
+    }
+    const known = new Map([...danach.values()].map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
+    /* Einmal, nicht je Artikel (siehe `invalid` in checks.ts). */
+    const ids = new Set(known.keys());
+    const stufen = stageBases(danach.values());
+    const eigen = user.isAdmin ? null : await ownedBy(user);
+    const abgelehnt: { id: string; name: string; type: string; issues: string[] }[] = [];
+    const geprueft: BulkChange[] = [];
+    for (const c of changes) {
+      const e = c.after ?? c.before!;
+      const name = String(e.components?.['Identity']?.['name'] ?? e.name ?? c.id);
+      if (eigen && !mayWrite(user, eigen, c.id)) {
+        abgelehnt.push({ id: c.id, name, type: e.interfaces?.[0] ?? '', issues: ['Das gehört dir nicht.'] });
+        continue;
+      }
+      if (!c.after) {
+        geprueft.push(c);
+        continue;
+      }
+      const pruefling = isInstance(c.after) ? resolveInstance(danach, c.after) : c.after;
+      const issues = validateEntity(registry, pruefling, { knownTypes: known, knownIds: ids, stageOf: stufen });
+      if (issues.length) {
+        abgelehnt.push({ id: c.id, name, type: e.interfaces?.[0] ?? '', issues: issues.map((i) => i.message) });
+        continue;
+      }
+      const after = isInstance(c.after) ? thinInstance(danach, c.after) : c.after;
+      if (c.before && storedKey(after) === storedKey(c.before)) continue;
+      geprueft.push({ ...c, after });
+    }
+    return { geprueft, abgelehnt };
+  }
+
+  /**
+   * Eine Massenänderung. `dryRun: true` sagt, was geschähe — Zahl,
+   * Beispiele, Ablehnungen —, und schreibt nichts. Ohne `dryRun` geht jeder
+   * Artikel durch `validateEntity`; besteht einer nicht, wird **nichts**
+   * geschrieben (ausser `skipRejected`, und nie beim Löschen). Vor dem
+   * ersten Schreiben steht das Ereignis im Protokoll, mit jeder alten
+   * Fassung: bricht der Lauf mittendrin ab, ist er trotzdem rückgängig zu
+   * machen.
+   */
+  app.post<{ Body: unknown }>('/api/bulk', async (request, reply) => {
+    const wer = await werkbankFuer(request);
+    if (typeof wer === 'string') return reply.code(403).send({ error: wer });
+    const parsed = BulkRequestSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'Massenänderung ungültig', issues: parsed.error.issues });
+    const auftrag = parsed.data;
+    const falsch = (auftrag.select.where ?? []).map(conditionProblem).filter((x): x is string => !!x);
+    if (falsch.length) return reply.code(400).send({ error: falsch.join('; ') });
+    const merge = auftrag.ops.find((o) => o.op === 'merge');
+    if (merge && auftrag.ops.length > 1) {
+      return reply.code(400).send({ error: 'Zusammenführen steht allein — nicht mit anderen Operationen in einem Lauf.' });
+    }
+    if (!auftrag.select.ids?.length && !auftrag.select.types?.length && !auftrag.select.layer && !auftrag.select.tag && !auftrag.select.where?.length) {
+      return reply.code(400).send({ error: 'Eine Auswahl ohne Bedingung träfe den ganzen Bestand — sag, welche Artikel.' });
+    }
+
+    const t0 = Date.now();
+    const alle = await repo.listEntities();
+    const roh = new Map(alle.map((e) => [e.id, e]));
+    const registry = await repo.getRegistry();
+    const gesiebt = await sieve(request, alle, alle);
+    const auswahl = selectEntities(registry, gesiebt, auftrag.select);
+    const plan = planBulk(registry, roh, auswahl.map((e) => e.id), auftrag.ops);
+    const { geprueft, abgelehnt } = await pruefeLauf(wer.user, registry, roh, plan.changes);
+    const loescht = geprueft.filter((c) => !c.after).length;
+    const limit = auftrag.limit ?? 50;
+    const antwort = {
+      dryRun: auftrag.dryRun === true,
+      selected: plan.selected,
+      changed: geprueft.length - loescht,
+      deleted: loescht,
+      examples: geprueft.slice(0, limit).map(zeile),
+      rejected: abgelehnt.slice(0, limit),
+      rejectedCount: abgelehnt.length,
+      skipped: plan.skipped.slice(0, limit),
+      skippedCount: plan.skipped.length,
+      ms: 0,
+    };
+    if (auftrag.dryRun) return { ...antwort, ms: Date.now() - t0 };
+
+    if (loescht > 1 && auftrag.confirmDelete !== loescht) {
+      return reply.code(409).send({
+        ...antwort,
+        error: `Dieser Lauf löscht ${loescht} Artikel. Bestätige mit "confirmDelete": ${loescht}.`,
+      });
+    }
+    if (abgelehnt.length && (!auftrag.skipRejected || loescht > 0)) {
+      return reply.code(422).send({
+        ...antwort,
+        error: `${abgelehnt.length} Artikel bestehen die Prüfung nicht — nichts geschrieben.`,
+      });
+    }
+    if (!geprueft.length) return { ...antwort, id: null, ms: Date.now() - t0 };
+
+    const { dryRun: _d, ...was } = auftrag;
+    const id = await repo.appendEvent('bulk', undefined, {
+      by: { id: wer.user.id, name: wer.user.name },
+      token: wer.token?.name ?? null,
+      request: was,
+      selected: plan.selected,
+      changed: antwort.changed,
+      deleted: loescht,
+      summary: geprueft.slice(0, 5).map((c) => `${zeile(c).name}: ${c.summary.join(', ')}`),
+      changes: geprueft.map((c) => ({ id: c.id, before: c.before, after: c.after })),
+    });
+    let geschrieben = 0;
+    try {
+      /* Zuerst die gehenden: ein bleibender Artikel nimmt ihre Kanten mit,
+         und eine Kanten-Id ist Schlüssel der ganzen Tabelle. */
+      for (const c of geprueft) if (!c.after) {
+        await repo.deleteEntity(c.id);
+        geschrieben += 1;
+      }
+      for (const c of geprueft) if (c.after) {
+        await repo.putEntity(c.after);
+        geschrieben += 1;
+      }
+    } catch (error) {
+      request.log.error(error);
+      return reply.code(500).send({
+        error: `Abgebrochen nach ${geschrieben} von ${geprueft.length} Artikeln. Rückgängig: POST /api/bulk/${id}/undo`,
+        id,
+      });
+    }
+    return { ...antwort, id, ms: Date.now() - t0 };
+  });
+
+  /** Die letzten Massenänderungen, ohne ihre alten Fassungen. */
+  app.get<{ Querystring: { limit?: string } }>('/api/bulk', async (request, reply) => {
+    const wer = await werkbankFuer(request);
+    if (typeof wer === 'string') return reply.code(403).send({ error: wer });
+    const limit = Math.min(200, Math.max(1, Number(request.query.limit) || 20));
+    const laeufe = await repo.listEvents({ name: 'bulk', limit, light: true });
+    const zurueck = new Set((await repo.listEvents({ name: 'bulk.undone', limit: 1000, light: true })).map((e) => e.subject));
+    return laeufe.map((e) => ({ id: e.id, at: e.at, undone: zurueck.has(e.id), ...(e.payload as object) }));
+  });
+
+  /**
+   * Eine Massenänderung zurücknehmen: jede alte Fassung wieder hin, jeder
+   * gelöschte Artikel wieder da. Hat jemand einen Artikel seither anders
+   * geändert, steht er als Konflikt da, und es geschieht nichts — ausser
+   * mit `force`, dann gewinnt die alte Fassung. Auch das geht durch
+   * `validateEntity`, und auch das steht im Protokoll.
+   */
+  app.post<{ Params: { id: string }; Body: { force?: boolean; dryRun?: boolean } | null }>(
+    '/api/bulk/:id/undo',
+    async (request, reply) => {
+      const wer = await werkbankFuer(request);
+      if (typeof wer === 'string') return reply.code(403).send({ error: wer });
+      const ereignis = await repo.getEvent(request.params.id);
+      if (!ereignis || ereignis.name !== 'bulk') return reply.code(404).send({ error: 'Nicht gefunden' });
+      if ((await repo.listEvents({ name: 'bulk.undone', subject: ereignis.id, limit: 1, light: true })).length) {
+        return reply.code(409).send({ error: 'Schon rückgängig gemacht.' });
+      }
+      const payload = ereignis.payload as { changes?: { id: string; before: Entity | null; after: Entity | null }[] };
+      const alle = await repo.listEntities();
+      const roh = new Map(alle.map((e) => [e.id, e]));
+      const konflikte: { id: string; name: string; reason: string }[] = [];
+      const zurueck: BulkChange[] = [];
+      for (const c of [...(payload.changes ?? [])].reverse()) {
+        const jetzt = roh.get(c.id) ?? null;
+        const name = String((c.before ?? c.after)?.components?.['Identity']?.['name'] ?? c.id);
+        if (storedKey(jetzt) === storedKey(c.before)) continue; // steht schon wie vorher
+        if (storedKey(jetzt) !== storedKey(c.after)) {
+          konflikte.push({
+            id: c.id,
+            name,
+            reason: jetzt ? (c.after ? 'changed since' : 'exists again') : 'deleted since',
+          });
+          if (!request.body?.force) continue;
+        }
+        zurueck.push({ id: c.id, before: jetzt, after: c.before, summary: [] });
+      }
+      if (konflikte.length && !request.body?.force) {
+        return reply.code(409).send({ error: `${konflikte.length} Artikel wurden seither geändert. Mit "force": true gewinnt die alte Fassung.`, conflicts: konflikte });
+      }
+      const registry = await repo.getRegistry();
+      const { geprueft, abgelehnt } = await pruefeLauf(wer.user, registry, roh, zurueck);
+      const antwort = { restored: geprueft.length, conflicts: konflikte, rejected: abgelehnt };
+      if (request.body?.dryRun) return { dryRun: true, ...antwort };
+      if (abgelehnt.length) return reply.code(422).send({ error: 'Die alten Fassungen bestehen die Prüfung nicht — nichts geschrieben.', ...antwort });
+      await repo.appendEvent('bulk.undone', ereignis.id, {
+        by: { id: wer.user.id, name: wer.user.name },
+        token: wer.token?.name ?? null,
+        changes: geprueft.map((c) => ({ id: c.id, before: c.before, after: c.after })),
+      });
+      for (const c of geprueft) if (!c.after) await repo.deleteEntity(c.id);
+      for (const c of geprueft) if (c.after) await repo.putEntity(c.after);
+      return antwort;
+    },
+  );
+
 
   return app;
 }

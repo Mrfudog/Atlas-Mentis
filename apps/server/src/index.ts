@@ -19,6 +19,14 @@ async function main(): Promise<void> {
   if (applied.length) app.log.info({ applied }, 'Migrationen angewandt');
   await seedRegistryInto(repo);
   await app.listen({ port: config.port, host: config.host });
+  /* Den Bestand einmal lesen, bevor jemand fragt: die erste Anfrage nach
+     einem Neustart wartete sonst auf das Lesen aller Artikel (24 157 aus
+     5e.tools). Danach hält ihn der Zwischenspeicher am Repository. */
+  const t0 = Date.now();
+  void repo
+    .listEntities()
+    .then((l) => app.log.info({ artikel: l.length, ms: Date.now() - t0 }, 'Bestand gelesen'))
+    .catch((error: unknown) => app.log.warn({ err: error }, 'Bestand nicht vorgelesen'));
 }
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {

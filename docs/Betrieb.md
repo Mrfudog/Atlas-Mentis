@@ -23,9 +23,12 @@ push preprod ─┬─ check      lint, test, build (wie bisher)
               ├─ postgres   Durchstich gegen eine frische Postgres 17
               └─ image      Abbild bauen, nach GHCR: :preprod und :preprod-<sha>
                    └─ deploy   Environment „dev": SSH → deploy.sh :preprod-<sha>
+                        └─ import-5etools   nur wenn packages/import-5etools sich
+                                            geändert hat: 5e.tools neu einlesen
 ```
 
-`main` läuft genauso und rollt nach `prod` aus. Weil `main` nur aus `preprod`
+`main` läuft genauso und rollt nach `prod` aus — ohne `import-5etools`
+(siehe [5e.tools laden](#5etools-laden)). Weil `main` nur aus `preprod`
 vorgespult wird, ist es derselbe Commit, der auf dev schon lief.
 
 **Gebaut wird nur in CI.** Der Server holt das fertige Abbild und startet es;
@@ -224,10 +227,111 @@ docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB
 
 ## 5e.tools laden
 
-**Einmal** (Arbeitsplan §1, E7): danach gehören die Artikel uns und werden
-direkt bearbeitet. Der volle Bestand geht an den Server, nicht in den
-Prototyp; zuerst auf `dev`, `prod` erst, wenn dev angeschaut ist (P6).
-Was hereinkommt und was nicht, sagt [5etools-Bericht.md](5etools-Bericht.md).
+Die Artikel aus 5e.tools stehen in einer eigenen **Ebene**, „D&D 5e
+(2014)" (`inLayer` an jedem). Eingelesen wird über eine **Pipeline**; die
+Daten von 5e.tools kommen dabei nie ins Repository und bleiben nicht auf
+dem Server liegen. Was hereinkommt und was nicht, sagt
+[5etools-Bericht.md](5etools-Bericht.md). Zuerst auf `dev`, `prod` erst,
+wenn dev angeschaut ist (P6).
+
+### Einmal einlesen, danach nur ergänzen
+
+Der Import ist **ein einmaliger Lauf, der die Basis bildet** (D71). Danach
+legt die Leitung selbst Artikel an, oder es wird gezielt ergänzt — ein
+Modul, ein Buch. Neu geladen wird nicht.
+
+Darum ist `only-new` die Vorgabe (`import.js <datei> --only-new`):
+angelegt wird nur, wessen Id es noch nicht gibt. Was schon steht, bleibt,
+wie es ist — auch wenn die Leitung es seither geändert hat (Kampfrolle,
+Marken, Text). Gelöscht wird nichts. Vom Register kommen nur Zeilen dazu,
+die es noch nicht gibt; eine Art, die jemand am Server angepasst hat,
+bleibt angepasst. Der Lauf sagt `Nur ergänzt: 120 neu, 23 880
+übersprungen (gibt es schon).` — beim zweiten Lauf mit derselben Datei
+also `0 neu`. Geprüft wird wie immer alles, bevor etwas geschrieben wird.
+
+**Ein Modul ergänzen:** Pipeline mit `mode` = `only-new` und `sources` =
+dem Kürzel aus 5e.tools (z. B. `CoS`, oder `PHB,MM`); zuerst `dry-run`
+mit denselben Angaben. Was das Modul an Bekanntem mitbringt (ein Monster
+aus dem MM), steht schon und wird übersprungen.
+
+**Wann `replace-layer`:** nur, wenn die Ebene wirklich neu geladen werden
+soll — etwa weil der Importer etwas an *bestehenden* Artikeln anders
+schreibt und das überall ankommen soll. **Was es kostet:** jeder Artikel
+der Ebene wird aus der Datei neu geschrieben, eigene Änderungen an
+5e.tools-Artikeln (Werkbank, D70) gehen dabei verloren; was die Ebene
+bringt und die Datei nicht mehr, wird gelöscht. Die Pipeline verlangt
+dafür `confirm` = `ersetzen` und bricht sonst ab. Vor dem Lauf sichert
+`import.sh` die Datenbank — das ist der Weg zurück.
+
+### Ersetzen je Ebene
+
+`replace-layer` **ersetzt die Ebene**, nicht den Bestand
+(`import.js <datei> --replace-layer`, W8): gelöscht wird nur, was die Ebene
+der Datei bringt — `inLayer` auf sie und auf keine andere — und in der
+Datei fehlt. Eigene Artikel ohne Ebene oder in einer Kampagnenebene
+bleiben, auch einer, der zusätzlich in der 5e-Ebene steht. Der Lauf sagt:
+
+- wie viele Artikel geschrieben und gelöscht wurden, die gelöschten je Art
+  (`3 gelöscht (Spell 2, Statblock 1)`);
+- welche **Kanten aus bleibenden Artikeln** danach ins Leere zeigen
+  (`Der Fall von Kanalgang (…) —involves→ Fireball (…)`) — sie bleiben
+  stehen und sind dann ein `dangling_relation`; wer sie nicht will, löscht
+  sie von Hand;
+- welche **Instanzen** von einer gelöschten Vorlage gelöst wurden — sie
+  tragen danach selbst, was sie von ihr lasen, wie beim Löschen über die
+  Oberfläche;
+- welche Figuren an einem Konto nicht mehr da sind (die Konten bleiben,
+  REQ-199).
+
+`--dry-run` sagt dasselbe und schreibt nichts. `--replace` (alles löschen,
+was nicht in der Datei steht) gibt es weiter — für eine Sicherung, die den
+ganzen Bestand ersetzen soll, nicht für 5e.tools: es nähme die eigenen
+Kampagnenartikel mit. Die Ebene wählt `--replace-layer` selbst (die eine,
+auf die die Artikel der Datei zeigen); `--replace-layer=<id oder Name>`
+nennt sie ausdrücklich.
+
+### Die Pipeline (der Normalweg)
+
+**Actions › 5e.tools einlesen › Run workflow**:
+
+| Eingabe | Werte |
+| --- | --- |
+| *Use workflow from* | `preprod` für dev, `main` für prod — die Zweigregel der Environments verlangt es, ein Lauf vom falschen Zweig bricht gleich ab |
+| `environment` | `dev` oder `prod` |
+| `mode` | `only-new` (Vorgabe): nur anlegen, was es noch nicht gibt · `dry-run`: nur sagen, was `only-new` täte (mit `confirm` = `ersetzen`: was `replace-layer` täte) · `replace-layer`: Ebene neu laden, nur mit `confirm` = `ersetzen` · `add`: dazulegen und Bestehendes überschreiben |
+| `sources` | nur diese Quellen, z. B. `PHB,MM` oder ein Modulkürzel; leer heisst alles |
+| `confirm` | `ersetzen` für `replace-layer`, sonst leer |
+| `source-ref` | Stand von `5etools-src` (Zweig oder Tag); leer heisst der neueste |
+
+Der Lauf klont `5etools-src` (nur `data`, nach `$RUNNER_TEMP`), baut
+`model`, `registry` und `import-5etools`, erzeugt die Datei (jeder Artikel
+geht durch `validateEntity`; besteht einer nicht, endet der Lauf hier),
+legt sie gepackt mit `deploy/import.sh` in das Verzeichnis der Umgebung
+und ruft dort `import.sh` auf. Das Skript **sichert die Datenbank**
+(`backups/<zeit>-vor-import.dump`, ausser beim Probelauf), kopiert die
+Datei in den laufenden `app`-Container, liest sie ein und löscht sie
+danach — im Container und auf der Platte, auch wenn etwas scheitert. Die
+Ausgabe des Imports steht im Log und in der Zusammenfassung des Laufs; der
+Bericht hängt als Artefakt daran (30 Tage).
+
+**Von selbst** läuft es nie (D71) — auch nicht, wenn sich
+`packages/import-5etools` ändert: ein geänderter Importer ist kein Grund,
+alles neu zu laden. Mit Ausrollen davor: **Actions › CI › Run workflow**
+mit dem Häkchen „5e.tools danach einlesen" — auf `preprod` für dev, auf
+`main` für prod; das liest mit `only-new` ein (Job `import-5etools`, mit
+dem Abbild, das gerade gestartet ist).
+
+Der Lauf braucht ein Verwaltungskonto auf der Umgebung (Schritt 7 oben):
+ein Server ohne Konto liest ohne Anmeldung, solange sein Bestand leer ist
+— mit einem Bestand nicht mehr. Und er braucht ein Abbild, das
+die Schalter kennt (`--only-new`, `--replace-layer`, `--dry-run`);
+`import.sh` prüft das und verweigert sonst, statt einen Probelauf schreiben
+oder ein Ergänzen überschreiben zu lassen.
+
+### Von Hand (Notlösung)
+
+Wenn die Pipeline nicht geht — GitHub Actions gestört, oder die Datei soll
+vor dem Laden lokal angeschaut werden.
 
 **1. Daten holen** — ausserhalb des Repos (112 MB, nicht unsere Daten):
 
@@ -236,26 +340,24 @@ git clone --depth 1 --filter=blob:none --sparse https://github.com/5etools-mirro
 git -C ~/5etools-src sparse-checkout set data
 ```
 
-**2. Die Datei erzeugen** — lokal, nicht auf dem Server:
+**2. Die Datei erzeugen** — lokal:
 
 ```bash
 pnpm --filter @nw/model build && pnpm --filter @nw/registry build && pnpm --filter @nw/import-5etools build
 node packages/import-5etools/dist/cli.js ~/5etools-src/data --out 5etools-2014.json --bericht docs/5etools-Bericht.md
 ```
 
-Jeder Artikel geht dabei durch `validateEntity`; besteht einer nicht,
-bricht der Lauf ab und schreibt keine Datei. Die Datei (rund 30 MB,
-24 000 Artikel) wird **nicht** eingecheckt, der Bericht schon. `--srd`
-nimmt nur, was im SRD steht; `--sources PHB,MM` nur diese Bücher.
-`--sample` schreibt einen Ausschnitt als Prüfbestand nach
+Die Datei (rund 35 MB, 24 000 Artikel) wird **nicht** eingecheckt, der
+Bericht schon. `--srd` nimmt nur, was im SRD steht; `--sources PHB,MM` nur
+diese Bücher. `--sample` schreibt einen Ausschnitt als Prüfbestand nach
 `prototype/test/dbdump/entities` (das Register dazu: `emit-seed`) —
-derselbe Ausschnitt geht ins Artefakt. Das Verzeichnis vorher leeren:
-der Lauf schreibt hinzu und löscht nichts. Gleiche Merkmale und
-Fassungen aus mehreren Büchern löst der Lauf selbst auf
+derselbe Ausschnitt geht ins Artefakt. Das Verzeichnis vorher leeren: der
+Lauf schreibt hinzu und löscht nichts. Gleiche Merkmale und Fassungen aus
+mehreren Büchern löst der Lauf selbst auf
 ([Arbeitsplan › Doppel](5etools-Arbeitsplan.md)).
 
-**Ohne eigenen Rechner** geht Schritt 1 und 2 auch auf dem Server, in einem
-Wegwerf-Container (als `deploy`; nichts davon bleibt installiert):
+**Ohne eigenen Rechner** gehen Schritt 1 und 2 auch auf dem Server, in
+einem Wegwerf-Container (als `deploy`; nichts davon bleibt installiert):
 
 ```bash
 mkdir -p ~/5e && cd ~/5e
@@ -269,50 +371,186 @@ docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e COREPACK_ENABLE_DOWNL
     cd atlas-mentis && pnpm install --frozen-lockfile
     pnpm --filter @nw/model build && pnpm --filter @nw/registry build && pnpm --filter @nw/import-5etools build
     node packages/import-5etools/dist/cli.js /w/5etools-src/data --out /w/5etools-2014.json'
+gzip -9 5etools-2014.json && cp 5etools-2014.json.gz atlas-mentis/deploy/import.sh /srv/atlas/dev/
 ```
 
-Danach liegt die Datei in `~/5e/5etools-2014.json`; nach dem Laden
-`rm -rf ~/5e` — die Daten gehören nicht auf die Platte und nie ins Repo.
+Nach dem Laden `rm -rf ~/5e` — die Daten gehören nicht auf die Platte.
 
-**3. Sichern** — auf dem Server, vor dem Laden. Die Sicherung wird nicht
-gelöscht, auch wenn der Bestand neu steht: sie ist der einzige Ort, an dem
-der alte Bestand danach noch steht.
+**3. Laden** — dasselbe Skript wie die Pipeline, es sichert vorher und
+räumt danach auf:
 
 ```bash
-cd /srv/atlas/dev
-docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > backups/vor-5etools-$(date +%F).dump
-```
-
-**4. Laden.** Der Befehl verweigert, solange kein Verwaltungskonto
-existiert (Schritt 7 oben): ein Server ohne Konto liest ohne Anmeldung,
-solange sein Bestand leer ist — mit einem Bestand nicht mehr.
-
-```bash
-scp 5etools-2014.json deploy@<host>:/srv/atlas/dev/
-cd /srv/atlas/dev
-docker compose cp 5etools-2014.json app:/tmp/5etools-2014.json
-docker compose exec app node apps/server/dist/import.js /tmp/5etools-2014.json             # dazulegen
-docker compose exec app node apps/server/dist/import.js /tmp/5etools-2014.json --replace   # Bestand ersetzen
-docker compose exec app rm /tmp/5etools-2014.json
+gzip -9 5etools-2014.json
+scp 5etools-2014.json.gz deploy/import.sh deploy@<host>:/srv/atlas/dev/
+ssh deploy@<host>
+cd /srv/atlas/dev && chmod +x import.sh
+./import.sh 5etools-2014.json.gz --only-new --dry-run   # erst ansehen (löscht die Datei danach)
+./import.sh 5etools-2014.json.gz --only-new             # dann einlesen (Datei noch einmal hinlegen)
 ```
 
 Lokal gegen die eigene Datenbank: `pnpm --filter @nw/server run import
-<datei> [--replace]` — mit `run`, denn `pnpm import` ist ein eingebauter
-Befehl von pnpm und liefe sonst statt des Skripts.
+<datei> [--only-new | --replace-layer | --replace] [--dry-run]` — mit `run`, denn `pnpm
+import` ist ein eingebauter Befehl von pnpm und liefe sonst statt des
+Skripts.
 
-Geprüft wird alles, **bevor** etwas geschrieben wird — auch, dass jede
-Kanten-Id im ganzen Bestand nur einmal vorkommt; ein Fehler lässt den
-Bestand, wie er war. Geschrieben wird danach Artikel für Artikel: bricht
-ein Lauf **beim Schreiben** ab (Datenbank weg, Platte voll), steht ein Teil
-da. Dann denselben Befehl mit `--replace` noch einmal — er räumt auf, was
-nicht in der Datei steht. `--replace` löscht, was nicht in der Datei steht, und
-nennt danach die Figuren, die an einem Konto stehen und nicht mehr da sind
-(die Konten bleiben, REQ-199). Eine Datei mit `registry` und ohne
-`entities` bringt nur die Registerzeilen. Die Ablage speichert
-`interfaces`, `relations`, `views`, `units`, `vars`, `enums` und
-`settings` (die letzten beiden seit Migration 019; eine ältere Datenbank
-bekommt sie beim nächsten Start aus den Startzeilen nachgefüllt, solange
-sie dort leer sind).
+### Was beim Einlesen gilt
+
+Geprüft wird alles, **bevor** etwas geschrieben wird — jeder Artikel gegen
+das Register, und dass jede Kanten-Id im ganzen Bestand danach nur einmal
+vorkommt; ein Fehler lässt den Bestand, wie er war. Dann wird zuerst
+gelöscht, danach Artikel für Artikel geschrieben: bricht ein Lauf **beim
+Schreiben** ab (Datenbank weg, Platte voll), steht ein Teil da. Dann
+denselben Lauf noch einmal — er bringt den Rest. Die Sicherung von davor
+liegt in `backups/` (Zurück: wie oben, mit dieser Sicherung).
+
+Eine Datei mit `registry` und ohne `entities` bringt nur die
+Registerzeilen. Die Ablage speichert `interfaces`, `relations`, `views`,
+`units`, `vars`, `enums` und `settings` (die letzten beiden seit Migration
+019; eine ältere Datenbank bekommt sie beim nächsten Start aus den
+Startzeilen nachgefüllt, solange sie dort leer sind).
+
+## Werkzeugzugang
+
+Seit W9 (13.10.2026): eine Claude-Sitzung in der Cloud (oder ein anderes
+Werkzeug) **prüft dev und ändert dort in grossen Zügen** — über die
+Werkbank (`/api/checks`, `/api/bulk`) und das Skript `scripts/atlas.mjs`.
+Angemeldet wird mit einem **API-Token** eines eigenen Kontos
+([Zugang › API-Tokens](Zugang.md#api-tokens)). **Nur auf dev**, nie auf
+prod: dort gibt es dieses Konto nicht, und das Skript zeigt ohne Angabe
+auf dev.
+
+### Einrichten (einmal, die Leitung)
+
+**1. Das Konto auf dev anlegen** — als `deploy` auf dem Server:
+
+```bash
+cd /srv/atlas/dev
+docker compose exec -e NW_PASSWORD="$(openssl rand -base64 24)" app \
+  node apps/server/dist/user.js add werkbank --admin
+```
+
+Das Passwort ist zufällig und wird nirgends aufgeschrieben: das Konto
+meldet sich nie über die Maske an, nur mit Token. **Warum `--admin`:** die
+Werkbank steht der Leitung offen, aber **schreiben** darf heute nur die
+Verwaltung (`mayWrite`, [Zugang › Was noch fehlt](Zugang.md#was-noch-fehlt)).
+Soll die Sitzung nur **prüfen** und Vorschauen rechnen, reicht die
+Leitungsrolle in der Kampagne — dann ohne `--admin` anlegen und
+`… user.js role werkbank <kampagnen-id> gm` setzen, und in Schritt 2 ohne
+`--write`.
+
+**2. Ein Token ausgeben** — es steht genau einmal da, also gleich kopieren:
+
+```bash
+docker compose exec app node apps/server/dist/user.js token werkbank new claude-cloud --days 30 --write
+```
+
+Ausgabe: `Token tok_… (write, bis …)` und darunter `atm_…`. Ohne `--write`
+darf es nur lesen (Prüfungen, Vorschauen). Höchstens 365 Tage; nach Ablauf
+ein neues ausgeben und Schritt 3 wiederholen.
+
+**3. Die Cloud-Umgebung einstellen** — in Claude Code (Web oder App): im
+Titel der Sitzung das Menü der Cloud-Umgebung → **Edit**
+([Anleitung](https://code.claude.com/docs/en/cloud-environments#network-access)):
+
+| Einstellung | Wert |
+| --- | --- |
+| **Network access** | Stufe „Limited" (in älteren Apps „Custom") und unter **Allowed domains** `dev.ttrpg.fuchsbau.io` eintragen. Den Haken **Allow package managers** stehen lassen — sonst geht `pnpm install` nicht mehr. |
+| **Environment variables** | `ATLAS_DEV_TOKEN=atm_…` (das Token aus Schritt 2) |
+| | `ATLAS_URL=https://dev.ttrpg.fuchsbau.io` (optional — das ist die Vorgabe des Skripts) |
+
+Speichern. Eine **neue** Sitzung bekommt die Einstellungen; eine laufende
+nicht. Das Token gehört in die Einstellungen der Umgebung und **nie** in
+einen Chat, eine Datei im Repository oder eine Issue.
+
+**4. Prüfen** — in einer neuen Sitzung:
+
+```bash
+node scripts/atlas.mjs me        # "name": "werkbank", "token": { "scope": "write", … }
+node scripts/atlas.mjs checks    # die Zahlen je Prüfung
+```
+
+`403` beim Verbinden (`CONNECT tunnel failed`) heisst: die Domain ist in
+Schritt 3 nicht freigegeben. `401` heisst: Token falsch, abgelaufen oder
+widerrufen.
+
+**Widerrufen**, wenn ein Token irgendwo liegt, wo es nicht hingehört:
+
+```bash
+docker compose exec app node apps/server/dist/user.js token werkbank list
+docker compose exec app node apps/server/dist/user.js token werkbank drop tok_…
+```
+
+Das Konto ganz sperren: `… user.js disable werkbank` — alle seine Tokens
+gelten dann nicht mehr.
+
+### Was das Skript kann
+
+```bash
+node scripts/atlas.mjs checks                          # Zahlen je Prüfung (unter 2 s über 21 000 Artikel)
+node scripts/atlas.mjs checks duplicates --limit 20    # Treffer einer Prüfung
+node scripts/atlas.mjs find Ogre --type Statblock      # Artikel suchen
+node scripts/atlas.mjs get statblock-0042              # einen Artikel ganz (Peg-Id, Nummer oder Name)
+node scripts/atlas.mjs bulk --dry-run auftrag.json     # Vorschau: Zahl, Beispiele, Ablehnungen
+node scripts/atlas.mjs bulk auftrag.json               # schreiben — druckt die Id fürs Zurücknehmen
+node scripts/atlas.mjs bulks                           # die letzten Massenänderungen
+node scripts/atlas.mjs undo <id>                       # eine zurücknehmen
+```
+
+Eine **Massenänderung** steht in einer Datei, damit das Geschriebene genau
+das Geprüfte ist. „Allen Statblöcken, deren Name auf Ogre endet, die
+Kampfrolle Brute geben":
+
+```json
+{
+  "select": { "types": ["Statblock"], "where": [{ "field": "name", "op": "endsWith", "value": "Ogre" }] },
+  "ops": [{ "op": "set", "field": "Statblock.combatRole", "value": "Brute" }]
+}
+```
+
+„Die gleichnamigen Merkmale Amphibious mit gleichem Text zusammenführen"
+(einer bleibt, die anderen gehen, alles zeigt danach auf den bleibenden):
+
+```json
+{
+  "select": { "types": ["Feature"], "where": [{ "field": "name", "op": "eq", "value": "Amphibious" }] },
+  "ops": [{ "op": "merge", "mode": "delete", "by": "content" }]
+}
+```
+
+Seit W1 vereint schon der Importer textgleiche Merkmale; auf dem heutigen
+Bestand findet dieser Auftrag darum nichts (Vorschau: `0 geändert`) — von
+64 „Amphibious" sind 6 geblieben, alle verschieden. Ähnliche führt man
+gezielt zusammen: `checks duplicates` zeigt Gruppe und Ähnlichkeit, dann
+`"select": { "ids": [ … ] }` und `"keep": "<die bleibt>"`.
+
+| Teil | Was geht |
+| --- | --- |
+| `select.types` | Arten; ein Untertyp zählt mit (`Creature` trifft auch `PlayerCharacter`) |
+| `select.layer` | eine Ebene (Peg-Id oder Nummer), über `inLayer` |
+| `select.tag` | eine Marke |
+| `select.ids` | Peg-Ids oder Nummern |
+| `select.where` | `[{ field, op, value }]`, alle müssen gelten. `field`: `name`, `id` (Nummer), `type` oder `Karte.feld` (`Statblock.cr`). `op`: `eq`, `ne`, `contains`, `startsWith`, `endsWith`, `in` (Liste), `matches` (Regex), `empty`, `notEmpty` — gross/klein egal |
+| `ops` | `set` / `unset` (`field`, `value`), `addTag` / `removeTag` (`tag`), `addRelation` (`type`, `to`, `props`), `removeRelation` (`type`, `to` optional), `merge` (`mode`: `variant` oder `delete`; `keep`: wer bleibt, sonst die kleinste Nummer; `by`: `name` oder `content`) — `merge` steht allein |
+| `confirmDelete` | löscht ein Lauf mehr als einen Artikel, die Zahl aus der Vorschau (`--confirm-delete N`) |
+| `skipRejected` | schreiben, was besteht, und die Abgelehnten liegen lassen (nie beim Löschen) |
+
+Eine Auswahl ohne jede Bedingung lehnt der Server ab — sie träfe den ganzen
+Bestand. Jeder geänderte Artikel geht durch `validateEntity`; besteht einer
+nicht, wird **nichts** geschrieben. Wird die Kampfrolle eine Aufzählung,
+lehnt die Prüfung ein Wort ausserhalb der Liste ab — die Vorschau sagt es.
+
+**Rückgängig** setzt jede alte Fassung wieder hin und holt gelöschte
+Artikel zurück. Hat jemand einen der Artikel seither anders geändert,
+steht er als Konflikt da und es geschieht nichts; `undo <id> --force` lässt
+die alte Fassung gewinnen.
+
+**Was beim Neu-Einlesen passiert:** die Pipeline (oben, W8) schreibt jeden
+Artikel der Ebene „D&D 5e (2014)" so, wie die Datei ihn bringt. Eine
+Massenänderung an einem 5e.tools-Artikel — eine Kampfrolle, ein
+zusammengeführtes Doppel — ist nach dem nächsten Lauf wieder weg (das
+gelöschte Doppel steht wieder da). Was bleiben soll, gehört in den
+Importer (Doppel: `packages/import-5etools/src/doppel.ts`) oder als
+überschreibende Fassung in eine eigene Ebene.
 
 ## Den Bestand von prod nach dev holen
 
