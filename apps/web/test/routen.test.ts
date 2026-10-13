@@ -31,4 +31,9 @@ describe('routes', () => {
   it('names the article id the way the article page reads it', () => {
     expect(routes.some((r) => r.path === 'artikel/:id')).toBe(true);
   });
+
+  it('has the campaign page behind the guard', () => {
+    const r = routes.find((x) => x.path === 'campaign');
+    expect(r?.canActivate?.length).toBe(1);
+  });
 });
