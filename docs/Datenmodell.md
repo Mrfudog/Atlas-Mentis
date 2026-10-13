@@ -723,6 +723,27 @@ hat (`app_user_article`) oder schreiben darf (seine Figuren samt dem, was an
 ihnen hängt) — der Server gibt es als `Viewer.own` mit. Das gilt überall,
 wo gesiebt wird: Liste, Artikel, Verweise, Rückbezüge, Auswahlen.
 
+**Die eigene Figur ist ausgenommen** (E-014 d, D74): ein Spielercharakter,
+der einem Konto zugeteilt ist (`app_user_actor`), samt seinem Statblock
+(`belongsTo`, auch eine Instanz) und seinem Inventar (`carries`) geht nach
+der gewöhnlichen Sichtbarkeit an die Mitspielenden, in jedem Stand — der
+Server gibt die Figuren *aller* Konten als `Viewer.ungated` mit.
+
+**Der letzte fertige Stand gilt** (E-012, D74): fiel ein Artikel nach einer
+Änderung einer Spielerin auf `prepared` zurück, bekommt, wer den
+Arbeitsstand nicht sieht (`seesUnfinished`: nicht Leitung, nicht Eigenes),
+die Kopie von vorher aus `entity_ready` — in Liste, Artikel und als
+Zusammenhang des Siebs. Wer ihn sieht, bekommt den neuen Stand mit dem
+Datum des alten (`refs.ready`) und mit `?stand=ready` den alten.
+
+```mermaid
+flowchart LR
+  F["ready"] -- "Spielerin ändert" --> P["prepared<br/>+ Kopie in entity_ready"]
+  P -- "Spielerin ändert weiter" --> P
+  P -- "gm: ready" --> F2["ready<br/>Kopie weg, der neue gilt"]
+  P -. "alle anderen lesen" .-> K["die Kopie"]
+```
+
 ### 9.2 Rollen
 
 Die Rolle am Tisch steht **am Konto, je Kampagne**: `gm` · `co-gm` · `player`
@@ -780,7 +801,16 @@ die Verfasserin neben dem Konto (`app_user_article`), nicht im Artikel
 (REQ-199). Eine angelegte Spielerfigur führt sie gleich. **`ready` setzen
 die Verwaltung und `gm` der Kampagne, der der Artikel gehört**, nicht
 Spielende und nicht `co-gm`; der Server prüft es, auch wenn die Status-Karte
-fehlt. Dafür schreibt `gm` die Artikel, die Spielende angelegt haben. Das
+fehlt. Dafür schreibt `gm` die Artikel, die Spielende angelegt haben.
+**Ausgenommen ist die eigene Figur** (E-014 d, D74): der Spieler schreibt
+auch ihren Statblock (`belongsTo`) und setzt bei Figur, Statblock und
+Inventar den Stand selbst, auch `ready`. **Ändert eine Spielerin einen
+anderen fertigen Artikel, fällt er auf `prepared`** (E-012, D74), und der
+Stand davor bleibt als Kopie (`entity_ready`, Migration 027) — jede
+Änderung zählt, ein Speichern ohne Änderung nicht. Setzt `gm` wieder
+`ready` (in der Maske oder per `POST /api/entities/:id/ready`), gilt der
+neue und die Kopie fällt weg; ändert `gm` selbst, fällt nichts zurück. Was
+wartet, listet `GET /api/unready` (Werkbank, „Not ready, by players"). Das
 Register schreiben die Verwaltung und `gm` der laufenden Kampagne. Was die
 Leitung sonst schreibt, ist offen (D69).
 
@@ -916,6 +946,7 @@ verschweigen.
 | Konten, Passwörter, Sitzungen, Einladungen, Fehlversuche | Server: `app_user`, `app_session`, `app_invite`, `login_attempt` | nein (REQ-199) |
 | welche Figuren ein Konto führt | `app_user_actor` | nein |
 | wer einen Artikel angelegt hat (D72) | `app_user_article` | nein |
+| der letzte fertige Stand eines zurückgefallenen Artikels (D74) | `entity_ready` | nein |
 | Rolle je Kampagne | `campaign_member`; Prototyp: Sammlung `members` | nein |
 | Verwaltung der Installation | `app_user.is_admin` | nein |
 | das Register | Tabellen `interface_def`, `relation_def`, `view_def`, `unit_def`, `var_def`, `enum_def` (Aufzählungen), `setting_def` (Einstellungen, seit Migration 019); Prototyp: Sammlung `registry` | ja — allein weiterreichbar (`register-datei.mjs`) |

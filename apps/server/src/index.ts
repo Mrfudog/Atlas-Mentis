@@ -12,7 +12,11 @@ const repo = new PgRepository(getPool());
 
 // In the container the built Angular app sits beside dist/ as public/.
 const staticRoot = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
+/* Solange der Bestand nach dem Start gelesen wird, sagt der Server das
+   (503 mit der Zahl), statt Anfragen warten zu lassen (T-086). */
+let anlauf: { artikel: number } | null = null;
 const app = buildApp({
+  anlauf: () => anlauf,
   repo,
   logger: true,
   staticRoot,
@@ -32,10 +36,14 @@ async function main(): Promise<void> {
      einem Neustart wartete sonst auf das Lesen aller Artikel (24 157 aus
      5e.tools). Danach hält ihn der Zwischenspeicher am Repository. */
   const t0 = Date.now();
+  anlauf = { artikel: await repo.countEntities() };
   void repo
     .listEntities()
     .then((l) => app.log.info({ artikel: l.length, ms: Date.now() - t0 }, 'Bestand gelesen'))
-    .catch((error: unknown) => app.log.warn({ err: error }, 'Bestand nicht vorgelesen'));
+    .catch((error: unknown) => app.log.warn({ err: error }, 'Bestand nicht vorgelesen'))
+    .finally(() => {
+      anlauf = null;
+    });
 }
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {

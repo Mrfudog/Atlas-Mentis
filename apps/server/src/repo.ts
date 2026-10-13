@@ -38,6 +38,14 @@ export interface EventFilter {
   light?: boolean;
 }
 
+/** **Der letzte fertige Stand** eines Artikels (REQ-237, E-012): eine Kopie,
+ *  wie er war, als eine Spielerin ihn nach `ready` änderte. `at` ist, wann
+ *  dieser Stand geschrieben wurde. */
+export interface ReadyStand {
+  entity: Entity;
+  at: string;
+}
+
 export interface Repository {
   getRegistry(): Promise<Registry>;
   putRegistryPart<K extends keyof Registry>(part: K, value: Registry[K]): Promise<void>;
@@ -86,6 +94,17 @@ export interface Repository {
   /** Alle Artikel, die irgendein Konto angelegt hat — was die Leitung
    *  vorgelegt bekommt. */
   authoredArticles(): Promise<string[]>;
+
+  /** **Der letzte fertige Stand** (REQ-237, E-012): alle, die es gibt — es
+   *  sind wenige, nur Artikel, die eine Spielerin nach `ready` geändert hat
+   *  und die die Leitung noch nicht wieder fertig nannte. Eine Kopie am
+   *  Server (`entity_ready`), keine zweite Karte im Artikel. */
+  readyStands(): Promise<Map<string, ReadyStand>>;
+  /** Merkt den fertigen Stand; steht schon einer da, bleibt der alte —
+   *  er ist der, der gilt. */
+  keepReadyStand(stand: ReadyStand): Promise<void>;
+  /** Der neue Stand gilt (die Leitung nannte ihn fertig) oder der Artikel ist weg. */
+  dropReadyStand(entityId: string): Promise<void>;
 
   /* Einladungen. Ein Code erlaubt eine Registrierung und sonst nichts; ein
      offener Registrierungsendpunkt wäre ein Loch, und ein Passwort, das die
@@ -246,6 +265,16 @@ export class InMemoryRepository implements Repository {
   }
   async authoredArticles(): Promise<string[]> {
     return [...new Set([...this.users.values()].flatMap((u) => u.authoredIds ?? []))];
+  }
+  private readonly fertig = new Map<string, ReadyStand>();
+  async readyStands(): Promise<Map<string, ReadyStand>> {
+    return new Map([...this.fertig].map(([k, v]) => [k, structuredClone(v)]));
+  }
+  async keepReadyStand(stand: ReadyStand): Promise<void> {
+    if (!this.fertig.has(stand.entity.id)) this.fertig.set(stand.entity.id, structuredClone(stand));
+  }
+  async dropReadyStand(entityId: string): Promise<void> {
+    this.fertig.delete(entityId);
   }
   async usersOfActor(actorId: string): Promise<User[]> {
     return [...this.users.values()]

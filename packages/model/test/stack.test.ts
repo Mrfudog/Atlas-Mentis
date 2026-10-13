@@ -7,6 +7,7 @@ import {
   inPlay,
   inStack,
   isOverridden,
+  playStack,
   resolveArticle,
   unactivatedLayers,
   withStack,
@@ -137,5 +138,17 @@ describe('what is missing only because its layer is off (T-069)', () => {
     expect(neu.relations?.find((r) => r.to === 'ly_system')?.id).toBe('a1');
     expect(neu.relations?.some((r) => r.type === 'partOf')).toBe(true);
     expect(withStack(c, []).relations?.filter((r) => r.type === 'activates')).toEqual([]);
+  });
+});
+
+describe('the stack computed once for many articles (T-086)', () => {
+  it('answers like inPlay and unactivatedLayers, for every article and campaign', () => {
+    for (const c of [E('camp_nebel'), E('camp_salz'), null]) {
+      const s = playStack(entities, c);
+      for (const e of entities.values()) {
+        expect([e.id, s.inPlay(e)]).toEqual([e.id, inPlay(entities, e, c)]);
+        expect([e.id, s.unactivated(e)]).toEqual([e.id, unactivatedLayers(entities, e, c)]);
+      }
+    }
   });
 });

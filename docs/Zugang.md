@@ -119,14 +119,24 @@ Die Regel ist kurz, weil eine lange niemand mehr nachliest:
   Konto. **Unfertiges sieht nur die Leitung der Kampagne** — und wer es
   angelegt hat oder schreiben darf; ein Artikel ohne Status-Karte zählt als
   fertig.
+- **Die eigene Figur verwaltet der Spieler ganz** (E-014 d, D74): seinen
+  Spielercharakter samt Statblock (`belongsTo`, auch eine Instanz) und
+  Inventar (`carries`) schreibt er und setzt ihren Stand selbst, auch
+  `ready`; nichts fällt zurück, und die Mitspielenden sehen sie nach der
+  gewöhnlichen Sichtbarkeit, nicht nach dem Stand.
+- **Ändert eine Spielerin einen anderen fertigen Artikel, fällt er auf
+  `prepared`** (E-012, D74), und für alle ausser ihr und der Leitung gilt
+  der letzte fertige Stand weiter (`entity_ready`), bis `gm` wieder `ready`
+  setzt. Was wartet, steht in der Werkbank („Not ready, by players",
+  `GET /api/unready`, Knopf `POST /api/entities/:id/ready`).
 
-| | legt an | schreibt | setzt `ready` | sieht Unfertiges |
-|---|---|---|---|---|
-| Verwaltung (`is_admin`) | ja | alles | ja | alles |
-| `gm` der Kampagne | nein (D69) | was Spielende angelegt haben | ja | ja |
-| `co-gm` der Kampagne | nein (D69) | nein | nein | ja |
-| `player` der laufenden Kampagne | jede Art mit Stand | eigene Figur samt Anhang, eigene Artikel | nein | nur eigenes |
-| `spectator`, ohne Rolle | nein | nein | nein | nein |
+| | legt an | schreibt | setzt `ready` | sieht Unfertiges | ändert er Fertiges |
+|---|---|---|---|---|---|
+| Verwaltung (`is_admin`) | ja | alles | ja | alles | bleibt fertig |
+| `gm` der Kampagne | nein (D69) | was Spielende angelegt haben | ja | ja | bleibt fertig |
+| `co-gm` der Kampagne | nein (D69) | nein | nein | ja, mit Band | — |
+| `player` der laufenden Kampagne | jede Art mit Stand | eigene Figur samt Statblock und Anhang, eigene Artikel | nur an der eigenen Figur | nur eigenes; die Figuren der anderen ja | fällt auf `prepared`, für die anderen gilt der fertige Stand — ausser an der eigenen Figur |
+| `spectator`, ohne Rolle | nein | nein | nein | nein; die Figuren der Spielenden ja | — |
 - **Das Register gehört der Verwaltung und der Leitung der laufenden
   Kampagne** (`gm` in der Kampagne, die `currentCampaign` nennt; seit W5).
   Eine Registerzeile zu ändern heisst, die Regeln zu ändern, und die
