@@ -11,6 +11,14 @@ Jede Umgebung hat ihre eigene Datenbank, ihr eigenes Volume und ihre eigenen
 Konten. Davor steht Caddy als Container (`deploy/proxy/`, Host-Netz) und
 macht TLS; auch er kommt aus dem Repository.
 
+**Welche Umgebung antwortet, sagt `ATLAS_ENV`** (`dev` oder `prod`, gesetzt
+in `docker-compose.preprod.yml` und `docker-compose.yml`). Der Server gibt
+es in `/api/health` und `/api/me` mit; auf `dev` steht in der Oberfläche
+oben ein schmales Band „DEV — Test environment", auf `prod` und ohne
+Angabe keines (T-070). Wer auf dev pflegt, pflegt auf der Spielwiese:
+was dort fehlt, wenn ausgerollt oder eingelesen wird, steht unten unter
+[Was Daten löschen kann](#was-daten-löschen-kann).
+
 > **Schalter:** der Job `deploy` läuft nur, wenn die Repo-Variable
 > `DEPLOY_ENABLED` auf `true` steht (Settings › Secrets and variables ›
 > Actions › Variables). Ohne ihn bleibt ein Push grün, auch wenn die
@@ -234,7 +242,46 @@ nächtliche mehr da.
 Für die Kopie nach aussen eignet sich eine Hetzner Storage Box
 (`rsync -a /srv/atlas/prod/backups/ u…@u….your-storagebox.de:atlas/`).
 
+### Die eigene Ausfuhr
+
+Unabhängig von den Sicherungen des Servers lädt die Leitung ihre Kampagne
+jederzeit als Datei herunter (T-077): auf der Seite **Campaign** der Knopf
+„Export campaign", oder `GET /api/export?campaign=<id>` (mit einem
+Lesetoken auch aus einem Werkzeug). Die Datei heisst
+`<kampagne>-<datum>.json` und hat das Format, das der Ladebefehl liest
+(`format`, `registry`, `entities`).
+
+Darin stehen das **Register** und die **Artikel der Kampagne**: was in
+einer Kampagnenebene liegt (eine Ebene, die nur diese Kampagne aufschaltet
+und kein Regelwerk ist — `Layer.kind` nicht `system`/`expansion`), was
+keine Ebene hat, die Kampagne selbst und die Ebenen, die sie aufschaltet,
+als Artikel. Gesiebt nach dem, was der Aufrufer sieht. **Nicht** darin:
+Konten, Sitzungen, Tokens, Einladungen und die Rollen am Tisch (REQ-199),
+und die Artikel aus 5e.tools oder einer geteilten Ebene. Die ganze Ausfuhr
+mit allem holt nur die Verwaltung: `&layers=all`.
+
+Wer sie ausführen darf: [Zugang.md › Wer was darf](Zugang.md#wer-was-darf).
+
 ## Zurück
+
+### Aus der eigenen Ausfuhr
+
+Die Datei kommt über den Ladebefehl zurück, wie jede Ausfuhrdatei:
+
+```bash
+docker compose exec app node apps/server/dist/import.js /pfad/nebelwacht-2026-10-13.json --dry-run
+docker compose exec app node apps/server/dist/import.js /pfad/nebelwacht-2026-10-13.json
+```
+
+Ohne Schalter schreibt er die Artikel der Datei über den Bestand und
+löscht nichts. Zeigt ein Artikel der Kampagne auf etwas aus 5e.tools (eine
+Klasse, eine Vorlage), muss 5e.tools **vorher** da sein — sonst lehnt die
+Prüfung die Datei ab (`dangling_relation`) und schreibt nichts. Auf einen
+frischen Server also erst [5e.tools laden](#5etools-laden), dann die
+Datei. Konten und Rollen kommen nicht mit; die legt die Verwaltung neu an
+(`user add`, `user role`, oder die Seite **Campaign**).
+
+### Aus der Sicherung des Servers
 
 Migrationen laufen nur vorwärts. Wer auf das vorige Abbild zurück will,
 nimmt die Datenbank von davor mit — die Sicherung, die `deploy.sh` vor dem
@@ -247,6 +294,33 @@ docker compose exec -T db sh -c 'dropdb -U "$POSTGRES_USER" "$POSTGRES_DB" && cr
 docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner' < backups/<zeit>.dump
 ./deploy.sh "$(cat previous-image)"
 ```
+
+## Was Daten löschen kann
+
+Diese Wege ersetzen oder löschen Bestand. Jeder hat einen Weg zurück —
+aber nur, solange die Sicherung von davor noch liegt (`backups/`, die
+letzten 20; nächtliche in `backups/nacht/`). **Auf dev** ist das Absicht:
+dort wird ausprobiert, und was zählt, steht auf prod.
+
+| Was | Was dabei verloren gehen kann | Sicherung davor | Zurück |
+| --- | --- | --- | --- |
+| **Ausrollen mit Migration** (Push auf `preprod`/`main`, `deploy.sh`) | Eine Migration baut Tabellen um; sie läuft nur vorwärts. Was sie falsch umbaut, ist danach so. | ja, `backups/<zeit>.dump` | [Zurück](#zurück): App anhalten, Datenbank aus dieser Sicherung, `./deploy.sh "$(cat previous-image)"` |
+| **Einlesen mit `--replace`** (`import.sh`, `import.js`) | **Alles**, was nicht in der Datei steht — auch die eigenen Kampagnenartikel. | ja, `backups/<zeit>-vor-import.dump` (nicht bei `--dry-run`) | wie [Zurück](#zurück), mit der Sicherung `…-vor-import.dump`; das Abbild bleibt, `deploy.sh` ist nicht nötig, nur `docker compose start app` |
+| **Einlesen mit `--replace-layer`** (Pipeline „5e.tools einlesen", Art `replace-layer`, verlangt `confirm=ersetzen`) | Was die Ebene der Datei bringt und in der Datei fehlt, **und eigene Änderungen an ihren Artikeln**. | ja, wie oben | wie oben |
+| **Massenänderung** (Werkbank › Bulk change, `POST /api/bulk`) | Felder, Marken, Kanten an vielen Artikeln; mit `merge` und `mode: delete` auch Artikel. | die alten Fassungen stehen im Lauf selbst | Werkbank › Undo (`POST /api/bulk/<id>/undo`). Wurde ein Artikel seither geändert, sagt es das (409) — mit `force` gewinnt die alte Fassung. |
+| **Wiederherstellen** einer Sicherung, auch [prod nach dev holen](#den-bestand-von-prod-nach-dev-holen) | Alles, was **nach** der Sicherung geschrieben wurde. Beim Holen von prod nach dev: der ganze Bestand von dev (die Konten bleiben). | nein — vorher von Hand sichern (unten) | die Sicherung, die man vorher gemacht hat |
+
+**Vor einem Wiederherstellen selbst sichern**, denn dort sichert kein
+Skript:
+
+```bash
+cd /srv/atlas/dev     # oder prod
+docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > backups/$(date -u +%Y%m%dT%H%M%SZ)-von-hand.dump
+```
+
+**Sicher** ist: `--only-new` (die Vorgabe der Pipeline, legt nur an, D71),
+`--dry-run` und die Vorschau einer Massenänderung — sie schreiben nichts
+oder nur Neues.
 
 ## 5e.tools laden
 

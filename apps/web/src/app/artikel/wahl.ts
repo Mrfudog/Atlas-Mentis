@@ -116,6 +116,11 @@ export class Wahl {
   readonly wert = input<string>('');
   readonly arten = input<string[]>([]);
   readonly label = input<string>('Article');
+  /**
+   * Marken aus `target.tags`: was eine davon trägt, steht zuoberst. Nur ein
+   * Vorschlag — die Marke ist der heutige Stand des Ziels (T-068).
+   */
+  readonly bevorzugt = input<string[]>([]);
   /** Diese Id wird nicht angeboten — eine Kante auf sich selbst. */
   readonly ausser = input<string>('');
   readonly wertChange = output<string>();
@@ -169,7 +174,9 @@ export class Wahl {
       const r = await this.api.list({ of: this.arten(), q, limit: 20 });
       /* Eine ältere Antwort, die nach einer neueren kommt, gilt nicht. */
       if (nr !== this.lauf) return;
-      this.treffer.set(r.rows.filter((z) => z.id !== this.ausser()));
+      const marken = new Set(this.bevorzugt());
+      const passt = (z: ListenZeile) => Number((z.tags ?? []).some((t) => marken.has(t)));
+      this.treffer.set(r.rows.filter((z) => z.id !== this.ausser()).sort((a, b) => passt(b) - passt(a)));
     } catch {
       if (nr === this.lauf) this.treffer.set([]);
     } finally {

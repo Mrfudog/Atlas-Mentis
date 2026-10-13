@@ -226,6 +226,8 @@ export interface Me {
   writable: string[] | null;
   /** Steht nur auf einem frischen Server: wie man das erste Konto anlegt. */
   setup: string | null;
+  /** Welche Umgebung antwortet (`ATLAS_ENV`); auf `dev` steht oben ein Band (T-070). */
+  env?: 'dev' | 'prod' | null;
   /** Über welches API-Token gefragt wurde, sonst `null`. */
   token?: { name: string; scope: 'read' | 'write'; expiresAt: string } | null;
   /**
@@ -438,6 +440,23 @@ export class Api {
   }
 
   // ------------------------------------------------------- Verwaltung
+  /**
+   * Die Kampagne als Datei (T-077): der Körper als Blob, der Name aus
+   * `content-disposition` — den Namen sagt der Server, nicht ein zweites
+   * Mal die Seite.
+   */
+  async exportCampaign(campaign: string): Promise<{ blob: Blob; name: string }> {
+    const res = await fetch(`${this.base}/api/export?campaign=${encodeURIComponent(campaign)}`, {
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      const b = (await res.json().catch(() => null)) as { error?: string } | null;
+      throw new ApiError(res.status, b?.error ?? `Request failed (${res.status})`, undefined, b);
+    }
+    const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? 'campaign.json';
+    return { blob: await res.blob(), name };
+  }
+
   campaigns(): Promise<Kampagnen> {
     return this.call<Kampagnen>('/api/campaigns');
   }

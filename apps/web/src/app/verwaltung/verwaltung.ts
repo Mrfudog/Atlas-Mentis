@@ -58,6 +58,17 @@ const ROLLEN: { role: TableRole; text: string }[] = [
         </span>
       }
       <span class="stand">{{ standText() }}</span>
+      @if (mitglieder()?.campaign?.exists) {
+        <button
+          type="button"
+          class="ausfuhr"
+          [disabled]="laeuft()"
+          title="Download this campaign as a file: registry and its articles, without accounts"
+          (click)="ausfuehren()"
+        >
+          Export campaign
+        </button>
+      }
     </div>
 
     @if (fehler()) {
@@ -467,6 +478,22 @@ export class Verwaltung {
       month: 'short',
       year: 'numeric',
     })}`;
+  }
+
+  /** Die Kampagne als Datei herunterladen (T-077) — unabhängig von den
+   *  Sicherungen des Servers. Was hineingeht, sagt der Server (`ausfuhr.ts`). */
+  protected async ausfuehren(): Promise<void> {
+    const c = this.gewaehlt();
+    if (!c) return;
+    await this.tun(async () => {
+      const { blob, name } = await this.api.exportCampaign(c);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    });
   }
 
   private async tun(was: () => Promise<unknown>): Promise<boolean> {

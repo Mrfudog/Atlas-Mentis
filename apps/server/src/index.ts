@@ -12,7 +12,13 @@ const repo = new PgRepository(getPool());
 
 // In the container the built Angular app sits beside dist/ as public/.
 const staticRoot = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
-const app = buildApp({ repo, logger: true, staticRoot, trustProxy: config.trustProxy });
+const app = buildApp({
+  repo,
+  logger: true,
+  staticRoot,
+  trustProxy: config.trustProxy,
+  env: config.env,
+});
 
 async function main(): Promise<void> {
   const applied = await migrate();

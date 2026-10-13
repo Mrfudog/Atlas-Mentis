@@ -29,11 +29,15 @@ import {
   ausEingabe,
   eingabeArt,
   inEingabe,
+  inListe,
   kantenAusEntwurf,
   sindZeilen,
+  suchgruppen,
   tabelleAlsText,
+  verweisZiele,
   type Eingabe,
 } from './felder';
+import { Mehrfach, type Suchgruppe } from './mehrfach';
 import { Text } from './text';
 import { Wahl } from './wahl';
 import { Statblock } from './statblock';
@@ -54,6 +58,8 @@ interface Zelle {
   geerbt?: boolean;
   /** Ein langes Textfeld: gezeichnet als Markdown (M10), nicht als Zeile. */
   lang?: boolean;
+  /** Ein Verweisfeld: Namen als Links statt Ids (T-068). */
+  links?: { ziel: string; text: string }[];
 }
 
 interface Prosa {
@@ -100,6 +106,10 @@ interface Feld {
   wert: string;
   jaNein: boolean;
   pflicht: boolean;
+  /** Die Werte einer Auswahl mit Chips (`verweise`, `mehrfach`). */
+  liste: string[];
+  gruppen: Suchgruppe[];
+  frei: boolean;
 }
 
 /**
@@ -120,7 +130,7 @@ interface Feld {
  */
 @Component({
   selector: 'nw-artikel',
-  imports: [RouterLink, FormsModule, Text, Wahl, Statblock, Zauber, Gegenstand, Abschnitte],
+  imports: [RouterLink, FormsModule, Text, Wahl, Mehrfach, Statblock, Zauber, Gegenstand, Abschnitte],
   template: `
     @if (artikel(); as e) {
       <div class="buch">
@@ -206,6 +216,29 @@ interface Feld {
                           [wert]="f.wert"
                           (wertChange)="f.wert = $event"
                           [arten]="f.schema?.target?.interfaces ?? []"
+                          [bevorzugt]="f.schema?.target?.tags ?? []"
+                          [ausser]="e.id"
+                          [label]="f.label"
+                        />
+                      }
+                      @case ('verweise') {
+                        <nw-mehrfach
+                          [werte]="f.liste"
+                          (werteChange)="f.liste = $event"
+                          [verweise]="true"
+                          [gruppen]="f.gruppen"
+                          [bevorzugt]="f.schema?.target?.tags ?? []"
+                          [ausser]="e.id"
+                          [label]="f.label"
+                        />
+                      }
+                      @case ('mehrfach') {
+                        <nw-mehrfach
+                          [werte]="f.liste"
+                          (werteChange)="f.liste = $event"
+                          [gruppen]="f.gruppen"
+                          [feste]="f.werte"
+                          [frei]="f.frei"
                           [label]="f.label"
                         />
                       }
@@ -268,6 +301,15 @@ interface Feld {
                                 [checked]="k.props[f.prop] === true"
                                 (change)="setzeProp(k, f.prop, $any($event.target).checked)"
                                 [name]="k.id + '-' + f.prop"
+                              />
+                            }
+                            @case ('verweis') {
+                              <nw-wahl
+                                [wert]="anzeige(k.props[f.prop])"
+                                (wertChange)="setzeProp(k, f.prop, $event)"
+                                [arten]="f.schema?.target?.interfaces ?? []"
+                                [bevorzugt]="f.schema?.target?.tags ?? []"
+                                [label]="f.label"
                               />
                             }
                             @case ('auswahl') {
@@ -345,7 +387,16 @@ interface Feld {
                              [attr.title]="z.geerbt ? 'From the template' : null">
                           <dt>{{ z.label }}</dt>
                           <dd>
-                            @if (z.lang) {
+                            @if (z.links) {
+                              @for (l of z.links; track $index) {
+                                @if (!$first) {<ng-container>, </ng-container>}
+                                @if (l.ziel) {
+                                  <a [routerLink]="['/artikel', l.ziel]">{{ l.text }}</a>
+                                } @else {
+                                  <span class="weg">{{ l.text }}</span>
+                                }
+                              }
+                            } @else if (z.lang) {
                               <nw-text [text]="z.wert" [scopes]="scopes()" />
                             } @else {
                               <nw-text inline [text]="z.wert" [scopes]="scopes()" />
@@ -405,11 +456,20 @@ interface Feld {
             <section class="kasten">
               <h2>Who can see this</h2>
               <div class="zeile"><span>Audience</span><strong>{{ sicht().audience }}</strong></div>
-              @if (sicht().revealedTo.length) {
-                <div class="zeile"><span>Revealed to</span><span>{{ sicht().revealedTo.join(', ') }}</span></div>
-              }
-              @if (sicht().hiddenFrom.length) {
-                <div class="zeile"><span>Hidden from</span><span>{{ sicht().hiddenFrom.join(', ') }}</span></div>
+              @for (z of sicht().listen; track z.label) {
+                <div class="zeile">
+                  <span>{{ z.label }}</span>
+                  <span>
+                    @for (l of z.links; track $index) {
+                      @if (!$first) {<ng-container>, </ng-container>}
+                      @if (l.ziel) {
+                        <a [routerLink]="['/artikel', l.ziel]">{{ l.text }}</a>
+                      } @else {
+                        <span class="weg">{{ l.text }}</span>
+                      }
+                    }
+                  </span>
+                </div>
               }
             </section>
             @if (quelle(); as q) {
@@ -515,11 +575,13 @@ export class Artikel {
       | { audience?: string; revealedTo?: string[]; hiddenFrom?: string[] }
       | undefined;
     const name = this.bestand.name();
-    const namen = (ids?: string[]) => (ids ?? []).map((i) => name(i) ?? i);
+    /* Träger als Links, wie jedes Verweisfeld (T-068). */
     return {
       audience: v?.audience ?? 'public',
-      revealedTo: namen(v?.revealedTo),
-      hiddenFrom: namen(v?.hiddenFrom),
+      listen: [
+        { label: 'Revealed to', links: verweisZiele(v?.revealedTo, name) },
+        { label: 'Hidden from', links: verweisZiele(v?.hiddenFrom, name) },
+      ].filter((l) => l.links.length),
     };
   });
 
@@ -606,7 +668,11 @@ export class Artikel {
             ? anzeigeWert(wert)
             : fieldText(r, schema, wert, mode);
         if (!text) continue;
+        /* Ein Verweisfeld zeigt Namen, die auf ihren Artikel führen, und
+           nicht die Id (T-068) — auch eine Liste davon. */
+        const links = schema?.format === 'link' ? verweisZiele(wert, this.bestand.name()) : undefined;
         out.push({
+          ...(links?.length ? { links } : {}),
           ref: `${comp}.${prop}`,
           comp,
           prop,
@@ -814,6 +880,8 @@ export class Artikel {
            Art, von der noch nichts sichtbar ist (M6), soll man trotzdem
            etwas eintragen können. */
         const art = eingabeArt(schema) === 'auswahl' && !werte.length ? 'text' : eingabeArt(schema);
+        const chips = art === 'verweise' || art === 'mehrfach';
+        const suche = chips ? suchgruppen(r, schema) : { gruppen: [], feste: [], frei: true };
         out.push({
           ref: `${comp}.${prop}`,
           comp,
@@ -823,10 +891,13 @@ export class Artikel {
           label: `${def.label ?? comp} · ${fieldTitle(r, primaryInterface(e), { type: comp, key: prop, prop: schema })}`,
           art,
           schema,
-          werte,
-          wert: art === 'jaNein' ? '' : inEingabe(karte[prop]),
+          werte: chips ? suche.feste : werte,
+          wert: art === 'jaNein' || chips ? '' : inEingabe(karte[prop]),
           jaNein: karte[prop] === true,
           pflicht: pflicht.has(`${comp}.${prop}`),
+          liste: chips ? inListe(karte[prop]) : [],
+          gruppen: suche.gruppen,
+          frei: suche.frei,
         });
       }
     }
@@ -1010,7 +1081,10 @@ export class Artikel {
 
     const components: Record<string, Record<string, unknown>> = {};
     for (const f of this.felder()) {
-      let wert = ausEingabe(f.schema, f.art === 'jaNein' ? f.jaNein : f.wert);
+      let wert = ausEingabe(
+        f.schema,
+        f.art === 'jaNein' ? f.jaNein : f.art === 'verweise' || f.art === 'mehrfach' ? f.liste : f.wert,
+      );
       if (wert === undefined) continue;
       if (f.schema?.format === 'long' && typeof wert === 'string') wert = mitIds(wert);
       (components[f.comp] ??= {})[f.prop] = wert;
