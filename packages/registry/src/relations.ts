@@ -249,6 +249,42 @@ export const relations: Record<string, RelationDef> = {
   },
 
   /**
+   * **Welche Attributsverfahren eine Kampagne erlaubt** (E-016 a). Nennt
+   * sie keines, gelten Standardreihe und Punktekauf
+   * (`DEFAULT_ABILITY_METHODS`).
+   */
+  allowsMethod: {
+    type: 'allowsMethod',
+    label: 'allows ability method',
+    inverseLabel: 'allowed in',
+    from: ['Campaign'],
+    to: ['AbilityMethod'],
+  },
+
+  /**
+   * **Der Gruppenpool** (E-016 a): einmal für die Gruppe gewürfelt, und
+   * jede ihrer Figuren verteilt dieselben Werte selbst. Gewürfelt wird am
+   * Server (`POST /api/abilities/roll`), und jeder Wurf steht im
+   * Protokoll; wer gewürfelt hat, steht dort und nicht hier (REQ-199).
+   */
+  abilityPool: {
+    type: 'abilityPool',
+    label: 'rolled ability pool',
+    inverseLabel: 'pool of',
+    from: ['Party'],
+    to: ['AbilityMethod'],
+    props: {
+      type: 'object',
+      required: ['values'],
+      properties: {
+        values: { type: 'array', items: { type: 'number' }, title: 'Scores' },
+        rolls: { type: 'array', items: { type: 'string' }, title: 'Rolls' },
+        at: { type: 'string', title: 'Rolled at' },
+      },
+    },
+  },
+
+  /**
    * **Was eine Figur gewählt hat** (REQ-238, E-015 a): je Wahl eine Kante
    * auf den Artikel, der fragt, mit der `id` der Wahl und den Antworten
    * (Namen, Artikel-Ids oder der Schlüssel einer Möglichkeit). Die Figur

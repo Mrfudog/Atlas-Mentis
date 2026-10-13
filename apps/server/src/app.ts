@@ -23,6 +23,9 @@ import {
   selectEntities,
   storedKey,
   CAMPAIGN_TYPE,
+  allowedMethods,
+  partyPool,
+  rollAbilityScores,
   articleVisible,
   backlinks,
   campaignLayer,
@@ -845,6 +848,9 @@ export function buildApp({
        Kampagne im Pfad (gm ändert, co-gm sieht), nicht am Konto allein. */
     if (url.startsWith('/api/campaigns') || url.startsWith('/api/invites')) return;
 
+    /* Würfeln für die Attribute (E-016 a): die Route prüft die Rolle in
+       der laufenden Kampagne selbst. */
+    if (url === '/api/abilities/roll' && request.method === 'POST') return;
     /* Den eigenen Lesestand merken (T-091): die Route schreibt nur am Konto. */
     if (/^\/api\/read\/[^/]+\/position$/.test(url) && request.method === 'PUT') return;
     /* „ready" per Knopf (REQ-237): die Route prüft je Artikel (`maySetReady`). */
@@ -1658,6 +1664,80 @@ export function buildApp({
     };
   });
 
+  /**
+   * **Die Attributsverfahren dieser Kampagne** (REQ-238, E-016 a) für den
+   * Assistenten: was die laufende Kampagne über `allowsMethod` erlaubt —
+   * gesiebt wie jeder Artikel —, ohne eine einzige Kante die Vorgabe
+   * (Standardreihe, Punktekauf). Dazu ihre Gruppen mit den Pools, die für
+   * sie schon gewürfelt sind.
+   */
+  async function verfahren(request: FastifyRequest) {
+    const stand = await roh();
+    const registry = await repo.getRegistry();
+    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const genannt = (kampagne?.relations ?? []).filter((r) => r.type === 'allowsMethod').map((r) => r.to);
+    const sichtbar = genannt.length
+      ? new Set((await sieve(request, genannt.map((i) => stand.map.get(i)).filter((e): e is Entity => !!e), stand.map)).map((e) => e.id))
+      : null;
+    const methods = allowedMethods(kampagne ?? undefined, stand.map).filter((m) => m.builtIn || sichtbar?.has(m.id));
+    const gruppen = kampagne
+      ? stand.alle.filter((e) => e.relations?.some((r) => r.type === 'partyOf' && r.to === kampagne.id))
+      : [];
+    const parties = (await sieve(request, gruppen, stand.map)).map((p) => ({
+      id: p.id,
+      name: entityName(p),
+      pools: Object.fromEntries(
+        methods.filter((m) => m.scope === 'party').flatMap((m) => {
+          const pool = partyPool(stand.map.get(p.id), m.id);
+          return pool ? [[m.id, pool] as const] : [];
+        }),
+      ),
+    }));
+    return { kampagne, methods, parties };
+  }
+
+  app.get('/api/abilities', async (request) => {
+    const { kampagne, methods, parties } = await verfahren(request);
+    return { campaign: kampagne ? { id: kampagne.id, name: entityName(kampagne) } : null, methods, parties };
+  });
+
+  /**
+   * **Würfeln am Server** (E-016 a): jeder Wurf steht im Protokoll
+   * (`abilities.rolled`). Für eine Figur bekommt der Assistent die Werte
+   * zurück; für die Gruppe stehen sie danach an ihr (`abilityPool`), und
+   * jede Figur der Gruppe verteilt dieselben. Würfeln dürfen, wer in der
+   * laufenden Kampagne spielt oder leitet; einen schon gewürfelten Pool
+   * würfelt nur die Leitung neu — sonst würfelte die Gruppe, bis es passt.
+   */
+  app.post<{ Body: { method?: unknown; party?: unknown } | null }>('/api/abilities/roll', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return reply.code(401).send({ error: 'Nicht angemeldet' });
+    const { kampagne, methods, parties } = await verfahren(request);
+    const rolle = kampagne ? tableRole({ roles: user.roles ?? {} }, kampagne.id) : null;
+    const leitet = user.isAdmin || rolle === 'gm' || rolle === 'co-gm';
+    if (!leitet && rolle !== 'player') return reply.code(403).send({ error: 'Würfeln dürfen, wer in dieser Kampagne spielt oder leitet.' });
+    const m = methods.find((x) => x.id === String(request.body?.method ?? ''));
+    if (!m || m.method !== 'roll') return reply.code(400).send({ error: 'Kein erlaubtes Verfahren mit Würfeln.' });
+    const wurf = rollAbilityScores(m);
+    if (!wurf) return reply.code(422).send({ error: `Kein Würfelausdruck: ${m.dice ?? '—'}` });
+    const at = new Date().toISOString();
+    if (m.scope === 'party') {
+      const gruppe = parties.find((p) => p.id === String(request.body?.party ?? ''));
+      if (!gruppe) return reply.code(400).send({ error: 'Für den Gruppenpool fehlt die Gruppe dieser Kampagne.' });
+      const da = gruppe.pools[m.id];
+      if (da && !leitet) return reply.code(409).send({ error: 'Für diese Gruppe ist schon gewürfelt.', pool: da });
+      const party = (await repo.getEntity(gruppe.id))!;
+      /* Ein neuer Wurf ersetzt den alten; im Protokoll stehen beide. */
+      const relations = (party.relations ?? []).filter((r) => !(r.type === 'abilityPool' && r.to === m.id));
+      relations.push({ id: `${party.id}~abilityPool-${randomUUID().slice(0, 8)}`, type: 'abilityPool', to: m.id, props: { ...wurf, at } });
+      const ergebnis = await schreibeGeprueft({ ...party, relations });
+      if ('issues' in ergebnis) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues: ergebnis.issues });
+      await repo.appendEvent('abilities.rolled', party.id, { method: m.id, dice: m.dice, scope: 'party', ...wurf, by: user.id });
+      return { ...wurf, at, party: party.id };
+    }
+    await repo.appendEvent('abilities.rolled', undefined, { method: m.id, dice: m.dice, scope: 'character', ...wurf, by: user.id });
+    return { ...wurf, at };
+  });
   /* Die Leseansicht (T-091, REQ-247): eine Ebene als Buch. */
   const { leseZiel } = registerLesen(app, { repo, viewerOf, roh, sieve, geltend, bezuegeVon });
 
@@ -1806,11 +1886,20 @@ export function buildApp({
         }
         const karte = (components[STATUS_COMPONENT] ??= {});
         const wert = karte['status'];
-        /* Die eigene Figur nennt ihr Spieler selbst fertig (E-014 d). */
-        if (wert === 'ready' && !kette.includes(PLAYER_CHARACTER)) {
+        /* Die eigene Figur nennt ihr Spieler selbst fertig (E-014 d) — auch
+           den Statblock, den der Assistent gleich an sie hängt (T-080). */
+        const anEigener =
+          relations.some((r) => r.type === 'belongsTo') &&
+          (() => {
+            const figur = eigeneFigur(user, stand.map, registry);
+            return relations.every((r) => r.type !== 'belongsTo' || figur.has(r.to));
+          })();
+        const darfFertig = kette.includes(PLAYER_CHARACTER) || anEigener;
+        if (wert === 'ready' && !darfFertig) {
           return reply.code(403).send({ error: '„ready" setzt die Leitung.' });
         }
-        if (wert !== 'idea' && wert !== 'prepared') karte['status'] = 'idea';
+        /* „ready" blieb hier bis T-080 nicht stehen, auch an der eigenen Figur. */
+        if (wert !== 'idea' && wert !== 'prepared' && !(wert === 'ready' && darfFertig)) karte['status'] = 'idea';
         /* Die Ebene gibt der Server, nicht die Maske: eine Spielerin legt
            in ihre Runde an und nicht in ein geteiltes Regelwerk. */
         for (let i = relations.length - 1; i >= 0; i -= 1) {

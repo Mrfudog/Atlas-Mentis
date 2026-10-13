@@ -90,6 +90,20 @@ export const routes: Routes = [
     loadComponent: () => import('./klassen/klasse').then((m) => m.Klasse),
     title: 'Class · Atlas Mentis',
   },
+  /* Der Assistent für Figuren (T-080): seine Schritte kommen aus den
+     Artikeln. Der Stufenaufstieg ist derselbe Assistent an einer Figur. */
+  {
+    path: 'characters/new',
+    canActivate: [wache],
+    loadComponent: () => import('./figur/assistent').then((m) => m.Assistent),
+    title: 'New character · Atlas Mentis',
+  },
+  {
+    path: 'characters/:id/level-up',
+    canActivate: [wache],
+    loadComponent: () => import('./figur/assistent').then((m) => m.Assistent),
+    title: 'Level up · Atlas Mentis',
+  },
   {
     path: 'registry',
     canActivate: [wache],

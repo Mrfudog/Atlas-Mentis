@@ -156,6 +156,10 @@ interface Feld {
                 @if (art(e) === 'Class' && !bearbeitet()) {
                   <a class="knopf" [routerLink]="['/classes', e.id]">Class view</a>
                 }
+                <!-- Der Stufenaufstieg ist derselbe Assistent wie das Anlegen (T-080). -->
+                @if (art(e) === 'PlayerCharacter' && darfSchreiben() && !bearbeitet() && !zeigtAlten()) {
+                  <a class="knopf" [routerLink]="['/characters', e.id, 'level-up']">Level up</a>
+                }
                 <!-- Die Leseansicht (T-091): an der Stelle im Buch, oder bei
                      einer Ebene von vorn. -->
                 @if (leseZiel(); as z) {

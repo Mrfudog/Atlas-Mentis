@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { Entity, Registry, RegistryUsage, Relation } from '@nw/model';
+import type { AbilityMethod, Entity, Registry, RegistryUsage, Relation, RolledScores } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -466,6 +466,7 @@ export function wasLaedt(path: string): string {
   if (path.startsWith('/api/list')) return 'list';
   if (path.startsWith('/api/entities') || path.startsWith('/api/links')) return 'articles';
   if (path.startsWith('/api/classes')) return 'classes';
+  if (path.startsWith('/api/abilities')) return 'ability methods';
   if (path.startsWith('/api/campaigns')) return 'campaign';
   if (path.startsWith('/api/checks') || path.startsWith('/api/bulk')) return 'workbench';
   if (path.startsWith('/api/read')) return 'book';
@@ -638,6 +639,18 @@ export class Api {
       method: 'POST',
       body: JSON.stringify({ type, name, fields, relations }),
     });
+  }
+  /** Die Attributsverfahren der laufenden Kampagne und ihre Gruppen (E-016 a). */
+  abilities(): Promise<{
+    campaign: { id: string; name: string } | null;
+    methods: AbilityMethod[];
+    parties: { id: string; name: string; pools: Record<string, RolledScores & { at?: string }> }[];
+  }> {
+    return this.call('/api/abilities');
+  }
+  /** Würfeln am Server — der Wurf steht im Protokoll (E-016 a). */
+  rollAbilities(method: string, party?: string): Promise<RolledScores & { at: string }> {
+    return this.call('/api/abilities/roll', { method: 'POST', body: JSON.stringify({ method, ...(party ? { party } : {}) }) });
   }
   /** Diese Artikel ganz, gesiebt — die Teile eines Statblocks (W2). */
   entitiesById(ids: readonly string[]): Promise<Entity[]> {
