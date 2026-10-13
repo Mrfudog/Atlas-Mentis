@@ -50,9 +50,13 @@ Entschieden (12.10. und 13.10.):
   `app.ts` (Kopfleiste) und `styles.scss` sind erwartbar — beide Seiten
   behalten.
 - Der Bestand ist gross: was je Anfrage über alle Artikel läuft, läuft am
-  Server über den Zwischenspeicher (`PgRepository.listEntities`), in der
-  Oberfläche über die Kurzfassung (`Bestand.entities()`, `summaryOf`).
-  Ganze Artikel holt nur, wer einen öffnet (`Bestand.oeffnen`).
+  Server über den Zwischenspeicher (`PgRepository.listEntities`, der Index
+  der Liste je Stempel in `liste.ts`). **Die Oberfläche hält keinen
+  Bestand** (seit W7): Listen und Auswahlen fragen `GET /api/list`
+  (`Api.list`, Auswahl über `nw-wahl`), ein Artikel kommt beim Öffnen mit
+  den Namen, die er braucht (`Bestand.oeffnen`, `refs`, `Bestand.name()`,
+  `Bestand.verweise()`). `Bestand.entities()`, `byId` und `?as=summary`
+  gibt es nicht mehr.
 
 ## Pakete
 
@@ -147,23 +151,26 @@ absprechen über die PR-Beschreibung).
 - Daten: `Class`, `Subclass`, `Feature`, Kanten `grants` mit
   `props.level`, `subclassOf`.
 
-### W7 — Kompendium: Spalten, Filter, Vorschau, Teile
-`apps/web/src/app/artikel/kompendium.*`, `packages/model/src/summary.ts`,
-Server-Route der Kurzfassung.
-- Spalten und Filter **je Art** wie in `Compendium.dc.html`: bei Zaubern
-  Grad und Schule, bei Statblöcken HG und Typ, bei Gegenständen Seltenheit.
-  Welche Felder eine Zeile zeigt, sagt die Art — vorgeschlagen: die Felder
-  ihrer `overview`-Ansicht (`layoutFor`), die Kurzfassung trägt sie mit.
-  Gefiltert wird nach Feldern mit `enum`/`enumRef`/Spanne.
-- Vorschau rechts (`quick`) beim Anklicken einer Zeile, wie in
-  `Main.dc.html`; „Open" führt zum Artikel.
-- **Teile von Statblöcken**: ein Merkmal oder eine Aktion, die nur ein
-  Statblock nutzt („Multiattack" des Goblin Boss), ist ein Teil davon und
-  steht standardmässig nicht in der Liste (Schalter „Show statblock parts");
-  geteilte („Pack Tactics") stehen da, mit der Zahl der Nutzer. Dafür trägt
-  die Kurzfassung, wie viele Artikel über eine Abschnittskante
-  (`RelationDef.section`) auf diesen zeigen — am Server gerechnet.
-- „New article" (Anlegen-Dialog) und „Edit type" (→ W5).
+### W7 — Kompendium mit Paginierung am Server, Artikel anlegen
+`apps/server/src/liste.ts`, `apps/web/src/app/artikel/kompendium.*`,
+`vorschau.ts`, `anlegen.ts`, `wahl.ts`, `kern/bestand.ts`.
+
+Neu gefasst am 13.10., als die Leitung meldete „Artikel laden noch zu
+langsam" und „ich kann noch keine Artikel erstellen": der Browser lud die
+Kurzfassung aller Artikel (7,7 MB), bevor er eine Zeile zeigte, und die
+Artikelseite wartete mit. **Steht** (PR „Liste am Server"):
+- `GET /api/list` mit Paginierung, Suche (Name, Alias, Nummer), Facetten
+  (Arten nach Bereich, Ebenen, Feldfilter je Art aus `enum`/`enumRef` und
+  Spannen) über einen Index je Bestand-Stempel und Betrachter; Spalten aus
+  der `overview` der Art (`listColumns`), in den Registerzeilen gesetzt.
+- Teile von Statblöcken (eine Abschnittskante zeigt auf sie) ausgeblendet,
+  `parts=1` blendet ein; geteilte tragen die Zahl der Nutzer.
+- Die Oberfläche hält keinen Bestand: Register allein, Artikel mit `refs`
+  (Namen der Kantenziele, Treffer der `[[Verweise]]`), Auswahlen über die
+  Suche (`nw-wahl`), `[[Name]]` → Nummer über `POST /api/links`.
+- Kompendium: Seitenleiste, Tabelle mit Spalten, Sortieren, Blättern,
+  Vorschau `quick` rechts, „New article" (`POST /api/entities`) und „Edit
+  type" (→ `/registry`, W5).
 
 ### W8 — Einlesen als Pipeline, Ersetzen je Ebene
 `apps/server/src/import.ts`, `deploy/import.sh`,

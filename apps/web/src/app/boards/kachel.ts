@@ -1,6 +1,5 @@
 import { Component, computed, inject, input } from '@angular/core';
 import {
-  entityName,
   entriesOf,
   fieldTitle,
   layoutFor,
@@ -181,12 +180,13 @@ export class Kachel {
       case 'composed': {
         /* Woraus der Artikel besteht (Merkmale, Aktionen) — als Namen, je
            Abschnitt der Kante. Die Zahlen darin stehen auf der Seite. */
-        const byId = this.bestand.byId();
+        /* Die Namen brachte der Artikel mit (`refs`, W7). */
+        const nameVon = this.bestand.name();
         const gruppen = new Map<string, string[]>();
         for (const rel of e.relations ?? []) {
           const abschnitt = r.relations[rel.type]?.section;
           if (!abschnitt) continue;
-          const name = entityName(byId.get(rel.to));
+          const name = nameVon(rel.to);
           if (name) gruppen.set(abschnitt, [...(gruppen.get(abschnitt) ?? []), name]);
         }
         return gruppen.size

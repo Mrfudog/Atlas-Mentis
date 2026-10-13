@@ -1,13 +1,12 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { entityName, primaryInterface, tagsOf } from '@nw/model';
-import { Bestand } from '../kern/bestand';
+import { Api, type ListenZeile } from '../kern/api';
 
 /**
  * Die Klassen auf einen Blick (W6) — der Weg in die Klassenansicht.
  *
- * Gelesen wird aus der Kurzfassung: Name, Quelle und Marken reichen für
- * eine Kachel. Was eine Klasse ist, sagt ihre Art und keine Liste hier;
+ * Gelesen wird aus der Liste am Server (`/api/list?type=Class`, W7): Name,
+ * Quelle und Marken reichen für eine Kachel. Was eine Klasse ist, sagt ihre Art und keine Liste hier;
  * eine selbst angelegte Klasse steht genauso da wie eine aus dem Buch.
  */
 @Component({
@@ -21,9 +20,9 @@ import { Bestand } from '../kern/bestand';
         <span>Classes</span>
       </nav>
       <h1>Classes</h1>
-      @if (!bestand.geladen()) {
+      @if (!geladen()) {
         <p class="dim">Loading…</p>
-      } @else if (bestand.fehler(); as f) {
+      } @else if (fehler(); as f) {
         <p class="fehler" role="alert">{{ f }}</p>
       }
       @for (g of gruppen(); track g.titel) {
@@ -46,8 +45,8 @@ import { Bestand } from '../kern/bestand';
         }
       }
       @if (
-        bestand.geladen() &&
-        !bestand.fehler() &&
+        geladen() &&
+        !fehler() &&
         !gruppen()[0]!.klassen.length &&
         !gruppen()[1]!.klassen.length
       ) {
@@ -127,22 +126,28 @@ import { Bestand } from '../kern/bestand';
   `,
 })
 export class Klassen {
-  protected readonly bestand = inject(Bestand);
+  private readonly api = inject(Api);
+  private readonly zeilen = signal<ListenZeile[]>([]);
+  protected readonly geladen = signal(false);
+  protected readonly fehler = signal<string | null>(null);
 
   constructor() {
-    void this.bestand.load();
+    /* Klassen gibt es eine Handvoll (16 aus 5e.tools); ein Blatt reicht. */
+    this.api
+      .list({ type: 'Class', limit: 200 })
+      .then((r) => this.zeilen.set(r.rows))
+      .catch((e: Error) => this.fehler.set(e.message))
+      .finally(() => this.geladen.set(true));
   }
 
   /** Die Klassen, die Gefährten (`sidekick`) für sich — wie im Buch. */
   protected readonly gruppen = computed(() => {
-    const alle = this.bestand
-      .entities()
-      .filter((e) => primaryInterface(e) === 'Class')
-      .map((e) => ({
-        id: e.id,
-        name: entityName(e),
-        quelle: String(e.components?.['Source']?.['publication'] ?? ''),
-        gefaehrte: tagsOf(e).includes('sidekick'),
+    const alle = this.zeilen()
+      .map((z) => ({
+        id: z.id,
+        name: z.name,
+        quelle: z.source.split(' p. ')[0] ?? '',
+        gefaehrte: (z.tags ?? []).includes('sidekick'),
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
     return [

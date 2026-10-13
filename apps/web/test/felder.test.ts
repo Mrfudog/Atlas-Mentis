@@ -41,6 +41,14 @@ describe('eingabeArt', () => {
     expect(ausEingabe(prof['saves'], 'str, con')).toEqual(['str', 'con']);
   });
 
+  /* Ein Verweisfeld hält eine Id; gewählt wird über die Suche (W7). */
+  it('picks an article for a link field, and writes its id back as text', () => {
+    const aktion = seedRegistry.interfaces.Action.schema?.properties ?? {};
+    expect(eingabeArt(aktion['actionType'])).toBe('verweis');
+    expect(ausEingabe(aktion['actionType'], 'e5_123')).toBe('e5_123');
+    expect(ausEingabe(aktion['actionType'], '')).toBeUndefined();
+  });
+
   it('falls back to plain text rather than guessing', () => {
     expect(eingabeArt(undefined)).toBe('text');
   });

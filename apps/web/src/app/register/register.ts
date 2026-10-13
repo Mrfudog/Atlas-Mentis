@@ -227,17 +227,12 @@ export class Register {
     return this.bestand.registry()?.interfaces[t]?.label ?? t;
   }
 
-  /** Artikel je Art — aus der Zählung, sonst aus der Kurzfassung. */
-  private readonly jeArt = computed(() => {
-    const u = this.arbeit.usage();
-    if (u) return u.types;
-    const m: Record<string, number> = {};
-    for (const e of this.bestand.entities()) {
-      const t = e.interfaces?.[0];
-      if (t) m[t] = (m[t] ?? 0) + 1;
-    }
-    return m;
-  });
+  /**
+   * Artikel je Art — aus der Zählung am Server. Bis sie da ist, steht keine
+   * Zahl: der Browser hält keinen Bestand mehr (W7), und eine Null wäre
+   * eine falsche Auskunft.
+   */
+  private readonly jeArt = computed(() => this.arbeit.usage()?.types ?? null);
 
   protected readonly zeilen = computed(() => {
     const r = this.bestand.registry();
@@ -261,7 +256,7 @@ export class Register {
     return typeList(r)
       .map((name) => {
         const d = r.interfaces[name]!;
-        const n = zahl[name] ?? 0;
+        const n = zahl?.[name] ?? 0;
         return { name, label: d.label ?? name, zusatz: d.abstract ? 'shared' : n ? n.toLocaleString('en') : '', query: { type: name } };
       })
       .filter((z) => passt(z.name, z.label));

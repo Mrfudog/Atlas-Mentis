@@ -321,11 +321,10 @@ export class RegTyp {
   protected readonly kinder = computed(() => (this.reg() ? childrenOf(this.reg()!, this.name()) : []));
   protected readonly eigene = computed(() => Object.keys(this.reg() ? ownFields(this.reg()!, this.name()) : {}));
 
-  /** Artikel dieser Art — aus der Kurzfassung, die jeder hat. */
+  /** Artikel dieser Art — aus der Zählung am Server; bis sie da ist, keine Zahl (W7). */
   protected readonly eigeneArtikel = computed(() => {
     const u = this.arbeit.usage();
-    if (u) return u.types[this.name()] ?? 0;
-    return this.bestand.entities().filter((e) => e.interfaces?.[0] === this.name()).length;
+    return u ? (u.types[this.name()] ?? 0) : null;
   });
 
   protected readonly gruppen = computed<Gruppe[]>(() => {
@@ -411,8 +410,8 @@ export class RegTyp {
   protected label(t: string): string {
     return this.reg()?.interfaces[t]?.label ?? t;
   }
-  protected zahlText(n: number): string {
-    return articles(n);
+  protected zahlText(n: number | null): string {
+    return n === null ? '' : articles(n);
   }
   protected wert(ev: Event): string {
     return String((ev.target as HTMLInputElement).value ?? '').trim();

@@ -228,12 +228,15 @@ Durchstich in CI prüft `PgRepository` gegen eine echte Postgres.
 | `GET /api/users` | die Konten der Installation — nur die Verwaltung |
 | `GET /api/registry` · `PUT /api/registry/:part` | das Register lesen; ändern die Verwaltung und die Leitung (`gm`) der laufenden Kampagne — `/api/me` sagt es mit `registry` |
 | `GET /api/registry/usage` | was der Bestand an jeder Zeile trägt (`registryUsage`: je Art, Karte, Feld, Listenwert, Kante) — gezählt, bevor das Register etwas löscht; nur für wer es ändert |
-| `GET /api/entities` · `GET /api/entities/:id` | Artikel, **gesiebt** |
-| `GET /api/entities?as=summary` | die Kurzfassung aller Artikel (`summaryOf`) — für Liste, Verweise, Auswahlen |
 | `GET /api/entities?ids=a,b,c` | diese Artikel ganz, gesiebt (höchstens 500) — die Teile eines Statblocks in einer Anfrage (W2) |
+| `GET /api/list?area=&type=&of=&q=&layer=&nolayer=&parts=&sort=&offset=&limit=&f=` | **ein Blatt der Liste** mit Facetten (`{ total, columns, rows, facets }`) — Kompendium, Bereiche und jede Auswahl (W7) |
+| `GET /api/entities` | der ganze Bestand, **gesiebt** — für Ausfuhr und Prüfungen, nicht für die Oberfläche |
+| `GET /api/entities/:id` | ein Artikel, gesiebt, mit `refs`: die Namen seiner Kantenziele und die Treffer seiner `[[Verweise]]` (beim Ausliefern gerechnet, nie gespeichert) |
 | `GET /api/entities/:id/backlinks` | wer auf den Artikel zeigt (Kurzfassung + Kante), gesiebt |
+| `POST /api/entities` | **anlegen**: `{ type, name, fields? }` → Peg-Id, Nummer (`nextId`), Vorgaben aus dem Register, geprüft mit `validateEntity` |
 | `GET /api/classes/:id` | eine Klasse samt Unterklassen, Stufentabellen und den Merkmalen, die eine davon gewährt oder einbettet (`classParts`), gesiebt — die Klassenansicht (W6) in einer Antwort |
 | `PUT /api/entities/:id` · `DELETE /api/entities/:id` | schreiben, immer durch `validateEntity` |
+| `POST /api/links` | `[[Name]]` → `[[nummer\|Name]]` (M11), über das, was der Schreibende sieht; liest nur, darf also jeder |
 | `POST /api/validate` | prüfen ohne zu speichern |
 | `GET/POST /api/tokens` · `DELETE /api/tokens/:id` | eigene API-Tokens (W9); nur aus einer Sitzung, nie mit einem Token |
 | `GET /api/checks?check=…&limit=…` | Prüfungen über den gesiebten Bestand (`checks.ts`): Zahl und Beispiele je Prüfung; Leitung und Verwaltung |
@@ -267,15 +270,44 @@ sequenceDiagram
   F-->>B: gesiebte Artikel
 ```
 
-**Die Oberfläche hält nur die Kurzfassung** (`?as=summary`): Name, Art,
-`Identity`, Marken, Stand, Quelle, die Kanten `instanceOf` und `inLayer` und die Felder, nach
-denen eine Auswahl filtert (`enumWhere`, aus dem Register gelesen). Den
-ganzen Artikel holt sie beim Öffnen, die Rückbezüge dazu über
-`/backlinks` — die Gegenrichtung braucht jede Kante im Bestand, und die
-hat die Kurzfassung nicht. Gekürzt wird **nach** dem Sieb, damit ein
-Deckname der Deckname bleibt. Bis zum 13.10. ging der ganze Bestand an
-die Liste; mit den 24 157 Artikeln aus 5e.tools kam sie nicht mehr an.
-`listEntities` liest dafür in drei Abfragen statt in dreien je Artikel.
+**Die Oberfläche hält keinen Bestand** (W7, 13.10.). Bis dahin lud sie
+die Kurzfassung aller Artikel (`?as=summary`, 7,7 MB roh, 675 KB gepackt
+bei den 24 157 aus 5e.tools) und rechnete Liste, Filter und Verweise
+selbst — und weil Register und Kurzfassung in einem Zug kamen, wartete
+sogar die Artikelseite auf die ganze Liste. Die Route ist weggefallen.
+Jetzt:
+
+- **Das Register** kommt allein und sofort (`Bestand.load`, ≈11 KB gepackt).
+- **Ein Artikel** kommt beim Öffnen, gesiebt, mit `refs` (`names`: Id →
+  Name für Kantenziele, Verweisfelder, Sichtbarkeitslisten; `links`: die
+  Kandidaten jedes `[[ziel]]` nach `linkCandidates`). Die Artikelseite
+  wartet auf Register und Artikel, auf nichts sonst. Die Rückbezüge kommen
+  über `/backlinks`; gesiebt werden dort nur die Artikel, die auf ihn
+  zeigen.
+- **Listen und Auswahlen** fragen `/api/list`. Der Server baut dafür je
+  **Bestand-Stempel** (`Repository.version()`: Anzahl und letzte Änderung),
+  Register und Betrachter einmal einen **Index** (`apps/server/src/liste.ts`):
+  je sichtbarem Artikel eine schmale Zeile mit Name, Art, Bereich, Ebenen,
+  Quelle, Stand, Suchtext (Name, Aliasse, Deckname, Nummer), der Zahl der
+  Abschnittskanten, die auf ihn zeigen, und den **Spalten seiner Art** —
+  den Feldern ihrer `overview` (`listColumns`). Die Verwaltung teilt einen
+  Index, ein Spieler hat seinen eigenen (das Sieb rechnet Wissen je
+  Artikel); gehalten werden die letzten acht. Blättern, Suchen, Filtern
+  laufen über die Zeilen, nicht über die Artikel.
+- **Facetten** zählen über die Zeilen, die alle *anderen* Filter bestehen:
+  Arten (mit Bereich, das Kompendium gruppiert danach), Ebenen, und bei
+  einer gewählten Art je Spalte eine Aufzählung (`enum`/`enumRef` → Werte
+  mit Zahl) oder eine Spanne (eine Zahl — oder ein Text, der fast überall
+  eine Zahl ist wie der HG „1/4"). Im Code steht keine Spalte und kein
+  Filter je Art.
+- **Teile von Statblöcken**: ein Artikel, auf den genau einer über eine
+  Abschnittskante (`RelationDef.section`, heute `composedOf`) zeigt, ist
+  ein Teil davon und fehlt ohne `parts=1`; geteilte tragen die Zahl ihrer
+  Nutzer (`users`). Gezählt wird über das, was der Betrachter sieht.
+
+Gemessen mit dem vollen 5e.tools-Bestand (lokal, Postgres 16): ein Blatt
+20–40 ms und 2 KB gepackt; der erste Aufruf nach einer Änderung baut den
+Index neu (Verwaltung ≈300 ms samt Lesen aus Postgres, Spieler ≈370 ms).
 
 Die Reihenfolge ist die Regel aus CLAUDE.md: erst ob überhaupt
 (Stapel, Sichtbarkeit), dann was darin (Wissen). Zurückgehalten wird
@@ -304,7 +336,10 @@ flowchart TB
     wache[kern/wache.ts<br/>Route-Guard: angemeldet?]
     subgraph seiten[Seiten, lazy geladen]
       login[login/login.ts]
-      liste[artikel/liste.ts<br/>Artikelliste]
+      liste[artikel/kompendium.ts<br/>Kompendium und Bereiche]
+      vorschau[artikel/vorschau.ts<br/>Vorschau quick]
+      anlegen[artikel/anlegen.ts<br/>New article]
+      wahl[artikel/wahl.ts<br/>Artikel suchen und wählen]
       artikel[artikel/artikel.ts<br/>Artikelansicht, Bearbeiten]
       felder[artikel/felder.ts<br/>Felder aus dem Register]
       text[artikel/text.ts<br/>Markdown, Verweise, Würfel]
@@ -316,7 +351,7 @@ flowchart TB
     end
     subgraph kern[kern/ · Dienste]
       api[api.ts<br/>HttpClient → /api]
-      bestand[bestand.ts<br/>Register + Artikel als Signal]
+      bestand[bestand.ts<br/>Register + geöffnete Artikel als Signal]
       session[session.ts<br/>wer ist angemeldet]
     end
   end
@@ -327,9 +362,12 @@ flowchart TB
   register --> regtyp --> bestand
   artikel --> felder & text & buch
   buch --> text
+  liste --> vorschau & anlegen
+  artikel & anlegen --> wahl --> api
+  liste --> api
+  vorschau & artikel --> bestand --> api
   klassen --> text
   klassen -->|"GET /api/classes/:id"| api
-  liste & artikel --> bestand --> api
   login --> session --> api
   felder & text & buch --> model
   api -->|"/api · im Dev über proxy.conf.json"| srv[Fastify]
@@ -356,9 +394,16 @@ bestünde (eine Karte ohne Typ, ein Typ mit Artikeln), lässt die Seite gar
 nicht erst zu. Die reinen Regeln (Feldarten, Zyklen, Umbenennen samt aller
 Nennungen) stehen in `register/regeln.ts`.
 
-Der Bestand wird **einmal** geladen und als Signal gehalten — die
-Kampagne ist klein genug. Mit 28 000 importierten Artikeln stimmt das
-nicht mehr; Seitenweise laden ist eine offene Frage für die Zeit nach P6.
+**Die Oberfläche hält keinen Bestand** (W7): das Register und die
+geöffneten Artikel samt den Namen, die sie mitbrachten (`Bestand.namen`,
+`Bestand.verweise`). Das Kompendium fragt je Blatt den Server
+(`/api/list`); die Seitenzahl, die Feldfilter und die Vorschau stehen im
+Filterzustand der Seite (`ListenFilter`, „der Filter gehört der Seite"),
+die Art in der Adresse. Wer ein Kantenziel oder ein Verweisfeld wählt,
+sucht über dieselbe Route (`nw-wahl`, `of=Art&q=…&limit=20`). Boards und Klassen fragen sie ebenso
+(`Bestand.liste`): die Boards und die Geschichte mit `rel=partOf`, die
+Namen der verbundenen Artikel mit `ids=`; die Zeilen liegen als schmale
+Artikel in `Bestand.kurz`.
 
 ---
 

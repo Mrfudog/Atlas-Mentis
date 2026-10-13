@@ -71,15 +71,19 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   deshalb sind sie ohne Datenbank testbar (`InMemoryRepository`).
 - `apps/web` — Angular, im Pergament des Design-Canvas. Anmeldung, die
   Kopfleiste mit den Bereichen, Kompendium und Bereiche (Filter in der
-  Seitenleiste, aus der Kurzfassung `?as=summary`) und der Artikel im
-  Buchstil (geholt beim Öffnen, Ansicht `full`) stehen, dazu die Boards
+  Seitenleiste, Spalten aus der `overview` der Art, Vorschau `quick`;
+  **gerechnet am Server**, `GET /api/list`), „New article" und der
+  Artikel im Buchstil (geholt beim Öffnen, Ansicht `full`, mit den Namen
+  seiner Kantenziele und Verweise in `refs`) stehen, dazu die Boards
   (`boards/`: je Geschichtsartikel eines, Karten als `placed`-Kanten),
-  das Register (`/registry`: Typen, Kanten, Listen anlegen und ändern —
-  Verwaltung und Leitung der laufenden Kampagne; gezählt wird vorher über
-  `/api/registry/usage`), die **Werkbank** für Leitung und Verwaltung
-  (`werkbank/`: Prüfungen aus `checks.ts`, Massenänderungen aus `bulk.ts`
-  mit Vorschau und Rückgängig, W9) und das Konto mit seinen API-Tokens
-  (`konto/`); Karte, Initiative und Spiel noch nicht;
+  die Klassen (`klassen/`), das Register (`/registry`: Typen, Kanten,
+  Listen anlegen und ändern — Verwaltung und Leitung der laufenden
+  Kampagne; gezählt wird vorher über `/api/registry/usage`), die
+  **Werkbank** für Leitung und Verwaltung (`werkbank/`: Prüfungen aus
+  `checks.ts`, Massenänderungen aus `bulk.ts` mit Vorschau und
+  Rückgängig, W9) und das Konto mit seinen API-Tokens (`konto/`); die
+  Oberfläche hält **keinen Bestand** (W7). Karte, Initiative und Spiel
+  noch nicht;
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
   Vorlage je Artikelart. **Zurückgehalten wird am Server** (`redactEntity`) —
   was hier ankommt, darf angezeigt werden, und eine zweite Prüfung in der

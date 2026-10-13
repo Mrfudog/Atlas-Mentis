@@ -723,20 +723,28 @@ export class Werkbank {
   protected readonly laeufe = signal<BulkLauf[]>([]);
   protected readonly undoMeldung = signal<{ id: string; text: string; konflikte: UndoAntwort['conflicts'] } | null>(null);
 
-  /** Die Arten, die im Bestand stehen. */
-  protected readonly arten = computed(() =>
-    [...new Set(this.bestand.entities().map((e) => e.interfaces?.[0] ?? '').filter(Boolean))].sort(),
-  );
-  protected readonly ebenen = computed(() =>
-    this.bestand
-      .entities()
-      .filter((e) => e.interfaces?.[0] === 'Layer')
-      .map((e) => ({ id: e.id, name: String(e.components?.['Identity']?.['name'] ?? e.name ?? e.id) })),
-  );
+  /**
+   * Die anlegbaren Arten aus dem Register. Der Browser hält keinen Bestand
+   * (W7); eine Art ohne Artikel wählt nichts aus, und die Vorschau sagt es.
+   */
+  protected readonly arten = computed(() => {
+    const r = this.bestand.registry();
+    if (!r) return [];
+    return Object.entries(r.interfaces)
+      .filter(([, d]) => !d.abstract)
+      .map(([n]) => n)
+      .sort();
+  });
+  /** Die Ebenen — eine Handvoll, aus der Liste am Server. */
+  protected readonly ebenen = signal<{ id: string; name: string }[]>([]);
   protected readonly kantenarten = computed(() => Object.keys(this.bestand.registry()?.relations ?? {}).sort());
 
   constructor() {
     void this.bestand.load();
+    void this.bestand
+      .liste({ type: 'Layer', limit: 200 })
+      .then((l) => this.ebenen.set(l.rows.map((z) => ({ id: z.id, name: z.name }))))
+      .catch(() => undefined);
     if (this.session.leitung()) {
       void this.pruefen();
       void this.laeufeLaden();

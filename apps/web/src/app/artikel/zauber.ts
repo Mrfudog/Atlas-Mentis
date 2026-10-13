@@ -1,5 +1,5 @@
 import { Component, computed, inject, input } from '@angular/core';
-import { bodyOf, entityName, spellBook } from '@nw/model';
+import { bodyOf, spellBook } from '@nw/model';
 import type { Entity, SpellBook, VarScopes } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { Text } from './text';
@@ -56,11 +56,9 @@ export class Zauber {
   protected readonly buch = computed<SpellBook | null>(() => {
     const r = this.bestand.registry();
     if (!r) return null;
-    const kurz = this.bestand.byId();
-    return spellBook(r, this.artikel(), (id) => {
-      const k = kurz.get(id);
-      return k ? entityName(k) : undefined;
-    });
+    const name = this.bestand.name();
+    /* Die Namen der Kantenziele bringt der Artikel mit (`refs`, W7). */
+    return spellBook(r, this.artikel(), (id) => name(id));
   });
 
   protected readonly text = computed(() => bodyOf(this.artikel()));

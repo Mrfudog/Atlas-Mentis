@@ -256,6 +256,8 @@ export const interfaces: Record<string, InterfaceDef> = {
    * wie bei der Initiative am Spieltisch.
    */
     views: {
+      /* Die Spalten im Kompendium (W7, `listColumns`). */
+      overview: [{ id: 'c-ov', el: 'fields', fields: ['Creature.kind', 'Creature.species', 'Creature.role'] }],
       full: [
         { id: 'c-sheet', el: 'sheet' },
         {
@@ -376,6 +378,9 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Rule Element',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Source', 'Vars'],
     schema: merge(g.RuleInfo),
+    /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
+       Verweis, also `overview`. */
+    views: { overview: [{ id: 'rul-ov', el: 'fields', fields: ['Rule.kind'] }] },
   },
 
   /**
@@ -390,6 +395,9 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Feat',
     extends: ['Rule'],
     schema: merge(g.FeatInfo),
+    /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
+       Verweis, also `overview`. */
+    views: { overview: [{ id: 'fea-ov', el: 'fields', fields: ['Feat.prerequisite', 'Feat.repeatable'] }] },
   },
 
   Skill: {
@@ -407,6 +415,9 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Language',
     extends: ['Rule'],
     schema: merge(g.LanguageInfo),
+    /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
+       Verweis, also `overview`. */
+    views: { overview: [{ id: 'lan-ov', el: 'fields', fields: ['Language.languageType', 'Language.script'] }] },
   },
 
   /* ---------- Charakterbau (M3) ----------
@@ -426,6 +437,9 @@ export const interfaces: Record<string, InterfaceDef> = {
       'Proficiencies.proficient': 'Grants proficiency in',
       'Proficiencies.expertise': 'Grants expertise in',
     },
+    /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
+       Verweis, also `overview`. */
+    views: { overview: [{ id: 'cla-ov', el: 'fields', fields: ['Class.hitDie', 'Class.primaryAbility', 'Class.casterProgression'] }] },
   },
 
   Subclass: {
@@ -438,6 +452,9 @@ export const interfaces: Record<string, InterfaceDef> = {
       'Proficiencies.proficient': 'Grants proficiency in',
       'Proficiencies.expertise': 'Grants expertise in',
     },
+    /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
+       Verweis, also `overview`. */
+    views: { overview: [{ id: 'sub-ov', el: 'fields', fields: ['Subclass.shortName', 'Subclass.casterProgression'] }] },
   },
 
   Ancestry: {
@@ -450,6 +467,9 @@ export const interfaces: Record<string, InterfaceDef> = {
       'Proficiencies.proficient': 'Grants proficiency in',
       'Proficiencies.expertise': 'Grants expertise in',
     },
+    /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
+       Verweis, also `overview`. */
+    views: { overview: [{ id: 'anc-ov', el: 'fields', fields: ['Ancestry.size', 'Ancestry.speed'] }] },
   },
 
   Background: {
@@ -471,6 +491,9 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Condition',
     extends: ['Rule'],
     schema: merge(g.ConditionInfo),
+    /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
+       Verweis, also `overview`. */
+    views: { overview: [{ id: 'con-ov', el: 'fields', fields: ['Condition.kind'] }] },
   },
 
   /** Eine Krankheit: zuweisbar wie ein Zustand, mit eigenen Feldern (D48). */
@@ -498,6 +521,9 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Action',
     extends: ['Rule'],
     schema: merge(g.ActionInfo),
+    /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
+       Verweis, also `overview`. */
+    views: { overview: [{ id: 'act-ov', el: 'fields', fields: ['Action.actionType', 'Action.attack', 'Action.damageType', 'Action.recharge'] }] },
   },
 
   /** Merkmal: alles Dauerhafte — Klasse, Volk, Monster, Region (D48). */
@@ -507,6 +533,9 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Feature',
     extends: ['Rule'],
     schema: merge(g.FeatureInfo),
+    /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
+       Verweis, also `overview`. */
+    views: { overview: [{ id: 'ftr-ov', el: 'fields', fields: ['Feature.featureType'] }] },
   },
 
   /** Gegenstandseigenschaft: Finesse, Versatile, Heavy (D48). */
@@ -528,12 +557,15 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Spell',
     extends: ['Rule'],
     schema: merge(g.SpellInfo),
+    /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
+       Verweis, also `overview`. */
     /* **Wie im Spielerhandbuch** (W2): Grad und Schule kursiv, die vier
        Kopfzeilen, der Text, „At Higher Levels". Das Element `spell`
        zeichnet die Karte `Spell` ganz und den Haupttext (Beschreibung und
        `Prose.paragraph`) dazu, weil „At Higher Levels" hinter ihm steht —
        darum nehmen Feldtabelle und Prosa beides heraus. */
     views: {
+      overview: [{ id: 'spe-ov', el: 'fields', fields: ['Spell.level', 'Spell.school', 'Spell.duration', 'Spell.concentration', 'Spell.ritual'] }],
       full: [
         { id: 'sp-book', el: 'spell' },
         { id: 'sp-f', el: 'fields', fields: 'all', except: ['Spell'] },
@@ -552,6 +584,9 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Hazard',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Secrets'],
     schema: merge(g.HazardInfo),
+    /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
+       Verweis, also `overview`. */
+    views: { overview: [{ id: 'haz-ov', el: 'fields', fields: ['Hazard.kind', 'Hazard.category', 'Hazard.threat'] }] },
   },
 
   /**
@@ -573,6 +608,9 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Deity',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Lore', 'Secrets'],
     schema: merge(g.DeityInfo),
+    /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
+       Verweis, also `overview`. */
+    views: { overview: [{ id: 'dei-ov', el: 'fields', fields: ['Deity.pantheon', 'Deity.alignment', 'Deity.domains'] }] },
   },
 
   /** An entity of its own (D4), referenced by creatures, never embedded. */
@@ -590,6 +628,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {
+      /* Die Spalten im Kompendium (W7, `listColumns`). */
+      overview: [{ id: 's-ov', el: 'fields', fields: ['Statblock.cr', 'Statblock.size', 'Statblock.creatureType', 'Statblock.alignment'] }],
       /* Der Statblock neben der Initiative (REQ-211, D53) ist `quick`: die
          Zahlen und was er kann, ohne Beziehungen und Fliesstext. Die
          Grundanordnung von `quick` (Bild, Beschreibung, Passagen) zeigte an
@@ -622,11 +662,14 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Item',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Lore', 'Secrets', 'Facts'],
     schema: merge(g.ItemInfo, g.Footprint),
+    /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
+       Verweis, also `overview`. */
     /* **Wie im Spielleiterhandbuch** (W2): Art, Seltenheit und Einstimmung
        kursiv unter dem Namen, Rüstungsklasse, Schaden, Preis und Gewicht
        als Kopfzeilen. Waffe, Rüstung und Material erben die Anordnung;
        das Element zeichnet ihre Karten mit. */
     views: {
+      overview: [{ id: 'ite-ov', el: 'fields', fields: ['Item.itemType', 'Item.rarity', 'Item.attunement'] }],
       full: [
         { id: 'it-img', el: 'image' },
         { id: 'it-book', el: 'item' },
@@ -648,6 +691,9 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Weapon',
     extends: ['Item'],
     schema: merge(g.WeaponInfo),
+    /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
+       Verweis, also `overview`. */
+    views: { overview: [{ id: 'wea-ov', el: 'fields', fields: ['Weapon.category', 'Weapon.damage', 'Weapon.damageType', 'Item.rarity'] }] },
   },
 
   Armor: {
@@ -656,6 +702,9 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Armor',
     extends: ['Item'],
     schema: merge(g.ArmorInfo),
+    /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
+       Verweis, also `overview`. */
+    views: { overview: [{ id: 'arm-ov', el: 'fields', fields: ['Armor.armorType', 'Armor.ac', 'Armor.strength', 'Armor.stealthDisadvantage'] }] },
   },
 
   Material: {
@@ -1031,6 +1080,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {
+      /* Die Spalten im Kompendium (W7, `listColumns`). */
+      overview: [{ id: 't-ov', el: 'fields', fields: ['Table.kind', 'Table.die'] }],
       full: [
         { id: 't-table', el: 'table' },
         { id: 't-desc', el: 'description' },

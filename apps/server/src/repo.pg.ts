@@ -207,6 +207,10 @@ export class PgRepository implements Repository {
    * Einfuhr läuft als eigener Prozess (`import.js`) und schreibt an diesem
    * Server vorbei.
    */
+  async version(): Promise<string> {
+    return this.stempel();
+  }
+
   private async stempel(): Promise<string> {
     const { rows } = await this.pool.query<Row>(
       `select count(*)::text || '/' || coalesce(max(updated_at)::text, '') as s from entity`,

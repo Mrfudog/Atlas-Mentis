@@ -1,14 +1,16 @@
-import { Component, computed, effect, inject, input, signal, viewChild } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
 import type { ElementRef } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   areaOf,
+  BOARD_TYPE,
   boardCard,
   entityName,
   INSTANCE_RELATION,
   isInstance,
   LAYER_RELATION,
   nextPlacement,
+  PART_OF_RELATION,
   PLACED_RELATION,
   PLACEMENT_MIN,
   placementOf,
@@ -29,7 +31,7 @@ interface Karte {
   rel: Relation;
   platz: BoardPlacement;
   ziel: Entity | undefined;
-  /** Die Kurzfassung — Name und Art stehen, bevor der ganze Artikel da ist. */
+  /** Die Zeile aus der Liste — Name und Art stehen, bevor der ganze Artikel da ist. */
   kurz: Entity | undefined;
   ansicht: string;
   bereich: string;
@@ -88,10 +90,55 @@ export class Board {
     effect(() => {
       for (const k of this.kanten()) void this.bestand.oeffnen(k.to, false, false);
     });
+    /* Was die Seitenspalte nennt (verbundene Artikel) und der Pfad über dem
+       Board (die Geschichte) kommen aus der Liste am Server (W7) — Namen und
+       Arten, nicht ganze Artikel. Gefragt wird nur, was noch fehlt. */
+    effect(() => {
+      const fehlen = this.fehlendeIds();
+      if (!fehlen.length) return;
+      const schluessel = fehlen.join(',');
+      if (schluessel === this.zuletztGefragt) return;
+      this.zuletztGefragt = schluessel;
+      untracked(() => void this.bestand.liste({ ids: fehlen, limit: 200 }).catch(() => undefined));
+    });
+    effect(() => {
+      const b = this.board();
+      if (!b || !storyOf(b) || this.geschichteGeholt) return;
+      this.geschichteGeholt = true;
+      untracked(() => {
+        void Promise.all([
+          this.bestand.liste({ of: ['Story'], rel: [PART_OF_RELATION], limit: 200 }),
+          this.bestand.liste({ type: BOARD_TYPE, rel: [PART_OF_RELATION], limit: 200 }),
+        ]).catch(() => undefined);
+      });
+    });
     /* Am Telefon passt eine Leinwand von 2400 px nicht; sie fängt
        verkleinert an, statt dass man zuerst sucht, wo etwas liegt. */
     if (typeof window !== 'undefined' && window.innerWidth < 700) this.zoom.set(0.5);
   }
+
+  private zuletztGefragt = '';
+  private geschichteGeholt = false;
+
+  /** Was die Seite kennt: ganze Artikel, sonst die schmalen aus der Liste. */
+  private readonly kennt = computed<ReadonlyMap<string, Entity>>(() => {
+    const m = new Map(this.bestand.kurz());
+    for (const [id, e] of this.bestand.voll()) m.set(id, e);
+    return m;
+  });
+
+  /** Die Ziele der Kanten auf den Kacheln, deren Name und Art noch fehlen. */
+  private readonly fehlendeIds = computed(() => {
+    const voll = this.bestand.voll();
+    const kurz = this.bestand.kurz();
+    const raus = new Set<string>();
+    for (const k of this.kanten()) {
+      for (const rel of voll.get(k.to)?.relations ?? []) {
+        if (!voll.has(rel.to) && !kurz.has(rel.to)) raus.add(rel.to);
+      }
+    }
+    return [...raus].sort();
+  });
 
   protected readonly board = computed<Entity | undefined>(() => {
     const e = this.bestand.voll().get(this.id());
@@ -133,7 +180,7 @@ export class Board {
     const r = this.bestand.registry();
     if (!b || !r) return [];
     const voll = this.bestand.voll();
-    const byId = this.bestand.byId();
+    const byId = this.kennt();
     const z = this.zug();
     return this.kanten().map((rel) => {
       const ziel = voll.get(rel.to);
@@ -179,10 +226,10 @@ export class Board {
     if (!b) return [];
     const s = storyOf(b);
     if (!s) return [];
-    const byId = this.bestand.byId();
+    const byId = this.kennt();
     const story = byId.get(s);
     if (!story) return [];
-    const boards = this.bestand.entities().filter(isBoard);
+    const boards = [...byId.values()].filter(isBoard);
     return [...chainAbove(byId, s), story].map((e) => {
       const eigenes = boards.find((x) => storyOf(x) === e.id && x.id !== b.id);
       return {
@@ -206,7 +253,7 @@ export class Board {
     const b = this.board();
     if (!b) return [];
     const liegt = new Set(this.kanten().map((k) => k.to));
-    const byId = this.bestand.byId();
+    const byId = this.kennt();
     const voll = this.bestand.voll();
     const nicht = new Set([LAYER_RELATION, INSTANCE_RELATION, PLACED_RELATION]);
     const out = new Map<string, Entity>();
@@ -222,7 +269,7 @@ export class Board {
 
   /** Was auf dem Board liegt und noch nicht fertig ist (`Status`, REQ-188). */
   protected readonly offen = computed(() => {
-    const byId = this.bestand.byId();
+    const byId = this.kennt();
     return this.kanten()
       .map((k) => byId.get(k.to))
       .filter((e): e is Entity => !!e)

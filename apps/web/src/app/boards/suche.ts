@@ -1,16 +1,16 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
-import { entityName, isInstance, primaryInterface } from '@nw/model';
+import { Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
+import { entityName, primaryInterface } from '@nw/model';
 import type { Entity } from '@nw/model';
-import { Bestand } from '../kern/bestand';
+import { Bestand, schmal } from '../kern/bestand';
 
 /** So viele Treffer zeigt die Suche — 24 157 liest niemand. */
 const TREFFER = 30;
 
 /**
- * Einen Artikel aufs Board legen: suchen und anklicken. Gesucht wird in
- * der Kurzfassung (`Bestand.entities()`); ganz geholt wird er erst, wenn er
- * auf dem Board liegt. Instanzen stehen in keiner Liste, also auch nicht
- * hier, und was schon daliegt, nicht noch einmal.
+ * Einen Artikel aufs Board legen: suchen und anklicken. Gesucht wird am
+ * Server (`/api/list?q=…`, W7) nach Name, Alias und Nummer; ganz geholt wird
+ * er erst, wenn er auf dem Board liegt. Instanzen stehen in keiner Liste,
+ * also auch nicht hier, und was schon daliegt, nicht noch einmal.
  */
 @Component({
   selector: 'nw-board-suche',
@@ -19,7 +19,7 @@ const TREFFER = 30;
       type="search"
       placeholder="Search articles by name…"
       [value]="suche()"
-      (input)="suche.set($any($event.target).value)"
+      (input)="tippen($any($event.target).value)"
       aria-label="Search articles"
     />
     @if (suche().trim()) {
@@ -88,19 +88,38 @@ export class BoardSuche {
 
   private readonly bestand = inject(Bestand);
   protected readonly suche = signal('');
+  private readonly gefunden = signal<Entity[]>([]);
+  private lauf = 0;
+  private uhr: ReturnType<typeof setTimeout> | null = null;
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => {
+      if (this.uhr) clearTimeout(this.uhr);
+    });
+  }
+
+  /** Gefragt wird nach einer kurzen Pause, nicht bei jedem Buchstaben. */
+  protected tippen(q: string): void {
+    this.suche.set(q);
+    if (this.uhr) clearTimeout(this.uhr);
+    if (!q.trim()) return;
+    this.uhr = setTimeout(() => {
+      const nr = ++this.lauf;
+      void this.bestand
+        .liste({ q, limit: TREFFER + 10 })
+        .then((r) => {
+          if (nr === this.lauf) this.gefunden.set(r.rows.map(schmal));
+        })
+        .catch(() => undefined);
+    }, 200);
+  }
 
   protected readonly treffer = computed(() => {
-    const q = this.suche().trim().toLowerCase();
-    if (!q) return [];
+    if (!this.suche().trim()) return [];
     const ohne = this.ohne();
-    const out: Entity[] = [];
-    for (const e of this.bestand.entities()) {
-      if (ohne.has(e.id) || isInstance(e)) continue;
-      if (!entityName(e).toLowerCase().includes(q)) continue;
-      out.push(e);
-      if (out.length >= TREFFER) break;
-    }
-    return out;
+    return this.gefunden()
+      .filter((e) => !ohne.has(e.id))
+      .slice(0, TREFFER);
   });
 
   protected name(e: Entity): string {

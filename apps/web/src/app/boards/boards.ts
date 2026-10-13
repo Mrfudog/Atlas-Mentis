@@ -1,8 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { entityName, isInstance, PART_OF_RELATION, primaryInterface } from '@nw/model';
+import { BOARD_TYPE, entityName, isInstance, PART_OF_RELATION, primaryInterface } from '@nw/model';
 import type { Entity } from '@nw/model';
-import { Bestand } from '../kern/bestand';
+import { Bestand, schmal } from '../kern/bestand';
 import { Session } from '../kern/session';
 import { Brett, isBoard, isStoryRung, storyOf, type Mangel } from './brett';
 
@@ -19,9 +19,10 @@ interface Sprosse {
  * Sitzung — in der Reihenfolge ihrer `partOf`-Kette, und darunter die
  * Regel-Boards, die zu keiner Geschichte gehören.
  *
- * Gelesen wird aus der Kurzfassung: sie trägt Art, Name, Stand und die
- * Kante `partOf`, und mehr braucht eine Liste nicht. Ein Board selbst kommt
- * erst, wenn man es öffnet.
+ * Gelesen wird aus der Liste am Server (`Bestand.liste`, W7): die Boards
+ * und die Geschichte, je Zeile Art, Name und die Kante `partOf` (`rel=`),
+ * und mehr braucht eine Liste nicht. Ein Board selbst kommt erst, wenn man
+ * es öffnet.
  */
 @Component({
   selector: 'nw-boards',
@@ -47,7 +48,7 @@ interface Sprosse {
         </div>
       }
 
-      @if (!bestand.geladen()) {
+      @if (!bestand.geladen() || !geholt()) {
         <p class="leer">Loading…</p>
       } @else {
         <section>
@@ -207,6 +208,7 @@ export class Boards {
 
   constructor() {
     void this.bestand.load();
+    void this.holen();
   }
 
   protected readonly fehler = signal<Mangel | null>(null);
@@ -215,7 +217,25 @@ export class Boards {
   /** Anlegen darf, wer alles schreiben darf — ein neuer Artikel steht in keiner Liste. */
   protected readonly darfAnlegen = computed(() => this.session.darfSchreiben()(''));
 
-  private readonly boards = computed(() => this.bestand.entities().filter(isBoard));
+  /* Die Boards und die Sprossen der Geschichte — Kampagneninhalt, eine
+     Handvoll; ein Blatt von 200 reicht für beide. */
+  private readonly zeilen = signal<Entity[]>([]);
+  protected readonly geholt = signal(false);
+  private async holen(): Promise<void> {
+    try {
+      const [b, g] = await Promise.all([
+        this.bestand.liste({ type: BOARD_TYPE, rel: [PART_OF_RELATION], limit: 200 }),
+        this.bestand.liste({ of: ['Story'], rel: [PART_OF_RELATION], limit: 200 }),
+      ]);
+      this.zeilen.set([...b.rows, ...g.rows].map(schmal));
+    } catch (e) {
+      this.fehler.set({ text: e instanceof Error ? e.message : String(e), einzeln: [] });
+    } finally {
+      this.geholt.set(true);
+    }
+  }
+
+  private readonly boards = computed(() => this.zeilen().filter(isBoard));
 
   /**
    * Die Geschichte als Baum aus `partOf`, die Wurzeln zuerst, darunter ihre
@@ -225,9 +245,7 @@ export class Boards {
   protected readonly sprossen = computed<Sprosse[]>(() => {
     const r = this.bestand.registry();
     if (!r) return [];
-    const stories = this.bestand
-      .entities()
-      .filter((e) => !isInstance(e) && isStoryRung(r, e));
+    const stories = this.zeilen().filter((e) => !isInstance(e) && isStoryRung(r, e));
     const ids = new Set(stories.map((e) => e.id));
     const kinder = new Map<string | null, Entity[]>();
     for (const e of stories) {

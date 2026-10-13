@@ -7,7 +7,6 @@ import { Injectable, inject } from '@angular/core';
 import {
   BOARD_TYPE,
   entityName,
-  nextId,
   PART_OF_RELATION,
   primaryInterface,
   typeChain,
@@ -42,7 +41,8 @@ export function storyOf(board: Entity): string | undefined {
 
 /**
  * Die Kette über einem Artikel, die oberste zuerst: Kampagne › Kapitel ›
- * Sitzung. Gelesen aus der Kurzfassung, die `partOf` mitträgt; ein Kreis
+ * Sitzung. Gelesen aus den Zeilen der Liste, die `partOf` mittragen
+ * (`/api/list?rel=partOf`, W7) — oder aus ganzen Artikeln; ein Kreis
  * hört beim zweiten Besuch auf.
  */
 export function chainAbove(byId: ReadonlyMap<string, Entity>, id: string): Entity[] {
@@ -89,9 +89,10 @@ export class Brett {
   async schreiben(e: Entity): Promise<Mangel | null> {
     const r = this.bestand.registry();
     if (!r) return { text: 'The registry is not loaded.', einzeln: [] };
-    const bekannt = new Map(this.bestand.entities().map((x) => [x.id, primaryInterface(x)]));
-    bekannt.set(e.id, primaryInterface(e));
-    const issues = validateEntity(r, e, { knownTypes: bekannt });
+    /* Ohne `knownTypes`: welche Arten die Ziele haben, weiss nur der
+       Bestand, und den hält die Seite nicht mehr (W7) — das prüft der
+       Server, der ihn hat. */
+    const issues = validateEntity(r, e);
     if (issues.length) {
       return { text: 'This would not be valid.', einzeln: issues.map(issueText) };
     }
@@ -117,19 +118,25 @@ export class Brett {
    */
   async anlegen(story?: Entity, name?: string): Promise<{ id: string } | Mangel> {
     const titel = (name ?? (story ? entityName(story) : '') ?? '').trim() || 'New board';
-    const id = `e-${crypto.randomUUID()}`;
-    const neu: Entity = {
-      id,
-      interfaces: [BOARD_TYPE],
-      name: titel,
-      components: {
-        Identity: { name: titel, id: nextId(this.bestand.entities(), BOARD_TYPE), aliases: [] },
-        [BOARD_TYPE]: {},
-      },
-      relations: story ? [{ id: `r-${crypto.randomUUID()}`, type: PART_OF_RELATION, to: story.id }] : [],
-      createdAt: new Date().toISOString(),
-    };
-    const fehler = await this.schreiben(neu);
-    return fehler ?? { id };
+    /* Angelegt wird am Server (W7): er vergibt Peg-Id und Nummer (`nextId`)
+       über den ganzen Bestand, den die Seite nicht hält. */
+    try {
+      const neu = await this.api.createEntity(
+        BOARD_TYPE,
+        titel,
+        {},
+        story ? [{ type: PART_OF_RELATION, to: story.id }] : [],
+      );
+      await this.bestand.oeffnen(neu.id, true, false);
+      return { id: neu.id };
+    } catch (error) {
+      if (error instanceof ApiError) {
+        return {
+          text: error.message,
+          einzeln: Array.isArray(error.issues) ? error.issues.map(issueText) : [],
+        };
+      }
+      return { text: 'Could not reach the server.', einzeln: [] };
+    }
   }
 }

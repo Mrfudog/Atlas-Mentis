@@ -1,5 +1,5 @@
 import { Component, computed, effect, inject, input } from '@angular/core';
-import { bookSections, entityName, relationDef } from '@nw/model';
+import { bookSections, relationDef } from '@nw/model';
 import type { BookSection, Entity } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { Text } from './text';
@@ -75,13 +75,10 @@ export class Abschnitte {
     const r = this.bestand.registry();
     if (!r) return [];
     const voll = this.bestand.voll();
-    const kurz = this.bestand.byId();
+    const name = this.bestand.name();
     return bookSections(r, this.besitzer(), {
       part: (id) => voll.get(id),
-      nameOf: (id) => {
-        const k = kurz.get(id);
-        return k ? entityName(k) : undefined;
-      },
+      nameOf: (id) => voll.get(id)?.name ?? name(id),
       campaign: r.vars,
     });
   });

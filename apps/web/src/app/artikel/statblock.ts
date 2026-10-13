@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input } from '@angular/core';
+import { Component, computed, effect, inject, input, untracked } from '@angular/core';
 import { entityName, enumRefKind, primaryInterface, statblockBook } from '@nw/model';
 import type { Entity, StatblockBook } from '@nw/model';
 import { Bestand } from '../kern/bestand';
@@ -61,24 +61,34 @@ export class Statblock {
 
   private readonly bestand = inject(Bestand);
 
+  /** Die Namen in `proficient` und `expertise`. */
+  private readonly uebungsNamen = computed(() => {
+    const pr = (this.artikel().components?.['Proficiencies'] ?? {}) as Record<string, unknown>;
+    return [pr['proficient'], pr['expertise']].flatMap((v) => (Array.isArray(v) ? v.map(String) : []));
+  });
+
   /**
-   * Die Namen in `proficient` und `expertise` und welche Art sie sind —
-   * gesucht unter den Arten, aus denen das Feld seine Werte zieht
-   * (`enumRef`), nicht in einer Liste hier.
+   * Die Arten, aus denen das Feld seine Werte zieht (`enumRef`) und die
+   * Artikel sind — gesucht wird dort, nicht in einer Liste hier.
+   */
+  private readonly quellen = computed(() => {
+    const r = this.bestand.registry();
+    if (!r) return [];
+    const feld = r.interfaces['Proficiencies']?.schema?.properties?.['proficient'];
+    return [feld?.enumRef ?? []].flat().filter((q) => enumRefKind(r, q) === 'type');
+  });
+
+  /**
+   * Die Übungen als Artikel und welche Art sie sind. Der Browser hält keinen
+   * Bestand (W7): je Name fragt die Liste am Server, eingeschränkt auf die
+   * Quellarten, und ihre Zeilen landen in `kurz`.
    */
   private readonly uebungen = computed(() => {
-    const r = this.bestand.registry();
-    const e = this.artikel();
-    const pr = (e.components?.['Proficiencies'] ?? {}) as Record<string, unknown>;
-    const namen = [pr['proficient'], pr['expertise']].flatMap((v) => (Array.isArray(v) ? v.map(String) : []));
+    const quellen = new Set(this.quellen());
+    const gesucht = new Set(this.uebungsNamen().map((n) => n.toLowerCase()));
     const art = new Map<string, Entity>();
-    if (!r || !namen.length) return art;
-    const feld = r.interfaces['Proficiencies']?.schema?.properties?.['proficient'];
-    const quellen = new Set(
-      [feld?.enumRef ?? []].flat().filter((q) => enumRefKind(r, q) === 'type'),
-    );
-    const gesucht = new Set(namen.map((n) => n.toLowerCase()));
-    for (const k of this.bestand.entities()) {
+    if (!gesucht.size) return art;
+    for (const k of this.bestand.kurz().values()) {
       const n = entityName(k).toLowerCase();
       if (gesucht.has(n) && quellen.has(primaryInterface(k)) && !art.has(n)) art.set(n, k);
     }
@@ -86,6 +96,14 @@ export class Statblock {
   });
 
   constructor() {
+    effect(() => {
+      const namen = this.uebungsNamen();
+      const of = this.quellen();
+      if (!namen.length || !of.length) return;
+      untracked(() => {
+        for (const q of namen) void this.bestand.liste({ of, q, limit: 20 }).catch(() => undefined);
+      });
+    });
     /* Worauf eine Fertigkeit rechnet, steht an ihrem Artikel — den holt,
        wer ihn braucht, mit den Teilen in einer Anfrage. */
     effect(() => {

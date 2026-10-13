@@ -106,6 +106,70 @@ export type TableRole = 'gm' | 'co-gm' | 'player' | 'spectator';
 export const TABLE_ROLES: readonly TableRole[] = ['gm', 'co-gm', 'player', 'spectator'];
 
 /**
+ * Die Namen, die ein geöffneter Artikel braucht (W7): Kantenziele,
+ * Verweisfelder, Sichtbarkeitslisten (`names`) und die Treffer jedes
+ * `[[…]]` (`links`). Der Server rechnet sie beim Ausliefern, gespeichert
+ * werden sie nie.
+ */
+export interface Bezuege {
+  names: Record<string, string>;
+  links: Record<string, { id: string; name: string }[]>;
+}
+
+/** Ein Blatt der Liste (`GET /api/list`) — die Form steht in `apps/server/src/liste.ts`. */
+export interface Liste {
+  total: number;
+  offset: number;
+  limit: number;
+  columns: { ref: string; label: string; kind: 'number' | 'bool' | 'list' | 'text' }[];
+  rows: ListenZeile[];
+  facets: {
+    types: { type: string; label: string; area: string; count: number }[];
+    layers: { id: string; name: string; count: number }[];
+    fields: (
+      | { ref: string; label: string; kind: 'enum'; options: { value: string; count: number }[] }
+      | { ref: string; label: string; kind: 'range'; min: number; max: number }
+    )[];
+    partsHidden: number;
+  };
+}
+
+export interface ListenZeile {
+  id: string;
+  name: string;
+  type: string;
+  layers: string[];
+  source: string;
+  status: string;
+  /** Wie viele Artikel diesen über eine Abschnittskante nutzen. */
+  users?: number;
+  cols: Record<string, unknown>;
+  tags?: string[];
+  /** Die Ziele der Kantenarten, nach denen `rel=` fragte. */
+  rels?: Record<string, string[]>;
+}
+
+/** Was die Liste gefragt wird. Leere Angaben fallen weg. */
+export interface ListenFrage {
+  area?: string | undefined;
+  type?: string | undefined;
+  of?: string[] | undefined;
+  /** Nur diese Artikel. */
+  ids?: string[] | undefined;
+  /** Diese Kantenarten je Zeile mitschicken. */
+  rel?: string[] | undefined;
+  q?: string | undefined;
+  layer?: string[] | undefined;
+  nolayer?: string[] | undefined;
+  parts?: boolean | undefined;
+  sort?: string | undefined;
+  offset?: number | undefined;
+  limit?: number | undefined;
+  /** `Typ.feld:Wert|Wert` oder `Typ.feld:1..3`. */
+  f?: string[] | undefined;
+}
+
+/**
  * Eine Klasse samt allem, was ihre Ansicht braucht (W6, `GET /api/classes/:id`):
  * ihre Unterklassen, die Stufentabellen und die Merkmale, die eine davon
  * gewährt oder einbettet — ganz, gesiebt.
@@ -271,9 +335,31 @@ export class Api {
   registryUsage(): Promise<RegistryUsage> {
     return this.call<RegistryUsage>('/api/registry/usage');
   }
-  /** Die Kurzfassung des Bestands (`summaryOf`), nicht die Artikel selbst. */
-  entities(): Promise<Entity[]> {
-    return this.call<Entity[]>('/api/entities?as=summary');
+  /** Ein Blatt der Liste — Kompendium, Bereiche und jede Auswahl (W7). */
+  list(frage: ListenFrage, init: RequestInit = {}): Promise<Liste> {
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries(frage)) {
+      if (v === undefined || v === '' || v === false || (Array.isArray(v) && !v.length)) continue;
+      if (k === 'f') for (const f of v as string[]) p.append('f', f);
+      else p.set(k, Array.isArray(v) ? v.join(',') : v === true ? '1' : String(v));
+    }
+    return this.call<Liste>(`/api/list?${p.toString()}`, init);
+  }
+  /** `[[Name]]` → `[[nummer|Name]]`, wo genau ein Artikel so heisst (M11). */
+  links(texts: string[]): Promise<{ texts: string[]; open: string[] }> {
+    return this.call('/api/links', { method: 'POST', body: JSON.stringify({ texts }) });
+  }
+  /** Einen Artikel anlegen; Id, Nummer und Vorgaben setzt der Server. */
+  createEntity(
+    type: string,
+    name: string,
+    fields: Record<string, unknown> = {},
+    relations: { type: string; to: string; props?: Record<string, unknown> }[] = [],
+  ): Promise<Entity> {
+    return this.call<Entity>('/api/entities', {
+      method: 'POST',
+      body: JSON.stringify({ type, name, fields, relations }),
+    });
   }
   /** Diese Artikel ganz, gesiebt — die Teile eines Statblocks (W2). */
   entitiesById(ids: readonly string[]): Promise<Entity[]> {
@@ -285,8 +371,9 @@ export class Api {
   klasse(id: string): Promise<KlassenBuendel> {
     return this.call<KlassenBuendel>(`/api/classes/${encodeURIComponent(id)}`);
   }
-  entity(id: string): Promise<Entity> {
-    return this.call<Entity>(`/api/entities/${encodeURIComponent(id)}`);
+  /** Der ganze Artikel, gesiebt, mit den Namen, die er braucht (`refs`). */
+  entity(id: string): Promise<Entity & { refs?: Bezuege }> {
+    return this.call<Entity & { refs?: Bezuege }>(`/api/entities/${encodeURIComponent(id)}`);
   }
 
   /** Prüfungen; `limit` 0 heisst nur die Zahlen, `'all'` jeden Treffer. */
