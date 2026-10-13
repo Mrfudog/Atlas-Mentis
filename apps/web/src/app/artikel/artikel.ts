@@ -363,8 +363,14 @@ export class Artikel {
     effect(() => {
       void this.bestand.oeffnen(this.id());
     });
+    /* Einmal je Artikel: nach dem Speichern steht `?edit=1` noch in der
+       Adresse, und die Seite soll dann lesen, nicht wieder bearbeiten. */
+    let schonBearbeitet = '';
     effect(() => {
-      if (this.edit() && this.artikel() && this.reg() && !this.bearbeitet() && this.darfSchreiben()) {
+      const id = this.id();
+      if (!this.edit() || schonBearbeitet === id) return;
+      if (this.artikel() && this.reg() && this.darfSchreiben()) {
+        schonBearbeitet = id;
         untracked(() => this.beginnen());
       }
     });
