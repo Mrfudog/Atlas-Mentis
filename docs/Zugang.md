@@ -186,7 +186,7 @@ Drei Grenzen, die man leicht übersieht:
   bestehendes Konto beim Namen dazu oder lädt ein.
 
 **Eine Einladung führt in eine Kampagne, mit der Rolle darin** (Migration
-021: `app_invite.campaign_id`, `role`). Die Leitung, die nicht Verwaltung
+022: `app_invite.campaign_id`, `role`). Die Leitung, die nicht Verwaltung
 ist, fände ein eingeladenes Konto sonst nirgends. Nach dem Einlösen steht
 die Rolle am Konto (`campaign_member`) und nicht mehr an der Einladung — die
 ist mit dem letzten Gebrauch weg. Der Link heisst `/login?invite=<code>` und
