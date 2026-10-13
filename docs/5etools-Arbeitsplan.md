@@ -395,7 +395,7 @@ der erste Lauf stehen liess:
 | Doppel | Warum | Was gilt |
 |---|---|---|
 | **Gleiches Merkmal an mehreren Klassen** — Ability Score Improvement zwölfmal | Klassenmerkmale wurden nur innerhalb einer Klasse vereint; nach dem Ersetzen der Stufen ist der Text bei allen gleich | **Ein Artikel**, jede Klasse zeigt mit `grants` und ihren Stufen darauf (D50). Gleiche Art, gleicher Name, gleiche Karten ausser Nummer und Fundstelle |
-| **Monster-Merkmal, das den Namen nicht trifft** — Pack Tactics am Giant Rat sagt „the rat" | `{CREATURE}` wurde nur für den vollen Namen eingesetzt | Auch `shortName`, der Name ohne Klammer, das letzte und das erste Wort. **Ein Name je Text** und die Kante trägt genau ihn — gelesen wird jeder Text wie im Buch (geprüft über alle 3 820 Statblöcke) |
+| **Monster-Merkmal, das den Namen nicht trifft** — Pack Tactics am Giant Rat sagt „the rat", Amphibious am Black Dragon Wyrmling „the dragon", an Venomfang „Venomfang" | `{CREATURE}` wurde nur für „the" + vollen Namen, erstes oder letztes Wort eingesetzt | **`{CREATURE}` trägt den Artikel** (W1): erkannt wird „the" + die längste Wortfolge aus Name (auch in der Klammer), `shortName` oder **Kreaturtyp** samt Marken — klein, gross nur, wie der Name es schreibt; Füllwörter am Ende weg, ein Genitiv beendet sie. Bei benannten Kreaturen (`isNamedCreature`, `shortName`) dazu jede Folge grossgeschriebener Namensteile ohne Artikel („Gar", „Wei Feng"). Verweise und Würfel bleiben unberührt; offene Vorlagenwerte (`<$short_name$>`, `<$dc__con$>` aus `_templates`) werden vorher eingesetzt. **Ein Name je Text**, der längste, und die Kante trägt genau ihn — gelesen wird jeder Text wie im Buch |
 | **Fassungen aus mehreren Büchern** — MPMM druckt Volo und Mordenkainen neu, Common steht in sechs Settingbüchern | eine Fassung je Buch | Es gilt der **Nachdruck** (aus `reprintedAs`), sonst das **Kernbuch** (PHB, DMG, MM), sonst das **neuste** Buch. Die anderen bleiben als **Variante** (`variantOf`) mit dem Buch im Namen — „Kobold Inventor (VGM)" ist wählbar, `[[Kobold Inventor]]` eindeutig |
 
 Warum Variante und nicht Instanz (nur die Abweichung speichern): beide
@@ -408,6 +408,15 @@ Ein Lauf danach: **26 404 Artikel** (−1 434): 6 816 Monster-Doppel nicht
 angelegt (vorher 5 705), 323 Merkmale über Klassen vereint, 635 Fassungen
 als Variante (301 Statblöcke, 171 Gottheiten, 49 Abstammungen, 44
 Sprachen …).
+
+**`{CREATURE}` mit Artikel (W1, 13.10.2026).** Gemessen am vollen
+Bestand: Merkmale und Aktionen von Monstern 10 379 → 7 871 (alle Teile
+an Statblöcken 11 807 → 9 105), Amphibious 62 → 5, Multiattack 1 620 →
+1 198, Magic Resistance 211 → 18. Jeder Teil liest mit der Bindung an
+seiner Kante wörtlich wie vorher (geprüft über alle 21 031 Kanten); die
+205, die anders lesen, hatten `<$short_name$>` oder `<$dc__con$>` offen
+stehen. Was gleich heisst und verschieden bleibt, ist wirklich
+verschieden („air or water", „the monkey's allies").
 
 **Angriffe, einer für alle (Entscheidung 12.10.2026, D51,
 `src/arten/angriff.ts`).** Der Angriffssatz eines Statblocks wird in
