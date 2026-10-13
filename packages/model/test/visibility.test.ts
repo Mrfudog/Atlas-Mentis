@@ -5,6 +5,7 @@ import {
   campaignOf,
   campaignsOf,
   isReady,
+  seesUnfinished,
   tableRole,
   type Viewer,
 } from '../src/visibility.js';
@@ -287,5 +288,32 @@ describe('der Vorbereitungsstand als grobe Frage', () => {
   it('lässt Fertiges und Standloses durch wie bisher', () => {
     expect(articleVisible(entities, mitStand('ready'), sela)).toBe(true);
     expect(articleVisible(entities, mitStand(undefined), sela)).toBe(true);
+  });
+});
+
+/* E-014 d: die eigene Figur eines Spielers ist vom Status-Gate ausgenommen
+   — für die Mitspielenden gilt die gewöhnliche Sichtbarkeit. */
+describe('die eigene Figur ist vom Stand ausgenommen', () => {
+  const figur = (audience?: string): Entity => ({
+    ...artikel(undefined, ['ly_nebel']),
+    id: 'npc_baron',
+    components: { Status: { status: 'prepared' }, ...(audience ? { Visibility: { audience } } : {}) },
+  });
+
+  it('zeigt eine unfertige Figur den Mitspielenden, wenn sie ausgenommen ist', () => {
+    expect(articleVisible(entities, figur(), sela)).toBe(false);
+    expect(articleVisible(entities, figur(), { ...sela, ungated: ['npc_baron'] })).toBe(true);
+  });
+
+  it('fragt danach die gewöhnliche Sichtbarkeit', () => {
+    expect(articleVisible(entities, figur('gm'), { ...sela, ungated: new Set(['npc_baron']) })).toBe(false);
+  });
+
+  it('sagt, wer den Arbeitsstand sieht: Leitung und Eigenes, sonst niemand', () => {
+    const a = figur();
+    expect(seesUnfinished(entities, a, basil)).toBe(true);
+    expect(seesUnfinished(entities, a, sela)).toBe(false);
+    expect(seesUnfinished(entities, a, { ...sela, own: ['npc_baron'] })).toBe(true);
+    expect(seesUnfinished(entities, a)).toBe(true);
   });
 });

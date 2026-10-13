@@ -363,6 +363,14 @@ wiederkommen, werden sie neu geschrieben.
   fertig.** `ready` setzen nur die Verwaltung und `gm`; der Server prüft
   es, die Maske bietet es Spielenden nicht an. Kein eigenes Feld „zur
   Abnahme" (E-011) — das wäre ein zweiter Stand.
+  **Die eigene Figur ist ausgenommen** (D74, E-014 d): Spielercharakter
+  samt Statblock und Inventar verwaltet der Spieler ganz, setzt auch
+  `ready`, und die Mitspielenden sehen sie in jedem Stand
+  (`Viewer.ungated`). **Ändert eine Spielerin anderes Fertiges, fällt es
+  auf `prepared`**, und für alle ausser ihr und der Leitung gilt der
+  letzte fertige Stand weiter — eine Kopie am Server (`entity_ready`),
+  keine zweite Karte im Artikel; `ready` durch `gm` lässt den neuen
+  gelten.
 - **Eine Seite, ein Scroll.** Der Registerkörper hatte sein eigenes
   Fenster (`overflow-y:auto; max-height:72vh`) — die Feldliste scrollte im
   Kasten, während die Seite stillstand, und wer unten etwas aufklappte,
