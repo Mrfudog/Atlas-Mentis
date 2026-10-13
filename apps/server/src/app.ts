@@ -1236,6 +1236,25 @@ export function buildApp({
   });
 
   /**
+   * **Die Quellenkürzel und ihre Bücher** (T-088, REQ-245): Kürzel → voller
+   * Titel, aus `Layer.abbreviation` der Ebenen, die dieser Betrachter
+   * sieht. Die Seite zeigt damit an jedem „XGE" den Titel — beim
+   * Darüberfahren, auf dem Telefon beim Antippen.
+   */
+  app.get('/api/sources', async (request) => {
+    const [stand, idx] = await Promise.all([roh(), indexFor(request)]);
+    const out: Record<string, string> = {};
+    for (const e of stand.map.values()) {
+      if ((e.interfaces ?? [])[0] !== 'Layer') continue;
+      const k = (e.components?.['Layer'] as { abbreviation?: unknown } | undefined)?.abbreviation;
+      const name = idx.names.get(e.id);
+      if (typeof k !== 'string' || !k.trim() || !name) continue;
+      out[k.trim()] ??= name;
+    }
+    return { sources: out };
+  });
+
+  /**
    * **Was fehlt, weil seine Ebene nicht aufgeschaltet ist** (T-069) — mit
    * denselben Filtern wie das Blatt, je Ebene gezählt. Auf dev verschwanden
    * nach dem Anlegen einer Kampagne alle 5e.tools-Artikel, und die Seite

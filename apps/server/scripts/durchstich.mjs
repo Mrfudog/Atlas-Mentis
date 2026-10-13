@@ -535,6 +535,7 @@ try {
     ].map((e) => ({ ...e, relations: e.relations.map((r) => ({ ...r, id: r.id.startsWith('~') ? `${e.id}${r.id}` : r.id })) }));
     const ordner = mkdtempSync(join(tmpdir(), 'durchstich-buch-'));
     const name = 'zzz_durchstich_ebene_je_buch.sql';
+    const name088 = 'zzz_durchstich_ebenen_gruppen.sql';
     const BUECHER = ['e5_book_phb', 'e5_book_xge', 'e5_book_scag'];
     const sicht = async () => {
       const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
@@ -585,10 +586,53 @@ try {
       );
       pruefe('Eine Ebene je Buch: was ohne Quelle blieb, wird aufgezählt', gemeldet.some((m) => /Ohne Quelle.*\(1\): Probe Action/.test(m)), gemeldet.join(' | '));
       const gelesen = await get(admin, '/api/campaigns/camp_probe_c/layers');
-      pruefe('Eine Ebene je Buch: die Kampagnenseite liest die Bücher', gelesen.ok && (await gelesen.json()).layers.some((l) => l.id === 'e5_book_phb' && l.group === 'core' && l.active), String(gelesen.status));
+      pruefe('Eine Ebene je Buch: die Kampagnenseite liest die Bücher', gelesen.ok && (await gelesen.json()).layers.some((l) => l.id === 'e5_book_phb' && l.kind === 'book' && l.active), String(gelesen.status));
+
+      /* Gruppen von Ebenen (T-088): dieselben Buchebenen bekommen ihre
+         Gruppe, ihr Kürzel und ihre Beschreibung; keine Kampagne sieht
+         danach etwas anderes. */
+      writeFileSync(join(ordner, name088), readFileSync(join(DIST, '..', 'migrations', '034_ebenen_gruppen.sql'), 'utf8'));
+      const vor088 = await sicht();
+      await migrate(pool, { env: {} }, ordner);
+      const nach088 = await sicht();
+      const gruppeVon = (id) => (nach088.alle.get(id)?.relations ?? []).filter((r) => r.type === 'partOf').map((r) => r.to).join(',');
+      pruefe(
+        'Gruppen von Ebenen: jedes Buch hängt an seiner Gruppe',
+        gruppeVon('e5_book_phb') === 'e5_group_core' && gruppeVon('e5_book_xge') === 'e5_group_supplement' && gruppeVon('e5_book_scag') === 'e5_group_setting'
+          && nach088.alle.get('e5_group_core')?.components['Layer']?.kind === 'group',
+        BUECHER.map((b) => `${b}→${gruppeVon(b)}`).join(', '),
+      );
+      const phb088 = nach088.alle.get('e5_book_phb');
+      pruefe(
+        'Gruppen von Ebenen: Kürzel und Beschreibung nachgetragen',
+        phb088?.components['Layer']?.abbreviation === 'PHB' && phb088.components['Description']?.description === "PHB — Player's Handbook"
+          && nach088.alle.get('e5_book_scag')?.components['Layer']?.abbreviation === 'SCAG',
+        JSON.stringify(phb088?.components),
+      );
+      const verloren088 = [...vor088.je].flatMap(([k, ids]) => [...ids].filter((id) => !nach088.je.get(k)?.has(id)).map((id) => `${k}: ${id}`));
+      pruefe('Gruppen von Ebenen: keine Kampagne verliert einen Artikel', verloren088.length === 0, verloren088.join(', '));
+      /* Die Gruppe aufschalten und ein Buch darin abschalten — über die Seite. */
+      const aufG = await fetch(`${BASE}/api/campaigns/camp_probe_c/layers`, {
+        method: 'PUT', headers: { cookie: admin, 'content-type': 'application/json' },
+        body: JSON.stringify({ layers: [ALT, 'e5_group_core', 'e5_book_xge', 'e5_book_scag', 'ly_probe_a'], off: [] }),
+      });
+      pruefe('Gruppen von Ebenen: Gruppe aufgeschaltet (Registerzeilen nachgezogen)', aufG.ok, `${aufG.status} ${await aufG.text()}`);
+      const zeilen = (await (await get(admin, '/api/campaigns/camp_probe_c/layers')).json()).layers;
+      pruefe('Gruppen von Ebenen: das Buch ist über die Gruppe im Spiel',
+        zeilen.some((l) => l.id === 'e5_book_phb' && !l.active && l.inPlay), JSON.stringify(zeilen.map((l) => [l.id, l.active, l.inPlay])));
+      const ausG = await fetch(`${BASE}/api/campaigns/camp_probe_c/layers`, {
+        method: 'PUT', headers: { cookie: admin, 'content-type': 'application/json' },
+        body: JSON.stringify({ layers: [ALT, 'e5_group_core', 'e5_book_xge', 'e5_book_scag', 'ly_probe_a'], off: ['e5_book_phb'] }),
+      });
+      pruefe('Gruppen von Ebenen: ein Buch in der Gruppe abgeschaltet', ausG.ok, `${ausG.status} ${await ausG.text()}`);
+      const ohne = await sicht();
+      pruefe('Gruppen von Ebenen: aus schlägt an', !ohne.je.get('camp_probe_c')?.has('e5_probe_r1') && ohne.je.get('camp_probe_c')?.has('e5_probe_r2'), '');
+      const quellen = await (await get(admin, '/api/sources')).json();
+      pruefe('Gruppen von Ebenen: Quellenkürzel erklärt', quellen.sources?.PHB === "Player's Handbook", JSON.stringify(quellen));
     } finally {
       await pool.query('delete from entity where id = any($1)', [[...probe.map((e) => e.id), ...BUECHER]]);
-      await pool.query('delete from schema_migrations where name = $1', [name]);
+      await pool.query("delete from entity where id like 'e5_group_%'");
+      await pool.query('delete from schema_migrations where name = any($1)', [[name, name088]]);
       await pool.end();
       rmSync(ordner, { recursive: true, force: true });
     }
@@ -640,7 +684,7 @@ try {
       pruefe('Abenteuer als Ebene: aufgeschaltet', gesetzt.ok, `${gesetzt.status} ${await gesetzt.text()}`);
       const g = await (await get(admin, '/api/campaigns/camp_probe_a/layers')).json();
       pruefe('Abenteuer als Ebene: steht unter den Abenteuern',
-        g.layers.some((l) => l.id === 'e5_book_t082a' && l.group === 'adventure' && l.active), JSON.stringify(g.layers.map((l) => [l.id, l.group, l.active])));
+        g.layers.some((l) => l.id === 'e5_book_t082a' && l.kind === 'adventure' && l.active), JSON.stringify(g.layers.map((l) => [l.id, l.kind, l.active])));
       const a = await fetch(`${BASE}/api/entities/st_probe_t082/adapt`, { method: 'POST', headers: { cookie: admin } });
       const aj = await a.json();
       fassung = aj.id ?? '';

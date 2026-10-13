@@ -27,6 +27,13 @@ import {
   LAYER_RELATION,
   activeStack,
   campaignsActivating,
+  groupMembers,
+  isGroupLayer,
+  layersInGroup,
+  offLayers,
+  resolvedStack,
+  withOff,
+  GROUP_RELATION,
   campaignsOf,
   currentCampaign,
   inStack,
@@ -49,8 +56,6 @@ import { foldName, hashToken, mayViewAs, newInviteCode, type Invite, type User }
 /** Was ein Konto an einer Kampagne darf: ändern, nur sehen, oder nichts. */
 export type Recht = 'manage' | 'see' | null;
 
-/** Die Gruppen der Bücher auf der Kampagnenseite, in dieser Reihenfolge (T-081). */
-export const BUCHGRUPPEN = ['core', 'sourcebook', 'adventure'];
 
 export function rechtAn(user: User | null, campaignId: string): Recht {
   if (!user || user.disabledAt) return null;
@@ -75,12 +80,20 @@ export function mayActivate(
   alle: Map<string, Entity>,
   layerId: string,
   campaignId: string,
+  members?: Map<string, string[]>,
 ): boolean {
   if (rechtAn(user, campaignId) !== 'manage') return false;
   if (user?.isAdmin) return true;
-  const laufen = campaignsActivating(alle, layerId);
-  if (laufen.includes(campaignId)) return true;
-  return laufen.length !== 1;
+  const frei = (id: string) => {
+    const laufen = campaignsActivating(alle, id);
+    return laufen.includes(campaignId) || laufen.length !== 1;
+  };
+  if (!frei(layerId)) return false;
+  /* Eine Gruppe bringt ihre Mitglieder (T-088): sie aufschalten darf nur,
+     wer jedes davon aufschalten dürfte — sonst käme die Ebene einer
+     anderen Runde über die Gruppe herein. */
+  if (!isGroupLayer(alle.get(layerId))) return true;
+  return layersInGroup(alle, layerId, members).every(frei);
 }
 
 interface Deps {
@@ -181,22 +194,6 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
   // ---------------------------------------------------------- Ebenen
 
   /**
-   * Unter welcher Gruppe ein Buch auf der Kampagnenseite steht (T-081):
-   * die Marke, die der Importer und die Migration setzen (`core`,
-   * `sourcebook`, `adventure`). Nur für `kind: 'book'` und `'adventure'`
-   * (T-082) — ein Abenteuer steht immer unter den Abenteuern; eine andere
-   * Ebene steht im Stapel und hat keine Gruppe. Beschreibung, keine Regel.
-   */
-  const buchGruppe = (e: Entity): string => {
-    const kind = (e.components?.[LAYER_COMPONENT] as { kind?: unknown } | undefined)?.kind;
-    if (kind === 'adventure') return 'adventure';
-    if (kind !== 'book') return '';
-    const marken = (e.components?.['Tags'] as { tags?: unknown } | undefined)?.tags;
-    const g = Array.isArray(marken) ? marken.find((m) => BUCHGRUPPEN.includes(m as string)) : undefined;
-    return typeof g === 'string' ? g : 'sourcebook';
-  };
-
-  /**
    * **Die Ebenen einer Kampagne** (T-069, E-008): alle Ebenen des
    * Bestands, die aufgeschalteten von unten nach oben, darunter die
    * übrigen. Was eine Kampagne zeigt, ist ihre wichtigste Einstellung —
@@ -216,33 +213,61 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     }
     const ebenen = [...alle.values()].filter((e) => (e.interfaces ?? [])[0] === LAYER_COMPONENT);
     const zahl = new Map<string, number>();
+    /* Was eine Ebene enthält, je Art — gerechnet, nie gespeichert (D8, T-088). */
+    const inhalt = new Map<string, Record<string, number>>();
     /* Ebenen mit Text (T-091): nur an ihnen steht „Read". */
     const text = new Set<string>();
     for (const e of alle.values()) {
-      const lesbar = READING_TYPES.includes((e.interfaces ?? [])[0] ?? '');
+      const art = (e.interfaces ?? [])[0] ?? '';
+      const lesbar = READING_TYPES.includes(art);
       for (const r of e.relations ?? []) {
         if (r.type !== LAYER_RELATION || (r.props as { mode?: unknown } | undefined)?.mode === 'removes') continue;
         zahl.set(r.to, (zahl.get(r.to) ?? 0) + 1);
+        const je = inhalt.get(r.to) ?? {};
+        je[art] = (je[art] ?? 0) + 1;
+        inhalt.set(r.to, je);
         if (lesbar) text.add(r.to);
       }
     }
+    const mitglieder = groupMembers(alle);
     const stapel = activeStack(alle, kampagne).map((x) => x.layer.id);
+    /* Im Spiel ist auch, was eine aufgeschaltete Gruppe bringt (E-022 b). */
+    const imSpiel = new Set(resolvedStack(alle, kampagne, mitglieder).map((l) => l.id));
+    const abgeschaltet = offLayers(kampagne);
     const vergleich = compareLayers(alle, kampagne).map((x) => x.id);
     const zeile = (e: Entity) => {
       const andere = campaignsActivating(alle, e.id)
         .filter((k) => k !== c)
         .map((k) => entityName(alle.get(k)));
+      const karte = (e.components?.[LAYER_COMPONENT] as Record<string, unknown> | undefined) ?? {};
+      const wort = (k: string) => (typeof karte[k] === 'string' || typeof karte[k] === 'number' ? String(karte[k]) : '');
+      const beschreibung = (e.components?.['Description'] as { description?: unknown } | undefined)?.description;
+      const gruppe = isGroupLayer(e);
       return {
         id: e.id,
         name: entityName(e),
-        kind: String((e.components?.[LAYER_COMPONENT] as { kind?: unknown } | undefined)?.kind ?? ''),
-        group: buchGruppe(e),
+        kind: wort('kind'),
+        /* Die Gruppen, an denen sie hängt, und bei einer Gruppe ihre Mitglieder (T-088). */
+        groups: (e.relations ?? []).filter((r) => r.type === GROUP_RELATION && isGroupLayer(alle.get(r.to))).map((r) => r.to),
+        ...(gruppe ? { members: mitglieder.get(e.id) ?? [] } : {}),
         articles: zahl.get(e.id) ?? 0,
+        content: inhalt.get(e.id) ?? {},
+        about: {
+          abbreviation: wort('abbreviation'),
+          published: wort('published'),
+          author: wort('author'),
+          version: wort('version'),
+          levels: wort('levels'),
+          storyline: wort('storyline'),
+          description: typeof beschreibung === 'string' ? beschreibung : '',
+        },
         readable: text.has(e.id),
         active: stapel.includes(e.id),
+        inPlay: imSpiel.has(e.id),
+        off: abgeschaltet.has(e.id),
         compare: vergleich.includes(e.id),
         alsoIn: andere,
-        canActivate: mayActivate(user, alle, e.id, c),
+        canActivate: mayActivate(user, alle, e.id, c, mitglieder),
       };
     };
     const an = stapel.map((id) => alle.get(id)!).map(zeile);
@@ -266,6 +291,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     request: FastifyRequest<{ Params: { c: string } }>,
     reply: FastifyReply,
     neu: (alle: Map<string, Entity>, kampagne: Entity) => string[] | string,
+    abgeschaltet?: string[],
   ): Promise<unknown> {
     const user = await viewerOf(request);
     const c = request.params.c;
@@ -280,27 +306,45 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     const ids = neu(alle, kampagne);
     if (typeof ids === 'string') return nein(reply, 400, ids);
     const vorher = new Set(activeStack(alle, kampagne).map((x) => x.layer.id));
+    const mitglieder = groupMembers(alle);
     for (const id of ids) {
       if ((alle.get(id)?.interfaces ?? [])[0] !== LAYER_COMPONENT) return nein(reply, 400, `Keine Ebene: ${id}`);
-      if (!vorher.has(id) && !mayActivate(user, alle, id, c)) {
+      if (!vorher.has(id) && !mayActivate(user, alle, id, c, mitglieder)) {
         return nein(reply, 403, `„${entityName(alle.get(id))}" gehört einer anderen Kampagne; aufschalten kann sie die Verwaltung.`);
       }
     }
-    const geschrieben = withStack(kampagne, ids);
+    /* Abschalten (T-088) darf die Leitung jede Ebene: aus nimmt nur weg. */
+    for (const id of abgeschaltet ?? []) {
+      if ((alle.get(id)?.interfaces ?? [])[0] !== LAYER_COMPONENT) return nein(reply, 400, `Keine Ebene: ${id}`);
+    }
+    let geschrieben = withStack(kampagne, ids);
+    if (abgeschaltet) geschrieben = withOff(geschrieben, abgeschaltet);
     const issues = validateEntity(await repo.getRegistry(), geschrieben, {});
     if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
     await repo.putEntity(geschrieben);
-    await repo.appendEvent('campaign.layers', c, { layers: ids, by: user.id });
-    return { ok: true, layers: ids };
+    await repo.appendEvent('campaign.layers', c, { layers: ids, ...(abgeschaltet ? { off: abgeschaltet } : {}), by: user.id });
+    return { ok: true, layers: ids, ...(abgeschaltet ? { off: [...offLayers(geschrieben)] } : {}) };
   }
 
-  app.put<{ Params: { c: string }; Body: { layers?: unknown } }>('/api/campaigns/:c/layers', (request, reply) =>
-    stapelSchreiben(request, reply, () => {
-      const l = request.body?.layers;
-      if (!Array.isArray(l) || !l.every((x) => typeof x === 'string')) return 'layers: eine Liste von Ebenen-Ids.';
-      return l as string[];
-    }),
-  );
+  /** `{ layers, off? }` — `off` (T-088): die Ebenen, die aus sind, obwohl
+   *  eine aufgeschaltete Gruppe sie brächte. Ohne `off` bleiben die
+   *  Abschaltungen, wie sie sind. */
+  app.put<{ Params: { c: string }; Body: { layers?: unknown; off?: unknown } }>('/api/campaigns/:c/layers', (request, reply) => {
+    const off = request.body?.off;
+    if (off !== undefined && (!Array.isArray(off) || !off.every((x) => typeof x === 'string'))) {
+      return nein(reply, 400, 'off: eine Liste von Ebenen-Ids.');
+    }
+    return stapelSchreiben(
+      request,
+      reply,
+      () => {
+        const l = request.body?.layers;
+        if (!Array.isArray(l) || !l.every((x) => typeof x === 'string')) return 'layers: eine Liste von Ebenen-Ids.';
+        return l as string[];
+      },
+      off as string[] | undefined,
+    );
+  });
 
   /** Eine Ebene dazuschalten — der Knopf im Hinweis der Listen. Sie kommt
    *  an die Stelle, die ihre eigene Spezifität (`Layer.order`) sagt: ein

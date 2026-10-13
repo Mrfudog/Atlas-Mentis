@@ -26,9 +26,9 @@ on:
         options: [dev, prod]
         default: dev
       mode:
-        description: "only-new: nur anlegen, was es noch nicht gibt · dry-run: nur sagen, was only-new (mit confirm=ersetzen: replace-layer) täte · replace-layer: die Ebene D&D 5e (2014) neu laden — eigene Änderungen an 5e.tools-Artikeln gehen dabei verloren, braucht confirm=ersetzen · add: dazulegen und Bestehendes überschreiben"
+        description: "only-new: nur anlegen, was es noch nicht gibt · dry-run: nur sagen, was only-new (mit confirm=ersetzen: replace-layer) täte · replace-layer: die Ebene D&D 5e (2014) neu laden — eigene Änderungen an 5e.tools-Artikeln gehen dabei verloren, braucht confirm=ersetzen · add: dazulegen und Bestehendes überschreiben · layers: nur die Ebenen — Gruppen anlegen, Beschreibung nachtragen, kein Artikel (T-088)"
         type: choice
-        options: [only-new, dry-run, replace-layer, add]
+        options: [only-new, dry-run, replace-layer, add, layers]
         default: only-new
       sources:
         description: "Nur diese Quellen, z. B. PHB,MM oder ein Modulkürzel (leer = alles)"
@@ -107,7 +107,9 @@ jobs:
               }
               echo "FLAGS=--replace-layer" >> "$GITHUB_ENV" ;;
             add) echo "FLAGS=" >> "$GITHUB_ENV" ;;
-            *) echo "::error::Unbekannte Art: $MODE (only-new, dry-run, replace-layer, add)"; exit 1 ;;
+            # Nur Ebenen (T-088): Gruppen und Beschreibung, kein Artikel.
+            layers) echo "FLAGS=--layers" >> "$GITHUB_ENV" ;;
+            *) echo "::error::Unbekannte Art: $MODE (only-new, dry-run, replace-layer, add, layers)"; exit 1 ;;
           esac
           case "$SOURCES" in
             *[!A-Za-z0-9,_\ -]*) echo "::error::sources: nur Kürzel, durch Kommas getrennt (z. B. PHB,MM)"; exit 1 ;;

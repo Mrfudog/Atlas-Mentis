@@ -429,6 +429,21 @@ in der alten Ebene und steht im Startprotokoll (`Ohne Quelle in der alten
 Ebene geblieben (n): …`). Ein Buch, das die Migration nicht beim Namen
 kennt, heisst wie sein Kürzel, bis jemand die Ebene umbenennt.
 
+**Gruppen und Beschreibung der Ebenen** (T-088, Migration
+`034_ebenen_gruppen.sql`): beim Start legt der Server die Gruppen-Ebenen
+an (Core rules, Supplements, Settings, Adventures, Unearthed Arcana, 2024
+rules, Screens & other — nur die, in die ein Buch gehört), hängt jede
+Buchebene an ihre Gruppe und trägt Kürzel und „XGE — Xanathar's Guide to
+Everything" als Beschreibung ein, wo nichts steht. Erscheinen, Autor,
+Stufen und Handlungsstrang kennt nur 5e.tools: dafür einmal die Pipeline
+mit `mode` = `layers` (`import.js <datei> --layers`). Der Lauf liest aus
+der Datei **nur die Ebenen**: neue (Gruppen) legt er an, an bestehenden
+füllt er, was leer ist, und richtet ihre Gruppen des Importers
+(`e5_group_*`) nach der Datei — eine Ebene, die die Migration zu den
+Supplements legte, die aber ein Setting ist, wechselt dabei. Kein Artikel,
+keine Registerzeile, keine Kampagne wird angefasst; was die Leitung an
+einer Ebene geändert hat, bleibt.
+
 **Wann `replace-layer`:** nur, wenn die Ebene wirklich neu geladen werden
 soll — etwa weil der Importer etwas an *bestehenden* Artikeln anders
 schreibt und das überall ankommen soll. **Was es kostet:** jeder Artikel
@@ -476,7 +491,7 @@ nennt sie ausdrücklich.
 | --- | --- |
 | *Use workflow from* | `preprod` für dev, `main` für prod — die Zweigregel der Environments verlangt es, ein Lauf vom falschen Zweig bricht gleich ab |
 | `environment` | `dev` oder `prod` |
-| `mode` | `only-new` (Vorgabe): nur anlegen, was es noch nicht gibt · `dry-run`: nur sagen, was `only-new` täte (mit `confirm` = `ersetzen`: was `replace-layer` täte) · `replace-layer`: Ebene neu laden, nur mit `confirm` = `ersetzen` · `add`: dazulegen und Bestehendes überschreiben |
+| `mode` | `only-new` (Vorgabe): nur anlegen, was es noch nicht gibt · `dry-run`: nur sagen, was `only-new` täte (mit `confirm` = `ersetzen`: was `replace-layer` täte) · `replace-layer`: Ebene neu laden, nur mit `confirm` = `ersetzen` · `add`: dazulegen und Bestehendes überschreiben · `layers`: nur die Ebenen — Gruppen anlegen, Beschreibung nachtragen, kein Artikel (T-088) |
 | `sources` | nur diese Quellen, z. B. `PHB,MM` oder ein Modulkürzel; leer heisst alles |
 | `confirm` | `ersetzen` für `replace-layer`, sonst leer |
 | `source-ref` | Stand von `5etools-src` (Zweig oder Tag); leer heisst der neueste |
@@ -502,7 +517,7 @@ dem Abbild, das gerade gestartet ist).
 Der Lauf braucht ein Verwaltungskonto auf der Umgebung (Schritt 7 oben):
 ein Server ohne Konto liest ohne Anmeldung, solange sein Bestand leer ist
 — mit einem Bestand nicht mehr. Und er braucht ein Abbild, das
-die Schalter kennt (`--only-new`, `--replace-layer`, `--dry-run`);
+die Schalter kennt (`--only-new`, `--replace-layer`, `--layers`, `--dry-run`);
 `import.sh` prüft das und verweigert sonst, statt einen Probelauf schreiben
 oder ein Ergänzen überschreiben zu lassen.
 

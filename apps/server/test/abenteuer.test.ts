@@ -84,7 +84,7 @@ describe('an adventure is a layer of its own (T-082)', () => {
   it('stands under the adventures on the campaign page', async () => {
     const { rufe } = await aufbau();
     const l = (await rufe('Basil', 'GET', '/api/campaigns/camp_a/layers')).json();
-    expect(l.layers.find((x: { id: string }) => x.id === 'e5_book_tst')).toMatchObject({ kind: 'adventure', group: 'adventure', active: true });
+    expect(l.layers.find((x: { id: string }) => x.id === 'e5_book_tst')).toMatchObject({ kind: 'adventure', active: true });
   });
 
   it('shows its chapters in the story of the campaign, in order, next to its own', async () => {
