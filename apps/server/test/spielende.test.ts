@@ -186,7 +186,10 @@ describe('players create articles; ready is set by the GM', () => {
       else components['Status'] = { status };
       return { ...e, components };
     };
-    expect((await als('Sela', 'PUT', `/api/entities/${e.id}`, mit('prepared'))).statusCode).toBe(200);
+    const erst = await als('Sela', 'PUT', `/api/entities/${e.id}`, mit('prepared'));
+    expect(erst.statusCode).toBe(200);
+    /* Weiter gegen den neuen Stand (REQ-192). */
+    e.revision = (erst.json() as Entity).revision;
     expect((await als('Sela', 'PUT', `/api/entities/${e.id}`, mit('ready'))).statusCode).toBe(403);
     /* Die Karte wegzulassen ist kein Umweg: ohne Stand gilt er als fertig. */
     expect((await als('Sela', 'PUT', `/api/entities/${e.id}`, mit(null))).statusCode).toBe(403);

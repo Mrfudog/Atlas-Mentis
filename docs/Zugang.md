@@ -355,6 +355,43 @@ in der Sitzung aus.
 
 ---
 
+### Die Sicht eines Mitglieds (REQ-241, E-019 a)
+
+Die Leitung sieht die Kampagne **als ein bestimmtes Mitglied**: dieselben
+Artikel, Felder und Entwürfe, dasselbe Wissen über seine Figuren, Gruppe
+und Fraktion samt Rang, dieselbe Statusregel. Gemeint ist die Frage „warum
+sieht Mara das nicht?".
+
+- **Gerechnet am Server, als dieses Konto.** Die Oberfläche schickt je
+  Anfrage den Kopf `X-View-As: <Konto-Id>`; der Server löst ihn dort auf,
+  wo jede Route fragt, wer fragt (`viewerOf`). Liste, Suche, Artikel,
+  Board, Werkbank und `/api/me` rechnen danach mit dem Zielkonto samt
+  seinen Figuren (`app_user_actor`) und dem, was es angelegt hat. Eine
+  eigene Spieleransicht gibt es nicht — es ist dieselbe Rechnung mit einem
+  anderen Konto.
+- **Wer darf:** die Verwaltung und die Leitung (`gm`, `co-gm`) der
+  **laufenden** Kampagne, und nur für ein Mitglied dieser Kampagne
+  (`mayViewAs`). Sonst `403` mit `code: 'view_as_forbidden'`. Die Leitung
+  nimmt keine Verwaltung ein (die sieht alles), und vom Zielkonto zählt für
+  sie nur die Rolle in der laufenden Kampagne — leitet das Ziel anderswo,
+  sähe sie über eine geteilte Ebene sonst, was dort nur dessen Leitung
+  sieht (`viewedAs`).
+- **Nur lesen.** Jeder schreibende Aufruf mit dem Kopf wird abgelehnt
+  (`403`, `code: 'view_as_read_only'`), auch die Tokens des Ziels — die
+  gehören zum Konto, nicht zur Kampagne. `/api/me` sagt in dieser Sicht
+  `viewAs: {id, name, role, by}` und bietet nichts zum Schreiben an.
+- **Protokolliert:** eine Zeile `view_as.start` im Protokoll (`event_log`,
+  `subject` = wer schaut, `payload.target`, `payload.campaign`) je Beginn —
+  die erste Anfrage mit diesem Ziel oder die erste nach einer halben
+  Stunde ohne.
+- **In der Oberfläche:** auf der Kampagnenseite je Mitglied „View as" (der
+  Server sagt je Mitglied, ob, `members[].viewAs`), oben ein fester Balken
+  „Viewing as <Name> — Exit", Bearbeiten ausgeblendet. Der Wert hält je Tab
+  über Seitenwechsel und Neuladen (`sessionStorage`), nicht über
+  Abmelden.
+- **Echtzeit-Ereignisse** gibt es noch nicht; wenn sie kommen, werden sie
+  für das Zielkonto gefiltert wie jede andere Antwort.
+
 ## Was noch fehlt
 
 - **Die Bereiche in der Oberfläche.** Anmeldung, Liste, Artikelansicht und

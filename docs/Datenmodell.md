@@ -91,7 +91,7 @@ dessen, was es gibt.
     { "id": "r1", "type": "livesIn", "to": "o_kerzengasse", "props": {} },
     { "id": "r2", "type": "regards", "to": "pa_wacht", "props": { "tags": ["dankbar"] } }
   ],
-  "createdAt": "…", "updatedAt": "…"
+  "createdAt": "…", "updatedAt": "…", "revision": 4
 }
 ```
 
@@ -109,6 +109,7 @@ Was dabei immer gilt:
 | A8 | **Die Id ist undurchsichtig** und wird nie wiederverwendet. `Identity.id` ist die ausgegebene Nummer (`npc-0042`): beim Anlegen vergeben, `readOnly`, danach unverändert — auch bei einem Wechsel der Art. | `nextId`, `readOnly` |
 | A9 | **`adhoc`** hält Felder, die nur dieser Artikel hat; befördern schreibt sie in den Typ (REQ-181). | Maske |
 | A10 | **Was kein Artikel ist, steht nicht im Artikel:** Konten, Rollen, Sitzungen, Einstellungen. Siehe §12. | — |
+| A11 | **Geschrieben wird gegen die gelesene Revision** (REQ-192). `revision` zählt der Server, je Schreiben eins mehr (Migration 030). Ein `PUT` nennt die Revision, die er gelesen hat; steht eine andere da — oder fehlt sie bei einem Artikel, den es schon gibt —, wird nichts geschrieben: `409` mit dem Stand, der gilt (`current`, gesiebt wie ein `GET`). Die Maske führt dann zusammen (`mergeEntity`, je Feld und je Kante) und fragt nur, wo beide Seiten dasselbe verschieden geändert haben. Ohne Revision wird nur angelegt; Einfuhr und Massenänderung schreiben ungeprüft, weil sie selbst vergleichen. | Server (`putEntity`, gesperrt mit `for update`), `mergeEntity` |
 
 ---
 
@@ -654,6 +655,8 @@ Vorlage. Ein eigener Typ dafür wäre derselbe Typ ein zweites Mal.
 | Artikelart `Layer` | `kind` (`system` · `expansion` · `book` · `adventure` · `world` · `pack` · `campaign` · `overrides`), `order`, `version`. `kind` ist **Beschreibung**, keine Regel: `book` gruppiert die Kampagnenseite (mit der Marke `core` · `sourcebook` · `adventure`), `adventure` steht immer unter den Abenteuern (T-082), und die Ausfuhr lässt `system`/`expansion`/`book`/`adventure` als Regelwerk weg. |
 | Kante `inLayer` (`*` → Layer) | der Artikel liegt in dieser Ebene; `props.mode` `adds` (Vorgabe) oder `removes` |
 | Kante `activates` (Campaign → Layer, „Layers in play" / „In play in") | die Kampagne schaltet die Ebene auf; `props.order` ordnet, sonst `Layer.order`. Gepflegt auf der Kampagnenseite (Häkchen und Reihenfolge, `PUT /api/campaigns/:c/layers`) |
+| `activates` mit `props.mode: 'compare'` | **Vergleichsebene** (T-092, E-021 d): nicht im Spiel, ihre Fassungen stehen auf Wunsch an den Feldern und lassen sich übernehmen. Zählt nicht für `activeStack`, `campaignsOf`, `campaignsActivating` und die Ausfuhr. Gepflegt auf der Kampagnenseite (`PUT /api/campaigns/:c/compare`) |
+| Feld `Campaign.compareFor` | wer die Vergleichsebenen sieht: `gm` (Vorgabe — Verwaltung, `gm`, `co-gm`) oder `players` (jede Rolle am Tisch) |
 | Kante `overrides` (`*` → `*`, one) | der neue Artikel gilt statt des alten, solange seine Ebene läuft. **So passt eine Kampagne ein Abenteuer an** (E-018 a, T-082): „Adapt" (`POST /api/entities/:id/adapt`, `adaptedVersion`) legt eine Fassung mit denselben Karten und Kanten in die Ebene der Kampagne (`campaignLayer`); zurück heisst, die Fassung zu löschen |
 | Kante `variantOf` (`*` → `*`, one) | eine Kopie mit Herkunft; sie ersetzt nichts |
 
@@ -666,6 +669,9 @@ Vorlage. Ein eigener Typ dafür wäre derselbe Typ ein zweites Mal.
 | E3 | **Wem ein Artikel gehört, sagt der Stapel** (`campaignsOf`): eine Ebene, die genau eine Kampagne aufschaltet, gehört ihr; eine, die mehrere aufschalten, ist gemeinsam; ohne Ebene ist er niemandem zuzuordnen. `removes` zählt nicht. |
 | E4 | **Instanzen und Varianten** erben die Ebene nicht (V3). |
 | E5 | **Ein Verweis aufs Original führt zur Fassung, die gilt** (E-018, T-082): der Server liefert beim Öffnen, in den Namen der Kantenziele und in den Treffern von `[[…]]` die Fassung, die in der laufenden Kampagne das Original ersetzt (`resolveArticle`), und die Rückbezüge einer Fassung sammeln auch, was aufs Original zeigt (`replacedIds`) — die Szenen eines angepassten Kapitels bleiben seine. Die Seite zieht die Adresse nach. Das Original selbst sieht in dieser Kampagne niemand; es bleibt für jede andere. |
+| E6 | **Fassungen derselben Sache** (`versions.ts`, T-092, E-021 d): zwei Artikel derselben Art, verbunden über `variantOf` (in beide Richtungen) oder `overrides`, mit demselben Namen nach Abzug eines angehängten „ (Buch)" der eigenen Quelle (`versionName`, `sameThing`); `overrides` zählt immer. Die Gruppe ist alles, was so erreichbar ist (`versionsOf` je Artikel, `versionGroups` für eine Liste — beide ein Gang über den Bestand). Es gibt **keinen Umschalter**: die Artikelseite zeigt an jedem Feld, an jeder Kantenart und an jedem Text, was eine Fassung aus einer Spiel- oder Vergleichsebene anders sagt (`versionDiff`), mit dem Kürzel ihrer Ebene (`layerShort`); ein- und ausschaltbar und je Ebene, gemerkt am Konto (`app_user_pref`, Schlüssel `versions`). Das Kompendium zeigt eine Zeile je Sache, Kopf ist die Fassung aus der obersten Spielebene (`/api/list?versions=1`). Die Fassungen eines Artikels: `GET /api/entities/:id/versions`. |
+| E7 | **Übernehmen** (T-092): die Leitung macht eine Fassung aus einer Vergleichsebene zur geltenden — `POST /api/campaigns/:c/adopt {version, over}` legt eine **Kopie** in die Ebene der Kampagne (`campaignLayer`) mit `overrides` → `over` und `variantOf` → `version`, mit dem Namen von `over` — wie „Adapt" (E5), nur aus einer Vergleichsebene und mit der Herkunft in `variantOf`. Keine Kante am Buchartikel: eine Überschreibung in einer geteilten Ebene gälte in jeder Kampagne, die sie aufschaltet. Rückgängig: `DELETE /api/campaigns/:c/adopt/:kopie`. |
+| E8 | **Eine Ebene liest sich als Buch** (T-091, REQ-247, `readingOrder` in `packages/model/src/reading.ts`): ihr Text sind die Artikel der Ebene von einer Leseart (`READING_TYPES`: heute `Story` und `Scene`; die Art für Buchtext entscheidet E-024), verbunden über `partOf`; Geschwister stehen nach ihrer Nummer (`Identity.id`), gelesen wird Tiefe zuerst. Gezeigt wird **ein Stück am Stück**: hat die Ebene genau eine Wurzel (das Abenteuer), ist sie die Titelseite und jedes Kapitel darunter ein Stück, sonst jede Wurzel. Karten (`mapOf`) und Begegnungen (`partOf`) stehen an ihrem Abschnitt. Gesiebt wird wie überall (E2, Sichtbarkeit, Wissen); eine Fassung steht an der Stelle ihres Originals (E5), der Baum bleibt der des Originals. Die Seite eines Abschnitts ist `Source.page`, bei `Story`/`Scene` (ohne `Source`) die Notiz `source` des Importers — darüber springt „XGE p. 12" an die Stelle (`nodeAtPage`). |
 
 Offen und benannt: der Server kennt heute nur E3; E2 läuft im Prototyp
 (siehe [Durchgang.md](Durchgang.md), Abgleich). Mit einer zweiten Kampagne
@@ -895,7 +901,10 @@ ganzen Artikel aus: `/api/list?rel=partOf` schickt die Kante je Zeile mit
 (W7).
 
 Eine Spieleransicht gibt es nicht: gesiebt wird am Server, alle sehen
-dieselbe Ansicht. Für `overview` und `quick` wählt eine Art **nach Gruppe**
+dieselbe Ansicht. **Die Sicht eines Mitglieds** (REQ-241) ist darum keine
+Ansicht, sondern ein anderes Konto in derselben Rechnung: mit `X-View-As`
+siebt der Server für die Leitung als dieses Mitglied, nur zum Lesen
+(siehe [Zugang.md](Zugang.md#die-sicht-eines-mitglieds-req-241-e-019-a)). Für `overview` und `quick` wählt eine Art **nach Gruppe**
 (ein Typname in `except`), nicht Feld für Feld.
 
 **Die Anordnung wohnt am Typ** (`views.full` usw.) und ist eine geordnete
@@ -951,6 +960,8 @@ verschweigen.
 | welche Figuren ein Konto führt | `app_user_actor` | nein |
 | wer einen Artikel angelegt hat (D72) | `app_user_article` | nein |
 | der letzte fertige Stand eines zurückgefallenen Artikels (D74) | `entity_ready` | nein |
+| wo ein Konto in einem Buch stehen blieb (T-091) | `reading_position` (Konto, Ebene, Abschnitt) | nein |
+| wie jemand liest — Fassungen an den Feldern an/aus, welche Ebenen (T-092) | `app_user_pref` (Konto, Schlüssel, JSON) | nein |
 | Rolle je Kampagne | `campaign_member`; Prototyp: Sammlung `members` | nein |
 | Verwaltung der Installation | `app_user.is_admin` | nein |
 | das Register | Tabellen `interface_def`, `relation_def`, `view_def`, `unit_def`, `var_def`, `enum_def` (Aufzählungen), `setting_def` (Einstellungen, seit Migration 019); Prototyp: Sammlung `registry` | ja — allein weiterreichbar (`register-datei.mjs`) |
@@ -1026,7 +1037,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Campaign` | `Story` | — | `allowsMethod` `partOf` `happensAt` `features` `onMap` `loot` `tableFor` `inWorld` `activates` | `partOf` `partyOf` `mapOf` | full |
+| `Campaign` | `Story` | `compareFor` | `allowsMethod` `partOf` `happensAt` `features` `onMap` `loot` `tableFor` `inWorld` `activates` | `partOf` `partyOf` `mapOf` | full |
 | `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | full |
 | `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `mapOf` | — |
 | `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `nowPlaying` `moves` `log` `partyNote` `stewardship` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `mapOf` | full |
@@ -1080,7 +1091,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | Kante | von → nach | eins | liest sich / setzt ein | Eigenschaften |
 |---|---|---|---|---|
 | `abilityPool` | Party → AbilityMethod |  | — | `values` `rolls` `at` |
-| `activates` | Campaign → Layer |  | — | `order` |
+| `activates` | Campaign → Layer |  | — | `order` `mode` |
 | `affects` | Rule → Rule |  | — | `effect` `on` `note` |
 | `allowsMethod` | Campaign → AbilityMethod |  | — | — |
 | `belongsTo` | Statblock → Creature | ja | Feld am `to`-Ende | — |

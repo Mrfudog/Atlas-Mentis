@@ -13,7 +13,7 @@ wer eine Zeile anders sieht, ändert sie dort und lässt das Skript laufen.
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: **127** steht · **10** ersetzt · **30** teils · **62** offen · **6** verworfen — 235 Anforderungen.
+Zusammen: **128** steht · **10** ersetzt · **29** teils · **62** offen · **6** verworfen — 235 Anforderungen.
 
 ## Aus den Gesprächen (September und Oktober 2026)
 
@@ -228,8 +228,8 @@ Was nicht als Nummer im Vault steht, sondern hier entschieden wurde — alles ge
 | REQ-188 | Cross-type "unfinished" overview: everything at status idea/planned across all interfaces, with jump-to and bulk status change | 3 | **steht** | Unfinished |
 | REQ-189 | Aggregated todo list across containers and entities (campaign, arc, session, quest, NPC) | 3 | **steht** | `Todos`, gesammelt |
 | REQ-190 | Quick capture during play: one field that files a seed, todo or idea against the current session without leaving the view | 3 | **steht** | Schnellerfassung an der Sitzung |
-| REQ-191 | Fail-closed persistence: a failed load or migration must never be overwritten by a later autosave; the unreadable state is preserved and downloadable | 1 | **steht** | Fail-closed im Prototyp |
-| REQ-192 | Optimistic concurrency for non-realtime edits: per-entity revision check; the second writer is rejected with a merge prompt rather than silently winning | 2 | **teils** | Prototyp; Server ohne Revisionsprüfung |
+| REQ-191 | Fail-closed persistence: a failed load or migration must never be overwritten by a later autosave; the unreadable state is preserved and downloadable | 1 | **steht** | Fail-closed im Prototyp; in der Seite: Schreiben nur gegen gelesene Revision, Entwurf herunterladbar |
+| REQ-192 | Optimistic concurrency for non-realtime edits: per-entity revision check; the second writer is rejected with a merge prompt rather than silently winning | 2 | **steht** | Revision je Artikel am Server (409), Zusammenführen in der Maske (mergeEntity) |
 | REQ-193 | Territory overlays rasterised onto the map grid from shapes (rect, circle, ellipse, polygon) | 4 | **steht** | `territory` |
 | REQ-194 | Mobile navigation: the user chooses which entries occupy the phone bottom bar | 4 | **offen** |  |
 | REQ-195 | Statblock export back to Obsidian markdown, preserving `{VAR}` placeholders unresolved | 4 | **offen** |  |
@@ -296,7 +296,6 @@ Offene Anforderungen mit Priorität 1 bis 3, nach Bereich:
 - **REQ-146** (2, offen) — NAS / Nextcloud backend for large assets (mount vs WebDAV → AD-15)
 - **REQ-147** (2, teils) — Image upload, portraits, icons — *Prototyp ja; Server noch nicht*
 - **REQ-166** (2, teils) — Board-first authoring: create entities directly on the canvas (into the campaign layer), choose their facet and place them in one flow — *Anlegen auf dem Board*
-- **REQ-192** (2, teils) — Optimistic concurrency for non-realtime edits: per-entity revision check; the second writer is rejected with a merge prompt rather than silently winning — *Prototyp; Server ohne Revisionsprüfung*
 - **REQ-202** (2, offen) — Chats stehen ausserhalb von Abzug, Ausfuhr und Recap: ein Faden zwischen zwei Spielern gehört weder in den Prod-nach-preprod-Abzug noch in eine Kampagnenausfuhr, und die SL liest nicht mit
 - **REQ-007** (3, offen) — Stack expert settings: layer priority, per-entry pick, disable single override, flatten into independent layer
 - **REQ-022** (3, offen) — Derived asset variants: thumbnails, map tiles, PDF page renders, stored app-side

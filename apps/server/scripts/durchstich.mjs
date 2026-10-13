@@ -205,6 +205,29 @@ try {
     `${r3.status} ${JSON.stringify(wieder).slice(0, 300)}`,
   );
 
+  /* REQ-192: zwei Geräte schreiben gleichzeitig gegen dieselbe Revision.
+     Genau eines kommt durch; das andere bekommt 409 und den neuen Stand.
+     Die Sperre (`for update`) gibt es nur in Postgres. */
+  {
+    const pc = await (await get(admin, '/api/entities/pc_probe')).json();
+    delete pc.refs;
+    const zwei = await Promise.all(
+      ['Probefigur A', 'Probefigur B'].map((n) =>
+        put(admin, { ...pc, components: { ...pc.components, Identity: { ...pc.components.Identity, aliases: [n] } } }),
+      ),
+    );
+    const codes = zwei.map((r) => r.status).sort();
+    const abgewiesen = zwei.find((r) => r.status === 409);
+    const body = abgewiesen ? await abgewiesen.json() : null;
+    pruefe(
+      'gleichzeitig gegen dieselbe Revision: eines schreibt, eines bekommt 409',
+      codes.join() === '200,409' && body?.revision === pc.revision + 1 && body?.current?.id === 'pc_probe',
+      `${codes.join()} ${JSON.stringify(body).slice(0, 200)}`,
+    );
+    const blind = await put(admin, { ...pc, revision: undefined });
+    pruefe('ohne Revision wird nichts überschrieben', blind.status === 409, String(blind.status));
+  }
+
   /* Das Register speichern, während Artikel darauf zeigen — scheiterte
      einmal an einem Fremdschlüssel, den nur Postgres kennt. */
   const reg = await (await get(admin, '/api/registry')).json();
@@ -626,12 +649,24 @@ try {
       pruefe('Anpassen: das Original öffnen heisst, die Fassung zu bekommen', offen.id === fassung, offen.id);
       const original = await repo.getEntity('st_probe_t082');
       pruefe('Anpassen: das Original bleibt unberührt', (original?.relations ?? []).length === 1, JSON.stringify(original?.relations));
+      /* Die Leseansicht (T-091): das Kapitel steht im Inhaltsverzeichnis, als
+         Fassung der Kampagne, und der Lesestand liegt in `reading_position`. */
+      const buch = await (await get(admin, '/api/read/e5_book_t082a')).json();
+      pruefe('Leseansicht: das Kapitel als Fassung im Inhaltsverzeichnis',
+        buch.toc?.some((z) => z.id === 'st_probe_t082' && z.article === fassung), JSON.stringify(buch));
+      const merk = await fetch(`${BASE}/api/read/e5_book_t082a/position`, {
+        method: 'PUT', headers: { cookie: admin, 'content-type': 'application/json' }, body: JSON.stringify({ id: 'st_probe_t082' }),
+      });
+      pruefe('Leseansicht: Lesestand gemerkt', merk.status === 204, `${merk.status} ${await merk.text()}`);
+      const wieder = await (await get(admin, '/api/read/e5_book_t082a')).json();
+      pruefe('Leseansicht: Lesestand gelesen', wieder.position === 'st_probe_t082', String(wieder.position));
       /* Zurück zum alten Stapel — die übrigen Prüfungen rechnen mit ihm. */
       await fetch(`${BASE}/api/campaigns/camp_probe_a/layers`, {
         method: 'PUT', headers: { cookie: admin, 'content-type': 'application/json' }, body: JSON.stringify({ layers: stapel.filter((x) => x !== 'e5_book_t082a') }),
       });
     } finally {
       await pool.query('delete from entity where id = any($1)', [[...probe.map((e) => e.id), ...(fassung ? [fassung] : [])]]);
+      await pool.query('delete from reading_position where layer_id = $1', ['e5_book_t082a']);
       await pool.query('delete from schema_migrations where name = $1', [name]);
       await pool.end();
       rmSync(ordner, { recursive: true, force: true });
@@ -674,8 +709,8 @@ try {
   await loeschen('');
 
   /* Zurück auf demselben Weg: der Ladebefehl gegen Postgres, dann noch
-     einmal ausgeführt — derselbe Bestand. `createdAt` und `updatedAt` setzt
-     die Ablage beim Schreiben. */
+     einmal ausgeführt — derselbe Bestand. `createdAt`, `updatedAt` und
+     `revision` setzt die Ablage beim Schreiben. */
   const datei1 = join(tmpdir(), `durchstich-ausfuhr-${process.pid}.json`);
   writeFileSync(datei1, text);
   const imp = spawnSync(process.execPath, [join(DIST, 'import.js'), datei1], { env: process.env, encoding: 'utf8' });
@@ -683,7 +718,7 @@ try {
   const gleich = (l) =>
     JSON.stringify(
       (l ?? [])
-        .map(({ updatedAt: _t, createdAt: _c, ...e }) => ({ ...e, relations: [...(e.relations ?? [])].sort((a, b) => a.id.localeCompare(b.id)) }))
+        .map(({ updatedAt: _t, createdAt: _c, revision: _r, ...e }) => ({ ...e, relations: [...(e.relations ?? [])].sort((a, b) => a.id.localeCompare(b.id)) }))
         .sort((a, b) => a.id.localeCompare(b.id)),
       (_k, v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v),
     );

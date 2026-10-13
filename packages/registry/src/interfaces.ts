@@ -822,6 +822,8 @@ export const interfaces: Record<string, InterfaceDef> = {
     area: 'story',
     label: 'Campaign',
     extends: ['Story'],
+    /* Wer die Vergleichsebenen sieht (T-092, E-021 d). */
+    schema: merge(g.CampaignInfo),
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     /* Die Kampagne trägt, was über ihr Ganzes geht: welche Ebenen laufen,

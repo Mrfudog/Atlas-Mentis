@@ -43,6 +43,7 @@ import { Api, type KampagnenGeschichte } from '../kern/api';
         @for (a of d.adventures; track a.id) {
           <h3>
             <a [routerLink]="['/artikel', a.id]">{{ a.name }}</a>
+            <a class="lesen" [routerLink]="['/read', a.layer]">Read</a>
           </h3>
           <ol class="liste">
             @for (k of a.chapters; track k.id) {
@@ -98,6 +99,13 @@ import { Api, type KampagnenGeschichte } from '../kern/api';
     }
     h3 a {
       color: var(--accent);
+    }
+    /* Die Leseansicht des Abenteuers (T-091). */
+    h3 .lesen {
+      margin-left: 0.75rem;
+      font-family: var(--sans);
+      font-size: 0.85rem;
+      color: var(--link);
     }
     .fuss {
       margin: 0;

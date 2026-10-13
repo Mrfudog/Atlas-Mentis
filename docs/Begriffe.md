@@ -303,6 +303,24 @@ Karten mit den Feldwerten und die Kanten. Ein Artikel **ist** einen
 Artikeltyp; was er festhält, sagt dieser Typ und die Bestandteile, aus denen
 er gemacht ist.
 
+### Zwei Geräte, ein Artikel
+
+Ein Artikel trägt seine **Revision**: wie oft er geschrieben wurde. Wer ihn
+bearbeitet, hat eine Revision gelesen und schreibt gegen genau diese. Hat
+inzwischen jemand anders gespeichert — das Telefon am Tisch, der Laptop zu
+Hause —, gewinnt nicht still der Spätere: er wird abgewiesen, bekommt den
+neuen Stand und führt zusammen. Was nur eine Seite geändert hat, kommt
+ohne Frage zusammen; gefragt wird nur bei einem Feld, das beide verschieden
+geändert haben. `updatedAt` reicht dafür nicht: zwei Schreiben in derselben
+Millisekunde sehen gleich aus, und ein Zeitstempel sagt nicht, *wovon* eine
+Änderung ausging.
+
+Dahinter steht dieselbe Lehre wie hinter REQ-191: **was nicht sicher
+gelesen ist, wird nicht überschrieben.** Die alte App lud bei einem Fehler
+die Vorgaben und speicherte sie 700 ms später über alles. Darum schreibt
+die Seite nichts ohne gelesenen Stand, und ein Entwurf, der nicht
+gespeichert werden konnte, bleibt in der Maske und lässt sich herunterladen.
+
 ---
 
 ## Ansicht
@@ -330,6 +348,11 @@ hat damit schon gewählt.
 Stelle, an der stand, was ein Spieler nicht sehen darf. Zurückgehalten wird
 am Server (`redactEntity`): was bei einem Spieler ankommt, darf er sehen, und
 er sieht dieselbe Ansicht wie alle anderen — nur steht weniger darin.
+Will die Leitung wissen, was eine Spielerin sieht, **nimmt sie deren Sicht
+ein** („View as", REQ-241): der Server rechnet dann als dieses Konto, und
+geschrieben wird darin nichts. Hätte sie stattdessen eine allgemeine Rolle
+„Spieler" gewählt, fehlte gerade das, wonach gefragt wird — das Wissen an
+der Figur und die eigenen Entwürfe (E-019).
 
 **Die Anordnung wohnt am Typ.** Eine Kreatur ordnet ihre Full anders als ein
 Rezept, und das steht bei der Kreatur. Untertypen erben sie, bis einer etwas
@@ -676,6 +699,36 @@ angepasst hat, und zurück heisst, die Fassung zu löschen. Damit ein Verweis
 aufs Original nicht ins Leere führt, liefert der Server die Fassung, die
 gilt (E5) — dieselbe Frage, die der Stapel ohnehin stellt (`resolveArticle`),
 nur jetzt auch beim Öffnen und bei den Namen.
+
+**Fassungen stehen am Feld, nicht hinter einem Umschalter** (T-092,
+E-021 d). Fireball gibt es im PHB von 2014, im PHB von 2024 und mit
+Reichweite 120 in Xanathar's Guide. Ein Umschalter „2014 · 2024" oben am
+Artikel hiesse: eine Fassung lesen und die andere vergessen. Die Leitung
+will beides sehen, wo es sich unterscheidet — also bleiben die Fassungen
+eigene Artikel, und an jedem Feld, an dem eine andere Fassung etwas anderes
+sagt, steht ihr Wert dabei, mit dem Kürzel ihrer Ebene. Wer liest, schaltet
+das ein und aus und wählt die Ebenen; gemerkt wird es **am Konto**
+(`app_user_pref`), weil es eine Frage ist, wie jemand liest, und nicht, was
+gilt.
+
+*Was eine Fassung ist*, sagt nicht `variantOf` allein: die Kante verbindet
+auch den Oathbow mit dem Longbow und die Kopie „Goblin Boss" mit dem
+Goblin — das sind andere Dinge, und im Kompendium unter dem Longbow
+verschwände der Oathbow. Eine Fassung ist dieselbe Art mit demselben Namen,
+nachdem ein angehängtes „(Buch)" der eigenen Quelle weg ist — so nennt der
+Importer die Fassungen aus mehreren Büchern. Eine Überschreibung sagt es
+selbst und zählt immer.
+
+*Vergleichsebenen* sind Ebenen, die eine Kampagne nennt, ohne sie
+aufzuschalten (`activates` mit `mode: 'compare'`). Was sie bringen, steht
+in keiner Liste, ist an keinem Verweis und gehört der Kampagne nicht — es
+ist auf Wunsch sichtbar, für die Leitung und, wenn die Kampagne es sagt,
+für die Spielenden. Eine Fassung daraus **übernimmt** die Leitung als
+Kopie in die Ebene der Kampagne, mit `overrides` auf die geltende — wie „Adapt" eines Abenteuers, nur aus
+einer Vergleichsebene und mit der Herkunft in `variantOf`. Eine
+Kante am Buchartikel wäre kürzer und falsch: das Buch liegt in einer
+geteilten Ebene, und eine Überschreibung dort gälte in jeder Runde, die es
+aufschaltet.
 
 > **Die dritte Zeile der Tabelle ist die, die heute zählt.** Von
 > fünfundsiebzig Artikeln tragen fünfundsechzig keine Ebenenkante — die

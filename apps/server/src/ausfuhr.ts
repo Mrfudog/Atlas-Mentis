@@ -44,6 +44,7 @@
 
 import {
   ACTIVATES_RELATION,
+  isCompareEdge,
   CAMPAIGN_TYPE,
   LAYER_COMPONENT,
   LAYER_RELATION,
@@ -72,7 +73,10 @@ const art = (e: Entity): string => (e.interfaces ?? [])[0] ?? '';
 
 /** Die Ebenen, die diese Kampagne aufschaltet. */
 function aufgeschaltet(kampagne: Entity): Set<string> {
-  return new Set((kampagne.relations ?? []).filter((r) => r.type === ACTIVATES_RELATION).map((r) => r.to));
+  /* Vergleichsebenen (T-092) gehören nicht dazu: sie sind nicht im Spiel. */
+  return new Set(
+    (kampagne.relations ?? []).filter((r) => r.type === ACTIVATES_RELATION && !isCompareEdge(r)).map((r) => r.to),
+  );
 }
 
 /** Die Kampagnenebenen: von dieser Kampagne aufgeschaltet, von keiner anderen, kein Regelwerk. */

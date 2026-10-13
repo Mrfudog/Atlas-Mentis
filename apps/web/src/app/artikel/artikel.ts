@@ -16,14 +16,15 @@ import {
   entryRef,
   enumOptions,
   fieldTitle,
+  mergeEntity,
   proseFields,
   relationsFrom,
   primaryInterface,
   relationDef,
   resolveView,
 } from '@nw/model';
-import type { Entity, LayoutElement, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
-import { Api, ApiError } from '../kern/api';
+import type { Entity, LayoutElement, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
+import { Api, ApiError, type Fassungen, type LeseZiel } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
 import {
@@ -46,6 +47,7 @@ import { Statblock } from './statblock';
 import { Zauber } from './zauber';
 import { Gegenstand } from './gegenstand';
 import { Abschnitte } from './abschnitte';
+import { abweichungen, FassungsKasten, FassungsLesart, verglichene, type Abweichung } from './fassungen';
 import { bereichLabel } from '../kern/bereiche';
 
 const SCHON_ANDERSWO = ['Identity', 'Visibility', 'Source'];
@@ -132,7 +134,7 @@ interface Feld {
  */
 @Component({
   selector: 'nw-artikel',
-  imports: [RouterLink, FormsModule, Text, Wahl, Mehrfach, Statblock, Zauber, Gegenstand, Abschnitte],
+  imports: [RouterLink, FormsModule, Text, Wahl, Mehrfach, Statblock, Zauber, Gegenstand, Abschnitte, FassungsKasten],
   template: `
     @if (artikel(); as e) {
       <div class="buch">
@@ -157,6 +159,15 @@ interface Feld {
                 <!-- Der Stufenaufstieg ist derselbe Assistent wie das Anlegen (T-080). -->
                 @if (art(e) === 'PlayerCharacter' && darfSchreiben() && !bearbeitet() && !zeigtAlten()) {
                   <a class="knopf" [routerLink]="['/characters', e.id, 'level-up']">Level up</a>
+                }
+                <!-- Die Leseansicht (T-091): an der Stelle im Buch, oder bei
+                     einer Ebene von vorn. -->
+                @if (leseZiel(); as z) {
+                  @if (!bearbeitet()) {
+                    <a class="knopf" [routerLink]="['/read', z.layer]" [queryParams]="leseParams(z)">
+                      {{ art(e) === 'Layer' ? 'Read' : 'Read in book' }}
+                    </a>
+                  }
                 }
                 <!-- Anpassen über der Vorlage (E-018, T-082): eine Fassung in
                      der Ebene der Kampagne, das Original bleibt. -->
@@ -216,6 +227,13 @@ interface Feld {
               </p>
             }
 
+            <!-- Eine Fassung aus einer Vergleichsebene (T-092): sichtbar, aber nicht im Spiel. -->
+            @if (bestand.vergleich().has(e.id)) {
+              <p class="band-fertig band-vergleich" role="status">
+                <span>This version comes from a compare layer. It is not in play in this campaign.</span>
+              </p>
+            }
+
             <article class="blatt">
               <div>
                 <h1>{{ name(e) }}</h1>
@@ -229,8 +247,48 @@ interface Feld {
                 <div class="linie" aria-hidden="true"></div>
               }
             @if (bearbeitet()) {
+              <!-- REQ-192: jemand anders hat gespeichert, seit die Maske
+                   offen ist. Nichts ist geschrieben; zusammengeführt wird
+                   hier, gefragt nur, wo beide dasselbe verschieden änderten. -->
+              @if (zusammen(); as z) {
+                <section class="zusammen" role="alert">
+                  <p>
+                    <strong>Changed elsewhere.</strong>
+                    Someone saved this article while you were editing. Nothing of yours is lost — it is not saved yet.
+                    @if (z.taken) {
+                      {{ z.taken }} of their changes {{ z.taken === 1 ? 'was' : 'were' }} merged into yours.
+                    }
+                  </p>
+                  @if (z.conflicts.length) {
+                    <p>Both of you changed {{ z.conflicts.length === 1 ? 'this' : 'these' }} — choose what to keep:</p>
+                    <ul class="konflikte">
+                      @for (k of z.conflicts; track k.key) {
+                        <li>
+                          <span class="was">{{ k.label }}</span>
+                          <label><input type="radio" [name]="'k-' + k.key" [checked]="k.wahl === 'mine'" (change)="waehleSeite(k.key, 'mine')" /> Yours: <em>{{ k.mine }}</em></label>
+                          <label><input type="radio" [name]="'k-' + k.key" [checked]="k.wahl === 'theirs'" (change)="waehleSeite(k.key, 'theirs')" /> Theirs: <em>{{ k.theirs }}</em></label>
+                        </li>
+                      }
+                    </ul>
+                  } @else {
+                    <p>None of your changes collide with theirs.</p>
+                  }
+                  <div class="werkzeuge">
+                    <button type="button" class="pri" [disabled]="speichert()" (click)="zusammenSpeichern()">
+                      {{ speichert() ? 'Saving…' : 'Save merged' }}
+                    </button>
+                    <button type="button" [disabled]="speichert()" (click)="verwerfen()">Discard mine, show theirs</button>
+                    <button type="button" (click)="herunterladen()">Download my version</button>
+                  </div>
+                </section>
+              }
               @if (problem(); as p) {
-                <p class="fehler" role="alert">{{ p }}</p>
+                <p class="fehler" role="alert">
+                  {{ p }}
+                  @if (entwurf()) {
+                    <button type="button" class="klein" (click)="herunterladen()">Download my version</button>
+                  }
+                </p>
               }
               @if (maengel().length) {
                 <ul class="maengel" role="alert">
@@ -452,6 +510,19 @@ interface Feld {
                             } @else {
                               <nw-text inline [text]="z.wert" [scopes]="scopes()" />
                             }
+                            @for (a of abwAn(z.ref); track a.id) {
+                              <span class="fassung" [class.lang]="a.lang">
+                                <span class="kuerzel" [class.vergleich]="a.compare" [title]="a.titel">{{ a.kuerzel }}</span>
+                                @if (a.lang && a.text) {
+                                  <details>
+                                    <summary>says otherwise</summary>
+                                    <nw-text [text]="a.text" [scopes]="scopes()" />
+                                  </details>
+                                } @else {
+                                  <span class="fwert">{{ a.text || '—' }}</span>
+                                }
+                              </span>
+                            }
                           </dd>
                         </div>
                       }
@@ -464,17 +535,61 @@ interface Feld {
                           <h2>{{ b.label }}</h2>
                         }
                         <nw-text [text]="b.wert" [scopes]="scopes()" />
+                        @for (a of abwProsa(b.ref); track a.id) {
+                          <details class="fassung lang">
+                            <summary>
+                              <span class="kuerzel" [class.vergleich]="a.compare" [title]="a.titel">{{ a.kuerzel }}</span>
+                              {{ a.text ? 'says otherwise' : 'has nothing here' }}
+                            </summary>
+                            @if (a.text) {
+                              <nw-text [text]="a.text" [scopes]="scopes()" />
+                            }
+                          </details>
+                        }
                       </section>
                     }
                   }
                 }
+              }
+              <!-- Was eine Fassung anders sagt, wo die Seite kein Feld dafür
+                   zeichnet: im Zauberblock, im Statblock, oder weil das Feld
+                   hier leer ist (T-092). -->
+              @if (abwRest().length) {
+                <section class="block fassungen-rest">
+                  <h2>Where other versions differ</h2>
+                  <dl class="felder">
+                    @for (z of abwRest(); track z.ref) {
+                      <div class="feld" [class.lang]="z.lang">
+                        <dt>{{ z.label }}</dt>
+                        <dd>
+                          @if (z.hier) {
+                            <span class="fhier">{{ z.hier }}</span>
+                          }
+                          @for (a of z.liste; track a.id) {
+                            <span class="fassung" [class.lang]="a.lang">
+                              <span class="kuerzel" [class.vergleich]="a.compare" [title]="a.titel">{{ a.kuerzel }}</span>
+                              @if (a.lang && a.text) {
+                                <details>
+                                  <summary>says otherwise</summary>
+                                  <nw-text [text]="a.text" [scopes]="scopes()" />
+                                </details>
+                              } @else {
+                                <span class="fwert">{{ a.text || '—' }}</span>
+                              }
+                            </span>
+                          }
+                        </dd>
+                      </div>
+                    }
+                  </dl>
+                </section>
               }
             }
             </article>
           </main>
 
           <aside class="seitenspalte" aria-label="Connections">
-            @if (kanten().length) {
+            @if (kanten().length || abwKanten().length) {
               <section class="kasten">
                 <h2>Relations</h2>
                 <ul class="kanten">
@@ -488,9 +603,22 @@ interface Feld {
                       }
                     </li>
                   }
+                  @for (k of abwKanten(); track $index) {
+                    <li class="fassung-kante">
+                      <span class="rl">{{ k.label }}</span>
+                      <span class="kuerzel" [class.vergleich]="k.compare" [title]="k.titel">{{ k.kuerzel }}</span>
+                      @if (k.dazu.length) {
+                        <span>+ {{ k.dazu.join(', ') }}</span>
+                      }
+                      @if (k.weg.length) {
+                        <span class="weg">− {{ k.weg.join(', ') }}</span>
+                      }
+                    </li>
+                  }
                 </ul>
               </section>
             }
+            <nw-fassungen [artikel]="e.id" [fassungen]="fassungen()" (gewechselt)="gewechselt($event)" />
             @if (rueckbezuege().length) {
               <section class="kasten">
                 <h2>Linked here</h2>
@@ -528,6 +656,9 @@ interface Feld {
                 <h2>Source</h2>
                 @if (q.url) {
                   <a [href]="q.url" target="_blank" rel="noopener">{{ q.text }}</a>
+                } @else if (leseZiel(); as z) {
+                  <!-- „XGE p. 12" springt an die Stelle im Buch (T-091). -->
+                  <a [routerLink]="['/read', z.layer]" [queryParams]="leseParams(z)">{{ q.text }}</a>
                 } @else {
                   <span>{{ q.text }}</span>
                 }
@@ -551,6 +682,8 @@ export class Artikel {
 
   protected readonly bestand = inject(Bestand);
   protected readonly session = inject(Session);
+  private readonly lesart = inject(FassungsLesart);
+  private readonly router = inject(Router);
 
   constructor() {
     void this.bestand.load();
@@ -559,6 +692,14 @@ export class Artikel {
        der nächste geholt. */
     effect(() => {
       void this.bestand.oeffnen(this.id());
+    });
+    /* **Die Fassungen** (T-092) kommen je Artikel, neben ihm: eine
+       Anfrage, und der Vergleich rechnet hier. Namen der Kantenziele, die
+       eine Fassung anders hat, holt die Liste nach. */
+    void this.lesart.laden();
+    effect(() => {
+      const id = this.id();
+      untracked(() => void this.fassungenLaden(id));
     });
     /* **Wer das Original öffnet, landet bei der Fassung** (E-018, T-082):
        der Server liefert, was in der laufenden Kampagne gilt. Die Adresse
@@ -920,6 +1061,91 @@ export class Artikel {
     });
   });
 
+  // ------------------------------------------------------------ Fassungen (T-092)
+
+  private readonly fassungsStand = signal<{ id: string; f: Fassungen } | null>(null);
+  protected readonly fassungen = computed(() => {
+    const s = this.fassungsStand();
+    return s && s.id === this.id() ? s.f : null;
+  });
+
+  private async fassungenLaden(id: string): Promise<void> {
+    try {
+      const f = await this.api.versions(id);
+      if (id !== this.id()) return;
+      this.fassungsStand.set({ id, f });
+      const ziele = new Set<string>();
+      for (const v of f.versions) for (const r of v.entity.relations ?? []) if (r.to) ziele.add(r.to);
+      const name = this.bestand.name();
+      const fehlen = [...ziele].filter((x) => name(x) === undefined).slice(0, 200);
+      if (fehlen.length) await this.bestand.liste({ ids: fehlen, limit: 200 });
+    } catch {
+      /* Ohne Fassungen steht der Artikel für sich — das ist kein Fehler der Seite. */
+      if (id === this.id()) this.fassungsStand.set(null);
+    }
+  }
+
+  /** Was die verglichenen Fassungen anders sagen — je Feld und je Kantenart. */
+  private readonly abw = computed(() => {
+    const e = this.artikel();
+    const r = this.reg();
+    if (!e || !r || this.bearbeitet()) return { felder: new Map<string, Abweichung[]>(), kanten: [] };
+    return abweichungen(r, e, verglichene(this.fassungen(), this.lesart.stand()), this.bestand.name());
+  });
+
+  protected abwAn(ref: string): Abweichung[] {
+    return this.abw().felder.get(ref) ?? [];
+  }
+
+  /** Ein Prosafeld bekommt den Vergleich an seinem ersten Eintrag. */
+  private readonly erstePros = computed(() => {
+    const m = new Map<string, string>();
+    for (const b of this.prosa()) if (!m.has(`${b.type}.${b.key}`)) m.set(`${b.type}.${b.key}`, b.ref);
+    return m;
+  });
+  protected abwProsa(entry: string): Abweichung[] {
+    for (const [feld, erste] of this.erstePros()) if (erste === entry) return this.abwAn(feld);
+    return [];
+  }
+
+  /** Was keine Zelle und kein Absatz der Seite zeigt — es steht am Ende. */
+  protected readonly abwRest = computed(() => {
+    const e = this.artikel();
+    const r = this.reg();
+    const felder = this.abw().felder;
+    if (!e || !r || !felder.size) return [];
+    const gezeigt = new Set<string>(this.erstePros().keys());
+    for (const st of this.stuecke()) for (const z of st.zellen ?? []) gezeigt.add(z.ref);
+    const hier = new Map(this.alleZellen().map((z) => [z.ref, z.wert]));
+    const out: { ref: string; label: string; lang: boolean; hier: string; liste: Abweichung[] }[] = [];
+    for (const [ref, liste] of felder) {
+      if (gezeigt.has(ref)) continue;
+      const [type = '', key = ''] = ref.split('.');
+      const prop = r.interfaces[type]?.schema?.properties?.[key];
+      out.push({
+        ref,
+        label: prop ? fieldTitle(r, primaryInterface(e), { type, key, prop }) : key,
+        lang: liste.some((a) => a.lang),
+        hier: hier.get(ref) ?? '',
+        liste,
+      });
+    }
+    return out;
+  });
+
+  protected readonly abwKanten = computed(() => {
+    const r = this.reg();
+    if (!r) return [];
+    return this.abw().kanten.map((k) => ({ ...k, label: relationDef(r, k.type).label }));
+  });
+
+  /** Nach dem Übernehmen oder Zurücknehmen gilt ein anderer Artikel. */
+  protected async gewechselt(id: string): Promise<void> {
+    await this.bestand.oeffnen(id, true);
+    await this.router.navigate(['/artikel', id]);
+    await this.fassungenLaden(id);
+  }
+
   // ------------------------------------------------------------ bearbeiten
 
   protected readonly bearbeitet = signal(false);
@@ -934,7 +1160,12 @@ export class Artikel {
   >([]);
 
   private readonly api = inject(Api);
-  private readonly router = inject(Router);
+
+  /** „Im Buch lesen" — der Server sagt es mit dem Artikel (`refs.reading`, T-091). */
+  protected readonly leseZiel = computed(() => this.bestand.lesen().get(this.id()));
+  protected leseParams(z: LeseZiel): Record<string, string> {
+    return z.at ? { at: z.at } : z.page ? { page: z.page } : {};
+  }
 
   /** „Adapt" anbieten — der Server hat es mit dem Artikel gesagt (`refs.adaptable`). */
   protected readonly anpassbar = computed(() => this.bestand.anpassbar().has(this.id()));
@@ -1069,6 +1300,14 @@ export class Artikel {
     this.problem.set(null);
     this.maengel.set([]);
     this.offeneVerweise.set([]);
+    /* Wovon die Maske ausgeht (REQ-192): gegen diese Revision wird
+       geschrieben, und gegen diesen Stand wird zusammengeführt, falls
+       inzwischen jemand anders gespeichert hat. Festgehalten und nicht
+       aus dem Bestand gelesen — der lädt den Artikel womöglich neu, und
+       dann wäre die eigene Ausgangslage still eine andere. */
+    this.basis.set(structuredClone(e));
+    this.zusammen.set(null);
+    this.entwurf.set(null);
     this.bearbeitet.set(true);
   }
 
@@ -1076,7 +1315,22 @@ export class Artikel {
     this.bearbeitet.set(false);
     this.problem.set(null);
     this.maengel.set([]);
+    this.zusammen.set(null);
+    this.entwurf.set(null);
   }
+
+  /** Der Stand, von dem die Maske ausging. */
+  private readonly basis = signal<Entity | null>(null);
+  /** Was zuletzt geschickt und nicht gespeichert wurde — zum Herunterladen. */
+  protected readonly entwurf = signal<Entity | null>(null);
+  /** Abgewiesen, weil jemand anders gespeichert hat: drei Fassungen und die Wahl je Konflikt. */
+  protected readonly zusammen = signal<{
+    base: Entity;
+    mine: Entity;
+    theirs: Entity;
+    taken: number;
+    conflicts: { key: string; label: string; mine: string; theirs: string; wahl: MergeSide }[];
+  } | null>(null);
 
   protected prosaArten(): { ref: string; label: string }[] {
     const e = this.artikel();
@@ -1253,20 +1507,49 @@ export class Artikel {
 
     const relations = kantenAusEntwurf(this.entwurfKanten());
 
-    const neu = { ...alt, components, relations } as Entity;
+    const basis = this.basis() ?? alt;
+    const neu = { ...basis, components, relations } as Entity;
+    await this.schreibe(neu, basis, offen);
+  }
 
+  /**
+   * **Schreiben gegen die gelesene Revision** (REQ-192). Gelingt es, gilt
+   * der Stand des Servers; weist er ab, weil jemand anders gespeichert hat,
+   * wird zusammengeführt (`mergeEntity`) und gefragt — geschrieben wird
+   * erst, wenn jemand „Save merged" sagt. Was nicht gespeichert werden
+   * konnte, bleibt als Entwurf und lässt sich herunterladen (REQ-191).
+   */
+  private async schreibe(neu: Entity, basis: Entity, offen: Set<string> = new Set()): Promise<void> {
+    this.speichert.set(true);
+    this.problem.set(null);
+    this.maengel.set([]);
+    const { refs: _refs, fromTemplate: _ft, ...ohne } = neu as Entity & { refs?: unknown };
+    this.entwurf.set(ohne as Entity);
     try {
-      const gespeichert = await this.api.putEntity(neu);
+      const gespeichert = await this.api.putEntity(ohne as Entity);
       /* Neu geholt und nicht das Zurückgeschickte eingesetzt: was die Seite
          zeigt, ist gesiebt und aufgelöst, und das Gespeicherte ist es nicht.
          Die Zeile in der Liste zieht dabei mit. */
-      await this.bestand.oeffnen(alt.id, true);
+      await this.bestand.oeffnen(neu.id, true);
       this.bearbeitet.set(false);
+      this.zusammen.set(null);
+      this.entwurf.set(null);
       this.offeneVerweise.set([...offen]);
-      /* Was der Server zurückgibt, gilt — er setzt `updatedAt` und darf
-         mehr ändern, als hier geschickt wurde. */
+      /* Was der Server zurückgibt, gilt — er setzt `updatedAt` und
+         `revision` und darf mehr ändern, als hier geschickt wurde. */
       void gespeichert;
     } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        const jetzt = (error.body as { current?: (Entity & { refs?: unknown }) | null } | null)?.current;
+        if (!jetzt) {
+          this.zusammen.set(null);
+          this.problem.set('This article no longer exists, or you can no longer see it. Your version is not saved.');
+          return;
+        }
+        const { refs: _r, ...theirs } = jetzt;
+        this.zeigeZusammen(basis, ohne as Entity, theirs as Entity);
+        return;
+      }
       if (error instanceof ApiError) {
         this.problem.set(error.message);
         /* Die Liste wird gezeigt und nicht zusammengefasst: „ungültig" ohne
@@ -1288,6 +1571,96 @@ export class Artikel {
     } finally {
       this.speichert.set(false);
     }
+  }
+
+  /** Drei Fassungen nebeneinander; was nur eine Seite änderte, ist schon drin. */
+  private zeigeZusammen(base: Entity, mine: Entity, theirs: Entity): void {
+    const r = mergeEntity(base, mine, theirs);
+    this.zusammen.set({
+      base,
+      mine,
+      theirs,
+      taken: r.taken.length,
+      conflicts: r.conflicts.map((k) => ({
+        key: k.key,
+        label: this.konfliktName(k.key),
+        mine: this.konfliktWert(k.mine),
+        theirs: this.konfliktWert(k.theirs),
+        wahl: 'mine' as MergeSide,
+      })),
+    });
+  }
+
+  protected waehleSeite(key: string, wahl: MergeSide): void {
+    this.zusammen.update((z) =>
+      z ? { ...z, conflicts: z.conflicts.map((k) => (k.key === key ? { ...k, wahl } : k)) } : z,
+    );
+  }
+
+  /** Die Wahl angewandt, gegen den Stand der anderen geschrieben. Hat
+   *  inzwischen noch jemand gespeichert, wird von dort aus wieder gefragt. */
+  protected async zusammenSpeichern(): Promise<void> {
+    const z = this.zusammen();
+    if (!z || this.speichert()) return;
+    const prefer = Object.fromEntries(z.conflicts.map((k) => [k.key, k.wahl]));
+    const { merged } = mergeEntity(z.base, z.mine, z.theirs, prefer);
+    await this.schreibe(merged, z.theirs);
+  }
+
+  /** Den eigenen Stand aufgeben und zeigen, was gilt. */
+  protected async verwerfen(): Promise<void> {
+    const e = this.artikel();
+    this.zusammen.set(null);
+    this.entwurf.set(null);
+    this.problem.set(null);
+    this.bearbeitet.set(false);
+    if (e) await this.bestand.oeffnen(e.id, true);
+  }
+
+  /** Der ungespeicherte Stand als Datei — er geht nicht verloren, auch wenn
+   *  er hier nicht unterkommt (REQ-191). */
+  protected herunterladen(): void {
+    const e = this.zusammen()?.mine ?? this.entwurf();
+    if (!e) return;
+    const blob = new Blob([JSON.stringify(e, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(entityName(e) || e.id).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'article'}-unsaved.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  private konfliktName(key: string): string {
+    if (key === 'name') return 'Name';
+    if (key === 'interfaces') return 'Type';
+    if (key === 'adhoc') return 'Extra fields';
+    const r = this.reg();
+    if (key.startsWith('edge:')) {
+      const id = key.slice(5);
+      const kante = [...(this.zusammen()?.theirs.relations ?? []), ...(this.basis()?.relations ?? [])]
+        .find((k) => k.id === id);
+      return kante && r ? `Link · ${relationDef(r, kante.type).label}` : 'Link';
+    }
+    if (key.startsWith('card:')) {
+      const t = key.slice(5);
+      return r?.interfaces[t]?.label ?? t;
+    }
+    const f = this.felder().find((x) => x.ref === key);
+    if (f) return f.label;
+    const [t, k] = key.split('.');
+    return `${(t && r?.interfaces[t]?.label) || t} · ${k}`;
+  }
+
+  private konfliktWert(v: unknown): string {
+    if (v === undefined || v === null || v === '') return '(empty)';
+    if (typeof v === 'boolean') return v ? 'yes' : 'no';
+    if (v && typeof v === 'object' && 'type' in v && 'to' in v) {
+      const k = v as { type: string; to: string };
+      return `→ ${this.bestand.name()(k.to) ?? k.to}`;
+    }
+    const text = inEingabe(v);
+    return text.length > 160 ? `${text.slice(0, 160)}…` : text;
   }
 
   protected readonly rueckbezuege = computed(() => {
