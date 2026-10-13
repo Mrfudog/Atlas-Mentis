@@ -136,7 +136,7 @@ Ein Repo für Code **und** Vault (D42). Was Obsidian liest, liegt in
 atlas-mentis/
 ├── apps/
 │   ├── server/          @nw/server   Fastify-API, Postgres, Befehle user/import/migrate
-│   │   ├── src/                      app.ts (Routen), auth.ts, repo.ts, repo.pg.ts, …
+│   │   ├── src/                      app.ts (Routen), verwaltung.ts (Kampagnen, Mitglieder, Einladungen), auth.ts, repo.ts, repo.pg.ts, …
 │   │   └── migrations/               001_backbone.sql … 009_blocks_are_fields.sql
 │   └── web/             web          Angular-Oberfläche (Anmeldung, Liste, Artikel)
 ├── packages/
@@ -220,7 +220,12 @@ Durchstich in CI prüft `PgRepository` gegen eine echte Postgres.
 | `GET /api/health` | lebt der Prozess (für Docker und deploy.sh) |
 | `POST /api/login` · `/api/register` · `/api/logout` · `/api/logout-everywhere` | Konto und Sitzung; Registrieren nur mit Einladung |
 | `GET /api/me` | wer bin ich, welche Rollen, welche Figuren |
-| `GET/POST/DELETE /api/invites` | Einladungen (Verwaltung, Leitung) |
+| `GET/POST/DELETE /api/invites` | Einladungen, mit Kampagne und Rolle; die Verwaltung alle, die Leitung in ihre Kampagne (`gm` legt an und widerruft, `co-gm` sieht) |
+| `GET /api/campaigns` · `POST /api/campaigns` | die Kampagnen, an denen jemand leitet oder mitleitet (Verwaltung: alle); anlegen nur die Verwaltung |
+| `GET /api/campaigns/:c/members` | Mitglieder mit Rolle und Figuren, dazu die Figuren, die diese Kampagne vergeben darf — `gm`, `co-gm`, Verwaltung |
+| `POST /api/campaigns/:c/members` · `PUT`/`DELETE …/members/:user` | Konto beim Namen dazunehmen, Rolle setzen, herausnehmen — `gm` und Verwaltung, nie die eigene Rolle (ausser Verwaltung) |
+| `PUT /api/campaigns/:c/members/:user/actors` | welche Figuren ein Mitglied führt (`app_user_actor`); keine Figur einer anderen Kampagne |
+| `GET /api/users` | die Konten der Installation — nur die Verwaltung |
 | `GET /api/registry` · `PUT /api/registry/:part` | das Register lesen; ändern die Verwaltung und die Leitung (`gm`) der laufenden Kampagne — `/api/me` sagt es mit `registry` |
 | `GET /api/registry/usage` | was der Bestand an jeder Zeile trägt (`registryUsage`: je Art, Karte, Feld, Listenwert, Kante) — gezählt, bevor das Register etwas löscht; nur für wer es ändert |
 | `GET /api/entities` · `GET /api/entities/:id` | Artikel, **gesiebt** |
@@ -286,7 +291,7 @@ Zeilen daneben. Eine neue Artikelart ist eine Zeile, keine Migration.
 ```mermaid
 flowchart TB
   subgraph angular[apps/web · Angular 21, Standalone, Signals]
-    router[app.routes.ts<br/>/login · / · /artikel/:id · /registry · /classes · /classes/:id]
+    router[app.routes.ts<br/>/login · / · /artikel/:id · /campaign · /registry · /classes · /classes/:id]
     wache[kern/wache.ts<br/>Route-Guard: angemeldet?]
     subgraph seiten[Seiten, lazy geladen]
       login[login/login.ts]
@@ -296,6 +301,7 @@ flowchart TB
       text[artikel/text.ts<br/>Markdown, Verweise, Würfel]
       register[register/register.ts<br/>Typen · Kanten · Listen]
       regtyp[register/typ.ts · feld.ts<br/>ein Typ auf einer Fläche]
+      verwaltung[verwaltung/verwaltung.ts<br/>Mitglieder, Rollen, Einladungen]
       klassen[klassen/klasse.ts<br/>Klassenansicht: Tabelle, Merkmale je Stufe,<br/>Unterklassen filtern und vergleichen]
     end
     subgraph kern[kern/ · Dienste]
@@ -306,7 +312,8 @@ flowchart TB
   end
   model[["@nw/model<br/>views · calc · markdown · inline"]]
   router --> wache --> session
-  router --> login & liste & artikel & register & klassen
+  router --> login & liste & artikel & verwaltung & register & klassen
+  verwaltung --> api
   register --> regtyp --> bestand
   artikel --> felder & text
   klassen --> text

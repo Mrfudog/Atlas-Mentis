@@ -44,6 +44,12 @@ import { BEREICHE } from './kern/bereiche';
           @if (session.darfRegister()) {
             <a routerLink="/registry" routerLinkActive="an" ariaCurrentWhenActive="page">Registry</a>
           }
+          <!-- Nur für wen die Seite etwas zeigt: Verwaltung, Leitung, Mitleitung (W3). -->
+          @if (session.verwaltet()) {
+            <a routerLink="/campaign" routerLinkActive="an" ariaCurrentWhenActive="page"
+              >Campaign</a
+            >
+          }
         </nav>
         <span class="wer">
           {{ session.user()?.name }}

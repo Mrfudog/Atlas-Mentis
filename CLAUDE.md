@@ -598,7 +598,8 @@ Zum Entwickeln: `pnpm dev:server` und `pnpm dev:web` nebeneinander; die
 Oberfläche schickt `/api` über `apps/web/proxy.conf.json` an den Server.
 Das erste Konto legt `pnpm --filter @nw/server user add <name> --admin` an
 (`is_admin` ist die Verwaltungsrolle der Installation, nicht die Leitung
-einer Kampagne — die setzt `user role <name> <kampagne> gm`).
+einer Kampagne — die setzt `user role <name> <kampagne> gm` oder die Seite
+`/campaign`, siehe [docs/Zugang.md](docs/Zugang.md)).
 
 Die Reihenfolge ist notwendig: die übrigen Pakete übersetzen gegen die von
 `model` erzeugten `.d.ts`, nicht gegen dessen Quelltext. In `tsconfig.json` der
