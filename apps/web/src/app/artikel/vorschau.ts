@@ -11,6 +11,7 @@ import {
 } from '@nw/model';
 import type { Entity, LayoutElement, Registry, VarScopes } from '@nw/model';
 import { Bestand } from '../kern/bestand';
+import { QuelleText } from '../kern/quellen';
 import { Text } from './text';
 
 /** Was die Seitenspalte und die Überschrift schon sagen. */
@@ -37,7 +38,7 @@ interface Stueck {
  */
 @Component({
   selector: 'nw-vorschau',
-  imports: [RouterLink, Text],
+  imports: [RouterLink, Text, QuelleText],
   template: `
     <aside class="vorschau" aria-label="Preview">
       <div class="vkopf">
@@ -47,7 +48,12 @@ interface Stueck {
       @if (artikel(); as e) {
         <h2>{{ name(e) }}</h2>
         @if (meta(); as m) {
-          <p class="meta">{{ m }}</p>
+          <p class="meta">
+            {{ m.art }}
+            @if (m.quelle) {
+              · <nw-quelle [text]="m.quelle" />
+            }
+          </p>
         }
         <div class="linie" aria-hidden="true"></div>
         @for (s of stuecke(); track s.key) {
@@ -233,11 +239,12 @@ export class Vorschau {
   protected readonly meta = computed(() => {
     const e = this.artikel();
     const r = this.reg();
-    if (!e || !r) return '';
+    if (!e || !r) return null;
     const typ = primaryInterface(e);
     const q = e.components?.['Source'] as { publication?: string; page?: string } | undefined;
     const quelle = [q?.publication, q?.page ? `p. ${q.page}` : ''].filter(Boolean).join(' ');
-    return [r.interfaces[typ]?.label ?? typ, quelle].filter(Boolean).join(' · ');
+    /* Das Kürzel erklärt sich selbst (T-088). */
+    return { art: r.interfaces[typ]?.label ?? typ, quelle };
   });
 
   protected readonly scopes = computed<VarScopes>(() => {

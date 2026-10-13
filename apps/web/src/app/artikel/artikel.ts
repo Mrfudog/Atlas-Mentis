@@ -49,6 +49,7 @@ import { Gegenstand } from './gegenstand';
 import { Abschnitte } from './abschnitte';
 import { abweichungen, FassungsKasten, FassungsLesart, verglichene, type Abweichung } from './fassungen';
 import { bereichLabel } from '../kern/bereiche';
+import { Quellen } from '../kern/quellen';
 
 const SCHON_ANDERSWO = ['Identity', 'Visibility', 'Source'];
 
@@ -662,6 +663,10 @@ interface Feld {
                 } @else {
                   <span>{{ q.text }}</span>
                 }
+                <!-- Das Kürzel ausgeschrieben (T-088): „XGE" sagt nur, wer das Buch kennt. -->
+                @if (q.titel) {
+                  <p class="quelltitel">{{ q.titel }}</p>
+                }
               </section>
             }
           </aside>
@@ -681,6 +686,7 @@ export class Artikel {
   readonly edit = input<string | undefined>(undefined);
 
   protected readonly bestand = inject(Bestand);
+  private readonly quellen = inject(Quellen);
   protected readonly session = inject(Session);
   private readonly lesart = inject(FassungsLesart);
   private readonly router = inject(Router);
@@ -831,7 +837,7 @@ export class Artikel {
       | undefined;
     if (!q?.publication && !q?.url) return null;
     const text = [q.publication, q.page ? `p. ${q.page}` : ''].filter(Boolean).join(', ');
-    return { text: text || q.url || '', url: q.url };
+    return { text: text || q.url || '', url: q.url, titel: q.publication ? this.quellen.titel(q.publication.trim()) : '' };
   });
   protected name(e: Entity): string {
     return entityName(e);

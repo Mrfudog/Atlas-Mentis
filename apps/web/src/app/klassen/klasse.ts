@@ -4,6 +4,7 @@ import { choiceText, choicesOf, classTable, entityName, levelFeatures, linkIndex
 import type { Entity, LevelFeature, VarScopes } from '@nw/model';
 import { Api, ApiError, type KlassenBuendel } from '../kern/api';
 import { Bestand } from '../kern/bestand';
+import { Quellen, QuelleText } from '../kern/quellen';
 import { Text } from '../artikel/text';
 import { Merkmal } from './merkmal';
 import { Klassentabelle, type KlassenTabelle } from './klassentabelle';
@@ -40,7 +41,7 @@ const KERN = ['PHB', 'DMG', 'MM'];
  */
 @Component({
   selector: 'nw-klasse',
-  imports: [RouterLink, Text, Merkmal, Klassentabelle],
+  imports: [RouterLink, Text, Merkmal, Klassentabelle, QuelleText],
   templateUrl: './klasse.html',
   styleUrl: './klasse.scss',
 })
@@ -54,6 +55,12 @@ export class Klasse {
   private readonly api = inject(Api);
   private readonly router = inject(Router);
   protected readonly bestand = inject(Bestand);
+  private readonly quellenTitel = inject(Quellen);
+
+  /** Der volle Titel eines Quellenkürzels (T-088) — an einem Knopf als `title`. */
+  protected quellTitel(kuerzel: string): string {
+    return this.quellenTitel.titel(kuerzel);
+  }
 
   protected readonly daten = signal<KlassenBuendel | null>(null);
   protected readonly fehlt = signal(false);

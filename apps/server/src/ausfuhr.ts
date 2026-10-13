@@ -45,6 +45,7 @@
 import {
   ACTIVATES_RELATION,
   isCompareEdge,
+  isOffEdge,
   CAMPAIGN_TYPE,
   LAYER_COMPONENT,
   LAYER_RELATION,
@@ -57,7 +58,8 @@ import type { User } from './auth.js';
 /** Ebenenarten, die ein Regelwerk sind und nicht die Arbeit einer Runde. */
 /* Ein Abenteuer aus 5e.tools (T-082) ist Buchtext wie ein Buch: was die
    Runde daraus macht, liegt als Fassung in ihrer eigenen Ebene (E-018). */
-const REGELWERK = new Set(['system', 'expansion', 'book', 'adventure']);
+/* Eine Gruppe (T-088) enthält Ebenen und keine Artikel — keine Kampagnenebene. */
+const REGELWERK = new Set(['system', 'expansion', 'book', 'adventure', 'group']);
 
 export interface Ausfuhr {
   format: 'nebelwacht/1';
@@ -73,9 +75,11 @@ const art = (e: Entity): string => (e.interfaces ?? [])[0] ?? '';
 
 /** Die Ebenen, die diese Kampagne aufschaltet. */
 function aufgeschaltet(kampagne: Entity): Set<string> {
-  /* Vergleichsebenen (T-092) gehören nicht dazu: sie sind nicht im Spiel. */
+  /* Vergleichsebenen (T-092) und abgeschaltete (T-088) gehören nicht dazu: sie sind nicht im Spiel. */
   return new Set(
-    (kampagne.relations ?? []).filter((r) => r.type === ACTIVATES_RELATION && !isCompareEdge(r)).map((r) => r.to),
+    (kampagne.relations ?? [])
+      .filter((r) => r.type === ACTIVATES_RELATION && !isCompareEdge(r) && !isOffEdge(r))
+      .map((r) => r.to),
   );
 }
 

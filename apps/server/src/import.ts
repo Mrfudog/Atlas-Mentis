@@ -2,7 +2,7 @@
  * **Eine Ausfuhrdatei einlesen** — von der Kommandozeile, nicht über das
  * Netz (Arbeitsplan §4, P5; M13 schlanker).
  *
- *   pnpm --filter @nw/server run import <datei> [--only-new | --replace | --replace-layer[=<id|Name>]] [--dry-run]
+ *   pnpm --filter @nw/server run import <datei> [--only-new | --replace | --replace-layer[=<id|Name>] | --layers] [--dry-run]
  *   docker compose exec app node apps/server/dist/import.js <datei> --only-new
  *
  * Dieselbe Semantik wie die Einfuhr des Prototyps: eine Datei mit
@@ -23,6 +23,13 @@
  * noch nicht gibt; was schon steht, bleibt, wie es ist — auch wenn die
  * Leitung es seither geändert hat. Ebenso das Register: nur Zeilen, die
  * es noch nicht gibt, kommen dazu. Gelöscht wird nichts.
+ *
+ * **Nur die Ebenen ergänzen** (`--layers`, T-088): aus der Datei zählen nur
+ * die Ebenen. Was es nicht gibt (die Gruppen), wird angelegt; an einer
+ * bestehenden Ebene kommt dazu, was dort leer ist (Kürzel, Erscheinen,
+ * Autor, Stufen, Beschreibung — was die Leitung geändert hat, bleibt), und
+ * ihre Gruppen des Importers (`e5_group_*`) werden die der Datei. Kein
+ * Artikel und keine Registerzeile wird angefasst.
  *
  * `--dry-run` sagt dasselbe
  * und schreibt nichts. Jeder Artikel geht durch `validateEntity` mit `knownTypes`, **bevor**
@@ -78,6 +85,8 @@ export interface ImportOptionen {
    * Registerzeilen werden übersprungen, nichts wird gelöscht.
    */
   onlyNew?: boolean;
+  /** Nur die Ebenen der Datei: neue anlegen, bestehende ergänzen (T-088). */
+  layers?: boolean;
   /** Alles prüfen und sagen, nichts schreiben. */
   dryRun?: boolean;
 }
@@ -94,6 +103,9 @@ export async function runImport(
   }
   if (optionen.onlyNew && (optionen.replace || optionen.replaceLayer)) {
     throw new ImportFehler('`--only-new` schliesst `--replace` und `--replace-layer` aus: das eine lässt Bestehendes stehen, die anderen ersetzen es.');
+  }
+  if (optionen.layers && (optionen.replace || optionen.replaceLayer || optionen.onlyNew)) {
+    throw new ImportFehler('`--layers` steht allein: es ergänzt nur Ebenen und ersetzt nichts.');
   }
   const verwaltung = (await repo.listUsers()).filter((u) => u.isAdmin && !u.disabledAt);
   if (!verwaltung.length) {
@@ -130,6 +142,7 @@ export async function runImport(
      leere Liste `entities: []` ist etwas anderes: eine Sicherung ohne
      Artikel, also „alles weg". */
   if (d.entities === undefined) {
+    if (optionen.layers) throw new ImportFehler('`--layers` braucht Artikel: die Datei bringt nur Registerzeilen.');
     if (optionen.dryRun) return { text: 'Probelauf: das Register würde übernommen, die Artikel blieben.', geschrieben: 0, geloescht: 0 };
     const liegen = await schreibeRegister(repo, d.registry, registry);
     await repo.appendEvent('import.registry', undefined, {});
@@ -147,6 +160,11 @@ export async function runImport(
   for (const e of ausDatei) {
     if (dateiIds.has(e.id)) fehler.push(`${e.id}: steht zweimal in der Datei`);
     dateiIds.add(e.id);
+  }
+
+  if (optionen.layers) {
+    if (fehler.length) throw new ImportFehler(`${fehler.length} Fehler, nichts geschrieben:\n${fehler.slice(0, 30).join('\n')}`);
+    return ebenenErgaenzen(repo, aktuell, ausDatei, Boolean(optionen.dryRun));
   }
 
   /* Was es danach gibt: mit `--replace` nur die Datei, mit
@@ -273,6 +291,68 @@ export async function runImport(
   return { text: zeilen.join('\n') + liegenText(liegen), geschrieben: zuSchreiben.length, geloescht, ...(optionen.onlyNew ? { uebersprungen } : {}), verwaisteKanten };
 }
 
+/** Die Gruppen, die der Importer anlegt (`gruppeEbeneId`) — nur deren Kanten ersetzt `--layers`. */
+const IMPORTER_GRUPPE = /^e5_group_/;
+
+/**
+ * **Nur die Ebenen** (`--layers`, T-088): neue anlegen, an bestehenden das
+ * Leere füllen und die Gruppen des Importers auf den Stand der Datei
+ * bringen. Kein anderer Artikel wird gelesen oder geschrieben.
+ */
+async function ebenenErgaenzen(repo: Repository, registry: Registry, ausDatei: Entity[], dryRun: boolean): Promise<ImportErgebnis> {
+  const bestand = new Map((await repo.listEntities()).map((e) => [e.id, e] as const));
+  const leer = (v: unknown) => v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length);
+  const zuSchreiben: Entity[] = [];
+  let neu = 0;
+  let ergaenzt = 0;
+  for (const datei of ausDatei.filter((e) => e.interfaces?.[0] === 'Layer')) {
+    const alt = bestand.get(datei.id);
+    if (!alt) {
+      zuSchreiben.push(datei);
+      neu += 1;
+      continue;
+    }
+    if (alt.interfaces?.[0] !== 'Layer') continue;
+    const components = { ...alt.components };
+    let anders = false;
+    for (const karte of ['Layer', 'Description'] as const) {
+      const von = datei.components?.[karte] as Record<string, unknown> | undefined;
+      if (!von) continue;
+      const hier = { ...((components[karte] as Record<string, unknown> | undefined) ?? {}) };
+      for (const [k, v] of Object.entries(von)) {
+        if (leer(hier[k]) && !leer(v)) {
+          hier[k] = v;
+          anders = true;
+        }
+      }
+      components[karte] = hier;
+    }
+    const soll = (datei.relations ?? []).filter((r) => r.type === 'partOf');
+    const bleiben = (alt.relations ?? []).filter((r) => r.type !== 'partOf' || !IMPORTER_GRUPPE.test(r.to) || soll.some((x) => x.to === r.to));
+    const dazu = soll.filter((r) => !bleiben.some((x) => x.type === 'partOf' && x.to === r.to));
+    if (dazu.length || bleiben.length !== (alt.relations ?? []).length) anders = true;
+    if (!anders) continue;
+    zuSchreiben.push({ ...alt, components, relations: [...bleiben, ...dazu] });
+    ergaenzt += 1;
+  }
+  const danach = new Map(bestand);
+  for (const e of zuSchreiben) danach.set(e.id, e);
+  const arten = new Map([...danach.values()].map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
+  const bekannt = new Set(arten.keys());
+  const fehler: string[] = [];
+  for (const e of zuSchreiben) {
+    for (const issue of validateEntity(registry, e, { knownTypes: arten, knownIds: bekannt })) {
+      fehler.push(`Layer „${e.name}" (${e.id}): ${issue.message}`);
+    }
+  }
+  if (fehler.length) throw new ImportFehler(`${fehler.length} Fehler, nichts geschrieben:\n${fehler.slice(0, 30).join('\n')}`);
+  const satz = `${neu} Ebenen neu, ${ergaenzt} ergänzt; kein Artikel und keine Registerzeile angefasst.`;
+  if (dryRun) return { text: `Probelauf, nichts geschrieben — nur Ebenen: ${satz}`, geschrieben: 0, geloescht: 0 };
+  for (const e of zuSchreiben) await repo.putEntity(e);
+  await repo.appendEvent('import', undefined, { layers: true, written: zuSchreiben.length });
+  return { text: `Nur Ebenen: ${satz}`, geschrieben: zuSchreiben.length, geloescht: 0 };
+}
+
 /**
  * Das Register mit `--only-new` (D71): je Teil die Zeilen der Datei, die
  * es noch nicht gibt, und darüber die bestehenden — eine Art, die die
@@ -371,7 +451,7 @@ if (direkt) {
   const args = process.argv.slice(2);
   const datei = args.find((a) => !a.startsWith('--'));
   if (!datei) {
-    console.error('import <datei> [--only-new | --replace | --replace-layer[=<id|Name>]] [--dry-run]');
+    console.error('import <datei> [--only-new | --replace | --replace-layer[=<id|Name>] | --layers] [--dry-run]');
     process.exit(2);
   }
   const ebenenArg = args.find((a) => a === '--replace-layer' || a.startsWith('--replace-layer='));
@@ -388,7 +468,7 @@ if (direkt) {
   const repo = new PgRepository(getPool());
   try {
     const daten = JSON.parse(readFileSync(pfad, 'utf8')) as unknown;
-    const r = await runImport(repo, daten, { replace: args.includes('--replace'), replaceLayer, onlyNew: args.includes('--only-new'), dryRun: args.includes('--dry-run') });
+    const r = await runImport(repo, daten, { replace: args.includes('--replace'), replaceLayer, onlyNew: args.includes('--only-new'), layers: args.includes('--layers'), dryRun: args.includes('--dry-run') });
     console.log(r.text);
   } catch (x) {
     console.error((x as Error).message);

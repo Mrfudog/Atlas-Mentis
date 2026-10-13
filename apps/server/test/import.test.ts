@@ -236,3 +236,58 @@ describe('pnpm --filter @nw/server run import', () => {
     });
   });
 });
+
+/* Nur Ebenen (T-088): die Gruppen kommen, die Buchebene bekommt, was leer
+   war, und ihre Gruppe des Importers wechselt — kein Artikel ändert sich. */
+describe('import --layers', () => {
+  const buch = (layer: Record<string, unknown>, partOf?: string, description?: string): Entity => ({
+    id: 'e5_book_erlw',
+    interfaces: ['Layer'],
+    name: 'Eberron: Rising from the Last War',
+    components: {
+      Identity: { name: 'Eberron: Rising from the Last War', id: 'layer-0002' },
+      Status: { status: 'ready' },
+      Layer: layer,
+      ...(description ? { Description: { description } } : {}),
+    },
+    relations: partOf ? [{ id: `e5_book_erlw~partOf-${partOf}`, type: 'partOf', to: partOf }] : [],
+  });
+  const gruppe = (k: string, name: string, n: number): Entity => ({
+    id: `e5_group_${k}`,
+    interfaces: ['Layer'],
+    name,
+    components: { Identity: { name, id: `layer-00${n}` }, Status: { status: 'ready' }, Layer: { kind: 'group', order: 0 } },
+  });
+
+  it('legt Gruppen an, füllt Leeres, richtet die Gruppe und lässt Artikel und Eigenes stehen', async () => {
+    const artikel = { ...regel('r1', 'Alt'), relations: [{ id: 'r1~in', type: 'inLayer', to: 'e5_book_erlw' }] };
+    const repo = await mitKonto([
+      gruppe('supplement', 'Supplements', 90),
+      buch({ kind: 'book', order: 0, abbreviation: 'ERLW', author: 'Von Hand' }, 'e5_group_supplement'),
+      artikel,
+    ]);
+    const datei = {
+      format: 'nebelwacht/1',
+      entities: [
+        gruppe('setting', 'Settings', 91),
+        buch({ kind: 'book', order: 0, abbreviation: 'ERLW', published: '2019-11-19', author: 'Wizards RPG Team' }, 'e5_group_setting', 'ERLW — Eberron: Rising from the Last War'),
+        { ...regel('r1', 'Neu aus der Datei'), relations: [{ id: 'r1~in', type: 'inLayer', to: 'e5_book_erlw' }] },
+        regel('r2', 'Auch neu'),
+      ],
+    };
+    const probe = await runImport(repo, datei, { layers: true, dryRun: true });
+    expect(probe.text).toMatch(/1 Ebenen neu, 1 ergänzt/);
+    expect(await repo.getEntity('e5_group_setting')).toBeFalsy();
+    const r = await runImport(repo, datei, { layers: true });
+    expect(r.geschrieben).toBe(2);
+    const b = (await repo.getEntity('e5_book_erlw'))!;
+    expect(b.components['Layer']).toMatchObject({ published: '2019-11-19', author: 'Von Hand' });
+    expect(b.components['Description']).toEqual({ description: 'ERLW — Eberron: Rising from the Last War' });
+    expect((b.relations ?? []).map((x) => x.to)).toEqual(['e5_group_setting']);
+    expect((await repo.getEntity('r1'))!.name).toBe('Alt');
+    expect(await repo.getEntity('r2')).toBeFalsy();
+    /* Ein zweiter Lauf ändert nichts. */
+    expect((await runImport(repo, datei, { layers: true })).geschrieben).toBe(0);
+    await expect(runImport(repo, datei, { layers: true, onlyNew: true })).rejects.toThrow(/allein/);
+  });
+});

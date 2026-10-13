@@ -147,18 +147,74 @@ describe('the campaign page switches layers on', () => {
     expect((await rufe('Sela', 'GET', '/api/campaigns/camp_a/layers')).statusCode).toBe(403);
   });
 
-  it('names the group of a book layer, from its tag (T-081)', async () => {
-    const { rufe, repo } = await aufbau();
-    const buch = (id: string, name: string, n: number, tags?: string[]): Entity => ({
+  /* Gruppen sind Ebenen (E-022 b, T-088): „Core rules" enthält PHB und
+     MM; eine zweite Gruppe hält die Ebene der anderen Runde. */
+  const mitGruppen = async () => {
+    const a = await aufbau();
+    const buch = (id: string, name: string, n: number, published: string, partOf: string): Entity => ({
       ...ebene(id, name, n, 0),
-      components: { ...ident(name, `layer-00${n}`), Layer: { kind: 'book', order: 0 }, ...(tags ? { Tags: { tags } } : {}) },
+      components: {
+        ...ident(name, `layer-00${n}`),
+        Layer: { kind: 'book', order: 0, abbreviation: name.slice(0, 3).toUpperCase(), published },
+        Description: { description: `${name.slice(0, 3).toUpperCase()} — ${name}` },
+      },
+      relations: [{ id: `${id}~partOf`, type: 'partOf', to: partOf, props: {} }],
     });
-    await repo.putEntity(buch('e5_book_phb', "Player's Handbook", 7, ['core']));
-    await repo.putEntity(buch('e5_book_cos', 'Curse of Strahd', 8, ['adventure']));
-    await repo.putEntity(buch('e5_book_x', 'X', 9));
+    const gruppe = (id: string, name: string, n: number): Entity => ({
+      ...ebene(id, name, n, 0),
+      components: { ...ident(name, `layer-00${n}`), Layer: { kind: 'group', order: 0 } },
+    });
+    await a.repo.putEntity(gruppe('e5_group_core', 'Core rules', 7));
+    await a.repo.putEntity(gruppe('g_fremd', 'Fremd', 8));
+    await a.repo.putEntity(buch('e5_book_phb', "Player's Handbook", 9, '2014-08-19', 'e5_group_core'));
+    await a.repo.putEntity(buch('e5_book_mm', 'Monster Manual', 10, '2014-09-30', 'e5_group_core'));
+    await a.repo.putEntity({ ...BESTAND.find((e) => e.id === 'ly_b')!, relations: [{ id: 'ly_b~partOf', type: 'partOf', to: 'g_fremd', props: {} }] });
+    await a.repo.putEntity(regel('r_phb', 7, 'e5_book_phb'));
+    await a.repo.putEntity(regel('r_mm', 8, 'e5_book_mm'));
+    return a;
+  };
+  const zeile = (l: { layers: { id: string }[] }, id: string) => l.layers.find((x) => x.id === id) as Record<string, unknown>;
+
+  it('lists groups with their members, and every layer with what it holds (T-088)', async () => {
+    const { rufe } = await mitGruppen();
     const l = (await rufe('Basil', 'GET', '/api/campaigns/camp_a/layers')).json();
-    const gruppe = (id: string) => l.layers.find((x: { id: string }) => x.id === id)?.group;
-    expect([gruppe('e5_book_phb'), gruppe('e5_book_cos'), gruppe('e5_book_x'), gruppe('ly_a')]).toEqual(['core', 'adventure', 'sourcebook', '']);
+    expect(zeile(l, 'e5_group_core')).toMatchObject({ kind: 'group', members: ['e5_book_phb', 'e5_book_mm'], active: false, inPlay: false });
+    expect(zeile(l, 'e5_book_phb')).toMatchObject({
+      groups: ['e5_group_core'],
+      content: { Rule: 1 },
+      about: { abbreviation: 'PLA', published: '2014-08-19', description: 'PLA — Player\'s Handbook' },
+    });
+    /* Die Gruppe der anderen Runde bringt deren Ebene: die Leitung schaltet sie nicht auf. */
+    expect(zeile(l, 'g_fremd')).toMatchObject({ canActivate: false });
+    expect(zeile(l, 'e5_group_core')).toMatchObject({ canActivate: true });
+    expect((await rufe('Basil', 'POST', '/api/campaigns/camp_a/layers/g_fremd')).statusCode).toBe(403);
+  });
+
+  it('turns a group on as a whole and one book inside it off (T-088)', async () => {
+    const { rufe, repo } = await mitGruppen();
+    expect((await rufe('Basil', 'PUT', '/api/campaigns/camp_a/layers', { layers: ['e5_group_core', 'ly_a'] })).statusCode).toBe(200);
+    let liste = (await rufe('Basil', 'GET', '/api/list?type=Rule')).json();
+    expect(namen(liste)).toEqual(['r_a', 'r_frei', 'r_mm', 'r_phb']);
+    let l = (await rufe('Basil', 'GET', '/api/campaigns/camp_a/layers')).json();
+    expect(zeile(l, 'e5_book_mm')).toMatchObject({ active: false, inPlay: true, off: false });
+    /* Aus schlägt an: das Monsterbuch geht, die Gruppe bleibt. */
+    const res = await rufe('Basil', 'PUT', '/api/campaigns/camp_a/layers', { layers: ['e5_group_core', 'ly_a'], off: ['e5_book_mm'] });
+    expect(res.json()).toMatchObject({ off: ['e5_book_mm'] });
+    liste = (await rufe('Basil', 'GET', '/api/list?type=Rule')).json();
+    expect(namen(liste)).toEqual(['r_a', 'r_frei', 'r_phb']);
+    l = (await rufe('Basil', 'GET', '/api/campaigns/camp_a/layers')).json();
+    expect(zeile(l, 'e5_book_mm')).toMatchObject({ inPlay: false, off: true });
+    /* Ohne `off` bleibt die Abschaltung stehen. */
+    await rufe('Basil', 'PUT', '/api/campaigns/camp_a/layers', { layers: ['ly_a', 'e5_group_core'] });
+    const c = await repo.getEntity('camp_a');
+    expect(c?.relations?.filter((r) => r.props?.['mode'] === 'off').map((r) => r.to)).toEqual(['e5_book_mm']);
+    expect((await rufe('Basil', 'PUT', '/api/campaigns/camp_a/layers', { layers: [], off: 'e5_book_mm' })).statusCode).toBe(400);
+  });
+
+  it('explains every source abbreviation the viewer may see (T-088)', async () => {
+    const { rufe } = await mitGruppen();
+    const q = (await rufe('Sela', 'GET', '/api/sources')).json();
+    expect(q.sources).toMatchObject({ PLA: "Player's Handbook", MON: 'Monster Manual' });
   });
 
   it('turns one on at the place its own order says, and the articles are back', async () => {

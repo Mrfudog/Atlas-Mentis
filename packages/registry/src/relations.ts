@@ -404,8 +404,10 @@ export const relations: Record<string, RelationDef> = {
     inverseLabel: 'contains',
     /* `Encounter` (T-082): eine Begegnung hängt an ihrer Szene oder ihrem
        Kapitel — so stand es am Typ, die Kante liess es nicht zu. */
-    from: ['Place', 'Story', 'Quest', 'Event', 'Board', 'Encounter'],
-    to: ['Place', 'Story', 'Event'],
+    from: ['Place', 'Story', 'Quest', 'Event', 'Board', 'Encounter', 'Layer'],
+    /* `Layer` (E-022 b, T-088): eine Ebene hängt an ihrer Gruppe — einer
+       Ebene mit `kind: 'group'`. Eine Ebene darf in mehreren Gruppen sein. */
+    to: ['Place', 'Story', 'Event', 'Layer'],
   },
 
   controls: {
@@ -1068,8 +1070,10 @@ export const relations: Record<string, RelationDef> = {
         order: { type: 'number', title: 'Order' },
         /* `compare` (T-092, E-021 d): die Ebene ist nicht im Spiel, ihre
            Fassungen stehen auf Wunsch an den Feldern und lassen sich als
-           Überschreibung übernehmen. Ohne Angabe: im Spiel. */
-        mode: { type: 'string', title: 'Mode', enum: ['compare'] },
+           Überschreibung übernehmen. `off` (T-088): die Ebene ist aus,
+           auch wenn eine aufgeschaltete Gruppe sie brächte. Ohne Angabe:
+           im Spiel. */
+        mode: { type: 'string', title: 'Mode', enum: ['compare', 'off'] },
       },
     },
   },

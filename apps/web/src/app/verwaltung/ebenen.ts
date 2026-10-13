@@ -1,13 +1,23 @@
 import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Api, type KampagnenEbene, type KampagnenEbenen } from '../kern/api';
+import { Bestand } from '../kern/bestand';
 
-/** Die Gruppen der Bücher, wie der Server sie nennt (`BUCHGRUPPEN`, T-081). */
-const BUCHGRUPPEN: [string, string][] = [
-  ['core', 'Core rules'],
-  ['sourcebook', 'Sourcebooks'],
-  ['adventure', 'Adventures'],
-];
+/** Ebenen, die Bücher sind — ohne Gruppe stehen sie unter „Other books". */
+const BUCHARTEN = new Set(['book', 'adventure']);
+/** Der Schlüssel am Konto, unter dem die aufgeklappten Gruppen stehen (T-088). */
+const OFFEN_PREF = 'layerGroups';
+
+/** Eine Gruppe mit ihren Mitgliedern (T-088), verschachtelt. */
+interface Gruppe {
+  ebene: KampagnenEbene;
+  untergruppen: Gruppe[];
+  ebenen: KampagnenEbene[];
+  /** Bücher darin (verschachtelt, ohne Gruppen), davon im Spiel. */
+  gesamt: number;
+  an: number;
+}
 
 /**
  * **Die Ebenen einer Kampagne** (T-069, E-008) — auf der Kampagnenseite,
@@ -29,13 +39,19 @@ const BUCHGRUPPEN: [string, string][] = [
  * an den Feldern. Darunter, ob die Spielenden sie auch sehen.
  *
  * **Bücher stehen für sich** (T-081, E-017): je Buch aus 5e.tools eine
- * Ebene, gruppiert nach Grundregelwerk, Quellenbuch und Abenteuer, mit
- * Häkchen und ohne Pfeile — zwischen Büchern gibt es nichts zu ordnen, und
- * siebzig Zeilen mit Pfeilen verdeckten den Stapel, um den es geht.
+ * Ebene, mit Häkchen und ohne Pfeile — zwischen Büchern gibt es nichts zu
+ * ordnen, und siebzig Zeilen mit Pfeilen verdeckten den Stapel, um den es
+ * geht.
+ *
+ * **Gruppen sind Ebenen** (T-088, E-022 b): je Gruppe ein aufklappbarer
+ * Abschnitt mit „3 of 12 on", einem Häkchen für die ganze Gruppe und einem
+ * je Buch darin. Ist die Gruppe an, nimmt das Häkchen am Buch es aus der
+ * Gruppe heraus (`off` — aus schlägt an); ist sie aus, schaltet es das Buch
+ * für sich auf. Welche Abschnitte offen sind, merkt sich das Konto.
  */
 @Component({
   selector: 'nw-kampagnen-ebenen',
-  imports: [RouterLink],
+  imports: [RouterLink, NgTemplateOutlet],
   template: `
     <section class="kasten" aria-label="Layers in play">
       <h2>Layers in play</h2>
@@ -109,58 +125,104 @@ const BUCHGRUPPEN: [string, string][] = [
               }
             </li>
           } @empty {
-            @if (!buecher().length) {
+            @if (!gruppen().length && !lose().length) {
               <li class="dim">There is no layer yet. Everything is in play.</li>
             }
           }
         </ul>
-        @if (buecher().length) {
+        @if (gruppen().length || lose().length) {
           <h3>Books</h3>
-          <p class="fuss">Each book from 5e.tools is a layer of its own. Turn on the books this campaign uses.</p>
-          @for (g of buecher(); track g.key) {
-            <details class="gruppe" [open]="g.key === 'core' || offen().has(g.key)" (toggle)="merke(g.key, $event)">
+          <p class="fuss">
+            Each book from 5e.tools is a layer of its own, and the books sit in groups. Turn on a whole group, or
+            single books; with the group on, unticking a book takes just that one out.
+          </p>
+          @for (g of gruppen(); track g.ebene.id) {
+            <ng-container [ngTemplateOutlet]="gruppeTpl" [ngTemplateOutletContext]="{ $implicit: g }" />
+          }
+          @if (lose().length) {
+            <details class="gruppe" [open]="offen().has('-')" (toggle)="merke('-', $event)">
               <summary>
-                <span class="gname">{{ g.label }}</span>
-                <span class="dim">{{ g.an }} of {{ g.books.length }} on</span>
+                <span class="gname">Other books</span>
+                <span class="dim">{{ anZahl(lose()) }} of {{ lose().length }} on</span>
               </summary>
               <ul class="ebenen buecher">
-                @for (l of g.books; track l.id) {
-                  <li [class.aus]="!l.active">
-                    <label class="haken">
-                      <input
-                        type="checkbox"
-                        [checked]="l.active"
-                        [disabled]="!aenderbar(l) || laeuft()"
-                        (change)="umschalten(l)"
-                      />
-                      <span class="name">{{ l.name }}</span>
-                    </label>
-                    @if (l.readable && l.active) {
-                      <a class="lesen" [routerLink]="['/read', l.id]">Read</a>
-                    }
-                    <span class="dim">
-                      {{ zahl(l.articles) }} {{ l.articles === 1 ? 'article' : 'articles' }}
-                      @if (l.alsoIn.length) {
-                        · also in {{ l.alsoIn.join(', ') }}
-                      }
-                    </span>
-                    @if (!l.active) {
-                      <label class="vergleich" [title]="'Show versions from ' + l.name + ' on demand, without putting it in play'">
-                        <input
-                          type="checkbox"
-                          [checked]="!!l.compare"
-                          [disabled]="!aenderbar(l) || laeuft()"
-                          (change)="vergleichen(l)"
-                        />
-                        compare
-                      </label>
-                    }
-                  </li>
+                @for (l of lose(); track l.id) {
+                  <ng-container [ngTemplateOutlet]="buchTpl" [ngTemplateOutletContext]="{ $implicit: l }" />
                 }
               </ul>
             </details>
           }
         }
+        <ng-template #gruppeTpl let-g>
+          <details class="gruppe" [open]="offen().has(g.ebene.id)" (toggle)="merke(g.ebene.id, $event)">
+            <summary>
+              <input
+                type="checkbox"
+                class="ganz"
+                [checked]="g.ebene.inPlay"
+                [indeterminate]="!g.ebene.inPlay && g.an > 0"
+                [disabled]="!aenderbar(g.ebene) || laeuft()"
+                [attr.aria-label]="'Turn the whole group ' + g.ebene.name + (g.ebene.inPlay ? ' off' : ' on')"
+                (click)="$event.stopPropagation()"
+                (change)="gruppeSchalten(g.ebene)"
+              />
+              <span class="gname">{{ g.ebene.name }}</span>
+              <span class="dim">{{ g.an }} of {{ g.gesamt }} on</span>
+              @if (g.ebene.about.description) {
+                <span class="beschreibung">{{ g.ebene.about.description }}</span>
+              }
+            </summary>
+            <div class="innen">
+              @for (u of g.untergruppen; track u.ebene.id) {
+                <ng-container [ngTemplateOutlet]="gruppeTpl" [ngTemplateOutletContext]="{ $implicit: u }" />
+              }
+              <ul class="ebenen buecher">
+                @for (l of g.ebenen; track l.id) {
+                  <ng-container [ngTemplateOutlet]="buchTpl" [ngTemplateOutletContext]="{ $implicit: l }" />
+                }
+              </ul>
+            </div>
+          </details>
+        </ng-template>
+        <ng-template #buchTpl let-l>
+          <li [class.aus]="!l.inPlay">
+            <label class="haken">
+              <input
+                type="checkbox"
+                [checked]="l.inPlay"
+                [disabled]="!aenderbar(l) || laeuft()"
+                (change)="buchSchalten(l)"
+              />
+              <span class="name">{{ l.name }}</span>
+            </label>
+            @if (l.readable && l.inPlay) {
+              <a class="lesen" [routerLink]="['/read', l.id]">Read</a>
+            }
+            @if (!l.inPlay) {
+              <label class="vergleich" [title]="'Show versions from ' + l.name + ' on demand, without putting it in play'">
+                <input
+                  type="checkbox"
+                  [checked]="!!l.compare"
+                  [disabled]="!aenderbar(l) || laeuft()"
+                  (change)="vergleichen(l)"
+                />
+                compare
+              </label>
+            }
+            <span class="dim fakten">
+              @if (l.about.abbreviation) {
+                <abbr [title]="l.name">{{ l.about.abbreviation }}</abbr> ·
+              }
+              {{ fakten(l) }}
+              @if (l.off) {
+                · off in its group
+              }
+              @if (l.alsoIn.length) {
+                · also in {{ l.alsoIn.join(', ') }}
+              }
+            </span>
+          </li>
+        </ng-template>
         <h3>Compare layers</h3>
         <p class="fuss">
           A layer marked <em>compare</em> is not in play and in no list. Its versions of an article show
@@ -333,6 +395,28 @@ const BUCHGRUPPEN: [string, string][] = [
     .spieler {
       flex: 0 0 auto;
     }
+    .ganz {
+      width: 1.1rem;
+      height: 1.1rem;
+      margin: 0;
+    }
+    .beschreibung {
+      flex: 1 1 100%;
+      font-size: 0.82rem;
+      color: var(--dim);
+    }
+    .innen {
+      margin-left: 1.1rem;
+    }
+    .fakten {
+      flex: 1 1 100%;
+      font-size: 0.85rem;
+      overflow-wrap: anywhere;
+    }
+    .fakten abbr {
+      text-decoration: underline dotted;
+      cursor: help;
+    }
   `,
 })
 export class KampagnenEbenenListe {
@@ -341,6 +425,7 @@ export class KampagnenEbenenListe {
   readonly geschaltet = output<void>();
 
   private readonly api = inject(Api);
+  private readonly bestand = inject(Bestand);
   protected readonly daten = signal<KampagnenEbenen | null>(null);
   protected readonly fehler = signal<string | null>(null);
   protected readonly laeuft = signal(false);
@@ -358,36 +443,149 @@ export class KampagnenEbenenListe {
       if (c !== this.kampagne()) return;
       this.daten.set(d);
       this.fehler.set(null);
+      void this.offenLaden();
     } catch (error) {
       this.daten.set(null);
       this.fehler.set(error instanceof Error ? error.message : String(error));
     }
   }
 
-  /** Die aufgeschalteten, oben die spezifischste; darunter die übrigen. Ohne Bücher. */
+  /** Die Ebenen, die weder Gruppe noch Mitglied einer Gruppe noch ein Buch sind — der Stapel mit Pfeilen. */
   protected readonly oben = computed(() => {
-    const l = (this.daten()?.layers ?? []).filter((x) => !x.group);
+    const l = (this.daten()?.layers ?? []).filter((x) => x.kind !== 'group' && !x.groups.length && !BUCHARTEN.has(x.kind));
     return [...l.filter((x) => x.active).reverse(), ...l.filter((x) => !x.active)];
   });
 
-  /** Die Bücher je Gruppe, in der Reihenfolge der Gruppen, nach Name (T-081). */
-  protected readonly buecher = computed(() => {
-    const l = (this.daten()?.layers ?? []).filter((x) => x.group);
-    return BUCHGRUPPEN.map(([key, label]) => {
-      const books = l.filter((x) => x.group === key).sort((a, b) => a.name.localeCompare(b.name, 'en'));
-      return { key, label, books, an: books.filter((x) => x.active).length };
-    }).filter((g) => g.books.length);
+  private readonly nachId = computed(() => new Map((this.daten()?.layers ?? []).map((x) => [x.id, x])));
+
+  /**
+   * **Die Gruppen als Baum** (T-088): oben die Gruppen, die in keiner
+   * anderen hängen; darin Untergruppen und Bücher (nach Erscheinen, wie der
+   * Server sie schickt). Ein Kreis bricht ab.
+   */
+  protected readonly gruppen = computed<Gruppe[]>(() => {
+    const m = this.nachId();
+    const knoten = (g: KampagnenEbene, gesehen: Set<string>): Gruppe => {
+      const innen = (g.members ?? []).map((id) => m.get(id)).filter((x): x is KampagnenEbene => !!x && !gesehen.has(x.id));
+      const weiter = new Set([...gesehen, ...innen.map((x) => x.id)]);
+      const untergruppen = innen.filter((x) => x.kind === 'group').map((x) => knoten(x, weiter));
+      const ebenen = innen.filter((x) => x.kind !== 'group');
+      const blaetter = new Map<string, KampagnenEbene>(ebenen.map((x) => [x.id, x]));
+      const sammle = (u: Gruppe) => {
+        for (const x of u.ebenen) blaetter.set(x.id, x);
+        u.untergruppen.forEach(sammle);
+      };
+      untergruppen.forEach(sammle);
+      const alle = [...blaetter.values()];
+      return { ebene: g, untergruppen, ebenen, gesamt: alle.length, an: this.anZahl(alle) };
+    };
+    const gruppen = (this.daten()?.layers ?? []).filter((x) => x.kind === 'group');
+    return gruppen
+      .filter((g) => !g.groups.some((p) => m.get(p)?.kind === 'group'))
+      .map((g) => knoten(g, new Set([g.id])));
   });
 
-  /** Welche Gruppen aufgeklappt sind — über ein Neuladen nach dem Schalten. */
+  /** Bücher ohne Gruppe — etwa bevor die Migration sie einhängte. */
+  protected readonly lose = computed(() =>
+    (this.daten()?.layers ?? [])
+      .filter((x) => BUCHARTEN.has(x.kind) && !x.groups.length)
+      .sort((a, b) => a.name.localeCompare(b.name, 'en')),
+  );
+
+  protected anZahl(l: KampagnenEbene[]): number {
+    return l.filter((x) => x.inPlay).length;
+  }
+
+  /** „2017-11-21 · Wizards RPG Team · 2014 rules · levels 1–5 · Spell 312, Feat 40" (REQ-245). */
+  protected fakten(l: KampagnenEbene): string {
+    const a = l.about;
+    const reg = this.bestand.registry();
+    const inhalt = Object.entries(l.content ?? {})
+      .sort((x, y) => y[1] - x[1])
+      .slice(0, 4)
+      .map(([t, n]) => `${reg?.interfaces[t]?.label ?? t} ${this.zahl(n)}`);
+    const mehr = Object.keys(l.content ?? {}).length > 4 ? ` … ${this.zahl(l.articles)} in all` : '';
+    return [
+      a.published,
+      a.author,
+      a.version ? `${a.version} rules` : '',
+      a.levels ? `levels ${a.levels}` : '',
+      a.storyline,
+      inhalt.length ? inhalt.join(', ') + mehr : `${this.zahl(l.articles)} ${l.articles === 1 ? 'article' : 'articles'}`,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+  }
+
+  /** Welche Gruppen aufgeklappt sind — gemerkt am Konto (T-088), über ein Neuladen hinweg. */
   protected readonly offen = signal(new Set<string>());
+  private offenGeladen = false;
 
   protected merke(key: string, ev: Event): void {
     const auf = (ev.target as HTMLDetailsElement).open;
     const s = new Set(this.offen());
+    if (auf === s.has(key)) return;
     if (auf) s.add(key);
     else s.delete(key);
     this.offen.set(s);
+    void this.api.setPref(OFFEN_PREF, [...s]).catch(() => {
+      /* Nicht gemerkt ist nicht schlimm: der Abschnitt ist trotzdem offen. */
+    });
+  }
+
+  private async offenLaden(): Promise<void> {
+    if (this.offenGeladen) return;
+    this.offenGeladen = true;
+    try {
+      const p = (await this.api.prefs())[OFFEN_PREF];
+      if (Array.isArray(p)) {
+        this.offen.set(new Set(p.filter((x): x is string => typeof x === 'string')));
+        return;
+      }
+    } catch {
+      /* ohne gemerkten Stand: siehe unten */
+    }
+    /* Noch nichts gemerkt: offen ist, worin etwas läuft. */
+    this.offen.set(new Set(this.gruppen().filter((g) => g.an > 0).map((g) => g.ebene.id)));
+  }
+
+  /** Bringt eine aufgeschaltete Gruppe diese Ebene? */
+  private ueberGruppe(l: KampagnenEbene): boolean {
+    const m = this.nachId();
+    return l.groups.some((g) => m.get(g)?.inPlay === true);
+  }
+
+  /** Die ganze Gruppe an oder aus (T-088). */
+  protected gruppeSchalten(g: KampagnenEbene): void {
+    if (g.active) void this.schreiben(this.stapel().filter((id) => id !== g.id));
+    else if (g.off) void this.schreiben(this.stapel(), undefined, this.abgeschaltet().filter((id) => id !== g.id));
+    else void this.schreiben(null, g.id);
+  }
+
+  /**
+   * Ein Buch an oder aus. Ist es über seine Gruppe im Spiel, nimmt „aus"
+   * es nur aus der Gruppe (`off`); ist die Gruppe aus, schaltet „an" das
+   * Buch für sich auf.
+   */
+  protected buchSchalten(l: KampagnenEbene): void {
+    const stapel = this.stapel();
+    const aus = this.abgeschaltet();
+    if (l.inPlay) {
+      const ohne = stapel.filter((id) => id !== l.id);
+      if (this.ueberGruppe(l)) void this.schreiben(ohne, undefined, [...aus, l.id]);
+      else void this.schreiben(ohne);
+    } else if (this.ueberGruppe(l) || l.off) {
+      const ohne = aus.filter((id) => id !== l.id);
+      /* Bringt nach dem Zurücknehmen keine Gruppe es, kommt es für sich dazu. */
+      if (l.groups.some((g) => this.nachId().get(g)?.inPlay)) void this.schreiben(stapel, undefined, ohne);
+      else void this.schreiben(null, l.id);
+    } else {
+      void this.schreiben(null, l.id);
+    }
+  }
+
+  private abgeschaltet(): string[] {
+    return (this.daten()?.layers ?? []).filter((x) => x.off).map((x) => x.id);
   }
 
   /** Die Namen der Vergleichsebenen (T-092). */
@@ -452,7 +650,8 @@ export class KampagnenEbenenListe {
    *  bleiben, wo sie sind. */
   protected schieben(l: KampagnenEbene, um: 1 | -1): void {
     const s = this.stapel();
-    const buch = new Set((this.daten()?.layers ?? []).filter((x) => x.group).map((x) => x.id));
+    const oben = new Set(this.oben().map((x) => x.id));
+    const buch = new Set(s.filter((id) => !oben.has(id)));
     const i = s.indexOf(l.id);
     let j = i + um;
     while (j >= 0 && j < s.length && buch.has(s[j]!)) j += um;
@@ -461,11 +660,11 @@ export class KampagnenEbenenListe {
     void this.schreiben(s);
   }
 
-  private async schreiben(stapel: string[] | null, dazu?: string): Promise<void> {
+  private async schreiben(stapel: string[] | null, dazu?: string, off?: string[]): Promise<void> {
     const c = this.kampagne();
     this.laeuft.set(true);
     try {
-      if (stapel) await this.api.setCampaignLayers(c, stapel);
+      if (stapel) await this.api.setCampaignLayers(c, stapel, off);
       else if (dazu) await this.api.activateLayer(c, dazu);
       await this.laden(c);
       this.geschaltet.emit();

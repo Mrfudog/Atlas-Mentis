@@ -18,10 +18,10 @@ import type { Knoten } from './copy.js';
 import { fassungen, herkunft, vereineGleiche } from './doppel.js';
 import { angriffeVereinen } from './arten/angriff.js';
 import { KOPIE_VON, loeseKopien } from './copy.js';
-import type { Auswahl, Datenstand } from './lesen.js';
-import { ARTEN_WEG, ausschluss, quelleVon } from './lesen.js';
+import type { Auswahl, Datenstand, Quelle } from './lesen.js';
+import { ARTEN_WEG, ausschluss, quelleVon, STICHTAG_2024 } from './lesen.js';
 import type { Bericht } from './werkbank.js';
-import { buchEbeneId, Werkbank, zaehle } from './werkbank.js';
+import { buchEbeneId, gruppeEbeneId, Werkbank, zaehle } from './werkbank.js';
 import type { Zuordnung } from './zuordnung.js';
 
 /** Die Reihenfolge aus Abgleich §4.2 — jede spätere Art zeigt auf frühere. */
@@ -41,6 +41,38 @@ export const EBENE = 'D&D 5e (2014)';
 
 /** Die drei Grundregelwerke — je eine Ebene wie jedes Buch, gruppiert als `core`. */
 export const KERN = ['PHB', 'MM', 'DMG'];
+
+/**
+ * **Die Gruppen der Buchebenen** (T-088, E-022 b): je Gruppe eine Ebene
+ * mit `kind: 'group'`, an der die Bücher mit `partOf` hängen. Die
+ * Reihenfolge ist die der Kampagnenseite. Schlüssel, Name und ein Satz,
+ * was darin steht.
+ */
+export const GRUPPEN: [string, string, string][] = [
+  ['core', 'Core rules', "The three core rulebooks: Player's Handbook, Monster Manual and Dungeon Master's Guide."],
+  ['supplement', 'Supplements', 'Rule books that add options, monsters and items to the core rules.'],
+  ['setting', 'Settings', 'Books that describe a world or a plane, with the rules that belong to it.'],
+  ['adventure', 'Adventures', 'Published adventures: chapters, scenes, encounters and maps.'],
+  ['ua', 'Unearthed Arcana', 'Playtest material, not final rules.'],
+  ['2024', '2024 rules', 'The revised fifth edition of 2024 and the books built on it.'],
+  ['other', 'Screens & other', 'Screens, recipes and everything else that fits no other group.'],
+];
+
+/** In welche Gruppe ein Buch gehört — aus der Gruppe in 5e.tools, dem Erscheinen und dem Kürzel. */
+export function gruppeVon(q: string, meta: Quelle | undefined): string {
+  const k = q.toLowerCase();
+  if (meta?.art === 'adventure') return 'adventure';
+  if (/^ua/.test(k) || meta?.group === 'prerelease') return 'ua';
+  if (['xphb', 'xmm', 'xdmg'].includes(k) || (meta?.published ?? '') >= STICHTAG_2024) return '2024';
+  if (KERN.includes(meta?.id ?? q) || meta?.group === 'core') return 'core';
+  if (meta?.group === 'setting' || meta?.group === 'setting-alt') return 'setting';
+  if (!meta?.group || meta.group === 'supplement' || meta.group === 'supplement-alt') return 'supplement';
+  return 'other';
+}
+
+/** „1–5" aus den Stufen eines Abenteuers. */
+const stufenText = (l: Quelle['level']): string =>
+  l?.start ? (l.end && l.end !== l.start ? `${l.start}–${l.end}` : String(l.start)) : '';
 
 /** Begleittexte, die an einen Artikel gehen (`Lore`). */
 const FLUFF = ['monsterFluff', 'raceFluff', 'backgroundFluff', 'classFluff', 'subclassFluff'];
@@ -68,6 +100,19 @@ function kopieSchluessel(art: string): (e: Knoten) => string {
 export interface Ergebnis {
   datei: { format: string; registry: Registry & { components?: unknown }; entities: Entity[] };
   bericht: Bericht;
+}
+
+/** Der Text einer Buchebene: was sie ist, in einem Satz (T-088). */
+function buchProsa(name: string, kuerzel: string, meta: Quelle | undefined, regeln: string): string {
+  const art = meta?.art === 'adventure' ? 'an adventure' : 'a book';
+  const teile = [
+    meta?.published ? `published ${meta.published}` : '',
+    meta?.author ? `by ${meta.author}` : '',
+    `${regeln} rules`,
+    meta?.level?.start ? `for levels ${stufenText(meta.level)}` : '',
+    meta?.storyline ? `storyline ${meta.storyline}` : '',
+  ].filter(Boolean);
+  return `${name} (${kuerzel}) is ${art}, ${teile.join(', ')}. Taken over from 5e.tools; articles from it name ${kuerzel} as their source. Turn it on for a campaign to bring its articles into play.`;
 }
 
 export class Prueffehler extends Error {
@@ -113,9 +158,19 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
        Kapitel und Abschnitte, nicht nur Regeln. */
     wb.feld(l, 'Layer', 'kind', meta?.art === 'adventure' ? 'adventure' : 'book');
     wb.feld(l, 'Layer', 'order', 0);
-    wb.feld(l, 'Layer', 'version', '2014');
-    wb.feld(l, 'Tags', 'tags', [KERN.includes(meta?.id ?? q) ? 'core' : meta?.art === 'adventure' ? 'adventure' : 'sourcebook']);
-    wb.prosa(l, `${name} (${meta?.id ?? q}${meta?.published ? `, ${meta.published.slice(0, 4)}` : ''}), taken over from 5e.tools. Turn it on for a campaign to bring its articles into play.`);
+    /* Die Ebene beschreibt sich selbst (T-088, REQ-245): das Kürzel, unter
+       dem ihre Artikel die Quelle nennen, und was 5e.tools über das Buch weiss. */
+    const kuerzel = meta?.id ?? q;
+    const regeln = gruppeVon(q, meta) === '2024' ? '2024' : '2014';
+    wb.feld(l, 'Layer', 'abbreviation', kuerzel);
+    wb.feld(l, 'Layer', 'published', meta?.published);
+    wb.feld(l, 'Layer', 'author', meta?.author);
+    wb.feld(l, 'Layer', 'version', regeln);
+    wb.feld(l, 'Layer', 'levels', stufenText(meta?.level));
+    wb.feld(l, 'Layer', 'storyline', meta?.storyline);
+    wb.feld(l, 'Description', 'description', `${kuerzel} — ${name}`);
+    wb.feld(l, 'Tags', 'tags', [KERN.includes(kuerzel) ? 'core' : meta?.art === 'adventure' ? 'adventure' : 'sourcebook']);
+    wb.prosa(l, buchProsa(name, kuerzel, meta, regeln));
     buecher.set(k, l);
     return l;
   };
@@ -280,6 +335,28 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
     wb.entities.splice(wb.entities.indexOf(l), 1);
     zaehle(wb.bericht.typen, 'Layer', -1);
   }
+  /* Die Gruppen (T-088, E-022 b): je Gruppe, in der ein Buch steht, eine
+     Ebene; das Buch hängt mit `partOf` daran. Eine leere Gruppe bringt
+     nichts und wird nicht angelegt. */
+  const gruppen = new Map<string, Entity>();
+  for (const [k, l] of buecher) {
+    if (!belegt.has(l.id)) continue;
+    const meta = stand.quellen.get(k);
+    const g = gruppeVon(meta?.id ?? k, meta);
+    let gruppe = gruppen.get(g);
+    if (!gruppe) {
+      const [, name, text] = GRUPPEN.find(([x]) => x === g)!;
+      gruppe = wb.anlegen('Layer', name, `group|${g}`);
+      gruppe.id = gruppeEbeneId(g);
+      wb.feld(gruppe, 'Layer', 'kind', 'group');
+      wb.feld(gruppe, 'Layer', 'order', 0);
+      wb.feld(gruppe, 'Description', 'description', text);
+      wb.prosa(gruppe, `${text} A group of layers from 5e.tools: turning it on for a campaign puts every book in it into play; a single book inside can still be turned off.`);
+      gruppen.set(g, gruppe);
+    }
+    wb.kante(l, 'partOf', gruppe.id);
+  }
+
   fassungen(wb.entities, stand, wb.bericht, (e) => wb.nachdrucke.get(e.id) ?? []);
   herkunft(wb.entities, stand, wb.bericht, (e) => wb.nachdrucke.get(e.id) ?? []);
 

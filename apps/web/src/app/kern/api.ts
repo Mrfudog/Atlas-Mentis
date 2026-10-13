@@ -244,10 +244,29 @@ export interface KampagnenEbene {
   id: string;
   name: string;
   kind: string;
-  /** Bei einem Buch die Gruppe (`core`, `sourcebook`, `adventure`), sonst leer (T-081). */
-  group: string;
+  /** Die Gruppen, an denen die Ebene mit `partOf` hängt (T-088, E-022 b). */
+  groups: string[];
+  /** Bei einer Gruppe ihre Mitglieder, nach Erscheinen. */
+  members?: string[];
   articles: number;
+  /** Was sie enthält, je Art — gerechnet (D8). */
+  content: Record<string, number>;
+  /** Wie sie sich beschreibt (REQ-245): Kürzel, Erscheinen, Autor, Regelstand … */
+  about: {
+    abbreviation: string;
+    published: string;
+    author: string;
+    version: string;
+    levels: string;
+    storyline: string;
+    description: string;
+  };
+  /** Ausdrücklich aufgeschaltet (eine Kante `activates`). */
   active: boolean;
+  /** Im Spiel — ausdrücklich oder über eine aufgeschaltete Gruppe. */
+  inPlay: boolean;
+  /** Ausdrücklich aus, obwohl eine Gruppe sie brächte (T-088). */
+  off: boolean;
   /** Eine Vergleichsebene (T-092): nicht im Spiel, ihre Fassungen auf Wunsch sichtbar. */
   compare?: boolean;
   /** Die anderen Kampagnen, die sie aufschalten. */
@@ -830,12 +849,18 @@ export class Api {
   campaignLayers(campaign: string): Promise<KampagnenEbenen> {
     return this.call<KampagnenEbenen>(`/api/campaigns/${encodeURIComponent(campaign)}/layers`);
   }
-  /** Der ganze Stapel, von unten nach oben; was fehlt, ist danach aus. */
-  setCampaignLayers(campaign: string, layers: string[]): Promise<{ ok: true; layers: string[] }> {
+  /** Der ganze Stapel, von unten nach oben; was fehlt, ist danach aus.
+   *  `off` (T-088): die Ebenen, die trotz aufgeschalteter Gruppe aus sind;
+   *  ohne bleiben die Abschaltungen, wie sie sind. */
+  setCampaignLayers(campaign: string, layers: string[], off?: string[]): Promise<{ ok: true; layers: string[] }> {
     return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/layers`, {
       method: 'PUT',
-      body: JSON.stringify({ layers }),
+      body: JSON.stringify(off ? { layers, off } : { layers }),
     });
+  }
+  /** Quellenkürzel → voller Titel (T-088). */
+  sources(): Promise<{ sources: Record<string, string> }> {
+    return this.call<{ sources: Record<string, string> }>('/api/sources');
   }
   /** Die Vergleichsebenen und wer sie sieht (T-092); was fehlt, bleibt, wie es ist. */
   setCampaignCompare(

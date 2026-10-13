@@ -4,9 +4,9 @@ import { stageBases, validateEntity } from '@nw/model';
 import { seedRegistry } from '@nw/registry';
 import type { Knoten } from '../src/copy.js';
 import type { Datenstand } from '../src/lesen.js';
-import { ausschnitt, lauf } from '../src/lauf.js';
+import { ausschnitt, gruppeVon, lauf } from '../src/lauf.js';
 import { berichtMarkdown } from '../src/bericht.js';
-import { buchEbeneId } from '../src/werkbank.js';
+import { buchEbeneId, gruppeEbeneId } from '../src/werkbank.js';
 
 /** Ein kleiner Datenstand in der Form von 5e.tools — genug, um jede Stufe zu berühren. */
 function datenstand(): Datenstand {
@@ -104,8 +104,35 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
     /* Keine Ebene steht selbst in einer Ebene, und keine Buchebene ist leer. */
     for (const l of ebenen.values()) {
       expect(l.relations?.some((r) => r.type === 'inLayer') ?? false).toBe(false);
-      if (l !== ebene) expect(es.some((e) => e.relations?.some((r) => r.type === 'inLayer' && r.to === l.id))).toBe(true);
+      if (l === ebene) continue;
+      /* Eine Gruppe (T-088) enthält Ebenen, keine Artikel. */
+      const gruppe = (l.components['Layer'] as { kind?: string }).kind === 'group';
+      const inhalt = gruppe ? (e: Entity) => e.relations?.some((r) => r.type === 'partOf' && r.to === l.id) : (e: Entity) => e.relations?.some((r) => r.type === 'inLayer' && r.to === l.id);
+      expect(es.some((e) => inhalt(e)), l.name).toBe(true);
     }
+  });
+
+  it('hängt jedes Buch an seine Gruppe und beschreibt es (T-088, E-022 b)', () => {
+    const phb = finde(es, 'Layer', "Player's Handbook");
+    expect(phb.components['Layer']).toMatchObject({ abbreviation: 'PHB', published: '2014-08-19', version: '2014' });
+    expect(phb.components['Description']).toEqual({ description: "PHB — Player's Handbook" });
+    const kern = es.find((e) => e.id === gruppeEbeneId('core'))!;
+    expect(kern.name).toBe('Core rules');
+    expect(kern.components['Layer']).toMatchObject({ kind: 'group' });
+    expect((phb.relations ?? []).filter((r) => r.type === 'partOf').map((r) => r.to)).toEqual([kern.id]);
+    /* Ohne Mitglied keine Gruppe: Settings gibt es in diesem Stand nicht. */
+    expect(es.some((e) => e.id === gruppeEbeneId('setting'))).toBe(false);
+  });
+
+  it('ordnet Bücher nach der Gruppe in 5e.tools, dem Erscheinen und dem Kürzel', () => {
+    const q = (group: string, published = '2017-01-01', art: 'book' | 'adventure' = 'book') => ({ id: 'X', name: 'X', published, art, group });
+    expect(gruppeVon('PHB', undefined)).toBe('core');
+    expect(gruppeVon('XGE', q('supplement'))).toBe('supplement');
+    expect(gruppeVon('ERLW', q('setting'))).toBe('setting');
+    expect(gruppeVon('CoS', q('supplement', '2016-03-15', 'adventure'))).toBe('adventure');
+    expect(gruppeVon('UATest', q('prerelease'))).toBe('ua');
+    expect(gruppeVon('XPHB', q('core', '2024-09-17'))).toBe('2024');
+    expect(gruppeVon('DMS', q('screen'))).toBe('other');
   });
 
   it('vergibt Kanten-Ids, die im ganzen Bestand nur einmal vorkommen', () => {

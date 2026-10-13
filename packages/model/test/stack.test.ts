@@ -13,6 +13,11 @@ import {
   resolveArticle,
   unactivatedLayers,
   withStack,
+  groupMembers,
+  layersInGroup,
+  offLayers,
+  resolvedStack,
+  withOff,
 } from '../src/stack.js';
 import type { Entity, EntityId } from '../src/types.js';
 
@@ -188,5 +193,89 @@ describe('the stack computed once for many articles (T-086)', () => {
         expect([e.id, s.unactivated(e)]).toEqual([e.id, unactivatedLayers(entities, e, c)]);
       }
     }
+  });
+});
+
+/* Gruppen sind Ebenen, die Ebenen enthalten (E-022 b, T-088): „Core rules"
+   bringt das Spielerhandbuch und das Monsterbuch, „Supplements" Xanathar
+   und — verschachtelt — die Gruppe „Settings" mit Eberron. Ein Kreis
+   (Settings → Supplements) läuft nicht endlos. */
+describe('groups of layers (T-088)', () => {
+  const L = (id: string, kind: string, published: string, partOf: string[] = []): Entity => ({
+    id, name: id, interfaces: ['Layer'], components: { Layer: { kind, published } },
+    relations: partOf.map((to, i) => ({ id: `${id}~p${i}`, type: 'partOf', to })),
+  });
+  const R = (id: string, layer: string): Entity => ({
+    id, name: id, interfaces: ['Rule'], relations: [{ id: `${id}~l`, type: 'inLayer', to: layer }],
+  });
+  const K = (relations: Entity['relations']): Entity => ({ id: 'camp', name: 'Kampagne', interfaces: ['Campaign'], relations });
+  const basis: Entity[] = [
+    L('g_core', 'group', ''),
+    L('g_supp', 'group', '', ['g_sett']),
+    L('g_sett', 'group', '', ['g_supp']),
+    L('mm', 'book', '2014-09-30', ['g_core']),
+    L('phb', 'book', '2014-08-19', ['g_core']),
+    L('xge', 'book', '2017-11-21', ['g_supp']),
+    L('erlw', 'book', '2019-11-19', ['g_sett']),
+    L('lose', 'book', '2015-01-01'),
+    R('r_phb', 'phb'), R('r_mm', 'mm'), R('r_xge', 'xge'), R('r_erlw', 'erlw'), R('r_lose', 'lose'),
+  ];
+  const welt = (k: Entity) => new Map<EntityId, Entity>([...basis, k].map((e) => [e.id, e]));
+  const an = (...ids: string[]) => ids.map((to, i) => ({ id: `a_${to}`, type: 'activates', to, props: { order: (i + 1) * 10 } }));
+
+  it('finds the members, by publication date, and the nested ones without looping', () => {
+    const k = K([]);
+    const w = welt(k);
+    expect(groupMembers(w).get('g_core')).toEqual(['phb', 'mm']);
+    expect(layersInGroup(w, 'g_supp')).toEqual(['xge', 'g_sett', 'erlw']);
+    expect(layersInGroup(w, 'g_sett')).toEqual(['erlw', 'g_supp', 'xge']);
+  });
+
+  it('brings every member, recursively, at the rank of the group', () => {
+    const k = K(an('lose', 'g_core', 'g_supp'));
+    const w = welt(k);
+    expect(resolvedStack(w, k).map((l) => l.id)).toEqual(['lose', 'g_core', 'phb', 'mm', 'g_supp', 'xge', 'g_sett', 'erlw']);
+    const s = playStack(w, k);
+    for (const id of ['r_phb', 'r_mm', 'r_xge', 'r_erlw', 'r_lose']) expect(s.inPlay(w.get(id)!)).toBe(true);
+    /* Rang: die Gruppe gibt ihn, innen nach Erscheinen. */
+    expect(s.rank(w.get('r_mm')!)).toBeGreaterThan(s.rank(w.get('r_phb')!));
+    expect(s.rank(w.get('r_phb')!)).toBeGreaterThan(s.rank(w.get('r_lose')!));
+    expect(inPlay(w, w.get('r_erlw')!, k)).toBe(true);
+  });
+
+  it('takes one book out of a group that is on: off beats on', () => {
+    const k = K([...an('g_core', 'g_supp'), { id: 'off_mm', type: 'activates', to: 'mm', props: { mode: 'off' } }, { id: 'off_s', type: 'activates', to: 'g_sett', props: { mode: 'off' } }]);
+    const w = welt(k);
+    const s = playStack(w, k);
+    expect(s.inPlay(w.get('r_mm')!)).toBe(false);
+    expect(s.inPlay(w.get('r_phb')!)).toBe(true);
+    /* Was nur über die abgeschaltete Untergruppe käme, ist auch aus. */
+    expect(s.inPlay(w.get('r_erlw')!)).toBe(false);
+    expect(s.unactivated(w.get('r_mm')!)).toEqual(['mm']);
+    expect(offLayers(k)).toEqual(new Set(['mm', 'g_sett']));
+    /* Ohne aufgeschaltete Gruppe tut eine Abschaltung nichts. */
+    expect(activeStack(w, k).map((x) => x.layer.id)).toEqual(['g_core', 'g_supp']);
+  });
+
+  it('lets an explicit edge place a member itself', () => {
+    /* XGE ausdrücklich ganz unten, die Gruppe darüber: XGE bleibt unten. */
+    const k = K(an('xge', 'g_supp'));
+    const w = welt(k);
+    expect(resolvedStack(w, k).map((l) => l.id)).toEqual(['xge', 'g_supp', 'g_sett', 'erlw']);
+  });
+
+  it('keeps the off edges when the stack is rewritten, unless the layer is turned on itself', () => {
+    const k = withOff(K(an('g_core')), ['mm']);
+    expect(k.relations?.filter((r) => r.props?.['mode'] === 'off').map((r) => r.to)).toEqual(['mm']);
+    const weiter = withStack(k, ['g_core', 'g_supp']);
+    expect(offLayers(weiter)).toEqual(new Set(['mm']));
+    const selbst = withStack(k, ['g_core', 'mm']);
+    expect(offLayers(selbst).size).toBe(0);
+    expect(withOff(selbst, ['mm']).relations?.filter((r) => r.props?.['mode'] === 'off')).toEqual([]);
+  });
+
+  it('never makes a group the place for new articles', () => {
+    const k = K(an('g_core'));
+    expect(campaignLayer(welt(k), k)).toBeNull();
   });
 });

@@ -26,13 +26,26 @@ const EBENEN = 40;
 
 function bestand(): Entity[] {
   const out: Entity[] = [];
+  /* Die Bücher hängen in Gruppen (T-088): A hält 0–19, B hält 20–34 und
+     darin, verschachtelt, C mit 30–34. */
+  const gruppeVon = (l: number) => (l < 20 ? 'g_a' : l < 30 ? 'g_b' : l < 35 ? 'g_c' : '');
+  for (const [g, in_] of [['g_a', ''], ['g_b', ''], ['g_c', 'g_b']] as const) {
+    out.push({
+      id: g,
+      name: `Group ${g}`,
+      interfaces: ['Layer'],
+      components: { Identity: { name: `Group ${g}`, id: `layer-${g}`, aliases: [] }, Layer: { kind: 'group', order: 10 } },
+      relations: in_ ? [{ id: `${g}~p`, type: 'partOf', to: in_, props: {} }] : [],
+    });
+  }
   for (let l = 0; l < EBENEN; l += 1) {
+    const g = gruppeVon(l);
     out.push({
       id: `ly_${l}`,
       name: `Book ${l}`,
       interfaces: ['Layer'],
-      components: { Identity: { name: `Book ${l}`, id: `layer-${l}`, aliases: [] }, Layer: { kind: 'book', order: 10 } },
-      relations: [],
+      components: { Identity: { name: `Book ${l}`, id: `layer-${l}`, aliases: [] }, Layer: { kind: 'book', order: 10, published: `2014-${String((l % 12) + 1).padStart(2, '0')}-01` } },
+      relations: g ? [{ id: `ly_${l}~p`, type: 'partOf', to: g, props: {} }] : [],
     });
   }
   out.push({
@@ -40,15 +53,13 @@ function bestand(): Entity[] {
     name: 'Aus Nebel wacht',
     interfaces: ['Campaign'],
     components: { Identity: { name: 'Aus Nebel wacht', id: 'campaign-0001', aliases: [] } },
-    /* Drei Viertel der Bücher aufgeschaltet: der Rest zählt als ausgeblendet.
-       Fünf davon sind Vergleichsebenen (T-092) — nicht im Spiel. */
+    /* Drei Viertel der Bücher aufgeschaltet, über die Gruppen A und B ohne
+       die abgeschaltete Untergruppe C (T-088): der Rest zählt als
+       ausgeblendet. Fünf davon sind Vergleichsebenen (T-092) — nicht im Spiel. */
     relations: [
-      ...Array.from({ length: (EBENEN * 3) / 4 }, (_, l) => ({
-        id: `ac_${l}`,
-        type: 'activates',
-        to: `ly_${l}`,
-        props: { order: (l + 1) * 10 },
-      })),
+      { id: 'ac_a', type: 'activates', to: 'g_a', props: { order: 10 } },
+      { id: 'ac_b', type: 'activates', to: 'g_b', props: { order: 20 } },
+      { id: 'off_c', type: 'activates', to: 'g_c', props: { mode: 'off' } },
       ...Array.from({ length: 5 }, (_, l) => ({
         id: `cmp_${l}`,
         type: 'activates',
@@ -120,7 +131,15 @@ describe('a list over 20 000 articles (REQ-246)', () => {
     expect(fassungen.statusCode).toBe(200);
     expect(fassungen.json().versions.map((v: { entity: { id: string } }) => v.entity.id)).toEqual(['r_22']);
 
+    /* Die Kampagnenseite mit den Gruppen (T-088). */
+    t0 = performance.now();
+    const ebenen = await app.inject({ method: 'GET', url: '/api/campaigns/camp/layers', headers: { cookie } });
+    const msEbenen = performance.now() - t0;
+    expect(ebenen.statusCode).toBe(200);
+    expect(ebenen.json().layers.filter((l: { inPlay: boolean; kind: string }) => l.inPlay && l.kind === 'book')).toHaveLength(30);
+
     expect(msListe).toBeLessThan(5000);
+    expect(msEbenen).toBeLessThan(5000);
     expect(msUsage).toBeLessThan(5000);
     expect(msGruppiert).toBeLessThan(5000);
     expect(msFassungen).toBeLessThan(5000);

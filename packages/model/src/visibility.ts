@@ -186,7 +186,11 @@ export function campaignsOf(
     for (const r of e.relations ?? []) {
       /* Ein Vergleich schaltet nicht auf (T-092): wer eine Ebene nur zum
          Vergleichen nennt, macht sie nicht zu seiner oder zu einer gemeinsamen. */
-      if ((r.props as { mode?: unknown } | undefined)?.mode === 'compare') continue;
+      const mode = (r.props as { mode?: unknown } | undefined)?.mode;
+      if (mode === 'compare') continue;
+      /* Abgeschaltet (T-088) ebensowenig — und eine Gruppe macht ihre
+         Mitglieder nicht zu Eigentum: es zählt nur die ausdrückliche Kante. */
+      if (mode === 'off') continue;
       if (r.type === ACTIVATES_RELATION && ebenen.has(r.to)) out.add(e.id);
     }
   }

@@ -1,6 +1,7 @@
 import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Api, type ListenFrage, type Liste, type ListenZeile } from '../kern/api';
+import { QuelleText } from '../kern/quellen';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
 import { BEREICHE, bereichLabel } from '../kern/bereiche';
@@ -42,7 +43,7 @@ const OFFEN = 8;
  */
 @Component({
   selector: 'nw-kompendium',
-  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis],
+  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis, QuelleText],
   template: `
     <div class="seite" [class.mitvorschau]="!!filter.vorschau()">
       <aside class="filter" [class.offen]="filterOffen()" aria-label="Filters">
@@ -256,7 +257,13 @@ const OFFEN = 8;
                     @for (c of liste()!.columns; track c.ref) {
                       <td [class.zahlspalte]="c.kind === 'number'">{{ zelle(z.cols[c.ref], c.kind) }}</td>
                     }
-                    <td class="dim quelle">{{ z.source || z.layers.join(', ') }}</td>
+                    <td class="dim quelle">
+                      @if (z.source) {
+                        <nw-quelle [text]="z.source" />
+                      } @else {
+                        {{ z.layers.join(', ') }}
+                      }
+                    </td>
                   </tr>
                   @if (fassungenOffen().has(z.id)) {
                     @for (v of z.versions ?? []; track v.id) {
@@ -265,7 +272,13 @@ const OFFEN = 8;
                           <a [routerLink]="zielVon({ id: v.id, type: z.type })" (click)="link({ id: v.id, type: z.type }, $event)">{{ v.name }}</a>
                         </td>
                         <td [attr.colspan]="spaltenZahl() - 2" class="dim">{{ v.layers.join(', ') }}</td>
-                        <td class="dim quelle">{{ v.source || v.layers.join(', ') }}</td>
+                        <td class="dim quelle">
+                          @if (v.source) {
+                            <nw-quelle [text]="v.source" />
+                          } @else {
+                            {{ v.layers.join(', ') }}
+                          }
+                        </td>
                       </tr>
                     }
                   }

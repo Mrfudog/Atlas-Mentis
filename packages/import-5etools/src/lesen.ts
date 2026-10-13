@@ -75,6 +75,12 @@ export interface Quelle {
   name: string;
   published: string;
   art: 'book' | 'adventure';
+  /** Die Gruppe in 5e.tools (`core`, `supplement`, `setting`, `prerelease`, `screen` …) — für die Gruppen-Ebenen (T-088). */
+  group?: string;
+  author?: string;
+  /** Bei einem Abenteuer: der Handlungsstrang und die Stufen (T-088). */
+  storyline?: string;
+  level?: { start?: number; end?: number };
 }
 
 export interface Datenstand {
@@ -130,7 +136,18 @@ export function lies(datenPfad: string): Datenstand {
       for (const b of j[schluessel] ?? []) {
         const id = String(b['source'] ?? b['id'] ?? '');
         if (!id || quellen.has(id.toLowerCase())) continue;
-        quellen.set(id.toLowerCase(), { id, name: String(b['name'] ?? id), published: String(b['published'] ?? ''), art });
+        const stufen = b['level'] as { start?: unknown; end?: unknown } | undefined;
+        const zahl = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? x : undefined);
+        quellen.set(id.toLowerCase(), {
+          id,
+          name: String(b['name'] ?? id),
+          published: String(b['published'] ?? ''),
+          art,
+          ...(typeof b['group'] === 'string' ? { group: b['group'] } : {}),
+          ...(typeof b['author'] === 'string' ? { author: b['author'] } : {}),
+          ...(typeof b['storyline'] === 'string' ? { storyline: b['storyline'] } : {}),
+          ...(stufen && typeof stufen === 'object' ? { level: { start: zahl(stufen.start), end: zahl(stufen.end) } } : {}),
+        });
       }
     } catch {
       /* ohne Bücherliste wird nur nach UA gesiebt */

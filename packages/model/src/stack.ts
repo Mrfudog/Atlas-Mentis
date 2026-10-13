@@ -22,6 +22,15 @@
  *    aufgeschalteten Ebene heraus — eine, die immer gälte, wäre eine
  *    Bearbeitung. Die spezifischste gewinnt; die Kette wird bis zum Ende
  *    verfolgt, aber nicht im Kreis.
+ *  - Eine **Gruppe** (`Layer.kind: 'group'`, E-022 b, T-088) ist eine
+ *    Ebene, deren Mitglieder mit `partOf` an ihr hängen. Schaltet die
+ *    Kampagne sie auf, sind alle Mitglieder im Spiel, verschachtelt auch
+ *    die Mitglieder der Mitglieder (nicht im Kreis). Den Rang gibt die
+ *    Gruppe; darin stehen sie nach Erscheinen (`Layer.published`), das
+ *    neuere höher. **Eine ausdrückliche Kante schlägt die Gruppe:** eine
+ *    Ebene, die die Kampagne selbst aufschaltet, steht an ihrer eigenen
+ *    Stelle, und eine mit `activates` `mode: 'off'` ist aus, auch wenn
+ *    eine Gruppe sie brächte — aus schlägt an.
  */
 
 import type { Entity, EntityId } from './types.js';
@@ -36,6 +45,16 @@ export const OVERRIDES_RELATION = 'overrides';
  */
 export const COMPARE_MODE = 'compare';
 export const LAYER_COMPONENT = 'Layer';
+/** Eine Ebene, die andere Ebenen enthält (E-022 b, T-088). */
+export const GROUP_KIND = 'group';
+/**
+ * **Aus, obwohl eine Gruppe es brächte** (T-088): eine Kante `activates`
+ * mit `props.mode: 'off'` nimmt genau diese Ebene (und was nur über sie
+ * hereinkäme) aus dem Stapel. Ohne aufgeschaltete Gruppe tut sie nichts.
+ */
+export const OFF_MODE = 'off';
+/** Die Kante, mit der eine Ebene an ihrer Gruppe hängt (E-022 b). */
+export const GROUP_RELATION = 'partOf';
 /** Die Einstellung, die sagt, welche Kampagne läuft. */
 export const CAMPAIGN_SETTING = 'campaign';
 
@@ -48,8 +67,75 @@ const kanten = (e: Entity | undefined, type: string): Rel[] =>
 export const isCompareEdge = (r: { type: string; props?: unknown }): boolean =>
   r.type === ACTIVATES_RELATION && (r.props as { mode?: unknown } | undefined)?.mode === COMPARE_MODE;
 
-/** Die Kanten, die eine Ebene wirklich aufschalten — ohne die Vergleiche. */
-const aufschalten = (e: Entity | undefined): Rel[] => kanten(e, ACTIVATES_RELATION).filter((r) => !isCompareEdge(r));
+/** Schaltet diese Kante `activates` eine Ebene ausdrücklich ab (T-088)? */
+export const isOffEdge = (r: { type: string; props?: unknown }): boolean =>
+  r.type === ACTIVATES_RELATION && (r.props as { mode?: unknown } | undefined)?.mode === OFF_MODE;
+
+/** Die Kanten, die eine Ebene wirklich aufschalten — ohne Vergleiche und Abschaltungen. */
+const aufschalten = (e: Entity | undefined): Rel[] =>
+  kanten(e, ACTIVATES_RELATION).filter((r) => !isCompareEdge(r) && !isOffEdge(r));
+
+const layerKarte = (e: Entity | undefined): Record<string, unknown> =>
+  (e?.components?.[LAYER_COMPONENT] as Record<string, unknown> | undefined) ?? {};
+
+/** Ist diese Ebene eine Gruppe (E-022 b)? Beschreibung wie jedes `kind` — aber eine, die etwas enthält. */
+export const isGroupLayer = (e: Entity | undefined): boolean =>
+  (e?.interfaces ?? [])[0] === LAYER_COMPONENT && layerKarte(e)['kind'] === GROUP_KIND;
+
+/**
+ * **Die Mitglieder jeder Gruppe**, einmal gerechnet (T-088): Gruppen-Id →
+ * die Ebenen, die mit `partOf` an ihr hängen, nach Erscheinen
+ * (`Layer.published`, ohne Datum zuletzt), dann nach Name. Gezählt wird
+ * nur, was selbst eine Ebene ist und an einer Gruppe hängt.
+ */
+export function groupMembers(entities: Map<EntityId, Entity>): Map<EntityId, EntityId[]> {
+  const roh = new Map<EntityId, Entity[]>();
+  for (const e of entities.values()) {
+    if ((e.interfaces ?? [])[0] !== LAYER_COMPONENT) continue;
+    for (const r of kanten(e, GROUP_RELATION)) {
+      if (!isGroupLayer(entities.get(r.to))) continue;
+      const l = roh.get(r.to) ?? [];
+      if (!l.includes(e)) l.push(e);
+      roh.set(r.to, l);
+    }
+  }
+  const datum = (e: Entity) => String(layerKarte(e)['published'] ?? '') || '9999';
+  const out = new Map<EntityId, EntityId[]>();
+  for (const [g, l] of roh) {
+    l.sort((a, b) => (datum(a) < datum(b) ? -1 : datum(a) > datum(b) ? 1 : (a.name ?? '').localeCompare(b.name ?? '')));
+    out.set(g, l.map((e) => e.id));
+  }
+  return out;
+}
+
+/**
+ * **Alle Ebenen in einer Gruppe**, verschachtelt, ohne die Gruppe selbst
+ * und nicht im Kreis (T-088) — in der Reihenfolge, in der sie im Stapel
+ * stünden.
+ */
+export function layersInGroup(
+  entities: Map<EntityId, Entity>,
+  groupId: EntityId,
+  members: Map<EntityId, EntityId[]> = groupMembers(entities),
+): EntityId[] {
+  const out: EntityId[] = [];
+  const gesehen = new Set<EntityId>([groupId]);
+  const lauf = (g: EntityId) => {
+    for (const m of members.get(g) ?? []) {
+      if (gesehen.has(m)) continue;
+      gesehen.add(m);
+      out.push(m);
+      lauf(m);
+    }
+  };
+  lauf(groupId);
+  return out;
+}
+
+/** Die Ebenen, die die Kampagne ausdrücklich abschaltet (T-088). */
+export function offLayers(campaign: Entity | null): Set<EntityId> {
+  return new Set(kanten(campaign ?? undefined, ACTIVATES_RELATION).filter(isOffEdge).map((r) => r.to));
+}
 
 /** Die laufende Kampagne: die Einstellung, sonst die erste im Bestand, sonst keine. */
 export function currentCampaign(
@@ -70,7 +156,12 @@ export interface StackEntry {
   order: number;
 }
 
-/** Die aufgeschalteten Ebenen der Kampagne, von unten nach oben. */
+/**
+ * Die Ebenen, die die Kampagne **ausdrücklich** aufschaltet, von unten
+ * nach oben — so, wie sie an ihren Kanten stehen und geschrieben werden.
+ * Eine Gruppe steht hier als eine Ebene; was sie bringt, sagt
+ * `resolvedStack`.
+ */
 export function activeStack(entities: Map<EntityId, Entity>, campaign: Entity | null): StackEntry[] {
   if (!campaign) return [];
   const out: StackEntry[] = [];
@@ -85,6 +176,58 @@ export function activeStack(entities: Map<EntityId, Entity>, campaign: Entity | 
     out.push({ layer, order });
   }
   return out.sort((a, b) => a.order - b.order);
+}
+
+/**
+ * **Der Stapel mit aufgelösten Gruppen** (T-088, E-022 b), von unten nach
+ * oben: an der Stelle einer Gruppe die Gruppe selbst und darüber ihre
+ * Mitglieder (verschachtelt, nach Erscheinen). Eine Ebene, die die
+ * Kampagne selbst aufschaltet, steht nur an ihrer eigenen Stelle; eine,
+ * die sie abschaltet (`mode: 'off'`), steht gar nicht da, und was nur
+ * über sie käme, auch nicht. Bringen zwei Gruppen dieselbe Ebene, zählt
+ * die höhere.
+ *
+ * Einmal je Anfrage: die Mitglieder werden einmal gesammelt
+ * (`groupMembers`), danach ist jeder Schritt ein Nachschlagen (T-086).
+ */
+export function resolvedStack(
+  entities: Map<EntityId, Entity>,
+  campaign: Entity | null,
+  members?: Map<EntityId, EntityId[]>,
+): Entity[] {
+  const stapel = activeStack(entities, campaign);
+  if (!stapel.length) return [];
+  const aus = offLayers(campaign);
+  const ausdruecklich = new Set(stapel.map((x) => x.layer.id));
+  const gruppen = stapel.some((x) => isGroupLayer(x.layer)) ? (members ?? groupMembers(entities)) : new Map<EntityId, EntityId[]>();
+  /* Eine Map behält die Einfügereihenfolge; wer später (höher) noch
+     einmal kommt, wird ans Ende gesetzt. */
+  const rang = new Map<EntityId, Entity>();
+  const setze = (e: Entity) => {
+    rang.delete(e.id);
+    rang.set(e.id, e);
+  };
+  for (const { layer } of stapel) {
+    if (aus.has(layer.id)) continue;
+    setze(layer);
+    if (!isGroupLayer(layer)) continue;
+    const gesehen = new Set<EntityId>([layer.id]);
+    const lauf = (g: EntityId) => {
+      for (const m of gruppen.get(g) ?? []) {
+        if (gesehen.has(m) || aus.has(m)) continue;
+        gesehen.add(m);
+        const e = entities.get(m);
+        if (!e) continue;
+        /* Die ausdrückliche Kante schlägt die Gruppe: die Ebene steht an
+           ihrer eigenen Stelle — ihre Mitglieder bringt sie dort selbst. */
+        if (ausdruecklich.has(m)) continue;
+        setze(e);
+        lauf(m);
+      }
+    };
+    lauf(layer.id);
+  }
+  return [...rang.values()];
 }
 
 /**
@@ -103,10 +246,10 @@ export function compareLayers(entities: Map<EntityId, Entity>, campaign: Entity 
     .filter((e): e is Entity => !!e);
 }
 
-/** Ebenen-Id → Rang 1..n; höher heisst spezifischer. */
+/** Ebenen-Id → Rang 1..n; höher heisst spezifischer. Gruppen sind aufgelöst (T-088). */
 export function activeLayerRanks(entities: Map<EntityId, Entity>, campaign: Entity | null): Map<EntityId, number> {
   const m = new Map<EntityId, number>();
-  activeStack(entities, campaign).forEach((x, i) => m.set(x.layer.id, i + 1));
+  resolvedStack(entities, campaign).forEach((l, i) => m.set(l.id, i + 1));
   return m;
 }
 
@@ -203,6 +346,14 @@ export function playStack(entities: Map<EntityId, Entity>, campaign: Entity | nu
   }
   const rang = activeLayerRanks(entities, campaign);
   const vergleich = new Set(compareLayers(entities, campaign).map((l) => l.id));
+  /* Eine Gruppe zum Vergleich vergleicht ihre Mitglieder (T-088), soweit
+     sie nicht ohnehin im Spiel sind. */
+  if ([...vergleich].some((id) => isGroupLayer(entities.get(id)))) {
+    const gruppen = groupMembers(entities);
+    for (const id of [...vergleich]) {
+      for (const m of layersInGroup(entities, id, gruppen)) if (!rang.has(m)) vergleich.add(m);
+    }
+  }
   const ueberschrieben = new Set<EntityId>();
   for (const o of entities.values()) {
     const ziele = kanten(o, OVERRIDES_RELATION);
@@ -261,6 +412,8 @@ export function campaignLayer(entities: Map<EntityId, Entity>, campaign: Entity 
   const stapel = activeStack(entities, campaign);
   for (let i = stapel.length - 1; i >= 0; i -= 1) {
     const ebene = stapel[i]!.layer;
+    /* Eine Gruppe ist kein Ort für Artikel (T-088). */
+    if (isGroupLayer(ebene)) continue;
     let andere = false;
     for (const e of entities.values()) {
       if (e.id === campaign.id || (e.interfaces ?? [])[0] !== CAMPAIGN_TYPE) continue;
@@ -323,10 +476,11 @@ export function campaignsActivating(entities: Map<EntityId, Entity>, layerId: En
 export function withStack(campaign: Entity, layerIds: readonly EntityId[]): Entity {
   const alt = aufschalten(campaign);
   const ins = new Set(layerIds);
-  /* Die Vergleiche bleiben stehen (T-092) — ausser für eine Ebene, die
-     jetzt im Spiel ist: die vergleicht sich ohnehin. */
+  /* Die Vergleiche und Abschaltungen bleiben stehen (T-092, T-088) —
+     ausser für eine Ebene, die jetzt ausdrücklich im Spiel ist: die
+     vergleicht sich ohnehin, und ihre Kante schlägt jede Abschaltung. */
   const andere = (campaign.relations ?? []).filter(
-    (r) => r.type !== ACTIVATES_RELATION || (isCompareEdge(r) && !ins.has(r.to)),
+    (r) => r.type !== ACTIVATES_RELATION || ((isCompareEdge(r) || isOffEdge(r)) && !ins.has(r.to)),
   );
   const neu: Rel[] = [...new Set(layerIds)].map((to, i) => ({
     /* Eine Kante, die bleibt, behält ihre Id. */
@@ -355,6 +509,27 @@ export function withCompare(campaign: Entity, layerIds: readonly EntityId[]): En
       type: ACTIVATES_RELATION,
       to,
       props: { mode: COMPARE_MODE, order: (i + 1) * 10 },
+    }));
+  return { ...campaign, relations: [...andere, ...neu] };
+}
+
+/**
+ * Die abgeschalteten Ebenen einer Kampagne neu (T-088): je Ebene eine
+ * Kante `activates` mit `mode: 'off'` — „die Gruppe ist an, dieses Buch
+ * darin nicht". Eine Ebene, die die Kampagne ausdrücklich aufschaltet,
+ * wird nicht zugleich abgeschaltet; die übrigen Kanten bleiben.
+ */
+export function withOff(campaign: Entity, layerIds: readonly EntityId[]): Entity {
+  const imSpiel = new Set(aufschalten(campaign).map((r) => r.to));
+  const alt = kanten(campaign, ACTIVATES_RELATION).filter(isOffEdge);
+  const andere = (campaign.relations ?? []).filter((r) => !isOffEdge(r));
+  const neu: Rel[] = [...new Set(layerIds)]
+    .filter((to) => !imSpiel.has(to))
+    .map((to) => ({
+      id: alt.find((r) => r.to === to)?.id ?? `${ACTIVATES_RELATION}-${OFF_MODE}-${to}`,
+      type: ACTIVATES_RELATION,
+      to,
+      props: { mode: OFF_MODE },
     }));
   return { ...campaign, relations: [...andere, ...neu] };
 }
