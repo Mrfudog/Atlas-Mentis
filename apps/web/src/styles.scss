@@ -1,28 +1,48 @@
-/* Ruhige Farben, weil die Seite am Tisch neben Kerzenlicht und Würfeln
-   steht und nicht um Aufmerksamkeit konkurrieren soll. Helles und dunkles
-   Schema, beides über dieselben Marken. */
+/* Pergament, wie auf dem Design-Canvas (Kompendium, Artikel im Buchstil):
+   die Seite steht am Tisch neben Würfeln und Bögen und soll sich lesen wie
+   ein Regelbuch, nicht wie ein Verwaltungswerkzeug. Hell und dunkel über
+   dieselben Marken — die Bausteine fragen nur die Marken, nie eine Farbe. */
 :root {
-  --bg: #fbfaf7;
-  --surface: #ffffff;
-  --line: #ddd8cc;
-  --line2: #eeeae2;
-  --ink: #23201b;
-  --dim: #7b756a;
-  --accent: #6b5e9c;
-  --link: #3d5a80;
+  --bg: #efe4cc; /* die Seite */
+  --surface: #fbf6ec; /* Tabellen, Kästen */
+  --bar: #f8f1e1; /* Kopfleiste, Filterleiste */
+  --paper: #fdf1dc; /* das Blatt eines Artikels */
+  --line: #cdbb98;
+  --line2: #e6d3b0;
+  --chip: #eadcc0;
+  --ink: #2b1d12;
+  --dim: #6a5642;
+  --accent: #8c1c13; /* Rot der Überschriften und Knöpfe */
+  --accent-ink: #fbf6ec;
+  --heading: #7a200d;
+  --gold: #c8822e;
+  --rule: #922610;
+  --hover: #f6e2bf;
+  --link: #8c1c13;
   --warn: #a8441f;
+  --serif: 'Alegreya', Georgia, serif;
+  --caps: 'Alegreya SC', Georgia, serif;
+  --sans: 'Alegreya Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #14161a;
-    --surface: #1b1e24;
-    --line: #2e333c;
-    --line2: #23272e;
-    --ink: #e6e3d8;
-    --dim: #8e8879;
-    --accent: #a094d6;
-    --link: #8ab0d8;
+    --bg: #1c1712;
+    --surface: #251e17;
+    --bar: #211a14;
+    --paper: #2a2119;
+    --line: #4a3d2e;
+    --line2: #382d22;
+    --chip: #3a2e22;
+    --ink: #eadfca;
+    --dim: #b09c80;
+    --accent: #d0675a;
+    --accent-ink: #1c1712;
+    --heading: #e08a74;
+    --gold: #b77a33;
+    --rule: #a5452f;
+    --hover: #3a2c1c;
+    --link: #e08a74;
     --warn: #d98a63;
   }
 }
@@ -35,11 +55,43 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  font-family: var(--sans);
   font-size: 16px;
   line-height: 1.5;
 }
 a {
   color: var(--link);
+}
+a:hover {
+  color: var(--heading);
+}
+button {
+  min-height: 40px;
+  padding: 0 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+button.pri {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+button[disabled] {
+  opacity: 0.6;
+  cursor: default;
+}
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
 }

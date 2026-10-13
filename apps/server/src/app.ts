@@ -14,6 +14,7 @@ import {
   EntitySchema,
   RegistrySchema,
   articleVisible,
+  backlinks,
   currentCampaign,
   inPlay,
   detachInstance,
@@ -24,6 +25,8 @@ import {
   resolveInstance,
   thinInstance,
   stageBases,
+  summaryFields,
+  summaryOf,
   validateEntity,
 } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
@@ -477,12 +480,12 @@ export function buildApp({
    * steht im Modellpaket, weil es für Server und Oberfläche gleichermassen
    * gilt und es nur einmal geben darf.
    */
-  async function sieve(request: FastifyRequest, entities: Entity[]): Promise<Entity[]> {
+  async function sieve(request: FastifyRequest, entities: Entity[], bestand?: Entity[]): Promise<Entity[]> {
     const user = await viewerOf(request);
     /* **Eine Instanz geht aufgelöst hinaus**, mit ihrer Vorlage darin und
        der Angabe, welche Felder von dort kommen. Gespeichert ist an ihr nur,
        was abweicht; ohne Auflösung hätte Wache 1 keine Trefferpunkte. */
-    const roh = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const roh = new Map((bestand ?? (await repo.listEntities())).map((e) => [e.id, e]));
     const registry = await repo.getRegistry();
     /* **Die nullte Frage: steht der Artikel im Stapel?** (E2, A2) Was eine
        aufgeschaltete Ebene herausnimmt oder eine spezifischere Fassung
@@ -531,7 +534,40 @@ export function buildApp({
       .map((e) => redactEntity(registry, alle, e, augen, gmFields));
   }
 
-  app.get('/api/entities', async (request) => sieve(request, await repo.listEntities()));
+  app.get<{ Querystring: { as?: string } }>('/api/entities', async (request) => {
+    /* Die Liste ist zugleich der Zusammenhang, gegen den gesiebt wird —
+       einmal holen, nicht zweimal. */
+    const alle = await repo.listEntities();
+    const gesiebt = await sieve(request, alle, alle);
+    /* `?as=summary`: die Kurzfassung für Liste, Verweise und Auswahlen.
+       Gekürzt wird nach dem Sieb, damit ein Deckname der Deckname bleibt.
+       Ohne die Angabe bleibt es der ganze Bestand — Ausfuhr und Prüfungen
+       lesen ihn so. */
+    if (request.query.as !== 'summary') return gesiebt;
+    const felder = summaryFields(await repo.getRegistry());
+    return gesiebt.map((e) => summaryOf(e, felder));
+  });
+
+  /**
+   * Wer auf diesen Artikel zeigt. Die Gegenrichtung ist eine Abfrage (K1);
+   * gestellt wurde sie bisher in der Oberfläche, über den ganzen Bestand —
+   * den hat sie jetzt nicht mehr. Gefragt wird nur unter dem, was der
+   * Betrachter sehen darf: eine Kante von einem verborgenen Artikel verriete
+   * ihn.
+   */
+  app.get<{ Params: { id: string } }>('/api/entities/:id/backlinks', async (request, reply) => {
+    const alle = await repo.listEntities();
+    const gesiebt = await sieve(request, alle, alle);
+    if (!gesiebt.some((e) => e.id === request.params.id)) {
+      return reply.code(404).send({ error: 'Nicht gefunden' });
+    }
+    const registry = await repo.getRegistry();
+    const felder = summaryFields(registry);
+    return backlinks(registry, gesiebt, request.params.id).map((b) => ({
+      from: summaryOf(b.from, felder),
+      relation: b.relation,
+    }));
+  });
 
   app.get<{ Params: { id: string } }>('/api/entities/:id', async (request, reply) => {
     const entity = await repo.getEntity(request.params.id);

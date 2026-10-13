@@ -11,7 +11,7 @@
  */
 
 import { Injectable } from '@angular/core';
-import type { Entity, Registry } from '@nw/model';
+import type { Entity, Registry, Relation } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -21,6 +21,12 @@ export class ApiError extends Error {
   ) {
     super(message);
   }
+}
+
+/** Eine Kante, die auf einen Artikel zeigt — mit der Kurzfassung ihres Ursprungs. */
+export interface Rueckbezug {
+  from: Entity;
+  relation: Relation;
 }
 
 export interface Me {
@@ -82,8 +88,12 @@ export class Api {
   registry(): Promise<Registry> {
     return this.call<Registry>('/api/registry');
   }
+  /** Die Kurzfassung des Bestands (`summaryOf`), nicht die Artikel selbst. */
   entities(): Promise<Entity[]> {
-    return this.call<Entity[]>('/api/entities');
+    return this.call<Entity[]>('/api/entities?as=summary');
+  }
+  backlinks(id: string): Promise<Rueckbezug[]> {
+    return this.call<Rueckbezug[]>(`/api/entities/${encodeURIComponent(id)}/backlinks`);
   }
   entity(id: string): Promise<Entity> {
     return this.call<Entity>(`/api/entities/${encodeURIComponent(id)}`);
