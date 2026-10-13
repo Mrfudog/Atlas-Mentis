@@ -73,8 +73,10 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   Kopfleiste mit den Bereichen, Kompendium und Bereiche (Filter in der
   Seitenleiste, aus der Kurzfassung `?as=summary`) und der Artikel im
   Buchstil (geholt beim Öffnen, Ansicht `full`) stehen, dazu die Boards
-  (`boards/`: je Geschichtsartikel eines, Karten als `placed`-Kanten);
-  Karte, Initiative und Spiel noch nicht;
+  (`boards/`: je Geschichtsartikel eines, Karten als `placed`-Kanten) und
+  das Register (`/registry`: Typen, Kanten, Listen anlegen und ändern —
+  Verwaltung und Leitung der laufenden Kampagne; gezählt wird vorher über
+  `/api/registry/usage`); Karte, Initiative und Spiel noch nicht;
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
   Vorlage je Artikelart. **Zurückgehalten wird am Server** (`redactEntity`) —
   was hier ankommt, darf angezeigt werden, und eine zweite Prüfung in der

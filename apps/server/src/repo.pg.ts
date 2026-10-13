@@ -8,7 +8,7 @@
 
 import type { Pool } from 'pg';
 import { isTableRole } from '@nw/model';
-import type { Entity, InterfaceDef, Registry, Relation, TableRole } from '@nw/model';
+import type { Entity, InterfaceDef, Registry, Relation, RelationDef, TableRole } from '@nw/model';
 import type { Repository, SessionRow, StoredUser } from './repo.js';
 import type { Invite, User } from './auth.js';
 
@@ -56,6 +56,13 @@ export class PgRepository implements Repository {
         owned: Boolean(r['owned']),
         cardinality: (r['cardinality'] as 'one' | 'many') ?? 'many',
         section: (r['section'] as string) ?? undefined,
+        /* An welchem Ende sie sich wie ein Feld liest (Migration 022). */
+        asField: (r['as_field'] as RelationDef['asField']) ?? undefined,
+        /* Was die Kante selbst trägt — geschrieben wurde es immer, gelesen
+           bis zur Migration 022 nie. Ein leeres Schema ist keines. */
+        props: Object.keys((r['props'] as { properties?: object } | null)?.properties ?? {}).length
+          ? (r['props'] as RelationDef['props'])
+          : undefined,
       };
     }
     for (const r of views.rows) {
@@ -116,11 +123,11 @@ export class PgRepository implements Repository {
         await client.query('delete from relation_def');
         for (const [type, def] of Object.entries(value as Registry['relations'])) {
           await client.query(
-            `insert into relation_def(type,label,inverse_label,from_ifaces,to_ifaces,owned,cardinality,section,props)
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+            `insert into relation_def(type,label,inverse_label,from_ifaces,to_ifaces,owned,cardinality,section,props,as_field)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
             [type, def.label, def.inverseLabel, def.from ?? ['*'], def.to ?? ['*'],
              def.owned ?? false, def.cardinality ?? 'many', def.section ?? null,
-             JSON.stringify(def.props ?? {})],
+             JSON.stringify(def.props ?? {}), def.asField ?? null],
           );
         }
       } else if (part === 'views') {

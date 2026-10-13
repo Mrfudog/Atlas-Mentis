@@ -226,7 +226,8 @@ Durchstich in CI prüft `PgRepository` gegen eine echte Postgres.
 | `POST /api/campaigns/:c/members` · `PUT`/`DELETE …/members/:user` | Konto beim Namen dazunehmen, Rolle setzen, herausnehmen — `gm` und Verwaltung, nie die eigene Rolle (ausser Verwaltung) |
 | `PUT /api/campaigns/:c/members/:user/actors` | welche Figuren ein Mitglied führt (`app_user_actor`); keine Figur einer anderen Kampagne |
 | `GET /api/users` | die Konten der Installation — nur die Verwaltung |
-| `GET /api/registry` · `PUT /api/registry/:part` | das Register lesen; ändern nur die Leitung |
+| `GET /api/registry` · `PUT /api/registry/:part` | das Register lesen; ändern die Verwaltung und die Leitung (`gm`) der laufenden Kampagne — `/api/me` sagt es mit `registry` |
+| `GET /api/registry/usage` | was der Bestand an jeder Zeile trägt (`registryUsage`: je Art, Karte, Feld, Listenwert, Kante) — gezählt, bevor das Register etwas löscht; nur für wer es ändert |
 | `GET /api/entities` · `GET /api/entities/:id` | Artikel, **gesiebt** |
 | `GET /api/entities?as=summary` | die Kurzfassung aller Artikel (`summaryOf`) — für Liste, Verweise, Auswahlen |
 | `GET /api/entities?ids=a,b,c` | diese Artikel ganz, gesiebt (höchstens 500) — die Teile eines Statblocks in einer Anfrage (W2) |
@@ -291,7 +292,7 @@ Zeilen daneben. Eine neue Artikelart ist eine Zeile, keine Migration.
 ```mermaid
 flowchart TB
   subgraph angular[apps/web · Angular 21, Standalone, Signals]
-    router[app.routes.ts<br/>/login · / · /artikel/:id · /campaign · /classes · /classes/:id]
+    router[app.routes.ts<br/>/login · / · /artikel/:id · /campaign · /registry · /classes · /classes/:id]
     wache[kern/wache.ts<br/>Route-Guard: angemeldet?]
     subgraph seiten[Seiten, lazy geladen]
       login[login/login.ts]
@@ -300,6 +301,8 @@ flowchart TB
       felder[artikel/felder.ts<br/>Felder aus dem Register]
       text[artikel/text.ts<br/>Markdown, Verweise, Würfel]
       buch[artikel/statblock.ts · zauber.ts · gegenstand.ts · abschnitte.ts<br/>wie im Buch]
+      register[register/register.ts<br/>Typen · Kanten · Listen]
+      regtyp[register/typ.ts · feld.ts<br/>ein Typ auf einer Fläche]
       verwaltung[verwaltung/verwaltung.ts<br/>Mitglieder, Rollen, Einladungen]
       klassen[klassen/klasse.ts<br/>Klassenansicht: Tabelle, Merkmale je Stufe,<br/>Unterklassen filtern und vergleichen]
     end
@@ -311,8 +314,9 @@ flowchart TB
   end
   model[["@nw/model<br/>views · calc · book · markdown · inline"]]
   router --> wache --> session
-  router --> login & liste & artikel & verwaltung & klassen
+  router --> login & liste & artikel & verwaltung & register & klassen
   verwaltung --> api
+  register --> regtyp --> bestand
   artikel --> felder & text & buch
   buch --> text
   klassen --> text
@@ -331,6 +335,18 @@ Artikelart erscheint ohne Codeänderung. Die Artikelseite zeichnet die
 Anordnung der Art (`layoutFor`); die Buch-Elemente `statblock`, `spell`
 und `item` bauen ihre Zeilen in `book.ts` und holen die Teile eines
 Statblocks über `Bestand.holen` (`?ids=`) in einer Anfrage.
+
+**Das Register** (`/registry`, W5) bearbeitet dieselben Zeilen, aus
+denen gezeichnet wird: Typen (eigene Felder offen, geerbte zugeklappt,
+verlinkte und Kanten von hier), Kantenarten und Listen. Geschrieben wird
+ein ganzer Teil über `PUT /api/registry/:part` und erst übernommen, wenn
+der Server ihn nimmt (`register/arbeit.ts`). Was eine Änderung im Bestand
+träfe — ein gelöschtes Feld, ein herausgenommener Typ, ein gestrichener
+Listenwert —, wird vorher über `/api/registry/usage` gezählt und in der
+Rückfrage gesagt; was der Bestand beim nächsten Speichern nicht mehr
+bestünde (eine Karte ohne Typ, ein Typ mit Artikeln), lässt die Seite gar
+nicht erst zu. Die reinen Regeln (Feldarten, Zyklen, Umbenennen samt aller
+Nennungen) stehen in `register/regeln.ts`.
 
 Der Bestand wird **einmal** geladen und als Signal gehalten — die
 Kampagne ist klein genug. Mit 28 000 importierten Artikeln stimmt das
@@ -355,6 +371,7 @@ nicht mehr; Seitenweise laden ist eine offene Frage für die Zeit nach P6.
 | `stack.ts` | Ebenen: `inPlay`, `overriderOf` |
 | `visibility.ts` | `articleVisible`: Rolle am Tisch, `audience`, `revealedTo`, `hiddenFrom` |
 | `knowledge.ts` | `redactEntity`: welche Felder ein Träger kennt, Fraktionsränge |
+| `usage.ts` | `registryUsage`: was der Bestand an jeder Registerzeile trägt — für das Register vor dem Löschen |
 | `classes.ts` | die Klassenansicht (W6): Merkmale je Stufe aus `grants`, Übungsbonus, eingebettete Merkmale (ein Verweis allein im Absatz), Stufentabelle mit Zusatzspalten |
 
 ---
