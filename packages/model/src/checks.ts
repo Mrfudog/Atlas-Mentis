@@ -140,9 +140,12 @@ export const CHECKS: Check[] = [
     description: 'Articles that validateEntity refuses — a save of them would be refused too.',
     run({ registry, entities, exists }) {
       const stufen = stageBases(entities);
+      /* Die Ids einmal: ohne sie baut validateEntity je Artikel ein Set aus
+         allen Schlüsseln — über 21 000 Artikel 50 s statt einer halben. */
+      const ids = new Set(exists.keys());
       const raus: CheckHit[] = [];
       for (const e of entities) {
-        const issues = validateEntity(registry, e, { knownTypes: exists, stageOf: stufen });
+        const issues = validateEntity(registry, e, { knownTypes: exists, knownIds: ids, stageOf: stufen });
         if (issues.length) {
           raus.push(hit(e, issues.slice(0, 3).map((i) => i.message).join('; ') + (issues.length > 3 ? ` (+${issues.length - 3})` : '')));
         }

@@ -868,6 +868,8 @@ export function buildApp({
       else danach.delete(c.id);
     }
     const known = new Map([...danach.values()].map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
+    /* Einmal, nicht je Artikel (siehe `invalid` in checks.ts). */
+    const ids = new Set(known.keys());
     const stufen = stageBases(danach.values());
     const eigen = user.isAdmin ? null : await ownedBy(user);
     const abgelehnt: { id: string; name: string; type: string; issues: string[] }[] = [];
@@ -884,7 +886,7 @@ export function buildApp({
         continue;
       }
       const pruefling = isInstance(c.after) ? resolveInstance(danach, c.after) : c.after;
-      const issues = validateEntity(registry, pruefling, { knownTypes: known, stageOf: stufen });
+      const issues = validateEntity(registry, pruefling, { knownTypes: known, knownIds: ids, stageOf: stufen });
       if (issues.length) {
         abgelehnt.push({ id: c.id, name, type: e.interfaces?.[0] ?? '', issues: issues.map((i) => i.message) });
         continue;
