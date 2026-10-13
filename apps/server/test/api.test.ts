@@ -124,19 +124,19 @@ describe('entities', () => {
     expect(ctx.repo.events.map((e) => e.name)).toContain('entity.written');
   });
 
-  /* Pflicht steht je Feld. Eine Regel ohne `kind` ist eine Regel, von der
-     niemand weiss, wann sie gilt. */
+  /* Pflicht steht je Feld. Eine Aktion ohne Aktionsart ist eine Aktion, von
+     der niemand weiss, wann sie dran ist (D48). */
   it('refuses an article whose type leaves a required field empty', async () => {
     const broken: Entity = {
       ...volo,
       id: '22222222-2222-4222-8222-222222222222',
-      interfaces: ['Rule'],
+      interfaces: ['Action'],
     };
     const res = await ctx.inject({ method: 'PUT', url: `/api/entities/${broken.id}`, payload: broken });
     expect(res.statusCode).toBe(422);
     const issues = res.json().issues as { code: string; component?: string; property?: string }[];
     expect(issues.map((i) => i.code)).toContain('missing_property');
-    expect(issues.find((i) => i.property === 'kind')?.component).toBe('Rule');
+    expect(issues.find((i) => i.property === 'actionType')?.component).toBe('Action');
   });
 
   /* Und eine Karte, deren Art der Artikel gar nicht ist, ist kein Tippfehler
@@ -191,10 +191,68 @@ describe('entities', () => {
 describe('POST /api/validate', () => {
   it('reports the same issues as a write, without writing', async () => {
     const { inject, repo } = await makeApp();
-    const broken: Entity = { ...volo, interfaces: ['Rule'] };
+    const broken: Entity = { ...volo, interfaces: ['Action'] };
     const res = await inject({ method: 'POST', url: '/api/validate', payload: broken });
     expect(res.statusCode).toBe(200);
     expect(res.json().issues.length).toBeGreaterThan(0);
     expect(await repo.listEntities()).toEqual([]);
+  });
+});
+
+/**
+ * Die Liste bekommt die Kurzfassung, der Artikel kommt beim Öffnen.
+ *
+ * Mit 24 157 Artikeln aus 5e.tools war der ganze Bestand mit jedem Feld zu
+ * viel für eine Liste von Namen. Die Kurzfassung muss aber tragen, was
+ * Suche, Verweise und Auswahlen lesen — sonst findet `[[Der Dicke]]` nichts
+ * mehr, und niemand merkt es, weil ein offener Verweis normal aussieht.
+ */
+describe('summaries and backlinks', () => {
+  const schuldner: Entity = {
+    id: '22222222-2222-4222-8222-222222222222',
+    interfaces: ['Creature'],
+    name: 'Mira',
+    components: {
+      Identity: { name: 'Mira', id: 'npc-0002' },
+      Description: { description: 'Schuldet Volo Geld.' },
+    },
+    relations: [{ id: 'r-schuld', type: 'owes', to: volo.id, props: {} }],
+  };
+
+  it('lists the short form: name, identity, tags, status — no prose, no edges', async () => {
+    const ctx = await makeApp([volo, schuldner]);
+    const res = await ctx.inject({ method: 'GET', url: '/api/entities?as=summary' });
+    expect(res.statusCode).toBe(200);
+    const mira = (res.json() as Entity[]).find((e) => e.id === schuldner.id)!;
+    expect(mira.name).toBe('Mira');
+    expect(mira.components['Identity']).toEqual({ name: 'Mira', id: 'npc-0002' });
+    expect(mira.components['Description']).toBeUndefined();
+    expect(mira.relations).toEqual([]);
+    const v = (res.json() as Entity[]).find((e) => e.id === volo.id)!;
+    expect(v.components['Identity']?.['aliases']).toEqual(['Der Dicke']);
+    expect(v.components['Tags']).toEqual({ tags: ['händler'] });
+  });
+
+  it('still sends whole articles without the flag', async () => {
+    const ctx = await makeApp([volo, schuldner]);
+    const res = await ctx.inject({ method: 'GET', url: '/api/entities' });
+    const mira = (res.json() as Entity[]).find((e) => e.id === schuldner.id)!;
+    expect(mira.relations?.length).toBe(1);
+  });
+
+  it('answers who points here, as short forms', async () => {
+    const ctx = await makeApp([volo, schuldner]);
+    const res = await ctx.inject({ method: 'GET', url: `/api/entities/${volo.id}/backlinks` });
+    expect(res.statusCode).toBe(200);
+    const [b] = res.json() as { from: Entity; relation: { type: string } }[];
+    expect(b?.from.id).toBe(schuldner.id);
+    expect(b?.from.components['Description']).toBeUndefined();
+    expect(b?.relation.type).toBe('owes');
+  });
+
+  it('404s backlinks of an unknown article', async () => {
+    const ctx = await makeApp([volo]);
+    const res = await ctx.inject({ method: 'GET', url: '/api/entities/gibt-es-nicht/backlinks' });
+    expect(res.statusCode).toBe(404);
   });
 });

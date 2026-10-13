@@ -14,6 +14,7 @@ import {
   EntitySchema,
   RegistrySchema,
   articleVisible,
+  backlinks,
   currentCampaign,
   inPlay,
   detachInstance,
@@ -23,6 +24,9 @@ import {
   redactEntity,
   resolveInstance,
   thinInstance,
+  stageBases,
+  summaryFields,
+  summaryOf,
   validateEntity,
 } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
@@ -66,7 +70,7 @@ export interface AppOptions {
   trustProxy?: boolean | string;
 }
 
-const REGISTRY_PARTS = ['interfaces', 'relations', 'views', 'vars'] as const;
+const REGISTRY_PARTS = ['interfaces', 'relations', 'views', 'vars', 'enums', 'settings'] as const;
 type RegistryPart = (typeof REGISTRY_PARTS)[number];
 
 function isRegistryPart(value: string): value is RegistryPart {
@@ -388,10 +392,15 @@ export function buildApp({
    * Die Wache. Sie steht vor allem unter `/api`, ausser vor dem, was man
    * braucht, um sich überhaupt anzumelden.
    *
-   * Solange kein Konto angelegt ist, ist der Server **offen zum Lesen und
-   * zu zu zum Schreiben**: sonst käme man an einen frisch aufgesetzten
-   * Server nicht heran, und ein offener Schreibweg wäre das Schlimmste von
-   * beidem.
+   * Solange kein Konto angelegt ist **und der Bestand leer ist**, ist der
+   * Server offen zum Lesen und zu zum Schreiben: sonst käme man an einen
+   * frisch aufgesetzten Server nicht heran, und ein offener Schreibweg wäre
+   * das Schlimmste von beidem.
+   *
+   * Die Ausnahme hing bis P5 nur an den Konten. Mit leerem Bestand war das
+   * harmlos; mit zehntausend geladenen Artikeln wäre es eine offene
+   * Bibliothek, sobald jemand das letzte Konto löscht (Arbeitsplan §4). Der
+   * Ladebefehl verweigert ohnehin ohne Verwaltungskonto (`import.ts`).
    */
   const OPEN = new Set(['/api/health', '/api/login', '/api/register', '/api/logout', '/api/me']);
   app.addHook('preHandler', async (request, reply) => {
@@ -403,8 +412,8 @@ export function buildApp({
     const schreibt = request.method !== 'GET' && request.method !== 'HEAD';
 
     if (!user) {
-      const leer = (await repo.countUsers()) === 0;
-      if (leer && !schreibt) return; // frischer Server: lesen ja, schreiben nie
+      const frisch = (await repo.countUsers()) === 0 && (await repo.countEntities()) === 0;
+      if (frisch && !schreibt) return; // frischer Server: lesen ja, schreiben nie
       return reply.code(401).send({ error: 'Nicht angemeldet.' });
     }
     if (!schreibt) return;
@@ -451,6 +460,8 @@ export function buildApp({
         case 'relations': await repo.putRegistryPart('relations', parsed.data.relations); break;
         case 'views': await repo.putRegistryPart('views', parsed.data.views); break;
         case 'vars': await repo.putRegistryPart('vars', parsed.data.vars); break;
+        case 'enums': await repo.putRegistryPart('enums', parsed.data.enums ?? {}); break;
+        case 'settings': await repo.putRegistryPart('settings', parsed.data.settings ?? {}); break;
       }
       await repo.appendEvent('registry.written', undefined, { part });
       return { ok: true, part };
@@ -469,12 +480,12 @@ export function buildApp({
    * steht im Modellpaket, weil es für Server und Oberfläche gleichermassen
    * gilt und es nur einmal geben darf.
    */
-  async function sieve(request: FastifyRequest, entities: Entity[]): Promise<Entity[]> {
+  async function sieve(request: FastifyRequest, entities: Entity[], bestand?: Entity[]): Promise<Entity[]> {
     const user = await viewerOf(request);
     /* **Eine Instanz geht aufgelöst hinaus**, mit ihrer Vorlage darin und
        der Angabe, welche Felder von dort kommen. Gespeichert ist an ihr nur,
        was abweicht; ohne Auflösung hätte Wache 1 keine Trefferpunkte. */
-    const roh = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const roh = new Map((bestand ?? (await repo.listEntities())).map((e) => [e.id, e]));
     const registry = await repo.getRegistry();
     /* **Die nullte Frage: steht der Artikel im Stapel?** (E2, A2) Was eine
        aufgeschaltete Ebene herausnimmt oder eine spezifischere Fassung
@@ -523,7 +534,40 @@ export function buildApp({
       .map((e) => redactEntity(registry, alle, e, augen, gmFields));
   }
 
-  app.get('/api/entities', async (request) => sieve(request, await repo.listEntities()));
+  app.get<{ Querystring: { as?: string } }>('/api/entities', async (request) => {
+    /* Die Liste ist zugleich der Zusammenhang, gegen den gesiebt wird —
+       einmal holen, nicht zweimal. */
+    const alle = await repo.listEntities();
+    const gesiebt = await sieve(request, alle, alle);
+    /* `?as=summary`: die Kurzfassung für Liste, Verweise und Auswahlen.
+       Gekürzt wird nach dem Sieb, damit ein Deckname der Deckname bleibt.
+       Ohne die Angabe bleibt es der ganze Bestand — Ausfuhr und Prüfungen
+       lesen ihn so. */
+    if (request.query.as !== 'summary') return gesiebt;
+    const felder = summaryFields(await repo.getRegistry());
+    return gesiebt.map((e) => summaryOf(e, felder));
+  });
+
+  /**
+   * Wer auf diesen Artikel zeigt. Die Gegenrichtung ist eine Abfrage (K1);
+   * gestellt wurde sie bisher in der Oberfläche, über den ganzen Bestand —
+   * den hat sie jetzt nicht mehr. Gefragt wird nur unter dem, was der
+   * Betrachter sehen darf: eine Kante von einem verborgenen Artikel verriete
+   * ihn.
+   */
+  app.get<{ Params: { id: string } }>('/api/entities/:id/backlinks', async (request, reply) => {
+    const alle = await repo.listEntities();
+    const gesiebt = await sieve(request, alle, alle);
+    if (!gesiebt.some((e) => e.id === request.params.id)) {
+      return reply.code(404).send({ error: 'Nicht gefunden' });
+    }
+    const registry = await repo.getRegistry();
+    const felder = summaryFields(registry);
+    return backlinks(registry, gesiebt, request.params.id).map((b) => ({
+      from: summaryOf(b.from, felder),
+      relation: b.relation,
+    }));
+  });
 
   app.get<{ Params: { id: string } }>('/api/entities/:id', async (request, reply) => {
     const entity = await repo.getEntity(request.params.id);
@@ -558,6 +602,9 @@ export function buildApp({
         (await repo.listEntities()).map((e) => [e.id, e.interfaces?.[0] ?? ''] as const),
       );
       known.set(entity.id, entity.interfaces?.[0] ?? '');
+      /* Welche Zustände Stufen eines Grundzustands sind (D48) — gerechnet
+         aus den Kanten, nicht gespeichert. */
+      const stufen = stageBases([...(await repo.listEntities()), entity]);
 
       /* **Eine Instanz wird aufgelöst geprüft und ausgedünnt gespeichert.**
          Ihre Pflichtfelder stehen an der Vorlage; gespeichert wird nur, was
@@ -573,7 +620,7 @@ export function buildApp({
         zuSchreiben = thinInstance(alle, entity);
       }
 
-      const issues = validateEntity(registry, zuPruefen, { knownTypes: known });
+      const issues = validateEntity(registry, zuPruefen, { knownTypes: known, stageOf: stufen });
       if (issues.length) {
         return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
       }
@@ -636,7 +683,8 @@ export function buildApp({
       alle.set(pruefling.id, pruefling);
       pruefling = resolveInstance(alle, pruefling);
     }
-    return { issues: validateEntity(registry, pruefling, { knownTypes: known }) };
+    const stufen = stageBases([...(await repo.listEntities()), pruefling]);
+    return { issues: validateEntity(registry, pruefling, { knownTypes: known, stageOf: stufen }) };
   });
 
   return app;

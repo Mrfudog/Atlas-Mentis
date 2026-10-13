@@ -5,18 +5,45 @@ import { wache } from './kern/wache';
  * Die Wache steht vor allem ausser der Anmeldung. Sie ist Bequemlichkeit,
  * keine Sicherheit — die Rechte hängen am Server, und eine Route, die nur
  * hier bewacht wäre, wäre gar nicht bewacht.
+ *
+ * Die Bereiche sind das Kompendium mit einem Bereich in den Routendaten;
+ * welche Art wohin gehört, sagt `area` am Typ.
  */
+const kompendium = () => import('./artikel/kompendium').then((m) => m.Kompendium);
+
 export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () => import('./login/login').then((m) => m.Login),
     title: 'Sign in · Atlas Mentis',
   },
+  { path: '', pathMatch: 'full', redirectTo: 'compendium' },
   {
-    path: '',
+    path: 'compendium',
     canActivate: [wache],
-    loadComponent: () => import('./artikel/liste').then((m) => m.Liste),
-    title: 'Articles · Atlas Mentis',
+    loadComponent: kompendium,
+    title: 'Compendium · Atlas Mentis',
+  },
+  {
+    path: 'world',
+    canActivate: [wache],
+    loadComponent: kompendium,
+    data: { bereich: 'world' },
+    title: 'World · Atlas Mentis',
+  },
+  {
+    path: 'history',
+    canActivate: [wache],
+    loadComponent: kompendium,
+    data: { bereich: 'history' },
+    title: 'History · Atlas Mentis',
+  },
+  {
+    path: 'rules',
+    canActivate: [wache],
+    loadComponent: kompendium,
+    data: { bereich: 'rules' },
+    title: 'Rules · Atlas Mentis',
   },
   {
     path: 'artikel/:id',
@@ -24,5 +51,5 @@ export const routes: Routes = [
     loadComponent: () => import('./artikel/artikel').then((m) => m.Artikel),
     title: 'Article · Atlas Mentis',
   },
-  { path: '**', redirectTo: '' },
+  { path: '**', redirectTo: 'compendium' },
 ];

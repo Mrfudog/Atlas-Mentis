@@ -1,9 +1,9 @@
 #!/bin/sh
-# Den Server einmal einrichten — als root auf einer frischen Ubuntu-24.04-
-# Maschine bei Hetzner. Danach rollt CI aus; von Hand wird hier nichts mehr
+# Den Server einmal einrichten — als root auf einer frischen Ubuntu-Maschine
+# (24.04 oder 26.04) bei Hetzner. Danach rollt CI aus; von Hand wird hier nichts mehr
 # gebaut. Was das Skript tut, steht in docs/Betrieb.md Schritt für Schritt.
 #
-#   curl -fsSL https://raw.githubusercontent.com/Mrfudog/atlas-mentis/main/deploy/bootstrap.sh -o bootstrap.sh
+#   curl -fsSL https://raw.githubusercontent.com/Mrfudog/atlas-mentis/preprod/deploy/bootstrap.sh -o bootstrap.sh
 #   sh bootstrap.sh atlas.example.ch dev.atlas.example.ch mail@example.ch "ssh-ed25519 AAAA… atlas-deploy"
 #
 # Argumente: Produktionsname, Testname, Mailadresse für Let's Encrypt, der
@@ -22,7 +22,7 @@ echo "== System"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
 apt-get -y -q upgrade
-apt-get -y -q install ca-certificates curl unattended-upgrades openssl
+apt-get -y -q install ca-certificates curl unattended-upgrades openssl cron
 
 echo "== Docker (aus dem Docker-Repository)"
 if ! command -v docker >/dev/null 2>&1; then
@@ -36,11 +36,30 @@ if ! command -v docker >/dev/null 2>&1; then
   apt-get -y -q install docker-ce docker-ce-cli containerd.io docker-compose-plugin
 fi
 systemctl enable --now docker >/dev/null
+systemctl enable --now cron >/dev/null 2>&1 || true
 
 echo "== SSH: keine Passwörter, kein root"
-sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
-sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
-systemctl reload ssh 2>/dev/null || systemctl reload sshd
+# Eine eigene Datei in sshd_config.d und nicht ein sed in sshd_config: sshd
+# nimmt den ersten Wert, den es findet, und die Dateien in sshd_config.d
+# kommen vor dem Rest. Hetzner legt dort 50-cloud-init.conf mit
+# „PasswordAuthentication yes“ ab — ein sed in sshd_config hätte nichts
+# bewirkt. 00- gewinnt gegen 50-.
+install -d -m 755 /etc/ssh/sshd_config.d
+cat > /etc/ssh/sshd_config.d/00-atlas.conf <<'SSHD'
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin prohibit-password
+SSHD
+# Ohne laufenden Dienst fehlt /run/sshd, und sshd -t bricht mit
+# „Missing privilege separation directory“ ab.
+install -d -m 755 /run/sshd
+sshd -t
+# Ubuntu 24.04 startet sshd über ssh.socket; ssh.service ist dann oft gar
+# nicht aktiv, und „reload“ schlägt fehl. try-reload-or-restart lädt neu,
+# wenn er läuft, und tut sonst nichts — die nächste Verbindung liest die
+# neue Einstellung ohnehin. Laufende Sitzungen bleiben stehen.
+systemctl try-reload-or-restart ssh.service 2>/dev/null || systemctl try-reload-or-restart sshd.service 2>/dev/null || true
+echo "   $(sshd -T 2>/dev/null | grep -E '^(passwordauthentication|permitrootlogin) ' | tr '\n' ' ')"
 
 echo "== Benutzer deploy"
 id deploy >/dev/null 2>&1 || adduser --disabled-password --gecos "" deploy

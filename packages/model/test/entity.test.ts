@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   areaOf,
+  enumGroups,
+  enumHolds,
+  enumOptions,
+  enumSource,
   articleId,
   backlinks,
   fieldTitle,
@@ -495,5 +499,91 @@ describe('nextId', () => {
   it('reads the number back off an article', () => {
     expect(articleId({ components: { Identity: { id: 'npc-0003' } } })).toBe('npc-0003');
     expect(articleId({ components: {} })).toBe('');
+  });
+});
+
+describe('enumRef auf eine Artikelart (M6)', () => {
+  const reg = {
+    interfaces: {
+      Identity: { name: 'Identity', abstract: true, schema: { type: 'object', properties: { name: { type: 'string' } } } },
+      Rule: { name: 'Rule', extends: ['Identity'] },
+      Skill: { name: 'Skill', label: 'Skill', extends: ['Rule'] },
+      Item: {
+        name: 'Item',
+        label: 'Item',
+        extends: ['Identity'],
+        schema: { type: 'object', properties: { itemType: { type: 'string' } } },
+      },
+      Weapon: {
+        name: 'Weapon',
+        label: 'Weapon',
+        extends: ['Item'],
+        schema: { type: 'object', properties: { category: { type: 'string', title: 'Category', enum: ['simple', 'martial'] } } },
+      },
+      Sheet: {
+        name: 'Sheet',
+        extends: ['Identity'],
+        schema: {
+          type: 'object',
+          properties: {
+            proficient: {
+              type: 'array',
+              items: { type: 'string' },
+              enumRef: ['Ability', 'Skill', 'Item', 'Weapon.category'],
+              enumWhere: { Item: { itemType: ['tool'] } },
+            },
+            saves: { type: 'array', items: { type: 'string' }, enumRef: ['Ability', 'Weapon.category'] },
+          },
+        },
+      },
+    },
+    relations: {},
+    views: {},
+    units: {},
+    vars: {},
+    enums: { Ability: { name: 'Ability', values: ['str', 'dex'] } },
+  } as unknown as Registry;
+  const art = (id: string, typ: string, name: string, karten: Record<string, Record<string, unknown>> = {}): Entity => ({
+    id,
+    interfaces: [typ],
+    name,
+    components: karten,
+  });
+  const bestand: Entity[] = [
+    art('s1', 'Skill', 'Stealth'),
+    art('s2', 'Skill', 'Arcana'),
+    art('i1', 'Item', "Thieves' tools", { Item: { itemType: 'tool' } }),
+    art('i2', 'Item', 'Rope', { Item: { itemType: 'adventuring gear' } }),
+    art('w1', 'Weapon', 'Hammer', { Item: { itemType: 'tool' } }),
+    { ...art('s3', 'Skill', 'Stealth (Kopie)'), relations: [{ id: 'r', type: 'instanceOf', to: 's1' }] },
+  ];
+  const p = reg.interfaces['Sheet']!.schema!.properties['proficient'];
+
+  it('liest Zeile, Artikel der Art samt Untertypen, und die Liste eines Feldes', () => {
+    expect(enumGroups(reg, p, bestand).map((g) => [g.name, g.from, g.values])).toEqual([
+      ['Ability', 'enum', ['str', 'dex']],
+      ['Skill', 'type', ['Arcana', 'Stealth']],
+      ['Item', 'type', ['Hammer', "Thieves' tools"]],
+      ['Weapon.category', 'field', ['simple', 'martial']],
+    ]);
+    expect(enumGroups(reg, p, bestand)[3]!.label).toBe('Weapon · Category');
+  });
+
+  it('ohne Bestand trägt eine Art nichts bei, die Gruppe steht trotzdem', () => {
+    expect(enumOptions(reg, p)).toEqual(['str', 'dex', 'simple', 'martial']);
+    expect(enumGroups(reg, p).find((g) => g.name === 'Skill')?.values).toEqual([]);
+  });
+
+  it('sagt, woher ein Wert kommt', () => {
+    expect(enumSource(reg, p, 'Stealth', bestand)).toBe('Skill');
+    expect(enumSource(reg, p, 'martial', bestand)).toBe('Weapon.category');
+  });
+
+  it('die Zeile hält, die Art schlägt vor', () => {
+    expect(enumHolds(reg, p)).toBe(false);
+    expect(enumHolds(reg, reg.interfaces['Sheet']!.schema!.properties['saves'])).toBe(true);
+    const e = art('x', 'Sheet', 'Bogen', { Sheet: { proficient: ['Nebelkunde'], saves: ['str', 'heavy'] } });
+    const codes = validateEntity(reg, e).filter((i) => i.code === 'value_not_allowed');
+    expect(codes.map((i) => i.property)).toEqual(['saves']);
   });
 });

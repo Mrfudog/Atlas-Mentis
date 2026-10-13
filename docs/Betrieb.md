@@ -61,8 +61,10 @@ Zertifikate selbst). Von Hand wird einmal die Maschine vorbereitet
 
 ### 1. Maschine bei Hetzner
 
-- **Hetzner Cloud** → Server anlegen: Ubuntu 24.04, Typ CX22 oder CPX11
-  (2 vCPU, 4 GB) reicht für beide Umgebungen — gebaut wird nicht hier.
+- **Hetzner Cloud** → Server anlegen: Ubuntu 24.04 oder 26.04 (26.04 läuft seit 2026-10-13), Typ **CPX22**
+  (2 vCPU AMD, 4 GB, 80 GB) — reicht für beide Umgebungen samt Proxy,
+  gebaut wird nicht hier. CX23 (40 GB, ältere Intel-Generation) geht
+  auch, ist aber bei Images, Dumps und Logs schneller voll.
   Standort nach Wahl; IPv4 **und** IPv6.
 - Beim Anlegen deinen eigenen SSH-Schlüssel hinterlegen (damit du als
   `root` hineinkommst; Passwörter sind gleich abgeschaltet).
@@ -138,7 +140,14 @@ dem Ausrollen nach `prod` noch einmal bestätigen will, setzt dort
 
 **Settings → Secrets and variables → Actions → Variables** (Repository):
 `DEPLOY_ENABLED` = `true`. Ohne diese Variable bleibt der Job `deploy`
-absichtlich aus. `DEPLOY_DIR` und `PROXY_DIR` überschreiben die
+absichtlich aus. **Als Repository-Variable**, nicht als Secret und nicht
+im Environment: die Bedingung des Jobs wird geprüft, bevor das Environment
+geladen ist, und sieht nur Variablen des Repositorys.
+
+**Wann ausgerollt wird:** beim **Push** auf `preprod` bzw. `main` — also
+beim Merge eines Pull Requests, nicht in seinem Lauf. Der Lauf eines Pull
+Requests prüft nur; ungemergter Code kommt nie auf dev. Ohne neuen Merge:
+*Actions → CI → Run workflow* auf dem Zweig. `DEPLOY_DIR` und `PROXY_DIR` überschreiben die
 Verzeichnisse, wenn es nicht `/srv/atlas/…` sein soll.
 
 **Settings → Actions → General**: *Workflow permissions* auf „Read and
@@ -212,6 +221,98 @@ docker compose exec -T db sh -c 'dropdb -U "$POSTGRES_USER" "$POSTGRES_DB" && cr
 docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner' < backups/<zeit>.dump
 ./deploy.sh "$(cat previous-image)"
 ```
+
+## 5e.tools laden
+
+**Einmal** (Arbeitsplan §1, E7): danach gehören die Artikel uns und werden
+direkt bearbeitet. Der volle Bestand geht an den Server, nicht in den
+Prototyp; zuerst auf `dev`, `prod` erst, wenn dev angeschaut ist (P6).
+Was hereinkommt und was nicht, sagt [5etools-Bericht.md](5etools-Bericht.md).
+
+**1. Daten holen** — ausserhalb des Repos (112 MB, nicht unsere Daten):
+
+```bash
+git clone --depth 1 --filter=blob:none --sparse https://github.com/5etools-mirror-3/5etools-src.git ~/5etools-src
+git -C ~/5etools-src sparse-checkout set data
+```
+
+**2. Die Datei erzeugen** — lokal, nicht auf dem Server:
+
+```bash
+pnpm --filter @nw/model build && pnpm --filter @nw/registry build && pnpm --filter @nw/import-5etools build
+node packages/import-5etools/dist/cli.js ~/5etools-src/data --out 5etools-2014.json --bericht docs/5etools-Bericht.md
+```
+
+Jeder Artikel geht dabei durch `validateEntity`; besteht einer nicht,
+bricht der Lauf ab und schreibt keine Datei. Die Datei (rund 30 MB,
+24 000 Artikel) wird **nicht** eingecheckt, der Bericht schon. `--srd`
+nimmt nur, was im SRD steht; `--sources PHB,MM` nur diese Bücher.
+`--sample` schreibt einen Ausschnitt als Prüfbestand nach
+`prototype/test/dbdump/entities` (das Register dazu: `emit-seed`) —
+derselbe Ausschnitt geht ins Artefakt. Das Verzeichnis vorher leeren:
+der Lauf schreibt hinzu und löscht nichts. Gleiche Merkmale und
+Fassungen aus mehreren Büchern löst der Lauf selbst auf
+([Arbeitsplan › Doppel](5etools-Arbeitsplan.md)).
+
+**Ohne eigenen Rechner** geht Schritt 1 und 2 auch auf dem Server, in einem
+Wegwerf-Container (als `deploy`; nichts davon bleibt installiert):
+
+```bash
+mkdir -p ~/5e && cd ~/5e
+docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
+  -e PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 -e NODE_OPTIONS=--max-old-space-size=3072 \
+  -v "$PWD":/w -w /w node:22 bash -c '
+    set -e
+    [ -d atlas-mentis ] || git clone --depth 1 -b preprod https://github.com/Mrfudog/atlas-mentis.git
+    [ -d 5etools-src ] || { git clone --depth 1 --filter=blob:none --sparse https://github.com/5etools-mirror-3/5etools-src.git && git -C 5etools-src sparse-checkout set data; }
+    mkdir -p /tmp/bin && corepack enable --install-directory /tmp/bin && export PATH=/tmp/bin:$PATH
+    cd atlas-mentis && pnpm install --frozen-lockfile
+    pnpm --filter @nw/model build && pnpm --filter @nw/registry build && pnpm --filter @nw/import-5etools build
+    node packages/import-5etools/dist/cli.js /w/5etools-src/data --out /w/5etools-2014.json'
+```
+
+Danach liegt die Datei in `~/5e/5etools-2014.json`; nach dem Laden
+`rm -rf ~/5e` — die Daten gehören nicht auf die Platte und nie ins Repo.
+
+**3. Sichern** — auf dem Server, vor dem Laden. Die Sicherung wird nicht
+gelöscht, auch wenn der Bestand neu steht: sie ist der einzige Ort, an dem
+der alte Bestand danach noch steht.
+
+```bash
+cd /srv/atlas/dev
+docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > backups/vor-5etools-$(date +%F).dump
+```
+
+**4. Laden.** Der Befehl verweigert, solange kein Verwaltungskonto
+existiert (Schritt 7 oben): ein Server ohne Konto liest ohne Anmeldung,
+solange sein Bestand leer ist — mit einem Bestand nicht mehr.
+
+```bash
+scp 5etools-2014.json deploy@<host>:/srv/atlas/dev/
+cd /srv/atlas/dev
+docker compose cp 5etools-2014.json app:/tmp/5etools-2014.json
+docker compose exec app node apps/server/dist/import.js /tmp/5etools-2014.json             # dazulegen
+docker compose exec app node apps/server/dist/import.js /tmp/5etools-2014.json --replace   # Bestand ersetzen
+docker compose exec app rm /tmp/5etools-2014.json
+```
+
+Lokal gegen die eigene Datenbank: `pnpm --filter @nw/server run import
+<datei> [--replace]` — mit `run`, denn `pnpm import` ist ein eingebauter
+Befehl von pnpm und liefe sonst statt des Skripts.
+
+Geprüft wird alles, **bevor** etwas geschrieben wird — auch, dass jede
+Kanten-Id im ganzen Bestand nur einmal vorkommt; ein Fehler lässt den
+Bestand, wie er war. Geschrieben wird danach Artikel für Artikel: bricht
+ein Lauf **beim Schreiben** ab (Datenbank weg, Platte voll), steht ein Teil
+da. Dann denselben Befehl mit `--replace` noch einmal — er räumt auf, was
+nicht in der Datei steht. `--replace` löscht, was nicht in der Datei steht, und
+nennt danach die Figuren, die an einem Konto stehen und nicht mehr da sind
+(die Konten bleiben, REQ-199). Eine Datei mit `registry` und ohne
+`entities` bringt nur die Registerzeilen. Die Ablage speichert
+`interfaces`, `relations`, `views`, `units`, `vars`, `enums` und
+`settings` (die letzten beiden seit Migration 019; eine ältere Datenbank
+bekommt sie beim nächsten Start aus den Startzeilen nachgefüllt, solange
+sie dort leer sind).
 
 ## Den Bestand von prod nach dev holen
 

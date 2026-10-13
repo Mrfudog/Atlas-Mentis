@@ -104,6 +104,10 @@ export const views: Record<string, ViewDef> = {
       { id: 'l-linked', el: 'linked' },
       { id: 'l-b', el: 'prose', fields: 'all' },
       { id: 'l-c', el: 'composed' },
+      /* Wer diesen Artikel zusammensetzt, nach Kreaturentyp (D51): ein Biss
+         zeigt Tiere und Drachen, ein Merkmal seine Völker. Wo niemand ihn
+         nutzt, zeichnet das Element nichts. */
+      { id: 'l-used', el: 'usedBy' },
       /* Wer wie zu wem steht, gehört auf die Seite und nicht hinter ein
          Dropdown. `elStanding` gibt nichts zurück, wo niemand eine Meinung
          hat — also steht es hier, ohne jede leere Seite zu belasten.

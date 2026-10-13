@@ -55,6 +55,9 @@ REQ-Nummern stehen in `VTT/Requirements.md`, ihr Stand in
 
 ## Wo was liegt
 
+Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
+[docs/Architektur.md](docs/Architektur.md).
+
 - `packages/model` — Typen, Validierung, `calc.ts` (abgeleitete Werte),
   `views.ts` (Feldauswahl je Darstellungsstufe), `inline.ts` (`[[Verweise]]`,
   `{VAR}`), `entity.ts` (Registerzugriff, Rückbezüge). **Kein Framework-Import.**
@@ -66,15 +69,24 @@ REQ-Nummern stehen in `VTT/Requirements.md`, ihr Stand in
   Artikelart im Prototyp anzulegen ist der Sinn der Sache und kein Fehler.
 - `apps/server` — Fastify. Routen sprechen mit `Repository`, nie mit Postgres;
   deshalb sind sie ohne Datenbank testbar (`InMemoryRepository`).
-- `apps/web` — Angular. Anmeldung, Artikelliste und Artikelansicht stehen;
+- `apps/web` — Angular, im Pergament des Design-Canvas. Anmeldung, die
+  Kopfleiste mit den Bereichen, Kompendium und Bereiche (Filter in der
+  Seitenleiste, aus der Kurzfassung `?as=summary`) und der Artikel im
+  Buchstil (geholt beim Öffnen, Ansicht `full`) stehen; Boards, Karte,
+  Initiative und Spiel noch nicht;
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
   Vorlage je Artikelart. **Zurückgehalten wird am Server** (`redactEntity`) —
   was hier ankommt, darf angezeigt werden, und eine zweite Prüfung in der
   Maske lüde nur dazu ein, die erste wegzulassen.
+- `packages/import-5etools` — der Importer für 5e.tools (P5): liest einen
+  Checkout von `5etools-src/data`, schreibt eine Ausfuhrdatei und den
+  Bericht [docs/5etools-Bericht.md](docs/5etools-Bericht.md). Kein
+  Framework; läuft einmal, nicht im Server. Laden:
+  [docs/Betrieb.md › 5e.tools laden](docs/Betrieb.md#5etools-laden).
 - `legacy/` — die alte React-App. Nicht weiterentwickeln; sie läuft, bis die
   neue Karte und Initiative kann.
 
-Was es **nicht** mehr gibt: `packages/import` und der Importer im Prototyp. Die Obsidian-Importer für
+Was es **nicht** mehr gibt: `packages/import` und der Importer im Prototyp (der für 5e.tools ist neu geschrieben, oben). Die Obsidian-Importer für
 Gegenstände und Statblocks sind weg (2026-09-20); der Prototyp hat seinen
 Mit ihnen fiel der Bestandteil `Imported` weg — er trug den Wortlaut, wie er
 aus dem Vault kam, und füllt ihn jetzt niemand mehr. Wenn die Importer
@@ -209,7 +221,8 @@ wiederkommen, werden sie neu geschrieben.
   Figur: das ist, was sich während der Sitzung ändert. Damit heisst `hp` am
   Statblock das Maximum und an der Figur der Stand.
   Der Statblock trägt seine Felder **selbst** (`ac`, `hp`, `speed`, `cr`,
-  `prof`, `senses`, `resistances` …) und nimmt `Abilities` dazu — die sechs
+  `prof`, `senses`, `resistances`, `bonuses` …) und nimmt `Abilities` und
+  `Proficiencies` dazu — die sechs
   Werte samt ihren gerechneten Nachbarn, denn `mod(dex)` löst gegen
   dieselbe Karte auf. `StatblockInfo` gibt es nicht mehr: dreissig Felder
   unter einem Sammelnamen sind keine Auskunft. Der Bogen liest beide Karten
@@ -246,6 +259,16 @@ wiederkommen, werden sie neu geschrieben.
   Wissensfreigabe hängt (`Secrets.secret#id`). Die Id kommt aus dem Text, denn
   eine durchgezählte hält nur, solange die Reihenfolge hält. Ein Prosafeld
   steht **nicht** in der Feldtabelle — es gehört dem Element `prose`.
+- **Ein langer Text ist Markdown, und nichts darin wird HTML** (M10).
+  `parseMarkdown` liest die Blöcke, `parseInline` jede Zeile darin — ein
+  Zerleger für Inline-Text, nicht zwei. Gezeichnet wird mit Elementen und
+  Textknoten (`nw-text`, im Prototyp `para`), nie mit `innerHTML`.
+  **Ein Verweis nennt die Nummer** (`[[npc-0042|Volo]]`, M11): `[[Name]]`
+  darf getippt werden und wird beim Speichern zur Nummer, wenn genau ein
+  Artikel so heisst (`idLinks`); ein mehrdeutiger bleibt stehen und sagt
+  es — der erste Treffer wäre bei zwei Goblins der falsche. **Ein Würfel
+  ist `{{1d6+2}}`** (M12), `{{+4}}` ein W20 mit Bonus; einfache Klammern
+  bleiben den Platzhaltern, eckige den Verweisen.
 - **Ein Untertyp ohne eigene Felder ist ein Wort und keine Zeile.** `NPC`,
   `Companion` und `Retainer` waren drei Artikelarten, die zusammen kein
   einziges eigenes Feld trugen; eine Kreatur ist jetzt selbst eine Art, und
@@ -264,27 +287,41 @@ wiederkommen, werden sie neu geschrieben.
   Gelesen wird **immer** über `enumOptions()` (Paket) bzw. `enumWerte()`
   (Prototyp) und nie `p.enum` direkt. Eine Liste mit genau einem Nutzer
   bleibt am Feld — eine Zeile dafür wäre der Umweg ohne den Gewinn.
-  **Mehrere Zeilen darf ein Feld nennen** (`enumRef: ['Skill', 'Tool', …]`),
+  **Mehrere Zeilen darf ein Feld nennen** (`enumRef: ['Skill', 'Language', …]`),
   und dann gelten sie zusammen: `Proficiencies.proficient` zieht aus sechs
-  Listen, weil ein Feld je Sorte dieselbe Frage sechsmal stellte und die
+  Quellen, weil ein Feld je Sorte dieselbe Frage sechsmal stellte und die
   siebte Sorte ein siebtes Feld gebraucht hätte. Woher ein Wert kommt, sagt
-  die Liste, in der er steht (`enumSource` / `enumQuelle`) — der Bogen
-  gruppiert danach, und das Handwerk liest die Werkzeugübungen so heraus.
+  die Quelle, in der er steht (`enumSource`) — der Bogen gruppiert danach.
   Getrennt gebraucht: `enumGroups()` / `enumGruppen()`.
   Mit `type: 'array'` hält dasselbe Feld **mehrere** Werte aus diesen
-  Listen; die Maske zeigt dann Häkchen, nach Zeile gruppiert.
+  Listen; die Maske zeigt dann Häkchen, nach Quelle gruppiert.
+  **Ein Name darf eine Artikelart sein** (M6, D50): dann sind die Werte die
+  Namen ihrer sichtbaren Artikel (Untertypen ja, Instanzen nein; `enumWhere`
+  engt ein), und `Typ.feld` nennt die Liste eines Feldes
+  (`Weapon.category`). Wer eine Art nennt, gibt `enumOptions()` die
+  sichtbaren Artikel mit. **Die Zeile hält, die Art schlägt vor:** ein
+  Feld, das eine Art nennt, prüft `validateEntity` nicht gegen die Liste
+  (`enumHolds`) — ein Name ist der heutige Stand.
 - **Eine Zahl mit Grenzen ist eine Spanne** (`min`, `max`), keine
   Aufzählung von zwanzig Wörtern. Die Schwierigkeit war fünf Wörter an der
   Begegnung und freier Text an der Szene; sie ist jetzt eine Stufe von 1
   bis 20 im Typ `Difficulty`, und beide nehmen ihn dazu.
-- **Übungen stehen in einem Feld, nicht in sechs.**
-  `Proficiencies.proficient` (und `expertise`) ziehen aus `Skill`, `Tool`,
-  `Language`, `WeaponTraining`, `ArmorTraining` und `KnowledgeField`;
-  `saves` zieht aus `Ability`. Welche Fertigkeiten es gibt, sagt die Zeile
-  `Skill`; **worauf jede rechnet**, sagt die Einstellung `skills`
-  (`stealth:dex`) — zwei Stellen, aber nicht zweimal dasselbe, denn eine
-  Liste von Wörtern kann keine Zuordnung tragen. Wird eine Fertigkeit
-  einmal ein Artikel, fallen beide weg.
+- **Übungen stehen in einem Feld, nicht in sechs, und am Statblock.**
+  `Proficiencies.proficient` (und `expertise`) ziehen aus den Artikeln von
+  `Skill`, `Language`, `Item` (nur Werkzeuge) und `Weapon` und aus den
+  Listen von `Weapon.category` und `Armor.armorType`; `saves` zieht aus
+  `Ability`. Welche Fertigkeiten es gibt, sagen die `Skill`-Artikel,
+  **worauf jede rechnet**, ihr `ability` — die Zeilen `Skill`, `Tool`,
+  `Language`, `WeaponTraining`, `ArmorTraining`, `KnowledgeField` und die
+  Einstellung `skills` sind seit P4 weg (M6). `Proficiencies` nimmt der
+  Statblock, nicht die Kreatur (M5): die Übungen gehören zu den Zahlen.
+- **Klasse, Abstammung, Hintergrund sind Kanten von der Figur** (M3):
+  `hasClass` je Klasse mit `props.level` und `props.subclass`,
+  `hasAncestry`, `hasBackground`. **Die Stufe wird gerechnet**
+  (`sum(hasClass.level)`, eine Rechnung über die eigenen Kanten), nicht
+  eingetippt. Was eine Klasse gewährt, ist `grants` mit der Stufe **an der
+  Kante** — „Ability Score Improvement" ist ein Artikel und sieben Kanten,
+  darum gibt es `Feature.level` nicht (D50).
 - **`Status` ist der Vorbereitungsstand und sonst nichts:** `idea`,
   `prepared`, `ready` (Aufzählungszeile `State`). Gelesen wird die Zeile
   (`statusWerte()`), nicht ein Gedächtnis: „Unfinished" zählte nach der
@@ -313,7 +350,9 @@ wiederkommen, werden sie neu geschrieben.
 - **Was eine Einstellung auslöst, steht dabei.** Unter `Display`,
   `Derived from` und `belongs to field` steht eine Zeile, die sagt, was
   passiert: `signed` druckt +3, `measure` rechnet um, eine Rechnung löst
-  gegen die **Nachbarfelder derselben Karte** auf, und `of` heisst, dass
+  gegen die **Nachbarfelder derselben Karte** auf und erst dann gegen die
+  übrigen Karten des Artikels (der Zauber-SG am Statblock liest `int` aus
+  `Abilities`, D49), und `of` heisst, dass
   der gerechnete Wert in der Zelle des Nachbarn reitet (**DEX 16 (+3)**).
   Wer nicht weiss, was eine Angabe tut, lässt sie leer — dann ist sie kein
   Werkzeug, sondern ein Rätsel.
@@ -353,7 +392,8 @@ wiederkommen, werden sie neu geschrieben.
   [docs/Anforderungen.md](docs/Anforderungen.md). Wo das Register vom
   Konzept abweicht: der Abgleich in [docs/Durchgang.md](docs/Durchgang.md).
   Was 5e.tools kennt und wir noch nicht, und wie es hereinkommt:
-  [docs/5etools-Abgleich.md](docs/5etools-Abgleich.md).
+  [docs/5etools-Abgleich.md](docs/5etools-Abgleich.md); in welcher
+  Reihenfolge: [docs/5etools-Arbeitsplan.md](docs/5etools-Arbeitsplan.md).
 - **Bei jeder Modelländerung wandert die Erklärung mit.**
   [docs/Datenmodell.md](docs/Datenmodell.md) (die Regel),
   [docs/Begriffe.md](docs/Begriffe.md) (das Warum) *und* die Seite „How it

@@ -24,7 +24,7 @@ Stelle, um Code zu schreiben.
 | Bereich | Zeilen | Element |
 |---|---|---|
 | Assets | `Asset` | — (im Bildfeld) |
-| Karten | `Map`, `mapOf` / `insideMap` / `marker` | `map` |
+| Karten | `Map`, `mapOf` / `insideMap` / `marker` / `zone`, `ZoneKind`, Zug in `Session.moves` (D56) | `map` |
 | Charakterbogen | `Vitals`, `Proficiencies` | `sheet` |
 | Inventar | `holds`-Eigenschaften | `inventory` |
 | Handwerk | `Recipe`, `needs` / `yields` | `crafting` |
@@ -246,6 +246,10 @@ Also steht er an einer Kante (`crafting`) — dieselbe Regel wie bei der
 Tragestufe im Inventar und beim Lichtradius auf der Karte. Kein Artikel: ein
 Gang ist vorbei, wenn er vorbei ist, und ein Artikel, den man anschliessend
 löscht, war keiner.
+
+> **Überholt seit D55 (2026-10-12):** das Material wird wieder **beim Start
+> gebunden**, das Nachlegen bleibt für Nachgekommenes; Blaupausen werden
+> gelernt. Was gilt: [Datenmodell › 9.5](Datenmodell.md#95-handwerk-gelernt-und-gebunden-d55).
 
 **Das Material wird angehängt, während der Gang läuft** (seit 2026-09-20; es
 ging einmal am Anfang hinein). Das ist die Zeile `put` an der Kante, und an

@@ -31,6 +31,7 @@
  * diese Abfrage über die Kanten.
  */
 
+import { PARTICIPATES, redactParticipants } from './initiative.js';
 import type { Entity, EntityId, Registry } from './types.js';
 import { entityName, entriesOf, entryRef } from './entity.js';
 
@@ -398,5 +399,20 @@ export function redactEntity(
      der Name im Klartext. */
   const name = (components['Identity']?.['name'] as string | undefined) ?? article.name;
 
-  return { ...article, name, components } as Entity;
+  /* Die Initiative an einer Begegnung (REQ-213, D53): was Spielende von
+     den Teilnehmern nicht sehen, geht gar nicht erst hinaus. */
+  const kampf = article.relations?.some((r) => r.type === PARTICIPATES);
+  const karte = ((article.components ?? {})['Encounter'] ?? {}) as { round?: number; turn?: number };
+  const relations = kampf
+    ? redactParticipants(entities, article.relations!, { round: karte.round, turn: karte.turn })
+    : article.relations;
+  /* REQ-226, D58: die Zugnummer zählt die ganze Reihe, auch was verborgen
+     ist oder noch nicht erschien — sie geht nicht hinaus; wer dran ist,
+     sagt die Marke `current` am Teilnehmer. */
+  if (kampf && components['Encounter'] && 'turn' in components['Encounter']) {
+    const { turn: _turn, ...ohne } = components['Encounter'];
+    components['Encounter'] = ohne;
+  }
+
+  return { ...article, name, components, ...(relations ? { relations } : {}) } as Entity;
 }

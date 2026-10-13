@@ -16,9 +16,30 @@ export const relations: Record<string, RelationDef> = {
     from: ['Statblock'],
     to: ['Rule'],
     section: 'Actions & traits',
+    /* **Was dieser Statblock anders macht** (D51): ein Biss ist ein Artikel
+       für alle, die beissen; die Kante trägt nur, was hier abweicht —
+       andere Würfel, Reichweite, ein Zusatzschaden, ein Satz nur für
+       diesen. `toHit` und `damageFlat` sind die **Buchzahl**, wo sie nicht
+       aus der Rechnung folgt: gezeigt wird das Buch, und dass die Zahl
+       fest steht, sieht man ihr an (`attackNumbers` im Modell). */
     props: {
       type: 'object',
-      properties: { vars: { type: 'object', title: 'Variable bindings' } },
+      properties: {
+        vars: { type: 'object', title: 'Variable bindings' },
+        ability: { type: 'string', title: 'Ability', enum: ['str', 'dex', 'con', 'int', 'wis', 'cha', 'finesse', 'spell'] },
+        damageDice: { type: 'string', title: 'Damage dice' },
+        damageType: { type: 'string', title: 'Damage type', enumRef: 'DamageType' },
+        reach: { type: 'number', min: 0, unit: 'ft', title: 'Reach' },
+        range: { type: 'string', format: 'measure', unit: 'ft', title: 'Range' },
+        target: { type: 'string', title: 'Target' },
+        toHitBonus: { type: 'number', title: 'To-hit bonus', format: 'signed' },
+        damageBonus: { type: 'number', title: 'Damage bonus', format: 'signed' },
+        extraDamageDice: { type: 'string', title: 'Extra damage dice' },
+        extraDamageType: { type: 'string', title: 'Extra damage type', enumRef: 'DamageType' },
+        toHit: { type: 'number', title: 'To hit (book, fixed)', format: 'signed' },
+        damageFlat: { type: 'number', title: 'Damage modifier (book, fixed)', format: 'signed' },
+        note: { type: 'string', format: 'long', title: 'Only here' },
+      },
     },
   },
 
@@ -58,13 +79,206 @@ export const relations: Record<string, RelationDef> = {
     asField: 'to',
   },
 
+  /**
+   * **Die Stufe eines Zustands** (D48): „Exhaustion 3" ist Stufe 3 von
+   * „Exhaustion". Dasselbe Muster trägt die Stadien einer Krankheit. Die
+   * Zustandsliste hält höchstens eine Stufe je Grundzustand; ändert sich
+   * die Stufe, wird ersetzt (gleicher `stageOf`, `stage ± 1`).
+   */
+  stageOf: {
+    type: 'stageOf',
+    label: 'stage of',
+    inverseLabel: 'has stages',
+    from: ['Condition'],
+    to: ['Condition'],
+    cardinality: 'one',
+  },
+
+  /**
+   * **Wirkungen zwischen Regeln** (D48): gelähmt *bewirkt* kampfunfähig,
+   * kampfunfähig *verbietet* Reaktionen. Gespeichert wird vorwärts; die
+   * Gegenfrage („was verbietet mir Reaktionen?") ist eine Abfrage.
+   * **Ausgewertet wird vorerst nichts** — die Kanten sind Daten, die der
+   * Bogen anzeigt. Der Importer legt sie nicht an: dass ein Text einen
+   * anderen Zustand nennt, heisst nicht, dass er ihn bewirkt.
+   */
+  affects: {
+    type: 'affects',
+    label: 'affects',
+    inverseLabel: 'affected by',
+    from: ['Rule'],
+    to: ['Rule'],
+    props: {
+      type: 'object',
+      properties: {
+        effect: {
+          type: 'string',
+          title: 'Effect',
+          enum: ['imposes', 'prevents', 'limits', 'advantage', 'disadvantage', 'triggers'],
+        },
+        on: { type: 'string', suggest: true, title: 'On' },
+        note: { type: 'string', title: 'Note' },
+      },
+    },
+  },
+
+  /** Wer an eine Gottheit glaubt (M7). Die Anhänger sind die Gegenrichtung. */
+  worships: {
+    type: 'worships',
+    label: 'worships',
+    inverseLabel: 'worshipped by',
+    from: ['Creature', 'Faction'],
+    to: ['Deity'],
+  },
+
+  /**
+   * **Wer einen Zauber wirkt, und wie (M2).** Der Zauber steht einmal da;
+   * die Kante sagt, was er beim Wirkenden ist: vorbereitet, bekannt,
+   * angeboren oder in einem Gegenstand gespeichert. `uses` ist die
+   * Häufigkeit, wie sie im Statblock steht („at will", „3/day"), `level`
+   * der Grad, auf dem er so gewirkt wird, `charges` was ein Gegenstand
+   * dafür verbraucht (der Zauberstab der Magischen Geschosse: 1).
+   *
+   * Vom Statblock und nicht von der Kreatur: die Zahlen und das
+   * Zauberwirken wohnen dort. Seit P4 auch von der Unterklasse und der
+   * Abstammung: Domänenzauber des Klerikers, das angeborene Thaumaturgy
+   * des Tieflings — mit `fromLevel`, ab welcher Klassen- bzw. Figurenstufe.
+   */
+  casts: {
+    type: 'casts',
+    label: 'casts',
+    inverseLabel: 'cast by',
+    from: ['Statblock', 'PlayerCharacter', 'Item', 'Subclass', 'Ancestry'],
+    to: ['Spell'],
+    props: {
+      type: 'object',
+      properties: {
+        mode: {
+          type: 'string',
+          title: 'How',
+          enum: ['prepared', 'known', 'innate', 'item'],
+        },
+        uses: { type: 'string', suggest: true, title: 'Uses' },
+        level: { type: 'number', min: 0, max: 9, title: 'At level' },
+        charges: { type: 'number', min: 0, title: 'Charges per cast' },
+        fromLevel: { type: 'number', min: 1, max: 20, title: 'From level' },
+      },
+    },
+  },
+
+  /**
+   * **Was ein Statblock in der Hand hat** (M5): der Goblin führt Krummsäbel
+   * und Kurzbogen. Ein Verweis auf den Gegenstand aus dem Buch und kein
+   * Inventar — das hat eine Figur am Tisch (`carries`), nicht eine Vorlage.
+   */
+  equips: {
+    type: 'equips',
+    label: 'equips',
+    inverseLabel: 'equipped by',
+    from: ['Statblock'],
+    to: ['Item'],
+  },
+
+  // ------------------------------------------------------------ charakterbau
+
+  /** Zu welcher Klasse eine Unterklasse gehört (M3). */
+  subclassOf: {
+    type: 'subclassOf',
+    label: 'subclass of',
+    inverseLabel: 'subclasses',
+    from: ['Subclass'],
+    to: ['Class'],
+    cardinality: 'one',
+  },
+
+  /** Hill Dwarf ist eine Unterart von Dwarf (M3). */
+  subraceOf: {
+    type: 'subraceOf',
+    label: 'subrace of',
+    inverseLabel: 'subraces',
+    from: ['Ancestry'],
+    to: ['Ancestry'],
+    cardinality: 'one',
+  },
+
+  /**
+   * **Eine Figur hat Klassen, jede mit ihrer Stufe** (M3). Mehrklassig ist
+   * zwei Kanten: Kämpfer 3 und Magier 2. Die Stufe der Figur ist die Summe
+   * (`sum(hasClass.level)`, gerechnet, D8); die Unterklasse steht an der
+   * Kante, weil sie zu **dieser** Klasse der Figur gehört.
+   */
+  hasClass: {
+    type: 'hasClass',
+    label: 'class',
+    inverseLabel: 'taken by',
+    from: ['PlayerCharacter'],
+    to: ['Class'],
+    props: {
+      type: 'object',
+      required: ['level'],
+      properties: {
+        level: { type: 'number', min: 1, max: 20, title: 'Level' },
+        subclass: {
+          type: 'string',
+          format: 'link',
+          title: 'Subclass',
+          target: { interfaces: ['Subclass'] },
+        },
+      },
+    },
+  },
+
+  /** Die Abstammung einer Figur — eine (M3). */
+  hasAncestry: {
+    type: 'hasAncestry',
+    label: 'ancestry',
+    inverseLabel: 'ancestry of',
+    from: ['PlayerCharacter'],
+    to: ['Ancestry'],
+    cardinality: 'one',
+  },
+
+  /** Der Hintergrund einer Figur — einer (M3). */
+  hasBackground: {
+    type: 'hasBackground',
+    label: 'background',
+    inverseLabel: 'background of',
+    from: ['PlayerCharacter'],
+    to: ['Background'],
+    cardinality: 'one',
+  },
+
+  /**
+   * **Was Klasse, Abstammung, Hintergrund oder Talent mitbringen** (M3):
+   * Merkmale, Aktionen, Zustände — jede Regel. Die Stufe steht an der
+   * Kante, nicht am Merkmal: „Ability Score Improvement" ist ein Artikel,
+   * den der Kämpfer auf Stufe 4, 6, 8, 12, 14, 16 und 19 bekommt (D50).
+   *
+   * Das ist die Kante, die der Arbeitsplan `featureOf` nannte — nur
+   * vorwärts vom Gebenden aus. Beide Richtungen als eigene Kanten wären
+   * ein Gegenstück, das verwaist.
+   */
+  grants: {
+    type: 'grants',
+    label: 'grants',
+    inverseLabel: 'granted by',
+    from: ['Class', 'Subclass', 'Ancestry', 'Background', 'Feat'],
+    to: ['Rule'],
+    props: {
+      type: 'object',
+      properties: {
+        level: { type: 'number', min: 1, max: 20, title: 'At level' },
+      },
+    },
+  },
+
   /** Weapon properties are pooled rules, referenced rather than copied. */
   hasProperty: {
     type: 'hasProperty',
     label: 'has property',
     inverseLabel: 'property of',
     from: ['Weapon', 'Item', 'Armor'],
-    to: ['Rule'],
+    to: ['ItemProperty'],
   },
 
   /* `NPC` stand hier, solange es die Art gab. Jetzt ist eine Kreatur die
@@ -109,13 +323,19 @@ export const relations: Record<string, RelationDef> = {
    * hierarchy beside it: a chapter sits in an arc the way a room sits in a
    * building, and a quest hangs off the story it belongs to. Widening the
    * ends of an existing edge keeps one set of backlinks, one `contains`.
+   *
+   * **Eine Spur der Weltgeschichte enthält ihre Ereignisse über diese
+   * Kante** (REQ-220, D57): eine Schlacht ist Teil des Kriegs, der Krieg
+   * Teil des Zeitalters, und ein Ereignis am Tisch Teil der Kampagne. Nicht
+   * über den Zeitraum — sonst läge jede Hochzeit im Norden im Krieg im
+   * Süden.
    */
   partOf: {
     type: 'partOf',
     label: 'part of',
     inverseLabel: 'contains',
-    from: ['Place', 'Story', 'Quest'],
-    to: ['Place', 'Story'],
+    from: ['Place', 'Story', 'Quest', 'Event'],
+    to: ['Place', 'Story', 'Event'],
   },
 
   controls: {
@@ -170,7 +390,9 @@ export const relations: Record<string, RelationDef> = {
     type: 'carries',
     label: 'carries',
     inverseLabel: 'carried by',
-    from: ['Creature', 'Party'],
+    /* Ein Gegenstand trägt eins, wenn er ein Behälter ist (M4): der
+       Rucksack hat sein Raster, der Köcher seine Form. */
+    from: ['Creature', 'Party', 'Item'],
     to: ['Inventory'],
     cardinality: 'one',
     /* Dasselbe am anderen Ende: das Inventar ist ein eigener Artikel, weil
@@ -203,17 +425,34 @@ export const relations: Record<string, RelationDef> = {
         tier: {
           type: 'string',
           title: 'Within reach',
-          enum: ['held', 'worn', 'belt', 'pack', 'stored'],
+          /* `ground`: fallen gelassen (REQ-225, D58) — liegt der Figur zu
+             Füssen, gehört ihr weiter und steht weiter in ihrem Inventar,
+             ohne Platz und ohne Raster. Aufheben heisst: wieder hinlegen. */
+          enum: ['held', 'worn', 'belt', 'pack', 'ground', 'stored'],
           default: 'pack',
         },
+        /* **Die Plätze nach Basils Blatt** (REQ-214, D54): Kopf, Schultern,
+           Torso, rechte und linke Hand (beide nehmen alles), Beine,
+           Stiefel, Gurt mit zwei Holstern, je vier Ringe an jeder Hand,
+           vier Halsketten. `hands` (Handschuhe) steht nicht auf dem Blatt
+           und bleibt, bis die Verwaltung es anders sagt. Aus `cloak`,
+           `neck`, `ring1`, `ring2` wurden `shoulders`, `neck1`, `ringR1`,
+           `ringL1` — Wanderung: `prototype/migration/plaetze-nach-dem-blatt.mjs`.
+           Wie schnell etwas von einem Platz kommt, sagt die Einstellung
+           `slotDraw`, nicht diese Liste. */
         slot: {
           type: 'string',
           title: 'Body slot',
-          enum: ['head', 'neck', 'cloak', 'torso', 'hands', 'mainHand', 'offHand',
-            'belt', 'legs', 'feet', 'ring1', 'ring2'],
+          enum: ['head', 'shoulders', 'torso', 'hands', 'mainHand', 'offHand',
+            'legs', 'feet', 'belt', 'holster1', 'holster2',
+            'ringR1', 'ringR2', 'ringR3', 'ringR4', 'ringL1', 'ringL2', 'ringL3', 'ringL4',
+            'neck1', 'neck2', 'neck3', 'neck4'],
         },
         gx: { type: 'number', title: 'Grid column' },
         gy: { type: 'number', title: 'Grid row' },
+        /* Die Drehung im Raster schrieb der Prototyp schon immer; hier
+           stand sie nicht (D54 zieht sie nach). */
+        rot: { type: 'number', title: 'Rotation in degrees', default: 0 },
         attuned: { type: 'boolean', title: 'Attuned' },
         note: { type: 'string', title: 'Note' },
       },
@@ -393,6 +632,48 @@ export const relations: Record<string, RelationDef> = {
         // ein anderes ist. Also steht der Radius an der Kante (REQ-140).
         light: { type: 'number', title: 'Bright light in squares' },
         dim: { type: 'number', title: 'Dim light in squares' },
+        /* Versteckt (REQ-209): Spielende sehen das Token nicht, bis es
+           aufgedeckt wird — von Hand oder entlang eines bestätigten Pfads.
+           `stealth` ist, was die passive Wahrnehmung schlagen muss: der
+           Heimlichkeitswurf einer Kreatur, der SG einer Falle. Es steht an
+           der Kante, weil dieselbe Falle auf einer Karte offen liegt und
+           auf der nächsten unter Laub. */
+        hidden: { type: 'boolean', title: 'Hidden from players' },
+        stealth: { type: 'number', title: 'Stealth (to notice)' },
+      },
+    },
+  },
+
+  /**
+   * **Wo eine Zone liegt** (REQ-208, D56). Eine Form auf der Karte, die auf
+   * ihre Zonenart zeigt — wie `territory`, und wie dort aufs Gitter
+   * gerastert: am Tisch zählt, welche Quadrate Eis sind. Die Regel steht am
+   * Artikel und gilt für jede Stelle, die auf ihn zeigt; was nur hier
+   * gilt (schon entdeckt), steht an der Kante.
+   */
+  zone: {
+    type: 'zone',
+    label: 'zone',
+    inverseLabel: 'lies on',
+    from: ['Map'],
+    to: ['ZoneKind'],
+    props: {
+      type: 'object',
+      properties: {
+        kind: {
+          type: 'string',
+          title: 'Shape',
+          enum: ['rect', 'circle', 'poly'],
+          default: 'rect',
+        },
+        x: { type: 'number', title: 'X (0–1)' },
+        y: { type: 'number', title: 'Y (0–1)' },
+        w: { type: 'number', title: 'Width (0–1)' },
+        h: { type: 'number', title: 'Height (0–1)' },
+        /* Eine Zone mit `hiddenUntil` ist versteckt, bis jemand sie
+           bemerkt; dann steht hier, dass sie es nicht mehr ist. */
+        found: { type: 'boolean', title: 'Found' },
+        note: { type: 'string', title: 'Note' },
       },
     },
   },
@@ -498,8 +779,10 @@ export const relations: Record<string, RelationDef> = {
    * Anzahl: drei Goblins haben drei Mal Trefferpunkte, und eine Zahl an
    * einer Kante könnte nur einen davon verletzen.
    *
-   * Zustände tragen ihre Dauer mit; sie zählt am Ende des Zuges herunter,
-   * der sie gesetzt hat. Ohne Dauer vergisst sie der Tisch.
+   * Zustände und Notizen tragen ihre Dauer mit (REQ-212, D53): `rounds`
+   * zählt herunter, wenn der Zug des Ankers anfängt oder endet. Ohne Dauer
+   * vergisst sie der Tisch. RK und TP-Maximum stehen **nicht** hier, sondern
+   * am Statblock der Instanz (REQ-211); `hp` ist der Stand im Kampf.
    */
   participates: {
     type: 'participates',
@@ -513,13 +796,26 @@ export const relations: Record<string, RelationDef> = {
         label: { type: 'string', title: 'Name at the table' },
         init: { type: 'number', title: 'Initiative' },
         hp: { type: 'number', title: 'Hit points' },
-        hpMax: { type: 'number', title: 'Maximum' },
+        /* Abschrift aus der Zeit vor D53. Gelesen wird das Maximum am
+           Statblock (`participantStats`); dieses Feld nur, wo keiner hängt. */
+        hpMax: { type: 'number', title: 'Maximum (without statblock)' },
         ally: { type: 'boolean', title: 'On the party’s side' },
-        /* Zeitlich begrenzte Zustände (REQ-115): je Eintrag `rule` (Id
-           eines Regelartikels mit `kind: condition`), `rounds` (zählt am
-           Zugende herunter) und `source` (wer ihn verhängt hat). */
-        conditions: { type: 'array', title: 'Conditions', items: { type: 'object' } },
-        note: { type: 'string', title: 'Note' },
+        /* Zustände und Notizen mit Dauer (REQ-115, REQ-212, D53). Je Eintrag
+           entweder `rule` (Id eines Artikels der Art `Condition`; der
+           Schlüssel heisst aus alter Zeit so) oder `text` (eine Notiz), dazu
+           `rounds` (wie oft der Zeitpunkt noch vorbeikommt), `anchor` (Id
+           der Teilnehmerkante, an deren Zug gezählt wird; leer: der eigene),
+           `at` (`start` | `end`; leer: `end`), `source` (wer ihn verhängt
+           hat, als Text) und `hidden` (nicht für Spielende). Ohne `anchor`
+           und `at` verhält sich ein Eintrag wie vor D53. Wie in
+           `Vitals.conditions` höchstens eine Stufe je Grundzustand. */
+        conditions: { type: 'array', title: 'Conditions and notes', items: { type: 'object' } },
+        note: { type: 'string', title: 'GM note' },
+        /* Die Spieleransicht (REQ-213, D53): gezeigt wird die Gruppe und wer
+           `revealed` oder `involved` ist; ohne `identified` der Deckname. */
+        revealed: { type: 'boolean', title: 'Revealed to the players' },
+        involved: { type: 'boolean', title: 'Involved (has acted or been hit)' },
+        identified: { type: 'boolean', title: 'Identified by the players' },
       },
     },
   },
@@ -598,11 +894,14 @@ export const relations: Record<string, RelationDef> = {
   },
 
   /** Welche Tabelle an diesem Ort gilt (REQ-172). */
+  /* Seit M3 auch die Stufentabelle einer Klasse und die vier
+     Charakterzug-Tabellen eines Hintergrunds: eine Tabelle ist ein Artikel
+     mit Spalten (M8), und eine Liste am Typ wäre die zweite Tabelle. */
   tableFor: {
     type: 'tableFor',
     label: 'rolls on',
     inverseLabel: 'used at',
-    from: ['Place', 'Story', 'Encounter'],
+    from: ['Place', 'Story', 'Encounter', 'Class', 'Subclass', 'Ancestry', 'Background'],
     to: ['Table'],
   },
 
@@ -700,16 +999,19 @@ export const relations: Record<string, RelationDef> = {
    * selbst gesetzt hat. Wer den Wert der Vorlage einträgt, folgt ihr wieder.
    *
    * Anders als `variantOf`, das eine Kopie mit Herkunft ist und nichts
-   * nachliest. Erlaubt ist es heute am Statblock; eine weitere Art, die
-   * Vorlagen braucht, kommt hier in `from` und `to` dazu und braucht keine
+   * nachliest. Erlaubt ist es am Statblock und am Gegenstand (M4): das
+   * +1-Langschwert am Tisch ist eine Instanz des Langschwerts, die nur
+   * `bonusWeapon` und `rarity` selbst trägt. **Eine Instanz ist von
+   * derselben Art wie ihre Vorlage** (`same`): ein Statblock liest keinen
+   * Gegenstand. Eine weitere Art kommt in `from` dazu und braucht keine
    * Codeänderung.
    */
   instanceOf: {
     type: 'instanceOf',
     label: 'instance of',
     inverseLabel: 'instances',
-    from: ['Statblock'],
-    to: ['Statblock'],
+    from: ['Statblock', 'Item'],
+    to: ['same'],
     cardinality: 'one',
   },
 
@@ -753,14 +1055,17 @@ export const relations: Record<string, RelationDef> = {
    * er vorbei ist, und ein Artikel, den man anschliessend löscht, war
    * keiner.
    *
-   * `put` ist das Stück, an dem alles hängt: **das Material wird
-   * angehängt, während der Gang läuft**, nicht am Anfang hineingelegt. Es
-   * ging einmal am Anfang hinein, und das hiess, dass anfangen nur konnte,
-   * wer schon alles hatte — am Tisch ist es andersherum. Tage lassen sich
-   * von Anfang an arbeiten; fertig wird es nicht, bevor alles drin ist.
+   * `put` ist das Stück, an dem alles hängt: **das Material wird beim
+   * Start gebunden** (REQ-219, D55). Was das Rezept braucht und dabei ist,
+   * verlässt das Inventar und steht hier — auch, was nicht verbraucht wird,
+   * denn gebunden heisst: nicht zugleich für etwas anderes da. Bis D52 ging
+   * nichts hinein, und angehängt wurde unterwegs (Aufgabe #34); das bleibt
+   * für Material, das erst später dazukommt, und ein Gang aus der Zeit davor
+   * ist dieselbe Kante mit weniger in `put`. Tage lassen sich von Anfang an
+   * arbeiten; fertig wird es nicht, bevor alles drin ist.
    *
-   * Und nur weil etwas drin liegt, kann ein Fehlschlag etwas kosten und
-   * `onFailure` mehr sein als eine Zeile.
+   * Was am Ende zurückkommt: was nicht verbraucht wird, immer; das Übrige
+   * beim Misslingen und beim Abbruch nach `Recipe.onFailure`.
    */
   crafting: {
     type: 'crafting',
@@ -773,7 +1078,7 @@ export const relations: Record<string, RelationDef> = {
       properties: {
         day: { type: 'number', title: 'Days done', default: 0 },
         days: { type: 'number', title: 'Days needed', default: 1 },
-        put: { type: 'array', title: 'Materials put in so far' },
+        put: { type: 'array', title: 'Materials bound to it' },
         rolls: { type: 'array', title: 'Rolls' },
       },
     },

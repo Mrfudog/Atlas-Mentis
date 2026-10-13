@@ -30,6 +30,32 @@ export const settings: Record<string, string> = {
   gridUnit: '1,5 m',
   inventoryCols: '10',
   inventoryRows: '6',
+  /* **Basils Blatt** (REQ-214–216, D54). Das Tragraster einer Kreatur
+     ohne eigene Form: Seitenlänge des Grundquadrats je Grösse (eine
+     Grösse, die hier fehlt, behält das Rechteck oben), und die Zonen nach
+     Spalten. Das Zusatzquadrat rechnet der Statblock (`carryExtra`). */
+  carrySquares: 'tiny:3, small:4, medium:5, large:6',
+  carryZones: '0-1:bonus action, 2-4:action, 5-8:turn, 9-10:round',
+  /* Wie schnell etwas von einem Körperplatz kommt — und ein Behälter an
+     diesem Platz gibt seinem Inhalt eine Stufe dazu. Ein Platz, der hier
+     fehlt, hat keine Stufe. */
+  /* Der Gurt ist eine freie Aktion (REQ-225, D58), wie die Holster. */
+  slotDraw: 'mainHand:free action, offHand:free action, holster1:free action, holster2:free action, '
+    + 'belt:free action, shoulders:bonus action, head:action, torso:action, hands:action, '
+    + 'legs:action, feet:action, ringR1:action, ringR2:action, ringR3:action, ringR4:action, '
+    + 'ringL1:action, ringL2:action, ringL3:action, ringL4:action, '
+    + 'neck1:action, neck2:action, neck3:action, neck4:action',
+  /* Was die Gegenrichtung kostet (REQ-225, D58): **Fallenlassen** (was in
+     der Hand ist, liegt danach am Boden) und **Verstauen** (aus der Hand
+     an einen freien Platz oder ins Raster) — egal wohin. Eine Einstellung
+     wie `slotDraw` und keine Zeile: sie ist das Blatt der Kampagne und
+     rechnet nichts; die Werte kommen aus `DrawTime`. */
+  handActions: 'drop:free action, stow:bonus action',
+  /* Vorlagen beim Anlegen eines Behälters, `container:<Name>`: Zeilen mit
+     `/`, nach dem Strich die Zonen nach Spalten. Eine neue Vorlage ist
+     eine neue Einstellung. */
+  'container:Backpack': '.###../######/######/######/.###.. | 0-1:action, 2-3:turn, 4-5:round',
+  'container:Bag of Holding': '####/####/####/####/####/####/####/####',
   /* `calendar` stand hier: der Kalender hängt seit dem 7.10. an der Welt
      (`World.calendar`, Kante `inWorld` von der Kampagne), A11. */
   /* Der Tag, an dem die Kampagne steht. Leer heisst: das jüngste benutzte
@@ -37,15 +63,9 @@ export const settings: Record<string, string> = {
      ausdrücklich NICHT — sie werden gerechnet (B3, D8), und eine
      eingetippte Gruppenstufe ist nach der ersten Stufe falsch. */
   today: '',
-  /* Fertigkeit zu Attribut. Steht hier und nicht im Code, damit eine
-     Kampagne mit anderen Fertigkeiten eine Einstellung ist und kein
-     Schemawechsel. Die Seite hat denselben Satz als Rückfall, damit sie
-     auch ohne diese Zeile rechnet. */
-  skills:
-    'acrobatics:dex,animalHandling:wis,arcana:int,athletics:str,deception:cha,' +
-    'history:int,insight:wis,intimidation:cha,investigation:int,medicine:wis,' +
-    'nature:int,perception:wis,performance:cha,persuasion:cha,religion:int,' +
-    'sleightOfHand:dex,stealth:dex,survival:wis',
+  /* `skills` stand hier: Fertigkeit zu Attribut (`stealth:dex`). Seit M6
+     ist eine Fertigkeit ein Artikel und trägt ihr Attribut selbst
+     (`Skill.ability`) — die Einstellung wäre die zweite Stelle dafür. */
   /* Felder, die ein Spieler nicht sieht, solange keine bekannte
      Information sie ausdrücklich freigibt. Als Einstellung, weil eine
      Kampagne das anders halten darf. Es hiess `gmBlockTypes` und nannte
@@ -62,7 +82,7 @@ export const settings: Record<string, string> = {
   travelLightEvery: '4',
   travelWatchesPerDay: '3',
   /* `travelActions` und `conditions` standen hier als Wortlisten. Beides
-     sind seit dem 7.10. Regelartikel (`Rule.kind` travel bzw. condition,
+     sind seit dem 7.10. Regelartikel (`Rule.kind` travel bzw. seit D48 die Art `Condition`,
      Abgleich A3): ein Wort hat keine Beschreibung und keine Quelle, ein
      Artikel schon. Wanderung: `prototype/migration/zustaende-als-regeln.mjs`. */
 };

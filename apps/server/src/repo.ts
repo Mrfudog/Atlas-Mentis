@@ -25,6 +25,8 @@ export interface Repository {
   putRegistryPart<K extends keyof Registry>(part: K, value: Registry[K]): Promise<void>;
 
   listEntities(): Promise<Entity[]>;
+  /** Wie viele Artikel es gibt — ohne sie alle zu laden. */
+  countEntities(): Promise<number>;
   getEntity(id: string): Promise<Entity | undefined>;
   putEntity(entity: Entity): Promise<Entity>;
   deleteEntity(id: string): Promise<boolean>;
@@ -102,6 +104,10 @@ export class InMemoryRepository implements Repository {
 
   async listEntities(): Promise<Entity[]> {
     return [...this.entities.values()].map((e) => structuredClone(e));
+  }
+
+  async countEntities(): Promise<number> {
+    return this.entities.size;
   }
 
   async getEntity(id: string): Promise<Entity | undefined> {

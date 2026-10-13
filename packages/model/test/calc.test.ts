@@ -91,3 +91,62 @@ describe('formatValue', () => {
     expect(formatValue({ type: 'array' }, ['a', 'b'])).toBe('a, b');
   });
 });
+
+/* M2: der Zauber-SG braucht `prof` aus der Statblock-Karte und den Wert aus
+   `Abilities` — zwei Karten, die der Bogen ohnehin als eine liest. */
+describe('derivedValue across the cards of one article', () => {
+  const dc = { type: 'number', derived: '8+prof+modOf(spellAbility)' } as const;
+  const atk = { type: 'number', derived: 'prof+modOf(spellAbility)' } as const;
+  const statblock = { prof: 3, spellAbility: 'int' };
+  const abilities = { str: 10, int: 18 };
+  const cards = { Statblock: statblock, Abilities: abilities };
+
+  it('takes the modifier of the ability a field names, from the other card', () => {
+    expect(derivedValue(dc, statblock, cards)).toBe(15);
+    expect(derivedValue(atk, statblock, cards)).toBe(7);
+  });
+
+  it('has no value without an ability — 8 + proficiency would look right and is not', () => {
+    const nurWerte = { Abilities: abilities };
+    expect(derivedValue(dc, { prof: 3 }, nurWerte)).toBeUndefined();
+    expect(derivedValue(dc, { prof: 3, spellAbility: 'luck' }, nurWerte)).toBeUndefined();
+    expect(derivedValue(dc, statblock, { Statblock: statblock })).toBeUndefined();
+  });
+
+  it('lets the own card win, and refuses a name two other cards disagree on', () => {
+    expect(derivedValue({ type: 'number', derived: 'prof' }, { prof: 2 }, { X: { prof: 9 } })).toBe(2);
+    const zwei = { A: { prof: 2 }, B: { prof: 4 } };
+    expect(derivedValue({ type: 'number', derived: 'prof+1' }, {}, zwei)).toBeUndefined();
+    const gleich = { A: { prof: 2 }, B: { prof: 2 } };
+    expect(derivedValue({ type: 'number', derived: 'prof+1' }, {}, gleich)).toBe(3);
+  });
+
+  it('keeps every calculation that stays inside its card as it was', () => {
+    expect(derivedValue({ type: 'number', derived: 'mod(dex)' }, { dex: 14 }, cards)).toBe(2);
+    expect(derivedValue({ type: 'number', derived: 'mod(str)' }, {}, cards)).toBe(0);
+  });
+});
+
+describe('sum über die eigenen Kanten (M3)', () => {
+  const level = { type: 'number' as const, derived: 'sum(hasClass.level)' };
+  const prof = { type: 'number' as const, derived: '2+(sum(hasClass.level)-1)/4' };
+  const kanten = [
+    { id: 'r1', type: 'hasClass', to: 'fighter', props: { level: 3 } },
+    { id: 'r2', type: 'hasClass', to: 'wizard', props: { level: 2 } },
+    { id: 'r3', type: 'memberOf', to: 'zirkel', props: { level: 9 } },
+  ];
+
+  it('zählt die Stufen aller Klassen und nur die', () => {
+    expect(derivedValue(level, {}, {}, kanten)).toBe(5);
+    expect(derivedValue(prof, {}, {}, kanten)).toBe(3);
+  });
+
+  it('ohne Klasse keine Stufe — und kein Übungsbonus, der aussieht, als stimmte er', () => {
+    expect(derivedValue(level, {}, {}, [])).toBeUndefined();
+    expect(derivedValue(prof, {}, {})).toBeUndefined();
+  });
+
+  it('ein Pfad ohne Punkt rechnet nichts', () => {
+    expect(derivedValue({ type: 'number', derived: 'sum(hasClass)' }, {}, {}, kanten)).toBeUndefined();
+  });
+});
