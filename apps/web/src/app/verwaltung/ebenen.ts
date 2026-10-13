@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { Api, type KampagnenEbene, type KampagnenEbenen } from '../kern/api';
 
 /** Die Gruppen der Bücher, wie der Server sie nennt (`BUCHGRUPPEN`, T-081). */
@@ -322,6 +322,8 @@ const BUCHGRUPPEN: [string, string][] = [
 })
 export class KampagnenEbenenListe {
   readonly kampagne = input.required<string>();
+  /** Nach jedem Schalten — die Geschichte der Kampagne liest dann neu (T-082). */
+  readonly geschaltet = output<void>();
 
   private readonly api = inject(Api);
   protected readonly daten = signal<KampagnenEbenen | null>(null);
@@ -451,6 +453,7 @@ export class KampagnenEbenenListe {
       if (stapel) await this.api.setCampaignLayers(c, stapel);
       else if (dazu) await this.api.activateLayer(c, dazu);
       await this.laden(c);
+      this.geschaltet.emit();
     } catch (error) {
       this.fehler.set(error instanceof Error ? error.message : String(error));
     } finally {

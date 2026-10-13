@@ -656,6 +656,27 @@ Büchern gibt es nichts zu ordnen. `book` ist wie jedes `kind`
 Beschreibung: es gruppiert und hält die Ausfuhr klein, aber wer etwas
 sieht, sagt es nicht.
 
+**Ein Abenteuer ist eine Ebene, und anpassen heisst darüberlegen** (T-082,
+E-018, REQ-240). Bis T-082 übersprang der Importer den Abenteuertext;
+von *Lost Mine of Phandelver* kamen nur die NSC herein. Jetzt bringt ein
+Abenteuer seine Geschichte mit — Kapitel, Abschnitte, Begegnungen, Karten
+— als Artikel in seiner Ebene (`kind: adventure`), und die Kampagne zeigt
+die Kapitel jedes aufgeschalteten Abenteuers in ihrer Geschichte. Was
+darin vorkommt, ist ein Verweis auf den Buchartikel und keine Kopie: der
+Goblin in Raum 2 *ist* der Goblin aus dem Monster Manual.
+
+Wie eine Runde ein Kapitel ändert, ohne das Original zu verlieren, war die
+Frage von E-018. **Kopieren** wäre einfach, und die Kopie gehörte der
+Kampagne — aber die Verbindung zum Original wäre weg, und jeder Verweis im
+Abenteuer zeigte weiter darauf. **Darüberlegen** (`overrides`, gewählt)
+heisst: „Adapt" legt eine Fassung in die Ebene der Kampagne, und solange
+die läuft, gilt die Fassung. Das Original bleibt darunter, für jede andere
+Runde unverändert; eine Korrektur daran erreicht jede, die es nicht
+angepasst hat, und zurück heisst, die Fassung zu löschen. Damit ein Verweis
+aufs Original nicht ins Leere führt, liefert der Server die Fassung, die
+gilt (E5) — dieselbe Frage, die der Stapel ohnehin stellt (`resolveArticle`),
+nur jetzt auch beim Öffnen und bei den Namen.
+
 **Fassungen stehen am Feld, nicht hinter einem Umschalter** (T-092,
 E-021 d). Fireball gibt es im PHB von 2014, im PHB von 2024 und mit
 Reichweite 120 in Xanathar's Guide. Ein Umschalter „2014 · 2024" oben am
@@ -680,7 +701,8 @@ aufzuschalten (`activates` mit `mode: 'compare'`). Was sie bringen, steht
 in keiner Liste, ist an keinem Verweis und gehört der Kampagne nicht — es
 ist auf Wunsch sichtbar, für die Leitung und, wenn die Kampagne es sagt,
 für die Spielenden. Eine Fassung daraus **übernimmt** die Leitung als
-Kopie in die Ebene der Kampagne, mit `overrides` auf die geltende. Eine
+Kopie in die Ebene der Kampagne, mit `overrides` auf die geltende — wie „Adapt" eines Abenteuers, nur aus
+einer Vergleichsebene und mit der Herkunft in `variantOf`. Eine
 Kante am Buchartikel wäre kürzer und falsch: das Buch liegt in einer
 geteilten Ebene, und eine Überschreibung dort gälte in jeder Runde, die es
 aufschaltet.
