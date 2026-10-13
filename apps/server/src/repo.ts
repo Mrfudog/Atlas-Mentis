@@ -106,6 +106,13 @@ export interface Repository {
   /** Der neue Stand gilt (die Leitung nannte ihn fertig) oder der Artikel ist weg. */
   dropReadyStand(entityId: string): Promise<void>;
 
+  /** **Einstellungen je Konto** (T-092): Schlüssel → Wert, wie die Seite
+   *  sie schreibt. Wie jemand liest, nicht was gilt — darum am Konto und
+   *  in keinem Artikel. */
+  getPrefs(userId: string): Promise<Record<string, unknown>>;
+  /** `null` nimmt die Einstellung weg. */
+  putPref(userId: string, key: string, value: unknown): Promise<void>;
+
   /* Einladungen. Ein Code erlaubt eine Registrierung und sonst nichts; ein
      offener Registrierungsendpunkt wäre ein Loch, und ein Passwort, das die
      Spielleitung für jeden ausdenkt und weitergibt, geht über einen Kanal,
@@ -275,6 +282,17 @@ export class InMemoryRepository implements Repository {
   }
   async dropReadyStand(entityId: string): Promise<void> {
     this.fertig.delete(entityId);
+  }
+  private readonly prefs = new Map<string, Record<string, unknown>>();
+  async getPrefs(userId: string): Promise<Record<string, unknown>> {
+    return structuredClone(this.prefs.get(userId) ?? {});
+  }
+  async putPref(userId: string, key: string, value: unknown): Promise<void> {
+    if (!this.users.has(userId)) return;
+    const p = this.prefs.get(userId) ?? {};
+    if (value === null || value === undefined) delete p[key];
+    else p[key] = structuredClone(value);
+    this.prefs.set(userId, p);
   }
   async usersOfActor(actorId: string): Promise<User[]> {
     return [...this.users.values()]

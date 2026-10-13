@@ -40,13 +40,22 @@ function bestand(): Entity[] {
     name: 'Aus Nebel wacht',
     interfaces: ['Campaign'],
     components: { Identity: { name: 'Aus Nebel wacht', id: 'campaign-0001', aliases: [] } },
-    /* Drei Viertel der Bücher aufgeschaltet: der Rest zählt als ausgeblendet. */
-    relations: Array.from({ length: (EBENEN * 3) / 4 }, (_, l) => ({
-      id: `ac_${l}`,
-      type: 'activates',
-      to: `ly_${l}`,
-      props: { order: (l + 1) * 10 },
-    })),
+    /* Drei Viertel der Bücher aufgeschaltet: der Rest zählt als ausgeblendet.
+       Fünf davon sind Vergleichsebenen (T-092) — nicht im Spiel. */
+    relations: [
+      ...Array.from({ length: (EBENEN * 3) / 4 }, (_, l) => ({
+        id: `ac_${l}`,
+        type: 'activates',
+        to: `ly_${l}`,
+        props: { order: (l + 1) * 10 },
+      })),
+      ...Array.from({ length: 5 }, (_, l) => ({
+        id: `cmp_${l}`,
+        type: 'activates',
+        to: `ly_${EBENEN - 1 - l}`,
+        props: { mode: 'compare', order: (l + 1) * 10 },
+      })),
+    ],
   });
   for (let i = 0; i < N; i += 1) {
     const relations: NonNullable<Entity['relations']> = [
@@ -54,11 +63,15 @@ function bestand(): Entity[] {
     ];
     /* Jeder fünfzigste überschreibt seinen Vorgänger. */
     if (i % 50 === 1) relations.push({ id: `ov_${i}`, type: 'overrides', to: `r_${i - 1}`, props: {} });
+    /* Jeder zwanzigste ist eine Fassung seines Vorvorgängers (T-092). */
+    const fassung = i % 20 === 2;
+    if (fassung) relations.push({ id: `va_${i}`, type: 'variantOf', to: `r_${i - 2}`, props: {} });
+    const name = `Rule ${fassung ? i - 2 : i}`;
     out.push({
       id: `r_${i}`,
-      name: `Rule ${i}`,
+      name,
       interfaces: ['Rule'],
-      components: { Identity: { name: `Rule ${i}`, id: `rule-${i}`, aliases: [] } },
+      components: { Identity: { name, id: `rule-${i}`, aliases: [] } },
       relations,
     });
   }
@@ -93,8 +106,24 @@ describe('a list over 20 000 articles (REQ-246)', () => {
     expect(usage.statusCode).toBe(200);
     expect(usage.json().inPlay.Rule).toBe(liste.json().total);
 
+    /* Fassungen gruppiert (T-092): ein Gang über die Treffer, nicht jeder gegen jeden. */
+    t0 = performance.now();
+    const gruppiert = await app.inject({ method: 'GET', url: '/api/list?type=Rule&limit=50&versions=1', headers: { cookie } });
+    const msGruppiert = performance.now() - t0;
+    expect(gruppiert.statusCode).toBe(200);
+    expect(gruppiert.json().total).toBeLessThan(liste.json().total);
+    expect(gruppiert.json().rows.some((r: { versions?: unknown[] }) => r.versions?.length)).toBe(true);
+
+    t0 = performance.now();
+    const fassungen = await app.inject({ method: 'GET', url: '/api/entities/r_20/versions', headers: { cookie } });
+    const msFassungen = performance.now() - t0;
+    expect(fassungen.statusCode).toBe(200);
+    expect(fassungen.json().versions.map((v: { entity: { id: string } }) => v.entity.id)).toEqual(['r_22']);
+
     expect(msListe).toBeLessThan(5000);
     expect(msUsage).toBeLessThan(5000);
+    expect(msGruppiert).toBeLessThan(5000);
+    expect(msFassungen).toBeLessThan(5000);
   }, 60_000);
 });
 

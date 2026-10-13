@@ -35,6 +35,14 @@ import {
   classParts,
   currentCampaign,
   playStack,
+  compareLayers,
+  activeLayerRanks,
+  layerShort,
+  layersOf,
+  versionsOf,
+  LAYER_RELATION,
+  OVERRIDES_RELATION,
+  VARIANT_RELATION,
   detachInstance,
   registryUsage,
   instancesOf,
@@ -703,6 +711,8 @@ export function buildApp({
     /* Die eigenen Tokens verwaltet jedes Konto; die Massenänderung prüft
        je Artikel selbst, ob geschrieben werden darf (`mayWrite`). */
     if (url === '/api/tokens' || url.startsWith('/api/tokens/')) return;
+    /* Die eigenen Einstellungen (T-092) schreibt jedes Konto. */
+    if (url.startsWith('/api/me/prefs/')) return;
     if ((url === '/api/bulk' || url.startsWith('/api/bulk/')) && isLeitung(user)) return;
     /* Verwaltung und Einladungen prüfen selbst: das Recht hängt an der
        Kampagne im Pfad (gm ändert, co-gm sieht), nicht am Konto allein. */
@@ -821,6 +831,20 @@ export function buildApp({
    * steht im Modellpaket, weil es für Server und Oberfläche gleichermassen
    * gilt und es nur einmal geben darf.
    */
+  /**
+   * **Wer die Vergleichsebenen sieht** (T-092, E-021 d): die Verwaltung,
+   * die Leitung der laufenden Kampagne (`gm`, `co-gm`) und — wenn die
+   * Kampagne es sagt (`Campaign.compareFor: 'players'`) — wer am Tisch
+   * sitzt. Vorgabe ist nur die Leitung.
+   */
+  function siehtVergleich(user: User | null, kampagne: Entity | null): boolean {
+    if (!kampagne) return false;
+    if (!user) return true;
+    if (rechtAn(user, kampagne.id)) return true;
+    const fuer = (kampagne.components?.[CAMPAIGN_TYPE] as { compareFor?: unknown } | undefined)?.compareFor;
+    return fuer === 'players' && !!user.roles?.[kampagne.id];
+  }
+
   async function sieve(
     request: FastifyRequest,
     entities: Entity[],
@@ -833,7 +857,10 @@ export function buildApp({
      *  weil ihre Ebene nicht aufgeschaltet ist (T-069) — gesiebt, als
      *  wären sie da. Gezählt wird so nur, was dieser Betrachter nach dem
      *  Aufschalten sähe. */
-    stapel: 'inPlay' | 'unactivated' = 'inPlay',
+    /* `'versions'` (T-092): die Fassungen eines Artikels — was im Stapel
+       steht, auch überschrieben, und was eine Vergleichsebene bringt, wenn
+       dieser Betrachter Vergleichsebenen sehen darf (`siehtVergleich`). */
+    stapel: 'inPlay' | 'unactivated' | 'versions' | 'compare' = 'inPlay',
   ): Promise<Entity[]> {
     const user = await viewerOf(request);
     /* **Eine Instanz geht aufgelöst hinaus**, mit ihrer Vorlage darin und
@@ -852,8 +879,17 @@ export function buildApp({
     const kampagne = currentCampaign(roh, registry.settings ?? null);
     /* Einmal je Aufruf gerechnet, nicht je Artikel (T-086). */
     const sicht = playStack(roh, kampagne);
+    const vergleich = (stapel === 'versions' || stapel === 'compare') && siehtVergleich(user, kampagne);
     entities = entities
-      .filter((e) => (stapel === 'inPlay' ? sicht.inPlay(e) : sicht.unactivated(e).length > 0))
+      .filter((e) =>
+        stapel === 'inPlay'
+          ? sicht.inPlay(e)
+          : stapel === 'versions'
+            ? sicht.inStack(e) || (vergleich && sicht.inCompare(e))
+            : stapel === 'compare'
+              ? vergleich && !sicht.inStack(e) && sicht.inCompare(e)
+              : sicht.unactivated(e).length > 0,
+      )
       .map((e) => readInstance(roh, e));
     if (!user || user.isAdmin) return entities;
     /* Der Zusammenhang ist immer der ganze Bestand, auch wenn nur ein
@@ -1030,8 +1066,11 @@ export function buildApp({
       indizes.set(key, lauf); // zuletzt gebraucht steht hinten
       return lauf;
     }
+    /* Der Rang je Artikel für die Kopfzeile der Fassungen (T-092) —
+       derselbe Stapel, einmal gerechnet. */
+    const rang = playStack(stand.map, currentCampaign(stand.map, registry.settings ?? null));
     lauf = sieve(request, stand.alle, stand.map, listProjection(registry), stapel).then((gesiebt) =>
-      buildListIndex(registry, gesiebt),
+      buildListIndex(registry, gesiebt, (e) => rang.rank(stand.map.get(e.id) ?? e)),
     );
     indizes.set(key, lauf);
     lauf.catch(() => indizes.delete(key));
@@ -1191,6 +1230,199 @@ export function buildApp({
   });
 
   /**
+   * **Die Fassungen eines Artikels** (T-092, E-021 d): was über `variantOf`
+   * oder `overrides` dieselbe Sache ist (`versionsOf`), aus Spiel- und —
+   * wer sie sehen darf — Vergleichsebenen, gesiebt wie jeder Artikel. Die
+   * Seite vergleicht selbst (`versionDiff`); hier steht, woher jede Fassung
+   * kommt, ob sie im Spiel ist und ob die Leitung sie als Überschreibung
+   * übernehmen kann (`adoptable`) oder schon übernommen hat (`adoptedAs`).
+   *
+   * Ein Gang über den Bestand je Anfrage (`versionsOf`), der Stapel einmal
+   * (`playStack`) — nie jeder Artikel gegen jeden (T-086).
+   */
+  app.get<{ Params: { id: string } }>('/api/entities/:id/versions', async (request, reply) => {
+    const stand = await roh();
+    const basis = stand.map.get(request.params.id);
+    const sichtbar = basis
+      ? (await sieve(request, [basis], stand.map)).length ||
+        (await sieve(request, [basis], stand.map, undefined, 'compare')).length
+      : 0;
+    if (!basis || !sichtbar) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const registry = await repo.getRegistry();
+    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const sicht = playStack(stand.map, kampagne);
+    const roheFassungen = versionsOf(stand.map, basis.id);
+    const gesiebt = roheFassungen.length
+      ? await sieve(request, roheFassungen, stand.map, undefined, 'versions')
+      : [];
+    const user = await viewerOf(request);
+    const eigene = kampagne && rechtAn(user, kampagne.id) === 'manage' ? campaignLayer(stand.map, kampagne) : null;
+    const vergleichsIds = new Set(compareLayers(stand.map, kampagne).map((l) => l.id));
+    const imSpiel = activeLayerRanks(stand.map, kampagne);
+    /* Übernommen ist eine Fassung, wenn eine Kopie in der Kampagnenebene
+       mit `variantOf` auf sie zeigt und etwas überschreibt (`adopt`). */
+    const kopieVon = new Map<string, string>();
+    if (eigene) {
+      for (const e of [basis, ...roheFassungen]) {
+        if (!istUebernahme(e, eigene.id)) continue;
+        const von = (e.relations ?? []).find((r) => r.type === VARIANT_RELATION)?.to;
+        if (von) kopieVon.set(von, e.id);
+      }
+    }
+    const basisImSpiel = sicht.inPlay(basis);
+    const ebenenIds = new Set(layersOf(basis));
+    const versions = gesiebt.map((v) => {
+      const r = stand.map.get(v.id) ?? v;
+      for (const l of layersOf(r)) ebenenIds.add(l);
+      const compare = !sicht.inStack(r) && sicht.inCompare(r);
+      const adoptedAs = kopieVon.get(v.id);
+      return {
+        entity: v,
+        layers: layersOf(r),
+        play: sicht.inPlay(r),
+        compare,
+        ...(adoptedAs ? { adoptedAs } : {}),
+        adoptable: !!eigene && compare && !adoptedAs && basisImSpiel,
+      };
+    });
+    const ebenen = await sieve(
+      request,
+      [...ebenenIds].map((id) => stand.map.get(id)).filter((e): e is Entity => !!e),
+      stand.map,
+    );
+    return {
+      layers: ebenen.map((l) => ({
+        id: l.id,
+        name: entityName(l),
+        short: layerShort(l),
+        compare: vergleichsIds.has(l.id),
+        play: imSpiel.has(l.id),
+      })),
+      versions,
+      ...(kampagne ? { campaign: { id: kampagne.id, name: entityName(kampagne) } } : {}),
+    };
+  });
+
+  /** Ist dieser Artikel eine übernommene Fassung in dieser Ebene (T-092)? */
+  function istUebernahme(e: Entity, ebene: string): boolean {
+    const rs = e.relations ?? [];
+    return (
+      rs.some((r) => r.type === LAYER_RELATION && r.to === ebene) &&
+      rs.some((r) => r.type === OVERRIDES_RELATION) &&
+      rs.some((r) => r.type === VARIANT_RELATION)
+    );
+  }
+
+  /**
+   * **Eine Fassung als Überschreibung übernehmen** (T-092, E-021 d):
+   * „use this in my campaign" an einer Fassung aus einer Vergleichsebene.
+   * Es entsteht eine **Kopie** in der Ebene der Kampagne (`campaignLayer`)
+   * mit `overrides` auf die Fassung, die gerade gilt, und `variantOf` auf
+   * die übernommene — die Herkunft. Eine Kopie und keine Kante an der
+   * Fassung selbst: die liegt in einer geteilten Ebene, und eine
+   * Überschreibung dort gälte in jeder Kampagne, die das Buch aufschaltet.
+   * Die Kopie trägt den Namen der Fassung, die sie ersetzt, damit Verweise
+   * und Suche dasselbe finden.
+   *
+   * Nur die Leitung (`rechtAn` = `manage`), nur in der laufenden Kampagne.
+   */
+  app.post<{ Params: { c: string }; Body: { version?: unknown; over?: unknown } }>(
+    '/api/campaigns/:c/adopt',
+    async (request, reply) => {
+      const user = await viewerOf(request);
+      const c = request.params.c;
+      if (rechtAn(user, c) !== 'manage') return reply.code(403).send({ error: 'Übernehmen darf die Leitung.' });
+      const stand = await roh();
+      const registry = await repo.getRegistry();
+      const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+      if (!kampagne || kampagne.id !== c) {
+        return reply.code(409).send({ error: 'Übernehmen geht nur in der laufenden Kampagne.' });
+      }
+      const ebene = campaignLayer(stand.map, kampagne);
+      if (!ebene) {
+        return reply.code(409).send({ error: 'Diese Kampagne hat keine eigene Ebene, in die eine Überschreibung käme.' });
+      }
+      const quelle = stand.map.get(String(request.body?.version ?? ''));
+      const ueber = stand.map.get(String(request.body?.over ?? ''));
+      if (!quelle || !ueber) return reply.code(404).send({ error: 'Nicht gefunden' });
+      const sicht = playStack(stand.map, kampagne);
+      if (!sicht.inPlay(ueber)) return reply.code(409).send({ error: 'Überschrieben wird, was gerade gilt.' });
+      if (sicht.inStack(quelle) || !sicht.inCompare(quelle)) {
+        return reply.code(409).send({ error: 'Übernommen wird eine Fassung aus einer Vergleichsebene.' });
+      }
+      if (!versionsOf(stand.map, ueber.id).some((v) => v.id === quelle.id)) {
+        return reply.code(409).send({ error: 'Das ist keine Fassung derselben Sache.' });
+      }
+      const type = quelle.interfaces?.[0] ?? '';
+      const neueId = (): string => `e_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+      let id = neueId();
+      while (stand.map.has(id)) id = neueId();
+      const name = entityName(ueber);
+      const components = structuredClone(quelle.components ?? {});
+      components['Identity'] = { ...(components['Identity'] ?? {}), name, id: nextId(stand.alle, type) };
+      const STRUKTUR = new Set([LAYER_RELATION, OVERRIDES_RELATION, VARIANT_RELATION]);
+      const relations: NonNullable<Entity['relations']> = [
+        ...(quelle.relations ?? [])
+          .filter((r) => !STRUKTUR.has(r.type))
+          .map((r, i) => ({ ...structuredClone(r), id: `${id}~${r.type}-${i + 1}` })),
+        { id: `${id}~inLayer-1`, type: LAYER_RELATION, to: ebene.id, props: {} },
+        { id: `${id}~overrides-1`, type: OVERRIDES_RELATION, to: ueber.id, props: {} },
+        { id: `${id}~variantOf-1`, type: VARIANT_RELATION, to: quelle.id, props: {} },
+      ];
+      const kopie: Entity = { id, interfaces: [...(quelle.interfaces ?? [])], name, components, relations };
+      const known = new Map(stand.alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
+      known.set(id, type);
+      const issues = validateEntity(registry, kopie, { knownTypes: known });
+      if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+      const stored = await repo.putEntity(kopie);
+      await repo.appendEvent('version.adopted', id, { version: quelle.id, over: ueber.id, campaign: c, by: user?.id });
+      return reply.code(201).send(stored);
+    },
+  );
+
+  /** **Rückgängig** (T-092): die übernommene Kopie geht wieder; es gilt,
+   *  was vorher galt. Nur eine Kopie, die `adopt` angelegt haben könnte. */
+  app.delete<{ Params: { c: string; id: string } }>('/api/campaigns/:c/adopt/:id', async (request, reply) => {
+    const user = await viewerOf(request);
+    const c = request.params.c;
+    if (rechtAn(user, c) !== 'manage') return reply.code(403).send({ error: 'Rückgängig macht die Leitung.' });
+    const stand = await roh();
+    const kampagne = stand.map.get(c);
+    const ebene = kampagne ? campaignLayer(stand.map, kampagne) : null;
+    const kopie = stand.map.get(request.params.id);
+    if (!kopie || !ebene || !istUebernahme(kopie, ebene.id)) {
+      return reply.code(404).send({ error: 'Keine übernommene Fassung dieser Kampagne.' });
+    }
+    const ueber = (kopie.relations ?? []).find((r) => r.type === OVERRIDES_RELATION)?.to;
+    await repo.dropReadyStand(kopie.id);
+    await repo.deleteEntity(kopie.id);
+    await repo.appendEvent('version.dropped', kopie.id, { campaign: c, by: user?.id });
+    return { ok: true, over: ueber };
+  });
+
+  /**
+   * **Einstellungen je Konto** (T-092): `GET` alle, `PUT …/:key` eine
+   * (`{ value }`, `null` nimmt sie weg). Was die Seite sich merkt — ob die
+   * Fassungen an den Feldern stehen und welche Ebenen —, gilt auf jedem
+   * Gerät desselben Kontos.
+   */
+  app.get('/api/me/prefs', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+    return repo.getPrefs(user.id);
+  });
+  app.put<{ Params: { key: string }; Body: { value?: unknown } }>('/api/me/prefs/:key', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+    const key = request.params.key;
+    if (!/^[a-z][a-zA-Z0-9.-]{0,63}$/.test(key)) return reply.code(400).send({ error: 'Unbekannter Schlüssel.' });
+    const value = request.body?.value ?? null;
+    if (JSON.stringify(value).length > 8000) return reply.code(400).send({ error: 'Zu gross.' });
+    await repo.putPref(user.id, key, value);
+    return { ok: true };
+  });
+
+  /**
    * Wer auf diesen Artikel zeigt. Die Gegenrichtung ist eine Abfrage (K1);
    * gestellt wurde sie bisher in der Oberfläche, über den ganzen Bestand —
    * den hat sie jetzt nicht mehr. Gefragt wird nur unter dem, was der
@@ -1272,7 +1504,15 @@ export function buildApp({
         if (alt) zeige = fertig.entity;
       }
     }
-    const [gesiebt] = await sieve(request, [zeige], stand.map);
+    let [gesiebt] = await sieve(request, [zeige], stand.map);
+    /* **Eine Fassung aus einer Vergleichsebene** (T-092) ist nicht im
+       Spiel, aber auf Wunsch sichtbar — wer Vergleichsebenen sehen darf,
+       öffnet sie wie jeden Artikel, mit dem Hinweis `refs.compare`. */
+    let vergleich = false;
+    if (!gesiebt) {
+      [gesiebt] = await sieve(request, [zeige], stand.map, undefined, 'compare');
+      vergleich = !!gesiebt;
+    }
     const einer = gesiebt;
     /* Fällt er durchs Sieb, gibt es ihn für diesen Betrachter nicht.
        „Verboten" wäre die genauere Auskunft und die falsche: sie sagt, dass
@@ -1282,7 +1522,10 @@ export function buildApp({
     if (!einer) return reply.code(404).send({ error: 'Nicht gefunden' });
     /* Die Namen, die der Artikel braucht, kommen mit (W7) — der Browser
        hält keinen Bestand mehr, aus dem er sie nachschlagen könnte. */
-    return { ...einer, refs: { ...(await bezuegeVon(request, einer)), ...(ready ? { ready } : {}) } };
+    return {
+      ...einer,
+      refs: { ...(await bezuegeVon(request, einer)), ...(ready ? { ready } : {}), ...(vergleich ? { compare: true } : {}) },
+    };
   });
 
   /**
