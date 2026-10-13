@@ -9,6 +9,7 @@
  *   pnpm --filter @nw/server user add basil --admin
  *   pnpm --filter @nw/server user add sela --actor pc_sela
  *   pnpm --filter @nw/server user role basil camp_nebel gm
+ *   pnpm --filter @nw/server user invite new --campaign camp_nebel --role player --uses 1
  *   pnpm --filter @nw/server user password basil
  *   pnpm --filter @nw/server user disable sela
  *   pnpm --filter @nw/server user list
@@ -76,6 +77,7 @@ export async function runUserCommand(repo: Repository, argv: string[]): Promise<
             `${i.label ?? '(ohne Kennung)'}` +
             `${i.isAdmin ? '  (Verwaltung)' : ''}` +
             `${i.actorId ? `  für ${i.actorId}` : ''}` +
+            `${i.campaignId ? `  ${i.role ?? 'player'} in ${i.campaignId}` : ''}` +
             `${i.usesLeft == null ? '  unbegrenzt' : `  noch ${i.usesLeft}×`}` +
             `${i.expiresAt ? `  bis ${i.expiresAt.slice(0, 10)}` : ''}` +
             `\n  ${i.codeHash}`,
@@ -91,12 +93,21 @@ export async function runUserCommand(repo: Repository, argv: string[]): Promise<
       const usesAt = rest.indexOf('--uses');
       const daysAt = rest.indexOf('--days');
       const labelAt = rest.indexOf('--label');
+      const campaignAt = rest.indexOf('--campaign');
+      const roleAt = rest.indexOf('--role');
+      const kampagne = campaignAt >= 0 ? rest[campaignAt + 1] : undefined;
+      const rolle = roleAt >= 0 ? rest[roleAt + 1] : kampagne ? 'player' : undefined;
+      /* Eine Rolle ohne Kampagne wäre eine Rolle nirgends (W3). */
+      if (rolle && !kampagne) throw new Error('--role gilt nur mit --campaign <kampagne>.');
+      if (rolle && !isTableRole(rolle)) throw new Error(`Unbekannte Rolle „${rolle}" — gm, co-gm, player, spectator.`);
       const code = newInviteCode();
       await repo.putInvite({
         codeHash: hashToken(code),
         label: labelAt >= 0 ? rest[labelAt + 1] : undefined,
         isAdmin: flags.has('--admin'),
         actorId: actorId,
+        campaignId: kampagne,
+        role: rolle && isTableRole(rolle) ? rolle : undefined,
         usesLeft: usesAt >= 0 ? Math.max(1, Number(rest[usesAt + 1]) || 1) : undefined,
         expiresAt:
           daysAt >= 0

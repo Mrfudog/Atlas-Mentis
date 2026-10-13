@@ -136,7 +136,7 @@ Ein Repo für Code **und** Vault (D42). Was Obsidian liest, liegt in
 atlas-mentis/
 ├── apps/
 │   ├── server/          @nw/server   Fastify-API, Postgres, Befehle user/import/migrate
-│   │   ├── src/                      app.ts (Routen), auth.ts, repo.ts, repo.pg.ts, …
+│   │   ├── src/                      app.ts (Routen), verwaltung.ts (Kampagnen, Mitglieder, Einladungen), auth.ts, repo.ts, repo.pg.ts, …
 │   │   └── migrations/               001_backbone.sql … 009_blocks_are_fields.sql
 │   └── web/             web          Angular-Oberfläche (Anmeldung, Liste, Artikel)
 ├── packages/
@@ -220,11 +220,17 @@ Durchstich in CI prüft `PgRepository` gegen eine echte Postgres.
 | `GET /api/health` | lebt der Prozess (für Docker und deploy.sh) |
 | `POST /api/login` · `/api/register` · `/api/logout` · `/api/logout-everywhere` | Konto und Sitzung; Registrieren nur mit Einladung |
 | `GET /api/me` | wer bin ich, welche Rollen, welche Figuren |
-| `GET/POST/DELETE /api/invites` | Einladungen (Verwaltung, Leitung) |
+| `GET/POST/DELETE /api/invites` | Einladungen, mit Kampagne und Rolle; die Verwaltung alle, die Leitung in ihre Kampagne (`gm` legt an und widerruft, `co-gm` sieht) |
+| `GET /api/campaigns` · `POST /api/campaigns` | die Kampagnen, an denen jemand leitet oder mitleitet (Verwaltung: alle); anlegen nur die Verwaltung |
+| `GET /api/campaigns/:c/members` | Mitglieder mit Rolle und Figuren, dazu die Figuren, die diese Kampagne vergeben darf — `gm`, `co-gm`, Verwaltung |
+| `POST /api/campaigns/:c/members` · `PUT`/`DELETE …/members/:user` | Konto beim Namen dazunehmen, Rolle setzen, herausnehmen — `gm` und Verwaltung, nie die eigene Rolle (ausser Verwaltung) |
+| `PUT /api/campaigns/:c/members/:user/actors` | welche Figuren ein Mitglied führt (`app_user_actor`); keine Figur einer anderen Kampagne |
+| `GET /api/users` | die Konten der Installation — nur die Verwaltung |
 | `GET /api/registry` · `PUT /api/registry/:part` | das Register lesen; ändern nur die Leitung |
 | `GET /api/entities` · `GET /api/entities/:id` | Artikel, **gesiebt** |
 | `GET /api/entities?as=summary` | die Kurzfassung aller Artikel (`summaryOf`) — für Liste, Verweise, Auswahlen |
 | `GET /api/entities/:id/backlinks` | wer auf den Artikel zeigt (Kurzfassung + Kante), gesiebt |
+| `GET /api/classes/:id` | eine Klasse samt Unterklassen, Stufentabellen und den Merkmalen, die eine davon gewährt oder einbettet (`classParts`), gesiebt — die Klassenansicht (W6) in einer Antwort |
 | `PUT /api/entities/:id` · `DELETE /api/entities/:id` | schreiben, immer durch `validateEntity` |
 | `POST /api/validate` | prüfen ohne zu speichern |
 | `GET/POST /api/tokens` · `DELETE /api/tokens/:id` | eigene API-Tokens (W9); nur aus einer Sitzung, nie mit einem Token |
@@ -292,7 +298,7 @@ Zeilen daneben. Eine neue Artikelart ist eine Zeile, keine Migration.
 ```mermaid
 flowchart TB
   subgraph angular[apps/web · Angular 21, Standalone, Signals]
-    router[app.routes.ts<br/>/login · / · /artikel/:id]
+    router[app.routes.ts<br/>/login · / · /artikel/:id · /campaign · /classes · /classes/:id]
     wache[kern/wache.ts<br/>Route-Guard: angemeldet?]
     subgraph seiten[Seiten, lazy geladen]
       login[login/login.ts]
@@ -300,6 +306,8 @@ flowchart TB
       artikel[artikel/artikel.ts<br/>Artikelansicht, Bearbeiten]
       felder[artikel/felder.ts<br/>Felder aus dem Register]
       text[artikel/text.ts<br/>Markdown, Verweise, Würfel]
+      verwaltung[verwaltung/verwaltung.ts<br/>Mitglieder, Rollen, Einladungen]
+      klassen[klassen/klasse.ts<br/>Klassenansicht: Tabelle, Merkmale je Stufe,<br/>Unterklassen filtern und vergleichen]
     end
     subgraph kern[kern/ · Dienste]
       api[api.ts<br/>HttpClient → /api]
@@ -309,8 +317,11 @@ flowchart TB
   end
   model[["@nw/model<br/>views · calc · markdown · inline"]]
   router --> wache --> session
-  router --> login & liste & artikel
+  router --> login & liste & artikel & verwaltung & klassen
+  verwaltung --> api
   artikel --> felder & text
+  klassen --> text
+  klassen -->|"GET /api/classes/:id"| api
   liste & artikel --> bestand --> api
   login --> session --> api
   felder & text --> model
@@ -348,6 +359,7 @@ nicht mehr; Seitenweise laden ist eine offene Frage für die Zeit nach P6.
 | `knowledge.ts` | `redactEntity`: welche Felder ein Träger kennt, Fraktionsränge |
 | `checks.ts` | Prüfungen über einen Bestand (W9): eine erweiterbare Liste `CHECKS` reiner Funktionen |
 | `bulk.ts` | Massenänderungen (W9): Auswahl, Operationen, Zusammenführen als Vorher/Nachher (`planBulk`), `repoint` |
+| `classes.ts` | die Klassenansicht (W6): Merkmale je Stufe aus `grants`, Übungsbonus, eingebettete Merkmale (ein Verweis allein im Absatz), Stufentabelle mit Zusatzspalten |
 
 ---
 

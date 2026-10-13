@@ -14,7 +14,7 @@
  * Kantenziel überhaupt da ist.
  */
 
-import { entityName, linkIndex, typeChain } from './entity.js';
+import { entityName, linkFinder, typeChain } from './entity.js';
 import { INSTANCE_RELATION, isInstance } from './instance.js';
 import type { Entity, Registry } from './types.js';
 import { stageBases, validateEntity } from './validate.js';
@@ -288,7 +288,7 @@ export const CHECKS: Check[] = [
     label: 'Links that hit nothing',
     description: 'A [[…]] link in text whose target no visible article carries as number, id, name or alias.',
     run({ entities }) {
-      const finde = linkIndex(entities);
+      const finde = linkFinder(entities);
       const raus: CheckHit[] = [];
       for (const e of entities) {
         const offen = new Set<string>();
@@ -306,7 +306,7 @@ export const CHECKS: Check[] = [
     label: 'Ambiguous links',
     description: 'A [[Name]] link that more than one article answers to — it should name the number.',
     run({ entities }) {
-      const finde = linkIndex(entities);
+      const finde = linkFinder(entities);
       const raus: CheckHit[] = [];
       for (const e of entities) {
         const mehr = new Set<string>();

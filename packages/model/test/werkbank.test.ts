@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { seedRegistry } from '@nw/registry';
 import { CHECKS, runChecks } from '../src/checks.js';
 import { BulkRequestSchema, planBulk, repoint, selectEntities, storedKey } from '../src/bulk.js';
-import { linkCandidates, linkIndex } from '../src/entity.js';
+import { linkCandidates, linkFinder } from '../src/entity.js';
 import type { Entity } from '../src/types.js';
 
 /* Werkbank (W9): Prüfungen und Massenänderungen sind reine Funktionen über
@@ -107,9 +107,9 @@ describe('checks', () => {
   });
 });
 
-describe('linkIndex', () => {
+describe('linkFinder', () => {
   it('answers like linkCandidates', () => {
-    const finde = linkIndex(bestand);
+    const finde = linkFinder(bestand);
     for (const ziel of ['feature-0002', 'f3', 'Amphibious', 'ogre', 'Nowhere', 'FEATURE-0001', '']) {
       expect(finde(ziel).map((e) => e.id)).toEqual(linkCandidates(bestand, ziel).map((e) => e.id));
     }

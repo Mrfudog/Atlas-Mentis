@@ -37,11 +37,18 @@ import { BEREICHE } from './kern/bereiche';
               b.label
             }}</a>
           }
+          <a routerLink="/classes" routerLinkActive="an" ariaCurrentWhenActive="page">Classes</a>
           <a routerLink="/compendium" routerLinkActive="an" ariaCurrentWhenActive="page"
             >Compendium</a
           >
           @if (session.leitung()) {
             <a routerLink="/werkbank" routerLinkActive="an" ariaCurrentWhenActive="page">Workbench</a>
+          }
+          <!-- Nur für wen die Seite etwas zeigt: Verwaltung, Leitung, Mitleitung (W3). -->
+          @if (session.verwaltet()) {
+            <a routerLink="/campaign" routerLinkActive="an" ariaCurrentWhenActive="page"
+              >Campaign</a
+            >
           }
         </nav>
         <a class="wer" routerLink="/account" title="Account and API tokens">

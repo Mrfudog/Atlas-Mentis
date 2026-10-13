@@ -418,6 +418,9 @@ export class PgRepository implements Repository {
       usesLeft: row['uses_left'] == null ? undefined : Number(row['uses_left']),
       expiresAt: row['expires_at'] ? new Date(row['expires_at'] as string).toISOString() : undefined,
       createdBy: (row['created_by'] as string | null) ?? undefined,
+      createdAt: row['created_at'] ? new Date(row['created_at'] as string).toISOString() : undefined,
+      campaignId: (row['campaign_id'] as string | null) ?? undefined,
+      role: isTableRole(row['role']) ? row['role'] : undefined,
     };
   }
 
@@ -531,11 +534,13 @@ export class PgRepository implements Repository {
 
   async putInvite(invite: Invite): Promise<void> {
     await this.pool.query(
-      `insert into app_invite(code_hash,label,is_admin,actor_id,uses_left,expires_at,created_by)
-       values ($1,$2,$3,$4,$5,$6,$7)
+      `insert into app_invite(code_hash,label,is_admin,actor_id,uses_left,expires_at,created_by,
+                              campaign_id,role)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
        on conflict (code_hash) do update set
          label = excluded.label, is_admin = excluded.is_admin, actor_id = excluded.actor_id,
-         uses_left = excluded.uses_left, expires_at = excluded.expires_at`,
+         uses_left = excluded.uses_left, expires_at = excluded.expires_at,
+         campaign_id = excluded.campaign_id, role = excluded.role`,
       [
         invite.codeHash,
         invite.label ?? null,
@@ -544,6 +549,8 @@ export class PgRepository implements Repository {
         invite.usesLeft ?? null,
         invite.expiresAt ?? null,
         invite.createdBy ?? null,
+        invite.campaignId ?? null,
+        invite.role ?? null,
       ],
     );
   }

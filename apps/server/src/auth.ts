@@ -65,6 +65,14 @@ export interface Invite {
   usesLeft?: number | undefined;
   expiresAt?: string | undefined;
   createdBy?: string | undefined;
+  createdAt?: string | undefined;
+  /** **Wohin die Einladung führt** (W3): eine Kampagne und die Rolle darin.
+   *  Ohne sie musste die Leitung das neue Konto danach suchen — und eine
+   *  Leitung, die nicht Verwaltung ist, sieht die Kontoliste gar nicht. Wer
+   *  welche Rolle hat, steht danach trotzdem am Konto (`campaign_member`),
+   *  nicht an der Einladung: die ist mit dem letzten Gebrauch weg. */
+  campaignId?: string | undefined;
+  role?: TableRole | undefined;
 }
 
 export interface Viewer {

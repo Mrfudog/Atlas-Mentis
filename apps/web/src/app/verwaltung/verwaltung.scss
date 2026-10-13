@@ -1,0 +1,303 @@
+/* Nach `Members.dc.html`, über die Marken aus styles.scss — keine Farbe hier. */
+:host {
+  display: block;
+  padding: 0 0 2rem;
+}
+.kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1.25rem;
+  padding: 0.6rem 1.5rem;
+  color: var(--dim);
+}
+.kopf select {
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.stand {
+  margin-left: auto;
+}
+.fehler {
+  margin: 0 1.5rem 0.75rem;
+  color: var(--warn);
+}
+h2 {
+  margin: 0 0 0.25rem;
+  font-family: var(--caps);
+  font-size: 1.25rem;
+  color: var(--accent);
+}
+.dim {
+  color: var(--dim);
+}
+.fuss {
+  font-size: 0.82rem;
+  color: var(--dim);
+}
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.kasten {
+  min-width: 0;
+  margin: 0 1.5rem 1rem;
+  padding: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.flaeche {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+  margin: 0 1.5rem 1rem;
+}
+.flaeche .kasten {
+  margin: 0;
+}
+.tisch {
+  flex: 999 1 640px;
+}
+.seitlich {
+  flex: 1 1 320px;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+/* ---- die Tabelle am Tisch ---- */
+.zeile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 0 0.5rem;
+  border-bottom: 1px solid var(--line2);
+}
+.zeile > span {
+  padding: 0.45rem 0;
+  min-width: 0;
+}
+.kopfzeile {
+  font-weight: 700;
+  border-bottom: 2px solid var(--line);
+}
+.zeile select,
+.dazunehmen select,
+.dazunehmen input,
+.einladen select,
+.einladen input {
+  min-height: 36px;
+  padding: 0 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--ink);
+}
+.zeile select {
+  max-width: 100%;
+}
+.rolle {
+  display: inline-block;
+  padding: 1px 10px;
+  border-radius: 10px;
+  background: var(--chip);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.rolle.gm {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.marke {
+  margin-left: 0.3rem;
+  padding: 0 0.4rem;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  color: var(--accent);
+  font-size: 0.72rem;
+}
+.marke.aus {
+  border-color: var(--dim);
+  color: var(--dim);
+}
+.figuren {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.6rem;
+  align-items: center;
+}
+.figur {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+button.klein,
+button.weg {
+  min-height: 28px;
+  padding: 0 0.45rem;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-weight: 700;
+}
+button.weg {
+  font-size: 1.1rem;
+}
+
+.dazunehmen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.6rem;
+}
+.dazunehmen label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.82rem;
+  color: var(--dim);
+}
+.dazunehmen label.haken {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 40px;
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+/* ---- Einladen: das Blatt mit Goldkante wie auf der Tafel ---- */
+.einladen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.9rem 1.1rem;
+  background: var(--paper);
+  border-top: 6px solid var(--gold);
+  border-bottom: 6px solid var(--gold);
+}
+.einladen h2 {
+  font-size: 1.4rem;
+  color: var(--heading);
+}
+.einladen label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.82rem;
+  color: var(--dim);
+}
+.einladen select,
+.einladen input {
+  min-height: 40px;
+}
+.einladen .zwei {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.einladen button.pri {
+  min-height: 44px;
+}
+.link {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--line);
+}
+.link input {
+  flex: 1 1 200px;
+  min-width: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+}
+
+.legende {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.6rem;
+  font-size: 0.9rem;
+}
+.legende .breit {
+  grid-column: 1 / 3;
+  margin-top: 0.25rem;
+}
+
+/* ---- Listen: offene Einladungen, Konten ---- */
+.einladungen,
+.konten {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.einladungen li,
+.konten li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.9rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--line2);
+}
+.einladungen .was,
+.konten .wer {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+.einladungen button,
+.konten button {
+  min-height: 34px;
+}
+
+/* Am Telefon: eine Karte je Mitglied statt einer Tabelle mit vier Spalten. */
+@media (max-width: 640px) {
+  .kopf {
+    padding: 0.5rem 1rem;
+  }
+  .stand {
+    margin-left: 0;
+  }
+  .kasten,
+  .flaeche {
+    margin-left: 1rem;
+    margin-right: 1rem;
+  }
+  .seitlich {
+    max-width: none;
+  }
+  .kopfzeile {
+    display: none;
+  }
+  .zeile {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 0.35rem 0;
+  }
+  .zeile > span {
+    padding: 0.15rem 0;
+  }
+  .zeile > span:nth-child(3) {
+    grid-column: 1 / 2;
+  }
+  .zeile > span:nth-child(4) {
+    grid-row: 1;
+    grid-column: 2;
+    justify-self: end;
+  }
+  .zeile > span:nth-child(2) {
+    grid-column: 1 / 3;
+  }
+}

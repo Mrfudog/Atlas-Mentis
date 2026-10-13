@@ -1,0 +1,180 @@
+@if (klasse(); as k) {
+  <div class="buch">
+    <nav aria-label="Breadcrumb" class="brot">
+      <a routerLink="/rules">Rules</a>
+      <span aria-hidden="true">›</span>
+      <a routerLink="/classes">Classes</a>
+      <span aria-hidden="true">›</span>
+      <span>{{ name() }}</span>
+    </nav>
+
+    <article class="blatt">
+      <div class="titelzeile">
+        <div>
+          <h1>{{ name() }}</h1>
+          @if (untertitel()) {
+            <p class="untertitel">{{ untertitel() }}</p>
+          }
+        </div>
+        <a class="knopf" [routerLink]="['/artikel', k.id]">Article</a>
+      </div>
+      <div class="linie" aria-hidden="true"></div>
+
+      @if (eckdaten().length) {
+        <dl class="eckdaten">
+          @for (z of eckdaten(); track z.label) {
+            <dt>{{ z.label }}</dt>
+            <dd>
+              @if (z.lang) {
+                <nw-text [text]="z.wert" [scopes]="scopes()" />
+              } @else {
+                {{ z.wert }}
+              }
+            </dd>
+          }
+        </dl>
+      }
+
+      <!-- Die Unterklassen: filtern, wählen, vergleichen -->
+      <section class="leiste" aria-labelledby="unter-titel">
+        <div class="leistenkopf">
+          <h2 id="unter-titel">{{ unterTitel() }}</h2>
+          <input
+            type="search"
+            class="suche"
+            placeholder="Filter by name…"
+            aria-label="Filter subclasses by name"
+            [value]="suche()"
+            (input)="suche.set($any($event.target).value)"
+          />
+          <label class="schalter">
+            <input
+              type="checkbox"
+              [checked]="zeigeOptional()"
+              (change)="optionalUmschalten($any($event.target).checked)"
+            />
+            Optional features &amp; variants
+            @if (anzahlOptional()) {
+              <span class="dim">({{ anzahlOptional() }})</span>
+            }
+          </label>
+        </div>
+        @if (quellen().length > 1) {
+          <div class="chips" role="group" aria-label="Filter subclasses by source">
+            <span class="dim">Source</span>
+            @for (q of quellen(); track q.q) {
+              <button
+                type="button"
+                class="chip"
+                [class.an]="quellFilter().has(q.q)"
+                [attr.aria-pressed]="quellFilter().has(q.q)"
+                (click)="quelleUmschalten(q.q)"
+              >
+                {{ q.q }} <span class="dim">{{ q.n }}</span>
+              </button>
+            }
+          </div>
+        }
+        <div class="unterliste" role="group" aria-label="Choose subclasses to show and compare">
+          @for (u of gefiltert(); track u.e.id) {
+            <button
+              type="button"
+              class="unter"
+              [class.an]="gewaehltIds().has(u.e.id)"
+              [attr.aria-pressed]="gewaehltIds().has(u.e.id)"
+              (click)="umschalten(u.e.id)"
+            >
+              @if (nummer().has(u.e.id)) {
+                <span class="nr" [class]="'u' + (nummer().get(u.e.id)! % 6)" aria-hidden="true">{{
+                  nummer().get(u.e.id)! + 1
+                }}</span>
+              }
+              {{ u.name }} <span class="quelle">{{ u.quelle }}</span>
+            </button>
+          } @empty {
+            <span class="dim">No subclass matches.</span>
+          }
+        </div>
+        <div class="auswahlzeile">
+          <span class="dim">
+            @switch (gewaehlt().length) {
+              @case (0) {
+                Pick one to read it, two or more to compare them level by level.
+              }
+              @case (1) {
+                One shown — pick another to compare.
+              }
+              @default {
+                Comparing {{ gewaehlt().length }}.
+              }
+            }
+          </span>
+          <button type="button" (click)="alleGefilterten()" [disabled]="!gefiltert().length">
+            Select shown
+          </button>
+          <button type="button" (click)="keine()" [disabled]="!gewaehlt().length">Clear</button>
+        </div>
+      </section>
+
+      <!-- Die Stufentabelle -->
+      @if (tabelle(); as t) {
+        <h2>The {{ name() }}</h2>
+        <nw-klassentabelle [tabelle]="t" (springe)="springe($event)" />
+      }
+
+      <!-- Die Merkmale je Stufe -->
+      <h2>Features</h2>
+      @for (s of stufen(); track s.level) {
+        <section class="stufe-abschnitt" [attr.aria-labelledby]="'stufe-' + s.level">
+          <h3 [id]="'stufe-' + s.level">
+            Level {{ s.level }} <span class="dim">· proficiency bonus +{{ s.pb }}</span>
+          </h3>
+          @for (f of s.klasse; track f.feature.id) {
+            @for (n of f.names; track n.id) {
+              <span class="anker" [id]="anker(s.level, n.id)"></span>
+            }
+            <nw-merkmal
+              [merkmal]="f.feature"
+              [index]="index()"
+              [scopes]="scopes()"
+              [zeigeOptional]="zeigeOptional()"
+            />
+          }
+          @if (s.unter; as unter) {
+            <div class="vergleich" [style.--spalten]="unter.length">
+              @for (x of unter; track x.u.e.id; let i = $index) {
+                <div class="spalte" [class]="'u' + (i % 6)">
+                  <div class="spaltenkopf">
+                    <span class="nr" aria-hidden="true">{{ i + 1 }}</span>
+                    <a [routerLink]="['/artikel', x.u.e.id]">{{ x.u.name }}</a>
+                    <span class="quelle">{{ x.u.quelle }}</span>
+                  </div>
+                  @for (f of x.merkmale; track f.feature.id) {
+                    @for (n of f.names; track n.id) {
+                      <span class="anker" [id]="anker(s.level, n.id)"></span>
+                    }
+                    <nw-merkmal
+                      [merkmal]="f.feature"
+                      [index]="index()"
+                      [scopes]="scopes()"
+                      [zeigeOptional]="zeigeOptional()"
+                      [ohneName]="f.feature.id === x.u.e.id || nameVon(f.feature) === x.u.name"
+                    />
+                  } @empty {
+                    <p class="dim nichts">Nothing new at this level.</p>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </section>
+      }
+    </article>
+  </div>
+} @else if (fehlt()) {
+  <p class="fehler buch">No such class — or not one you may see.</p>
+} @else if (fehler(); as f) {
+  <p class="fehler buch" role="alert">{{ f }}</p>
+} @else {
+  <p class="leer buch">Loading…</p>
+}

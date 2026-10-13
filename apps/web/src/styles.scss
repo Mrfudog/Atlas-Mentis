@@ -23,6 +23,14 @@
   --serif: 'Alegreya', Georgia, serif;
   --caps: 'Alegreya SC', Georgia, serif;
   --sans: 'Alegreya Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Die Farben der verglichenen Unterklassen (W6) — sechs, die sich auf
+     dem Pergament voneinander abheben; dazu steht immer die Nummer. */
+  --sub-1: #8c1c13;
+  --sub-2: #9a5f12;
+  --sub-3: #2f5d7c;
+  --sub-4: #4c6b2a;
+  --sub-5: #6b3d75;
+  --sub-6: #2e6e64;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -44,6 +52,12 @@
     --hover: #3a2c1c;
     --link: #e08a74;
     --warn: #d98a63;
+    --sub-1: #e08a74;
+    --sub-2: #d9a35a;
+    --sub-3: #7fb0d4;
+    --sub-4: #9cc070;
+    --sub-5: #c49ad0;
+    --sub-6: #74c2b5;
   }
 }
 
@@ -94,4 +108,20 @@ textarea {
 :focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 2px;
+}
+
+/* Ein Link, der wie ein Knopf daneben aussieht — „Class view" an einer
+   Klasse, „Article" in der Klassenansicht (W6). */
+a.knopf {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
 }

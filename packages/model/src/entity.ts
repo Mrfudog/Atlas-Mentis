@@ -644,7 +644,7 @@ export function linkCandidates(entities: Iterable<Entity>, target: string): Enti
  * über 24 000 Artikel und zehntausende Verweise hiesse die lineare Suche
  * je Verweis Minuten statt Millisekunden (Werkbank, W9).
  */
-export function linkIndex(entities: Iterable<Entity>): (target: string) => Entity[] {
+export function linkFinder(entities: Iterable<Entity>): (target: string) => Entity[] {
   const nachNummer = new Map<string, { at: number; e: Entity }>();
   const nachPeg = new Map<string, { at: number; e: Entity }>();
   const nachName = new Map<string, Entity[]>();
