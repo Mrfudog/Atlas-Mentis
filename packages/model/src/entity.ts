@@ -652,6 +652,42 @@ export function linkCandidates(entities: Iterable<Entity>, target: string): Enti
 }
 
 /**
+ * `linkCandidates` für viele Verweise auf einmal: der Bestand wird einmal
+ * gelesen, danach ist jede Frage ein Nachschlagen. Die Regel ist dieselbe
+ * (Id vor Name, Instanzen sind kein Ziel, mehr als einer ist mehrdeutig) —
+ * über 24 000 Artikel und zehntausende Verweise hiesse die lineare Suche
+ * je Verweis Minuten statt Millisekunden (Werkbank, W9).
+ */
+export function linkFinder(entities: Iterable<Entity>): (target: string) => Entity[] {
+  const nachNummer = new Map<string, { at: number; e: Entity }>();
+  const nachPeg = new Map<string, { at: number; e: Entity }>();
+  const nachName = new Map<string, Entity[]>();
+  let at = 0;
+  for (const entity of entities) {
+    const nummer = articleId(entity).toLowerCase();
+    if (nummer && !nachNummer.has(nummer)) nachNummer.set(nummer, { at, e: entity });
+    if (!nachPeg.has(entity.id)) nachPeg.set(entity.id, { at, e: entity });
+    at += 1;
+    if (isInstance(entity)) continue;
+    const schluessel = new Set<string>([entityName(entity).toLowerCase()]);
+    const aliases = entity.components?.['Identity']?.['aliases'];
+    if (Array.isArray(aliases)) for (const a of aliases) schluessel.add(String(a).toLowerCase());
+    for (const k of schluessel) (nachName.get(k) ?? nachName.set(k, []).get(k)!).push(entity);
+  }
+  return (target: string) => {
+    const roh = String(target ?? '').trim();
+    const needle = roh.toLowerCase();
+    if (!needle) return [];
+    /* Wie in `linkCandidates`: der erste Artikel im Bestand, der die Nummer
+       oder die Peg-Id trägt. */
+    const a = nachNummer.get(needle);
+    const b = nachPeg.get(roh);
+    if (a || b) return [(a && (!b || a.at <= b.at) ? a : b)!.e];
+    return nachName.get(needle) ?? [];
+  };
+}
+
+/**
  * Ein Eintrag eines Feldes mit `many`.
  *
  * Die `id` ist das, woran eine Wissensfreigabe hängt — sie war einmal der

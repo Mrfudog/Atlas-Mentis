@@ -256,10 +256,59 @@ oder „abgemeldet" sagen, während die Sitzung dort weiterlebt.
 
 ---
 
+## API-Tokens
+
+Seit W9 (13.10.2026). Ein Werkzeug — ein Skript, eine Claude-Sitzung, die
+Kommandozeile — hält keinen Keks. Es meldet sich mit einem **Token** an:
+
+```
+Authorization: Bearer atm_…
+```
+
+| | |
+|---|---|
+| wirkt wie | die Sitzung **seines Kontos**: dieselben Rollen, dieselben Figuren, dasselbe Sieb, dieselben Schreibrechte (`mayWrite`) |
+| Rechte | `read` oder `write`. `read` darf alles lesen, was das Konto liest, und die zwei POST, die nichts schreiben: `/api/validate` und `/api/bulk` mit `dryRun: true` |
+| Ablauf | immer — Vorgabe 30 Tage, höchstens 365. Ein Token, das ewig gilt, vergisst man in irgendeiner Umgebung |
+| gespeichert | nur der Hash (`app_token.token_hash`), wie bei Sitzung und Einladung; der Klartext steht **genau einmal** in der Antwort auf das Anlegen |
+| Präfix | `atm_` — damit man es erkennt, wo es auftaucht (Log, Umgebung, Chat) |
+
+Drei Regeln, die man leicht weglässt:
+
+- **Ein Token sieht und darf nie mehr als sein Konto.** Es gibt keine
+  eigene Rechteprüfung für Tokens: der Server rechnet mit dem `User` des
+  Kontos weiter, und `read` nimmt davon nur weg. Ist das Konto gesperrt,
+  gilt das Token nicht.
+- **Ein Token legt keine Tokens an.** Anlegen, ansehen und widerrufen
+  geht nur aus einer angemeldeten Sitzung (Seite „Account") oder von der
+  Kommandozeile. Sonst machte ein Lesetoken sich ein Schreibtoken, und aus
+  einem verlorenen würden zehn.
+- **Ein falsches Token ist niemand** — auch wenn daneben ein gültiger Keks
+  mitkommt. Ein Werkzeug, das still als jemand anderes weiterläuft, sucht
+  man lange.
+
+```bash
+pnpm --filter @nw/server user token werkbank new claude-dev --days 30 --write
+pnpm --filter @nw/server user token werkbank list
+pnpm --filter @nw/server user token werkbank drop tok_…
+```
+
+In der Seite: Klick auf den eigenen Namen in der Kopfleiste → **Account** →
+API tokens. Wie die Leitung einer Claude-Sitzung damit Zugang zu dev gibt:
+[Betrieb › Werkzeugzugang](Betrieb.md#werkzeugzugang).
+
+**Die Werkbank** (Prüfungen `GET /api/checks`, Massenänderungen
+`POST /api/bulk`) ist für Leitung (`gm`/`co-gm` in irgendeiner Kampagne)
+und Verwaltung. Geschrieben wird trotzdem nur, was `mayWrite` dem Konto
+erlaubt — die Leitung schreibt heute noch nicht (unten, „Was noch fehlt").
+Die Vorschau zeigt ihr darum jeden Artikel als „Das gehört dir nicht."
+
+---
+
 ## Was nicht mitwandert
 
 **Zugänge sind keine Artikel.** Ein Artikel gehört der Kampagne und wandert
-mit ihr; ein Zugang gehört der Instanz. `app_user`, `app_session` und
+mit ihr; ein Zugang gehört der Instanz. `app_user`, `app_session`, `app_token` und
 `login_attempt` sind eigene Tabellen und dürfen beim Spiegeln von prod nach
 preprod ausdrücklich **nicht** mitwandern (REQ-199). In der Artikeltabelle
 steht davon nichts — nur beim Nutzer steht die Id der Figur, die er spielt.

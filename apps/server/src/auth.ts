@@ -157,3 +157,54 @@ export function mayWrite(user: User | null, ownedIds: Set<string>, id: string): 
   if (user.isAdmin) return true;
   return ownedIds.has(id);
 }
+
+// ------------------------------------------------------------ API-Tokens
+
+/**
+ * **Ein Token für Werkzeuge** (W9): ein Skript, eine Claude-Sitzung, ein
+ * Kommandozeilenaufruf — alles, was keinen Keks hält. Es wirkt wie die
+ * Sitzung seines Kontos, beschränkt auf `read` oder `write`, und sieht und
+ * darf nie mehr als das Konto: gesiebt wird mit dessen Rollen und Figuren,
+ * geschrieben mit dessen Rechten. Gespeichert wird nur der Hash, wie bei
+ * Sitzung und Einladung; der Klartext steht genau einmal in der Antwort auf
+ * das Anlegen.
+ */
+export type TokenScope = 'read' | 'write';
+export const TOKEN_SCOPES: readonly TokenScope[] = ['read', 'write'];
+/** Ein Token läuft ab — eines, das ewig gilt, vergisst man irgendwo. */
+export const TOKEN_DAYS_DEFAULT = 30;
+export const TOKEN_DAYS_MAX = 365;
+
+export interface ApiToken {
+  id: string;
+  userId: string;
+  name: string;
+  tokenHash: string;
+  scope: TokenScope;
+  expiresAt: string;
+  createdAt?: string | undefined;
+  lastUsedAt?: string | undefined;
+}
+
+/** Am Präfix erkennt man, was es ist, wenn es irgendwo auftaucht (Log, Umgebung). */
+export function newApiToken(): string {
+  return `atm_${randomBytes(32).toString('base64url')}`;
+}
+
+export function tokenExpiry(days: unknown, from: Date = new Date()): Date {
+  const n = Math.floor(Number(days ?? TOKEN_DAYS_DEFAULT));
+  const tage = Number.isFinite(n) && n > 0 ? Math.min(n, TOKEN_DAYS_MAX) : TOKEN_DAYS_DEFAULT;
+  return new Date(from.getTime() + tage * 24 * 60 * 60 * 1000);
+}
+
+/**
+ * **Leitung oder Verwaltung** — wer die Werkbank benutzen darf. Leitung
+ * heisst `gm` oder `co-gm` in irgendeiner Kampagne; geschrieben wird
+ * trotzdem nur, was `mayWrite` erlaubt (die Leitung schreibt heute noch
+ * nicht, siehe Zugang.md › Was noch fehlt).
+ */
+export function isLeitung(user: User | null): boolean {
+  if (!user || user.disabledAt) return false;
+  if (user.isAdmin) return true;
+  return Object.values(user.roles ?? {}).some((r) => r === 'gm' || r === 'co-gm');
+}

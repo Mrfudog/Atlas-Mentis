@@ -13,6 +13,9 @@
  *   pnpm --filter @nw/server user password basil
  *   pnpm --filter @nw/server user disable sela
  *   pnpm --filter @nw/server user list
+ *   pnpm --filter @nw/server user token werkbank new claude-dev --days 30 --write
+ *   pnpm --filter @nw/server user token werkbank list
+ *   pnpm --filter @nw/server user token werkbank drop <id>
  *
  * Das Passwort kommt aus der Umgebung (`NW_PASSWORD`) oder wird erfragt —
  * **nie aus der Kommandozeile**: Argumente stehen in der Prozessliste und
@@ -23,7 +26,17 @@ import { randomUUID } from 'node:crypto';
 import { createInterface } from 'node:readline/promises';
 import { closePool, getPool } from './db.js';
 import { PgRepository } from './repo.pg.js';
-import { foldName, hashPassword, hashToken, newInviteCode, passwordProblem } from './auth.js';
+import {
+  TOKEN_SCOPES,
+  foldName,
+  hashPassword,
+  hashToken,
+  newApiToken,
+  newInviteCode,
+  passwordProblem,
+  tokenExpiry,
+  type TokenScope,
+} from './auth.js';
 import type { Repository } from './repo.js';
 import { isTableRole } from '@nw/model';
 
@@ -209,8 +222,41 @@ export async function runUserCommand(repo: Repository, argv: string[]): Promise<
       await repo.putUser({ ...existing, roles });
       return `${name} ist in ${kampagne} jetzt ${rolle}.`;
     }
+    /* **API-Tokens** (W9) — für ein Werkzeug, das auf dem Server keine
+       Sitzung öffnen kann. Der Klartext wird genau einmal ausgegeben;
+       gespeichert ist nur sein Hash. Ohne `--write` darf es nur lesen. */
+    case 'token': {
+      if (!existing) throw new Error(`„${name}" gibt es nicht.`);
+      const tageBei = rest.indexOf('--days');
+      const [sub = 'list', ...args] = rest.filter((a, i) => !a.startsWith('--') && !(tageBei >= 0 && i === tageBei + 1));
+      if (sub === 'list') {
+        const liste = await repo.listTokens(existing.id);
+        if (!liste.length) return `${name} hat kein Token.`;
+        return liste
+          .map((t) => `${t.id}  ${t.name}  ${t.scope}  bis ${t.expiresAt.slice(0, 10)}${t.lastUsedAt ? `  zuletzt ${t.lastUsedAt.slice(0, 16)}` : ''}`)
+          .join('\n');
+      }
+      if (sub === 'drop') {
+        const id = args[0];
+        if (!id) throw new Error('Welches? Die Id steht bei `token <name> list`.');
+        return (await repo.dropToken(existing.id, id)) ? 'Widerrufen.' : 'Nicht gefunden.';
+      }
+      if (sub === 'new') {
+        const label = args[0];
+        if (!label) throw new Error('token <name> new <bezeichnung> [--days N] [--write]');
+        const scope: TokenScope = flags.has('--write') ? 'write' : 'read';
+        if (!TOKEN_SCOPES.includes(scope)) throw new Error('read | write');
+        const klartext = newApiToken();
+        const id = `tok_${newInviteCode().slice(0, 12)}`;
+        const expiresAt = tokenExpiry(tageBei >= 0 ? rest[tageBei + 1] : undefined).toISOString();
+        await repo.createToken({ id, userId: existing.id, name: label, tokenHash: hashToken(klartext), scope, expiresAt });
+        await repo.appendEvent('token.created', existing.id, { id, name: label, scope, expiresAt, via: 'cli' });
+        return `Token ${id} (${scope}, bis ${expiresAt.slice(0, 10)}):\n${klartext}\n(Es steht nur hier. Gespeichert ist nur sein Hash.)`;
+      }
+      throw new Error('token <name> new <bezeichnung> [--days N] [--write] | token <name> list | token <name> drop <id>');
+    }
     default:
-      throw new Error('add | password | disable | enable | actor | role | invite | list');
+      throw new Error('add | password | disable | enable | actor | role | token | invite | list');
   }
 }
 

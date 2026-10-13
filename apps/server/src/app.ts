@@ -11,8 +11,14 @@ import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyCookie from '@fastify/cookie';
 import {
+  BulkRequestSchema,
   EntitySchema,
   RegistrySchema,
+  conditionProblem,
+  planBulk,
+  runChecks,
+  selectEntities,
+  storedKey,
   articleVisible,
   backlinks,
   classParts,
@@ -32,21 +38,28 @@ import {
   summaryOf,
   validateEntity,
 } from '@nw/model';
-import type { Entity, Registry } from '@nw/model';
+import type { BulkChange, Entity, Registry } from '@nw/model';
 import type { Repository } from './repo.js';
 import { registerVerwaltung } from './verwaltung.js';
 import {
   ATTEMPT_WINDOW_MINUTES,
   MAX_ATTEMPTS,
   SESSION_DAYS,
+  TOKEN_SCOPES,
   checkPassword,
   foldName,
+  isLeitung,
+  newApiToken,
+  newInviteCode,
+  tokenExpiry,
   hashPassword,
   hashToken,
   mayWrite,
   newSessionToken,
   passwordProblem,
   sessionExpiry,
+  type ApiToken,
+  type TokenScope,
   type User,
 } from './auth.js';
 
@@ -115,13 +128,50 @@ export function buildApp({
    */
   const COOKIE = 'nw_session';
 
-  async function viewerOf(request: FastifyRequest): Promise<User | null> {
+  /**
+   * Wer fragt: über den Sitzungskeks — oder über `Authorization: Bearer`
+   * mit einem API-Token (W9). Ein Token wirkt wie die Sitzung seines
+   * Kontos, beschränkt auf seine Rechte; es sieht und darf nie mehr als das
+   * Konto, weil alles danach mit diesem `User` rechnet. Steht ein Token da
+   * und gilt nicht, ist niemand angemeldet — auch mit einem Keks daneben:
+   * ein Werkzeug, das still als jemand anderes weiterläuft, sucht man
+   * lange.
+   *
+   * Einmal je Anfrage gefragt (Wache, Sieb und Route fragen alle), sonst
+   * schöbe jede Frage die Sitzung nach.
+   */
+  interface Wer {
+    user: User;
+    token?: ApiToken | undefined;
+  }
+  const gefragt = new WeakMap<FastifyRequest, Promise<Wer | null>>();
+  function werIst(request: FastifyRequest): Promise<Wer | null> {
+    let p = gefragt.get(request);
+    if (!p) {
+      p = ermittle(request);
+      gefragt.set(request, p);
+    }
+    return p;
+  }
+  async function ermittle(request: FastifyRequest): Promise<Wer | null> {
+    const kopf = String(request.headers.authorization ?? '');
+    if (/^bearer\s/i.test(kopf)) {
+      const roh = kopf.slice(7).trim();
+      if (!roh) return null;
+      const treffer = await repo.useToken(hashToken(roh));
+      if (!treffer || treffer.user.disabledAt) return null;
+      const { passwordHash: _hash, ...user } = treffer.user;
+      return { user, token: treffer.token };
+    }
     const token = request.cookies?.[COOKIE];
     if (!token) return null;
     const user = await repo.touchSession(hashToken(token), sessionExpiry().toISOString());
     if (!user || user.disabledAt) return null;
     const { passwordHash: _hash, ...rest } = user;
-    return rest;
+    return { user: rest };
+  }
+  async function viewerOf(request: FastifyRequest): Promise<User | null> {
+    return (await werIst(request))?.user ?? null;
   }
 
   /** Was ein Spieler schreiben darf: seine Figur und was an ihr hängt. Die
@@ -158,7 +208,8 @@ export function buildApp({
   }
 
   app.get('/api/me', async (request) => {
-    const user = await viewerOf(request);
+    const wer = await werIst(request);
+    const user = wer?.user ?? null;
     const count = await repo.countUsers();
     /* **Der Server sagt, was jemand schreiben darf** — die Oberfläche rechnet
        es nicht zum zweiten Mal aus. Eine zweite Rechnung wäre die zweite
@@ -192,6 +243,11 @@ export function buildApp({
          dann — einer, der bei jedem Versuch „Einladung fehlt" sagt, ist
          kein Knopf, sondern eine Enttäuschung. */
       invites: count === 0 ? false : (await repo.listInvites()).length > 0,
+      /* Über welches Token gefragt wird — ein Werkzeug soll sehen, was es
+         darf, ohne es auszuprobieren. */
+      token: wer?.token
+        ? { name: wer.token.name, scope: wer.token.scope, expiresAt: wer.token.expiresAt }
+        : null,
     };
   });
 
@@ -383,14 +439,26 @@ export function buildApp({
     const url = request.url.split('?')[0] ?? '';
     if (!url.startsWith('/api/') || OPEN.has(url)) return;
 
-    const user = await viewerOf(request);
+    const wer = await werIst(request);
+    const user = wer?.user ?? null;
     (request as FastifyRequest & { viewer?: User | null }).viewer = user;
-    const schreibt = request.method !== 'GET' && request.method !== 'HEAD';
+    /* Zwei POST schreiben nichts: prüfen (`/api/validate`) und die
+       Vorschau einer Massenänderung (`dryRun`). Ein Token mit `read` darf
+       sie, sonst könnte ein Werkzeug nicht fragen, was geschähe. */
+    const liestNur =
+      url === '/api/validate' ||
+      (url === '/api/bulk' && (request.body as { dryRun?: unknown } | null)?.dryRun === true);
+    const schreibt = request.method !== 'GET' && request.method !== 'HEAD' && !liestNur;
 
     if (!user) {
       const frisch = (await repo.countUsers()) === 0 && (await repo.countEntities()) === 0;
       if (frisch && !schreibt) return; // frischer Server: lesen ja, schreiben nie
       return reply.code(401).send({ error: 'Nicht angemeldet.' });
+    }
+    /* Vor jeder anderen Regel: ein Lesetoken schreibt nirgends — auch
+       nicht dort, wo das Konto es dürfte (Register, Verwaltung). */
+    if (schreibt && wer?.token && wer.token.scope !== 'write') {
+      return reply.code(403).send({ error: 'Dieses Token darf nur lesen.' });
     }
     /* Das Register gehört der Spielleitung: eine Registerzeile zu ändern
        heisst, die Regeln zu ändern. Auch die Zählung des Bestands gehört
@@ -401,6 +469,10 @@ export function buildApp({
     }
     if (!schreibt) return;
     if (user.isAdmin) return;
+    /* Die eigenen Tokens verwaltet jedes Konto; die Massenänderung prüft
+       je Artikel selbst, ob geschrieben werden darf (`mayWrite`). */
+    if (url === '/api/tokens' || url.startsWith('/api/tokens/')) return;
+    if ((url === '/api/bulk' || url.startsWith('/api/bulk/')) && isLeitung(user)) return;
     /* Verwaltung und Einladungen prüfen selbst: das Recht hängt an der
        Kampagne im Pfad (gm ändert, co-gm sieht), nicht am Konto allein. */
     if (url.startsWith('/api/campaigns') || url.startsWith('/api/invites')) return;
@@ -725,6 +797,310 @@ export function buildApp({
     const stufen = stageBases([...(await repo.listEntities()), pruefling]);
     return { issues: validateEntity(registry, pruefling, { knownTypes: known, stageOf: stufen }) };
   });
+
+  // ---------------------------------------------------------- API-Tokens
+  /*
+   * Eigene Tokens anlegen, ansehen, widerrufen (W9). Nur aus einer
+   * angemeldeten Sitzung, nie mit einem Token: ein Token, das Tokens
+   * anlegt, machte aus `read` ein `write`, und aus einem verlorenen eines
+   * zehn.
+   */
+  async function nurSitzung(request: FastifyRequest): Promise<User | string> {
+    const wer = await werIst(request);
+    if (!wer) return 'Nicht angemeldet.';
+    if (wer.token) return 'Tokens werden in einer angemeldeten Sitzung verwaltet, nicht mit einem Token.';
+    return wer.user;
+  }
+  const tokenAus = (t: ApiToken) => ({
+    id: t.id,
+    name: t.name,
+    scope: t.scope,
+    expiresAt: t.expiresAt,
+    createdAt: t.createdAt ?? null,
+    lastUsedAt: t.lastUsedAt ?? null,
+  });
+
+  app.get('/api/tokens', async (request, reply) => {
+    const user = await nurSitzung(request);
+    if (typeof user === 'string') return reply.code(403).send({ error: user });
+    return (await repo.listTokens(user.id)).map(tokenAus);
+  });
+
+  app.post<{ Body: { name?: string; scope?: string; days?: number } }>('/api/tokens', async (request, reply) => {
+    const user = await nurSitzung(request);
+    if (typeof user === 'string') return reply.code(403).send({ error: user });
+    const name = String(request.body?.name ?? '').trim();
+    if (!name) return reply.code(400).send({ error: 'Ein Token braucht einen Namen — woran erkennst du es sonst?' });
+    const scope = (request.body?.scope ?? 'read') as TokenScope;
+    if (!TOKEN_SCOPES.includes(scope)) return reply.code(400).send({ error: 'Rechte: read oder write.' });
+    const klartext = newApiToken();
+    const token: ApiToken = {
+      id: `tok_${newInviteCode().slice(0, 12)}`,
+      userId: user.id,
+      name: name.slice(0, 80),
+      tokenHash: hashToken(klartext),
+      scope,
+      expiresAt: tokenExpiry(request.body?.days).toISOString(),
+    };
+    await repo.createToken(token);
+    await repo.appendEvent('token.created', user.id, { id: token.id, name: token.name, scope, expiresAt: token.expiresAt });
+    /* Einmal und nie wieder — gespeichert ist nur der Hash. */
+    return reply.code(201).send({ ...tokenAus(token), token: klartext });
+  });
+
+  app.delete<{ Params: { id: string } }>('/api/tokens/:id', async (request, reply) => {
+    const user = await nurSitzung(request);
+    if (typeof user === 'string') return reply.code(403).send({ error: user });
+    if (!(await repo.dropToken(user.id, request.params.id))) return reply.code(404).send({ error: 'Nicht gefunden' });
+    await repo.appendEvent('token.revoked', user.id, { id: request.params.id });
+    return { ok: true };
+  });
+
+  // ------------------------------------------------------------ Werkbank
+  /*
+   * Prüfungen und Massenänderungen (W9) — für Leitung und Verwaltung.
+   * Gerechnet wird über den Bestand, **wie ihn der Fragende sieht** (das
+   * Sieb), geschrieben nur, was `mayWrite` ihm erlaubt, und jeder Artikel
+   * geht durch `validateEntity`.
+   */
+  async function werkbankFuer(request: FastifyRequest): Promise<Wer | string> {
+    const wer = await werIst(request);
+    if (!wer) return 'Nicht angemeldet.';
+    if (!isLeitung(wer.user)) return 'Die Werkbank ist für Leitung und Verwaltung.';
+    return wer;
+  }
+
+  app.get<{ Querystring: { check?: string; limit?: string } }>('/api/checks', async (request, reply) => {
+    const wer = await werkbankFuer(request);
+    if (typeof wer === 'string') return reply.code(403).send({ error: wer });
+    const t0 = Date.now();
+    const alle = await repo.listEntities();
+    const gesiebt = await sieve(request, alle, alle);
+    const registry = await repo.getRegistry();
+    const exists = new Map(alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
+    const roh = String(request.query.limit ?? '50');
+    const limit = roh === 'all' ? Number.MAX_SAFE_INTEGER : Math.max(0, Math.floor(Number(roh)) || 0);
+    const only = request.query.check ? request.query.check.split(',').map((x) => x.trim()).filter(Boolean) : undefined;
+    const checks = runChecks({ registry, entities: gesiebt, exists }, { limit, ...(only ? { only } : {}) });
+    return { total: gesiebt.length, ms: Date.now() - t0, checks };
+  });
+
+  /** Ein Artikel in einer Antwort der Werkbank: wer, was, was sich ändert. */
+  const zeile = (c: BulkChange) => {
+    const e = c.after ?? c.before!;
+    return {
+      id: c.id,
+      name: String(e.components?.['Identity']?.['name'] ?? e.name ?? c.id),
+      type: e.interfaces?.[0] ?? '',
+      change: c.after === null ? 'delete' : c.before === null ? 'create' : 'update',
+      summary: c.summary,
+    };
+  };
+
+  /**
+   * Prüft die Nachher-Fassungen eines Laufs, als stünden sie schon da:
+   * Instanzen aufgelöst geprüft und ausgedünnt gespeichert (wie `PUT`),
+   * Rechte je Artikel. Gibt die Änderungen zurück, wie sie geschrieben
+   * würden, und die Abgelehnten.
+   */
+  async function pruefeLauf(user: User, registry: Registry, roh: Map<string, Entity>, changes: BulkChange[]) {
+    const danach = new Map(roh);
+    for (const c of changes) {
+      if (c.after) danach.set(c.id, c.after);
+      else danach.delete(c.id);
+    }
+    const known = new Map([...danach.values()].map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
+    /* Einmal, nicht je Artikel (siehe `invalid` in checks.ts). */
+    const ids = new Set(known.keys());
+    const stufen = stageBases(danach.values());
+    const eigen = user.isAdmin ? null : await ownedBy(user);
+    const abgelehnt: { id: string; name: string; type: string; issues: string[] }[] = [];
+    const geprueft: BulkChange[] = [];
+    for (const c of changes) {
+      const e = c.after ?? c.before!;
+      const name = String(e.components?.['Identity']?.['name'] ?? e.name ?? c.id);
+      if (eigen && !mayWrite(user, eigen, c.id)) {
+        abgelehnt.push({ id: c.id, name, type: e.interfaces?.[0] ?? '', issues: ['Das gehört dir nicht.'] });
+        continue;
+      }
+      if (!c.after) {
+        geprueft.push(c);
+        continue;
+      }
+      const pruefling = isInstance(c.after) ? resolveInstance(danach, c.after) : c.after;
+      const issues = validateEntity(registry, pruefling, { knownTypes: known, knownIds: ids, stageOf: stufen });
+      if (issues.length) {
+        abgelehnt.push({ id: c.id, name, type: e.interfaces?.[0] ?? '', issues: issues.map((i) => i.message) });
+        continue;
+      }
+      const after = isInstance(c.after) ? thinInstance(danach, c.after) : c.after;
+      if (c.before && storedKey(after) === storedKey(c.before)) continue;
+      geprueft.push({ ...c, after });
+    }
+    return { geprueft, abgelehnt };
+  }
+
+  /**
+   * Eine Massenänderung. `dryRun: true` sagt, was geschähe — Zahl,
+   * Beispiele, Ablehnungen —, und schreibt nichts. Ohne `dryRun` geht jeder
+   * Artikel durch `validateEntity`; besteht einer nicht, wird **nichts**
+   * geschrieben (ausser `skipRejected`, und nie beim Löschen). Vor dem
+   * ersten Schreiben steht das Ereignis im Protokoll, mit jeder alten
+   * Fassung: bricht der Lauf mittendrin ab, ist er trotzdem rückgängig zu
+   * machen.
+   */
+  app.post<{ Body: unknown }>('/api/bulk', async (request, reply) => {
+    const wer = await werkbankFuer(request);
+    if (typeof wer === 'string') return reply.code(403).send({ error: wer });
+    const parsed = BulkRequestSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'Massenänderung ungültig', issues: parsed.error.issues });
+    const auftrag = parsed.data;
+    const falsch = (auftrag.select.where ?? []).map(conditionProblem).filter((x): x is string => !!x);
+    if (falsch.length) return reply.code(400).send({ error: falsch.join('; ') });
+    const merge = auftrag.ops.find((o) => o.op === 'merge');
+    if (merge && auftrag.ops.length > 1) {
+      return reply.code(400).send({ error: 'Zusammenführen steht allein — nicht mit anderen Operationen in einem Lauf.' });
+    }
+    if (!auftrag.select.ids?.length && !auftrag.select.types?.length && !auftrag.select.layer && !auftrag.select.tag && !auftrag.select.where?.length) {
+      return reply.code(400).send({ error: 'Eine Auswahl ohne Bedingung träfe den ganzen Bestand — sag, welche Artikel.' });
+    }
+
+    const t0 = Date.now();
+    const alle = await repo.listEntities();
+    const roh = new Map(alle.map((e) => [e.id, e]));
+    const registry = await repo.getRegistry();
+    const gesiebt = await sieve(request, alle, alle);
+    const auswahl = selectEntities(registry, gesiebt, auftrag.select);
+    const plan = planBulk(registry, roh, auswahl.map((e) => e.id), auftrag.ops);
+    const { geprueft, abgelehnt } = await pruefeLauf(wer.user, registry, roh, plan.changes);
+    const loescht = geprueft.filter((c) => !c.after).length;
+    const limit = auftrag.limit ?? 50;
+    const antwort = {
+      dryRun: auftrag.dryRun === true,
+      selected: plan.selected,
+      changed: geprueft.length - loescht,
+      deleted: loescht,
+      examples: geprueft.slice(0, limit).map(zeile),
+      rejected: abgelehnt.slice(0, limit),
+      rejectedCount: abgelehnt.length,
+      skipped: plan.skipped.slice(0, limit),
+      skippedCount: plan.skipped.length,
+      ms: 0,
+    };
+    if (auftrag.dryRun) return { ...antwort, ms: Date.now() - t0 };
+
+    if (loescht > 1 && auftrag.confirmDelete !== loescht) {
+      return reply.code(409).send({
+        ...antwort,
+        error: `Dieser Lauf löscht ${loescht} Artikel. Bestätige mit "confirmDelete": ${loescht}.`,
+      });
+    }
+    if (abgelehnt.length && (!auftrag.skipRejected || loescht > 0)) {
+      return reply.code(422).send({
+        ...antwort,
+        error: `${abgelehnt.length} Artikel bestehen die Prüfung nicht — nichts geschrieben.`,
+      });
+    }
+    if (!geprueft.length) return { ...antwort, id: null, ms: Date.now() - t0 };
+
+    const { dryRun: _d, ...was } = auftrag;
+    const id = await repo.appendEvent('bulk', undefined, {
+      by: { id: wer.user.id, name: wer.user.name },
+      token: wer.token?.name ?? null,
+      request: was,
+      selected: plan.selected,
+      changed: antwort.changed,
+      deleted: loescht,
+      summary: geprueft.slice(0, 5).map((c) => `${zeile(c).name}: ${c.summary.join(', ')}`),
+      changes: geprueft.map((c) => ({ id: c.id, before: c.before, after: c.after })),
+    });
+    let geschrieben = 0;
+    try {
+      /* Zuerst die gehenden: ein bleibender Artikel nimmt ihre Kanten mit,
+         und eine Kanten-Id ist Schlüssel der ganzen Tabelle. */
+      for (const c of geprueft) if (!c.after) {
+        await repo.deleteEntity(c.id);
+        geschrieben += 1;
+      }
+      for (const c of geprueft) if (c.after) {
+        await repo.putEntity(c.after);
+        geschrieben += 1;
+      }
+    } catch (error) {
+      request.log.error(error);
+      return reply.code(500).send({
+        error: `Abgebrochen nach ${geschrieben} von ${geprueft.length} Artikeln. Rückgängig: POST /api/bulk/${id}/undo`,
+        id,
+      });
+    }
+    return { ...antwort, id, ms: Date.now() - t0 };
+  });
+
+  /** Die letzten Massenänderungen, ohne ihre alten Fassungen. */
+  app.get<{ Querystring: { limit?: string } }>('/api/bulk', async (request, reply) => {
+    const wer = await werkbankFuer(request);
+    if (typeof wer === 'string') return reply.code(403).send({ error: wer });
+    const limit = Math.min(200, Math.max(1, Number(request.query.limit) || 20));
+    const laeufe = await repo.listEvents({ name: 'bulk', limit, light: true });
+    const zurueck = new Set((await repo.listEvents({ name: 'bulk.undone', limit: 1000, light: true })).map((e) => e.subject));
+    return laeufe.map((e) => ({ id: e.id, at: e.at, undone: zurueck.has(e.id), ...(e.payload as object) }));
+  });
+
+  /**
+   * Eine Massenänderung zurücknehmen: jede alte Fassung wieder hin, jeder
+   * gelöschte Artikel wieder da. Hat jemand einen Artikel seither anders
+   * geändert, steht er als Konflikt da, und es geschieht nichts — ausser
+   * mit `force`, dann gewinnt die alte Fassung. Auch das geht durch
+   * `validateEntity`, und auch das steht im Protokoll.
+   */
+  app.post<{ Params: { id: string }; Body: { force?: boolean; dryRun?: boolean } | null }>(
+    '/api/bulk/:id/undo',
+    async (request, reply) => {
+      const wer = await werkbankFuer(request);
+      if (typeof wer === 'string') return reply.code(403).send({ error: wer });
+      const ereignis = await repo.getEvent(request.params.id);
+      if (!ereignis || ereignis.name !== 'bulk') return reply.code(404).send({ error: 'Nicht gefunden' });
+      if ((await repo.listEvents({ name: 'bulk.undone', subject: ereignis.id, limit: 1, light: true })).length) {
+        return reply.code(409).send({ error: 'Schon rückgängig gemacht.' });
+      }
+      const payload = ereignis.payload as { changes?: { id: string; before: Entity | null; after: Entity | null }[] };
+      const alle = await repo.listEntities();
+      const roh = new Map(alle.map((e) => [e.id, e]));
+      const konflikte: { id: string; name: string; reason: string }[] = [];
+      const zurueck: BulkChange[] = [];
+      for (const c of [...(payload.changes ?? [])].reverse()) {
+        const jetzt = roh.get(c.id) ?? null;
+        const name = String((c.before ?? c.after)?.components?.['Identity']?.['name'] ?? c.id);
+        if (storedKey(jetzt) === storedKey(c.before)) continue; // steht schon wie vorher
+        if (storedKey(jetzt) !== storedKey(c.after)) {
+          konflikte.push({
+            id: c.id,
+            name,
+            reason: jetzt ? (c.after ? 'changed since' : 'exists again') : 'deleted since',
+          });
+          if (!request.body?.force) continue;
+        }
+        zurueck.push({ id: c.id, before: jetzt, after: c.before, summary: [] });
+      }
+      if (konflikte.length && !request.body?.force) {
+        return reply.code(409).send({ error: `${konflikte.length} Artikel wurden seither geändert. Mit "force": true gewinnt die alte Fassung.`, conflicts: konflikte });
+      }
+      const registry = await repo.getRegistry();
+      const { geprueft, abgelehnt } = await pruefeLauf(wer.user, registry, roh, zurueck);
+      const antwort = { restored: geprueft.length, conflicts: konflikte, rejected: abgelehnt };
+      if (request.body?.dryRun) return { dryRun: true, ...antwort };
+      if (abgelehnt.length) return reply.code(422).send({ error: 'Die alten Fassungen bestehen die Prüfung nicht — nichts geschrieben.', ...antwort });
+      await repo.appendEvent('bulk.undone', ereignis.id, {
+        by: { id: wer.user.id, name: wer.user.name },
+        token: wer.token?.name ?? null,
+        changes: geprueft.map((c) => ({ id: c.id, before: c.before, after: c.after })),
+      });
+      for (const c of geprueft) if (!c.after) await repo.deleteEntity(c.id);
+      for (const c of geprueft) if (c.after) await repo.putEntity(c.after);
+      return antwort;
+    },
+  );
+
 
   return app;
 }

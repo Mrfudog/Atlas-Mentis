@@ -377,6 +377,149 @@ Registerzeilen. Die Ablage speichert `interfaces`, `relations`, `views`,
 019; eine ältere Datenbank bekommt sie beim nächsten Start aus den
 Startzeilen nachgefüllt, solange sie dort leer sind).
 
+## Werkzeugzugang
+
+Seit W9 (13.10.2026): eine Claude-Sitzung in der Cloud (oder ein anderes
+Werkzeug) **prüft dev und ändert dort in grossen Zügen** — über die
+Werkbank (`/api/checks`, `/api/bulk`) und das Skript `scripts/atlas.mjs`.
+Angemeldet wird mit einem **API-Token** eines eigenen Kontos
+([Zugang › API-Tokens](Zugang.md#api-tokens)). **Nur auf dev**, nie auf
+prod: dort gibt es dieses Konto nicht, und das Skript zeigt ohne Angabe
+auf dev.
+
+### Einrichten (einmal, die Leitung)
+
+**1. Das Konto auf dev anlegen** — als `deploy` auf dem Server:
+
+```bash
+cd /srv/atlas/dev
+docker compose exec -e NW_PASSWORD="$(openssl rand -base64 24)" app \
+  node apps/server/dist/user.js add werkbank --admin
+```
+
+Das Passwort ist zufällig und wird nirgends aufgeschrieben: das Konto
+meldet sich nie über die Maske an, nur mit Token. **Warum `--admin`:** die
+Werkbank steht der Leitung offen, aber **schreiben** darf heute nur die
+Verwaltung (`mayWrite`, [Zugang › Was noch fehlt](Zugang.md#was-noch-fehlt)).
+Soll die Sitzung nur **prüfen** und Vorschauen rechnen, reicht die
+Leitungsrolle in der Kampagne — dann ohne `--admin` anlegen und
+`… user.js role werkbank <kampagnen-id> gm` setzen, und in Schritt 2 ohne
+`--write`.
+
+**2. Ein Token ausgeben** — es steht genau einmal da, also gleich kopieren:
+
+```bash
+docker compose exec app node apps/server/dist/user.js token werkbank new claude-cloud --days 30 --write
+```
+
+Ausgabe: `Token tok_… (write, bis …)` und darunter `atm_…`. Ohne `--write`
+darf es nur lesen (Prüfungen, Vorschauen). Höchstens 365 Tage; nach Ablauf
+ein neues ausgeben und Schritt 3 wiederholen.
+
+**3. Die Cloud-Umgebung einstellen** — in Claude Code (Web oder App): im
+Titel der Sitzung das Menü der Cloud-Umgebung → **Edit**
+([Anleitung](https://code.claude.com/docs/en/cloud-environments#network-access)):
+
+| Einstellung | Wert |
+| --- | --- |
+| **Network access** | Stufe „Limited" (in älteren Apps „Custom") und unter **Allowed domains** `dev.ttrpg.fuchsbau.io` eintragen. Den Haken **Allow package managers** stehen lassen — sonst geht `pnpm install` nicht mehr. |
+| **Environment variables** | `ATLAS_DEV_TOKEN=atm_…` (das Token aus Schritt 2) |
+| | `ATLAS_URL=https://dev.ttrpg.fuchsbau.io` (optional — das ist die Vorgabe des Skripts) |
+
+Speichern. Eine **neue** Sitzung bekommt die Einstellungen; eine laufende
+nicht. Das Token gehört in die Einstellungen der Umgebung und **nie** in
+einen Chat, eine Datei im Repository oder eine Issue.
+
+**4. Prüfen** — in einer neuen Sitzung:
+
+```bash
+node scripts/atlas.mjs me        # "name": "werkbank", "token": { "scope": "write", … }
+node scripts/atlas.mjs checks    # die Zahlen je Prüfung
+```
+
+`403` beim Verbinden (`CONNECT tunnel failed`) heisst: die Domain ist in
+Schritt 3 nicht freigegeben. `401` heisst: Token falsch, abgelaufen oder
+widerrufen.
+
+**Widerrufen**, wenn ein Token irgendwo liegt, wo es nicht hingehört:
+
+```bash
+docker compose exec app node apps/server/dist/user.js token werkbank list
+docker compose exec app node apps/server/dist/user.js token werkbank drop tok_…
+```
+
+Das Konto ganz sperren: `… user.js disable werkbank` — alle seine Tokens
+gelten dann nicht mehr.
+
+### Was das Skript kann
+
+```bash
+node scripts/atlas.mjs checks                          # Zahlen je Prüfung (unter 2 s über 21 000 Artikel)
+node scripts/atlas.mjs checks duplicates --limit 20    # Treffer einer Prüfung
+node scripts/atlas.mjs find Ogre --type Statblock      # Artikel suchen
+node scripts/atlas.mjs get statblock-0042              # einen Artikel ganz (Peg-Id, Nummer oder Name)
+node scripts/atlas.mjs bulk --dry-run auftrag.json     # Vorschau: Zahl, Beispiele, Ablehnungen
+node scripts/atlas.mjs bulk auftrag.json               # schreiben — druckt die Id fürs Zurücknehmen
+node scripts/atlas.mjs bulks                           # die letzten Massenänderungen
+node scripts/atlas.mjs undo <id>                       # eine zurücknehmen
+```
+
+Eine **Massenänderung** steht in einer Datei, damit das Geschriebene genau
+das Geprüfte ist. „Allen Statblöcken, deren Name auf Ogre endet, die
+Kampfrolle Brute geben":
+
+```json
+{
+  "select": { "types": ["Statblock"], "where": [{ "field": "name", "op": "endsWith", "value": "Ogre" }] },
+  "ops": [{ "op": "set", "field": "Statblock.combatRole", "value": "Brute" }]
+}
+```
+
+„Die gleichnamigen Merkmale Amphibious mit gleichem Text zusammenführen"
+(einer bleibt, die anderen gehen, alles zeigt danach auf den bleibenden):
+
+```json
+{
+  "select": { "types": ["Feature"], "where": [{ "field": "name", "op": "eq", "value": "Amphibious" }] },
+  "ops": [{ "op": "merge", "mode": "delete", "by": "content" }]
+}
+```
+
+Seit W1 vereint schon der Importer textgleiche Merkmale; auf dem heutigen
+Bestand findet dieser Auftrag darum nichts (Vorschau: `0 geändert`) — von
+64 „Amphibious" sind 6 geblieben, alle verschieden. Ähnliche führt man
+gezielt zusammen: `checks duplicates` zeigt Gruppe und Ähnlichkeit, dann
+`"select": { "ids": [ … ] }` und `"keep": "<die bleibt>"`.
+
+| Teil | Was geht |
+| --- | --- |
+| `select.types` | Arten; ein Untertyp zählt mit (`Creature` trifft auch `PlayerCharacter`) |
+| `select.layer` | eine Ebene (Peg-Id oder Nummer), über `inLayer` |
+| `select.tag` | eine Marke |
+| `select.ids` | Peg-Ids oder Nummern |
+| `select.where` | `[{ field, op, value }]`, alle müssen gelten. `field`: `name`, `id` (Nummer), `type` oder `Karte.feld` (`Statblock.cr`). `op`: `eq`, `ne`, `contains`, `startsWith`, `endsWith`, `in` (Liste), `matches` (Regex), `empty`, `notEmpty` — gross/klein egal |
+| `ops` | `set` / `unset` (`field`, `value`), `addTag` / `removeTag` (`tag`), `addRelation` (`type`, `to`, `props`), `removeRelation` (`type`, `to` optional), `merge` (`mode`: `variant` oder `delete`; `keep`: wer bleibt, sonst die kleinste Nummer; `by`: `name` oder `content`) — `merge` steht allein |
+| `confirmDelete` | löscht ein Lauf mehr als einen Artikel, die Zahl aus der Vorschau (`--confirm-delete N`) |
+| `skipRejected` | schreiben, was besteht, und die Abgelehnten liegen lassen (nie beim Löschen) |
+
+Eine Auswahl ohne jede Bedingung lehnt der Server ab — sie träfe den ganzen
+Bestand. Jeder geänderte Artikel geht durch `validateEntity`; besteht einer
+nicht, wird **nichts** geschrieben. Wird die Kampfrolle eine Aufzählung,
+lehnt die Prüfung ein Wort ausserhalb der Liste ab — die Vorschau sagt es.
+
+**Rückgängig** setzt jede alte Fassung wieder hin und holt gelöschte
+Artikel zurück. Hat jemand einen der Artikel seither anders geändert,
+steht er als Konflikt da und es geschieht nichts; `undo <id> --force` lässt
+die alte Fassung gewinnen.
+
+**Was beim Neu-Einlesen passiert:** die Pipeline (oben, W8) schreibt jeden
+Artikel der Ebene „D&D 5e (2014)" so, wie die Datei ihn bringt. Eine
+Massenänderung an einem 5e.tools-Artikel — eine Kampfrolle, ein
+zusammengeführtes Doppel — ist nach dem nächsten Lauf wieder weg (das
+gelöschte Doppel steht wieder da). Was bleiben soll, gehört in den
+Importer (Doppel: `packages/import-5etools/src/doppel.ts`) oder als
+überschreibende Fassung in eine eigene Ebene.
+
 ## Den Bestand von prod nach dev holen
 
 **Ohne Konten** (REQ-199): ein `pg_dump` der ganzen Produktion trägt

@@ -15,6 +15,10 @@ import { BEREICHE } from './kern/bereiche';
  * Eintrag, der ins Leere führt, ist schlechter als keiner. Sie kommen mit
  * ihren Seiten.
  *
+ * Die **Werkbank** (W9) steht nur für Leitung und Verwaltung da — für
+ * alle anderen wäre sie ein Eintrag, der „nicht für dich" sagt. Der eigene
+ * Name führt zum Konto (API-Tokens).
+ *
  * Das Register steht nur für wen es ändern darf (Verwaltung, Leitung der
  * laufenden Kampagne) — lesen kann es jeder über die Adresse, aber ein
  * Eintrag für etwas, das man nur ansehen kann, lenkt am Tisch ab.
@@ -41,6 +45,9 @@ import { BEREICHE } from './kern/bereiche';
           <a routerLink="/compendium" routerLinkActive="an" ariaCurrentWhenActive="page"
             >Compendium</a
           >
+          @if (session.leitung()) {
+            <a routerLink="/werkbank" routerLinkActive="an" ariaCurrentWhenActive="page">Workbench</a>
+          }
           @if (session.darfRegister()) {
             <a routerLink="/registry" routerLinkActive="an" ariaCurrentWhenActive="page">Registry</a>
           }
@@ -51,12 +58,12 @@ import { BEREICHE } from './kern/bereiche';
             >
           }
         </nav>
-        <span class="wer">
+        <a class="wer" routerLink="/account" title="Account and API tokens">
           {{ session.user()?.name }}
           @if (session.isAdmin()) {
             <span class="rolle">admin</span>
           }
-        </span>
+        </a>
         <button type="button" (click)="abmelden()">Sign out</button>
       </header>
     }
@@ -103,6 +110,10 @@ import { BEREICHE } from './kern/bereiche';
     .wer {
       margin-left: auto;
       color: var(--dim);
+      text-decoration: none;
+    }
+    .wer:hover {
+      color: var(--accent);
     }
     .rolle {
       margin-left: 0.35rem;
