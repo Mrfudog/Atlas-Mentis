@@ -92,6 +92,10 @@ export class Api {
   entities(): Promise<Entity[]> {
     return this.call<Entity[]>('/api/entities?as=summary');
   }
+  /** Diese Artikel ganz, gesiebt — die Teile eines Statblocks (W2). */
+  entitiesById(ids: readonly string[]): Promise<Entity[]> {
+    return this.call<Entity[]>(`/api/entities?ids=${ids.map(encodeURIComponent).join(',')}`);
+  }
   backlinks(id: string): Promise<Rueckbezug[]> {
     return this.call<Rueckbezug[]>(`/api/entities/${encodeURIComponent(id)}/backlinks`);
   }

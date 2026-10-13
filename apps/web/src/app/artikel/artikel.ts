@@ -3,7 +3,11 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
   areaOf,
+  BOOK_CARDS,
+  fieldText,
+  layoutFor,
   LAYER_RELATION,
+  unitsFor,
   typeChain,
   entityName,
   entriesOf,
@@ -17,26 +21,60 @@ import {
   primaryInterface,
   relationDef,
   resolveView,
-  showField,
 } from '@nw/model';
-import type { Entity, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
+import type { Entity, LayoutElement, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
 import { ausEingabe, eingabeArt, inEingabe, kantenAusEntwurf, type Eingabe } from './felder';
 import { Text } from './text';
+import { Statblock } from './statblock';
+import { Zauber } from './zauber';
+import { Gegenstand } from './gegenstand';
+import { Abschnitte } from './abschnitte';
 import { bereichLabel } from '../kern/bereiche';
 
 const SCHON_ANDERSWO = ['Identity', 'Visibility', 'Source'];
 
 interface Zelle {
   ref: string;
+  comp: string;
+  prop: string;
   label: string;
   wert: string;
   /** An einer Instanz: der Wert kommt von der Vorlage. */
   geerbt?: boolean;
   /** Ein langes Textfeld: gezeichnet als Markdown (M10), nicht als Zeile. */
   lang?: boolean;
+}
+
+interface Prosa {
+  ref: string;
+  type: string;
+  key: string;
+  label: string;
+  wert: string;
+}
+
+/** Ein Stück der gezeichneten Seite — ein Layout-Element, aufgelöst. */
+interface Stueck {
+  id: string;
+  art: 'statblock' | 'spell' | 'item' | 'beschreibung' | 'felder' | 'prosa' | 'teile' | 'ueberschrift' | 'absatz';
+  text?: string;
+  zellen?: Zelle[];
+  prosa?: Prosa[];
+}
+
+/** Reiter gibt es auf der Artikelseite noch nicht: ihre Gruppen stehen nacheinander. */
+function flach(layout: readonly LayoutElement[]): LayoutElement[] {
+  return layout.flatMap((el) => (el.el === 'tabs' ? (el.tabs ?? []).flatMap((t) => flach(t.layout)) : [el]));
+}
+
+/** Nennt das Element dieses Feld — `fields`/`except` mit Typ oder `Typ.feld`? */
+function passt(el: LayoutElement, typ: string, feld: string): boolean {
+  if ((el.except ?? []).some((x) => x === typ || x === `${typ}.${feld}`)) return false;
+  if (el.fields === undefined || el.fields === 'all') return true;
+  return el.fields.some((x) => x === typ || x === `${typ}.${feld}`);
 }
 
 interface Feld {
@@ -60,10 +98,12 @@ interface Feld {
  * Ein Artikel.
  *
  * **Gezeichnet wird aus dem Register**, nicht aus einer Vorlage je
- * Artikelart: welche Felder eine Darstellungsstufe zeigt, steht in der
- * Ansicht, und die Auswahl macht `showField` aus `packages/model` — dieselbe
- * Funktion, die der Prototyp benutzt. Eine zweite Auswahl hier wäre die
- * zweite Stelle, an der jemand etwas vergisst.
+ * Artikelart: die Anordnung steht am Typ (`InterfaceDef.views`), und
+ * `layoutFor` aus `packages/model` sucht sie die `extends`-Kette hoch —
+ * dieselbe Funktion, die der Prototyp benutzt. Ein Statblock liest sich
+ * wie im Buch, weil das Register ihm das Element `statblock` gibt (W2);
+ * eine Abfrage nach dem Artnamen hier wäre die zweite Stelle, an der
+ * jemand etwas vergisst.
  *
  * **Zurückgehalten wird am Server** (`redactEntity`). Was hier ankommt, darf
  * angezeigt werden; die Seite prüft das nicht noch einmal. Eine zweite
@@ -72,7 +112,7 @@ interface Feld {
  */
 @Component({
   selector: 'nw-artikel',
-  imports: [RouterLink, FormsModule, Text],
+  imports: [RouterLink, FormsModule, Text, Statblock, Zauber, Gegenstand, Abschnitte],
   template: `
     @if (artikel(); as e) {
       <div class="buch">
@@ -111,7 +151,11 @@ interface Feld {
                   <p class="untertitel">{{ u }}</p>
                 }
               </div>
-              <div class="linie" aria-hidden="true"></div>
+              <!-- Ein Buch-Element setzt seine kursive Zeile unter den Namen
+                   und zieht die Linie selbst. -->
+              @if (bearbeitet() || !buchKopf()) {
+                <div class="linie" aria-hidden="true"></div>
+              }
             @if (bearbeitet()) {
               @if (problem(); as p) {
                 <p class="fehler" role="alert">{{ p }}</p>
@@ -245,33 +289,60 @@ interface Feld {
                   {{ offeneVerweise().join(', ') }}
                 </p>
               }
-              @if (zellen().length) {
-                <dl class="felder">
-                  @for (z of zellen(); track z.ref) {
-                    <dt>{{ z.label }}</dt>
-                    <dd [class.geerbt]="z.geerbt" [attr.title]="z.geerbt ? 'From the template' : null">
-                      @if (z.lang) {
-                        <nw-text [text]="z.wert" [scopes]="scopes()" />
-                      } @else {
-                        {{ z.wert }}
+              <!-- Gezeichnet wird die Anordnung der Art (layoutFor): was ein
+                   Element nicht kennt, zeichnet hier noch niemand; was kein
+                   Element zeichnet, steht am Ende (rest). -->
+              @for (st of stuecke(); track st.id) {
+                @switch (st.art) {
+                  @case ('statblock') {
+                    <nw-statblock [artikel]="e" />
+                  }
+                  @case ('spell') {
+                    <nw-zauber [artikel]="e" [scopes]="scopes()" />
+                  }
+                  @case ('item') {
+                    <nw-gegenstand [artikel]="e" />
+                  }
+                  @case ('beschreibung') {
+                    <nw-text class="beschreibung" [text]="st.text ?? ''" [scopes]="scopes()" />
+                  }
+                  @case ('teile') {
+                    <nw-abschnitte [besitzer]="e" />
+                  }
+                  @case ('ueberschrift') {
+                    <h2>{{ st.text }}</h2>
+                  }
+                  @case ('absatz') {
+                    <p class="beschreibung">{{ st.text }}</p>
+                  }
+                  @case ('felder') {
+                    <dl class="felder">
+                      @for (z of st.zellen; track z.ref) {
+                        <div class="feld" [class.lang]="z.lang" [class.geerbt]="z.geerbt"
+                             [attr.title]="z.geerbt ? 'From the template' : null">
+                          <dt>{{ z.label }}</dt>
+                          <dd>
+                            @if (z.lang) {
+                              <nw-text [text]="z.wert" [scopes]="scopes()" />
+                            } @else {
+                              <nw-text inline [text]="z.wert" [scopes]="scopes()" />
+                            }
+                          </dd>
+                        </div>
                       }
-                    </dd>
+                    </dl>
                   }
-                </dl>
-              }
-              @if (beschreibung(); as text) {
-                @if (zellen().length) {
-                  <div class="linie" aria-hidden="true"></div>
+                  @case ('prosa') {
+                    @for (b of st.prosa; track b.ref) {
+                      <section class="block" [class]="b.key">
+                        @if (b.key !== 'paragraph') {
+                          <h2>{{ b.label }}</h2>
+                        }
+                        <nw-text [text]="b.wert" [scopes]="scopes()" />
+                      </section>
+                    }
+                  }
                 }
-                <nw-text class="beschreibung" [text]="text" [scopes]="scopes()" />
-              }
-              @for (b of prosa(); track b.ref) {
-                <section class="block" [class]="b.key">
-                  @if (b.key !== 'paragraph') {
-                    <h2>{{ b.label }}</h2>
-                  }
-                  <nw-text [text]="b.wert" [scopes]="scopes()" />
-                </section>
               }
             }
             </article>
@@ -450,15 +521,16 @@ export class Artikel {
   });
 
   /**
-   * Die Feldzellen. `Description.description` bleibt draussen, weil sie schon
-   * als Absatz oben steht — sie zweimal zu zeigen wäre kein Fehler, aber es
-   * liest sich wie einer.
+   * **Jede Feldzelle des Artikels**, in der Reihenfolge, in der die Art ihre
+   * Felder erklärt. Welche davon wo stehen, sagt die Anordnung (`stuecke`).
+   * Ein Mass steht mit Einheit da, umgerechnet nach `units` (D8) — „Range
+   * 150" ohne Einheit gibt es nicht.
    */
-  protected readonly zellen = computed<Zelle[]>(() => {
+  private readonly alleZellen = computed<Zelle[]>(() => {
     const e = this.artikel();
     const r = this.reg();
-    const v = this.view();
-    if (!e || !r || !v) return [];
+    if (!e || !r) return [];
+    const mode = unitsFor(r, primaryInterface(e));
     const out: Zelle[] = [];
     for (const [comp, karte] of Object.entries(e.components ?? {})) {
       /* Was schon anderswo steht: der Name als Überschrift, Aliasse und
@@ -466,8 +538,6 @@ export class Artikel {
          Seitenspalte. Zweimal dasselbe liest sich wie ein Fehler. */
       if (SCHON_ANDERSWO.includes(comp)) continue;
       const def = r.interfaces[comp];
-      /* In der Reihenfolge, in der die Art ihre Felder erklärt — nicht in
-         der, in der sie zuletzt gespeichert wurden. */
       const werte = (karte ?? {}) as Record<string, unknown>;
       const reihe = [
         ...Object.keys(def?.schema?.properties ?? {}).filter((k) => k in werte),
@@ -475,21 +545,111 @@ export class Artikel {
       ];
       for (const prop of reihe) {
         const wert = werte[prop];
-        if (comp === 'Description' && prop === 'description' && v.description) continue;
-        if (!showField(v, comp, prop)) continue;
         if (wert === null || wert === undefined || wert === '') continue;
         const schema = def?.schema?.properties?.[prop];
-        const titel = schema?.title ?? prop;
+        /* Ein Prosafeld gehört dem Element `prose`, nicht der Tabelle. */
+        if (schema?.many && schema.format === 'long') continue;
+        const text = fieldText(r, schema, wert, mode);
+        if (!text) continue;
         out.push({
-          lang: schema?.format === 'long' && typeof wert === 'string',
           ref: `${comp}.${prop}`,
-          label: titel,
-          wert: Array.isArray(wert) ? wert.join(', ') : String(wert),
+          comp,
+          prop,
+          lang: schema?.format === 'long' && typeof wert === 'string',
+          label: schema
+            ? fieldTitle(r, primaryInterface(e), { type: comp, key: prop, prop: schema })
+            : prop,
+          wert: text,
           geerbt: e.fromTemplate?.fields.includes(`${comp}.${prop}`) ?? false,
         });
       }
     }
     return out;
+  });
+
+  /**
+   * **Die Seite, wie die Anordnung der Art sie sagt** (`layoutFor`, die
+   * `extends`-Kette hoch). Ein Statblock zeichnet sich wie im Buch, weil
+   * das Register an `Statblock` das Element `statblock` setzt — hier steht
+   * kein Artname (W2).
+   *
+   * Jedes Element nimmt, was es zeichnet, aus dem Rest; **was keines
+   * zeichnet, steht am Ende**. Die Seite kennt noch nicht jedes Element
+   * (Bogen, Inventar, Karte …), und ein Feld, das nur dort stünde, wäre
+   * sonst nirgends zu lesen.
+   */
+  protected readonly stuecke = computed<Stueck[]>(() => {
+    const e = this.artikel();
+    const r = this.reg();
+    if (!e || !r) return [];
+    const layout = flach(layoutFor(r, 'full', primaryInterface(e)).layout);
+    const zellen = this.alleZellen();
+    const prosa = this.prosa();
+    const felderDa = new Set<string>();
+    const prosaDa = new Set<string>();
+    const da = (typ: string, feld: string) => felderDa.has(typ) || felderDa.has(`${typ}.${feld}`);
+    const out: Stueck[] = [];
+
+    for (const el of layout) {
+      switch (el.el) {
+        case 'statblock':
+        case 'spell':
+        case 'item': {
+          for (const karte of BOOK_CARDS[el.el] ?? []) felderDa.add(karte);
+          /* Der Zauber zeichnet seinen Text selbst, weil „At Higher Levels"
+             dahinter steht. */
+          if (el.el === 'spell') {
+            felderDa.add('Description.description');
+            prosa.filter((b) => b.type === 'Prose' && b.key === 'paragraph').forEach((b) => prosaDa.add(b.ref));
+          }
+          out.push({ id: el.id, art: el.el });
+          break;
+        }
+        case 'description': {
+          const text = this.beschreibung();
+          felderDa.add('Description.description');
+          if (text) out.push({ id: el.id, art: 'beschreibung', text });
+          break;
+        }
+        case 'fields': {
+          const hier = zellen.filter((z) => !da(z.comp, z.prop) && passt(el, z.comp, z.prop));
+          hier.forEach((z) => felderDa.add(z.ref));
+          if (hier.length) out.push({ id: el.id, art: 'felder', zellen: hier });
+          break;
+        }
+        case 'prose': {
+          const hier = prosa.filter((b) => !prosaDa.has(b.ref) && passt(el, b.type, b.key));
+          hier.forEach((b) => prosaDa.add(b.ref));
+          if (hier.length) out.push({ id: el.id, art: 'prosa', prosa: hier });
+          break;
+        }
+        case 'composed':
+          out.push({ id: el.id, art: 'teile' });
+          break;
+        case 'heading':
+          if (el.text) out.push({ id: el.id, art: 'ueberschrift', text: el.text });
+          break;
+        case 'text':
+          if (el.text) out.push({ id: el.id, art: 'absatz', text: el.text });
+          break;
+        default:
+          /* Bogen, Inventar, Karte, Board … zeichnet die Artikelseite noch
+             nicht (W4 und später). Was sie tragen, steht unten im Rest. */
+          break;
+      }
+    }
+
+    const rest = zellen.filter((z) => !da(z.comp, z.prop));
+    if (rest.length) out.push({ id: 'rest-f', art: 'felder', zellen: rest });
+    const restProsa = prosa.filter((b) => !prosaDa.has(b.ref));
+    if (restProsa.length) out.push({ id: 'rest-p', art: 'prosa', prosa: restProsa });
+    return out;
+  });
+
+  /** Steht ein Buch-Element zuoberst, setzt es die Zeile unter den Namen. */
+  protected readonly buchKopf = computed(() => {
+    const erstes = this.stuecke()[0]?.art;
+    return erstes === 'statblock' || erstes === 'spell' || erstes === 'item';
   });
 
   /**
@@ -501,12 +661,13 @@ export class Artikel {
     const e = this.artikel();
     const r = this.reg();
     if (!e || !r) return [];
-    const out: { ref: string; key: string; label: string; wert: string }[] = [];
+    const out: Prosa[] = [];
     for (const f of proseFields(r, primaryInterface(e))) {
       const karte = (e.components?.[f.type] ?? {}) as Record<string, unknown>;
       for (const eintrag of entriesOf(karte[f.key])) {
         out.push({
           ref: entryRef(f.type, f.key, eintrag.id),
+          type: f.type,
           key: f.key,
           label: fieldTitle(r, primaryInterface(e), f),
           wert: eintrag.value,

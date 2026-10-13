@@ -207,6 +207,7 @@ Durchstich in CI prüft `PgRepository` gegen eine echte Postgres.
 | `GET /api/registry` · `PUT /api/registry/:part` | das Register lesen; ändern nur die Leitung |
 | `GET /api/entities` · `GET /api/entities/:id` | Artikel, **gesiebt** |
 | `GET /api/entities?as=summary` | die Kurzfassung aller Artikel (`summaryOf`) — für Liste, Verweise, Auswahlen |
+| `GET /api/entities?ids=a,b,c` | diese Artikel ganz, gesiebt (höchstens 500) — die Teile eines Statblocks in einer Anfrage (W2) |
 | `GET /api/entities/:id/backlinks` | wer auf den Artikel zeigt (Kurzfassung + Kante), gesiebt |
 | `PUT /api/entities/:id` · `DELETE /api/entities/:id` | schreiben, immer durch `validateEntity` |
 | `POST /api/validate` | prüfen ohne zu speichern |
@@ -275,6 +276,7 @@ flowchart TB
       artikel[artikel/artikel.ts<br/>Artikelansicht, Bearbeiten]
       felder[artikel/felder.ts<br/>Felder aus dem Register]
       text[artikel/text.ts<br/>Markdown, Verweise, Würfel]
+      buch[artikel/statblock.ts · zauber.ts · gegenstand.ts · abschnitte.ts<br/>wie im Buch]
     end
     subgraph kern[kern/ · Dienste]
       api[api.ts<br/>HttpClient → /api]
@@ -282,13 +284,14 @@ flowchart TB
       session[session.ts<br/>wer ist angemeldet]
     end
   end
-  model[["@nw/model<br/>views · calc · markdown · inline"]]
+  model[["@nw/model<br/>views · calc · book · markdown · inline"]]
   router --> wache --> session
   router --> login & liste & artikel
-  artikel --> felder & text
+  artikel --> felder & text & buch
+  buch --> text
   liste & artikel --> bestand --> api
   login --> session --> api
-  felder & text --> model
+  felder & text & buch --> model
   api -->|"/api · im Dev über proxy.conf.json"| srv[Fastify]
 ```
 
@@ -296,7 +299,10 @@ flowchart TB
 `felder.ts` liest die Felder einer Art aus dem Register und das Modell
 sagt, was in welcher Ansicht steht (`views`), was gerechnet wird
 (`calc`) und wie Text aussieht (`markdown`, `inline`). Eine neue
-Artikelart erscheint ohne Codeänderung.
+Artikelart erscheint ohne Codeänderung. Die Artikelseite zeichnet die
+Anordnung der Art (`layoutFor`); die Buch-Elemente `statblock`, `spell`
+und `item` bauen ihre Zeilen in `book.ts` und holen die Teile eines
+Statblocks über `Bestand.holen` (`?ids=`) in einer Anfrage.
 
 Der Bestand wird **einmal** geladen und als Signal gehalten — die
 Kampagne ist klein genug. Mit 28 000 importierten Artikeln stimmt das
