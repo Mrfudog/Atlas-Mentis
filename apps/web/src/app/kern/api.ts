@@ -120,6 +120,38 @@ export interface Bezuege {
    * fertigen Stands, `old`, ob die Antwort dieser Stand ist (`?stand=ready`).
    */
   ready?: { at: string; old: boolean };
+  /** Eine Fassung aus einer Vergleichsebene (T-092): nicht im Spiel, auf Wunsch sichtbar. */
+  compare?: boolean;
+}
+
+/** Eine Ebene, aus der eine Fassung kommt (`GET /api/entities/:id/versions`). */
+export interface FassungsEbene {
+  id: string;
+  name: string;
+  /** Das Kürzel am Feld; der Name steht im Tooltip. */
+  short: string;
+  compare: boolean;
+  play: boolean;
+}
+
+/** Eine andere Fassung derselben Sache (T-092, E-021 d). */
+export interface Fassung {
+  entity: Entity;
+  layers: string[];
+  /** Im Spiel (eine aufgeschaltete Ebene bringt sie, nichts überschreibt sie). */
+  play: boolean;
+  /** Aus einer Vergleichsebene. */
+  compare: boolean;
+  /** Die Leitung kann sie als Überschreibung übernehmen. */
+  adoptable: boolean;
+  /** Schon übernommen: die Kopie in der Kampagnenebene. */
+  adoptedAs?: string;
+}
+
+export interface Fassungen {
+  layers: FassungsEbene[];
+  versions: Fassung[];
+  campaign?: { id: string; name: string };
 }
 
 /** Eine Zeile „not ready, by players" (`GET /api/unready`, REQ-237). */
@@ -172,6 +204,8 @@ export interface KampagnenEbene {
   group: string;
   articles: number;
   active: boolean;
+  /** Eine Vergleichsebene (T-092): nicht im Spiel, ihre Fassungen auf Wunsch sichtbar. */
+  compare?: boolean;
   /** Die anderen Kampagnen, die sie aufschalten. */
   alsoIn: string[];
   canActivate: boolean;
@@ -181,6 +215,8 @@ export interface KampagnenEbenen {
   may: Recht;
   /** Die aufgeschalteten von unten nach oben, darunter die übrigen. */
   layers: KampagnenEbene[];
+  /** Wer die Vergleichsebenen sieht (T-092). */
+  compareFor?: 'gm' | 'players';
 }
 
 export interface ListenZeile {
@@ -196,6 +232,8 @@ export interface ListenZeile {
   tags?: string[];
   /** Die Ziele der Kantenarten, nach denen `rel=` fragte. */
   rels?: Record<string, string[]>;
+  /** Die übrigen Fassungen derselben Sache (T-092, mit `versions`). */
+  versions?: { id: string; name: string; layers: string[]; source: string }[];
 }
 
 /** Was die Liste gefragt wird. Leere Angaben fallen weg. */
@@ -211,6 +249,8 @@ export interface ListenFrage {
   layer?: string[] | undefined;
   nolayer?: string[] | undefined;
   parts?: boolean | undefined;
+  /** Fassungen derselben Sache als eine Zeile (T-092). */
+  versions?: boolean | undefined;
   sort?: string | undefined;
   offset?: number | undefined;
   limit?: number | undefined;
@@ -510,6 +550,35 @@ export class Api {
     return this.call<Entity & { refs?: Bezuege }>(`/api/entities/${encodeURIComponent(id)}`);
   }
 
+  /** Die übrigen Fassungen dieses Artikels (T-092). */
+  versions(id: string): Promise<Fassungen> {
+    return this.call<Fassungen>(`/api/entities/${encodeURIComponent(id)}/versions`);
+  }
+  /** Was sich das Konto merkt (T-092). */
+  prefs(): Promise<Record<string, unknown>> {
+    return this.call<Record<string, unknown>>('/api/me/prefs', {}, false);
+  }
+  setPref(key: string, value: unknown): Promise<{ ok: true }> {
+    return this.call(`/api/me/prefs/${encodeURIComponent(key)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ value }),
+    });
+  }
+  /** Eine Fassung aus einer Vergleichsebene als Überschreibung übernehmen (T-092). */
+  adopt(campaign: string, version: string, over: string): Promise<Entity> {
+    return this.call<Entity>(`/api/campaigns/${encodeURIComponent(campaign)}/adopt`, {
+      method: 'POST',
+      body: JSON.stringify({ version, over }),
+    });
+  }
+  /** Die Übernahme zurücknehmen; `over` ist, was danach wieder gilt. */
+  unadopt(campaign: string, copy: string): Promise<{ ok: true; over?: string }> {
+    return this.call(
+      `/api/campaigns/${encodeURIComponent(campaign)}/adopt/${encodeURIComponent(copy)}`,
+      { method: 'DELETE' },
+    );
+  }
+
   /** Der letzte fertige Stand (E-012) — für Verfasserin und Leitung. */
   readyVersion(id: string): Promise<Entity & { refs?: Bezuege }> {
     return this.call<Entity & { refs?: Bezuege }>(`/api/entities/${encodeURIComponent(id)}?stand=ready`);
@@ -622,6 +691,16 @@ export class Api {
     return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/layers`, {
       method: 'PUT',
       body: JSON.stringify({ layers }),
+    });
+  }
+  /** Die Vergleichsebenen und wer sie sieht (T-092); was fehlt, bleibt, wie es ist. */
+  setCampaignCompare(
+    campaign: string,
+    neu: { layers?: string[]; players?: boolean },
+  ): Promise<{ ok: true; layers: string[] }> {
+    return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/compare`, {
+      method: 'PUT',
+      body: JSON.stringify(neu),
     });
   }
   /** Eine Ebene dazuschalten; der Server sucht ihr den Platz im Stapel. */

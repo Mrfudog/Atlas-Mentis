@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import {
   areaOf,
   choicesOf,
@@ -23,7 +23,7 @@ import {
   resolveView,
 } from '@nw/model';
 import type { Entity, LayoutElement, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
-import { Api, ApiError } from '../kern/api';
+import { Api, ApiError, type Fassungen } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
 import {
@@ -46,6 +46,7 @@ import { Statblock } from './statblock';
 import { Zauber } from './zauber';
 import { Gegenstand } from './gegenstand';
 import { Abschnitte } from './abschnitte';
+import { abweichungen, FassungsKasten, FassungsLesart, verglichene, type Abweichung } from './fassungen';
 import { bereichLabel } from '../kern/bereiche';
 
 const SCHON_ANDERSWO = ['Identity', 'Visibility', 'Source'];
@@ -132,7 +133,7 @@ interface Feld {
  */
 @Component({
   selector: 'nw-artikel',
-  imports: [RouterLink, FormsModule, Text, Wahl, Mehrfach, Statblock, Zauber, Gegenstand, Abschnitte],
+  imports: [RouterLink, FormsModule, Text, Wahl, Mehrfach, Statblock, Zauber, Gegenstand, Abschnitte, FassungsKasten],
   template: `
     @if (artikel(); as e) {
       <div class="buch">
@@ -184,6 +185,13 @@ interface Feld {
                 @if (!bearbeitet() && problem(); as p) {
                   <span class="fehler" role="alert">{{ p }}</span>
                 }
+              </p>
+            }
+
+            <!-- Eine Fassung aus einer Vergleichsebene (T-092): sichtbar, aber nicht im Spiel. -->
+            @if (bestand.vergleich().has(e.id)) {
+              <p class="band-fertig band-vergleich" role="status">
+                <span>This version comes from a compare layer. It is not in play in this campaign.</span>
               </p>
             }
 
@@ -423,6 +431,19 @@ interface Feld {
                             } @else {
                               <nw-text inline [text]="z.wert" [scopes]="scopes()" />
                             }
+                            @for (a of abwAn(z.ref); track a.id) {
+                              <span class="fassung" [class.lang]="a.lang">
+                                <span class="kuerzel" [class.vergleich]="a.compare" [title]="a.titel">{{ a.kuerzel }}</span>
+                                @if (a.lang && a.text) {
+                                  <details>
+                                    <summary>says otherwise</summary>
+                                    <nw-text [text]="a.text" [scopes]="scopes()" />
+                                  </details>
+                                } @else {
+                                  <span class="fwert">{{ a.text || '—' }}</span>
+                                }
+                              </span>
+                            }
                           </dd>
                         </div>
                       }
@@ -435,17 +456,61 @@ interface Feld {
                           <h2>{{ b.label }}</h2>
                         }
                         <nw-text [text]="b.wert" [scopes]="scopes()" />
+                        @for (a of abwProsa(b.ref); track a.id) {
+                          <details class="fassung lang">
+                            <summary>
+                              <span class="kuerzel" [class.vergleich]="a.compare" [title]="a.titel">{{ a.kuerzel }}</span>
+                              {{ a.text ? 'says otherwise' : 'has nothing here' }}
+                            </summary>
+                            @if (a.text) {
+                              <nw-text [text]="a.text" [scopes]="scopes()" />
+                            }
+                          </details>
+                        }
                       </section>
                     }
                   }
                 }
+              }
+              <!-- Was eine Fassung anders sagt, wo die Seite kein Feld dafür
+                   zeichnet: im Zauberblock, im Statblock, oder weil das Feld
+                   hier leer ist (T-092). -->
+              @if (abwRest().length) {
+                <section class="block fassungen-rest">
+                  <h2>Where other versions differ</h2>
+                  <dl class="felder">
+                    @for (z of abwRest(); track z.ref) {
+                      <div class="feld" [class.lang]="z.lang">
+                        <dt>{{ z.label }}</dt>
+                        <dd>
+                          @if (z.hier) {
+                            <span class="fhier">{{ z.hier }}</span>
+                          }
+                          @for (a of z.liste; track a.id) {
+                            <span class="fassung" [class.lang]="a.lang">
+                              <span class="kuerzel" [class.vergleich]="a.compare" [title]="a.titel">{{ a.kuerzel }}</span>
+                              @if (a.lang && a.text) {
+                                <details>
+                                  <summary>says otherwise</summary>
+                                  <nw-text [text]="a.text" [scopes]="scopes()" />
+                                </details>
+                              } @else {
+                                <span class="fwert">{{ a.text || '—' }}</span>
+                              }
+                            </span>
+                          }
+                        </dd>
+                      </div>
+                    }
+                  </dl>
+                </section>
               }
             }
             </article>
           </main>
 
           <aside class="seitenspalte" aria-label="Connections">
-            @if (kanten().length) {
+            @if (kanten().length || abwKanten().length) {
               <section class="kasten">
                 <h2>Relations</h2>
                 <ul class="kanten">
@@ -459,9 +524,22 @@ interface Feld {
                       }
                     </li>
                   }
+                  @for (k of abwKanten(); track $index) {
+                    <li class="fassung-kante">
+                      <span class="rl">{{ k.label }}</span>
+                      <span class="kuerzel" [class.vergleich]="k.compare" [title]="k.titel">{{ k.kuerzel }}</span>
+                      @if (k.dazu.length) {
+                        <span>+ {{ k.dazu.join(', ') }}</span>
+                      }
+                      @if (k.weg.length) {
+                        <span class="weg">− {{ k.weg.join(', ') }}</span>
+                      }
+                    </li>
+                  }
                 </ul>
               </section>
             }
+            <nw-fassungen [artikel]="e.id" [fassungen]="fassungen()" (gewechselt)="gewechselt($event)" />
             @if (rueckbezuege().length) {
               <section class="kasten">
                 <h2>Linked here</h2>
@@ -522,6 +600,8 @@ export class Artikel {
 
   protected readonly bestand = inject(Bestand);
   protected readonly session = inject(Session);
+  private readonly lesart = inject(FassungsLesart);
+  private readonly router = inject(Router);
 
   constructor() {
     void this.bestand.load();
@@ -530,6 +610,14 @@ export class Artikel {
        der nächste geholt. */
     effect(() => {
       void this.bestand.oeffnen(this.id());
+    });
+    /* **Die Fassungen** (T-092) kommen je Artikel, neben ihm: eine
+       Anfrage, und der Vergleich rechnet hier. Namen der Kantenziele, die
+       eine Fassung anders hat, holt die Liste nach. */
+    void this.lesart.laden();
+    effect(() => {
+      const id = this.id();
+      untracked(() => void this.fassungenLaden(id));
     });
     /* Einmal je Artikel: nach dem Speichern steht `?edit=1` noch in der
        Adresse, und die Seite soll dann lesen, nicht wieder bearbeiten. */
@@ -883,6 +971,91 @@ export class Artikel {
       };
     });
   });
+
+  // ------------------------------------------------------------ Fassungen (T-092)
+
+  private readonly fassungsStand = signal<{ id: string; f: Fassungen } | null>(null);
+  protected readonly fassungen = computed(() => {
+    const s = this.fassungsStand();
+    return s && s.id === this.id() ? s.f : null;
+  });
+
+  private async fassungenLaden(id: string): Promise<void> {
+    try {
+      const f = await this.api.versions(id);
+      if (id !== this.id()) return;
+      this.fassungsStand.set({ id, f });
+      const ziele = new Set<string>();
+      for (const v of f.versions) for (const r of v.entity.relations ?? []) if (r.to) ziele.add(r.to);
+      const name = this.bestand.name();
+      const fehlen = [...ziele].filter((x) => name(x) === undefined).slice(0, 200);
+      if (fehlen.length) await this.bestand.liste({ ids: fehlen, limit: 200 });
+    } catch {
+      /* Ohne Fassungen steht der Artikel für sich — das ist kein Fehler der Seite. */
+      if (id === this.id()) this.fassungsStand.set(null);
+    }
+  }
+
+  /** Was die verglichenen Fassungen anders sagen — je Feld und je Kantenart. */
+  private readonly abw = computed(() => {
+    const e = this.artikel();
+    const r = this.reg();
+    if (!e || !r || this.bearbeitet()) return { felder: new Map<string, Abweichung[]>(), kanten: [] };
+    return abweichungen(r, e, verglichene(this.fassungen(), this.lesart.stand()), this.bestand.name());
+  });
+
+  protected abwAn(ref: string): Abweichung[] {
+    return this.abw().felder.get(ref) ?? [];
+  }
+
+  /** Ein Prosafeld bekommt den Vergleich an seinem ersten Eintrag. */
+  private readonly erstePros = computed(() => {
+    const m = new Map<string, string>();
+    for (const b of this.prosa()) if (!m.has(`${b.type}.${b.key}`)) m.set(`${b.type}.${b.key}`, b.ref);
+    return m;
+  });
+  protected abwProsa(entry: string): Abweichung[] {
+    for (const [feld, erste] of this.erstePros()) if (erste === entry) return this.abwAn(feld);
+    return [];
+  }
+
+  /** Was keine Zelle und kein Absatz der Seite zeigt — es steht am Ende. */
+  protected readonly abwRest = computed(() => {
+    const e = this.artikel();
+    const r = this.reg();
+    const felder = this.abw().felder;
+    if (!e || !r || !felder.size) return [];
+    const gezeigt = new Set<string>(this.erstePros().keys());
+    for (const st of this.stuecke()) for (const z of st.zellen ?? []) gezeigt.add(z.ref);
+    const hier = new Map(this.alleZellen().map((z) => [z.ref, z.wert]));
+    const out: { ref: string; label: string; lang: boolean; hier: string; liste: Abweichung[] }[] = [];
+    for (const [ref, liste] of felder) {
+      if (gezeigt.has(ref)) continue;
+      const [type = '', key = ''] = ref.split('.');
+      const prop = r.interfaces[type]?.schema?.properties?.[key];
+      out.push({
+        ref,
+        label: prop ? fieldTitle(r, primaryInterface(e), { type, key, prop }) : key,
+        lang: liste.some((a) => a.lang),
+        hier: hier.get(ref) ?? '',
+        liste,
+      });
+    }
+    return out;
+  });
+
+  protected readonly abwKanten = computed(() => {
+    const r = this.reg();
+    if (!r) return [];
+    return this.abw().kanten.map((k) => ({ ...k, label: relationDef(r, k.type).label }));
+  });
+
+  /** Nach dem Übernehmen oder Zurücknehmen gilt ein anderer Artikel. */
+  protected async gewechselt(id: string): Promise<void> {
+    await this.bestand.oeffnen(id, true);
+    await this.router.navigate(['/artikel', id]);
+    await this.fassungenLaden(id);
+  }
 
   // ------------------------------------------------------------ bearbeiten
 

@@ -24,6 +24,10 @@ const OFFEN = 8;
  * (`Compendium.dc.html`, Vorschau nach `Main.dc.html`): links die Filter,
  * in der Mitte die Tabelle, rechts die Vorschau der angeklickten Zeile.
  *
+ * **Fassungen derselben Sache stehen als eine Zeile** (T-092, E-021 d):
+ * Kopf ist die aus der obersten Spielebene, die übrigen klappen darunter
+ * auf, je mit Ebene und Quelle.
+ *
  * **Gerechnet wird am Server** (`GET /api/list`, W7): Suche, Arten mit
  * Zahl, Ebenen, Feldfilter und das Blatt. Bis zum 13.10. lud diese Seite
  * die Kurzfassung aller 24 157 Artikel und rechnete hier — jetzt kommt ein
@@ -234,6 +238,17 @@ const OFFEN = 8;
                       } @else if (z.users === 1 && filter.teile()) {
                         <span class="stand">part</span>
                       }
+                      @if (z.versions?.length) {
+                        <button
+                          type="button"
+                          class="fassungen"
+                          [attr.aria-expanded]="fassungenOffen().has(z.id)"
+                          [attr.aria-label]="(fassungenOffen().has(z.id) ? 'Hide' : 'Show') + ' the other versions of ' + z.name"
+                          (click)="fassungenZeigen(z.id, $event)"
+                        >
+                          {{ fassungenOffen().has(z.id) ? '▾' : '▸' }} {{ z.versions!.length + 1 }} versions
+                        </button>
+                      }
                     </td>
                     @if (!type()) {
                       <td>{{ typLabel(z.type) }}</td>
@@ -243,6 +258,17 @@ const OFFEN = 8;
                     }
                     <td class="dim quelle">{{ z.source || z.layers.join(', ') }}</td>
                   </tr>
+                  @if (fassungenOffen().has(z.id)) {
+                    @for (v of z.versions ?? []; track v.id) {
+                      <tr class="unter" [class.gewaehlt]="filter.vorschau() === v.id" (click)="zeile({ id: v.id, type: z.type }, $event)">
+                        <td class="name">
+                          <a [routerLink]="zielVon({ id: v.id, type: z.type })" (click)="link({ id: v.id, type: z.type }, $event)">{{ v.name }}</a>
+                        </td>
+                        <td [attr.colspan]="spaltenZahl() - 2" class="dim">{{ v.layers.join(', ') }}</td>
+                        <td class="dim quelle">{{ v.source || v.layers.join(', ') }}</td>
+                      </tr>
+                    }
+                  }
                 } @empty {
                   <tr>
                     <td [attr.colspan]="spaltenZahl()" class="leer">Nothing here.</td>
@@ -344,6 +370,8 @@ export class Kompendium {
       q: this.filter.suche().trim() || undefined,
       nolayer: [...this.filter.ohneEbenen()],
       parts: this.filter.teile(),
+      /* Fassungen derselben Sache als eine Zeile (T-092, E-021 d). */
+      versions: true,
       sort: this.filter.sortierung() || undefined,
       offset: this.filter.blatt() * BLATT,
       limit: BLATT,
@@ -540,12 +568,22 @@ export class Kompendium {
     return s === nach ? 'ascending' : s === `-${nach}` ? 'descending' : null;
   }
 
+  /** Welche Zeilen ihre Fassungen zeigen (T-092). */
+  protected readonly fassungenOffen = signal(new Set<string>());
+  protected fassungenZeigen(id: string, ev: MouseEvent): void {
+    ev.stopPropagation();
+    const s = new Set(this.fassungenOffen());
+    if (s.has(id)) s.delete(id);
+    else s.add(id);
+    this.fassungenOffen.set(s);
+  }
+
   /**
    * Eine Zeile anklicken zeigt die Vorschau rechts (`quick`); „Open" darin
    * führt zum Artikel. Am Telefon ist neben der Tabelle kein Platz — dort
    * führt die Zeile gleich hin.
    */
-  protected zeile(z: ListenZeile, ev: MouseEvent): void {
+  protected zeile(z: Pick<ListenZeile, 'id' | 'type'>, ev: MouseEvent): void {
     if ((ev.target as HTMLElement | null)?.closest('a')) return;
     if (this.schmal()) {
       void this.router.navigate(this.zielVon(z));
@@ -558,7 +596,7 @@ export class Kompendium {
     return z.type === 'Class' ? ['/classes', z.id] : ['/artikel', z.id];
   }
   /** Der Name ist ein echter Link (Mittelklick, neuer Reiter); ein schlichter Klick zeigt die Vorschau. */
-  protected link(z: ListenZeile, ev: MouseEvent): void {
+  protected link(z: Pick<ListenZeile, 'id' | 'type'>, ev: MouseEvent): void {
     if (ev.button !== 0 || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey || this.schmal()) return;
     ev.preventDefault();
     this.filter.vorschau.set(z.id);
