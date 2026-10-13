@@ -330,6 +330,11 @@ hat damit schon gewählt.
 Stelle, an der stand, was ein Spieler nicht sehen darf. Zurückgehalten wird
 am Server (`redactEntity`): was bei einem Spieler ankommt, darf er sehen, und
 er sieht dieselbe Ansicht wie alle anderen — nur steht weniger darin.
+Will die Leitung wissen, was eine Spielerin sieht, **nimmt sie deren Sicht
+ein** („View as", REQ-241): der Server rechnet dann als dieses Konto, und
+geschrieben wird darin nichts. Hätte sie stattdessen eine allgemeine Rolle
+„Spieler" gewählt, fehlte gerade das, wonach gefragt wird — das Wissen an
+der Figur und die eigenen Entwürfe (E-019).
 
 **Die Anordnung wohnt am Typ.** Eine Kreatur ordnet ihre Full anders als ein
 Rezept, und das steht bei der Kreatur. Untertypen erben sie, bis einer etwas
