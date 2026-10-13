@@ -18,7 +18,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { summaryFields, summaryOf } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
-import { Api, ApiError, type Rueckbezug } from './api';
+import { Api, ApiError, type RegisterTeil, type Rueckbezug } from './api';
 
 @Injectable({ providedIn: 'root' })
 export class Bestand {
@@ -104,6 +104,17 @@ export class Bestand {
       .finally(() => this.oeffnet.delete(id));
     this.oeffnet.set(id, lauf);
     return lauf;
+  }
+
+  /**
+   * **Einen Registerteil schreiben** und, wenn der Server ihn nimmt, hier
+   * einsetzen. Erst nach seiner Antwort: eine Zeile, die er abweist, soll
+   * auch hier nicht stehen — sonst zeigte die Seite ein Register, das es
+   * nirgends gibt.
+   */
+  async registerSchreiben<T extends RegisterTeil>(part: T, value: Registry[T]): Promise<void> {
+    await this.api.putRegistry(part, value);
+    this._registry.update((r) => (r ? { ...r, [part]: value } : r));
   }
 
   /** Nach dem Speichern: die Zeile in der Liste sagt dasselbe wie der Artikel. */

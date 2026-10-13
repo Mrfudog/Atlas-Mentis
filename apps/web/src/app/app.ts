@@ -13,6 +13,10 @@ import { BEREICHE } from './kern/bereiche';
  * dieser Oberfläche noch nicht gibt — ein Eintrag, der ins Leere führt,
  * ist schlechter als keiner. Sie kommen mit ihren Seiten.
  *
+ * Das Register steht nur für wen es ändern darf (Verwaltung, Leitung der
+ * laufenden Kampagne) — lesen kann es jeder über die Adresse, aber ein
+ * Eintrag für etwas, das man nur ansehen kann, lenkt am Tisch ab.
+ *
  * Die Kopfleiste bleibt weg, solange die Sitzung noch nicht gefragt ist.
  * Ein Balken, der erst „nicht angemeldet" zeigt und einen Wimpernschlag
  * später den Namen, sieht nach einem Fehler aus, auch wenn keiner vorliegt.
@@ -33,6 +37,9 @@ import { BEREICHE } from './kern/bereiche';
           <a routerLink="/compendium" routerLinkActive="an" ariaCurrentWhenActive="page"
             >Compendium</a
           >
+          @if (session.darfRegister()) {
+            <a routerLink="/registry" routerLinkActive="an" ariaCurrentWhenActive="page">Registry</a>
+          }
         </nav>
         <span class="wer">
           {{ session.user()?.name }}

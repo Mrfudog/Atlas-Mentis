@@ -72,7 +72,10 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
 - `apps/web` — Angular, im Pergament des Design-Canvas. Anmeldung, die
   Kopfleiste mit den Bereichen, Kompendium und Bereiche (Filter in der
   Seitenleiste, aus der Kurzfassung `?as=summary`) und der Artikel im
-  Buchstil (geholt beim Öffnen, Ansicht `full`) stehen; Boards, Karte,
+  Buchstil (geholt beim Öffnen, Ansicht `full`) und das Register
+  (`/registry`: Typen, Kanten, Listen anlegen und ändern — Verwaltung und
+  Leitung der laufenden Kampagne; gezählt wird vorher über
+  `/api/registry/usage`) stehen; Boards, Karte,
   Initiative und Spiel noch nicht;
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
   Vorlage je Artikelart. **Zurückgehalten wird am Server** (`redactEntity`) —

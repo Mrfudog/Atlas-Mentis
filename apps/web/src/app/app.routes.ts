@@ -46,6 +46,12 @@ export const routes: Routes = [
     title: 'Rules · Atlas Mentis',
   },
   {
+    path: 'registry',
+    canActivate: [wache],
+    loadComponent: () => import('./register/register').then((m) => m.Register),
+    title: 'Registry · Atlas Mentis',
+  },
+  {
     path: 'artikel/:id',
     canActivate: [wache],
     loadComponent: () => import('./artikel/artikel').then((m) => m.Artikel),

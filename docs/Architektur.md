@@ -204,7 +204,8 @@ Durchstich in CI prüft `PgRepository` gegen eine echte Postgres.
 | `POST /api/login` · `/api/register` · `/api/logout` · `/api/logout-everywhere` | Konto und Sitzung; Registrieren nur mit Einladung |
 | `GET /api/me` | wer bin ich, welche Rollen, welche Figuren |
 | `GET/POST/DELETE /api/invites` | Einladungen (Verwaltung, Leitung) |
-| `GET /api/registry` · `PUT /api/registry/:part` | das Register lesen; ändern nur die Leitung |
+| `GET /api/registry` · `PUT /api/registry/:part` | das Register lesen; ändern die Verwaltung und die Leitung (`gm`) der laufenden Kampagne — `/api/me` sagt es mit `registry` |
+| `GET /api/registry/usage` | was der Bestand an jeder Zeile trägt (`registryUsage`: je Art, Karte, Feld, Listenwert, Kante) — gezählt, bevor das Register etwas löscht; nur für wer es ändert |
 | `GET /api/entities` · `GET /api/entities/:id` | Artikel, **gesiebt** |
 | `GET /api/entities?as=summary` | die Kurzfassung aller Artikel (`summaryOf`) — für Liste, Verweise, Auswahlen |
 | `GET /api/entities/:id/backlinks` | wer auf den Artikel zeigt (Kurzfassung + Kante), gesiebt |
@@ -267,7 +268,7 @@ Zeilen daneben. Eine neue Artikelart ist eine Zeile, keine Migration.
 ```mermaid
 flowchart TB
   subgraph angular[apps/web · Angular 21, Standalone, Signals]
-    router[app.routes.ts<br/>/login · / · /artikel/:id]
+    router[app.routes.ts<br/>/login · / · /artikel/:id · /registry]
     wache[kern/wache.ts<br/>Route-Guard: angemeldet?]
     subgraph seiten[Seiten, lazy geladen]
       login[login/login.ts]
@@ -275,6 +276,8 @@ flowchart TB
       artikel[artikel/artikel.ts<br/>Artikelansicht, Bearbeiten]
       felder[artikel/felder.ts<br/>Felder aus dem Register]
       text[artikel/text.ts<br/>Markdown, Verweise, Würfel]
+      register[register/register.ts<br/>Typen · Kanten · Listen]
+      regtyp[register/typ.ts · feld.ts<br/>ein Typ auf einer Fläche]
     end
     subgraph kern[kern/ · Dienste]
       api[api.ts<br/>HttpClient → /api]
@@ -284,7 +287,8 @@ flowchart TB
   end
   model[["@nw/model<br/>views · calc · markdown · inline"]]
   router --> wache --> session
-  router --> login & liste & artikel
+  router --> login & liste & artikel & register
+  register --> regtyp --> bestand
   artikel --> felder & text
   liste & artikel --> bestand --> api
   login --> session --> api
@@ -297,6 +301,18 @@ flowchart TB
 sagt, was in welcher Ansicht steht (`views`), was gerechnet wird
 (`calc`) und wie Text aussieht (`markdown`, `inline`). Eine neue
 Artikelart erscheint ohne Codeänderung.
+
+**Das Register** (`/registry`, W5) bearbeitet dieselben Zeilen, aus
+denen gezeichnet wird: Typen (eigene Felder offen, geerbte zugeklappt,
+verlinkte und Kanten von hier), Kantenarten und Listen. Geschrieben wird
+ein ganzer Teil über `PUT /api/registry/:part` und erst übernommen, wenn
+der Server ihn nimmt (`register/arbeit.ts`). Was eine Änderung im Bestand
+träfe — ein gelöschtes Feld, ein herausgenommener Typ, ein gestrichener
+Listenwert —, wird vorher über `/api/registry/usage` gezählt und in der
+Rückfrage gesagt; was der Bestand beim nächsten Speichern nicht mehr
+bestünde (eine Karte ohne Typ, ein Typ mit Artikeln), lässt die Seite gar
+nicht erst zu. Die reinen Regeln (Feldarten, Zyklen, Umbenennen samt aller
+Nennungen) stehen in `register/regeln.ts`.
 
 Der Bestand wird **einmal** geladen und als Signal gehalten — die
 Kampagne ist klein genug. Mit 28 000 importierten Artikeln stimmt das
@@ -321,6 +337,7 @@ nicht mehr; Seitenweise laden ist eine offene Frage für die Zeit nach P6.
 | `stack.ts` | Ebenen: `inPlay`, `overriderOf` |
 | `visibility.ts` | `articleVisible`: Rolle am Tisch, `audience`, `revealedTo`, `hiddenFrom` |
 | `knowledge.ts` | `redactEntity`: welche Felder ein Träger kennt, Fraktionsränge |
+| `usage.ts` | `registryUsage`: was der Bestand an jeder Registerzeile trägt — für das Register vor dem Löschen |
 
 ---
 

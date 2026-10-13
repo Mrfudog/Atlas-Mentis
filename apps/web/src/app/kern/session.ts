@@ -26,6 +26,8 @@ export class Session {
   readonly setupHint = computed(() => this._me()?.setup ?? null);
   readonly isAdmin = computed(() => this.user()?.isAdmin === true);
   readonly angemeldet = computed(() => this.user() !== null);
+  /** Darf das Register ändern — Anzeige, keine Kontrolle; der Server prüft. */
+  readonly darfRegister = computed(() => this._me()?.registry === true);
 
   /**
    * Darf dieser Betrachter den Artikel schreiben? Die Antwort kommt vom

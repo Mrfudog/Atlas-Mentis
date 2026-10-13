@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { areaOf, entityName, isInstance, LAYER_RELATION, primaryInterface } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
 import { Bestand } from '../kern/bestand';
+import { Session } from '../kern/session';
 import { BEREICHE, bereichLabel } from '../kern/bereiche';
 import { ListenFilter } from '../kern/filter';
 
@@ -114,6 +115,12 @@ const BLATT = 100;
                 <button type="button" aria-label="Clear search" (click)="suchen('')">×</button></span
               >
             }
+            @if (session.darfRegister()) {
+              @if (type(); as t) {
+                <a class="knopf" routerLink="/registry" [queryParams]="{ type: t }">Edit type</a>
+              }
+              <a class="knopf" routerLink="/registry" [queryParams]="{ create: 1, from: type() ?? null }">New type</a>
+            }
             <button type="button" class="nurklein" (click)="filterOffen.set(!filterOffen())">
               {{ filterOffen() ? 'Hide filters' : 'Filters' }}
             </button>
@@ -185,6 +192,8 @@ export class Kompendium {
 
   protected readonly bestand = inject(Bestand);
   protected readonly filter = inject(ListenFilter);
+  /** „Edit type" und „New type" nur für wen das Register ändern darf (W5). */
+  protected readonly session = inject(Session);
   protected readonly filterOffen = signal(false);
 
   constructor() {
