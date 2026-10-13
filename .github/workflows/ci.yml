@@ -221,6 +221,10 @@ jobs:
         (github.event_name == 'workflow_dispatch' && inputs.import5etools)
       )
     uses: ./.github/workflows/import-5etools.yml
+    # Ein aufgerufener Workflow sieht die Secrets des Aufrufers nicht von
+    # selbst — ohne `inherit` war DEPLOY_USER@DEPLOY_HOST leer und ssh brach
+    # beim ersten Lauf mit 255 ab.
+    secrets: inherit
     with:
       environment: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
       mode: replace-layer
