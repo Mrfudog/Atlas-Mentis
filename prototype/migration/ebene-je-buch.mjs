@@ -1,6 +1,6 @@
 /**
  * **Eine Ebene je Buch** (T-081, E-017) — dieselbe Wanderung wie die
- * Server-Migration `apps/server/migrations/025_ebene_je_buch.sql`, für eine
+ * Server-Migration `apps/server/migrations/026_ebene_je_buch.sql`, für eine
  * Ausfuhr aus dem Prototyp oder ein Verzeichnis mit Artikeln.
  *
  *   node ebene-je-buch.mjs <verzeichnis-mit-entities>
@@ -21,7 +21,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HIER = dirname(fileURLToPath(import.meta.url));
-const MIGRATION = resolve(HIER, '..', '..', 'apps', 'server', 'migrations', '025_ebene_je_buch.sql');
+const MIGRATION = resolve(HIER, '..', '..', 'apps', 'server', 'migrations', '026_ebene_je_buch.sql');
 const ALT_ID = 'e5_367c46d7f4ff';
 const ALT_NAME = 'D&D 5e (2014)';
 

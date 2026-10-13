@@ -100,7 +100,7 @@ const klein = (s: unknown) => String(s ?? '').trim().toLowerCase();
 
 /**
  * Die Peg-Id der Ebene eines Buchs (T-081): aus dem Kürzel und nicht aus
- * einem Hash, damit die Server-Migration (`025_ebene_je_buch.sql`) dieselbe
+ * einem Hash, damit die Server-Migration (`026_ebene_je_buch.sql`) dieselbe
  * Id bildet — sonst legte ein späteres `--only-new` jedes Buch ein zweites
  * Mal an.
  */
@@ -209,6 +209,13 @@ export class Werkbank {
     if (Array.isArray(wert) && !wert.length) return;
     if (typeof wert === 'number' && !Number.isFinite(wert)) return;
     this.karte(e, typ)[feld] = wert;
+  }
+
+  /** Eine Notiz am Artikel (`Notes.note`), für was kein Feld fasst. */
+  anmerkung(e: Entity, id: string, text: string): void {
+    const karte = this.karte(e, 'Notes');
+    const liste = Array.isArray(karte['note']) ? (karte['note'] as { id: string; value: string }[]) : [];
+    karte['note'] = [...liste.filter((n) => n.id !== id), { id, value: text }];
   }
 
   kante(e: Entity, typ: string, ziel: string, props?: Relation['props']): void {

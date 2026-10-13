@@ -1,4 +1,4 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, effect, inject, input, untracked } from '@angular/core';
 import { itemBook, primaryInterface } from '@nw/model';
 import type { Entity, ItemBook } from '@nw/model';
 import { Bestand } from '../kern/bestand';
@@ -38,11 +38,23 @@ export class Gegenstand {
 
   private readonly bestand = inject(Bestand);
 
+  constructor() {
+    /* Die Munition ist ein Verweis (T-078); ohne Namen aus `refs` holt der
+       Gegenstand sie selbst, wie der Statblock seine Zustände. */
+    effect(() => {
+      const w = this.artikel().components?.['Weapon'] as Record<string, unknown> | undefined;
+      const id = w?.['ammoType'];
+      if (typeof id === 'string' && id && !this.bestand.name()(id)) untracked(() => void this.bestand.holen([id]));
+    });
+  }
+
   protected readonly buch = computed<ItemBook | null>(() => {
     const r = this.bestand.registry();
     if (!r) return null;
     const e = this.artikel();
     const typ = primaryInterface(e);
-    return itemBook(r, e, r.interfaces[typ]?.label ?? typ);
+    const name = this.bestand.name();
+    /* Die Namen der Verweisziele bringt der Artikel mit (`refs`, W7). */
+    return itemBook(r, e, r.interfaces[typ]?.label ?? typ, (id) => name(id));
   });
 }

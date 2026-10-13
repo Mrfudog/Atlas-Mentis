@@ -413,7 +413,7 @@ Lauf auf der Kampagnenseite das Häkchen setzen, sonst stehen seine
 Artikel in keiner Liste (die Listen sagen es mit „Turn on").
 
 **Vom Bestand mit einer Ebene zu einer je Buch** (Migration
-`025_ebene_je_buch.sql`, T-081): beim Start hängt der Server jeden Artikel
+`026_ebene_je_buch.sql`, T-081): beim Start hängt der Server jeden Artikel
 der alten Ebene „D&D 5e (2014)" an die Ebene seines Buchs
 (`Source.publication`, sonst die Fundstelle in den Notizen) — kein
 Neueinlesen, Ids und eigene Änderungen bleiben. Jede Kampagne, die die

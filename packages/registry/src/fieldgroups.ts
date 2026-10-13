@@ -441,14 +441,15 @@ export const fieldGroups = {
         resistances: { type: 'string', title: 'Resistances' },
         vulnerabilities: { type: 'string', title: 'Vulnerabilities' },
         immunities: { type: 'string', title: 'Immunities' },
-        /* **Zustandsimmunitäten nennen Zustände** (M5): die Namen der
-           `Condition`-Artikel. Ein Vorschlag aus dem Bestand, keine Regel
-           (D50). */
+        /* **Zustandsimmunitäten zeigen auf Zustände** (M5, T-078): die Ids
+           der `Condition`-Artikel, wie `Vitals.conditions`. Als Namen
+           (D50) hielten sie den Stand vom Tag des Eintrags — ein
+           umbenannter Zustand liess die Immunität auf nichts zeigen. Was
+           kein Zustandsartikel ist („Disease"), steht als Notiz. */
         conditionImmunities: {
-          type: 'array',
-          title: 'Condition immunities',
+          type: 'array', format: 'link', title: 'Condition immunities',
           items: { type: 'string' },
-          enumRef: 'Condition',
+          target: { interfaces: ['Condition'] },
         },
         /* Wie viele Legendäre Aktionen je Runde; die Aktionen selbst sind
            `Action`-Artikel mit der Aktionsart „Legendary Action" über
@@ -1203,9 +1204,14 @@ export const fieldGroups = {
         damage2: { type: 'string', title: 'Two-handed damage' },
         damageType: { type: 'string', title: 'Damage type', enumRef: 'DamageType' },
         range: { type: 'string', format: 'measure', unit: 'ft', title: 'Range' },
-        /* Was sie verschiesst: arrow, bolt, sling bullet — ein Wort, kein
-           Verweis; welcher Pfeil, entscheidet das Inventar. */
-        ammoType: { type: 'string', suggest: true, title: 'Ammunition' },
+        /* Was sie verschiesst: ein Verweis auf den Munitionsartikel (Arrow,
+           Crossbow Bolt, T-078) — das Wort davor nannte genau diesen
+           Artikel, nur ohne dass man hinkam. Welcher Köcher, entscheidet
+           weiter das Inventar. */
+        ammoType: {
+          type: 'string', format: 'link', title: 'Ammunition',
+          target: { interfaces: ['Item'] },
+        },
         /* **Die Eigenschaften sind Kanten**, keine Aufzählung im Text:
            `hasProperty` zeigt auf gepoolte Regelartikel. Genau darum ging
            es beim Import — „Versatil" als Text zu übernehmen kopiert, was

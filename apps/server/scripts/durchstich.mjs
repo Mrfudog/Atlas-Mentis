@@ -493,7 +493,7 @@ try {
       }
       const vorher = await sicht();
       const { readFileSync } = await import('node:fs');
-      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '025_ebene_je_buch.sql'), 'utf8'));
+      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '026_ebene_je_buch.sql'), 'utf8'));
       const gemeldet = [];
       const logAlt = console.log;
       console.log = (...a) => gemeldet.push(a.join(' '));
