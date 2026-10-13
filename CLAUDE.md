@@ -71,8 +71,11 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   deshalb sind sie ohne Datenbank testbar (`InMemoryRepository`).
 - `apps/web` — Angular, im Pergament des Design-Canvas. Anmeldung, die
   Kopfleiste mit den Bereichen, Kompendium und Bereiche (Filter in der
-  Seitenleiste, aus der Kurzfassung `?as=summary`) und der Artikel im
-  Buchstil (geholt beim Öffnen, Ansicht `full`) stehen; Boards, Karte,
+  Seitenleiste, Spalten aus der `overview` der Art, Vorschau `quick`;
+  **gerechnet am Server**, `GET /api/list`), „New article" und der
+  Artikel im Buchstil (geholt beim Öffnen, Ansicht `full`, mit den Namen
+  seiner Kantenziele und Verweise in `refs`) stehen; die Oberfläche hält
+  **keinen Bestand** (W7). Boards, Karte,
   Initiative und Spiel noch nicht;
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
   Vorlage je Artikelart. **Zurückgehalten wird am Server** (`redactEntity`) —

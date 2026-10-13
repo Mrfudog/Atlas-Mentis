@@ -2,8 +2,6 @@ import { Component, computed, inject, input, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import {
-  entityName,
-  linkCandidates,
   parseInline,
   parseMarkdown,
   rollDice,
@@ -209,16 +207,21 @@ export class Text {
   protected readonly wuerfe = signal<Record<string, string>>({});
 
   protected stuecke(text: string): Stueck[] {
-    const bestand = this.bestand.entities();
+    /* Die Treffer jedes `[[ziel]]` rechnet der Server beim Ausliefern des
+       Artikels (`refs.links`, W7) — der Browser hält keinen Bestand mehr,
+       in dem er selbst suchen könnte. Dieselbe Regel wie `linkCandidates`:
+       die Id zuerst, sonst Name und Alias, und mehr als einer ist
+       mehrdeutig. */
+    const verweise = this.bestand.verweise();
     return parseInline(text, this.scopes()).map((s, i) => {
       /* Zeile und Stelle: zwei gleiche Ausdrücke in einer Zeile sind zwei
          Würfe, und ein neues Zeichnen verliert das Ergebnis nicht. */
       const schluessel = `${i}#${text}`;
       if (s.kind !== 'link') return { ...s, schluessel };
-      const treffer = linkCandidates(bestand, s.target);
+      const treffer = verweise.get(s.target.trim()) ?? [];
       if (treffer.length === 1) {
         const ziel = treffer[0]!;
-        return { ...s, schluessel, ziel: ziel.id, titel: entityName(ziel) };
+        return { ...s, schluessel, ziel: ziel.id, titel: ziel.name };
       }
       return {
         ...s,

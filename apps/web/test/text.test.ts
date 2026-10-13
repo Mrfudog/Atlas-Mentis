@@ -10,12 +10,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
-import type { Entity } from '@nw/model';
 import { Text } from '../src/app/artikel/text';
 import { Bestand } from '../src/app/kern/bestand';
 
-const art = (id: string, name: string, nr: string) =>
-  ({ id, name, interfaces: ['Creature'], components: { Identity: { name, id: nr } } }) as unknown as Entity;
 
 /* Die Prüfumgebung übersetzt JIT, und JIT kennt `input()` nicht — `setInput`
    scheitert mit NG0303. Also wird das Signal vor dem ersten Zeichnen
@@ -38,8 +35,15 @@ describe('nw-text', () => {
         provideRouter([]),
         {
           provide: Bestand,
+          /* Die Treffer rechnet der Server (`refs.links`, W7); hier stehen
+             sie, wie er sie schicken würde. */
           useValue: {
-            entities: signal([art('p1', 'Volo', 'npc-0001'), art('p2', 'Goblin', 'sb-1'), art('p3', 'Goblin', 'sb-2')]),
+            verweise: signal(
+              new Map([
+                ['npc-0001', [{ id: 'p1', name: 'Volo' }]],
+                ['Goblin', [{ id: 'p2', name: 'Goblin' }, { id: 'p3', name: 'Goblin' }]],
+              ]),
+            ),
           },
         },
       ],

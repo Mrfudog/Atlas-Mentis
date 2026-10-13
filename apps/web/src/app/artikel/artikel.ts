@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
@@ -10,9 +10,7 @@ import {
   entryRef,
   enumOptions,
   fieldTitle,
-  idLinks,
   proseFields,
-  relationAccepts,
   relationsFrom,
   primaryInterface,
   relationDef,
@@ -25,6 +23,7 @@ import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
 import { ausEingabe, eingabeArt, inEingabe, kantenAusEntwurf, type Eingabe } from './felder';
 import { Text } from './text';
+import { Wahl } from './wahl';
 import { bereichLabel } from '../kern/bereiche';
 
 const SCHON_ANDERSWO = ['Identity', 'Visibility', 'Source'];
@@ -72,7 +71,7 @@ interface Feld {
  */
 @Component({
   selector: 'nw-artikel',
-  imports: [RouterLink, FormsModule, Text],
+  imports: [RouterLink, FormsModule, Text, Wahl],
   template: `
     @if (artikel(); as e) {
       <div class="buch">
@@ -143,6 +142,14 @@ interface Feld {
                       @case ('lang') {
                         <textarea rows="4" [(ngModel)]="f.wert" [name]="f.ref"></textarea>
                       }
+                      @case ('verweis') {
+                        <nw-wahl
+                          [wert]="f.wert"
+                          (wertChange)="f.wert = $event"
+                          [arten]="f.schema?.target?.interfaces ?? []"
+                          [label]="f.label"
+                        />
+                      }
                       @case ('zahl') {
                         <input type="text" inputmode="decimal" [(ngModel)]="f.wert" [name]="f.ref" />
                       }
@@ -181,12 +188,13 @@ interface Feld {
                 <div class="kantenmaske">
                   <div class="bkopf">
                     <span class="rl">{{ kantenLabel(k.type) }}</span>
-                    <select [(ngModel)]="k.to" [name]="k.id + '-to'">
-                      <option value="">— pick an article —</option>
-                      @for (z of ziele(k.type); track z.id) {
-                        <option [value]="z.id">{{ z.name }}</option>
-                      }
-                    </select>
+                    <nw-wahl
+                      [wert]="k.to"
+                      (wertChange)="k.to = $event"
+                      [arten]="zielArten(k.type)"
+                      [ausser]="e.id"
+                      [label]="kantenLabel(k.type)"
+                    />
                     <button type="button" class="weg" (click)="kanteWeg(k.id)" title="Remove">×</button>
                   </div>
                   @if (kantenFelder(k.type).length) {
@@ -341,6 +349,8 @@ interface Feld {
 })
 export class Artikel {
   readonly id = input.required<string>();
+  /** `?edit=1`: gleich bearbeiten — so öffnet „New article" den frischen Artikel (W7). */
+  readonly edit = input<string | undefined>(undefined);
 
   protected readonly bestand = inject(Bestand);
   protected readonly session = inject(Session);
@@ -352,6 +362,11 @@ export class Artikel {
        der nächste geholt. */
     effect(() => {
       void this.bestand.oeffnen(this.id());
+    });
+    effect(() => {
+      if (this.edit() && this.artikel() && this.reg() && !this.bearbeitet() && this.darfSchreiben()) {
+        untracked(() => this.beginnen());
+      }
     });
   }
 
@@ -383,11 +398,12 @@ export class Artikel {
   protected readonly meta = computed(() => {
     const e = this.artikel();
     if (!e) return '';
-    const byId = this.bestand.byId();
+    /* Die Namen kommen mit dem Artikel (`refs`, W7). */
+    const name = this.bestand.name();
     const nummer = (e.components?.['Identity'] as { id?: string } | undefined)?.id;
     const ebenen = (e.relations ?? [])
       .filter((r) => r.type === LAYER_RELATION)
-      .map((r) => entityName(byId.get(r.to)));
+      .map((r) => name(r.to) ?? '');
     return [this.typLabel(primaryInterface(e)), nummer, ...ebenen].filter(Boolean).join(' · ');
   });
 
@@ -406,8 +422,8 @@ export class Artikel {
     const v = this.artikel()?.components?.['Visibility'] as
       | { audience?: string; revealedTo?: string[]; hiddenFrom?: string[] }
       | undefined;
-    const byId = this.bestand.byId();
-    const namen = (ids?: string[]) => (ids ?? []).map((i) => entityName(byId.get(i)) || i);
+    const name = this.bestand.name();
+    const namen = (ids?: string[]) => (ids ?? []).map((i) => name(i) ?? i);
     return {
       audience: v?.audience ?? 'public',
       revealedTo: namen(v?.revealedTo),
@@ -520,17 +536,17 @@ export class Artikel {
     const e = this.artikel();
     const r = this.reg();
     if (!e || !r || !this.view()?.relations) return [];
-    const map = this.bestand.byId();
+    const name = this.bestand.name();
     /* Die Ebene steht schon in der Zeile über dem Blatt. */
     return (e.relations ?? []).filter((rel) => rel.type !== LAYER_RELATION).map((rel) => {
-      const ziel = map.get(rel.to);
+      const ziel = name(rel.to);
       return {
         id: rel.id,
         label: relationDef(r, rel.type).label,
-        ziel: ziel?.id ?? '',
+        ziel: ziel === undefined ? '' : rel.to,
         /* Ein Ziel, das es nicht gibt, wird gesagt und nicht verschwiegen —
            es kann auch heissen, dass der Betrachter es nicht sehen darf. */
-        text: ziel ? entityName(ziel) : '(not here)',
+        text: ziel ?? '(not here)',
       };
     });
   });
@@ -583,7 +599,11 @@ export class Artikel {
            Zweimal dasselbe anzubieten hiesse, dass der zweite Eingang den
            ersten überschreibt, und keiner der beiden sagte das. */
         if (schema.many && schema.format === 'long') continue;
-        const werte = enumOptions(r, schema, this.bestand.entities()) ?? [];
+        /* Ohne Artikel: eine Auswahl, die eine Art nennt (M6), hätte den
+           ganzen Bestand gebraucht, und den hält der Browser nicht mehr
+           (W7). Sie wird ein freies Wort — heute nennt das nur Felder mit
+           mehreren Werten, und die sind ohnehin eine Liste. */
+        const werte = enumOptions(r, schema) ?? [];
         /* Eine Auswahl ohne Werte ist ein freies Wort: nennt das Feld eine
            Art, von der noch nichts sichtbar ist (M6), soll man trotzdem
            etwas eintragen können. */
@@ -597,8 +617,6 @@ export class Artikel {
           label: `${def.label ?? comp} · ${fieldTitle(r, primaryInterface(e), { type: comp, key: prop, prop: schema })}`,
           art,
           schema,
-          /* Nennt das Feld eine Artikelart (M6), sind die Werte die Namen
-             der Artikel, die hier angekommen sind — gesiebt hat der Server. */
           werte,
           wert: art === 'jaNein' ? '' : inEingabe(karte[prop]),
           jaNein: karte[prop] === true,
@@ -684,22 +702,19 @@ export class Artikel {
   }
 
   /**
-   * Welche Artikel diese Kantenart überhaupt annimmt — aus dem Register,
-   * nicht aus einer Liste hier. Eine Kante, die auf etwas Unpassendes zeigt,
-   * weist der Server ohnehin ab; sie erst gar nicht anbieten ist die
-   * freundlichere Hälfte derselben Regel.
+   * Welche Arten diese Kantenart als Ziel annimmt — aus dem Register, nicht
+   * aus einer Liste hier; gesucht wird dann am Server (`nw-wahl`). Leer
+   * heisst jede. Eine Kante, die auf etwas Unpassendes zeigt, weist der
+   * Server ohnehin ab; sie erst gar nicht anbieten ist die freundlichere
+   * Hälfte derselben Regel.
    */
-  protected ziele(type: string): { id: string; name: string }[] {
+  protected zielArten(type: string): string[] {
     const e = this.artikel();
     const r = this.reg();
     if (!e || !r) return [];
-    const def = relationDef(r, type);
-    const quelle = primaryInterface(e);
-    return this.bestand
-      .entities()
-      .filter((o) => o.id !== e.id && relationAccepts(def, quelle, primaryInterface(o), r))
-      .map((o) => ({ id: o.id, name: entityName(o) }))
-      .sort((a2, b2) => a2.name.localeCompare(b2.name, 'de'));
+    const to = relationDef(r, type).to ?? ['*'];
+    if (to.includes('*')) return [];
+    return to.map((t) => (t === 'same' ? primaryInterface(e) : t));
   }
 
   protected kantenFelder(
@@ -719,7 +734,7 @@ export class Artikel {
       label: schema.title ?? prop,
       art: eingabeArt(schema),
       schema,
-      werte: enumOptions(r, schema, this.bestand.entities()) ?? [],
+      werte: enumOptions(r, schema) ?? [],
     }));
   }
 
@@ -766,12 +781,26 @@ export class Artikel {
        heisst (M11). Hier und nicht beim Lesen: danach überlebt der Verweis
        das Umbenennen des Ziels. Was nichts oder mehreres trifft, bleibt
        stehen und wird gesagt. */
+    /* Der Server schreibt um (`/api/links`): er kennt den Bestand, und er
+       weiss, was der Schreibende sehen darf. Ein Zug für alle Texte. */
+    const texte: string[] = [];
+    for (const f of this.felder()) {
+      if (f.schema?.format === 'long' && f.art !== 'jaNein' && f.wert.includes('[[')) texte.push(f.wert);
+    }
+    for (const b of this.entwurfProsa()) if (b.wert.includes('[[')) texte.push(b.wert);
     const offen = new Set<string>();
-    const mitIds = (text: string): string => {
-      const r = idLinks(text, this.bestand.entities());
-      r.open.forEach((o) => offen.add(o));
-      return r.text;
-    };
+    const umgeschrieben = new Map<string, string>();
+    if (texte.length) {
+      try {
+        const r = await this.api.links(texte);
+        texte.forEach((t, i) => umgeschrieben.set(t, r.texts[i] ?? t));
+        r.open.forEach((o) => offen.add(o));
+      } catch {
+        /* Ohne Antwort bleibt `[[Name]]` stehen — ein Verweis ohne Nummer
+           ist erlaubt und wird beim nächsten Speichern nachgezogen. */
+      }
+    }
+    const mitIds = (text: string): string => umgeschrieben.get(text) ?? text;
 
     const components: Record<string, Record<string, unknown>> = {};
     for (const f of this.felder()) {

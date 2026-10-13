@@ -44,6 +44,17 @@ export class Session {
     return (id: string) => erlaubt.has(id);
   });
 
+  /**
+   * Darf dieser Betrachter Artikel anlegen? Wer alles schreiben darf
+   * (`writable: null`, die Verwaltung) — einen Artikel, den es noch nicht
+   * gibt, besitzt kein Spieler. Der Server prüft es beim Anlegen noch
+   * einmal; das hier spart nur den Knopf, der danach Nein sagt.
+   */
+  readonly darfAnlegen = computed(() => {
+    const me = this._me();
+    return !!me?.user && me.writable === null;
+  });
+
   private laeuft: Promise<void> | null = null;
 
   /** Einmal fragen, auch wenn mehrere gleichzeitig fragen. */

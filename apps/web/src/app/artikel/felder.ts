@@ -9,7 +9,7 @@
 
 import type { PropertySchema } from '@nw/model';
 
-export type Eingabe = 'text' | 'lang' | 'zahl' | 'jaNein' | 'auswahl' | 'liste';
+export type Eingabe = 'text' | 'lang' | 'zahl' | 'jaNein' | 'auswahl' | 'liste' | 'verweis';
 
 export function eingabeArt(p: PropertySchema | undefined): Eingabe {
   if (!p) return 'text';
@@ -21,6 +21,9 @@ export function eingabeArt(p: PropertySchema | undefined): Eingabe {
      ist, ist es eine Liste — Übungen tragen seit M6 auch Namen, die keine
      Liste kennt (D50). */
   if (p.type === 'array') return 'liste';
+  /* Ein Verweisfeld hält eine Artikel-Id; gewählt wird über die Suche der
+     Liste (`nw-wahl`, W7), nicht durch Abtippen einer Id. */
+  if (p.format === 'link') return 'verweis';
   if ((Array.isArray(p.enum) && p.enum.length) || p.enumRef) return 'auswahl';
   if (p.type === 'boolean') return 'jaNein';
   if (p.type === 'number' || p.type === 'integer') return 'zahl';
