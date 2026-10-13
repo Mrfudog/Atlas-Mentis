@@ -269,6 +269,22 @@ export interface Me {
   /** Die eigene Figur samt Statblock und Inventar: dort setzt auch ein
    *  Spieler `ready` (E-014 d). */
   character?: string[];
+  /** **In der Sicht eines Mitglieds** (REQ-241): wer gesehen wird und wer
+   *  schaut. `user` ist dann das gesehene Konto, und nichts ist schreibbar. */
+  viewAs?: { id: string; name: string; role: TableRole | null; by: { id: string; name: string } } | null;
+  /** Der Kopf `X-View-As` galt nicht (mehr) — die Maske vergisst ihn. */
+  viewAsRefused?: boolean;
+}
+
+/** Wo der Tab sich merkt, wessen Sicht er einnimmt: über Seitenwechsel und
+ *  Neuladen, nicht über das Schliessen des Tabs (REQ-241). */
+const SICHT_SCHLUESSEL = 'atlas.viewAs';
+function leseSicht(): string | null {
+  try {
+    return globalThis.sessionStorage?.getItem(SICHT_SCHLUESSEL) || null;
+  } catch {
+    return null;
+  }
 }
 
 /* ---- Verwaltung (W3). Was ein Konto an einer Kampagne darf, sagt der
@@ -299,6 +315,8 @@ export interface Mitglied {
   disabled: boolean;
   self: boolean;
   actors: Figur[];
+  /** Ob „View as" angeboten wird — der Server sagt es (`mayViewAs`, REQ-241). */
+  viewAs?: boolean;
 }
 export interface Mitglieder {
   campaign: { id: string; name: string; exists: boolean };
@@ -376,6 +394,26 @@ export class Api {
   readonly neueVersion = signal(false);
   private bau: string | null = null;
 
+  /**
+   * **Wessen Sicht dieser Tab einnimmt** (REQ-241, E-019 a): eine Konto-Id,
+   * die als `X-View-As` an jeder Anfrage steht. Gerechnet wird am Server —
+   * hier steht nur, wen man fragt.
+   */
+  readonly viewAs = signal<string | null>(leseSicht());
+  setViewAs(id: string | null): void {
+    this.viewAs.set(id);
+    try {
+      if (id) globalThis.sessionStorage?.setItem(SICHT_SCHLUESSEL, id);
+      else globalThis.sessionStorage?.removeItem(SICHT_SCHLUESSEL);
+    } catch {
+      /* Ohne Speicher hält die Sicht nur bis zum Neuladen. */
+    }
+  }
+  private sichtKopf(): Record<string, string> {
+    const id = this.viewAs();
+    return id ? { 'x-view-as': id } : {};
+  }
+
   /** `halten: false` — ein Ausfall geht gleich an den Aufrufer, statt auf
    *  „Retry" zu warten: die Sitzung muss sich auch ohne Server festlegen,
    *  sonst bliebe die Seite ohne Kopfleiste stehen. */
@@ -425,7 +463,11 @@ export class Api {
       ...init,
       credentials: 'include',
       /* Der Typ nur mit Körper: Fastify lehnt ein leeres JSON ab (DELETE). */
-      headers: { ...(init.body ? { 'content-type': 'application/json' } : {}), ...(init.headers ?? {}) },
+      headers: {
+        ...(init.body ? { 'content-type': 'application/json' } : {}),
+        ...this.sichtKopf(),
+        ...(init.headers ?? {}),
+      },
     });
     this.merkeBau(res);
     const text = await res.text();
@@ -562,6 +604,7 @@ export class Api {
   async exportCampaign(campaign: string): Promise<{ blob: Blob; name: string }> {
     const res = await fetch(`${this.base}/api/export?campaign=${encodeURIComponent(campaign)}`, {
       credentials: 'include',
+      headers: this.sichtKopf(),
     });
     if (!res.ok) {
       const b = (await res.json().catch(() => null)) as { error?: string } | null;

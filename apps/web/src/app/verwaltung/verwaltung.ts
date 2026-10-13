@@ -126,6 +126,17 @@ const ROLLEN: { role: TableRole; text: string }[] = [
                   @if (p.disabled) {
                     <span class="marke aus">disabled</span>
                   }
+                  <!-- REQ-241: sehen, was dieses Mitglied sieht; der Server sagt, wo es geht. -->
+                  @if (p.viewAs) {
+                    <button
+                      type="button"
+                      class="klein ansehen"
+                      [attr.aria-label]="'View as ' + p.name"
+                      (click)="sichtEinnehmen(p)"
+                    >
+                      View as
+                    </button>
+                  }
                 </span>
                 <span role="cell">
                   @if (aenderbar(p)) {
@@ -444,6 +455,13 @@ export class Verwaltung {
 
   constructor() {
     void this.laden(this.route.snapshot.queryParamMap.get('c'));
+  }
+
+  /** Die Sicht dieses Mitglieds einnehmen (REQ-241) und dorthin, wo man
+   *  am ehesten etwas vermisst: ins Kompendium. */
+  protected async sichtEinnehmen(p: Mitglied): Promise<void> {
+    await this.session.viewAsUser(p.id);
+    await this.router.navigateByUrl('/compendium');
   }
 
   /** Wer sich selbst nicht ändert: eine Leitung, die sich zum Zuschauer

@@ -301,3 +301,12 @@ button.weg {
     grid-column: 1 / 3;
   }
 }
+
+/* „View as" (REQ-241): ein Rahmen, damit er nicht wie ein Entfernen-× aussieht. */
+button.klein.ansehen {
+  margin-left: 0.35rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 400;
+}
