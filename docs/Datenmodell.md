@@ -802,7 +802,7 @@ fehlt. Dafür schreibt `gm` die Artikel, die Spielende angelegt haben.
 auch ihren Statblock (`belongsTo`) und setzt bei Figur, Statblock und
 Inventar den Stand selbst, auch `ready`. **Ändert eine Spielerin einen
 anderen fertigen Artikel, fällt er auf `prepared`** (E-012, D74), und der
-Stand davor bleibt als Kopie (`entity_ready`, Migration 025) — jede
+Stand davor bleibt als Kopie (`entity_ready`, Migration 027) — jede
 Änderung zählt, ein Speichern ohne Änderung nicht. Setzt `gm` wieder
 `ready` (in der Maske oder per `POST /api/entities/:id/ready`), gilt der
 neue und die Kopie fällt weg; ändert `gm` selbst, fällt nichts zurück. Was
