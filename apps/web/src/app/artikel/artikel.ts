@@ -42,6 +42,7 @@ import {
 import { Mehrfach, type Suchgruppe } from './mehrfach';
 import { Text } from './text';
 import { Wahl } from './wahl';
+import { Karte } from '../karten/karte';
 import { Bild, BildWahl, bildDes } from './bild';
 import { Statblock } from './statblock';
 import { Zauber } from './zauber';
@@ -127,6 +128,7 @@ interface Feld {
     Herausgeber,
     Bild,
     BildWahl,
+    Karte,
   ],
   template: `
     @if (artikel(); as e) {
@@ -607,6 +609,9 @@ interface Feld {
                   }
                   @case ('ueberschrift') {
                     <h2>{{ st.text }}</h2>
+                  }
+                  @case ('karte') {
+                    <nw-karte class="karte" [id]="e.id" />
                   }
                   @case ('bild') {
                     <nw-bild class="hauptbild" [wert]="st.bild!.wert" [caption]="st.bild!.caption" [alt]="st.bild!.alt || e.name || ''" />

@@ -86,11 +86,14 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   Kampagne; gezählt wird vorher über `/api/registry/usage`), die
   **Werkbank** für Leitung und Verwaltung (`werkbank/`: Prüfungen aus
   `checks.ts`, Massenänderungen aus `bulk.ts` mit Vorschau und
-  Rückgängig, W9), die **Leseansicht** (`lesen/`, `/read/:layer`: eine
+  Rückgängig, W9), die **Karte** (`karten/`: Element `map` und
+  Play › Map unter `/play`, Blätter, Gitter, Messen, Marker mit
+  Kurzansicht, Unterkarten zum Hineinzoomen, Gruppen-Token; Logik in
+  `packages/model/src/map.ts`, Zurückhalten mit `redactMap`, T-115), die **Leseansicht** (`lesen/`, `/read/:layer`: eine
   Ebene als Buch mit Inhaltsverzeichnis, Suche und Lesestand je Konto,
   T-091), der **Druck** (`/artikel/:id/print`: eine Ansicht auf einem
   Blatt A4, T-110) und das Konto mit seinen API-Tokens (`konto/`); die
-  Oberfläche hält **keinen Bestand** (W7). Karte, Initiative und Spiel
+  Oberfläche hält **keinen Bestand** (W7). Initiative, Nebel und Licht
   noch nicht;
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
   Vorlage je Artikelart. **Zurückgehalten wird am Server** (`redactEntity`) —

@@ -1406,6 +1406,23 @@ anders ist, und das Besondere (Figur) schlägt das Allgemeine (Kampagne).
 
 ---
 
+## Was ein Spieler von einer Karte bekommt
+
+**Eine Karte geht gekürzt hinaus, nicht verdeckt.** Ein versteckter Marker,
+den die Seite nur nicht zeichnet, ist trotzdem angekommen — wer die
+Antwort liest, sieht die Kante und weiss, dass dort jemand lauert. Darum
+nimmt der Server sie heraus (`redactMap`), bevor die Karte losgeht: die
+versteckten Marker, die Marker auf Artikel, die der Spieler nicht sieht
+(sonst verriete die Id, dass dort etwas ist), und die Blätter der Leitung.
+Wer die Karte leitet oder schreibt, bekommt sie ganz — sonst schriebe er
+beim nächsten Verschieben eines Markers eine gekürzte Karte zurück.
+
+**Was neben der Karte steht, ist eine Frage und kein Feld.** Welche
+Unterkarten in ihr liegen, sagt keine Liste an ihr: jede Unterkarte nennt
+ihre Umgebung (`insideMap`), und die Gegenrichtung fragt der Server — so
+wie bei jeder Kante. Ein Feld „Unterkarten" an der grossen Karte wäre die
+zweite Stelle, die beim ersten Verschieben nicht mitkommt.
+
 ## Zug, Tempo und Zone auf der Karte
 
 **Ein Zug ist kein Feld der Kreatur.** Dass der Kämpfer schon 20 Fuss
