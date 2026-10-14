@@ -1012,7 +1012,7 @@ Wahl wie die Schreibebene in der Kopfleiste (T-161, unten); Account ›
 Layers setzt sie mit „Make default", die Verwaltung auch für ein anderes
 Konto. Die Verwaltung
 legt ohne Wahl wie bisher ohne Ebene an. Gedacht für eine Testebene der
-Leitung, die sich mit „Empty this layer" (eine umkehrbare Massenänderung
+Leitung (`Layer.kind: 'test'`, Beschreibung wie jedes `kind`; Migration 073), die sich mit „Empty this layer" (eine umkehrbare Massenänderung
 `delete`, Teile und Kanten darauf eingeschlossen) wieder leeren lässt.
 
 **Die Spielerebene** (T-164): je Konto und Kampagne, in der es `player`
