@@ -506,6 +506,14 @@ die aufgeschaltete Gruppe „D&D 5e (2014)" sofort im Spiel wären. Ein
 Verweis auf einen Artikel, der nicht mitkommt, wird ein Verweis nach
 Namen. Probelauf: `dry-run` mit `confirm` = `neues`.
 
+**Nicht während eines Ausrollens einlesen.** Der Import läuft im
+App-Container; rollt in der Zeit ein Push auf `preprod` aus, startet der
+Container neu und der Import endet mit Code 137, mitten im Schreiben (so
+am 14.10. nach 8 506 von 29 547 Artikeln). Nichts ist kaputt — jeder
+Artikel wird für sich geschrieben —, und derselbe Lauf noch einmal bringt
+den Rest. Vorher unter Actions nachsehen, dass auf `preprod` keine CI
+läuft.
+
 **2024, Unearthed Arcana, Fahrzeuge, Decks, Bastionen** (T-087,
 REQ-243): seit T-087 bringt ein Lauf alles, jede Quelle in ihre Ebene —
 gut 29 000 Artikel mehr, je Ebene gezählt in
