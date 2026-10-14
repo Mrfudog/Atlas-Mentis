@@ -16031,7 +16031,9 @@ function renderHowto(v){
     "word on the campaign (Campaign.inventory): grid, weight with load "+
     "stages, or slots per stack. Giving an item to the party moves its "+
     "holds edge into the party's inventory and leaves its place in the grid "+
-    "behind; a stack reserved for something (holds.reservedFor) stays put."));
+    "behind; a stack reserved for something (holds.reservedFor) stays put — "+
+    "the site's server refuses to sell, move, use up or delete it while its "+
+    "crafting order runs, unless the GM releases it."));
   var hkB=handActionsCost();
   var leiterB=zonenListe(), sqB=carrySquares(), plB=parsePairs(setting("slotDraw",""));
   var sbB={size:"medium"}, abB={str:16};
