@@ -14,6 +14,7 @@ import { CHARAKTERBAU } from './arten/charakterbau.js';
 import { LEGENDAER, MONSTER } from './arten/monster.js';
 import { WELT } from './arten/welt.js';
 import { abenteuer } from './arten/abenteuer.js';
+import { buch } from './arten/buch.js';
 import type { Knoten } from './copy.js';
 import { fassungen, herkunft, vereineGleiche } from './doppel.js';
 import { angriffeVereinen } from './arten/angriff.js';
@@ -368,6 +369,22 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
       continue;
     }
     abenteuer(wb, a);
+  }
+
+  /* Die Bücher als Kapitel aus Teilen (T-108, E-028): nach allen Artikeln,
+     damit jeder Verweis und jedes `Embed` sein Ziel findet. Gesiebt wie
+     jeder Eintrag. */
+  for (const b of stand.buecher?.values() ?? []) {
+    const grund = ausschluss({ source: String(b.kopf['source'] ?? b.id) }, stand, auswahl);
+    if (grund) {
+      const ber = wb.artBericht('bookData');
+      ber.gelesen += 1;
+      const m = ber.ausgeschlossen.get(grund) ?? new Map<string, number>();
+      zaehle(m, b.id);
+      ber.ausgeschlossen.set(grund, m);
+      continue;
+    }
+    buch(wb, b);
   }
 
   /* Eine aufgelöste Kopie zeigt auf ihr Original, wenn es hereinkam und

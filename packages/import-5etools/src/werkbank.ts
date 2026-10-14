@@ -191,6 +191,9 @@ export class Werkbank {
       },
       relations: [],
     };
+    /* Ein Kapitel und seine Teile (T-108) tragen keinen Vorbereitungsstand —
+       ohne Status-Karte zählt ein Artikel als fertig. */
+    if (!this.mitStatus(typ)) delete e.components['Status'];
     if (eintrag) this.quelle(e, eintrag);
     /* Je Buch eine Ebene (E-017): eine Kampagne schaltet die Bücher auf,
        die sie nutzt. Ohne Quelle bleibt es die Systemebene. */
@@ -201,6 +204,16 @@ export class Werkbank {
     this.entities.push(e);
     zaehle(this.bericht.typen, typ);
     return e;
+  }
+
+  private readonly statusJe = new Map<string, boolean>();
+  private mitStatus(typ: string): boolean {
+    let ja = this.statusJe.get(typ);
+    if (ja === undefined) {
+      ja = typeChain(this.registry, typ).includes('Status');
+      this.statusJe.set(typ, ja);
+    }
+    return ja;
   }
 
   /** `Source`: Buch, Seite, Lizenzflagge — als Text, ohne Link (Arbeitsplan §2.5). */
