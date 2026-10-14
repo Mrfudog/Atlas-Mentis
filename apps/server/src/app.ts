@@ -90,6 +90,7 @@ import {
   nextRank,
   partsIndex,
   overridersIndex,
+  CAMPAIGN_SETTING,
 } from '@nw/model';
 import type { BulkChange, Entity, Registry } from '@nw/model';
 import { RevisionConflict } from './repo.js';
@@ -1098,6 +1099,18 @@ export function buildApp({
     return fuer === 'players' && !!user.roles?.[kampagne.id];
   }
 
+  /* Die laufende Kampagne je Bestand: ohne Einstellung sucht
+     `currentCampaign` den ganzen Bestand ab, und das Sieb fragt je Aufruf. */
+  const kampagneJe = new WeakMap<Map<string, Entity>, { key: string; kampagne: Entity | null }>();
+  function kampagneIn(map: Map<string, Entity>, settings: Record<string, string> | null): Entity | null {
+    const key = settings?.[CAMPAIGN_SETTING] ?? '';
+    const da = kampagneJe.get(map);
+    if (da?.key === key) return da.kampagne;
+    const kampagne = currentCampaign(map, settings);
+    kampagneJe.set(map, { key, kampagne });
+    return kampagne;
+  }
+
   const stapelJe = new WeakMap<Map<string, Entity>, { key: string; stapel: ReturnType<typeof playStack> }>();
   function stapelFuer(roh: Map<string, Entity>, kampagne: Entity | null, registry: Registry): ReturnType<typeof playStack> {
     const key = `${kampagne?.id ?? ''}|${registerStempel(registry)}`;
@@ -1139,7 +1152,7 @@ export function buildApp({
        überschreibt, ist nicht da — für jeden, auch für die Verwaltung.
        Bis zum 7.10. rechnete das nur der Prototyp, und der Server schickte
        solche Artikel trotzdem hinaus. */
-    const kampagne = currentCampaign(roh, registry.settings ?? null);
+    const kampagne = kampagneIn(roh, registry.settings ?? null);
     /* Einmal je Bestand und Register gerechnet, nicht je Aufruf (T-086,
        T-108): mit hunderttausend Teilen kostet der Stapel eine Sekunde,
        und die Leseansicht siebt je Anfrage zwei- oder dreimal. */
@@ -1452,10 +1465,13 @@ export function buildApp({
    * Fassung, sonst er selbst. Gesiebt wird danach wie immer.
    */
   async function geltend(e: Entity, map: Map<string, Entity>): Promise<Entity> {
-    const stand = await roh();
+    /* Ist `map` der Stand, den wir halten, fragt niemand die Datenbank nach
+       dem Stempel — eine Kapitelseite fragt hier für jeden Verweis darin,
+       und je Frage ein `count(*)` über 150 000 Artikel waren drei Sekunden. */
+    const stand = rohStand?.map === map ? rohStand : await roh();
     if (!stand.ersetzt.has(e.id)) return e;
     const registry = await repo.getRegistry();
-    const kampagne = currentCampaign(map, registry.settings ?? null);
+    const kampagne = kampagneIn(map, registry.settings ?? null);
     if (!kampagne) return e;
     /* Aus dem Bestand dieses Stempels: der Stapel ist gerechnet, die
        Überschreiber sind gezählt (T-108). Ein anderer Bestand fragt wie bisher. */
