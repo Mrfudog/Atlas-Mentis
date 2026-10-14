@@ -241,6 +241,16 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
     expect(es.some((e) => e.interfaces[0] === 'Campaign' || (e.relations ?? []).some((r) => r.type === 'activates'))).toBe(false);
   });
 
+  it('nennt die Neuzugänge mit ihren Ebenen und Gruppen, nicht den Grundstand (T-087)', () => {
+    const neu = new Set(datei.additions);
+    expect(neu.has(finde(es, 'Statblock', 'Goblin Warrior').id)).toBe(true);
+    expect(neu.has(buchEbeneId('XMM'))).toBe(true);
+    expect(neu.has(gruppeEbeneId('2024'))).toBe(true);
+    expect(neu.has(finde(es, 'Statblock', 'Galley').id)).toBe(true);
+    expect(neu.has(finde(es, 'Statblock', 'Goblin').id)).toBe(false);
+    expect(lauf(datenstand(), { nurGrundstand: true }).datei.additions).toBeUndefined();
+  });
+
   it('macht die 2024-Fassung zur Variante der von 2014 (E-021 d)', () => {
     const alt = finde(es, 'Spell', 'Fireball');
     const neu = finde(es, 'Spell', 'Fireball (XPHB)');
