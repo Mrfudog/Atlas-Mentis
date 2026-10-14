@@ -386,7 +386,12 @@ Eine Kampagne schaltet auf der Kampagnenseite die Bücher auf, die sie
 nutzt (Liste mit Häkchen, nach Grundregelwerk, Quellenbuch und Abenteuer
 gruppiert). **Ein Abenteuer** (`kind: adventure`, T-082) bringt dabei
 seine Kapitel, Abschnitte, Begegnungen und Karten mit; die Kapitel stehen
-danach im Kasten „Story" der Kampagnenseite. Die Karten sind Adressen
+danach im Kasten „Story" der Kampagnenseite. **Jedes Buch bringt seinen
+Text** (T-108): je Kapitel ein `Chapter` mit seinen Teilen (Überschriften,
+Absätze, Kästen, Verweise auf Zauber, Monster, Tabellen, die schon
+Artikel sind) — zu lesen unter „Read" an der Ebene. Ein Lauf `only-new`
+legt die Kapitel bestehender Buchebenen dazu an, ohne einen Artikel
+anzufassen (gut 23 000 Teile für die 2014er Bücher). Die Karten sind Adressen
 auf die Bilder bei 5e.tools — die Bilder selbst liegen nicht bei uns. Ein
 einzelnes Abenteuer ergänzt man mit `sources` (z. B. `LMoP`), `only-new`
 wie immer. Eingelesen wird über eine **Pipeline**; die

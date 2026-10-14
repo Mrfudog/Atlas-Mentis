@@ -19,9 +19,9 @@ import type { Knoten } from './copy.js';
 export const STICHTAG_2024 = '2024-09-01';
 
 /* Verzeichnisse und Dateien ohne Einträge, die Artikel werden könnten:
-   Buchtext (E1: nur die Regeln daraus), Werkzeugdaten der Seite (Abgleich
-   §2.7). Der Abenteuertext kommt seit T-082 herein, aber nicht als Liste
-   je Art: `liesAbenteuer` liest ihn für sich (`arten/abenteuer.ts`). */
+   Werkzeugdaten der Seite (Abgleich §2.7). Buch- und Abenteuertext kommen
+   herein (T-082, T-108), aber nicht als Liste je Art: `liesAbenteuer` und
+   `liesBuecher` lesen sie für sich (`arten/abenteuer.ts`, `arten/buch.ts`). */
 const NICHT_LESEN = /^(adventure|book|foundry.*|changelog|renderdemo|converter|makecards|makebrew-creature|msbcr|encounterbuilder|bookref-.*|gendata-(maps|nav-adventure-book-index|spell-source-lookup|subclass-lookup|tag-redirects)|index|fluff-index|sources|bookref)(\.json)?$/;
 
 /** Arten, die nicht hereinkommen, und warum (Abgleich §2, Arbeitsplan E4). */
@@ -89,6 +89,8 @@ export interface Datenstand {
   quellen: Map<string, Quelle>;
   /** Je Abenteuer (Kürzel, klein) sein Textbaum aus `adventure/` (T-082). */
   abenteuer?: Map<string, Abenteuer>;
+  /** Je Buch (Kürzel, klein) sein Textbaum aus `book/` (T-108). */
+  buecher?: Map<string, Abenteuer>;
 }
 
 /** Ein Abenteuer aus `adventure/adventure-*.json` mit seinem Kopf aus `adventures.json`. */
@@ -155,7 +157,7 @@ export function lies(datenPfad: string): Datenstand {
   };
   meta('books.json', 'book', 'book');
   meta('adventures.json', 'adventure', 'adventure');
-  return { arten, quellen, abenteuer: liesAbenteuer(datenPfad) };
+  return { arten, quellen, abenteuer: liesAbenteuer(datenPfad), buecher: liesBuecher(datenPfad) };
 }
 
 /**
@@ -186,6 +188,47 @@ export function liesAbenteuer(datenPfad: string): Map<string, Abenteuer> {
       continue;
     }
     for (const a of j['adventureData'] ?? []) {
+      const id = String(a['id'] ?? a['source'] ?? '');
+      const kopf = koepfe.get(id.toLowerCase());
+      if (!id || !kopf || !Array.isArray(a['data'])) continue;
+      out.set(id.toLowerCase(), { id: String(kopf['id'] ?? id), kopf, daten: a['data'] as Knoten[] });
+    }
+  }
+  return out;
+}
+
+/**
+ * Die Bücher (T-108, E-028): je Datei in `book/` ein Textbaum, dazu der
+ * Kopf aus `books.json` — dieselbe Form wie ein Abenteuer (`Abenteuer`).
+ * Ohne Verzeichnis keine.
+ */
+export function liesBuecher(datenPfad: string): Map<string, Abenteuer> {
+  return liesTexte(datenPfad, 'books.json', 'book', 'book', 'bookData');
+}
+
+function liesTexte(datenPfad: string, kopfDatei: string, kopfSchluessel: string, ordner: string, datenSchluessel: string): Map<string, Abenteuer> {
+  const out = new Map<string, Abenteuer>();
+  const koepfe = new Map<string, Knoten>();
+  try {
+    const j = JSON.parse(readFileSync(join(datenPfad, kopfDatei), 'utf8')) as Record<string, Knoten[]>;
+    for (const a of j[kopfSchluessel] ?? []) koepfe.set(String(a['id'] ?? '').toLowerCase(), a);
+  } catch {
+    return out;
+  }
+  let dateien: string[];
+  try {
+    dateien = readdirSync(join(datenPfad, ordner)).filter((f) => f.startsWith(`${ordner}-`) && f.endsWith('.json')).sort();
+  } catch {
+    return out;
+  }
+  for (const f of dateien) {
+    let j: Record<string, Knoten[]>;
+    try {
+      j = JSON.parse(readFileSync(join(datenPfad, ordner, f), 'utf8')) as Record<string, Knoten[]>;
+    } catch {
+      continue;
+    }
+    for (const a of j[datenSchluessel] ?? []) {
       const id = String(a['id'] ?? a['source'] ?? '');
       const kopf = koepfe.get(id.toLowerCase());
       if (!id || !kopf || !Array.isArray(a['data'])) continue;
