@@ -2,7 +2,9 @@ import { Component, computed, effect, inject, signal, untracked } from '@angular
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   answerChoice,
-  answersOf,
+  answeredKeys,
+  offeredOptions,
+  choicesOf,
   checkPurchase,
   entityName,
   fixedEquipmentLines,
@@ -263,13 +265,40 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
               }
 
               @case ('choice') {
-                <p>{{ wahlsatz(s.at) }} <span class="dim">— from {{ s.at.source.entity.name }}</span></p>
+                <p>{{ wahlsatz(s.at) }} <span class="dim">— from {{ herkunft(s.at) }}</span></p>
                 @if (moeglichkeiten()[s.id]; as liste) {
                   @if (liste.length) {
                     @if (liste.length > 8) {
                       <input class="suche" type="search" placeholder="Filter…" [value]="filter()" (input)="filter.set($any($event.target).value)" />
                     }
                     <p class="dim">{{ antwort(s).length }} of {{ s.at.choice.count ?? 1 }} chosen</p>
+                    @if (s.at.choice.repeat) {
+                      <!-- Derselbe Wert mehrmals (T-107): +1 zweimal auf dasselbe ist +2. -->
+                      <ul class="karten">
+                        @for (m of gefiltert(liste); track m.wert) {
+                          <li>
+                            <div class="mehrfach" [class.an]="anzahl(s, m.wert) > 0">
+                              <span class="name">{{ m.label }}</span>
+                              @if (m.hinweis) {
+                                <span class="dim">{{ m.hinweis }}</span>
+                              }
+                              <span class="zaehler">
+                                <button type="button" [attr.aria-label]="'Less ' + m.label" [disabled]="!anzahl(s, m.wert)" (click)="weniger(s, m.wert)">−</button>
+                                <output [attr.aria-label]="m.label + ' chosen'">{{ anzahl(s, m.wert) }}</output>
+                                <button
+                                  type="button"
+                                  [attr.aria-label]="'More ' + m.label"
+                                  [disabled]="antwort(s).length >= (s.at.choice.count ?? 1)"
+                                  (click)="mehr(s, m.wert)"
+                                >
+                                  +
+                                </button>
+                              </span>
+                            </div>
+                          </li>
+                        }
+                      </ul>
+                    } @else {
                     <ul class="karten">
                       @for (m of gefiltert(liste); track m.wert) {
                         <li>
@@ -289,6 +318,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                         </li>
                       }
                     </ul>
+                    }
                   } @else {
                     <!-- Eine freie Wahl: die Notiz sagt, was gemeint ist. -->
                     <label class="zeile">
@@ -531,6 +561,36 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
       border-color: var(--accent);
       background: var(--hover);
     }
+    .karten .mehrfach {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem;
+      min-height: 44px;
+      padding: 0.35rem 0.5rem 0.35rem 0.75rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+    }
+    .karten .mehrfach.an {
+      border-color: var(--accent);
+      background: var(--hover);
+    }
+    .zaehler {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .zaehler button {
+      min-width: 36px;
+      min-height: 36px;
+    }
+    .zaehler output {
+      min-width: 1.2rem;
+      text-align: center;
+      font-weight: 700;
+    }
     .name {
       font-weight: 700;
       color: var(--heading);
@@ -697,6 +757,8 @@ export class Assistent {
   protected readonly werte = signal<Partial<Record<string, number>>>({});
   /** Die Sprachen der Kampagne (REQ-251); leer heisst jede. */
   private readonly sprachen = signal<string[]>([]);
+  /** Talente am Tisch (T-107): nein nimmt das Talent als Ausweg weg. */
+  private readonly talente = signal(true);
   private readonly geladenVerfahren = signal(false);
 
   /** Die Startausrüstung (T-096): Verfahren, Wurf, Einkauf. */
@@ -739,15 +801,22 @@ export class Assistent {
     () => !!this.bestand.registry() && this.geladenVerfahren() && (!this.aufstieg() || !!this.figur()),
   );
 
-  /** Was die gespeicherte Figur schon beantwortet hat: beim Aufstieg kein Schritt mehr. */
+  /**
+   * Was die gespeicherte Figur schon beantwortet hat: beim Aufstieg kein
+   * Schritt mehr — je Gewährung, also fragt die Steigerung auf Stufe 8
+   * neu, auch wenn die auf Stufe 4 beantwortet ist (T-107).
+   */
   private readonly beantwortet = computed(() => {
     const f = this.figur();
-    if (!f) return new Set<string>();
-    return new Set(answersOf(f).map((a) => `${a.source}#${a.choice}`));
+    return f ? answeredKeys(f, this.quellen()) : new Set<string>();
   });
 
   protected readonly schritte = computed<BuilderStep[]>(() =>
-    builderSteps(this.entwurf(), this.quellen(), { levelUp: this.aufstieg(), done: this.beantwortet() }),
+    builderSteps(this.entwurf(), this.quellen(), {
+      levelUp: this.aufstieg(),
+      done: this.beantwortet(),
+      rules: { feats: this.talente() },
+    }),
   );
   protected readonly schritt = computed(() => this.schritte()[Math.min(this.index(), this.schritte().length - 1)]);
   protected readonly letzter = computed(() => this.index() >= this.schritte().length - 1);
@@ -806,8 +875,9 @@ export class Assistent {
     if (!k) return [];
     return gainedFeatures(this.entwurf(), q, k).map((f) => ({
       id: f.id,
-      name: q.get(f.id)?.name ?? this.bestand.name()(f.id) ?? f.id,
-      von: f.source === k ? '' : (q.get(f.source)?.name ?? ''),
+      /* Der Name steht in `Identity` (`entityName`); `name` kann leer sein. */
+      name: (q.has(f.id) ? entityName(q.get(f.id)) : '') || this.bestand.name()(f.id) || f.id,
+      von: f.source === k ? '' : q.has(f.source) ? entityName(q.get(f.source)) : '',
     }));
   });
 
@@ -838,6 +908,7 @@ export class Assistent {
         this.methoden.set(r.methods);
         this.gruppen.set(r.parties);
         this.sprachen.set(r.languages ?? []);
+        this.talente.set(r.feats !== false);
         if (r.methods.length === 1) this.methode.set(r.methods[0]!);
         if (r.parties.length === 1) this.gruppe.set(r.parties[0]!.id);
       })
@@ -923,7 +994,10 @@ export class Assistent {
     const f = s.at.choice.from ?? {};
     let liste: Moeglichkeit[] = [];
     try {
-      if (f.options?.length) liste = f.options.map((o) => ({ wert: o.key, label: `(${o.key}) ${o.label}` }));
+      if (f.options?.length && s.at.choice.kind === 'option') {
+        /* Steigerung oder Talent (T-107): ohne Talente am Tisch nur die Steigerung. */
+        liste = offeredOptions(s.at.choice, choicesOf(s.at.source.entity), { feats: this.talente() }).map((o) => ({ wert: o.key, label: o.label }));
+      } else if (f.options?.length) liste = f.options.map((o) => ({ wert: o.key, label: `(${o.key}) ${o.label}` }));
       else if (f.values?.length) liste = f.values.map((v) => ({ wert: v, label: v }));
       else if (f.interfaces?.length) {
         let rows = await this.zeilen(f.interfaces, f.edge?.type);
@@ -944,7 +1018,8 @@ export class Assistent {
       }
       if (s.at.choice.kind === 'ability') {
         const b = s.at.choice.bonus ?? [1];
-        liste = liste.map((m) => ({ ...m, label: m.label.toUpperCase(), hinweis: `+${b.join('/+')}` }));
+        const hinweis = s.at.choice.repeat ? `+${b[0] ?? 1} each` : `+${b.join('/+')}`;
+        liste = liste.map((m) => ({ ...m, label: m.label.toUpperCase(), hinweis }));
       }
     } catch (e) {
       this.problem.set((e as Error).message);
@@ -986,6 +1061,15 @@ export class Assistent {
     return choiceText(c.choice);
   }
 
+  /** Woher eine Wahl kommt — bei einem gewährten Merkmal mit Stufe und Klasse (T-107). */
+  protected herkunft(c: ChoiceAtCharacter): string {
+    const g = c.source.grant;
+    const name = entityName(c.source.entity);
+    if (!g) return name;
+    const von = this.quellen().get(g.by);
+    return `${name}, level ${g.level}${von ? ` (${entityName(von)})` : ''}`;
+  }
+
   protected beschreibe(m: AbilityMethod): string {
     if (m.method === 'array') return (m.scores ?? []).join(', ');
     if (m.method === 'pointBuy') return `${m.budget ?? '?'} points`;
@@ -1014,6 +1098,25 @@ export class Assistent {
     const jetzt = this.antwort(s);
     const neu = n === 1 ? [wert] : jetzt.includes(wert) ? jetzt.filter((w) => w !== wert) : [...jetzt, wert].slice(0, n);
     this.beantworte(s, neu);
+  }
+
+  /** Wie oft ein Wert gewählt ist — bei `repeat` mehr als einmal (T-107). */
+  protected anzahl(s: Extract<BuilderStep, { kind: 'choice' }>, wert: string): number {
+    return this.antwort(s).filter((w) => w === wert).length;
+  }
+
+  protected mehr(s: Extract<BuilderStep, { kind: 'choice' }>, wert: string): void {
+    const jetzt = this.antwort(s);
+    if (jetzt.length >= (s.at.choice.count ?? 1)) return;
+    this.beantworte(s, [...jetzt, wert]);
+  }
+
+  protected weniger(s: Extract<BuilderStep, { kind: 'choice' }>, wert: string): void {
+    const jetzt = [...this.antwort(s)];
+    const i = jetzt.lastIndexOf(wert);
+    if (i < 0) return;
+    jetzt.splice(i, 1);
+    this.beantworte(s, jetzt);
   }
 
   protected frei(s: Extract<BuilderStep, { kind: 'choice' }>, text: string): void {

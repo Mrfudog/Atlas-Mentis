@@ -706,6 +706,8 @@ export class Api {
     parties: { id: string; name: string; pools: Record<string, RolledScores & { at?: string }> }[];
     /** Die Sprachen der Kampagne (REQ-251); leer heisst jede. */
     languages?: string[];
+    /** Talente am Tisch (T-107); ohne Angabe ja. */
+    feats?: boolean;
   }> {
     return this.call('/api/abilities');
   }
