@@ -43,6 +43,17 @@ if [ -d backups ]; then
   rm -f "$probe"
 fi
 
+# Die Übernahme (T-130) ist ein Fenster und kein Zustand (E-042): wer gerade
+# nicht übernimmt, nimmt die Zeilen aus .env wieder heraus. Ein Ausrollen
+# hält deswegen nicht an — es sagt nur, was offen steht (T-074).
+env_wert() { sed -n "s/^$1=//p" .env | tail -n 1 | tr -d "\"' "; }
+case "$(env_wert ATLAS_TRANSFER_ACCEPT)" in
+  1|true) echo "Warnung: ATLAS_TRANSFER_ACCEPT steht in .env — diese Installation nimmt Übernahmen an. Nach der Übernahme herausnehmen (docs/Betrieb.md › Übernahme dev ↔ prod)." >&2 ;;
+esac
+if [ -n "$(env_wert ATLAS_PEER_TOKEN)" ]; then
+  echo "Warnung: ATLAS_PEER_TOKEN steht in .env ($(env_wert ATLAS_PEER_URL)) — ein Token der Gegenstelle liegt auf diesem Server. Nach der Übernahme herausnehmen oder das Token dort widerrufen." >&2
+fi
+
 # Ein kurzlebiger Zugang aus CI, wenn das Paket privat ist. Er gilt nur so
 # lange wie der Lauf, der ihn mitbringt; auf dem Server bleibt nichts liegen.
 if [ -n "${GHCR_TOKEN:-}" ]; then

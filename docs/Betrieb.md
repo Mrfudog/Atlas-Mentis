@@ -81,7 +81,9 @@ hätte. Gemerkt hätte man es beim ersten Aufsetzen hier.
 0. prüfen, ob es schreiben darf: das Verzeichnis der Umgebung und jedes
    unter `backups/` (ausser `backups/uebernahme/`, das dem Server gehört)
    — sonst bricht es ab, bevor es etwas tut
-   ([Ausrollen schlägt fehl](#ausrollen-schlägt-fehl));
+   ([Ausrollen schlägt fehl](#ausrollen-schlägt-fehl)); und warnen, wenn
+   in `.env` eine Übernahme offensteht (`ATLAS_TRANSFER_ACCEPT`,
+   `ATLAS_PEER_TOKEN`, [unten](#übernahme-dev--prod)) — das hält nicht an;
 1. das neue Abbild holen — schlägt das fehl, läuft das alte unberührt weiter;
 2. die Datenbank sichern (`backups/<zeit>.dump`, die letzten 20 bleiben);
 3. die Verzeichnisse anlegen, in die der Server schreibt, und dem
@@ -132,6 +134,14 @@ Platte liegt, die keine Eigentümer kennt, steht der Befehl in der Meldung:
 
 Der `chown -R` auf `backups/` oben nimmt `backups/uebernahme` mit; das
 schadet nicht, `deploy.sh` gibt es danach wieder uid 1000.
+
+**`Warnung: ATLAS_TRANSFER_ACCEPT steht in .env`** (oder
+`ATLAS_PEER_TOKEN`) — kein Fehler, das Ausrollen läuft weiter. Die
+Übernahme ist ein Fenster (E-042): prod nimmt an, solange die Zeile steht,
+und dev hält solange ein `write`-Token von prod. Wer gerade nicht
+übernimmt, nimmt die Zeilen aus `.env` heraus (oder kommentiert sie mit
+`#` aus) und rollt neu aus; das Token lässt sich auf prod unter Account ›
+API tokens widerrufen ([Übernahme › Einrichten](#einrichten-einmal-die-verwaltung)).
 
 ## Den Server einrichten — Schritt für Schritt (einmal)
 
