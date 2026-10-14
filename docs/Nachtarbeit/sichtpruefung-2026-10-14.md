@@ -73,7 +73,7 @@ Stand: zweiter Durchgang nach dem Ausrollen (14.10., ~13:00 Z).
 | 9 | Bearbeiten · jede Art | Sitzung `e_13320e503ea4` | `Identity · ID` war eine Eingabe, obwohl `readOnly` (die Nummer liess sich ändern) | behoben, #112 |
 | 10 | Bearbeiten · 390 px | Sitzung `e_13320e503ea4` | Kantenzeile ohne Umbruch: langes Ziel („D&D 5e (2014) — no book given") schob die Seite auf 450 px | behoben, #112 |
 | 11 | Artikelseite · 390 px · Tabelle | Wilderness Encounters (ToA) `e5_bd6c2d0e90aa` | Erste Spalte **Zeichen für Zeichen** untereinander („5 / 9 / f"), weil `overflow-wrap: anywhere` in die Tabelle vererbt wurde | behoben, #117 |
-| 12 | Kompendium · Talent | Spalte „Prerequisite" | Rohe Verweise `[[feat-0088\|initiate of high sorcery (nuitari)]]` in der Zelle (sichtbar, seit 056 die Spalten bringt) | #122 |
+| 12 | Kompendium · Talent | Spalte „Prerequisite" | Rohe Verweise `[[feat-0088\|initiate of high sorcery (nuitari)]]` in der Zelle (sichtbar, seit 056 die Spalten bringt) | behoben, #122 |
 | 13 | Register · Kanten | — | `partOf` ohne `Board`/`Encounter`, `activates` ohne `mode`/`areas`/`types` und mit „runs on", `Recipe.tool` ohne Auswahl; `Campaign` **ohne Schema** (Sprachen, Talente, Vergleichsebenen fehlten) | behoben, #111 und #118 (055, 057) |
 | 14 | Tabelle · erste Spalte | 7 Tabellen, u. a. `e5_bd6c2d0e90aa`, `e5_c8710c5de6d3` | Schlüssel „59f", „5a0" statt Kreaturen; 12 Tabellen ohne Spaltenköpfe | **T-124** (Importer) |
 | 15 | Artikelseite · Rüstung | Dragon Scale Mail `e5_30e67339bd0a`, Armor of Vulnerability | Magische Rüstung ganz ohne Text | **T-124** |
@@ -111,6 +111,12 @@ Stand: zweiter Durchgang nach dem Ausrollen (14.10., ~13:00 Z).
   es noch keinen Kartenartikel; die lokale Karte (Stand vor T-115) zeigte
   nur Felder.
 - **Initiative**: im Web noch nicht vorhanden (T-022).
+- **Offen, nicht bestätigt:** Bei 390 px liess sich „Edit“ an einzelnen
+  Artikeln (Ancestry, Board, Campaign, Class) im Prüfgerüst wiederholt
+  nicht anklicken (Zeitüberschreitung nach 30 s), im Einzeltest derselben
+  Artikel aber sofort; einmal fehlte der Knopf ganz. Vermutlich zeichnet
+  die Knopfleiste neu, während die Seite nachlädt (Sitzung, Fassungsziele).
+  Wer am Telefon auf „Edit“ tippt und nichts passiert: hier anknüpfen.
 
 ## Wie es dazu kam
 
