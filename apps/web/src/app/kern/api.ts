@@ -78,6 +78,75 @@ export interface BulkLauf {
   deleted: number;
   summary?: string[];
 }
+/** Die Übernahme dev ↔ prod (T-130). */
+export interface TransferStand {
+  env: string | null;
+  accept: boolean;
+  canTrigger: boolean;
+  backup: boolean;
+  peer: { name: string; url: string } | null;
+  peerState: { env?: string | null; accept?: boolean; articles?: number; error?: string } | null;
+  runs: TransferLauf[];
+}
+export interface TransferLauf {
+  id: string;
+  at: string;
+  kind: 'transfer' | 'transfer.clone';
+  undone: boolean;
+  direction?: 'push' | 'pull' | 'clone';
+  by?: { id: string; name: string };
+  items?: { id: string; name: string; type: string; status: string }[];
+  count?: number;
+  backup?: string | null;
+}
+export interface TransferFeld {
+  key: string;
+  kind: 'types' | 'field' | 'adhoc' | 'edge';
+  base?: unknown;
+  source?: unknown;
+  target?: unknown;
+  state: 'same' | 'source' | 'target' | 'conflict';
+}
+export interface TransferEintrag {
+  id: string;
+  kind: 'entity' | 'registry';
+  name: string;
+  type: string;
+  number: string;
+  layers: string[];
+  status: 'new' | 'changed' | 'unchanged' | 'conflict' | 'target-ahead';
+  fields: TransferFeld[];
+  sourceKey: string;
+  targetKey: string;
+}
+export interface TransferVorschau {
+  direction: 'push' | 'pull';
+  source: string;
+  target: string;
+  items: TransferEintrag[];
+  counts: Record<string, number>;
+  ms: number;
+}
+export interface TransferErgebnis {
+  id: string;
+  direction: 'push' | 'pull';
+  written: number;
+  numbers: Record<string, string>;
+  notAligned?: { id: string; name: string; issues: string[] }[];
+  backup?: string | null;
+}
+export interface KlonAntwort {
+  dryRun?: boolean;
+  here?: number;
+  incoming?: number;
+  text?: string;
+  id?: string;
+  backup?: string;
+  written?: number;
+  removed?: number;
+  files?: number;
+}
+
 export interface UndoAntwort {
   dryRun?: boolean;
   restored: number;
@@ -581,7 +650,7 @@ export function wasLaedt(path: string): string {
   if (path.startsWith('/api/classes')) return 'classes';
   if (path.startsWith('/api/abilities')) return 'ability methods';
   if (path.startsWith('/api/campaigns')) return 'campaign';
-  if (path.startsWith('/api/checks') || path.startsWith('/api/bulk')) return 'workbench';
+  if (path.startsWith('/api/checks') || path.startsWith('/api/bulk') || path.startsWith('/api/transfer')) return 'workbench';
   if (path.startsWith('/api/read')) return 'book';
   if (path.startsWith('/api/layers')) return 'layers';
   if (path.startsWith('/api/maps') || path.startsWith('/api/play')) return 'map';
@@ -939,6 +1008,23 @@ export class Api {
   }
   bulk(auftrag: unknown): Promise<BulkAntwort> {
     return this.call<BulkAntwort>('/api/bulk', { method: 'POST', body: JSON.stringify(auftrag) });
+  }
+  /* Die Übernahme dev ↔ prod (T-130): gerechnet am Server, das Token der
+     Gegenstelle bleibt dort. */
+  transferStand(): Promise<TransferStand> {
+    return this.call<TransferStand>('/api/transfer');
+  }
+  transferVorschau(auftrag: unknown): Promise<TransferVorschau> {
+    return this.call<TransferVorschau>('/api/transfer/preview', { method: 'POST', body: JSON.stringify(auftrag) });
+  }
+  transferLauf(lauf: unknown): Promise<TransferErgebnis> {
+    return this.call<TransferErgebnis>('/api/transfer/run', { method: 'POST', body: JSON.stringify(lauf) });
+  }
+  transferUndo(id: string, body: { force?: boolean; dryRun?: boolean } = {}): Promise<{ restored: number }> {
+    return this.call<{ restored: number }>(`/api/transfer/${encodeURIComponent(id)}/undo`, { method: 'POST', body: JSON.stringify(body) });
+  }
+  transferKlon(body: { confirm?: string; dryRun?: boolean }): Promise<KlonAntwort> {
+    return this.call<KlonAntwort>('/api/transfer/clone', { method: 'POST', body: JSON.stringify(body) });
   }
   bulks(): Promise<BulkLauf[]> {
     return this.call<BulkLauf[]>('/api/bulk?limit=20');
