@@ -6,7 +6,7 @@
 #
 #   ./import.sh 5etools-2014.json.gz --only-new                 # nur ergänzen (Vorgabe, D71)
 #   ./import.sh 5etools-2014.json.gz --only-new --dry-run       # nur sagen, was geschähe
-#   ./import.sh 5etools-2014.json.gz --only-new --new-layers    # nur neue Ebenen (T-087)
+#   ./import.sh 5etools-2014.json.gz --only-new --additions     # nur die Neuzugänge (T-087)
 #   ./import.sh 5etools-2014.json.gz --replace-layer            # die Ebene der Datei ersetzen
 #   ./import.sh 5etools-2014.json.gz --layers                   # nur Ebenen ergänzen (T-088)
 #   ./import.sh 5etools-2014.json.gz                            # dazulegen und überschreiben
@@ -29,7 +29,7 @@ shift
 # einer, der überschreibt.
 for a in "$@"; do
   case "$a" in
-    --replace-layer*|--dry-run|--only-new|--new-layers|--layers)
+    --replace-layer*|--dry-run|--only-new|--additions|--layers)
       docker compose exec -T app grep -q -- "${a%%=*}" apps/server/dist/import.js \
         || { echo "Das laufende Abbild kennt $a noch nicht — zuerst ausrollen" >&2; exit 1; } ;;
   esac

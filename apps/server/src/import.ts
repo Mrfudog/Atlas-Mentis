@@ -2,7 +2,7 @@
  * **Eine Ausfuhrdatei einlesen** — von der Kommandozeile, nicht über das
  * Netz (Arbeitsplan §4, P5; M13 schlanker).
  *
- *   pnpm --filter @nw/server run import <datei> [--only-new [--new-layers] | --replace | --replace-layer[=<id|Name>] | --layers] [--dry-run]
+ *   pnpm --filter @nw/server run import <datei> [--only-new [--additions] | --replace | --replace-layer[=<id|Name>] | --layers] [--dry-run]
  *   docker compose exec app node apps/server/dist/import.js <datei> --only-new
  *
  * Dieselbe Semantik wie die Einfuhr des Prototyps: eine Datei mit
@@ -98,12 +98,12 @@ export interface ImportOptionen {
   /** Nur die Ebenen der Datei: neue anlegen, bestehende ergänzen (T-088). */
   layers?: boolean;
   /**
-   * Mit `onlyNew`: nur Ebenen, die es noch nicht gibt, und die Artikel
-   * darin (T-087). Für einen Bestand, der mit einem älteren Importer
-   * geladen wurde: dort trägt manches Geteilte eine andere Peg-Id, und
-   * `onlyNew` allein legte es ein zweites Mal an.
+   * Mit `onlyNew`: nur die Neuzugänge, die die Datei nennt (`additions`,
+   * T-087) — was nicht zum Grundstand gehört. Für einen Bestand, der mit
+   * einem älteren Importer geladen wurde: dort trägt manches Geteilte eine
+   * andere Peg-Id, und `onlyNew` allein legte es ein zweites Mal an.
    */
-  newLayers?: boolean;
+  additions?: boolean;
   /** Alles prüfen und sagen, nichts schreiben. */
   dryRun?: boolean;
 }
@@ -121,8 +121,8 @@ export async function runImport(
   if (optionen.onlyNew && (optionen.replace || optionen.replaceLayer)) {
     throw new ImportFehler('`--only-new` schliesst `--replace` und `--replace-layer` aus: das eine lässt Bestehendes stehen, die anderen ersetzen es.');
   }
-  if (optionen.newLayers && !optionen.onlyNew) {
-    throw new ImportFehler('`--new-layers` gehört zu `--only-new`: es engt ein, was neu angelegt wird.');
+  if (optionen.additions && !optionen.onlyNew) {
+    throw new ImportFehler('`--additions` gehört zu `--only-new`: es engt ein, was neu angelegt wird.');
   }
   if (optionen.layers && (optionen.replace || optionen.replaceLayer || optionen.onlyNew)) {
     throw new ImportFehler('`--layers` steht allein: es ergänzt nur Ebenen und ersetzt nichts.');
@@ -136,7 +136,10 @@ export async function runImport(
   }
 
   if (!daten || typeof daten !== 'object' || Array.isArray(daten)) throw new ImportFehler('Die Datei ist kein Objekt.');
-  const d = daten as { format?: unknown; registry?: unknown; entities?: unknown };
+  const d = daten as { format?: unknown; registry?: unknown; entities?: unknown; additions?: unknown };
+  if (optionen.additions && !Array.isArray(d.additions)) {
+    throw new ImportFehler('`--additions`: die Datei nennt keine Neuzugänge (`additions`) — sie stammt von einem Importer vor T-087.');
+  }
   if (d.format !== undefined && !String(d.format).startsWith('nebelwacht/')) {
     throw new ImportFehler(`Unbekanntes Format: ${String(d.format)}`);
   }
@@ -200,21 +203,32 @@ export async function runImport(
      desselben Texts an. */
   const ganzesSchonDa = (e: Entity): boolean =>
     isBookPart(e) && (e.relations ?? []).some((r) => partRank(r) !== undefined && bestandIds.has(r.to));
-  /* **Nur neue Ebenen** (`--new-layers`, T-087): eine Ebene, die es noch
-     nicht gibt, und was ganz in solchen liegt. Ein Artikel ohne Ebene
-     oder in einer bestehenden bleibt weg, auch wenn seine Id neu ist. */
-  const inNeuerEbene = (e: Entity): boolean => {
-    if (e.interfaces?.[0] === 'Layer') return true;
-    const ebenen = (e.relations ?? []).filter((r) => r.type === 'inLayer').map((r) => r.to);
-    return ebenen.length > 0 && ebenen.every((l) => !bestandIds.has(l));
-  };
   const neuRoh = optionen.onlyNew ? ausDatei.filter((e) => !bestandIds.has(e.id) && !ganzesSchonDa(e)) : ausDatei;
-  const neu = optionen.newLayers ? neuRoh.filter(inNeuerEbene) : neuRoh;
+  /* **Nur die Neuzugänge** (`--additions`, T-087), und was einer davon über
+     eine Kante braucht und noch nirgends steht (die 2014-Karte, auf die die
+     2024-Karte mit `variantOf` zeigt) — sonst lehnte die Prüfung die Kante ab. */
+  const genannt = new Set(Array.isArray(d.additions) ? d.additions.map(String) : []);
+  const mitZielen = (auswahl: Entity[]): Entity[] => {
+    const nachId = new Map(neuRoh.map((e) => [e.id, e] as const));
+    const drin = new Set(auswahl.map((e) => e.id));
+    const offen = [...auswahl];
+    while (offen.length) {
+      for (const r of offen.pop()!.relations ?? []) {
+        const z = nachId.get(r.to);
+        if (!z || drin.has(z.id)) continue;
+        drin.add(z.id);
+        offen.push(z);
+      }
+    }
+    return neuRoh.filter((e) => drin.has(e.id));
+  };
+  const neu = optionen.additions ? mitZielen(neuRoh.filter((e) => genannt.has(e.id))) : neuRoh;
   const ausAlterEbene = neuRoh.length - neu.length;
+  const mitgezogen = optionen.additions ? neu.filter((e) => !genannt.has(e.id)).length : 0;
   const teileMitGanzem = optionen.onlyNew ? ausDatei.filter((e) => !bestandIds.has(e.id) && ganzesSchonDa(e)).length : 0;
   const uebersprungen = ausDatei.length - neu.length;
   const angeglichen = optionen.onlyNew ? nummernAngleichen(ausDatei, bestand, neu) : 0;
-  const angeglichenText = `${angeglichen ? ` ${angeglichen} davon mit angeglichener Nummer oder angeglichenen Verweisen (die Nummern der Datei sind nicht die des Bestands).` : ''}${optionen.newLayers ? ` Nur neue Ebenen: ${ausAlterEbene} Artikel mit neuer Id in einer bestehenden Ebene oder ohne Ebene nicht angelegt.` : ''}`;
+  const angeglichenText = `${angeglichen ? ` ${angeglichen} davon mit angeglichener Nummer oder angeglichenen Verweisen (die Nummern der Datei sind nicht die des Bestands).` : ''}${optionen.additions ? ` Nur Neuzugänge: ${ausAlterEbene} Artikel mit neuer Id aus dem Grundstand nicht angelegt${mitgezogen ? `; ${mitgezogen} davon kamen doch mit, weil ein Neuzugang auf sie zeigt` : ''}.` : ''}`;
   const ids = new Set(neu.map((e) => e.id));
   let weg: Entity[] = [];
   let ebenenText = '';
@@ -352,7 +366,7 @@ const nummerVon = (e: Entity): string => {
  *     im Bestand trägt oder jetzt bekommt.
  *  3. Ein Verweis auf einen Artikel der Datei, der weder im Bestand steht
  *     noch jetzt angelegt wird (ein Teil, dessen Ganzes schon steht; mit
- *     `--new-layers` alles aus bestehenden Ebenen), wird ein Verweis nach
+ *     `--additions` der Grundstand, den der Bestand nicht kennt), wird ein Verweis nach
  *     Namen (`[[Fireball]]`): seine Nummer kann im Bestand ein anderer
  *     tragen, und ein falscher Verweis ist schlechter als einer, der nach
  *     dem Namen sucht.
@@ -600,7 +614,7 @@ if (direkt) {
   const args = process.argv.slice(2);
   const datei = args.find((a) => !a.startsWith('--'));
   if (!datei) {
-    console.error('import <datei> [--only-new [--new-layers] | --replace | --replace-layer[=<id|Name>] | --layers] [--dry-run]');
+    console.error('import <datei> [--only-new [--additions] | --replace | --replace-layer[=<id|Name>] | --layers] [--dry-run]');
     process.exit(2);
   }
   const ebenenArg = args.find((a) => a === '--replace-layer' || a.startsWith('--replace-layer='));
@@ -617,7 +631,7 @@ if (direkt) {
   const repo = new PgRepository(getPool());
   try {
     const daten = JSON.parse(readFileSync(pfad, 'utf8')) as unknown;
-    const r = await runImport(repo, daten, { replace: args.includes('--replace'), replaceLayer, onlyNew: args.includes('--only-new'), newLayers: args.includes('--new-layers'), layers: args.includes('--layers'), dryRun: args.includes('--dry-run') });
+    const r = await runImport(repo, daten, { replace: args.includes('--replace'), replaceLayer, onlyNew: args.includes('--only-new'), additions: args.includes('--additions'), layers: args.includes('--layers'), dryRun: args.includes('--dry-run') });
     console.log(r.text);
   } catch (x) {
     console.error((x as Error).message);

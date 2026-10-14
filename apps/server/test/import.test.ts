@@ -267,29 +267,35 @@ describe('pnpm --filter @nw/server run import', () => {
       expect((await repo.getEntity('fremd'))?.components['Identity']).toMatchObject({ id: 'spell-0002' });
     });
 
-    it('legt mit --new-layers nur neue Ebenen und ihre Artikel an; Verweise auf Weggelassenes suchen nach Namen (T-087)', async () => {
-      const artikel = (id: string, name: string, nummer: string, ebeneId: string, text?: string): Entity => ({
+    it('legt mit --additions nur die Neuzugänge an, mit dem, worauf sie zeigen; Verweise auf Weggelassenes suchen nach Namen (T-087)', async () => {
+      const artikel = (id: string, name: string, nummer: string, ebeneId: string, text?: string, varianteVon?: string): Entity => ({
         id, interfaces: ['Spell'], name,
         components: { Identity: { name, id: nummer }, Status: { status: 'ready' }, ...(text ? { Prose: { paragraph: [{ id: 'text', value: text }] } } : {}) },
-        relations: [{ id: `${id}-inLayer`, type: 'inLayer', to: ebeneId }],
+        relations: [{ id: `${id}-inLayer`, type: 'inLayer', to: ebeneId }, ...(varianteVon ? [{ id: `${id}-variantOf`, type: 'variantOf', to: varianteVon }] : [])],
       });
       const neueEbene: Entity = { ...ebene, id: 'e5_book_xphb', name: "Player's Handbook (2024)", components: { ...ebene.components, Identity: { name: "Player's Handbook (2024)", id: 'layer-0002' }, Layer: { kind: 'group' } } };
-      /* Auf dem Server steht ein Fireball unter einer anderen Peg-Id als in der Datei, und unter spell-0001 ein ganz anderer Zauber. */
+      /* Auf dem Server steht Fireball unter einer anderen Peg-Id als in der
+         Datei, und unter spell-0001 ein ganz anderer Zauber. */
       const repo = await mitKonto([ebene, artikel('alt_fb', 'Fireball', 'spell-0005', ebene.id), artikel('fremd', 'Anderes', 'spell-0001', ebene.id)]);
       const datei = {
         format: 'nebelwacht/1', registry: seedRegistry,
         entities: [
           ebene,
           artikel('fb', 'Fireball', 'spell-0001', ebene.id),
+          artikel('karte', 'Vizier', 'spell-0003', ebene.id),
           neueEbene,
           artikel('fb24', 'Fireball (XPHB)', 'spell-0002', neueEbene.id, 'Like [[spell-0001|Fireball]].'),
+          artikel('karte24', 'Vizier (XPHB)', 'spell-0004', neueEbene.id, undefined, 'karte'),
         ],
+        additions: [neueEbene.id, 'fb24', 'karte24'],
       };
-      await expect(runImport(repo, datei, { newLayers: true })).rejects.toThrow(/gehört zu `--only-new`/);
-      const r = await runImport(repo, datei, { onlyNew: true, newLayers: true });
-      expect(r.geschrieben).toBe(2);
-      expect(r.text).toMatch(/Nur neue Ebenen: 1 Artikel/);
+      await expect(runImport(repo, datei, { additions: true })).rejects.toThrow(/gehört zu `--only-new`/);
+      await expect(runImport(repo, { ...datei, additions: undefined }, { onlyNew: true, additions: true })).rejects.toThrow(/nennt keine Neuzugänge/);
+      const r = await runImport(repo, datei, { onlyNew: true, additions: true });
+      expect(r.geschrieben).toBe(4);
+      expect(r.text).toMatch(/Nur Neuzugänge: 1 Artikel mit neuer Id aus dem Grundstand nicht angelegt; 1 davon kamen doch mit/);
       expect(await repo.getEntity('fb')).toBeUndefined();
+      expect(await repo.getEntity('karte')).toBeDefined();
       const fb24 = (await repo.getEntity('fb24'))!;
       /* spell-0001 trägt dort „Anderes": der Verweis sucht nach dem Namen. */
       expect((fb24.components['Prose'] as { paragraph: { value: string }[] }).paragraph[0]!.value).toBe('Like [[Fireball]].');

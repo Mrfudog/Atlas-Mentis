@@ -161,7 +161,13 @@ function kopieSchluessel(art: string): (e: Knoten) => string {
 }
 
 export interface Ergebnis {
-  datei: { format: string; registry: Registry & { components?: unknown }; entities: Entity[] };
+  datei: {
+    format: string;
+    registry: Registry & { components?: unknown };
+    entities: Entity[];
+    /** Die Neuzugänge (T-087): was nicht zum Grundstand gehört, mit seinen Ebenen und deren Gruppen. `import --only-new --additions` legt nur sie an. */
+    additions?: string[];
+  };
   bericht: Bericht;
 }
 
@@ -606,6 +612,7 @@ function bauen(
            des Prototyps noch liest (`register-datei.mjs`). */
         registry: { ...registry, components: registry.interfaces },
         entities: wb.entities,
+        ...(auswahl.nurGrundstand ? {} : { additions: neuzugaenge(wb) }),
       },
       bericht: wb.bericht,
     },
@@ -714,6 +721,29 @@ export const PROBE: Wunsch[] = [
   { typ: 'Item', namen: ['Trinket', 'Trinket (CoS)'] },
   { typ: 'Table', namen: ['Random Height and Weight', 'Random Height and Weight (GGR)'] },
 ];
+
+/**
+ * **Die Neuzugänge** (T-087): jeder Artikel ausserhalb des Grundstands,
+ * dazu die Ebenen, in denen sie liegen, und deren Gruppen. Ein Server, der
+ * mit einem älteren Importer geladen wurde, kennt manches aus dem
+ * Grundstand unter einer anderen Peg-Id — `--only-new` allein legte es ein
+ * zweites Mal an; mit `--additions` kommt nur, was hier steht.
+ */
+function neuzugaenge(wb: Werkbank): string[] {
+  const nachId = new Map(wb.entities.map((e) => [e.id, e] as const));
+  const raus = new Set<string>();
+  const ebene = (id: string) => {
+    if (raus.has(id)) return;
+    raus.add(id);
+    for (const r of nachId.get(id)?.relations ?? []) if (r.type === 'partOf') ebene(r.to);
+  };
+  for (const e of wb.entities) {
+    if (e.interfaces[0] === 'Layer' || !wb.teilungVon(e.id)) continue;
+    raus.add(e.id);
+    for (const r of e.relations ?? []) if (r.type === 'inLayer') ebene(r.to);
+  }
+  return [...raus];
+}
 
 /** Jede Kanten-Id mit der Peg-Id ihres Artikels davor, damit sie im ganzen
  *  Bestand nur einmal vorkommt. Wiederholbar: was schon so heisst, bleibt. */

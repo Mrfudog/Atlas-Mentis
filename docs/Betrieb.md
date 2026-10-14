@@ -493,14 +493,18 @@ neuen Artikeln nennt die Nummer, die sein Ziel im Bestand trägt; der
 Bestand selbst bleibt. Die Zeile sagt `… davon mit angeglichener Nummer
 oder angeglichenen Verweisen`.
 
-**Nur neue Ebenen** (`new-layers`, `--only-new --new-layers`, T-087):
-legt nur Ebenen an, die es noch nicht gibt, und die Artikel, die ganz in
-solchen liegen. Für einen Bestand aus einem älteren Importer: dort tragen
-geteilte Aktionen und Merkmale oft eine andere Peg-Id als in der Datei,
-und `only-new` allein legte sie ein zweites Mal an (dev am 14.10.: rund
-5 000 Aktionen und 3 000 Merkmale). Ein Verweis auf einen Artikel, der
-dabei nicht mitkommt, wird ein Verweis nach Namen. Probelauf: `dry-run`
-mit `confirm` = `neue-ebenen`.
+**Nur die Neuzugänge** (`additions`, `--only-new --additions`, T-087):
+die Datei nennt in `additions`, was nicht zum Grundstand gehört (2024,
+UA, Fahrzeuge, Decks, Bastionen, Waffenmeisterschaften, mit ihren Ebenen
+und Gruppen), und nur das wird angelegt — dazu, was ein Neuzugang über
+eine Kante braucht und noch nirgends steht. Für einen Bestand aus einem
+älteren Importer: dort tragen geteilte Aktionen und Merkmale oft eine
+andere Peg-Id als in der Datei, und `only-new` allein legte sie ein
+zweites Mal an (dev am 14.10.: rund 5 000 Aktionen und 3 000 Merkmale);
+ausserdem brächte es Abenteuer und Buchtext des Grundstands mit, die über
+die aufgeschaltete Gruppe „D&D 5e (2014)" sofort im Spiel wären. Ein
+Verweis auf einen Artikel, der nicht mitkommt, wird ein Verweis nach
+Namen. Probelauf: `dry-run` mit `confirm` = `neues`.
 
 **2024, Unearthed Arcana, Fahrzeuge, Decks, Bastionen** (T-087,
 REQ-243): seit T-087 bringt ein Lauf alles, jede Quelle in ihre Ebene —
@@ -616,7 +620,7 @@ nennt sie ausdrücklich.
 | --- | --- |
 | *Use workflow from* | `preprod` für dev, `main` für prod — die Zweigregel der Environments verlangt es, ein Lauf vom falschen Zweig bricht gleich ab |
 | `environment` | `dev` oder `prod` |
-| `mode` | `only-new` (Vorgabe): nur anlegen, was es noch nicht gibt · `new-layers`: wie `only-new`, nur neue Ebenen und ihre Artikel (T-087) · `dry-run`: nur sagen, was `only-new` täte (mit `confirm` = `ersetzen`: was `replace-layer` täte, mit `neue-ebenen`: was `new-layers` täte) · `replace-layer`: Ebene neu laden, nur mit `confirm` = `ersetzen` · `add`: dazulegen und Bestehendes überschreiben · `layers`: nur die Ebenen — Gruppen und Herausgeber anlegen, Beschreibung nachtragen, kein Artikel (T-088, T-094) |
+| `mode` | `only-new` (Vorgabe): nur anlegen, was es noch nicht gibt · `additions`: wie `only-new`, nur die Neuzugänge seit T-087 · `dry-run`: nur sagen, was `only-new` täte (mit `confirm` = `ersetzen`: was `replace-layer` täte, mit `neues`: was `additions` täte) · `replace-layer`: Ebene neu laden, nur mit `confirm` = `ersetzen` · `add`: dazulegen und Bestehendes überschreiben · `layers`: nur die Ebenen — Gruppen und Herausgeber anlegen, Beschreibung nachtragen, kein Artikel (T-088, T-094) |
 | `sources` | nur diese Quellen, z. B. `PHB,MM` oder ein Modulkürzel; leer heisst alles |
 | `confirm` | `ersetzen` für `replace-layer`, sonst leer |
 | `source-ref` | Stand von `5etools-src` (Zweig oder Tag); leer heisst der neueste |
