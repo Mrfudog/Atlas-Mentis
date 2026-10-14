@@ -30,6 +30,14 @@
  * gibt ihm einen `discount`. Ob Marken einmal Preise bewegen, ist offen
  * (E-043).
  *
+ * **Der Listenpreis kommt aus der geltenden Fassung** (T-139): die Kante
+ * `sells` zeigt aufs Original, und eine aufgeschaltete Ebene darf es
+ * überschreiben — etwa „AI generated prices" mit einem geschätzten Preis.
+ * Welche Fassung gilt, sagt der Stapel (`resolveArticle`); der Laden
+ * bekommt die Auflösung als `resolve` mit, damit er den Stapel nicht selbst
+ * rechnen muss. Woher der Preis kommt, reitet als `listNote` mit
+ * (`Item.priceNote`) — ein geschätzter Preis soll als solcher dastehen.
+ *
  * **Prozent rechnen auf den Grundpreis**, nicht aufeinander: −10 % und
  * −10 % sind −20 %, gleich in welcher Reihenfolge die Kanten stehen. Jeder
  * Schritt wird auf Kupfer gerundet, und der Preis fällt nicht unter null.
@@ -86,8 +94,10 @@ export interface WareOffer {
   /** Leer heisst: so viele, wie man will. */
   qty?: number;
   available: boolean;
-  /** Der Listenpreis des Gegenstands. */
+  /** Der Listenpreis des Gegenstands (aus der geltenden Fassung, T-139). */
   list?: number;
+  /** Woher der Listenpreis kommt (`Item.priceNote`), etwa „estimated: …". */
+  listNote?: string;
   /** Was der Laden verlangt, bevor Abschläge greifen. */
   base?: number;
   /** Nach allen Abschlägen; fehlt, wenn es keinen Grundpreis gibt. */
@@ -99,6 +109,12 @@ export interface ShopContext {
   entities: ReadonlyMap<EntityId, Entity>;
   /** Wer kauft: eine Figur oder eine Gruppe. Ohne: der Preis am Tisch. */
   buyer?: Entity;
+  /**
+   * Welche Fassung eines Gegenstands gilt (T-139): der Server gibt
+   * `resolveArticle` gegen den Stapel der laufenden Kampagne mit. Ohne:
+   * das Original.
+   */
+  resolve?: (item: Entity) => Entity;
 }
 
 const zahl = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
@@ -179,9 +195,12 @@ export function shopWares(shop: Entity, ctx: ShopContext): WareOffer[] {
   const laden = ladenAbschlaege(shop, ctx);
   const out: WareOffer[] = [];
   for (const r of kanten(shop, 'sells')) {
-    const item = ctx.entities.get(r.to);
-    if (!item) continue;
+    const roh = ctx.entities.get(r.to);
+    if (!roh) continue;
+    const item = ctx.resolve ? ctx.resolve(roh) : roh;
     const list = itemPrice(item);
+    const note = item.components?.['Item']?.['priceNote'];
+    const listNote = list !== undefined && typeof note === 'string' && note.trim() ? note.trim() : undefined;
     const eigen = zahl(r.props?.['price']);
     const base = eigen !== undefined && eigen >= 0 ? eigen : list;
     const ware = typeof r.props?.['mod'] === 'string' && (r.props['mod'] as string).trim()
@@ -196,6 +215,7 @@ export function shopWares(shop: Entity, ctx: ShopContext): WareOffer[] {
       ...(qty !== undefined ? { qty } : {}),
       available: r.props?.['available'] !== false && qty !== 0,
       ...(list !== undefined ? { list } : {}),
+      ...(listNote ? { listNote } : {}),
       ...(base !== undefined ? { base } : {}),
       ...(price !== undefined ? { price } : {}),
       steps,

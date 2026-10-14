@@ -80,3 +80,40 @@ describe('refs.shop (T-129)', () => {
     expect(r.json().refs.shop).toBeUndefined();
   });
 });
+
+describe('refs.shop liest die geltende Fassung (T-139)', () => {
+  it('nimmt den Preis aus einer aufgeschalteten Überschreibung, mit Herkunft — abgeschaltet gilt das Original', async () => {
+    const ring = art('ring', 'Item', 'Ring of Warmth', 'item-0003', { components: { Item: { rarity: 'uncommon' } } });
+    const schaetzung = art('ring-ai', 'Item', 'Ring of Warmth', 'item-0004', {
+      components: { Item: { rarity: 'uncommon', copperPrice: 40000, priceNote: 'estimated: uncommon' } },
+      relations: [
+        { id: 'ra~1', type: 'inLayer', to: 'ki' },
+        { id: 'ra~2', type: 'overrides', to: 'ring' },
+      ],
+    });
+    const gruppe = art('ki-gruppe', 'Layer', 'AI content', 'layer-0001', { components: { Layer: { kind: 'group', groupBy: 'publisher' } } });
+    const ebene = art('ki', 'Layer', 'AI generated prices', 'layer-0002', {
+      components: { Layer: { kind: 'pack', order: 50 } },
+      relations: [{ id: 'ki~1', type: 'partOf', to: 'ki-gruppe' }],
+    });
+    const laden = (await repo.getEntity('laden'))!;
+    await repo.putEntity({ ...laden, relations: [...(laden.relations ?? []), { id: 'l~3', type: 'sells', to: 'ring' }] });
+    for (const e of [ring, schaetzung, gruppe, ebene]) await repo.putEntity(e);
+    const k = (await repo.getEntity('k'))!;
+    const an = { ...k, relations: [{ id: 'k~1', type: 'activates', to: 'ki-gruppe' }] };
+    await repo.putEntity(an);
+    const cookie = await anmelden('leitung');
+
+    let w = (await app.inject({ method: 'GET', url: '/api/entities/laden', headers: { cookie } })).json().refs.shop.table;
+    expect(w.find((x: { name: string }) => x.name === 'Ring of Warmth')).toMatchObject({
+      item: 'ring-ai', list: 40000, listNote: 'estimated: uncommon', price: 39900,
+    });
+
+    await repo.putEntity({ ...k, relations: [{ id: 'k~1', type: 'activates', to: 'ki-gruppe', props: { mode: 'off' } }, { id: 'k~2', type: 'activates', to: 'ki', props: { mode: 'off' } }] });
+    w = (await app.inject({ method: 'GET', url: '/api/entities/laden', headers: { cookie } })).json().refs.shop.table;
+    const ohne = w.find((x: { name: string }) => x.name === 'Ring of Warmth');
+    expect(ohne).toMatchObject({ item: 'ring' });
+    expect(ohne.list).toBeUndefined();
+    expect(ohne.price).toBeUndefined();
+  });
+});

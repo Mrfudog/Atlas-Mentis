@@ -111,3 +111,18 @@ describe('shopWares: Waren, Menge, und woher jeder Abschlag kommt', () => {
     expect(shopWares(l, { entities: welt(gruppe, wirt, rook, fremd, l), buyer: fremd })[0]!.price).toBe(900);
   });
 });
+
+describe('shopWares liest die geltende Fassung (T-139)', () => {
+  it('nimmt Preis und Herkunft aus der Fassung, die `resolve` nennt', () => {
+    const ring = art('ring', 'Item', 'Ring of Warmth', { components: { Item: { rarity: 'uncommon' } } });
+    const ki = art('ring-ai', 'Item', 'Ring of Warmth', {
+      components: { Item: { copperPrice: 40000, priceNote: 'estimated: uncommon' } },
+    });
+    const laden = art('laden', 'Shop', 'Wick', { relations: [{ id: 's~1', type: 'sells', to: 'ring' }] });
+    const entities = welt(ring, ki, laden);
+    expect(shopWares(laden, { entities })[0]).toMatchObject({ item: 'ring' });
+    expect(shopWares(laden, { entities })[0]!.list).toBeUndefined();
+    const w = shopWares(laden, { entities, resolve: (e) => (e.id === 'ring' ? ki : e) })[0]!;
+    expect(w).toMatchObject({ item: 'ring-ai', list: 40000, listNote: 'estimated: uncommon', price: 40000 });
+  });
+});

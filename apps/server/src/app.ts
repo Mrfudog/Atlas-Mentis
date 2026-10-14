@@ -1702,7 +1702,17 @@ export function buildApp({
   ): Promise<{ table: unknown[]; mine: unknown[] } | null> {
     const registry = await repo.getRegistry();
     if (!typeChain(registry, primaryInterface(e)).includes(SHOP_TYPE)) return null;
-    const verkauft = (e.relations ?? []).filter((r) => r.type === 'sells').map((r) => map.get(r.to)).filter((x): x is Entity => !!x);
+    /* Die geltende Fassung jeder Ware (T-139): eine aufgeschaltete Ebene
+       wie „AI generated prices" überschreibt das Original, und gesiebt
+       wird die Fassung, die im Spiel ist. */
+    const kampagne = currentCampaign(map, registry.settings ?? null);
+    const index = overridersIndex(map.values());
+    const resolve = (x: Entity) => resolveArticle(map, x, kampagne, registry, index);
+    const verkauft = (e.relations ?? [])
+      .filter((r) => r.type === 'sells')
+      .map((r) => map.get(r.to))
+      .filter((x): x is Entity => !!x)
+      .map(resolve);
     const user = await viewerOf(request);
     const figuren = (user?.actorIds ?? []).map((id) => map.get(id)).filter((x): x is Entity => !!x);
     const genannt = new Set<string>();
@@ -1723,8 +1733,8 @@ export function buildApp({
           }),
         }));
     return {
-      table: benannt(shopWares(e, { entities: map })),
-      mine: figuren.map((f) => ({ id: f.id, name: entityName(f), wares: benannt(shopWares(e, { entities: map, buyer: f })) })),
+      table: benannt(shopWares(e, { entities: map, resolve })),
+      mine: figuren.map((f) => ({ id: f.id, name: entityName(f), wares: benannt(shopWares(e, { entities: map, buyer: f, resolve })) })),
     };
   }
 
@@ -2668,10 +2678,12 @@ export function buildApp({
     const kampagne = currentCampaign(map, registry.settings ?? null);
     if (!kampagne || !inStack(map, e, kampagne, registry)) return [];
     const ebenen = layersOf(e);
+    /* Die Verwaltung schreibt ohnehin alles; eine Fassung legt sie in die
+       Ebene der Kampagne oder in eine eigene, die im Spiel ist — etwa
+       „AI generated prices" (T-139). */
     if (user.isAdmin) {
       if (!ebenen.length) return [];
-      const ebene = await kampagnenEbene(map, kampagne);
-      return ebene && !ebenen.includes(ebene.id) ? [ebene] : [];
+      return (await zielEbenen(user, map, kampagne)).filter((l) => !ebenen.includes(l.id));
     }
     if ((await ownedBy(user, map.values())).has(e.id)) return [];
     return (await zielEbenen(user, map, kampagne)).filter((l) => !ebenen.includes(l.id));

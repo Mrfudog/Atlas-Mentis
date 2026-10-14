@@ -962,7 +962,9 @@ Migration 035 an. **Was nicht in den eigenen Ebenen liegt, ändert man als
 Fassung:** „Edit" an einem fremden Artikel — auch einem ohne Ebene, der
 bleibt bei der Verwaltung — legt über `POST /api/entities/:id/adapt` eine
 Fassung (E5) in eine eigene Ebene, die im Spiel ist (`zielEbenen`; bei
-mehreren `{ layer }`). `ready` bleibt bei `gm`: ändert die Mitleitung oder
+mehreren `{ layer }`). Die Verwaltung wählt dabei zwischen der Ebene der
+Kampagne und ihren eigenen Ebenen im Spiel — so legt die Werkbank geschätzte
+Preise in „AI generated prices" (T-139). `ready` bleibt bei `gm`: ändert die Mitleitung oder
 eine Spielerin in ihrer Ebene etwas Fertiges, fällt es zurück wie oben.
 
 ### 9.5 Handwerk: gelernt und gebunden (D55)
@@ -1098,6 +1100,15 @@ flowchart LR
   2024 rare". Der Buchstil zeigt es hinter dem Preis. Ein Satz und keine
   Aufzählung: nach welcher Regel geschätzt wird, entscheidet die Leitung,
   und ein geschätzter Preis soll sich finden und ersetzen lassen.
+- **Geschätzte Preise wohnen in einer eigenen Ebene** (T-139, Vorgabe der
+  Leitung 14.10.): „AI generated prices" in der Herausgeber-Gruppe „AI
+  content". Der Grundartikel behält, was die Quelle sagt; die Schätzung
+  ist eine Fassung mit `overrides` aufs Original (E5) und `priceNote`.
+  Schaltet die Kampagne die Gruppe ab (`activates` `mode: 'off'`), gilt
+  wieder das Original — ohne Preis. Die Artikelseite zeigt den Unterschied
+  an `copperPrice` wie jede Fassung (E6). Ein Listenpreis, den die Quelle
+  als Rechnung gibt (`valueExpression`), ist keine Schätzung und bleibt im
+  Grundartikel.
 - **Ein Abschlag ist ein Wort**: `−10 gp`, `+5 sp`, `−10 %`
   (`parsePriceMod`). Ohne Einheit ist er keiner; was sich nicht lesen
   lässt, zählt 0 und steht als `invalid` in der Herkunft.
@@ -1109,7 +1120,10 @@ flowchart LR
   Rang ausserhalb der Leiter trifft niemanden. Eine Fraktion, die ihren
   eigenen Mitgliedern Rabatt gibt, zeigt auf sich selbst.
 - **Gerechnet beim Lesen** (D8, `shopWares`, `packages/model/src/shop.ts`):
-  Grundpreis = `sells.price` sonst Listenpreis; dann Laden, Rabatte, Ware.
+  Grundpreis = `sells.price` sonst Listenpreis **der geltenden Fassung**
+  (`ShopContext.resolve`, am Server `resolveArticle` gegen den Stapel,
+  T-139; ihre Herkunft reitet als `listNote` mit); dann Laden, Rabatte,
+  Ware.
   **Prozent auf den Grundpreis**, addiert, je Schritt auf Kupfer gerundet;
   nie unter 0. Jeder Schritt nennt Geber, Empfänger und Rang.
 - **Am Server** (`refs.shop`): am Tisch (Laden und Ware) und je eigener

@@ -264,6 +264,8 @@ export interface Ware {
   qty?: number;
   available: boolean;
   list?: number;
+  /** Woher der Listenpreis kommt (`Item.priceNote`, T-139). */
+  listNote?: string;
   base?: number;
   price?: number;
   steps: Preisschritt[];

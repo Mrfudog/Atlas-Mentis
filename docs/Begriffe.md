@@ -1527,6 +1527,15 @@ dreimal an den Läden. Der Rang ist dieselbe Leiter wie beim Wissen
 (`Faction.ranks`, A7): was der Zirkel bekommt, bekommt der Novize noch
 nicht, und ein Rang, der nicht in der Leiter steht, gewährt nichts.
 
+**Ein geschätzter Preis ist eine Fassung, kein Eintrag im Original**
+(T-139). Die Quelle nennt für die meisten magischen Gegenstände keinen
+Preis; was Claude dafür schätzt, liegt in der Ebene „AI generated prices"
+(Gruppe „AI content") als Überschreibung, mit seiner Herkunft in
+`priceNote`. So bleibt sichtbar, was das Buch sagt und was geschätzt ist,
+und wer ohne Schätzungen spielen will, schaltet eine Gruppe ab, statt
+tausend Felder zu leeren. Der Laden liest darum die **geltende** Fassung
+seiner Ware — sonst bliebe die Schätzung an der Theke unsichtbar.
+
 **Der Preis wird gerechnet, nie gespeichert** (D8). Ein gespeicherter
 Preis wäre am Tag falsch, an dem jemand in der Gilde aufsteigt; der
 gerechnete sagt dazu, woher jeder Abschlag kommt. Prozent rechnen auf den
