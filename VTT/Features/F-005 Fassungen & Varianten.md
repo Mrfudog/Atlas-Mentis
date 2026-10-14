@@ -19,9 +19,9 @@ Epic: [[EP-01 Inhaltsgerüst]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-008]] Variant mechanism: copy with variantOf link | – | 1 | teils |
-| [[REQ-009]] Override mechanism: explicit overrides relation with scope | – | 2 | steht |
-| [[REQ-108]] Campaign-specific lore divergence via campaign-scoped blocks and overrides | – | 3 | steht |
+| [[REQ-008]] Varianten einer Sache | Spielleitung | 1 | teils |
+| [[REQ-009]] Überschreiben in der eigenen Ebene | Spielleitung | 2 | steht |
+| [[REQ-108]] Lore der Kampagne abweichen lassen | Spielleitung | 3 | steht |
 | [[REQ-264]] Vergleichsebenen der Kampagne | Spielleitung | 2 | teils |
 | [[REQ-310]] Fassungen am Feld zeigen | Spielleitung | 2 | steht |
 <!-- stories:ende -->

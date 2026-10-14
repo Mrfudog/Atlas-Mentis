@@ -19,9 +19,9 @@ Epic: [[EP-01 Inhaltsgerüst]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-013]] Reference registry & auto-linking: ID-based links, alias matching, auto-link when unambiguous, suggest when ambiguous | – | 1 | teils |
-| [[REQ-014]] Backlinks view | – | 3 | steht |
-| [[REQ-174]] Parameterised rule templates: `{VAR}` placeholders in RuleElement text, bound per reference; resolution order reference → entity → campaign register | – | 2 | steht |
-| [[REQ-175]] Inline rule reference panel: text scanned against RuleElement names and aliases, matches shown as an expandable block in the view | – | 3 | steht |
-| [[REQ-176]] Similarity suggestions on create: fuzzy name/text matching proposes existing entities before a duplicate is made; promote-to-reference in one action | – | 3 | teils |
+| [[REQ-013]] Verweise nach Nummer, getippt nach Name | Spielleitung | 1 | teils |
+| [[REQ-014]] Rückbezüge sehen | Spielleitung | 3 | steht |
+| [[REQ-174]] Regeltexte mit Platzhaltern | Spielleitung | 2 | steht |
+| [[REQ-175]] Regelbegriffe im Text erkennen | Spieler | 3 | steht |
+| [[REQ-176]] Ähnliches vor dem Anlegen vorschlagen | Spielleitung | 3 | teils |
 <!-- stories:ende -->

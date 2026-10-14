@@ -80,12 +80,14 @@ export function leseStoryBody(body) {
   }
   for (const k of ['satz', 'anmerkungen', 'wortlaut']) teile[k] = teile[k].trim();
   teile.wortlaut = teile.wortlaut.replace(/^> ?/gm, '');
+  /* Der Platzhalter ist kein Satz — er wird beim Schreiben neu gesetzt. */
+  if (/^\*(Noch als Story|Weggefallen)/.test(teile.satz)) teile.satz = '';
   return teile;
 }
 
 export function schreibeStory(fm, teile) {
   const z = [schreibeFrontmatter(fm, 'story'), `# ${fm.id} ${fm.title}`, ''];
-  z.push(teile.satz || '*Noch als Story zu formulieren.*', '');
+  z.push(teile.satz || platzhalter(fm), '');
   if (teile.akzeptanz?.length) {
     z.push('## Akzeptanzkriterien', '');
     for (const a of teile.akzeptanz) z.push(`- ${a}`);
@@ -94,6 +96,14 @@ export function schreibeStory(fm, teile) {
   if (teile.anmerkungen) z.push('## Anmerkungen', '', teile.anmerkungen, '');
   if (teile.wortlaut) z.push('## Bisheriger Wortlaut', '', ...teile.wortlaut.split('\n').map((l) => `> ${l}`.trimEnd()), '');
   return z.join('\n');
+}
+
+/* Ohne Satz: eine weggefallene Story nennt, was sie trägt; jede andere
+   ist noch die alte Anforderung und wartet auf ihre Formulierung. */
+function platzhalter(fm) {
+  if (fm.status !== 'dropped') return '*Noch als Story zu formulieren.*';
+  const durch = (fm.ersetztDurch ?? []).map((id) => `[[${id}]]`).join(', ');
+  return `*Weggefallen (${fm.stand})*` + (durch ? ` — getragen von ${durch}.` : fm.standNotiz ? ` — ${fm.standNotiz}.` : '.');
 }
 
 /* Der Satz aus seinen drei Teilen. Ein Ziel beginnt klein („mein Token …“),
