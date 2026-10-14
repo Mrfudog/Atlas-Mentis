@@ -138,6 +138,26 @@ export interface Bezuege {
   reading?: LeseZiel;
   /** Eine Fassung aus einer Vergleichsebene (T-092): nicht im Spiel, auf Wunsch sichtbar. */
   compare?: boolean;
+  /** Womit an einem Rezept gefertigt wird (T-122): am Tisch und je eigener Figur. */
+  craft?: Fertigungswerte;
+}
+
+/** Wer einen Fertigungswert gesetzt hat (`craftCheck`): die Quelle oder ein Träger einer `craftsWith`-Kante. */
+export interface FertigungsQuelle {
+  by: 'recipe' | 'campaign' | 'party' | 'actor';
+  holder?: string;
+  name?: string;
+  on?: 'recipe' | 'tool';
+}
+export interface Fertigungswert {
+  tool: string;
+  ability: string;
+  dc: number;
+  source: { tool: FertigungsQuelle; ability: FertigungsQuelle; dc: FertigungsQuelle };
+}
+export interface Fertigungswerte {
+  table: Fertigungswert;
+  mine: { id: string; name: string; check: Fertigungswert }[];
 }
 
 /** Eine Ebene, aus der eine Fassung kommt (`GET /api/entities/:id/versions`). */

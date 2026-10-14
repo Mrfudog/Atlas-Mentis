@@ -982,6 +982,9 @@ flowchart LR
   Kopie des Rezepts wäre eine zweite Fassung, die eine Korrektur am
   Original nicht mehr erreicht; ein Feld an der Kampagne wäre eine Liste
   von Rezeptnamen neben den Rezepten.
+  Die Artikelseite eines Rezepts zeigt das Ergebnis (Element `crafting`):
+  am Tisch und je eigener Figur, mit dem, was nicht aus dem Rezept kommt —
+  gerechnet am Server (`refs.craft`), nicht in der Maske.
 - **Ein Regelwerk mit Rezepten** (Kibbles’ Compendium, T-122) ist eine
   Ebene wie ein Buch: Rezepte, Materialien und Gegenstände sind Artikel
   darin, `needs`/`yields` verbinden sie, und jedes Rezept trägt eine
@@ -1111,7 +1114,7 @@ sind Zeilen, Darstellung ist Code.**
 |---|---|
 | `heading`, `text` | eine Überschrift, einen festen Text |
 | `description`, `image` | die Beschreibung, das Bild |
-| `fields` | die Feldtabelle: `fields: 'all'` oder `['Typ', 'Typ.feld']`, `except`, `columns` |
+| `fields` | die Feldtabelle: `fields: 'all'` oder `['Typ', 'Typ.feld']`, `except`, `columns`. `'all'` und der Rest nehmen `Image` nicht — Bild, Unterschrift und Alternativtext gehören dem Element `image`; einzeln genannt stehen sie da (T-090) |
 | `prose` | die Prosafelder, mit Anlegen und Bearbeiten an Ort und Stelle |
 | `linked` | die Felder der Teil-Artikel (§5.3), mit eigenen Eingaben |
 | `composed` | die eingesetzten Regeln (`section`-Kanten), Variablen aufgelöst |

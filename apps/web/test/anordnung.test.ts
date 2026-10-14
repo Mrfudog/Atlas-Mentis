@@ -55,6 +55,26 @@ describe('anordnen', () => {
     expect(mit[1]!.zellen!.map((z) => z.ref)).toEqual(['Spell.school']);
   });
 
+  it('lässt Bildunterschrift und Alternativtext aus dem Rest, wenn kein Bild gezeichnet wird (T-090)', () => {
+    const mitBild = {
+      ...reg,
+      interfaces: {
+        Spell: { ...reg.interfaces['Spell']!, extends: ['Image'] },
+        Image: {
+          name: 'Image',
+          schema: { type: 'object', properties: { caption: { type: 'string', title: 'Caption' }, alt: { type: 'string', title: 'Alt text' } } },
+        },
+      },
+    } as unknown as Registry;
+    const b: Entity = { ...e, components: { ...e.components, Image: { caption: 'Unter dem Bild', alt: 'Ein Bild' } } };
+    const rest = anordnen(nurLevel, feldZellen(mitBild, b, () => undefined), prosaVon(mitBild, b), { beschreibung: null, rest: true });
+    expect(rest.find((s) => s.id === 'rest-f')!.zellen!.map((z) => z.ref)).toEqual(['Spell.school']);
+    const alle = anordnen([{ id: 'f', el: 'fields', fields: 'all' }], feldZellen(mitBild, b, () => undefined), [], { beschreibung: null, rest: false });
+    expect(alle[0]!.zellen!.map((z) => z.ref)).toEqual(['Spell.level', 'Spell.school']);
+    const genannt = anordnen([{ id: 'f', el: 'fields', fields: ['Image.caption'] }], feldZellen(mitBild, b, () => undefined), [], { beschreibung: null, rest: false });
+    expect(genannt[0]!.zellen!.map((z) => z.ref)).toEqual(['Image.caption']);
+  });
+
   it('ein Feld steht im ersten Element, das es nimmt', () => {
     const zwei: LayoutElement[] = [
       { id: 'a', el: 'fields', fields: ['Spell'] },
