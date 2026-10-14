@@ -64,6 +64,8 @@ function datenstand(): Datenstand {
   });
   add('subclass', { name: 'Champion', shortName: 'Champion', source: 'PHB', className: 'Fighter', classSource: 'PHB', subclassFeatures: ['Improved Critical|Fighter||Champion||3'],
     subclassTableGroups: [{ subclasses: [{ name: 'Champion', source: 'PHB' }], colLabels: ['{@filter Spells Known|spells}'], rows: Array.from({ length: 20 }, (_, i) => [i < 2 ? 0 : i + 1]) }] });
+  add('subclass', { name: 'Knowledge Domain', shortName: 'Knowledge', source: 'PHB', className: 'Cleric', classSource: 'PHB' });
+  add('deity', { name: 'Oghma', source: 'PHB', pantheon: 'Forgotten Realms', domains: ['Knowledge', 'Unknown'] });
   add('table', { name: 'Trinkets', source: 'PHB', colLabels: ['d6', 'Trinket'], rows: [['1-3', 'A {@item scimitar|phb}'], ['4-6', 'A button']] });
   add('vehicle', { name: 'Galley', source: 'GoS' });
   return {
@@ -216,6 +218,14 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
     expect(kante.props).toBeUndefined();
     expect(prosa(teile[0]!)).toBe('{CREATURE} can take the [[action-0001|Disengage]] action as a bonus action.');
     expect(goblin.relations?.some((r) => r.type === 'equips')).toBe(true);
+  });
+
+  it('lässt die Domänen einer Gottheit auf die Unterklassen zeigen (E-020, T-099)', () => {
+    const oghma = finde(es, 'Deity', 'Oghma');
+    const wissen = finde(es, 'Subclass', 'Knowledge Domain');
+    expect(oghma.components['Deity']?.['domains']).toEqual([wissen.id]);
+    /* Was keine Unterklasse trifft, steht als Notiz — nicht als Verweis ins Leere. */
+    expect(oghma.components['Notes']?.['note']).toEqual([{ id: 'domains', value: 'Domains: Unknown' }]);
   });
 
   it('legt gleichlautende Merkmale einmal an, mit dem Namen an der Kante', () => {
