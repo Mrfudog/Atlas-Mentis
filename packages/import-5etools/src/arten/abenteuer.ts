@@ -293,7 +293,7 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
       const karte = neu('Map', titel, ['map', ent.name, titel]);
       /* An einer Szene hängt die Karte an ihr; im Text eines Kapitels
          bekommt sie ihre eigene (E-026). Deren Id ist die der Karte mit
-         `_scene` — so bildet die Migration 039 für schon geladene Karten
+         `_scene` — so bildet die Migration 040 für schon geladene Karten
          dieselbe, und `--only-new` legt keine zweite an. */
       let ort = ent;
       if (ent.interfaces[0] !== 'Scene') {

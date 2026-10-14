@@ -162,7 +162,7 @@ describe('Abenteuer als Ebene (T-082)', () => {
     expect(szene.components['Visibility']).toEqual({ audience: 'gm' });
   });
 
-  it('ein Kapitel behält die Peg-Id, die es als Story hatte (Migration 039)', () => {
+  it('ein Kapitel behält die Peg-Id, die es als Story hatte (Migration 040)', () => {
     const kapitel = finde(es, 'Arc', 'Chapter 1: The Reed Caves');
     const alt = `e5_${createHash('sha1').update('Story|adventure|tst|the reed caves').digest('hex').slice(0, 12)}`;
     expect(kapitel.id).toBe(alt);

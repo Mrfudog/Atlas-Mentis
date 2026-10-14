@@ -689,7 +689,7 @@ try {
       ebene('e5_book_t082a', 'Probe Adventure', 'adventure', 81),
       ebene('e5_book_t082b', 'Probe Sourcebook', 'sourcebook', 82),
       { id: 'st_probe_t082', name: 'Probe Chapter', interfaces: ['Story'], components: { ...ident('Probe Chapter', 'story-0981'), Story: { kind: 'chapter' } }, relations: [{ id: 'st_probe_t082~in', type: 'inLayer', to: 'e5_book_t082a', props: {} }] },
-      /* Eine Karte am Kapitel selbst: Migration 039 gibt ihr eine Szene (E-026). */
+      /* Eine Karte am Kapitel selbst: Migration 040 gibt ihr eine Szene (E-026). */
       {
         id: 'e5_probe_t097_karte', name: 'Probe Map', interfaces: ['Map'], components: ident('Probe Map', 'map-0981'),
         relations: [{ id: 'e5_probe_t097_karte~in', type: 'inLayer', to: 'e5_book_t082a', props: {} }, { id: 'e5_probe_t097_karte~of', type: 'mapOf', to: 'st_probe_t082', props: {} }],
@@ -711,9 +711,9 @@ try {
       pruefe('Abenteuer als Ebene: die Migration setzt kind adventure, ein Quellenbuch bleibt book',
         (await art('e5_book_t082a')) === 'adventure' && (await art('e5_book_t082b')) === 'book',
         `${await art('e5_book_t082a')} / ${await art('e5_book_t082b')}`);
-      /* Kapitel als Arc (T-097, E-026): Migration 039 an denselben Proben. */
+      /* Kapitel als Arc (T-097, E-026): Migration 040 an denselben Proben. */
       rmSync(join(ordner, name));
-      writeFileSync(join(ordner, name097), readFileSync(join(DIST, '..', 'migrations', '039_kapitel_als_arc.sql'), 'utf8'));
+      writeFileSync(join(ordner, name097), readFileSync(join(DIST, '..', 'migrations', '040_kapitel_als_arc.sql'), 'utf8'));
       await migrate(pool, { env: {} }, ordner);
       const kap = await repo.getEntity('st_probe_t082');
       /* Das Probekapitel ist selbst angelegt (keine e5_-Id): das Wort bleibt. */
@@ -831,7 +831,7 @@ try {
   /* ------------------------------------ Gruppe je Kampagne (T-100) */
   {
     /* Eine neue Kampagne bringt ihre Gruppe mit, in ihrer Ebene; und
-       Migration 039 noch einmal unter einem Probenamen: Runde A und B
+       Migration 040 noch einmal unter einem Probenamen: Runde A und B
        bekommen je eine, die Figur der Spielerin kommt in die von Runde A. */
     const { migrate } = await import(join(DIST, 'migrate.js'));
     const { PgRepository } = await import(join(DIST, 'repo.pg.js'));
