@@ -315,7 +315,7 @@ Authorization: Bearer atm_…
 |---|---|
 | wirkt wie | die Sitzung **seines Kontos**: dieselben Rollen, dieselben Figuren, dasselbe Sieb, dieselben Schreibrechte (`mayWrite`) |
 | Rechte | `read` oder `write`. `read` darf alles lesen, was das Konto liest, und die zwei POST, die nichts schreiben: `/api/validate` und `/api/bulk` mit `dryRun: true` |
-| Ablauf | immer — Vorgabe 30 Tage, höchstens 365. Ein Token, das ewig gilt, vergisst man in irgendeiner Umgebung |
+| Ablauf | immer — Vorgabe 30 Tage, höchstens 365. Die Seite fragt nach einem **Datum** (`expiresAt`, gilt bis zum Ende dieses Tages, UTC; ein vergangenes lehnt der Server ab, ein zu fernes kürzt er auf 365 Tage), Kommandozeile und Skripte nach Tagen (`days`). Ein Token, das ewig gilt, vergisst man in irgendeiner Umgebung |
 | gespeichert | nur der Hash (`app_token.token_hash`), wie bei Sitzung und Einladung; der Klartext steht **genau einmal** in der Antwort auf das Anlegen |
 | Präfix | `atm_` — damit man es erkennt, wo es auftaucht (Log, Umgebung, Chat) |
 
@@ -339,9 +339,19 @@ pnpm --filter @nw/server user token werkbank list
 pnpm --filter @nw/server user token werkbank drop tok_…
 ```
 
-In der Seite: Klick auf den eigenen Namen in der Kopfleiste → **Account** →
-API tokens. Wie die Leitung einer Claude-Sitzung damit Zugang zu dev gibt:
-[Betrieb › Werkzeugzugang](Betrieb.md#werkzeugzugang).
+In der Seite an zwei Orten, derselbe Baustein (`nw-api-tokens`, T-112):
+Klick auf den eigenen Namen in der Kopfleiste → **Account** → API tokens,
+und für Leitung und Verwaltung zuunterst in der **Werkbank** — dort, wo
+man das Token für eine Claude-Sitzung braucht. Es ist auch dort immer das
+**eigene**: Tokens anderer Konten sieht und widerruft niemand in der Seite
+(die Verwaltung tut es von der Kommandozeile). Angelegt wird mit Name,
+Rechten und Ablaufdatum; danach steht der Klartext einmal da, mit
+Kopierknopf und dem, was in die Cloud-Umgebung gehört: Host (der dieser
+Seite), Header `Authorization`, Präfix `Bearer` — und ein Knopf, der
+`Bearer atm_…` als ganzen Wert kopiert. „Done" oder das Verlassen der
+Seite nimmt ihn weg. Die Liste nennt je Token Rechte, Ablauf und letzte
+Nutzung; „Revoke" wirkt sofort. Wie die Leitung einer Claude-Sitzung
+damit Zugang zu dev gibt: [Betrieb › Werkzeugzugang](Betrieb.md#werkzeugzugang).
 
 **Die Werkbank** (Prüfungen `GET /api/checks`, Massenänderungen
 `POST /api/bulk`) ist für Leitung (`gm`/`co-gm` in irgendeiner Kampagne)
