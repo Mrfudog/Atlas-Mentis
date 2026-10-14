@@ -16053,7 +16053,15 @@ function renderHowto(v){
     "holds edge into the party's inventory and leaves its place in the grid "+
     "behind; a stack reserved for something (holds.reservedFor) stays put — "+
     "the site's server refuses to sell, move, use up or delete it while its "+
-    "crafting order runs, unless the GM releases it."));
+    "crafting order runs, unless the GM releases it. What arrives — bought, "+
+    "looted, a gift — lies in front of the character first (holds.unstowed, "+
+    "T-140) and is stowed by putting it into the grid, at a slot or into a "+
+    "container. How long it may lie there is a word on the campaign "+
+    "(Campaign.stowing): any time, until the session ends, or until the "+
+    "table moves on (the session's scene, fight or map changes). Then what "+
+    "is still unstowed leaves the inventory and stays at the session as a "+
+    "leftBehind edge, with its quantity and where it came from — nothing is "+
+    "deleted, and whoever goes back picks it up, unstowed again."));
   var hkB=handActionsCost();
   var leiterB=zonenListe(), sqB=carrySquares(), plB=parsePairs(setting("slotDraw",""));
   var sbB={size:"medium"}, abB={str:16};
@@ -16071,7 +16079,10 @@ function renderHowto(v){
     "  "+drawPath(pack)+"\n\n"+
     "Dagger at the belt                    slotDraw     →  "+(plB.belt||"—")+"\n"+
     "Longsword in the right hand: Drop     handActions  →  "+(hkB.drop||"—")+", then tier ground, still carried\n"+
-    "Longsword in the right hand: Stow     handActions  →  "+(hkB.stow||"—")+", to a free slot or the grid"}));
+    "Longsword in the right hand: Stow     handActions  →  "+(hkB.stow||"—")+", to a free slot or the grid\n\n"+
+    "Bought 2 × Lantern, 1 already in the pack   pack 1 · in front of her 2 (unstowed)\n"+
+    "Campaign.stowing bySessionEnd, session ends  pack 1 · session: leftBehind 2 × Lantern from her pack\n"+
+    "Picked up again                             pack 1 · in front of her 2 (unstowed)"}));
   /* ---- Ein Kampf, durchgerechnet (REQ-211–213, D53) ----
      Mit denselben Funktionen, die die Initiative nimmt (`expiresAt`,
      `hpWord`), und den Eigenschaften der Kante aus dem Register: ändert

@@ -40,3 +40,4 @@ export * from './shop.js';
 export * from './assets.js';
 export * from './uebernahme.js';
 export * from './registerabgleich.js';
+export * from './stowing.js';
