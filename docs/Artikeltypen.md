@@ -185,7 +185,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `pantheon` *string*, `title` *string*, `alignment` *string*, `domains` *array*, `symbol` *string*, `province` *string*, `plane` *string*
+- `pantheon` *string*, `title` *string*, `alignment` *string*, `domains` *link → Subclass*, `symbol` *string*, `province` *string*, `plane` *string*
 
 **Geerbte Felder**
 
@@ -1849,7 +1849,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `trade` *string*, `tool` *string*, `ability` *Ability: str | dex | con | int | wis | cha*, `dc` *number*, `time` *string*, `days` *number*, `yieldCount` *number*, `onFailure` *materialsLost | halfLost | nothingLost*
+- `trade` *string*, `tool` *Item articles*, `ability` *Ability: str | dex | con | int | wis | cha*, `dc` *number*, `time` *string*, `days` *number*, `yieldCount` *number*, `onFailure` *materialsLost | halfLost | nothingLost*
 
 **Geerbte Felder**
 

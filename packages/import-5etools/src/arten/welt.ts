@@ -193,7 +193,21 @@ export const WELT: Zuordnung[] = [
       wb.feld(ent, D, 'pantheon', e['pantheon']);
       wb.feld(ent, D, 'title', e['title'] ? wb.zeile(e['title']) : undefined);
       wb.feld(ent, D, 'alignment', gesinnung(e['alignment']));
-      wb.feld(ent, D, 'domains', liste(e['domains']).map(String).filter((d) => d !== 'None'));
+      /* Die Domänen zeigen auf die Unterklassen des Klerikers (E-020,
+         T-099): „Knowledge" ist der Kurzname von „Knowledge Domain". Was
+         keine trifft („Unknown"), steht als Notiz. */
+      const domaenen: string[] = [];
+      const ohne: string[] = [];
+      for (const d of liste(e['domains']).map(String).filter((d) => d !== 'None')) {
+        const ziel = wb.finde('subclass', [d, 'Cleric']);
+        if (ziel) domaenen.push(ziel.id);
+        else {
+          ohne.push(d);
+          wb.ctx.insLeere('subclass', `${d}|Cleric`);
+        }
+      }
+      wb.feld(ent, D, 'domains', [...new Set(domaenen)]);
+      if (ohne.length) wb.anmerkung(ent, 'domains', `Domains: ${ohne.join(', ')}`);
       wb.feld(ent, D, 'symbol', e['symbol'] ? wb.zeile(e['symbol']) : undefined);
       wb.feld(ent, D, 'province', e['province'] ? wb.zeile(e['province']) : undefined);
       wb.feld(ent, D, 'plane', e['plane'] ? wb.zeile(e['plane']) : undefined);
