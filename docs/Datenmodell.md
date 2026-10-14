@@ -1239,13 +1239,13 @@ flowchart LR
 
 Die Leitung prüft auf dev vor und zieht auf prod nach — nach Artikeln,
 Arten, Ebenen, Marken, Suchauswahl und Registerzeilen. Ausgelöst wird auf
-dev (Werkbank › Transfer); prod ist die Gegenstelle. Ablauf und
+dev (Werkbank › Transfer between installations); prod ist die Gegenstelle. Ablauf und
 Einrichtung: [Betrieb › Übernahme dev ↔ prod](Betrieb.md#übernahme-dev--prod).
 
 ```mermaid
 flowchart LR
   subgraph dev["dev (löst aus)"]
-    W["Werkbank › Transfer"] --> P["/api/transfer/preview<br/>/api/transfer/run"]
+    W["Werkbank › Transfer between installations"] --> P["/api/transfer/preview<br/>/api/transfer/run"]
     B[("transfer_base<br/>Stand der letzten Übernahme")]
     P --- B
   end

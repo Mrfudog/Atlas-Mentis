@@ -16,6 +16,7 @@ import {
 import { Bestand } from '../kern/bestand';
 import { ApiTokens } from '../konto/api-tokens';
 import { Session } from '../kern/session';
+import { Uebernahme } from './uebernahme';
 import { BEDINGUNGEN, OPS, auftragAus, formularFehlt, leeresFormular, type Formular } from './auftrag';
 
 /**
@@ -33,7 +34,7 @@ import { BEDINGUNGEN, OPS, auftragAus, formularFehlt, leeresFormular, type Formu
  */
 @Component({
   selector: 'nw-werkbank',
-  imports: [ApiTokens, FormsModule, RouterLink],
+  imports: [ApiTokens, FormsModule, RouterLink, Uebernahme],
   template: `
     <div class="seite">
       <header class="kopf">
@@ -446,6 +447,11 @@ import { BEDINGUNGEN, OPS, auftragAus, formularFehlt, leeresFormular, type Formu
             }
           </ul>
         </section>
+
+        <!-- T-130: Übernahme dev ↔ prod — nur die Verwaltung der Installation. -->
+        @if (session.isAdmin()) {
+          <nw-uebernahme class="block" id="uebernahme" [arten]="arten()" [ebenen]="ebenen()" />
+        }
 
         <!-- T-112: das Token für eine Claude-Sitzung entsteht hier, wo die
              Leitung mit der Werkbank arbeitet — es ist trotzdem ihr eigenes. -->

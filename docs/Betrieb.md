@@ -364,8 +364,8 @@ dort wird ausprobiert, und was zählt, steht auf prod.
 | **Einlesen mit `--replace-layer`** (Pipeline „5e.tools einlesen", Art `replace-layer`, verlangt `confirm=ersetzen`) | Was die Ebene der Datei bringt und in der Datei fehlt, **und eigene Änderungen an ihren Artikeln**. | ja, wie oben | wie oben |
 | **Massenänderung** (Werkbank › Bulk change, `POST /api/bulk`) | Felder, Marken, Kanten an vielen Artikeln; mit `merge` und `mode: delete` auch Artikel. | die alten Fassungen stehen im Lauf selbst | Werkbank › Undo (`POST /api/bulk/<id>/undo`). Wurde ein Artikel seither geändert, sagt es das (409) — mit `force` gewinnt die alte Fassung. |
 | **Ein Bild löschen** (Asset-Artikel löschen) | Die Datei, wenn kein anderes Asset sie nennt (T-114). | ja, `backups/bilder/` hält jede Datei, die vor dem letzten Ausrollen oder der letzten Nacht da war | die Datei aus `backups/bilder/` zurückkopieren, den Artikel aus der Datenbanksicherung oder der Ausfuhr |
-| **Übernahme** (Werkbank › Transfer, T-130) | Auf dem Ziel: Felder und Kanten der gewählten Artikel und Registerzeilen — nur, was die Vorschau zeigte, Konflikte nur wie gelöst. | ja, `backups/uebernahme/<zeit>-vor-uebernahme-von-….json`, und jede alte Fassung im Protokoll | Werkbank › Transfer › Undo (beide Seiten); sonst die Datei über `import.js` ([Übernahme › Zurück](#zurück-1)) |
-| **Überklonen** (Werkbank › Transfer, nur auf dev) | Der ganze Bestand von dev (Register, Artikel); die Konten bleiben. | ja, `backups/uebernahme/<zeit>-vor-ueberklonen.json` (der ganze Bestand) | `import.js <datei> --replace` |
+| **Übernahme** (Werkbank › Transfer between installations, T-130) | Auf dem Ziel: Felder und Kanten der gewählten Artikel und Registerzeilen — nur, was die Vorschau zeigte, Konflikte nur wie gelöst. | ja, `backups/uebernahme/<zeit>-vor-uebernahme-von-….json`, und jede alte Fassung im Protokoll | Werkbank › Transfer between installations › Undo (beide Seiten); sonst die Datei über `import.js` ([Übernahme › Zurück](#zurück-1)) |
+| **Überklonen** (Werkbank › Transfer between installations, nur auf dev) | Der ganze Bestand von dev (Register, Artikel); die Konten bleiben. | ja, `backups/uebernahme/<zeit>-vor-ueberklonen.json` (der ganze Bestand) | `import.js <datei> --replace` |
 | **Wiederherstellen** einer Sicherung, auch [prod nach dev holen](#den-bestand-von-prod-nach-dev-holen) | Alles, was **nach** der Sicherung geschrieben wurde. Beim Holen von prod nach dev: der ganze Bestand von dev (die Konten bleiben). | nein — vorher von Hand sichern (unten) | die Sicherung, die man vorher gemacht hat |
 
 **Vor einem Wiederherstellen selbst sichern**, denn dort sichert kein
@@ -1036,7 +1036,7 @@ nie im Repository.
    Server vor jedem Schreiben seine Sicherung (`ATLAS_BACKUP_DIR`,
    im Container `/data/backups`).
 
-Ob es steht, zeigt die Werkbank auf dev (Kasten „Transfer": Gegenstelle,
+Ob es steht, zeigt die Werkbank auf dev (Abschnitt „Transfer between installations": Gegenstelle,
 Umgebung, „accepts transfers"), oder lesend:
 `curl -s -H "Authorization: Bearer $ATLAS_DEV_TOKEN" https://dev…/api/transfer`.
 Auf prod löst niemand aus — dort antwortet die Seite mit „prod ist die
@@ -1050,7 +1050,7 @@ Gegenstelle".
    Basis gibt. Nichts ist geschrieben.
 2. **Einen neuen Probeartikel** auf dev anlegen (z. B. eine Regel
    „Transfer test" in der Kampagnenebene), „dev → prod", Vorschau: „new".
-   „Transfer" schreibt ihn nach prod; die Liste darunter zeigt den Lauf.
+   „Transfer 1 to …" schreibt ihn nach prod; die Liste darunter zeigt den Lauf.
 3. **Rückgängig** am Lauf: der Artikel ist auf prod wieder weg, auf dev
    steht er wie vorher. Damit ist der ganze Weg einmal gegangen.
 
@@ -1090,7 +1090,7 @@ von Hand, der weiter geht.
 
 ### Zurück
 
-- **Eine Übernahme:** Werkbank › Transfer › Lauf › „Undo". Hat seither
+- **Eine Übernahme:** Werkbank › Transfer between installations › Lauf › „Undo". Hat seither
   jemand einen der Artikel geändert, sagt es das (409); „force" lässt die
   alte Fassung gewinnen.
 - **Von Hand** aus der Sicherung (die Artikel, wie sie vorher standen):
