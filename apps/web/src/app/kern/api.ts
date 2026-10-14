@@ -384,6 +384,8 @@ export interface LeseBuch {
   toc: LeseZeile[];
   /** Wo dieses Konto zuletzt stand. */
   position: string | null;
+  /** Die Ebene hat keinen Buchtext — eingelesen ist nur, was kein Kapitel ist (T-126). */
+  empty?: 'noText';
 }
 /** Ein Stück am Stück (`GET /api/read/:layer/unit/:unit`). */
 export interface LeseStueck {

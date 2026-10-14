@@ -51,6 +51,8 @@ const BUCH = 'e5_book_tst';
 const BESTAND: Entity[] = [
   { id: BUCH, name: 'The Sunken Test', interfaces: ['Layer'], components: { ...ident('The Sunken Test', 'layer-0001'), Layer: { kind: 'adventure', order: 0 } }, relations: [] },
   { id: 'ly_aus', name: 'Not on', interfaces: ['Layer'], components: { ...ident('Not on', 'layer-0003'), Layer: { kind: 'adventure', order: 0 } }, relations: [] },
+  /* Ein Regelwerk, dessen Text nicht eingelesen ist — nur Artikel (T-126). */
+  { id: 'ly_phb', name: 'Rules Only', interfaces: ['Layer'], components: { ...ident('Rules Only', 'layer-0004'), Layer: { kind: 'book', order: 0 } }, relations: [] },
   { id: 'ly_a', name: 'Runde A', interfaces: ['Layer'], components: { ...ident('Runde A', 'layer-0002'), Layer: { kind: 'campaign', order: 50 } }, relations: [] },
   {
     id: 'camp_a', name: 'Aus Nebel wacht', interfaces: ['Campaign'], components: ident('Aus Nebel wacht', 'campaign-0001'),
@@ -130,6 +132,16 @@ describe('reading a layer as a book (T-091)', () => {
     /* Nicht aufgeschaltet heisst: nicht da, auch für die Verwaltung. */
     expect((await rufe('Admin', 'GET', '/api/read/ly_aus')).json().toc).toEqual([]);
     expect((await rufe('Admin', 'GET', '/api/read/camp_a')).statusCode).toBe(404);
+  });
+
+  it('says when a layer has no book text at all — and only then (T-126)', async () => {
+    const { rufe } = await aufbau();
+    const leer = (await rufe('Admin', 'GET', '/api/read/ly_phb')).json();
+    expect(leer.toc).toEqual([]);
+    expect(leer.empty).toBe('noText');
+    /* Gesiebt oder nicht aufgeschaltet ist etwas anderes, und das bleibt ungesagt. */
+    expect((await rufe('Admin', 'GET', '/api/read/ly_aus')).json().empty).toBeUndefined();
+    expect((await rufe('Sela', 'GET', `/api/read/${BUCH}`)).json().empty).toBeUndefined();
   });
 
   it('gives a chapter in one piece, with its maps, encounters and the targets of its links', async () => {

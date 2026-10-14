@@ -126,10 +126,19 @@ interface Abschnitt {
 
           <main class="lesetext">
             @if (!b.toc.length) {
-              <p class="leer">
-                Nothing to read here. The text of this book may be for the GM only, or the book is not
-                turned on for the running campaign.
-              </p>
+              <!-- Der Grund, wo der Server ihn kennt (T-126): ohne eingelesenen
+                   Buchtext ist das der einzige, auch für die Verwaltung. -->
+              @if (b.empty === 'noText') {
+                <p class="leer">
+                  Nothing to read here yet: no text of this book has been imported — only its articles
+                  (spells, creatures, items …). Once its chapters are read in, they appear here.
+                </p>
+              } @else {
+                <p class="leer">
+                  Nothing to read here. The text of this book may be for the GM only, or the book is not
+                  turned on for the running campaign.
+                </p>
+              }
             }
             @for (a of abschnitte(); track a.id) {
               @if (a.teil) {
