@@ -19,9 +19,9 @@ Epic: [[EP-09 Karten]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-130]] Map entity: image asset, scale, grid config (size, offset, square/hex), link to Location | – | 3 | steht |
-| [[REQ-131]] Nested maps: parent + anchor region, zoom-through transitions world → region → city → district → battlemap | – | 3 | steht |
-| [[REQ-132]] Level lock: pin current map level while zooming | – | 3 | offen |
-| [[REQ-138]] Map tiling for smooth zoom (derived asset) | – | 4 | steht |
+| [[REQ-130]] Karte mit Gitter und Massstab | Spielleitung | 3 | steht |
+| [[REQ-131]] Unterkarten zum Hineinzoomen | Spielleitung | 3 | steht |
+| [[REQ-132]] Kartenebene festhalten | Spielleitung | 3 | offen |
+| [[REQ-138]] Grosse Karten in Kacheln | Spieler | 4 | steht |
 | [[REQ-293]] Ladeanzeige für Kartenbilder | Spielleitung | 3 | steht |
 <!-- stories:ende -->

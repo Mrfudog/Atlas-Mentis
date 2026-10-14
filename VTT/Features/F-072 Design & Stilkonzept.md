@@ -19,7 +19,7 @@ Epic: [[EP-11 Oberfläche & Navigation]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-153]] German UI output with i18n-ready string handling | – | 2 | ersetzt |
+| [[REQ-153]] Deutsche Oberfläche | – | 2 | ersetzt |
 | [[REQ-300]] Gestaltung wie die Bücher | Spielleitung | 3 | teils |
 | [[REQ-301]] Stilkonzept in der Verwaltung anpassen | Verwaltung | 4 | offen |
 | [[REQ-306]] Lesbarkeit im Feinschliff | Spieler | 3 | steht |
