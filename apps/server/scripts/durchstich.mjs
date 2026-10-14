@@ -717,6 +717,53 @@ try {
     }
   }
 
+  /* ------------------------------------ Schreibrechte je Ebene (T-098) */
+  {
+    /* `app_user_layer` gibt es nur in Postgres: eine eigene Ebene anlegen,
+       aufschalten, darin anlegen, jemanden dazunehmen — und die Leitung
+       schreibt die Ebene ihrer Runde, nicht die eigene einer Spielerin. */
+    const spielerin = await anmelden('probe-spiel');
+    const mit = await anmelden('probe-mit');
+    const leit = await anmelden('probe-leitung');
+    const post = (keks, pfad, body) =>
+      fetch(`${BASE}${pfad}`, { method: 'POST', headers: { ...json, cookie: keks }, body: JSON.stringify(body ?? {}) });
+    const umbenannt = (e, n) => ({ ...e, name: n, components: { ...e.components, Identity: { ...e.components.Identity, name: n } } });
+    const rN = await post(spielerin, '/api/layers', { name: 'Probe eigene Ebene' });
+    const eigen = rN.ok ? (await rN.json()).id : '';
+    pruefe('Ebenen: eine eigene anlegen', rN.status === 201 && !!eigen, String(rN.status));
+    let ort = null;
+    try {
+      const mine = await (await get(spielerin, '/api/layers/mine')).json();
+      pruefe('Ebenen: sie besitzt sie, noch nicht im Spiel', mine.layers?.some((l) => l.id === eigen && l.owner && !l.inPlay), JSON.stringify(mine).slice(0, 300));
+      const rA = await post(leit, `/api/campaigns/camp_probe_a/layers/${eigen}`);
+      pruefe('Ebenen: die Leitung schaltet sie auf', rA.ok, String(rA.status));
+      const leitMine = await (await get(leit, '/api/layers/mine')).json();
+      pruefe('Ebenen: die Leitung schreibt die Ebene ihrer Runde, nicht die eigene', JSON.stringify(leitMine.layers?.map((l) => l.id)) === '["ly_probe_a"]', JSON.stringify(leitMine).slice(0, 300));
+      const rO = await post(spielerin, '/api/entities', { type: 'Place', name: 'Probe in eigener Ebene', relations: [{ type: 'inLayer', to: eigen }] });
+      ort = rO.ok ? await rO.json() : null;
+      pruefe('Ebenen: angelegt in der eigenen Ebene', rO.status === 201 && ort?.relations?.some((r) => r.type === 'inLayer' && r.to === eigen), `${rO.status} ${JSON.stringify(ort).slice(0, 200)}`);
+      if (ort) {
+        delete ort.refs;
+        pruefe('Ebenen: ein Mitspieler schreibt darin nicht', (await put(mit, umbenannt(ort, 'Probe X'))).status === 403);
+        const rE = await post(spielerin, `/api/layers/${eigen}/editors`, { name: 'probe-mit' });
+        pruefe('Ebenen: sie nimmt ihn dazu', rE.status === 201, `${rE.status} ${(await rE.text()).slice(0, 200)}`);
+        const rM = await put(mit, umbenannt(ort, 'Probe, von ihm'));
+        pruefe('Ebenen: jetzt schreibt er darin', rM.ok, `${rM.status} ${(await rM.text()).slice(0, 200)}`);
+      }
+    } finally {
+      const stapel = await (await get(admin, '/api/campaigns/camp_probe_a/layers')).json();
+      await fetch(`${BASE}/api/campaigns/camp_probe_a/layers`, {
+        method: 'PUT', headers: { ...json, cookie: admin },
+        body: JSON.stringify({ layers: (stapel.layers ?? []).filter((l) => l.active && l.id !== eigen).map((l) => l.id) }),
+      });
+      if (ort) await fetch(`${BASE}/api/entities/${ort.id}`, { method: 'DELETE', headers: { cookie: admin } });
+      if (eigen) {
+        const rW = await fetch(`${BASE}/api/entities/${eigen}`, { method: 'DELETE', headers: { cookie: admin } });
+        pruefe('Ebenen: die eigene wieder weg', rW.ok, String(rW.status));
+      }
+    }
+  }
+
   /* ------------------------------------------- Eigene Ausfuhr (T-077) */
   const ausfuhr = async (keks) => {
     const r = await get(keks, '/api/export?campaign=camp_probe_a');

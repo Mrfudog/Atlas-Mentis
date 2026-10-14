@@ -624,12 +624,13 @@ docker compose exec -e NW_PASSWORD="$(openssl rand -base64 24)" app \
 
 Das Passwort ist zufällig und wird nirgends aufgeschrieben: das Konto
 meldet sich nie über die Maske an, nur mit Token. **Warum `--admin`:** die
-Werkbank steht der Leitung offen, aber **schreiben** darf heute nur die
-Verwaltung (`mayWrite`, [Zugang › Was noch fehlt](Zugang.md#was-noch-fehlt)).
-Soll die Sitzung nur **prüfen** und Vorschauen rechnen, reicht die
-Leitungsrolle in der Kampagne — dann ohne `--admin` anlegen und
-`… user.js role werkbank <kampagnen-id> gm` setzen, und in Schritt 2 ohne
-`--write`.
+Leitung schreibt seit T-098 nur die Ebene ihrer Kampagne
+([Zugang › Wer was darf](Zugang.md#wer-was-darf)); was in geteilten Ebenen
+liegt (5e.tools) oder ohne Ebene ist, schreibt nur die Verwaltung. Soll die
+Sitzung nur **prüfen** oder nur die Ebene der Kampagne ändern, reicht die
+Leitungsrolle — dann ohne `--admin` anlegen und
+`… user.js role werkbank <kampagnen-id> gm` setzen (in Schritt 2 ohne
+`--write`, wenn sie nur prüft).
 
 **2. Ein Token ausgeben** — es steht genau einmal da, also gleich kopieren:
 

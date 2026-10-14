@@ -117,6 +117,55 @@ bringt ihn nicht mit und besitzt ihn nicht.
 
 ---
 
+## Die Ebene sagt auch, wer darin schreibt (T-098, E-001)
+
+Seit dem 14.10. hängt am Stapel eine dritte Frage: **wer einen Artikel
+ändern darf.** Die Leitung entschied (E-001, eigener Weg): je Konto ist
+verwaltbar, welche Ebenen es bearbeitet; eigene Ebenen legt jede und jeder
+an; jede Kampagne hat eine eigene Ebene, die `gm` und `co-gm` bearbeiten;
+was in anderen Ebenen liegt, ändert man als Fassung in einer eigenen.
+
+```mermaid
+flowchart TB
+  subgraph Konto["am Konto (app_user_layer)"]
+    Sela["Sela · besitzt"]
+    Tom["Tom · schreibt mit"]
+  end
+  Rolle["gm / co-gm von Nebelwacht<br/>(campaign_member)"]
+  K["Nebelwacht"]
+  K -- "activates" --> R["Regelwerk<br/>(geteilt)"]
+  K -- "activates" --> E["Selas Ebene<br/>(gehört Sela)"]
+  K -- "activates" --> N["Ebene der Kampagne<br/>(ly_…, kind campaign)"]
+  Sela --> E
+  Tom --> E
+  Rolle --> N
+  R -. "„Edit“ = Fassung (overrides)" .-> N
+```
+
+- **Geschrieben wird, was ganz in eigenen Ebenen liegt** (`inWritableLayers`).
+  Ein Artikel, der auch im Regelwerk liegt, gehört nicht ganz der Runde —
+  ihn zu ändern hiesse, ihn in jeder Runde zu ändern, die das Regelwerk
+  aufschaltet. Ein Artikel **ohne Ebene** gehört niemandem besonders und
+  bleibt bei der Verwaltung; die Leitung ändert ihn als Fassung.
+- **Die Ebene der Kampagne** ist dieselbe wie oben (`campaignLayer`), mit
+  einer Ausnahme: **eine Ebene, die einem Konto gehört, ist es nie.** Schaltet
+  die Leitung Selas Ebene auf, und sie ist die spezifischste, die nur diese
+  Runde aufschaltet, bliebe sie sonst die „Ebene der Kampagne" — und Leitung
+  wie Neuangelegtes landeten in Selas Ebene. Eine neue Kampagne bekommt ihre
+  Ebene beim Anlegen, eine ältere über Migration 035.
+- **Eine eigene Ebene wirkt erst, wenn sie aufgeschaltet ist.** Was in einer
+  Ebene liegt, die die laufende Kampagne nicht aufschaltet, ist für niemanden
+  da (die nullte Frage) — darum bietet der Server als Ziel für Anlegen und
+  Fassung nur Ebenen an, die im Spiel sind (`zielEbenen`).
+- **„Edit" an einem fremden Artikel** legt eine Fassung (`adaptedVersion`,
+  E-018) in eine dieser Ebenen; bei mehreren fragt die Seite, welche. Das
+  Original bleibt; zurück heisst, die Fassung zu löschen.
+- **`ready` bleibt bei `gm`** der Kampagne, der der Artikel gehört. Ändert
+  die Mitleitung oder eine Spielerin in ihrer Ebene etwas Fertiges, fällt es
+  zurück (E-012), und für die anderen gilt der fertige Stand.
+
+---
+
 ## Die Herkunftsanzeige (REQ-044)
 
 Am Artikelkopf steht, woher er kommt: die Ebene, ob etwas ihn ersetzt, wovon

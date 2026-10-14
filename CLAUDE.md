@@ -214,9 +214,23 @@ wiederkommen, werden sie neu geschrieben.
   ein Feld, das gleichzeitig Regel ist, leckt beim ersten Tippfehler.
   **Offen:** ohne Ebenenkante gehört ein Artikel niemandem besonders (65 von
   75 heute) — das stimmt bei *einer* Kampagne und nicht mehr bei zweien.
-  Ebenso offen: `mayWrite` kennt die Leitung noch nicht (D69; nur was
-  Spielende angelegt haben, schreibt `gm`, um es `ready` zu setzen, D72),
-  und die laufende Kampagne ist eine globale Einstellung.
+  Ebenso offen: die laufende Kampagne ist eine globale Einstellung.
+- **Geschrieben wird je Ebene** (T-098, E-001). Ein Konto schreibt, was
+  **ganz** in Ebenen liegt, in denen es schreibt (`inWritableLayers` —
+  liegt ein Artikel auch im geteilten Regelwerk, nicht): die es besitzt
+  oder zugeteilt bekam (`app_user_layer`, **neben dem Konto**, nicht an
+  der Ebene — REQ-199), und als `gm` oder `co-gm` die **Ebene seiner
+  Kampagne** (`campaignLayer`, aus der Rolle, ohne Zeile). **Eine eigene
+  Ebene legt jedes Konto an** (`POST /api/layers`) und besitzt sie; sie
+  wirkt, sobald die Leitung sie aufschaltet, und **wird nie zur Ebene der
+  Kampagne** (`campaignLayer` überspringt, was einem Konto gehört). Jede
+  Kampagne hat ihre Ebene (beim Anlegen; ältere: Migration 035). **Fremdes
+  ändert man als Fassung:** „Edit" an einem Artikel, den man nicht
+  schreibt — auch einem ohne Ebene, der bleibt bei der Verwaltung —, legt
+  ihn mit `adaptedVersion` in eine eigene Ebene, die im Spiel ist
+  (`zielEbenen`, `POST /api/entities/:id/adapt`). `ready` bleibt bei `gm`;
+  was einer ändert, der es nicht setzen darf, fällt zurück (D74). Dazu
+  schreibt `gm` weiter, was Spielende angelegt haben (D72).
 - **Drei Ansichten, und der Ort wählt sie.** `overview` steht in einem
   Verweis oder einer Listenzeile, `quick` auf einer Karte, `full` auf der
   Artikelseite. Einen Wähler gibt es nicht — ein Verweis ist ein Verweis,

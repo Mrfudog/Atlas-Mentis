@@ -69,6 +69,13 @@ export interface ReadyStand {
   at: string;
 }
 
+/** Eine Zeile aus `app_user_layer` (T-098). */
+export interface LayerGrant {
+  userId: string;
+  layerId: string;
+  owner: boolean;
+}
+
 export interface Repository {
   getRegistry(): Promise<Registry>;
   putRegistryPart<K extends keyof Registry>(part: K, value: Registry[K]): Promise<void>;
@@ -119,6 +126,15 @@ export interface Repository {
   /** Alle Artikel, die irgendein Konto angelegt hat — was die Leitung
    *  vorgelegt bekommt. */
   authoredArticles(): Promise<string[]>;
+
+  /** **Wer in einer Ebene schreibt** (T-098, E-001): je Konto und Ebene
+   *  eine Zeile neben dem Konto (`app_user_layer`), nicht an der Ebene
+   *  (REQ-199). `owner` heisst: besitzt sie und sagt, wer sonst darin
+   *  schreibt. Ein zweites Setzen ändert nur `owner`. */
+  grantLayer(userId: string, layerId: string, owner?: boolean): Promise<void>;
+  revokeLayer(userId: string, layerId: string): Promise<boolean>;
+  /** Alle Zeilen — wenige; gefragt, wer eine Ebene besitzt und wer darin schreibt. */
+  layerGrants(): Promise<LayerGrant[]>;
 
   /** **Der letzte fertige Stand** (REQ-237, E-012): alle, die es gibt — es
    *  sind wenige, nur Artikel, die eine Spielerin nach `ready` geändert hat
@@ -279,24 +295,51 @@ export class InMemoryRepository implements Repository {
   }
   async findUserByName(nameFold: string): Promise<StoredUser | undefined> {
     for (const u of this.users.values()) {
-      if (u.name.trim().toLocaleLowerCase('de') === nameFold) return { ...u, authoredIds: [...(u.authoredIds ?? [])] };
+      if (u.name.trim().toLocaleLowerCase('de') === nameFold) return this.mitEbenen(u);
     }
     return undefined;
   }
   async getUser(id: string): Promise<StoredUser | undefined> {
     const u = this.users.get(id);
-    return u ? { ...u, authoredIds: [...(u.authoredIds ?? [])] } : undefined;
+    return u ? this.mitEbenen(u) : undefined;
   }
   async listUsers(): Promise<User[]> {
-    return [...this.users.values()].map(({ passwordHash: _hash, ...rest }) => ({ ...rest }));
+    return [...this.users.values()].map((u) => {
+      const { passwordHash: _hash, ...rest } = this.mitEbenen(u);
+      return rest;
+    });
+  }
+  /** Wie in Postgres: die Ebenen kommen aus ihrer eigenen Tabelle dazu. */
+  private mitEbenen(u: StoredUser): StoredUser {
+    const meine = [...this.ebenenRechte.values()].filter((g) => g.userId === u.id);
+    return {
+      ...u,
+      authoredIds: [...(u.authoredIds ?? [])],
+      layerIds: meine.map((g) => g.layerId),
+      ownedLayerIds: meine.filter((g) => g.owner).map((g) => g.layerId),
+    };
+  }
+  private readonly ebenenRechte = new Map<string, LayerGrant>();
+  async grantLayer(userId: string, layerId: string, owner = false): Promise<void> {
+    if (!this.users.has(userId)) return;
+    this.ebenenRechte.set(`${userId}|${layerId}`, { userId, layerId, owner });
+  }
+  async revokeLayer(userId: string, layerId: string): Promise<boolean> {
+    return this.ebenenRechte.delete(`${userId}|${layerId}`);
+  }
+  async layerGrants(): Promise<LayerGrant[]> {
+    return [...this.ebenenRechte.values()].map((g) => ({ ...g }));
   }
   async putUser(user: StoredUser): Promise<void> {
     this.users.set(user.id, {
       ...user,
       actorIds: [...(user.actorIds ?? [])],
       roles: { ...(user.roles ?? {}) },
-      /* Wie in Postgres: was jemand angelegt hat, schreibt `putUser` nicht. */
+      /* Wie in Postgres: was jemand angelegt hat, schreibt `putUser` nicht —
+         und die Ebenen auch nicht (die stehen in `ebenenRechte`). */
       authoredIds: [...(this.users.get(user.id)?.authoredIds ?? [])],
+      layerIds: undefined,
+      ownedLayerIds: undefined,
     });
   }
   async addAuthored(userId: string, entityId: string): Promise<void> {

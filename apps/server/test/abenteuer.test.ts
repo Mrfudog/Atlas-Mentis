@@ -131,7 +131,9 @@ describe('adapting over the template (E-018 a)', () => {
     /* Die Seite bietet „Adapt" an, wo die Route es annähme — nicht an der Fassung. */
     expect((await rufe('Admin', 'GET', '/api/entities/sc_mund')).json().refs.adaptable).toBe(true);
     expect((await rufe('Admin', 'GET', `/api/entities/${id}`)).json().refs.adaptable).toBeUndefined();
-    expect((await rufe('Basil', 'GET', '/api/entities/sc_mund')).json().refs.adaptable).toBeUndefined();
+    /* Die Leitung passt in die Ebene ihrer Kampagne an (T-098), eine Spielerin ohne eigene Ebene nicht. */
+    expect((await rufe('Basil', 'GET', '/api/entities/sc_mund')).json().refs.adaptTo).toEqual([{ id: 'ly_a', name: 'Runde A' }]);
+    expect((await rufe('Sela', 'GET', '/api/entities/sc_mund')).json().refs?.adaptable).toBeUndefined();
     /* Das Original öffnen heisst, die Fassung zu bekommen. */
     expect((await rufe('Admin', 'GET', '/api/entities/sc_bau')).json().id).toBe(id);
     /* `[[scene-0002|2]]` in der Nachbarszene führt zur Fassung. */
@@ -148,8 +150,10 @@ describe('adapting over the template (E-018 a)', () => {
   it('refuses what already is the campaign’s, and who may not', async () => {
     const { rufe } = await aufbau();
     expect((await rufe('Admin', 'POST', '/api/entities/st_eigen/adapt')).statusCode).toBe(409);
-    expect((await rufe('Basil', 'POST', '/api/entities/st_k1/adapt')).statusCode).toBe(403);
-    expect((await rufe('Sela', 'POST', '/api/entities/st_k1/adapt')).statusCode).toBe(403);
+    /* Was eine Spielerin nicht sieht (`audience: 'gm'`), gibt es für sie nicht. */
+    expect((await rufe('Sela', 'POST', '/api/entities/st_k1/adapt')).statusCode).toBe(404);
+    /* Die Leitung schreibt die Ebene ihrer Kampagne (T-098): dort liegt die Fassung schon zum Bearbeiten. */
+    expect((await rufe('Basil', 'POST', '/api/entities/st_eigen/adapt')).statusCode).toBe(403);
     expect((await rufe('Admin', 'POST', '/api/entities/gibt-es-nicht/adapt')).statusCode).toBe(404);
   });
 });

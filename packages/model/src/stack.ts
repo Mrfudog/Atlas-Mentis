@@ -406,14 +406,26 @@ export function playStack(entities: Map<EntityId, Entity>, campaign: Entity | nu
  * der er entstand, und deren Leitung sieht ihn (`campaignOf`). Gibt es
  * keine solche Ebene, `null`: der Artikel liegt dann in keiner, wie heute
  * die meisten.
+ *
+ * **Eine Ebene, die einem Konto gehört, ist nicht die der Kampagne**
+ * (T-098, E-001): schaltet die Leitung die eigene Ebene einer Spielerin
+ * auf, wird sie dadurch nicht zur Kampagnenebene — sonst schrieben `gm`
+ * und `co-gm` darin, und was andere anlegen, landete dort. Wem eine Ebene
+ * gehört, steht am Server neben dem Konto; der Aufrufer gibt diese Ebenen
+ * als `owned` mit.
  */
-export function campaignLayer(entities: Map<EntityId, Entity>, campaign: Entity | null): Entity | null {
+export function campaignLayer(
+  entities: Map<EntityId, Entity>,
+  campaign: Entity | null,
+  owned?: ReadonlySet<EntityId>,
+): Entity | null {
   if (!campaign) return null;
   const stapel = activeStack(entities, campaign);
   for (let i = stapel.length - 1; i >= 0; i -= 1) {
     const ebene = stapel[i]!.layer;
     /* Eine Gruppe ist kein Ort für Artikel (T-088). */
     if (isGroupLayer(ebene)) continue;
+    if (owned?.has(ebene.id)) continue;
     let andere = false;
     for (const e of entities.values()) {
       if (e.id === campaign.id || (e.interfaces ?? [])[0] !== CAMPAIGN_TYPE) continue;

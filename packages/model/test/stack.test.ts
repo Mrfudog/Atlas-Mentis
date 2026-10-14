@@ -115,6 +115,16 @@ describe('campaignLayer', () => {
   it('gibt null ohne Kampagne', () => {
     expect(campaignLayer(entities, null)).toBeNull();
   });
+  it('überspringt eine Ebene, die einem Konto gehört (T-098)', () => {
+    /* Die eigene Ebene einer Spielerin, aufgeschaltet und spezifischer: sie
+       wird dadurch nicht zur Kampagnenebene. */
+    const mit = new Map(entities);
+    mit.set('ly_sela', { id: 'ly_sela', name: 'Selas Ebene', interfaces: ['Layer'], components: { Layer: { order: 40 } } });
+    const nebel = { ...E('camp_nebel'), relations: [...(E('camp_nebel').relations ?? []), { id: 'a9', type: 'activates', to: 'ly_sela' }] };
+    mit.set('camp_nebel', nebel);
+    expect(campaignLayer(mit, nebel)?.id).toBe('ly_sela');
+    expect(campaignLayer(mit, nebel, new Set(['ly_sela']))?.id).toBe('ly_nebel');
+  });
 });
 
 describe('what is missing only because its layer is off (T-069)', () => {

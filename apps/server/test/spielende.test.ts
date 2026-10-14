@@ -200,14 +200,17 @@ describe('players create articles; ready is set by the GM', () => {
     expect(await sieht('Tom', e.id)).toEqual({ code: 200, inListe: true });
   });
 
-  it('lets the GM write only what players submitted, not everything (E-001 is open)', async () => {
+  it('lets the GM write what is in the campaign layer, and set it ready (T-098, E-001)', async () => {
     const { als, repo } = await aufbau();
     const idee = (await repo.getEntity('p_idee'))!;
     const res = await als('Mira', 'PUT', '/api/entities/p_idee', {
       ...idee,
       components: { ...idee.components, Status: { status: 'ready' } },
     });
-    expect(res.statusCode).toBe(403);
+    expect(res.statusCode).toBe(200);
+    /* Ein Spieler schreibt die Ebene der Kampagne nicht. */
+    const markt = (await repo.getEntity('p_fertig'))!;
+    expect((await als('Tom', 'PUT', '/api/entities/p_fertig', { ...markt, name: 'Anders' })).statusCode).toBe(403);
   });
 });
 
@@ -217,8 +220,9 @@ describe('what /api/me tells the GM', () => {
     const id = ((await als('Sela', 'POST', '/api/entities', { type: 'Place', name: 'Vorgelegt' })).json() as Entity).id;
     const mira = (await als('Mira', 'GET', '/api/me')).json() as { writable: string[]; ready: boolean; create: boolean };
     expect(mira.writable).toContain(id);
-    expect(mira.writable).not.toContain('p_idee');
-    expect(mira).toMatchObject({ ready: true, create: false });
+    /* Seit T-098 schreibt die Leitung, was in der Ebene ihrer Kampagne liegt, und legt dort an. */
+    expect(mira.writable).toContain('p_idee');
+    expect(mira).toMatchObject({ ready: true, create: true });
     const tom = (await als('Tom', 'GET', '/api/me')).json() as { writable: string[] };
     expect(tom.writable).not.toContain(id);
   });

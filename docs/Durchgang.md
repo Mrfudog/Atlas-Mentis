@@ -82,8 +82,8 @@ aufschalten, gehörte welcher?
 
 **Offen und benannt:** ohne Ebenenkante gehört ein Artikel niemandem besonders
 (65 von 75 heute — richtig bei *einer* Kampagne, falsch bei zweien);
-`mayWrite` kennt die Leitung noch nicht; die laufende Kampagne ist eine
-globale Einstellung.
+die laufende Kampagne ist eine globale Einstellung. (`mayWrite` kennt die
+Leitung seit T-098: sie schreibt die Ebene ihrer Kampagne, E-001.)
 
 ### Die Rolle steht am Konto — entschieden am 1.10.
 
@@ -181,8 +181,8 @@ Kante auf einen unbekannten Typ; jeder Standardwert steht in seiner Auswahl.
 
 **Bekannt offen, nicht neu:** mehrere Kampagnen (die laufende ist eine
 globale Einstellung, 65 von 75 Artikeln ohne Ebene, `gmFields` gilt
-installationsweit); `mayWrite` kennt die Leitung nicht; Rollen setzt am
-Server nur die Kommandozeile.
+installationsweit); `mayWrite` kannte die Leitung nicht (seit T-098: die
+Ebene ihrer Kampagne); Rollen setzt am Server nur die Kommandozeile.
 
 ### Wahlen als Feld — entschieden am 13.10. (E-015 a, T-079)
 

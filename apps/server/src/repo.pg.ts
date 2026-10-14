@@ -10,7 +10,7 @@ import type { Pool } from 'pg';
 import { isTableRole } from '@nw/model';
 import type { Entity, InterfaceDef, Registry, Relation, RelationDef, TableRole } from '@nw/model';
 import { RevisionConflict } from './repo.js';
-import type { EventFilter, PutOptions, ReadyStand, Repository, SessionRow, StoredEvent, StoredUser } from './repo.js';
+import type { EventFilter, LayerGrant, PutOptions, ReadyStand, Repository, SessionRow, StoredEvent, StoredUser } from './repo.js';
 import type { ApiToken, Invite, TokenScope, User } from './auth.js';
 
 type Row = Record<string, unknown>;
@@ -414,6 +414,12 @@ export class PgRepository implements Repository {
       authoredIds: ((row['authored_ids'] as (string | null)[] | null) ?? []).filter(
         (x): x is string => typeof x === 'string' && x.length > 0,
       ),
+      layerIds: ((row['layer_ids'] as (string | null)[] | null) ?? []).filter(
+        (x): x is string => typeof x === 'string' && x.length > 0,
+      ),
+      ownedLayerIds: ((row['owned_layer_ids'] as (string | null)[] | null) ?? []).filter(
+        (x): x is string => typeof x === 'string' && x.length > 0,
+      ),
       disabledAt: row['disabled_at'] ? new Date(row['disabled_at'] as string).toISOString() : undefined,
     };
   }
@@ -442,7 +448,11 @@ export class PgRepository implements Repository {
            (select coalesce(jsonb_object_agg(m.campaign_id, m.role), '{}'::jsonb)
               from campaign_member m where m.user_id = u.id) as roles,
            array(select w.entity_id from app_user_article w
-                  where w.user_id = u.id order by w.added_at) as authored_ids
+                  where w.user_id = u.id order by w.added_at) as authored_ids,
+           array(select g.layer_id from app_user_layer g
+                  where g.user_id = u.id order by g.added_at) as layer_ids,
+           array(select g.layer_id from app_user_layer g
+                  where g.user_id = u.id and g.owner order by g.added_at) as owned_layer_ids
       from app_user u
       left join app_user_actor a on a.user_id = u.id`;
 
@@ -525,6 +535,26 @@ export class PgRepository implements Repository {
   async authoredArticles(): Promise<string[]> {
     const { rows } = await this.pool.query<Row>('select distinct entity_id from app_user_article');
     return rows.map((r) => String(r['entity_id']));
+  }
+
+  /* Wer in einer Ebene schreibt (T-098). Ein zweites Setzen ändert nur
+     `owner`. */
+  async grantLayer(userId: string, layerId: string, owner = false): Promise<void> {
+    await this.pool.query(
+      `insert into app_user_layer(user_id, layer_id, owner) values ($1, $2, $3)
+       on conflict (user_id, layer_id) do update set owner = excluded.owner`,
+      [userId, layerId, owner],
+    );
+  }
+
+  async revokeLayer(userId: string, layerId: string): Promise<boolean> {
+    const res = await this.pool.query('delete from app_user_layer where user_id = $1 and layer_id = $2', [userId, layerId]);
+    return (res.rowCount ?? 0) > 0;
+  }
+
+  async layerGrants(): Promise<LayerGrant[]> {
+    const { rows } = await this.pool.query<Row>('select user_id, layer_id, owner from app_user_layer order by added_at');
+    return rows.map((r) => ({ userId: String(r['user_id']), layerId: String(r['layer_id']), owner: r['owner'] === true }));
   }
 
   /* Der letzte fertige Stand (REQ-237, E-012), als JSON-Kopie. Wenige

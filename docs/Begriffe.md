@@ -700,6 +700,21 @@ aufs Original nicht ins Leere führt, liefert der Server die Fassung, die
 gilt (E5) — dieselbe Frage, die der Stapel ohnehin stellt (`resolveArticle`),
 nur jetzt auch beim Öffnen und bei den Namen.
 
+**Wer schreibt, schreibt in eine Ebene** (T-098, E-001). Die Leitung
+konnte bis zum 14.10. ihre eigene Kampagne lesen und nichts daran ändern;
+die naheliegende Regel „die Leitung schreibt, was ihrer Kampagne gehört"
+hätte an jedem Artikel gefragt, wem er gehört — und für einen, der auch im
+Regelwerk liegt, keine gute Antwort gehabt. Jetzt ist die Ebene der Ort
+**und** das Recht: wer in einer Ebene schreibt, schreibt alles darin, und
+was woanders liegt, ändert er, indem er es darüberlegt — derselbe Weg wie
+„Adapt", nur von „Edit" aus. Darum gibt es keine Rechteliste je Artikel:
+die wäre bei jedem neuen Artikel anzufassen, und wer sie vergisst, hat
+einen Artikel, den niemand ändern kann. Wer in welcher Ebene schreibt,
+steht am Konto (`app_user_layer`) und nicht an der Ebene — eine Konto-Id
+in einem Artikel wanderte mit der Ausfuhr (REQ-199). Und eine eigene Ebene
+wird nie zur Ebene der Kampagne, auch wenn nur diese sie aufschaltet:
+sonst entschiede die Reihenfolge im Stapel, wem eine Ebene gehört.
+
 **Fassungen stehen am Feld, nicht hinter einem Umschalter** (T-092,
 E-021 d). Fireball gibt es im PHB von 2014, im PHB von 2024 und mit
 Reichweite 120 in Xanathar's Guide. Ein Umschalter „2014 · 2024" oben am
