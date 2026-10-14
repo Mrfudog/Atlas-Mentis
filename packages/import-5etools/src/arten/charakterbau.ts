@@ -243,20 +243,52 @@ function fortschritt(wb: Werkbank, ent: Entity, roh: unknown, art: 'feat' | 'fea
 
 /**
  * **Ausrüstung (a) oder (b)** als Wahlen: je Block mit Buchstaben eine
- * Wahl, deren Möglichkeiten die Buchstaben sind. Was fest ist (`_`),
- * steht weiter im Text von `startingEquipment`.
+ * Wahl, deren Möglichkeiten die Buchstaben sind. **Das Feste** (`_`) ist
+ * eine Wahl mit genau einer Möglichkeit — sie beantwortet sich selbst
+ * (`fixedPicks`) und landet so wie eine gewählte Variante im Inventar
+ * (T-096). Jede Möglichkeit nennt ihre Stücke (`items`, Nummern wie die
+ * Verweise im Text) und ihr Geld (`gold`, gp), damit niemand den Text
+ * lesen muss; der Text bleibt die Beschriftung.
  */
 function ausruestungsWahl(wb: Werkbank, ent: Entity, roh: unknown, when?: Choice['when']): void {
+  const moeglichkeit = (key: string, teile: unknown) => {
+    const xs = liste(teile);
+    const inhalt = xs.map((x) => stueckDaten(wb, x));
+    const items = inhalt.flatMap((i) => (i.item ? [{ id: i.item, qty: i.qty }] : []));
+    const gold = inhalt.reduce((n, i) => n + i.gp, 0);
+    return {
+      key,
+      label: xs.map((x) => stueck(wb, x)).filter(Boolean).join(', '),
+      ...(items.length ? { items } : {}),
+      ...(gold ? { gold } : {}),
+    };
+  };
   for (const block of liste(roh)) {
     const b = (block as Knoten) ?? {};
+    if (b['_']) wahl(wb, ent, 'equipment-fixed', { kind: 'equipment', when, from: { options: [moeglichkeit('fixed', b['_'])] } });
     const keys = Object.keys(b).filter((k) => k !== '_').sort();
     if (keys.length < 2) continue;
     wahl(wb, ent, 'equipment', {
       kind: 'equipment',
       when,
-      from: { options: keys.map((k) => ({ key: k.toLowerCase(), label: liste(b[k]).map((x) => stueck(wb, x)).filter(Boolean).join(', ') })) },
+      from: { options: keys.map((k) => moeglichkeit(k.toLowerCase(), b[k])) },
     });
   }
+}
+
+/** Ein Stück Ausrüstung als Daten: der Gegenstand (Nummer), wie viele, und Geld in gp. */
+function stueckDaten(wb: Werkbank, x: unknown): { item?: string; qty: number; gp: number } {
+  const finde = (ref: string): string | undefined => {
+    const [n = '', q = ''] = ref.split('|');
+    const e = wb.finde('item', [n, q.toUpperCase()]);
+    return e ? String((e.components['Identity'] as { id?: unknown } | undefined)?.id ?? '') || undefined : undefined;
+  };
+  if (typeof x === 'string') return { item: finde(x), qty: 1, gp: 0 };
+  const o = (x as Knoten) ?? {};
+  const qty = Math.max(1, Number(o['quantity']) || 1);
+  if (o['item']) return { item: finde(String(o['item'])), qty, gp: Number(o['containsValue'] ?? 0) / 100 };
+  if (o['value'] !== undefined) return { qty: 1, gp: Number(o['value']) / 100 };
+  return { qty: 1, gp: 0 };
 }
 
 /** Ein Stück Ausrüstung als Text. */
@@ -509,6 +541,9 @@ export const CHARAKTERBAU: Zuordnung[] = [
         ausr['goldAlternative'] ? `Alternatively, ${wb.zeile(ausr['goldAlternative'])} gp to buy your own equipment.` : '',
       ].filter(Boolean).join('\n\n');
       wb.feld(ent, C, 'startingEquipment', ausrText);
+      /* Das Startgold als Ausdruck (T-096): `{@dice 5d4 × 10|…}` → `5d4×10`. */
+      const gold = /\{@dice\s+([^|}]+)/.exec(String(ausr['goldAlternative'] ?? ''))?.[1] ?? String(ausr['goldAlternative'] ?? '');
+      if (gold.trim()) wb.feld(ent, C, 'startingGold', gold.replace(/\s+/g, '').replace(/x/gi, '×'));
       ausruestungsWahl(wb, ent, ausr['defaultData'], 'start');
       const mc = (e['multiclassing'] as Knoten | undefined) ?? {};
       const req = (mc['requirements'] as Knoten | undefined) ?? {};

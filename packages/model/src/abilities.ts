@@ -11,6 +11,7 @@
  */
 
 import { rollDice, rollText } from './dice.js';
+import { entityName } from './entity.js';
 import type { Entity, EntityId } from './types.js';
 
 export type AbilityMethodKind = 'array' | 'pointBuy' | 'roll';
@@ -74,7 +75,8 @@ export function abilityMethodOf(e: Entity | undefined): AbilityMethod | undefine
   const count = Number(k['count']);
   return {
     id: e.id,
-    name: e.name ?? String(e.components?.['Identity']?.['name'] ?? e.id),
+    /* Ein leerer Name oben fällt auf `Identity.name` zurück (T-096: sonst stand das Verfahren ohne Namen da). */
+    name: entityName(e),
     method,
     ...(scores.length ? { scores } : {}),
     ...(Number.isFinite(Number(k['budget'])) && k['budget'] !== undefined ? { budget: Number(k['budget']) } : {}),

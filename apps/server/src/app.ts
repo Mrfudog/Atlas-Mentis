@@ -24,6 +24,14 @@ import {
   storedKey,
   CAMPAIGN_TYPE,
   allowedMethods,
+  allowedEquipmentMethods,
+  checkPurchase,
+  fixedGold,
+  resolveEquipment,
+  rollGold,
+  startClassOf,
+  startingBundle,
+  startingGoldOf,
   campaignLanguages,
   partyPool,
   rollAbilityScores,
@@ -949,6 +957,9 @@ export function buildApp({
     /* Würfeln für die Attribute (E-016 a): die Route prüft die Rolle in
        der laufenden Kampagne selbst. */
     if (url === '/api/abilities/roll' && request.method === 'POST') return;
+    /* Die Startausrüstung (T-096): die Routen prüfen Rolle und Figur selbst. */
+    if (url === '/api/equipment/roll' && request.method === 'POST') return;
+    if (/^\/api\/entities\/[^/]+\/equipment$/.test(url) && request.method === 'POST') return;
     /* Den eigenen Lesestand merken (T-091): die Route schreibt nur am Konto. */
     if (/^\/api\/read\/[^/]+\/position$/.test(url) && request.method === 'PUT') return;
     /* „ready" per Knopf (REQ-237): die Route prüft je Artikel (`maySetReady`). */
@@ -1902,6 +1913,212 @@ export function buildApp({
     await repo.appendEvent('abilities.rolled', undefined, { method: m.id, dice: m.dice, scope: 'character', ...wurf, by: user.id });
     return { ...wurf, at };
   });
+  /**
+   * **Die Verfahren für die Startausrüstung dieser Kampagne** (REQ-250,
+   * T-096): was die laufende Kampagne über `allowsEquipment` erlaubt —
+   * gesiebt wie jeder Artikel —, ohne eine einzige Kante die Vorgabe
+   * (Klasse und Hintergrund, Startgold).
+   */
+  async function ausruestungsVerfahren(request: FastifyRequest) {
+    const stand = await roh();
+    const registry = await repo.getRegistry();
+    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const genannt = (kampagne?.relations ?? []).filter((r) => r.type === 'allowsEquipment').map((r) => r.to);
+    const sichtbar = genannt.length
+      ? new Set((await sieve(request, genannt.map((i) => stand.map.get(i)).filter((e): e is Entity => !!e), stand.map)).map((e) => e.id))
+      : null;
+    const methods = allowedEquipmentMethods(kampagne ?? undefined, stand.map).filter((m) => m.builtIn || sichtbar?.has(m.id));
+    return { stand, kampagne, methods };
+  }
+
+  app.get('/api/equipment', async (request) => {
+    const { methods } = await ausruestungsVerfahren(request);
+    return { methods };
+  });
+
+  /**
+   * **Das Startgold würfeln** (T-096): am Server, und jeder Wurf steht im
+   * Protokoll (`equipment.rolled`). Die Id des Eintrags ist der Beleg, den
+   * das Anlegen der Ausrüstung nennt — ein Betrag aus der Maske gälte
+   * sonst ungeprüft. Ohne Betrag am Verfahren gilt der der Klasse.
+   */
+  app.post<{ Body: { method?: unknown; class?: unknown } | null }>('/api/equipment/roll', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return reply.code(401).send({ error: 'Nicht angemeldet' });
+    const { stand, kampagne, methods } = await ausruestungsVerfahren(request);
+    const rolle = kampagne ? tableRole({ roles: user.roles ?? {} }, kampagne.id) : null;
+    if (!user.isAdmin && rolle !== 'gm' && rolle !== 'co-gm' && rolle !== 'player') {
+      return reply.code(403).send({ error: 'Würfeln dürfen, wer in dieser Kampagne spielt oder leitet.' });
+    }
+    const m = methods.find((x) => x.id === String(request.body?.method ?? ''));
+    if (!m || m.method !== 'gold') return reply.code(400).send({ error: 'Kein erlaubtes Verfahren mit Startgold.' });
+    const klasse = String(request.body?.class ?? '');
+    const ausdruck = m.gold ?? startingGoldOf(stand.map.get(klasse));
+    if (!ausdruck) return reply.code(422).send({ error: 'Diese Klasse nennt kein Startgold.' });
+    if (fixedGold(ausdruck) !== undefined) return reply.code(400).send({ error: 'Ein fester Betrag wird nicht gewürfelt.' });
+    const wurf = rollGold(ausdruck);
+    if (!wurf) return reply.code(422).send({ error: `Kein Würfelausdruck: ${ausdruck}` });
+    const event = await repo.appendEvent('equipment.rolled', undefined, {
+      method: m.id,
+      ...(m.gold ? {} : { class: klasse }),
+      expr: ausdruck,
+      ...wurf,
+      by: user.id,
+    });
+    return { ...wurf, expr: ausdruck, event };
+  });
+
+  /**
+   * **Die Startausrüstung in das Inventar der Figur** (T-096, REQ-250):
+   * je nach Verfahren das, was Klasse und Hintergrund geben (`rules`,
+   * gerechnet aus den gespeicherten Antworten), oder ein Einkauf, den
+   * **dieser** Server gegen Budget und Grenzen prüft (`checkPurchase`).
+   * Das Ergebnis ist ein Inventar (`carries`) mit je Gegenstand einer
+   * Kante `holds` und dem Rest des Geldes im Beutel (`Inventory.copper`).
+   *
+   * Wer die Figur schreibt, darf es — einmal: hält ihr Inventar schon
+   * etwas, gibt es die Startausrüstung nur noch durch die Leitung.
+   */
+  app.post<{ Params: { id: string }; Body: { method?: unknown; purchases?: unknown; roll?: unknown } | null }>(
+    '/api/entities/:id/equipment',
+    async (request, reply) => {
+      const user = await viewerOf(request);
+      if (!user) return reply.code(401).send({ error: 'Nicht angemeldet' });
+      const { stand, kampagne, methods } = await ausruestungsVerfahren(request);
+      const registry = await repo.getRegistry();
+      const figur = stand.map.get(request.params.id);
+      if (!figur || !typeChain(registry, primaryInterface(figur)).includes(PLAYER_CHARACTER)) {
+        return reply.code(404).send({ error: 'Keine Spielerfigur.' });
+      }
+      const rolle = kampagne ? tableRole({ roles: user.roles ?? {} }, kampagne.id) : null;
+      const leitet = user.isAdmin || rolle === 'gm' || rolle === 'co-gm';
+      /* Wie beim Schreiben: die eigene Figur, und die Leitung, was Spielende ihr vorlegen (D72). */
+      const darf =
+        mayWrite(user, await ownedBy(user, stand.alle), figur.id) ||
+        ((await repo.authorsOf(figur.id)).length > 0 && maySetReady(user, stand.map, figur));
+      if (!darf) return reply.code(403).send({ error: 'Das gehört dir nicht.' });
+      const inventarId = (figur.relations ?? []).find((r) => r.type === 'carries')?.to;
+      const inventar = inventarId ? stand.map.get(inventarId) : undefined;
+      if (!leitet && inventar?.relations?.some((r) => r.type === 'holds')) {
+        return reply.code(409).send({ error: 'Diese Figur hat schon Ausrüstung; mehr gibt die Leitung.' });
+      }
+      const m = methods.find((x) => x.id === String(request.body?.method ?? ''));
+      if (!m) return reply.code(400).send({ error: 'Kein erlaubtes Verfahren.' });
+
+      /* Gegenstände nur, wie dieser Betrachter sie sieht, und nur fertige. */
+      const sichtbar = async (ids: string[]) =>
+        new Map(
+          (await sieve(request, ids.map((i) => stand.map.get(i)).filter((e): e is Entity => !!e), stand.map))
+            .filter((e) => isReady(e))
+            .map((e) => [e.id, e] as const),
+        );
+      let items: { id: string; qty: number }[] = [];
+      let kupfer = 0;
+      const ausgelassen: string[] = [];
+      let beleg: string | undefined;
+      if (m.method === 'rules') {
+        const paket = resolveEquipment(startingBundle(figur, stand.map), stand.alle);
+        const da = await sichtbar(paket.items.map((i) => i.id));
+        items = paket.items.filter((i) => da.has(i.id));
+        ausgelassen.push(...paket.missing, ...paket.items.filter((i) => !da.has(i.id)).map((i) => i.id), ...paket.rest);
+        kupfer = paket.copper;
+      } else {
+        const roh = Array.isArray(request.body?.purchases) ? (request.body.purchases as unknown[]) : [];
+        const kauf = roh
+          .filter((p): p is { id: string; qty: unknown } => !!p && typeof p === 'object' && typeof (p as { id?: unknown }).id === 'string')
+          .map((p) => ({ id: p.id, qty: Number(p.qty) }));
+        let budget: number | undefined;
+        if (m.method === 'free') budget = m.budget !== undefined ? Math.round(m.budget * 100) : undefined;
+        else {
+          const ausdruck = m.gold ?? startingGoldOf(stand.map.get(startClassOf(figur) ?? ''));
+          const fest = fixedGold(ausdruck);
+          if (fest !== undefined) budget = Math.round(fest * 100);
+          else {
+            /* Der Beleg: ein Wurf dieses Kontos mit diesem Verfahren (und
+               bei Startgold je Klasse für die erste Klasse der Figur), der
+               noch nicht verbraucht ist. */
+            beleg = String(request.body?.roll ?? '');
+            const ev = beleg ? await repo.getEvent(beleg) : undefined;
+            const p = (ev?.payload ?? {}) as { method?: unknown; class?: unknown; gp?: unknown; by?: unknown };
+            if (!ev || ev.name !== 'equipment.rolled' || p.method !== m.id || p.by !== user.id || (!m.gold && p.class !== startClassOf(figur))) {
+              return reply.code(400).send({ error: 'Erst würfeln: der Wurf für dieses Verfahren und diese Klasse fehlt.' });
+            }
+            const verbraucht = (await repo.listEvents({ name: 'equipment.applied', limit: 10000 })).some(
+              (x) => (x.payload as { roll?: unknown } | undefined)?.roll === beleg,
+            );
+            if (verbraucht) return reply.code(409).send({ error: 'Dieser Wurf ist schon ausgegeben.' });
+            budget = Math.round(Number(p.gp) * 100);
+          }
+        }
+        const da = await sichtbar(kauf.map((k) => k.id));
+        const pruefung = checkPurchase(kauf, da, m, budget);
+        if (pruefung.problem) return reply.code(422).send({ error: pruefung.problem });
+        for (const k of kauf) {
+          const vorhanden = items.find((i) => i.id === k.id);
+          if (vorhanden) vorhanden.qty += k.qty;
+          else items.push({ id: k.id, qty: k.qty });
+        }
+        kupfer = budget !== undefined ? budget - pruefung.spent : 0;
+      }
+
+      /* Das Inventar: das vorhandene, sonst ein neues in den Ebenen der Figur. */
+      const holds = items.map((i, n) => ({ type: 'holds', to: i.id, props: { qty: i.qty, tier: 'pack' } as Record<string, unknown>, n }));
+      let invId = inventar?.id;
+      if (inventar) {
+        const relations = [
+          ...(inventar.relations ?? []),
+          ...holds.map((h) => ({ id: `${inventar.id}~holds-${randomUUID().slice(0, 8)}`, type: h.type, to: h.to, props: h.props })),
+        ];
+        const alt = Number(inventar.components?.['Inventory']?.['copper']) || 0;
+        const components = { ...(inventar.components ?? {}), Inventory: { ...(inventar.components?.['Inventory'] ?? {}), copper: alt + kupfer } };
+        const ergebnis = await schreibeGeprueft({ ...inventar, components, relations });
+        if ('issues' in ergebnis) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues: ergebnis.issues });
+      } else {
+        const neueId = (): string => `e_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+        let id = neueId();
+        while (stand.map.has(id)) id = neueId();
+        invId = id;
+        const name = `${entityName(figur)}'s inventory`;
+        const neu: Entity = {
+          id,
+          interfaces: ['Inventory'],
+          name,
+          components: {
+            Identity: { name, id: nextId(stand.alle, 'Inventory') },
+            Inventory: { copper: kupfer },
+            /* Teil der eigenen Figur (E-014 d): fertig wie sie. */
+            [STATUS_COMPONENT]: { status: 'ready' },
+          },
+          relations: [
+            ...(figur.relations ?? []).filter((r) => r.type === 'inLayer').map((r, n) => ({ id: `${id}~inLayer-${n + 1}`, type: 'inLayer', to: r.to, props: {} })),
+            ...holds.map((h) => ({ id: `${id}~holds-${h.n + 1}`, type: h.type, to: h.to, props: h.props })),
+          ],
+        };
+        const known = new Map(stand.alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
+        known.set(id, 'Inventory');
+        const issues = validateEntity(registry, neu, { knownTypes: known, stageOf: stageBases([...stand.alle, neu]) });
+        if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+        await repo.putEntity(neu);
+        if (!user.isAdmin && (user.authoredIds ?? []).includes(figur.id)) await repo.addAuthored(user.id, id);
+        const ergebnis = await schreibeGeprueft({
+          ...figur,
+          relations: [...(figur.relations ?? []), { id: `${figur.id}~carries-${randomUUID().slice(0, 8)}`, type: 'carries', to: id, props: {} }],
+        });
+        if ('issues' in ergebnis) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues: ergebnis.issues });
+      }
+      await repo.appendEvent('equipment.applied', figur.id, {
+        method: m.id,
+        inventory: invId,
+        items,
+        copper: kupfer,
+        ...(beleg ? { roll: beleg } : {}),
+        ...(ausgelassen.length ? { skipped: ausgelassen } : {}),
+        by: user.id,
+      });
+      return { inventory: invId, items, copper: kupfer, skipped: ausgelassen };
+    },
+  );
+
   /* Die Leseansicht (T-091, REQ-247): eine Ebene als Buch. */
   const { leseZiel } = registerLesen(app, { repo, viewerOf, roh, sieve, geltend, bezuegeVon });
 

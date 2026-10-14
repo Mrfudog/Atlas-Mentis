@@ -121,7 +121,7 @@ export function herausgeberEbeneId(herausgeber: string): string {
 /**
  * Arten, deren Peg-Id noch mit dem alten Typnamen gerechnet wird: ein
  * Kapitel war bis E-026 eine `Story` (`kind: 'chapter'`) und ist jetzt ein
- * `Arc`. Die Migration 040 ändert nur die Art, nicht die Id — mit dem neuen
+ * `Arc`. Die Migration 041 ändert nur die Art, nicht die Id — mit dem neuen
  * Namen im Hash legte `--only-new` jedes Kapitel ein zweites Mal an.
  */
 const PEG_TYP: Record<string, string> = { Arc: 'Story' };

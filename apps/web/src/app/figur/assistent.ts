@@ -3,6 +3,16 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   answerChoice,
   answersOf,
+  checkPurchase,
+  entityName,
+  fixedEquipmentLines,
+  fixedGold,
+  formatCopper,
+  itemPrice,
+  magicRarity,
+  plainEquipmentText,
+  startClassOf,
+  startingGoldOf,
   assignScore,
   assignmentProblem,
   builderSteps,
@@ -21,6 +31,9 @@ import {
   type BuilderStep,
   type ChoiceAtCharacter,
   type Entity,
+  type EquipmentMethod,
+  type GoldRoll,
+  type Purchase,
   type RolledScores,
 } from '@nw/model';
 import { Api, ApiError, type ListenZeile } from '../kern/api';
@@ -293,6 +306,101 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                 }
               }
 
+              @case ('equipment') {
+                <div class="verfahren" role="radiogroup" aria-label="Equipment method">
+                  @for (m of ausrMethoden(); track m.id) {
+                    <label [class.an]="ausrMethode()?.id === m.id">
+                      <input type="radio" name="ausr" [checked]="ausrMethode()?.id === m.id" (change)="waehleAusr(m)" />
+                      {{ m.name }}
+                      <span class="dim">{{ beschreibeAusr(m) }}</span>
+                    </label>
+                  }
+                </div>
+                @if (ausrMethode(); as m) {
+                  @if (m.method === 'rules') {
+                    @for (c of s.choices; track c.source.entity.id + '#' + c.choice.id) {
+                      <p>{{ c.choice.note ?? 'Choose' }} <span class="dim">— from {{ c.source.entity.name }}</span></p>
+                      <ul class="karten" role="radiogroup">
+                        @for (o of c.choice.from?.options ?? []; track o.key) {
+                          <li>
+                            <label [class.an]="(c.picks ?? []).includes(o.key)">
+                              <input
+                                type="radio"
+                                [name]="'eq-' + c.source.entity.id + '-' + c.choice.id"
+                                [checked]="(c.picks ?? []).includes(o.key)"
+                                (change)="waehleVariante(c, o.key)"
+                              />
+                              <span class="name">({{ o.key }})</span>
+                              {{ klartext(o.label) }}
+                            </label>
+                          </li>
+                        }
+                      </ul>
+                    }
+                    @if (festes().length) {
+                      <p>Also: {{ festes().join('; ') }}</p>
+                    }
+                    @if (!s.choices.length && !festes().length) {
+                      <p class="dim">Class and background name no equipment.</p>
+                    }
+                  } @else {
+                    @if (m.method === 'gold' && goldAusdruck() && goldFest() === undefined) {
+                      @if (goldWurf(); as w) {
+                        <p class="wurf">Rolled <strong>{{ w.gp }} gp</strong> <span class="dim">— {{ goldAusdruck() }}: {{ w.roll }}</span></p>
+                      } @else {
+                        <button type="button" class="pri" [disabled]="wuerfelt()" (click)="wuerfleGold(m)">Roll starting gold ({{ goldAusdruck() }})</button>
+                      }
+                    }
+                    @if (m.method === 'gold' && !goldAusdruck()) {
+                      <p class="dim">This class names no starting gold.</p>
+                    }
+                    @if (budget() !== null || m.method === 'free') {
+                      <p class="wurf">
+                        @if (budget() !== null) {
+                          Budget <strong>{{ geld(budget()!) }}</strong> · spent {{ geld(pruefung().spent) }} · left
+                          <strong>{{ geld(budget()! - pruefung().spent) }}</strong>
+                        } @else {
+                          No budget limit · spent {{ geld(pruefung().spent) }}
+                        }
+                      </p>
+                      @if (grenzen(m); as g) {
+                        <p class="dim">{{ g }}</p>
+                      }
+                      <input class="suche" type="search" placeholder="Search items…" [value]="ladenSuche()" (input)="sucheImLaden($any($event.target).value)" />
+                      <ul class="laden" aria-label="Items">
+                        @for (it of ladenTreffer(); track it.id) {
+                          <li>
+                            <span class="name">{{ nameVon(it) }}</span>
+                            <span class="dim">{{ preis(it) }}{{ selten(it) }}</span>
+                            <button type="button" (click)="kaufe(it.id, 1)" [attr.aria-label]="'Add ' + nameVon(it)">Add</button>
+                          </li>
+                        } @empty {
+                          @if (ladenSuche().trim()) {
+                            <li class="dim">Nothing ready matches.</li>
+                          }
+                        }
+                      </ul>
+                      @if (korb().length) {
+                        <h3>Your equipment</h3>
+                        <ul class="laden korb">
+                          @for (k of korb(); track k.id) {
+                            <li>
+                              <span class="name">{{ nameVon(ladenArtikel().get(k.id)) }}</span>
+                              <span class="dim">× {{ k.qty }}</span>
+                              <button type="button" (click)="kaufe(k.id, -1)" [attr.aria-label]="'One fewer'">−</button>
+                              <button type="button" (click)="kaufe(k.id, 1)" [attr.aria-label]="'One more'">+</button>
+                            </li>
+                          }
+                        </ul>
+                      }
+                      @if (pruefung().problem; as p) {
+                        <p class="fehler">{{ p }}</p>
+                      }
+                    }
+                  }
+                }
+              }
+
               @case ('details') {
                 <label class="zeile">
                   <span>Name <i class="pflicht" title="required">*</i></span>
@@ -479,6 +587,32 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
       font-size: 1.1rem;
       color: var(--heading);
     }
+    .laden {
+      list-style: none;
+      margin: 0.5rem 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .laden li {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+      min-height: 44px;
+      padding: 0.3rem 0.6rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+    }
+    .laden li .name {
+      flex: 1 1 10rem;
+    }
+    .laden button {
+      min-height: 36px;
+      min-width: 44px;
+    }
     .neu {
       margin: 0.25rem 0 0.5rem;
       padding-left: 1.2rem;
@@ -564,6 +698,42 @@ export class Assistent {
   /** Die Sprachen der Kampagne (REQ-251); leer heisst jede. */
   private readonly sprachen = signal<string[]>([]);
   private readonly geladenVerfahren = signal(false);
+
+  /** Die Startausrüstung (T-096): Verfahren, Wurf, Einkauf. */
+  protected readonly ausrMethoden = signal<EquipmentMethod[]>([]);
+  protected readonly ausrMethode = signal<EquipmentMethod | null>(null);
+  protected readonly goldWurf = signal<(GoldRoll & { event: string }) | null>(null);
+  protected readonly korb = signal<Purchase[]>([]);
+  protected readonly ladenSuche = signal('');
+  protected readonly ladenTreffer = signal<Entity[]>([]);
+  /** Jeder Gegenstand, der im Laden einmal gezeigt wurde — gegen ihn rechnet `checkPurchase`. */
+  protected readonly ladenArtikel = signal<ReadonlyMap<string, Entity>>(new Map());
+  /** Die schon angelegte Figur, falls die Ausrüstung danach scheiterte. */
+  private readonly angelegt = signal<string | null>(null);
+  private ladenLauf = 0;
+
+  protected readonly startKlasse = computed(() => this.quellen().get(startClassOf(this.entwurf()) ?? ''));
+  protected readonly goldAusdruck = computed(() => {
+    const m = this.ausrMethode();
+    return m?.method === 'gold' ? (m.gold ?? startingGoldOf(this.startKlasse())) : undefined;
+  });
+  protected readonly goldFest = computed(() => fixedGold(this.goldAusdruck()));
+  /** Das Geld in Kupfer; `null` heisst ohne Grenze oder noch nicht gewürfelt. */
+  protected readonly budget = computed<number | null>(() => {
+    const m = this.ausrMethode();
+    if (!m || m.method === 'rules') return null;
+    if (m.method === 'free') return m.budget !== undefined ? Math.round(m.budget * 100) : null;
+    const fest = this.goldFest();
+    if (fest !== undefined) return Math.round(fest * 100);
+    const w = this.goldWurf();
+    return w ? Math.round(w.gp * 100) : null;
+  });
+  protected readonly pruefung = computed(() => {
+    const m = this.ausrMethode();
+    if (!m) return { problem: 'Choose a method.', spent: 0, magic: {} };
+    return checkPurchase(this.korb(), this.ladenArtikel(), m, this.budget() ?? undefined);
+  });
+  protected readonly festes = computed(() => fixedEquipmentLines(this.entwurf(), this.quellen()).map((z) => z.text));
 
   protected readonly bereit = computed(
     () => !!this.bestand.registry() && this.geladenVerfahren() && (!this.aufstieg() || !!this.figur()),
@@ -673,6 +843,16 @@ export class Assistent {
       })
       .catch((e: Error) => this.ladefehler.set(e.message))
       .finally(() => this.geladenVerfahren.set(true));
+    /* Beim Aufstieg gibt es keine Startausrüstung. */
+    if (!id) {
+      this.api
+        .equipmentMethods()
+        .then((r) => {
+          this.ausrMethoden.set(r.methods);
+          if (r.methods.length === 1) this.ausrMethode.set(r.methods[0]!);
+        })
+        .catch((e: Error) => this.ladefehler.set(e.message));
+    }
 
     /* **Was der Entwurf nennt, kommt ganz** — und was eine Quelle gewährt
        (`grants`), denn auch ein Merkmal kann fragen (Fighting Style). */
@@ -793,6 +973,8 @@ export class Assistent {
         return 'Level';
       case 'details':
         return 'Name';
+      case 'equipment':
+        return 'Equipment';
       case 'choice': {
         const c = s.at.choice;
         return c.note && c.note.length < 40 ? c.note : `${s.at.source.entity.name}: ${c.kind}`;
@@ -920,6 +1102,13 @@ export class Assistent {
         return !!this.aufstiegKlasse();
       case 'details':
         return !!this.name().trim();
+      case 'equipment': {
+        const m = this.ausrMethode();
+        if (!m) return false;
+        if (m.method === 'rules') return s.choices.every((c) => !!c.picks?.length);
+        if (m.method === 'gold' && this.budget() === null) return false;
+        return !this.pruefung().problem;
+      }
       case 'choice':
         return (s.at.picks?.length ?? 0) >= (s.at.choice.count ?? 1) || this.spaeterGelegt().has(choiceKey(s.at)) || (!!s.at.picks?.length && !s.at.choice.from);
     }
@@ -931,6 +1120,107 @@ export class Assistent {
 
   protected zurueck(): void {
     this.index.update((i) => Math.max(0, i - 1));
+  }
+
+  // ---------------------------------------------------------- Startausrüstung (T-096)
+
+  protected beschreibeAusr(m: EquipmentMethod): string {
+    if (m.method === 'rules') return 'what your class and background give';
+    if (m.method === 'gold') return m.gold ? `${m.gold} gp to buy your own` : "your class's starting gold to buy your own";
+    return m.budget !== undefined ? `${m.budget} gp, your own choice` : 'your own choice';
+  }
+
+  /** Was das Verfahren begrenzt, als Satz. */
+  protected grenzen(m: EquipmentMethod): string {
+    const teile: string[] = [];
+    if (m.magic) {
+      const l = Object.entries(m.magic).filter(([, n]) => n > 0);
+      teile.push(l.length ? `Magic items: at most ${l.map(([r, n]) => `${n} ${r}`).join(', ')}` : 'No magic items');
+    }
+    if (m.itemTypes?.length) teile.push(`Only: ${m.itemTypes.join(', ')}`);
+    return teile.join(' · ');
+  }
+
+  protected waehleAusr(m: EquipmentMethod): void {
+    this.ausrMethode.set(m);
+    this.korb.set([]);
+    this.goldWurf.set(null);
+  }
+
+  protected waehleVariante(c: ChoiceAtCharacter, key: string): void {
+    this.entwurf.update((e) => pruneAnswers(answerChoice(e, c, [key]), this.quellen()));
+  }
+
+  protected klartext(label: string): string {
+    return plainEquipmentText(label);
+  }
+
+  protected nameVon(e: Entity | undefined): string {
+    return entityName(e);
+  }
+
+  protected geld(cp: number): string {
+    return formatCopper(cp);
+  }
+
+  protected preis(it: Entity): string {
+    const p = itemPrice(it);
+    return p === undefined ? 'no price' : formatCopper(p);
+  }
+
+  protected selten(it: Entity): string {
+    const r = magicRarity(it);
+    return r ? ` · ${r}` : '';
+  }
+
+  protected async wuerfleGold(m: EquipmentMethod): Promise<void> {
+    this.wuerfelt.set(true);
+    this.problem.set(null);
+    try {
+      this.goldWurf.set(await this.api.rollGold(m.id, startClassOf(this.entwurf())));
+    } catch (e) {
+      this.problem.set((e as Error).message);
+    } finally {
+      this.wuerfelt.set(false);
+    }
+  }
+
+  /**
+   * **Im Laden suchen**: die Liste am Server (gesiebt, im Stapel), nur
+   * fertige Gegenstände, dann die Treffer ganz — Preis und Seltenheit
+   * stehen nicht in der Zeile.
+   */
+  protected async sucheImLaden(q: string): Promise<void> {
+    this.ladenSuche.set(q);
+    const lauf = ++this.ladenLauf;
+    if (!q.trim()) {
+      this.ladenTreffer.set([]);
+      return;
+    }
+    const typen = this.ausrMethode()?.itemTypes;
+    try {
+      const r = await this.api.list({ of: ['Item'], q, limit: 30, sort: 'name', ...(typen?.length ? { f: [`Item.itemType:${typen.join('|')}`] } : {}) });
+      const ids = r.rows.filter(fertig).map((z) => z.id);
+      const ganz = ids.length ? await this.api.entitiesById(ids) : [];
+      if (lauf !== this.ladenLauf) return;
+      this.ladenTreffer.set(ganz);
+      this.ladenArtikel.update((m) => {
+        const neu = new Map(m);
+        for (const e of ganz) neu.set(e.id, e);
+        return neu;
+      });
+    } catch (e) {
+      this.problem.set((e as Error).message);
+    }
+  }
+
+  protected kaufe(id: string, n: number): void {
+    this.korb.update((l) => {
+      const da = l.find((k) => k.id === id);
+      if (!da) return n > 0 ? [...l, { id, qty: n }] : l;
+      const qty = da.qty + n;
+      return qty > 0 ? l.map((k) => (k.id === id ? { ...k, qty } : k)) : l.filter((k) => k.id !== id);
+    });
   }
 
   protected async speichern(): Promise<void> {
@@ -949,21 +1239,31 @@ export class Assistent {
         return;
       }
       const name = this.name().trim();
-      const kanten = (e.relations ?? []).map((r) => ({ type: r.type, to: r.to, props: r.props ?? {} }));
-      if (this.gruppe()) kanten.push({ type: 'memberOfParty', to: this.gruppe(), props: {} });
-      /* Die Figur gehört dem Spieler (E-014 d): gleich fertig. */
-      const figur = await this.api.createEntity('PlayerCharacter', name, { 'Status.status': 'ready' }, kanten);
-      const werte = Object.fromEntries(this.attribute().map((a) => [`Abilities.${a}`, this.werte()[a]]));
-      await this.api.createEntity('Statblock', name, { ...werte, 'Status.status': 'ready' }, [{ type: 'belongsTo', to: figur.id }]);
-      /* Was sie angelegt hat, schreibt sie — das weiss erst ein neues `/api/me`. */
-      await this.session.load(true);
-      await this.router.navigate(['/artikel', figur.id], { queryParams: { edit: 1 } });
+      /* Scheiterte beim letzten Mal nur die Ausrüstung, steht die Figur schon. */
+      let figurId = this.angelegt();
+      if (!figurId) {
+        const kanten = (e.relations ?? []).map((r) => ({ type: r.type, to: r.to, props: r.props ?? {} }));
+        if (this.gruppe()) kanten.push({ type: 'memberOfParty', to: this.gruppe(), props: {} });
+        /* Die Figur gehört dem Spieler (E-014 d): gleich fertig. */
+        const figur = await this.api.createEntity('PlayerCharacter', name, { 'Status.status': 'ready' }, kanten);
+        const werte = Object.fromEntries(this.attribute().map((a) => [`Abilities.${a}`, this.werte()[a]]));
+        await this.api.createEntity('Statblock', name, { ...werte, 'Status.status': 'ready' }, [{ type: 'belongsTo', to: figur.id }]);
+        figurId = figur.id;
+        this.angelegt.set(figurId);
+        /* Was sie angelegt hat, schreibt sie — das weiss erst ein neues `/api/me`. */
+        await this.session.load(true);
+      }
+      /* Die Startausrüstung prüft und schreibt der Server (T-096). */
+      const m = this.ausrMethode();
+      if (m) await this.api.applyEquipment(figurId, m.id, m.method === 'rules' ? [] : this.korb(), this.goldWurf()?.event);
+      await this.router.navigate(['/artikel', figurId], { queryParams: { edit: 1 } });
     } catch (error) {
       if (error instanceof ApiError) {
         const issues = Array.isArray(error.issues)
           ? (error.issues as { message?: string }[]).map((i) => i.message).filter(Boolean)
           : [];
-        this.problem.set([error.message, ...issues].join(' — '));
+        const vorab = this.angelegt() ? 'The character is saved, but not its equipment: ' : '';
+        this.problem.set(vorab + [error.message, ...issues].join(' — '));
       } else this.problem.set('Could not reach the server.');
     } finally {
       this.speichert.set(false);

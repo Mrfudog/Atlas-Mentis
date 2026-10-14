@@ -1,4 +1,4 @@
-import { choicesOf, type Entity } from '@nw/model';
+import { choicesOf, plainEquipmentText, type Entity } from '@nw/model';
 
 /**
  * **Ein Eintrag je Klasse** (T-095, REQ-238). Gespeichert bleibt, was das
@@ -85,7 +85,8 @@ export function antwortText(
   const text = picks
     .map((p) => {
       const opt = c?.from?.options?.find((o) => o.key === p);
-      if (opt) return `(${opt.key}) ${opt.label}`;
+      /* Ohne Verweis-Markup: die Zeile ist Text (T-096). */
+      if (opt) return `(${opt.key}) ${plainEquipmentText(opt.label)}`;
       if (c?.kind === 'ability') return p.toUpperCase();
       return artikel || !c ? (name(p) ?? p) : p;
     })

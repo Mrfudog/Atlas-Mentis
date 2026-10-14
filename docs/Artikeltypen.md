@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-14. 71 Schnittstellen, 57 Kantenarten.
+Stand 2026-10-14. 72 Schnittstellen, 58 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -830,6 +830,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `allowsMethod` → AbilityMethod — „allows ability method"
+- `allowsEquipment` → EquipmentMethod — „allows equipment method"
 - `partOf` → Place | Story | Event | Layer — „part of"
 - `describedIn` → Article — „described in"
 - `happensAt` → Place — „happens at"
@@ -1071,7 +1072,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## Rules
 
-*Woran man sich hält.* — 23 Arten.
+*Woran man sich hält.* — 24 Arten.
 
 ### Ability score method
 
@@ -1330,7 +1331,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `hitDie` *4…12*, `primaryAbility` *Ability: str | dex | con | int | wis | cha*, `startingEquipment` *long*, `multiclassRequirement` *string*, `multiclassProficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `subclassTitle` *string*, `casterProgression` *full | half | third | pact | artificer*, `spellAbility` *Ability: str | dex | con | int | wis | cha*
+- `hitDie` *4…12*, `primaryAbility` *Ability: str | dex | con | int | wis | cha*, `startingEquipment` *long*, `startingGold` *string*, `multiclassRequirement` *string*, `multiclassProficient` *Skill articles + Language articles + Item articles + Weapon articles + Weapon.category + Armor.armorType*, `subclassTitle` *string*, `casterProgression` *full | half | third | pact | artificer*, `spellAbility` *Ability: str | dex | con | int | wis | cha*
 
 **Geerbte Felder**
 
@@ -1464,6 +1465,53 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Statblock — `composedOf` → „used in"
 - Condition — `stageOf` → „has stages"
 - Rule — `affects` → „affected by"
+- Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+
+### Starting equipment method
+
+`EquipmentMethod` · erbt von `Rule` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Vars`
+
+**Eigene Felder**
+
+- `method` **Pflicht** *rules | gold | free*, `gold` *string*, `budget` *0…∞*, `magic` *object*, `itemTypes` *Item.itemType*
+
+**Geerbte Felder**
+
+- *`Rule`* — `kind` *RuleKind: rule | travel | sense | reward | boon | option*, `autolink` *boolean*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Vars`* — `bindings` *object*
+
+**Kanten von hier**
+
+- `affects` → Rule — „affects"
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Statblock — `composedOf` → „used in"
+- Rule — `affects` → „affected by"
+- Campaign — `allowsEquipment` → „allowed in"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
