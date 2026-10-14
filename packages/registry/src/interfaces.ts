@@ -1140,6 +1140,31 @@ export const interfaces: Record<string, InterfaceDef> = {
   },
 
   /**
+   * **Ein Fertigungsauftrag** (T-128) ist eine Instanz des Rezepts: er
+   * erbt von `Recipe` und zeigt mit `instanceOf` auf das Rezept, liest dort
+   * Werkzeug, SG, Zeit, Material und Ertrag und speichert nur, was abweicht
+   * (ein anderer SG für diesen einen Auftrag). Eigen sind ihm Fortschritt,
+   * Ausgang und Proben. Nicht das Endprodukt: ein Ertrag von drei Tränken
+   * ist ein Stapel im Inventar, keine Instanz, und eine Instanz ist kein
+   * Verweisziel — ein Gegenstand im Inventar ist eines.
+   */
+  CraftingOrder: {
+    name: 'CraftingOrder',
+    area: 'play',
+    label: 'Crafting order',
+    extends: ['Recipe'],
+    schema: merge(g.CraftingOrderInfo),
+    views: {
+      full: [
+        { id: 'co-craft', el: 'crafting' },
+        { id: 'co-f', el: 'fields', fields: 'all' },
+        { id: 'co-b', el: 'prose', fields: 'all' },
+        { id: 'co-r', el: 'relations' },
+      ],
+    },
+  },
+
+  /**
    * Ein Board ist ein Artikel, und was darauf liegt, sind Kanten. Damit
    * beantwortet „wo liegt dieser NSC überall?" derselbe Rückbezug wie
    * überall sonst — und ein Board kann geteilt, versioniert und mit Wissen

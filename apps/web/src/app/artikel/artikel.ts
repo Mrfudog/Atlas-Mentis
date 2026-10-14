@@ -53,6 +53,7 @@ import { Statblock } from './statblock';
 import { Zauber } from './zauber';
 import { Gegenstand } from './gegenstand';
 import { Laden } from './laden';
+import { Werkstatt } from './werkstatt';
 import { Abschnitte } from './abschnitte';
 import { Fluss } from './fluss';
 import { anordnen, feldZellen, mitLeeren, prosaVon, SCHON_ANDERSWO, type Prosa, type Stueck, type Zelle } from './anordnung';
@@ -130,7 +131,7 @@ interface Feld {
     Statblock,
     Zauber,
     Gegenstand,
-    Laden,
+    Laden, Werkstatt,
     Abschnitte,
     Fluss,
     FassungsKasten,
@@ -621,6 +622,7 @@ interface Feld {
                         <p class="hinweis">A campaign, party or character changes this with a “crafts with” edge to the recipe or its tool.</p>
                       </section>
                     }
+                    <nw-werkstatt [id]="e.id" />
                   }
                   @case ('laden') {
                     @if (ladenwaren(); as lw) {

@@ -299,10 +299,13 @@ export function anordnen(
       case 'composed':
         out.push({ id: el.id, art: 'teile' });
         break;
-      /* Das Handwerk (T-122): heute nur der Fertigungswert am Rezept —
-         die Seite zeichnet es, wo der Server ihn mitschickt (`refs.craft`).
-         Die Werkbank an Figur und Gruppe kommt mit T-027. */
+      /* Das Handwerk: der Fertigungswert am Rezept (T-122, `refs.craft`)
+         und die Werkbank (T-128) — am Rezept einen Auftrag starten, am
+         Auftrag Proben und Abschluss (`nw-werkstatt`). */
       case 'crafting':
+        /* Fortschritt, Ausgang und Proben eines Auftrags zeichnet die
+           Werkbank selbst — als lose Felder stünden sie doppelt da. */
+        felderDa.add('CraftingOrder');
         out.push({ id: el.id, art: 'handwerk' });
         break;
       /* Die Waren eines Ladens (T-129): gerechnet am Server (`refs.shop`). */

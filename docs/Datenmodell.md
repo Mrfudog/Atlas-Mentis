@@ -1030,6 +1030,58 @@ flowchart LR
   das Regelwerk zu schreiben: ein `Knowledge`-Bündel in ihrer Ebene
   `includes` die Blaupausen und ist `knownBy` der Figur (9.3).
 
+#### Der Fertigungsauftrag in der Seite (T-128)
+
+```mermaid
+flowchart LR
+  F["Creature"] -- "crafting" --> O["CraftingOrder<br/>progress · outcome · rolls"]
+  O -- "instanceOf" --> R["Recipe<br/>dc · checks · days · onFailure"]
+  R -- "needs · qty · consumed" --> M["Item"]
+  R -- "yields" --> P["Item"]
+  Inv["Inventory (Figur, Gruppe)"] -- "holds · reservedFor = Auftrag" --> M
+  K["Campaign<br/>craftFailure · craftCritSuccess<br/>craftCritFailure · craftConfirm"] -. "Regeln" .-> O
+```
+
+- **Ein Auftrag ist eine Instanz des Rezepts** (`CraftingOrder extends
+  Recipe`, `instanceOf` aufs Rezept; `same` nimmt die Obertypen mit). Er
+  liest Werkzeug, SG, Proben, Tage, Material und Ertrag beim Rezept und
+  speichert nur, was abweicht — die Leitung gibt *diesem* Auftrag einen
+  anderen SG, ohne das Rezept zu kopieren. Eigen sind ihm `progress`,
+  `outcome` (`open`, `succeeded`, `failed`, `aborted`), `started` und
+  `rolls`. Wer fertigt, sagt `crafting` vom Fertigenden zum Auftrag. Wie
+  jede Instanz steht er in keiner Liste; er hängt an der Figur und am
+  Rezept. **Nicht das Endprodukt:** ein Ertrag von drei Tränken ist ein
+  Stapel im Inventar und keine Instanz, und ein Gegenstand im Inventar ist
+  ein Verweisziel, eine Instanz nicht.
+- **Das Material bleibt im Inventar und wird reserviert**
+  (`holds.props.reservedFor` = der Auftrag): aus dem Inventar der Figur
+  und dem ihrer Gruppen, Behälter darin eingeschlossen; ein grösserer
+  Stapel wird geteilt (`reserveIn`). Reserviert wandert nichts. Das löst
+  in der Seite das Binden in `crafting.props.put` (D55) ab — gebunden ist
+  es so wie dort, aber es bleibt sichtbar, wo es liegt.
+- **Fortschritt** (`orderNeed`): nennt das Rezept `checks`, zählt jede
+  gelungene Probe eins; sonst zählen Arbeitstage, und am Ende entscheidet
+  eine Probe. Die Probe rechnet gegen den SG aus `craftCheck` (mit den
+  `craftsWith`-Kanten der Figur).
+- **Die Regeln stehen an der Kampagne** (`craftRulesOf`, wandern mit T-132
+  in ein Modul): `craftFailure` — `recipe` (Vorgabe: `Recipe.onFailure`,
+  also die Quelle), `noProgress`, `progressLost`, `materialsLost`,
+  `halfLost`, `nothingLost`, `custom` (die Leitung entscheidet);
+  `craftCritSuccess` (`double`: die natürliche 20 zählt zweimal);
+  `craftCritFailure` (eigener Ausgang der natürlichen 1); `craftConfirm`
+  (`gm`: eine Probe der Spielenden wartet, bis die Leitung sie annimmt).
+- **Abrechnung** (`settlePieces`): bei Erfolg ist das Verbrauchte weg, das
+  Übrige frei, und der Ertrag (`yieldCount` ×) liegt im Inventar der Figur
+  (sonst der Gruppe); beim Abbruch kommt alles zurück; beim Misserfolg nach
+  der Regel (`halfLost`: die abgerundete Hälfte zurück). Was nicht
+  verbraucht wird, kommt immer zurück.
+- **Geschrieben wird nur über `/api/crafting`** (`apps/server/src/handwerk.ts`),
+  nicht über `PUT`: ein Ausgang, den jemand in der Maske setzt, hätte
+  nichts abgerechnet — die Felder des Auftrags sind `readOnly`. Spielende
+  starten für ihre Figur und nur Gelerntes (`recipeLearned`), mit allem
+  Verbrauchten; die Leitung für jede Figur und auch mit Lücken. Was sich
+  ändert, geht über den Live-Kanal (T-116).
+
 ### 9.6 Laden und Preise (T-129)
 
 - **Ein Laden ist ein Ort** (`Shop extends Place`, Bereich `world`). Er
@@ -1339,7 +1391,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-14: 55 Artikelarten, 24 Grundtypen, 63 Kantenarten, 6 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-14: 56 Artikelarten, 24 Grundtypen, 63 Kantenarten, 6 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -1401,7 +1453,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
 | `Arc` | `Story` | `levelFrom` `levelTo` `hook` `outcome` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `mapOf` | — |
-| `Campaign` | `Story` | `compareFor` `languages` `feats` `inventory` | `allowsMethod` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` | `partOf` `chapterOf` `partyOf` `mapOf` | full |
+| `Campaign` | `Story` | `compareFor` `languages` `feats` `inventory` `craftFailure` `craftCritSuccess` `craftCritFailure` `craftConfirm` | `allowsMethod` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` | `partOf` `chapterOf` `partyOf` `mapOf` | full |
 | `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | quick, full |
 | `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `mapOf` | quick |
 | `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `nowPlaying` `moves` `log` `partyNote` `stewardship` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `mapOf` | full |
@@ -1441,6 +1493,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
 | `Board` | — | `width` `height` `snap` `background` `rules` `shapes` `anchors` | `partOf` `placed` | — | full |
+| `CraftingOrder` | `Recipe` | `progress` `outcome` `started` `rolls` | `needs` `yields` `instanceOf` | `craftsWith` `instanceOf` `crafting` | full |
 | `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` | `xpBudget` `phase` `round` `turn` `surprise` | `partOf` `participates` `onMap` `loot` `tableFor` | — | full |
 | `Map` | `Image` `Secrets` `ReadAloud` | `sheets` `baseHidden` `baseGmOnly` `kind` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `scale` `lighting` `fog` `reveal` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `zone` `territory` | `insideMap` `onMap` | full |
 
@@ -1489,7 +1542,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `includes` | Knowledge → Information |  | — | — |
 | `inLayer` | * → Layer |  | — | `mode` `addedAt` |
 | `insideMap` | Map → Map | ja | — | `x` `y` `w` `h` |
-| `instanceOf` | Statblock \| Item → same | ja | — | — |
+| `instanceOf` | Statblock \| Item \| CraftingOrder → same | ja | — | — |
 | `involves` | Event → * |  | — | — |
 | `inWorld` | Campaign → World | ja | — | — |
 | `knowledge` | * → Information |  | owned | — |

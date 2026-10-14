@@ -273,6 +273,62 @@ export interface Ladenwaren {
   mine: { id: string; name: string; wares: Ware[] }[];
 }
 
+/** Die Regeln des Handwerks am Tisch (T-128, `craftRulesOf`). */
+export interface HandwerkRegeln {
+  failure: string;
+  critSuccess: string;
+  critFailure: string;
+  confirm: string;
+}
+/** Eine Probe am Auftrag. */
+export interface HandwerkProbe {
+  total: number;
+  nat?: number;
+  dc: number;
+  result: string;
+  would?: string;
+  by: string;
+  at: string;
+  note?: string;
+}
+/** Ein freies Stück, das ein Rezept braucht, in einem Inventar der Figur oder ihrer Gruppe. */
+export interface HandwerkVorrat {
+  item: string;
+  inventory: string;
+  owner: string;
+  edge: string;
+  qty: number;
+}
+export interface HandwerkAuftrag {
+  id: string;
+  name: string;
+  actor: { id: string; name: string } | null;
+  recipe: { id: string; name: string } | null;
+  progress: number;
+  needed: number;
+  unit: 'checks' | 'days';
+  outcome: 'open' | 'succeeded' | 'failed' | 'aborted';
+  started: string;
+  rolls: HandwerkProbe[];
+  check: { tool: string; ability: string; dc: number };
+  yields: { id: string; name: string; count: number } | null;
+  reserved: (HandwerkVorrat & { name: string; consumed: boolean })[];
+  onFailure: string;
+  may: { roll: boolean; work: boolean; confirm: boolean; abort: boolean; fail: boolean };
+}
+/** `GET /api/crafting/:id` — am Rezept oder am Auftrag (T-128). */
+export type Handwerk =
+  | { kind: 'order'; rules: HandwerkRegeln; leitet: boolean; order: HandwerkAuftrag }
+  | {
+      kind: 'recipe';
+      rules: HandwerkRegeln;
+      leitet: boolean;
+      recipe: { id: string; name: string; unit: 'checks' | 'days'; needed: number; onFailure: string; yields: { id: string; name: string } | null };
+      needs: { item: string; name: string; qty: number; consumed: boolean }[];
+      actors: { id: string; name: string; learned: boolean; check: { tool: string; ability: string; dc: number }; stock: HandwerkVorrat[] }[];
+      orders: { id: string; name: string; actor: string; progress: number; outcome: string }[];
+    };
+
 /** Eine Ebene, aus der eine Fassung kommt (`GET /api/entities/:id/versions`). */
 export interface FassungsEbene {
   id: string;
@@ -883,6 +939,18 @@ export class Api {
   /** Regelset und Gruppen der laufenden Kampagne, mit den Inventaren, zwischen denen Sachen wandern (T-127). */
   inventory(): Promise<InventarLage> {
     return this.call('/api/inventory');
+  }
+  /** Das Handwerk an einem Rezept oder Auftrag (T-128). */
+  crafting(id: string): Promise<Handwerk> {
+    return this.call(`/api/crafting/${encodeURIComponent(id)}`);
+  }
+  /** Einen Fertigungsauftrag starten; das Material wird reserviert (T-128). */
+  startCrafting(recipe: string, actor: string, materials: { inventory: string; edge: string; qty: number }[]): Promise<{ id: string }> {
+    return this.call('/api/crafting', { method: 'POST', body: JSON.stringify({ recipe, actor, materials }) });
+  }
+  /** Am Auftrag: `roll`, `confirm`, `work`, `abort`, `fail` (T-128). */
+  craftingAction(id: string, action: 'roll' | 'confirm' | 'work' | 'abort' | 'fail', body: Record<string, unknown> = {}): Promise<unknown> {
+    return this.call(`/api/crafting/${encodeURIComponent(id)}/${action}`, { method: 'POST', body: JSON.stringify(body) });
   }
   /** Die Spieler der laufenden Kampagne mit ihren Figuren (T-100, E-007) — ohne Konto-Id. */
   players(): Promise<{ campaign: { id: string; name: string } | null; players: Spieler[] }> {

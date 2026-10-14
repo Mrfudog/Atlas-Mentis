@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-14. 79 Schnittstellen, 63 Kantenarten.
+Stand 2026-10-14. 80 Schnittstellen, 63 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -68,7 +68,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
-- Statblock | Item — `instanceOf` → „instances"
+- Statblock | Item | CraftingOrder — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -421,7 +421,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
-- Statblock | Item — `instanceOf` → „instances"
+- Statblock | Item | CraftingOrder — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -479,7 +479,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
-- Statblock | Item — `instanceOf` → „instances"
+- Statblock | Item | CraftingOrder — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -774,7 +774,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
-- Statblock | Item — `instanceOf` → „instances"
+- Statblock | Item | CraftingOrder — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -887,7 +887,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `compareFor` *gm | players*, `languages` *Language articles*, `feats` *boolean*, `inventory` *grid | weight | slots*
+- `compareFor` *gm | players*, `languages` *Language articles*, `feats` *boolean*, `inventory` *grid | weight | slots*, `craftFailure` *recipe | noProgress | progressLost | materialsLost | halfLost | nothingLost | custom*, `craftCritSuccess` *asSuccess | double*, `craftCritFailure` *asFailure | progressLost | materialsLost*, `craftConfirm` *gm | player*
 
 **Geerbte Felder**
 
@@ -2169,7 +2169,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Encounter — `participates` → „fights in"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"
-- Statblock | Item — `instanceOf` → „instances"
+- Statblock | Item | CraftingOrder — `instanceOf` → „instances"
 - * — `variantOf` → „has variants"
 - * — `overrides` → „replaced by"
 
@@ -2325,7 +2325,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## Play
 
-*Worauf man während der Sitzung schaut.* — 3 Arten.
+*Worauf man während der Sitzung schaut.* — 4 Arten.
 
 ### Board
 
@@ -2367,6 +2367,55 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - * — `overrides` → „replaced by"
 
 **Gezeichnet** (aus `Board`): `board`, `fields` (ohne Board.shapes, Board.anchors)
+
+### Crafting order
+
+`CraftingOrder` · erbt von `Recipe` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Notes` ← `Secrets` ← `Lore`
+
+**Eigene Felder**
+
+- `progress` *0…∞*, `outcome` *open | succeeded | failed | aborted*, `started` *string*, `rolls` *array*
+
+**Geerbte Felder**
+
+- *`Recipe`* — `trade` *string*, `tool` *Item articles*, `ability` *Ability: str | dex | con | int | wis | cha*, `dc` *number*, `time` *string*, `days` *number*, `checks` *1…∞*, `yieldCount` *number*, `onFailure` *materialsLost | halfLost | nothingLost*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Notes`* — `note` *long*
+- *`Secrets`* — `secret` *long*
+- *`Lore`* — `lore` *long*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `needs` → Item — „needs"
+- `yields` → Item — „yields"
+- `inLayer` → Layer — „from"
+- `instanceOf` → same — „instance of"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Campaign | Party | Creature — `craftsWith` → „crafted differently by"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Statblock | Item | CraftingOrder — `instanceOf` → „instances"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+- Creature | PlayerCharacter | Party — `crafting` → „worked on by"
+
+**Gezeichnet** (aus `CraftingOrder`): `crafting`, `fields`, `prose`, `relations`
 
 ### Encounter
 

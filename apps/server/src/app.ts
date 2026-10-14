@@ -110,6 +110,7 @@ import type { AtlasEnv } from './config.js';
 import { NO_LAYER, buildListIndex, listProjection, parseListQuery, queryList, type ListIndex } from './liste.js';
 import { mayActivate, rechtAn, registerVerwaltung } from './verwaltung.js';
 import { registerLesen } from './lesen.js';
+import { registerHandwerk } from './handwerk.js';
 import { eigeneEbenen, registerEbenenrechte } from './ebenenrechte.js';
 import { ausfuhrName, kampagnenAusfuhr } from './ausfuhr.js';
 import { inDieGruppe } from './gruppe.js';
@@ -1051,6 +1052,8 @@ export function buildApp({
     /* Die Startausrüstung (T-096): die Routen prüfen Rolle und Figur selbst. */
     if (url === '/api/equipment/roll' && request.method === 'POST') return;
     if (/^\/api\/entities\/[^/]+\/equipment$/.test(url) && request.method === 'POST') return;
+    /* Das Handwerk (T-128): die Routen prüfen Figur, Rolle und Regel selbst. */
+    if (url === '/api/crafting' || url.startsWith('/api/crafting/')) return;
     /* Den eigenen Lesestand merken (T-091): die Route schreibt nur am Konto. */
     if (/^\/api\/read\/[^/]+\/position$/.test(url) && request.method === 'PUT') return;
     /* „ready" per Knopf (REQ-237): die Route prüft je Artikel (`maySetReady`). */
@@ -2410,6 +2413,8 @@ export function buildApp({
 
   /* Die Leseansicht (T-091, REQ-247): eine Ebene als Buch. */
   const { leseZiel } = registerLesen(app, { repo, viewerOf, roh, sieve, geltend, bezuegeVon });
+  /* Der Fertigungsauftrag (T-128): Material reservieren, Proben, Abrechnung. */
+  registerHandwerk(app, { repo, viewerOf, roh, sieve, schreibeGeprueft: (e) => schreibeGeprueft(e), kampagnenEbene });
 
   /* **Der Live-Kanal** (T-116, REQ-116): `GET /api/live`, je Empfänger
      gesiebt mit `sieveFuer` — dieselbe Rechnung wie jede Route. */

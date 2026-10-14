@@ -528,7 +528,7 @@ export function relationsFrom(
   );
 }
 
-/** May this relation point at that entity? `same` means the source's own interface. */
+/** May this relation point at that entity? `same` means the source's own interface or one of its supertypes. */
 export function relationAccepts(
   def: RelationDef,
   sourceInterface: string,
@@ -538,6 +538,9 @@ export function relationAccepts(
   const to = def.to ?? ['*'];
   if (to.includes('*')) return true;
   if (to.includes('same') && targetInterface === sourceInterface) return true;
+  /* `same` nimmt die Obertypen der Quelle mit (T-128): ein Fertigungsauftrag
+     ist ein Rezept und darf eines als Vorlage nennen. */
+  if (to.includes('same') && registry && interfaceInList(registry, [targetInterface], sourceInterface)) return true;
   if (registry) return interfaceInList(registry, to, targetInterface);
   return to.includes(targetInterface);
 }
