@@ -996,6 +996,41 @@ Kampagne anlegen und ihre Bücher aufschalten, dann die Routen der Wege
 Register, Kompendium, Artikel und Board je zweimal abrufen (kalt nach
 einem Neustart, dann warm) und `Server-Timing` lesen.
 
+## Der Live-Kanal hinter Caddy
+
+`GET /api/live` (T-116) ist ein Strom aus Server-Sent Events, der offen
+bleibt — Beamer, Laptop und Telefone hören darauf, was sich ändert
+(was der Kanal trägt: [Architektur.md › Der Live-Kanal](Architektur.md#52-der-live-kanal)).
+Damit er durchkommt, sagt `deploy/proxy/Caddyfile` (Schnipsel `atlas`, für
+prod und dev gleich):
+
+- **nicht packen**: `encode` gilt für alles ausser `/api/live` — ein
+  Packer sammelt, bevor er schickt, und dann käme eine Änderung erst mit
+  der nächsten;
+- **sofort durchreichen**: `reverse_proxy … { flush_interval -1 }`;
+- **kein Zeitlimit nötig**: Caddy setzt für Antworten keines. Die
+  Anwendung schickt alle 25 s ein Lebenszeichen (`: ping`), damit kein
+  Mobilfunknetz die stille Verbindung kappt, und schliesst nach 15 min
+  selbst; der Browser kommt nach 3 s wieder und holt mit `Last-Event-ID`
+  nach, was er verpasst hat.
+
+Die Anwendung schickt dazu `Cache-Control: no-cache, no-transform` und
+`X-Accel-Buffering: no` — falls je ein nginx davorsteht, puffert auch der
+nicht. **Auf dem Server ist nichts von Hand zu ändern**: CI legt das
+Caddyfile bei jedem Ausrollen hin und lädt Caddy neu.
+
+Prüfen, ob der Strom durchkommt (angemeldet, Keks aus dem Browser):
+
+```bash
+curl -N -H 'Cookie: nw_session=…' https://dev.atlas.<domain>/api/live
+# → retry: 3000, dann „event: hello", alle 25 s „: ping"
+```
+
+Heute läuft **ein** Serverprozess je
+Umgebung — die Quelle des Kanals ist sein Speicher. Mehrere Prozesse
+hinter Caddy bräuchten zuerst die Umsetzung über Postgres
+`LISTEN/NOTIFY` (Architektur.md, 5.2).
+
 ## Lokal durchspielen
 
 Alles oben lief einmal ausserhalb von Hetzner durch (2026-10-01): Abbild
