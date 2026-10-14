@@ -171,7 +171,11 @@ wiederkommen, werden sie neu geschrieben.
   Die beiden Listen nennen **Träger** (`Creature | Party | Faction`),
   dieselben drei wie `knownBy`, und ein Träger zählt einen Schritt weit auch
   als seine Gruppe und seine Fraktion. **Die Gruppe ist das Figurengefüge
-  einer Runde** (`Party`, `partyOf` → `Campaign`, `memberOfParty`); eine
+  einer Runde** (`Party`, `partyOf` → `Campaign`, `memberOfParty`); **jede
+  Kampagne bekommt eine** (beim Anlegen, ältere: Migration 039), und eine
+  Figur, die ein `player` zugeteilt bekommt, kommt hinein (T-100, E-007).
+  In „Revealed to"/„Hidden from" bietet die Maske auch **Spieler** an und
+  schreibt ihre Figuren — nie das Konto. Eine
   andere Konstellation gibt es nicht — `Group`, der Träger von Konten (ein
   Konto führte sie wie eine Figur), ist weg (A8): zwei Sorten Träger waren
   zwei Wahrheiten. „Die Spieler dieser Kampagne“

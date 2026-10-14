@@ -582,6 +582,16 @@ dieselben drei wie `knownBy`, denn es ist dieselbe Frage: wem gehört etwas.
 Ein Träger zählt einen Schritt weit auch als seine Gruppe: wer den
 Reisetrupp nennt, verbirgt es vor seinen Mitgliedern.
 
+**Ein Spieler steht für seine Figuren** (T-100, E-007). Die Leitung wollte
+„Mia" wählen können, ohne zu wissen, wie Mias Figur heisst. Die Maske
+bietet darum Spieler an — und schreibt ihre Figuren in die Liste. Ein
+Konto im Artikel wanderte mit der Ausfuhr mit (REQ-199), und bei einer
+Einfuhr anderswo hiesse ein verlorenes `hiddenFrom`, dass plötzlich jemand
+etwas sieht. Darum auch **eine Gruppe je Kampagne, von selbst**: sie ist
+der häufigste Empfänger („alle am Tisch, aber nicht der neue Gast"), und
+wer einem Spieler eine Figur zuteilt, setzt sie gleich hinein. Anpassbar
+heisst: es ist eine gewöhnliche Kante, die man an der Figur wegnimmt.
+
 **Unfertiges sehen Spielende nicht** (REQ-237, D72). Der Vorbereitungsstand
 (`Status`: `idea`, `prepared`, `ready`) ist seit dem 13.10. auch Teil der
 groben Frage: wer nicht hinter dem Schirm sitzt, bekommt nur, was `ready`
