@@ -1,0 +1,360 @@
+/**
+ * **Was eine Kante bewirkt** (T-111, REQ-257).
+ *
+ * Eine Kantenart sagt im Register, was sie **bedeutet** (`RelationDef.means`).
+ * Was sie **bewirkt**, sagt sie nicht selbst: das entscheidet der Code, der
+ * sie liest. Hier steht deshalb ein Verzeichnis der **Auswerter** — je
+ * Auswerter, welche Kanten er in welcher Datei liest —, und die Wirkung
+ * einer Kantenart wird daraus gerechnet (`edgeEffects`).
+ *
+ * Damit das Verzeichnis nicht behauptet, sondern abschreibt, liest der Test
+ * (`edges.test.ts`) die genannten Dateien: jede Kantenart, die dort als
+ * Zeichenkette oder über eine Konstante (`LAYER_RELATION`) vorkommt, muss
+ * hier stehen, und was hier steht, muss dort vorkommen. Liest ein neuer
+ * Auswerter eine Kante, schlägt der Test fehl, bis er eingetragen ist.
+ *
+ * Dazu kommen drei Wirkungen, die nicht im Code einer Art stehen, sondern
+ * aus der Zeile selbst folgen und darum hier gerechnet werden: `section`
+ * (die Ziele werden in den Artikel komponiert), `asField` (am einen Ende
+ * liest sich das andere wie ein Feld) und gerechnete Felder, deren Rechnung
+ * die Kante nennt (`sum(hasClass.level)`).
+ *
+ * Was nichts davon trifft, ist **nur Anzeige**: es steht unter „Relations"
+ * und „Linked here", und sonst liest es niemand. Verspricht eine solche
+ * Kante eine Wirkung (`affects` mit `effect`), sagt das `intended` — und die
+ * Oberfläche sagt „not evaluated yet".
+ */
+
+import type { Registry, RelationDef } from './types.js';
+
+/** Wofür ein Auswerter die Kante braucht — die Gruppen der Wirkungstabelle. */
+export type EdgeArea =
+  | 'stack'
+  | 'visibility'
+  | 'character'
+  | 'play'
+  | 'reading'
+  | 'versions'
+  | 'rights'
+  | 'checks'
+  | 'transfer'
+  | 'display';
+
+export const EDGE_AREAS: Readonly<Record<EdgeArea, string>> = {
+  stack: 'Layers in play',
+  visibility: 'Visibility & knowledge',
+  character: 'Character values',
+  play: 'Play',
+  reading: 'Reading & timelines',
+  versions: 'Versions & templates',
+  rights: 'Who may write',
+  checks: 'Checks',
+  transfer: 'Import & export',
+  display: 'Display',
+};
+
+/** Wirkungen, die aus der Zeile selbst folgen. */
+export type EdgeShape = 'section' | 'asField' | 'derived';
+
+export const EDGE_SHAPES: Readonly<Record<EdgeShape, string>> = {
+  section: 'Composed into the article',
+  asField: 'Reads as a field',
+  derived: 'Calculation',
+};
+
+/** Ein Teil des Codes, der Kanten liest — und welche, je Datei. */
+export interface EdgeReader {
+  key: string;
+  label: string;
+  area: EdgeArea;
+  /** Was er mit diesen Kanten tut, ein Satz, so dass er vor dem Anlegen taugt. */
+  does: string;
+  /** Datei (vom Repo aus) → die Kantenarten, die er dort liest oder schreibt. */
+  uses: Readonly<Record<string, readonly string[]>>;
+}
+
+const M = 'packages/model/src/';
+const S = 'apps/server/src/';
+const W = 'apps/web/src/app/';
+
+/**
+ * **Die Auswerter.** Geprüft gegen den Quelltext (`edges.test.ts`): je
+ * Datei ist die Vereinigung der Einträge genau das, was dort an Kanten
+ * steht, abzüglich `NOT_EDGE_WORDS`.
+ */
+export const EDGE_READERS: readonly EdgeReader[] = [
+  {
+    key: 'stack',
+    label: 'Layers in play',
+    area: 'stack',
+    does: 'decides whether an article is in play at all — what the campaign’s layers bring, what a group layer brings with its members, which version replaces another',
+    uses: {
+      [M + 'visibility.ts']: ['activates', 'inLayer'],
+      [M + 'stack.ts']: ['activates', 'inLayer', 'overrides', 'partOf'],
+      [S + 'verwaltung.ts']: ['activates', 'inLayer'],
+    },
+  },
+  {
+    key: 'take',
+    label: 'Take into your story',
+    area: 'stack',
+    does: 'copies a chapter or scene with everything under it into the campaign layer as versions, and leaves layer, template and replacement edges behind',
+    uses: {
+      [M + 'stack.ts']: ['inLayer', 'instanceOf', 'mapOf', 'overrides', 'partOf', 'variantOf'],
+      [S + 'verwaltung.ts']: ['overrides', 'partOf'],
+    },
+  },
+  {
+    key: 'versions',
+    label: 'Versions and templates',
+    area: 'versions',
+    does: 'finds the versions of the same thing and reads an instance through its template, field by field',
+    uses: {
+      [M + 'instance.ts']: ['belongsTo', 'inLayer', 'instanceOf', 'overrides', 'variantOf'],
+      [M + 'versions.ts']: ['inLayer', 'instanceOf', 'overrides', 'variantOf'],
+      [S + 'app.ts']: ['inLayer', 'overrides', 'variantOf'],
+      [W + 'artikel/artikel.ts']: ['overrides'],
+    },
+  },
+  {
+    key: 'knowledge',
+    label: 'Knowledge',
+    area: 'visibility',
+    does: 'decides which fields a viewer learns — what a creature, its party or its faction (from a rank) knows, and which combatants players may see',
+    uses: {
+      [M + 'knowledge.ts']: ['includes', 'knowledge', 'knownBy', 'memberOf', 'memberOfParty', 'participates', 'partyOf'],
+    },
+  },
+  {
+    key: 'party',
+    label: 'The campaign’s party',
+    area: 'visibility',
+    does: 'gives every campaign its party and puts a character assigned to a player into it',
+    uses: {
+      [S + 'gruppe.ts']: ['inLayer', 'memberOfParty', 'partyOf'],
+      [W + 'figur/assistent.ts']: ['memberOfParty'],
+    },
+  },
+  {
+    key: 'rights',
+    label: 'Own character and writing',
+    area: 'rights',
+    does: 'decides who may write: a player manages their own character with its statblock and inventory, and creates into the layers they write',
+    uses: {
+      [S + 'app.ts']: ['belongsTo', 'carries', 'crafting', 'holds', 'inLayer'],
+    },
+  },
+  {
+    key: 'builder',
+    label: 'Character builder and sheet',
+    area: 'character',
+    does: 'builds a character — class levels, ancestry, background, the choices they ask, ability and equipment methods — and shows the answers by their class',
+    uses: {
+      [M + 'builder.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass'],
+      [M + 'choices.ts']: ['chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass'],
+      [M + 'abilities.ts']: ['abilityPool', 'allowsMethod'],
+      [M + 'equipment.ts']: ['allowsEquipment', 'hasBackground', 'hasClass'],
+      [S + 'app.ts']: ['abilityPool', 'allowsEquipment', 'allowsMethod', 'carries', 'holds'],
+      [W + 'figur/assistent.ts']: ['belongsTo', 'chose', 'grants', 'hasAncestry', 'hasBackground', 'hasClass'],
+      [W + 'artikel/klasseneintrag.ts']: ['chose', 'hasAncestry', 'hasBackground', 'hasClass'],
+      [W + 'artikel/artikel.ts']: ['chose', 'hasClass'],
+    },
+  },
+  {
+    key: 'effects',
+    label: 'Effects on the numbers',
+    area: 'character',
+    does: 'applies the effects of granted features (from their level) and of carried items to the character’s numbers',
+    uses: {
+      [M + 'effects.ts']: ['carries', 'grants', 'holds'],
+    },
+  },
+  {
+    key: 'classes',
+    label: 'Class pages',
+    area: 'character',
+    does: 'builds a class page — features by level, subclasses, the class table',
+    uses: {
+      [M + 'classes.ts']: ['grants', 'subclassOf', 'tableFor'],
+      [W + 'klassen/klasse.ts']: ['tableFor'],
+    },
+  },
+  {
+    key: 'initiative',
+    label: 'Initiative',
+    area: 'play',
+    does: 'orders the combatants of an encounter, with the party’s members and each creature’s statblock',
+    uses: {
+      [M + 'initiative.ts']: ['belongsTo', 'memberOfParty', 'participates'],
+    },
+  },
+  {
+    key: 'boards',
+    label: 'Boards',
+    area: 'play',
+    does: 'lays the article out as a card on the board, and hangs a board under its story',
+    uses: {
+      [M + 'board.ts']: ['placed'],
+      [W + 'boards/board.ts']: ['inLayer', 'instanceOf', 'partOf', 'placed'],
+      [W + 'boards/boards.ts']: ['partOf'],
+      [W + 'boards/brett.ts']: ['partOf'],
+    },
+  },
+  {
+    key: 'reading',
+    label: 'Reading view',
+    area: 'reading',
+    does: 'reads a layer as a book — chapters and their parts in rank order, maps and fights in place',
+    uses: {
+      [M + 'reading.ts']: ['inLayer', 'partOf'],
+      [M + 'parts.ts']: ['partOf'],
+      [S + 'lesen.ts']: ['inLayer', 'mapOf', 'overrides', 'partOf'],
+      [W + 'lesen/lesen.ts']: ['participates'],
+      [W + 'artikel/artikel.ts']: ['partOf'],
+    },
+  },
+  {
+    key: 'timeline',
+    label: 'Timelines',
+    area: 'reading',
+    does: 'puts an article on the timeline of the nearest span it is part of',
+    uses: {
+      [M + 'timeline.ts']: ['partOf'],
+    },
+  },
+  {
+    key: 'checks',
+    label: 'Validation and workbench',
+    area: 'checks',
+    does: 'checks it when saving and on the workbench — stages of a condition, conditions in a fight, a replacement of the same type, templates and copies',
+    uses: {
+      [M + 'validate.ts']: ['overrides', 'participates', 'stageOf'],
+      [M + 'checks.ts']: ['instanceOf', 'variantOf'],
+      [M + 'bulk.ts']: ['inLayer', 'variantOf'],
+    },
+  },
+  {
+    key: 'transfer',
+    label: 'Import and export',
+    area: 'transfer',
+    does: 'carries the layer and its group along when importing or exporting',
+    uses: {
+      [S + 'import.ts']: ['inLayer', 'instanceOf', 'partOf'],
+      [S + 'ausfuhr.ts']: ['activates', 'inLayer'],
+    },
+  },
+  {
+    key: 'display',
+    label: 'Where it is from',
+    area: 'display',
+    does: 'shows where an article comes from — its layer, its template, what it is part of — in lists and on the page',
+    uses: {
+      [M + 'summary.ts']: ['inLayer', 'instanceOf', 'partOf'],
+      [S + 'liste.ts']: ['inLayer'],
+      [W + 'artikel/artikel.ts']: ['inLayer'],
+    },
+  },
+];
+
+/**
+ * Wörter in einer Datei, die wie eine Kantenart heissen und keine sind: die
+ * Layout-Elemente `knowledge` und `crafting`, die CSS-Klasse `holds`, das
+ * Verb „carries" in einem Satz.
+ */
+export const NOT_EDGE_WORDS: Readonly<Record<string, readonly string[]>> = {
+  [M + 'types.ts']: ['crafting', 'knowledge'],
+  [M + 'validate.ts']: ['crafting', 'knowledge'],
+  [W + 'register/typ.ts']: ['carries', 'holds'],
+  [W + 'register/arbeit.ts']: ['carries'],
+};
+
+/** Die Auswerter, die diese Kantenart lesen. */
+export function edgeReaders(type: string): EdgeReader[] {
+  return EDGE_READERS.filter((r) => Object.values(r.uses).some((l) => l.includes(type)));
+}
+
+/** Was eine Kantenart bedeutet und bewirkt — gerechnet, nicht behauptet. */
+export interface EdgeEffects {
+  type: string;
+  /** Der Satz aus dem Register, sonst einer aus den Beschriftungen. */
+  means: string;
+  /** Die Auswerter, die sie lesen. */
+  readers: { key: string; label: string; area: EdgeArea; does: string }[];
+  /** Was aus der Zeile selbst folgt: Komposition, Feld am anderen Ende, Rechnungen. */
+  shape: { kind: EdgeShape; text: string }[];
+  /** Liest sie irgendetwas ausser der Anzeige? */
+  evaluated: boolean;
+  /** Was sie bewirken soll und noch nicht bewirkt — nur, wenn nichts sie liest. */
+  intended?: string;
+}
+
+function typLabel(reg: Pick<Registry, 'interfaces'>, t: string): string {
+  if (t === '*') return 'any article';
+  if (t === 'same') return 'its own type';
+  return reg.interfaces[t]?.label ?? t;
+}
+
+function enden(reg: Pick<Registry, 'interfaces'>, l: string[] | undefined): string {
+  return (l?.length ? l : ['*']).map((t) => typLabel(reg, t)).join(' or ');
+}
+
+/** Ein Satz aus den Beschriftungen, wo das Register keinen hat. */
+export function edgeMeaning(reg: Pick<Registry, 'interfaces'>, def: RelationDef): string {
+  if (def.means) return def.means;
+  return `${enden(reg, def.from)} — ${def.label} → ${enden(reg, def.to)}; from the other end it reads “${def.inverseLabel}”.`;
+}
+
+/**
+ * Gerechnete Felder, deren Rechnung diese Kante nennt (`sum(hasClass.level)`).
+ * Gesucht wird das Wort vor einem Punkt; eine Kante, die in einer Rechnung
+ * steht, ist eine, deren Anlegen eine Zahl ändert.
+ */
+function rechnungen(reg: Pick<Registry, 'interfaces'>, type: string): EdgeEffects['shape'] {
+  const muster = new RegExp(`\\b${type}\\.`);
+  const raus: EdgeEffects['shape'] = [];
+  for (const [name, def] of Object.entries(reg.interfaces)) {
+    for (const [feld, p] of Object.entries(def.schema?.properties ?? {})) {
+      if (typeof p.derived === 'string' && muster.test(p.derived)) {
+        raus.push({ kind: 'derived', text: `calculates ${def.label ?? name} › ${p.title ?? feld} = ${p.derived}` });
+      }
+    }
+  }
+  return raus;
+}
+
+export function edgeEffects(reg: Pick<Registry, 'interfaces' | 'relations'>, type: string): EdgeEffects {
+  const def: RelationDef = reg.relations[type] ?? { type, label: type, inverseLabel: `← ${type}` };
+  const shape: EdgeEffects['shape'] = [];
+  if (def.section) shape.push({ kind: 'section', text: `composes the target into the ${enden(reg, def.from)} under “${def.section}”` });
+  if (def.asField) {
+    const hier = def.asField === 'to' ? def.to : def.from;
+    const dort = def.asField === 'to' ? def.from : def.to;
+    shape.push({ kind: 'asField', text: `lets the ${enden(reg, hier)} show and edit the ${enden(reg, dort)}’s fields as its own` });
+  }
+  shape.push(...rechnungen(reg, type));
+  const readers = edgeReaders(type).map(({ key, label, area, does }) => ({ key, label, area, does }));
+  const evaluated = readers.length > 0 || shape.length > 0;
+  return {
+    type,
+    means: edgeMeaning(reg, def),
+    readers,
+    shape,
+    evaluated,
+    ...(!evaluated && def.intended ? { intended: def.intended } : {}),
+  };
+}
+
+/**
+ * Ein Satz für die Auswahl und den Tooltip: „Adding this: …". Ohne Leser:
+ * „Shown under Relations; nothing else reads it", und was sie bewirken
+ * soll, wenn sie es verspricht.
+ */
+export function edgeEffectText(e: EdgeEffects): string {
+  if (!e.evaluated) {
+    return e.intended
+      ? `Not evaluated yet — shown under Relations only. Meant to: ${e.intended}`
+      : 'Display only — shown under Relations on both ends; nothing else reads it.';
+  }
+  const teile = [...e.shape.map((s) => s.text), ...e.readers.map((r) => `${r.label}: ${r.does}`)];
+  return `Adding this: ${teile.join('; ')}.`;
+}

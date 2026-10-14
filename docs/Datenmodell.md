@@ -304,7 +304,9 @@ Codeblöcke, Bilder, Fussnoten — kein Text, der hierher kommt, braucht sie.
 | `asField` | `from` oder `to`: an diesem Ende liest sich das andere wie ein Feld (§5.3) |
 | `section` | die Kante **setzt ein** statt zu verweisen: das Ziel steht unter dieser Überschrift im Artikel (`composedOf`) |
 | `props` | Schema der Eigenschaften an der Kante |
-| `owned` | das Ziel stirbt mit dem Artikel (`knowledge`) |
+| `owned` | das Ziel soll mit dem Artikel gehen (`knowledge`) — **heute von keinem Auswerter gelesen** (T-111) |
+| `means` | was die Kante bedeutet, ein Satz in beide Richtungen (T-111) |
+| `intended` | was sie bewirken **soll**, solange kein Auswerter sie liest — die Oberfläche sagt dann „not evaluated yet" |
 
 ### 5.2 Regeln für Kanten
 
@@ -315,6 +317,7 @@ Codeblöcke, Bilder, Fussnoten — kein Text, der hierher kommt, braucht sie.
 | K3 | **Was auf etwas zeigt, ist eine Kante**, kein Feld mit Namen: ein Token, eine Platzierung, ein Teilnehmer, eine Zutat. Ein Rechteck auf dem Board zeigt auf nichts und ist darum ein Feld. |
 | K4 | **Die Kanten einer Art stehen in ihrer Feldliste mit** — als Gruppe „Edges from here" im Register, zugeklappt. |
 | K5 | **Eine Beziehung ist eine Kante mit Marken** (`regards`), beim Urteilenden gespeichert; die Gegenrichtung ist eine eigene Kante. |
+| K6 | **Die Wirkung einer Kante wird gerechnet, nicht behauptet** (T-111, REQ-257). Die Zeile sagt, was sie bedeutet (`means`); was sie bewirkt, ergibt sich aus den Auswertern, die sie lesen (`EDGE_READERS` in `packages/model/src/edges.ts`), und aus der Zeile selbst (`section`, `asField`, gerechnete Felder, deren Rechnung sie nennt). Ein Test liest die Dateien der Auswerter und hält das Verzeichnis beim Code. Was nichts liest, ist **nur Anzeige**. |
 
 ### 5.3 Teil-Kanten (`asField`)
 
@@ -344,6 +347,53 @@ nicht — den gäbe es auch ohne das Rezept.
 | Wissen | `knowledge` (owned), `includes`, `knownBy` | — |
 
 Die vollständige Tabelle mit `from`, `to` und Eigenschaften steht in §13.
+
+### 5.4a Was eine Kante bewirkt (T-111)
+
+`edgeEffects(registry, type)` rechnet je Kantenart die Bedeutung, die
+Auswerter und die Wirkungen aus der Zeile. Gezeigt wird das an drei Stellen:
+in der Kantenauswahl beim Bearbeiten („Adding this: …", bevor die Kante
+angelegt ist), als Tooltip an jeder Kante am Artikel (auch unter „Linked
+here") und im Register — an der Kantenart und als Tabelle „How edges work",
+wenn unter „Edges" keine gewählt ist.
+
+```mermaid
+flowchart LR
+  Zeile["RelationDef<br/>means · intended<br/>section · asField"] --> E[edgeEffects]
+  Rechnung["gerechnete Felder<br/>sum(hasClass.level)"] --> E
+  Leser["EDGE_READERS<br/>Datei → Kanten"] --> E
+  Code["Quelltext der Auswerter"] -. "edges.test.ts hält beides gleich" .- Leser
+  E --> Auswahl["Auswahl: Adding this …"]
+  E --> Artikel["Tooltip an der Kante"]
+  E --> Register["Register: Kantenart, How edges work"]
+```
+
+| Auswerter | Bereich | liest |
+|---|---|---|
+| Layers in play | Stapel | `activates`, `inLayer`, `overrides`, `partOf` |
+| Take into your story | Stapel | `partOf`, `mapOf`, `inLayer`, `overrides`, `instanceOf`, `variantOf` |
+| Versions and templates | Fassungen | `instanceOf`, `variantOf`, `overrides`, `inLayer`, `belongsTo` |
+| Knowledge | Sichtbarkeit | `knownBy`, `includes`, `knowledge`, `memberOf`, `memberOfParty`, `partyOf`, `participates` |
+| The campaign’s party | Sichtbarkeit | `partyOf`, `memberOfParty`, `inLayer` |
+| Own character and writing | Rechte | `belongsTo`, `carries`, `holds`, `crafting`, `inLayer` |
+| Character builder and sheet | Figur | `hasClass`, `hasAncestry`, `hasBackground`, `chose`, `grants`, `allowsMethod`, `allowsEquipment`, `abilityPool`, `carries`, `holds`, `belongsTo` |
+| Effects on the numbers | Figur | `grants`, `carries`, `holds` |
+| Class pages | Figur | `grants`, `subclassOf`, `tableFor` |
+| Initiative | Spiel | `participates`, `memberOfParty`, `belongsTo` |
+| Boards | Spiel | `placed`, `partOf`, `inLayer`, `instanceOf` |
+| Reading view, Timelines | Lesen | `partOf`, `inLayer`, `mapOf`, `overrides`, `participates` |
+| Validation and workbench | Prüfung | `stageOf`, `participates`, `overrides`, `instanceOf`, `variantOf`, `inLayer` |
+| Import and export | Transfer | `inLayer`, `partOf`, `instanceOf`, `activates` |
+| Where it is from | Anzeige | `inLayer`, `instanceOf`, `partOf` |
+
+Die Tabelle ist eine Zusammenfassung; massgeblich ist `EDGE_READERS`.
+**Nicht ausgewertet, aber versprochen** (`intended`, Vorschlag im Brett,
+E-031): `affects`, `casts`, `equips`, `hasProperty`, `subraceOf`, `needs`,
+`yields`, `loot`, `entry`, `route`, `inWorld` und die Kartenkanten
+`insideMap`, `marker`, `zone`, `territory`, `onMap`. **Nur Anzeige** und so
+gemeint: `worships`, `owes`, `livesIn`, `controls`, `describedIn`,
+`questGiver`, `questAbout`, `happensAt`, `features`, `involves`, `regards`,
+`chapterOf`.
 
 ### 5.5 Regeltypen, Stufen und Wirkungen (D48)
 
