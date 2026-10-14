@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-14-whats-new-since-account",
+      "date": "2026-10-14",
+      "title": "What's new starts with your account",
+      "text": "What's new now lists only what changed since your account was created, so a new player is not handed the whole history. Admins can still show everything.",
+      "area": "Navigation",
+      "link": "/whats-new"
+    },
+    {
       "id": "2026-10-14-image-loading",
       "date": "2026-10-14",
       "title": "Large images show they are loading",

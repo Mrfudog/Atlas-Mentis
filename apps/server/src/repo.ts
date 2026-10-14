@@ -379,6 +379,8 @@ export class InMemoryRepository implements Repository {
       authoredIds: [...(this.users.get(user.id)?.authoredIds ?? [])],
       layerIds: undefined,
       ownedLayerIds: undefined,
+      /* Wie `created_at` in Postgres: beim ersten Schreiben gesetzt, danach fest (T-163). */
+      createdAt: this.users.get(user.id)?.createdAt ?? user.createdAt ?? new Date().toISOString(),
     });
   }
   async addAuthored(userId: string, entityId: string): Promise<void> {

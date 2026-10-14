@@ -680,6 +680,8 @@ export interface Me {
     actorIds?: string[];
     /** Kampagnen-Id → Rolle darin. Steht am Konto und in keinem Artikel. */
     roles?: Record<string, TableRole>;
+    /** Seit wann es das Konto gibt (ISO) — „What's new" zeigt nur, was danach kam (T-163). */
+    createdAt?: string;
   } | null;
   /**
    * Welche Artikel dieser Betrachter schreiben darf. **`null` heisst alles**
