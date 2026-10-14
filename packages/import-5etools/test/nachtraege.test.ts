@@ -24,6 +24,12 @@ function datenstand(): Datenstand {
     name: '+1 Weapon', type: 'GV|DMG', requires: [{ weapon: true }], excludes: { net: true },
     inherits: { namePrefix: '+1 ', source: 'DMG', page: 213, rarity: 'uncommon', bonusWeapon: '+1', entries: ['A {=bonusWeapon} {=baseName/l}.'] },
   });
+  /* Ein Preis als Rechnung am Grundgegenstand (T-139). */
+  add('magicvariant', {
+    name: 'Silvered Weapon', type: 'GV|DMG', requires: [{ weapon: true }], excludes: { net: true },
+    inherits: { namePrefix: 'Silvered ', source: 'PHB', page: 148, valueExpression: '[[baseItem.value]] + 10000', entries: ['Silver.'] },
+  });
+  add('item', { name: 'Silversmith Kit', source: 'PHB', type: 'G', value: 500, entries: ['Turns a blade into a {@item silvered longsword|phb}.'] });
   add('table', { name: '10 gp Gemstones', source: 'DMG', colLabels: ['d6', 'Stone'], rows: [['1-6', 'Azurite']] });
   add('gems', { name: '10 gp Gemstones', source: 'DMG', type: 10, table: ['Azurite'] });
   add('magicItems', { name: 'Magic Item Table A', source: 'DMG', type: 'A', table: [{ min: 1, max: 100, item: '{@item +1 longsword}' }] });
@@ -104,6 +110,16 @@ describe('Nachträge aus 5e.tools (T-084)', () => {
     expect(es.some((e) => e.name === '+1 Net' || e.name === '+1 Shield')).toBe(false);
     /* Die Tabelle des Grundstands sieht den Nachtrag nicht: ihr Text bleibt, wie er auf dev steht. */
     expect(zeilen(finde(es, 'Table', 'Magic Item Table A'))[0]!.text).toBe('+1 longsword');
+  });
+
+  it('rechnet den Preis einer Variante aus dem Grundgegenstand und sagt woher (T-139)', () => {
+    expect(finde(es, 'Weapon', 'Silvered Longsword').components['Item']).toMatchObject({
+      copperPrice: 11500, priceNote: 'derived: base price + 100 gp',
+    });
+    /* Ein Listenpreis sagt nichts dazu. */
+    expect(finde(es, 'Item', 'Silversmith Kit').components['Item']).not.toHaveProperty('priceNote');
+    /* Ohne Preisangabe an der Variante bleibt der Preis leer, statt den Grundpreis zu nehmen. */
+    expect(finde(es, 'Weapon', '+1 Longsword').components['Item']).not.toHaveProperty('copperPrice');
   });
 
   it('zählt die Nachträge hinter Grundstand und T-087 und nennt sie als Neuzugänge', () => {
