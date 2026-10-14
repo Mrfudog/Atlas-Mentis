@@ -287,6 +287,7 @@ function bauen(
     const gelöst = loeseKopien(roh, kopieSchluessel(art), (was) => wb.notiz(was, art));
     wb.fluffe.set(art, new Map(gelöst.map((f) => [`${kl(f['name'])}|${kl(f['source'])}`, f])));
   }
+  for (const t of stand.arten.get('itemEntry') ?? []) wb.schablonen.set(`${kl(t['name'])}|${kl(t['source'])}`, t);
   const vorlagen = new Map((stand.arten.get('monsterTemplate') ?? []).map((t) => [`${kl(t['name'])}|${kl(t['source'])}`, t]));
 
   /* Was keine Zuordnung hat und nicht bewusst wegbleibt, steht im Bericht. */
