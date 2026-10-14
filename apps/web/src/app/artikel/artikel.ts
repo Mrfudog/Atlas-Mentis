@@ -70,6 +70,7 @@ import {
 } from './fassungen';
 import { bereichLabel } from '../kern/bereiche';
 import { Quellen } from '../kern/quellen';
+import { Verlinkt } from './verlinkt';
 import { antwortenJeEintrag, antwortText, EINTRAG_KANTEN } from './klasseneintrag';
 
 /** Die Kante, an der ein Artikel in einem anderen steht — Raum im Kapitel, Kapitel im Abenteuer. */
@@ -138,6 +139,7 @@ interface Feld {
     BildWahl,
     BildPanel,
     Karte,
+    Verlinkt,
   ],
   template: `
     @if (artikel(); as e) {
@@ -626,6 +628,9 @@ interface Feld {
                   }
                   @case ('karte') {
                     <nw-karte class="karte" [id]="e.id" />
+                  }
+                  @case ('verlinkt') {
+                    <nw-verlinkt [artikel]="e" [nur]="st.nur ?? []" [ausser]="st.ausser ?? []" />
                   }
                   @case ('bild') {
                     <nw-bild class="hauptbild" [wert]="st.bild!.wert" [version]="st.bild!.version" [caption]="st.bild!.caption" [alt]="st.bild!.alt || e.name || ''" />

@@ -320,6 +320,8 @@ export class Schnell {
   readonly ziele = input<string[]>([]);
   /** Eine davon vorgewählt — wer „as Creature" anklickt, meint Creature. */
   readonly vorgabe = input<string | undefined>(undefined);
+  /** Kanten, die der neue Artikel gleich trägt — ein Statblock gehört seiner Kreatur (`belongsTo`, T-125). */
+  readonly kanten = input<{ type: string; to: string }[]>([]);
   readonly angelegt = output<Angelegt>();
   readonly zu = output<void>();
 
@@ -442,7 +444,7 @@ export class Schnell {
       if (this.publikum()) felder['Visibility.audience'] = this.publikum();
       /* Die Ebene nennt die Maske, der Server prüft sie: wer dort nicht
          schreibt, legt in seine eigene (T-098). */
-      const kanten = this.ebene() ? [{ type: LAYER_RELATION, to: this.ebene() }] : [];
+      const kanten = [...(this.ebene() ? [{ type: LAYER_RELATION, to: this.ebene() }] : []), ...this.kanten()];
       const e = await this.api.createEntity(typ, name, felder, kanten);
       /* Was eine Spielerin anlegt, darf sie schreiben (REQ-237) — das weiss
          erst ein neues `/api/me`. */

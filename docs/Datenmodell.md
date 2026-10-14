@@ -332,6 +332,16 @@ sie auf der Seite des lesenden Artikels mit eigenen Eingaben, die in den
 anderen Artikel schreiben. Ein Rezept, das einen Gegenstand liefert, ist das
 nicht — den gäbe es auch ohne das Rezept.
 
+Fehlt das andere Ende und liegt die Kante dort (`belongsTo` am Statblock),
+steht an seiner Stelle „Create" (mit dem Namen des lesenden Artikels) und,
+wo die Art Vorlagen kennt (`instanceOf.from`), „From a template": das legt
+eine **Instanz** an, die nur speichert, was abweicht — der Server prüft sie
+beim Anlegen aufgelöst und speichert sie ausgedünnt wie beim Schreiben. An
+der Instanz zeigt die Maske blass, was von der Vorlage kommt, und ↺ lässt
+ein Feld ihr wieder folgen. Liegt die Kante beim lesenden Artikel und fehlt
+(`carries` an einem Gegenstand), steht nichts da: ein Schwert ohne Inventar
+ist kein Behälter. Nur das Element `inventory` fragt ausdrücklich (T-125).
+
 ### 5.4 Die Familien
 
 | Familie | Kanten | Trägt |
