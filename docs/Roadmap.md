@@ -382,3 +382,8 @@ A, B und D stehen. Was bleibt, in der Reihenfolge, in der es sich lohnt:
 7. **Der Ortsimporter als TypeScript** (C4, Rest). Das Register steht seit
    2026-09-20 nur noch einmal: `pnpm --filter @nw/registry emit-seed`
    erzeugt die Zeilen des Prototyps aus `packages/registry`.
+8. **Regelsysteme als Behälter** (T-132, Entscheidung E-044 offen): ein
+   System schlägt Module vor (Inventar, Handwerk, Attribute,
+   Startausrüstung …), die Kampagne wählt und wandelt ab. Bestandsaufnahme,
+   drei Wege und Aufwand in [Regelsysteme.md](Regelsysteme.md). Zuerst die
+   Lesefunktionen für die heute globalen Regel-Einstellungen.
