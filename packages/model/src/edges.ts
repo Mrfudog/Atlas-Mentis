@@ -119,6 +119,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       /* Anlegen aus einer Vorlage prüft die Vorlage und dünnt aus (T-125). */
       [S + 'app.ts']: ['inLayer', 'instanceOf', 'overrides', 'variantOf'],
       [W + 'artikel/artikel.ts']: ['overrides'],
+      /* Nebeneinander (T-173): Ebene und Herkunft zählen als Name, nicht als Sache. */
+      [W + 'artikel/vergleich.ts']: ['inLayer', 'overrides', 'variantOf'],
     },
   },
   {

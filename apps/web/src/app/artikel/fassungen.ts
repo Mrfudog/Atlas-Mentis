@@ -11,10 +11,24 @@
 
 import { Component, Injectable, computed, inject, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { entityName, entriesOf, fieldText, linesDiff, primaryInterface, sectionDiff, textSections, unitsFor, versionDiff } from '@nw/model';
-import type { Entity, FieldEntry, Registry, VarScopes } from '@nw/model';
+import {
+  entityName,
+  entriesOf,
+  fieldText,
+  layersOf,
+  linesDiff,
+  primaryInterface,
+  sectionDiff,
+  textSections,
+  unitsFor,
+  versionDiff,
+  versionInPlay,
+  versionSummary,
+} from '@nw/model';
+import type { Entity, FieldEntry, Registry, VarScopes, VersionSummary } from '@nw/model';
 import { Api, type Fassung, type Fassungen } from '../kern/api';
 import { anzeigeWert } from './felder';
+import { Bestand } from '../kern/bestand';
 import { Text } from './text';
 
 /** Was sich das Konto merkt (`/api/me/prefs`, Schlüssel `versions`). */
@@ -142,6 +156,26 @@ export function vergleichsfassungen(vergleich: ReturnType<typeof verglichene>): 
 }
 
 /**
+ * **Ein Feldwert als Text** — wie in der Feldtabelle: ein Verweis als
+ * Name, ein Objekt als Liste, eine Zahl mit Einheit. Für die Marken an den
+ * Feldern und den Vergleich nebeneinander (T-173), damit beide gleich lesen.
+ */
+export function wertText(
+  r: Registry,
+  type: string,
+  key: string,
+  wert: unknown,
+  name: (id: string) => string | undefined,
+  mode = unitsFor(r, type),
+): string {
+  if (wert === undefined || wert === null || wert === '') return '';
+  const schema = r.interfaces[type]?.schema?.properties?.[key];
+  if (schema?.format === 'link') return [wert].flat().map((x) => name(String(x)) ?? '(not here)').join(', ');
+  if (typeof wert === 'object') return anzeigeWert(wert);
+  return fieldText(r, schema, wert, mode) || String(wert);
+}
+
+/**
  * **Je Feld die abweichenden Werte** (`Typ.feld` → Liste), und je
  * Kantenart, was eine Fassung dazu oder nicht hat. Gerechnet über das
  * Modell (`versionDiff`); der Text wie in der Feldtabelle.
@@ -159,18 +193,7 @@ export function abweichungen(
     const d = versionDiff(r, basis, v.entity);
     const { titel } = v;
     for (const f of d.fields) {
-      const schema = r.interfaces[f.type]?.schema?.properties?.[f.key];
-      const wert = f.value;
-      let text = '';
-      if (wert !== undefined) {
-        if (schema?.format === 'link') {
-          text = [wert].flat().map((x) => name(String(x)) ?? '(not here)').join(', ');
-        } else if (typeof wert === 'object') {
-          text = anzeigeWert(wert);
-        } else {
-          text = fieldText(r, schema, wert, mode) || String(wert);
-        }
-      }
+      const text = wertText(r, f.type, f.key, f.value, name, mode);
       const liste = felder.get(f.ref) ?? [];
       liste.push({ id: v.id, kuerzel: v.kuerzel, titel, text, lang: f.long, compare: v.compare });
       felder.set(f.ref, liste);
@@ -346,12 +369,13 @@ export function zeilenVergleich(
             <nw-text [text]="a.text" [scopes]="scopes()" />
           </details>
         } @else if (a.lang) {
-          <span class="fwert dim">has nothing here</span>
+          <span class="fwert dim">— not set in {{ a.kuerzel }}</span>
         } @else if (a.text) {
           <!-- Ein Verweis im Wert bleibt ein Verweis (M11), kein \`[[…]]\`. -->
           <nw-text class="fwert" inline [text]="a.text" [scopes]="scopes()" />
         } @else {
-          <span class="fwert">—</span>
+          <!-- Fehlt dort (T-173): leer hiess vorher „—", und das las sich wie ein Wert. -->
+          <span class="fwert dim">— not set in {{ a.kuerzel }}</span>
         }
       </span>
     }
@@ -371,6 +395,10 @@ export function zeilenVergleich(
       font-style: normal;
       font-weight: 400;
       color: var(--dim);
+      /* Auffällig (T-173): ein Balken in Gold und die Raute am Kürzel —
+         Farbe und Form, damit es auch ohne Farbe auffällt. */
+      border-left: 3px solid var(--gold);
+      padding-left: 0.4rem;
     }
     .fassung.lang {
       display: block;
@@ -412,10 +440,15 @@ export function zeilenVergleich(
       font-weight: 700;
       letter-spacing: 0.03em;
       padding: 0 0.35rem;
-      border: 1px solid var(--line);
+      border: 1px solid var(--gold);
       border-radius: 3px;
-      color: var(--dim);
+      color: var(--ink);
+      background: var(--hover);
       white-space: nowrap;
+    }
+    .kuerzel::before {
+      content: '◆ ';
+      color: var(--gold);
     }
     .kuerzel.vergleich {
       border-style: dashed;
@@ -427,6 +460,140 @@ export class AbwMarken {
   readonly scopes = input<VarScopes>({});
   /** Was am aufklappbaren Text steht — eine Überschrift, die nur dort steht, sagt es selbst. */
   readonly titel = input<string>('');
+}
+
+
+// ------------------------------------------------------------ Auf einen Blick (T-173)
+
+/**
+ * **Was eine Fassung anders hat, als Satz** (T-173, Punkt 2): „Differs in:
+ * tier" oder „Same text and values — only the source differs (XDMG
+ * p. 324)". Vorher zählte der Kasten die Fassungen nur auf, und wer nichts
+ * Abweichendes fand, wusste nicht, ob es nichts gab.
+ */
+export function fassungsSatz(s: VersionSummary): string {
+  if (s.same) return s.source ? `Same text and values — only the source differs (${s.source})` : 'Same text and values';
+  const felder = s.fields.map((f) => (s.notThere.includes(f) ? `${f} (not set there)` : f));
+  return `Differs in: ${[...felder, ...s.relations].join(', ')}`;
+}
+
+/** Je Fassung die Zusammenfassung gegen den Artikel hier. */
+export function zusammenfassungen(r: Registry | null, basis: Entity | null, f: Fassungen | null): Map<string, VersionSummary> {
+  const out = new Map<string, VersionSummary>();
+  if (!r || !basis || !f) return out;
+  for (const v of f.versions) out.set(v.entity.id, versionSummary(r, basis, v.entity));
+  return out;
+}
+
+/**
+ * **Welche Fassung am Tisch gilt** (T-173, Punkt 5) — nur gesagt, wenn
+ * mehr als eine im Spiel ist; sonst ist es keine Frage. Es gilt die aus
+ * der obersten Ebene des Stapels (`versionInPlay`), wie in den Listen.
+ */
+export function geltendeFassung(
+  basis: Entity | null,
+  f: Fassungen | null,
+): { id: string; satz: string } | null {
+  if (!basis || !f) return null;
+  const ebenen = new Map(f.layers.map((l) => [l.id, l]));
+  const ranks = new Map(f.layers.filter((l) => l.rank !== undefined).map((l) => [l.id, l.rank!]));
+  const imSpiel = [basis, ...f.versions.filter((v) => v.play).map((v) => v.entity)].filter((e) =>
+    layersOf(e).some((l) => ranks.has(l)),
+  );
+  if (imSpiel.length < 2) return null;
+  const g = versionInPlay(imSpiel, ranks);
+  if (!g) return null;
+  const kurz = (id: string) => ebenen.get(id)?.short ?? '?';
+  const andere = imSpiel
+    .filter((e) => e.id !== g.entity.id)
+    .flatMap((e) => layersOf(e).filter((l) => ranks.has(l)))
+    .map(kurz);
+  const wer = g.entity.id === basis.id ? 'this one' : `the ${kurz(g.layer)} version`;
+  const auch = [...new Set(andere)].filter((k) => k !== kurz(g.layer));
+  return {
+    id: g.entity.id,
+    satz: `In play: ${kurz(g.layer)}. ${auch.join(' and ')} ${auch.length > 1 ? 'are' : 'is'} on too, but ${kurz(g.layer)} is higher in the layer stack, so lists and links show ${wer}.`,
+  };
+}
+
+/**
+ * **Das Abzeichen in der Kopfzeile** (T-173, Punkt 0): „2 versions ·
+ * differs in tier" unter dem Namen, ein Link zum Vergleich nebeneinander.
+ * Die Leitung fand den Kasten in der Seitenspalte erst beim zweiten
+ * Hinsehen — am Telefon steht er ganz unten. Das Abzeichen steht oben,
+ * auch dort.
+ */
+@Component({
+  selector: 'nw-fassungs-abzeichen',
+  imports: [RouterLink],
+  template: `
+    @if (abzeichen(); as a) {
+      <a class="abzeichen" [routerLink]="['/artikel', a.basis, 'compare', a.mit]" [title]="a.titel">
+        <span class="raute" aria-hidden="true">◆</span>
+        <span>{{ a.text }}</span>
+        <span class="pfeil" aria-hidden="true">›</span>
+      </a>
+    }
+  `,
+  styles: `
+    :host {
+      display: block;
+      margin-top: 0.4rem;
+    }
+    .abzeichen {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      min-height: 32px;
+      padding: 0.15rem 0.7rem;
+      border: 1px solid var(--gold);
+      border-left-width: 4px;
+      border-radius: 4px;
+      background: var(--hover);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+      overflow-wrap: anywhere;
+    }
+    .abzeichen:hover,
+    .abzeichen:focus-visible {
+      border-color: var(--accent);
+    }
+    .raute {
+      color: var(--gold);
+    }
+    .pfeil {
+      color: var(--dim);
+    }
+  `,
+})
+export class FassungsAbzeichen {
+  readonly basis = input<Entity | null>(null);
+  readonly fassungen = input<Fassungen | null>(null);
+  private readonly bestand = inject(Bestand);
+
+  protected readonly abzeichen = computed(() => {
+    const e = this.basis();
+    const f = this.fassungen();
+    if (!e || !f?.versions.length) return null;
+    const z = zusammenfassungen(this.bestand.registry(), e, f);
+    const felder = [...new Set([...z.values()].flatMap((s) => [...s.fields, ...s.relations]))];
+    /* Zum Vergleich mit der ersten, die etwas anders sagt — sonst der ersten. */
+    const mit = f.versions.find((v) => z.get(v.entity.id)?.same === false) ?? f.versions[0]!;
+    const n = f.versions.length + 1;
+    const was = felder.length
+      ? `differs in ${felder.slice(0, 3).join(', ')}${felder.length > 3 ? ` +${felder.length - 3}` : ''}`
+      : 'same text';
+    const g = geltendeFassung(e, f);
+    return {
+      basis: e.id,
+      mit: mit.entity.id,
+      text: `${n} versions · ${was}`,
+      titel: `Compare side by side${g ? `. ${g.satz}` : ''}`,
+    };
+  });
 }
 
 /**
@@ -459,6 +626,10 @@ export class AbwMarken {
               }
             </fieldset>
           }
+          <!-- Welche gilt, wenn beide im Spiel sind (T-173, Punkt 5). -->
+          @if (geltend(); as g) {
+            <p class="geltend">{{ g.satz }}</p>
+          }
           <ul class="kanten">
             @for (v of f.versions; track v.entity.id) {
               <li>
@@ -472,6 +643,11 @@ export class AbwMarken {
                 <a [routerLink]="['/artikel', v.entity.id]">{{ name(v.entity) }}</a>
                 @if (v.compare) {
                   <span class="dim">compare</span>
+                }
+                <a class="vergleichen" [routerLink]="['/artikel', artikel(), 'compare', v.entity.id]">Compare</a>
+                <!-- Was sie anders hat, in einem Satz (T-173, Punkt 2). -->
+                @if (saetze().get(v.entity.id); as satz) {
+                  <span class="satz" [class.gleich]="satz.startsWith('Same')">{{ satz }}</span>
                 }
                 @if (v.adoptable && f.campaign) {
                   <button type="button" class="klein" [disabled]="laeuft()" (click)="uebernehmen(v)">
@@ -529,6 +705,30 @@ export class AbwMarken {
       display: inline-flex;
       gap: 0.25rem;
     }
+    .satz {
+      flex-basis: 100%;
+      font-size: 0.85rem;
+      color: var(--ink);
+      border-left: 3px solid var(--gold);
+      padding-left: 0.4rem;
+    }
+    .satz.gleich {
+      border-left-color: var(--line);
+      color: var(--dim);
+    }
+    .vergleichen {
+      font-size: 0.85rem;
+      min-height: 28px;
+      display: inline-flex;
+      align-items: center;
+    }
+    .geltend {
+      margin: 0;
+      font-size: 0.85rem;
+      padding: 0.3rem 0.5rem;
+      background: var(--hover);
+      border-radius: 4px;
+    }
     .dim {
       color: var(--dim);
     }
@@ -581,11 +781,20 @@ export class AbwMarken {
 export class FassungsKasten {
   readonly artikel = input.required<string>();
   readonly fassungen = input<Fassungen | null>(null);
+  /** Der Artikel selbst — für die Sätze, was eine Fassung anders hat (T-173). */
+  readonly basis = input<Entity | null>(null);
   /** Nach dem Übernehmen oder Zurücknehmen: der Artikel, der jetzt gilt. */
   readonly gewechselt = output<string>();
 
   protected readonly lesart = inject(FassungsLesart);
   private readonly api = inject(Api);
+  private readonly bestand = inject(Bestand);
+  protected readonly saetze = computed(() => {
+    const out = new Map<string, string>();
+    for (const [id, s] of zusammenfassungen(this.bestand.registry(), this.basis(), this.fassungen())) out.set(id, fassungsSatz(s));
+    return out;
+  });
+  protected readonly geltend = computed(() => geltendeFassung(this.basis(), this.fassungen()));
   protected readonly laeuft = signal(false);
   protected readonly fehler = signal<string | null>(null);
 

@@ -1039,6 +1039,18 @@ unter seiner eigenen Überschrift. Ebenso ein Statblock nach seinen Zeilen
 Und ein Feld, das nur die andere Fassung füllt, steht an seinem Platz mit
 „—" — in einer Liste am Ende hiesse es, die Stelle suchen zu gehen.
 
+*Dass es eine andere Fassung gibt*, muss man sehen, ohne zu suchen
+(T-173). An „+1 Weapon" stand der einzige Unterschied — `tier` gibt es
+nur in der Fassung von 2014 — als leerer Wert in einem Kasten der
+Seitenspalte, am Telefon ganz unten. Also steht unter dem Namen ein
+Abzeichen mit der Zahl der Fassungen und dem, worin sie abweichen; ein
+fehlender Wert heisst „— not set in XDMG" und nicht „—", denn ein Strich
+liest sich wie ein Wert; und wenn nichts abweicht, sagt der Kasten auch
+das. Gleich ist eine Auskunft, kein Schweigen. Wer es genau wissen will,
+stellt beide nebeneinander — alle Felder, gleiche mit, lange Texte Zeile
+für Zeile. Sind beide Ebenen im Spiel, gilt am Tisch die aus der oberen,
+und die Seite sagt es, statt es dem Stapel zu überlassen.
+
 *Was eine Fassung ist*, sagt nicht `variantOf` allein: die Kante verbindet
 auch den Oathbow mit dem Longbow und die Kopie „Goblin Boss" mit dem
 Goblin — das sind andere Dinge, und im Kompendium unter dem Longbow
