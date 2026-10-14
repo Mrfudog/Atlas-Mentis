@@ -1553,6 +1553,27 @@ welcher Reihenfolge die Kanten stehen.
 Kante mit Marken; ein Wirt, der Rook etwas schuldet, gibt ihm einen
 `discount`. Ob Marken einmal Preise bewegen, ist offen (E-043).
 
+**Gekauft wird eine Ware, nicht ein Preis** (T-133). Die Seite schickt,
+welche Ware, wie viele und für wen; den Preis rechnet der Server noch
+einmal. Ein Preis aus der Maske wäre der, den jemand gern bezahlt hätte.
+Die Menge am Laden sinkt, das Stück liegt danach im Inventar der Figur,
+und die Münzen gehen von dort ab — drei Stellen, die gemeinsam stimmen
+müssen, darum schreibt sie eine Route und nicht drei Masken.
+
+**Gekauft wird ein Stück, nicht der Artikel** (T-133, T-150). Die Laterne
+im Kompendium ist die Vorlage; was Ash über den Tresen bekommt, ist eine
+Instanz davon — ein eigener Artikel, der nur speichert, was an *dieser*
+Laterne anders ist. Hängte das Inventar am Grundartikel, wäre eine Gravur
+an Ashs Laterne eine an jeder, und eine Korrektur am Preis im Kompendium
+erreichte eine Kopie nie. Zehn gleiche Fackeln sind trotzdem ein Stapel:
+eine Instanz, die nicht abweicht, nimmt die nächsten auf, und verkauft
+fällt sie wieder weg. Eine abweichende geht als sie selbst an den Laden.
+
+**Verkauft wird zum halben Listenpreis** — die Regel aus 5e, Rabatte
+gelten dabei nicht. Ein Stück, das für einen Fertigungsauftrag reserviert
+ist, verkauft man nicht: es gehört schon dem Auftrag. Ob ein Hehler weniger
+zahlt als ein Sammler, wäre ein Feld am Laden (E-045, offen).
+
 ## Was ein Spieler von einer Karte bekommt
 
 **Eine Karte geht gekürzt hinaus, nicht verdeckt.** Ein versteckter Marker,

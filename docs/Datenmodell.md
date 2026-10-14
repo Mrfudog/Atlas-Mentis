@@ -734,6 +734,14 @@ heute `Statblock` und `Item` (M4: das +1-Langschwert am Tisch ist eine
 Instanz des Langschwerts), und `to: same` hält die Instanz in der Art ihrer
 Vorlage. Ein eigener Typ dafür wäre derselbe Typ ein zweites Mal.
 
+**Was eine Figur in die Hand bekommt, entsteht als Instanz** (T-150, zuerst
+beim Kauf, T-133): `newInstance` legt den Artikel an — `instanceOf` auf den
+Grundartikel, `inLayer` in die Ebene der Kampagne, `Identity` mit dem Namen
+der Vorlage und einer neuen Nummer, `Status: ready`, sonst nichts. Eine
+Funktion für Kauf, Beute, Handwerk und Geschenke. `followsTemplate` sagt, ob
+eine Instanz in nichts abweicht — dann ist sie ein beliebiges Stück und
+darf einen Stapel bilden.
+
 ---
 
 ## 8. Ebenen und Stapel
@@ -1131,8 +1139,10 @@ flowchart LR
   eigenen Mitgliedern Rabatt gibt, zeigt auf sich selbst.
 - **Gerechnet beim Lesen** (D8, `shopWares`, `packages/model/src/shop.ts`):
   Grundpreis = `sells.price` sonst Listenpreis **der geltenden Fassung**
-  (`ShopContext.resolve`, am Server `resolveArticle` gegen den Stapel,
-  T-139; ihre Herkunft reitet als `listNote` mit); dann Laden, Rabatte,
+  (T-139: der Server rechnet in der **Preissicht** `withVersionPrices` —
+  jedes Original trägt Preis und Herkunft seiner geltenden Fassung, Ids
+  bleiben; Kaufen, Verkaufen und Ankauf rechnen damit, gesiebt wird die
+  Fassung; die Herkunft reitet als `listNote` mit); dann Laden, Rabatte,
   Ware.
   **Prozent auf den Grundpreis**, addiert, je Schritt auf Kupfer gerundet;
   nie unter 0. Jeder Schritt nennt Geber, Empfänger und Rang.
@@ -1143,9 +1153,41 @@ flowchart LR
   ohne Namen. Element `wares` auf der Artikelseite.
 - **`regards` rechnet nicht mit** (E-043, offen): persönliche Rabatte sind
   `discount` vom Ladenhalter an die Figur.
-- **Kaufen und Verkaufen** (Menge sinkt, Gegenstand ins Inventar, Münzen
-  ab `Inventory.copper`) kommt mit dem Inventar (T-127). Migration 061 trägt
-  Art und Kanten nach.
+- Migration 061 trägt Art und Kanten nach.
+- **Kaufen** (T-133, `POST /api/shops/:id/buy`, `buyWare`): die Maske
+  schickt Ware (`sells`-Kante), Menge und Figur — **nie einen Preis**; der
+  Server rechnet `shopWares` für diese Figur neu. Die gezählte Menge sinkt
+  (leer bleibt unbegrenzt), und `Inventory.copper` sinkt um Preis × Menge.
+  Ins Inventar, das die Figur trägt (`carries`), kommt per `holds` **eine
+  Instanz** des Gegenstands (`newInstance`, T-150): ein eigener Artikel mit
+  `instanceOf` auf den Grundartikel, in der Ebene der Kampagne, `ready`,
+  sonst nur Name und Nummer — Preis, Gewicht und Form liest er von der
+  Vorlage, bis er abweicht. Liegt schon ein loser Stapel desselben da (der
+  Grundartikel selbst oder eine Instanz, die nicht abweicht,
+  `followsTemplate`), wächst der, und es entsteht nichts. Wer kauft, hat
+  das Stück angelegt (`app_user_article`, D72) und darf es ändern. Nein
+  sagen `soldOut`, `unavailable`, `tooFew`, `noPrice` (verschenkt wird
+  nichts), `tooPoor`; ohne Inventar gibt es nichts zu bezahlen.
+- **Verkaufen** (`POST /api/shops/:id/sell`, `sellPiece`): ein Stapel aus
+  dem Inventar der Figur oder einem Behälter darin (nicht dem der Gruppe),
+  zum **Ankaufspreis** `buybackPrice` = halber Listenpreis, abgerundet (5e;
+  ob ein Laden einen eigenen Satz trägt, ist offen: E-045). Rabatte gelten
+  nur beim Kaufen. Ein **reserviertes** Stück (`holds.props.reservedFor`,
+  T-128) und ein Behälter, in dem noch etwas liegt, bleiben. Eine
+  Instanz, die **nicht abweicht**, zählt als Grundartikel: führt der Laden
+  ihn mit gezählter Menge, steigt sie, und ist der Stapel ganz verkauft,
+  wird die Instanz gelöscht. Eine, die **abweicht** (eigener Name, Gravur),
+  geht als dieses Stück über den Tresen — der Laden führt sie danach selbst
+  (`sells` auf die Instanz), und wer sie zurückkauft, bekommt genau sie.
+- **Wer handelt:** für die eigene Figur (D74, wie beim Inventar), die
+  Leitung für jede. Laden und Inventar werden **gegen die gelesene
+  Revision** geschrieben — kaufen zwei die letzte Laterne, bekommt sie
+  einer, der andere ein 409. `refs.shop.mine` nennt je Figur dazu ihr
+  Inventar, ihr Geld (`purse`) und was sie verkaufen kann (`sellable`).
+- **Protokoll:** `shop.bought` und `shop.sold` am Laden — Figur, Konto,
+  Gegenstand, Menge, Stückpreis, Summe, beim Kauf Listen- und Grundpreis
+  und jeder Abschlag mit Herkunft (`steps`), beim Verkauf die Regel
+  (`rule: 'half'`).
 
 ```mermaid
 flowchart LR
