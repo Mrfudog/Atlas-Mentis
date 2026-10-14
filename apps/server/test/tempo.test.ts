@@ -55,10 +55,12 @@ function bestand(): Entity[] {
     components: { Identity: { name: 'Aus Nebel wacht', id: 'campaign-0001', aliases: [] } },
     /* Drei Viertel der Bücher aufgeschaltet, über die Gruppen A und B ohne
        die abgeschaltete Untergruppe C (T-088): der Rest zählt als
-       ausgeblendet. Fünf davon sind Vergleichsebenen (T-092) — nicht im Spiel. */
+       ausgeblendet. Fünf davon sind Vergleichsebenen (T-092) — nicht im Spiel.
+       Gruppe B bringt nur Regeln und Zauber (T-105): dieselben Artikel,
+       aber jeder geht durch die Bereichsauswahl. */
     relations: [
       { id: 'ac_a', type: 'activates', to: 'g_a', props: { order: 10 } },
-      { id: 'ac_b', type: 'activates', to: 'g_b', props: { order: 20 } },
+      { id: 'ac_b', type: 'activates', to: 'g_b', props: { order: 20, areas: ['rules'], types: ['Spell'] } },
       { id: 'off_c', type: 'activates', to: 'g_c', props: { mode: 'off' } },
       ...Array.from({ length: 5 }, (_, l) => ({
         id: `cmp_${l}`,
