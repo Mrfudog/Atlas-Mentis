@@ -114,6 +114,7 @@ import { NO_LAYER, buildListIndex, listProjection, parseListQuery, queryList, se
 import { mayActivate, rechtAn, registerVerwaltung } from './verwaltung.js';
 import { registerLesen } from './lesen.js';
 import { registerHandwerk } from './handwerk.js';
+import { registerFiltergruppen } from './filtergruppen.js';
 import { inventareDerFigur, registerLaden } from './laden.js';
 import { reservierteSperre, vorDemLoeschen } from './reservierung.js';
 import { eigeneEbenen, registerEbenenrechte } from './ebenenrechte.js';
@@ -1059,6 +1060,9 @@ export function buildApp({
     if (/^\/api\/entities\/[^/]+\/equipment$/.test(url) && request.method === 'POST') return;
     /* Das Handwerk (T-128): die Routen prüfen Figur, Rolle und Regel selbst. */
     if (url === '/api/crafting' || url.startsWith('/api/crafting/')) return;
+    /* Filtergruppen (T-137): eigene schreibt jedes Konto, die der
+       Kampagne die Leitung — die Routen prüfen beides selbst. */
+    if (url === '/api/filters' || url.startsWith('/api/filters/')) return;
     /* Kaufen und Verkaufen (T-133): die Route prüft die Figur selbst (`laden.ts`). */
     if (/^\/api\/shops\/[^/]+\/(buy|sell)$/.test(url) && request.method === 'POST') return;
     /* Den eigenen Lesestand merken (T-091): die Route schreibt nur am Konto. */
@@ -2491,6 +2495,8 @@ export function buildApp({
 
   /* Die Leseansicht (T-091, REQ-247): eine Ebene als Buch. */
   const { leseZiel } = registerLesen(app, { repo, viewerOf, roh, sieve, geltend, bezuegeVon });
+  /* Filtergruppen je Seite (T-137): die der Kampagne und die eigenen. */
+  registerFiltergruppen(app, { repo, viewerOf, roh });
   /* Der Fertigungsauftrag (T-128): Material reservieren, Proben, Abrechnung. */
   registerHandwerk(app, { repo, viewerOf, roh, sieve, schreibeGeprueft: (e) => schreibeGeprueft(e), kampagnenEbene });
   /* Kaufen und Verkaufen im Laden (T-133): der Preis am Server, gegen die gelesene Revision. */

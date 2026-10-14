@@ -647,6 +647,13 @@ wiederkommen, werden sie neu geschrieben.
   beim Wechsel auf eine **andere** Seite; von einem Artikel auf seine Liste
   zurückzugehen behält ihn. Ihn auch dort zu leeren hiesse, ihn jedes Mal
   neu zu setzen.
+  **Filtergruppen** (T-137) sind gespeicherte Filter einer Seite, als
+  Unterreiter (`?view=<id>`) und in der Kopfleiste (▾) erreichbar; die der
+  Kampagne pflegt die Leitung, eigene jedes Konto (`list_filter`, nicht im
+  Artikel). **Die Vorgabe einer Seite ist eine Gruppe mit `default`** —
+  „World ohne Items" ist ein Eintrag, keine Liste im Code. Ein Reiter ist
+  eine eigene Seite: er fängt mit Suche und Ebenen seiner Gruppe an, danach
+  gehört der Filter wieder ihm.
 - **Das Diagramm zeichnet sich selbst.** Auf „How it works" steht ein
   Kasten je Artikelart und eine Linie je Kantenart (gestrichelt: die
   Vererbung), angeordnet nach Bereich — aus dem laufenden Register

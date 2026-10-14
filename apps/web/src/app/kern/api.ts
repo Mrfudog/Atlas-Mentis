@@ -595,6 +595,10 @@ export interface ListenFrage {
   area?: string | undefined;
   type?: string | undefined;
   of?: string[] | undefined;
+  /** Ohne diese Arten und ihre Untertypen (T-137). */
+  notype?: string[] | undefined;
+  /** Nur in diesem Stand (T-137); ohne Status-Karte zählt `ready`. */
+  status?: string[] | undefined;
   /** Nur diese Artikel. */
   ids?: string[] | undefined;
   /** Diese Kantenarten je Zeile mitschicken. */
@@ -614,6 +618,37 @@ export interface ListenFrage {
   tag?: string[] | undefined;
   /** Nur Bilder, die kein sichtbarer Artikel zeigt (T-119). */
   unused?: boolean | undefined;
+}
+
+/**
+ * **Eine Filtergruppe** (T-137, `/api/filters`): ein benannter Filter einer
+ * Listenseite, als Unterreiter und in der Kopfleiste. `of`, `notype`,
+ * `tag`, `status`, `layer` grenzen ein; `q` und `nolayer` setzen die
+ * Seitenleiste beim Betreten.
+ */
+export interface GespeicherterFilter {
+  of?: string[];
+  notype?: string[];
+  tag?: string[];
+  status?: string[];
+  layer?: string[];
+  nolayer?: string[];
+  q?: string;
+}
+export interface Filtergruppe {
+  id: string;
+  page: string;
+  name: string;
+  scope: 'campaign' | 'own';
+  filter: GespeicherterFilter;
+  default: boolean;
+  rank: number;
+  canEdit: boolean;
+}
+export interface FiltergruppenStand {
+  campaign: string | null;
+  canManage: boolean;
+  groups: Filtergruppe[];
 }
 
 /** Wo ein Bild verwendet wird (T-119, `GET /api/assets/:id/uses`) — nur, was dieser Betrachter sieht. */
@@ -808,6 +843,7 @@ export function wasLaedt(path: string): string {
   if (path.startsWith('/api/checks') || path.startsWith('/api/bulk') || path.startsWith('/api/transfer')) return 'workbench';
   if (path.startsWith('/api/read')) return 'book';
   if (path.startsWith('/api/layers')) return 'layers';
+  if (path.startsWith('/api/filters')) return 'filter groups';
   if (path.startsWith('/api/maps') || path.startsWith('/api/play')) return 'map';
   return 'data';
 }
@@ -1153,6 +1189,19 @@ export class Api {
   /** Die übrigen Fassungen dieses Artikels (T-092). */
   versions(id: string): Promise<Fassungen> {
     return this.call<Fassungen>(`/api/entities/${encodeURIComponent(id)}/versions`);
+  }
+  /** Die Filtergruppen der laufenden Kampagne und die eigenen (T-137). */
+  filters(): Promise<FiltergruppenStand> {
+    return this.call<FiltergruppenStand>('/api/filters', {}, false);
+  }
+  createFilter(g: { page: string; name: string; scope: 'campaign' | 'own'; filter: GespeicherterFilter; default?: boolean }): Promise<Filtergruppe> {
+    return this.call<Filtergruppe>('/api/filters', { method: 'POST', body: JSON.stringify(g) });
+  }
+  updateFilter(id: string, g: { name?: string; filter?: GespeicherterFilter; default?: boolean; rank?: number }): Promise<Filtergruppe> {
+    return this.call<Filtergruppe>(`/api/filters/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(g) });
+  }
+  deleteFilter(id: string): Promise<{ ok: true }> {
+    return this.call(`/api/filters/${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
   /** Was sich das Konto merkt (T-092). */
   prefs(): Promise<Record<string, unknown>> {

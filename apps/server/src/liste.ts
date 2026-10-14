@@ -252,6 +252,11 @@ export interface ListQuery {
   type?: string[] | undefined;
   /** Diese Arten oder ein Untertyp davon (`extends`-Kette) — für Auswahlen. */
   of?: string[] | undefined;
+  /** Ohne diese Arten und ihre Untertypen (T-137): „World ohne Items". */
+  notype?: string[] | undefined;
+  /** Nur Artikel in diesem Vorbereitungsstand (T-137); ohne Status-Karte
+   *  zählt ein Artikel als `ready` (D72). */
+  status?: string[] | undefined;
   q?: string | undefined;
   /** Nur diese Ebenen (`NO_LAYER` für „keine"); leer heisst alle. */
   layer?: string[] | undefined;
@@ -402,6 +407,8 @@ function spaltenArt(prop: PropertySchema): ListColumn['kind'] {
 export function queryList(idx: ListIndex, q: ListQuery): ListResult {
   const such = q.q?.trim().toLowerCase() ?? '';
   const ofSet = q.of?.length ? new Set(q.of) : null;
+  const ohneTypen = q.notype?.length ? new Set(q.notype) : null;
+  const staende = q.status?.length ? new Set(q.status) : null;
   const typSet = q.type?.length ? new Set(q.type) : null;
   const ebenen = q.layer?.length ? new Set(q.layer) : null;
   const ohneEbenen = q.nolayer?.length ? new Set(q.nolayer) : null;
@@ -423,6 +430,8 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
     if (nurIds && !nurIds.has(z.id)) continue;
     if (q.area && z.area !== q.area) continue;
     if (ofSet && !idx.types.get(z.type)?.chain.some((t) => ofSet.has(t))) continue;
+    if (ohneTypen && idx.types.get(z.type)?.chain.some((t) => ohneTypen.has(t))) continue;
+    if (staende && !staende.has(z.status || 'ready')) continue;
     if (such && !z.such.includes(such)) continue;
     if (marken && !marken.every((t) => z.tags.includes(t))) continue;
     if (q.exclude?.has(z.id)) continue;
@@ -675,6 +684,8 @@ export function parseListQuery(raw: Record<string, unknown>): ListQuery {
     area: typeof raw['area'] === 'string' && raw['area'] ? raw['area'] : undefined,
     type: liste(raw['type']),
     of: liste(raw['of']),
+    notype: liste(raw['notype']),
+    status: liste(raw['status']),
     q: typeof raw['q'] === 'string' ? raw['q'] : undefined,
     layer: liste(raw['layer']),
     nolayer: liste(raw['nolayer']),

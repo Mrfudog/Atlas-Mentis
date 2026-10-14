@@ -10,7 +10,7 @@ import type { Pool } from 'pg';
 import { isTableRole } from '@nw/model';
 import type { Entity, InterfaceDef, Registry, Relation, RelationDef, TableRole } from '@nw/model';
 import { RevisionConflict } from './repo.js';
-import type { EventFilter, LayerGrant, PutOptions, ReadyStand, Repository, SessionRow, StoredEvent, StoredUser } from './repo.js';
+import type { EventFilter, LayerGrant, ListFilterRow, PutOptions, ReadyStand, Repository, SessionRow, StoredEvent, StoredUser } from './repo.js';
 import type { ApiToken, Invite, TokenScope, User } from './auth.js';
 
 type Row = Record<string, unknown>;
@@ -639,6 +639,52 @@ export class PgRepository implements Repository {
     );
   }
 
+  async listFilters(campaignId: string | null, userId: string): Promise<ListFilterRow[]> {
+    const { rows } = await this.pool.query<Row>(
+      `select * from list_filter where ($1::text is not null and campaign_id = $1) or user_id = $2
+        order by page, (user_id is not null), rank, name`,
+      [campaignId, userId],
+    );
+    return rows.map(filterZeile);
+  }
+
+  async getListFilter(id: string): Promise<ListFilterRow | undefined> {
+    const { rows } = await this.pool.query<Row>('select * from list_filter where id = $1', [id]);
+    return rows[0] ? filterZeile(rows[0]) : undefined;
+  }
+
+  async putListFilter(row: ListFilterRow): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('begin');
+      if (row.isDefault) {
+        await client.query(
+          'update list_filter set is_default = false where campaign_id = $1 and page = $2 and id <> $3',
+          [row.campaignId, row.page, row.id],
+        );
+      }
+      await client.query(
+        `insert into list_filter(id, page, name, campaign_id, user_id, filter, is_default, rank)
+         values ($1, $2, $3, $4, $5, $6, $7, $8)
+         on conflict (id) do update set page = excluded.page, name = excluded.name,
+           filter = excluded.filter, is_default = excluded.is_default, rank = excluded.rank,
+           updated_at = now()`,
+        [row.id, row.page, row.name, row.campaignId, row.userId, JSON.stringify(row.filter), row.isDefault, row.rank],
+      );
+      await client.query('commit');
+    } catch (error) {
+      await client.query('rollback');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async dropListFilter(id: string): Promise<boolean> {
+    const r = await this.pool.query('delete from list_filter where id = $1', [id]);
+    return (r.rowCount ?? 0) > 0;
+  }
+
   async getPrefs(userId: string): Promise<Record<string, unknown>> {
     const { rows } = await this.pool.query<Row>('select key, value from app_user_pref where user_id = $1', [userId]);
     return Object.fromEntries(rows.map((r) => [String(r['key']), r['value']]));
@@ -924,5 +970,18 @@ function zusammensetzen(base: Row, components: Row[], relations: Row[]): Entity 
     createdAt: (base['created_at'] as Date)?.toISOString(),
     updatedAt: (base['updated_at'] as Date)?.toISOString(),
     ...(base['revision'] != null ? { revision: Number(base['revision']) } : {}),
+  };
+}
+
+function filterZeile(r: Row): ListFilterRow {
+  return {
+    id: String(r['id']),
+    page: String(r['page']),
+    name: String(r['name']),
+    campaignId: r['campaign_id'] === null ? null : String(r['campaign_id']),
+    userId: r['user_id'] === null ? null : String(r['user_id']),
+    filter: (r['filter'] ?? {}) as Record<string, unknown>,
+    isDefault: r['is_default'] === true,
+    rank: Number(r['rank'] ?? 0),
   };
 }
