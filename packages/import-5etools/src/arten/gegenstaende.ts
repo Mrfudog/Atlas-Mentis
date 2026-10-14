@@ -10,7 +10,8 @@
  * würden sonst zweitausend Schwerter speichern.
  */
 
-import type { Entity } from '@nw/model';
+import type { Effect, Entity } from '@nw/model';
+import { effectId } from '@nw/model';
 import type { Knoten } from '../copy.js';
 import type { Werkbank } from '../werkbank.js';
 import type { Zuordnung } from '../zuordnung.js';
@@ -49,13 +50,19 @@ export function typVon(e: Knoten): string {
   return 'Item';
 }
 
+/* Was 5e.tools strukturiert über die Wirkung eines Gegenstands sagt (E-025 a). */
+const WIRKUNGEN = [
+  'ability', 'resist', 'immune', 'vulnerable', 'conditionImmune', 'modifySpeed', 'bonusSpellSaveDc',
+  'critThreshold', 'containerCapacity', 'carryingCapacity',
+];
+
 const GENUTZT_ITEM = [
   'name', 'entries', 'additionalEntries', 'type', 'rarity', 'tier', 'reqAttune', 'reqAttuneTags',
   'reqAttuneAlt', 'reqAttuneAltTags', 'charges', 'recharge', 'rechargeAmount', 'bonusWeapon',
   'bonusAc', 'bonusSpellAttack', 'bonusSavingThrow', 'value', 'weight', 'weaponCategory', 'dmg1',
   'dmg2', 'dmgType', 'range', 'ammoType', 'ac', 'strength', 'stealth', 'property', 'attachedSpells',
   'baseItem', 'weapon', 'armor', 'packContents', 'lootTables', 'valueMult', 'weightMult', 'ammo',
-  'age', 'focus', 'scfType', 'grantsProficiency', 'grantsLanguage', 'light', ...SORTEN,
+  'age', 'focus', 'scfType', 'grantsProficiency', 'grantsLanguage', 'light', ...WIRKUNGEN, ...SORTEN,
 ];
 
 /** Die Felder eines Gegenstands, aus einem Eintrag oder dem `inherits` einer Variante. */
@@ -89,6 +96,7 @@ function felder(wb: Werkbank, ent: Entity, e: Knoten): void {
   wb.feld(ent, I, 'copperPrice', zahl(e['value']));
   wb.feld(ent, I, 'weight', zahl(e['weight']));
   wb.marke(ent, ...SORTEN.filter((s) => e[s] === true));
+  wirkungen(wb, ent, e);
 
   if (typ === 'Weapon') {
     const W = 'Weapon';
@@ -125,6 +133,65 @@ function felder(wb: Werkbank, ent: Entity, e: Knoten): void {
     else wb.ctx.insLeere('itemProperty', roh);
   }
   zauberAmGegenstand(wb, ent, e['attachedSpells']);
+}
+
+/**
+ * **Die Wirkungen eines Gegenstands** (REQ-238, REQ-063, E-025 a): was
+ * 5e.tools strukturiert sagt, wird ein Eintrag in `Effects.effects`. Die
+ * Bedingung bleibt meist leer — dann gilt „eingestimmt, wenn verlangt,
+ * sonst getragen" beim Lesen. Was sich nicht als Wirkung schreiben lässt
+ * (Geschwindigkeit verdoppeln, ein Attribut nach Wahl), steht als Notiz
+ * und im Bericht.
+ */
+export function wirkungen(wb: Werkbank, ent: Entity, e: Knoten): void {
+  const neu: Omit<Effect, 'id'>[] = [];
+  const ab = e['ability'];
+  if (ab && typeof ab === 'object') {
+    for (const [k, v] of Object.entries(ab as Knoten)) {
+      if (k === 'static' && v && typeof v === 'object') {
+        for (const [a, n] of Object.entries(v as Knoten)) if (zahl(n) !== undefined) neu.push({ target: `ability.${a}`, op: 'set', value: zahl(n)! });
+      } else if (/^(str|dex|con|int|wis|cha)$/.test(k) && zahl(v) !== undefined) neu.push({ target: `ability.${k}`, op: 'add', value: zahl(v)! });
+      else wb.notiz(`Wirkung ability.${k} nicht übernommen`);
+    }
+  }
+  for (const ziel of ['resist', 'immune', 'vulnerable', 'conditionImmune'] as const) {
+    for (const w of liste(e[ziel])) {
+      if (typeof w === 'string') neu.push({ target: ziel, op: 'grant', value: w });
+      else wb.notiz(`Wirkung ${ziel} mit Form nicht übernommen`);
+    }
+  }
+  const tempo = e['modifySpeed'];
+  if (tempo && typeof tempo === 'object') {
+    for (const [art, werte] of Object.entries(tempo as Knoten)) {
+      for (const [modus, w] of Object.entries((werte as Knoten | undefined) ?? {})) {
+        const ziel = `speed.${modus}`;
+        if (art === 'bonus' && zahl(w) !== undefined) neu.push({ target: ziel, op: 'add', value: zahl(w)! });
+        else if (art === 'static' && zahl(w) !== undefined) neu.push({ target: ziel, op: 'set', value: zahl(w)! });
+        else if (art === 'equal' && typeof w === 'string') neu.push({ target: ziel, op: 'set', value: w });
+        else {
+          wb.notiz(`Wirkung modifySpeed.${art} nicht übernommen`);
+          wb.anmerkung(ent, `speed-${art}-${modus}`, `Speed: ${art} ${modus} ${String(w)}`);
+        }
+      }
+    }
+  }
+  if (zahl(e['bonusSpellSaveDc']) !== undefined) neu.push({ target: 'spellSaveDc', op: 'add', value: zahl(e['bonusSpellSaveDc'])! });
+  if (zahl(e['critThreshold']) !== undefined) neu.push({ target: 'critThreshold', op: 'set', value: zahl(e['critThreshold'])! });
+  /* Fassungsvermögen und Tragkraft gehören dem Gegenstand selbst (dem
+     Beutel, dem Wagen) und keiner Figur, die ihn trägt: `self`. */
+  const fass = e['containerCapacity'] as Knoten | undefined;
+  if (fass && typeof fass === 'object') {
+    const lb = liste(fass['weight']).map(zahl).filter((n): n is number => n !== undefined);
+    if (lb.length) {
+      neu.push({ target: 'capacity', op: 'set', value: lb.reduce((a, b) => a + b, 0), when: 'self', ...(fass['weightless'] ? { note: 'contents weigh nothing' } : {}) });
+    }
+  }
+  if (zahl(e['carryingCapacity']) !== undefined) neu.push({ target: 'carry', op: 'set', value: zahl(e['carryingCapacity'])!, when: 'self' });
+  if (!neu.length) return;
+  const karte = wb.karte(ent, 'Effects');
+  const alle = (karte['effects'] as Effect[] | undefined) ?? [];
+  for (const w of neu) alle.push({ id: effectId(w.target, w.value, alle.map((x) => x.id)), ...w });
+  karte['effects'] = alle;
 }
 
 /** `attachedSpells` als `casts` mit `mode: item`. */
