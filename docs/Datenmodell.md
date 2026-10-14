@@ -1360,6 +1360,11 @@ als Reiter (ein Klick springt hin), ein Bereich lässt sich einklappen —
 dann zeigt er nur seine Titelzeile, und seine Karten sind verborgen,
 nicht verschoben. **Eingeklappt ist je Betrachter** (im Browser): am
 Board gespeichert klappte ein Spieler der Leitung die Conditions zu.
+**Ein Bereich wird an seiner Titelzeile verschoben und nimmt seine Karten
+mit** (T-146) — sonst stünden sie danach draussen und gehörten nach der
+Lage zu keinem Bereich mehr; an der Ecke ändert er seine Grösse, und die
+Karten bleiben liegen. Gezogen wird mit Pointer-Events, mit Maus, Stift
+und Finger gleich.
 
 Eine Spieleransicht gibt es nicht: gesiebt wird am Server, alle sehen
 dieselbe Ansicht. **Die Sicht eines Mitglieds** (REQ-241) ist darum keine
