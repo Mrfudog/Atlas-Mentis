@@ -13,7 +13,7 @@
  * dort ist der Entwurf die gespeicherte Figur mit einer Stufe mehr.
  */
 
-import { choicesAtCharacter, choicesOf, type ChoiceAtCharacter } from './choices.js';
+import { answerKey, answersOf, choicesAtCharacter, choicesOf, offeredOptions, type ChoiceAtCharacter, type ChoiceRules } from './choices.js';
 import type { Entity, EntityId, Relation } from './types.js';
 
 export type BuilderStep =
@@ -27,8 +27,25 @@ export type BuilderStep =
 /** Die Reihenfolge der Quellen: Abstammung, Hintergrund, Klasse, und was sie öffnen. */
 const RANG: Record<string, number> = { hasAncestry: 0, hasBackground: 1, hasClass: 2, subclass: 3, grants: 4, chose: 5 };
 
-/** Der Schlüssel einer Wahl an einer Figur: `quelle#wahl`. */
-export const choiceKey = (c: ChoiceAtCharacter): string => `${c.source.entity.id}#${c.choice.id}`;
+/**
+ * Der Schlüssel einer Wahl an einer Figur: `quelle#wahl`, bei einem
+ * gewährten Merkmal mit der Gewährung (`quelle#wahl@von:stufe`, T-107).
+ */
+export const choiceKey = (c: ChoiceAtCharacter): string => answerKey(c.source.entity.id, c.choice.id, c.source.grant);
+
+/**
+ * **Was die gespeicherte Figur schon beantwortet hat** — als Schlüssel,
+ * wie `choiceKey` sie bildet. Eine ältere Antwort ohne Gewährung zählt für
+ * die Quelle, die sie liest. Eine Vorgabe (`assumed`) gilt als
+ * beantwortet, sobald dieselbe Quelle eine gespeicherte Antwort hat — wer
+ * auf Stufe 4 Attributspunkte genommen hat, hat die Steigerung gewählt.
+ */
+export function answeredKeys(character: Entity, byId: ReadonlyMap<EntityId, Entity>): Set<string> {
+  const alle = choicesAtCharacter(character, byId);
+  const quelle = (c: ChoiceAtCharacter) => answerKey(c.source.entity.id, '', c.source.grant);
+  const mitAntwort = new Set(alle.filter((c) => c.relationId).map(quelle));
+  return new Set(alle.filter((c) => c.relationId || (c.assumed && mitAntwort.has(quelle(c)))).map(choiceKey));
+}
 
 /**
  * **Die Schritte für diesen Entwurf.** `levelUp` beginnt mit der Stufe und
@@ -40,17 +57,23 @@ export const choiceKey = (c: ChoiceAtCharacter): string => `${c.source.entity.id
  * wählt keine. Darum stehen die Ausrüstungswahlen einer neuen Figur nicht
  * je als Schritt da, sondern gesammelt im Schritt `equipment` vor dem
  * Namen.
+ *
+ * **Eine Möglichkeit allein ist kein Schritt** (T-107): erlaubt die
+ * Kampagne keine Talente (`rules.feats`), bleibt von „Steigerung oder
+ * Talent" die Steigerung, und es gilt die Vorgabe der Wahl.
  */
 export function builderSteps(
   draft: Entity,
   byId: ReadonlyMap<EntityId, Entity>,
-  opts: { levelUp?: boolean; done?: ReadonlySet<string> } = {},
+  opts: { levelUp?: boolean; done?: ReadonlySet<string>; rules?: ChoiceRules } = {},
 ): BuilderStep[] {
   const alle = choicesAtCharacter(draft, byId);
   const ausruestung = !opts.levelUp;
+  const einzig = (c: ChoiceAtCharacter) =>
+    c.choice.kind === 'option' && !!c.picks && offeredOptions(c.choice, choicesOf(c.source.entity), opts.rules).length <= 1;
   const wahlen = alle
     .map((c, i) => ({ c, i }))
-    .filter(({ c }) => !c.fixed && !opts.done?.has(choiceKey(c)) && !(ausruestung && c.choice.kind === 'equipment'))
+    .filter(({ c }) => !c.fixed && !einzig(c) && !opts.done?.has(choiceKey(c)) && !(ausruestung && c.choice.kind === 'equipment'))
     .sort((a, z) => (RANG[a.c.source.via] ?? 9) - (RANG[z.c.source.via] ?? 9) || a.i - z.i)
     .map(({ c }): BuilderStep => ({ id: `choice:${choiceKey(c)}`, kind: 'choice', at: c }));
   if (opts.levelUp) return [{ id: 'level', kind: 'level' }, ...wahlen];
@@ -99,14 +122,26 @@ export function setClassLevel(draft: Entity, classId: EntityId, level: number): 
  * **Eine Wahl beantworten**: die Kante `chose` dieser Wahl setzen oder,
  * ohne Antwort, wegnehmen. Eine Unterklasse steht dazu an ihrer Klasse
  * (`hasClass.props.subclass`, C2) — dort liest sie jede andere Ansicht.
+ * An einem gewährten Merkmal merkt sich die Antwort ihre Gewährung
+ * (`props.by`, `props.level`, T-107).
  */
 export function answerChoice(draft: Entity, at: ChoiceAtCharacter, picks: string[]): Entity {
   const quelle = at.source.entity.id;
-  let rel: Relation[] = (draft.relations ?? []).filter(
-    (r) => !(r.type === 'chose' && r.to === quelle && r.props?.['choice'] === at.choice.id),
-  );
+  const grant = at.source.grant;
+  const schluessel = choiceKey(at);
+  let rel: Relation[] = (draft.relations ?? []).filter((r) => {
+    if (r.type !== 'chose') return true;
+    if (r.id === at.relationId) return false;
+    const a = answersOf({ ...draft, relations: [r] })[0];
+    return !a || answerKey(a.source, a.choice, a.grant) !== schluessel;
+  });
   if (picks.length) {
-    rel.push({ id: kantenId(draft, 'chose'), type: 'chose', to: quelle, props: { choice: at.choice.id, picks } });
+    rel.push({
+      id: kantenId(draft, 'chose'),
+      type: 'chose',
+      to: quelle,
+      props: { choice: at.choice.id, picks, ...(grant ? { by: grant.by, level: grant.level } : {}) },
+    });
   }
   if (at.choice.kind === 'subclass' && at.source.via === 'hasClass') {
     rel = rel.map((r) => {
@@ -129,10 +164,8 @@ export function answerChoice(draft: Entity, at: ChoiceAtCharacter, picks: string
  */
 export function pruneAnswers(draft: Entity, byId: ReadonlyMap<EntityId, Entity>): Entity {
   if (!byId.size) return draft;
-  const offen = new Set(choicesAtCharacter(draft, byId).map(choiceKey));
-  const rel = (draft.relations ?? []).filter(
-    (r) => r.type !== 'chose' || offen.has(`${r.to}#${String(r.props?.['choice'] ?? '')}`) || !choicesOf(byId.get(r.to)).length,
-  );
+  const gelesen = new Set(choicesAtCharacter(draft, byId).flatMap((c) => (c.relationId ? [c.relationId] : [])));
+  const rel = (draft.relations ?? []).filter((r) => r.type !== 'chose' || gelesen.has(r.id) || !choicesOf(byId.get(r.to)).length);
   return rel.length === (draft.relations ?? []).length ? draft : pruneAnswers({ ...draft, relations: rel }, byId);
 }
 
@@ -177,4 +210,13 @@ export function gainedFeatures(draft: Entity, byId: ReadonlyMap<EntityId, Entity
 export function campaignLanguages(campaign: Entity | undefined): string[] {
   const roh = campaign?.components?.['Campaign']?.['languages'];
   return Array.isArray(roh) ? [...new Set(roh.filter((x): x is string => typeof x === 'string' && !!x.trim()))] : [];
+}
+
+/**
+ * **Erlaubt die Kampagne Talente?** (T-107) `Campaign.feats`; ohne Angabe
+ * ja. Nein nimmt das Talent als Ausweg einer Wahl weg (`offeredOptions`) —
+ * Talente, die eine Klasse oder Herkunft selbst gewährt, bleiben.
+ */
+export function campaignAllowsFeats(campaign: Entity | undefined): boolean {
+  return campaign?.components?.['Campaign']?.['feats'] !== false;
 }

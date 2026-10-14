@@ -562,7 +562,10 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Feature',
     area: 'rules',
     label: 'Feature',
-    extends: ['Rule'],
+    /* Ein Merkmal fragt selbst (Fighting Style, Ability Score
+       Improvement); gewährt eine Klasse es mehrmals, fragt es jedes Mal
+       (T-107, E-027). */
+    extends: ['Rule', 'Choices'],
     schema: merge(g.FeatureInfo),
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */

@@ -898,7 +898,9 @@ export const fieldGroups = {
               kind: {
                 type: 'string',
                 title: 'Kind',
-                enum: ['proficiency', 'ability', 'feat', 'spell', 'equipment', 'feature', 'subclass'],
+                /* `option`: benannte Möglichkeiten, die nur steuern, welche
+                   Wahlen dahinter gelten (Steigerung oder Talent, T-107). */
+                enum: ['proficiency', 'ability', 'feat', 'spell', 'equipment', 'feature', 'subclass', 'option'],
               },
               level: { type: 'number', min: 1, max: 20, title: 'From level' },
               /* Nur für die erste Klasse einer Figur (`start`: Fertigkeiten,
@@ -909,6 +911,14 @@ export const fieldGroups = {
               count: { type: 'number', min: 1, title: 'How many' },
               /* Bei `ability`: der Bonus je Wahl, +2 und +1 heisst [2, 1]. */
               bonus: { type: 'array', items: { type: 'number' }, title: 'Bonus per pick' },
+              /* Derselbe Wert darf mehrmals gewählt werden: +1 auf zwei
+                 Attribute, dasselbe zweimal heisst +2 (T-107). */
+              repeat: { type: 'boolean', title: 'Same pick more than once' },
+              /* Gilt nur, wenn eine Wahl davor an derselben Quelle diesen
+                 Wert trägt: `{choice: 'improvement', pick: 'feat'}`. */
+              onlyIf: { type: 'object', title: 'Only if' },
+              /* Gilt, bis jemand anders antwortet. */
+              default: { type: 'array', items: { type: 'string' }, title: 'Default' },
               note: { type: 'string', title: 'Note' },
             },
           },
@@ -2264,6 +2274,10 @@ export const fieldGroups = {
            `Language`-Artikeln, wie eine Übung sie hält — die Art schlägt
            vor, die Liste hält nicht (M6). */
         languages: { type: 'array', items: { type: 'string' }, enumRef: ['Language'], title: 'Languages in play' },
+        /* **Talente am Tisch** (T-107): nein nimmt das Talent als Ausweg
+           einer Wahl weg („Steigerung oder Talent" wird „Steigerung").
+           Ohne Angabe ja. */
+        feats: { type: 'boolean', title: 'Feats allowed', default: true },
       },
     },
   },

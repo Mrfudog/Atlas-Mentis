@@ -33,6 +33,7 @@ import {
   startingBundle,
   startingGoldOf,
   campaignLanguages,
+  campaignAllowsFeats,
   partyPool,
   rollAbilityScores,
   articleVisible,
@@ -1873,6 +1874,8 @@ export function buildApp({
       methods,
       parties,
       languages: campaignLanguages(kampagne ?? undefined),
+      /* Talente am Tisch (T-107): nein nimmt das Talent als Ausweg weg. */
+      feats: campaignAllowsFeats(kampagne ?? undefined),
     };
   });
 

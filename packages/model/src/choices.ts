@@ -16,12 +16,20 @@
  * `props.level`), Übungen in `Proficiencies`, Attributsboni der Abstammung
  * in `Ancestry.abilityBonus`. **Eine Wahl ohne Spielraum ist beantwortet**
  * — „eines aus [con]" fragt niemanden.
+ *
+ * **Ein Merkmal, das mehrfach gewährt wird, fragt jedes Mal** (T-107,
+ * E-027): „Ability Score Improvement" ist ein Artikel, den der Kämpfer auf
+ * Stufe 4, 6, 8 … bekommt (`grants` mit `props.level`, D50). Jede dieser
+ * Kanten macht das Merkmal zu einer eigenen Quelle (`ChoiceSource.grant`),
+ * und die Antwort merkt sich, zu welcher sie gehört (`chose` mit
+ * `props.by` und `props.level`). Sieben Kanten tragen so sieben Antworten
+ * — für jedes Merkmal, nicht nur für dieses.
  */
 
 import type { Entity, EntityId } from './types.js';
 
 /** Die Sorten einer Wahl. Die Liste steht am Feld (`Choices.choices`). */
-export const CHOICE_KINDS = ['proficiency', 'ability', 'feat', 'spell', 'equipment', 'feature', 'subclass'] as const;
+export const CHOICE_KINDS = ['proficiency', 'ability', 'feat', 'spell', 'equipment', 'feature', 'subclass', 'option'] as const;
 export type ChoiceKind = (typeof CHOICE_KINDS)[number];
 
 /**
@@ -66,7 +74,33 @@ export interface Choice {
   count?: number;
   /** Bei `ability`: der Bonus je Wahl, in der Reihenfolge der Antwort. */
   bonus?: number[];
+  /**
+   * Derselbe Wert darf mehrmals gewählt werden (T-107): „+1 auf zwei
+   * Attribute, dasselbe zweimal erlaubt" ist +2 auf eines.
+   */
+  repeat?: boolean;
+  /**
+   * Gilt nur, wenn eine andere Wahl **derselben Quelle** diesen Wert trägt
+   * (T-107): die Attributspunkte nur, wenn die Steigerung gewählt ist, das
+   * Talent nur an ihrer Stelle. Die genannte Wahl steht davor.
+   */
+  onlyIf?: { choice: string; pick: string };
+  /**
+   * Gilt, solange niemand anders geantwortet hat (`assumed`). Eine Wahl
+   * zwischen zwei Wegen hat so einen gewöhnlichen, und die Wahlen dahinter
+   * stehen sofort da.
+   */
+  default?: string[];
   note?: string;
+}
+
+/**
+ * **Welche Gewährung**: der Artikel, der das Merkmal gewährt (`by`), und
+ * die Stufe an seiner Kante `grants` (T-107).
+ */
+export interface ChoiceGrant {
+  by: EntityId;
+  level: number;
 }
 
 /** Eine Antwort der Figur: die Kante `chose`, gelesen. */
@@ -76,6 +110,8 @@ export interface ChoiceAnswer {
   choice: string;
   picks: string[];
   relationId: string;
+  /** Zu welcher Gewährung (`props.by`, `props.level`); fehlt an älteren Antworten. */
+  grant?: ChoiceGrant;
 }
 
 /** Eine Quelle von Wahlen an einer Figur, mit der Stufe, die für sie zählt. */
@@ -86,6 +122,13 @@ export interface ChoiceSource {
   via: string;
   /** Bei einer Klasse: ist es die erste der Figur (die erste Kante `hasClass`)? */
   start?: boolean;
+  /** Über `grants` erreicht: welche Kante — je Kante eine Quelle (T-107). */
+  grant?: ChoiceGrant;
+}
+
+/** Wo eine Antwort hingehört: `quelle#wahl`, mit Gewährung `quelle#wahl@von:stufe`. */
+export function answerKey(source: EntityId, choice: string, grant?: ChoiceGrant): string {
+  return grant ? `${source}#${choice}@${grant.by}:${grant.level}` : `${source}#${choice}`;
 }
 
 /** Die Wahlen eines Artikels, in der gespeicherten Reihenfolge. */
@@ -131,7 +174,10 @@ export function answersOf(character: Entity | undefined): ChoiceAnswer[] {
     const choice = r.props?.['choice'];
     if (typeof choice !== 'string' || !choice) continue;
     const picks = Array.isArray(r.props?.['picks']) ? (r.props['picks'] as unknown[]).map(String) : [];
-    raus.push({ source: r.to, choice, picks, relationId: r.id });
+    const by = r.props?.['by'];
+    const level = Number(r.props?.['level']);
+    const grant = typeof by === 'string' && by && Number.isFinite(level) && level >= 1 ? { by, level } : undefined;
+    raus.push({ source: r.to, choice, picks, relationId: r.id, ...(grant ? { grant } : {}) });
   }
   return raus;
 }
@@ -171,13 +217,15 @@ export function characterLevel(character: Entity | undefined): number {
 export function choiceSources(character: Entity, byId: ReadonlyMap<EntityId, Entity>): ChoiceSource[] {
   const gesamt = characterLevel(character);
   const raus: ChoiceSource[] = [];
-  const gesehen = new Set<EntityId>();
-  const dazu = (id: unknown, level: number, via: string, start?: boolean) => {
-    if (typeof id !== 'string' || gesehen.has(id)) return;
+  const gesehen = new Set<string>();
+  const dazu = (id: unknown, level: number, via: string, start?: boolean, grant?: ChoiceGrant) => {
+    if (typeof id !== 'string') return;
+    const schluessel = grant ? `${id}@${grant.by}:${grant.level}` : id;
+    if (gesehen.has(schluessel)) return;
     const e = byId.get(id);
     if (!e) return;
-    gesehen.add(id);
-    raus.push({ entity: e, level, via, ...(start === undefined ? {} : { start }) });
+    gesehen.add(schluessel);
+    raus.push({ entity: e, level, via, ...(start === undefined ? {} : { start }), ...(grant ? { grant } : {}) });
   };
   let ersteKlasse = true;
   for (const r of character.relations ?? []) {
@@ -196,7 +244,7 @@ export function choiceSources(character: Entity, byId: ReadonlyMap<EntityId, Ent
     for (const r of q.entity.relations ?? []) {
       if (r.type !== 'grants') continue;
       const ab = Number(r.props?.['level']) || 1;
-      if (ab <= q.level && choicesOf(byId.get(r.to)).length) dazu(r.to, gesamt, 'grants');
+      if (ab <= q.level && choicesOf(byId.get(r.to)).length) dazu(r.to, gesamt, 'grants', undefined, { by: q.entity.id, level: ab });
     }
     for (const a of antworten) {
       if (a.source !== q.entity.id) continue;
@@ -214,21 +262,53 @@ export interface ChoiceAtCharacter {
   picks?: string[];
   /** Ohne gespeicherte Antwort beantwortet, weil es nichts zu wählen gab. */
   fixed?: boolean;
+  /** Ohne gespeicherte Antwort beantwortet mit der Vorgabe der Wahl (`default`). */
+  assumed?: boolean;
+  /** Die Kante `chose`, aus der die Antwort kommt. */
+  relationId?: string;
 }
 
-/** Jede Wahl, die an der Figur auf ihrer Stufe gilt, mit Antwort, wo es eine gibt. */
+/**
+ * Jede Wahl, die an der Figur auf ihrer Stufe gilt, mit Antwort, wo es eine
+ * gibt. Eine Antwort gehört zu ihrer Gewährung (`answerKey`); eine ältere
+ * ohne Gewährung nimmt die **erste** Quelle dieses Artikels, die sie
+ * brauchen kann — so steht, was vor T-107 gewählt wurde, weiter da.
+ */
 export function choicesAtCharacter(character: Entity, byId: ReadonlyMap<EntityId, Entity>): ChoiceAtCharacter[] {
-  const antworten = new Map(answersOf(character).map((a) => [`${a.source}#${a.choice}`, a] as const));
+  const antworten = new Map<string, ChoiceAnswer>();
+  for (const a of answersOf(character)) {
+    const k = answerKey(a.source, a.choice, a.grant);
+    if (!antworten.has(k)) antworten.set(k, a);
+  }
+  const verbraucht = new Set<string>();
   const raus: ChoiceAtCharacter[] = [];
   for (const q of choiceSources(character, byId)) {
+    /* Was diese Quelle schon beantwortet hat — für `onlyIf`. */
+    const hier = new Map<string, string[]>();
     for (const c of choicesOf(q.entity)) {
       if ((c.level ?? 1) > q.level) continue;
       /* Die Startwahl einer Klasse gilt nur für die erste, die Wahl beim
          Mehrklassen-Einstieg nur für jede weitere. */
       if (q.start !== undefined && ((c.when === 'start' && !q.start) || (c.when === 'multiclass' && q.start))) continue;
-      const a = antworten.get(`${q.entity.id}#${c.id}`);
+      if (c.onlyIf && !(hier.get(c.onlyIf.choice) ?? []).includes(c.onlyIf.pick)) continue;
+      let a = antworten.get(answerKey(q.entity.id, c.id, q.grant));
+      if (!a && q.grant) {
+        const alt = antworten.get(answerKey(q.entity.id, c.id));
+        if (alt && !verbraucht.has(alt.relationId)) a = alt;
+      }
+      if (a && verbraucht.has(a.relationId)) a = undefined;
+      if (a) verbraucht.add(a.relationId);
       const fest = a ? undefined : fixedPicks(c);
-      raus.push({ source: q, choice: c, ...(a ? { picks: a.picks } : fest ? { picks: fest, fixed: true } : {}) });
+      const vorgabe = a || fest || !c.default?.length ? undefined : [...c.default];
+      const eintrag: ChoiceAtCharacter = a
+        ? { source: q, choice: c, picks: a.picks, relationId: a.relationId }
+        : fest
+          ? { source: q, choice: c, picks: fest, fixed: true }
+          : vorgabe
+            ? { source: q, choice: c, picks: vorgabe, assumed: true }
+            : { source: q, choice: c };
+      if (eintrag.picks) hier.set(c.id, eintrag.picks);
+      raus.push(eintrag);
     }
   }
   return raus;
@@ -240,15 +320,18 @@ export function pendingChoices(character: Entity, byId: ReadonlyMap<EntityId, En
 }
 
 /**
- * **Verwaiste Antworten**: die Quelle hängt nicht mehr an der Figur, oder
- * sie stellt die Wahl nicht mehr. Gezeigt, nicht gelöscht — wer die Wahl
- * am Artikel umbenannt hat, will die Antwort vielleicht zurück.
+ * **Verwaiste Antworten**: die Quelle hängt nicht mehr an der Figur, sie
+ * stellt die Wahl nicht mehr, oder die Gewährung, zu der die Antwort
+ * gehört, gibt es nicht mehr (T-107). Gezeigt, nicht gelöscht — wer die
+ * Wahl am Artikel umbenannt hat, will die Antwort vielleicht zurück.
  */
 export function orphanAnswers(character: Entity, byId: ReadonlyMap<EntityId, Entity>): ChoiceAnswer[] {
-  const quellen = new Map(choiceSources(character, byId).map((q) => [q.entity.id, q] as const));
+  const quellen = new Map<EntityId, ChoiceSource[]>();
+  for (const q of choiceSources(character, byId)) quellen.set(q.entity.id, [...(quellen.get(q.entity.id) ?? []), q]);
   return answersOf(character).filter((a) => {
-    const q = quellen.get(a.source);
-    return !q || !choicesOf(q.entity).some((c) => c.id === a.choice);
+    const qs = quellen.get(a.source);
+    if (!qs || !choicesOf(qs[0]!.entity).some((c) => c.id === a.choice)) return true;
+    return !!a.grant && !qs.some((q) => q.grant?.by === a.grant!.by && q.grant.level === a.grant!.level);
   });
 }
 
@@ -286,6 +369,9 @@ export function chosenResult(character: Entity, byId: ReadonlyMap<EntityId, Enti
       case 'ability':
         genommen.forEach((a, i) => bonus(a, choice.bonus?.[i] ?? choice.bonus?.[0] ?? 1));
         break;
+      /* Eine Möglichkeit steuert nur, welche Wahlen dahinter gelten. */
+      case 'option':
+        break;
       case 'equipment':
         for (const k of genommen) {
           raus.equipment.push({
@@ -301,6 +387,27 @@ export function chosenResult(character: Entity, byId: ReadonlyMap<EntityId, Enti
     }
   }
   return raus;
+}
+
+/** Was am Tisch gilt und die Wahlen einengt (T-107). */
+export interface ChoiceRules {
+  /** Erlaubt die Kampagne Talente? `false` nimmt das Talent als Ausweg weg. */
+  feats?: boolean;
+}
+
+/**
+ * **Welche Möglichkeiten eine Wahl anbietet** (T-107). Erlaubt die
+ * Kampagne keine Talente, fällt eine Möglichkeit weg, hinter der nur
+ * Talentwahlen stehen (`onlyIf`) — „Steigerung oder Talent" wird dann
+ * „Steigerung", und mit einer Möglichkeit allein ist es kein Schritt mehr.
+ */
+export function offeredOptions(choice: Choice, siblings: readonly Choice[], rules: ChoiceRules = {}): { key: string; label: string }[] {
+  const alle = choice.from?.options ?? [];
+  if (rules.feats !== false) return alle;
+  return alle.filter((o) => {
+    const dahinter = siblings.filter((c) => c.onlyIf?.choice === choice.id && c.onlyIf.pick === o.key);
+    return !dahinter.length || dahinter.some((c) => c.kind !== 'feat');
+  });
 }
 
 /**
@@ -329,10 +436,11 @@ export function choiceText(c: Choice): string {
   const n = c.count ?? 1;
   const f = c.from ?? {};
   let satz: string;
-  if (f.options?.length) satz = f.options.map((o) => `(${o.key}) ${o.label}`).join(' or ');
+  if (f.options?.length && c.kind === 'option') satz = f.options.map((o) => o.label).join(' or ');
+  else if (f.options?.length) satz = f.options.map((o) => `(${o.key}) ${o.label}`).join(' or ');
   else if (c.kind === 'ability' && f.values?.length) {
     const b = c.bonus?.length ? c.bonus : [1];
-    satz = `${b.map((x) => `+${x}`).join('/')}${b.length < n ? ` to ${n}` : ''} from ${f.values.join(', ')}`;
+    satz = `${b.map((x) => `+${x}`).join('/')}${b.length < n ? ` to ${n}` : ''} from ${f.values.join(', ')}${c.repeat ? ' (the same one more than once allowed)' : ''}`;
   } else if (f.values?.length) satz = `Choose ${n} from ${f.values.join(', ')}`;
   else if (f.interfaces?.length) satz = `Choose ${n} ${[...(f.tags ?? []), f.interfaces.join(' or ').toLowerCase()].join(' ')}`;
   else if (f.enumRef?.length) satz = `Choose ${n} from ${f.enumRef.join(', ')}`;
