@@ -107,7 +107,7 @@ import { seedRegistry } from '@nw/registry';
 import { RevisionConflict } from './repo.js';
 import type { ReadyStand, Repository } from './repo.js';
 import type { AtlasEnv } from './config.js';
-import { NO_LAYER, buildListIndex, listProjection, parseListQuery, queryList, type ListIndex } from './liste.js';
+import { NO_LAYER, buildListIndex, listProjection, parseListQuery, queryList, search, type ListIndex } from './liste.js';
 import { mayActivate, rechtAn, registerVerwaltung } from './verwaltung.js';
 import { registerLesen } from './lesen.js';
 import { registerHandwerk } from './handwerk.js';
@@ -1523,6 +1523,39 @@ export function buildApp({
     /* Eine Auswahl nach Ids fragt nach Bekanntem; dort fehlt nichts. */
     const aus = q.ids?.length ? null : await ausgeblendet(request, idx, q);
     return aus ? { ...blatt, unactivated: aus } : blatt;
+  });
+
+  /**
+   * **Die übergreifende Suche** (T-138): `GET /api/search?q=&type=&layer=&publisher=&area=&offset=&limit=`.
+   * Derselbe gesiebte Index wie `/api/list` — was dieser Betrachter nicht
+   * sieht, findet er nicht —, nach Nähe geordnet und mit einem Filter nach
+   * Herausgeber. Beim Tippen fragt die Seite hier; ohne `q` antwortet sie
+   * leer, eine Suche nach nichts ist keine Liste aller Artikel.
+   */
+  const verlage = new WeakMap<Map<string, Entity>, Map<string, string>>();
+  app.get('/api/search', async (request) => {
+    const roh_ = request.query as Record<string, unknown>;
+    const q = parseListQuery(roh_);
+    q.limit = Math.min(q.limit, 50);
+    const text = q.q?.trim() ?? '';
+    if (!text) return { q: '', total: 0, offset: 0, limit: q.limit, rows: [], facets: { types: [], layers: [], publishers: [] } };
+    const [stand, idx] = await Promise.all([roh(), indexFor(request)]);
+    /* Herausgeber je Ebene, einmal je Stand (T-094, T-109). */
+    let verlag = verlage.get(stand.map);
+    if (!verlag) {
+      verlag = new Map();
+      const eigene = eigeneEbenen(stand.map);
+      for (const e of stand.map.values()) {
+        if ((e.interfaces ?? [])[0] === 'Layer') verlag.set(e.id, publisherOf(stand.map, e, eigene));
+      }
+      verlage.set(stand.map, verlag);
+    }
+    const publisher = typeof roh_['publisher'] === 'string' && roh_['publisher']
+      ? roh_['publisher'].split(',').map((x) => x.trim()).filter(Boolean)
+      : undefined;
+    const v = verlag;
+    /* Nur Ebenen, die dieser Betrachter sieht: der Index kennt ihren Namen. */
+    return search(idx, q, publisher, (l) => (idx.names.has(l) ? (v.get(l) ?? '') : ''));
   });
 
   /**
