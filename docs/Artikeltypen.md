@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-13. 69 Schnittstellen, 57 Kantenarten.
+Stand 2026-10-14. 70 Schnittstellen, 57 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -18,7 +18,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Armor
 
-`Armor` · erbt von `Item` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts`
+`Armor` · erbt von `Item` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts` ← `Effects`
 
 **Eigene Felder**
 
@@ -39,6 +39,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Lore`* — `lore` *long*
 - *`Secrets`* — `secret` *long*
 - *`Facts`* — `fact` *long*
+- *`Effects`* — `effects` *array*
 
 **Kanten von hier**
 
@@ -362,7 +363,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Item
 
-`Item` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts`
+`Item` · erbt von `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts` ← `Effects`
 
 **Eigene Felder**
 
@@ -382,6 +383,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Lore`* — `lore` *long*
 - *`Secrets`* — `secret` *long*
 - *`Facts`* — `fact` *long*
+- *`Effects`* — `effects` *array*
 
 **Kanten von hier**
 
@@ -416,7 +418,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Material
 
-`Material` · erbt von `Item` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts`
+`Material` · erbt von `Item` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts` ← `Effects`
 
 **Eigene Felder**
 
@@ -437,6 +439,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Lore`* — `lore` *long*
 - *`Secrets`* — `secret` *long*
 - *`Facts`* — `fact` *long*
+- *`Effects`* — `effects` *array*
 
 **Kanten von hier**
 
@@ -646,7 +649,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ### Weapon
 
-`Weapon` · erbt von `Item` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts`
+`Weapon` · erbt von `Item` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Source` ← `Lore` ← `Secrets` ← `Facts` ← `Effects`
 
 **Eigene Felder**
 
@@ -667,6 +670,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - *`Lore`* — `lore` *long*
 - *`Secrets`* — `secret` *long*
 - *`Facts`* — `fact` *long*
+- *`Effects`* — `effects` *array*
 
 **Kanten von hier**
 
@@ -2263,7 +2267,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## Ohne Bereich
 
-*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 24 Arten.
+*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 25 Arten.
 
 ### Abilities — *abstrakt*
 
@@ -2401,6 +2405,35 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Eigene Felder**
 
 - `difficulty` *1…20*
+
+**Kanten von hier**
+
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+
+### Effects — *abstrakt*
+
+`Effects`
+
+**Eigene Felder**
+
+- `effects` *array*
 
 **Kanten von hier**
 

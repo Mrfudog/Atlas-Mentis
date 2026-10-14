@@ -194,6 +194,20 @@ Server nur die Kommandozeile.
 | `Ancestry.abilityNote` | bleibt, hält aber nur noch, was keine Wahl ist (`lineage`); die Wahl „+1 auf zwei" ist ein Eintrag. |
 | Attributsverfahren (E-016) | nicht hier: sie sind Artikel/Zeilen der Leitung (T-080). Ein Verfahren kann dieselbe Form nutzen (Feld mit `entry`). |
 
+### Wirkungen als Feld — entschieden am 14.10. (E-025 a, T-085)
+
+| Was | Entscheidung |
+|---|---|
+| Wirkungen magischer Gegenstände (`resist`, `ability`, `modifySpeed`, `bonusSpellSaveDc` …) standen nur im Text | **`Effects.effects`**: je Wirkung ein Eintrag mit Form, `{id, target, op, value, when, note}`. Der Gegenstand nimmt es; Klasse, Abstammung, Talent und Merkmal können es nehmen, die Rechnung liest sie schon mit. Migration 035 trägt die Zeile ins Register und `Effects` in `Item.extends`. |
+| Wann eine Wirkung zählt | **an der Inventarkante gelesen**: `holds.tier`/`slot` (getragen), `holds.attuned` (eingestimmt), `stored`/`ground` (nicht dabei). Ohne `when`: eingestimmt, wenn verlangt, sonst getragen. |
+| Was die Wirkungen ergeben | **beim Lesen** (`effectsAt`, `effectTotals`, `abilityWithEffects`, D8) — nichts wird in den Statblock geschrieben. |
+| `bonusAc`, `bonusWeapon`, `bonusSpellAttack`, `bonusSave` | bleiben vorerst und zählen als Wirkung (`effectsOf`); eine Überführung per Migration kann später folgen. |
+| Geschwindigkeit verdoppeln (`modifySpeed.multiply`), ein Attribut nach Wahl (`ability.choose`) | keine Wirkung: Notiz am Artikel bzw. im Bericht. |
+
+Offen: der Bogen der Oberfläche zeigt kein Inventar und rechnet die
+Wirkungen noch nicht zu den Werten der Figur — die Gegenstandsseite nennt
+sie als Satz („Strength becomes 19").
+
 ---
 
 ## Noch nicht durchgegangen
