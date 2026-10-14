@@ -79,6 +79,50 @@ legend {
   color: var(--dim);
   font-size: 0.85rem;
 }
+/* Facetten (T-174): eine je Feld oder Kante, aufklappbar — für einen
+   Zauber sind es zwanzig, und offen stünden sie über drei Bildschirme. */
+.facette {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.facette summary {
+  cursor: pointer;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  list-style: none;
+}
+.facette summary::-webkit-details-marker {
+  display: none;
+}
+.facette summary::before {
+  content: '▸';
+  color: var(--dim);
+  font-size: 0.8rem;
+}
+.facette[open] summary::before {
+  content: '▾';
+}
+.gewaehlt {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 999px;
+  padding: 0 0.45rem;
+  font-size: 0.75rem;
+  font-family: var(--body, inherit);
+}
+.wert {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.wert .art {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--dim);
+}
 .haupt {
   flex: 1;
   min-width: 0;

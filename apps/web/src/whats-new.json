@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-list-filters",
+      "date": "2026-10-15",
+      "title": "Filter lists by everything a type has",
+      "text": "Pick a type in the compendium or an area and the sidebar offers a filter for each of its fields and connections: spells by level, school, components, concentration, ritual, saving throw, damage type and the class that grants them; items by type, rarity, attunement, price and more. The choice stays in the address, so you can share it or save it as a filter group.",
+      "area": "Navigation",
+      "link": "/rules",
+      "query": { "type": "Spell" }
+    },
+    {
       "id": "2026-10-14-crafting-circles",
       "date": "2026-10-14",
       "title": "Crafting checks are circles you click",
