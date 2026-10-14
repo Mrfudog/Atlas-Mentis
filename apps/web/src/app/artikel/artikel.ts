@@ -34,6 +34,7 @@ import {
   inEingabe,
   inListe,
   kantenAusEntwurf,
+  type KantenEntwurf,
   sindZeilen,
   suchgruppen,
   tabelleAlsText,
@@ -50,6 +51,7 @@ import { Abschnitte } from './abschnitte';
 import { abweichungen, FassungsKasten, FassungsLesart, verglichene, type Abweichung } from './fassungen';
 import { bereichLabel } from '../kern/bereiche';
 import { Quellen } from '../kern/quellen';
+import { antwortenJeEintrag, antwortText, EINTRAG_KANTEN } from './klasseneintrag';
 
 const SCHON_ANDERSWO = ['Identity', 'Visibility', 'Source'];
 
@@ -386,7 +388,7 @@ interface Feld {
               </div>
 
               <h3>Relations</h3>
-              @for (k of entwurfKanten(); track k.id) {
+              @for (k of hauptKanten(); track k.id) {
                 <div class="kantenmaske">
                   <div class="bkopf">
                     <span class="rl">{{ kantenLabel(k.type) }}</span>
@@ -445,6 +447,22 @@ interface Feld {
                           }
                         </label>
                       }
+                    </div>
+                  }
+                  <!-- Die Antworten auf die Wahlen dieses Eintrags (T-095):
+                       gespeichert als Kanten chose, gezeigt bei ihrer Klasse. -->
+                  @for (u of unterKanten(k); track u.id) {
+                    <div class="antwortmaske">
+                      <label>
+                        <span>{{ antwortLabel(u) }}</span>
+                        <input
+                          type="text"
+                          [value]="anzeige(u.props['picks'])"
+                          (input)="setzeProp(u, 'picks', $any($event.target).value)"
+                          [name]="u.id + '-picks'"
+                        />
+                      </label>
+                      <button type="button" class="weg" (click)="kanteWeg(u.id)" title="Remove">×</button>
                     </div>
                   }
                 </div>
@@ -601,6 +619,20 @@ interface Feld {
                         <a [routerLink]="['/artikel', k.ziel]">{{ k.text }}</a>
                       } @else {
                         <span class="weg">{{ k.text }}</span>
+                      }
+                      @if (k.stufe) {
+                        <span class="stufe">level {{ k.stufe }}</span>
+                      }
+                      @if (k.unter; as u) {
+                        <a class="unter" [routerLink]="['/artikel', u.id]">{{ u.name }}</a>
+                      }
+                      @if (k.antworten.length) {
+                        <dl class="antworten">
+                          @for (a of k.antworten; track a.id) {
+                            <dt>{{ a.label }}</dt>
+                            <dd>{{ a.text || '—' }}</dd>
+                          }
+                        </dl>
                       }
                     </li>
                   }
@@ -1053,18 +1085,63 @@ export class Artikel {
     const r = this.reg();
     if (!e || !r || !this.view()?.relations) return [];
     const name = this.bestand.name();
+    const voll = this.bestand.voll();
+    /* **Ein Eintrag je Klasse** (T-095): die Antworten stehen bei der
+       Klasse (oder Abstammung, Hintergrund), die fragt, nicht daneben. */
+    const zu = antwortenJeEintrag(e.relations ?? []);
+    const antworten = (id: string) =>
+      (e.relations ?? [])
+        .filter((a) => zu.get(a.id) === id)
+        .map((a) => {
+          const picks = Array.isArray(a.props?.['picks']) ? (a.props['picks'] as unknown[]).map(String) : [];
+          return { id: a.id, ...antwortText(voll.get(a.to), String(a.props?.['choice'] ?? ''), picks, name) };
+        });
     /* Die Ebene steht schon in der Zeile über dem Blatt. */
-    return (e.relations ?? []).filter((rel) => rel.type !== LAYER_RELATION).map((rel) => {
-      const ziel = name(rel.to);
-      return {
-        id: rel.id,
-        label: relationDef(r, rel.type).label,
-        ziel: ziel === undefined ? '' : rel.to,
-        /* Ein Ziel, das es nicht gibt, wird gesagt und nicht verschwiegen —
-           es kann auch heissen, dass der Betrachter es nicht sehen darf. */
-        text: ziel ?? '(not here)',
-      };
-    });
+    return (e.relations ?? [])
+      .filter((rel) => rel.type !== LAYER_RELATION && !zu.has(rel.id))
+      .map((rel) => {
+        const ziel = name(rel.to);
+        const sub = rel.type === 'hasClass' && typeof rel.props?.['subclass'] === 'string' ? rel.props['subclass'] : '';
+        const stufe = rel.type === 'hasClass' ? Number(rel.props?.['level']) || 1 : 0;
+        const antw = EINTRAG_KANTEN.includes(rel.type) ? antworten(rel.id) : [];
+        const subName = sub ? (name(sub) ?? sub) : '';
+        return {
+          id: rel.id,
+          label: relationDef(r, rel.type).label,
+          ziel: ziel === undefined ? '' : rel.to,
+          /* Ein Ziel, das es nicht gibt, wird gesagt und nicht verschwiegen —
+             es kann auch heissen, dass der Betrachter es nicht sehen darf. */
+          text: rel.type === 'chose' ? `${ziel ?? rel.to}: ${String(rel.props?.['choice'] ?? '')}` : (ziel ?? '(not here)'),
+          stufe,
+          /* Die Unterklasse einmal: steht sie schon als Antwort da, nicht noch als Zeile. */
+          unter: sub && !antw.some((a) => a.text === subName) ? { id: sub, name: subName } : null,
+          antworten: antw,
+        };
+      });
+  });
+
+  /**
+   * Die Quellen der Antworten ganz holen — ihre Wahlen sagen, wie eine
+   * Antwort heisst und ob sie Ids hält —, danach die gewählten Artikel für
+   * ihre Namen (T-095).
+   */
+  private readonly antwortQuellen = effect(() => {
+    const e = this.artikel();
+    if (!e?.relations?.some((r) => r.type === 'chose')) return;
+    const voll = this.bestand.voll();
+    const ids = new Set<string>();
+    for (const r of e.relations) {
+      if (r.type === 'chose') ids.add(r.to);
+      if (r.type === 'hasClass' && typeof r.props?.['subclass'] === 'string') ids.add(r.props['subclass']);
+    }
+    for (const r of e.relations) {
+      if (r.type !== 'chose') continue;
+      const c = choicesOf(voll.get(r.to)).find((x) => x.id === r.props?.['choice']);
+      if (c && (['feat', 'spell', 'feature', 'subclass'].includes(String(c.kind)) || c.from?.interfaces?.length)) {
+        for (const p of Array.isArray(r.props?.['picks']) ? (r.props['picks'] as unknown[]) : []) ids.add(String(p));
+      }
+    }
+    untracked(() => void this.bestand.holen([...ids]));
   });
 
   // ------------------------------------------------------------ Fassungen (T-092)
@@ -1437,6 +1514,22 @@ export class Artikel {
     const wert = ausEingabe(schema, roh);
     if (wert === undefined) delete kante.props[prop];
     else kante.props[prop] = wert;
+  }
+
+  /** Die Kanten der Maske ohne die Antworten, die bei ihrem Eintrag stehen (T-095). */
+  protected hauptKanten(): KantenEntwurf[] {
+    const ks = this.entwurfKanten();
+    const zu = antwortenJeEintrag(ks);
+    return ks.filter((k) => !zu.has(k.id));
+  }
+  protected unterKanten(k: { id: string }): KantenEntwurf[] {
+    if (!this.reg()) return [];
+    const ks = this.entwurfKanten();
+    const zu = antwortenJeEintrag(ks);
+    return ks.filter((a) => zu.get(a.id) === k.id);
+  }
+  protected antwortLabel(a: { to: string; props: Record<string, unknown> }): string {
+    return antwortText(this.bestand.voll().get(a.to), String(a.props['choice'] ?? ''), [], this.bestand.name()).label;
   }
 
   protected kanteDazu(type: string): void {
