@@ -1,30 +1,25 @@
 import { Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { Api, ApiError, type Handwerk, type HandwerkAuftrag, type HandwerkProbe, type HandwerkRegeln } from '../kern/api';
+import { nextMark } from '@nw/model';
+import { Api, ApiError, type Handwerk, type HandwerkAuftrag, type HandwerkKreis } from '../kern/api';
 import { KurzLink } from '../kern/kurzansicht';
 import { Live } from '../kern/live';
 
 type RezeptSicht = Extract<Handwerk, { kind: 'recipe' }>;
 
-/** Die Regeln in Worten — dieselben Wörter wie in der Auswahl an der Kampagne. */
-const FAILURE: Record<string, string> = {
-  recipe: 'as the recipe says',
-  noProgress: 'no progress',
-  progressLost: 'progress lost',
-  materialsLost: 'materials lost',
-  halfLost: 'half the materials lost',
-  nothingLost: 'materials come back',
-  custom: 'the GM decides',
-};
-const CRIT_SUCCESS: Record<string, string> = { asSuccess: 'a success', double: 'counts twice' };
-const CRIT_FAILURE: Record<string, string> = { asFailure: 'a failure', progressLost: 'progress lost', materialsLost: 'materials lost' };
-const RESULT: Record<string, string> = {
-  critSuccess: 'critical success',
+/** Was ein Kreis zeigt — in Worten für Vorleser und Tooltip. */
+const MARK: Record<string, string> = {
   success: 'success',
   failure: 'failure',
-  critFailure: 'critical failure',
-  pending: 'waiting for the GM',
-  rejected: 'not accepted',
+  critSuccess: 'natural 20',
+  critFailure: 'natural 1',
+};
+/** Was beim Abschluss mit dem Material geschieht. */
+const SETTLE: Record<string, string> = {
+  success: 'Finish — the work is done',
+  all: 'Finish — the work failed, materials come back',
+  half: 'Finish — the work failed, half the materials are lost',
+  none: 'Finish — the work failed, materials are lost',
 };
 const OUTCOME: Record<string, string> = { open: 'in progress', succeeded: 'done', failed: 'failed', aborted: 'aborted' };
 
@@ -43,7 +38,16 @@ const OUTCOME: Record<string, string> = { open: 'in progress', succeeded: 'done'
       <section class="werkstatt" aria-label="Crafting">
         @if (s.kind === 'recipe') {
           <h3>Crafting</h3>
-          <p class="regeln">{{ regelText(s.rules) }}</p>
+          <aside class="regeln" aria-label="Campaign rules">
+            <h4>Campaign rules</h4>
+            <ul>
+              @for (z of s.rules.sentences; track $index) { <li>{{ z }}</li> }
+            </ul>
+            @if (s.recipe.sourceFailure) { <p class="quelle-text">The source says: “{{ s.recipe.sourceFailure }}” — the campaign rule applies.</p> }
+            @if (s.rules.campaign; as k) {
+              <a [routerLink]="['/artikel', k.id]">{{ s.leitet ? 'Change on ' + k.name : 'Set on ' + k.name }}</a>
+            }
+          </aside>
           <p>
             {{ masz(s.recipe.unit, s.recipe.needed) }}
             @if (s.recipe.yields; as y) { · yields <a [routerLink]="['/artikel', y.id]" [nwQuick]="y.id">{{ y.name }}</a> }
@@ -103,42 +107,81 @@ const OUTCOME: Record<string, string> = { open: 'in progress', succeeded: 'done'
         } @else {
           <h3>Crafting order</h3>
           @let o = s.order;
-          <p class="regeln">{{ regelText(s.rules) }}</p>
+          <aside class="regeln" aria-label="Campaign rules">
+            <h4>Campaign rules</h4>
+            <ul>
+              @for (z of s.rules.sentences; track $index) { <li>{{ z }}</li> }
+            </ul>
+            @if (o.sourceFailure) { <p class="quelle-text">The source says: “{{ o.sourceFailure }}” — the campaign rule applies.</p> }
+            @if (s.rules.campaign; as k) {
+              <a [routerLink]="['/artikel', k.id]">{{ s.leitet ? 'Change on ' + k.name : 'Set on ' + k.name }}</a>
+            }
+          </aside>
           <p>
             @if (o.actor; as a) { <a [routerLink]="['/artikel', a.id]" [nwQuick]="a.id">{{ a.name }}</a> crafts }
             @if (o.recipe; as r) { <a [routerLink]="['/artikel', r.id]" [nwQuick]="r.id">{{ r.name }}</a> }
             <span class="ausgang" [attr.data-outcome]="o.outcome">{{ outcome(o.outcome) }}</span>
           </p>
           <p class="fortschritt">
-            <progress [max]="o.needed" [value]="o.progress"></progress>
-            {{ o.progress }} / {{ masz(o.unit, o.needed) }}
+            @if (o.unit === 'checks') { {{ o.progress }} / {{ o.needed }} successful checks }
+            @else { {{ o.progress }} / {{ o.needed }} days worked, then a check }
             · check {{ probeText(o.check) }}
             @if (o.yields; as y) { · yields {{ y.count }} × <a [routerLink]="['/artikel', y.id]" [nwQuick]="y.id">{{ y.name }}</a> }
+            @if (o.outcome === 'open' && o.result !== 'open') { <span class="ausgang" [attr.data-outcome]="o.result">{{ outcome(o.result) }} — not yet settled</span> }
           </p>
+          <div class="kreise" role="group" aria-label="Checks">
+            @for (k of o.circles; track k.index) {
+              <button
+                type="button"
+                class="kreis"
+                [attr.data-mark]="k.mark ?? 'none'"
+                [class.wartet]="k.pending"
+                [class.zaehlt-nicht]="k.ignored"
+                [disabled]="!o.may.mark || laeuft() || (!k.open && !k.mark)"
+                [attr.aria-label]="kreisText(k)"
+                [title]="kreisText(k)"
+                (click)="klick(k)"
+              >
+                <span aria-hidden="true">{{ zeichen(k) }}</span>
+              </button>
+            }
+            @if (o.may.mark && o.outcome === 'open') {
+              <small class="kreis-hilfe">Click a circle: once ✓ success, twice ✗ failure, three times empty.</small>
+            }
+          </div>
           @if (o.reserved.length) {
             <p class="reserviert">
               Reserved:
               @for (r of o.reserved; track r.edge) {
-                <span>{{ r.qty }} × <a [routerLink]="['/artikel', r.item]" [nwQuick]="r.item">{{ r.name }}</a> <small>({{ r.owner }}{{ r.consumed ? '' : ', comes back' }})</small></span>
+                <span>{{ r.qty }} × <a [routerLink]="['/artikel', r.item]" [nwQuick]="r.item">{{ r.name }}</a>
+                  <small>({{ r.owner }}{{ r.consumed ? '' : ', comes back' }})</small>
+                  @if (r.lost !== undefined && r.consumed) {
+                    <small class="verlust" [class.fehlt]="r.lost > 0">{{ r.lost > 0 ? r.lost + ' lost on finishing' : 'comes back on finishing' }}</small>
+                  }
+                </span>
               }
             </p>
           }
-          @if (o.rolls.length) {
-            <ol class="proben">
-              @for (p of o.rolls; track $index) {
-                <li [attr.data-result]="p.result">
-                  <strong>{{ p.total }}</strong>@if (p.nat) { <small>(nat {{ p.nat }})</small> } vs DC {{ p.dc }} — {{ ergebnis(p) }}
-                  @if (p.note) { <small>{{ p.note }}</small> }
-                  <small class="wer">{{ p.by }}</small>
-                  @if (p.result === 'pending' && o.may.confirm) {
-                    <button type="button" (click)="tu('confirm', { accept: true })" [disabled]="laeuft()">Accept</button>
-                    <button type="button" (click)="tu('confirm', { accept: false })" [disabled]="laeuft()">Reject</button>
-                  }
-                </li>
+          @if (o.lines.length) {
+            <ol class="verlauf" aria-label="History">
+              @for (l of o.lines; track l.index) {
+                <li><span class="nr">Check {{ l.index + 1 }}</span> {{ l.note }} {{ wurf(o.circles[l.index]) }}</li>
               }
             </ol>
           }
+          @if (o.waiting && o.may.confirm) {
+            <p class="zeile">
+              {{ o.waiting }} check{{ o.waiting === 1 ? '' : 's' }} by a player wait{{ o.waiting === 1 ? 's' : '' }} for you.
+              <button type="button" (click)="tu('confirm', { accept: true })" [disabled]="laeuft()">Accept</button>
+              <button type="button" (click)="tu('confirm', { accept: false })" [disabled]="laeuft()">Reject</button>
+            </p>
+          } @else if (o.waiting) {
+            <p class="hinweis">Dashed circles wait for the GM.</p>
+          }
           <div class="aktionen">
+            @if (o.may.finish && o.settle) {
+              <button type="button" class="abschluss" (click)="tu('finish')" [disabled]="laeuft()">{{ abschluss(o.settle) }}</button>
+            }
             @if (o.may.roll) {
               <label>Check total <input type="number" [value]="summe()" (input)="summe.set($any($event.target).value)" aria-label="Check total" /></label>
               <label>d20
@@ -148,7 +191,7 @@ const OUTCOME: Record<string, string> = { open: 'in progress', succeeded: 'done'
                   <option value="1">natural 1</option>
                 </select>
               </label>
-              <button type="button" (click)="probe()" [disabled]="laeuft() || summe() === ''">Enter check</button>
+              <button type="button" (click)="probe()" [disabled]="laeuft() || summe() === ''">Enter roll</button>
             }
             @if (o.may.work) {
               <button type="button" (click)="tu('work', { days: 1 })" [disabled]="laeuft()">Work a day</button>
@@ -167,8 +210,8 @@ const OUTCOME: Record<string, string> = { open: 'in progress', succeeded: 'done'
               <button type="button" (click)="tu('fail', { return: rueck() })" [disabled]="laeuft()">Declare failed</button>
             }
           </div>
-          @if (o.unit === 'days' && o.outcome === 'open' && o.progress < o.needed) {
-            <p class="hinweis">The check comes at the end, once the days are worked.</p>
+          @if (o.unit === 'days' && o.outcome === 'open' && o.daysLeft > 0) {
+            <p class="hinweis">The check comes once {{ o.daysLeft }} more day{{ o.daysLeft === 1 ? ' is' : 's are' }} worked.</p>
           }
         }
         @if (fehler()) {
@@ -180,8 +223,31 @@ const OUTCOME: Record<string, string> = { open: 'in progress', succeeded: 'done'
   styles: `
     .werkstatt { margin: 1rem 0; }
     h3, h4 { margin: 0 0 .4rem; }
-    .regeln, .hinweis, small { color: var(--dim); }
-    .regeln { font-size: .85em; }
+    .hinweis, small { color: var(--dim); }
+    .regeln { font-size: .9em; border: 1px solid var(--line); border-radius: .4rem; padding: .5rem .8rem; margin: .4rem 0 .8rem; }
+    .regeln h4 { margin: 0 0 .2rem; font-size: 1em; }
+    .regeln ul { list-style: disc; padding-left: 1.2rem; margin: .2rem 0; }
+    .quelle-text { color: var(--dim); margin: .2rem 0; }
+    .kreise { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: .6rem 0; }
+    /* Gross genug für einen Finger (≥ 44 px); ✓ und ✗ sind Zeichen, nicht nur Farbe. */
+    .kreis {
+      inline-size: 2.75rem; block-size: 2.75rem; min-inline-size: 44px; min-block-size: 44px;
+      border-radius: 50%; padding: 0; display: inline-grid; place-items: center;
+      border: 2px solid var(--line); background: var(--paper); color: var(--ink);
+      font-size: 1.35rem; line-height: 1; font-weight: 700; cursor: pointer; touch-action: manipulation;
+    }
+    .kreis:hover:not(:disabled) { border-color: var(--accent); }
+    .kreis[data-mark='success'], .kreis[data-mark='critSuccess'] { background: var(--gold); border-color: var(--gold); color: var(--accent-ink); }
+    .kreis[data-mark='failure'], .kreis[data-mark='critFailure'] { background: var(--paper); border-color: var(--warn); color: var(--warn); border-width: 3px; }
+    .kreis.wartet { border-style: dashed; opacity: .75; }
+    .kreis.zaehlt-nicht { opacity: .4; }
+    .kreis:disabled { cursor: default; }
+    .kreis:disabled[data-mark='none'] { border-style: dotted; }
+    .kreis-hilfe { flex-basis: 100%; }
+    .verlauf { padding-left: 1.4rem; font-size: .9em; }
+    .verlauf .nr { font-weight: 600; margin-right: .3rem; }
+    .verlust { margin-left: .2rem; }
+    .abschluss { font-weight: 600; }
     .zeile, .aktionen { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; margin: .5rem 0; }
     select { margin-left: .4rem; max-width: 14rem; }
     ul, ol { padding: 0; margin: .4rem 0; }
@@ -196,9 +262,6 @@ const OUTCOME: Record<string, string> = { open: 'in progress', succeeded: 'done'
     .reserviert span { margin-right: .8rem; }
     .reserviert small { margin-left: .2rem; }
     .ausgang { margin-left: .5rem; font-size: .85em; padding: 0 .4rem; border: 1px solid var(--rule); border-radius: .6rem; }
-    .proben li { margin: .2rem 0; }
-    .proben small { margin-left: .4rem; }
-    .proben button { margin-left: .4rem; }
     .aktionen input { width: 5rem; margin-left: .3rem; }
     .fehler { color: var(--warn, #a33); }
   `,
@@ -318,7 +381,24 @@ export class Werkstatt {
     this.nat.set('');
   }
 
-  protected async tu(action: 'roll' | 'confirm' | 'work' | 'abort' | 'fail', body: Record<string, unknown> = {}): Promise<void> {
+  /**
+   * **Ein Klick auf einen Kreis** (T-165): leer → ✓ → ✗ → leer. Gezeigt
+   * wird sofort, geschickt der Zielstand; die Antwort (und der Live-Kanal)
+   * bringt, was die Regel daraus macht.
+   */
+  protected async klick(k: HandwerkKreis): Promise<void> {
+    const s = this.sicht();
+    if (s?.kind !== 'order') return;
+    const ziel = nextMark(k.mark);
+    const circles = s.order.circles.map((c) => (c.index === k.index ? { ...c, mark: ziel, pending: false } : c));
+    this.sicht.set({ ...s, order: { ...s.order, circles } });
+    await this.schreibe(async () => {
+      await this.api.craftingCheck(this.id(), k.index, ziel);
+    });
+    await this.holen(this.id(), true);
+  }
+
+  protected async tu(action: 'roll' | 'confirm' | 'work' | 'finish' | 'abort' | 'fail', body: Record<string, unknown> = {}): Promise<void> {
     await this.schreibe(async () => {
       await this.api.craftingAction(this.id(), action, body);
       await this.holen(this.id());
@@ -338,17 +418,29 @@ export class Werkstatt {
     }
   }
 
-  protected regelText(r: HandwerkRegeln): string {
-    return `Table rules: a failed check — ${FAILURE[r.failure] ?? r.failure}; a natural 20 — ${CRIT_SUCCESS[r.critSuccess] ?? r.critSuccess}; a natural 1 — ${CRIT_FAILURE[r.critFailure] ?? r.critFailure}; player checks count ${r.confirm === 'gm' ? 'once the GM accepts them' : 'at once'}.`;
-  }
   protected masz(unit: 'checks' | 'days', n: number): string {
     return unit === 'checks' ? `${n} successful check${n === 1 ? '' : 's'}` : `${n} day${n === 1 ? '' : 's'} of work, then a check`;
   }
   protected probeText(c: HandwerkAuftrag['check']): string {
     return `${c.ability.toUpperCase()}${c.tool ? ` (${c.tool})` : ''} DC ${c.dc}`;
   }
-  protected ergebnis(p: HandwerkProbe): string {
-    return RESULT[p.result] ?? p.result;
+  protected zeichen(k: HandwerkKreis): string {
+    if (k.mark === 'success' || k.mark === 'failure') return k.mark === 'success' ? '✓' : '✗';
+    if (k.mark === 'critSuccess') return '✓✓';
+    if (k.mark === 'critFailure') return '✗';
+    return '';
+  }
+  protected kreisText(k: HandwerkKreis): string {
+    const was = k.mark ? MARK[k.mark] : k.open ? 'empty' : 'not yet (work the days first)';
+    const zusatz = [k.pending ? 'waits for the GM' : '', k.ignored ? 'does not count' : '', k.by ? `by ${k.by}` : ''].filter(Boolean).join(', ');
+    return `Check ${k.index + 1}: ${was}${zusatz ? ` (${zusatz})` : ''}`;
+  }
+  protected wurf(k: HandwerkKreis | undefined): string {
+    if (!k || k.total === undefined) return '';
+    return `(rolled ${k.total}${k.nat ? `, natural ${k.nat}` : ''}${k.dc !== undefined ? ` vs DC ${k.dc}` : ''})`;
+  }
+  protected abschluss(settle: string): string {
+    return SETTLE[settle] ?? 'Finish';
   }
   protected outcome(o: string): string {
     return OUTCOME[o] ?? o;

@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-14-crafting-circles",
+      "date": "2026-10-14",
+      "title": "Crafting checks are circles you click",
+      "text": "On a crafting order, each check is a circle: click once for a success, twice for a failure, three times to clear it. A failure applies the campaign rule at once and clicking back undoes it; nothing is used up until you finish. The rules themselves now live on the campaign and are shown on every recipe and order.",
+      "area": "Rules",
+      "link": "/rules"
+    },
+    {
       "id": "2026-10-14-player-layer",
       "date": "2026-10-14",
       "title": "Your own layer as a player",

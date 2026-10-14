@@ -293,23 +293,28 @@ export interface Handel {
   copper: number;
 }
 
-/** Die Regeln des Handwerks am Tisch (T-128, `craftRulesOf`). */
+/** Die Regeln des Handwerks am Tisch (T-128, T-165, `craftRulesOf`): an der Kampagne, in Sätzen. */
 export interface HandwerkRegeln {
   failure: string;
   critSuccess: string;
   critFailure: string;
   confirm: string;
+  /** Ein Satz je Regel (`craftRuleSentences`). */
+  sentences: string[];
+  /** Wo sie stehen — die Leitung ändert sie dort. */
+  campaign: { id: string; name: string } | null;
 }
-/** Eine Probe am Auftrag. */
-export interface HandwerkProbe {
-  total: number;
+/** Ein Kreis am Auftrag (T-165): leer, ✓ oder ✗ (ein Wurf mit natürlicher 20/1 als crit…). */
+export interface HandwerkKreis {
+  index: number;
+  mark: 'success' | 'failure' | 'critSuccess' | 'critFailure' | null;
+  pending: boolean;
+  ignored: boolean;
+  open: boolean;
+  by?: string;
+  total?: number;
   nat?: number;
-  dc: number;
-  result: string;
-  would?: string;
-  by: string;
-  at: string;
-  note?: string;
+  dc?: number;
 }
 /** Ein freies Stück, das ein Rezept braucht, in einem Inventar der Figur oder ihrer Gruppe. */
 export interface HandwerkVorrat {
@@ -327,14 +332,22 @@ export interface HandwerkAuftrag {
   progress: number;
   needed: number;
   unit: 'checks' | 'days';
+  daysLeft: number;
   outcome: 'open' | 'succeeded' | 'failed' | 'aborted';
+  /** Wie er beim Abschluss ausginge (aus den Kreisen gerechnet). */
+  result: 'open' | 'succeeded' | 'failed' | 'aborted';
+  settle: 'success' | 'all' | 'half' | 'none' | null;
   started: string;
-  rolls: HandwerkProbe[];
+  circles: HandwerkKreis[];
+  /** Der Verlauf: was jede zählende Probe ausgelöst hat. */
+  lines: { index: number; note: string }[];
+  waiting: number;
   check: { tool: string; ability: string; dc: number };
   yields: { id: string; name: string; count: number } | null;
-  reserved: (HandwerkVorrat & { name: string; consumed: boolean })[];
-  onFailure: string;
-  may: { roll: boolean; work: boolean; confirm: boolean; abort: boolean; fail: boolean };
+  reserved: (HandwerkVorrat & { name: string; consumed: boolean; lost?: number })[];
+  /** Was die Quelle beim Misslingen sagt — gilt nicht. */
+  sourceFailure: string;
+  may: { mark: boolean; roll: boolean; work: boolean; confirm: boolean; finish: boolean; abort: boolean; fail: boolean };
 }
 /** `GET /api/crafting/:id` — am Rezept oder am Auftrag (T-128). */
 export type Handwerk =
@@ -343,7 +356,7 @@ export type Handwerk =
       kind: 'recipe';
       rules: HandwerkRegeln;
       leitet: boolean;
-      recipe: { id: string; name: string; unit: 'checks' | 'days'; needed: number; onFailure: string; yields: { id: string; name: string } | null };
+      recipe: { id: string; name: string; unit: 'checks' | 'days'; needed: number; sourceFailure: string; yields: { id: string; name: string } | null };
       needs: { item: string; name: string; qty: number; consumed: boolean }[];
       actors: { id: string; name: string; learned: boolean; check: { tool: string; ability: string; dc: number }; stock: HandwerkVorrat[] }[];
       orders: { id: string; name: string; actor: string; progress: number; outcome: string }[];
@@ -1081,7 +1094,11 @@ export class Api {
     return this.call('/api/crafting', { method: 'POST', body: JSON.stringify({ recipe, actor, materials }) });
   }
   /** Am Auftrag: `roll`, `confirm`, `work`, `abort`, `fail` (T-128). */
-  craftingAction(id: string, action: 'roll' | 'confirm' | 'work' | 'abort' | 'fail', body: Record<string, unknown> = {}): Promise<unknown> {
+  /** Einen Kreis am Auftrag setzen (T-165): der Zielstand, nicht „weiter". */
+  craftingCheck(id: string, index: number, mark: 'success' | 'failure' | null): Promise<unknown> {
+    return this.call(`/api/crafting/${encodeURIComponent(id)}/checks/${index}`, { method: 'PUT', body: JSON.stringify({ mark }) });
+  }
+  craftingAction(id: string, action: 'roll' | 'confirm' | 'work' | 'finish' | 'abort' | 'fail', body: Record<string, unknown> = {}): Promise<unknown> {
     return this.call(`/api/crafting/${encodeURIComponent(id)}/${action}`, { method: 'POST', body: JSON.stringify(body) });
   }
   /** Im Laden kaufen (T-133): Ware und Menge; den Preis rechnet der Server. */
