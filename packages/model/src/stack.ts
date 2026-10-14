@@ -742,12 +742,30 @@ export function unactivatedLayers(
  * aufschaltet, macht sie gemeinsam — und die Leitung der zweiten sähe,
  * was in der ersten nur deren Leitung sieht.
  */
-export function campaignsActivating(entities: Map<EntityId, Entity>, layerId: EntityId): EntityId[] {
-  const out: EntityId[] = [];
+export function campaignsActivating(
+  entities: Map<EntityId, Entity>,
+  layerId: EntityId,
+  index?: ReadonlyMap<EntityId, readonly EntityId[]>,
+): EntityId[] {
+  return [...(index ?? activatingIndex(entities)).get(layerId) ?? []];
+}
+
+/**
+ * **Ebene → die Kampagnen, die sie aufschalten**, einmal gerechnet
+ * (T-143). `campaignsActivating` je Ebene lief jedes Mal über den ganzen
+ * Bestand — für die Ebenenseite mit 174 Ebenen und einer Viertelmillion
+ * Artikel gut eine Sekunde je Abruf. Wer viele Ebenen fragt, rechnet die
+ * Tafel einmal und gibt sie mit.
+ */
+export function activatingIndex(entities: Map<EntityId, Entity>): Map<EntityId, EntityId[]> {
+  const out = new Map<EntityId, EntityId[]>();
   for (const e of entities.values()) {
     if ((e.interfaces ?? [])[0] !== CAMPAIGN_TYPE) continue;
     /* Wer nur vergleicht, schaltet nicht auf (T-092): die Ebene bleibt, wem sie gehört. */
-    if (aufschalten(e).some((r) => r.to === layerId)) out.push(e.id);
+    for (const r of aufschalten(e)) {
+      const l = out.get(r.to) ?? out.set(r.to, []).get(r.to)!;
+      if (!l.includes(e.id)) l.push(e.id);
+    }
   }
   return out;
 }

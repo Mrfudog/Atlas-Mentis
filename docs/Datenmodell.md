@@ -724,9 +724,9 @@ beides zusammen (`resolveInstance`), Feld für Feld.
 |---|---|
 | V1 | **Gleich wie die Vorlage heisst: folgt der Vorlage.** Beim Speichern fällt weg, was gleich steht (`thinInstance`); den Wert der Vorlage eintragen oder das Feld leeren heisst, ihr wieder zu folgen. |
 | V2 | **Kanten nach Art:** die Aktionen der Vorlage (`composedOf`) kommen mit, solange die Instanz keine eigenen hat; eine geänderte Liste gehört ganz ihr. |
-| V3 | **Nicht vererbt:** `Identity`, `Visibility` und die Kanten, die zur Vorlage als Artikel gehören (`inLayer`, `belongsTo`, `overrides`, `variantOf`). |
+| V3 | **Nicht vererbt:** `Identity`, `Visibility` und die Kanten, die zur Vorlage als Artikel gehören (`inLayer`, `belongsTo`, `overrides`, `variantOf`) — dazu, was ein **Stück** trägt (`carries`, `PIECE_RELATIONS`, T-150): zwei Rucksäcke aus einer Vorlage haben nicht denselben Inhalt. Anders als `inLayer` ist `carries` eine Abweichung: ein Behälter mit eigenem Inhalt folgt der Vorlage nicht mehr (`followsTemplate`) und bildet keinen Stapel. |
 | V4 | **Eine Vorlage darf selbst Instanz sein**; gelesen wird die Kette hoch, ein Kreis bricht ab. |
-| V5 | **Instanzen stehen an ihrer Kreatur und sonst nirgends** — nicht in Listen, nicht als Verweisziel. |
+| V5 | **Instanzen stehen an ihrer Kreatur oder in ihrem Inventar und sonst nirgends** — nicht in Listen, nicht als Verweisziel. |
 | V6 | **Löschen nimmt nichts weg:** geht die Vorlage, bekommen die Instanzen vorher, was sie lasen (`detachInstance`); geht die Kreatur, geht ihre Instanz mit. |
 | V7 | Am Server kommt eine Instanz aufgelöst an, mit `fromTemplate` (Vorlage, geerbte Felder) — nur gelesen, nie gespeichert. |
 
@@ -739,9 +739,34 @@ Vorlage. Ein eigener Typ dafür wäre derselbe Typ ein zweites Mal.
 beim Kauf, T-133): `newInstance` legt den Artikel an — `instanceOf` auf den
 Grundartikel, `inLayer` in die Ebene der Kampagne, `Identity` mit dem Namen
 der Vorlage und einer neuen Nummer, `Status: ready`, sonst nichts. Eine
-Funktion für Kauf, Beute, Handwerk und Geschenke. `followsTemplate` sagt, ob
-eine Instanz in nichts abweicht — dann ist sie ein beliebiges Stück und
-darf einen Stapel bilden.
+Funktion für alle Wege, und eine fürs Einlegen (`receivePiece`): liegt ein
+loser Stapel desselben Grundartikels da, wächst er, sonst kommt eine neue
+`holds`-Kante auf das neue Stück. `followsTemplate` sagt, ob eine Instanz in
+nichts abweicht — dann ist sie ein beliebiges Stück und darf einen Stapel
+bilden. Am Server legt `stueckWerkstatt` (`apps/server/src/stueck.ts`) die
+Stücke einer Anfrage an und nimmt sie zurück, wenn das Inventar danach
+nicht geschrieben werden kann. Die Wege:
+
+| Weg | Wo |
+|---|---|
+| Kauf (T-133) | `POST /api/shops/:id/buy` |
+| Handwerk, der Ertrag bei Erfolg (T-128) | `abrechnen` in `handwerk.ts` |
+| Startausrüstung (T-096) | `POST /api/entities/:id/equipment` |
+| **Geben** — Beute, Geschenke, „Add an item" am Inventar | `POST /api/inventories/:id/give` (`{ item, qty }`): die Leitung der laufenden Kampagne in jedes Inventar, das sie sieht, sonst wer das Inventar schreibt; der Gegenstand muss sichtbar sein. Protokoll `inventory.given` |
+
+Wer ein Stück **weitergibt** (verschieben zwischen Figur, Gruppe und
+Behälter, `moveHeld`), gibt dieses Stück — eine Instanz einer Instanz
+entsteht nie. **Material zählt nach dem Grundartikel** (`baseArticle`): das
+Rezept braucht „Eisenbarren", der gekaufte Barren ist eine Instanz davon.
+Reservierte Stücke (T-134) bleiben gesperrt; die Reservierung steht an der
+Kante und nicht am Gegenstand.
+
+**Der Bestand vor T-150** (Migration 067): jede `holds`-Kante, die direkt auf
+einen Gegenstand zeigte, zeigt danach auf ein eigenes Stück — Name, Art und
+Sichtbarkeit des Gegenstands, eine neue Nummer, `ready`, in den Ebenen
+seines Inventars, verfasst von dem, der das Inventar verfasst hat. Menge,
+Lage und Reservierung bleiben an der Kante. Ein Behälter mit eigenem Inhalt
+und ein Ziel, das kein Gegenstand ist, bleiben und werden aufgezählt.
 
 ---
 
@@ -753,7 +778,7 @@ darf einen Stapel bilden.
 | Kante `partOf` (Layer → Layer) | die Ebene gehört zu dieser **Gruppe** (E-022 b, T-088); eine Ebene darf in mehreren sein, eine Gruppe in einer Gruppe |
 | Kante `inLayer` (`*` → Layer) | der Artikel liegt in dieser Ebene; `props.mode` `adds` (Vorgabe) oder `removes` |
 | Kante `activates` (Campaign → Layer, „Layers in play" / „In play in") | die Kampagne schaltet die Ebene auf; `props.order` ordnet, sonst `Layer.order`. Gepflegt auf der Kampagnenseite (Häkchen und Reihenfolge, `PUT /api/campaigns/:c/layers`) |
-| `activates` mit `props.mode: 'compare'` | **Vergleichsebene** (T-092, E-021 d): nicht im Spiel, ihre Fassungen stehen auf Wunsch an den Feldern und lassen sich übernehmen. Zählt nicht für `activeStack`, `campaignsOf`, `campaignsActivating` und die Ausfuhr. Gepflegt auf der Kampagnenseite (`PUT /api/campaigns/:c/compare`) |
+| `activates` mit `props.mode: 'compare'` | **Vergleichsebene** (T-092, E-021 d): nicht im Spiel, ihre Fassungen stehen auf Wunsch an den Feldern und lassen sich übernehmen. Eine **Gruppe** zum Vergleich vergleicht ihre Mitglieder, verschachtelt, soweit sie nicht im Spiel sind (`playStack`, T-143). Zählt nicht für `activeStack`, `campaignsOf`, `campaignsActivating` und die Ausfuhr. Gepflegt auf der Kampagnenseite und im Popup der Kopfleiste (`PUT /api/campaigns/:c/compare`) |
 | `activates` mit `props.mode: 'off'` | **ausdrücklich aus** (T-088): die Ebene ist nicht im Spiel, auch wenn eine aufgeschaltete Gruppe sie brächte. Ohne Gruppe tut die Kante nichts. Gepflegt auf der Kampagnenseite (`PUT /api/campaigns/:c/layers` mit `off`) |
 | `activates` mit `props.areas` / `props.types` | **was die Ebene bringt** (T-105, REQ-255): Bereiche (`area` der Art, geerbt) und einzelne Arten; ein Artikel passt, wenn seine Art genannt ist oder ihr Bereich. Ohne beide: alles. Gilt an aufgeschalteten Ebenen, an Gruppen (die Mitglieder tragen die Auswahl ihrer Gruppe, eine ausdrückliche Kante ihre eigene) und an Vergleichsebenen. Gepflegt auf der Kampagnenseite (`PUT /api/campaigns/:c/layers/:layer/only`) |
 | Feld `Campaign.compareFor` | wer die Vergleichsebenen sieht: `gm` (Vorgabe — Verwaltung, `gm`, `co-gm`) oder `players` (jede Rolle am Tisch) |

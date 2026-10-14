@@ -295,6 +295,15 @@ Jetzt:
   Index, ein Spieler hat seinen eigenen (das Sieb rechnet Wissen je
   Artikel); gehalten werden die letzten acht. Blättern, Suchen, Filtern
   laufen über die Zeilen, nicht über die Artikel.
+- **Der Bestand selbst** liegt je Stempel im Speicher (`PgRepository`).
+  Schreibt der Server einen Artikel, **führt er ihn nach** statt neu zu
+  lesen (T-143): unter einer Sperre für andere Schreiber liest er den
+  Stempel vor und nach dem Schreiben und ersetzt den einen Artikel, wenn
+  der Bestand genau auf dem Stand davor war — sonst (ein fremder Prozess
+  wie die Einfuhr schrieb) liest er neu. Mit 150 000 Artikeln: 26 ms statt
+  gut vier Sekunden nach einem Häkchen an den Ebenen. Die Ebenenseite
+  (`GET /api/campaigns/:c/layers`) zählt ihren Inhalt je Stempel einmal und
+  behält die Zählung, wenn sich seither nur die Kampagne geändert hat.
 - **Facetten** zählen über die Zeilen, die alle *anderen* Filter bestehen:
   Arten (mit Bereich, das Kompendium gruppiert danach), Ebenen, und bei
   einer gewählten Art je Spalte eine Aufzählung (`enum`/`enumRef` → Werte
@@ -503,7 +512,7 @@ Artikel in `Bestand.kurz`.
 flowchart LR
   reg["packages/registry<br/>(Quelle)"] -- emit-seed --> seed[prototype/test<br/>Prüfaufbau]
   reg -- catalogue --> docs1[docs/Artikeltypen.md<br/>Datenmodell.md › Register heute]
-  vault[VTT/Requirements.md] -- anforderungen --> docs2[docs/Anforderungen.md<br/>VTT/Umsetzung.md]
+  vault[VTT/Stories · Features · Epics] -- anforderungen --> docs2[docs/Anforderungen.md<br/>VTT/Requirements.md · Umsetzung.md]
   ft[(5etools-src/data<br/>ausserhalb des Repos)] -- import-5etools --> datei[Ausfuhrdatei<br/>~35 MB, nicht eingecheckt]
   datei -->|"server import --only-new"| pg[(Postgres)]
   datei -->|"--sample"| seed

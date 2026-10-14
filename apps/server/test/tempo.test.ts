@@ -140,8 +140,33 @@ describe('a list over 20 000 articles (REQ-246)', () => {
     expect(ebenen.statusCode).toBe(200);
     expect(ebenen.json().layers.filter((l: { inPlay: boolean; kind: string }) => l.inPlay && l.kind === 'book')).toHaveLength(30);
 
+    /* **Aufschalten im Popup** (T-143): ein Häkchen schreibt den Stapel,
+       danach fragt das Popup die Ebenen neu. Die Zählung je Ebene hängt
+       nicht am Stapel und steht je Bestand einmal — nur was die Kampagne
+       ändert, wird neu gerechnet. Und eine ganze Gruppe zum Vergleich. */
+    t0 = performance.now();
+    const auf = await app.inject({ method: 'PUT', url: '/api/campaigns/camp/layers', headers: { cookie }, payload: { layers: ['g_a', 'g_b', 'ly_36'] } });
+    const msAuf = performance.now() - t0;
+    expect(auf.statusCode).toBe(200);
+    t0 = performance.now();
+    const danach = await app.inject({ method: 'GET', url: '/api/campaigns/camp/layers', headers: { cookie } });
+    const msDanach = performance.now() - t0;
+    expect(danach.json().layers.find((l: { id: string }) => l.id === 'ly_36').inPlay).toBe(true);
+    t0 = performance.now();
+    await app.inject({ method: 'GET', url: '/api/campaigns/camp/layers', headers: { cookie } });
+    const msWieder = performance.now() - t0;
+    const vergleich = await app.inject({ method: 'PUT', url: '/api/campaigns/camp/compare', headers: { cookie }, payload: { layers: ['g_c'] } });
+    expect(vergleich.json().layers).toEqual(['g_c']);
+    console.log(
+      `T-143 · 20k: Ebenen ${msEbenen.toFixed(0)} ms, aufschalten ${msAuf.toFixed(0)} ms, Ebenen danach ${msDanach.toFixed(0)} ms, noch einmal ${msWieder.toFixed(0)} ms`,
+    );
+
     expect(msListe).toBeLessThan(5000);
     expect(msEbenen).toBeLessThan(5000);
+    expect(msAuf).toBeLessThan(5000);
+    expect(msDanach).toBeLessThan(5000);
+    /* Derselbe Bestand: nichts zu zählen, nur die Kampagne. */
+    expect(msWieder).toBeLessThan(1000);
     expect(msUsage).toBeLessThan(5000);
     expect(msGruppiert).toBeLessThan(5000);
     expect(msFassungen).toBeLessThan(5000);

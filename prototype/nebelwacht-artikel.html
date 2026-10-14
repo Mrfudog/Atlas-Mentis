@@ -15468,8 +15468,11 @@ var BEGRIFFE=[
    "charges in the staff. An item may carry an inventory of its own (a "+
    "backpack), and each container adds a draw step to what lies in it; "+
    "a creature's own inventory without a shape takes the carry grid from "+
-   "its size and its statblock. The piece at the table may be an instance of the item "+
-   "in the book (the +1 longsword stores only what differs). A character "+
+   "its size and its statblock. The piece at the table is an instance of the item "+
+   "in the book — bought, looted, crafted or handed out, it stores only what "+
+   "differs (an engraving, a name, spent charges), keeps its own contents, "+
+   "and a loose stack of the same grows instead of a new piece; a recipe "+
+   "counts it as the item it is a piece of. A character "+
    "has its classes as edges, each with its level (hasClass: Fighter 3, "+
    "Wizard 2 with the subclass on the edge), and one ancestry and one "+
    "background; its level is the sum of those edges, worked out on read. "+
@@ -15947,7 +15950,9 @@ function renderHowto(v){
       "price, discounts or not; a reserved piece or a container that still "+
       "holds something stays put, and a ware the shop counts gets one more. "+
       "A plain instance sold off is deleted; an engraved one goes over the "+
-      "counter as itself and the shop sells that very piece."));
+      "counter as itself and the shop sells that very piece. Loot and gifts "+
+      "from the GM, a crafted draught and starting equipment arrive the same "+
+      "way (T-150), and a recipe that needs a Lantern takes Ysolde’s."));
     v.appendChild(el("pre",{class:"code",text:
       "Ysolde buys 2 × Lantern   purse 20 gp → "+((2000-2*(lp+sp+ware+gilde))/100)+" gp   "+slP.qty.title+" 3 → 1\n"+
       "Ysolde sells 1 × Lantern  purse +"+(Math.floor(lp/2)/100)+" gp           "+slP.qty.title+" 1 → 2"}));

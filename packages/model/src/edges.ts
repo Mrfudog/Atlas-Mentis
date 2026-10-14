@@ -112,7 +112,7 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     area: 'versions',
     does: 'finds the versions of the same thing and reads an instance through its template, field by field',
     uses: {
-      [M + 'instance.ts']: ['belongsTo', 'inLayer', 'instanceOf', 'overrides', 'variantOf'],
+      [M + 'instance.ts']: ['belongsTo', 'carries', 'inLayer', 'instanceOf', 'overrides', 'variantOf'],
       [M + 'versions.ts']: ['inLayer', 'instanceOf', 'overrides', 'variantOf'],
       /* Anlegen aus einer Vorlage prüft die Vorlage und dünnt aus (T-125). */
       [S + 'app.ts']: ['inLayer', 'instanceOf', 'overrides', 'variantOf'],

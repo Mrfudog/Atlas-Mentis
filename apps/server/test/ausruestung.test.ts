@@ -78,7 +78,15 @@ async function aufbau(methoden: string[]) {
 const inventarVon = async (repo: InMemoryRepository, id: string) => {
   const f = await repo.getEntity(id);
   const inv = await repo.getEntity(f!.relations!.find((r) => r.type === 'carries')!.to);
-  return { inv: inv!, holds: (inv!.relations ?? []).filter((r) => r.type === 'holds').map((r) => [r.to, r.props?.['qty']]) };
+  /* Jedes Stück ist eine Instanz seines Gegenstands (T-150): gezählt wird nach der Vorlage. */
+  const holds = [];
+  for (const r of (inv!.relations ?? []).filter((x) => x.type === 'holds')) {
+    const stueck = await repo.getEntity(r.to);
+    const vorlage = stueck?.relations?.find((x) => x.type === 'instanceOf')?.to;
+    expect(vorlage, `${r.to} ist keine Instanz`).toBeTruthy();
+    holds.push([vorlage, r.props?.['qty']]);
+  }
+  return { inv: inv!, holds };
 };
 
 describe('Startausrüstung (T-096, REQ-250)', () => {

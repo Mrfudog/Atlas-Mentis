@@ -2,6 +2,7 @@ import { Component, DestroyRef, computed, effect, inject, input, signal, untrack
 import { Router, RouterLink } from '@angular/router';
 import { plainText } from '@nw/model';
 import { Api, type ListenFrage, type Liste, type ListenZeile } from '../kern/api';
+import { Stapel } from '../kern/stapel';
 import { QuelleText } from '../kern/quellen';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
@@ -436,6 +437,16 @@ export class Kompendium {
         if (getippt && this.liste()) this.uhr = setTimeout(() => void this.hole(frage), 220);
         else void this.hole(frage);
       });
+    });
+    /* Hat sich der Stapel geändert (T-143, das Popup in der Kopfleiste),
+       dieselbe Frage noch einmal — sonst stünde da, was eben noch galt. */
+    const stapel = inject(Stapel);
+    let gesehen = stapel.stand();
+    effect(() => {
+      const n = stapel.stand();
+      if (n === gesehen) return;
+      gesehen = n;
+      untracked(() => this.neuFragen());
     });
     inject(DestroyRef).onDestroy(() => {
       if (this.uhr) clearTimeout(this.uhr);

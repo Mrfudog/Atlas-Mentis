@@ -117,3 +117,14 @@ describe('Der Tisch zieht weiter (immediately, T-140)', () => {
     }
   });
 });
+
+describe('Beute und Geschenke kommen unverstaut an (T-140, Schnittstelle zu T-150)', () => {
+  it('legt Gegebenes neben den verstauten Stapel, nicht darauf', async () => {
+    const { post, holds } = await aufbau();
+    const r = await post('Gwen', '/api/inventories/inv_rook/give', { item: 'it_fackel', qty: 2 });
+    expect(r.statusCode).toBe(200);
+    const h = await holds('inv_rook');
+    expect(h.find((x) => x.id === 'inv_rook_f')?.props?.['qty']).toBe(3);
+    expect(h.filter((x) => x.props?.['unstowed'] === true).map((x) => x.props?.['qty'])).toEqual([2]);
+  });
+});

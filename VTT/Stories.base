@@ -1,0 +1,72 @@
+filters:
+  and:
+    - file.inFolder("VTT/Stories")
+    - typ == "story"
+views:
+  - type: table
+    name: Nach Epic
+    groupBy:
+      property: epic
+      direction: ASC
+    order:
+      - file.name
+      - title
+      - rolle
+      - feature
+      - prio
+      - aufwand
+      - stand
+    sort:
+      - property: feature
+        direction: ASC
+      - property: prio
+        direction: ASC
+  - type: table
+    name: Nach Feature
+    groupBy:
+      property: feature
+      direction: ASC
+    order:
+      - file.name
+      - title
+      - rolle
+      - prio
+      - stand
+      - standNotiz
+  - type: table
+    name: Offen und wichtig
+    filters:
+      and:
+        - stand == "offen" || stand == "teils"
+        - prio <= 3
+    order:
+      - file.name
+      - title
+      - epic
+      - prio
+      - aufwand
+      - stand
+      - standNotiz
+    sort:
+      - property: prio
+        direction: ASC
+  - type: table
+    name: Nach Rolle
+    groupBy:
+      property: rolle
+      direction: ASC
+    order:
+      - file.name
+      - title
+      - feature
+      - stand
+  - type: table
+    name: Noch zu formulieren
+    filters:
+      and:
+        - rolle == null
+        - status != "dropped"
+    order:
+      - file.name
+      - title
+      - feature

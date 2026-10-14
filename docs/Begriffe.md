@@ -1003,7 +1003,10 @@ Importer die Fassungen aus mehreren Büchern. Eine Überschreibung sagt es
 selbst und zählt immer.
 
 *Vergleichsebenen* sind Ebenen, die eine Kampagne nennt, ohne sie
-aufzuschalten (`activates` mit `mode: 'compare'`). Was sie bringen, steht
+aufzuschalten (`activates` mit `mode: 'compare'`) — auch eine **ganze
+Gruppe** wie „2024 rules" (T-143): ihre Bücher vergleichen sich, soweit
+keines davon ohnehin im Spiel ist, und ein Buch, das später in die Gruppe
+kommt, ist dabei, ohne dass jemand ein Häkchen setzt. Was sie bringen, steht
 in keiner Liste, ist an keinem Verweis und gehört der Kampagne nicht — es
 ist auf Wunsch sichtbar, für die Leitung und, wenn die Kampagne es sagt,
 für die Spielenden. Eine Fassung daraus **übernimmt** die Leitung als
@@ -1304,7 +1307,9 @@ Gespeichert wird an ihr **nur, was abweicht**; gelesen wird beides zusammen
   solange die Instanz keine eigenen hat; ändert jemand die Liste, gehört sie
   ganz der Instanz. Was zur Vorlage **als Artikel** gehört — `inLayer`,
   `belongsTo`, `overrides`, `variantOf` — kommt nicht mit, ebenso wenig ihr
-  Name (`Identity`) und ihre Sichtbarkeit (`Visibility`).
+  Name (`Identity`), ihre Sichtbarkeit (`Visibility`) und ihr Inventar
+  (`carries`): zwei Rucksäcke aus einer Vorlage tragen nicht denselben
+  Inhalt.
 - **Eine Vorlage darf selbst eine Instanz sein** („Hauptmann" aus „Wache");
   gelesen wird die Kette hoch, ein Kreis bricht ab.
 - **Instanzen stehen an ihrer Kreatur und sonst nirgends** — nicht in
@@ -1318,6 +1323,20 @@ Gespeichert wird an ihr **nur, was abweicht**; gelesen wird beides zusammen
   die Felder, die von dort kommen) — nur gelesen, nie gespeichert.
 
 Ein Statblock gehört damit **einer** Kreatur (`belongsTo` ist wieder `one`).
+
+**Ein Stück im Inventar ist eine Instanz** (T-150). Was eine Figur in die
+Hand bekommt — gekauft, erbeutet, gefertigt, geschenkt —, ist nicht der
+Gegenstand aus dem Buch, sondern ein Stück davon: ein eigener Artikel mit
+`instanceOf` auf den Gegenstand, der nur speichert, was abweicht. Rook
+graviert seinen Dolch, und der Dolch im Regelwerk bleibt, wie er ist; die
+Leitung korrigiert das Gewicht im Regelwerk, und jeder Dolch am Tisch, der
+das Gewicht nicht selbst trägt, wiegt danach richtig. Vorher zeigte das
+Inventar auf den Gegenstand selbst — wer ihn umbenannte, benannte ihn für
+alle um. Zehn gleiche Fackeln sind trotzdem ein Stapel und nicht zehn
+Artikel: ein neues Stück legt sich auf einen losen Stapel, der der Vorlage
+noch in allem folgt. Und ein Rezept, das „Eisenbarren" braucht, nimmt den
+gekauften Barren, denn gezählt wird nach dem Gegenstand, von dem das Stück
+eines ist.
 
 > **Nicht mehr:** für einen Tag durfte ein Statblock vielen gehören, und die
 > Seite warnte „shared by 30". Die Warnung beschrieb genau den Fall, den
@@ -1670,6 +1689,23 @@ liegt. Erst beim Bestätigen wird der Weg Schritt für Schritt abgelaufen,
 und an jedem Schritt gilt dieselbe Prüfung wie von Hand.
 
 ---
+
+## Epic, Feature, Story — Wörter der Planung
+
+Keine Wörter des Modells, sondern der Anforderungen (T-154): eine **Story**
+ist ein Wunsch einer Rolle („Als Spieler möchte ich mein Token verschieben,
+damit meine Bewegung auf der Karte steht“), ein **Feature** eine Funktion,
+Artikelart oder Ansicht, an der Stories hängen, ein **Epic** ein
+Funktionsbereich mit mehreren Features. Die Bereiche der App (World, Story,
+Rules, Play) sind Features: „Bereich World“ wohnt im Epic Welt & Lore.
+
+Zwei Wörter sind doppelt belegt, und es bleibt mit Absicht so, weil beide
+Seiten ihr Wort brauchen: **Feature** heisst im Register die Artikelart
+für ein Merkmal einer Klasse oder Abstammung (`Feature`, über `grants`) —
+in der Planung trägt ein Feature immer seine Kennung `F-nnn`, und wo beides
+vorkommen kann, steht die Kennung dabei. **Story** ist im Register der
+Obertyp der Geschichtsartikel (Bereich `story`) — eine Anforderung heisst
+darum immer mit ihrer Nummer `REQ-nnn`, nie nur „die Story“.
 
 ## Was nirgends steht
 
