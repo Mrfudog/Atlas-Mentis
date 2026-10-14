@@ -1554,6 +1554,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
 - `grants` → Rule — „grants"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -2014,7 +2015,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
-- Statblock | PlayerCharacter | Item | Subclass | Ancestry — `casts` → „cast by"
+- Statblock | PlayerCharacter | Item | Subclass | Ancestry | Feat — `casts` → „cast by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"

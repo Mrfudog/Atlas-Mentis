@@ -19,6 +19,18 @@ function datenstand(): Datenstand {
     { name: 'Long Rules', source: 'PHB', ruleType: 'O', type: 'section', entries: ['Text.'] },
     { name: 'Short Rules', source: 'PHB', type: 'entries', entries: ['Text.'] },
   );
+  const zauber = (name: string, level: number): Knoten => ({ name, source: 'PHB', level, school: 'T', time: [{ number: 1, unit: 'action' }], range: { type: 'point', distance: { type: 'self' } }, duration: [{ type: 'instant' }], entries: ['Magic.'] });
+  add('spell', zauber('Levitate', 2), zauber('Hex', 1), zauber('Light', 0));
+  add('feat',
+    { name: 'Deep Magic', source: 'PHB', additionalSpells: [{ ability: 'cha', innate: { _: { daily: { '1e': ['levitate'] } } }, known: { _: [{ choose: 'level=0|class=Wizard' }] } }], entries: ['Spells.'] },
+    {
+      name: 'Twin Lists', source: 'PHB', entries: ['Pick a list.'],
+      additionalSpells: [
+        { name: 'Bright List', known: { _: ['light#c'] }, innate: { _: { daily: { 1: [{ choose: 'level=1|class=Cleric' }] } } } },
+        { name: 'Dark List', innate: { _: { daily: { '1e': [{ choose: { from: ['hex'], count: 1 } }] } } } },
+      ],
+    },
+  );
   add('monsterTemplate', {
     name: 'Stone Kin', source: 'PHB', page: 1,
     prerequisite: { size: { max: 'H' }, type: { oneOf: ['beast', 'plant'] }, int: { max: 3 } },
@@ -69,8 +81,29 @@ describe('Importer-Regeln aus der Artikelprüfung (T-089)', () => {
     expect(t).not.toContain('<$');
   });
 
+  it('liest die Zauber eines Talents: fest als casts, gewählt als Wahl', () => {
+    const deep = finde('Deep Magic');
+    const levitate = finde('Levitate');
+    expect(deep.relations.filter((r) => r.type === 'casts')).toMatchObject([{ to: levitate.id, props: { mode: 'innate', uses: '1/day' } }]);
+    expect(deep.components['Choices']?.['choices']).toMatchObject([{ kind: 'spell', count: 1, from: { interfaces: ['Spell'] }, note: 'level 0, class Wizard' }]);
+  });
+
+  it('macht aus mehreren Zauberlisten eine Möglichkeit und hängt die Zauber daran', () => {
+    const twin = finde('Twin Lists');
+    expect(twin.relations.filter((r) => r.type === 'casts')).toEqual([]);
+    const wahlen = twin.components['Choices']?.['choices'] as { id: string; kind: string; onlyIf?: unknown; default?: string[]; from?: unknown }[];
+    const option = wahlen[0]!;
+    expect(option).toMatchObject({ kind: 'option', from: { options: [{ key: 'bright-list', label: 'Bright List' }, { key: 'dark-list', label: 'Dark List' }] } });
+    expect(wahlen.filter((w) => w.kind === 'spell').map((w) => w.onlyIf)).toEqual([
+      { choice: option.id, pick: 'bright-list' },
+      { choice: option.id, pick: 'bright-list' },
+      { choice: option.id, pick: 'dark-list' },
+    ]);
+    expect(wahlen.find((w) => w.default)?.default).toEqual([finde('Light').id]);
+  });
+
   it('besteht die Prüfung', () => {
     const arten = new Map(es.map((e) => [e.id, e.interfaces[0]!] as const));
-    for (const n of ['Stone Kin', 'Web Rot', 'Long Rules']) expect(validateEntity(seedRegistry, finde(n), { knownTypes: arten })).toEqual([]);
+    for (const n of ['Stone Kin', 'Web Rot', 'Long Rules', 'Deep Magic', 'Twin Lists']) expect(validateEntity(seedRegistry, finde(n), { knownTypes: arten })).toEqual([]);
   });
 });
