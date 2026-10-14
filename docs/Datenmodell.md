@@ -1025,7 +1025,7 @@ flowchart LR
   Z --> S["Schnittmenge mit dem Artikel<br/>+ empty / rest"]
 ```
 
-Die Migration (048) änderte, was gezeichnet wird, nicht: `full` bekam
+Die Migration (050) änderte, was gezeichnet wird, nicht: `full` bekam
 `rest: true` — das tat die Artikelseite schon immer, nur stand es nirgends —,
 `print` kam dazu; die Anordnungen an den Arten bleiben Listen.
 
