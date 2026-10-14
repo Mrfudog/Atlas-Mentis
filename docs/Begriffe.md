@@ -1462,6 +1462,37 @@ stehen, weil sie liest, wer plant, und die Proben zählt, wer würfelt.
 
 ---
 
+## Laden, Ware und Rabatt
+
+**Ein Laden ist ein Ort, der verkauft** (`Shop`, T-129). Was er führt,
+steht nicht am Gegenstand, sondern an der Kante `sells`: dieselbe Laterne
+kostet im einen Laden zehn Gold und im anderen zwölf, und es gibt hier drei
+davon und dort keine. Ein Feld am Gegenstand könnte nur eine der beiden
+Wahrheiten tragen.
+
+**Ein Abschlag ist ein Wort** — `−10 gp` oder `−10 %`. Zwei Zahlenfelder
+(Gold, Prozent) hiessen, dass eines leer steht und niemand weiss, welches
+gilt; das Wort sagt es beim Lesen. Was sich nicht lesen lässt, zählt nicht
+und wird trotzdem gezeigt: ein still verschluckter Rabatt sähe aus wie ein
+Laden ohne Rabatt.
+
+**Ein Rabatt ist eine Kante vom Gebenden zum Empfangenden** (`discount`).
+Die Gilde, die drei Läden kontrolliert (`controls`), gibt ihren Mitgliedern
+ab dem Rang „Flame" zehn Prozent — einmal an der Gilde gesagt, nicht
+dreimal an den Läden. Der Rang ist dieselbe Leiter wie beim Wissen
+(`Faction.ranks`, A7): was der Zirkel bekommt, bekommt der Novize noch
+nicht, und ein Rang, der nicht in der Leiter steht, gewährt nichts.
+
+**Der Preis wird gerechnet, nie gespeichert** (D8). Ein gespeicherter
+Preis wäre am Tag falsch, an dem jemand in der Gilde aufsteigt; der
+gerechnete sagt dazu, woher jeder Abschlag kommt. Prozent rechnen auf den
+Grundpreis und addieren sich — so hängt das Ergebnis nicht davon ab, in
+welcher Reihenfolge die Kanten stehen.
+
+**Was einer vom anderen hält, rechnet nicht mit.** `regards` bleibt eine
+Kante mit Marken; ein Wirt, der Rook etwas schuldet, gibt ihm einen
+`discount`. Ob Marken einmal Preise bewegen, ist offen (E-043).
+
 ## Was ein Spieler von einer Karte bekommt
 
 **Eine Karte geht gekürzt hinaus, nicht verdeckt.** Ein versteckter Marker,

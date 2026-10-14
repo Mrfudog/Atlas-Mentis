@@ -172,6 +172,17 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'shopPrice',
+    label: 'Shop prices',
+    area: 'character',
+    does: 'prices a shop’s wares for a buyer — the ware’s own price and mark-down, the shop’s, and the discounts of the shop, the factions controlling it and its shopkeepers to the buyer, their party or their faction from a rank',
+    uses: {
+      [M + 'shop.ts']: ['controls', 'discount', 'memberOf', 'memberOfParty', 'sells', 'shopkeeper'],
+      /* Was der Betrachter vom Laden sehen darf: die Waren und wer ihn kontrolliert. */
+      [S + 'app.ts']: ['controls', 'sells'],
+    },
+  },
+  {
     key: 'builder',
     label: 'Character builder and sheet',
     area: 'character',
