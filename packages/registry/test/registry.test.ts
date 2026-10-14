@@ -835,6 +835,8 @@ describe('loot is more than items', () => {
     expect(rule.required ?? []).not.toContain('kind');
     expect(enumOptions(seedRegistry, rule.properties['kind'])).toEqual([
       'rule', 'travel', 'sense', 'reward', 'boon', 'option',
+      /* T-087: Aufrüstung eines Fahrzeugs, Raum einer Bastion, Karte eines Decks. */
+      'upgrade', 'facility', 'card',
     ]);
   });
 

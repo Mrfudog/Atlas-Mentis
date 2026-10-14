@@ -60,7 +60,7 @@ const GENUTZT_ITEM = [
   'name', 'entries', 'additionalEntries', 'type', 'rarity', 'tier', 'reqAttune', 'reqAttuneTags',
   'reqAttuneAlt', 'reqAttuneAltTags', 'charges', 'recharge', 'rechargeAmount', 'bonusWeapon',
   'bonusAc', 'bonusSpellAttack', 'bonusSavingThrow', 'value', 'weight', 'weaponCategory', 'dmg1',
-  'dmg2', 'dmgType', 'range', 'ammoType', 'ac', 'strength', 'stealth', 'property', 'attachedSpells',
+  'dmg2', 'dmgType', 'range', 'ammoType', 'ac', 'strength', 'stealth', 'property', 'mastery', 'attachedSpells',
   'baseItem', 'weapon', 'armor', 'packContents', 'lootTables', 'valueMult', 'weightMult', 'ammo',
   'age', 'focus', 'scfType', 'grantsProficiency', 'grantsLanguage', 'light', ...WIRKUNGEN, ...SORTEN,
 ];
@@ -131,6 +131,17 @@ function felder(wb: Werkbank, ent: Entity, e: Knoten): void {
     const ziel = wb.hole('itemProperty', abk, quelle || 'PHB') ?? wb.finde('itemProperty', [abk]);
     if (ziel) wb.kante(ent, 'hasProperty', ziel.id);
     else wb.ctx.insLeere('itemProperty', roh);
+  }
+  /* Die Waffenmeisterschaft (2024, T-087) ist eine Eigenschaft mit der
+     Marke `mastery`. Nicht im Grundstand: dort gibt es sie nicht. */
+  if (!wb.grund) {
+    for (const m of liste(e['mastery'])) {
+      const roh = typeof m === 'string' ? m : String((m as Knoten)['uid'] ?? '');
+      const [name = '', quelle = ''] = roh.split('|');
+      const ziel = wb.hole('itemMastery', name, quelle || 'XPHB');
+      if (ziel) wb.kante(ent, 'hasProperty', ziel.id);
+      else wb.ctx.insLeere('itemMastery', roh);
+    }
   }
   zauberAmGegenstand(wb, ent, e['attachedSpells']);
 }

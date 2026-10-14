@@ -485,6 +485,29 @@ die es noch nicht gibt; eine Art, die jemand am Server angepasst hat,
 bleibt angepasst. Der Lauf sagt `Nur ergänzt: 120 neu, 23 880
 übersprungen (gibt es schon).` — beim zweiten Lauf mit derselben Datei
 also `0 neu`. Geprüft wird wie immer alles, bevor etwas geschrieben wird.
+**Die Nummern der neuen Artikel gleicht der Lauf an** (T-087): ein Verweis
+nennt die Nummer (`[[spell-0601|Fireball]]`), und ein Bestand aus einem
+älteren Lauf trägt für denselben Artikel oft eine andere. Eine Nummer, die
+im Bestand ein anderer trägt, wird eine neue, und jeder Verweis in den
+neuen Artikeln nennt die Nummer, die sein Ziel im Bestand trägt; der
+Bestand selbst bleibt. Die Zeile sagt `… davon mit angeglichener Nummer
+oder angeglichenen Verweisen`.
+
+**2024, Unearthed Arcana, Fahrzeuge, Decks, Bastionen** (T-087,
+REQ-243): seit T-087 bringt ein Lauf alles, jede Quelle in ihre Ebene —
+gut 29 000 Artikel mehr, je Ebene gezählt in
+[5etools-Bericht.md](5etools-Bericht.md). **Keine neue Ebene ist
+aufgeschaltet**, auch nicht über die Gruppe „D&D 5e (2014)": eine
+Kampagne ändert sich durch den Lauf nicht. Wer 2024 vergleichen will,
+trägt die Ebene (oder die Gruppe „2024 rules") auf der Kampagnenseite als
+Vergleichsebene ein (T-092); wer damit spielen will, schaltet sie auf.
+Neues in einer schon aufgeschalteten 2014-Ebene (die Schiffe aus Ghosts of
+Saltmarsh, das Tarokka-Deck aus Curse of Strahd) ist dagegen gleich da,
+wie jeder neue Artikel eines Buchs. Der Lauf braucht die **Migration
+`051_neue_arten_5etools.sql`**: sie trägt die Listenwerte `card`,
+`facility`, `upgrade` (`RuleKind`) und `deck` (`Table.kind`) an
+bestehenden Registerzeilen nach, die `only-new` sonst stehen liesse. Ohne
+2024: `node packages/import-5etools/dist/cli.js <data> --only-2014`.
 
 **Ein Modul ergänzen:** Pipeline mit `mode` = `only-new` und `sources` =
 dem Kürzel aus 5e.tools (z. B. `CoS`, oder `PHB,MM`); zuerst `dry-run`
