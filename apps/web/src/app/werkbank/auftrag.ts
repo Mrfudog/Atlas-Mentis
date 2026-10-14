@@ -42,6 +42,7 @@ export const OPS: { op: OpArt; label: string }[] = [
   { op: 'addRelation', label: 'Add edge' },
   { op: 'removeRelation', label: 'Remove edge' },
   { op: 'merge', label: 'Merge duplicates' },
+  { op: 'delete', label: 'Delete articles' },
 ];
 
 export const BEDINGUNGEN: { op: ConditionOp; label: string; ohneWert?: boolean }[] = [
@@ -114,6 +115,9 @@ export function auftragAus(f: Formular): Pick<BulkRequest, 'select' | 'ops'> {
       break;
     case 'merge':
       op = { op: 'merge', mode: f.mode, by: f.by, ...(f.keep.trim() ? { keep: f.keep.trim() } : {}) };
+      break;
+    case 'delete':
+      op = { op: 'delete' };
       break;
   }
   return { select, ops: [op] };
