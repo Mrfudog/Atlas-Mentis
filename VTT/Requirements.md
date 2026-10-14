@@ -1,284 +1,362 @@
 ---
 tags: [vtt, requirements, registry]
-status: living
-version: 0.8
-updated: 2026-10-13
+status: derived
+updated: 2026-10-14
 ---
 
 # Requirements Registry
 
-Single source of truth for all requirements. **IDs are immutable**: sequential, never reused, never renumbered, carrying no meaning (areas may move; IDs never do). Dropped requirements stay with status `dropped`.
+> [!info] Erzeugt aus den Notizen
+> Quelle sind die Story-Notizen in `VTT/Stories/`, die Features in `VTT/Features/`, die Epics in `VTT/Epics/`.
+> `pnpm --filter @nw/registry anforderungen -- --umsetzung VTT/Umsetzung.md` schreibt diese Seite neu — von Hand geändert wird die Notiz, nicht die Seite.
 
-**Vorrang (D42, 7.10.2026):** was der Tisch von Nebelwacht braucht, vor dem, was ein beliebiger Tisch brauchen könnte — die Nummern aus der Ernte (REQ-168 ff.) vor den generischen; die Spalte *Prio* bleibt, wie sie ist, der Vorrang gilt bei gleicher Prio. Einschneidende Änderungen entscheidet die Verwaltung.
+Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `REQ-nnn`, je Story ein **Feature** (eine Funktion, eine Artikelart oder eine Ansicht), je Feature ein **Epic** (ein Funktionsbereich, siehe [[Areas]]). **Nummern sind unveränderlich**: fortlaufend, nie neu vergeben, ohne Bedeutung. Was wegfällt, bleibt mit `dropped` stehen und nennt, was es ersetzt (`ersetztDurch`) oder warum nicht.
 
-Per-area views are derived: see [[Requirements by Area]]. **Was davon steht**, sagt [[Umsetzung]] (erzeugt aus dem Repo [Nebelwacht](../docs/Anforderungen.md)); die Spalte *Status* hier folgt ihr: `done` = steht, `in progress` = teils, `dropped` = ersetzt oder verworfen. Definitions of the areas: [[Areas]]. Terms: [[Glossary]].
+**Vorrang (D42, 7.10.2026):** was der Tisch von Nebelwacht braucht, vor dem, was ein beliebiger Tisch brauchen könnte; die Spalte *Prio* bleibt, der Vorrang gilt bei gleicher Prio. Einschneidende Änderungen entscheidet die Verwaltung.
 
-## Scales
-- **Priority** 1 backbone-critical · 2 first table use · 3 full v1.0 · 4 expansion · 5 idea parking
-- **Effort** Fibonacci points: 1 ≈ one evening · 2 · 3 ≈ two evening-weeks · 5 · 8 ≈ a month+ · 13 = split before starting
-- **Phase** prep · play · both — **Value** enables (new capability) · efficiency (saves time) — **Prep cost** none · low · high (how much prep the feature *demands* to deliver its play value)
-- **Status** idea · defined · planned · in progress · done · dropped
-- **v1** depth for priority 1–2 items: full · minimal (reduced shape, same contract) · stub (shape exists, trivial implementation) · later (excluded from v1). **v1 pts** = effort at that depth. Details and rationale: [[Scope v1]].
+**Ein neuer Wunsch** wird zuerst eine Story oder ändert eine bestehende (bzw. setzt sie auf `dropped`); Aufgaben im Projektbrett hängen an Stories. Ablauf: [CONTRIBUTING.md](../CONTRIBUTING.md#anforderungen-als-user-stories).
 
-## Summary
+## Skalen
+- **Rolle** Spieler · Spielleitung · Mitleitung · Zuschauer · Verwaltung
+- **Prio** 1 Gerüst · 2 erster Einsatz am Tisch · 3 volle v1.0 · 4 Ausbau · 5 Ideenparkplatz
+- **Aufwand** Fibonacci-Punkte: 1 ≈ ein Abend · 2 · 3 ≈ zwei Abendwochen · 5 · 8 ≈ ein Monat+ · 13 = vorher teilen
+- **Status** idea · defined · planned · in progress · done · dropped — folgt dem **Stand** (steht → done, teils → in progress, ersetzt/verworfen → dropped)
+- **Stand** steht · teils · offen · ersetzt · verworfen — ein Urteil über das Repo, mit Anmerkung in `standNotiz`
+- **Phase** prep · play · both — **Wert** enables · efficiency — **Vorbereitung** none · low · high — **v1** full · minimal · stub · later ([[Scope v1]])
 
-| Priority | Count | Effort points |
-|---|---|---|
-| 1 | 32 | 88 |
-| 2 | 62 | 198 |
-| 3 | 87 | 258 |
-| 4 | 37 | 168 |
-| 5 | 17 | 148 |
-| **Total** | **235** | **860** |
+## Übersicht
 
-Effort per area (a requirement spanning several areas counts in each): Content Backbone 198, Platform & Access 88, Creatures & Characters 96, Player Experience 96, Campaign & Sessions 117, World & Lore 94, Rules & Reference 104, Live Play 197, Maps 116, Media & Assets 84, Cross-cutting 33.
+| Prio | Stories | Punkte | Stand |
+|---|---|---|---|
+| 1 | 42 | 133 | 30 steht · 7 teils · 1 offen · 2 ersetzt · 2 verworfen |
+| 2 | 95 | 326 | 61 steht · 17 teils · 9 offen · 5 ersetzt · 3 verworfen |
+| 3 | 115 | 331 | 61 steht · 22 teils · 31 offen · 1 ersetzt |
+| 4 | 44 | 195 | 13 steht · 2 teils · 26 offen · 2 ersetzt · 1 verworfen |
+| 5 | 19 | 154 | 1 steht · 18 offen |
+| **Zusammen** | **315** | **1139** | 166 steht · 48 teils · 85 offen · 10 ersetzt · 6 verworfen |
 
-## Registry
+177 Stories tragen noch den alten Wortlaut und sind als Story zu formulieren.
 
-| ID | Requirement | Prio | Effort | v1 | v1 pts | Areas | Phase | Value | Prep cost | Depends on | Status | Notes |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| **REQ-001** | Core entity model: entity types, shared property types, typed relations, immutable IDs | 1 | 5 | minimal | 4 | Content Backbone | both | enables | none | – | done | Hardcoded core entity set first; generic engine later (→REQ-027). See [[33_Backbone_Concept#Entities, properties, relations]] |
-| **REQ-002** | Successor chain: successorId, resolution to head so old links stay valid | 1 | 2 | stub | 1 | Content Backbone | both | enables | none | REQ-001 | dropped | Chains, not trees |
-| **REQ-003** | Change chain: every change as entry (who/when/what) along the version chain, git-log style | 1 | 3 | stub | 1 | Content Backbone | both | enables | none | REQ-002 | in progress | Replaces denormalized authors[]; authorship is a query |
-| **REQ-004** | Layer entity: types system/expansion/world/pack/campaign/override-set, dependsOn, nesting by link with priority | 1 | 3 | minimal | 2 | Content Backbone | prep | enables | none | REQ-001 | done | Unifies Source, LorePack and scope packaging |
-| **REQ-005** | Entry relation: entity→layer with mode adds/overrides/removes, addedAt/addedBy, optional version pin | 1 | 3 | minimal | 2 | Content Backbone | prep | enables | none | REQ-004 | done | Membership is its own record, sparse |
-| **REQ-006** | Stack resolution: campaign-activated ordered layers, specificity precedence (campaign > pack > world > system) | 1 | 5 | minimal | 2 | Content Backbone | both | enables | none | REQ-005 | in progress | Read-time overlay, no copies |
-| **REQ-007** | Stack expert settings: layer priority, per-entry pick, disable single override, flatten into independent layer | 3 | 5 | – |  | Content Backbone | prep | enables | none | REQ-006 | defined | Final conflict model deferred (AD-13) |
-| **REQ-008** | Variant mechanism: copy with variantOf link | 1 | 2 | stub | 1 | Content Backbone | prep | enables | none | REQ-001 | in progress |  |
-| **REQ-009** | Override mechanism: explicit overrides relation with scope | 2 | 3 | stub | 1 | Content Backbone | prep | enables | none | REQ-006 | done | Both variant and override planned; precedence rule AD-14 |
-| **REQ-010** | Dimensions: optional, sparsely stored property bundles (Visibility, TemporalValidity, KnowledgeRequirement, Reputation…) | 1 | 3 | minimal | 2 | Content Backbone | both | enables | none | REQ-001 | done | No empty cells on root entities |
-| **REQ-011** | ContentBlock primitive: text + visibility + knowledge requirement + scope + temporal validity + pack membership | 1 | 5 | minimal | 3 | Content Backbone | both | enables | none | REQ-010 | dropped | Unit of time and divergence |
-| **REQ-012** | Block types: paragraph, readaloud, fact, secret, poem/song/review… extensible list | 2 | 2 | minimal | 1 | Content Backbone | prep | enables | none | REQ-011 | done |  |
-| **REQ-013** | Reference registry & auto-linking: ID-based links, alias matching, auto-link when unambiguous, suggest when ambiguous | 1 | 5 | minimal | 3 | Content Backbone | prep | efficiency | none | REQ-001 | in progress |  |
-| **REQ-014** | Backlinks view | 3 | 2 | – |  | Content Backbone | both | efficiency | none | REQ-013 | done |  |
-| **REQ-015** | Graph view | 4 | 5 | – |  | Content Backbone | prep | efficiency | none | REQ-014 | defined |  |
-| **REQ-016** | Term / translation layer: pseudoname key, LocalizedText, fallback chain DE → EN → key | 1 | 3 | minimal | 2 | Content Backbone | both | enables | none | REQ-001 | dropped | Output single-language per view |
-| **REQ-017** | Term engine bindings: system-specific semantic evaluation of rule terms | 4 | 5 | – |  | Content Backbone, Rules & Reference | play | enables | none | REQ-016 | defined | Multi-system enabler |
-| **REQ-018** | Rule effects format: effects[] with grants/constraints, open type list, consumers ignore unknown types | 1 | 2 | stub | 1 | Content Backbone, Rules & Reference | both | enables | none | REQ-001 | defined |  |
-| **REQ-019** | RawContent coexistence: every import keeps its raw form (markdown, OCR, JSON) next to structured data | 1 | 2 | full | 2 | Content Backbone | prep | enables | none | REQ-001 | dropped | Obsidian bridge |
-| **REQ-020** | SourceRef provenance: publication, page, optional file + page anchor | 1 | 2 | minimal | 1 | Content Backbone, Media & Assets | both | enables | none | REQ-001 | done |  |
-| **REQ-021** | Asset entity contract: backend app/nas/external, consumers resolve URLs via asset service | 1 | 3 | minimal | 2 | Content Backbone, Media & Assets | both | enables | none | REQ-001 | done | Designed early; viewers later |
-| **REQ-022** | Derived asset variants: thumbnails, map tiles, PDF page renders, stored app-side | 3 | 5 | – |  | Media & Assets | prep | efficiency | none | REQ-021 | defined |  |
-| **REQ-023** | Status dimension: idea / planned / used / discarded | 2 | 1 | full | 1 | Content Backbone, Campaign & Sessions | prep | efficiency | none | REQ-010 | dropped |  |
-| **REQ-024** | WorldDate property type: canonical sortable value + display string + CalendarSystem reference | 1 | 2 | minimal | 1 | Content Backbone, World & Lore | both | enables | none | REQ-001 | done |  |
-| **REQ-025** | CalendarSystem definition: months, eras, moons, configurable per world/system | 3 | 5 | – |  | World & Lore | prep | enables | low | REQ-024 | defined |  |
-| **REQ-026** | View config format: mode raw/structured/hybrid, field list, resolution priority per view | 1 | 3 | stub | 1 | Content Backbone | both | enables | none | REQ-001 | done | Seed of the later Template Manager |
-| **REQ-027** | Generic template engine & Template Manager UI (generalize hardcoded types) | 4 | 13 | – |  | Content Backbone | prep | enables | none | REQ-026 | done |  |
-| **REQ-028** | Full-text search across content | 3 | 3 | – |  | Content Backbone | both | efficiency | none | REQ-001 | in progress |  |
-| **REQ-029** | Serializable schema / export (future file or git backing) | 3 | 3 | – |  | Content Backbone | prep | enables | none | REQ-001 | done |  |
-| **REQ-030** | Reputation hooks: weighted tags on relations, propagation rule slot reserved | 2 | 1 | stub | 1 | Content Backbone, World & Lore | play | enables | none | REQ-001 | dropped | Hook only; system is REQ-081 |
-| **REQ-031** | Authentication: password hash check behind an auth interface | 1 | 2 | full | 2 | Platform & Access | both | enables | none | – | done |  |
-| **REQ-032** | Nextcloud / OIDC SSO behind the auth interface | 4 | 5 | – |  | Platform & Access | prep | efficiency | none | REQ-031 | dropped |  |
-| **REQ-033** | User accounts & profile | 1 | 2 | full | 2 | Platform & Access | both | enables | none | REQ-031 | done |  |
-| **REQ-034** | Simplest onboarding: GM-created accounts or plain invite link, whichever is cheaper | 2 | 2 | full | 2 | Platform & Access | prep | efficiency | none | REQ-033 | done | Low security bar accepted initially |
-| **REQ-035** | Membership triples: user + scope (campaign/world/layer) + role | 1 | 3 | minimal | 2 | Platform & Access | both | enables | none | REQ-033, REQ-004 | done | Multi-author worlds |
-| **REQ-036** | Roles GM / Player (Admin global) | 1 | 1 | full | 1 | Platform & Access | both | enables | none | REQ-035 | done |  |
-| **REQ-037** | Roles Co-GM / Spectator | 3 | 2 | – |  | Platform & Access | both | enables | none | REQ-036 | done |  |
-| **REQ-038** | Visibility evaluation, simple: gm_only vs campaign | 1 | 2 | full | 2 | Platform & Access | both | enables | none | REQ-010 | done | Full schema stored from day one |
-| **REQ-039** | Visibility evaluation, full: scope, allowed/denied roles, knowledgeTags, requiresTags, sharedUsers | 3 | 8 | – |  | Platform & Access | both | enables | none | REQ-038 | dropped |  |
-| **REQ-040** | Knowledge tags & KnowledgeState per campaign (grants, holders, since) | 2 | 3 | minimal | 2 | Platform & Access, Campaign & Sessions | play | enables | none | REQ-038 | done |  |
-| **REQ-041** | Per-document edit permissions: owner, GM-default (overridable), co-editors / wardship / open | 2 | 3 | minimal | 2 | Platform & Access | both | enables | none | REQ-035 | in progress |  |
-| **REQ-042** | Field-group edit granularity (e.g. vitals editable, abilities locked) | 4 | 5 | – |  | Platform & Access | play | enables | none | REQ-041 | defined |  |
-| **REQ-043** | Campaign configuration store: key-value, each area interprets its keys | 2 | 2 | minimal | 1 | Platform & Access, Campaign & Sessions | prep | enables | none | REQ-035 | done |  |
-| **REQ-044** | Scope inspector sidebar, slim: effective source layer per block/property | 2 | 5 | minimal | 3 | Platform & Access, Content Backbone, Live Play | both | efficiency | none | REQ-006 | done | Priority 1–2, not polish |
-| **REQ-045** | Scope inspector sidebar, full: layer actions (override here, create variant, move to pack, pick entry) | 3 | 8 | – |  | Platform & Access, Content Backbone | prep | enables | none | REQ-044, REQ-007 | defined |  |
-| **REQ-046** | Creature / Statblock split with PC and NPC specializations | 1 | 3 | full | 3 | Creatures & Characters | both | enables | none | REQ-001 | done | Creature without statblock and statblock without creature both valid |
-| **REQ-047** | Import-first entry: 5e.tools JSON, Improved Initiative JSON, markdown paste from Obsidian | 2 | 5 | minimal | 3 | Creatures & Characters | prep | efficiency | none | REQ-046, REQ-019 | dropped |  |
-| **REQ-048** | Minimal edit form for core creature fields | 2 | 3 | full | 3 | Creatures & Characters | prep | enables | none | REQ-046 | done |  |
-| **REQ-049** | Quick add: name-only NPC or statblock-only mob in one field | 2 | 2 | full | 2 | Creatures & Characters, Live Play | play | efficiency | none | REQ-046 | done |  |
-| **REQ-050** | Simple creature viewer: social / description / combat sections | 2 | 3 | full | 3 | Creatures & Characters | play | enables | none | REQ-046, REQ-026 | done | Leads over detailed view |
-| **REQ-051** | Quick changes: HP, temp HP, conditions, rest, inspiration | 2 | 3 | full | 3 | Creatures & Characters, Player Experience | play | enables | none | REQ-050 | done |  |
-| **REQ-052** | Detailed statblock viewer | 3 | 3 | – |  | Creatures & Characters | play | enables | none | REQ-050 | done |  |
-| **REQ-053** | Statblock as composition of RuleElement references (traits, feats, actions) | 2 | 5 | later |  | Creatures & Characters, Rules & Reference | prep | enables | none | REQ-046, REQ-089 | done |  |
-| **REQ-054** | Fightingtype field (MCDM roles) on statblock | 2 | 1 | full | 1 | Creatures & Characters | prep | enables | none | REQ-046 | done | Term layer provides German role names |
-| **REQ-055** | Inline trait reuse & variant creation while typing | 3 | 3 | – |  | Creatures & Characters, Rules & Reference | prep | efficiency | none | REQ-053, REQ-008 | defined |  |
-| **REQ-056** | Creature builder with suggestions (origin + fightingtype filter, grants applied via effects) | 4 | 13 | – |  | Creatures & Characters | prep | enables | none | REQ-053, REQ-095 | defined |  |
-| **REQ-057** | Point-buy ability setting | 4 | 2 | – |  | Creatures & Characters | prep | efficiency | none | REQ-056 | defined |  |
-| **REQ-058** | Monster scaling | 5 | 5 | – |  | Creatures & Characters | prep | enables | none | REQ-056 | idea |  |
-| **REQ-059** | Creature knowledge facts: gated ContentBlocks on type / species / faction | 3 | 3 | – |  | Creatures & Characters, World & Lore | play | enables | low | REQ-011, REQ-040 | done | Lore reusable, unlock state per campaign |
-| **REQ-060** | Companions / summons as regular creatures via companionOf + overrides | 3 | 2 | – |  | Creatures & Characters, Player Experience | both | enables | none | REQ-046, REQ-009 | in progress |  |
-| **REQ-061** | Creature relations (creature ↔ creature / faction) with relation type | 2 | 2 | minimal | 1 | Creatures & Characters, World & Lore | prep | enables | none | REQ-046 | done |  |
-| **REQ-062** | Multi-system statblock extension point (system reference on composition) | 5 | 8 | – |  | Creatures & Characters, Content Backbone | prep | enables | none | REQ-053 | idea | Long-term only |
-| **REQ-063** | Character sheet: General tab (HP, temp, hit dice, death saves, AC, conditions, resources, rest) | 2 | 5 | full | 5 | Player Experience | play | enables | none | REQ-046, REQ-026 | done |  |
-| **REQ-064** | Inventory as list: coins / attuned / worn / carried / stored / deeds | 2 | 3 | full | 3 | Player Experience | play | enables | none | REQ-046 | done |  |
-| **REQ-065** | Tile-based visual inventory (alternative view over same data) | 4 | 8 | – |  | Player Experience | play | enables | low | REQ-064 | done | Uses the existing icon library |
-| **REQ-066** | Character sheet: Combat tab (initiative, actions, companions) | 3 | 5 | – |  | Player Experience | play | enables | none | REQ-063, REQ-060 | done |  |
-| **REQ-067** | Character sheet: Spellcasting tab (slots/points, concentration, active spells, list) | 3 | 5 | – |  | Player Experience | play | enables | none | REQ-063, REQ-092 | defined |  |
-| **REQ-068** | Character sheet: Freeplay tab | 4 | 3 | – |  | Player Experience | play | enables | none | REQ-063 | defined |  |
-| **REQ-069** | Phone-first responsive layout for all player-facing views | 1 | 3 | full | 3 | Player Experience, Cross-cutting | play | enables | none | – | in progress | Hard criterion for component library (AD-04) |
-| **REQ-070** | Local dice roller (selector, modifiers, results) | 2 | 2 | full | 2 | Player Experience, Live Play | play | enables | none | – | done |  |
-| **REQ-071** | Shared rolls & roll log per session | 4 | 3 | – |  | Player Experience, Live Play | play | enables | none | REQ-070, REQ-116 | done |  |
-| **REQ-072** | Player notes as owned documents | 2 | 2 | full | 2 | Player Experience | both | enables | none | REQ-041 | defined |  |
-| **REQ-073** | Custom / reorderable sheet layout | 4 | 5 | – |  | Player Experience | play | efficiency | none | REQ-063 | dropped |  |
-| **REQ-074** | Quicklinks: campaign, quests, party, session | 3 | 1 | – |  | Player Experience | play | efficiency | none | REQ-075 | in progress |  |
-| **REQ-075** | Campaign as root NarrativeContainer with attached CampaignSettings, WorldDate, KnowledgeState | 1 | 3 | minimal | 2 | Campaign & Sessions | both | enables | none | REQ-001, REQ-024 | done | Composition = aggregate; complexity divided into attached objects |
-| **REQ-076** | NarrativeContainer hierarchy with DM-definable container types (Arc, Session, Scene, Kapitel…) | 1 | 3 | minimal | 1 | Campaign & Sessions | prep | enables | none | REQ-075 | done |  |
-| **REQ-077** | Session documents with planned vs occurred encounters and reports | 2 | 3 | minimal | 2 | Campaign & Sessions | both | enables | none | REQ-076, REQ-085 | done |  |
-| **REQ-078** | Session prep cockpit: container view aggregating scenes, quests, storylines, encounters, notes | 2 | 5 | minimal | 2 | Campaign & Sessions | prep | efficiency | none | REQ-077 | done | Strongest prep-time value of the area |
-| **REQ-079** | DM session quick actions: grant knowledge, reveal block, mark encounter occurred — one tap | 2 | 3 | minimal | 2 | Campaign & Sessions, Live Play | play | efficiency | none | REQ-040, REQ-078 | in progress |  |
-| **REQ-080** | Readaloud blocks unlocking for players after session (time/event-based grant) | 3 | 2 | – |  | Campaign & Sessions | play | enables | none | REQ-012, REQ-040 | defined |  |
-| **REQ-081** | Reputation & relationship system: interaction tags propagate NPC → faction → city with renown thresholds and status | 4 | 8 | – |  | World & Lore, Campaign & Sessions | play | enables | none | REQ-030 | dropped |  |
-| **REQ-082** | Quests with tasks, rewards, restrictions; player-facing quest board with gated GM parts | 3 | 3 | – |  | Campaign & Sessions | both | efficiency | none | REQ-011 | done | Deliberately non-crucial |
-| **REQ-083** | Player-created quests and personal goals | 3 | 1 | – |  | Campaign & Sessions, Player Experience | play | enables | none | REQ-082, REQ-041 | defined |  |
-| **REQ-084** | Ideas inbox per campaign/player and clean vs planning view toggle | 3 | 3 | – |  | Campaign & Sessions | prep | efficiency | none | REQ-023, REQ-026 | done |  |
-| **REQ-085** | Encounter entity: links notes, maps, NPCs, loot tables; attachable to any container level; dice-table semantics | 2 | 3 | minimal | 2 | Content Backbone, Campaign & Sessions, Live Play | prep | enables | none | REQ-001, REQ-076 | done | Backbone core set |
-| **REQ-086** | Party view: passive perception, feats, inventory overview | 3 | 3 | – |  | Campaign & Sessions, Live Play | play | efficiency | none | REQ-064 | in progress |  |
-| **REQ-087** | Calendar module: months, moons, holidays, time-of-day widget with triggers, lore coupling | 5 | 13 | – |  | Campaign & Sessions, World & Lore | both | enables | high | REQ-025 | idea | Parked |
-| **REQ-088** | Bulk actions: knowledge / permission assignment | 3 | 3 | – |  | Campaign & Sessions, Platform & Access | prep | efficiency | none | REQ-040 | in progress |  |
-| **REQ-089** | RuleElement reference objects: structured text, tags, optional effects/constraints, rawContent | 1 | 2 | full | 2 | Rules & Reference, Content Backbone | both | enables | none | REQ-018, REQ-019 | done |  |
-| **REQ-090** | Rule import from Obsidian markdown and 5e.tools data | 2 | 3 | full | 3 | Rules & Reference | prep | efficiency | none | REQ-089 | dropped |  |
-| **REQ-091** | Rules browser: filtered, grouped, searchable, with layer origin in scope sidebar | 2 | 5 | minimal | 3 | Rules & Reference | both | efficiency | none | REQ-089, REQ-044 | done | 5e.tools is the benchmark |
-| **REQ-092** | Spell entities with layer-scoped attached rule sets (5e 2014 / 2024 / homebrew) | 2 | 3 | minimal | 1 | Rules & Reference | both | enables | none | REQ-089, REQ-094 | defined | Data on entity, meaning in rule |
-| **REQ-093** | Rule engine per system evaluating rules against entity data (constraints, terms) | 5 | 13 | – |  | Rules & Reference, Content Backbone | play | enables | none | REQ-017, REQ-095 | idea | Multi-system |
-| **REQ-094** | Entity ↔ rule attachment as layer-scoped relation | 2 | 3 | later |  | Rules & Reference, Content Backbone | prep | enables | none | REQ-005, REQ-089 | done |  |
-| **REQ-095** | Effects interpreter for grants (first consumer: creature builder) | 4 | 8 | – |  | Rules & Reference, Creatures & Characters | prep | enables | none | REQ-018 | defined |  |
-| **REQ-096** | Constraint interpreter (first consumer: settlement / building validation) | 5 | 8 | – |  | Rules & Reference, World & Lore | prep | enables | none | REQ-018 | idea |  |
-| **REQ-097** | Spell lists as relations (class ↔ spell) | 3 | 2 | – |  | Rules & Reference | prep | enables | none | REQ-092 | defined |  |
-| **REQ-098** | Sub-5-second rule lookup during play | 2 | 2 | full | 2 | Rules & Reference, Live Play | play | efficiency | none | REQ-091 | done | The requirement that justifies the area |
-| **REQ-099** | Pinnable rules: bookmark object (user + context + rule) | 3 | 1 | – |  | Rules & Reference, Live Play | play | efficiency | none | REQ-091 | done |  |
-| **REQ-100** | World as scope and layer (members, owns content, activated by campaigns) | 1 | 2 | minimal | 1 | World & Lore, Platform & Access | prep | enables | none | REQ-004, REQ-035 | in progress |  |
-| **REQ-101** | Lore articles: categories, composed of ContentBlocks | 2 | 3 | minimal | 2 | World & Lore | prep | enables | none | REQ-011 | done |  |
-| **REQ-102** | Contextual article rendering per stack: knowledge, time, scope resolved at read time | 2 | 5 | minimal | 2 | World & Lore, Content Backbone | both | enables | none | REQ-006, REQ-011 | in progress | Player wiki grows automatically |
-| **REQ-103** | Locations: hierarchy via parent, type, biome | 2 | 2 | minimal | 1 | World & Lore | prep | enables | none | REQ-001 | done |  |
-| **REQ-104** | Factions: type/subtype taxonomy, relations | 2 | 2 | minimal | 1 | World & Lore | prep | enables | none | REQ-001 | done |  |
-| **REQ-105** | NPC directory as filtered view over creatures with relations | 3 | 2 | – |  | World & Lore, Creatures & Characters | both | efficiency | none | REQ-061 | done |  |
-| **REQ-106** | Events & timelines sorted by WorldDate | 3 | 3 | – |  | World & Lore | prep | enables | none | REQ-024 | done |  |
-| **REQ-107** | Pantheons / deities as article subtype | 4 | 1 | – |  | World & Lore | prep | enables | none | REQ-101 | defined |  |
-| **REQ-108** | Campaign-specific lore divergence via campaign-scoped blocks and overrides | 3 | 3 | – |  | World & Lore | prep | enables | none | REQ-102, REQ-009 | done | Likely trigger for AD-14 |
-| **REQ-109** | Player-authored ContentBlocks with per-view block-type whitelist | 3 | 3 | – |  | World & Lore, Platform & Access | both | enables | none | REQ-011, REQ-041 | in progress | City page: poems, songs, reviews |
-| **REQ-110** | Bibliothek von Tan'Jit: illustrated navigation presentation layer over articles | 5 | 8 | – |  | World & Lore | play | enables | high | REQ-101 | idea |  |
-| **REQ-111** | Boards: user-owned configurable views with tabs/pages and widgets; DM and player boards share the mechanism | 2 | 8 | minimal | 4 | Live Play | both | enables | low | REQ-026 | done | Multi-monitor = multiple windows on board pages. v1: one board per user, no pages (AD-19 board-first) |
-| **REQ-112** | Widget: reference box holding multiple open articles with inner tabs | 2 | 3 | later |  | Live Play | play | efficiency | none | REQ-111 | dropped |  |
-| **REQ-113** | Widget: notes | 2 | 2 | later |  | Live Play | play | efficiency | none | REQ-111 | defined |  |
-| **REQ-114** | Widget: quick-create (creates entries in the campaign layer inline) | 2 | 3 | later |  | Live Play | play | efficiency | none | REQ-111, REQ-049 | in progress |  |
-| **REQ-115** | Widget: initiative tracker — session-aware, conditions with durations, damage attributed to current actor by default | 2 | 5 | minimal | 3 | Live Play | play | enables | none | REQ-111, REQ-116 | done | Smart defaults, quiet overrides |
-| **REQ-116** | Session state objects (initiative, now-playing, active scene, party note) + realtime channel per session | 2 | 8 | later |  | Live Play, Content Backbone | play | enables | none | REQ-001 | done | Resolves AD-11; multi-tab per user falls out |
-| **REQ-117** | Stewardship: write permission on a state object per user, GM override configurable | 3 | 3 | – |  | Live Play, Platform & Access | play | efficiency | none | REQ-116 | done |  |
-| **REQ-118** | Widget: encounter runner — instantiate participants, roll random entries, raw statblocks trackable | 3 | 5 | – |  | Live Play | play | enables | none | REQ-115, REQ-085 | done | Improved Initiative as benchmark |
-| **REQ-119** | Player boards | 3 | 3 | – |  | Live Play, Player Experience | play | enables | none | REQ-111 | defined |  |
-| **REQ-120** | Play log: persist state events (actor, target, delta) | 3 | 3 | – |  | Live Play | play | enables | none | REQ-116 | in progress |  |
-| **REQ-121** | Statistics widget: kills, damage per character, monsters faced, records | 4 | 3 | – |  | Live Play | play | enables | none | REQ-120 | defined |  |
-| **REQ-122** | Widget: party overview | 3 | 2 | – |  | Live Play | play | efficiency | none | REQ-086 | done |  |
-| **REQ-123** | Widget: timers | 3 | 1 | – |  | Live Play | play | efficiency | none | REQ-111 | defined |  |
-| **REQ-124** | Widget: quest board | 3 | 2 | – |  | Live Play | play | efficiency | none | REQ-082 | done |  |
-| **REQ-125** | Widget: random tables & generators (names, shops, loot, cities) | 3 | 5 | – |  | Live Play | play | efficiency | low | REQ-111 | done |  |
-| **REQ-126** | Widget: sound — embed/link external tool, native now-playing state only | 4 | 2 | – |  | Live Play, Media & Assets | play | enables | high | REQ-116 | in progress | Soundtale as reference |
-| **REQ-127** | Native soundboard / music engine | 5 | 13 | – |  | Live Play, Media & Assets | play | enables | high | REQ-126 | idea | Late feature |
-| **REQ-128** | Combat player view: own initiative, conditions, health comments | 3 | 3 | – |  | Live Play, Player Experience | play | enables | none | REQ-115 | in progress |  |
-| **REQ-129** | Chatbot: rules Q&A, facts, quick edit | 5 | 8 | – |  | Live Play | play | efficiency | none | REQ-028 | idea |  |
-| **REQ-130** | Map entity: image asset, scale, grid config (size, offset, square/hex), link to Location | 3 | 2 | – |  | Maps | prep | enables | low | REQ-021 | done |  |
-| **REQ-131** | Nested maps: parent + anchor region, zoom-through transitions world → region → city → district → battlemap | 3 | 8 | – |  | Maps | both | enables | high | REQ-130 | done |  |
-| **REQ-132** | Level lock: pin current map level while zooming | 3 | 1 | – |  | Maps | play | efficiency | none | REQ-131 | defined |  |
-| **REQ-133** | Static tokens: reference markers linked to entities (pin opens article) | 3 | 3 | – |  | Maps | prep | enables | low | REQ-130, REQ-013 | done |  |
-| **REQ-134** | Static tokens: scenery / props as part of prepared map state | 4 | 3 | – |  | Maps | prep | enables | low | REQ-133 | done |  |
-| **REQ-135** | Play tokens: session- or campaign-scoped state objects (combat positions, temporary changes) | 3 | 5 | – |  | Maps, Live Play | play | enables | none | REQ-116, REQ-130 | in progress |  |
-| **REQ-136** | Party and quest markers on region maps (campaign-scoped play tokens) | 3 | 2 | – |  | Maps | play | enables | none | REQ-135 | done |  |
-| **REQ-137** | Overlays: query-driven highlights (faction locations, biomes, routes) | 4 | 5 | – |  | Maps, World & Lore | both | efficiency | none | REQ-131 | in progress |  |
-| **REQ-138** | Map tiling for smooth zoom (derived asset) | 4 | 5 | – |  | Maps, Media & Assets | play | efficiency | none | REQ-022 | done |  |
-| **REQ-139** | Fog of war | 4 | 8 | – |  | Maps | play | enables | high | REQ-135 | done |  |
-| **REQ-140** | Light & line of sight with walls | 5 | 13 | – |  | Maps | play | enables | high | REQ-139 | done | Hardest single feature |
-| **REQ-141** | Map effects & animations (conditions, weather) | 5 | 8 | – |  | Maps | play | enables | high | REQ-135 | idea |  |
-| **REQ-142** | Drawing, stamps, brushes, layers on maps | 5 | 8 | – |  | Maps | both | enables | high | REQ-130 | idea |  |
-| **REQ-143** | Map editor / full map creation | 5 | 13 | – |  | Maps | prep | enables | high | REQ-142 | idea |  |
-| **REQ-144** | Initiative indicator on battlemap (current / next) | 4 | 2 | – |  | Maps, Live Play | play | efficiency | none | REQ-115, REQ-135 | done |  |
-| **REQ-145** | Asset service implementation: app-managed storage (icons, portraits, thumbnails) | 1 | 3 | minimal | 2 | Media & Assets | both | enables | none | REQ-021 | in progress |  |
-| **REQ-146** | NAS / Nextcloud backend for large assets (mount vs WebDAV → AD-15) | 2 | 5 | later |  | Media & Assets | prep | enables | none | REQ-021 | defined |  |
-| **REQ-147** | Image upload, portraits, icons | 2 | 2 | full | 2 | Media & Assets | prep | enables | none | REQ-145 | in progress |  |
-| **REQ-148** | External URL assets | 3 | 1 | – |  | Media & Assets | prep | enables | none | REQ-021 | done |  |
-| **REQ-149** | PDF viewer with page-anchor jump from SourceRef | 4 | 5 | – |  | Media & Assets, Rules & Reference | both | efficiency | none | REQ-020, REQ-146 | defined |  |
-| **REQ-150** | Audio asset storage | 5 | 2 | – |  | Media & Assets | prep | enables | none | REQ-146 | idea |  |
-| **REQ-151** | 3D file viewer / repository | 5 | 8 | – |  | Media & Assets | prep | enables | none | REQ-146 | idea |  |
-| **REQ-152** | OCR / PDF import to structured content with editable raw output (MonsterBox-style) | 5 | 13 | – |  | Media & Assets, Creatures & Characters | prep | efficiency | none | REQ-019, REQ-149 | idea |  |
-| **REQ-153** | German UI output with i18n-ready string handling | 2 | 2 | full | 2 | Cross-cutting | both | enables | none | REQ-016 | dropped |  |
-| **REQ-154** | Deployment: container(s) on NAS, reverse proxy, TLS, remote player access | 1 | 3 | full | 3 | Cross-cutting | both | enables | none | – | done | AD-12 |
-| **REQ-155** | Backups of database and app-managed assets | 2 | 2 | full | 2 | Cross-cutting | both | enables | none | REQ-154 | done |  |
-| **REQ-156** | Visibility inheritance container → children: `inherit: true` on Visibility, evaluated by Resolution | 2 | 2 | minimal | 1 | Platform & Access, Content Backbone | both | enables | none | REQ-038 | dropped | Closes registry open question 4; rule model = D7 |
-| **REQ-157** | Canvas boards: free positioning, scaling and arrangement of entity placements on a board (Figma/Canva-style), beyond the widget grid | 2 | 8 | minimal | 4 | Live Play | both | enables | low | REQ-111 | done | Placements live in the board ViewConfig, not the layer system (D12) |
-| **REQ-158** | Placement rendering: each placement resolves to a facet/renderer via the display resolution; explicit per-placement override always wins | 2 | 3 | minimal | 2 | Live Play | both | enables | none | REQ-157, REQ-164 | done |  |
-| **REQ-159** | Frames / viewpoint anchors: named canvas viewports (position, zoom depth, target facet, visible layers), persisted in the board config | 3 | 3 | – |  | Live Play | both | enables | low | REQ-157 | done |  |
-| **REQ-160** | Anchor quick navigation: jump between anchors (list, hotkeys) — session notes → map → house rules without leaving the board | 3 | 2 | – |  | Live Play | play | efficiency | none | REQ-159 | in progress |  |
-| **REQ-161** | Display resolution as priority system: entity profile proposes, board rules (per interface / attribute value) decide, user overrides; placement override wins; ties → board rule; works board-only | 2 | 5 | stub | 1 | Live Play, Content Backbone | both | enables | none | REQ-164, REQ-026 | done | Smart defaults, quiet overrides, three levels (D13) |
-| **REQ-162** | Semantic zoom: zoom depth maps onto facets (compact list of weapon properties → full detail on zoom-in); anchors may store a target facet | 4 | 5 | – |  | Live Play | play | enables | none | REQ-159, REQ-161 | defined | Later feature |
-| **REQ-163** | Opaque IDs: no semantics (pack/type/version) in peg IDs; provenance via source metadata (`source_pack`, `source_version`); copying only as explicit fork with `forkedFrom` | 1 | 1 | full | 1 | Content Backbone | both | enables | none | REQ-001 | done | Convention that guards the layer mechanics (D15) |
-| **REQ-164** | Facets (Darstellungsstufen): system-wide set short/description/full/image/token/map/link, reusable across boards, sheets, statblocks, notes; `renderer_def` analogous to `projection_def` | 2 | 3 | minimal | 2 | Content Backbone, Live Play | both | enables | none | REQ-026 | dropped | D11/D14. v1: short/full/image/token |
-| **REQ-165** | Board placements beyond content entities: assets (images, icons), geometric/mathematical shapes as inline canvas objects, and tool objects (interactive widgets such as creature creator or generators) on the canvas | 2 | 3 | minimal | 2 | Live Play, Media & Assets | both | enables | none | REQ-157, REQ-145 | done | Placement kinds entity/asset/shape/widget (D16); v1 = assets + basic shapes, tool placements later |
-| **REQ-166** | Board-first authoring: create entities directly on the canvas (into the campaign layer), choose their facet and place them in one flow | 2 | 2 | minimal | 2 | Live Play | both | enables | none | REQ-157, REQ-049 | in progress | Canvas counterpart of quick-create (REQ-114); AD-19 |
-| **REQ-167** | Print & export outputs: item cards, creature cards, character sheets (PDF), maps (image/print) rendered from facets — the facet defines *what* appears, the medium (screen/print/pdf/image) *how*; card-sheet assembly (n cards per page) as export config | 3 | 5 | – |  | Media & Assets, Content Backbone | prep | enables | low | REQ-164, REQ-021 | defined | Renderer templates per medium; Export engine renders via `renderer_def` (D17) |
-| **REQ-168** | Point-crawl travel: node/edge graph attached to a Location, with per-edge sensory read-aloud text and per-node arrival state | 3 | 5 | – | – | Maps, World & Lore | both | enables | none | REQ-103 | done | The per-edge "signal" text is the part that makes it run at the table — what the party perceives before choosing a direction — Stand: `route` mit signal, `Place.state` |
-| **REQ-169** | Exploration state ladder per map feature (verborgen → entdeckt → erkundet) with cascade: exploring a node reveals its edges as discovered | 3 | 3 | – | – | Maps, Content Backbone | play | enables | none | REQ-168, REQ-010 | done | A progressive-disclosure dimension, adjacent to Visibility but not the same thing — Stand: `Place.state` hidden · discovered · explored |
-| **REQ-170** | Travel resource cadence: consumables consumed every N nodes or watches, configurable per travel ruleset | 4 | 2 | – | – | Live Play | play | enables | none | REQ-168 | done | Stand: Einstellungen `travel*`, `Party.sinceRation/sinceLight` |
-| **REQ-171** | Per-node action budget: one action per character per node from a configurable list (sneak, craft, forage, rest) | 4 | 3 | – | – | Live Play | play | enables | none | REQ-168 | done | Stand: `Party.actions`: Figur → Regelartikel `kind: travel` |
-| **REQ-172** | Weighted encounter tables per region, with per-location type constraints and safety states that restrict the pool | 3 | 3 | – | – | Campaign & Sessions, Live Play | both | efficiency | none | REQ-085 | done | Makes REQ-085's "dice-table semantics" concrete. Weights per region across encounter kinds; a location may allow only some kinds; a secured location rolls nothing — Stand: `entry.weight`, `requiresTag`, `tableFor` |
-| **REQ-173** | World-state decay between sessions: roll to degrade secured locations, weighted by adjacency to faction territory | 4 | 3 | – | – | Campaign & Sessions | prep | enables | none | REQ-172 | idea | The old app's "Zeitsprung". The map changes without the DM authoring the change |
-| **REQ-174** | Parameterised rule templates: `{VAR}` placeholders in RuleElement text, bound per reference; resolution order reference → entity → campaign register | 2 | 3 | – | – | Rules & Reference, Content Backbone | prep | efficiency | none | REQ-089 | done | Without it, `composedOf` (REQ-053) only reuses rules needing no variation — which is almost none. One "Weapon Attack" rule, bound differently by every statblock — Stand: `{VAR}`: Kante → Artikel → Kampagnenwerte → Register |
-| **REQ-175** | Inline rule reference panel: text scanned against RuleElement names and aliases, matches shown as an expandable block in the view | 3 | 2 | – | – | Rules & Reference | play | efficiency | none | REQ-013, REQ-089 | done | Serves REQ-098's sub-5-second lookup without anyone having to author links — Stand: `Rule.autolink` |
-| **REQ-176** | Similarity suggestions on create: fuzzy name/text matching proposes existing entities before a duplicate is made; promote-to-reference in one action | 3 | 3 | – | – | Content Backbone | prep | efficiency | none | REQ-013 | in progress | REQ-013 matches names and aliases; near-misses are what actually cause duplicates — Stand: Vorschläge nach Name und Alias; keine Ähnlichkeit |
-| **REQ-177** | Field-level knowledge gating: grant individual components or fields of an entity, not only ContentBlocks | 2 | 3 | – | – | Platform & Access | both | enables | none | REQ-040 | done | `KnowledgeRequirement` currently attaches only to ContentBlock. The old app gates per field and uses it constantly — Stand: `Information.fields` je Feld und je Eintrag |
-| **REQ-178** | Cover names: an entity may carry a player-facing alias shown while its identity is ungranted | 3 | 1 | – | – | World & Lore, Platform & Access | play | enables | none | REQ-177 | done | Cheap, and it is what makes partial revelation playable rather than just hiding things — Stand: `Identity.cover` |
-| **REQ-179** | Known-unknowns disclosure: a gated view may reveal the count of withheld facts without revealing them | 4 | 1 | – | – | Platform & Access | play | enables | none | REQ-059 | done | "…und 3 weitere Eigenheiten". Tells players there is more to learn, which drives investigation — Stand: „…and 3 more things" |
-| **REQ-180** | Narrative seeds: planted threads with category (Backstory · Geheimnis · Faden · Idee · Versprechen · Konsequenz) and status (offen · gepflanzt · aufgegangen · verworfen), bound to a character and the session planted in | 3 | 3 | – | – | Campaign & Sessions | both | enables | none | REQ-023 | idea | Distinct from REQ-084 ideas inbox and REQ-023 status: this tracks *payoff*, per player. The single most-used prep feature of the old app — Stand: keine Art und kein Feld für gepflanzte Fäden |
-| **REQ-181** | Ad-hoc fields on a single entity, promotable into the interface definition | 2 | 3 | – | – | Content Backbone | prep | efficiency | none | REQ-001 | done | **Conflicts with D2** (`allows` strict). Suggested resolution: unpromoted fields live in a reserved component; promotion is an explicit action that writes the `interface` row — Stand: `adhoc` mit Befördern |
-| **REQ-182** | Relation inverse labels in `relation_def`, so one stored edge renders correctly from both ends | 2 | 1 | – | – | Content Backbone | both | enables | none | REQ-001 | done | Schema gap in `meta/relation`. Gläubiger ↔ Schuldner, Anführer ↔ Untergebene/r. Cheap now, painful once data exists — Stand: `inverseLabel` |
-| **REQ-183** | Party-owned inventory as a shared container distinct from character inventories | 3 | 2 | – | – | Player Experience | both | enables | none | REQ-064 | done | REQ-064 is per-character, REQ-086 is an overview — neither owns the party purse — Stand: `carries` von `Party` |
-| **REQ-184** | Crafting: recipes with material inputs, skill checks and DC, time, and output; consumption on completion | 4 | 5 | – | – | Rules & Reference, Player Experience | both | enables | none | REQ-064, REQ-089 | done | The campaign's essence/reagent/scrap economy. Currently a catalogue with no mechanic — Stand: `Recipe`, `needs`, `yields`, `crafting` |
-| **REQ-185** | Non-coin economies: barter and alternative currency ladders per region | 5 | 2 | – | – | World & Lore | play | enables | none | – | idea | Unterwacht trades salt → hardtack → salted meat rather than coin |
-| **REQ-186** | Nested loot tables: a table entry may reference another table, with cycle protection | 3 | 2 | – | – | Live Play | both | efficiency | none | REQ-085 | done | `LootTable.yields → Item {weight, range}` is currently flat — Stand: `entry` auf eine Tabelle |
-| **REQ-187** | Table display mode: a shared read-only presentation view for a screen at the table, distinct from per-player accounts | 3 | 2 | – | – | Live Play, Cross-cutting | play | enables | none | REQ-038 | idea | Every access requirement (REQ-031–036) assumes accounts; a beamer or table tablet has none |
-| **REQ-188** | Cross-type "unfinished" overview: everything at status idea/planned across all interfaces, with jump-to and bulk status change | 3 | 2 | – | – | Campaign & Sessions | prep | efficiency | none | REQ-023, REQ-088 | done | Stand: Unfinished |
-| **REQ-189** | Aggregated todo list across containers and entities (campaign, arc, session, quest, NPC) | 3 | 2 | – | – | Campaign & Sessions | prep | efficiency | none | REQ-078 | done | Stand: `Todos`, gesammelt |
-| **REQ-190** | Quick capture during play: one field that files a seed, todo or idea against the current session without leaving the view | 3 | 2 | – | – | Live Play | play | efficiency | none | REQ-180 | done | Narrower and cheaper than REQ-114's quick-create widget, and used far more often — Stand: Schnellerfassung an der Sitzung |
-| **REQ-191** | Fail-closed persistence: a failed load or migration must never be overwritten by a later autosave; the unreadable state is preserved and downloadable | 1 | 2 | – | – | Cross-cutting | both | enables | none | – | done | The lesson that nearly cost the campaign. In the old app a load error installs defaults and the autosave then overwrites everything 700 ms later. Not covered by REQ-155 backups — Stand: Fail-closed im Prototyp |
-| **REQ-192** | Optimistic concurrency for non-realtime edits: per-entity revision check; the second writer is rejected with a merge prompt rather than silently winning | 2 | 3 | – | – | Cross-cutting, Platform & Access | both | enables | none | REQ-001 | in progress | REQ-116 covers realtime session state; ordinary two-device editing is unspecified — Stand: Prototyp; Server ohne Revisionsprüfung |
-| **REQ-193** | Territory overlays rasterised onto the map grid from shapes (rect, circle, ellipse, polygon) | 4 | 3 | – | – | Maps | both | efficiency | none | REQ-130 | done | Refines REQ-137, which is query-driven highlights rather than authored areas — Stand: `territory` |
-| **REQ-194** | Mobile navigation: the user chooses which entries occupy the phone bottom bar | 4 | 1 | – | – | Cross-cutting | both | efficiency | none | REQ-069 | idea | Refines REQ-069 |
-| **REQ-195** | Statblock export back to Obsidian markdown, preserving `{VAR}` placeholders unresolved | 4 | 2 | – | – | Rules & Reference, Media & Assets | prep | efficiency | none | REQ-174, REQ-029 | idea | Optional — sits against the decision that Obsidian is import-only. Listed because the old app's export resolves variables into literals, and that loss is permanent |
-| **REQ-196** | Sitzungsmitschnitt: Audio einer Sitzung aufnehmen oder eine fertige Aufnahme anhängen, als Asset am Sitzungs-Container, mit Startzeit und Kapitelmarken | 4 | 5 | – | – | Campaign & Sessions, Media & Assets | play | efficiency | none | REQ-021, REQ-077, REQ-145 | idea | Aufnahme im Browser oder Upload aus einem Recorder. Grosse Dateien gehören auf den NAS-Backend (REQ-146), nicht in die App-Ablage |
-| **REQ-197** | Transkription und Recap-Entwurf: Mitschnitt transkribieren, am Sitzungsverlauf ausrichten und daraus einen Recap-Entwurf erzeugen, den die SL bearbeitet | 4 | 8 | – | – | Campaign & Sessions | prep | efficiency | none | REQ-196, REQ-077 | idea | Der Entwurf ist nie das Ergebnis — die SL kürzt und färbt. Passagen sollen sich als ContentBlock herauslösen lassen (readaloud für Vorlesetext, fact für Festgestelltes), damit der Recap gleich Wissen freigeben kann (REQ-080) |
-| **REQ-198** | Sprecherzuordnung im Transkript: Abschnitte einer Figur oder der SL zuordnen, damit „was hat meine Figur mitbekommen“ beantwortbar wird | 5 | 5 | – | – | Campaign & Sessions | prep | efficiency | low | REQ-197, REQ-040 | idea | Erst sinnvoll, wenn die Wissensfreigabe steht — dann aber die eigentliche Auszahlung: der Recap weiss, wer dabei war |
-| **REQ-199** | Produktionsdaten nach preprod spiegeln: regelmässiger Abzug aus der Prod-Datenbank in die Testinstanz, damit gegen echte Inhalte getestet wird | 3 | 3 | – | – | Cross-cutting | prep | efficiency | none | REQ-154, REQ-155 | done | Einrichtung: `pg_dump` aus prod, `pg_restore` nach preprod, nach Plan. Zwei Dinge daran sind Entscheidungen, keine Technik: preprod wird dabei **überschrieben** — was dort an Testständen liegt, ist weg, also muss der Zeitpunkt bekannt sein; und sobald Spielerzugänge (REQ-025-Token) oder Mitschnitte (REQ-196) existieren, gehören die **nicht** mitgespiegelt. Tokens sind Laufzeitzustand, keine Kampagnendaten, und liegen darum ohnehin ausserhalb der Datenbank; für alles andere braucht der Abzug eine Ausschlussliste — Stand: Rezept in Betrieb.md, ohne Konten; `members` nicht in der Ausfuhr |
-| **REQ-200** | Chat: Fäden zwischen SL und einzelnen Spielern und zwischen Spielern untereinander, an der Kampagne und nicht an einer Sitzung | 3 | 5 | – | – | Campaign & Sessions, Player Experience, Platform & Access | both | enables | none | REQ-031, REQ-116 | idea | Zwischen den Sitzungen wird geredet, und zwar dort, wo es gerade geht — und drei Wochen später weiss niemand mehr, in welchem Messenger die Abmachung stand. Ein Faden hängt an der Kampagne, nicht an der Sitzung, weil das Gespräch die Sitzung überlebt. **Nachrichten sind keine Artikel**: als Artikel geführt, ersäufte die erste Woche das Kompendium und jede „hä?"-Zeile stünde für immer im Register. Sie gehören in einen eigenen Speicher, wie Konten und Sitzungen (REQ-025), und was daraus Kampagneninhalt werden soll, wird ausdrücklich befördert — siehe REQ-201. Echtzeit über denselben Kanal wie Anwesenheit und Würfe (REQ-116), aber **gespeichert und nicht nur gesendet**: was nur im Raum stand, ist weg, sobald jemand den Reiter schliesst |
-| **REQ-201** | Aus einer Stelle im Chat wird Kampagneninhalt: eine Nachricht (oder ein markierter Abschnitt) wird zur Idee, zum Todo, zum Faden oder zu einem ContentBlock an einem Artikel, mit Rückverweis auf die Stelle | 3 | 3 | – | – | Campaign & Sessions, Content Backbone | both | efficiency | none | REQ-200, REQ-084, REQ-180, REQ-190 | idea | **Das ist der eigentliche Grund für REQ-200.** Im Gespräch entstehen die Ideen; was fehlt, ist der Weg vom Satz zum Eintrag, der nicht durch Abtippen führt. Dieselbe Bewegung wie die Schnellerfassung am Tisch (REQ-190), nur aus einem Faden statt aus der Sitzung. Der Rückverweis zeigt auf die Stelle und **kopiert das Gespräch nicht mit**: sonst stünde derselbe Text an zwei Orten, und der eine wäre bald falsch |
-| **REQ-202** | Chats stehen ausserhalb von Abzug, Ausfuhr und Recap: ein Faden zwischen zwei Spielern gehört weder in den Prod-nach-preprod-Abzug noch in eine Kampagnenausfuhr, und die SL liest nicht mit | 2 | 2 | – | – | Cross-cutting, Platform & Access | both | enables | none | REQ-200, REQ-199, REQ-155, REQ-029 | idea | Dieselbe Trennung wie bei den Spielerzugängen: Laufzeitzustand und Privates sind keine Kampagnendaten. Zwei Fallen, und beide fallen erst auf, wenn es zu spät ist — ein Abzug nach preprod nähme private Fäden mit (REQ-199 braucht die Ausschlussliste), und eine Ausfuhr „alles" legte sie in eine Datei, die jemand weitergibt. Dass die SL in einem Faden zwischen Spielern **nicht** mitliest, ist eine Zusage und keine Einstellung: eine, die man umlegen kann, ist keine |
-| **REQ-203** | Fraktionen mit Rängen: `Faction.ranks` als Leiter (niedrigster zuerst), der Rang eines Mitglieds an der Kante `memberOf`, und eine Wissenszuteilung an die Fraktion darf einen Mindestrang nennen — was der Zirkel weiss, weiss der Novize noch nicht | 2 | 2 | – | – | World & Lore, Platform & Access | both | enables | none | REQ-040, REQ-177 | done | **Eine Fraktion weiss nichts, ihre Mitglieder wissen.** Entschieden am 7.10. (Abgleich A7): `memberOf` zählt wie `memberOfParty` als Schritt vom Betrachter zu seinen Trägern; `hiddenFrom`/`revealedTo` meinen jedes Mitglied. Ohne Rang an der Zuteilung jedes Mitglied; ein Mitglied ohne Rang steht unter der untersten Sprosse; ein Rang ausserhalb der Leiter schliesst nichts auf. Siehe docs/Wissen.md. — Stand: `Faction.ranks`, `memberOf.props.rank`, `knownBy.props.rank` als Mindestrang (7.10., A7) |
-| **REQ-204** | Spielleiter-Schirm je Kampagne: Fenster (mehrere Bildschirme als Browser-Reiter), darin Plätze, die ein Board oder ein Werkzeug zeigen; zuklappbar, umstellbar, zwischen Fenstern verschiebbar | 3 | 5 | – | – | Live Play | play | efficiency | low | REQ-111, REQ-116, REQ-157 | idea | **Board ist Inhalt, Schirm ist Anordnung.** Der Schirm sagt nur, welches Board oder Werkzeug wo steht und ob es offen ist; ein Regel-Board ersetzt den „allgemeinen DM-Screen“. Werkzeuge (Artikelansicht, Initiative, Karte, Schnell anlegen) sind keine Boards. Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
-| **REQ-205** | Ein Board je Geschichtsartikel (Kampagne, Kapitel, Sitzung, nicht Szene) und Regel-Boards; der Schirm schaltet zwischen ihnen, die Artikelansicht filtert nach Artikeln aus den offenen Boards | 3 | 3 | – | – | Campaign & Sessions, Live Play | both | efficiency | low | REQ-157, REQ-204 | in progress | Das Board sammelt die Zusammenhänge einer Sitzung; im Spiel kommt es auf den Schirm. Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
-| **REQ-206** | Bewegungsrechner auf der Karte: Diagonalen 5-10-5, gezählt je Kreatur und Zug und mit jedem Zug neu; Modi „genauer Weg“, „grösste Reichweite“, „aus“; das Tempo des Zuges ist eine Zahl, die man ändert (Spurt, Klettern, Schwimmen, Sonderfälle), und die SL darf übersteuern | 3 | 3 | – | – | Maps, Live Play | play | efficiency | none | REQ-135, REQ-140 | done | **Tempo statt Spurt-Schalter:** jede Ausnahme ist eine andere Zahl, keine weitere Regel im Code. Mauern, Kreaturen und Zonen mit Bewegungskosten gehen in die Rechnung ein. Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
-| **REQ-207** | Wählbarer Pfad: Wegpunkte setzen (um eine Falle herum, nicht an einem Gegner vorbei), zwischen ihnen der günstigste Weg; die Diagonalenzählung läuft über die Wegpunkte weiter; Gefahren und Reichweite von Gegnern können gemieden werden | 3 | 2 | – | – | Maps, Live Play | play | enables | none | REQ-206 | done | Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
-| **REQ-208** | Zonen mit eigenen Regeln: eine Zonenart ist ein Regelartikel; Bewegungskosten, Licht, Sicht und „versteckt bis passive Wahrnehmung n“ rechnet die Karte, Schaden, Rettungswurf, Zustand und freie Regeln zeigt sie und schreibt sie beim Betreten ins Protokoll | 3 | 5 | – | – | Maps, Rules & Reference | both | enables | low | REQ-139, REQ-193, REQ-206 | in progress | Eis und Feuer sind Beispiele, keine Liste im Code. Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
-| **REQ-209** | Aufdecken: von Hand oder beim Bestätigen einer Bewegung, dann **entlang des Pfads** Schritt für Schritt; von Hand zeigt das Token, wen es sieht und von wem es gesehen wird (Sichtlinie, passive Wahrnehmung gegen Heimlichkeit, −5 im Dämmerlicht) | 3 | 3 | – | – | Maps, Live Play | play | enables | none | REQ-140, REQ-207 | done | Entschieden 12.10.: automatisch erst beim Bestätigen, nicht während des Ziehens. Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
-| **REQ-210** | Karte und Initiative je als Vollbild, je mit SL- und Spieleransicht; Spielende bewegen ihre eigenen Tokens und prüfen die Reichweite selbst | 3 | 3 | – | – | Maps, Live Play, Player Experience | play | enables | none | REQ-128, REQ-187, REQ-206 | in progress | Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
-| **REQ-211** | Initiative wie Improved Initiative: je Zeile Initiative, RK, TP und Zustände, aus der Zeile der Statblock | 2 | 3 | – | – | Live Play | play | efficiency | none | REQ-115, REQ-118 | done | RK und TP-Maximum liest die Zeile vom Statblock (der Instanz), nicht aus einer Abschrift. Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
-| **REQ-212** | Zustände und Notizen mit Dauer: Anzahl Runden, Anker (wessen Zug) und Zeitpunkt (Anfang oder Ende dieses Zuges); eine Notiz ist ein freier Text mit derselben Dauer | 2 | 2 | – | – | Live Play | play | enables | none | REQ-115, REQ-211 | done | „Bis zum Ende des nächsten Zuges des Zauberers“ ist ein Anker und kein Rundenzähler am Ziel. Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
-| **REQ-213** | Initiative der Spielenden: die eigene Reihenfolge und jede Kreatur, die aufgedeckt oder schon beteiligt ist; nicht erkannte Kreaturen mit Decknamen, TP von Gegnern als Wort | 3 | 2 | – | – | Live Play, Player Experience | play | enables | none | REQ-128, REQ-178, REQ-211 | done | Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
-| **REQ-214** | Ausrüstungsfigur nach dem Inventarblatt: Figur je Kreatur wählbar (männlich, weiblich, neutral) und dort gespeichert; Plätze Kopf, Schulter, Torso, rechte und linke Hand, Beine, Stiefel, Gurt mit zwei Holstern, Ringe je Hand, Halskette | 4 | 2 | – | – | Player Experience | play | enables | none | REQ-064 | done | Vorlage: Basils Inventarblatt. Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
-| **REQ-215** | Tragraster aus Grösse und Statblock: ein Grundquadrat nach Grösse (Tiny 3 … Large 6) und ein Zusatzquadrat in der Grösse des Stärkemodifikators (+1 … +5) aus dem Statblock des Trägers — beim Lesen gerechnet, nie eingetippt | 3 | 2 | – | – | Player Experience, Creatures & Characters | play | enables | none | REQ-065 | done | Wie ein Merkmal seinen Trefferbonus aus Attribut und Übung rechnet (D51), rechnet das Raster seine Grösse aus dem Statblock, der es liest. Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
-| **REQ-216** | Behälter in Behältern: jeder Behälter gibt eine Ziehstufe dazu, ausgehend davon, wo er selbst liegt; die Basiszonen kommen aus dem Blatt und sind je Behälter änderbar | 3 | 2 | – | – | Player Experience | play | enables | none | REQ-065, REQ-215 | done | Eine Bag of Holding im Aktionsbereich: was darin liegt, braucht einen Zug. Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
-| **REQ-217** | Ziehen am Bogen: unter Aktion, Bonusaktion usw. je ein Eintrag „Ziehen“; ein Klick zeigt, was sich mit dieser Aktion herausnehmen lässt, mit Dauer | 3 | 2 | – | – | Player Experience, Live Play | play | efficiency | none | REQ-066, REQ-216 | done | Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
-| **REQ-218** | Blaupausen werden gelernt: alle Rezepte sind sichtbar, ungelernte mit „muss noch gelernt werden“ (ohne festen Fundort); Filter „kann der Charakter“ und „alle“, „machbar“ und „fast“, nach Material und nach Beruf | 3 | 2 | – | – | Rules & Reference, Player Experience | both | enables | none | REQ-184, REQ-177 | done | Ein Rezept ist Wissen (`knownBy`); gelernt heisst zugeteilt. Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
-| **REQ-219** | Material wird beim Start an den Vorgang gebunden: es verlässt den Vorrat und kann nicht doppelt oder anderweitig gebraucht werden; was beim Misslingen zurückkommt, sagt `Recipe.onFailure` | 3 | 2 | – | – | Rules & Reference, Player Experience | play | enables | none | REQ-184 | done | Ersetzt das Anhängen während des Gangs (Aufgabe #34) als Vorgabe. Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
-| **REQ-220** | Zeitleisten der Weltgeschichte: mehrere Spuren (ein Krieg, eine Dynastie, Zeitalter) neben der Kampagnenzeitleiste; ein Ereignis mit Spanne enthält seine Ereignisse, und die Kampagne ist eine Spur unter ihnen | 3 | 3 | – | – | World & Lore | prep | enables | low | REQ-106 | done | Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
-| **REQ-221** | Begegnungsbau: Schwierigkeit aus den XP-Schwellen der Gruppe mit Multiplikator nach Anzahl (2014), Kreaturen aus dem Kompendium, dann auf die Karte setzen und Initiative starten | 3 | 3 | – | – | Live Play, Campaign & Sessions | prep | efficiency | none | REQ-118 | idea | Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
-| **REQ-222** | Stufenaufstieg: Schritte aus Klassen- und Unterklassentabellen (TP, Attributsverbesserung oder Talent, Zauber), Folgewerte gerechnet | 4 | 5 | – | – | Player Experience, Creatures & Characters | play | efficiency | none | REQ-063 | idea | Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
-| **REQ-223** | Regelsysteme als Rahmen (Taverne, Alley, Kanalisation): ein Ort, seine Kennzahlen, ein Wochenwurf und ein Protokoll | 4 | 5 | – | – | Campaign & Sessions, Rules & Reference | both | enables | low | REQ-184 | idea | Gemeinsamer Rahmen oder je ein eigenes Layout ist offen. Herkunft: UI-Planung auf dem Design-Canvas, 12.10.2026. |
-| **REQ-224** | Kreaturen nehmen auf der Karte Felder nach ihrer Grösse ein (Regeln 2014): Tiny, Small, Medium, Large 2 × 2, Huge 3 × 3, Gargantuan 4 × 4; Bewegung, Wege, Sicht und Reichweite rechnen mit dem ganzen Platz | 3 | 3 | – | – | Maps, Live Play | play | enables | none | REQ-206, REQ-209 | done | Die Grösse steht am Statblock (`size`, Zeile `Size`). Tiny teilt sich ein Feld. Festgelegt von der Leitung, 12.10.2026 (D58). |
-| **REQ-225** | Fallenlassen ist eine freie Aktion, Verstauen eine Bonusaktion, egal wohin; der Gurt ist eine freie Aktion | 3 | 1 | – | – | Player Experience, Live Play | play | efficiency | none | REQ-216, REQ-217 | done | Ergänzt das Ziehen am Bogen um die Gegenrichtung. Festgelegt von der Leitung, 12.10.2026 (D58). |
-| **REQ-226** | In der ersten Runde erscheinen Gegner in der Initiative der Spielenden erst, wenn sie an der Reihe sind; ab der zweiten Runde stehen die bereits gezeigten fest | 3 | 1 | – | – | Live Play, Player Experience | play | enables | none | REQ-213 | done | Die Reihenfolge verrät sonst, wer noch kommt. Festgelegt von der Leitung, 12.10.2026 (D58). |
-| **REQ-227** | Masse im Fliesstext umrechnen: Fuss und Meilen in Regeltexten („within 120 feet“) nach der Einstellung `units` zeigen, beim Lesen gerechnet, gespeichert bleibt der Wortlaut | 3 | 2 | – | – | Rules & Reference | both | efficiency | none | – | idea | Wie die Masse in Feldern (D8). Heute rechnen nur Felder mit `unit` und Angriffszeilen um (`convertText`, `attackLine`); im Text der Teile eines Statblocks stehen weiter die Fuss der Vorlage. Herkunft: W2 Artikel wie im Buch (#48), 13.10.2026. |
-| **REQ-228** | Verlorene Einladung neu ausgeben: eine offene Einladung lässt sich in einem Schritt durch eine neue mit denselben Angaben (Kampagne, Rolle, Figur, Nutzungen, Ablauf) ersetzen | 4 | 1 | – | – | Platform & Access | prep | efficiency | none | REQ-034 | idea | Der Link steht nur einmal da, gespeichert ist nur der Hash — noch einmal anzeigen lässt er sich nicht, und das soll so bleiben. Heute: widerrufen und neu anlegen. Herkunft: W3 Verwaltung (#43), 13.10.2026. |
-| **REQ-229** | Konten in der Oberfläche verwalten: sperren und entsperren und die Verwaltung (`is_admin`) vergeben, ohne Kommandozeile | 3 | 2 | – | – | Platform & Access | prep | efficiency | none | REQ-033, REQ-036 | idea | Heute nur über `user` auf dem Server; die Kontoliste in der Seite (nur für die Verwaltung) steht seit W3. Herkunft: W3 Verwaltung (#43), 13.10.2026. |
-| **REQ-230** | Register in der Seite bearbeiten: die Leitung legt Typen, Felder, Kantenarten und Listen in der Web-Oberfläche an und ändert sie; vorher wird gezählt und gesagt, was eine Änderung im Bestand trifft, und eine Änderung, die gespeicherte Artikel beim nächsten Speichern ungültig machte (Karte ohne Typ, Typ mit Artikeln), lässt die Seite nicht zu | 2 | 5 | – | – | Content Backbone | prep | enables | none | REQ-027, REQ-181 | done | Rückfrage mit Zahl, bevor ein Feld gelöscht, eine Feldart gewechselt, ein Feld zur Pflicht oder eine Spanne enger wird oder ein Listenwert wegfällt (`registryUsage`, `GET /api/registry/usage`). Schreiben dürfen die Verwaltung und `gm` der laufenden Kampagne (D64). Herkunft: W5 Register-Editor (#46), 13.10.2026. |
-| **REQ-231** | Klassenansicht wie 5e.tools: Stufentabelle (Übungsbonus, Merkmale, Spalten der Klasse und gewählter Unterklassen), Merkmale je Stufe ausgeschrieben, optionale Merkmale und Varianten zuschaltbar, Unterklassen nach Name und Quelle filtern und mehrere nebeneinander vergleichen (am Telefon untereinander) | 3 | 3 | – | – | Rules & Reference, Player Experience | both | efficiency | none | REQ-089 | done | Klasse, Unterklassen, Tabellen und Merkmale kommen gesiebt in einer Antwort (`GET /api/classes/:id`), damit kein Merkmal eine verborgene Unterklasse verrät; eingebettete Merkmale über allein stehende Verweise (D65). Herkunft: W6 Klassen (#47), 13.10.2026. |
-| **REQ-232** | Listen rechnet der Server: Blättern, Suchen, Filtern und Auswahlen über den gesiebten Bestand am Server, die Oberfläche hält keinen Bestand — ein Blatt unter 100 KB, Blättern und Suchen unter 100 ms, ein Artikel ohne Warten auf eine Liste | 2 | 5 | – | – | Content Backbone, Cross-cutting | both | efficiency | none | REQ-028 | done | Vorher lud der Browser die Kurzfassung aller 24 157 Artikel (7,7 MB); jetzt `GET /api/list` mit 2 KB je Blatt in 15–40 ms. Der erste Aufruf eines Spielers nach einer Änderung liegt mit ≈370 ms noch über 300 ms. Herkunft: W7 Liste am Server (#51), 13.10.2026. |
-| **REQ-233** | 5e.tools über eine Pipeline einlesen statt von Hand auf dem Server: dev von selbst, wenn sich der Importer ändert, prod nur von Hand; vorher eine Sicherung, ein Probelauf ist möglich, der Bericht steht im Lauf | 3 | 3 | – | – | Cross-cutting, Rules & Reference | prep | efficiency | none | REQ-154, REQ-155 | done | `.github/workflows/import-5etools.yml` und `deploy/import.sh`; ersetzt wird die Ebene, nicht der Bestand (`--replace-layer`, D67). Ein echter Lauf in GitHub Actions gegen den Server war beim Merge noch nicht geprüft. Herkunft: W8 Pipeline (#50, als Vorschlag), 13.10.2026. |
-| **REQ-234** | Werkzeugzugang: ein Konto vergibt API-Tokens (`read`/`write`, mit Ablauf, nur als Hash gespeichert); ein Token sieht und darf nie mehr als sein Konto | 3 | 2 | – | – | Platform & Access, Cross-cutting | both | enables | none | REQ-031, REQ-033 | done | Damit eine Claude-Sitzung dev prüfen und ändern kann (`scripts/atlas.mjs`). Ein Token läuft immer ab (höchstens 365 Tage), legt keine weiteren an und wandert wie Sitzungen nicht mit (REQ-199). Herkunft: W9 Werkbank (#53), 13.10.2026. |
-| **REQ-235** | Werkbank: erweiterbare Prüfungen über den ganzen Bestand und Massenänderungen mit Vorschau, Protokoll und Rückgängig; mehrere Artikel löschen nur mit ausdrücklicher Bestätigung | 3 | 5 | – | – | Content Backbone, Campaign & Sessions | prep | efficiency | none | REQ-088, REQ-188 | done | Prüfungen: was `validateEntity` ablehnt, leere Pflichtfelder, gleichnamige Artikel, Kanten ins Leere, Statblöcke ohne Zahlen, Instanzen ohne Vorlage, Verweise ohne oder mit mehreren Treffern. Operationen: Feld, Marke, Kante, Zusammenführen; alles oder nichts (D68). Herkunft: W9 Werkbank (#53), 13.10.2026. |
+## Register
 
-## Changelog
-- **0.8** (2026-10-13): REQ-227 … REQ-235 aus den Abschnitten „Für den Vault“ der Web-Pakete W2–W9 (#43–#53): Masse im Fliesstext, Einladung neu ausgeben, Konten in der Oberfläche (offen); Register in der Seite, Klassenansicht, Liste am Server, 5e.tools-Pipeline, Werkzeugzugang, Werkbank (umgesetzt). REQ-205 in progress (W4). Summen neu gezählt (235 requirements · 860 points); [[Requirements by Area]] neu erzeugt.
-- **0.7** (2026-10-07): REQ-168 … REQ-203 aus der Ernte des Repos übernommen (alte App, Gespräche, Fraktionsränge); Spalte *Status* aus [[Umsetzung]] nachgezogen; Summen neu gezählt (203 requirements · 768 points).
-- **0.6** (2026-09-05): REQ-167 print & export outputs (facet-based item/creature cards, PDF character sheets, map images; D17). 167 requirements · 666 points.
-- **0.5** (2026-09-05): Board-first v1 (AD-19): REQ-157/158/161 reprioritized 3 → 2 and given v1 depths; REQ-111 and REQ-164 pulled into v1 (minimal). New REQ-165 (asset/shape/tool placements, D16) and REQ-166 (create-on-canvas). 166 requirements · 661 points.
-- **0.4** (2026-09-04): Added REQ-156 (visibility inheritance, closes open question 4) and REQ-157 … REQ-164 (canvas boards, frames/anchors, display resolution as priority system, facets, opaque IDs) from the boards/display session. Summary and area totals recounted (164 requirements · 656 points).
-- **0.3** (2026-08-31): Added v1 depth and v1 points columns (AD-18).
-- **0.2** (2026-08-31): Full rewrite as immutable-ID registry with numeric priority/effort, area tags, time lens. Supersedes 10_Requirements_Catalog.md (MoSCoW version, IDs P-xx/C-xx… retired).
-- **0.1** (2026-08-28): Initial MoSCoW catalog.
+| ID | Story | Rolle | Feature | Prio | Aufwand | Status | Stand |
+|---|---|---|---|---|---|---|---|
+| [[REQ-001]] | Artikel aus Arten, Feldern und Kanten | Spielleitung | [[F-001 Artikelmodell\|Artikelmodell]] | 1 | 5 | done | steht |
+| [[REQ-002]] | Nachfolgerkette | – | [[F-001 Artikelmodell\|Artikelmodell]] | 1 | 2 | dropped | ersetzt |
+| [[REQ-003]] | Änderungsverlauf je Artikel | Spielleitung | [[F-009 Verlauf & gleichzeitiges Schreiben\|Verlauf & gleichzeitiges Schreiben]] | 1 | 3 | in progress | teils |
+| [[REQ-004]] | Ebenen als Pakete von Inhalt | Spielleitung | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 1 | 3 | done | steht |
+| [[REQ-005]] | Zugehörigkeit eines Artikels zu einer Ebene | Spielleitung | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 1 | 3 | done | steht |
+| [[REQ-006]] | Stapel: was in der Kampagne gilt | Spielleitung | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 1 | 5 | in progress | teils |
+| [[REQ-007]] | Stapel für Fortgeschrittene | Spielleitung | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 3 | 5 | defined | offen |
+| [[REQ-008]] | Varianten einer Sache | Spielleitung | [[F-005 Fassungen & Varianten\|Fassungen & Varianten]] | 1 | 2 | in progress | teils |
+| [[REQ-009]] | Überschreiben in der eigenen Ebene | Spielleitung | [[F-005 Fassungen & Varianten\|Fassungen & Varianten]] | 2 | 3 | done | steht |
+| [[REQ-010]] | Feldgruppen nur, wo sie gebraucht werden | Spielleitung | [[F-001 Artikelmodell\|Artikelmodell]] | 1 | 3 | done | steht |
+| [[REQ-011]] | Inhaltsblock als eigenes Grundelement | – | [[F-001 Artikelmodell\|Artikelmodell]] | 1 | 5 | dropped | ersetzt |
+| [[REQ-012]] | Textfelder für jede Art von Text | Spielleitung | [[F-003 Feldformen & Aufzählungen\|Feldformen & Aufzählungen]] | 2 | 2 | done | steht |
+| [[REQ-013]] | Verweise nach Nummer, getippt nach Name | Spielleitung | [[F-007 Verweise & Platzhalter\|Verweise & Platzhalter]] | 1 | 5 | in progress | teils |
+| [[REQ-014]] | Rückbezüge sehen | Spielleitung | [[F-007 Verweise & Platzhalter\|Verweise & Platzhalter]] | 3 | 2 | done | steht |
+| [[REQ-015]] | Graph der Artikel | Spielleitung | [[F-008 Kanten verstehen\|Kanten verstehen]] | 4 | 5 | defined | offen |
+| [[REQ-016]] | Übersetzungsschicht für Begriffe | – | [[F-001 Artikelmodell\|Artikelmodell]] | 1 | 3 | dropped | verworfen |
+| [[REQ-017]] | Term engine bindings: system-specific semantic evaluation of rule terms | – | [[F-046 Regelauswertung\|Regelauswertung]] | 4 | 5 | defined | offen |
+| [[REQ-018]] | Rule effects format: effects[] with grants/constraints, open type list, consumers ignore unknown types | – | [[F-046 Regelauswertung\|Regelauswertung]] | 1 | 2 | defined | offen |
+| [[REQ-019]] | Rohform jedes Imports aufbewahren | – | [[F-001 Artikelmodell\|Artikelmodell]] | 1 | 2 | dropped | verworfen |
+| [[REQ-020]] | SourceRef provenance: publication, page, optional file + page anchor | – | [[F-062 Asset-Ablage\|Asset-Ablage]] | 1 | 2 | done | steht |
+| [[REQ-021]] | Asset entity contract: backend app/nas/external, consumers resolve URLs via asset service | – | [[F-062 Asset-Ablage\|Asset-Ablage]] | 1 | 3 | done | steht |
+| [[REQ-022]] | Derived asset variants: thumbnails, map tiles, PDF page renders, stored app-side | – | [[F-062 Asset-Ablage\|Asset-Ablage]] | 3 | 5 | defined | offen |
+| [[REQ-023]] | Status idea/planned/used/discarded | – | [[F-003 Feldformen & Aufzählungen\|Feldformen & Aufzählungen]] | 2 | 1 | dropped | ersetzt |
+| [[REQ-024]] | WorldDate property type: canonical sortable value + display string + CalendarSystem reference | – | [[F-038 Kalender & Zeitleisten\|Kalender & Zeitleisten]] | 1 | 2 | done | steht |
+| [[REQ-025]] | CalendarSystem definition: months, eras, moons, configurable per world/system | – | [[F-038 Kalender & Zeitleisten\|Kalender & Zeitleisten]] | 3 | 5 | defined | offen |
+| [[REQ-026]] | Ansichten festlegen | Spielleitung | [[F-006 Ansichten & Anordnung\|Ansichten & Anordnung]] | 1 | 3 | done | steht |
+| [[REQ-027]] | Arten ohne Code anlegen | Spielleitung | [[F-002 Register\|Register]] | 4 | 13 | done | steht |
+| [[REQ-028]] | Full-text search across content | – | [[F-068 Suche\|Suche]] | 3 | 3 | in progress | teils |
+| [[REQ-029]] | Serializable schema / export (future file or git backing) | – | [[F-065 Druck & Ausfuhr\|Druck & Ausfuhr]] | 3 | 3 | done | steht |
+| [[REQ-030]] | Reputation hooks: weighted tags on relations, propagation rule slot reserved | – | [[F-039 Beziehungen & Ruf\|Beziehungen & Ruf]] | 2 | 1 | dropped | ersetzt |
+| [[REQ-031]] | Anmelden mit Passwort | Spieler | [[F-010 Anmeldung & Konten\|Anmeldung & Konten]] | 1 | 2 | done | steht |
+| [[REQ-032]] | Anmeldung über Nextcloud/OIDC | – | [[F-010 Anmeldung & Konten\|Anmeldung & Konten]] | 4 | 5 | dropped | verworfen |
+| [[REQ-033]] | Konten | Verwaltung | [[F-010 Anmeldung & Konten\|Anmeldung & Konten]] | 1 | 2 | done | steht |
+| [[REQ-034]] | Einladen per Link | Spielleitung | [[F-010 Anmeldung & Konten\|Anmeldung & Konten]] | 2 | 2 | done | steht |
+| [[REQ-035]] | Rolle je Kampagne | Verwaltung | [[F-011 Rollen je Kampagne\|Rollen je Kampagne]] | 1 | 3 | done | steht |
+| [[REQ-036]] | Leitung, Spieler und Verwaltung | Verwaltung | [[F-011 Rollen je Kampagne\|Rollen je Kampagne]] | 1 | 1 | done | steht |
+| [[REQ-037]] | Mitleitung und Zuschauer | Spielleitung | [[F-011 Rollen je Kampagne\|Rollen je Kampagne]] | 3 | 2 | done | steht |
+| [[REQ-038]] | Wer einen Artikel sieht | Spielleitung | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 1 | 2 | done | steht |
+| [[REQ-039]] | Sichtbarkeit mit Rollenlisten und Freigabemarken | – | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 3 | 8 | dropped | ersetzt |
+| [[REQ-040]] | Wissen zuteilen | Spielleitung | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 2 | 3 | done | steht |
+| [[REQ-041]] | Wer was schreiben darf | Spielleitung | [[F-013 Schreibrechte & Freigabe\|Schreibrechte & Freigabe]] | 2 | 3 | in progress | teils |
+| [[REQ-042]] | Schreibrecht je Feldgruppe | Spielleitung | [[F-013 Schreibrechte & Freigabe\|Schreibrechte & Freigabe]] | 4 | 5 | defined | offen |
+| [[REQ-043]] | Campaign configuration store: key-value, each area interprets its keys | – | [[F-029 Kampagne\|Kampagne]] | 2 | 2 | done | steht |
+| [[REQ-044]] | Herkunft am Artikel sehen | Spielleitung | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 2 | 5 | done | steht |
+| [[REQ-045]] | Ebenen-Aktionen am Artikel | Spielleitung | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 3 | 8 | defined | offen |
+| [[REQ-046]] | Creature / Statblock split with PC and NPC specializations | – | [[F-020 Kreatur\|Kreatur]] | 1 | 3 | done | steht |
+| [[REQ-047]] | Import-first entry: 5e.tools JSON, Improved Initiative JSON, markdown paste from Obsidian | – | [[F-073 5e.tools-Import\|5e.tools-Import]] | 2 | 5 | dropped | verworfen |
+| [[REQ-048]] | Minimal edit form for core creature fields | – | [[F-022 Schnellanlage\|Schnellanlage]] | 2 | 3 | done | steht |
+| [[REQ-049]] | Quick add: name-only NPC or statblock-only mob in one field | – | [[F-022 Schnellanlage\|Schnellanlage]] | 2 | 2 | done | steht |
+| [[REQ-050]] | Simple creature viewer: social / description / combat sections | – | [[F-020 Kreatur\|Kreatur]] | 2 | 3 | done | steht |
+| [[REQ-051]] | Quick changes: HP, temp HP, conditions, rest, inspiration | – | [[F-023 Charakterbogen\|Charakterbogen]] | 2 | 3 | done | steht |
+| [[REQ-052]] | Detailed statblock viewer | – | [[F-021 Statblock\|Statblock]] | 3 | 3 | done | steht |
+| [[REQ-053]] | Statblock as composition of RuleElement references (traits, feats, actions) | – | [[F-021 Statblock\|Statblock]] | 2 | 5 | done | steht |
+| [[REQ-054]] | Fightingtype field (MCDM roles) on statblock | – | [[F-021 Statblock\|Statblock]] | 2 | 1 | done | steht |
+| [[REQ-055]] | Inline trait reuse & variant creation while typing | – | [[F-021 Statblock\|Statblock]] | 3 | 3 | defined | offen |
+| [[REQ-056]] | Creature builder with suggestions (origin + fightingtype filter, grants applied via effects) | – | [[F-024 Charaktermanager\|Charaktermanager]] | 4 | 13 | defined | offen |
+| [[REQ-057]] | Point-buy ability setting | – | [[F-024 Charaktermanager\|Charaktermanager]] | 4 | 2 | defined | offen |
+| [[REQ-058]] | Monster scaling | – | [[F-021 Statblock\|Statblock]] | 5 | 5 | idea | offen |
+| [[REQ-059]] | Wissen über Arten von Kreaturen | Spielleitung | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 3 | 3 | done | steht |
+| [[REQ-060]] | Companions / summons as regular creatures via companionOf + overrides | – | [[F-020 Kreatur\|Kreatur]] | 3 | 2 | in progress | teils |
+| [[REQ-061]] | Creature relations (creature ↔ creature / faction) with relation type | – | [[F-039 Beziehungen & Ruf\|Beziehungen & Ruf]] | 2 | 2 | done | steht |
+| [[REQ-062]] | Multi-system statblock extension point (system reference on composition) | – | [[F-021 Statblock\|Statblock]] | 5 | 8 | idea | offen |
+| [[REQ-063]] | Character sheet: General tab (HP, temp, hit dice, death saves, AC, conditions, resources, rest) | – | [[F-023 Charakterbogen\|Charakterbogen]] | 2 | 5 | done | steht |
+| [[REQ-064]] | Inventory as list: coins / attuned / worn / carried / stored / deeds | – | [[F-026 Inventar\|Inventar]] | 2 | 3 | done | steht |
+| [[REQ-065]] | Tile-based visual inventory (alternative view over same data) | – | [[F-026 Inventar\|Inventar]] | 4 | 8 | done | steht |
+| [[REQ-066]] | Character sheet: Combat tab (initiative, actions, companions) | – | [[F-023 Charakterbogen\|Charakterbogen]] | 3 | 5 | done | steht |
+| [[REQ-067]] | Character sheet: Spellcasting tab (slots/points, concentration, active spells, list) | – | [[F-023 Charakterbogen\|Charakterbogen]] | 3 | 5 | defined | offen |
+| [[REQ-068]] | Character sheet: Freeplay tab | – | [[F-023 Charakterbogen\|Charakterbogen]] | 4 | 3 | defined | offen |
+| [[REQ-069]] | Phone-first responsive layout for all player-facing views | – | [[F-025 Spieleransicht & Telefon\|Spieleransicht & Telefon]] | 1 | 3 | in progress | teils |
+| [[REQ-070]] | Local dice roller (selector, modifiers, results) | – | [[F-053 Würfel\|Würfel]] | 2 | 2 | done | steht |
+| [[REQ-071]] | Shared rolls & roll log per session | – | [[F-053 Würfel\|Würfel]] | 4 | 3 | done | steht |
+| [[REQ-072]] | Player notes as owned documents | – | [[F-027 Eigene Inhalte der Spielenden\|Eigene Inhalte der Spielenden]] | 2 | 2 | defined | offen |
+| [[REQ-073]] | Custom / reorderable sheet layout | – | [[F-023 Charakterbogen\|Charakterbogen]] | 4 | 5 | dropped | ersetzt |
+| [[REQ-074]] | Quicklinks: campaign, quests, party, session | – | [[F-025 Spieleransicht & Telefon\|Spieleransicht & Telefon]] | 3 | 1 | in progress | teils |
+| [[REQ-075]] | Campaign as root NarrativeContainer with attached CampaignSettings, WorldDate, KnowledgeState | – | [[F-029 Kampagne\|Kampagne]] | 1 | 3 | done | steht |
+| [[REQ-076]] | NarrativeContainer hierarchy with DM-definable container types (Arc, Session, Scene, Kapitel…) | – | [[F-030 Bereich Story\|Bereich Story]] | 1 | 3 | done | steht |
+| [[REQ-077]] | Session documents with planned vs occurred encounters and reports | – | [[F-031 Sitzungen & Vorbereitung\|Sitzungen & Vorbereitung]] | 2 | 3 | done | steht |
+| [[REQ-078]] | Session prep cockpit: container view aggregating scenes, quests, storylines, encounters, notes | – | [[F-031 Sitzungen & Vorbereitung\|Sitzungen & Vorbereitung]] | 2 | 5 | done | steht |
+| [[REQ-079]] | DM session quick actions: grant knowledge, reveal block, mark encounter occurred — one tap | – | [[F-031 Sitzungen & Vorbereitung\|Sitzungen & Vorbereitung]] | 2 | 3 | in progress | teils |
+| [[REQ-080]] | Readaloud blocks unlocking for players after session (time/event-based grant) | – | [[F-030 Bereich Story\|Bereich Story]] | 3 | 2 | defined | offen |
+| [[REQ-081]] | Reputation & relationship system: interaction tags propagate NPC → faction → city with renown thresholds and status | – | [[F-039 Beziehungen & Ruf\|Beziehungen & Ruf]] | 4 | 8 | dropped | ersetzt |
+| [[REQ-082]] | Quests with tasks, rewards, restrictions; player-facing quest board with gated GM parts | – | [[F-030 Bereich Story\|Bereich Story]] | 3 | 3 | done | steht |
+| [[REQ-083]] | Player-created quests and personal goals | – | [[F-027 Eigene Inhalte der Spielenden\|Eigene Inhalte der Spielenden]] | 3 | 1 | defined | offen |
+| [[REQ-084]] | Ideas inbox per campaign/player and clean vs planning view toggle | – | [[F-031 Sitzungen & Vorbereitung\|Sitzungen & Vorbereitung]] | 3 | 3 | done | steht |
+| [[REQ-085]] | Encounter entity: links notes, maps, NPCs, loot tables; attachable to any container level; dice-table semantics | – | [[F-032 Begegnungen\|Begegnungen]] | 2 | 3 | done | steht |
+| [[REQ-086]] | Party view: passive perception, feats, inventory overview | – | [[F-034 Party\|Party]] | 3 | 3 | in progress | teils |
+| [[REQ-087]] | Calendar module: months, moons, holidays, time-of-day widget with triggers, lore coupling | – | [[F-038 Kalender & Zeitleisten\|Kalender & Zeitleisten]] | 5 | 13 | idea | offen |
+| [[REQ-088]] | Massenänderungen an Wissen und Rechten | Spielleitung | [[F-016 Werkbank\|Werkbank]] | 3 | 3 | in progress | teils |
+| [[REQ-089]] | RuleElement reference objects: structured text, tags, optional effects/constraints, rawContent | – | [[F-042 Bereich Rules & Kompendium\|Bereich Rules & Kompendium]] | 1 | 2 | done | steht |
+| [[REQ-090]] | Rule import from Obsidian markdown and 5e.tools data | – | [[F-073 5e.tools-Import\|5e.tools-Import]] | 2 | 3 | dropped | verworfen |
+| [[REQ-091]] | Rules browser: filtered, grouped, searchable, with layer origin in scope sidebar | – | [[F-042 Bereich Rules & Kompendium\|Bereich Rules & Kompendium]] | 2 | 5 | done | steht |
+| [[REQ-092]] | Spell entities with layer-scoped attached rule sets (5e 2014 / 2024 / homebrew) | – | [[F-045 Zauber\|Zauber]] | 2 | 3 | defined | offen |
+| [[REQ-093]] | Rule engine per system evaluating rules against entity data (constraints, terms) | – | [[F-046 Regelauswertung\|Regelauswertung]] | 5 | 13 | idea | offen |
+| [[REQ-094]] | Entity ↔ rule attachment as layer-scoped relation | – | [[F-042 Bereich Rules & Kompendium\|Bereich Rules & Kompendium]] | 2 | 3 | done | steht |
+| [[REQ-095]] | Effects interpreter for grants (first consumer: creature builder) | – | [[F-046 Regelauswertung\|Regelauswertung]] | 4 | 8 | defined | offen |
+| [[REQ-096]] | Constraint interpreter (first consumer: settlement / building validation) | – | [[F-046 Regelauswertung\|Regelauswertung]] | 5 | 8 | idea | offen |
+| [[REQ-097]] | Spell lists as relations (class ↔ spell) | – | [[F-045 Zauber\|Zauber]] | 3 | 2 | defined | offen |
+| [[REQ-098]] | Sub-5-second rule lookup during play | – | [[F-042 Bereich Rules & Kompendium\|Bereich Rules & Kompendium]] | 2 | 2 | done | steht |
+| [[REQ-099]] | Pinnable rules: bookmark object (user + context + rule) | – | [[F-042 Bereich Rules & Kompendium\|Bereich Rules & Kompendium]] | 3 | 1 | done | steht |
+| [[REQ-100]] | Welt als Ebene | Spielleitung | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 1 | 2 | in progress | teils |
+| [[REQ-101]] | Lore articles: categories, composed of ContentBlocks | – | [[F-037 Bereich World\|Bereich World]] | 2 | 3 | done | steht |
+| [[REQ-102]] | Artikel je Stapel und Wissen zeichnen | Spieler | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 2 | 5 | in progress | teils |
+| [[REQ-103]] | Locations: hierarchy via parent, type, biome | – | [[F-037 Bereich World\|Bereich World]] | 2 | 2 | done | steht |
+| [[REQ-104]] | Factions: type/subtype taxonomy, relations | – | [[F-037 Bereich World\|Bereich World]] | 2 | 2 | done | steht |
+| [[REQ-105]] | NPC directory as filtered view over creatures with relations | – | [[F-020 Kreatur\|Kreatur]] | 3 | 2 | done | steht |
+| [[REQ-106]] | Events & timelines sorted by WorldDate | – | [[F-038 Kalender & Zeitleisten\|Kalender & Zeitleisten]] | 3 | 3 | done | steht |
+| [[REQ-107]] | Pantheons / deities as article subtype | – | [[F-037 Bereich World\|Bereich World]] | 4 | 1 | defined | offen |
+| [[REQ-108]] | Lore der Kampagne abweichen lassen | Spielleitung | [[F-005 Fassungen & Varianten\|Fassungen & Varianten]] | 3 | 3 | done | steht |
+| [[REQ-109]] | Player-authored ContentBlocks with per-view block-type whitelist | – | [[F-027 Eigene Inhalte der Spielenden\|Eigene Inhalte der Spielenden]] | 3 | 3 | in progress | teils |
+| [[REQ-110]] | Bibliothek von Tan'Jit: illustrated navigation presentation layer over articles | – | [[F-037 Bereich World\|Bereich World]] | 5 | 8 | idea | offen |
+| [[REQ-111]] | Boards: user-owned configurable views with tabs/pages and widgets; DM and player boards share the mechanism | – | [[F-067 Boards\|Boards]] | 2 | 8 | done | steht |
+| [[REQ-112]] | Widget: reference box holding multiple open articles with inner tabs | – | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 2 | 3 | dropped | ersetzt |
+| [[REQ-113]] | Widget: notes | – | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 2 | 2 | defined | offen |
+| [[REQ-114]] | Widget: quick-create (creates entries in the campaign layer inline) | – | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 2 | 3 | in progress | teils |
+| [[REQ-115]] | Widget: initiative tracker — session-aware, conditions with durations, damage attributed to current actor by default | – | [[F-051 Initiative\|Initiative]] | 2 | 5 | done | steht |
+| [[REQ-116]] | Session state objects (initiative, now-playing, active scene, party note) + realtime channel per session | – | [[F-052 Sitzungszustand & Live-Kanal\|Sitzungszustand & Live-Kanal]] | 2 | 8 | done | steht |
+| [[REQ-117]] | Stewardship: write permission on a state object per user, GM override configurable | – | [[F-052 Sitzungszustand & Live-Kanal\|Sitzungszustand & Live-Kanal]] | 3 | 3 | done | steht |
+| [[REQ-118]] | Widget: encounter runner — instantiate participants, roll random entries, raw statblocks trackable | – | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 3 | 5 | done | steht |
+| [[REQ-119]] | Player boards | – | [[F-067 Boards\|Boards]] | 3 | 3 | defined | offen |
+| [[REQ-120]] | Play log: persist state events (actor, target, delta) | – | [[F-052 Sitzungszustand & Live-Kanal\|Sitzungszustand & Live-Kanal]] | 3 | 3 | in progress | teils |
+| [[REQ-121]] | Statistics widget: kills, damage per character, monsters faced, records | – | [[F-052 Sitzungszustand & Live-Kanal\|Sitzungszustand & Live-Kanal]] | 4 | 3 | defined | offen |
+| [[REQ-122]] | Widget: party overview | – | [[F-034 Party\|Party]] | 3 | 2 | done | steht |
+| [[REQ-123]] | Widget: timers | – | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 3 | 1 | defined | offen |
+| [[REQ-124]] | Widget: quest board | – | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 3 | 2 | done | steht |
+| [[REQ-125]] | Widget: random tables & generators (names, shops, loot, cities) | – | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 3 | 5 | done | steht |
+| [[REQ-126]] | Widget: sound — embed/link external tool, native now-playing state only | – | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 4 | 2 | in progress | teils |
+| [[REQ-127]] | Native soundboard / music engine | – | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 5 | 13 | idea | offen |
+| [[REQ-128]] | Combat player view: own initiative, conditions, health comments | – | [[F-051 Initiative\|Initiative]] | 3 | 3 | in progress | teils |
+| [[REQ-129]] | Chatbot: rules Q&A, facts, quick edit | – | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 5 | 8 | idea | offen |
+| [[REQ-130]] | Map entity: image asset, scale, grid config (size, offset, square/hex), link to Location | – | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 3 | 2 | done | steht |
+| [[REQ-131]] | Nested maps: parent + anchor region, zoom-through transitions world → region → city → district → battlemap | – | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 3 | 8 | done | steht |
+| [[REQ-132]] | Level lock: pin current map level while zooming | – | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 3 | 1 | defined | offen |
+| [[REQ-133]] | Static tokens: reference markers linked to entities (pin opens article) | – | [[F-056 Tokens & Marker\|Tokens & Marker]] | 3 | 3 | done | steht |
+| [[REQ-134]] | Static tokens: scenery / props as part of prepared map state | – | [[F-056 Tokens & Marker\|Tokens & Marker]] | 4 | 3 | done | steht |
+| [[REQ-135]] | Play tokens: session- or campaign-scoped state objects (combat positions, temporary changes) | – | [[F-056 Tokens & Marker\|Tokens & Marker]] | 3 | 5 | in progress | teils |
+| [[REQ-136]] | Party and quest markers on region maps (campaign-scoped play tokens) | – | [[F-056 Tokens & Marker\|Tokens & Marker]] | 3 | 2 | done | steht |
+| [[REQ-137]] | Overlays: query-driven highlights (faction locations, biomes, routes) | – | [[F-059 Gebiete & Overlays\|Gebiete & Overlays]] | 4 | 5 | in progress | teils |
+| [[REQ-138]] | Map tiling for smooth zoom (derived asset) | – | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 4 | 5 | done | steht |
+| [[REQ-139]] | Fog of war | – | [[F-057 Nebel, Licht & Sicht\|Nebel, Licht & Sicht]] | 4 | 8 | done | steht |
+| [[REQ-140]] | Light & line of sight with walls | – | [[F-057 Nebel, Licht & Sicht\|Nebel, Licht & Sicht]] | 5 | 13 | done | steht |
+| [[REQ-141]] | Map effects & animations (conditions, weather) | – | [[F-061 Karteneditor\|Karteneditor]] | 5 | 8 | idea | offen |
+| [[REQ-142]] | Drawing, stamps, brushes, layers on maps | – | [[F-061 Karteneditor\|Karteneditor]] | 5 | 8 | idea | offen |
+| [[REQ-143]] | Map editor / full map creation | – | [[F-061 Karteneditor\|Karteneditor]] | 5 | 13 | idea | offen |
+| [[REQ-144]] | Initiative indicator on battlemap (current / next) | – | [[F-051 Initiative\|Initiative]] | 4 | 2 | done | steht |
+| [[REQ-145]] | Asset service implementation: app-managed storage (icons, portraits, thumbnails) | – | [[F-062 Asset-Ablage\|Asset-Ablage]] | 1 | 3 | in progress | teils |
+| [[REQ-146]] | NAS / Nextcloud backend for large assets (mount vs WebDAV → AD-15) | – | [[F-062 Asset-Ablage\|Asset-Ablage]] | 2 | 5 | defined | offen |
+| [[REQ-147]] | Image upload, portraits, icons | – | [[F-063 Bildverwaltung\|Bildverwaltung]] | 2 | 2 | in progress | teils |
+| [[REQ-148]] | External URL assets | – | [[F-062 Asset-Ablage\|Asset-Ablage]] | 3 | 1 | done | steht |
+| [[REQ-149]] | PDF viewer with page-anchor jump from SourceRef | – | [[F-066 PDF & OCR\|PDF & OCR]] | 4 | 5 | defined | offen |
+| [[REQ-150]] | Audio asset storage | – | [[F-062 Asset-Ablage\|Asset-Ablage]] | 5 | 2 | idea | offen |
+| [[REQ-151]] | 3D file viewer / repository | – | [[F-062 Asset-Ablage\|Asset-Ablage]] | 5 | 8 | idea | offen |
+| [[REQ-152]] | OCR / PDF import to structured content with editable raw output (MonsterBox-style) | – | [[F-066 PDF & OCR\|PDF & OCR]] | 5 | 13 | idea | offen |
+| [[REQ-153]] | German UI output with i18n-ready string handling | – | [[F-072 Design & Stilkonzept\|Design & Stilkonzept]] | 2 | 2 | dropped | ersetzt |
+| [[REQ-154]] | Ausrollen nach dev und prod | Verwaltung | [[F-017 Ausrollen & Sicherung\|Ausrollen & Sicherung]] | 1 | 3 | done | steht |
+| [[REQ-155]] | Sicherungen | Verwaltung | [[F-017 Ausrollen & Sicherung\|Ausrollen & Sicherung]] | 2 | 2 | done | steht |
+| [[REQ-156]] | Sichtbarkeit vererben | – | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 2 | 2 | dropped | verworfen |
+| [[REQ-157]] | Canvas boards: free positioning, scaling and arrangement of entity placements on a board (Figma/Canva-style), beyond the widget grid | – | [[F-067 Boards\|Boards]] | 2 | 8 | done | steht |
+| [[REQ-158]] | Placement rendering: each placement resolves to a facet/renderer via the display resolution; explicit per-placement override always wins | – | [[F-067 Boards\|Boards]] | 2 | 3 | done | steht |
+| [[REQ-159]] | Frames / viewpoint anchors: named canvas viewports (position, zoom depth, target facet, visible layers), persisted in the board config | – | [[F-067 Boards\|Boards]] | 3 | 3 | done | steht |
+| [[REQ-160]] | Anchor quick navigation: jump between anchors (list, hotkeys) — session notes → map → house rules without leaving the board | – | [[F-067 Boards\|Boards]] | 3 | 2 | in progress | teils |
+| [[REQ-161]] | Display resolution as priority system: entity profile proposes, board rules (per interface / attribute value) decide, user overrides; placement override wins; ties → board rule; works board-only | – | [[F-067 Boards\|Boards]] | 2 | 5 | done | steht |
+| [[REQ-162]] | Semantic zoom: zoom depth maps onto facets (compact list of weapon properties → full detail on zoom-in); anchors may store a target facet | – | [[F-067 Boards\|Boards]] | 4 | 5 | defined | offen |
+| [[REQ-163]] | Bezeichner ohne Bedeutung | Spielleitung | [[F-001 Artikelmodell\|Artikelmodell]] | 1 | 1 | done | steht |
+| [[REQ-164]] | Darstellungsstufen als eigenes System | – | [[F-006 Ansichten & Anordnung\|Ansichten & Anordnung]] | 2 | 3 | dropped | ersetzt |
+| [[REQ-165]] | Board placements beyond content entities: assets (images, icons), geometric/mathematical shapes as inline canvas objects, and tool objects (interactive widgets such as creature creator or generators) on the canvas | – | [[F-067 Boards\|Boards]] | 2 | 3 | done | steht |
+| [[REQ-166]] | Board-first authoring: create entities directly on the canvas (into the campaign layer), choose their facet and place them in one flow | – | [[F-067 Boards\|Boards]] | 2 | 2 | in progress | teils |
+| [[REQ-167]] | Print & export outputs: item cards, creature cards, character sheets (PDF), maps (image/print) rendered from facets — the facet defines *what* appears, the medium (screen/print/pdf/image) *how*; card-sheet assembly (n cards per page) as export config | – | [[F-065 Druck & Ausfuhr\|Druck & Ausfuhr]] | 3 | 5 | defined | offen |
+| [[REQ-168]] | Point-crawl travel: node/edge graph attached to a Location, with per-edge sensory read-aloud text and per-node arrival state | – | [[F-060 Reisen & Erkundung\|Reisen & Erkundung]] | 3 | 5 | done | steht |
+| [[REQ-169]] | Exploration state ladder per map feature (verborgen → entdeckt → erkundet) with cascade: exploring a node reveals its edges as discovered | – | [[F-060 Reisen & Erkundung\|Reisen & Erkundung]] | 3 | 3 | done | steht |
+| [[REQ-170]] | Travel resource cadence: consumables consumed every N nodes or watches, configurable per travel ruleset | – | [[F-060 Reisen & Erkundung\|Reisen & Erkundung]] | 4 | 2 | done | steht |
+| [[REQ-171]] | Per-node action budget: one action per character per node from a configurable list (sneak, craft, forage, rest) | – | [[F-060 Reisen & Erkundung\|Reisen & Erkundung]] | 4 | 3 | done | steht |
+| [[REQ-172]] | Weighted encounter tables per region, with per-location type constraints and safety states that restrict the pool | – | [[F-032 Begegnungen\|Begegnungen]] | 3 | 3 | done | steht |
+| [[REQ-173]] | World-state decay between sessions: roll to degrade secured locations, weighted by adjacency to faction territory | – | [[F-032 Begegnungen\|Begegnungen]] | 4 | 3 | idea | offen |
+| [[REQ-174]] | Regeltexte mit Platzhaltern | Spielleitung | [[F-007 Verweise & Platzhalter\|Verweise & Platzhalter]] | 2 | 3 | done | steht |
+| [[REQ-175]] | Regelbegriffe im Text erkennen | Spieler | [[F-007 Verweise & Platzhalter\|Verweise & Platzhalter]] | 3 | 2 | done | steht |
+| [[REQ-176]] | Ähnliches vor dem Anlegen vorschlagen | Spielleitung | [[F-007 Verweise & Platzhalter\|Verweise & Platzhalter]] | 3 | 3 | in progress | teils |
+| [[REQ-177]] | Einzelne Felder freigeben | Spielleitung | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 2 | 3 | done | steht |
+| [[REQ-178]] | Decknamen | Spielleitung | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 3 | 1 | done | steht |
+| [[REQ-179]] | Zeigen, dass es mehr gibt | Spieler | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 4 | 1 | done | steht |
+| [[REQ-180]] | Narrative seeds: planted threads with category (Backstory · Geheimnis · Faden · Idee · Versprechen · Konsequenz) and status (offen · gepflanzt · aufgegangen · verworfen), bound to a character and the session planted in | – | [[F-030 Bereich Story\|Bereich Story]] | 3 | 3 | idea | offen |
+| [[REQ-181]] | Freie Felder an einem einzelnen Artikel | Spielleitung | [[F-001 Artikelmodell\|Artikelmodell]] | 2 | 3 | done | steht |
+| [[REQ-182]] | Kanten lesen sich von beiden Enden | Spielleitung | [[F-001 Artikelmodell\|Artikelmodell]] | 2 | 1 | done | steht |
+| [[REQ-183]] | Party-owned inventory as a shared container distinct from character inventories | – | [[F-026 Inventar\|Inventar]] | 3 | 2 | done | steht |
+| [[REQ-184]] | Crafting: recipes with material inputs, skill checks and DC, time, and output; consumption on completion | – | [[F-047 Handwerk\|Handwerk]] | 4 | 5 | done | steht |
+| [[REQ-185]] | Non-coin economies: barter and alternative currency ladders per region | – | [[F-040 Läden & Wirtschaft\|Läden & Wirtschaft]] | 5 | 2 | idea | offen |
+| [[REQ-186]] | Nested loot tables: a table entry may reference another table, with cycle protection | – | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 3 | 2 | done | steht |
+| [[REQ-187]] | Table display mode: a shared read-only presentation view for a screen at the table, distinct from per-player accounts | – | [[F-050 Spielleiter-Schirm\|Spielleiter-Schirm]] | 3 | 2 | idea | offen |
+| [[REQ-188]] | Cross-type "unfinished" overview: everything at status idea/planned across all interfaces, with jump-to and bulk status change | – | [[F-031 Sitzungen & Vorbereitung\|Sitzungen & Vorbereitung]] | 3 | 2 | done | steht |
+| [[REQ-189]] | Aggregated todo list across containers and entities (campaign, arc, session, quest, NPC) | – | [[F-031 Sitzungen & Vorbereitung\|Sitzungen & Vorbereitung]] | 3 | 2 | done | steht |
+| [[REQ-190]] | Quick capture during play: one field that files a seed, todo or idea against the current session without leaving the view | – | [[F-031 Sitzungen & Vorbereitung\|Sitzungen & Vorbereitung]] | 3 | 2 | done | steht |
+| [[REQ-191]] | Nichts still überschreiben | Spielleitung | [[F-009 Verlauf & gleichzeitiges Schreiben\|Verlauf & gleichzeitiges Schreiben]] | 1 | 2 | done | steht |
+| [[REQ-192]] | Gleichzeitig bearbeiten ohne Verlust | Spielleitung | [[F-009 Verlauf & gleichzeitiges Schreiben\|Verlauf & gleichzeitiges Schreiben]] | 2 | 3 | done | steht |
+| [[REQ-193]] | Territory overlays rasterised onto the map grid from shapes (rect, circle, ellipse, polygon) | – | [[F-059 Gebiete & Overlays\|Gebiete & Overlays]] | 4 | 3 | done | steht |
+| [[REQ-194]] | Mobile navigation: the user chooses which entries occupy the phone bottom bar | – | [[F-025 Spieleransicht & Telefon\|Spieleransicht & Telefon]] | 4 | 1 | idea | offen |
+| [[REQ-195]] | Statblock export back to Obsidian markdown, preserving `{VAR}` placeholders unresolved | – | [[F-065 Druck & Ausfuhr\|Druck & Ausfuhr]] | 4 | 2 | idea | offen |
+| [[REQ-196]] | Sitzungsmitschnitt: Audio einer Sitzung aufnehmen oder eine fertige Aufnahme anhängen, als Asset am Sitzungs-Container, mit Startzeit und Kapitelmarken | – | [[F-036 Sitzungsmitschnitt\|Sitzungsmitschnitt]] | 4 | 5 | idea | offen |
+| [[REQ-197]] | Transkription und Recap-Entwurf: Mitschnitt transkribieren, am Sitzungsverlauf ausrichten und daraus einen Recap-Entwurf erzeugen, den die SL bearbeitet | – | [[F-036 Sitzungsmitschnitt\|Sitzungsmitschnitt]] | 4 | 8 | idea | offen |
+| [[REQ-198]] | Sprecherzuordnung im Transkript: Abschnitte einer Figur oder der SL zuordnen, damit „was hat meine Figur mitbekommen“ beantwortbar wird | – | [[F-036 Sitzungsmitschnitt\|Sitzungsmitschnitt]] | 5 | 5 | idea | offen |
+| [[REQ-199]] | Produktionsdaten nach dev spiegeln | Verwaltung | [[F-017 Ausrollen & Sicherung\|Ausrollen & Sicherung]] | 3 | 3 | done | steht |
+| [[REQ-200]] | Chat: Fäden zwischen SL und einzelnen Spielern und zwischen Spielern untereinander, an der Kampagne und nicht an einer Sitzung | – | [[F-028 Chat\|Chat]] | 3 | 5 | idea | offen |
+| [[REQ-201]] | Aus einer Stelle im Chat wird Kampagneninhalt: eine Nachricht (oder ein markierter Abschnitt) wird zur Idee, zum Todo, zum Faden oder zu einem ContentBlock an einem Artikel, mit Rückverweis auf die Stelle | – | [[F-028 Chat\|Chat]] | 3 | 3 | idea | offen |
+| [[REQ-202]] | Chats stehen ausserhalb von Abzug, Ausfuhr und Recap: ein Faden zwischen zwei Spielern gehört weder in den Prod-nach-preprod-Abzug noch in eine Kampagnenausfuhr, und die SL liest nicht mit | – | [[F-028 Chat\|Chat]] | 2 | 2 | idea | offen |
+| [[REQ-203]] | Wissen nach Rang in einer Fraktion | Spielleitung | [[F-012 Sichtbarkeit & Wissen\|Sichtbarkeit & Wissen]] | 2 | 2 | done | steht |
+| [[REQ-204]] | Spielleiter-Schirm je Kampagne: Fenster (mehrere Bildschirme als Browser-Reiter), darin Plätze, die ein Board oder ein Werkzeug zeigen; zuklappbar, umstellbar, zwischen Fenstern verschiebbar | – | [[F-050 Spielleiter-Schirm\|Spielleiter-Schirm]] | 3 | 5 | idea | offen |
+| [[REQ-205]] | Ein Board je Geschichtsartikel (Kampagne, Kapitel, Sitzung, nicht Szene) und Regel-Boards; der Schirm schaltet zwischen ihnen, die Artikelansicht filtert nach Artikeln aus den offenen Boards | – | [[F-050 Spielleiter-Schirm\|Spielleiter-Schirm]] | 3 | 3 | in progress | teils |
+| [[REQ-206]] | Bewegungsrechner auf der Karte: Diagonalen 5-10-5, gezählt je Kreatur und Zug und mit jedem Zug neu; Modi „genauer Weg“, „grösste Reichweite“, „aus“; das Tempo des Zuges ist eine Zahl, die man ändert (Spurt, Klettern, Schwimmen, Sonderfälle), und die SL darf übersteuern | – | [[F-058 Bewegung & Zonen\|Bewegung & Zonen]] | 3 | 3 | done | steht |
+| [[REQ-207]] | Wählbarer Pfad: Wegpunkte setzen (um eine Falle herum, nicht an einem Gegner vorbei), zwischen ihnen der günstigste Weg; die Diagonalenzählung läuft über die Wegpunkte weiter; Gefahren und Reichweite von Gegnern können gemieden werden | – | [[F-058 Bewegung & Zonen\|Bewegung & Zonen]] | 3 | 2 | done | steht |
+| [[REQ-208]] | Zonen mit eigenen Regeln: eine Zonenart ist ein Regelartikel; Bewegungskosten, Licht, Sicht und „versteckt bis passive Wahrnehmung n“ rechnet die Karte, Schaden, Rettungswurf, Zustand und freie Regeln zeigt sie und schreibt sie beim Betreten ins Protokoll | – | [[F-058 Bewegung & Zonen\|Bewegung & Zonen]] | 3 | 5 | in progress | teils |
+| [[REQ-209]] | Aufdecken: von Hand oder beim Bestätigen einer Bewegung, dann entlang des Pfads Schritt für Schritt; von Hand zeigt das Token, wen es sieht und von wem es gesehen wird (Sichtlinie, passive Wahrnehmung gegen Heimlichkeit, −5 im Dämmerlicht) | – | [[F-057 Nebel, Licht & Sicht\|Nebel, Licht & Sicht]] | 3 | 3 | done | steht |
+| [[REQ-210]] | Karte und Initiative je als Vollbild, je mit SL- und Spieleransicht; Spielende bewegen ihre eigenen Tokens und prüfen die Reichweite selbst | – | [[F-058 Bewegung & Zonen\|Bewegung & Zonen]] | 3 | 3 | in progress | teils |
+| [[REQ-211]] | Initiative wie Improved Initiative: je Zeile Initiative, RK, TP und Zustände, aus der Zeile der Statblock | – | [[F-051 Initiative\|Initiative]] | 2 | 3 | done | steht |
+| [[REQ-212]] | Zustände und Notizen mit Dauer: Anzahl Runden, Anker (wessen Zug) und Zeitpunkt (Anfang oder Ende dieses Zuges); eine Notiz ist ein freier Text mit derselben Dauer | – | [[F-051 Initiative\|Initiative]] | 2 | 2 | done | steht |
+| [[REQ-213]] | Initiative der Spielenden: die eigene Reihenfolge und jede Kreatur, die aufgedeckt oder schon beteiligt ist; nicht erkannte Kreaturen mit Decknamen, TP von Gegnern als Wort | – | [[F-051 Initiative\|Initiative]] | 3 | 2 | done | steht |
+| [[REQ-214]] | Ausrüstungsfigur nach dem Inventarblatt: Figur je Kreatur wählbar (männlich, weiblich, neutral) und dort gespeichert; Plätze Kopf, Schulter, Torso, rechte und linke Hand, Beine, Stiefel, Gurt mit zwei Holstern, Ringe je Hand, Halskette | – | [[F-026 Inventar\|Inventar]] | 4 | 2 | done | steht |
+| [[REQ-215]] | Tragraster aus Grösse und Statblock: ein Grundquadrat nach Grösse (Tiny 3 … Large 6) und ein Zusatzquadrat in der Grösse des Stärkemodifikators (+1 … +5) aus dem Statblock des Trägers — beim Lesen gerechnet, nie eingetippt | – | [[F-026 Inventar\|Inventar]] | 3 | 2 | done | steht |
+| [[REQ-216]] | Behälter in Behältern: jeder Behälter gibt eine Ziehstufe dazu, ausgehend davon, wo er selbst liegt; die Basiszonen kommen aus dem Blatt und sind je Behälter änderbar | – | [[F-026 Inventar\|Inventar]] | 3 | 2 | done | steht |
+| [[REQ-217]] | Ziehen am Bogen: unter Aktion, Bonusaktion usw. je ein Eintrag „Ziehen“; ein Klick zeigt, was sich mit dieser Aktion herausnehmen lässt, mit Dauer | – | [[F-026 Inventar\|Inventar]] | 3 | 2 | done | steht |
+| [[REQ-218]] | Blaupausen werden gelernt: alle Rezepte sind sichtbar, ungelernte mit „muss noch gelernt werden“ (ohne festen Fundort); Filter „kann der Charakter“ und „alle“, „machbar“ und „fast“, nach Material und nach Beruf | – | [[F-047 Handwerk\|Handwerk]] | 3 | 2 | done | steht |
+| [[REQ-219]] | Material wird beim Start an den Vorgang gebunden: es verlässt den Vorrat und kann nicht doppelt oder anderweitig gebraucht werden; was beim Misslingen zurückkommt, sagt `Recipe.onFailure` | – | [[F-047 Handwerk\|Handwerk]] | 3 | 2 | done | steht |
+| [[REQ-220]] | Zeitleisten der Weltgeschichte: mehrere Spuren (ein Krieg, eine Dynastie, Zeitalter) neben der Kampagnenzeitleiste; ein Ereignis mit Spanne enthält seine Ereignisse, und die Kampagne ist eine Spur unter ihnen | – | [[F-038 Kalender & Zeitleisten\|Kalender & Zeitleisten]] | 3 | 3 | done | steht |
+| [[REQ-221]] | Begegnungsbau: Schwierigkeit aus den XP-Schwellen der Gruppe mit Multiplikator nach Anzahl (2014), Kreaturen aus dem Kompendium, dann auf die Karte setzen und Initiative starten | – | [[F-032 Begegnungen\|Begegnungen]] | 3 | 3 | idea | offen |
+| [[REQ-222]] | Stufenaufstieg: Schritte aus Klassen- und Unterklassentabellen (TP, Attributsverbesserung oder Talent, Zauber), Folgewerte gerechnet | – | [[F-024 Charaktermanager\|Charaktermanager]] | 4 | 5 | idea | offen |
+| [[REQ-223]] | Regelsysteme als Rahmen (Taverne, Alley, Kanalisation): ein Ort, seine Kennzahlen, ein Wochenwurf und ein Protokoll | – | [[F-048 Regelsysteme & Module\|Regelsysteme & Module]] | 4 | 5 | idea | offen |
+| [[REQ-224]] | Kreaturen nehmen auf der Karte Felder nach ihrer Grösse ein (Regeln 2014): Tiny, Small, Medium, Large 2 × 2, Huge 3 × 3, Gargantuan 4 × 4; Bewegung, Wege, Sicht und Reichweite rechnen mit dem ganzen Platz | – | [[F-056 Tokens & Marker\|Tokens & Marker]] | 3 | 3 | done | steht |
+| [[REQ-225]] | Fallenlassen ist eine freie Aktion, Verstauen eine Bonusaktion, egal wohin; der Gurt ist eine freie Aktion | – | [[F-026 Inventar\|Inventar]] | 3 | 1 | done | steht |
+| [[REQ-226]] | In der ersten Runde erscheinen Gegner in der Initiative der Spielenden erst, wenn sie an der Reihe sind; ab der zweiten Runde stehen die bereits gezeigten fest | – | [[F-051 Initiative\|Initiative]] | 3 | 1 | done | steht |
+| [[REQ-227]] | Masse im Fliesstext umrechnen: Fuss und Meilen in Regeltexten („within 120 feet“) nach der Einstellung `units` zeigen, beim Lesen gerechnet, gespeichert bleibt der Wortlaut | – | [[F-049 Masse & Einheiten\|Masse & Einheiten]] | 3 | 2 | idea | offen |
+| [[REQ-228]] | Verlorene Einladung neu ausgeben | Spielleitung | [[F-010 Anmeldung & Konten\|Anmeldung & Konten]] | 4 | 1 | idea | offen |
+| [[REQ-229]] | Konten in der Seite verwalten | Verwaltung | [[F-010 Anmeldung & Konten\|Anmeldung & Konten]] | 3 | 2 | idea | offen |
+| [[REQ-230]] | Register in der Seite bearbeiten | Spielleitung | [[F-002 Register\|Register]] | 2 | 5 | done | steht |
+| [[REQ-231]] | Klassenansicht wie 5e.tools: Stufentabelle (Übungsbonus, Merkmale, Spalten der Klasse und gewählter Unterklassen), Merkmale je Stufe ausgeschrieben, optionale Merkmale und Varianten zuschaltbar, Unterklassen nach Name und Quelle filtern und mehrere nebeneinander vergleichen (am Telefon untereinander) | – | [[F-044 Klassen\|Klassen]] | 3 | 3 | done | steht |
+| [[REQ-232]] | Listen rechnet der Server | Spieler | [[F-019 Leistung & Laden\|Leistung & Laden]] | 2 | 5 | done | steht |
+| [[REQ-233]] | 5e.tools über eine Pipeline einlesen statt von Hand auf dem Server: dev von selbst, wenn sich der Importer ändert, prod nur von Hand; vorher eine Sicherung, ein Probelauf ist möglich, der Bericht steht im Lauf | – | [[F-073 5e.tools-Import\|5e.tools-Import]] | 3 | 3 | done | steht |
+| [[REQ-234]] | API-Tokens für Werkzeuge | Verwaltung | [[F-015 API-Tokens & Werkzeugzugang\|API-Tokens & Werkzeugzugang]] | 3 | 2 | done | steht |
+| [[REQ-235]] | Werkbank: Prüfungen und Massenänderungen | Spielleitung | [[F-016 Werkbank\|Werkbank]] | 3 | 5 | done | steht |
+| [[REQ-236]] | Kampagne anlegen mit Dialog: Name, aufgeschaltete Ebenen (Liste mit Häkchen und Reihenfolge, vorhandene vorausgewählt), eigene Kampagnenebene, Leitung | – | [[F-029 Kampagne\|Kampagne]] | 2 | 3 | defined | offen |
+| [[REQ-237]] | Spielende legen Artikel an, die Leitung gibt frei | Spieler | [[F-013 Schreibrechte & Freigabe\|Schreibrechte & Freigabe]] | 2 | 5 | done | steht |
+| [[REQ-238]] | Charaktererstellung aus den Artikeln: Klasse, Herkunft (Ancestry) und Hintergrund wählen und ihre Entscheidungen treffen; Schritte und Wahlmöglichkeiten kommen aus den Artikeln, nicht aus Code — eine Änderung am Artikel wirkt sofort | – | [[F-024 Charaktermanager\|Charaktermanager]] | 1 | 13 | done | steht |
+| [[REQ-239]] | Jedes Buch eine eigene Ebene (PHB, MM, DMG, XGE …), statt einer Ebene für alles aus 5e.tools; eine Kampagne schaltet die Bücher auf, die sie nutzt | – | [[F-073 5e.tools-Import\|5e.tools-Import]] | 2 | 3 | done | steht |
+| [[REQ-240]] | Vorgefertigte Abenteuer aus 5e.tools: je Abenteuer eine Ebene mit Kapiteln, Abschnitten, Begegnungen, Karten und NSC als Artikeln; die Leitung übernimmt sie in die eigene Geschichte und passt sie an, ohne das Original zu verlieren | – | [[F-033 Abenteuer übernehmen\|Abenteuer übernehmen]] | 2 | 13 | done | steht |
+| [[REQ-241]] | Die Sicht eines Spielers einnehmen | Spielleitung | [[F-014 Sicht eines Spielers\|Sicht eines Spielers]] | 1 | 5 | done | steht |
+| [[REQ-242]] | Felder der eigenen Figur sperren | Spielleitung | [[F-013 Schreibrechte & Freigabe\|Schreibrechte & Freigabe]] | 3 | 5 | defined | offen |
+| [[REQ-243]] | Alle 5e.tools-Inhalte als eigene Ebenen, abschaltbar: 2024-Regeln, Unearthed Arcana, Fahrzeuge, Kartendecks, Bastionen — damit die Leitung Ebenen umschalten und Fassungen eines Artikels nebeneinander zeigen kann | – | [[F-073 5e.tools-Import\|5e.tools-Import]] | 2 | 8 | done | steht |
+| [[REQ-244]] | Ebenen gruppieren | Spielleitung | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 2 | 3 | done | steht |
+| [[REQ-245]] | Ebenen beschreiben sich selbst | Spielleitung | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 2 | 2 | done | steht |
+| [[REQ-246]] | Navigation ohne Einfrieren | Spieler | [[F-019 Leistung & Laden\|Leistung & Laden]] | 1 | 5 | done | steht |
+| [[REQ-247]] | Leseansicht für Bücher und Abenteuer: eine Ebene als Buch lesen — Inhaltsverzeichnis, Kapitel in Reihenfolge, eingebettete Artikel (Zauber, Monster, Tabellen) als Verweise bzw. Karten, Lesestand gemerkt | – | [[F-043 Bücher & Leseansicht\|Bücher & Leseansicht]] | 2 | 8 | done | steht |
+| [[REQ-248]] | Kurzansicht überall: wo ein Artikel genannt wird (auch Ebenen in Filtern, Chips, Listen), öffnet ein Klick bzw. Antippen ein Popup mit der Quick-Ansicht und einem Link zum Artikel; Brotkrumen für die Navigation | – | [[F-070 Navigation & Kurzansicht\|Navigation & Kurzansicht]] | 2 | 5 | done | steht |
+| [[REQ-249]] | Ebenen nach Herausgeber | Spielleitung | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 2 | 3 | in progress | teils |
+| [[REQ-250]] | Startausrüstung je Kampagne einstellbar: nach Regeln (Klasse/Hintergrund), Gold (fest oder gewürfelt) oder frei mit eigenen Grenzen (Goldbudget, höchstens N magische Gegenstände je Seltenheit u. ä.) | – | [[F-024 Charaktermanager\|Charaktermanager]] | 2 | 5 | done | steht |
+| [[REQ-251]] | Sprachen der Kampagne: die Kampagne nennt die sinnvollen/möglichen Sprachen; Sprachwahlen in der Charaktererstellung bieten genau diese an | – | [[F-024 Charaktermanager\|Charaktermanager]] | 1 | 2 | done | steht |
+| [[REQ-252]] | Abenteuer modular: Kapitel als Arcs, Begegnungen und Karten als eigene Szenen; einzelne Vorlesetexte oder ganze Kapitel in die eigene Kampagne übernehmen | – | [[F-033 Abenteuer übernehmen\|Abenteuer übernehmen]] | 2 | 5 | done | steht |
+| [[REQ-253]] | Ebenen und Artikel kopieren | Spielleitung | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 3 | 5 | defined | offen |
+| [[REQ-254]] | Namensgenerator: Namen für NSC, Orte usw. erzeugen (z. B. aus den Namenstabellen der Abstammungen/Kulturen), übernehmbar beim Anlegen | – | [[F-041 Namensgenerator\|Namensgenerator]] | 4 | 3 | defined | offen |
+| [[REQ-255]] | Ebenen teilweise aufschalten | Spielleitung | [[F-004 Ebenen & Stapel\|Ebenen & Stapel]] | 2 | 3 | done | steht |
+| [[REQ-256]] | Ansichten ohne Code definieren | Spielleitung | [[F-006 Ansichten & Anordnung\|Ansichten & Anordnung]] | 1 | 8 | done | steht |
+| [[REQ-257]] | Kanten verständlich | Spielleitung | [[F-008 Kanten verstehen\|Kanten verstehen]] | 2 | 5 | done | steht |
+| [[REQ-258]] | Verweisfeld nennt, welche Artikel es annimmt | Spielleitung | [[F-003 Feldformen & Aufzählungen\|Feldformen & Aufzählungen]] | 2 | 2 | in progress | teils |
+| [[REQ-259]] | Vorgabewerte für Felder | Spielleitung | [[F-003 Feldformen & Aufzählungen\|Feldformen & Aufzählungen]] | 3 | 1 | done | steht |
+| [[REQ-260]] | Ausgehende Kanten im Register sehen | Spielleitung | [[F-002 Register\|Register]] | 3 | 1 | done | steht |
+| [[REQ-261]] | Sorte einer Art als freies Feld mit Vorschlägen | Spielleitung | [[F-003 Feldformen & Aufzählungen\|Feldformen & Aufzählungen]] | 2 | 1 | done | steht |
+| [[REQ-262]] | Flache Typenlisten | Spielleitung | [[F-002 Register\|Register]] | 3 | 1 | done | steht |
+| [[REQ-263]] | Was eine Einstellung im Register auslöst | Spielleitung | [[F-002 Register\|Register]] | 3 | 1 | done | steht |
+| [[REQ-264]] | Vergleichsebenen der Kampagne | Spielleitung | [[F-005 Fassungen & Varianten\|Fassungen & Varianten]] | 2 | 3 | in progress | teils |
+| [[REQ-265]] | Register zeigt einen Typ auf einer Fläche | Spielleitung | [[F-002 Register\|Register]] | 2 | 3 | done | steht |
+| [[REQ-266]] | Demo-Zugang | Verwaltung | [[F-010 Anmeldung & Konten\|Anmeldung & Konten]] | 5 | 3 | defined | offen |
+| [[REQ-267]] | Eigenes Netz-VPS mit VPN | Verwaltung | [[F-017 Ausrollen & Sicherung\|Ausrollen & Sicherung]] | 5 | 3 | defined | offen |
+| [[REQ-268]] | Dev-Token aus der Werkbank erzeugen | Verwaltung | [[F-015 API-Tokens & Werkzeugzugang\|API-Tokens & Werkzeugzugang]] | 3 | 1 | in progress | teils |
+| [[REQ-269]] | Ankündigen, wann produktiv gearbeitet werden kann | Verwaltung | [[F-017 Ausrollen & Sicherung\|Ausrollen & Sicherung]] | 2 | 1 | in progress | teils |
+| [[REQ-270]] | Artikel von dev nach prod übernehmen | Spielleitung | [[F-018 Übernahme dev - prod\|Übernahme dev ↔ prod]] | 2 | 5 | in progress | teils |
+| [[REQ-271]] | Konflikte bei der Übernahme nebeneinander lösen | Spielleitung | [[F-018 Übernahme dev - prod\|Übernahme dev ↔ prod]] | 3 | 5 | defined | offen |
+| [[REQ-272]] | Statblock als Instanz einer Vorlage | Spielleitung | [[F-021 Statblock\|Statblock]] | 1 | 3 | done | steht |
+| [[REQ-273]] | Eigene Verfahren für Attributswerte | Spielleitung | [[F-024 Charaktermanager\|Charaktermanager]] | 2 | 2 | done | steht |
+| [[REQ-274]] | Charakter- und Kampagnenmanager jederzeit aufrufen | Spieler | [[F-024 Charaktermanager\|Charaktermanager]] | 3 | 5 | defined | offen |
+| [[REQ-275]] | Erhaltene Gegenstände als Instanz | Spieler | [[F-026 Inventar\|Inventar]] | 2 | 3 | in progress | teils |
+| [[REQ-276]] | Unverstaute Gegenstände gelten als liegengelassen | Spielleitung | [[F-026 Inventar\|Inventar]] | 4 | 2 | defined | offen |
+| [[REQ-277]] | Gegenstände mit Form spiegeln | Spieler | [[F-026 Inventar\|Inventar]] | 4 | 1 | defined | offen |
+| [[REQ-278]] | Bereiche als eigene Seiten | Spielleitung | [[F-029 Kampagne\|Kampagne]] | 1 | 2 | done | steht |
+| [[REQ-279]] | Kampagnenwerte pflegen und in Texten nutzen | Spielleitung | [[F-029 Kampagne\|Kampagne]] | 2 | 2 | in progress | teils |
+| [[REQ-280]] | Umschalter Vorbereitung und Spiel | Spielleitung | [[F-031 Sitzungen & Vorbereitung\|Sitzungen & Vorbereitung]] | 4 | 2 | defined | offen |
+| [[REQ-281]] | Eine Party je Kampagne | Spielleitung | [[F-034 Party\|Party]] | 1 | 2 | done | steht |
+| [[REQ-282]] | Sitzungsansicht für das Spiel | Spielleitung | [[F-031 Sitzungen & Vorbereitung\|Sitzungen & Vorbereitung]] | 2 | 3 | defined | offen |
+| [[REQ-283]] | Kampagnen-Ladebildschirm | Spieler | [[F-035 Ladebildschirm-Board\|Ladebildschirm-Board]] | 3 | 3 | defined | offen |
+| [[REQ-284]] | Läden mit Waren und Preisen | Spielleitung | [[F-040 Läden & Wirtschaft\|Läden & Wirtschaft]] | 2 | 3 | done | steht |
+| [[REQ-285]] | Fraktionspreise | Spielleitung | [[F-040 Läden & Wirtschaft\|Läden & Wirtschaft]] | 3 | 2 | in progress | teils |
+| [[REQ-286]] | Artikel nachts auf Vollständigkeit prüfen | Spielleitung | [[F-076 Artikelprüfung & Nachtarbeit\|Artikelprüfung & Nachtarbeit]] | 3 | 3 | done | steht |
+| [[REQ-287]] | Regelsysteme als Behälter mit Optionen | Spielleitung | [[F-048 Regelsysteme & Module\|Regelsysteme & Module]] | 2 | 8 | defined | offen |
+| [[REQ-288]] | Preise für jeden Gegenstand | Spielleitung | [[F-077 KI-Inhalte\|KI-Inhalte]] | 3 | 3 | in progress | teils |
+| [[REQ-289]] | Homebrew-Regeln erfassen | Spielleitung | [[F-048 Regelsysteme & Module\|Regelsysteme & Module]] | 3 | 3 | defined | offen |
+| [[REQ-290]] | Wechselwirkungen von Regeln auswerten | Spielleitung | [[F-046 Regelauswertung\|Regelauswertung]] | 4 | 8 | defined | offen |
+| [[REQ-291]] | Leseansicht auf dem Board | Spielleitung | [[F-067 Boards\|Boards]] | 3 | 3 | defined | offen |
+| [[REQ-292]] | Neuen Artikel aus einer Auswahl anlegen | Spielleitung | [[F-054 Werkzeuge am Tisch\|Werkzeuge am Tisch]] | 2 | 2 | in progress | teils |
+| [[REQ-293]] | Ladeanzeige für Kartenbilder | Spielleitung | [[F-055 Karte & Kartenebenen\|Karte & Kartenebenen]] | 3 | 1 | done | steht |
+| [[REQ-294]] | Token ohne Bild zeigt den Anfangsbuchstaben | Spielleitung | [[F-056 Tokens & Marker\|Tokens & Marker]] | 3 | 1 | in progress | teils |
+| [[REQ-295]] | Bild ersetzen als Fassung oder neue Quelle | Spielleitung | [[F-063 Bildverwaltung\|Bildverwaltung]] | 3 | 2 | defined | offen |
+| [[REQ-296]] | Bildklassen | Spielleitung | [[F-063 Bildverwaltung\|Bildverwaltung]] | 3 | 2 | in progress | teils |
+| [[REQ-297]] | Bilder aus 5e.tools einlesen und verknüpfen | Spielleitung | [[F-063 Bildverwaltung\|Bildverwaltung]] | 3 | 5 | defined | offen |
+| [[REQ-298]] | Bilder bearbeiten und Tokens zusammenstellen | Spielleitung | [[F-064 Token-Werkstatt\|Token-Werkstatt]] | 4 | 8 | defined | offen |
+| [[REQ-299]] | Optionale Felder verdeckt | Spielleitung | [[F-071 Bearbeiten in der Ansicht\|Bearbeiten in der Ansicht]] | 3 | 2 | in progress | teils |
+| [[REQ-300]] | Gestaltung wie die Bücher | Spielleitung | [[F-072 Design & Stilkonzept\|Design & Stilkonzept]] | 3 | 3 | in progress | teils |
+| [[REQ-301]] | Stilkonzept in der Verwaltung anpassen | Verwaltung | [[F-072 Design & Stilkonzept\|Design & Stilkonzept]] | 4 | 3 | defined | offen |
+| [[REQ-302]] | Der Filter gehört der Seite | Spielleitung | [[F-069 Filter & Filtergruppen\|Filter & Filtergruppen]] | 3 | 1 | done | steht |
+| [[REQ-303]] | Filtergruppen je Seite | Spielleitung | [[F-069 Filter & Filtergruppen\|Filter & Filtergruppen]] | 2 | 3 | done | steht |
+| [[REQ-304]] | Übergreifende Suche beim Tippen | Spieler | [[F-068 Suche\|Suche]] | 1 | 3 | done | steht |
+| [[REQ-305]] | Kampagne und Ebene immer sichtbar | Spielleitung | [[F-070 Navigation & Kurzansicht\|Navigation & Kurzansicht]] | 2 | 2 | defined | offen |
+| [[REQ-306]] | Lesbarkeit im Feinschliff | Spieler | [[F-072 Design & Stilkonzept\|Design & Stilkonzept]] | 3 | 2 | done | steht |
+| [[REQ-307]] | Löschen mit Rückfrage in der Seite | Spielleitung | [[F-071 Bearbeiten in der Ansicht\|Bearbeiten in der Ansicht]] | 3 | 1 | done | steht |
+| [[REQ-308]] | Obsidian-Vault einlesen | Spielleitung | [[F-075 Obsidian-Vault\|Obsidian-Vault]] | 3 | 5 | defined | offen |
+| [[REQ-309]] | Claude darf auf dev ergänzen, mit Protokoll | Spielleitung | [[F-076 Artikelprüfung & Nachtarbeit\|Artikelprüfung & Nachtarbeit]] | 3 | 1 | done | steht |
+| [[REQ-310]] | Fassungen am Feld zeigen | Spielleitung | [[F-005 Fassungen & Varianten\|Fassungen & Varianten]] | 2 | 3 | done | steht |
+| [[REQ-311]] | Spieleransicht mit der eigenen Figur im Fokus | Spieler | [[F-025 Spieleransicht & Telefon\|Spieleransicht & Telefon]] | 2 | 5 | in progress | teils |
+| [[REQ-312]] | Eigenes Token bewegen | Spieler | [[F-058 Bewegung & Zonen\|Bewegung & Zonen]] | 2 | 3 | in progress | teils |
+| [[REQ-313]] | Zustände als Artikel | Spielleitung | [[F-042 Bereich Rules & Kompendium\|Bereich Rules & Kompendium]] | 2 | 3 | in progress | teils |
+| [[REQ-314]] | Regelwerk eines Drittverlags laden | Spielleitung | [[F-074 Regelwerke anderer Verlage\|Regelwerke anderer Verlage]] | 3 | 5 | in progress | teils |
+| [[REQ-315]] | Globale Kopfleiste | Spieler | [[F-070 Navigation & Kurzansicht\|Navigation & Kurzansicht]] | 1 | 2 | done | steht |
+
+## Verlauf
+- **0.9** (2026-10-14): Umstellung auf User Stories (T-154): 12 Epics, Features, je Story eine Notiz; REQ-236 … REQ-257 aus dem Projektbrett nachgetragen, REQ-258 ff. aus der Ernte aller Gespräche. Die Tabelle wird seither erzeugt.
+- **0.1 … 0.8** (2026-08-28 … 2026-10-13): eine von Hand gepflegte Tabelle — im Git-Verlauf dieser Datei.
