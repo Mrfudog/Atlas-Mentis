@@ -76,7 +76,7 @@ function datenstand(): Datenstand {
   add('spell', { name: 'Fireball', source: 'XPHB', level: 3, school: 'V', time: [{ number: 1, unit: 'action' }], entries: ['Like {@spell fireball|PHB}, but 2024.'] });
   add('itemMastery', { name: 'Nick', source: 'XPHB', entries: ['An extra attack.'] });
   add('baseitem', { name: 'Scimitar', source: 'XPHB', type: 'M|XPHB', weaponCategory: 'martial', dmg1: '1d6', dmgType: 'S', property: ['F', 'L'], mastery: ['Nick|XPHB'], weapon: true });
-  add('vehicle', { name: 'Galley', source: 'GoS', vehicleType: 'SHIP', terrain: ['sea'], capCrew: 80, hull: { ac: 15, hp: 500, dt: 20 }, str: 24, dex: 4, con: 20, int: 0, wis: 0, cha: 0 });
+  add('vehicle', { name: 'Galley', source: 'GoS', vehicleType: 'SHIP', terrain: ['sea'], capCrew: 80, pace: { fly: '4½', swim: 3 }, hull: { ac: 15, hp: 500, dt: 20 }, str: 24, dex: 4, con: 20, int: 0, wis: 0, cha: 0 });
   add('card', { name: 'Vizier', source: 'DMG', set: 'Deck of Many Things', entries: ['Answer a question.'] }, { name: 'Fool', source: 'DMG', set: 'Deck of Many Things', entries: ['Lose XP.'] });
   add('deck', { name: 'Deck of Many Things', source: 'DMG', cards: ['Vizier|Deck of Many Things', { uid: 'Fool|Deck of Many Things', count: 2 }], entries: ['A deck of cards.'] });
   add('facility', { name: 'Armory', source: 'XDMG', facilityType: 'special', level: 5, space: ['roomy'], hirelings: [{ exact: 1 }], orders: ['trade'], entries: ['Weapons.'] });
@@ -283,6 +283,8 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
     expect(galeere.components['Statblock']).toMatchObject({ creatureType: 'vehicle (ship)', ac: 15, hp: 500 });
     expect(galeere.relations?.find((r) => r.type === 'inLayer')?.to).toBe(buchEbeneId('GoS'));
     expect(prosa(galeere)).toContain('**Crew:** 80');
+    /* Die Reisegeschwindigkeit je Fortbewegung, nicht „[object Object]" (T-089). */
+    expect(prosa(galeere)).toContain('**Travel pace:** fly 4½ miles per hour, swim 3 miles per hour');
     const deck = finde(es, 'Table', 'Deck of Many Things');
     expect(deck.components['Table']).toMatchObject({ kind: 'deck', die: '1d3' });
     const karten = (deck.relations ?? []).filter((r) => r.type === 'entry');
