@@ -50,8 +50,10 @@ sind Zeilen — eine neue Artikelart anzulegen heisst einfügen, nicht migrieren
 Das ursprüngliche Konzept liegt in `VTT/` (`Backbone Concept.md`,
 `Schemas.md` mit D0–D17, `Data Definitions.md`) und ist **überholt** —
 was gilt, steht in [docs/Datenmodell.md](docs/Datenmodell.md). Die
-REQ-Nummern stehen in `VTT/Requirements.md`, ihr Stand in
-`VTT/Umsetzung.md` (erzeugt).
+Anforderungen sind **User Stories** (T-154): je Story eine Notiz
+`VTT/Stories/REQ-nnn.md` (Nummer unveränderlich), jede an einem **Feature**
+(`VTT/Features/F-nnn …`), jedes Feature an einem **Epic** (`VTT/Epics/EP-nn …`);
+`VTT/Requirements.md` und `VTT/Umsetzung.md` sind daraus erzeugt.
 
 ## Wo was liegt
 
@@ -350,7 +352,12 @@ wiederkommen, werden sie neu geschrieben.
   vorher, was sie lasen (`detachInstance`), geht die Kreatur, geht ihre
   Instanz mit. Nicht vererbt werden `Identity`, `Visibility` und die
   Kanten, die zur Vorlage als Artikel gehören (`inLayer`, `belongsTo`,
-  `overrides`, `variantOf`). Für einen Tag durfte ein Statblock vielen
+  `overrides`, `variantOf`), und das Inventar eines Stücks (`carries`).
+  **Ein Gegenstand im Inventar ist ein Stück** (T-150): gekauft, erbeutet,
+  gefertigt oder gegeben entsteht er als Instanz (`newInstance`,
+  `stueckWerkstatt`), ein loser Stapel derselben Vorlage wächst stattdessen
+  (`receivePiece`), und Material zählt nach dem Grundartikel
+  (`baseArticle`). Für einen Tag durfte ein Statblock vielen
   gehören („shared by 30") — dann war jede Änderung an einer Wache eine an
   allen.
 - **Ein Textblock ist ein Feld.** Es gab einmal `blocks: [{blockType, body,
@@ -717,10 +724,15 @@ nirgends steht, hielt jemand einmal für richtig und füllt niemand.
 `… --liste` zählt die Arten nach Bereich auf.
 
 `pnpm --filter @nw/registry anforderungen -- --umsetzung VTT/Umsetzung.md`
-schreibt [docs/Anforderungen.md](docs/Anforderungen.md) neu **und** dieselbe
-Übersicht als Notiz in den Vault — die Spalte *Status* im Register des
-Vaults folgt ihr. Wer einen Stand anders sieht, ändert die Zuordnung im
-Skript, nicht die Datei.
+liest die Story-, Feature- und Epic-Notizen und schreibt daraus
+[docs/Anforderungen.md](docs/Anforderungen.md), `VTT/Requirements.md`,
+`VTT/Requirements by Epic.md`, `VTT/Areas.md` (die Epics), `VTT/Umsetzung.md`
+und die Listen in den Epic- und Feature-Notizen (zwischen
+`stories:anfang` und `stories:ende`). Der Stand einer Story steht **in ihrer
+Notiz** (`stand`, `standNotiz`); wer ihn anders sieht, ändert die Notiz.
+Bricht etwas (Story ohne Feature, Verweis ins Leere), schreibt der Lauf
+nichts und schlägt fehl — `packages/registry/test/anforderungen.test.ts`
+prüft dasselbe in `pnpm test`.
 
 `pnpm --filter @nw/registry catalogue` schreibt
 [docs/Artikeltypen.md](docs/Artikeltypen.md) neu — je Artikelart, was sie
@@ -790,6 +802,12 @@ Anforderungen, Entscheidungen und Todos werden festgehalten, wo sie
 hingehören (unten); was nichts mehr sagt, wird gelöscht — im Zweifel
 fragen, und vorher abschätzen, ob jemand es noch braucht.
 
+**Jeder neue Wunsch ist zuerst eine Story** (T-154): er legt eine Story
+an oder ändert eine bestehende — und was wegfällt, wird nicht gelöscht,
+sondern `dropped` mit `ersetztDurch`. Aufgaben im Projektbrett hängen an
+Stories. Ablauf: [CONTRIBUTING.md › Anforderungen als User
+Stories](CONTRIBUTING.md#anforderungen-als-user-stories).
+
 **Ein Kommentar im Code nennt die Anforderung**, die er umsetzt (`REQ-174`)
 oder die Entscheidung (`D8`, `A7`), wenn es eine gibt — dann führt der Weg
 vom Code zur Begründung ohne Suchen.
@@ -798,7 +816,7 @@ vom Code zur Begründung ohne Suchen.
 
 | Was | Wo |
 |---|---|
-| Anforderungen (REQ-Nummern, Prio, Stand) | der Vault in diesem Repo, `VTT/Requirements.md` — mit Obsidian-Mitteln: `[[Verweise]]`, Auszüge `![[…]]`, Bases für Übersichten |
+| Anforderungen (Stories, Features, Epics; Prio, Stand) | der Vault in diesem Repo: je Story eine Notiz in `VTT/Stories/`, Features in `VTT/Features/`, Epics in `VTT/Epics/` — mit Obsidian-Mitteln: `[[Verweise]]`, Bases (`VTT/Stories.base`) für Übersichten |
 | was davon hier steht | [docs/Anforderungen.md](docs/Anforderungen.md), erzeugt von `anforderungen.mjs` |
 | Entscheidungen zum Modell | [docs/Durchgang.md](docs/Durchgang.md) (Abgleich, mit Entscheidungsspalte), [docs/Begriffe.md](docs/Begriffe.md) (das Warum) |
 | offene Arbeit | [docs/Roadmap.md](docs/Roadmap.md) „Als Nächstes"; Issues für das, was gerade gebaut wird |

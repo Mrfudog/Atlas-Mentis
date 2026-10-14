@@ -73,10 +73,48 @@ und dass jeder `link` eine Route trifft.
 
 ## Wo Anforderungen leben
 
-**Im Vault**, der seit dem 7.10. in diesem Repo liegt: `VTT/Requirements.md` ist die
-Quelle: unveränderliche REQ-Nummern, Priorität, Aufwand, v1-Tiefe, Abhängigkeiten
-und die Begründung daneben. IDs werden vergeben, nie neu nummeriert; Verworfenes
-bleibt mit Status `dropped` stehen.
+**Im Vault**, der seit dem 7.10. in diesem Repo liegt, als **User Stories**
+(T-154, E-048 a): je Story eine Notiz `VTT/Stories/REQ-nnn.md`. IDs werden
+vergeben, nie neu nummeriert; Verworfenes bleibt mit Status `dropped` stehen.
+`VTT/Requirements.md` ist seither eine erzeugte Übersicht.
+
+### Anforderungen als User Stories
+
+Drei Stufen, je eine Notiz mit Frontmatter (Obsidian-Eigenschaften):
+
+| Stufe | Ist | Notiz | Kennung |
+|---|---|---|---|
+| **Epic** | ein Funktionsbereich mit seinem Umfang (E-049) | `VTT/Epics/EP-nn Name.md` | `EP-01` … |
+| **Feature** | eine Funktion, eine Artikelart oder eine Ansicht — auch ein Bereich der App wie „Bereich World“ | `VTT/Features/F-nnn Name.md`, `epic: "[[EP-nn …]]"` | `F-001` … |
+| **Story** | ein Wunsch einer Rolle, mit Nutzen und Akzeptanzkriterien | `VTT/Stories/REQ-nnn.md`, `feature: "[[F-nnn …]]"` | `REQ-001` … |
+
+Eine Story sagt: **Als** ⟨Rolle⟩ **möchte ich** ⟨Ziel⟩, **damit** ⟨Nutzen⟩ —
+Rolle ist eine von Spieler, Spielleitung, Mitleitung, Zuschauer, Verwaltung.
+Darunter die **Akzeptanzkriterien** (woran man merkt, dass es steht), im
+Frontmatter `prio`, `aufwand`, `v1`, `abhaengig`, `status`, `stand` und
+`standNotiz` (was im Repo steht), `herkunft`. Eine Vorlage ist jede
+bestehende Notiz; die Skalen stehen in `VTT/Requirements.md`.
+
+**Der Ablauf, wenn sich etwas ändert:**
+
+1. Ein **neuer Wunsch** wird zuerst eine Story — die nächste freie Nummer,
+   an das passende Feature. Passt keines, ein neues Feature (nächste
+   `F-nnn`) im passenden Epic; ein neues Epic entscheidet die Leitung.
+2. Ein **geänderter Wunsch** ändert die bestehende Story (Satz, Kriterien,
+   Prio). Fasst eine Story zu viel zusammen, wird sie geteilt: der Rest
+   bekommt eine neue Nummer, beide nennen einander in `abhaengig`.
+3. Ein **weggefallener oder doppelter Wunsch** wird nicht gelöscht: `status:
+   dropped`, `stand: ersetzt` oder `verworfen`, und `ersetztDurch` nennt die
+   Story, die ihn jetzt trägt (sonst sagt `standNotiz`, warum).
+4. Danach `pnpm --filter @nw/registry anforderungen -- --umsetzung VTT/Umsetzung.md`
+   — es schreibt die Übersichten neu und schlägt fehl, wenn eine Story ins
+   Leere zeigt.
+5. **Aufgaben hängen an Stories**: im Projektbrett nennt eine Aufgabe ihre
+   REQ-Nummern; ein Commit oder Kommentar im Code nennt sie ebenso.
+
+Zitate aus Gesprächen gehören **nicht** in die Notizen — die Story sagt
+sachlich, was gewünscht ist; Zitate und Kampagneninhalt bleiben im
+Projektbrett.
 
 **Issues bilden ab, was gerade gebaut wird** — nicht den ganzen Katalog:
 

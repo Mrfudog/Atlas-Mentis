@@ -889,6 +889,62 @@ try {
     }
   }
 
+  /* ------------------------------------ Stücke als Instanz (T-150) */
+  {
+    /* Migration 067 macht aus jeder Kante `holds` auf einen Gegenstand ein
+       eigenes Stück (Instanz): Menge und Reservierung bleiben an der Kante,
+       die Sichtbarkeit kommt mit, ein Behälter mit eigenem Inhalt bleibt. */
+    const { migrate } = await import(join(DIST, 'migrate.js'));
+    const { PgRepository } = await import(join(DIST, 'repo.pg.js'));
+    const { default: pg } = await import('pg');
+    const { readFileSync } = await import('node:fs');
+    const pool = new pg.Pool({ connectionString: process.env['DATABASE_URL'] });
+    const repo = new PgRepository(pool);
+    const probe = [
+      { id: 'it_probe_t150', name: 'Probe Torch', interfaces: ['Item'], components: ident('Probe Torch', 'item-0981'), relations: [] },
+      { id: 'it_probe_t150_geheim', name: 'Probe Idol', interfaces: ['Item'], components: { ...ident('Probe Idol', 'item-0982'), Visibility: { audience: 'gm' } }, relations: [] },
+      { id: 'inv_probe_t150_sack', name: 'Probe Sack inventory', interfaces: ['Inventory'], components: ident('Probe Sack inventory', 'inventory-0981'), relations: [] },
+      { id: 'it_probe_t150_sack', name: 'Probe Sack', interfaces: ['Item'], components: ident('Probe Sack', 'item-0983'), relations: [{ id: 'it_probe_t150_sack~c', type: 'carries', to: 'inv_probe_t150_sack', props: {} }] },
+      {
+        id: 'inv_probe_t150', name: 'Probe pack', interfaces: ['Inventory'], components: ident('Probe pack', 'inventory-0982'),
+        relations: [
+          { id: 'inv_probe_t150~h1', type: 'holds', to: 'it_probe_t150', props: { qty: 3, tier: 'pack', reservedFor: 'order_probe_t150' } },
+          { id: 'inv_probe_t150~h2', type: 'holds', to: 'it_probe_t150_geheim', props: { qty: 1, tier: 'pack' } },
+          { id: 'inv_probe_t150~h3', type: 'holds', to: 'it_probe_t150_sack', props: { qty: 1, tier: 'pack' } },
+        ],
+      },
+    ];
+    const ordner = mkdtempSync(join(tmpdir(), 'durchstich-stuecke-'));
+    const name = 'zzz_durchstich_stuecke_als_instanz.sql';
+    let stuecke = [];
+    try {
+      for (const e of probe) {
+        const r = await put(admin, e);
+        pruefe(`Probeartikel ${e.id}`, r.ok, `${r.status} ${await r.text()}`);
+      }
+      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '067_stuecke_als_instanz.sql'), 'utf8'));
+      await migrate(pool, { env: {} }, ordner);
+      const inv = await repo.getEntity('inv_probe_t150');
+      const h = (k) => inv?.relations?.find((r) => r.id === `inv_probe_t150~${k}`);
+      stuecke = ['h1', 'h2'].map((k) => h(k)?.to).filter((x) => x && !x.startsWith('it_probe'));
+      const fackel = h('h1') ? await repo.getEntity(h('h1').to) : null;
+      const idol = h('h2') ? await repo.getEntity(h('h2').to) : null;
+      pruefe('Stücke als Instanz: die Kante zeigt auf ein Stück der Vorlage, Menge und Reservierung bleiben',
+        stuecke.length === 2 && fackel?.relations?.some((r) => r.type === 'instanceOf' && r.to === 'it_probe_t150')
+          && h('h1')?.props?.qty === 3 && h('h1')?.props?.reservedFor === 'order_probe_t150'
+          && fackel?.components?.['Status']?.status === 'ready' && /^item-\d{4}$/.test(fackel?.components?.['Identity']?.id ?? ''),
+        JSON.stringify({ rel: inv?.relations, fackel }));
+      pruefe('Stücke als Instanz: die Sichtbarkeit kommt mit',
+        idol?.components?.['Visibility']?.audience === 'gm', JSON.stringify(idol?.components));
+      pruefe('Stücke als Instanz: ein Behälter mit eigenem Inhalt bleibt', h('h3')?.to === 'it_probe_t150_sack', JSON.stringify(h('h3')));
+    } finally {
+      await pool.query('delete from entity where id = any($1)', [[...stuecke, ...probe.map((e) => e.id)]]);
+      await pool.query('delete from schema_migrations where name = $1', [name]);
+      await pool.end();
+      rmSync(ordner, { recursive: true, force: true });
+    }
+  }
+
   /* ------------------------------------ Bücher aus Teilen (T-108) */
   {
     /* Migration 043 bringt die Arten und die Kanteneigenschaft in ein

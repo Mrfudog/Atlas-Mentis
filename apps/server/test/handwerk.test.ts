@@ -139,10 +139,36 @@ describe('Fertigungsauftrag (T-128)', () => {
     expect(f.some((h) => h.props?.['reservedFor'])).toBe(false);
     expect(f.find((h) => h.to === 'kraut')?.props?.['qty']).toBe(3);
     expect(f.find((h) => h.to === 'moerser')?.props?.['qty']).toBe(1);
-    expect(f.find((h) => h.to === 'trank')?.props?.['qty']).toBe(2);
+    // Der Ertrag ist ein Stück: eine Instanz des Tranks (T-150), kein Verweis auf den Grundartikel.
+    expect(f.some((h) => h.to === 'trank')).toBe(false);
+    const ertrag = f.find((h) => !['kraut', 'moerser'].includes(h.to));
+    expect(ertrag?.props?.['qty']).toBe(2);
+    const stueck = await repo.getEntity(ertrag!.to);
+    expect(stueck?.relations?.find((r) => r.type === 'instanceOf')?.to).toBe('trank');
+    expect(stueck?.components?.['Status']?.['status']).toBe('ready');
     expect(await holdsVon('inv-g')).toEqual([]);
     // Danach ist er abgeschlossen.
     expect((await post('l', `/api/crafting/${id}/roll`, { total: 20 })).statusCode).toBe(409);
+  });
+
+  it('ein gekauftes Stück (Instanz) zählt als Material seines Grundartikels (T-150)', async () => {
+    await repo.putEntity(art('kraut-1', 'Item', 'Moonleaf', 'item-0004', { relations: [{ id: 'k1~i', type: 'instanceOf', to: 'kraut', props: {} }] }));
+    const inv = (await repo.getEntity('inv-f'))!;
+    await repo.putEntity({ ...inv, relations: [...(inv.relations ?? []), holds('h4', 'kraut-1', 3)] });
+    const sicht = (await get('s', '/api/crafting/salbe')).json();
+    const vorrat = sicht.actors.find((a: { id: string }) => a.id === 'f').stock as { item: string; edge: string }[];
+    expect(vorrat.find((x) => x.edge === 'h4')?.item).toBe('kraut');
+    const r = await post('s', '/api/crafting', {
+      recipe: 'salbe',
+      actor: 'f',
+      materials: [
+        { inventory: 'inv-f', edge: 'h4', qty: 3 },
+        { inventory: 'inv-f', edge: 'h2', qty: 1 },
+      ],
+    });
+    expect(r.statusCode, r.body).toBe(200);
+    expect((await post('s', `/api/crafting/${r.json().id}/abort`)).statusCode).toBe(200);
+    expect((await holdsVon('inv-f')).find((h) => h.to === 'kraut-1')?.props?.['qty']).toBe(3);
   });
 
   it('Abbruch gibt alles frei', async () => {

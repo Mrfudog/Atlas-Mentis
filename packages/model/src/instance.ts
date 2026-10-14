@@ -37,8 +37,19 @@ export const INSTANCE_RELATION = 'instanceOf';
 export const NOT_INHERITED_CARDS: readonly string[] = ['Identity', 'Visibility'];
 
 /**
+ * Kanten, die einem **Stück** gehören (T-150): das Inventar eines
+ * Behälters (`carries`). Zwei Rucksäcke aus einer Vorlage tragen nicht
+ * denselben Inhalt — also erbt keine Instanz das Inventar ihrer Vorlage.
+ * Anders als `inLayer` ist eine solche Kante aber eine **Abweichung**: ein
+ * Rucksack mit eigenem Inhalt ist kein beliebiges Stück mehr
+ * (`followsTemplate`), und auf ihn kommt kein zweiter.
+ */
+export const PIECE_RELATIONS: readonly string[] = ['carries'];
+
+/**
  * Kanten, die zur Vorlage **als Artikel** gehören und nicht zu ihrem
- * Inhalt: wo sie liegt, wem sie gehört, wovon sie eine Spielart ist. Die
+ * Inhalt: wo sie liegt, wem sie gehört, wovon sie eine Spielart ist, was
+ * sie als Stück trägt. Die
  * übrigen — die Aktionen eines Statblocks (`composedOf`) zum Beispiel —
  * bringt die Vorlage mit, solange die Instanz keine eigenen dieser Art hat.
  */
@@ -48,6 +59,7 @@ export const NOT_INHERITED_RELATIONS: readonly string[] = [
   'inLayer',
   'overrides',
   'variantOf',
+  ...PIECE_RELATIONS,
 ];
 
 /** Weiter als so viele Vorlagen hoch wird nicht gesucht. */
@@ -309,5 +321,17 @@ export function followsTemplate(entities: Lookup, entity: Entity): boolean {
     if (card === 'Identity' || card === 'Status' || NOT_INHERITED_CARDS.includes(card)) continue;
     if (Object.values(werte ?? {}).some((w) => !leer(w))) return false;
   }
-  return (entity.relations ?? []).every((r) => NOT_INHERITED_RELATIONS.includes(r.type));
+  return (entity.relations ?? []).every((r) => NOT_INHERITED_RELATIONS.includes(r.type) && !PIECE_RELATIONS.includes(r.type));
+}
+
+/**
+ * **Der Grundartikel** eines Stücks: die fernste Vorlage, sonst das Stück
+ * selbst (T-150). Ein Rezept braucht „Eisenbarren", und der gekaufte
+ * Barren ist eine Instanz davon — gezählt wird er als Eisenbarren.
+ */
+export function baseArticle(entities: Lookup, id: EntityId): EntityId {
+  const e = entities.get(id);
+  if (!e) return id;
+  const kette = templateChain(entities, e);
+  return kette.length ? kette[kette.length - 1]!.id : id;
 }
