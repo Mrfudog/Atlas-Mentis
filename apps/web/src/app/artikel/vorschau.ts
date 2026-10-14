@@ -47,14 +47,18 @@ interface Stueck {
   selector: 'nw-vorschau',
   imports: [RouterLink, Text, QuelleText, KurzLink, Bild],
   template: `
-    <aside class="vorschau" aria-label="Preview">
-      <div class="vkopf">
-        <span class="leg">Quick view</span>
-        <button type="button" class="zu" (click)="zu.emit()" aria-label="Close preview">×</button>
-      </div>
+    <aside class="vorschau" [class.eingebettet]="eingebettet()" aria-label="Preview">
+      @if (!eingebettet()) {
+        <div class="vkopf">
+          <span class="leg">Quick view</span>
+          <button type="button" class="zu" (click)="zu.emit()" aria-label="Close preview">×</button>
+        </div>
+      }
       @if (artikel(); as e) {
-        <h2>{{ name(e) }}</h2>
-        @if (meta(); as m) {
+        @if (!eingebettet()) {
+          <h2>{{ name(e) }}</h2>
+        }
+        @if (eingebettet() ? null : meta(); as m) {
           <p class="meta">
             {{ m.art }}
             @if (m.quelle) {
@@ -62,7 +66,9 @@ interface Stueck {
             }
           </p>
         }
-        <div class="linie" aria-hidden="true"></div>
+        @if (!eingebettet()) {
+          <div class="linie" aria-hidden="true"></div>
+        }
         @for (s of stuecke(); track s.key) {
           @switch (s.kind) {
             @case ('text') {
@@ -118,9 +124,11 @@ interface Stueck {
             }
           }
         }
-        <div class="knoepfe">
-          <a class="knopf pri" [routerLink]="e.interfaces[0] === 'Class' ? ['/classes', e.id] : ['/artikel', e.id]">Open article</a>
-        </div>
+        @if (!eingebettet()) {
+          <div class="knoepfe">
+            <a class="knopf pri" [routerLink]="e.interfaces[0] === 'Class' ? ['/classes', e.id] : ['/artikel', e.id]">Open article</a>
+          </div>
+        }
       } @else if (bestand.fehlt().has(id())) {
         <p class="dim">No such article — or not one you may see.</p>
       } @else {
@@ -129,6 +137,11 @@ interface Stueck {
     </aside>
   `,
   styles: `
+    .vorschau.eingebettet {
+      border: 0;
+      padding: 0;
+      background: none;
+    }
     .vorschau {
       background: var(--paper);
       border: 1px solid var(--line);
@@ -231,6 +244,11 @@ export class Vorschau {
   readonly id = input.required<string>();
   /** Auch holen, was auf ihn zeigt? Das Popup (T-093) zeigt es nicht und spart die Anfrage. */
   readonly rueck = input(true);
+  /** Welche Ansicht (T-138): `quick`, wo nichts anderes gesagt wird; das „+"
+   *  der Suche fragt nach `search`. Fehlt sie im Register, gilt `quick`. */
+  readonly ansicht = input('quick');
+  /** In einer fremden Zeile: ohne Kopf, Namen, Quelle und „Open article" — das sagt die Zeile. */
+  readonly eingebettet = input(false);
   readonly zu = output<void>();
 
   protected readonly bestand = inject(Bestand);
@@ -277,10 +295,11 @@ export class Vorschau {
     const flach = (layout: LayoutElement[]): LayoutElement[] =>
       layout.flatMap((el) => (el.el === 'tabs' ? flach(el.tabs?.[0]?.layout ?? []) : [el]));
     /* Was die Ansicht sagt (T-110): leere Felder zeigen, Ungenanntes am Ende. */
-    const view = r.views['quick'];
+    const ansicht = r.views[this.ansicht()] ? this.ansicht() : 'quick';
+    const view = r.views[ansicht];
     const leer = view?.empty === 'show';
     const genommen = new Set<string>();
-    for (const el of flach(layoutFor(r, 'quick', typ).layout)) {
+    for (const el of flach(layoutFor(r, ansicht, typ).layout)) {
       if (el.el === 'image') {
         /* Die Karte zeigt die Vorschau (480 px); ein Klick öffnet das ganze Bild (T-114). */
         const bild = bildDes(e, r);
