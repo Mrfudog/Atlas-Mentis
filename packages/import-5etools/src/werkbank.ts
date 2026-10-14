@@ -113,6 +113,11 @@ export function gruppeEbeneId(gruppe: string): string {
   return `e5_group_${gruppe}`;
 }
 
+/** Die Id einer Herausgeber-Gruppe (T-094) — dieselbe in der Migration. */
+export function herausgeberEbeneId(herausgeber: string): string {
+  return `e5_publisher_${herausgeber}`;
+}
+
 export class Werkbank {
   readonly entities: Entity[] = [];
   readonly bericht: Bericht = neuerBericht();

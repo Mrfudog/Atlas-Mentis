@@ -731,6 +731,9 @@ interface Feld {
                 @if (q.titel) {
                   <p class="quelltitel">{{ q.titel }}</p>
                 }
+                @if (q.verlag) {
+                  <p class="quelltitel">Publisher: {{ q.verlag }}</p>
+                }
               </section>
             }
           </aside>
@@ -940,7 +943,9 @@ export class Artikel {
       | undefined;
     if (!q?.publication && !q?.url) return null;
     const text = [q.publication, q.page ? `p. ${q.page}` : ''].filter(Boolean).join(', ');
-    return { text: text || q.url || '', url: q.url, titel: q.publication ? this.quellen.titel(q.publication.trim()) : '' };
+    const k = q.publication?.trim() ?? '';
+    /* Dazu der Herausgeber (T-094): offizielles D&D, Partner oder Homebrew. */
+    return { text: text || q.url || '', url: q.url, titel: k ? this.quellen.titel(k) : '', verlag: k ? this.quellen.herausgeber(k) : '' };
   });
   protected name(e: Entity): string {
     return entityName(e);

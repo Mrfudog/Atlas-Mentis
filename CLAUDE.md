@@ -156,6 +156,10 @@ wiederkommen, werden sie neu geschrieben.
   (`kind: 'group'`, Mitglieder über `partOf`, E-022 b): aufgeschaltet bringt
   sie alle Mitglieder, und die ausdrückliche Kante schlägt die Gruppe —
   `activates` mit `mode: 'off'` nimmt ein Buch heraus (`resolvedStack`).
+  Gruppen ordnen nach Kategorie oder, mit `groupBy: 'publisher'`, nach
+  Herausgeber (T-094) — für den Stapel gleich. **Der Herausgeber einer
+  Ebene wird gerechnet** (`publisherOf`): ihre Herausgeber-Gruppe, sonst
+  Homebrew; ein Feld dafür gibt es nicht.
 - **Zwei Fragen, und die grobe kommt zuerst.** Die **Sichtbarkeit**
   (`articleVisible`) sagt, ob ein Artikel überhaupt an jemanden geht; das
   **Wissen** (`redactEntity`) sagt, welche Felder darin. Beides zu einer

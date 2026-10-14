@@ -227,6 +227,53 @@ auf die Modelländerungen in Abschnitt 3.
 | `adventure` | 100 | `Layer kind: pack` | **anpassen** | wie `book`; nur die Metadaten |
 | `data` (Buch- und Abenteuertext) | 1 259 Abschnitte | — | **weglassen** | Der Fliesstext der Bücher und Abenteuer. Die Regeln daraus stehen schon in `variantrule`, die Tabellen in `table`. Abenteuertext als `Article` zu übernehmen wäre Lizenz und Umfang zugleich (E1) |
 
+#### Herausgeber und Blocklist-Kategorien (T-094)
+
+Neben der Kategorie (T-088: Core rules, Supplements, Settings, Adventures,
+Unearthed Arcana, 2024 rules, Screens & other) steht jedes Buch in einer
+**Herausgeber-Gruppe** (`Layer.groupBy: 'publisher'`, Datenmodell E10) und
+gegebenenfalls in weiteren Kategorien aus 5e.tools › Utilities › Content
+Blocklist. Woher die Zuordnung kommt — gelesen in `5etools-src`, nicht
+geraten:
+
+| Gruppe | Regel | Quelle in 5etools-src |
+|---|---|---|
+| **Official** | jedes Buch aus `data/books.json` / `data/adventures.json`, das nicht Partnered ist | `SourceUtil.isSiteSource`: was die Seite selbst führt, ist kein Homebrew |
+| **Partnered** | RMBRE, RMR, EGW, ToR, DD, FS, US, CRCotN, HftT, LRDT, TD | `Parser.SOURCES_PARTNERED_WOTC` in `js/parser.js` — seit Dez. 2025 leer und auskommentiert, weil D&D Beyond diese Bücher als „Official" führt; die alte Liste gilt hier, damit Partner-Inhalte erkennbar bleiben |
+| **Third party** | legt der Importer nie an | `5etools-src` enthält kein Buch eines fremden Verlags; Drittanbieter kämen über Homebrew (`partnered`-Kennzeichen an der Quelle in `homebrew/`), das wir nicht einlesen |
+| **Homebrew** | jede Ebene ohne Herausgeber-Gruppe — die Kampagnenebenen, eigene Ebenen | `BrewUtil2.hasSourceJson`: Homebrew liegt nicht in `5etools-src` |
+| Non-standard | `SOURCES_NON_STANDARD_WOTC` und Kürzel mit `PS…` (Plane Shift) oder `MCV…` | „UA/Etc. Sources" der Blocklist, `SourceUtil.isNonstandardSourceWotc` ohne UA (UA kommt nicht herein) |
+| Comedy | `SOURCES_COMEDY` | „Comedy Sources" |
+| Outside the Forgotten Realms | `SOURCES_NON_FR` | „Non-*Forgotten Realms*" |
+
+„5e ('14)" und „5.5e ('24)" der Blocklist brauchen keine eigene Gruppe:
+2024-Bücher kommen nicht herein, und „2024 rules" gibt es schon. Die
+„Category" der Blocklist (Spell, Creature …) ordnet Einträge, nicht Bücher,
+und ist unsere Artikelart.
+
+**Nicht eindeutig** — so eingeordnet, die Leitung kann umhängen (die
+Ebene an eine andere Herausgeber-Gruppe):
+
+- *EGW mit ToR, DD, FS, US; CRCotN* (Darrington Press / Critical Role),
+  *RMR, RMBRE, HftT* (Rick and Morty), *LRDT* (LEGO), *TD* (Tarot Deck,
+  Clarkson Potter): als **Partnered** eingeordnet, obwohl 5e.tools und D&D
+  Beyond sie seit Dez. 2025 als offiziell führen.
+- *HF, HFFotM, HFLotT* (Kyle Newman), *PaF* (Andrew Wheeler), *CaBoMP*
+  (Stacy King): lizenzierte Koch- und Bastelbücher fremder Verlage, die
+  5e.tools nie als Partner führte — **Official**. Rezepte kommen ohnehin
+  nicht herein (§2.5), die Ebene entsteht nur, wenn sonst etwas daraus
+  kommt.
+- *OGA* (Christopher Lindsay), *AWM, MGELFT* (Emi Tanji), *TLK* (Shawn
+  Wood), *LLK, RtG* (Extra Life): ein Autor ausserhalb des Wizards-Teams,
+  aber von Wizards veröffentlicht (DMs Guild, Wohltätigkeit) — **Official**,
+  dazu **Non-standard**.
+- *VNotEE*: ohne Autor in den Daten — **Official**.
+
+Die Listen stehen wörtlich in `packages/import-5etools/src/lauf.ts`
+(Stand 10/2026). Ein neues Buch, das 5e.tools später einer Liste
+hinzufügt, steht bis zum Nachziehen nur in seiner Kategorie und unter
+Official.
+
 ### 2.7 Nicht übernommen, weil keine Daten
 
 `foundry-*` (Foundry-VTT-Automatisierung), `changelog`, `renderdemo`,
