@@ -24,7 +24,7 @@ interface FieldGroup {
  * Hintergrund.
  */
 const PROFICIENCY_SOURCES = ['Skill', 'Language', 'Item', 'Weapon', 'Weapon.category', 'Armor.armorType'];
-const TOOLS_ONLY = { Item: { itemType: ['tool', 'artisan tools', 'gaming set', 'instrument'] } };
+export const TOOLS_ONLY = { Item: { itemType: ['tool', 'artisan tools', 'gaming set', 'instrument'] } };
 
 /* `satisfies` statt einer Annotation: so kennt der Übersetzer die Namen
    und `g.Vitals` ist nicht „vielleicht undefiniert". */

@@ -941,6 +941,8 @@ flowchart LR
   R -- "needs · qty · consumed" --> M["Item"]
   F -- "crafting · day · days · put" --> R
   F -- "carries" --> Inv["Inventory"] -- "holds · qty" --> M
+  K["Campaign | Party | Creature"] -. "craftsWith · tool · ability · dc" .-> R
+  K -. "craftsWith" .-> T["Item (tool)"]
 ```
 
 - **Eine Blaupause wird gelernt, und gelernt heisst zugeteilt** (REQ-218):
@@ -967,6 +969,25 @@ flowchart LR
   nichts davon. Ein Gang aus der Zeit vor D55 ist dieselbe Kante mit
   weniger in `put`: nicht Verbrauchtes zählt dann in der Hand, und er
   läuft weiter.
+- **Womit gefertigt wird, ist wählbar** (T-122): Werkzeug, Attribut und
+  SG nennt das Rezept, wie seine Quelle sie druckt. Eine Kampagne, eine
+  Gruppe oder eine Figur weicht ab mit einer Kante `craftsWith` — zum
+  **Rezept** (dieses eine) oder zum **Werkzeug** (jedes Rezept, das von
+  sich aus dieses Werkzeug nennt: „Kräuterkunde mit Weisheit"). Die Kante
+  trägt nur, was sie ändert. Gelesen wird Kampagne → Gruppe (`memberOfParty`,
+  ein Schritt) → Figur, je Träger erst Werkzeug, dann Rezept; das Spätere
+  schlägt (`craftCheck`, `packages/model/src/crafting.ts`, mit der Herkunft
+  jedes Werts). Das Werkzeug selbst tauscht nur eine Kante zum Rezept —
+  sonst hinge das Ergebnis von der Reihenfolge der Werkzeugkanten ab. Eine
+  Kopie des Rezepts wäre eine zweite Fassung, die eine Korrektur am
+  Original nicht mehr erreicht; ein Feld an der Kampagne wäre eine Liste
+  von Rezeptnamen neben den Rezepten.
+- **Ein Regelwerk mit Rezepten** (Kibbles’ Compendium, T-122) ist eine
+  Ebene wie ein Buch: Rezepte, Materialien und Gegenstände sind Artikel
+  darin, `needs`/`yields` verbinden sie, und jedes Rezept trägt eine
+  Information ohne Felder, die man lernen kann. Eine Kampagne lehrt, ohne
+  das Regelwerk zu schreiben: ein `Knowledge`-Bündel in ihrer Ebene
+  `includes` die Blaupausen und ist `knownBy` der Figur (9.3).
 
 ---
 
@@ -1174,7 +1195,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-14: 54 Artikelarten, 24 Grundtypen, 59 Kantenarten, 6 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-14: 54 Artikelarten, 24 Grundtypen, 60 Kantenarten, 6 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -1215,19 +1236,19 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Armor` | `Item` | `ac` `armorType` `strength` `stealthDisadvantage` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `loot` `instanceOf` | quick, overview |
+| `Armor` | `Item` | `ac` `armorType` `strength` `stealthDisadvantage` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, overview |
 | `Article` | `Source` `Todos` `Lore` `Secrets` | — | — | `describedIn` | — |
-| `Creature` | `Image` `Source` `Vars` `Vitals` `Lore` `Facts` `Secrets` `ReadAloud` | `appearance` `personality` `species` `kind` `role` `attitude` `figure` | `worships` `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | quick, overview, full |
+| `Creature` | `Image` `Source` `Vars` `Vitals` `Lore` `Facts` `Secrets` `ReadAloud` | `appearance` `personality` `species` `kind` `role` `attitude` `figure` | `worships` `owes` `memberOf` `livesIn` `memberOfParty` `carries` `craftsWith` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | quick, overview, full |
 | `Deity` | `Image` `Source` `Lore` `Secrets` | `pantheon` `title` `alignment` `domains` `symbol` `province` `plane` | — | `worships` | quick, overview |
 | `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `partOf` `involves` | `partOf` | — |
 | `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` `goal` | `worships` `controls` `regards` | `memberOf` `questGiver` `features` `knownBy` `regards` | quick |
 | `Hazard` | `Image` `Source` `Secrets` | `kind` `category` `tier` `threat` `trigger` `duration` `effect` `countermeasures` `initiative` | — | — | quick, overview |
-| `Item` | `Image` `Source` `Lore` `Secrets` `Facts` `Effects` | `itemType` `rarity` `tier` `attunement` `attunementNote` `charges` `recharge` `rechargeAmount` `bonusWeapon` `bonusAc` `bonusSpellAttack` `bonusSave` `appliesTo` `availability` `copperPrice` `stackSize` `weight` `rows` `width*` `height*` `cells*` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `loot` `instanceOf` | quick, print, overview, full |
-| `Material` | `Item` | `materialType` `trades` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `loot` `instanceOf` | — |
-| `Party` | `Image` `Lore` | `level` `motto` `day` `watch` `sinceRation` `sinceLight` `actions` | `abilityPool` `partyOf` `carries` `crafting` `regards` | `memberOfParty` `knownBy` `participates` `regards` | full |
+| `Item` | `Image` `Source` `Lore` `Secrets` `Facts` `Effects` | `itemType` `rarity` `tier` `attunement` `attunementNote` `charges` `recharge` `rechargeAmount` `bonusWeapon` `bonusAc` `bonusSpellAttack` `bonusSave` `appliesTo` `availability` `copperPrice` `stackSize` `weight` `rows` `width*` `height*` `cells*` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, print, overview, full |
+| `Material` | `Item` | `materialType` `trades` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `craftsWith` `loot` `instanceOf` | — |
+| `Party` | `Image` `Lore` | `level` `motto` `day` `watch` `sinceRation` `sinceLight` `actions` | `abilityPool` `partyOf` `carries` `craftsWith` `crafting` `regards` | `memberOfParty` `knownBy` `participates` `regards` | full |
 | `Place` | `Image` `Lore` `ReadAloud` `Secrets` | `kind` `environment` `state` `arrival` | `partOf` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | quick, full |
-| `PlayerCharacter` | `Creature` | `backstory` `level*` `proficiency*` | `worships` `casts` `hasClass` `hasAncestry` `hasBackground` `chose` `owes` `memberOf` `livesIn` `memberOfParty` `carries` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | — |
-| `Weapon` | `Item` | `category` `damage` `damage2` `damageType` `range` `ammoType` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `loot` `instanceOf` | quick, overview |
+| `PlayerCharacter` | `Creature` | `backstory` `level*` `proficiency*` | `worships` `casts` `hasClass` `hasAncestry` `hasBackground` `chose` `owes` `memberOf` `livesIn` `memberOfParty` `carries` `craftsWith` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | — |
+| `Weapon` | `Item` | `category` `damage` `damage2` `damageType` `range` `ammoType` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, overview |
 | `World` | `Image` `Lore` | `calendar` | — | `inWorld` | — |
 
 **story**
@@ -1235,7 +1256,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
 | `Arc` | `Story` | `levelFrom` `levelTo` `hook` `outcome` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `mapOf` | — |
-| `Campaign` | `Story` | `compareFor` `languages` `feats` | `allowsMethod` `allowsEquipment` `partOf` `happensAt` `features` `onMap` `loot` `tableFor` `inWorld` `activates` | `partOf` `chapterOf` `partyOf` `mapOf` | full |
+| `Campaign` | `Story` | `compareFor` `languages` `feats` | `allowsMethod` `allowsEquipment` `partOf` `happensAt` `features` `craftsWith` `onMap` `loot` `tableFor` `inWorld` `activates` | `partOf` `chapterOf` `partyOf` `mapOf` | full |
 | `Quest` | `Todos` `Time` `Lore` `Secrets` | `progress` `reward` `deadline` `restriction` `tasks` | `partOf` `questGiver` `questAbout` `loot` | — | quick, full |
 | `Scene` | `Story` `Tactics` `Difficulty` | `mode` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `mapOf` | quick |
 | `Session` | `Story` | `activeScene` `activeEncounter` `activeMap` `nowPlaying` `moves` `log` `partyNote` `stewardship` | `partOf` `happensAt` `features` `onMap` `loot` `tableFor` | `partOf` `chapterOf` `mapOf` | full |
@@ -1261,7 +1282,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `ItemProperty` | `Rule` | `abbreviation` | `affects` | `composedOf` `affects` `grants` `hasProperty` | — |
 | `Knowledge` | — | — | `knownBy` `includes` | — | — |
 | `Language` | `Rule` | `languageType` `script` `typicalSpeakers` | `affects` | `composedOf` `affects` `grants` | overview |
-| `Recipe` | `Source` `Secrets` `Lore` | `trade` `tool` `ability` `dc` `time` `days` `yieldCount` `onFailure` | `needs` `yields` | `crafting` | full |
+| `Recipe` | `Source` `Secrets` `Lore` | `trade` `tool` `ability` `dc` `time` `days` `yieldCount` `onFailure` | `needs` `yields` | `craftsWith` `crafting` | full |
 | `Rule` | `Source` `Vars` | `kind` `autolink` | `affects` | `composedOf` `affects` `grants` | quick, overview |
 | `Skill` | `Rule` | `ability` | `affects` | `composedOf` `affects` `grants` `loot` | — |
 | `Spell` | `Rule` | `level` `school` `castingTime` `castingAction` `castingUnit` `castingCondition` `rangeKind` `range` `components` `material` `materialCost` `materialConsumed` `duration` `durationAmount` `durationUnit` `concentration` `ritual` `higherLevels` `save` `attack` `damageTypes` | `affects` | `composedOf` `affects` `casts` `grants` | quick, print, overview, full |
@@ -1307,6 +1328,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `composedOf` | Statblock → Rule |  | Abschnitt „Actions & traits" | `vars` `ability` `damageDice` `damageType` `reach` `range` `target` `toHitBonus` `damageBonus` `extraDamageDice` `extraDamageType` `toHit` `damageFlat` `note` |
 | `controls` | Faction → Place |  | — | — |
 | `crafting` | Creature \| PlayerCharacter \| Party → Recipe |  | — | `day` `days` `put` `rolls` |
+| `craftsWith` | Campaign \| Party \| Creature → Recipe \| Item |  | — | `tool` `ability` `dc` `note` |
 | `describedIn` | * → Article |  | — | — |
 | `entry` | Table → * |  | — | `weight` `qty` `label` `requiresTag` `note` |
 | `equips` | Statblock → Item |  | — | — |
