@@ -19,7 +19,7 @@ Epic: [[EP-09 Karten]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-139]] Fog of war | – | 4 | steht |
-| [[REQ-140]] Light & line of sight with walls | – | 5 | steht |
-| [[REQ-209]] Aufdecken: von Hand oder beim Bestätigen einer Bewegung, dann entlang des Pfads Schritt für Schritt; von Hand zeigt das Token, wen es sieht und von wem es gesehen wird (Sichtlinie, passive Wahrnehmung gegen Heimlichkeit, −5 im Dämmerlicht) | – | 3 | steht |
+| [[REQ-139]] Nebel | Spielleitung | 4 | steht |
+| [[REQ-140]] Licht und Sicht mit Wänden | Spielleitung | 5 | steht |
+| [[REQ-209]] Aufdecken von Hand oder entlang des Pfads | Spielleitung | 3 | steht |
 <!-- stories:ende -->

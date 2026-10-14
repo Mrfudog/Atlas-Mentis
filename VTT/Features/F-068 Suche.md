@@ -19,6 +19,6 @@ Epic: [[EP-11 Oberfläche & Navigation]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-028]] Full-text search across content | – | 3 | teils |
+| [[REQ-028]] Volltextsuche | Spieler | 3 | teils |
 | [[REQ-304]] Übergreifende Suche beim Tippen | Spieler | 1 | steht |
 <!-- stories:ende -->

@@ -19,7 +19,7 @@ Epic: [[EP-09 Karten]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-141]] Map effects & animations (conditions, weather) | – | 5 | offen |
-| [[REQ-142]] Drawing, stamps, brushes, layers on maps | – | 5 | offen |
-| [[REQ-143]] Map editor / full map creation | – | 5 | offen |
+| [[REQ-141]] Effekte auf der Karte | Spielleitung | 5 | offen |
+| [[REQ-142]] Auf Karten zeichnen | Spielleitung | 5 | offen |
+| [[REQ-143]] Karteneditor | Spielleitung | 5 | offen |
 <!-- stories:ende -->

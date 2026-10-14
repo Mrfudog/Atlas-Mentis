@@ -19,10 +19,10 @@ Epic: [[EP-09 Karten]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-133]] Static tokens: reference markers linked to entities (pin opens article) | – | 3 | steht |
-| [[REQ-134]] Static tokens: scenery / props as part of prepared map state | – | 4 | steht |
-| [[REQ-135]] Play tokens: session- or campaign-scoped state objects (combat positions, temporary changes) | – | 3 | teils |
-| [[REQ-136]] Party and quest markers on region maps (campaign-scoped play tokens) | – | 3 | steht |
-| [[REQ-224]] Kreaturen nehmen auf der Karte Felder nach ihrer Grösse ein (Regeln 2014): Tiny, Small, Medium, Large 2 × 2, Huge 3 × 3, Gargantuan 4 × 4; Bewegung, Wege, Sicht und Reichweite rechnen mit dem ganzen Platz | – | 3 | steht |
+| [[REQ-133]] Marker, die zu Artikeln führen | Spielleitung | 3 | steht |
+| [[REQ-134]] Kulisse auf der Karte | Spielleitung | 4 | steht |
+| [[REQ-135]] Tokens im Spiel | Spielleitung | 3 | teils |
+| [[REQ-136]] Gruppe und Quests auf der Karte | Spieler | 3 | steht |
+| [[REQ-224]] Kreaturen nach Grösse auf der Karte | Spielleitung | 3 | steht |
 | [[REQ-294]] Token ohne Bild zeigt den Anfangsbuchstaben | Spielleitung | 3 | teils |
 <!-- stories:ende -->
