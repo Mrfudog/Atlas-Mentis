@@ -386,6 +386,8 @@ export interface LeseZiel {
   layer: string;
   at?: string;
   page?: string;
+  /** An einer Ebene ohne Buchtext (T-167): „Read" steht ausgegraut da. */
+  empty?: true;
 }
 
 /** Ein Eintrag im Inhaltsverzeichnis der Leseansicht (`GET /api/read/:layer`, T-091). */
@@ -408,6 +410,21 @@ export interface LeseBuch {
   position: string | null;
   /** Die Ebene hat keinen Buchtext — eingelesen ist nur, was kein Kapitel ist (T-126). */
   empty?: 'noText';
+  /** Die laufende Kampagne schaltet die Ebene nicht auf (T-167). */
+  inactive?: true;
+  /** … und dieser Betrachter liest sie trotzdem, als Vorschau. */
+  preview?: true;
+  /** An einer Gruppe: ihre Bücher, ein Regal (T-167). */
+  shelf?: LeseRegalBuch[];
+}
+/** Ein Buch im Regal einer Gruppe (T-167). */
+export interface LeseRegalBuch {
+  id: string;
+  name: string;
+  kind: string;
+  group?: true;
+  hasText: boolean;
+  active: boolean;
 }
 /** Ein Stück am Stück (`GET /api/read/:layer/unit/:unit`). */
 export interface LeseStueck {

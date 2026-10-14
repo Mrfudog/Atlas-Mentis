@@ -100,8 +100,9 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   Fertigungsauftrag ist eine Instanz des Rezepts, das Material bleibt
   reserviert im Inventar von Figur und Gruppe, die Regeln stehen an der
   Kampagne; T-128), die **Leseansicht** (`lesen/`, `/read/:layer`: eine
-  Ebene als Buch mit Inhaltsverzeichnis, Suche und Lesestand je Konto,
-  T-091), der **Druck** (`/artikel/:id/print`: eine Ansicht auf einem
+  Ebene als Buch mit aufklappbarem Inhaltsverzeichnis, Suche und
+  Lesestand je Konto, T-091; derselbe als Reiter „Read“ am Ebenen-Artikel,
+  auch vor dem Aufschalten, eine Gruppe als Regal, T-167), der **Druck** (`/artikel/:id/print`: eine Ansicht auf einem
   Blatt A4, T-110), die **Suche** (`suche/`, Kopfleiste, Strg+K und `/`:
   Treffer beim Tippen aus `GET /api/search`, nach Nähe, Filter nach Art,
   Ebene, Herausgeber und Bereich, das „+" ist die Ansicht `search`;

@@ -11,6 +11,7 @@ import { KurzLink } from '../kern/kurzansicht';
 import { Ladeanzeige } from '../kern/ladeanzeige';
 import { bloeckeVon, type Block } from '../kern/buchtext';
 import { bildAdresse } from '../artikel/bild';
+import { LeseInhalt } from './inhalt';
 
 interface Abschnitt {
   id: string;
@@ -52,10 +53,26 @@ interface Abschnitt {
  */
 @Component({
   selector: 'nw-lesen',
-  imports: [RouterLink, FormsModule, Text, KurzLink, Ladeanzeige],
+  imports: [RouterLink, FormsModule, Text, KurzLink, Ladeanzeige, LeseInhalt],
+  host: { '(document:keydown.escape)': 'tocOffen.set(false)' },
   template: `
-    <div class="leser">
+    <div class="leser" [class.eingebettet]="eingebettet()">
       <div class="kopf">
+        @if (eingebettet()) {
+          <!-- Am Ebenen-Artikel (T-167): der Artikel steht schon darüber; hier nur, wo man liest. -->
+          <nav aria-label="Reading position" class="brot">
+            @for (z of pfad(); track z.id; let letzte = $last) {
+              @if (!$first) {
+                <span aria-hidden="true">›</span>
+              }
+              @if (letzte) {
+                <span aria-current="location">{{ z.name }}</span>
+              } @else {
+                <a [href]="'#s-' + z.id" (click)="$event.preventDefault(); gehe(z.id)">{{ z.name }}</a>
+              }
+            }
+          </nav>
+        } @else {
         <nav aria-label="Breadcrumb" class="brot">
           <a routerLink="/campaign">Campaign</a>
           <span aria-hidden="true">›</span>
@@ -74,10 +91,13 @@ interface Abschnitt {
             <span>Book</span>
           }
         </nav>
+        }
+        @if (buch()?.toc?.length) {
         <button type="button" class="inhalt-knopf" [attr.aria-expanded]="tocOffen()" aria-controls="inhalt"
                 (click)="tocOffen.set(!tocOffen())">
           {{ tocOffen() ? 'Close contents' : 'Contents' }}
         </button>
+        }
       </div>
 
       @if (fehler(); as f) {
@@ -85,7 +105,39 @@ interface Abschnitt {
       }
 
       @if (buch(); as b) {
-        <div class="spalten">
+        <!-- Vor dem Aufschalten (T-167): eine Vorschau, und die Seite sagt es. -->
+        @if (b.preview && b.toc.length) {
+          <p class="vorschau" role="status">
+            Preview — this layer is not turned on in the running campaign. What you read here is not in play yet.
+          </p>
+        }
+        @if (b.shelf; as regal) {
+          <!-- Eine Gruppe liest sich als Regal ihrer Bücher (T-167). -->
+          <section class="regal" aria-label="Books in this group">
+            <h2 class="titel">{{ b.layer.name }}</h2>
+            @if (!regal.length) {
+              <p class="leer">No books in this group yet.</p>
+            }
+            <ul>
+              @for (r of regal; track r.id) {
+                <li [class.ohne-text]="!r.hasText && !r.group">
+                  <a [routerLink]="regalLink(r.id)" [queryParams]="eingebettet() ? { tab: 'read' } : null">{{ r.name }}</a>
+                  <span class="dim">
+                    {{ r.group ? 'Group' : r.kind || 'Layer' }}{{ r.active ? '' : ' · not turned on' }}
+                  </span>
+                  @if (!r.hasText && !r.group) {
+                    <span class="hinweis-leer">No text imported yet</span>
+                  }
+                </li>
+              }
+            </ul>
+          </section>
+        } @else {
+        @if (tocOffen()) {
+          <button type="button" class="vorhang" aria-label="Close contents" (click)="tocOffen.set(false)"></button>
+        }
+        <div class="spalten" [class.ohne-inhalt]="!b.toc.length">
+          @if (b.toc.length) {
           <nav id="inhalt" class="inhalt" [class.offen]="tocOffen()" aria-label="Contents">
             <form class="suche" role="search" (submit)="suchen($event)">
               <input type="search" name="q" [(ngModel)]="frage" placeholder="Search this book"
@@ -111,28 +163,27 @@ interface Abschnitt {
               </div>
             }
             <h2 class="titel">{{ b.layer.name }}</h2>
-            <ol class="toc">
-              @for (z of b.toc; track z.id) {
-                <li [style.padding-left.rem]="z.depth * 0.8" [class.hier]="z.id === aktuell()"
-                    [class.im-stueck]="z.unit === stueck()?.unit">
-                  <a [href]="'#s-' + z.id" (click)="$event.preventDefault(); gehe(z.id)"
-                     [attr.aria-current]="z.id === aktuell() ? 'location' : null">{{ z.name }}</a>
-                  @if (z.page) {
-                    <span class="seite">{{ z.page }}</span>
-                  }
-                </li>
-              }
-            </ol>
+            <!-- Aufklappbar (T-167): Buch › Kapitel › Abschnitte, folgt dem Lesestand. -->
+            <nw-lese-inhalt [layer]="b.layer.id" [toc]="b.toc" [aktuell]="aktuell()" [stueck]="stueck()?.unit"
+                            (springe)="gehe($event)" />
           </nav>
+          }
 
           <main class="lesetext">
             @if (!b.toc.length) {
               <!-- Der Grund, wo der Server ihn kennt (T-126): ohne eingelesenen
                    Buchtext ist das der einzige, auch für die Verwaltung. -->
               @if (b.empty === 'noText') {
+                <div class="ohne-text">
+                  <p class="leer-kopf">No text imported yet</p>
+                  <p class="leer">
+                    Only the articles of this book are here (spells, creatures, items …). Once its chapters are
+                    read in, they appear here.
+                  </p>
+                </div>
+              } @else if (b.inactive && !b.preview) {
                 <p class="leer">
-                  Nothing to read here yet: no text of this book has been imported — only its articles
-                  (spells, creatures, items …). Once its chapters are read in, they appear here.
+                  Nothing to read here. This layer is not turned on in the running campaign.
                 </p>
               } @else {
                 <p class="leer">
@@ -231,6 +282,7 @@ interface Abschnitt {
           </main>
 
         </div>
+        }
       } @else if (!fehler()) {
         <p class="dim leer">Loading…</p>
       }
@@ -245,6 +297,8 @@ export class Lesen {
   readonly at = input<string>();
   /** Eine Seite („XGE p. 12", `?page=`). */
   readonly page = input<string>();
+  /** Im Reiter „Read" am Ebenen-Artikel (T-167): ohne eigenen Brotkrumenpfad und Seitentitel. */
+  readonly eingebettet = input(false);
 
   private readonly api = inject(Api);
   private readonly bestand = inject(Bestand);
@@ -354,6 +408,11 @@ export class Lesen {
     return raus.filter((z) => z.depth > 0);
   });
 
+  /** Wohin ein Buch im Regal führt: im Reiter zum Reiter, sonst zur Leseseite. */
+  protected regalLink(id: string): string[] {
+    return this.eingebettet() ? ['/artikel', id] : ['/read', id];
+  }
+
   /** Die Stücke in Lesereihenfolge, je mit dem ersten Eintrag, der es nennt. */
   private readonly stuecke = computed<LeseZeile[]>(() => {
     const raus = new Map<string, LeseZeile>();
@@ -369,11 +428,18 @@ export class Lesen {
 
   private async oeffnen(layer: string, at?: string, page?: string): Promise<void> {
     this.fehler.set(null);
+    /* Ein anderes Buch (aus dem Regal, T-167): nichts vom vorigen bleibt stehen. */
+    if (this.buch()?.layer.id !== layer) {
+      this.buch.set(null);
+      this.stueck.set(null);
+      this.aktuell.set(null);
+      this.treffer.set(null);
+    }
     try {
       const b = await this.api.readBook(layer);
       if (layer !== this.layer()) return;
       this.buch.set(b);
-      this.title.setTitle(`${b.layer.name} · Atlas Mentis`);
+      if (!this.eingebettet()) this.title.setTitle(`${b.layer.name} · Atlas Mentis`);
       this.gemerkt = b.position;
       const seite = Number(page);
       /* `?at=` darf auch ein Absatz sein (T-108): er steht in keinem

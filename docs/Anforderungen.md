@@ -462,7 +462,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-247 | Bücher lesen | 2 | **steht** | `/read/:layer` mit Inhaltsverzeichnis, Suche, Lesestand (T-091, T-108) |
+| REQ-247 | Bücher lesen | 2 | **steht** | `/read/:layer` mit Inhaltsverzeichnis, Suche, Lesestand (T-091, T-108); Reiter „Read“ am Ebenen-Artikel, Vorschau vor dem Aufschalten, Regal einer Gruppe, aufklappbares Verzeichnis (T-167) |
 
 ### F-044 Klassen
 

@@ -518,6 +518,19 @@ mit Strg/⌘ wie auf jeden Link. Am Telefon ist das Popup ein Blatt von
 unten. Die Leseansicht hatte dafür eine eigene Spalte neben dem Text; sie
 ist im Popup aufgegangen, damit ein Verweis überall dasselbe tut.
 
+**Ein Buch liest man an ihm selbst** (T-167, 14.10.2026): eine Ebene hat
+die Reiter „Article" und „Read", und „Read" ist dieselbe Leseansicht wie
+`/read/:layer` — eine Komponente, keine zweite. Gelesen werden darf auch,
+was noch nicht aufgeschaltet ist: wer ein Buch aufschalten soll, will es
+vorher ansehen. Das ist die einzige Stelle, an der „steht es im Stapel?"
+nicht die erste Frage ist, und darum fragt sie nur die Leseansicht und
+nur für diese eine Ebene; was darin jemand sehen darf, sagt das Sieb wie
+überall. Eine Gruppe ist dort ein **Regal**: ihre Bücher, und eines ohne
+Text steht ausgegraut da — ein fehlendes Buch sähe aus wie eines, das es
+nicht gibt. Das **Inhaltsverzeichnis klappt auf**, Stufe für Stufe, und
+folgt dem Lesestand; was aufgeklappt ist, merkt sich das Gerät, nicht das
+Konto — das ist eine Sache der Hand, nicht des Lesestands.
+
 **Wie im Buch** (W2, 13.10.2026) ist darum auch eine Anordnung und kein
 Sonderfall: ein Statblock liest sich wie im Monster Manual, weil am Typ
 `Statblock` das Element `statblock` steht — nicht, weil der Code nach dem
