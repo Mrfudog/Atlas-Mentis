@@ -28,6 +28,7 @@ import {
   entityName,
   enumOptions,
   fieldTitle,
+  isBookPart,
   isInstance,
   LAYER_RELATION,
   listColumns,
@@ -138,6 +139,8 @@ export function buildListIndex(
   for (const e of visible) {
     /* Eine Instanz steht in keiner Liste (D82): sie gehört ihrer Kreatur. */
     if (isInstance(e)) continue;
+    /* Ein Teil eines Buchs auch nicht (T-108): er gehört seinem Kapitel. */
+    if (isBookPart(e)) continue;
     const type = primaryInterface(e);
     const art = artVon(type);
     const name = entityName(e);

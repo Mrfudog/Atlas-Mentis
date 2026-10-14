@@ -781,6 +781,74 @@ try {
     }
   }
 
+  /* ------------------------------------ Bücher aus Teilen (T-108) */
+  {
+    /* Migration 043 bringt die Arten und die Kanteneigenschaft in ein
+       bestehendes Register: hier zuerst wieder heraus, dann die Migration
+       unter einem Probenamen. Danach ein Kapitel mit zwei Teilen über die
+       Routen, und die Leseansicht liest es in der Reihenfolge der Ränge. */
+    const { migrate } = await import(join(DIST, 'migrate.js'));
+    const { default: pg } = await import('pg');
+    const { readFileSync } = await import('node:fs');
+    const pool = new pg.Pool({ connectionString: process.env['DATABASE_URL'] });
+    const ordner = mkdtempSync(join(tmpdir(), 'durchstich-teile-'));
+    const name = 'zzz_durchstich_buecher_aus_teilen.sql';
+    let nr = 0;
+    const id = (n) => ({ Identity: { name: n, id: `t108-${String((nr += 1)).padStart(4, '0')}`, aliases: [] } });
+    const ids = ['ly_probe_t108', 'ch_probe_t108', 'pa_probe_t108', 'hd_probe_t108'];
+    let stapel = null;
+    try {
+      await pool.query(`delete from interface_def where name in ('Chapter','Heading','Paragraph','ReadAloudText','Embed')`);
+      await pool.query(`delete from interface_def where name = 'BookPart'`);
+      await pool.query(`delete from relation_def where type = 'chapterOf'`);
+      await pool.query(`update relation_def set props = '{}'::jsonb, from_ifaces = array_remove(array_remove(from_ifaces, 'Chapter'), 'BookPart'), to_ifaces = array_remove(to_ifaces, 'Chapter') where type = 'partOf'`);
+      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '043_buecher_aus_teilen.sql'), 'utf8'));
+      await migrate(pool, { env: {} }, ordner);
+      const { rows: arten } = await pool.query(`select name from interface_def where name in ('Chapter','BookPart','Heading','Paragraph','ReadAloudText','Embed') order by name`);
+      const { rows: kante } = await pool.query(`select props, from_ifaces, to_ifaces from relation_def where type = 'partOf'`);
+      pruefe('Bücher aus Teilen: die Migration bringt die sechs Arten',
+        arten.map((r) => r.name).join() === 'BookPart,Chapter,Embed,Heading,Paragraph,ReadAloudText', JSON.stringify(arten));
+      pruefe('Bücher aus Teilen: partOf trägt den Rang und nimmt Kapitel und Teile',
+        kante[0]?.props?.properties?.rank?.type === 'number' && kante[0].from_ifaces.includes('BookPart') && kante[0].to_ifaces.includes('Chapter'),
+        JSON.stringify(kante[0]));
+      /* Die Seite liest das Register zwischengespeichert: neu starten ist
+         hier nicht nötig, die Routen fragen das Repository je Anfrage. */
+      const probe = [
+        { id: 'ly_probe_t108', name: 'Probe Book', interfaces: ['Layer'], components: { ...id('Probe Book'), Layer: { kind: 'book', order: 0 } }, relations: [] },
+        { id: 'ch_probe_t108', name: 'Chapter 1: Probe', interfaces: ['Chapter'], components: { ...id('Chapter 1: Probe'), Chapter: { ordinal: 'Chapter 1' } }, relations: [{ id: 'ch_probe_t108~in', type: 'inLayer', to: 'ly_probe_t108', props: {} }] },
+        { id: 'pa_probe_t108', name: 'Second', interfaces: ['Paragraph'], components: { ...id('Second'), Prose: { paragraph: [{ id: 'text', value: 'Second.' }] } }, relations: [{ id: 'pa_probe_t108~in', type: 'inLayer', to: 'ly_probe_t108', props: {} }, { id: 'pa_probe_t108~p', type: 'partOf', to: 'ch_probe_t108', props: { rank: 2 } }] },
+        { id: 'hd_probe_t108', name: 'First', interfaces: ['Heading'], components: { ...id('First'), Heading: { level: 2 } }, relations: [{ id: 'hd_probe_t108~in', type: 'inLayer', to: 'ly_probe_t108', props: {} }, { id: 'hd_probe_t108~p', type: 'partOf', to: 'ch_probe_t108', props: { rank: 1 } }] },
+      ];
+      for (const e of probe) {
+        const r = await put(admin, e);
+        pruefe(`Bücher aus Teilen: ${e.interfaces[0]} geschrieben`, r.ok, `${r.status} ${await r.text()}`);
+      }
+      /* Nur was die laufende Kampagne aufschaltet, ist da (E2). */
+      const k = await (await get(admin, '/api/campaigns/camp_probe_a/layers')).json();
+      stapel = k.layers.filter((l) => l.active).map((l) => l.id);
+      const an = await fetch(`${BASE}/api/campaigns/camp_probe_a/layers`, {
+        method: 'PUT', headers: { cookie: admin, 'content-type': 'application/json' }, body: JSON.stringify({ layers: ['ly_probe_t108', ...stapel] }),
+      });
+      pruefe('Bücher aus Teilen: das Buch aufgeschaltet', an.ok, `${an.status} ${await an.text()}`);
+      const buch = await (await get(admin, '/api/read/ly_probe_t108')).json();
+      pruefe('Bücher aus Teilen: die Leseansicht liest das Kapitel nach Rang, den Absatz nicht im Inhaltsverzeichnis',
+        JSON.stringify((buch.toc ?? []).map((z) => z.id)) === '["ch_probe_t108","hd_probe_t108"]', JSON.stringify(buch.toc));
+      const stueck = await (await get(admin, '/api/read/ly_probe_t108/unit/ch_probe_t108')).json();
+      pruefe('Bücher aus Teilen: das Stück hat Überschrift und Absatz in Rangfolge',
+        JSON.stringify((stueck.sections ?? []).map((x) => x.id)) === '["ch_probe_t108","hd_probe_t108","pa_probe_t108"]', JSON.stringify(stueck.sections?.map((x) => x.id)));
+    } finally {
+      if (stapel) {
+        await fetch(`${BASE}/api/campaigns/camp_probe_a/layers`, {
+          method: 'PUT', headers: { cookie: admin, 'content-type': 'application/json' }, body: JSON.stringify({ layers: stapel }),
+        });
+      }
+      await pool.query('delete from entity where id = any($1)', [ids]);
+      await pool.query('delete from schema_migrations where name = $1', [name]);
+      await pool.end();
+      rmSync(ordner, { recursive: true, force: true });
+    }
+  }
+
   /* ------------------------------------ Schreibrechte je Ebene (T-098) */
   {
     /* `app_user_layer` gibt es nur in Postgres: eine eigene Ebene anlegen,

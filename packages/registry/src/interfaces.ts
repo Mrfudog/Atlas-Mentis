@@ -836,6 +836,68 @@ export const interfaces: Record<string, InterfaceDef> = {
   },
 
   /**
+   * **Ein Kapitel ist die Lesestruktur eines Buchs** (T-108, E-029 a): ein
+   * Regelbuch („Chapter 9: Combat") und ein Abenteuer haben Kapitel, eine
+   * Kampagne hat Arcs. Ein Kapitel besteht aus **Teilen** — Überschriften,
+   * Absätzen, Vorlesetexten, Verweisen, Szenen —, jeder ein eigener Artikel,
+   * in der Reihenfolge von `partOf.rank`. **Ein Kapitel eines offiziellen
+   * Abenteuers gibt es zweimal, und seine Teile einmal:** als Chapter zum
+   * Lesen und als Arc zum Spielen (`chapterOf`), beide über denselben
+   * Szenen. Ohne Bereich: Kapitel liest man in der Leseansicht, nicht in
+   * einer Liste.
+   */
+  Chapter: {
+    name: 'Chapter',
+    label: 'Chapter',
+    extends: ['Identity', 'Prose', 'Description', 'Visibility', 'Tags', 'Source', 'Notes'],
+    schema: merge(g.ChapterInfo),
+  },
+
+  /**
+   * **Ein Teil eines Kapitels** (T-108, E-028): was ein Buch Absatz für
+   * Absatz sagt. Jeder Teil ist ein Artikel, damit man ihn einzeln
+   * wiederverwendet — einen Vorlesetext in die eigene Szene holt. Teile
+   * stehen **in keiner Liste und sind kein Verweisziel nach Namen**
+   * (`isBookPart`): hundertfünfzigtausend Absätze, die „Surprise" heissen
+   * können, machten jeden `[[Verweis]]` mehrdeutig. Gefunden werden sie in
+   * der Leseansicht und über ihr Kapitel.
+   */
+  BookPart: {
+    name: 'BookPart',
+    label: 'Book part',
+    abstract: true,
+    extends: ['Identity', 'Visibility', 'Tags', 'Source', 'Notes'],
+  },
+
+  Heading: {
+    name: 'Heading',
+    label: 'Heading',
+    extends: ['BookPart'],
+    schema: merge(g.HeadingInfo),
+  },
+
+  Paragraph: {
+    name: 'Paragraph',
+    label: 'Paragraph',
+    extends: ['BookPart', 'Prose'],
+    schema: merge(g.ParagraphInfo),
+  },
+
+  /** Der Vorlesetext als eigener Teil (E-028); sein Text steht in `ReadAloud.readaloud`. */
+  ReadAloudText: {
+    name: 'ReadAloudText',
+    label: 'Read-aloud text',
+    extends: ['BookPart', 'ReadAloud'],
+  },
+
+  Embed: {
+    name: 'Embed',
+    label: 'Embedded article',
+    extends: ['BookPart'],
+    schema: merge(g.EmbedInfo),
+  },
+
+  /**
    * **Wer die Kampagne leitet, steht nicht an ihr**, sondern am Konto:
    * `campaign_member` hält je Konto und Kampagne eine Rolle (`gm`, `co-gm`,
    * `player`, `spectator`). Für einen Tag stand hier eine `Access`-Karte mit

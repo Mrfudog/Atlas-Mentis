@@ -1450,6 +1450,64 @@ export const fieldGroups = {
   },
 
   /**
+   * **Ein Kapitel eines Buchs** (T-108, E-029): die Lesestruktur, nicht die
+   * Geschichte. Was es sagt, sind seine Teile (`partOf` mit `rank`); hier
+   * steht nur, wie das Buch es zählt — „Chapter 9", „Appendix A". Die
+   * Nummer der Reihenfolge ist das nicht: die ist die Nummer des Artikels.
+   */
+  ChapterInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        ordinal: { type: 'string', title: 'Ordinal' },
+      },
+    },
+  },
+
+  /** Eine Überschrift im Buchtext (T-108): ihr Text ist der Name, hier steht nur die Stufe. */
+  HeadingInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        level: { type: 'number', title: 'Level', min: 1, max: 6, default: 2 },
+      },
+    },
+  },
+
+  /**
+   * Ein Absatz im Buchtext (T-108): sein Text ist `Prose.paragraph`. Die
+   * Sorte sagt, wie er gesetzt wird — ein Kasten am Rand ist kein
+   * Vorlesetext, und eine Tabelle im Fliesstext keine `Table`, solange
+   * 5e.tools sie nicht als eine führt.
+   */
+  ParagraphInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', title: 'Kind', enum: ['text', 'list', 'table', 'sidebar', 'quote'], default: 'text' },
+      },
+    },
+  },
+
+  /**
+   * **Ein Verweis-Teil** (T-108, E-028): ein Artikel, der für sich steht —
+   * ein Monster aus dem Monster Manual, ein Zauber, eine Regel —, an einer
+   * Stelle im Buchtext. Er wird nicht kopiert und bekommt keine Kante zum
+   * Kapitel (die stünde in einem Artikel einer fremden Ebene); der Teil
+   * hält nur den Verweis.
+   */
+  EmbedInfo: {
+    schema: {
+      type: 'object',
+      required: ['target'],
+      properties: {
+        /* Jede Art erbt `Identity`: das Ziel darf jeder Artikel sein. */
+        target: { type: 'string', format: 'link', title: 'Article', target: { interfaces: ['Identity'] } },
+      },
+    },
+  },
+
+  /**
    * **Wie schwer es ist — als Stufe von 1 bis 20.**
    *
    * Es stand zweimal da und zweimal anders: an der Begegnung als

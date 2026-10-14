@@ -423,10 +423,37 @@ export const relations: Record<string, RelationDef> = {
     inverseLabel: 'contains',
     /* `Encounter` (T-082): eine Begegnung hängt an ihrer Szene oder ihrem
        Kapitel — so stand es am Typ, die Kante liess es nicht zu. */
-    from: ['Place', 'Story', 'Quest', 'Event', 'Board', 'Encounter', 'Layer'],
+    from: ['Place', 'Story', 'Quest', 'Event', 'Board', 'Encounter', 'Layer', 'Chapter', 'BookPart'],
     /* `Layer` (E-022 b, T-088): eine Ebene hängt an ihrer Gruppe — einer
        Ebene mit `kind: 'group'`. Eine Ebene darf in mehreren Gruppen sein. */
-    to: ['Place', 'Story', 'Event', 'Layer'],
+    to: ['Place', 'Story', 'Event', 'Layer', 'Chapter'],
+    /* **Die Reihenfolge der Teile steht an der Kante** (T-108): derselbe
+       Vorlesetext steht im Kapitel an dritter Stelle und in der eigenen
+       Szene an erster — eine Zahl am Teil gälte nur für eines davon. Ohne
+       `rank` ist ein Teil angehängt (eine Begegnung an ihrer Szene) und
+       steht nicht im Lesefluss. */
+    props: {
+      type: 'object',
+      properties: {
+        rank: { type: 'number', title: 'Order' },
+      },
+    },
+  },
+
+  /**
+   * **Ein Kapitel und sein Arc** (T-108, E-029): ein Kapitel eines
+   * offiziellen Abenteuers ist aus Buchsicht ein `Chapter` und aus
+   * Geschichtssicht ein `Arc`. Die Kante geht vom Kapitel zum Arc und sagt
+   * nur, dass beide dasselbe erzählen — ihre Teile (Szenen, Vorlesetexte,
+   * Begegnungen) gibt es einmal, und beide zeigen auf sie.
+   */
+  chapterOf: {
+    type: 'chapterOf',
+    label: 'chapter of',
+    inverseLabel: 'read as chapter',
+    from: ['Chapter'],
+    to: ['Story'],
+    cardinality: 'one',
   },
 
   controls: {

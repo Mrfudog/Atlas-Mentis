@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-14. 72 Schnittstellen, 58 Kantenarten.
+Stand 2026-10-14. 78 Schnittstellen, 59 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -247,7 +247,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `involves` → * — „involves"
@@ -257,7 +257,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event | Board | Encounter | Layer — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -546,7 +546,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `tableFor` → Table — „rolls on"
@@ -558,7 +558,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Creature — `livesIn` → „residents"
-- Place | Story | Quest | Event | Board | Encounter | Layer — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
 - Faction — `controls` → „controlled by"
 - Quest — `questAbout` → „concerned by"
 - Story — `happensAt` → „scenes here"
@@ -776,7 +776,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
 - `describedIn` → Article — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
@@ -790,7 +790,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event | Board | Encounter | Layer — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
+- Chapter — `chapterOf` → „read as chapter"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -831,7 +832,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `allowsMethod` → AbilityMethod — „allows ability method"
 - `allowsEquipment` → EquipmentMethod — „allows equipment method"
-- `partOf` → Place | Story | Event | Layer — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
 - `describedIn` → Article — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
@@ -847,7 +848,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event | Board | Encounter | Layer — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
+- Chapter — `chapterOf` → „read as chapter"
 - Party — `partyOf` → „parties"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
@@ -885,7 +887,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
 - `describedIn` → Article — „described in"
 - `questGiver` → Creature | Faction — „given by"
 - `questAbout` → * — „concerns"
@@ -936,7 +938,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
 - `describedIn` → Article — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
@@ -950,7 +952,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event | Board | Encounter | Layer — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
+- Chapter — `chapterOf` → „read as chapter"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -989,7 +992,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
 - `describedIn` → Article — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
@@ -1003,7 +1006,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event | Board | Encounter | Layer — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
+- Chapter — `chapterOf` → „read as chapter"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -1041,7 +1045,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
 - `describedIn` → Article — „described in"
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
@@ -1055,7 +1059,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event | Board | Encounter | Layer — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
+- Chapter — `chapterOf` → „read as chapter"
 - Quest — `questAbout` → „concerned by"
 - Map — `mapOf` → „maps"
 - Map — `marker` → „on the map"
@@ -2247,7 +2252,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `placed` → * — „on the board"
@@ -2293,7 +2298,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `participates` → Creature | Statblock | Party — „in the fight"
@@ -2370,7 +2375,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## Ohne Bereich
 
-*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 25 Arten.
+*Abstrakte Oberbegriffe — sie tragen keine Artikel.* — 31 Arten.
 
 ### Abilities — *abstrakt*
 
@@ -2431,6 +2436,82 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+
+### Book part — *abstrakt*
+
+`BookPart` · erbt von `Identity` ← `Visibility` ← `Tags` ← `Source` ← `Notes`
+
+**Geerbte Felder**
+
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+
+### Chapter
+
+`Chapter` · erbt von `Identity` ← `Prose` ← `Description` ← `Visibility` ← `Tags` ← `Source` ← `Notes`
+
+**Eigene Felder**
+
+- `ordinal` *string*
+
+**Geerbte Felder**
+
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `chapterOf` → Story — „chapter of"
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2559,6 +2640,44 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
 
+### Embedded article
+
+`Embed` · erbt von `BookPart` ← `Identity` ← `Visibility` ← `Tags` ← `Source` ← `Notes`
+
+**Eigene Felder**
+
+- `target` **Pflicht** *link → Identity*
+
+**Geerbte Felder**
+
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+
 ### Facts — *abstrakt*
 
 `Facts`
@@ -2569,6 +2688,44 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+
+### Heading
+
+`Heading` · erbt von `BookPart` ← `Identity` ← `Visibility` ← `Tags` ← `Source` ← `Notes`
+
+**Eigene Felder**
+
+- `level` *1…6*
+
+**Geerbte Felder**
+
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -2666,7 +2823,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
-- `partOf` → Place | Story | Event | Layer — „part of"
+- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -2675,7 +2832,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
-- Place | Story | Quest | Event | Board | Encounter | Layer — `partOf` → „contains"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
@@ -2728,6 +2885,45 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+
+### Paragraph
+
+`Paragraph` · erbt von `BookPart` ← `Prose` ← `Identity` ← `Visibility` ← `Tags` ← `Source` ← `Notes`
+
+**Eigene Felder**
+
+- `kind` *text | list | table | sidebar | quote*
+
+**Geerbte Felder**
+
+- *`Prose`* — `paragraph` *long*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -2815,6 +3011,41 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten von hier**
 
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Quest — `questAbout` → „concerned by"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
+
+### Read-aloud text
+
+`ReadAloudText` · erbt von `BookPart` ← `ReadAloud` ← `Identity` ← `Visibility` ← `Tags` ← `Source` ← `Notes`
+
+**Geerbte Felder**
+
+- *`ReadAloud`* — `readaloud` *long*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Source`* — `publication` *string*, `page` *string*, `anchor` *string*, `url` *string*, `srd` *boolean*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"

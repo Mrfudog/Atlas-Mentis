@@ -746,6 +746,34 @@ Es heisst bewusst nicht „Übernehmen": das ist schon das Wort für eine
 Fassung aus einer Vergleichsebene (E7), und zwei Sachen unter einem Namen
 werden irgendwann eine.
 
+**Ein Buch besteht aus Teilen, und jeder Teil ist ein Artikel** (T-108,
+E-028, E-029). Ein Textblock ist ein Feld — das gilt weiter für alles, was
+jemand an einem Artikel schreibt. Buchtext ist die Ausnahme, und zwar aus
+einem Grund, den ein Feld nicht tragen kann: die Leitung will einen
+Vorlesetext, einen Absatz, eine Überschrift samt dem, was darunter steht,
+**einzeln** in ihre Geschichte holen. Was man einzeln holt, braucht eine
+Id, eine Ebene, eine Fassung — es ist ein Artikel. Also ist ein Kapitel
+(`Chapter`) die Lesestruktur, und seine Teile (`Heading`, `Paragraph`,
+`ReadAloudText`, `Embed`, im Abenteuer Szenen) sind Artikel in einer
+Reihenfolge. **Die Reihenfolge steht an der Kante** (`partOf.rank`), nicht
+am Teil: derselbe Vorlesetext steht im Kapitel an dritter Stelle und in
+der eigenen Szene an erster, und eine Zahl am Teil gälte nur für eines
+davon. **Lesen und Spielen sind zwei Arten** (E-029 a): ein Regelkapitel
+ist keine Geschichte, und ein Arc trägt Stufen, Hook und Ausgang, die in
+„Chapter 9: Combat" nichts bedeuten. Ein Kapitel eines offiziellen
+Abenteuers ist darum zweimal da — als `Chapter` zum Lesen und als `Arc`
+zum Spielen, über `chapterOf` verbunden — und seine Teile einmal: beide
+zeigen auf dieselben Szenen, nichts ist verdoppelt. Was für sich steht
+(ein Monster aus dem Monster Manual, eine Regel), wird nicht kopiert und
+bekommt keine Kante zum Kapitel — die stünde in einem Artikel einer
+fremden Ebene —, sondern ein Teil `Embed` zeigt darauf. **Teile stehen in
+keiner Liste und sind kein Verweisziel nach Namen:** ein Absatz heisst
+nach seinen ersten Worten, eine Überschrift „Surprise" wie die Regel
+darunter, und hundertfünfzigtausend solcher Namen machten jeden
+`[[Verweis]]` mehrdeutig. Teil heisst hier ein Stück Buchtext; ein
+**Bestandteil** ist weiter ein Typ, aus dem ein anderer gemacht ist — der
+abstrakte Obertyp heisst darum `BookPart` und nicht `Part`.
+
 **Wer schreibt, schreibt in eine Ebene** (T-098, E-001). Die Leitung
 konnte bis zum 14.10. ihre eigene Kampagne lesen und nichts daran ändern;
 die naheliegende Regel „die Leitung schreibt, was ihrer Kampagne gehört"
