@@ -30,6 +30,13 @@ import { Session } from '../kern/session';
         <p class="fehler" role="alert">{{ f }}</p>
       }
 
+      @if (vorgabe(); as v) {
+        <p class="dim">New articles go to <b>{{ v }}</b> unless you pick another layer.</p>
+      }
+      @if (bericht(); as b) {
+        <p role="status">{{ b }}</p>
+      }
+
       <ul class="ebenen">
         @for (l of ebenen(); track l.id) {
           <li>
@@ -43,7 +50,17 @@ import { Session } from '../kern/session';
               @for (k of l.campaigns; track k.id) {
                 <span class="art">{{ k.role }} of {{ k.name }}</span>
               }
+              @if (l.player; as p) {
+                <span class="art">{{ p.mine ? 'your player layer' : 'player layer' }} in {{ p.campaign.name }}</span>
+              }
+              @if (l.default) {
+                <span class="art vorgabe">default</span>
+              }
               <span class="dim">· {{ l.inPlay ? 'in play' : 'not turned on in ' + (kampagne() ?? 'the campaign') }}</span>
+              @if (l.player && !l.player.mine) {
+                <button type="button" class="klein" [disabled]="laeuft()" (click)="uebernehmen(l)"
+                        title="Move what is in it to the campaign layer and remove the empty layer">Take over</button>
+              }
             </div>
             @if (l.editors; as eds) {
               <div class="schreiber">
@@ -111,6 +128,10 @@ import { Session } from '../kern/session';
       flex-wrap: wrap;
       gap: 0.3rem 0.5rem;
       align-items: baseline;
+    }
+    .art.vorgabe {
+      background: var(--accent);
+      color: var(--paper);
     }
     .art,
     .chip {
@@ -193,6 +214,9 @@ export class MeineEbenen {
 
   protected readonly ebenen = signal<MeineEbene[]>([]);
   protected readonly kampagne = signal<string | null>(null);
+  /** Wohin angelegt wird, wenn niemand eine Ebene nennt (T-164). */
+  protected readonly vorgabe = signal<string | null>(null);
+  protected readonly bericht = signal<string | null>(null);
   protected readonly geladen = signal(false);
   protected readonly fehler = signal<string | null>(null);
   protected readonly laeuft = signal(false);
@@ -213,6 +237,7 @@ export class MeineEbenen {
       const d = await this.api.myLayers();
       this.ebenen.set(d.layers);
       this.kampagne.set(d.campaign?.name ?? null);
+      this.vorgabe.set(d.default?.name ?? null);
     } catch (e) {
       this.fehler.set(e instanceof ApiError ? e.message : 'Could not reach the server.');
     } finally {
@@ -246,6 +271,18 @@ export class MeineEbenen {
     return this.tue(async () => {
       await this.api.addLayerEditor(l.id, { name });
       this.wer[l.id] = '';
+    });
+  }
+
+  /** Eine Spielerebene übernehmen (T-164) — der Server sagt, wenn ihr Konto noch mitspielt. */
+  protected uebernehmen(l: MeineEbene): Promise<void> {
+    if (!confirm(`Move everything in “${l.name}” to the campaign layer and remove it?`)) return Promise.resolve();
+    return this.tue(async () => {
+      const r = await this.api.takeOverLayer(l.id);
+      this.bericht.set(
+        `${r.moved.length} article(s) moved to ${r.into.name}` +
+          (r.kept.length ? `; ${r.kept.length} stayed: ${r.kept.map((k) => k.name).join(', ')}.` : '.'),
+      );
     });
   }
 

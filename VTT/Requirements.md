@@ -28,12 +28,12 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 
 | Prio | Stories | Punkte | Stand |
 |---|---|---|---|
-| 1 | 42 | 133 | 30 steht · 7 teils · 1 offen · 2 ersetzt · 2 verworfen |
+| 1 | 43 | 136 | 31 steht · 7 teils · 1 offen · 2 ersetzt · 2 verworfen |
 | 2 | 95 | 326 | 61 steht · 17 teils · 9 offen · 5 ersetzt · 3 verworfen |
 | 3 | 115 | 331 | 61 steht · 22 teils · 31 offen · 1 ersetzt |
 | 4 | 44 | 195 | 13 steht · 2 teils · 26 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **315** | **1139** | 166 steht · 48 teils · 85 offen · 10 ersetzt · 6 verworfen |
+| **Zusammen** | **316** | **1142** | 167 steht · 48 teils · 85 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -354,6 +354,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-313]] | Zustände als Artikel | Spielleitung | [[F-042 Bereich Rules & Kompendium\|Bereich Rules & Kompendium]] | 2 | 3 | in progress | teils |
 | [[REQ-314]] | Regelwerk eines Drittverlags laden | Spielleitung | [[F-074 Regelwerke anderer Verlage\|Regelwerke anderer Verlage]] | 3 | 5 | in progress | teils |
 | [[REQ-315]] | Globale Kopfleiste | Spieler | [[F-070 Navigation & Kurzansicht\|Navigation & Kurzansicht]] | 1 | 2 | done | steht |
+| [[REQ-316]] | Eigene Ebene je Spieler als Vorgabe | Spieler | [[F-013 Schreibrechte & Freigabe\|Schreibrechte & Freigabe]] | 1 | 3 | done | steht |
 
 ## Verlauf
 - **0.9** (2026-10-14): Umstellung auf User Stories (T-154): 12 Epics, Features, je Story eine Notiz; REQ-236 … REQ-257 aus dem Projektbrett nachgetragen, REQ-258 ff. aus der Ernte aller Gespräche. Die Tabelle wird seither erzeugt.

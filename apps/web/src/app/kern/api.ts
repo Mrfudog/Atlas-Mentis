@@ -682,6 +682,8 @@ export interface Me {
     actorIds?: string[];
     /** Kampagnen-Id → Rolle darin. Steht am Konto und in keinem Artikel. */
     roles?: Record<string, TableRole>;
+    /** Seit wann es das Konto gibt (ISO) — „What's new" zeigt nur, was danach kam (T-163). */
+    createdAt?: string;
   } | null;
   /**
    * Welche Artikel dieser Betrachter schreiben darf. **`null` heisst alles**
@@ -840,6 +842,18 @@ export interface MeineEbene {
   inPlay: boolean;
   /** Nur an einer Ebene, die man besitzt (oder als Verwaltung). */
   editors?: EbenenSchreiber[];
+  /** Hierhin wird angelegt, wenn niemand eine Ebene nennt (T-164). */
+  default?: boolean;
+  /** Eine Spielerebene (T-164): in welcher Kampagne, und ob es die eigene ist. */
+  player?: { campaign: { id: string; name: string }; mine: boolean };
+}
+
+/** Was `POST /api/layers/:id/takeover` meldet (T-164). */
+export interface EbenenUebernahme {
+  into: { id: string; name: string };
+  moved: { id: string; name: string }[];
+  kept: { id: string; name: string }[];
+  deleted: boolean;
 }
 
 /** Die Teile des Registers, die `PUT /api/registry/:part` nimmt. */
@@ -1186,8 +1200,20 @@ export class Api {
   /* ------------------------------------------- Schreibrechte je Ebene (T-098) */
 
   /** Die Ebenen, in denen ich schreibe. */
-  myLayers(): Promise<{ layers: MeineEbene[]; campaign: { id: string; name: string } | null }> {
+  myLayers(): Promise<{
+    layers: MeineEbene[];
+    campaign: { id: string; name: string } | null;
+    default: { id: string; name: string } | null;
+  }> {
     return this.call('/api/layers/mine');
+  }
+  /** Die Vorgabe-Schreibebene in der laufenden Kampagne (T-164) — als `player` die eigene Spielerebene. */
+  defaultLayer(): Promise<{ layer: { id: string; name: string; player: boolean } | null; campaign: { id: string; name: string } | null }> {
+    return this.call('/api/layers/default');
+  }
+  /** Eine Spielerebene übernehmen (T-164): Inhalt in die Ebene der Kampagne, die leere Ebene weg. */
+  takeOverLayer(id: string): Promise<EbenenUebernahme> {
+    return this.call(`/api/layers/${encodeURIComponent(id)}/takeover`, { method: 'POST' });
   }
   /** Eine eigene Ebene anlegen — sie gehört mir. */
   createLayer(name: string): Promise<{ id: string; name: string }> {

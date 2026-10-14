@@ -132,7 +132,7 @@ Was eine Kante bedeutet und bewirkt; Typdiagramm und Graph. — [[F-008 Kanten v
 
 ## EP-02 Zugang & Betrieb
 
-37 Stories · 114 Punkte · 22 steht · 5 teils · 7 offen · 1 ersetzt · 2 verworfen — [[EP-02 Zugang & Betrieb]]
+38 Stories · 117 Punkte · 23 steht · 5 teils · 7 offen · 1 ersetzt · 2 verworfen — [[EP-02 Zugang & Betrieb]]
 
 ### F-010 Anmeldung & Konten
 
@@ -180,6 +180,7 @@ Wer was schreibt (je Ebene, eigene Artikel), Status ready als Freigabe, gesperrt
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
+| [[REQ-316]] | Eigene Ebene je Spieler als Vorgabe | Spieler | 1 | 3 | steht |
 | [[REQ-041]] | Wer was schreiben darf | Spielleitung | 2 | 3 | teils |
 | [[REQ-237]] | Spielende legen Artikel an, die Leitung gibt frei | Spieler | 2 | 5 | steht |
 | [[REQ-242]] | Felder der eigenen Figur sperren | Spielleitung | 3 | 5 | offen |

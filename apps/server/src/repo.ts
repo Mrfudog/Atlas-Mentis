@@ -94,6 +94,9 @@ export interface LayerGrant {
   userId: string;
   layerId: string;
   owner: boolean;
+  /** **Die Spielerebene dieses Kontos in dieser Kampagne** (T-164): steht
+   *  hier, neben dem Konto, und nicht an der Ebene (REQ-199). */
+  campaign?: string;
 }
 
 export interface Repository {
@@ -150,8 +153,10 @@ export interface Repository {
   /** **Wer in einer Ebene schreibt** (T-098, E-001): je Konto und Ebene
    *  eine Zeile neben dem Konto (`app_user_layer`), nicht an der Ebene
    *  (REQ-199). `owner` heisst: besitzt sie und sagt, wer sonst darin
-   *  schreibt. Ein zweites Setzen ändert nur `owner`. */
-  grantLayer(userId: string, layerId: string, owner?: boolean): Promise<void>;
+   *  schreibt. Ein zweites Setzen ändert nur `owner` — und `campaign`,
+   *  wenn es genannt ist: dann ist die Ebene die Spielerebene des Kontos
+   *  in dieser Kampagne (T-164). */
+  grantLayer(userId: string, layerId: string, owner?: boolean, campaign?: string): Promise<void>;
   revokeLayer(userId: string, layerId: string): Promise<boolean>;
   /** Alle Zeilen — wenige; gefragt, wer eine Ebene besitzt und wer darin schreibt. */
   layerGrants(): Promise<LayerGrant[]>;
@@ -359,9 +364,11 @@ export class InMemoryRepository implements Repository {
     };
   }
   private readonly ebenenRechte = new Map<string, LayerGrant>();
-  async grantLayer(userId: string, layerId: string, owner = false): Promise<void> {
+  async grantLayer(userId: string, layerId: string, owner = false, campaign?: string): Promise<void> {
     if (!this.users.has(userId)) return;
-    this.ebenenRechte.set(`${userId}|${layerId}`, { userId, layerId, owner });
+    const vorher = this.ebenenRechte.get(`${userId}|${layerId}`)?.campaign;
+    const k = campaign ?? vorher;
+    this.ebenenRechte.set(`${userId}|${layerId}`, { userId, layerId, owner, ...(k ? { campaign: k } : {}) });
   }
   async revokeLayer(userId: string, layerId: string): Promise<boolean> {
     return this.ebenenRechte.delete(`${userId}|${layerId}`);
@@ -379,6 +386,8 @@ export class InMemoryRepository implements Repository {
       authoredIds: [...(this.users.get(user.id)?.authoredIds ?? [])],
       layerIds: undefined,
       ownedLayerIds: undefined,
+      /* Wie `created_at` in Postgres: beim ersten Schreiben gesetzt, danach fest (T-163). */
+      createdAt: this.users.get(user.id)?.createdAt ?? user.createdAt ?? new Date().toISOString(),
     });
   }
   async addAuthored(userId: string, entityId: string): Promise<void> {

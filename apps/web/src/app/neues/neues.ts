@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Neues, type NeuEintrag } from '../kern/neues';
+import { Session } from '../kern/session';
 
 /**
  * **What's new** (T-157): was auf der Seite neu ist, nach Tag, mit Sprung
@@ -13,6 +14,10 @@ import { Neues, type NeuEintrag } from '../kern/neues';
  *
  * Nach Bereich einengen lässt sich die Liste über die Marken oben; sie
  * kommen aus den Einträgen selbst, nicht aus einer Liste im Code.
+ *
+ * Gezeigt wird, was seit der Anlage des Kontos kam (T-163); ein neues
+ * Konto sieht einen Hinweis statt der ganzen Geschichte. Die Verwaltung
+ * darf mit „Show all" auch das Ältere aufklappen.
  */
 @Component({
   selector: 'nw-neues',
@@ -25,6 +30,14 @@ import { Neues, type NeuEintrag } from '../kern/neues';
           What changed on this site, newest first.
           @if (neu().size) {
             <strong>{{ neu().size }} new</strong> since your last visit.
+          }
+          @if (ab() && !alles()) {
+            <span class="seit">Showing changes since your account was created ({{ datum(ab()!) }}).</span>
+          }
+          @if (isAdmin() && ab()) {
+            <button type="button" class="alle" [attr.aria-pressed]="alles()" (click)="alles.set(!alles())">
+              {{ alles() ? 'Only since my account' : 'Show all' }}
+            </button>
           }
         </p>
       </header>
@@ -79,7 +92,13 @@ import { Neues, type NeuEintrag } from '../kern/neues';
           </ul>
         </section>
       } @empty {
-        <p class="leer">Nothing here.</p>
+        <p class="leer">
+          @if (bereich()) {
+            Nothing here.
+          } @else {
+            Nothing new since you joined — new features will show up here as they arrive.
+          }
+        </p>
       }
     </div>
   `,
@@ -104,6 +123,19 @@ import { Neues, type NeuEintrag } from '../kern/neues';
     }
     .hinweis strong {
       color: var(--accent);
+    }
+    .seit {
+      display: block;
+      font-size: 0.9rem;
+    }
+    .alle {
+      margin-top: 0.35rem;
+      padding: 0.15rem 0.6rem;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--surface);
+      color: var(--ink);
+      font-size: 0.85rem;
     }
     .bereiche {
       display: flex;
@@ -205,17 +237,22 @@ import { Neues, type NeuEintrag } from '../kern/neues';
 })
 export class NeuesSeite {
   private readonly neues = inject(Neues);
+  protected readonly isAdmin = inject(Session).isAdmin;
+  protected readonly ab = this.neues.ab;
+  /** Die Verwaltung klappt auch auf, was vor ihrem Konto lag (T-163). */
+  protected readonly alles = signal(false);
+  private readonly liste = computed(() => (this.alles() ? this.neues.alle : this.neues.eintraege()));
   /** Was beim Öffnen neu war — gemerkt, bevor der Stand weiterrückt. */
   protected readonly neu = signal<Set<string>>(new Set());
   protected readonly bereich = signal<string | null>(null);
   protected readonly bereiche = computed(() =>
-    [...new Set(this.neues.eintraege.map((e) => e.area))].sort(),
+    [...new Set(this.liste().map((e) => e.area))].sort(),
   );
 
   protected readonly tage = computed(() => {
     const b = this.bereich();
     const je = new Map<string, NeuEintrag[]>();
-    for (const e of this.neues.eintraege) {
+    for (const e of this.liste()) {
       if (b && e.area !== b) continue;
       (je.get(e.date) ?? je.set(e.date, []).get(e.date)!).push(e);
     }

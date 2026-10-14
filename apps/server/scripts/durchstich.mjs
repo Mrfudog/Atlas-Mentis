@@ -1197,7 +1197,13 @@ try {
       const rA = await post(leit, `/api/campaigns/camp_probe_a/layers/${eigen}`);
       pruefe('Ebenen: die Leitung schaltet sie auf', rA.ok, String(rA.status));
       const leitMine = await (await get(leit, '/api/layers/mine')).json();
-      pruefe('Ebenen: die Leitung schreibt die Ebene ihrer Runde, nicht die eigene', JSON.stringify(leitMine.layers?.map((l) => l.id)) === '["ly_probe_a"]', JSON.stringify(leitMine).slice(0, 300));
+      /* … und die Spielerebenen ihrer Runde (T-164), nicht aber eine eigene Ebene einer Spielerin. */
+      pruefe(
+        'Ebenen: die Leitung schreibt die Ebene ihrer Runde, nicht die eigene',
+        leitMine.layers?.some((l) => l.id === 'ly_probe_a') && !leitMine.layers?.some((l) => l.id === eigen) &&
+          leitMine.layers.every((l) => l.id === 'ly_probe_a' || l.player?.campaign?.id === 'camp_probe_a'),
+        JSON.stringify(leitMine).slice(0, 300),
+      );
       const rO = await post(spielerin, '/api/entities', { type: 'Place', name: 'Probe in eigener Ebene', relations: [{ type: 'inLayer', to: eigen }] });
       ort = rO.ok ? await rO.json() : null;
       pruefe('Ebenen: angelegt in der eigenen Ebene', rO.status === 201 && ort?.relations?.some((r) => r.type === 'inLayer' && r.to === eigen), `${rO.status} ${JSON.stringify(ort).slice(0, 200)}`);
@@ -1279,6 +1285,79 @@ try {
          eine Gruppe, die es nicht mehr gibt. */
       await pool.query('delete from relation where from_id = any($1) or to_id = any($1)', [weg]);
       await pool.query('delete from entity where id = any($1)', [weg]);
+      await pool.query('delete from schema_migrations where name = $1', [name]);
+      await pool.end();
+      rmSync(ordner, { recursive: true, force: true });
+    }
+  }
+
+  /* ------------------------------------ Spielerebene (T-164) */
+  {
+    /* Die Spielerin bekam ihre Spielerebene, als die Leitung ihr oben die
+       Rolle noch einmal gab — angelegt wird dort. Der Mitspieler bekam die
+       Rolle, bevor es die Runde gab, hat also keine: was er anlegt, liegt
+       in der Ebene der Runde, bis Migration 069 (unter einem Probenamen)
+       ihm seine anlegt und es hineinholt. */
+    const { migrate } = await import(join(DIST, 'migrate.js'));
+    const { default: pg } = await import('pg');
+    const { readFileSync } = await import('node:fs');
+    const pool = new pg.Pool({ connectionString: process.env['DATABASE_URL'] });
+    const ordner = mkdtempSync(join(tmpdir(), 'durchstich-spielerebene-'));
+    const name = 'zzz_durchstich_spielerebene.sql';
+    const spielerin = await anmelden('probe-spiel');
+    const mit = await anmelden('probe-mit');
+    const leit = await anmelden('probe-leitung');
+    const neue = [];
+    const anlegen = async (keks, n) => {
+      const r = await fetch(`${BASE}/api/entities`, { method: 'POST', headers: { ...json, cookie: keks }, body: JSON.stringify({ type: 'Place', name: n }) });
+      const e = r.ok ? await r.json() : {};
+      if (e.id) neue.push(e.id);
+      return { r, e };
+    };
+    const lage = async (id) => (await pool.query(`select to_id from relation where from_id = $1 and type = 'inLayer'`, [id])).rows.map((r) => r.to_id);
+    const ebeneVon = async (konto) =>
+      (await pool.query(
+        `select g.layer_id from app_user_layer g join app_user u on u.id = g.user_id where g.campaign_id = 'camp_probe_a' and g.owner and u.name = $1`,
+        [konto],
+      )).rows[0]?.layer_id ?? '';
+    try {
+      const ly = await ebeneVon('probe-spiel');
+      pruefe('Spielerebene: mit der Rolle angelegt', !!ly);
+      const def = await (await get(spielerin, '/api/layers/default')).json();
+      pruefe('Spielerebene: die Vorgabe der Spielerin', def.layer?.id === ly && def.layer?.player === true, JSON.stringify(def));
+      const { r: rS, e: s } = await anlegen(spielerin, 'Probe T164 Spielerin');
+      pruefe('Spielerebene: angelegt wird dort', JSON.stringify(s.relations?.filter((r) => r.type === 'inLayer').map((r) => r.to)) === JSON.stringify([ly]), `${rS.status} ${JSON.stringify(s).slice(0, 200)}`);
+      delete s.refs;
+      const um = { ...s, name: 'Probe T164 Leitung', components: { ...s.components, Identity: { ...s.components?.Identity, name: 'Probe T164 Leitung' } } };
+      pruefe('Spielerebene: die Leitung schreibt darin', (await put(leit, um)).ok);
+      const stapel = (await (await get(admin, '/api/campaigns/camp_probe_a/layers')).json()).layers.filter((l) => l.active).map((l) => l.id);
+      pruefe('Spielerebene: unter der Ebene der Runde', stapel.indexOf(ly) >= 0 && stapel.indexOf(ly) < stapel.indexOf('ly_probe_a'), JSON.stringify(stapel));
+
+      pruefe('Spielerebene: der Mitspieler hat noch keine', !(await ebeneVon('probe-mit')));
+      const { r: rM, e: m } = await anlegen(mit, 'Probe T164 vorher');
+      pruefe('Spielerebene: ohne sie in die Ebene der Runde', JSON.stringify(await lage(m.id)) === '["ly_probe_a"]', `${rM.status} ${JSON.stringify(m).slice(0, 200)}`);
+      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '069_spielerebene.sql'), 'utf8'));
+      await migrate(pool, { env: {} }, ordner);
+      const lyM = await ebeneVon('probe-mit');
+      pruefe('Spielerebene: Migration legt sie an', !!lyM && lyM !== ly);
+      pruefe('Spielerebene: was er angelegt hat, wandert hinein', JSON.stringify(await lage(m.id)) === JSON.stringify([lyM]), JSON.stringify(await lage(m.id)));
+      pruefe('Spielerebene: was niemandem gehört, bleibt', JSON.stringify(await lage('npc_probe_geheim')) === '["ly_probe_a"]');
+      pruefe('Spielerebene: die der Spielerin bleibt, wie sie war', (await ebeneVon('probe-spiel')) === ly);
+      const { e: m2 } = await anlegen(mit, 'Probe T164 nachher');
+      pruefe('Spielerebene: danach legt er dort an', JSON.stringify(await lage(m2.id)) === JSON.stringify([lyM]));
+    } finally {
+      /* Was hier entstand, geht wieder; die Ebene der Spielerin bleibt. */
+      if (neue.length) {
+        await pool.query('delete from relation where from_id = any($1) or to_id = any($1)', [neue]);
+        await pool.query('delete from entity where id = any($1)', [neue]);
+      }
+      const lyM = await ebeneVon('probe-mit');
+      if (lyM) {
+        await pool.query('delete from relation where from_id = $1 or to_id = $1', [lyM]);
+        await pool.query('delete from entity where id = $1', [lyM]);
+        await pool.query('delete from app_user_layer where layer_id = $1', [lyM]);
+        await pool.query(`update entity set updated_at = now() where id = 'camp_probe_a'`);
+      }
       await pool.query('delete from schema_migrations where name = $1', [name]);
       await pool.end();
       rmSync(ordner, { recursive: true, force: true });
