@@ -366,6 +366,29 @@ const ROLLEN: { role: TableRole; text: string }[] = [
                   · plays {{ figurenText(k) }}
                 }
               </span>
+              <!-- In welchen Ebenen das Konto schreibt (T-098, E-001): je Konto
+                   verwaltbar. Die Ebene der Kampagne kommt aus der Rolle. -->
+              <span class="schreibt">
+                @for (l of k.layers ?? []; track l.id) {
+                  <span class="chip">
+                    {{ l.name ?? l.id }}{{ l.owner ? ' (owner)' : '' }}
+                    <button type="button" class="x" [disabled]="laeuft()"
+                            [attr.aria-label]="(k.name) + ' no longer edits ' + (l.name ?? l.id)"
+                            (click)="ebeneWeg(k, l.id)">×</button>
+                  </span>
+                }
+                @if (ebenenWahl().length) {
+                  <select [attr.aria-label]="'Let ' + k.name + ' edit a layer'" [disabled]="laeuft()"
+                          (change)="ebeneDazu(k, $any($event.target))">
+                    <option value="">edits layer…</option>
+                    @for (l of ebenenWahl(); track l.id) {
+                      @if (!schreibtIn(k, l.id)) {
+                        <option [value]="l.id">{{ l.name }}</option>
+                      }
+                    }
+                  </select>
+                }
+              </span>
               @if (gewaehlt() && !istMitglied(k)) {
                 <button type="button" (click)="kontoAufnehmen(k)">Add to this campaign</button>
               }
@@ -413,6 +436,9 @@ export class Verwaltung {
   protected readonly mitglieder = signal<Mitglieder | null>(null);
   protected readonly einladungen = signal<Einladung[]>([]);
   protected readonly konten = signal<Konto[]>([]);
+  /** Die Ebenen, die die Verwaltung einem Konto zuteilen kann (T-098) —
+   *  ohne Gruppen: in einer Gruppe liegt nichts. */
+  protected readonly ebenenWahl = signal<{ id: string; name: string }[]>([]);
   protected readonly fehler = signal<string | null>(null);
   protected readonly laeuft = signal(false);
   protected readonly link = signal<string | null>(null);
@@ -553,7 +579,36 @@ export class Verwaltung {
   }
 
   private async ladeKonten(): Promise<void> {
-    this.konten.set(await this.api.users());
+    const c = this.gewaehlt();
+    const [konten, ebenen] = await Promise.all([
+      this.api.users(),
+      c ? this.api.campaignLayers(c).catch(() => null) : Promise.resolve(null),
+    ]);
+    this.konten.set(konten);
+    this.ebenenWahl.set(
+      (ebenen?.layers ?? [])
+        .filter((l) => l.kind !== 'group')
+        .map((l) => ({ id: l.id, name: l.name }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'de')),
+    );
+  }
+
+  protected schreibtIn(k: Konto, layer: string): boolean {
+    return (k.layers ?? []).some((l) => l.id === layer);
+  }
+
+  /** Ein Konto in einer Ebene schreiben lassen (T-098). */
+  protected async ebeneDazu(k: Konto, wahl: HTMLSelectElement): Promise<void> {
+    const layer = wahl.value;
+    wahl.value = '';
+    if (!layer) return;
+    await this.tun(() => this.api.addLayerEditor(layer, { user: k.id }));
+    await this.tun(() => this.ladeKonten());
+  }
+
+  protected async ebeneWeg(k: Konto, layer: string): Promise<void> {
+    await this.tun(() => this.api.dropLayerEditor(layer, k.id));
+    await this.tun(() => this.ladeKonten());
   }
 
   private async neuLaden(): Promise<void> {

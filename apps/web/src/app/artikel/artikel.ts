@@ -172,14 +172,14 @@ interface Feld {
                 }
                 <!-- Anpassen über der Vorlage (E-018, T-082): eine Fassung in
                      der Ebene der Kampagne, das Original bleibt. -->
-                @if (anpassbar() && !bearbeitet()) {
+                @if (anpassbar() && session.isAdmin() && !bearbeitet()) {
                   <button type="button" [disabled]="passtAn()" (click)="anpassen()"
                           title="Make a version for this campaign. The original stays as it is.">
                     {{ passtAn() ? 'Adapting…' : 'Adapt for this campaign' }}
                   </button>
                 }
                 @if (original(); as o) {
-                  @if (session.isAdmin() && !bearbeitet()) {
+                  @if ((session.isAdmin() || darfSchreiben()) && !bearbeitet()) {
                     <button type="button" [disabled]="passtAn()" (click)="zumOriginal(o.id)"
                             title="Delete this version; the campaign sees the original again.">
                       Back to the original
@@ -190,6 +190,28 @@ interface Feld {
                   <button type="button" (click)="bearbeitet() ? abbrechen() : beginnen()">
                     {{ bearbeitet() ? 'Cancel' : 'Edit' }}
                   </button>
+                } @else if (fassungsZiele().length && !zeigtAlten() && !session.isAdmin()) {
+                  <!-- Fremdes ändert man als Fassung in einer eigenen Ebene (T-098, E-001). -->
+                  @if (fassungsZiele().length === 1) {
+                    <button type="button" [disabled]="passtAn()" (click)="alsFassung(fassungsZiele()[0]!.id)"
+                            [title]="'This article is not in a layer you edit. Edit makes your version in ' + fassungsZiele()[0]!.name + '; the original stays.'">
+                      {{ passtAn() ? 'Making your version…' : 'Edit' }}
+                    </button>
+                  } @else {
+                    <span class="fassung-wahl">
+                      <label>
+                        Edit as a version in
+                        <select #ziel [disabled]="passtAn()" aria-label="Layer for your version">
+                          @for (l of fassungsZiele(); track l.id) {
+                            <option [value]="l.id">{{ l.name }}</option>
+                          }
+                        </select>
+                      </label>
+                      <button type="button" [disabled]="passtAn()" (click)="alsFassung(ziel.value)">
+                        {{ passtAn() ? 'Making…' : 'Edit' }}
+                      </button>
+                    </span>
+                  }
                 }
                 @if (bearbeitet()) {
                   <button type="button" class="pri" [disabled]="speichert()" (click)="speichern()">
@@ -1175,6 +1197,8 @@ export class Artikel {
 
   /** „Adapt" anbieten — der Server hat es mit dem Artikel gesagt (`refs.adaptable`). */
   protected readonly anpassbar = computed(() => this.bestand.anpassbar().has(this.id()));
+  /** Wohin „Edit" eine Fassung legt, wenn man den Artikel nicht schreibt (`refs.adaptTo`, T-098). */
+  protected readonly fassungsZiele = computed(() => this.bestand.anpassZiele().get(this.id()) ?? []);
   protected readonly passtAn = signal(false);
   protected readonly anpassFehler = signal<string | null>(null);
 
@@ -1195,6 +1219,29 @@ export class Artikel {
       /* Das Original zeigt ab jetzt auf die Fassung; was offen war, gilt nicht mehr. */
       await this.bestand.oeffnen(this.id(), true);
       await this.router.navigate(['/artikel', id]);
+    } catch (x) {
+      this.anpassFehler.set(x instanceof Error ? x.message : String(x));
+    } finally {
+      this.passtAn.set(false);
+    }
+  }
+
+  /**
+   * **„Edit" an einem fremden Artikel** (T-098, E-001): eine Fassung in der
+   * gewählten eigenen Ebene, dann gleich bearbeiten (`?edit=1`). Gibt es sie
+   * schon, öffnet der Server die bestehende.
+   */
+  protected async alsFassung(layer: string): Promise<void> {
+    const e = this.artikel();
+    if (!e || !layer) return;
+    this.passtAn.set(true);
+    this.anpassFehler.set(null);
+    try {
+      const { id } = await this.api.adapt(e.id, layer);
+      /* Die Fassung ist neu: was ich schreibe, sagt der Server erst jetzt (`/api/me`). */
+      await this.session.load(true);
+      await this.bestand.oeffnen(this.id(), true);
+      await this.router.navigate(['/artikel', id], { queryParams: { edit: 1 } });
     } catch (x) {
       this.anpassFehler.set(x instanceof Error ? x.message : String(x));
     } finally {

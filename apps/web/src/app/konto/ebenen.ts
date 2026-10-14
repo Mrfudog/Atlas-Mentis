@@ -1,0 +1,256 @@
+import { Component, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { Api, ApiError, type EbenenSchreiber, type MeineEbene } from '../kern/api';
+import { Session } from '../kern/session';
+
+/**
+ * **Die Ebenen, in denen ich schreibe** (T-098, E-001) — auf der Seite
+ * „Account": je Ebene, warum (meine, zugeteilt, als Leitung einer
+ * Kampagne) und ob sie in der laufenden Kampagne im Spiel ist. Darunter
+ * „New layer": eine eigene Ebene, die mir gehört. An einer, die mir
+ * gehört, sage ich, wer sonst darin schreibt.
+ *
+ * **Was der Server nicht annähme, bietet die Seite nicht an**: die Liste
+ * der Schreibenden steht nur an Ebenen, für die der Server sie mitschickt
+ * (`editors`).
+ */
+@Component({
+  selector: 'nw-meine-ebenen',
+  imports: [FormsModule],
+  template: `
+    <section class="block" aria-labelledby="h-ebenen">
+      <h2 id="h-ebenen">Layers</h2>
+      <p class="dim">
+        You edit everything in the layers below. An article that lies elsewhere — in a shared book, or
+        in no layer — you change as your own version in one of them; the original stays. A layer of
+        your own works once the GM turns it on for the campaign.
+      </p>
+
+      @if (fehler(); as f) {
+        <p class="fehler" role="alert">{{ f }}</p>
+      }
+
+      <ul class="ebenen">
+        @for (l of ebenen(); track l.id) {
+          <li>
+            <div class="kopf">
+              <b>{{ l.name }}</b>
+              @if (l.owner) {
+                <span class="art">yours</span>
+              } @else if (l.granted) {
+                <span class="art">shared with you</span>
+              }
+              @for (k of l.campaigns; track k.id) {
+                <span class="art">{{ k.role }} of {{ k.name }}</span>
+              }
+              <span class="dim">· {{ l.inPlay ? 'in play' : 'not turned on in ' + (kampagne() ?? 'the campaign') }}</span>
+            </div>
+            @if (l.editors; as eds) {
+              <div class="schreiber">
+                <span class="dim">Edited by</span>
+                @for (s of eds; track s.id) {
+                  <span class="chip">
+                    {{ s.name }}{{ s.owner ? ' (owner)' : '' }}
+                    @if (darfEntfernen(s)) {
+                      <button type="button" class="x" [attr.aria-label]="'Remove ' + s.name + ' from ' + l.name"
+                              [disabled]="laeuft()" (click)="entfernen(l, s)">×</button>
+                    }
+                  </span>
+                }
+                <form class="dazu" (ngSubmit)="dazunehmen(l)">
+                  <input [name]="'wer-' + l.id" [(ngModel)]="wer[l.id]" placeholder="account name"
+                         [attr.aria-label]="'Let someone edit ' + l.name" />
+                  <button type="submit" class="klein" [disabled]="laeuft() || !(wer[l.id] ?? '').trim()">Add</button>
+                </form>
+              </div>
+            }
+          </li>
+        } @empty {
+          <li class="dim">{{ geladen() ? 'You edit no layer yet.' : 'Loading…' }}</li>
+        }
+      </ul>
+
+      <form class="anlegen" (ngSubmit)="anlegen()">
+        <label>New layer <input name="ebene" [(ngModel)]="name" placeholder="My notes" maxlength="80" /></label>
+        <button type="submit" class="pri" [disabled]="laeuft() || !name.trim()">Create layer</button>
+      </form>
+    </section>
+  `,
+  styles: `
+    h2 {
+      font-family: var(--caps);
+      color: var(--accent);
+      margin: 0;
+      font-size: 1.3rem;
+    }
+    .dim {
+      color: var(--dim);
+    }
+    .fehler {
+      color: var(--warn);
+    }
+    .block {
+      margin-top: 1.25rem;
+      padding: 1rem 1.25rem;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-top: 3px solid var(--rule);
+      border-radius: 6px;
+    }
+    .ebenen {
+      margin: 0.75rem 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    .ebenen li {
+      padding: 0.5rem 0;
+      border-top: 1px solid var(--line2);
+    }
+    .kopf {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem 0.5rem;
+      align-items: baseline;
+    }
+    .art,
+    .chip {
+      padding: 0 0.4rem;
+      border-radius: 10px;
+      background: var(--chip);
+      font-size: 0.75rem;
+    }
+    .schreiber {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem 0.5rem;
+      align-items: center;
+      margin-top: 0.35rem;
+      font-size: 0.85rem;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+      font-size: 0.8rem;
+    }
+    button.x {
+      min-height: 24px;
+      padding: 0 0.3rem;
+      border: 0;
+      background: transparent;
+      color: var(--dim);
+      cursor: pointer;
+    }
+    .dazu {
+      display: inline-flex;
+      gap: 0.3rem;
+    }
+    .dazu input {
+      width: 10rem;
+      min-height: 32px;
+    }
+    .anlegen {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 0.5rem 0.75rem;
+      align-items: end;
+      margin-top: 0.75rem;
+    }
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+      font-size: 0.85rem;
+      color: var(--dim);
+    }
+    input {
+      min-height: 40px;
+      padding: 0.25rem 0.5rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--paper);
+      color: var(--ink);
+      min-width: 0;
+    }
+    button.klein {
+      min-height: 32px;
+      padding: 0 0.6rem;
+      font-size: 0.85rem;
+    }
+    @media (max-width: 640px) {
+      .block {
+        padding: 0.75rem;
+      }
+      .dazu input {
+        width: 8rem;
+      }
+    }
+  `,
+})
+export class MeineEbenen {
+  private readonly api = inject(Api);
+  private readonly session = inject(Session);
+
+  protected readonly ebenen = signal<MeineEbene[]>([]);
+  protected readonly kampagne = signal<string | null>(null);
+  protected readonly geladen = signal(false);
+  protected readonly fehler = signal<string | null>(null);
+  protected readonly laeuft = signal(false);
+  protected name = '';
+  protected wer: Record<string, string | undefined> = {};
+
+  constructor() {
+    void this.laden();
+  }
+
+  /** Sich selbst nimmt nur die Verwaltung heraus — sonst gehörte die Ebene niemandem. */
+  protected darfEntfernen(s: EbenenSchreiber): boolean {
+    return this.session.isAdmin() || s.id !== this.session.user()?.id;
+  }
+
+  private async laden(): Promise<void> {
+    try {
+      const d = await this.api.myLayers();
+      this.ebenen.set(d.layers);
+      this.kampagne.set(d.campaign?.name ?? null);
+    } catch (e) {
+      this.fehler.set(e instanceof ApiError ? e.message : 'Could not reach the server.');
+    } finally {
+      this.geladen.set(true);
+    }
+  }
+
+  private async tue(was: () => Promise<unknown>): Promise<void> {
+    this.laeuft.set(true);
+    this.fehler.set(null);
+    try {
+      await was();
+      await this.laden();
+    } catch (e) {
+      this.fehler.set(e instanceof ApiError ? e.message : 'Could not reach the server.');
+    } finally {
+      this.laeuft.set(false);
+    }
+  }
+
+  protected anlegen(): Promise<void> {
+    const name = this.name.trim();
+    return this.tue(async () => {
+      await this.api.createLayer(name);
+      this.name = '';
+    });
+  }
+
+  protected dazunehmen(l: MeineEbene): Promise<void> {
+    const name = (this.wer[l.id] ?? '').trim();
+    return this.tue(async () => {
+      await this.api.addLayerEditor(l.id, { name });
+      this.wer[l.id] = '';
+    });
+  }
+
+  protected entfernen(l: MeineEbene, s: EbenenSchreiber): Promise<void> {
+    if (!confirm(`${s.name} no longer edits “${l.name}”?`)) return Promise.resolve();
+    return this.tue(() => this.api.dropLayerEditor(l.id, s.id));
+  }
+}

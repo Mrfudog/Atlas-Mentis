@@ -2,9 +2,11 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Api, ApiError, type TokenZeile } from '../kern/api';
 import { Session } from '../kern/session';
+import { MeineEbenen } from './ebenen';
 
 /**
- * **Das eigene Konto**: wer man ist, und die eigenen API-Tokens (W9).
+ * **Das eigene Konto**: wer man ist, die Ebenen, in denen man schreibt
+ * (T-098), und die eigenen API-Tokens (W9).
  *
  * Ein Token ist der Zugang eines Werkzeugs — eines Skripts, einer
  * Claude-Sitzung —, das keinen Keks hält. Es wirkt wie die Sitzung dieses
@@ -14,7 +16,7 @@ import { Session } from '../kern/session';
  */
 @Component({
   selector: 'nw-konto',
-  imports: [FormsModule],
+  imports: [FormsModule, MeineEbenen],
   template: `
     <div class="seite">
       <h1>Account</h1>
@@ -27,6 +29,9 @@ import { Session } from '../kern/session';
           · {{ r }}
         }
       </p>
+
+      <!-- In welchen Ebenen ich schreibe, und eigene anlegen (T-098). -->
+      <nw-meine-ebenen />
 
       <section class="block" aria-labelledby="h-tokens">
         <h2 id="h-tokens">API tokens</h2>

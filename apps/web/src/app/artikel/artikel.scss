@@ -218,6 +218,18 @@ h1 {
   gap: 0.4rem;
   align-items: center;
 }
+/* „Edit" als Fassung, wenn es mehrere eigene Ebenen gibt (T-098). */
+.fassung-wahl {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+  font-size: 0.85rem;
+}
+.fassung-wahl select {
+  max-width: 12rem;
+  margin-left: 0.3rem;
+}
 .maske {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
