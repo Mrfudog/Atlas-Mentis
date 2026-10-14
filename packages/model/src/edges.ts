@@ -87,11 +87,12 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'stack',
     label: 'Layers in play',
     area: 'stack',
-    does: 'decides whether an article is in play at all — what the campaign’s layers bring, what a group layer brings with its members, which version replaces another',
+    does: 'decides whether an article is in play at all — what the campaign’s layers bring, what a group layer brings with its members, which publisher a layer counts under, which version replaces another',
     uses: {
       [M + 'visibility.ts']: ['activates', 'inLayer'],
       [M + 'stack.ts']: ['activates', 'inLayer', 'overrides', 'partOf'],
       [S + 'verwaltung.ts']: ['activates', 'inLayer'],
+      [S + 'ebenenrechte.ts']: ['partOf'],
     },
   },
   {

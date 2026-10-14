@@ -59,7 +59,7 @@ export class PgRepository implements Repository {
         section: (r['section'] as string) ?? undefined,
         /* An welchem Ende sie sich wie ein Feld liest (Migration 022). */
         asField: (r['as_field'] as RelationDef['asField']) ?? undefined,
-        /* Was sie bedeutet und bewirken soll (T-111, Migration 044). */
+        /* Was sie bedeutet und bewirken soll (T-111, Migration 045). */
         means: (r['means'] as string | null) ?? undefined,
         intended: (r['intended'] as string | null) ?? undefined,
         /* Was die Kante selbst trägt — geschrieben wurde es immer, gelesen
