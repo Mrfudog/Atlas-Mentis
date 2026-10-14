@@ -44,6 +44,7 @@ const propertySchema = z
     unit: z.string().optional(),
     target: linkTargetSchema.optional(),
     alwaysEdit: z.boolean().optional(),
+    editOnly: z.boolean().optional(),
     suggest: z.boolean().optional(),
     many: z.boolean().optional(),
     readOnly: z.boolean().optional(),

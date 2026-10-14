@@ -120,6 +120,18 @@ import {
             <b>Always an input</b> shows the input without pressing Edit — for a value set mid-turn, like hit
             points. Who may not write still sees the value.
           </p>
+          <!-- Ein Schlüssel zum Ordnen liest niemand (T-126, editOnly). -->
+          <label class="f">
+            <span>Read</span>
+            <select [disabled]="!darf()" (change)="schalter('editOnly', $any($event.target).value === '1')">
+              <option value="" [selected]="!p.editOnly">on the page</option>
+              <option value="1" [selected]="!!p.editOnly">only in the edit form</option>
+            </select>
+          </label>
+          <p class="hint">
+            <b>Only in the edit form</b> keeps a value off every page, card and print — for a key that orders
+            and that nobody reads, like the sortable value next to a date.
+          </p>
         }
 
         @if (art() === 'text' && !p.format) {
@@ -427,7 +439,7 @@ export class RegFeld {
       return p;
     });
   }
-  protected schalter(k: 'alwaysEdit' | 'suggest', an: boolean): void {
+  protected schalter(k: 'alwaysEdit' | 'editOnly' | 'suggest', an: boolean): void {
     void this.setzen({ [k]: an ? true : undefined });
   }
 

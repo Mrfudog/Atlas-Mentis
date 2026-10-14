@@ -249,6 +249,11 @@ a.kname:hover {
   gap: 0.5rem;
   padding: 0.2rem 0;
 }
+/* Was Gleichnamiges unterscheidet (T-126) steht gleich hinter dem Namen. */
+.zeile .zusatz {
+  flex: 1;
+  font-size: 0.85rem;
+}
 button.klein {
   flex: none;
   min-height: 30px;

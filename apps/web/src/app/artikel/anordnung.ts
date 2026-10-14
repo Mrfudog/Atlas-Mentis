@@ -129,6 +129,8 @@ export function feldZellen(r: Registry, e: Entity, name: (id: string) => string 
       const schema = def?.schema?.properties?.[prop];
       /* Ein Prosafeld gehört dem Element `prose`, nicht der Tabelle. */
       if (schema?.many && schema.format === 'long') continue;
+      /* Ein Schlüssel zum Ordnen liest niemand (`editOnly`, T-126). */
+      if (schema?.editOnly) continue;
       /* Tabellenzeilen und Objekte liest `anzeigeWert` — `fieldText`
          kennt Masse und Einheiten, aber keine Karten in einer Liste (W1). */
       const tabelle = prop === zeilen && sindZeilen(wert);
@@ -183,7 +185,7 @@ export function mitLeeren(r: Registry, e: Entity, zellen: readonly Zelle[]): Zel
     if (SCHON_ANDERSWO.includes(comp)) continue;
     for (const [prop, schema] of Object.entries(r.interfaces[comp]?.schema?.properties ?? {})) {
       const ref = `${comp}.${prop}`;
-      if (da.has(ref) || schema.derived || (schema.many && schema.format === 'long')) continue;
+      if (da.has(ref) || schema.derived || schema.editOnly || (schema.many && schema.format === 'long')) continue;
       if (ref === 'Description.description') continue;
       const zelle: Zelle = {
         ref,

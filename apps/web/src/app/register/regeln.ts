@@ -110,6 +110,7 @@ export function holds(registry: Pick<Registry, 'enums' | 'interfaces'>, p: Prope
   if (p.many) teile.push('many');
   if (p.suggest) teile.push('suggests');
   if (p.alwaysEdit) teile.push('always an input');
+  if (p.editOnly) teile.push('edit form only');
   if (p.readOnly) teile.push('issued');
   return teile.join(' · ');
 }

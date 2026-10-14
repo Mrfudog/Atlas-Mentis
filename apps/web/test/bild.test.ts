@@ -5,11 +5,12 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { seedRegistry } from '@nw/registry';
 import type { Entity } from '@nw/model';
 import { Api } from '../src/app/kern/api';
-import { bildAdresse, bildDes } from '../src/app/artikel/bild';
+import { Bild, bildAdresse, bildDes } from '../src/app/artikel/bild';
 import { eingabeArt } from '../src/app/artikel/felder';
 
 describe('bildAdresse', () => {
@@ -130,5 +131,35 @@ describe('managing images (T-119)', () => {
     expect(q.get('tag')).toBe('stadt,wache');
     expect(q.get('unused')).toBe('1');
     expect(q.get('f')).toBe('Asset.kind:token');
+  });
+});
+
+describe('loading indicator (T-126)', () => {
+  beforeEach(() => TestBed.resetTestingModule());
+
+  const zeichne = (groesse: 'full' | 'thumb') => {
+    const f = TestBed.createComponent(Bild);
+    /* JIT kennt `input()` nicht (siehe text.test.ts): die Signale vor dem ersten Zeichnen ersetzen. */
+    Object.assign(f.componentInstance, { wert: signal('https://example.org/karte.jpg'), groesse: signal(groesse) });
+    f.detectChanges();
+    return f;
+  };
+
+  it('spins over a large image until it has loaded', () => {
+    const f = zeichne('full');
+    const el = f.nativeElement as HTMLElement;
+    expect(el.querySelector('nw-ladeanzeige')).not.toBeNull();
+    el.querySelector('img')!.dispatchEvent(new Event('load'));
+    f.detectChanges();
+    expect(el.querySelector('nw-ladeanzeige')).toBeNull();
+  });
+
+  it('leaves a preview alone, and stops when the image fails', () => {
+    expect((zeichne('thumb').nativeElement as HTMLElement).querySelector('nw-ladeanzeige')).toBeNull();
+    const f = zeichne('full');
+    const el = f.nativeElement as HTMLElement;
+    el.querySelector('img')!.dispatchEvent(new Event('error'));
+    f.detectChanges();
+    expect(el.querySelector('nw-ladeanzeige')).toBeNull();
   });
 });

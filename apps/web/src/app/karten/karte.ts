@@ -47,6 +47,7 @@ import { Session } from '../kern/session';
 import { bildAdresse } from '../artikel/bild';
 import { Brett, type Mangel } from '../boards/brett';
 import { BoardSuche } from '../boards/suche';
+import { Ladeanzeige } from '../kern/ladeanzeige';
 
 /** Ab so vielen Bildpunkten ist ein Druck ein Ziehen und kein Antippen. */
 const ZIEHEN_AB = 5;
@@ -101,7 +102,7 @@ interface Zeiger {
  */
 @Component({
   selector: 'nw-karte',
-  imports: [RouterLink, BoardSuche],
+  imports: [RouterLink, BoardSuche, Ladeanzeige],
   template: `
     <div class="karte" [class.gross]="gross()">
       <div class="leiste">
@@ -221,6 +222,11 @@ interface Zeiger {
           (pointercancel)="abbrechen($event)"
           (keydown)="taste($event)"
         >
+          <!-- Bis das Kartenbild da ist (T-126): ein Kreis statt einer leeren
+               Fläche. Gemessen ist es, sobald es geladen hat (nat). -->
+          @if (!nat() && !bildFehlt()) {
+            <nw-ladeanzeige class="laedt" label="Loading map image …" />
+          }
           <div
             #innen
             class="innen"

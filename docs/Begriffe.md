@@ -191,6 +191,10 @@ Eine Tatsache, die ein Typ festhält. Ein Feld hat
   sind drei Klicks für eine Zahl. Es steht **am Feld und nur dort**: am Typ
   war es ein Schalter für zwanzig Felder auf einmal, und an `Vitals` sind
   die Trefferpunkte ein Stand, die Zustandsliste aber ein Satz Häkchen,
+- ob es **nur in der Maske** steht (`editOnly`): ein Schlüssel, den man
+  setzt und niemand liest — `Time.sort` ordnet die Weltgeschichte, gelesen
+  wird „Mirtul 12, 1492 DR". In der Feldtabelle stand „Sortable value
+  14920512" an jedem Ereignis,
 - bei einem freien Wort, ob es **vorschlägt, was schon dasteht** (`suggest`)
   — für eine Sorte wie `Creature.kind` oder `Deity.pantheon`, damit sie nicht
   dreimal anders geschrieben wird, und **nicht** für einen Namen: der

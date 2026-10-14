@@ -228,6 +228,18 @@
 .karte {
   margin: 1rem 0;
 }
+/* Bis das Kartenbild da ist, hält der Rahmen Platz für die Ladeanzeige (T-126). */
+.kartenbild {
+  position: relative;
+}
+.kartenbild.laedt {
+  min-height: 8rem;
+}
+.kartenbild .anzeige {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
 .karte img {
   display: block;
   max-width: 100%;
