@@ -285,6 +285,8 @@ export interface KampagnenEbene {
   off: boolean;
   /** Eine Vergleichsebene (T-092): nicht im Spiel, ihre Fassungen auf Wunsch sichtbar. */
   compare?: boolean;
+  /** Was sie bringt (T-105): Bereiche und Arten an ihrer eigenen Kante; fehlt es, alles. */
+  only?: { areas?: string[]; types?: string[] };
   /** Die anderen Kampagnen, die sie aufschalten. */
   alsoIn: string[];
   canActivate: boolean;
@@ -972,6 +974,17 @@ export class Api {
     });
   }
   /** Eine Ebene dazuschalten; der Server sucht ihr den Platz im Stapel. */
+  /** Was eine Ebene bringt (T-105); `null` heisst wieder alles. */
+  setLayerOnly(
+    campaign: string,
+    layer: string,
+    only: { areas?: string[]; types?: string[] } | null,
+  ): Promise<{ ok: true }> {
+    return this.call(
+      `/api/campaigns/${encodeURIComponent(campaign)}/layers/${encodeURIComponent(layer)}/only`,
+      { method: 'PUT', body: JSON.stringify(only ?? {}) },
+    );
+  }
   activateLayer(campaign: string, layer: string): Promise<{ ok: true; layers: string[] }> {
     return this.call(
       `/api/campaigns/${encodeURIComponent(campaign)}/layers/${encodeURIComponent(layer)}`,

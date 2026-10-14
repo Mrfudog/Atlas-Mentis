@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, input, output, signal } from '@ang
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { KurzLink } from '../kern/kurzansicht';
+import { areaOf } from '@nw/model';
 import { Api, type KampagnenEbene, type KampagnenEbenen } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 
@@ -12,6 +13,20 @@ const OFFEN_PREF = 'layerGroups';
 /** … und wonach die Bücher gruppiert stehen (T-094). */
 const ANSICHT_PREF = 'layerGroupBy';
 type Ansicht = 'category' | 'publisher';
+
+/** Die Bereiche in der Reihenfolge der Kopfleiste; andere danach, ohne Bereich zuletzt (T-105). */
+const BEREICHE = ['world', 'story', 'rules', 'play'];
+type Auswahl = { areas?: string[]; types?: string[] };
+/** Ein Bereich in der Auswahl einer Ebene (T-105), mit seinen Arten und Zählern. */
+interface AuswahlBereich {
+  area: string;
+  label: string;
+  n: number;
+  an: boolean;
+  /** Nicht ganz an, aber einzelne Arten darin. */
+  teils: boolean;
+  arten: { type: string; label: string; n: number; an: boolean }[];
+}
 
 /** Eine Gruppe mit ihren Mitgliedern (T-088), verschachtelt. */
 interface Gruppe {
@@ -57,6 +72,13 @@ interface Gruppe {
  * Umschalter zeigt die Gruppen der einen oder der anderen Art
  * (`groupBy`), gemerkt am Konto. Jede Ebene trägt ihren Herausgeber als
  * Marke — Official, Partnered, Homebrew … —, gerechnet am Server.
+ *
+ * **Teilweise aufschalten** (T-105, REQ-255): an jeder Ebene und Gruppe
+ * mit eigener Kante „Brings: everything" zum Aufklappen — je Bereich ein
+ * Häkchen mit Zähler, darunter die Arten einzeln. Aus einem Abenteuer so
+ * nur Regeln und Gegenstände, nicht seine Orte. Geschrieben wird an der
+ * Kante (`PUT …/layers/:layer/only`); was „alles" ist, schickt die Seite als
+ * keine Auswahl, damit eine Art, die später dazukommt, mitkommt.
  */
 @Component({
   selector: 'nw-kampagnen-ebenen',
@@ -104,6 +126,7 @@ interface Gruppe {
                   · belongs to another campaign; the admin can turn it on
                 }
               </span>
+              <ng-container [ngTemplateOutlet]="auswahlTpl" [ngTemplateOutletContext]="{ $implicit: l }" />
               @if (!l.active) {
                 <label class="vergleich" [title]="'Show versions from ' + l.name + ' on demand, without putting it in play'">
                   <input
@@ -193,6 +216,7 @@ interface Gruppe {
               }
             </summary>
             <div class="innen">
+              <ng-container [ngTemplateOutlet]="auswahlTpl" [ngTemplateOutletContext]="{ $implicit: g.ebene }" />
               @for (u of g.untergruppen; track u.ebene.id) {
                 <ng-container [ngTemplateOutlet]="gruppeTpl" [ngTemplateOutletContext]="{ $implicit: u }" />
               }
@@ -245,7 +269,53 @@ interface Gruppe {
                 · also in {{ l.alsoIn.join(', ') }}
               }
             </span>
+            <ng-container [ngTemplateOutlet]="auswahlTpl" [ngTemplateOutletContext]="{ $implicit: l }" />
           </li>
+        </ng-template>
+        <ng-template #auswahlTpl let-l>
+          @if ((l.active || l.compare) && hatInhalt(l)) {
+            <details class="auswahl" [open]="offen().has('only:' + l.id)" (toggle)="merke('only:' + l.id, $event)">
+              <summary>
+                <span class="dim">Brings:</span> <span class="was">{{ auswahlText(l) }}</span>
+              </summary>
+              <div class="bereiche" role="group" [attr.aria-label]="'What ' + l.name + ' brings'">
+                @for (b of auswahl(l); track b.area) {
+                  <div class="bereich">
+                    <label class="haken">
+                      <input
+                        type="checkbox"
+                        [checked]="b.an"
+                        [indeterminate]="b.teils"
+                        [disabled]="d.may !== 'manage' || laeuft()"
+                        (change)="bereichSchalten(l, b.area)"
+                      />
+                      <span>{{ b.label }}</span>
+                      <span class="dim">{{ zahl(b.n) }}</span>
+                    </label>
+                    <details class="arten">
+                      <summary class="dim">by type</summary>
+                      <ul>
+                        @for (a of b.arten; track a.type) {
+                          <li>
+                            <label class="haken">
+                              <input
+                                type="checkbox"
+                                [checked]="a.an"
+                                [disabled]="d.may !== 'manage' || laeuft()"
+                                (change)="artSchalten(l, a.type)"
+                              />
+                              <span>{{ a.label }}</span>
+                              <span class="dim">{{ zahl(a.n) }}</span>
+                            </label>
+                          </li>
+                        }
+                      </ul>
+                    </details>
+                  </div>
+                }
+              </div>
+            </details>
+          }
         </ng-template>
         <h3>Compare layers</h3>
         <p class="fuss">
@@ -379,7 +449,7 @@ interface Gruppe {
     .gruppe {
       border-top: 1px solid var(--line2);
     }
-    .gruppe summary {
+    .gruppe > summary {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
@@ -387,10 +457,10 @@ interface Gruppe {
       min-height: 40px;
       cursor: pointer;
     }
-    .gruppe summary::-webkit-details-marker {
+    .gruppe > summary::-webkit-details-marker {
       display: none;
     }
-    .gruppe summary::before {
+    .gruppe > summary::before {
       content: '▸';
       color: var(--dim);
     }
@@ -469,6 +539,66 @@ interface Gruppe {
       color: var(--accent);
       font-weight: 700;
     }
+    /* Was eine Ebene bringt (T-105): aufklappbar, Bereiche nebeneinander. */
+    .auswahl {
+      flex: 1 1 100%;
+      font-size: 0.88rem;
+    }
+    .auswahl > summary {
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      cursor: pointer;
+    }
+    .auswahl > summary::-webkit-details-marker,
+    .arten > summary::-webkit-details-marker {
+      display: none;
+    }
+    .auswahl > summary::before,
+    .arten > summary::before {
+      content: '▸';
+      color: var(--dim);
+    }
+    .auswahl[open] > summary::before,
+    .arten[open] > summary::before {
+      content: '▾';
+    }
+    .auswahl .was {
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+    .bereiche {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem 1.25rem;
+      padding: 0 0 0.25rem 1.1rem;
+    }
+    .bereich {
+      flex: 0 1 12rem;
+      min-width: 0;
+    }
+    .bereich .haken {
+      flex: 0 1 auto;
+      min-height: 36px;
+    }
+    .arten summary {
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      cursor: pointer;
+      font-size: 0.82rem;
+    }
+    .arten ul {
+      margin: 0 0 0 0.75rem;
+      padding: 0;
+      list-style: none;
+    }
+    .arten li {
+      padding: 0;
+      border: 0;
+    }
     .fakten abbr {
       text-decoration: underline dotted;
       cursor: help;
@@ -487,6 +617,8 @@ export class KampagnenEbenenListe {
   protected readonly laeuft = signal(false);
 
   constructor() {
+    /* Das Register sagt den Bereich jeder Art (T-105) und die Namen im Inhalt. */
+    void this.bestand.load();
     effect(() => {
       const c = this.kampagne();
       void this.laden(c);
@@ -617,6 +749,124 @@ export class KampagnenEbenenListe {
     }
     /* Noch nichts gemerkt: offen ist, worin etwas läuft. */
     this.offen.set(new Set(this.gruppen().filter((g) => g.an > 0).map((g) => g.ebene.id)));
+  }
+
+  /** Was eine Ebene enthält, je Art — bei einer Gruppe die Summe ihrer Mitglieder, verschachtelt (T-105). */
+  private inhalt(l: KampagnenEbene): Record<string, number> {
+    if (l.kind !== 'group') return l.content ?? {};
+    const m = this.nachId();
+    const summe: Record<string, number> = {};
+    const gesehen = new Set<string>([l.id]);
+    const lauf = (g: KampagnenEbene) => {
+      for (const id of g.members ?? []) {
+        const x = m.get(id);
+        if (!x || gesehen.has(id)) continue;
+        gesehen.add(id);
+        for (const [t, n] of Object.entries(x.content ?? {})) summe[t] = (summe[t] ?? 0) + n;
+        lauf(x);
+      }
+    };
+    lauf(l);
+    return summe;
+  }
+
+  /** Nur wo etwas drin ist, gibt es etwas zu wählen. */
+  protected hatInhalt(l: KampagnenEbene): boolean {
+    return Object.keys(this.inhalt(l)).length > 0;
+  }
+
+  private bereichVon(t: string): string {
+    const reg = this.bestand.registry();
+    return reg ? areaOf(reg, t) : '';
+  }
+
+  private bereichName(a: string): string {
+    return a ? a[0]!.toUpperCase() + a.slice(1) : 'Other';
+  }
+
+  private artName(t: string): string {
+    return this.bestand.registry()?.interfaces[t]?.label ?? t;
+  }
+
+  /** Die Bereiche und Arten einer Ebene mit Zählern und Häkchen (T-105). */
+  protected auswahl(l: KampagnenEbene): AuswahlBereich[] {
+    const f = l.only ?? null;
+    const je = new Map<string, AuswahlBereich>();
+    for (const [t, n] of Object.entries(this.inhalt(l))) {
+      const a = this.bereichVon(t);
+      const b = je.get(a) ?? { area: a, label: this.bereichName(a), n: 0, an: false, teils: false, arten: [] };
+      b.n += n;
+      const bereichAn = !f || (!!a && !!f.areas?.includes(a));
+      b.arten.push({ type: t, label: this.artName(t), n, an: bereichAn || !!f?.types?.includes(t) });
+      je.set(a, b);
+    }
+    const rang = (a: string) => (a === '' ? 99 : BEREICHE.includes(a) ? BEREICHE.indexOf(a) : 50);
+    return [...je.values()]
+      .map((b) => {
+        b.arten.sort((x, y) => x.label.localeCompare(y.label, 'en'));
+        const alle = b.arten.every((x) => x.an);
+        return { ...b, an: alle, teils: !alle && b.arten.some((x) => x.an) };
+      })
+      .sort((x, y) => rang(x.area) - rang(y.area) || x.label.localeCompare(y.label, 'en'));
+  }
+
+  /** „everything", „Rules, Item" oder „nothing" (T-105). */
+  protected auswahlText(l: KampagnenEbene): string {
+    const f = l.only;
+    if (!f) return 'everything';
+    const teile = [...(f.areas ?? []).map((a) => this.bereichName(a)), ...(f.types ?? []).map((t) => this.artName(t))];
+    return teile.length ? teile.join(', ') : 'nothing';
+  }
+
+  /** Die Auswahl als Häkchen je Art — der Ausgangspunkt jeder Änderung. */
+  private haken(l: KampagnenEbene): Map<string, { area: string; an: boolean }> {
+    const out = new Map<string, { area: string; an: boolean }>();
+    for (const b of this.auswahl(l)) for (const a of b.arten) out.set(a.type, { area: b.area, an: a.an });
+    return out;
+  }
+
+  /**
+   * Aus den Häkchen je Art die Auswahl, die an die Kante geht: ein Bereich,
+   * dessen Arten alle an sind, steht als Bereich da (dann kommt eine neue
+   * Art darin mit); sind alle an, keine Auswahl — alles.
+   */
+  private auswahlAus(h: Map<string, { area: string; an: boolean }>): Auswahl | null {
+    if ([...h.values()].every((x) => x.an)) return null;
+    const bereiche = new Map<string, boolean>();
+    for (const x of h.values()) if (x.area) bereiche.set(x.area, (bereiche.get(x.area) ?? true) && x.an);
+    const areas = [...bereiche].filter(([, an]) => an).map(([a]) => a);
+    const types = [...h].filter(([, x]) => x.an && !(x.area && areas.includes(x.area))).map(([t]) => t);
+    return { areas, ...(types.length ? { types } : {}) };
+  }
+
+  protected bereichSchalten(l: KampagnenEbene, area: string): void {
+    const h = this.haken(l);
+    const imBereich = [...h.values()].filter((x) => x.area === area);
+    const an = !imBereich.every((x) => x.an);
+    for (const x of imBereich) x.an = an;
+    void this.auswahlSchreiben(l, this.auswahlAus(h));
+  }
+
+  protected artSchalten(l: KampagnenEbene, type: string): void {
+    const h = this.haken(l);
+    const x = h.get(type);
+    if (!x) return;
+    x.an = !x.an;
+    void this.auswahlSchreiben(l, this.auswahlAus(h));
+  }
+
+  private async auswahlSchreiben(l: KampagnenEbene, only: Auswahl | null): Promise<void> {
+    const c = this.kampagne();
+    this.laeuft.set(true);
+    try {
+      await this.api.setLayerOnly(c, l.id, only);
+      await this.laden(c);
+      this.geschaltet.emit();
+    } catch (error) {
+      this.fehler.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.laeuft.set(false);
+    }
   }
 
   /** Bringt eine aufgeschaltete Gruppe diese Ebene? */

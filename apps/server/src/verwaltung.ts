@@ -38,8 +38,11 @@ import {
   GROUP_RELATION,
   campaignsOf,
   currentCampaign,
-  inStack,
-  isOverridden,
+  playStack,
+  filterOf,
+  withFilter,
+  areaOf,
+  ACTIVATES_RELATION,
   READING_TYPES,
   resolveArticle,
   entityName,
@@ -273,6 +276,11 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     const imSpiel = new Set(resolvedStack(alle, kampagne, mitglieder).map((l) => l.id));
     const abgeschaltet = offLayers(kampagne);
     const vergleich = compareLayers(alle, kampagne).map((x) => x.id);
+    const auswahl = new Map(
+      (kampagne.relations ?? [])
+        .filter((r) => r.type === ACTIVATES_RELATION && (r.props as { mode?: unknown } | undefined)?.mode !== 'off')
+        .map((r) => [r.to, filterOf(r)] as const),
+    );
     const zeile = (e: Entity) => {
       const andere = campaignsActivating(alle, e.id)
         .filter((k) => k !== c)
@@ -307,6 +315,9 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
         inPlay: imSpiel.has(e.id),
         off: abgeschaltet.has(e.id),
         compare: vergleich.includes(e.id),
+        /* Was sie bringt (T-105): die Auswahl an ihrer eigenen Kante; ohne
+           Kante (nur über eine Gruppe) gilt die der Gruppe. */
+        ...(auswahl.get(e.id) ? { only: auswahl.get(e.id)! } : {}),
         alsoIn: andere,
         canActivate: mayActivate(user, alle, e.id, c, mitglieder),
       };
@@ -409,6 +420,52 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
   );
 
   /**
+   * **Was eine Ebene bringt** (T-105, REQ-255): `{ areas?, types? }` an
+   * ihrer Kante `activates` — aufgeschaltet, als Gruppe oder zum Vergleich.
+   * Beide leer oder fehlend (`null`) heisst wieder alles. Bereiche sind die
+   * `area` der Arten im Register, Arten seine Typen; Unbekanntes lehnt die
+   * Route ab, denn ein Tippfehler nähme still ein ganzes Buch heraus.
+   */
+  app.put<{ Params: { c: string; layer: string }; Body: { areas?: unknown; types?: unknown } }>(
+    '/api/campaigns/:c/layers/:layer/only',
+    async (request, reply) => {
+      const user = await viewerOf(request);
+      const c = request.params.c;
+      const recht = rechtAn(user, c);
+      if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
+      if (recht !== 'manage') return nein(reply, 403, 'Was eine Ebene bringt, wählt die Leitung; ein Mitleiter sieht es nur.');
+      const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      const kampagne = alle.get(c);
+      if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
+        return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+      }
+      const registry = await repo.getRegistry();
+      const liste = (x: unknown, name: string): string[] | undefined | string => {
+        if (x === undefined || x === null) return undefined;
+        if (!Array.isArray(x) || !x.every((y) => typeof y === 'string')) return `${name}: eine Liste von Wörtern.`;
+        return x as string[];
+      };
+      const areas = liste(request.body?.areas, 'areas');
+      const types = liste(request.body?.types, 'types');
+      if (typeof areas === 'string') return nein(reply, 400, areas);
+      if (typeof types === 'string') return nein(reply, 400, types);
+      const bereiche = new Set(Object.keys(registry.interfaces).map((t) => areaOf(registry, t)).filter(Boolean));
+      const fremd = [...(areas ?? []).filter((a) => !bereiche.has(a)), ...(types ?? []).filter((t) => !registry.interfaces[t])];
+      if (fremd.length) return nein(reply, 400, `Unbekannt: ${fremd.join(', ')}`);
+      const filter = areas === undefined && types === undefined ? null : { ...(areas ? { areas } : {}), ...(types ? { types } : {}) };
+      const geschrieben = withFilter(kampagne, request.params.layer, filter);
+      if (!geschrieben) {
+        return nein(reply, 409, 'Diese Ebene schaltet die Kampagne nicht selbst auf; sie bringt, was ihre Gruppe bringt.');
+      }
+      const issues = validateEntity(registry, geschrieben, {});
+      if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+      await repo.putEntity(geschrieben);
+      await repo.appendEvent('campaign.layers', c, { layer: request.params.layer, only: filter, by: user.id });
+      return { ok: true, only: filter };
+    },
+  );
+
+  /**
    * **Die Vergleichsebenen schreiben** (T-092, E-021 d): `{ layers, players? }`
    * — die Ebenen, deren Fassungen auf Wunsch an den Feldern stehen, ohne
    * im Spiel zu sein (`activates` mit `mode: 'compare'`). `players` sagt,
@@ -477,6 +534,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
       return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
     }
+    const registry = await repo.getRegistry();
     const ebenen = new Set(activeStack(alle, kampagne).map((x) => x.layer.id));
     const art = (e: Entity) => (e.interfaces ?? [])[0] ?? '';
     const sorte = (e: Entity) => String((e.components?.['Story'] as { kind?: unknown } | undefined)?.kind ?? '');
@@ -484,14 +542,16 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     const nachNummer = (a: Entity, b: Entity) => nummer(a).localeCompare(nummer(b), 'en', { numeric: true });
     const teilVon = (e: Entity, ziel: string) => (e.relations ?? []).some((r) => r.type === 'partOf' && r.to === ziel);
     const zeile = (e: Entity) => {
-      const gilt = resolveArticle(alle, e, kampagne);
+      const gilt = resolveArticle(alle, e, kampagne, registry);
       /* Angepasst ist, was eine Fassung ist — ob sie hier über das Original
          oder für sich in die Liste kam. */
       const adapted = (gilt.relations ?? []).some((r) => r.type === 'overrides');
       return { id: gilt.id, name: entityName(gilt), type: art(gilt), kind: sorte(gilt), adapted };
     };
-    const geschichte = [...alle.values()].filter((e) => inStack(alle, e, kampagne));
-    const eigene = geschichte.filter((e) => teilVon(e, c) && !isOverridden(alle, e, kampagne)).sort(nachNummer).map(zeile);
+    /* Der Stapel einmal, mit der Bereichsauswahl der Ebenen (T-086, T-105). */
+    const stapel = playStack(alle, kampagne, registry);
+    const geschichte = [...alle.values()].filter((e) => stapel.inStack(e));
+    const eigene = geschichte.filter((e) => teilVon(e, c) && stapel.inPlay(e)).sort(nachNummer).map(zeile);
     const abenteuer = geschichte
       .filter((e) => art(e) === 'Story' && sorte(e) === 'adventure' && (e.relations ?? []).some((r) => r.type === LAYER_RELATION && ebenen.has(r.to)))
       .sort((a, b) => entityName(a).localeCompare(entityName(b), 'en'))

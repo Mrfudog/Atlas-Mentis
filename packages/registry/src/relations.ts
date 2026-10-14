@@ -1087,6 +1087,10 @@ export const relations: Record<string, RelationDef> = {
            auch wenn eine aufgeschaltete Gruppe sie brächte. Ohne Angabe:
            im Spiel. */
         mode: { type: 'string', title: 'Mode', enum: ['compare', 'off'] },
+        /* Teilweise aufschalten (T-105, REQ-255): was die Ebene bringt —
+           Bereiche (`area` der Art) und einzelne Arten. Ohne beide: alles. */
+        areas: { type: 'array', items: { type: 'string' }, title: 'Areas' },
+        types: { type: 'array', items: { type: 'string' }, title: 'Types' },
       },
     },
   },
