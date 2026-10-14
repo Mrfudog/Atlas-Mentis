@@ -19,7 +19,7 @@ Epic: [[EP-10 Medien & Assets]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-147]] Image upload, portraits, icons | – | 2 | teils |
+| [[REQ-147]] Bilder hochladen | Spielleitung | 2 | teils |
 | [[REQ-295]] Bild ersetzen als Fassung oder neue Quelle | Spielleitung | 3 | offen |
 | [[REQ-296]] Bildklassen | Spielleitung | 3 | teils |
 | [[REQ-297]] Bilder aus 5e.tools einlesen und verknüpfen | Spielleitung | 3 | offen |

@@ -20,6 +20,14 @@ describe('Anforderungen als Stories (T-154)', () => {
     expect(nummern).toEqual(nummern.map((_: number, i: number) => i + 1));
   });
 
+  it('words every story that still counts as a story, with acceptance criteria', () => {
+    const offen = stories
+      .filter((s: { status: string }) => s.status !== 'dropped')
+      .filter((s: { rolle: string | null; satz: string; akzeptanz: string[] }) => !s.rolle || !s.satz.startsWith('**Als**') || !s.akzeptanz.length)
+      .map((s: { id: string }) => s.id);
+    expect(offen).toEqual([]);
+  });
+
   it('round-trips a note through frontmatter and body', () => {
     const fm = { id: 'REQ-999', title: 'Eigenes Token bewegen', typ: 'story', abhaengig: ['REQ-206'], prio: 2, v1: null };
     const teile = { satz: satz('Spieler', 'mein Token verschieben', 'meine Bewegung widergespiegelt wird'), akzeptanz: ['Nur eigene Tokens.'], anmerkungen: 'Notiz', wortlaut: 'alt' };

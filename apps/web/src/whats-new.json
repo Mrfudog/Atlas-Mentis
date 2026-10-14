@@ -9,6 +9,13 @@
       "link": "/whats-new"
     },
     {
+      "id": "2026-10-14-campaign-in-header",
+      "date": "2026-10-14",
+      "title": "Campaign and layers in the header",
+      "text": "Under the brand, the header shows the running campaign and how many layers are in play. A click opens a popup to switch layers and groups on or off and to compare them.",
+      "area": "Navigation"
+    },
+    {
       "id": "2026-10-14-item-copies",
       "date": "2026-10-14",
       "title": "Every item given is its own copy",

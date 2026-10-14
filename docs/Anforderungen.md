@@ -574,64 +574,64 @@ Karte und Kartenebenen, Tokens und Marker, Nebel, Licht und Sicht, Bewegung und 
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-130 | Map entity: image asset, scale, grid config (size, offset, square/hex), link to Location | 3 | **steht** | `Map` mit Gitter, Massstab, `mapOf` |
-| REQ-131 | Nested maps: parent + anchor region, zoom-through transitions world → region → city → district → battlemap | 3 | **steht** | `insideMap` mit Rahmen, Hineinzoomen |
-| REQ-132 | Level lock: pin current map level while zooming | 3 | **offen** |  |
-| REQ-138 | Map tiling for smooth zoom (derived asset) | 4 | **steht** | `Map.tiles` |
+| REQ-130 | Karte mit Gitter und Massstab | 3 | **steht** | `Map` mit Gitter, Massstab, `mapOf` |
+| REQ-131 | Unterkarten zum Hineinzoomen | 3 | **steht** | `insideMap` mit Rahmen, Hineinzoomen |
+| REQ-132 | Kartenebene festhalten | 3 | **offen** |  |
+| REQ-138 | Grosse Karten in Kacheln | 4 | **steht** | `Map.tiles` |
 | REQ-293 | Ladeanzeige für Kartenbilder | 3 | **steht** | T-126 |
 
 ### F-056 Tokens & Marker
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-133 | Static tokens: reference markers linked to entities (pin opens article) | 3 | **steht** | `marker` |
-| REQ-134 | Static tokens: scenery / props as part of prepared map state | 4 | **steht** | `marker.kind: scenery` |
-| REQ-135 | Play tokens: session- or campaign-scoped state objects (combat positions, temporary changes) | 3 | **teils** | Tokens als Kanten; keine getrennte Lebensdauer je Sitzung |
-| REQ-136 | Party and quest markers on region maps (campaign-scoped play tokens) | 3 | **steht** | Gruppen-Token, `{PARTYWHERE}` |
-| REQ-224 | Kreaturen nehmen auf der Karte Felder nach ihrer Grösse ein (Regeln 2014): Tiny, Small, Medium, Large 2 × 2, Huge 3 × 3, Gargantuan 4 × 4; Bewegung, Wege, Sicht und Reichweite rechnen mit dem ganzen Platz | 3 | **steht** | Platz nach `Statblock.size` beim Lesen (`sizeSpan`, Instanz über `resolveInstance`), gespeichert die Mitte, gerechnet über den Anker; Rechner mit `MoveGrid.span` (ganzer Platz passt, Wände je Feld, teuerstes neu betretenes Feld), Sperren und Reichweite vom ganzen Platz, Sicht Feld zu Feld (`bestNotice`); tiny teilt (D58) |
+| REQ-133 | Marker, die zu Artikeln führen | 3 | **steht** | `marker` |
+| REQ-134 | Kulisse auf der Karte | 4 | **steht** | `marker.kind: scenery` |
+| REQ-135 | Tokens im Spiel | 3 | **teils** | Tokens als Kanten; keine getrennte Lebensdauer je Sitzung |
+| REQ-136 | Gruppe und Quests auf der Karte | 3 | **steht** | Gruppen-Token, `{PARTYWHERE}` |
+| REQ-224 | Kreaturen nach Grösse auf der Karte | 3 | **steht** | Platz nach `Statblock.size` beim Lesen (`sizeSpan`, Instanz über `resolveInstance`), gespeichert die Mitte, gerechnet über den Anker; Rechner mit `MoveGrid.span` (ganzer Platz passt, Wände je Feld, teuerstes neu betretenes Feld), Sperren und Reichweite vom ganzen Platz, Sicht Feld zu Feld (`bestNotice`); tiny teilt (D58) |
 | REQ-294 | Token ohne Bild zeigt den Anfangsbuchstaben | 3 | **teils** | Anfangsbuchstabe ja; Deckname nicht geprüft |
 
 ### F-057 Nebel, Licht & Sicht
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-139 | Fog of war | 4 | **steht** | `Map.reveal` |
-| REQ-140 | Light & line of sight with walls | 5 | **steht** | `marker.light/dim`, `Map.walls`, `visionPoly` |
-| REQ-209 | Aufdecken: von Hand oder beim Bestätigen einer Bewegung, dann entlang des Pfads Schritt für Schritt; von Hand zeigt das Token, wen es sieht und von wem es gesehen wird (Sichtlinie, passive Wahrnehmung gegen Heimlichkeit, −5 im Dämmerlicht) | 3 | **steht** | Sieht / wird gesehen von am gewählten Token, Aufdecken von Hand; beim Bestätigen entlang des Pfads Schritt für Schritt (Tokens, versteckte Zonen, Nebel); Sichtlinie, PP gegen Heimlichkeit, −5 im Dämmerlicht (`sight.ts`, D56) |
+| REQ-139 | Nebel | 4 | **steht** | `Map.reveal` |
+| REQ-140 | Licht und Sicht mit Wänden | 5 | **steht** | `marker.light/dim`, `Map.walls`, `visionPoly` |
+| REQ-209 | Aufdecken von Hand oder entlang des Pfads | 3 | **steht** | Sieht / wird gesehen von am gewählten Token, Aufdecken von Hand; beim Bestätigen entlang des Pfads Schritt für Schritt (Tokens, versteckte Zonen, Nebel); Sichtlinie, PP gegen Heimlichkeit, −5 im Dämmerlicht (`sight.ts`, D56) |
 
 ### F-058 Bewegung & Zonen
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-206 | Bewegungsrechner auf der Karte: Diagonalen 5-10-5, gezählt je Kreatur und Zug und mit jedem Zug neu; Modi „genauer Weg“, „grösste Reichweite“, „aus“; das Tempo des Zuges ist eine Zahl, die man ändert (Spurt, Klettern, Schwimmen, Sonderfälle), und die SL darf übersteuern | 3 | **steht** | Rechner 5-10-5 über Feld × Parität (`movement.ts`, Prototyp `mvSearch`), Modi genau · Reichweite · aus, Tempo als Zahl in `Session.moves` mit Kurzwahl, SL setzt frei und bestätigt über das Tempo hinaus; nur Quadratraster (D56) |
-| REQ-207 | Wählbarer Pfad: Wegpunkte setzen (um eine Falle herum, nicht an einem Gegner vorbei), zwischen ihnen der günstigste Weg; die Diagonalenzählung läuft über die Wegpunkte weiter; Gefahren und Reichweite von Gegnern können gemieden werden | 3 | **steht** | Wegpunkte per Klick, günstigster Weg dazwischen, Parität läuft weiter (`pathVia`); Gefahren und Reichweite von Gegnern meidbar (D56) |
-| REQ-208 | Zonen mit eigenen Regeln: eine Zonenart ist ein Regelartikel; Bewegungskosten, Licht, Sicht und „versteckt bis passive Wahrnehmung n“ rechnet die Karte, Schaden, Rettungswurf, Zustand und freie Regeln zeigt sie und schreibt sie beim Betreten ins Protokoll | 3 | **teils** | `ZoneKind` (Regelartikel) + Kante `zone`: Kosten, Licht und Verdeckung in Weg und Sicht, versteckt bis PP n; Schaden/Rettungswurf/Zustand gezeigt und beim Betreten in `Session.log`. Offen: Auslöser zu Zugbeginn/-ende, Zonenlicht in der Dunkelheitsmaske (D56) |
-| REQ-210 | Karte und Initiative je als Vollbild, je mit SL- und Spieleransicht; Spielende bewegen ihre eigenen Tokens und prüfen die Reichweite selbst | 3 | **teils** | Prototyp: Vollbild für Karte und Initiative, SL-/Spieleransicht der Karte, Spielende bewegen eigene Tokens; offen: `redactEntity` hält versteckte Marker am Server nicht zurück (D56) |
+| REQ-206 | Bewegungsrechner | 3 | **steht** | Rechner 5-10-5 über Feld × Parität (`movement.ts`, Prototyp `mvSearch`), Modi genau · Reichweite · aus, Tempo als Zahl in `Session.moves` mit Kurzwahl, SL setzt frei und bestätigt über das Tempo hinaus; nur Quadratraster (D56) |
+| REQ-207 | Pfad mit Wegpunkten | 3 | **steht** | Wegpunkte per Klick, günstigster Weg dazwischen, Parität läuft weiter (`pathVia`); Gefahren und Reichweite von Gegnern meidbar (D56) |
+| REQ-208 | Zonen mit eigenen Regeln | 3 | **teils** | `ZoneKind` (Regelartikel) + Kante `zone`: Kosten, Licht und Verdeckung in Weg und Sicht, versteckt bis PP n; Schaden/Rettungswurf/Zustand gezeigt und beim Betreten in `Session.log`. Offen: Auslöser zu Zugbeginn/-ende, Zonenlicht in der Dunkelheitsmaske (D56) |
+| REQ-210 | Karte und Initiative im Vollbild | 3 | **teils** | Prototyp: Vollbild für Karte und Initiative, SL-/Spieleransicht der Karte, Spielende bewegen eigene Tokens; offen: `redactEntity` hält versteckte Marker am Server nicht zurück (D56) |
 | REQ-312 | Eigenes Token bewegen | 2 | **teils** | Prototyp ja; in der Seite noch nicht für Spielende |
 
 ### F-059 Gebiete & Overlays
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-137 | Overlays: query-driven highlights (faction locations, biomes, routes) | 4 | **teils** | `territory` von Hand; keine Abfrage |
-| REQ-193 | Territory overlays rasterised onto the map grid from shapes (rect, circle, ellipse, polygon) | 4 | **steht** | `territory` |
+| REQ-137 | Hervorhebungen nach Abfrage | 4 | **teils** | `territory` von Hand; keine Abfrage |
+| REQ-193 | Gebiete auf der Karte | 4 | **steht** | `territory` |
 
 ### F-060 Reisen & Erkundung
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-168 | Point-crawl travel: node/edge graph attached to a Location, with per-edge sensory read-aloud text and per-node arrival state | 3 | **steht** | `route` mit signal, `Place.state` |
-| REQ-169 | Exploration state ladder per map feature (verborgen → entdeckt → erkundet) with cascade: exploring a node reveals its edges as discovered | 3 | **steht** | `Place.state` hidden · discovered · explored |
-| REQ-170 | Travel resource cadence: consumables consumed every N nodes or watches, configurable per travel ruleset | 4 | **steht** | Einstellungen `travel*`, `Party.sinceRation/sinceLight` |
-| REQ-171 | Per-node action budget: one action per character per node from a configurable list (sneak, craft, forage, rest) | 4 | **steht** | `Party.actions`: Figur → Regelartikel `kind: travel` |
+| REQ-168 | Point-Crawl | 3 | **steht** | `route` mit signal, `Place.state` |
+| REQ-169 | Erkundungsstand | 3 | **steht** | `Place.state` hidden · discovered · explored |
+| REQ-170 | Vorräte auf Reisen | 4 | **steht** | Einstellungen `travel*`, `Party.sinceRation/sinceLight` |
+| REQ-171 | Aktionen je Knoten | 4 | **steht** | `Party.actions`: Figur → Regelartikel `kind: travel` |
 
 ### F-061 Karteneditor
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-141 | Map effects & animations (conditions, weather) | 5 | **offen** |  |
-| REQ-142 | Drawing, stamps, brushes, layers on maps | 5 | **offen** | Aufgabe #60 |
-| REQ-143 | Map editor / full map creation | 5 | **offen** |  |
+| REQ-141 | Effekte auf der Karte | 5 | **offen** |  |
+| REQ-142 | Auf Karten zeichnen | 5 | **offen** | Aufgabe #60 |
+| REQ-143 | Karteneditor | 5 | **offen** |  |
 
 ## EP-10 Medien & Assets
 
@@ -641,20 +641,20 @@ Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Dru
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-020 | SourceRef provenance: publication, page, optional file + page anchor | 1 | **steht** | `Source`: publication, page, anchor, url |
-| REQ-021 | Asset entity contract: backend app/nas/external, consumers resolve URLs via asset service | 1 | **steht** | `Asset`: backend app/external, ref, mime, width, height, bytes |
-| REQ-022 | Derived asset variants: thumbnails, map tiles, PDF page renders, stored app-side | 3 | **offen** |  |
-| REQ-145 | Asset service implementation: app-managed storage (icons, portraits, thumbnails) | 1 | **teils** | Assets als Artikel; Ablage im Artefakt |
-| REQ-146 | NAS / Nextcloud backend for large assets (mount vs WebDAV → AD-15) | 2 | **offen** |  |
-| REQ-148 | External URL assets | 3 | **steht** | `Asset.backend: external` |
-| REQ-150 | Audio asset storage | 5 | **offen** |  |
-| REQ-151 | 3D file viewer / repository | 5 | **offen** |  |
+| REQ-020 | Quelle eines Artikels | 1 | **steht** | `Source`: publication, page, anchor, url |
+| REQ-021 | Dateien als Assets | 1 | **steht** | `Asset`: backend app/external, ref, mime, width, height, bytes |
+| REQ-022 | Vorschaubilder und Kacheln | 3 | **offen** |  |
+| REQ-145 | Ablage in der Seite | 1 | **teils** | Assets als Artikel; Ablage im Artefakt |
+| REQ-146 | Grosse Dateien auf dem NAS | 2 | **offen** |  |
+| REQ-148 | Bilder von aussen | 3 | **steht** | `Asset.backend: external` |
+| REQ-150 | Audio ablegen | 5 | **offen** |  |
+| REQ-151 | 3D-Dateien | 5 | **offen** |  |
 
 ### F-063 Bildverwaltung
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-147 | Image upload, portraits, icons | 2 | **teils** | Prototyp ja; Server noch nicht |
+| REQ-147 | Bilder hochladen | 2 | **teils** | Prototyp ja; Server noch nicht |
 | REQ-295 | Bild ersetzen als Fassung oder neue Quelle | 3 | **offen** |  |
 | REQ-296 | Bildklassen | 3 | **teils** | `Asset.kind` (T-119); Übersicht fehlt |
 | REQ-297 | Bilder aus 5e.tools einlesen und verknüpfen | 3 | **offen** |  |
@@ -669,16 +669,16 @@ Bilder und Dateien: Ablage, Bildverwaltung und Bildklassen, Token-Werkstatt, Dru
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-029 | Serializable schema / export (future file or git backing) | 3 | **steht** | Ausfuhr/Einfuhr als eine Datei; Register allein (`register-datei.mjs`) |
-| REQ-167 | Print & export outputs: item cards, creature cards, character sheets (PDF), maps (image/print) rendered from facets — the facet defines *what* appears, the medium (screen/print/pdf/image) *how*; card-sheet assembly (n cards per page) as export config | 3 | **offen** |  |
-| REQ-195 | Statblock export back to Obsidian markdown, preserving `{VAR}` placeholders unresolved | 4 | **offen** |  |
+| REQ-029 | Ausfuhr und Einfuhr | 3 | **steht** | Ausfuhr/Einfuhr als eine Datei; Register allein (`register-datei.mjs`) |
+| REQ-167 | Drucken | 3 | **offen** |  |
+| REQ-195 | Statblock nach Obsidian ausführen | 4 | **offen** |  |
 
 ### F-066 PDF & OCR
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-149 | PDF viewer with page-anchor jump from SourceRef | 4 | **offen** |  |
-| REQ-152 | OCR / PDF import to structured content with editable raw output (MonsterBox-style) | 5 | **offen** |  |
+| REQ-149 | PDF mit Seitensprung | 4 | **offen** |  |
+| REQ-152 | Texte aus PDF erkennen | 5 | **offen** |  |
 
 ## EP-11 Oberfläche & Navigation
 
@@ -688,23 +688,23 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-111 | Boards: user-owned configurable views with tabs/pages and widgets; DM and player boards share the mechanism | 2 | **steht** | `Board`, `placed` |
-| REQ-119 | Player boards | 3 | **offen** |  |
-| REQ-157 | Canvas boards: free positioning, scaling and arrangement of entity placements on a board (Figma/Canva-style), beyond the widget grid | 2 | **steht** | `placed` mit x, y, w, h, z; in der Seite die Leinwand `/boards` (W4) |
-| REQ-158 | Placement rendering: each placement resolves to a facet/renderer via the display resolution; explicit per-placement override always wins | 2 | **steht** | `placed.view` |
-| REQ-159 | Frames / viewpoint anchors: named canvas viewports (position, zoom depth, target facet, visible layers), persisted in the board config | 3 | **steht** | `Board.anchors`; in der Seite als Reiter über dem Board, mit Rechteck ein einklappbarer Bereich (T-073) |
-| REQ-160 | Anchor quick navigation: jump between anchors (list, hotkeys) — session notes → map → house rules without leaving the board | 3 | **teils** |  |
-| REQ-161 | Display resolution as priority system: entity profile proposes, board rules (per interface / attribute value) decide, user overrides; placement override wins; ties → board rule; works board-only | 2 | **steht** | `Board.rules`, `placed.view`; ohne beides wählt die Grösse der Kachel (`placementView`, D63) |
-| REQ-162 | Semantic zoom: zoom depth maps onto facets (compact list of weapon properties → full detail on zoom-in); anchors may store a target facet | 4 | **offen** |  |
-| REQ-165 | Board placements beyond content entities: assets (images, icons), geometric/mathematical shapes as inline canvas objects, and tool objects (interactive widgets such as creature creator or generators) on the canvas | 2 | **steht** | `Board.shapes`, Assets als Platzierung (Prototyp); die Seite zeichnet Anker und Bereiche (T-073), Formen noch nicht (W4) |
-| REQ-166 | Board-first authoring: create entities directly on the canvas (into the campaign layer), choose their facet and place them in one flow | 2 | **teils** | Anlegen auf dem Board |
+| REQ-111 | Boards | 2 | **steht** | `Board`, `placed` |
+| REQ-119 | Boards der Spielenden | 3 | **offen** |  |
+| REQ-157 | Frei anordnen auf dem Board | 2 | **steht** | `placed` mit x, y, w, h, z; in der Seite die Leinwand `/boards` (W4) |
+| REQ-158 | Ansicht je Platzierung | 2 | **steht** | `placed.view` |
+| REQ-159 | Anker und Bereiche auf dem Board | 3 | **steht** | `Board.anchors`; in der Seite als Reiter über dem Board, mit Rechteck ein einklappbarer Bereich (T-073) |
+| REQ-160 | Zwischen Ankern springen | 3 | **teils** |  |
+| REQ-161 | Regeln für die Darstellung | 2 | **steht** | `Board.rules`, `placed.view`; ohne beides wählt die Grösse der Kachel (`placementView`, D63) |
+| REQ-162 | Semantischer Zoom | 4 | **offen** |  |
+| REQ-165 | Bilder, Formen und Werkzeuge auf dem Board | 2 | **steht** | `Board.shapes`, Assets als Platzierung (Prototyp); die Seite zeichnet Anker und Bereiche (T-073), Formen noch nicht (W4) |
+| REQ-166 | Auf dem Board anlegen | 2 | **teils** | Anlegen auf dem Board |
 | REQ-291 | Leseansicht auf dem Board | 3 | **offen** |  |
 
 ### F-068 Suche
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-028 | Full-text search across content | 3 | **teils** | Suche am Server über Name, Alias, Deckname und Nummer, Feldfilter als Facetten (`GET /api/list`, W7); keine Volltextsuche |
+| REQ-028 | Volltextsuche | 3 | **teils** | Suche am Server über Name, Alias, Deckname und Nummer, Feldfilter als Facetten (`GET /api/list`, W7); keine Volltextsuche |
 | REQ-304 | Übergreifende Suche beim Tippen | 1 | **steht** | T-138 |
 
 ### F-069 Filter & Filtergruppen
@@ -718,7 +718,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-248 | Kurzansicht überall: wo ein Artikel genannt wird (auch Ebenen in Filtern, Chips, Listen), öffnet ein Klick bzw. Antippen ein Popup mit der Quick-Ansicht und einem Link zum Artikel; Brotkrumen für die Navigation | 2 | **steht** | `nwQuick`, `nw-kurzpopup`, Brotkrumen (T-093) |
+| REQ-248 | Kurzansicht überall | 2 | **steht** | `nwQuick`, `nw-kurzpopup`, Brotkrumen (T-093) |
 | REQ-305 | Kampagne und Ebene immer sichtbar | 2 | **offen** | T-143 läuft |
 | REQ-315 | Globale Kopfleiste | 1 | **steht** |  |
 
@@ -733,7 +733,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-153 | German UI output with i18n-ready string handling | 2 | **ersetzt** | Oberfläche englisch (19.9.) |
+| REQ-153 | Deutsche Oberfläche | 2 | **ersetzt** | Oberfläche englisch (19.9.) |
 | REQ-300 | Gestaltung wie die Bücher | 3 | **teils** | Pergament in `apps/web`; Design-Lauf offen |
 | REQ-301 | Stilkonzept in der Verwaltung anpassen | 4 | **offen** |  |
 | REQ-306 | Lesbarkeit im Feinschliff | 3 | **steht** | T-126 |
@@ -746,11 +746,11 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-047 | Import-first entry: 5e.tools JSON, Improved Initiative JSON, markdown paste from Obsidian | 2 | **verworfen** | Importer entfernt; wiederkommen heisst neu schreiben |
-| REQ-090 | Rule import from Obsidian markdown and 5e.tools data | 2 | **verworfen** | siehe REQ-047 |
-| REQ-233 | 5e.tools über eine Pipeline einlesen statt von Hand auf dem Server: dev von selbst, wenn sich der Importer ändert, prod nur von Hand; vorher eine Sicherung, ein Probelauf ist möglich, der Bericht steht im Lauf | 3 | **steht** | `import-5etools.yml` und `deploy/import.sh`, `--only-new` (Vorgabe), `--replace-layer` nur ausdrücklich, `--dry-run`; nur von Hand, dev wie prod (W8, D67, D71) |
-| REQ-239 | Jedes Buch eine eigene Ebene (PHB, MM, DMG, XGE …), statt einer Ebene für alles aus 5e.tools; eine Kampagne schaltet die Bücher auf, die sie nutzt | 2 | **steht** | je Quelle eine Ebene (T-087) |
-| REQ-243 | Alle 5e.tools-Inhalte als eigene Ebenen, abschaltbar: 2024-Regeln, Unearthed Arcana, Fahrzeuge, Kartendecks, Bastionen — damit die Leitung Ebenen umschalten und Fassungen eines Artikels nebeneinander zeigen kann | 2 | **steht** | jeder Regelstand in seiner Ebene (T-087) |
+| REQ-047 | Import von 5e.tools, Improved Initiative und Obsidian als Einstieg | 2 | **verworfen** | Importer entfernt; wiederkommen heisst neu schreiben |
+| REQ-090 | Regeln aus Obsidian und 5e.tools einlesen | 2 | **verworfen** | siehe REQ-047 |
+| REQ-233 | 5e.tools über eine Pipeline laden | 3 | **steht** | `import-5etools.yml` und `deploy/import.sh`, `--only-new` (Vorgabe), `--replace-layer` nur ausdrücklich, `--dry-run`; nur von Hand, dev wie prod (W8, D67, D71) |
+| REQ-239 | Jedes Buch eine Ebene | 2 | **steht** | je Quelle eine Ebene (T-087) |
+| REQ-243 | Alle Inhalte als abschaltbare Ebenen | 2 | **steht** | jeder Regelstand in seiner Ebene (T-087) |
 
 ### F-074 Regelwerke anderer Verlage
 
@@ -788,7 +788,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-018** (1, offen, Regeln & Nachschlagen) — Wirkungen von Regeln beschreiben — *keine `effects[]`; Regeln sind Text mit `{VAR}`*
 - **REQ-069** (1, teils, Spielererlebnis) — Am Telefon spielen — *Prototyp passt sich an; `apps/web` ist noch klein*
 - **REQ-100** (1, teils, Inhaltsgerüst) — Welt als Ebene — *`Layer.kind: world`; keine Mitglieder je Welt*
-- **REQ-145** (1, teils, Medien & Assets) — Asset service implementation: app-managed storage (icons, portraits, thumbnails) — *Assets als Artikel; Ablage im Artefakt*
+- **REQ-145** (1, teils, Medien & Assets) — Ablage in der Seite — *Assets als Artikel; Ablage im Artefakt*
 - **REQ-041** (2, teils, Zugang & Betrieb) — Wer was schreiben darf — *Verwaltung oder eigene Figur (+ carries/holds/crafting); die Leitung fehlt in `mayWrite`*
 - **REQ-072** (2, offen, Spielererlebnis) — Eigene Notizen — *`Notes` an Artikeln; kein eigener Notizartikel je Spieler*
 - **REQ-079** (2, teils, Kampagne & Sitzungen) — Schnelle Aktionen in der Sitzung — *Wissen zuteilen im Seitenpanel; kein Ein-Tipp-Knopf in der Sitzung*
@@ -796,9 +796,9 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-102** (2, teils, Inhaltsgerüst) — Artikel je Stapel und Wissen zeichnen — *Prototyp ja; Server ohne Stapel — Abgleich A2*
 - **REQ-113** (2, offen, Live-Spiel) — Notiz-Widget — *Aufgabe #58*
 - **REQ-114** (2, teils, Live-Spiel) — Schnellanlage auf dem Schirm — *Anlegen aus dem Board*
-- **REQ-146** (2, offen, Medien & Assets) — NAS / Nextcloud backend for large assets (mount vs WebDAV → AD-15)
-- **REQ-147** (2, teils, Medien & Assets) — Image upload, portraits, icons — *Prototyp ja; Server noch nicht*
-- **REQ-166** (2, teils, Oberfläche & Navigation) — Board-first authoring: create entities directly on the canvas (into the campaign layer), choose their facet and place them in one flow — *Anlegen auf dem Board*
+- **REQ-146** (2, offen, Medien & Assets) — Grosse Dateien auf dem NAS
+- **REQ-147** (2, teils, Medien & Assets) — Bilder hochladen — *Prototyp ja; Server noch nicht*
+- **REQ-166** (2, teils, Oberfläche & Navigation) — Auf dem Board anlegen — *Anlegen auf dem Board*
 - **REQ-202** (2, offen, Spielererlebnis) — Chats bleiben privat
 - **REQ-236** (2, offen, Kampagne & Sitzungen) — Kampagne mit Dialog anlegen — *Kampagne anlegen ohne Dialog*
 - **REQ-249** (2, teils, Inhaltsgerüst) — Ebenen nach Herausgeber — *`publisherOf` und Herausgeber-Gruppen (T-094, T-109); Kategorien wie die Blocklist von 5e.tools offen*
@@ -816,9 +816,9 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-312** (2, teils, Karten) — Eigenes Token bewegen — *Prototyp ja; in der Seite noch nicht für Spielende*
 - **REQ-313** (2, teils, Regeln & Nachschlagen) — Zustände als Artikel — *Wirkung `affects` gespeichert, nicht ausgewertet*
 - **REQ-007** (3, offen, Inhaltsgerüst) — Stapel für Fortgeschrittene
-- **REQ-022** (3, offen, Medien & Assets) — Derived asset variants: thumbnails, map tiles, PDF page renders, stored app-side
+- **REQ-022** (3, offen, Medien & Assets) — Vorschaubilder und Kacheln
 - **REQ-025** (3, offen, Welt & Lore) — Kalender der Welt — *nur die Einstellung `calendar`; keine Kalenderzeile*
-- **REQ-028** (3, teils, Oberfläche & Navigation) — Full-text search across content — *Suche am Server über Name, Alias, Deckname und Nummer, Feldfilter als Facetten (`GET /api/list`, W7); keine Volltextsuche*
+- **REQ-028** (3, teils, Oberfläche & Navigation) — Volltextsuche — *Suche am Server über Name, Alias, Deckname und Nummer, Feldfilter als Facetten (`GET /api/list`, W7); keine Volltextsuche*
 - **REQ-045** (3, offen, Inhaltsgerüst) — Ebenen-Aktionen am Artikel
 - **REQ-055** (3, offen, Kreaturen & Figuren) — Merkmale beim Tippen wiederverwenden — *Pool steht; Variante beim Tippen nicht*
 - **REQ-060** (3, teils, Kreaturen & Figuren) — Begleiter und Beschwörungen — *`Creature.kind` companion/summon; keine `companionOf`-Kante*
@@ -830,14 +830,14 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-088** (3, teils, Zugang & Betrieb) — Massenänderungen an Wissen und Rechten — *Massenbearbeitung ohne Wissen*
 - **REQ-097** (3, offen, Regeln & Nachschlagen) — Zauberlisten — *braucht REQ-092*
 - **REQ-109** (3, teils, Spielererlebnis) — Lore-Texte von Spielenden — *Felder da (`Article.poem/song`); Schreibrecht offen (REQ-041)*
-- **REQ-119** (3, offen, Oberfläche & Navigation) — Player boards
+- **REQ-119** (3, offen, Oberfläche & Navigation) — Boards der Spielenden
 - **REQ-120** (3, teils, Live-Spiel) — Spielprotokoll — *Würfe im Protokoll; Zustandsereignisse nicht gespeichert*
 - **REQ-123** (3, offen, Live-Spiel) — Timer
 - **REQ-128** (3, teils, Live-Spiel) — Kampf aus Sicht der Spielenden — *dieselbe Ansicht, gesiebt*
-- **REQ-132** (3, offen, Karten) — Level lock: pin current map level while zooming
-- **REQ-135** (3, teils, Karten) — Play tokens: session- or campaign-scoped state objects (combat positions, temporary changes) — *Tokens als Kanten; keine getrennte Lebensdauer je Sitzung*
-- **REQ-160** (3, teils, Oberfläche & Navigation) — Anchor quick navigation: jump between anchors (list, hotkeys) — session notes → map → house rules without leaving the board
-- **REQ-167** (3, offen, Medien & Assets) — Print & export outputs: item cards, creature cards, character sheets (PDF), maps (image/print) rendered from facets — the facet defines *what* appears, the medium (screen/print/pdf/image) *how*; card-sheet assembly (n cards per page) as export config
+- **REQ-132** (3, offen, Karten) — Kartenebene festhalten
+- **REQ-135** (3, teils, Karten) — Tokens im Spiel — *Tokens als Kanten; keine getrennte Lebensdauer je Sitzung*
+- **REQ-160** (3, teils, Oberfläche & Navigation) — Zwischen Ankern springen
+- **REQ-167** (3, offen, Medien & Assets) — Drucken
 - **REQ-176** (3, teils, Inhaltsgerüst) — Ähnliches vor dem Anlegen vorschlagen — *Vorschläge nach Name und Alias; keine Ähnlichkeit*
 - **REQ-180** (3, offen, Kampagne & Sitzungen) — Gepflanzte Fäden — *keine Art und kein Feld für gepflanzte Fäden*
 - **REQ-187** (3, offen, Live-Spiel) — Tischanzeige
@@ -845,8 +845,8 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-201** (3, offen, Spielererlebnis) — Aus dem Chat wird Inhalt
 - **REQ-204** (3, offen, Live-Spiel) — Spielleiter-Schirm
 - **REQ-205** (3, teils, Live-Spiel) — Ein Board je Geschichtsartikel — *ein Board je Geschichtsartikel über `partOf`, Liste und Anlegen in der Seite (W4, D63); offen: Umschalten auf dem Schirm, Filter nach Artikeln aus offenen Boards*
-- **REQ-208** (3, teils, Karten) — Zonen mit eigenen Regeln: eine Zonenart ist ein Regelartikel; Bewegungskosten, Licht, Sicht und „versteckt bis passive Wahrnehmung n“ rechnet die Karte, Schaden, Rettungswurf, Zustand und freie Regeln zeigt sie und schreibt sie beim Betreten ins Protokoll — *`ZoneKind` (Regelartikel) + Kante `zone`: Kosten, Licht und Verdeckung in Weg und Sicht, versteckt bis PP n; Schaden/Rettungswurf/Zustand gezeigt und beim Betreten in `Session.log`. Offen: Auslöser zu Zugbeginn/-ende, Zonenlicht in der Dunkelheitsmaske (D56)*
-- **REQ-210** (3, teils, Karten) — Karte und Initiative je als Vollbild, je mit SL- und Spieleransicht; Spielende bewegen ihre eigenen Tokens und prüfen die Reichweite selbst — *Prototyp: Vollbild für Karte und Initiative, SL-/Spieleransicht der Karte, Spielende bewegen eigene Tokens; offen: `redactEntity` hält versteckte Marker am Server nicht zurück (D56)*
+- **REQ-208** (3, teils, Karten) — Zonen mit eigenen Regeln — *`ZoneKind` (Regelartikel) + Kante `zone`: Kosten, Licht und Verdeckung in Weg und Sicht, versteckt bis PP n; Schaden/Rettungswurf/Zustand gezeigt und beim Betreten in `Session.log`. Offen: Auslöser zu Zugbeginn/-ende, Zonenlicht in der Dunkelheitsmaske (D56)*
+- **REQ-210** (3, teils, Karten) — Karte und Initiative im Vollbild — *Prototyp: Vollbild für Karte und Initiative, SL-/Spieleransicht der Karte, Spielende bewegen eigene Tokens; offen: `redactEntity` hält versteckte Marker am Server nicht zurück (D56)*
 - **REQ-221** (3, offen, Kampagne & Sitzungen) — Begegnungen bauen
 - **REQ-227** (3, offen, Regeln & Nachschlagen) — Masse im Fliesstext umrechnen — *umgerechnet werden nur Felder mit `unit` und Angriffszeilen (`convertText`, W2)*
 - **REQ-229** (3, offen, Zugang & Betrieb) — Konten in der Seite verwalten — *nur über `user` auf dem Server; die Kontoliste der Verwaltung steht in der Seite (W3)*

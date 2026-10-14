@@ -19,12 +19,12 @@ Epic: [[EP-10 Medien & Assets]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-020]] SourceRef provenance: publication, page, optional file + page anchor | – | 1 | steht |
-| [[REQ-021]] Asset entity contract: backend app/nas/external, consumers resolve URLs via asset service | – | 1 | steht |
-| [[REQ-022]] Derived asset variants: thumbnails, map tiles, PDF page renders, stored app-side | – | 3 | offen |
-| [[REQ-145]] Asset service implementation: app-managed storage (icons, portraits, thumbnails) | – | 1 | teils |
-| [[REQ-146]] NAS / Nextcloud backend for large assets (mount vs WebDAV → AD-15) | – | 2 | offen |
-| [[REQ-148]] External URL assets | – | 3 | steht |
-| [[REQ-150]] Audio asset storage | – | 5 | offen |
-| [[REQ-151]] 3D file viewer / repository | – | 5 | offen |
+| [[REQ-020]] Quelle eines Artikels | Spielleitung | 1 | steht |
+| [[REQ-021]] Dateien als Assets | Spielleitung | 1 | steht |
+| [[REQ-022]] Vorschaubilder und Kacheln | Spieler | 3 | offen |
+| [[REQ-145]] Ablage in der Seite | Spielleitung | 1 | teils |
+| [[REQ-146]] Grosse Dateien auf dem NAS | Verwaltung | 2 | offen |
+| [[REQ-148]] Bilder von aussen | Spielleitung | 3 | steht |
+| [[REQ-150]] Audio ablegen | Spielleitung | 5 | offen |
+| [[REQ-151]] 3D-Dateien | Spielleitung | 5 | offen |
 <!-- stories:ende -->

@@ -156,4 +156,11 @@ describe('entity cache', () => {
       expect(pgQuelle.slice(ab, ab + 200)).toContain('this.bestand = null');
     }
   });
+  it('carries its own write forward only under a lock, stamp read before and after (T-143)', () => {
+    const ab = pgQuelle.indexOf('async putEntity');
+    const rumpf = pgQuelle.slice(ab, pgQuelle.indexOf('async deleteEntity'));
+    expect(rumpf).toContain('lock table entity in share row exclusive mode');
+    expect(rumpf.split('PgRepository.STEMPEL').length - 1).toBe(2);
+    expect(rumpf).toContain('this.bestand = { stempel: nachher, liste }');
+  });
 });

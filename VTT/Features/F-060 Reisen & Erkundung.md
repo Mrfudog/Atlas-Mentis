@@ -19,8 +19,8 @@ Epic: [[EP-09 Karten]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-168]] Point-crawl travel: node/edge graph attached to a Location, with per-edge sensory read-aloud text and per-node arrival state | – | 3 | steht |
-| [[REQ-169]] Exploration state ladder per map feature (verborgen → entdeckt → erkundet) with cascade: exploring a node reveals its edges as discovered | – | 3 | steht |
-| [[REQ-170]] Travel resource cadence: consumables consumed every N nodes or watches, configurable per travel ruleset | – | 4 | steht |
-| [[REQ-171]] Per-node action budget: one action per character per node from a configurable list (sneak, craft, forage, rest) | – | 4 | steht |
+| [[REQ-168]] Point-Crawl | Spielleitung | 3 | steht |
+| [[REQ-169]] Erkundungsstand | Spieler | 3 | steht |
+| [[REQ-170]] Vorräte auf Reisen | Spielleitung | 4 | steht |
+| [[REQ-171]] Aktionen je Knoten | Spieler | 4 | steht |
 <!-- stories:ende -->

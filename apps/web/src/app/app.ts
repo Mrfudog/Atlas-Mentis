@@ -8,6 +8,8 @@ import { Live } from './kern/live';
 import { ALLE, Filtergruppen } from './kern/filtergruppen';
 import { Suche, tipptGerade } from './kern/suche';
 import { SucheComponent } from './suche/suche';
+import { Stapel } from './kern/stapel';
+import { StapelKnopf } from './verwaltung/stapel-knopf';
 import { Neues } from './kern/neues';
 
 /**
@@ -36,6 +38,9 @@ import { Neues } from './kern/neues';
  * Anmeldung — gerade dann, wenn man noch nicht weiss, wo man ist. Auf prod
  * und ohne `ATLAS_ENV` kein Band.
  *
+ * **Die laufende Kampagne** (T-143) steht unter der Marke, mit der Zahl der
+ * Ebenen im Spiel; ein Klick öffnet das Popup zum Einstellen (`nw-stapel`).
+ *
  * **Die Suche** (T-138) steht in der Kopfleiste und geht auf jeder Seite
  * mit Strg+K (⌘K) oder `/` auf — `/` nur, wenn gerade nicht in ein Feld
  * getippt wird. Am Telefon ist der Knopf ein Zeichen ohne Text.
@@ -50,7 +55,7 @@ import { Neues } from './kern/neues';
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, KurzPopup, SucheComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, KurzPopup, SucheComponent, StapelKnopf],
   template: `
     @if (session.dev()) {
       <p class="umgebung" role="note">
@@ -70,7 +75,12 @@ import { Neues } from './kern/neues';
     }
     @if (session.stand() === 'bereit' && session.angemeldet()) {
       <header class="leiste">
-        <a routerLink="/" class="marke">Atlas Mentis</a>
+        <!-- Unter der Marke die laufende Kampagne und ihr Stapel, immer da
+             (T-143) — dort kostet sie keine Breite in der Leiste. -->
+        <div class="marke-ort">
+          <a routerLink="/" class="marke">Atlas Mentis</a>
+          <nw-stapel />
+        </div>
         <nav aria-label="Areas" class="bereiche">
           <a routerLink="/play" routerLinkActive="an" ariaCurrentWhenActive="page">Play</a>
           <a routerLink="/boards" routerLinkActive="an" ariaCurrentWhenActive="page">Boards</a>
@@ -268,7 +278,16 @@ import { Neues } from './kern/neues';
       background: var(--bar);
       border-bottom: 3px solid var(--accent);
     }
+    /* Die Kampagnenzeile ist nie breiter als die Marke: ein langer Name
+       wird gekürzt, statt die Leiste umbrechen zu lassen (T-143). */
+    .marke-ort {
+      display: grid;
+      grid-template-columns: min-content;
+      justify-items: start;
+    }
     .marke {
+      white-space: nowrap;
+      line-height: 1.15;
       font-family: var(--caps);
       font-size: 1.4rem;
       font-weight: 700;
@@ -483,6 +502,8 @@ export class App {
   protected readonly alle = ALLE;
   /** Welches Untermenü offen ist: der Weg der Seite. */
   protected readonly menue = signal<string | null>(null);
+  /** Die laufende Kampagne in der Leiste (T-143). */
+  private readonly stapel = inject(Stapel);
 
   protected readonly api = inject(Api);
   protected readonly suche = inject(Suche);
@@ -511,6 +532,8 @@ export class App {
         this.menue.set(null);
         if (wer) void this.gruppen.laden(true);
         else this.gruppen.vergessen();
+        if (wer) void this.stapel.laden();
+        else this.stapel.vergessen();
         if (this.session.angemeldet()) void this.neues.laden();
         else this.neues.vergessen();
       });
