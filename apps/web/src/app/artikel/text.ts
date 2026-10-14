@@ -171,6 +171,11 @@ type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
       border-bottom: 1px solid var(--line);
       padding: 0.15rem 0.6rem;
       vertical-align: top;
+      /* Die Feldtabelle bricht ihre Werte überall um (overflow-wrap:
+         anywhere); in einer Tabelle hiesse das „5 / 9 / f" untereinander
+         und zehn Zeichen breite Spalten am Telefon (T-090). Eine Zelle
+         bricht zwischen Wörtern, und was nicht passt, scrollt in .tw. */
+      overflow-wrap: normal;
     }
     .b {
       font-weight: 600;
