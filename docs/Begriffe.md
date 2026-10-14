@@ -1673,6 +1673,23 @@ und an jedem Schritt gilt dieselbe Prüfung wie von Hand.
 
 ---
 
+## Epic, Feature, Story — Wörter der Planung
+
+Keine Wörter des Modells, sondern der Anforderungen (T-154): eine **Story**
+ist ein Wunsch einer Rolle („Als Spieler möchte ich mein Token verschieben,
+damit meine Bewegung auf der Karte steht“), ein **Feature** eine Funktion,
+Artikelart oder Ansicht, an der Stories hängen, ein **Epic** ein
+Funktionsbereich mit mehreren Features. Die Bereiche der App (World, Story,
+Rules, Play) sind Features: „Bereich World“ wohnt im Epic Welt & Lore.
+
+Zwei Wörter sind doppelt belegt, und es bleibt mit Absicht so, weil beide
+Seiten ihr Wort brauchen: **Feature** heisst im Register die Artikelart
+für ein Merkmal einer Klasse oder Abstammung (`Feature`, über `grants`) —
+in der Planung trägt ein Feature immer seine Kennung `F-nnn`, und wo beides
+vorkommen kann, steht die Kennung dabei. **Story** ist im Register der
+Obertyp der Geschichtsartikel (Bereich `story`) — eine Anforderung heisst
+darum immer mit ihrer Nummer `REQ-nnn`, nie nur „die Story“.
+
 ## Was nirgends steht
 
 Zwei Dinge werden nie gespeichert, und beide aus demselben Grund — zwei
