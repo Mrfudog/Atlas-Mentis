@@ -1056,6 +1056,9 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Asset',
     extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source'],
     schema: merge(g.AssetInfo),
+    /* In einer Liste und in der Galerie (T-119): das Bild und seine Klasse
+       — die Klasse als Spalte, damit die Liste nach ihr filtert. */
+    views: { overview: [{ id: 'as-ov-img', el: 'image' }, { id: 'as-ov', el: 'fields', fields: ['Asset.kind'] }] },
   },
 
   /**
@@ -1071,6 +1074,9 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Map',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Notes', 'Secrets', 'ReadAloud'],
     schema: merge(g.MapInfo),
+    /* Das Kartenbild wählt aus Kartenbildern (T-119): `Image.image` bietet
+       sonst allgemeine Bilder an. */
+    targets: { 'Image.image': { where: { component: 'Asset', property: 'kind', value: 'map' } } },
     /* Wie diese Art gezeichnet wird. **Die Anordnung wohnt am Typ**;
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     /* Karte, Board und Begegnung gehören in den Bereich **Play** und

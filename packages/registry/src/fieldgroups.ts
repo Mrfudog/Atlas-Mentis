@@ -298,7 +298,10 @@ export const fieldGroups = {
            gehört ans Asset** — das ist ein Artikel und erbt `Source`. Am
            Artikel, der es zeigt, stünde dieselbe Herkunft noch einmal, und
            zwar bei jedem der fünf Orte, die dasselbe Wappen zeigen. */
-        image: { type: 'string', format: 'asset', title: 'Image' },
+        /* Angeboten werden zuerst allgemeine Bilder (T-119); eine Karte
+           engt auf Kartenbilder ein (`Map.targets`). Ein Vorschlag, keine
+           Regel: die Klasse ist der heutige Stand des Bildes. */
+        image: { type: 'string', format: 'asset', title: 'Image', target: { where: { component: 'Asset', property: 'kind', value: 'image' } } },
         caption: { type: 'string', title: 'Caption' },
         alt: { type: 'string', title: 'Alt text' },
       },
@@ -467,7 +470,7 @@ export const fieldGroups = {
         bonuses: { type: 'object', title: 'Fixed bonuses' },
         /* Das Bild auf der Karte. Ein Asset und keine URL: die Bilder von
            5e.tools kommen nicht herein (E5). */
-        token: { type: 'string', format: 'asset', title: 'Token' },
+        token: { type: 'string', format: 'asset', title: 'Token', target: { where: { component: 'Asset', property: 'kind', value: 'token' } } },
       },
     },
   },
@@ -1717,6 +1720,22 @@ export const fieldGroups = {
           default: 'app',
         },
         ref: { type: 'string', title: 'Reference' },
+        /* **Die Klasse eines Bildes** (T-119): was es ist und darum, wo es
+           angeboten wird — `map` beim Kartenbild, `token` beim Token,
+           `prop` beim Platzieren auf einer Karte (Möbel, Requisiten,
+           Stempel), `image` überall sonst (Porträt, Handout,
+           Veranschaulichung). Ein Wort und keine Unterart: keine der vier
+           trägt heute ein eigenes Feld — die Grösse eines Tokens ist die
+           seiner Kreatur, das Raster gehört der Karte. Braucht eine Klasse
+           eigene Felder, wird sie eine Zeile, die von `Asset` erbt. Welches
+           Feld welche Klasse anbietet, sagt sein `target.where` (am Feld
+           oder als `targets` am Typ) — eine Liste im Code gibt es nicht. */
+        kind: {
+          type: 'string',
+          title: 'Class',
+          enum: ['image', 'map', 'token', 'prop'],
+          default: 'image',
+        },
         mime: { type: 'string', title: 'Media type' },
         width: { type: 'number', title: 'Width in px' },
         height: { type: 'number', title: 'Height in px' },

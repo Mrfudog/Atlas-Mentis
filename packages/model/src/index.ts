@@ -36,3 +36,4 @@ export * from './parts.js';
 export * from './edges.js';
 export * from './map.js';
 export * from './crafting.js';
+export * from './assets.js';

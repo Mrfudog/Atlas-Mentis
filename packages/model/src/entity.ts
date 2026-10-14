@@ -12,6 +12,7 @@ import type {
   Backlink,
   Entity,
   EntityId,
+  LinkTarget,
   PropertySchema,
   Registry,
   RelationDef,
@@ -214,6 +215,27 @@ export function fieldTitle(
     }
   }
   return field.prop.title ?? field.key;
+}
+
+/**
+ * **Wohin ein Feld an dieser Art zeigen soll** (T-119): `targets` am Typ
+ * oder an einem, von dem er erbt, sonst das `target` des Feldes. Wie
+ * `fieldTitle` die `extends`-Kette hoch — die Karte bietet beim Bild
+ * Kartenbilder an, ohne dass `Image` dafür zweimal da wäre.
+ */
+export function fieldTarget(
+  registry: Pick<Registry, 'interfaces'>,
+  type: string | undefined,
+  field: Pick<TypedField, 'type' | 'key' | 'prop'>,
+): LinkTarget | undefined {
+  const ref = `${field.type}.${field.key}`;
+  if (type) {
+    for (const t of typeChain(registry, type)) {
+      const eigen = registry.interfaces[t]?.targets?.[ref];
+      if (eigen) return eigen;
+    }
+  }
+  return field.prop.target;
 }
 
 /**
