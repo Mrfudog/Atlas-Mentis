@@ -16,6 +16,7 @@
 
 import { entityName, linkFinder, typeChain } from './entity.js';
 import { INSTANCE_RELATION, isInstance } from './instance.js';
+import { beschreibeAbweichung, registerAbweichung } from './registerabgleich.js';
 import type { Entity, Registry } from './types.js';
 import { stageBases, validateEntity } from './validate.js';
 
@@ -27,6 +28,8 @@ export interface CheckHit {
   reason: string;
   /** Bei Doppeln: alle Artikel der Gruppe, der erste ist der älteste. */
   group?: string[];
+  /** Kein Artikel, sondern eine Registerzeile (T-123): wohin im Register. */
+  registry?: Record<string, string>;
 }
 
 export interface CheckResult {
@@ -45,6 +48,8 @@ export interface CheckContext {
   entities: Entity[];
   /** Id → Art über den ganzen Bestand: ob ein Kantenziel da ist. */
   exists: ReadonlyMap<string, string>;
+  /** Die Startzeilen, gegen die das Register verglichen wird (T-123). */
+  seed?: Registry;
 }
 
 export interface Check {
@@ -284,6 +289,23 @@ export const CHECKS: Check[] = [
     },
   },
   {
+    /* T-123: Registeränderungen ohne Migration kamen nie auf dev und prod. */
+    key: 'registryDrift',
+    label: 'Registry differs from the seed',
+    description:
+      'A type, field, edge, view or list that stands differently in this database than in packages/registry — a change that came without a migration, or one somebody made here on purpose.',
+    run({ registry, seed }) {
+      if (!seed) return [];
+      return registerAbweichung(registry, seed).map((a) => ({
+        id: `registry:${a.part}:${a.name}${a.path ? `:${a.path}` : ''}`,
+        name: a.path ? `${a.name}.${a.path}` : a.name,
+        type: a.part,
+        reason: beschreibeAbweichung(a),
+        registry: registerOrt(a.part, a.name),
+      }));
+    },
+  },
+  {
     key: 'brokenLinks',
     label: 'Links that hit nothing',
     description: 'A [[…]] link in text whose target no visible article carries as number, id, name or alias.',
@@ -320,6 +342,15 @@ export const CHECKS: Check[] = [
     },
   },
 ];
+
+/** Wohin im Register (`/registry?…`) eine Zeile führt. */
+function registerOrt(part: string, name: string): Record<string, string> {
+  if (part === 'interfaces') return { type: name };
+  if (part === 'relations') return { tab: 'edges', edge: name };
+  if (part === 'views') return { tab: 'views', view: name };
+  if (part === 'enums') return { tab: 'lists', list: name };
+  return {};
+}
 
 export interface RunChecksOptions {
   /** Nur diese Prüfungen (Schlüssel); ohne Angabe alle. */
