@@ -506,7 +506,10 @@ Saltmarsh, das Tarokka-Deck aus Curse of Strahd) ist dagegen gleich da,
 wie jeder neue Artikel eines Buchs. Der Lauf braucht die **Migration
 `051_neue_arten_5etools.sql`**: sie trägt die Listenwerte `card`,
 `facility`, `upgrade` (`RuleKind`) und `deck` (`Table.kind`) an
-bestehenden Registerzeilen nach, die `only-new` sonst stehen liesse. Ohne
+bestehenden Registerzeilen nach, die `only-new` sonst stehen liesse,
+und **`054_ebenenart_buch_abenteuer.sql`** die Ebenenarten `book` und
+`adventure` an `Layer.kind` — die Buchebenen kamen per Migration an der
+Prüfung vorbei, und der erste Probelauf mit 2024 scheiterte an ihnen. Ohne
 2024: `node packages/import-5etools/dist/cli.js <data> --only-2014`.
 
 **Ein Modul ergänzen:** Pipeline mit `mode` = `only-new` und `sources` =
