@@ -4,6 +4,8 @@ import { Router, RouterLink } from '@angular/router';
 import {
   areaOf,
   choicesOf,
+  effectText,
+  storedEffects,
   choiceText,
   BOOK_CARDS,
   fieldText,
@@ -914,7 +916,10 @@ export class Artikel {
           ? tabelleAlsText(werte['columns'], wert)
           : comp === 'Choices' && prop === 'choices'
             ? choicesOf(e).map((c) => `${c.level && c.level > 1 ? `Level ${c.level}: ` : ''}${choiceText(c)}`).join('; ')
-            : objekt
+            : /* Ebenso eine Wirkung („Strength becomes 19", E-025 a). */
+              comp === 'Effects' && prop === 'effects'
+              ? storedEffects(e).map(effectText).join('; ')
+              : objekt
             ? anzeigeWert(wert)
             : fieldText(r, schema, wert, mode);
         if (!text) continue;
