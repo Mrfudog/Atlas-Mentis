@@ -34,6 +34,10 @@ COPY --from=build /app/apps/server/dist       ./apps/server/dist
 COPY --from=build /app/apps/server/migrations ./apps/server/migrations
 COPY --from=build /app/apps/web/dist/web/browser ./apps/server/public
 
+# Die Ablage der Bilder (T-114): ein Volume, das dem Benutzer node gehört.
+RUN mkdir -p /data/assets && chown node:node /data/assets
+ENV ASSET_DIR=/data/assets
+
 USER node
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s \

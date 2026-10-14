@@ -326,6 +326,26 @@ die Vorgaben und speicherte sie 700 ms später über alles. Darum schreibt
 die Seite nichts ohne gelesenen Stand, und ein Entwurf, der nicht
 gespeichert werden konnte, bleibt in der Maske und lässt sich herunterladen.
 
+### Ein Bild ist ein Artikel, die Datei nicht
+
+Ein hochgeladenes Bild sind zwei Dinge (T-114): ein **`Asset`-Artikel**
+und eine **Datei** in der Ablage. Der Artikel trägt, was man über das Bild
+wissen will — Name, Marken, Quelle, wer es sehen darf —, die Datei nur die
+Bytes. Wer ein Bild zeigt, nennt die Id des Artikels (`Image.image`), nie
+eine Adresse und nie einen Dateinamen: eine Adresse gilt so lange, wie die
+Ablage dieselbe bleibt, die Id für immer (E-032).
+
+Warum nicht einfach ein Feld mit der Datei am NSC? Weil dasselbe Wappen an
+fünf Orten hängt und dann fünfmal dazuläge, mit fünf Quellenangaben, die
+auseinanderlaufen. Und weil ein Bild **eine eigene Sichtbarkeit** braucht:
+das Porträt des verborgenen Fremden darf nicht über die Adresse an die
+Spielenden gehen, nur weil sie die Adresse erraten. Also fragt der Server
+bei jeder Datei, ob ihr Artikel sichtbar ist — dieselbe Frage wie überall.
+
+Die Datei heisst nach ihrem Inhalt (`<sha256>.png`). Dasselbe Bild zweimal
+hochgeladen liegt einmal da, eine Datei ändert sich nie, und darum darf der
+Browser sie behalten, solange er nach diesem Namen fragt.
+
 ---
 
 ## Ansicht

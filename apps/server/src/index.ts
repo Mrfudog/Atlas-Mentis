@@ -6,9 +6,11 @@ import { closePool, getPool } from './db.js';
 import { PgRepository } from './repo.pg.js';
 import { seedRegistryInto } from './seed.js';
 import { migrate } from './migrate.js';
+import { FileAssetStore } from './assets.js';
 
 const config = loadConfig();
 const repo = new PgRepository(getPool());
+const assets = new FileAssetStore(config.assetDir);
 
 // In the container the built Angular app sits beside dist/ as public/.
 const staticRoot = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
@@ -22,12 +24,17 @@ const app = buildApp({
   staticRoot,
   trustProxy: config.trustProxy,
   env: config.env,
+  assets,
+  assetMaxBytes: config.assetMaxBytes,
 });
 
 async function main(): Promise<void> {
   /* Was eine Migration oder der Seed entfernen würde, wird vorher gezählt;
      ohne Freigabe bricht der Start hier ab (T-076). */
   const verlust = { log: (m: string) => app.log.warn(m) };
+  /* Die Ablage der Bilder muss schreibbar sein (T-114) — sonst jetzt
+     scheitern und nicht beim ersten Hochladen am Tisch. */
+  await assets.bereit();
   const applied = await migrate(getPool(), verlust);
   if (applied.length) app.log.info({ applied }, 'Migrationen angewandt');
   await seedRegistryInto(repo, verlust);
