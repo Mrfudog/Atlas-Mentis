@@ -388,3 +388,248 @@ export function linesDiff(
   }
   return out;
 }
+
+// ------------------------------------------------------------ Zusammenfassung (T-173)
+
+/**
+ * **Was eine Fassung anders hat, in einem Satz** (T-173). Die Leitung sah
+ * an „+1 Weapon" den Unterschied nirgends: es war nur ein Feld, und es
+ * fehlte in der anderen Fassung. Also sagt die Zusammenfassung beides —
+ * welche Felder und Kanten abweichen, und wenn keine, dass sie gleich
+ * sind und nur Quelle oder Seite anders steht.
+ */
+export interface VersionSummary {
+  /** Gleiche Felder und Kanten — was bleibt, ist Name, Quelle, Stand. */
+  same: boolean;
+  /** Beschriftungen der abweichenden Felder, in der Reihenfolge des Vergleichs. */
+  fields: string[];
+  /** Beschriftungen der Kantenarten, die abweichen. */
+  relations: string[];
+  /** Felder, die nur dieser Artikel setzt — die andere Fassung lässt sie leer. */
+  notThere: string[];
+  /** Die Quelle der anderen Fassung, wenn sie anders steht („XDMG p. 324"). */
+  source?: string;
+}
+
+const feldTitel = (registry: Pick<Registry, 'interfaces'>, type: string, key: string): string =>
+  registry.interfaces[type]?.schema?.properties?.[key]?.title ?? key;
+
+const quelleText = (e: Entity): string => {
+  const s = (e.components?.['Source'] ?? {}) as { publication?: unknown; page?: unknown };
+  const buch = String(s.publication ?? '').trim();
+  const seite = String(s.page ?? '').trim();
+  return [buch, seite ? `p. ${seite}` : ''].filter(Boolean).join(' ');
+};
+
+export function versionSummary(
+  registry: Pick<Registry, 'interfaces'> & { relations?: Registry['relations'] },
+  base: Entity,
+  other: Entity,
+  diff: VersionDiff = versionDiff(registry, base, other),
+): VersionSummary {
+  const fields = diff.fields.map((f) => feldTitel(registry, f.type, f.key));
+  const notThere = diff.fields.filter((f) => f.value === undefined).map((f) => feldTitel(registry, f.type, f.key));
+  const relations = diff.relations.map((r) => registry.relations?.[r.type]?.label ?? r.type);
+  const qa = quelleText(base);
+  const qb = quelleText(other);
+  return {
+    same: !fields.length && !relations.length,
+    fields,
+    relations,
+    notThere,
+    ...(qb && qb !== qa ? { source: qb } : {}),
+  };
+}
+
+// ------------------------------------------------------------ Welche gilt (T-173)
+
+/**
+ * **Welche Fassung gilt am Tisch** (T-173, Punkt 5): sind zwei Ebenen mit
+ * Fassungen derselben Sache aufgeschaltet, steht in Listen und Verweisen
+ * die aus der **obersten** Ebene des Stapels (dieselbe Regel wie
+ * `queryList` mit `versions`). `ranks` ist `activeLayerRanks` — grösser
+ * heisst weiter oben. Ohne Ebene im Spiel: `null`.
+ */
+export function versionInPlay(
+  candidates: readonly Entity[],
+  ranks: ReadonlyMap<EntityId, number>,
+): { entity: Entity; layer: EntityId; rank: number } | null {
+  let best: { entity: Entity; layer: EntityId; rank: number } | null = null;
+  for (const e of candidates) {
+    for (const l of layersOf(e)) {
+      const r = ranks.get(l);
+      if (r === undefined) continue;
+      if (!best || r > best.rank) best = { entity: e, layer: l, rank: r };
+    }
+  }
+  return best;
+}
+
+// ------------------------------------------------------------ Nebeneinander (T-173)
+
+/** Wie eine Zeile des Vergleichs steht. */
+export type CompareState = 'same' | 'changed' | 'onlyLeft' | 'onlyRight';
+
+/** Ein Feld im Vergleich nebeneinander. */
+export interface CompareFieldRow {
+  ref: string;
+  type: string;
+  key: string;
+  label: string;
+  left: unknown;
+  right: unknown;
+  state: CompareState;
+  long: boolean;
+  /** Name, Quelle, Stand, Sichtbarkeit: gezeigt, aber kein Unterschied in der Sache. */
+  meta: boolean;
+}
+
+/** Eine Kantenart im Vergleich nebeneinander. */
+export interface CompareRelationRow {
+  type: string;
+  label: string;
+  left: EntityId[];
+  right: EntityId[];
+  state: CompareState;
+}
+
+export interface CompareRows {
+  fields: CompareFieldRow[];
+  relations: CompareRelationRow[];
+}
+
+const zustand = (a: unknown, b: unknown): CompareState =>
+  leer(a) ? 'onlyRight' : leer(b) ? 'onlyLeft' : stabil(a) === stabil(b) ? 'same' : 'changed';
+
+/**
+ * **Zwei Artikel Feld für Feld, nebeneinander** (T-173): alle Felder, die
+ * eine Seite setzt — auch gleiche, denn „gleich" ist eine Auskunft — und
+ * alle Kantenarten mit ihren Zielen. Gebraucht für Fassungen und für die
+ * Übertragung dev → prod (T-130), wo zwei Stände desselben Artikels
+ * nebeneinanderstehen; darum nimmt es zwei beliebige Artikel.
+ * Reihenfolge: die Typen des linken Artikels, dann was nur rechts steht;
+ * je Typ die Felder in der Reihenfolge des Registers.
+ */
+export function compareRows(
+  registry: Pick<Registry, 'interfaces'> & { relations?: Registry['relations'] },
+  left: Entity,
+  right: Entity,
+): CompareRows {
+  const fields: CompareFieldRow[] = [];
+  const typen = [...new Set([...Object.keys(left.components ?? {}), ...Object.keys(right.components ?? {})])].filter(
+    (t) => t !== '__meta',
+  );
+  for (const type of typen) {
+    const a = (left.components?.[type] ?? {}) as Record<string, unknown>;
+    const b = (right.components?.[type] ?? {}) as Record<string, unknown>;
+    const props = registry.interfaces[type]?.schema?.properties ?? {};
+    const schluessel = [...new Set([...Object.keys(props), ...Object.keys(a), ...Object.keys(b)])];
+    for (const key of schluessel) {
+      const va = a[key];
+      const vb = b[key];
+      if (leer(va) && leer(vb)) continue;
+      const p = props[key];
+      const istLang = (v: unknown) => typeof v === 'string' && (v.length > 160 || v.includes('\n'));
+      fields.push({
+        ref: `${type}.${key}`,
+        type,
+        key,
+        label: p?.title ?? key,
+        left: leer(va) ? undefined : va,
+        right: leer(vb) ? undefined : vb,
+        state: zustand(va, vb),
+        long: p?.format === 'long' || istLang(va) || istLang(vb),
+        meta: NICHT_VERGLEICHEN.has(type),
+      });
+    }
+  }
+  const ziele = (e: Entity) => {
+    const m = new Map<string, EntityId[]>();
+    for (const r of e.relations ?? []) {
+      if (!r.to) continue;
+      const l = m.get(r.type) ?? m.set(r.type, []).get(r.type)!;
+      if (!l.includes(r.to)) l.push(r.to);
+    }
+    return m;
+  };
+  const za = ziele(left);
+  const zb = ziele(right);
+  const relations: CompareRelationRow[] = [];
+  for (const type of new Set([...za.keys(), ...zb.keys()])) {
+    const l = za.get(type) ?? [];
+    const r = zb.get(type) ?? [];
+    const gleich = l.length === r.length && l.every((x) => r.includes(x));
+    relations.push({
+      type,
+      label: registry.relations?.[type]?.label ?? type,
+      left: l,
+      right: r,
+      state: !l.length ? 'onlyRight' : !r.length ? 'onlyLeft' : gleich ? 'same' : 'changed',
+    });
+  }
+  return { fields, relations };
+}
+
+/** Eine Zeile eines Zeilenvergleichs: gleich, nur links (weg) oder nur rechts (dazu). */
+export interface DiffLine {
+  op: 'same' | 'del' | 'add';
+  text: string;
+}
+
+/**
+ * **Zwei Texte Zeile für Zeile, wie ein Git-Vergleich** (T-173): die
+ * längste gemeinsame Folge, davor und dazwischen was weg- oder dazukommt.
+ * Leerraum am Zeilenende zählt nicht. Bei sehr langen Texten (mehr als
+ * vier Millionen Zellen) steht links alles als weg und rechts alles als
+ * dazu — falsch wäre ein halber Vergleich, der Gleiches als neu zeigt,
+ * ohne es zu sagen; so sieht man, dass nicht verglichen wurde.
+ */
+export function lineDiff(left: string, right: string): DiffLine[] {
+  const a = String(left ?? '').split('\n');
+  const b = String(right ?? '').split('\n');
+  const gleich = (x: string, y: string) => x.trimEnd() === y.trimEnd();
+  /* Gleicher Anfang und gleiches Ende zuerst — die Tabelle bleibt klein. */
+  let vorn = 0;
+  while (vorn < a.length && vorn < b.length && gleich(a[vorn]!, b[vorn]!)) vorn++;
+  let hinten = 0;
+  while (hinten < a.length - vorn && hinten < b.length - vorn && gleich(a[a.length - 1 - hinten]!, b[b.length - 1 - hinten]!)) hinten++;
+  const ma = a.slice(vorn, a.length - hinten);
+  const mb = b.slice(vorn, b.length - hinten);
+  const out: DiffLine[] = a.slice(0, vorn).map((text) => ({ op: 'same', text }));
+  if (ma.length * mb.length > 4_000_000) {
+    out.push(...ma.map((text) => ({ op: 'del' as const, text })), ...mb.map((text) => ({ op: 'add' as const, text })));
+  } else {
+    /* lcs[i][j]: Länge der gemeinsamen Folge von ma[i..] und mb[j..]. */
+    const n = ma.length;
+    const m = mb.length;
+    const lcs: Uint32Array[] = Array.from({ length: n + 1 }, () => new Uint32Array(m + 1));
+    for (let i = n - 1; i >= 0; i--) {
+      for (let j = m - 1; j >= 0; j--) {
+        lcs[i]![j] = gleich(ma[i]!, mb[j]!) ? lcs[i + 1]![j + 1]! + 1 : Math.max(lcs[i + 1]![j]!, lcs[i]![j + 1]!);
+      }
+    }
+    let i = 0;
+    let j = 0;
+    while (i < n || j < m) {
+      if (i < n && j < m && gleich(ma[i]!, mb[j]!)) {
+        out.push({ op: 'same', text: ma[i]! });
+        i++;
+        j++;
+      } else if (j < m && (i >= n || lcs[i]![j + 1]! >= lcs[i + 1]![j]!)) {
+        /* Weg vor dazu, wie in einem Git-Vergleich: erst kommt, was ging. */
+        if (i < n && lcs[i + 1]![j]! === lcs[i]![j + 1]!) {
+          out.push({ op: 'del', text: ma[i]! });
+          i++;
+        } else {
+          out.push({ op: 'add', text: mb[j]! });
+          j++;
+        }
+      } else {
+        out.push({ op: 'del', text: ma[i]! });
+        i++;
+      }
+    }
+  }
+  out.push(...a.slice(a.length - hinten).map((text) => ({ op: 'same' as const, text })));
+  return out;
+}

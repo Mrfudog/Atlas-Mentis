@@ -372,6 +372,8 @@ export interface FassungsEbene {
   short: string;
   compare: boolean;
   play: boolean;
+  /** Platz im Stapel, wenn im Spiel — grösser heisst weiter oben (T-173). */
+  rank?: number;
 }
 
 /** Eine andere Fassung derselben Sache (T-092, E-021 d). */
