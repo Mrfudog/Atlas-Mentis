@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-14. 78 Schnittstellen, 59 Kantenarten.
+Stand 2026-10-14. 78 Schnittstellen, 60 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -62,6 +62,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Map — `territory` → „holds ground on"
 - Recipe — `needs` → „used in"
 - Recipe — `yields` → „made by"
+- Campaign | Party | Creature — `craftsWith` → „crafted differently by"
 - Board — `placed` → „lies on"
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
@@ -148,6 +149,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `memberOfParty` → Party — „in the party"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
+- `craftsWith` → Recipe | Item — „crafts with"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
@@ -406,6 +408,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Map — `territory` → „holds ground on"
 - Recipe — `needs` → „used in"
 - Recipe — `yields` → „made by"
+- Campaign | Party | Creature — `craftsWith` → „crafted differently by"
 - Board — `placed` → „lies on"
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
@@ -462,6 +465,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Map — `territory` → „holds ground on"
 - Recipe — `needs` → „used in"
 - Recipe — `yields` → „made by"
+- Campaign | Party | Creature — `craftsWith` → „crafted differently by"
 - Board — `placed` → „lies on"
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
@@ -499,6 +503,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `partyOf` → Campaign — „party of"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
+- `craftsWith` → Recipe | Item — „crafts with"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
@@ -616,6 +621,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `memberOfParty` → Party — „in the party"
 - `carries` → Inventory — „carries"
 - `knowledge` → Information — „knowledge about it"
+- `craftsWith` → Recipe | Item — „crafts with"
 - `inLayer` → Layer — „from"
 - `variantOf` → * — „variant of"
 - `overrides` → * — „replaces"
@@ -693,6 +699,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Map — `territory` → „holds ground on"
 - Recipe — `needs` → „used in"
 - Recipe — `yields` → „made by"
+- Campaign | Party | Creature — `craftsWith` → „crafted differently by"
 - Board — `placed` → „lies on"
 - Encounter | Story | Quest — `loot` → „found in"
 - Event — `involves` → „took part in"
@@ -837,6 +844,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `happensAt` → Place — „happens at"
 - `features` → Creature | Statblock | Faction — „features"
 - `knowledge` → Information — „knowledge about it"
+- `craftsWith` → Recipe | Item — „crafts with"
 - `onMap` → Map — „fought on"
 - `loot` → Item | Information | Feat | Skill — „loot"
 - `tableFor` → Table — „rolls on"
@@ -1880,6 +1888,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
 - Map — `territory` → „holds ground on"
+- Campaign | Party | Creature — `craftsWith` → „crafted differently by"
 - Board — `placed` → „lies on"
 - Event — `involves` → „took part in"
 - Table — `entry` → „rolled on"

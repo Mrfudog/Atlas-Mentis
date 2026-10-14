@@ -1,4 +1,5 @@
 import type { RelationDef } from '@nw/model';
+import { TOOLS_ONLY } from './fieldgroups.js';
 
 /**
  * `relation_def` rows. Every edge is stored once, in one direction;
@@ -917,6 +918,33 @@ export const relations: Record<string, RelationDef> = {
     from: ['Recipe'],
     to: ['Item'],
     cardinality: 'one',
+  },
+
+  /**
+   * **Womit gefertigt wird, wenn nicht wie im Buch** (T-122). Das Rezept
+   * nennt Werkzeug, Attribut und SG seiner Quelle; eine Kampagne, eine
+   * Gruppe oder eine Figur weicht davon ab, ohne das Rezept zu kopieren —
+   * für ein Rezept (Kante zum Rezept) oder für jedes Rezept eines Werkzeugs
+   * (Kante zum Werkzeug: „Kräuterkunde mit Weisheit"). Die Kante trägt nur,
+   * was sie ändert; Spezifischeres schlägt Allgemeineres (`craftCheck`).
+   * Das Werkzeug selbst tauscht nur eine Kante zum Rezept.
+   */
+  craftsWith: {
+    type: 'craftsWith',
+    label: 'crafts with',
+    inverseLabel: 'crafted differently by',
+    means: 'A campaign, party or creature crafts a recipe — or every recipe of a tool — with another tool, ability or DC than the source says; the recipe or tool lists who does.',
+    from: ['Campaign', 'Party', 'Creature'],
+    to: ['Recipe', 'Item'],
+    props: {
+      type: 'object',
+      properties: {
+        tool: { type: 'string', title: 'Tool instead', enumRef: 'Item', enumWhere: TOOLS_ONLY },
+        ability: { type: 'string', title: 'Ability instead', enumRef: 'Ability' },
+        dc: { type: 'number', title: 'DC instead' },
+        note: { type: 'string', title: 'Note' },
+      },
+    },
   },
 
   // ---------------------------------------------------------------- boards

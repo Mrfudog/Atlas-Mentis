@@ -149,6 +149,15 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'craftCheck',
+    label: 'Crafting check',
+    area: 'character',
+    does: 'decides the tool, ability and DC a creature crafts a recipe with — the recipe’s own default, changed by its campaign, its party or itself for one recipe or for every recipe of a tool',
+    uses: {
+      [M + 'crafting.ts']: ['craftsWith', 'memberOfParty'],
+    },
+  },
+  {
     key: 'builder',
     label: 'Character builder and sheet',
     area: 'character',
