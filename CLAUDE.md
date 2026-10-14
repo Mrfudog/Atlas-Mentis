@@ -348,7 +348,12 @@ wiederkommen, werden sie neu geschrieben.
   vorher, was sie lasen (`detachInstance`), geht die Kreatur, geht ihre
   Instanz mit. Nicht vererbt werden `Identity`, `Visibility` und die
   Kanten, die zur Vorlage als Artikel gehören (`inLayer`, `belongsTo`,
-  `overrides`, `variantOf`). Für einen Tag durfte ein Statblock vielen
+  `overrides`, `variantOf`), und das Inventar eines Stücks (`carries`).
+  **Ein Gegenstand im Inventar ist ein Stück** (T-150): gekauft, erbeutet,
+  gefertigt oder gegeben entsteht er als Instanz (`newInstance`,
+  `stueckWerkstatt`), ein loser Stapel derselben Vorlage wächst stattdessen
+  (`receivePiece`), und Material zählt nach dem Grundartikel
+  (`baseArticle`). Für einen Tag durfte ein Statblock vielen
   gehören („shared by 30") — dann war jede Änderung an einer Wache eine an
   allen.
 - **Ein Textblock ist ein Feld.** Es gab einmal `blocks: [{blockType, body,
