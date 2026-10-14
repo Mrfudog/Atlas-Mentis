@@ -1114,7 +1114,7 @@ sind Zeilen, Darstellung ist Code.**
 |---|---|
 | `heading`, `text` | eine Überschrift, einen festen Text |
 | `description`, `image` | die Beschreibung, das Bild |
-| `fields` | die Feldtabelle: `fields: 'all'` oder `['Typ', 'Typ.feld']`, `except`, `columns` |
+| `fields` | die Feldtabelle: `fields: 'all'` oder `['Typ', 'Typ.feld']`, `except`, `columns`. `'all'` und der Rest nehmen `Image` nicht — Bild, Unterschrift und Alternativtext gehören dem Element `image`; einzeln genannt stehen sie da (T-090) |
 | `prose` | die Prosafelder, mit Anlegen und Bearbeiten an Ort und Stelle |
 | `linked` | die Felder der Teil-Artikel (§5.3), mit eigenen Eingaben |
 | `composed` | die eingesetzten Regeln (`section`-Kanten), Variablen aufgelöst |
