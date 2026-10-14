@@ -173,6 +173,18 @@ export interface Rueckbezug {
   relation: Relation;
 }
 
+/** Wohin Sachen wandern können (T-127): das Regelset der Kampagne, ihre Gruppen und deren Figuren. */
+export interface InventarLage {
+  campaign: { id: string; name: string } | null;
+  rules: 'grid' | 'weight' | 'slots';
+  parties: {
+    id: string;
+    name: string;
+    inventory: string | null;
+    members: { id: string; name: string; inventory: string | null }[];
+  }[];
+}
+
 /** Ein Spieler der laufenden Kampagne: sein Name und die Figuren, die er führt (T-100). */
 export interface Spieler {
   name: string;
@@ -837,6 +849,10 @@ export class Api {
     feats?: boolean;
   }> {
     return this.call('/api/abilities');
+  }
+  /** Regelset und Gruppen der laufenden Kampagne, mit den Inventaren, zwischen denen Sachen wandern (T-127). */
+  inventory(): Promise<InventarLage> {
+    return this.call('/api/inventory');
   }
   /** Die Spieler der laufenden Kampagne mit ihren Figuren (T-100, E-007) — ohne Konto-Id. */
   players(): Promise<{ campaign: { id: string; name: string } | null; players: Spieler[] }> {

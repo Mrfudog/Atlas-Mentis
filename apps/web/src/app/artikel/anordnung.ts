@@ -341,8 +341,8 @@ export function anordnen(
         out.push({ id: el.id, art: 'verlinkt', ausser: [...(el.except ?? [])] });
         break;
       /* Das Inventar (T-125, Darstellung): am Träger das über `carries`
-         getragene, an einem Inventar das, was es selbst hält. Das Raster
-         zum Ziehen kommt mit W4. */
+         getragene, an einem Inventar das, was es selbst hält — gezeichnet
+         von `nw-inventar` (T-127: Raster, Gewicht oder Slots, Verschieben). */
       case 'inventory':
         out.push({ id: el.id, art: 'verlinkt', nur: ['Inventory'] });
         break;

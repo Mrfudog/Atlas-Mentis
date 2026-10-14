@@ -20,6 +20,7 @@ import { KurzLink } from '../kern/kurzansicht';
 import { Mehrfach, type Suchgruppe } from './mehrfach';
 import { Schnell } from './schnell';
 import { Statblock } from './statblock';
+import { Inventar } from './inventar';
 import { Text } from './text';
 import { Wahl } from './wahl';
 
@@ -65,13 +66,6 @@ interface EFeld {
   folgt: boolean;
 }
 
-interface Posten {
-  id: string;
-  name: string;
-  qty: number;
-  tier: string;
-}
-
 /**
  * **Was über eine `asField`-Kante hängt, am Ort dieses Artikels** (T-125,
  * Element `linked`; CLAUDE.md „Eine Kante darf sich an einem Ende wie ein
@@ -94,23 +88,11 @@ interface Posten {
  */
 @Component({
   selector: 'nw-verlinkt',
-  imports: [RouterLink, Statblock, Text, Wahl, Mehrfach, Schnell, KurzLink],
+  imports: [RouterLink, Statblock, Text, Wahl, Mehrfach, Schnell, KurzLink, Inventar],
   template: `
     <!-- Ein Inventar selbst: was es hält (das Element \`inventory\` an seiner eigenen Seite). -->
     @if (selbst()) {
-      @if (posten(artikel()).length) {
-        <ul class="posten">
-          @for (p of posten(artikel()); track p.id) {
-            <li>
-              <a [routerLink]="['/artikel', p.id]" [nwQuick]="p.id">{{ p.name }}</a>
-              @if (p.qty !== 1) { <span class="qty">×{{ p.qty }}</span> }
-              @if (p.tier) { <span class="tier">{{ p.tier }}</span> }
-            </li>
-          }
-        </ul>
-      } @else {
-        <p class="leer">Nothing in it yet.</p>
-      }
+      <nw-inventar [inventar]="artikel()" [traeger]="traegerVon()" [statblock]="statblockVon(traegerVon())" />
     }
     @for (g of glieder(); track g.relation) {
       <section class="verlinkt" [attr.aria-label]="g.typLabel">
@@ -205,21 +187,8 @@ interface Posten {
               <nw-statblock [artikel]="le" />
             } @else {
               @if (g.inventar) {
-                @if (posten(le).length) {
-                  <ul class="posten">
-                    @for (p of posten(le); track p.id) {
-                      <li>
-                        <a [routerLink]="['/artikel', p.id]" [nwQuick]="p.id">{{ p.name }}</a>
-                        @if (p.qty !== 1) { <span class="qty">×{{ p.qty }}</span> }
-                        @if (p.tier) { <span class="tier">{{ p.tier }}</span> }
-                      </li>
-                    }
-                  </ul>
-                } @else {
-                  <p class="leer">Nothing in it yet.</p>
-                }
-              }
-              @if (zellen(le); as zs) {
+                <nw-inventar [inventar]="le" [traeger]="artikel()" [statblock]="statblockVon(artikel())" />
+              } @else if (zellen(le); as zs) {
                 @if (zs.length) {
                   <dl class="vzellen">
                     @for (z of zs; track z.ref) {
@@ -378,15 +347,6 @@ interface Posten {
     .fehler {
       color: var(--warn);
     }
-    .posten {
-      margin: 0 0 0.5rem;
-      padding-left: 1.2rem;
-    }
-    .qty,
-    .tier {
-      margin-left: 0.4rem;
-      color: var(--dim);
-    }
     dl.vzellen {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr));
@@ -505,18 +465,39 @@ export class Verlinkt {
     return feldZellen(r, e, this.bestand.name()).filter((z) => !NICHT_HIER.has(z.comp) && !z.bild);
   }
 
-  /** Was im Inventar liegt (`holds`), nach Griffweite. */
-  protected posten(e: Entity): Posten[] {
-    const name = this.bestand.name();
-    return (e.relations ?? [])
-      .filter((k) => k.type === 'holds')
-      .map((k) => ({
-        id: k.to,
-        name: name(k.to) ?? k.to,
-        qty: typeof k.props?.['qty'] === 'number' ? (k.props['qty'] as number) : 1,
-        tier: typeof k.props?.['tier'] === 'string' ? (k.props['tier'] as string) : '',
-      }));
+  /**
+   * **Der Statblock eines Artikels**, für Tragraster und Tragestufe des
+   * Inventars (T-127): das andere Ende der `asField`-Kante, deren Art der
+   * Bogen zeichnet — kein Artname hier, wie bei den Gliedern.
+   */
+  protected statblockVon(e: Entity | null): Entity | null {
+    const r = this.reg();
+    if (!r || !e) return null;
+    const rueck = this.bestand.rueckbezuege().get(e.id) ?? [];
+    for (const l of linkedTypes(r, primaryInterface(e))) {
+      if (!flach(layoutFor(r, 'full', l.type).layout).some((x) => x.el === 'statblock')) continue;
+      const id = l.direction === 'out'
+        ? (e.relations ?? []).find((k) => k.type === l.relation)?.to
+        : rueck.find((b) => b.relation.type === l.relation && b.relation.to === e.id)?.from.id;
+      if (!id) continue;
+      untracked(() => void this.bestand.oeffnen(id, false, false));
+      return this.bestand.voll().get(id) ?? null;
+    }
+    return null;
   }
+
+  /** Auf der Seite eines Inventars: wer es trägt (die Rückfrage über die `asField`-Kante). */
+  protected readonly traegerVon = computed<Entity | null>(() => {
+    const r = this.reg();
+    const e = this.artikel();
+    if (!r || !this.selbst()) return null;
+    const rueck = this.bestand.rueckbezuege().get(e.id) ?? [];
+    const kanten = new Set(Object.values(r.relations).filter((d) => d.asField === 'from').map((d) => d.type));
+    const id = rueck.find((b) => kanten.has(b.relation.type) && b.relation.to === e.id)?.from.id;
+    if (!id) return null;
+    untracked(() => void this.bestand.oeffnen(id, false, true));
+    return this.bestand.voll().get(id) ?? null;
+  });
 
   // ------------------------------------------------------------ bearbeiten
 

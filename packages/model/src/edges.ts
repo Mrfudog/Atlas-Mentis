@@ -197,6 +197,19 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'inventory',
+    label: 'Inventory',
+    area: 'character',
+    does: 'draws and changes what a character, a party or a container holds — grid, rotation, zones, weight or slots by the campaign’s rules — and moves stacks between them, except those reserved for something',
+    uses: {
+      [M + 'inventory.ts']: ['carries', 'holds'],
+      [W + 'artikel/inventar.ts']: ['carries', 'holds'],
+      /* Die Gruppen der Kampagne mit ihren Figuren und Inventaren (T-127),
+         und wer das Gruppeninventar schreibt. */
+      [S + 'app.ts']: ['carries', 'memberOfParty', 'partyOf'],
+    },
+  },
+  {
     key: 'classes',
     label: 'Class pages',
     area: 'character',
@@ -305,9 +318,10 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       /* Schnell anlegen schlägt die Ebene des Ausgangsartikels vor (T-131). */
       [W + 'artikel/schnell.ts']: ['inLayer'],
       /* Was über eine asField-Kante hängt, am Ort des lesenden Artikels
-         (T-125): welche Kanten, sagt `linkedTypes`; genannt werden nur das
-         Inventar (`holds`), die Vorlage einer neuen Instanz und ihre Ebene. */
-      [W + 'artikel/verlinkt.ts']: ['holds', 'inLayer', 'instanceOf'],
+         (T-125): welche Kanten, sagt `linkedTypes`; genannt werden nur die
+         Vorlage einer neuen Instanz und ihre Ebene — das Inventar zeichnet
+         `inventar.ts` (T-127). */
+      [W + 'artikel/verlinkt.ts']: ['inLayer', 'instanceOf'],
     },
   },
 ];
