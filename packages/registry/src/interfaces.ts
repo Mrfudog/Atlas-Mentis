@@ -505,6 +505,16 @@ export const interfaces: Record<string, InterfaceDef> = {
     views: { overview: [{ id: 'abm-ov', el: 'fields', fields: ['AbilityMethod.method', 'AbilityMethod.scope'] }] },
   },
 
+  /** Wie Spielende zu ihrer Startausrüstung kommen (REQ-250, T-096): ein Artikel je Verfahren. */
+  EquipmentMethod: {
+    name: 'EquipmentMethod',
+    area: 'rules',
+    label: 'Starting equipment method',
+    extends: ['Rule'],
+    schema: merge(g.EquipmentMethodInfo),
+    views: { overview: [{ id: 'eqm-ov', el: 'fields', fields: ['EquipmentMethod.method', 'EquipmentMethod.gold', 'EquipmentMethod.budget'] }] },
+  },
+
   /** Ein Zustand, den man hat — und die Art, die `Vitals.conditions` verlangt (D48). */
   Condition: {
     name: 'Condition',

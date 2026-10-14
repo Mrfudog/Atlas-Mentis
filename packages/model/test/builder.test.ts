@@ -58,7 +58,7 @@ describe('the character builder reads its steps from the articles (T-080)', () =
     d = setPick(d, 'hasClass', 'class-1');
     expect(builderSteps(d, bestand).map((s) => s.id)).toEqual([
       'ancestry', 'background', 'class', 'abilities',
-      'choice:background-1#origin-feat', 'choice:class-1#skills', 'details',
+      'choice:background-1#origin-feat', 'choice:class-1#skills', 'equipment', 'details',
     ]);
   });
 
@@ -68,7 +68,9 @@ describe('the character builder reads its steps from the articles (T-080)', () =
     if (skills?.kind !== 'choice') throw new Error('kein Schritt');
     d = answerChoice(d, skills.at, ['Athletics', 'Survival']);
     d = pruneAnswers(setPick(d, 'hasClass', 'class-2'), bestand);
-    expect(builderSteps(d, bestand).map((s) => s.id)).toContain('choice:class-2#mist-gift');
+    /* Die Ausrüstungswahl steht gesammelt im Schritt `equipment` (T-096). */
+    const ausr = builderSteps(d, bestand).find((s) => s.id === 'equipment');
+    expect(ausr?.kind === 'equipment' && ausr.choices.map((c) => c.choice.id)).toEqual(['mist-gift']);
     expect(d.relations?.filter((r) => r.type === 'chose')).toEqual([]);
   });
 

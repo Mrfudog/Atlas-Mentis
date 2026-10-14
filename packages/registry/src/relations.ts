@@ -262,6 +262,19 @@ export const relations: Record<string, RelationDef> = {
   },
 
   /**
+   * **Welche Verfahren für die Startausrüstung eine Kampagne erlaubt**
+   * (REQ-250, T-096). Nennt sie keines, gelten „Klasse und Hintergrund"
+   * und „Startgold" (`DEFAULT_EQUIPMENT_METHODS`).
+   */
+  allowsEquipment: {
+    type: 'allowsEquipment',
+    label: 'allows equipment method',
+    inverseLabel: 'allowed in',
+    from: ['Campaign'],
+    to: ['EquipmentMethod'],
+  },
+
+  /**
    * **Der Gruppenpool** (E-016 a): einmal für die Gruppe gewürfelt, und
    * jede ihrer Figuren verteilt dieselben Werte selbst. Gewürfelt wird am
    * Server (`POST /api/abilities/roll`), und jeder Wurf steht im

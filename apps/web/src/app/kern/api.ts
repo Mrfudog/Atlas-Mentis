@@ -11,7 +11,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import type { AbilityMethod, Entity, Registry, RegistryUsage, Relation, RolledScores } from '@nw/model';
+import type { AbilityMethod, Entity, EquipmentMethod, GoldRoll, Purchase, Registry, RegistryUsage, Relation, RolledScores } from '@nw/model';
 
 export class ApiError extends Error {
   constructor(
@@ -713,6 +713,26 @@ export class Api {
   /** Würfeln am Server — der Wurf steht im Protokoll (E-016 a). */
   rollAbilities(method: string, party?: string): Promise<RolledScores & { at: string }> {
     return this.call('/api/abilities/roll', { method: 'POST', body: JSON.stringify({ method, ...(party ? { party } : {}) }) });
+  }
+  /** Die Verfahren für die Startausrüstung der laufenden Kampagne (T-096). */
+  equipmentMethods(): Promise<{ methods: EquipmentMethod[] }> {
+    return this.call('/api/equipment');
+  }
+  /** Das Startgold würfeln — `event` ist der Beleg für das Anlegen (T-096). */
+  rollGold(method: string, cls?: string): Promise<GoldRoll & { expr: string; event: string }> {
+    return this.call('/api/equipment/roll', { method: 'POST', body: JSON.stringify({ method, ...(cls ? { class: cls } : {}) }) });
+  }
+  /** Die Startausrüstung ins Inventar der Figur; der Server prüft Budget und Grenzen (T-096). */
+  applyEquipment(
+    id: string,
+    method: string,
+    purchases: Purchase[] = [],
+    roll?: string,
+  ): Promise<{ inventory: string; items: Purchase[]; copper: number; skipped: string[] }> {
+    return this.call(`/api/entities/${encodeURIComponent(id)}/equipment`, {
+      method: 'POST',
+      body: JSON.stringify({ method, purchases, ...(roll ? { roll } : {}) }),
+    });
   }
   /** Diese Artikel ganz, gesiebt — die Teile eines Statblocks (W2). */
   entitiesById(ids: readonly string[]): Promise<Entity[]> {

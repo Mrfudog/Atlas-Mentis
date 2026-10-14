@@ -23,7 +23,11 @@ function datenstand(): Datenstand {
     name: 'Ranger', source: 'PHB', hd: { number: 1, faces: 10 }, proficiency: ['str', 'dex'],
     startingProficiencies: { skills: [{ choose: { from: ['athletics', 'perception', 'swimming'], count: 2 } }] },
     multiclassing: { proficienciesGained: { skills: [{ choose: { from: ['athletics', 'perception'], count: 1 } }] } },
-    startingEquipment: { default: ['(a) rope or (b) a kit'], defaultData: [{ a: ['rope kit|phb'], b: [{ special: 'a kit' }] }] },
+    startingEquipment: {
+      default: ['(a) rope or (b) a kit'],
+      defaultData: [{ a: ['rope kit|phb'], b: [{ special: 'a kit' }] }],
+      goldAlternative: '{@dice 5d4 × 10|5d4 × 10|Starting Gold}',
+    },
     classFeatures: [{ classFeature: 'Path Choice|Ranger||3', gainSubclassFeature: true }],
     subclassTitle: 'Ranger Path',
     featProgression: [{ name: 'Fighting Style', category: ['FS'], progression: { 2: 1 } }],
@@ -64,13 +68,27 @@ describe('Wahlen beim Einlesen (REQ-238, E-015 a)', () => {
     const ranger = finde('Class', 'Ranger');
     expect(wahlen(ranger)).toEqual([
       { id: 'skills', kind: 'proficiency', when: 'start', count: 2, from: { values: ['Athletics', 'Perception', 'Swimming'] } },
-      { id: 'equipment', kind: 'equipment', when: 'start', from: { options: [{ key: 'a', label: expect.stringMatching(/^\[\[item-\d+\|rope kit\]\]$/) }, { key: 'b', label: 'a kit' }] } },
+      {
+        id: 'equipment',
+        kind: 'equipment',
+        when: 'start',
+        from: {
+          options: [
+            { key: 'a', label: expect.stringMatching(/^\[\[item-\d+\|rope kit\]\]$/), items: [{ id: expect.stringMatching(/^item-\d+$/), qty: 1 }] },
+            { key: 'b', label: 'a kit' },
+          ],
+        },
+      },
       { id: 'multiclass-skills', kind: 'proficiency', when: 'multiclass', count: 1, from: { values: ['Athletics', 'Perception'] } },
       { id: 'ranger-path', kind: 'subclass', level: 3, from: { interfaces: ['Subclass'], edge: { type: 'subclassOf', to: ranger.id } } },
       { id: 'fighting-style-2', kind: 'feat', level: 2, count: 1, from: { interfaces: ['Feat'], tags: ['fighting style'] }, note: 'Fighting Style' },
       { id: 'tricks-3', kind: 'feature', level: 3, count: 2, from: { interfaces: ['Feature'], where: { component: 'Feature', property: 'featureType', value: 'Maneuver, Battle Master' } }, note: 'Tricks' },
       { id: 'tricks-7', kind: 'feature', level: 7, count: 1, from: { interfaces: ['Feature'], where: { component: 'Feature', property: 'featureType', value: 'Maneuver, Battle Master' } }, note: 'Tricks' },
     ]);
+  });
+
+  it('eine Klasse: das Startgold als Ausdruck (T-096)', () => {
+    expect(finde('Class', 'Ranger').components['Class']?.['startingGold']).toBe('5d4×10');
   });
 
   it('eine Abstammung: fester Bonus bleibt Feld, die Wahl wird eine', () => {
@@ -87,7 +105,9 @@ describe('Wahlen beim Einlesen (REQ-238, E-015 a)', () => {
   it('ein Hintergrund: gewichtete Wahl mit Alternative, festes Talent als Kante, Ausrüstung a/b', () => {
     const w = finde('Background', 'Wanderer');
     expect(wahlen(w)).toEqual([
-      { id: 'equipment', kind: 'equipment', from: { options: [{ key: 'a', label: expect.stringContaining('rope kit') }, { key: 'b', label: '15 gp' }] } },
+      /* Das Feste als Wahl mit einer Möglichkeit (T-096): sie beantwortet sich selbst. */
+      { id: 'equipment-fixed', kind: 'equipment', from: { options: [{ key: 'fixed', label: expect.stringContaining('rope kit'), items: [{ id: expect.stringMatching(/^item-\d+$/), qty: 1 }] }] } },
+      { id: 'equipment', kind: 'equipment', from: { options: [{ key: 'a', label: expect.stringContaining('rope kit'), items: [{ id: expect.stringMatching(/^item-\d+$/), qty: 1 }] }, { key: 'b', label: '15 gp', gold: 15 }] } },
       { id: 'ability-scores', kind: 'ability', count: 2, bonus: [2, 1], from: { values: ['str', 'dex', 'con'] }, note: 'or instead: +1/+1/+1 from str, dex, con' },
     ]);
     expect(w.relations?.some((r) => r.type === 'grants' && r.to === finde('Feat', 'Steady').id)).toBe(true);

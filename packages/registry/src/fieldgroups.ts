@@ -834,6 +834,34 @@ export const fieldGroups = {
   },
 
   /**
+   * **Ein Verfahren für die Startausrüstung** (REQ-250, T-096): Daten wie
+   * die Attributsverfahren (E-016 a) — die Leitung legt je Verfahren einen
+   * Artikel an, die Kampagne nennt die erlaubten (`allowsEquipment`).
+   *
+   * `method` sagt die Art: `rules` gibt, was Klasse und Hintergrund geben
+   * (das Feste und die gewählten Varianten), `gold` einen Betrag zum
+   * Einkaufen — `gold` fest (`100`) oder gewürfelt (`5d4×10`), leer das
+   * Startgold der Klasse —, `free` ein Budget (`budget`, gp; leer: ohne
+   * Grenze). Für `gold` und `free` gelten die Grenzen: `magic` sagt je
+   * Seltenheit, wie viele magische Gegenstände es höchstens sein dürfen
+   * (`{"uncommon": 1}`; was fehlt, heisst keiner, und ohne Angabe nur, was
+   * einen Preis hat), `itemTypes` nennt die erlaubten Gegenstandsarten.
+   */
+  EquipmentMethodInfo: {
+    schema: {
+      type: 'object',
+      required: ['method'],
+      properties: {
+        method: { type: 'string', title: 'Method', enum: ['rules', 'gold', 'free'], default: 'rules' },
+        gold: { type: 'string', title: 'Gold (gp, fixed or rolled)' },
+        budget: { type: 'number', min: 0, title: 'Budget (gp)' },
+        magic: { type: 'object', title: 'Magic items per rarity' },
+        itemTypes: { type: 'array', items: { type: 'string' }, enumRef: 'Item.itemType', title: 'Allowed item types' },
+      },
+    },
+  },
+
+  /**
    * **Was zu wählen ist** (REQ-238, E-015 a): je Eintrag eine Wahl — was
    * (`kind`), wie viele (`count`), woraus (`from`), ab welcher Stufe
    * (`level`). Klasse, Unterklasse, Abstammung, Hintergrund und Talent
@@ -965,6 +993,10 @@ export const fieldGroups = {
           enumRef: 'Ability',
         },
         startingEquipment: { type: 'string', format: 'long', title: 'Starting equipment' },
+        /* **Das Startgold** (T-096, REQ-250): ein Würfelausdruck mit
+           Faktor (`5d4×10`) oder ein fester Betrag in gp. Das Verfahren
+           „Startgold" würfelt ihn, wenn es selbst keinen Betrag nennt. */
+        startingGold: { type: 'string', title: 'Starting gold (gp)' },
         /* „STR 13 or DEX 13" — ein Satz; die Regel wertet niemand aus. */
         multiclassRequirement: { type: 'string', title: 'Multiclass requirement' },
         /* Was beim Einstieg als zweite Klasse dazukommt — weniger als beim
