@@ -586,6 +586,43 @@ export class PgRepository implements Repository {
     await this.pool.query('delete from entity_ready where entity_id = $1', [entityId]);
   }
 
+  async transferBase(peer: string, keys?: Iterable<string>): Promise<Map<string, unknown>> {
+    const liste = keys ? [...keys] : null;
+    const { rows } = liste
+      ? await this.pool.query<Row>('select key, value from transfer_base where peer = $1 and key = any($2)', [peer, liste])
+      : await this.pool.query<Row>('select key, value from transfer_base where peer = $1', [peer]);
+    return new Map(rows.map((r) => [String(r['key']), r['value']]));
+  }
+
+  async keepTransferBase(peer: string, rows: { key: string; value: unknown }[]): Promise<void> {
+    if (!rows.length) return;
+    const client = await this.pool.connect();
+    try {
+      await client.query('begin');
+      for (const r of rows) {
+        if (r.value === null || r.value === undefined) {
+          await client.query('delete from transfer_base where peer = $1 and key = $2', [peer, r.key]);
+        } else {
+          await client.query(
+            `insert into transfer_base(peer, key, value, at) values ($1, $2, $3, now())
+             on conflict (peer, key) do update set value = excluded.value, at = excluded.at`,
+            [peer, r.key, JSON.stringify(r.value)],
+          );
+        }
+      }
+      await client.query('commit');
+    } catch (error) {
+      await client.query('rollback');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async clearTransferBase(peer: string): Promise<void> {
+    await this.pool.query('delete from transfer_base where peer = $1', [peer]);
+  }
+
   async readingPosition(userId: string, layerId: string): Promise<string | undefined> {
     const { rows } = await this.pool.query<Row>(
       'select entity_id from reading_position where user_id = $1 and layer_id = $2',

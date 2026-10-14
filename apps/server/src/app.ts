@@ -111,6 +111,7 @@ import { inDieGruppe } from './gruppe.js';
 import { InMemoryAssetStore, type AssetStore } from './assets.js';
 import { registerBilder } from './bilder.js';
 import { registerKarten } from './karten.js';
+import { uebernahmeRouten, type Gegenstelle, type Sicherung } from './uebernahme.js';
 import { LocalChangeFeed, mitKanal, registerLive, type ChangeFeed } from './live.js';
 import {
   ATTEMPT_WINDOW_MINUTES,
@@ -219,6 +220,12 @@ export interface AppOptions {
   assetMaxBytes?: number;
   /** Die Quelle des Live-Kanals (T-116); ungesetzt eine im Speicher. */
   live?: ChangeFeed;
+  /** Die andere Installation für die Übernahme (T-130); ungesetzt keine. */
+  transferPeer?: Gegenstelle | null;
+  /** Nimmt diese Installation Übernahmen an (`ATLAS_TRANSFER_ACCEPT`)? */
+  transferAccept?: boolean;
+  /** Wohin die Sicherung vor einer Übernahme geht (`ATLAS_BACKUP_DIR`). */
+  sicherung?: Sicherung | null;
 }
 
 const REGISTRY_PARTS = ['interfaces', 'relations', 'views', 'vars', 'enums', 'settings'] as const;
@@ -238,6 +245,9 @@ export function buildApp({
   assets = new InMemoryAssetStore(),
   assetMaxBytes = 40 * 1024 * 1024,
   live = new LocalChangeFeed(),
+  transferPeer = null,
+  transferAccept = false,
+  sicherung = null,
 }: AppOptions): FastifyInstance {
   const app = Fastify({ logger, trustProxy });
   /* **Jedes Schreiben meldet sich beim Live-Kanal** (T-116): die Hülle
@@ -929,6 +939,9 @@ export function buildApp({
     const liestNur =
       url === '/api/validate' ||
       url === '/api/links' ||
+      /* Die Übernahme (T-130): lesen und vorschauen schreibt nichts. */
+      url === '/api/transfer/peer/read' ||
+      url === '/api/transfer/preview' ||
       (url === '/api/bulk' && (request.body as { dryRun?: unknown } | null)?.dryRun === true);
     const schreibt = request.method !== 'GET' && request.method !== 'HEAD' && !liestNur;
 
@@ -3427,6 +3440,24 @@ export function buildApp({
     },
   );
 
+
+  /** Die Übernahme ist Sache der Verwaltung der Installation (T-130) — nie in einer Sicht. */
+  async function verwaltungFuer(request: FastifyRequest): Promise<Wer | string> {
+    const echt = await werIst(request);
+    if (!echt) return 'Nicht angemeldet.';
+    if (!echt.user.isAdmin || echt.user.disabledAt) return 'Die Übernahme ist Sache der Verwaltung.';
+    if (await sichtVon(request)) return 'In einer Sicht wird nicht übernommen.';
+    return echt;
+  }
+  uebernahmeRouten(app, {
+    repo,
+    env,
+    peer: transferPeer,
+    accept: transferAccept,
+    sicherung,
+    assets,
+    verwaltung: verwaltungFuer,
+  });
 
   return app;
 }
