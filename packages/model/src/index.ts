@@ -32,3 +32,4 @@ export * from './bulk.js';
 export * from './reading.js';
 export * from './versions.js';
 export * from './merge.js';
+export * from './parts.js';

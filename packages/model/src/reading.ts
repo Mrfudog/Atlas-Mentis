@@ -21,16 +21,26 @@
  *   Abenteuer selbst), ist sie die Titelseite — ihr eigener Text ein
  *   Stück, jedes Kind ein weiteres. Sonst ist jede Wurzel ein Stück.
  *
+ * **Hat die Ebene Kapitel** (`Chapter`, T-108), liest sie sich aus ihnen:
+ * jedes Kapitel ist eine Wurzel und ein Stück, darunter seine Teile in der
+ * Reihenfolge von `partOf.rank` (`partsIndex`) — Überschriften, Absätze,
+ * Vorlesetexte, Verweise, Szenen und deren Teile. Der Baum aus Story, Arc
+ * und Szene gilt dann nicht: er ist die Geschichtssicht desselben Texts,
+ * und beide zeigen auf dieselben Szenen (E-029). Ins Inhaltsverzeichnis
+ * gehören Kapitel, Szenen und Überschriften (`toc`), nicht die Absätze;
+ * eine Überschrift steht so tief, wie ihre Stufe sagt.
+ *
  * Gesiebt wird hier nichts: wer was sehen darf, fragt der Server danach
  * (`articleVisible`, `redactEntity`), und eine Fassung (E-018) setzt er an
  * die Stelle ihres Originals — der Baum bleibt der des Originals.
  */
 
 import { articleId, primaryInterface } from './entity.js';
+import { CHAPTER_TYPE, headingLevel, isBookPart, partRank, partsIndex } from './parts.js';
 import type { Entity } from './types.js';
 
-/** Die Arten, deren Artikel Text eines Buchs sind. */
-export const READING_TYPES: readonly string[] = ['Story', 'Arc', 'Scene'];
+/** Die Arten, deren Artikel Text eines Buchs sind — ein Kapitel (T-108) und die Sprossen der Geschichte. */
+export const READING_TYPES: readonly string[] = ['Chapter', 'Story', 'Arc', 'Scene'];
 
 /** Ein Eintrag im Inhaltsverzeichnis. */
 export interface ReadingNode {
@@ -41,6 +51,12 @@ export interface ReadingNode {
   parent?: string;
   /** Das Stück, in dem er gezeigt wird (die Id seines Kapitels). */
   unit: string;
+  /**
+   * Steht er im Inhaltsverzeichnis? Kapitel, Szenen, Überschriften ja,
+   * Absätze, Vorlesetexte und Verweise nicht (T-108). Fehlt die Angabe,
+   * steht er dort.
+   */
+  toc?: boolean;
 }
 
 const LAYER_EDGE = 'inLayer';
@@ -53,7 +69,7 @@ export function inLayerOf(e: Entity, layer: string): boolean {
 
 /** Ist er ein Textknoten dieser Ebene? */
 export function isReadingNode(e: Entity, layer: string): boolean {
-  return READING_TYPES.includes(primaryInterface(e)) && inLayerOf(e, layer);
+  return (READING_TYPES.includes(primaryInterface(e)) || isBookPart(e)) && inLayerOf(e, layer);
 }
 
 /** Nach der Nummer, mit Zahlen als Zahlen: `scene-0010` nach `scene-0009`. */
@@ -66,8 +82,10 @@ export function byNumber(a: Entity, b: Entity): number {
  * Ein Kreis über `partOf` läuft nicht endlos; seine Knoten stehen am Ende.
  */
 export function readingOrder(all: Iterable<Entity>, layer: string): ReadingNode[] {
+  const liste = [...all];
+  if (liste.some((e) => primaryInterface(e) === CHAPTER_TYPE && inLayerOf(e, layer))) return chapterOrder(liste, layer);
   const nodes = new Map<string, Entity>();
-  for (const e of all) if (isReadingNode(e, layer)) nodes.set(e.id, e);
+  for (const e of liste) if (isReadingNode(e, layer)) nodes.set(e.id, e);
   const parentOf = (e: Entity): string | undefined =>
     (e.relations ?? []).find((r) => r.type === PART_EDGE && r.to !== e.id && nodes.has(r.to))?.to;
   const children = new Map<string, Entity[]>();
@@ -78,7 +96,13 @@ export function readingOrder(all: Iterable<Entity>, layer: string): ReadingNode[
     else roots.push(e);
   }
   roots.sort(byNumber);
-  for (const l of children.values()) l.sort(byNumber);
+  /* Mit Rang (T-108) gilt der Rang — ein Vorlesetext, den die Leitung in
+     ihren Arc holte, steht dort, wo sie ihn hinstellte —, sonst die Nummer. */
+  const rangAn = (e: Entity, p: string) => {
+    for (const r of e.relations ?? []) if (r.to === p && partRank(r) !== undefined) return partRank(r)!;
+    return Number.POSITIVE_INFINITY;
+  };
+  for (const [p, l] of children) l.sort((a, b) => (rangAn(a, p) - rangAn(b, p)) || byNumber(a, b));
 
   const out: ReadingNode[] = [];
   const seen = new Set<string>();
@@ -86,7 +110,7 @@ export function readingOrder(all: Iterable<Entity>, layer: string): ReadingNode[
   const walk = (e: Entity, depth: number, unit: string, parent?: string): void => {
     if (seen.has(e.id)) return;
     seen.add(e.id);
-    out.push({ id: e.id, depth, unit, ...(parent ? { parent } : {}) });
+    out.push({ id: e.id, depth, unit, ...(parent ? { parent } : {}), ...(isBookPart(e) && headingLevel(e) === undefined ? { toc: false } : {}) });
     for (const k of children.get(e.id) ?? []) {
       /* Unter der Titelseite ist jedes Kind ein eigenes Stück. */
       walk(k, depth + 1, titlePage && depth === 0 ? k.id : unit, e.id);
@@ -96,6 +120,44 @@ export function readingOrder(all: Iterable<Entity>, layer: string): ReadingNode[
   /* Was in einem Kreis hängt, hat keine Wurzel — es steht dann am Ende,
      statt still zu fehlen. */
   for (const e of [...nodes.values()].sort(byNumber)) walk(e, 0, e.id);
+  return out;
+}
+
+/**
+ * **Die Lesereihenfolge aus Kapiteln** (T-108): Wurzeln sind die Kapitel
+ * der Ebene, die an keinem anderen Kapitel der Ebene hängen (nach Nummer);
+ * darunter, Tiefe zuerst, was mit Rang an ihnen hängt, und was mit Rang an
+ * diesen Teilen hängt (Räume einer Szene, deren Absätze). Gezählt wird nur,
+ * was in derselben Ebene liegt — ein Teil aus einer fremden Ebene ist dort
+ * ein Verweis (`Embed`), keine Kante.
+ */
+function chapterOrder(all: Entity[], layer: string): ReadingNode[] {
+  const hier = all.filter((e) => inLayerOf(e, layer));
+  const teile = partsIndex(hier);
+  const kapitel = hier.filter((e) => primaryInterface(e) === CHAPTER_TYPE);
+  const imKapitel = new Set(kapitel.map((k) => k.id));
+  const roots = kapitel
+    .filter((k) => !(k.relations ?? []).some((r) => partRank(r) !== undefined && imKapitel.has(r.to) && r.to !== k.id))
+    .sort(byNumber);
+  const out: ReadingNode[] = [];
+  const seen = new Set<string>();
+  const tiefeVon = new Map<string, number>();
+  const walk = (e: Entity, depth: number, unit: string, parent?: string): void => {
+    if (seen.has(e.id)) return;
+    seen.add(e.id);
+    const level = headingLevel(e);
+    /* Eine Überschrift steht so tief, wie ihre Stufe sagt: „##" unter dem
+       Kapitel eine Stufe, „###" zwei. Unter ihr hängt nichts — sie gliedert
+       den Fluss, sie enthält ihn nicht. */
+    const tiefe = level !== undefined && parent ? (tiefeVon.get(parent) ?? 0) + Math.max(1, level - 1) : depth;
+    tiefeVon.set(e.id, tiefe);
+    const toc = !isBookPart(e) || level !== undefined;
+    out.push({ id: e.id, depth: tiefe, unit, ...(parent ? { parent } : {}), ...(toc ? {} : { toc: false }) });
+    for (const t of teile.get(e.id) ?? []) walk(t.entity, depth + 1, unit, e.id);
+  };
+  for (const r of roots) walk(r, 0, r.id);
+  /* Was in einem Kreis hängt, steht am Ende, statt still zu fehlen. */
+  for (const k of [...kapitel].sort(byNumber)) walk(k, 0, k.id);
   return out;
 }
 

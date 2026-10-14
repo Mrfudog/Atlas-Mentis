@@ -41,7 +41,7 @@ import { foldName, type User } from './auth.js';
  * **Die Ebenen, die hier angelegt wurden** (T-109): jede, die nicht aus
  * einer Einfuhr kommt. Was der Importer für 5e.tools anlegt, trägt Pegs
  * mit `e5_` (`Werkbank.anlegen`, `buchEbeneId` …) — daran halten sich
- * auch die Migrationen 026, 034, 037 und 043. Ohne Herausgeber-Gruppe
+ * auch die Migrationen 026, 034, 037 und 044. Ohne Herausgeber-Gruppe
  * heissen diese Homebrew, die eingelesenen „Unassigned" (`publisherInfo`).
  * Ein Konto, eine Kampagne oder ein Besitz daran wäre die schwächere
  * Frage: eine Kampagnenebene, die zwei Runden teilen, ist niemandes
