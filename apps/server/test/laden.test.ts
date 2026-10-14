@@ -34,7 +34,20 @@ const bestand = (): Entity[] => [
       { id: 'l~2', type: 'sells', to: 'geheim', props: { qty: 1 } },
     ],
   }),
-  art('f', 'PlayerCharacter', 'Ash', 'pc-0001', { relations: [{ id: 'f~1', type: 'memberOf', to: 'gilde', props: { rank: 'Flame' } }] }),
+  art('f', 'PlayerCharacter', 'Ash', 'pc-0001', {
+    relations: [
+      { id: 'f~1', type: 'memberOf', to: 'gilde', props: { rank: 'Flame' } },
+      { id: 'f~2', type: 'carries', to: 'inv-f' },
+    ],
+  }),
+  art('inv-f', 'Inventory', 'Ash’s pack', 'inventory-0001', {
+    components: { Inventory: { copper: 2000 } },
+    relations: [
+      { id: 'h1', type: 'holds', to: 'laterne', props: { qty: 1, tier: 'pack' } },
+      { id: 'h2', type: 'holds', to: 'laterne', props: { qty: 1, tier: 'pack', reservedFor: 'auftrag' } },
+    ],
+  }),
+  art('fremd', 'PlayerCharacter', 'Bryn', 'pc-0002'),
 ];
 
 let app: ReturnType<typeof buildApp>;
@@ -78,5 +91,126 @@ describe('refs.shop (T-129)', () => {
   it('fehlt an allem, was kein Laden ist', async () => {
     const r = await app.inject({ method: 'GET', url: '/api/entities/laterne', headers: { cookie: await anmelden('leitung') } });
     expect(r.json().refs.shop).toBeUndefined();
+  });
+});
+
+describe('refs.shop liest die geltende Fassung (T-139)', () => {
+  it('nimmt den Preis aus einer aufgeschalteten Überschreibung, mit Herkunft — abgeschaltet gilt das Original', async () => {
+    const ring = art('ring', 'Item', 'Ring of Warmth', 'item-0003', { components: { Item: { rarity: 'uncommon' } } });
+    const schaetzung = art('ring-ai', 'Item', 'Ring of Warmth', 'item-0004', {
+      components: { Item: { rarity: 'uncommon', copperPrice: 40000, priceNote: 'estimated: uncommon' } },
+      relations: [
+        { id: 'ra~1', type: 'inLayer', to: 'ki' },
+        { id: 'ra~2', type: 'overrides', to: 'ring' },
+      ],
+    });
+    const gruppe = art('ki-gruppe', 'Layer', 'AI content', 'layer-0001', { components: { Layer: { kind: 'group', groupBy: 'publisher' } } });
+    const ebene = art('ki', 'Layer', 'AI generated prices', 'layer-0002', {
+      components: { Layer: { kind: 'pack', order: 50 } },
+      relations: [{ id: 'ki~1', type: 'partOf', to: 'ki-gruppe' }],
+    });
+    const laden = (await repo.getEntity('laden'))!;
+    await repo.putEntity({ ...laden, relations: [...(laden.relations ?? []), { id: 'l~3', type: 'sells', to: 'ring' }] });
+    for (const e of [ring, schaetzung, gruppe, ebene]) await repo.putEntity(e);
+    const k = (await repo.getEntity('k'))!;
+    const an = { ...k, relations: [{ id: 'k~1', type: 'activates', to: 'ki-gruppe' }] };
+    await repo.putEntity(an);
+    const cookie = await anmelden('leitung');
+
+    let w = (await app.inject({ method: 'GET', url: '/api/entities/laden', headers: { cookie } })).json().refs.shop.table;
+    expect(w.find((x: { name: string }) => x.name === 'Ring of Warmth')).toMatchObject({
+      item: 'ring', list: 40000, listNote: 'estimated: uncommon', price: 39900,
+    });
+    /* Der Kauf rechnet mit demselben Preis: zu teuer, nicht „ohne Preis" oder „nicht da" (T-133). */
+    const kauf = await app.inject({ method: 'POST', url: '/api/shops/laden/buy', headers: { cookie: await anmelden('spiel') }, payload: { actor: 'f', edge: 'l~3' } });
+    expect(kauf.json().refused).toBe('tooPoor');
+
+    await repo.putEntity({ ...k, relations: [{ id: 'k~1', type: 'activates', to: 'ki-gruppe', props: { mode: 'off' } }, { id: 'k~2', type: 'activates', to: 'ki', props: { mode: 'off' } }] });
+    w = (await app.inject({ method: 'GET', url: '/api/entities/laden', headers: { cookie } })).json().refs.shop.table;
+    const ohne = w.find((x: { name: string }) => x.name === 'Ring of Warmth');
+    expect(ohne).toMatchObject({ item: 'ring' });
+    expect(ohne.list).toBeUndefined();
+    expect(ohne.price).toBeUndefined();
+  });
+});
+
+describe('Kaufen und Verkaufen (T-133)', () => {
+  const kaufen = async (wer: string, body: Record<string, unknown>) =>
+    app.inject({ method: 'POST', url: '/api/shops/laden/buy', headers: { cookie: await anmelden(wer) }, payload: body });
+  const verkaufen = async (wer: string, body: Record<string, unknown>) =>
+    app.inject({ method: 'POST', url: '/api/shops/laden/sell', headers: { cookie: await anmelden(wer) }, payload: body });
+
+  it('nennt an der eigenen Figur Geld und was sie verkaufen kann — ohne Reserviertes', async () => {
+    const r = await app.inject({ method: 'GET', url: '/api/entities/laden', headers: { cookie: await anmelden('spiel') } });
+    const [ash] = r.json().refs.shop.mine;
+    expect(ash).toMatchObject({ inventory: 'inv-f', purse: 2000 });
+    expect(ash.sellable).toEqual([{ inventory: 'inv-f', edge: 'h1', item: 'laterne', name: 'Lantern', qty: 1, price: 500 }]);
+  });
+
+  it('kauft zum Preis des Servers: Menge sinkt, Stück ins Inventar, Münzen ab, Protokoll', async () => {
+    const r = await kaufen('spiel', { actor: 'f', edge: 'l~1', qty: 2, price: 1 });
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toMatchObject({ qty: 2, unit: 800, total: 1600, copper: 400 });
+    const laden = await repo.getEntity('laden');
+    expect(laden?.relations?.find((x) => x.id === 'l~1')?.props?.['qty']).toBe(1);
+    const inv = await repo.getEntity('inv-f');
+    expect(inv?.components['Inventory']?.['copper']).toBe(400);
+    expect(inv?.relations?.find((x) => x.id === 'h1')?.props?.['qty']).toBe(3);
+    const [ev] = await repo.listEvents({ name: 'shop.bought', limit: 5 });
+    expect(ev?.payload).toMatchObject({ actor: 'f', item: 'laterne', qty: 2, unit: 800, total: 1600, by: 'u_s' });
+    expect((ev?.payload as { steps: unknown[] }).steps).toHaveLength(2);
+  });
+
+  it('lehnt ab: zu wenig Geld, mehr als da, ausverkauft, fremde Figur, verborgene Ware', async () => {
+    expect((await kaufen('spiel', { actor: 'f', edge: 'l~1', qty: 3 })).json().refused).toBe('tooPoor');
+    expect((await kaufen('spiel', { actor: 'f', edge: 'l~1', qty: 4 })).json().refused).toBe('tooFew');
+    expect((await kaufen('spiel', { actor: 'fremd', edge: 'l~1' })).statusCode).toBe(403);
+    expect((await kaufen('spiel', { actor: 'f', edge: 'l~2' })).json().refused).toBe('missing');
+    const leer = await repo.getEntity('laden');
+    await repo.putEntity({ ...leer!, relations: leer!.relations!.map((x) => (x.id === 'l~1' ? { ...x, props: { qty: 0 } } : x)) });
+    expect((await kaufen('spiel', { actor: 'f', edge: 'l~1' })).json().refused).toBe('soldOut');
+    expect((await repo.getEntity('inv-f'))?.components['Inventory']?.['copper']).toBe(2000);
+  });
+
+  it('verkauft zur Hälfte des Listenpreises, füllt die gezählte Ware auf, Reserviertes nicht', async () => {
+    const r = await verkaufen('spiel', { actor: 'f', inventory: 'inv-f', edge: 'h1' });
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toMatchObject({ qty: 1, unit: 500, total: 500, copper: 2500 });
+    expect((await repo.getEntity('laden'))?.relations?.find((x) => x.id === 'l~1')?.props?.['qty']).toBe(4);
+    expect((await repo.getEntity('inv-f'))?.relations?.some((x) => x.id === 'h1')).toBe(false);
+    expect((await verkaufen('spiel', { actor: 'f', inventory: 'inv-f', edge: 'h2' })).json().refused).toBe('reserved');
+    const [ev] = await repo.listEvents({ name: 'shop.sold', limit: 5 });
+    expect(ev?.payload).toMatchObject({ actor: 'f', item: 'laterne', total: 500, rule: 'half' });
+  });
+
+  it('legt Gekauftes als Instanz an (T-150) und verkauft sie wieder — danach ist sie weg', async () => {
+    const inv0 = await repo.getEntity('inv-f');
+    await repo.putEntity({ ...inv0!, relations: inv0!.relations!.filter((x) => x.id !== 'h1') });
+    const r = await kaufen('spiel', { actor: 'f', edge: 'l~1' });
+    expect(r.statusCode).toBe(200);
+    const piece = r.json().piece as string;
+    expect(piece).not.toBe('laterne');
+    const stueck = await repo.getEntity(piece);
+    expect(stueck?.relations?.find((x) => x.type === 'instanceOf')?.to).toBe('laterne');
+    expect(stueck?.components['Item']).toBeUndefined();
+    expect(stueck?.components['Identity']?.['name']).toBe('Lantern');
+    const inv = await repo.getEntity('inv-f');
+    const kante = inv?.relations?.find((x) => x.type === 'holds' && x.to === piece);
+    expect(kante?.props?.['qty']).toBe(1);
+    /* Gelesen wird die Instanz samt Vorlage — die Spielerin sieht ihr Stück mit Preis. */
+    const g = await app.inject({ method: 'GET', url: `/api/entities/${piece}`, headers: { cookie: await anmelden('spiel') } });
+    expect(g.statusCode).toBe(200);
+    expect(g.json().components.Item.copperPrice).toBe(1000);
+    /* Ein zweiter Kauf legt auf denselben Stapel. */
+    expect((await kaufen('spiel', { actor: 'f', edge: 'l~1' })).json().piece).toBe(piece);
+    const v = await verkaufen('spiel', { actor: 'f', inventory: 'inv-f', edge: kante!.id, qty: 2 });
+    expect(v.json()).toMatchObject({ qty: 2, unit: 500 });
+    expect(await repo.getEntity(piece)).toBeFalsy();
+    expect((await repo.getEntity('laden'))?.relations?.find((x) => x.id === 'l~1')?.props?.['qty']).toBe(3);
+  });
+
+  it('verkauft nicht aus fremdem Inventar', async () => {
+    const r = await verkaufen('spiel', { actor: 'f', inventory: 'inv-x', edge: 'h1' });
+    expect(r.statusCode).toBe(403);
   });
 });

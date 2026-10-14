@@ -98,6 +98,9 @@ import {
   CAMPAIGN_SETTING,
   craftCheck,
   shopWares,
+  withVersionPrices,
+  buybackPrice,
+  reservedFor,
   SHOP_TYPE,
   type WareOffer,
   RECIPE_COMPONENT,
@@ -107,10 +110,12 @@ import { seedRegistry } from '@nw/registry';
 import { RevisionConflict } from './repo.js';
 import type { ReadyStand, Repository } from './repo.js';
 import type { AtlasEnv } from './config.js';
-import { NO_LAYER, buildListIndex, listProjection, parseListQuery, queryList, type ListIndex } from './liste.js';
+import { NO_LAYER, buildListIndex, listProjection, parseListQuery, queryList, search, type ListIndex } from './liste.js';
 import { mayActivate, rechtAn, registerVerwaltung } from './verwaltung.js';
 import { registerLesen } from './lesen.js';
 import { registerHandwerk } from './handwerk.js';
+import { registerFiltergruppen } from './filtergruppen.js';
+import { inventareDerFigur, registerLaden } from './laden.js';
 import { reservierteSperre, vorDemLoeschen } from './reservierung.js';
 import { eigeneEbenen, registerEbenenrechte } from './ebenenrechte.js';
 import { ausfuhrName, kampagnenAusfuhr } from './ausfuhr.js';
@@ -1055,6 +1060,11 @@ export function buildApp({
     if (/^\/api\/entities\/[^/]+\/equipment$/.test(url) && request.method === 'POST') return;
     /* Das Handwerk (T-128): die Routen prüfen Figur, Rolle und Regel selbst. */
     if (url === '/api/crafting' || url.startsWith('/api/crafting/')) return;
+    /* Filtergruppen (T-137): eigene schreibt jedes Konto, die der
+       Kampagne die Leitung — die Routen prüfen beides selbst. */
+    if (url === '/api/filters' || url.startsWith('/api/filters/')) return;
+    /* Kaufen und Verkaufen (T-133): die Route prüft die Figur selbst (`laden.ts`). */
+    if (/^\/api\/shops\/[^/]+\/(buy|sell)$/.test(url) && request.method === 'POST') return;
     /* Den eigenen Lesestand merken (T-091): die Route schreibt nur am Konto. */
     if (/^\/api\/read\/[^/]+\/position$/.test(url) && request.method === 'PUT') return;
     /* „ready" per Knopf (REQ-237): die Route prüft je Artikel (`maySetReady`). */
@@ -1526,6 +1536,39 @@ export function buildApp({
   });
 
   /**
+   * **Die übergreifende Suche** (T-138): `GET /api/search?q=&type=&layer=&publisher=&area=&offset=&limit=`.
+   * Derselbe gesiebte Index wie `/api/list` — was dieser Betrachter nicht
+   * sieht, findet er nicht —, nach Nähe geordnet und mit einem Filter nach
+   * Herausgeber. Beim Tippen fragt die Seite hier; ohne `q` antwortet sie
+   * leer, eine Suche nach nichts ist keine Liste aller Artikel.
+   */
+  const verlage = new WeakMap<Map<string, Entity>, Map<string, string>>();
+  app.get('/api/search', async (request) => {
+    const roh_ = request.query as Record<string, unknown>;
+    const q = parseListQuery(roh_);
+    q.limit = Math.min(q.limit, 50);
+    const text = q.q?.trim() ?? '';
+    if (!text) return { q: '', total: 0, offset: 0, limit: q.limit, rows: [], facets: { types: [], layers: [], publishers: [] } };
+    const [stand, idx] = await Promise.all([roh(), indexFor(request)]);
+    /* Herausgeber je Ebene, einmal je Stand (T-094, T-109). */
+    let verlag = verlage.get(stand.map);
+    if (!verlag) {
+      verlag = new Map();
+      const eigene = eigeneEbenen(stand.map);
+      for (const e of stand.map.values()) {
+        if ((e.interfaces ?? [])[0] === 'Layer') verlag.set(e.id, publisherOf(stand.map, e, eigene));
+      }
+      verlage.set(stand.map, verlag);
+    }
+    const publisher = typeof roh_['publisher'] === 'string' && roh_['publisher']
+      ? roh_['publisher'].split(',').map((x) => x.trim()).filter(Boolean)
+      : undefined;
+    const v = verlag;
+    /* Nur Ebenen, die dieser Betrachter sieht: der Index kennt ihren Namen. */
+    return search(idx, q, publisher, (l) => (idx.names.has(l) ? (v.get(l) ?? '') : ''));
+  });
+
+  /**
    * **Die Quellenkürzel und ihre Bücher** (T-088, REQ-245): Kürzel → voller
    * Titel, aus `Layer.abbreviation` der Ebenen, die dieser Betrachter
    * sieht. Die Seite zeigt damit an jedem „XGE" den Titel — beim
@@ -1703,14 +1746,27 @@ export function buildApp({
   ): Promise<{ table: unknown[]; mine: unknown[] } | null> {
     const registry = await repo.getRegistry();
     if (!typeChain(registry, primaryInterface(e)).includes(SHOP_TYPE)) return null;
+    /* Gerechnet wird in der Preissicht (T-139): jede Ware mit dem Preis
+       ihrer geltenden Fassung, etwa aus „AI generated prices". */
+    const kampagne = currentCampaign(map, registry.settings ?? null);
+    const roherStand = map;
+    map = withVersionPrices(map, kampagne, registry);
     const verkauft = (e.relations ?? []).filter((r) => r.type === 'sells').map((r) => map.get(r.to)).filter((x): x is Entity => !!x);
     const user = await viewerOf(request);
     const figuren = (user?.actorIds ?? []).map((id) => map.get(id)).filter((x): x is Entity => !!x);
     const genannt = new Set<string>();
     for (const r of [...(e.relations ?? []), ...figuren.flatMap((f) => f.relations ?? [])]) genannt.add(r.to);
     for (const x of map.values()) if ((x.relations ?? []).some((r) => r.type === 'controls' && r.to === e.id)) genannt.add(x.id);
+    /* Was die eigenen Figuren verkaufen könnten, muss der Betrachter sehen dürfen (T-133). */
+    for (const f of figuren) for (const inv of inventareDerFigur(f, map)) for (const r of map.get(inv)?.relations ?? []) if (r.type === 'holds') genannt.add(r.to);
     const kandidaten = [...new Set([...verkauft, ...[...genannt].map((i) => map.get(i)).filter((x): x is Entity => !!x)])];
-    const sichtbar = new Set((await sieve(request, kandidaten, map)).map((x) => x.id));
+    /* Ein Original, das eine Fassung ersetzt, steht nicht im Spiel — gesiebt
+       wird darum die geltende Fassung, gezeigt das Original, auf das die
+       Kante zeigt (T-139). */
+    const index = overridersIndex(roherStand.values());
+    const geltend = (x: Entity) => resolveArticle(roherStand, x, kampagne, registry, index);
+    const gesiebt = new Set((await sieve(request, kandidaten.map(geltend), roherStand)).map((x) => x.id));
+    const sichtbar = new Set(kandidaten.filter((x) => gesiebt.has(geltend(x).id)).map((x) => x.id));
     const name = (id?: string) => (id && sichtbar.has(id) ? entityName(map.get(id)) : undefined);
     const benannt = (w: WareOffer[]) =>
       w
@@ -1725,8 +1781,33 @@ export function buildApp({
         }));
     return {
       table: benannt(shopWares(e, { entities: map })),
-      mine: figuren.map((f) => ({ id: f.id, name: entityName(f), wares: benannt(shopWares(e, { entities: map, buyer: f })) })),
+      mine: figuren.map((f) => ({ id: f.id, name: entityName(f), ...geldbeutel(f), wares: benannt(shopWares(e, { entities: map, buyer: f })) })),
     };
+
+    /**
+     * Was die Figur hat (T-133): ihr Geld (`Inventory.copper` am Inventar,
+     * das sie trägt) und was sie diesem Laden verkaufen kann — die freien
+     * Stücke aus ihrem Inventar und den Behältern darin, mit dem
+     * Ankaufspreis (`buybackPrice`, E-045). Reserviertes fehlt (T-128).
+     */
+    function geldbeutel(f: Entity) {
+      const invId = (f.relations ?? []).find((r) => r.type === 'carries')?.to;
+      if (!invId) return {};
+      const purse = Math.max(0, Math.trunc(Number(map.get(invId)?.components?.['Inventory']?.['copper']) || 0));
+      const sellable = inventareDerFigur(f, map).flatMap((inv) =>
+        (map.get(inv)?.relations ?? [])
+          .filter((r) => r.type === 'holds' && !reservedFor(r) && sichtbar.has(r.to))
+          .map((r) => ({
+            inventory: inv,
+            edge: r.id,
+            item: r.to,
+            name: entityName(map.get(r.to)),
+            qty: Math.max(1, Math.trunc(Number(r.props?.['qty']) || 1)),
+            ...(buybackPrice(map.get(r.to), map) !== undefined ? { price: buybackPrice(map.get(r.to), map) } : {}),
+          })),
+      );
+      return { inventory: invId, purse, sellable };
+    }
   }
 
   async function bezuegeVon(
@@ -2414,8 +2495,12 @@ export function buildApp({
 
   /* Die Leseansicht (T-091, REQ-247): eine Ebene als Buch. */
   const { leseZiel } = registerLesen(app, { repo, viewerOf, roh, sieve, geltend, bezuegeVon });
+  /* Filtergruppen je Seite (T-137): die der Kampagne und die eigenen. */
+  registerFiltergruppen(app, { repo, viewerOf, roh });
   /* Der Fertigungsauftrag (T-128): Material reservieren, Proben, Abrechnung. */
   registerHandwerk(app, { repo, viewerOf, roh, sieve, schreibeGeprueft: (e) => schreibeGeprueft(e), kampagnenEbene });
+  /* Kaufen und Verkaufen im Laden (T-133): der Preis am Server, gegen die gelesene Revision. */
+  registerLaden(app, { repo, viewerOf, roh, sieve, schreibeGeprueft: (e, erwartet) => schreibeGeprueft(e, undefined, erwartet), kampagnenEbene });
 
   /* **Der Live-Kanal** (T-116, REQ-116): `GET /api/live`, je Empfänger
      gesiebt mit `sieveFuer` — dieselbe Rechnung wie jede Route. */
@@ -2669,10 +2754,12 @@ export function buildApp({
     const kampagne = currentCampaign(map, registry.settings ?? null);
     if (!kampagne || !inStack(map, e, kampagne, registry)) return [];
     const ebenen = layersOf(e);
+    /* Die Verwaltung schreibt ohnehin alles; eine Fassung legt sie in die
+       Ebene der Kampagne oder in eine eigene, die im Spiel ist — etwa
+       „AI generated prices" (T-139). */
     if (user.isAdmin) {
       if (!ebenen.length) return [];
-      const ebene = await kampagnenEbene(map, kampagne);
-      return ebene && !ebenen.includes(ebene.id) ? [ebene] : [];
+      return (await zielEbenen(user, map, kampagne)).filter((l) => !ebenen.includes(l.id));
     }
     if ((await ownedBy(user, map.values())).has(e.id)) return [];
     return (await zielEbenen(user, map, kampagne)).filter((l) => !ebenen.includes(l.id));

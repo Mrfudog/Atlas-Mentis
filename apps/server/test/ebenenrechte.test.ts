@@ -237,6 +237,20 @@ describe('editing what is not yours makes a version (T-098)', () => {
     /* Ein Spieler ohne eigene Ebene im Spiel bekommt keine Fassung. */
     expect((await als('Tom', 'POST', '/api/entities/n_ort/adapt')).statusCode).toBe(403);
   });
+
+  it('lets the administration lay a version into its own layer in play, not only the campaign layer (T-139)', async () => {
+    const { als, repo } = await aufbau();
+    const ly = ((await als('Basil', 'POST', '/api/layers', { name: 'AI generated prices' })).json() as { id: string }).id;
+    /* Noch nicht aufgeschaltet: nur die Ebene der Kampagne. */
+    expect((await als('Basil', 'POST', '/api/entities/r_regel/adapt', { layer: ly })).statusCode).toBe(409);
+    await als('Basil', 'POST', `/api/campaigns/camp_nebel/layers/${ly}`);
+    const offen = await als('Basil', 'POST', '/api/entities/r_regel/adapt');
+    expect(offen.json().layers.map((l: { id: string }) => l.id)).toEqual(['ly_nebel', ly]);
+    const gut = await als('Basil', 'POST', '/api/entities/r_regel/adapt', { layer: ly });
+    expect(gut.statusCode).toBe(201);
+    const fassung = (await repo.getEntity(gut.json().id))!;
+    expect(fassung.relations?.map((k) => [k.type, k.to])).toEqual([['inLayer', ly], ['overrides', 'r_regel']]);
+  });
 });
 
 describe('a new campaign gets its own layer', () => {

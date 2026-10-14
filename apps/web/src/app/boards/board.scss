@@ -319,6 +319,9 @@ button.klein {
 }
 .leinwand.zeichnet {
   cursor: crosshair;
+  /* Am Telefon scrollte der Finger sonst die Bühne, statt den Rahmen zu
+     ziehen, und der Browser brach den Zug mit pointercancel ab (T-146). */
+  touch-action: none;
 }
 .bereich {
   position: absolute;
@@ -337,6 +340,16 @@ button.klein {
   gap: 0.25rem;
   height: 30px;
   padding: 0 0.3rem;
+}
+.bkopf.ziehbar {
+  cursor: move;
+  touch-action: none;
+}
+.bereich.zieht {
+  border-color: var(--accent);
+}
+.bgriff {
+  border-bottom-right-radius: 4px;
 }
 .bname {
   overflow: hidden;
@@ -367,4 +380,25 @@ button.klein {
   border: 2px dashed var(--accent);
   background: rgb(0 0 0 / 5%);
   pointer-events: none;
+}
+
+/* Mit dem Finger (T-146): Griffe und Knöpfe so gross, dass man sie trifft —
+   16 px sind ein Mauszeiger, keine Fingerkuppe. Am Desktop bleibt alles, wie
+   es war. */
+@media (pointer: coarse) {
+  .kkopf {
+    min-height: 36px;
+  }
+  .kname.ziehbar {
+    touch-action: none;
+  }
+  .griff {
+    width: 28px;
+    height: 28px;
+  }
+  .klapp,
+  .bkopf .weg {
+    min-width: 30px;
+    min-height: 30px;
+  }
 }

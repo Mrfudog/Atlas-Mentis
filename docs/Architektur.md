@@ -464,7 +464,8 @@ geöffneten Artikel samt den Namen, die sie mitbrachten (`Bestand.namen`,
 `Bestand.verweise`). Das Kompendium fragt je Blatt den Server
 (`/api/list`); die Seitenzahl, die Feldfilter und die Vorschau stehen im
 Filterzustand der Seite (`ListenFilter`, „der Filter gehört der Seite"),
-die Art in der Adresse. Wer ein Kantenziel oder ein Verweisfeld wählt,
+die Art in der Adresse, die Filtergruppe auch (`?view=`, T-137; die
+Gruppen hält `Filtergruppen` für Kopfleiste und Unterreiter zugleich). Wer ein Kantenziel oder ein Verweisfeld wählt,
 sucht über dieselbe Route (`nw-wahl`, `of=Art&q=…&limit=20`). Boards und Klassen fragen sie ebenso
 (`Bestand.liste`): die Boards und die Geschichte mit `rel=partOf`, die
 Namen der verbundenen Artikel mit `ids=`; die Zeilen liegen als schmale

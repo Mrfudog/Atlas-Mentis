@@ -736,6 +736,14 @@ heute `Statblock` und `Item` (M4: das +1-Langschwert am Tisch ist eine
 Instanz des Langschwerts), und `to: same` hält die Instanz in der Art ihrer
 Vorlage. Ein eigener Typ dafür wäre derselbe Typ ein zweites Mal.
 
+**Was eine Figur in die Hand bekommt, entsteht als Instanz** (T-150, zuerst
+beim Kauf, T-133): `newInstance` legt den Artikel an — `instanceOf` auf den
+Grundartikel, `inLayer` in die Ebene der Kampagne, `Identity` mit dem Namen
+der Vorlage und einer neuen Nummer, `Status: ready`, sonst nichts. Eine
+Funktion für Kauf, Beute, Handwerk und Geschenke. `followsTemplate` sagt, ob
+eine Instanz in nichts abweicht — dann ist sie ein beliebiges Stück und
+darf einen Stapel bilden.
+
 ---
 
 ## 8. Ebenen und Stapel
@@ -964,7 +972,9 @@ Migration 035 an. **Was nicht in den eigenen Ebenen liegt, ändert man als
 Fassung:** „Edit" an einem fremden Artikel — auch einem ohne Ebene, der
 bleibt bei der Verwaltung — legt über `POST /api/entities/:id/adapt` eine
 Fassung (E5) in eine eigene Ebene, die im Spiel ist (`zielEbenen`; bei
-mehreren `{ layer }`). `ready` bleibt bei `gm`: ändert die Mitleitung oder
+mehreren `{ layer }`). Die Verwaltung wählt dabei zwischen der Ebene der
+Kampagne und ihren eigenen Ebenen im Spiel — so legt die Werkbank geschätzte
+Preise in „AI generated prices" (T-139). `ready` bleibt bei `gm`: ändert die Mitleitung oder
 eine Spielerin in ihrer Ebene etwas Fertiges, fällt es zurück wie oben.
 
 ### 9.5 Handwerk: gelernt und gebunden (D55)
@@ -1110,6 +1120,15 @@ flowchart LR
   2024 rare". Der Buchstil zeigt es hinter dem Preis. Ein Satz und keine
   Aufzählung: nach welcher Regel geschätzt wird, entscheidet die Leitung,
   und ein geschätzter Preis soll sich finden und ersetzen lassen.
+- **Geschätzte Preise wohnen in einer eigenen Ebene** (T-139, Vorgabe der
+  Leitung 14.10.): „AI generated prices" in der Herausgeber-Gruppe „AI
+  content". Der Grundartikel behält, was die Quelle sagt; die Schätzung
+  ist eine Fassung mit `overrides` aufs Original (E5) und `priceNote`.
+  Schaltet die Kampagne die Gruppe ab (`activates` `mode: 'off'`), gilt
+  wieder das Original — ohne Preis. Die Artikelseite zeigt den Unterschied
+  an `copperPrice` wie jede Fassung (E6). Ein Listenpreis, den die Quelle
+  als Rechnung gibt (`valueExpression`), ist keine Schätzung und bleibt im
+  Grundartikel.
 - **Ein Abschlag ist ein Wort**: `−10 gp`, `+5 sp`, `−10 %`
   (`parsePriceMod`). Ohne Einheit ist er keiner; was sich nicht lesen
   lässt, zählt 0 und steht als `invalid` in der Herkunft.
@@ -1121,7 +1140,12 @@ flowchart LR
   Rang ausserhalb der Leiter trifft niemanden. Eine Fraktion, die ihren
   eigenen Mitgliedern Rabatt gibt, zeigt auf sich selbst.
 - **Gerechnet beim Lesen** (D8, `shopWares`, `packages/model/src/shop.ts`):
-  Grundpreis = `sells.price` sonst Listenpreis; dann Laden, Rabatte, Ware.
+  Grundpreis = `sells.price` sonst Listenpreis **der geltenden Fassung**
+  (T-139: der Server rechnet in der **Preissicht** `withVersionPrices` —
+  jedes Original trägt Preis und Herkunft seiner geltenden Fassung, Ids
+  bleiben; Kaufen, Verkaufen und Ankauf rechnen damit, gesiebt wird die
+  Fassung; die Herkunft reitet als `listNote` mit); dann Laden, Rabatte,
+  Ware.
   **Prozent auf den Grundpreis**, addiert, je Schritt auf Kupfer gerundet;
   nie unter 0. Jeder Schritt nennt Geber, Empfänger und Rang.
 - **Am Server** (`refs.shop`): am Tisch (Laden und Ware) und je eigener
@@ -1131,9 +1155,41 @@ flowchart LR
   ohne Namen. Element `wares` auf der Artikelseite.
 - **`regards` rechnet nicht mit** (E-043, offen): persönliche Rabatte sind
   `discount` vom Ladenhalter an die Figur.
-- **Kaufen und Verkaufen** (Menge sinkt, Gegenstand ins Inventar, Münzen
-  ab `Inventory.copper`) kommt mit dem Inventar (T-127). Migration 061 trägt
-  Art und Kanten nach.
+- Migration 061 trägt Art und Kanten nach.
+- **Kaufen** (T-133, `POST /api/shops/:id/buy`, `buyWare`): die Maske
+  schickt Ware (`sells`-Kante), Menge und Figur — **nie einen Preis**; der
+  Server rechnet `shopWares` für diese Figur neu. Die gezählte Menge sinkt
+  (leer bleibt unbegrenzt), und `Inventory.copper` sinkt um Preis × Menge.
+  Ins Inventar, das die Figur trägt (`carries`), kommt per `holds` **eine
+  Instanz** des Gegenstands (`newInstance`, T-150): ein eigener Artikel mit
+  `instanceOf` auf den Grundartikel, in der Ebene der Kampagne, `ready`,
+  sonst nur Name und Nummer — Preis, Gewicht und Form liest er von der
+  Vorlage, bis er abweicht. Liegt schon ein loser Stapel desselben da (der
+  Grundartikel selbst oder eine Instanz, die nicht abweicht,
+  `followsTemplate`), wächst der, und es entsteht nichts. Wer kauft, hat
+  das Stück angelegt (`app_user_article`, D72) und darf es ändern. Nein
+  sagen `soldOut`, `unavailable`, `tooFew`, `noPrice` (verschenkt wird
+  nichts), `tooPoor`; ohne Inventar gibt es nichts zu bezahlen.
+- **Verkaufen** (`POST /api/shops/:id/sell`, `sellPiece`): ein Stapel aus
+  dem Inventar der Figur oder einem Behälter darin (nicht dem der Gruppe),
+  zum **Ankaufspreis** `buybackPrice` = halber Listenpreis, abgerundet (5e;
+  ob ein Laden einen eigenen Satz trägt, ist offen: E-045). Rabatte gelten
+  nur beim Kaufen. Ein **reserviertes** Stück (`holds.props.reservedFor`,
+  T-128) und ein Behälter, in dem noch etwas liegt, bleiben. Eine
+  Instanz, die **nicht abweicht**, zählt als Grundartikel: führt der Laden
+  ihn mit gezählter Menge, steigt sie, und ist der Stapel ganz verkauft,
+  wird die Instanz gelöscht. Eine, die **abweicht** (eigener Name, Gravur),
+  geht als dieses Stück über den Tresen — der Laden führt sie danach selbst
+  (`sells` auf die Instanz), und wer sie zurückkauft, bekommt genau sie.
+- **Wer handelt:** für die eigene Figur (D74, wie beim Inventar), die
+  Leitung für jede. Laden und Inventar werden **gegen die gelesene
+  Revision** geschrieben — kaufen zwei die letzte Laterne, bekommt sie
+  einer, der andere ein 409. `refs.shop.mine` nennt je Figur dazu ihr
+  Inventar, ihr Geld (`purse`) und was sie verkaufen kann (`sellable`).
+- **Protokoll:** `shop.bought` und `shop.sold` am Laden — Figur, Konto,
+  Gegenstand, Menge, Stückpreis, Summe, beim Kauf Listen- und Grundpreis
+  und jeder Abschlag mit Herkunft (`steps`), beim Verkauf die Regel
+  (`rule: 'half'`).
 
 ```mermaid
 flowchart LR
@@ -1151,8 +1207,8 @@ flowchart LR
 
 ## 10. Ansichten und Anordnung
 
-Vier Ansichten, und der Ort wählt sie — dazu eigene (T-110, REQ-256,
-E-030 b):
+Fünf Ansichten, und der Ort wählt sie — dazu eigene (T-110, REQ-256,
+E-030 b; `search` seit T-138):
 
 | Ansicht | Wo | Zeigt |
 |---|---|---|
@@ -1160,11 +1216,12 @@ E-030 b):
 | `quick` | eine Kachel auf dem Board, die Vorschau, das Popup, die Schnellanlage | Bild, Beschreibung, Felder, Prosa |
 | `full` | die Artikelseite | alles |
 | `print` | „Print" an der Artikelseite: ein Blatt A4 (`/artikel/:id/print`) | Beschreibung, alle Felder ausser dem Vorbereitungsstand, Prosa, Teile, Abschnitte — ohne Seitenspalte; Statblock, Zauber, Gegenstand wie im Buch |
+| `search` | das „+" an einem Treffer der übergreifenden Suche (T-138) | Bild, Beschreibung und die Felder, die die Art dafür wählt; Art, Ebene und Herausgeber stehen in der Trefferzeile, sie sind keine Felder |
 | eigene, z. B. `handout` | dort, wo gewählt wird: die Kachel auf dem Board, der Druck | was sie sagt — der Handzettel: Beschreibung, Absatz, Vorlesetext |
 
 **Ansichten sind Zeilen und werden im Register bearbeitet** (Register ›
 Views, T-110): anlegen (als Abschrift einer anderen), umbenennen, ordnen,
-löschen — die vier, nach denen ein Ort fragt (`PLACE_VIEWS`), nicht. Je
+löschen — die fünf, nach denen ein Ort fragt (`PLACE_VIEWS`), nicht. Je
 Ansicht eine **globale Anordnung**: Elemente in ihrer Reihenfolge, ein
 `fields`- oder `prose`-Element mit Einträgen „ganzer Typ" (`Spell` — ein
 neues Feld erscheint von selbst) oder „Typ.Feld" (`Spell.level` — bleibt
@@ -1233,6 +1290,24 @@ Abstammung, Zustand, Gefahr, Gottheit, Tabelle, Regel und Kreatur. Eine
 Art ohne eigene `overview` erbt die ihres Obertyps; sagt keiner etwas,
 hat die Zeile keine Spalten ausser Name und Quelle.
 
+**Filtergruppen je Seite** (T-137): eine Listenseite — Kompendium, World,
+Story, Rules — hat benannte, gespeicherte Filter als Unterreiter
+(`/world?view=<id>`), in der Kopfleiste über ▾ neben der Seite direkt
+aufrufbar. Eine Gruppe gehört **der Kampagne** (die Leitung — Verwaltung,
+`gm`, `co-gm` — legt sie an, jedes Mitglied sieht sie) oder **einem Konto**
+(nur seine, in jeder Runde). **Die Vorgabe einer Seite ist eine Gruppe der
+Kampagne mit `default`**, je Kampagne und Seite höchstens eine: sie gilt,
+solange niemand einen anderen Reiter wählt, und „All" (`?view=all`) zeigt
+die Seite ohne sie. So ist „World ohne Items" ein Eintrag und keine Liste im
+Code. Was eine Gruppe festhält, ist zweierlei: **was den Reiter ausmacht** —
+Arten samt Untertypen (`of`), ohne Arten samt Untertypen (`notype`),
+Marken, Stand (`status`; ohne Status-Karte zählt `ready`), nur diese Ebenen —
+geht als Grenze an `/api/list`; **womit er anfängt** — Suche, abgewählte
+Ebenen — setzt die Seitenleiste einmal beim Betreten, danach gehört der
+Filter der Seite. Gespeichert in `list_filter` (Migration 066), nicht im
+Artikel: eine Konto-Id wandert nicht mit der Ausfuhr (REQ-199). Routen:
+`GET`/`POST /api/filters`, `PUT`/`DELETE /api/filters/:id`.
+
 **Nur die Kachel auf dem Board wählt** (REQ-161, `placementView`): zuerst
 die Platzierung (`placed.props.view`), dann die Regel des Boards je Art
 (`Board.rules`, die `extends`-Kette hoch), und sagt keiner etwas, **die
@@ -1262,6 +1337,11 @@ als Reiter (ein Klick springt hin), ein Bereich lässt sich einklappen —
 dann zeigt er nur seine Titelzeile, und seine Karten sind verborgen,
 nicht verschoben. **Eingeklappt ist je Betrachter** (im Browser): am
 Board gespeichert klappte ein Spieler der Leitung die Conditions zu.
+**Ein Bereich wird an seiner Titelzeile verschoben und nimmt seine Karten
+mit** (T-146) — sonst stünden sie danach draussen und gehörten nach der
+Lage zu keinem Bereich mehr; an der Ecke ändert er seine Grösse, und die
+Karten bleiben liegen. Gezogen wird mit Pointer-Events, mit Maus, Stift
+und Finger gleich.
 
 Eine Spieleransicht gibt es nicht: gesiebt wird am Server, alle sehen
 dieselbe Ansicht. **Die Sicht eines Mitglieds** (REQ-241) ist darum keine
@@ -1331,6 +1411,7 @@ Druck und Registervorschau.
 | der letzte fertige Stand eines zurückgefallenen Artikels (D74) | `entity_ready` | nein |
 | wo ein Konto in einem Buch stehen blieb (T-091) | `reading_position` (Konto, Ebene, Abschnitt) | nein |
 | wie jemand liest — Fassungen an den Feldern an/aus, welche Ebenen (T-092) | `app_user_pref` (Konto, Schlüssel, JSON) | nein |
+| Filtergruppen je Seite und die Vorgabe einer Seite (T-137) | `list_filter` (Seite, Name, Kampagne *oder* Konto, Filter, `is_default`) | nein |
 | Rolle je Kampagne | `campaign_member`; Prototyp: Sammlung `members` | nein |
 | Verwaltung der Installation | `app_user.is_admin` | nein |
 | das Register | Tabellen `interface_def`, `relation_def`, `view_def`, `unit_def`, `var_def`, `enum_def` (Aufzählungen), `setting_def` (Einstellungen, seit Migration 019); Prototyp: Sammlung `registry` | ja — allein weiterreichbar (`register-datei.mjs`) |

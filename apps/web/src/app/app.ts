@@ -1,10 +1,13 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Api } from './kern/api';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Session } from './kern/session';
 import { BEREICHE } from './kern/bereiche';
 import { KurzPopup } from './artikel/kurzpopup';
 import { Live } from './kern/live';
+import { ALLE, Filtergruppen } from './kern/filtergruppen';
+import { Suche, tipptGerade } from './kern/suche';
+import { SucheComponent } from './suche/suche';
 
 /**
  * Das Gerüst: die Kopfleiste wie auf dem Design-Canvas (Kompendium, Artikel
@@ -32,13 +35,17 @@ import { Live } from './kern/live';
  * Anmeldung — gerade dann, wenn man noch nicht weiss, wo man ist. Auf prod
  * und ohne `ATLAS_ENV` kein Band.
  *
+ * **Die Suche** (T-138) steht in der Kopfleiste und geht auf jeder Seite
+ * mit Strg+K (⌘K) oder `/` auf — `/` nur, wenn gerade nicht in ein Feld
+ * getippt wird. Am Telefon ist der Knopf ein Zeichen ohne Text.
+ *
  * Die Kopfleiste bleibt weg, solange die Sitzung noch nicht gefragt ist.
  * Ein Balken, der erst „nicht angemeldet" zeigt und einen Wimpernschlag
  * später den Namen, sieht nach einem Fehler aus, auch wenn keiner vorliegt.
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, KurzPopup],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, KurzPopup, SucheComponent],
   template: `
     @if (session.dev()) {
       <p class="umgebung" role="note">
@@ -66,11 +73,36 @@ import { Live } from './kern/live';
             <a [routerLink]="'/' + b.weg" routerLinkActive="an" ariaCurrentWhenActive="page">{{
               b.label
             }}</a>
+            <!-- Die Filtergruppen der Seite, direkt aufrufbar (T-137). -->
+            @if (gruppen.jeSeite(b.weg).length) {
+              <button
+                type="button"
+                class="auf"
+                [class.offen]="menue() === b.weg"
+                [attr.aria-expanded]="menue() === b.weg"
+                [attr.aria-label]="'Filter groups of ' + b.label"
+                (click)="menueUm(b.weg)"
+              >
+                ▾
+              </button>
+            }
           }
           <a routerLink="/classes" routerLinkActive="an" ariaCurrentWhenActive="page">Classes</a>
           <a routerLink="/compendium" routerLinkActive="an" ariaCurrentWhenActive="page"
             >Compendium</a
           >
+          @if (gruppen.jeSeite('compendium').length) {
+            <button
+              type="button"
+              class="auf"
+              [class.offen]="menue() === 'compendium'"
+              [attr.aria-expanded]="menue() === 'compendium'"
+              aria-label="Filter groups of Compendium"
+              (click)="menueUm('compendium')"
+            >
+              ▾
+            </button>
+          }
           <a routerLink="/images" routerLinkActive="an" ariaCurrentWhenActive="page">Images</a>
           @if (session.leitung()) {
             <a routerLink="/werkbank" routerLinkActive="an" ariaCurrentWhenActive="page">Workbench</a>
@@ -85,6 +117,17 @@ import { Live } from './kern/live';
             >
           }
         </nav>
+        <button
+          type="button"
+          class="suchknopf"
+          (click)="suche.oeffnen()"
+          aria-label="Search"
+          aria-keyshortcuts="Control+K /"
+          title="Search (Ctrl+K or /)"
+        >
+          <span aria-hidden="true" class="lupe">⌕</span>
+          <span class="suchtext">Search</span>
+        </button>
         <!-- Ob dieses Gerät mithört (T-116): ein Punkt, kein Text — am Tisch
              fällt auf, wenn er hohl wird. -->
         <span
@@ -103,6 +146,27 @@ import { Live } from './kern/live';
         </a>
         <button type="button" (click)="abmelden()">Sign out</button>
       </header>
+      <!-- Das Untermenü steht unter der Leiste und nicht an ihr: am Telefon
+           schiebt die Leiste seitlich und schnitte ein Aufklappmenü ab. -->
+      @if (menue(); as m) {
+        <nav class="untermenue" [attr.aria-label]="'Filter groups of ' + seitenLabel(m)">
+          <span class="wo">{{ seitenLabel(m) }}</span>
+          @for (g of gruppen.jeSeite(m); track g.id) {
+            <a [routerLink]="'/' + m" [queryParams]="{ view: g.default ? null : g.id }" (click)="menue.set(null)"
+              >{{ g.name }}
+              @if (g.default) {
+                <span class="dim">(default)</span>
+              }
+              @if (g.scope === 'own') {
+                <span class="dim">· yours</span>
+              }
+            </a>
+          }
+          @if (gruppen.vorgabe(m)) {
+            <a [routerLink]="'/' + m" [queryParams]="{ view: alle }" (click)="menue.set(null)">All</a>
+          }
+        </nav>
+      }
     }
     @if (warnung()) {
       <p class="warnung" role="alert">{{ warnung() }}</p>
@@ -127,6 +191,10 @@ import { Live } from './kern/live';
       }
     </div>
     <router-outlet />
+    <!-- Die übergreifende Suche, eine für alle Seiten (T-138). -->
+    @if (session.angemeldet()) {
+      <nw-suche />
+    }
     <!-- Die Kurzansicht eines genannten Artikels, eine für alle Seiten (T-093). -->
     <nw-kurzpopup />
   `,
@@ -206,8 +274,69 @@ import { Live } from './kern/live';
       background: var(--chip);
       font-weight: 700;
     }
-    .live {
+    .bereiche .auf {
+      min-height: 0;
+      margin-left: -4px;
+      padding: 0.5rem 0.35rem;
+      border: 0;
+      border-radius: 6px;
+      background: none;
+      color: var(--dim);
+      cursor: pointer;
+    }
+    .bereiche .auf:hover,
+    .bereiche .auf.offen {
+      background: var(--hover);
+      color: var(--accent);
+    }
+    .untermenue {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 2px 0.25rem;
+      padding: 0.3rem 1.5rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+    }
+    .untermenue .wo {
+      margin-right: 0.5rem;
+      font-family: var(--caps);
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .untermenue a {
+      padding: 0.4rem 0.65rem;
+      border-radius: 6px;
+      color: var(--ink);
+      text-decoration: none;
+    }
+    .untermenue a:hover {
+      background: var(--hover);
+    }
+    .untermenue .dim {
+      color: var(--dim);
+      font-size: 0.85em;
+    }
+    .suchknopf {
       margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.6rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--dim);
+    }
+    .suchknopf:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    .lupe {
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+    .live {
       width: 0.55rem;
       height: 0.55rem;
       flex: none;
@@ -297,8 +426,8 @@ import { Live } from './kern/live';
       /* Marke, Live-Punkt, Konto und Abmelden bleiben **eine** Zeile
          (T-126): seit dem Live-Punkt rutschte „Sign out" in eine zweite,
          und der Kopf war 130 px hoch. Der Name gibt nach (Auslassung),
-         die Rolle steht auf der Kontoseite. Platz bleibt für einen
-         Suchknopf neben dem Punkt (T-138). */
+         die Rolle steht auf der Kontoseite. Der Suchknopf (T-138) zeigt
+         hier nur die Lupe und wird mit „Sign out" kleiner. */
       .marke {
         font-size: 1.15rem;
         white-space: nowrap;
@@ -318,6 +447,12 @@ import { Live } from './kern/live';
         padding: 0.3rem 0.6rem;
         font-size: 0.85rem;
       }
+      .untermenue {
+        padding: 0.3rem 1rem;
+      }
+      .suchtext {
+        display: none;
+      }
     }
   `,
 })
@@ -328,8 +463,14 @@ export class App {
   protected readonly betrieb =
     'https://github.com/Mrfudog/Atlas-Mentis/blob/preprod/docs/Betrieb.md#was-daten-löschen-kann';
   protected readonly bereiche = BEREICHE.filter((b) => b.weg !== 'play');
+  /** Die Filtergruppen je Seite (T-137) — für die Untermenüs. */
+  protected readonly gruppen = inject(Filtergruppen);
+  protected readonly alle = ALLE;
+  /** Welches Untermenü offen ist: der Weg der Seite. */
+  protected readonly menue = signal<string | null>(null);
 
   protected readonly api = inject(Api);
+  protected readonly suche = inject(Suche);
   /** Der Live-Kanal (T-116) — hier geholt, damit er mit der Anmeldung steht. */
   protected readonly live = inject(Live);
   /** Ob gerade sichtbar gewartet wird: erst wenn eine Anfrage länger als
@@ -341,12 +482,40 @@ export class App {
 
   constructor() {
     void this.session.load();
+    /* Die Gruppen gehören zum Konto und zur Kampagne: neu nach Anmelden,
+       Abmelden und jedem Wechsel der Sicht (REQ-241). */
+    effect(() => {
+      const wer = this.session.angemeldet() ? `${this.session.user()?.id}|${this.session.viewAs()?.id ?? ''}` : null;
+      untracked(() => {
+        this.menue.set(null);
+        if (wer) void this.gruppen.laden(true);
+        else this.gruppen.vergessen();
+      });
+    });
     effect(() => {
       const laeuft = this.api.laufend().length > 0;
       clearTimeout(this.uhr);
       if (!laeuft) this.wartet.set(false);
       else if (!this.wartet()) this.uhr = setTimeout(() => this.wartet.set(true), 300);
     });
+  }
+
+  protected menueUm(seite: string): void {
+    this.menue.set(this.menue() === seite ? null : seite);
+  }
+  protected seitenLabel(seite: string): string {
+    return BEREICHE.find((b) => b.weg === seite)?.label ?? 'Compendium';
+  }
+
+  /** Strg+K (⌘K) überall, `/` ausserhalb von Feldern: die Suche auf (T-138). */
+  @HostListener('document:keydown', ['$event'])
+  protected tasten(ev: KeyboardEvent): void {
+    if (!this.session.angemeldet() || ev.defaultPrevented) return;
+    const strgK = (ev.ctrlKey || ev.metaKey) && !ev.altKey && ev.key.toLowerCase() === 'k';
+    const schraeg = ev.key === '/' && !ev.ctrlKey && !ev.metaKey && !ev.altKey && !tipptGerade(ev.target);
+    if (!strgK && !schraeg) return;
+    ev.preventDefault();
+    this.suche.oeffnen();
   }
 
   protected neuLaden(): void {

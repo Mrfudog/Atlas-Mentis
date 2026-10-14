@@ -464,6 +464,28 @@ try {
     String(r4.status),
   );
   await setze(`/api/campaigns/camp_probe_a/members/${spiel?.id}`, { role: 'player' });
+
+  /* Filtergruppen (T-137): eine eigene der Spielerin, zwei Vorgaben derselben
+     Seite — die zweite nimmt der ersten die Marke, in einer Abfrage auf
+     `list_filter`, die der Index `list_filter_default` hält. */
+  {
+    const spielerin = await anmelden('probe-spiel');
+    const lege = (keks, body) =>
+      fetch(`${BASE}/api/filters`, { method: 'POST', headers: { ...json, cookie: keks }, body: JSON.stringify(body) });
+    const eigen = await lege(spielerin, { page: 'world', name: 'Probe: places', filter: { of: ['Place'] } });
+    pruefe('Filtergruppe: eigene der Spielerin', eigen.status === 201, `${eigen.status} ${await eigen.clone().text()}`);
+    const a = await (await lege(admin, { page: 'world', name: 'Probe: A', scope: 'campaign', default: true, filter: { notype: ['Item'] } })).json();
+    const b = await (await lege(admin, { page: 'world', name: 'Probe: B', scope: 'campaign', default: true })).json();
+    const alle = (await (await get(admin, '/api/filters')).json()).groups ?? [];
+    const vorgaben = alle.filter((g) => g.page === 'world' && g.default).map((g) => g.id);
+    pruefe('Filtergruppe: eine Vorgabe je Seite', !!a.id && vorgaben.length === 1 && vorgaben[0] === b.id, JSON.stringify({ a, b, vorgaben }));
+    const fremd = (await (await get(admin, '/api/filters')).json()).groups.some((g) => g.name === 'Probe: places');
+    pruefe('Filtergruppe: die eigene einer anderen sieht niemand', !fremd);
+    for (const id of [a.id, b.id]) if (id) await fetch(`${BASE}/api/filters/${id}`, { method: 'DELETE', headers: { cookie: admin } });
+    const ej = await eigen.json();
+    const weg = await fetch(`${BASE}/api/filters/${ej.id}`, { method: 'DELETE', headers: { cookie: spielerin } });
+    pruefe('Filtergruppe: gelöscht', weg.ok, String(weg.status));
+  }
   const r5 = await setze(`/api/campaigns/camp_probe_a/members/${spiel?.id}/actors`, {
     actorIds: ['pc_probe'],
   });

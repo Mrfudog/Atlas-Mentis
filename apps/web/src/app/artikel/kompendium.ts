@@ -9,6 +9,9 @@ import { BEREICHE, bereichLabel } from '../kern/bereiche';
 import { ListenFilter } from '../kern/filter';
 import { AusgeblendetHinweis } from '../kern/ausgeblendet';
 import { KurzLink } from '../kern/kurzansicht';
+import { ALLE, Filtergruppen } from '../kern/filtergruppen';
+import type { Filtergruppe, GespeicherterFilter } from '../kern/api';
+import { FiltergruppeMaske } from './filtergruppe';
 import { Anlegen } from './anlegen';
 import { Vorschau } from './vorschau';
 import { Bild } from './bild';
@@ -46,7 +49,7 @@ const OFFEN = 8;
  */
 @Component({
   selector: 'nw-kompendium',
-  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis, QuelleText, KurzLink, Bild],
+  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis, QuelleText, KurzLink, Bild, FiltergruppeMaske],
   template: `
     <div class="seite" [class.mitvorschau]="!!filter.vorschau()">
       <aside class="filter" [class.offen]="filterOffen()" aria-label="Filters">
@@ -202,6 +205,43 @@ const OFFEN = 8;
           </div>
         </div>
 
+        <!-- Filtergruppen als Unterreiter (T-137): die Vorgabe der Seite
+             zuerst, dann die der Kampagne, dann die eigenen. -->
+        @if (gruppen.stand()) {
+          <nav class="reiter" aria-label="Filter groups">
+            @for (r of reiter(); track r.key) {
+              <a
+                [routerLink]="[]"
+                [queryParams]="{ view: r.view, type: null }"
+                [class.an]="r.an"
+                [attr.aria-current]="r.an ? 'page' : null"
+                [attr.title]="r.titel"
+                >{{ r.label }}
+                @if (r.eigen) {
+                  <span class="marke-eigen" aria-label="only you">·</span>
+                }
+              </a>
+            }
+            @if (gruppe(); as g) {
+              @if (g.canEdit) {
+                <button type="button" class="reiter-knopf" (click)="maske.set(maske() === 'aendern' ? null : 'aendern')">Edit group</button>
+              }
+            }
+            <button type="button" class="reiter-knopf" (click)="maske.set(maske() === 'neu' ? null : 'neu')">+ Save as group</button>
+          </nav>
+        }
+        @if (maske(); as m) {
+          <nw-filtergruppe
+            [seite]="seite()"
+            [bereich]="bereich()"
+            [gruppe]="m === 'aendern' ? gruppe() : null"
+            [vorlage]="vorlage()"
+            [markenDa]="markenDa()"
+            (zu)="maske.set(null)"
+            (gespeichert)="gespeichert($event)"
+          />
+        }
+
         @if (fehler(); as f) {
           <p class="fehler" role="alert">{{ f }}</p>
         }
@@ -332,11 +372,14 @@ export class Kompendium {
   readonly bereich = input<string | undefined>(undefined);
   /** Aus der Adresse (`?type=`). */
   readonly type = input<string | undefined>(undefined);
+  /** Die Filtergruppe aus der Adresse (`?view=<id>`, `?view=all`; T-137). */
+  readonly view = input<string | undefined>(undefined);
 
   protected readonly OFFEN = OFFEN;
   protected readonly bestand = inject(Bestand);
   protected readonly session = inject(Session);
   protected readonly filter = inject(ListenFilter);
+  protected readonly gruppen = inject(Filtergruppen);
   private readonly api = inject(Api);
   private readonly router = inject(Router);
 
@@ -346,6 +389,13 @@ export class Kompendium {
   protected readonly liste = signal<Liste | null>(null);
   protected readonly laedt = signal(false);
   protected readonly fehler = signal<string | null>(null);
+  /** Die Maske für eine Filtergruppe: neu oder die aktive ändern. */
+  protected readonly maske = signal<'neu' | 'aendern' | null>(null);
+
+  /** Die Seite, an der Filter und Gruppen hängen. */
+  protected readonly seite = computed(() => this.bereich() ?? 'compendium');
+  /** Die Gruppe, die gilt — ohne `view` die Vorgabe der Seite (T-137). */
+  protected readonly gruppe = computed(() => this.gruppen.aktiv(this.seite(), this.view()));
 
   private lauf = 0;
   private uhr: ReturnType<typeof setTimeout> | null = null;
@@ -355,8 +405,11 @@ export class Kompendium {
     /* Das Register braucht die Seite nur für Beschriftungen und den
        Anlegen-Dialog; die Liste wartet nicht darauf. */
     void this.bestand.load();
+    void this.gruppen.laden();
     effect(() => {
-      this.filter.betrete(this.bereich() ?? 'compendium');
+      /* Ein anderer Reiter ist eine andere Seite: er fängt mit dem an, was
+         seine Gruppe sagt (T-137). */
+      this.filter.betrete(`${this.seite()}|${this.view() ?? ''}`);
       /* Auf einen Typwechsel folgt Blatt 1: auf Blatt 40 der Zauber zu
          landen, nachdem man eben noch durch Gegenstände blätterte, ist keine
          Absicht. Zurück vom Artikel bleibt das Blatt, denn die Art ist
@@ -364,9 +417,17 @@ export class Kompendium {
       this.filter.typ(this.type());
       untracked(() => this.typenOffen.set(false));
     });
-    /* Jede Änderung am Filter fragt den Server. Getippt wird mit einer
-       kurzen Pause, sonst ginge je Buchstabe eine Anfrage hinaus. */
+    /* Womit die Gruppe anfängt — einmal, danach gehört der Filter der Seite. */
     effect(() => {
+      if (!this.gruppen.stand()) return;
+      const g = this.gruppe();
+      untracked(() => this.filter.saeen(g ? `${g.id}|${JSON.stringify(g.filter)}` : '-', g?.filter ?? {}));
+    });
+    /* Jede Änderung am Filter fragt den Server. Getippt wird mit einer
+       kurzen Pause, sonst ginge je Buchstabe eine Anfrage hinaus. Erst
+       wenn die Gruppen da sind — sonst käme „World" einmal mit Items. */
+    effect(() => {
+      if (!this.gruppen.stand()) return;
       const frage = this.frage();
       untracked(() => {
         const getippt = (frage.q ?? '') !== this.letzteSuche;
@@ -389,9 +450,16 @@ export class Kompendium {
       if (w.values?.length) f.push(`${ref}:${w.values.join('|')}`);
       else if (w.min !== undefined || w.max !== undefined) f.push(`${ref}:${w.min ?? ''}..${w.max ?? ''}`);
     }
+    const g = this.gruppe()?.filter ?? {};
     return {
       area: this.bereich(),
       type: this.type(),
+      /* Was den Reiter ausmacht, grenzt ein (T-137). */
+      of: g.of,
+      notype: g.notype,
+      tag: g.tag,
+      status: g.status,
+      layer: g.layer,
       q: this.filter.suche().trim() || undefined,
       nolayer: [...this.filter.ohneEbenen()],
       parts: this.filter.teile(),
@@ -426,6 +494,62 @@ export class Kompendium {
   }
 
   protected readonly titel = computed(() => bereichLabel(this.bereich()) ?? 'Compendium');
+
+  /**
+   * Die Unterreiter (T-137). Ohne Vorgabe steht „All" vorne und ist die
+   * Seite selbst; mit Vorgabe steht sie vorne, und „All" am Ende zeigt
+   * die Seite ohne sie (`?view=all`).
+   */
+  protected readonly reiter = computed(() => {
+    const alle = this.gruppen.jeSeite(this.seite());
+    const vorgabe = alle.find((g) => g.default);
+    const aktiv = this.gruppe();
+    const view = this.view();
+    const zu = (g: Filtergruppe) => ({
+      key: g.id,
+      view: g.default ? null : g.id,
+      label: g.name,
+      titel: g.scope === 'own' ? 'Your own group' : g.default ? 'Default of this page' : 'Group of the campaign',
+      eigen: g.scope === 'own',
+      an: aktiv?.id === g.id,
+    });
+    const allesReiter = {
+      key: ALLE,
+      view: vorgabe ? ALLE : null,
+      label: 'All',
+      titel: 'Everything on this page',
+      eigen: false,
+      an: !aktiv && (vorgabe ? view === ALLE : true),
+    };
+    return [
+      ...(vorgabe ? [zu(vorgabe)] : [allesReiter]),
+      ...alle.filter((g) => !g.default).map(zu),
+      ...(vorgabe ? [allesReiter] : []),
+    ];
+  });
+
+  /** Was „Save as group" vorfüllt: der Blick, den die Seite gerade zeigt. */
+  protected readonly vorlage = computed<GespeicherterFilter>(() => {
+    const { q: _alt, ...g } = this.gruppe()?.filter ?? {};
+    const t = this.type();
+    const q = this.filter.suche().trim();
+    return {
+      ...g,
+      ...(t ? { of: [t] } : {}),
+      ...(q ? { q } : {}),
+      nolayer: [...this.filter.ohneEbenen()],
+    };
+  });
+  protected readonly markenDa = computed(() => (this.liste()?.facets.tags ?? []).map((t) => t.tag));
+
+  /** Nach dem Speichern: zur Gruppe, nach dem Löschen zur Seite. */
+  protected gespeichert(g: Filtergruppe | null): void {
+    this.maske.set(null);
+    void this.router.navigate([], {
+      queryParams: { view: g ? (g.default ? null : g.id) : null, type: null },
+      queryParamsHandling: 'merge',
+    });
+  }
 
   protected readonly unterzeile = computed(() => {
     const l = this.liste();

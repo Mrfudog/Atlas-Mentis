@@ -227,16 +227,28 @@ describe('a list and a book over 250 000 articles (T-108, REQ-246)', () => {
     expect(teile.r.json().parts).toHaveLength(TEILE / KAPITEL);
     const usage = await zeit('/api/registry/usage');
     expect(usage.r.statusCode).toBe(200);
+    /* **Die übergreifende Suche beim Tippen** (T-138): je Tastendruck eine
+       Frage an den fertigen Index. Ein Buchstabe trifft fast alles — das
+       ist der teuerste Fall —, „rule 1203" genau einen. */
+    const tippen = [];
+    for (const q of ['r', 'ru', 'rule', 'rule 1', 'rule 12', 'rule 1203']) tippen.push(await zeit(`/api/search?q=${encodeURIComponent(q)}&limit=12`));
+    expect(tippen.at(-1)!.r.json().rows[0].name).toBe('Rule 1203');
+    expect(tippen[0]!.r.json().rows.every((z: { type: string }) => z.type !== 'Paragraph')).toBe(true);
+    const msTippen = Math.max(...tippen.map((x) => x.ms));
     /* Zum Nachlesen im Lauf: was eine Viertelmillion kostet. */
     console.log(
       `T-108 · 250k: Liste ${liste.ms.toFixed(0)} ms (danach ${zweite.ms.toFixed(0)}), Buch ${buch.ms.toFixed(0)} ms, ` +
-        `Kapitel ${stueck.ms.toFixed(0)} ms, Suche ${suche.ms.toFixed(0)} ms, Teile ${teile.ms.toFixed(0)} ms, Zählung ${usage.ms.toFixed(0)} ms`,
+        `Kapitel ${stueck.ms.toFixed(0)} ms, Suche ${suche.ms.toFixed(0)} ms, Teile ${teile.ms.toFixed(0)} ms, Zählung ${usage.ms.toFixed(0)} ms, ` +
+        `Suche beim Tippen höchstens ${msTippen.toFixed(0)} ms (${tippen.map((x) => x.ms.toFixed(0)).join('/')})`,
     );
     /* Die erste Liste liest den Bestand in den Speicher (hier: klont ihn
        das Prüf-Repository) und baut den Index — das ist der Anlauf; alles
        danach fragt den fertigen Stand. */
     expect(liste.ms).toBeLessThan(45_000);
     for (const x of [zweite, buch, stueck, suche, teile, usage]) expect(x.ms).toBeLessThan(10_000);
+    /* Beim Tippen zählt jede Zehntelsekunde; die Grenze ist trotzdem für
+       einen langsamen CI-Rechner bemessen. */
+    expect(msTippen).toBeLessThan(2_000);
   }, 180_000);
 });
 

@@ -264,13 +264,33 @@ export interface Ware {
   qty?: number;
   available: boolean;
   list?: number;
+  /** Woher der Listenpreis kommt (`Item.priceNote`, T-139). */
+  listNote?: string;
   base?: number;
   price?: number;
   steps: Preisschritt[];
 }
+/** Ein Stück, das die Figur diesem Laden verkaufen kann (T-133), mit dem Ankaufspreis. */
+export interface Verkaeuflich {
+  inventory: string;
+  edge: string;
+  item: string;
+  name: string;
+  qty: number;
+  price?: number;
+}
 export interface Ladenwaren {
   table: Ware[];
-  mine: { id: string; name: string; wares: Ware[] }[];
+  /** Je eigener Figur: ihre Preise, ihr Geld und was sie verkaufen kann (T-133) — ohne Inventar fehlt beides. */
+  mine: { id: string; name: string; wares: Ware[]; inventory?: string; purse?: number; sellable?: Verkaeuflich[] }[];
+}
+/** Was ein Handel ergab (T-133): gerechnet am Server. */
+export interface Handel {
+  item: { id: string; name: string };
+  qty: number;
+  unit: number;
+  total: number;
+  copper: number;
 }
 
 /** Die Regeln des Handwerks am Tisch (T-128, `craftRulesOf`). */
@@ -539,10 +559,48 @@ export interface ListenZeile {
 }
 
 /** Was die Liste gefragt wird. Leere Angaben fallen weg. */
+/** Ein Blatt der übergreifenden Suche (`GET /api/search`, T-138) — die Form steht in `apps/server/src/liste.ts`. */
+export interface Suchergebnis {
+  q: string;
+  total: number;
+  offset: number;
+  limit: number;
+  rows: {
+    id: string;
+    name: string;
+    type: string;
+    typeLabel: string;
+    area: string;
+    layers: string[];
+    publishers: string[];
+    source: string;
+    image?: string;
+  }[];
+  facets: {
+    types: { type: string; label: string; area: string; count: number }[];
+    layers: { id: string; name: string; count: number }[];
+    publishers: { name: string; count: number }[];
+  };
+}
+
+export interface SuchFrage {
+  q: string;
+  type?: string[];
+  layer?: string[];
+  publisher?: string[];
+  area?: string;
+  offset?: number;
+  limit?: number;
+}
+
 export interface ListenFrage {
   area?: string | undefined;
   type?: string | undefined;
   of?: string[] | undefined;
+  /** Ohne diese Arten und ihre Untertypen (T-137). */
+  notype?: string[] | undefined;
+  /** Nur in diesem Stand (T-137); ohne Status-Karte zählt `ready`. */
+  status?: string[] | undefined;
   /** Nur diese Artikel. */
   ids?: string[] | undefined;
   /** Diese Kantenarten je Zeile mitschicken. */
@@ -562,6 +620,37 @@ export interface ListenFrage {
   tag?: string[] | undefined;
   /** Nur Bilder, die kein sichtbarer Artikel zeigt (T-119). */
   unused?: boolean | undefined;
+}
+
+/**
+ * **Eine Filtergruppe** (T-137, `/api/filters`): ein benannter Filter einer
+ * Listenseite, als Unterreiter und in der Kopfleiste. `of`, `notype`,
+ * `tag`, `status`, `layer` grenzen ein; `q` und `nolayer` setzen die
+ * Seitenleiste beim Betreten.
+ */
+export interface GespeicherterFilter {
+  of?: string[];
+  notype?: string[];
+  tag?: string[];
+  status?: string[];
+  layer?: string[];
+  nolayer?: string[];
+  q?: string;
+}
+export interface Filtergruppe {
+  id: string;
+  page: string;
+  name: string;
+  scope: 'campaign' | 'own';
+  filter: GespeicherterFilter;
+  default: boolean;
+  rank: number;
+  canEdit: boolean;
+}
+export interface FiltergruppenStand {
+  campaign: string | null;
+  canManage: boolean;
+  groups: Filtergruppe[];
 }
 
 /** Wo ein Bild verwendet wird (T-119, `GET /api/assets/:id/uses`) — nur, was dieser Betrachter sieht. */
@@ -748,6 +837,7 @@ export type RegisterTeil = 'interfaces' | 'relations' | 'views' | 'vars' | 'enum
 export function wasLaedt(path: string): string {
   if (path.startsWith('/api/registry')) return 'registry';
   if (path.startsWith('/api/list')) return 'list';
+  if (path.startsWith('/api/search')) return 'search';
   if (path.startsWith('/api/entities') || path.startsWith('/api/links')) return 'articles';
   if (path.startsWith('/api/classes')) return 'classes';
   if (path.startsWith('/api/abilities')) return 'ability methods';
@@ -755,6 +845,7 @@ export function wasLaedt(path: string): string {
   if (path.startsWith('/api/checks') || path.startsWith('/api/bulk') || path.startsWith('/api/transfer')) return 'workbench';
   if (path.startsWith('/api/read')) return 'book';
   if (path.startsWith('/api/layers')) return 'layers';
+  if (path.startsWith('/api/filters')) return 'filter groups';
   if (path.startsWith('/api/maps') || path.startsWith('/api/play')) return 'map';
   return 'data';
 }
@@ -910,6 +1001,21 @@ export class Api {
     }
     return this.call<Liste>(`/api/list?${p.toString()}`, init);
   }
+  /**
+   * **Die übergreifende Suche** (T-138). Hält nicht an einem Ausfall fest
+   * (`halten = false`): beim Tippen ist die nächste Frage schon unterwegs,
+   * und das Suchfeld sagt selbst, wenn nichts kam.
+   */
+  search(frage: SuchFrage, init: RequestInit = {}): Promise<Suchergebnis> {
+    const p = new URLSearchParams({ q: frage.q });
+    if (frage.type?.length) p.set('type', frage.type.join(','));
+    if (frage.layer?.length) p.set('layer', frage.layer.join(','));
+    if (frage.publisher?.length) p.set('publisher', frage.publisher.join(','));
+    if (frage.area) p.set('area', frage.area);
+    if (frage.offset) p.set('offset', String(frage.offset));
+    if (frage.limit) p.set('limit', String(frage.limit));
+    return this.call<Suchergebnis>(`/api/search?${p.toString()}`, init, false);
+  }
   /** `[[Name]]` → `[[nummer|Name]]`, wo genau ein Artikel so heisst (M11). */
   links(texts: string[]): Promise<{ texts: string[]; open: string[] }> {
     return this.call('/api/links', { method: 'POST', body: JSON.stringify({ texts }) });
@@ -953,6 +1059,14 @@ export class Api {
   /** Am Auftrag: `roll`, `confirm`, `work`, `abort`, `fail` (T-128). */
   craftingAction(id: string, action: 'roll' | 'confirm' | 'work' | 'abort' | 'fail', body: Record<string, unknown> = {}): Promise<unknown> {
     return this.call(`/api/crafting/${encodeURIComponent(id)}/${action}`, { method: 'POST', body: JSON.stringify(body) });
+  }
+  /** Im Laden kaufen (T-133): Ware und Menge; den Preis rechnet der Server. */
+  buy(shop: string, actor: string, edge: string, qty: number): Promise<Handel> {
+    return this.call(`/api/shops/${encodeURIComponent(shop)}/buy`, { method: 'POST', body: JSON.stringify({ actor, edge, qty }) });
+  }
+  /** Dem Laden verkaufen (T-133): ein Stapel aus dem Inventar der Figur. */
+  sell(shop: string, actor: string, inventory: string, edge: string, qty: number): Promise<Handel> {
+    return this.call(`/api/shops/${encodeURIComponent(shop)}/sell`, { method: 'POST', body: JSON.stringify({ actor, inventory, edge, qty }) });
   }
   /** Die Spieler der laufenden Kampagne mit ihren Figuren (T-100, E-007) — ohne Konto-Id. */
   players(): Promise<{ campaign: { id: string; name: string } | null; players: Spieler[] }> {
@@ -1077,6 +1191,19 @@ export class Api {
   /** Die übrigen Fassungen dieses Artikels (T-092). */
   versions(id: string): Promise<Fassungen> {
     return this.call<Fassungen>(`/api/entities/${encodeURIComponent(id)}/versions`);
+  }
+  /** Die Filtergruppen der laufenden Kampagne und die eigenen (T-137). */
+  filters(): Promise<FiltergruppenStand> {
+    return this.call<FiltergruppenStand>('/api/filters', {}, false);
+  }
+  createFilter(g: { page: string; name: string; scope: 'campaign' | 'own'; filter: GespeicherterFilter; default?: boolean }): Promise<Filtergruppe> {
+    return this.call<Filtergruppe>('/api/filters', { method: 'POST', body: JSON.stringify(g) });
+  }
+  updateFilter(id: string, g: { name?: string; filter?: GespeicherterFilter; default?: boolean; rank?: number }): Promise<Filtergruppe> {
+    return this.call<Filtergruppe>(`/api/filters/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(g) });
+  }
+  deleteFilter(id: string): Promise<{ ok: true }> {
+    return this.call(`/api/filters/${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
   /** Was sich das Konto merkt (T-092). */
   prefs(): Promise<Record<string, unknown>> {

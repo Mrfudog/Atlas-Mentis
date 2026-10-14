@@ -100,7 +100,10 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   Kampagne; T-128), die **Leseansicht** (`lesen/`, `/read/:layer`: eine
   Ebene als Buch mit Inhaltsverzeichnis, Suche und Lesestand je Konto,
   T-091), der **Druck** (`/artikel/:id/print`: eine Ansicht auf einem
-  Blatt A4, T-110) und das Konto mit seinen API-Tokens (`konto/`); die
+  Blatt A4, T-110), die **Suche** (`suche/`, Kopfleiste, Strg+K und `/`:
+  Treffer beim Tippen aus `GET /api/search`, nach Nähe, Filter nach Art,
+  Ebene, Herausgeber und Bereich, das „+" ist die Ansicht `search`;
+  T-138) und das Konto mit seinen API-Tokens (`konto/`); die
   Oberfläche hält **keinen Bestand** (W7). Initiative, Nebel und Licht
   noch nicht;
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
@@ -268,13 +271,14 @@ wiederkommen, werden sie neu geschrieben.
   (`zielEbenen`, `POST /api/entities/:id/adapt`). `ready` bleibt bei `gm`;
   was einer ändert, der es nicht setzen darf, fällt zurück (D74). Dazu
   schreibt `gm` weiter, was Spielende angelegt haben (D72).
-- **Vier Ansichten, und der Ort wählt sie.** `overview` steht in einem
+- **Fünf Ansichten, und der Ort wählt sie.** `overview` steht in einem
   Verweis oder einer Listenzeile, `quick` auf einer Karte, `full` auf der
-  Artikelseite, `print` auf dem Blatt hinter „Print" (T-110). **Eigene
+  Artikelseite, `print` auf dem Blatt hinter „Print" (T-110), `search`
+  unter dem „+" eines Treffers der übergreifenden Suche (T-138). **Eigene
   Ansichten** legt man im Register an (Registry › Views, E-030 b; die
   erste ist der Handzettel `handout`); gewählt
   werden sie nur, wo ohnehin gewählt wird — die Kachel und der Druck. Die
-  vier, nach denen ein Ort fragt (`PLACE_VIEWS`), lassen sich umbauen, nicht
+  fünf, nach denen ein Ort fragt (`PLACE_VIEWS`), lassen sich umbauen, nicht
   löschen. **Die Kurzansicht** (`quick`) steht auch als Popup an
   jedem genannten Artikel (`nwQuick`, `nw-kurzpopup`, T-093): ein Klick
   zeigt die Karte, „Open article" führt hin. Einen Wähler gibt es nicht —
@@ -643,6 +647,13 @@ wiederkommen, werden sie neu geschrieben.
   beim Wechsel auf eine **andere** Seite; von einem Artikel auf seine Liste
   zurückzugehen behält ihn. Ihn auch dort zu leeren hiesse, ihn jedes Mal
   neu zu setzen.
+  **Filtergruppen** (T-137) sind gespeicherte Filter einer Seite, als
+  Unterreiter (`?view=<id>`) und in der Kopfleiste (▾) erreichbar; die der
+  Kampagne pflegt die Leitung, eigene jedes Konto (`list_filter`, nicht im
+  Artikel). **Die Vorgabe einer Seite ist eine Gruppe mit `default`** —
+  „World ohne Items" ist ein Eintrag, keine Liste im Code. Ein Reiter ist
+  eine eigene Seite: er fängt mit Suche und Ebenen seiner Gruppe an, danach
+  gehört der Filter wieder ihm.
 - **Das Diagramm zeichnet sich selbst.** Auf „How it works" steht ein
   Kasten je Artikelart und eine Linie je Kantenart (gestrichelt: die
   Vererbung), angeordnet nach Bereich — aus dem laufenden Register

@@ -17,6 +17,7 @@ import {
   relationsFrom,
   layoutFor,
   viewKeys,
+  PLACE_VIEWS,
 } from '@nw/model';
 import type { PropertySchema } from '@nw/model';
 import { seedRegistry } from '../src/index.js';
@@ -122,8 +123,10 @@ describe('seed registry', () => {
      Sonderfällen mit einem Dropdown davor. Und **die Anordnung wohnt am
      Typ**: was für eine Artikelart eigen ist, steht bei ihr. */
   it('keeps the views to how much, and the arrangement at the type', () => {
-    /* Vier, nach denen ein Ort fragt (seit T-110 mit dem Druck), und der Handzettel als erste eigene. */
-    expect(Object.keys(seedRegistry.views).sort()).toEqual(['full', 'handout', 'overview', 'print', 'quick']);
+    /* Fünf, nach denen ein Ort fragt (seit T-110 mit dem Druck, seit T-138
+       mit dem „+" der Suche), und der Handzettel als erste eigene. */
+    expect(Object.keys(seedRegistry.views).sort()).toEqual(['full', 'handout', 'overview', 'print', 'quick', 'search']);
+    for (const v of PLACE_VIEWS) expect(seedRegistry.views[v]).toBeDefined();
     const mitEigener = Object.keys(seedRegistry.interfaces).filter((n) => {
       const v = seedRegistry.interfaces[n]?.views?.['full'];
       return Array.isArray(v) && v.length;

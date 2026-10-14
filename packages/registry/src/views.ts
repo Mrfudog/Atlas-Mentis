@@ -184,4 +184,29 @@ export const views: Record<string, ViewDef> = {
       { id: 'h-b', el: 'prose', fields: ['Prose.paragraph', 'ReadAloud.readaloud'] },
     ],
   },
+
+  /**
+   * **Das „+" der Suche** (T-138): die Leitung wollte Treffer mit wenig
+   * Info und darunter, aufgeklappt, „Quelle, Art etc.". Art, Ebene und
+   * Herausgeber stehen in der Trefferzeile selbst (sie sind keine Felder);
+   * was der Artikel darüber hinaus sagt, sagt diese Ansicht — Bild,
+   * Beschreibung und je Art die Felder, die sie dazunimmt. Ein Ort, der
+   * nach ihr fragt, also bleibt sie stehen (`PLACE_VIEWS`).
+   */
+  search: {
+    label: 'Search',
+    order: 6,
+    fields: 'none',
+    description: true,
+    composed: false,
+    relations: false,
+    bindings: false,
+    image: true,
+    layout: [
+      { id: 's-img', el: 'image' },
+      { id: 's-desc', el: 'description' },
+      /* Leer wie bei `quick`: welche zwei, drei Werte, weiss die Art. */
+      { id: 's-f', el: 'fields', fields: [] },
+    ],
+  },
 };

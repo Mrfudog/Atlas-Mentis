@@ -64,6 +64,26 @@ export interface EventFilter {
 /** **Der letzte fertige Stand** eines Artikels (REQ-237, E-012): eine Kopie,
  *  wie er war, als eine Spielerin ihn nach `ready` änderte. `at` ist, wann
  *  dieser Stand geschrieben wurde. */
+/**
+ * **Ein gespeicherter Filter** (T-137): eine Filtergruppe einer Listenseite
+ * — der Kampagne (`campaignId`, die Leitung pflegt sie) oder eines Kontos
+ * (`userId`, nur seine). Genau eins von beiden ist gesetzt. `isDefault`
+ * gibt es nur an einer Gruppe der Kampagne und je Seite einmal: sie ist
+ * die Vorgabe der Seite. Kein Artikel — eine Konto-Id wandert nicht mit
+ * der Ausfuhr (REQ-199).
+ */
+export interface ListFilterRow {
+  id: string;
+  /** `compendium`, `world`, `story`, `rules` — die Seite, an der sie steht. */
+  page: string;
+  name: string;
+  campaignId: string | null;
+  userId: string | null;
+  filter: Record<string, unknown>;
+  isDefault: boolean;
+  rank: number;
+}
+
 export interface ReadyStand {
   entity: Entity;
   at: string;
@@ -163,6 +183,14 @@ export interface Repository {
    *  Lesezeichen wandert nicht mit der Ausfuhr (wie `app_session`). */
   readingPosition(userId: string, layerId: string): Promise<string | undefined>;
   keepReadingPosition(userId: string, layerId: string, entityId: string): Promise<void>;
+  /** **Filtergruppen** (T-137): die der Kampagne und die eigenen dieses
+   *  Kontos, nach Seite und Rang. */
+  listFilters(campaignId: string | null, userId: string): Promise<ListFilterRow[]>;
+  getListFilter(id: string): Promise<ListFilterRow | undefined>;
+  /** Schreibt die Gruppe; ist sie die Vorgabe, verliert jede andere der
+   *  Kampagne an derselben Seite die Marke — in einem Schritt. */
+  putListFilter(row: ListFilterRow): Promise<void>;
+  dropListFilter(id: string): Promise<boolean>;
   /** **Einstellungen je Konto** (T-092): Schlüssel → Wert, wie die Seite
    *  sie schreibt. Wie jemand liest, nicht was gilt — darum am Konto und
    *  in keinem Artikel. */
@@ -399,6 +427,28 @@ export class InMemoryRepository implements Repository {
   }
   async keepReadingPosition(userId: string, layerId: string, entityId: string): Promise<void> {
     this.lesestand.set(`${userId}|${layerId}`, entityId);
+  }
+  private readonly filtergruppen = new Map<string, ListFilterRow>();
+  async listFilters(campaignId: string | null, userId: string): Promise<ListFilterRow[]> {
+    return [...this.filtergruppen.values()]
+      .filter((f) => (campaignId !== null && f.campaignId === campaignId) || f.userId === userId)
+      .sort((a, b) => a.page.localeCompare(b.page) || Number(!!a.userId) - Number(!!b.userId) || a.rank - b.rank || a.name.localeCompare(b.name))
+      .map((f) => structuredClone(f));
+  }
+  async getListFilter(id: string): Promise<ListFilterRow | undefined> {
+    const f = this.filtergruppen.get(id);
+    return f ? structuredClone(f) : undefined;
+  }
+  async putListFilter(row: ListFilterRow): Promise<void> {
+    if (row.isDefault) {
+      for (const f of this.filtergruppen.values()) {
+        if (f.id !== row.id && f.campaignId === row.campaignId && f.page === row.page) f.isDefault = false;
+      }
+    }
+    this.filtergruppen.set(row.id, structuredClone(row));
+  }
+  async dropListFilter(id: string): Promise<boolean> {
+    return this.filtergruppen.delete(id);
   }
   private readonly prefs = new Map<string, Record<string, unknown>>();
   async getPrefs(userId: string): Promise<Record<string, unknown>> {

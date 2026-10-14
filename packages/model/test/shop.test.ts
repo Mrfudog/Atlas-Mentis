@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { applyPriceMods, parsePriceMod, shopWares } from '../src/shop.js';
+import { withVersionPrices, applyPriceMods, buyWare, buybackPrice, parsePriceMod, sellPiece, shopWares } from '../src/shop.js';
+import { newInstance } from '../src/instance.js';
 import type { Entity } from '../src/types.js';
 
 /* Erfundene Artikel: ein Laden, zwei Waren, eine Fraktion mit Leiter,
@@ -109,5 +110,122 @@ describe('shopWares: Waren, Menge, und woher jeder Abschlag kommt', () => {
     // Wer nicht in der Gruppe ist und dem der Wirt nichts gibt, zahlt den Ladenpreis.
     const fremd = art('fremd', 'Creature', 'Stranger');
     expect(shopWares(l, { entities: welt(gruppe, wirt, rook, fremd, l), buyer: fremd })[0]!.price).toBe(900);
+  });
+});
+
+describe('withVersionPrices: die Preissicht (T-139)', () => {
+  it('gibt dem Original Preis und Herkunft der aufgeschalteten Fassung, Ids bleiben', () => {
+    const ring = art('ring', 'Item', 'Ring of Warmth', { components: { Item: { rarity: 'uncommon' } }, relations: [{ id: 'r~1', type: 'inLayer', to: 'buch' }] });
+    const ki = art('ring-ai', 'Item', 'Ring of Warmth', {
+      components: { Item: { rarity: 'uncommon', copperPrice: 40000, priceNote: 'estimated: uncommon' } },
+      relations: [{ id: 'k~1', type: 'inLayer', to: 'ki' }, { id: 'k~2', type: 'overrides', to: 'ring' }],
+    });
+    const buch = art('buch', 'Layer', 'Book', { components: { Layer: { order: 10 } } });
+    const ebene = art('ki', 'Layer', 'AI generated prices', { components: { Layer: { order: 50 } } });
+    const kampagne = (an: boolean) => art('k', 'Campaign', 'Run', {
+      relations: [{ id: 'a1', type: 'activates', to: 'buch' }, ...(an ? [{ id: 'a2', type: 'activates', to: 'ki' }] : [])],
+    });
+    const laden = art('laden', 'Shop', 'Wick', { relations: [{ id: 's~1', type: 'sells', to: 'ring' }] });
+    const entities = welt(ring, ki, buch, ebene, laden);
+    const an = withVersionPrices(entities, kampagne(true));
+    expect(an.get('ring')?.components['Item']).toEqual({ rarity: 'uncommon', copperPrice: 40000, priceNote: 'estimated: uncommon' });
+    expect(an.get('ring')?.relations).toBe(ring.relations);
+    expect(shopWares(laden, { entities: an })[0]).toMatchObject({ item: 'ring', list: 40000, listNote: 'estimated: uncommon', price: 40000 });
+    expect(buybackPrice(an.get('ring'), an)).toBe(20000);
+    /* Abgeschaltet: das Original, ohne Preis. */
+    const aus = withVersionPrices(entities, kampagne(false));
+    expect(aus.get('ring')).toBe(ring);
+    expect(shopWares(laden, { entities: aus })[0]!.list).toBeUndefined();
+  });
+});
+
+describe('buyWare / sellPiece (T-133): Menge, Inventar, Münzen', () => {
+  const laden = art('laden', 'Shop', 'Wick & Wire', {
+    relations: [
+      { id: 'l~1', type: 'sells', to: 'laterne', props: { qty: 2 } },
+      { id: 'l~2', type: 'sells', to: 'seil', props: {} },
+    ],
+  });
+  const beutel = (copper: number, relations: Entity['relations'] = []) =>
+    art('inv', 'Inventory', 'Pack', { components: { Inventory: { copper } }, relations });
+
+  const stueck = { edge: 'neu', to: 'inst' };
+  it('zieht Menge und Münzen ab und legt auf den losen Stapel', () => {
+    const [ware] = shopWares(laden, { entities: welt(laden) });
+    const r = buyWare(laden, beutel(2500, [{ id: 'h1', type: 'holds', to: 'laterne', props: { qty: 1, tier: 'pack' } }]), ware!, 2, stueck, welt(laden));
+    if ('refused' in r) throw new Error(r.refused);
+    expect(r.created).toBe(false);
+    expect(r.total).toBe(2000);
+    expect(r.shop.relations?.[0]?.props?.['qty']).toBe(0);
+    expect(r.inventory.components['Inventory']?.['copper']).toBe(500);
+    expect(r.inventory.relations).toEqual([{ id: 'h1', type: 'holds', to: 'laterne', props: { qty: 3, tier: 'pack' } }]);
+  });
+
+  it('lässt eine unbegrenzte Ware unbegrenzt und legt eine neue Instanz an (T-150)', () => {
+    const ware = shopWares(laden, { entities: welt(laden) })[1]!;
+    const r = buyWare(laden, beutel(100), ware, 1, stueck, welt(laden));
+    if ('refused' in r) throw new Error(r.refused);
+    expect(r.shop).toBe(laden);
+    expect(r).toMatchObject({ created: true, piece: 'inst' });
+    expect(r.inventory.relations).toEqual([{ id: 'neu', type: 'holds', to: 'inst', props: { qty: 1, tier: 'pack' } }]);
+  });
+
+  it('legt auf eine Instanz, die nicht abweicht, und nicht auf eine gravierte', () => {
+    const ware = shopWares(laden, { entities: welt(laden) })[1]!;
+    const glatt = newInstance(seil, { id: 'i1', number: 'item-0002', layer: 'ebene' });
+    const graviert: Entity = { ...newInstance(seil, { id: 'i2', number: 'item-0003' }), components: { Identity: { name: 'Lucky Rope', id: 'item-0003' } } };
+    const w = welt(laden, glatt, graviert);
+    const inv = beutel(500, [{ id: 'h2', type: 'holds', to: 'i2', props: { qty: 1 } }, { id: 'h1', type: 'holds', to: 'i1', props: { qty: 1 } }]);
+    const r = buyWare(laden, inv, ware, 2, stueck, w);
+    if ('refused' in r) throw new Error(r.refused);
+    expect(r).toMatchObject({ created: false, piece: 'i1' });
+    expect(r.inventory.relations?.[1]?.props?.['qty']).toBe(3);
+    const ohne = buyWare(laden, beutel(500, [{ id: 'h2', type: 'holds', to: 'i2', props: { qty: 1 } }]), ware, 1, stueck, w);
+    expect(ohne).toMatchObject({ created: true, piece: 'inst' });
+  });
+
+  it('lehnt ab: zu wenig Geld, zu viele, ausverkauft, ohne Preis', () => {
+    const [ware] = shopWares(laden, { entities: welt(laden) });
+    const w = welt(laden);
+    expect(buyWare(laden, beutel(999), ware!, 1, stueck, w)).toEqual({ refused: 'tooPoor' });
+    expect(buyWare(laden, beutel(9999), ware!, 3, stueck, w)).toEqual({ refused: 'tooFew' });
+    expect(buyWare(laden, beutel(9999), { ...ware!, qty: 0, available: false }, 1, stueck, w)).toEqual({ refused: 'soldOut' });
+    const { price: _p, ...ohne } = ware!;
+    expect(buyWare(laden, beutel(9999), ohne, 1, stueck, w)).toEqual({ refused: 'noPrice' });
+  });
+
+  it('kauft die Hälfte des Listenpreises an und füllt eine gezählte Ware auf', () => {
+    expect(buybackPrice(laterne)).toBe(500);
+    const inv = beutel(0, [{ id: 'h1', type: 'holds', to: 'laterne', props: { qty: 2 } }]);
+    const r = sellPiece(laden, inv, 'h1', 1, welt(laden));
+    if ('refused' in r) throw new Error(r.refused);
+    expect(r).toMatchObject({ item: 'laterne', qty: 1, unit: 500, total: 500 });
+    expect(r.shop.relations?.[0]?.props?.['qty']).toBe(3);
+    expect(r.inventory.relations?.[0]?.props?.['qty']).toBe(1);
+    expect(r.inventory.components['Inventory']?.['copper']).toBe(500);
+  });
+
+  it('verkauft kein reserviertes Stück und keinen vollen Behälter', () => {
+    const inv = beutel(0, [{ id: 'h1', type: 'holds', to: 'laterne', props: { qty: 1, reservedFor: 'auftrag' } }]);
+    expect(sellPiece(laden, inv, 'h1', 1, welt(laden))).toEqual({ refused: 'reserved' });
+    const sack = art('sack', 'Item', 'Sack', { components: { Item: { copperPrice: 10 } }, relations: [{ id: 's~1', type: 'carries', to: 'innen' }] });
+    const innen = art('innen', 'Inventory', 'Inside', { relations: [{ id: 'i~1', type: 'holds', to: 'seil' }] });
+    const inv2 = beutel(0, [{ id: 'h2', type: 'holds', to: 'sack', props: { qty: 1 } }]);
+    expect(sellPiece(laden, inv2, 'h2', 1, welt(laden, sack, innen))).toEqual({ refused: 'notEmpty' });
+  });
+
+  it('verkauft eine Instanz zum Preis der Vorlage: eine beliebige fällt weg, eine eigene führt der Laden', () => {
+    const glatt = newInstance(laterne, { id: 'i1', number: 'item-0002' });
+    const r = sellPiece(laden, beutel(0, [{ id: 'h1', type: 'holds', to: 'i1', props: { qty: 1 } }]), 'h1', 1, welt(laden, glatt));
+    if ('refused' in r) throw new Error(r.refused);
+    expect(r).toMatchObject({ item: 'laterne', unit: 500, orphan: 'i1' });
+    expect(r.shop.relations?.[0]?.props?.['qty']).toBe(3);
+    const eigen: Entity = { ...newInstance(laterne, { id: 'i2', number: 'item-0003' }), components: { Identity: { name: 'Grandma’s Lantern', id: 'item-0003' } } };
+    const r2 = sellPiece(laden, beutel(0, [{ id: 'h2', type: 'holds', to: 'i2', props: { qty: 1 } }]), 'h2', 1, welt(laden, eigen));
+    if ('refused' in r2) throw new Error(r2.refused);
+    expect(r2.orphan).toBeUndefined();
+    expect(r2.item).toBe('i2');
+    expect(r2.shop.relations?.at(-1)).toMatchObject({ type: 'sells', to: 'i2', props: { qty: 1 } });
+    expect(shopWares(r2.shop, { entities: welt(r2.shop, eigen) }).at(-1)).toMatchObject({ item: 'i2', list: 1000 });
   });
 });

@@ -1,14 +1,33 @@
-import { Component, computed, input, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { formatCopper } from '@nw/model';
-import type { Ladenwaren, Preisschritt, Ware } from '../kern/api';
+import { Api, ApiError, type Handel, type Ladenwaren, type Preisschritt, type Verkaeuflich, type Ware } from '../kern/api';
+import { Bestand } from '../kern/bestand';
 import { KurzLink } from '../kern/kurzansicht';
+
+/** Warum der Server einen Handel ablehnt (`TradeRefusal`, T-133). */
+const ABGELEHNT: Record<string, string> = {
+  missing: 'That is no longer here.',
+  unavailable: 'The shop is not selling that right now.',
+  soldOut: 'Sold out.',
+  tooFew: 'The shop does not have that many.',
+  noPrice: 'Nobody trades without a price.',
+  tooPoor: 'Not enough money.',
+  reserved: 'That piece is reserved for crafting.',
+  notEmpty: 'Empty the container first.',
+  noInventory: 'This character carries no inventory yet.',
+};
 
 /**
  * **Die Waren eines Ladens** (T-129): je Ware Menge und Preis, und unter
  * dem Preis, woher jeder Abschlag kommt. Gerechnet hat der Server
  * (`refs.shop`, `shopWares`, D8) — am Tisch und für jede eigene Figur;
  * hier wird nur gewählt, für wen man schaut.
+ *
+ * **Kaufen und Verkaufen** (T-133): für die gewählte Figur je Ware „Buy"
+ * und darunter, was sie dem Laden verkaufen kann. Geschickt werden Ware,
+ * Menge und Figur — den Preis rechnet der Server neu, und er sagt nein,
+ * wenn das Geld nicht reicht oder die Ware weg ist.
  */
 @Component({
   selector: 'nw-laden',
@@ -20,15 +39,23 @@ import { KurzLink } from '../kern/kurzansicht';
         @if (waren().mine.length) {
           <label>
             Prices for
-            <select [value]="fuer()" (change)="fuer.set($any($event.target).value)">
-              <option value="">At this table</option>
+            <select (change)="fuer.set($any($event.target).value)">
+              <option value="" [selected]="gewaehlt() === ''">At this table</option>
               @for (m of waren().mine; track m.id) {
-                <option [value]="m.id">{{ m.name }}</option>
+                <option [value]="m.id" [selected]="gewaehlt() === m.id">{{ m.name }}</option>
               }
             </select>
           </label>
         }
+        @if (figur(); as f) {
+          @if (f.purse !== undefined) {
+            <span class="geld">Purse <strong>{{ geld(f.purse) }}</strong></span>
+          }
+        }
       </div>
+      @if (meldung()) {
+        <p class="meldung" [class.nein]="meldungNein()" role="status">{{ meldung() }}</p>
+      }
       @if (liste().length) {
         <ul>
           @for (w of liste(); track w.edge) {
@@ -47,8 +74,20 @@ import { KurzLink } from '../kern/kurzansicht';
                   <span class="leer" title="Neither the item nor the shop names a price">no price</span>
                 }
               </span>
-              @if (w.steps.length || (w.base !== w.list && w.base !== undefined)) {
+              @if (figur()?.inventory) {
+                <span class="kauf">
+                  @if (w.available && w.price !== undefined) {
+                    <input type="number" min="1" [attr.max]="w.qty ?? null" [value]="1" aria-label="Quantity to buy" #n />
+                    <button type="button" [disabled]="laeuft() || zuTeuer(w)" (click)="kaufen(w, +n.value)">Buy</button>
+                    @if (zuTeuer(w)) { <small class="knapp">can’t afford</small> }
+                  }
+                </span>
+              }
+              @if (w.steps.length || (w.base !== w.list && w.base !== undefined) || w.listNote) {
                 <span class="herkunft">
+                  @if (w.listNote) {
+                    <span class="schaetzung" title="Where the list price comes from">{{ w.listNote }}</span>
+                  }
                   @if (w.base !== w.list && w.base !== undefined) {
                     <span>shop price {{ geld(w.base) }}</span>
                   }
@@ -64,6 +103,34 @@ import { KurzLink } from '../kern/kurzansicht';
         </ul>
       } @else {
         <p class="hinweis">This shop sells nothing yet. Add a “sells” edge to an item.</p>
+      }
+      @if (figur(); as f) {
+        @if (f.inventory) {
+          <h4>Sell to this shop</h4>
+          @if (f.sellable?.length) {
+            <ul class="verkauf">
+              @for (v of f.sellable; track v.edge) {
+                <li>
+                  <span class="name">{{ v.name }} <small class="menge">× {{ v.qty }}</small></span>
+                  <span class="preis">
+                    @if (v.price !== undefined) { {{ geld(v.price) }} each } @else { <span class="leer">no price</span> }
+                  </span>
+                  <span class="kauf">
+                    @if (v.price !== undefined) {
+                      <input type="number" min="1" [attr.max]="v.qty" [value]="1" aria-label="Quantity to sell" #m />
+                      <button type="button" [disabled]="laeuft()" (click)="verkaufen(v, +m.value)">Sell</button>
+                    }
+                  </span>
+                </li>
+              }
+            </ul>
+            <p class="hinweis">The shop pays half the list price. Reserved pieces are not listed.</p>
+          } @else {
+            <p class="hinweis">{{ f.name }} carries nothing to sell.</p>
+          }
+        } @else {
+          <p class="hinweis">{{ f.name }} carries no inventory yet — nothing to pay with.</p>
+        }
       }
     </section>
   `,
@@ -83,17 +150,71 @@ import { KurzLink } from '../kern/kurzansicht';
     .herkunft { grid-column: 1 / -1; font-size: .85em; color: var(--dim); display: flex; flex-wrap: wrap; gap: .1rem .9rem; }
     .unklar { text-decoration: underline wavy; }
     .hinweis, .leer { color: var(--dim); }
+    .geld { font-size: .9em; }
+    .kauf { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; justify-content: flex-end; }
+    .kauf input { width: 3.5rem; }
+    .knapp { color: var(--dim); }
+    h4 { margin: 1rem 0 0; }
+    .meldung { margin: .5rem 0 0; }
+    .meldung.nein { color: var(--accent, #8b2e1f); }
   `,
 })
 export class Laden {
   readonly waren = input.required<Ladenwaren>();
-  /** Für wen die Preise gelten: leer heisst am Tisch, sonst eine eigene Figur. */
-  protected readonly fuer = signal('');
+  /** Der Laden — für Kaufen und Verkaufen (T-133). */
+  readonly id = input<string>('');
+  private readonly api = inject(Api);
+  private readonly bestand = inject(Bestand);
+  /**
+   * Für wen die Preise gelten: leer heisst am Tisch, sonst eine eigene
+   * Figur. Ungewählt die erste eigene — wer einkaufen geht, geht als
+   * jemand (T-133).
+   */
+  protected readonly fuer = signal<string | null>(null);
+  protected readonly gewaehlt = computed(() => this.fuer() ?? this.waren().mine[0]?.id ?? '');
+  protected readonly figur = computed(() => this.waren().mine.find((m) => m.id === this.gewaehlt()));
 
-  protected readonly liste = computed<Ware[]>(() => {
-    const w = this.waren();
-    return w.mine.find((m) => m.id === this.fuer())?.wares ?? w.table;
-  });
+  protected readonly liste = computed<Ware[]>(() => this.figur()?.wares ?? this.waren().table);
+
+  protected readonly laeuft = signal(false);
+  protected readonly meldung = signal('');
+  protected readonly meldungNein = signal(false);
+
+  /** Reicht das Geld für ein Stück? Nur ein Hinweis — entscheiden tut der Server. */
+  protected zuTeuer(w: Ware): boolean {
+    const f = this.figur();
+    return w.price !== undefined && f?.purse !== undefined && w.price > f.purse;
+  }
+
+  protected kaufen(w: Ware, n: number): Promise<void> {
+    const f = this.figur();
+    if (!f) return Promise.resolve();
+    return this.handeln(() => this.api.buy(this.id(), f.id, w.edge, n), (h) => `Bought ${h.qty} × ${h.item.name} for ${this.geld(h.total)}.`);
+  }
+
+  protected verkaufen(v: Verkaeuflich, n: number): Promise<void> {
+    const f = this.figur();
+    if (!f) return Promise.resolve();
+    return this.handeln(() => this.api.sell(this.id(), f.id, v.inventory, v.edge, n), (h) => `Sold ${h.qty} × ${h.item.name} for ${this.geld(h.total)}.`);
+  }
+
+  /** Ein Handel, danach den Laden neu holen: Menge, Geld und Verkäufliches stehen dort. */
+  private async handeln(fn: () => Promise<Handel>, text: (h: Handel) => string): Promise<void> {
+    this.laeuft.set(true);
+    this.meldung.set('');
+    try {
+      const h = await fn();
+      this.meldungNein.set(false);
+      this.meldung.set(text(h));
+      await this.bestand.oeffnen(this.id(), true);
+    } catch (e) {
+      const body = e instanceof ApiError ? (e.body as { error?: string; refused?: string } | undefined) : undefined;
+      this.meldungNein.set(true);
+      this.meldung.set((body?.refused && ABGELEHNT[body.refused]) || body?.error || String((e as Error).message ?? e));
+    } finally {
+      this.laeuft.set(false);
+    }
+  }
 
   protected geld(cp: number): string {
     return formatCopper(cp);

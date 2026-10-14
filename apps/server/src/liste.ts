@@ -252,6 +252,11 @@ export interface ListQuery {
   type?: string[] | undefined;
   /** Diese Arten oder ein Untertyp davon (`extends`-Kette) — für Auswahlen. */
   of?: string[] | undefined;
+  /** Ohne diese Arten und ihre Untertypen (T-137): „World ohne Items". */
+  notype?: string[] | undefined;
+  /** Nur Artikel in diesem Vorbereitungsstand (T-137); ohne Status-Karte
+   *  zählt ein Artikel als `ready` (D72). */
+  status?: string[] | undefined;
   q?: string | undefined;
   /** Nur diese Ebenen (`NO_LAYER` für „keine"); leer heisst alle. */
   layer?: string[] | undefined;
@@ -276,6 +281,10 @@ export interface ListQuery {
   exclude?: ReadonlySet<string> | undefined;
   /** `name` (Vorgabe), `type` oder eine Spalte `Typ.feld`; `-` davor kehrt um. */
   sort?: string | undefined;
+  /** **Nach Nähe ordnen** (T-138): mit `q` zuerst der genaue Name, dann
+   *  der Anfang, ein Wortanfang, ein Alias oder Deckname, zuletzt „enthält".
+   *  Innerhalb einer Stufe nach Namen. Gilt nur ohne `sort`. */
+  rank?: boolean | undefined;
   offset: number;
   limit: number;
   /** `Typ.feld` → Werte oder Spanne. */
@@ -353,6 +362,33 @@ function trifft(z: IndexZeile, ref: string, f: FieldFilter): boolean {
   return true;
 }
 
+/**
+ * **Wie nah ein Treffer liegt** (T-138): 0 der Name genau, 1 sein Anfang,
+ * 2 ein Wortanfang im Namen, 3 ein Alias, der Deckname oder die Nummer
+ * genau oder am Anfang, 4 irgendwo enthalten. Gerechnet über die Zeile
+ * des Index — der Name ist dort schon der, den dieser Betrachter sieht
+ * (Deckname statt Name, wenn das Sieb es so will).
+ */
+export function naehe(name: string, such: string, q: string): number {
+  if (name === q) return 0;
+  if (name.startsWith(q)) return 1;
+  if (name.includes(` ${q}`) || name.includes(`-${q}`) || name.includes(`(${q}`)) return 2;
+  for (const teil of such.split('\n')) if (teil.startsWith(q)) return 3;
+  return 4;
+}
+
+/**
+ * Die Treffer nach Nähe in Eimern — **ein Gang, keine Sortierung**: der
+ * Index liegt schon nach Namen, und die Eimer behalten die Reihenfolge.
+ * Ein Buchstabe trifft bei einer Viertelmillion Artikeln die Hälfte; ein
+ * Vergleich je Paar wäre dort das, was beim Tippen wartet.
+ */
+function nachNaehe<T extends { sortName: string; such: string }>(treffer: T[], q: string): T[] {
+  const eimer: T[][] = [[], [], [], [], []];
+  for (const z of treffer) eimer[naehe(z.sortName, z.such, q)]!.push(z);
+  return eimer.flat();
+}
+
 function spaltenArt(prop: PropertySchema): ListColumn['kind'] {
   if (prop.type === 'array') return 'list';
   if (prop.type === 'boolean') return 'bool';
@@ -371,6 +407,8 @@ function spaltenArt(prop: PropertySchema): ListColumn['kind'] {
 export function queryList(idx: ListIndex, q: ListQuery): ListResult {
   const such = q.q?.trim().toLowerCase() ?? '';
   const ofSet = q.of?.length ? new Set(q.of) : null;
+  const ohneTypen = q.notype?.length ? new Set(q.notype) : null;
+  const staende = q.status?.length ? new Set(q.status) : null;
   const typSet = q.type?.length ? new Set(q.type) : null;
   const ebenen = q.layer?.length ? new Set(q.layer) : null;
   const ohneEbenen = q.nolayer?.length ? new Set(q.nolayer) : null;
@@ -392,6 +430,8 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
     if (nurIds && !nurIds.has(z.id)) continue;
     if (q.area && z.area !== q.area) continue;
     if (ofSet && !idx.types.get(z.type)?.chain.some((t) => ofSet.has(t))) continue;
+    if (ohneTypen && idx.types.get(z.type)?.chain.some((t) => ohneTypen.has(t))) continue;
+    if (staende && !staende.has(z.status || 'ready')) continue;
     if (such && !z.such.includes(such)) continue;
     if (marken && !marken.every((t) => z.tags.includes(t))) continue;
     if (q.exclude?.has(z.id)) continue;
@@ -480,7 +520,9 @@ export function queryList(idx: ListIndex, q: ListQuery): ListResult {
   const sort = q.sort ?? 'name';
   const ab = sort.startsWith('-');
   const nach = ab ? sort.slice(1) : sort;
-  if (nach !== 'name' || ab) {
+  if (q.rank && such && !q.sort) {
+    liste = nachNaehe(treffer, such);
+  } else if (nach !== 'name' || ab) {
     const wert = (z: IndexZeile): unknown =>
       nach === 'name' ? z.sortName : nach === 'type' ? (idx.types.get(z.type)?.label ?? z.type) : z.cols[nach];
     liste = [...treffer].sort((a, b) => {
@@ -642,6 +684,8 @@ export function parseListQuery(raw: Record<string, unknown>): ListQuery {
     area: typeof raw['area'] === 'string' && raw['area'] ? raw['area'] : undefined,
     type: liste(raw['type']),
     of: liste(raw['of']),
+    notype: liste(raw['notype']),
+    status: liste(raw['status']),
     q: typeof raw['q'] === 'string' ? raw['q'] : undefined,
     layer: liste(raw['layer']),
     nolayer: liste(raw['nolayer']),
@@ -650,10 +694,121 @@ export function parseListQuery(raw: Record<string, unknown>): ListQuery {
     tag: liste(raw['tag']),
     parts: raw['parts'] === '1' || raw['parts'] === 'true',
     versions: raw['versions'] === '1' || raw['versions'] === 'true',
+    rank: raw['rank'] === '1' || raw['rank'] === 'true',
     sort: typeof raw['sort'] === 'string' && raw['sort'] ? raw['sort'] : undefined,
     offset: Math.max(0, zahl(raw['offset'], 0)),
     /* Höchstens 200 je Blatt: wer mehr will, blättert. */
     limit: Math.min(200, Math.max(1, zahl(raw['limit'], 50))),
     fields,
   };
+}
+
+// ------------------------------------------------------------------ Suche
+
+/** Eine Zeile der übergreifenden Suche (T-138): wenig — mehr zeigt das „+" (Ansicht `search`). */
+export interface SearchRow {
+  id: string;
+  name: string;
+  type: string;
+  typeLabel: string;
+  area: string;
+  layers: string[];
+  publishers: string[];
+  source: string;
+  image?: string;
+}
+
+export interface SearchResult {
+  q: string;
+  total: number;
+  offset: number;
+  limit: number;
+  rows: SearchRow[];
+  facets: {
+    types: ListResult['facets']['types'];
+    layers: ListResult['facets']['layers'];
+    publishers: { name: string; count: number }[];
+  };
+}
+
+/**
+ * **Die übergreifende Suche** (T-138): dieselbe Liste wie überall
+ * (`queryList` über den gesiebten Index), nach Nähe geordnet, Fassungen
+ * als eine Zeile — und ein Filter nach **Herausgeber**, der zu einer
+ * Ebenenauswahl wird. Wer etwas nicht sehen darf, findet es nicht: der
+ * Index ist schon gesiebt, und der Name darin ist der, den dieser
+ * Betrachter sieht (Deckname).
+ *
+ * `verlagVon` gibt je Ebenen-Id den Herausgeber (`publisherOf`); eine
+ * Ebene, die der Betrachter nicht sieht, kommt nicht vor, weil der Index
+ * ihren Namen nicht kennt.
+ */
+export function search(
+  idx: ListIndex,
+  q: ListQuery,
+  publisher: string[] | undefined,
+  verlagVon: (layer: string) => string,
+): SearchResult {
+  let layer = q.layer;
+  if (publisher?.length) {
+    const gewaehlt = new Set(publisher);
+    const ebenen = [...idx.names.keys()].filter((id) => {
+      const v = verlagVon(id);
+      return v !== '' && gewaehlt.has(v);
+    });
+    const schnitt = layer?.length ? ebenen.filter((l) => layer!.includes(l)) : ebenen;
+    /* Nichts trifft: eine Ebene, die es nicht gibt, statt „alle". */
+    layer = schnitt.length ? schnitt : ['∅∅'];
+  }
+  const roh = queryList(idx, { ...q, layer, versions: true, rank: true, parts: false });
+  /* Die Ebenen-Facette ohne den Herausgeberfilter: sonst verschwände mit
+     dem ersten Verlag jeder andere aus der Leiste. */
+  const ohne = publisher?.length ? queryList(idx, { ...q, versions: true, parts: false, offset: 0, limit: 1 }) : roh;
+  const verlage = new Map<string, number>();
+  for (const l of ohne.facets.layers) {
+    if (l.id === NO_LAYER) continue;
+    const v = verlagVon(l.id);
+    if (v) verlage.set(v, (verlage.get(v) ?? 0) + l.count);
+  }
+  for (const v of publisher ?? []) if (!verlage.has(v)) verlage.set(v, 0);
+  const zeilen = zeilenVon(idx);
+  return {
+    q: q.q ?? '',
+    total: roh.total,
+    offset: roh.offset,
+    limit: roh.limit,
+    rows: roh.rows.map((z) => {
+      const art = idx.types.get(z.type);
+      const ids = zeilen.get(z.id)?.layers ?? [];
+      return {
+        id: z.id,
+        name: z.name,
+        type: z.type,
+        typeLabel: art?.label ?? z.type,
+        area: art?.area ?? '',
+        layers: z.layers,
+        publishers: [...new Set(ids.map(verlagVon).filter(Boolean))],
+        source: z.source,
+        ...(z.image ? { image: z.image } : {}),
+      };
+    }),
+    facets: {
+      types: roh.facets.types,
+      layers: ohne.facets.layers,
+      publishers: [...verlage.entries()]
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'en')),
+    },
+  };
+}
+
+/** Id → Zeile, einmal je Index — der Index gilt je Stempel und Betrachter. */
+const zeilenJe = new WeakMap<ListIndex, Map<string, IndexZeile>>();
+function zeilenVon(idx: ListIndex): Map<string, IndexZeile> {
+  let m = zeilenJe.get(idx);
+  if (!m) {
+    m = new Map(idx.rows.map((z) => [z.id, z]));
+    zeilenJe.set(idx, m);
+  }
+  return m;
 }

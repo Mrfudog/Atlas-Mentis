@@ -430,6 +430,7 @@ und welche gilt, sagt der Ort und kein Schalter:
 | **Quick** (Kurzansicht) | Eine Karte auf dem Board, die Vorschau neben der Liste, das Popup an einem genannten Artikel, die Schnellanlage aus einem anderen Artikel | Das Nötigste, um zu wissen, was man vor sich hat |
 | **Full** | Die Artikelseite | Alles, was dieser Artikel trägt |
 | **Print** | „Print" an der Artikelseite | Was auf ein Blatt A4 gehört — ohne Knöpfe und Seitenspalte |
+| **Search** | Das „+" an einem Treffer der übergreifenden Suche (T-138) | Was über Name, Art, Ebene und Herausgeber hinaus hilft, den richtigen Treffer zu erkennen — Bild, Beschreibung, ein, zwei Werte |
 
 Einen Wähler „welche Ansicht hätten Sie gern" gibt es an diesen Orten
 nicht. Ein Verweis ist ein Verweis, und eine Artikelseite ist eine
@@ -441,7 +442,9 @@ Leitung wissen will) ist die erste, „Spielertisch" könnte die nächste
 sein — im Register angelegt und dort gewählt, wo ohnehin gewählt
 wird: auf der Kachel und beim Drucken. Die Leitung wollte festlegen, was
 erscheint, ohne Code zu ändern; dass dafür niemand an jedem Ort wählen
-muss, hält die vier fest.
+muss, hält die fünf fest. Das „+" der Suche ist darum **eine Ansicht und
+kein Sonderfall**: die Leitung stellt im Register ein, was ein
+aufgeklappter Treffer zeigt, wie bei jeder anderen.
 
 **Was eine Ansicht zeigt, steht einmal, global** — eine Liste von
 Elementen, darin ganze Typen oder einzelne Felder —, und **ein Artikel
@@ -489,6 +492,18 @@ Seltenheit beim Gegenstand. Eine Spaltenliste im Code wäre eine zweite
 Stelle, die am Tag der nächsten Art falsch ist; so bringt die neue Art ihre
 Spalten mit. Und weil die Vorschau neben der Liste eine Karte ist, zeigt
 sie Quick.
+
+**Eine Filtergruppe ist kein Wort, sondern ein gespeicherter Blick**
+(T-137). Die Leitung wollte World ohne Gegenstände sehen, ohne es jedes Mal
+abzuwählen, und Unterreiter, die sie aus der Kopfleiste wieder findet. Eine
+Vorgabe je Seite *und* daneben Gruppen wären zwei Stellen für dieselbe
+Frage — „was zeigt diese Seite?" —, also ist die Vorgabe eine Gruppe mit
+einer Marke. Sie gehört nicht ins Register: wie jemand seine Listen
+schneidet, ist keine Regel, und eine eigene Gruppe trägt eine Konto-Id, die
+in keinem Artikel stehen darf. Getrennt bleibt, was eine Gruppe **ist**
+(Arten, Marken, Stand — die Grenze des Reiters) und womit sie **anfängt**
+(Suche, Ebenen — danach gehört der Filter der Seite): sonst liesse sich in
+„Places" eine Suche nicht mehr löschen, ohne die Gruppe zu ändern.
 
 **Die Kurzansicht** ist das deutsche Wort für Quick, kein zehntes Wort
 (T-093, REQ-248, 14.10.2026). Sie steht auch als **Popup**: wo ein Artikel
@@ -1535,6 +1550,15 @@ dreimal an den Läden. Der Rang ist dieselbe Leiter wie beim Wissen
 (`Faction.ranks`, A7): was der Zirkel bekommt, bekommt der Novize noch
 nicht, und ein Rang, der nicht in der Leiter steht, gewährt nichts.
 
+**Ein geschätzter Preis ist eine Fassung, kein Eintrag im Original**
+(T-139). Die Quelle nennt für die meisten magischen Gegenstände keinen
+Preis; was Claude dafür schätzt, liegt in der Ebene „AI generated prices"
+(Gruppe „AI content") als Überschreibung, mit seiner Herkunft in
+`priceNote`. So bleibt sichtbar, was das Buch sagt und was geschätzt ist,
+und wer ohne Schätzungen spielen will, schaltet eine Gruppe ab, statt
+tausend Felder zu leeren. Der Laden liest darum die **geltende** Fassung
+seiner Ware — sonst bliebe die Schätzung an der Theke unsichtbar.
+
 **Der Preis wird gerechnet, nie gespeichert** (D8). Ein gespeicherter
 Preis wäre am Tag falsch, an dem jemand in der Gilde aufsteigt; der
 gerechnete sagt dazu, woher jeder Abschlag kommt. Prozent rechnen auf den
@@ -1544,6 +1568,27 @@ welcher Reihenfolge die Kanten stehen.
 **Was einer vom anderen hält, rechnet nicht mit.** `regards` bleibt eine
 Kante mit Marken; ein Wirt, der Rook etwas schuldet, gibt ihm einen
 `discount`. Ob Marken einmal Preise bewegen, ist offen (E-043).
+
+**Gekauft wird eine Ware, nicht ein Preis** (T-133). Die Seite schickt,
+welche Ware, wie viele und für wen; den Preis rechnet der Server noch
+einmal. Ein Preis aus der Maske wäre der, den jemand gern bezahlt hätte.
+Die Menge am Laden sinkt, das Stück liegt danach im Inventar der Figur,
+und die Münzen gehen von dort ab — drei Stellen, die gemeinsam stimmen
+müssen, darum schreibt sie eine Route und nicht drei Masken.
+
+**Gekauft wird ein Stück, nicht der Artikel** (T-133, T-150). Die Laterne
+im Kompendium ist die Vorlage; was Ash über den Tresen bekommt, ist eine
+Instanz davon — ein eigener Artikel, der nur speichert, was an *dieser*
+Laterne anders ist. Hängte das Inventar am Grundartikel, wäre eine Gravur
+an Ashs Laterne eine an jeder, und eine Korrektur am Preis im Kompendium
+erreichte eine Kopie nie. Zehn gleiche Fackeln sind trotzdem ein Stapel:
+eine Instanz, die nicht abweicht, nimmt die nächsten auf, und verkauft
+fällt sie wieder weg. Eine abweichende geht als sie selbst an den Laden.
+
+**Verkauft wird zum halben Listenpreis** — die Regel aus 5e, Rabatte
+gelten dabei nicht. Ein Stück, das für einen Fertigungsauftrag reserviert
+ist, verkauft man nicht: es gehört schon dem Auftrag. Ob ein Hehler weniger
+zahlt als ein Sammler, wäre ein Feld am Laden (E-045, offen).
 
 ## Was ein Spieler von einer Karte bekommt
 
