@@ -144,7 +144,7 @@ interface Posten {
                       <label [class.geerbt]="f.geerbt && !geaendert(f)" [class.folgt]="f.folgt">
                         <span class="vl">
                           {{ f.label }}
-                          @if (entwurf()!.instanz && !f.geerbt && !f.folgt) {
+                          @if (entwurf()!.instanz && !f.geerbt && !f.folgt && eigenerWert(f)) {
                             <button type="button" class="zurueck" (click)="folgen(f)"
                                     [attr.aria-label]="'Follow the template: ' + f.label" title="Follow the template">↺</button>
                           }
@@ -572,6 +572,11 @@ export class Verlinkt {
   protected setze(f: EFeld, was: Partial<Pick<EFeld, 'wert' | 'jaNein' | 'liste'>>): void {
     Object.assign(f, was, { folgt: false });
     this.entwurf.update((e) => (e ? { ...e } : e));
+  }
+
+  /** ↺ nur, wo ein eigener Wert steht — an einem leeren Feld gäbe es nichts zurückzusetzen. */
+  protected eigenerWert(f: EFeld): boolean {
+    return f.art === 'jaNein' ? f.jaNein : stand(f) !== '';
   }
 
   protected geaendert(f: EFeld): boolean {
