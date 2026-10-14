@@ -177,6 +177,12 @@
   },
   "active": "0f563dc26f82184d",
   "lastOpenFiles": [
+    "apps/web/test/suche.test.ts",
+    "apps/web/src/app/suche/suche.ts",
+    "apps/web/src/app/suche",
+    "apps/web/src/app/kern/suche.ts",
+    "apps/server/test/suche.test.ts",
+    "apps/server/migrations/065_ansicht_suche.sql",
     "VTT/Backbone Concept.md",
     "docs/Betrieb.md",
     "docs/Architektur.md",
