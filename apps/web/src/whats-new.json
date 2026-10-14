@@ -9,6 +9,14 @@
       "link": "/characters/new"
     },
     {
+      "id": "2026-10-14-player-layer",
+      "date": "2026-10-14",
+      "title": "Your own layer as a player",
+      "text": "As a player, you get your own layer in each campaign you join: your character, notes and everything you create land there, just under the campaign layer. The account page marks it as your default; when a player leaves, the GM can take over what is in it.",
+      "area": "Campaign",
+      "link": "/account"
+    },
+    {
       "id": "2026-10-14-whats-new-since-account",
       "date": "2026-10-14",
       "title": "What's new starts with your account",

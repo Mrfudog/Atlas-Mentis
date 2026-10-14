@@ -262,6 +262,10 @@ wiederkommen, werden sie neu geschrieben.
   **Offen:** ohne Ebenenkante gehört ein Artikel niemandem besonders (65 von
   75 heute) — das stimmt bei *einer* Kampagne und nicht mehr bei zweien.
   Ebenso offen: die laufende Kampagne ist eine globale Einstellung.
+  **Eine Spielerebene gehört der Kampagne, die sie aufschaltet**, wie die
+  Kampagnenebene (T-164): genau eine, also sieht deren Leitung darin, was
+  sie dort sähe — die Ebene sagt Herkunft und Schreibrecht, die
+  Sichtbarkeit sagt weiter der Artikel.
 - **Geschrieben wird je Ebene** (T-098, E-001). Ein Konto schreibt, was
   **ganz** in Ebenen liegt, in denen es schreibt (`inWritableLayers` —
   liegt ein Artikel auch im geteilten Regelwerk, nicht): die es besitzt
@@ -278,6 +282,17 @@ wiederkommen, werden sie neu geschrieben.
   (`zielEbenen`, `POST /api/entities/:id/adapt`). `ready` bleibt bei `gm`;
   was einer ändert, der es nicht setzen darf, fällt zurück (D74). Dazu
   schreibt `gm` weiter, was Spielende angelegt haben (D72).
+  **Jede Spielerin hat ihre Spielerebene** (T-164, `spielerebene.ts`): je
+  Konto und Kampagne mit Rolle `player` eine, angelegt mit der Rolle
+  (ältere: Migration 069), besessen vom Konto, **wessen sie ist, steht in
+  `app_user_layer.campaign_id`** (`Layer.kind: 'player'` ist Beschreibung).
+  Sie ist die **Vorgabe zum Schreiben** (`vorgabeEbene`, eine Funktion für
+  Anlegen, Konto-Seite und `GET /api/layers/default`), steht dicht **unter**
+  der Kampagnenebene, `gm`/`co-gm` schreiben sie mit, und **Fassungen
+  fremder Artikel kommen nicht hinein** (`anpassZiele`). Geht die Rolle,
+  bleibt die Ebene unbeschrieben stehen, bis die Leitung sie übernimmt
+  (`POST /api/layers/:layer/takeover`: Inhalt in die Kampagnenebene, leere
+  Ebene weg).
 - **Fünf Ansichten, und der Ort wählt sie.** `overview` steht in einem
   Verweis oder einer Listenzeile, `quick` auf einer Karte, `full` auf der
   Artikelseite, `print` auf dem Blatt hinter „Print" (T-110), `search`

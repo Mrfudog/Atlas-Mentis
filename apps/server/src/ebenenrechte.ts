@@ -21,8 +21,10 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
+  ACTIVATES_RELATION,
   CAMPAIGN_TYPE,
   LAYER_COMPONENT,
+  LAYER_RELATION,
   GROUP_RELATION,
   currentCampaign,
   entityName,
@@ -36,6 +38,7 @@ import {
 } from '@nw/model';
 import type { Repository } from './repo.js';
 import { foldName, type User } from './auth.js';
+import { spielerEbenen } from './spielerebene.js';
 
 /**
  * **Die Ebenen, die hier angelegt wurden** (T-109): jede, die nicht aus
@@ -60,12 +63,29 @@ interface Deps {
   schreibEbenen(user: User | null, map: Map<string, Entity>): Promise<Set<string>>;
   zielEbenen(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity[]>;
   kampagnenEbene(map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null>;
+  vorgabeEbene(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null>;
+}
+
+/** An einer Spielerebene (T-164): für welche Kampagne, und ob es die eigene ist. */
+function spielerVon(
+  map: Map<string, Entity>,
+  spieler: Map<string, { userId: string; campaign: string }>,
+  id: string,
+  userId: string,
+): { player?: { campaign: { id: string; name: string }; mine: boolean } } {
+  const s = spieler.get(id);
+  if (!s) return {};
+  const k = map.get(s.campaign);
+  return { player: { campaign: { id: s.campaign, name: k ? entityName(k) : s.campaign }, mine: s.userId === userId } };
 }
 
 /** Wie lang ein Ebenenname sein darf — er steht in Listen und Kopfzeilen. */
 const NAME_MAX = 80;
 
-export function registerEbenenrechte(app: FastifyInstance, { repo, viewerOf, schreibEbenen, zielEbenen, kampagnenEbene }: Deps): void {
+export function registerEbenenrechte(
+  app: FastifyInstance,
+  { repo, viewerOf, schreibEbenen, zielEbenen, kampagnenEbene, vorgabeEbene }: Deps,
+): void {
   const nein = (reply: FastifyReply, code: number, error: string) => reply.code(code).send({ error });
   const bestand = async () => new Map((await repo.listEntities()).map((e) => [e.id, e]));
   const istEbene = (e: Entity | undefined): e is Entity => !!e && primaryInterface(e) === LAYER_COMPONENT;
@@ -95,6 +115,9 @@ export function registerEbenenrechte(app: FastifyInstance, { repo, viewerOf, sch
     const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
     const schreibt = await schreibEbenen(user, map);
     const imSpiel = new Set((await zielEbenen(user, map, kampagne)).map((l) => l.id));
+    const vorgabe = (await vorgabeEbene(user, map, kampagne))?.id ?? null;
+    /* Die eigenen Spielerebenen (T-164), mit ihrer Kampagne. */
+    const spieler = spielerEbenen(await repo.layerGrants());
     /* Als Leitung: welche Kampagne welche Ebene bringt. */
     const alsLeitung = new Map<string, { id: string; name: string; role: string }[]>();
     for (const [c, role] of Object.entries(user.roles ?? {})) {
@@ -119,14 +142,97 @@ export function registerEbenenrechte(app: FastifyInstance, { repo, viewerOf, sch
         granted: (user.layerIds ?? []).includes(id),
         campaigns: alsLeitung.get(id) ?? [],
         inPlay: imSpiel.has(id),
+        default: id === vorgabe,
+        ...(spielerVon(map, spieler, id, user.id)),
         ...(verwaltet(user, id) ? { editors: await schreiberVon(id) } : {}),
       });
     }
     layers.sort((a, b) => Number(b.inPlay) - Number(a.inPlay) || a.name.localeCompare(b.name, 'de'));
+    /* Die Vorgabe kann die Ebene der Kampagne sein, in der eine Spielerin
+       nicht schreibt — darum steht sie für sich und nicht nur in der Liste. */
+    const v = vorgabe ? map.get(vorgabe) : undefined;
     return {
       layers,
       campaign: kampagne ? { id: kampagne.id, name: entityName(kampagne) } : null,
+      default: v ? { id: v.id, name: entityName(v) } : null,
     };
+  });
+
+  /**
+   * **Die Vorgabe-Schreibebene** (T-164, für T-161): wohin dieses Konto in
+   * der laufenden Kampagne anlegt, wenn es keine Ebene nennt — als
+   * `player` die eigene Spielerebene. `layer: null`: hier legt es nicht an.
+   */
+  app.get('/api/layers/default', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return nein(reply, 401, 'Nicht angemeldet.');
+    const map = await bestand();
+    const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
+    const l = await vorgabeEbene(user, map, kampagne);
+    const spieler = l ? spielerEbenen(await repo.layerGrants()).get(l.id) : undefined;
+    return {
+      layer: l ? { id: l.id, name: entityName(l), player: spieler?.userId === user.id } : null,
+      campaign: kampagne ? { id: kampagne.id, name: entityName(kampagne) } : null,
+    };
+  });
+
+  /**
+   * **Eine Spielerebene übernehmen** (T-164): wenn ihr Konto in der Kampagne
+   * nicht mehr mitspielt, holt die Leitung (oder die Verwaltung) ihren
+   * Inhalt in die Ebene der Kampagne und löscht die leere Ebene. Was nicht
+   * durch `validateEntity` geht, bleibt liegen — dann bleibt auch die
+   * Ebene, und die Antwort zählt es auf. Nichts geht verloren.
+   */
+  app.post<{ Params: { layer: string } }>('/api/layers/:layer/takeover', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user || user.disabledAt) return nein(reply, 401, 'Nicht angemeldet.');
+    const map = await bestand();
+    const l = map.get(request.params.layer);
+    if (!istEbene(l)) return nein(reply, 404, 'Diese Ebene gibt es nicht.');
+    const s = spielerEbenen(await repo.layerGrants()).get(l.id);
+    if (!s) return nein(reply, 400, 'Keine Spielerebene.');
+    const rolle = user.roles?.[s.campaign];
+    if (!user.isAdmin && rolle !== 'gm' && rolle !== 'co-gm') {
+      return nein(reply, 403, 'Eine Spielerebene übernimmt die Leitung ihrer Kampagne.');
+    }
+    if ((await repo.getUser(s.userId))?.roles?.[s.campaign] === 'player') {
+      return nein(reply, 409, 'Ihr Konto spielt in dieser Kampagne noch mit.');
+    }
+    const kampagne = map.get(s.campaign) ?? null;
+    const ziel = await kampagnenEbene(map, kampagne);
+    if (!kampagne || !ziel) return nein(reply, 409, 'Die Kampagne hat keine eigene Ebene, die den Inhalt aufnimmt.');
+    const registry = await repo.getRegistry();
+    const known = new Map([...map.values()].map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
+    const geholt: { id: string; name: string }[] = [];
+    const liegen: { id: string; name: string }[] = [];
+    for (const e of map.values()) {
+      if (e.id === l.id || !(e.relations ?? []).some((r) => r.type === LAYER_RELATION && r.to === l.id)) continue;
+      const schon = (e.relations ?? []).some((r) => r.type === LAYER_RELATION && r.to === ziel.id);
+      const neu: Entity = {
+        ...e,
+        relations: (e.relations ?? []).flatMap((r) =>
+          r.type === LAYER_RELATION && r.to === l.id ? (schon ? [] : [{ ...r, to: ziel.id }]) : [r],
+        ),
+      };
+      if (validateEntity(registry, neu, { knownTypes: known }).length) {
+        liegen.push({ id: e.id, name: entityName(e) });
+        continue;
+      }
+      await repo.putEntity(neu);
+      geholt.push({ id: e.id, name: entityName(e) });
+    }
+    if (!liegen.length) {
+      /* Die leere Ebene geht, mit ihrer Kante an jeder Kampagne. */
+      for (const k of map.values()) {
+        if (primaryInterface(k) !== CAMPAIGN_TYPE) continue;
+        const rest = (k.relations ?? []).filter((r) => !(r.type === ACTIVATES_RELATION && r.to === l.id));
+        if (rest.length !== (k.relations ?? []).length) await repo.putEntity({ ...k, relations: rest });
+      }
+      await repo.deleteEntity(l.id);
+      for (const g of await repo.layerGrants()) if (g.layerId === l.id) await repo.revokeLayer(g.userId, g.layerId);
+    }
+    await repo.appendEvent('layer.takeover', l.id, { into: ziel.id, moved: geholt.map((x) => x.id), kept: liegen.map((x) => x.id), by: user.id });
+    return { into: { id: ziel.id, name: entityName(ziel) }, moved: geholt, kept: liegen, deleted: !liegen.length };
   });
 
   /**

@@ -1002,6 +1002,44 @@ Kampagne und ihren eigenen Ebenen im Spiel — so legt die Werkbank geschätzte
 Preise in „AI generated prices" (T-139). `ready` bleibt bei `gm`: ändert die Mitleitung oder
 eine Spielerin in ihrer Ebene etwas Fertiges, fällt es zurück wie oben.
 
+**Die Spielerebene** (T-164): je Konto und Kampagne, in der es `player`
+ist, eine eigene Ebene — **die Vorgabe zum Schreiben**. Figur, Notizen und
+was eine Spielerin sonst anlegt, landen dort (`vorgabeEbene`, für die
+Kopfleiste `GET /api/layers/default`); ohne Spielerebene wie bisher in der
+Ebene der Kampagne. Angelegt wird sie, sobald das Konto die Rolle `player`
+bekommt (Kampagnenseite, Einladung, `user role`; ältere Mitglieder:
+Migration 069), als `<Konto> · <Kampagne>`, umbenennbar, `Layer.kind:
+'player'` — Beschreibung wie jedes `kind`. **Wessen sie ist, steht neben
+dem Konto** (`app_user_layer.campaign_id`, REQ-199). Die Kampagne schaltet
+sie **dicht unter ihrer eigenen Ebene** auf; genau eine Kampagne heisst,
+sie gehört ihr (`campaignsOf`), also sieht deren Leitung darin, was sie in
+der Kampagnenebene sähe — **die Sichtbarkeit bleibt am Artikel**, die Ebene
+ist Herkunft und Schreibrecht, kein Versteck. `gm` und `co-gm` schreiben die
+Spielerebenen ihrer Runde mit (wie D72). **Keine Fassung fremder Artikel
+darin** (`anpassZiele`): der Stapel gilt für alle am Tisch, eine
+Überschreibung in einer Spielerebene änderte den Artikel für alle — wer
+etwas an einem fremden Artikel anmerken will, schreibt eine Notiz mit
+Verweis. **Rolle weg, Ebene bleibt:** beschrieben wird sie nur, solange
+ihr Konto in der Kampagne mitspielt oder leitet; danach holt die Leitung
+den Inhalt in die Ebene der Kampagne und löscht die leere Ebene
+(`POST /api/layers/:layer/takeover`), und wer eine Ebene mit Inhalt löschen
+will, bekommt den Inhalt aufgezählt (`409`, `contents`). Migration 069 legt
+die Spielerebenen der heutigen Mitglieder an und holt hinein, was ein
+einziges Konto angelegt hat oder führt (`app_user_article`,
+`app_user_actor`) und in der Ebene seiner Kampagne lag; was zwei Konten
+zugleich gehört, bleibt und wird gezählt. Bei der Übernahme zwischen zwei
+Installationen (T-130) wandert die Ebene als Artikel mit, die Zuordnung zum
+Konto nicht.
+
+```mermaid
+flowchart TB
+  K["Campaign"] -- "activates · 100" --> KE["Kampagnenebene<br/>gm, co-gm"]
+  K -- "activates · 99" --> SE["Spielerebene<br/>Mara · Nebelwacht"]
+  K -- "activates · 10" --> R["Regelwerk"]
+  M(["Konto Mara<br/>player"]) -. "app_user_layer<br/>owner · campaign_id" .-> SE
+  F["Maras Figur, Notizen"] -- "inLayer" --> SE
+```
+
 ### 9.5 Handwerk: gelernt und gebunden (D55)
 
 ```mermaid

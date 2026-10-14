@@ -844,8 +844,23 @@ Leitung sie nicht. Was eine Kampagne zeigt, ist ihre wichtigste
 Einstellung; sie steht jetzt auf der Kampagnenseite als Liste mit Häkchen
 und Reihenfolge, und die Listen sagen, was fehlt und warum (T-069).
 
+**Eine Spielerebene ist Herkunft, kein Versteck** (T-164). Was eine
+Spielerin anlegt, liegt in ihrer eigenen Ebene — „Mara · Nebelwacht" —, und
+die schaltet nur ihre Kampagne auf, also gehört sie wie die Kampagnenebene
+dieser Runde. Warum nicht einfach weiter die Kampagnenebene? Weil dort nach
+einem Abend nicht mehr zu sagen ist, was die Leitung vorbereitet und was
+die Spielenden dazugeschrieben haben, und weil eine Spielerin, die die
+Runde verlässt, ihre Notizen sonst über die ganze Kampagnenebene verteilt
+zurücklässt. Wer was sehen darf, sagt weiter der Artikel (`audience`,
+`hiddenFrom`, `revealedTo`): eine Ebene, die zugleich verbirgt, wäre eine
+zweite Sichtbarkeit, und zwei Sichtbarkeiten sind eine, die man vergisst.
+Und **keine Fassungen darin**: der Stapel gilt für alle am Tisch — eine
+Überschreibung in Maras Ebene änderte den Artikel auch für Tom. Was Mara an
+einem fremden Artikel anmerken will, ist eine Notiz mit Verweis.
+
 Dass die Zugehörigkeit so von selbst herausfällt, ist der Grund, dafür **kein
-Feld** zu setzen. `Layer.kind` kennt zwar ein Wort `campaign`, aber ein Feld,
+Feld** zu setzen. `Layer.kind` kennt zwar die Wörter `campaign` und
+`player`, aber ein Feld,
 das gleichzeitig Regel ist, leckt beim ersten Tippfehler: ein Paket, das
 versehentlich `campaign` heisst, gehörte plötzlich wem? Das `kind` bleibt
 Beschreibung.

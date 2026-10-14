@@ -23,12 +23,12 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 166 steht · 48 teils · 85 offen · 10 ersetzt · 6 verworfen — 315 Stories in 77 Features und 12 Epics.
+Zusammen: 167 steht · 48 teils · 85 offen · 10 ersetzt · 6 verworfen — 316 Stories in 77 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
 | [EP-01 Inhaltsgerüst](#ep-01-inhaltsgerüst) | 51 | 31 steht · 10 teils · 4 offen · 4 ersetzt · 2 verworfen |
-| [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 37 | 22 steht · 5 teils · 7 offen · 1 ersetzt · 2 verworfen |
+| [EP-02 Zugang & Betrieb](#ep-02-zugang--betrieb) | 38 | 23 steht · 5 teils · 7 offen · 1 ersetzt · 2 verworfen |
 | [EP-03 Kreaturen & Figuren](#ep-03-kreaturen--figuren) | 27 | 16 steht · 1 teils · 9 offen · 1 ersetzt |
 | [EP-04 Spielererlebnis](#ep-04-spielererlebnis) | 21 | 8 steht · 5 teils · 8 offen |
 | [EP-05 Kampagne & Sitzungen](#ep-05-kampagne--sitzungen) | 31 | 17 steht · 3 teils · 11 offen |
@@ -186,6 +186,7 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 | [[REQ-042]] | Schreibrecht je Feldgruppe | 4 | **offen** |  |
 | [[REQ-237]] | Spielende legen Artikel an, die Leitung gibt frei | 2 | **steht** | `isReady`, `Viewer.own`, `entity_ready` (T-075, D72, D74) |
 | [[REQ-242]] | Felder der eigenen Figur sperren | 3 | **offen** | die eigene Figur verwaltet der Spieler ganz (E-014 d) |
+| [[REQ-316]] | Eigene Ebene je Spieler als Vorgabe | 1 | **steht** | T-164: Spielerebene je Konto und Kampagne, Vorgabe zum Anlegen, Übernahme durch die Leitung; Migration 069 |
 
 ### F-014 Sicht eines Spielers
 
