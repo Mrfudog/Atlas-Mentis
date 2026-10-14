@@ -8,6 +8,7 @@ import { Live } from './kern/live';
 import { ALLE, Filtergruppen } from './kern/filtergruppen';
 import { Suche, tipptGerade } from './kern/suche';
 import { SucheComponent } from './suche/suche';
+import { Neues } from './kern/neues';
 
 /**
  * Das Gerüst: die Kopfleiste wie auf dem Design-Canvas (Kompendium, Artikel
@@ -38,6 +39,10 @@ import { SucheComponent } from './suche/suche';
  * **Die Suche** (T-138) steht in der Kopfleiste und geht auf jeder Seite
  * mit Strg+K (⌘K) oder `/` auf — `/` nur, wenn gerade nicht in ein Feld
  * getippt wird. Am Telefon ist der Knopf ein Zeichen ohne Text.
+ *
+ * **What's new** (T-157) steht klein neben dem Namen, mit einem Punkt,
+ * solange es für dieses Konto Ungelesenes gibt — kein Bereich, sondern
+ * ein Hinweis; am Telefon nur das Zeichen.
  *
  * Die Kopfleiste bleibt weg, solange die Sitzung noch nicht gefragt ist.
  * Ein Balken, der erst „nicht angemeldet" zeigt und einen Wimpernschlag
@@ -137,6 +142,20 @@ import { SucheComponent } from './suche/suche';
           [attr.aria-label]="live.stand() === 'offen' ? 'Live' : 'Live reconnecting'"
           role="img"
         ></span>
+        <!-- Was neu ist (T-157): klein, mit Punkt, solange etwas ungelesen ist. -->
+        <a
+          class="neues"
+          routerLink="/whats-new"
+          routerLinkActive="an"
+          [attr.title]="neuTitel()"
+          [attr.aria-label]="neuTitel()"
+        >
+          <span aria-hidden="true" class="stern">✦</span>
+          <span class="neutext">What's new</span>
+          @if (neues.anzahl()) {
+            <span class="punkt" aria-hidden="true"></span>
+          }
+        </a>
         <a class="wer" routerLink="/account" title="Account and API tokens">
           <!-- In der Sicht eines Mitglieds bleibt hier, wer angemeldet ist (REQ-241). -->
           {{ session.viewAs()?.by?.name ?? session.user()?.name }}
@@ -347,6 +366,25 @@ import { SucheComponent } from './suche/suche';
       border-color: var(--accent);
       background: var(--accent);
     }
+    .neues {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      color: var(--dim);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .neues:hover,
+    .neues.an {
+      color: var(--accent);
+    }
+    .punkt {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      background: var(--accent);
+    }
     .wer {
       color: var(--dim);
       text-decoration: none;
@@ -426,7 +464,8 @@ import { SucheComponent } from './suche/suche';
       .untermenue {
         padding: 0.3rem 1rem;
       }
-      .suchtext {
+      .suchtext,
+      .neutext {
         display: none;
       }
     }
@@ -447,6 +486,12 @@ export class App {
 
   protected readonly api = inject(Api);
   protected readonly suche = inject(Suche);
+  /** Was neu ist (T-157) — der Stand gehört zum Konto. */
+  protected readonly neues = inject(Neues);
+  protected readonly neuTitel = computed(() => {
+    const n = this.neues.anzahl();
+    return n ? `What's new: ${n} since your last visit` : "What's new";
+  });
   /** Der Live-Kanal (T-116) — hier geholt, damit er mit der Anmeldung steht. */
   protected readonly live = inject(Live);
   /** Ob gerade sichtbar gewartet wird: erst wenn eine Anfrage länger als
@@ -466,6 +511,8 @@ export class App {
         this.menue.set(null);
         if (wer) void this.gruppen.laden(true);
         else this.gruppen.vergessen();
+        if (this.session.angemeldet()) void this.neues.laden();
+        else this.neues.vergessen();
       });
     });
     effect(() => {
