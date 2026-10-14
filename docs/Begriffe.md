@@ -882,6 +882,20 @@ durchgezählte beim Umsortieren still zur falschen Wahl gehörte. **Eine
 Wahl ohne Spielraum ist beantwortet**: „+1 auf Con" an einem Talent ist
 eine Wahl aus einem Wert und fragt niemanden.
 
+**Ein Gegenstand wirkt, solange er getragen wird — und keinen Augenblick
+länger** (REQ-063, E-025 a). Handschuhe der Ogerstärke setzen STR auf 19;
+stünde die 19 im Statblock, wäre sie nach dem Ablegen noch da, und wer
+vorher 20 hatte, hätte plötzlich weniger. Also steht die Wirkung am
+Gegenstand (`Effects.effects`: Ziel, Art, Wert, Bedingung), der Zustand
+an der Inventarkante (`holds.tier`, `slot`, `attuned`), und was beides
+ergibt, rechnet `effectsAt` beim Lesen (D8). Es ist dieselbe Form wie die
+Wahlen — ein Eintrag mit `id` aus dem Text —, damit Klasse, Talent und
+Gegenstand eine Rechnung teilen und eine neue Wirkungsart ein Eintrag ist
+und kein neues Feld. Je Wirkung ein eigenes Feld (`abilitySet`,
+`resist`, `speedBonus` …) wäre einfacher zu lesen gewesen, aber jede
+neue Art hätte Feld und Code gebraucht. Die alten `bonusAc` & Co. bleiben
+stehen und zählen beim Lesen mit.
+
 **Der Assistent zählt keine Schritte auf, er liest sie** (T-080). Fest ist
 nur, was das Modell selbst vorgibt: drei Kanten (Abstammung, Hintergrund,
 Klasse), sechs Werte, ein Name. Dazwischen steht je offene Wahl der

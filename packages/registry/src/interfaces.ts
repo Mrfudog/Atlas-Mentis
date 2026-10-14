@@ -96,6 +96,15 @@ export const interfaces: Record<string, InterfaceDef> = {
     schema: g.Choices.schema,
   },
 
+  /* Was ein Artikel an der Figur verändert (REQ-238, REQ-063, E-025 a):
+     heute nimmt ihn der Gegenstand; gerechnet wird beim Lesen (`effectsAt`). */
+  Effects: {
+    name: 'Effects',
+    label: 'Effects',
+    abstract: true,
+    schema: g.Effects.schema,
+  },
+
   /* Eine Stufe von 1 bis 20, die Begegnung und Szene teilen. */
   Difficulty: {
     name: 'Difficulty',
@@ -672,7 +681,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     name: 'Item',
     area: 'world',
     label: 'Item',
-    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Lore', 'Secrets', 'Facts'],
+    extends: ['Identity', 'Prose', 'Notes', 'Status', 'Description', 'Visibility', 'Tags', 'Image', 'Source', 'Lore', 'Secrets', 'Facts', 'Effects'],
     schema: merge(g.ItemInfo, g.Footprint),
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
