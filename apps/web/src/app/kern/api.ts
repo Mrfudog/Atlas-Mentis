@@ -880,6 +880,33 @@ export interface MeineEbene {
   player?: { campaign: { id: string; name: string }; mine: boolean };
 }
 
+/** Eine Ebene zur Wahl als Schreibebene (T-161), mit Grund. */
+export interface SchreibOption {
+  id: string;
+  name: string;
+  /** Warum ich darin schreibe: eigene Spielerebene, besessen, zugeteilt, als Leitung, als Verwaltung, die Spielerebene von jemandem am Tisch. */
+  reason: 'player' | 'playerOf' | 'owner' | 'granted' | 'gm' | 'co-gm' | 'admin';
+  /** Bei `playerOf`: wessen. */
+  player?: string;
+  selectable: boolean;
+  /** Warum nicht wählbar. */
+  why?: string;
+}
+
+/** Wohin ich in der laufenden Kampagne anlege (`GET /api/layers/write`, T-161). */
+export interface Schreibstand {
+  campaign: { id: string; name: string } | null;
+  /** Hierhin geht, was ich ohne Nennung anlege; `null` mit `none`: in keine Ebene (die Verwaltung ohne Wahl). */
+  layer: { id: string; name: string } | null;
+  /** Die Vorgabe ohne Wahl (T-164). */
+  default: { id: string; name: string } | null;
+  chosen: boolean;
+  /** Eine Wahl, die gerade nicht gilt — aus dem Stapel gefallen oder ohne Recht. */
+  dropped: { id: string; name: string } | null;
+  none: boolean;
+  options: SchreibOption[];
+}
+
 /** Was `POST /api/layers/:id/takeover` meldet (T-164). */
 export interface EbenenUebernahme {
   into: { id: string; name: string };
@@ -1246,6 +1273,14 @@ export class Api {
   /** Die Vorgabe-Schreibebene in der laufenden Kampagne (T-164) — als `player` die eigene Spielerebene. */
   defaultLayer(): Promise<{ layer: { id: string; name: string; player: boolean } | null; campaign: { id: string; name: string } | null }> {
     return this.call('/api/layers/default');
+  }
+  /** Die Schreibebene in der laufenden Kampagne und die Ebenen zur Wahl (T-161). */
+  writeLayer(): Promise<Schreibstand> {
+    return this.call('/api/layers/write');
+  }
+  /** Die Schreibebene wählen — `null` heisst: wieder die Vorgabe. Der Server prüft. */
+  setWriteLayer(layer: string | null): Promise<Schreibstand> {
+    return this.call('/api/layers/write', { method: 'PUT', body: JSON.stringify({ layer }) });
   }
   /** Die Schreibebene wählen (T-176): hierhin wird angelegt, solange die Ebene im Spiel ist. */
   chooseDefaultLayer(id: string): Promise<{ layer: { id: string; name: string } }> {

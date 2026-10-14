@@ -31,6 +31,7 @@ import { Api, ApiError, type Fassungen, type Fertigungswert, type LeseZiel } fro
 import { Bestand } from '../kern/bestand';
 import { KurzLink } from '../kern/kurzansicht';
 import { Session } from '../kern/session';
+import { Stapel } from '../kern/stapel';
 import {
   ausEingabe,
   eingabeArt,
@@ -285,6 +286,23 @@ interface Feld {
 
             @if (anpassFehler(); as f) {
               <p class="fehler" role="alert">{{ f }}</p>
+            }
+            <!-- Wohin die Änderung geht (T-161): in diesen Artikel und damit
+                 in seine Ebene — damit niemand aus Versehen ein geteiltes
+                 Regelwerk ändert. -->
+            @if (bearbeitet() && schreibZiel(); as z) {
+              <p class="hinweis" [class.fehler]="z.fremd" role="status">
+                @if (z.ebenen.length) {
+                  Changes go into this article in <b>{{ z.ebenen.join(', ') }}</b>
+                } @else {
+                  Changes go into this article, which is in no layer
+                }
+                @if (z.fremd) {
+                  — not your write layer{{ z.schreib ? ' (' + z.schreib + ')' : '' }}. Everyone who uses that layer sees the change.
+                } @else {
+                  — your write layer.
+                }
+              </p>
             }
             <!-- Wer die Ebene herausgibt und warum (T-109) — gerechnet, geändert wird die Kante. -->
             @if (art(e) === 'Layer' && !zeigtAlten()) {
@@ -872,6 +890,7 @@ export class Artikel implements SchnellKontext {
   readonly tab = input<string | undefined>(undefined);
 
   protected readonly bestand = inject(Bestand);
+  private readonly stapel = inject(Stapel);
   private readonly quellen = inject(Quellen);
   protected readonly session = inject(Session);
   private readonly lesart = inject(FassungsLesart);
@@ -1473,6 +1492,23 @@ export class Artikel implements SchnellKontext {
 
   /** „Adapt" anbieten — der Server hat es mit dem Artikel gesagt (`refs.adaptable`). */
   protected readonly anpassbar = computed(() => this.bestand.anpassbar().has(this.id()));
+  /**
+   * **Wohin eine Änderung geht** (T-161): die Ebenen des Artikels, und ob
+   * das die Schreibebene ist. Eine Fassung liegt schon in der eigenen.
+   */
+  protected readonly schreibZiel = computed(() => {
+    const e = this.artikel();
+    if (!e) return null;
+    const ebenen = (e.relations ?? []).filter((r) => r.type === LAYER_RELATION).map((r) => r.to);
+    const name = this.bestand.name();
+    const w = this.stapel.schreib()?.layer;
+    return {
+      ebenen: ebenen.map((id) => name(id) ?? id),
+      schreib: w?.name ?? null,
+      fremd: !w || !ebenen.includes(w.id),
+    };
+  });
+
   /** Wohin „Edit" eine Fassung legt, wenn man den Artikel nicht schreibt (`refs.adaptTo`, T-098). */
   protected readonly fassungsZiele = computed(() => this.bestand.anpassZiele().get(this.id()) ?? []);
   protected readonly passtAn = signal(false);

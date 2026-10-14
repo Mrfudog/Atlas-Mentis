@@ -127,6 +127,7 @@ import { eigeneEbenen, registerEbenenrechte } from './ebenenrechte.js';
 import { ausfuhrName, kampagnenAusfuhr } from './ausfuhr.js';
 import { inDieGruppe } from './gruppe.js';
 import { spielerEbenen, spielerEbeneVon, sorgeSpielerEbene } from './spielerebene.js';
+import { gewaehlteEbene } from './schreibebene.js';
 import { InMemoryAssetStore, type AssetStore } from './assets.js';
 import { registerBilder } from './bilder.js';
 import { registerKarten } from './karten.js';
@@ -552,14 +553,9 @@ export function buildApp({
    * für alle anderen die erste Zielebene (die Leitung: die Ebene der
    * Kampagne). `null`: hier legt dieses Konto nicht an.
    */
-  async function vorgabeEbene(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
+  async function grundEbene(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
     if (!user || user.disabledAt || !kampagne) return null;
     const ziele = await zielEbenen(user, map, kampagne);
-    /* **Gewählt schlägt gerechnet** (T-176): hat das Konto für diese
-       Kampagne eine Schreibebene gewählt und schreibt es dort noch, gilt
-       sie — eine eigene Testebene der Leitung etwa. */
-    const gewaehlt = await gewaehlteEbene(user, ziele, kampagne);
-    if (gewaehlt) return gewaehlt;
     if (user.roles?.[kampagne.id] === 'player' && !user.isAdmin) {
       const eigene = spielerEbeneVon(await repo.layerGrants(), user.id, kampagne.id);
       return ziele.find((l) => l.id === eigene) ?? (await kampagnenEbene(map, kampagne));
@@ -568,16 +564,32 @@ export function buildApp({
   }
 
   /**
-   * **Die gewählte Schreibebene** (T-176, für T-161): die Kontoeinstellung
-   * `writeLayer` (`{ [Kampagne]: Ebene }`, neben dem Konto wie jede
-   * Einstellung, nie im Artikel — REQ-199), aber nur, solange die Ebene
-   * unter den Zielebenen steht: geschrieben, im Spiel. Sonst `null`, und
-   * es gilt die gerechnete Vorgabe.
+   * **Die Schreibebene** (T-161): die gewählte, solange sie unter den
+   * Zielebenen steht, sonst die Vorgabe (`grundEbene`). `dropped` nennt
+   * eine Wahl, die gerade nicht gilt — aus dem Stapel gefallen oder ohne
+   * Recht —, damit die Kopfleiste es sagen kann.
    */
-  async function gewaehlteEbene(user: User, ziele: Entity[], kampagne: Entity): Promise<Entity | null> {
-    const wahl = (await repo.getPrefs(user.id))[WRITE_LAYER_PREF] as Record<string, unknown> | null | undefined;
-    const id = wahl && typeof wahl === 'object' ? wahl[kampagne.id] : undefined;
-    return (typeof id === 'string' && ziele.find((l) => l.id === id)) || null;
+  async function schreibEbene(
+    user: User | null,
+    map: Map<string, Entity>,
+    kampagne: Entity | null,
+  ): Promise<{ layer: Entity | null; grund: Entity | null; chosen: string | null; dropped: string | null }> {
+    const grund = await grundEbene(user, map, kampagne);
+    if (!user || user.disabledAt || !kampagne) return { layer: grund, grund, chosen: null, dropped: null };
+    const wahl = gewaehlteEbene(await repo.getPrefs(user.id), kampagne.id);
+    if (!wahl) return { layer: grund, grund, chosen: null, dropped: null };
+    const l = (await zielEbenen(user, map, kampagne)).find((x) => x.id === wahl);
+    return l ? { layer: l, grund, chosen: wahl, dropped: null } : { layer: grund, grund, chosen: wahl, dropped: wahl };
+  }
+
+  /** Die Schreibebene, nur wenn sie gewählt ist und gilt — ohne Wahl `null`. */
+  async function gewaehlteSchreibEbene(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
+    const s = await schreibEbene(user, map, kampagne);
+    return s.chosen && !s.dropped ? s.layer : null;
+  }
+
+  async function vorgabeEbene(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
+    return (await schreibEbene(user, map, kampagne)).layer;
   }
 
   /**
@@ -999,7 +1011,7 @@ export function buildApp({
   /* Einladungen, Kampagnen, Mitglieder und Konten: `verwaltung.ts` (W3). */
   registerVerwaltung(app, { repo, viewerOf });
   /* Eigene Ebenen und wer darin schreibt: `ebenenrechte.ts` (T-098). */
-  registerEbenenrechte(app, { repo, viewerOf, schreibEbenen, zielEbenen, kampagnenEbene, vorgabeEbene });
+  registerEbenenrechte(app, { repo, viewerOf, schreibEbenen, zielEbenen, kampagnenEbene, vorgabeEbene, schreibEbene });
 
   app.post('/api/logout', async (request, reply) => {
     const token = request.cookies?.[COOKIE];
@@ -2137,6 +2149,8 @@ export function buildApp({
     if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
     const key = request.params.key;
     if (!/^[a-z][a-zA-Z0-9.-]{0,63}$/.test(key)) return reply.code(400).send({ error: 'Unbekannter Schlüssel.' });
+    /* Die Schreibebene prüft der Server gegen die Zielebenen (T-161). */
+    if (key === WRITE_LAYER_PREF) return reply.code(400).send({ error: 'Die Schreibebene setzt PUT /api/layers/write oder PUT /api/layers/:layer/default.' });
     const value = request.body?.value ?? null;
     if (JSON.stringify(value).length > 8000) return reply.code(400).send({ error: 'Zu gross.' });
     await repo.putPref(user.id, key, value);
@@ -2904,8 +2918,12 @@ export function buildApp({
     /* **Keine Fassung in einer Spielerebene** (T-164): der Stapel gilt für
        alle am Tisch, eine Überschreibung darin änderte den Artikel für alle. */
     const spieler = spielerEbenen(await repo.layerGrants());
-    const ziele = async () =>
-      (await zielEbenen(user, map, kampagne)).filter((l) => !ebenen.includes(l.id) && !spieler.has(l.id));
+    /* Die Schreibebene steht vorn (T-161) — die Maske wählt die erste vor. */
+    const ziele = async () => {
+      const liste = (await zielEbenen(user, map, kampagne)).filter((l) => !ebenen.includes(l.id) && !spieler.has(l.id));
+      const w = (await gewaehlteSchreibEbene(user, map, kampagne))?.id;
+      return [...liste.filter((l) => l.id === w), ...liste.filter((l) => l.id !== w)];
+    };
     if (user.isAdmin) {
       if (!ebenen.length) return [];
       return ziele();
@@ -3020,12 +3038,16 @@ export function buildApp({
         /* Die Ebene gibt der Server, nicht die Maske: angelegt wird in eine
            Ebene, in der man schreibt, oder als Spielerin in die Runde — nie
            in ein geteiltes Regelwerk. */
+        /* Ohne genannte Ebene in die Schreibebene (T-161), wenn sie unter
+           den Zielebenen steht. */
+        const wahl = (await schreibEbene(user, stand.map, kampagne)).layer;
         let ziel =
           ziele.find((l) => genannt.includes(l.id)) ??
-          (spielt ? null : ((await vorgabeEbene(user, stand.map, kampagne)) ?? ziele[0] ?? null));
+          ziele.find((l) => l.id === wahl?.id) ??
+          (spielt ? null : (ziele[0] ?? null));
         /* Als Spielerin in die Vorgabe: die eigene Spielerebene, sonst die
            Ebene der Kampagne (T-164). Was dort liegt, hat sie angelegt. */
-        const vorgabe = spielt ? await vorgabeEbene(user, stand.map, kampagne) : null;
+        const vorgabe = spielt ? await grundEbene(user, stand.map, kampagne) : null;
         spielerin = !ziel || (spielt && ziel.id === vorgabe?.id);
         if (!ziel) {
           if (!spielt) return { code: 403, body: { error: 'Anlegen darfst du hier nicht.' } };
@@ -3069,10 +3091,10 @@ export function buildApp({
       } else if (user && type !== LAYER_COMPONENT && type !== CAMPAIGN_TYPE && !relations.some((r) => r.type === LAYER_RELATION)) {
         /* **Die Verwaltung legt an, wo sie nichts sagt** — wie bisher ohne
            Ebene, ausser sie hat für die laufende Kampagne eine Schreibebene
-           gewählt (T-176): dann dort, damit Tests in der Testebene landen
-           und mit „Empty this layer" wieder gehen. */
+           gewählt (T-161, T-176): dann dort, damit Tests in der Testebene
+           landen und mit „Empty this layer" wieder gehen. */
         const kampagne = currentCampaign(stand.map, registry.settings ?? null);
-        const gewaehlt = kampagne ? await gewaehlteEbene(user, await zielEbenen(user, stand.map, kampagne), kampagne) : null;
+        const gewaehlt = await gewaehlteSchreibEbene(user, stand.map, kampagne);
         if (gewaehlt) relations.push({ id: `${id}~inLayer-1`, type: LAYER_RELATION, to: gewaehlt.id, props: {} });
       }
       const entity: Entity = { id, interfaces: [type], name, components, relations };
@@ -3515,7 +3537,14 @@ export function buildApp({
       return reply.code(409).send({ error: 'Seine Ebene ist in dieser Kampagne nicht aufgeschaltet.' });
     }
     const gewuenscht = String(request.body?.layer ?? '');
-    const ebene = gewuenscht ? ziele.find((l) => l.id === gewuenscht) : ziele.length === 1 ? ziele[0] : undefined;
+    /* Ohne Nennung in die gewählte Schreibebene, wenn eine Fassung dorthin
+       darf (T-161); ohne Wahl fragt der Server bei mehreren zurück. */
+    const schreibt = gewuenscht ? null : await gewaehlteSchreibEbene(user, stand.map, kampagne);
+    const ebene = gewuenscht
+      ? ziele.find((l) => l.id === gewuenscht)
+      : ziele.length === 1
+        ? ziele[0]
+        : ziele.find((l) => l.id === schreibt?.id);
     if (!ebene) {
       return reply.code(409).send({
         error: gewuenscht ? 'In diese Ebene geht keine Fassung von dir.' : 'In welche Ebene?',

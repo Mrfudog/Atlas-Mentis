@@ -23,7 +23,7 @@ Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urt
 | **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |
 | **verworfen** | entschieden gegen die Anforderung |
 
-Zusammen: 167 steht · 48 teils · 85 offen · 10 ersetzt · 6 verworfen — 316 Stories in 77 Features und 12 Epics.
+Zusammen: 168 steht · 48 teils · 84 offen · 10 ersetzt · 6 verworfen — 316 Stories in 77 Features und 12 Epics.
 
 | Epic | Stories | Stand |
 |---|---|---|
@@ -37,7 +37,7 @@ Zusammen: 167 steht · 48 teils · 85 offen · 10 ersetzt · 6 verworfen — 316
 | [EP-08 Live-Spiel](#ep-08-live-spiel) | 28 | 14 steht · 6 teils · 7 offen · 1 ersetzt |
 | [EP-09 Karten](#ep-09-karten) | 28 | 18 steht · 6 teils · 4 offen |
 | [EP-10 Medien & Assets](#ep-10-medien--assets) | 18 | 4 steht · 3 teils · 11 offen |
-| [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 24 | 13 steht · 5 teils · 5 offen · 1 ersetzt |
+| [EP-11 Oberfläche & Navigation](#ep-11-oberfläche--navigation) | 24 | 14 steht · 5 teils · 4 offen · 1 ersetzt |
 | [EP-12 Import & Inhalte](#ep-12-import--inhalte) | 10 | 5 steht · 2 teils · 1 offen · 2 verworfen |
 
 ## EP-01 Inhaltsgerüst
@@ -731,7 +731,7 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
 | [[REQ-248]] | Kurzansicht überall | 2 | **steht** | `nwQuick`, `nw-kurzpopup`, Brotkrumen (T-093) |
-| [[REQ-305]] | Kampagne und Ebene immer sichtbar | 2 | **offen** | T-143 läuft |
+| [[REQ-305]] | Kampagne und Ebene immer sichtbar | 2 | **steht** | T-143: Kampagne und Ebenen im Popup; T-161: Schreibebene in der Kopfleiste, wählbar, am Server je Konto und Kampagne |
 | [[REQ-315]] | Globale Kopfleiste | 1 | **steht** |  |
 
 ### F-071 Bearbeiten in der Ansicht
@@ -823,7 +823,6 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-282]]** (2, offen, Kampagne & Sitzungen) — Sitzungsansicht für das Spiel — *Vorbereitungsseite steht (REQ-078), Spielansicht nicht*
 - **[[REQ-287]]** (2, offen, Regeln & Nachschlagen) — Regelsysteme als Behälter mit Optionen — *E-044, T-132*
 - **[[REQ-292]]** (2, teils, Live-Spiel) — Neuen Artikel aus einer Auswahl anlegen
-- **[[REQ-305]]** (2, offen, Oberfläche & Navigation) — Kampagne und Ebene immer sichtbar — *T-143 läuft*
 - **[[REQ-311]]** (2, teils, Spielererlebnis) — Spieleransicht mit der eigenen Figur im Fokus — *Entwurf Player/PlayerPhone*
 - **[[REQ-312]]** (2, teils, Karten) — Eigenes Token bewegen — *Prototyp ja; in der Seite noch nicht für Spielende*
 - **[[REQ-313]]** (2, teils, Regeln & Nachschlagen) — Zustände als Artikel — *Wirkung `affects` gespeichert, nicht ausgewertet*

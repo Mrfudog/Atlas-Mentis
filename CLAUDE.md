@@ -293,10 +293,17 @@ wiederkommen, werden sie neu geschrieben.
   fremder Artikel kommen nicht hinein** (`anpassZiele`). Geht die Rolle,
   bleibt die Ebene unbeschrieben stehen, bis die Leitung sie übernimmt
   (`POST /api/layers/:layer/takeover`: Inhalt in die Kampagnenebene, leere
-  Ebene weg). **Gewählt schlägt gerechnet** (T-176): eine Zielebene, die
-  ein Konto je Kampagne als Schreibebene wählt (Einstellung `writeLayer`,
-  `PUT /api/layers/:layer/default`), ist seine Vorgabe — auch für die
-  Verwaltung, die ohne Wahl weiter ohne Ebene anlegt. **Eine Ebene leeren**
+  Ebene weg).
+  **Die Schreibebene wählt jedes Konto selbst** (T-161, `schreibebene.ts`):
+  im Popup der Kopfleiste unter seinen Zielebenen, gespeichert am Server je
+  Konto und Kampagne (`writeLayer`, nur über `PUT /api/layers/write`),
+  beim Lesen gegen `zielEbenen` geprüft — fällt sie weg, gilt die Vorgabe
+  (`grundEbene`) mit Hinweis. Anlegen nimmt sie, eine genannte Ebene geht
+  vor; Fassungen und Übernahme nehmen nur eine *gewählte*. Die Verwaltung
+  legt ohne Wahl weiter ausserhalb jeder Ebene an.
+  **Gewählt schlägt gerechnet** (T-176): auch Account › Layers wählt
+  („Make default", `PUT /api/layers/:layer/default`, die Verwaltung auch für
+  ein anderes Konto) — dieselbe Einstellung. **Eine Ebene leeren**
   (`POST /api/layers/:layer/empty`, Besitzer und Verwaltung) ist eine
   Massenänderung `delete`: Teile gehen mit, Kanten darauf gehen weg, Undo
   wie jede.

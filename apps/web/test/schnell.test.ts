@@ -14,6 +14,7 @@ import { SCHNELL_KONTEXT, Schnell, anlegbareArten } from '../src/app/artikel/sch
 import { Api } from '../src/app/kern/api';
 import { Bestand } from '../src/app/kern/bestand';
 import { Session } from '../src/app/kern/session';
+import { Stapel } from '../src/app/kern/stapel';
 
 const reg = {
   interfaces: {
@@ -51,10 +52,16 @@ const herkunft = () => ({
   relations: [{ id: 'r1', type: 'inLayer', to: 'L1' }],
 });
 
-function aufbauen() {
+function aufbauen(schreib: { id: string; name: string } | null = null) {
   const api = {
     list: vi.fn().mockResolvedValue({ rows: [], total: 0 }),
-    myLayers: vi.fn().mockResolvedValue({ layers: [{ id: 'L1', name: 'Campaign', inPlay: true }], campaign: null }),
+    myLayers: vi.fn().mockResolvedValue({
+      layers: [
+        { id: 'L1', name: 'Campaign', inPlay: true },
+        { id: 'L2', name: 'Mine', inPlay: true },
+      ],
+      campaign: null,
+    }),
     createEntity: vi.fn().mockResolvedValue({ id: 'e_neu', name: 'Gobbo', interfaces: ['Creature'] }),
   };
   TestBed.resetTestingModule();
@@ -65,6 +72,7 @@ function aufbauen() {
       { provide: Bestand, useValue: { registry: signal(reg), name: signal(() => undefined) } },
       { provide: Session, useValue: { isAdmin: signal(true), load: vi.fn() } },
       { provide: SCHNELL_KONTEXT, useValue: { herkunft } },
+      { provide: Stapel, useValue: { schreib: signal(schreib ? { layer: schreib } : null) } },
     ],
   });
   return api;
@@ -131,5 +139,19 @@ describe('nw-schnell', () => {
     ]);
     expect(angelegt).toEqual(['e_neu']);
     expect([...el.querySelectorAll('[role="dialog"] button')].map((b) => b.textContent?.trim())).toEqual(['Open', 'Done']);
+  });
+
+  it('starts in the write layer when there is one (T-161)', async () => {
+    const api = aufbauen({ id: 'L2', name: 'Mine' });
+    const fixture = TestBed.createComponent(Schnell);
+    Object.assign(fixture.componentInstance, { vorschlag: signal('Gobbo'), ziele: signal(['Creature']), vorgabe: signal('Creature') });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect([...el.querySelectorAll('option')].find((o) => o.value === 'L2')?.textContent).toContain('(write layer)');
+    [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Save')!.click();
+    await fixture.whenStable();
+    expect(api.createEntity).toHaveBeenCalledWith('Creature', 'Gobbo', { 'Visibility.audience': 'gm' }, [{ type: 'inLayer', to: 'L2' }]);
   });
 });

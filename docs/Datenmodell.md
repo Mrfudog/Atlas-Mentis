@@ -1006,8 +1006,11 @@ eine Spielerin in ihrer Ebene etwas Fertiges, fällt es zurück wie oben.
 **Die gewählte Schreibebene** (T-176): jedes Konto darf je Kampagne eine
 seiner Zielebenen als Vorgabe wählen (Kontoeinstellung `writeLayer`, neben
 dem Konto wie jede Einstellung, nie im Artikel — REQ-199). Sie schlägt die
-gerechnete Vorgabe (`vorgabeEbene`), solange das Konto dort schreibt und
-die Ebene im Spiel ist; sonst gilt wieder die gerechnete. Die Verwaltung
+gerechnete Vorgabe (`grundEbene`), solange das Konto dort schreibt und
+die Ebene im Spiel ist; sonst gilt wieder die gerechnete. Es ist dieselbe
+Wahl wie die Schreibebene in der Kopfleiste (T-161, unten); Account ›
+Layers setzt sie mit „Make default", die Verwaltung auch für ein anderes
+Konto. Die Verwaltung
 legt ohne Wahl wie bisher ohne Ebene an. Gedacht für eine Testebene der
 Leitung, die sich mit „Empty this layer" (eine umkehrbare Massenänderung
 `delete`, Teile und Kanten darauf eingeschlossen) wieder leeren lässt.
@@ -1040,6 +1043,29 @@ einziges Konto angelegt hat oder führt (`app_user_article`,
 zugleich gehört, bleibt und wird gezählt. Bei der Übernahme zwischen zwei
 Installationen (T-130) wandert die Ebene als Artikel mit, die Zuordnung zum
 Konto nicht.
+
+**Die Schreibebene** (T-161): wohin ein Konto in der laufenden Kampagne
+anlegt, wenn es keine Ebene nennt. Ohne Wahl ist es die Vorgabe oben
+(`grundEbene`: als `player` die Spielerebene, als Leitung die Ebene der
+Kampagne); **gewählt wird im Popup der Kopfleiste** unter den Zielebenen
+(`zielEbenen`) — Gruppen und nicht aufgeschaltete Ebenen stehen dort
+ausgegraut mit dem Grund. **Gespeichert am Server je Konto und Kampagne**
+(Einstellung `writeLayer`: Kampagne → Ebene), gesetzt nur über
+`PUT /api/layers/write`, das gegen die Zielebenen prüft; `/api/me/prefs`
+nimmt den Schlüssel nicht. **Gelesen wird immer gegen die Zielebenen**
+(`schreibEbene`): fällt die gewählte aus dem Stapel oder entfällt das
+Recht, gilt die Vorgabe, und `GET /api/layers/write` sagt es (`dropped`);
+die Wahl bleibt stehen und gilt wieder, sobald die Ebene zurück ist.
+Sie wirkt beim **Anlegen** (auch aus einem Verweisfeld, eine im Dialog
+genannte Ebene geht vor), bei **Fassungen** (`adapt` ohne `{ layer }`,
+`adaptTo` mit ihr vorn — nur eine *gewählte*, ohne Wahl fragt der Server bei
+mehreren Zielen zurück) und bei der **Übernahme** einer Spielerebene (in die
+gewählte, wenn sie keine Spielerebene ist, sonst in die Ebene der
+Kampagne). **Die Verwaltung** legt ohne Wahl wie bisher ausserhalb jeder
+Ebene an (`none`); hat sie eine gewählt, dorthin. Die Oberfläche zeigt sie
+unter der Kampagne („Writes to", am Telefon ✎), im Anlegedialog und beim
+Bearbeiten — dort mit einer Warnung, wenn die Änderung in eine andere Ebene
+geht als die Schreibebene.
 
 ```mermaid
 flowchart TB
