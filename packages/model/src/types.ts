@@ -415,6 +415,8 @@ export type LayoutElementKind =
   | 'sheet'
   | 'inventory'
   | 'crafting'
+  /** Die Waren eines Ladens mit ihren Preisen und deren Herkunft (T-129). */
+  | 'wares'
   | 'board'
   | 'initiative'
   | 'quests'

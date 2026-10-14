@@ -1026,6 +1026,51 @@ flowchart LR
   das Regelwerk zu schreiben: ein `Knowledge`-Bündel in ihrer Ebene
   `includes` die Blaupausen und ist `knownBy` der Figur (9.3).
 
+### 9.6 Laden und Preise (T-129)
+
+- **Ein Laden ist ein Ort** (`Shop extends Place`, Bereich `world`). Er
+  trägt einen Abschlag für alle (`Shop.priceMod`); was er führt, steht an
+  `sells` zum Gegenstand: `qty` (leer: unbegrenzt, 0: ausverkauft),
+  `price` (in Kupfer, statt `Item.copperPrice`), `mod` (nur diese Ware),
+  `available`. Wer ihn hält, steht an `shopkeeper`; eine Fraktion, die ihn
+  kontrolliert, an ihrer Kante `controls`.
+- **Ein Abschlag ist ein Wort**: `−10 gp`, `+5 sp`, `−10 %`
+  (`parsePriceMod`). Ohne Einheit ist er keiner; was sich nicht lesen
+  lässt, zählt 0 und steht als `invalid` in der Herkunft.
+- **Rabatt** (`discount`, Geber → Empfänger, `props.mod`, `props.rank`):
+  Geber sind der Laden, die Fraktionen, die ihn kontrollieren, und seine
+  Ladenhalter. Er trifft die kaufende Figur, wenn der Empfänger sie selbst
+  ist, eine ihrer Gruppen (`memberOfParty`) oder eine ihrer Fraktionen
+  (`memberOf`) — dort ab dem Rang an der Kante, nach `Faction.ranks`; ein
+  Rang ausserhalb der Leiter trifft niemanden. Eine Fraktion, die ihren
+  eigenen Mitgliedern Rabatt gibt, zeigt auf sich selbst.
+- **Gerechnet beim Lesen** (D8, `shopWares`, `packages/model/src/shop.ts`):
+  Grundpreis = `sells.price` sonst Listenpreis; dann Laden, Rabatte, Ware.
+  **Prozent auf den Grundpreis**, addiert, je Schritt auf Kupfer gerundet;
+  nie unter 0. Jeder Schritt nennt Geber, Empfänger und Rang.
+- **Am Server** (`refs.shop`): am Tisch (Laden und Ware) und je eigener
+  Figur. Gerechnet über den ganzen Stand — ein Rabatt gilt auch, wenn die
+  Figur den Geber nicht aufschlagen darf —, gezeigt wird nur, was der
+  Betrachter sieht: verborgene Waren fehlen, ein verborgener Geber bleibt
+  ohne Namen. Element `wares` auf der Artikelseite.
+- **`regards` rechnet nicht mit** (E-043, offen): persönliche Rabatte sind
+  `discount` vom Ladenhalter an die Figur.
+- **Kaufen und Verkaufen** (Menge sinkt, Gegenstand ins Inventar, Münzen
+  ab `Inventory.copper`) kommt mit dem Inventar (T-127). Migration 061 trägt
+  Art und Kanten nach.
+
+```mermaid
+flowchart LR
+  F[Faction<br/>ranks Wick·Flame·Beacon] -- controls --> S[Shop<br/>priceMod −10 %]
+  S -- "sells<br/>qty 3 · mod −1 gp" --> I[Item<br/>copperPrice 1000]
+  S -- shopkeeper --> K[Creature]
+  F -- "discount<br/>−10 % · rank Flame" --> F
+  K -- "discount −2 gp" --> P[PlayerCharacter]
+  S -- "discount −5 %" --> G[Party]
+  P -- "memberOf (Beacon)" --> F
+  P -- memberOfParty --> G
+```
+
 ---
 
 ## 10. Ansichten und Anordnung
@@ -1290,7 +1335,7 @@ Erzeugt aus `packages/registry` — nicht von Hand ändern:
 [Artikeltypen.md](Artikeltypen.md) neu.
 
 <!-- register:anfang -->
-Stand 2026-10-14: 54 Artikelarten, 24 Grundtypen, 60 Kantenarten, 6 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
+Stand 2026-10-14: 55 Artikelarten, 24 Grundtypen, 63 Kantenarten, 6 Aufzählungszeilen, 14 Einheiten, 6 Variablen.
 
 ### Grundtypen
 
@@ -1331,19 +1376,20 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
-| `Armor` | `Item` | `ac` `armorType` `strength` `stealthDisadvantage` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, overview |
+| `Armor` | `Item` | `ac` `armorType` `strength` `stealthDisadvantage` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `sells` `holds` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, overview |
 | `Article` | `Source` `Todos` `Lore` `Secrets` | — | — | `describedIn` | — |
-| `Creature` | `Image` `Source` `Vars` `Vitals` `Lore` `Facts` `Secrets` `ReadAloud` | `appearance` `personality` `species` `kind` `role` `attitude` `figure` | `worships` `owes` `memberOf` `livesIn` `memberOfParty` `carries` `craftsWith` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | quick, overview, full |
+| `Creature` | `Image` `Source` `Vars` `Vitals` `Lore` `Facts` `Secrets` `ReadAloud` | `appearance` `personality` `species` `kind` `role` `attitude` `figure` | `worships` `owes` `memberOf` `livesIn` `discount` `memberOfParty` `carries` `craftsWith` `crafting` `regards` | `belongsTo` `owes` `discount` `shopkeeper` `questGiver` `features` `knownBy` `participates` `regards` | quick, overview, full |
 | `Deity` | `Image` `Source` `Lore` `Secrets` | `pantheon` `title` `alignment` `domains` `symbol` `province` `plane` | — | `worships` | quick, overview |
 | `Event` | `Time` `Lore` `Secrets` `ReadAloud` | `kind` | `partOf` `involves` | `partOf` | — |
-| `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` `goal` | `worships` `controls` `regards` | `memberOf` `questGiver` `features` `knownBy` `regards` | quick |
+| `Faction` | `Image` `Lore` `Secrets` | `kind` `color` `ranks` `goal` | `worships` `controls` `discount` `regards` | `memberOf` `discount` `questGiver` `features` `knownBy` `regards` | quick |
 | `Hazard` | `Image` `Source` `Secrets` | `kind` `category` `tier` `threat` `trigger` `duration` `effect` `countermeasures` `initiative` | — | — | quick, overview |
-| `Item` | `Image` `Source` `Lore` `Secrets` `Facts` `Effects` | `itemType` `rarity` `tier` `attunement` `attunementNote` `charges` `recharge` `rechargeAmount` `bonusWeapon` `bonusAc` `bonusSpellAttack` `bonusSave` `appliesTo` `availability` `copperPrice` `stackSize` `weight` `rows` `width*` `height*` `cells*` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, print, overview, full |
-| `Material` | `Item` | `materialType` `trades` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `craftsWith` `loot` `instanceOf` | — |
-| `Party` | `Image` `Lore` | `level` `motto` `day` `watch` `sinceRation` `sinceLight` `actions` | `abilityPool` `partyOf` `carries` `craftsWith` `crafting` `regards` | `memberOfParty` `knownBy` `participates` `regards` | full |
+| `Item` | `Image` `Source` `Lore` `Secrets` `Facts` `Effects` | `itemType` `rarity` `tier` `attunement` `attunementNote` `charges` `recharge` `rechargeAmount` `bonusWeapon` `bonusAc` `bonusSpellAttack` `bonusSave` `appliesTo` `availability` `copperPrice` `stackSize` `weight` `rows` `width*` `height*` `cells*` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `sells` `holds` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, print, overview, full |
+| `Material` | `Item` | `materialType` `trades` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `sells` `holds` `needs` `yields` `craftsWith` `loot` `instanceOf` | — |
+| `Party` | `Image` `Lore` | `level` `motto` `day` `watch` `sinceRation` `sinceLight` `actions` | `abilityPool` `partyOf` `carries` `craftsWith` `crafting` `regards` | `discount` `memberOfParty` `knownBy` `participates` `regards` | full |
 | `Place` | `Image` `Lore` `ReadAloud` `Secrets` | `kind` `environment` `state` `arrival` | `partOf` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | quick, full |
-| `PlayerCharacter` | `Creature` | `backstory` `level*` `proficiency*` | `worships` `casts` `hasClass` `hasAncestry` `hasBackground` `chose` `owes` `memberOf` `livesIn` `memberOfParty` `carries` `craftsWith` `crafting` `regards` | `belongsTo` `owes` `questGiver` `features` `knownBy` `participates` `regards` | — |
-| `Weapon` | `Item` | `category` `damage` `damage2` `damageType` `range` `ammoType` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `holds` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, overview |
+| `PlayerCharacter` | `Creature` | `backstory` `level*` `proficiency*` | `worships` `casts` `hasClass` `hasAncestry` `hasBackground` `chose` `owes` `memberOf` `livesIn` `discount` `memberOfParty` `carries` `craftsWith` `crafting` `regards` | `belongsTo` `owes` `discount` `shopkeeper` `questGiver` `features` `knownBy` `participates` `regards` | — |
+| `Shop` | `Place` | `priceMod` | `partOf` `sells` `discount` `shopkeeper` `tableFor` `route` | `livesIn` `partOf` `controls` `happensAt` `mapOf` `route` | full |
+| `Weapon` | `Item` | `category` `damage` `damage2` `damageType` `range` `ammoType` | `casts` `hasProperty` `carries` `instanceOf` | `equips` `sells` `holds` `needs` `yields` `craftsWith` `loot` `instanceOf` | quick, overview |
 | `World` | `Image` `Lore` | `calendar` | — | `inWorld` | — |
 
 **story**
@@ -1425,6 +1471,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `crafting` | Creature \| PlayerCharacter \| Party → Recipe |  | — | `day` `days` `put` `rolls` |
 | `craftsWith` | Campaign \| Party \| Creature → Recipe \| Item |  | — | `tool` `ability` `dc` `note` |
 | `describedIn` | * → Article |  | — | — |
+| `discount` | Shop \| Faction \| Creature → Creature \| Party \| Faction |  | — | `mod` `rank` `note` |
 | `entry` | Table → * |  | — | `weight` `qty` `label` `requiresTag` `note` |
 | `equips` | Statblock → Item |  | — | — |
 | `features` | Story → Creature \| Statblock \| Faction |  | — | — |
@@ -1461,6 +1508,8 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `questGiver` | Quest → Creature \| Faction |  | — | — |
 | `regards` | Creature \| Party \| Faction → Creature \| Party \| Faction |  | — | `tags` `note` |
 | `route` | Place → Place |  | — | `hours` `terrain` `signal` `hidden` `oneWay` |
+| `sells` | Shop → Item |  | — | `qty` `price` `mod` `available` |
+| `shopkeeper` | Shop → Creature |  | — | — |
 | `stageOf` | Condition → Condition | ja | — | — |
 | `subclassOf` | Subclass → Class | ja | — | — |
 | `subraceOf` | Ancestry → Ancestry | ja | — | — |

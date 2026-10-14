@@ -211,6 +211,8 @@ export interface Bezuege {
   compare?: boolean;
   /** Womit an einem Rezept gefertigt wird (T-122): am Tisch und je eigener Figur. */
   craft?: Fertigungswerte;
+  /** Was ein Laden führt, und zu welchem Preis (T-129). */
+  shop?: Ladenwaren;
 }
 
 /** Wer einen Fertigungswert gesetzt hat (`craftCheck`): die Quelle oder ein Träger einer `craftsWith`-Kante. */
@@ -229,6 +231,34 @@ export interface Fertigungswert {
 export interface Fertigungswerte {
   table: Fertigungswert;
   mine: { id: string; name: string; check: Fertigungswert }[];
+}
+
+/** Woher ein Abschlag am Preis kommt (`shopWares`, T-129); Namen nur, wo der Betrachter den Geber sieht. */
+export interface Preisschritt {
+  by: 'shop' | 'ware' | 'discount';
+  giver?: string;
+  giverName?: string;
+  target?: string;
+  targetName?: string;
+  rank?: string;
+  mod: string;
+  delta: number;
+  invalid?: boolean;
+}
+export interface Ware {
+  edge: string;
+  item: string;
+  name: string;
+  qty?: number;
+  available: boolean;
+  list?: number;
+  base?: number;
+  price?: number;
+  steps: Preisschritt[];
+}
+export interface Ladenwaren {
+  table: Ware[];
+  mine: { id: string; name: string; wares: Ware[] }[];
 }
 
 /** Eine Ebene, aus der eine Fassung kommt (`GET /api/entities/:id/versions`). */
