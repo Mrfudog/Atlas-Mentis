@@ -1,5 +1,6 @@
 import { Component, computed, effect, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { KurzLink } from '../kern/kurzansicht';
 import {
   entityName,
   entriesOf,
@@ -34,11 +35,14 @@ interface Stueck {
  * `quick`, wie eine Karte auf dem Board. Gezeichnet wird die Anordnung, die
  * die Art für `quick` sagt (`layoutFor`) — der Statblock seine Felder und
  * seine Teile, ein Ort Bild, Beschreibung und Passagen. Kein Sonderfall je
- * Art. „Open" führt zur Artikelseite (`full`).
+ * Art. „Open article" führt zur Artikelseite (`full`).
+ *
+ * Dieselbe Karte steht im Popup der Kurzansicht (`nw-kurzpopup`, T-093) —
+ * überall, wo ein Artikel genannt wird.
  */
 @Component({
   selector: 'nw-vorschau',
-  imports: [RouterLink, Text, QuelleText],
+  imports: [RouterLink, Text, QuelleText, KurzLink],
   template: `
     <aside class="vorschau" aria-label="Preview">
       <div class="vkopf">
@@ -94,7 +98,7 @@ interface Stueck {
                   <p class="teile">
                     @for (z of g.ziele; track z.id; let letzte = $last) {
                       @if (z.name) {
-                        <a [routerLink]="['/artikel', z.id]">{{ z.name }}</a>
+                        <a [routerLink]="['/artikel', z.id]" [nwQuick]="z.id">{{ z.name }}</a>
                       } @else {
                         <span class="dim">(not here)</span>
                       }
@@ -109,7 +113,7 @@ interface Stueck {
           }
         }
         <div class="knoepfe">
-          <a class="knopf pri" [routerLink]="e.interfaces[0] === 'Class' ? ['/classes', e.id] : ['/artikel', e.id]">Open</a>
+          <a class="knopf pri" [routerLink]="e.interfaces[0] === 'Class' ? ['/classes', e.id] : ['/artikel', e.id]">Open article</a>
         </div>
       } @else if (bestand.fehlt().has(id())) {
         <p class="dim">No such article — or not one you may see.</p>
@@ -219,13 +223,18 @@ interface Stueck {
 })
 export class Vorschau {
   readonly id = input.required<string>();
+  /** Auch holen, was auf ihn zeigt? Das Popup (T-093) zeigt es nicht und spart die Anfrage. */
+  readonly rueck = input(true);
   readonly zu = output<void>();
 
   protected readonly bestand = inject(Bestand);
 
   constructor() {
+    /* Als Popup steht sie auf jeder Seite (T-093), auch auf einer, die das
+       Register sonst nicht braucht — gezeichnet wird aber aus ihm. */
+    void this.bestand.load();
     effect(() => {
-      void this.bestand.oeffnen(this.id());
+      void this.bestand.oeffnen(this.id(), false, this.rueck());
     });
   }
 
