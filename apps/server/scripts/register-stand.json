@@ -1,0 +1,6740 @@
+{
+ "migration": "060_uebernahme_basis.sql",
+ "registry": {
+  "interfaces": {
+   "Vars": {
+    "name": "Vars",
+    "label": "Variables",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "bindings": {
+       "type": "object",
+       "title": "Bindings"
+      }
+     }
+    }
+   },
+   "Abilities": {
+    "name": "Abilities",
+    "label": "Abilities",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "str": {
+       "type": "number",
+       "title": "STR"
+      },
+      "strMod": {
+       "type": "number",
+       "title": "STR mod",
+       "derived": "mod(str)",
+       "of": "str",
+       "format": "signed"
+      },
+      "dex": {
+       "type": "number",
+       "title": "DEX"
+      },
+      "dexMod": {
+       "type": "number",
+       "title": "DEX mod",
+       "derived": "mod(dex)",
+       "of": "dex",
+       "format": "signed"
+      },
+      "con": {
+       "type": "number",
+       "title": "CON"
+      },
+      "conMod": {
+       "type": "number",
+       "title": "CON mod",
+       "derived": "mod(con)",
+       "of": "con",
+       "format": "signed"
+      },
+      "int": {
+       "type": "number",
+       "title": "INT"
+      },
+      "intMod": {
+       "type": "number",
+       "title": "INT mod",
+       "derived": "mod(int)",
+       "of": "int",
+       "format": "signed"
+      },
+      "wis": {
+       "type": "number",
+       "title": "WIS"
+      },
+      "wisMod": {
+       "type": "number",
+       "title": "WIS mod",
+       "derived": "mod(wis)",
+       "of": "wis",
+       "format": "signed"
+      },
+      "cha": {
+       "type": "number",
+       "title": "CHA"
+      },
+      "chaMod": {
+       "type": "number",
+       "title": "CHA mod",
+       "derived": "mod(cha)",
+       "of": "cha",
+       "format": "signed"
+      },
+      "initiative": {
+       "type": "number",
+       "title": "Initiative",
+       "derived": "mod(dex)",
+       "format": "signed"
+      },
+      "passivePerception": {
+       "type": "number",
+       "title": "Passive perception",
+       "derived": "10+mod(wis)"
+      }
+     }
+    }
+   },
+   "Vitals": {
+    "name": "Vitals",
+    "label": "Vitals",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "hp": {
+       "type": "number",
+       "title": "Hit points now",
+       "alwaysEdit": true
+      },
+      "hpTemp": {
+       "type": "number",
+       "title": "Temporary HP",
+       "alwaysEdit": true
+      },
+      "hitDiceLeft": {
+       "type": "number",
+       "title": "Hit dice left"
+      },
+      "deathSuccess": {
+       "type": "number",
+       "title": "Death saves passed",
+       "default": 0
+      },
+      "deathFail": {
+       "type": "number",
+       "title": "Death saves failed",
+       "default": 0
+      },
+      "inspiration": {
+       "type": "boolean",
+       "title": "Inspiration"
+      },
+      "conditions": {
+       "type": "array",
+       "format": "link",
+       "title": "Conditions",
+       "items": {
+        "type": "string"
+       },
+       "target": {
+        "interfaces": [
+         "Condition"
+        ]
+       }
+      },
+      "nat1": {
+       "type": "number",
+       "title": "Natural 1s",
+       "default": 0
+      },
+      "slotsUsed": {
+       "type": "array",
+       "title": "Spell slots used",
+       "items": {
+        "type": "number"
+       }
+      }
+     }
+    }
+   },
+   "Proficiencies": {
+    "name": "Proficiencies",
+    "label": "Proficiencies",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "proficient": {
+       "type": "array",
+       "title": "Proficient in",
+       "items": {
+        "type": "string"
+       },
+       "enumRef": [
+        "Skill",
+        "Language",
+        "Item",
+        "Weapon",
+        "Weapon.category",
+        "Armor.armorType"
+       ],
+       "enumWhere": {
+        "Item": {
+         "itemType": [
+          "tool",
+          "artisan tools",
+          "gaming set",
+          "instrument"
+         ]
+        }
+       }
+      },
+      "expertise": {
+       "type": "array",
+       "title": "Expertise in",
+       "items": {
+        "type": "string"
+       },
+       "enumRef": [
+        "Skill",
+        "Language",
+        "Item",
+        "Weapon",
+        "Weapon.category",
+        "Armor.armorType"
+       ],
+       "enumWhere": {
+        "Item": {
+         "itemType": [
+          "tool",
+          "artisan tools",
+          "gaming set",
+          "instrument"
+         ]
+        }
+       }
+      },
+      "saves": {
+       "type": "array",
+       "title": "Saving throws",
+       "items": {
+        "type": "string"
+       },
+       "enumRef": "Ability"
+      }
+     }
+    }
+   },
+   "Choices": {
+    "name": "Choices",
+    "label": "Choices",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "choices": {
+       "type": "array",
+       "many": true,
+       "title": "Choices",
+       "items": {
+        "type": "object"
+       },
+       "entry": {
+        "type": "object",
+        "required": [
+         "id",
+         "kind"
+        ],
+        "properties": {
+         "id": {
+          "type": "string",
+          "title": "Id"
+         },
+         "kind": {
+          "type": "string",
+          "title": "Kind",
+          "enum": [
+           "proficiency",
+           "ability",
+           "feat",
+           "spell",
+           "equipment",
+           "feature",
+           "subclass",
+           "option"
+          ]
+         },
+         "level": {
+          "type": "number",
+          "min": 1,
+          "max": 20,
+          "title": "From level"
+         },
+         "when": {
+          "type": "string",
+          "title": "Only when",
+          "enum": [
+           "start",
+           "multiclass"
+          ]
+         },
+         "from": {
+          "type": "object",
+          "title": "Choose from"
+         },
+         "count": {
+          "type": "number",
+          "min": 1,
+          "title": "How many"
+         },
+         "bonus": {
+          "type": "array",
+          "items": {
+           "type": "number"
+          },
+          "title": "Bonus per pick"
+         },
+         "repeat": {
+          "type": "boolean",
+          "title": "Same pick more than once"
+         },
+         "onlyIf": {
+          "type": "object",
+          "title": "Only if"
+         },
+         "default": {
+          "type": "array",
+          "items": {
+           "type": "string"
+          },
+          "title": "Default"
+         },
+         "note": {
+          "type": "string",
+          "title": "Note"
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "Effects": {
+    "name": "Effects",
+    "label": "Effects",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "effects": {
+       "type": "array",
+       "many": true,
+       "title": "Effects",
+       "items": {
+        "type": "object"
+       },
+       "entry": {
+        "type": "object",
+        "required": [
+         "id",
+         "target",
+         "op"
+        ],
+        "properties": {
+         "id": {
+          "type": "string",
+          "title": "Id"
+         },
+         "target": {
+          "type": "string",
+          "title": "Target"
+         },
+         "op": {
+          "type": "string",
+          "title": "Operation",
+          "enum": [
+           "add",
+           "set",
+           "grant"
+          ]
+         },
+         "value": {
+          "type": "string",
+          "title": "Value"
+         },
+         "when": {
+          "type": "string",
+          "title": "Applies when",
+          "enum": [
+           "worn",
+           "attuned",
+           "carried",
+           "self"
+          ]
+         },
+         "note": {
+          "type": "string",
+          "title": "Note"
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "Difficulty": {
+    "name": "Difficulty",
+    "label": "Difficulty",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "difficulty": {
+       "type": "number",
+       "title": "Difficulty",
+       "min": 1,
+       "max": 20
+      }
+     }
+    }
+   },
+   "Identity": {
+    "name": "Identity",
+    "label": "Identity",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "required": [
+      "name",
+      "id"
+     ],
+     "properties": {
+      "name": {
+       "type": "string",
+       "title": "Name"
+      },
+      "id": {
+       "type": "string",
+       "title": "ID",
+       "readOnly": true
+      },
+      "aliases": {
+       "type": "array",
+       "title": "Aliases",
+       "items": {
+        "type": "string"
+       }
+      },
+      "cover": {
+       "type": "string",
+       "title": "Cover name"
+      }
+     }
+    }
+   },
+   "Status": {
+    "name": "Status",
+    "label": "Status",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "status": {
+       "type": "string",
+       "title": "Status",
+       "enumRef": "State",
+       "default": "idea"
+      }
+     }
+    }
+   },
+   "Description": {
+    "name": "Description",
+    "label": "Description",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "description": {
+       "type": "string",
+       "format": "long",
+       "title": "Description"
+      }
+     }
+    }
+   },
+   "Visibility": {
+    "name": "Visibility",
+    "label": "Visibility",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "audience": {
+       "type": "string",
+       "title": "Audience",
+       "enum": [
+        "public",
+        "campaign",
+        "players",
+        "gm"
+       ],
+       "default": "public"
+      },
+      "revealedTo": {
+       "type": "array",
+       "format": "link",
+       "title": "Revealed to",
+       "items": {
+        "type": "string"
+       },
+       "target": {
+        "interfaces": [
+         "Creature",
+         "Party",
+         "Faction"
+        ]
+       }
+      },
+      "hiddenFrom": {
+       "type": "array",
+       "format": "link",
+       "title": "Hidden from",
+       "items": {
+        "type": "string"
+       },
+       "target": {
+        "interfaces": [
+         "Creature",
+         "Party",
+         "Faction"
+        ]
+       }
+      }
+     }
+    }
+   },
+   "Tags": {
+    "name": "Tags",
+    "label": "Tags",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "tags": {
+       "type": "array",
+       "format": "tags",
+       "title": "Tags",
+       "items": {
+        "type": "string"
+       }
+      }
+     }
+    }
+   },
+   "Prose": {
+    "name": "Prose",
+    "label": "Text",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "paragraph": {
+       "type": "string",
+       "format": "long",
+       "many": true,
+       "title": "Text"
+      }
+     }
+    }
+   },
+   "Notes": {
+    "name": "Notes",
+    "label": "Notes",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "note": {
+       "type": "string",
+       "format": "long",
+       "many": true,
+       "title": "Notes"
+      }
+     }
+    }
+   },
+   "Lore": {
+    "name": "Lore",
+    "label": "Lore",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "lore": {
+       "type": "string",
+       "format": "long",
+       "many": true,
+       "title": "Lore"
+      }
+     }
+    }
+   },
+   "Secrets": {
+    "name": "Secrets",
+    "label": "Secrets",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "secret": {
+       "type": "string",
+       "format": "long",
+       "many": true,
+       "title": "Secrets"
+      }
+     }
+    }
+   },
+   "ReadAloud": {
+    "name": "ReadAloud",
+    "label": "Read aloud",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "readaloud": {
+       "type": "string",
+       "format": "long",
+       "many": true,
+       "title": "Read aloud"
+      }
+     }
+    }
+   },
+   "Facts": {
+    "name": "Facts",
+    "label": "Facts",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "fact": {
+       "type": "string",
+       "format": "long",
+       "many": true,
+       "title": "Facts"
+      }
+     }
+    }
+   },
+   "Tactics": {
+    "name": "Tactics",
+    "label": "Tactics",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "tactics": {
+       "type": "string",
+       "format": "long",
+       "many": true,
+       "title": "Tactics"
+      }
+     }
+    }
+   },
+   "Time": {
+    "name": "Time",
+    "label": "Time",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "sort": {
+       "type": "number",
+       "title": "Sortable value"
+      },
+      "display": {
+       "type": "string",
+       "format": "date",
+       "title": "Date"
+      },
+      "untilSort": {
+       "type": "number",
+       "title": "Sortable value of the end"
+      },
+      "until": {
+       "type": "string",
+       "format": "date",
+       "title": "Until"
+      },
+      "duration": {
+       "type": "string",
+       "title": "Duration"
+      }
+     }
+    }
+   },
+   "Image": {
+    "name": "Image",
+    "label": "Image",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "image": {
+       "type": "string",
+       "format": "asset",
+       "title": "Image",
+       "target": {
+        "where": {
+         "component": "Asset",
+         "property": "kind",
+         "value": "image"
+        }
+       }
+      },
+      "caption": {
+       "type": "string",
+       "title": "Caption"
+      },
+      "alt": {
+       "type": "string",
+       "title": "Alt text"
+      }
+     }
+    }
+   },
+   "Source": {
+    "name": "Source",
+    "label": "Source",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "publication": {
+       "type": "string",
+       "suggest": true,
+       "title": "Publication"
+      },
+      "page": {
+       "type": "string",
+       "title": "Page"
+      },
+      "anchor": {
+       "type": "string",
+       "title": "Anchor"
+      },
+      "url": {
+       "type": "string",
+       "title": "URL"
+      },
+      "srd": {
+       "type": "boolean",
+       "title": "In the SRD"
+      }
+     }
+    }
+   },
+   "Todos": {
+    "name": "Todos",
+    "label": "Todos",
+    "abstract": true,
+    "schema": {
+     "type": "object",
+     "properties": {
+      "items": {
+       "type": "array",
+       "title": "Items",
+       "items": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   },
+   "Creature": {
+    "name": "Creature",
+    "area": "world",
+    "label": "Creature",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Notes",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Image",
+     "Source",
+     "Vars",
+     "Vitals",
+     "Lore",
+     "Facts",
+     "Secrets",
+     "ReadAloud"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "appearance": {
+       "type": "string",
+       "format": "long",
+       "many": true,
+       "title": "Appearance"
+      },
+      "personality": {
+       "type": "string",
+       "format": "long",
+       "many": true,
+       "title": "Personality"
+      },
+      "species": {
+       "type": "string",
+       "suggest": true,
+       "title": "Species"
+      },
+      "kind": {
+       "type": "string",
+       "suggest": true,
+       "title": "Kind"
+      },
+      "role": {
+       "type": "string",
+       "suggest": true,
+       "title": "Role"
+      },
+      "attitude": {
+       "type": "string",
+       "title": "Attitude",
+       "enum": [
+        "freundlich",
+        "neutral",
+        "feindlich",
+        "unbekannt"
+       ]
+      },
+      "figure": {
+       "type": "string",
+       "title": "Figure",
+       "enum": [
+        "male",
+        "female",
+        "neutral"
+       ]
+      }
+     }
+    },
+    "views": {
+     "quick": {
+      "adjust": {
+       "add": {
+        "q-f": [
+         "Creature.kind",
+         "Creature.species",
+         "Creature.role",
+         "Creature.attitude"
+        ]
+       }
+      }
+     },
+     "overview": [
+      {
+       "id": "c-ov-img",
+       "el": "image"
+      },
+      {
+       "id": "c-ov",
+       "el": "fields",
+       "fields": [
+        "Creature.kind",
+        "Creature.species",
+        "Creature.role"
+       ]
+      }
+     ],
+     "full": [
+      {
+       "id": "c-sheet",
+       "el": "sheet"
+      },
+      {
+       "id": "c-tabs",
+       "el": "tabs",
+       "tabs": [
+        {
+         "id": "about",
+         "label": "Overview",
+         "layout": [
+          {
+           "id": "c-img",
+           "el": "image"
+          },
+          {
+           "id": "c-desc",
+           "el": "description"
+          },
+          {
+           "id": "c-linked",
+           "el": "linked",
+           "except": [
+            "Inventory"
+           ]
+          },
+          {
+           "id": "c-f",
+           "el": "fields",
+           "fields": "all",
+           "except": [
+            "Vitals"
+           ]
+          },
+          {
+           "id": "c-b",
+           "el": "prose",
+           "fields": "all"
+          }
+         ]
+        },
+        {
+         "id": "combat",
+         "label": "Combat",
+         "layout": [
+          {
+           "id": "c-c",
+           "el": "composed"
+          }
+         ]
+        },
+        {
+         "id": "gear",
+         "label": "Gear",
+         "layout": [
+          {
+           "id": "c-inv",
+           "el": "inventory"
+          }
+         ]
+        },
+        {
+         "id": "craft",
+         "label": "Craft",
+         "layout": [
+          {
+           "id": "c-craft",
+           "el": "crafting"
+          }
+         ]
+        },
+        {
+         "id": "ties",
+         "label": "Ties",
+         "layout": [
+          {
+           "id": "c-stand",
+           "el": "standing"
+          },
+          {
+           "id": "c-r",
+           "el": "relations"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "PlayerCharacter": {
+    "name": "PlayerCharacter",
+    "area": "world",
+    "label": "Player character",
+    "extends": [
+     "Creature"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "backstory": {
+       "type": "string",
+       "format": "long",
+       "many": true,
+       "title": "Backstory"
+      },
+      "level": {
+       "type": "number",
+       "title": "Level",
+       "derived": "sum(hasClass.level)"
+      },
+      "proficiency": {
+       "type": "number",
+       "title": "Proficiency",
+       "derived": "2+(sum(hasClass.level)-1)/4",
+       "format": "signed"
+      }
+     }
+    }
+   },
+   "Place": {
+    "name": "Place",
+    "area": "world",
+    "label": "Place",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Notes",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Image",
+     "Lore",
+     "ReadAloud",
+     "Secrets"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "kind": {
+       "type": "string",
+       "title": "Place type",
+       "enum": [
+        "Reich",
+        "Stadt",
+        "Distrikt",
+        "Gasse",
+        "Gebäude",
+        "Raum",
+        "Wildnis"
+       ]
+      },
+      "environment": {
+       "type": "string",
+       "suggest": true,
+       "title": "Environment"
+      },
+      "state": {
+       "type": "string",
+       "title": "State",
+       "enum": [
+        "hidden",
+        "discovered",
+        "explored"
+       ],
+       "default": "hidden"
+      },
+      "arrival": {
+       "type": "string",
+       "format": "long",
+       "title": "On arrival"
+      }
+     }
+    },
+    "views": {
+     "quick": {
+      "adjust": {
+       "add": {
+        "q-f": [
+         "Place.kind",
+         "Place.environment"
+        ]
+       }
+      }
+     },
+     "full": [
+      {
+       "id": "o-img",
+       "el": "image"
+      },
+      {
+       "id": "o-desc",
+       "el": "description"
+      },
+      {
+       "id": "o-f",
+       "el": "fields",
+       "fields": "all"
+      },
+      {
+       "id": "o-b",
+       "el": "prose",
+       "fields": "all"
+      },
+      {
+       "id": "o-crawl",
+       "el": "crawl"
+      },
+      {
+       "id": "o-table",
+       "el": "table"
+      },
+      {
+       "id": "o-r",
+       "el": "relations"
+      }
+     ]
+    }
+   },
+   "Faction": {
+    "name": "Faction",
+    "area": "world",
+    "label": "Faction",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Notes",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Image",
+     "Lore",
+     "Secrets"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "kind": {
+       "type": "string",
+       "suggest": true,
+       "title": "Kind"
+      },
+      "color": {
+       "type": "string",
+       "format": "color",
+       "title": "Colour"
+      },
+      "ranks": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "title": "Ranks (lowest first)"
+      },
+      "goal": {
+       "type": "string",
+       "format": "long",
+       "title": "Goal"
+      }
+     }
+    },
+    "views": {
+     "quick": {
+      "adjust": {
+       "add": {
+        "q-f": [
+         "Faction.kind",
+         "Faction.goal"
+        ]
+       }
+      }
+     }
+    }
+   },
+   "Article": {
+    "name": "Article",
+    "area": "world",
+    "label": "Article",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Notes",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Source",
+     "Todos",
+     "Lore",
+     "Secrets"
+    ]
+   },
+   "Rule": {
+    "name": "Rule",
+    "area": "rules",
+    "label": "Rule Element",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Notes",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Source",
+     "Vars"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "kind": {
+       "type": "string",
+       "title": "Rule kind",
+       "enumRef": "RuleKind"
+      },
+      "autolink": {
+       "type": "boolean",
+       "title": "Spot it in prose",
+       "default": true
+      }
+     }
+    },
+    "views": {
+     "quick": {
+      "adjust": {
+       "add": {
+        "q-f": [
+         "Rule.kind"
+        ]
+       }
+      }
+     },
+     "overview": [
+      {
+       "id": "rul-ov",
+       "el": "fields",
+       "fields": [
+        "Rule.kind"
+       ]
+      }
+     ]
+    }
+   },
+   "Feat": {
+    "name": "Feat",
+    "area": "rules",
+    "label": "Feat",
+    "extends": [
+     "Rule",
+     "Choices"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "prerequisite": {
+       "type": "string",
+       "title": "Prerequisite"
+      },
+      "repeatable": {
+       "type": "boolean",
+       "title": "May be taken again",
+       "default": false
+      }
+     }
+    },
+    "views": {
+     "quick": {
+      "adjust": {
+       "add": {
+        "q-f": [
+         "Feat.prerequisite"
+        ]
+       }
+      }
+     },
+     "overview": [
+      {
+       "id": "fea-ov",
+       "el": "fields",
+       "fields": [
+        "Feat.prerequisite",
+        "Feat.repeatable"
+       ]
+      }
+     ]
+    }
+   },
+   "Skill": {
+    "name": "Skill",
+    "area": "rules",
+    "label": "Skill",
+    "extends": [
+     "Rule"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "ability": {
+       "type": "string",
+       "title": "Ability",
+       "enumRef": "Ability"
+      }
+     }
+    }
+   },
+   "Language": {
+    "name": "Language",
+    "area": "rules",
+    "label": "Language",
+    "extends": [
+     "Rule"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "languageType": {
+       "type": "string",
+       "title": "Language type",
+       "enum": [
+        "standard",
+        "exotic",
+        "rare",
+        "secret"
+       ]
+      },
+      "script": {
+       "type": "string",
+       "suggest": true,
+       "title": "Script"
+      },
+      "typicalSpeakers": {
+       "type": "string",
+       "title": "Typical speakers"
+      }
+     }
+    },
+    "views": {
+     "overview": [
+      {
+       "id": "lan-ov",
+       "el": "fields",
+       "fields": [
+        "Language.languageType",
+        "Language.script"
+       ]
+      }
+     ]
+    }
+   },
+   "Class": {
+    "name": "Class",
+    "area": "rules",
+    "label": "Class",
+    "extends": [
+     "Rule",
+     "Proficiencies",
+     "Choices",
+     "Lore",
+     "Image"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "hitDie": {
+       "type": "number",
+       "min": 4,
+       "max": 12,
+       "title": "Hit die"
+      },
+      "primaryAbility": {
+       "type": "array",
+       "title": "Primary ability",
+       "items": {
+        "type": "string"
+       },
+       "enumRef": "Ability"
+      },
+      "startingEquipment": {
+       "type": "string",
+       "format": "long",
+       "title": "Starting equipment"
+      },
+      "startingGold": {
+       "type": "string",
+       "title": "Starting gold (gp)"
+      },
+      "multiclassRequirement": {
+       "type": "string",
+       "title": "Multiclass requirement"
+      },
+      "multiclassProficient": {
+       "type": "array",
+       "title": "Proficiencies when multiclassing",
+       "items": {
+        "type": "string"
+       },
+       "enumRef": [
+        "Skill",
+        "Language",
+        "Item",
+        "Weapon",
+        "Weapon.category",
+        "Armor.armorType"
+       ],
+       "enumWhere": {
+        "Item": {
+         "itemType": [
+          "tool",
+          "artisan tools",
+          "gaming set",
+          "instrument"
+         ]
+        }
+       }
+      },
+      "subclassTitle": {
+       "type": "string",
+       "title": "Subclass title"
+      },
+      "casterProgression": {
+       "type": "string",
+       "title": "Caster progression",
+       "enum": [
+        "full",
+        "half",
+        "third",
+        "pact",
+        "artificer"
+       ]
+      },
+      "spellAbility": {
+       "type": "string",
+       "title": "Spellcasting ability",
+       "enumRef": "Ability"
+      }
+     }
+    },
+    "titles": {
+     "Proficiencies.proficient": "Grants proficiency in",
+     "Proficiencies.expertise": "Grants expertise in"
+    },
+    "views": {
+     "quick": {
+      "adjust": {
+       "add": {
+        "q-f": [
+         "Class.hitDie",
+         "Class.primaryAbility"
+        ]
+       }
+      }
+     },
+     "overview": [
+      {
+       "id": "cla-ov-img",
+       "el": "image"
+      },
+      {
+       "id": "cla-ov",
+       "el": "fields",
+       "fields": [
+        "Class.hitDie",
+        "Class.primaryAbility",
+        "Class.casterProgression"
+       ]
+      }
+     ]
+    }
+   },
+   "Subclass": {
+    "name": "Subclass",
+    "area": "rules",
+    "label": "Subclass",
+    "extends": [
+     "Rule",
+     "Proficiencies",
+     "Choices",
+     "Lore",
+     "Image"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "shortName": {
+       "type": "string",
+       "title": "Short name"
+      },
+      "casterProgression": {
+       "type": "string",
+       "title": "Caster progression",
+       "enum": [
+        "full",
+        "half",
+        "third",
+        "pact",
+        "artificer"
+       ]
+      },
+      "spellAbility": {
+       "type": "string",
+       "title": "Spellcasting ability",
+       "enumRef": "Ability"
+      }
+     }
+    },
+    "titles": {
+     "Proficiencies.proficient": "Grants proficiency in",
+     "Proficiencies.expertise": "Grants expertise in"
+    },
+    "views": {
+     "overview": [
+      {
+       "id": "sub-ov-img",
+       "el": "image"
+      },
+      {
+       "id": "sub-ov",
+       "el": "fields",
+       "fields": [
+        "Subclass.shortName",
+        "Subclass.casterProgression"
+       ]
+      }
+     ]
+    }
+   },
+   "Ancestry": {
+    "name": "Ancestry",
+    "area": "rules",
+    "label": "Ancestry",
+    "extends": [
+     "Rule",
+     "Proficiencies",
+     "Choices",
+     "Lore",
+     "Image"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "size": {
+       "type": "array",
+       "title": "Size",
+       "items": {
+        "type": "string"
+       },
+       "enumRef": "Size"
+      },
+      "speed": {
+       "type": "string",
+       "format": "measure",
+       "unit": "ft",
+       "title": "Speed"
+      },
+      "abilityBonus": {
+       "type": "object",
+       "title": "Ability score increase"
+      },
+      "abilityNote": {
+       "type": "string",
+       "title": "Ability choice"
+      },
+      "age": {
+       "type": "string",
+       "title": "Age"
+      },
+      "darkvision": {
+       "type": "number",
+       "min": 0,
+       "unit": "ft",
+       "title": "Darkvision"
+      },
+      "creatureType": {
+       "type": "string",
+       "suggest": true,
+       "title": "Creature type",
+       "default": "humanoid"
+      },
+      "resistances": {
+       "type": "array",
+       "title": "Damage resistances",
+       "items": {
+        "type": "string"
+       },
+       "enumRef": "DamageType"
+      }
+     }
+    },
+    "titles": {
+     "Proficiencies.proficient": "Grants proficiency in",
+     "Proficiencies.expertise": "Grants expertise in"
+    },
+    "views": {
+     "quick": {
+      "adjust": {
+       "add": {
+        "q-f": [
+         "Ancestry.size"
+        ]
+       }
+      }
+     },
+     "overview": [
+      {
+       "id": "anc-ov-img",
+       "el": "image"
+      },
+      {
+       "id": "anc-ov",
+       "el": "fields",
+       "fields": [
+        "Ancestry.size",
+        "Ancestry.speed"
+       ]
+      }
+     ]
+    }
+   },
+   "Background": {
+    "name": "Background",
+    "area": "rules",
+    "label": "Background",
+    "extends": [
+     "Rule",
+     "Proficiencies",
+     "Choices",
+     "Lore",
+     "Image"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "startingEquipment": {
+       "type": "string",
+       "format": "long",
+       "title": "Starting equipment"
+      }
+     }
+    },
+    "titles": {
+     "Proficiencies.proficient": "Grants proficiency in",
+     "Proficiencies.expertise": "Grants expertise in"
+    }
+   },
+   "AbilityMethod": {
+    "name": "AbilityMethod",
+    "area": "rules",
+    "label": "Ability score method",
+    "extends": [
+     "Rule"
+    ],
+    "schema": {
+     "type": "object",
+     "required": [
+      "method"
+     ],
+     "properties": {
+      "method": {
+       "type": "string",
+       "title": "Method",
+       "enum": [
+        "array",
+        "pointBuy",
+        "roll"
+       ],
+       "default": "array"
+      },
+      "scores": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "title": "Scores to assign"
+      },
+      "budget": {
+       "type": "number",
+       "min": 0,
+       "title": "Point budget"
+      },
+      "costs": {
+       "type": "object",
+       "title": "Cost per score"
+      },
+      "dice": {
+       "type": "string",
+       "title": "Dice per score"
+      },
+      "count": {
+       "type": "number",
+       "min": 1,
+       "max": 12,
+       "title": "Scores rolled",
+       "default": 6
+      },
+      "scope": {
+       "type": "string",
+       "title": "Rolled for",
+       "enum": [
+        "character",
+        "party"
+       ],
+       "default": "character"
+      }
+     }
+    },
+    "views": {
+     "overview": [
+      {
+       "id": "abm-ov",
+       "el": "fields",
+       "fields": [
+        "AbilityMethod.method",
+        "AbilityMethod.scope"
+       ]
+      }
+     ]
+    }
+   },
+   "EquipmentMethod": {
+    "name": "EquipmentMethod",
+    "area": "rules",
+    "label": "Starting equipment method",
+    "extends": [
+     "Rule"
+    ],
+    "schema": {
+     "type": "object",
+     "required": [
+      "method"
+     ],
+     "properties": {
+      "method": {
+       "type": "string",
+       "title": "Method",
+       "enum": [
+        "rules",
+        "gold",
+        "free"
+       ],
+       "default": "rules"
+      },
+      "gold": {
+       "type": "string",
+       "title": "Gold (gp, fixed or rolled)"
+      },
+      "budget": {
+       "type": "number",
+       "min": 0,
+       "title": "Budget (gp)"
+      },
+      "magic": {
+       "type": "object",
+       "title": "Magic items per rarity"
+      },
+      "itemTypes": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "enumRef": "Item.itemType",
+       "title": "Allowed item types"
+      }
+     }
+    },
+    "views": {
+     "overview": [
+      {
+       "id": "eqm-ov",
+       "el": "fields",
+       "fields": [
+        "EquipmentMethod.method",
+        "EquipmentMethod.gold",
+        "EquipmentMethod.budget"
+       ]
+      }
+     ]
+    }
+   },
+   "Condition": {
+    "name": "Condition",
+    "area": "rules",
+    "label": "Condition",
+    "extends": [
+     "Rule"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "kind": {
+       "type": "string",
+       "title": "Condition kind",
+       "enum": [
+        "condition",
+        "status"
+       ],
+       "default": "condition"
+      },
+      "stage": {
+       "type": "number",
+       "min": 1,
+       "title": "Stage"
+      },
+      "recovery": {
+       "type": "string",
+       "title": "Recovery",
+       "enum": [
+        "none",
+        "shortRest",
+        "longRest",
+        "longRestStep",
+        "save",
+        "special"
+       ]
+      }
+     }
+    },
+    "views": {
+     "overview": [
+      {
+       "id": "con-ov",
+       "el": "fields",
+       "fields": [
+        "Condition.kind"
+       ]
+      }
+     ]
+    }
+   },
+   "Disease": {
+    "name": "Disease",
+    "area": "rules",
+    "label": "Disease",
+    "extends": [
+     "Condition"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "kind": {
+       "type": "string",
+       "suggest": true,
+       "title": "Disease kind"
+      },
+      "save": {
+       "type": "string",
+       "title": "Saving throw",
+       "enumRef": "Ability"
+      },
+      "dc": {
+       "type": "number",
+       "min": 1,
+       "max": 30,
+       "title": "Save DC"
+      },
+      "incubation": {
+       "type": "string",
+       "title": "Incubation"
+      },
+      "transmission": {
+       "type": "string",
+       "title": "Transmission"
+      }
+     }
+    }
+   },
+   "ActionType": {
+    "name": "ActionType",
+    "area": "rules",
+    "label": "Action type",
+    "extends": [
+     "Rule"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "per": {
+       "type": "string",
+       "title": "Per",
+       "enum": [
+        "turn",
+        "round"
+       ]
+      },
+      "count": {
+       "type": "number",
+       "min": 1,
+       "title": "How often"
+      }
+     }
+    }
+   },
+   "Action": {
+    "name": "Action",
+    "area": "rules",
+    "label": "Action",
+    "extends": [
+     "Rule"
+    ],
+    "schema": {
+     "type": "object",
+     "required": [
+      "actionType"
+     ],
+     "properties": {
+      "actionType": {
+       "type": "string",
+       "format": "link",
+       "title": "Action type",
+       "target": {
+        "interfaces": [
+         "ActionType"
+        ]
+       }
+      },
+      "recharge": {
+       "type": "string",
+       "title": "Recharge"
+      },
+      "uses": {
+       "type": "string",
+       "title": "Uses"
+      },
+      "attack": {
+       "type": "array",
+       "title": "Attack",
+       "items": {
+        "type": "string"
+       },
+       "enum": [
+        "melee weapon",
+        "ranged weapon",
+        "melee spell",
+        "ranged spell"
+       ]
+      },
+      "ability": {
+       "type": "string",
+       "title": "Ability",
+       "enum": [
+        "str",
+        "dex",
+        "con",
+        "int",
+        "wis",
+        "cha",
+        "finesse",
+        "spell"
+       ]
+      },
+      "toHitBonus": {
+       "type": "number",
+       "title": "To-hit bonus",
+       "format": "signed"
+      },
+      "reach": {
+       "type": "number",
+       "min": 0,
+       "unit": "ft",
+       "title": "Reach"
+      },
+      "range": {
+       "type": "string",
+       "format": "measure",
+       "unit": "ft",
+       "title": "Range"
+      },
+      "target": {
+       "type": "string",
+       "title": "Target"
+      },
+      "damageDice": {
+       "type": "string",
+       "title": "Damage dice"
+      },
+      "damageBonus": {
+       "type": "number",
+       "title": "Damage bonus",
+       "format": "signed"
+      },
+      "damageType": {
+       "type": "string",
+       "title": "Damage type",
+       "enumRef": "DamageType"
+      },
+      "extraDamageDice": {
+       "type": "string",
+       "title": "Extra damage dice"
+      },
+      "extraDamageType": {
+       "type": "string",
+       "title": "Extra damage type",
+       "enumRef": "DamageType"
+      }
+     }
+    },
+    "views": {
+     "overview": [
+      {
+       "id": "act-ov",
+       "el": "fields",
+       "fields": [
+        "Action.actionType",
+        "Action.attack",
+        "Action.damageType",
+        "Action.recharge"
+       ]
+      }
+     ]
+    }
+   },
+   "Feature": {
+    "name": "Feature",
+    "area": "rules",
+    "label": "Feature",
+    "extends": [
+     "Rule",
+     "Choices"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "featureType": {
+       "type": "string",
+       "suggest": true,
+       "title": "Feature type"
+      }
+     }
+    },
+    "views": {
+     "overview": [
+      {
+       "id": "ftr-ov",
+       "el": "fields",
+       "fields": [
+        "Feature.featureType"
+       ]
+      }
+     ]
+    }
+   },
+   "ItemProperty": {
+    "name": "ItemProperty",
+    "area": "rules",
+    "label": "Item property",
+    "extends": [
+     "Rule"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "abbreviation": {
+       "type": "string",
+       "title": "Abbreviation"
+      }
+     }
+    }
+   },
+   "Spell": {
+    "name": "Spell",
+    "area": "rules",
+    "label": "Spell",
+    "extends": [
+     "Rule"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "level": {
+       "type": "number",
+       "min": 0,
+       "max": 9,
+       "title": "Spell level"
+      },
+      "school": {
+       "type": "string",
+       "title": "School",
+       "enum": [
+        "abjuration",
+        "conjuration",
+        "divination",
+        "enchantment",
+        "evocation",
+        "illusion",
+        "necromancy",
+        "transmutation"
+       ]
+      },
+      "castingTime": {
+       "type": "number",
+       "min": 1,
+       "title": "Casting time",
+       "default": 1
+      },
+      "castingAction": {
+       "type": "string",
+       "format": "link",
+       "title": "Cast as",
+       "target": {
+        "interfaces": [
+         "ActionType"
+        ]
+       }
+      },
+      "castingUnit": {
+       "type": "string",
+       "title": "Casting unit",
+       "enum": [
+        "minute",
+        "hour"
+       ]
+      },
+      "castingCondition": {
+       "type": "string",
+       "title": "Reaction trigger"
+      },
+      "rangeKind": {
+       "type": "string",
+       "title": "Range kind",
+       "enum": [
+        "point",
+        "touch",
+        "self",
+        "sight",
+        "unlimited",
+        "special",
+        "radius",
+        "sphere",
+        "cone",
+        "line",
+        "cube",
+        "cylinder",
+        "hemisphere",
+        "emanation"
+       ]
+      },
+      "range": {
+       "type": "number",
+       "min": 0,
+       "unit": "ft",
+       "title": "Range"
+      },
+      "components": {
+       "type": "array",
+       "title": "Components",
+       "items": {
+        "type": "string"
+       },
+       "enum": [
+        "v",
+        "s",
+        "m"
+       ]
+      },
+      "material": {
+       "type": "string",
+       "title": "Material"
+      },
+      "materialCost": {
+       "type": "number",
+       "min": 0,
+       "title": "Material cost in copper"
+      },
+      "materialConsumed": {
+       "type": "boolean",
+       "title": "Material consumed"
+      },
+      "duration": {
+       "type": "string",
+       "title": "Duration",
+       "enum": [
+        "instant",
+        "timed",
+        "permanent",
+        "special"
+       ],
+       "default": "instant"
+      },
+      "durationAmount": {
+       "type": "number",
+       "min": 1,
+       "title": "Lasts"
+      },
+      "durationUnit": {
+       "type": "string",
+       "title": "Duration unit",
+       "enum": [
+        "round",
+        "minute",
+        "hour",
+        "day"
+       ]
+      },
+      "concentration": {
+       "type": "boolean",
+       "title": "Concentration"
+      },
+      "ritual": {
+       "type": "boolean",
+       "title": "Ritual"
+      },
+      "higherLevels": {
+       "type": "string",
+       "format": "long",
+       "title": "At higher levels"
+      },
+      "save": {
+       "type": "array",
+       "title": "Saving throw",
+       "items": {
+        "type": "string"
+       },
+       "enumRef": "Ability"
+      },
+      "attack": {
+       "type": "string",
+       "title": "Spell attack",
+       "enum": [
+        "melee",
+        "ranged"
+       ]
+      },
+      "damageTypes": {
+       "type": "array",
+       "title": "Damage types",
+       "items": {
+        "type": "string"
+       },
+       "enumRef": "DamageType"
+      }
+     }
+    },
+    "views": {
+     "quick": {
+      "adjust": {
+       "add": {
+        "q-f": [
+         "Spell.level",
+         "Spell.school",
+         "Spell.concentration",
+         "Spell.ritual"
+        ]
+       }
+      }
+     },
+     "print": {
+      "adjust": {
+       "extra": [
+        {
+         "id": "p-spell",
+         "el": "spell"
+        }
+       ],
+       "order": [
+        "p-spell"
+       ]
+      }
+     },
+     "overview": [
+      {
+       "id": "spe-ov",
+       "el": "fields",
+       "fields": [
+        "Spell.level",
+        "Spell.school",
+        "Spell.duration",
+        "Spell.concentration",
+        "Spell.ritual"
+       ]
+      }
+     ],
+     "full": [
+      {
+       "id": "sp-book",
+       "el": "spell"
+      },
+      {
+       "id": "sp-f",
+       "el": "fields",
+       "fields": "all",
+       "except": [
+        "Spell"
+       ]
+      },
+      {
+       "id": "sp-b",
+       "el": "prose",
+       "fields": "all",
+       "except": [
+        "Prose.paragraph"
+       ]
+      },
+      {
+       "id": "sp-c",
+       "el": "composed"
+      },
+      {
+       "id": "sp-used",
+       "el": "usedBy"
+      },
+      {
+       "id": "sp-r",
+       "el": "relations"
+      }
+     ]
+    }
+   },
+   "Hazard": {
+    "name": "Hazard",
+    "area": "world",
+    "label": "Hazard",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Notes",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Image",
+     "Source",
+     "Secrets"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "kind": {
+       "type": "string",
+       "title": "Kind",
+       "enum": [
+        "trap",
+        "hazard"
+       ],
+       "default": "trap"
+      },
+      "category": {
+       "type": "string",
+       "title": "Category",
+       "enum": [
+        "MECH",
+        "MAG",
+        "WTH",
+        "ENV",
+        "WLD"
+       ]
+      },
+      "tier": {
+       "type": "number",
+       "min": 1,
+       "max": 20,
+       "title": "Level"
+      },
+      "threat": {
+       "type": "string",
+       "title": "Threat",
+       "enum": [
+        "setback",
+        "dangerous",
+        "deadly"
+       ]
+      },
+      "trigger": {
+       "type": "string",
+       "format": "long",
+       "title": "Trigger"
+      },
+      "duration": {
+       "type": "string",
+       "title": "Duration"
+      },
+      "effect": {
+       "type": "string",
+       "format": "long",
+       "title": "Effect"
+      },
+      "countermeasures": {
+       "type": "string",
+       "format": "long",
+       "title": "Countermeasures"
+      },
+      "initiative": {
+       "type": "number",
+       "title": "Initiative"
+      }
+     }
+    },
+    "views": {
+     "quick": {
+      "adjust": {
+       "add": {
+        "q-f": [
+         "Hazard.kind",
+         "Hazard.threat"
+        ]
+       }
+      }
+     },
+     "overview": [
+      {
+       "id": "haz-ov-img",
+       "el": "image"
+      },
+      {
+       "id": "haz-ov",
+       "el": "fields",
+       "fields": [
+        "Hazard.kind",
+        "Hazard.category",
+        "Hazard.threat"
+       ]
+      }
+     ]
+    }
+   },
+   "ZoneKind": {
+    "name": "ZoneKind",
+    "area": "rules",
+    "label": "Zone kind",
+    "extends": [
+     "Rule"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "moveCost": {
+       "type": "number",
+       "min": 1,
+       "max": 10,
+       "title": "Movement cost ×",
+       "default": 1
+      },
+      "light": {
+       "type": "string",
+       "title": "Light inside",
+       "enum": [
+        "bright",
+        "dim",
+        "dark"
+       ]
+      },
+      "obscured": {
+       "type": "string",
+       "title": "Obscured",
+       "enum": [
+        "none",
+        "light",
+        "heavy"
+       ],
+       "default": "none"
+      },
+      "hiddenUntil": {
+       "type": "number",
+       "min": 1,
+       "max": 30,
+       "title": "Hidden until passive perception"
+      },
+      "damage": {
+       "type": "string",
+       "title": "Damage"
+      },
+      "damageType": {
+       "type": "string",
+       "suggest": true,
+       "title": "Damage type"
+      },
+      "save": {
+       "type": "string",
+       "title": "Saving throw",
+       "enumRef": "Ability"
+      },
+      "saveDC": {
+       "type": "number",
+       "min": 1,
+       "max": 30,
+       "title": "Save DC"
+      },
+      "condition": {
+       "type": "string",
+       "format": "link",
+       "title": "Condition",
+       "target": {
+        "interfaces": [
+         "Condition"
+        ]
+       }
+      },
+      "trigger": {
+       "type": "string",
+       "title": "Applies",
+       "enum": [
+        "enter",
+        "start",
+        "end"
+       ],
+       "default": "enter"
+      }
+     }
+    }
+   },
+   "Deity": {
+    "name": "Deity",
+    "area": "world",
+    "label": "Deity",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Notes",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Image",
+     "Source",
+     "Lore",
+     "Secrets"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "pantheon": {
+       "type": "string",
+       "suggest": true,
+       "title": "Pantheon"
+      },
+      "title": {
+       "type": "string",
+       "title": "Title"
+      },
+      "alignment": {
+       "type": "string",
+       "suggest": true,
+       "title": "Alignment"
+      },
+      "domains": {
+       "type": "array",
+       "format": "link",
+       "title": "Domains",
+       "items": {
+        "type": "string"
+       },
+       "target": {
+        "interfaces": [
+         "Subclass"
+        ]
+       }
+      },
+      "symbol": {
+       "type": "string",
+       "title": "Symbol"
+      },
+      "province": {
+       "type": "string",
+       "title": "Province"
+      },
+      "plane": {
+       "type": "string",
+       "suggest": true,
+       "title": "Plane"
+      }
+     }
+    },
+    "views": {
+     "quick": {
+      "adjust": {
+       "add": {
+        "q-f": [
+         "Deity.pantheon",
+         "Deity.alignment"
+        ]
+       }
+      }
+     },
+     "overview": [
+      {
+       "id": "dei-ov-img",
+       "el": "image"
+      },
+      {
+       "id": "dei-ov",
+       "el": "fields",
+       "fields": [
+        "Deity.pantheon",
+        "Deity.alignment",
+        "Deity.domains"
+       ]
+      }
+     ]
+    }
+   },
+   "Statblock": {
+    "name": "Statblock",
+    "area": "rules",
+    "label": "Statblock",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Notes",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Source",
+     "Abilities",
+     "Proficiencies",
+     "Vars",
+     "Tactics",
+     "Lore",
+     "Image"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "system": {
+       "type": "string",
+       "suggest": true,
+       "title": "System",
+       "default": "dnd5e"
+      },
+      "size": {
+       "type": "string",
+       "title": "Size",
+       "enumRef": "Size"
+      },
+      "creatureType": {
+       "type": "string",
+       "suggest": true,
+       "title": "Creature type"
+      },
+      "alignment": {
+       "type": "string",
+       "suggest": true,
+       "title": "Alignment"
+      },
+      "ac": {
+       "type": "number",
+       "title": "Armour class"
+      },
+      "acNote": {
+       "type": "string",
+       "title": "AC note"
+      },
+      "hp": {
+       "type": "number",
+       "title": "Hit points"
+      },
+      "hpFormula": {
+       "type": "string",
+       "title": "Hit dice"
+      },
+      "speed": {
+       "type": "string",
+       "format": "measure",
+       "unit": "ft",
+       "title": "Speed"
+      },
+      "cr": {
+       "type": "string",
+       "title": "Challenge rating"
+      },
+      "prof": {
+       "type": "number",
+       "title": "Proficiency bonus"
+      },
+      "carryExtra": {
+       "type": "number",
+       "title": "Extra carry square",
+       "derived": "mod(str)",
+       "min": 0,
+       "max": 5
+      },
+      "combatRole": {
+       "type": "string",
+       "suggest": true,
+       "title": "Combat role"
+      },
+      "senses": {
+       "type": "string",
+       "title": "Senses"
+      },
+      "languageNote": {
+       "type": "string",
+       "title": "Languages, besides"
+      },
+      "resistances": {
+       "type": "string",
+       "title": "Resistances"
+      },
+      "vulnerabilities": {
+       "type": "string",
+       "title": "Vulnerabilities"
+      },
+      "immunities": {
+       "type": "string",
+       "title": "Immunities"
+      },
+      "conditionImmunities": {
+       "type": "array",
+       "format": "link",
+       "title": "Condition immunities",
+       "items": {
+        "type": "string"
+       },
+       "target": {
+        "interfaces": [
+         "Condition"
+        ]
+       }
+      },
+      "legendaryActions": {
+       "type": "number",
+       "min": 1,
+       "title": "Legendary actions per round"
+      },
+      "bonuses": {
+       "type": "object",
+       "title": "Fixed bonuses"
+      },
+      "token": {
+       "type": "string",
+       "format": "asset",
+       "title": "Token",
+       "target": {
+        "where": {
+         "component": "Asset",
+         "property": "kind",
+         "value": "token"
+        }
+       }
+      },
+      "spellAbility": {
+       "type": "string",
+       "title": "Spellcasting ability",
+       "enumRef": "Ability"
+      },
+      "casterLevel": {
+       "type": "number",
+       "min": 1,
+       "max": 20,
+       "title": "Caster level"
+      },
+      "spellSlots": {
+       "type": "array",
+       "title": "Spell slots by level",
+       "items": {
+        "type": "number"
+       }
+      },
+      "spellDc": {
+       "type": "number",
+       "title": "Spell save DC",
+       "derived": "8+prof+modOf(spellAbility)"
+      },
+      "spellAttack": {
+       "type": "number",
+       "title": "Spell attack",
+       "derived": "prof+modOf(spellAbility)",
+       "format": "signed"
+      }
+     }
+    },
+    "views": {
+     "print": {
+      "adjust": {
+       "drop": [
+        "p-c"
+       ],
+       "extra": [
+        {
+         "id": "p-statblock",
+         "el": "statblock"
+        }
+       ],
+       "order": [
+        "p-statblock"
+       ]
+      }
+     },
+     "overview": [
+      {
+       "id": "s-ov-img",
+       "el": "image"
+      },
+      {
+       "id": "s-ov",
+       "el": "fields",
+       "fields": [
+        "Statblock.cr",
+        "Statblock.size",
+        "Statblock.creatureType",
+        "Statblock.alignment"
+       ]
+      }
+     ],
+     "quick": [
+      {
+       "id": "s-q-sb",
+       "el": "statblock"
+      }
+     ],
+     "full": [
+      {
+       "id": "s-sb",
+       "el": "statblock"
+      },
+      {
+       "id": "s-f",
+       "el": "fields",
+       "fields": "all",
+       "except": [
+        "Statblock",
+        "Abilities",
+        "Proficiencies"
+       ]
+      },
+      {
+       "id": "s-b",
+       "el": "prose",
+       "fields": "all"
+      },
+      {
+       "id": "s-used",
+       "el": "usedBy"
+      },
+      {
+       "id": "s-r",
+       "el": "relations"
+      }
+     ]
+    }
+   },
+   "Item": {
+    "name": "Item",
+    "area": "world",
+    "label": "Item",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Notes",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Image",
+     "Source",
+     "Lore",
+     "Secrets",
+     "Facts",
+     "Effects"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "itemType": {
+       "type": "string",
+       "title": "Item type",
+       "enum": [
+        "adventuring gear",
+        "ammunition",
+        "artisan tools",
+        "explosive",
+        "food and drink",
+        "gaming set",
+        "instrument",
+        "tool",
+        "tack and harness",
+        "light armor",
+        "medium armor",
+        "heavy armor",
+        "shield",
+        "melee weapon",
+        "ranged weapon",
+        "potion",
+        "scroll",
+        "ring",
+        "rod",
+        "staff",
+        "wand",
+        "wondrous item",
+        "spellcasting focus",
+        "mount",
+        "vehicle",
+        "trade good",
+        "treasure",
+        "art object",
+        "gemstone",
+        "coinage",
+        "other"
+       ]
+      },
+      "rarity": {
+       "type": "string",
+       "title": "Rarity",
+       "enum": [
+        "none",
+        "common",
+        "uncommon",
+        "rare",
+        "very rare",
+        "legendary",
+        "artifact",
+        "varies",
+        "unknown"
+       ]
+      },
+      "tier": {
+       "type": "string",
+       "title": "Tier",
+       "enum": [
+        "minor",
+        "major"
+       ]
+      },
+      "attunement": {
+       "type": "boolean",
+       "title": "Requires attunement"
+      },
+      "attunementNote": {
+       "type": "string",
+       "title": "Attunement by"
+      },
+      "charges": {
+       "type": "number",
+       "min": 0,
+       "title": "Charges"
+      },
+      "recharge": {
+       "type": "string",
+       "title": "Recharges at",
+       "enum": [
+        "dawn",
+        "dusk",
+        "midnight",
+        "shortRest",
+        "longRest",
+        "special"
+       ]
+      },
+      "rechargeAmount": {
+       "type": "string",
+       "title": "Recharge amount"
+      },
+      "bonusWeapon": {
+       "type": "number",
+       "title": "Attack and damage bonus",
+       "format": "signed"
+      },
+      "bonusAc": {
+       "type": "number",
+       "title": "AC bonus",
+       "format": "signed"
+      },
+      "bonusSpellAttack": {
+       "type": "number",
+       "title": "Spell attack bonus",
+       "format": "signed"
+      },
+      "bonusSave": {
+       "type": "number",
+       "title": "Saving throw bonus",
+       "format": "signed"
+      },
+      "appliesTo": {
+       "type": "array",
+       "title": "Variant applies to",
+       "items": {
+        "type": "string"
+       }
+      },
+      "availability": {
+       "type": "string",
+       "suggest": true,
+       "title": "Purchase rarity"
+      },
+      "copperPrice": {
+       "type": "number",
+       "title": "Price in copper"
+      },
+      "stackSize": {
+       "type": "number",
+       "title": "Stack size"
+      },
+      "weight": {
+       "type": "number",
+       "unit": "lb",
+       "title": "Weight"
+      },
+      "rows": {
+       "type": "array",
+       "format": "grid",
+       "title": "Grid",
+       "items": {
+        "type": "string"
+       }
+      },
+      "width": {
+       "type": "number",
+       "title": "Width",
+       "derived": "colCount(rows)"
+      },
+      "height": {
+       "type": "number",
+       "title": "Height",
+       "derived": "rowCount(rows)"
+      },
+      "cells": {
+       "type": "number",
+       "title": "Cells",
+       "derived": "cellCount(rows)"
+      }
+     }
+    },
+    "views": {
+     "quick": {
+      "adjust": {
+       "add": {
+        "q-f": [
+         "Item.itemType",
+         "Item.rarity",
+         "Item.attunement"
+        ]
+       }
+      }
+     },
+     "print": {
+      "adjust": {
+       "extra": [
+        {
+         "id": "p-item",
+         "el": "item"
+        }
+       ],
+       "order": [
+        "p-item"
+       ]
+      }
+     },
+     "overview": [
+      {
+       "id": "ite-ov-img",
+       "el": "image"
+      },
+      {
+       "id": "ite-ov",
+       "el": "fields",
+       "fields": [
+        "Item.itemType",
+        "Item.rarity",
+        "Item.attunement"
+       ]
+      }
+     ],
+     "full": [
+      {
+       "id": "it-img",
+       "el": "image"
+      },
+      {
+       "id": "it-book",
+       "el": "item"
+      },
+      {
+       "id": "it-desc",
+       "el": "description"
+      },
+      {
+       "id": "it-f",
+       "el": "fields",
+       "fields": "all",
+       "except": [
+        "Item",
+        "Weapon",
+        "Armor",
+        "Material"
+       ]
+      },
+      {
+       "id": "it-linked",
+       "el": "linked"
+      },
+      {
+       "id": "it-b",
+       "el": "prose",
+       "fields": "all"
+      },
+      {
+       "id": "it-c",
+       "el": "composed"
+      },
+      {
+       "id": "it-used",
+       "el": "usedBy"
+      },
+      {
+       "id": "it-stand",
+       "el": "standing"
+      },
+      {
+       "id": "it-r",
+       "el": "relations"
+      }
+     ]
+    }
+   },
+   "Weapon": {
+    "name": "Weapon",
+    "area": "world",
+    "label": "Weapon",
+    "extends": [
+     "Item"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "category": {
+       "type": "string",
+       "title": "Category",
+       "enum": [
+        "simple",
+        "martial"
+       ]
+      },
+      "damage": {
+       "type": "string",
+       "title": "Damage"
+      },
+      "damage2": {
+       "type": "string",
+       "title": "Two-handed damage"
+      },
+      "damageType": {
+       "type": "string",
+       "title": "Damage type",
+       "enumRef": "DamageType"
+      },
+      "range": {
+       "type": "string",
+       "format": "measure",
+       "unit": "ft",
+       "title": "Range"
+      },
+      "ammoType": {
+       "type": "string",
+       "format": "link",
+       "title": "Ammunition",
+       "target": {
+        "interfaces": [
+         "Item"
+        ]
+       }
+      }
+     }
+    },
+    "views": {
+     "quick": {
+      "adjust": {
+       "add": {
+        "q-f": [
+         "Weapon.category",
+         "Weapon.damage",
+         "Weapon.damageType"
+        ]
+       }
+      }
+     },
+     "overview": [
+      {
+       "id": "wea-ov-img",
+       "el": "image"
+      },
+      {
+       "id": "wea-ov",
+       "el": "fields",
+       "fields": [
+        "Weapon.category",
+        "Weapon.damage",
+        "Weapon.damageType",
+        "Item.rarity"
+       ]
+      }
+     ]
+    }
+   },
+   "Armor": {
+    "name": "Armor",
+    "area": "world",
+    "label": "Armor",
+    "extends": [
+     "Item"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "ac": {
+       "type": "number",
+       "title": "Armour class"
+      },
+      "armorType": {
+       "type": "string",
+       "title": "Armour type",
+       "enum": [
+        "light",
+        "medium",
+        "heavy",
+        "shield"
+       ]
+      },
+      "strength": {
+       "type": "number",
+       "min": 1,
+       "max": 30,
+       "title": "Strength required"
+      },
+      "stealthDisadvantage": {
+       "type": "boolean",
+       "title": "Stealth disadvantage"
+      }
+     }
+    },
+    "views": {
+     "quick": {
+      "adjust": {
+       "add": {
+        "q-f": [
+         "Armor.armorType",
+         "Armor.ac"
+        ]
+       }
+      }
+     },
+     "overview": [
+      {
+       "id": "arm-ov-img",
+       "el": "image"
+      },
+      {
+       "id": "arm-ov",
+       "el": "fields",
+       "fields": [
+        "Armor.armorType",
+        "Armor.ac",
+        "Armor.strength",
+        "Armor.stealthDisadvantage"
+       ]
+      }
+     ]
+    }
+   },
+   "Material": {
+    "name": "Material",
+    "area": "world",
+    "label": "Material",
+    "extends": [
+     "Item"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "materialType": {
+       "type": "string",
+       "suggest": true,
+       "title": "Material type"
+      },
+      "trades": {
+       "type": "array",
+       "title": "Trades",
+       "items": {
+        "type": "string"
+       }
+      }
+     }
+    }
+   },
+   "Party": {
+    "name": "Party",
+    "area": "world",
+    "label": "Party",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Image",
+     "Lore",
+     "Notes"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "level": {
+       "type": "number",
+       "title": "Party level"
+      },
+      "motto": {
+       "type": "string",
+       "title": "Motto"
+      },
+      "day": {
+       "type": "number",
+       "title": "Day",
+       "default": 1,
+       "alwaysEdit": true
+      },
+      "watch": {
+       "type": "number",
+       "title": "Watch",
+       "default": 1,
+       "alwaysEdit": true
+      },
+      "sinceRation": {
+       "type": "number",
+       "title": "Nodes since rations",
+       "default": 0,
+       "alwaysEdit": true
+      },
+      "sinceLight": {
+       "type": "number",
+       "title": "Nodes since light",
+       "default": 0,
+       "alwaysEdit": true
+      },
+      "actions": {
+       "type": "object",
+       "title": "Actions at this node"
+      }
+     }
+    },
+    "views": {
+     "full": [
+      {
+       "id": "p-desc",
+       "el": "description"
+      },
+      {
+       "id": "p-f",
+       "el": "fields",
+       "fields": "all"
+      },
+      {
+       "id": "p-inv",
+       "el": "inventory"
+      },
+      {
+       "id": "p-craft",
+       "el": "crafting"
+      },
+      {
+       "id": "p-r",
+       "el": "relations"
+      }
+     ]
+    }
+   },
+   "Inventory": {
+    "name": "Inventory",
+    "area": "rules",
+    "label": "Inventory",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Notes"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "capacity": {
+       "type": "number",
+       "title": "Slots"
+      },
+      "copper": {
+       "type": "number",
+       "title": "Purse in copper"
+      },
+      "grid": {
+       "type": "array",
+       "format": "grid",
+       "title": "Grid",
+       "items": {
+        "type": "string"
+       }
+      },
+      "zones": {
+       "type": "object",
+       "format": "zones",
+       "title": "Zones",
+       "enumRef": "DrawTime"
+      }
+     }
+    },
+    "views": {
+     "full": [
+      {
+       "id": "i-inv",
+       "el": "inventory"
+      },
+      {
+       "id": "i-desc",
+       "el": "description"
+      },
+      {
+       "id": "i-f",
+       "el": "fields",
+       "fields": "all",
+       "except": [
+        "Inventory.copper"
+       ]
+      },
+      {
+       "id": "i-r",
+       "el": "relations"
+      }
+     ]
+    }
+   },
+   "Story": {
+    "name": "Story",
+    "area": "story",
+    "label": "Story",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Todos",
+     "Time",
+     "Lore",
+     "Secrets",
+     "ReadAloud",
+     "Notes"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "kind": {
+       "type": "string",
+       "suggest": true,
+       "title": "Kind"
+      },
+      "played": {
+       "type": "string",
+       "title": "Played on"
+      },
+      "summary": {
+       "type": "string",
+       "format": "long",
+       "title": "Recap"
+      }
+     }
+    }
+   },
+   "Arc": {
+    "name": "Arc",
+    "area": "story",
+    "label": "Arc",
+    "extends": [
+     "Story"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "levelFrom": {
+       "type": "number",
+       "title": "From level",
+       "min": 1,
+       "max": 20
+      },
+      "levelTo": {
+       "type": "number",
+       "title": "To level",
+       "min": 1,
+       "max": 20
+      },
+      "hook": {
+       "type": "string",
+       "format": "long",
+       "title": "Hook"
+      },
+      "outcome": {
+       "type": "string",
+       "format": "long",
+       "title": "Outcome"
+      }
+     }
+    }
+   },
+   "Chapter": {
+    "name": "Chapter",
+    "label": "Chapter",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Source",
+     "Notes"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "ordinal": {
+       "type": "string",
+       "title": "Ordinal"
+      }
+     }
+    }
+   },
+   "BookPart": {
+    "name": "BookPart",
+    "label": "Book part",
+    "abstract": true,
+    "extends": [
+     "Identity",
+     "Visibility",
+     "Tags",
+     "Source",
+     "Notes"
+    ]
+   },
+   "Heading": {
+    "name": "Heading",
+    "label": "Heading",
+    "extends": [
+     "BookPart"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "level": {
+       "type": "number",
+       "title": "Level",
+       "min": 1,
+       "max": 6,
+       "default": 2
+      }
+     }
+    }
+   },
+   "Paragraph": {
+    "name": "Paragraph",
+    "label": "Paragraph",
+    "extends": [
+     "BookPart",
+     "Prose"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "kind": {
+       "type": "string",
+       "title": "Kind",
+       "enum": [
+        "text",
+        "list",
+        "table",
+        "sidebar",
+        "quote"
+       ],
+       "default": "text"
+      }
+     }
+    }
+   },
+   "ReadAloudText": {
+    "name": "ReadAloudText",
+    "label": "Read-aloud text",
+    "extends": [
+     "BookPart",
+     "ReadAloud"
+    ]
+   },
+   "Embed": {
+    "name": "Embed",
+    "label": "Embedded article",
+    "extends": [
+     "BookPart"
+    ],
+    "schema": {
+     "type": "object",
+     "required": [
+      "target"
+     ],
+     "properties": {
+      "target": {
+       "type": "string",
+       "format": "link",
+       "title": "Article",
+       "target": {
+        "interfaces": [
+         "Identity"
+        ]
+       }
+      }
+     }
+    }
+   },
+   "World": {
+    "name": "World",
+    "area": "world",
+    "label": "World",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Image",
+     "Lore",
+     "Notes"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "calendar": {
+       "type": "string",
+       "suggest": true,
+       "title": "Calendar"
+      }
+     }
+    }
+   },
+   "Campaign": {
+    "name": "Campaign",
+    "area": "story",
+    "label": "Campaign",
+    "extends": [
+     "Story"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "compareFor": {
+       "type": "string",
+       "title": "Compare layers visible to",
+       "enum": [
+        "gm",
+        "players"
+       ],
+       "default": "gm"
+      },
+      "languages": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "enumRef": [
+        "Language"
+       ],
+       "title": "Languages in play"
+      },
+      "feats": {
+       "type": "boolean",
+       "title": "Feats allowed",
+       "default": true
+      }
+     }
+    },
+    "views": {
+     "full": [
+      {
+       "id": "k-desc",
+       "el": "description"
+      },
+      {
+       "id": "k-f",
+       "el": "fields",
+       "fields": "all"
+      },
+      {
+       "id": "k-stack",
+       "el": "stack"
+      },
+      {
+       "id": "k-mem",
+       "el": "members"
+      },
+      {
+       "id": "k-q",
+       "el": "quests"
+      },
+      {
+       "id": "k-time",
+       "el": "timeline"
+      },
+      {
+       "id": "k-prep",
+       "el": "prep"
+      },
+      {
+       "id": "k-b",
+       "el": "prose",
+       "fields": "all"
+      },
+      {
+       "id": "k-r",
+       "el": "relations"
+      }
+     ]
+    }
+   },
+   "Session": {
+    "name": "Session",
+    "area": "story",
+    "label": "Session",
+    "extends": [
+     "Story"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "activeScene": {
+       "type": "string",
+       "format": "link",
+       "title": "Scene in play",
+       "target": {
+        "interfaces": [
+         "Scene"
+        ]
+       }
+      },
+      "activeEncounter": {
+       "type": "string",
+       "format": "link",
+       "title": "Fight in play",
+       "target": {
+        "interfaces": [
+         "Encounter"
+        ]
+       }
+      },
+      "activeMap": {
+       "type": "string",
+       "format": "link",
+       "title": "Map on the table",
+       "target": {
+        "interfaces": [
+         "Map"
+        ]
+       }
+      },
+      "nowPlaying": {
+       "type": "string",
+       "title": "Now playing"
+      },
+      "moves": {
+       "type": "array",
+       "title": "Movement this turn",
+       "items": {
+        "type": "object"
+       }
+      },
+      "log": {
+       "type": "array",
+       "title": "Table log",
+       "items": {
+        "type": "object"
+       }
+      },
+      "partyNote": {
+       "type": "string",
+       "format": "long",
+       "title": "Note for the table"
+      },
+      "stewardship": {
+       "type": "string",
+       "title": "Who may write",
+       "enum": [
+        "gm",
+        "table"
+       ],
+       "default": "gm"
+      }
+     }
+    },
+    "titles": {
+     "Time.display": "Played on",
+     "Time.duration": "Ran for"
+    },
+    "views": {
+     "full": [
+      {
+       "id": "se-live",
+       "el": "live"
+      },
+      {
+       "id": "se-prep",
+       "el": "prep"
+      },
+      {
+       "id": "se-desc",
+       "el": "description"
+      },
+      {
+       "id": "se-f",
+       "el": "fields",
+       "fields": "all"
+      },
+      {
+       "id": "se-b",
+       "el": "prose",
+       "fields": "all"
+      },
+      {
+       "id": "se-r",
+       "el": "relations"
+      }
+     ]
+    }
+   },
+   "Scene": {
+    "name": "Scene",
+    "area": "story",
+    "label": "Scene / Encounter",
+    "extends": [
+     "Story",
+     "Tactics",
+     "Difficulty"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "mode": {
+       "type": "string",
+       "title": "Mode",
+       "enum": [
+        "roleplay",
+        "encounter",
+        "exploration",
+        "downtime"
+       ],
+       "default": "roleplay"
+      }
+     }
+    },
+    "views": {
+     "quick": {
+      "adjust": {
+       "add": {
+        "q-f": [
+         "Scene.mode",
+         "Difficulty"
+        ]
+       }
+      }
+     }
+    }
+   },
+   "Quest": {
+    "name": "Quest",
+    "area": "story",
+    "label": "Quest",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Notes",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Todos",
+     "Time",
+     "Lore",
+     "Secrets"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "progress": {
+       "type": "string",
+       "title": "Progress",
+       "enum": [
+        "rumoured",
+        "offered",
+        "accepted",
+        "done",
+        "failed",
+        "abandoned"
+       ],
+       "default": "rumoured"
+      },
+      "reward": {
+       "type": "string",
+       "title": "Reward"
+      },
+      "deadline": {
+       "type": "string",
+       "title": "Deadline"
+      },
+      "restriction": {
+       "type": "string",
+       "title": "Restriction"
+      },
+      "tasks": {
+       "type": "array",
+       "title": "Tasks",
+       "items": {
+        "type": "object"
+       }
+      }
+     }
+    },
+    "titles": {
+     "Time.until": "Deadline",
+     "Time.display": "Taken on"
+    },
+    "views": {
+     "quick": {
+      "adjust": {
+       "add": {
+        "q-f": [
+         "Quest.progress",
+         "Quest.reward"
+        ]
+       }
+      }
+     },
+     "full": [
+      {
+       "id": "qu-q",
+       "el": "quests"
+      },
+      {
+       "id": "qu-desc",
+       "el": "description"
+      },
+      {
+       "id": "qu-f",
+       "el": "fields",
+       "fields": "all",
+       "except": [
+        "Quest.tasks"
+       ]
+      },
+      {
+       "id": "qu-b",
+       "el": "prose",
+       "fields": "all"
+      },
+      {
+       "id": "qu-r",
+       "el": "relations"
+      }
+     ]
+    }
+   },
+   "Information": {
+    "name": "Information",
+    "area": "rules",
+    "label": "Information",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Notes",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Secrets",
+     "Facts"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "fields": {
+       "type": "array",
+       "title": "Fields",
+       "items": {
+        "type": "string"
+       }
+      },
+      "tier": {
+       "type": "string",
+       "title": "Guardedness",
+       "enum": [
+        "open",
+        "rumour",
+        "secret"
+       ],
+       "default": "secret"
+      }
+     }
+    }
+   },
+   "Knowledge": {
+    "name": "Knowledge",
+    "area": "rules",
+    "label": "Knowledge",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Notes",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags"
+    ]
+   },
+   "Asset": {
+    "name": "Asset",
+    "label": "Asset",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Notes",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Image",
+     "Source"
+    ],
+    "schema": {
+     "type": "object",
+     "required": [
+      "ref"
+     ],
+     "properties": {
+      "backend": {
+       "type": "string",
+       "title": "Backend",
+       "enum": [
+        "app",
+        "nas",
+        "external"
+       ],
+       "default": "app"
+      },
+      "ref": {
+       "type": "string",
+       "title": "Reference"
+      },
+      "kind": {
+       "type": "string",
+       "title": "Class",
+       "enum": [
+        "image",
+        "map",
+        "token",
+        "prop"
+       ],
+       "default": "image"
+      },
+      "mime": {
+       "type": "string",
+       "title": "Media type"
+      },
+      "width": {
+       "type": "number",
+       "title": "Width in px"
+      },
+      "height": {
+       "type": "number",
+       "title": "Height in px"
+      },
+      "bytes": {
+       "type": "number",
+       "title": "Bytes"
+      }
+     }
+    },
+    "views": {
+     "overview": [
+      {
+       "id": "as-ov-img",
+       "el": "image"
+      },
+      {
+       "id": "as-ov",
+       "el": "fields",
+       "fields": [
+        "Asset.kind"
+       ]
+      }
+     ]
+    }
+   },
+   "Map": {
+    "name": "Map",
+    "area": "play",
+    "label": "Map",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Image",
+     "Notes",
+     "Secrets",
+     "ReadAloud"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "sheets": {
+       "type": "array",
+       "title": "Drawing layers",
+       "items": {
+        "type": "object"
+       }
+      },
+      "baseHidden": {
+       "type": "boolean",
+       "title": "Hide the base image"
+      },
+      "baseGmOnly": {
+       "type": "boolean",
+       "title": "Base image is GM only"
+      },
+      "kind": {
+       "type": "string",
+       "title": "Map kind",
+       "enum": [
+        "world",
+        "region",
+        "settlement",
+        "district",
+        "building",
+        "battle"
+       ],
+       "default": "region"
+      },
+      "gridShape": {
+       "type": "string",
+       "title": "Grid",
+       "enum": [
+        "none",
+        "square",
+        "hex"
+       ],
+       "default": "none"
+      },
+      "gridSize": {
+       "type": "number",
+       "title": "Grid size in px",
+       "default": 70
+      },
+      "gridOffsetX": {
+       "type": "number",
+       "title": "Grid offset X",
+       "default": 0
+      },
+      "gridOffsetY": {
+       "type": "number",
+       "title": "Grid offset Y",
+       "default": 0
+      },
+      "scale": {
+       "type": "string",
+       "format": "measure",
+       "unit": "m",
+       "title": "One square is",
+       "default": "1,5 m"
+      },
+      "lighting": {
+       "type": "string",
+       "title": "Lighting",
+       "enum": [
+        "bright",
+        "dim",
+        "dark"
+       ],
+       "default": "bright"
+      },
+      "fog": {
+       "type": "boolean",
+       "title": "Fog of war",
+       "default": false
+      },
+      "reveal": {
+       "type": "array",
+       "title": "Uncovered areas",
+       "items": {
+        "type": "object"
+       }
+      },
+      "walls": {
+       "type": "array",
+       "title": "Walls, doors, windows, chasms",
+       "items": {
+        "type": "object"
+       }
+      },
+      "tiles": {
+       "type": "string",
+       "title": "Tile pattern ({x}, {y})"
+      },
+      "tileCols": {
+       "type": "number",
+       "title": "Tile columns"
+      },
+      "tileRows": {
+       "type": "number",
+       "title": "Tile rows"
+      },
+      "tileSize": {
+       "type": "number",
+       "title": "Tile size in px",
+       "default": 256
+      }
+     }
+    },
+    "targets": {
+     "Image.image": {
+      "where": {
+       "component": "Asset",
+       "property": "kind",
+       "value": "map"
+      }
+     }
+    },
+    "views": {
+     "full": [
+      {
+       "id": "m-map",
+       "el": "map"
+      },
+      {
+       "id": "m-desc",
+       "el": "description"
+      },
+      {
+       "id": "m-f",
+       "el": "fields",
+       "fields": "all"
+      }
+     ]
+    }
+   },
+   "Recipe": {
+    "name": "Recipe",
+    "area": "rules",
+    "label": "Recipe",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Source",
+     "Notes",
+     "Secrets",
+     "Lore"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "trade": {
+       "type": "string",
+       "suggest": true,
+       "title": "Trade"
+      },
+      "tool": {
+       "type": "string",
+       "title": "Tool needed",
+       "enumRef": "Item",
+       "enumWhere": {
+        "Item": {
+         "itemType": [
+          "tool",
+          "artisan tools",
+          "gaming set",
+          "instrument"
+         ]
+        }
+       }
+      },
+      "ability": {
+       "type": "string",
+       "title": "Check",
+       "enumRef": "Ability",
+       "default": "int"
+      },
+      "dc": {
+       "type": "number",
+       "title": "DC",
+       "default": 12
+      },
+      "time": {
+       "type": "string",
+       "title": "Time"
+      },
+      "days": {
+       "type": "number",
+       "title": "Days of work",
+       "default": 1
+      },
+      "checks": {
+       "type": "number",
+       "title": "Crafting checks",
+       "min": 1
+      },
+      "yieldCount": {
+       "type": "number",
+       "title": "Yield",
+       "default": 1
+      },
+      "onFailure": {
+       "type": "string",
+       "title": "On a failure",
+       "enum": [
+        "materialsLost",
+        "halfLost",
+        "nothingLost"
+       ],
+       "default": "halfLost"
+      }
+     }
+    },
+    "views": {
+     "full": [
+      {
+       "id": "rz-craft",
+       "el": "crafting"
+      },
+      {
+       "id": "rz-desc",
+       "el": "description"
+      },
+      {
+       "id": "rz-f",
+       "el": "fields",
+       "fields": "all"
+      },
+      {
+       "id": "rz-b",
+       "el": "prose",
+       "fields": "all"
+      },
+      {
+       "id": "rz-r",
+       "el": "relations"
+      }
+     ]
+    }
+   },
+   "Board": {
+    "name": "Board",
+    "area": "play",
+    "label": "Board",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Notes"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "width": {
+       "type": "number",
+       "title": "Width in px",
+       "default": 2400
+      },
+      "height": {
+       "type": "number",
+       "title": "Height in px",
+       "default": 1500
+      },
+      "snap": {
+       "type": "number",
+       "title": "Snap to px",
+       "default": 10
+      },
+      "background": {
+       "type": "string",
+       "format": "asset",
+       "title": "Background"
+      },
+      "rules": {
+       "type": "object",
+       "title": "View per interface"
+      },
+      "shapes": {
+       "type": "array",
+       "title": "Shapes",
+       "items": {
+        "type": "object"
+       }
+      },
+      "anchors": {
+       "type": "array",
+       "title": "Anchors",
+       "items": {
+        "type": "object"
+       }
+      }
+     }
+    },
+    "views": {
+     "full": [
+      {
+       "id": "b-board",
+       "el": "board"
+      },
+      {
+       "id": "b-f",
+       "el": "fields",
+       "fields": "all",
+       "except": [
+        "Board.shapes",
+        "Board.anchors"
+       ]
+      }
+     ]
+    }
+   },
+   "Encounter": {
+    "name": "Encounter",
+    "area": "play",
+    "label": "Encounter",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Todos",
+     "Tactics",
+     "ReadAloud",
+     "Notes",
+     "Secrets",
+     "Difficulty"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "xpBudget": {
+       "type": "number",
+       "title": "XP budget"
+      },
+      "phase": {
+       "type": "string",
+       "title": "Phase",
+       "enum": [
+        "planned",
+        "running",
+        "done",
+        "skipped"
+       ],
+       "default": "planned"
+      },
+      "round": {
+       "type": "number",
+       "title": "Round",
+       "default": 0
+      },
+      "turn": {
+       "type": "number",
+       "title": "Turn",
+       "default": 0
+      },
+      "surprise": {
+       "type": "string",
+       "title": "Surprise"
+      }
+     }
+    },
+    "views": {
+     "full": [
+      {
+       "id": "e-init",
+       "el": "initiative"
+      },
+      {
+       "id": "e-desc",
+       "el": "description"
+      },
+      {
+       "id": "e-f",
+       "el": "fields",
+       "fields": "all"
+      },
+      {
+       "id": "e-b",
+       "el": "prose",
+       "fields": "all"
+      }
+     ]
+    }
+   },
+   "Event": {
+    "name": "Event",
+    "area": "world",
+    "label": "Event",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Notes",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Time",
+     "Lore",
+     "Secrets",
+     "ReadAloud"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "kind": {
+       "type": "string",
+       "suggest": true,
+       "title": "Kind"
+      }
+     }
+    }
+   },
+   "Table": {
+    "name": "Table",
+    "area": "rules",
+    "label": "Table",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Source",
+     "Notes",
+     "Secrets"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "kind": {
+       "type": "string",
+       "title": "Kind",
+       "enum": [
+        "loot",
+        "encounter",
+        "name",
+        "shop",
+        "event",
+        "generic",
+        "deck"
+       ],
+       "default": "generic"
+      },
+      "die": {
+       "type": "string",
+       "suggest": true,
+       "title": "Die",
+       "default": "1d100"
+      },
+      "columns": {
+       "type": "array",
+       "title": "Columns",
+       "items": {
+        "type": "string"
+       }
+      },
+      "rows": {
+       "type": "array",
+       "title": "Plain entries",
+       "items": {
+        "type": "object"
+       }
+      }
+     }
+    },
+    "views": {
+     "overview": [
+      {
+       "id": "t-ov",
+       "el": "fields",
+       "fields": [
+        "Table.kind",
+        "Table.die"
+       ]
+      }
+     ],
+     "full": [
+      {
+       "id": "t-table",
+       "el": "table"
+      },
+      {
+       "id": "t-desc",
+       "el": "description"
+      },
+      {
+       "id": "t-f",
+       "el": "fields",
+       "fields": "all",
+       "except": [
+        "Table.rows"
+       ]
+      },
+      {
+       "id": "t-b",
+       "el": "prose",
+       "fields": "all"
+      }
+     ]
+    }
+   },
+   "Layer": {
+    "name": "Layer",
+    "label": "Layer",
+    "extends": [
+     "Identity",
+     "Prose",
+     "Status",
+     "Description",
+     "Visibility",
+     "Tags",
+     "Notes"
+    ],
+    "schema": {
+     "type": "object",
+     "properties": {
+      "kind": {
+       "type": "string",
+       "title": "Kind",
+       "enum": [
+        "system",
+        "expansion",
+        "book",
+        "adventure",
+        "world",
+        "pack",
+        "campaign",
+        "overrides",
+        "group"
+       ],
+       "default": "pack"
+      },
+      "order": {
+       "type": "number",
+       "title": "Specificity",
+       "default": 10
+      },
+      "abbreviation": {
+       "type": "string",
+       "title": "Abbreviation"
+      },
+      "published": {
+       "type": "string",
+       "title": "Published"
+      },
+      "author": {
+       "type": "string",
+       "title": "Author"
+      },
+      "version": {
+       "type": "string",
+       "title": "Rules version"
+      },
+      "levels": {
+       "type": "string",
+       "title": "Levels"
+      },
+      "storyline": {
+       "type": "string",
+       "title": "Storyline",
+       "suggest": true
+      },
+      "groupBy": {
+       "type": "string",
+       "title": "Groups by",
+       "enum": [
+        "category",
+        "publisher"
+       ]
+      }
+     }
+    }
+   }
+  },
+  "relations": {
+   "composedOf": {
+    "type": "composedOf",
+    "label": "composed of",
+    "inverseLabel": "used in",
+    "means": "A statblock is built from a pooled rule (an attack, a trait); the rule lists the statblocks that use it.",
+    "from": [
+     "Statblock"
+    ],
+    "to": [
+     "Rule"
+    ],
+    "section": "Actions & traits",
+    "props": {
+     "type": "object",
+     "properties": {
+      "vars": {
+       "type": "object",
+       "title": "Variable bindings"
+      },
+      "ability": {
+       "type": "string",
+       "title": "Ability",
+       "enum": [
+        "str",
+        "dex",
+        "con",
+        "int",
+        "wis",
+        "cha",
+        "finesse",
+        "spell"
+       ]
+      },
+      "damageDice": {
+       "type": "string",
+       "title": "Damage dice"
+      },
+      "damageType": {
+       "type": "string",
+       "title": "Damage type",
+       "enumRef": "DamageType"
+      },
+      "reach": {
+       "type": "number",
+       "min": 0,
+       "unit": "ft",
+       "title": "Reach"
+      },
+      "range": {
+       "type": "string",
+       "format": "measure",
+       "unit": "ft",
+       "title": "Range"
+      },
+      "target": {
+       "type": "string",
+       "title": "Target"
+      },
+      "toHitBonus": {
+       "type": "number",
+       "title": "To-hit bonus",
+       "format": "signed"
+      },
+      "damageBonus": {
+       "type": "number",
+       "title": "Damage bonus",
+       "format": "signed"
+      },
+      "extraDamageDice": {
+       "type": "string",
+       "title": "Extra damage dice"
+      },
+      "extraDamageType": {
+       "type": "string",
+       "title": "Extra damage type",
+       "enumRef": "DamageType"
+      },
+      "toHit": {
+       "type": "number",
+       "title": "To hit (book, fixed)",
+       "format": "signed"
+      },
+      "damageFlat": {
+       "type": "number",
+       "title": "Damage modifier (book, fixed)",
+       "format": "signed"
+      },
+      "note": {
+       "type": "string",
+       "format": "long",
+       "title": "Only here"
+      }
+     }
+    }
+   },
+   "belongsTo": {
+    "type": "belongsTo",
+    "label": "belongs to",
+    "inverseLabel": "statblock of",
+    "means": "A statblock belongs to one creature; the creature reads its numbers from it.",
+    "from": [
+     "Statblock"
+    ],
+    "to": [
+     "Creature"
+    ],
+    "cardinality": "one",
+    "asField": "to"
+   },
+   "stageOf": {
+    "type": "stageOf",
+    "label": "stage of",
+    "inverseLabel": "has stages",
+    "means": "A condition is a stage of another (exhaustion 3 of exhaustion); the base condition lists its stages.",
+    "from": [
+     "Condition"
+    ],
+    "to": [
+     "Condition"
+    ],
+    "cardinality": "one"
+   },
+   "affects": {
+    "type": "affects",
+    "label": "affects",
+    "inverseLabel": "affected by",
+    "means": "A rule changes another rule (a feat that alters grappling); the changed rule lists what affects it.",
+    "intended": "Apply the change in play: when the source rule is active, the effect it names should alter the target rule’s numbers or text where the target is used.",
+    "from": [
+     "Rule"
+    ],
+    "to": [
+     "Rule"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "effect": {
+       "type": "string",
+       "title": "Effect",
+       "enum": [
+        "imposes",
+        "prevents",
+        "limits",
+        "advantage",
+        "disadvantage",
+        "triggers"
+       ]
+      },
+      "on": {
+       "type": "string",
+       "suggest": true,
+       "title": "On"
+      },
+      "note": {
+       "type": "string",
+       "title": "Note"
+      }
+     }
+    }
+   },
+   "worships": {
+    "type": "worships",
+    "label": "worships",
+    "inverseLabel": "worshipped by",
+    "means": "A creature or faction worships a deity; the deity lists its worshippers.",
+    "from": [
+     "Creature",
+     "Faction"
+    ],
+    "to": [
+     "Deity"
+    ]
+   },
+   "casts": {
+    "type": "casts",
+    "label": "casts",
+    "inverseLabel": "cast by",
+    "means": "A statblock, character, item, subclass, ancestry or feat can cast a spell; the spell lists who casts it.",
+    "intended": "Feed the spell list and its uses: mode, uses, level and charges should appear on the sheet as castable, with slots and charges counted down in play.",
+    "from": [
+     "Statblock",
+     "PlayerCharacter",
+     "Item",
+     "Subclass",
+     "Ancestry",
+     "Feat"
+    ],
+    "to": [
+     "Spell"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "mode": {
+       "type": "string",
+       "title": "How",
+       "enum": [
+        "prepared",
+        "known",
+        "innate",
+        "item"
+       ]
+      },
+      "uses": {
+       "type": "string",
+       "suggest": true,
+       "title": "Uses"
+      },
+      "level": {
+       "type": "number",
+       "min": 0,
+       "max": 9,
+       "title": "At level"
+      },
+      "charges": {
+       "type": "number",
+       "min": 0,
+       "title": "Charges per cast"
+      },
+      "fromLevel": {
+       "type": "number",
+       "min": 1,
+       "max": 20,
+       "title": "From level"
+      }
+     }
+    }
+   },
+   "equips": {
+    "type": "equips",
+    "label": "equips",
+    "inverseLabel": "equipped by",
+    "means": "A statblock has an item equipped; the item lists who wears or wields it.",
+    "intended": "Count equipped items: armour and shields should set AC, weapons should become attacks on the statblock.",
+    "from": [
+     "Statblock"
+    ],
+    "to": [
+     "Item"
+    ]
+   },
+   "subclassOf": {
+    "type": "subclassOf",
+    "label": "subclass of",
+    "inverseLabel": "subclasses",
+    "means": "A subclass belongs to one class; the class lists its subclasses.",
+    "from": [
+     "Subclass"
+    ],
+    "to": [
+     "Class"
+    ],
+    "cardinality": "one"
+   },
+   "subraceOf": {
+    "type": "subraceOf",
+    "label": "subrace of",
+    "inverseLabel": "subraces",
+    "means": "An ancestry is a subrace of another; the parent lists its subraces.",
+    "intended": "Inherit from the parent: a subrace should bring what its parent ancestry grants, and the builder should offer it under the parent.",
+    "from": [
+     "Ancestry"
+    ],
+    "to": [
+     "Ancestry"
+    ],
+    "cardinality": "one"
+   },
+   "hasClass": {
+    "type": "hasClass",
+    "label": "class",
+    "inverseLabel": "taken by",
+    "means": "A player character has levels in a class; the class lists who took it.",
+    "from": [
+     "PlayerCharacter"
+    ],
+    "to": [
+     "Class"
+    ],
+    "props": {
+     "type": "object",
+     "required": [
+      "level"
+     ],
+     "properties": {
+      "level": {
+       "type": "number",
+       "min": 1,
+       "max": 20,
+       "title": "Level"
+      },
+      "subclass": {
+       "type": "string",
+       "format": "link",
+       "title": "Subclass",
+       "target": {
+        "interfaces": [
+         "Subclass"
+        ]
+       }
+      }
+     }
+    }
+   },
+   "hasAncestry": {
+    "type": "hasAncestry",
+    "label": "ancestry",
+    "inverseLabel": "ancestry of",
+    "means": "A player character has one ancestry; the ancestry lists the characters of it.",
+    "from": [
+     "PlayerCharacter"
+    ],
+    "to": [
+     "Ancestry"
+    ],
+    "cardinality": "one"
+   },
+   "hasBackground": {
+    "type": "hasBackground",
+    "label": "background",
+    "inverseLabel": "background of",
+    "means": "A player character has one background; the background lists the characters with it.",
+    "from": [
+     "PlayerCharacter"
+    ],
+    "to": [
+     "Background"
+    ],
+    "cardinality": "one"
+   },
+   "allowsMethod": {
+    "type": "allowsMethod",
+    "label": "allows ability method",
+    "inverseLabel": "allowed in",
+    "means": "A campaign allows a way of determining ability scores; the method lists the campaigns that allow it.",
+    "from": [
+     "Campaign"
+    ],
+    "to": [
+     "AbilityMethod"
+    ]
+   },
+   "allowsEquipment": {
+    "type": "allowsEquipment",
+    "label": "allows equipment method",
+    "inverseLabel": "allowed in",
+    "means": "A campaign allows a way of getting starting equipment; the method lists the campaigns that allow it.",
+    "from": [
+     "Campaign"
+    ],
+    "to": [
+     "EquipmentMethod"
+    ]
+   },
+   "abilityPool": {
+    "type": "abilityPool",
+    "label": "rolled ability pool",
+    "inverseLabel": "pool of",
+    "means": "A party has rolled a pool of ability scores with a method; the method lists the parties that rolled with it.",
+    "from": [
+     "Party"
+    ],
+    "to": [
+     "AbilityMethod"
+    ],
+    "props": {
+     "type": "object",
+     "required": [
+      "values"
+     ],
+     "properties": {
+      "values": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "title": "Scores"
+      },
+      "rolls": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "title": "Rolls"
+      },
+      "at": {
+       "type": "string",
+       "title": "Rolled at"
+      }
+     }
+    }
+   },
+   "chose": {
+    "type": "chose",
+    "label": "chose",
+    "inverseLabel": "chosen by",
+    "means": "A player character answered a choice (a skill, a feat, a subclass); the source of the choice lists who chose from it.",
+    "from": [
+     "PlayerCharacter"
+    ],
+    "to": [
+     "Choices"
+    ],
+    "props": {
+     "type": "object",
+     "required": [
+      "choice"
+     ],
+     "properties": {
+      "choice": {
+       "type": "string",
+       "title": "Choice"
+      },
+      "picks": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "title": "Picks"
+      },
+      "by": {
+       "type": "string",
+       "title": "Granted by"
+      },
+      "level": {
+       "type": "number",
+       "min": 1,
+       "max": 20,
+       "title": "At level"
+      }
+     }
+    }
+   },
+   "grants": {
+    "type": "grants",
+    "label": "grants",
+    "inverseLabel": "granted by",
+    "means": "A class, subclass, ancestry, background or feat grants a feature, from a level on; the feature lists what grants it.",
+    "from": [
+     "Class",
+     "Subclass",
+     "Ancestry",
+     "Background",
+     "Feat"
+    ],
+    "to": [
+     "Rule"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "level": {
+       "type": "number",
+       "min": 1,
+       "max": 20,
+       "title": "At level"
+      }
+     }
+    }
+   },
+   "hasProperty": {
+    "type": "hasProperty",
+    "label": "has property",
+    "inverseLabel": "property of",
+    "means": "A weapon, armour or item has a property (finesse, heavy); the property lists the items that have it.",
+    "intended": "Use the property in numbers: finesse should let an attack use DEX, heavy and two-handed should show on the attack.",
+    "from": [
+     "Weapon",
+     "Item",
+     "Armor"
+    ],
+    "to": [
+     "ItemProperty"
+    ]
+   },
+   "owes": {
+    "type": "owes",
+    "label": "owes",
+    "inverseLabel": "creditor of",
+    "means": "A creature owes another something (a favour, a debt); the creditor lists who owes it.",
+    "from": [
+     "Creature"
+    ],
+    "to": [
+     "Creature"
+    ]
+   },
+   "memberOf": {
+    "type": "memberOf",
+    "label": "member of",
+    "inverseLabel": "members",
+    "means": "A creature is a member of a faction, at a rank; the faction lists its members.",
+    "from": [
+     "Creature"
+    ],
+    "to": [
+     "Faction"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "rank": {
+       "type": "string",
+       "title": "Rank"
+      },
+      "note": {
+       "type": "string",
+       "title": "Note"
+      }
+     }
+    }
+   },
+   "livesIn": {
+    "type": "livesIn",
+    "label": "lives in",
+    "inverseLabel": "residents",
+    "means": "A creature lives in a place; the place lists its residents.",
+    "from": [
+     "Creature"
+    ],
+    "to": [
+     "Place"
+    ]
+   },
+   "partOf": {
+    "type": "partOf",
+    "label": "part of",
+    "inverseLabel": "contains",
+    "means": "An article is part of a larger one (a room of a house, a scene of an arc, a book of a group); the larger one lists what it contains, in rank order.",
+    "from": [
+     "Place",
+     "Story",
+     "Quest",
+     "Event",
+     "Board",
+     "Encounter",
+     "Layer",
+     "Chapter",
+     "BookPart"
+    ],
+    "to": [
+     "Place",
+     "Story",
+     "Event",
+     "Layer",
+     "Chapter"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "rank": {
+       "type": "number",
+       "title": "Order"
+      }
+     }
+    }
+   },
+   "chapterOf": {
+    "type": "chapterOf",
+    "label": "chapter of",
+    "inverseLabel": "read as chapter",
+    "means": "A chapter is read as a chapter of a story (the arc of an adventure); the story lists the chapters that read it.",
+    "from": [
+     "Chapter"
+    ],
+    "to": [
+     "Story"
+    ],
+    "cardinality": "one"
+   },
+   "controls": {
+    "type": "controls",
+    "label": "controls",
+    "inverseLabel": "controlled by",
+    "means": "A faction controls a place; the place lists who controls it.",
+    "from": [
+     "Faction"
+    ],
+    "to": [
+     "Place"
+    ]
+   },
+   "describedIn": {
+    "type": "describedIn",
+    "label": "described in",
+    "inverseLabel": "describes",
+    "means": "An article is described in another article; that one lists what it describes.",
+    "from": [
+     "*"
+    ],
+    "to": [
+     "Article"
+    ]
+   },
+   "memberOfParty": {
+    "type": "memberOfParty",
+    "label": "in the party",
+    "inverseLabel": "members",
+    "means": "A creature is in a party; the party lists its members.",
+    "from": [
+     "Creature"
+    ],
+    "to": [
+     "Party"
+    ]
+   },
+   "partyOf": {
+    "type": "partyOf",
+    "label": "party of",
+    "inverseLabel": "parties",
+    "means": "A party plays in one campaign; the campaign lists its parties.",
+    "from": [
+     "Party"
+    ],
+    "to": [
+     "Campaign"
+    ],
+    "cardinality": "one"
+   },
+   "carries": {
+    "type": "carries",
+    "label": "carries",
+    "inverseLabel": "carried by",
+    "means": "A creature, party or item carries one inventory; the inventory knows who carries it.",
+    "from": [
+     "Creature",
+     "Party",
+     "Item"
+    ],
+    "to": [
+     "Inventory"
+    ],
+    "cardinality": "one",
+    "asField": "from"
+   },
+   "holds": {
+    "type": "holds",
+    "label": "holds",
+    "inverseLabel": "held in",
+    "means": "An inventory holds an item, with quantity and place in the grid; the item lists where it is held.",
+    "from": [
+     "Inventory"
+    ],
+    "to": [
+     "Item"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "qty": {
+       "type": "number",
+       "title": "Quantity",
+       "default": 1
+      },
+      "tier": {
+       "type": "string",
+       "title": "Within reach",
+       "enum": [
+        "held",
+        "worn",
+        "belt",
+        "pack",
+        "ground",
+        "stored"
+       ],
+       "default": "pack"
+      },
+      "slot": {
+       "type": "string",
+       "title": "Body slot",
+       "enum": [
+        "head",
+        "shoulders",
+        "torso",
+        "hands",
+        "mainHand",
+        "offHand",
+        "legs",
+        "feet",
+        "belt",
+        "holster1",
+        "holster2",
+        "ringR1",
+        "ringR2",
+        "ringR3",
+        "ringR4",
+        "ringL1",
+        "ringL2",
+        "ringL3",
+        "ringL4",
+        "neck1",
+        "neck2",
+        "neck3",
+        "neck4"
+       ]
+      },
+      "gx": {
+       "type": "number",
+       "title": "Grid column"
+      },
+      "gy": {
+       "type": "number",
+       "title": "Grid row"
+      },
+      "rot": {
+       "type": "number",
+       "title": "Rotation in degrees",
+       "default": 0
+      },
+      "attuned": {
+       "type": "boolean",
+       "title": "Attuned"
+      },
+      "note": {
+       "type": "string",
+       "title": "Note"
+      }
+     }
+    }
+   },
+   "questGiver": {
+    "type": "questGiver",
+    "label": "given by",
+    "inverseLabel": "gives",
+    "means": "A quest is given by a creature or faction; they list the quests they give.",
+    "from": [
+     "Quest"
+    ],
+    "to": [
+     "Creature",
+     "Faction"
+    ]
+   },
+   "questAbout": {
+    "type": "questAbout",
+    "label": "concerns",
+    "inverseLabel": "concerned by",
+    "means": "A quest concerns an article; the article lists the quests about it.",
+    "from": [
+     "Quest"
+    ],
+    "to": [
+     "*"
+    ]
+   },
+   "happensAt": {
+    "type": "happensAt",
+    "label": "happens at",
+    "inverseLabel": "scenes here",
+    "means": "A story happens at a place; the place lists the scenes there.",
+    "from": [
+     "Story"
+    ],
+    "to": [
+     "Place"
+    ]
+   },
+   "features": {
+    "type": "features",
+    "label": "features",
+    "inverseLabel": "appears in",
+    "means": "A story features a creature, statblock or faction; they list the stories they appear in.",
+    "from": [
+     "Story"
+    ],
+    "to": [
+     "Creature",
+     "Statblock",
+     "Faction"
+    ]
+   },
+   "knowledge": {
+    "type": "knowledge",
+    "label": "knowledge about it",
+    "inverseLabel": "about",
+    "means": "An article has a piece of information about it; the information says what it is about.",
+    "from": [
+     "*"
+    ],
+    "to": [
+     "Information"
+    ],
+    "owned": true
+   },
+   "knownBy": {
+    "type": "knownBy",
+    "label": "known by",
+    "inverseLabel": "knows",
+    "means": "Information or knowledge is known by a creature, party or faction (from a rank); they list what they know.",
+    "from": [
+     "Information",
+     "Knowledge"
+    ],
+    "to": [
+     "Creature",
+     "Party",
+     "Faction"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "rank": {
+       "type": "string",
+       "title": "From rank"
+      }
+     }
+    }
+   },
+   "includes": {
+    "type": "includes",
+    "label": "includes",
+    "inverseLabel": "part of",
+    "means": "A bundle of knowledge includes a piece of information; the information lists the bundles it is part of.",
+    "from": [
+     "Knowledge"
+    ],
+    "to": [
+     "Information"
+    ]
+   },
+   "mapOf": {
+    "type": "mapOf",
+    "label": "map of",
+    "inverseLabel": "maps",
+    "means": "A map shows a place or story; the place lists its maps.",
+    "from": [
+     "Map"
+    ],
+    "to": [
+     "Place",
+     "Story"
+    ]
+   },
+   "insideMap": {
+    "type": "insideMap",
+    "label": "inside",
+    "inverseLabel": "zoom into",
+    "means": "A map lies inside another map, at a rectangle; the outer map lists what you can zoom into.",
+    "from": [
+     "Map"
+    ],
+    "to": [
+     "Map"
+    ],
+    "cardinality": "one",
+    "props": {
+     "type": "object",
+     "properties": {
+      "x": {
+       "type": "number",
+       "title": "X (0–1)"
+      },
+      "y": {
+       "type": "number",
+       "title": "Y (0–1)"
+      },
+      "w": {
+       "type": "number",
+       "title": "Width (0–1)"
+      },
+      "h": {
+       "type": "number",
+       "title": "Height (0–1)"
+      }
+     }
+    }
+   },
+   "marker": {
+    "type": "marker",
+    "label": "marker",
+    "inverseLabel": "on the map",
+    "means": "A map has a marker for an article, at a point; the article lists the maps it is marked on.",
+    "from": [
+     "Map"
+    ],
+    "to": [
+     "*"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "x": {
+       "type": "number",
+       "title": "X (0–1)"
+      },
+      "y": {
+       "type": "number",
+       "title": "Y (0–1)"
+      },
+      "kind": {
+       "type": "string",
+       "title": "Token kind",
+       "enum": [
+        "static",
+        "scenery",
+        "party",
+        "quest",
+        "play"
+       ],
+       "default": "static"
+      },
+      "size": {
+       "type": "number",
+       "title": "Size in squares",
+       "default": 1
+      },
+      "rot": {
+       "type": "number",
+       "title": "Rotation in degrees",
+       "default": 0
+      },
+      "ratio": {
+       "type": "number",
+       "title": "Height ÷ width",
+       "default": 1
+      },
+      "note": {
+       "type": "string",
+       "title": "Note"
+      },
+      "light": {
+       "type": "number",
+       "title": "Bright light in squares"
+      },
+      "dim": {
+       "type": "number",
+       "title": "Dim light in squares"
+      },
+      "hidden": {
+       "type": "boolean",
+       "title": "Hidden from players"
+      },
+      "stealth": {
+       "type": "number",
+       "title": "Stealth (to notice)"
+      }
+     }
+    }
+   },
+   "zone": {
+    "type": "zone",
+    "label": "zone",
+    "inverseLabel": "lies on",
+    "means": "A map has a zone of a kind (difficult terrain, darkness); the zone kind lists where it lies.",
+    "intended": "Draw on the map screen and count it: a zone should change movement and sight where it lies.",
+    "from": [
+     "Map"
+    ],
+    "to": [
+     "ZoneKind"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "kind": {
+       "type": "string",
+       "title": "Shape",
+       "enum": [
+        "rect",
+        "circle",
+        "poly"
+       ],
+       "default": "rect"
+      },
+      "x": {
+       "type": "number",
+       "title": "X (0–1)"
+      },
+      "y": {
+       "type": "number",
+       "title": "Y (0–1)"
+      },
+      "w": {
+       "type": "number",
+       "title": "Width (0–1)"
+      },
+      "h": {
+       "type": "number",
+       "title": "Height (0–1)"
+      },
+      "found": {
+       "type": "boolean",
+       "title": "Found"
+      },
+      "note": {
+       "type": "string",
+       "title": "Note"
+      }
+     }
+    }
+   },
+   "territory": {
+    "type": "territory",
+    "label": "territory",
+    "inverseLabel": "holds ground on",
+    "means": "A map shows an article’s territory as a shape; the article lists where it holds ground.",
+    "intended": "Draw on the map screen: the shape in its colour over the map.",
+    "from": [
+     "Map"
+    ],
+    "to": [
+     "*"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "kind": {
+       "type": "string",
+       "title": "Shape",
+       "enum": [
+        "rect",
+        "circle",
+        "poly"
+       ],
+       "default": "rect"
+      },
+      "x": {
+       "type": "number",
+       "title": "X (0–1)"
+      },
+      "y": {
+       "type": "number",
+       "title": "Y (0–1)"
+      },
+      "w": {
+       "type": "number",
+       "title": "Width (0–1)"
+      },
+      "h": {
+       "type": "number",
+       "title": "Height (0–1)"
+      },
+      "r": {
+       "type": "number",
+       "title": "Radius (0–1)"
+      },
+      "pts": {
+       "type": "array",
+       "title": "Points"
+      },
+      "color": {
+       "type": "string",
+       "format": "color",
+       "title": "Colour"
+      },
+      "opacity": {
+       "type": "number",
+       "title": "Opacity",
+       "default": 0.18
+      }
+     }
+    }
+   },
+   "needs": {
+    "type": "needs",
+    "label": "needs",
+    "inverseLabel": "used in",
+    "means": "A recipe needs an item, in a quantity; the item lists the recipes that use it.",
+    "intended": "Check at the workbench: crafting should require and, where consumed, use up the needed items from the crafter’s inventory.",
+    "from": [
+     "Recipe"
+    ],
+    "to": [
+     "Item"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "qty": {
+       "type": "number",
+       "title": "Quantity",
+       "default": 1
+      },
+      "consumed": {
+       "type": "boolean",
+       "title": "Consumed",
+       "default": true
+      },
+      "note": {
+       "type": "string",
+       "title": "Note"
+      }
+     }
+    }
+   },
+   "yields": {
+    "type": "yields",
+    "label": "yields",
+    "inverseLabel": "made by",
+    "means": "A recipe yields one item; the item lists the recipe that makes it.",
+    "intended": "Deliver at the workbench: a finished crafting should put the item into the crafter’s inventory.",
+    "from": [
+     "Recipe"
+    ],
+    "to": [
+     "Item"
+    ],
+    "cardinality": "one"
+   },
+   "craftsWith": {
+    "type": "craftsWith",
+    "label": "crafts with",
+    "inverseLabel": "crafted differently by",
+    "means": "A campaign, party or creature crafts a recipe — or every recipe of a tool — with another tool, ability or DC than the source says; the recipe or tool lists who does.",
+    "from": [
+     "Campaign",
+     "Party",
+     "Creature"
+    ],
+    "to": [
+     "Recipe",
+     "Item"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "tool": {
+       "type": "string",
+       "title": "Tool instead",
+       "enumRef": "Item",
+       "enumWhere": {
+        "Item": {
+         "itemType": [
+          "tool",
+          "artisan tools",
+          "gaming set",
+          "instrument"
+         ]
+        }
+       }
+      },
+      "ability": {
+       "type": "string",
+       "title": "Ability instead",
+       "enumRef": "Ability"
+      },
+      "dc": {
+       "type": "number",
+       "title": "DC instead"
+      },
+      "note": {
+       "type": "string",
+       "title": "Note"
+      }
+     }
+    }
+   },
+   "placed": {
+    "type": "placed",
+    "label": "on the board",
+    "inverseLabel": "lies on",
+    "means": "A board has an article placed on it as a card; the article lists the boards it lies on.",
+    "from": [
+     "Board"
+    ],
+    "to": [
+     "*"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "x": {
+       "type": "number",
+       "title": "X in px"
+      },
+      "y": {
+       "type": "number",
+       "title": "Y in px"
+      },
+      "w": {
+       "type": "number",
+       "title": "Width in px",
+       "default": 260
+      },
+      "h": {
+       "type": "number",
+       "title": "Height in px",
+       "default": 180
+      },
+      "view": {
+       "type": "string",
+       "title": "Shown as"
+      },
+      "z": {
+       "type": "number",
+       "title": "Layer",
+       "default": 0
+      },
+      "locked": {
+       "type": "boolean",
+       "title": "Locked"
+      },
+      "note": {
+       "type": "string",
+       "title": "Note"
+      }
+     }
+    }
+   },
+   "participates": {
+    "type": "participates",
+    "label": "in the fight",
+    "inverseLabel": "fights in",
+    "means": "An encounter has a creature, statblock or party in the fight, with initiative and hit points; they list the fights they are in.",
+    "from": [
+     "Encounter"
+    ],
+    "to": [
+     "Creature",
+     "Statblock",
+     "Party"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "label": {
+       "type": "string",
+       "title": "Name at the table"
+      },
+      "init": {
+       "type": "number",
+       "title": "Initiative"
+      },
+      "hp": {
+       "type": "number",
+       "title": "Hit points"
+      },
+      "hpMax": {
+       "type": "number",
+       "title": "Maximum (without statblock)"
+      },
+      "ally": {
+       "type": "boolean",
+       "title": "On the party’s side"
+      },
+      "conditions": {
+       "type": "array",
+       "title": "Conditions and notes",
+       "items": {
+        "type": "object"
+       }
+      },
+      "note": {
+       "type": "string",
+       "title": "GM note"
+      },
+      "revealed": {
+       "type": "boolean",
+       "title": "Revealed to the players"
+      },
+      "involved": {
+       "type": "boolean",
+       "title": "Involved (has acted or been hit)"
+      },
+      "identified": {
+       "type": "boolean",
+       "title": "Identified by the players"
+      }
+     }
+    }
+   },
+   "onMap": {
+    "type": "onMap",
+    "label": "fought on",
+    "inverseLabel": "fights here",
+    "means": "An encounter or story is fought on a map; the map lists what is fought there.",
+    "from": [
+     "Encounter",
+     "Story"
+    ],
+    "to": [
+     "Map"
+    ],
+    "cardinality": "one"
+   },
+   "loot": {
+    "type": "loot",
+    "label": "loot",
+    "inverseLabel": "found in",
+    "means": "An encounter, story or quest has loot (an item, information, a feat), with quantity and chance; the loot lists where it is found.",
+    "intended": "Roll and hand out: finishing the encounter should roll the chance and offer the loot to the party’s inventory or knowledge.",
+    "from": [
+     "Encounter",
+     "Story",
+     "Quest"
+    ],
+    "to": [
+     "Item",
+     "Information",
+     "Feat",
+     "Skill"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "qty": {
+       "type": "number",
+       "title": "Quantity",
+       "default": 1
+      },
+      "chance": {
+       "type": "number",
+       "title": "Chance in percent"
+      }
+     }
+    }
+   },
+   "involves": {
+    "type": "involves",
+    "label": "involves",
+    "inverseLabel": "took part in",
+    "means": "An event involves an article; the article lists the events it took part in.",
+    "from": [
+     "Event"
+    ],
+    "to": [
+     "*"
+    ]
+   },
+   "entry": {
+    "type": "entry",
+    "label": "entry",
+    "inverseLabel": "rolled on",
+    "means": "A table has an entry, with a weight; the entry lists the tables it can be rolled on.",
+    "intended": "Roll on the table: the weights should decide which entry a roll lands on.",
+    "from": [
+     "Table"
+    ],
+    "to": [
+     "*"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "weight": {
+       "type": "number",
+       "title": "Weight",
+       "default": 1
+      },
+      "qty": {
+       "type": "string",
+       "title": "Quantity",
+       "default": "1"
+      },
+      "label": {
+       "type": "string",
+       "title": "Shown as"
+      },
+      "requiresTag": {
+       "type": "string",
+       "title": "Only where tagged"
+      },
+      "note": {
+       "type": "string",
+       "title": "Note"
+      }
+     }
+    }
+   },
+   "tableFor": {
+    "type": "tableFor",
+    "label": "rolls on",
+    "inverseLabel": "used at",
+    "means": "A place, story, encounter or character option rolls on a table; the table lists where it is used.",
+    "from": [
+     "Place",
+     "Story",
+     "Encounter",
+     "Class",
+     "Subclass",
+     "Ancestry",
+     "Background"
+    ],
+    "to": [
+     "Table"
+    ]
+   },
+   "route": {
+    "type": "route",
+    "label": "leads to",
+    "inverseLabel": "reached from",
+    "means": "A place leads to another, with travel hours and terrain; the other lists where it is reached from.",
+    "intended": "Travel: moving the party along a route should advance the watch and day counters by its hours.",
+    "from": [
+     "Place"
+    ],
+    "to": [
+     "Place"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "hours": {
+       "type": "number",
+       "title": "Hours"
+      },
+      "terrain": {
+       "type": "string",
+       "title": "Terrain"
+      },
+      "signal": {
+       "type": "string",
+       "format": "long",
+       "title": "What you sense on the way"
+      },
+      "hidden": {
+       "type": "boolean",
+       "title": "Has to be found"
+      },
+      "oneWay": {
+       "type": "boolean",
+       "title": "One way only"
+      }
+     }
+    }
+   },
+   "inLayer": {
+    "type": "inLayer",
+    "label": "from",
+    "inverseLabel": "brings",
+    "means": "An article comes from a layer (a book, the campaign, homebrew); the layer lists what it brings.",
+    "from": [
+     "*"
+    ],
+    "to": [
+     "Layer"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "mode": {
+       "type": "string",
+       "title": "Mode",
+       "enum": [
+        "adds",
+        "removes"
+       ],
+       "default": "adds"
+      },
+      "addedAt": {
+       "type": "string",
+       "title": "Added at"
+      }
+     }
+    }
+   },
+   "inWorld": {
+    "type": "inWorld",
+    "label": "in the world",
+    "inverseLabel": "campaigns",
+    "means": "A campaign plays in one world; the world lists its campaigns.",
+    "intended": "Share the world: the campaign should read its calendar and history from this world.",
+    "from": [
+     "Campaign"
+    ],
+    "to": [
+     "World"
+    ],
+    "cardinality": "one"
+   },
+   "activates": {
+    "type": "activates",
+    "label": "Layers in play",
+    "inverseLabel": "In play in",
+    "means": "A campaign puts a layer in play, in an order and mode; the layer lists the campaigns it is in play in.",
+    "from": [
+     "Campaign"
+    ],
+    "to": [
+     "Layer"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "order": {
+       "type": "number",
+       "title": "Order"
+      },
+      "mode": {
+       "type": "string",
+       "title": "Mode",
+       "enum": [
+        "compare",
+        "off"
+       ]
+      },
+      "areas": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "title": "Areas"
+      },
+      "types": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "title": "Types"
+      }
+     }
+    }
+   },
+   "instanceOf": {
+    "type": "instanceOf",
+    "label": "instance of",
+    "inverseLabel": "instances",
+    "means": "A statblock or item is an instance of a template and stores only what differs; the template lists its instances.",
+    "from": [
+     "Statblock",
+     "Item"
+    ],
+    "to": [
+     "same"
+    ],
+    "cardinality": "one"
+   },
+   "variantOf": {
+    "type": "variantOf",
+    "label": "variant of",
+    "inverseLabel": "has variants",
+    "means": "An article is a variant of another (an adopted or adapted copy); the original lists its variants.",
+    "from": [
+     "*"
+    ],
+    "to": [
+     "*"
+    ],
+    "cardinality": "one"
+   },
+   "overrides": {
+    "type": "overrides",
+    "label": "replaces",
+    "inverseLabel": "replaced by",
+    "means": "A version replaces another article wherever its layer is in play; the replaced one lists what replaces it.",
+    "from": [
+     "*"
+    ],
+    "to": [
+     "*"
+    ],
+    "cardinality": "one",
+    "props": {
+     "type": "object",
+     "properties": {
+      "scope": {
+       "type": "string",
+       "title": "Scope"
+      },
+      "note": {
+       "type": "string",
+       "title": "Why"
+      }
+     }
+    }
+   },
+   "crafting": {
+    "type": "crafting",
+    "label": "working on",
+    "inverseLabel": "worked on by",
+    "means": "A creature or party is working on a recipe, with days and rolls so far; the recipe lists who works on it.",
+    "from": [
+     "Creature",
+     "PlayerCharacter",
+     "Party"
+    ],
+    "to": [
+     "Recipe"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "day": {
+       "type": "number",
+       "title": "Days done",
+       "default": 0
+      },
+      "days": {
+       "type": "number",
+       "title": "Days needed",
+       "default": 1
+      },
+      "put": {
+       "type": "array",
+       "title": "Materials bound to it"
+      },
+      "rolls": {
+       "type": "array",
+       "title": "Rolls"
+      }
+     }
+    }
+   },
+   "regards": {
+    "type": "regards",
+    "label": "regards",
+    "inverseLabel": "judged by",
+    "means": "A creature, party or faction regards another, in words (trusts, fears); the other lists who judges it — the reverse is its own edge.",
+    "from": [
+     "Creature",
+     "Party",
+     "Faction"
+    ],
+    "to": [
+     "Creature",
+     "Party",
+     "Faction"
+    ],
+    "props": {
+     "type": "object",
+     "properties": {
+      "tags": {
+       "type": "array",
+       "title": "Thoughts",
+       "items": {
+        "type": "string"
+       }
+      },
+      "note": {
+       "type": "string",
+       "title": "Why"
+      }
+     }
+    }
+   }
+  },
+  "views": {
+   "overview": {
+    "label": "Overview",
+    "order": 1,
+    "fields": "none",
+    "description": true,
+    "composed": false,
+    "relations": false,
+    "bindings": false,
+    "image": true,
+    "layout": [
+     {
+      "id": "ov-img",
+      "el": "image"
+     },
+     {
+      "id": "ov-desc",
+      "el": "description"
+     },
+     {
+      "id": "ov-f",
+      "el": "fields",
+      "fields": []
+     }
+    ]
+   },
+   "quick": {
+    "label": "Quick",
+    "order": 2,
+    "fields": "none",
+    "description": true,
+    "composed": false,
+    "relations": true,
+    "bindings": false,
+    "image": true,
+    "layout": [
+     {
+      "id": "q-img",
+      "el": "image"
+     },
+     {
+      "id": "q-desc",
+      "el": "description"
+     },
+     {
+      "id": "q-f",
+      "el": "fields",
+      "fields": []
+     },
+     {
+      "id": "q-b",
+      "el": "prose",
+      "fields": [
+       "Prose.paragraph",
+       "ReadAloud.readaloud"
+      ]
+     }
+    ]
+   },
+   "full": {
+    "label": "Full",
+    "order": 3,
+    "fields": "all",
+    "description": true,
+    "composed": true,
+    "relations": true,
+    "bindings": true,
+    "image": true,
+    "rest": true,
+    "layout": [
+     {
+      "id": "l-img",
+      "el": "image"
+     },
+     {
+      "id": "l-desc",
+      "el": "description"
+     },
+     {
+      "id": "l-f",
+      "el": "fields",
+      "fields": "all"
+     },
+     {
+      "id": "l-linked",
+      "el": "linked"
+     },
+     {
+      "id": "l-b",
+      "el": "prose",
+      "fields": "all"
+     },
+     {
+      "id": "l-parts",
+      "el": "parts"
+     },
+     {
+      "id": "l-c",
+      "el": "composed"
+     },
+     {
+      "id": "l-used",
+      "el": "usedBy"
+     },
+     {
+      "id": "l-stand",
+      "el": "standing"
+     },
+     {
+      "id": "l-r",
+      "el": "relations"
+     }
+    ]
+   },
+   "print": {
+    "label": "Print",
+    "order": 4,
+    "fields": "all",
+    "description": true,
+    "composed": true,
+    "relations": false,
+    "bindings": true,
+    "image": false,
+    "layout": [
+     {
+      "id": "p-desc",
+      "el": "description"
+     },
+     {
+      "id": "p-f",
+      "el": "fields",
+      "fields": "all",
+      "except": [
+       "Status"
+      ]
+     },
+     {
+      "id": "p-b",
+      "el": "prose",
+      "fields": "all"
+     },
+     {
+      "id": "p-parts",
+      "el": "parts"
+     },
+     {
+      "id": "p-c",
+      "el": "composed"
+     }
+    ]
+   },
+   "handout": {
+    "label": "Handout",
+    "order": 5,
+    "fields": "none",
+    "description": true,
+    "composed": false,
+    "relations": false,
+    "bindings": true,
+    "image": true,
+    "layout": [
+     {
+      "id": "h-img",
+      "el": "image"
+     },
+     {
+      "id": "h-desc",
+      "el": "description"
+     },
+     {
+      "id": "h-b",
+      "el": "prose",
+      "fields": [
+       "Prose.paragraph",
+       "ReadAloud.readaloud"
+      ]
+     }
+    ]
+   }
+  },
+  "units": {
+   "ft": {
+    "code": "ft",
+    "label": "Feet",
+    "quantity": "length",
+    "system": "imperial",
+    "base": 0.3048,
+    "aliases": [
+     "feet",
+     "foot",
+     "fuss",
+     "'"
+    ],
+    "decimals": 0
+   },
+   "in": {
+    "code": "in",
+    "label": "Inches",
+    "quantity": "length",
+    "system": "imperial",
+    "base": 0.0254,
+    "aliases": [
+     "inch",
+     "inches",
+     "zoll",
+     "\""
+    ],
+    "decimals": 0
+   },
+   "mi": {
+    "code": "mi",
+    "label": "Miles",
+    "quantity": "length",
+    "system": "imperial",
+    "base": 1609.344,
+    "aliases": [
+     "mile",
+     "miles",
+     "meile",
+     "meilen"
+    ],
+    "decimals": 1
+   },
+   "cm": {
+    "code": "cm",
+    "label": "Centimetres",
+    "quantity": "length",
+    "system": "metric",
+    "base": 0.01,
+    "decimals": 0
+   },
+   "m": {
+    "code": "m",
+    "label": "Metres",
+    "quantity": "length",
+    "system": "metric",
+    "base": 1,
+    "aliases": [
+     "meter",
+     "metre",
+     "meters",
+     "metres"
+    ],
+    "decimals": 1
+   },
+   "km": {
+    "code": "km",
+    "label": "Kilometres",
+    "quantity": "length",
+    "system": "metric",
+    "base": 1000,
+    "aliases": [
+     "kilometer",
+     "kilometre"
+    ],
+    "decimals": 1
+   },
+   "lb": {
+    "code": "lb",
+    "label": "Pounds",
+    "quantity": "weight",
+    "system": "imperial",
+    "base": 0.45359237,
+    "aliases": [
+     "lbs",
+     "pound",
+     "pounds",
+     "pfund"
+    ],
+    "decimals": 1
+   },
+   "oz": {
+    "code": "oz",
+    "label": "Ounces",
+    "quantity": "weight",
+    "system": "imperial",
+    "base": 0.0283495231,
+    "aliases": [
+     "ounce",
+     "ounces",
+     "unze"
+    ],
+    "decimals": 1
+   },
+   "g": {
+    "code": "g",
+    "label": "Grams",
+    "quantity": "weight",
+    "system": "metric",
+    "base": 0.001,
+    "decimals": 0
+   },
+   "kg": {
+    "code": "kg",
+    "label": "Kilograms",
+    "quantity": "weight",
+    "system": "metric",
+    "base": 1,
+    "aliases": [
+     "kilo",
+     "kilogramm"
+    ],
+    "decimals": 1
+   },
+   "gal": {
+    "code": "gal",
+    "label": "Gallons",
+    "quantity": "volume",
+    "system": "imperial",
+    "base": 3.785411784,
+    "aliases": [
+     "gallon",
+     "gallons"
+    ],
+    "decimals": 1
+   },
+   "pt": {
+    "code": "pt",
+    "label": "Pints",
+    "quantity": "volume",
+    "system": "imperial",
+    "base": 0.473176473,
+    "aliases": [
+     "pint",
+     "pints"
+    ],
+    "decimals": 1
+   },
+   "ml": {
+    "code": "ml",
+    "label": "Millilitres",
+    "quantity": "volume",
+    "system": "metric",
+    "base": 0.001,
+    "decimals": 0
+   },
+   "l": {
+    "code": "l",
+    "label": "Litres",
+    "quantity": "volume",
+    "system": "metric",
+    "base": 1,
+    "aliases": [
+     "liter",
+     "litre",
+     "liters",
+     "litres"
+    ],
+    "decimals": 1
+   }
+  },
+  "enums": {
+   "Ability": {
+    "name": "Ability",
+    "label": "Ability",
+    "values": [
+     "str",
+     "dex",
+     "con",
+     "int",
+     "wis",
+     "cha"
+    ]
+   },
+   "Size": {
+    "name": "Size",
+    "label": "Size",
+    "values": [
+     "tiny",
+     "small",
+     "medium",
+     "large",
+     "huge",
+     "gargantuan"
+    ]
+   },
+   "DamageType": {
+    "name": "DamageType",
+    "label": "Damage type",
+    "values": [
+     "acid",
+     "bludgeoning",
+     "cold",
+     "fire",
+     "force",
+     "lightning",
+     "necrotic",
+     "piercing",
+     "poison",
+     "psychic",
+     "radiant",
+     "slashing",
+     "thunder"
+    ]
+   },
+   "DrawTime": {
+    "name": "DrawTime",
+    "label": "Draw time",
+    "values": [
+     "free action",
+     "bonus action",
+     "action",
+     "turn",
+     "round"
+    ]
+   },
+   "RuleKind": {
+    "name": "RuleKind",
+    "label": "Rule kind",
+    "values": [
+     "rule",
+     "travel",
+     "sense",
+     "reward",
+     "boon",
+     "option",
+     "upgrade",
+     "facility",
+     "card"
+    ]
+   },
+   "State": {
+    "name": "State",
+    "label": "State",
+    "values": [
+     "idea",
+     "prepared",
+     "ready"
+    ]
+   }
+  },
+  "vars": {
+   "ATK": "+4",
+   "DMG": "4 (1d6)",
+   "DMG2": "(5 1d8)",
+   "DMGTYP": "bludgeoning",
+   "DMGTYP2": "piercing",
+   "RNG": "5 ft."
+  },
+  "settings": {
+   "gridSize": "70",
+   "gridUnit": "1,5 m",
+   "inventoryCols": "10",
+   "inventoryRows": "6",
+   "carrySquares": "tiny:3, small:4, medium:5, large:6",
+   "carryZones": "0-1:bonus action, 2-4:action, 5-8:turn, 9-10:round",
+   "slotDraw": "mainHand:free action, offHand:free action, holster1:free action, holster2:free action, belt:free action, shoulders:bonus action, head:action, torso:action, hands:action, legs:action, feet:action, ringR1:action, ringR2:action, ringR3:action, ringR4:action, ringL1:action, ringL2:action, ringL3:action, ringL4:action, neck1:action, neck2:action, neck3:action, neck4:action",
+   "handActions": "drop:free action, stow:bonus action",
+   "container:Backpack": ".###../######/######/######/.###.. | 0-1:action, 2-3:turn, 4-5:round",
+   "container:Bag of Holding": "####/####/####/####/####/####/####/####",
+   "today": "",
+   "gmFields": "Secrets.secret,Tactics.tactics",
+   "units": "both",
+   "travelRationEvery": "3",
+   "travelLightEvery": "4",
+   "travelWatchesPerDay": "3"
+  }
+ }
+}

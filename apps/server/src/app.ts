@@ -99,6 +99,7 @@ import {
   RECIPE_COMPONENT,
 } from '@nw/model';
 import type { BulkChange, CraftCheck, CraftSource, Entity, Registry } from '@nw/model';
+import { seedRegistry } from '@nw/registry';
 import { RevisionConflict } from './repo.js';
 import type { ReadyStand, Repository } from './repo.js';
 import type { AtlasEnv } from './config.js';
@@ -3220,7 +3221,7 @@ export function buildApp({
     const roh = String(request.query.limit ?? '50');
     const limit = roh === 'all' ? Number.MAX_SAFE_INTEGER : Math.max(0, Math.floor(Number(roh)) || 0);
     const only = request.query.check ? request.query.check.split(',').map((x) => x.trim()).filter(Boolean) : undefined;
-    const checks = runChecks({ registry, entities: gesiebt, exists }, { limit, ...(only ? { only } : {}) });
+    const checks = runChecks({ registry, entities: gesiebt, exists, seed: seedRegistry }, { limit, ...(only ? { only } : {}) });
     return { total: gesiebt.length, ms: Date.now() - t0, checks };
   });
 

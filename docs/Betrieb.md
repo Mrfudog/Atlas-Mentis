@@ -404,6 +404,34 @@ cp -R -n backups/bilder/. daten/bilder/        # oder: rsync -a u…@u….your-s
 Ob jede Datei da ist, die ein Artikel nennt: die Ausfuhr der Kampagne
 listet sie (`files`, je Asset `ref`), `ls daten/bilder/*/<ref>` findet sie.
 
+## Register: Datenbank gegen Startzeilen (T-123)
+
+Der Seed schreibt Arten, Kanten und Ansichten nur in eine **leere**
+Datenbank; Listen, Einstellungen und Einheiten füllt er nach, solange der
+Teil leer ist. Was danach in `packages/registry` geändert wird, erreicht
+dev und prod nur über eine Migration — fehlte sie, zeigten Verweisfelder
+rohe Ids und das Kompendium keine Spalten (nachgezogen mit 055–057).
+
+- **Im CI** spielt `apps/server/scripts/register-abgleich.mjs` zwei
+  Installationen nach: eine frische (alle Migrationen, dann der Seed) und
+  eine auf dem Stand von `apps/server/scripts/register-stand.json` (die
+  Migrationen bis dahin, dessen Register, dann die übrigen und der Seed).
+  Beide müssen danach den Startzeilen gleichen; sonst schlägt der Lauf
+  fehl und zählt je Art, Feld, Kante und Ansicht auf, was fehlt oder
+  anders steht. Eine bewusste Abweichung steht mit Grund in `AUSNAHMEN`
+  im Skript. `--schnappschuss` schreibt den Stand neu — nur bei grünem
+  Lauf, dann kürzt er bloss den Weg.
+- **Auf einer laufenden Installation** zeigt die Werkbank dieselbe
+  Rechnung als Prüfung „Registry differs from the seed“ (`registryDrift`),
+  je Treffer mit dem Weg ins Register. Dort darf stehen bleiben, was
+  jemand am Register bewusst geändert hat (ein eigenes Feld, eine
+  Beschreibung); was fehlt, braucht eine Migration.
+
+Verglichen wird normalisiert: Vorgaben der Ablage (`abstract: false`,
+`owned: false`, `from: ['*']`, leere Listen), die Reihenfolge der
+Schlüssel und die von Mengen (Listenwerte, Kantenenden, Pflichtfelder)
+sind keine Abweichung.
+
 ## Was Daten löschen kann
 
 Diese Wege ersetzen oder löschen Bestand. Jeder hat einen Weg zurück —

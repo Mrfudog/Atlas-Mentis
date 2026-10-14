@@ -33,6 +33,8 @@ export interface CheckHit {
   type: string;
   reason: string;
   group?: string[];
+  /** Eine Registerzeile statt eines Artikels (T-123): Abfrage für `/registry`. */
+  registry?: Record<string, string>;
 }
 export interface CheckResult {
   key: string;

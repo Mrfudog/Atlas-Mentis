@@ -563,6 +563,15 @@ wiederkommen, werden sie neu geschrieben.
   zu pflegen hält genau so lange, wie jemand daran denkt — und als es hier
   zuletzt auseinanderlief, standen deutsche Variablen im Paket und englische
   im Prototyp, und gemerkt hat es niemand, weil beide für sich stimmten.
+  **Eine Zeile zu ändern heisst auch, sie nachzuziehen** (T-123): der
+  Seed schreibt Arten nur in eine leere Datenbank, also erreicht eine
+  Änderung dev und prod nur über eine Migration. Der Lauf
+  `apps/server/scripts/register-abgleich.mjs` im CI spielt eine
+  Installation auf dem Stand von `register-stand.json` nach und schlägt
+  fehl, wenn sie danach anders steht als `packages/registry`; eine
+  bewusste Abweichung kommt mit Grund in seine `AUSNAHMEN`. Was eine
+  laufende Datenbank heute anders hat, zeigt die Werkbank
+  (`registryDrift`).
 - **Masse werden beim Lesen umgerechnet, nie gespeichert** (D8). Der Vault
   ist imperial, weil die Regeln es sind; wie gerechnet wird, steht als
   Registerzeile in `packages/registry/src/units.ts` und nicht im Code. Was
@@ -700,6 +709,11 @@ wird — und den Abschnitt „Das Register heute" in
 `register:anfang` und `register:ende`. Beides wird **erzeugt und nicht von
 Hand geändert**: eine Übersicht, die jemand abtippt, stimmt am Tag ihrer
 Entstehung und danach nie wieder.
+
+**Eine Registeränderung braucht eine Migration**, die sie auf bestehenden
+Datenbanken nachzieht — `node apps/server/scripts/register-abgleich.mjs`
+(mit `DATABASE_URL` auf eine Postgres, nach dem Serverbau) sagt, ob sie
+reicht, und läuft im CI mit (T-123).
 
 **Eine Migration, die entfernt, nennt ihre Prüfabfrage** im Kopf
 (`-- verlust: select count(*) from …`) und wird im Durchstich mit einem

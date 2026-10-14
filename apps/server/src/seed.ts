@@ -46,6 +46,11 @@ export async function seedRegistryInto(
   if (!Object.keys(current.settings ?? {}).length && seed.settings) {
     await schreibe('settings', seed.settings);
   }
+  /* Einheiten schrieb der Seed nie (T-123): eine frische Datenbank hatte
+     keine, und ein Mass rechnete nicht um. Gleiche Regel wie oben. */
+  if (!Object.keys(current.units ?? {}).length && Object.keys(seed.units ?? {}).length) {
+    await schreibe('units', seed.units);
+  }
   if (Object.keys(current.interfaces).length) {
     await ordneFelder(repo, current.interfaces, seed);
     return;
