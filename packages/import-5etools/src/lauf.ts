@@ -19,8 +19,9 @@ import type { Knoten } from './copy.js';
 import { fassungen, herkunft, vereineGleiche } from './doppel.js';
 import { angriffeVereinen } from './arten/angriff.js';
 import { KOPIE_VON, loeseKopien } from './copy.js';
-import type { Auswahl, Datenstand, Quelle } from './lesen.js';
-import { ARTEN_WEG, ausschluss, quelleVon, STICHTAG_2024 } from './lesen.js';
+import type { Auswahl, Datenstand, Quelle, Regelstand } from './lesen.js';
+import { ARTEN_WEG, ausschluss, ebeneQuelle, imGrundstand, quelleVon, regelstandDerQuelle, regelstandVon, STICHTAG_2024 } from './lesen.js';
+import { NEUES } from './arten/neu.js';
 import type { Bericht } from './werkbank.js';
 import { buchEbeneId, gruppeEbeneId, herausgeberEbeneId, ohneBuchEbeneId, Werkbank, zaehle } from './werkbank.js';
 import type { Zuordnung } from './zuordnung.js';
@@ -34,6 +35,7 @@ export const ZUORDNUNGEN: Zuordnung[] = [
   LEGENDAER,
   ...MONSTER,
   ...WELT,
+  ...NEUES,
 ];
 
 /** Die Gruppe aller offiziellen 2014-Bücher (T-109, E-022 b). Bis T-109
@@ -136,7 +138,7 @@ const stufenText = (l: Quelle['level']): string =>
   l?.start ? (l.end && l.end !== l.start ? `${l.start}–${l.end}` : String(l.start)) : '';
 
 /** Begleittexte, die an einen Artikel gehen (`Lore`). */
-const FLUFF = ['monsterFluff', 'raceFluff', 'backgroundFluff', 'classFluff', 'subclassFluff'];
+const FLUFF = ['monsterFluff', 'raceFluff', 'backgroundFluff', 'classFluff', 'subclassFluff', 'vehicleFluff', 'facilityFluff'];
 
 const kl = (s: unknown) => String(s ?? '').trim().toLowerCase();
 
@@ -164,12 +166,12 @@ export interface Ergebnis {
 }
 
 /** Der Text einer Buchebene: was sie ist, in einem Satz (T-088). */
-function buchProsa(name: string, kuerzel: string, meta: Quelle | undefined, regeln: string): string {
+function buchProsa(name: string, kuerzel: string, meta: Quelle | undefined, regeln: Regelstand): string {
   const art = meta?.art === 'adventure' ? 'an adventure' : 'a book';
   const teile = [
     meta?.published ? `published ${meta.published}` : '',
     meta?.author ? `by ${meta.author}` : '',
-    `${regeln} rules`,
+    regeln === 'UA' ? 'playtest material (Unearthed Arcana), not final rules' : `${regeln} rules`,
     meta?.level?.start ? `for levels ${stufenText(meta.level)}` : '',
     meta?.storyline ? `storyline ${meta.storyline}` : '',
   ].filter(Boolean);
@@ -190,8 +192,28 @@ function aufraeumen(e: Entity): void {
   if (e.relations && !e.relations.length) delete e.relations;
 }
 
+/**
+ * **Ein Lauf in zwei Gängen** (T-087): erst der Grundstand allein, dann
+ * alles mit dessen Nummern. Nur so schreibt ein Lauf mit 2024, UA und den
+ * neuen Arten den Grundstand mit denselben Ids, Nummern und Namen, wie ihn
+ * einer ohne geschrieben hätte — die Peg-Id eines geteilten Merkmals hängt
+ * an seinem Text, und der nennt Nummern. Anders steht danach nur Buch- und
+ * Abenteuertext, der jetzt auch Fahrzeuge und Decks findet.
+ */
 export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registry = seedRegistry): Ergebnis {
-  const wb = new Werkbank(registry);
+  if (auswahl.nurGrundstand) return bauen(stand, auswahl, registry).ergebnis;
+  const grund = bauen(stand, { ...auswahl, nurGrundstand: true }, registry, undefined, false);
+  return bauen(stand, auswahl, registry, grund.vergeben).ergebnis;
+}
+
+function bauen(
+  stand: Datenstand,
+  auswahl: Auswahl,
+  registry: Registry,
+  vorgabe?: Map<string, string>,
+  pruefen = true,
+): { ergebnis: Ergebnis; vergeben: Map<string, string> } {
+  const wb = new Werkbank(registry, vorgabe);
 
   /* 1. Die Ebenen. Kein `inLayer` an ihnen selbst. Die alte Systemebene
      ist eine Gruppe (T-109); was kein Buch nennt, liegt in einer eigenen
@@ -211,6 +233,9 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
   wb.feld(ohneBuch, 'Layer', 'version', '2014');
   wb.prosa(ohneBuch, 'What the 2014 rules of 5e.tools bring without naming a book (the action types). Every book has its own layer; which page an article comes from is in its source.');
   wb.ebene = ohneBuch;
+  /* Jede Quelle ihre Ebene; was an einer Klasse eines anderen
+     Regelstands hängt, liegt bei ihr (T-087, `ebeneQuelle`). */
+  wb.ebeneFuer = (e) => ebeneQuelle(e, stand);
 
   /* Je Buch eine Ebene (T-081, E-017), angelegt beim ersten Eintrag
      daraus. Der Name kommt aus `books.json`/`adventures.json`; die Marke
@@ -232,7 +257,8 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
     /* Die Ebene beschreibt sich selbst (T-088, REQ-245): das Kürzel, unter
        dem ihre Artikel die Quelle nennen, und was 5e.tools über das Buch weiss. */
     const kuerzel = meta?.id ?? q;
-    const regeln = gruppeVon(q, meta) === '2024' ? '2024' : '2014';
+    /* Der Regelstand an der Ebene (T-087): 2014, 2024 oder UA. */
+    const regeln = regelstandDerQuelle(q, stand);
     wb.feld(l, 'Layer', 'abbreviation', kuerzel);
     wb.feld(l, 'Layer', 'published', meta?.published);
     wb.feld(l, 'Layer', 'author', meta?.author);
@@ -296,7 +322,7 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
     };
     const geordnet = gelöst.map((e, i) => [rang(e), i, e] as const).sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] - b[1]));
     for (const [, , e] of geordnet) {
-      const grund = ausschluss(e, stand, auswahl);
+      const grund = ausschluss(e, stand, auswahl, z.art);
       if (grund) {
         const m = b.ausgeschlossen.get(grund) ?? new Map<string, number>();
         zaehle(m, quelleVon(e) || '(ohne)');
@@ -305,12 +331,20 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
       }
       const q = quelleVon(e);
       if (q && !stand.quellen.has(q.toLowerCase())) zaehle(wb.bericht.fremdeQuellen, q);
+      wb.stand = regelstandVon(e, stand);
+      wb.grund = imGrundstand(e, z.art, stand);
       const typ = z.typ(e, wb);
       if (!typ) continue;
-      const v = z.vereinen?.(e);
+      /* Vereint wird nur innerhalb einer Teilung (T-087): ein 2024-Merkmal
+         mit dem Text des 2014-Merkmals ist trotzdem ein 2024-Merkmal. */
+      const v0 = z.vereinen?.(e);
+      const v = v0 && wb.teilung ? `${wb.teilung}|${v0}` : v0;
       let ent = v ? vereint.get(v) : undefined;
       if (!ent) {
-        const herkunft = `${z.art}|${kl(z.name(e))}|${kl(q)}|${z.herkunft?.(e) ?? ''}`;
+        /* Mit der Teilung (T-087): der 2014-Champion, den 5e.tools dem
+           2024-Kämpfer gibt, hat dieselbe Quelle und Klasse wie der im
+           Grundstand. Der Grundstand selbst behält seine Peg-Ids. */
+        const herkunft = `${z.art}|${kl(z.name(e))}|${kl(q)}|${z.herkunft?.(e) ?? ''}${wb.teilung ? `|${wb.teilung}` : ''}`;
         const neu = wb.anlegen(typ, z.name(e), herkunft, e);
         if (pegs.has(neu.id)) {
           /* Derselbe Eintrag zweimal (dieselbe Art, derselbe Name, dieselbe
@@ -346,6 +380,9 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
   /* 3. Zweiter Gang: füllen. Jetzt findet jeder Verweis sein Ziel. */
   for (const [z, ent, e] of zuFuellen) {
     wb.aktuelleArt = z.art;
+    const st = wb.standJe.get(ent.id);
+    wb.stand = st?.stand ?? '2014';
+    wb.grund = st?.grund ?? true;
     z.fuellen(wb, ent, e);
     /* Andere Namen, unter denen 5e.tools den Eintrag auch führt. */
     if (Array.isArray(e['alias']) && e['alias'].length) {
@@ -355,11 +392,13 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
     wb.liegen(z.art, e, [...z.genutzt, 'name', 'alias']);
   }
 
+  wb.grundSiehtAlles = true;
   /* Die Abenteuer (T-082, REQ-240): nach den Buchartikeln, damit jeder
      Verweis im Abenteuertext sein Ziel findet. Gesiebt wird wie jeder
      Eintrag — nach Quelle, 2024 bleibt draussen. */
   for (const a of stand.abenteuer?.values() ?? []) {
-    const grund = ausschluss({ source: String(a.kopf['source'] ?? a.id) }, stand, auswahl);
+    const quelleA = String(a.kopf['source'] ?? a.id);
+    const grund = ausschluss({ source: quelleA }, stand, auswahl, 'adventure');
     if (grund) {
       const b = wb.artBericht('adventureData');
       b.gelesen += 1;
@@ -368,6 +407,8 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
       b.ausgeschlossen.set(grund, m);
       continue;
     }
+    wb.stand = regelstandDerQuelle(quelleA, stand);
+    wb.grund = wb.stand === '2014';
     abenteuer(wb, a);
   }
 
@@ -375,7 +416,8 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
      damit jeder Verweis und jedes `Embed` sein Ziel findet. Gesiebt wie
      jeder Eintrag. */
   for (const b of stand.buecher?.values() ?? []) {
-    const grund = ausschluss({ source: String(b.kopf['source'] ?? b.id) }, stand, auswahl);
+    const quelleB = String(b.kopf['source'] ?? b.id);
+    const grund = ausschluss({ source: quelleB }, stand, auswahl, 'book');
     if (grund) {
       const ber = wb.artBericht('bookData');
       ber.gelesen += 1;
@@ -384,8 +426,11 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
       ber.ausgeschlossen.set(grund, m);
       continue;
     }
+    wb.stand = regelstandDerQuelle(quelleB, stand);
+    wb.grund = wb.stand === '2014';
     buch(wb, b);
   }
+  wb.grundSiehtAlles = false;
 
   /* Eine aufgelöste Kopie zeigt auf ihr Original, wenn es hereinkam und
      sie nicht schon auf einen Grundgegenstand zeigt (`variantOf` ist eine
@@ -412,7 +457,7 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
   /* Doppel, die erst gefüllt zu erkennen sind: gleiche Merkmale an
      verschiedenen Trägern werden einer, Fassungen aus mehreren Büchern
      Varianten der geltenden (Entscheidung 12.10.2026). */
-  const entities = vereineGleiche(wb.entities, wb.bericht);
+  const entities = vereineGleiche(wb.entities, wb.bericht, (e) => wb.teilungVon(e.id));
   /* Ohne Spread: über hunderttausend Argumente sprengen den Stapel (T-108). */
   wb.entities.length = 0;
   for (const e of entities) wb.entities.push(e);
@@ -457,6 +502,10 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
     const [, name, text] = HERAUSGEBER.find(([x]) => x === h)!;
     return neueGruppe(`publisher|${h}`, herausgeberEbeneId(h), name, text, true);
   };
+  /* Die Ebenen, in denen der Grundstand liegt. */
+  const grundEbenen = new Set(
+    wb.entities.filter((e) => !wb.teilungVon(e.id)).flatMap((e) => (e.relations ?? []).filter((r) => r.type === 'inLayer').map((r) => r.to)),
+  );
   for (const [k, l] of buecher) {
     if (!belegt.has(l.id)) continue;
     const meta = stand.quellen.get(k);
@@ -466,8 +515,12 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
     for (const b of blocklistGruppen(q)) gruppeAn(l, gruppeEbeneId(b), kategorie(b));
     const h = herausgeberVon(q);
     gruppeAn(l, herausgeberEbeneId(h), verlag(h));
-    /* Die Gruppe der 2014-Regeln (T-109): jedes offizielle Buch darauf. */
-    if (h === 'official' && (l.components['Layer'] as { version?: string } | undefined)?.version === '2014') {
+    /* Die Gruppe der 2014-Regeln (T-109): jedes offizielle Buch darauf —
+       das schon vor T-087 hereinkam. Eine Ebene, die erst jetzt dazukommt
+       (nur Fahrzeuge oder Kartendecks), ist nicht aufgeschaltet: über die
+       Gruppe käme sie in jede Kampagne, die sie aufschaltet. Die Leitung
+       hängt sie auf der Ebenenseite dazu, wenn sie will. */
+    if (h === 'official' && (l.components['Layer'] as { version?: string } | undefined)?.version === '2014' && grundEbenen.has(l.id)) {
       wb.kante(l, 'partOf', ebene.id);
     }
   }
@@ -485,8 +538,22 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
     zaehle(wb.bericht.typen, 'Layer', -1);
   }
 
-  fassungen(wb.entities, stand, wb.bericht, (e) => wb.nachdrucke.get(e.id) ?? []);
-  herkunft(wb.entities, stand, wb.bericht, (e) => wb.nachdrucke.get(e.id) ?? []);
+  /* Fassungen über die Regelstände (T-087, E-021 d): die Grundfassung
+     ist die des Grundstands; eine aus einer anderen Ebene als ihrer
+     Quelle (der 2014-Champion des 2024-Kämpfers) heisst nach beiden. */
+  const kuerzel = new Map(wb.entities.filter((e) => e.interfaces[0] === 'Layer').map((l) => [l.id, String((l.components['Layer'] as { abbreviation?: string } | undefined)?.abbreviation ?? '')] as const));
+  const kennung = (e: Entity): string => {
+    const q = String((e.components['Source'] as { publication?: string } | undefined)?.publication ?? '');
+    const l = kuerzel.get((e.relations ?? []).find((r) => r.type === 'inLayer')?.to ?? '') ?? '';
+    return l && q && l.toLowerCase() !== q.toLowerCase() ? `${q}, ${l}` : q;
+  };
+  const doppel = {
+    nachdruck: (e: Entity) => wb.nachdrucke.get(e.id) ?? [],
+    teilung: (e: Entity) => wb.teilungVon(e.id),
+    kennung,
+  };
+  fassungen(wb.entities, stand, wb.bericht, doppel);
+  herkunft(wb.entities, stand, wb.bericht, doppel);
 
   /* Kanten-Ids über den ganzen Bestand eindeutig: die Werkbank zählt je
      Artikel (`inLayer-1`), der Server hält die Id einer Kante aber als
@@ -495,7 +562,27 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
      hier, weil Doppel und Fassungen oben noch Kanten dazulegen. */
   kantenEindeutig(wb.entities);
 
-  /* 4. Prüfen, mit Art und Stufen — wie der Server beim Schreiben. */
+  /* Die Zählung je Ebene für den Bericht (T-087). */
+  const jeEbene = new Map<string, { artikel: number; neu: number }>();
+  for (const e of wb.entities) {
+    const l = (e.relations ?? []).find((r) => r.type === 'inLayer')?.to;
+    if (!l) continue;
+    const z = jeEbene.get(l) ?? { artikel: 0, neu: 0 };
+    z.artikel += 1;
+    if (wb.teilungVon(e.id)) z.neu += 1;
+    jeEbene.set(l, z);
+  }
+  wb.bericht.ebenen = wb.entities
+    .filter((e) => e.interfaces[0] === 'Layer' && jeEbene.has(e.id))
+    .map((l) => {
+      const k = (l.components['Layer'] ?? {}) as { abbreviation?: string; version?: string; kind?: string };
+      return { name: l.name, kuerzel: k.abbreviation ?? '', stand: k.version ?? '', art: k.kind ?? '', ...jeEbene.get(l.id)! };
+    })
+    .sort((a, b) => a.stand.localeCompare(b.stand) || b.artikel - a.artikel || a.name.localeCompare(b.name));
+
+  /* 4. Prüfen, mit Art und Stufen — wie der Server beim Schreiben. Der
+     erste Gang für die Nummern prüft nicht: der zweite prüft alles. */
+  if (!pruefen) return { ergebnis: { datei: { format: 'nebelwacht/1', registry, entities: wb.entities }, bericht: wb.bericht }, vergeben: wb.vergeben };
   const bekannteArten = new Map(wb.entities.map((e) => [e.id, e.interfaces[0] ?? ''] as const));
   /* Die Ids einmal: ohne sie baut die Prüfung je Artikel ein neues Set
      aus allen Schlüsseln, und das sind bei 28 000 Artikeln Minuten. */
@@ -512,14 +599,17 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
   if (fehler.length) throw new Prueffehler(fehler);
 
   return {
-    datei: {
-      format: 'nebelwacht/1',
-      /* `components` ist der zweite Name für `interfaces`, den die Einfuhr
-         des Prototyps noch liest (`register-datei.mjs`). */
-      registry: { ...registry, components: registry.interfaces },
-      entities: wb.entities,
+    ergebnis: {
+      datei: {
+        format: 'nebelwacht/1',
+        /* `components` ist der zweite Name für `interfaces`, den die Einfuhr
+           des Prototyps noch liest (`register-datei.mjs`). */
+        registry: { ...registry, components: registry.interfaces },
+        entities: wb.entities,
+      },
+      bericht: wb.bericht,
     },
-    bericht: wb.bericht,
+    vergeben: wb.vergeben,
   };
 }
 

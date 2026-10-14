@@ -22,7 +22,11 @@
  * einmaliger Lauf, danach wird ergänzt. Angelegt wird nur, wessen Id es
  * noch nicht gibt; was schon steht, bleibt, wie es ist — auch wenn die
  * Leitung es seither geändert hat. Ebenso das Register: nur Zeilen, die
- * es noch nicht gibt, kommen dazu. Gelöscht wird nichts.
+ * es noch nicht gibt, kommen dazu. Gelöscht wird nichts. **Die Nummern der
+ * neuen Artikel werden an den Bestand angeglichen** (T-087,
+ * `nummernAngleichen`): ein Verweis im Text nennt die Nummer
+ * (`[[spell-0601|Fireball]]`, M11), und der Bestand ist mit einem älteren
+ * Lauf entstanden, dessen Nummern nicht die der Datei sind.
  *
  * **Nur die Ebenen ergänzen** (`--layers`, T-088): aus der Datei zählen nur
  * die Ebenen. Was es nicht gibt (die Gruppen), wird angelegt; an einer
@@ -72,6 +76,8 @@ export interface ImportErgebnis {
   geloescht: number;
   /** Mit `onlyNew`: Artikel der Datei, deren Id es schon gab. */
   uebersprungen?: number;
+  /** Mit `onlyNew`: neue Artikel, deren Nummer oder Verweise angeglichen wurden (T-087). */
+  angeglichen?: number;
   /** Kanten aus bleibenden Artikeln auf gelöschte, als `Artikel —typ→ Ziel`. */
   verwaisteKanten?: string[];
 }
@@ -187,6 +193,8 @@ export async function runImport(
   const neu = optionen.onlyNew ? ausDatei.filter((e) => !bestandIds.has(e.id) && !ganzesSchonDa(e)) : ausDatei;
   const teileMitGanzem = optionen.onlyNew ? ausDatei.filter((e) => !bestandIds.has(e.id) && ganzesSchonDa(e)).length : 0;
   const uebersprungen = ausDatei.length - neu.length;
+  const angeglichen = optionen.onlyNew ? nummernAngleichen(ausDatei, bestand, neu) : 0;
+  const angeglichenText = angeglichen ? ` ${angeglichen} davon mit angeglichener Nummer oder angeglichenen Verweisen (die Nummern der Datei sind nicht die des Bestands).` : '';
   const ids = new Set(neu.map((e) => e.id));
   let weg: Entity[] = [];
   let ebenenText = '';
@@ -259,11 +267,11 @@ export async function runImport(
 
   if (optionen.dryRun) {
     const zeilen = [optionen.onlyNew
-      ? `Probelauf, nichts geschrieben — nur ergänzen: ${zuSchreiben.length} neu, ${uebersprungen} übersprungen (gibt es schon${teileMitGanzem ? `; davon ${teileMitGanzem} Teile, deren Kapitel oder Szene schon steht` : ''}).`
+      ? `Probelauf, nichts geschrieben — nur ergänzen: ${zuSchreiben.length} neu, ${uebersprungen} übersprungen (gibt es schon${teileMitGanzem ? `; davon ${teileMitGanzem} Teile, deren Kapitel oder Szene schon steht` : ''}).${angeglichenText}`
       : `Probelauf, nichts geschrieben${ebenenText ? ` — ${ebenenText}` : ''}: ${zuSchreiben.length} Artikel würden geschrieben, ${weg.length} gelöscht${weg.length ? ` (${jeArt(weg)})` : ''}.`];
     if (geloest.length) zeilen.push(`${geloest.length} Instanzen würden von ihrer Vorlage gelöst: ${geloest.map((e) => `${entityName(e)} (${e.id})`).join(', ')}`);
     if (verwaisteKanten.length) zeilen.push(kantenText(verwaisteKanten, 'würden ins Leere zeigen'));
-    return { text: zeilen.join('\n'), geschrieben: 0, geloescht: 0, ...(optionen.onlyNew ? { uebersprungen } : {}), verwaisteKanten };
+    return { text: zeilen.join('\n'), geschrieben: 0, geloescht: 0, ...(optionen.onlyNew ? { uebersprungen, angeglichen } : {}), verwaisteKanten };
   }
 
   /* Erst löschen, dann schreiben: geprüft ist der Stand danach, und eine
@@ -295,12 +303,101 @@ export async function runImport(
     if (weg.length) verwaist.push(`${u.name}: ${weg.join(', ')}`);
   }
   const zeilen = [optionen.onlyNew
-    ? `Nur ergänzt: ${zuSchreiben.length} neu, ${uebersprungen} übersprungen (gibt es schon${teileMitGanzem ? `; davon ${teileMitGanzem} Teile, deren Kapitel oder Szene schon steht` : ''}).`
+    ? `Nur ergänzt: ${zuSchreiben.length} neu, ${uebersprungen} übersprungen (gibt es schon${teileMitGanzem ? `; davon ${teileMitGanzem} Teile, deren Kapitel oder Szene schon steht` : ''}).${angeglichenText}`
     : `${ebenenText ? `${ebenenText}: ` : ''}${zuSchreiben.length} Artikel geschrieben${geloescht ? `, ${geloescht} gelöscht (${jeArt(weg)})` : ''}.`];
   if (geloest.length) zeilen.push(`${geloest.length} Instanzen von ihrer gelöschten Vorlage gelöst (sie tragen jetzt, was sie lasen): ${geloest.map((e) => `${entityName(e)} (${e.id})`).join(', ')}`);
   if (verwaisteKanten.length) zeilen.push(kantenText(verwaisteKanten, 'zeigen jetzt ins Leere'));
   if (verwaist.length) zeilen.push(`Figuren, die es nicht mehr gibt, an Konten:\n  ${verwaist.join('\n  ')}`);
-  return { text: zeilen.join('\n') + liegenText(liegen), geschrieben: zuSchreiben.length, geloescht, ...(optionen.onlyNew ? { uebersprungen } : {}), verwaisteKanten };
+  return { text: zeilen.join('\n') + liegenText(liegen), geschrieben: zuSchreiben.length, geloescht, ...(optionen.onlyNew ? { uebersprungen, angeglichen } : {}), verwaisteKanten };
+}
+
+const nummerVon = (e: Entity): string => {
+  const n = (e.components?.['Identity'] as { id?: unknown } | undefined)?.id;
+  return typeof n === 'string' ? n : '';
+};
+
+/**
+ * **Die Nummern neuer Artikel an den Bestand angleichen** (T-087, für
+ * `--only-new`). Der Importer zählt je Lauf von vorn; ein Bestand, der mit
+ * einem älteren Lauf oder Datenstand entstand, trägt für denselben Artikel
+ * (dieselbe Peg-Id) oft eine andere Nummer — und unter der Nummer der
+ * Datei womöglich einen ganz anderen Artikel. Ein Verweis nennt die Nummer
+ * (M11), also zeigte ein neuer 2024-Zauber, der auf den 2014-Fireball
+ * verweist, sonst auf irgendetwas.
+ *
+ * Darum, nur an den neuen Artikeln:
+ *  1. Eine Nummer, die im Bestand schon ein anderer trägt, wird eine neue
+ *     — hinter der höchsten, die Bestand oder Datei kennt.
+ *  2. Jeder Verweis `[[nummer|…]]` nennt danach die Nummer, die sein Ziel
+ *     im Bestand trägt oder jetzt bekommt.
+ * Der Bestand wird nicht angefasst. Gibt die Zahl der geänderten Artikel zurück.
+ */
+export function nummernAngleichen(ausDatei: Entity[], bestand: Entity[], neu: Entity[]): number {
+  const besetzt = new Map<string, string>();
+  const imBestand = new Map<string, string>();
+  const hoechste = new Map<string, number>();
+  const zaehle = (n: string) => {
+    const m = /^(.*)-(\d+)$/.exec(n);
+    if (m) hoechste.set(m[1]!, Math.max(hoechste.get(m[1]!) ?? 0, Number(m[2])));
+  };
+  for (const e of bestand) {
+    const n = nummerVon(e);
+    if (!n) continue;
+    besetzt.set(n, e.id);
+    imBestand.set(e.id, n);
+    zaehle(n);
+  }
+  for (const e of ausDatei) zaehle(nummerVon(e));
+  /* Dateinummer → Nummer danach. */
+  const um = new Map<string, string>();
+  for (const e of ausDatei) {
+    const n = nummerVon(e);
+    const da = imBestand.get(e.id);
+    if (n && da && da !== n) um.set(n, da);
+  }
+  const geaendert = new Set<Entity>();
+  for (const e of neu) {
+    const n = nummerVon(e);
+    if (!n) continue;
+    const wer = besetzt.get(n);
+    if (!wer || wer === e.id) {
+      besetzt.set(n, e.id);
+      continue;
+    }
+    const m = /^(.*)-(\d+)$/.exec(n);
+    const prefix = m ? m[1]! : n;
+    const frisch = (hoechste.get(prefix) ?? 0) + 1;
+    hoechste.set(prefix, frisch);
+    const neueNummer = `${prefix}-${String(frisch).padStart(4, '0')}`;
+    um.set(n, neueNummer);
+    besetzt.set(neueNummer, e.id);
+    e.components = { ...e.components, Identity: { ...(e.components['Identity'] as object), id: neueNummer } };
+    geaendert.add(e);
+  }
+  if (!um.size) return geaendert.size;
+  const verweis = /\[\[([^\]|]+)(?=[|\]])/g;
+  const wert = (v: unknown, aenderung: { ja: boolean }): unknown => {
+    if (typeof v === 'string') {
+      if (!v.includes('[[')) return v;
+      const neuText = v.replace(verweis, (roh, ziel: string) => {
+        const nach = um.get(ziel.trim());
+        return nach ? `[[${nach}` : roh;
+      });
+      if (neuText !== v) aenderung.ja = true;
+      return neuText;
+    }
+    if (Array.isArray(v)) return v.map((x) => wert(x, aenderung));
+    if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, wert(x, aenderung)]));
+    return v;
+  };
+  for (const e of neu) {
+    const aenderung = { ja: false };
+    const karten = wert(e.components, aenderung) as Entity['components'];
+    if (!aenderung.ja) continue;
+    e.components = karten;
+    geaendert.add(e);
+  }
+  return geaendert.size;
 }
 
 /** Die Gruppen, die der Importer anlegt (`gruppeEbeneId`, `herausgeberEbeneId`, T-094) — nur deren Kanten ersetzt `--layers`. */

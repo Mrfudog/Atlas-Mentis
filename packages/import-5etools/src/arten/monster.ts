@@ -222,7 +222,9 @@ function teil(
      der Statblock (D51, `angriff.ts`). */
   const z = wort ? zerlegeAngriff(roh['entries'] ?? roh['entry']) : null;
   if (wort && z) {
-    const schluessel = `Angriff|${wort}|${name}|${z.sorten.join(',')}|${z.schadensart}|${recharge ?? ''}|${uses ?? ''}`;
+    /* Geteilt wird nur innerhalb einer Teilung (T-087): sonst rechneten
+       2024-Monster die Vorgaben der 2014-Angriffe mit. */
+    const schluessel = `${wb.teilung ? `${wb.teilung}|` : ''}Angriff|${wort}|${name}|${z.sorten.join(',')}|${z.schadensart}|${recharge ?? ''}|${uses ?? ''}`;
     let ziel = geteilt.get(schluessel);
     if (ziel) {
       wb.bericht.geteilt.verwendungen += 1;
@@ -251,7 +253,7 @@ function teil(
   if (wort && JSON.stringify(roh['entries'] ?? '').includes('{@atk')) wb.bericht.angriffe.alsText += 1;
   const { text, wort: genannt } = platzhalter(vorlagenwerte(wb.text(roh['entries'] ?? roh['entry'], 5), e), selbst);
   const benutzt = text.includes('{CREATURE}');
-  const schluessel = `${typ}|${wort ?? ''}|${name}|${text}`;
+  const schluessel = `${wb.teilung ? `${wb.teilung}|` : ''}${typ}|${wort ?? ''}|${name}|${text}`;
   let ziel = geteilt.get(schluessel);
   if (ziel) {
     wb.bericht.geteilt.verwendungen += 1;
@@ -262,7 +264,7 @@ function teil(
       wb.geteiltGezaehlt.add(ziel.id);
     }
   } else {
-    ziel = wb.anlegen(typ, name, `${typ}|${wort ?? ''}|${name}|${text}`, e);
+    ziel = wb.anlegen(typ, name, schluessel, e);
     if (wort) {
       wb.feld(ziel, 'Action', 'actionType', aktionsart(wb, wort).id);
       wb.feld(ziel, 'Action', 'recharge', recharge);
@@ -359,7 +361,7 @@ const GENUTZT_MONSTER = [
 ];
 
 /** Monster und Objekte als Statblock. */
-function statblock(wb: Werkbank, sb: Entity, e: Knoten): void {
+export function statblock(wb: Werkbank, sb: Entity, e: Knoten): void {
   const S = 'Statblock';
   wb.feld(sb, S, 'size', GROESSE[String(liste(e['size'])[0] ?? '')]);
   const typ = e['type'];
