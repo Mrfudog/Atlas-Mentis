@@ -119,7 +119,8 @@ Die Regel ist kurz, weil eine lange niemand mehr nachliest:
   solchen Ebenen liegt — einer, der auch im geteilten Regelwerk liegt, nicht.
   **Eine eigene Ebene legt jedes Konto an** (Seite „Account" › Layers,
   `POST /api/layers`); wer sie anlegt, besitzt sie und sagt, wer sonst darin
-  schreibt. Sie wirkt, sobald die Leitung sie aufschaltet. **Was nicht in
+  schreibt. Die Verwaltung teilt jedem Konto Ebenen zu (Seite „Campaign" ›
+  Accounts of this installation). Sie wirkt, sobald die Leitung sie aufschaltet. **Was nicht in
   den eigenen Ebenen liegt — auch was ohne Ebene ist —, ändert man als
   Fassung:** „Edit" legt sie in eine eigene Ebene im Spiel
   (`POST /api/entities/:id/adapt`, bei mehreren `{ layer }`).
