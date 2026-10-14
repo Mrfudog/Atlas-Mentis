@@ -368,6 +368,15 @@ sequenceDiagram
   `EventSource` kann keinen Kopf setzen. Er läuft als die Leitung; was die
   Seite daraufhin holt, holt sie in der Sicht.
 
+Im Browser: `Live` (`apps/web/src/app/kern/live.ts`) verbindet, solange
+jemand angemeldet ist, und verteilt an wer sich anmeldet —
+`onArtikel` (geändert / weg), `onSitzung` (der Sitzungszustand, dazu das
+Signal `sitzungen`) und `onNeu` (`reset`, Register). Der Transport steht
+hinter `LIVE_TRANSPORT`; eine Komponente kennt ihn nicht. Der `Bestand`
+holt geöffnete Artikel neu (eine Maske beim Bearbeiten hält ihre
+Ausgangslage selbst, REQ-192). Der Punkt in der Kopfleiste zeigt, ob das
+Gerät mithört.
+
 ### 5.3 Die Tabellen
 
 Drei generische Tabellen tragen jeden Artikel, das Register steht als
