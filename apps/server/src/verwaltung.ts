@@ -31,7 +31,7 @@ import {
   isGroupLayer,
   layersInGroup,
   groupingOf,
-  publisherOf,
+  publisherInfo,
   offLayers,
   resolvedStack,
   withOff,
@@ -58,6 +58,7 @@ import {
 import type { Repository, StoredUser } from './repo.js';
 import { foldName, hashToken, mayViewAs, newInviteCode, type Invite, type User } from './auth.js';
 import { inDieGruppe, neueGruppe } from './gruppe.js';
+import { eigeneEbenen } from './ebenenrechte.js';
 
 /** Was ein Konto an einer Kampagne darf: ändern, nur sehen, oder nichts. */
 export type Recht = 'manage' | 'see' | null;
@@ -271,6 +272,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       }
     }
     const mitglieder = groupMembers(alle);
+    const eigene = eigeneEbenen(alle);
     const stapel = activeStack(alle, kampagne).map((x) => x.layer.id);
     /* Im Spiel ist auch, was eine aufgeschaltete Gruppe bringt (E-022 b). */
     const imSpiel = new Set(resolvedStack(alle, kampagne, mitglieder).map((l) => l.id));
@@ -289,12 +291,14 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       const wort = (k: string) => (typeof karte[k] === 'string' || typeof karte[k] === 'number' ? String(karte[k]) : '');
       const beschreibung = (e.components?.['Description'] as { description?: unknown } | undefined)?.description;
       const gruppe = isGroupLayer(e);
+      const verlag = publisherInfo(alle, e, eigene);
       return {
         id: e.id,
         name: entityName(e),
         kind: wort('kind'),
-        /* Wer sie herausgibt, gerechnet (T-094, E10); bei einer Gruppe, wonach sie ordnet. */
-        publisher: publisherOf(alle, e),
+        /* Wer sie herausgibt, gerechnet (T-094, E10), und warum (T-109); bei einer Gruppe, wonach sie ordnet. */
+        publisher: verlag.name,
+        publisherWhy: verlag.why,
         ...(gruppe ? { groupBy: groupingOf(e) } : {}),
         /* Die Gruppen, an denen sie hängt, und bei einer Gruppe ihre Mitglieder (T-088). */
         groups: (e.relations ?? []).filter((r) => r.type === GROUP_RELATION && isGroupLayer(alle.get(r.to))).map((r) => r.to),

@@ -163,23 +163,65 @@ export const CATEGORY_GROUPING = 'category';
 export const groupingOf = (e: Entity | undefined): 'publisher' | 'category' =>
   layerKarte(e)['groupBy'] === PUBLISHER_GROUPING ? PUBLISHER_GROUPING : CATEGORY_GROUPING;
 
-/** Was eine Ebene ist, die in keiner Herausgeber-Gruppe steht: eigener Inhalt (T-094). */
+/** Was eine Ebene ist, die hier angelegt wurde und in keiner Herausgeber-Gruppe steht (T-094, T-109). */
 export const HOMEBREW = 'Homebrew';
+/** Was eine eingelesene Ebene ist, die in keiner Herausgeber-Gruppe steht (T-109). */
+export const UNASSIGNED = 'Unassigned';
+
+/** Der Herausgeber einer Ebene samt Begründung (T-109): der Name, die Gruppen, aus denen er kommt, und ein Satz, warum. */
+export interface PublisherInfo {
+  name: string;
+  groups: EntityId[];
+  why: string;
+}
+
+/** Alle Herausgeber-Gruppen (T-109), nach Name — die Auswahl, an die eine Ebene gehängt werden kann. */
+export function publisherGroups(entities: Map<EntityId, Entity>): Entity[] {
+  return [...entities.values()]
+    .filter((g) => isGroupLayer(g) && groupingOf(g) === PUBLISHER_GROUPING)
+    .sort((a, b) => entityName(a).localeCompare(entityName(b)));
+}
 
 /**
  * **Der Herausgeber einer Ebene** (T-094, REQ-249) — gerechnet, nicht
  * gespeichert (D8): die Namen der Herausgeber-Gruppen, an denen sie mit
- * `partOf` hängt, sonst „Homebrew". Eine Gruppe hat keinen. Ein zweites
- * Feld `publisher` neben der Gruppe wäre die zweite Stelle, die beim
- * ersten Umhängen falsch steht.
+ * `partOf` hängt. Ein zweites Feld `publisher` neben der Gruppe wäre die
+ * zweite Stelle, die beim ersten Umhängen falsch steht. Eine Gruppe hat
+ * keinen.
+ *
+ * Hängt sie an keiner, entscheidet, **woher sie kommt** (T-109):
+ * `homebrew` nennt die Ebenen, die hier angelegt wurden — von einem
+ * Konto, mit einer Kampagne —, die sind „Homebrew"; jede andere ist
+ * eingelesen und „Unassigned". Bis T-109 hiess alles ohne Gruppe
+ * Homebrew, auch die Sammelebene aus 5e.tools, und niemand sah, woher
+ * die Marke kam.
  */
-export function publisherOf(entities: Map<EntityId, Entity>, layer: Entity | undefined): string {
-  if (!layer || isGroupLayer(layer)) return '';
-  const namen = kanten(layer, GROUP_RELATION)
+export function publisherInfo(
+  entities: Map<EntityId, Entity>,
+  layer: Entity | undefined,
+  homebrew?: ReadonlySet<EntityId>,
+): PublisherInfo {
+  if (!layer || isGroupLayer(layer)) return { name: '', groups: [], why: '' };
+  const gruppen = kanten(layer, GROUP_RELATION)
     .map((r) => entities.get(r.to))
-    .filter((g): g is Entity => isGroupLayer(g) && groupingOf(g) === PUBLISHER_GROUPING)
-    .map((g) => entityName(g));
-  return namen.length ? [...new Set(namen)].join(' / ') : HOMEBREW;
+    .filter((g): g is Entity => isGroupLayer(g) && groupingOf(g) === PUBLISHER_GROUPING);
+  const ids = [...new Set(gruppen.map((g) => g.id))];
+  const namen = [...new Set(gruppen.map((g) => entityName(g)))];
+  if (namen.length) {
+    return { name: namen.join(' / '), groups: ids, why: `Because this layer is part of the publisher group ${namen.join(' and ')}.` };
+  }
+  return homebrew?.has(layer.id)
+    ? { name: HOMEBREW, groups: [], why: 'Not part of any publisher group, and made here rather than imported.' }
+    : { name: UNASSIGNED, groups: [], why: 'Not part of any publisher group.' };
+}
+
+/** Nur der Name aus `publisherInfo` — die Marke in Listen und auf der Kampagnenseite. */
+export function publisherOf(
+  entities: Map<EntityId, Entity>,
+  layer: Entity | undefined,
+  homebrew?: ReadonlySet<EntityId>,
+): string {
+  return publisherInfo(entities, layer, homebrew).name;
 }
 
 /**

@@ -223,11 +223,35 @@ describe('the campaign page switches layers on', () => {
     expect(zeile(l, 'e5_book_phb')).toMatchObject({ publisher: 'Official', groups: ['e5_group_core', 'e5_publisher_official'] });
     expect(zeile(l, 'e5_publisher_official')).toMatchObject({ groupBy: 'publisher', publisher: '', members: ['e5_book_phb'] });
     expect(zeile(l, 'e5_group_core')).toMatchObject({ groupBy: 'category' });
-    /* Ohne Herausgeber-Gruppe: eigener Inhalt. */
-    expect(zeile(l, 'e5_book_mm')).toMatchObject({ publisher: 'Homebrew' });
+    expect(zeile(l, 'e5_book_phb').publisherWhy).toBe('Because this layer is part of the publisher group Official.');
+    /* Ohne Herausgeber-Gruppe (T-109): eingelesen heisst „Unassigned",
+       Homebrew ist nur, was ein Konto oder eine Kampagne hier anlegte. */
+    expect(zeile(l, 'e5_book_mm')).toMatchObject({ publisher: 'Unassigned', publisherWhy: 'Not part of any publisher group.' });
     expect(zeile(l, 'ly_a')).toMatchObject({ publisher: 'Homebrew' });
     const q = (await rufe('Sela', 'GET', '/api/sources')).json();
-    expect(q.publishers).toMatchObject({ PLA: 'Official', MON: 'Homebrew' });
+    expect(q.publishers).toMatchObject({ PLA: 'Official', MON: 'Unassigned' });
+  });
+
+  it('shows the publisher at the layer and lets the admin hang it under another one (T-109)', async () => {
+    const { rufe, repo } = await mitGruppen();
+    for (const [id, name, n] of [['e5_publisher_official', 'Official', 11], ['e5_publisher_partnered', 'Partnered', 12]] as const) {
+      await repo.putEntity({
+        ...ebene(id, name, n, 0),
+        components: { ...ident(name, `layer-00${n}`), Layer: { kind: 'group', order: 0, groupBy: 'publisher' } },
+      });
+    }
+    let p = (await rufe('Basil', 'GET', '/api/layers/e5_book_mm/publisher')).json();
+    expect(p).toMatchObject({ name: 'Unassigned', groups: [], canChange: false });
+    expect(p.options.map((o: { name: string }) => o.name)).toEqual(['Official', 'Partnered']);
+    expect((await rufe('Basil', 'PUT', '/api/layers/e5_book_mm/publisher', { groups: ['e5_publisher_official'] })).statusCode).toBe(403);
+    expect((await rufe('Admin', 'PUT', '/api/layers/e5_book_mm/publisher', { groups: ['e5_group_core'] })).statusCode).toBe(400);
+    p = (await rufe('Admin', 'PUT', '/api/layers/e5_book_mm/publisher', { groups: ['e5_publisher_official'] })).json();
+    expect(p).toMatchObject({ name: 'Official', groups: ['e5_publisher_official'] });
+    /* Umhängen nimmt den alten Herausgeber weg, die Kategorie bleibt. */
+    await rufe('Admin', 'PUT', '/api/layers/e5_book_mm/publisher', { groups: ['e5_publisher_partnered'] });
+    const mm = (await repo.getEntity('e5_book_mm'))!;
+    expect((mm.relations ?? []).filter((r) => r.type === 'partOf').map((r) => r.to)).toEqual(['e5_group_core', 'e5_publisher_partnered']);
+    expect((await rufe('Admin', 'GET', '/api/layers/e5_group_core/publisher')).json()).toMatchObject({ name: '', canChange: false });
   });
 
   it('explains every source abbreviation the viewer may see (T-088)', async () => {

@@ -23,8 +23,12 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
   CAMPAIGN_TYPE,
   LAYER_COMPONENT,
+  GROUP_RELATION,
   currentCampaign,
   entityName,
+  isGroupLayer,
+  publisherGroups,
+  publisherInfo,
   nextId,
   primaryInterface,
   validateEntity,
@@ -32,6 +36,23 @@ import {
 } from '@nw/model';
 import type { Repository } from './repo.js';
 import { foldName, type User } from './auth.js';
+
+/**
+ * **Die Ebenen, die hier angelegt wurden** (T-109): jede, die nicht aus
+ * einer Einfuhr kommt. Was der Importer für 5e.tools anlegt, trägt Pegs
+ * mit `e5_` (`Werkbank.anlegen`, `buchEbeneId` …) — daran halten sich
+ * auch die Migrationen 026, 034, 037 und 043. Ohne Herausgeber-Gruppe
+ * heissen diese Homebrew, die eingelesenen „Unassigned" (`publisherInfo`).
+ * Ein Konto, eine Kampagne oder ein Besitz daran wäre die schwächere
+ * Frage: eine Kampagnenebene, die zwei Runden teilen, ist niemandes
+ * Kampagnenebene und trotzdem hier entstanden.
+ */
+const IMPORTIERT = /^e5_/;
+export function eigeneEbenen(map: Map<string, Entity>): Set<string> {
+  return new Set(
+    [...map.values()].filter((e) => primaryInterface(e) === LAYER_COMPONENT && !IMPORTIERT.test(e.id)).map((e) => e.id),
+  );
+}
 
 interface Deps {
   repo: Repository;
@@ -194,5 +215,65 @@ export function registerEbenenrechte(app: FastifyInstance, { repo, viewerOf, sch
     if (!(await repo.revokeLayer(zielId, layer))) return nein(reply, 404, 'Schreibt nicht in dieser Ebene.');
     await repo.appendEvent('layer.editor', zielId, { layer, owner: null, by: user.id });
     return { ok: true };
+  });
+
+  /**
+   * **Der Herausgeber einer Ebene** (T-109, REQ-249): gerechnet aus den
+   * Herausgeber-Gruppen, an denen sie mit `partOf` hängt, mit dem Satz,
+   * warum — und die Gruppen, unter die sie gehängt werden kann. Ändern
+   * dürfen die Verwaltung und wer die Ebene besitzt (`canChange`).
+   */
+  app.get<{ Params: { layer: string } }>('/api/layers/:layer/publisher', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return nein(reply, 401, 'Nicht angemeldet.');
+    const map = await bestand();
+    const l = map.get(request.params.layer);
+    if (!istEbene(l)) return nein(reply, 404, 'Diese Ebene gibt es nicht.');
+    if (isGroupLayer(l)) return { name: '', why: '', groups: [], options: [], canChange: false };
+    return {
+      ...publisherInfo(map, l, eigeneEbenen(map)),
+      options: publisherGroups(map).map((g) => ({ id: g.id, name: entityName(g) })),
+      canChange: verwaltet(user, l.id),
+    };
+  });
+
+  /**
+   * **Den Herausgeber ändern** (T-109): `{ groups: [...] }` sind die
+   * Herausgeber-Gruppen, an denen die Ebene danach hängt — die Kanten
+   * `partOf` zu anderen Herausgeber-Gruppen gehen, die zu Kategorien
+   * bleiben. Ein Feld dafür gibt es nicht (D8); leer heisst: an keiner.
+   */
+  app.put<{ Params: { layer: string }; Body: { groups?: unknown } | null }>('/api/layers/:layer/publisher', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return nein(reply, 401, 'Nicht angemeldet.');
+    const map = await bestand();
+    const l = map.get(request.params.layer);
+    if (!istEbene(l)) return nein(reply, 404, 'Diese Ebene gibt es nicht.');
+    if (isGroupLayer(l)) return nein(reply, 400, 'Eine Gruppe hat keinen Herausgeber.');
+    if (!verwaltet(user, l.id)) return nein(reply, 403, 'Den Herausgeber ändern die Verwaltung und wer die Ebene besitzt.');
+    const roh = request.body?.groups;
+    if (!Array.isArray(roh) || !roh.every((x) => typeof x === 'string')) return nein(reply, 400, 'groups: eine Liste von Gruppen-Ids.');
+    const erlaubt = new Set(publisherGroups(map).map((g) => g.id));
+    const ziel = [...new Set(roh as string[])];
+    const fremd = ziel.find((g) => !erlaubt.has(g));
+    if (fremd) return nein(reply, 400, `Keine Herausgeber-Gruppe: ${fremd}`);
+    const bleiben = (l.relations ?? []).filter((r) => !(r.type === GROUP_RELATION && erlaubt.has(r.to)));
+    const neu: Entity = {
+      ...l,
+      relations: [
+        ...bleiben,
+        ...ziel.map((g) => ((l.relations ?? []).find((r) => r.type === GROUP_RELATION && r.to === g) ?? {
+          id: `${l.id}~partOf-${g}`,
+          type: GROUP_RELATION,
+          to: g,
+        })),
+      ],
+    };
+    const issues = validateEntity(await repo.getRegistry(), neu, {});
+    if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+    await repo.putEntity(neu);
+    await repo.appendEvent('layer.publisher', l.id, { groups: ziel, by: user.id });
+    map.set(l.id, neu);
+    return publisherInfo(map, neu, eigeneEbenen(map));
   });
 }

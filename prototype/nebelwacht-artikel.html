@@ -16222,13 +16222,17 @@ function renderHowto(v){
     "Official (Wizards of the Coast), Partnered, Third party, Homebrew. A "+
     "book sits in one group of each kind, and either turns it on the same "+
     "way. A layer's publisher is not stored: it is the name of the "+
-    "publisher group it hangs on, and a layer in none is Homebrew \u2014 "+
-    "your own content needs no publisher to be known as yours. The mark "+
-    "shows on the campaign page, in lists and in the preview."));
+    "publisher group it hangs on. A layer in none is Homebrew if it was "+
+    "made here (by an account or with a campaign) and Unassigned if it was "+
+    "imported (T-109). The layer's page shows the publisher with the reason "+
+    "and, for the admin and the layer's owner, a choice that hangs it under "+
+    "another publisher group. The mark shows on the campaign page (the "+
+    "reason on hover), in lists and in the preview."));
   v.appendChild(el("pre",{class:"code",text:
     "EGW  partOf Settings (category) \u00b7 Partnered (publisher)  \u2192 mark Partnered\n"+
-    "XGE  partOf Supplements \u00b7 Official                     \u2192 mark Official\n"+
-    "Ebene: Nebelwacht  in no publisher group             \u2192 mark Homebrew"}));
+    "XGE  partOf Supplements \u00b7 Official \u00b7 D&D 5e (2014)     \u2192 mark Official\n"+
+    "Ebene: Nebelwacht  in no publisher group, made here   \u2192 mark Homebrew\n"+
+    "Imported book      in no publisher group              \u2192 mark Unassigned"}));
 
   v.appendChild(el("div",{class:"rsec",text:"Who gets to see an article"}));
   v.appendChild(el("p",{class:"hint"},

@@ -21,6 +21,9 @@ import {
   groupingOf,
   publisherOf,
   HOMEBREW,
+  UNASSIGNED,
+  publisherInfo,
+  publisherGroups,
   withFilter,
   withCompare,
   filterOf,
@@ -321,9 +324,20 @@ describe('publisher groups (T-094)', () => {
     expect(publisherOf(w, w.get('egw'))).toBe('Partnered');
   });
 
-  it('calls a layer in no publisher group homebrew, and a group has none', () => {
-    expect(publisherOf(w, w.get('eigen'))).toBe(HOMEBREW);
+  it('calls a layer in no publisher group homebrew only when it was made here (T-109)', () => {
+    expect(publisherOf(w, w.get('eigen'), new Set(['eigen']))).toBe(HOMEBREW);
+    expect(publisherOf(w, w.get('eigen'))).toBe(UNASSIGNED);
     expect(publisherOf(w, w.get('g_off'))).toBe('');
+  });
+
+  it('says why, and lists the publisher groups to choose from (T-109)', () => {
+    expect(publisherInfo(w, w.get('xge'))).toEqual({
+      name: 'Official',
+      groups: ['g_off'],
+      why: 'Because this layer is part of the publisher group Official.',
+    });
+    expect(publisherInfo(w, w.get('eigen')).why).toBe('Not part of any publisher group.');
+    expect(publisherGroups(w).map((g) => g.id)).toEqual(['g_off', 'g_part']);
   });
 
   it('groups by category unless the group says publisher', () => {
