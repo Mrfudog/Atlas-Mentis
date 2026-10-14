@@ -70,6 +70,7 @@ const bestand: Entity[] = [
   art('kammer', 'Map', 'Kammer', {}, [{ id: 'in3', type: 'insideMap', to: 'gruft', props: { x: 0.7, y: 0.7, w: 0.1, h: 0.1 } }]),
   art('nische', 'Map', 'Nische', {}, [{ id: 'in4', type: 'insideMap', to: 'gruft', props: { x: 0.1, y: 0.1, w: 0.1, h: 0.1 } }]),
   art('npc_wache', 'Creature', 'Wache'),
+  art('sb_ghul', 'Statblock', 'Ghul', { Statblock: { token: 'as_ghul_token' } }, [{ id: 'bt', type: 'belongsTo', to: 'npc_dunkel', props: {} }]),
   art('enc_gruft', 'Encounter', 'Ghule', { Encounter: { round: 1, turn: 1 } }, [
     { id: 'p1', type: 'participates', to: 'pc_1', props: { init: 18 } },
     { id: 'p2', type: 'participates', to: 'npc_dunkel', props: { init: 12, revealed: true } },
@@ -157,6 +158,8 @@ describe('fog of war (REQ-139)', () => {
     expect(sp.targets['npc_dunkel']).toBeUndefined();
     const gm = (await hole('Mira', '/api/maps/gruft/context')).json();
     expect(gm.children.map((c: { id: string }) => c.id)).toEqual(['kammer', 'nische']);
+    /* Das Tokenbild kommt vom Statblock (T-119). */
+    expect(gm.targets['npc_dunkel'].image).toBe('as_ghul_token');
   });
 });
 

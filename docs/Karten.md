@@ -259,10 +259,12 @@ ist; beides steht an der Karte, weil Aufgedecktes bleibt.
   darunter „Round 2 · Ghoul’s turn · next: Rook". Spielende sehen den
   Ring nur, wo ihre Initiative-Reihe den Teilnehmer zeigt (D53, D58) —
   ein Gegner, dessen Zug noch nicht kam, ist auch nicht „next".
-- **Token ohne Bild:** die Anfangsbuchstaben des Namens, den der Server
-  schickt — für Spielende ist das der Deckname, solange der Name nicht
-  freigegeben ist (REQ-178, `redactEntity`). Tokenbilder aus Assets der
-  Klasse „Token" kommen mit T-119.
+- **Das Tokenbild** ist `Statblock.token` des Statblocks der Kreatur — ein
+  Asset der Klasse „Token" (T-119), gesiebt, eine Instanz mit dem Token
+  ihrer Vorlage —, sonst ihr Bild (`Image.image`). **Ohne Bild** stehen
+  die Anfangsbuchstaben des Namens, den der Server schickt — für Spielende
+  ist das der Deckname, solange der Name nicht freigegeben ist (REQ-178,
+  `redactEntity`); die Maske entscheidet das nicht.
 - **Spielende ziehen die eigene Figur** noch nicht — wer es erlaubt und
   wo das steht, ist E-040.
 

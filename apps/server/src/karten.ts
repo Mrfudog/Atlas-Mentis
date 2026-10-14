@@ -127,9 +127,25 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
       zielIds.map((id) => stand.map.get(id)).filter((e): e is Entity => !!e),
       stand.map,
     );
+    /* **Das Tokenbild** (T-117, T-119): `Statblock.token` des Statblocks,
+       der der Kreatur gehört (`belongsTo`), gesiebt wie jeder Artikel —
+       eine Instanz kommt aufgelöst, mit dem Token ihrer Vorlage. Sonst
+       das Bild des Artikels, sonst zeichnet die Seite die Anfangsbuchstaben
+       des Namens, den der Server schickt (für Spielende der Deckname,
+       REQ-178). Ein Durchgang über den Bestand, nicht einer je Marker. */
+    const zielSet = new Set(ziele.map((z) => z.id));
+    const boegen = stand.alle.filter(
+      (e) => primaryInterface(e) === 'Statblock' && (e.relations ?? []).some((r) => r.type === 'belongsTo' && zielSet.has(r.to)),
+    );
+    const tokenVon = new Map<string, string>();
+    for (const sb of boegen.length ? await sieve(request, boegen, stand.map) : []) {
+      const t = (sb.components?.['Statblock'] as { token?: unknown } | undefined)?.token;
+      const wem = (boegen.find((b) => b.id === sb.id)?.relations ?? []).find((r) => r.type === 'belongsTo' && zielSet.has(r.to))?.to;
+      if (wem && typeof t === 'string' && t.trim() && !tokenVon.has(wem)) tokenVon.set(wem, t.trim());
+    }
     const targets: Record<string, MarkerZiel> = {};
     for (const z of ziele) {
-      const bild = bildVon(z);
+      const bild = tokenVon.get(z.id) ?? bildVon(z);
       targets[z.id] = { name: entityName(z), type: primaryInterface(z), ...(bild ? { image: bild } : {}) };
     }
 
