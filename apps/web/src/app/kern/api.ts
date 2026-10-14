@@ -659,11 +659,13 @@ export class Api {
       body: JSON.stringify({ type, name, fields, relations }),
     });
   }
-  /** Die Attributsverfahren der laufenden Kampagne und ihre Gruppen (E-016 a). */
+  /** Die Attributsverfahren der laufenden Kampagne, ihre Gruppen (E-016 a) und ihre Sprachen (REQ-251). */
   abilities(): Promise<{
     campaign: { id: string; name: string } | null;
     methods: AbilityMethod[];
     parties: { id: string; name: string; pools: Record<string, RolledScores & { at?: string }> }[];
+    /** Die Sprachen der Kampagne (REQ-251); leer heisst jede. */
+    languages?: string[];
   }> {
     return this.call('/api/abilities');
   }
