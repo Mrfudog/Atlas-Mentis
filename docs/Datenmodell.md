@@ -1004,6 +1004,11 @@ flowchart LR
   Die Artikelseite eines Rezepts zeigt das Ergebnis (Element `crafting`):
   am Tisch und je eigener Figur, mit dem, was nicht aus dem Rezept kommt —
   gerechnet am Server (`refs.craft`), nicht in der Maske.
+- **Fortschritt in Proben** (T-122): `Recipe.checks` sagt, wie viele
+  gelungene Proben die Arbeit braucht — Regelwerke wie Kibbles’ Compendium
+  zählen in Proben je Zeitabschnitt (zwei Stunden, eine Probe) statt in
+  Tagen. Ohne Angabe gilt eine Probe am Ende. Auf bestehenden Datenbanken
+  trägt Migration 059 das Feld nach.
 - **Ein Regelwerk mit Rezepten** (Kibbles’ Compendium, T-122) ist eine
   Ebene wie ein Buch: Rezepte, Materialien und Gegenstände sind Artikel
   darin, `needs`/`yields` verbinden sie, und jedes Rezept trägt eine
@@ -1112,6 +1117,20 @@ Regel-Board. Eine eigene Kante `boardOf` wäre eine zweite Hierarchie neben
 der Boards und ihr Pfad „Kampagne › Kapitel › Sitzung" kommen ohne einen
 ganzen Artikel aus: `/api/list?rel=partOf` schickt die Kante je Zeile mit
 (W7).
+
+**Ein Bereich ist ein Anker mit Rechteck** (T-073, REQ-159): ein Eintrag
+in `Board.anchors` mit `id`, `name`, `x`, `y` und dazu `w`, `h`. Ohne
+Breite und Höhe bleibt er ein Punkt (wie der Prototyp ihn anlegt, mit
+`zoom`). Kein neues Feld: ein Bereich ist eine Stelle, zu der man
+springt, und das war der Anker schon — eine Form mit Namen (`shapes`) ist
+Zeichnung und springt nirgends hin. **Welche Karten dazugehören, sagt die
+Lage** (`anchorAreaOf`): ihre Mitte liegt im Rechteck, bei mehreren im
+kleinsten. Eine Kante dafür wäre dieselbe Auskunft zweimal, und nach dem
+ersten Verschieben stimmte eine davon nicht mehr. Die Anker stehen oben
+als Reiter (ein Klick springt hin), ein Bereich lässt sich einklappen —
+dann zeigt er nur seine Titelzeile, und seine Karten sind verborgen,
+nicht verschoben. **Eingeklappt ist je Betrachter** (im Browser): am
+Board gespeichert klappte ein Spieler der Leitung die Conditions zu.
 
 Eine Spieleransicht gibt es nicht: gesiebt wird am Server, alle sehen
 dieselbe Ansicht. **Die Sicht eines Mitglieds** (REQ-241) ist darum keine
@@ -1311,7 +1330,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | `ItemProperty` | `Rule` | `abbreviation` | `affects` | `composedOf` `affects` `grants` `hasProperty` | — |
 | `Knowledge` | — | — | `knownBy` `includes` | — | — |
 | `Language` | `Rule` | `languageType` `script` `typicalSpeakers` | `affects` | `composedOf` `affects` `grants` | overview |
-| `Recipe` | `Source` `Secrets` `Lore` | `trade` `tool` `ability` `dc` `time` `days` `yieldCount` `onFailure` | `needs` `yields` | `craftsWith` `crafting` | full |
+| `Recipe` | `Source` `Secrets` `Lore` | `trade` `tool` `ability` `dc` `time` `days` `checks` `yieldCount` `onFailure` | `needs` `yields` | `craftsWith` `crafting` | full |
 | `Rule` | `Source` `Vars` | `kind` `autolink` | `affects` | `composedOf` `affects` `grants` | quick, overview |
 | `Skill` | `Rule` | `ability` | `affects` | `composedOf` `affects` `grants` `loot` | — |
 | `Spell` | `Rule` | `level` `school` `castingTime` `castingAction` `castingUnit` `castingCondition` `rangeKind` `range` `components` `material` `materialCost` `materialConsumed` `duration` `durationAmount` `durationUnit` `concentration` `ritual` `higherLevels` `save` `attack` `damageTypes` | `affects` | `composedOf` `affects` `casts` `grants` | quick, print, overview, full |

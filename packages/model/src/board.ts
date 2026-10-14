@@ -158,3 +158,104 @@ export function nextPlacement(
   }
   return { x: rand, y: rand, w, h, z };
 }
+
+/**
+ * Ein Anker (REQ-159, T-073): eine benannte Stelle auf der Leinwand. Mit
+ * Breite und Höhe ist er ein **Bereich** — ein Rechteck, zu dem man über
+ * einen Reiter springt und das man einklappen kann. Ohne sie bleibt er ein
+ * Punkt, wie der Prototyp ihn anlegt (`x`, `y`, `zoom`).
+ *
+ * Bereich ist kein neues Feld: `Board.anchors` gab es schon, und ein
+ * Bereich ist ein Anker, der seine Grösse kennt. Eine Form mit Namen
+ * (`shapes`) wäre Zeichnung — sie springt nirgends hin.
+ */
+export interface BoardAnchor {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  /** Nur ein Bereich hat sie. */
+  w?: number;
+  h?: number;
+  zoom?: number;
+}
+
+/** Ein Bereich unter dieser Grösse ist ein Versehen beim Ziehen, kein Rechteck. */
+export const AREA_MIN = { w: 80, h: 40 } as const;
+
+/** Die Anker eines Boards, wie sie gespeichert sind — unbrauchbare fallen weg. */
+export function anchorsOf(board: Entity): BoardAnchor[] {
+  const c = (board.components?.[BOARD_TYPE] ?? {}) as Record<string, unknown>;
+  const roh = Array.isArray(c['anchors']) ? (c['anchors'] as unknown[]) : [];
+  const out: BoardAnchor[] = [];
+  for (const a of roh) {
+    if (!a || typeof a !== 'object') continue;
+    const o = a as Record<string, unknown>;
+    if (typeof o['id'] !== 'string' || !o['id']) continue;
+    const anker: BoardAnchor = {
+      id: o['id'],
+      name: typeof o['name'] === 'string' && o['name'].trim() ? o['name'] : o['id'],
+      x: zahl(o['x'], 0),
+      y: zahl(o['y'], 0),
+    };
+    const w = zahl(o['w'], 0);
+    const h = zahl(o['h'], 0);
+    if (w > 0 && h > 0) {
+      anker.w = w;
+      anker.h = h;
+    }
+    if (typeof o['zoom'] === 'number' && o['zoom'] > 0) anker.zoom = o['zoom'];
+    out.push(anker);
+  }
+  return out;
+}
+
+/** Ist dieser Anker ein Bereich (hat er ein Rechteck)? */
+export function isArea(a: BoardAnchor): a is BoardAnchor & { w: number; h: number } {
+  return (a.w ?? 0) > 0 && (a.h ?? 0) > 0;
+}
+
+/**
+ * Gehört eine Karte zu einem Bereich? **Die Lage entscheidet** (T-073):
+ * ihre Mitte liegt im Rechteck. Eine Kante dafür gäbe es zweimal — einmal
+ * gespeichert und einmal so, wie es aussieht —, und beim ersten Verschieben
+ * stimmte eins davon nicht mehr. Liegt die Mitte in mehreren, gehört sie zum
+ * kleinsten: das ist der, den man darübergelegt hat.
+ */
+export function anchorAreaOf(anchors: readonly BoardAnchor[], p: BoardPlacement): string | null {
+  const mx = p.x + p.w / 2;
+  const my = p.y + p.h / 2;
+  let best: BoardAnchor | null = null;
+  for (const a of anchors) {
+    if (!isArea(a)) continue;
+    if (mx < a.x || mx > a.x + a.w || my < a.y || my > a.y + a.h) continue;
+    if (!best || a.w * a.h < (best.w ?? 0) * (best.h ?? 0)) best = a;
+  }
+  return best?.id ?? null;
+}
+
+/**
+ * Das Board mit diesen Ankern. Was an einem gespeicherten Anker sonst noch
+ * steht (ein Feld, das der Prototyp kennt und die Seite nicht), bleibt.
+ */
+export function withAnchors(board: Entity, anchors: readonly BoardAnchor[]): Entity {
+  const c = (board.components?.[BOARD_TYPE] ?? {}) as Record<string, unknown>;
+  const alt = new Map<string, Record<string, unknown>>();
+  for (const a of Array.isArray(c['anchors']) ? (c['anchors'] as unknown[]) : []) {
+    if (a && typeof a === 'object' && typeof (a as { id?: unknown }).id === 'string') {
+      alt.set((a as { id: string }).id, a as Record<string, unknown>);
+    }
+  }
+  const neu = anchors.map((a) => {
+    const o: Record<string, unknown> = { ...(alt.get(a.id) ?? {}), ...a };
+    if (!isArea(a)) {
+      delete o['w'];
+      delete o['h'];
+    }
+    return o;
+  });
+  return {
+    ...board,
+    components: { ...board.components, [BOARD_TYPE]: { ...c, anchors: neu } },
+  };
+}

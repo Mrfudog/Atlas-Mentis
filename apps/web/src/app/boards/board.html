@@ -19,6 +19,9 @@
         </span>
         <a class="knopf" [routerLink]="['/artikel', b.id]">Article</a>
         @if (darfSchreiben()) {
+          <button type="button" [attr.aria-pressed]="zeichnet()" (click)="zeichnet.set(!zeichnet())">
+            {{ zeichnet() ? 'Cancel area' : 'Add area' }}
+          </button>
           <button
             type="button"
             class="pri"
@@ -44,14 +47,41 @@
           <span class="fehler"> · {{ m }}</span>
         }
       } @else {
-        {{ karten().length }} on the board
-        @if (darfSchreiben()) {
-          · drag the title bar to move, the corner to resize
+        @if (zeichnet()) {
+          Drag a rectangle on the canvas to mark the area · Esc cancels
+        } @else {
+          {{ karten().length }} on the board
+          @if (karten().length > sichtbar().length) {
+            · {{ karten().length - sichtbar().length }} in collapsed areas
+          }
+          @if (darfSchreiben()) {
+            · drag the title bar to move, the corner to resize
+          }
         }
       }
     </p>
 
     <div class="spalten">
+      <div class="links">
+      @if (anker().length) {
+        <!-- Die Reiter stehen fest, solange die Leinwand im Bild ist (T-073). -->
+        <nav class="reiter" aria-label="Areas on this board">
+          @for (a of anker(); track a.id) {
+            <button
+              type="button"
+              class="reiter-knopf"
+              [class.zu]="istZu(a.id)"
+              (click)="springen(a)"
+              [title]="istZu(a.id) ? a.name + ' (collapsed)' : a.name"
+            >
+              @if (a.w) {
+                <span class="pfeil" aria-hidden="true">{{ istZu(a.id) ? '▸' : '▾' }}</span>
+              }
+              {{ a.name }}
+            </button>
+          }
+        </nav>
+      }
       <div #buehne class="buehne" tabindex="0" aria-label="Board canvas">
         @if (karte(); as c) {
           <div class="flaeche" [style.width.px]="c.width * zoom()" [style.height.px]="c.height * zoom()">
@@ -60,9 +90,79 @@
               [style.width.px]="c.width"
               [style.height.px]="c.height"
               [style.transform]="'scale(' + zoom() + ')'"
-              (pointerdown)="gewaehlt.set(null)"
+              [class.zeichnet]="zeichnet()"
+              (pointerdown)="leinwandGreifen($event)"
             >
-              @for (k of karten(); track k.rel.id) {
+              @for (a of bereiche(); track a.id) {
+                <section
+                  class="bereich"
+                  [class.zu]="istZu(a.id)"
+                  [style.left.px]="a.x"
+                  [style.top.px]="a.y"
+                  [style.width.px]="a.w"
+                  [style.height.px]="hoeheVon(a)"
+                  [attr.aria-label]="'Area ' + a.name"
+                >
+                  <header class="bkopf">
+                    <button
+                      type="button"
+                      class="klapp"
+                      (pointerdown)="$event.stopPropagation()"
+                      (click)="klappen(a.id)"
+                      [attr.aria-expanded]="!istZu(a.id)"
+                      [attr.aria-label]="(istZu(a.id) ? 'Expand ' : 'Collapse ') + a.name"
+                    >
+                      {{ istZu(a.id) ? '▸' : '▾' }}
+                    </button>
+                    @if (benennt() === a.id && darfSchreiben()) {
+                      <input
+                        #nm
+                        class="bname-ein"
+                        [value]="a.name"
+                        aria-label="Area name"
+                        (pointerdown)="$event.stopPropagation()"
+                        (keydown.enter)="umbenennen(a, nm.value)"
+                        (keydown.escape)="benennt.set(null)"
+                        (blur)="umbenennen(a, nm.value)"
+                      />
+                    } @else {
+                      <span class="bname">{{ a.name }}</span>
+                    }
+                    @if (darfSchreiben()) {
+                      <button
+                        type="button"
+                        class="weg ren"
+                        (pointerdown)="$event.stopPropagation()"
+                        (click)="benennt.set(a.id)"
+                        [attr.aria-label]="'Rename ' + a.name"
+                        title="Rename"
+                      >
+                        ✎
+                      </button>
+                      <button
+                        type="button"
+                        class="weg"
+                        (pointerdown)="$event.stopPropagation()"
+                        (click)="bereichLoeschen(a)"
+                        [attr.aria-label]="'Remove area ' + a.name"
+                        title="Remove the area — the cards stay"
+                      >
+                        ×
+                      </button>
+                    }
+                  </header>
+                </section>
+              }
+              @if (rahmen(); as r) {
+                <div
+                  class="rahmen"
+                  [style.left.px]="r.x"
+                  [style.top.px]="r.y"
+                  [style.width.px]="r.w"
+                  [style.height.px]="r.h"
+                ></div>
+              }
+              @for (k of sichtbar(); track k.rel.id) {
                 <article
                   class="kachel"
                   [class.gewaehlt]="gewaehlt() === k.rel.id"
@@ -148,6 +248,7 @@
             }
           </p>
         }
+      </div>
       </div>
 
       <aside class="rand" aria-label="Around the board">
