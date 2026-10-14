@@ -131,6 +131,11 @@ Die Regel ist kurz, weil eine lange niemand mehr nachliest:
   Konto. **Unfertiges sieht nur die Leitung der Kampagne** — und wer es
   angelegt hat oder schreiben darf; ein Artikel ohne Status-Karte zählt als
   fertig.
+- **Ein Bild hochladen heisst einen Artikel anlegen** (T-114): wer anlegt,
+  lädt hoch (`POST /api/assets`), mit denselben Regeln. Aus einem Artikel
+  heraus bekommt das Bild dessen Sichtbarkeit und Stand; **ausgeliefert**
+  wird eine Datei nur, wenn ihr `Asset`-Artikel für das Konto sichtbar ist
+  (`GET /api/assets/:id`, sonst 404).
 - **Die eigene Figur verwaltet der Spieler ganz** (E-014 d, D74): seinen
   Spielercharakter samt Statblock (`belongsTo`, auch eine Instanz) und
   Inventar (`carries`) schreibt er und setzt ihren Stand selbst, auch

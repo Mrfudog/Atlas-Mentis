@@ -38,6 +38,13 @@ if [ -n "$(docker compose ps -q db 2>/dev/null)" ]; then
   ls -1t backups/*.dump 2>/dev/null | tail -n +"$((KEEP + 1))" | xargs -r rm --
 fi
 
+# Die Bilder (T-114): das Verzeichnis gehört dem Benutzer node im Abbild
+# (uid 1000), sonst startet der Server nicht. Docker legt einen fehlenden
+# Bind-Mount als root an; darum hier, mit dem Abbild selbst, ohne sudo.
+docker run --rm --user 0 --entrypoint sh -v "$PWD/daten:/d" "$IMAGE" \
+  -c 'mkdir -p /d/bilder && chown 1000:1000 /d/bilder'
+[ -x ./bilder-sichern.sh ] && ./bilder-sichern.sh
+
 # Das laufende Abbild merken, damit „zurück" ein Befehl ist und keine Suche.
 current="$(sed -n 's/^IMAGE=//p' .env | tail -n 1)"
 [ -n "$current" ] && [ "$current" != "$IMAGE" ] && echo "$current" > previous-image

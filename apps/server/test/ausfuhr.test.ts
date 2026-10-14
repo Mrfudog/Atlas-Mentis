@@ -133,7 +133,7 @@ describe('GET /api/export', () => {
       const res = await ausfuhr('Basil', frage);
       for (const id of ids) expect(res.body).not.toContain(id);
       const datei = res.json();
-      expect(Object.keys(datei).sort()).toEqual(['at', 'campaign', 'entities', 'format', 'layers', 'registry']);
+      expect(Object.keys(datei).sort()).toEqual(['at', 'campaign', 'entities', 'files', 'format', 'layers', 'registry']);
       expect(JSON.stringify(datei.entities)).not.toMatch(/passwordHash|nw_session|"roles"|"actorIds"|"userIds"/);
     }
   });

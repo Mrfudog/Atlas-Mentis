@@ -165,7 +165,7 @@ jobs:
         run: |
           ssh "$TARGET" "mkdir -p '$DIR' '$PROXY_DIR'"
           scp "$COMPOSE" "$TARGET:$DIR/compose.yml"
-          scp deploy/deploy.sh "$TARGET:$DIR/deploy.sh"
+          scp deploy/deploy.sh deploy/bilder-sichern.sh "$TARGET:$DIR/"
           scp deploy/proxy/compose.yml deploy/proxy/Caddyfile "$TARGET:$PROXY_DIR/"
       # Der Reverse Proxy kommt aus dem Repository mit: Caddyfile und Compose
       # werden bei jedem Ausrollen frisch hingelegt, Caddy lädt sie ohne
@@ -182,7 +182,7 @@ jobs:
         # die stünde auf dem Server in der Prozessliste.
         run: |
           printf '%s\n' "$TOKEN" | ssh "$TARGET" \
-            "cd '$DIR' && chmod +x deploy.sh && read -r GHCR_TOKEN && export GHCR_TOKEN GHCR_USER='${{ github.actor }}' && ./deploy.sh '$IMAGE'"
+            "cd '$DIR' && chmod +x deploy.sh bilder-sichern.sh && read -r GHCR_TOKEN && export GHCR_TOKEN GHCR_USER='${{ github.actor }}' && ./deploy.sh '$IMAGE'"
 
   # Nach dem Ausrollen, mit dem Abbild, das gerade gestartet ist — nur,
   # wenn jemand CI von Hand mit dem Häkchen startet. Von selbst nie mehr:

@@ -1,0 +1,307 @@
+/**
+ * **Was eine Ansicht von einem Artikel zeichnet** — die Feldzellen, die
+ * Prosa und wie die Elemente der Anordnung sie unter sich aufteilen.
+ *
+ * Stand in der Artikelseite. Seit T-110 zeichnen der Druck und die Vorschau
+ * im Register dieselbe Ansicht für andere Orte, und zwei Abschriften
+ * derselben Zuteilung liefen beim ersten neuen Element auseinander.
+ */
+
+import {
+  BOOK_CARDS,
+  choicesOf,
+  choiceText,
+  effectText,
+  elementTakes,
+  entriesOf,
+  entryRef,
+  fieldText,
+  fieldTitle,
+  primaryInterface,
+  proseFields,
+  storedEffects,
+  typeChain,
+  unitsFor,
+} from '@nw/model';
+import type { Entity, LayoutElement, Registry } from '@nw/model';
+import { anzeigeWert, sindZeilen, tabelleAlsText, verweisZiele } from './felder';
+
+/** Was schon anderswo steht: der Name als Überschrift, Nummer, Sichtbarkeit und Quelle. */
+export const SCHON_ANDERSWO = ['Identity', 'Visibility', 'Source'];
+
+export interface Zelle {
+  ref: string;
+  comp: string;
+  prop: string;
+  label: string;
+  wert: string;
+  /** An einer Instanz: der Wert kommt von der Vorlage. */
+  geerbt?: boolean;
+  /** Ein langes Textfeld: gezeichnet als Markdown (M10), nicht als Zeile. */
+  lang?: boolean;
+  /** Ein Verweisfeld: Namen als Links statt Ids (T-068). */
+  links?: { ziel: string; text: string }[];
+  /** Hier leer, aber eine andere Fassung füllt es (T-103): „hier —", daneben ihr Wert. */
+  leer?: boolean;
+  /** Leer, und die Ansicht zeigt leere Felder (`ViewDef.empty: 'show'`, T-110). */
+  fehlt?: boolean;
+}
+
+export interface Prosa {
+  ref: string;
+  type: string;
+  key: string;
+  label: string;
+  wert: string;
+  /** Hier kein Eintrag, aber eine andere Fassung hat einen (T-103). */
+  leer?: boolean;
+}
+
+/** Ein Stück der gezeichneten Seite — ein Layout-Element, aufgelöst. */
+export interface Stueck {
+  id: string;
+  art:
+    | 'statblock'
+    | 'spell'
+    | 'item'
+    | 'beschreibung'
+    | 'felder'
+    | 'prosa'
+    | 'teile'
+    | 'fluss'
+    | 'ueberschrift'
+    | 'absatz'
+    | 'kanten';
+  text?: string;
+  zellen?: Zelle[];
+  prosa?: Prosa[];
+}
+
+/** Reiter gibt es auf einem Blatt nicht: ihre Gruppen stehen nacheinander. */
+export function flach(layout: readonly LayoutElement[]): LayoutElement[] {
+  return layout.flatMap((el) => (el.el === 'tabs' ? (el.tabs ?? []).flatMap((t) => flach(t.layout)) : [el]));
+}
+
+/**
+ * **Jede Feldzelle des Artikels**, in der Reihenfolge, in der die Art ihre
+ * Felder erklärt. Welche davon wo stehen, sagt die Anordnung (`anordnen`).
+ * Ein Mass steht mit Einheit da, umgerechnet nach `units` (D8) — „Range
+ * 150" ohne Einheit gibt es nicht.
+ */
+export function feldZellen(r: Registry, e: Entity, name: (id: string) => string | undefined): Zelle[] {
+  const typ = primaryInterface(e);
+  const mode = unitsFor(r, typ);
+  const out: Zelle[] = [];
+  /* Ein Prosafeld steht nicht in der Feldtabelle, es gehört dem Absatz
+     darunter (`prosa`) — hier stand es als „[object Object]" (W1). */
+  const prosa = new Set(proseFields(r, typ).map((f) => `${f.type}.${f.key}`));
+  for (const [comp, karte] of Object.entries(e.components ?? {})) {
+    /* Was schon anderswo steht: der Name als Überschrift, Aliasse und
+       Nummer darüber und darunter, Sichtbarkeit und Quelle in der
+       Seitenspalte. Zweimal dasselbe liest sich wie ein Fehler. */
+    if (SCHON_ANDERSWO.includes(comp)) continue;
+    const def = r.interfaces[comp];
+    const werte = (karte ?? {}) as Record<string, unknown>;
+    const reihe = [
+      ...Object.keys(def?.schema?.properties ?? {}).filter((k) => k in werte),
+      ...Object.keys(werte).filter((k) => !(k in (def?.schema?.properties ?? {}))),
+    ];
+    /* Tabellenzeilen (`Table.rows`) werden eine Tabelle, ihr Kopf
+       (`columns`) steht darin und nicht noch einmal als Zeile. */
+    const zeilen = Object.keys(werte).find((k) => sindZeilen(werte[k]));
+    for (const prop of reihe) {
+      const wert = werte[prop];
+      if (prosa.has(`${comp}.${prop}`)) continue;
+      if (zeilen && prop === 'columns') continue;
+      if (wert === null || wert === undefined || wert === '') continue;
+      const schema = def?.schema?.properties?.[prop];
+      /* Ein Prosafeld gehört dem Element `prose`, nicht der Tabelle. */
+      if (schema?.many && schema.format === 'long') continue;
+      /* Tabellenzeilen und Objekte liest `anzeigeWert` — `fieldText`
+         kennt Masse und Einheiten, aber keine Karten in einer Liste (W1). */
+      const tabelle = prop === zeilen && sindZeilen(wert);
+      const objekt =
+        typeof wert === 'object' &&
+        (!Array.isArray(wert) || wert.some((x) => x !== null && typeof x === 'object'));
+      /* Eine Wahl liest sich als Satz („Choose 2 from …", REQ-238),
+         nicht als ihre Schlüssel. */
+      const text = tabelle
+        ? tabelleAlsText(werte['columns'], wert)
+        : comp === 'Choices' && prop === 'choices'
+          ? choicesOf(e).map((c) => `${c.level && c.level > 1 ? `Level ${c.level}: ` : ''}${choiceText(c)}`).join('; ')
+          : /* Ebenso eine Wirkung („Strength becomes 19", E-025 a). */
+            comp === 'Effects' && prop === 'effects'
+            ? storedEffects(e).map(effectText).join('; ')
+            : objekt
+              ? anzeigeWert(wert)
+              : fieldText(r, schema, wert, mode);
+      if (!text) continue;
+      /* Ein Verweisfeld zeigt Namen, die auf ihren Artikel führen, und
+         nicht die Id (T-068) — auch eine Liste davon. */
+      const links = schema?.format === 'link' ? verweisZiele(wert, name) : undefined;
+      out.push({
+        ...(links?.length ? { links } : {}),
+        ref: `${comp}.${prop}`,
+        comp,
+        prop,
+        lang: tabelle || (schema?.format === 'long' && typeof wert === 'string'),
+        label: schema ? fieldTitle(r, typ, { type: comp, key: prop, prop: schema }) : prop,
+        wert: text,
+        geerbt: e.fromTemplate?.fields.includes(`${comp}.${prop}`) ?? false,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * **Die leeren Felder dazu** (`ViewDef.empty: 'show'`, T-110): jedes Feld,
+ * das die Art erklärt und der Artikel nicht füllt, als „—" hinter der
+ * letzten Zelle derselben Karte. Nicht dabei: was gerechnet wird (es hat
+ * immer einen Wert oder keinen Sinn), Prosa (sie gehört dem Element
+ * `prose`), die Beschreibung (sie ist ein eigenes Element) und was schon
+ * anderswo steht.
+ */
+export function mitLeeren(r: Registry, e: Entity, zellen: readonly Zelle[]): Zelle[] {
+  const typ = primaryInterface(e);
+  const da = new Set(zellen.map((z) => z.ref));
+  const out = [...zellen];
+  for (const comp of typeChain(r, typ)) {
+    if (SCHON_ANDERSWO.includes(comp)) continue;
+    for (const [prop, schema] of Object.entries(r.interfaces[comp]?.schema?.properties ?? {})) {
+      const ref = `${comp}.${prop}`;
+      if (da.has(ref) || schema.derived || (schema.many && schema.format === 'long')) continue;
+      if (ref === 'Description.description') continue;
+      const zelle: Zelle = {
+        ref,
+        comp,
+        prop,
+        label: fieldTitle(r, typ, { type: comp, key: prop, prop: schema }),
+        wert: '—',
+        fehlt: true,
+      };
+      let hinter = -1;
+      out.forEach((z, i) => {
+        if (z.comp === comp) hinter = i;
+      });
+      if (hinter < 0) out.push(zelle);
+      else out.splice(hinter + 1, 0, zelle);
+      da.add(ref);
+    }
+  }
+  return out;
+}
+
+/**
+ * Die Prosa dieses Artikels. Sie steht in Feldern mit `many` und langer
+ * Eingabe — es gibt keine zweite Sorte Inhalt mehr neben den Karten —,
+ * und jeder Eintrag trägt die Id, an der die Wissensfreigabe hängt.
+ */
+export function prosaVon(r: Registry, e: Entity): Prosa[] {
+  const typ = primaryInterface(e);
+  const out: Prosa[] = [];
+  for (const f of proseFields(r, typ)) {
+    const karte = (e.components?.[f.type] ?? {}) as Record<string, unknown>;
+    for (const eintrag of entriesOf(karte[f.key])) {
+      out.push({
+        ref: entryRef(f.type, f.key, eintrag.id),
+        type: f.type,
+        key: f.key,
+        label: fieldTitle(r, typ, f),
+        wert: eintrag.value,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * **Die Seite, wie die Anordnung sie sagt.** Ein Statblock zeichnet sich
+ * wie im Buch, weil das Register an `Statblock` das Element `statblock`
+ * setzt — hier steht kein Artname (W2).
+ *
+ * Jedes Element nimmt, was es zeichnet, aus dem Rest; **was keines
+ * zeichnet, steht am Ende, wenn die Ansicht es sagt** (`ViewDef.rest`,
+ * T-110). Die Artikelseite tut es: sie kennt noch nicht jedes Element
+ * (Bogen, Inventar, Karte …), und ein Feld, das nur dort stünde, wäre
+ * sonst nirgends zu lesen. Eine Karte tut es nicht.
+ */
+export function anordnen(
+  layout: readonly LayoutElement[],
+  zellen: readonly Zelle[],
+  prosa: readonly Prosa[],
+  opt: { beschreibung: string | null; beschreibungZeigen?: boolean; rest: boolean },
+): Stueck[] {
+  const felderDa = new Set<string>();
+  const prosaDa = new Set<string>();
+  const da = (typ: string, feld: string) => felderDa.has(typ) || felderDa.has(`${typ}.${feld}`);
+  const out: Stueck[] = [];
+
+  for (const el of flach(layout)) {
+    switch (el.el) {
+      case 'statblock':
+      case 'spell':
+      case 'item': {
+        for (const karte of BOOK_CARDS[el.el] ?? []) felderDa.add(karte);
+        /* Der Zauber zeichnet seinen Text selbst, weil „At Higher Levels"
+           dahinter steht. */
+        if (el.el === 'spell') {
+          felderDa.add('Description.description');
+          prosa.filter((b) => b.type === 'Prose' && b.key === 'paragraph').forEach((b) => prosaDa.add(b.ref));
+        }
+        out.push({ id: el.id, art: el.el });
+        break;
+      }
+      case 'description': {
+        const text = opt.beschreibung;
+        felderDa.add('Description.description');
+        /* Auch leer, wenn eine andere Fassung eine hat (T-103). */
+        if (text || opt.beschreibungZeigen) out.push({ id: el.id, art: 'beschreibung', text: text ?? '' });
+        break;
+      }
+      case 'fields': {
+        const hier = zellen.filter((z) => !da(z.comp, z.prop) && elementTakes(el, z.comp, z.prop));
+        hier.forEach((z) => felderDa.add(z.ref));
+        if (hier.length) out.push({ id: el.id, art: 'felder', zellen: hier });
+        break;
+      }
+      case 'prose': {
+        const hier = prosa.filter((b) => !prosaDa.has(b.ref) && elementTakes(el, b.type, b.key));
+        hier.forEach((b) => prosaDa.add(b.ref));
+        if (hier.length) out.push({ id: el.id, art: 'prosa', prosa: hier });
+        break;
+      }
+      case 'composed':
+        out.push({ id: el.id, art: 'teile' });
+        break;
+      /* Die Teile eines Kapitels oder einer Szene (T-108): die Komponente
+         fragt selbst und zeichnet nichts, wo nichts hängt. */
+      case 'parts':
+        out.push({ id: el.id, art: 'fluss' });
+        break;
+      case 'heading':
+        if (el.text) out.push({ id: el.id, art: 'ueberschrift', text: el.text });
+        break;
+      case 'text':
+        if (el.text) out.push({ id: el.id, art: 'absatz', text: el.text });
+        break;
+      /* Die Kanten: die Artikelseite hat sie in der Seitenspalte und
+         zeichnet das Stück nicht; ein Blatt ohne Spalte schon. */
+      case 'relations':
+        out.push({ id: el.id, art: 'kanten' });
+        break;
+      default:
+        /* Bogen, Inventar, Karte, Board … zeichnet noch niemand (W4 und
+           später). Was sie tragen, steht im Rest, wo die Ansicht ihn will. */
+        break;
+    }
+  }
+
+  if (opt.rest) {
+    const rest = zellen.filter((z) => !da(z.comp, z.prop));
+    if (rest.length) out.push({ id: 'rest-f', art: 'felder', zellen: rest });
+    const restProsa = prosa.filter((b) => !prosaDa.has(b.ref));
+    if (restProsa.length) out.push({ id: 'rest-p', art: 'prosa', prosa: restProsa });
+  }
+  return out;
+}
