@@ -1421,6 +1421,28 @@ Buch sein (`instanceOf`, wie beim Statblock): das +1-Langschwert speichert
 nur, was es vom Langschwert unterscheidet, und eine Korrektur am Langschwert
 erreicht es.
 
+**Wie gezählt wird, sagt die Kampagne** (T-127). Basils Blatt mit Raster
+und Zonen ist eine Art, Inventar zu führen; Gewicht mit Tragestufen und
+Slots je Stapel sind zwei andere, und zwei Runden derselben Installation
+dürfen verschieden spielen. Darum ist es ein Wort an der Kampagne
+(`Campaign.inventory`) und keine Einstellung des Registers. Gelesen wird es
+an genau einer Stelle (`inventoryRulesOf`): wenn die Regelsysteme Behälter
+werden (T-132), wandert das Wort in ein Modul, und nur diese Funktion sieht
+woanders nach.
+
+**Geben heisst, die Kante umzuhängen.** Wer der Gruppe ein Seil gibt,
+nimmt die `holds`-Kante aus dem eigenen Inventar und legt sie in das der
+Gruppe. Die Lage im Raster bleibt zurück — sie war die im alten Behälter —,
+und drüben liegt das Seil im Fach, bis jemand es hinlegt. Das
+Gruppeninventar schreibt jeder am Tisch, die Gruppe selbst nicht: etwas
+hineinzulegen ist Spiel, ihre Reisezähler zu ändern ist Leitung.
+
+**Reserviert ist ein Stapel.** Was ein Handwerksauftrag (T-128) braucht,
+bleibt, wo es liegt, und gehört weiter der Figur; die Kante sagt nur, für
+wen es zurückgelegt ist (`holds.props.reservedFor`), und solange wandert es
+nicht. An der Kante und nicht am Gegenstand, wie die Drehung: zurückgelegt
+sind *diese drei Barren hier*, nicht Eisenbarren überhaupt.
+
 ---
 
 ## Blaupause und Gang

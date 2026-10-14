@@ -817,7 +817,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `compareFor` *gm | players*, `languages` *Language articles*, `feats` *boolean*
+- `compareFor` *gm | players*, `languages` *Language articles*, `feats` *boolean*, `inventory` *grid | weight | slots*
 
 **Geerbte Felder**
 

@@ -611,6 +611,11 @@ export const relations: Record<string, RelationDef> = {
         rot: { type: 'number', title: 'Rotation in degrees', default: 0 },
         attuned: { type: 'boolean', title: 'Attuned' },
         note: { type: 'string', title: 'Note' },
+        /* **Reserviert für …** (T-127, für den Handwerksauftrag T-128): der
+           Artikel, der diesen Stapel gerade braucht. Das Stück bleibt, wo es
+           liegt; verschieben lässt es sich nicht, bis die Reservierung fällt
+           (`reservedFor`, `moveHeld`). */
+        reservedFor: { type: 'string', format: 'link', target: { interfaces: ['Identity'] }, title: 'Reserved for' },
       },
     },
   },
