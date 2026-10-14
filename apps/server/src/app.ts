@@ -24,6 +24,7 @@ import {
   storedKey,
   CAMPAIGN_TYPE,
   allowedMethods,
+  campaignLanguages,
   partyPool,
   rollAbilityScores,
   articleVisible,
@@ -1803,9 +1804,15 @@ export function buildApp({
     return { kampagne, methods, parties };
   }
 
+  /* Dazu die Sprachen der Kampagne (REQ-251, T-095): leer heisst jede. */
   app.get('/api/abilities', async (request) => {
     const { kampagne, methods, parties } = await verfahren(request);
-    return { campaign: kampagne ? { id: kampagne.id, name: entityName(kampagne) } : null, methods, parties };
+    return {
+      campaign: kampagne ? { id: kampagne.id, name: entityName(kampagne) } : null,
+      methods,
+      parties,
+      languages: campaignLanguages(kampagne ?? undefined),
+    };
   });
 
   /**

@@ -92,9 +92,35 @@ export interface ChoiceSource {
 export function choicesOf(e: Entity | undefined): Choice[] {
   const roh = e?.components?.['Choices']?.['choices'];
   if (!Array.isArray(roh)) return [];
-  return roh.filter(
-    (c): c is Choice => !!c && typeof c === 'object' && typeof (c as Choice).id === 'string' && !!(c as Choice).id,
-  );
+  return roh
+    .filter((c): c is Choice => !!c && typeof c === 'object' && typeof (c as Choice).id === 'string' && !!(c as Choice).id)
+    .map(sprachwahl);
+}
+
+const ZAHLWORT: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+
+/**
+ * **Eine Sprachwahl ohne Liste zieht aus den Sprachen** (T-095). Ältere
+ * Wahlen (die Karte `ProficiencyChoice`, Migration 028) und von Hand
+ * angelegte tragen oft nur einen Satz: „two standard languages of your
+ * choice". Daraus wurde ein Freitext, obwohl es die Sprachen als Artikel
+ * gibt. Nennt eine Übungswahl **ohne `from`** in Id oder Satz Sprachen,
+ * zieht sie aus den `Language`-Artikeln; fehlt `count`, gilt die Zahl am
+ * Anfang des Satzes. Gespeichert wird nichts davon — gelesen wie bisher,
+ * nur mit der Liste, die der Satz meint.
+ */
+function sprachwahl(c: Choice): Choice {
+  if ((c.kind ?? 'proficiency') !== 'proficiency') return c;
+  if (c.from && Object.keys(c.from).length) return c;
+  const satz = `${c.id} ${c.note ?? ''}`;
+  if (!/\blanguages?\b/i.test(satz)) return c;
+  const raus: Choice = { ...c, from: { enumRef: ['Language'] } };
+  if (c.count === undefined) {
+    const z = /^\s*(\d+|one|two|three|four|five|six)\b/i.exec(c.note ?? '')?.[1]?.toLowerCase();
+    const n = z ? (ZAHLWORT[z] ?? Number(z)) : NaN;
+    if (Number.isInteger(n) && n >= 1) raus.count = n;
+  }
+  return raus;
 }
 
 /** Die Antworten einer Figur: jede Kante `chose`. */

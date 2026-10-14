@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-13. 69 Schnittstellen, 57 Kantenarten.
+Stand 2026-10-14. 69 Schnittstellen, 57 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -752,7 +752,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `compareFor` *gm | players*
+- `compareFor` *gm | players*, `languages` *Language articles*
 
 **Geerbte Felder**
 
