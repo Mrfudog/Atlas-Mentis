@@ -497,6 +497,72 @@ export const relations: Record<string, RelationDef> = {
     to: ['Place'],
   },
 
+  /**
+   * **Was ein Laden führt** (T-129). Menge, Preis und Abschlag stehen an
+   * der Kante, nicht am Gegenstand: dieselbe Laterne kostet im einen Laden
+   * mehr als im anderen, und ein Feld am Gegenstand trüge nur eine der
+   * beiden Wahrheiten. `price` ersetzt den Listenpreis (`Item.copperPrice`,
+   * ebenfalls in Kupfer), `mod` schlägt etwas ab oder auf (`−1 gp`,
+   * `−10 %`). Leere Menge heisst: so viele, wie man will; 0 ist
+   * ausverkauft.
+   */
+  sells: {
+    type: 'sells',
+    label: 'sells',
+    inverseLabel: 'sold at',
+    means: 'A shop sells an item, with quantity, its own price and mark-down; the item lists where it is sold.',
+    from: ['Shop'],
+    to: ['Item'],
+    props: {
+      type: 'object',
+      properties: {
+        qty: { type: 'number', min: 0, title: 'Quantity' },
+        price: { type: 'number', min: 0, title: 'Price in copper (instead of list price)' },
+        mod: { type: 'string', title: 'Price modifier (−1 gp, −10 %)' },
+        available: { type: 'boolean', title: 'Available', default: true },
+      },
+    },
+  },
+
+  /**
+   * **Ein Rabatt ist eine Kante vom Gebenden zum Empfangenden** (T-129).
+   * Geben kann der Laden selbst, eine Fraktion, die ihn kontrolliert
+   * (`controls`), oder einer seiner Ladenhalter (`shopkeeper`) — so gibt
+   * die Gilde in jedem ihrer Läden dasselbe, ohne dass es an jedem Laden
+   * steht. Empfangen kann eine Figur, eine Gruppe (die der Kampagne) oder
+   * eine Fraktion; an einer Fraktion darf die Kante einen Mindestrang
+   * nennen (`rank`, ein Wort aus `Faction.ranks`, wie bei `knownBy`, A7):
+   * was der Zirkel bekommt, bekommt der Novize noch nicht. Eine Fraktion,
+   * die ihren eigenen Mitgliedern Rabatt gibt, zeigt auf sich selbst.
+   * Gerechnet wird beim Lesen (D8, `shopWares`).
+   */
+  discount: {
+    type: 'discount',
+    label: 'discount for',
+    inverseLabel: 'discount from',
+    means: 'A shop, a faction or a shopkeeper gives a creature, a party or a faction (from a rank) a price modifier at its shops; the receiver lists who gives it one.',
+    from: ['Shop', 'Faction', 'Creature'],
+    to: ['Creature', 'Party', 'Faction'],
+    props: {
+      type: 'object',
+      properties: {
+        mod: { type: 'string', title: 'Price modifier (−10 gp, −10 %)' },
+        rank: { type: 'string', title: 'From rank (faction)' },
+        note: { type: 'string', title: 'Why' },
+      },
+    },
+  },
+
+  /** Wer einen Laden hält (T-129): seine Rabatte und seine Beziehungen gelten dort. */
+  shopkeeper: {
+    type: 'shopkeeper',
+    label: 'shopkeeper',
+    inverseLabel: 'keeps shop',
+    means: 'A shop is kept by a creature, whose discounts count at the shop; the creature lists the shops it keeps.',
+    from: ['Shop'],
+    to: ['Creature'],
+  },
+
   describedIn: {
     type: 'describedIn',
     label: 'described in',

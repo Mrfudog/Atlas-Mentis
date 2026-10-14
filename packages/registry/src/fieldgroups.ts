@@ -1146,6 +1146,25 @@ export const fieldGroups = {
     },
   },
 
+  /**
+   * **Ein Laden** (T-129): was er für alle ab- oder aufschlägt. Die Waren
+   * stehen nicht hier, sondern an der Kante `sells` — mit Menge, eigenem
+   * Preis und eigenem Abschlag je Ware. Der Preis wird beim Lesen
+   * gerechnet (D8, `shopWares`) und sagt, woher jeder Abschlag kommt.
+   */
+  ShopInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        /* Ein Wort und keine zwei Zahlenfelder: `−10 gp` oder `−10 %` sagt
+           der Leitung beim Lesen, was gemeint ist; ein Feld „Prozent" neben
+           einem Feld „Gold" hiesse, dass eines davon leer steht und keiner
+           weiss, welches gilt. Gelesen von `parsePriceMod`. */
+        priceMod: { type: 'string', title: 'Price modifier (−10 gp, −10 %)' },
+      },
+    },
+  },
+
   FactionInfo: {
     schema: {
       type: 'object',

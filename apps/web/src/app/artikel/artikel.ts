@@ -52,6 +52,7 @@ import { BildPanel } from '../bilder/bildpanel';
 import { Statblock } from './statblock';
 import { Zauber } from './zauber';
 import { Gegenstand } from './gegenstand';
+import { Laden } from './laden';
 import { Abschnitte } from './abschnitte';
 import { Fluss } from './fluss';
 import { anordnen, feldZellen, mitLeeren, prosaVon, SCHON_ANDERSWO, type Prosa, type Stueck, type Zelle } from './anordnung';
@@ -129,6 +130,7 @@ interface Feld {
     Statblock,
     Zauber,
     Gegenstand,
+    Laden,
     Abschnitte,
     Fluss,
     FassungsKasten,
@@ -618,6 +620,11 @@ interface Feld {
                         }
                         <p class="hinweis">A campaign, party or character changes this with a “crafts with” edge to the recipe or its tool.</p>
                       </section>
+                    }
+                  }
+                  @case ('laden') {
+                    @if (ladenwaren(); as lw) {
+                      <nw-laden [waren]="lw" />
                     }
                   }
                   @case ('fluss') {
@@ -1416,6 +1423,8 @@ export class Artikel implements SchnellKontext {
     return z.at ? { at: z.at } : z.page ? { page: z.page } : {};
   }
 
+  /** Was dieser Laden führt (`refs.shop`, T-129). */
+  protected readonly ladenwaren = computed(() => this.bestand.laden().get(this.id()));
   /** Womit an diesem Rezept gefertigt wird (`refs.craft`, T-122). */
   protected readonly fertigung = computed(() => this.bestand.fertigung().get(this.id()));
   protected fertigungText(c: Fertigungswert): string {

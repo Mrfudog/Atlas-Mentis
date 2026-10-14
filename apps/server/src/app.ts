@@ -97,6 +97,9 @@ import {
   overridersIndex,
   CAMPAIGN_SETTING,
   craftCheck,
+  shopWares,
+  SHOP_TYPE,
+  type WareOffer,
   RECIPE_COMPONENT,
 } from '@nw/model';
 import type { BulkChange, CraftCheck, CraftSource, Entity, Registry } from '@nw/model';
@@ -1680,6 +1683,48 @@ export function buildApp({
     };
   }
 
+  /**
+   * **Was ein Laden führt, und zu welchem Preis** (T-129): am Tisch (Laden
+   * und Ware) und für jede eigene Figur (dazu ihre Rabatte). Gerechnet beim
+   * Lesen (D8) über den ganzen Stand — ein Rabatt der Gilde gilt auch, wenn
+   * jemand die Gilde nicht aufschlagen darf —, gezeigt wird aber nur, was
+   * dieser Betrachter sieht: die Waren aus dem gesiebten Laden und davon
+   * die sichtbaren Gegenstände; ein Geber, den er nicht sieht, bleibt ohne
+   * Namen.
+   */
+  async function ladenwaren(
+    request: FastifyRequest,
+    e: Entity,
+    map: Map<string, Entity>,
+  ): Promise<{ table: unknown[]; mine: unknown[] } | null> {
+    const registry = await repo.getRegistry();
+    if (!typeChain(registry, primaryInterface(e)).includes(SHOP_TYPE)) return null;
+    const verkauft = (e.relations ?? []).filter((r) => r.type === 'sells').map((r) => map.get(r.to)).filter((x): x is Entity => !!x);
+    const user = await viewerOf(request);
+    const figuren = (user?.actorIds ?? []).map((id) => map.get(id)).filter((x): x is Entity => !!x);
+    const genannt = new Set<string>();
+    for (const r of [...(e.relations ?? []), ...figuren.flatMap((f) => f.relations ?? [])]) genannt.add(r.to);
+    for (const x of map.values()) if ((x.relations ?? []).some((r) => r.type === 'controls' && r.to === e.id)) genannt.add(x.id);
+    const kandidaten = [...new Set([...verkauft, ...[...genannt].map((i) => map.get(i)).filter((x): x is Entity => !!x)])];
+    const sichtbar = new Set((await sieve(request, kandidaten, map)).map((x) => x.id));
+    const name = (id?: string) => (id && sichtbar.has(id) ? entityName(map.get(id)) : undefined);
+    const benannt = (w: WareOffer[]) =>
+      w
+        .filter((x) => sichtbar.has(x.item))
+        .map((x) => ({
+          ...x,
+          steps: x.steps.map((st) => {
+            const g = name(st.giver);
+            const t = name(st.target);
+            return { ...st, ...(g ? { giverName: g } : {}), ...(t ? { targetName: t } : {}) };
+          }),
+        }));
+    return {
+      table: benannt(shopWares(e, { entities: map })),
+      mine: figuren.map((f) => ({ id: f.id, name: entityName(f), wares: benannt(shopWares(e, { entities: map, buyer: f })) })),
+    };
+  }
+
   async function bezuegeVon(
     request: FastifyRequest,
     e: Entity,
@@ -2425,12 +2470,14 @@ export function buildApp({
     /* „Im Buch lesen" (T-091): wohin die Quellenangabe führt, wenn seine Ebene Text hat. */
     const reading = await leseZiel(einer);
     const craft = await fertigungswert(request, einer, stand.map);
+    const shop = await ladenwaren(request, einer, stand.map);
     const refs = {
       ...(await bezuegeVon(request, einer)),
       ...(ready ? { ready } : {}),
       ...(vergleich ? { compare: true } : {}),
       ...(reading ? { reading } : {}),
       ...(craft ? { craft } : {}),
+      ...(shop ? { shop } : {}),
     };
     /* Ob „Adapt" angeboten wird (E-018, T-082) und in welche Ebenen
        (`adaptTo`, T-098): dieselbe Frage wie die Route, damit die Seite

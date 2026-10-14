@@ -75,6 +75,7 @@ export interface Stueck {
     | 'absatz'
     | 'kanten'
     | 'handwerk'
+    | 'laden'
     | 'bild'
     | 'karte'
     | 'verlinkt';
@@ -303,6 +304,10 @@ export function anordnen(
          Die Werkbank an Figur und Gruppe kommt mit T-027. */
       case 'crafting':
         out.push({ id: el.id, art: 'handwerk' });
+        break;
+      /* Die Waren eines Ladens (T-129): gerechnet am Server (`refs.shop`). */
+      case 'wares':
+        out.push({ id: el.id, art: 'laden' });
         break;
       /* Die Teile eines Kapitels oder einer Szene (T-108): die Komponente
          fragt selbst und zeichnet nichts, wo nichts hängt. */

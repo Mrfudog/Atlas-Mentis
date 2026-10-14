@@ -15491,7 +15491,13 @@ var BEGRIFFE=[
    "Wisdom for the whole table, one character brewing with Dexterity — "+
    "and the more particular one wins, without a copy of the recipe. A "+
    "recipe may also say how many successful checks the work takes "+
-   "(checks), for rulebooks that count progress in rolls rather than days. On a "+
+   "(checks), for rulebooks that count progress in rolls rather than days. A "+
+   "shop is a place that sells: each ware is a sells edge to the item, with "+
+   "the quantity, the shop's own price instead of the list price and a "+
+   "modifier for this ware (−1 gp, −10 %). Discounts are edges too, from the "+
+   "shop, a faction that controls it or its shopkeeper to a character, a "+
+   "party or a faction from a rank on; the price is worked out on read and "+
+   "says where every step comes from. On a "+
    "map, a token is an edge with coordinates, and whether it is hidden "+
    "from the players and how stealthy it is sit on that edge too — the same "+
    "trap lies open on one map and under leaves on the next. A zone is an "+
@@ -15896,6 +15902,36 @@ function renderHowto(v){
     "  to hit = prof + mod(dex)  →  "+sgn(nW.toHit)+"     damage  "+nW.damage+"  ("+nW.average+")\n"+
     "Odd beast     prof 2 · STR 18 (+4)        edge: toHit 7 (book)\n"+
     "  to hit "+sgn(nB.toHit)+" fixed — the sum would give "+sgn(nB.toHitComputed)}));
+
+  /* ---- Ein Laden, durchgerechnet (T-129) ----
+     Die Rechnung selbst steht in `packages/model/src/shop.ts`
+     (`shopWares`); hier dieselben Schritte mit den Beschriftungen aus dem
+     Register. Prozent rechnen auf den Grundpreis, nicht aufeinander. */
+  var slP=((REG.relations.sells||{}).props||{}).properties||{};
+  var dcP=((REG.relations.discount||{}).props||{}).properties||{};
+  if(slP.qty&&dcP.rank){
+    v.appendChild(el("div",{class:"rsec",text:"A shop, its wares, and a discount by faction rank"}));
+    v.appendChild(el("p",{class:"hint"},
+      "The price of a ware is never stored. It starts from the shop's own "+
+      "price on the sells edge or the item's list price, then every modifier "+
+      "is applied: the shop's for everyone, the ware's own, and each discount "+
+      "edge that reaches the buyer — from the shop, from a faction that "+
+      "controls it, from its shopkeeper; to the character, their party, or a "+
+      "faction they belong to at the rank on the edge or higher. Percentages "+
+      "count on the base price and add up; a modifier that cannot be read "+
+      "counts as nothing and is shown as such."));
+    var lp=1000, sp=Math.round(lp*-10/100), ware=-100, gilde=Math.round(lp*-10/100);
+    v.appendChild(el("pre",{class:"code",text:
+      "Lantern          Item.copperPrice 1000              list 10 gp\n"+
+      "The Wick & Wire  Shop.priceMod −10 %                "+(sp/100)+" gp\n"+
+      "  sells → Lantern  "+slP.qty.title+" 3 · mod −1 gp       "+(ware/100)+" gp\n"+
+      "Lamplighters     controls → The Wick & Wire\n"+
+      "  discount → Lamplighters  mod −10 % · "+dcP.rank.title+" Flame\n"+
+      "  ranks Wick < Flame < Beacon\n\n"+
+      "Tam     memberOf Lamplighters (Wick)    10 − 1 − 1       = "+((lp+sp+ware)/100)+" gp\n"+
+      "Ysolde  memberOf Lamplighters (Beacon)  10 − 1 − 1 − 1   = "+((lp+sp+ware+gilde)/100)+" gp\n"+
+      "        −10 % Lamplighters for Lamplighters from Flame (−1 gp)"}));
+  }
 
   /* ---- Ein Zug auf der Karte, durchgerechnet (D56) ----
      Mit demselben Rechner, den die Karte nimmt, und dem Faktor, den die

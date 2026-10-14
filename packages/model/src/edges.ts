@@ -172,6 +172,17 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'shopPrice',
+    label: 'Shop prices',
+    area: 'character',
+    does: 'prices a shop’s wares for a buyer — the ware’s own price and mark-down, the shop’s, and the discounts of the shop, the factions controlling it and its shopkeepers to the buyer, their party or their faction from a rank',
+    uses: {
+      [M + 'shop.ts']: ['controls', 'discount', 'memberOf', 'memberOfParty', 'sells', 'shopkeeper'],
+      /* Was der Betrachter vom Laden sehen darf: die Waren und wer ihn kontrolliert. */
+      [S + 'app.ts']: ['controls', 'sells'],
+    },
+  },
+  {
     key: 'builder',
     label: 'Character builder and sheet',
     area: 'character',
@@ -330,7 +341,7 @@ export const EDGE_READERS: readonly EdgeReader[] = [
  * Wörter in einer Datei, die wie eine Kantenart heissen und keine sind: die
  * Layout-Elemente `knowledge` und `crafting` (auch in der Anordnung der
  * Artikelseite), die CSS-Klasse `holds`, das
- * Verb „carries" in einem Satz.
+ * Verb „carries" in einem Satz, die Herkunft `discount` eines Preisschritts.
  */
 export const NOT_EDGE_WORDS: Readonly<Record<string, readonly string[]>> = {
   [M + 'types.ts']: ['crafting', 'knowledge'],
@@ -338,6 +349,8 @@ export const NOT_EDGE_WORDS: Readonly<Record<string, readonly string[]>> = {
   [W + 'register/typ.ts']: ['carries', 'holds'],
   [W + 'register/arbeit.ts']: ['carries'],
   [W + 'artikel/anordnung.ts']: ['crafting'],
+  /* Die Herkunft eines Preisschritts heisst wie die Kante, aus der er kommt (T-129). */
+  [W + 'kern/api.ts']: ['discount'],
 };
 
 /** Die Auswerter, die diese Kantenart lesen. */

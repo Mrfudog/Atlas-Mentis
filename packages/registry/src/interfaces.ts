@@ -363,6 +363,26 @@ export const interfaces: Record<string, InterfaceDef> = {
     },
   },
 
+  /**
+   * **Ein Laden ist ein Ort** (T-129): er liegt in einer Gasse, hat ein
+   * Bild und Geheimnisse, und eine Fraktion kann ihn kontrollieren
+   * (`controls`). Dazu führt er Waren (`sells`) und gibt Rabatte
+   * (`discount`); wer ihn hält, steht an `shopkeeper`.
+   */
+  Shop: {
+    name: 'Shop',
+    area: 'world',
+    label: 'Shop',
+    extends: ['Place'],
+    schema: merge(g.ShopInfo),
+    /* Die Anordnung des Orts und die Waren davor: wer einen Laden
+       aufschlägt, will wissen, was er führt — die Punktreise und die
+       Würfeltabelle des Orts bleiben dabei, wenn er sie hat. */
+    views: {
+      full: { adjust: { extra: [{ id: 'shop-wares', el: 'wares' }], order: ['o-img', 'o-desc', 'o-f', 'shop-wares'] } },
+    },
+  },
+
   Faction: {
     name: 'Faction',
     area: 'world',
