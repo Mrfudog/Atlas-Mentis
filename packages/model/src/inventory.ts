@@ -464,6 +464,9 @@ export function coins(copper: unknown): { pp: number; gp: number; sp: number; cp
  */
 export const RESERVED_FOR = 'reservedFor';
 
+/** Die Lage im Raster und am Körper: sie gilt nur im Behälter, in dem das Stück liegt. */
+const LAGE = ['gx', 'gy', 'rot', 'slot'];
+
 export function reservedFor(edge: Pick<Relation, 'props'> | null | undefined): EntityId | null {
   const v = edge?.props?.[RESERVED_FOR];
   return typeof v === 'string' && v ? v : null;
@@ -477,10 +480,53 @@ export function reserve<R extends Pick<Relation, 'props'>>(edge: R, forId: Entit
   return { ...edge, props };
 }
 
-// ------------------------------------------------------------ Verschieben
+/** Was eine Schreibung an einem reservierten Stück täte: es wegnehmen, es ändern, eins erfinden. */
+export interface ReservationBreach {
+  edge: string;
+  item: EntityId;
+  order: EntityId;
+  change: 'removed' | 'changed' | 'added';
+}
 
-/** Die Lage im Raster und am Körper: sie gilt nur im Behälter, in dem das Stück liegt. */
-const LAGE = ['gx', 'gy', 'rot', 'slot'];
+/**
+ * **Die Sperre** (T-134): was `after` gegenüber `before` an reservierten
+ * Stücken anrührt. Ein reserviertes Stück bleibt, wie es ist — nicht weg
+ * (verkauft, verbraucht, verschoben, gelöscht), nicht anders (Menge,
+ * Gegenstand, Reservierung) —, solange sein Auftrag läuft (`live`). Nur
+ * die Lage im selben Behälter (Raster, Platz, Drehung, Griffweite `tier`)
+ * darf sich ändern: umräumen gibt nichts frei. Eine Reservierung **setzt** keine
+ * Schreibung; das tut der Auftrag (T-128). Ein Stück, dessen Auftrag
+ * nicht mehr läuft, ist frei — eine Reservierung ohne Auftrag sperrt nicht
+ * für immer.
+ */
+export function reservationBreaches(
+  before: Pick<Entity, 'relations'> | null | undefined,
+  after: Pick<Entity, 'relations'> | null | undefined,
+  live: (order: EntityId) => boolean,
+): ReservationBreach[] {
+  const vorher = new Map((before?.relations ?? []).filter((r) => r.type === 'holds').map((r) => [r.id, r]));
+  const nachher = new Map((after?.relations ?? []).filter((r) => r.type === 'holds').map((r) => [r.id, r]));
+  const ohneLage = (r: Relation) => {
+    const p: Record<string, unknown> = { ...(r.props ?? {}) };
+    for (const k of [...LAGE, 'tier']) delete p[k];
+    return JSON.stringify(Object.keys(p).sort().map((k) => [k, p[k]]));
+  };
+  const raus: ReservationBreach[] = [];
+  for (const [id, r] of vorher) {
+    const order = reservedFor(r);
+    if (!order || !live(order)) continue;
+    const n = nachher.get(id);
+    if (!n) raus.push({ edge: id, item: r.to, order, change: 'removed' });
+    else if (n.to !== r.to || ohneLage(n) !== ohneLage(r)) raus.push({ edge: id, item: r.to, order, change: 'changed' });
+  }
+  for (const [id, n] of nachher) {
+    const order = reservedFor(n);
+    if (order && order !== reservedFor(vorher.get(id))) raus.push({ edge: id, item: n.to, order, change: 'added' });
+  }
+  return raus;
+}
+
+// ------------------------------------------------------------ Verschieben
 
 export type MoveRefusal = 'missing' | 'reserved' | 'same' | 'cycle';
 
