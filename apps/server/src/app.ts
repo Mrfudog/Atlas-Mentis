@@ -73,6 +73,8 @@ import {
   isInstance,
   readInstance,
   redactEntity,
+  redactMap,
+  isMap,
   resolveInstance,
   thinInstance,
   stageBases,
@@ -107,6 +109,7 @@ import { ausfuhrName, kampagnenAusfuhr } from './ausfuhr.js';
 import { inDieGruppe } from './gruppe.js';
 import { InMemoryAssetStore, type AssetStore } from './assets.js';
 import { registerBilder } from './bilder.js';
+import { registerKarten } from './karten.js';
 import { LocalChangeFeed, mitKanal, registerLive, type ChangeFeed } from './live.js';
 import {
   ATTEMPT_WINDOW_MINUTES,
@@ -1260,9 +1263,25 @@ export function buildApp({
         entities = entities.map((e) => (statt.has(e.id) ? readInstance(alle, statt.get(e.id)!) : e));
       }
     }
+    /* **Eine Karte ohne das, was am Tisch niemand sehen soll** (T-115,
+       docs/Karten.md): versteckte Marker, Marker auf Verborgenes und die
+       Blätter der Leitung gehen gar nicht erst hinaus. Wer die Karte
+       leitet oder schreibt, bekommt sie ganz — sonst schriebe er beim
+       nächsten Speichern eine gekürzte Karte zurück. */
+    const sieht = new Map<string, boolean>();
+    const siehtZiel = (id: string): boolean => {
+      let ja = sieht.get(id);
+      if (ja === undefined) {
+        const z = alle.get(id);
+        ja = !!z && articleVisible(alle, z, auge);
+        sieht.set(id, ja);
+      }
+      return ja;
+    };
     return entities
       .filter((e) => articleVisible(alle, e, auge))
-      .map((e) => redactEntity(registry, alle, schmal ? schmal(e) : e, augen, gmFields));
+      .map((e) => redactEntity(registry, alle, schmal ? schmal(e) : e, augen, gmFields))
+      .map((e) => (isMap(e) ? redactMap(e, { gm: seesUnfinished(alle, e, auge), sees: siehtZiel }) : e));
   }
 
   app.get<{ Querystring: { ids?: string } }>('/api/entities', async (request, reply) => {
@@ -2672,6 +2691,8 @@ export function buildApp({
 
   /* Bilder hochladen und ausliefern (T-114): `bilder.ts`. */
   const bilder = registerBilder(app, { repo, store: assets, viewerOf, roh, sieve, geltend, anlegen });
+  /* Karten am Tisch (T-115): Brotkrumen, Unterkarten, Gruppe, die Karte der Sitzung. */
+  registerKarten(app, { repo, roh, sieve, geltend });
 
   app.put<{ Params: { id: string }; Body: unknown }>(
     '/api/entities/:id',

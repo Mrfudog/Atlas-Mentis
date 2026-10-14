@@ -75,7 +75,8 @@ export interface Stueck {
     | 'absatz'
     | 'kanten'
     | 'handwerk'
-    | 'bild';
+    | 'bild'
+    | 'karte';
   text?: string;
   /** Das Bild (`Image.image` oder das Asset selbst, T-114) mit Unterschrift und Alternativtext. */
   bild?: { wert: string; caption: string; alt: string };
@@ -313,6 +314,13 @@ export function anordnen(
         ['Image.image', 'Image.caption', 'Image.alt'].forEach((x) => felderDa.add(x));
         if (opt.bild) out.push({ id: el.id, art: 'bild', bild: opt.bild });
         break;
+      /* Die Karte (T-115): ihr Bild ist `Image.image`, und das zeichnet
+         sie selbst — als Kartenbild mit Gitter und Markern auf der Seite,
+         als Bild auf dem Blatt. */
+      case 'map':
+        felderDa.add('Image.image');
+        out.push({ id: el.id, art: 'karte', ...(opt.bild ? { bild: opt.bild } : {}) });
+        break;
       case 'text':
         if (el.text) out.push({ id: el.id, art: 'absatz', text: el.text });
         break;
@@ -322,7 +330,7 @@ export function anordnen(
         out.push({ id: el.id, art: 'kanten' });
         break;
       default:
-        /* Bogen, Inventar, Karte, Board … zeichnet noch niemand (W4 und
+        /* Bogen, Inventar, Board … zeichnet noch niemand (W4 und
            später). Was sie tragen, steht im Rest, wo die Ansicht ihn will. */
         break;
     }

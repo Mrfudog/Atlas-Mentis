@@ -185,7 +185,39 @@ einer herausgezoomten der halbe Rahmen.
 
 ---
 
+## In der Seite (T-115)
+
+Die Seite zeichnet die Karte mit `nw-karte` — auf der Artikelseite
+(Layout-Element `map`) und unter **Play** (`/play`). Gerechnet wird in
+`packages/model/src/map.ts`, nicht in der Komponente: Blätter
+(`drawnSheets`), Gitter und Messen (`gridGeometry`, `measure`), Rahmen
+und der Schritt hinein oder hinaus (`frameShare`, `zoomStep`), das
+Gruppen-Token (`partyPosition`) und was ein Spieler nicht bekommt
+(`redactMap`). Dieselben Regeln wie oben; die Tabelle K1–K7 in
+[Datenmodell.md](Datenmodell.md) sagt, wo was steht.
+
+- **Gesten:** ein Finger oder die Maus schwenkt, das Rad und zwei Finger
+  zoomen, `+`/`-` auf der Tastatur auch. Ein Marker antippen öffnet seine
+  Kurzansicht mit „Open article" — wie jeder genannte Artikel.
+- **Play folgt der Sitzung** (`SessionState.activeMap`, `GET /api/play`).
+  Wer unter Play in eine Unterkarte zoomt, schaut hinein (`?map=`) — die
+  Sitzung und der Beamer bleiben, wo sie sind.
+- **Der Stand kommt aus dem Bestand.** Die Karte ist ein Artikel; was
+  neben ihr steht (Brotkrumen, Unterkarten, Markerziele, Gruppe), fragt
+  `GET /api/maps/:id/context`, neu, sobald der Artikel neu kommt. Über
+  den Live-Kanal (T-116) kommt die Karte neu, wenn jemand einen Marker
+  setzt; der Kontext, wenn sich eine Karte oder ein Markerziel ändert, und
+  Play, wenn die Leitung eine andere Karte auf den Tisch legt.
+- **Die Leitung** (und wer die Karte schreibt) zieht Marker an eine neue
+  Stelle und setzt neue mit „Add marker" — beides schreibt nur die Kante.
+  Gitter, Massstab und Blätter stellt sie in den Feldern der Karte ein.
+
 ## Was noch fehlt
 
+- **Nebel, Licht, Sperren und Zonen** in der Seite (REQ-139, 140, 193,
+  208) — der Prototyp kann sie, die Seite zeichnet sie noch nicht.
+- **Rahmen aufziehen** und Marker einstellen (Art, Grösse, Drehung,
+  versteckt) mit der Maus; heute über die Kanten im Bearbeiten.
+- **Kacheln** für grosse Karten (REQ-138, `Map.tiles`).
 - **Bewegung**, die `mapBarriers` auch auswertet.
 - **Mehrere Tokens auf einmal** verschieben.

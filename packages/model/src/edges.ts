@@ -214,6 +214,17 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'maps',
+    label: 'Maps',
+    area: 'play',
+    does: 'draws the map with its markers and the frames of its sub-maps, zooms through them, shows where the party stands — and keeps hidden markers and markers on unseen articles from players (T-115)',
+    uses: {
+      [M + 'map.ts']: ['insideMap', 'mapOf', 'marker'],
+      [S + 'karten.ts']: ['insideMap', 'memberOfParty'],
+      [W + 'karten/karte.ts']: ['marker'],
+    },
+  },
+  {
     key: 'reading',
     label: 'Reading view',
     area: 'reading',
