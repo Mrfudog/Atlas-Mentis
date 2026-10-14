@@ -15,7 +15,7 @@ Epic: [[EP-02 Zugang & Betrieb]]
 ## Stories
 
 <!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->
-4 Stories · 18 Punkte · 1 steht · 1 teils · 2 offen
+5 Stories · 21 Punkte · 2 steht · 1 teils · 2 offen
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
@@ -23,4 +23,5 @@ Epic: [[EP-02 Zugang & Betrieb]]
 | [[REQ-042]] Schreibrecht je Feldgruppe | Spielleitung | 4 | offen |
 | [[REQ-237]] Spielende legen Artikel an, die Leitung gibt frei | Spieler | 2 | steht |
 | [[REQ-242]] Felder der eigenen Figur sperren | Spielleitung | 3 | offen |
+| [[REQ-316]] Eigene Ebene je Spieler als Vorgabe | Spieler | 1 | steht |
 <!-- stories:ende -->
