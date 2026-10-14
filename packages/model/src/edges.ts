@@ -230,10 +230,10 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'maps',
     label: 'Maps',
     area: 'play',
-    does: 'draws the map with its markers and the frames of its sub-maps, zooms through them, shows where the party stands — and keeps hidden markers and markers on unseen articles from players (T-115)',
+    does: 'draws the map with its markers and the frames of its sub-maps, zooms through them, shows where the party stands, puts the combatants of the encounter fought there on it and rings whose turn it is — and keeps hidden markers, markers on unseen articles and markers under the fog from players (T-115, T-117)',
     uses: {
-      [M + 'map.ts']: ['insideMap', 'mapOf', 'marker'],
-      [S + 'karten.ts']: ['insideMap', 'memberOfParty'],
+      [M + 'map.ts']: ['insideMap', 'mapOf', 'marker', 'participates'],
+      [S + 'karten.ts']: ['belongsTo', 'insideMap', 'memberOfParty', 'onMap', 'participates'],
       [W + 'karten/karte.ts']: ['marker'],
     },
   },

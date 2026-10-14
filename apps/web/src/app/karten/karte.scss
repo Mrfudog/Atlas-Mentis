@@ -326,3 +326,15 @@ button {
   border-color: var(--ink);
   background: rgb(0 0 0 / 0.25);
 }
+
+/* Wer dran ist (REQ-144): ein goldener Ring, der Nächste gestrichelt. */
+.marker.dran {
+  box-shadow:
+    0 0 0 3px var(--gold),
+    0 0 12px 4px rgb(201 150 40 / 0.8);
+  z-index: 2;
+}
+.marker.naechster {
+  outline: 2px dashed var(--gold);
+  outline-offset: 3px;
+}

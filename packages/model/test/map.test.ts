@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   cellAt,
+  clearPlayTokens,
+  placeTokens,
+  turnOf,
   coverAll,
   coverArea,
   fogOn,
@@ -239,5 +242,30 @@ describe('fog of war (REQ-139)', () => {
     const e = nebel([{ id: 'r', kind: 'rect', x: 0, y: 0, w: 0.5, h: 0.5 }]);
     expect(frameRevealed(e, { x: 0.4, y: 0.4, w: 0.3, h: 0.3 })).toBe(true);
     expect(frameRevealed(e, { x: 0.6, y: 0.6, w: 0.3, h: 0.3 })).toBe(false);
+  });
+});
+
+describe('play tokens and the turn (REQ-135, REQ-144)', () => {
+  it('places only who has no token yet, in a block around the centre, and clears play tokens', () => {
+    const e = karte('k', {}, [marker('da', 'a', { x: 0.1, y: 0.1 }), marker('fest', 'm', { x: 0.2, y: 0.2, kind: 'static' })]);
+    const p = placeTokens(e, ['a', 'b', 'c', 'c'], { x: 0.5, y: 0.5 }, 0.1, 0.5, (to) => `t-${to}`);
+    const neu = markersOf(p).filter((m) => m.kind === 'play');
+    expect(neu.map((m) => m.to)).toEqual(['b', 'c']);
+    expect(neu[0]).toMatchObject({ x: 0.45, y: 0.5 });
+    expect(neu[1]).toMatchObject({ x: 0.55, y: 0.5 });
+    expect(markersOf(clearPlayTokens(p)).map((m) => m.rel.id)).toEqual(['da', 'fest']);
+  });
+  it('names the current and the next participant, none before round 1', () => {
+    const teil = (id: string, to: string, init: number): Relation => ({ id, type: 'participates', to, props: { init } });
+    const enc: Entity = {
+      id: 'e',
+      interfaces: ['Encounter'],
+      name: 'e',
+      components: { Encounter: { round: 2, turn: 2 } },
+      relations: [teil('p1', 'a', 5), teil('p2', 'b', 15), teil('p3', 'c', 10)],
+    };
+    const t = turnOf(new Map(), enc);
+    expect([t.current?.to, t.next?.to]).toEqual(['a', 'b']);
+    expect(turnOf(new Map(), { ...enc, components: { Encounter: { round: 0 } } })).toEqual({});
   });
 });

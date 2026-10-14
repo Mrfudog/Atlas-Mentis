@@ -1023,13 +1023,13 @@ export const relations: Record<string, RelationDef> = {
     },
   },
 
-  /** Wo sie stattfindet — damit der Initiative-Zeiger auf die Karte kann. */
+  /** Wo sie stattfindet — damit der Initiative-Zeiger auf die Karte kann
+      (REQ-144, T-117: `turnOf`, `/api/maps/:id/context`). */
   onMap: {
     type: 'onMap',
     label: 'fought on',
     inverseLabel: 'fights here',
     means: 'An encounter or story is fought on a map; the map lists what is fought there.',
-    intended: 'Open the map in play: starting the encounter should show this map on the map screen.',
     from: ['Encounter', 'Story'],
     to: ['Map'],
     cardinality: 'one',
