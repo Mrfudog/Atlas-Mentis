@@ -372,6 +372,7 @@ interface Feld {
                           [bevorzugt]="f.schema?.target?.tags ?? []"
                           [ausser]="e.id"
                           [label]="f.label"
+                          [spieler]="f.comp === 'Visibility'"
                         />
                       }
                       @case ('mehrfach') {
