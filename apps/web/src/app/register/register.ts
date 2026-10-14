@@ -5,6 +5,7 @@ import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
 import { RegisterArbeit } from './arbeit';
 import { RegKante } from './kante';
+import { RegKantentabelle } from './kantentabelle';
 import { RegListe } from './liste';
 import { techName } from './regeln';
 import { RegTyp } from './typ';
@@ -29,7 +30,7 @@ type Reiter = 'types' | 'edges' | 'lists';
  */
 @Component({
   selector: 'nw-register',
-  imports: [RouterLink, RegTyp, RegKante, RegListe],
+  imports: [RouterLink, RegTyp, RegKante, RegKantentabelle, RegListe],
   template: `
     <div class="seite">
       <nav class="leiste" [class.zu]="!!gewaehlt() && !listeOffen()" aria-label="Registry rows">
@@ -125,6 +126,10 @@ type Reiter = 'types' | 'edges' | 'lists';
           <nw-reg-kante [name]="edge()!" [darf]="darf()" />
         } @else if (reiter() === 'lists' && list()) {
           <nw-reg-liste [name]="list()!" [darf]="darf()" />
+        } @else if (reiter() === 'edges') {
+          <!-- Wie Kanten wirken (T-111): je Kantenart Bedeutung und
+               Wirkung, gerechnet aus den Auswertern (edgeEffects). -->
+          <nw-reg-kantentabelle [suche]="suche()" />
         } @else {
           <p class="leer">Pick a {{ reiter() === 'types' ? 'type' : reiter() === 'edges' ? 'kind of edge' : 'list' }} on the left.</p>
         }

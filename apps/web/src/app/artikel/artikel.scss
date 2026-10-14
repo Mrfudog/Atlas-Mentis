@@ -250,6 +250,13 @@ h1 {
   gap: 0.4rem;
   align-items: center;
 }
+/* Vor dem Anlegen: was die gewählte Kantenart bedeutet und bewirkt (T-111). */
+.kantenvorschau {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  color: var(--dim);
+  max-width: 60ch;
+}
 /* „Edit" als Fassung, wenn es mehrere eigene Ebenen gibt (T-098). */
 .fassung-wahl {
   display: inline-flex;

@@ -318,6 +318,22 @@ export interface RelationDef {
   label: string;
   /** How the edge reads from its target. One edge, two labels (REQ-182). */
   inverseLabel: string;
+  /**
+   * **Was die Kante bedeutet**, ein Satz in beide Richtungen (T-111,
+   * REQ-257): „A statblock belongs to one creature; the creature reads its
+   * numbers from it." Was sie **bewirkt**, steht nicht hier, sondern wird
+   * aus den Auswertern gerechnet (`edgeEffects`, `edges.ts`) — eine
+   * behauptete Wirkung wäre am Tag des nächsten Umbaus falsch.
+   */
+  means?: string;
+  /**
+   * **Was die Kante bewirken soll und heute noch nicht bewirkt** (T-111).
+   * Nur an Kanten, die eine Wirkung versprechen — `affects` mit `effect`,
+   * `casts` mit `uses` —, aber von keinem Auswerter gelesen werden. Die
+   * Oberfläche sagt dann „not evaluated yet"; liest sie ein Auswerter,
+   * fällt die Angabe weg (ein Test prüft es).
+   */
+  intended?: string;
   /** Source interfaces; `*` for any. */
   from?: string[];
   /** Target interfaces; `*` for any, `same` for the source's own interface. */

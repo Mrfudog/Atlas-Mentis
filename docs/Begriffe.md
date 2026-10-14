@@ -420,6 +420,24 @@ Eine Kante mit `section` **setzt ein**, statt zu verweisen: die drei
 gepoolten Regeln eines Statblocks stehen im Artikel und nicht als Links
 daneben.
 
+### Was eine Kante bedeutet, sagt die Zeile; was sie bewirkt, der Code
+
+Eine Kante an einen Artikel zu hängen, kann viel tun — ihn in den Stapel
+bringen (`inLayer`), einer Figur eine Stufe geben (`hasClass`), einer
+Gruppe ein Geheimnis verraten (`knownBy`) — oder gar nichts ausser einer
+Zeile unter „Relations" (`livesIn`). Von aussen sah man den Unterschied
+nicht. Darum trägt jede Kantenart einen Satz, was sie **bedeutet**
+(`means`), und ihre **Wirkung** wird gerechnet: aus dem Verzeichnis der
+Auswerter (`EDGE_READERS`), das ein Test gegen den Quelltext hält, und aus
+der Zeile selbst (`section`, `asField`, Rechnungen wie `sum(hasClass.level)`).
+Eine Wirkung von Hand ins Register zu schreiben hiesse, eine Behauptung zu
+pflegen, die beim nächsten Umbau still falsch wird.
+
+Verspricht eine Kante mehr, als heute jemand liest — `affects` mit `effect`,
+`casts` mit `uses` —, steht das in `intended`, und die Oberfläche sagt „not
+evaluated yet". Sobald ein Auswerter sie liest, muss `intended` weg: der
+Test lässt beides nicht zugleich stehen.
+
 ### Eine Stufe ist ein Zustand, eine Wirkung ist eine Kante
 
 „Exhaustion 3" ist ein Artikel der Art `Condition` mit `stage` 3 und einer
