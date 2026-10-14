@@ -103,7 +103,10 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   Blatt A4, T-110), die **Suche** (`suche/`, Kopfleiste, Strg+K und `/`:
   Treffer beim Tippen aus `GET /api/search`, nach Nähe, Filter nach Art,
   Ebene, Herausgeber und Bereich, das „+" ist die Ansicht `search`;
-  T-138) und das Konto mit seinen API-Tokens (`konto/`); die
+  T-138), unter der Marke die **laufende Kampagne** mit der Zahl ihrer
+  Ebenen und dem Popup zum Einstellen (`verwaltung/stapel-knopf.ts`,
+  `kern/stapel.ts`: Ebenen, Gruppen, Vergleich auch einer ganzen Gruppe,
+  Wechsel der Kampagne für die Verwaltung; T-143) und das Konto mit seinen API-Tokens (`konto/`); die
   Oberfläche hält **keinen Bestand** (W7). Initiative, Nebel und Licht
   noch nicht;
   gezeichnet wird aus dem Register über `packages/model`, nicht aus einer
