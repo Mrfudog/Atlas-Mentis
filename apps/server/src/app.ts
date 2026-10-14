@@ -1005,6 +1005,10 @@ export function buildApp({
       if (await mayCreate(user)) return;
       return reply.code(403).send({ error: 'Anlegen darfst du hier nicht.' });
     }
+    /* „Quelle ersetzen" an einem Bild (T-119): die Route fragt
+       `mayWrite` selbst — erst nach dem Sieb, damit ein fremdes Bild 404
+       sagt und nicht 403. */
+    if (/^\/api\/assets\/[^/]+\/file$/.test(url) && request.method === 'PUT') return;
     /* Ein Konto schreibt seine Figur und was an ihr hängt, was es selbst
        angelegt hat und was in seinen Ebenen liegt (T-098) — und sonst
        nichts. */
@@ -1432,7 +1436,19 @@ export function buildApp({
    */
   app.get('/api/list', async (request) => {
     const idx = await indexFor(request);
-    const q = parseListQuery(request.query as Record<string, unknown>);
+    const roh_ = request.query as Record<string, unknown>;
+    const q = parseListQuery(roh_);
+    /* **Unbenutzte Bilder** (T-119, `unused=1`): was kein Artikel zeigt,
+       **den dieser Betrachter sieht** — ein Bild, das nur ein verborgener
+       NSC trägt, ist für die Spielerin unbenutzt, und „benutzt" verriete
+       den NSC. */
+    if (roh_['unused'] === '1' || roh_['unused'] === 'true') {
+      const genutzt = new Set<string>();
+      for (const [asset, uses] of await bilder.verwendung()) {
+        if (uses.some((u) => idx.names.has(u.id))) genutzt.add(asset);
+      }
+      q.exclude = genutzt;
+    }
     const blatt = queryList(idx, q);
     /* Eine Auswahl nach Ids fragt nach Bekanntem; dort fehlt nichts. */
     const aus = q.ids?.length ? null : await ausgeblendet(request, idx, q);
@@ -2690,7 +2706,20 @@ export function buildApp({
   });
 
   /* Bilder hochladen und ausliefern (T-114): `bilder.ts`. */
-  const bilder = registerBilder(app, { repo, store: assets, viewerOf, roh, sieve, geltend, anlegen });
+  const bilder = registerBilder(app, {
+    repo,
+    store: assets,
+    viewerOf,
+    roh,
+    sieve,
+    geltend,
+    anlegen,
+    schreiben,
+    darfSchreiben: async (request, id) => {
+      const user = await viewerOf(request);
+      return !!user && mayWrite(user, await ownedBy(user), id);
+    },
+  });
   /* Karten am Tisch (T-115): Brotkrumen, Unterkarten, Gruppe, die Karte der Sitzung. */
   registerKarten(app, { repo, roh, sieve, geltend });
 
@@ -2705,74 +2734,91 @@ export function buildApp({
       if (entity.id !== request.params.id) {
         return reply.code(400).send({ error: 'id im Pfad und im Körper stimmen nicht überein' });
       }
-
-      /* **Gegen welchen Stand wird geschrieben?** (REQ-192) Die Revision,
-         die gelesen wurde; ohne sie nur gegen „keinen" — anlegen ja,
-         überschreiben nein. Ein Schreiben ohne gelesenen Stand gewänne
-         sonst still gegen alles, was seither geschah. Hier zuerst
-         geprüft, damit nichts anderes geschieht (der fertige Stand unten),
-         und beim Schreiben noch einmal, gesperrt (`putEntity`). */
-      const erwartet = entity.revision ?? null;
-      const steht = (await repo.getEntity(entity.id))?.revision ?? null;
-      if (steht !== erwartet) return konflikt(request, reply, entity.id, erwartet);
-
-      /* **`ready` setzt die Leitung** (REQ-237, E-011): wer nicht
-         `maySetReady` ist, macht aus einem unfertigen Artikel keinen
-         fertigen — auch nicht, indem er die Status-Karte weglässt (ohne
-         Karte gilt er als fertig, `isReady`). Die eigene Figur ist
-         ausgenommen (E-014 d).
-
-         **Ändert eine Spielerin einen fertigen Artikel, fällt er auf
-         `prepared`** (E-012), und der Stand davor bleibt als Kopie
-         (`entity_ready`): für alle anderen gilt er weiter, bis die Leitung
-         wieder `ready` setzt. Jede Änderung zählt — Lore hat keinen
-         Spielstand. Ändert die Leitung selbst, fällt nichts zurück. */
-      const schreiber = await viewerOf(request);
-      const registry = await repo.getRegistry();
-      let zurueck: ReadyStand | null = null;
-      if (schreiber && !schreiber.isAdmin) {
-        const bestand = new Map((await repo.listEntities()).map((e) => [e.id, e]));
-        const vorher = bestand.get(entity.id);
-        const figur = eigeneFigur(schreiber, bestand, registry);
-        if (!maySetReady(schreiber, bestand, vorher ?? entity, figur)) {
-          const warFertig = vorher ? isReady(vorher) : false;
-          /* Ohne Stand in der Art gibt es nichts, worauf er fallen könnte. */
-          const traegtStand = typeChain(registry, primaryInterface(entity)).includes(STATUS_COMPONENT);
-          if (warFertig && vorher && traegtStand && kern(vorher) !== kern(entity)) {
-            entity.components = {
-              ...(entity.components ?? {}),
-              [STATUS_COMPONENT]: { ...(entity.components?.[STATUS_COMPONENT] ?? {}), status: 'prepared' },
-            };
-            zurueck = { entity: vorher, at: typeof vorher.updatedAt === 'string' ? vorher.updatedAt : new Date().toISOString() };
-          } else if (!warFertig && isReady(entity)) {
-            return reply.code(403).send({ error: '„ready" setzt die Leitung.' });
-          }
-        }
-      }
-
-      let ergebnis: Awaited<ReturnType<typeof schreibeGeprueft>>;
-      try {
-        ergebnis = await schreibeGeprueft(entity, async () => {
-          /* Vor dem Artikel: mit ihm ändert sich der Stempel, und erst dann
-             liest jemand den neuen Stand (`fertigeStaende`). */
-          if (zurueck) await repo.keepReadyStand(zurueck);
-          else if (isReady(entity)) await repo.dropReadyStand(entity.id);
-        }, erwartet);
-      } catch (error) {
-        if (error instanceof RevisionConflict) return konflikt(request, reply, entity.id, erwartet);
-        throw error;
-      }
-      if ('issues' in ergebnis) {
-        return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues: ergebnis.issues });
-      }
-      await repo.appendEvent('entity.written', entity.id, {
-        interfaces: entity.interfaces,
-        cards: Object.keys(entity.components ?? {}),
-        ...(zurueck ? { fellBack: true } : {}),
-      });
-      return ergebnis.stored;
+      const r = await schreiben(request, entity);
+      if ('konflikt' in r) return konflikt(request, reply, entity.id, r.konflikt);
+      return reply.code(r.code).send(r.body);
     },
   );
+
+  /**
+   * **Einen Artikel schreiben**, mit allen Regeln von `PUT`: gegen die
+   * gelesene Revision, `ready` nur durch die Leitung, der Rückfall auf
+   * `prepared` (E-012), durch `validateEntity`. Eine Funktion wie
+   * `anlegen`, weil „Quelle ersetzen" an einem Bild (T-119) denselben
+   * Artikel schreibt — und dieselben Regeln an zwei Stellen laufen nur so
+   * lange gleich, bis sich eine ändert.
+   */
+  async function schreiben(
+    request: FastifyRequest,
+    entity: Entity,
+  ): Promise<{ code: number; body: unknown } | { konflikt: number | null }> {
+
+    /* **Gegen welchen Stand wird geschrieben?** (REQ-192) Die Revision,
+       die gelesen wurde; ohne sie nur gegen „keinen" — anlegen ja,
+       überschreiben nein. Ein Schreiben ohne gelesenen Stand gewänne
+       sonst still gegen alles, was seither geschah. Hier zuerst
+       geprüft, damit nichts anderes geschieht (der fertige Stand unten),
+       und beim Schreiben noch einmal, gesperrt (`putEntity`). */
+    const erwartet = entity.revision ?? null;
+    const steht = (await repo.getEntity(entity.id))?.revision ?? null;
+    if (steht !== erwartet) return { konflikt: erwartet };
+
+    /* **`ready` setzt die Leitung** (REQ-237, E-011): wer nicht
+       `maySetReady` ist, macht aus einem unfertigen Artikel keinen
+       fertigen — auch nicht, indem er die Status-Karte weglässt (ohne
+       Karte gilt er als fertig, `isReady`). Die eigene Figur ist
+       ausgenommen (E-014 d).
+
+       **Ändert eine Spielerin einen fertigen Artikel, fällt er auf
+       `prepared`** (E-012), und der Stand davor bleibt als Kopie
+       (`entity_ready`): für alle anderen gilt er weiter, bis die Leitung
+       wieder `ready` setzt. Jede Änderung zählt — Lore hat keinen
+       Spielstand. Ändert die Leitung selbst, fällt nichts zurück. */
+    const schreiber = await viewerOf(request);
+    const registry = await repo.getRegistry();
+    let zurueck: ReadyStand | null = null;
+    if (schreiber && !schreiber.isAdmin) {
+      const bestand = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+      const vorher = bestand.get(entity.id);
+      const figur = eigeneFigur(schreiber, bestand, registry);
+      if (!maySetReady(schreiber, bestand, vorher ?? entity, figur)) {
+        const warFertig = vorher ? isReady(vorher) : false;
+        /* Ohne Stand in der Art gibt es nichts, worauf er fallen könnte. */
+        const traegtStand = typeChain(registry, primaryInterface(entity)).includes(STATUS_COMPONENT);
+        if (warFertig && vorher && traegtStand && kern(vorher) !== kern(entity)) {
+          entity.components = {
+            ...(entity.components ?? {}),
+            [STATUS_COMPONENT]: { ...(entity.components?.[STATUS_COMPONENT] ?? {}), status: 'prepared' },
+          };
+          zurueck = { entity: vorher, at: typeof vorher.updatedAt === 'string' ? vorher.updatedAt : new Date().toISOString() };
+        } else if (!warFertig && isReady(entity)) {
+          return { code: 403, body: { error: '„ready" setzt die Leitung.' } };
+        }
+      }
+    }
+
+    let ergebnis: Awaited<ReturnType<typeof schreibeGeprueft>>;
+    try {
+      ergebnis = await schreibeGeprueft(entity, async () => {
+        /* Vor dem Artikel: mit ihm ändert sich der Stempel, und erst dann
+           liest jemand den neuen Stand (`fertigeStaende`). */
+        if (zurueck) await repo.keepReadyStand(zurueck);
+        else if (isReady(entity)) await repo.dropReadyStand(entity.id);
+      }, erwartet);
+    } catch (error) {
+      if (error instanceof RevisionConflict) return { konflikt: erwartet };
+      throw error;
+    }
+    if ('issues' in ergebnis) {
+      return { code: 422, body: { error: 'Validierung fehlgeschlagen', issues: ergebnis.issues } };
+    }
+    await repo.appendEvent('entity.written', entity.id, {
+      interfaces: entity.interfaces,
+      cards: Object.keys(entity.components ?? {}),
+      ...(zurueck ? { fellBack: true } : {}),
+    });
+    return { code: 200, body: ergebnis.stored };
+  }
 
   /**
    * **Prüfen und schreiben** — für `PUT` und den Knopf „ready". Eine
