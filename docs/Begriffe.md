@@ -946,6 +946,25 @@ Grundregeln. **Gewürfelt wird am Server**, weil nur so jeder Wurf im
 Protokoll steht; der Pool einer Gruppe steht an ihr (`abilityPool`), und
 neu würfelt ihn nur die Leitung — sonst würfelte die Gruppe, bis es passt.
 
+**Die Startausrüstung ist ein Verfahren wie die Attribute** (T-096,
+REQ-250). Die Leitung wollte drei Wege — nach den Regeln, mit Gold, oder
+frei mit eigenen Grenzen („200 gp, höchstens ein ungewöhnlicher magischer
+Gegenstand") — und wird weitere erfinden. Also ist jeder ein Artikel
+(`EquipmentMethod`), und die Kampagne nennt die erlaubten
+(`allowsEquipment`), genau wie bei `AbilityMethod`. **Die Varianten
+bleiben Wahlen** (E-015 a): wer (a) nimmt, hat eine Antwort an der Figur
+und keine Kopie der Liste. Das Feste ist eine Wahl mit einer einzigen
+Möglichkeit — sie fragt niemanden und zählt doch. **Eine Möglichkeit nennt
+ihre Stücke** (`items`); wo sie es nicht tut, weil die Klasse vor T-096
+eingelesen wurde, liest das Modell die Verweise in ihrem Text, denn die
+Ebene neu einzulesen verlöre, was die Leitung an ihr geändert hat.
+**Gerechnet und geprüft wird am Server**: das Gold würfelt er, und der
+Eintrag im Protokoll ist der Beleg — ein Betrag aus der Maske gälte sonst
+ungeprüft; der Einkauf wird gegen Budget und Grenzen gerechnet, bevor das
+Inventar entsteht. Danach ist die Ausrüstung **Inventar wie jedes andere**
+(`carries`, `holds`, `Inventory.copper`) — kein zweiter Ort, an dem „was
+sie hat" steht.
+
 **Ein Merkmal, das allein in einem Absatz steht, ist eingebettet** (W6).
 5e.tools zieht Merkmale in andere hinein — der Battle Master beginnt mit
 einem Kopf, der „Student of War" und „Combat Superiority" enthält, und

@@ -21,6 +21,7 @@ export type BuilderStep =
   | { id: 'abilities'; kind: 'abilities' }
   | { id: 'level'; kind: 'level' }
   | { id: string; kind: 'choice'; at: ChoiceAtCharacter }
+  | { id: 'equipment'; kind: 'equipment'; choices: ChoiceAtCharacter[] }
   | { id: 'details'; kind: 'details' };
 
 /** Die Reihenfolge der Quellen: Abstammung, Hintergrund, Klasse, und was sie öffnen. */
@@ -33,15 +34,23 @@ export const choiceKey = (c: ChoiceAtCharacter): string => `${c.source.entity.id
  * **Die Schritte für diesen Entwurf.** `levelUp` beginnt mit der Stufe und
  * lässt aus, was die gespeicherte Figur schon beantwortet hat (`done`).
  * Eine Wahl ohne Spielraum (`fixed`) ist kein Schritt.
+ *
+ * **Die Ausrüstung ist ein Schritt** (T-096, REQ-250): welche Varianten
+ * (a)/(b) gelten, hängt am Verfahren der Kampagne — wer Startgold nimmt,
+ * wählt keine. Darum stehen die Ausrüstungswahlen einer neuen Figur nicht
+ * je als Schritt da, sondern gesammelt im Schritt `equipment` vor dem
+ * Namen.
  */
 export function builderSteps(
   draft: Entity,
   byId: ReadonlyMap<EntityId, Entity>,
   opts: { levelUp?: boolean; done?: ReadonlySet<string> } = {},
 ): BuilderStep[] {
-  const wahlen = choicesAtCharacter(draft, byId)
+  const alle = choicesAtCharacter(draft, byId);
+  const ausruestung = !opts.levelUp;
+  const wahlen = alle
     .map((c, i) => ({ c, i }))
-    .filter(({ c }) => !c.fixed && !opts.done?.has(choiceKey(c)))
+    .filter(({ c }) => !c.fixed && !opts.done?.has(choiceKey(c)) && !(ausruestung && c.choice.kind === 'equipment'))
     .sort((a, z) => (RANG[a.c.source.via] ?? 9) - (RANG[z.c.source.via] ?? 9) || a.i - z.i)
     .map(({ c }): BuilderStep => ({ id: `choice:${choiceKey(c)}`, kind: 'choice', at: c }));
   if (opts.levelUp) return [{ id: 'level', kind: 'level' }, ...wahlen];
@@ -51,6 +60,7 @@ export function builderSteps(
     { id: 'class', kind: 'pick', edge: 'hasClass', type: 'Class' },
     { id: 'abilities', kind: 'abilities' },
     ...wahlen,
+    { id: 'equipment', kind: 'equipment', choices: alle.filter((c) => c.choice.kind === 'equipment' && !c.fixed) },
     { id: 'details', kind: 'details' },
   ];
 }
