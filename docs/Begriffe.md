@@ -426,6 +426,7 @@ und welche gilt, sagt der Ort und kein Schalter:
 | **Quick** (Kurzansicht) | Eine Karte auf dem Board, die Vorschau neben der Liste, das Popup an einem genannten Artikel, die Schnellanlage aus einem anderen Artikel | Das Nötigste, um zu wissen, was man vor sich hat |
 | **Full** | Die Artikelseite | Alles, was dieser Artikel trägt |
 | **Print** | „Print" an der Artikelseite | Was auf ein Blatt A4 gehört — ohne Knöpfe und Seitenspalte |
+| **Search** | Das „+" an einem Treffer der übergreifenden Suche (T-138) | Was über Name, Art, Ebene und Herausgeber hinaus hilft, den richtigen Treffer zu erkennen — Bild, Beschreibung, ein, zwei Werte |
 
 Einen Wähler „welche Ansicht hätten Sie gern" gibt es an diesen Orten
 nicht. Ein Verweis ist ein Verweis, und eine Artikelseite ist eine
@@ -437,7 +438,9 @@ Leitung wissen will) ist die erste, „Spielertisch" könnte die nächste
 sein — im Register angelegt und dort gewählt, wo ohnehin gewählt
 wird: auf der Kachel und beim Drucken. Die Leitung wollte festlegen, was
 erscheint, ohne Code zu ändern; dass dafür niemand an jedem Ort wählen
-muss, hält die vier fest.
+muss, hält die fünf fest. Das „+" der Suche ist darum **eine Ansicht und
+kein Sonderfall**: die Leitung stellt im Register ein, was ein
+aufgeklappter Treffer zeigt, wie bei jeder anderen.
 
 **Was eine Ansicht zeigt, steht einmal, global** — eine Liste von
 Elementen, darin ganze Typen oder einzelne Felder —, und **ein Artikel

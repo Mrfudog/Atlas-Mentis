@@ -537,6 +537,40 @@ export interface ListenZeile {
 }
 
 /** Was die Liste gefragt wird. Leere Angaben fallen weg. */
+/** Ein Blatt der übergreifenden Suche (`GET /api/search`, T-138) — die Form steht in `apps/server/src/liste.ts`. */
+export interface Suchergebnis {
+  q: string;
+  total: number;
+  offset: number;
+  limit: number;
+  rows: {
+    id: string;
+    name: string;
+    type: string;
+    typeLabel: string;
+    area: string;
+    layers: string[];
+    publishers: string[];
+    source: string;
+    image?: string;
+  }[];
+  facets: {
+    types: { type: string; label: string; area: string; count: number }[];
+    layers: { id: string; name: string; count: number }[];
+    publishers: { name: string; count: number }[];
+  };
+}
+
+export interface SuchFrage {
+  q: string;
+  type?: string[];
+  layer?: string[];
+  publisher?: string[];
+  area?: string;
+  offset?: number;
+  limit?: number;
+}
+
 export interface ListenFrage {
   area?: string | undefined;
   type?: string | undefined;
@@ -746,6 +780,7 @@ export type RegisterTeil = 'interfaces' | 'relations' | 'views' | 'vars' | 'enum
 export function wasLaedt(path: string): string {
   if (path.startsWith('/api/registry')) return 'registry';
   if (path.startsWith('/api/list')) return 'list';
+  if (path.startsWith('/api/search')) return 'search';
   if (path.startsWith('/api/entities') || path.startsWith('/api/links')) return 'articles';
   if (path.startsWith('/api/classes')) return 'classes';
   if (path.startsWith('/api/abilities')) return 'ability methods';
@@ -907,6 +942,21 @@ export class Api {
       else p.set(k, Array.isArray(v) ? v.join(',') : v === true ? '1' : String(v));
     }
     return this.call<Liste>(`/api/list?${p.toString()}`, init);
+  }
+  /**
+   * **Die übergreifende Suche** (T-138). Hält nicht an einem Ausfall fest
+   * (`halten = false`): beim Tippen ist die nächste Frage schon unterwegs,
+   * und das Suchfeld sagt selbst, wenn nichts kam.
+   */
+  search(frage: SuchFrage, init: RequestInit = {}): Promise<Suchergebnis> {
+    const p = new URLSearchParams({ q: frage.q });
+    if (frage.type?.length) p.set('type', frage.type.join(','));
+    if (frage.layer?.length) p.set('layer', frage.layer.join(','));
+    if (frage.publisher?.length) p.set('publisher', frage.publisher.join(','));
+    if (frage.area) p.set('area', frage.area);
+    if (frage.offset) p.set('offset', String(frage.offset));
+    if (frage.limit) p.set('limit', String(frage.limit));
+    return this.call<Suchergebnis>(`/api/search?${p.toString()}`, init, false);
   }
   /** `[[Name]]` → `[[nummer|Name]]`, wo genau ein Artikel so heisst (M11). */
   links(texts: string[]): Promise<{ texts: string[]; open: string[] }> {
