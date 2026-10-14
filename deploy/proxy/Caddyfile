@@ -5,16 +5,28 @@
 	email {$ACME_EMAIL}
 }
 
+# Der Live-Kanal (T-116, `GET /api/live`) ist ein Strom aus Server-Sent
+# Events: er wird nicht gepackt (das Packen sammelt, bevor es schickt) und
+# sofort durchgereicht (`flush_interval -1`). Ein Zeitlimit für die Antwort
+# setzt Caddy von sich aus keines; die Anwendung schickt alle 25 s ein
+# Lebenszeichen und schliesst nach 15 min selbst, das Gerät kommt mit
+# `Last-Event-ID` wieder.
+(atlas) {
+	@gepackt not path /api/live
+	encode @gepackt zstd gzip
+	reverse_proxy {args[0]} {
+		flush_interval -1
+	}
+}
+
 {$PROD_HOST} {
-	encode zstd gzip
-	reverse_proxy 127.0.0.1:8080
+	import atlas 127.0.0.1:8080
 }
 
 {$DEV_HOST} {
-	encode zstd gzip
 	# Die Testinstanz ist nicht für die Öffentlichkeit: Suchmaschinen
 	# draussen halten. Wer sie ganz zumachen will, nimmt basic_auth dazu:
 	#   basic_auth { <name> <hash aus: docker compose exec caddy caddy hash-password> }
 	header X-Robots-Tag "noindex, nofollow"
-	reverse_proxy 127.0.0.1:8081
+	import atlas 127.0.0.1:8081
 }

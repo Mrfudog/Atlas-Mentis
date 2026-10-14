@@ -1396,6 +1396,14 @@ das, was erst unterwegs dazukommt.
 Was beim Misslingen und beim Abbruch zurückkommt, sagt das Rezept
 (`onFailure`) — sonst entschiede es jedes Mal die Laune am Tisch.
 
+**Womit** gefertigt wird — Werkzeug, Attribut, SG — sagt ebenfalls das
+Rezept, so wie seine Quelle es druckt. Ein Tisch, der Kräuterkunde mit
+Weisheit spielt, oder eine Figur, die mit Geschick braut, kopiert das Rezept
+nicht, sondern sagt die **Abweichung** mit einer Kante `craftsWith` zum
+Rezept oder zum Werkzeug. Eine Kopie wäre eine zweite Fassung, die die
+nächste Korrektur am Original nicht mehr erreicht; eine Kante sagt nur, was
+anders ist, und das Besondere (Figur) schlägt das Allgemeine (Kampagne).
+
 ---
 
 ## Was ein Spieler von einer Karte bekommt

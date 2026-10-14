@@ -4,6 +4,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { Session } from './kern/session';
 import { BEREICHE } from './kern/bereiche';
 import { KurzPopup } from './artikel/kurzpopup';
+import { Live } from './kern/live';
 
 /**
  * Das Gerüst: die Kopfleiste wie auf dem Design-Canvas (Kompendium, Artikel
@@ -83,6 +84,15 @@ import { KurzPopup } from './artikel/kurzpopup';
             >
           }
         </nav>
+        <!-- Ob dieses Gerät mithört (T-116): ein Punkt, kein Text — am Tisch
+             fällt auf, wenn er hohl wird. -->
+        <span
+          class="live"
+          [class.offen]="live.stand() === 'offen'"
+          [attr.title]="live.stand() === 'offen' ? 'Live: changes arrive without reloading' : 'Live: reconnecting …'"
+          [attr.aria-label]="live.stand() === 'offen' ? 'Live' : 'Live reconnecting'"
+          role="img"
+        ></span>
         <a class="wer" routerLink="/account" title="Account and API tokens">
           <!-- In der Sicht eines Mitglieds bleibt hier, wer angemeldet ist (REQ-241). -->
           {{ session.viewAs()?.by?.name ?? session.user()?.name }}
@@ -195,8 +205,19 @@ import { KurzPopup } from './artikel/kurzpopup';
       background: var(--chip);
       font-weight: 700;
     }
-    .wer {
+    .live {
       margin-left: auto;
+      width: 0.55rem;
+      height: 0.55rem;
+      flex: none;
+      border: 1.5px solid var(--dim);
+      border-radius: 50%;
+    }
+    .live.offen {
+      border-color: var(--accent);
+      background: var(--accent);
+    }
+    .wer {
       color: var(--dim);
       text-decoration: none;
     }
@@ -284,6 +305,8 @@ export class App {
   protected readonly bereiche = BEREICHE.filter((b) => b.weg !== 'play');
 
   protected readonly api = inject(Api);
+  /** Der Live-Kanal (T-116) — hier geholt, damit er mit der Anmeldung steht. */
+  protected readonly live = inject(Live);
   /** Ob gerade sichtbar gewartet wird: erst wenn eine Anfrage länger als
    *  300 ms läuft (REQ-246). Darunter wäre der Hinweis nur ein Flackern. */
   protected readonly wartet = signal(false);

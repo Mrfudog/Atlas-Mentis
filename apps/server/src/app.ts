@@ -108,6 +108,7 @@ import { inDieGruppe } from './gruppe.js';
 import { InMemoryAssetStore, type AssetStore } from './assets.js';
 import { registerBilder } from './bilder.js';
 import { registerKarten } from './karten.js';
+import { LocalChangeFeed, mitKanal, registerLive, type ChangeFeed } from './live.js';
 import {
   ATTEMPT_WINDOW_MINUTES,
   MAX_ATTEMPTS,
@@ -213,6 +214,8 @@ export interface AppOptions {
   assets?: AssetStore;
   /** Wie gross ein Bild sein darf, in Bytes (`ASSET_MAX_MB`). */
   assetMaxBytes?: number;
+  /** Die Quelle des Live-Kanals (T-116); ungesetzt eine im Speicher. */
+  live?: ChangeFeed;
 }
 
 const REGISTRY_PARTS = ['interfaces', 'relations', 'views', 'vars', 'enums', 'settings'] as const;
@@ -231,8 +234,13 @@ export function buildApp({
   anlauf,
   assets = new InMemoryAssetStore(),
   assetMaxBytes = 40 * 1024 * 1024,
+  live = new LocalChangeFeed(),
 }: AppOptions): FastifyInstance {
   const app = Fastify({ logger, trustProxy });
+  /* **Jedes Schreiben meldet sich beim Live-Kanal** (T-116): die Hülle
+     liegt um das Repository, bevor irgendeine Route oder ein Modul es
+     bekommt — so vergisst es keine. */
+  repo = mitKanal(repo, live);
 
   void app.register(fastifyCookie);
   /* Hochladen (T-114): eine Datei je Anfrage, und die Grenze gilt schon
@@ -883,6 +891,7 @@ export function buildApp({
     const user = await viewerOf(request);
     if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
     const n = await repo.dropSessionsOf(user.id);
+    kanal.closeUser(user.id);
     void reply.clearCookie(COOKIE, { path: '/' });
     return { ok: true, sessions: n };
   });
@@ -1154,7 +1163,19 @@ export function buildApp({
        dieser Betrachter Vergleichsebenen sehen darf (`siehtVergleich`). */
     stapel: 'inPlay' | 'unactivated' | 'versions' | 'compare' = 'inPlay',
   ): Promise<Entity[]> {
-    const user = await viewerOf(request);
+    return sieveFuer(await viewerOf(request), entities, bestand, schmal, stapel);
+  }
+
+  /** **Das Sieb für ein Konto statt einer Anfrage** — der Live-Kanal
+   *  (T-116) siebt je Empfänger, ohne dass eine Anfrage dasteht. Dieselbe
+   *  Rechnung, damit der Kanal kein Umweg an ihr vorbei ist. */
+  async function sieveFuer(
+    user: User | null,
+    entities: Entity[],
+    bestand?: Entity[] | Map<string, Entity>,
+    schmal?: (e: Entity) => Entity,
+    stapel: 'inPlay' | 'unactivated' | 'versions' | 'compare' = 'inPlay',
+  ): Promise<Entity[]> {
     /* **Eine Instanz geht aufgelöst hinaus**, mit ihrer Vorlage darin und
        der Angabe, welche Felder von dort kommen. Gespeichert ist an ihr nur,
        was abweicht; ohne Auflösung hätte Wache 1 keine Trefferpunkte. */
@@ -2204,6 +2225,17 @@ export function buildApp({
 
   /* Die Leseansicht (T-091, REQ-247): eine Ebene als Buch. */
   const { leseZiel } = registerLesen(app, { repo, viewerOf, roh, sieve, geltend, bezuegeVon });
+
+  /* **Der Live-Kanal** (T-116, REQ-116): `GET /api/live`, je Empfänger
+     gesiebt mit `sieveFuer` — dieselbe Rechnung wie jede Route. */
+  const kanal = registerLive(app, {
+    repo,
+    feed: live,
+    viewerOf,
+    sieveFuer: (user, entities, bestand) => sieveFuer(user, entities, bestand),
+    roh,
+  });
+  app.addHook('onClose', async () => kanal.close());
 
   app.get<{ Params: { id: string }; Querystring: { stand?: string } }>('/api/entities/:id', async (request, reply) => {
     const stand = await roh();
