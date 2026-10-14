@@ -130,6 +130,9 @@ export const RelationDefSchema = z.object({
   type: z.string(),
   label: z.string(),
   inverseLabel: z.string(),
+  /* Bedeutung und versprochene Wirkung (T-111); die heutige Wirkung wird gerechnet. */
+  means: z.string().optional(),
+  intended: z.string().optional(),
   from: z.array(z.string()).optional(),
   to: z.array(z.string()).optional(),
   owned: z.boolean().optional(),
