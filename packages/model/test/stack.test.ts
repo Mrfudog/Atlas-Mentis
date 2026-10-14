@@ -5,6 +5,7 @@ import {
   replacedIds,
   campaignLayer,
   campaignsActivating,
+  activatingIndex,
   currentCampaign,
   inPlay,
   inStack,
@@ -153,6 +154,12 @@ describe('what is missing only because its layer is off (T-069)', () => {
     expect(campaignsActivating(entities, 'ly_system').sort()).toEqual(['camp_nebel', 'camp_salz']);
     expect(campaignsActivating(entities, 'ly_salz')).toEqual(['camp_salz']);
     expect(campaignsActivating(entities, 'ly_aus')).toEqual([]);
+  });
+  it('answers the same from a table computed once (T-143)', () => {
+    const tafel = activatingIndex(entities);
+    for (const l of ['ly_system', 'ly_salz', 'ly_aus']) {
+      expect(campaignsActivating(entities, l, tafel).sort()).toEqual(campaignsActivating(entities, l).sort());
+    }
   });
   it('rewrites the stack in the given order and keeps the other edges', () => {
     const c: Entity = {

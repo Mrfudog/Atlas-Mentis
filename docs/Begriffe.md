@@ -1007,7 +1007,10 @@ Importer die Fassungen aus mehreren Büchern. Eine Überschreibung sagt es
 selbst und zählt immer.
 
 *Vergleichsebenen* sind Ebenen, die eine Kampagne nennt, ohne sie
-aufzuschalten (`activates` mit `mode: 'compare'`). Was sie bringen, steht
+aufzuschalten (`activates` mit `mode: 'compare'`) — auch eine **ganze
+Gruppe** wie „2024 rules" (T-143): ihre Bücher vergleichen sich, soweit
+keines davon ohnehin im Spiel ist, und ein Buch, das später in die Gruppe
+kommt, ist dabei, ohne dass jemand ein Häkchen setzt. Was sie bringen, steht
 in keiner Liste, ist an keinem Verweis und gehört der Kampagne nicht — es
 ist auf Wunsch sichtbar, für die Leitung und, wenn die Kampagne es sagt,
 für die Spielenden. Eine Fassung daraus **übernimmt** die Leitung als

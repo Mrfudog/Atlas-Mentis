@@ -744,10 +744,20 @@ export interface KampagneKurz {
   role: TableRole | null;
   may: Recht;
 }
+/** Die laufende Kampagne (T-143), für jeden am Tisch. */
+export interface LaufendeKampagne {
+  id: string;
+  name: string;
+  role: TableRole | null;
+  may: Recht;
+  /** Wie viele Ebenen im Spiel sind (Gruppen aufgelöst). */
+  layers: number;
+}
 export interface Kampagnen {
   campaigns: KampagneKurz[];
   canCreate: boolean;
   isAdmin: boolean;
+  current?: LaufendeKampagne | null;
 }
 export interface Mitglied {
   id: string;
@@ -1418,7 +1428,7 @@ export class Api {
   /** Der ganze Stapel, von unten nach oben; was fehlt, ist danach aus.
    *  `off` (T-088): die Ebenen, die trotz aufgeschalteter Gruppe aus sind;
    *  ohne bleiben die Abschaltungen, wie sie sind. */
-  setCampaignLayers(campaign: string, layers: string[], off?: string[]): Promise<{ ok: true; layers: string[] }> {
+  setCampaignLayers(campaign: string, layers: string[], off?: string[]): Promise<{ ok: true; layers: string[]; state?: KampagnenEbenen | null }> {
     return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/layers`, {
       method: 'PUT',
       body: JSON.stringify(off ? { layers, off } : { layers }),
@@ -1432,7 +1442,7 @@ export class Api {
   setCampaignCompare(
     campaign: string,
     neu: { layers?: string[]; players?: boolean },
-  ): Promise<{ ok: true; layers: string[] }> {
+  ): Promise<{ ok: true; layers: string[]; state?: KampagnenEbenen | null }> {
     return this.call(`/api/campaigns/${encodeURIComponent(campaign)}/compare`, {
       method: 'PUT',
       body: JSON.stringify(neu),
@@ -1444,13 +1454,17 @@ export class Api {
     campaign: string,
     layer: string,
     only: { areas?: string[]; types?: string[] } | null,
-  ): Promise<{ ok: true }> {
+  ): Promise<{ ok: true; state?: KampagnenEbenen | null }> {
     return this.call(
       `/api/campaigns/${encodeURIComponent(campaign)}/layers/${encodeURIComponent(layer)}/only`,
       { method: 'PUT', body: JSON.stringify(only ?? {}) },
     );
   }
-  activateLayer(campaign: string, layer: string): Promise<{ ok: true; layers: string[] }> {
+  /** Die laufende Kampagne wechseln — nur die Verwaltung (T-143). */
+  setCurrentCampaign(id: string): Promise<{ ok: true; current: string }> {
+    return this.call('/api/campaigns/current', { method: 'PUT', body: JSON.stringify({ id }) });
+  }
+  activateLayer(campaign: string, layer: string): Promise<{ ok: true; layers: string[]; state?: KampagnenEbenen | null }> {
     return this.call(
       `/api/campaigns/${encodeURIComponent(campaign)}/layers/${encodeURIComponent(layer)}`,
       { method: 'POST' },
