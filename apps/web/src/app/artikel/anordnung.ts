@@ -272,7 +272,13 @@ export function anordnen(
         break;
       }
       case 'fields': {
-        const hier = zellen.filter((z) => !da(z.comp, z.prop) && elementTakes(el, z.comp, z.prop));
+        /* „Alle Felder" heisst nicht Bild, Unterschrift und Alternativtext:
+           die gehören dem Element `image` (T-114), und eine Unterschrift
+           ohne Bild sagt nichts (T-090). Wer sie einzeln nennt, bekommt sie. */
+        const alle = el.fields === undefined || el.fields === 'all';
+        const hier = zellen.filter(
+          (z) => !da(z.comp, z.prop) && elementTakes(el, z.comp, z.prop) && !(alle && z.comp === 'Image'),
+        );
         hier.forEach((z) => felderDa.add(z.ref));
         if (hier.length) out.push({ id: el.id, art: 'felder', zellen: hier });
         break;
@@ -316,7 +322,10 @@ export function anordnen(
   }
 
   if (opt.rest) {
-    const rest = zellen.filter((z) => !da(z.comp, z.prop));
+    /* Bild, Unterschrift und Alternativtext gehören dem Element `image`
+       (T-114). Zeichnet die Ansicht keines, stehen sie nicht als lose
+       Felder im Rest — eine Unterschrift ohne Bild sagt nichts (T-090). */
+    const rest = zellen.filter((z) => !da(z.comp, z.prop) && z.comp !== 'Image');
     if (rest.length) out.push({ id: 'rest-f', art: 'felder', zellen: rest });
     const restProsa = prosa.filter((b) => !prosaDa.has(b.ref));
     if (restProsa.length) out.push({ id: 'rest-p', art: 'prosa', prosa: restProsa });
