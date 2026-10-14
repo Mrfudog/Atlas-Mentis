@@ -945,6 +945,73 @@ try {
     }
   }
 
+  /* ------------------------------------ Handwerk: Kreise und Kampagnenregel (T-165) */
+  {
+    /* Migration 071: eine Kampagne, die dem Rezept folgte, bekommt die
+       häufigste Regel ihrer Rezepte; die Auswahl am Rezept wird ein Satz;
+       die Proben eines Auftrags werden Kreise (eine wartende behält, was
+       sie ergäbe). Geschrieben über das Repository, weil das Register die
+       alte Form nicht mehr annimmt. */
+    const { migrate } = await import(join(DIST, 'migrate.js'));
+    const { PgRepository } = await import(join(DIST, 'repo.pg.js'));
+    const { default: pg } = await import('pg');
+    const { readFileSync } = await import('node:fs');
+    const pool = new pg.Pool({ connectionString: process.env['DATABASE_URL'] });
+    const repo = new PgRepository(pool);
+    const rezept = (id, nr, onFailure) => ({ id, name: `Probe ${id}`, interfaces: ['Recipe'], components: { ...ident(`Probe ${id}`, nr), Recipe: { dc: 10, onFailure } }, relations: [] });
+    const probe = [
+      { id: 'cp_probe_t165', name: 'Probe Runde T165', interfaces: ['Campaign'], components: { ...ident('Probe Runde T165', 'campaign-0965'), Campaign: { craftFailure: 'recipe' } }, relations: [] },
+      rezept('rc_probe_t165_a', 'recipe-0965', 'materialsLost'),
+      rezept('rc_probe_t165_b', 'recipe-0966', 'materialsLost'),
+      rezept('rc_probe_t165_c', 'recipe-0967', 'nothingLost'),
+      {
+        id: 'co_probe_t165', name: 'Probe Auftrag', interfaces: ['CraftingOrder'],
+        components: {
+          ...ident('Probe Auftrag', 'craftingorder-0965'),
+          CraftingOrder: {
+            progress: 1, outcome: 'open', started: '2026-10-14',
+            rolls: [
+              { total: 14, dc: 10, result: 'success', by: 'probe', at: '2026-10-14T10:00:00Z', note: 'Success — one step further.' },
+              { total: 3, dc: 10, result: 'pending', would: 'failure', by: 'probe', at: '2026-10-14T10:05:00Z' },
+            ],
+          },
+        },
+        relations: [{ id: 'co_probe_t165~i', type: 'instanceOf', to: 'rc_probe_t165_a', props: {} }],
+      },
+    ];
+    const ordner = mkdtempSync(join(tmpdir(), 'durchstich-t165-'));
+    const name = 'zzz_durchstich_handwerk_kreise.sql';
+    try {
+      for (const e of probe) await repo.putEntity(e);
+      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '071_handwerk_kreise.sql'), 'utf8'));
+      await migrate(pool, { env: {} }, ordner);
+      const k = await repo.getEntity('cp_probe_t165');
+      const a = await repo.getEntity('rc_probe_t165_a');
+      const c = await repo.getEntity('rc_probe_t165_c');
+      const o = await repo.getEntity('co_probe_t165');
+      pruefe('Handwerk (T-165): die Kampagne bekommt die Regel ihrer Rezepte', k?.components?.Campaign?.craftFailure === 'materialsLost', JSON.stringify(k?.components?.Campaign));
+      pruefe('Handwerk (T-165): die Auswahl am Rezept wird ein Satz der Quelle',
+        a?.components?.Recipe?.onFailure === 'The materials are lost.' && c?.components?.Recipe?.onFailure === 'The materials come back.',
+        JSON.stringify([a?.components?.Recipe, c?.components?.Recipe]));
+      const karte = o?.components?.CraftingOrder ?? {};
+      pruefe('Handwerk (T-165): Proben werden Kreise, die wartende behält ihr Ergebnis',
+        !('rolls' in karte) && karte.checks?.length === 2 && karte.checks[0].mark === 'success' && karte.checks[0].total === 14
+          && karte.checks[1].mark === 'failure' && karte.checks[1].pending === true && !('note' in karte.checks[0]),
+        JSON.stringify(karte));
+      const reg = await repo.getRegistry();
+      pruefe('Handwerk (T-165): das Register kennt `checks` und keine Auswahl am Rezept mehr',
+        !!reg.interfaces.CraftingOrder?.schema?.properties?.checks && !reg.interfaces.CraftingOrder?.schema?.properties?.rolls
+          && !reg.interfaces.Recipe?.schema?.properties?.onFailure?.enum
+          && !reg.interfaces.Campaign?.schema?.properties?.craftFailure?.enum?.includes('recipe'),
+        JSON.stringify(reg.interfaces.CraftingOrder?.schema?.properties ?? {}).slice(0, 300));
+    } finally {
+      await pool.query('delete from entity where id = any($1)', [probe.map((e) => e.id)]);
+      await pool.query('delete from schema_migrations where name = $1', [name]);
+      await pool.end();
+      rmSync(ordner, { recursive: true, force: true });
+    }
+  }
+
   /* ------------------------------------ Bücher aus Teilen (T-108) */
   {
     /* Migration 043 bringt die Arten und die Kanteneigenschaft in ein
