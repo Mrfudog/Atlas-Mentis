@@ -89,7 +89,11 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   Rückgängig, W9), die **Karte** (`karten/`: Element `map` und
   Play › Map unter `/play`, Blätter, Gitter, Messen, Marker mit
   Kurzansicht, Unterkarten zum Hineinzoomen, Gruppen-Token; Logik in
-  `packages/model/src/map.ts`, Zurückhalten mit `redactMap`, T-115), die **Leseansicht** (`lesen/`, `/read/:layer`: eine
+  `packages/model/src/map.ts`, Zurückhalten mit `redactMap`, T-115), das
+  **Inventar** (`artikel/inventar.ts`, an Figur, Gruppe und Behälter:
+  Raster mit Drehen und Zonen, Gewicht oder Slots nach `Campaign.inventory`,
+  Münzen, Verschieben zwischen Figur, Gruppe und Behälter; Logik in
+  `packages/model/src/inventory.ts`, T-127), die **Leseansicht** (`lesen/`, `/read/:layer`: eine
   Ebene als Buch mit Inhaltsverzeichnis, Suche und Lesestand je Konto,
   T-091), der **Druck** (`/artikel/:id/print`: eine Ansicht auf einem
   Blatt A4, T-110) und das Konto mit seinen API-Tokens (`konto/`); die

@@ -2399,6 +2399,15 @@ export const fieldGroups = {
            einer Wahl weg („Steigerung oder Talent" wird „Steigerung").
            Ohne Angabe ja. */
         feats: { type: 'boolean', title: 'Feats allowed', default: true },
+        /* **Wie diese Kampagne Inventar zählt** (T-127): im Raster nach
+           Basils Blatt, nach Gewicht mit Tragestufen, oder nach Slots.
+           Gelesen über `inventoryRulesOf`; wandert mit T-132 in ein Modul. */
+        inventory: {
+          type: 'string',
+          title: 'Inventory rules',
+          enum: ['grid', 'weight', 'slots'],
+          default: 'grid',
+        },
       },
     },
   },
