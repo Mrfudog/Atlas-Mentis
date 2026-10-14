@@ -201,3 +201,48 @@ describe('bulk', () => {
     expect(neu.get('s9')!.relations).toEqual([{ id: 'a', type: 'composedOf', to: 'f1' }]);
   });
 });
+
+describe('bulk delete (T-176)', () => {
+  const e = (id: string, typ: string, relations: Entity['relations'] = [], components: Entity['components'] = {}): Entity => ({
+    id,
+    interfaces: [typ],
+    name: id,
+    components: { ...ident(id, `${typ.toLowerCase()}-${id}`), ...components },
+    relations,
+  });
+  const bestand = new Map(
+    [
+      e('figur', 'Creature', [{ id: 'figur~c', type: 'carries', to: 'inv' }]),
+      e('inv', 'Inventory', [
+        { id: 'inv~h1', type: 'holds', to: 'stueck' },
+        { id: 'inv~h2', type: 'holds', to: 'seil' },
+      ]),
+      /* Ein Stück (Instanz) geht mit seinem Inventar, der Grundartikel bleibt. */
+      e('stueck', 'Item', [{ id: 'stueck~i', type: 'instanceOf', to: 'seil' }]),
+      e('seil', 'Item'),
+      /* Eine Instanz der gehenden Vorlage, die bleibt, wird vorher gelöst. */
+      e('vorlage', 'Statblock', [], { Statblock: { ac: 12 } }),
+      e('wache', 'Statblock', [{ id: 'wache~i', type: 'instanceOf', to: 'vorlage' }], { Statblock: { hp: 9 } }),
+      e('board', 'Board', [
+        { id: 'board~p1', type: 'placed', to: 'figur', props: { x: 0, y: 0 } },
+        { id: 'board~p2', type: 'placed', to: 'seil', props: { x: 1, y: 0 } },
+      ]),
+    ].map((x) => [x.id, x]),
+  );
+
+  it('takes inventory and pieces along, detaches instances, and drops edges into what goes', () => {
+    const plan = planBulk(seedRegistry, bestand, ['figur', 'vorlage'], [{ op: 'delete' }]);
+    const weg = plan.changes.filter((c) => !c.after).map((c) => c.id).sort();
+    expect(weg).toEqual(['figur', 'inv', 'stueck', 'vorlage']);
+    expect(plan.changes.find((c) => c.id === 'inv')!.summary).toEqual(['deleted — part of figur (creature-figur)']);
+    const nach = new Map(plan.changes.filter((c) => c.after).map((c) => [c.id, c.after!]));
+    expect([...nach.keys()].sort()).toEqual(['board', 'wache']);
+    expect(nach.get('board')!.relations!.map((r) => r.to)).toEqual(['seil']);
+    expect(nach.get('wache')!.relations!.some((r) => r.type === 'instanceOf')).toBe(false);
+    expect(nach.get('wache')!.components['Statblock']).toEqual({ ac: 12, hp: 9 });
+  });
+
+  it('parses as an op of its own', () => {
+    expect(BulkRequestSchema.safeParse({ select: { layer: 'ly' }, ops: [{ op: 'delete' }] }).success).toBe(true);
+  });
+});

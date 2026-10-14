@@ -66,7 +66,9 @@ import {
   resolvedStack,
   isGroupLayer,
   versionsOf,
+  LAYER_COMPONENT,
   LAYER_RELATION,
+  WRITE_LAYER_PREF,
   OVERRIDES_RELATION,
   VARIANT_RELATION,
   detachInstance,
@@ -107,7 +109,7 @@ import {
   type WareOffer,
   RECIPE_COMPONENT,
 } from '@nw/model';
-import type { BulkChange, CraftCheck, CraftSource, Entity, Registry } from '@nw/model';
+import type { BulkChange, BulkRequest, CraftCheck, CraftSource, Entity, Registry } from '@nw/model';
 import { seedRegistry } from '@nw/registry';
 import { RevisionConflict } from './repo.js';
 import type { ReadyStand, Repository } from './repo.js';
@@ -553,11 +555,29 @@ export function buildApp({
   async function vorgabeEbene(user: User | null, map: Map<string, Entity>, kampagne: Entity | null): Promise<Entity | null> {
     if (!user || user.disabledAt || !kampagne) return null;
     const ziele = await zielEbenen(user, map, kampagne);
+    /* **Gewählt schlägt gerechnet** (T-176): hat das Konto für diese
+       Kampagne eine Schreibebene gewählt und schreibt es dort noch, gilt
+       sie — eine eigene Testebene der Leitung etwa. */
+    const gewaehlt = await gewaehlteEbene(user, ziele, kampagne);
+    if (gewaehlt) return gewaehlt;
     if (user.roles?.[kampagne.id] === 'player' && !user.isAdmin) {
       const eigene = spielerEbeneVon(await repo.layerGrants(), user.id, kampagne.id);
       return ziele.find((l) => l.id === eigene) ?? (await kampagnenEbene(map, kampagne));
     }
     return ziele[0] ?? null;
+  }
+
+  /**
+   * **Die gewählte Schreibebene** (T-176, für T-161): die Kontoeinstellung
+   * `writeLayer` (`{ [Kampagne]: Ebene }`, neben dem Konto wie jede
+   * Einstellung, nie im Artikel — REQ-199), aber nur, solange die Ebene
+   * unter den Zielebenen steht: geschrieben, im Spiel. Sonst `null`, und
+   * es gilt die gerechnete Vorgabe.
+   */
+  async function gewaehlteEbene(user: User, ziele: Entity[], kampagne: Entity): Promise<Entity | null> {
+    const wahl = (await repo.getPrefs(user.id))[WRITE_LAYER_PREF] as Record<string, unknown> | null | undefined;
+    const id = wahl && typeof wahl === 'object' ? wahl[kampagne.id] : undefined;
+    return (typeof id === 'string' && ziele.find((l) => l.id === id)) || null;
   }
 
   /**
@@ -1080,6 +1100,8 @@ export function buildApp({
     /* Die eigenen Einstellungen (T-092) schreibt jedes Konto. */
     if (url.startsWith('/api/me/prefs/')) return;
     if ((url === '/api/bulk' || url.startsWith('/api/bulk/')) && isLeitung(user)) return;
+    /* Das eigene Leeren einer Ebene zurücknehmen (T-176): die Route prüft, wer es war. */
+    if (/^\/api\/bulk\/[^/]+\/undo$/.test(url)) return;
     /* Verwaltung und Einladungen prüfen selbst: das Recht hängt an der
        Kampagne im Pfad (gm ändert, co-gm sieht), nicht am Konto allein. */
     if (url.startsWith('/api/campaigns') || url.startsWith('/api/invites')) return;
@@ -2995,7 +3017,9 @@ export function buildApp({
         /* Die Ebene gibt der Server, nicht die Maske: angelegt wird in eine
            Ebene, in der man schreibt, oder als Spielerin in die Runde — nie
            in ein geteiltes Regelwerk. */
-        let ziel = ziele.find((l) => genannt.includes(l.id)) ?? (spielt ? null : (ziele[0] ?? null));
+        let ziel =
+          ziele.find((l) => genannt.includes(l.id)) ??
+          (spielt ? null : ((await vorgabeEbene(user, stand.map, kampagne)) ?? ziele[0] ?? null));
         /* Als Spielerin in die Vorgabe: die eigene Spielerebene, sonst die
            Ebene der Kampagne (T-164). Was dort liegt, hat sie angelegt. */
         const vorgabe = spielt ? await vorgabeEbene(user, stand.map, kampagne) : null;
@@ -3039,6 +3063,14 @@ export function buildApp({
           if (wert === 'ready' && !darfFertig && !optionen.zurueck) return { code: 403, body: { error: '„ready" setzt die Leitung.' } };
           if (wert !== 'idea' && wert !== 'prepared' && !(wert === 'ready' && darfFertig)) karte['status'] = 'idea';
         }
+      } else if (user && type !== LAYER_COMPONENT && type !== CAMPAIGN_TYPE && !relations.some((r) => r.type === LAYER_RELATION)) {
+        /* **Die Verwaltung legt an, wo sie nichts sagt** — wie bisher ohne
+           Ebene, ausser sie hat für die laufende Kampagne eine Schreibebene
+           gewählt (T-176): dann dort, damit Tests in der Testebene landen
+           und mit „Empty this layer" wieder gehen. */
+        const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+        const gewaehlt = kampagne ? await gewaehlteEbene(user, await zielEbenen(user, stand.map, kampagne), kampagne) : null;
+        if (gewaehlt) relations.push({ id: `${id}~inLayer-1`, type: LAYER_RELATION, to: gewaehlt.id, props: {} });
       }
       const entity: Entity = { id, interfaces: [type], name, components, relations };
 
@@ -3657,12 +3689,18 @@ export function buildApp({
     const ids = new Set(known.keys());
     const stufen = stageBases(danach.values());
     const eigen = user.isAdmin ? null : await ownedBy(user);
+    /* Was erst entsteht — oder beim Zurücknehmen wiederkommt —, steht im
+       heutigen Bestand nicht: es zählt, ob es danach dem Konto gehört
+       (T-176). Was schon steht, zählt wie es vorher war; sonst eignete sich
+       an, wer eine Ebenenkante dazuschreibt. */
+    const eigenDanach = user.isAdmin || !changes.some((c) => !roh.has(c.id)) ? null : await ownedBy(user, danach.values());
     const abgelehnt: { id: string; name: string; type: string; issues: string[] }[] = [];
     const geprueft: BulkChange[] = [];
     for (const c of changes) {
       const e = c.after ?? c.before!;
       const name = String(e.components?.['Identity']?.['name'] ?? e.name ?? c.id);
-      if (eigen && !mayWrite(user, eigen, c.id)) {
+      const pruefe = !roh.has(c.id) && eigenDanach ? eigenDanach : eigen;
+      if (pruefe && !mayWrite(user, pruefe, c.id)) {
         abgelehnt.push({ id: c.id, name, type: e.interfaces?.[0] ?? '', issues: ['Das gehört dir nicht.'] });
         continue;
       }
@@ -3700,9 +3738,13 @@ export function buildApp({
     const auftrag = parsed.data;
     const falsch = (auftrag.select.where ?? []).map(conditionProblem).filter((x): x is string => !!x);
     if (falsch.length) return reply.code(400).send({ error: falsch.join('; ') });
-    const merge = auftrag.ops.find((o) => o.op === 'merge');
-    if (merge && auftrag.ops.length > 1) {
-      return reply.code(400).send({ error: 'Zusammenführen steht allein — nicht mit anderen Operationen in einem Lauf.' });
+    const allein = auftrag.ops.find((o) => o.op === 'merge' || o.op === 'delete');
+    if (allein && auftrag.ops.length > 1) {
+      return reply.code(400).send({
+        error: allein.op === 'merge'
+          ? 'Zusammenführen steht allein — nicht mit anderen Operationen in einem Lauf.'
+          : 'Löschen steht allein — nicht mit anderen Operationen in einem Lauf.',
+      });
     }
     if (!auftrag.select.ids?.length && !auftrag.select.types?.length && !auftrag.select.layer && !auftrag.select.tag && !auftrag.select.where?.length) {
       return reply.code(400).send({ error: 'Eine Auswahl ohne Bedingung träfe den ganzen Bestand — sag, welche Artikel.' });
@@ -3714,7 +3756,24 @@ export function buildApp({
     const registry = await repo.getRegistry();
     const gesiebt = await sieve(request, alle, alle);
     const auswahl = selectEntities(registry, gesiebt, auftrag.select);
-    const plan = planBulk(registry, roh, auswahl.map((e) => e.id), auftrag.ops);
+    const r = await fuehreLaufAus(request, wer, registry, roh, auftrag, auswahl.map((e) => e.id));
+    return reply.code(r.code).send({ ...r.body, ms: Date.now() - t0 });
+  });
+
+  /**
+   * Was `/api/bulk` und „Empty this layer" gemeinsam tun (T-176): planen,
+   * prüfen, und ohne `dryRun` schreiben — mit jeder alten Fassung vorher
+   * im Protokoll (`bulk`), damit Werkbank › Undo es zurücknimmt.
+   */
+  async function fuehreLaufAus(
+    request: FastifyRequest,
+    wer: Wer,
+    registry: Registry,
+    roh: Map<string, Entity>,
+    auftrag: BulkRequest,
+    ausgewaehlt: string[],
+  ): Promise<{ code: number; body: Record<string, unknown> }> {
+    const plan = planBulk(registry, roh, ausgewaehlt, auftrag.ops);
     const { geprueft, abgelehnt } = await pruefeLauf(wer.user, registry, roh, plan.changes);
     const loescht = geprueft.filter((c) => !c.after).length;
     const limit = auftrag.limit ?? 50;
@@ -3728,23 +3787,22 @@ export function buildApp({
       rejectedCount: abgelehnt.length,
       skipped: plan.skipped.slice(0, limit),
       skippedCount: plan.skipped.length,
-      ms: 0,
     };
-    if (auftrag.dryRun) return { ...antwort, ms: Date.now() - t0 };
+    if (auftrag.dryRun) return { code: 200, body: antwort };
 
     if (loescht > 1 && auftrag.confirmDelete !== loescht) {
-      return reply.code(409).send({
-        ...antwort,
-        error: `Dieser Lauf löscht ${loescht} Artikel. Bestätige mit "confirmDelete": ${loescht}.`,
-      });
+      return {
+        code: 409,
+        body: { ...antwort, error: `Dieser Lauf löscht ${loescht} Artikel. Bestätige mit "confirmDelete": ${loescht}.` },
+      };
     }
     if (abgelehnt.length && (!auftrag.skipRejected || loescht > 0)) {
-      return reply.code(422).send({
-        ...antwort,
-        error: `${abgelehnt.length} Artikel bestehen die Prüfung nicht — nichts geschrieben.`,
-      });
+      return {
+        code: 422,
+        body: { ...antwort, error: `${abgelehnt.length} Artikel bestehen die Prüfung nicht — nichts geschrieben.` },
+      };
     }
-    if (!geprueft.length) return { ...antwort, id: null, ms: Date.now() - t0 };
+    if (!geprueft.length) return { code: 200, body: { ...antwort, id: null } };
 
     const { dryRun: _d, ...was } = auftrag;
     const id = await repo.appendEvent('bulk', undefined, {
@@ -3771,13 +3829,51 @@ export function buildApp({
       }
     } catch (error) {
       request.log.error(error);
-      return reply.code(500).send({
-        error: `Abgebrochen nach ${geschrieben} von ${geprueft.length} Artikeln. Rückgängig: POST /api/bulk/${id}/undo`,
-        id,
-      });
+      return {
+        code: 500,
+        body: { error: `Abgebrochen nach ${geschrieben} von ${geprueft.length} Artikeln. Rückgängig: POST /api/bulk/${id}/undo`, id },
+      };
     }
-    return { ...antwort, id, ms: Date.now() - t0 };
-  });
+    return { code: 200, body: { ...antwort, id } };
+  }
+
+  /**
+   * **Eine Ebene leeren** (T-176): alles, was in ihr liegt, samt Teilen und
+   * Kanten darauf, als **eine** Massenänderung — zurück über Werkbank ›
+   * Undo. Die Ebene selbst bleibt, mit ihren Rechten und ihrer Aufschaltung.
+   * Dürfen: die Verwaltung und wer die Ebene besitzt; geschrieben wird nur,
+   * was das Konto auch einzeln schreiben dürfte (`pruefeLauf`), sonst
+   * nichts. `dryRun` zeigt Zahl und Liste, `confirmDelete` nennt die Zahl
+   * aus der Vorschau, wie bei jeder Massenänderung.
+   */
+  app.post<{ Params: { layer: string }; Body: { dryRun?: unknown; confirmDelete?: unknown; limit?: unknown } | null }>(
+    '/api/layers/:layer/empty',
+    async (request, reply) => {
+      const echt = await werIst(request);
+      if (!echt || echt.user.disabledAt) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+      if (await sichtVon(request)) return reply.code(403).send({ error: 'In einer Sicht wird nicht geleert.' });
+      const t0 = Date.now();
+      const alle = await repo.listEntities();
+      const roh = new Map(alle.map((e) => [e.id, e]));
+      const l = roh.get(request.params.layer);
+      if (!l || primaryInterface(l) !== LAYER_COMPONENT) return reply.code(404).send({ error: 'Diese Ebene gibt es nicht.' });
+      if (!echt.user.isAdmin && !(echt.user.ownedLayerIds ?? []).includes(l.id)) {
+        return reply.code(403).send({ error: 'Eine Ebene leeren die Verwaltung und wer sie besitzt.' });
+      }
+      const b = request.body ?? {};
+      const auftrag: BulkRequest = {
+        select: { layer: l.id },
+        ops: [{ op: 'delete' }],
+        dryRun: b.dryRun === true,
+        ...(typeof b.confirmDelete === 'number' ? { confirmDelete: b.confirmDelete } : {}),
+        limit: typeof b.limit === 'number' ? Math.min(5000, Math.max(0, Math.floor(b.limit))) : 200,
+        note: `Empty layer ${entityName(l)}`,
+      };
+      const drin = alle.filter((e) => e.id !== l.id && layersOf(e).includes(l.id)).map((e) => e.id);
+      const r = await fuehreLaufAus(request, echt, await repo.getRegistry(), roh, auftrag, drin);
+      return reply.code(r.code).send({ ...r.body, layer: { id: l.id, name: entityName(l) }, ms: Date.now() - t0 });
+    },
+  );
 
   /** Die letzten Massenänderungen, ohne ihre alten Fassungen. */
   app.get<{ Querystring: { limit?: string } }>('/api/bulk', async (request, reply) => {
@@ -3799,10 +3895,14 @@ export function buildApp({
   app.post<{ Params: { id: string }; Body: { force?: boolean; dryRun?: boolean } | null }>(
     '/api/bulk/:id/undo',
     async (request, reply) => {
-      const wer = await werkbankFuer(request);
-      if (typeof wer === 'string') return reply.code(403).send({ error: wer });
       const ereignis = await repo.getEvent(request.params.id);
       if (!ereignis || ereignis.name !== 'bulk') return reply.code(404).send({ error: 'Nicht gefunden' });
+      /* Wer eine eigene Ebene geleert hat, nimmt das selbst zurück (T-176),
+         auch ohne Werkbank. */
+      const echt = await werIst(request);
+      const selbst = !!echt && !(await sichtVon(request)) && (ereignis.payload as { by?: { id?: string } }).by?.id === echt.user.id;
+      const wer = selbst ? echt! : await werkbankFuer(request);
+      if (typeof wer === 'string') return reply.code(403).send({ error: wer });
       if ((await repo.listEvents({ name: 'bulk.undone', subject: ereignis.id, limit: 1, light: true })).length) {
         return reply.code(409).send({ error: 'Schon rückgängig gemacht.' });
       }

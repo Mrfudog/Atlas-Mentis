@@ -1003,6 +1003,15 @@ Kampagne und ihren eigenen Ebenen im Spiel — so legt die Werkbank geschätzte
 Preise in „AI generated prices" (T-139). `ready` bleibt bei `gm`: ändert die Mitleitung oder
 eine Spielerin in ihrer Ebene etwas Fertiges, fällt es zurück wie oben.
 
+**Die gewählte Schreibebene** (T-176): jedes Konto darf je Kampagne eine
+seiner Zielebenen als Vorgabe wählen (Kontoeinstellung `writeLayer`, neben
+dem Konto wie jede Einstellung, nie im Artikel — REQ-199). Sie schlägt die
+gerechnete Vorgabe (`vorgabeEbene`), solange das Konto dort schreibt und
+die Ebene im Spiel ist; sonst gilt wieder die gerechnete. Die Verwaltung
+legt ohne Wahl wie bisher ohne Ebene an. Gedacht für eine Testebene der
+Leitung, die sich mit „Empty this layer" (eine umkehrbare Massenänderung
+`delete`, Teile und Kanten darauf eingeschlossen) wieder leeren lässt.
+
 **Die Spielerebene** (T-164): je Konto und Kampagne, in der es `player`
 ist, eine eigene Ebene — **die Vorgabe zum Schreiben**. Figur, Notizen und
 was eine Spielerin sonst anlegt, landen dort (`vorgabeEbene`, für die
