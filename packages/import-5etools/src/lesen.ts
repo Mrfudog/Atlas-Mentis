@@ -4,11 +4,13 @@
  * Gelesen wird jede solche Liste unter ihrem Schlüssel, damit eine Art, die
  * 5e.tools in eine neue Datei verschiebt, nicht still wegfällt.
  *
- * Gesiebt wird nach den Entscheidungen des Arbeitsplans (§1, D47):
- * **2014 als Basis** — ohne die 2024-Kernbücher, ohne die Bücher, die seit
- * September 2024 auf den 2024-Regeln stehen, ohne Unearthed Arcana (E2);
- * ohne Vehikel, Bastionen und Decks (E4). Was dabei wegfällt, wird je Art
- * und Quelle gezählt — einschalten ist eine Zeile.
+ * **Gesiebt wird nicht mehr nach Regelstand** (T-087, REQ-243; löst E2
+ * und E4 ab): 2024, Unearthed Arcana, Fahrzeuge, Kartendecks und
+ * Bastionen kommen herein, jede Quelle in ihre Ebene, und aufgeschaltet
+ * wird, was die Kampagne will. Der Regelstand (`regelstandVon`) sagt
+ * jetzt, wohin ein Eintrag gehört, und was **vorher** schon hereinkam,
+ * heisst der Grundstand (`imGrundstand`) — an ihm ändert sich nichts.
+ * Weg bleibt, was keine Art ist (`ARTEN_WEG`); gezählt wird es je Art.
  */
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -18,21 +20,25 @@ import type { Knoten } from './copy.js';
 /** Ab diesem Erscheinungstag steht ein Buch auf den 2024-Regeln (E2). */
 export const STICHTAG_2024 = '2024-09-01';
 
+/** Der Regelstand einer Quelle und einer Ebene (T-087). */
+export type Regelstand = '2014' | '2024' | 'UA';
+
+/**
+ * Die Arten, die bis T-087 zurückgestellt waren (E4): sie kommen herein,
+ * gehören aber nie zum Grundstand — auch ein Fahrzeug aus einem
+ * 2014-Abenteuer ist neu und darf keinen Artikel von vorher verschieben.
+ */
+export const NEUE_ARTEN = new Set(['vehicle', 'vehicleUpgrade', 'deck', 'card', 'facility', 'itemMastery']);
+
 /* Verzeichnisse und Dateien ohne Einträge, die Artikel werden könnten:
    Werkzeugdaten der Seite (Abgleich §2.7). Buch- und Abenteuertext kommen
    herein (T-082, T-108), aber nicht als Liste je Art: `liesAbenteuer` und
    `liesBuecher` lesen sie für sich (`arten/abenteuer.ts`, `arten/buch.ts`). */
 const NICHT_LESEN = /^(adventure|book|foundry.*|changelog|renderdemo|converter|makecards|makebrew-creature|msbcr|encounterbuilder|bookref-.*|gendata-(maps|nav-adventure-book-index|spell-source-lookup|subclass-lookup|tag-redirects)|index|fluff-index|sources|bookref)(\.json)?$/;
 
-/** Arten, die nicht hereinkommen, und warum (Abgleich §2, Arbeitsplan E4). */
+/** Arten, die nicht hereinkommen, und warum (Abgleich §2). Fahrzeuge, Decks,
+ *  Bastionen und Waffenmeisterschaften standen hier bis T-087 (E4). */
 export const ARTEN_WEG: Record<string, string> = {
-  vehicle: 'später (E4)',
-  vehicleUpgrade: 'später (E4)',
-  vehicleFluff: 'später (E4)',
-  deck: 'später (E4)',
-  card: 'später (E4)',
-  facility: 'später (E4)',
-  facilityFluff: 'später (E4)',
   recipe: 'Kochrezepte, kein Handwerk (Abgleich §2.5)',
   recipeFluff: 'Kochrezepte',
   crochetPattern: 'Häkelmuster',
@@ -62,12 +68,24 @@ export const ARTEN_WEG: Record<string, string> = {
   _meta: 'Dateikopf',
   book: 'Buch-Metadaten: eine Systemebene statt einer je Buch (Arbeitsplan §1)',
   adventure: 'Abenteuer-Metadaten: Name und Erscheinen der Ebene (T-082); der Text kommt aus adventure/',
-  itemMastery: 'Waffenmeisterschaft gibt es erst 2024',
   languageScript: 'die Schrift steht als Wort an Language.script',
   hoard: 'Schatztabellen mit verschachtelten Würfen — noch nicht zugeordnet',
   individual: 'Schatztabellen mit verschachtelten Würfen — noch nicht zugeordnet',
   dragon: 'Schatztabellen mit verschachtelten Würfen — noch nicht zugeordnet',
   dragonMundaneItems: 'Schatztabellen mit verschachtelten Würfen — noch nicht zugeordnet',
+};
+
+/**
+ * Quellen, die nicht hereinkommen (T-087): Kochbücher und das Häkelbuch.
+ * Ihre Rezepte und Muster bleiben weg wie `recipe` und `crochetPattern`,
+ * und mit ihnen ihr Buchtext und das Rezept-Deck. Was davon vor T-087
+ * schon hereinkam (Heroes' Feast, 2020), bleibt — der Grundstand ändert
+ * sich nicht.
+ */
+export const QUELLEN_WEG: Record<string, string> = {
+  hflott: 'Kochbuch (Heroes\' Feast Legends of the Table)',
+  hfdomm: 'Kochrezepte als Karten (Deck of Many Morsels)',
+  cabomp: 'Häkelmuster (Crochet: A Book of Many Patterns)',
 };
 
 export interface Quelle {
@@ -249,28 +267,89 @@ export interface Auswahl {
   nurSrd?: boolean;
   /** Nur diese Quellen (Kürzel). */
   quellen?: string[];
+  /** Nur der Grundstand, wie vor T-087: ohne 2024, UA und die neuen Arten. */
+  nurGrundstand?: boolean;
+}
+
+/** Der Regelstand einer Quelle: UA am Kürzel, 2024 an den Kernbüchern und am Erscheinen (E2). */
+export function regelstandDerQuelle(quelle: string, stand: Pick<Datenstand, 'quellen'>): Regelstand {
+  const q = quelle.toLowerCase();
+  if (/^ua/.test(q)) return 'UA';
+  if (['xphb', 'xmm', 'xdmg'].includes(q)) return '2024';
+  const meta = stand.quellen.get(q);
+  if (meta && meta.published >= STICHTAG_2024) return '2024';
+  return '2014';
+}
+
+/** Die Klasse oder Abstammung, an der ein Eintrag hängt, wenn sie aus einer anderen Quelle kommt. */
+function haengtAn(e: Knoten): string[] {
+  const out: string[] = [];
+  for (const feld of ['classSource', 'raceSource']) {
+    const q = e[feld];
+    if (typeof q === 'string' && q && q !== quelleVon(e)) out.push(q);
+  }
+  return out;
+}
+
+/**
+ * **Der Regelstand eines Eintrags** (T-087). Ein Merkmal oder eine
+ * Unterklasse aus einem 2014-Buch, die 5e.tools an eine 2024-Klasse hängt,
+ * gehört zu ihr: der Regelstand der Klasse gilt, wenn er ein anderer ist.
+ */
+export function regelstandVon(e: Knoten, stand: Pick<Datenstand, 'quellen'>): Regelstand {
+  const eigen = regelstandDerQuelle(quelleVon(e), stand);
+  for (const q of haengtAn(e)) {
+    const r = regelstandDerQuelle(q, stand);
+    if (r !== '2014') return r;
+  }
+  return eigen;
+}
+
+/**
+ * **In welcher Ebene ein Eintrag liegt** (T-087): in der seiner Quelle —
+ * ausser er hängt an einer Klasse oder Abstammung eines anderen
+ * Regelstands, dann in deren. Sonst stünde der 2014-Champion, den
+ * 5e.tools dem 2024-Kämpfer gibt, ein zweites Mal im Player's Handbook
+ * und käme in jeder Kampagne ins Spiel, die es aufschaltet.
+ */
+export function ebeneQuelle(e: Knoten, stand: Pick<Datenstand, 'quellen'>): string {
+  const eigen = quelleVon(e);
+  const r = regelstandDerQuelle(eigen, stand);
+  for (const q of haengtAn(e)) if (regelstandDerQuelle(q, stand) !== r) return q;
+  return eigen;
+}
+
+/**
+ * **Der Grundstand** (T-087): was bis T-087 allein hereinkam — 2014-Regeln
+ * ohne die zurückgestellten Arten. Er teilt nichts mit dem Rest: keinen
+ * Angriff, kein Merkmal, keine Fassung, damit ein Lauf mit 2024 an ihm
+ * nichts anders schreibt als einer ohne.
+ */
+export function imGrundstand(e: Knoten, art: string, stand: Pick<Datenstand, 'quellen'>): boolean {
+  return !NEUE_ARTEN.has(art) && regelstandVon(e, stand) === '2014';
 }
 
 /**
  * Warum ein Eintrag nicht hereinkommt, oder `undefined`, wenn er es tut.
- * Die Gründe sind die Wörter, nach denen der Bericht zählt.
+ * Die Gründe sind die Wörter, nach denen der Bericht zählt. Seit T-087
+ * siebt nur noch die Auswahl, nicht der Regelstand.
  */
-export function ausschluss(e: Knoten, stand: Datenstand, auswahl: Auswahl = {}): string | undefined {
-  /* Ein 2014-Merkmal, das an eine 2024-Klasse gehängt ist, gehört zu ihr
-     und fällt mit ihr weg. */
-  for (const feld of ['classSource', 'raceSource']) {
-    const q = e[feld];
-    if (typeof q === 'string' && q && q !== quelleVon(e)) {
-      const grund = ausschluss({ source: q }, stand, { ...auswahl, nurSrd: false });
-      if (grund) return `hängt an einer Klasse oder Abstammung aus ${q} (${grund})`;
-    }
+export function ausschluss(e: Knoten, stand: Datenstand, auswahl: Auswahl = {}, art = ''): string | undefined {
+  /* Ein Merkmal, das an einer Klasse hängt, die nicht hereinkommt, fällt mit ihr weg. */
+  for (const q of haengtAn(e)) {
+    const grund = ausschluss({ source: q }, stand, { ...auswahl, nurSrd: false });
+    if (grund) return `hängt an einer Klasse oder Abstammung aus ${q} (${grund})`;
   }
   const quelle = quelleVon(e);
   const q = quelle.toLowerCase();
-  if (/^ua/.test(q)) return 'Unearthed Arcana';
-  const meta = stand.quellen.get(q);
-  if (['xphb', 'xmm', 'xdmg'].includes(q)) return '2024-Kernbuch';
-  if (meta && meta.published >= STICHTAG_2024) return '2024-Regeln (seit 2024-09)';
+  if (QUELLEN_WEG[q]) return QUELLEN_WEG[q];
+  if (auswahl.nurGrundstand) {
+    if (NEUE_ARTEN.has(art)) return 'neue Art (T-087)';
+    const r = regelstandDerQuelle(quelle, stand);
+    if (r === 'UA') return 'Unearthed Arcana';
+    if (['xphb', 'xmm', 'xdmg'].includes(q)) return '2024-Kernbuch';
+    if (r === '2024') return '2024-Regeln (seit 2024-09)';
+  }
   if (auswahl.quellen?.length && !auswahl.quellen.some((s) => s.toLowerCase() === q)) return 'nicht ausgewählt';
   if (auswahl.nurSrd) {
     const i = (e['inherits'] as Knoten | undefined) ?? {};

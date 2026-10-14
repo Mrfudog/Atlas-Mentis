@@ -103,6 +103,24 @@ Antworten der anderen nicht dazwischen. Jetzt heisst der eine Bereich
 `story` und ist nur die Kampagne; die Weltgeschichte (`World`, `Event`)
 steht unter `world`, bei der Welt, zu der sie gehört.
 
+### Ein Fahrzeug ist ein Statblock, eine Karte ist eine Regel
+
+Als T-087 hereinholte, was 5e.tools bis dahin zurückhielt — Fahrzeuge,
+ihre Aufrüstungen, Kartendecks, Bastionen, Waffenmeisterschaften —, lag
+nahe, je eine Art anzulegen: `Vehicle`, `Deck`, `Card`, `Facility`. Keine
+davon hätte ein Feld getragen, das eine bestehende Art nicht schon hat.
+Ein Fahrzeug hat RK, TP, Attribute und Immunitäten wie ein Statblock, und
+ein Belagerungsgerät ist dort schon einer („siege weapon"); was es sonst
+hat — Rumpf, Steuerung, Antrieb, Besatzung, Laderaum —, sind Zahlen, mit
+denen heute nichts rechnet, und die stehen als Text. Ein Deck ist eine
+Tabelle, auf der man zieht statt würfelt: je Karte ein Eintrag, die
+Anzahl als Gewicht. Eine Karte, eine Aufrüstung, ein Bastionsraum sind
+Regeln mit einem Wort (`card`, `upgrade`, `facility`), eine
+Waffenmeisterschaft ist eine Eigenschaft der Waffe wie „Finesse". **Ein
+Untertyp ohne eigene Felder ist ein Wort** — und wird eine Zeile, sobald
+eine Initiative mit Fahrzeugzügen rechnet oder eine Bastion ihre Runden
+zählt.
+
 ---
 
 ## Bestandteil
@@ -741,6 +759,26 @@ angepasst hat, und zurück heisst, die Fassung zu löschen. Damit ein Verweis
 aufs Original nicht ins Leere führt, liefert der Server die Fassung, die
 gilt (E5) — dieselbe Frage, die der Stapel ohnehin stellt (`resolveArticle`),
 nur jetzt auch beim Öffnen und bei den Namen.
+
+**2014, 2024 und Unearthed Arcana sind Ebenen, kein Schalter** (T-087,
+E-021 d). Bis 13.10. kam nur 2014 herein (E2 des Arbeitsplans), und 2024
+wurde weggesiebt — wer vergleichen wollte, konnte nicht. Jetzt kommt alles
+herein, jede Quelle in ihre Ebene, und aufgeschaltet wird, was die
+Kampagne will; keine neue Ebene ist von selbst im Spiel, auch nicht über
+die Gruppe „D&D 5e (2014)". Dass es Fireball zweimal gibt, löst dasselbe,
+was Fassungen innerhalb von 2014 schon löste: die eine ist die
+Grundfassung, die andere heisst nach ihrem Buch und zeigt mit `variantOf`
+darauf. Welche die Grundfassung ist, entscheidet hier nicht „das Neueste
+gilt" — das sagte 5e.tools mit `reprintedAs` und machte aus dem
+2014-Fireball „Fireball (PHB)". Ein Artikel, den Kampagnen schon nennen,
+hiesse dann auf einmal anders, und `[[Fireball]]` träfe den, den niemand
+gemeint hat. **Was schon da war, bleibt, wie es war** — der Importer
+schreibt den Grundstand mit denselben Ids, Nummern und Namen, wie ihn ein
+Lauf ohne 2024 schriebe, und teilt keinen Angriff und kein Merkmal mit dem
+Rest. Nur Buch- und Abenteuertext findet jetzt auch das Schiff oder das
+Deck, das er nennt: seine Teile hängen an ihrer Stelle im Buch und nicht
+am Text, und `--only-new` legt in einem Kapitel, das schon steht, ohnehin
+nichts dazu.
 
 **Ein Kapitel ist ein Arc, und ein Abenteuer besteht aus Teilen** (T-097,
 E-026, REQ-252). Die Leitung will ein Abenteuer nicht nur als Ganzes

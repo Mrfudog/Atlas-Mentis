@@ -57,6 +57,29 @@ export function berichtMarkdown(b: Bericht, kopf: BerichtKopf): string {
   for (const [t, n] of [...b.typen.entries()].sort((a, c) => a[0].localeCompare(c[0]))) z.push(`| \`${t}\` | ${zahl(n)} |`);
   z.push('');
 
+  if (b.ebenen.length) {
+    z.push('## Artikel je Ebene');
+    z.push('');
+    z.push('Jede Quelle ihre Ebene (T-081), nach Regelstand (T-087). *Neu* sind die Artikel, die nicht zum Grundstand gehören — 2024, Unearthed Arcana, Fahrzeuge, Decks, Bastionen, Waffenmeisterschaften; auf einem Server mit dem Grundstand legt `--only-new` sie an. Keine neue Ebene ist aufgeschaltet; in der Gruppe „D&D 5e (2014)" stehen nur die Ebenen des Grundstands.');
+    z.push('');
+    const jeStand = new Map<string, { ebenen: number; artikel: number; neu: number }>();
+    for (const e of b.ebenen) {
+      const x = jeStand.get(e.stand || '—') ?? { ebenen: 0, artikel: 0, neu: 0 };
+      x.ebenen += 1;
+      x.artikel += e.artikel;
+      x.neu += e.neu;
+      jeStand.set(e.stand || '—', x);
+    }
+    z.push('| Regelstand | Ebenen | Artikel | davon neu |');
+    z.push('| --- | ---: | ---: | ---: |');
+    for (const [st, x] of jeStand) z.push(`| ${st} | ${zahl(x.ebenen)} | ${zahl(x.artikel)} | ${zahl(x.neu)} |`);
+    z.push('');
+    z.push('| Ebene | Kürzel | Art | Regelstand | Artikel | davon neu |');
+    z.push('| --- | --- | --- | --- | ---: | ---: |');
+    for (const e of b.ebenen) z.push(`| ${e.name.replace(/\|/g, '\\|')} | ${e.kuerzel ? `\`${e.kuerzel}\`` : '—'} | ${e.art} | ${e.stand || '—'} | ${zahl(e.artikel)} | ${e.neu ? zahl(e.neu) : '—'} |`);
+    z.push('');
+  }
+
   z.push('## Je 5e.tools-Art');
   z.push('');
   z.push('*Gelesen* ist jeder Eintrag der Liste, *Artikel* die daraus angelegten Hauptartikel (ohne die Aktionen und Merkmale, die ein Statblock oder eine Klasse dazu anlegt). Die Differenz steht unter *ausgeschlossen* und *Notizen*.');
@@ -74,7 +97,7 @@ export function berichtMarkdown(b: Bericht, kopf: BerichtKopf): string {
 
   z.push('## Ausgeschlossene Quellen');
   z.push('');
-  z.push('Nach Arbeitsplan §1, E2: 2014 als Basis. Je Grund die Quellen mit Anzahl Einträgen, über alle Arten.');
+  z.push('Seit T-087 siebt nicht mehr der Regelstand, nur noch die Auswahl des Laufs (`--sources`, `--srd`, `--only-2014`) und was keine Art ist: Kochbücher und Häkelmuster. Je Grund die Quellen mit Anzahl Einträgen, über alle Arten.');
   z.push('');
   const gruende = new Map<string, Map<string, number>>();
   for (const a of b.arten.values()) {
@@ -110,7 +133,7 @@ export function berichtMarkdown(b: Bericht, kopf: BerichtKopf): string {
 
   z.push('## Verweise ins Leere');
   z.push('');
-  z.push('Marken, deren Ziel nicht hereinkam — meist ein Eintrag aus einer ausgeschlossenen Quelle. Sie stehen als Text da.');
+  z.push('Marken, deren Ziel nicht hereinkam — meist ein Eintrag aus einer ausgeschlossenen Quelle. Sie stehen als Text da. Artikel des Grundstands (ausser Buch- und Abenteuertext) finden nur den Grundstand (T-087): ihr Text bleibt, wie er ohne 2024 war — darum stehen ihre Verweise auf Fahrzeuge und Karten weiter hier.');
   z.push('');
   z.push('| Marke | Verweise | verschiedene Ziele | häufigste |');
   z.push('| --- | ---: | ---: | --- |');

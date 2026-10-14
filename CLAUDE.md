@@ -97,7 +97,11 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   `import-5etools.yml`, nur von Hand. **Einmal einlesen, danach nur
   ergänzen** (`import.js --only-new`, D71): angelegt wird nur, was es noch
   nicht gibt; die Ebene „D&D 5e (2014)" neu laden (`--replace-layer`) geht
-  nur ausdrücklich und nimmt eigene Änderungen an ihren Artikeln mit. Laden:
+  nur ausdrücklich und nimmt eigene Änderungen an ihren Artikeln mit.
+  **Seit T-087 kommt jeder Regelstand herein** (2024, UA, dazu Fahrzeuge,
+  Decks, Bastionen): jede Quelle in ihre Ebene, keine neue aufgeschaltet,
+  und der Grundstand (was vorher hereinkam) behält Ids, Nummern und Namen —
+  der Lauf rechnet ihn erst allein, für seine Nummern. Laden:
   [docs/Betrieb.md › 5e.tools laden](docs/Betrieb.md#5etools-laden).
 - `legacy/` — die alte React-App. Nicht weiterentwickeln; sie läuft, bis die
   neue Karte und Initiative kann.

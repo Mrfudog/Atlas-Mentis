@@ -86,12 +86,15 @@ export const enums: Record<string, EnumDef> = {
    * **Die Regeln ohne Träger (D48).** Zustand, Aktion, Merkmal, Talent,
    * Fertigkeit, Zauber haben eigene Arten; was übrig bleibt, trägt hier ein
    * Wort: `rule` (Variantregeln), `travel` (was eine Figur an einem
-   * Reiseknoten tun kann, REQ-171), `sense`, `reward`, `boon`, `option`.
+   * Reiseknoten tun kann, REQ-171), `sense`, `reward`, `boon`, `option`,
+   * und seit T-087 `upgrade` (eines Fahrzeugs), `facility` (ein Raum der
+   * Bastion, 2024) und `card` (eine Karte eines Decks) — Untertypen ohne
+   * eigene Felder, also Wörter und keine Zeilen.
    */
   RuleKind: {
     name: 'RuleKind',
     label: 'Rule kind',
-    values: ['rule', 'travel', 'sense', 'reward', 'boon', 'option'],
+    values: ['rule', 'travel', 'sense', 'reward', 'boon', 'option', 'upgrade', 'facility', 'card'],
   },
 
   State: {

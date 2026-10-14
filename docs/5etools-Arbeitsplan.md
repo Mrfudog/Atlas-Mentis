@@ -12,9 +12,9 @@ verbraucht.
 | # | Frage | Entscheidung |
 |---|---|---|
 | E1 | Umfang | **Alles**, was auf 2014 aufbaut — nicht nur das SRD. Die Seite ist **nicht öffentlich**: jede Route ausser Anmeldung verlangt ein Konto, Konten gibt es nur auf Einladung. Eine spätere Demo zeigt nur SRD-Inhalt; dafür trägt jeder Artikel die Lizenzflagge (`Source.srd`) |
-| E2 | Ausgabe | **2014 als Basis.** Die 2024-Kernbücher (`XPHB`, `XMM`, `XDMG`) kommen nicht herein, ebenso die Bücher seit September 2024, die auf den 2024-Regeln stehen (Heroes of Faerûn, Forge of the Artificer …), und Unearthed Arcana. Der Importer zählt sie auf; einschalten ist eine Zeile |
+| E2 | Ausgabe | ~~**2014 als Basis.**~~ **Abgelöst am 13.10.2026 (T-087, REQ-243):** alles kommt herein — 2014, 2024 (`XPHB`, `XMM`, `XDMG` und die Bücher seit September 2024) und Unearthed Arcana —, jede Quelle in ihre Ebene mit dem Regelstand an `Layer.version`, keine neue aufgeschaltet. Was vorher hereinkam, heisst der **Grundstand** und bleibt Zeichen für Zeichen, wie es war; die 2024-Fassung einer Sache ist eine Variante der von 2014 (E-021 d). `--only-2014` nimmt nur den Grundstand
 | E3 | Sprache | **Alles englisch, wie im Original** — Namen, Text, Aufzählungswerte und ihre Beschriftungen. Übersetzt wird danach von Mike, Begriff für Begriff (Paket P8). Der Importer übernimmt keine fremde Übersetzung |
-| E4 | Vehikel, Bastionen, Decks | später |
+| E4 | Vehikel, Bastionen, Decks | ~~später~~ **Herein seit T-087**, jede mit der kleinsten Art, die passt: Fahrzeug als `Statblock`, Aufrüstung, Bastionsraum und Karte als `Rule` (`upgrade`, `facility`, `card`), Deck als `Table` (`deck`), Waffenmeisterschaft als `ItemProperty` (Datenmodell R11). Kochrezepte und Häkelmuster bleiben weg, mit ihren Büchern |
 | E5 | Bilder | nicht im ersten Durchgang |
 | E6 | Reihenfolge | Regeln, Zustände, Zauber, Gegenstände, Monster zuerst; Klassen und Abstammungen mit dem Bogen |
 | E7 | Laden | **Einmal**, kein laufender Abgleich. Danach gehören die Artikel uns und werden direkt bearbeitet |

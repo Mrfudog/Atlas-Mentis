@@ -2,7 +2,10 @@
  * Der Importer von der Kommandozeile.
  *
  *   node dist/cli.js <5etools-src/data> [--out datei.json] [--bericht bericht.md]
- *                    [--srd] [--sources PHB,MM] [--sample [verzeichnis]]
+ *                    [--srd] [--sources PHB,MM] [--only-2014] [--sample [verzeichnis]]
+ *
+ * `--only-2014` nimmt nur den Grundstand, wie vor T-087: ohne 2024, UA,
+ * Fahrzeuge, Decks, Bastionen und Waffenmeisterschaften.
  *
  * Ohne `--out` schreibt er nur den Bericht. `--sample` schreibt einen
  * kleinen Ausschnitt als `<verzeichnis>/<id>.json` — Vorgabe ist der
@@ -28,7 +31,7 @@ const wert = (flag: string): string | undefined => {
 };
 const pfad = args[0] && !args[0].startsWith('--') ? args[0] : undefined;
 if (!pfad) {
-  console.error('node dist/cli.js <5etools-src/data> [--out datei.json] [--bericht bericht.md] [--srd] [--sources PHB,MM] [--sample [verzeichnis]]');
+  console.error('node dist/cli.js <5etools-src/data> [--out datei.json] [--bericht bericht.md] [--srd] [--sources PHB,MM] [--only-2014] [--sample [verzeichnis]]');
   process.exit(2);
 }
 
@@ -49,6 +52,7 @@ const quellen = wert('--sources');
 try {
   const { datei, bericht } = lauf(datenstand, {
     nurSrd: args.includes('--srd'),
+    nurGrundstand: args.includes('--only-2014'),
     quellen: quellen ? quellen.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
   });
   console.log(`${datei.entities.length} Artikel, alle geprüft.`);
