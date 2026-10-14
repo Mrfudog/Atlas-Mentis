@@ -19,10 +19,10 @@ Epic: [[EP-07 Regeln & Nachschlagen]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-089]] RuleElement reference objects: structured text, tags, optional effects/constraints, rawContent | – | 1 | steht |
-| [[REQ-091]] Rules browser: filtered, grouped, searchable, with layer origin in scope sidebar | – | 2 | steht |
-| [[REQ-094]] Entity ↔ rule attachment as layer-scoped relation | – | 2 | steht |
-| [[REQ-098]] Sub-5-second rule lookup during play | – | 2 | steht |
-| [[REQ-099]] Pinnable rules: bookmark object (user + context + rule) | – | 3 | steht |
+| [[REQ-089]] Regeln als Artikel | Spielleitung | 1 | steht |
+| [[REQ-091]] Regeln durchsuchen | Spieler | 2 | steht |
+| [[REQ-094]] Regeln an Artikel hängen | Spielleitung | 2 | steht |
+| [[REQ-098]] Regel in Sekunden | Spieler | 2 | steht |
+| [[REQ-099]] Regeln anheften | Spieler | 3 | steht |
 | [[REQ-313]] Zustände als Artikel | Spielleitung | 2 | teils |
 <!-- stories:ende -->

@@ -19,6 +19,6 @@ Epic: [[EP-08 Live-Spiel]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-070]] Local dice roller (selector, modifiers, results) | – | 2 | steht |
-| [[REQ-071]] Shared rolls & roll log per session | – | 4 | steht |
+| [[REQ-070]] Würfeln | Spieler | 2 | steht |
+| [[REQ-071]] Würfe für alle | Spieler | 4 | steht |
 <!-- stories:ende -->

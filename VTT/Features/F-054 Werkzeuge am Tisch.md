@@ -19,16 +19,16 @@ Epic: [[EP-08 Live-Spiel]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-112]] Widget: reference box holding multiple open articles with inner tabs | – | 2 | ersetzt |
-| [[REQ-113]] Widget: notes | – | 2 | offen |
-| [[REQ-114]] Widget: quick-create (creates entries in the campaign layer inline) | – | 2 | teils |
-| [[REQ-118]] Widget: encounter runner — instantiate participants, roll random entries, raw statblocks trackable | – | 3 | steht |
-| [[REQ-123]] Widget: timers | – | 3 | offen |
-| [[REQ-124]] Widget: quest board | – | 3 | steht |
-| [[REQ-125]] Widget: random tables & generators (names, shops, loot, cities) | – | 3 | steht |
-| [[REQ-126]] Widget: sound — embed/link external tool, native now-playing state only | – | 4 | teils |
-| [[REQ-127]] Native soundboard / music engine | – | 5 | offen |
-| [[REQ-129]] Chatbot: rules Q&A, facts, quick edit | – | 5 | offen |
-| [[REQ-186]] Nested loot tables: a table entry may reference another table, with cycle protection | – | 3 | steht |
+| [[REQ-112]] Widget mit mehreren offenen Artikeln | – | 2 | ersetzt |
+| [[REQ-113]] Notiz-Widget | Spielleitung | 2 | offen |
+| [[REQ-114]] Schnellanlage auf dem Schirm | Spielleitung | 2 | teils |
+| [[REQ-118]] Begegnung starten | Spielleitung | 3 | steht |
+| [[REQ-123]] Timer | Spielleitung | 3 | offen |
+| [[REQ-124]] Auftragsbrett als Widget | Spieler | 3 | steht |
+| [[REQ-125]] Zufallstabellen | Spielleitung | 3 | steht |
+| [[REQ-126]] Musik einbinden | Spielleitung | 4 | teils |
+| [[REQ-127]] Eigene Klangtafel | Spielleitung | 5 | offen |
+| [[REQ-129]] Fragen an einen Assistenten | Spielleitung | 5 | offen |
+| [[REQ-186]] Verschachtelte Tabellen | Spielleitung | 3 | steht |
 | [[REQ-292]] Neuen Artikel aus einer Auswahl anlegen | Spielleitung | 2 | teils |
 <!-- stories:ende -->

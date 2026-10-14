@@ -19,5 +19,5 @@ Epic: [[EP-06 Welt & Lore]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-254]] Namensgenerator: Namen für NSC, Orte usw. erzeugen (z. B. aus den Namenstabellen der Abstammungen/Kulturen), übernehmbar beim Anlegen | – | 4 | offen |
+| [[REQ-254]] Namensgenerator | Spielleitung | 4 | offen |
 <!-- stories:ende -->

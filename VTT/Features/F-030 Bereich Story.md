@@ -19,8 +19,8 @@ Epic: [[EP-05 Kampagne & Sitzungen]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-076]] NarrativeContainer hierarchy with DM-definable container types (Arc, Session, Scene, Kapitel…) | – | 1 | steht |
-| [[REQ-080]] Readaloud blocks unlocking for players after session (time/event-based grant) | – | 3 | offen |
-| [[REQ-082]] Quests with tasks, rewards, restrictions; player-facing quest board with gated GM parts | – | 3 | steht |
-| [[REQ-180]] Narrative seeds: planted threads with category (Backstory · Geheimnis · Faden · Idee · Versprechen · Konsequenz) and status (offen · gepflanzt · aufgegangen · verworfen), bound to a character and the session planted in | – | 3 | offen |
+| [[REQ-076]] Geschichte gliedern | Spielleitung | 1 | steht |
+| [[REQ-080]] Vorlesetexte nach der Sitzung freigeben | Spielleitung | 3 | offen |
+| [[REQ-082]] Quests mit Aufgaben und Lohn | Spielleitung | 3 | steht |
+| [[REQ-180]] Gepflanzte Fäden | Spielleitung | 3 | offen |
 <!-- stories:ende -->

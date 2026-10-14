@@ -19,7 +19,7 @@ Epic: [[EP-05 Kampagne & Sitzungen]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-196]] Sitzungsmitschnitt: Audio einer Sitzung aufnehmen oder eine fertige Aufnahme anhängen, als Asset am Sitzungs-Container, mit Startzeit und Kapitelmarken | – | 4 | offen |
-| [[REQ-197]] Transkription und Recap-Entwurf: Mitschnitt transkribieren, am Sitzungsverlauf ausrichten und daraus einen Recap-Entwurf erzeugen, den die SL bearbeitet | – | 4 | offen |
-| [[REQ-198]] Sprecherzuordnung im Transkript: Abschnitte einer Figur oder der SL zuordnen, damit „was hat meine Figur mitbekommen“ beantwortbar wird | – | 5 | offen |
+| [[REQ-196]] Sitzung aufnehmen | Spielleitung | 4 | offen |
+| [[REQ-197]] Transkript und Recap-Entwurf | Spielleitung | 4 | offen |
+| [[REQ-198]] Sprecher im Transkript | Spielleitung | 5 | offen |
 <!-- stories:ende -->

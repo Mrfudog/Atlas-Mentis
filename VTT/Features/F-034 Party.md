@@ -19,7 +19,7 @@ Epic: [[EP-05 Kampagne & Sitzungen]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-086]] Party view: passive perception, feats, inventory overview | – | 3 | teils |
-| [[REQ-122]] Widget: party overview | – | 3 | steht |
+| [[REQ-086]] Gruppenübersicht | Spielleitung | 3 | teils |
+| [[REQ-122]] Gruppe als Widget | Spielleitung | 3 | steht |
 | [[REQ-281]] Eine Party je Kampagne | Spielleitung | 1 | steht |
 <!-- stories:ende -->

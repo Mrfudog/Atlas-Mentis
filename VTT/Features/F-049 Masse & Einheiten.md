@@ -19,5 +19,5 @@ Epic: [[EP-07 Regeln & Nachschlagen]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-227]] Masse im Fliesstext umrechnen: Fuss und Meilen in Regeltexten („within 120 feet“) nach der Einstellung `units` zeigen, beim Lesen gerechnet, gespeichert bleibt der Wortlaut | – | 3 | offen |
+| [[REQ-227]] Masse im Fliesstext umrechnen | Spieler | 3 | offen |
 <!-- stories:ende -->

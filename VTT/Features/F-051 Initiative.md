@@ -19,11 +19,11 @@ Epic: [[EP-08 Live-Spiel]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-115]] Widget: initiative tracker — session-aware, conditions with durations, damage attributed to current actor by default | – | 2 | steht |
-| [[REQ-128]] Combat player view: own initiative, conditions, health comments | – | 3 | teils |
-| [[REQ-144]] Initiative indicator on battlemap (current / next) | – | 4 | steht |
-| [[REQ-211]] Initiative wie Improved Initiative: je Zeile Initiative, RK, TP und Zustände, aus der Zeile der Statblock | – | 2 | steht |
-| [[REQ-212]] Zustände und Notizen mit Dauer: Anzahl Runden, Anker (wessen Zug) und Zeitpunkt (Anfang oder Ende dieses Zuges); eine Notiz ist ein freier Text mit derselben Dauer | – | 2 | steht |
-| [[REQ-213]] Initiative der Spielenden: die eigene Reihenfolge und jede Kreatur, die aufgedeckt oder schon beteiligt ist; nicht erkannte Kreaturen mit Decknamen, TP von Gegnern als Wort | – | 3 | steht |
-| [[REQ-226]] In der ersten Runde erscheinen Gegner in der Initiative der Spielenden erst, wenn sie an der Reihe sind; ab der zweiten Runde stehen die bereits gezeigten fest | – | 3 | steht |
+| [[REQ-115]] Initiative | Spielleitung | 2 | steht |
+| [[REQ-128]] Kampf aus Sicht der Spielenden | Spieler | 3 | teils |
+| [[REQ-144]] Initiative auf der Karte | Spieler | 4 | steht |
+| [[REQ-211]] Initiative wie Improved Initiative | Spielleitung | 2 | steht |
+| [[REQ-212]] Zustände und Notizen mit Dauer | Spielleitung | 2 | steht |
+| [[REQ-213]] Initiative der Spielenden | Spieler | 3 | steht |
+| [[REQ-226]] Gegner erscheinen in Runde 1 erst in ihrem Zug | Spieler | 3 | steht |
 <!-- stories:ende -->
