@@ -512,7 +512,7 @@ Artikel in `Bestand.kurz`.
 flowchart LR
   reg["packages/registry<br/>(Quelle)"] -- emit-seed --> seed[prototype/test<br/>Prüfaufbau]
   reg -- catalogue --> docs1[docs/Artikeltypen.md<br/>Datenmodell.md › Register heute]
-  vault[VTT/Requirements.md] -- anforderungen --> docs2[docs/Anforderungen.md<br/>VTT/Umsetzung.md]
+  vault[VTT/Stories · Features · Epics] -- anforderungen --> docs2[docs/Anforderungen.md<br/>VTT/Requirements.md · Umsetzung.md]
   ft[(5etools-src/data<br/>ausserhalb des Repos)] -- import-5etools --> datei[Ausfuhrdatei<br/>~35 MB, nicht eingecheckt]
   datei -->|"server import --only-new"| pg[(Postgres)]
   datei -->|"--sample"| seed

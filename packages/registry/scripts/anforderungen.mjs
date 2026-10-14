@@ -1,292 +1,182 @@
 /*
-  Erzeugt docs/Anforderungen.md: jede REQ-Nummer aus dem Vault
-  (`Mrfudog/atlas-mentis`, VTT/Requirements.md) und aus der Ernte
-  (docs/Requirements from Kanalgang.md), mit dem Stand im Repo.
+  Die Anforderungen als Epics → Features → Stories (T-154, E-048 a, E-049).
 
-  Der Stand ist eine Zuordnung in dieser Datei — ein Urteil, keine Messung.
-  Darum steht er hier und nicht im Katalog-Erzeuger: wer eine Zeile anders
-  sieht, ändert sie in `STAND` und lässt das Skript laufen.
+  Quelle sind die Notizen im Vault: VTT/Epics, VTT/Features, VTT/Stories —
+  je eine Notiz mit Frontmatter (siehe `stories-lib.mjs`). Der Stand einer
+  Story (`stand`, `standNotiz`) steht in ihrer Notiz; er ist ein Urteil,
+  keine Messung — wer ihn anders sieht, ändert die Notiz.
 
-  Aufruf: node scripts/anforderungen.mjs [pfad-zum-vault/VTT/Requirements.md]
-  Ohne Pfad wird der Vault im Repo gelesen (VTT/Requirements.md).
+  Erzeugt werden, und von Hand geändert wird davon nichts:
+  - VTT/Requirements.md — alle Nummern in einer Tabelle,
+  - VTT/Requirements by Epic.md — je Epic und Feature,
+  - VTT/Areas.md — die Epics im Überblick,
+  - die Listen in den Epic- und Feature-Notizen (zwischen den Marken
+    `stories:anfang` und `stories:ende`),
+  - docs/Anforderungen.md, mit `--umsetzung <datei>` dieselbe Übersicht als
+    Notiz im Vault (VTT/Umsetzung.md).
+
+  Bricht etwas (Story ohne Feature, Verweis ins Leere, doppelte Nummer),
+  schreibt der Lauf nichts und schlägt fehl.
+
+  Aufruf: pnpm --filter @nw/registry anforderungen -- --umsetzung VTT/Umsetzung.md
 */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { leseAnforderungen, schreibeDatei } from './stories-lib.mjs';
 
 const HIER = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HIER, '..', '..', '..');
-/* `--umsetzung <datei>` schreibt dieselbe Übersicht zusätzlich als Obsidian-
-   Notiz in den Vault (mit Frontmatter), damit die Anforderungen dort den
-   Stand sehen, ohne dass jemand ihn abtippt. */
 const argv = process.argv.slice(2).filter((a) => a !== '--');
 const umsetzungAt = argv.indexOf('--umsetzung');
 /* Ein relativer Pfad meint das Repo, nicht das Paket — pnpm läuft in
    packages/registry, der Aufruf steht in CLAUDE.md vom Wurzelverzeichnis aus. */
 const UMSETZUNG = umsetzungAt >= 0 ? resolve(REPO, argv[umsetzungAt + 1] ?? '') : null;
-const pfadArg = argv.find((a, i) => !a.startsWith('--') && i !== umsetzungAt + 1);
-const VAULT = pfadArg ? resolve(REPO, pfadArg) : join(REPO, 'VTT', 'Requirements.md');
-const vault = readFileSync(VAULT, 'utf8');
-const ernte = readFileSync(join(REPO, 'docs', 'Requirements from Kanalgang.md'), 'utf8');
+const VTT = join(REPO, 'VTT');
 
-const reqs = new Map();
-for (const line of vault.split('\n')) {
-  const m = line.match(/^\| \*\*(REQ-\d{3})\*\* \| (.+?) \| (\d) \| (\d+) \|/);
-  if (m) reqs.set(m[1], { text: m[2], prio: m[3], quelle: 'Vault' });
+const { epics, features, stories, fehler } = leseAnforderungen(REPO);
+if (fehler.length) {
+  console.error(`${fehler.length} Fehler in den Anforderungen:\n  ` + fehler.join('\n  '));
+  process.exit(1);
 }
-for (const line of ernte.split('\n')) {
-  const m = line.match(/^\| (REQ-\d{3}) \| (.+?) \| (\d) \| (\d+) \|/);
-  if (m && !reqs.has(m[1])) reqs.set(m[1], { text: m[2], prio: m[3], quelle: 'Ernte' });
-}
-
-/* steht · teils · offen · ersetzt · verworfen */
-const STAND = {
-  'REQ-001': ['steht', 'Peg, Karten, Kanten, Register — Datenmodell.md §1–5'],
-  'REQ-002': ['ersetzt', 'keine Nachfolgerkette; Fassungen über `overrides` und `variantOf` in Ebenen'],
-  'REQ-003': ['teils', 'Server schreibt `event_log` (`entity.written`, `entity.deleted`); keine Anzeige, keine Kette'],
-  'REQ-004': ['steht', '`Layer.kind` system · expansion · world · pack · campaign · overrides, `order`, `version`'],
-  'REQ-005': ['steht', '`inLayer` mit `mode` adds/removes; Überschreiben ist die Kante `overrides`; kein Pin'],
-  'REQ-006': ['teils', 'Prototyp: `inStack`/`resolveArticle`; Server kennt nur die Zugehörigkeit (`campaignsOf`) — Abgleich A2'],
-  'REQ-007': ['offen', ''],
-  'REQ-008': ['teils', 'Kante `variantOf` da; kein Kopierknopf'],
-  'REQ-009': ['steht', '`overrides` in einer Ebene, Auflösung im Prototyp'],
-  'REQ-010': ['steht', 'als Grundtypen: `Visibility`, `Status`, `Time`'],
-  'REQ-011': ['ersetzt', 'ein Textblock ist ein Feld (`many` + `long`) mit Eintrags-Id; gesperrt wird je Eintrag über eine Information'],
-  'REQ-012': ['steht', 'als Prosafelder: paragraph, readaloud, fact, secret, lore, tactics, note, poem, song, appearance, personality'],
-  'REQ-013': ['teils', '`[[Verweise]]` nach Name und Alias, Vorschläge beim Tippen, `Rule.autolink`; kein Auto-Link beim Schreiben'],
-  'REQ-014': ['steht', 'Rückbezüge in der Seitenleiste (`backlinks`)'],
-  'REQ-015': ['offen', 'Typdiagramm steht (Register › How it works); Artikelgraph nicht — Aufgabe #44'],
-  'REQ-016': ['verworfen', 'keine Übersetzungsschicht; Bezeichner englisch, Inhalte in der Sprache der Kampagne'],
-  'REQ-017': ['offen', ''],
-  'REQ-018': ['offen', 'keine `effects[]`; Regeln sind Text mit `{VAR}`'],
-  'REQ-019': ['verworfen', 'die Importer sind weg (2026-09-20), mit ihnen `Imported`; kommt mit neuen Importern zurück'],
-  'REQ-020': ['steht', '`Source`: publication, page, anchor, url'],
-  'REQ-021': ['steht', '`Asset`: backend app/external, ref, mime, width, height, bytes'],
-  'REQ-022': ['offen', ''],
-  'REQ-023': ['ersetzt', '`State`: idea · prepared · ready; used/discarded waren Ereignisse und sind das Feld der Art (`Quest.progress`, `Encounter.phase`)'],
-  'REQ-024': ['steht', '`Time.sort` (sortierbar), `Time.display`, `Time.calendar`'],
-  'REQ-025': ['offen', 'nur die Einstellung `calendar`; keine Kalenderzeile'],
-  'REQ-026': ['steht', 'drei Ansichten, Anordnung am Typ (`InterfaceDef.views`)'],
-  'REQ-027': ['steht', 'das Register ist Daten mit Masken (Prototyp, Registerseite in der Web-Oberfläche: REQ-230); keine Codeänderung je Art'],
-  'REQ-028': ['teils', 'Suche am Server über Name, Alias, Deckname und Nummer, Feldfilter als Facetten (`GET /api/list`, W7); keine Volltextsuche'],
-  'REQ-029': ['steht', 'Ausfuhr/Einfuhr als eine Datei; Register allein (`register-datei.mjs`)'],
-  'REQ-030': ['ersetzt', 'Kante `regards` mit Marken (Beziehungen.md)'],
-  'REQ-031': ['steht', 'Argon2id, Sitzung beim Server (Zugang.md)'],
-  'REQ-032': ['verworfen', 'Entscheidung 2 (19.9.): kein SSO'],
-  'REQ-033': ['steht', '`app_user`'],
-  'REQ-034': ['steht', 'Einladung, Konto selbst anlegen'],
-  'REQ-035': ['steht', '`campaign_member (campaign, user, role)`; Scope ist die Kampagne'],
-  'REQ-036': ['steht', 'gm · co-gm · player · spectator; `is_admin` global'],
-  'REQ-037': ['steht', ''],
-  'REQ-038': ['steht', '`audience`, am Server ausgewertet (`articleVisible`)'],
-  'REQ-039': ['ersetzt', 'drei Felder statt sechs; scope, Rollenlisten, sharedUsers weg (30.9.)'],
-  'REQ-040': ['steht', 'anders: `Information`/`Knowledge` als Artikel, `knownBy` an Träger'],
-  'REQ-041': ['teils', 'Verwaltung oder eigene Figur (+ carries/holds/crafting); die Leitung fehlt in `mayWrite`'],
-  'REQ-042': ['offen', ''],
-  'REQ-043': ['steht', 'Registerteil `settings`'],
-  'REQ-044': ['steht', 'Herkunft am Artikelkopf, Ansicht `stack`'],
-  'REQ-045': ['offen', ''],
-  'REQ-046': ['steht', '`belongsTo`, `PlayerCharacter`; NPC ist `Creature.kind`'],
-  'REQ-047': ['verworfen', 'Importer entfernt; wiederkommen heisst neu schreiben'],
-  'REQ-048': ['steht', 'Bearbeiten in der Ansicht und im Dialog'],
-  'REQ-049': ['steht', 'Anlegedialog mit Statblock-Frage, Schnellanlage aus einem Verweis'],
-  'REQ-050': ['steht', 'Reiter Overview · Combat · Gear · Craft · Ties'],
-  'REQ-051': ['steht', '`Vitals` mit `alwaysEdit`, Bogen'],
-  'REQ-052': ['steht', 'Statblock-Seite mit eingesetzten Regeln'],
-  'REQ-053': ['steht', '`composedOf` mit `{VAR}`-Bindung'],
-  'REQ-054': ['steht', '`Statblock.combatRole`'],
-  'REQ-055': ['offen', 'Pool steht; Variante beim Tippen nicht'],
-  'REQ-056': ['offen', ''],
-  'REQ-057': ['offen', ''],
-  'REQ-058': ['offen', ''],
-  'REQ-059': ['steht', '`Facts.fact#id` über eine Information'],
-  'REQ-060': ['teils', '`Creature.kind` companion/summon; keine `companionOf`-Kante'],
-  'REQ-061': ['steht', '`owes`, `memberOf`, `livesIn`, `regards`'],
-  'REQ-062': ['offen', '`Statblock.system` als Feld vorhanden'],
-  'REQ-063': ['steht', ''],
-  'REQ-064': ['steht', '`holds.tier`, `holds.slot`'],
-  'REQ-065': ['steht', 'Kachelraster, `Item.rows`, `Inventory.grid`/`zones`'],
-  'REQ-066': ['steht', 'Reiter Combat; Initiative am Spieltisch'],
-  'REQ-067': ['offen', 'es gibt keine Art für Zauber — Abgleich A9'],
-  'REQ-068': ['offen', ''],
-  'REQ-069': ['teils', 'Prototyp passt sich an; `apps/web` ist noch klein'],
-  'REQ-070': ['steht', ''],
-  'REQ-071': ['steht', 'Würfe über den Raum-Kanal, Protokoll'],
-  'REQ-072': ['offen', '`Notes` an Artikeln; kein eigener Notizartikel je Spieler'],
-  'REQ-073': ['ersetzt', 'die Anordnung steht am Typ im Register, nicht je Nutzer'],
-  'REQ-074': ['teils', 'Bereich Play und die Leiste'],
-  'REQ-075': ['steht', '`Campaign`, `settings`, Zeitleiste'],
-  'REQ-076': ['steht', '`Story` (`kind`: adventure …) · Campaign · Arc · Session · Scene, Hierarchie über `partOf`'],
-  'REQ-077': ['steht', '`Session`, `Encounter.phase`'],
-  'REQ-078': ['steht', 'Element `prep`'],
-  'REQ-079': ['teils', 'Wissen zuteilen im Seitenpanel; kein Ein-Tipp-Knopf in der Sitzung'],
-  'REQ-080': ['offen', ''],
-  'REQ-081': ['ersetzt', 'siehe REQ-030'],
-  'REQ-082': ['steht', '`Quest.tasks`, `reward`, `restriction`; Auftragsbrett'],
-  'REQ-083': ['offen', 'Spieler schreiben nur ihre Figur'],
-  'REQ-084': ['steht', 'Unfinished, Todos'],
-  'REQ-085': ['steht', '`Encounter`, `participates`, `onMap`, `loot`, `tableFor`'],
-  'REQ-086': ['teils', 'Party-Seite mit Inventar und Werkbank; keine Übersicht der passiven Wahrnehmung'],
-  'REQ-087': ['offen', ''],
-  'REQ-088': ['teils', 'Massenbearbeitung ohne Wissen'],
-  'REQ-089': ['steht', '`Rule`, `Feat`, `Skill`'],
-  'REQ-090': ['verworfen', 'siehe REQ-047'],
-  'REQ-091': ['steht', 'Bereich Rules mit Filter'],
-  'REQ-092': ['offen', 'keine Art für Zauber — Abgleich A9'],
-  'REQ-093': ['offen', ''],
-  'REQ-094': ['steht', '`hasProperty`, `composedOf`; die Ebene über `inLayer`'],
-  'REQ-095': ['offen', ''],
-  'REQ-096': ['offen', ''],
-  'REQ-097': ['offen', 'braucht REQ-092'],
-  'REQ-098': ['steht', 'Verweise im Text, Merkzettel'],
-  'REQ-099': ['steht', 'Merkzettel (pinned)'],
-  'REQ-100': ['teils', '`Layer.kind: world`; keine Mitglieder je Welt'],
-  'REQ-101': ['steht', '`Article` mit poem/song'],
-  'REQ-102': ['teils', 'Prototyp ja; Server ohne Stapel — Abgleich A2'],
-  'REQ-103': ['steht', '`Place.kind`, `environment`, `partOf`'],
-  'REQ-104': ['steht', '`Faction.kind`, `controls`, `memberOf`'],
-  'REQ-105': ['steht', 'Kompendium nach Art gefiltert'],
-  'REQ-106': ['steht', '`Event`, `Time`, Element `timeline`'],
-  'REQ-107': ['offen', 'eine Zeile, wenn gebraucht'],
-  'REQ-108': ['steht', '`overrides` in der Kampagnenebene'],
-  'REQ-109': ['teils', 'Felder da (`Article.poem/song`); Schreibrecht offen (REQ-041)'],
-  'REQ-110': ['offen', 'Aufgabe #59 Portal'],
-  'REQ-111': ['steht', '`Board`, `placed`'],
-  'REQ-112': ['ersetzt', 'Platzierungen auf dem Board'],
-  'REQ-113': ['offen', 'Aufgabe #58'],
-  'REQ-114': ['teils', 'Anlegen aus dem Board'],
-  'REQ-115': ['steht', '`participates` mit init, hp, conditions (je Eintrag ein Artikel der Art `Condition`, Runden, Quelle)'],
-  'REQ-116': ['steht', '`Session.activeMap/activeEncounter/activeScene`; Raum-Kanal für Augenblicke'],
-  'REQ-117': ['steht', '`Session.stewardship` gm/table'],
-  'REQ-118': ['steht', 'Begegnung mit Teilnehmern und Tabellen'],
-  'REQ-119': ['offen', ''],
-  'REQ-120': ['teils', 'Würfe im Protokoll; Zustandsereignisse nicht gespeichert'],
-  'REQ-121': ['offen', ''],
-  'REQ-122': ['steht', 'Party-Seite'],
-  'REQ-123': ['offen', ''],
-  'REQ-124': ['steht', 'Element `quests`'],
-  'REQ-125': ['steht', '`Table.kind` loot · encounter · name · shop · event · generic'],
-  'REQ-126': ['teils', '`Session.nowPlaying` als Feld; kein Einbetten'],
-  'REQ-127': ['offen', ''],
-  'REQ-128': ['teils', 'dieselbe Ansicht, gesiebt'],
-  'REQ-129': ['offen', ''],
-  'REQ-130': ['steht', '`Map` mit Gitter, Massstab, `mapOf`'],
-  'REQ-131': ['steht', '`insideMap` mit Rahmen, Hineinzoomen'],
-  'REQ-132': ['offen', ''],
-  'REQ-133': ['steht', '`marker`'],
-  'REQ-134': ['steht', '`marker.kind: scenery`'],
-  'REQ-135': ['teils', 'Tokens als Kanten; keine getrennte Lebensdauer je Sitzung'],
-  'REQ-136': ['steht', 'Gruppen-Token, `{PARTYWHERE}`'],
-  'REQ-137': ['teils', '`territory` von Hand; keine Abfrage'],
-  'REQ-138': ['steht', '`Map.tiles`'],
-  'REQ-139': ['steht', '`Map.reveal`'],
-  'REQ-140': ['steht', '`marker.light/dim`, `Map.walls`, `visionPoly`'],
-  'REQ-141': ['offen', ''],
-  'REQ-142': ['offen', 'Aufgabe #60'],
-  'REQ-143': ['offen', ''],
-  'REQ-144': ['steht', ''],
-  'REQ-145': ['teils', 'Assets als Artikel; Ablage im Artefakt'],
-  'REQ-146': ['offen', ''],
-  'REQ-147': ['teils', 'Prototyp ja; Server noch nicht'],
-  'REQ-148': ['steht', '`Asset.backend: external`'],
-  'REQ-149': ['offen', ''],
-  'REQ-150': ['offen', ''],
-  'REQ-151': ['offen', ''],
-  'REQ-152': ['offen', ''],
-  'REQ-153': ['ersetzt', 'Oberfläche englisch (19.9.)'],
-  'REQ-154': ['steht', 'Hetzner, Caddy, GHCR (Betrieb.md)'],
-  'REQ-155': ['steht', 'Sicherung vor jedem Ausrollen; nächtliche als Rezept'],
-  'REQ-156': ['verworfen', '`inherit` bewusst weg — kommt mit einer Tiefe wieder, wenn gebraucht'],
-  'REQ-157': ['steht', '`placed` mit x, y, w, h, z; in der Seite die Leinwand `/boards` (W4)'],
-  'REQ-158': ['steht', '`placed.view`'],
-  'REQ-159': ['steht', '`Board.anchors`; in der Seite als Reiter über dem Board, mit Rechteck ein einklappbarer Bereich (T-073)'],
-  'REQ-160': ['teils', ''],
-  'REQ-161': ['steht', '`Board.rules`, `placed.view`; ohne beides wählt die Grösse der Kachel (`placementView`, D63)'],
-  'REQ-162': ['offen', ''],
-  'REQ-163': ['steht', 'undurchsichtige Id; `Identity.id` als Nummer'],
-  'REQ-164': ['ersetzt', 'drei Ansichten; Bild, Token, Karte sind Elemente'],
-  'REQ-165': ['steht', '`Board.shapes`, Assets als Platzierung (Prototyp); die Seite zeichnet Anker und Bereiche (T-073), Formen noch nicht (W4)'],
-  'REQ-166': ['teils', 'Anlegen auf dem Board'],
-  'REQ-167': ['offen', ''],
-  'REQ-168': ['steht', '`route` mit signal, `Place.state`'],
-  'REQ-169': ['steht', '`Place.state` hidden · discovered · explored'],
-  'REQ-170': ['steht', 'Einstellungen `travel*`, `Party.sinceRation/sinceLight`'],
-  'REQ-171': ['steht', '`Party.actions`: Figur → Regelartikel `kind: travel`'],
-  'REQ-172': ['steht', '`entry.weight`, `requiresTag`, `tableFor`'],
-  'REQ-173': ['offen', ''],
-  'REQ-174': ['steht', '`{VAR}`: Kante → Artikel → Kampagnenwerte → Register; ein Platzhalter trägt seinen Artikel, Satzanfang gross beim Lesen (D60)'],
-  'REQ-175': ['steht', '`Rule.autolink`'],
-  'REQ-176': ['teils', 'Vorschläge nach Name und Alias; keine Ähnlichkeit'],
-  'REQ-177': ['steht', '`Information.fields` je Feld und je Eintrag'],
-  'REQ-178': ['steht', '`Identity.cover`'],
-  'REQ-179': ['steht', '„…and 3 more things"'],
-  'REQ-180': ['offen', 'keine Art und kein Feld für gepflanzte Fäden'],
-  'REQ-181': ['steht', '`adhoc` mit Befördern'],
-  'REQ-182': ['steht', '`inverseLabel`'],
-  'REQ-183': ['steht', '`carries` von `Party`'],
-  'REQ-184': ['steht', '`Recipe`, `needs`, `yields`, `crafting`'],
-  'REQ-185': ['offen', ''],
-  'REQ-186': ['steht', '`entry` auf eine Tabelle'],
-  'REQ-187': ['offen', ''],
-  'REQ-188': ['steht', 'Unfinished'],
-  'REQ-189': ['steht', '`Todos`, gesammelt'],
-  'REQ-190': ['steht', 'Schnellerfassung an der Sitzung'],
-  'REQ-191': ['steht', 'Fail-closed im Prototyp; in der Seite: Schreiben nur gegen gelesene Revision, Entwurf herunterladbar'],
-  'REQ-192': ['steht', 'Revision je Artikel am Server (409), Zusammenführen in der Maske (mergeEntity)'],
-  'REQ-193': ['steht', '`territory`'],
-  'REQ-194': ['offen', ''],
-  'REQ-195': ['offen', ''],
-  'REQ-196': ['offen', ''],
-  'REQ-197': ['offen', ''],
-  'REQ-198': ['offen', ''],
-  'REQ-199': ['steht', 'Rezept in Betrieb.md, ohne Konten; `members` nicht in der Ausfuhr'],
-  'REQ-200': ['offen', ''],
-  'REQ-201': ['offen', ''],
-  'REQ-202': ['offen', ''],
-  'REQ-203': ['steht', '`Faction.ranks`, `memberOf.props.rank`, `knownBy.props.rank` als Mindestrang (7.10., A7)'],
-  'REQ-204': ['offen', ''],
-  'REQ-205': ['teils', 'ein Board je Geschichtsartikel über `partOf`, Liste und Anlegen in der Seite (W4, D63); offen: Umschalten auf dem Schirm, Filter nach Artikeln aus offenen Boards'],
-  'REQ-206': ['steht', 'Rechner 5-10-5 über Feld × Parität (`movement.ts`, Prototyp `mvSearch`), Modi genau · Reichweite · aus, Tempo als Zahl in `Session.moves` mit Kurzwahl, SL setzt frei und bestätigt über das Tempo hinaus; nur Quadratraster (D56)'],
-  'REQ-207': ['steht', 'Wegpunkte per Klick, günstigster Weg dazwischen, Parität läuft weiter (`pathVia`); Gefahren und Reichweite von Gegnern meidbar (D56)'],
-  'REQ-208': ['teils', '`ZoneKind` (Regelartikel) + Kante `zone`: Kosten, Licht und Verdeckung in Weg und Sicht, versteckt bis PP n; Schaden/Rettungswurf/Zustand gezeigt und beim Betreten in `Session.log`. Offen: Auslöser zu Zugbeginn/-ende, Zonenlicht in der Dunkelheitsmaske (D56)'],
-  'REQ-209': ['steht', 'Sieht / wird gesehen von am gewählten Token, Aufdecken von Hand; beim Bestätigen entlang des Pfads Schritt für Schritt (Tokens, versteckte Zonen, Nebel); Sichtlinie, PP gegen Heimlichkeit, −5 im Dämmerlicht (`sight.ts`, D56)'],
-  'REQ-210': ['teils', 'Prototyp: Vollbild für Karte und Initiative, SL-/Spieleransicht der Karte, Spielende bewegen eigene Tokens; offen: `redactEntity` hält versteckte Marker am Server nicht zurück (D56)'],
-  'REQ-211': ['steht', 'Prototyp: RK und TP-Maximum vom Statblock der Instanz (`participantStats`), Statblock in `quick` neben der Reihe (D53)'],
-  'REQ-212': ['steht', '`anchor`/`at` an `participates.props.conditions`, Notiz mit `text`; `tickEntries`, `expiresAt` (D53)'],
-  'REQ-213': ['steht', '`redactParticipants` in `redactEntity` und im Prototyp; `turn` geht nicht an Spielende, `props.current` statt dessen (D53, D58)'],
-  'REQ-214': ['steht', '`Creature.figure`, Plätze des Blatts an `holds.props.slot`, Reiter „Worn“ mit Figur (Prototyp, D54)'],
-  'REQ-215': ['steht', '`Statblock.carryExtra` gerechnet, Grundquadrat aus `carrySquares`; `carryGrid` im Modell, Prototyp (D54)'],
-  'REQ-216': ['steht', 'Ziehstufe die Kette hinauf (`drawStage`), `slotDraw`, Basiszonen `carryZones` und Vorlagen `container:*` (D54)'],
-  'REQ-217': ['steht', 'Abschnitt „Actions“ am Bogen, je `DrawTime`-Stufe „Draw“ mit Weg (Prototyp, D54)'],
-  'REQ-218': ['steht', 'gelernt über `knownBy`, Werkbank mit Filtern (Prototyp, D55)'],
-  'REQ-219': ['steht', 'beim Start gebunden in `crafting.props.put`, `onFailure` (D55)'],
-  'REQ-220': ['steht', 'Spuren = `Event` mit Spanne, Inhalt über `partOf` (D57), Kampagne als Spur; `worldHistory` im Modell, Reiter im Element `timeline` (Prototyp)'],
-  'REQ-221': ['offen', ''],
-  'REQ-222': ['offen', ''],
-  'REQ-223': ['offen', ''],
-  'REQ-224': ['steht', 'Platz nach `Statblock.size` beim Lesen (`sizeSpan`, Instanz über `resolveInstance`), gespeichert die Mitte, gerechnet über den Anker; Rechner mit `MoveGrid.span` (ganzer Platz passt, Wände je Feld, teuerstes neu betretenes Feld), Sperren und Reichweite vom ganzen Platz, Sicht Feld zu Feld (`bestNotice`); tiny teilt (D58)'],
-  'REQ-225': ['steht', '„Drop“/„Stow“ am Bogen in der Zeile ihrer Kosten (Einstellung `handActions`), `tier: ground`, Gurt frei in `slotDraw`; `handActions`/`inHand` im Modell (Prototyp, D58)'],
-  'REQ-226': ['steht', 'Runde 1: Gegner erst in ihrem Zug (`turnHasCome`, `initiativeOrder`), in `redactParticipants`/`redactEntity` und im Prototyp (D58)'],
-  'REQ-227': ['offen', 'umgerechnet werden nur Felder mit `unit` und Angriffszeilen (`convertText`, W2)'],
-  'REQ-228': ['offen', 'heute widerrufen und neu anlegen (W3)'],
-  'REQ-229': ['offen', 'nur über `user` auf dem Server; die Kontoliste der Verwaltung steht in der Seite (W3)'],
-  'REQ-230': ['steht', 'Registerseite `/registry` mit Zählung (`registryUsage`, `GET /api/registry/usage`); schreiben Verwaltung und `gm` der laufenden Kampagne (W5, D64)'],
-  'REQ-231': ['steht', '`/classes`: Stufentabelle, Merkmale je Stufe, optionale zuschaltbar, Unterklassen filtern und vergleichen (`classes.ts`, W6, D65)'],
-  'REQ-232': ['steht', '`GET /api/list` mit Spalten aus `overview` und Facetten, 2 KB je Blatt in 15–40 ms; erster Aufruf eines Spielers nach einer Änderung ≈370 ms (W7, D66)'],
-  'REQ-233': ['steht', '`import-5etools.yml` und `deploy/import.sh`, `--only-new` (Vorgabe), `--replace-layer` nur ausdrücklich, `--dry-run`; nur von Hand, dev wie prod (W8, D67, D71)'],
-  'REQ-234': ['steht', '`app_token`, Bearer `atm_…`, `read`/`write` mit Ablauf; `scripts/atlas.mjs` (W9)'],
-  'REQ-235': ['steht', '`/werkbank`: Prüfungen (`CHECKS`), `POST /api/bulk` mit Vorschau, `event_log` und Rückgängig (W9, D68)'],
+const heute = new Date().toISOString().slice(0, 10);
+const zelle = (s) => String(s ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ');
+const name = (datei) => datei.replace(/\.md$/, '');
+const E = new Map(epics.map((e) => [e.id, e]));
+const F = new Map(features.map((f) => [f.id, f]));
+const storiesVon = (fid) => stories.filter((s) => s.featureId === fid);
+const featuresVon = (eid) => features.filter((f) => f.epicId === eid);
+const punkte = (liste) => liste.reduce((n, s) => n + (Number(s.aufwand) || 0), 0);
+const zaehle = (liste, k) => liste.reduce((m, s) => ((m[s[k]] = (m[s[k]] ?? 0) + 1), m), {});
+const STAENDE = ['steht', 'teils', 'offen', 'ersetzt', 'verworfen'];
+const standZeile = (liste) => {
+  const z = zaehle(liste, 'stand');
+  return STAENDE.filter((s) => z[s]).map((s) => `${z[s]} ${s}`).join(' · ');
 };
+/* Eine Story ohne Satz ist noch die alte Anforderung (vor T-154). */
+const formuliert = (s) => /^\*\*Als\*\*/.test(s.satz);
 
+/* --- Listen in Epic- und Feature-Notizen ------------------------------- */
+function setzeListe(datei, zeilen) {
+  const pfad = join(VTT, datei);
+  const text = readFileSync(pfad, 'utf8');
+  const block = ['<!-- stories:anfang — erzeugt von anforderungen.mjs, nicht von Hand ändern -->', ...zeilen, '<!-- stories:ende -->'].join('\n');
+  const neu = /<!-- stories:anfang[\s\S]*?<!-- stories:ende -->/.test(text)
+    ? text.replace(/<!-- stories:anfang[\s\S]*?<!-- stories:ende -->/, block)
+    : text.trimEnd() + '\n\n' + block + '\n';
+  if (neu !== text) writeFileSync(pfad, neu);
+}
+for (const f of features) {
+  const ss = storiesVon(f.id);
+  setzeListe(join('Features', f.datei), [
+    `${ss.length} Stories · ${punkte(ss)} Punkte · ${standZeile(ss)}`, '',
+    '| Story | Rolle | Prio | Stand |', '|---|---|---|---|',
+    ...ss.map((s) => `| [[${s.id}]] ${zelle(s.title)} | ${s.rolle ?? '–'} | ${s.prio ?? '–'} | ${s.stand} |`),
+  ]);
+}
+for (const e of epics) {
+  const fs = featuresVon(e.id);
+  setzeListe(join('Epics', e.datei), [
+    '| Feature | Stories | Punkte | Stand |', '|---|---|---|---|',
+    ...fs.map((f) => { const ss = storiesVon(f.id); return `| [[${name(f.datei)}]] — ${zelle(f.beschreibung)} | ${ss.length} | ${punkte(ss)} | ${standZeile(ss)} |`; }),
+  ]);
+}
+
+/* --- VTT/Requirements.md ---------------------------------------------- */
+const kopf = (tags, titel) => ['---', `tags: [${tags}]`, 'status: derived', `updated: ${heute}`, '---', '', `# ${titel}`, ''];
+const hinweis = [
+  '> [!info] Erzeugt aus den Notizen',
+  '> Quelle sind die Story-Notizen in `VTT/Stories/`, die Features in `VTT/Features/`, die Epics in `VTT/Epics/`.',
+  '> `pnpm --filter @nw/registry anforderungen -- --umsetzung VTT/Umsetzung.md` schreibt diese Seite neu — von Hand geändert wird die Notiz, nicht die Seite.',
+  '',
+];
+{
+  const z = [...kopf('vtt, requirements, registry', 'Requirements Registry'), ...hinweis];
+  z.push('Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `REQ-nnn`, je Story ein **Feature** (eine Funktion, eine Artikelart oder eine Ansicht), je Feature ein **Epic** (ein Funktionsbereich, siehe [[Areas]]). **Nummern sind unveränderlich**: fortlaufend, nie neu vergeben, ohne Bedeutung. Was wegfällt, bleibt mit `dropped` stehen und nennt, was es ersetzt (`ersetztDurch`) oder warum nicht.');
+  z.push('');
+  z.push('**Vorrang (D42, 7.10.2026):** was der Tisch von Nebelwacht braucht, vor dem, was ein beliebiger Tisch brauchen könnte; die Spalte *Prio* bleibt, der Vorrang gilt bei gleicher Prio. Einschneidende Änderungen entscheidet die Verwaltung.');
+  z.push('');
+  z.push('**Ein neuer Wunsch** wird zuerst eine Story oder ändert eine bestehende (bzw. setzt sie auf `dropped`); Aufgaben im Projektbrett hängen an Stories. Ablauf: [CONTRIBUTING.md](../CONTRIBUTING.md#anforderungen-als-user-stories).');
+  z.push('');
+  z.push('## Skalen');
+  z.push('- **Rolle** Spieler · Spielleitung · Mitleitung · Zuschauer · Verwaltung');
+  z.push('- **Prio** 1 Gerüst · 2 erster Einsatz am Tisch · 3 volle v1.0 · 4 Ausbau · 5 Ideenparkplatz');
+  z.push('- **Aufwand** Fibonacci-Punkte: 1 ≈ ein Abend · 2 · 3 ≈ zwei Abendwochen · 5 · 8 ≈ ein Monat+ · 13 = vorher teilen');
+  z.push('- **Status** idea · defined · planned · in progress · done · dropped — folgt dem **Stand** (steht → done, teils → in progress, ersetzt/verworfen → dropped)');
+  z.push('- **Stand** steht · teils · offen · ersetzt · verworfen — ein Urteil über das Repo, mit Anmerkung in `standNotiz`');
+  z.push('- **Phase** prep · play · both — **Wert** enables · efficiency — **Vorbereitung** none · low · high — **v1** full · minimal · stub · later ([[Scope v1]])');
+  z.push('');
+  z.push('## Übersicht');
+  z.push('');
+  z.push('| Prio | Stories | Punkte | Stand |');
+  z.push('|---|---|---|---|');
+  for (const p of [1, 2, 3, 4, 5]) {
+    const ss = stories.filter((s) => Number(s.prio) === p);
+    z.push(`| ${p} | ${ss.length} | ${punkte(ss)} | ${standZeile(ss)} |`);
+  }
+  z.push(`| **Zusammen** | **${stories.length}** | **${punkte(stories)}** | ${standZeile(stories)} |`);
+  z.push('');
+  const offen = stories.filter((s) => !formuliert(s) && s.status !== 'dropped').length;
+  if (offen) z.push(`${offen} Stories tragen noch den alten Wortlaut und sind als Story zu formulieren.`, '');
+  z.push('## Register');
+  z.push('');
+  z.push('| ID | Story | Rolle | Feature | Prio | Aufwand | Status | Stand |');
+  z.push('|---|---|---|---|---|---|---|---|');
+  for (const s of stories) {
+    const f = F.get(s.featureId);
+    z.push(`| [[${s.id}]] | ${zelle(s.title)} | ${s.rolle ?? '–'} | [[${name(f.datei)}\\|${zelle(f.title)}]] | ${s.prio ?? '–'} | ${s.aufwand ?? '–'} | ${s.status} | ${s.stand} |`);
+  }
+  z.push('');
+  z.push('## Verlauf');
+  z.push('- **0.9** (2026-10-14): Umstellung auf User Stories (T-154): 12 Epics, Features, je Story eine Notiz; REQ-236 … REQ-257 aus dem Projektbrett nachgetragen, REQ-258 ff. aus der Ernte aller Gespräche. Die Tabelle wird seither erzeugt.');
+  z.push('- **0.1 … 0.8** (2026-08-28 … 2026-10-13): eine von Hand gepflegte Tabelle — im Git-Verlauf dieser Datei.');
+  schreibeDatei(join(VTT, 'Requirements.md'), z.join('\n'));
+}
+
+/* --- VTT/Requirements by Epic.md --------------------------------------- */
+{
+  const z = [...kopf('vtt, requirements, view', 'Requirements by Epic'), ...hinweis];
+  z.push('Sprung: ' + epics.map((e) => `[[#${e.id} ${e.title}]]`).join(' · '));
+  z.push('');
+  for (const e of epics) {
+    const ss = stories.filter((s) => s.epicId === e.id);
+    z.push(`## ${e.id} ${e.title}`, '');
+    z.push(`${ss.length} Stories · ${punkte(ss)} Punkte · ${standZeile(ss)} — [[${name(e.datei)}]]`, '');
+    for (const f of featuresVon(e.id)) {
+      const fs = storiesVon(f.id);
+      z.push(`### ${f.id} ${f.title}`, '', `${zelle(f.beschreibung)} — [[${name(f.datei)}]]`, '');
+      z.push('| ID | Story | Rolle | Prio | Aufwand | Stand |', '|---|---|---|---|---|---|');
+      for (const s of fs.slice().sort((a, b) => (a.prio ?? 9) - (b.prio ?? 9) || a.id.localeCompare(b.id))) {
+        z.push(`| [[${s.id}]] | ${zelle(s.title)} | ${s.rolle ?? '–'} | ${s.prio ?? '–'} | ${s.aufwand ?? '–'} | ${s.stand} |`);
+      }
+      z.push('');
+    }
+  }
+  schreibeDatei(join(VTT, 'Requirements by Epic.md'), z.join('\n'));
+}
+
+/* --- VTT/Areas.md: die Epics ------------------------------------------ */
+{
+  const z = ['---', 'tags: [vtt, epics, view]', 'aliases: [Epics]', 'status: derived', `updated: ${heute}`, '---', '', '# Epics', '', ...hinweis];
+  z.push('Die Funktionsbereiche von früher sind die **Epics** (E-049): je Epic ein Bereich mit seinem Umfang, darin die Features — einzelne Funktionen, Artikelarten oder Ansichten. Die Bereiche der App (World, Story, Rules, Play, Register …) sind Features in ihrem Epic, z. B. „Bereich World“ in Welt & Lore. Der Querschnitt (früher „Cross-cutting“) ist auf die passenden Epics verteilt.');
+  z.push('');
+  z.push('| Epic | Umfang | Features | Stories | Punkte | Stand |');
+  z.push('|---|---|---|---|---|---|');
+  for (const e of epics) {
+    const ss = stories.filter((s) => s.epicId === e.id);
+    z.push(`| [[${name(e.datei)}]] | ${zelle(e.umfang)} | ${featuresVon(e.id).length} | ${ss.length} | ${punkte(ss)} | ${standZeile(ss)} |`);
+  }
+  schreibeDatei(join(VTT, 'Areas.md'), z.join('\n'));
+}
+
+/* --- docs/Anforderungen.md -------------------------------------------- */
 const z = [];
 const w = (s = '') => z.push(s);
 w('# Anforderungen — was gefordert war und was steht');
 w();
-w(`Stand ${new Date().toISOString().slice(0, 10)}. Jede Nummer aus dem Vault ` +
-  '(`VTT/Requirements.md` in diesem Repo, v0.8) und aus der Ernte');
-w('([Requirements from Kanalgang.md](Requirements%20from%20Kanalgang.md)), mit dem Stand im Repo.');
-w('Erzeugt von `packages/registry/scripts/anforderungen.mjs` aus einer Zuordnung, die ein Urteil ist:');
-w('wer eine Zeile anders sieht, ändert sie dort und lässt das Skript laufen.');
+w(`Stand ${heute}. Jede Story aus dem Vault (\`VTT/Stories/\`, gegliedert in Epics und Features), mit dem Stand im Repo.`);
+w('Erzeugt von `packages/registry/scripts/anforderungen.mjs`; der Stand ist ein Urteil und steht in der Story-Notiz');
+w('(`stand`, `standNotiz`) — wer ihn anders sieht, ändert die Notiz und lässt das Skript laufen.');
 w();
 w('| Stand | Heisst |');
 w('|---|---|');
@@ -296,76 +186,51 @@ w('| **offen** | nichts davon steht |');
 w('| **ersetzt** | anders gelöst als gefordert, mit Absicht — die Anmerkung sagt wie |');
 w('| **verworfen** | entschieden gegen die Anforderung |');
 w();
-const zaehl = {};
-for (const id of reqs.keys()) { const s = STAND[id]?.[0] ?? '?'; zaehl[s] = (zaehl[s] ?? 0) + 1; }
-w('Zusammen: ' + Object.entries(zaehl).map(([s, n]) => `**${n}** ${s}`).join(' · ') + ` — ${reqs.size} Anforderungen.`);
+w(`Zusammen: ${standZeile(stories)} — ${stories.length} Stories in ${features.length} Features und ${epics.length} Epics.`);
 w();
-w('## Aus den Gesprächen (September und Oktober 2026)');
-w();
-w('Was nicht als Nummer im Vault steht, sondern hier entschieden wurde — alles gebaut:');
-w();
-w('| Wann | Entscheidung | Wo |');
+w('| Epic | Stories | Stand |');
 w('|---|---|---|');
-w('| 19.9. | Prototyp bleibt Artefakt; Zugang ein Passwort je Nutzer, kein SSO; Bearbeiten per Klick aufs Feld; Wissen über ein Seitenpanel; Massenbearbeitung; Session als Artikel | Roadmap.md |');
-w('| 19.9. | Oberfläche und Bezeichner englisch | CLAUDE.md |');
-w('| 20.9. | Importer weg, `Imported` weg; Register steht einmal (`emit-seed`) | CLAUDE.md |');
-w('| 20.9. | Komponenten weg, Arten tragen ihre Felder (D27); `extends` ist ein Array | Roadmap.md D25, D27 |');
-w('| 21.9. | Aufzählungszeilen (`enums`), Spannen, Übungen in einem Feld; Identity.key wird Identity.id | Begriffe.md |');
-w('| 30.9. | Sichtbarkeit: `public` ist die Vorgabe, drei Felder, keine Vererbung; `is_gm` heisst `is_admin` | Durchgang.md |');
-w('| 30.9. | Eine Leitung je Kampagne; wem ein Artikel gehört, sagt die Ebene | Ebenen.md |');
-w('| 1.10. | Rollen am Konto (`campaign_member`), `Access` weg | Zugang.md |');
-w('| 1.10. | Ohne Statblock keine Zahlen; Anlegen oder aus einer Vorlage; Kreaturen ohne Statblock in der Vorbereitung | Begriffe.md |');
-w('| 1.10. | Hetzner: `preprod` → dev, `main` → prod, nur CI baut; Durchstich gegen Postgres | Betrieb.md |');
-w('| 1.10. | Vorlage und Instanz: eine Instanz je Kreatur, nur Abweichungen gespeichert | Datenmodell.md §7 |');
-w('| 7.10. | Vorschläge nur, wo das Feld es sagt (`suggest`); der Deckname ist keine Sorte | Begriffe.md |');
-w();
-w('## Die Nummern');
-w();
-w('| ID | Anforderung | Prio | Stand | Anmerkung |');
-w('|---|---|---|---|---|');
-for (const [id, r] of [...reqs].sort(([a], [b]) => a.localeCompare(b))) {
-  const [stand, note] = STAND[id] ?? ['?', 'nicht zugeordnet'];
-  const text = r.text.replace(/\|/g, '\\|').replace(/`/g, '`');
-  w(`| ${id} | ${text} | ${r.prio} | **${stand}** | ${note} |`);
+for (const e of epics) {
+  const ss = stories.filter((s) => s.epicId === e.id);
+  w(`| [${e.id} ${e.title}](#${(e.id + ' ' + e.title).toLowerCase().replace(/[^a-z0-9äöüß -]/g, '').replace(/ /g, '-')}) | ${ss.length} | ${standZeile(ss)} |`);
 }
 w();
+for (const e of epics) {
+  w(`## ${e.id} ${e.title}`);
+  w();
+  w(e.umfang);
+  w();
+  for (const f of featuresVon(e.id)) {
+    w(`### ${f.id} ${f.title}`);
+    w();
+    w('| ID | Story | Prio | Stand | Anmerkung |');
+    w('|---|---|---|---|---|');
+    for (const s of storiesVon(f.id)) w(`| ${s.id} | ${zelle(s.title)} | ${s.prio ?? '–'} | **${s.stand}** | ${zelle(s.standNotiz)} |`);
+    w();
+  }
+}
 w('## Was offen ist und wehtut');
 w();
-w('Offene Anforderungen mit Priorität 1 bis 3, nach Bereich:');
+w('Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:');
 w();
-const offen = [...reqs].filter(([id]) => (STAND[id]?.[0] === 'offen' || STAND[id]?.[0] === 'teils') && Number(reqs.get(id).prio) <= 3)
-  .sort(([a], [b]) => Number(reqs.get(a).prio) - Number(reqs.get(b).prio) || a.localeCompare(b));
-for (const [id, r] of offen) w(`- **${id}** (${r.prio}, ${STAND[id][0]}) — ${r.text}${STAND[id][1] ? ` — *${STAND[id][1]}*` : ''}`);
+for (const s of stories.filter((s) => ['offen', 'teils'].includes(s.stand) && Number(s.prio) <= 3)
+  .sort((a, b) => a.prio - b.prio || a.id.localeCompare(b.id))) {
+  w(`- **${s.id}** (${s.prio}, ${s.stand}, ${E.get(s.epicId).title}) — ${s.title}${s.standNotiz ? ` — *${s.standNotiz}*` : ''}`);
+}
 w();
-writeFileSync(join(REPO, 'docs', 'Anforderungen.md'), z.join('\n') + '\n');
-console.log(`geschrieben: ${reqs.size} Anforderungen, ${z.length} Zeilen`);
+schreibeDatei(join(REPO, 'docs', 'Anforderungen.md'), z.join('\n'));
+console.log(`geschrieben: ${stories.length} Stories, ${features.length} Features, ${epics.length} Epics`);
+
 if (UMSETZUNG) {
-  /* Dieselbe Übersicht als Vault-Notiz: Frontmatter davor, die Verweise
-     aufs Repo absolut, der Rest wörtlich. Abgeleitet, nicht bearbeitet. */
-  const heute = new Date().toISOString().slice(0, 10);
-  const kopf = [
-    '---',
-    'tags: [vtt, requirements, view, umsetzung]',
-    'status: derived',
-    `updated: ${heute}`,
-    'source: ../docs/Anforderungen.md',
-    '---',
-    '',
-    '> [!info] Erzeugt aus dem Repo',
-    '> `pnpm --filter @nw/registry anforderungen -- --umsetzung VTT/Umsetzung.md`',
-    '> im Repo schreibt diese Notiz neu.',
-    '> Wer einen Stand anders sieht, ändert ihn in `packages/registry/scripts/anforderungen.mjs`.',
-    '> Die Nummern selbst stehen in [[Requirements]]; die Spalte *Status* dort folgt dieser Notiz.',
+  /* Dieselbe Übersicht als Vault-Notiz: Frontmatter davor, der Rest wörtlich. */
+  const vorn = [
+    '---', 'tags: [vtt, requirements, view, umsetzung]', 'status: derived', `updated: ${heute}`, 'source: ../docs/Anforderungen.md', '---', '',
+    '> [!info] Erzeugt aus den Story-Notizen',
+    '> `pnpm --filter @nw/registry anforderungen -- --umsetzung VTT/Umsetzung.md` im Repo schreibt diese Notiz neu.',
+    '> Wer einen Stand anders sieht, ändert ihn in der Story-Notiz (`VTT/Stories/REQ-nnn.md`).',
     '',
   ];
-  const koerper = z.map((l) =>
-    l.replace('(Requirements%20from%20Kanalgang.md)', '(../docs/Requirements%20from%20Kanalgang.md)')
-      .replace(/\| (Roadmap|CLAUDE|Begriffe|Durchgang|Ebenen|Zugang|Betrieb|Datenmodell|Wissen|Spieltisch)\.md( §\d+)? \|$/, (m, d, para) =>
-        `| [${d}.md${para ?? ''}](../${d === 'CLAUDE' ? '' : 'docs/'}${d}.md) |`));
-  writeFileSync(UMSETZUNG, kopf.concat(koerper).join('\n') + '\n');
+  const koerper = z.map((l) => l.replace(/^\| (REQ-\d{3}) \|/, '| [[$1]] |').replace(/^- \*\*(REQ-\d{3})\*\*/, '- **[[$1]]**'));
+  schreibeDatei(UMSETZUNG, vorn.concat(koerper).join('\n'));
   console.log(`geschrieben: ${UMSETZUNG}`);
 }
-const fehlt = [...reqs.keys()].filter((id) => !STAND[id]);
-if (fehlt.length) console.log('ohne Stand: ' + fehlt.join(', '));
-const zuviel = Object.keys(STAND).filter((id) => !reqs.has(id));
-if (zuviel.length) console.log('Stand ohne Anforderung: ' + zuviel.join(', '));
