@@ -78,16 +78,70 @@ hätte. Gemerkt hätte man es beim ersten Aufsetzen hier.
 
 **`deploy/deploy.sh`** tut auf dem Server, in dieser Reihenfolge:
 
+0. prüfen, ob es schreiben darf: das Verzeichnis der Umgebung und jedes
+   unter `backups/` (ausser `backups/uebernahme/`, das dem Server gehört)
+   — sonst bricht es ab, bevor es etwas tut
+   ([Ausrollen schlägt fehl](#ausrollen-schlägt-fehl)); und warnen, wenn
+   in `.env` eine Übernahme offensteht (`ATLAS_TRANSFER_ACCEPT`,
+   `ATLAS_PEER_TOKEN`, [unten](#übernahme-dev--prod)) — das hält nicht an;
 1. das neue Abbild holen — schlägt das fehl, läuft das alte unberührt weiter;
 2. die Datenbank sichern (`backups/<zeit>.dump`, die letzten 20 bleiben);
-3. das Verzeichnis der Bilder anlegen und dem Benutzer `node` im Abbild
-   geben (`daten/bilder`, uid 1000) und neue Bilder nach `backups/bilder/`
-   holen (`bilder-sichern.sh`, [Bilder](#bilder));
+3. die Verzeichnisse anlegen, in die der Server schreibt, und dem
+   Benutzer `node` im Abbild geben (`daten/bilder` und
+   `backups/uebernahme`, uid 1000) — gehört eines danach nicht uid 1000,
+   bricht es ab — und neue Bilder nach `backups/bilder/` holen
+   (`bilder-sichern.sh`, [Bilder](#bilder));
 4. das laufende Abbild als `previous-image` merken;
 5. `IMAGE=` in `.env` setzen und `docker compose up -d` — die Migrationen
    laufen beim Start;
 6. warten, bis `/api/health` antwortet, sonst die letzten Logzeilen zeigen
    und mit Fehler enden.
+
+## Ausrollen schlägt fehl
+
+**`… ist für deploy nicht schreibbar (gehört root:root)`** — `deploy.sh`
+läuft als `deploy` und schreibt ins Verzeichnis der Umgebung (`.env`,
+`previous-image`) und nach `backups/` (die Sicherung vor dem Wechsel, die
+Bilder in `backups/bilder/`, nachts `backups/nacht/`). Gehört eines davon
+jemand anderem, bricht es **vor** dem Holen ab, und das laufende Abbild
+bleibt unberührt (T-074). Die Meldung nennt den Befehl; als root auf dem
+Server, für prod:
+
+```sh
+sudo chown -R deploy:deploy /srv/atlas/prod/backups && sudo chmod -R u+rwX /srv/atlas/prod/backups
+```
+
+Danach den Lauf in GitHub neu starten (*Re-run failed jobs*). Für das
+Verzeichnis der Umgebung selbst **ohne** `-R`: darunter liegt `daten/db`,
+und das gehört Postgres im Container.
+
+So geschah es am 13.10. auf prod: `cannot create backups/<zeit>.dump:
+Permission denied`. `bootstrap.sh` hatte `backups/nacht` mit `install -d`
+angelegt, und `install` gibt nur dem letzten Verzeichnis den Eigentümer —
+`backups/` selbst gehörte root. Beim ersten Ausrollen lief noch keine
+Datenbank, also wurde nichts gesichert, und es fiel nicht auf.
+`bootstrap.sh` legt jede Stufe jetzt einzeln an; ein zweiter Lauf
+(ungefährlich, Passwörter bleiben) setzt auf einem bestehenden Server den
+Eigentümer von `backups/` zurecht, nicht aber den von Verzeichnissen
+darunter — dafür der Befehl oben.
+
+**`daten/bilder gehört …, nicht 1000`** (ebenso `backups/uebernahme`) —
+die Bilder und die Sicherungen vor einer Übernahme schreibt der Server
+als Benutzer `node` (uid 1000) im Abbild. `deploy.sh` setzt das selbst
+(mit dem Abbild, ohne sudo); hält es nicht, etwa weil `daten/` auf einer
+Platte liegt, die keine Eigentümer kennt, steht der Befehl in der Meldung:
+`sudo chown 1000:1000 /srv/atlas/prod/daten/bilder`.
+
+Der `chown -R` auf `backups/` oben nimmt `backups/uebernahme` mit; das
+schadet nicht, `deploy.sh` gibt es danach wieder uid 1000.
+
+**`Warnung: ATLAS_TRANSFER_ACCEPT steht in .env`** (oder
+`ATLAS_PEER_TOKEN`) — kein Fehler, das Ausrollen läuft weiter. Die
+Übernahme ist ein Fenster (E-042): prod nimmt an, solange die Zeile steht,
+und dev hält solange ein `write`-Token von prod. Wer gerade nicht
+übernimmt, nimmt die Zeilen aus `.env` heraus (oder kommentiert sie mit
+`#` aus) und rollt neu aus; das Token lässt sich auf prod unter Account ›
+API tokens widerrufen ([Übernahme › Einrichten](#einrichten-einmal-die-verwaltung)).
 
 ## Den Server einrichten — Schritt für Schritt (einmal)
 
@@ -349,6 +403,34 @@ cp -R -n backups/bilder/. daten/bilder/        # oder: rsync -a u…@u….your-s
 
 Ob jede Datei da ist, die ein Artikel nennt: die Ausfuhr der Kampagne
 listet sie (`files`, je Asset `ref`), `ls daten/bilder/*/<ref>` findet sie.
+
+## Register: Datenbank gegen Startzeilen (T-123)
+
+Der Seed schreibt Arten, Kanten und Ansichten nur in eine **leere**
+Datenbank; Listen, Einstellungen und Einheiten füllt er nach, solange der
+Teil leer ist. Was danach in `packages/registry` geändert wird, erreicht
+dev und prod nur über eine Migration — fehlte sie, zeigten Verweisfelder
+rohe Ids und das Kompendium keine Spalten (nachgezogen mit 055–057).
+
+- **Im CI** spielt `apps/server/scripts/register-abgleich.mjs` zwei
+  Installationen nach: eine frische (alle Migrationen, dann der Seed) und
+  eine auf dem Stand von `apps/server/scripts/register-stand.json` (die
+  Migrationen bis dahin, dessen Register, dann die übrigen und der Seed).
+  Beide müssen danach den Startzeilen gleichen; sonst schlägt der Lauf
+  fehl und zählt je Art, Feld, Kante und Ansicht auf, was fehlt oder
+  anders steht. Eine bewusste Abweichung steht mit Grund in `AUSNAHMEN`
+  im Skript. `--schnappschuss` schreibt den Stand neu — nur bei grünem
+  Lauf, dann kürzt er bloss den Weg.
+- **Auf einer laufenden Installation** zeigt die Werkbank dieselbe
+  Rechnung als Prüfung „Registry differs from the seed“ (`registryDrift`),
+  je Treffer mit dem Weg ins Register. Dort darf stehen bleiben, was
+  jemand am Register bewusst geändert hat (ein eigenes Feld, eine
+  Beschreibung); was fehlt, braucht eine Migration.
+
+Verglichen wird normalisiert: Vorgaben der Ablage (`abstract: false`,
+`owned: false`, `from: ['*']`, leere Listen), die Reihenfolge der
+Schlüssel und die von Mengen (Listenwerte, Kantenenden, Pflichtfelder)
+sind keine Abweichung.
 
 ## Was Daten löschen kann
 

@@ -19,6 +19,17 @@ describe('seedRegistryInto', () => {
     expect(reg.settings?.['carrySquares']).toBe(seedRegistry.settings?.['carrySquares']);
   });
 
+  /* T-123: Einheiten schrieb der Seed nie — eine frische Datenbank rechnete nicht um. */
+  it('füllt Einheiten nach, wenn keine da sind, und lässt eigene stehen', async () => {
+    const leer = new InMemoryRepository({ ...seedRegistry, units: {} });
+    await seedRegistryInto(leer);
+    expect(Object.keys((await leer.getRegistry()).units)).toEqual(Object.keys(seedRegistry.units));
+    const ft = seedRegistry.units['ft']!;
+    const eigen = new InMemoryRepository({ ...seedRegistry, units: { ft } });
+    await seedRegistryInto(eigen);
+    expect((await eigen.getRegistry()).units).toEqual({ ft });
+  });
+
   it('lässt geänderte Einstellungen stehen', async () => {
     const repo = new InMemoryRepository({ ...seedRegistry, settings: { slotDraw: 'belt:free action' } });
     await seedRegistryInto(repo);

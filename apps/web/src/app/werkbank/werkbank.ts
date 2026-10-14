@@ -120,7 +120,11 @@ import { BEDINGUNGEN, OPS, auftragAus, formularFehlt, leeresFormular, type Formu
                     <ul class="treffer">
                       @for (h of t.hits; track h.id) {
                         <li>
-                          <a [routerLink]="['/artikel', h.id]">{{ h.name || h.id }}</a>
+                          @if (h.registry) {
+                            <a routerLink="/registry" [queryParams]="h.registry">{{ h.name }}</a>
+                          } @else {
+                            <a [routerLink]="['/artikel', h.id]">{{ h.name || h.id }}</a>
+                          }
                           <span class="art">{{ h.type }}</span>
                           <span class="grund">{{ h.reason }}</span>
                           @if (h.group) {
@@ -145,9 +149,11 @@ import { BEDINGUNGEN, OPS, auftragAus, formularFehlt, leeresFormular, type Formu
                           Show all {{ c.count }}
                         </button>
                       }
-                      <button type="button" class="klein" (click)="alsAuswahl(c)">
-                        Use as selection
-                      </button>
+                      @if (c.key !== 'registryDrift') {
+                        <button type="button" class="klein" (click)="alsAuswahl(c)">
+                          Use as selection
+                        </button>
+                      }
                     </div>
                   } @else {
                     <p class="leer">Loading…</p>

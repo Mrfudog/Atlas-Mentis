@@ -17,6 +17,43 @@ KEEP="${KEEP_BACKUPS:-20}"
 [ -f .env ] || { echo ".env fehlt — siehe docs/Betrieb.md" >&2; exit 1; }
 [ -f compose.yml ] || { echo "compose.yml fehlt" >&2; exit 1; }
 
+# Schreiben dürfen, bevor etwas geschieht (T-074). Am 13.10. brach prod erst
+# nach dem Holen mit „cannot create backups/….dump: Permission denied“ ab —
+# backups/ gehörte root. Gefragt wird hier, mit einer Meldung, die den
+# Befehl gleich nennt. Geprüft wird jedes Verzeichnis darunter, denn
+# bilder-sichern.sh legt in backups/bilder/ Unterverzeichnisse an und der
+# nächtliche Cron schreibt nach backups/nacht/. backups/uebernahme/ nicht:
+# das gehört dem Server im Container (uid 1000, unten).
+nicht_schreibbar() {
+  echo "$1 ist für $(id -un) nicht schreibbar (gehört $(stat -c '%U:%G' "$1")). Einmal auf dem Server:" >&2
+  echo "  sudo chown ${2:+$2 }$(id -un):$(id -gn) $3 && sudo chmod ${2:+$2 }u+rwX $3" >&2
+  echo "Siehe docs/Betrieb.md › Ausrollen schlägt fehl." >&2
+  exit 1
+}
+# Das Verzeichnis selbst ohne -R: darunter liegt daten/db, und das gehört
+# Postgres im Container.
+[ -w . ] || nicht_schreibbar "$PWD" "" "$PWD"
+if [ -d backups ]; then
+  fremd="$(find backups -path backups/uebernahme -prune -o -type d ! -writable -print -quit)"
+  [ -z "$fremd" ] || nicht_schreibbar "$fremd" -R "$PWD/backups"
+  # -w sagt, was die Rechte erlauben; eine Probedatei, ob es auch geht
+  # (nur lesbar eingehängt, voll).
+  probe="backups/.probe-$$"
+  { : > "$probe"; } 2>/dev/null || nicht_schreibbar backups -R "$PWD/backups"
+  rm -f "$probe"
+fi
+
+# Die Übernahme (T-130) ist ein Fenster und kein Zustand (E-042): wer gerade
+# nicht übernimmt, nimmt die Zeilen aus .env wieder heraus. Ein Ausrollen
+# hält deswegen nicht an — es sagt nur, was offen steht (T-074).
+env_wert() { sed -n "s/^$1=//p" .env | tail -n 1 | tr -d "\"' "; }
+case "$(env_wert ATLAS_TRANSFER_ACCEPT)" in
+  1|true) echo "Warnung: ATLAS_TRANSFER_ACCEPT steht in .env — diese Installation nimmt Übernahmen an. Nach der Übernahme herausnehmen (docs/Betrieb.md › Übernahme dev ↔ prod)." >&2 ;;
+esac
+if [ -n "$(env_wert ATLAS_PEER_TOKEN)" ]; then
+  echo "Warnung: ATLAS_PEER_TOKEN steht in .env ($(env_wert ATLAS_PEER_URL)) — ein Token der Gegenstelle liegt auf diesem Server. Nach der Übernahme herausnehmen oder das Token dort widerrufen." >&2
+fi
+
 # Ein kurzlebiger Zugang aus CI, wenn das Paket privat ist. Er gilt nur so
 # lange wie der Lauf, der ihn mitbringt; auf dem Server bleibt nichts liegen.
 if [ -n "${GHCR_TOKEN:-}" ]; then
@@ -44,6 +81,17 @@ fi
 # Ebenso die Sicherungen vor einer Übernahme (T-130, backups/uebernahme).
 docker run --rm --user 0 --entrypoint sh -v "$PWD/daten:/d" -v "$PWD/backups:/b" "$IMAGE" \
   -c 'mkdir -p /d/bilder /b/uebernahme && chown 1000:1000 /d/bilder /b/uebernahme'
+# Und nachsehen, ob es gehalten hat: gehört eines davon nicht uid 1000, kann
+# der Server dort nicht schreiben, und das merkt erst, wer hochlädt oder
+# übernimmt (T-074).
+for d in daten/bilder backups/uebernahme; do
+  [ "$(stat -c %u "$d")" = 1000 ] || {
+    echo "$d gehört $(stat -c '%u:%g' "$d"), nicht 1000 (node im Abbild):" >&2
+    echo "  sudo chown 1000:1000 $PWD/$d" >&2
+    echo "Siehe docs/Betrieb.md › Ausrollen schlägt fehl." >&2
+    exit 1
+  }
+done
 [ -x ./bilder-sichern.sh ] && ./bilder-sichern.sh
 
 # Das laufende Abbild merken, damit „zurück" ein Befehl ist und keine Suche.
