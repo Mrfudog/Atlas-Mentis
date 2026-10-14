@@ -1,18 +1,12 @@
 import { Component, computed, effect, inject, input, linkedSignal, output, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { areaOf, enumOptions, fieldTitle, typeChain } from '@nw/model';
-import type { PropertySchema } from '@nw/model';
+import { areaOf, typeChain } from '@nw/model';
 import { Api, ApiError } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
+import { pflichtFelder, type Pflicht } from './schnell';
 import { Wahl } from './wahl';
 
-interface Pflicht {
-  ref: string;
-  label: string;
-  prop: PropertySchema;
-  werte: string[];
-}
 
 /**
  * „New article" (W7): Art wählen, Name, und was die Art verlangt und keine
@@ -197,23 +191,7 @@ export class Anlegen {
   protected readonly pflicht = computed<Pflicht[]>(() => {
     const r = this.bestand.registry();
     const typ = this.typ();
-    if (!r || !typ) return [];
-    const raus: Pflicht[] = [];
-    for (const t of typeChain(r, typ)) {
-      const schema = r.interfaces[t]?.schema;
-      for (const k of schema?.required ?? []) {
-        const prop = schema?.properties?.[k];
-        if (!prop || prop.derived || prop.default !== undefined) continue;
-        if (t === 'Identity' && (k === 'name' || k === 'id')) continue;
-        raus.push({
-          ref: `${t}.${k}`,
-          label: fieldTitle(r, typ, { type: t, key: k, prop }),
-          prop,
-          werte: enumOptions(r, prop) ?? [],
-        });
-      }
-    }
-    return raus;
+    return r && typ ? pflichtFelder(r, typ) : [];
   });
 
   constructor() {

@@ -1,6 +1,8 @@
 import { Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
 import { Api, type ListenZeile } from '../kern/api';
 import { Bestand } from '../kern/bestand';
+import { Session } from '../kern/session';
+import { Schnell, anlegbareArten, type Angelegt } from './schnell';
 
 /**
  * Einen Artikel wählen — über die Suche der Liste (`/api/list?of=…&q=…&limit=20`, W7).
@@ -12,9 +14,14 @@ import { Bestand } from '../kern/bestand';
  *
  * `arten` sind die Arten, die das Ziel sein darf (die `extends`-Kette hoch,
  * wie `relationAccepts`); leer heisst jede.
+ *
+ * **Was es nicht gibt, legt man hier an** (T-131): unter den Treffern
+ * steht „Create “…” as …" je anlegbarer Art; das Popup (`nw-schnell`)
+ * legt an, und der neue Artikel steht sofort im Feld.
  */
 @Component({
   selector: 'nw-wahl',
+  imports: [Schnell],
   template: `
     <div class="wahl">
       <input
@@ -41,7 +48,26 @@ import { Bestand } from '../kern/bestand';
           } @empty {
             <li class="leer">{{ sucht() ? 'Searching…' : 'Nothing found.' }}</li>
           }
+          <!-- Neu anlegen, ohne die Auswahl zu verlassen (T-131). -->
+          @if (!sucht()) {
+            @for (a of anlegen(); track a.name) {
+              <li role="option" class="neu" [attr.aria-selected]="false">
+                <button type="button" (click)="schnell.set({ name: suche().trim(), typ: a.name })">
+                  Create “{{ suche().trim() }}” as {{ a.label }}
+                </button>
+              </li>
+            }
+          }
         </ul>
+      }
+      @if (schnell(); as s) {
+        <nw-schnell
+          [vorschlag]="s.name"
+          [ziele]="arten()"
+          [vorgabe]="s.typ"
+          (angelegt)="eingetragen($event)"
+          (zu)="schnell.set(null)"
+        />
       }
     </div>
   `,
@@ -109,6 +135,13 @@ import { Bestand } from '../kern/bestand';
     .leer {
       padding: 0.35rem 0.6rem;
     }
+    .neu {
+      border-top: 1px solid var(--line);
+    }
+    .neu button {
+      color: var(--accent);
+      font-style: italic;
+    }
   `,
 })
 export class Wahl {
@@ -123,10 +156,28 @@ export class Wahl {
   readonly bevorzugt = input<string[]>([]);
   /** Diese Id wird nicht angeboten — eine Kante auf sich selbst. */
   readonly ausser = input<string>('');
+  /** „Create … as …" anbieten (T-131) — im Popup selbst nicht, sonst stapeln sich Popups. */
+  readonly anlegbar = input<boolean>(true);
   readonly wertChange = output<string>();
 
   private readonly api = inject(Api);
   private readonly bestand = inject(Bestand);
+  private readonly session = inject(Session);
+
+  /** Das offene „Create"-Popup: was getippt war und welche Art gemeint ist. */
+  protected readonly schnell = signal<{ name: string; typ?: string } | null>(null);
+
+  /**
+   * Was sich hier anlegen lässt: bis drei Arten je eine Zeile, mehr unter
+   * einer — die Art wählt dann das Popup.
+   */
+  protected readonly anlegen = computed<{ name: string; label: string }[]>(() => {
+    const r = this.bestand.registry();
+    if (!r || !this.anlegbar()) return [];
+    const arten = anlegbareArten(r, this.arten(), !this.session.isAdmin());
+    if (arten.length <= 3) return arten;
+    return [{ name: '', label: '…' }];
+  });
 
   protected readonly suche = signal('');
   protected readonly offen = signal(false);
@@ -182,6 +233,11 @@ export class Wahl {
     } finally {
       if (nr === this.lauf) this.sucht.set(false);
     }
+  }
+
+  /** Der neue Artikel steht sofort im Feld (T-131). */
+  protected eingetragen(a: Angelegt): void {
+    this.waehle({ id: a.id, name: a.name, type: a.type } as ListenZeile);
   }
 
   protected waehle(z: ListenZeile | null): void {

@@ -299,7 +299,7 @@ Jede Quelle ihre Ebene (T-081), nach Regelstand (T-087). *Neu* sind die Artikel,
 | `lifeBackground` | 13 | — | — | `weggelassen: Tabellen aus „This Is Your Life" — noch nicht zugeordnet` 13 |
 | `lifeClass` | 12 | — | — | `weggelassen: Tabellen aus „This Is Your Life" — noch nicht zugeordnet` 12 |
 | `magicItems` | 33 | 33 Table | — | — |
-| `magicvariant` | 230 | 230 Item | — | `inherits.hasRefs nicht übernommen` 22, `inherits.spellScrollLevel nicht übernommen` 18, `inherits.classFeatures nicht übernommen` 12, `inherits.bonusSpellDamage nicht übernommen` 8, `inherits.propertyAdd nicht übernommen` 8, `inherits.bonusWeaponAttack nicht übernommen` 3, … (5 weitere) |
+| `magicvariant` | 230 | 230 Item | — | `inherits.spellScrollLevel nicht übernommen` 18, `inherits.classFeatures nicht übernommen` 12, `inherits.propertyAdd nicht übernommen` 8, `inherits.valueExpression nicht übernommen` 3, `inherits.otherSources nicht übernommen` 2, `inherits.barding nicht übernommen` 1, … (1 weitere) |
 | `monster` | 4’560 | 4’560 Statblock | — | `Spielarten (_versions) nicht ausgeschrieben` 85, `_mod scalarAddProp an fehlendem save` 19, `_mod scalarAddProp an fehlendem skill` 13, `Zustandsimmunität mit Bedingung (Bedingung entfällt)` 2 |
 | `monsterfeatures` | 25 | — | — | `keine Zuordnung` 25 |
 | `monsterFluff` | 4’170 | — | — | — |
@@ -358,8 +358,8 @@ Je Art die 5e.tools-Schlüssel, die keine Zuordnung liest, mit der Zahl der Eint
 - **deity:** `reprintAlias` 22
 - **disease:** `type` 7
 - **feat:** `resist` 11, `expertise` 7, `optionalfeatureProgression` 4, `senses` 4, `_versions` 2, `conditionImmune` 2, `immune` 2, `savingThrowProficiencies` 2, `skillToolLanguageProficiencies` 2, `bonusSenses` 1
-- **item:** `hasRefs` 101, `optionalfeatures` 100, `detail1` 59, `classFeatures` 43, `poisonTypes` 38, `vehSpeed` 36, `crew` 35, `vehAc` 35, `vehHp` 35, `capCargo` 32, `seeAlsoVehicle` 31, `vehDmgThresh` 30, `spellScrollLevel` 29, `capPassenger` 18, `speed` 17, `detail2` 14, `group` 11, `seeAlsoDeck` 8, `typeAlt` 4, `barDimensions` 3, `bonusAbilityCheck` 3, `bonusWeaponAttack` 3, `valueRarity` 3, `atomicPackContents` 2, `bonusProficiencyBonus` 2, `bonusWeaponDamage` 2, `weightNote` 2, `bonusSavingThrowConcentration` 1, `crewMax` 1, `crewMin` 1, … (3 weitere)
-- **itemGroup:** `itemsHidden` 12, `classFeatures` 1, `hasRefs` 1
+- **item:** `optionalfeatures` 100, `detail1` 59, `classFeatures` 43, `poisonTypes` 38, `vehSpeed` 36, `crew` 35, `vehAc` 35, `vehHp` 35, `capCargo` 32, `seeAlsoVehicle` 31, `vehDmgThresh` 30, `spellScrollLevel` 29, `capPassenger` 18, `speed` 17, `detail2` 14, `group` 11, `seeAlsoDeck` 8, `typeAlt` 4, `barDimensions` 3, `valueRarity` 3, `atomicPackContents` 2, `weightNote` 2, `crewMax` 1, `crewMin` 1, `dexterityMax` 1, `shippingCost` 1, `travelCost` 1
+- **itemGroup:** `itemsHidden` 12, `classFeatures` 1
 - **language:** `fonts` 1
 - **monster:** `_versions` 85, `actionNote` 2, `reactionNote` 1, `sizeNote` 1
 - **monsterTemplate:** `crMin` 27, `prerequisite` 1

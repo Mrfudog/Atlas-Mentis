@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
+import { Component, computed, effect, forwardRef, inject, input, signal, untracked, viewChild } from '@angular/core';
 import type { ElementRef } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
@@ -31,6 +31,7 @@ import { Session } from '../kern/session';
 import { Brett, chainAbove, isBoard, storyOf, type Mangel } from './brett';
 import { Kachel } from './kachel';
 import { BoardSuche } from './suche';
+import { SCHNELL_KONTEXT, type SchnellKontext } from '../artikel/schnell';
 
 interface Karte {
   rel: Relation;
@@ -87,6 +88,8 @@ interface Zug {
   imports: [RouterLink, Kachel, BoardSuche],
   templateUrl: './board.html',
   styleUrl: './board.scss',
+  /* Was aus der Suche neu angelegt wird, folgt der Ebene des Boards (T-131). */
+  providers: [{ provide: SCHNELL_KONTEXT, useExisting: forwardRef(() => Board) }],
   host: {
     '(window:pointermove)': 'bewegen($event)',
     '(window:pointerup)': 'loslassen()',
@@ -94,8 +97,12 @@ interface Zug {
     '(window:keydown.escape)': 'zeichnenAbbrechen()',
   },
 })
-export class Board {
+export class Board implements SchnellKontext {
   readonly id = input.required<string>();
+
+  herkunft(): Entity | null {
+    return this.board() ?? null;
+  }
 
   protected readonly bestand = inject(Bestand);
   private readonly session = inject(Session);

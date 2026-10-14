@@ -15,6 +15,8 @@ import type { Entity } from '@nw/model';
 import { Bestand, schmal } from '../kern/bestand';
 import { AusgeblendetHinweis } from '../kern/ausgeblendet';
 import type { Ausgeblendet } from '../kern/api';
+import { Session } from '../kern/session';
+import { Schnell, anlegbareArten, type Angelegt } from '../artikel/schnell';
 
 /** So viele Treffer zeigt die Suche — 24 157 liest niemand. */
 const TREFFER = 30;
@@ -33,7 +35,7 @@ const TREFFER = 30;
  */
 @Component({
   selector: 'nw-board-suche',
-  imports: [AusgeblendetHinweis],
+  imports: [AusgeblendetHinweis, Schnell],
   template: `
     <div class="zeile">
       <input
@@ -64,12 +66,29 @@ const TREFFER = 30;
           </li>
         } @empty {
           <li class="leer">{{ laedt() ? 'Searching…' : 'Nothing matches — or it is already on the board.' }}</li>
+        }        <!-- Was es noch nicht gibt, gleich anlegen und hinlegen (T-131). -->
+        @if (suche().trim() && !laedt() && anlegbar()) {
+          <li class="neu">
+            <button type="button" (click)="schnell.set(suche().trim())">
+              <b>Create “{{ suche().trim() }}”</b>
+              <span>as {{ art() ? artLabelVon(art()) : '…' }}</span>
+            </button>
+          </li>
         }
       </ul>
       @if (mehr() > 0) {
         <p class="leer">{{ mehr() }} more — narrow the search or pick a type.</p>
       }
       <nw-ausgeblendet [info]="ausgeblendet()" [knapp]="true" (geaendert)="fragen()" />
+    }
+    @if (schnell(); as name) {
+      <nw-schnell
+        [vorschlag]="name"
+        [ziele]="art() ? [art()] : []"
+        [vorgabe]="art() || undefined"
+        (angelegt)="eingetragen($event)"
+        (zu)="schnell.set(null)"
+      />
     }
   `,
   styles: `
@@ -130,6 +149,13 @@ const TREFFER = 30;
     .leer {
       margin: 0.5rem 0 0;
     }
+    .neu {
+      border-top: 1px solid var(--line);
+    }
+    .neu b {
+      color: var(--accent);
+      font-style: italic;
+    }
     .fehler {
       margin: 0.5rem 0 0;
       color: var(--accent, #8b1a1a);
@@ -142,6 +168,9 @@ export class BoardSuche {
   readonly gewaehlt = output<Entity>();
 
   private readonly bestand = inject(Bestand);
+  private readonly session = inject(Session);
+  /** Das offene „Create"-Popup (T-131): der getippte Name. */
+  protected readonly schnell = signal<string | null>(null);
   private readonly feld = viewChild<ElementRef<HTMLInputElement>>('feld');
   protected readonly suche = signal('');
   protected readonly art = signal('');
@@ -214,6 +243,22 @@ export class BoardSuche {
 
   /** Was die Liste noch hätte — gesagt, damit niemand meint, das sei alles. */
   protected readonly mehr = computed(() => Math.max(0, this.gesamt() - this.gefunden().length));
+
+  /** Lässt sich hier überhaupt etwas anlegen — in der gewählten Art oder irgendeiner? */
+  protected readonly anlegbar = computed(() => {
+    const r = this.bestand.registry();
+    return !!r && anlegbareArten(r, this.art() ? [this.art()] : [], !this.session.isAdmin()).length > 0;
+  });
+
+  /** Der neue Artikel liegt sofort da (T-131); das Popup bleibt für „Open". */
+  protected eingetragen(a: Angelegt): void {
+    this.gewaehlt.emit(a.entity);
+    this.fragen();
+  }
+
+  protected artLabelVon(t: string): string {
+    return this.bestand.registry()?.interfaces[t]?.label ?? t;
+  }
 
   protected name(e: Entity): string {
     return entityName(e);
