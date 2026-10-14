@@ -98,7 +98,7 @@ describe('Der Statblock wie im Buch (W2)', () => {
     expect(book.top).toEqual([
       { label: 'Armor Class', text: '15 (leather armor, shield)', ref: 'Statblock.ac' },
       { label: 'Hit Points', text: '7 ({{2d6}})', ref: 'Statblock.hp' },
-      { label: 'Speed', text: '30 ft', ref: 'Statblock.speed' },
+      { label: 'Speed', text: '30 ft', ref: 'Statblock.speed' },
     ]);
   });
 
@@ -111,7 +111,7 @@ describe('Der Statblock wie im Buch (W2)', () => {
   it('rechnet Fertigkeiten mit Expertise, die passive Wahrnehmung und die Erfahrung', () => {
     const zeile = (l: string) => book.details.find((d) => d.label === l)?.text;
     expect(zeile('Skills')).toBe('Stealth +6');
-    expect(zeile('Senses')).toBe('darkvision 60 ft, passive Perception 9');
+    expect(zeile('Senses')).toBe('darkvision 60 ft, passive Perception 9');
     expect(zeile('Languages')).toBe('Common, Goblin');
     expect(zeile('Challenge')).toBe('1/4 (50 XP)');
     expect(zeile('Proficiency Bonus')).toBe('+2');
@@ -131,7 +131,7 @@ describe('Der Statblock wie im Buch (W2)', () => {
 
   it('rechnet Masse nach der Einstellung um', () => {
     const metrisch: Registry = { ...seedRegistry, settings: { ...seedRegistry.settings, units: 'metric' } };
-    expect(statblockBook(metrisch, goblin).top.find((l) => l.label === 'Speed')?.text).toBe('9.1 m');
+    expect(statblockBook(metrisch, goblin).top.find((l) => l.label === 'Speed')?.text).toBe('9.1 m');
   });
 });
 
@@ -153,8 +153,8 @@ describe('Die Abschnitte aus composedOf', () => {
 
   it('rechnet die Angriffe am Statblock (D51)', () => {
     const [scimitar, shortbow] = abschnitte[1]!.entries;
-    expect(scimitar!.text).toBe('*Melee Weapon Attack:* {{+4}} to hit, reach 5 ft, one target. *Hit:* 5 ({{1d6 + 2}}) slashing damage.');
-    expect(shortbow!.text).toContain('range 80/320 ft, one target');
+    expect(scimitar!.text).toBe('*Melee Weapon Attack:* {{+4}} to hit, reach 5 ft, one target. *Hit:* 5 ({{1d6 + 2}}) slashing damage.');
+    expect(shortbow!.text).toContain('range 80/320 ft, one target');
   });
 
   it('setzt die Aufladung an den Namen und den Satz vor die Legendären Aktionen', () => {
@@ -205,7 +205,7 @@ describe('Der Zauber wie im Buch', () => {
     expect(b.byline).toBe('3rd-level evocation');
     expect(b.lines.map((l) => `${l.label}: ${l.text}`)).toEqual([
       'Casting Time: 1 action',
-      'Range: 150 ft',
+      'Range: 150 ft',
       'Components: V, S, M (a tiny ball of bat guano and sulfur)',
       'Duration: Instantaneous',
     ]);
@@ -215,7 +215,7 @@ describe('Der Zauber wie im Buch', () => {
 
   it('nennt die Reichweite nie ohne Einheit', () => {
     const b = spellBook(seedRegistry, fireball, (id) => namen[id]);
-    expect(b.lines.find((l) => l.label === 'Range')?.text).toBe('150 ft (45.7 m)');
+    expect(b.lines.find((l) => l.label === 'Range')?.text).toBe('150 ft (45.7 m)');
   });
 
   it('kennt Zaubertricks, Rituale, Konzentration und Flächen um sich', () => {
@@ -226,7 +226,7 @@ describe('Der Zauber wie im Buch', () => {
     expect(b.byline).toBe('Divination cantrip (ritual)');
     const zeile = (l: string) => b.lines.find((x) => x.label === l)?.text;
     expect(zeile('Casting Time')).toBe('1 reaction, which you take when hit');
-    expect(zeile('Range')).toBe('Self (15 ft cone)');
+    expect(zeile('Range')).toBe('Self (15 ft cone)');
     expect(zeile('Duration')).toBe('Concentration, up to 10 minutes');
   });
 });
@@ -250,7 +250,7 @@ describe('Der Gegenstand wie im Buch', () => {
     });
     expect(b.byline).toBe('Heavy armor');
     expect(b.lines.map((l) => `${l.label}: ${l.text}`)).toEqual([
-      'Armor Class: 18', 'Strength: Str 15', 'Stealth: Disadvantage', 'Cost: 1,500 gp', 'Weight: 65 lb',
+      'Armor Class: 18', 'Strength: Str 15', 'Stealth: Disadvantage', 'Cost: 1,500 gp', 'Weight: 65 lb',
     ]);
   });
 });
@@ -284,6 +284,6 @@ describe('Kleinzeug', () => {
     expect(coinText(50)).toBe('5 sp');
     expect(coinText(3)).toBe('3 cp');
     expect(xpForCr('17')).toBe(18000);
-    expect(fieldText(imperial, { type: 'number', unit: 'ft' }, 150, 'imperial')).toBe('150 ft');
+    expect(fieldText(imperial, { type: 'number', unit: 'ft' }, 150, 'imperial')).toBe('150 ft');
   });
 });
