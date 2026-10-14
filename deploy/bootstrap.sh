@@ -90,8 +90,10 @@ chown deploy:deploy "$f"; chmod 600 "$f"
 # Eigentümer, die Zwischenstufen legt es als root an — so gehörte
 # prod/backups am 13.10. root, und das Ausrollen brach ab (T-074). Auf einem
 # bestehenden Server setzt ein zweiter Lauf den Eigentümer zurecht.
-# backups/ bindet kein Compose ein; Docker legt es also nie an. daten/
-# schon — dort schreiben aber nur die Container (daten/bilder: deploy.sh).
+# Compose bindet backups/uebernahme und daten/ ein; fehlte backups/, legte
+# Docker es als root an. Darum steht es hier, bevor ein Container läuft;
+# was darunter die Container beschreiben (backups/uebernahme, daten/bilder),
+# gibt deploy.sh uid 1000.
 for env in prod dev; do
   install -d -o deploy -g deploy "$BASE/$env/backups" "$BASE/$env/backups/bilder"
 done

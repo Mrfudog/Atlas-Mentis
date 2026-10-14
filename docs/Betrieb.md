@@ -79,14 +79,16 @@ hätte. Gemerkt hätte man es beim ersten Aufsetzen hier.
 **`deploy/deploy.sh`** tut auf dem Server, in dieser Reihenfolge:
 
 0. prüfen, ob es schreiben darf: das Verzeichnis der Umgebung und jedes
-   unter `backups/` — sonst bricht es ab, bevor es etwas tut
+   unter `backups/` (ausser `backups/uebernahme/`, das dem Server gehört)
+   — sonst bricht es ab, bevor es etwas tut
    ([Ausrollen schlägt fehl](#ausrollen-schlägt-fehl));
 1. das neue Abbild holen — schlägt das fehl, läuft das alte unberührt weiter;
 2. die Datenbank sichern (`backups/<zeit>.dump`, die letzten 20 bleiben);
-3. das Verzeichnis der Bilder anlegen und dem Benutzer `node` im Abbild
-   geben (`daten/bilder`, uid 1000) und neue Bilder nach `backups/bilder/`
-   holen (`bilder-sichern.sh`, [Bilder](#bilder)) — gehört `daten/bilder`
-   danach nicht uid 1000, bricht es ab;
+3. die Verzeichnisse anlegen, in die der Server schreibt, und dem
+   Benutzer `node` im Abbild geben (`daten/bilder` und
+   `backups/uebernahme`, uid 1000) — gehört eines danach nicht uid 1000,
+   bricht es ab — und neue Bilder nach `backups/bilder/` holen
+   (`bilder-sichern.sh`, [Bilder](#bilder));
 4. das laufende Abbild als `previous-image` merken;
 5. `IMAGE=` in `.env` setzen und `docker compose up -d` — die Migrationen
    laufen beim Start;
@@ -121,11 +123,15 @@ Datenbank, also wurde nichts gesichert, und es fiel nicht auf.
 Eigentümer von `backups/` zurecht, nicht aber den von Verzeichnissen
 darunter — dafür der Befehl oben.
 
-**`daten/bilder gehört …, nicht 1000`** — die Bilder schreibt der Server
+**`daten/bilder gehört …, nicht 1000`** (ebenso `backups/uebernahme`) —
+die Bilder und die Sicherungen vor einer Übernahme schreibt der Server
 als Benutzer `node` (uid 1000) im Abbild. `deploy.sh` setzt das selbst
 (mit dem Abbild, ohne sudo); hält es nicht, etwa weil `daten/` auf einer
 Platte liegt, die keine Eigentümer kennt, steht der Befehl in der Meldung:
 `sudo chown 1000:1000 /srv/atlas/prod/daten/bilder`.
+
+Der `chown -R` auf `backups/` oben nimmt `backups/uebernahme` mit; das
+schadet nicht, `deploy.sh` gibt es danach wieder uid 1000.
 
 ## Den Server einrichten — Schritt für Schritt (einmal)
 

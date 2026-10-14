@@ -22,7 +22,8 @@ KEEP="${KEEP_BACKUPS:-20}"
 # backups/ gehörte root. Gefragt wird hier, mit einer Meldung, die den
 # Befehl gleich nennt. Geprüft wird jedes Verzeichnis darunter, denn
 # bilder-sichern.sh legt in backups/bilder/ Unterverzeichnisse an und der
-# nächtliche Cron schreibt nach backups/nacht/.
+# nächtliche Cron schreibt nach backups/nacht/. backups/uebernahme/ nicht:
+# das gehört dem Server im Container (uid 1000, unten).
 nicht_schreibbar() {
   echo "$1 ist für $(id -un) nicht schreibbar (gehört $(stat -c '%U:%G' "$1")). Einmal auf dem Server:" >&2
   echo "  sudo chown ${2:+$2 }$(id -un):$(id -gn) $3 && sudo chmod ${2:+$2 }u+rwX $3" >&2
@@ -33,7 +34,7 @@ nicht_schreibbar() {
 # Postgres im Container.
 [ -w . ] || nicht_schreibbar "$PWD" "" "$PWD"
 if [ -d backups ]; then
-  fremd="$(find backups -type d ! -writable -print -quit)"
+  fremd="$(find backups -path backups/uebernahme -prune -o -type d ! -writable -print -quit)"
   [ -z "$fremd" ] || nicht_schreibbar "$fremd" -R "$PWD/backups"
   # -w sagt, was die Rechte erlauben; eine Probedatei, ob es auch geht
   # (nur lesbar eingehängt, voll).
@@ -69,13 +70,17 @@ fi
 # Ebenso die Sicherungen vor einer Übernahme (T-130, backups/uebernahme).
 docker run --rm --user 0 --entrypoint sh -v "$PWD/daten:/d" -v "$PWD/backups:/b" "$IMAGE" \
   -c 'mkdir -p /d/bilder /b/uebernahme && chown 1000:1000 /d/bilder /b/uebernahme'
-# Und nachsehen, ob es gehalten hat: gehört daten/bilder nicht uid 1000,
-# kann der Server kein Bild ablegen, und das merkt erst, wer hochlädt.
-[ "$(stat -c %u daten/bilder)" = 1000 ] || {
-  echo "daten/bilder gehört $(stat -c '%u:%g' daten/bilder), nicht 1000 (node im Abbild):" >&2
-  echo "  sudo chown 1000:1000 $PWD/daten/bilder" >&2
-  exit 1
-}
+# Und nachsehen, ob es gehalten hat: gehört eines davon nicht uid 1000, kann
+# der Server dort nicht schreiben, und das merkt erst, wer hochlädt oder
+# übernimmt (T-074).
+for d in daten/bilder backups/uebernahme; do
+  [ "$(stat -c %u "$d")" = 1000 ] || {
+    echo "$d gehört $(stat -c '%u:%g' "$d"), nicht 1000 (node im Abbild):" >&2
+    echo "  sudo chown 1000:1000 $PWD/$d" >&2
+    echo "Siehe docs/Betrieb.md › Ausrollen schlägt fehl." >&2
+    exit 1
+  }
+done
 [ -x ./bilder-sichern.sh ] && ./bilder-sichern.sh
 
 # Das laufende Abbild merken, damit „zurück" ein Befehl ist und keine Suche.
