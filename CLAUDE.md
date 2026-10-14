@@ -109,6 +109,12 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   und der Grundstand (was vorher hereinkam) behält Ids, Nummern und Namen —
   der Lauf rechnet ihn erst allein, für seine Nummern. Laden:
   [docs/Betrieb.md › 5e.tools laden](docs/Betrieb.md#5etools-laden).
+- `scripts/regelwerk.mjs` — der Einleser für Regelwerke anderer Verlage
+  (T-122, zuerst Kibbles’ Compendium): liest ein Paket **ausserhalb** des
+  Repos und schreibt Ebene, Artikel und Kanten über die API nach dev. Der
+  Inhalt eines solchen Buchs kommt nie ins Repository, auch nicht in
+  Tests oder Commits. Laden: [docs/Betrieb.md › Ein Regelwerk eines
+  Drittverlags laden](docs/Betrieb.md#ein-regelwerk-eines-drittverlags-laden).
 - `legacy/` — die alte React-App. Nicht weiterentwickeln; sie läuft, bis die
   neue Karte und Initiative kann.
 - `prototype/` — **eingefroren seit 13.10.2026 (D59).** Genutzt wird nur noch
