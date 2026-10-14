@@ -28,6 +28,8 @@ import {
   sellPiece,
   SHOP_TYPE,
   shopWares,
+  withVersionPrices,
+  resolveArticle,
   tableRole,
   typeChain,
   type Entity,
@@ -138,11 +140,16 @@ export function registerLaden(app: FastifyInstance, deps: LadenDeps): void {
       const v = await vorbereiten(request);
       if ('fehler' in v) return reply.code(v.fehler.code).send({ error: v.fehler.error });
       const { user, stand, laden, figur, kampagne, leitet } = v;
-      const map = new Map(stand.map).set(laden.id, laden);
+      /* Gerechnet in der Preissicht (T-139): die Ware mit dem Preis ihrer
+         geltenden Fassung, etwa aus „AI generated prices". */
+      const registry = await repo.getRegistry();
+      const map = withVersionPrices(new Map(stand.map).set(laden.id, laden), kampagne, registry);
       const offer = shopWares(laden, { entities: map, buyer: figur }).find((w) => w.edge === String(request.body?.edge ?? ''));
-      const item = offer ? map.get(offer.item) : undefined;
-      /* Eine Ware, die dieser Betrachter nicht sieht, gibt es für ihn nicht. */
-      if (!offer || !item || !(await sieve(request, [item], stand.map)).length) {
+      const item = offer ? stand.map.get(offer.item) : undefined;
+      /* Eine Ware, die dieser Betrachter nicht sieht, gibt es für ihn nicht —
+         gesiebt wird die geltende Fassung, das Original steht nicht im Spiel. */
+      const geltend = item ? resolveArticle(stand.map, item, kampagne, registry) : undefined;
+      if (!offer || !item || !geltend || !(await sieve(request, [geltend], stand.map)).length) {
         return reply.code(409).send({ error: GRUND.missing, refused: 'missing' });
       }
       const invId = (figur.relations ?? []).find((r) => r.type === 'carries')?.to;
@@ -214,7 +221,7 @@ export function registerLaden(app: FastifyInstance, deps: LadenDeps): void {
     async (request, reply) => {
       const v = await vorbereiten(request);
       if ('fehler' in v) return reply.code(v.fehler.code).send({ error: v.fehler.error });
-      const { user, stand, laden, figur } = v;
+      const { user, stand, laden, figur, kampagne } = v;
       /* Verkauft wird aus dem Inventar der Figur und den Behältern darin — nicht aus dem der Gruppe. */
       const invId = String(request.body?.inventory ?? '');
       if (!inventareDerFigur(figur, stand.map).includes(invId)) {
@@ -223,7 +230,8 @@ export function registerLaden(app: FastifyInstance, deps: LadenDeps): void {
       const inventar = await repo.getEntity(invId);
       if (!inventar) return reply.code(409).send({ error: GRUND.missing, refused: 'missing' });
       const qty = Number(request.body?.qty ?? 1);
-      const r = sellPiece(laden, inventar, String(request.body?.edge ?? ''), Number.isFinite(qty) ? qty : 1, stand.map);
+      const preise = withVersionPrices(stand.map, kampagne, await repo.getRegistry());
+      const r = sellPiece(laden, inventar, String(request.body?.edge ?? ''), Number.isFinite(qty) ? qty : 1, preise);
       if ('refused' in r) return reply.code(409).send({ error: GRUND[r.refused], refused: r.refused });
       const neu = r.shop === laden ? [r.inventory] : [r.shop, r.inventory];
       const fehler = await schreiben(neu, new Map([[laden.id, laden], [inventar.id, inventar]]), user);

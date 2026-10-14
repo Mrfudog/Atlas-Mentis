@@ -83,8 +83,11 @@ const ABGELEHNT: Record<string, string> = {
                   }
                 </span>
               }
-              @if (w.steps.length || (w.base !== w.list && w.base !== undefined)) {
+              @if (w.steps.length || (w.base !== w.list && w.base !== undefined) || w.listNote) {
                 <span class="herkunft">
+                  @if (w.listNote) {
+                    <span class="schaetzung" title="Where the list price comes from">{{ w.listNote }}</span>
+                  }
                   @if (w.base !== w.list && w.base !== undefined) {
                     <span>shop price {{ geld(w.base) }}</span>
                   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyPriceMods, buyWare, buybackPrice, parsePriceMod, sellPiece, shopWares } from '../src/shop.js';
+import { withVersionPrices, applyPriceMods, buyWare, buybackPrice, parsePriceMod, sellPiece, shopWares } from '../src/shop.js';
 import { newInstance } from '../src/instance.js';
 import type { Entity } from '../src/types.js';
 
@@ -110,6 +110,32 @@ describe('shopWares: Waren, Menge, und woher jeder Abschlag kommt', () => {
     // Wer nicht in der Gruppe ist und dem der Wirt nichts gibt, zahlt den Ladenpreis.
     const fremd = art('fremd', 'Creature', 'Stranger');
     expect(shopWares(l, { entities: welt(gruppe, wirt, rook, fremd, l), buyer: fremd })[0]!.price).toBe(900);
+  });
+});
+
+describe('withVersionPrices: die Preissicht (T-139)', () => {
+  it('gibt dem Original Preis und Herkunft der aufgeschalteten Fassung, Ids bleiben', () => {
+    const ring = art('ring', 'Item', 'Ring of Warmth', { components: { Item: { rarity: 'uncommon' } }, relations: [{ id: 'r~1', type: 'inLayer', to: 'buch' }] });
+    const ki = art('ring-ai', 'Item', 'Ring of Warmth', {
+      components: { Item: { rarity: 'uncommon', copperPrice: 40000, priceNote: 'estimated: uncommon' } },
+      relations: [{ id: 'k~1', type: 'inLayer', to: 'ki' }, { id: 'k~2', type: 'overrides', to: 'ring' }],
+    });
+    const buch = art('buch', 'Layer', 'Book', { components: { Layer: { order: 10 } } });
+    const ebene = art('ki', 'Layer', 'AI generated prices', { components: { Layer: { order: 50 } } });
+    const kampagne = (an: boolean) => art('k', 'Campaign', 'Run', {
+      relations: [{ id: 'a1', type: 'activates', to: 'buch' }, ...(an ? [{ id: 'a2', type: 'activates', to: 'ki' }] : [])],
+    });
+    const laden = art('laden', 'Shop', 'Wick', { relations: [{ id: 's~1', type: 'sells', to: 'ring' }] });
+    const entities = welt(ring, ki, buch, ebene, laden);
+    const an = withVersionPrices(entities, kampagne(true));
+    expect(an.get('ring')?.components['Item']).toEqual({ rarity: 'uncommon', copperPrice: 40000, priceNote: 'estimated: uncommon' });
+    expect(an.get('ring')?.relations).toBe(ring.relations);
+    expect(shopWares(laden, { entities: an })[0]).toMatchObject({ item: 'ring', list: 40000, listNote: 'estimated: uncommon', price: 40000 });
+    expect(buybackPrice(an.get('ring'), an)).toBe(20000);
+    /* Abgeschaltet: das Original, ohne Preis. */
+    const aus = withVersionPrices(entities, kampagne(false));
+    expect(aus.get('ring')).toBe(ring);
+    expect(shopWares(laden, { entities: aus })[0]!.list).toBeUndefined();
   });
 });
 

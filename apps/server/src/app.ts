@@ -98,6 +98,7 @@ import {
   CAMPAIGN_SETTING,
   craftCheck,
   shopWares,
+  withVersionPrices,
   buybackPrice,
   reservedFor,
   SHOP_TYPE,
@@ -1741,6 +1742,11 @@ export function buildApp({
   ): Promise<{ table: unknown[]; mine: unknown[] } | null> {
     const registry = await repo.getRegistry();
     if (!typeChain(registry, primaryInterface(e)).includes(SHOP_TYPE)) return null;
+    /* Gerechnet wird in der Preissicht (T-139): jede Ware mit dem Preis
+       ihrer geltenden Fassung, etwa aus „AI generated prices". */
+    const kampagne = currentCampaign(map, registry.settings ?? null);
+    const roherStand = map;
+    map = withVersionPrices(map, kampagne, registry);
     const verkauft = (e.relations ?? []).filter((r) => r.type === 'sells').map((r) => map.get(r.to)).filter((x): x is Entity => !!x);
     const user = await viewerOf(request);
     const figuren = (user?.actorIds ?? []).map((id) => map.get(id)).filter((x): x is Entity => !!x);
@@ -1750,7 +1756,13 @@ export function buildApp({
     /* Was die eigenen Figuren verkaufen könnten, muss der Betrachter sehen dürfen (T-133). */
     for (const f of figuren) for (const inv of inventareDerFigur(f, map)) for (const r of map.get(inv)?.relations ?? []) if (r.type === 'holds') genannt.add(r.to);
     const kandidaten = [...new Set([...verkauft, ...[...genannt].map((i) => map.get(i)).filter((x): x is Entity => !!x)])];
-    const sichtbar = new Set((await sieve(request, kandidaten, map)).map((x) => x.id));
+    /* Ein Original, das eine Fassung ersetzt, steht nicht im Spiel — gesiebt
+       wird darum die geltende Fassung, gezeigt das Original, auf das die
+       Kante zeigt (T-139). */
+    const index = overridersIndex(roherStand.values());
+    const geltend = (x: Entity) => resolveArticle(roherStand, x, kampagne, registry, index);
+    const gesiebt = new Set((await sieve(request, kandidaten.map(geltend), roherStand)).map((x) => x.id));
+    const sichtbar = new Set(kandidaten.filter((x) => gesiebt.has(geltend(x).id)).map((x) => x.id));
     const name = (id?: string) => (id && sichtbar.has(id) ? entityName(map.get(id)) : undefined);
     const benannt = (w: WareOffer[]) =>
       w
@@ -2736,10 +2748,12 @@ export function buildApp({
     const kampagne = currentCampaign(map, registry.settings ?? null);
     if (!kampagne || !inStack(map, e, kampagne, registry)) return [];
     const ebenen = layersOf(e);
+    /* Die Verwaltung schreibt ohnehin alles; eine Fassung legt sie in die
+       Ebene der Kampagne oder in eine eigene, die im Spiel ist — etwa
+       „AI generated prices" (T-139). */
     if (user.isAdmin) {
       if (!ebenen.length) return [];
-      const ebene = await kampagnenEbene(map, kampagne);
-      return ebene && !ebenen.includes(ebene.id) ? [ebene] : [];
+      return (await zielEbenen(user, map, kampagne)).filter((l) => !ebenen.includes(l.id));
     }
     if ((await ownedBy(user, map.values())).has(e.id)) return [];
     return (await zielEbenen(user, map, kampagne)).filter((l) => !ebenen.includes(l.id));

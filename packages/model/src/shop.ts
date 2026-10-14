@@ -30,6 +30,16 @@
  * gibt ihm einen `discount`. Ob Marken einmal Preise bewegen, ist offen
  * (E-043).
  *
+ * **Der Listenpreis kommt aus der geltenden Fassung** (T-139): die Kante
+ * `sells` zeigt aufs Original, und eine aufgeschaltete Ebene darf es
+ * überschreiben — etwa „AI generated prices" mit einem geschätzten Preis.
+ * Der Server reicht dafür eine **Preissicht** herein (`withVersionPrices`):
+ * jedes Original trägt Preis und Herkunft seiner geltenden Fassung, sonst
+ * bleibt alles, wie es ist — Ids, Kanten, Instanzen. So rechnen Kaufen,
+ * Verkaufen und Ankauf (T-133) mit demselben Preis, ohne dass jede Stelle
+ * den Stapel kennt. Woher der Preis kommt, reitet als `listNote` mit
+ * (`Item.priceNote`) — ein geschätzter soll als solcher dastehen.
+ *
  * **Prozent rechnen auf den Grundpreis**, nicht aufeinander: −10 % und
  * −10 % sind −20 %, gleich in welcher Reihenfolge die Kanten stehen. Jeder
  * Schritt wird auf Kupfer gerundet, und der Preis fällt nicht unter null.
@@ -39,7 +49,8 @@ import { entityName } from './entity.js';
 import { itemPrice } from './equipment.js';
 import { factionRanks } from './knowledge.js';
 import { followsTemplate, isInstance, resolveInstance, templateOf } from './instance.js';
-import type { Entity, EntityId } from './types.js';
+import { overridersIndex, resolveArticle } from './stack.js';
+import type { Entity, EntityId, Registry } from './types.js';
 
 export const SHOP_TYPE = 'Shop';
 
@@ -87,8 +98,10 @@ export interface WareOffer {
   /** Leer heisst: so viele, wie man will. */
   qty?: number;
   available: boolean;
-  /** Der Listenpreis des Gegenstands. */
+  /** Der Listenpreis des Gegenstands (aus der geltenden Fassung, T-139). */
   list?: number;
+  /** Woher der Listenpreis kommt (`Item.priceNote`), etwa „estimated: …". */
+  listNote?: string;
   /** Was der Laden verlangt, bevor Abschläge greifen. */
   base?: number;
   /** Nach allen Abschlägen; fehlt, wenn es keinen Grundpreis gibt. */
@@ -175,6 +188,35 @@ export function applyPriceMods(base: number | undefined, mods: readonly Omit<Pri
   return { price, steps };
 }
 
+/**
+ * **Die Preissicht** (T-139): der Bestand, in dem jeder Gegenstand Preis
+ * und Herkunft (`copperPrice`, `priceNote`) der Fassung trägt, die in
+ * dieser Kampagne gilt (`resolveArticle`). Sonst bleibt jeder Artikel, wie
+ * er ist — die Ids an `sells` und `holds` treffen weiter. Nur zum Rechnen:
+ * geschrieben wird nie aus dieser Sicht.
+ */
+export function withVersionPrices(
+  entities: ReadonlyMap<EntityId, Entity>,
+  campaign: Entity | null,
+  registry?: Pick<Registry, 'interfaces'>,
+): Map<EntityId, Entity> {
+  const out = new Map(entities);
+  if (!campaign) return out;
+  const alle = entities instanceof Map ? (entities as Map<EntityId, Entity>) : new Map(entities);
+  const index = overridersIndex(alle.values());
+  for (const id of index.keys()) {
+    const e = alle.get(id);
+    if (!e?.components?.['Item']) continue;
+    const g = resolveArticle(alle, e, campaign, registry, index);
+    if (g === e) continue;
+    const { copperPrice: _p, priceNote: _n, ...rest } = e.components['Item'] as Record<string, unknown>;
+    const gi = (g.components?.['Item'] ?? {}) as Record<string, unknown>;
+    const item = { ...rest, ...(gi['copperPrice'] !== undefined ? { copperPrice: gi['copperPrice'] } : {}), ...(gi['priceNote'] !== undefined ? { priceNote: gi['priceNote'] } : {}) };
+    out.set(id, { ...e, components: { ...e.components, Item: item } });
+  }
+  return out;
+}
+
 /** Die Waren eines Ladens mit ihren Preisen für diesen Käufer — in Reihenfolge der Kanten. */
 export function shopWares(shop: Entity, ctx: ShopContext): WareOffer[] {
   const laden = ladenAbschlaege(shop, ctx);
@@ -184,6 +226,8 @@ export function shopWares(shop: Entity, ctx: ShopContext): WareOffer[] {
     if (!item) continue;
     /* Ein angekauftes Stück mit Eigenem ist eine Instanz (T-133): ihr Preis steht an der Vorlage. */
     const list = itemPrice(resolveInstance(ctx.entities, item));
+    const note = (resolveInstance(ctx.entities, item).components?.['Item'] ?? {})['priceNote'];
+    const listNote = list !== undefined && typeof note === 'string' && note.trim() ? note.trim() : undefined;
     const eigen = zahl(r.props?.['price']);
     const base = eigen !== undefined && eigen >= 0 ? eigen : list;
     const ware = typeof r.props?.['mod'] === 'string' && (r.props['mod'] as string).trim()
@@ -198,6 +242,7 @@ export function shopWares(shop: Entity, ctx: ShopContext): WareOffer[] {
       ...(qty !== undefined ? { qty } : {}),
       available: r.props?.['available'] !== false && qty !== 0,
       ...(list !== undefined ? { list } : {}),
+      ...(listNote ? { listNote } : {}),
       ...(base !== undefined ? { base } : {}),
       ...(price !== undefined ? { price } : {}),
       steps,
