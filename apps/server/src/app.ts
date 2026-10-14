@@ -1024,7 +1024,7 @@ export function buildApp({
     const kampagne = currentCampaign(map, registry.settings ?? null);
     if (!kampagne) return usage;
     const inPlayJeArt: Record<string, number> = {};
-    const stapel = playStack(map, kampagne);
+    const stapel = playStack(map, kampagne, registry);
     for (const e of alle) {
       const typ = e.interfaces?.[0];
       if (typ && stapel.inPlay(e)) inPlayJeArt[typ] = (inPlayJeArt[typ] ?? 0) + 1;
@@ -1124,7 +1124,7 @@ export function buildApp({
        solche Artikel trotzdem hinaus. */
     const kampagne = currentCampaign(roh, registry.settings ?? null);
     /* Einmal je Aufruf gerechnet, nicht je Artikel (T-086). */
-    const sicht = playStack(roh, kampagne);
+    const sicht = playStack(roh, kampagne, registry);
     const vergleich = (stapel === 'versions' || stapel === 'compare') && siehtVergleich(user, kampagne);
     entities = entities
       .filter((e) =>
@@ -1320,7 +1320,7 @@ export function buildApp({
     }
     /* Der Rang je Artikel für die Kopfzeile der Fassungen (T-092) —
        derselbe Stapel, einmal gerechnet. */
-    const rang = playStack(stand.map, currentCampaign(stand.map, registry.settings ?? null));
+    const rang = playStack(stand.map, currentCampaign(stand.map, registry.settings ?? null), registry);
     lauf = sieve(request, stand.alle, stand.map, listProjection(registry), stapel).then((gesiebt) =>
       buildListIndex(registry, gesiebt, (e) => rang.rank(stand.map.get(e.id) ?? e)),
     );
@@ -1556,7 +1556,7 @@ export function buildApp({
     if (!basis || !sichtbar) return reply.code(404).send({ error: 'Nicht gefunden' });
     const registry = await repo.getRegistry();
     const kampagne = currentCampaign(stand.map, registry.settings ?? null);
-    const sicht = playStack(stand.map, kampagne);
+    const sicht = playStack(stand.map, kampagne, registry);
     const roheFassungen = versionsOf(stand.map, basis.id);
     const gesiebt = roheFassungen.length
       ? await sieve(request, roheFassungen, stand.map, undefined, 'versions')
@@ -1651,7 +1651,7 @@ export function buildApp({
       const quelle = stand.map.get(String(request.body?.version ?? ''));
       const ueber = stand.map.get(String(request.body?.over ?? ''));
       if (!quelle || !ueber) return reply.code(404).send({ error: 'Nicht gefunden' });
-      const sicht = playStack(stand.map, kampagne);
+      const sicht = playStack(stand.map, kampagne, registry);
       if (!sicht.inPlay(ueber)) return reply.code(409).send({ error: 'Überschrieben wird, was gerade gilt.' });
       if (sicht.inStack(quelle) || !sicht.inCompare(quelle)) {
         return reply.code(409).send({ error: 'Übernommen wird eine Fassung aus einer Vergleichsebene.' });
@@ -2214,13 +2214,13 @@ export function buildApp({
     if (!kette.includes('Story') || OHNE_UEBERNAHME.has(primaryInterface(e))) return [];
     if ((e.relations ?? []).some((r) => r.type === OVERRIDES_RELATION)) return [];
     const kampagne = currentCampaign(map, registry.settings ?? null);
-    if (!kampagne || !inStack(map, e, kampagne)) return [];
+    if (!kampagne || !inStack(map, e, kampagne, registry)) return [];
     const ebene = await kampagnenEbene(map, kampagne);
     if (!ebene || layersOf(e).includes(ebene.id)) return [];
     if (!user.isAdmin && !(await zielEbenen(user, map, kampagne)).some((l) => l.id === ebene.id)) return [];
     const arcs = [...map.values()]
       .filter((x) => x.id !== e.id && layersOf(x).includes(ebene.id) && typeChain(registry, primaryInterface(x)).includes('Arc'))
-      .filter((x) => inStack(map, x, kampagne))
+      .filter((x) => inStack(map, x, kampagne, registry))
       .sort((a, b) => entityName(a).localeCompare(entityName(b), 'en'));
     return [kampagne, ...arcs];
   }
@@ -2256,7 +2256,7 @@ export function buildApp({
     }
     const kampagne = currentCampaign(stand.map, registry.settings ?? null);
     const ebene = (await kampagnenEbene(stand.map, kampagne))!;
-    const teile = takenWith(stand.map, original, kampagne, ebene.id);
+    const teile = takenWith(stand.map, original, kampagne, ebene.id, registry);
     /* Original → Fassung: die schon da ist, oder eine neue. */
     const mapping = new Map<string, string>();
     const fassungen: Entity[] = [];
@@ -2322,8 +2322,9 @@ export function buildApp({
     if (!user || user.disabledAt) return [];
     if ((e.relations ?? []).some((r) => r.type === OVERRIDES_RELATION)) return [];
     if (OHNE_FASSUNG.has(primaryInterface(e))) return [];
-    const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
-    if (!kampagne || !inStack(map, e, kampagne)) return [];
+    const registry = await repo.getRegistry();
+    const kampagne = currentCampaign(map, registry.settings ?? null);
+    if (!kampagne || !inStack(map, e, kampagne, registry)) return [];
     const ebenen = layersOf(e);
     if (user.isAdmin) {
       if (!ebenen.length) return [];

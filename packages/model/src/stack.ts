@@ -31,10 +31,19 @@
  *    Ebene, die die Kampagne selbst aufschaltet, steht an ihrer eigenen
  *    Stelle, und eine mit `activates` `mode: 'off'` ist aus, auch wenn
  *    eine Gruppe sie brächte — aus schlägt an.
+ *  - **Teilweise aufschalten** (T-105, REQ-255): eine Kante `activates`
+ *    darf sagen, was ihre Ebene bringt — `props.areas` (Bereiche wie
+ *    `rules`, aus `area` der Art) und `props.types` (einzelne Arten). Ohne
+ *    beide: alles. Was nicht passt, bringt die Ebene nicht — auch nicht als
+ *    Herausnahme oder Überschreibung; aus einem Abenteuer kommen so die
+ *    Gegenstände, nicht die Orte. Eine Gruppe gibt ihre Auswahl an ihre
+ *    Mitglieder weiter; die ausdrückliche Kante eines Mitglieds hat ihre
+ *    eigene.
  */
 
 import { entityName } from './entity.js';
-import type { Entity, EntityId } from './types.js';
+import { areaOf } from './entity.js';
+import type { Entity, EntityId, Registry } from './types.js';
 import { ACTIVATES_RELATION, CAMPAIGN_TYPE, LAYER_RELATION } from './visibility.js';
 
 export const OVERRIDES_RELATION = 'overrides';
@@ -75,6 +84,64 @@ export const isOffEdge = (r: { type: string; props?: unknown }): boolean =>
 /** Die Kanten, die eine Ebene wirklich aufschalten — ohne Vergleiche und Abschaltungen. */
 const aufschalten = (e: Entity | undefined): Rel[] =>
   kanten(e, ACTIVATES_RELATION).filter((r) => !isCompareEdge(r) && !isOffEdge(r));
+
+/**
+ * **Was eine Ebene bringt** (T-105, REQ-255): Bereiche und Arten. Ein
+ * Artikel passt, wenn seine Art genannt ist oder ihr Bereich. `null`
+ * heisst: alles — die Vorgabe.
+ */
+export interface LayerFilter {
+  areas?: string[];
+  types?: string[];
+}
+
+const woerter = (x: unknown): string[] | undefined =>
+  Array.isArray(x) ? x.filter((y): y is string => typeof y === 'string') : undefined;
+
+/** Die Auswahl an einer Kante `activates`; ohne `areas` und `types` keine. */
+export function filterOf(r: { props?: unknown } | undefined): LayerFilter | null {
+  const p = r?.props as { areas?: unknown; types?: unknown } | undefined;
+  const areas = woerter(p?.areas);
+  const types = woerter(p?.types);
+  if (!areas && !types) return null;
+  return { ...(areas ? { areas } : {}), ...(types ? { types } : {}) };
+}
+
+/** Der Bereich einer Art, je Art einmal gerechnet (`areaOf` läuft die Kette hoch). */
+type BereichVon = (type: string) => string;
+function bereichVon(registry: Pick<Registry, 'interfaces'> | undefined): BereichVon | undefined {
+  if (!registry) return undefined;
+  const merk = new Map<string, string>();
+  return (t) => {
+    let a = merk.get(t);
+    if (a === undefined) merk.set(t, (a = areaOf(registry, t)));
+    return a;
+  };
+}
+
+/**
+ * Passt der Artikel zur Auswahl? Ohne Auswahl ja. **Ohne Register** lässt
+ * sich ein Bereich nicht prüfen, und die Bereichsauswahl gilt dann nicht —
+ * lieber zu viel gezeigt als still ein ganzes Buch verloren; wer einen
+ * Stapel rechnet, gibt das Register mit.
+ */
+function passt(f: LayerFilter | null | undefined, entity: Entity, bereich: BereichVon | undefined): boolean {
+  if (!f) return true;
+  const t = (entity.interfaces ?? [])[0] ?? '';
+  if (f.types?.includes(t)) return true;
+  if (!f.areas) return false;
+  if (!bereich) return true;
+  return f.areas.includes(bereich(t));
+}
+
+/** Öffentlich für die Oberfläche und die Tests: dieselbe Frage mit einem Register. */
+export function passesFilter(
+  f: LayerFilter | null | undefined,
+  entity: Entity,
+  registry?: Pick<Registry, 'interfaces'>,
+): boolean {
+  return passt(f, entity, bereichVon(registry));
+}
 
 const layerKarte = (e: Entity | undefined): Record<string, unknown> =>
   (e?.components?.[LAYER_COMPONENT] as Record<string, unknown> | undefined) ?? {};
@@ -187,6 +254,8 @@ export function currentCampaign(
 export interface StackEntry {
   layer: Entity;
   order: number;
+  /** Was sie bringt (T-105); `null` heisst alles. */
+  filter: LayerFilter | null;
 }
 
 /**
@@ -206,7 +275,7 @@ export function activeStack(entities: Map<EntityId, Entity>, campaign: Entity | 
     const order =
       anKante != null && Number.isFinite(Number(anKante)) ? Number(anKante)
         : Number.isFinite(Number(amLayer)) && amLayer != null ? Number(amLayer) : 10;
-    out.push({ layer, order });
+    out.push({ layer, order, filter: filterOf(r) });
   }
   return out.sort((a, b) => a.order - b.order);
 }
@@ -228,6 +297,19 @@ export function resolvedStack(
   campaign: Entity | null,
   members?: Map<EntityId, EntityId[]>,
 ): Entity[] {
+  return resolvedEntries(entities, campaign, members).map((x) => x.layer);
+}
+
+/**
+ * Wie `resolvedStack`, mit der Auswahl je Ebene (T-105): ein Mitglied
+ * trägt die seiner Gruppe, eine ausdrücklich aufgeschaltete Ebene ihre
+ * eigene.
+ */
+export function resolvedEntries(
+  entities: Map<EntityId, Entity>,
+  campaign: Entity | null,
+  members?: Map<EntityId, EntityId[]>,
+): { layer: Entity; filter: LayerFilter | null }[] {
   const stapel = activeStack(entities, campaign);
   if (!stapel.length) return [];
   const aus = offLayers(campaign);
@@ -235,14 +317,14 @@ export function resolvedStack(
   const gruppen = stapel.some((x) => isGroupLayer(x.layer)) ? (members ?? groupMembers(entities)) : new Map<EntityId, EntityId[]>();
   /* Eine Map behält die Einfügereihenfolge; wer später (höher) noch
      einmal kommt, wird ans Ende gesetzt. */
-  const rang = new Map<EntityId, Entity>();
-  const setze = (e: Entity) => {
+  const rang = new Map<EntityId, { layer: Entity; filter: LayerFilter | null }>();
+  const setze = (e: Entity, filter: LayerFilter | null) => {
     rang.delete(e.id);
-    rang.set(e.id, e);
+    rang.set(e.id, { layer: e, filter });
   };
-  for (const { layer } of stapel) {
+  for (const { layer, filter } of stapel) {
     if (aus.has(layer.id)) continue;
-    setze(layer);
+    setze(layer, filter);
     if (!isGroupLayer(layer)) continue;
     const gesehen = new Set<EntityId>([layer.id]);
     const lauf = (g: EntityId) => {
@@ -254,7 +336,7 @@ export function resolvedStack(
         /* Die ausdrückliche Kante schlägt die Gruppe: die Ebene steht an
            ihrer eigenen Stelle — ihre Mitglieder bringt sie dort selbst. */
         if (ausdruecklich.has(m)) continue;
-        setze(e);
+        setze(e, filter);
         lauf(m);
       }
     };
@@ -279,6 +361,11 @@ export function compareLayers(entities: Map<EntityId, Entity>, campaign: Entity 
     .filter((e): e is Entity => !!e);
 }
 
+/** Die Auswahl je Vergleichsebene (T-105), wie an ihrer Kante. */
+function compareFilters(campaign: Entity | null): Map<EntityId, LayerFilter | null> {
+  return new Map(kanten(campaign ?? undefined, ACTIVATES_RELATION).filter(isCompareEdge).map((r) => [r.to, filterOf(r)]));
+}
+
 /** Ebenen-Id → Rang 1..n; höher heisst spezifischer. Gruppen sind aufgelöst (T-088). */
 export function activeLayerRanks(entities: Map<EntityId, Entity>, campaign: Entity | null): Map<EntityId, number> {
   const m = new Map<EntityId, number>();
@@ -287,19 +374,51 @@ export function activeLayerRanks(entities: Map<EntityId, Entity>, campaign: Enti
 }
 
 /**
+ * **Rang und Auswahl je Ebene**, einmal gerechnet (T-105): `zaehlt` sagt,
+ * mit welchem Rang eine Ebenenkante dieses Artikels zählt — 0, wenn die
+ * Ebene nicht im Spiel ist oder ihn nach ihrer Auswahl nicht bringt.
+ */
+function sicht(
+  entities: Map<EntityId, Entity>,
+  campaign: Entity | null,
+  registry: Pick<Registry, 'interfaces'> | undefined,
+): { rang: Map<EntityId, number>; filter: Map<EntityId, LayerFilter | null>; zaehlt: (e: Entity, layer: EntityId) => number } {
+  const eintraege = resolvedEntries(entities, campaign);
+  const rang = new Map<EntityId, number>();
+  const filter = new Map<EntityId, LayerFilter | null>();
+  eintraege.forEach((x, i) => {
+    rang.set(x.layer.id, i + 1);
+    filter.set(x.layer.id, x.filter);
+  });
+  const bereich = bereichVon(registry);
+  const zaehlt = (e: Entity, layer: EntityId): number => {
+    const x = rang.get(layer);
+    if (!x) return 0;
+    return passt(filter.get(layer), e, bereich) ? x : 0;
+  };
+  return { rang, filter, zaehlt };
+}
+
+/**
  * Steht dieser Artikel im Stapel? Ohne Ebenenkante: ja. Mit: nur, wenn eine
  * aufgeschaltete Ebene ihn bringt und keine spezifischere ihn herausnimmt.
  * Ohne irgendeine Kampagne: ja — es gibt nichts, wogegen man rechnen könnte.
+ * Mit `registry` gilt die Bereichsauswahl der Ebenen (T-105).
  */
-export function inStack(entities: Map<EntityId, Entity>, entity: Entity, campaign: Entity | null): boolean {
+export function inStack(
+  entities: Map<EntityId, Entity>,
+  entity: Entity,
+  campaign: Entity | null,
+  registry?: Pick<Registry, 'interfaces'>,
+): boolean {
   const ebenen = kanten(entity, LAYER_RELATION);
   if (!ebenen.length) return true;
   if (!campaign) return true;
-  const rang = activeLayerRanks(entities, campaign);
+  const { zaehlt } = sicht(entities, campaign, registry);
   let addAt = 0;
   let remAt = 0;
   for (const r of ebenen) {
-    const x = rang.get(r.to);
+    const x = zaehlt(entity, r.to);
     if (!x) continue;
     if ((r.props as { mode?: unknown } | undefined)?.mode === 'removes') remAt = Math.max(remAt, x);
     else addAt = Math.max(addAt, x);
@@ -309,14 +428,19 @@ export function inStack(entities: Map<EntityId, Entity>, entity: Entity, campaig
 }
 
 /** Wer diesen Artikel überschreibt: die spezifischste aufgeschaltete Fassung, sonst niemand. */
-export function overriderOf(entities: Map<EntityId, Entity>, id: EntityId, campaign: Entity | null): Entity | null {
+export function overriderOf(
+  entities: Map<EntityId, Entity>,
+  id: EntityId,
+  campaign: Entity | null,
+  registry?: Pick<Registry, 'interfaces'>,
+): Entity | null {
   if (!campaign) return null;
-  const rang = activeLayerRanks(entities, campaign);
+  const { zaehlt } = sicht(entities, campaign, registry);
   let best: Entity | null = null;
   let bestRang = -1;
   for (const o of entities.values()) {
     if (!kanten(o, OVERRIDES_RELATION).some((r) => r.to === id)) continue;
-    const r2 = Math.max(0, ...kanten(o, LAYER_RELATION).map((x) => rang.get(x.to) ?? 0));
+    const r2 = Math.max(0, ...kanten(o, LAYER_RELATION).map((x) => zaehlt(o, x.to)));
     if (!r2) continue; /* Überschreibung ohne aufgeschaltete Ebene zählt nicht */
     if (r2 > bestRang) {
       bestRang = r2;
@@ -326,16 +450,26 @@ export function overriderOf(entities: Map<EntityId, Entity>, id: EntityId, campa
   return best;
 }
 
-export function isOverridden(entities: Map<EntityId, Entity>, entity: Entity, campaign: Entity | null): boolean {
-  return overriderOf(entities, entity.id, campaign) !== null;
+export function isOverridden(
+  entities: Map<EntityId, Entity>,
+  entity: Entity,
+  campaign: Entity | null,
+  registry?: Pick<Registry, 'interfaces'>,
+): boolean {
+  return overriderOf(entities, entity.id, campaign, registry) !== null;
 }
 
 /** Was an dieser Stelle wirklich gilt: die Kette der Überschreibungen bis zum Ende, nicht im Kreis. */
-export function resolveArticle(entities: Map<EntityId, Entity>, entity: Entity, campaign: Entity | null): Entity {
+export function resolveArticle(
+  entities: Map<EntityId, Entity>,
+  entity: Entity,
+  campaign: Entity | null,
+  registry?: Pick<Registry, 'interfaces'>,
+): Entity {
   let at = entity;
   const gesehen = new Set<EntityId>([entity.id]);
   for (let i = 0; i < 8; i += 1) {
-    const next = overriderOf(entities, at.id, campaign);
+    const next = overriderOf(entities, at.id, campaign, registry);
     if (!next || gesehen.has(next.id)) return at;
     gesehen.add(next.id);
     at = next;
@@ -344,8 +478,13 @@ export function resolveArticle(entities: Map<EntityId, Entity>, entity: Entity, 
 }
 
 /** Das Sieb, wie der Server es braucht: da und nicht überschrieben. */
-export function inPlay(entities: Map<EntityId, Entity>, entity: Entity, campaign: Entity | null): boolean {
-  return inStack(entities, entity, campaign) && !isOverridden(entities, entity, campaign);
+export function inPlay(
+  entities: Map<EntityId, Entity>,
+  entity: Entity,
+  campaign: Entity | null,
+  registry?: Pick<Registry, 'interfaces'>,
+): boolean {
+  return inStack(entities, entity, campaign, registry) && !isOverridden(entities, entity, campaign, registry);
 }
 
 export interface PlayStack {
@@ -372,26 +511,37 @@ export interface PlayStack {
  * und die Ziele aller geltenden Überschreibungen einmal vorab, danach ist
  * jede Frage ein Nachschlagen. Gleiche Regeln wie oben: eine Überschreibung
  * zählt nur aus einer aufgeschalteten Ebene heraus.
+ *
+ * Mit `registry` gilt die Bereichsauswahl der Ebenen (T-105); der Bereich
+ * einer Art wird einmal je Art nachgeschlagen, nicht je Artikel.
  */
-export function playStack(entities: Map<EntityId, Entity>, campaign: Entity | null): PlayStack {
+export function playStack(
+  entities: Map<EntityId, Entity>,
+  campaign: Entity | null,
+  registry?: Pick<Registry, 'interfaces'>,
+): PlayStack {
   if (!campaign) {
     return { inPlay: () => true, inStack: () => true, inCompare: () => false, rank: () => 0, unactivated: () => [] };
   }
-  const rang = activeLayerRanks(entities, campaign);
-  const vergleich = new Set(compareLayers(entities, campaign).map((l) => l.id));
+  const { rang, zaehlt } = sicht(entities, campaign, registry);
+  const bereich = bereichVon(registry);
+  const vergleichAuswahl = compareFilters(campaign);
+  const vergleich = new Map<EntityId, LayerFilter | null>(
+    compareLayers(entities, campaign).map((l) => [l.id, vergleichAuswahl.get(l.id) ?? null]),
+  );
   /* Eine Gruppe zum Vergleich vergleicht ihre Mitglieder (T-088), soweit
-     sie nicht ohnehin im Spiel sind. */
-  if ([...vergleich].some((id) => isGroupLayer(entities.get(id)))) {
+     sie nicht ohnehin im Spiel sind — mit ihrer Auswahl (T-105). */
+  if ([...vergleich.keys()].some((id) => isGroupLayer(entities.get(id)))) {
     const gruppen = groupMembers(entities);
-    for (const id of [...vergleich]) {
-      for (const m of layersInGroup(entities, id, gruppen)) if (!rang.has(m)) vergleich.add(m);
+    for (const [id, f] of [...vergleich]) {
+      for (const m of layersInGroup(entities, id, gruppen)) if (!rang.has(m) && !vergleich.has(m)) vergleich.set(m, f);
     }
   }
   const ueberschrieben = new Set<EntityId>();
   for (const o of entities.values()) {
     const ziele = kanten(o, OVERRIDES_RELATION);
     if (!ziele.length) continue;
-    if (!kanten(o, LAYER_RELATION).some((x) => (rang.get(x.to) ?? 0) > 0)) continue;
+    if (!kanten(o, LAYER_RELATION).some((x) => zaehlt(o, x.to) > 0)) continue;
     for (const r of ziele) ueberschrieben.add(r.to);
   }
   const imStapel = (entity: Entity): boolean => {
@@ -400,7 +550,7 @@ export function playStack(entities: Map<EntityId, Entity>, campaign: Entity | nu
     let addAt = 0;
     let remAt = 0;
     for (const r of ebenen) {
-      const x = rang.get(r.to);
+      const x = zaehlt(entity, r.to);
       if (!x) continue;
       if ((r.props as { mode?: unknown } | undefined)?.mode === 'removes') remAt = Math.max(remAt, x);
       else addAt = Math.max(addAt, x);
@@ -413,13 +563,16 @@ export function playStack(entities: Map<EntityId, Entity>, campaign: Entity | nu
     inCompare: (entity) =>
       vergleich.size > 0 &&
       kanten(entity, LAYER_RELATION).some(
-        (r) => vergleich.has(r.to) && (r.props as { mode?: unknown } | undefined)?.mode !== 'removes',
+        (r) =>
+          vergleich.has(r.to) &&
+          (r.props as { mode?: unknown } | undefined)?.mode !== 'removes' &&
+          passt(vergleich.get(r.to), entity, bereich),
       ),
     rank: (entity) => {
       let best = 0;
       for (const r of kanten(entity, LAYER_RELATION)) {
         if ((r.props as { mode?: unknown } | undefined)?.mode === 'removes') continue;
-        best = Math.max(best, rang.get(r.to) ?? 0);
+        best = Math.max(best, zaehlt(entity, r.to));
       }
       return best;
     },
@@ -553,9 +706,36 @@ export function withCompare(campaign: Entity, layerIds: readonly EntityId[]): En
       id: alt.find((r) => r.to === to)?.id ?? `${ACTIVATES_RELATION}-${COMPARE_MODE}-${to}`,
       type: ACTIVATES_RELATION,
       to,
-      props: { mode: COMPARE_MODE, order: (i + 1) * 10 },
+      /* Die Auswahl (T-105) bleibt an der Kante. */
+      props: { ...auswahlVon(alt.find((r) => r.to === to)), mode: COMPARE_MODE, order: (i + 1) * 10 },
     }));
   return { ...campaign, relations: [...andere, ...neu] };
+}
+
+const auswahlVon = (r: Rel | undefined): Record<string, unknown> => {
+  const f = filterOf(r);
+  return f ? { ...f } : {};
+};
+
+/**
+ * **Die Auswahl einer Ebene setzen** (T-105, REQ-255): an der Kante
+ * `activates`, die sie aufschaltet oder zum Vergleich nennt. `null` heisst
+ * wieder alles. Ohne solche Kante `null` zurück — eine Ebene, die nur über
+ * ihre Gruppe kommt, trägt deren Auswahl.
+ */
+export function withFilter(campaign: Entity, layerId: EntityId, filter: LayerFilter | null): Entity | null {
+  const kante = kanten(campaign, ACTIVATES_RELATION).find((r) => r.to === layerId && !isOffEdge(r));
+  if (!kante) return null;
+  const { areas: _a, types: _t, ...rest } = (kante.props ?? {}) as Record<string, unknown>;
+  const props = {
+    ...rest,
+    ...(filter?.areas ? { areas: [...new Set(filter.areas)] } : {}),
+    ...(filter?.types ? { types: [...new Set(filter.types)] } : {}),
+  };
+  return {
+    ...campaign,
+    relations: (campaign.relations ?? []).map((r) => (r === kante ? { ...r, props } : r)),
+  };
 }
 
 /**
@@ -651,6 +831,7 @@ export function takenWith(
   root: Entity,
   campaign: Entity | null,
   targetLayer: EntityId,
+  registry?: Pick<Registry, 'interfaces'>,
 ): Entity[] {
   const teile = new Map<EntityId, Entity[]>();
   for (const e of entities.values()) {
@@ -660,7 +841,7 @@ export function takenWith(
     }
   }
   const mit = (e: Entity) =>
-    inStack(entities, e, campaign) && !kanten(e, LAYER_RELATION).some((r) => r.to === targetLayer) && !kanten(e, OVERRIDES_RELATION).length;
+    inStack(entities, e, campaign, registry) && !kanten(e, LAYER_RELATION).some((r) => r.to === targetLayer) && !kanten(e, OVERRIDES_RELATION).length;
   const out: Entity[] = [root];
   const gesehen = new Set<EntityId>([root.id]);
   for (let i = 0; i < out.length; i += 1) {
