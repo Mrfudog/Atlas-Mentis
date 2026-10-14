@@ -34,6 +34,7 @@ import {
   nextId,
   primaryInterface,
   validateEntity,
+  WRITE_LAYER_PREF,
   type Entity,
 } from '@nw/model';
 import type { Repository } from './repo.js';
@@ -174,6 +175,61 @@ export function registerEbenenrechte(
       layer: l ? { id: l.id, name: entityName(l), player: spieler?.userId === user.id } : null,
       campaign: kampagne ? { id: kampagne.id, name: entityName(kampagne) } : null,
     };
+  });
+
+  /**
+   * **Die Schreibebene wählen** (T-176, für T-161): wohin dieses Konto in
+   * der laufenden Kampagne anlegt, wenn es keine Ebene nennt. Gewählt
+   * werden kann nur eine Ebene, in der es schreibt und die im Spiel ist
+   * (`zielEbenen`) — sonst gälte, was dort entsteht, nirgends. Die
+   * Verwaltung wählt auch für ein anderes Konto (`{ user }`), etwa die
+   * Testebene der Leitung. `DELETE` nimmt die Wahl zurück.
+   */
+  async function wahlZiel(request: FastifyRequest, reply: FastifyReply, userId: unknown): Promise<User | null> {
+    const user = await viewerOf(request);
+    if (!user || user.disabledAt) {
+      nein(reply, 401, 'Nicht angemeldet.');
+      return null;
+    }
+    if (userId === undefined || userId === user.id) return user;
+    if (!user.isAdmin) {
+      nein(reply, 403, 'Die Schreibebene eines anderen Kontos wählt die Verwaltung.');
+      return null;
+    }
+    const ziel = await repo.getUser(String(userId));
+    if (!ziel || ziel.disabledAt) {
+      nein(reply, 404, 'Dieses Konto gibt es nicht.');
+      return null;
+    }
+    return ziel;
+  }
+  app.put<{ Params: { layer: string }; Body: { user?: unknown } | null }>('/api/layers/:layer/default', async (request, reply) => {
+    const ziel = await wahlZiel(request, reply, request.body?.user);
+    if (!ziel) return reply;
+    const map = await bestand();
+    const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
+    if (!kampagne) return nein(reply, 409, 'Es läuft keine Kampagne.');
+    const l = map.get(request.params.layer);
+    if (!istEbene(l)) return nein(reply, 404, 'Diese Ebene gibt es nicht.');
+    if (!(await zielEbenen(ziel, map, kampagne)).some((x) => x.id === l.id)) {
+      return nein(reply, 409, `${ziel.name} schreibt nicht in „${entityName(l)}", oder sie ist in ${entityName(kampagne)} nicht aufgeschaltet.`);
+    }
+    const wahl = (await repo.getPrefs(ziel.id))[WRITE_LAYER_PREF];
+    await repo.putPref(ziel.id, WRITE_LAYER_PREF, { ...(wahl && typeof wahl === 'object' ? wahl : {}), [kampagne.id]: l.id });
+    await repo.appendEvent('layer.default', ziel.id, { layer: l.id, campaign: kampagne.id, by: (await viewerOf(request))?.id });
+    return { layer: { id: l.id, name: entityName(l) }, campaign: { id: kampagne.id, name: entityName(kampagne) } };
+  });
+  app.delete<{ Querystring: { user?: string } }>('/api/layers/default', async (request, reply) => {
+    const ziel = await wahlZiel(request, reply, request.query.user);
+    if (!ziel) return reply;
+    const map = await bestand();
+    const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
+    const wahl = (await repo.getPrefs(ziel.id))[WRITE_LAYER_PREF];
+    if (kampagne && wahl && typeof wahl === 'object' && kampagne.id in wahl) {
+      const { [kampagne.id]: _weg, ...rest } = wahl as Record<string, unknown>;
+      await repo.putPref(ziel.id, WRITE_LAYER_PREF, Object.keys(rest).length ? rest : null);
+    }
+    return { ok: true };
   });
 
   /**
