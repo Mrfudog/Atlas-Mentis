@@ -1111,9 +1111,32 @@ flowchart LR
   ohne Namen. Element `wares` auf der Artikelseite.
 - **`regards` rechnet nicht mit** (E-043, offen): persönliche Rabatte sind
   `discount` vom Ladenhalter an die Figur.
-- **Kaufen und Verkaufen** (Menge sinkt, Gegenstand ins Inventar, Münzen
-  ab `Inventory.copper`) kommt mit dem Inventar (T-127). Migration 061 trägt
-  Art und Kanten nach.
+- Migration 061 trägt Art und Kanten nach.
+- **Kaufen** (T-133, `POST /api/shops/:id/buy`, `buyWare`): die Maske
+  schickt Ware (`sells`-Kante), Menge und Figur — **nie einen Preis**; der
+  Server rechnet `shopWares` für diese Figur neu. Die gezählte Menge sinkt
+  (leer bleibt unbegrenzt), der Gegenstand kommt per `holds` ins Inventar,
+  das die Figur trägt (`carries`) — auf einen losen Stapel desselben, wenn
+  einer daliegt —, und `Inventory.copper` sinkt um Preis × Menge. Nein
+  sagen `soldOut`, `unavailable`, `tooFew`, `noPrice` (verschenkt wird
+  nichts), `tooPoor`; ohne Inventar gibt es nichts zu bezahlen.
+- **Verkaufen** (`POST /api/shops/:id/sell`, `sellPiece`): ein Stapel aus
+  dem Inventar der Figur oder einem Behälter darin (nicht dem der Gruppe),
+  zum **Ankaufspreis** `buybackPrice` = halber Listenpreis, abgerundet (5e;
+  ob ein Laden einen eigenen Satz trägt, ist offen: E-045). Rabatte gelten
+  nur beim Kaufen. Ein **reserviertes** Stück (`holds.props.reservedFor`,
+  T-128) und ein Behälter, in dem noch etwas liegt, bleiben. Führt der
+  Laden den Gegenstand mit gezählter Menge, steigt sie; sonst nimmt er ihn
+  nicht ins Sortiment.
+- **Wer handelt:** für die eigene Figur (D74, wie beim Inventar), die
+  Leitung für jede. Laden und Inventar werden **gegen die gelesene
+  Revision** geschrieben — kaufen zwei die letzte Laterne, bekommt sie
+  einer, der andere ein 409. `refs.shop.mine` nennt je Figur dazu ihr
+  Inventar, ihr Geld (`purse`) und was sie verkaufen kann (`sellable`).
+- **Protokoll:** `shop.bought` und `shop.sold` am Laden — Figur, Konto,
+  Gegenstand, Menge, Stückpreis, Summe, beim Kauf Listen- und Grundpreis
+  und jeder Abschlag mit Herkunft (`steps`), beim Verkauf die Regel
+  (`rule: 'half'`).
 
 ```mermaid
 flowchart LR

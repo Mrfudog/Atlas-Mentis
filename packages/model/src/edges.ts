@@ -193,6 +193,16 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     },
   },
   {
+    key: 'shopTrade',
+    label: 'Buying and selling',
+    area: 'character',
+    does: 'buys a ware into the inventory the character carries and sells a piece from it or a container inside — the counted quantity on the shop falls or rises, a loose stack of the same item grows, and a reserved piece or a container holding something stays (T-133)',
+    uses: {
+      [M + 'shop.ts']: ['carries', 'holds', 'sells'],
+      [S + 'laden.ts']: ['carries', 'holds'],
+    },
+  },
+  {
     key: 'builder',
     label: 'Character builder and sheet',
     area: 'character',

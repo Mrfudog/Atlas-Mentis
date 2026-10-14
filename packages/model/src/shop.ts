@@ -203,3 +203,112 @@ export function shopWares(shop: Entity, ctx: ShopContext): WareOffer[] {
   }
   return out;
 }
+
+// ------------------------------------------------------------ Kaufen und Verkaufen (T-133)
+
+/**
+ * Warum ein Handel nicht zustande kommt. `soldOut` ist eine gezählte Ware
+ * bei null, `unavailable` eine, die der Laden gerade nicht hergibt,
+ * `tooFew` mehr verlangt als da ist, `noPrice` eine Ware ohne Grundpreis
+ * — verschenkt wird nichts, nur weil niemand einen Preis eingetragen hat.
+ */
+export type TradeRefusal = 'missing' | 'unavailable' | 'soldOut' | 'tooFew' | 'noPrice' | 'tooPoor' | 'reserved' | 'notEmpty';
+
+const INVENTORY = 'Inventory';
+const kupferIn = (inv: Entity): number => Math.max(0, Math.trunc(Number(inv.components?.[INVENTORY]?.['copper']) || 0));
+const mitKupfer = (inv: Entity, copper: number): Entity => ({
+  ...inv,
+  components: { ...(inv.components ?? {}), [INVENTORY]: { ...(inv.components?.[INVENTORY] ?? {}), copper } },
+});
+const stueck = (n: unknown): number => Math.max(1, Math.trunc(Number(n) || 1));
+
+/** Ein loser Stapel desselben Gegenstands: nicht reserviert, nirgends hingelegt. */
+const loseGleich = (item: EntityId) => (r: { type: string; to: string; props?: Record<string, unknown> }) =>
+  r.type === 'holds' && r.to === item && !r.props?.['reservedFor'] && ['gx', 'gy', 'rot', 'slot'].every((k) => r.props?.[k] === undefined || r.props?.[k] === null);
+
+/**
+ * **Kaufen** (T-133): `qty` Stück der Ware `offer` — mit dem Preis, den
+ * `shopWares` für diese Figur gerechnet hat (am Server, nie aus der
+ * Maske). Die gezählte Menge an `sells` sinkt (leer bleibt unbegrenzt),
+ * der Gegenstand kommt per `holds` ins Inventar — auf einen losen Stapel
+ * desselben, wenn einer daliegt —, und `Inventory.copper` sinkt um den
+ * Preis mal Menge. Laden und Inventar kommen neu zurück; die alten bleiben
+ * unberührt.
+ */
+export function buyWare(
+  shop: Entity,
+  inventory: Entity,
+  offer: WareOffer,
+  qty: number,
+  newId: string,
+): { shop: Entity; inventory: Entity; unit: number; total: number } | { refused: TradeRefusal } {
+  const kante = kanten(shop, 'sells').find((r) => r.id === offer.edge);
+  if (!kante) return { refused: 'missing' };
+  if (offer.qty === 0) return { refused: 'soldOut' };
+  if (!offer.available) return { refused: 'unavailable' };
+  const n = stueck(qty);
+  if (offer.qty !== undefined && n > offer.qty) return { refused: 'tooFew' };
+  if (offer.price === undefined) return { refused: 'noPrice' };
+  const total = offer.price * n;
+  const hat = kupferIn(inventory);
+  if (total > hat) return { refused: 'tooPoor' };
+  const neuerLaden: Entity =
+    offer.qty === undefined
+      ? shop
+      : { ...shop, relations: (shop.relations ?? []).map((r) => (r === kante ? { ...r, props: { ...(r.props ?? {}), qty: offer.qty! - n } } : r)) };
+  const liste = inventory.relations ?? [];
+  const da = liste.find(loseGleich(offer.item));
+  const relations = da
+    ? liste.map((r) => (r === da ? { ...r, props: { ...(r.props ?? {}), qty: stueck(r.props?.['qty']) + n } } : r))
+    : [...liste, { id: newId, type: 'holds', to: offer.item, props: { qty: n, tier: 'pack' } }];
+  return { shop: neuerLaden, inventory: mitKupfer({ ...inventory, relations }, hat - total), unit: offer.price, total };
+}
+
+/**
+ * **Was ein Laden für ein Stück zahlt** (T-133): die Hälfte des
+ * Listenpreises, abgerundet auf Kupfer — die Regel aus 5e. Rabatte gelten
+ * beim Kaufen, nicht hier. Ob ein Laden einen eigenen Satz trägt, ist
+ * offen (E-045); diese Stelle ist die eine, die es dann rechnet.
+ */
+export function buybackPrice(item: Entity | undefined): number | undefined {
+  const list = itemPrice(item);
+  return list === undefined ? undefined : Math.floor(list / 2);
+}
+
+/**
+ * **Verkaufen** (T-133): `qty` Stück vom Stapel `edgeId` aus dem Inventar
+ * an den Laden, zum Ankaufspreis (`buybackPrice`). Ein reserviertes Stück
+ * (`reservedFor`, T-128) bleibt, wo es ist, und ein Behälter, in dem noch
+ * etwas liegt, auch — sein Inhalt ginge sonst mit über den Tresen. Führt
+ * der Laden den Gegenstand schon mit gezählter Menge, steigt sie; sonst
+ * nimmt er ihn nicht ins Sortiment.
+ */
+export function sellPiece(
+  shop: Entity,
+  inventory: Entity,
+  edgeId: string,
+  qty: number,
+  entities: ReadonlyMap<EntityId, Entity>,
+): { shop: Entity; inventory: Entity; item: EntityId; qty: number; unit: number; total: number } | { refused: TradeRefusal } {
+  const kante = (inventory.relations ?? []).find((r) => r.id === edgeId && r.type === 'holds');
+  if (!kante) return { refused: 'missing' };
+  if (kante.props?.['reservedFor']) return { refused: 'reserved' };
+  const item = entities.get(kante.to);
+  const voll = kanten(item, 'carries').some((c) => kanten(entities.get(c.to), 'holds').length > 0);
+  if (voll) return { refused: 'notEmpty' };
+  const unit = buybackPrice(item);
+  if (unit === undefined) return { refused: 'noPrice' };
+  const alle = stueck(kante.props?.['qty']);
+  const n = stueck(qty);
+  if (n > alle) return { refused: 'tooFew' };
+  const relations = (inventory.relations ?? []).flatMap((r) => {
+    if (r !== kante) return [r];
+    return n < alle ? [{ ...r, props: { ...(r.props ?? {}), qty: alle - n } }] : [];
+  });
+  const total = unit * n;
+  const ware = kanten(shop, 'sells').find((r) => r.to === kante.to && zahl(r.props?.['qty']) !== undefined);
+  const neuerLaden: Entity = ware
+    ? { ...shop, relations: (shop.relations ?? []).map((r) => (r === ware ? { ...r, props: { ...(r.props ?? {}), qty: zahl(r.props?.['qty'])! + n } } : r)) }
+    : shop;
+  return { shop: neuerLaden, inventory: mitKupfer({ ...inventory, relations }, kupferIn(inventory) + total), item: kante.to, qty: n, unit, total };
+}

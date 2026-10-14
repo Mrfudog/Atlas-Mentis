@@ -1537,6 +1537,18 @@ welcher Reihenfolge die Kanten stehen.
 Kante mit Marken; ein Wirt, der Rook etwas schuldet, gibt ihm einen
 `discount`. Ob Marken einmal Preise bewegen, ist offen (E-043).
 
+**Gekauft wird eine Ware, nicht ein Preis** (T-133). Die Seite schickt,
+welche Ware, wie viele und für wen; den Preis rechnet der Server noch
+einmal. Ein Preis aus der Maske wäre der, den jemand gern bezahlt hätte.
+Die Menge am Laden sinkt, das Stück liegt danach im Inventar der Figur,
+und die Münzen gehen von dort ab — drei Stellen, die gemeinsam stimmen
+müssen, darum schreibt sie eine Route und nicht drei Masken.
+
+**Verkauft wird zum halben Listenpreis** — die Regel aus 5e, Rabatte
+gelten dabei nicht. Ein Stück, das für einen Fertigungsauftrag reserviert
+ist, verkauft man nicht: es gehört schon dem Auftrag. Ob ein Hehler weniger
+zahlt als ein Sammler, wäre ein Feld am Laden (E-045, offen).
+
 ## Was ein Spieler von einer Karte bekommt
 
 **Eine Karte geht gekürzt hinaus, nicht verdeckt.** Ein versteckter Marker,
