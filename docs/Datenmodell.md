@@ -1131,8 +1131,8 @@ flowchart LR
 
 ## 10. Ansichten und Anordnung
 
-Vier Ansichten, und der Ort wählt sie — dazu eigene (T-110, REQ-256,
-E-030 b):
+Fünf Ansichten, und der Ort wählt sie — dazu eigene (T-110, REQ-256,
+E-030 b; `search` seit T-138):
 
 | Ansicht | Wo | Zeigt |
 |---|---|---|
@@ -1140,11 +1140,12 @@ E-030 b):
 | `quick` | eine Kachel auf dem Board, die Vorschau, das Popup, die Schnellanlage | Bild, Beschreibung, Felder, Prosa |
 | `full` | die Artikelseite | alles |
 | `print` | „Print" an der Artikelseite: ein Blatt A4 (`/artikel/:id/print`) | Beschreibung, alle Felder ausser dem Vorbereitungsstand, Prosa, Teile, Abschnitte — ohne Seitenspalte; Statblock, Zauber, Gegenstand wie im Buch |
+| `search` | das „+" an einem Treffer der übergreifenden Suche (T-138) | Bild, Beschreibung und die Felder, die die Art dafür wählt; Art, Ebene und Herausgeber stehen in der Trefferzeile, sie sind keine Felder |
 | eigene, z. B. `handout` | dort, wo gewählt wird: die Kachel auf dem Board, der Druck | was sie sagt — der Handzettel: Beschreibung, Absatz, Vorlesetext |
 
 **Ansichten sind Zeilen und werden im Register bearbeitet** (Register ›
 Views, T-110): anlegen (als Abschrift einer anderen), umbenennen, ordnen,
-löschen — die vier, nach denen ein Ort fragt (`PLACE_VIEWS`), nicht. Je
+löschen — die fünf, nach denen ein Ort fragt (`PLACE_VIEWS`), nicht. Je
 Ansicht eine **globale Anordnung**: Elemente in ihrer Reihenfolge, ein
 `fields`- oder `prose`-Element mit Einträgen „ganzer Typ" (`Spell` — ein
 neues Feld erscheint von selbst) oder „Typ.Feld" (`Spell.level` — bleibt
