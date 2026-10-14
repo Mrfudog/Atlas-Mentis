@@ -382,8 +382,10 @@ Einen Wähler „welche Ansicht hätten Sie gern" gibt es an diesen Orten
 nicht. Ein Verweis ist ein Verweis, und eine Artikelseite ist eine
 Artikelseite — wer das jedes Mal sagen muss, sagt es irgendwann falsch.
 
-**Eigene Ansichten** (T-110, E-030 b) gibt es trotzdem: „Handout",
-„Spielertisch" — im Register angelegt und dort gewählt, wo ohnehin gewählt
+**Eigene Ansichten** (T-110, E-030 b) gibt es trotzdem: der **Handzettel**
+(`handout` — Beschreibung, Absatz, Vorlesetext, nichts, was man nur als
+Leitung wissen will) ist die erste, „Spielertisch" könnte die nächste
+sein — im Register angelegt und dort gewählt, wo ohnehin gewählt
 wird: auf der Kachel und beim Drucken. Die Leitung wollte festlegen, was
 erscheint, ohne Code zu ändern; dass dafür niemand an jedem Ort wählen
 muss, hält die vier fest.
@@ -396,8 +398,8 @@ sie wirklich anders aussieht, ihre **eigene Anordnung**. Die Anpassung ist
 der Normalfall, weil sie richtig bleibt, wenn die Ansicht sich ändert; eine
 Abschrift wäre am Tag der nächsten Änderung die Stelle, die beim Alten
 stehen blieb. Ob leere Felder mit „—" dastehen und ob Ungenanntes am Ende
-folgt, sagt die Ansicht: die Artikelseite und der Druck lassen nichts
-fallen, die Karte schon.
+folgt, sagt die Ansicht: die Artikelseite lässt nichts fallen, die
+Karte und der Druck nehmen, was sie nennen.
 
 Nur auf dem Board wählt die **Kachel**: dort liegen Karten nebeneinander,
 und wie gross eine davon ist, ist eine Frage an sie. Sagt weder die

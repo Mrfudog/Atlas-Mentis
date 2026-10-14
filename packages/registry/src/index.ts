@@ -1,11 +1,21 @@
 import type { Registry } from '@nw/model';
-import { interfaces } from './interfaces.js';
+import { interfaces as grundtypen } from './interfaces.js';
+import { typeViews } from './ansichten.js';
 import { relations } from './relations.js';
 import { views } from './views.js';
 import { units } from './units.js';
 import { enums } from './enums.js';
 
-export { interfaces, relations, views, units, enums };
+/* Die Ansichten je Art (T-110 Schritt 7) an ihre Art gehängt — was eine
+   Art in `interfaces.ts` selbst sagt, bleibt und geht vor. */
+const interfaces: Registry['interfaces'] = Object.fromEntries(
+  Object.entries(grundtypen).map(([name, def]) => {
+    const dazu = typeViews[name];
+    return [name, dazu ? { ...def, views: { ...dazu, ...(def.views ?? {}) } } : def];
+  }),
+);
+
+export { interfaces, relations, views, units, enums, typeViews };
 
 /** Campaign-wide defaults, the last scope {VAR} resolution falls back to. */
 export const vars: Record<string, string> = {
