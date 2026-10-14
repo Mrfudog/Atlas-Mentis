@@ -256,6 +256,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       [M + 'summary.ts']: ['inLayer', 'instanceOf', 'partOf'],
       [S + 'liste.ts']: ['inLayer'],
       [W + 'artikel/artikel.ts']: ['inLayer'],
+      /* Der Druck lässt die Ebene aus der Kantenliste — sie steht im Kopf (T-110). */
+      [W + 'artikel/blatt.ts']: ['inLayer'],
     },
   },
 ];

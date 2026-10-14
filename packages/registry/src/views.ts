@@ -1,7 +1,9 @@
 import type { ViewDef } from '@nw/model';
 
 /**
- * Ansichten (REQ-164) — **drei, und der Ort wählt sie.**
+ * Ansichten (REQ-164) — **vier, und der Ort wählt sie** (seit T-110 mit
+ * dem Druck; eigene kommen im Register dazu und werden dort gewählt, wo
+ * gewählt wird: auf der Kachel und beim Drucken).
  *
  * Es waren einundzwanzig, und vierzehn davon gab es für genau eine
  * Artikelart: `sheet` nur für Kreaturen, `craft` nur für Rezepte, `stack`
@@ -98,6 +100,10 @@ export const views: Record<string, ViewDef> = {
     relations: true,
     bindings: true,
     image: true,
+    /* Was kein Element nimmt, steht am Ende (T-110): die Seite kennt noch
+       nicht jedes Element, und ein Feld, das nur der Bogen zeigt, wäre
+       sonst nirgends zu lesen. */
+    rest: true,
     layout: [
       { id: 'l-img', el: 'image' },
       { id: 'l-desc', el: 'description' },
@@ -124,6 +130,32 @@ export const views: Record<string, ViewDef> = {
          auch. */
       { id: 'l-stand', el: 'standing' },
       { id: 'l-r', el: 'relations' },
+    ],
+  },
+
+  /**
+   * **Der Druck** (T-110, E-030 b): „Print" an der Artikelseite. Ein Blatt
+   * A4 hat keine Seitenspalte und keine Knöpfe — also kein Bild, das eine
+   * Seite füllt, keine Kantenliste, keine Meinungen; dafür alles, was man am
+   * Tisch nachliest, und was kein Element nimmt, am Ende wie auf der
+   * Artikelseite. Eine Art passt es an wie jede Ansicht (`InterfaceDef.views`).
+   */
+  print: {
+    label: 'Print',
+    order: 4,
+    fields: 'all',
+    description: true,
+    composed: true,
+    relations: false,
+    bindings: true,
+    image: false,
+    rest: true,
+    layout: [
+      { id: 'p-desc', el: 'description' },
+      { id: 'p-f', el: 'fields', fields: 'all' },
+      { id: 'p-b', el: 'prose', fields: 'all' },
+      { id: 'p-parts', el: 'parts' },
+      { id: 'p-c', el: 'composed' },
     ],
   },
 };

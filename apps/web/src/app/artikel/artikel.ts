@@ -4,16 +4,11 @@ import { Router, RouterLink } from '@angular/router';
 import {
   areaOf,
   choicesOf,
-  effectText,
-  storedEffects,
-  choiceText,
   BOOK_CARDS,
   edgeEffects,
   edgeEffectText,
-  fieldText,
   layoutFor,
   LAYER_RELATION,
-  unitsFor,
   typeChain,
   entityName,
   entriesOf,
@@ -28,22 +23,19 @@ import {
   resolveView,
   isBookPart,
 } from '@nw/model';
-import type { Entity, LayoutElement, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
+import type { Entity, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
 import { Api, ApiError, type Fassungen, type LeseZiel } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { KurzLink } from '../kern/kurzansicht';
 import { Session } from '../kern/session';
 import {
-  anzeigeWert,
   ausEingabe,
   eingabeArt,
   inEingabe,
   inListe,
   kantenAusEntwurf,
   type KantenEntwurf,
-  sindZeilen,
   suchgruppen,
-  tabelleAlsText,
   verweisZiele,
   type Eingabe,
 } from './felder';
@@ -56,6 +48,7 @@ import { Zauber } from './zauber';
 import { Gegenstand } from './gegenstand';
 import { Abschnitte } from './abschnitte';
 import { Fluss } from './fluss';
+import { anordnen, feldZellen, mitLeeren, prosaVon, SCHON_ANDERSWO, type Prosa, type Stueck, type Zelle } from './anordnung';
 import { Herausgeber } from './herausgeber';
 import {
   abweichungen,
@@ -73,62 +66,10 @@ import { bereichLabel } from '../kern/bereiche';
 import { Quellen } from '../kern/quellen';
 import { antwortenJeEintrag, antwortText, EINTRAG_KANTEN } from './klasseneintrag';
 
-const SCHON_ANDERSWO = ['Identity', 'Visibility', 'Source'];
 /** Die Kante, an der ein Artikel in einem anderen steht — Raum im Kapitel, Kapitel im Abenteuer. */
 const PART_RELATION = 'partOf';
 /** So viele Glieder höchstens im Brotkrumenpfad. */
 const PFAD_TIEFE = 8;
-
-interface Zelle {
-  ref: string;
-  comp: string;
-  prop: string;
-  label: string;
-  wert: string;
-  /** An einer Instanz: der Wert kommt von der Vorlage. */
-  geerbt?: boolean;
-  /** Ein langes Textfeld: gezeichnet als Markdown (M10), nicht als Zeile. */
-  lang?: boolean;
-  /** Ein Verweisfeld: Namen als Links statt Ids (T-068). */
-  links?: { ziel: string; text: string }[];
-  /** Hier leer, aber eine andere Fassung füllt es (T-103): „hier —", daneben ihr Wert. */
-  leer?: boolean;
-  /** Ein Bildfeld (`format: 'asset'`, T-114): gezeichnet als Vorschau, nicht als Id. */
-  bild?: string;
-}
-
-interface Prosa {
-  ref: string;
-  type: string;
-  key: string;
-  label: string;
-  wert: string;
-  /** Hier kein Eintrag, aber eine andere Fassung hat einen (T-103). */
-  leer?: boolean;
-}
-
-/** Ein Stück der gezeichneten Seite — ein Layout-Element, aufgelöst. */
-interface Stueck {
-  id: string;
-  art: 'statblock' | 'spell' | 'item' | 'beschreibung' | 'felder' | 'prosa' | 'teile' | 'fluss' | 'ueberschrift' | 'absatz' | 'bild';
-  text?: string;
-  /** Das Bild (`Image.image` oder das Asset selbst, T-114) mit Unterschrift und Alternativtext. */
-  bild?: { wert: string; caption: string; alt: string };
-  zellen?: Zelle[];
-  prosa?: Prosa[];
-}
-
-/** Reiter gibt es auf der Artikelseite noch nicht: ihre Gruppen stehen nacheinander. */
-function flach(layout: readonly LayoutElement[]): LayoutElement[] {
-  return layout.flatMap((el) => (el.el === 'tabs' ? (el.tabs ?? []).flatMap((t) => flach(t.layout)) : [el]));
-}
-
-/** Nennt das Element dieses Feld — `fields`/`except` mit Typ oder `Typ.feld`? */
-function passt(el: LayoutElement, typ: string, feld: string): boolean {
-  if ((el.except ?? []).some((x) => x === typ || x === `${typ}.${feld}`)) return false;
-  if (el.fields === undefined || el.fields === 'all') return true;
-  return el.fields.some((x) => x === typ || x === `${typ}.${feld}`);
-}
 
 interface Feld {
   /** `Component.property` — eindeutig und zugleich der Name im Formular. */
@@ -216,6 +157,10 @@ interface Feld {
                 <!-- Der Stufenaufstieg ist derselbe Assistent wie das Anlegen (T-080). -->
                 @if (art(e) === 'PlayerCharacter' && darfSchreiben() && !bearbeitet() && !zeigtAlten()) {
                   <a class="knopf" [routerLink]="['/characters', e.id, 'level-up']">Level up</a>
+                }
+                <!-- Der Druck (T-110): die Ansicht print auf einem Blatt A4. -->
+                @if (!bearbeitet()) {
+                  <a class="knopf" [routerLink]="['/artikel', e.id, 'print']">Print</a>
                 }
                 <!-- Die Leseansicht (T-091): an der Stelle im Buch, oder bei
                      einer Ebene von vorn. -->
@@ -651,7 +596,7 @@ interface Feld {
                   @case ('felder') {
                     <dl class="felder">
                       @for (z of st.zellen; track z.ref) {
-                        <div class="feld" [class.lang]="z.lang" [class.geerbt]="z.geerbt" [class.leer]="z.leer"
+                        <div class="feld" [class.lang]="z.lang" [class.geerbt]="z.geerbt" [class.leer]="z.leer || z.fehlt"
                              [attr.title]="z.geerbt ? 'From the template' : z.leer ? 'Empty here; another version fills it' : null">
                           <dt>{{ z.label }}</dt>
                           <dd>
@@ -1063,174 +1008,33 @@ export class Artikel {
     return d?.description ?? null;
   });
 
-  /**
-   * **Jede Feldzelle des Artikels**, in der Reihenfolge, in der die Art ihre
-   * Felder erklärt. Welche davon wo stehen, sagt die Anordnung (`stuecke`).
-   * Ein Mass steht mit Einheit da, umgerechnet nach `units` (D8) — „Range
-   * 150" ohne Einheit gibt es nicht.
-   */
+  /** Jede Feldzelle des Artikels (`feldZellen`); wo welche steht, sagt `stuecke`. */
   private readonly alleZellen = computed<Zelle[]>(() => {
     const e = this.artikel();
     const r = this.reg();
-    if (!e || !r) return [];
-    const mode = unitsFor(r, primaryInterface(e));
-    const out: Zelle[] = [];
-    /* Ein Prosafeld steht nicht in der Feldtabelle, es gehört dem Absatz
-       darunter (`prosa`) — hier stand es als „[object Object]" (W1). */
-    const prosa = new Set(proseFields(r, primaryInterface(e)).map((f) => `${f.type}.${f.key}`));
-    for (const [comp, karte] of Object.entries(e.components ?? {})) {
-      /* Was schon anderswo steht: der Name als Überschrift, Aliasse und
-         Nummer darüber und darunter, Sichtbarkeit und Quelle in der
-         Seitenspalte. Zweimal dasselbe liest sich wie ein Fehler. */
-      if (SCHON_ANDERSWO.includes(comp)) continue;
-      const def = r.interfaces[comp];
-      const werte = (karte ?? {}) as Record<string, unknown>;
-      const reihe = [
-        ...Object.keys(def?.schema?.properties ?? {}).filter((k) => k in werte),
-        ...Object.keys(werte).filter((k) => !(k in (def?.schema?.properties ?? {}))),
-      ];
-      /* Tabellenzeilen (`Table.rows`) werden eine Tabelle, ihr Kopf
-         (`columns`) steht darin und nicht noch einmal als Zeile. */
-      const zeilen = Object.keys(werte).find((k) => sindZeilen(werte[k]));
-      for (const prop of reihe) {
-        const wert = werte[prop];
-        if (prosa.has(`${comp}.${prop}`)) continue;
-        if (zeilen && prop === 'columns') continue;
-        if (wert === null || wert === undefined || wert === '') continue;
-        const schema = def?.schema?.properties?.[prop];
-        /* Ein Prosafeld gehört dem Element `prose`, nicht der Tabelle. */
-        if (schema?.many && schema.format === 'long') continue;
-        /* Tabellenzeilen und Objekte liest `anzeigeWert` — `fieldText`
-           kennt Masse und Einheiten, aber keine Karten in einer Liste (W1). */
-        const tabelle = prop === zeilen && sindZeilen(wert);
-        const objekt =
-          typeof wert === 'object' &&
-          (!Array.isArray(wert) || wert.some((x) => x !== null && typeof x === 'object'));
-        /* Eine Wahl liest sich als Satz („Choose 2 from …", REQ-238),
-           nicht als ihre Schlüssel. */
-        const text = tabelle
-          ? tabelleAlsText(werte['columns'], wert)
-          : comp === 'Choices' && prop === 'choices'
-            ? choicesOf(e).map((c) => `${c.level && c.level > 1 ? `Level ${c.level}: ` : ''}${choiceText(c)}`).join('; ')
-            : /* Ebenso eine Wirkung („Strength becomes 19", E-025 a). */
-              comp === 'Effects' && prop === 'effects'
-              ? storedEffects(e).map(effectText).join('; ')
-              : objekt
-            ? anzeigeWert(wert)
-            : fieldText(r, schema, wert, mode);
-        if (!text) continue;
-        /* Ein Verweisfeld zeigt Namen, die auf ihren Artikel führen, und
-           nicht die Id (T-068) — auch eine Liste davon. */
-        const links = schema?.format === 'link' ? verweisZiele(wert, this.bestand.name()) : undefined;
-        out.push({
-          ...(links?.length ? { links } : {}),
-          ...(schema?.format === 'asset' && typeof wert === 'string' ? { bild: wert } : {}),
-          ref: `${comp}.${prop}`,
-          comp,
-          prop,
-          lang: tabelle || (schema?.format === 'long' && typeof wert === 'string'),
-          label: schema
-            ? fieldTitle(r, primaryInterface(e), { type: comp, key: prop, prop: schema })
-            : prop,
-          wert: text,
-          geerbt: e.fromTemplate?.fields.includes(`${comp}.${prop}`) ?? false,
-        });
-      }
-    }
-    return out;
+    return e && r ? feldZellen(r, e, this.bestand.name()) : [];
   });
 
   /**
    * **Die Seite, wie die Anordnung der Art sie sagt** (`layoutFor`, die
-   * `extends`-Kette hoch). Ein Statblock zeichnet sich wie im Buch, weil
-   * das Register an `Statblock` das Element `statblock` setzt — hier steht
-   * kein Artname (W2).
-   *
-   * Jedes Element nimmt, was es zeichnet, aus dem Rest; **was keines
-   * zeichnet, steht am Ende**. Die Seite kennt noch nicht jedes Element
-   * (Bogen, Inventar, Karte …), und ein Feld, das nur dort stünde, wäre
-   * sonst nirgends zu lesen.
+   * `extends`-Kette hoch; zugeteilt in `anordnen`). Was kein Element
+   * zeichnet, steht am Ende, weil `full` es sagt (`rest`, T-110).
    */
   protected readonly stuecke = computed<Stueck[]>(() => {
     const e = this.artikel();
     const r = this.reg();
     if (!e || !r) return [];
-    const layout = flach(layoutFor(r, 'full', primaryInterface(e)).layout);
-    const zellen = this.zellenMitFassungen();
-    const prosa = this.prosaMitFassungen();
-    const felderDa = new Set<string>();
-    const prosaDa = new Set<string>();
-    const da = (typ: string, feld: string) => felderDa.has(typ) || felderDa.has(`${typ}.${feld}`);
-    const out: Stueck[] = [];
-
-    for (const el of layout) {
-      switch (el.el) {
-        case 'statblock':
-        case 'spell':
-        case 'item': {
-          for (const karte of BOOK_CARDS[el.el] ?? []) felderDa.add(karte);
-          /* Der Zauber zeichnet seinen Text selbst, weil „At Higher Levels"
-             dahinter steht. */
-          if (el.el === 'spell') {
-            felderDa.add('Description.description');
-            prosa.filter((b) => b.type === 'Prose' && b.key === 'paragraph').forEach((b) => prosaDa.add(b.ref));
-          }
-          out.push({ id: el.id, art: el.el });
-          break;
-        }
-        case 'description': {
-          const text = this.beschreibung();
-          felderDa.add('Description.description');
-          /* Auch leer, wenn eine andere Fassung eine hat (T-103). */
-          if (text || this.vglBeschreibung()) out.push({ id: el.id, art: 'beschreibung', text: text ?? '' });
-          break;
-        }
-        case 'fields': {
-          const hier = zellen.filter((z) => !da(z.comp, z.prop) && passt(el, z.comp, z.prop));
-          hier.forEach((z) => felderDa.add(z.ref));
-          if (hier.length) out.push({ id: el.id, art: 'felder', zellen: hier });
-          break;
-        }
-        case 'prose': {
-          const hier = prosa.filter((b) => !prosaDa.has(b.ref) && passt(el, b.type, b.key));
-          hier.forEach((b) => prosaDa.add(b.ref));
-          if (hier.length) out.push({ id: el.id, art: 'prosa', prosa: hier });
-          break;
-        }
-        case 'composed':
-          out.push({ id: el.id, art: 'teile' });
-          break;
-        /* Die Teile eines Kapitels oder einer Szene (T-108): die Komponente
-           fragt selbst und zeichnet nichts, wo nichts hängt. */
-        case 'parts':
-          out.push({ id: el.id, art: 'fluss' });
-          break;
-        case 'heading':
-          if (el.text) out.push({ id: el.id, art: 'ueberschrift', text: el.text });
-          break;
-        /* Das Bild des Artikels (T-114): `Image.image`, und an einem Asset
-           die eigene Datei — sein Bild ist es selbst. */
-        case 'image': {
-          const bild = bildDes(e, r);
-          ['Image.image', 'Image.caption', 'Image.alt'].forEach((x) => felderDa.add(x));
-          if (bild) out.push({ id: el.id, art: 'bild', bild });
-          break;
-        }
-        case 'text':
-          if (el.text) out.push({ id: el.id, art: 'absatz', text: el.text });
-          break;
-        default:
-          /* Bogen, Inventar, Karte, Board … zeichnet die Artikelseite noch
-             nicht (W4 und später). Was sie tragen, steht unten im Rest. */
-          break;
-      }
-    }
-
-    const rest = zellen.filter((z) => !da(z.comp, z.prop));
-    if (rest.length) out.push({ id: 'rest-f', art: 'felder', zellen: rest });
-    const restProsa = prosa.filter((b) => !prosaDa.has(b.ref));
-    if (restProsa.length) out.push({ id: 'rest-p', art: 'prosa', prosa: restProsa });
-    return out;
+    const v = this.view();
+    const layout = layoutFor(r, 'full', primaryInterface(e)).layout;
+    /* Leere Felder, wenn die Ansicht es sagt (T-110) — beim Lesen; die
+       Maske zeigt ohnehin jedes Feld. */
+    const zellen = v?.empty === 'show' ? mitLeeren(r, e, this.zellenMitFassungen()) : this.zellenMitFassungen();
+    return anordnen(layout, zellen, this.prosaMitFassungen(), {
+      beschreibung: this.beschreibung(),
+      beschreibungZeigen: !!this.vglBeschreibung(),
+      rest: !!v?.rest,
+      bild: bildDes(e, r),
+    });
   });
 
   /** Steht ein Buch-Element zuoberst, setzt es die Zeile unter den Namen. */
@@ -1239,29 +1043,11 @@ export class Artikel {
     return erstes === 'statblock' || erstes === 'spell' || erstes === 'item';
   });
 
-  /**
-   * Die Prosa dieses Artikels. Sie steht in Feldern mit `many` und langer
-   * Eingabe — es gibt keine zweite Sorte Inhalt mehr neben den Karten —,
-   * und jeder Eintrag trägt die Id, an der die Wissensfreigabe hängt.
-   */
+  /** Die Prosa dieses Artikels (`prosaVon`). */
   protected readonly prosa = computed(() => {
     const e = this.artikel();
     const r = this.reg();
-    if (!e || !r) return [];
-    const out: Prosa[] = [];
-    for (const f of proseFields(r, primaryInterface(e))) {
-      const karte = (e.components?.[f.type] ?? {}) as Record<string, unknown>;
-      for (const eintrag of entriesOf(karte[f.key])) {
-        out.push({
-          ref: entryRef(f.type, f.key, eintrag.id),
-          type: f.type,
-          key: f.key,
-          label: fieldTitle(r, primaryInterface(e), f),
-          wert: eintrag.value,
-        });
-      }
-    }
-    return out;
+    return e && r ? prosaVon(r, e) : [];
   });
 
   protected readonly kanten = computed(() => {

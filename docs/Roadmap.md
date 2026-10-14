@@ -63,13 +63,13 @@ Was die Schnittstellen bekommen haben, bekommen Komponenten,
 Verknüpfungsarten, Ansichten und Variablen auch: eine Maske mit Feldern statt
 eines JSON-Textfelds. Das JSON bleibt als Notausgang.
 
-### A4 · Ansichten als Werkzeugkasten
+### A4 · Ansichten als Werkzeugkasten — **steht in der Seite** (T-110)
 Eine Ansicht wird eine **geordnete Liste von Elementen** statt einer Sammlung
 von Schaltern: Zwischentitel, Absatz, Tabelle mit einstellbarer Spaltenzahl,
 Feldgruppe, Bild, Bezüge, Bausteine. Anlegen, anordnen, entfernen.
 Die vorhandenen Ansichten werden umgewandelt.
 
-### A5 · Ansichten pro Typ
+### A5 · Ansichten pro Typ — **steht in der Seite** (T-110: eigene Anordnung oder Anpassung je Art, Registry › Views, Druck)
 `Item: Voll` zeigt andere Felder als `Statblock: Voll`. Die Ansicht definiert
 das Layout, der Typ füllt es. Ohne eigene Festlegung erbt ein Subtyp die
 Ansicht seines Obertyps — dieselbe Vererbung wie bei Komponenten.

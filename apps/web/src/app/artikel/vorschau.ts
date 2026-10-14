@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, input, output } from '@angular/cor
 import { RouterLink } from '@angular/router';
 import { KurzLink } from '../kern/kurzansicht';
 import {
+  elementTakes,
   entityName,
   entriesOf,
   fieldTitle,
@@ -275,6 +276,10 @@ export class Vorschau {
     const raus: Stueck[] = [];
     const flach = (layout: LayoutElement[]): LayoutElement[] =>
       layout.flatMap((el) => (el.el === 'tabs' ? flach(el.tabs?.[0]?.layout ?? []) : [el]));
+    /* Was die Ansicht sagt (T-110): leere Felder zeigen, Ungenanntes am Ende. */
+    const view = r.views['quick'];
+    const leer = view?.empty === 'show';
+    const genommen = new Set<string>();
     for (const el of flach(layoutFor(r, 'quick', typ).layout)) {
       if (el.el === 'image') {
         /* Die Karte zeigt die Vorschau (480 px); ein Klick öffnet das ganze Bild (T-114). */
@@ -284,7 +289,7 @@ export class Vorschau {
         const d = (e.components?.['Description'] as { description?: string } | undefined)?.description;
         if (d) raus.push({ kind: 'text', key: el.id, text: d });
       } else if (el.el === 'fields') {
-        const felder = this.felder(e, r, typ, el);
+        const felder = this.felder(e, r, typ, el, leer, genommen);
         if (felder.length) raus.push({ kind: 'felder', key: el.id, felder });
       } else if (el.el === 'prose') {
         const prosa = this.prosa(e, r, typ, el);
@@ -294,15 +299,24 @@ export class Vorschau {
         if (teile.length) raus.push({ kind: 'teile', key: el.id, teile });
       }
     }
+    if (view?.rest) {
+      const felder = this.felder(e, r, typ, { id: 'rest-f', el: 'fields', fields: 'all' }, leer, genommen);
+      if (felder.length) raus.push({ kind: 'felder', key: 'rest-f', felder });
+    }
     return raus;
   });
 
-  private felder(e: Entity, r: Registry, typ: string, el: LayoutElement): NonNullable<Stueck['felder']> {
-    const nimmt = (comp: string, key: string): boolean => {
-      if (el.except?.includes(comp) || el.except?.includes(`${comp}.${key}`)) return false;
-      if (el.fields === 'all') return true;
-      return !!el.fields?.includes(comp) || !!el.fields?.includes(`${comp}.${key}`);
-    };
+  private felder(
+    e: Entity,
+    r: Registry,
+    typ: string,
+    el: LayoutElement,
+    leer = false,
+    genommen = new Set<string>(),
+  ): NonNullable<Stueck['felder']> {
+    /* `fields` fehlt: dann nimmt die Karte nichts (anders als `elementTakes`). */
+    const nimmt = (comp: string, key: string): boolean =>
+      el.fields !== undefined && elementTakes(el, comp, key) && !genommen.has(`${comp}.${key}`);
     const name = this.bestand.name();
     const raus: NonNullable<Stueck['felder']> = [];
     for (const comp of typeChain(r, typ)) {
@@ -310,12 +324,18 @@ export class Vorschau {
       const karte = (e.components?.[comp] ?? {}) as Record<string, unknown>;
       for (const [key, prop] of Object.entries(r.interfaces[comp]?.schema?.properties ?? {})) {
         const wert = karte[key];
-        if (wert === undefined || wert === null || wert === '' || prop.derived) continue;
+        const fehlt = wert === undefined || wert === null || wert === '';
+        if ((fehlt && !leer) || prop.derived) continue;
         if (comp === 'Description' && key === 'description') continue;
         /* Das Bild zeichnet das Element `image`, nicht die Feldliste. */
         if (prop.format === 'asset' || comp === 'Image') continue;
         if (prop.many && prop.format === 'long') continue;
         if (!nimmt(comp, key)) continue;
+        genommen.add(`${comp}.${key}`);
+        if (fehlt) {
+          raus.push({ ref: `${comp}.${key}`, label: fieldTitle(r, typ, { type: comp, key, prop }), wert: '—', lang: false });
+          continue;
+        }
         const text = Array.isArray(wert)
           ? wert.map((w) => (prop.format === 'link' ? (name(String(w)) ?? String(w)) : String(w))).join(', ')
           : typeof wert === 'boolean'
