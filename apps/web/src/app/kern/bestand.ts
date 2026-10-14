@@ -21,11 +21,22 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { entityName } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
+import { Live, type ArtikelEreignis } from './live';
 import { Api, ApiError, type Bezuege, type LeseZiel, type ListenFrage, type Liste, type ListenZeile, type RegisterTeil, type Rueckbezug } from './api';
 
 @Injectable({ providedIn: 'root' })
 export class Bestand {
   private readonly api = inject(Api);
+
+  /* **Was offen ist, bleibt aktuell** (T-116): ändert sich ein geöffneter
+     Artikel am Server, wird er neu geholt — gesiebt wie beim Öffnen. Eine
+     Maske, die gerade bearbeitet, hält ihre Ausgangslage selbst (REQ-192)
+     und merkt beim Speichern, dass jemand anders schneller war. */
+  constructor() {
+    const live = inject(Live);
+    live.onArtikel((e) => this.lebt(e));
+    live.onNeu((was) => (was === 'registry' ? void this.load(true) : this.allesNeu()));
+  }
 
   private readonly _registry = signal<Registry | null>(null);
   private readonly _fehler = signal<string | null>(null);
@@ -218,6 +229,37 @@ export class Bestand {
       .finally(() => this.oeffnet.delete(schluessel));
     this.oeffnet.set(schluessel, lauf);
     return lauf;
+  }
+
+  /** Ein Ereignis aus dem Live-Kanal: geöffnete Artikel neu holen oder
+   *  als fehlend vermerken. Was niemand geöffnet hat, wird nicht geholt. */
+  private lebt(e: ArtikelEreignis): void {
+    const voll = this._voll();
+    /* Auch unter der Id des Originals, wenn eine Fassung kam (E-018). */
+    const schluessel = [...voll].filter(([k, x]) => k === e.id || x.id === e.id).map(([k]) => k);
+    if (e.kind === 'gone') {
+      if (!schluessel.length) return;
+      this._voll.update((m) => {
+        const n = new Map(m);
+        for (const k of schluessel) n.delete(k);
+        return n;
+      });
+      this._fehlt.update((f) => new Set([...f, ...schluessel]));
+      return;
+    }
+    if (this._fehlt().has(e.id) && !schluessel.includes(e.id)) schluessel.push(e.id);
+    for (const k of schluessel) {
+      /* Den eigenen gerade gespeicherten Stand nicht zweimal holen. */
+      if (e.revision != null && voll.get(k)?.revision === e.revision) continue;
+      void this.oeffnen(k, true, this._rueck().has(k));
+    }
+  }
+
+  /** Alles Geöffnete neu holen — nach `reset` (zu viel auf einmal, oder
+   *  die Verbindung war zu lange weg). */
+  private allesNeu(): void {
+    const offen = new Set([...this._voll().keys(), ...this._fehlt()]);
+    for (const k of offen) void this.oeffnen(k, true, this._rueck().has(k));
   }
 
   /**

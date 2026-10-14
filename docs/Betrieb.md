@@ -1013,7 +1013,8 @@ curl -N -H 'Cookie: nw_session=…' https://dev.atlas.<domain>/api/live
 # → retry: 3000, dann „event: hello", alle 25 s „: ping"
 ```
 
-Heute läuft **ein** Serverprozess je
+Steht der Punkt rechts in der Kopfleiste hohl, hört dieses Gerät gerade
+nicht mit (es verbindet neu). Heute läuft **ein** Serverprozess je
 Umgebung — die Quelle des Kanals ist sein Speicher. Mehrere Prozesse
 hinter Caddy bräuchten zuerst die Umsetzung über Postgres
 `LISTEN/NOTIFY` (Architektur.md, 5.2).

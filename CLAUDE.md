@@ -71,7 +71,9 @@ Als Bild — Container, Frameworks, Repo, Server und Oberfläche:
   deshalb sind sie ohne Datenbank testbar (`InMemoryRepository`). Der
   **Live-Kanal** (`live.ts`, `GET /api/live`, T-116) liegt als Hülle um das
   Repository und siebt je Empfänger mit derselben Rechnung wie jede Route
-  (`sieveFuer`) — er ist kein Umweg an der Sichtbarkeit vorbei.
+  (`sieveFuer`) — er ist kein Umweg an der Sichtbarkeit vorbei; im Web
+  hört man über `Live` (`onArtikel`, `onSitzung`), ohne den Transport zu
+  kennen.
 - `apps/web` — Angular, im Pergament des Design-Canvas. Anmeldung, die
   Kopfleiste mit den Bereichen, Kompendium und Bereiche (Filter in der
   Seitenleiste, Spalten aus der `overview` der Art, Vorschau `quick`;
