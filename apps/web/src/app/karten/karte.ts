@@ -13,6 +13,7 @@ import type { ElementRef } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import {
   addMarker,
+  clearPlayTokens,
   coverAll,
   coverArea,
   drawnSheets,
@@ -29,6 +30,7 @@ import {
   measure,
   moveMarker,
   parentMapRelation,
+  placeTokens,
   redactMap,
   revealAll,
   revealArea,
@@ -127,6 +129,14 @@ interface Zeiger {
             <button type="button" [class.an]="werkzeug() === 'setzen'" [attr.aria-pressed]="werkzeug() === 'setzen'" (click)="waehle('setzen')" title="Tap the map where the marker goes">
               Add marker
             </button>
+            @if (offeneTeilnehmer().length) {
+              <button type="button" (click)="teilnehmerSetzen()" [title]="'Put ' + offeneTeilnehmer().length + ' combatants of ' + (kontext()?.turn?.name ?? 'the fight') + ' on the map'">
+                Place combatants ({{ offeneTeilnehmer().length }})
+              </button>
+            }
+            @if (spielTokens()) {
+              <button type="button" (click)="spielTokensWeg()" title="Remove the tokens placed for play; prepared markers and the party stay">Clear play tokens</button>
+            }
             <button type="button" [class.an]="nebelOffen()" [attr.aria-expanded]="nebelOffen()" (click)="nebelLeiste()" title="Fog of war: reveal and hide what the players see">
               Fog
             </button>
@@ -315,6 +325,8 @@ interface Zeiger {
                 class="marker"
                 [class]="'k-' + m.kind"
                 [class.versteckt]="m.hidden"
+                [class.dran]="m.dran"
+                [class.naechster]="m.naechster"
                 [class.zieht]="zug()?.id === m.rel.id"
                 [style.left.%]="m.x * 100"
                 [style.top.%]="m.y * 100"
@@ -358,6 +370,9 @@ interface Zeiger {
         } @else {
           @if (spielersicht()) {
             Player view ·
+          }
+          @if (zugText(); as z) {
+            {{ z }} ·
           }
           @if (nebelAn()) {
             Fog of war ·
@@ -445,8 +460,9 @@ export class Karte {
        eine Karte oder eines dieser Ziele sich ändert. */
     const ab = inject(Live).onArtikel((ev) => {
       const k = this.kontext();
+      /* Eine Begegnung: ihr Zug wandert, oder ein Kampf beginnt hier. */
       const betrifft =
-        ev.type === 'Map' || ev.id === k?.party?.id || !!k?.targets[ev.id] || !!k?.children.some((c) => c.id === ev.id);
+        ev.type === 'Map' || ev.type === 'Encounter' || ev.id === k?.turn?.encounter || ev.id === k?.party?.id || !!k?.targets[ev.id] || !!k?.children.some((c) => c.id === ev.id);
       if (betrifft && ev.id !== this.id()) void this.kontextHolen(this.id());
     });
     inject(DestroyRef).onDestroy(() => {
@@ -678,6 +694,7 @@ export class Karte {
     const s = this.einst();
     if (!e || !s) return [];
     const ziele = this.kontext()?.targets ?? {};
+    const zug = this.kontext()?.turn;
     const f = this.faktor();
     const z = this.zug();
     const max = this.breite() * 0.3;
@@ -693,7 +710,13 @@ export class Karte {
         name,
         px,
         bild: ziel?.image ? bildAdresse(ziel.image, 'thumb') : null,
-        titel: [name, m.note, m.hidden ? 'hidden from the players' : ''].filter(Boolean).join(' — '),
+        /* Der Zeiger auf dem, der dran ist (REQ-144): dasselbe Token,
+           ein Ring mehr — und gestrichelt der Nächste. */
+        dran: !!zug?.current && m.to === zug.current,
+        naechster: !!zug?.next && m.to === zug.next && m.to !== zug.current,
+        titel: [name, m.note, m.hidden ? 'hidden from the players' : '', zug?.current === m.to ? 'their turn' : zug?.next === m.to ? 'next' : '']
+          .filter(Boolean)
+          .join(' — '),
       };
     });
   });
@@ -964,6 +987,50 @@ export class Karte {
     this.setzenBei.set(null);
     this.werkzeug.set('keins');
     void this.schreiben(addMarker(e, ziel.id, pt, `r-${crypto.randomUUID()}`));
+  }
+
+  // ------------------------------------------------------- Spiel-Tokens
+
+  /** Teilnehmer des laufenden Kampfes ohne Token auf dieser Karte (nur die Leitung bekommt sie). */
+  protected readonly offeneTeilnehmer = computed(() =>
+    this.darfSchreiben() && !this.spielersicht() ? (this.kontext()?.combatants ?? []).filter((c) => !c.placed) : [],
+  );
+  protected readonly spielTokens = computed(() => {
+    const e = this.karte();
+    return this.darfSchreiben() && !this.spielersicht() && !!e && markersOf(e).some((m) => m.kind === 'play');
+  });
+
+  /** „Round 2 · Ghoul's turn · next: Rook" — aus dem Kontext, mit den Namen der Tokens. */
+  protected readonly zugText = computed(() => {
+    const z = this.kontext()?.turn;
+    if (!z) return '';
+    const name = (id: string | null): string =>
+      !id ? '' : (this.kontext()?.targets[id]?.name ?? this.kontext()?.combatants.find((c) => c.id === id)?.name ?? '');
+    const jetzt = name(z.current);
+    const dann = name(z.next);
+    return [`Round ${z.round}`, jetzt ? `${jetzt}’s turn` : '', dann ? `next: ${dann}` : ''].filter(Boolean).join(' · ');
+  });
+
+  /**
+   * Die Teilnehmer auf die Karte (REQ-135): ein Block in der Mitte des
+   * Ausschnitts, ein Feld auseinander. Danach zieht die Leitung sie an
+   * ihren Platz.
+   */
+  protected teilnehmerSetzen(): void {
+    const e = this.karte();
+    const s = this.einst();
+    const n = this.nat();
+    if (!e || !s) return;
+    const sicht = this.sichtbar();
+    const mitte = sicht ? { x: sicht.x + Math.min(sicht.w, 1) / 2, y: sicht.y + Math.min(sicht.h, 1) / 2 } : { x: 0.5, y: 0.5 };
+    const schritt = n ? s.gridSize / n.w : 0.05;
+    const ids = this.offeneTeilnehmer().map((c) => c.id);
+    void this.schreiben(placeTokens(e, ids, mitte, schritt, this.seitenverhaeltnis(), () => `r-${crypto.randomUUID()}`));
+  }
+
+  protected spielTokensWeg(): void {
+    const e = this.karte();
+    if (e && confirm('Remove all play tokens from this map? Prepared markers and the party stay.')) void this.schreiben(clearPlayTokens(e));
   }
 
   // ------------------------------------------------------------- Nebel

@@ -69,6 +69,14 @@ const bestand: Entity[] = [
   ),
   art('kammer', 'Map', 'Kammer', {}, [{ id: 'in3', type: 'insideMap', to: 'gruft', props: { x: 0.7, y: 0.7, w: 0.1, h: 0.1 } }]),
   art('nische', 'Map', 'Nische', {}, [{ id: 'in4', type: 'insideMap', to: 'gruft', props: { x: 0.1, y: 0.1, w: 0.1, h: 0.1 } }]),
+  art('npc_wache', 'Creature', 'Wache'),
+  art('sb_ghul', 'Statblock', 'Ghul', { Statblock: { token: 'as_ghul_token' } }, [{ id: 'bt', type: 'belongsTo', to: 'npc_dunkel', props: {} }]),
+  art('enc_gruft', 'Encounter', 'Ghule', { Encounter: { round: 1, turn: 1 } }, [
+    { id: 'p1', type: 'participates', to: 'pc_1', props: { init: 18 } },
+    { id: 'p2', type: 'participates', to: 'npc_dunkel', props: { init: 12, revealed: true } },
+    { id: 'p3', type: 'participates', to: 'npc_wache', props: { init: 8 } },
+    { id: 'om', type: 'onMap', to: 'gruft', props: {} },
+  ]),
   art('s_1', 'Session', 'Abend 1', { Time: { sort: 1 } }),
   art('s_2', 'Session', 'Abend 2', { Time: { sort: 2 }, SessionState: { activeMap: 'stadt' } }),
 ];
@@ -93,7 +101,7 @@ async function aufbau() {
     }
     return app.inject({ method: 'GET', url, headers: { cookie: k } });
   };
-  return { hole };
+  return { hole, repo };
 }
 
 const marker = (e: Entity) => (e.relations ?? []).filter((r) => r.type === 'marker').map((r) => r.id);
@@ -150,6 +158,38 @@ describe('fog of war (REQ-139)', () => {
     expect(sp.targets['npc_dunkel']).toBeUndefined();
     const gm = (await hole('Mira', '/api/maps/gruft/context')).json();
     expect(gm.children.map((c: { id: string }) => c.id)).toEqual(['kammer', 'nische']);
+    /* Das Tokenbild kommt vom Statblock (T-119). */
+    expect(gm.targets['npc_dunkel'].image).toBe('as_ghul_token');
+  });
+});
+
+describe('initiative on the map (REQ-144)', () => {
+  it('names whose token is up and next — for players only what their order shows', async () => {
+    const { hole } = await aufbau();
+    const gm = (await hole('Mira', '/api/maps/gruft/context')).json();
+    expect(gm.turn).toMatchObject({ encounter: 'enc_gruft', round: 1, current: 'npc_dunkel', next: 'npc_wache' });
+    expect(gm.combatants).toEqual([
+      { id: 'pc_1', name: 'Rook', placed: true },
+      { id: 'npc_dunkel', name: 'Ghul', placed: true },
+      { id: 'npc_wache', name: 'Wache', placed: false },
+    ]);
+    const sp = (await hole('Sela', '/api/maps/gruft/context')).json();
+    /* Der Ghul steht im Nebel — sein Token kommt nicht an, also auch kein Ring. */
+    expect(sp.turn).toMatchObject({ encounter: 'enc_gruft', current: null, next: null });
+    expect(sp.combatants).toEqual([]);
+  });
+  it('rings the own figure when it is up, and hides an enemy whose turn has not come (D58)', async () => {
+    const { hole, repo } = await aufbau();
+    const enc = (await repo.getEntity('enc_gruft'))!;
+    await repo.putEntity({ ...enc, components: { ...enc.components, Encounter: { round: 1, turn: 0 } } });
+    const sp = (await hole('Sela', '/api/maps/gruft/context')).json();
+    expect(sp.turn).toMatchObject({ current: 'pc_1', next: null });
+    const gm = (await hole('Mira', '/api/maps/gruft/context')).json();
+    expect(gm.turn).toMatchObject({ current: 'pc_1', next: 'npc_dunkel' });
+  });
+  it('has no turn on a map without a running fight', async () => {
+    const { hole } = await aufbau();
+    expect((await hole('Mira', '/api/maps/stadt/context')).json().turn).toBeNull();
   });
 });
 
