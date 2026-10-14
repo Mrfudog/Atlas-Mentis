@@ -977,7 +977,7 @@ try {
 
   /* ------------------------------------ Handwerk: Kreise und Kampagnenregel (T-165) */
   {
-    /* Migration 071: eine Kampagne, die dem Rezept folgte, bekommt die
+    /* Migration 072: eine Kampagne, die dem Rezept folgte, bekommt die
        häufigste Regel ihrer Rezepte; die Auswahl am Rezept wird ein Satz;
        die Proben eines Auftrags werden Kreise (eine wartende behält, was
        sie ergäbe). Geschrieben über das Repository, weil das Register die
@@ -1013,7 +1013,7 @@ try {
     const name = 'zzz_durchstich_handwerk_kreise.sql';
     try {
       for (const e of probe) await repo.putEntity(e);
-      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '071_handwerk_kreise.sql'), 'utf8'));
+      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '072_handwerk_kreise.sql'), 'utf8'));
       await migrate(pool, { env: {} }, ordner);
       const k = await repo.getEntity('cp_probe_t165');
       const a = await repo.getEntity('rc_probe_t165_a');

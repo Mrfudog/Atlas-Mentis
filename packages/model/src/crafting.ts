@@ -174,7 +174,7 @@ const einer = <T extends string>(liste: readonly T[], v: unknown, vorgabe: T): T
  * Die Regeln einer Kampagne, mit den Vorgaben, wo nichts steht. Die
  * Vorgabe des Misserfolgs ist die halbe Materialmenge — dieselbe, die bis
  * T-165 über das Rezept galt, wenn es nichts sagte. Ein altes `recipe`
- * fällt darauf zurück (Migration 071 schreibt es um).
+ * fällt darauf zurück (Migration 072 schreibt es um).
  */
 export function craftRulesOf(campaign: Entity | null | undefined): CraftRules {
   const k = campaign?.components?.['Campaign'] ?? {};

@@ -303,8 +303,38 @@ function stueck(wb: Werkbank, x: unknown): string {
   }
   if (o['special']) return `${wb.zeile(String(o['special']))}${menge}`;
   if (o['value'] !== undefined) return `${Number(o['value']) / 100} gp`;
-  if (o['equipmentType']) return `one ${String(o['equipmentType']).replace(/([A-Z])/g, ' $1').toLowerCase()} of your choice`;
+  if (o['equipmentType']) return sorteAlsSatz(String(o['equipmentType']), Number(o['quantity']) || 1);
   return '';
+}
+
+/* Die Sorten von 5e.tools als gesprochene Wörter (Einzahl, Mehrzahl). */
+const SORTE: Record<string, [string, string]> = {
+  weaponSimple: ['simple weapon', 'simple weapons'],
+  weaponMartial: ['martial weapon', 'martial weapons'],
+  weaponSimpleMelee: ['simple melee weapon', 'simple melee weapons'],
+  weaponMartialMelee: ['martial melee weapon', 'martial melee weapons'],
+  weaponSimpleRanged: ['simple ranged weapon', 'simple ranged weapons'],
+  weaponMartialRanged: ['martial ranged weapon', 'martial ranged weapons'],
+  toolArtisan: ["artisan's tools", "artisan's tools"],
+  instrumentMusical: ['musical instrument', 'musical instruments'],
+  setGaming: ['gaming set', 'gaming sets'],
+  focusSpellcastingArcane: ['arcane focus', 'arcane foci'],
+  focusSpellcastingDruidic: ['druidic focus', 'druidic foci'],
+  focusSpellcastingHoly: ['holy focus', 'holy foci'],
+};
+const ZAHLWORT = ['', 'one', 'two', 'three', 'four', 'five', 'six'];
+
+/**
+ * **Eine offene Stelle als Satz** (T-162): „two martial weapons of your
+ * choice". Vorher stand hier „one weapon martial of your choice" — die
+ * Menge ging verloren (der Kämpfer bekam eine Kriegswaffe statt zwei), und
+ * die Wortstellung war die des Schlüssels. Der Assistent liest den Satz
+ * (`itemSlotIn`) und bietet eine Auswahl an.
+ */
+function sorteAlsSatz(typ: string, menge: number): string {
+  const [eins, viele] = SORTE[typ] ?? [typ.replace(/([A-Z])/g, ' $1').toLowerCase().trim(), ''];
+  const wort = menge > 1 ? (viele || eins) : eins;
+  return `${ZAHLWORT[menge] ?? String(menge)} ${wort} of your choice`;
 }
 
 /** Die Startausrüstung eines Hintergrunds: was fest ist, und die Wahl a/b. */

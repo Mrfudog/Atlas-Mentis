@@ -518,6 +518,19 @@ mit Strg/⌘ wie auf jeden Link. Am Telefon ist das Popup ein Blatt von
 unten. Die Leseansicht hatte dafür eine eigene Spalte neben dem Text; sie
 ist im Popup aufgegangen, damit ein Verweis überall dasselbe tut.
 
+**Ein Buch liest man an ihm selbst** (T-167, 14.10.2026): eine Ebene hat
+die Reiter „Article" und „Read", und „Read" ist dieselbe Leseansicht wie
+`/read/:layer` — eine Komponente, keine zweite. Gelesen werden darf auch,
+was noch nicht aufgeschaltet ist: wer ein Buch aufschalten soll, will es
+vorher ansehen. Das ist die einzige Stelle, an der „steht es im Stapel?"
+nicht die erste Frage ist, und darum fragt sie nur die Leseansicht und
+nur für diese eine Ebene; was darin jemand sehen darf, sagt das Sieb wie
+überall. Eine Gruppe ist dort ein **Regal**: ihre Bücher, und eines ohne
+Text steht ausgegraut da — ein fehlendes Buch sähe aus wie eines, das es
+nicht gibt. Das **Inhaltsverzeichnis klappt auf**, Stufe für Stufe, und
+folgt dem Lesestand; was aufgeklappt ist, merkt sich das Gerät, nicht das
+Konto — das ist eine Sache der Hand, nicht des Lesestands.
+
 **Wie im Buch** (W2, 13.10.2026) ist darum auch eine Anordnung und kein
 Sonderfall: ein Statblock liest sich wie im Monster Manual, weil am Typ
 `Statblock` das Element `statblock` steht — nicht, weil der Code nach dem
@@ -1278,6 +1291,30 @@ ungeprüft; der Einkauf wird gegen Budget und Grenzen gerechnet, bevor das
 Inventar entsteht. Danach ist die Ausrüstung **Inventar wie jedes andere**
 (`carries`, `holds`, `Inventory.copper`) — kein zweiter Ort, an dem „was
 sie hat" steht.
+
+**Eine offene Stelle wird gefüllt, nicht abgetippt** (T-162). „Two martial
+weapons of your choice" nennt keinen Gegenstand, sondern eine Sorte; der
+Assistent zeigte den Satz und liess es dabei, und ins Inventar kam nichts.
+Jetzt liest das Modell den Satz (`itemSlotIn` — die gesprochene Form und
+die des Importers, „one weapon martial of your choice") und macht daraus
+eine Stelle mit Zahl, Art und Sorte; die Figur wählt je Stück einen
+Gegenstand, und die Antwort merkt sich die Ids (`chose.props.items`). Ein
+Feld an der Möglichkeit wäre die zweite Stelle neben dem Satz gewesen, und
+jede eingelesene Klasse hätte es nachgetragen gebraucht. **Geprüft wird
+mit derselben Regel, mit der die Auswahl fragt** (`slotAccepts`):
+gewöhnlich, die Kategorie, Nah- oder Fernkampf — am Server, bevor etwas ins
+Inventar kommt. Eine Übungswahl, deren Satz eine Werkzeugsorte nennt („an
+artisan's tools", „three musical instruments"), zieht ebenso aus den
+Gegenständen dieser Sorte, statt aus jedem Gegenstand oder aus einem
+Freitext.
+
+**Eine Wahl heisst nach Quelle und Sache** (T-162): „Fighter · Skill
+proficiencies (choose 2)". Sie hiess „: equipment" — die Überschrift las
+`name`, und an einem eingelesenen Artikel steht der Name in `Identity`
+(`entityName`). Was eine Wahl anbietet, sind Artikel, und Artikel stehen
+**als Verweise** da wie überall: `nw-text` zeichnet `[[weapon-0008|greataxe]]`,
+ein Klick zeigt die Kurzansicht, Strg-Klick öffnet einen Reiter. Eine Art
+für Möglichkeiten, die nur der Assistent kennt, gäbe es dann zweimal.
 
 **Ein Merkmal, das allein in einem Absatz steht, ist eingebettet** (W6).
 5e.tools zieht Merkmale in andere hinein — der Battle Master beginnt mit

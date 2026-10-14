@@ -2100,7 +2100,7 @@ export const fieldGroups = {
            `success`, `failure`, `critSuccess` oder `critFailure`. Was sie
            bewirken, rechnet `tallyChecks` beim Lesen; `pending` wartet auf
            die Leitung (`Campaign.craftConfirm`). Löste `rolls` ab
-           (Migration 071). */
+           (Migration 072). */
         checks: { type: 'array', title: 'Checks', items: { type: 'object' }, readOnly: true },
       },
     },

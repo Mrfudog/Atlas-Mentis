@@ -22,7 +22,19 @@
  */
 
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { entityName, isReadingNode, partsIndex, primaryInterface, readingOrder, READING_TYPES, replacedIds, type ReadingNode } from '@nw/model';
+import {
+  entityName,
+  groupMembers,
+  isGroupLayer,
+  isReadingNode,
+  layersInGroup,
+  partsIndex,
+  primaryInterface,
+  readingOrder,
+  READING_TYPES,
+  replacedIds,
+  type ReadingNode,
+} from '@nw/model';
 import type { Entity } from '@nw/model';
 import type { User } from './auth.js';
 import type { Repository } from './repo.js';
@@ -45,7 +57,15 @@ export interface LeseDeps {
   repo: Repository;
   viewerOf: (request: FastifyRequest) => Promise<User | null>;
   roh: () => Promise<Stand>;
-  sieve: (request: FastifyRequest, entities: Entity[], bestand?: Map<string, Entity>) => Promise<Entity[]>;
+  /** Mit `vorschau` (T-167) auch, was nur fehlt, weil eine dieser Ebenen nicht aufgeschaltet ist. */
+  sieve: (
+    request: FastifyRequest,
+    entities: Entity[],
+    bestand?: Map<string, Entity>,
+    vorschau?: ReadonlySet<string>,
+  ) => Promise<Entity[]>;
+  /** Die Ebenen, die die laufende Kampagne aufschaltet (Gruppen aufgelöst). */
+  aufgeschaltet: (map: Map<string, Entity>) => Promise<ReadonlySet<string>>;
   geltend: (e: Entity, map: Map<string, Entity>) => Promise<Entity>;
   bezuegeVon: (
     request: FastifyRequest,
@@ -60,6 +80,8 @@ export interface LeseZiel {
   at?: string;
   /** Sonst seine Seite („XGE p. 12"). */
   page?: string;
+  /** An einer Ebene ohne Buchtext (T-167): der Knopf steht ausgegraut da. */
+  empty?: true;
 }
 
 /** Ein Eintrag im Inhaltsverzeichnis, wie er hinausgeht. */
@@ -113,7 +135,7 @@ export function registerLesen(
   app: FastifyInstance,
   deps: LeseDeps,
 ): { leseZiel: (e: Entity) => Promise<LeseZiel | undefined>; lesbar: () => Promise<Set<string>> } {
-  const { repo, viewerOf, roh, sieve, geltend, bezuegeVon } = deps;
+  const { repo, viewerOf, roh, sieve, geltend, bezuegeVon, aufgeschaltet } = deps;
 
   /* Das Inhaltsverzeichnis je Ebene, einmal je Bestand-Stempel: der Baum
      hängt nicht am Betrachter, nur das Sieb danach. */
@@ -146,16 +168,47 @@ export function registerLesen(
   }
 
   /**
+   * **Darf dieser Betrachter die Ebene lesen, bevor sie aufgeschaltet
+   * ist?** (T-167) Dann die Ebenen, deren Artikel das Sieb dazu fragt —
+   * die Ebene selbst, bei einer Gruppe auch ihre Mitglieder; sonst eine
+   * leere Menge, und es gilt der Stapel wie überall.
+   *
+   * Immer: die Verwaltung, wer irgendwo leitet, und wer die Ebene besitzt
+   * oder bearbeitet. Spielende nur, wenn die Ebene ausdrücklich
+   * `audience: 'public'` trägt — die Vorgabe `public` ohne Angabe reicht
+   * nicht, sonst wäre jedes Buch der Installation vor dem Aufschalten
+   * offen. Was im Spiel ist, lesen sie ohnehin. Welche Felder und Artikel
+   * danach ankommen, sagt das Sieb wie immer (`redactEntity`).
+   */
+  async function vorschauFuer(request: FastifyRequest, l: Entity, stand: Stand): Promise<ReadonlySet<string>> {
+    const user = await viewerOf(request);
+    const ebenen = (): Set<string> =>
+      new Set([l.id, ...(isGroupLayer(l) ? layersInGroup(stand.map, l.id, groupMembers(stand.map)) : [])]);
+    if (!user || user.isAdmin) return ebenen();
+    if (Object.values(user.roles ?? {}).some((r) => r === 'gm' || r === 'co-gm')) return ebenen();
+    if ((user.layerIds ?? []).includes(l.id) || (user.ownedLayerIds ?? []).includes(l.id)) return ebenen();
+    const vis = l.components?.['Visibility'] as { audience?: unknown } | undefined;
+    return vis?.audience === 'public' ? ebenen() : new Set();
+  }
+
+  /**
    * Die Abschnitte, wie dieser Betrachter sie bekommt: je Original die
    * Fassung, die gilt, gesiebt. Was durchs Sieb fällt, fehlt in der Karte.
    */
-  async function gesiebt(request: FastifyRequest, knoten: Entity[], stand: Stand): Promise<Map<string, Entity>> {
+  async function gesiebt(
+    request: FastifyRequest,
+    knoten: Entity[],
+    stand: Stand,
+    vorschau?: ReadonlySet<string>,
+  ): Promise<Map<string, Entity>> {
     /* Nur was eine Fassung ersetzt, fragt nach ihr: zehntausend Absätze
        sind sonst zehntausend Fragen an den Bestand (T-108). */
     const gilt = await Promise.all(
       knoten.map(async (k) => [k.id, stand.ersetzt && !stand.ersetzt.has(k.id) ? k : await geltend(k, stand.map)] as const),
     );
-    const durch = new Map((await sieve(request, [...new Map(gilt.map(([, g]) => [g.id, g])).values()], stand.map)).map((e) => [e.id, e]));
+    const durch = new Map(
+      (await sieve(request, [...new Map(gilt.map(([, g]) => [g.id, g])).values()], stand.map, vorschau)).map((e) => [e.id, e]),
+    );
     const raus = new Map<string, Entity>();
     for (const [orig, g] of gilt) {
       const e = durch.get(g.id);
@@ -164,16 +217,41 @@ export function registerLesen(
     return raus;
   }
 
+  /**
+   * **Das Regal einer Gruppe** (T-167): ihre direkten Mitglieder in der
+   * Reihenfolge des Stapels, je mit der Angabe, ob es Text zu lesen gibt —
+   * ein Buch ohne Text steht ausgegraut da, statt zu fehlen. Gesiebt wie
+   * jede Ebene.
+   */
+  async function regal(request: FastifyRequest, g: Entity, stand: Stand, imSpiel: ReadonlySet<string>) {
+    const mitText = await lesbar();
+    const ids = groupMembers(stand.map).get(g.id) ?? [];
+    const ebenen = await sieve(request, ids.map((id) => stand.map.get(id)!).filter(Boolean), stand.map);
+    return ebenen.map((e) => {
+      const kind = (e.components?.['Layer'] as { kind?: unknown } | undefined)?.kind;
+      return {
+        id: e.id,
+        name: entityName(e),
+        kind: typeof kind === 'string' ? kind : '',
+        ...(isGroupLayer(e) ? { group: true } : {}),
+        hasText: mitText.has(e.id),
+        active: imSpiel.has(e.id),
+      };
+    });
+  }
+
   app.get<{ Params: { layer: string } }>('/api/read/:layer', async (request, reply) => {
     const { stand, order } = await ordnung(request.params.layer);
     const l = await ebene(request, request.params.layer, stand);
     if (!l) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const vorschau = await vorschauFuer(request, l, stand);
     /* Gesiebt wird, was im Verzeichnis steht — die Absätze eines Buchs
        (T-108) sind Zehntausende und kommen erst mit ihrem Stück. */
     const sichtbar = await gesiebt(
       request,
       order.filter((n) => n.toc !== false).map((n) => stand.map.get(n.id)!),
       stand,
+      vorschau,
     );
     const toc: Zeile[] = [];
     for (const n of order) {
@@ -198,15 +276,21 @@ export function registerLesen(
     const user = await viewerOf(request);
     const merk = user ? await repo.readingPosition(user.id, l.id) : undefined;
     const layerKind = (l.components?.['Layer'] as { kind?: unknown } | undefined)?.kind;
+    const imSpiel = await aufgeschaltet(stand.map);
     return {
       layer: { id: l.id, name: entityName(l), kind: typeof layerKind === 'string' ? layerKind : '' },
       toc,
       position: merk && toc.some((z) => z.id === merk) ? merk : null,
+      /* Nicht aufgeschaltet (T-167): gelesen wird eine Vorschau, und die
+         Seite sagt es — oder, ohne Recht dazu, warum sie leer bleibt. */
+      ...(imSpiel.has(l.id) ? {} : { inactive: true, ...(vorschau.size ? { preview: true } : {}) }),
+      /* Eine Gruppe liest sich als Regal ihrer Bücher (T-167). */
+      ...(isGroupLayer(l) ? { shelf: await regal(request, l, stand, imSpiel) } : {}),
       /* Hat die Ebene gar keinen Buchtext, sagt die Seite das (T-126) —
          statt „vielleicht nur für die Leitung" auch der Verwaltung, bei der
          das nie der Grund ist. Verrät nichts: ob ein Buch eingelesen ist,
          ist kein Geheimnis; was gesiebt wurde, bleibt ungesagt. */
-      ...(order.some((n) => n.toc !== false) ? {} : { empty: 'noText' as const }),
+      ...(order.some((n) => n.toc !== false) || isGroupLayer(l) ? {} : { empty: 'noText' as const }),
     };
   });
 
@@ -220,7 +304,8 @@ export function registerLesen(
     const unit = order.find((n) => n.id === request.params.unit)?.unit ?? request.params.unit;
     const glieder = order.filter((n) => n.unit === unit);
     if (!glieder.length) return reply.code(404).send({ error: 'Nicht gefunden' });
-    const sichtbar = await gesiebt(request, glieder.map((n) => stand.map.get(n.id)!), stand);
+    const vorschau = await vorschauFuer(request, l, stand);
+    const sichtbar = await gesiebt(request, glieder.map((n) => stand.map.get(n.id)!), stand, vorschau);
 
     /* Was an einem Abschnitt hängt — an ihm oder an seiner Fassung. */
     const anKnoten = new Map<string, string>();
@@ -240,7 +325,7 @@ export function registerLesen(
       const k = anKnoten.get(r.to)!;
       (haengt.get(k) ?? haengt.set(k, []).get(k)!).push(e);
     }
-    const eingebettet = await gesiebt(request, [...haengt.values()].flat(), stand);
+    const eingebettet = await gesiebt(request, [...haengt.values()].flat(), stand, vorschau);
     /* Ein Verweis-Teil (`Embed`, T-108) zeigt auf einen Artikel, der für
        sich steht — einen Zauber, ein Monster. Er kommt mit, gesiebt wie
        alles: wer das Ziel nicht sehen darf, sieht an der Stelle nichts. */
@@ -251,7 +336,7 @@ export function registerLesen(
       const z = typeof ziel === 'string' ? stand.map.get(ziel) : undefined;
       if (z) zielVon.set(n.id, z);
     }
-    const ziele = await gesiebt(request, [...zielVon.values()], stand);
+    const ziele = await gesiebt(request, [...zielVon.values()], stand, vorschau);
 
     const sections = glieder
       .filter((n) => sichtbar.has(n.id))
@@ -291,7 +376,7 @@ export function registerLesen(
     if (!l) return reply.code(404).send({ error: 'Nicht gefunden' });
     /* Gesucht wird im Gesiebten: ein Treffer in einem Geheimnis verriete
        es, auch ohne den Text zu zeigen. */
-    const sichtbar = await gesiebt(request, order.map((n) => stand.map.get(n.id)!), stand);
+    const sichtbar = await gesiebt(request, order.map((n) => stand.map.get(n.id)!), stand, await vorschauFuer(request, l, stand));
     const hits: { id: string; unit: string; name: string; snippet: string }[] = [];
     for (const n of order) {
       const e = sichtbar.get(n.id);
@@ -366,10 +451,14 @@ export function registerLesen(
     if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
     const id = typeof request.body?.id === 'string' ? request.body.id : '';
     const { stand, order } = await ordnung(request.params.layer);
-    if (!(await ebene(request, request.params.layer, stand))) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const l = await ebene(request, request.params.layer, stand);
+    if (!l) return reply.code(404).send({ error: 'Nicht gefunden' });
     /* Gemerkt wird nur ein Abschnitt dieses Buchs, den er sieht — sonst
        wäre der Lesestand eine Ablage für beliebige Ids. */
-    if (!order.some((n) => n.id === id) || !(await gesiebt(request, [stand.map.get(id)!], stand)).size) {
+    if (
+      !order.some((n) => n.id === id) ||
+      !(await gesiebt(request, [stand.map.get(id)!], stand, await vorschauFuer(request, l, stand))).size
+    ) {
       return reply.code(400).send({ error: 'Kein Abschnitt dieses Buchs.' });
     }
     await repo.keepReadingPosition(user.id, request.params.layer, id);
@@ -385,8 +474,10 @@ export function registerLesen(
   async function leseZiel(e: Entity): Promise<LeseZiel | undefined> {
     const stand = await roh();
     const mitText = await lesbar();
-    /* Die Ebene selbst liest man von vorn. */
-    if (primaryInterface(e) === 'Layer') return mitText.has(e.id) ? { layer: e.id } : undefined;
+    /* Die Ebene selbst liest man von vorn — auch ohne Text (T-167): die
+       Seite sagt dann „No text imported yet", statt dass der Knopf fehlt,
+       und eine Gruppe ist ein Regal. */
+    if (primaryInterface(e) === 'Layer') return { layer: e.id, ...(mitText.has(e.id) || isGroupLayer(e) ? {} : { empty: true }) };
     /* Eine Fassung (E-018) liest man an der Stelle ihres Originals. */
     const original = (e.relations ?? []).find((r) => r.type === 'overrides')?.to;
     const quelle = (original && stand.map.get(original)) || e;

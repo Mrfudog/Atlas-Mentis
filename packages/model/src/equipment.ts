@@ -21,6 +21,7 @@
 
 import { choicesOf, choiceSources, chosenResult, type Choice } from './choices.js';
 import { rollDice, rollText } from './dice.js';
+import { itemSlotIn, slotAccepts, type ItemSlot } from './slots.js';
 import { entityName } from './entity.js';
 import type { Entity, EntityId } from './types.js';
 
@@ -189,6 +190,41 @@ export function optionContents(o: EquipmentOption): EquipmentContents {
   return { items, copper, rest: Array.isArray(o.items) ? [] : aus.rest };
 }
 
+/**
+ * **Die offenen Stellen einer Möglichkeit** (T-162): was ihr Text als
+ * Sorte nennt statt als Gegenstand — „one weapon martial of your choice",
+ * „two simple weapons". Der Reihe nach; die Antwort (`chose.props.items`)
+ * füllt sie Stelle für Stelle.
+ */
+export function optionSlots(o: Pick<EquipmentOption, 'label'>): ItemSlot[] {
+  return equipmentFromText(o.label)
+    .rest.map((t) => itemSlotIn(t))
+    .filter((s): s is ItemSlot => !!s);
+}
+
+/**
+ * **Was in die offenen Stellen kommt**: die Antwort Stelle für Stelle
+ * gelesen und gegen die Stelle geprüft (`slotAccepts`) — am Server, mit
+ * dem Bestand, den er hat. Eine ganz gefüllte Stelle verlässt den Rest.
+ */
+function gefuellt(o: EquipmentOption, items: readonly string[] | undefined, byId: ReadonlyMap<EntityId, Entity>): EquipmentContents {
+  const raus: EquipmentContents = { items: [], copper: 0, rest: [] };
+  if (!items?.length) return raus;
+  let i = 0;
+  for (const s of optionSlots(o)) {
+    let n = 0;
+    for (let k = 0; k < s.count; k++, i++) {
+      const id = items[i];
+      if (id && slotAccepts(s, byId.get(id))) {
+        dazu(raus, { items: [{ id, qty: 1 }], copper: 0, rest: [] });
+        n++;
+      }
+    }
+    if (n === s.count) raus.rest.push(s.text);
+  }
+  return raus;
+}
+
 /** Stücke zusammenlegen: derselbe Gegenstand zweimal ist einer mit mehr. */
 function dazu(ziel: EquipmentContents, q: EquipmentContents): void {
   for (const i of q.items) {
@@ -234,14 +270,16 @@ function ausruestungsQuellen(character: Entity, byId: ReadonlyMap<EntityId, Enti
 /**
  * **Was ohne Wahl dazukommt**, als Sätze — für die Anzeige im Assistenten:
  * die Wahlen mit genau einer Möglichkeit und die festen Zeilen im Text.
+ * `raw` behält die Verweise, damit sie als Verweise gezeichnet werden (T-162).
  */
-export function fixedEquipmentLines(character: Entity, byId: ReadonlyMap<EntityId, Entity>): { source: EntityId; text: string }[] {
-  const raus: { source: EntityId; text: string }[] = [];
+export function fixedEquipmentLines(character: Entity, byId: ReadonlyMap<EntityId, Entity>): { source: EntityId; text: string; raw: string }[] {
+  const raus: { source: EntityId; text: string; raw: string }[] = [];
   for (const q of ausruestungsQuellen(character, byId)) {
-    for (const z of festeZeilen(q.entity, q.art)) raus.push({ source: q.entity.id, text: plainEquipmentText(z) });
+    for (const z of festeZeilen(q.entity, q.art)) raus.push({ source: q.entity.id, text: plainEquipmentText(z), raw: z });
     for (const c of ausruestungswahlen(q.entity)) {
       const o = c.from?.options;
-      if (o?.length === 1 && (c.level ?? 1) <= 1 && (c.when !== 'multiclass')) raus.push({ source: q.entity.id, text: plainEquipmentText(o[0]!.label) });
+      /* Mit offener Stelle steht es als Wahl im Schritt (T-162). */
+      if (o?.length === 1 && (c.level ?? 1) <= 1 && c.when !== 'multiclass' && !optionSlots(o[0]!).length) raus.push({ source: q.entity.id, text: plainEquipmentText(o[0]!.label), raw: o[0]!.label });
     }
   }
   return raus;
@@ -260,7 +298,12 @@ export function startingBundle(character: Entity, byId: ReadonlyMap<EntityId, En
     const quelle = byId.get(g.source);
     const wahl = ausruestungswahlen(quelle ?? ({} as Entity)).find((c) => c.id === g.choice);
     const opt = (wahl?.from?.options as EquipmentOption[] | undefined)?.find((o) => o.key === g.key);
-    if (opt) dazu(raus, optionContents(opt));
+    if (!opt) continue;
+    const inhalt = optionContents(opt);
+    const voll = gefuellt(opt, g.items, byId);
+    /* Was gefüllt ist, steht nicht mehr als offener Satz im Rest. */
+    dazu(raus, { ...inhalt, rest: inhalt.rest.filter((t) => !voll.rest.includes(t)) });
+    dazu(raus, { ...voll, rest: [] });
   }
   return raus;
 }
