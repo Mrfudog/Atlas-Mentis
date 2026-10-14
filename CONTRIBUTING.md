@@ -44,7 +44,9 @@ gegen die von `model` erzeugten Typdateien, nicht gegen dessen Quelltext.
 [`apps/web/src/whats-new.json`](apps/web/src/whats-new.json) ein (T-157) —
 oben, denn die Liste steht neueste zuerst. Die Seite „What's new" zeigt
 ihn, und wer ihn noch nicht gesehen hat, sieht einen Punkt in der
-Kopfleiste. Was dev zeigt, steht auf `preprod`, was die Produktion zeigt,
+Kopfleiste. Ein Konto sieht nur Einträge ab dem Tag seiner Anlage
+(T-163) — `date` ist darum der Tag, an dem es auf `preprod` kam, nicht
+der, an dem die Arbeit begann. Was dev zeigt, steht auf `preprod`, was die Produktion zeigt,
 auf `main` — gepflegt wird nur die Datei.
 
 ```json

@@ -14,6 +14,12 @@
  * seines Eintrags und käme nach einem Datumsstand nie als neu an. Damit die
  * Liste nicht ohne Ende wächst, steht dazu eine Grenze (`until`): was davor
  * datiert ist, gilt als gesehen, und nur die Ids danach stehen in der Liste.
+ *
+ * **Gezeigt wird nur, was seit der Anlage des Kontos kam** (T-163): wer neu
+ * dazukommt, braucht nicht die ganze Geschichte der Seite, sondern das, was
+ * sich ab jetzt ändert. Das Datum kommt vom Server (`app_user.created_at`,
+ * in `/api/me`); fehlt es, gilt alles. Die Verwaltung darf auf der Seite
+ * trotzdem alles aufklappen.
  */
 
 import { Injectable, computed, inject, signal } from '@angular/core';
@@ -60,6 +66,19 @@ export function istNeu(e: NeuEintrag, stand: NeuStand | null): boolean {
   return e.date >= stand.until && !stand.seen.includes(e.id);
 }
 
+/** Ab welchem Tag ein Konto Einträge sieht: der Tag seiner Anlage (T-163).
+ *  Ohne gültiges Datum `null` — dann gilt alles. */
+export function abKonto(createdAt: string | null | undefined): string | null {
+  if (!createdAt) return null;
+  const d = new Date(createdAt);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+}
+
+/** Die Einträge, die ein Konto angehen: ab dem Tag seiner Anlage. */
+export function seitKonto(eintraege: readonly NeuEintrag[], ab: string | null): NeuEintrag[] {
+  return ab ? eintraege.filter((e) => e.date >= ab) : [...eintraege];
+}
+
 /** Der Stand, nachdem alle diese Einträge gesehen sind. */
 export function standNach(eintraege: readonly NeuEintrag[], heute = new Date()): NeuStand {
   const neuester = eintraege.reduce(
@@ -90,12 +109,17 @@ export class Neues {
   private readonly _stand = signal<NeuStand | null | undefined>(undefined);
   private fuer: string | null = null;
 
-  readonly eintraege = EINTRAEGE;
+  /** Alle Einträge — die Verwaltung darf sie aufklappen. */
+  readonly alle = EINTRAEGE;
+  /** Seit wann dieses Konto Einträge sieht (T-163). */
+  readonly ab = computed(() => abKonto(this.session.user()?.createdAt));
+  /** Was dieses Konto angeht: seit seiner Anlage. */
+  readonly eintraege = computed(() => seitKonto(EINTRAEGE, this.ab()));
   /** Wie viele Einträge neu sind; 0, solange der Stand nicht da ist — ein
    *  Punkt, der beim Laden aufblitzt, ist ein falscher Alarm. */
   readonly anzahl = computed(() => {
     const s = this._stand();
-    return s === undefined ? 0 : this.eintraege.filter((e) => istNeu(e, s)).length;
+    return s === undefined ? 0 : this.eintraege().filter((e) => istNeu(e, s)).length;
   });
 
   /** Den Stand dieses Kontos holen — einmal je Konto. */
@@ -121,7 +145,7 @@ export class Neues {
   neuJetzt(): Set<string> {
     const s = this._stand();
     return new Set(
-      s === undefined ? [] : this.eintraege.filter((e) => istNeu(e, s)).map((e) => e.id),
+      s === undefined ? [] : this.eintraege().filter((e) => istNeu(e, s)).map((e) => e.id),
     );
   }
 
@@ -129,7 +153,9 @@ export class Neues {
    *  liest man mit fremden Augen und schreibt nichts. */
   async gesehen(): Promise<void> {
     if (this.session.viewAs() || !this.session.user()) return;
-    const stand = standNach(this.eintraege);
+    /* Über alle Einträge: was vor der Anlage lag, gilt damit auch als
+       gesehen, falls die Verwaltung es später aufklappt. */
+    const stand = standNach(this.alle);
     this._stand.set(stand);
     try {
       await this.api.setPref('whatsNew', stand);

@@ -64,6 +64,10 @@ export interface User {
    *  Ebene besitzt, sagt, wer sonst darin schreibt. */
   ownedLayerIds?: string[] | undefined;
   disabledAt?: string | undefined;
+  /** **Seit wann es das Konto gibt** (T-163): „What's new" zeigt nur, was
+   *  danach kam — wer neu dazukommt, braucht nicht die ganze Geschichte.
+   *  Aus `app_user.created_at`; `putUser` schreibt es nicht. */
+  createdAt?: string | undefined;
 }
 
 /** Eine Einladung: ein Code, der eine Registrierung erlaubt, und sonst

@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { EINTRAEGE, istNeu, standAus, standNach, type NeuEintrag } from '../src/app/kern/neues';
+import { EINTRAEGE, abKonto, istNeu, seitKonto, standAus, standNach, type NeuEintrag } from '../src/app/kern/neues';
 import { routes } from '../src/app/app.routes';
 
 const e = (id: string, date: string): NeuEintrag => ({
@@ -78,5 +78,31 @@ describe('what is new for an account', () => {
       until: '2026-10-01',
       seen: ['a'],
     });
+  });
+});
+
+describe('only what is new since the account was created (T-163)', () => {
+  const liste = [
+    e('2026-10-14-b', '2026-10-14'),
+    e('2026-10-13-a', '2026-10-13'),
+    e('2026-09-01-alt', '2026-09-01'),
+  ];
+
+  it('starts at the day the account was created', () => {
+    expect(abKonto('2026-10-13T21:30:00.000Z')).toBe('2026-10-13');
+    expect(seitKonto(liste, abKonto('2026-10-13T21:30:00.000Z')).map((x) => x.id)).toEqual([
+      '2026-10-14-b',
+      '2026-10-13-a',
+    ]);
+  });
+
+  it('shows a brand-new account nothing of the history', () => {
+    expect(seitKonto(liste, abKonto('2026-10-15T08:00:00Z'))).toEqual([]);
+  });
+
+  it('shows everything when the date is missing or broken', () => {
+    expect(abKonto(undefined)).toBeNull();
+    expect(abKonto('kaputt')).toBeNull();
+    expect(seitKonto(liste, null)).toHaveLength(3);
   });
 });
