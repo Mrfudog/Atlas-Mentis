@@ -576,11 +576,13 @@ export class PgRepository implements Repository {
 
   /* Wer in einer Ebene schreibt (T-098). Ein zweites Setzen ändert nur
      `owner`. */
-  async grantLayer(userId: string, layerId: string, owner = false): Promise<void> {
+  async grantLayer(userId: string, layerId: string, owner = false, campaign?: string): Promise<void> {
     await this.pool.query(
-      `insert into app_user_layer(user_id, layer_id, owner) values ($1, $2, $3)
-       on conflict (user_id, layer_id) do update set owner = excluded.owner`,
-      [userId, layerId, owner],
+      `insert into app_user_layer(user_id, layer_id, owner, campaign_id) values ($1, $2, $3, $4)
+       on conflict (user_id, layer_id) do update
+         set owner = excluded.owner,
+             campaign_id = coalesce(excluded.campaign_id, app_user_layer.campaign_id)`,
+      [userId, layerId, owner, campaign ?? null],
     );
   }
 
@@ -590,8 +592,13 @@ export class PgRepository implements Repository {
   }
 
   async layerGrants(): Promise<LayerGrant[]> {
-    const { rows } = await this.pool.query<Row>('select user_id, layer_id, owner from app_user_layer order by added_at');
-    return rows.map((r) => ({ userId: String(r['user_id']), layerId: String(r['layer_id']), owner: r['owner'] === true }));
+    const { rows } = await this.pool.query<Row>('select user_id, layer_id, owner, campaign_id from app_user_layer order by added_at');
+    return rows.map((r) => ({
+      userId: String(r['user_id']),
+      layerId: String(r['layer_id']),
+      owner: r['owner'] === true,
+      ...(r['campaign_id'] ? { campaign: String(r['campaign_id']) } : {}),
+    }));
   }
 
   /* Der letzte fertige Stand (REQ-237, E-012), als JSON-Kopie. Wenige

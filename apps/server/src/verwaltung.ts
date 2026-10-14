@@ -58,6 +58,7 @@ import {
   type TableRole,
 } from '@nw/model';
 import type { Repository, StoredUser } from './repo.js';
+import { sorgeSpielerEbene } from './spielerebene.js';
 import { foldName, hashToken, mayViewAs, newInviteCode, type Invite, type User } from './auth.js';
 import { inDieGruppe, neueGruppe } from './gruppe.js';
 import { eigeneEbenen } from './ebenenrechte.js';
@@ -766,6 +767,8 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       const c = request.params.c;
       await repo.putUser({ ...ziel, roles: { ...(ziel.roles ?? {}), [c]: role } });
       await repo.appendEvent('member.role', ziel.id, { campaign: c, role, by: ok.user.id });
+      /* Wer mitspielt, bekommt seine Spielerebene (T-164). */
+      if (role === 'player') await sorgeSpielerEbene(repo, ziel.id, c, ok.user.id);
       return reply.code(201).send({ id: ziel.id, name: ziel.name, role });
     },
   );
@@ -780,6 +783,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       const c = request.params.c;
       await repo.putUser({ ...ok.ziel, roles: { ...(ok.ziel.roles ?? {}), [c]: role } });
       await repo.appendEvent('member.role', ok.ziel.id, { campaign: c, role, by: ok.user.id });
+      if (role === 'player') await sorgeSpielerEbene(repo, ok.ziel.id, c, ok.user.id);
       return { id: ok.ziel.id, role };
     },
   );
