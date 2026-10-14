@@ -19,7 +19,7 @@ Epic: [[EP-02 Zugang & Betrieb]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-035]] Membership triples: user + scope (campaign/world/layer) + role | – | 1 | steht |
-| [[REQ-036]] Roles GM / Player (Admin global) | – | 1 | steht |
-| [[REQ-037]] Roles Co-GM / Spectator | – | 3 | steht |
+| [[REQ-035]] Rolle je Kampagne | Verwaltung | 1 | steht |
+| [[REQ-036]] Leitung, Spieler und Verwaltung | Verwaltung | 1 | steht |
+| [[REQ-037]] Mitleitung und Zuschauer | Spielleitung | 3 | steht |
 <!-- stories:ende -->

@@ -19,9 +19,9 @@ Epic: [[EP-02 Zugang & Betrieb]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-154]] Deployment: container(s) on NAS, reverse proxy, TLS, remote player access | – | 1 | steht |
-| [[REQ-155]] Backups of database and app-managed assets | – | 2 | steht |
-| [[REQ-199]] Produktionsdaten nach preprod spiegeln: regelmässiger Abzug aus der Prod-Datenbank in die Testinstanz, damit gegen echte Inhalte getestet wird | – | 3 | steht |
+| [[REQ-154]] Ausrollen nach dev und prod | Verwaltung | 1 | steht |
+| [[REQ-155]] Sicherungen | Verwaltung | 2 | steht |
+| [[REQ-199]] Produktionsdaten nach dev spiegeln | Verwaltung | 3 | steht |
 | [[REQ-267]] Eigenes Netz-VPS mit VPN | Verwaltung | 5 | offen |
 | [[REQ-269]] Ankündigen, wann produktiv gearbeitet werden kann | Verwaltung | 2 | teils |
 <!-- stories:ende -->

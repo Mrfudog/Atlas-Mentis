@@ -19,6 +19,6 @@ Epic: [[EP-02 Zugang & Betrieb]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-232]] Listen rechnet der Server: Blättern, Suchen, Filtern und Auswahlen über den gesiebten Bestand am Server, die Oberfläche hält keinen Bestand — ein Blatt unter 100 KB, Blättern und Suchen unter 100 ms, ein Artikel ohne Warten auf eine Liste | – | 2 | steht |
-| [[REQ-246]] Navigation ohne Einfrieren: ein Seitenwechsel antwortet in unter einer Sekunde, auch nach längerer Pause und mit dem ganzen 5e.tools-Bestand; werden Daten geladen, sagt ein Banner das (statt stillzustehen) | – | 1 | steht |
+| [[REQ-232]] Listen rechnet der Server | Spieler | 2 | steht |
+| [[REQ-246]] Navigation ohne Einfrieren | Spieler | 1 | steht |
 <!-- stories:ende -->

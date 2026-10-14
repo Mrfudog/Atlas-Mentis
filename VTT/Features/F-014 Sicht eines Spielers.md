@@ -19,5 +19,5 @@ Epic: [[EP-02 Zugang & Betrieb]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-241]] Als Spielleitung die Sicht eines Spielers einnehmen: dieselben Artikel, Felder und Entwürfe sehen wie dieses Konto, um Probleme zu erkennen und zu helfen | – | 1 | steht |
+| [[REQ-241]] Die Sicht eines Spielers einnehmen | Spielleitung | 1 | steht |
 <!-- stories:ende -->

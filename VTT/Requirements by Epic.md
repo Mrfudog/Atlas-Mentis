@@ -22,15 +22,15 @@ Peg, Karten je Art, Kanten, Bezeichner — wie ein Artikel gespeichert wird. —
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-001]] | Core entity model: entity types, shared property types, typed relations, immutable IDs | – | 1 | 5 | steht |
-| [[REQ-002]] | Successor chain: successorId, resolution to head so old links stay valid | – | 1 | 2 | ersetzt |
-| [[REQ-010]] | Dimensions: optional, sparsely stored property bundles (Visibility, TemporalValidity, KnowledgeRequirement, Reputation…) | – | 1 | 3 | steht |
-| [[REQ-011]] | ContentBlock primitive: text + visibility + knowledge requirement + scope + temporal validity + pack membership | – | 1 | 5 | ersetzt |
-| [[REQ-016]] | Term / translation layer: pseudoname key, LocalizedText, fallback chain DE → EN → key | – | 1 | 3 | verworfen |
-| [[REQ-019]] | RawContent coexistence: every import keeps its raw form (markdown, OCR, JSON) next to structured data | – | 1 | 2 | verworfen |
-| [[REQ-163]] | Opaque IDs: no semantics (pack/type/version) in peg IDs; provenance via source metadata (`source_pack`, `source_version`); copying only as explicit fork with `forkedFrom` | – | 1 | 1 | steht |
-| [[REQ-181]] | Ad-hoc fields on a single entity, promotable into the interface definition | – | 2 | 3 | steht |
-| [[REQ-182]] | Relation inverse labels in `relation_def`, so one stored edge renders correctly from both ends | – | 2 | 1 | steht |
+| [[REQ-001]] | Artikel aus Arten, Feldern und Kanten | Spielleitung | 1 | 5 | steht |
+| [[REQ-002]] | Nachfolgerkette | – | 1 | 2 | ersetzt |
+| [[REQ-010]] | Feldgruppen nur, wo sie gebraucht werden | Spielleitung | 1 | 3 | steht |
+| [[REQ-011]] | Inhaltsblock als eigenes Grundelement | – | 1 | 5 | ersetzt |
+| [[REQ-016]] | Übersetzungsschicht für Begriffe | – | 1 | 3 | verworfen |
+| [[REQ-019]] | Rohform jedes Imports aufbewahren | – | 1 | 2 | verworfen |
+| [[REQ-163]] | Bezeichner ohne Bedeutung | Spielleitung | 1 | 1 | steht |
+| [[REQ-181]] | Freie Felder an einem einzelnen Artikel | Spielleitung | 2 | 3 | steht |
+| [[REQ-182]] | Kanten lesen sich von beiden Enden | Spielleitung | 2 | 1 | steht |
 
 ### F-002 Register
 
@@ -38,12 +38,12 @@ Die Seite /registry: Typen, Felder, Kanten, Listen und Ansichten anlegen und än
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-230]] | Register in der Seite bearbeiten: die Leitung legt Typen, Felder, Kantenarten und Listen in der Web-Oberfläche an und ändert sie; vorher wird gezählt und gesagt, was eine Änderung im Bestand trifft, und eine Änderung, die gespeicherte Artikel beim nächsten Speichern ungültig machte (Karte ohne Typ, Typ mit Artikeln), lässt die Seite nicht zu | – | 2 | 5 | steht |
+| [[REQ-230]] | Register in der Seite bearbeiten | Spielleitung | 2 | 5 | steht |
 | [[REQ-265]] | Register zeigt einen Typ auf einer Fläche | Spielleitung | 2 | 3 | steht |
 | [[REQ-260]] | Ausgehende Kanten im Register sehen | Spielleitung | 3 | 1 | steht |
 | [[REQ-262]] | Flache Typenlisten | Spielleitung | 3 | 1 | steht |
 | [[REQ-263]] | Was eine Einstellung im Register auslöst | Spielleitung | 3 | 1 | steht |
-| [[REQ-027]] | Generic template engine & Template Manager UI (generalize hardcoded types) | – | 4 | 13 | steht |
+| [[REQ-027]] | Arten ohne Code anlegen | Spielleitung | 4 | 13 | steht |
 
 ### F-003 Feldformen & Aufzählungen
 
@@ -51,8 +51,8 @@ Was ein Feld halten darf: Formen, Aufzählungszeilen, Spannen, Verweisziele, Vor
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-012]] | Block types: paragraph, readaloud, fact, secret, poem/song/review… extensible list | – | 2 | 2 | steht |
-| [[REQ-023]] | Status dimension: idea / planned / used / discarded | – | 2 | 1 | ersetzt |
+| [[REQ-012]] | Textfelder für jede Art von Text | Spielleitung | 2 | 2 | steht |
+| [[REQ-023]] | Status idea/planned/used/discarded | – | 2 | 1 | ersetzt |
 | [[REQ-258]] | Verweisfeld nennt, welche Artikel es annimmt | Spielleitung | 2 | 2 | teils |
 | [[REQ-261]] | Sorte einer Art als freies Feld mit Vorschlägen | Spielleitung | 2 | 1 | steht |
 | [[REQ-259]] | Vorgabewerte für Felder | Spielleitung | 3 | 1 | steht |
@@ -63,19 +63,19 @@ Ebenen, Gruppen von Ebenen, Herausgeber, Aufschalten (auch teilweise) und was im
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-004]] | Layer entity: types system/expansion/world/pack/campaign/override-set, dependsOn, nesting by link with priority | – | 1 | 3 | steht |
-| [[REQ-005]] | Entry relation: entity→layer with mode adds/overrides/removes, addedAt/addedBy, optional version pin | – | 1 | 3 | steht |
-| [[REQ-006]] | Stack resolution: campaign-activated ordered layers, specificity precedence (campaign > pack > world > system) | – | 1 | 5 | teils |
-| [[REQ-100]] | World as scope and layer (members, owns content, activated by campaigns) | – | 1 | 2 | teils |
-| [[REQ-044]] | Scope inspector sidebar, slim: effective source layer per block/property | – | 2 | 5 | steht |
-| [[REQ-102]] | Contextual article rendering per stack: knowledge, time, scope resolved at read time | – | 2 | 5 | teils |
-| [[REQ-244]] | Ebenen gruppieren (Grundregeln, Ergänzungen, Settings, Abenteuer, Unearthed Arcana, 2024, Eigenes …), gruppenweise auf- und zuklappen und aufschalten | – | 2 | 3 | steht |
-| [[REQ-245]] | Ebenen beschreiben sich selbst: voller Titel, erklärte Abkürzung, Erscheinungsdatum, Regelstand (2014/2024), Gruppe, Inhalt je Art; Quellenkürzel an Artikeln zeigen überall den vollen Namen | – | 2 | 2 | steht |
-| [[REQ-249]] | Ebenen nach Herausgeber und Kategorie: offizielles D&D, Partner-Inhalte, Drittanbieter, Homebrew — dazu die Kategorien wie in 5e.tools (Utilities › Content Blocklist), damit die Auswahl leichtfällt | – | 2 | 3 | teils |
-| [[REQ-255]] | Ebenen teilweise aufschalten: aus einem Buch oder Abenteuer nur Regeln/Gegenstände nehmen, nicht dessen Orte, NSC und Begegnungen (Auswahl nach Bereich World/Rules/Story bzw. Art) | – | 2 | 3 | steht |
-| [[REQ-007]] | Stack expert settings: layer priority, per-entry pick, disable single override, flatten into independent layer | – | 3 | 5 | offen |
-| [[REQ-045]] | Scope inspector sidebar, full: layer actions (override here, create variant, move to pack, pick entry) | – | 3 | 8 | offen |
-| [[REQ-253]] | Ebenen und Artikel kopieren: eine ganze Ebene oder ausgewählte Artikel daraus in eine andere (eigene) Ebene kopieren, z. B. in der Werkbank | – | 3 | 5 | offen |
+| [[REQ-004]] | Ebenen als Pakete von Inhalt | Spielleitung | 1 | 3 | steht |
+| [[REQ-005]] | Zugehörigkeit eines Artikels zu einer Ebene | Spielleitung | 1 | 3 | steht |
+| [[REQ-006]] | Stapel: was in der Kampagne gilt | Spielleitung | 1 | 5 | teils |
+| [[REQ-100]] | Welt als Ebene | Spielleitung | 1 | 2 | teils |
+| [[REQ-044]] | Herkunft am Artikel sehen | Spielleitung | 2 | 5 | steht |
+| [[REQ-102]] | Artikel je Stapel und Wissen zeichnen | Spieler | 2 | 5 | teils |
+| [[REQ-244]] | Ebenen gruppieren | Spielleitung | 2 | 3 | steht |
+| [[REQ-245]] | Ebenen beschreiben sich selbst | Spielleitung | 2 | 2 | steht |
+| [[REQ-249]] | Ebenen nach Herausgeber | Spielleitung | 2 | 3 | teils |
+| [[REQ-255]] | Ebenen teilweise aufschalten | Spielleitung | 2 | 3 | steht |
+| [[REQ-007]] | Stapel für Fortgeschrittene | Spielleitung | 3 | 5 | offen |
+| [[REQ-045]] | Ebenen-Aktionen am Artikel | Spielleitung | 3 | 8 | offen |
+| [[REQ-253]] | Ebenen und Artikel kopieren | Spielleitung | 3 | 5 | offen |
 
 ### F-005 Fassungen & Varianten
 
@@ -83,11 +83,11 @@ Dieselbe Sache aus einer anderen Quelle (Fassung, Überschreibung) und eine verw
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-008]] | Variant mechanism: copy with variantOf link | – | 1 | 2 | teils |
-| [[REQ-009]] | Override mechanism: explicit overrides relation with scope | – | 2 | 3 | steht |
+| [[REQ-008]] | Varianten einer Sache | Spielleitung | 1 | 2 | teils |
+| [[REQ-009]] | Überschreiben in der eigenen Ebene | Spielleitung | 2 | 3 | steht |
 | [[REQ-264]] | Vergleichsebenen der Kampagne | Spielleitung | 2 | 3 | teils |
 | [[REQ-310]] | Fassungen am Feld zeigen | Spielleitung | 2 | 3 | steht |
-| [[REQ-108]] | Campaign-specific lore divergence via campaign-scoped blocks and overrides | – | 3 | 3 | steht |
+| [[REQ-108]] | Lore der Kampagne abweichen lassen | Spielleitung | 3 | 3 | steht |
 
 ### F-006 Ansichten & Anordnung
 
@@ -95,9 +95,9 @@ Overview, Quick, Full, Print, Search und eigene Ansichten; Anordnung am Typ, ohn
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-026]] | View config format: mode raw/structured/hybrid, field list, resolution priority per view | – | 1 | 3 | steht |
-| [[REQ-256]] | Ansichten ohne Code definieren: global je Ansicht festlegen, welche Felder (nach Typ bzw. Typ.Feld) erscheinen; ein Artikel zeigt davon, was er hat; je Artikelart überschreib- und anpassbar | – | 1 | 8 | steht |
-| [[REQ-164]] | Facets (Darstellungsstufen): system-wide set short/description/full/image/token/map/link, reusable across boards, sheets, statblocks, notes; `renderer_def` analogous to `projection_def` | – | 2 | 3 | ersetzt |
+| [[REQ-026]] | Ansichten festlegen | Spielleitung | 1 | 3 | steht |
+| [[REQ-256]] | Ansichten ohne Code definieren | Spielleitung | 1 | 8 | steht |
+| [[REQ-164]] | Darstellungsstufen als eigenes System | – | 2 | 3 | ersetzt |
 
 ### F-007 Verweise & Platzhalter
 
@@ -105,11 +105,11 @@ Overview, Quick, Full, Print, Search und eigene Ansichten; Anordnung am Typ, ohn
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-013]] | Reference registry & auto-linking: ID-based links, alias matching, auto-link when unambiguous, suggest when ambiguous | – | 1 | 5 | teils |
-| [[REQ-174]] | Parameterised rule templates: `{VAR}` placeholders in RuleElement text, bound per reference; resolution order reference → entity → campaign register | – | 2 | 3 | steht |
-| [[REQ-014]] | Backlinks view | – | 3 | 2 | steht |
-| [[REQ-175]] | Inline rule reference panel: text scanned against RuleElement names and aliases, matches shown as an expandable block in the view | – | 3 | 2 | steht |
-| [[REQ-176]] | Similarity suggestions on create: fuzzy name/text matching proposes existing entities before a duplicate is made; promote-to-reference in one action | – | 3 | 3 | teils |
+| [[REQ-013]] | Verweise nach Nummer, getippt nach Name | Spielleitung | 1 | 5 | teils |
+| [[REQ-174]] | Regeltexte mit Platzhaltern | Spielleitung | 2 | 3 | steht |
+| [[REQ-014]] | Rückbezüge sehen | Spielleitung | 3 | 2 | steht |
+| [[REQ-175]] | Regelbegriffe im Text erkennen | Spieler | 3 | 2 | steht |
+| [[REQ-176]] | Ähnliches vor dem Anlegen vorschlagen | Spielleitung | 3 | 3 | teils |
 
 ### F-008 Kanten verstehen
 
@@ -117,8 +117,8 @@ Was eine Kante bedeutet und bewirkt; Typdiagramm und Graph. — [[F-008 Kanten v
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-257]] | Kanten verständlich: zu jeder Kantenart steht, was sie bedeutet und was sie bewirkt (Sichtbarkeit, Stapel, Werte der Figur, nur Anzeige) — in der Auswahl, am Artikel und im Register, mit Vorschau vor dem Anlegen | – | 2 | 5 | steht |
-| [[REQ-015]] | Graph view | – | 4 | 5 | offen |
+| [[REQ-257]] | Kanten verständlich | Spielleitung | 2 | 5 | steht |
+| [[REQ-015]] | Graph der Artikel | Spielleitung | 4 | 5 | offen |
 
 ### F-009 Verlauf & gleichzeitiges Schreiben
 
@@ -126,9 +126,9 @@ Was eine Kante bedeutet und bewirkt; Typdiagramm und Graph. — [[F-008 Kanten v
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-003]] | Change chain: every change as entry (who/when/what) along the version chain, git-log style | – | 1 | 3 | teils |
-| [[REQ-191]] | Fail-closed persistence: a failed load or migration must never be overwritten by a later autosave; the unreadable state is preserved and downloadable | – | 1 | 2 | steht |
-| [[REQ-192]] | Optimistic concurrency for non-realtime edits: per-entity revision check; the second writer is rejected with a merge prompt rather than silently winning | – | 2 | 3 | steht |
+| [[REQ-003]] | Änderungsverlauf je Artikel | Spielleitung | 1 | 3 | teils |
+| [[REQ-191]] | Nichts still überschreiben | Spielleitung | 1 | 2 | steht |
+| [[REQ-192]] | Gleichzeitig bearbeiten ohne Verlust | Spielleitung | 2 | 3 | steht |
 
 ## EP-02 Zugang & Betrieb
 
@@ -140,12 +140,12 @@ Passwort je Konto, Einladungen, Kontoverwaltung in der Seite, Demo. — [[F-010 
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-031]] | Authentication: password hash check behind an auth interface | – | 1 | 2 | steht |
-| [[REQ-033]] | User accounts & profile | – | 1 | 2 | steht |
-| [[REQ-034]] | Simplest onboarding: GM-created accounts or plain invite link, whichever is cheaper | – | 2 | 2 | steht |
-| [[REQ-229]] | Konten in der Oberfläche verwalten: sperren und entsperren und die Verwaltung (`is_admin`) vergeben, ohne Kommandozeile | – | 3 | 2 | offen |
-| [[REQ-032]] | Nextcloud / OIDC SSO behind the auth interface | – | 4 | 5 | verworfen |
-| [[REQ-228]] | Verlorene Einladung neu ausgeben: eine offene Einladung lässt sich in einem Schritt durch eine neue mit denselben Angaben (Kampagne, Rolle, Figur, Nutzungen, Ablauf) ersetzen | – | 4 | 1 | offen |
+| [[REQ-031]] | Anmelden mit Passwort | Spieler | 1 | 2 | steht |
+| [[REQ-033]] | Konten | Verwaltung | 1 | 2 | steht |
+| [[REQ-034]] | Einladen per Link | Spielleitung | 2 | 2 | steht |
+| [[REQ-229]] | Konten in der Seite verwalten | Verwaltung | 3 | 2 | offen |
+| [[REQ-032]] | Anmeldung über Nextcloud/OIDC | – | 4 | 5 | verworfen |
+| [[REQ-228]] | Verlorene Einladung neu ausgeben | Spielleitung | 4 | 1 | offen |
 | [[REQ-266]] | Demo-Zugang | Verwaltung | 5 | 3 | offen |
 
 ### F-011 Rollen je Kampagne
@@ -154,9 +154,9 @@ gm, co-gm, player, spectator am Konto je Kampagne; Verwaltung der Installation. 
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-035]] | Membership triples: user + scope (campaign/world/layer) + role | – | 1 | 3 | steht |
-| [[REQ-036]] | Roles GM / Player (Admin global) | – | 1 | 1 | steht |
-| [[REQ-037]] | Roles Co-GM / Spectator | – | 3 | 2 | steht |
+| [[REQ-035]] | Rolle je Kampagne | Verwaltung | 1 | 3 | steht |
+| [[REQ-036]] | Leitung, Spieler und Verwaltung | Verwaltung | 1 | 1 | steht |
+| [[REQ-037]] | Mitleitung und Zuschauer | Spielleitung | 3 | 2 | steht |
 
 ### F-012 Sichtbarkeit & Wissen
 
@@ -164,15 +164,15 @@ Wer einen Artikel sieht (audience, revealedTo, hiddenFrom) und welche Felder dar
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-038]] | Visibility evaluation, simple: gm_only vs campaign | – | 1 | 2 | steht |
-| [[REQ-040]] | Knowledge tags & KnowledgeState per campaign (grants, holders, since) | – | 2 | 3 | steht |
-| [[REQ-156]] | Visibility inheritance container → children: `inherit: true` on Visibility, evaluated by Resolution | – | 2 | 2 | verworfen |
-| [[REQ-177]] | Field-level knowledge gating: grant individual components or fields of an entity, not only ContentBlocks | – | 2 | 3 | steht |
-| [[REQ-203]] | Fraktionen mit Rängen: `Faction.ranks` als Leiter (niedrigster zuerst), der Rang eines Mitglieds an der Kante `memberOf`, und eine Wissenszuteilung an die Fraktion darf einen Mindestrang nennen — was der Zirkel weiss, weiss der Novize noch nicht | – | 2 | 2 | steht |
-| [[REQ-039]] | Visibility evaluation, full: scope, allowed/denied roles, knowledgeTags, requiresTags, sharedUsers | – | 3 | 8 | ersetzt |
-| [[REQ-059]] | Creature knowledge facts: gated ContentBlocks on type / species / faction | – | 3 | 3 | steht |
-| [[REQ-178]] | Cover names: an entity may carry a player-facing alias shown while its identity is ungranted | – | 3 | 1 | steht |
-| [[REQ-179]] | Known-unknowns disclosure: a gated view may reveal the count of withheld facts without revealing them | – | 4 | 1 | steht |
+| [[REQ-038]] | Wer einen Artikel sieht | Spielleitung | 1 | 2 | steht |
+| [[REQ-040]] | Wissen zuteilen | Spielleitung | 2 | 3 | steht |
+| [[REQ-156]] | Sichtbarkeit vererben | – | 2 | 2 | verworfen |
+| [[REQ-177]] | Einzelne Felder freigeben | Spielleitung | 2 | 3 | steht |
+| [[REQ-203]] | Wissen nach Rang in einer Fraktion | Spielleitung | 2 | 2 | steht |
+| [[REQ-039]] | Sichtbarkeit mit Rollenlisten und Freigabemarken | – | 3 | 8 | ersetzt |
+| [[REQ-059]] | Wissen über Arten von Kreaturen | Spielleitung | 3 | 3 | steht |
+| [[REQ-178]] | Decknamen | Spielleitung | 3 | 1 | steht |
+| [[REQ-179]] | Zeigen, dass es mehr gibt | Spieler | 4 | 1 | steht |
 
 ### F-013 Schreibrechte & Freigabe
 
@@ -180,10 +180,10 @@ Wer was schreibt (je Ebene, eigene Artikel), Status ready als Freigabe, gesperrt
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-041]] | Per-document edit permissions: owner, GM-default (overridable), co-editors / wardship / open | – | 2 | 3 | teils |
-| [[REQ-237]] | Spielende legen Artikel jeder Art an (z. B. Figur, Hintergrund); „ready“ setzt nur die Leitung. Spielende sehen nur fertige Artikel und ihre eigenen; ändert eine Spielerin einen fertigen Artikel, fällt der Status zurück und für alle anderen gilt der letzte fertige Stand weiter | – | 2 | 5 | steht |
-| [[REQ-242]] | Spielercharakter: die Leitung kann einzelne Felder oder Kanten für den Spieler sperren oder ihre Änderung freigabepflichtig machen (z. B. Attributswerte, Klasse), während der Rest frei bleibt | – | 3 | 5 | offen |
-| [[REQ-042]] | Field-group edit granularity (e.g. vitals editable, abilities locked) | – | 4 | 5 | offen |
+| [[REQ-041]] | Wer was schreiben darf | Spielleitung | 2 | 3 | teils |
+| [[REQ-237]] | Spielende legen Artikel an, die Leitung gibt frei | Spieler | 2 | 5 | steht |
+| [[REQ-242]] | Felder der eigenen Figur sperren | Spielleitung | 3 | 5 | offen |
+| [[REQ-042]] | Schreibrecht je Feldgruppe | Spielleitung | 4 | 5 | offen |
 
 ### F-014 Sicht eines Spielers
 
@@ -191,7 +191,7 @@ Die Leitung sieht die Seite, wie ein bestimmtes Konto sie sieht. — [[F-014 Sic
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-241]] | Als Spielleitung die Sicht eines Spielers einnehmen: dieselben Artikel, Felder und Entwürfe sehen wie dieses Konto, um Probleme zu erkennen und zu helfen | – | 1 | 5 | steht |
+| [[REQ-241]] | Die Sicht eines Spielers einnehmen | Spielleitung | 1 | 5 | steht |
 
 ### F-015 API-Tokens & Werkzeugzugang
 
@@ -199,7 +199,7 @@ Tokens am Konto für Skripte und Claude-Sitzungen. — [[F-015 API-Tokens & Werk
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-234]] | Werkzeugzugang: ein Konto vergibt API-Tokens (`read`/`write`, mit Ablauf, nur als Hash gespeichert); ein Token sieht und darf nie mehr als sein Konto | – | 3 | 2 | steht |
+| [[REQ-234]] | API-Tokens für Werkzeuge | Verwaltung | 3 | 2 | steht |
 | [[REQ-268]] | Dev-Token aus der Werkbank erzeugen | Verwaltung | 3 | 1 | teils |
 
 ### F-016 Werkbank
@@ -208,8 +208,8 @@ Prüfungen über den Bestand, Massenänderungen mit Vorschau und Rückgängig (/
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-088]] | Bulk actions: knowledge / permission assignment | – | 3 | 3 | teils |
-| [[REQ-235]] | Werkbank: erweiterbare Prüfungen über den ganzen Bestand und Massenänderungen mit Vorschau, Protokoll und Rückgängig; mehrere Artikel löschen nur mit ausdrücklicher Bestätigung | – | 3 | 5 | steht |
+| [[REQ-088]] | Massenänderungen an Wissen und Rechten | Spielleitung | 3 | 3 | teils |
+| [[REQ-235]] | Werkbank: Prüfungen und Massenänderungen | Spielleitung | 3 | 5 | steht |
 
 ### F-017 Ausrollen & Sicherung
 
@@ -217,10 +217,10 @@ CI/CD nach Hetzner, dev und prod, Sicherungen, Spiegelung, Netz. — [[F-017 Aus
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-154]] | Deployment: container(s) on NAS, reverse proxy, TLS, remote player access | – | 1 | 3 | steht |
-| [[REQ-155]] | Backups of database and app-managed assets | – | 2 | 2 | steht |
+| [[REQ-154]] | Ausrollen nach dev und prod | Verwaltung | 1 | 3 | steht |
+| [[REQ-155]] | Sicherungen | Verwaltung | 2 | 2 | steht |
 | [[REQ-269]] | Ankündigen, wann produktiv gearbeitet werden kann | Verwaltung | 2 | 1 | teils |
-| [[REQ-199]] | Produktionsdaten nach preprod spiegeln: regelmässiger Abzug aus der Prod-Datenbank in die Testinstanz, damit gegen echte Inhalte getestet wird | – | 3 | 3 | steht |
+| [[REQ-199]] | Produktionsdaten nach dev spiegeln | Verwaltung | 3 | 3 | steht |
 | [[REQ-267]] | Eigenes Netz-VPS mit VPN | Verwaltung | 5 | 3 | offen |
 
 ### F-018 Übernahme dev ↔ prod
@@ -238,8 +238,8 @@ Listen am Server, schnelle Navigation, Ladeanzeige. — [[F-019 Leistung & Laden
 
 | ID | Story | Rolle | Prio | Aufwand | Stand |
 |---|---|---|---|---|---|
-| [[REQ-246]] | Navigation ohne Einfrieren: ein Seitenwechsel antwortet in unter einer Sekunde, auch nach längerer Pause und mit dem ganzen 5e.tools-Bestand; werden Daten geladen, sagt ein Banner das (statt stillzustehen) | – | 1 | 5 | steht |
-| [[REQ-232]] | Listen rechnet der Server: Blättern, Suchen, Filtern und Auswahlen über den gesiebten Bestand am Server, die Oberfläche hält keinen Bestand — ein Blatt unter 100 KB, Blättern und Suchen unter 100 ms, ein Artikel ohne Warten auf eine Liste | – | 2 | 5 | steht |
+| [[REQ-246]] | Navigation ohne Einfrieren | Spieler | 1 | 5 | steht |
+| [[REQ-232]] | Listen rechnet der Server | Spieler | 2 | 5 | steht |
 
 ## EP-03 Kreaturen & Figuren
 

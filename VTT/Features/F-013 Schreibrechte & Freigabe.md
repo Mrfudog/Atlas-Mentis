@@ -19,8 +19,8 @@ Epic: [[EP-02 Zugang & Betrieb]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-041]] Per-document edit permissions: owner, GM-default (overridable), co-editors / wardship / open | – | 2 | teils |
-| [[REQ-042]] Field-group edit granularity (e.g. vitals editable, abilities locked) | – | 4 | offen |
-| [[REQ-237]] Spielende legen Artikel jeder Art an (z. B. Figur, Hintergrund); „ready“ setzt nur die Leitung. Spielende sehen nur fertige Artikel und ihre eigenen; ändert eine Spielerin einen fertigen Artikel, fällt der Status zurück und für alle anderen gilt der letzte fertige Stand weiter | – | 2 | steht |
-| [[REQ-242]] Spielercharakter: die Leitung kann einzelne Felder oder Kanten für den Spieler sperren oder ihre Änderung freigabepflichtig machen (z. B. Attributswerte, Klasse), während der Rest frei bleibt | – | 3 | offen |
+| [[REQ-041]] Wer was schreiben darf | Spielleitung | 2 | teils |
+| [[REQ-042]] Schreibrecht je Feldgruppe | Spielleitung | 4 | offen |
+| [[REQ-237]] Spielende legen Artikel an, die Leitung gibt frei | Spieler | 2 | steht |
+| [[REQ-242]] Felder der eigenen Figur sperren | Spielleitung | 3 | offen |
 <!-- stories:ende -->

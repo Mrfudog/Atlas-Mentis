@@ -19,13 +19,13 @@ Epic: [[EP-02 Zugang & Betrieb]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-038]] Visibility evaluation, simple: gm_only vs campaign | – | 1 | steht |
-| [[REQ-039]] Visibility evaluation, full: scope, allowed/denied roles, knowledgeTags, requiresTags, sharedUsers | – | 3 | ersetzt |
-| [[REQ-040]] Knowledge tags & KnowledgeState per campaign (grants, holders, since) | – | 2 | steht |
-| [[REQ-059]] Creature knowledge facts: gated ContentBlocks on type / species / faction | – | 3 | steht |
-| [[REQ-156]] Visibility inheritance container → children: `inherit: true` on Visibility, evaluated by Resolution | – | 2 | verworfen |
-| [[REQ-177]] Field-level knowledge gating: grant individual components or fields of an entity, not only ContentBlocks | – | 2 | steht |
-| [[REQ-178]] Cover names: an entity may carry a player-facing alias shown while its identity is ungranted | – | 3 | steht |
-| [[REQ-179]] Known-unknowns disclosure: a gated view may reveal the count of withheld facts without revealing them | – | 4 | steht |
-| [[REQ-203]] Fraktionen mit Rängen: `Faction.ranks` als Leiter (niedrigster zuerst), der Rang eines Mitglieds an der Kante `memberOf`, und eine Wissenszuteilung an die Fraktion darf einen Mindestrang nennen — was der Zirkel weiss, weiss der Novize noch nicht | – | 2 | steht |
+| [[REQ-038]] Wer einen Artikel sieht | Spielleitung | 1 | steht |
+| [[REQ-039]] Sichtbarkeit mit Rollenlisten und Freigabemarken | – | 3 | ersetzt |
+| [[REQ-040]] Wissen zuteilen | Spielleitung | 2 | steht |
+| [[REQ-059]] Wissen über Arten von Kreaturen | Spielleitung | 3 | steht |
+| [[REQ-156]] Sichtbarkeit vererben | – | 2 | verworfen |
+| [[REQ-177]] Einzelne Felder freigeben | Spielleitung | 2 | steht |
+| [[REQ-178]] Decknamen | Spielleitung | 3 | steht |
+| [[REQ-179]] Zeigen, dass es mehr gibt | Spieler | 4 | steht |
+| [[REQ-203]] Wissen nach Rang in einer Fraktion | Spielleitung | 2 | steht |
 <!-- stories:ende -->

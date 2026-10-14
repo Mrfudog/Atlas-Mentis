@@ -19,11 +19,11 @@ Epic: [[EP-02 Zugang & Betrieb]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-031]] Authentication: password hash check behind an auth interface | – | 1 | steht |
-| [[REQ-032]] Nextcloud / OIDC SSO behind the auth interface | – | 4 | verworfen |
-| [[REQ-033]] User accounts & profile | – | 1 | steht |
-| [[REQ-034]] Simplest onboarding: GM-created accounts or plain invite link, whichever is cheaper | – | 2 | steht |
-| [[REQ-228]] Verlorene Einladung neu ausgeben: eine offene Einladung lässt sich in einem Schritt durch eine neue mit denselben Angaben (Kampagne, Rolle, Figur, Nutzungen, Ablauf) ersetzen | – | 4 | offen |
-| [[REQ-229]] Konten in der Oberfläche verwalten: sperren und entsperren und die Verwaltung (`is_admin`) vergeben, ohne Kommandozeile | – | 3 | offen |
+| [[REQ-031]] Anmelden mit Passwort | Spieler | 1 | steht |
+| [[REQ-032]] Anmeldung über Nextcloud/OIDC | – | 4 | verworfen |
+| [[REQ-033]] Konten | Verwaltung | 1 | steht |
+| [[REQ-034]] Einladen per Link | Spielleitung | 2 | steht |
+| [[REQ-228]] Verlorene Einladung neu ausgeben | Spielleitung | 4 | offen |
+| [[REQ-229]] Konten in der Seite verwalten | Verwaltung | 3 | offen |
 | [[REQ-266]] Demo-Zugang | Verwaltung | 5 | offen |
 <!-- stories:ende -->

@@ -19,7 +19,7 @@ Epic: [[EP-01 Inhaltsgerüst]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-003]] Change chain: every change as entry (who/when/what) along the version chain, git-log style | – | 1 | teils |
-| [[REQ-191]] Fail-closed persistence: a failed load or migration must never be overwritten by a later autosave; the unreadable state is preserved and downloadable | – | 1 | steht |
-| [[REQ-192]] Optimistic concurrency for non-realtime edits: per-entity revision check; the second writer is rejected with a merge prompt rather than silently winning | – | 2 | steht |
+| [[REQ-003]] Änderungsverlauf je Artikel | Spielleitung | 1 | teils |
+| [[REQ-191]] Nichts still überschreiben | Spielleitung | 1 | steht |
+| [[REQ-192]] Gleichzeitig bearbeiten ohne Verlust | Spielleitung | 2 | steht |
 <!-- stories:ende -->
