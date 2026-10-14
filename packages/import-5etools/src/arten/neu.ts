@@ -93,7 +93,7 @@ const fahrzeug: Zuordnung = {
       e['capPassenger'] !== undefined ? `**Passengers:** ${String(e['capPassenger'])}` : '',
       e['capCreature'] !== undefined ? `**Creatures:** ${String(e['capCreature'])}` : '',
       e['capCargo'] !== undefined ? `**Cargo:** ${typeof e['capCargo'] === 'number' ? `${String(e['capCargo'])} tons` : wb.zeile(String(e['capCargo']))}` : '',
-      e['pace'] !== undefined ? `**Travel pace:** ${typeof e['pace'] === 'number' ? `${String(e['pace'])} miles per hour` : wb.zeile(String(e['pace']))}` : '',
+      e['pace'] !== undefined ? `**Travel pace:** ${reisetempo(wb, e['pace'])}` : '',
       typeof e['speed'] === 'string' ? `**Speed:** ${wb.zeile(e['speed'])}` : '',
       rumpf['dt'] !== undefined || tp['dt'] !== undefined ? `**Damage threshold:** ${String(rumpf['dt'] ?? tp['dt'])}` : '',
       tp['mt'] !== undefined ? `**Mishap threshold:** ${String(tp['mt'])}` : '',
@@ -230,4 +230,19 @@ const meisterschaft: Zuordnung = {
 };
 
 /** In der Reihenfolge, in der sie aufeinander zeigen: die Karte vor dem Deck. */
+
+/**
+ * Die Reisegeschwindigkeit eines Fahrzeugs: eine Zahl, ein Text oder je
+ * Fortbewegung eine (`{fly: 4, swim: 3}` bei den Spelljammer-Schiffen). Als
+ * Objekt stand sie einmal als „[object Object]" im Text (T-089).
+ */
+function reisetempo(wb: Werkbank, pace: unknown): string {
+  if (typeof pace === 'number') return `${String(pace)} miles per hour`;
+  if (pace && typeof pace === 'object') {
+    const teile = Object.entries(pace as Knoten).map(([art, v]) => `${art === 'walk' ? '' : `${art} `}${String(v)} miles per hour`);
+    return teile.join(', ');
+  }
+  return wb.zeile(String(pace));
+}
+
 export const NEUES: Zuordnung[] = [meisterschaft, fahrzeug, aufruestung, karte, deck, bastion];
