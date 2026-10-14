@@ -273,7 +273,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
 
 /**
  * Wörter in einer Datei, die wie eine Kantenart heissen und keine sind: die
- * Layout-Elemente `knowledge` und `crafting`, die CSS-Klasse `holds`, das
+ * Layout-Elemente `knowledge` und `crafting` (auch in der Anordnung der
+ * Artikelseite), die CSS-Klasse `holds`, das
  * Verb „carries" in einem Satz.
  */
 export const NOT_EDGE_WORDS: Readonly<Record<string, readonly string[]>> = {
@@ -281,6 +282,7 @@ export const NOT_EDGE_WORDS: Readonly<Record<string, readonly string[]>> = {
   [M + 'validate.ts']: ['crafting', 'knowledge'],
   [W + 'register/typ.ts']: ['carries', 'holds'],
   [W + 'register/arbeit.ts']: ['carries'],
+  [W + 'artikel/anordnung.ts']: ['crafting'],
 };
 
 /** Die Auswerter, die diese Kantenart lesen. */

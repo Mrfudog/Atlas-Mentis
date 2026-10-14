@@ -24,7 +24,7 @@ import {
   isBookPart,
 } from '@nw/model';
 import type { Entity, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
-import { Api, ApiError, type Fassungen, type LeseZiel } from '../kern/api';
+import { Api, ApiError, type Fassungen, type Fertigungswert, type LeseZiel } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { KurzLink } from '../kern/kurzansicht';
 import { Session } from '../kern/session';
@@ -580,6 +580,24 @@ interface Feld {
                   }
                   @case ('teile') {
                     <nw-abschnitte [besitzer]="e" />
+                  }
+                  @case ('handwerk') {
+                    @if (fertigung(); as fw) {
+                      <section class="fertigung" aria-label="Crafting check">
+                        <h3>Crafting check</h3>
+                        <p>
+                          <span class="wer">At this table</span> {{ fertigungText(fw.table) }}
+                          @if (fertigungHerkunft(fw.table); as h) { <small>— {{ h }}</small> }
+                        </p>
+                        @for (m of fw.mine; track m.id) {
+                          <p>
+                            <span class="wer">{{ m.name }}</span> {{ fertigungText(m.check) }}
+                            @if (fertigungHerkunft(m.check); as h) { <small>— {{ h }}</small> }
+                          </p>
+                        }
+                        <p class="hinweis">A campaign, party or character changes this with a “crafts with” edge to the recipe or its tool.</p>
+                      </section>
+                    }
                   }
                   @case ('fluss') {
                     <nw-fluss [besitzer]="e" />
@@ -1329,6 +1347,22 @@ export class Artikel {
   protected readonly leseZiel = computed(() => this.bestand.lesen().get(this.id()));
   protected leseParams(z: LeseZiel): Record<string, string> {
     return z.at ? { at: z.at } : z.page ? { page: z.page } : {};
+  }
+
+  /** Womit an diesem Rezept gefertigt wird (`refs.craft`, T-122). */
+  protected readonly fertigung = computed(() => this.bestand.fertigung().get(this.id()));
+  protected fertigungText(c: Fertigungswert): string {
+    return [c.tool || 'no tool', c.ability.toUpperCase(), `DC ${c.dc}`].join(' · ');
+  }
+  /** Was nicht aus dem Rezept kommt, und von wem — die Vorgabe der Quelle sagt nichts. */
+  protected fertigungHerkunft(c: Fertigungswert): string {
+    const teile: string[] = [];
+    for (const [was, q] of [['tool', c.source.tool], ['ability', c.source.ability], ['DC', c.source.dc]] as const) {
+      if (q.by === 'recipe') continue;
+      const wer = q.by === 'actor' ? (q.name ?? 'character') : `${q.by} ${q.name ?? ''}`.trim();
+      teile.push(`${was} from ${wer}${q.on === 'tool' ? ' (for the tool)' : ''}`);
+    }
+    return teile.join(', ');
   }
 
   /** „Adapt" anbieten — der Server hat es mit dem Artikel gesagt (`refs.adaptable`). */
