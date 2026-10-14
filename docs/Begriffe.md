@@ -469,7 +469,9 @@ steht nicht am Zauber**, sondern an der Kante `casts` vom Wirkenden —
 vom Statblock, vom Spielercharakter, vom Gegenstand. Derselbe Feuerball ist
 bei der Magierin vorbereitet, beim Kultisten angeboren und dreimal am Tag,
 im Stab drei Ladungen wert; drei Felder am Zauber könnten das nicht sagen,
-drei Kanten schon (`mode`, `uses`, `charges`).
+drei Kanten schon (`mode`, `uses`, `charges`). Ein Talent ist darum
+ebenfalls ein Wirkender (Drow High Magic: Levitate einmal am Tag) und
+nicht etwas, das den Zauber nur „gewährt" — `grants` kennt kein „1/day".
 
 Die **Wirkzeit nennt ihre Aktionsart** (`castingAction` → `ActionType`):
 „1 bonus action" als Wort wäre neben `Action.actionType` die zweite

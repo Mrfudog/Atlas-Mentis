@@ -116,8 +116,8 @@ describe('a spell is a rule with its own fields (M2)', () => {
 describe('who casts a spell is an edge (M2)', () => {
   const casts = seedRegistry.relations['casts']!;
 
-  it('goes from a statblock, a player character, an item, a subclass or an ancestry to a spell', () => {
-    expect(casts.from).toEqual(['Statblock', 'PlayerCharacter', 'Item', 'Subclass', 'Ancestry']);
+  it('goes from a statblock, a player character, an item, a subclass, an ancestry or a feat to a spell', () => {
+    expect(casts.from).toEqual(['Statblock', 'PlayerCharacter', 'Item', 'Subclass', 'Ancestry', 'Feat']);
     expect(relationAccepts(casts, 'Statblock', 'Spell', seedRegistry)).toBe(true);
     expect(relationAccepts(casts, 'Statblock', 'Feature', seedRegistry)).toBe(false);
     expect(Object.keys(casts.props?.properties ?? {})).toEqual(['mode', 'uses', 'level', 'charges', 'fromLevel']);
