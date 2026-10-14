@@ -262,7 +262,11 @@ export const fieldGroups = {
            welche davon gemeint ist.
 
            Ein Verweisfeld nennt seinen Zieltyp, auch als Liste: ohne das
-           nähme „Revealed to" eine Rüstung. */
+           nähme „Revealed to" eine Rüstung.
+
+           **Spieler bietet die Maske trotzdem an** (T-100, E-007): wer
+           einen wählt, wählt seine Figuren — hier landen Träger, nie ein
+           Konto (REQ-199). */
         revealedTo: {
           type: 'array',
           format: 'link',

@@ -54,6 +54,7 @@ import {
 } from '@nw/model';
 import type { Repository, StoredUser } from './repo.js';
 import { foldName, hashToken, mayViewAs, newInviteCode, type Invite, type User } from './auth.js';
+import { inDieGruppe, neueGruppe } from './gruppe.js';
 
 /** Was ein Konto an einer Kampagne darf: ändern, nur sehen, oder nichts. */
 export type Recht = 'manage' | 'see' | null;
@@ -172,7 +173,11 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
    *  aufgeschaltet und spezifischer als alles andere (100). Darin schreiben
    *  `gm` und `co-gm`, dorthin legen Spielende an, und dort liegt eine
    *  Fassung aus einer anderen Ebene. Dieselbe Ebene legt Migration 035
-   *  für jede Kampagne an, die noch keine hatte. */
+   *  für jede Kampagne an, die noch keine hatte.
+   *
+   *  **Und ihre Gruppe** (T-100, E-007): eine Party mit `partyOf`, in
+   *  dieser Ebene. Wer als `player` eine Figur zugeteilt bekommt, kommt
+   *  mit ihr hinein (`inDieGruppe`). */
   app.post<{ Body: { name?: string; lead?: boolean } }>('/api/campaigns', async (request, reply) => {
     const user = await viewerOf(request);
     if (!user?.isAdmin) return nein(reply, 403, 'Eine Kampagne legt die Verwaltung an.');
@@ -199,12 +204,22 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       components: { Identity: { name, id: nextId(alle, CAMPAIGN_TYPE), aliases: [] } },
       relations: [{ id: `${id}~activates-${ebeneId}`, type: 'activates', to: ebeneId, props: { order: 100 } }],
     };
+    const gruppe = neueGruppe(alle, entity, ebeneId);
     const registry = await repo.getRegistry();
-    const known = new Map([...alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const), [ebeneId, LAYER_COMPONENT] as const]);
-    const issues = [...validateEntity(registry, ebene, {}), ...validateEntity(registry, entity, { knownTypes: known })];
+    const known = new Map([
+      ...alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const),
+      [ebeneId, LAYER_COMPONENT] as const,
+      [id, CAMPAIGN_TYPE] as const,
+    ]);
+    const issues = [
+      ...validateEntity(registry, ebene, {}),
+      ...validateEntity(registry, entity, { knownTypes: known }),
+      ...validateEntity(registry, gruppe, { knownTypes: known }),
+    ];
     if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
     await repo.putEntity(ebene);
     await repo.putEntity(entity);
+    await repo.putEntity(gruppe);
     await repo.appendEvent('entity.written', entity.id, { interfaces: entity.interfaces, cards: ['Identity'], layer: ebeneId });
     if (request.body?.lead === true) {
       const ich = await repo.getUser(user.id);
@@ -628,8 +643,13 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
    * Welche Figuren ein Mitglied führt. Gesetzt wird die ganze Liste; geändert
    * wird nur, was diese Kampagne vergeben darf (`vergebbar`) — eine Figur
    * einer anderen Runde bleibt, wo sie ist, auch wenn sie in der Liste fehlt.
+   *
+   * **Eine neue Figur eines Spielers kommt in die Gruppe** (T-100, E-007),
+   * ausser die Leitung sagt `party: false`. Wer eine Figur abgibt, bleibt
+   * mit ihr, wo er ist: die Gruppe ist Fiktion, nicht das Konto — und eine
+   * Kante, die man wegnimmt, nimmt man an der Figur weg.
    */
-  app.put<{ Params: { c: string; u: string }; Body: { actorIds?: unknown } }>(
+  app.put<{ Params: { c: string; u: string }; Body: { actorIds?: unknown; party?: unknown } }>(
     '/api/campaigns/:c/members/:u/actors',
     async (request, reply) => {
       const ok = await aendern(request, reply, request.params.u);
@@ -659,7 +679,11 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       const neu = [...bleibt, ...[...gewollt].filter((id) => !bisher.includes(id))];
       await repo.putUser({ ...ok.ziel, actorIds: neu });
       await repo.appendEvent('member.actors', ok.ziel.id, { campaign: c, actors: neu, by: ok.user.id });
-      return { id: ok.ziel.id, actors: figurenMitNamen(alle, neu) };
+      const party =
+        ok.ziel.roles[c] === 'player' && request.body?.party !== false
+          ? await inDieGruppe(repo, c, neu.filter((id) => !bisher.includes(id)), ok.user.id)
+          : [];
+      return { id: ok.ziel.id, actors: figurenMitNamen(alle, neu), party };
     },
   );
 

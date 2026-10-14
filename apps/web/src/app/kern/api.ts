@@ -102,6 +102,12 @@ export interface Rueckbezug {
   relation: Relation;
 }
 
+/** Ein Spieler der laufenden Kampagne: sein Name und die Figuren, die er führt (T-100). */
+export interface Spieler {
+  name: string;
+  actors: { id: string; name: string }[];
+}
+
 export type TableRole = 'gm' | 'co-gm' | 'player' | 'spectator';
 export const TABLE_ROLES: readonly TableRole[] = ['gm', 'co-gm', 'player', 'spectator'];
 
@@ -702,6 +708,10 @@ export class Api {
     languages?: string[];
   }> {
     return this.call('/api/abilities');
+  }
+  /** Die Spieler der laufenden Kampagne mit ihren Figuren (T-100, E-007) — ohne Konto-Id. */
+  players(): Promise<{ campaign: { id: string; name: string } | null; players: Spieler[] }> {
+    return this.call('/api/players');
   }
   /** Würfeln am Server — der Wurf steht im Protokoll (E-016 a). */
   rollAbilities(method: string, party?: string): Promise<RolledScores & { at: string }> {

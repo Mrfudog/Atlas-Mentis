@@ -43,6 +43,23 @@ export const KNOWN_BY_RELATION = 'knownBy';
 export const INCLUDES_RELATION = 'includes';
 /** Party-Mitgliedschaft — wer in der Gruppe ist, erbt deren Wissen. */
 export const PARTY_RELATION = 'memberOfParty';
+/** Party → Kampagne: zu welcher Runde eine Gruppe gehört (A8). */
+export const PARTY_OF_RELATION = 'partyOf';
+
+/**
+ * **Die Gruppen einer Kampagne** (A8, T-100) — die Parties mit `partyOf`
+ * auf sie, die älteste zuerst (nach Nummer, dann Id). Die erste ist die,
+ * in die eine zugeteilte Spielerfigur von selbst kommt: jede Kampagne
+ * bekommt beim Anlegen eine, und wer zwei Tische hat, legt die zweite an
+ * und teilt von Hand zu.
+ */
+export function partiesOf(entities: Map<EntityId, Entity>, campaignId: EntityId): Entity[] {
+  const nummer = (e: Entity) => String((e.components?.['Identity'] as { id?: unknown } | undefined)?.id ?? '');
+  return [...entities.values()]
+    .filter((e) => (e.relations ?? []).some((r) => r.type === PARTY_OF_RELATION && r.to === campaignId))
+    .sort((a, b) => nummer(a).localeCompare(nummer(b)) || a.id.localeCompare(b.id));
+}
+
 /**
  * Fraktionsmitgliedschaft — **eine Fraktion weiss nichts, ihre Mitglieder
  * wissen** (Abgleich A7, REQ-203). Die Kante trägt den Rang
