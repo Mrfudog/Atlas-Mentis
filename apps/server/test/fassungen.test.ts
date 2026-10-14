@@ -100,7 +100,7 @@ describe('compare layers of a campaign (T-092)', () => {
     const { rufe } = await aufbau();
     expect((await rufe('Mira', 'PUT', '/api/campaigns/camp/compare', { layers: ['e5_book_xphb'] })).statusCode).toBe(403);
     const res = await rufe('Basil', 'PUT', '/api/campaigns/camp/compare', { layers: ['e5_book_xphb'] });
-    expect(res.json()).toEqual({ ok: true, layers: ['e5_book_xphb'] });
+    expect(res.json()).toMatchObject({ ok: true, layers: ['e5_book_xphb'] });
     const ebenen = (await rufe('Mira', 'GET', '/api/campaigns/camp/layers')).json();
     expect(ebenen.compareFor).toBe('gm');
     expect(ebenen.layers.find((l: { id: string }) => l.id === 'e5_book_xphb')).toMatchObject({ active: false, compare: true });

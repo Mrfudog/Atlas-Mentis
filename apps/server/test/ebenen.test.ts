@@ -59,8 +59,26 @@ const BESTAND = [
   regel('r_b', 6, 'ly_b'),
 ];
 
-async function aufbau() {
-  const repo = new InMemoryRepository(seedRegistry, BESTAND);
+/**
+ * Hält seinen Bestand wie `PgRepository`: unveränderte Artikel bleiben
+ * dieselben Objekte über ein Schreiben hinweg (T-143) — darauf baut die
+ * Ebenenseite, wenn sie nach einem Häkchen nicht neu zählt.
+ */
+class Gehalten extends InMemoryRepository {
+  private gehalten = new Map<string, Entity>();
+  override async listEntities(): Promise<Entity[]> {
+    const neu = new Map<string, Entity>();
+    for (const e of await super.listEntities()) {
+      const alt = this.gehalten.get(e.id);
+      neu.set(e.id, alt && alt.revision === e.revision ? alt : e);
+    }
+    this.gehalten = neu;
+    return [...neu.values()];
+  }
+}
+
+async function aufbau(Repo: typeof InMemoryRepository = InMemoryRepository) {
+  const repo = new Repo(seedRegistry, BESTAND);
   const app = buildApp({ repo });
   const konto = async (name: string, opts: { admin?: boolean; roles?: Record<string, Rolle> } = {}) => {
     await repo.putUser({
@@ -149,8 +167,8 @@ describe('the campaign page switches layers on', () => {
 
   /* Gruppen sind Ebenen (E-022 b, T-088): „Core rules" enthält PHB und
      MM; eine zweite Gruppe hält die Ebene der anderen Runde. */
-  const mitGruppen = async () => {
-    const a = await aufbau();
+  const mitGruppen = async (Repo: typeof InMemoryRepository = InMemoryRepository) => {
+    const a = await aufbau(Repo);
     const buch = (id: string, name: string, n: number, published: string, partOf: string): Entity => ({
       ...ebene(id, name, n, 0),
       components: {
@@ -209,6 +227,45 @@ describe('the campaign page switches layers on', () => {
     const c = await repo.getEntity('camp_a');
     expect(c?.relations?.filter((r) => r.props?.['mode'] === 'off').map((r) => r.to)).toEqual(['e5_book_mm']);
     expect((await rufe('Basil', 'PUT', '/api/campaigns/camp_a/layers', { layers: [], off: 'e5_book_mm' })).statusCode).toBe(400);
+  });
+
+  it('answers every switch with the new state, and a whole group compares (T-143)', async () => {
+    const { rufe, repo } = await mitGruppen(Gehalten);
+    let l = (await rufe('Basil', 'GET', '/api/campaigns/camp_a/layers')).json();
+    expect(zeile(l, 'e5_book_phb')).toMatchObject({ articles: 1, inPlay: false });
+    /* Das Popup fragt nach dem Häkchen nicht noch einmal: der Stand kommt mit. */
+    let res = await rufe('Basil', 'PUT', '/api/campaigns/camp_a/layers', { layers: ['e5_group_core', 'ly_a'] });
+    expect(zeile(res.json().state, 'e5_book_mm')).toMatchObject({ inPlay: true, articles: 1 });
+    res = await rufe('Basil', 'PUT', '/api/campaigns/camp_a/layers', { layers: ['ly_a'] });
+    expect(zeile(res.json().state, 'e5_book_mm')).toMatchObject({ inPlay: false });
+    /* Eine Gruppe wie „D&D 5e (2024)" als Ganzes zum Vergleich. */
+    res = await rufe('Basil', 'PUT', '/api/campaigns/camp_a/compare', { layers: ['e5_group_core'] });
+    expect(res.json().layers).toEqual(['e5_group_core']);
+    expect(zeile(res.json().state, 'e5_group_core')).toMatchObject({ compare: true, inPlay: false });
+    const fassung = await rufe('Basil', 'GET', '/api/entities/r_phb');
+    expect(fassung.json().refs?.compare).toBe(true);
+    res = await rufe('Basil', 'PUT', '/api/campaigns/camp_a/layers/e5_group_core/only', { areas: ['rules'] });
+    expect(zeile(res.json().state, 'e5_group_core')).toMatchObject({ only: { areas: ['rules'] } });
+    /* Ändert sich Inhalt statt der Kampagne, wird neu gezählt. */
+    await repo.putEntity(regel('r_phb_2', 9, 'e5_book_phb'));
+    l = (await rufe('Basil', 'GET', '/api/campaigns/camp_a/layers')).json();
+    expect(zeile(l, 'e5_book_phb')).toMatchObject({ articles: 2 });
+    /* Und eine Kampagne, die eine Ebene aufschaltet, macht sie zu ihrer. */
+    await repo.putEntity({ ...BESTAND.find((e) => e.id === 'camp_b')!, relations: [{ id: 'cb_core', type: 'activates', to: 'e5_book_phb', props: {} }] });
+    l = (await rufe('Basil', 'GET', '/api/campaigns/camp_a/layers')).json();
+    expect(zeile(l, 'e5_book_phb')).toMatchObject({ alsoIn: ['Der Salzpfad'], canActivate: false });
+  });
+
+  it('names the running campaign for everyone, and only the admin switches it (T-143)', async () => {
+    const { rufe } = await aufbau();
+    expect((await rufe('Sela', 'GET', '/api/campaigns')).json().current).toMatchObject({ id: 'camp_a', name: 'Aus Nebel wacht', role: 'player', may: null });
+    expect((await rufe('Basil', 'GET', '/api/campaigns')).json().current).toMatchObject({ id: 'camp_a', may: 'manage' });
+    expect((await rufe('Basil', 'PUT', '/api/campaigns/current', { id: 'camp_b' })).statusCode).toBe(403);
+    expect((await rufe('Admin', 'PUT', '/api/campaigns/current', { id: 'r_frei' })).statusCode).toBe(400);
+    expect((await rufe('Admin', 'PUT', '/api/campaigns/current', { id: 'camp_b' })).statusCode).toBe(200);
+    expect((await rufe('Sela', 'GET', '/api/campaigns')).json().current).toMatchObject({ id: 'camp_b', name: 'Der Salzpfad', role: null });
+    /* Was jetzt im Spiel ist, folgt: die Runde B bringt ihre Regel. */
+    expect(namen((await rufe('Admin', 'GET', '/api/list?type=Rule')).json())).toContain('r_b');
   });
 
   it('names the publisher of every layer and what a group sorts by (T-094)', async () => {

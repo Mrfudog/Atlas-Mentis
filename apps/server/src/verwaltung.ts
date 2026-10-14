@@ -23,6 +23,7 @@ import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
   CAMPAIGN_TYPE,
+  CAMPAIGN_SETTING,
   LAYER_COMPONENT,
   LAYER_RELATION,
   activeStack,
@@ -178,6 +179,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     const user = await viewerOf(request);
     if (!user) return nein(reply, 401, 'Nicht angemeldet.');
     const da = await kampagnen();
+    const laufend = currentCampaign(da, (await repo.getRegistry()).settings ?? null);
     const ids = new Set<string>(user.isAdmin ? da.keys() : []);
     for (const [c, r] of Object.entries(user.roles ?? {})) if (r === 'gm' || r === 'co-gm') ids.add(c);
     return {
@@ -197,7 +199,37 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
          Verwaltung (`mayWrite`). */
       canCreate: user.isAdmin,
       isAdmin: user.isAdmin,
+      /* **Die laufende Kampagne** (T-143) — sie steht in der Kopfleiste,
+         für jeden am Tisch. Ihr Name ist kein Geheimnis: ihr Inhalt ist,
+         was jeder ohnehin sieht. `role` sagt, was man an ihr ist. */
+      current: laufend
+        ? {
+            id: laufend.id,
+            name: entityName(laufend),
+            role: user.roles?.[laufend.id] ?? null,
+            may: rechtAn(user, laufend.id),
+            /* Wie viele Ebenen Inhalt bringen — Gruppen aufgelöst, ohne sie selbst. */
+            layers: resolvedStack(await bestandAls(await repo.version()), laufend).filter((l) => !isGroupLayer(l)).length,
+          }
+        : null,
     };
+  });
+
+  /**
+   * **Die laufende Kampagne wechseln** (T-143) — die Einstellung
+   * `campaign` im Register. Sie gilt für die ganze Installation (offen in
+   * CLAUDE.md: „die laufende Kampagne ist eine globale Einstellung"), also
+   * wechselt sie nur die Verwaltung; der Kampagnenmanager (T-141) übernimmt.
+   */
+  app.put<{ Body: { id?: unknown } }>('/api/campaigns/current', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user?.isAdmin) return nein(reply, 403, 'Die laufende Kampagne wechselt die Verwaltung; sie gilt für alle.');
+    const id = request.body?.id;
+    if (typeof id !== 'string' || !(await kampagnen()).has(id)) return nein(reply, 400, 'Diese Kampagne gibt es nicht als Artikel.');
+    const registry = await repo.getRegistry();
+    await repo.putRegistryPart('settings', { ...(registry.settings ?? {}), [CAMPAIGN_SETTING]: id });
+    await repo.appendEvent('registry.written', undefined, { part: 'settings', campaign: id, by: user.id });
+    return { ok: true, current: id };
   });
 
   /** Eine Kampagne anlegen — wenn es noch keine gibt, kann sonst niemand
@@ -281,7 +313,26 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
   };
   let gezaehlt: { stempel: string; alle: Map<string, Entity>; z: ReturnType<typeof zaehle> } | null = null;
   const zaehlung = async (stempel: string, alle: Map<string, Entity>) => {
-    if (gezaehlt?.stempel !== stempel || gezaehlt.alle !== alle) gezaehlt = { stempel, alle, z: zaehle(alle) };
+    if (gezaehlt?.stempel === stempel && gezaehlt.alle === alle) return gezaehlt.z;
+    /* Hat sich seither nur eine Kampagne geändert — das Häkchen im Popup —,
+       bleibt die Zählung: sie hängt an Ebenen und Inhalt, nicht am Stapel.
+       Neu ist dann nur, wer was aufschaltet. Der gehaltene Bestand teilt
+       die unveränderten Artikel (`PgRepository`), also reicht der
+       Vergleich der Objekte. */
+    const vorher = gezaehlt;
+    const nurKampagne = (e: Entity | undefined) =>
+      !e || ((e.interfaces ?? [])[0] === CAMPAIGN_TYPE && !(e.relations ?? []).some((r) => r.type === LAYER_RELATION));
+    let gleich = !!vorher && vorher.alle.size === alle.size;
+    if (vorher && gleich) {
+      for (const [id, e] of alle) {
+        const alt = vorher.alle.get(id);
+        if (alt !== e && !(nurKampagne(alt) && nurKampagne(e) && alt)) {
+          gleich = false;
+          break;
+        }
+      }
+    }
+    gezaehlt = { stempel, alle, z: vorher && gleich ? { ...vorher.z, aktiv: activatingIndex(alle) } : zaehle(alle) };
     return gezaehlt.z;
   };
 
@@ -299,12 +350,18 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     const c = request.params.c;
     const recht = rechtAn(user, c);
     if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
+    const sicht = await ebenenSicht(user, c, recht);
+    if (!sicht) return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
+    return sicht;
+  });
+
+  /** Was `GET …/layers` antwortet — auch nach jedem Schreiben am Stapel
+   *  mitgeschickt (`state`, T-143), damit das Popup nicht noch einmal fragt. */
+  async function ebenenSicht(user: User, c: string, recht: Recht) {
     const stempel = await repo.version();
     const alle = await bestandAls(stempel);
     const kampagne = alle.get(c);
-    if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
-      return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
-    }
+    if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) return null;
     const { ebenen, zahl, inhalt, text, mitglieder, aktiv, verlag } = await zaehlung(stempel, alle);
     const stapel = activeStack(alle, kampagne).map((x) => x.layer.id);
     /* Im Spiel ist auch, was eine aufgeschaltete Gruppe bringt (E-022 b). */
@@ -370,9 +427,9 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       may: recht,
       layers: [...an, ...aus],
       /* Wer die Vergleichsebenen sieht (T-092): `gm` (Vorgabe) oder `players`. */
-      compareFor: compareFor === 'players' ? 'players' : 'gm',
+      compareFor: compareFor === 'players' ? ('players' as const) : ('gm' as const),
     };
-  });
+  }
 
   /** Die Kanten `activates` schreiben — der ganze Stapel, von unten nach
    *  oben. Was fehlt, ist danach abgeschaltet; gelöscht wird nichts. */
@@ -413,7 +470,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
     await repo.putEntity(geschrieben);
     await repo.appendEvent('campaign.layers', c, { layers: ids, ...(abgeschaltet ? { off: abgeschaltet } : {}), by: user.id });
-    return { ok: true, layers: ids, ...(abgeschaltet ? { off: [...offLayers(geschrieben)] } : {}) };
+    return { ok: true, layers: ids, ...(abgeschaltet ? { off: [...offLayers(geschrieben)] } : {}), state: await ebenenSicht(user, c, recht) };
   }
 
   /** `{ layers, off? }` — `off` (T-088): die Ebenen, die aus sind, obwohl
@@ -499,7 +556,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
       await repo.putEntity(geschrieben);
       await repo.appendEvent('campaign.layers', c, { layer: request.params.layer, only: filter, by: user.id });
-      return { ok: true, only: filter };
+      return { ok: true, only: filter, state: await ebenenSicht(user, c, recht) };
     },
   );
 
@@ -551,7 +608,12 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
       await repo.putEntity(geschrieben);
       await repo.appendEvent('campaign.compare', c, { layers: ids, ...(players !== undefined ? { players } : {}), by: user.id });
-      return { ok: true, layers: compareLayers(new Map([...alle, [c, geschrieben]]), geschrieben).map((x) => x.id) };
+      alle.set(c, geschrieben);
+      return {
+        ok: true,
+        layers: compareLayers(alle, geschrieben).map((x) => x.id),
+        state: await ebenenSicht(user, c, recht),
+      };
     },
   );
 
