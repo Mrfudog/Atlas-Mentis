@@ -152,15 +152,16 @@ export const relations: Record<string, RelationDef> = {
    * des Tieflings — mit `fromLevel`, ab welcher Klassen- bzw. Figurenstufe.
    * Seit T-089 auch vom Talent: Drow High Magic wirkt Levitate einmal am Tag
    * wie die Abstammung ihr Thaumaturgy — `grants` hätte das „1/day"
-   * verloren.
+   * verloren. Seit T-084 auch vom Kult (`Faction`) und vom Segen (`Rule`):
+   * ihre Signaturzauber, die wirkt, wer ihm angehört oder ihn trägt.
    */
   casts: {
     type: 'casts',
     label: 'casts',
     inverseLabel: 'cast by',
-    means: 'A statblock, character, item, subclass, ancestry or feat can cast a spell; the spell lists who casts it.',
+    means: 'A statblock, character, item, subclass, ancestry, feat, cult or boon can cast a spell; the spell lists who casts it.',
     intended: 'Feed the spell list and its uses: mode, uses, level and charges should appear on the sheet as castable, with slots and charges counted down in play.',
-    from: ['Statblock', 'PlayerCharacter', 'Item', 'Subclass', 'Ancestry', 'Feat'],
+    from: ['Statblock', 'PlayerCharacter', 'Item', 'Subclass', 'Ancestry', 'Feat', 'Faction', 'Rule'],
     to: ['Spell'],
     props: {
       type: 'object',

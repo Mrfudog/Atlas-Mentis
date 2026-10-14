@@ -587,6 +587,9 @@ im Stab drei Ladungen wert; drei Felder am Zauber könnten das nicht sagen,
 drei Kanten schon (`mode`, `uses`, `charges`). Ein Talent ist darum
 ebenfalls ein Wirkender (Drow High Magic: Levitate einmal am Tag) und
 nicht etwas, das den Zauber nur „gewährt" — `grants` kennt kein „1/day".
+Ebenso ein Kult und ein Segen (seit T-084): ihre Signaturzauber sind
+Zauber, die wirkt, wer dem Kult angehört oder den Segen trägt — eine
+Kante `casts` ohne `mode`, nicht ein Absatz, den niemand abfragen kann.
 
 Die **Wirkzeit nennt ihre Aktionsart** (`castingAction` → `ActionType`):
 „1 bonus action" als Wort wäre neben `Action.actionType` die zweite

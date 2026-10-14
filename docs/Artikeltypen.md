@@ -295,6 +295,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `worships` → Deity — „worships"
+- `casts` → Spell — „casts"
 - `controls` → Place — „controls"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -1111,6 +1112,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1159,6 +1161,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1205,6 +1208,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1312,6 +1316,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
 - `grants` → Rule — „grants"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -1366,6 +1371,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
 - `grants` → Rule — „grants"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
@@ -1418,6 +1424,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `stageOf` → Condition — „stage of"
 - `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1467,6 +1474,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - `stageOf` → Condition — „stage of"
 - `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1514,6 +1522,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1613,6 +1622,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1746,6 +1756,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1830,6 +1841,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1921,6 +1933,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -1967,6 +1980,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -2014,6 +2028,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -2024,7 +2039,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `composedOf` → „used in"
 - Rule — `affects` → „affected by"
-- Statblock | PlayerCharacter | Item | Subclass | Ancestry | Feat — `casts` → „cast by"
+- Statblock | PlayerCharacter | Item | Subclass | Ancestry | Feat | Faction | Rule — `casts` → „cast by"
 - Class | Subclass | Ancestry | Background | Feat — `grants` → „granted by"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -2213,6 +2228,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten von hier**
 
 - `affects` → Rule — „affects"
+- `casts` → Spell — „casts"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
