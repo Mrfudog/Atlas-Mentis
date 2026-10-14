@@ -446,7 +446,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
   /**
    * **Die Geschichte der Kampagne** (T-082, REQ-240): ihre eigenen
    * Geschichtsartikel (`partOf` die Kampagne) und, je aufgeschaltetes
-   * Abenteuer, dessen Kapitel — in der Fassung, die in **dieser** Kampagne
+   * Abenteuer, dessen Kapitel (`Arc`, E-026) — in der Fassung, die in **dieser** Kampagne
    * gilt (`resolveArticle`, E-018): ein angepasstes Kapitel steht als ihre
    * Fassung da. Ein Abenteuer ist eine `Story` mit `kind: 'adventure'` in
    * einer aufgeschalteten Ebene; meist ist es eine Abenteuerebene, manchmal
@@ -486,7 +486,8 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
         chapters: geschichte
           /* Die Originale, nach ihrer Nummer — eine Fassung steht an der
              Stelle dessen, was sie ersetzt (`zeile`), nicht am Ende. */
-          .filter((k) => art(k) === 'Story' && teilVon(k, a.id) && !(k.relations ?? []).some((r) => r.type === 'overrides'))
+          /* Ein Kapitel ist ein Arc (E-026). */
+          .filter((k) => art(k) === 'Arc' && teilVon(k, a.id) && !(k.relations ?? []).some((r) => r.type === 'overrides'))
           .sort(nachNummer)
           .map(zeile),
       }));

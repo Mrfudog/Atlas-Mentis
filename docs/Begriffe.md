@@ -77,8 +77,9 @@ Feld trugen. Was sie trennt, ist jetzt das freie Feld `kind`: npc,
 companion, retainer, pet, summon. **Ein Untertyp, der nichts eigenes
 erklärt, ist ein Wort und keine Zeile** — und wird eine Zeile in dem
 Moment, in dem er eigene Felder braucht. Dasselbe geschah am 7.10. mit
-`Story` (`Arc` und `Chapter` sind Werte von `kind`; `Session` bleibt eine
-Zeile, weil sie den Sitzungszustand trägt), mit `Event` (`Era`,
+`Story` (`Arc` und `Chapter` wurden Werte von `kind`; `Session` blieb eine
+Zeile, weil sie den Sitzungszustand trägt — und am 14.10. wurde `Arc`
+wieder eine, als er Stufen, Hook und Ausgang bekam, siehe unten), mit `Event` (`Era`,
 `Cataclysm`, `Milestone`) und mit `Item` (`Consumable` ist ein
 `itemType`). Sechs Zeilen weniger, und keine davon hatte je ein Feld
 gebraucht. (`itemType` ist seit P3 eine Aufzählung am Feld, die
@@ -712,6 +713,28 @@ angepasst hat, und zurück heisst, die Fassung zu löschen. Damit ein Verweis
 aufs Original nicht ins Leere führt, liefert der Server die Fassung, die
 gilt (E5) — dieselbe Frage, die der Stapel ohnehin stellt (`resolveArticle`),
 nur jetzt auch beim Öffnen und bei den Namen.
+
+**Ein Kapitel ist ein Arc, und ein Abenteuer besteht aus Teilen** (T-097,
+E-026, REQ-252). Die Leitung will ein Abenteuer nicht nur als Ganzes
+aufschalten, sondern Teile davon in die eigene Geschichte holen: einen
+Abschnitt, eine Begegnung, ein ganzes Kapitel. Dafür muss ein Kapitel
+dasselbe sein wie ein Arc der eigenen Kampagne — sonst stünde es in der
+Geschichte als etwas Fremdes zwischen den Arcs. Ein Wort an einer Story
+hätte das getragen, aber ein Arc braucht eigene Felder (für welche Stufen,
+womit er die Runde hereinholt, wie er ausgehen kann), und eine Sprosse mit
+eigenen Feldern ist eine Zeile (T2). Also ist `Arc` eine Art, die von
+`Story` erbt, und der Importer legt jedes Kapitel als `Arc` an. Die
+Peg-Id eines Kapitels rechnet er weiter wie für eine Story, damit
+`--only-new` die schon geladenen wiederfindet. Eine Karte steht immer an
+einer Szene: liegt sie im Text des Kapitels selbst, bekommt sie ihre
+eigene — eine Karte, die nur Abschnittstext ist, lässt sich nicht einzeln
+holen. **In die Geschichte holen** (`take`) heisst dann dasselbe wie
+Anpassen (E-018 a), nur für einen Teil mit allem darunter und an eine
+andere Stelle: Fassungen in der Ebene der Kampagne, die Teile an den
+Fassungen ihrer Eltern, das Ganze an der Kampagne oder einem ihrer Arcs.
+Es heisst bewusst nicht „Übernehmen": das ist schon das Wort für eine
+Fassung aus einer Vergleichsebene (E7), und zwei Sachen unter einem Namen
+werden irgendwann eine.
 
 **Wer schreibt, schreibt in eine Ebene** (T-098, E-001). Die Leitung
 konnte bis zum 14.10. ihre eigene Kampagne lesen und nichts daran ändern;

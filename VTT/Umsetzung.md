@@ -1,7 +1,7 @@
 ---
 tags: [vtt, requirements, view, umsetzung]
 status: derived
-updated: 2026-10-13
+updated: 2026-10-14
 source: ../docs/Anforderungen.md
 ---
 
@@ -13,7 +13,7 @@ source: ../docs/Anforderungen.md
 
 # Anforderungen — was gefordert war und was steht
 
-Stand 2026-10-13. Jede Nummer aus dem Vault (`VTT/Requirements.md` in diesem Repo, v0.8) und aus der Ernte
+Stand 2026-10-14. Jede Nummer aus dem Vault (`VTT/Requirements.md` in diesem Repo, v0.8) und aus der Ernte
 ([Requirements from Kanalgang.md](../docs/Requirements%20from%20Kanalgang.md)), mit dem Stand im Repo.
 Erzeugt von `packages/registry/scripts/anforderungen.mjs` aus einer Zuordnung, die ein Urteil ist:
 wer eine Zeile anders sieht, ändert sie dort und lässt das Skript laufen.
@@ -126,7 +126,7 @@ Was nicht als Nummer im Vault steht, sondern hier entschieden wurde — alles ge
 | REQ-073 | Custom / reorderable sheet layout | 4 | **ersetzt** | die Anordnung steht am Typ im Register, nicht je Nutzer |
 | REQ-074 | Quicklinks: campaign, quests, party, session | 3 | **teils** | Bereich Play und die Leiste |
 | REQ-075 | Campaign as root NarrativeContainer with attached CampaignSettings, WorldDate, KnowledgeState | 1 | **steht** | `Campaign`, `settings`, Zeitleiste |
-| REQ-076 | NarrativeContainer hierarchy with DM-definable container types (Arc, Session, Scene, Kapitel…) | 1 | **steht** | `Story` (`kind`: arc, chapter …) · Campaign · Session · Scene, Hierarchie über `partOf` |
+| REQ-076 | NarrativeContainer hierarchy with DM-definable container types (Arc, Session, Scene, Kapitel…) | 1 | **steht** | `Story` (`kind`: adventure …) · Campaign · Arc · Session · Scene, Hierarchie über `partOf` |
 | REQ-077 | Session documents with planned vs occurred encounters and reports | 2 | **steht** | `Session`, `Encounter.phase` |
 | REQ-078 | Session prep cockpit: container view aggregating scenes, quests, storylines, encounters, notes | 2 | **steht** | Element `prep` |
 | REQ-079 | DM session quick actions: grant knowledge, reveal block, mark encounter occurred — one tap | 2 | **teils** | Wissen zuteilen im Seitenpanel; kein Ein-Tipp-Knopf in der Sitzung |

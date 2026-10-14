@@ -7,15 +7,21 @@
  * wird hier, in der Ebene des Abenteuers (`kind: 'adventure'`):
  *
  *  - das Abenteuer selbst als `Story` mit `kind: 'adventure'`,
- *  - je Kapitel eine `Story` mit `kind: 'chapter'`, `partOf` das Abenteuer,
+ *  - je Kapitel ein `Arc` (E-026), `partOf` das Abenteuer — dieselbe Art
+ *    wie ein Arc der eigenen Kampagne, damit es sich als Ganzes dorthin
+ *    übernehmen lässt,
  *  - je Abschnitt eine `Scene`, `partOf` ihr Kapitel oder ihr Abschnitt —
  *    ein Abschnitt, der selbst nummerierte Räume hat („Cragmaw Hideout"
  *    mit „1. Cave Mouth" …), bekommt sie als eigene Szenen;
  *  - der Vorlesetext als `ReadAloud.readaloud`, der übrige Text als Prosa;
  *  - je Karte (`imageType: 'map'`) eine `Map`, `mapOf` ihr Abschnitt. Das
- *    Bild bleibt bei 5e.tools, hier steht nur seine Adresse;
+ *    Bild bleibt bei 5e.tools, hier steht nur seine Adresse. **Eine Karte
+ *    steht immer an einer Szene** (E-026): liegt sie im Text des Kapitels
+ *    selbst, bekommt sie eine eigene Szene (`mode: 'exploration'`, `partOf`
+ *    das Kapitel) — so lässt sie sich wie jede Szene einzeln übernehmen;
  *  - je Abschnitt, der Kreaturen mit Anzahl nennt („two {@creature
- *    goblin}"), eine `Encounter`, `partOf` der Abschnitt, mit einer Kante
+ *    goblin}"), eine `Encounter`, `partOf` der Abschnitt (der damit eine
+ *    Szene mit `mode: 'encounter'` ist), mit einer Kante
  *    `participates` je Teilnehmer auf den Statblock aus dem Buch.
  *
  * **Verweise, keine Kopien:** eine Kreatur, ein Gegenstand, ein Zauber im
@@ -195,8 +201,8 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
     pfade.add(p);
     return p;
   };
-  const neu = (typ: string, n: string, teile: string[], seite?: unknown): Entity => {
-    const ent = wb.anlegen(typ, n, herkunft(teile), { source: quelle, ...(seite !== undefined ? { page: seite } : {}) });
+  const neu = (typ: string, n: string, teile: string[], seite?: unknown, peg?: string): Entity => {
+    const ent = wb.anlegen(typ, n, herkunft(teile), { source: quelle, ...(seite !== undefined ? { page: seite } : {}) }, peg);
     wb.feld(ent, 'Visibility', 'audience', 'gm');
     zaehle(b.artikel, typ);
     angelegt.push(ent);
@@ -248,8 +254,8 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
        schon („Appendix A: Magic Items"). */
     const art = String(ord?.['type'] ?? '').replace(/^./, (c) => c.toUpperCase());
     const titel = ord && art && !n.toLowerCase().startsWith(art.toLowerCase()) ? `${art} ${String(ord['identifier'] ?? '')}: ${n}` : n;
-    const kapitel = neu('Story', titel, [n], kap['page']);
-    wb.feld(kapitel, 'Story', 'kind', 'chapter');
+    /* Ein Kapitel ist ein Arc (E-026, REQ-252) — kein Wort an einer Story. */
+    const kapitel = neu('Arc', titel, [n], kap['page']);
     wb.kante(kapitel, 'partOf', ganz.id);
     if (typeof kap['id'] === 'string') nachId.set(kap['id'], kapitel);
     knoten.push({ ent: kapitel, inhalt: abschnitte(kap, kapitel, [n]) });
@@ -285,11 +291,21 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
       if (typeof pfad !== 'string' || !pfad) continue;
       const titel = typeof k['title'] === 'string' && k['title'].trim() ? k['title'].trim() : ent.name;
       const karte = neu('Map', titel, ['map', ent.name, titel]);
+      /* An einer Szene hängt die Karte an ihr; im Text eines Kapitels
+         bekommt sie ihre eigene (E-026). Deren Id ist die der Karte mit
+         `_scene` — so bildet die Migration 039 für schon geladene Karten
+         dieselbe, und `--only-new` legt keine zweite an. */
+      let ort = ent;
+      if (ent.interfaces[0] !== 'Scene') {
+        ort = neu('Scene', titel, ['map-scene', ent.name, titel], undefined, `${karte.id}_scene`);
+        wb.feld(ort, 'Scene', 'mode', 'exploration');
+        wb.kante(ort, 'partOf', ent.id);
+      }
       wb.feld(karte, 'Image', 'image', BILD_ADRESSE + pfad.split('/').map(encodeURIComponent).join('/'));
       wb.feld(karte, 'Image', 'caption', [titel, k['credit'] ? `Map by ${String(k['credit'])}` : ''].filter(Boolean).join(' · '));
       wb.feld(karte, 'Image', 'alt', titel);
       raster(wb, karte, k['grid'] as Knoten | undefined);
-      wb.kante(karte, 'mapOf', ent.id);
+      wb.kante(karte, 'mapOf', ort.id);
     }
 
     /* Begegnung nur an einer Szene: ein Kapitel nennt Kreaturen, um sie

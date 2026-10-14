@@ -1363,13 +1363,14 @@ export const fieldGroups = {
     schema: {
       type: 'object',
       properties: {
-        /* Welche Sprosse: arc, chapter — ein freies Wort mit Vorschlägen,
-           wie `Creature.kind`. Es war eine Aufzählung mit fünf Werten, von
-           denen drei (`campaign`, `session`, `scene`) zugleich Arten waren:
-           dieselbe Einordnung zweimal (Abgleich A5). An einer dieser Arten
-           bleibt das Feld leer, denn die Art sagt es schon; `Arc` und
-           `Chapter` sind seit dem 7.10. Werte hier und keine Zeilen mehr
-           (Regel T2). */
+        /* Welche Sprosse: adventure, prologue … — ein freies Wort mit
+           Vorschlägen, wie `Creature.kind`. Es war eine Aufzählung mit fünf
+           Werten, von denen drei (`campaign`, `session`, `scene`) zugleich
+           Arten waren: dieselbe Einordnung zweimal (Abgleich A5). An einer
+           dieser Arten bleibt das Feld leer, denn die Art sagt es schon.
+           `arc` und `chapter` waren vom 7.10. bis 14.10. Wörter hier; seit
+           E-026 ist der Arc eine Art mit eigenen Feldern (`ArcInfo`), und
+           ein Kapitel eines Abenteuers ist ein Arc. */
         kind: { type: 'string', suggest: true, title: 'Kind' },
         played: { type: 'string', title: 'Played on' },
         /* Hier stand ein zweiter Zustand — geplant, läuft, gespielt,
@@ -1378,6 +1379,26 @@ export const fieldGroups = {
            `Status`; dass es gespielt wurde, sagt `played` mit einem Datum,
            und das ist die Angabe, die man später wirklich sucht. */
         summary: { type: 'string', format: 'long', title: 'Recap' },
+      },
+    },
+  },
+
+  /**
+   * **Was ein Arc trägt und eine Story nicht** (E-026, REQ-252): für welche
+   * Stufen er gedacht ist, womit er die Runde hereinholt und wie er
+   * ausgehen kann. Ein Kapitel eines Abenteuers ist ein Arc — damit lässt
+   * es sich als Ganzes in die eigene Kampagne hängen (Kampagne › Arc ›
+   * Sitzung, Szene). Die Spanne ist eine Spanne (`min`/`max`) wie die
+   * Schwierigkeit, keine Aufzählung.
+   */
+  ArcInfo: {
+    schema: {
+      type: 'object',
+      properties: {
+        levelFrom: { type: 'number', title: 'From level', min: 1, max: 20 },
+        levelTo: { type: 'number', title: 'To level', min: 1, max: 20 },
+        hook: { type: 'string', format: 'long', title: 'Hook' },
+        outcome: { type: 'string', format: 'long', title: 'Outcome' },
       },
     },
   },

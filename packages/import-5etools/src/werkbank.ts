@@ -118,6 +118,14 @@ export function herausgeberEbeneId(herausgeber: string): string {
   return `e5_publisher_${herausgeber}`;
 }
 
+/**
+ * Arten, deren Peg-Id noch mit dem alten Typnamen gerechnet wird: ein
+ * Kapitel war bis E-026 eine `Story` (`kind: 'chapter'`) und ist jetzt ein
+ * `Arc`. Die Migration 039 ändert nur die Art, nicht die Id — mit dem neuen
+ * Namen im Hash legte `--only-new` jedes Kapitel ein zweites Mal an.
+ */
+const PEG_TYP: Record<string, string> = { Arc: 'Story' };
+
 export class Werkbank {
   readonly entities: Entity[] = [];
   readonly bericht: Bericht = neuerBericht();
@@ -162,14 +170,14 @@ export class Werkbank {
    * Eintrag gleich, damit zwei Läufe dieselbe Datei schreiben; die Nummer
    * zählt je Art hoch.
    */
-  anlegen(typ: string, name: string, herkunft: string, eintrag?: Knoten): Entity {
+  anlegen(typ: string, name: string, herkunft: string, eintrag?: Knoten, peg?: string): Entity {
     const prefix = idPrefix(typ);
     const n = (this.nummern.get(prefix) ?? 0) + 1;
     this.nummern.set(prefix, n);
     const nummer = `${prefix}-${String(n).padStart(4, '0')}`;
-    const peg = `e5_${createHash('sha1').update(`${typ}|${herkunft}`).digest('hex').slice(0, 12)}`;
+    const id = peg ?? `e5_${createHash('sha1').update(`${PEG_TYP[typ] ?? typ}|${herkunft}`).digest('hex').slice(0, 12)}`;
     const e: Entity = {
-      id: peg,
+      id,
       interfaces: [typ],
       name,
       components: {

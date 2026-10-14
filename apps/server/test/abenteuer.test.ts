@@ -22,11 +22,12 @@ const ident = (name: string, id: string) => ({
 });
 const in_ = (id: string, ly: string) => ({ id: `${id}~inLayer`, type: 'inLayer', to: ly, props: {} });
 const teil = (id: string, to: string) => ({ id: `${id}~partOf`, type: 'partOf', to, props: {} });
+/* Ein Kapitel und ein eigener Arc sind ein `Arc` (E-026); nur das Abenteuer bleibt eine Story mit `kind`. */
 const geschichte = (id: string, name: string, nr: string, kind: string, ly: string, von?: string): Entity => ({
   id,
   name,
-  interfaces: ['Story'],
-  components: { ...ident(name, nr), Story: { kind }, Visibility: { audience: 'gm' } },
+  interfaces: [kind === 'arc' ? 'Arc' : 'Story'],
+  components: { ...ident(name, nr), ...(kind === 'arc' ? {} : { Story: { kind } }), Visibility: { audience: 'gm' } },
   relations: [in_(id, ly), ...(von ? [teil(id, von)] : [])],
 });
 
@@ -41,8 +42,8 @@ const BESTAND: Entity[] = [
     ],
   },
   geschichte('st_tst', 'The Sunken Test', 'story-0001', 'adventure', 'e5_book_tst'),
-  geschichte('st_k2', 'Chapter 2: Deep', 'story-0003', 'chapter', 'e5_book_tst', 'st_tst'),
-  geschichte('st_k1', 'Chapter 1: Reeds', 'story-0002', 'chapter', 'e5_book_tst', 'st_tst'),
+  geschichte('st_k2', 'Chapter 2: Deep', 'arc-0002', 'arc', 'e5_book_tst', 'st_tst'),
+  geschichte('st_k1', 'Chapter 1: Reeds', 'arc-0001', 'arc', 'e5_book_tst', 'st_tst'),
   {
     id: 'sc_mund', name: '1. Mouth', interfaces: ['Scene'],
     components: {
@@ -56,7 +57,12 @@ const BESTAND: Entity[] = [
     components: { ...ident('2. Den', 'scene-0002'), Visibility: { audience: 'gm' }, Prose: { paragraph: [{ id: 'text', value: 'Dry.' }] } },
     relations: [in_('sc_bau', 'e5_book_tst'), teil('sc_bau', 'st_k1')],
   },
-  geschichte('st_eigen', 'Session zero', 'story-0004', 'arc', 'ly_a', 'camp_a'),
+  geschichte('st_eigen', 'Session zero', 'arc-0003', 'arc', 'ly_a', 'camp_a'),
+  {
+    id: 'mp_mund', name: 'Mouth', interfaces: ['Map'],
+    components: { ...ident('Mouth', 'map-0001'), Visibility: { audience: 'gm' } },
+    relations: [in_('mp_mund', 'e5_book_tst'), { id: 'mp_mund~mapOf', type: 'mapOf', to: 'sc_mund', props: {} }],
+  },
 ];
 
 async function aufbau() {
@@ -70,12 +76,12 @@ async function aufbau() {
     await repo.putUser({ id: randomUUID(), name, passwordHash: await hashPassword(PASSWORT), isAdmin: admin, actorIds: [], roles: { ...roles } });
   }
   const kekse = new Map<string, string>();
-  const rufe = async (name: string, method: 'GET' | 'POST', url: string) => {
+  const rufe = async (name: string, method: 'GET' | 'POST', url: string, payload?: object) => {
     if (!kekse.has(name)) {
       const res = await app.inject({ method: 'POST', url: '/api/login', payload: { name, password: PASSWORT } });
       kekse.set(name, `nw_session=${res.cookies.find((x) => x.name === 'nw_session')?.value ?? ''}`);
     }
-    return app.inject({ method, url, headers: { cookie: kekse.get(name)! } });
+    return app.inject({ method, url, headers: { cookie: kekse.get(name)! }, ...(payload ? { payload } : {}) });
   };
   return { repo, rufe };
 }
@@ -110,7 +116,7 @@ describe('adapting over the template (E-018 a)', () => {
       ['inLayer', 'ly_a'],
       ['overrides', 'st_k1'],
     ]);
-    expect((fassung.components['Identity'] as { id: string }).id).toBe('story-0005');
+    expect((fassung.components['Identity'] as { id: string }).id).toBe('arc-0004');
     /* Das Original bleibt, wie es war. */
     expect((await repo.getEntity('st_k1'))!.relations?.map((k) => k.type)).toEqual(['inLayer', 'partOf']);
     /* Ein zweites Mal gibt dieselbe Fassung zurück. */
@@ -155,5 +161,60 @@ describe('adapting over the template (E-018 a)', () => {
     /* Die Leitung schreibt die Ebene ihrer Kampagne (T-098): dort liegt die Fassung schon zum Bearbeiten. */
     expect((await rufe('Basil', 'POST', '/api/entities/st_eigen/adapt')).statusCode).toBe(403);
     expect((await rufe('Admin', 'POST', '/api/entities/gibt-es-nicht/adapt')).statusCode).toBe(404);
+  });
+});
+
+describe('taking a part of an adventure into the campaign (E-026)', () => {
+  it('offers the campaign and its own arcs, to the gm and the admin, not to a player', async () => {
+    const { rufe } = await aufbau();
+    const ziele = (await rufe('Basil', 'GET', '/api/entities/st_k1')).json().refs.takeInto;
+    expect(ziele.map((z: { id: string }) => z.id)).toEqual(['camp_a', 'st_eigen']);
+    expect((await rufe('Admin', 'GET', '/api/entities/sc_mund')).json().refs.takeInto).toHaveLength(2);
+    expect((await rufe('Sela', 'GET', '/api/entities/st_k1')).json().refs?.takeInto).toBeUndefined();
+    /* Ein eigener Arc liegt schon in der Kampagne — nichts zu übernehmen. */
+    expect((await rufe('Basil', 'GET', '/api/entities/st_eigen')).json().refs?.takeInto).toBeUndefined();
+    /* Leitungstext sieht sie nicht — also gibt es ihn für sie nicht. */
+    expect((await rufe('Sela', 'POST', '/api/entities/st_k1/take', { into: 'camp_a' })).statusCode).toBe(404);
+  });
+
+  it('takes a whole chapter with its scenes and maps, and hangs it into the campaign', async () => {
+    const { repo, rufe } = await aufbau();
+    const r = await rufe('Basil', 'POST', '/api/entities/st_k1/take', { into: 'camp_a' });
+    expect(r.statusCode).toBe(201);
+    const { id, created, taken } = r.json();
+    expect([created, taken]).toEqual([4, 4]);
+    const alle = await repo.listEntities();
+    const fassungVon = (orig: string) => alle.find((e) => (e.relations ?? []).some((k) => k.type === 'overrides' && k.to === orig))!;
+    const kap = (await repo.getEntity(id))!;
+    expect(kap.interfaces).toEqual(['Arc']);
+    expect(kap.relations?.filter((k) => k.type === 'partOf').map((k) => k.to)).toEqual(['camp_a']);
+    /* Die Szenen hängen an der Fassung des Kapitels, die Karte an der Fassung ihrer Szene. */
+    for (const s of ['sc_mund', 'sc_bau']) {
+      const f = fassungVon(s);
+      expect(f.relations?.find((k) => k.type === 'partOf')?.to).toBe(id);
+      expect(f.relations?.find((k) => k.type === 'inLayer')?.to).toBe('ly_a');
+    }
+    expect(fassungVon('mp_mund').relations?.find((k) => k.type === 'mapOf')?.to).toBe(fassungVon('sc_mund').id);
+    /* Die Originale bleiben. */
+    expect((await repo.getEntity('st_k1'))!.relations?.find((k) => k.type === 'partOf')?.to).toBe('st_tst');
+    /* Die Geschichte zeigt das Kapitel bei den eigenen und als angepasst beim Abenteuer. */
+    const s = (await rufe('Basil', 'GET', '/api/campaigns/camp_a/story')).json();
+    expect(s.own.map((x: { id: string }) => x.id)).toEqual(expect.arrayContaining([id, 'st_eigen']));
+    expect(s.adventures[0].chapters[0]).toMatchObject({ id, adapted: true });
+  });
+
+  it('takes a single scene into an own arc, and taking again makes nothing twice', async () => {
+    const { repo, rufe } = await aufbau();
+    const erst = (await rufe('Basil', 'POST', '/api/entities/sc_mund/take', { into: 'st_eigen' })).json();
+    expect(erst.created).toBe(2);
+    expect((await repo.getEntity(erst.id))!.relations?.find((k) => k.type === 'partOf')?.to).toBe('st_eigen');
+    const vorher = (await repo.listEntities()).length;
+    const nochmal = (await rufe('Basil', 'POST', '/api/entities/sc_mund/take', { into: 'camp_a' })).json();
+    expect(nochmal).toMatchObject({ id: erst.id, created: 0 });
+    expect((await repo.listEntities()).length).toBe(vorher);
+    /* Ohne Ziel fragt der Server, wohin. */
+    const frage = await rufe('Basil', 'POST', '/api/entities/sc_bau/take', {});
+    expect(frage.statusCode).toBe(409);
+    expect(frage.json().into.map((z: { id: string }) => z.id)).toEqual(['camp_a', 'st_eigen']);
   });
 });

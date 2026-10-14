@@ -119,6 +119,9 @@ export interface Bezuege {
   /** In welche Ebenen eine Fassung ginge (T-098): wer den Artikel nicht
    *  schreibt, bekommt an „Edit" eine Fassung in einer davon. */
   adaptTo?: { id: string; name: string }[];
+  /** Wohin sich der Artikel in die Geschichte holen lässt (E-026): die laufende
+   *  Kampagne und ihre Arcs — leer heisst, nicht anbieten. */
+  takeInto?: { id: string; name: string; type: string }[];
   /**
    * **Ein älterer fertiger Stand gilt** (REQ-237, E-012): nur für wen den
    * Arbeitsstand sieht (Verfasserin, Leitung). `at` ist das Datum des
@@ -738,6 +741,18 @@ export class Api {
     return this.call(`/api/entities/${encodeURIComponent(id)}/adapt`, {
       method: 'POST',
       body: JSON.stringify(layer ? { layer } : {}),
+    });
+  }
+
+  /**
+   * **In die Geschichte holen** (E-026): ein Kapitel oder eine Szene samt allem darunter
+   * als Fassung in die Ebene der Kampagne, gehängt an `into` (die Kampagne
+   * oder einer ihrer Arcs). Gibt die Fassung des Artikels selbst zurück.
+   */
+  take(id: string, into: string): Promise<{ id: string; created: number; taken: number }> {
+    return this.call(`/api/entities/${encodeURIComponent(id)}/take`, {
+      method: 'POST',
+      body: JSON.stringify({ into }),
     });
   }
 

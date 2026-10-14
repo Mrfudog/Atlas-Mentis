@@ -3,7 +3,7 @@
  * Ebene der Text sind, in welcher Reihenfolge und wie tief.
  *
  * Der Text eines Abenteuers (T-082) ist ein Baum über `partOf`: das
- * Abenteuer (`Story`, `kind: 'adventure'`), seine Kapitel, darin die
+ * Abenteuer (`Story`, `kind: 'adventure'`), seine Kapitel (`Arc`, E-026), darin die
  * Abschnitte (`Scene`), darin Räume. Hier steht, wie man ihn liest — ohne
  * Framework, damit Server und Prüfungen dieselbe Reihenfolge rechnen.
  *
@@ -30,7 +30,7 @@ import { articleId, primaryInterface } from './entity.js';
 import type { Entity } from './types.js';
 
 /** Die Arten, deren Artikel Text eines Buchs sind. */
-export const READING_TYPES: readonly string[] = ['Story', 'Scene'];
+export const READING_TYPES: readonly string[] = ['Story', 'Arc', 'Scene'];
 
 /** Ein Eintrag im Inhaltsverzeichnis. */
 export interface ReadingNode {

@@ -689,7 +689,13 @@ try {
       ebene('e5_book_t082a', 'Probe Adventure', 'adventure', 81),
       ebene('e5_book_t082b', 'Probe Sourcebook', 'sourcebook', 82),
       { id: 'st_probe_t082', name: 'Probe Chapter', interfaces: ['Story'], components: { ...ident('Probe Chapter', 'story-0981'), Story: { kind: 'chapter' } }, relations: [{ id: 'st_probe_t082~in', type: 'inLayer', to: 'e5_book_t082a', props: {} }] },
+      /* Eine Karte am Kapitel selbst: Migration 039 gibt ihr eine Szene (E-026). */
+      {
+        id: 'e5_probe_t097_karte', name: 'Probe Map', interfaces: ['Map'], components: ident('Probe Map', 'map-0981'),
+        relations: [{ id: 'e5_probe_t097_karte~in', type: 'inLayer', to: 'e5_book_t082a', props: {} }, { id: 'e5_probe_t097_karte~of', type: 'mapOf', to: 'st_probe_t082', props: {} }],
+      },
     ];
+    const name097 = 'zzz_durchstich_kapitel_als_arc.sql';
     const ordner = mkdtempSync(join(tmpdir(), 'durchstich-abenteuer-'));
     const name = 'zzz_durchstich_abenteuer_ebene.sql';
     let fassung = '';
@@ -705,6 +711,20 @@ try {
       pruefe('Abenteuer als Ebene: die Migration setzt kind adventure, ein Quellenbuch bleibt book',
         (await art('e5_book_t082a')) === 'adventure' && (await art('e5_book_t082b')) === 'book',
         `${await art('e5_book_t082a')} / ${await art('e5_book_t082b')}`);
+      /* Kapitel als Arc (T-097, E-026): Migration 039 an denselben Proben. */
+      rmSync(join(ordner, name));
+      writeFileSync(join(ordner, name097), readFileSync(join(DIST, '..', 'migrations', '039_kapitel_als_arc.sql'), 'utf8'));
+      await migrate(pool, { env: {} }, ordner);
+      const kap = await repo.getEntity('st_probe_t082');
+      /* Das Probekapitel ist selbst angelegt (keine e5_-Id): das Wort bleibt. */
+      pruefe('Kapitel als Arc: die Migration macht aus der Story mit kind chapter einen Arc',
+        JSON.stringify(kap?.interfaces) === '["Arc"]' && kap?.components['Story']?.kind === 'chapter', JSON.stringify(kap?.components));
+      const kartenSzene = await repo.getEntity('e5_probe_t097_karte_scene');
+      const karte = await repo.getEntity('e5_probe_t097_karte');
+      pruefe('Kapitel als Arc: die Karte am Kapitel bekommt ihre Szene',
+        kartenSzene?.interfaces?.[0] === 'Scene' && kartenSzene.relations?.some((r) => r.type === 'partOf' && r.to === 'st_probe_t082')
+          && karte?.relations?.some((r) => r.type === 'mapOf' && r.to === 'e5_probe_t097_karte_scene'),
+        JSON.stringify(kartenSzene?.relations));
       /* Die laufende Kampagne schaltet das Abenteuer auf; ihre eigene Ebene hat sie schon. */
       const k = await (await get(admin, '/api/campaigns/camp_probe_a/layers')).json();
       const stapel = [...k.layers.filter((l) => l.active).map((l) => l.id), 'e5_book_t082a'];
@@ -735,12 +755,25 @@ try {
       pruefe('Leseansicht: Lesestand gemerkt', merk.status === 204, `${merk.status} ${await merk.text()}`);
       const wieder = await (await get(admin, '/api/read/e5_book_t082a')).json();
       pruefe('Leseansicht: Lesestand gelesen', wieder.position === 'st_probe_t082', String(wieder.position));
+      /* In die Geschichte holen (E-026): das Kapitel mit Szene und Karte in die Kampagne —
+         die Fassung des Kapitels gibt es schon und wird nur umgehängt. */
+      const t = await fetch(`${BASE}/api/entities/st_probe_t082/take`, {
+        method: 'POST', headers: { cookie: admin, 'content-type': 'application/json' }, body: JSON.stringify({ into: 'camp_probe_a' }),
+      });
+      const tj = await t.json();
+      pruefe('Holen: Kapitel samt Szene und Karte', t.status === 201 && tj.id === fassung && tj.taken === 3 && tj.created === 2, `${t.status} ${JSON.stringify(tj)}`);
+      const genommen = await repo.getEntity(fassung);
+      pruefe('Holen: das Kapitel hängt an der Kampagne',
+        JSON.stringify(genommen?.relations?.filter((r) => r.type === 'partOf').map((r) => r.to)) === '["camp_probe_a"]', JSON.stringify(genommen?.relations));
       /* Zurück zum alten Stapel — die übrigen Prüfungen rechnen mit ihm. */
       await fetch(`${BASE}/api/campaigns/camp_probe_a/layers`, {
         method: 'PUT', headers: { cookie: admin, 'content-type': 'application/json' }, body: JSON.stringify({ layers: stapel.filter((x) => x !== 'e5_book_t082a') }),
       });
     } finally {
-      await pool.query('delete from entity where id = any($1)', [[...probe.map((e) => e.id), ...(fassung ? [fassung] : [])]]);
+      const ids = [...probe.map((e) => e.id), 'e5_probe_t097_karte_scene'];
+      await pool.query(`delete from entity where id in (select from_id from relation where type = 'overrides' and to_id = any($1))`, [ids]);
+      await pool.query('delete from entity where id = any($1)', [[...ids, ...(fassung ? [fassung] : [])]]);
+      await pool.query('delete from schema_migrations where name = $1', [name097]);
       await pool.query('delete from reading_position where layer_id = $1', ['e5_book_t082a']);
       await pool.query('delete from schema_migrations where name = $1', [name]);
       await pool.end();
