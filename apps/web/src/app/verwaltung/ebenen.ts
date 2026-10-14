@@ -55,7 +55,13 @@ interface Gruppe {
  *
  * **Vergleichsebenen** (T-092, E-021 d): an jeder Ebene, die nicht im
  * Spiel ist, ein Häkchen „compare" — ihre Fassungen stehen dann auf Wunsch
- * an den Feldern. Darunter, ob die Spielenden sie auch sehen.
+ * an den Feldern. Darunter, ob die Spielenden sie auch sehen. **Auch an
+ * einer Gruppe** (T-143): „2024 rules" als Ganzes zum Vergleich; ihre
+ * Bücher sagen dann „compared with its group".
+ *
+ * **Auch im Popup der Kopfleiste** (T-143, `nw-stapel`): dieselbe Liste,
+ * `kompakt` ohne eigenen Kasten. Nach jedem Häkchen schickt der Server den
+ * neuen Stand mit (`state`); gefragt wird nur, wenn er fehlt.
  *
  * **Bücher stehen für sich** (T-081, E-017): je Buch aus 5e.tools eine
  * Ebene, mit Häkchen und ohne Pfeile — zwischen Büchern gibt es nichts zu
@@ -84,8 +90,10 @@ interface Gruppe {
   selector: 'nw-kampagnen-ebenen',
   imports: [RouterLink, NgTemplateOutlet, KurzLink],
   template: `
-    <section class="kasten" aria-label="Layers in play">
-      <h2>Layers in play</h2>
+    <section class="kasten" [class.kompakt]="kompakt()" aria-label="Layers in play">
+      @if (!kompakt()) {
+        <h2>Layers in play</h2>
+      }
       <p class="fuss">
         The lists of this campaign show what its layers bring, and articles without a layer. A layer
         higher up wins where two say the same. Turning a layer off deletes nothing.
@@ -211,6 +219,23 @@ interface Gruppe {
               <span class="gname">{{ g.ebene.name }}</span>
               <button type="button" class="quick-info" [nwQuick]="g.ebene.id" [attr.aria-label]="'Quick view of ' + g.ebene.name">i</button>
               <span class="dim">{{ g.an }} of {{ g.gesamt }} on</span>
+              <!-- Eine ganze Gruppe zum Vergleich (T-143), etwa „2024 rules": ihre Bücher vergleichen sich, soweit sie nicht im Spiel sind. -->
+              @if (!g.ebene.inPlay) {
+                <label
+                  class="vergleich"
+                  [title]="'Show versions from every book in ' + g.ebene.name + ' on demand, without putting them in play'"
+                  (click)="$event.stopPropagation()"
+                >
+                  <input
+                    type="checkbox"
+                    [checked]="!!g.ebene.compare"
+                    [disabled]="!aenderbar(g.ebene) || laeuft()"
+                    [attr.aria-label]="'Compare the whole group ' + g.ebene.name"
+                    (change)="vergleichen(g.ebene)"
+                  />
+                  compare
+                </label>
+              }
               @if (g.ebene.about.description) {
                 <span class="beschreibung">{{ g.ebene.about.description }}</span>
               }
@@ -247,15 +272,19 @@ interface Gruppe {
               <a class="lesen" [routerLink]="['/read', l.id]">Read</a>
             }
             @if (!l.inPlay) {
-              <label class="vergleich" [title]="'Show versions from ' + l.name + ' on demand, without putting it in play'">
-                <input
-                  type="checkbox"
-                  [checked]="!!l.compare"
-                  [disabled]="!aenderbar(l) || laeuft()"
-                  (change)="vergleichen(l)"
-                />
-                compare
-              </label>
+              @if (ueberVergleich().has(l.id) && !l.compare) {
+                <span class="vergleich dim" [title]="'Compared because its group is'">compared with its group</span>
+              } @else {
+                <label class="vergleich" [title]="'Show versions from ' + l.name + ' on demand, without putting it in play'">
+                  <input
+                    type="checkbox"
+                    [checked]="!!l.compare"
+                    [disabled]="!aenderbar(l) || laeuft()"
+                    (change)="vergleichen(l)"
+                  />
+                  compare
+                </label>
+              }
             }
             <span class="dim fakten">
               @if (l.about.abbreviation) {
@@ -361,6 +390,12 @@ interface Gruppe {
       .kasten {
         margin: 0 1rem 1rem;
       }
+    }
+    .kasten.kompakt {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: none;
     }
     h2 {
       margin: 0 0 0.25rem;
@@ -607,6 +642,8 @@ interface Gruppe {
 })
 export class KampagnenEbenenListe {
   readonly kampagne = input.required<string>();
+  /** Im Popup der Kopfleiste (T-143): ohne eigenen Kasten und Überschrift. */
+  readonly kompakt = input(false);
   /** Nach jedem Schalten — die Geschichte der Kampagne liest dann neu (T-082). */
   readonly geschaltet = output<void>();
 
@@ -623,6 +660,19 @@ export class KampagnenEbenenListe {
       const c = this.kampagne();
       void this.laden(c);
     });
+  }
+
+  /**
+   * Nach dem Schreiben den Stand übernehmen, den der Server mitschickt
+   * (T-143) — sonst noch einmal fragen. Ein Hin und Her weniger je Häkchen.
+   */
+  private async uebernehmen(c: string, r: { state?: KampagnenEbenen | null } | null): Promise<void> {
+    if (r?.state && c === this.kampagne()) {
+      this.daten.set(r.state);
+      this.fehler.set(null);
+    } else {
+      await this.laden(c);
+    }
   }
 
   private async laden(c: string): Promise<void> {
@@ -859,8 +909,7 @@ export class KampagnenEbenenListe {
     const c = this.kampagne();
     this.laeuft.set(true);
     try {
-      await this.api.setLayerOnly(c, l.id, only);
-      await this.laden(c);
+      await this.uebernehmen(c, await this.api.setLayerOnly(c, l.id, only));
       this.geschaltet.emit();
     } catch (error) {
       this.fehler.set(error instanceof Error ? error.message : String(error));
@@ -913,7 +962,23 @@ export class KampagnenEbenenListe {
     (this.daten()?.layers ?? []).filter((x) => x.compare).map((x) => x.name),
   );
 
-  /** Eine Ebene zum Vergleich dazu oder weg (T-092) — nur eine, die nicht im Spiel ist. */
+  /** Was über eine Gruppe zum Vergleich kommt (T-143), verschachtelt — wie `playStack` es rechnet. */
+  protected readonly ueberVergleich = computed(() => {
+    const m = this.nachId();
+    const out = new Set<string>();
+    const lauf = (g: KampagnenEbene) => {
+      for (const id of g.members ?? []) {
+        const x = m.get(id);
+        if (!x || out.has(id)) continue;
+        out.add(id);
+        if (x.kind === 'group') lauf(x);
+      }
+    };
+    for (const g of this.daten()?.layers ?? []) if (g.kind === 'group' && g.compare) lauf(g);
+    return out;
+  });
+
+  /** Eine Ebene zum Vergleich dazu oder weg (T-092) — nur eine, die nicht im Spiel ist; auch eine ganze Gruppe (T-143). */
   protected vergleichen(l: KampagnenEbene): void {
     const jetzt = (this.daten()?.layers ?? []).filter((x) => x.compare).map((x) => x.id);
     const neu = l.compare ? jetzt.filter((id) => id !== l.id) : [...jetzt, l.id];
@@ -928,8 +993,8 @@ export class KampagnenEbenenListe {
     const c = this.kampagne();
     this.laeuft.set(true);
     try {
-      await this.api.setCampaignCompare(c, neu);
-      await this.laden(c);
+      await this.uebernehmen(c, await this.api.setCampaignCompare(c, neu));
+      this.geschaltet.emit();
     } catch (error) {
       this.fehler.set(error instanceof Error ? error.message : String(error));
     } finally {
@@ -984,9 +1049,8 @@ export class KampagnenEbenenListe {
     const c = this.kampagne();
     this.laeuft.set(true);
     try {
-      if (stapel) await this.api.setCampaignLayers(c, stapel, off);
-      else if (dazu) await this.api.activateLayer(c, dazu);
-      await this.laden(c);
+      const r = stapel ? await this.api.setCampaignLayers(c, stapel, off) : dazu ? await this.api.activateLayer(c, dazu) : null;
+      await this.uebernehmen(c, r);
       this.geschaltet.emit();
     } catch (error) {
       this.fehler.set(error instanceof Error ? error.message : String(error));
