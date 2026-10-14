@@ -457,6 +457,7 @@ export class PgRepository implements Repository {
         (x): x is string => typeof x === 'string' && x.length > 0,
       ),
       disabledAt: row['disabled_at'] ? new Date(row['disabled_at'] as string).toISOString() : undefined,
+      createdAt: row['created_at'] ? new Date(row['created_at'] as string).toISOString() : undefined,
     };
   }
 
