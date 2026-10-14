@@ -46,6 +46,7 @@ import {
   seesUnfinished,
   tableRole,
   partiesOf,
+  inventoryRulesOf,
   STATUS_COMPONENT,
   classParts,
   currentCampaign,
@@ -157,6 +158,29 @@ const OWNING_RELATIONS = new Set(['carries', 'holds', 'crafting']);
 const PLAYER_CHARACTER = 'PlayerCharacter';
 const STATBLOCK_RELATION = 'belongsTo';
 const FIGUR_KANTEN = new Set(['carries']);
+
+/**
+ * **Behälter in einem Inventar** (T-127): wer ein Inventar hat, hat auch
+ * die Inventare der Gegenstände darin — der Rucksack in Rooks Gepäck ist
+ * Rooks, und etwas hineinzulegen heisst, ihn zu schreiben. Nur die
+ * Inventare, nicht die Gegenstände selbst; rekursiv, ein Beutel im Rucksack
+ * auch.
+ */
+function mitBehaeltern(ids: Set<string>, bestand: Iterable<Entity>): Set<string> {
+  const byId = new Map([...bestand].map((e) => [e.id, e]));
+  const offen = [...ids];
+  while (offen.length) {
+    for (const h of byId.get(offen.pop()!)?.relations ?? []) {
+      if (h.type !== 'holds') continue;
+      for (const c of byId.get(h.to)?.relations ?? []) {
+        if (c.type !== 'carries' || ids.has(c.to)) continue;
+        ids.add(c.to);
+        offen.push(c.to);
+      }
+    }
+  }
+  return ids;
+}
 
 /** Was an diesen Figuren hängt: über `kanten` von der Figur aus, und der
  *  Statblock, dessen `belongsTo` auf sie zeigt. */
@@ -515,9 +539,23 @@ export function buildApp({
   async function ownedBy(user: User, bestand?: Iterable<Entity>): Promise<Set<string>> {
     const figuren = new Set<string>(user.actorIds ?? []);
     const mitEbenen = (user.layerIds?.length ?? 0) > 0 || leitetIrgendwo(user);
-    const liste = figuren.size || mitEbenen ? [...(bestand ?? (await repo.listEntities()))] : [];
+    /* Die Kampagnen, an deren Tisch dieses Konto sitzt (nicht nur zuschaut). */
+    const amTisch = new Set(Object.entries(user.roles ?? {}).filter(([, r]) => r !== 'spectator').map(([k]) => k));
+    const liste = figuren.size || mitEbenen || amTisch.size ? [...(bestand ?? (await repo.listEntities()))] : [];
     /* Dazu der Statblock der Figur (E-014 d: alle Felder und Kanten). */
     const own = teileVon(figuren, liste, OWNING_RELATIONS);
+    /* **Das Gruppeninventar** (T-127, REQ-183): wer am Tisch einer
+       Kampagne sitzt, schreibt das Inventar ihrer Gruppe — etwas von der
+       Figur zur Gruppe zu legen heisst, beide Inventare zu schreiben. Die
+       Gruppe selbst nicht: Reisezähler und Beziehungen bleiben bei der
+       Leitung. */
+    if (amTisch.size) {
+      const gruppen = new Set(
+        liste.filter((e) => (e.relations ?? []).some((r) => r.type === 'partyOf' && amTisch.has(r.to))).map((e) => e.id),
+      );
+      for (const id of teileVon(gruppen, liste, FIGUR_KANTEN)) if (!gruppen.has(id)) own.add(id);
+    }
+    mitBehaeltern(own, liste);
     for (const id of user.authoredIds ?? []) own.add(id);
     if (mitEbenen) {
       const ebenen = await schreibEbenen(user, new Map(liste.map((e) => [e.id, e])));
@@ -546,7 +584,7 @@ export function buildApp({
    *  Konten — wer welche führt, steht am Server (`app_user_actor`). */
   async function ausgenommen(bestand: Map<string, Entity>, registry: Registry): Promise<Set<string>> {
     const ids = (await repo.listUsers()).filter((u) => !u.disabledAt).flatMap((u) => u.actorIds ?? []);
-    return teileVon(spielerfiguren(ids, bestand, registry), bestand.values(), FIGUR_KANTEN);
+    return mitBehaeltern(teileVon(spielerfiguren(ids, bestand, registry), bestand.values(), FIGUR_KANTEN), bestand.values());
   }
 
   /** Mit wessen Augen gesiebt wird: Figuren, Rollen, Eigenes, Ausgenommenes. */
@@ -2046,6 +2084,39 @@ export function buildApp({
       languages: campaignLanguages(kampagne ?? undefined),
       /* Talente am Tisch (T-107): nein nimmt das Talent als Ausweg weg. */
       feats: campaignAllowsFeats(kampagne ?? undefined),
+    };
+  });
+
+  /**
+   * **Das Inventar der laufenden Kampagne** (T-127): ihr Regelset
+   * (`Campaign.inventory` — Raster, Gewicht oder Slots) und ihre Gruppen mit
+   * dem Inventar, das jede trägt — wohin eine Figur etwas „der Gruppe gibt".
+   * Gesiebt wie jede Liste; wer die Gruppe nicht sieht, bekommt sie nicht.
+   */
+  app.get('/api/inventory', async (request) => {
+    const stand = await roh();
+    const registry = await repo.getRegistry();
+    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const gruppen = kampagne ? await sieve(request, partiesOf(stand.map, kampagne.id), stand.map) : [];
+    const ids = new Set(gruppen.map((p) => p.id));
+    const mitglieder = await sieve(
+      request,
+      [...stand.map.values()].filter((e) => (e.relations ?? []).some((r) => r.type === 'memberOfParty' && ids.has(r.to))),
+      stand.map,
+    );
+    const traegt = (e: Entity) => (e.relations ?? []).find((r) => r.type === 'carries')?.to ?? null;
+    return {
+      campaign: kampagne ? { id: kampagne.id, name: entityName(kampagne) } : null,
+      rules: inventoryRulesOf(kampagne),
+      parties: gruppen.map((p) => ({
+        id: p.id,
+        name: entityName(p),
+        inventory: traegt(p),
+        /* Wem die Gruppe etwas geben kann: ihre Figuren mit ihrem Inventar. */
+        members: mitglieder
+          .filter((m) => (m.relations ?? []).some((r) => r.type === 'memberOfParty' && r.to === p.id))
+          .map((m) => ({ id: m.id, name: entityName(m), inventory: traegt(m) })),
+      })),
     };
   });
 
