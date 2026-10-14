@@ -55,6 +55,9 @@ export const OVERRIDES_RELATION = 'overrides';
  */
 export const COMPARE_MODE = 'compare';
 export const LAYER_COMPONENT = 'Layer';
+/** Die Kontoeinstellung mit der gewählten Schreibebene je Kampagne
+ *  (`{ [Kampagne]: Ebene }`, T-176) — neben dem Konto, nie im Artikel. */
+export const WRITE_LAYER_PREF = 'writeLayer';
 /** Eine Ebene, die andere Ebenen enthält (E-022 b, T-088). */
 export const GROUP_KIND = 'group';
 /**

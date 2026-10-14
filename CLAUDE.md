@@ -301,6 +301,12 @@ wiederkommen, werden sie neu geschrieben.
   (`grundEbene`) mit Hinweis. Anlegen nimmt sie, eine genannte Ebene geht
   vor; Fassungen und Übernahme nehmen nur eine *gewählte*. Die Verwaltung
   legt ohne Wahl weiter ausserhalb jeder Ebene an.
+  **Gewählt schlägt gerechnet** (T-176): auch Account › Layers wählt
+  („Make default", `PUT /api/layers/:layer/default`, die Verwaltung auch für
+  ein anderes Konto) — dieselbe Einstellung. **Eine Ebene leeren**
+  (`POST /api/layers/:layer/empty`, Besitzer und Verwaltung) ist eine
+  Massenänderung `delete`: Teile gehen mit, Kanten darauf gehen weg, Undo
+  wie jede.
 - **Fünf Ansichten, und der Ort wählt sie.** `overview` steht in einem
   Verweis oder einer Listenzeile, `quick` auf einer Karte, `full` auf der
   Artikelseite, `print` auf dem Blatt hinter „Print" (T-110), `search`

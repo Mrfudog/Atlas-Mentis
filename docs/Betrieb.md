@@ -444,7 +444,7 @@ dort wird ausprobiert, und was zählt, steht auf prod.
 | **Ausrollen mit Migration** (Push auf `preprod`/`main`, `deploy.sh`) | Eine Migration baut Tabellen um; sie läuft nur vorwärts. Was sie falsch umbaut, ist danach so. Entfernt sie gespeicherte Werte, bricht der Start ohne Freigabe ab ([unten](#migrationen-und-seed-löschen-nie-still)). | ja, `backups/<zeit>.dump` | [Zurück](#zurück): App anhalten, Datenbank aus dieser Sicherung, `./deploy.sh "$(cat previous-image)"` |
 | **Einlesen mit `--replace`** (`import.sh`, `import.js`) | **Alles**, was nicht in der Datei steht — auch die eigenen Kampagnenartikel. | ja, `backups/<zeit>-vor-import.dump` (nicht bei `--dry-run`) | wie [Zurück](#zurück), mit der Sicherung `…-vor-import.dump`; das Abbild bleibt, `deploy.sh` ist nicht nötig, nur `docker compose start app` |
 | **Einlesen mit `--replace-layer`** (Pipeline „5e.tools einlesen", Art `replace-layer`, verlangt `confirm=ersetzen`) | Was die Ebene der Datei bringt und in der Datei fehlt, **und eigene Änderungen an ihren Artikeln**. | ja, wie oben | wie oben |
-| **Massenänderung** (Werkbank › Bulk change, `POST /api/bulk`) | Felder, Marken, Kanten an vielen Artikeln; mit `merge` und `mode: delete` auch Artikel. | die alten Fassungen stehen im Lauf selbst | Werkbank › Undo (`POST /api/bulk/<id>/undo`). Wurde ein Artikel seither geändert, sagt es das (409) — mit `force` gewinnt die alte Fassung. |
+| **Massenänderung** (Werkbank › Bulk change, `POST /api/bulk`) | Felder, Marken, Kanten an vielen Artikeln; mit `merge` und `mode: delete` oder mit `delete` (T-176; auch Account › Layers › *Empty…*, `POST /api/layers/<ebene>/empty`) auch Artikel — samt Teilen (eigene Statblock-Instanz, Inventar, Stücke) und den Kanten, die von aussen darauf zeigten. | die alten Fassungen stehen im Lauf selbst | Werkbank › Undo (`POST /api/bulk/<id>/undo`). Wurde ein Artikel seither geändert, sagt es das (409) — mit `force` gewinnt die alte Fassung. |
 | **Ein Bild löschen** (Asset-Artikel löschen) | Die Datei, wenn kein anderes Asset sie nennt (T-114). | ja, `backups/bilder/` hält jede Datei, die vor dem letzten Ausrollen oder der letzten Nacht da war | die Datei aus `backups/bilder/` zurückkopieren, den Artikel aus der Datenbanksicherung oder der Ausfuhr |
 | **Übernahme** (Werkbank › Transfer between installations, T-130) | Auf dem Ziel: Felder und Kanten der gewählten Artikel und Registerzeilen — nur, was die Vorschau zeigte, Konflikte nur wie gelöst. | ja, `backups/uebernahme/<zeit>-vor-uebernahme-von-….json`, und jede alte Fassung im Protokoll | Werkbank › Transfer between installations › Undo (beide Seiten); sonst die Datei über `import.js` ([Übernahme › Zurück](#zurück-1)) |
 | **Überklonen** (Werkbank › Transfer between installations, nur auf dev) | Der ganze Bestand von dev (Register, Artikel); die Konten bleiben. | ja, `backups/uebernahme/<zeit>-vor-ueberklonen.json` (der ganze Bestand) | `import.js <datei> --replace` |
@@ -979,7 +979,7 @@ gezielt zusammen: `checks duplicates` zeigt Gruppe und Ähnlichkeit, dann
 | `select.tag` | eine Marke |
 | `select.ids` | Peg-Ids oder Nummern |
 | `select.where` | `[{ field, op, value }]`, alle müssen gelten. `field`: `name`, `id` (Nummer), `type` oder `Karte.feld` (`Statblock.cr`). `op`: `eq`, `ne`, `contains`, `startsWith`, `endsWith`, `in` (Liste), `matches` (Regex), `empty`, `notEmpty` — gross/klein egal |
-| `ops` | `set` / `unset` (`field`, `value`), `addTag` / `removeTag` (`tag`), `addRelation` (`type`, `to`, `props`), `removeRelation` (`type`, `to` optional), `merge` (`mode`: `variant` oder `delete`; `keep`: wer bleibt, sonst die kleinste Nummer; `by`: `name` oder `content`) — `merge` steht allein |
+| `ops` | `set` / `unset` (`field`, `value`), `addTag` / `removeTag` (`tag`), `addRelation` (`type`, `to`, `props`), `removeRelation` (`type`, `to` optional), `merge` (`mode`: `variant` oder `delete`; `keep`: wer bleibt, sonst die kleinste Nummer; `by`: `name` oder `content`) — `merge` steht allein; `delete` (T-176) löscht die Auswahl mit ihren Teilen, entfernt Kanten von aussen darauf und löst Instanzen einer gehenden Vorlage — steht ebenfalls allein |
 | `confirmDelete` | löscht ein Lauf mehr als einen Artikel, die Zahl aus der Vorschau (`--confirm-delete N`) |
 | `skipRejected` | schreiben, was besteht, und die Abgelehnten liegen lassen (nie beim Löschen) |
 
@@ -987,6 +987,23 @@ Eine Auswahl ohne jede Bedingung lehnt der Server ab — sie träfe den ganzen
 Bestand. Jeder geänderte Artikel geht durch `validateEntity`; besteht einer
 nicht, wird **nichts** geschrieben. Wird die Kampfrolle eine Aufzählung,
 lehnt die Prüfung ein Wort ausserhalb der Liste ab — die Vorschau sagt es.
+
+**Eine Ebene leeren** (T-176): Account › Layers › *Empty…* an einer
+eigenen Ebene (die Verwaltung an jeder) zeigt erst Zahl und Namen, löscht
+nach dem Bestätigen alles darin als **eine** Massenänderung (`select.layer`
+plus `delete`) und bietet gleich *Undo* an; sonst Werkbank › Undo. Die
+Ebene selbst bleibt, mit Rechten und Aufschaltung. Auf der Kommandozeile
+dasselbe als Datei: `{ "select": { "layer": "<ebene>" }, "ops": [{ "op": "delete" }] }`.
+Verweise im Fliesstext auf gelöschte Artikel bleiben stehen; `checks
+brokenLinks` zählt sie.
+
+**Die Schreibebene wählen** (T-176): *Make default* an einer Ebene, in der
+man schreibt und die im Spiel ist, legt fest, wohin neue Artikel gehen
+(`PUT /api/layers/<ebene>/default`, die Verwaltung auch für ein anderes
+Konto mit `{ "user": "<konto-id>" }`; zurück: `DELETE /api/layers/default`).
+Gespeichert ist es als Kontoeinstellung `writeLayer` je Kampagne. Die
+Verwaltung legt ohne Wahl wie bisher ohne Ebene an, mit Wahl dort — so
+landen Tests in einer Testebene und gehen mit *Empty…* wieder.
 
 **Rückgängig** setzt jede alte Fassung wieder hin und holt gelöschte
 Artikel zurück. Hat jemand einen der Artikel seither anders geändert,

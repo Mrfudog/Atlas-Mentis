@@ -1282,6 +1282,14 @@ export class Api {
   setWriteLayer(layer: string | null): Promise<Schreibstand> {
     return this.call('/api/layers/write', { method: 'PUT', body: JSON.stringify({ layer }) });
   }
+  /** Die Schreibebene wählen (T-176): hierhin wird angelegt, solange die Ebene im Spiel ist. */
+  chooseDefaultLayer(id: string): Promise<{ layer: { id: string; name: string } }> {
+    return this.call(`/api/layers/${encodeURIComponent(id)}/default`, { method: 'PUT', body: JSON.stringify({}) });
+  }
+  /** Eine Ebene leeren (T-176): erst `dryRun`, dann mit der Zahl aus der Vorschau. Zurück über `undo`. */
+  emptyLayer(id: string, body: { dryRun?: boolean; confirmDelete?: number }): Promise<BulkAntwort> {
+    return this.call<BulkAntwort>(`/api/layers/${encodeURIComponent(id)}/empty`, { method: 'POST', body: JSON.stringify(body) });
+  }
   /** Eine Spielerebene übernehmen (T-164): Inhalt in die Ebene der Kampagne, die leere Ebene weg. */
   takeOverLayer(id: string): Promise<EbenenUebernahme> {
     return this.call(`/api/layers/${encodeURIComponent(id)}/takeover`, { method: 'POST' });

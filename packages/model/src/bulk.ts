@@ -15,6 +15,7 @@
 import { z } from 'zod';
 import { articleId, entityName, setTags, tagsOf, typeChain } from './entity.js';
 import { stableJson } from './checks.js';
+import { detachInstance, INSTANCE_RELATION, isInstance } from './instance.js';
 import type { Entity, Registry, Relation } from './types.js';
 import { LAYER_RELATION } from './visibility.js';
 
@@ -66,6 +67,9 @@ const OpSchema = z.discriminatedUnion('op', [
     /** `name`: eine Gruppe je Art und Name. `content`: dazu gleicher Inhalt. */
     by: z.enum(['name', 'content']).optional(),
   }),
+  /** Die Auswahl löschen (T-176), mit ihren Teilen; was von aussen auf sie
+   *  zeigt, verliert die Kante. Steht allein, wie `merge`. */
+  z.object({ op: z.literal('delete') }),
 ]);
 export type BulkOp = z.infer<typeof OpSchema>;
 
@@ -379,6 +383,53 @@ const ohneVerwaltung = (e: Entity) => {
 };
 
 /**
+ * **Die Teile, die mit einem gelöschten Artikel gehen** (T-176) — dieselbe
+ * Regel wie beim Löschen eines einzelnen (`DELETE /api/entities/:id`):
+ * eine Instanz, die über eine Kante mit `asField: 'to'` an ihm hängt (der
+ * eigene Statblock aus einer Vorlage), das Inventar, das nur er trägt
+ * (`asField: 'from'`), und die Stücke (Instanzen, T-150), die nur ein
+ * gehendes Inventar hält. Ein eigener Statblock ohne Vorlage und ein
+ * Grundartikel im Inventar stehen für sich und bleiben. Bis nichts mehr
+ * dazukommt: ein Rucksack im Inventar einer Figur trägt selbst eines.
+ */
+export function teileDazu(
+  registry: Pick<Registry, 'relations'>,
+  raw: ReadonlyMap<string, Entity>,
+  geloescht: ReadonlySet<string>,
+): Map<string, string> {
+  const anArt = new Set<string>();
+  const traegtArt = new Set<string>();
+  for (const r of Object.values(registry.relations)) {
+    if (r.asField === 'to') anArt.add(r.type);
+    if (r.asField === 'from') traegtArt.add(r.type);
+  }
+  /** Wer etwas trägt oder hält, je Ziel. */
+  const halter = new Map<string, { von: string; stueck: boolean }[]>();
+  for (const e of raw.values()) {
+    for (const r of e.relations ?? []) {
+      if (!traegtArt.has(r.type) && r.type !== 'holds') continue;
+      (halter.get(r.to) ?? halter.set(r.to, []).get(r.to)!).push({ von: e.id, stueck: r.type === 'holds' });
+    }
+  }
+  const weg = new Set(geloescht);
+  const raus = new Map<string, string>();
+  for (let neu = true; neu; ) {
+    neu = false;
+    for (const e of raw.values()) {
+      if (weg.has(e.id)) continue;
+      let von = isInstance(e) ? (e.relations ?? []).find((r) => anArt.has(r.type) && weg.has(r.to))?.to : undefined;
+      const h = halter.get(e.id) ?? [];
+      if (!von && h.length && h.every((x) => weg.has(x.von)) && h.every((x) => !x.stueck || isInstance(e))) von = h[0]!.von;
+      if (!von) continue;
+      weg.add(e.id);
+      raus.set(e.id, von);
+      neu = true;
+    }
+  }
+  return raus;
+}
+
+/**
  * Was ein Lauf ändern würde. `raw` ist der gespeicherte Bestand (Instanzen
  * dünn, wie sie liegen) — geändert wird, was gespeichert ist, nicht die
  * aufgelöste Fassung. `selected` sind die Ids, die die Auswahl traf.
@@ -394,6 +445,8 @@ export function planBulk(
   const geloescht = new Set<string>();
   /** Gelöscht → wohin umgehängt; nur für die Zeile „merged into …". */
   const wohin = new Map<string, string>();
+  /** Gelöscht als Teil von → wem; nur für die Zeile „part of …". */
+  const teilVon = new Map<string, string>();
   const problem = (e: Entity, reason: string) =>
     skipped.push({ id: e.id, name: entityName(e), type: e.interfaces?.[0] ?? '', reason });
   const vergeben = new Set<string>();
@@ -407,7 +460,25 @@ export function planBulk(
   const ziele = selected.map((id) => raw.get(id)).filter((e): e is Entity => !!e);
 
   const merge = ops.find((o) => o.op === 'merge');
-  if (merge && merge.op === 'merge') {
+  if (ops.some((o) => o.op === 'delete')) {
+    for (const e of ziele) geloescht.add(e.id);
+    for (const [id, von] of teileDazu(registry, raw, geloescht)) {
+      geloescht.add(id);
+      teilVon.set(id, von);
+    }
+    /* Was bleibt, zeigt danach nicht ins Leere (T-176): eine Kante auf
+       einen gehenden Artikel geht mit, und eine Instanz einer gehenden
+       Vorlage bekommt vorher, was sie von ihr las (wie beim Löschen eines
+       einzelnen Artikels). Verweise im Fliesstext bleiben stehen — sie
+       sind Text, und `brokenLinks` zählt sie. */
+    for (const e of raw.values()) {
+      if (geloescht.has(e.id)) continue;
+      const vorlage = (e.relations ?? []).find((r) => r.type === INSTANCE_RELATION)?.to;
+      const basis = vorlage && geloescht.has(vorlage) ? detachInstance(raw, e) : e;
+      const kanten = (basis.relations ?? []).filter((r) => !geloescht.has(r.to));
+      if (basis !== e || kanten.length !== (e.relations ?? []).length) nachher.set(e.id, { ...klon(basis), relations: kanten });
+    }
+  } else if (merge && merge.op === 'merge') {
     const gruppen = new Map<string, Entity[]>();
     for (const e of ziele) {
       const k = `${e.interfaces?.[0] ?? ''}\u0000${entityName(e).trim().toLowerCase()}${merge.by === 'content' ? `\u0000${ohneVerwaltung(e)}` : ''}`;
@@ -526,10 +597,15 @@ export function planBulk(
   }
 
   const changes: BulkChange[] = [];
+  const nenne = (e: Entity | undefined) => (e ? `${entityName(e)} (${articleId(e) || e.id})` : '?');
   for (const id of geloescht) {
     const before = raw.get(id)!;
-    const ziel = raw.get(wohin.get(id) ?? '');
-    changes.push({ id, before, after: null, summary: [`deleted — merged into ${ziel ? `${entityName(ziel)} (${articleId(ziel) || ziel.id})` : '?'}`] });
+    const zeile = wohin.has(id)
+      ? `deleted — merged into ${nenne(raw.get(wohin.get(id)!))}`
+      : teilVon.has(id)
+        ? `deleted — part of ${nenne(raw.get(teilVon.get(id)!))}`
+        : 'deleted';
+    changes.push({ id, before, after: null, summary: [zeile] });
   }
   for (const [id, after] of nachher) {
     const before = raw.get(id) ?? null;

@@ -13,11 +13,11 @@
  *    sagt es (`dropped`). Die Wahl bleibt stehen — schaltet die Leitung
  *    die Ebene wieder auf, gilt sie wieder.
  *  - **Die Maske schlägt vor, der Server prüft**: geschrieben wird die Wahl
- *    nur über `PUT /api/layers/write`, nicht über `/api/me/prefs`.
+ *    nur über `PUT /api/layers/write` (oder Account › Layers,
+ *    `PUT /api/layers/:layer/default`, T-176), nicht über `/api/me/prefs`.
  */
 
-/** Der Schlüssel in den Einstellungen des Kontos (`/api/me/prefs`). */
-export const WRITE_LAYER_PREF = 'writeLayer';
+import { WRITE_LAYER_PREF } from '@nw/model';
 
 /** Die gewählte Ebene in dieser Kampagne, wie sie in den Einstellungen steht. */
 export function gewaehlteEbene(prefs: Record<string, unknown>, campaignId: string): string | null {
