@@ -751,6 +751,17 @@ und wo ein Kürzel steht, zeigt die Seite den Titel beim Darüberfahren und
 auf dem Telefon beim Antippen. Was eine Ebene enthält, wird gezählt, wenn
 man fragt — gespeichert wäre es nach dem ersten neuen Artikel falsch (D8).
 
+**Der Herausgeber ist eine Gruppe, kein Feld** (T-094, REQ-249). Die
+Leitung will offizielles D&D auf einen Blick von Partner-Inhalten,
+Drittanbietern und Homebrew unterscheiden. Ein Feld `Layer.publisher` hätte
+die Marke getragen — aber „alle offiziellen Bücher an" wäre dann wieder
+eine Kante je Buch gewesen, und neben einer Gruppe „Partnered" stünde ein
+Feld, das etwas anderes sagen kann. Also ist ein Herausgeber eine Gruppe wie
+eine Kategorie (E-022 b), sie sagt mit `groupBy: 'publisher'`, in welche
+Ansicht sie gehört, und die Marke an einer Ebene wird aus ihr gerechnet.
+Was in keiner Herausgeber-Gruppe steht, ist **Homebrew**: eigener Inhalt
+braucht keinen Verlag, um als eigener erkannt zu werden.
+
 > **Die dritte Zeile der Tabelle ist die, die heute zählt.** Von
 > fünfundsiebzig Artikeln tragen fünfundsechzig keine Ebenenkante — die
 > Regel „ohne Ebene gehört er der Kampagne und ist immer da" (siehe

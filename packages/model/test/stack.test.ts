@@ -18,6 +18,9 @@ import {
   offLayers,
   resolvedStack,
   withOff,
+  groupingOf,
+  publisherOf,
+  HOMEBREW,
 } from '../src/stack.js';
 import type { Entity, EntityId } from '../src/types.js';
 
@@ -277,5 +280,40 @@ describe('groups of layers (T-088)', () => {
   it('never makes a group the place for new articles', () => {
     const k = K(an('g_core'));
     expect(campaignLayer(welt(k), k)).toBeNull();
+  });
+});
+
+describe('publisher groups (T-094)', () => {
+  const L = (id: string, name: string, layer: Record<string, unknown>, partOf: string[] = []): Entity => ({
+    id,
+    name,
+    interfaces: ['Layer'],
+    components: { Layer: layer },
+    relations: partOf.map((to, i) => ({ id: `${id}~${i}`, type: 'partOf', to })),
+  });
+  const w = new Map<EntityId, Entity>(
+    [
+      L('g_off', 'Official', { kind: 'group', groupBy: 'publisher' }),
+      L('g_part', 'Partnered', { kind: 'group', groupBy: 'publisher' }),
+      L('g_sett', 'Settings', { kind: 'group' }),
+      L('xge', 'Xanathar', { kind: 'book' }, ['g_off']),
+      L('egw', 'Wildemount', { kind: 'book' }, ['g_sett', 'g_part']),
+      L('eigen', 'Ebene: Nebelwacht', { kind: 'campaign' }),
+    ].map((e) => [e.id, e]),
+  );
+
+  it('reads the publisher from the publisher group, and a category group is no publisher', () => {
+    expect(publisherOf(w, w.get('xge'))).toBe('Official');
+    expect(publisherOf(w, w.get('egw'))).toBe('Partnered');
+  });
+
+  it('calls a layer in no publisher group homebrew, and a group has none', () => {
+    expect(publisherOf(w, w.get('eigen'))).toBe(HOMEBREW);
+    expect(publisherOf(w, w.get('g_off'))).toBe('');
+  });
+
+  it('groups by category unless the group says publisher', () => {
+    expect(groupingOf(w.get('g_sett'))).toBe('category');
+    expect(groupingOf(w.get('g_part'))).toBe('publisher');
   });
 });
