@@ -70,6 +70,15 @@ describe('anordnen', () => {
   });
 });
 
+describe('Element map (T-115)', () => {
+  it('zeichnet die Karte samt ihrem Bild und nimmt `Image.image` aus dem Rest', () => {
+    const bild = { wert: 'as-1', caption: '', alt: '' };
+    const zelle = { ref: 'Image.image', comp: 'Image', prop: 'image', label: 'Image', wert: 'as-1' };
+    const st = anordnen([{ id: 'm', el: 'map' }], [zelle], [], { beschreibung: null, rest: true, bild });
+    expect(st).toEqual([{ id: 'm', art: 'karte', bild }]);
+  });
+});
+
 describe('Editor-Helfer', () => {
   it('vergibt eine freie Id, auch über Reiter und geerbte Elemente hinweg', () => {
     const l: LayoutElement[] = [

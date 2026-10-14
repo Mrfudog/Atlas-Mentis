@@ -59,6 +59,7 @@ import { KurzPopup } from './artikel/kurzpopup';
       <header class="leiste">
         <a routerLink="/" class="marke">Atlas Mentis</a>
         <nav aria-label="Areas" class="bereiche">
+          <a routerLink="/play" routerLinkActive="an" ariaCurrentWhenActive="page">Play</a>
           <a routerLink="/boards" routerLinkActive="an" ariaCurrentWhenActive="page">Boards</a>
           @for (b of bereiche; track b.weg) {
             <a [routerLink]="'/' + b.weg" routerLinkActive="an" ariaCurrentWhenActive="page">{{

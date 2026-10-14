@@ -551,6 +551,7 @@ export function wasLaedt(path: string): string {
   if (path.startsWith('/api/checks') || path.startsWith('/api/bulk')) return 'workbench';
   if (path.startsWith('/api/read')) return 'book';
   if (path.startsWith('/api/layers')) return 'layers';
+  if (path.startsWith('/api/maps') || path.startsWith('/api/play')) return 'map';
   return 'data';
 }
 
@@ -764,6 +765,14 @@ export class Api {
   /** Diese Artikel ganz, gesiebt — die Teile eines Statblocks (W2). */
   entitiesById(ids: readonly string[]): Promise<Entity[]> {
     return this.call<Entity[]>(`/api/entities?ids=${ids.map(encodeURIComponent).join(',')}`);
+  }
+  /** Was neben einer Karte steht: Brotkrumen, Unterkarten, Markerziele, Gruppe (T-115). */
+  mapContext(id: string): Promise<KartenKontext> {
+    return this.call<KartenKontext>(`/api/maps/${encodeURIComponent(id)}/context`);
+  }
+  /** Welche Karte auf dem Tisch liegt (`SessionState.activeMap`, T-115). */
+  play(session?: string): Promise<Tisch> {
+    return this.call<Tisch>(`/api/play${session ? `?session=${encodeURIComponent(session)}` : ''}`);
   }
   backlinks(id: string): Promise<Rueckbezug[]> {
     return this.call<Rueckbezug[]>(`/api/entities/${encodeURIComponent(id)}/backlinks`);
@@ -1064,4 +1073,21 @@ export class Api {
   dropInvite(handle: string): Promise<unknown> {
     return this.call(`/api/invites/${encodeURIComponent(handle)}`, { method: 'DELETE' });
   }
+}
+
+/** Was neben einer Karte steht (`GET /api/maps/:id/context`, T-115). */
+export interface KartenKontext {
+  parents: { id: string; name: string }[];
+  children: { id: string; name: string; frame: { x: number; y: number; w: number; h: number } }[];
+  targets: Record<string, { name: string; type: string; image?: string }>;
+  party: { id: string; name: string; x: number; y: number; mapId: string; mapName: string; direct: boolean } | null;
+}
+
+/** Was auf dem Tisch liegt (`GET /api/play`, T-115). */
+export interface Tisch {
+  campaign: { id: string; name: string } | null;
+  sessions: { id: string; name: string; activeMap: string | null; mapName: string | null }[];
+  session: string | null;
+  map: string | null;
+  maps: { id: string; name: string }[];
 }

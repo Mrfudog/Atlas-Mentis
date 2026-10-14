@@ -62,6 +62,15 @@ export const routes: Routes = [
     loadComponent: () => import('./boards/board').then((m) => m.Board),
     title: 'Board · Atlas Mentis',
   },
+  /* Play › Map (T-115): die Karte der laufenden Sitzung. Ein Schirm,
+     kein Bereich — Karte, Initiative und Boards sucht man mitten im Kampf
+     nicht in einer Liste (CLAUDE.md, „Play ist ein Schirm"). */
+  {
+    path: 'play',
+    canActivate: [wache],
+    loadComponent: () => import('./karten/play').then((m) => m.Play),
+    title: 'Play · Atlas Mentis',
+  },
   /* Werkbank (W9): Prüfungen und Massenänderungen. Die Wache lässt jeden
      Angemeldeten hinein; was er sieht, entscheidet der Server — die Seite
      sagt nur, wem sie etwas zeigt. */

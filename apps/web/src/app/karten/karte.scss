@@ -1,0 +1,278 @@
+/* Die Karte nach docs/Karten.md: eine Leiste, die Bühne mit dem Kasten, der
+   genau so gross ist wie das Bild, und eine Zeile Stand darunter. Farben
+   nur aus den Marken. */
+:host {
+  display: block;
+  --gitter: rgb(60 40 20 / 0.35);
+}
+.karte {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.leiste {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+.brot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+  color: var(--dim);
+  font-size: 0.95rem;
+}
+.brot b {
+  color: var(--ink);
+}
+.werkzeuge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.werkzeuge button.an {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--surface);
+}
+.zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--dim);
+}
+.zoom span {
+  min-width: 3rem;
+  text-align: center;
+}
+button {
+  min-height: 36px;
+  min-width: 36px;
+}
+.blaetter {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+}
+.blaetter label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 32px;
+}
+.marke {
+  font-size: 0.75rem;
+  padding: 0 0.3rem;
+  border-radius: 3px;
+  background: var(--chip);
+  color: var(--dim);
+}
+.setzen {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.setzen p {
+  margin: 0;
+}
+
+.buehne {
+  position: relative;
+  overflow: auto;
+  height: min(70vh, 720px);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--chip);
+  /* Alle Gesten gehören der Karte: ein Finger schwenkt, zwei zoomen. Der
+     Browser würde sonst die Seite zoomen statt der Karte. */
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  outline: none;
+}
+.buehne:focus-visible {
+  outline: 2px solid var(--gold);
+}
+.buehne.werkzeug {
+  cursor: crosshair;
+}
+.gross .buehne {
+  height: calc(100dvh - 12rem);
+  min-height: 320px;
+}
+.innen {
+  position: relative;
+  min-width: 100%;
+}
+.blatt {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.blatt.grund {
+  position: relative;
+  display: block;
+  height: auto;
+}
+.gemessen .blatt.grund {
+  height: 100%;
+}
+.gitter {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.mess {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+.mess line {
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-dasharray: 6 4;
+}
+.messwert {
+  position: absolute;
+  transform: translate(0.5rem, -130%);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-size: 0.9rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Unterkarten: ein Rahmen, ein Klick hinein. Nah heisst: der nächste
+   Zoomschritt betritt ihn — er sagt es vorher. */
+.rahmen {
+  position: absolute;
+  border: 2px dashed rgb(140 28 19 / 0.7);
+  border-radius: 3px;
+  color: var(--ink);
+  text-decoration: none;
+  display: flex;
+  align-items: flex-start;
+}
+.rahmen span {
+  margin: 2px;
+  padding: 0 0.3rem;
+  border-radius: 3px;
+  background: rgb(251 246 236 / 0.85);
+  font-size: 0.8rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rahmen:hover,
+.rahmen:focus-visible {
+  background: rgb(140 28 19 / 0.08);
+}
+.rahmen.nah {
+  border-style: solid;
+  border-width: 3px;
+  background: rgb(140 28 19 / 0.1);
+}
+.rahmen.nah span {
+  font-weight: 600;
+}
+
+/* Ein Marker ist ein Kreis mit Rand: jemand steht auf der Karte. Ein Möbel
+   liegt auf ihr — ohne Kreis, ohne Rand. */
+.marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  background: var(--accent);
+  color: var(--surface);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font: 600 0.75rem var(--sans);
+  cursor: pointer;
+  touch-action: none;
+}
+.marker img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.marker:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+.marker.k-party {
+  background: var(--gold);
+  border-color: var(--ink);
+}
+.marker.k-quest {
+  background: #2e6b4f;
+}
+.marker.k-play {
+  background: #34506e;
+}
+.marker.k-scenery {
+  border-radius: 2px;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink);
+}
+.marker.k-scenery:hover {
+  outline: 1px dashed var(--ink);
+}
+.marker.abgeleitet {
+  border-style: dashed;
+  opacity: 0.9;
+}
+.marker.versteckt {
+  opacity: 0.5;
+  border-style: dashed;
+}
+.marker.zieht {
+  box-shadow: 0 0 0 3px var(--gold);
+  cursor: grabbing;
+}
+
+.stand,
+.leer {
+  margin: 0;
+  color: var(--dim);
+  font-size: 0.9rem;
+}
+.fehler {
+  color: var(--warn);
+}
+
+@media (max-width: 640px) {
+  .buehne {
+    height: 60vh;
+  }
+  .gross .buehne {
+    height: calc(100dvh - 14rem);
+  }
+}

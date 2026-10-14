@@ -53,6 +53,11 @@ import { Bild, bildDes } from './bild';
         @case ('bild') {
           <nw-bild [wert]="st.bild!.wert" [groesse]="ansicht() === 'full' ? 'full' : 'thumb'" [caption]="st.bild!.caption" [alt]="st.bild!.alt" [oeffnen]="false" />
         }
+        @case ('karte') {
+          @if (st.bild; as b) {
+            <nw-bild [wert]="b.wert" [groesse]="ansicht() === 'full' ? 'full' : 'thumb'" [caption]="b.caption" [alt]="b.alt" [oeffnen]="false" />
+          }
+        }
         @case ('absatz') {
           <p class="beschreibung">{{ st.text }}</p>
         }
