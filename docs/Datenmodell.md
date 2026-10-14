@@ -1118,6 +1118,20 @@ der Boards und ihr Pfad „Kampagne › Kapitel › Sitzung" kommen ohne einen
 ganzen Artikel aus: `/api/list?rel=partOf` schickt die Kante je Zeile mit
 (W7).
 
+**Ein Bereich ist ein Anker mit Rechteck** (T-073, REQ-159): ein Eintrag
+in `Board.anchors` mit `id`, `name`, `x`, `y` und dazu `w`, `h`. Ohne
+Breite und Höhe bleibt er ein Punkt (wie der Prototyp ihn anlegt, mit
+`zoom`). Kein neues Feld: ein Bereich ist eine Stelle, zu der man
+springt, und das war der Anker schon — eine Form mit Namen (`shapes`) ist
+Zeichnung und springt nirgends hin. **Welche Karten dazugehören, sagt die
+Lage** (`anchorAreaOf`): ihre Mitte liegt im Rechteck, bei mehreren im
+kleinsten. Eine Kante dafür wäre dieselbe Auskunft zweimal, und nach dem
+ersten Verschieben stimmte eine davon nicht mehr. Die Anker stehen oben
+als Reiter (ein Klick springt hin), ein Bereich lässt sich einklappen —
+dann zeigt er nur seine Titelzeile, und seine Karten sind verborgen,
+nicht verschoben. **Eingeklappt ist je Betrachter** (im Browser): am
+Board gespeichert klappte ein Spieler der Leitung die Conditions zu.
+
 Eine Spieleransicht gibt es nicht: gesiebt wird am Server, alle sehen
 dieselbe Ansicht. **Die Sicht eines Mitglieds** (REQ-241) ist darum keine
 Ansicht, sondern ein anderes Konto in derselben Rechnung: mit `X-View-As`
