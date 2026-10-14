@@ -734,6 +734,14 @@ heute `Statblock` und `Item` (M4: das +1-Langschwert am Tisch ist eine
 Instanz des Langschwerts), und `to: same` hält die Instanz in der Art ihrer
 Vorlage. Ein eigener Typ dafür wäre derselbe Typ ein zweites Mal.
 
+**Was eine Figur in die Hand bekommt, entsteht als Instanz** (T-150, zuerst
+beim Kauf, T-133): `newInstance` legt den Artikel an — `instanceOf` auf den
+Grundartikel, `inLayer` in die Ebene der Kampagne, `Identity` mit dem Namen
+der Vorlage und einer neuen Nummer, `Status: ready`, sonst nichts. Eine
+Funktion für Kauf, Beute, Handwerk und Geschenke. `followsTemplate` sagt, ob
+eine Instanz in nichts abweicht — dann ist sie ein beliebiges Stück und
+darf einen Stapel bilden.
+
 ---
 
 ## 8. Ebenen und Stapel
@@ -1123,9 +1131,15 @@ flowchart LR
 - **Kaufen** (T-133, `POST /api/shops/:id/buy`, `buyWare`): die Maske
   schickt Ware (`sells`-Kante), Menge und Figur — **nie einen Preis**; der
   Server rechnet `shopWares` für diese Figur neu. Die gezählte Menge sinkt
-  (leer bleibt unbegrenzt), der Gegenstand kommt per `holds` ins Inventar,
-  das die Figur trägt (`carries`) — auf einen losen Stapel desselben, wenn
-  einer daliegt —, und `Inventory.copper` sinkt um Preis × Menge. Nein
+  (leer bleibt unbegrenzt), und `Inventory.copper` sinkt um Preis × Menge.
+  Ins Inventar, das die Figur trägt (`carries`), kommt per `holds` **eine
+  Instanz** des Gegenstands (`newInstance`, T-150): ein eigener Artikel mit
+  `instanceOf` auf den Grundartikel, in der Ebene der Kampagne, `ready`,
+  sonst nur Name und Nummer — Preis, Gewicht und Form liest er von der
+  Vorlage, bis er abweicht. Liegt schon ein loser Stapel desselben da (der
+  Grundartikel selbst oder eine Instanz, die nicht abweicht,
+  `followsTemplate`), wächst der, und es entsteht nichts. Wer kauft, hat
+  das Stück angelegt (`app_user_article`, D72) und darf es ändern. Nein
   sagen `soldOut`, `unavailable`, `tooFew`, `noPrice` (verschenkt wird
   nichts), `tooPoor`; ohne Inventar gibt es nichts zu bezahlen.
 - **Verkaufen** (`POST /api/shops/:id/sell`, `sellPiece`): ein Stapel aus
@@ -1133,9 +1147,12 @@ flowchart LR
   zum **Ankaufspreis** `buybackPrice` = halber Listenpreis, abgerundet (5e;
   ob ein Laden einen eigenen Satz trägt, ist offen: E-045). Rabatte gelten
   nur beim Kaufen. Ein **reserviertes** Stück (`holds.props.reservedFor`,
-  T-128) und ein Behälter, in dem noch etwas liegt, bleiben. Führt der
-  Laden den Gegenstand mit gezählter Menge, steigt sie; sonst nimmt er ihn
-  nicht ins Sortiment.
+  T-128) und ein Behälter, in dem noch etwas liegt, bleiben. Eine
+  Instanz, die **nicht abweicht**, zählt als Grundartikel: führt der Laden
+  ihn mit gezählter Menge, steigt sie, und ist der Stapel ganz verkauft,
+  wird die Instanz gelöscht. Eine, die **abweicht** (eigener Name, Gravur),
+  geht als dieses Stück über den Tresen — der Laden führt sie danach selbst
+  (`sells` auf die Instanz), und wer sie zurückkauft, bekommt genau sie.
 - **Wer handelt:** für die eigene Figur (D74, wie beim Inventar), die
   Leitung für jede. Laden und Inventar werden **gegen die gelesene
   Revision** geschrieben — kaufen zwei die letzte Laterne, bekommt sie

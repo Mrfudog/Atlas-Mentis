@@ -1544,6 +1544,15 @@ Die Menge am Laden sinkt, das Stück liegt danach im Inventar der Figur,
 und die Münzen gehen von dort ab — drei Stellen, die gemeinsam stimmen
 müssen, darum schreibt sie eine Route und nicht drei Masken.
 
+**Gekauft wird ein Stück, nicht der Artikel** (T-133, T-150). Die Laterne
+im Kompendium ist die Vorlage; was Ash über den Tresen bekommt, ist eine
+Instanz davon — ein eigener Artikel, der nur speichert, was an *dieser*
+Laterne anders ist. Hängte das Inventar am Grundartikel, wäre eine Gravur
+an Ashs Laterne eine an jeder, und eine Korrektur am Preis im Kompendium
+erreichte eine Kopie nie. Zehn gleiche Fackeln sind trotzdem ein Stapel:
+eine Instanz, die nicht abweicht, nimmt die nächsten auf, und verkauft
+fällt sie wieder weg. Eine abweichende geht als sie selbst an den Laden.
+
 **Verkauft wird zum halben Listenpreis** — die Regel aus 5e, Rabatte
 gelten dabei nicht. Ein Stück, das für einen Fertigungsauftrag reserviert
 ist, verkauft man nicht: es gehört schon dem Auftrag. Ob ein Hehler weniger

@@ -143,6 +143,32 @@ describe('Kaufen und Verkaufen (T-133)', () => {
     expect(ev?.payload).toMatchObject({ actor: 'f', item: 'laterne', total: 500, rule: 'half' });
   });
 
+  it('legt Gekauftes als Instanz an (T-150) und verkauft sie wieder — danach ist sie weg', async () => {
+    const inv0 = await repo.getEntity('inv-f');
+    await repo.putEntity({ ...inv0!, relations: inv0!.relations!.filter((x) => x.id !== 'h1') });
+    const r = await kaufen('spiel', { actor: 'f', edge: 'l~1' });
+    expect(r.statusCode).toBe(200);
+    const piece = r.json().piece as string;
+    expect(piece).not.toBe('laterne');
+    const stueck = await repo.getEntity(piece);
+    expect(stueck?.relations?.find((x) => x.type === 'instanceOf')?.to).toBe('laterne');
+    expect(stueck?.components['Item']).toBeUndefined();
+    expect(stueck?.components['Identity']?.['name']).toBe('Lantern');
+    const inv = await repo.getEntity('inv-f');
+    const kante = inv?.relations?.find((x) => x.type === 'holds' && x.to === piece);
+    expect(kante?.props?.['qty']).toBe(1);
+    /* Gelesen wird die Instanz samt Vorlage — die Spielerin sieht ihr Stück mit Preis. */
+    const g = await app.inject({ method: 'GET', url: `/api/entities/${piece}`, headers: { cookie: await anmelden('spiel') } });
+    expect(g.statusCode).toBe(200);
+    expect(g.json().components.Item.copperPrice).toBe(1000);
+    /* Ein zweiter Kauf legt auf denselben Stapel. */
+    expect((await kaufen('spiel', { actor: 'f', edge: 'l~1' })).json().piece).toBe(piece);
+    const v = await verkaufen('spiel', { actor: 'f', inventory: 'inv-f', edge: kante!.id, qty: 2 });
+    expect(v.json()).toMatchObject({ qty: 2, unit: 500 });
+    expect(await repo.getEntity(piece)).toBeFalsy();
+    expect((await repo.getEntity('laden'))?.relations?.find((x) => x.id === 'l~1')?.props?.['qty']).toBe(3);
+  });
+
   it('verkauft nicht aus fremdem Inventar', async () => {
     const r = await verkaufen('spiel', { actor: 'f', inventory: 'inv-x', edge: 'h1' });
     expect(r.statusCode).toBe(403);

@@ -15498,8 +15498,9 @@ var BEGRIFFE=[
    "shop, a faction that controls it or its shopkeeper to a character, a "+
    "party or a faction from a rank on; the price is worked out on read and "+
    "says where every step comes from. Buying and selling happen on the "+
-   "server: the counted quantity falls, the item goes into the inventory "+
-   "the character carries and the coins come off; selling pays half the "+
+   "server: the counted quantity falls, an instance of the item (it stores "+
+   "only what differs) goes into the inventory the character carries and "+
+   "the coins come off; selling pays half the "+
    "list price and never takes a reserved piece. On a "+
    "map, a token is an edge with coordinates, and whether it is hidden "+
    "from the players and how stealthy it is sit on that edge too — the same "+
@@ -15938,12 +15939,15 @@ function renderHowto(v){
     v.appendChild(el("p",{class:"hint"},
       "Buying sends the ware, the quantity and the character — never a "+
       "price; the server works it out again. Two lanterns for Ysolde: the "+
-      "quantity on the sells edge falls from 3 to 1, a holds edge to the "+
-      "Lantern joins (or grows) a loose stack in her inventory, and "+
+      "quantity on the sells edge falls from 3 to 1, a new instance of the "+
+      "Lantern (instanceOf, nothing else of its own) lands in her inventory "+
+      "on a holds edge — or a plain one already there grows by two — and "+
       "Inventory.copper drops by twice the price. Too little money, more than "+
       "the shop has, or a quantity of 0 is a no. Selling pays half the list "+
       "price, discounts or not; a reserved piece or a container that still "+
-      "holds something stays put, and a ware the shop counts gets one more."));
+      "holds something stays put, and a ware the shop counts gets one more. "+
+      "A plain instance sold off is deleted; an engraved one goes over the "+
+      "counter as itself and the shop sells that very piece."));
     v.appendChild(el("pre",{class:"code",text:
       "Ysolde buys 2 × Lantern   purse 20 gp → "+((2000-2*(lp+sp+ware+gilde))/100)+" gp   "+slP.qty.title+" 3 → 1\n"+
       "Ysolde sells 1 × Lantern  purse +"+(Math.floor(lp/2)/100)+" gp           "+slP.qty.title+" 1 → 2"}));

@@ -7,7 +7,10 @@
  * Gehandelt wird für eine eigene Figur (D74, wie beim Inventar), die
  * Leitung handelt für jede. Laden und Inventar werden gegen die gelesene
  * Revision geschrieben: kaufen zwei gleichzeitig die letzte Laterne, geht
- * einer leer aus, statt dass beide sie bekommen. Jeder Handel steht im
+ * einer leer aus, statt dass beide sie bekommen. **Was gekauft wird,
+ * entsteht als Instanz** des Grundartikels (`newInstance`, T-150) in der
+ * Ebene der Kampagne — ausser es wächst ein loser Stapel desselben; eine
+ * beliebige Instanz, die ganz verkauft ist, fällt wieder weg. Jeder Handel steht im
  * Protokoll (`shop.bought`, `shop.sold`) — wer, was, wie viel, der Preis
  * und woher jeder Abschlag kam.
  */
@@ -18,6 +21,9 @@ import {
   currentCampaign,
   entityName,
   insideOf,
+  isInstance,
+  newInstance,
+  nextId,
   primaryInterface,
   sellPiece,
   SHOP_TYPE,
@@ -45,6 +51,7 @@ export interface LadenDeps {
     entity: Entity,
     erwartet?: number | null,
   ) => Promise<{ stored: Entity } | { issues: ReturnType<typeof validateEntity> }>;
+  kampagnenEbene: (map: Map<string, Entity>, kampagne: Entity | null) => Promise<Entity | null>;
 }
 
 /** Was die Ablehnung heisst — die Maske sagt es auf Englisch, der Code steht dabei. */
@@ -69,7 +76,7 @@ export function inventareDerFigur(figur: Entity, map: ReadonlyMap<string, Entity
 }
 
 export function registerLaden(app: FastifyInstance, deps: LadenDeps): void {
-  const { repo, viewerOf, roh, sieve, schreibeGeprueft } = deps;
+  const { repo, viewerOf, roh, sieve, schreibeGeprueft, kampagnenEbene } = deps;
 
   /**
    * Was beide Routen zuerst fragen: angemeldet, der Laden sichtbar und ein
@@ -78,7 +85,7 @@ export function registerLaden(app: FastifyInstance, deps: LadenDeps): void {
    */
   async function vorbereiten(
     request: FastifyRequest<{ Params: { id: string }; Body: { actor?: unknown } | null }>,
-  ): Promise<{ fehler: { code: number; error: string } } | { user: User; stand: Stand; laden: Entity; figur: Entity }> {
+  ): Promise<{ fehler: { code: number; error: string } } | { user: User; stand: Stand; laden: Entity; figur: Entity; kampagne: Entity | null; leitet: boolean }> {
     const user = await viewerOf(request);
     if (!user) return { fehler: { code: 401, error: 'Nicht angemeldet' } };
     const stand = await roh();
@@ -98,7 +105,7 @@ export function registerLaden(app: FastifyInstance, deps: LadenDeps): void {
     if (!leitet && !(user.actorIds ?? []).includes(figur.id)) return { fehler: { code: 403, error: 'Das ist nicht deine Figur.' } };
     /* Frisch gelesen: gegen diese Revision wird geschrieben. */
     const laden = (await repo.getEntity(roherLaden.id)) ?? roherLaden;
-    return { user, stand, laden, figur };
+    return { user, stand, laden, figur, kampagne, leitet };
   }
 
   /** Laden, dann Inventar — jeweils gegen die gelesene Revision. */
@@ -120,7 +127,7 @@ export function registerLaden(app: FastifyInstance, deps: LadenDeps): void {
     async (request, reply) => {
       const v = await vorbereiten(request);
       if ('fehler' in v) return reply.code(v.fehler.code).send({ error: v.fehler.error });
-      const { user, stand, laden, figur } = v;
+      const { user, stand, laden, figur, kampagne, leitet } = v;
       const map = new Map(stand.map).set(laden.id, laden);
       const offer = shopWares(laden, { entities: map, buyer: figur }).find((w) => w.edge === String(request.body?.edge ?? ''));
       const item = offer ? map.get(offer.item) : undefined;
@@ -132,11 +139,39 @@ export function registerLaden(app: FastifyInstance, deps: LadenDeps): void {
       const inventar = invId ? await repo.getEntity(invId) : undefined;
       if (!inventar) return reply.code(409).send({ error: 'Diese Figur trägt noch kein Inventar.', refused: 'noInventory' });
       const qty = Number(request.body?.qty ?? 1);
-      const r = buyWare(laden, inventar, offer, Number.isFinite(qty) ? qty : 1, `${inventar.id}~holds-${randomUUID().slice(0, 8)}`);
+      /* Das neue Stück: eine Instanz des Grundartikels (T-150). Führt der
+         Laden schon ein eigenes Stück (eine angekaufte Instanz), wandert
+         genau dieses — eine Instanz einer Instanz wäre ein Umweg ohne Grund. */
+      const neueId = (): string => `e_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+      let stueckId = neueId();
+      while (map.has(stueckId)) stueckId = neueId();
+      const eigenesStueck = isInstance(item);
+      const r = buyWare(
+        laden,
+        inventar,
+        offer,
+        Number.isFinite(qty) ? qty : 1,
+        { edge: `${inventar.id}~holds-${randomUUID().slice(0, 8)}`, to: eigenesStueck ? item.id : stueckId },
+        map,
+      );
       if ('refused' in r) return reply.code(409).send({ error: GRUND[r.refused], refused: r.refused });
+      let angelegt: string | undefined;
+      if (r.created && !eigenesStueck) {
+        const ebene = await kampagnenEbene(stand.map, kampagne);
+        const stueck = newInstance(item, { id: stueckId, number: nextId(stand.alle, primaryInterface(item)), layer: ebene?.id ?? null });
+        const geschrieben = await schreibeGeprueft(stueck, null);
+        if ('issues' in geschrieben) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues: geschrieben.issues });
+        angelegt = stueckId;
+        /* Das Stück gehört zur eigenen Figur (D74): wer es kauft, darf es gravieren. */
+        if (!user.isAdmin && !leitet) await repo.addAuthored(user.id, stueckId);
+      }
       const neu = r.shop === laden ? [r.inventory] : [r.shop, r.inventory];
       const fehler = await schreiben(neu, new Map([[laden.id, laden], [inventar.id, inventar]]));
-      if (fehler) return reply.code(fehler.code).send(fehler);
+      if (fehler) {
+        /* Ohne Kauf kein Stück: was eben angelegt wurde, hält niemand. */
+        if (angelegt) await repo.deleteEntity(angelegt);
+        return reply.code(fehler.code).send(fehler);
+      }
       const anzahl = Math.max(1, Math.trunc(qty) || 1);
       await repo.appendEvent('shop.bought', laden.id, {
         actor: figur.id,
@@ -148,11 +183,14 @@ export function registerLaden(app: FastifyInstance, deps: LadenDeps): void {
         ...(offer.list !== undefined ? { list: offer.list } : {}),
         ...(offer.base !== undefined ? { base: offer.base } : {}),
         steps: offer.steps,
+        piece: r.piece,
+        ...(angelegt ? { created: true } : {}),
         inventory: inventar.id,
         by: user.id,
       });
       return {
         item: { id: offer.item, name: entityName(item) },
+        piece: r.piece,
         qty: anzahl,
         unit: r.unit,
         total: r.total,
@@ -180,9 +218,13 @@ export function registerLaden(app: FastifyInstance, deps: LadenDeps): void {
       const neu = r.shop === laden ? [r.inventory] : [r.shop, r.inventory];
       const fehler = await schreiben(neu, new Map([[laden.id, laden], [inventar.id, inventar]]));
       if (fehler) return reply.code(fehler.code).send(fehler);
+      const stueck = (inventar.relations ?? []).find((x) => x.id === String(request.body?.edge ?? ''))?.to;
+      /* Eine beliebige Instanz, die niemand mehr hält, fällt weg (T-150) — der Laden zählt den Grundartikel. */
+      if (r.orphan) await repo.deleteEntity(r.orphan);
       await repo.appendEvent('shop.sold', laden.id, {
         actor: figur.id,
         item: r.item,
+        ...(stueck && stueck !== r.item ? { piece: stueck } : {}),
         qty: r.qty,
         unit: r.unit,
         total: r.total,

@@ -38,6 +38,7 @@
 import { entityName } from './entity.js';
 import { itemPrice } from './equipment.js';
 import { factionRanks } from './knowledge.js';
+import { followsTemplate, isInstance, resolveInstance, templateOf } from './instance.js';
 import type { Entity, EntityId } from './types.js';
 
 export const SHOP_TYPE = 'Shop';
@@ -181,7 +182,8 @@ export function shopWares(shop: Entity, ctx: ShopContext): WareOffer[] {
   for (const r of kanten(shop, 'sells')) {
     const item = ctx.entities.get(r.to);
     if (!item) continue;
-    const list = itemPrice(item);
+    /* Ein angekauftes Stück mit Eigenem ist eine Instanz (T-133): ihr Preis steht an der Vorlage. */
+    const list = itemPrice(resolveInstance(ctx.entities, item));
     const eigen = zahl(r.props?.['price']);
     const base = eigen !== undefined && eigen >= 0 ? eigen : list;
     const ware = typeof r.props?.['mod'] === 'string' && (r.props['mod'] as string).trim()
@@ -222,26 +224,38 @@ const mitKupfer = (inv: Entity, copper: number): Entity => ({
 });
 const stueck = (n: unknown): number => Math.max(1, Math.trunc(Number(n) || 1));
 
-/** Ein loser Stapel desselben Gegenstands: nicht reserviert, nirgends hingelegt. */
-const loseGleich = (item: EntityId) => (r: { type: string; to: string; props?: Record<string, unknown> }) =>
-  r.type === 'holds' && r.to === item && !r.props?.['reservedFor'] && ['gx', 'gy', 'rot', 'slot'].every((k) => r.props?.[k] === undefined || r.props?.[k] === null);
+/**
+ * Ein loser Stapel desselben Gegenstands: nicht reserviert, nirgends
+ * hingelegt, und entweder der Gegenstand selbst (aus der Zeit vor den
+ * Instanzen) oder eine Instanz davon, die in nichts abweicht
+ * (`followsTemplate`) — auf eine gravierte Klinge kommt keine zweite.
+ */
+const loseGleich = (item: EntityId, entities: ReadonlyMap<EntityId, Entity>) => (r: { type: string; to: string; props?: Record<string, unknown> }) => {
+  if (r.type !== 'holds' || r.props?.['reservedFor'] || !['gx', 'gy', 'rot', 'slot'].every((k) => r.props?.[k] === undefined || r.props?.[k] === null)) return false;
+  if (r.to === item) return true;
+  const stueck = entities.get(r.to);
+  return !!stueck && templateOf(entities, stueck)?.id === item && followsTemplate(entities, stueck);
+};
 
 /**
  * **Kaufen** (T-133): `qty` Stück der Ware `offer` — mit dem Preis, den
  * `shopWares` für diese Figur gerechnet hat (am Server, nie aus der
  * Maske). Die gezählte Menge an `sells` sinkt (leer bleibt unbegrenzt),
- * der Gegenstand kommt per `holds` ins Inventar — auf einen losen Stapel
- * desselben, wenn einer daliegt —, und `Inventory.copper` sinkt um den
- * Preis mal Menge. Laden und Inventar kommen neu zurück; die alten bleiben
- * unberührt.
+ * und `Inventory.copper` sinkt um den Preis mal Menge. Ins Inventar kommt
+ * **eine Instanz** des Gegenstands (`newInstance`, T-150): `piece` nennt
+ * die Kante und das neue Stück, das der Aufrufer anlegt, wenn `created`
+ * zurückkommt — liegt schon ein loser Stapel desselben da, wächst der, und
+ * es entsteht nichts. Laden und Inventar kommen neu zurück; die alten
+ * bleiben unberührt.
  */
 export function buyWare(
   shop: Entity,
   inventory: Entity,
   offer: WareOffer,
   qty: number,
-  newId: string,
-): { shop: Entity; inventory: Entity; unit: number; total: number } | { refused: TradeRefusal } {
+  piece: { edge: string; to: EntityId },
+  entities: ReadonlyMap<EntityId, Entity>,
+): { shop: Entity; inventory: Entity; unit: number; total: number; piece: EntityId; created: boolean } | { refused: TradeRefusal } {
   const kante = kanten(shop, 'sells').find((r) => r.id === offer.edge);
   if (!kante) return { refused: 'missing' };
   if (offer.qty === 0) return { refused: 'soldOut' };
@@ -257,21 +271,29 @@ export function buyWare(
       ? shop
       : { ...shop, relations: (shop.relations ?? []).map((r) => (r === kante ? { ...r, props: { ...(r.props ?? {}), qty: offer.qty! - n } } : r)) };
   const liste = inventory.relations ?? [];
-  const da = liste.find(loseGleich(offer.item));
+  const da = liste.find(loseGleich(offer.item, entities));
   const relations = da
     ? liste.map((r) => (r === da ? { ...r, props: { ...(r.props ?? {}), qty: stueck(r.props?.['qty']) + n } } : r))
-    : [...liste, { id: newId, type: 'holds', to: offer.item, props: { qty: n, tier: 'pack' } }];
-  return { shop: neuerLaden, inventory: mitKupfer({ ...inventory, relations }, hat - total), unit: offer.price, total };
+    : [...liste, { id: piece.edge, type: 'holds', to: piece.to, props: { qty: n, tier: 'pack' } }];
+  return {
+    shop: neuerLaden,
+    inventory: mitKupfer({ ...inventory, relations }, hat - total),
+    unit: offer.price,
+    total,
+    piece: da ? da.to : piece.to,
+    created: !da,
+  };
 }
 
 /**
  * **Was ein Laden für ein Stück zahlt** (T-133): die Hälfte des
  * Listenpreises, abgerundet auf Kupfer — die Regel aus 5e. Rabatte gelten
  * beim Kaufen, nicht hier. Ob ein Laden einen eigenen Satz trägt, ist
- * offen (E-045); diese Stelle ist die eine, die es dann rechnet.
+ * offen (E-045); diese Stelle ist die eine, die es dann rechnet. Eine
+ * Instanz zählt mit dem Preis ihrer Vorlage, solange sie keinen eigenen hat.
  */
-export function buybackPrice(item: Entity | undefined): number | undefined {
-  const list = itemPrice(item);
+export function buybackPrice(item: Entity | undefined, entities?: ReadonlyMap<EntityId, Entity>): number | undefined {
+  const list = itemPrice(item && entities ? resolveInstance(entities, item) : item);
   return list === undefined ? undefined : Math.floor(list / 2);
 }
 
@@ -279,9 +301,15 @@ export function buybackPrice(item: Entity | undefined): number | undefined {
  * **Verkaufen** (T-133): `qty` Stück vom Stapel `edgeId` aus dem Inventar
  * an den Laden, zum Ankaufspreis (`buybackPrice`). Ein reserviertes Stück
  * (`reservedFor`, T-128) bleibt, wo es ist, und ein Behälter, in dem noch
- * etwas liegt, auch — sein Inhalt ginge sonst mit über den Tresen. Führt
- * der Laden den Gegenstand schon mit gezählter Menge, steigt sie; sonst
- * nimmt er ihn nicht ins Sortiment.
+ * etwas liegt, auch — sein Inhalt ginge sonst mit über den Tresen.
+ *
+ * Ein Stück ist meist eine Instanz (T-150). **Weicht sie nicht ab**, ist
+ * sie ein beliebiges Stück des Grundartikels: führt der Laden ihn mit
+ * gezählter Menge, steigt sie, und ist der Stapel ganz verkauft, nennt
+ * `orphan` die Instanz, die niemand mehr hält — der Aufrufer löscht sie.
+ * **Weicht sie ab** (eine Gravur, ein eigener Name), geht genau dieses
+ * Stück über den Tresen: der Laden führt es danach selbst (`sells` auf die
+ * Instanz), statt dass die Gravur verschwindet.
  */
 export function sellPiece(
   shop: Entity,
@@ -289,14 +317,14 @@ export function sellPiece(
   edgeId: string,
   qty: number,
   entities: ReadonlyMap<EntityId, Entity>,
-): { shop: Entity; inventory: Entity; item: EntityId; qty: number; unit: number; total: number } | { refused: TradeRefusal } {
+): { shop: Entity; inventory: Entity; item: EntityId; qty: number; unit: number; total: number; orphan?: EntityId } | { refused: TradeRefusal } {
   const kante = (inventory.relations ?? []).find((r) => r.id === edgeId && r.type === 'holds');
   if (!kante) return { refused: 'missing' };
   if (kante.props?.['reservedFor']) return { refused: 'reserved' };
   const item = entities.get(kante.to);
   const voll = kanten(item, 'carries').some((c) => kanten(entities.get(c.to), 'holds').length > 0);
   if (voll) return { refused: 'notEmpty' };
-  const unit = buybackPrice(item);
+  const unit = buybackPrice(item, entities);
   if (unit === undefined) return { refused: 'noPrice' };
   const alle = stueck(kante.props?.['qty']);
   const n = stueck(qty);
@@ -306,9 +334,25 @@ export function sellPiece(
     return n < alle ? [{ ...r, props: { ...(r.props ?? {}), qty: alle - n } }] : [];
   });
   const total = unit * n;
-  const ware = kanten(shop, 'sells').find((r) => r.to === kante.to && zahl(r.props?.['qty']) !== undefined);
-  const neuerLaden: Entity = ware
-    ? { ...shop, relations: (shop.relations ?? []).map((r) => (r === ware ? { ...r, props: { ...(r.props ?? {}), qty: zahl(r.props?.['qty'])! + n } } : r)) }
-    : shop;
-  return { shop: neuerLaden, inventory: mitKupfer({ ...inventory, relations }, kupferIn(inventory) + total), item: kante.to, qty: n, unit, total };
+  const instanz = item && isInstance(item) ? item : undefined;
+  const beliebig = !instanz || followsTemplate(entities, instanz);
+  /* Ein beliebiges Stück zählt beim Laden als der Grundartikel; ein eigenes bleibt es selbst. */
+  const ware = beliebig ? (instanz ? (templateOf(entities, instanz)?.id ?? kante.to) : kante.to) : kante.to;
+  const gefuehrt = kanten(shop, 'sells').find((r) => r.to === ware && zahl(r.props?.['qty']) !== undefined);
+  const weg = n >= alle;
+  let neuerLaden: Entity = shop;
+  if (gefuehrt) {
+    neuerLaden = { ...shop, relations: (shop.relations ?? []).map((r) => (r === gefuehrt ? { ...r, props: { ...(r.props ?? {}), qty: zahl(r.props?.['qty'])! + n } } : r)) };
+  } else if (!beliebig) {
+    neuerLaden = { ...shop, relations: [...(shop.relations ?? []), { id: `${shop.id}~sells-${kante.to}`, type: 'sells', to: kante.to, props: { qty: n } }] };
+  }
+  return {
+    shop: neuerLaden,
+    inventory: mitKupfer({ ...inventory, relations }, kupferIn(inventory) + total),
+    item: ware,
+    qty: n,
+    unit,
+    total,
+    ...(instanz && beliebig && weg ? { orphan: instanz.id } : {}),
+  };
 }

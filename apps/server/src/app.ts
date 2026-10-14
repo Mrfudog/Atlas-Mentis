@@ -1753,7 +1753,7 @@ export function buildApp({
             item: r.to,
             name: entityName(map.get(r.to)),
             qty: Math.max(1, Math.trunc(Number(r.props?.['qty']) || 1)),
-            ...(buybackPrice(map.get(r.to)) !== undefined ? { price: buybackPrice(map.get(r.to)) } : {}),
+            ...(buybackPrice(map.get(r.to), map) !== undefined ? { price: buybackPrice(map.get(r.to), map) } : {}),
           })),
       );
       return { inventory: invId, purse, sellable };
@@ -2448,7 +2448,7 @@ export function buildApp({
   /* Der Fertigungsauftrag (T-128): Material reservieren, Proben, Abrechnung. */
   registerHandwerk(app, { repo, viewerOf, roh, sieve, schreibeGeprueft: (e) => schreibeGeprueft(e), kampagnenEbene });
   /* Kaufen und Verkaufen im Laden (T-133): der Preis am Server, gegen die gelesene Revision. */
-  registerLaden(app, { repo, viewerOf, roh, sieve, schreibeGeprueft: (e, erwartet) => schreibeGeprueft(e, undefined, erwartet) });
+  registerLaden(app, { repo, viewerOf, roh, sieve, schreibeGeprueft: (e, erwartet) => schreibeGeprueft(e, undefined, erwartet), kampagnenEbene });
 
   /* **Der Live-Kanal** (T-116, REQ-116): `GET /api/live`, je Empfänger
      gesiebt mit `sieveFuer` — dieselbe Rechnung wie jede Route. */
