@@ -20,6 +20,11 @@ import {
   builderSteps,
   choiceKey,
   choiceText,
+  choiceTitle,
+  optionSlots,
+  slotAccepts,
+  slotQuery,
+  type ItemSlot,
   choicesAtCharacter,
   chosenResult,
   enumOptions,
@@ -41,13 +46,33 @@ import {
 import { Api, ApiError, type ListenZeile } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Session } from '../kern/session';
+import { KurzLink } from '../kern/kurzansicht';
+import { Text } from '../artikel/text';
 
 interface Moeglichkeit {
   /** Was in die Antwort kommt: Artikel-Id, Name oder Schlüssel. */
   wert: string;
+  /** Kann `[[Verweise]]` tragen — gezeichnet mit `nw-text` (T-162). */
   label: string;
   hinweis?: string;
+  /** Der Artikel dahinter, für die Kurzansicht (T-162). */
+  id?: string;
 }
+
+/** Eine offene Stelle einer gewählten Möglichkeit, mit ihrem Platz in `items` (T-162). */
+interface Stelle {
+  slot: ItemSlot;
+  /** Ab welchem Eintrag von `chose.props.items` sie gilt. */
+  ab: number;
+  /** Schlüssel ihrer Auswahlliste. */
+  liste: string;
+}
+
+/** Ein gewöhnlicher Gegenstand nach der Listenzeile — das Ganze prüft `slotAccepts`. */
+const gewoehnlich = (z: ListenZeile) => {
+  const r = String(z.cols?.['Item.rarity'] ?? '').toLowerCase();
+  return !r || r === 'none' || r === 'mundane' || r === 'unknown';
+};
 
 interface Gruppe {
   id: string;
@@ -84,7 +109,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
  */
 @Component({
   selector: 'nw-assistent',
-  imports: [RouterLink],
+  imports: [RouterLink, KurzLink, Text],
   template: `
     <div class="buch">
       <nav aria-label="Breadcrumb" class="brot">
@@ -142,6 +167,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                             <span class="dim">{{ m.hinweis }}</span>
                           }
                         </label>
+                        <button type="button" class="quick-info" [nwQuick]="m.wert" [attr.aria-label]="'Quick view of ' + m.label">i</button>
                       </li>
                     } @empty {
                       <li class="dim">Nothing ready to choose here yet.</li>
@@ -265,7 +291,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
               }
 
               @case ('choice') {
-                <p>{{ wahlsatz(s.at) }} <span class="dim">— from {{ herkunft(s.at) }}</span></p>
+                <p><nw-text [text]="wahlsatz(s.at)" inline /><span class="dim">&nbsp;— from {{ herkunft(s.at) }}</span></p>
                 @if (moeglichkeiten()[s.id]; as liste) {
                   @if (liste.length) {
                     @if (liste.length > 8) {
@@ -278,7 +304,7 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                         @for (m of gefiltert(liste); track m.wert) {
                           <li>
                             <div class="mehrfach" [class.an]="anzahl(s, m.wert) > 0">
-                              <span class="name">{{ m.label }}</span>
+                              <span class="name"><nw-text [text]="m.label" inline /></span>
                               @if (m.hinweis) {
                                 <span class="dim">{{ m.hinweis }}</span>
                               }
@@ -310,11 +336,14 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                               [disabled]="!antwort(s).includes(m.wert) && (s.at.choice.count ?? 1) > 1 && antwort(s).length >= (s.at.choice.count ?? 1)"
                               (change)="kreuze(s, m.wert)"
                             />
-                            <span class="name">{{ m.label }}</span>
+                            <span class="name"><nw-text [text]="m.label" inline /></span>
                             @if (m.hinweis) {
                               <span class="dim">{{ m.hinweis }}</span>
                             }
                           </label>
+                          @if (m.id) {
+                            <button type="button" class="quick-info" [nwQuick]="m.id" [attr.aria-label]="'Quick view of ' + m.label">i</button>
+                          }
                         </li>
                       }
                     </ul>
@@ -349,8 +378,8 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                 @if (ausrMethode(); as m) {
                   @if (m.method === 'rules') {
                     @for (c of s.choices; track c.source.entity.id + '#' + c.choice.id) {
-                      <p>{{ c.choice.note ?? 'Choose' }} <span class="dim">— from {{ c.source.entity.name }}</span></p>
-                      <ul class="karten" role="radiogroup">
+                      <h3 class="wahlkopf">{{ wahlTitel(c) }}</h3>
+                      <ul class="karten varianten" role="radiogroup" [attr.aria-label]="wahlTitel(c)">
                         @for (o of c.choice.from?.options ?? []; track o.key) {
                           <li>
                             <label [class.an]="(c.picks ?? []).includes(o.key)">
@@ -360,15 +389,60 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
                                 [checked]="(c.picks ?? []).includes(o.key)"
                                 (change)="waehleVariante(c, o.key)"
                               />
-                              <span class="name">({{ o.key }})</span>
-                              {{ klartext(o.label) }}
+                              <!-- Das Feste mit offener Stelle hat keinen Buchstaben (T-162). -->
+                              <span class="variante">
+                                @if ((c.choice.from?.options?.length ?? 0) > 1) {
+                                  <span class="name">({{ o.key }})</span>{{ ' ' }}
+                                }
+                                <nw-text [text]="o.label" inline />
+                              </span>
                             </label>
+                            <!-- Die Folgewahl (T-162): „two martial weapons of your choice" -->
+                            @if ((c.picks ?? []).includes(o.key)) {
+                              @for (st of stellen(c, o); track st.ab) {
+                                <div class="stelle">
+                                  @if ((stellenListen()[st.liste]?.length ?? 0) > 12) {
+                                    <input
+                                      class="suche"
+                                      type="search"
+                                      placeholder="Filter…"
+                                      [attr.aria-label]="'Filter ' + st.slot.text"
+                                      [value]="stellenFilter()[st.liste] ?? ''"
+                                      (input)="filtereStelle(st.liste, $any($event.target).value)"
+                                    />
+                                  }
+                                  @for (p of reihe(st.slot.count); track p) {
+                                    <div class="stellenwahl">
+                                      @if (stellenListen()[st.liste]; as liste) {
+                                        <select
+                                          [attr.aria-label]="st.slot.text + (st.slot.count > 1 ? ' ' + (p + 1) : '')"
+                                          (change)="fuelle(c, o.key, st.ab + p, $any($event.target).value)"
+                                        >
+                                          <option value="" [selected]="!stueck(c, st.ab + p)">— choose —</option>
+                                          @for (z of gefiltertStelle(st.liste, liste, stueck(c, st.ab + p)); track z.id) {
+                                            <option [value]="z.id" [selected]="z.id === stueck(c, st.ab + p)">{{ z.name }}</option>
+                                          }
+                                        </select>
+                                        @if (stueck(c, st.ab + p); as id) {
+                                          <button type="button" class="quick-info" [nwQuick]="id" [attr.aria-label]="'Quick view of ' + nameIn(liste, id)">i</button>
+                                        }
+                                        @if (!liste.length) {
+                                          <span class="dim">Nothing ready to choose here yet.</span>
+                                        }
+                                      } @else {
+                                        <span class="dim">Loading…</span>
+                                      }
+                                    </div>
+                                  }
+                                </div>
+                              }
+                            }
                           </li>
                         }
                       </ul>
                     }
                     @if (festes().length) {
-                      <p>Also: {{ festes().join('; ') }}</p>
+                      <p>Also: @for (z of festes(); track $index) {<nw-text [text]="z" inline />@if (!$last) {<span>; </span>}}</p>
                     }
                     @if (!s.choices.length && !festes().length) {
                       <p class="dim">Class and background name no equipment.</p>
@@ -560,6 +634,46 @@ const fertig = (z: ListenZeile) => !z.status || z.status === 'ready';
     .verfahren label.an {
       border-color: var(--accent);
       background: var(--hover);
+    }
+    /* Der Info-Knopf sitzt in der Karte oben rechts (T-162): der Name
+       setzt das Häkchen, der Knopf zeigt den Artikel. */
+    .karten > li {
+      position: relative;
+    }
+    .karten > li > .quick-info {
+      position: absolute;
+      top: 0.55rem;
+      right: 0.55rem;
+    }
+    .karten > li:has(> .quick-info) > label {
+      padding-right: 2.6rem;
+    }
+    .varianten {
+      grid-template-columns: 1fr;
+    }
+    .varianten label {
+      flex-wrap: nowrap;
+    }
+    .wahlkopf {
+      margin: 1rem 0 0.25rem;
+      font-size: 1rem;
+    }
+    /* Die Folgewahl unter der gewählten Möglichkeit. */
+    .stelle {
+      display: grid;
+      gap: 0.35rem;
+      margin: 0.4rem 0 0 1.6rem;
+    }
+    .stellenwahl {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .stellenwahl select {
+      flex: 1;
+      min-width: 0;
+      max-width: 24rem;
+      min-height: 40px;
     }
     .karten .mehrfach {
       display: flex;
@@ -795,7 +909,8 @@ export class Assistent {
     if (!m) return { problem: 'Choose a method.', spent: 0, magic: {} };
     return checkPurchase(this.korb(), this.ladenArtikel(), m, this.budget() ?? undefined);
   });
-  protected readonly festes = computed(() => fixedEquipmentLines(this.entwurf(), this.quellen()).map((z) => z.text));
+  /** Mit Verweisen — gezeichnet von `nw-text` (T-162). */
+  protected readonly festes = computed(() => fixedEquipmentLines(this.entwurf(), this.quellen()).map((z) => z.raw));
 
   protected readonly bereit = computed(
     () => !!this.bestand.registry() && this.geladenVerfahren() && (!this.aufstieg() || !!this.figur()),
@@ -885,8 +1000,13 @@ export class Assistent {
   protected readonly offenGelassen = computed(() =>
     this.schritte()
       .filter((s): s is Extract<BuilderStep, { kind: 'choice' }> => s.kind === 'choice' && !s.at.picks)
-      .map((s) => `${s.at.source.entity.name}: ${choiceText(s.at.choice)}`),
+      .map((s) => `${choiceTitle(s.at)}: ${plainEquipmentText(choiceText(s.at.choice))}`),
   );
+
+  /** Die Auswahllisten der offenen Stellen (T-162), je Sorte einmal geladen. */
+  protected readonly stellenListen = signal<Partial<Record<string, { id: string; name: string }[]>>>({});
+  protected readonly stellenFilter = signal<Partial<Record<string, string>>>({});
+  private readonly stellenGefragt = new Set<string>();
 
   constructor() {
     void this.bestand.load();
@@ -945,6 +1065,20 @@ export class Assistent {
       untracked(() => void this.lade(fehlt));
     });
 
+    /* Die Auswahllisten der offenen Stellen, sobald eine Möglichkeit sie
+       verlangt — nicht aus der Vorlage heraus, die beim Zeichnen nichts
+       schreiben darf (T-162). */
+    effect(() => {
+      const s = this.schritt();
+      if (s?.kind !== 'equipment' || this.ausrMethode()?.method !== 'rules') return;
+      const offen = s.choices.flatMap((c) =>
+        (c.choice.from?.options ?? []).filter((o) => c.picks?.includes(o.key)).flatMap((o) => this.stellen(c, o)),
+      );
+      untracked(() => {
+        for (const st of offen) void this.ladeStelle(st);
+      });
+    });
+
     /* Die Möglichkeiten des Schritts, der gerade dran ist. */
     effect(() => {
       const s = this.schritt();
@@ -954,6 +1088,11 @@ export class Assistent {
         this.problem.set(null);
         if (s.kind === 'pick') void this.ladeKandidaten(s.type);
         if (s.kind === 'choice') void this.ladeMoeglichkeiten(s);
+        /* Die Verweisziele in Möglichkeiten und Sätzen (`refs.links`) kommen
+           mit dem Artikel — `nw-text` liest sie aus dem Bestand (T-162). */
+        const quellen = s.kind === 'choice' ? [s.at] : s.kind === 'equipment' ? s.choices : [];
+        for (const c of quellen) void this.bestand.oeffnen(c.source.entity.id, false, false);
+        if (s.kind === 'equipment') for (const z of fixedEquipmentLines(this.entwurf(), this.quellen())) void this.bestand.oeffnen(z.source, false, false);
       });
     });
   }
@@ -978,6 +1117,106 @@ export class Assistent {
     return r.rows.filter(fertig);
   }
 
+  /**
+   * **Mit Filter** (`ChoiceFrom.where`, T-162): eine Art allein fragt die
+   * Liste mit dem Feldfilter (`f=Typ.feld:Wert`) — der Kampfstil zog sonst
+   * aus jedem Merkmal, das Werkzeug aus jedem Gegenstand. Der Filter
+   * **schlägt vor** wie `LinkTarget.where`: findet er nichts, gilt die
+   * ganze Art. Bei Gegenständen nur gewöhnliche.
+   */
+  private async zeilenMitFilter(arten: string[], where: { component: string; property: string; value?: unknown } | undefined, rel?: string): Promise<ListenZeile[]> {
+    const werte = where ? (Array.isArray(where.value) ? where.value : where.value !== undefined ? [where.value] : []).map(String) : [];
+    if (arten.length === 1 && werte.length) {
+      const r = await this.api.list({ type: arten[0], f: [`${where!.component}.${where!.property}:${werte.join('|')}`], limit: 200, sort: 'name', ...(rel ? { rel: [rel] } : {}) });
+      const rows = r.rows.filter(fertig).filter(gewoehnlich);
+      if (rows.length) return rows;
+    }
+    return this.zeilen(arten, rel);
+  }
+
+  /** Die offenen Stellen einer gewählten Möglichkeit, mit ihrem Platz in `items`. */
+  protected stellen(c: ChoiceAtCharacter, o: { key: string; label: string }): Stelle[] {
+    let ab = 0;
+    return optionSlots(o).map((slot) => {
+      const st: Stelle = { slot, ab, liste: JSON.stringify([slotQuery(slot), slot.itemTypes ?? []]) };
+      ab += slot.count;
+      return st;
+    });
+  }
+
+  /**
+   * Die Gegenstände, die eine Stelle nimmt: die Liste fragt nach Art und
+   * Spalte (`slotQuery`), gewöhnlich und fertig; was die Spalte nicht sagt
+   * (Nah- oder Fernkampf), prüft `slotAccepts` am ganzen Artikel — dieselbe
+   * Regel, mit der der Server beim Ausrüsten prüft. Vorgeschlagen wird nur
+   * Kaufbares, solange es das gibt; der Server nimmt auch anderes, das die
+   * Stelle annimmt.
+   */
+  private async ladeStelle(st: Stelle): Promise<void> {
+    if (this.stellenGefragt.has(st.liste)) return;
+    this.stellenGefragt.add(st.liste);
+    try {
+      const q = slotQuery(st.slot);
+      const r = await this.api.list({ type: q.type, f: q.f, limit: 200, sort: 'name' });
+      let rows = r.rows.filter(fertig).filter(gewoehnlich);
+      const ganz = new Map<string, Entity>();
+      for (let i = 0; i < rows.length; i += 200) for (const e of await this.api.entitiesById(rows.slice(i, i + 200).map((z) => z.id))) ganz.set(e.id, e);
+      rows = rows.filter((z) => slotAccepts(st.slot, ganz.get(z.id)));
+      /* Vorgeschlagen wird, was man kaufen kann: „a martial weapon" ist
+         kein Laserrevolver ohne Preis. Hat nichts einen Preis, gilt alles. */
+      const kaufbar = rows.filter((z) => itemPrice(ganz.get(z.id)) !== undefined);
+      if (kaufbar.length) rows = kaufbar;
+      this.stellenListen.update((m) => ({ ...m, [st.liste]: rows.map((z) => ({ id: z.id, name: z.name })) }));
+    } catch (e) {
+      this.stellenGefragt.delete(st.liste);
+      this.problem.set((e as Error).message);
+    }
+  }
+
+  protected reihe(n: number): number[] {
+    return Array.from({ length: n }, (_x, i) => i);
+  }
+
+  /** Was an dieser Stelle steht. */
+  protected stueck(c: ChoiceAtCharacter, i: number): string {
+    return c.items?.[i] ?? '';
+  }
+
+  protected nameIn(liste: { id: string; name: string }[], id: string): string {
+    return liste.find((z) => z.id === id)?.name ?? this.bestand.name()(id) ?? 'item';
+  }
+
+  protected filtereStelle(liste: string, q: string): void {
+    this.stellenFilter.update((m) => ({ ...m, [liste]: q }));
+  }
+
+  /** Gefiltert — was gewählt ist, bleibt stehen, sonst verlöre die Auswahl ihren Wert. */
+  protected gefiltertStelle(liste: string, rows: { id: string; name: string }[], gewaehlt: string): { id: string; name: string }[] {
+    const q = (this.stellenFilter()[liste] ?? '').trim().toLowerCase();
+    return q ? rows.filter((z) => z.id === gewaehlt || z.name.toLowerCase().includes(q)) : rows;
+  }
+
+  /** Eine Stelle füllen: die Antwort behält die Möglichkeit und setzt das Stück. */
+  protected fuelle(c: ChoiceAtCharacter, key: string, i: number, id: string): void {
+    const gesamt = (c.choice.from?.options ?? []).find((o) => o.key === key);
+    const n = gesamt ? optionSlots(gesamt).reduce((x, st) => x + st.count, 0) : i + 1;
+    const items = Array.from({ length: Math.max(n, i + 1) }, (_x, k) => c.items?.[k] ?? '');
+    items[i] = id;
+    this.entwurf.update((e) => pruneAnswers(answerChoice(e, c, [key], items), this.quellen()));
+  }
+
+  /** Sind alle offenen Stellen der gewählten Möglichkeit gefüllt? */
+  private gefuellt(c: ChoiceAtCharacter): boolean {
+    const o = (c.choice.from?.options ?? []).find((x) => x.key === c.picks?.[0]);
+    if (!o) return !!c.picks?.length;
+    /* Eine Stelle, für die es nichts Fertiges gibt, hält niemanden auf. */
+    return this.stellen(c, o).every((st) => {
+      const liste = this.stellenListen()[st.liste];
+      if (liste && !liste.length) return true;
+      return Array.from({ length: st.slot.count }, (_x, k) => c.items?.[st.ab + k]).every(Boolean);
+    });
+  }
+
   private async ladeKandidaten(typ: string): Promise<void> {
     if (this.kandidaten()[typ]) return;
     try {
@@ -1000,7 +1239,7 @@ export class Assistent {
       } else if (f.options?.length) liste = f.options.map((o) => ({ wert: o.key, label: `(${o.key}) ${o.label}` }));
       else if (f.values?.length) liste = f.values.map((v) => ({ wert: v, label: v }));
       else if (f.interfaces?.length) {
-        let rows = await this.zeilen(f.interfaces, f.edge?.type);
+        let rows = await this.zeilenMitFilter(f.interfaces, f.where, f.edge?.type);
         if (f.edge) rows = rows.filter((z) => z.rels?.[f.edge!.type]?.includes(f.edge!.to));
         /* Die Marken schlagen vor (wie `LinkTarget.tags`): finden sie nichts, gilt die ganze Art. */
         const markiert = f.tags?.length ? rows.filter((z) => z.tags?.some((t) => f.tags!.includes(t))) : rows;
@@ -1008,13 +1247,18 @@ export class Assistent {
           wert: z.id,
           label: z.name,
           hinweis: z.source.split(' p. ')[0] ?? '',
+          id: z.id,
         }));
       } else if (f.enumRef?.length) {
         const reg = this.bestand.registry();
         const arten = f.enumRef.filter((r) => !!reg?.interfaces[r]);
-        const namen = arten.length ? this.nurSprachenDerKampagne(arten, await this.zeilen(arten)).map((z) => z.name) : [];
+        const rows = arten.length ? this.nurSprachenDerKampagne(arten, await this.zeilenMitFilter(arten, f.where)) : [];
+        /* Ein Name nennt den Artikel dahinter — für die Kurzansicht (T-162). */
+        const ids = new Map(rows.map((z) => [z.name, z.id] as const));
         const zeilen = reg ? (enumOptions(reg, { enumRef: f.enumRef.filter((r) => !arten.includes(r)) }) ?? []) : [];
-        liste = [...new Set([...zeilen, ...namen])].sort((a, z) => a.localeCompare(z, 'en')).map((v) => ({ wert: v, label: v }));
+        liste = [...new Set([...zeilen, ...ids.keys()])]
+          .sort((a, z) => a.localeCompare(z, 'en'))
+          .map((v) => ({ wert: v, label: v, ...(ids.has(v) ? { id: ids.get(v)! } : {}) }));
       }
       if (s.at.choice.kind === 'ability') {
         const b = s.at.choice.bonus ?? [1];
@@ -1050,11 +1294,15 @@ export class Assistent {
         return 'Name';
       case 'equipment':
         return 'Equipment';
-      case 'choice': {
-        const c = s.at.choice;
-        return c.note && c.note.length < 40 ? c.note : `${s.at.source.entity.name}: ${c.kind}`;
-      }
+      /* Quelle und Wahl (T-162) — vorher „: equipment", weil der Name
+         eines eingelesenen Artikels in `Identity` steht und nicht in `name`. */
+      case 'choice':
+        return choiceTitle(s.at);
     }
+  }
+
+  protected wahlTitel(c: ChoiceAtCharacter): string {
+    return choiceTitle(c);
   }
 
   protected wahlsatz(c: ChoiceAtCharacter): string {
@@ -1208,7 +1456,7 @@ export class Assistent {
       case 'equipment': {
         const m = this.ausrMethode();
         if (!m) return false;
-        if (m.method === 'rules') return s.choices.every((c) => !!c.picks?.length);
+        if (m.method === 'rules') return s.choices.every((c) => this.gefuellt(c));
         if (m.method === 'gold' && this.budget() === null) return false;
         return !this.pruefung().problem;
       }
@@ -1252,10 +1500,6 @@ export class Assistent {
 
   protected waehleVariante(c: ChoiceAtCharacter, key: string): void {
     this.entwurf.update((e) => pruneAnswers(answerChoice(e, c, [key]), this.quellen()));
-  }
-
-  protected klartext(label: string): string {
-    return plainEquipmentText(label);
   }
 
   protected nameVon(e: Entity | undefined): string {
