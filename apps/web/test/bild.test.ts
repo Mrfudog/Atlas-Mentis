@@ -84,3 +84,51 @@ describe('Api.uploadAsset', () => {
     expect(Object.keys((gesehen?.headers ?? {}) as Record<string, string>)).not.toContain('content-type');
   });
 });
+
+describe('managing images (T-119)', () => {
+  beforeEach(() => {
+    TestBed.resetTestingModule();
+    vi.unstubAllGlobals();
+  });
+
+  const antwort = (b: unknown) =>
+    ({ ok: true, status: 200, headers: new Headers(), json: async () => b, text: async () => JSON.stringify(b) }) as unknown as Response;
+
+  it('sends the class and the old image for a new version', async () => {
+    let body: FormData | undefined;
+    vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => {
+      body = init.body as FormData;
+      return antwort({ id: 'e_neu' });
+    });
+    await TestBed.inject(Api).uploadAsset(new File([new Uint8Array([1])], 'a.png'), { kind: 'token', variantOf: 'e_alt' });
+    expect(body?.get('kind')).toBe('token');
+    expect(body?.get('variantOf')).toBe('e_alt');
+  });
+
+  it('replaces the source with PUT against the revision it read', async () => {
+    let url = '';
+    let init: RequestInit | undefined;
+    vi.stubGlobal('fetch', async (u: string, i: RequestInit) => {
+      url = u;
+      init = i;
+      return antwort({ id: 'e_a' });
+    });
+    await TestBed.inject(Api).replaceAssetFile('e_a', new File([new Uint8Array([1])], 'b.png'), 7);
+    expect(url).toMatch(/\/api\/assets\/e_a\/file$/);
+    expect(init?.method).toBe('PUT');
+    expect((init?.body as FormData).get('revision')).toBe('7');
+  });
+
+  it('asks the list for tags and unused images', async () => {
+    let url = '';
+    vi.stubGlobal('fetch', async (u: string) => {
+      url = u;
+      return antwort({ total: 0, offset: 0, limit: 60, columns: [], rows: [], facets: { types: [], layers: [], fields: [], partsHidden: 0 } });
+    });
+    await TestBed.inject(Api).list({ type: 'Asset', tag: ['stadt', 'wache'], unused: true, f: ['Asset.kind:token'] });
+    const q = new URL(url, 'http://x').searchParams;
+    expect(q.get('tag')).toBe('stadt,wache');
+    expect(q.get('unused')).toBe('1');
+    expect(q.get('f')).toBe('Asset.kind:token');
+  });
+});

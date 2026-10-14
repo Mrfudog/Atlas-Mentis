@@ -1,8 +1,7 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { Component, Injectable, computed, effect, inject, input, output, signal } from '@angular/core';
 import { primaryInterface, typeChain } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
-import { Api, ApiError } from '../kern/api';
-import { Wahl } from './wahl';
+import { Api, ApiError, type ListenZeile } from '../kern/api';
 
 /**
  * **Bilder zeigen und aufnehmen** (T-114, REQ-021).
@@ -17,7 +16,7 @@ import { Wahl } from './wahl';
  * darf, kommt als 404 — dann zeichnet `nw-bild` nichts, statt eines
  * zerbrochenen Bildes.
  */
-export function bildAdresse(wert: unknown, groesse: 'thumb' | 'full' = 'full'): string | null {
+export function bildAdresse(wert: unknown, groesse: 'thumb' | 'full' = 'full', version = ''): string | null {
   if (typeof wert !== 'string') return null;
   const w = wert.trim();
   if (!w) return null;
@@ -25,7 +24,37 @@ export function bildAdresse(wert: unknown, groesse: 'thumb' | 'full' = 'full'): 
   /* Eine Ablage-Id, die kein Artikel ist, gibt es nicht mehr — alles
      andere ist die Id eines Asset-Artikels. */
   if (!/^[\w~.:-]+$/.test(w)) return null;
-  return `/api/assets/${encodeURIComponent(w)}${groesse === 'thumb' ? '?size=thumb' : ''}`;
+  /* Mit Version (der Hash aus `ref`): eine neue Quelle ist eine neue
+     Adresse, und der Browser zeigt nicht das alte Bild weiter (T-119). */
+  const frage = [groesse === 'thumb' ? 'size=thumb' : '', /^[\w-]+$/.test(version) ? `v=${version}` : ''].filter(Boolean).join('&');
+  return `/api/assets/${encodeURIComponent(w)}${frage ? `?${frage}` : ''}`;
+}
+
+/** Die Version einer Datei, wie der Server sie in `?v=` erwartet: der Hash vor der Endung. */
+export function bildVersion(e: Entity): string {
+  const ref = (e.components?.['Asset'] as { ref?: unknown } | undefined)?.ref;
+  return typeof ref === 'string' ? (ref.split('.')[0] ?? '') : '';
+}
+
+/**
+ * **Welche Quelle ein Bild in dieser Sitzung zuletzt bekam** (T-119):
+ * nach „Replace the source" ist es dieselbe Id mit einer neuen Datei. Wer
+ * die Id zeigt, kennt die Datei nicht — also merkt sich die Seite die
+ * neue Version, und jedes `nw-bild` mit dieser Id fragt danach. Ein
+ * anderes Gerät lädt beim nächsten Öffnen ohnehin neu (`no-cache`).
+ */
+@Injectable({ providedIn: 'root' })
+export class BildStand {
+  private readonly stand = signal(new Map<string, string>());
+  readonly version = computed(() => {
+    const m = this.stand();
+    return (id: string) => m.get(id) ?? '';
+  });
+  merke(id: string, version: string): void {
+    const m = new Map(this.stand());
+    m.set(id, version);
+    this.stand.set(m);
+  }
 }
 
 /**
@@ -33,13 +62,13 @@ export function bildAdresse(wert: unknown, groesse: 'thumb' | 'full' = 'full'): 
  * an einem Asset die eigene Datei — sein Bild ist es selbst —, sonst
  * `Image.image`. Unterschrift und Alternativtext gehen mit.
  */
-export function bildDes(e: Entity, r: Registry): { wert: string; caption: string; alt: string } | null {
+export function bildDes(e: Entity, r: Registry): { wert: string; caption: string; alt: string; version?: string } | null {
   const karte = (e.components?.['Image'] ?? {}) as { image?: unknown; caption?: unknown; alt?: unknown };
   const caption = typeof karte.caption === 'string' ? karte.caption : '';
   const alt = typeof karte.alt === 'string' ? karte.alt : '';
   const asset = e.components?.['Asset'] as { ref?: unknown } | undefined;
   if (typeof asset?.ref === 'string' && asset.ref && typeChain(r, primaryInterface(e)).includes('Asset')) {
-    return { wert: e.id, caption, alt };
+    return { wert: e.id, caption, alt, version: bildVersion(e) };
   }
   return typeof karte.image === 'string' && karte.image.trim() ? { wert: karte.image.trim(), caption, alt } : null;
 }
@@ -102,15 +131,153 @@ export class Bild {
   readonly caption = input<string>('');
   /** Ein Klick öffnet das Bild in voller Grösse (an der Vorschau und auf der Seite). */
   readonly oeffnen = input(true);
+  /** Die Version der Datei, wenn bekannt (am Asset selbst); sonst, was diese Sitzung zuletzt ersetzt hat. */
+  readonly version = input<string | undefined>('');
 
-  protected readonly adresse = computed(() => bildAdresse(this.wert(), this.groesse()));
+  private readonly bildStand = inject(BildStand);
+  private readonly v = computed(() => this.version() || (typeof this.wert() === 'string' ? this.bildStand.version()(String(this.wert()).trim()) : ''));
+  protected readonly adresse = computed(() => bildAdresse(this.wert(), this.groesse(), this.v()));
   /* Welche Adresse nicht geladen hat — ein neues Bild darf es wieder versuchen. */
   private readonly fehlte = signal<string | null>(null);
   protected readonly istKaputt = computed(() => this.fehlte() !== null && this.fehlte() === this.adresse());
   protected nichtGeladen(): void {
     this.fehlte.set(this.adresse());
   }
-  protected readonly gross = computed(() => (this.oeffnen() ? bildAdresse(this.wert(), 'full') : null));
+  protected readonly gross = computed(() => (this.oeffnen() ? bildAdresse(this.wert(), 'full', this.v()) : null));
+}
+
+/** Wie eine Klasse heisst (T-119) — die Werte stehen in `Asset.kind`, die Worte hier nur für die Knöpfe. */
+export function klassenName(k: string): string {
+  return ({ image: 'images', map: 'map images', token: 'tokens', prop: 'props' } as Record<string, string>)[k] ?? k;
+}
+
+/**
+ * **Ein vorhandenes Bild wählen** (T-119): Vorschaubilder statt Namen —
+ * ein Bild erkennt man am Bild. Zuerst die Klasse, die das Feld anbietet
+ * (`klasse`, aus `target.where`), auf Knopfdruck alle. Gesucht wird am
+ * Server (`/api/list`), gesiebt wie jede Liste.
+ */
+@Component({
+  selector: 'nw-bildraster',
+  imports: [Bild],
+  template: `
+    <div class="raster-kopf">
+      <input type="search" placeholder="Search images…" [attr.aria-label]="label() + ': search images'" (input)="suche.set($any($event.target).value)" />
+      @if (klasse()) {
+        <label class="alle"><input type="checkbox" [checked]="alle()" (change)="alle.set($any($event.target).checked)" /> all classes, not only {{ klassenName(klasse()) }}</label>
+      }
+    </div>
+    @if (treffer().length) {
+      <ul class="raster" [attr.aria-label]="label() + ': existing images'">
+        @for (z of treffer(); track z.id) {
+          <li>
+            <button type="button" (click)="gewaehlt.emit(z.id)" [attr.aria-label]="'Choose ' + z.name">
+              <nw-bild [wert]="z.id" groesse="thumb" [oeffnen]="false" [alt]="z.name" />
+              <span>{{ z.name }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="leer">{{ laedt() ? 'Loading…' : 'No image of this class yet.' }}</p>
+    }
+  `,
+  styles: `
+    .raster-kopf {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      align-items: center;
+    }
+    .raster-kopf input[type='search'] {
+      flex: 1;
+      min-width: 10rem;
+      min-height: 36px;
+    }
+    .alle {
+      display: inline-flex;
+      gap: 0.3rem;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+    .raster {
+      list-style: none;
+      margin: 0.4rem 0 0;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+      gap: 0.4rem;
+      max-height: 18rem;
+      overflow-y: auto;
+    }
+    .raster button {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      width: 100%;
+      padding: 0.25rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--paper);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.8rem;
+      text-align: left;
+    }
+    .raster button:hover,
+    .raster button:focus-visible {
+      border-color: var(--accent);
+    }
+    .raster nw-bild ::ng-deep img {
+      height: 5rem;
+      width: 100%;
+      object-fit: cover;
+    }
+    .raster span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .leer {
+      margin: 0.4rem 0 0;
+      color: var(--dim);
+    }
+  `,
+})
+export class BildRaster {
+  readonly klasse = input<string>('');
+  readonly label = input<string>('Image');
+  readonly gewaehlt = output<string>();
+
+  private readonly api = inject(Api);
+  protected readonly suche = signal('');
+  protected readonly alle = signal(false);
+  protected readonly treffer = signal<ListenZeile[]>([]);
+  protected readonly laedt = signal(false);
+  protected readonly klassenName = klassenName;
+  private lauf = 0;
+
+  constructor() {
+    effect(() => {
+      const k = this.klasse();
+      const q = this.suche().trim();
+      const alle = this.alle();
+      void this.hole(k && !alle ? [`Asset.kind:${k}`] : [], q);
+    });
+  }
+
+  private async hole(f: string[], q: string): Promise<void> {
+    const nr = ++this.lauf;
+    this.laedt.set(true);
+    try {
+      const r = await this.api.list({ type: 'Asset', f, q: q || undefined, limit: 48 });
+      if (nr === this.lauf) this.treffer.set(r.rows);
+    } catch {
+      if (nr === this.lauf) this.treffer.set([]);
+    } finally {
+      if (nr === this.lauf) this.laedt.set(false);
+    }
+  }
 }
 
 /**
@@ -125,7 +292,7 @@ export class Bild {
  */
 @Component({
   selector: 'nw-bildwahl',
-  imports: [Bild, Wahl],
+  imports: [Bild, BildRaster],
   template: `
     <div
       class="bildwahl"
@@ -161,7 +328,7 @@ export class Bild {
       </div>
       <p class="hinweis">…or drop an image here, or paste one (Ctrl+V).</p>
       @if (modus() === 'wahl') {
-        <nw-wahl [wert]="istAdresse() ? '' : wert()" (wertChange)="setze($event)" [arten]="['Asset']" [label]="label() + ': existing image'" />
+        <nw-bildraster [klasse]="klasse()" [label]="label()" (gewaehlt)="setze($event); modus.set(null)" />
       }
       @if (modus() === 'adresse') {
         <input
@@ -252,6 +419,8 @@ export class BildWahl {
   /** Der Artikel, an dem das Feld steht — das Bild übernimmt seine Sichtbarkeit. */
   readonly fuer = input<string>('');
   readonly label = input<string>('Image');
+  /** Die Klasse, die das Feld anbietet (T-119): ein neues Bild bekommt sie, die Auswahl zeigt sie zuerst. */
+  readonly klasse = input<string>('');
   readonly wertChange = output<string>();
 
   private readonly api = inject(Api);
@@ -309,7 +478,10 @@ export class BildWahl {
     this.laedt.set(true);
     this.problem.set(null);
     try {
-      const a = await this.api.uploadAsset(datei, { ...(this.fuer() ? { for: this.fuer() } : {}) });
+      const a = await this.api.uploadAsset(datei, {
+        ...(this.fuer() ? { for: this.fuer() } : {}),
+        ...(this.klasse() ? { kind: this.klasse() } : {}),
+      });
       this.modus.set(null);
       this.wertChange.emit(a.id);
     } catch (e) {

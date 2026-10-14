@@ -14,7 +14,10 @@ import {
   entriesOf,
   entryRef,
   enumOptions,
+  fieldTarget,
+  isAsset,
   fieldTitle,
+  offeredAssetKind,
   mergeEntity,
   proseFields,
   relationsFrom,
@@ -44,6 +47,7 @@ import { Text } from './text';
 import { Wahl } from './wahl';
 import { Karte } from '../karten/karte';
 import { Bild, BildWahl, bildDes } from './bild';
+import { BildPanel } from '../bilder/bildpanel';
 import { Statblock } from './statblock';
 import { Zauber } from './zauber';
 import { Gegenstand } from './gegenstand';
@@ -128,6 +132,7 @@ interface Feld {
     Herausgeber,
     Bild,
     BildWahl,
+    BildPanel,
     Karte,
   ],
   template: `
@@ -387,7 +392,7 @@ interface Feld {
                         />
                       }
                       @case ('bild') {
-                        <nw-bildwahl [wert]="f.wert" (wertChange)="f.wert = $event" [fuer]="e.id" [label]="f.label" />
+                        <nw-bildwahl [wert]="f.wert" (wertChange)="f.wert = $event" [fuer]="e.id" [label]="f.label" [klasse]="klasseVon(f)" />
                       }
                       @case ('verweise') {
                         <nw-mehrfach
@@ -614,7 +619,7 @@ interface Feld {
                     <nw-karte class="karte" [id]="e.id" />
                   }
                   @case ('bild') {
-                    <nw-bild class="hauptbild" [wert]="st.bild!.wert" [caption]="st.bild!.caption" [alt]="st.bild!.alt || e.name || ''" />
+                    <nw-bild class="hauptbild" [wert]="st.bild!.wert" [version]="st.bild!.version" [caption]="st.bild!.caption" [alt]="st.bild!.alt || e.name || ''" />
                   }
                   @case ('absatz') {
                     <p class="beschreibung">{{ st.text }}</p>
@@ -745,6 +750,10 @@ interface Feld {
               </section>
             }
             <nw-fassungen [artikel]="e.id" [fassungen]="fassungen()" (gewechselt)="gewechselt($event)" />
+            <!-- Ein Bild (T-119): wo es gezeigt wird, seine Fassungen, „Replace image". -->
+            @if (istBild(e)) {
+              <nw-bildpanel [artikel]="e" (gewechselt)="gewechselt($event)" />
+            }
             @if (rueckbezuege().length) {
               <section class="kasten">
                 <h2>Linked here</h2>
@@ -1219,6 +1228,16 @@ export class Artikel {
     return textVergleich(text(e), v.map((f) => ({ f, text: text(f.entity) })));
   });
 
+  protected istBild(e: Entity): boolean {
+    const r = this.reg();
+    return !!r && isAsset(r, e);
+  }
+
+  /** Welche Bildklasse ein Bildfeld zuerst anbietet (T-119) — aus `target.where`. */
+  protected klasseVon(f: Feld): string {
+    return offeredAssetKind(f.schema?.target) ?? '';
+  }
+
   protected nurDortTitel(heading: string): string {
     return `${heading || 'More text'} — only in this version`;
   }
@@ -1523,6 +1542,9 @@ export class Artikel {
         const art = eingabeArt(schema) === 'auswahl' && !werte.length ? 'text' : eingabeArt(schema);
         const chips = art === 'verweise' || art === 'mehrfach';
         const suche = chips ? suchgruppen(r, schema) : { gruppen: [], feste: [], frei: true };
+        /* Wohin das Feld **an dieser Art** zeigt (T-119): die Karte bietet
+           bei `Image.image` Kartenbilder an (`targets`), sonst gilt das Feld. */
+        const ziel = fieldTarget(r, primaryInterface(e), { type: comp, key: prop, prop: schema });
         out.push({
           ref: `${comp}.${prop}`,
           comp,
@@ -1531,7 +1553,7 @@ export class Artikel {
              ist an einem Auftrag die Frist und an einem Ereignis das Ende. */
           label: `${def.label ?? comp} · ${fieldTitle(r, primaryInterface(e), { type: comp, key: prop, prop: schema })}`,
           art,
-          schema,
+          schema: ziel === schema.target ? schema : { ...schema, ...(ziel ? { target: ziel } : {}) },
           werte: chips ? suche.feste : werte,
           wert: art === 'jaNein' || chips ? '' : inEingabe(karte[prop]),
           jaNein: karte[prop] === true,

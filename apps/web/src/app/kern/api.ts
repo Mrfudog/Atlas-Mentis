@@ -265,6 +265,8 @@ export interface Liste {
       | { ref: string; label: string; kind: 'enum'; options: { value: string; count: number }[] }
       | { ref: string; label: string; kind: 'range'; min: number; max: number }
     )[];
+    /** Die Marken der Treffer, gezählt (T-119). */
+    tags?: { tag: string; count: number }[];
     partsHidden: number;
   };
   /** Was fehlt, weil die laufende Kampagne seine Ebene nicht aufschaltet
@@ -385,6 +387,17 @@ export interface ListenFrage {
   limit?: number | undefined;
   /** `Typ.feld:Wert|Wert` oder `Typ.feld:1..3`. */
   f?: string[] | undefined;
+  /** Nur mit allen diesen Marken (T-119). */
+  tag?: string[] | undefined;
+  /** Nur Bilder, die kein sichtbarer Artikel zeigt (T-119). */
+  unused?: boolean | undefined;
+}
+
+/** Wo ein Bild verwendet wird (T-119, `GET /api/assets/:id/uses`) — nur, was dieser Betrachter sieht. */
+export interface BildVerwendung {
+  uses: { id: string; name: string; type: string; via: string }[];
+  variants: { id: string; name: string; type: string }[];
+  variantOf: { id: string; name: string; type: string } | null;
 }
 
 /**
@@ -974,13 +987,39 @@ export class Api {
    * Eigenes `fetch` und nicht `call`: der Körper ist multipart, und den
    * Typ samt Grenze setzt der Browser, nicht `application/json`.
    */
-  async uploadAsset(datei: Blob, felder: { for?: string; name?: string; filename?: string } = {}): Promise<Entity & { url: string; thumb: string }> {
+  async uploadAsset(
+    datei: Blob,
+    felder: { for?: string; name?: string; filename?: string; kind?: string; variantOf?: string } = {},
+  ): Promise<Entity & { url: string; thumb: string }> {
     const form = new FormData();
     if (felder.for) form.append('for', felder.for);
     if (felder.name) form.append('name', felder.name);
+    /* Die Klasse, die das Feld anbietet (T-119), und die Fassung eines Bildes. */
+    if (felder.kind) form.append('kind', felder.kind);
+    if (felder.variantOf) form.append('variantOf', felder.variantOf);
     form.append('file', datei, felder.filename ?? ((datei as File).name || 'image'));
-    const res = await fetch(`${this.base}/api/assets`, {
-      method: 'POST',
+    return this.sendeBild('POST', '/api/assets', form);
+  }
+
+  /**
+   * **Quelle ersetzen** (T-119): derselbe Asset-Artikel, eine neue Datei —
+   * jeder Verwender zeigt sofort das neue Bild. Gegen die gelesene
+   * Revision, wie jedes Schreiben.
+   */
+  async replaceAssetFile(id: string, datei: Blob, revision: number | null | undefined): Promise<Entity & { url: string; thumb: string }> {
+    const form = new FormData();
+    if (revision !== undefined && revision !== null) form.append('revision', String(revision));
+    form.append('file', datei, (datei as File).name || 'image');
+    return this.sendeBild('PUT', `/api/assets/${encodeURIComponent(id)}/file`, form);
+  }
+
+  assetUses(id: string): Promise<BildVerwendung> {
+    return this.call<BildVerwendung>(`/api/assets/${encodeURIComponent(id)}/uses`);
+  }
+
+  private async sendeBild(method: 'POST' | 'PUT', url: string, form: FormData): Promise<Entity & { url: string; thumb: string }> {
+    const res = await fetch(`${this.base}${url}`, {
+      method,
       credentials: 'include',
       headers: this.sichtKopf(),
       body: form,
