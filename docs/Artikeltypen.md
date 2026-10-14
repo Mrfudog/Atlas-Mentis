@@ -1858,7 +1858,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `trade` *string*, `tool` *Item articles*, `ability` *Ability: str | dex | con | int | wis | cha*, `dc` *number*, `time` *string*, `days` *number*, `yieldCount` *number*, `onFailure` *materialsLost | halfLost | nothingLost*
+- `trade` *string*, `tool` *Item articles*, `ability` *Ability: str | dex | con | int | wis | cha*, `dc` *number*, `time` *string*, `days` *number*, `checks` *1…∞*, `yieldCount` *number*, `onFailure` *materialsLost | halfLost | nothingLost*
 
 **Geerbte Felder**
 

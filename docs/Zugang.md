@@ -105,7 +105,10 @@ Die Regel selbst steht in `packages/model/src/visibility.ts` und ist in
 
 Die Regel ist kurz, weil eine lange niemand mehr nachliest:
 
-- **Die Verwaltung darf alles.**
+- **Die Verwaltung darf alles.** Nur sie übernimmt zwischen dev und prod
+  (T-130, [Betrieb › Übernahme](Betrieb.md#übernahme-dev--prod)) — die
+  Leitung einer Kampagne nicht, denn eine Übernahme schreibt auf einer
+  anderen Installation.
 - **Ein Spieler liest alles** (was die Sichtbarkeit ihn lesen lässt) **und
   schreibt genau seine Figur und was an ihr hängt** — und was er selbst
   angelegt hat (D72). „Hängt an" heisst: über

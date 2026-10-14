@@ -317,6 +317,16 @@ Freigabe auf den falschen Artikel zeigen zu lassen.
 Das ist **nicht** `derived`: ein gerechneter Wert entsteht bei jedem Lesen
 neu (D8), eine ausgegebene Nummer muss stehen bleiben.
 
+**Zwischen zwei Installationen gehört die Nummer prod** (T-130). Jede
+Installation zählt für sich; legt dev `rule-0042` an und hat prod
+inzwischen eine andere `rule-0042`, sind es zwei Artikel mit derselben
+Nummer. Einer muss weichen, und es ist der auf dev: auf prod wird gespielt,
+dort stehen die Verweise, die zählen, und dev ist die Spielwiese, die sich
+nach prod richtet. Die **Id** dagegen ist zufällig und auf beiden Seiten
+dieselbe — an ihr erkennt die Übernahme, dass es derselbe Artikel ist. Das
+ist die eine Stelle, an der eine Nummer sich nach dem Anlegen noch ändert,
+und sie nimmt ihre Verweise (`[[rule-0042|…]]`) mit.
+
 ---
 
 ## Artikel
@@ -445,6 +455,14 @@ und wie gross eine davon ist, ist eine Frage an sie. Sagt weder die
 Platzierung noch das Board etwas, entscheidet die Grösse — flach ist eine
 Zeile (Overview), höher eine Karte (Quick). Wer die Kachel grösser zieht,
 hat damit schon gewählt.
+
+Ein **Bereich** auf dem Board ist ein benanntes Rechteck, zu dem man über
+einen Reiter springt — „Conditions" oben links, „Kerzengasse" unten
+rechts. Er ist ein **Anker** mit Grösse und kein Behälter: welche Karten
+dazugehören, sagt ihre Lage, nicht eine Kante. Wer eine Karte
+hinausschiebt, hat sie damit herausgenommen; eine gespeicherte
+Zugehörigkeit müsste man dabei jedes Mal mitändern, und vergessen hiesse,
+dass sie im Bereich steht und woanders liegt.
 
 **Es gibt keine Spieleransicht.** Es gab einmal eine, und sie war die zweite
 Stelle, an der stand, was ein Spieler nicht sehen darf. Zurückgehalten wird
@@ -1436,6 +1454,11 @@ nicht, sondern sagt die **Abweichung** mit einer Kante `craftsWith` zum
 Rezept oder zum Werkzeug. Eine Kopie wäre eine zweite Fassung, die die
 nächste Korrektur am Original nicht mehr erreicht; eine Kante sagt nur, was
 anders ist, und das Besondere (Figur) schlägt das Allgemeine (Kampagne).
+
+Manche Regelwerke messen eine Arbeit nicht in Tagen, sondern in **Proben**:
+alle zwei Stunden eine, und erst wenn genug gelungen sind, ist das Stück
+fertig. Das Rezept sagt es mit `checks`; die Zeit (`time`) bleibt daneben
+stehen, weil sie liest, wer plant, und die Proben zählt, wer würfelt.
 
 ---
 

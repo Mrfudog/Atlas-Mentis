@@ -73,6 +73,10 @@ jobs:
       - run: node apps/server/scripts/durchstich.mjs
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      # Die Übernahme dev ↔ prod (T-130): zwei Server, zwei Datenbanken.
+      - run: node apps/server/scripts/uebernahme-durchstich.mjs
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
 
   # Gebaut wird immer; nach GHCR geht das Abbild nur von preprod und main.
   # Der Server baut nie selbst — was dort läuft, ist genau das, was hier

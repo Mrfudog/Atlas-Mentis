@@ -147,6 +147,17 @@ export interface Repository {
   /** Der neue Stand gilt (die Leitung nannte ihn fertig) oder der Artikel ist weg. */
   dropReadyStand(entityId: string): Promise<void>;
 
+  /** **Der Stand der letzten Übernahme** (T-130): je Gegenstelle (`peer`,
+   *  der Name der anderen Installation) und Schlüssel (Peg-Id oder
+   *  `registry:<teil>:<name>`) der Stand, auf dem beide Seiten zuletzt
+   *  gleich standen — die Basis des Dreiwege-Vergleichs. Neben dem
+   *  Bestand, nicht im Artikel: sie wandert nicht mit einer Ausfuhr. */
+  transferBase(peer: string, keys?: Iterable<string>): Promise<Map<string, unknown>>;
+  /** `null` nimmt den Schlüssel weg. */
+  keepTransferBase(peer: string, rows: { key: string; value: unknown }[]): Promise<void>;
+  /** Alles für diese Gegenstelle weg (Überklonen setzt neu). */
+  clearTransferBase(peer: string): Promise<void>;
+
   /** **Wo ein Konto in einem Buch stehen blieb** (T-091, REQ-247): je
    *  Konto und Ebene der zuletzt gelesene Abschnitt. Kein Artikel — ein
    *  Lesezeichen wandert nicht mit der Ausfuhr (wie `app_session`). */
@@ -363,6 +374,24 @@ export class InMemoryRepository implements Repository {
   }
   async dropReadyStand(entityId: string): Promise<void> {
     this.fertig.delete(entityId);
+  }
+  private readonly basis = new Map<string, Map<string, unknown>>();
+  async transferBase(peer: string, keys?: Iterable<string>): Promise<Map<string, unknown>> {
+    const alle = this.basis.get(peer) ?? new Map<string, unknown>();
+    if (!keys) return new Map([...alle].map(([k, v]) => [k, structuredClone(v)]));
+    const raus = new Map<string, unknown>();
+    for (const k of keys) if (alle.has(k)) raus.set(k, structuredClone(alle.get(k)));
+    return raus;
+  }
+  async keepTransferBase(peer: string, rows: { key: string; value: unknown }[]): Promise<void> {
+    const alle = this.basis.get(peer) ?? this.basis.set(peer, new Map()).get(peer)!;
+    for (const r of rows) {
+      if (r.value === null || r.value === undefined) alle.delete(r.key);
+      else alle.set(r.key, structuredClone(r.value));
+    }
+  }
+  async clearTransferBase(peer: string): Promise<void> {
+    this.basis.delete(peer);
   }
   private readonly lesestand = new Map<string, string>();
   async readingPosition(userId: string, layerId: string): Promise<string | undefined> {

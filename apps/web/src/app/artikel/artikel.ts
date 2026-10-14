@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { Component, computed, effect, forwardRef, inject, input, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import {
@@ -45,6 +45,7 @@ import {
 import { Mehrfach, type Suchgruppe } from './mehrfach';
 import { Text } from './text';
 import { Wahl } from './wahl';
+import { SCHNELL_KONTEXT, type SchnellKontext } from './schnell';
 import { Karte } from '../karten/karte';
 import { Bild, BildWahl, bildDes } from './bild';
 import { BildPanel } from '../bilder/bildpanel';
@@ -115,6 +116,9 @@ interface Feld {
  */
 @Component({
   selector: 'nw-artikel',
+  /* Schnell anlegen aus einer Auswahl (T-131): der Artikel schlägt Ebene
+     und Sichtbarkeit vor und sichert vor „Open" seinen Entwurf. */
+  providers: [{ provide: SCHNELL_KONTEXT, useExisting: forwardRef(() => Artikel) }],
   imports: [
     RouterLink,
     FormsModule,
@@ -139,6 +143,11 @@ interface Feld {
     @if (artikel(); as e) {
       <div class="buch">
         <nav aria-label="Breadcrumb" class="brot">
+          <!-- Hierher über „Open" aus einer Auswahl (T-131): zuerst der Weg zurück. -->
+          @if (zurueck(); as z) {
+            <a class="zurueck" [routerLink]="['/artikel', z.id]">‹ {{ z.name }}</a>
+            <span aria-hidden="true">·</span>
+          }
           <a [routerLink]="'/' + (bereich() || 'compendium')">{{ bereichName() }}</a>
           <span aria-hidden="true">›</span>
           <a [routerLink]="'/' + (bereich() || 'compendium')" [queryParams]="{ type: art(e) }">{{
@@ -817,10 +826,12 @@ interface Feld {
   `,
   styleUrl: './artikel.scss',
 })
-export class Artikel {
+export class Artikel implements SchnellKontext {
   readonly id = input.required<string>();
   /** `?edit=1`: gleich bearbeiten — so öffnet „New article" den frischen Artikel (W7). */
   readonly edit = input<string | undefined>(undefined);
+  /** `?from=<id>`: hierher kam man über „Open" aus einer Auswahl (T-131) — der Weg zurück. */
+  readonly from = input<string | undefined>(undefined);
 
   protected readonly bestand = inject(Bestand);
   private readonly quellen = inject(Quellen);
@@ -1356,6 +1367,30 @@ export class Artikel {
   }
 
   // ------------------------------------------------------------ bearbeiten
+
+  /** Woraus „Create … as …" anlegt (T-131): dieser Artikel. */
+  herkunft(): Entity | null {
+    return this.artikel() ?? null;
+  }
+
+  /**
+   * Vor „Open" im Schnell-Anlegen (T-131): der neue Artikel steht schon im
+   * Entwurf, und ein Wechsel ohne Speichern nähme ihn mit. Also erst
+   * speichern; schlägt das fehl, bleibt man hier.
+   */
+  async vorOeffnen(): Promise<boolean> {
+    if (!this.bearbeitet()) return true;
+    await this.speichern();
+    return !this.bearbeitet();
+  }
+
+  /** Der Weg zurück nach „Open" (T-131), solange der Artikel ihn kennt. */
+  protected readonly zurueck = computed(() => {
+    const von = this.from();
+    if (!von || von === this.id()) return null;
+    const name = this.bestand.name()(von);
+    return name ? { id: von, name } : null;
+  });
 
   protected readonly bearbeitet = signal(false);
   protected readonly speichert = signal(false);
