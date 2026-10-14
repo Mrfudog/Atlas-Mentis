@@ -13,7 +13,17 @@ import {
   withCompare,
   withStack,
 } from '../src/stack.js';
-import { layerShort, sameThing, versionDiff, versionGroups, versionName, versionsOf } from '../src/versions.js';
+import {
+  layerShort,
+  linesDiff,
+  sameThing,
+  sectionDiff,
+  textSections,
+  versionDiff,
+  versionGroups,
+  versionName,
+  versionsOf,
+} from '../src/versions.js';
 import { campaignsOf } from '../src/visibility.js';
 
 const ebene = (id: string, name: string): Entity => ({
@@ -131,5 +141,63 @@ describe('versions of one thing (T-092)', () => {
     expect(layerShort(XPHB)).toBe('XPHB');
     expect(layerShort(ebene('ly', 'Homebrew Rules'))).toBe('HR');
     expect(layerShort(ebene('ly', 'Unearthed Arcana 2023'))).toBe('UA 23');
+  });
+});
+
+/* T-103: die Leitung sah an Aasimar die abweichende Grösse unter
+   „Languages" — der Text war als Ganzes verglichen, und die andere Fassung
+   hing am Ende des letzten Abschnitts. */
+describe('sections of a long text (T-103)', () => {
+  const mpmm = '## Size\n\nYou are Medium or Small. You choose the size when you select this race.';
+  const vgm =
+    '## Age\n\nAasimar mature at the same rate as humans, but they can live up to 160 years.\n\n' +
+    '## Size\n\nAasimar have the same range of height and weight as humans.\n\n' +
+    '## Languages\n\nYou can speak, read, and write Common and Celestial.';
+
+  it('splits at headings and keeps the text before the first one', () => {
+    const s = textSections(`Intro line.\n\n${vgm}`);
+    expect(s.map((x) => x.key)).toEqual(['', 'age', 'size', 'languages']);
+    expect(s[2]!.text).toBe('## Size\n\nAasimar have the same range of height and weight as humans.');
+    expect(s[2]!.body).toBe('Aasimar have the same range of height and weight as humans.');
+    expect(textSections('')).toEqual([]);
+  });
+
+  it('counts a repeated heading, so the second one does not meet the first', () => {
+    expect(textSections('## A\n\nx\n\n## A\n\ny').map((x) => x.key)).toEqual(['a', 'a#2']);
+  });
+
+  it('puts the other size under Size, not under the last heading', () => {
+    const d = sectionDiff(mpmm, vgm);
+    const size = d.find((x) => x.key === 'size');
+    expect(size).toMatchObject({ heading: 'Size', onlyThere: false });
+    expect(size!.value).toBe('Aasimar have the same range of height and weight as humans.');
+    /* Was nur VGM hat, steht für sich, unter seiner eigenen Überschrift. */
+    expect(d.filter((x) => x.onlyThere).map((x) => x.heading)).toEqual(['Age', 'Languages']);
+    /* Andersherum: was VGM hat und MPMM nicht, heisst „dort fehlt er". */
+    const zurueck = sectionDiff(vgm, mpmm);
+    expect(zurueck.find((x) => x.key === 'languages')).toMatchObject({ value: undefined, onlyThere: false });
+    expect(zurueck.find((x) => x.key === 'size')!.value).toContain('Medium or Small');
+  });
+
+  it('says nothing where both say the same, whitespace aside', () => {
+    expect(sectionDiff(vgm, vgm.replace(/\n\n/g, '\n\n\n'))).toEqual([]);
+  });
+
+  it('compares book lines by their label', () => {
+    const d = linesDiff(
+      [
+        { label: 'Armor Class', text: '15 (leather armor, shield)' },
+        { label: 'Hit Points', text: '7 (2d6)' },
+      ],
+      [
+        { label: 'Hit Points', text: '7 (2d6)' },
+        { label: 'Armor Class', text: '15 (leather armor)' },
+        { label: 'Senses', text: 'darkvision 60 ft.' },
+      ],
+    );
+    expect(d).toEqual([
+      { key: 'armor class', heading: 'Armor Class', value: '15 (leather armor)', onlyThere: false },
+      { key: 'senses', heading: 'Senses', value: 'darkvision 60 ft.', onlyThere: true },
+    ]);
   });
 });
