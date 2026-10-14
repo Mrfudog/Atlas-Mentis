@@ -1,10 +1,11 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Api } from './kern/api';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Session } from './kern/session';
 import { BEREICHE } from './kern/bereiche';
 import { KurzPopup } from './artikel/kurzpopup';
 import { Live } from './kern/live';
+import { ALLE, Filtergruppen } from './kern/filtergruppen';
 
 /**
  * Das Gerüst: die Kopfleiste wie auf dem Design-Canvas (Kompendium, Artikel
@@ -66,11 +67,36 @@ import { Live } from './kern/live';
             <a [routerLink]="'/' + b.weg" routerLinkActive="an" ariaCurrentWhenActive="page">{{
               b.label
             }}</a>
+            <!-- Die Filtergruppen der Seite, direkt aufrufbar (T-137). -->
+            @if (gruppen.jeSeite(b.weg).length) {
+              <button
+                type="button"
+                class="auf"
+                [class.offen]="menue() === b.weg"
+                [attr.aria-expanded]="menue() === b.weg"
+                [attr.aria-label]="'Filter groups of ' + b.label"
+                (click)="menueUm(b.weg)"
+              >
+                ▾
+              </button>
+            }
           }
           <a routerLink="/classes" routerLinkActive="an" ariaCurrentWhenActive="page">Classes</a>
           <a routerLink="/compendium" routerLinkActive="an" ariaCurrentWhenActive="page"
             >Compendium</a
           >
+          @if (gruppen.jeSeite('compendium').length) {
+            <button
+              type="button"
+              class="auf"
+              [class.offen]="menue() === 'compendium'"
+              [attr.aria-expanded]="menue() === 'compendium'"
+              aria-label="Filter groups of Compendium"
+              (click)="menueUm('compendium')"
+            >
+              ▾
+            </button>
+          }
           <a routerLink="/images" routerLinkActive="an" ariaCurrentWhenActive="page">Images</a>
           @if (session.leitung()) {
             <a routerLink="/werkbank" routerLinkActive="an" ariaCurrentWhenActive="page">Workbench</a>
@@ -103,6 +129,27 @@ import { Live } from './kern/live';
         </a>
         <button type="button" (click)="abmelden()">Sign out</button>
       </header>
+      <!-- Das Untermenü steht unter der Leiste und nicht an ihr: am Telefon
+           schiebt die Leiste seitlich und schnitte ein Aufklappmenü ab. -->
+      @if (menue(); as m) {
+        <nav class="untermenue" [attr.aria-label]="'Filter groups of ' + seitenLabel(m)">
+          <span class="wo">{{ seitenLabel(m) }}</span>
+          @for (g of gruppen.jeSeite(m); track g.id) {
+            <a [routerLink]="'/' + m" [queryParams]="{ view: g.default ? null : g.id }" (click)="menue.set(null)"
+              >{{ g.name }}
+              @if (g.default) {
+                <span class="dim">(default)</span>
+              }
+              @if (g.scope === 'own') {
+                <span class="dim">· yours</span>
+              }
+            </a>
+          }
+          @if (gruppen.vorgabe(m)) {
+            <a [routerLink]="'/' + m" [queryParams]="{ view: alle }" (click)="menue.set(null)">All</a>
+          }
+        </nav>
+      }
     }
     @if (warnung()) {
       <p class="warnung" role="alert">{{ warnung() }}</p>
@@ -206,6 +253,49 @@ import { Live } from './kern/live';
       background: var(--chip);
       font-weight: 700;
     }
+    .bereiche .auf {
+      min-height: 0;
+      margin-left: -4px;
+      padding: 0.5rem 0.35rem;
+      border: 0;
+      border-radius: 6px;
+      background: none;
+      color: var(--dim);
+      cursor: pointer;
+    }
+    .bereiche .auf:hover,
+    .bereiche .auf.offen {
+      background: var(--hover);
+      color: var(--accent);
+    }
+    .untermenue {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 2px 0.25rem;
+      padding: 0.3rem 1.5rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+    }
+    .untermenue .wo {
+      margin-right: 0.5rem;
+      font-family: var(--caps);
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .untermenue a {
+      padding: 0.4rem 0.65rem;
+      border-radius: 6px;
+      color: var(--ink);
+      text-decoration: none;
+    }
+    .untermenue a:hover {
+      background: var(--hover);
+    }
+    .untermenue .dim {
+      color: var(--dim);
+      font-size: 0.85em;
+    }
     .live {
       margin-left: auto;
       width: 0.55rem;
@@ -294,6 +384,9 @@ import { Live } from './kern/live';
       .bereiche a {
         white-space: nowrap;
       }
+      .untermenue {
+        padding: 0.3rem 1rem;
+      }
     }
   `,
 })
@@ -304,6 +397,11 @@ export class App {
   protected readonly betrieb =
     'https://github.com/Mrfudog/Atlas-Mentis/blob/preprod/docs/Betrieb.md#was-daten-löschen-kann';
   protected readonly bereiche = BEREICHE.filter((b) => b.weg !== 'play');
+  /** Die Filtergruppen je Seite (T-137) — für die Untermenüs. */
+  protected readonly gruppen = inject(Filtergruppen);
+  protected readonly alle = ALLE;
+  /** Welches Untermenü offen ist: der Weg der Seite. */
+  protected readonly menue = signal<string | null>(null);
 
   protected readonly api = inject(Api);
   /** Der Live-Kanal (T-116) — hier geholt, damit er mit der Anmeldung steht. */
@@ -317,12 +415,29 @@ export class App {
 
   constructor() {
     void this.session.load();
+    /* Die Gruppen gehören zum Konto und zur Kampagne: neu nach Anmelden,
+       Abmelden und jedem Wechsel der Sicht (REQ-241). */
+    effect(() => {
+      const wer = this.session.angemeldet() ? `${this.session.user()?.id}|${this.session.viewAs()?.id ?? ''}` : null;
+      untracked(() => {
+        this.menue.set(null);
+        if (wer) void this.gruppen.laden(true);
+        else this.gruppen.vergessen();
+      });
+    });
     effect(() => {
       const laeuft = this.api.laufend().length > 0;
       clearTimeout(this.uhr);
       if (!laeuft) this.wartet.set(false);
       else if (!this.wartet()) this.uhr = setTimeout(() => this.wartet.set(true), 300);
     });
+  }
+
+  protected menueUm(seite: string): void {
+    this.menue.set(this.menue() === seite ? null : seite);
+  }
+  protected seitenLabel(seite: string): string {
+    return BEREICHE.find((b) => b.weg === seite)?.label ?? 'Compendium';
   }
 
   protected neuLaden(): void {

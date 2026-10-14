@@ -21,6 +21,8 @@ import { Injectable, signal } from '@angular/core';
 export class ListenFilter {
   private seite: string | null = null;
   private letzterTyp: string | undefined | null = null;
+  /** Mit welcher Filtergruppe die Seitenleiste zuletzt gesetzt wurde (T-137). */
+  private gesaet: string | null = null;
 
   readonly suche = signal('');
   /** Ausgeschlossene Ebenen — leer heisst: alle. Ein Häkchen weg nimmt eine heraus. */
@@ -47,6 +49,20 @@ export class ListenFilter {
     this.blatt.set(0);
     this.vorschau.set(null);
     this.letzterTyp = null;
+    this.gesaet = null;
+  }
+
+  /**
+   * **Womit eine Filtergruppe anfängt** (T-137): Suche und abgewählte
+   * Ebenen, einmal je Gruppe. Danach gehört der Filter wieder der Seite —
+   * zurück vom Artikel bleibt, was jemand seither geändert hat.
+   */
+  saeen(schluessel: string, start: { q?: string | undefined; nolayer?: readonly string[] | undefined }): void {
+    if (this.gesaet === schluessel) return;
+    this.gesaet = schluessel;
+    this.suche.set(start.q ?? '');
+    this.ohneEbenen.set(new Set(start.nolayer ?? []));
+    this.blatt.set(0);
   }
 
   /**

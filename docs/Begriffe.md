@@ -486,6 +486,18 @@ Stelle, die am Tag der nächsten Art falsch ist; so bringt die neue Art ihre
 Spalten mit. Und weil die Vorschau neben der Liste eine Karte ist, zeigt
 sie Quick.
 
+**Eine Filtergruppe ist kein Wort, sondern ein gespeicherter Blick**
+(T-137). Die Leitung wollte World ohne Gegenstände sehen, ohne es jedes Mal
+abzuwählen, und Unterreiter, die sie aus der Kopfleiste wieder findet. Eine
+Vorgabe je Seite *und* daneben Gruppen wären zwei Stellen für dieselbe
+Frage — „was zeigt diese Seite?" —, also ist die Vorgabe eine Gruppe mit
+einer Marke. Sie gehört nicht ins Register: wie jemand seine Listen
+schneidet, ist keine Regel, und eine eigene Gruppe trägt eine Konto-Id, die
+in keinem Artikel stehen darf. Getrennt bleibt, was eine Gruppe **ist**
+(Arten, Marken, Stand — die Grenze des Reiters) und womit sie **anfängt**
+(Suche, Ebenen — danach gehört der Filter der Seite): sonst liesse sich in
+„Places" eine Suche nicht mehr löschen, ohne die Gruppe zu ändern.
+
 **Die Kurzansicht** ist das deutsche Wort für Quick, kein zehntes Wort
 (T-093, REQ-248, 14.10.2026). Sie steht auch als **Popup**: wo ein Artikel
 genannt wird — ein Verweis im Text, eine Kante, eine Ebene im Filter oder
