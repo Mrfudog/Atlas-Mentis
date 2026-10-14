@@ -155,7 +155,10 @@ describe('Kaufen und Verkaufen (T-133)', () => {
     expect(laden?.relations?.find((x) => x.id === 'l~1')?.props?.['qty']).toBe(1);
     const inv = await repo.getEntity('inv-f');
     expect(inv?.components['Inventory']?.['copper']).toBe(400);
-    expect(inv?.relations?.find((x) => x.id === 'h1')?.props?.['qty']).toBe(3);
+    /* Der verstaute Stapel bleibt, wie er war; das Gekaufte liegt unverstaut daneben (T-140). */
+    expect(inv?.relations?.find((x) => x.id === 'h1')?.props?.['qty']).toBe(1);
+    const neu = inv?.relations?.find((x) => x.type === 'holds' && x.props?.['unstowed'] === true);
+    expect(neu).toMatchObject({ to: 'laterne', props: { qty: 2, unstowed: true } });
     const [ev] = await repo.listEvents({ name: 'shop.bought', limit: 5 });
     expect(ev?.payload).toMatchObject({ actor: 'f', item: 'laterne', qty: 2, unit: 800, total: 1600, by: 'u_s' });
     expect((ev?.payload as { steps: unknown[] }).steps).toHaveLength(2);

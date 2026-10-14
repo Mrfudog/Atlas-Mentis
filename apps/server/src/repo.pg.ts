@@ -308,8 +308,15 @@ export class PgRepository implements Repository {
     const client = await this.pool.connect();
     try {
       await client.query('begin');
+      /* **Die Tabelle zuerst, für jedes Schreiben** (REQ-192): sperrte nur,
+         wer den Bestand hält, nahm ein zweites Schreiben derselben Zeile
+         erst die Zeile (`for update`) und wartete dann beim Einfügen auf
+         die Tabelle, während das erste die Tabelle hielt und auf die Zeile
+         wartete — Postgres brach eines ab (40P01), und es kam als 500
+         statt 409 an. Dieselbe Reihenfolge überall hat keinen Kreis;
+         Lesen geht weiter. */
+      await client.query('lock table entity in share row exclusive mode');
       if (gehalten) {
-        await client.query('lock table entity in share row exclusive mode');
         const { rows } = await client.query<Row>(PgRepository.STEMPEL);
         nachher = String(rows[0]?.['s'] ?? '') === gehalten.stempel ? '' : null;
       }

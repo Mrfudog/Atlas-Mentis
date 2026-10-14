@@ -1,4 +1,4 @@
-import { Component, Injectable, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { Component, ElementRef, Injectable, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   carryGrid,
@@ -11,6 +11,7 @@ import {
   firstFreeSpot,
   fitsAt,
   insideOf,
+  isUnstowed,
   itemShape,
   loadStage,
   moveHeld,
@@ -35,6 +36,12 @@ import { Wahl } from './wahl';
 /** Die Griffweiten an `holds.props.tier`, in der Reihenfolge des Registers. */
 const TIERS = ['held', 'worn', 'belt', 'pack', 'ground', 'stored'];
 const REGELN: Record<InventarLage['rules'], string> = { grid: 'Grid', weight: 'Weight', slots: 'Slots' };
+/** Was die Kampagne mit Unverstautem tut (T-140) — als Satz über dem Bereich. */
+const VERSTAUEN: Record<NonNullable<InventarLage['stowing']>, string> = {
+  anytime: 'Lying in front of them — stow it whenever you like.',
+  bySessionEnd: 'Stow it before the session ends, or it is left behind.',
+  immediately: 'Stow it now — when the table moves on, it is left behind.',
+};
 
 /**
  * **Regelset und Gruppen der laufenden Kampagne** (T-127), einmal geholt
@@ -71,6 +78,8 @@ interface Stueck extends GridPiece {
   reserviert: string | null;
   /** Trägt der Gegenstand selbst ein Inventar, ist er ein Behälter. */
   behaelter: string | null;
+  /** Noch nicht verstaut (T-140, `holds.props.unstowed`). */
+  offen: boolean;
   farbe: string;
 }
 
@@ -137,12 +146,49 @@ interface Ziel {
         }
       </div>
 
+      @if (unverstaut().length) {
+        <section class="vor" aria-label="Not stowed">
+          <h4>Not stowed <small>{{ verstauText() }}</small></h4>
+          <ul>
+            @for (p of unverstaut(); track p.key) {
+              <li [class.gewaehlt]="p.key === wahl()">
+                <button type="button" class="stueck" [class.zieht]="zug()?.key === p.key"
+                        [attr.aria-pressed]="p.key === wahl()"
+                        [title]="darf() && regel() === 'grid' ? 'Drag it into the grid, or pick it and tap a cell' : p.name"
+                        (pointerdown)="ziehAn($event, p)" (click)="klickVor(p)">
+                  <span class="punkt" [style.background]="p.farbe"></span>{{ p.name }}
+                  @if (p.qty !== 1) { <span class="qty">×{{ p.qty }}</span> }
+                </button>
+                <a class="auf" [routerLink]="['/artikel', p.item]" [nwQuick]="p.item" aria-label="Open article">↗</a>
+                @if (darf()) {
+                  <button type="button" class="klein" (click)="verstauen(p)">Stow</button>
+                  @if (ziele(p).length && !p.reserviert) {
+                    <label>Move to
+                      <select (change)="verschieben(p, $any($event.target).value); $any($event.target).value = ''">
+                        <option value=""></option>
+                        @for (z of ziele(p); track z.id) { <option [value]="z.id">{{ z.label }}</option> }
+                      </select>
+                    </label>
+                  }
+                  @if (!p.reserviert) { <button type="button" class="klein" (click)="entfernen(p)">Remove</button> }
+                }
+              </li>
+            }
+          </ul>
+        </section>
+      }
+      @if (zug(); as z) {
+        @if (z.zieht) {
+          <div class="geist" aria-hidden="true" [style.left.px]="z.x" [style.top.px]="z.y">{{ z.name }}</div>
+        }
+      }
+
       @if (regel() === 'grid') {
-        <div class="raster" role="grid" [attr.aria-label]="'Grid of ' + name()"
+        <div class="raster" role="grid" [attr.aria-label]="'Grid of ' + name()" [attr.data-inv]="inventar().id"
              [style.grid-template-columns]="'repeat(' + kiste().w + ', var(--zelle))'"
              [style.--zelle]="'min(2.1rem, calc((100vw - 5rem) / ' + kiste().w + '))'">
           @for (z of zellen(); track z.key) {
-            <button type="button" class="zelle"
+            <button type="button" class="zelle" [attr.data-x]="z.x" [attr.data-y]="z.y"
                     [class.zu]="!z.offen && !formModus()" [class.aus]="!z.offen && formModus()"
                     [class.belegt]="!!z.stueck" [class.gewaehlt]="!!z.stueck && z.stueck.key === wahl()"
                     [style.background]="z.stueck ? z.stueck.farbe : z.zone ? zonenFarbe(z.zone) : null"
@@ -186,9 +232,9 @@ interface Ziel {
         }
       }
 
-      @if (stuecke().length) {
+      @if (verstaut().length) {
         <ul class="posten">
-          @for (p of stuecke(); track p.key) {
+          @for (p of verstaut(); track p.key) {
             <li [class.gewaehlt]="p.key === wahl()">
               <span class="punkt" [style.background]="p.farbe"></span>
               <button type="button" class="nennen" (click)="waehle(p.key)" [attr.aria-pressed]="p.key === wahl()">{{ p.name }}</button>
@@ -250,7 +296,7 @@ interface Ziel {
             }
           }
         </ul>
-      } @else {
+      } @else if (!unverstaut().length) {
         <p class="leer">Nothing in it yet.</p>
       }
 
@@ -298,6 +344,24 @@ interface Ziel {
     .innen { display: block !important; padding-left: 1.1rem !important; }
     .fehler { color: var(--warn); }
     .hinzu { max-width: 28rem; }
+    .vor { border: 1px dashed var(--accent); border-radius: 6px; padding: 0.4rem 0.6rem; background: var(--surface); }
+    .vor h4 { margin: 0 0 0.3rem; font-family: var(--caps); font-weight: normal; }
+    .vor h4 small { display: block; font-family: inherit; color: var(--dim); font-size: 0.85rem; }
+    .vor ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+    .vor li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.6rem; }
+    .vor li.gewaehlt .stueck { outline: 2px solid var(--accent); }
+    .vor select { min-height: 32px; }
+    .stueck {
+      display: inline-flex; align-items: center; gap: 0.35rem; min-height: 40px; padding: 0.2rem 0.6rem;
+      border: 1px solid var(--line); border-radius: 999px; background: var(--paper, var(--surface)); color: var(--heading);
+      font: inherit; cursor: grab; touch-action: none; user-select: none;
+    }
+    .stueck.zieht { opacity: 0.5; }
+    .geist {
+      position: fixed; z-index: 50; pointer-events: none; transform: translate(-50%, -120%);
+      padding: 0.2rem 0.6rem; border-radius: 999px; background: var(--accent); color: var(--accent-ink);
+      box-shadow: 0 2px 8px rgb(0 0 0 / 0.25); white-space: nowrap;
+    }
   `,
 })
 export class Inventar {
@@ -313,6 +377,7 @@ export class Inventar {
 
   protected readonly bestand = inject(Bestand);
   protected readonly session = inject(Session);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly api = inject(Api);
   private readonly lageDienst = inject(InventarLageDienst);
 
@@ -396,10 +461,22 @@ export class Inventar {
           stackSize: zahl(item['stackSize']),
           reserviert: reservedFor(k),
           behaelter: (it?.relations ?? []).find((r) => r.type === 'carries')?.to ?? null,
+          offen: isUnstowed(k),
           farbe: `hsl(${(i * 67 + 200) % 360} 55% 62%)`,
         };
       });
   });
+
+  /** Was schon verstaut ist — die Liste unter dem Raster. */
+  protected readonly verstaut = computed(() => this.stuecke().filter((p) => !p.offen));
+  /** Was noch vor der Figur liegt (T-140) — der Bereich über dem Raster. */
+  protected readonly unverstaut = computed(() => this.stuecke().filter((p) => p.offen));
+  protected readonly verstauText = computed(() => VERSTAUEN[this.lageDienst.lage()?.stowing ?? 'anytime']);
+
+  /** Ein Stück, das gerade mit Maus oder Finger gezogen wird. */
+  protected readonly zug = signal<{ key: string; name: string; x: number; y: number; x0: number; y0: number; zieht: boolean } | null>(null);
+  /** Nach einem Zug kommt noch ein Klick — der zählt nicht als Wahl. */
+  private gezogen = false;
 
   protected readonly zellen = computed(() => {
     const box = this.kiste();
@@ -576,7 +653,7 @@ export class Inventar {
       this.hinweis.set(`${gewaehlt.name} doesn’t fit there.`);
       return;
     }
-    void this.setze(gewaehlt, { gx: x, gy: y, rot: gewaehlt.rot ?? 0, slot: undefined, tier: 'pack' });
+    void this.setze(gewaehlt, { gx: x, gy: y, rot: gewaehlt.rot ?? 0, slot: undefined, tier: 'pack', unstowed: undefined });
   }
 
   protected drehen(p: Stueck): void {
@@ -591,7 +668,72 @@ export class Inventar {
   protected hinlegen(p: Stueck): void {
     const spot = firstFreeSpot(this.kiste(), this.stuecke(), p);
     if (!spot) return void this.hinweis.set(`No room for ${p.name} in the grid.`);
-    void this.setze(p, { ...spot, slot: undefined, tier: 'pack' });
+    void this.setze(p, { ...spot, slot: undefined, tier: 'pack', unstowed: undefined });
+  }
+
+  /**
+   * **Verstauen** (T-140): im Raster an den ersten freien Platz — wer es
+   * woanders will, zieht es oder tippt eine Zelle —, ohne Raster einfach
+   * in die Sachen.
+   */
+  protected verstauen(p: Stueck): void {
+    if (this.regel() === 'grid') return this.hinlegen(p);
+    void this.setze(p, { unstowed: undefined });
+  }
+
+  protected klickVor(p: Stueck): void {
+    if (this.gezogen) {
+      this.gezogen = false;
+      return;
+    }
+    this.waehle(p.key);
+  }
+
+  /**
+   * **Ins Raster ziehen** — mit Maus, Stift oder Finger (Pointer-Ereignisse,
+   * `touch-action: none` am Stück). Erst ab ein paar Pixeln ist es ein Zug;
+   * davor ein Tippen, das wählt. Losgelassen über einer Zelle dieses
+   * Rasters liegt es dort, wenn es passt — dieselbe Prüfung wie beim Tippen.
+   */
+  protected ziehAn(ev: PointerEvent, p: Stueck): void {
+    if (!this.darf() || this.regel() !== 'grid' || ev.button > 0) return;
+    const el = ev.currentTarget as HTMLElement;
+    el.setPointerCapture?.(ev.pointerId);
+    this.gezogen = false;
+    this.zug.set({ key: p.key, name: p.name, x: ev.clientX, y: ev.clientY, x0: ev.clientX, y0: ev.clientY, zieht: false });
+    const bewegt = (e: PointerEvent) => {
+      const z = this.zug();
+      if (!z || e.pointerId !== ev.pointerId) return;
+      const zieht = z.zieht || Math.hypot(e.clientX - z.x0, e.clientY - z.y0) > 6;
+      this.zug.set({ ...z, x: e.clientX, y: e.clientY, zieht });
+      if (zieht) e.preventDefault();
+    };
+    const ende = (e: PointerEvent) => {
+      if (e.pointerId !== ev.pointerId) return;
+      el.removeEventListener('pointermove', bewegt);
+      el.removeEventListener('pointerup', ende);
+      el.removeEventListener('pointercancel', ende);
+      const z = this.zug();
+      this.zug.set(null);
+      if (!z?.zieht || e.type === 'pointercancel') return;
+      this.gezogen = true;
+      this.fallen(p, e.clientX, e.clientY);
+    };
+    el.addEventListener('pointermove', bewegt);
+    el.addEventListener('pointerup', ende);
+    el.addEventListener('pointercancel', ende);
+  }
+
+  /** Wo das gezogene Stück losgelassen wurde: eine Zelle dieses Rasters, sonst nichts. */
+  private fallen(p: Stueck, x: number, y: number): void {
+    const unter = document.elementFromPoint(x, y) as HTMLElement | null;
+    const zelle = unter?.closest<HTMLElement>('[data-x]');
+    const raster = zelle?.closest<HTMLElement>('.raster');
+    if (!zelle || !raster || raster.dataset['inv'] !== this.inventar().id || !this.host.nativeElement.contains(raster)) return;
+    const gx = Number(zelle.dataset['x']);
+    const gy = Number(zelle.dataset['y']);
+    if (!fitsAt(this.kiste(), this.stuecke(), p, gx, gy)) return void this.hinweis.set(`${p.name} doesn’t fit there.`);
+    void this.setze(p, { gx, gy, rot: p.rot ?? 0, slot: undefined, tier: 'pack', unstowed: undefined });
   }
 
   protected herausnehmen(p: Stueck): void {
@@ -655,9 +797,12 @@ export class Inventar {
     const nach = this.bestand.voll().get(ziel);
     if (!nach) return void this.hinweis.set('That inventory isn’t visible to you.');
     if (!this.session.darfSchreiben()(ziel)) return void this.hinweis.set(`You can’t write ${entityName(nach)}.`);
+    /* In einen Behälter gelegt ist es verstaut; der Gruppe gegeben noch nicht (T-140). */
+    const behaelter = this.stuecke().some((s) => s.behaelter === ziel);
     const r = moveHeld(this.inventar(), nach, p.key, {
       newId: `${nach.id}~holds-${Date.now().toString(36)}`,
       inside: insideOf(p.item, this.bestand.voll()),
+      stow: behaelter,
     });
     if ('refused' in r) {
       const warum = { reserved: 'It is reserved.', cycle: 'A container can’t go into itself.', same: 'It is already there.', missing: 'It is gone — reload.' };
