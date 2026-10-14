@@ -18,6 +18,7 @@ import {
   parseContainerPreset,
   pieceInShape,
   pieceZone,
+  reserve,
   reservedFor,
   sizeFactor,
   slotsUsed,
@@ -233,6 +234,8 @@ interface Ziel {
                 }
                 @if (!p.reserviert) {
                   <button type="button" class="klein" (click)="entfernen(p)">Remove</button>
+                } @else if (session.leitung()) {
+                  <button type="button" class="klein" (click)="freigeben(p)" title="The order no longer counts on it">Release</button>
                 }
               </li>
             }
@@ -309,7 +312,7 @@ export class Inventar {
   readonly tiefe = input(0);
 
   protected readonly bestand = inject(Bestand);
-  private readonly session = inject(Session);
+  protected readonly session = inject(Session);
   private readonly api = inject(Api);
   private readonly lageDienst = inject(InventarLageDienst);
 
@@ -620,6 +623,12 @@ export class Inventar {
     const inv = this.inventar();
     this.wahl.set(null);
     await this.schreiben([{ ...inv, relations: (inv.relations ?? []).filter((r) => r.id !== p.key) }]);
+  }
+
+  /** **Die Leitung gibt frei** (T-134): das Stück verliert die Reservierung; der Server prüft, ob sie darf. */
+  protected async freigeben(p: Stueck): Promise<void> {
+    const inv = this.inventar();
+    await this.schreiben([{ ...inv, relations: (inv.relations ?? []).map((r) => (r.id === p.key ? reserve(r, null) : r)) }]);
   }
 
   protected async hinzu(item: string): Promise<void> {
