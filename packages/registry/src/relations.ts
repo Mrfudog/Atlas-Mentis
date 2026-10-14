@@ -149,14 +149,17 @@ export const relations: Record<string, RelationDef> = {
    * Zauberwirken wohnen dort. Seit P4 auch von der Unterklasse und der
    * Abstammung: Domänenzauber des Klerikers, das angeborene Thaumaturgy
    * des Tieflings — mit `fromLevel`, ab welcher Klassen- bzw. Figurenstufe.
+   * Seit T-089 auch vom Talent: Drow High Magic wirkt Levitate einmal am Tag
+   * wie die Abstammung ihr Thaumaturgy — `grants` hätte das „1/day"
+   * verloren.
    */
   casts: {
     type: 'casts',
     label: 'casts',
     inverseLabel: 'cast by',
-    means: 'A statblock, character, item, subclass or ancestry can cast a spell; the spell lists who casts it.',
+    means: 'A statblock, character, item, subclass, ancestry or feat can cast a spell; the spell lists who casts it.',
     intended: 'Feed the spell list and its uses: mode, uses, level and charges should appear on the sheet as castable, with slots and charges counted down in play.',
-    from: ['Statblock', 'PlayerCharacter', 'Item', 'Subclass', 'Ancestry'],
+    from: ['Statblock', 'PlayerCharacter', 'Item', 'Subclass', 'Ancestry', 'Feat'],
     to: ['Spell'],
     props: {
       type: 'object',
