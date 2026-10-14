@@ -32,6 +32,7 @@ import type { Entity, Frame, MapMarker, Pt, Size } from '@nw/model';
 import { Api, type KartenKontext } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Kurzansicht } from '../kern/kurzansicht';
+import { Live } from '../kern/live';
 import { Session } from '../kern/session';
 import { bildAdresse } from '../artikel/bild';
 import { Brett, type Mangel } from '../boards/brett';
@@ -336,7 +337,19 @@ export class Karte {
       ro.observe(b);
       aufraeumen(() => ro.disconnect());
     });
+    /* **Live** (T-116): die Karte selbst kommt über den Bestand neu. Was
+       neben ihr steht, hängt an anderen Artikeln — eine Unterkarte, die
+       ihren Rahmen bekommt, ein Markerziel, das umbenannt wird, die
+       Gruppe, die woanders steht —, also fragt der Kontext neu, sobald
+       eine Karte oder eines dieser Ziele sich ändert. */
+    const ab = inject(Live).onArtikel((ev) => {
+      const k = this.kontext();
+      const betrifft =
+        ev.type === 'Map' || ev.id === k?.party?.id || !!k?.targets[ev.id] || !!k?.children.some((c) => c.id === ev.id);
+      if (betrifft && ev.id !== this.id()) void this.kontextHolen(this.id());
+    });
     inject(DestroyRef).onDestroy(() => {
+      ab();
       this.kontextLauf += 1;
     });
   }

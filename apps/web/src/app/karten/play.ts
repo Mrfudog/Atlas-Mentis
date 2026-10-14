@@ -1,6 +1,7 @@
-import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Api, type Tisch } from '../kern/api';
+import { Live } from '../kern/live';
 import { Karte } from './karte';
 
 /**
@@ -12,8 +13,7 @@ import { Karte } from './karte';
  * `?map=` zeigt eine andere Karte, ohne die Sitzung zu ändern: wer in eine
  * Unterkarte hineinzoomt, schaut hinein, und der Tisch bleibt, wo er ist.
  * `?session=` wählt eine andere Sitzung. Ändert die Leitung `activeMap`,
- * holt die Seite den Stand beim nächsten Öffnen — und sobald der
- * Live-Kanal steht (T-116), auf sein Ereignis hin.
+ * kommt das über den Live-Kanal (T-116), und die Seite fragt neu.
  */
 @Component({
   selector: 'nw-play',
@@ -131,16 +131,32 @@ export class Play {
   constructor() {
     effect(() => {
       const s = this.session();
-      untracked(() => {
-        this.api
-          .play(s)
-          .then((t) => {
-            this.tisch.set(t);
-            this.fehler.set(null);
-          })
-          .catch((e: Error) => this.fehler.set(e.message));
-      });
+      untracked(() => this.holen(s));
     });
+    /* **Play folgt der Sitzung** (T-116): legt die Leitung eine andere
+       Karte auf den Tisch, wechselt jeder Schirm, der dieser Sitzung folgt —
+       der Beamer wie das Telefon. Wer gerade in eine Unterkarte schaut
+       (`?map=`), bleibt dort; „Back to the table map" bringt ihn zurück. */
+    const ab = inject(Live).onSitzung((z) => {
+      const t = this.tisch();
+      if (!t || z.id === t.session || !t.session) this.holen(this.session());
+    });
+    inject(DestroyRef).onDestroy(ab);
+  }
+
+  private lauf = 0;
+  private holen(session: string | undefined): void {
+    const n = ++this.lauf;
+    this.api
+      .play(session)
+      .then((t) => {
+        if (n !== this.lauf) return;
+        this.tisch.set(t);
+        this.fehler.set(null);
+      })
+      .catch((e: Error) => {
+        if (n === this.lauf) this.fehler.set(e.message);
+      });
   }
 
   protected sitzung(id: string): void {
