@@ -218,10 +218,10 @@ export class PgRepository implements Repository {
     return this.stempel();
   }
 
+  private static readonly STEMPEL = `select count(*)::text || '/' || coalesce(max(updated_at)::text, '') as s from entity`;
+
   private async stempel(): Promise<string> {
-    const { rows } = await this.pool.query<Row>(
-      `select count(*)::text || '/' || coalesce(max(updated_at)::text, '') as s from entity`,
-    );
+    const { rows } = await this.pool.query<Row>(PgRepository.STEMPEL);
     return String(rows[0]?.['s'] ?? '');
   }
 
@@ -293,10 +293,26 @@ export class PgRepository implements Repository {
   }
 
   async putEntity(entity: Entity, options: PutOptions = {}): Promise<Entity> {
+    const gehalten = this.bestand;
     this.bestand = null;
+    /* **Nachführen statt neu lesen** (T-143): wer einen Artikel schreibt,
+       weiss, was sich geändert hat. Bis hierher warf jedes Schreiben den
+       gehaltenen Bestand weg, und die nächste Anfrage las ihn ganz neu —
+       nach einem Häkchen an der Ebenenliste mehrere Sekunden, bei gut
+       150 000 Artikeln. Nachgeführt wird nur, wenn der Bestand **genau**
+       auf dem Stand vor diesem Schreiben war: die Tabelle ist dafür für
+       andere Schreiber gesperrt (Lesen geht weiter), und der Stempel wird
+       vorher und nachher in derselben Transaktion gelesen. Stimmt etwas
+       nicht, bleibt es beim Neulesen. */
+    let nachher: string | null = null;
     const client = await this.pool.connect();
     try {
       await client.query('begin');
+      if (gehalten) {
+        await client.query('lock table entity in share row exclusive mode');
+        const { rows } = await client.query<Row>(PgRepository.STEMPEL);
+        nachher = String(rows[0]?.['s'] ?? '') === gehalten.stempel ? '' : null;
+      }
       /* Die Zeile gesperrt gelesen (REQ-192): zwei gleichzeitige Schreiben
          mit derselben Revision kommen sonst beide durch die Prüfung. Ein
          Artikel, der noch nicht steht, hat nichts zu sperren — zwei, die
@@ -346,6 +362,10 @@ export class PgRepository implements Repository {
         );
       }
 
+      if (nachher !== null) {
+        const { rows } = await client.query<Row>(PgRepository.STEMPEL);
+        nachher = String(rows[0]?.['s'] ?? '');
+      }
       await client.query('commit');
     } catch (error) {
       await client.query('rollback');
@@ -358,7 +378,17 @@ export class PgRepository implements Repository {
       client.release();
     }
 
-    return (await this.getEntity(entity.id)) as Entity;
+    const gespeichert = (await this.getEntity(entity.id)) as Entity;
+    /* Nur, wenn seither niemand anders den Bestand gesetzt hat: ein
+       gleichzeitiges Lesen oder Schreiben in diesem Prozess gewinnt. */
+    if (gehalten && nachher && gespeichert && this.bestand === null) {
+      const liste = [...gehalten.liste];
+      const i = liste.findIndex((e) => e.id === entity.id);
+      if (i >= 0) liste[i] = gespeichert;
+      else liste.push(gespeichert);
+      this.bestand = { stempel: nachher, liste };
+    }
+    return gespeichert;
   }
 
   async deleteEntity(id: string): Promise<boolean> {
