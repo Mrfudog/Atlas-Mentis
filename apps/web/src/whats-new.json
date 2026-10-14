@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-14-read-at-layer",
+      "date": "2026-10-14",
+      "title": "Read a book right at its layer",
+      "text": "Every layer now has a Read tab with the reading view, also before the layer is turned on, so you can look a book over first. A group shows its books as a shelf, books without text appear greyed out, and the contents fold open chapter by chapter and follow along as you read.",
+      "area": "Rules",
+      "link": "/campaign"
+    },
+    {
       "id": "2026-10-14-player-layer",
       "date": "2026-10-14",
       "title": "Your own layer as a player",

@@ -31,6 +31,67 @@
   gap: 2rem;
   align-items: start;
 }
+.spalten.ohne-inhalt {
+  grid-template-columns: minmax(0, 1fr);
+}
+/* Am Ebenen-Artikel (T-167) steht die Leseansicht in der Seite, ohne eigenen Rand. */
+.leser.eingebettet {
+  padding: 0;
+}
+
+/* ------------------------------------------------ Vorschau, Regal (T-167) */
+.vorschau {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed var(--accent);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 0.92rem;
+}
+.regal ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.75rem;
+}
+.regal li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.regal li a {
+  font-family: var(--caps);
+  font-size: 1.05rem;
+}
+/* Ein Buch ohne Text steht da, ausgegraut, statt zu fehlen. */
+.regal li.ohne-text {
+  border-left-color: var(--line);
+  opacity: 0.65;
+}
+.hinweis-leer {
+  color: var(--dim);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+.ohne-text {
+  opacity: 0.75;
+}
+.leer-kopf {
+  margin: 1rem 0 0.25rem;
+  font-family: var(--caps);
+  font-size: 1.3rem;
+  color: var(--dim);
+}
+.vorhang {
+  display: none;
+}
 
 /* ------------------------------------------------------------ Verzeichnis */
 .inhalt {
@@ -49,39 +110,6 @@
   font-family: var(--caps);
   font-size: 1.05rem;
   color: var(--accent);
-}
-.toc {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.toc li {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  border-left: 2px solid transparent;
-}
-.toc li.im-stueck {
-  border-left-color: var(--line);
-}
-.toc li.hier {
-  border-left-color: var(--accent);
-  background: var(--hover);
-}
-.toc a {
-  display: block;
-  padding: 0.2rem 0.4rem;
-  min-height: 28px;
-  color: var(--ink);
-  text-decoration: none;
-  overflow-wrap: anywhere;
-}
-.toc li.hier a {
-  color: var(--accent);
-  font-weight: 600;
-}
-.toc a:hover {
-  text-decoration: underline;
 }
 .seite {
   color: var(--dim);
@@ -355,6 +383,18 @@
   }
   .inhalt.offen {
     display: block;
+    overflow-y: auto;
+  }
+  /* Hinter der Schublade: ein Klick daneben schliesst sie (T-167). */
+  .vorhang {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 19;
+    border: 0;
+    padding: 0;
+    background: rgb(0 0 0 / 0.25);
+    cursor: default;
   }
   .lesetext {
     padding: 0.25rem 1rem 1.5rem;
