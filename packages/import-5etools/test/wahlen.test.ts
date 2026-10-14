@@ -24,8 +24,8 @@ function datenstand(): Datenstand {
     startingProficiencies: { skills: [{ choose: { from: ['athletics', 'perception', 'swimming'], count: 2 } }] },
     multiclassing: { proficienciesGained: { skills: [{ choose: { from: ['athletics', 'perception'], count: 1 } }] } },
     startingEquipment: {
-      default: ['(a) rope or (b) a kit'],
-      defaultData: [{ a: ['rope kit|phb'], b: [{ special: 'a kit' }] }],
+      default: ['(a) rope or (b) a kit', '(a) two martial melee weapons or (b) a kit'],
+      defaultData: [{ a: ['rope kit|phb'], b: [{ special: 'a kit' }] }, { a: [{ equipmentType: 'weaponMartialMelee', quantity: 2 }], b: [{ special: 'a kit' }] }],
       goldAlternative: '{@dice 5d4 × 10|5d4 × 10|Starting Gold}',
     },
     classFeatures: [{ classFeature: 'Path Choice|Ranger||3', gainSubclassFeature: true }],
@@ -78,6 +78,13 @@ describe('Wahlen beim Einlesen (REQ-238, E-015 a)', () => {
             { key: 'b', label: 'a kit' },
           ],
         },
+      },
+      /* Die Menge bleibt, und die Sorte steht, wie man sie spricht (T-162). */
+      {
+        id: 'equipment-2',
+        kind: 'equipment',
+        when: 'start',
+        from: { options: [{ key: 'a', label: 'two martial melee weapons of your choice' }, { key: 'b', label: 'a kit' }] },
       },
       { id: 'multiclass-skills', kind: 'proficiency', when: 'multiclass', count: 1, from: { values: ['Athletics', 'Perception'] } },
       { id: 'ranger-path', kind: 'subclass', level: 3, from: { interfaces: ['Subclass'], edge: { type: 'subclassOf', to: ranger.id } } },

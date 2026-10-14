@@ -25,6 +25,7 @@ export * from './choices.js';
 export * from './effects.js';
 export * from './abilities.js';
 export * from './equipment.js';
+export * from './slots.js';
 export * from './builder.js';
 export * from './board.js';
 export * from './checks.js';

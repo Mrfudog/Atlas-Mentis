@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "id": "2026-10-14-character-choices",
+      "date": "2026-10-14",
+      "title": "Clearer choices in the character creator",
+      "text": "Each choice now says where it comes from (\"Fighter · Skill proficiencies (choose 2)\"), items in an option are links you can open in place, and \"two martial weapons of your choice\" or \"an artisan's tools\" lets you pick the actual items, which then land in the inventory.",
+      "area": "Characters",
+      "link": "/characters/new"
+    },
+    {
       "id": "2026-10-14-read-at-layer",
       "date": "2026-10-14",
       "title": "Read a book right at its layer",

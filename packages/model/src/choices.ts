@@ -26,6 +26,8 @@
  * — für jedes Merkmal, nicht nur für dieses.
  */
 
+import { entityName } from './entity.js';
+import { itemSlotIn } from './slots.js';
 import type { Entity, EntityId } from './types.js';
 
 /** Die Sorten einer Wahl. Die Liste steht am Feld (`Choices.choices`). */
@@ -112,6 +114,12 @@ export interface ChoiceAnswer {
   relationId: string;
   /** Zu welcher Gewährung (`props.by`, `props.level`); fehlt an älteren Antworten. */
   grant?: ChoiceGrant;
+  /**
+   * Was in die offenen Stellen der gewählten Möglichkeit kommt (T-162,
+   * `props.items`): Artikel-Ids der Reihe nach, Stelle für Stelle, `''`
+   * für eine noch leere — „two martial weapons" sind zwei Einträge.
+   */
+  items?: string[];
 }
 
 /** Eine Quelle von Wahlen an einer Figur, mit der Stufe, die für sie zählt. */
@@ -137,7 +145,8 @@ export function choicesOf(e: Entity | undefined): Choice[] {
   if (!Array.isArray(roh)) return [];
   return roh
     .filter((c): c is Choice => !!c && typeof c === 'object' && typeof (c as Choice).id === 'string' && !!(c as Choice).id)
-    .map(sprachwahl);
+    .map(sprachwahl)
+    .map(werkzeugwahl);
 }
 
 const ZAHLWORT: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
@@ -166,6 +175,29 @@ function sprachwahl(c: Choice): Choice {
   return raus;
 }
 
+/**
+ * **Eine Werkzeugwahl zieht aus ihrer Sorte** (T-162): „1 any artisans
+ * tool tool of your choice" und „three musical instruments of your
+ * choice" standen als Satz an einer Übungswahl, die aus **jedem**
+ * Gegenstand zog oder gar aus keinem (ein Freitext). Nennt der Satz eine
+ * Gegenstandssorte (`itemSlotIn`), zieht die Wahl aus den `Item`-Artikeln
+ * dieser Sorte (`where` auf `Item.itemType`), und ohne `count` gilt die
+ * Zahl im Satz. Gespeichert wird nichts davon, wie bei der Sprachwahl.
+ */
+function werkzeugwahl(c: Choice): Choice {
+  if ((c.kind ?? 'proficiency') !== 'proficiency' || !c.note) return c;
+  const f = c.from ?? {};
+  const nurItem = !Object.keys(f).length || (Object.keys(f).length === 1 && f.enumRef?.length === 1 && f.enumRef[0] === 'Item');
+  if (!nurItem) return c;
+  const stelle = itemSlotIn(c.note);
+  if (!stelle || stelle.type !== 'Item' || !stelle.itemTypes?.length) return c;
+  return {
+    ...c,
+    from: { enumRef: ['Item'], where: { component: 'Item', property: 'itemType', value: stelle.itemTypes } },
+    count: c.count ?? stelle.count,
+  };
+}
+
 /** Die Antworten einer Figur: jede Kante `chose`. */
 export function answersOf(character: Entity | undefined): ChoiceAnswer[] {
   const raus: ChoiceAnswer[] = [];
@@ -177,7 +209,8 @@ export function answersOf(character: Entity | undefined): ChoiceAnswer[] {
     const by = r.props?.['by'];
     const level = Number(r.props?.['level']);
     const grant = typeof by === 'string' && by && Number.isFinite(level) && level >= 1 ? { by, level } : undefined;
-    raus.push({ source: r.to, choice, picks, relationId: r.id, ...(grant ? { grant } : {}) });
+    const items = Array.isArray(r.props?.['items']) ? (r.props['items'] as unknown[]).map((x) => (typeof x === 'string' ? x : '')) : undefined;
+    raus.push({ source: r.to, choice, picks, relationId: r.id, ...(grant ? { grant } : {}), ...(items?.some(Boolean) ? { items } : {}) });
   }
   return raus;
 }
@@ -266,6 +299,8 @@ export interface ChoiceAtCharacter {
   assumed?: boolean;
   /** Die Kante `chose`, aus der die Antwort kommt. */
   relationId?: string;
+  /** Die Stücke für die offenen Stellen der gewählten Möglichkeit (T-162). */
+  items?: string[];
 }
 
 /**
@@ -301,7 +336,7 @@ export function choicesAtCharacter(character: Entity, byId: ReadonlyMap<EntityId
       const fest = a ? undefined : fixedPicks(c);
       const vorgabe = a || fest || !c.default?.length ? undefined : [...c.default];
       const eintrag: ChoiceAtCharacter = a
-        ? { source: q, choice: c, picks: a.picks, relationId: a.relationId }
+        ? { source: q, choice: c, picks: a.picks, relationId: a.relationId, ...(a.items ? { items: a.items } : {}) }
         : fest
           ? { source: q, choice: c, picks: fest, fixed: true }
           : vorgabe
@@ -344,7 +379,7 @@ export interface ChosenResult {
   /** Gewählte Artikel (Talent, Zauber, Merkmal, Unterklasse), nach Sorte. */
   articles: { kind: string; id: EntityId; source: EntityId }[];
   /** Gewählte Ausrüstung: der Schlüssel der Möglichkeit, samt Beschriftung. */
-  equipment: { source: EntityId; choice: string; key: string; label: string }[];
+  equipment: { source: EntityId; choice: string; key: string; label: string; items?: string[] }[];
 }
 
 export function chosenResult(character: Entity, byId: ReadonlyMap<EntityId, Entity>): ChosenResult {
@@ -358,7 +393,7 @@ export function chosenResult(character: Entity, byId: ReadonlyMap<EntityId, Enti
     const fest = q.entity.components?.['Ancestry']?.['abilityBonus'];
     if (fest && typeof fest === 'object') for (const [a, n] of Object.entries(fest)) bonus(a, Number(n));
   }
-  for (const { source, choice, picks } of choicesAtCharacter(character, byId)) {
+  for (const { source, choice, picks, items } of choicesAtCharacter(character, byId)) {
     if (!picks?.length) continue;
     const n = choice.count ?? 1;
     const genommen = picks.slice(0, n);
@@ -379,6 +414,7 @@ export function chosenResult(character: Entity, byId: ReadonlyMap<EntityId, Enti
             choice: choice.id,
             key: k,
             label: choice.from?.options?.find((o) => o.key === k)?.label ?? k,
+            ...(items ? { items } : {}),
           });
         }
         break;
@@ -443,10 +479,72 @@ export function choiceText(c: Choice): string {
     satz = `${b.map((x) => `+${x}`).join('/')}${b.length < n ? ` to ${n}` : ''} from ${f.values.join(', ')}${c.repeat ? ' (the same one more than once allowed)' : ''}`;
   } else if (f.values?.length) satz = `Choose ${n} from ${f.values.join(', ')}`;
   else if (f.interfaces?.length) satz = `Choose ${n} ${[...(f.tags ?? []), f.interfaces.join(' or ').toLowerCase()].join(' ')}`;
+  /* Eine Werkzeugwahl sagt in ihrer Notiz, aus welcher Sorte (T-162). */
+  else if (f.enumRef?.length && f.where && c.note) satz = c.note;
   else if (f.enumRef?.length) satz = `Choose ${n} from ${f.enumRef.join(', ')}`;
   else satz = c.note ?? `Choose ${n}`;
   const zusatz = [c.note && satz !== c.note ? c.note : '', c.when === 'start' ? 'first class only' : c.when === 'multiclass' ? 'when multiclassing' : '']
     .filter(Boolean)
     .join('; ');
   return zusatz ? `${satz} (${zusatz})` : satz;
+}
+
+/* Wie eine Übungswahl heisst, nach ihrer Id (`skills`, `multiclass-tools-2`). */
+const UEBUNG: Record<string, string> = {
+  skills: 'Skill proficiencies',
+  languages: 'Languages',
+  tools: 'Tool proficiencies',
+  weapons: 'Weapon proficiencies',
+  armor: 'Armor proficiencies',
+  'other-proficiencies': 'Other proficiencies',
+};
+const SORTE: Record<string, string> = {
+  equipment: 'Starting equipment',
+  ability: 'Ability score increase',
+  feat: 'Feat',
+  spell: 'Spell',
+  subclass: 'Subclass',
+  feature: 'Feature',
+  option: 'Option',
+  proficiency: 'Proficiency',
+};
+
+/** `fighting-style-2` → „Fighting style". */
+function ausId(id: string): string {
+  const t = id.replace(/^multiclass-/, '').replace(/-\d+$/, '').replace(/-/g, ' ').trim();
+  return t ? t[0]!.toUpperCase() + t.slice(1) : '';
+}
+
+/**
+ * **Wie eine Wahl heisst** (T-162): „Skill proficiencies (choose 2)",
+ * „Starting equipment", „Fighting Style". Eine kurze Notiz ist der Name,
+ * den der Artikel ihr gibt; sonst sagt es die Id (eine Übungswahl) oder
+ * die Sorte. Was sie anbietet, sagt `choiceText` — das hier ist die
+ * Überschrift.
+ */
+export function choiceLabel(c: Choice): string {
+  const kind = String(c.kind ?? 'proficiency');
+  const basis = c.id.replace(/^multiclass-/, '').replace(/-\d+$/, '');
+  const notiz = c.note?.trim() ?? '';
+  const kurz = notiz && notiz.length <= 32 && !notiz.includes('[[') && !/^\d|\bof your choice\b|^also:/i.test(notiz) ? notiz : '';
+  let name: string;
+  /* Eine Wahl aus Gegenständen ist eine Werkzeugwahl, wie auch immer ihre Id heisst. */
+  if (kind === 'proficiency' && c.from?.enumRef?.length === 1 && c.from.enumRef[0] === 'Item') name = UEBUNG['tools']!;
+  else if (kind === 'proficiency') name = UEBUNG[basis] ?? (kurz || ausId(c.id) || SORTE['proficiency']!);
+  else if (kind === 'equipment') name = SORTE['equipment']!;
+  else if (kind === 'subclass') name = ausId(c.id) || SORTE['subclass']!;
+  else name = kurz || (kind === 'spell' && (c.count ?? 1) > 1 ? 'Spells' : SORTE[kind] ?? (ausId(c.id) || kind));
+  const n = c.count ?? 1;
+  const teile = [n > 1 && kind !== 'equipment' ? `choose ${n}` : '', c.when === 'multiclass' ? 'multiclass' : ''].filter(Boolean);
+  return teile.length ? `${name} (${teile.join(', ')})` : name;
+}
+
+/**
+ * **Die Überschrift einer Wahl an der Figur**: „Fighter · Skill
+ * proficiencies (choose 2)". Der Name der Quelle steht in `Identity`
+ * (`entityName`) — an einem eingelesenen Artikel ist `name` leer, und die
+ * Überschrift hiess „: equipment".
+ */
+export function choiceTitle(at: ChoiceAtCharacter): string {
+  return `${entityName(at.source.entity)} · ${choiceLabel(at.choice)}`;
 }

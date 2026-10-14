@@ -158,8 +158,8 @@ describe('was ohne Wahl dazukommt', () => {
   it('nennt das Feste als Satz, aus der Wahl oder aus dem Text', () => {
     const d = setPick(setPick(art('draft', 'PlayerCharacter'), 'hasClass', 'class-1'), 'hasBackground', 'background-1');
     expect(fixedEquipmentLines(d, bestand)).toEqual([
-      { source: 'class-1', text: "an explorer's pack, and four javelins" },
-      { source: 'background-1', text: 'ink, a pouch' },
+      { source: 'class-1', text: "an explorer's pack, and four javelins", raw: "an [[item-3|explorer's pack]], and [[item-4|four javelins]]" },
+      { source: 'background-1', text: 'ink, a pouch', raw: 'ink, a pouch' },
     ]);
   });
 });
