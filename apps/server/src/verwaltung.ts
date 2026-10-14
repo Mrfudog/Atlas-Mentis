@@ -27,6 +27,7 @@ import {
   LAYER_RELATION,
   activeStack,
   campaignsActivating,
+  activatingIndex,
   groupMembers,
   isGroupLayer,
   layersInGroup,
@@ -88,11 +89,13 @@ export function mayActivate(
   layerId: string,
   campaignId: string,
   members?: Map<string, string[]>,
+  /** Ebene → Kampagnen (`activatingIndex`), wer viele Ebenen fragt (T-143). */
+  aktiv?: ReadonlyMap<string, readonly string[]>,
 ): boolean {
   if (rechtAn(user, campaignId) !== 'manage') return false;
   if (user?.isAdmin) return true;
   const frei = (id: string) => {
-    const laufen = campaignsActivating(alle, id);
+    const laufen = campaignsActivating(alle, id, aktiv);
     return laufen.includes(campaignId) || laufen.length !== 1;
   };
   if (!frei(layerId)) return false;
@@ -101,6 +104,34 @@ export function mayActivate(
      anderen Runde über die Gruppe herein. */
   if (!isGroupLayer(alle.get(layerId))) return true;
   return layersInGroup(alle, layerId, members).every(frei);
+}
+
+/** Was jede Ebene enthält und wem sie gehört — einmal je Bestand (T-143). */
+function zaehle(alle: Map<string, Entity>) {
+  const ebenen = [...alle.values()].filter((e) => (e.interfaces ?? [])[0] === LAYER_COMPONENT);
+  const zahl = new Map<string, number>();
+  /* Was eine Ebene enthält, je Art — gerechnet, nie gespeichert (D8, T-088). */
+  const inhalt = new Map<string, Record<string, number>>();
+  /* Ebenen mit Text (T-091): nur an ihnen steht „Read". */
+  const text = new Set<string>();
+  for (const e of alle.values()) {
+    const art = (e.interfaces ?? [])[0] ?? '';
+    const lesbar = READING_TYPES.includes(art);
+    for (const r of e.relations ?? []) {
+      if (r.type !== LAYER_RELATION || (r.props as { mode?: unknown } | undefined)?.mode === 'removes') continue;
+      zahl.set(r.to, (zahl.get(r.to) ?? 0) + 1);
+      const je = inhalt.get(r.to) ?? {};
+      je[art] = (je[art] ?? 0) + 1;
+      inhalt.set(r.to, je);
+      if (lesbar) text.add(r.to);
+    }
+  }
+  const mitglieder = groupMembers(alle);
+  const eigene = eigeneEbenen(alle);
+  const aktiv = activatingIndex(alle);
+  const verlage = new Map(ebenen.map((e) => [e.id, publisherInfo(alle, e, eigene)]));
+  const verlag = (e: Entity) => verlage.get(e.id) ?? publisherInfo(alle, e, eigene);
+  return { ebenen, zahl, inhalt, text, mitglieder, aktiv, verlag };
 }
 
 interface Deps {
@@ -236,6 +267,26 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
   // ---------------------------------------------------------- Ebenen
 
   /**
+   * **Der Bestand und was jede Ebene enthält, je Stempel** (T-143). Die
+   * Ebenenseite zählte bei jedem Abruf den ganzen Bestand durch und fragte
+   * je Ebene alle Artikel nach Kampagnen — mit 174 Ebenen und gut 150 000
+   * Artikeln eine halbe Sekunde auf dev, und das Popup in der Kopfleiste
+   * fragt nach jedem Häkchen. Nichts davon hängt an der Kampagne oder am
+   * Betrachter; ändert sich ein Artikel, ändert sich der Stempel.
+   */
+  let gehalten: { stempel: string; alle: Map<string, Entity> } | null = null;
+  const bestandAls = async (stempel: string): Promise<Map<string, Entity>> => {
+    if (gehalten?.stempel !== stempel) gehalten = { stempel, alle: new Map((await repo.listEntities()).map((e) => [e.id, e])) };
+    return gehalten.alle;
+  };
+  let gezaehlt: { stempel: string; alle: Map<string, Entity>; z: ReturnType<typeof zaehle> } | null = null;
+  const zaehlung = async (stempel: string, alle: Map<string, Entity>) => {
+    if (gezaehlt?.stempel !== stempel || gezaehlt.alle !== alle) gezaehlt = { stempel, alle, z: zaehle(alle) };
+    return gezaehlt.z;
+  };
+
+
+  /**
    * **Die Ebenen einer Kampagne** (T-069, E-008): alle Ebenen des
    * Bestands, die aufgeschalteten von unten nach oben, darunter die
    * übrigen. Was eine Kampagne zeigt, ist ihre wichtigste Einstellung —
@@ -248,31 +299,13 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     const c = request.params.c;
     const recht = rechtAn(user, c);
     if (!user || !recht) return nein(reply, 403, 'Nicht für dich.');
-    const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
+    const stempel = await repo.version();
+    const alle = await bestandAls(stempel);
     const kampagne = alle.get(c);
     if (!kampagne || (kampagne.interfaces ?? [])[0] !== CAMPAIGN_TYPE) {
       return nein(reply, 404, 'Diese Kampagne gibt es nicht als Artikel.');
     }
-    const ebenen = [...alle.values()].filter((e) => (e.interfaces ?? [])[0] === LAYER_COMPONENT);
-    const zahl = new Map<string, number>();
-    /* Was eine Ebene enthält, je Art — gerechnet, nie gespeichert (D8, T-088). */
-    const inhalt = new Map<string, Record<string, number>>();
-    /* Ebenen mit Text (T-091): nur an ihnen steht „Read". */
-    const text = new Set<string>();
-    for (const e of alle.values()) {
-      const art = (e.interfaces ?? [])[0] ?? '';
-      const lesbar = READING_TYPES.includes(art);
-      for (const r of e.relations ?? []) {
-        if (r.type !== LAYER_RELATION || (r.props as { mode?: unknown } | undefined)?.mode === 'removes') continue;
-        zahl.set(r.to, (zahl.get(r.to) ?? 0) + 1);
-        const je = inhalt.get(r.to) ?? {};
-        je[art] = (je[art] ?? 0) + 1;
-        inhalt.set(r.to, je);
-        if (lesbar) text.add(r.to);
-      }
-    }
-    const mitglieder = groupMembers(alle);
-    const eigene = eigeneEbenen(alle);
+    const { ebenen, zahl, inhalt, text, mitglieder, aktiv, verlag } = await zaehlung(stempel, alle);
     const stapel = activeStack(alle, kampagne).map((x) => x.layer.id);
     /* Im Spiel ist auch, was eine aufgeschaltete Gruppe bringt (E-022 b). */
     const imSpiel = new Set(resolvedStack(alle, kampagne, mitglieder).map((l) => l.id));
@@ -284,21 +317,21 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
         .map((r) => [r.to, filterOf(r)] as const),
     );
     const zeile = (e: Entity) => {
-      const andere = campaignsActivating(alle, e.id)
+      const andere = campaignsActivating(alle, e.id, aktiv)
         .filter((k) => k !== c)
         .map((k) => entityName(alle.get(k)));
       const karte = (e.components?.[LAYER_COMPONENT] as Record<string, unknown> | undefined) ?? {};
       const wort = (k: string) => (typeof karte[k] === 'string' || typeof karte[k] === 'number' ? String(karte[k]) : '');
       const beschreibung = (e.components?.['Description'] as { description?: unknown } | undefined)?.description;
       const gruppe = isGroupLayer(e);
-      const verlag = publisherInfo(alle, e, eigene);
+      const verlag_ = verlag(e);
       return {
         id: e.id,
         name: entityName(e),
         kind: wort('kind'),
         /* Wer sie herausgibt, gerechnet (T-094, E10), und warum (T-109); bei einer Gruppe, wonach sie ordnet. */
-        publisher: verlag.name,
-        publisherWhy: verlag.why,
+        publisher: verlag_.name,
+        publisherWhy: verlag_.why,
         ...(gruppe ? { groupBy: groupingOf(e) } : {}),
         /* Die Gruppen, an denen sie hängt, und bei einer Gruppe ihre Mitglieder (T-088). */
         groups: (e.relations ?? []).filter((r) => r.type === GROUP_RELATION && isGroupLayer(alle.get(r.to))).map((r) => r.to),
@@ -323,7 +356,7 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
            Kante (nur über eine Gruppe) gilt die der Gruppe. */
         ...(auswahl.get(e.id) ? { only: auswahl.get(e.id)! } : {}),
         alsoIn: andere,
-        canActivate: mayActivate(user, alle, e.id, c, mitglieder),
+        canActivate: mayActivate(user, alle, e.id, c, mitglieder, aktiv),
       };
     };
     const an = stapel.map((id) => alle.get(id)!).map(zeile);
@@ -363,9 +396,10 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
     if (typeof ids === 'string') return nein(reply, 400, ids);
     const vorher = new Set(activeStack(alle, kampagne).map((x) => x.layer.id));
     const mitglieder = groupMembers(alle);
+    const aktiv = activatingIndex(alle);
     for (const id of ids) {
       if ((alle.get(id)?.interfaces ?? [])[0] !== LAYER_COMPONENT) return nein(reply, 400, `Keine Ebene: ${id}`);
-      if (!vorher.has(id) && !mayActivate(user, alle, id, c, mitglieder)) {
+      if (!vorher.has(id) && !mayActivate(user, alle, id, c, mitglieder, aktiv)) {
         return nein(reply, 403, `„${entityName(alle.get(id))}" gehört einer anderen Kampagne; aufschalten kann sie die Verwaltung.`);
       }
     }
@@ -497,9 +531,11 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       }
       const ids = (l as string[] | undefined) ?? compareLayers(alle, kampagne).map((x) => x.id);
       const vorher = new Set(compareLayers(alle, kampagne).map((x) => x.id));
+      const mitglieder = groupMembers(alle);
+      const aktiv = activatingIndex(alle);
       for (const id of ids) {
         if ((alle.get(id)?.interfaces ?? [])[0] !== LAYER_COMPONENT) return nein(reply, 400, `Keine Ebene: ${id}`);
-        if (!vorher.has(id) && !mayActivate(user, alle, id, c)) {
+        if (!vorher.has(id) && !mayActivate(user, alle, id, c, mitglieder, aktiv)) {
           return nein(reply, 403, `„${entityName(alle.get(id))}" gehört einer anderen Kampagne; vergleichen kann damit die Verwaltung.`);
         }
       }
