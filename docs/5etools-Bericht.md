@@ -3,7 +3,7 @@
 Erzeugt von `packages/import-5etools` (Paket P5, [5etools-Arbeitsplan.md](5etools-Arbeitsplan.md)). **Nicht von Hand ändern** — ein neuer Lauf schreibt die Datei neu.
 
 - Datenstand: 5etools-src 8c026b8 2026-10-08
-- Aufruf: `node packages/import-5etools/dist/cli.js <data> --bericht <datei>`
+- Aufruf: `node packages/import-5etools/dist/cli.js <data> --out <datei> --bericht <datei>`
 - **181’240 Artikel**, alle durch `validateEntity` mit `knownTypes`
 - Gleichlautende Merkmale der Statblöcke (Arbeitsplan §2.5): 1’886 Aktionen und Merkmale stehen an mehr als einem Statblock; 12’318 Doppel wurden dadurch nicht angelegt
 - Gleiche Merkmale an verschiedenen Trägern (`doppel.ts`): 604 Artikel mit einem gleichen vereint (604 Feature)
@@ -320,7 +320,7 @@ Jede Quelle ihre Ebene (T-081), nach Regelstand (T-087). *Neu* sind die Artikel,
 | `spell` | 969 | 969 Spell | — | `Komponente R (2024)` 3, `mehrere Dauern (erste übernommen)` 3, `mehrere Wirkzeiten (erste übernommen)` 2 |
 | `spellFluff` | 92 | — | — | `weggelassen: nur Bilder (E5)` 92 |
 | `status` | 5 | 5 Condition | — | — |
-| `subclass` | 330 | 330 Subclass | — | `Zauber ohne Wahl und ohne Namen (als Text belassen)` 140 |
+| `subclass` | 330 | 330 Subclass | — | `Zauber ohne Wahl und ohne Namen (als Text belassen)` 139 |
 | `subclassFeature` | 1’499 | 1’492 Feature | — | `mit gleichlautendem Eintrag vereint` 7 |
 | `subclassFluff` | 164 | — | — | — |
 | `subrace` | 98 | 93 Ancestry | — | `Unterart ohne Namen (Spielart der Abstammung)` 5 |
@@ -391,7 +391,7 @@ Marken, deren Ziel nicht hereinkam — meist ein Eintrag aus einer ausgeschlosse
 | `@race` | 27 | 9 | `Elf (Kaladesh; Bishatar and Tirahar)\|PSK` 3, `Elf (Kaladesh; Vahadar)\|PSK` 3, `Elf (Zendikar; Joraga Nation)\|PSZ` 3, `Elf (Zendikar; Mul Daya Nation)\|PSZ` 3, `Elf (Zendikar; Tajuru Nation)\|PSZ` 3, … (4 weitere) |
 | `@recipe` | 633 | 357 | `Purple Grapemash No. 3\|HFFotM` 18, `Elverquisst\|HFFotM` 6, `Ruby Cordial\|HFFotM` 5, `Boar Hock Soup\|HFFotM` 4, `Cat's Cradle\|PaF` 4, … (352 weitere) |
 | `@spell` | 24 | 23 | `hex/curse#x` 2, `aarakocra armor` 1, `aarakocra armor\|` 1, `aarakocra hand` 1, `aarakocra hand\|` 1, … (18 weitere) |
-| `@subclass` | 38 | 19 | `Alchemist\|EFA` 2, `Arcana Domain (Cleric)\|AU` 2, `Arcane Archer (Fighter)\|AU` 2, `Armorer\|EFA` 2, `Artillerist\|EFA` 2, … (14 weitere) |
+| `@subclass` | 39 | 20 | `Alchemist\|EFA` 2, `Arcana Domain (Cleric)\|AU` 2, `Arcane Archer (Fighter)\|AU` 2, `Armorer\|EFA` 2, `Artillerist\|EFA` 2, … (15 weitere) |
 | `@table` | 231 | 8 | `Random Magic Items - Armaments\|XDMG` 67, `Random Magic Items - Arcana\|XDMG` 57, `Random Magic Items - Relics\|XDMG` 53, `Random Magic Items - Implements\|XDMG` 36, `Treasure Hoard: Challenge 0—4\|DMG` 5, … (3 weitere) |
 | `@trap` | 1 | 1 | `quicksand\|dmg` 1 |
 | `@variantrule` | 5 | 5 | `Armor Class\|XPHB` 1, `Heroic Inspiration\|XPHB` 1, `Long Rest\|XPHB` 1, `Short Rest\|XPHB` 1, `Temporary Hit Points\|XPHB` 1 |
