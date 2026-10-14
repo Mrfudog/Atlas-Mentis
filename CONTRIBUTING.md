@@ -38,6 +38,39 @@ DATABASE_URL=postgres://… node apps/server/scripts/durchstich.mjs
 Die Reihenfolge ist keine Willkür: `registry`, `server` und `web` übersetzen
 gegen die von `model` erzeugten Typdateien, nicht gegen dessen Quelltext.
 
+## What's new ergänzen
+
+**Jeder Pull Request mit einer sichtbaren Änderung** trägt einen Eintrag in
+[`apps/web/src/whats-new.json`](apps/web/src/whats-new.json) ein (T-157) —
+oben, denn die Liste steht neueste zuerst. Die Seite „What's new" zeigt
+ihn, und wer ihn noch nicht gesehen hat, sieht einen Punkt in der
+Kopfleiste. Was dev zeigt, steht auf `preprod`, was die Produktion zeigt,
+auf `main` — gepflegt wird nur die Datei.
+
+```json
+{
+  "id": "2026-10-14-search",
+  "date": "2026-10-14",
+  "title": "Search from anywhere",
+  "text": "Press Ctrl+K or / on any page: results appear while you type.",
+  "area": "Navigation",
+  "link": "/compendium"
+}
+```
+
+- `id` beginnt mit dem Datum und wird nie geändert — gesehen wird je Id.
+- `text`: ein, zwei Sätze auf Englisch, was man jetzt **tun** kann, nicht
+  wie es gebaut ist. **Nur Funktionen**: keine Namen aus der Kampagne,
+  keine Inhalte aus eingelesenen Regelwerken — das Repo ist öffentlich.
+- `link` (und `query`) zeigt auf eine Route der Seite, wenn es eine Stelle
+  gibt; `image` auf ein Bild unter `apps/web/public/`; `tour` auf einen
+  Schritt der Starttour (T-158), sobald es sie gibt.
+- Nicht nötig für Doku, Protokolle, Migrationen ohne sichtbare Folge und
+  reine Korrekturen — dann im Pull Request „nicht nötig" ankreuzen.
+
+`apps/web/test/neues.test.ts` prüft die Datei: eindeutige Ids, Reihenfolge,
+und dass jeder `link` eine Route trifft.
+
 ## Wo Anforderungen leben
 
 **Im Vault**, der seit dem 7.10. in diesem Repo liegt: `VTT/Requirements.md` ist die
