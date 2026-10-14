@@ -53,7 +53,7 @@ export function typVon(e: Knoten): string {
 /* Was 5e.tools strukturiert über die Wirkung eines Gegenstands sagt (E-025 a). */
 const WIRKUNGEN = [
   'ability', 'resist', 'immune', 'vulnerable', 'conditionImmune', 'modifySpeed', 'bonusSpellSaveDc',
-  'critThreshold', 'containerCapacity', 'carryingCapacity',
+  'critThreshold', 'containerCapacity', 'carryingCapacity', 'bonusWeaponAttack', 'bonusWeaponDamage', 'bonusSpellDamage',
 ];
 
 const GENUTZT_ITEM = [
@@ -61,7 +61,7 @@ const GENUTZT_ITEM = [
   'reqAttuneAlt', 'reqAttuneAltTags', 'charges', 'recharge', 'rechargeAmount', 'bonusWeapon',
   'bonusAc', 'bonusSpellAttack', 'bonusSavingThrow', 'value', 'weight', 'weaponCategory', 'dmg1',
   'dmg2', 'dmgType', 'range', 'ammoType', 'ac', 'strength', 'stealth', 'property', 'mastery', 'attachedSpells',
-  'baseItem', 'weapon', 'armor', 'packContents', 'lootTables', 'valueMult', 'weightMult', 'ammo',
+  'baseItem', 'weapon', 'armor', 'packContents', 'hasRefs', 'lootTables', 'valueMult', 'weightMult', 'ammo',
   'age', 'focus', 'scfType', 'grantsProficiency', 'grantsLanguage', 'light', ...WIRKUNGEN, ...SORTEN,
 ];
 
@@ -186,6 +186,14 @@ export function wirkungen(wb: Werkbank, ent: Entity, e: Knoten): void {
       }
     }
   }
+  /* Boni, für die der Gegenstand kein Feld hat (T-089): nur der Angriff
+     oder nur der Schaden der Waffe, der Schaden der Zauber. An einer Waffe
+     (oder einer Variante, die auf eine gelegt wird) gehört der Waffenbonus
+     ihr selbst; an Armschienen gilt er der Figur, die sie trägt. */
+  const selbst = ent.interfaces[0] === 'Weapon' || kurz(e['type']) === 'GV' ? { when: 'self' as const } : {};
+  if (zahl(e['bonusWeaponAttack']) !== undefined) neu.push({ target: 'weapon.attack', op: 'add', value: zahl(e['bonusWeaponAttack'])!, ...selbst });
+  if (zahl(e['bonusWeaponDamage']) !== undefined) neu.push({ target: 'weapon.damage', op: 'add', value: zahl(e['bonusWeaponDamage'])!, ...selbst });
+  if (zahl(e['bonusSpellDamage']) !== undefined) neu.push({ target: 'spellDamage', op: 'add', value: zahl(e['bonusSpellDamage'])! });
   if (zahl(e['bonusSpellSaveDc']) !== undefined) neu.push({ target: 'spellSaveDc', op: 'add', value: zahl(e['bonusSpellSaveDc'])! });
   if (zahl(e['critThreshold']) !== undefined) neu.push({ target: 'critThreshold', op: 'set', value: zahl(e['critThreshold'])! });
   /* Fassungsvermögen und Tragkraft gehören dem Gegenstand selbst (dem
@@ -228,8 +236,48 @@ function zauberAmGegenstand(wb: Werkbank, ent: Entity, roh: unknown): void {
   for (const s of liste(o['ritual'])) kante(s, { uses: 'ritual' });
 }
 
+/** Eine Liste als Satzteil: „acid", „acid and fire", „acid, cold, and fire". */
+function aufzaehlung(v: unknown): string {
+  const w = liste(v).map((x) => (typeof x === 'string' ? x : '')).filter(Boolean);
+  if (w.length < 3) return w.join(' and ');
+  return `${w.slice(0, -1).join(', ')}, and ${w[w.length - 1]}`;
+}
+
+/**
+ * **Die Textschablone einsetzen** (T-089): `{#itemEntry Name|Quelle}` steht
+ * als ganzer Eintrag im Text und meint den Text der Schablone, mit den
+ * Werten des Gegenstands darin (`{{item.resist}}`, `{{item.detail1}}`,
+ * `{{getFullImmRes item.resist}}`). Ohne Quelle ist es die des
+ * Gegenstands, sonst die des DMG — so liest 5e.tools es auch. Eine
+ * Schablone, die es nicht gibt, bleibt als Marke stehen und steht im
+ * Bericht.
+ */
+export function setzeSchablonen(wb: Werkbank, roh: unknown[], e: Knoten): unknown[] {
+  const werte = (s: string) =>
+    s.replace(/\{\{(?:getFullImmRes\s+)?item\.(\w+)\}\}/g, (m, k: string) => (e[k] === undefined ? m : aufzaehlung(e[k]) || String(e[k])));
+  const ein = (x: unknown): unknown[] => {
+    if (typeof x === 'string') {
+      const m = /^\{#itemEntry ([^|}]+)(?:\|([^}]*))?\}$/.exec(x.trim());
+      if (!m) return [x];
+      const name = m[1]!.trim().toLowerCase();
+      const q = [m[2], e['source'], 'DMG'].map((v) => String(v ?? '').trim().toLowerCase()).filter(Boolean);
+      const t = q.map((v) => wb.schablonen.get(`${name}|${v}`)).find(Boolean);
+      if (!t) {
+        wb.notiz('Textschablone nicht gefunden');
+        return [x];
+      }
+      return liste(t['entriesTemplate']).flatMap(ein).map((y) => (typeof y === 'string' ? werte(y) : JSON.parse(werte(JSON.stringify(y)))));
+    }
+    if (x && typeof x === 'object' && Array.isArray((x as Knoten)['entries'])) {
+      return [{ ...(x as Knoten), entries: ((x as Knoten)['entries'] as unknown[]).flatMap(ein) }];
+    }
+    return [x];
+  };
+  return roh.flatMap(ein);
+}
+
 function text(wb: Werkbank, ent: Entity, e: Knoten, ersetze?: (s: string) => string): void {
-  let roh = [...liste(e['entries']), ...liste(e['additionalEntries'])];
+  let roh = setzeSchablonen(wb, [...liste(e['entries']), ...liste(e['additionalEntries'])], e);
   if (ersetze) roh = JSON.parse(ersetze(JSON.stringify(roh))) as unknown[];
   const teile = [wb.text(roh)];
   const inhalt = liste(e['packContents']).map((p) => {
@@ -289,9 +337,9 @@ export const GEGENSTAENDE: Zuordnung[] = [
       const ersatz: Record<string, string> = { baseName: gilt[0] ?? 'item', dmgType: 'its' };
       const ersetze = (s: string) =>
         s.replace(/\{=(\w+)(?:\/[^}]*)?\}/g, (m, k: string) => (i[k] !== undefined ? String(i[k]) : ersatz[k] ?? m));
-      text(wb, ent, { entries: i['entries'] }, ersetze);
+      text(wb, ent, { ...i, entries: i['entries'], additionalEntries: undefined }, ersetze);
       for (const k of Object.keys(i)) {
-        if (!GENUTZT_ITEM.includes(k) && !['namePrefix', 'nameSuffix', 'source', 'page', 'srd', 'basicRules', 'reprintedAs', 'srd52', 'basicRules2024', 'lootTables', 'nameRemove'].includes(k)) {
+        if (!GENUTZT_ITEM.includes(k) && !['namePrefix', 'nameSuffix', 'source', 'page', 'srd', 'basicRules', 'reprintedAs', 'srd52', 'basicRules2024', 'lootTables', 'nameRemove', 'hasRefs'].includes(k)) {
           wb.notiz(`inherits.${k} nicht übernommen`);
         }
       }
@@ -305,7 +353,14 @@ export const GEGENSTAENDE: Zuordnung[] = [
     genutzt: [...GENUTZT_ITEM, 'items'],
     fuellen(wb, ent, e) {
       felder(wb, ent, e);
-      text(wb, ent, e);
+      /* Eine Gruppe ohne eigenen Text (Dragon Scale Mail, Belt of Giant
+         Strength: der Text steht an jeder Sorte, T-124) nennt ihre Sorten —
+         sonst stünde sie leer da, und wer sie öffnet, fände den Weg zur
+         Sorte nicht. */
+      const sorten = liste(e['items']).map((m) => `{@item ${String(m)}}`);
+      if (!liste(e['entries']).length && sorten.length) {
+        text(wb, ent, { ...e, entries: ['This item comes in the following kinds:', { type: 'list', items: sorten }] });
+      } else text(wb, ent, e);
       /* Die Mitglieder zeigen auf die Gruppe — es sei denn, sie zeigen
          schon auf ihren Grundgegenstand (`variantOf` ist eine Kante). */
       for (const m of liste(e['items'])) {
