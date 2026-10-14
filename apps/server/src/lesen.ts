@@ -37,6 +37,8 @@ interface Stand {
   stempel: string;
   alle: Entity[];
   map: Map<string, Entity>;
+  /** Was eine Fassung ersetzt — nur dafür lohnt `geltend` die Frage. */
+  ersetzt?: Set<string>;
 }
 
 export interface LeseDeps {
@@ -148,7 +150,11 @@ export function registerLesen(
    * Fassung, die gilt, gesiebt. Was durchs Sieb fällt, fehlt in der Karte.
    */
   async function gesiebt(request: FastifyRequest, knoten: Entity[], stand: Stand): Promise<Map<string, Entity>> {
-    const gilt = await Promise.all(knoten.map(async (k) => [k.id, await geltend(k, stand.map)] as const));
+    /* Nur was eine Fassung ersetzt, fragt nach ihr: zehntausend Absätze
+       sind sonst zehntausend Fragen an den Bestand (T-108). */
+    const gilt = await Promise.all(
+      knoten.map(async (k) => [k.id, stand.ersetzt && !stand.ersetzt.has(k.id) ? k : await geltend(k, stand.map)] as const),
+    );
     const durch = new Map((await sieve(request, [...new Map(gilt.map(([, g]) => [g.id, g])).values()], stand.map)).map((e) => [e.id, e]));
     const raus = new Map<string, Entity>();
     for (const [orig, g] of gilt) {
@@ -162,9 +168,11 @@ export function registerLesen(
     const { stand, order } = await ordnung(request.params.layer);
     const l = await ebene(request, request.params.layer, stand);
     if (!l) return reply.code(404).send({ error: 'Nicht gefunden' });
+    /* Gesiebt wird, was im Verzeichnis steht — die Absätze eines Buchs
+       (T-108) sind Zehntausende und kommen erst mit ihrem Stück. */
     const sichtbar = await gesiebt(
       request,
-      order.map((n) => stand.map.get(n.id)!),
+      order.filter((n) => n.toc !== false).map((n) => stand.map.get(n.id)!),
       stand,
     );
     const toc: Zeile[] = [];

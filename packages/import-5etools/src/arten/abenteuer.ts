@@ -1,5 +1,5 @@
 /**
- * **Abenteuer als eigene Ebene** (T-082, REQ-240, E-018).
+ * **Abenteuer als eigene Ebene** (T-082, REQ-240, E-018; T-108, E-029).
  *
  * Ein Abenteuer aus 5e.tools ist ein Textbaum: Kapitel (`section` auf der
  * obersten Stufe), darin benannte Abschnitte, darin Vorlesetext, Karten
@@ -7,22 +7,32 @@
  * wird hier, in der Ebene des Abenteuers (`kind: 'adventure'`):
  *
  *  - das Abenteuer selbst als `Story` mit `kind: 'adventure'`,
- *  - je Kapitel ein `Arc` (E-026), `partOf` das Abenteuer — dieselbe Art
- *    wie ein Arc der eigenen Kampagne, damit es sich als Ganzes dorthin
- *    übernehmen lässt,
- *  - je Abschnitt eine `Scene`, `partOf` ihr Kapitel oder ihr Abschnitt —
- *    ein Abschnitt, der selbst nummerierte Räume hat („Cragmaw Hideout"
- *    mit „1. Cave Mouth" …), bekommt sie als eigene Szenen;
- *  - der Vorlesetext als `ReadAloud.readaloud`, der übrige Text als Prosa;
+ *  - je Kapitel **zweimal dasselbe** (E-029): ein `Arc` (E-026), `partOf`
+ *    das Abenteuer — die Geschichte, die sich als Ganzes in die eigene
+ *    Kampagne holen lässt —, und ein `Chapter` (`<Arc>_chapter`,
+ *    `chapterOf` der Arc) — die Lesestruktur. Beide zeigen auf dieselben
+ *    Szenen; nichts ist verdoppelt;
+ *  - je Abschnitt eine `Scene`: auf Kapitelstufe `partOf` der Arc und mit
+ *    Rang im Chapter; ein Abschnitt, der selbst nummerierte Räume hat
+ *    („Cragmaw Hideout" mit „1. Cave Mouth" …), bekommt sie als eigene
+ *    Szenen mit Rang in ihm;
+ *  - der Text als **Teile** (E-028, `teile.ts`): Absätze, Überschriften,
+ *    Vorlesetexte (`ReadAloudText`), Verweise auf Statblöcke — mit Rang
+ *    im Chapter oder in der Szene, an der Stelle, an der sie im Buch stehen.
+ *    Einen Vorlesetext holt man so einzeln in die eigene Szene;
  *  - je Karte (`imageType: 'map'`) eine `Map`, `mapOf` ihr Abschnitt. Das
  *    Bild bleibt bei 5e.tools, hier steht nur seine Adresse. **Eine Karte
  *    steht immer an einer Szene** (E-026): liegt sie im Text des Kapitels
  *    selbst, bekommt sie eine eigene Szene (`mode: 'exploration'`, `partOf`
- *    das Kapitel) — so lässt sie sich wie jede Szene einzeln übernehmen;
+ *    der Arc, mit Rang im Chapter);
  *  - je Abschnitt, der Kreaturen mit Anzahl nennt („two {@creature
  *    goblin}"), eine `Encounter`, `partOf` der Abschnitt (der damit eine
  *    Szene mit `mode: 'encounter'` ist), mit einer Kante
  *    `participates` je Teilnehmer auf den Statblock aus dem Buch.
+ *
+ * Die Peg-Ids von Story, Arc, Szene, Karte und Begegnung sind dieselben
+ * wie seit T-097: ein Lauf `--only-new` findet jeden schon geladenen
+ * Artikel wieder.
  *
  * **Verweise, keine Kopien:** eine Kreatur, ein Gegenstand, ein Zauber im
  * Text ist ein `[[Verweis]]` auf den Buchartikel, wie überall im Importer.
@@ -43,8 +53,9 @@
 import type { Entity } from '@nw/model';
 import type { Knoten } from '../copy.js';
 import type { Abenteuer } from '../lesen.js';
-import { markdown } from '../text.js';
+import { legeTeileAn } from '../teile.js';
 import type { TextKontext } from '../text.js';
+import { kapitelTitel } from './buch.js';
 import type { Werkbank } from '../werkbank.js';
 import { zaehle } from '../werkbank.js';
 
@@ -70,13 +81,6 @@ const ABSCHNITT = new Set(['entries', 'section']);
 
 const kl = (s: unknown) => String(s ?? '').trim().toLowerCase();
 
-interface Knotenpunkt {
-  /** Der Artikel dieses Knotens. */
-  ent: Entity;
-  /** Die Einträge, die in den Text dieses Artikels gehören (ohne eigene Szenen). */
-  inhalt: unknown[];
-}
-
 /** Hat dieser Eintrag Kinder, die Räume sind? Dann werden sie eigene Szenen. */
 function hatRaeume(e: Knoten): boolean {
   return kinder(e).some((k) => RAUM.test(name(k)));
@@ -95,35 +99,6 @@ function name(e: Knoten): string {
 /** Ein Abschnitt, der eine eigene Szene wird: benannt und von einer Abschnittsart. */
 function istAbschnitt(k: unknown): k is Knoten {
   return !!k && typeof k === 'object' && !Array.isArray(k) && ABSCHNITT.has(String((k as Knoten)['type'] ?? 'entries')) && !!name(k as Knoten);
-}
-
-/**
- * Den Vorlesetext herausnehmen, in jeder Tiefe, und die Karten
- * einsammeln. Was übrig bleibt, ist der Text des Artikels.
- */
-function zerlege(liste: unknown[], vorlesen: unknown[][], karten: Knoten[]): unknown[] {
-  const out: unknown[] = [];
-  for (const x of liste) {
-    if (!x || typeof x !== 'object' || Array.isArray(x)) {
-      out.push(x);
-      continue;
-    }
-    const o = x as Knoten;
-    const typ = String(o['type'] ?? 'entries');
-    if (typ === 'insetReadaloud') {
-      vorlesen.push(Array.isArray(o['entries']) ? (o['entries'] as unknown[]) : []);
-      continue;
-    }
-    if (typ === 'image' || typ === 'gallery') {
-      const bilder = typ === 'gallery' ? (Array.isArray(o['images']) ? (o['images'] as Knoten[]) : []) : [o];
-      karten.push(...bilder.filter((b) => b && b['imageType'] === 'map'));
-      continue;
-    }
-    if (Array.isArray(o['entries'])) {
-      out.push({ ...o, entries: zerlege(o['entries'] as unknown[], vorlesen, karten) });
-    } else out.push(o);
-  }
-  return out;
 }
 
 /** Alle Zeichenketten eines Teilbaums, für die Suche nach Kreaturen. */
@@ -201,11 +176,14 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
     pfade.add(p);
     return p;
   };
+  const gm = (ent: Entity): void => {
+    wb.feld(ent, 'Visibility', 'audience', 'gm');
+    angelegt.push(ent);
+  };
   const neu = (typ: string, n: string, teile: string[], seite?: unknown, peg?: string): Entity => {
     const ent = wb.anlegen(typ, n, herkunft(teile), { source: quelle, ...(seite !== undefined ? { page: seite } : {}) }, peg);
-    wb.feld(ent, 'Visibility', 'audience', 'gm');
     zaehle(b.artikel, typ);
-    angelegt.push(ent);
+    gm(ent);
     return ent;
   };
 
@@ -220,12 +198,18 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
   ].filter(Boolean).join(' ');
   wb.feld(ganz, 'Description', 'description', kopfText);
 
-  /* 2. Erster Gang: Kapitel und Abschnitte anlegen, damit `{@area}` jeden
-        Abschnitt findet, auch einen, der später im Buch kommt. */
-  const knoten: Knotenpunkt[] = [];
+  /* 2. Erster Gang: Kapitel und Szenen anlegen, damit `{@area}` jeden
+        Abschnitt findet, auch einen, der später im Buch kommt. Je Kapitel
+        ein Arc (die Geschichte, E-026) und ein Chapter (die Lesestruktur,
+        E-029); die Szenen gehören beiden. */
   const nachId = new Map<string, Entity>();
+  /** Welcher Eintrag welche Szene wurde — der zweite Gang fragt danach. */
+  const szeneVon = new Map<Knoten, Entity>();
+  /** Je Szene der Text, der ihr selbst gehört (ohne eigene Szenen), für die Begegnung. */
+  const inhaltVon = new Map<Entity, unknown[]>();
+  const kapitel: { arc: Entity; chapter: Entity; kap: Knoten }[] = [];
   const ordnung = (Array.isArray(a.kopf['contents']) ? (a.kopf['contents'] as Knoten[]) : []);
-  const abschnitte = (e: Knoten, eltern: Entity, pfad: string[]): unknown[] => {
+  const abschnitte = (e: Knoten, arc: Entity, pfad: string[]): unknown[] => {
     const inhalt: unknown[] = [];
     const raeume = hatRaeume(e) || e['type'] === 'section';
     for (const k of Array.isArray(e['entries']) ? (e['entries'] as unknown[]) : []) {
@@ -237,9 +221,12 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
         continue;
       }
       const szene = neu('Scene', name(k), [...pfad, name(k)], k['page']);
-      wb.kante(szene, 'partOf', eltern.id);
+      /* Eine Szene auf Kapitelstufe gehört dem Arc (die Geschichte); ein
+         Raum hängt mit Rang an seiner Szene — das legt der zweite Gang an. */
+      if (pfad.length === 1) wb.kante(szene, 'partOf', arc.id);
       if (typeof k['id'] === 'string') nachId.set(k['id'], szene);
-      knoten.push({ ent: szene, inhalt: abschnitte(k, szene, [...pfad, name(k)]) });
+      szeneVon.set(k, szene);
+      inhaltVon.set(szene, abschnitte(k, arc, [...pfad, name(k)]));
     }
     return inhalt;
   };
@@ -249,16 +236,19 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
       if (n) wb.notiz(`Kapitel weggelassen: ${n}`, 'adventureData');
       return;
     }
-    const ord = ordnung[i]?.['ordinal'] as Knoten | undefined;
-    /* „Part 1: Goblin Arrows" wie bei 5e.tools — ausser der Name sagt es
-       schon („Appendix A: Magic Items"). */
-    const art = String(ord?.['type'] ?? '').replace(/^./, (c) => c.toUpperCase());
-    const titel = ord && art && !n.toLowerCase().startsWith(art.toLowerCase()) ? `${art} ${String(ord['identifier'] ?? '')}: ${n}` : n;
+    const { titel, ordinal } = kapitelTitel(n, ordnung[i]?.['ordinal'] as Knoten | undefined);
     /* Ein Kapitel ist ein Arc (E-026, REQ-252) — kein Wort an einer Story. */
-    const kapitel = neu('Arc', titel, [n], kap['page']);
-    wb.kante(kapitel, 'partOf', ganz.id);
-    if (typeof kap['id'] === 'string') nachId.set(kap['id'], kapitel);
-    knoten.push({ ent: kapitel, inhalt: abschnitte(kap, kapitel, [n]) });
+    const arc = neu('Arc', titel, [n], kap['page']);
+    wb.kante(arc, 'partOf', ganz.id);
+    if (typeof kap['id'] === 'string') nachId.set(kap['id'], arc);
+    /* … und ein Chapter (E-029): dasselbe Kapitel zum Lesen. Seine Id ist
+       die des Arcs mit `_chapter` — so bildet die Migration 044 für schon
+       geladene Kapitel dieselbe, und `--only-new` legt keines zweimal an. */
+    const chapter = neu('Chapter', titel, ['chapter', n], kap['page'], `${arc.id}_chapter`);
+    wb.feld(chapter, 'Chapter', 'ordinal', ordinal);
+    wb.kante(chapter, 'chapterOf', arc.id);
+    abschnitte(kap, arc, [n]);
+    kapitel.push({ arc, chapter, kap });
   });
 
   /* `{@area 2|01e}` findet den Abschnitt in diesem Abenteuer. */
@@ -274,44 +264,53 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
     },
   };
 
-  /* 3. Zweiter Gang: Text, Vorlesetext, Karten, Begegnungen. */
+  /* 3. Zweiter Gang: der Text als Teile (E-028) — Absätze, Vorlesetexte,
+        Überschriften, Verweise, die Szenen an ihrer Stelle; dazu Karten. */
   wb.aktuelleArt = 'adventureData';
-  for (const { ent, inhalt } of knoten) {
-    const vorlesen: unknown[][] = [];
-    const karten: Knoten[] = [];
-    const rest = zerlege(inhalt, vorlesen, karten);
-    wb.prosa(ent, markdown(rest, ctx, 2).trim());
-    const vor = vorlesen.map((v) => markdown(v, ctx, 6).trim()).filter(Boolean);
-    if (vor.length) {
-      wb.feld(ent, 'ReadAloud', 'readaloud', vor.map((value, i) => ({ id: i ? `read${i + 1}` : 'read', value })));
-    }
-
-    for (const k of karten) {
+  for (const { arc, chapter, kap } of kapitel) {
+    const bild = (k: Knoten, ganzes: Entity): Entity | undefined => {
+      if (k['imageType'] !== 'map') return undefined;
       const pfad = (k['href'] as Knoten | undefined)?.['path'];
-      if (typeof pfad !== 'string' || !pfad) continue;
-      const titel = typeof k['title'] === 'string' && k['title'].trim() ? k['title'].trim() : ent.name;
-      const karte = neu('Map', titel, ['map', ent.name, titel]);
+      if (typeof pfad !== 'string' || !pfad) return undefined;
+      const imKapitel = ganzes.id === chapter.id;
+      /* Im Kapiteltext heisst der Ort wie der Arc — so rechnete T-097 die
+         Herkunft, und die Peg-Ids bleiben. */
+      const ortName = imKapitel ? arc.name : ganzes.name;
+      const titel = typeof k['title'] === 'string' && k['title'].trim() ? k['title'].trim() : ortName;
+      const karte = neu('Map', titel, ['map', ortName, titel]);
       /* An einer Szene hängt die Karte an ihr; im Text eines Kapitels
-         bekommt sie ihre eigene (E-026). Deren Id ist die der Karte mit
-         `_scene` — so bildet die Migration 041 für schon geladene Karten
-         dieselbe, und `--only-new` legt keine zweite an. */
-      let ort = ent;
-      if (ent.interfaces[0] !== 'Scene') {
-        ort = neu('Scene', titel, ['map-scene', ent.name, titel], undefined, `${karte.id}_scene`);
+         bekommt sie ihre eigene (E-026), die als Teil an dieser Stelle
+         steht. Deren Id ist die der Karte mit `_scene` — so bildet die
+         Migration 041 für schon geladene Karten dieselbe. */
+      let ort = ganzes;
+      let teil: Entity | undefined;
+      if (imKapitel) {
+        ort = neu('Scene', titel, ['map-scene', ortName, titel], undefined, `${karte.id}_scene`);
         wb.feld(ort, 'Scene', 'mode', 'exploration');
-        wb.kante(ort, 'partOf', ent.id);
+        wb.kante(ort, 'partOf', arc.id);
+        teil = ort;
       }
       wb.feld(karte, 'Image', 'image', BILD_ADRESSE + pfad.split('/').map(encodeURIComponent).join('/'));
       wb.feld(karte, 'Image', 'caption', [titel, k['credit'] ? `Map by ${String(k['credit'])}` : ''].filter(Boolean).join(' · '));
       wb.feld(karte, 'Image', 'alt', titel);
       raster(wb, karte, k['grid'] as Knoten | undefined);
       wb.kante(karte, 'mapOf', ort.id);
-    }
+      return teil;
+    };
+    legeTeileAn(wb, chapter, Array.isArray(kap['entries']) ? (kap['entries'] as unknown[]) : [], 1, {
+      quelle,
+      ctx,
+      art: 'adventureData',
+      angelegt: gm,
+      szene: (k) => szeneVon.get(k),
+      bild,
+    }, kap['page']);
+  }
 
-    /* Begegnung nur an einer Szene: ein Kapitel nennt Kreaturen, um sie
-       vorzustellen, nicht um sie kämpfen zu lassen. */
-    if (ent.interfaces[0] !== 'Scene') continue;
-    const wer = kreaturenMitAnzahl(zeichenketten(rest));
+  /* 4. Begegnungen: nur an einer Szene — ein Kapitel nennt Kreaturen, um
+        sie vorzustellen, nicht um sie kämpfen zu lassen. */
+  for (const [szene, inhalt] of inhaltVon) {
+    const wer = kreaturenMitAnzahl(zeichenketten(ohneVorlesen(inhalt)));
     const teilnehmer: { sb: Entity; anzahl: number }[] = [];
     for (const k of wer) {
       const sb = wb.finde('creature', [k.name, k.quelle]);
@@ -324,9 +323,9 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
     if (!teilnehmer.length) continue;
     /* Die Peg-Id der Szene ist aus ihrem Pfad gerechnet und bleibt von
        Lauf zu Lauf gleich — die Begegnung damit auch. */
-    const kampf = neu('Encounter', ent.name, ['encounter', ent.id]);
-    wb.kante(kampf, 'partOf', ent.id);
-    wb.feld(ent, 'Scene', 'mode', 'encounter');
+    const kampf = neu('Encounter', szene.name, ['encounter', szene.id]);
+    wb.kante(kampf, 'partOf', szene.id);
+    wb.feld(szene, 'Scene', 'mode', 'encounter');
     for (const { sb, anzahl } of teilnehmer) {
       for (let i = 1; i <= anzahl; i += 1) {
         wb.kante(kampf, 'participates', sb.id, { label: anzahl > 1 ? `${sb.name} ${i}` : sb.name });
@@ -334,4 +333,19 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
     }
   }
   return angelegt;
+}
+
+/** Der Text ohne Vorlesetext, in jeder Tiefe — die Runde hört ihn, kämpft aber nicht darin. */
+function ohneVorlesen(liste: unknown[]): unknown[] {
+  const out: unknown[] = [];
+  for (const x of liste) {
+    if (!x || typeof x !== 'object' || Array.isArray(x)) {
+      out.push(x);
+      continue;
+    }
+    const o = x as Knoten;
+    if (o['type'] === 'insetReadaloud') continue;
+    out.push(Array.isArray(o['entries']) ? { ...o, entries: ohneVorlesen(o['entries'] as unknown[]) } : o);
+  }
+  return out;
 }

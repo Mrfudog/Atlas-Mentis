@@ -62,8 +62,12 @@ export interface TeileOptionen {
    * Inhalt wird ihr eigener Fluss.
    */
   szene?: (k: Knoten, ganzes: Entity, stufe: number) => Entity | undefined;
-  /** Ein Bild im Text (Karten im Abenteuer); ohne Rückgabe wird es nur gezählt. */
-  bild?: (b: Knoten, ganzes: Entity) => void;
+  /**
+   * Ein Bild im Text (Karten im Abenteuer). Gibt die Funktion einen Artikel
+   * zurück (die Szene einer Karte im Kapiteltext), steht er als Teil an
+   * dieser Stelle. Ohne `bild` wird es nur gezählt.
+   */
+  bild?: (b: Knoten, ganzes: Entity) => Entity | undefined;
   /** Bericht-Art (`bookData`, `adventureData`). */
   art: string;
 }
@@ -86,6 +90,8 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
   let rang = 0;
 
   const teil = (typ: string, n: string, s: unknown): Entity => {
+    /* Ein Name, dem kein Absatz folgte, steht für sich vor dem nächsten Teil. */
+    if (typ !== 'Paragraph') ohneText(s);
     rang += 1;
     const e = wb.anlegen(typ, n || typ, `part|${ganzes.id}|${rang}`, { source: o.quelle, ...(s !== undefined && s !== 0 ? { page: s } : {}) });
     wb.kante(e, 'partOf', ganzes.id, { rank: rang });
@@ -94,8 +100,24 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
     raus.push(e);
     return e;
   };
-  const absatz = (text: string, kind: string, s: unknown): void => {
-    if (!text.trim()) return;
+  /* Der Name eines tiefen Abschnitts steht als fetter Satzanfang vor
+     seinem ersten Absatz, wie 5e.tools ihn zeichnet. */
+  let titel = '';
+  function ohneText(s: unknown): void {
+    if (!titel) return;
+    const t = titel;
+    titel = '';
+    absatz(`**${t}.**`, 'text', s);
+  }
+  const absatz = (roh: string, kind: string, s: unknown): void => {
+    let text = roh.trim();
+    if (!text) return;
+    if (titel) {
+      if (kind === 'text' && !/^(#|\||-|>|\d+\.)/.test(text)) {
+        text = `**${titel}.** ${text}`;
+        titel = '';
+      } else ohneText(s);
+    }
     const e = teil('Paragraph', partName(text), s);
     wb.prosa(e, text.trim());
     if (kind !== 'text') wb.feld(e, 'Paragraph', 'kind', kind);
@@ -111,6 +133,30 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
       if (t && !t.interfaces[0]?.match(/^(Heading|Paragraph|ReadAloudText|Embed|Chapter)$/)) return t;
     }
     return undefined;
+  };
+
+  /** Bilder in einem Block, der als ein Absatz gesetzt wird: die Karten darin gehen nicht verloren. */
+  const karten = (k: Knoten): void => {
+    if (!o.bild) return;
+    const bilder: Knoten[] = [];
+    const such = (x: unknown): void => {
+      if (Array.isArray(x)) for (const y of x) such(y);
+      else if (x && typeof x === 'object') {
+        const y = x as Knoten;
+        if (y['type'] === 'image') bilder.push(y);
+        else if (y['type'] === 'gallery') such(y['images']);
+        else such(y['entries']);
+      }
+    };
+    such(k['entries']);
+    for (const bld of bilder) {
+      const an = o.bild(bld, ganzes);
+      if (an) {
+        rang += 1;
+        wb.kante(an, 'partOf', ganzes.id, { rank: rang });
+        raus.push(an);
+      }
+    }
   };
 
   const gehe = (eintraege: unknown[], tiefe: number, s: unknown): void => {
@@ -131,16 +177,22 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
             gehe(kinder, tiefe, hier);
             break;
           }
-          const da = schonDa(n);
-          if (da) {
-            verweis(da, hier);
-            break;
-          }
+          /* Eine Szene zuerst: ihre Id steht seit T-082, und ein Raum, der
+             wie ein Monster heisst, bleibt der Raum. */
           const sz = o.szene?.(k, ganzes, tiefe + 1);
           if (sz) {
             rang += 1;
             wb.kante(sz, 'partOf', ganzes.id, { rank: rang });
-            raus.push(sz, ...legeTeileAn(wb, sz, kinder, tiefe + 1, o, hier));
+            /* In der Szene beginnen die Stufen von vorn: sie ist ein Ganzes
+               wie ein Kapitel, und ihre Überschriften stehen unter ihr. */
+            raus.push(sz, ...legeTeileAn(wb, sz, kinder, 1, o, hier));
+            break;
+          }
+          const da = schonDa(n);
+          if (da) {
+            verweis(da, hier);
+            /* Eine Karte im Abschnitt gehört dem Abenteuer, nicht dem Artikel, auf den er zeigt. */
+            karten(k);
             break;
           }
           if (tiefe + 1 <= TIEFSTE_UEBERSCHRIFT) {
@@ -150,7 +202,13 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
             wb.feld(h, 'Heading', 'level', tiefe + 1);
             gehe(kinder, tiefe + 1, hier);
           } else {
-            absatz(markdown([k], o.ctx, 5).trim(), 'text', hier);
+            /* Tiefer: kein eigener Teil für den Namen, aber was darin
+               steht, wird weiter zerlegt — ein Vorlesetext und eine Karte
+               bleiben eigene Teile. */
+            ohneText(hier);
+            titel = inline(n, o.ctx).trim().replace(/[.:]$/, '');
+            gehe(kinder, tiefe + 1, hier);
+            ohneText(hier);
           }
           break;
         }
@@ -163,6 +221,7 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
         }
         case 'inset': case 'variant':
           absatz(markdown([k], o.ctx, 6), 'sidebar', hier);
+          karten(k);
           break;
         case 'quote':
           absatz(markdown([k], o.ctx, 6), 'quote', hier);
@@ -171,8 +230,8 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
           absatz(markdown([k], o.ctx, 6), 'list', hier);
           break;
         case 'table': {
-          const titel = typeof k['caption'] === 'string' ? k['caption'].trim() : '';
-          const t = titel ? wb.hole('table', titel, o.quelle) : undefined;
+          const unter = typeof k['caption'] === 'string' ? k['caption'].trim() : '';
+          const t = unter ? wb.hole('table', unter, o.quelle) : undefined;
           if (t) verweis(t, hier);
           else absatz(markdown([k], o.ctx, 6), 'table', hier);
           break;
@@ -194,8 +253,16 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
         case 'image': case 'gallery': {
           const bilder = typ === 'gallery' ? (Array.isArray(k['images']) ? (k['images'] as Knoten[]) : []) : [k];
           for (const bld of bilder) {
-            if (o.bild) o.bild(bld, ganzes);
-            else zaehle(b.notizen, 'Bild im Buchtext (weggelassen, E5)');
+            if (!o.bild) {
+              zaehle(b.notizen, 'Bild im Buchtext (weggelassen, E5)');
+              continue;
+            }
+            const an = o.bild(bld, ganzes);
+            if (an) {
+              rang += 1;
+              wb.kante(an, 'partOf', ganzes.id, { rank: rang });
+              raus.push(an);
+            }
           }
           break;
         }
@@ -203,6 +270,7 @@ export function legeTeileAn(wb: Werkbank, ganzes: Entity, liste: unknown[], stuf
           break;
         default:
           absatz(markdown([k], o.ctx, Math.min(6, tiefe + 1)), 'text', hier);
+          karten(k);
       }
     }
   };
