@@ -127,6 +127,12 @@ export const routes: Routes = [
     title: 'Read · Atlas Mentis',
   },
   {
+    path: 'artikel/:id/print',
+    canActivate: [wache],
+    loadComponent: () => import('./artikel/druck').then((m) => m.Druck),
+    title: 'Print · Atlas Mentis',
+  },
+  {
     path: 'artikel/:id',
     canActivate: [wache],
     loadComponent: () => import('./artikel/artikel').then((m) => m.Artikel),
