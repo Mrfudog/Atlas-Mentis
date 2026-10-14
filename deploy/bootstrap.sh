@@ -86,6 +86,17 @@ done
 f="$BASE/proxy/.env"
 printf 'PROD_HOST=%s\nDEV_HOST=%s\nACME_EMAIL=%s\n' "$PROD_HOST" "$DEV_HOST" "$ACME_EMAIL" > "$f"
 chown deploy:deploy "$f"; chmod 600 "$f"
+# Jede Stufe einzeln: `install -d` gibt nur dem letzten Verzeichnis den
+# Eigentümer, die Zwischenstufen legt es als root an — so gehörte
+# prod/backups am 13.10. root, und das Ausrollen brach ab (T-074). Auf einem
+# bestehenden Server setzt ein zweiter Lauf den Eigentümer zurecht.
+# Compose bindet backups/uebernahme und daten/ ein; fehlte backups/, legte
+# Docker es als root an. Darum steht es hier, bevor ein Container läuft;
+# was darunter die Container beschreiben (backups/uebernahme, daten/bilder),
+# gibt deploy.sh uid 1000.
+for env in prod dev; do
+  install -d -o deploy -g deploy "$BASE/$env/backups" "$BASE/$env/backups/bilder"
+done
 install -d -o deploy -g deploy "$BASE/prod/backups/nacht"
 
 echo "== Nächtliche Sicherung (als deploy, 03:17, eine je Wochentag)"
