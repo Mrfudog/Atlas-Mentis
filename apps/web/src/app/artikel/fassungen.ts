@@ -11,10 +11,11 @@
 
 import { Component, Injectable, computed, inject, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { entityName, fieldText, primaryInterface, unitsFor, versionDiff } from '@nw/model';
-import type { Entity, Registry } from '@nw/model';
+import { entityName, entriesOf, fieldText, linesDiff, primaryInterface, sectionDiff, textSections, unitsFor, versionDiff } from '@nw/model';
+import type { Entity, FieldEntry, Registry, VarScopes } from '@nw/model';
 import { Api, type Fassung, type Fassungen } from '../kern/api';
 import { anzeigeWert } from './felder';
+import { Text } from './text';
 
 /** Was sich das Konto merkt (`/api/me/prefs`, Schlüssel `versions`). */
 export interface Lesart {
@@ -86,6 +87,15 @@ export interface Abweichung {
   compare: boolean;
 }
 
+/** Eine verglichene Fassung, wie sie an jedem Wert steht: Kürzel, Tooltip, Artikel. */
+export interface Vergleichsfassung {
+  id: string;
+  kuerzel: string;
+  titel: string;
+  compare: boolean;
+  entity: Entity;
+}
+
 /** Was je Kantenart eine Fassung anders hat. */
 export interface KantenAbweichung {
   type: string;
@@ -120,6 +130,17 @@ export function verglichene(
   return out;
 }
 
+/** Die verglichenen Fassungen mit Kürzel und Tooltip — einmal, für Felder, Abschnitte und Buchzeilen. */
+export function vergleichsfassungen(vergleich: ReturnType<typeof verglichene>): Vergleichsfassung[] {
+  return vergleich.map(({ v, ebene }) => ({
+    id: v.entity.id,
+    kuerzel: ebene.short,
+    titel: `${ebene.name} — ${entityName(v.entity)}${v.compare ? ' (compare layer, not in play)' : ''}`,
+    compare: v.compare,
+    entity: v.entity,
+  }));
+}
+
 /**
  * **Je Feld die abweichenden Werte** (`Typ.feld` → Liste), und je
  * Kantenart, was eine Fassung dazu oder nicht hat. Gerechnet über das
@@ -128,15 +149,15 @@ export function verglichene(
 export function abweichungen(
   r: Registry,
   basis: Entity,
-  vergleich: ReturnType<typeof verglichene>,
+  vergleich: readonly Vergleichsfassung[],
   name: (id: string) => string | undefined,
 ): { felder: Map<string, Abweichung[]>; kanten: KantenAbweichung[] } {
   const felder = new Map<string, Abweichung[]>();
   const kanten: KantenAbweichung[] = [];
   const mode = unitsFor(r, primaryInterface(basis));
-  for (const { v, ebene } of vergleich) {
+  for (const v of vergleich) {
     const d = versionDiff(r, basis, v.entity);
-    const titel = `${ebene.name} — ${entityName(v.entity)}${v.compare ? ' (compare layer, not in play)' : ''}`;
+    const { titel } = v;
     for (const f of d.fields) {
       const schema = r.interfaces[f.type]?.schema?.properties?.[f.key];
       const wert = f.value;
@@ -151,22 +172,261 @@ export function abweichungen(
         }
       }
       const liste = felder.get(f.ref) ?? [];
-      liste.push({ id: v.entity.id, kuerzel: ebene.short, titel, text, lang: f.long, compare: v.compare });
+      liste.push({ id: v.id, kuerzel: v.kuerzel, titel, text, lang: f.long, compare: v.compare });
       felder.set(f.ref, liste);
     }
     for (const k of d.relations) {
       const n = (id: string) => name(id) ?? '(not in play)';
-      kanten.push({
-        type: k.type,
-        kuerzel: ebene.short,
-        titel,
-        dazu: k.only.map(n),
-        weg: k.missing.map(n),
-        compare: v.compare,
-      });
+      /* Jede Fassung hat ihre eigenen Merkmale — „Multiattack" hier und
+         „Multiattack" dort sind zwei Artikel und sagen doch dasselbe (T-103).
+         Was auf beiden Seiten gleich heisst, ist keine Abweichung. */
+      const dazu = k.only.map(n);
+      const weg = k.missing.map(n);
+      for (const x of [...dazu]) {
+        const i = weg.indexOf(x);
+        if (i < 0) continue;
+        weg.splice(i, 1);
+        dazu.splice(dazu.indexOf(x), 1);
+      }
+      if (!dazu.length && !weg.length) continue;
+      kanten.push({ type: k.type, kuerzel: v.kuerzel, titel, dazu, weg, compare: v.compare });
     }
   }
   return { felder, kanten };
+}
+
+// ------------------------------------------------------------ Abschnitte (T-103)
+
+/** Ein Abschnitt eines Prosaeintrags, mit dem, was andere Fassungen dort sagen. */
+export interface ProsaAbschnitt {
+  key: string;
+  /** Der Abschnitt samt Überschrift, wie er gezeichnet wird. */
+  text: string;
+  abw: Abweichung[];
+}
+
+/** Ein Prosaeintrag, Abschnitt für Abschnitt verglichen. */
+export interface ProsaVergleich {
+  abschnitte: ProsaAbschnitt[];
+  /** Abschnitte, die nur eine andere Fassung hat — unter ihrer eigenen Überschrift. */
+  nurDort: { heading: string; abw: Abweichung }[];
+  /** Der ganze Eintrag der anderen Fassung, wo er abweicht — für die Maske. */
+  ganz: Abweichung[];
+}
+
+const gleich = (a: string, b: string) => a.replace(/\s+/g, ' ').trim() === b.replace(/\s+/g, ' ').trim();
+const marke = (f: Vergleichsfassung, text: string): Abweichung => ({
+  id: f.id,
+  kuerzel: f.kuerzel,
+  titel: f.titel,
+  text,
+  lang: true,
+  compare: f.compare,
+});
+
+/**
+ * **Ein langer Text gegen die Texte der Fassungen** (T-103), Abschnitt für
+ * Abschnitt unter seinen Überschriften (`sectionDiff`). Was nur eine
+ * Fassung hat, steht danach unter seiner eigenen Überschrift.
+ */
+export function textVergleich(
+  basis: string,
+  andere: readonly { f: Vergleichsfassung; text: string }[],
+): ProsaVergleich {
+  const v: ProsaVergleich = {
+    abschnitte: textSections(basis).map((s) => ({ key: s.key, text: s.text, abw: [] })),
+    nurDort: [],
+    ganz: [],
+  };
+  for (const { f, text } of andere) {
+    if (gleich(basis, text)) continue;
+    v.ganz.push(marke(f, text));
+    /* Hat die Fassung den Text gar nicht, sagt sie es einmal und nicht unter jeder Überschrift. */
+    if (!text.trim()) {
+      v.abschnitte[0]?.abw.push(marke(f, ''));
+      continue;
+    }
+    for (const s of sectionDiff(basis, text)) {
+      if (s.onlyThere) v.nurDort.push({ heading: s.heading, abw: marke(f, s.value ?? '') });
+      else v.abschnitte.find((a) => a.key === s.key)?.abw.push(marke(f, s.value ?? ''));
+    }
+  }
+  return v;
+}
+
+/**
+ * **Ein Prosafeld gegen seine Fassungen** (T-103): je Eintrag (nach Id,
+ * sonst der Reihe nach) und darin je Abschnitt unter einer Überschrift.
+ * Vorher stand der Vergleich als Ganzes am ersten Eintrag, und was eine
+ * Fassung zur Grösse sagte, stand bei Aasimar unter „Languages", dem
+ * letzten Abschnitt des Textes. Ohne eigenen Eintrag (`basis` leer) steht
+ * ein leerer mit der Id `''` da, damit „hier: —" einen Platz hat.
+ */
+export function prosaVergleich(
+  type: string,
+  key: string,
+  basis: readonly FieldEntry[],
+  fassungen: readonly Vergleichsfassung[],
+): Map<string, ProsaVergleich> {
+  const eintraege = basis.length ? basis : [{ id: '', value: '' }];
+  const ids = new Set(eintraege.map((b) => b.id));
+  const je = new Map<string, { f: Vergleichsfassung; text: string }[]>(eintraege.map((b) => [b.id, []]));
+  /* Mehr Einträge als hier: sie stehen am letzten, für sich. */
+  const uebrig: { f: Vergleichsfassung; text: string }[] = [];
+  for (const f of fassungen) {
+    const dort = entriesOf((f.entity.components?.[type] as Record<string, unknown> | undefined)?.[key]);
+    const frei = dort.filter((d) => !ids.has(d.id));
+    let naechster = 0;
+    for (const b of eintraege) {
+      const d = dort.find((x) => x.id === b.id) ?? frei[naechster++];
+      je.get(b.id)!.push({ f, text: d?.value ?? '' });
+    }
+    for (const d of frei.slice(naechster)) uebrig.push({ f, text: d.value });
+  }
+  const out = new Map<string, ProsaVergleich>();
+  for (const b of eintraege) out.set(b.id, textVergleich(b.value, je.get(b.id)!));
+  const letzter = out.get(eintraege[eintraege.length - 1]!.id)!;
+  for (const { f, text } of uebrig) {
+    letzter.ganz.push(marke(f, text));
+    for (const s of sectionDiff('', text)) letzter.nurDort.push({ heading: s.heading, abw: marke(f, s.value ?? '') });
+  }
+  return out;
+}
+
+/** Eine Zeile eines Buch-Elements mit dem, was andere Fassungen dort sagen. */
+export interface ZeilenVergleich {
+  /** Beschriftung klein → abweichende Werte. */
+  an: Map<string, Abweichung[]>;
+  /** Zeilen, die nur eine andere Fassung hat, in ihrer Reihenfolge. */
+  nurDort: { label: string; abw: Abweichung[] }[];
+}
+
+/**
+ * **Die Zeilen eines Statblocks, Zaubers oder Gegenstands gegen die der
+ * Fassungen** (T-103) — verglichen wird, was dasteht, nach Beschriftung
+ * (`linesDiff`); ein Buch-Element zeichnet seine Felder selbst, also steht
+ * die andere Fassung an seiner Zeile und nicht in einer Tabelle darunter.
+ */
+export function zeilenVergleich(
+  basis: readonly { label: string; text: string }[],
+  andere: readonly { f: Vergleichsfassung; zeilen: readonly { label: string; text: string }[] }[],
+): ZeilenVergleich {
+  const an = new Map<string, Abweichung[]>();
+  const nurDort: ZeilenVergleich['nurDort'] = [];
+  for (const { f, zeilen } of andere) {
+    for (const d of linesDiff(basis, zeilen)) {
+      const a: Abweichung = { ...marke(f, d.value ?? ''), lang: (d.value ?? '').length > 160 };
+      if (!d.onlyThere) {
+        (an.get(d.key) ?? an.set(d.key, []).get(d.key)!).push(a);
+        continue;
+      }
+      const da = nurDort.find((z) => z.label.toLowerCase() === d.key);
+      if (da) da.abw.push(a);
+      else nurDort.push({ label: d.heading, abw: [a] });
+    }
+  }
+  return { an, nurDort };
+}
+
+/**
+ * **Die Marken an einem Wert** (T-092, T-103): je Fassung ihr Kürzel und
+ * was sie sagt — ein langer Text aufklappbar. Ein Baustein, damit Feld,
+ * Abschnitt, Buchzeile und Maske dasselbe zeigen.
+ */
+@Component({
+  selector: 'nw-abw',
+  imports: [Text],
+  template: `
+    @for (a of liste(); track a.id) {
+      <span class="fassung" [class.lang]="a.lang">
+        <span class="kuerzel" [class.vergleich]="a.compare" [title]="a.titel">{{ a.kuerzel }}</span>
+        @if (a.lang && a.text) {
+          <details>
+            <summary>{{ titel() || 'says otherwise' }}</summary>
+            <nw-text [text]="a.text" [scopes]="scopes()" />
+          </details>
+        } @else if (a.lang) {
+          <span class="fwert dim">has nothing here</span>
+        } @else if (a.text) {
+          <!-- Ein Verweis im Wert bleibt ein Verweis (M11), kein \`[[…]]\`. -->
+          <nw-text class="fwert" inline [text]="a.text" [scopes]="scopes()" />
+        } @else {
+          <span class="fwert">—</span>
+        }
+      </span>
+    }
+  `,
+  styles: `
+    :host {
+      display: block;
+    }
+    .fassung {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.15rem 0.4rem;
+      margin-top: 0.15rem;
+      font-family: var(--sans);
+      font-size: 0.85rem;
+      font-style: normal;
+      font-weight: 400;
+      color: var(--dim);
+    }
+    .fassung.lang {
+      display: block;
+    }
+    .fassung.lang > .fwert {
+      margin-left: 0.4rem;
+    }
+    details {
+      display: inline;
+    }
+    summary {
+      display: inline;
+      cursor: pointer;
+      min-height: 28px;
+      margin-left: 0.4rem;
+    }
+    details[open] {
+      display: block;
+    }
+    details > :not(summary) {
+      display: block;
+      margin-top: 0.25rem;
+      padding: 0.35rem 0.6rem;
+      border-left: 3px solid var(--line);
+      color: var(--ink);
+      font-family: var(--serif, inherit);
+      font-size: 0.95rem;
+    }
+    .fwert {
+      color: var(--ink);
+      overflow-wrap: anywhere;
+    }
+    .dim {
+      color: var(--dim);
+    }
+    .kuerzel {
+      font-family: var(--sans);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      padding: 0 0.35rem;
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      color: var(--dim);
+      white-space: nowrap;
+    }
+    .kuerzel.vergleich {
+      border-style: dashed;
+    }
+  `,
+})
+export class AbwMarken {
+  readonly liste = input<readonly Abweichung[]>([]);
+  readonly scopes = input<VarScopes>({});
+  /** Was am aufklappbaren Text steht — eine Überschrift, die nur dort steht, sagt es selbst. */
+  readonly titel = input<string>('');
 }
 
 /**

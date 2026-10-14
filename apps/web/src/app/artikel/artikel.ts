@@ -51,7 +51,18 @@ import { Statblock } from './statblock';
 import { Zauber } from './zauber';
 import { Gegenstand } from './gegenstand';
 import { Abschnitte } from './abschnitte';
-import { abweichungen, FassungsKasten, FassungsLesart, verglichene, type Abweichung } from './fassungen';
+import {
+  abweichungen,
+  AbwMarken,
+  FassungsKasten,
+  FassungsLesart,
+  prosaVergleich,
+  textVergleich,
+  verglichene,
+  vergleichsfassungen,
+  type Abweichung,
+  type ProsaVergleich,
+} from './fassungen';
 import { bereichLabel } from '../kern/bereiche';
 import { Quellen } from '../kern/quellen';
 import { antwortenJeEintrag, antwortText, EINTRAG_KANTEN } from './klasseneintrag';
@@ -74,6 +85,8 @@ interface Zelle {
   lang?: boolean;
   /** Ein Verweisfeld: Namen als Links statt Ids (T-068). */
   links?: { ziel: string; text: string }[];
+  /** Hier leer, aber eine andere Fassung füllt es (T-103): „hier —", daneben ihr Wert. */
+  leer?: boolean;
 }
 
 interface Prosa {
@@ -82,6 +95,8 @@ interface Prosa {
   key: string;
   label: string;
   wert: string;
+  /** Hier kein Eintrag, aber eine andere Fassung hat einen (T-103). */
+  leer?: boolean;
 }
 
 /** Ein Stück der gezeichneten Seite — ein Layout-Element, aufgelöst. */
@@ -144,7 +159,20 @@ interface Feld {
  */
 @Component({
   selector: 'nw-artikel',
-  imports: [RouterLink, FormsModule, Text, Wahl, Mehrfach, Statblock, Zauber, Gegenstand, Abschnitte, FassungsKasten, KurzLink],
+  imports: [
+    RouterLink,
+    FormsModule,
+    Text,
+    Wahl,
+    Mehrfach,
+    Statblock,
+    Zauber,
+    Gegenstand,
+    Abschnitte,
+    FassungsKasten,
+    AbwMarken,
+    KurzLink,
+  ],
   template: `
     @if (artikel(); as e) {
       <div class="buch">
@@ -417,6 +445,8 @@ interface Feld {
                         <input type="text" [(ngModel)]="f.wert" [name]="f.ref" />
                       }
                     }
+                    <!-- Was die anderen Fassungen hier sagen (T-103), auch beim Bearbeiten. -->
+                    <nw-abw [liste]="abwAn(f.ref)" [scopes]="scopes()" />
                   </label>
                 }
               </div>
@@ -429,6 +459,7 @@ interface Feld {
                     <button type="button" class="weg" (click)="prosaWeg(b.id)" title="Remove">×</button>
                   </div>
                   <textarea rows="3" [(ngModel)]="b.wert" [name]="b.id"></textarea>
+                  <nw-abw [liste]="vglProsa(b.id)?.ganz ?? []" [scopes]="scopes()" />
                 </div>
               }
               <div class="werkzeuge">
@@ -541,16 +572,31 @@ interface Feld {
               @for (st of stuecke(); track st.id) {
                 @switch (st.art) {
                   @case ('statblock') {
-                    <nw-statblock [artikel]="e" />
+                    <nw-statblock [artikel]="e" [fassungen]="vergleich()" />
                   }
                   @case ('spell') {
-                    <nw-zauber [artikel]="e" [scopes]="scopes()" />
+                    <nw-zauber [artikel]="e" [scopes]="scopes()" [fassungen]="vergleich()" />
                   }
                   @case ('item') {
-                    <nw-gegenstand [artikel]="e" />
+                    <nw-gegenstand [artikel]="e" [fassungen]="vergleich()" />
                   }
                   @case ('beschreibung') {
-                    <nw-text class="beschreibung" [text]="st.text ?? ''" [scopes]="scopes()" />
+                    @if (vglBeschreibung(); as v) {
+                      <div class="beschreibung">
+                        @if (!st.text) {
+                          <p class="leer" title="Empty here">—</p>
+                        }
+                        @for (s of v.abschnitte; track s.key) {
+                          <nw-text [text]="s.text" [scopes]="scopes()" />
+                          <nw-abw [liste]="s.abw" [scopes]="scopes()" />
+                        }
+                        @for (n of v.nurDort; track $index) {
+                          <nw-abw [liste]="[n.abw]" [titel]="nurDortTitel(n.heading)" [scopes]="scopes()" />
+                        }
+                      </div>
+                    } @else {
+                      <nw-text class="beschreibung" [text]="st.text ?? ''" [scopes]="scopes()" />
+                    }
                   }
                   @case ('teile') {
                     <nw-abschnitte [besitzer]="e" />
@@ -564,8 +610,8 @@ interface Feld {
                   @case ('felder') {
                     <dl class="felder">
                       @for (z of st.zellen; track z.ref) {
-                        <div class="feld" [class.lang]="z.lang" [class.geerbt]="z.geerbt"
-                             [attr.title]="z.geerbt ? 'From the template' : null">
+                        <div class="feld" [class.lang]="z.lang" [class.geerbt]="z.geerbt" [class.leer]="z.leer"
+                             [attr.title]="z.geerbt ? 'From the template' : z.leer ? 'Empty here; another version fills it' : null">
                           <dt>{{ z.label }}</dt>
                           <dd>
                             @if (z.links) {
@@ -582,19 +628,7 @@ interface Feld {
                             } @else {
                               <nw-text inline [text]="z.wert" [scopes]="scopes()" />
                             }
-                            @for (a of abwAn(z.ref); track a.id) {
-                              <span class="fassung" [class.lang]="a.lang">
-                                <span class="kuerzel" [class.vergleich]="a.compare" [title]="a.titel">{{ a.kuerzel }}</span>
-                                @if (a.lang && a.text) {
-                                  <details>
-                                    <summary>says otherwise</summary>
-                                    <nw-text [text]="a.text" [scopes]="scopes()" />
-                                  </details>
-                                } @else {
-                                  <span class="fwert">{{ a.text || '—' }}</span>
-                                }
-                              </span>
-                            }
+                            <nw-abw [liste]="abwAn(z.ref)" [scopes]="scopes()" />
                           </dd>
                         </div>
                       }
@@ -606,17 +640,21 @@ interface Feld {
                         @if (b.key !== 'paragraph') {
                           <h2>{{ b.label }}</h2>
                         }
-                        <nw-text [text]="b.wert" [scopes]="scopes()" />
-                        @for (a of abwProsa(b.ref); track a.id) {
-                          <details class="fassung lang">
-                            <summary>
-                              <span class="kuerzel" [class.vergleich]="a.compare" [title]="a.titel">{{ a.kuerzel }}</span>
-                              {{ a.text ? 'says otherwise' : 'has nothing here' }}
-                            </summary>
-                            @if (a.text) {
-                              <nw-text [text]="a.text" [scopes]="scopes()" />
-                            }
-                          </details>
+                        <!-- Je Abschnitt unter seiner Überschrift, was eine andere
+                             Fassung dort sagt (T-103) — nicht am Ende des Textes. -->
+                        @if (vglProsa(b.ref); as v) {
+                          @if (b.leer) {
+                            <p class="leer" title="Empty here">—</p>
+                          }
+                          @for (s of v.abschnitte; track s.key) {
+                            <nw-text [text]="s.text" [scopes]="scopes()" />
+                            <nw-abw [liste]="s.abw" [scopes]="scopes()" />
+                          }
+                          @for (n of v.nurDort; track $index) {
+                            <nw-abw [liste]="[n.abw]" [titel]="nurDortTitel(n.heading)" [scopes]="scopes()" />
+                          }
+                        } @else {
+                          <nw-text [text]="b.wert" [scopes]="scopes()" />
                         }
                       </section>
                     }
@@ -624,8 +662,8 @@ interface Feld {
                 }
               }
               <!-- Was eine Fassung anders sagt, wo die Seite kein Feld dafür
-                   zeichnet: im Zauberblock, im Statblock, oder weil das Feld
-                   hier leer ist (T-092). -->
+                   zeichnet — ein Feld, das kein Element der Anordnung nimmt
+                   (T-092). Leere Felder und Buchzeilen tragen es selbst (T-103). -->
               @if (abwRest().length) {
                 <section class="block fassungen-rest">
                   <h2>Where other versions differ</h2>
@@ -637,19 +675,7 @@ interface Feld {
                           @if (z.hier) {
                             <span class="fhier">{{ z.hier }}</span>
                           }
-                          @for (a of z.liste; track a.id) {
-                            <span class="fassung" [class.lang]="a.lang">
-                              <span class="kuerzel" [class.vergleich]="a.compare" [title]="a.titel">{{ a.kuerzel }}</span>
-                              @if (a.lang && a.text) {
-                                <details>
-                                  <summary>says otherwise</summary>
-                                  <nw-text [text]="a.text" [scopes]="scopes()" />
-                                </details>
-                              } @else {
-                                <span class="fwert">{{ a.text || '—' }}</span>
-                              }
-                            </span>
-                          }
+                          <nw-abw [liste]="z.liste" [scopes]="scopes()" />
                         </dd>
                       </div>
                     }
@@ -1086,8 +1112,8 @@ export class Artikel {
     const r = this.reg();
     if (!e || !r) return [];
     const layout = flach(layoutFor(r, 'full', primaryInterface(e)).layout);
-    const zellen = this.alleZellen();
-    const prosa = this.prosa();
+    const zellen = this.zellenMitFassungen();
+    const prosa = this.prosaMitFassungen();
     const felderDa = new Set<string>();
     const prosaDa = new Set<string>();
     const da = (typ: string, feld: string) => felderDa.has(typ) || felderDa.has(`${typ}.${feld}`);
@@ -1111,7 +1137,8 @@ export class Artikel {
         case 'description': {
           const text = this.beschreibung();
           felderDa.add('Description.description');
-          if (text) out.push({ id: el.id, art: 'beschreibung', text });
+          /* Auch leer, wenn eine andere Fassung eine hat (T-103). */
+          if (text || this.vglBeschreibung()) out.push({ id: el.id, art: 'beschreibung', text: text ?? '' });
           break;
         }
         case 'fields': {
@@ -1268,42 +1295,152 @@ export class Artikel {
     }
   }
 
-  /** Was die verglichenen Fassungen anders sagen — je Feld und je Kantenart. */
+  /** Die Fassungen, die nach der Lesart verglichen werden — mit Kürzel und Tooltip. */
+  protected readonly vergleich = computed(() =>
+    vergleichsfassungen(verglichene(this.fassungen(), this.lesart.stand())),
+  );
+
+  /**
+   * Was die verglichenen Fassungen anders sagen — je Feld und je Kantenart.
+   * Gegen den gespeicherten Artikel, auch während der Maske offen ist
+   * (T-103): wer bearbeitet, will sehen, was die andere Fassung dort sagt.
+   */
   private readonly abw = computed(() => {
     const e = this.artikel();
     const r = this.reg();
-    if (!e || !r || this.bearbeitet()) return { felder: new Map<string, Abweichung[]>(), kanten: [] };
-    return abweichungen(r, e, verglichene(this.fassungen(), this.lesart.stand()), this.bestand.name());
+    const v = this.vergleich();
+    if (!e || !r || !v.length) return { felder: new Map<string, Abweichung[]>(), kanten: [] };
+    return abweichungen(r, e, v, this.bestand.name());
   });
 
   protected abwAn(ref: string): Abweichung[] {
     return this.abw().felder.get(ref) ?? [];
   }
 
-  /** Ein Prosafeld bekommt den Vergleich an seinem ersten Eintrag. */
-  private readonly erstePros = computed(() => {
-    const m = new Map<string, string>();
-    for (const b of this.prosa()) if (!m.has(`${b.type}.${b.key}`)) m.set(`${b.type}.${b.key}`, b.ref);
-    return m;
+  /**
+   * **Jeder Prosaeintrag, Abschnitt für Abschnitt verglichen** (T-103):
+   * Eintrags-Ref → Vergleich. Nur für Prosafelder, an denen eine Fassung
+   * etwas anderes sagt; die übrigen zeichnen sich wie bisher am Stück.
+   */
+  private readonly prosaVgl = computed(() => {
+    const e = this.artikel();
+    const r = this.reg();
+    const v = this.vergleich();
+    const out = new Map<string, ProsaVergleich>();
+    if (!e || !r || !v.length) return out;
+    const felder = this.abw().felder;
+    for (const f of proseFields(r, primaryInterface(e))) {
+      if (!felder.has(`${f.type}.${f.key}`)) continue;
+      const basis = entriesOf((e.components?.[f.type] as Record<string, unknown> | undefined)?.[f.key]);
+      for (const [id, vgl] of prosaVergleich(f.type, f.key, basis, v)) out.set(entryRef(f.type, f.key, id), vgl);
+    }
+    return out;
   });
-  protected abwProsa(entry: string): Abweichung[] {
-    for (const [feld, erste] of this.erstePros()) if (erste === entry) return this.abwAn(feld);
-    return [];
+  protected vglProsa(ref: string): ProsaVergleich | null {
+    return this.prosaVgl().get(ref) ?? null;
   }
 
-  /** Was keine Zelle und kein Absatz der Seite zeigt — es steht am Ende. */
+  /** Die Beschreibung ebenso, Abschnitt für Abschnitt (T-103). */
+  protected readonly vglBeschreibung = computed<ProsaVergleich | null>(() => {
+    const e = this.artikel();
+    const v = this.vergleich();
+    if (!e || !v.length || !this.abw().felder.has('Description.description')) return null;
+    const text = (c: Entity) => String((c.components?.['Description'] as { description?: unknown } | undefined)?.description ?? '');
+    return textVergleich(text(e), v.map((f) => ({ f, text: text(f.entity) })));
+  });
+
+  protected nurDortTitel(heading: string): string {
+    return `${heading || 'More text'} — only in this version`;
+  }
+
+  /**
+   * **Die Zellen samt denen, die nur eine andere Fassung füllt** (T-103):
+   * „hier —, VGM: Medium" steht an dem Feld, wo es hingehört, und nicht in
+   * einer Liste am Ende. Eingefügt hinter die letzte Zelle derselben Karte,
+   * sonst am Ende; wohin sie gehört, sagt danach die Anordnung wie für jede.
+   */
+  private readonly zellenMitFassungen = computed<Zelle[]>(() => {
+    const zellen = this.alleZellen();
+    const e = this.artikel();
+    const r = this.reg();
+    const felder = this.abw().felder;
+    if (!e || !r || !felder.size) return zellen;
+    const da = new Set(zellen.map((z) => z.ref));
+    const prosa = new Set(proseFields(r, primaryInterface(e)).map((f) => `${f.type}.${f.key}`));
+    const out = [...zellen];
+    for (const [ref, liste] of felder) {
+      if (da.has(ref) || prosa.has(ref)) continue;
+      const [comp = '', prop = ''] = ref.split('.');
+      if (SCHON_ANDERSWO.includes(comp)) continue;
+      const schema = r.interfaces[comp]?.schema?.properties?.[prop];
+      if (schema?.many && schema.format === 'long') continue;
+      const zelle: Zelle = {
+        ref,
+        comp,
+        prop,
+        leer: true,
+        lang: liste.some((a) => a.lang),
+        label: schema ? fieldTitle(r, primaryInterface(e), { type: comp, key: prop, prop: schema }) : prop,
+        wert: '—',
+      };
+      let hinter = -1;
+      out.forEach((z, i) => {
+        if (z.comp === comp) hinter = i;
+      });
+      if (hinter < 0) out.push(zelle);
+      else out.splice(hinter + 1, 0, zelle);
+    }
+    return out;
+  });
+
+  /** Die Prosa samt leeren Einträgen, wo nur eine andere Fassung Text hat (T-103). */
+  private readonly prosaMitFassungen = computed<Prosa[]>(() => {
+    const prosa = this.prosa();
+    const e = this.artikel();
+    const r = this.reg();
+    const felder = this.abw().felder;
+    if (!e || !r || !felder.size) return prosa;
+    const out = [...prosa];
+    for (const f of proseFields(r, primaryInterface(e))) {
+      if (!felder.has(`${f.type}.${f.key}`) || prosa.some((b) => b.type === f.type && b.key === f.key)) continue;
+      out.push({
+        ref: entryRef(f.type, f.key, ''),
+        type: f.type,
+        key: f.key,
+        label: fieldTitle(r, primaryInterface(e), f),
+        wert: '',
+        leer: true,
+      });
+    }
+    return out;
+  });
+
+  /**
+   * Was kein Element der Seite zeigt — es steht am Ende. Seit T-103 nur
+   * noch, was keine Anordnung nimmt: leere Felder stehen an ihrem Platz,
+   * Buch-Elemente zeigen ihre Zeilen selbst.
+   */
   protected readonly abwRest = computed(() => {
     const e = this.artikel();
     const r = this.reg();
     const felder = this.abw().felder;
     if (!e || !r || !felder.size) return [];
-    const gezeigt = new Set<string>(this.erstePros().keys());
-    for (const st of this.stuecke()) for (const z of st.zellen ?? []) gezeigt.add(z.ref);
+    const gezeigt = new Set<string>();
+    const karten = new Set<string>();
+    for (const st of this.stuecke()) {
+      for (const z of st.zellen ?? []) gezeigt.add(z.ref);
+      for (const b of st.prosa ?? []) gezeigt.add(`${b.type}.${b.key}`);
+      if (st.art === 'beschreibung') gezeigt.add('Description.description');
+      if (st.art === 'statblock' || st.art === 'spell' || st.art === 'item') {
+        for (const k of BOOK_CARDS[st.art] ?? []) karten.add(k);
+        if (st.art === 'spell') ['Description.description', 'Prose.paragraph'].forEach((x) => gezeigt.add(x));
+      }
+    }
     const hier = new Map(this.alleZellen().map((z) => [z.ref, z.wert]));
     const out: { ref: string; label: string; lang: boolean; hier: string; liste: Abweichung[] }[] = [];
     for (const [ref, liste] of felder) {
-      if (gezeigt.has(ref)) continue;
       const [type = '', key = ''] = ref.split('.');
+      if (gezeigt.has(ref) || karten.has(type)) continue;
       const prop = r.interfaces[type]?.schema?.properties?.[key];
       out.push({
         ref,

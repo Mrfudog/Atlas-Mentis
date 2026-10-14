@@ -772,6 +772,17 @@ das ein und aus und wählt die Ebenen; gemerkt wird es **am Konto**
 (`app_user_pref`), weil es eine Frage ist, wie jemand liest, und nicht, was
 gilt.
 
+*Wo der Wert dabeisteht*, ist die Stelle, an der man ihn liest (T-103).
+An Aasimar stand die andere Grösse unter „Languages": der Text war als
+Ganzes verglichen, und die andere Fassung hing am Ende — beim letzten
+Abschnitt, „Languages". Ein Text aus 5e.tools ist aber „## Age … ## Size …
+## Languages …", also wird er Abschnitt für Abschnitt verglichen, nach
+Überschrift und nicht nach Nummer; was nur die andere Fassung hat, steht
+unter seiner eigenen Überschrift. Ebenso ein Statblock nach seinen Zeilen
+(„Armor Class", nicht `Statblock.ac`), denn die Zeile ist, was man liest.
+Und ein Feld, das nur die andere Fassung füllt, steht an seinem Platz mit
+„—" — in einer Liste am Ende hiesse es, die Stelle suchen zu gehen.
+
 *Was eine Fassung ist*, sagt nicht `variantOf` allein: die Kante verbindet
 auch den Oathbow mit dem Longbow und die Kopie „Goblin Boss" mit dem
 Goblin — das sind andere Dinge, und im Kompendium unter dem Longbow

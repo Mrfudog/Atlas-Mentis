@@ -3,6 +3,7 @@ import { entityName, enumRefKind, primaryInterface, statblockBook } from '@nw/mo
 import type { Entity, StatblockBook } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { Abschnitte } from './abschnitte';
+import { AbwMarken, zeilenVergleich, type Abweichung, type Vergleichsfassung } from './fassungen';
 import { Text } from './text';
 
 /**
@@ -18,17 +19,18 @@ import { Text } from './text';
  */
 @Component({
   selector: 'nw-statblock',
-  imports: [Text, Abschnitte],
+  imports: [Text, Abschnitte, AbwMarken],
   template: `
     @if (buch(); as b) {
       @if (b.byline) {
         <p class="byline">{{ b.byline }}</p>
       }
+      <nw-abw [liste]="an(KOPF)" />
       <div class="linie" aria-hidden="true"></div>
       @if (b.top.length) {
         <div class="zeilen">
           @for (z of b.top; track z.label) {
-            <p><strong>{{ z.label }}</strong> <nw-text inline [text]="z.text" /></p>
+            <p><strong>{{ z.label }}</strong> <nw-text inline [text]="z.text" /><nw-abw [liste]="an(z.label)" /></p>
           }
         </div>
         <div class="linie" aria-hidden="true"></div>
@@ -38,16 +40,21 @@ import { Text } from './text';
           <div role="listitem">
             <div class="k">{{ a.label }}</div>
             <div>{{ a.score ?? '—' }} {{ a.mod }}</div>
+            <nw-abw [liste]="an(a.label)" />
           </div>
         }
       </div>
       <div class="linie" aria-hidden="true"></div>
       <div class="zeilen">
         @for (z of b.details; track z.label) {
-          <p><strong>{{ z.label }}</strong> <nw-text inline [text]="z.text" /></p>
+          <p><strong>{{ z.label }}</strong> <nw-text inline [text]="z.text" /><nw-abw [liste]="an(z.label)" /></p>
         }
         @for (z of b.extra; track z.label) {
-          <p class="zusatz"><strong>{{ z.label }}</strong> <nw-text inline [text]="z.text" /></p>
+          <p class="zusatz"><strong>{{ z.label }}</strong> <nw-text inline [text]="z.text" /><nw-abw [liste]="an(z.label)" /></p>
+        }
+        <!-- Zeilen, die nur eine andere Fassung hat (T-103): „hier —". -->
+        @for (z of vgl().nurDort; track z.label) {
+          <p class="zusatz leer"><strong>{{ z.label }}</strong> —<nw-abw [liste]="z.abw" /></p>
         }
       </div>
       <div class="linie" aria-hidden="true"></div>
@@ -58,8 +65,12 @@ import { Text } from './text';
 })
 export class Statblock {
   readonly artikel = input.required<Entity>();
+  /** Die verglichenen Fassungen (T-103): an jeder Zeile steht, was sie anders sagen. */
+  readonly fassungen = input<readonly Vergleichsfassung[]>([]);
 
   private readonly bestand = inject(Bestand);
+  /** Die Zeile unter dem Namen — Grösse, Art, Gesinnung. */
+  protected readonly KOPF = 'byline';
 
   /** Die Namen in `proficient` und `expertise`. */
   private readonly uebungsNamen = computed(() => {
@@ -121,13 +132,15 @@ export class Statblock {
     });
   }
 
-  protected readonly buch = computed<StatblockBook | null>(() => {
+  protected readonly buch = computed<StatblockBook | null>(() => this.bauen(this.artikel()));
+
+  private bauen(artikel: Entity): StatblockBook | null {
     const r = this.bestand.registry();
     if (!r) return null;
     const uebungen = this.uebungen();
     const voll = this.bestand.voll();
     const name = this.bestand.name();
-    return statblockBook(r, this.artikel(), {
+    return statblockBook(r, artikel, {
       nameOf: (id) => name(id),
       kindOf: (n) => {
         const k = uebungen.get(n.toLowerCase());
@@ -140,5 +153,29 @@ export class Statblock {
         return typeof karte?.['ability'] === 'string' ? karte['ability'] : undefined;
       },
     });
+  }
+
+  /**
+   * **Die Zeilen gegen die der Fassungen** (T-103): verglichen wird, was
+   * dasteht — dieselbe Rechnung für beide, nach Beschriftung.
+   */
+  protected readonly vgl = computed(() => {
+    const b = this.buch();
+    const zeilen = (x: StatblockBook) => [
+      { label: this.KOPF, text: x.byline },
+      ...x.top,
+      ...x.abilities.map((a) => ({ label: a.label, text: `${a.score ?? '—'} ${a.mod}` })),
+      ...x.details,
+      ...x.extra,
+    ];
+    const andere = this.fassungen().flatMap((f) => {
+      const o = this.bauen(f.entity);
+      return o ? [{ f, zeilen: zeilen(o) }] : [];
+    });
+    return zeilenVergleich(b ? zeilen(b) : [], andere);
   });
+
+  protected an(label: string): Abweichung[] {
+    return this.vgl().an.get(label.trim().toLowerCase()) ?? [];
+  }
 }
