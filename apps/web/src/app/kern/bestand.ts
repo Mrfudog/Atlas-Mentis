@@ -22,7 +22,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { entityName } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
 import { Live, type ArtikelEreignis } from './live';
-import { Api, ApiError, type Bezuege, type Fertigungswerte, type LeseZiel, type ListenFrage, type Liste, type ListenZeile, type RegisterTeil, type Rueckbezug } from './api';
+import { Api, ApiError, type Bezuege, type Fertigungswerte, type Ladenwaren, type LeseZiel, type ListenFrage, type Liste, type ListenZeile, type RegisterTeil, type Rueckbezug } from './api';
 
 @Injectable({ providedIn: 'root' })
 export class Bestand {
@@ -56,6 +56,9 @@ export class Bestand {
   /** Womit an einem Rezept gefertigt wird (`refs.craft`, T-122). */
   private readonly _fertigung = signal<ReadonlyMap<string, Fertigungswerte>>(new Map());
   readonly fertigung = this._fertigung.asReadonly();
+  /** Was ein Laden führt, und zu welchem Preis (`refs.shop`, T-129). */
+  private readonly _laden = signal<ReadonlyMap<string, Ladenwaren>>(new Map());
+  readonly laden = this._laden.asReadonly();
   /** Artikel aus einer Vergleichsebene (T-092): nicht im Spiel, auf Wunsch sichtbar. */
   private readonly _vergleich = signal<ReadonlySet<string>>(new Set());
   readonly vergleich = this._vergleich.asReadonly();
@@ -199,6 +202,12 @@ export class Bestand {
         this._fertigung.update((m) => {
           const n = new Map(m);
           if (refs?.craft) n.set(id, refs.craft);
+          else n.delete(id);
+          return n;
+        });
+        this._laden.update((m) => {
+          const n = new Map(m);
+          if (refs?.shop) n.set(id, refs.shop);
           else n.delete(id);
           return n;
         });

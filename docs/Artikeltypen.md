@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-14. 78 Schnittstellen, 60 Kantenarten.
+Stand 2026-10-14. 79 Schnittstellen, 63 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -14,7 +14,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## World
 
-*Wer und was es gibt.* — 14 Arten.
+*Wer und was es gibt.* — 15 Arten.
 
 ### Armor
 
@@ -56,6 +56,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Statblock — `equips` → „equipped by"
+- Shop — `sells` → „sold at"
 - Inventory — `holds` → „held in"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -145,6 +146,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `owes` → Creature — „owes"
 - `memberOf` → Faction — „member of"
 - `livesIn` → Place — „lives in"
+- `discount` → Creature | Party | Faction — „discount for"
 - `describedIn` → Article — „described in"
 - `memberOfParty` → Party — „in the party"
 - `carries` → Inventory — „carries"
@@ -160,6 +162,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `belongsTo` → „statblock of"
 - Creature — `owes` → „creditor of"
+- Shop | Faction | Creature — `discount` → „discount from"
+- Shop — `shopkeeper` → „keeps shop"
 - Quest — `questGiver` → „gives"
 - Quest — `questAbout` → „concerned by"
 - Story — `features` → „appears in"
@@ -297,6 +301,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `worships` → Deity — „worships"
 - `casts` → Spell — „casts"
 - `controls` → Place — „controls"
+- `discount` → Creature | Party | Faction — „discount for"
 - `describedIn` → Article — „described in"
 - `knowledge` → Information — „knowledge about it"
 - `inLayer` → Layer — „from"
@@ -307,6 +312,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Creature — `memberOf` → „members"
+- Shop | Faction | Creature — `discount` → „discount from"
 - Quest — `questGiver` → „gives"
 - Quest — `questAbout` → „concerned by"
 - Story — `features` → „appears in"
@@ -403,6 +409,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Statblock — `equips` → „equipped by"
+- Shop — `sells` → „sold at"
 - Inventory — `holds` → „held in"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -460,6 +467,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Statblock — `equips` → „equipped by"
+- Shop — `sells` → „sold at"
 - Inventory — `holds` → „held in"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
@@ -513,6 +521,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Kanten hierher**
 
+- Shop | Faction | Creature — `discount` → „discount from"
 - Creature — `memberOfParty` → „members"
 - Quest — `questAbout` → „concerned by"
 - Information | Knowledge — `knownBy` → „knows"
@@ -618,6 +627,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 - `owes` → Creature — „owes"
 - `memberOf` → Faction — „member of"
 - `livesIn` → Place — „lives in"
+- `discount` → Creature | Party | Faction — „discount for"
 - `describedIn` → Article — „described in"
 - `memberOfParty` → Party — „in the party"
 - `carries` → Inventory — „carries"
@@ -633,6 +643,8 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 - Statblock — `belongsTo` → „statblock of"
 - Creature — `owes` → „creditor of"
+- Shop | Faction | Creature — `discount` → „discount from"
+- Shop — `shopkeeper` → „keeps shop"
 - Quest — `questGiver` → „gives"
 - Quest — `questAbout` → „concerned by"
 - Story — `features` → „appears in"
@@ -653,6 +665,62 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
   - **Gear** — `inventory`
   - **Craft** — `crafting`
   - **Ties** — `standing`, `relations`
+
+### Shop
+
+`Shop` · erbt von `Place` ← `Identity` ← `Prose` ← `Notes` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Image` ← `Lore` ← `ReadAloud` ← `Secrets`
+
+**Eigene Felder**
+
+- `priceMod` *string*
+
+**Geerbte Felder**
+
+- *`Place`* — `kind` *Reich | Stadt | Distrikt | Gasse | Gebäude | Raum | Wildnis*, `environment` *string*, `state` *hidden | discovered | explored*, `arrival` *long*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Notes`* — `note` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Image`* — `image` *asset*, `caption` *string*, `alt` *string*
+- *`Lore`* — `lore` *long*
+- *`ReadAloud`* — `readaloud` *long*
+- *`Secrets`* — `secret` *long*
+
+**Kanten von hier**
+
+- `partOf` → Place | Story | Event | Layer | Chapter — „part of"
+- `sells` → Item — „sells"
+- `discount` → Creature | Party | Faction — „discount for"
+- `shopkeeper` → Creature — „shopkeeper"
+- `describedIn` → Article — „described in"
+- `knowledge` → Information — „knowledge about it"
+- `tableFor` → Table — „rolls on"
+- `route` → Place — „leads to"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Creature — `livesIn` → „residents"
+- Place | Story | Quest | Event | Board | Encounter | Layer | Chapter | BookPart — `partOf` → „contains"
+- Faction — `controls` → „controlled by"
+- Quest — `questAbout` → „concerned by"
+- Story — `happensAt` → „scenes here"
+- Map — `mapOf` → „maps"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- Place — `route` → „reached from"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `Shop (angepasst)`): `image`, `description`, `fields`, `wares`, `prose`, `crawl`, `table`, `relations`
 
 ### Weapon
 
@@ -694,6 +762,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 **Kanten hierher**
 
 - Statblock — `equips` → „equipped by"
+- Shop — `sells` → „sold at"
 - Inventory — `holds` → „held in"
 - Quest — `questAbout` → „concerned by"
 - Map — `marker` → „on the map"
