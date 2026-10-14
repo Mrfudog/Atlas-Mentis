@@ -264,3 +264,50 @@ export function instancesOf(entities: Lookup, template: Entity): Entity[] {
   }
   return raus;
 }
+
+/**
+ * **Ein Stück entsteht als Instanz** (T-133, T-150): was einer Figur in die
+ * Hand kommt — gekauft, erbeutet, gefertigt, geschenkt —, ist ein eigener
+ * Artikel mit `instanceOf` auf den Grundartikel und trägt sonst nur seinen
+ * Namen, seine Nummer und den Stand `ready` (ein Stück am Tisch ist keine
+ * Vorbereitung). Alles Übrige liest es von der Vorlage, bis es abweicht:
+ * eine Gravur, ein anderer Name, verbrauchte Ladungen. Eine Funktion für
+ * alle Wege, damit Kauf, Beute und Handwerk dasselbe Stück anlegen.
+ *
+ * `id` ist die Artikel-Id, `number` der Bezeichner (`nextId` über den Typ
+ * der Vorlage), `layer` die Ebene, in die das Stück gehört — die der
+ * laufenden Kampagne, sonst steht es in keinem Stapel.
+ */
+export function newInstance(template: Entity, opts: { id: EntityId; number: string; layer?: EntityId | null }): Entity {
+  const name = String(template.components?.['Identity']?.['name'] ?? template.name ?? template.id);
+  return {
+    id: opts.id,
+    interfaces: [...(template.interfaces ?? [])],
+    name,
+    components: { Identity: { name, id: opts.number }, Status: { status: 'ready' } },
+    relations: [
+      { id: `${opts.id}~instanceOf`, type: INSTANCE_RELATION, to: template.id, props: {} },
+      ...(opts.layer ? [{ id: `${opts.id}~inLayer`, type: 'inLayer', to: opts.layer, props: {} }] : []),
+    ],
+  };
+}
+
+/**
+ * Weicht diese Instanz in nichts von ihrer Vorlage ab? Dann ist sie ein
+ * beliebiges Stück davon: Gekauftes darf auf ihren Stapel, und wer sie
+ * verkauft, verliert nichts, wenn sie danach wegfällt. Name, Nummer,
+ * Stand und Sichtbarkeit zählen nicht als Abweichung — der Name aber nur,
+ * solange er der der Vorlage ist.
+ */
+export function followsTemplate(entities: Lookup, entity: Entity): boolean {
+  const vorlage = templateOf(entities, entity);
+  if (!vorlage) return false;
+  const name = entity.components?.['Identity']?.['name'];
+  const vorlagenName = vorlage.components?.['Identity']?.['name'] ?? vorlage.name;
+  if (!leer(name) && name !== vorlagenName) return false;
+  for (const [card, werte] of Object.entries(entity.components ?? {})) {
+    if (card === 'Identity' || card === 'Status' || NOT_INHERITED_CARDS.includes(card)) continue;
+    if (Object.values(werte ?? {}).some((w) => !leer(w))) return false;
+  }
+  return (entity.relations ?? []).every((r) => NOT_INHERITED_RELATIONS.includes(r.type));
+}

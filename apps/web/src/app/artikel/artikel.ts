@@ -626,7 +626,7 @@ interface Feld {
                   }
                   @case ('laden') {
                     @if (ladenwaren(); as lw) {
-                      <nw-laden [waren]="lw" />
+                      <nw-laden [waren]="lw" [id]="e.id" />
                     }
                   }
                   @case ('fluss') {
