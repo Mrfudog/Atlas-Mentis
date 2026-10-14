@@ -3,7 +3,10 @@
  *
  * Ein Auftrag ist eine **Instanz des Rezepts** (`CraftingOrder`,
  * `instanceOf` aufs Rezept): er liest Werkzeug, SG, Zeit, Material und
- * Ertrag beim Rezept und hält selbst Fortschritt, Ausgang und Proben. Wer
+ * Ertrag beim Rezept und hält selbst Ausgang, gearbeitete Tage und die
+ * Proben als **Kreise** (T-165, `checks`) — was sie bewirken, rechnet
+ * `tallyChecks` beim Lesen, darum nimmt ein Zurückklicken eine Regel
+ * zurück, solange der Auftrag läuft; abgerechnet wird bei `finish`. Wer
  * fertigt, sagt die Kante `crafting` vom Fertigenden zum Auftrag. Das
  * Material bleibt in den Inventaren von Figur und Gruppe und ist für den
  * Auftrag **reserviert** (`holds.props.reservedFor`, T-127).
@@ -19,9 +22,9 @@ import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
   baseArticle,
-  applyRoll,
   applySettlement,
   craftCheck,
+  craftRuleSentences,
   craftRulesOf,
   CRAFTING_RELATION,
   currentCampaign,
@@ -30,6 +33,7 @@ import {
   knows,
   nextId,
   ORDER_COMPONENT,
+  orderChecks,
   orderNeed,
   RECIPE_COMPONENT,
   recipeLearned,
@@ -37,16 +41,21 @@ import {
   reservedPieces,
   resolveInstance,
   rollResult,
+  setCheck,
   settlePieces,
   STATUS_COMPONENT,
   tableRole,
+  tallyChecks,
   templateOf,
   typeChain,
   primaryInterface,
+  type CraftRules,
   type Entity,
+  type OrderCheck,
   type OrderOutcome,
   type ReservedPiece,
   type Return,
+  type RollResult,
   type validateEntity,
 } from '@nw/model';
 import type { User } from './auth.js';
@@ -70,18 +79,6 @@ export interface HandwerkDeps {
   kampagnenEbene: (map: Map<string, Entity>, kampagne: Entity | null) => Promise<Entity | null>;
 }
 
-/** Eine Probe, wie sie am Auftrag steht. */
-interface Probe {
-  total: number;
-  nat?: number;
-  dc: number;
-  result: 'critSuccess' | 'success' | 'failure' | 'critFailure' | 'pending' | 'rejected';
-  /** Bei `pending`: was sie ergäbe. */
-  would?: string;
-  by: string;
-  at: string;
-  note?: string;
-}
 
 const carriesOf = (e: Entity | undefined): string | null => (e?.relations ?? []).find((r) => r.type === 'carries')?.to ?? null;
 const partiesOf = (e: Entity): string[] => (e.relations ?? []).filter((r) => r.type === PARTY_RELATION).map((r) => r.to);
@@ -141,16 +138,28 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     const rezept = templateOf(map, order);
     const actor = [...map.values()].find((e) => (e.relations ?? []).some((r) => r.type === CRAFTING_RELATION && r.to === order.id)) ?? null;
     const karte = order.components?.[ORDER_COMPONENT] ?? {};
-    const rolls = (Array.isArray(karte['rolls']) ? karte['rolls'] : []) as Probe[];
     return {
       aufgeloest,
       rezept,
       actor,
-      progress: Math.max(0, Number(karte['progress']) || 0),
+      /** Gearbeitete Tage (nur bei Rezepten in Tagen). */
+      worked: Math.max(0, Number(karte['progress']) || 0),
       outcome: (typeof karte['outcome'] === 'string' ? karte['outcome'] : 'open') as OrderOutcome,
       started: typeof karte['started'] === 'string' ? karte['started'] : '',
-      rolls,
+      checks: orderChecks(karte),
     };
+  }
+
+  /** Was die Kreise eines Auftrags nach den Regeln der Kampagne bewirken (T-165). */
+  function zaehlen(a: ReturnType<typeof auftrag>, rules: CraftRules) {
+    const need = orderNeed(a.aufgeloest);
+    return { need, tally: tallyChecks(a.checks, need, rules, need.unit === 'days' ? a.worked : 0) };
+  }
+
+  /** Die Kampagne, an der die Regeln stehen — für den Link „Campaign rules". */
+  function regelSicht(kampagne: Entity | null) {
+    const rules = craftRulesOf(kampagne);
+    return { ...rules, sentences: craftRuleSentences(rules), campaign: kampagne ? { id: kampagne.id, name: entityName(kampagne) } : null };
   }
 
   /** Die für diesen Auftrag reservierten Stücke, in allen Inventaren. */
@@ -168,42 +177,67 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
   /** Der Auftrag mit allem, was die Seite zeigt. */
   function auftragsSicht(order: Entity, stand: Stand, user: User, kampagne: Entity | null) {
     const a = auftrag(order, stand.map);
-    const need = orderNeed(a.aufgeloest);
+    const { need, tally } = zaehlen(a, craftRulesOf(kampagne));
     const check = craftCheck(a.aufgeloest, { get: (id) => stand.map.get(id), campaign: kampagne, actor: a.actor });
     const namen = besitzer(stand.map);
     const bed = bedarf(a.aufgeloest, stand.map);
     const leitung = leitet(user, kampagne);
     const eigen = !!a.actor && (user.actorIds ?? []).includes(a.actor.id);
     const offen = a.outcome === 'open';
-    const wartet = a.rolls.some((r) => r.result === 'pending');
     const ertrag = (a.aufgeloest.relations ?? []).find((r) => r.type === 'yields');
+    const stuecke = reserviert(order.id, stand.map);
+    /* Was die Regel mit dem Material täte (T-165): angewandt wird beim Abschluss, gezeigt sofort. */
+    const vorschau = offen && tally.settle
+      ? settlePieces(stuecke, (item) => bed.find((b) => b.item === baseArticle(stand.map, item))?.consumed ?? true, tally.settle)
+      : [];
+    const darf = offen && (leitung || eigen);
     return {
       id: order.id,
       name: entityName(order),
       actor: a.actor ? { id: a.actor.id, name: entityName(a.actor) } : null,
       recipe: a.rezept ? { id: a.rezept.id, name: entityName(a.rezept) } : null,
-      progress: a.progress,
+      progress: tally.progress,
       needed: need.needed,
       unit: need.unit,
+      daysLeft: tally.daysLeft,
       outcome: a.outcome,
+      /** Wie er beim Abschluss ausginge, solange er läuft. */
+      result: offen ? tally.outcome : a.outcome,
+      settle: offen ? tally.settle : null,
       started: a.started,
-      rolls: a.rolls,
+      circles: tally.circles.map((c) => ({
+        index: c.index,
+        mark: c.mark,
+        pending: c.pending,
+        ignored: c.ignored,
+        open: c.open,
+        ...(c.check ? { by: c.check.by ?? '', total: c.check.total, nat: c.check.nat, dc: c.check.dc } : {}),
+      })),
+      lines: tally.lines,
+      waiting: tally.waiting,
       check: { tool: check.tool, ability: check.ability, dc: check.dc },
       yields: ertrag
         ? { id: ertrag.to, name: entityName(stand.map.get(ertrag.to)) || ertrag.to, count: Math.max(1, Number(a.aufgeloest.components?.[RECIPE_COMPONENT]?.['yieldCount']) || 1) }
         : null,
-      reserved: reserviert(order.id, stand.map).map((p) => ({
-        ...p,
-        name: entityName(stand.map.get(p.item)) || p.item,
-        owner: namen.get(p.inventory)?.name ?? '',
-        consumed: bed.find((b) => b.item === p.item)?.consumed ?? true,
-      })),
-      onFailure: a.aufgeloest.components?.[RECIPE_COMPONENT]?.['onFailure'] ?? 'halfLost',
+      reserved: stuecke.map((p) => {
+        const v = vorschau.find((x) => x.piece.edge === p.edge);
+        return {
+          ...p,
+          name: entityName(stand.map.get(p.item)) || p.item,
+          owner: namen.get(p.inventory)?.name ?? '',
+          consumed: bed.find((b) => b.item === baseArticle(stand.map, p.item))?.consumed ?? true,
+          /** Was beim Abschluss verloren ginge (verbraucht oder nach der Regel). */
+          ...(v ? { lost: p.qty - v.keep } : {}),
+        };
+      }),
+      sourceFailure: typeof a.aufgeloest.components?.[RECIPE_COMPONENT]?.['onFailure'] === 'string' ? String(a.aufgeloest.components[RECIPE_COMPONENT]['onFailure']) : '',
       may: {
-        roll: offen && !wartet && (leitung || eigen) && (need.unit === 'checks' || a.progress >= need.needed),
-        work: offen && (leitung || eigen) && need.unit === 'days' && a.progress < need.needed,
-        confirm: offen && wartet && leitung,
-        abort: offen && (leitung || eigen),
+        mark: darf,
+        roll: darf && tally.outcome === 'open' && tally.circles.some((c) => c.open && !c.mark),
+        work: darf && need.unit === 'days' && tally.daysLeft > 0 && tally.outcome === 'open',
+        confirm: offen && tally.waiting > 0 && leitung,
+        finish: darf && tally.outcome !== 'open',
+        abort: darf,
         fail: offen && leitung,
       },
     };
@@ -225,7 +259,7 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     const [e] = roh1 ? await sieve(request, [roh1], stand.map) : [];
     if (!e || !roh1) return reply.code(404).send({ error: 'Nicht gefunden' });
     const kampagne = currentCampaign(stand.map, registry.settings ?? null);
-    const rules = craftRulesOf(kampagne);
+    const rules = regelSicht(kampagne);
     const leitung = leitet(user, kampagne);
     if (await istAuftrag(roh1)) {
       return { kind: 'order', rules, leitet: leitung, order: auftragsSicht(roh1, stand, user, kampagne) };
@@ -274,7 +308,8 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     const sichtbar = (await sieve(request, auftraege, stand.map)).filter((o) => primaryInterface(o) === ORDER_TYPE);
     const orders = sichtbar.map((o) => {
       const a = auftrag(stand.map.get(o.id) ?? o, stand.map);
-      return { id: o.id, name: entityName(o), actor: a.actor ? entityName(a.actor) : '', progress: a.progress, outcome: a.outcome };
+      const { tally } = zaehlen(a, rules);
+      return { id: o.id, name: entityName(o), actor: a.actor ? entityName(a.actor) : '', progress: tally.progress, outcome: a.outcome };
     });
     const ertrag = (roh1.relations ?? []).find((r) => r.type === 'yields');
     return {
@@ -286,7 +321,7 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
         name: entityName(roh1),
         unit: need.unit,
         needed: need.needed,
-        onFailure: roh1.components?.[RECIPE_COMPONENT]?.['onFailure'] ?? 'halfLost',
+        sourceFailure: typeof roh1.components?.[RECIPE_COMPONENT]?.['onFailure'] === 'string' ? String(roh1.components[RECIPE_COMPONENT]['onFailure']) : '',
         yields: ertrag ? { id: ertrag.to, name: entityName(stand.map.get(ertrag.to)) || ertrag.to } : null,
       },
       needs: bed,
@@ -373,7 +408,7 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
       name,
       components: {
         Identity: { name, id: nextId(stand.alle, ORDER_TYPE) },
-        [ORDER_COMPONENT]: { progress: 0, outcome: 'open', started: new Date().toISOString().slice(0, 10), rolls: [] },
+        [ORDER_COMPONENT]: { progress: 0, outcome: 'open', started: new Date().toISOString().slice(0, 10), checks: [] },
         /* Ein Auftrag ist ein Stand am Tisch, keine Vorbereitung. */
         [STATUS_COMPONENT]: { status: 'ready' },
       },
@@ -471,25 +506,54 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     return { ok: true, user, stand, order, kampagne, a, leitung, rules: craftRulesOf(kampagne) } as const;
   }
 
-  /** Eine Probe wirken lassen: Fortschritt, Ausgang, und wo es endet, abrechnen. */
-  async function wirken(order: Entity, stand: Stand, kampagne: Entity | null, probe: Probe): Promise<string | null> {
-    const a = auftrag(order, stand.map);
-    const need = orderNeed(a.aufgeloest);
-    const ergebnis = probe.result === 'pending' || probe.result === 'rejected' ? 'failure' : probe.result;
-    const wirkung = applyRoll({ progress: a.progress, outcome: a.outcome }, ergebnis, need, craftRulesOf(kampagne), a.aufgeloest.components?.[RECIPE_COMPONENT]?.['onFailure']);
-    const rolls = [...a.rolls.filter((r) => r.result !== 'pending'), { ...probe, note: wirkung.note }];
-    if (wirkung.settle) {
-      const f = await abrechnen(order, stand.map, wirkung.settle, kampagne);
-      if (f) return f;
-    }
-    return setzeAuftrag(order, { progress: wirkung.progress, outcome: wirkung.outcome, rolls });
+  /**
+   * **Einen Kreis setzen** (T-165) und zurückgeben, was jetzt gilt. Wer
+   * nicht leitet, setzt unter `craftConfirm: 'gm'` einen wartenden Kreis.
+   * Gesetzt werden darf jeder Kreis, den die Seite zeigt, auch einer, der
+   * nach dem Ende nicht mehr zählt (zum Leeren).
+   */
+  async function setzeKreis(
+    v: Extract<Awaited<ReturnType<typeof vorbereiten>>, { ok: true }>,
+    index: number,
+    wert: Omit<OrderCheck, 'by' | 'at' | 'pending'> | null,
+  ): Promise<{ error: string; code: number } | { tally: ReturnType<typeof tallyChecks> }> {
+    const { tally } = zaehlen(v.a, v.rules);
+    const kreis = tally.circles[index];
+    if (!kreis) return { code: 409, error: 'Diesen Kreis gibt es nicht (mehr) — neu laden.' };
+    if (wert && !kreis.open) return { code: 409, error: 'Erst die Tage arbeiten.' };
+    const eintrag: OrderCheck | null = wert
+      ? { ...wert, by: v.user.name, at: new Date().toISOString(), ...(!v.leitung && v.rules.confirm === 'gm' ? { pending: true } : {}) }
+      : null;
+    const checks = setCheck(v.a.checks, index, eintrag);
+    const f = await setzeAuftrag(v.order, { checks });
+    if (f) return { code: 422, error: f };
+    const nach = zaehlen({ ...v.a, checks }, v.rules).tally;
+    await repo.appendEvent('crafting.check', v.order.id, { index, mark: eintrag?.mark ?? null, pending: !!eintrag?.pending, by: v.user.id });
+    return { tally: nach };
   }
 
   /**
-   * **Eine Probe eintragen** (`total`, `nat` für die natürliche 20 oder 1).
-   * Gilt sofort für die Leitung, sonst nach `Campaign.craftConfirm`: mit
-   * `gm` wartet sie (`pending`), bis die Leitung sie bestätigt. Bei
-   * Arbeitstagen erst, wenn die Tage gearbeitet sind.
+   * **Ein Kreis per Klick** (T-165): `mark` ist `success`, `failure` oder
+   * `null` (leer). Die Oberfläche rechnet den Zyklus (`nextMark`) und
+   * schickt den Zielstand — zwei schnelle Klicks sind so zwei Stände und
+   * nicht zweimal „weiter".
+   */
+  app.put<{ Params: { id: string; index: string }; Body: { mark?: unknown } | null }>('/api/crafting/:id/checks/:index', async (request, reply) => {
+    const v = await vorbereiten(request);
+    if (!v.ok) return reply.code(v.code).send({ error: v.error });
+    const index = Number(request.params.index);
+    if (!Number.isInteger(index) || index < 0) return reply.code(400).send({ error: 'Kein Kreis.' });
+    const m = request.body?.mark ?? null;
+    if (m !== null && m !== 'success' && m !== 'failure') return reply.code(400).send({ error: 'Ein Kreis ist leer, ✓ oder ✗.' });
+    const r = await setzeKreis(v, index, m ? { mark: m as RollResult } : null);
+    if ('error' in r) return reply.code(r.code).send({ error: r.error });
+    return { outcome: r.tally.outcome, progress: r.tally.progress };
+  });
+
+  /**
+   * **Eine Probe würfeln** (`total`, `nat` für die natürliche 20 oder 1):
+   * setzt den ersten freien Kreis, mit Summe und SG daran. Wartet unter
+   * `craftConfirm: 'gm'` auf die Leitung wie ein Klick.
    */
   app.post<{ Params: { id: string }; Body: { total?: unknown; nat?: unknown } | null }>('/api/crafting/:id/roll', async (request, reply) => {
     const v = await vorbereiten(request);
@@ -498,46 +562,73 @@ export function registerHandwerk(app: FastifyInstance, deps: HandwerkDeps): void
     if (!Number.isFinite(total)) return reply.code(400).send({ error: 'Das Ergebnis der Probe fehlt.' });
     const natRoh = Number(request.body?.nat);
     const nat = natRoh === 1 || natRoh === 20 ? natRoh : undefined;
-    const need = orderNeed(v.a.aufgeloest);
-    if (need.unit === 'days' && v.a.progress < need.needed) return reply.code(409).send({ error: 'Erst die Tage arbeiten.' });
-    if (v.a.rolls.some((r) => r.result === 'pending')) return reply.code(409).send({ error: 'Eine Probe wartet noch auf die Leitung.' });
+    const { tally } = zaehlen(v.a, v.rules);
+    if (tally.outcome !== 'open') return reply.code(409).send({ error: 'Der Auftrag ist entschieden — abschliessen.' });
+    const frei = tally.circles.find((c) => !c.mark && c.open);
+    if (!frei) return reply.code(409).send({ error: need0(tally) });
     const dc = craftCheck(v.a.aufgeloest, { get: (id) => v.stand.map.get(id), campaign: v.kampagne, actor: v.a.actor }).dc;
     const result = rollResult(total, dc, nat);
-    const probe: Probe = { total, ...(nat ? { nat } : {}), dc, result, by: v.user.name, at: new Date().toISOString() };
-    if (!v.leitung && v.rules.confirm === 'gm') {
-      const f = await setzeAuftrag(v.order, { rolls: [...v.a.rolls, { ...probe, result: 'pending', would: result }] });
-      return f ? reply.code(422).send({ error: f }) : { pending: true, result };
-    }
-    const f = await wirken(v.order, v.stand, v.kampagne, probe);
-    return f ? reply.code(422).send({ error: f }) : { pending: false, result };
+    const r = await setzeKreis(v, frei.index, { mark: result, total, ...(nat ? { nat } : {}), dc });
+    if ('error' in r) return reply.code(r.code).send({ error: r.error });
+    return { pending: !v.leitung && v.rules.confirm === 'gm', result };
   });
 
-  /** **Die Leitung bestätigt** (oder verwirft) die wartende Probe. */
+  /** Warum kein Kreis frei ist. */
+  function need0(t: ReturnType<typeof tallyChecks>): string {
+    if (t.daysLeft > 0) return 'Erst die Tage arbeiten.';
+    if (t.waiting > 0) return 'Eine Probe wartet noch auf die Leitung.';
+    return 'Kein Kreis ist frei.';
+  }
+
+  /**
+   * **Die Leitung nimmt die wartenden Kreise an** (`accept: true`) oder
+   * verwirft sie (sie werden leer).
+   */
   app.post<{ Params: { id: string }; Body: { accept?: unknown } | null }>('/api/crafting/:id/confirm', async (request, reply) => {
     const v = await vorbereiten(request);
     if (!v.ok) return reply.code(v.code).send({ error: v.error });
     if (!v.leitung) return reply.code(403).send({ error: 'Proben bestätigt die Leitung.' });
-    const wartend = v.a.rolls.find((r) => r.result === 'pending');
-    if (!wartend) return reply.code(409).send({ error: 'Keine Probe wartet.' });
-    if (request.body?.accept === false) {
-      const rolls = v.a.rolls.map((r) => (r === wartend ? { ...r, result: 'rejected' as const, note: 'Not accepted by the GM.' } : r));
-      const f = await setzeAuftrag(v.order, { rolls });
-      return f ? reply.code(422).send({ error: f }) : { ok: true };
-    }
-    const result = (wartend.would ?? rollResult(wartend.total, wartend.dc, wartend.nat)) as Probe['result'];
-    const probe: Probe = { total: wartend.total, ...(wartend.nat ? { nat: wartend.nat } : {}), dc: wartend.dc, result, by: wartend.by, at: wartend.at };
-    const f = await wirken(v.order, v.stand, v.kampagne, probe);
-    return f ? reply.code(422).send({ error: f }) : { ok: true, result };
+    if (!v.a.checks.some((c) => c?.pending)) return reply.code(409).send({ error: 'Keine Probe wartet.' });
+    const annehmen = request.body?.accept !== false;
+    const checks = v.a.checks.map((c): OrderCheck | null => {
+      if (!c?.pending) return c;
+      if (!annehmen) return null;
+      const { pending: _weg, ...rest } = c;
+      return rest;
+    });
+    /* Verworfene am Ende fallen weg; die leeren Kreise stehen ohnehin da. */
+    while (checks.length && checks[checks.length - 1] === null) checks.pop();
+    const f = await setzeAuftrag(v.order, { checks });
+    if (f) return reply.code(422).send({ error: f });
+    await repo.appendEvent('crafting.confirmed', v.order.id, { accept: annehmen, by: v.user.id });
+    return { ok: true };
+  });
+
+  /**
+   * **Abschliessen** (T-165): wenn die Kreise den Auftrag entschieden
+   * haben — bei Erfolg kommt der Ertrag ins Inventar, beim Misserfolg
+   * wird das Material nach der Regel abgerechnet. Erst hier ist es
+   * endgültig; bis dahin nimmt ein Zurückklicken alles zurück.
+   */
+  app.post<{ Params: { id: string } }>('/api/crafting/:id/finish', async (request, reply) => {
+    const v = await vorbereiten(request);
+    if (!v.ok) return reply.code(v.code).send({ error: v.error });
+    const { tally } = zaehlen(v.a, v.rules);
+    if (tally.outcome === 'open' || !tally.settle) return reply.code(409).send({ error: 'Der Auftrag läuft noch.' });
+    const f = (await abrechnen(v.order, v.stand.map, tally.settle, v.kampagne)) ?? (await setzeAuftrag(v.order, { outcome: tally.outcome }));
+    return f ? reply.code(422).send({ error: f }) : { ok: true, outcome: tally.outcome };
   });
 
   /** **Einen Arbeitstag** (oder mehrere) eintragen — nur, wo das Rezept in Tagen zählt. */
   app.post<{ Params: { id: string }; Body: { days?: unknown } | null }>('/api/crafting/:id/work', async (request, reply) => {
     const v = await vorbereiten(request);
     if (!v.ok) return reply.code(v.code).send({ error: v.error });
-    const need = orderNeed(v.a.aufgeloest);
+    const { need, tally } = zaehlen(v.a, v.rules);
     if (need.unit !== 'days') return reply.code(409).send({ error: 'Dieses Rezept zählt Proben, nicht Tage.' });
-    const tage = Math.max(1, Math.trunc(Number(request.body?.days) || 1));
-    const f = await setzeAuftrag(v.order, { progress: Math.min(need.needed, v.a.progress + tage) });
+    if (tally.daysLeft <= 0) return reply.code(409).send({ error: 'Die Tage sind gearbeitet — jetzt die Probe.' });
+    /* Gezählt werden die Tage insgesamt: ein Verlust des Fortschritts verlangt einen neuen Anlauf (`tallyChecks`). */
+    const tage = Math.min(tally.daysLeft, Math.max(1, Math.trunc(Number(request.body?.days) || 1)));
+    const f = await setzeAuftrag(v.order, { progress: v.a.worked + tage });
     return f ? reply.code(422).send({ error: f }) : { ok: true };
   });
 

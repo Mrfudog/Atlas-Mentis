@@ -1403,7 +1403,7 @@ export const relations: Record<string, RelationDef> = {
    * im Inventar und ist für den Auftrag reserviert
    * (`holds.props.reservedFor`, T-127): sichtbar, unbeweglich, bei Erfolg
    * verbraucht, beim Abbruch frei, beim Misserfolg nach
-   * `Campaign.craftFailure` (Vorgabe: `Recipe.onFailure`).
+   * `Campaign.craftFailure` (nur dort, T-165).
    *
    * Die Eigenschaften `day`, `days`, `put` und `rolls` an der Kante sind
    * die Form des Prototyps (D55: ein Gang ohne Artikel, das Material in
@@ -1413,7 +1413,7 @@ export const relations: Record<string, RelationDef> = {
     type: 'crafting',
     label: 'working on',
     inverseLabel: 'worked on by',
-    means: 'A creature or party works on a crafting order (an instance of a recipe, with progress and rolls); the order lists who works on it.',
+    means: 'A creature or party works on a crafting order (an instance of a recipe, with progress and checks); the order lists who works on it.',
     from: ['Creature', 'PlayerCharacter', 'Party'],
     to: ['Recipe'],
     props: {

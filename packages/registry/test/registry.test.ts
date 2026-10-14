@@ -618,7 +618,7 @@ describe('interface inheritance', () => {
 
   /* Ein laufender Handwerksgang (REQ-184). `put` ist die Zeile, an der
      alles hängt: ohne sie wüsste ein Fehlschlag nicht, was er kosten soll,
-     und `onFailure` wäre Zierrat. */
+     und die Regel an der Kampagne wäre Zierrat. */
   it('lets a craft actually run, on an edge and not in an article', () => {
     const gang = seedRegistry.relations.crafting;
     expect(gang.to).toEqual(['Recipe']);
@@ -627,7 +627,9 @@ describe('interface inheritance', () => {
     // Und eine Zahl neben dem Text, weil „2 Stunden" nicht rechnet.
     const rez = seedRegistry.interfaces.Recipe.schema.properties ?? {};
     expect(rez.days?.type).toBe('number');
-    expect(rez.onFailure?.enum).toEqual(['materialsLost', 'halfLost', 'nothingLost']);
+    // Was die Quelle beim Misslingen sagt, ist Text; es gilt die Kampagne (T-165).
+    expect(rez.onFailure?.enum).toBeUndefined();
+    expect(seedRegistry.interfaces.Campaign.schema.properties?.craftFailure?.enum).not.toContain('recipe');
   });
 
   /* Kachelkarten (REQ-138): ohne Spalten und Zeilen ist ein Muster nur eine

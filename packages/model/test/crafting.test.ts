@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { applyRoll, craftCheck, craftRulesOf, orderNeed, reserveIn, rollResult, settlePieces } from '../src/crafting.js';
+import {
+  applyRoll,
+  craftCheck,
+  craftRuleSentences,
+  craftRulesOf,
+  nextMark,
+  orderChecks,
+  orderNeed,
+  reserveIn,
+  rollResult,
+  setCheck,
+  settlePieces,
+  tallyChecks,
+  type OrderCheck,
+} from '../src/crafting.js';
 import type { Entity } from '../src/types.js';
 
 /* Erfundene Artikel: ein Kräuterset, zwei Rezepte, eine Runde mit Gruppe
@@ -58,9 +72,12 @@ describe('Fertigungsauftrag (T-128): Regeln, Probe, Abrechnung', () => {
   const proben = { unit: 'checks' as const, needed: 3 };
 
   it('Vorgaben ohne Kampagne, Unsinn fällt auf die Vorgabe', () => {
-    expect(regeln).toEqual({ failure: 'recipe', critSuccess: 'asSuccess', critFailure: 'asFailure', confirm: 'gm' });
+    expect(regeln).toEqual({ failure: 'halfLost', critSuccess: 'asSuccess', critFailure: 'asFailure', confirm: 'gm' });
     const k = art('k', 'Campaign', 'Run', { components: { Campaign: { craftFailure: 'quatsch', craftConfirm: 'player' } } });
-    expect(craftRulesOf(k)).toMatchObject({ failure: 'recipe', confirm: 'player' });
+    expect(craftRulesOf(k)).toMatchObject({ failure: 'halfLost', confirm: 'player' });
+    // Das alte „dem Rezept folgen" gibt es nicht mehr (T-165).
+    const alt = art('k', 'Campaign', 'Run', { components: { Campaign: { craftFailure: 'recipe' } } });
+    expect(craftRulesOf(alt).failure).toBe('halfLost');
   });
 
   it('Proben zählen, sonst Tage mit einer Probe am Ende', () => {
@@ -71,14 +88,29 @@ describe('Fertigungsauftrag (T-128): Regeln, Probe, Abrechnung', () => {
     expect(rollResult(30, 12, 1)).toBe('critFailure');
   });
 
-  it('eine misslungene Probe nach der Regel', () => {
+  it('eine misslungene Probe nach der Regel der Kampagne', () => {
     const st = { progress: 2, outcome: 'open' as const };
-    expect(applyRoll(st, 'failure', proben, regeln, 'nothingLost')).toMatchObject({ outcome: 'failed', settle: 'all' });
-    expect(applyRoll(st, 'failure', proben, regeln, undefined)).toMatchObject({ outcome: 'failed', settle: 'half' });
-    expect(applyRoll(st, 'failure', proben, { ...regeln, failure: 'progressLost' }, 'materialsLost')).toMatchObject({ outcome: 'open', progress: 0 });
-    expect(applyRoll(st, 'critFailure', proben, { ...regeln, failure: 'noProgress', critFailure: 'materialsLost' }, null)).toMatchObject({ outcome: 'failed', settle: 'none' });
-    expect(applyRoll(st, 'critSuccess', { unit: 'checks', needed: 5 }, { ...regeln, critSuccess: 'double' }, null)).toMatchObject({ progress: 4, outcome: 'open' });
-    expect(applyRoll(st, 'success', proben, regeln, null)).toMatchObject({ progress: 3, outcome: 'succeeded', settle: 'success' });
+    expect(applyRoll(st, 'failure', proben, { ...regeln, failure: 'nothingLost' })).toMatchObject({ outcome: 'failed', settle: 'all' });
+    expect(applyRoll(st, 'failure', proben, regeln)).toMatchObject({ outcome: 'failed', settle: 'half' });
+    expect(applyRoll(st, 'failure', proben, { ...regeln, failure: 'progressLost' })).toMatchObject({ outcome: 'open', progress: 0 });
+    expect(applyRoll(st, 'critFailure', proben, { ...regeln, failure: 'noProgress', critFailure: 'materialsLost' })).toMatchObject({ outcome: 'failed', settle: 'none' });
+    expect(applyRoll(st, 'critSuccess', { unit: 'checks', needed: 5 }, { ...regeln, critSuccess: 'double' })).toMatchObject({ progress: 4, outcome: 'open' });
+    expect(applyRoll(st, 'success', proben, regeln)).toMatchObject({ progress: 3, outcome: 'succeeded', settle: 'success' });
+  });
+
+  it('die Regeln in Sätzen, einer je Regel', () => {
+    expect(craftRuleSentences(regeln)).toEqual([
+      'On a failed check: the work fails and half the materials are lost.',
+      'On a natural 20: an ordinary success.',
+      'On a natural 1: counts as a failed check.',
+      'Checks by players count once the GM accepts them.',
+    ]);
+    expect(craftRuleSentences({ failure: 'noProgress', critSuccess: 'double', critFailure: 'materialsLost', confirm: 'player' })).toEqual([
+      'On a failed check: the check simply does not count.',
+      'On a natural 20: the check counts twice.',
+      'On a natural 1: the work fails and the materials are lost.',
+      'Checks by players count at once.',
+    ]);
   });
 
   it('abrechnen: nicht Verbrauchtes kommt immer zurück, die Hälfte abgerundet', () => {
@@ -100,5 +132,97 @@ describe('Fertigungsauftrag (T-128): Regeln, Probe, Abrechnung', () => {
     ]);
     expect(reserveIn(r.inventory, 'neu', 1, 'p', 'x')).toEqual({ refused: 'reserved' });
     expect(reserveIn(inv, 'h', 6, 'o', 'x')).toEqual({ refused: 'short' });
+  });
+});
+
+describe('Proben als Kreise (T-165): Zyklus, Anwenden und Zurücknehmen je Regel', () => {
+  const regeln = craftRulesOf(null);
+  const drei = { unit: 'checks' as const, needed: 3 };
+  const k = (mark: OrderCheck['mark'], extra: Partial<OrderCheck> = {}): OrderCheck => ({ mark, ...extra });
+  const marken = (t: ReturnType<typeof tallyChecks>) => t.circles.map((c) => c.mark ?? '·').join(' ');
+
+  it('der Klick: leer → ✓ → ✗ → leer, ein Wurf geht wie sein Zeichen weiter', () => {
+    expect(nextMark(null)).toBe('success');
+    expect(nextMark('success')).toBe('failure');
+    expect(nextMark('failure')).toBeNull();
+    expect(nextMark('critSuccess')).toBe('failure');
+    expect(nextMark('critFailure')).toBeNull();
+  });
+
+  it('setzen und leeren; leere Kreise am Ende fallen weg, Unsinn wird leer', () => {
+    expect(setCheck([], 2, k('success'))).toEqual([null, null, k('success')]);
+    expect(setCheck([k('success'), k('failure')], 1, null)).toEqual([k('success')]);
+    expect(orderChecks({ checks: [k('success'), { mark: 'quatsch' }, 3, null] })).toEqual([k('success'), null, null, null]);
+    expect(orderChecks({})).toEqual([]);
+  });
+
+  it('je fehlende Probe ein leerer Kreis', () => {
+    const t = tallyChecks([], drei, regeln);
+    expect(marken(t)).toBe('· · ·');
+    expect(t.circles.every((c) => c.open)).toBe(true);
+    const zwei = tallyChecks([k('success'), k('success')], drei, regeln);
+    expect(marken(zwei)).toBe('success success ·');
+    expect(zwei).toMatchObject({ progress: 2, outcome: 'open', settle: null });
+    // Eine Lücke zählt als leerer Kreis — es kommen keine weiteren dazu.
+    expect(marken(tallyChecks([null, k('success')], drei, regeln))).toBe('· success ·');
+  });
+
+  it('Verlustregel: ein ✗ entscheidet, Kreise danach zählen nicht; ohne ✗ ist alles zurück', () => {
+    const checks = [k('success'), k('failure'), k('success')];
+    const t = tallyChecks(checks, drei, regeln);
+    expect(t).toMatchObject({ outcome: 'failed', settle: 'half', progress: 1 });
+    expect(t.circles.map((c) => c.ignored)).toEqual([false, false, true]);
+    expect(t.lines.map((l) => l.index)).toEqual([0, 1]);
+    const zurueck = tallyChecks(setCheck(checks, 1, null), drei, regeln);
+    expect(zurueck).toMatchObject({ outcome: 'open', settle: null, progress: 2 });
+    expect(tallyChecks(checks, drei, { ...regeln, failure: 'materialsLost' }).settle).toBe('none');
+    expect(tallyChecks(checks, drei, { ...regeln, failure: 'nothingLost' }).settle).toBe('all');
+  });
+
+  it('kein Fortschritt: der ✗ zählt nicht, ein Kreis mehr', () => {
+    const t = tallyChecks([k('success'), k('failure')], drei, { ...regeln, failure: 'noProgress' });
+    expect(t).toMatchObject({ outcome: 'open', progress: 1 });
+    expect(marken(t)).toBe('success failure · ·');
+  });
+
+  it('Fortschritt verloren: von vorn, und zurückgeklickt wieder da', () => {
+    const r = { ...regeln, failure: 'progressLost' as const };
+    const t = tallyChecks([k('success'), k('success'), k('failure')], drei, r);
+    expect(t).toMatchObject({ outcome: 'open', progress: 0 });
+    expect(marken(t)).toBe('success success failure · · ·');
+    expect(tallyChecks([k('success'), k('success'), null], drei, r).progress).toBe(2);
+  });
+
+  it('die Leitung entscheidet: der Auftrag hält an, die Proben zählen weiter', () => {
+    const t = tallyChecks([k('failure')], drei, { ...regeln, failure: 'custom' });
+    expect(t).toMatchObject({ outcome: 'open', lines: [{ index: 0, note: 'Failure — the GM decides.' }] });
+  });
+
+  it('natürliche 20 doppelt, natürliche 1 nach eigener Regel', () => {
+    expect(tallyChecks([k('critSuccess'), k('success')], drei, { ...regeln, critSuccess: 'double' })).toMatchObject({ outcome: 'succeeded', settle: 'success', progress: 3 });
+    expect(tallyChecks([k('critFailure')], drei, { ...regeln, failure: 'noProgress', critFailure: 'materialsLost' })).toMatchObject({ outcome: 'failed', settle: 'none' });
+    expect(tallyChecks([k('critFailure')], drei, { ...regeln, failure: 'noProgress' }).outcome).toBe('open');
+  });
+
+  it('wartende Kreise zählen erst angenommen — und nur, solange die Regel es verlangt', () => {
+    const checks = [k('success', { pending: true }), k('success')];
+    const t = tallyChecks(checks, drei, regeln);
+    expect(t).toMatchObject({ progress: 1, waiting: 1 });
+    expect(t.circles[0]).toMatchObject({ pending: true });
+    expect(marken(t)).toBe('success success ·');
+    expect(tallyChecks(checks, drei, { ...regeln, confirm: 'player' })).toMatchObject({ progress: 2, waiting: 0 });
+  });
+
+  it('nach Tagen: der Kreis wartet auf die Tage; Fortschritt verloren verlangt neue', () => {
+    const tage = { unit: 'days' as const, needed: 2 };
+    expect(tallyChecks([], tage, regeln, 1)).toMatchObject({ daysLeft: 1, progress: 1 });
+    expect(tallyChecks([], tage, regeln, 1).circles).toEqual([expect.objectContaining({ mark: null, open: false })]);
+    expect(tallyChecks([k('success')], tage, regeln, 1).circles[0]).toMatchObject({ ignored: true });
+    expect(tallyChecks([k('success')], tage, regeln, 2)).toMatchObject({ outcome: 'succeeded', settle: 'success' });
+    const r = { ...regeln, failure: 'progressLost' as const };
+    const verloren = tallyChecks([k('failure')], tage, r, 2);
+    expect(verloren).toMatchObject({ outcome: 'open', daysLeft: 2, progress: 0 });
+    expect(verloren.circles[1]).toMatchObject({ mark: null, open: false });
+    expect(tallyChecks([k('failure'), k('success')], tage, r, 4)).toMatchObject({ outcome: 'succeeded' });
   });
 });

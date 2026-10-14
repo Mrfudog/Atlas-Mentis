@@ -1110,8 +1110,8 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  F["Creature"] -- "crafting" --> O["CraftingOrder<br/>progress · outcome · rolls"]
-  O -- "instanceOf" --> R["Recipe<br/>dc · checks · days · onFailure"]
+  F["Creature"] -- "crafting" --> O["CraftingOrder<br/>checks (Kreise) · progress (Tage) · outcome"]
+  O -- "instanceOf" --> R["Recipe<br/>dc · checks · days"]
   R -- "needs · qty · consumed" --> M["Item"]
   R -- "yields" --> P["Item"]
   Inv["Inventory (Figur, Gruppe)"] -- "holds · reservedFor = Auftrag" --> M
@@ -1122,9 +1122,9 @@ flowchart LR
   Recipe`, `instanceOf` aufs Rezept; `same` nimmt die Obertypen mit). Er
   liest Werkzeug, SG, Proben, Tage, Material und Ertrag beim Rezept und
   speichert nur, was abweicht — die Leitung gibt *diesem* Auftrag einen
-  anderen SG, ohne das Rezept zu kopieren. Eigen sind ihm `progress`,
-  `outcome` (`open`, `succeeded`, `failed`, `aborted`), `started` und
-  `rolls`. Wer fertigt, sagt `crafting` vom Fertigenden zum Auftrag. Wie
+  anderen SG, ohne das Rezept zu kopieren. Eigen sind ihm `checks` (die
+  Proben als Kreise, unten), `progress` (gearbeitete Tage), `outcome`
+  (`open`, `succeeded`, `failed`, `aborted`) und `started`. Wer fertigt, sagt `crafting` vom Fertigenden zum Auftrag. Wie
   jede Instanz steht er in keiner Liste; er hängt an der Figur und am
   Rezept. **Nicht das Endprodukt:** ein Ertrag von drei Tränken ist ein
   Stapel im Inventar und keine Instanz, und ein Gegenstand im Inventar ist
@@ -1149,19 +1149,55 @@ flowchart LR
   gelungene Probe eins; sonst zählen Arbeitstage, und am Ende entscheidet
   eine Probe. Die Probe rechnet gegen den SG aus `craftCheck` (mit den
   `craftsWith`-Kanten der Figur).
-- **Die Regeln stehen an der Kampagne** (`craftRulesOf`, wandern mit T-132
-  in ein Modul): `craftFailure` — `recipe` (Vorgabe: `Recipe.onFailure`,
-  also die Quelle), `noProgress`, `progressLost`, `materialsLost`,
-  `halfLost`, `nothingLost`, `custom` (die Leitung entscheidet);
-  `craftCritSuccess` (`double`: die natürliche 20 zählt zweimal);
-  `craftCritFailure` (eigener Ausgang der natürlichen 1); `craftConfirm`
-  (`gm`: eine Probe der Spielenden wartet, bis die Leitung sie annimmt).
+- **Die Regeln stehen an der Kampagne, und nur dort** (`craftRulesOf`,
+  T-165; wandern mit T-132 in ein Modul): `craftFailure` —
+  `noProgress`, `progressLost`, `materialsLost`, `halfLost` (Vorgabe),
+  `nothingLost`, `custom` (die Leitung entscheidet); `craftCritSuccess`
+  (`double`: die natürliche 20 zählt zweimal); `craftCritFailure`
+  (eigener Ausgang der natürlichen 1); `craftConfirm` (`gm`: eine Probe
+  der Spielenden wartet, bis die Leitung sie annimmt). **Das Rezept
+  entscheidet nichts mehr:** `Recipe.onFailure` ist der Text der Quelle
+  („Source: on a failure") und steht im Kasten „Campaign rules" daneben,
+  gilt aber nicht. Bis T-165 war es eine Auswahl, die über die
+  Kampagnenregel `recipe` galt — zwei Stellen für eine Regel. Migration
+  072 gibt einer Kampagne, die dem Rezept folgte, die Regel, die bei den
+  Rezepten am häufigsten stand (auf dev: `materialsLost` bei allen 698),
+  schreibt die Auswahlwerte am Rezept in Sätze und zählt die Rezepte auf,
+  die bisher anders galten. Am Rezept
+  und am Auftrag stehen die Regeln je ein Satz (`craftRuleSentences`),
+  mit dem Link zur Kampagne, wo die Leitung sie ändert.
+- **Die Proben sind Kreise** (T-165, `CraftingOrder.checks`, je Kreis
+  `{ mark, by, at, total?, nat?, dc?, pending? }` oder `null`): ein Klick
+  setzt ✓, der zweite ✗, der dritte leert (`nextMark`); ein Wurf setzt
+  den ersten freien Kreis mit Summe und SG. **Was die Kreise bewirken,
+  wird gerechnet** (`tallyChecks`, D8): der Reihe nach durch `applyRoll`,
+  bis einer den Auftrag entscheidet; danach stehen so viele leere Kreise
+  da, wie gelungene Proben fehlen (bei Tagen einer, offen erst, wenn die
+  Tage gearbeitet sind — ein Verlust des Fortschritts verlangt neue Tage).
+  Ein ✗ wendet die Regel also sofort an — Fortschritt, und am
+  reservierten Material steht, was beim Abschluss verloren ginge —, und
+  Zurückklicken nimmt sie zurück. **Endgültig ist erst der Abschluss**
+  (`POST …/finish`: abrechnen, Ertrag) oder der Abbruch. Ein Kreis der
+  Spielenden unter `craftConfirm: 'gm'` ist `pending` und zählt erst
+  angenommen; verworfen wird er leer. Was jede zählende Probe auslöste,
+  steht als Zeile im Verlauf (`lines`).
+
+```mermaid
+stateDiagram-v2
+  [*] --> leer
+  leer --> Erfolg: Klick
+  Erfolg --> Misserfolg: Klick
+  Misserfolg --> leer: Klick
+  note right of Misserfolg: wendet craftFailure an — zurückgeklickt nimmt es zurück
+```
 - **Abrechnung** (`settlePieces`): bei Erfolg ist das Verbrauchte weg, das
   Übrige frei, und der Ertrag (`yieldCount` ×) liegt im Inventar der Figur
   (sonst der Gruppe); beim Abbruch kommt alles zurück; beim Misserfolg nach
   der Regel (`halfLost`: die abgerundete Hälfte zurück). Was nicht
   verbraucht wird, kommt immer zurück.
-- **Geschrieben wird nur über `/api/crafting`** (`apps/server/src/handwerk.ts`),
+- **Geschrieben wird nur über `/api/crafting`** (`apps/server/src/handwerk.ts`;
+  ein Kreis über `PUT /api/crafting/:id/checks/:index` mit dem Zielstand,
+  damit zwei schnelle Klicks zwei Stände sind und nicht zweimal „weiter"),
   nicht über `PUT`: ein Ausgang, den jemand in der Maske setzt, hätte
   nichts abgerechnet — die Felder des Auftrags sind `readOnly`. Spielende
   starten für ihre Figur und nur Gelerntes (`recipeLearned`), mit allem
@@ -1658,7 +1694,7 @@ Die Grundausstattung (`Identity`, `Status`, `Description`, `Visibility`, `Tags`,
 | Art | erbt | eigene Felder | Kanten von hier | Kanten hierher | Anordnung |
 |---|---|---|---|---|---|
 | `Board` | — | `width` `height` `snap` `background` `rules` `shapes` `anchors` | `partOf` `placed` | — | full |
-| `CraftingOrder` | `Recipe` | `progress` `outcome` `started` `rolls` | `needs` `yields` `instanceOf` | `craftsWith` `instanceOf` `crafting` | full |
+| `CraftingOrder` | `Recipe` | `progress` `outcome` `started` `checks` | `needs` `yields` `instanceOf` | `craftsWith` `instanceOf` `crafting` | full |
 | `Encounter` | `Todos` `Tactics` `ReadAloud` `Secrets` `Difficulty` | `xpBudget` `phase` `round` `turn` `surprise` | `partOf` `participates` `onMap` `loot` `tableFor` | — | full |
 | `Map` | `Image` `Secrets` `ReadAloud` | `sheets` `baseHidden` `baseGmOnly` `kind` `gridShape` `gridSize` `gridOffsetX` `gridOffsetY` `scale` `lighting` `fog` `reveal` `walls` `tiles` `tileCols` `tileRows` `tileSize` | `mapOf` `insideMap` `marker` `zone` `territory` | `insideMap` `onMap` | full |
 
