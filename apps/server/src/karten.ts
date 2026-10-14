@@ -24,7 +24,9 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
   currentCampaign,
   entityName,
+  fogOn,
   frameOf,
+  frameRevealed,
   INSIDE_MAP_RELATION,
   isMap,
   mapAncestors,
@@ -50,6 +52,8 @@ export interface KartenDeps {
   roh: () => Promise<Stand>;
   sieve: (request: FastifyRequest, entities: Entity[], bestand?: Map<string, Entity>) => Promise<Entity[]>;
   geltend: (e: Entity, map: Map<string, Entity>) => Promise<Entity>;
+  /** Leitet der Betrachter diese Karte (oder schreibt sie)? Dann gilt der Nebel ihm nicht. */
+  leitet: (request: FastifyRequest, karte: Entity, bestand: Map<string, Entity>) => Promise<boolean>;
 }
 
 /** Was eine Marke zeichnet: Name, Art und ein Bild, wenn der Artikel eines hat. */
@@ -74,7 +78,7 @@ function bildVon(e: Entity): string | undefined {
 }
 
 export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
-  const { repo, roh, sieve, geltend } = deps;
+  const { repo, roh, sieve, geltend, leitet } = deps;
 
   app.get<{ Params: { id: string } }>('/api/maps/:id/context', async (request, reply) => {
     const stand = await roh();
@@ -97,6 +101,11 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
         return frame ? [{ id: k.id, name: entityName(k), frame }] : [];
       })
       .sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    /* **Unter dem Nebel kein Rahmen** (REQ-139): eine Unterkarte im
+       Verdeckten verriete, dass dort etwas ist. Es zählt, ob die Mitte
+       oder eine Ecke aufgedeckt ist. */
+    const ohneNebel = !fogOn(karte) || (await leitet(request, roheKarte, stand.map));
+    const kinder = ohneNebel ? children : children.filter((k) => frameRevealed(karte, k.frame));
 
     /* Die Ziele der Marker — auf der Karte stehen nur noch die, die der
        Betrachter sieht (`redactMap`); gesiebt wird trotzdem, denn ein Name
@@ -134,7 +143,7 @@ export function registerKarten(app: FastifyInstance, deps: KartenDeps): void {
         };
       }
     }
-    return { parents, children, targets, party } satisfies KartenKontext;
+    return { parents, children: kinder, targets, party } satisfies KartenKontext;
   });
 
   /**

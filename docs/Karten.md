@@ -212,10 +212,41 @@ Gruppen-Token (`partyPosition`) und was ein Spieler nicht bekommt
   Stelle und setzt neue mit „Add marker" — beides schreibt nur die Kante.
   Gitter, Massstab und Blätter stellt sie in den Feldern der Karte ein.
 
+## Nebel in der Seite (T-117)
+
+**Zugedeckt ist alles, was keine aufgedeckte Form berührt** — wie im
+Prototyp. `Map.fog` schaltet den Nebel, `Map.reveal` hält, was aufgedeckt
+ist; beides steht an der Karte, weil Aufgedecktes bleibt.
+
+- **Formen:** `rect` (aufgezogen), `circle`, `poly` (das Sichtpolygon des
+  Prototyps) und `path`, der **Pinselstrich**: ein Linienzug mit Halbmesser
+  `r`. Kreis und Strich messen `r` in Anteilen der Breite und tragen das
+  Seitenverhältnis `ar`, mit dem sie gezogen wurden — der Server kennt die
+  Bildgrösse nicht und muss trotzdem sagen können, ob ein Marker darin
+  steht.
+- **Werkzeuge der Leitung** (Knopf *Fog*): *Reveal* zieht ein Rechteck auf,
+  *Brush* malt in der gewählten Breite (in Feldern), *Hide* deckt zu, was
+  mit seiner Mitte im Kasten liegt, dazu *Reveal all* und *Cover all*.
+  Ein Finger zieht die Form, zwei zoomen weiter.
+- **Entlang des Weges** (*Reveal along moves*): wer ein Token im Nebel
+  zieht, deckt den Weg auf, so breit wie der Pinsel. Wände rechnet die
+  Seite dabei noch nicht — der Prototyp nimmt das Sichtpolygon.
+- **Zurückgehalten wird am Server** (`redactMap`): Marker unter dem Nebel
+  gehen nicht an Spielende, ausser dem Gruppen-Token und den Figuren der
+  Gruppe — wer im Dunkeln steht, steht trotzdem auf der Karte. Rahmen von
+  Unterkarten nur, wenn ihre Mitte oder eine Ecke aufgedeckt ist. **Das
+  Bild selbst** geht ganz hinaus und wird im Browser zugedeckt; ob der
+  Server es beschneiden soll, ist E-041. Was wirklich geheim ist, gehört
+  auf ein Blatt `gmOnly` — das geht nicht hinaus.
+- **Die Leitung sieht halb hindurch.** Mit *Player view* sieht sie die
+  Karte, wie Spielende sie bekommen: Nebel deckend, ohne Blätter der
+  Leitung, ohne versteckte Marker — dieselbe Rechnung (`redactMap`), im
+  Browser, als Vorschau.
+
 ## Was noch fehlt
 
-- **Nebel, Licht, Sperren und Zonen** in der Seite (REQ-139, 140, 193,
-  208) — der Prototyp kann sie, die Seite zeichnet sie noch nicht.
+- **Licht, Sperren und Zonen** in der Seite (REQ-140, 193, 208) — der
+  Prototyp kann sie, die Seite zeichnet sie noch nicht.
 - **Rahmen aufziehen** und Marker einstellen (Art, Grösse, Drehung,
   versteckt) mit der Maus; heute über die Kanten im Bearbeiten.
 - **Kacheln** für grosse Karten (REQ-138, `Map.tiles`).

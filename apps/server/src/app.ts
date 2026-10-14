@@ -74,6 +74,7 @@ import {
   readInstance,
   redactEntity,
   redactMap,
+  inParty,
   isMap,
   resolveInstance,
   thinInstance,
@@ -1281,7 +1282,17 @@ export function buildApp({
     return entities
       .filter((e) => articleVisible(alle, e, auge))
       .map((e) => redactEntity(registry, alle, schmal ? schmal(e) : e, augen, gmFields))
-      .map((e) => (isMap(e) ? redactMap(e, { gm: seesUnfinished(alle, e, auge), sees: siehtZiel }) : e));
+      .map((e) =>
+        isMap(e)
+          ? redactMap(e, {
+              gm: seesUnfinished(alle, e, auge),
+              sees: siehtZiel,
+              /* Unter dem Nebel (REQ-139) bleiben die eigenen stehen: die
+                 Figuren der Gruppe und wer zu ihr gehört. */
+              keep: (id) => inParty(alle, id),
+            })
+          : e,
+      );
   }
 
   app.get<{ Querystring: { ids?: string } }>('/api/entities', async (request, reply) => {
@@ -2692,7 +2703,19 @@ export function buildApp({
   /* Bilder hochladen und ausliefern (T-114): `bilder.ts`. */
   const bilder = registerBilder(app, { repo, store: assets, viewerOf, roh, sieve, geltend, anlegen });
   /* Karten am Tisch (T-115): Brotkrumen, Unterkarten, Gruppe, die Karte der Sitzung. */
-  registerKarten(app, { repo, roh, sieve, geltend });
+  registerKarten(app, {
+    repo,
+    roh,
+    sieve,
+    geltend,
+    /* Wer die Karte leitet, sieht unter dem Nebel alles — dieselbe Frage
+       wie in `sieve` vor `redactMap`. */
+    leitet: async (request, karte, bestand) => {
+      const user = await viewerOf(request);
+      if (!user || user.isAdmin) return true;
+      return seesUnfinished(bestand, karte, await augeVon(user, bestand, await repo.getRegistry()));
+    },
+  });
 
   app.put<{ Params: { id: string }; Body: unknown }>(
     '/api/entities/:id',
