@@ -9,6 +9,7 @@ import { Bestand } from '../kern/bestand';
 import { Text } from '../artikel/text';
 import { KurzLink } from '../kern/kurzansicht';
 import { bloeckeVon, type Block } from '../kern/buchtext';
+import { bildAdresse } from '../artikel/bild';
 
 interface Abschnitt {
   id: string;
@@ -297,7 +298,8 @@ export class Lesen {
             return {
               id: k.id,
               name: entityName(k),
-              ...(typeof bild?.image === 'string' && bild.image ? { bild: bild.image } : {}),
+              /* Eine Adresse oder ein hochgeladenes Asset (T-114) — `bildAdresse` weiss, welches. */
+              ...(bildAdresse(bild?.image) ? { bild: bildAdresse(bild?.image)! } : {}),
               ...(typeof bild?.caption === 'string' && bild.caption !== entityName(k) ? { text: bild.caption } : {}),
             };
           }),

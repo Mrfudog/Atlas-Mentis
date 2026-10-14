@@ -50,6 +50,7 @@ import {
 import { Mehrfach, type Suchgruppe } from './mehrfach';
 import { Text } from './text';
 import { Wahl } from './wahl';
+import { Bild, BildWahl, bildDes } from './bild';
 import { Statblock } from './statblock';
 import { Zauber } from './zauber';
 import { Gegenstand } from './gegenstand';
@@ -92,6 +93,8 @@ interface Zelle {
   links?: { ziel: string; text: string }[];
   /** Hier leer, aber eine andere Fassung füllt es (T-103): „hier —", daneben ihr Wert. */
   leer?: boolean;
+  /** Ein Bildfeld (`format: 'asset'`, T-114): gezeichnet als Vorschau, nicht als Id. */
+  bild?: string;
 }
 
 interface Prosa {
@@ -107,8 +110,10 @@ interface Prosa {
 /** Ein Stück der gezeichneten Seite — ein Layout-Element, aufgelöst. */
 interface Stueck {
   id: string;
-  art: 'statblock' | 'spell' | 'item' | 'beschreibung' | 'felder' | 'prosa' | 'teile' | 'fluss' | 'ueberschrift' | 'absatz';
+  art: 'statblock' | 'spell' | 'item' | 'beschreibung' | 'felder' | 'prosa' | 'teile' | 'fluss' | 'ueberschrift' | 'absatz' | 'bild';
   text?: string;
+  /** Das Bild (`Image.image` oder das Asset selbst, T-114) mit Unterschrift und Alternativtext. */
+  bild?: { wert: string; caption: string; alt: string };
   zellen?: Zelle[];
   prosa?: Prosa[];
 }
@@ -179,6 +184,8 @@ interface Feld {
     AbwMarken,
     KurzLink,
     Herausgeber,
+    Bild,
+    BildWahl,
   ],
   template: `
     @if (artikel(); as e) {
@@ -432,6 +439,9 @@ interface Feld {
                           [label]="f.label"
                         />
                       }
+                      @case ('bild') {
+                        <nw-bildwahl [wert]="f.wert" (wertChange)="f.wert = $event" [fuer]="e.id" [label]="f.label" />
+                      }
                       @case ('verweise') {
                         <nw-mehrfach
                           [werte]="f.liste"
@@ -632,6 +642,9 @@ interface Feld {
                   @case ('ueberschrift') {
                     <h2>{{ st.text }}</h2>
                   }
+                  @case ('bild') {
+                    <nw-bild class="hauptbild" [wert]="st.bild!.wert" [caption]="st.bild!.caption" [alt]="st.bild!.alt || e.name || ''" />
+                  }
                   @case ('absatz') {
                     <p class="beschreibung">{{ st.text }}</p>
                   }
@@ -651,6 +664,8 @@ interface Feld {
                                   <span class="weg">{{ l.text }}</span>
                                 }
                               }
+                            } @else if (z.bild) {
+                              <nw-bild class="feldbild" [wert]="z.bild" groesse="thumb" [alt]="z.label" />
                             } @else if (z.lang) {
                               <nw-text [text]="z.wert" [scopes]="scopes()" />
                             } @else {
@@ -1109,6 +1124,7 @@ export class Artikel {
         const links = schema?.format === 'link' ? verweisZiele(wert, this.bestand.name()) : undefined;
         out.push({
           ...(links?.length ? { links } : {}),
+          ...(schema?.format === 'asset' && typeof wert === 'string' ? { bild: wert } : {}),
           ref: `${comp}.${prop}`,
           comp,
           prop,
@@ -1192,6 +1208,14 @@ export class Artikel {
         case 'heading':
           if (el.text) out.push({ id: el.id, art: 'ueberschrift', text: el.text });
           break;
+        /* Das Bild des Artikels (T-114): `Image.image`, und an einem Asset
+           die eigene Datei — sein Bild ist es selbst. */
+        case 'image': {
+          const bild = bildDes(e, r);
+          ['Image.image', 'Image.caption', 'Image.alt'].forEach((x) => felderDa.add(x));
+          if (bild) out.push({ id: el.id, art: 'bild', bild });
+          break;
+        }
         case 'text':
           if (el.text) out.push({ id: el.id, art: 'absatz', text: el.text });
           break;
