@@ -242,6 +242,7 @@ Durchstich in CI prüft `PgRepository` gegen eine echte Postgres.
 | `GET /api/checks?check=…&limit=…` | Prüfungen über den gesiebten Bestand (`checks.ts`): Zahl und Beispiele je Prüfung; Leitung und Verwaltung |
 | `POST /api/bulk` | Massenänderung (`bulk.ts`): Auswahl → Operationen, `dryRun` zeigt, was geschähe; geschrieben wird durch `validateEntity`, protokolliert mit den alten Fassungen |
 | `GET /api/bulk` · `POST /api/bulk/:id/undo` | die letzten Massenänderungen; eine zurücknehmen (Konflikte nur mit `force`) |
+| `GET /api/live` | **der Live-Kanal** (T-116): Server-Sent Events, je Empfänger gesiebt — `entity`, `gone`, `session`, `registry`, `reset`; Wiederverbinden mit `Last-Event-ID` (Abschnitt 5.2) |
 
 Ohne Anmeldung offen sind nur Gesundheit, Anmelden, Registrieren,
 Abmelden und `me`. **Angemeldet ist man über den Sitzungskeks oder über
@@ -313,7 +314,61 @@ Die Reihenfolge ist die Regel aus CLAUDE.md: erst ob überhaupt
 (Stapel, Sichtbarkeit), dann was darin (Wissen). Zurückgehalten wird
 **nur hier**; die Oberfläche zeigt, was ankommt.
 
-### 5.2 Die Tabellen
+### 5.2 Der Live-Kanal
+
+Damit Beamer, Laptop und Telefone derselben Runde dasselbe zeigen, ohne
+neu zu laden (T-116, REQ-116). **Server-Sent Events, nicht WebSocket:**
+der Weg geht nur vom Server zum Gerät — geschrieben wird weiter über die
+gewöhnlichen Routen mit ihrer Wache —, es ist gewöhnliches HTTP hinter
+Caddy, und der Browser verbindet selbst wieder und sagt dabei, was er
+zuletzt bekam (`Last-Event-ID`).
+
+```mermaid
+sequenceDiagram
+  participant L as Laptop (Leitung)
+  participant F as Fastify
+  participant K as ChangeFeed (live.ts)
+  participant T as Telefon (Spielerin)
+  T->>F: GET /api/live (Cookie, Last-Event-ID)
+  F-->>T: hello {boot, seq}
+  L->>F: PUT /api/entities/s_eins (activeMap)
+  F->>K: putEntity über mitKanal → publish
+  K-->>F: Bündel (50 ms, je Artikel einmal)
+  F->>F: sieveFuer(Spielerin): Stapel → Sichtbarkeit → Wissen
+  F-->>T: entity {id, type, revision} · session {activeMap …}
+  T->>F: GET /api/entities/s_eins (gesiebt wie immer)
+```
+
+- **Die Quelle** (`ChangeFeed`, `apps/server/src/live.ts`) liegt als Hülle
+  um das `Repository` (`mitKanal`): jedes `putEntity`, `deleteEntity` und
+  `putRegistryPart` meldet sich, ohne dass eine Route daran denken muss —
+  und die Tests mit `InMemoryRepository` sehen dieselbe Quelle. Heute ein
+  Prozess, also der Speicher (`LocalChangeFeed`, ein Ring der letzten 1000
+  Meldungen zum Nachholen). Laufen einmal mehrere Prozesse, kommt eine
+  Umsetzung über Postgres `LISTEN/NOTIFY` hinter dieselbe Schnittstelle.
+- **Gesiebt je Empfänger** (`sieveFuer`, dieselbe Rechnung wie
+  `GET /api/entities/:id`, mit dem frisch gelesenen Konto): was er nicht
+  sieht, bekommt er nicht, auch nicht als Id. Eine Meldung trägt nur Id,
+  Art und Revision; den Inhalt holt das Gerät gesiebt wie immer. `gone`
+  geht nur an wen den alten Stand sah. `session` trägt `activeMap`,
+  `activeEncounter`, `activeScene`, `nowPlaying` aus dem **gesiebten**
+  Artikel.
+- **Ein Token auf der Karte ist eine Kante der Karte** (`marker`): es
+  bewegt sich, und die Karte meldet `entity`. Eine eigene Meldung mit
+  Koordinaten käme erst, wenn die Karte im Web versteckte Tokens selbst
+  zurückhält (T-115) — sonst trüge der Kanal, was der Artikel verbirgt.
+- **Zu viel auf einmal** (über 200 Artikel in einem Bündel — eine
+  Massenänderung) und **zu lange weg** (die Nummer liegt nicht mehr im
+  Ring, oder der Server wurde neu gestartet) heissen `reset`: das Gerät
+  holt neu, was es offen hat.
+- Ein Lebenszeichen alle 25 s; nach 15 min schliesst der Server und das
+  Gerät kommt wieder — dabei prüft die Wache die Anmeldung neu. „Überall
+  abmelden" schliesst die Ströme des Kontos sofort.
+- **Die Sicht eines Mitglieds** (`X-View-As`) gilt für den Strom nicht —
+  `EventSource` kann keinen Kopf setzen. Er läuft als die Leitung; was die
+  Seite daraufhin holt, holt sie in der Sicht.
+
+### 5.3 Die Tabellen
 
 Drei generische Tabellen tragen jeden Artikel, das Register steht als
 Zeilen daneben. Eine neue Artikelart ist eine Zeile, keine Migration.
