@@ -1,6 +1,7 @@
 import type { ElementRef } from '@angular/core';
 import { Component, HostListener, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import type { SchreibOption } from '../kern/api';
 import { Stapel } from '../kern/stapel';
 import { KampagnenEbenenListe } from './ebenen';
 
@@ -15,6 +16,12 @@ import { KampagnenEbenenListe } from './ebenen';
  *   auf- und abschalten, Gruppen, Teilaufschaltung nach Bereich und Art,
  *   und **Vergleich** — auch einer ganzen Gruppe wie „2024 rules";
  * - der Weg zur Kampagnenseite (der Kampagnenmanager, T-141, folgt).
+ *
+ * **Die Schreibebene** (T-161) steht daneben („Writes to", am Telefon ✎)
+ * und wird im Popup gewählt: unter den Ebenen, in denen dieses Konto
+ * schreibt und die hier im Spiel sind, je mit Grund; die übrigen stehen
+ * ausgegraut mit dem Grund, warum nicht. Gespeichert am Server je Konto
+ * und Kampagne, geprüft dort (`PUT /api/layers/write`).
  *
  * Wer nicht leitet, sieht den Namen und dass die Leitung die Ebenen wählt;
  * welche es sind, sagt die Ebenenliste nur der Leitung (`rechtAn`).
@@ -33,12 +40,18 @@ import { KampagnenEbenenListe } from './ebenen';
           class="knopf"
           aria-haspopup="dialog"
           [attr.aria-expanded]="offen()"
-          [title]="'Campaign ' + k.name + ' — ' + zahlText() + '. Click to change.'"
+          [title]="'Campaign ' + k.name + ' — ' + zahlText() + (stapel.schreib() ? ' — writes to ' + schreibName() : '') + '. Click to change.'"
           (click)="umschalten()"
         >
           <span class="zeichen" aria-hidden="true">◫</span>
           <span class="kname">{{ k.name }}</span>
           <span class="kzahl">{{ zahlText() }}</span>
+          @if (stapel.schreib(); as w) {
+            <span class="schreib" [class.weg]="!!w.dropped">
+              <span class="lang">Writes to</span><span class="kurz" aria-hidden="true">✎</span>
+              <span class="sname">{{ schreibName() }}</span>
+            </span>
+          }
         </button>
       }
       @if (offen()) {
@@ -69,6 +82,42 @@ import { KampagnenEbenenListe } from './ebenen';
           @if (fehler(); as f) {
             <p class="fehler" role="alert">{{ f }}</p>
           }
+          @if (stapel.schreib(); as w) {
+            <fieldset class="schreibwahl">
+              <legend>Writes to</legend>
+              @if (w.dropped; as d) {
+                <p class="fehler" role="status">
+                  “{{ d.name }}” is not available in this campaign right now — new articles go to the default.
+                </p>
+              }
+              <label class="option">
+                <input type="radio" name="schreib" [checked]="!w.chosen" [disabled]="waehlt()" (change)="schreibWaehlen(null)" />
+                <span>
+                  Default: <b>{{ w.default?.name ?? (w.none ? 'no layer' : '—') }}</b>
+                  <small>{{ w.none ? 'The administration creates outside any layer unless it picks one.' : vorgabeText() }}</small>
+                </span>
+              </label>
+              <!-- Die Vorgabe steht oben schon als eigene Zeile. -->
+              @for (o of w.options; track o.id) {
+                @if (o.id !== w.default?.id) {
+                <label class="option" [class.aus]="!o.selectable" [title]="o.why ?? ''">
+                  <input
+                    type="radio"
+                    name="schreib"
+                    [checked]="w.chosen && w.layer?.id === o.id"
+                    [disabled]="!o.selectable || waehlt()"
+                    (change)="schreibWaehlen(o.id)"
+                  />
+                  <span>
+                    {{ o.name }}
+                    <small>{{ grund(o) }}@if (o.why) { — {{ o.why }} }</small>
+                  </span>
+                </label>
+                }
+              }
+              <p class="fuss">Saved for your account in this campaign, on every device. Create dialogs can still pick another layer.</p>
+            </fieldset>
+          }
           @if (k.may) {
             <nw-kampagnen-ebenen [kampagne]="k.id" [kompakt]="true" (geschaltet)="stapel.geaendert()" />
           } @else {
@@ -87,6 +136,7 @@ import { KampagnenEbenenListe } from './ebenen';
     }
     .knopf {
       display: inline-flex;
+      flex-wrap: wrap;
       align-items: baseline;
       gap: 0.35rem;
       max-width: calc(100% + 0.35rem);
@@ -121,6 +171,61 @@ import { KampagnenEbenenListe } from './ebenen';
       flex: none;
       color: var(--dim);
       font-size: 0.85em;
+    }
+    /* Eine eigene Zeile unter der Kampagne — sonst teilen sich beide Namen die schmale Spalte. */
+    .schreib {
+      display: flex;
+      flex: 1 0 100%;
+      gap: 0.3rem;
+      min-width: 0;
+      color: var(--dim);
+      font-size: 0.85em;
+      white-space: nowrap;
+    }
+    .schreib.weg .sname {
+      color: var(--warn);
+    }
+    .sname {
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      color: var(--ink);
+    }
+    .kurz {
+      display: none;
+    }
+    .schreibwahl {
+      margin: 0;
+      padding: 0.4rem 0.6rem 0.5rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .schreibwahl legend {
+      padding: 0 0.3rem;
+      font-weight: 700;
+      color: var(--heading);
+    }
+    .option {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      min-height: 40px;
+      cursor: pointer;
+    }
+    .option input {
+      margin-top: 0.25rem;
+    }
+    .option small {
+      display: block;
+      color: var(--dim);
+    }
+    .option.aus {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
     .schleier {
       position: fixed;
@@ -205,9 +310,14 @@ import { KampagnenEbenenListe } from './ebenen';
     }
     /* Am Telefon: kürzer; das Popup als Blatt über die Breite. */
     @media (max-width: 640px) {
-      .zeichen {
+      .zeichen,
+      .lang {
         display: none;
       }
+      .kurz {
+        display: inline;
+      }
+
       .popup {
         top: 0.5rem;
         right: 0.5rem;
@@ -231,6 +341,50 @@ export class StapelKnopf {
     const n = this.stapel.laufend()?.layers ?? 0;
     return `${n} ${n === 1 ? 'layer' : 'layers'}`;
   });
+
+  protected readonly waehlt = signal(false);
+
+  /** Was in der Kopfleiste hinter „Writes to" steht. */
+  protected readonly schreibName = computed(() => {
+    const w = this.stapel.schreib();
+    return w?.layer?.name ?? (w?.none ? 'no layer' : '—');
+  });
+
+  protected readonly vorgabeText = computed(() => {
+    const d = this.stapel.schreib()?.default?.id;
+    const o = this.stapel.schreib()?.options.find((x) => x.id === d);
+    return o ? this.grund(o) : 'The campaign layer — you create as a player of this campaign.';
+  });
+
+  protected grund(o: SchreibOption): string {
+    switch (o.reason) {
+      case 'player':
+        return 'Your player layer';
+      case 'playerOf':
+        return `Player layer of ${o.player ?? 'someone at the table'}`;
+      case 'owner':
+        return 'Your own layer';
+      case 'granted':
+        return 'Shared with you';
+      case 'gm':
+      case 'co-gm':
+        return `Campaign layer — you are ${o.reason === 'gm' ? 'GM' : 'co-GM'}`;
+      case 'admin':
+        return 'Campaign layer — as administration';
+    }
+  }
+
+  protected async schreibWaehlen(id: string | null): Promise<void> {
+    this.waehlt.set(true);
+    try {
+      await this.stapel.schreibWaehlen(id);
+      this.fehler.set(null);
+    } catch (error) {
+      this.fehler.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.waehlt.set(false);
+    }
+  }
 
   constructor() {
     /* Der Fokus geht ins Popup und beim Schliessen zurück zum Knopf. */
