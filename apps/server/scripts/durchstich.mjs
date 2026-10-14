@@ -633,7 +633,7 @@ try {
 
       /* Herausgeber (T-094): jedes Buch hängt danach an „Official", keines
          der drei an einer Blocklist-Kategorie; niemand verliert etwas. */
-      writeFileSync(join(ordner, name094), readFileSync(join(DIST, '..', 'migrations', '035_ebenen_herausgeber.sql'), 'utf8'));
+      writeFileSync(join(ordner, name094), readFileSync(join(DIST, '..', 'migrations', '037_ebenen_herausgeber.sql'), 'utf8'));
       const vor094 = await sicht();
       await migrate(pool, { env: {} }, ordner);
       const nach094 = await sicht();

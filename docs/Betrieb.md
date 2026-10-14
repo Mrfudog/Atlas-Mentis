@@ -445,7 +445,7 @@ keine Registerzeile, keine Kampagne wird angefasst; was die Leitung an
 einer Ebene geändert hat, bleibt.
 
 **Herausgeber und Blocklist-Kategorien** (T-094, Migration
-`035_ebenen_herausgeber.sql`): beim Start legt der Server die
+`037_ebenen_herausgeber.sql`): beim Start legt der Server die
 Herausgeber-Gruppen „Official" und „Partnered" (`e5_publisher_*`,
 `groupBy: 'publisher'`) und die Kategorien „Non-standard", „Comedy" und
 „Outside the Forgotten Realms" an — wieder nur, wo ein Buch hineingehört —
