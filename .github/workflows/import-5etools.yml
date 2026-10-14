@@ -26,9 +26,9 @@ on:
         options: [dev, prod]
         default: dev
       mode:
-        description: "only-new: nur anlegen, was es noch nicht gibt · dry-run: nur sagen, was only-new (mit confirm=ersetzen: replace-layer) täte · replace-layer: die Ebene D&D 5e (2014) neu laden — eigene Änderungen an 5e.tools-Artikeln gehen dabei verloren, braucht confirm=ersetzen · add: dazulegen und Bestehendes überschreiben · layers: nur die Ebenen — Gruppen und Herausgeber anlegen, Beschreibung nachtragen, kein Artikel (T-088, T-094)"
+        description: "only-new: nur anlegen, was es noch nicht gibt · new-layers: wie only-new, aber nur neue Ebenen und ihre Artikel (T-087) · dry-run: nur sagen, was only-new (mit confirm=ersetzen: replace-layer, mit confirm=neue-ebenen: new-layers) täte · replace-layer: die Ebene D&D 5e (2014) neu laden — eigene Änderungen an 5e.tools-Artikeln gehen dabei verloren, braucht confirm=ersetzen · add: dazulegen und Bestehendes überschreiben · layers: nur die Ebenen — Gruppen und Herausgeber anlegen, Beschreibung nachtragen, kein Artikel (T-088, T-094)"
         type: choice
-        options: [only-new, dry-run, replace-layer, add, layers]
+        options: [only-new, new-layers, dry-run, replace-layer, add, layers]
         default: only-new
       sources:
         description: "Nur diese Quellen, z. B. PHB,MM oder ein Modulkürzel (leer = alles)"
@@ -97,8 +97,12 @@ jobs:
           # sie an 5e.tools-Artikeln geändert hat.
           case "$MODE" in
             only-new) echo "FLAGS=--only-new" >> "$GITHUB_ENV" ;;
+            # Nur neue Ebenen (T-087): für einen Bestand aus einem älteren
+            # Importer, dessen Geteiltes andere Peg-Ids trägt.
+            new-layers) echo "FLAGS=--only-new --new-layers" >> "$GITHUB_ENV" ;;
             dry-run)
               if [ "$CONFIRM" = ersetzen ]; then echo "FLAGS=--replace-layer --dry-run" >> "$GITHUB_ENV"
+              elif [ "$CONFIRM" = neue-ebenen ]; then echo "FLAGS=--only-new --new-layers --dry-run" >> "$GITHUB_ENV"
               else echo "FLAGS=--only-new --dry-run" >> "$GITHUB_ENV"; fi ;;
             replace-layer)
               [ "$CONFIRM" = ersetzen ] || {
@@ -109,7 +113,7 @@ jobs:
             add) echo "FLAGS=" >> "$GITHUB_ENV" ;;
             # Nur Ebenen (T-088): Gruppen und Beschreibung, kein Artikel.
             layers) echo "FLAGS=--layers" >> "$GITHUB_ENV" ;;
-            *) echo "::error::Unbekannte Art: $MODE (only-new, dry-run, replace-layer, add, layers)"; exit 1 ;;
+            *) echo "::error::Unbekannte Art: $MODE (only-new, new-layers, dry-run, replace-layer, add, layers)"; exit 1 ;;
           esac
           case "$SOURCES" in
             *[!A-Za-z0-9,_\ -]*) echo "::error::sources: nur Kürzel, durch Kommas getrennt (z. B. PHB,MM)"; exit 1 ;;

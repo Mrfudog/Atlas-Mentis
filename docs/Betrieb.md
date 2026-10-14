@@ -493,6 +493,15 @@ neuen Artikeln nennt die Nummer, die sein Ziel im Bestand trägt; der
 Bestand selbst bleibt. Die Zeile sagt `… davon mit angeglichener Nummer
 oder angeglichenen Verweisen`.
 
+**Nur neue Ebenen** (`new-layers`, `--only-new --new-layers`, T-087):
+legt nur Ebenen an, die es noch nicht gibt, und die Artikel, die ganz in
+solchen liegen. Für einen Bestand aus einem älteren Importer: dort tragen
+geteilte Aktionen und Merkmale oft eine andere Peg-Id als in der Datei,
+und `only-new` allein legte sie ein zweites Mal an (dev am 14.10.: rund
+5 000 Aktionen und 3 000 Merkmale). Ein Verweis auf einen Artikel, der
+dabei nicht mitkommt, wird ein Verweis nach Namen. Probelauf: `dry-run`
+mit `confirm` = `neue-ebenen`.
+
 **2024, Unearthed Arcana, Fahrzeuge, Decks, Bastionen** (T-087,
 REQ-243): seit T-087 bringt ein Lauf alles, jede Quelle in ihre Ebene —
 gut 29 000 Artikel mehr, je Ebene gezählt in
@@ -607,7 +616,7 @@ nennt sie ausdrücklich.
 | --- | --- |
 | *Use workflow from* | `preprod` für dev, `main` für prod — die Zweigregel der Environments verlangt es, ein Lauf vom falschen Zweig bricht gleich ab |
 | `environment` | `dev` oder `prod` |
-| `mode` | `only-new` (Vorgabe): nur anlegen, was es noch nicht gibt · `dry-run`: nur sagen, was `only-new` täte (mit `confirm` = `ersetzen`: was `replace-layer` täte) · `replace-layer`: Ebene neu laden, nur mit `confirm` = `ersetzen` · `add`: dazulegen und Bestehendes überschreiben · `layers`: nur die Ebenen — Gruppen und Herausgeber anlegen, Beschreibung nachtragen, kein Artikel (T-088, T-094) |
+| `mode` | `only-new` (Vorgabe): nur anlegen, was es noch nicht gibt · `new-layers`: wie `only-new`, nur neue Ebenen und ihre Artikel (T-087) · `dry-run`: nur sagen, was `only-new` täte (mit `confirm` = `ersetzen`: was `replace-layer` täte, mit `neue-ebenen`: was `new-layers` täte) · `replace-layer`: Ebene neu laden, nur mit `confirm` = `ersetzen` · `add`: dazulegen und Bestehendes überschreiben · `layers`: nur die Ebenen — Gruppen und Herausgeber anlegen, Beschreibung nachtragen, kein Artikel (T-088, T-094) |
 | `sources` | nur diese Quellen, z. B. `PHB,MM` oder ein Modulkürzel; leer heisst alles |
 | `confirm` | `ersetzen` für `replace-layer`, sonst leer |
 | `source-ref` | Stand von `5etools-src` (Zweig oder Tag); leer heisst der neueste |

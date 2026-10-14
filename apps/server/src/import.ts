@@ -2,7 +2,7 @@
  * **Eine Ausfuhrdatei einlesen** — von der Kommandozeile, nicht über das
  * Netz (Arbeitsplan §4, P5; M13 schlanker).
  *
- *   pnpm --filter @nw/server run import <datei> [--only-new | --replace | --replace-layer[=<id|Name>] | --layers] [--dry-run]
+ *   pnpm --filter @nw/server run import <datei> [--only-new [--new-layers] | --replace | --replace-layer[=<id|Name>] | --layers] [--dry-run]
  *   docker compose exec app node apps/server/dist/import.js <datei> --only-new
  *
  * Dieselbe Semantik wie die Einfuhr des Prototyps: eine Datei mit
@@ -97,6 +97,13 @@ export interface ImportOptionen {
   onlyNew?: boolean;
   /** Nur die Ebenen der Datei: neue anlegen, bestehende ergänzen (T-088). */
   layers?: boolean;
+  /**
+   * Mit `onlyNew`: nur Ebenen, die es noch nicht gibt, und die Artikel
+   * darin (T-087). Für einen Bestand, der mit einem älteren Importer
+   * geladen wurde: dort trägt manches Geteilte eine andere Peg-Id, und
+   * `onlyNew` allein legte es ein zweites Mal an.
+   */
+  newLayers?: boolean;
   /** Alles prüfen und sagen, nichts schreiben. */
   dryRun?: boolean;
 }
@@ -113,6 +120,9 @@ export async function runImport(
   }
   if (optionen.onlyNew && (optionen.replace || optionen.replaceLayer)) {
     throw new ImportFehler('`--only-new` schliesst `--replace` und `--replace-layer` aus: das eine lässt Bestehendes stehen, die anderen ersetzen es.');
+  }
+  if (optionen.newLayers && !optionen.onlyNew) {
+    throw new ImportFehler('`--new-layers` gehört zu `--only-new`: es engt ein, was neu angelegt wird.');
   }
   if (optionen.layers && (optionen.replace || optionen.replaceLayer || optionen.onlyNew)) {
     throw new ImportFehler('`--layers` steht allein: es ergänzt nur Ebenen und ersetzt nichts.');
@@ -190,11 +200,21 @@ export async function runImport(
      desselben Texts an. */
   const ganzesSchonDa = (e: Entity): boolean =>
     isBookPart(e) && (e.relations ?? []).some((r) => partRank(r) !== undefined && bestandIds.has(r.to));
-  const neu = optionen.onlyNew ? ausDatei.filter((e) => !bestandIds.has(e.id) && !ganzesSchonDa(e)) : ausDatei;
+  /* **Nur neue Ebenen** (`--new-layers`, T-087): eine Ebene, die es noch
+     nicht gibt, und was ganz in solchen liegt. Ein Artikel ohne Ebene
+     oder in einer bestehenden bleibt weg, auch wenn seine Id neu ist. */
+  const inNeuerEbene = (e: Entity): boolean => {
+    if (e.interfaces?.[0] === 'Layer') return true;
+    const ebenen = (e.relations ?? []).filter((r) => r.type === 'inLayer').map((r) => r.to);
+    return ebenen.length > 0 && ebenen.every((l) => !bestandIds.has(l));
+  };
+  const neuRoh = optionen.onlyNew ? ausDatei.filter((e) => !bestandIds.has(e.id) && !ganzesSchonDa(e)) : ausDatei;
+  const neu = optionen.newLayers ? neuRoh.filter(inNeuerEbene) : neuRoh;
+  const ausAlterEbene = neuRoh.length - neu.length;
   const teileMitGanzem = optionen.onlyNew ? ausDatei.filter((e) => !bestandIds.has(e.id) && ganzesSchonDa(e)).length : 0;
   const uebersprungen = ausDatei.length - neu.length;
   const angeglichen = optionen.onlyNew ? nummernAngleichen(ausDatei, bestand, neu) : 0;
-  const angeglichenText = angeglichen ? ` ${angeglichen} davon mit angeglichener Nummer oder angeglichenen Verweisen (die Nummern der Datei sind nicht die des Bestands).` : '';
+  const angeglichenText = `${angeglichen ? ` ${angeglichen} davon mit angeglichener Nummer oder angeglichenen Verweisen (die Nummern der Datei sind nicht die des Bestands).` : ''}${optionen.newLayers ? ` Nur neue Ebenen: ${ausAlterEbene} Artikel mit neuer Id in einer bestehenden Ebene oder ohne Ebene nicht angelegt.` : ''}`;
   const ids = new Set(neu.map((e) => e.id));
   let weg: Entity[] = [];
   let ebenenText = '';
@@ -330,6 +350,12 @@ const nummerVon = (e: Entity): string => {
  *     — hinter der höchsten, die Bestand oder Datei kennt.
  *  2. Jeder Verweis `[[nummer|…]]` nennt danach die Nummer, die sein Ziel
  *     im Bestand trägt oder jetzt bekommt.
+ *  3. Ein Verweis auf einen Artikel der Datei, der weder im Bestand steht
+ *     noch jetzt angelegt wird (ein Teil, dessen Ganzes schon steht; mit
+ *     `--new-layers` alles aus bestehenden Ebenen), wird ein Verweis nach
+ *     Namen (`[[Fireball]]`): seine Nummer kann im Bestand ein anderer
+ *     tragen, und ein falscher Verweis ist schlechter als einer, der nach
+ *     dem Namen sucht.
  * Der Bestand wird nicht angefasst. Gibt die Zahl der geänderten Artikel zurück.
  */
 export function nummernAngleichen(ausDatei: Entity[], bestand: Entity[], neu: Entity[]): number {
@@ -356,6 +382,12 @@ export function nummernAngleichen(ausDatei: Entity[], bestand: Entity[], neu: En
     if (n && da && da !== n) um.set(n, da);
   }
   const geaendert = new Set<Entity>();
+  const kommt = new Set(neu.map((e) => e.id));
+  const fehlt = new Map<string, string>();
+  for (const e of ausDatei) {
+    const n = nummerVon(e);
+    if (n && !imBestand.has(e.id) && !kommt.has(e.id)) fehlt.set(n, e.name);
+  }
   for (const e of neu) {
     const n = nummerVon(e);
     if (!n) continue;
@@ -374,14 +406,18 @@ export function nummernAngleichen(ausDatei: Entity[], bestand: Entity[], neu: En
     e.components = { ...e.components, Identity: { ...(e.components['Identity'] as object), id: neueNummer } };
     geaendert.add(e);
   }
-  if (!um.size) return geaendert.size;
-  const verweis = /\[\[([^\]|]+)(?=[|\]])/g;
+  if (!um.size && !fehlt.size) return geaendert.size;
+  const verweis = /\[\[([^\]|]+)(\|[^\]]*)?\]\]/g;
   const wert = (v: unknown, aenderung: { ja: boolean }): unknown => {
     if (typeof v === 'string') {
       if (!v.includes('[[')) return v;
-      const neuText = v.replace(verweis, (roh, ziel: string) => {
-        const nach = um.get(ziel.trim());
-        return nach ? `[[${nach}` : roh;
+      const neuText = v.replace(verweis, (roh, ziel: string, zeige: string | undefined) => {
+        const t = ziel.trim();
+        const nach = um.get(t);
+        if (nach) return `[[${nach}${zeige ?? ''}]]`;
+        const name = fehlt.get(t);
+        if (name !== undefined) return `[[${zeige ? zeige.slice(1) : name}]]`;
+        return roh;
       });
       if (neuText !== v) aenderung.ja = true;
       return neuText;
@@ -564,7 +600,7 @@ if (direkt) {
   const args = process.argv.slice(2);
   const datei = args.find((a) => !a.startsWith('--'));
   if (!datei) {
-    console.error('import <datei> [--only-new | --replace | --replace-layer[=<id|Name>] | --layers] [--dry-run]');
+    console.error('import <datei> [--only-new [--new-layers] | --replace | --replace-layer[=<id|Name>] | --layers] [--dry-run]');
     process.exit(2);
   }
   const ebenenArg = args.find((a) => a === '--replace-layer' || a.startsWith('--replace-layer='));
@@ -581,7 +617,7 @@ if (direkt) {
   const repo = new PgRepository(getPool());
   try {
     const daten = JSON.parse(readFileSync(pfad, 'utf8')) as unknown;
-    const r = await runImport(repo, daten, { replace: args.includes('--replace'), replaceLayer, onlyNew: args.includes('--only-new'), layers: args.includes('--layers'), dryRun: args.includes('--dry-run') });
+    const r = await runImport(repo, daten, { replace: args.includes('--replace'), replaceLayer, onlyNew: args.includes('--only-new'), newLayers: args.includes('--new-layers'), layers: args.includes('--layers'), dryRun: args.includes('--dry-run') });
     console.log(r.text);
   } catch (x) {
     console.error((x as Error).message);
