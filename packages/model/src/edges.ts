@@ -301,6 +301,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       [W + 'artikel/artikel.ts']: ['inLayer'],
       /* Der Druck lässt die Ebene aus der Kantenliste — sie steht im Kopf (T-110). */
       [W + 'artikel/blatt.ts']: ['inLayer'],
+      /* Schnell anlegen schlägt die Ebene des Ausgangsartikels vor (T-131). */
+      [W + 'artikel/schnell.ts']: ['inLayer'],
     },
   },
 ];

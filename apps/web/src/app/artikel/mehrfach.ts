@@ -1,7 +1,9 @@
 import { Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
 import { Api, type ListenFrage, type ListenZeile } from '../kern/api';
 import { Bestand } from '../kern/bestand';
+import { Session } from '../kern/session';
 import { SpielerListe } from '../kern/spieler';
+import { Schnell, anlegbareArten, type Angelegt } from './schnell';
 
 /** Wo die Vorschläge herkommen: eine Suche am Server je Gruppe. */
 export interface Suchgruppe {
@@ -46,6 +48,7 @@ interface Vorschlag {
  */
 @Component({
   selector: 'nw-mehrfach',
+  imports: [Schnell],
   template: `
     <div class="mehrfach">
       <ul class="chips" [attr.aria-label]="label()">
@@ -91,9 +94,28 @@ interface Vorschlag {
                 }
               </li>
             }
+            <!-- Neu anlegen und gleich dazunehmen (T-131). -->
+            @if (!sucht()) {
+              @for (a of anlegen(); track a.name) {
+                <li role="option" class="neu" [attr.aria-selected]="false">
+                  <button type="button" (click)="schnell.set({ name: suche().trim(), typ: a.name })">
+                    Create “{{ suche().trim() }}” as {{ a.label }}
+                  </button>
+                </li>
+              }
+            }
           </ul>
         }
       </div>
+      @if (schnell(); as s) {
+        <nw-schnell
+          [vorschlag]="s.name"
+          [ziele]="zielArten()"
+          [vorgabe]="s.typ"
+          (angelegt)="eingetragen($event)"
+          (zu)="schnell.set(null)"
+        />
+      }
     </div>
   `,
   styles: `
@@ -208,6 +230,21 @@ export class Mehrfach {
   private readonly api = inject(Api);
   private readonly bestand = inject(Bestand);
   private readonly spielerListe = inject(SpielerListe);
+  private readonly session = inject(Session);
+
+  /** Das offene „Create"-Popup (T-131). */
+  protected readonly schnell = signal<{ name: string; typ?: string } | null>(null);
+  /** Die Arten, die die Suche fragt — dieselben darf ein neuer Artikel sein. */
+  protected readonly zielArten = computed(() => [
+    ...new Set(this.gruppen().flatMap((g) => g.of ?? (g.type ? [g.type] : []))),
+  ]);
+  /** Nur bei Verweisen: ein neues Wort braucht keinen Artikel. Bis drei Arten je eine Zeile. */
+  protected readonly anlegen = computed<{ name: string; label: string }[]>(() => {
+    const r = this.bestand.registry();
+    if (!r || !this.verweise() || !this.gruppen().length) return [];
+    const arten = anlegbareArten(r, this.zielArten(), !this.session.isAdmin());
+    return arten.length <= 3 ? arten : [{ name: '', label: '…' }];
+  });
 
   protected readonly suche = signal('');
   protected readonly offen = signal(false);
@@ -338,6 +375,12 @@ export class Mehrfach {
     if (genau) this.dazu(genau);
     else if (this.frei()) this.setze([...this.werte(), q]);
     else if (erster) this.dazu(erster);
+  }
+
+  /** Der neue Artikel kommt sofort dazu (T-131). */
+  protected eingetragen(a: Angelegt): void {
+    this.namen.update((m) => new Map(m).set(a.id, a.name));
+    this.setze([...this.werte(), a.id]);
   }
 
   protected weg(w: string): void {

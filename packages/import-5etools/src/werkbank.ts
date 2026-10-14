@@ -467,6 +467,13 @@ export class Werkbank {
   /** Begleittext je Art (`monsterFluff` …), nach `name|source`. */
   readonly fluffe = new Map<string, Map<string, Knoten>>();
 
+  /**
+   * Die Textschablonen der Gegenstände (`itemEntry`), nach `name|source`.
+   * 5e.tools setzt sie beim Lesen ein (`{#itemEntry Ring of Resistance}`);
+   * wir beim Einlesen, sonst stünde die Marke im Text (T-089).
+   */
+  readonly schablonen = new Map<string, Knoten>();
+
   fluff(art: string, name: string, quelle: string): Knoten | undefined {
     return this.fluffe.get(art)?.get(`${klein(name)}|${klein(quelle)}`);
   }
