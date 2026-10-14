@@ -169,6 +169,8 @@ export function registerLesen(
     );
     const toc: Zeile[] = [];
     for (const n of order) {
+      /* Absätze, Vorlesetexte, Verweise stehen im Stück, nicht im Verzeichnis (T-108). */
+      if (n.toc === false) continue;
       const e = sichtbar.get(n.id);
       if (!e) continue;
       const seite = seiteVon(e) ?? seiteVon(stand.map.get(n.id)!);
@@ -215,8 +217,11 @@ export function registerLesen(
       if (f) anKnoten.set(f.id, n.id);
     }
     const haengt = new Map<string, Entity[]>();
+    /* Was selbst im Text steht (ein Teil eines Kapitels, T-108), ist kein
+       Anhang seines Abschnitts. */
+    const imText = new Set(order.map((n) => n.id));
     for (const e of stand.alle) {
-      if (READING_TYPES.includes(primaryInterface(e))) continue;
+      if (READING_TYPES.includes(primaryInterface(e)) || imText.has(e.id)) continue;
       const r = (e.relations ?? []).find((x) => EINGEBETTET.has(x.type) && anKnoten.has(x.to));
       if (!r) continue;
       const k = anKnoten.get(r.to)!;

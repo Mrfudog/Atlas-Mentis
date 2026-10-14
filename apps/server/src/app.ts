@@ -68,6 +68,7 @@ import {
   detachInstance,
   registryUsage,
   instancesOf,
+  isBookPart,
   isInstance,
   readInstance,
   redactEntity,
@@ -1272,6 +1273,8 @@ export function buildApp({
     for (const e of alle) {
       merke(e.id, e);
       merke(articleId(e), e);
+      /* Ein Teil eines Buchs ist kein Ziel nach Namen (T-108). */
+      if (isBookPart(e)) continue;
       merke(entityName(e), e);
       const aliases = e.components?.['Identity']?.['aliases'];
       if (Array.isArray(aliases)) for (const a of aliases) merke(String(a), e);

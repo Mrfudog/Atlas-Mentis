@@ -15403,7 +15403,14 @@ var BEGRIFFE=[
   ["Article",
    "A thing in the campaign: an id, the types it is, the cards with its "+
    "values, and its edges. What it records is said by its type, never by "+
-   "code."],
+   "code. A book is made of chapters, and a chapter of parts — headings, "+
+   "paragraphs, read-aloud texts, embedded articles, scenes —, each an "+
+   "article of its own, in the order kept on its “part of” edge (the same "+
+   "read-aloud text may be third in the chapter and first in your scene). "+
+   "A chapter of an official adventure is there twice and its parts once: "+
+   "a Chapter for reading and an Arc for playing, both pointing at the same "+
+   "scenes. Parts stand in no list and are no link target by name — a "+
+   "heading called “Surprise” would make every [[Surprise]] ambiguous."],
   ["View",
    "How an article is drawn. Three of them, and where you are decides which: "+
    "Overview for a reference in the text, Quick for a card, Full for the "+
@@ -15417,7 +15424,9 @@ var BEGRIFFE=[
    "view show the same blocks, so you do not have to hold two pictures of "+
    "one thing in your head. It no longer means a piece of prose sitting "+
    "beside the fields: that is a field with a long input, and several of "+
-   "them is “one or more”."],
+   "them is “one or more”. Book text is the exception: a paragraph of a "+
+   "book is a part article, because you take it into your own story on "+
+   "its own."],
   ["Edge",
    "A typed, directed connection between two articles, which may carry "+
    "properties of its own. Stored forward only; the other direction is "+

@@ -7,6 +7,7 @@
  */
 
 import { isInstance } from './instance.js';
+import { isBookPart } from './parts.js';
 import type {
   Backlink,
   Entity,
@@ -378,7 +379,7 @@ export function enumGroups(
       const filter = prop?.enumWhere?.[n];
       const werte: string[] = [];
       for (const e of bestand) {
-        if (!articleOfType(registry, e, n) || isInstance(e)) continue;
+        if (!articleOfType(registry, e, n) || isInstance(e) || isBookPart(e)) continue;
         if (filter && !matchesWhere(e, filter)) continue;
         const name = e.name || String(e.components?.['Identity']?.['name'] ?? '');
         if (name && !werte.includes(name)) werte.push(name);
@@ -638,7 +639,9 @@ export function linkCandidates(entities: Iterable<Entity>, target: string): Enti
   for (const entity of alle) {
     /* Eine Instanz ist kein Verweisziel (D82); sie hiesse wie ihre Vorlage
        und machte jeden Namen mehrdeutig. */
-    if (isInstance(entity)) continue;
+    /* Ein Teil eines Buchs (T-108) ebensowenig: ein Absatz heisst nach
+       seinen ersten Worten, eine Überschrift wie die Regel darunter. */
+    if (isInstance(entity) || isBookPart(entity)) continue;
     if (entityName(entity).toLowerCase() === needle) {
       namen.push(entity);
       continue;
@@ -668,7 +671,7 @@ export function linkFinder(entities: Iterable<Entity>): (target: string) => Enti
     if (nummer && !nachNummer.has(nummer)) nachNummer.set(nummer, { at, e: entity });
     if (!nachPeg.has(entity.id)) nachPeg.set(entity.id, { at, e: entity });
     at += 1;
-    if (isInstance(entity)) continue;
+    if (isInstance(entity) || isBookPart(entity)) continue;
     const schluessel = new Set<string>([entityName(entity).toLowerCase()]);
     const aliases = entity.components?.['Identity']?.['aliases'];
     if (Array.isArray(aliases)) for (const a of aliases) schluessel.add(String(a).toLowerCase());

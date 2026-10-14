@@ -315,6 +315,16 @@ wiederkommen, werden sie neu geschrieben.
   Wissensfreigabe hängt (`Secrets.secret#id`). Die Id kommt aus dem Text, denn
   eine durchgezählte hält nur, solange die Reihenfolge hält. Ein Prosafeld
   steht **nicht** in der Feldtabelle — es gehört dem Element `prose`.
+  **Ausnahme Buchtext** (T-108, E-028, E-029): ein Buch und ein Abenteuer
+  bestehen aus Kapiteln (`Chapter`), ein Kapitel aus **Teil-Artikeln** —
+  `Heading`, `Paragraph`, `ReadAloudText`, `Embed` (ein Verweis auf einen
+  Artikel, der für sich steht) und Szenen —, in der Reihenfolge von
+  `partOf.props.rank`. Der Grund: einen Vorlesetext oder einen Absatz holt
+  man **einzeln** in die eigene Geschichte, und was man einzeln holt, ist
+  ein Artikel. Teile stehen in keiner Liste und sind kein Verweisziel nach
+  Namen (`isBookPart`). Ein Kapitel eines offiziellen Abenteuers ist
+  zweimal da und seine Teile einmal: `Chapter` zum Lesen, `Arc` zum
+  Spielen (`chapterOf`), beide über denselben Szenen.
 - **Ein langer Text ist Markdown, und nichts darin wird HTML** (M10).
   `parseMarkdown` liest die Blöcke, `parseInline` jede Zeile darin — ein
   Zerleger für Inline-Text, nicht zwei. Gezeichnet wird mit Elementen und
