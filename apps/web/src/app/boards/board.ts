@@ -436,15 +436,41 @@ export class Board implements SchnellKontext {
     const byId = this.kennt();
     const voll = this.bestand.voll();
     const nicht = new Set([LAYER_RELATION, INSTANCE_RELATION, PLACED_RELATION]);
-    const out = new Map<string, Entity>();
+    const out = new Map<string, { id: string; e: Entity; von: Set<string>; zusatz: string }>();
     for (const k of this.kanten()) {
+      const karte = byId.get(k.to);
       for (const rel of voll.get(k.to)?.relations ?? []) {
         if (nicht.has(rel.type) || liegt.has(rel.to) || rel.to === b.id) continue;
         const e = byId.get(rel.to);
-        if (e && !isInstance(e)) out.set(e.id, e);
+        if (!e || isInstance(e)) continue;
+        const x = out.get(e.id) ?? { id: e.id, e, von: new Set<string>(), zusatz: '' };
+        if (karte) x.von.add(entityName(karte));
+        out.set(e.id, x);
       }
     }
-    return [...out.values()].sort((a, c) => entityName(a).localeCompare(entityName(c), 'de'));
+    /* Gleichnamiges unterscheidbar machen (T-126): zwei „Battleaxe" aus
+       verschiedenen Statblöcken sahen gleich aus. Erst die Art, und wo auch
+       die gleich ist, die Karte, von der die Kante ausgeht. */
+    const liste = [...out.values()];
+    const zaehle = (f: (x: (typeof liste)[number]) => string) => {
+      const n = new Map<string, number>();
+      for (const x of liste) n.set(f(x), (n.get(f(x)) ?? 0) + 1);
+      return n;
+    };
+    const art = (x: (typeof liste)[number]) => this.typLabel(x.e).split(' · ')[0] ?? '';
+    const gleicherName = zaehle((x) => entityName(x.e));
+    const gleicheArt = zaehle((x) => `${entityName(x.e)}\u0000${art(x)}`);
+    for (const x of liste) {
+      if ((gleicherName.get(entityName(x.e)) ?? 0) < 2) continue;
+      const teile = [art(x)];
+      if ((gleicheArt.get(`${entityName(x.e)}\u0000${art(x)}`) ?? 0) > 1 && x.von.size) {
+        teile.push(`from ${[...x.von].sort().join(', ')}`);
+      }
+      x.zusatz = teile.filter(Boolean).join(' · ');
+    }
+    return liste.sort(
+      (a, c) => entityName(a.e).localeCompare(entityName(c.e), 'de') || a.zusatz.localeCompare(c.zusatz, 'de'),
+    );
   });
 
   /** Was auf dem Board liegt und noch nicht fertig ist (`Status`, REQ-188). */

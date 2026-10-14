@@ -257,9 +257,12 @@
           <p class="hinweis">Connected to cards above but missing here.</p>
           @for (v of verbunden(); track v.id) {
             <div class="zeile">
-              <a [routerLink]="['/artikel', v.id]">{{ name(v) }}</a>
+              <a [routerLink]="['/artikel', v.id]">{{ name(v.e) }}</a>
+              @if (v.zusatz) {
+                <span class="dim zusatz">{{ v.zusatz }}</span>
+              }
               @if (darfSchreiben()) {
-                <button type="button" class="klein" (click)="hinlegen(v)">+ add</button>
+                <button type="button" class="klein" (click)="hinlegen(v.e)">+ add</button>
               }
             </div>
           } @empty {
