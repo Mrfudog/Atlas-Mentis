@@ -21,6 +21,10 @@ import {
   groupingOf,
   publisherOf,
   HOMEBREW,
+  withFilter,
+  withCompare,
+  filterOf,
+  passesFilter,
 } from '../src/stack.js';
 import type { Entity, EntityId } from '../src/types.js';
 
@@ -325,5 +329,117 @@ describe('publisher groups (T-094)', () => {
   it('groups by category unless the group says publisher', () => {
     expect(groupingOf(w.get('g_sett'))).toBe('category');
     expect(groupingOf(w.get('g_part'))).toBe('publisher');
+  });
+});
+
+describe('turning on part of a layer (T-105)', () => {
+  /* Ein Abenteuer bringt Orte, NSC, Gegenstände und Regeln; die Kampagne
+     will nur Gegenstände und Regeln daraus. */
+  const registry = {
+    interfaces: {
+      Place: { area: 'world' },
+      Creature: { area: 'world' },
+      Item: { area: 'rules' },
+      Weapon: { extends: ['Item'] },
+      Rule: { area: 'rules' },
+      Scene: { area: 'story' },
+      Layer: {},
+    },
+  } as never;
+  const A = (id: string, type: string, layer: string, more: Entity['relations'] = []): Entity => ({
+    id, name: id, interfaces: [type], relations: [{ id: `${id}~l`, type: 'inLayer', to: layer }, ...more],
+  });
+  const L = (id: string, kind: string, partOf: string[] = []): Entity => ({
+    id, name: id, interfaces: ['Layer'], components: { Layer: { kind } },
+    relations: partOf.map((to, i) => ({ id: `${id}~p${i}`, type: 'partOf', to })),
+  });
+  const basis: Entity[] = [
+    L('abenteuer', 'adventure', ['g_adv']),
+    L('g_adv', 'group'),
+    L('regeln', 'book'),
+    A('ort', 'Place', 'abenteuer'),
+    A('nsc', 'Creature', 'abenteuer'),
+    A('schwert', 'Weapon', 'abenteuer'),
+    A('regel', 'Rule', 'abenteuer'),
+    A('szene', 'Scene', 'abenteuer'),
+    A('grundregel', 'Rule', 'regeln'),
+    /* Die Hausregel des Abenteuers überschreibt die Grundregel — nur, wenn
+       das Abenteuer Regeln bringt. */
+    A('hausregel', 'Rule', 'abenteuer', [{ id: 'h~o', type: 'overrides', to: 'grundregel' }]),
+    /* Ein Ort aus dem Abenteuer überschreibt nichts, was nicht da ist. */
+    A('ohne', 'Place', 'regeln', [{ id: 'o~r', type: 'inLayer', to: 'abenteuer', props: { mode: 'removes' } }]),
+  ];
+  const K = (relations: Entity['relations']): Entity => ({ id: 'camp', name: 'Kampagne', interfaces: ['Campaign'], relations });
+  const welt = (k: Entity) => new Map<EntityId, Entity>([...basis, k].map((e) => [e.id, e]));
+  const kante = (to: string, props: Record<string, unknown> = {}) => ({ id: `a_${to}`, type: 'activates', to, props });
+  const da = (w: Map<EntityId, Entity>, k: Entity) => {
+    const s = playStack(w, k, registry);
+    return [...w.values()].filter((e) => e.interfaces?.[0] !== 'Layer' && e.interfaces?.[0] !== 'Campaign' && s.inPlay(e)).map((e) => e.id).sort();
+  };
+
+  it('brings everything without a choice', () => {
+    const k = K([kante('regeln', { order: 10 }), kante('abenteuer', { order: 20 })]);
+    expect(da(welt(k), k)).toEqual(['hausregel', 'nsc', 'regel', 'schwert', 'szene', 'ort'].sort());
+  });
+
+  it('brings only the chosen areas, subtypes by their inherited area', () => {
+    const k = K([kante('regeln', { order: 10 }), kante('abenteuer', { order: 20, areas: ['rules'] })]);
+    const w = welt(k);
+    /* Kein Ort, kein NSC, keine Szene; die Herausnahme aus `world` gilt
+       nicht, also bleibt `ohne` da. */
+    expect(da(w, k)).toEqual(['hausregel', 'ohne', 'regel', 'schwert'].sort());
+    /* Die Einzelfragen rechnen gleich. */
+    expect(inStack(w, w.get('ort')!, k, registry)).toBe(false);
+    expect(inPlay(w, w.get('grundregel')!, k, registry)).toBe(false);
+    expect(resolveArticle(w, w.get('grundregel')!, k, registry).id).toBe('hausregel');
+    /* Ein Ort fehlt nicht, weil die Ebene aus ist — er ist abgewählt. */
+    expect(playStack(w, k, registry).unactivated(w.get('ort')!)).toEqual([]);
+  });
+
+  it('lets a single type through, and a type choice alone narrows to that type', () => {
+    const k = K([kante('regeln', { order: 10 }), kante('abenteuer', { order: 20, areas: ['story'], types: ['Weapon'] })]);
+    expect(da(welt(k), k)).toEqual(['grundregel', 'ohne', 'schwert', 'szene'].sort());
+  });
+
+  it('does not let a filtered layer override', () => {
+    const k = K([kante('regeln', { order: 10 }), kante('abenteuer', { order: 20, areas: ['world'] })]);
+    const w = welt(k);
+    expect(playStack(w, k, registry).inPlay(w.get('grundregel')!)).toBe(true);
+    expect(isOverridden(w, w.get('grundregel')!, k, registry)).toBe(false);
+  });
+
+  it('passes the choice of a group to its members, and an explicit edge keeps its own', () => {
+    const k = K([kante('g_adv', { order: 10, types: ['Weapon'] })]);
+    expect(da(welt(k), k)).toEqual(['schwert']);
+    const k2 = K([kante('g_adv', { order: 10, types: ['Weapon'] }), kante('abenteuer', { order: 20, areas: ['story'] })]);
+    expect(da(welt(k2), k2)).toEqual(['szene']);
+  });
+
+  it('applies to compare layers as well', () => {
+    const k = K([kante('regeln', { order: 10 }), kante('abenteuer', { mode: 'compare', areas: ['rules'] })]);
+    const s = playStack(welt(k), k, registry);
+    expect(s.inCompare(welt(k).get('regel')!)).toBe(true);
+    expect(s.inCompare(welt(k).get('ort')!)).toBe(false);
+  });
+
+  it('writes, keeps and clears the choice at the edge', () => {
+    const k = K([kante('regeln', { order: 10 }), kante('abenteuer', { mode: 'compare' })]);
+    const mit = withFilter(k, 'abenteuer', { areas: ['rules'], types: ['Scene'] })!;
+    expect(filterOf(mit.relations!.find((r) => r.to === 'abenteuer'))).toEqual({ areas: ['rules'], types: ['Scene'] });
+    /* Der Stapel und die Vergleiche neu geschrieben: die Auswahl bleibt. */
+    const regeln = withFilter(mit, 'regeln', { areas: ['rules'] })!;
+    expect(filterOf(withStack(regeln, ['regeln']).relations!.find((r) => r.to === 'regeln'))).toEqual({ areas: ['rules'] });
+    expect(filterOf(withCompare(mit, ['abenteuer']).relations!.find((r) => r.to === 'abenteuer'))).toEqual({ areas: ['rules'], types: ['Scene'] });
+    const ohne = withFilter(mit, 'abenteuer', null)!;
+    expect(filterOf(ohne.relations!.find((r) => r.to === 'abenteuer'))).toBeNull();
+    expect(ohne.relations!.find((r) => r.to === 'abenteuer')?.props).toEqual({ mode: 'compare' });
+    /* Keine eigene Kante: nichts zu setzen. */
+    expect(withFilter(k, 'g_adv', { areas: ['rules'] })).toBeNull();
+  });
+
+  it('answers the same question for a single article', () => {
+    expect(passesFilter({ areas: ['rules'] }, basis.find((e) => e.id === 'schwert')!, registry)).toBe(true);
+    expect(passesFilter({ areas: ['rules'] }, basis.find((e) => e.id === 'ort')!, registry)).toBe(false);
+    expect(passesFilter(null, basis.find((e) => e.id === 'ort')!, registry)).toBe(true);
   });
 });

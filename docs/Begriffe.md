@@ -805,6 +805,18 @@ an** (`activates` mit `mode: 'off'`). Eigentum folgt der Gruppe nicht — wem
 eine Ebene gehört, sagt weiter nur, wer sie selbst aufschaltet; sonst
 machte eine geteilte Gruppe eine Kampagnenebene still gemeinsam.
 
+**Eine Ebene darf nur einen Teil bringen** (T-105, REQ-255). Die Leitung
+will aus einem Abenteuer die Gegenstände und Regeln, nicht dessen Orte, NSC
+und Begegnungen — die gehören in eine andere Geschichte. Die Artikel aus
+der Ebene zu nehmen hiesse, das Buch zu verändern, und jede andere Runde
+verlöre sie mit. Also sagt die **Kante** `activates`, was die Ebene in
+*dieser* Kampagne bringt: Bereiche (`areas`, aus `area` der Art) und
+einzelne Arten (`types`). Der Bereich ist die grobe Wahl, weil eine neue
+Art darin ohne Zutun mitkommt; die Art die feine, weil ein Gegenstand im
+selben Bereich steht wie ein Ort. Was nicht passt, bringt die Ebene in
+keiner Rolle — auch nicht als Überschreibung: eine Hausregel, die nur
+überschreibt, ohne da zu sein, wäre eine unsichtbare Änderung.
+
 **Eine Ebene erklärt ihr Kürzel.** „XGE" steht an jedem Artikel aus
 Xanathar's Guide; wer das Buch nicht kennt, liest drei Buchstaben. Darum
 trägt die Ebene ihr Kürzel (`Layer.abbreviation`) neben dem vollen Titel,
