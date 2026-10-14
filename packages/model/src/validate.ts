@@ -117,6 +117,8 @@ export const InterfaceDefSchema = z.object({
   units: z.enum(['imperial', 'metric', 'both']).optional(),
   /* `Typ.feld` → Beschriftung. Eine Beschriftung und keine Feldliste. */
   titles: z.record(z.string(), z.string()).optional(),
+  /* `Typ.feld` → Ziel (T-119): wie `target` am Feld, nur für diese Art. */
+  targets: z.record(z.string(), linkTargetSchema).optional(),
 });
 
 export const EnumDefSchema = z.object({
