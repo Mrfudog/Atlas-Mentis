@@ -1,6 +1,21 @@
 {
   "entries": [
     {
+      "id": "2026-10-14-image-loading",
+      "date": "2026-10-14",
+      "title": "Large images show they are loading",
+      "text": "Maps and full-size article images show a spinning circle until the picture has arrived, instead of an empty frame that looks broken.",
+      "area": "Maps",
+      "link": "/play"
+    },
+    {
+      "id": "2026-10-14-polish-reading",
+      "date": "2026-10-14",
+      "title": "Easier to read",
+      "text": "Long single texts such as \"On arrival\" or \"Goal\" read like prose, sortable values stay in the edit form, same-named links on a board say what they are, and a book without imported text says so when you open it to read.",
+      "area": "Articles"
+    },
+    {
       "id": "2026-10-14-whats-new",
       "date": "2026-10-14",
       "title": "What's new",
