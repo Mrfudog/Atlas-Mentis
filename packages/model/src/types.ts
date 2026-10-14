@@ -266,8 +266,14 @@ export interface InterfaceDef {
    * Sie stand einmal an der Ansicht (`ViewDef.byInterface`). Wer wissen
    * wollte, wie eine Art gezeichnet wird, musste dafür drei Ansichten
    * aufmachen und in jeder nach ihr suchen.
+   *
+   * **Zwei Formen** (T-110, REQ-256): eine eigene Liste ersetzt, was die
+   * Ansicht sonst zeichnet; `{ adjust }` nimmt die geerbte Anordnung — die
+   * des nächsten Obertyps, der etwas sagt, sonst die der Ansicht — und
+   * passt sie an (dazu, weg, umsortiert). Eine Anpassung bleibt richtig,
+   * wenn die Ansicht sich ändert; eine Abschrift nicht.
    */
-  views?: Record<string, LayoutElement[]>;
+  views?: Record<string, TypeLayout>;
   /**
    * In welchem System die Masse dieser Artikelart dastehen. Wird wie `area`
    * die `extends`-Kette hoch geerbt; ohne Angabe gilt die Einstellung der
@@ -483,6 +489,34 @@ export interface LayoutElement {
   tabs?: LayoutTab[];
 }
 
+/**
+ * **Die Anordnung einer Ansicht, angepasst für eine Art** (T-110, REQ-256).
+ *
+ * Gelesen wird sie über die geerbte Anordnung (`layoutFor`): erst fällt
+ * weg, was `drop` und `hide` nennen, dann kommt dazu, was `add` und
+ * `extra` bringen, zuletzt stellt `order` um. Alles nach `id` bzw. nach
+ * Eintrag (`Typ`, `Typ.feld`) — nie nach Position: eine Position stimmt
+ * nur, bis jemand die Ansicht umstellt.
+ */
+export interface LayoutAdjust {
+  /** Elemente der geerbten Anordnung, die hier wegfallen (nach `id`). */
+  drop?: string[];
+  /**
+   * Einträge, die hier nicht erscheinen — `Typ` oder `Typ.feld`, in jedem
+   * Element der Anordnung (sie werden zu dessen `except`).
+   */
+  hide?: string[];
+  /** Was ein Element hier dazunimmt: Element-`id` → `Typ` / `Typ.feld`. */
+  add?: Record<string, string[]>;
+  /** Elemente, die nur hier stehen — hinten, bis `order` sie stellt. */
+  extra?: LayoutElement[];
+  /** Reihenfolge nach `id`; was nicht genannt ist, folgt in seiner bisherigen. */
+  order?: string[];
+}
+
+/** Was eine Art für eine Ansicht sagt: eine eigene Anordnung oder eine Anpassung. */
+export type TypeLayout = LayoutElement[] | { adjust: LayoutAdjust };
+
 export interface LayoutTab {
   id: string;
   label: string;
@@ -511,6 +545,18 @@ export interface ViewDef {
    * angelegte Art nicht mit einer leeren Seite anfängt.
    */
   layout?: LayoutElement[];
+  /**
+   * **Was kein Element nimmt, steht am Ende** (T-110). Die Artikelseite tat
+   * das immer — ein Feld, das nur ein Element zeigt, das sie noch nicht
+   * zeichnet, wäre sonst nirgends zu lesen. Jetzt sagt es die Ansicht:
+   * `full` ja, die Karte nein.
+   */
+  rest?: boolean;
+  /**
+   * Leere Felder: `hide` (Vorgabe) lässt sie weg, `show` zeigt sie mit
+   * „—" — auf einem Druckbogen will man sehen, was noch fehlt.
+   */
+  empty?: 'hide' | 'show';
 }
 
 export interface Registry {

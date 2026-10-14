@@ -144,6 +144,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     does: 'decides who may write: a player manages their own character with its statblock and inventory, and creates into the layers they write',
     uses: {
       [S + 'app.ts']: ['belongsTo', 'carries', 'crafting', 'holds', 'inLayer'],
+      /* Ein Bild aus einem Artikel heraus geht in dessen Ebene (T-114). */
+      [S + 'bilder.ts']: ['inLayer'],
     },
   },
   {
@@ -254,6 +256,8 @@ export const EDGE_READERS: readonly EdgeReader[] = [
       [M + 'summary.ts']: ['inLayer', 'instanceOf', 'partOf'],
       [S + 'liste.ts']: ['inLayer'],
       [W + 'artikel/artikel.ts']: ['inLayer'],
+      /* Der Druck lässt die Ebene aus der Kantenliste — sie steht im Kopf (T-110). */
+      [W + 'artikel/blatt.ts']: ['inLayer'],
     },
   },
 ];

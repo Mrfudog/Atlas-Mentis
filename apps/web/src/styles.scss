@@ -152,3 +152,40 @@ button.quick-info:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
+
+/* **Der Druck** (T-110): ein Blatt A4, weiss, schwarz — auch im dunklen
+   Modus, denn Papier ist hell. Kopfleiste, Bänder und Knöpfe gehören zum
+   Bildschirm; was nur dorthin gehört, trägt `nichtdrucken`. */
+@page {
+  size: A4;
+  margin: 16mm 15mm;
+}
+@media print {
+  :root,
+  :root:not([data-theme='light']) {
+    --bg: #fff;
+    --surface: #fff;
+    --paper: #fff;
+    --bar: #fff;
+    --line: #999;
+    --line2: #eee;
+    --ink: #000;
+    --dim: #444;
+    --heading: #000;
+    --accent: #000;
+    --link: #000;
+    --rule: #000;
+    --gold: #888;
+  }
+  html,
+  body {
+    background: #fff;
+    font-size: 11pt;
+  }
+  header.leiste,
+  .umgebung,
+  .sicht,
+  .nichtdrucken {
+    display: none !important;
+  }
+}

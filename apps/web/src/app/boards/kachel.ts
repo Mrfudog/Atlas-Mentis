@@ -1,5 +1,6 @@
 import { Component, computed, inject, input } from '@angular/core';
 import {
+  elementTakes,
   entriesOf,
   fieldTitle,
   layoutFor,
@@ -129,30 +130,46 @@ const NICHT_AUF_DER_KACHEL = ['Identity', 'Visibility', 'Source'];
 export class Kachel {
   readonly artikel = input.required<Entity>();
   readonly ansicht = input.required<string>();
+  /** Ein anderes Register als das geladene — der Entwurf in der Vorschau des Registers (T-110). */
+  readonly register = input<Registry | null>(null);
 
   private readonly bestand = inject(Bestand);
+  private readonly reg = computed(() => this.register() ?? this.bestand.registry());
 
   protected readonly scopes = computed<VarScopes>(() => {
     const vars = this.artikel().components?.['Vars'] as
       | { bindings?: Record<string, string> }
       | undefined;
-    return { entity: vars?.bindings, campaign: this.bestand.registry()?.vars };
+    return { entity: vars?.bindings, campaign: this.reg()?.vars };
   });
 
   protected readonly stuecke = computed<Stueck[]>(() => {
-    const r = this.bestand.registry();
+    const r = this.reg();
     const e = this.artikel();
     if (!r) return [];
     const typ = primaryInterface(e);
+    const view = r.views[this.ansicht()];
+    /* Was die Ansicht sagt (T-110): leere Felder zeigen, Ungenanntes am Ende. */
+    const opt = { leer: view?.empty === 'show', genommen: new Set<string>() };
     const out: Stueck[] = [];
     for (const el of layoutFor(r, this.ansicht(), typ).layout) {
-      const s = this.stueck(r, e, typ, el);
+      const s = this.stueck(r, e, typ, el, opt);
+      if (s) out.push(s);
+    }
+    if (view?.rest) {
+      const s = this.stueck(r, e, typ, { id: 'rest-f', el: 'fields', fields: 'all' }, opt);
       if (s) out.push(s);
     }
     return out;
   });
 
-  private stueck(r: Registry, e: Entity, typ: string, el: LayoutElement): Stueck | null {
+  private stueck(
+    r: Registry,
+    e: Entity,
+    typ: string,
+    el: LayoutElement,
+    opt: { leer: boolean; genommen: Set<string> },
+  ): Stueck | null {
     switch (el.el) {
       case 'description': {
         const d = (e.components?.['Description'] as { description?: string } | undefined)
@@ -160,12 +177,12 @@ export class Kachel {
         return d ? { art: 'text', id: el.id, text: d } : null;
       }
       case 'fields': {
-        const zellen = this.zellen(r, e, typ, el);
+        const zellen = this.zellen(r, e, typ, el, opt);
         return zellen.length ? { art: 'felder', id: el.id, zellen } : null;
       }
       case 'prose': {
         const absaetze = proseFields(r, typ)
-          .filter((f) => waehlt(el, f.type, f.key))
+          .filter((f) => el.fields !== undefined && elementTakes(el, f.type, f.key))
           .flatMap((f) =>
             entriesOf((e.components?.[f.type] as Record<string, unknown> | undefined)?.[f.key]).map(
               (x) => ({
@@ -208,19 +225,22 @@ export class Kachel {
     e: Entity,
     typ: string,
     el: LayoutElement,
+    opt: { leer: boolean; genommen: Set<string> },
   ): { ref: string; label: string; wert: string }[] {
     const out: { ref: string; label: string; wert: string }[] = [];
     for (const comp of typeChain(r, typ)) {
       if (NICHT_AUF_DER_KACHEL.includes(comp)) continue;
-      const karte = e.components?.[comp] as Record<string, unknown> | undefined;
+      const karte = (e.components?.[comp] as Record<string, unknown> | undefined) ?? (opt.leer ? {} : undefined);
       if (!karte) continue;
       for (const [prop, schema] of Object.entries(r.interfaces[comp]?.schema?.properties ?? {})) {
-        if (!waehlt(el, comp, prop)) continue;
+        if (el.fields === undefined || !elementTakes(el, comp, prop) || opt.genommen.has(`${comp}.${prop}`)) continue;
         /* Die Beschreibung steht als Satz, ein Prosafeld als Absatz — nicht
            noch einmal als Wert. */
         if (comp === 'Description' || (schema.many && schema.format === 'long')) continue;
-        const wert = alsText(karte[prop]);
-        if (!wert) continue;
+        const roh = alsText(karte[prop]);
+        if (!roh && (!opt.leer || schema.derived)) continue;
+        const wert = roh || '—';
+        opt.genommen.add(`${comp}.${prop}`);
         out.push({
           ref: `${comp}.${prop}`,
           label: fieldTitle(r, typ, { type: comp, key: prop, prop: schema }),
@@ -230,15 +250,6 @@ export class Kachel {
     }
     return out;
   }
-}
-
-/** Nimmt dieses Element (`fields`/`prose`) das Feld `typ.feld`? */
-function waehlt(el: LayoutElement, typ: string, feld: string): boolean {
-  const weg = el.except ?? [];
-  if (weg.includes(typ) || weg.includes(`${typ}.${feld}`)) return false;
-  if (el.fields === 'all') return true;
-  if (!Array.isArray(el.fields)) return false;
-  return el.fields.includes(typ) || el.fields.includes(`${typ}.${feld}`);
 }
 
 function alsText(wert: unknown): string {
