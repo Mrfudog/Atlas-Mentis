@@ -228,51 +228,51 @@ Kreatur, Statblock (Vorlage und Instanz), Charakterbogen und Charaktermanager �
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-046 | Creature / Statblock split with PC and NPC specializations | 1 | **steht** | `belongsTo`, `PlayerCharacter`; NPC ist `Creature.kind` |
-| REQ-050 | Simple creature viewer: social / description / combat sections | 2 | **steht** | Reiter Overview · Combat · Gear · Craft · Ties |
-| REQ-060 | Companions / summons as regular creatures via companionOf + overrides | 3 | **teils** | `Creature.kind` companion/summon; keine `companionOf`-Kante |
-| REQ-105 | NPC directory as filtered view over creatures with relations | 3 | **steht** | Kompendium nach Art gefiltert |
+| REQ-046 | Kreatur und Statblock getrennt | 1 | **steht** | `belongsTo`, `PlayerCharacter`; NPC ist `Creature.kind` |
+| REQ-050 | Kreatur auf einen Blick | 2 | **steht** | Reiter Overview · Combat · Gear · Craft · Ties |
+| REQ-060 | Begleiter und Beschwörungen | 3 | **teils** | `Creature.kind` companion/summon; keine `companionOf`-Kante |
+| REQ-105 | NSC-Verzeichnis | 3 | **steht** | Kompendium nach Art gefiltert |
 
 ### F-021 Statblock
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-052 | Detailed statblock viewer | 3 | **steht** | Statblock-Seite mit eingesetzten Regeln |
-| REQ-053 | Statblock as composition of RuleElement references (traits, feats, actions) | 2 | **steht** | `composedOf` mit `{VAR}`-Bindung |
-| REQ-054 | Fightingtype field (MCDM roles) on statblock | 2 | **steht** | `Statblock.combatRole` |
-| REQ-055 | Inline trait reuse & variant creation while typing | 3 | **offen** | Pool steht; Variante beim Tippen nicht |
-| REQ-058 | Monster scaling | 5 | **offen** |  |
-| REQ-062 | Multi-system statblock extension point (system reference on composition) | 5 | **offen** | `Statblock.system` als Feld vorhanden |
+| REQ-052 | Statblock lesen wie im Buch | 3 | **steht** | Statblock-Seite mit eingesetzten Regeln |
+| REQ-053 | Statblock aus Regeln zusammensetzen | 2 | **steht** | `composedOf` mit `{VAR}`-Bindung |
+| REQ-054 | Kampfrolle am Statblock | 2 | **steht** | `Statblock.combatRole` |
+| REQ-055 | Merkmale beim Tippen wiederverwenden | 3 | **offen** | Pool steht; Variante beim Tippen nicht |
+| REQ-058 | Monster skalieren | 5 | **offen** |  |
+| REQ-062 | Statblöcke anderer Regelsysteme | 5 | **offen** | `Statblock.system` als Feld vorhanden |
 | REQ-272 | Statblock als Instanz einer Vorlage | 1 | **steht** | `instanceOf`, `resolveInstance`, `thinInstance` |
 
 ### F-022 Schnellanlage
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-048 | Minimal edit form for core creature fields | 2 | **steht** | Bearbeiten in der Ansicht und im Dialog |
-| REQ-049 | Quick add: name-only NPC or statblock-only mob in one field | 2 | **steht** | Anlegedialog mit Statblock-Frage, Schnellanlage aus einem Verweis |
+| REQ-048 | Kreatur schnell bearbeiten | 2 | **steht** | Bearbeiten in der Ansicht und im Dialog |
+| REQ-049 | Kreatur schnell anlegen | 2 | **steht** | Anlegedialog mit Statblock-Frage, Schnellanlage aus einem Verweis |
 
 ### F-023 Charakterbogen
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-051 | Quick changes: HP, temp HP, conditions, rest, inspiration | 2 | **steht** | `Vitals` mit `alwaysEdit`, Bogen |
-| REQ-063 | Character sheet: General tab (HP, temp, hit dice, death saves, AC, conditions, resources, rest) | 2 | **steht** |  |
-| REQ-066 | Character sheet: Combat tab (initiative, actions, companions) | 3 | **steht** | Reiter Combat; Initiative am Spieltisch |
-| REQ-067 | Character sheet: Spellcasting tab (slots/points, concentration, active spells, list) | 3 | **offen** | es gibt keine Art für Zauber — Abgleich A9 |
-| REQ-068 | Character sheet: Freeplay tab | 4 | **offen** |  |
-| REQ-073 | Custom / reorderable sheet layout | 4 | **ersetzt** | die Anordnung steht am Typ im Register, nicht je Nutzer |
+| REQ-051 | Schnelle Änderungen am Bogen | 2 | **steht** | `Vitals` mit `alwaysEdit`, Bogen |
+| REQ-063 | Charakterbogen: Allgemein | 2 | **steht** |  |
+| REQ-066 | Charakterbogen: Kampf | 3 | **steht** | Reiter Combat; Initiative am Spieltisch |
+| REQ-067 | Charakterbogen: Zauber | 3 | **offen** | es gibt keine Art für Zauber — Abgleich A9 |
+| REQ-068 | Charakterbogen: Freispiel | 4 | **offen** |  |
+| REQ-073 | Eigene Anordnung des Bogens je Nutzer | 4 | **ersetzt** | die Anordnung steht am Typ im Register, nicht je Nutzer |
 
 ### F-024 Charaktermanager
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-056 | Creature builder with suggestions (origin + fightingtype filter, grants applied via effects) | 4 | **offen** |  |
-| REQ-057 | Point-buy ability setting | 4 | **offen** |  |
-| REQ-222 | Stufenaufstieg: Schritte aus Klassen- und Unterklassentabellen (TP, Attributsverbesserung oder Talent, Zauber), Folgewerte gerechnet | 4 | **offen** |  |
-| REQ-238 | Charaktererstellung aus den Artikeln: Klasse, Herkunft (Ancestry) und Hintergrund wählen und ihre Entscheidungen treffen; Schritte und Wahlmöglichkeiten kommen aus den Artikeln, nicht aus Code — eine Änderung am Artikel wirkt sofort | 1 | **steht** | Assistent für Figuren aus den Artikeln (T-080, E-015 a); Aufstieg mit Wahlen: REQ-222 |
-| REQ-250 | Startausrüstung je Kampagne einstellbar: nach Regeln (Klasse/Hintergrund), Gold (fest oder gewürfelt) oder frei mit eigenen Grenzen (Goldbudget, höchstens N magische Gegenstände je Seltenheit u. ä.) | 2 | **steht** | Startausrüstung nach Kampagnenregel (T-096) |
-| REQ-251 | Sprachen der Kampagne: die Kampagne nennt die sinnvollen/möglichen Sprachen; Sprachwahlen in der Charaktererstellung bieten genau diese an | 1 | **steht** | `Campaign.languages` (T-095) |
+| REQ-056 | Kreaturen-Baukasten | 4 | **offen** |  |
+| REQ-057 | Punktekauf für Attribute | 4 | **offen** |  |
+| REQ-222 | Stufenaufstieg mit Wahlen | 4 | **offen** |  |
+| REQ-238 | Figur aus den Artikeln erstellen | 1 | **steht** | Assistent für Figuren aus den Artikeln (T-080, E-015 a); Aufstieg mit Wahlen: REQ-222 |
+| REQ-250 | Startausrüstung je Kampagne | 2 | **steht** | Startausrüstung nach Kampagnenregel (T-096) |
+| REQ-251 | Sprachen der Kampagne | 1 | **steht** | `Campaign.languages` (T-095) |
 | REQ-273 | Eigene Verfahren für Attributswerte | 2 | **steht** | E-016 |
 | REQ-274 | Charakter- und Kampagnenmanager jederzeit aufrufen | 3 | **offen** |  |
 
@@ -284,23 +284,23 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-069 | Phone-first responsive layout for all player-facing views | 1 | **teils** | Prototyp passt sich an; `apps/web` ist noch klein |
-| REQ-074 | Quicklinks: campaign, quests, party, session | 3 | **teils** | Bereich Play und die Leiste |
-| REQ-194 | Mobile navigation: the user chooses which entries occupy the phone bottom bar | 4 | **offen** |  |
+| REQ-069 | Am Telefon spielen | 1 | **teils** | Prototyp passt sich an; `apps/web` ist noch klein |
+| REQ-074 | Schnellzugriffe | 3 | **teils** | Bereich Play und die Leiste |
+| REQ-194 | Untere Leiste am Telefon wählen | 4 | **offen** |  |
 | REQ-311 | Spieleransicht mit der eigenen Figur im Fokus | 2 | **teils** | Entwurf Player/PlayerPhone |
 
 ### F-026 Inventar
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-064 | Inventory as list: coins / attuned / worn / carried / stored / deeds | 2 | **steht** | `holds.tier`, `holds.slot` |
-| REQ-065 | Tile-based visual inventory (alternative view over same data) | 4 | **steht** | Kachelraster, `Item.rows`, `Inventory.grid`/`zones` |
-| REQ-183 | Party-owned inventory as a shared container distinct from character inventories | 3 | **steht** | `carries` von `Party` |
-| REQ-214 | Ausrüstungsfigur nach dem Inventarblatt: Figur je Kreatur wählbar (männlich, weiblich, neutral) und dort gespeichert; Plätze Kopf, Schulter, Torso, rechte und linke Hand, Beine, Stiefel, Gurt mit zwei Holstern, Ringe je Hand, Halskette | 4 | **steht** | `Creature.figure`, Plätze des Blatts an `holds.props.slot`, Reiter „Worn“ mit Figur (Prototyp, D54) |
-| REQ-215 | Tragraster aus Grösse und Statblock: ein Grundquadrat nach Grösse (Tiny 3 … Large 6) und ein Zusatzquadrat in der Grösse des Stärkemodifikators (+1 … +5) aus dem Statblock des Trägers — beim Lesen gerechnet, nie eingetippt | 3 | **steht** | `Statblock.carryExtra` gerechnet, Grundquadrat aus `carrySquares`; `carryGrid` im Modell, Prototyp (D54) |
-| REQ-216 | Behälter in Behältern: jeder Behälter gibt eine Ziehstufe dazu, ausgehend davon, wo er selbst liegt; die Basiszonen kommen aus dem Blatt und sind je Behälter änderbar | 3 | **steht** | Ziehstufe die Kette hinauf (`drawStage`), `slotDraw`, Basiszonen `carryZones` und Vorlagen `container:*` (D54) |
-| REQ-217 | Ziehen am Bogen: unter Aktion, Bonusaktion usw. je ein Eintrag „Ziehen“; ein Klick zeigt, was sich mit dieser Aktion herausnehmen lässt, mit Dauer | 3 | **steht** | Abschnitt „Actions“ am Bogen, je `DrawTime`-Stufe „Draw“ mit Weg (Prototyp, D54) |
-| REQ-225 | Fallenlassen ist eine freie Aktion, Verstauen eine Bonusaktion, egal wohin; der Gurt ist eine freie Aktion | 3 | **steht** | „Drop“/„Stow“ am Bogen in der Zeile ihrer Kosten (Einstellung `handActions`), `tier: ground`, Gurt frei in `slotDraw`; `handActions`/`inHand` im Modell (Prototyp, D58) |
+| REQ-064 | Inventar als Liste | 2 | **steht** | `holds.tier`, `holds.slot` |
+| REQ-065 | Inventar als Raster | 4 | **steht** | Kachelraster, `Item.rows`, `Inventory.grid`/`zones` |
+| REQ-183 | Gruppeninventar | 3 | **steht** | `carries` von `Party` |
+| REQ-214 | Ausrüstungsfigur | 4 | **steht** | `Creature.figure`, Plätze des Blatts an `holds.props.slot`, Reiter „Worn“ mit Figur (Prototyp, D54) |
+| REQ-215 | Tragraster aus Grösse und Stärke | 3 | **steht** | `Statblock.carryExtra` gerechnet, Grundquadrat aus `carrySquares`; `carryGrid` im Modell, Prototyp (D54) |
+| REQ-216 | Behälter in Behältern | 3 | **steht** | Ziehstufe die Kette hinauf (`drawStage`), `slotDraw`, Basiszonen `carryZones` und Vorlagen `container:*` (D54) |
+| REQ-217 | Ziehen am Bogen | 3 | **steht** | Abschnitt „Actions“ am Bogen, je `DrawTime`-Stufe „Draw“ mit Weg (Prototyp, D54) |
+| REQ-225 | Fallenlassen und Verstauen | 3 | **steht** | „Drop“/„Stow“ am Bogen in der Zeile ihrer Kosten (Einstellung `handActions`), `tier: ground`, Gurt frei in `slotDraw`; `handActions`/`inHand` im Modell (Prototyp, D58) |
 | REQ-275 | Erhaltene Gegenstände als Instanz | 2 | **teils** | `instanceOf` am Item vorhanden (T-150 läuft) |
 | REQ-276 | Unverstaute Gegenstände gelten als liegengelassen | 4 | **offen** |  |
 | REQ-277 | Gegenstände mit Form spiegeln | 4 | **offen** |  |
@@ -309,17 +309,17 @@ Was Spielende sehen und tun: Spieleransicht und Telefon, eigene Figur und eigene
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-072 | Player notes as owned documents | 2 | **offen** | `Notes` an Artikeln; kein eigener Notizartikel je Spieler |
-| REQ-083 | Player-created quests and personal goals | 3 | **offen** | Spieler schreiben nur ihre Figur |
-| REQ-109 | Player-authored ContentBlocks with per-view block-type whitelist | 3 | **teils** | Felder da (`Article.poem/song`); Schreibrecht offen (REQ-041) |
+| REQ-072 | Eigene Notizen | 2 | **offen** | `Notes` an Artikeln; kein eigener Notizartikel je Spieler |
+| REQ-083 | Eigene Quests und Ziele | 3 | **offen** | Spieler schreiben nur ihre Figur |
+| REQ-109 | Lore-Texte von Spielenden | 3 | **teils** | Felder da (`Article.poem/song`); Schreibrecht offen (REQ-041) |
 
 ### F-028 Chat
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-200 | Chat: Fäden zwischen SL und einzelnen Spielern und zwischen Spielern untereinander, an der Kampagne und nicht an einer Sitzung | 3 | **offen** |  |
-| REQ-201 | Aus einer Stelle im Chat wird Kampagneninhalt: eine Nachricht (oder ein markierter Abschnitt) wird zur Idee, zum Todo, zum Faden oder zu einem ContentBlock an einem Artikel, mit Rückverweis auf die Stelle | 3 | **offen** |  |
-| REQ-202 | Chats stehen ausserhalb von Abzug, Ausfuhr und Recap: ein Faden zwischen zwei Spielern gehört weder in den Prod-nach-preprod-Abzug noch in eine Kampagnenausfuhr, und die SL liest nicht mit | 2 | **offen** |  |
+| REQ-200 | Chat mit der Leitung und unter Spielenden | 3 | **offen** |  |
+| REQ-201 | Aus dem Chat wird Inhalt | 3 | **offen** |  |
+| REQ-202 | Chats bleiben privat | 2 | **offen** |  |
 
 ## EP-05 Kampagne & Sitzungen
 
@@ -329,9 +329,9 @@ Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitu
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-043 | Campaign configuration store: key-value, each area interprets its keys | 2 | **steht** | Registerteil `settings` |
-| REQ-075 | Campaign as root NarrativeContainer with attached CampaignSettings, WorldDate, KnowledgeState | 1 | **steht** | `Campaign`, `settings`, Zeitleiste |
-| REQ-236 | Kampagne anlegen mit Dialog: Name, aufgeschaltete Ebenen (Liste mit Häkchen und Reihenfolge, vorhandene vorausgewählt), eigene Kampagnenebene, Leitung | 2 | **offen** | Kampagne anlegen ohne Dialog |
+| REQ-043 | Einstellungen der Kampagne | 2 | **steht** | Registerteil `settings` |
+| REQ-075 | Die Kampagne als Wurzel | 1 | **steht** | `Campaign`, `settings`, Zeitleiste |
+| REQ-236 | Kampagne mit Dialog anlegen | 2 | **offen** | Kampagne anlegen ohne Dialog |
 | REQ-278 | Bereiche als eigene Seiten | 1 | **steht** | `area` am Typ |
 | REQ-279 | Kampagnenwerte pflegen und in Texten nutzen | 2 | **teils** | Auflösung steht; Maske fehlt |
 
@@ -339,22 +339,22 @@ Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitu
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-076 | NarrativeContainer hierarchy with DM-definable container types (Arc, Session, Scene, Kapitel…) | 1 | **steht** | `Story` (`kind`: adventure …) · Campaign · Arc · Session · Scene, Hierarchie über `partOf` |
-| REQ-080 | Readaloud blocks unlocking for players after session (time/event-based grant) | 3 | **offen** |  |
-| REQ-082 | Quests with tasks, rewards, restrictions; player-facing quest board with gated GM parts | 3 | **steht** | `Quest.tasks`, `reward`, `restriction`; Auftragsbrett |
-| REQ-180 | Narrative seeds: planted threads with category (Backstory · Geheimnis · Faden · Idee · Versprechen · Konsequenz) and status (offen · gepflanzt · aufgegangen · verworfen), bound to a character and the session planted in | 3 | **offen** | keine Art und kein Feld für gepflanzte Fäden |
+| REQ-076 | Geschichte gliedern | 1 | **steht** | `Story` (`kind`: adventure …) · Campaign · Arc · Session · Scene, Hierarchie über `partOf` |
+| REQ-080 | Vorlesetexte nach der Sitzung freigeben | 3 | **offen** |  |
+| REQ-082 | Quests mit Aufgaben und Lohn | 3 | **steht** | `Quest.tasks`, `reward`, `restriction`; Auftragsbrett |
+| REQ-180 | Gepflanzte Fäden | 3 | **offen** | keine Art und kein Feld für gepflanzte Fäden |
 
 ### F-031 Sitzungen & Vorbereitung
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-077 | Session documents with planned vs occurred encounters and reports | 2 | **steht** | `Session`, `Encounter.phase` |
-| REQ-078 | Session prep cockpit: container view aggregating scenes, quests, storylines, encounters, notes | 2 | **steht** | Element `prep` |
-| REQ-079 | DM session quick actions: grant knowledge, reveal block, mark encounter occurred — one tap | 2 | **teils** | Wissen zuteilen im Seitenpanel; kein Ein-Tipp-Knopf in der Sitzung |
-| REQ-084 | Ideas inbox per campaign/player and clean vs planning view toggle | 3 | **steht** | Unfinished, Todos |
-| REQ-188 | Cross-type "unfinished" overview: everything at status idea/planned across all interfaces, with jump-to and bulk status change | 3 | **steht** | Unfinished |
-| REQ-189 | Aggregated todo list across containers and entities (campaign, arc, session, quest, NPC) | 3 | **steht** | `Todos`, gesammelt |
-| REQ-190 | Quick capture during play: one field that files a seed, todo or idea against the current session without leaving the view | 3 | **steht** | Schnellerfassung an der Sitzung |
+| REQ-077 | Sitzungen mit Geplantem und Geschehenem | 2 | **steht** | `Session`, `Encounter.phase` |
+| REQ-078 | Vorbereitungsseite | 2 | **steht** | Element `prep` |
+| REQ-079 | Schnelle Aktionen in der Sitzung | 2 | **teils** | Wissen zuteilen im Seitenpanel; kein Ein-Tipp-Knopf in der Sitzung |
+| REQ-084 | Ideen und Unfertiges | 3 | **steht** | Unfinished, Todos |
+| REQ-188 | Übersicht über alles Unfertige | 3 | **steht** | Unfinished |
+| REQ-189 | Gesammelte Todos | 3 | **steht** | `Todos`, gesammelt |
+| REQ-190 | Schnellerfassung im Spiel | 3 | **steht** | Schnellerfassung an der Sitzung |
 | REQ-280 | Umschalter Vorbereitung und Spiel | 4 | **offen** | ob nötig, ist offen |
 | REQ-282 | Sitzungsansicht für das Spiel | 2 | **offen** | Vorbereitungsseite steht (REQ-078), Spielansicht nicht |
 
@@ -362,24 +362,24 @@ Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitu
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-085 | Encounter entity: links notes, maps, NPCs, loot tables; attachable to any container level; dice-table semantics | 2 | **steht** | `Encounter`, `participates`, `onMap`, `loot`, `tableFor` |
-| REQ-172 | Weighted encounter tables per region, with per-location type constraints and safety states that restrict the pool | 3 | **steht** | `entry.weight`, `requiresTag`, `tableFor` |
-| REQ-173 | World-state decay between sessions: roll to degrade secured locations, weighted by adjacency to faction territory | 4 | **offen** |  |
-| REQ-221 | Begegnungsbau: Schwierigkeit aus den XP-Schwellen der Gruppe mit Multiplikator nach Anzahl (2014), Kreaturen aus dem Kompendium, dann auf die Karte setzen und Initiative starten | 3 | **offen** |  |
+| REQ-085 | Begegnungen | 2 | **steht** | `Encounter`, `participates`, `onMap`, `loot`, `tableFor` |
+| REQ-172 | Begegnungstabellen je Gebiet | 3 | **steht** | `entry.weight`, `requiresTag`, `tableFor` |
+| REQ-173 | Weltzustand zwischen Sitzungen | 4 | **offen** |  |
+| REQ-221 | Begegnungen bauen | 3 | **offen** |  |
 
 ### F-033 Abenteuer übernehmen
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-240 | Vorgefertigte Abenteuer aus 5e.tools: je Abenteuer eine Ebene mit Kapiteln, Abschnitten, Begegnungen, Karten und NSC als Artikeln; die Leitung übernimmt sie in die eigene Geschichte und passt sie an, ohne das Original zu verlieren | 2 | **steht** | je Abenteuer eine Ebene mit Kapiteln aus Teilen (T-082, T-108, E-018, E-029) |
-| REQ-252 | Abenteuer modular: Kapitel als Arcs, Begegnungen und Karten als eigene Szenen; einzelne Vorlesetexte oder ganze Kapitel in die eigene Kampagne übernehmen | 2 | **steht** | `take` mit allem darunter (E-026) |
+| REQ-240 | Abenteuer als eigene Ebene | 2 | **steht** | je Abenteuer eine Ebene mit Kapiteln aus Teilen (T-082, T-108, E-018, E-029) |
+| REQ-252 | Abenteuer modular übernehmen | 2 | **steht** | `take` mit allem darunter (E-026) |
 
 ### F-034 Party
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-086 | Party view: passive perception, feats, inventory overview | 3 | **teils** | Party-Seite mit Inventar und Werkbank; keine Übersicht der passiven Wahrnehmung |
-| REQ-122 | Widget: party overview | 3 | **steht** | Party-Seite |
+| REQ-086 | Gruppenübersicht | 3 | **teils** | Party-Seite mit Inventar und Werkbank; keine Übersicht der passiven Wahrnehmung |
+| REQ-122 | Gruppe als Widget | 3 | **steht** | Party-Seite |
 | REQ-281 | Eine Party je Kampagne | 1 | **steht** | `Party`, `partyOf`, `memberOfParty` (T-100, E-007) |
 
 ### F-035 Ladebildschirm-Board
@@ -392,9 +392,9 @@ Kampagnenmanager, Bereich Story (Arcs, Quests, Szenen), Sitzungen und Vorbereitu
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-196 | Sitzungsmitschnitt: Audio einer Sitzung aufnehmen oder eine fertige Aufnahme anhängen, als Asset am Sitzungs-Container, mit Startzeit und Kapitelmarken | 4 | **offen** |  |
-| REQ-197 | Transkription und Recap-Entwurf: Mitschnitt transkribieren, am Sitzungsverlauf ausrichten und daraus einen Recap-Entwurf erzeugen, den die SL bearbeitet | 4 | **offen** |  |
-| REQ-198 | Sprecherzuordnung im Transkript: Abschnitte einer Figur oder der SL zuordnen, damit „was hat meine Figur mitbekommen“ beantwortbar wird | 5 | **offen** |  |
+| REQ-196 | Sitzung aufnehmen | 4 | **offen** |  |
+| REQ-197 | Transkript und Recap-Entwurf | 4 | **offen** |  |
+| REQ-198 | Sprecher im Transkript | 5 | **offen** |  |
 
 ## EP-06 Welt & Lore
 
@@ -404,35 +404,35 @@ Bereich World: Orte, Fraktionen, Gottheiten, Lore, Kalender und Zeitleisten, Bez
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-101 | Lore articles: categories, composed of ContentBlocks | 2 | **steht** | `Article` mit poem/song |
-| REQ-103 | Locations: hierarchy via parent, type, biome | 2 | **steht** | `Place.kind`, `environment`, `partOf` |
-| REQ-104 | Factions: type/subtype taxonomy, relations | 2 | **steht** | `Faction.kind`, `controls`, `memberOf` |
-| REQ-107 | Pantheons / deities as article subtype | 4 | **offen** | eine Zeile, wenn gebraucht |
-| REQ-110 | Bibliothek von Tan'Jit: illustrated navigation presentation layer over articles | 5 | **offen** | Aufgabe #59 Portal |
+| REQ-101 | Lore-Artikel | 2 | **steht** | `Article` mit poem/song |
+| REQ-103 | Orte mit Hierarchie | 2 | **steht** | `Place.kind`, `environment`, `partOf` |
+| REQ-104 | Fraktionen | 2 | **steht** | `Faction.kind`, `controls`, `memberOf` |
+| REQ-107 | Gottheiten und Pantheons | 4 | **offen** | eine Zeile, wenn gebraucht |
+| REQ-110 | Illustrierte Bibliothek | 5 | **offen** | Aufgabe #59 Portal |
 
 ### F-038 Kalender & Zeitleisten
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-024 | WorldDate property type: canonical sortable value + display string + CalendarSystem reference | 1 | **steht** | `Time.sort` (sortierbar), `Time.display`, `Time.calendar` |
-| REQ-025 | CalendarSystem definition: months, eras, moons, configurable per world/system | 3 | **offen** | nur die Einstellung `calendar`; keine Kalenderzeile |
-| REQ-087 | Calendar module: months, moons, holidays, time-of-day widget with triggers, lore coupling | 5 | **offen** |  |
-| REQ-106 | Events & timelines sorted by WorldDate | 3 | **steht** | `Event`, `Time`, Element `timeline` |
-| REQ-220 | Zeitleisten der Weltgeschichte: mehrere Spuren (ein Krieg, eine Dynastie, Zeitalter) neben der Kampagnenzeitleiste; ein Ereignis mit Spanne enthält seine Ereignisse, und die Kampagne ist eine Spur unter ihnen | 3 | **steht** | Spuren = `Event` mit Spanne, Inhalt über `partOf` (D57), Kampagne als Spur; `worldHistory` im Modell, Reiter im Element `timeline` (Prototyp) |
+| REQ-024 | Weltdatum | 1 | **steht** | `Time.sort` (sortierbar), `Time.display`, `Time.calendar` |
+| REQ-025 | Kalender der Welt | 3 | **offen** | nur die Einstellung `calendar`; keine Kalenderzeile |
+| REQ-087 | Kalendermodul | 5 | **offen** |  |
+| REQ-106 | Ereignisse und Zeitleisten | 3 | **steht** | `Event`, `Time`, Element `timeline` |
+| REQ-220 | Zeitleisten der Weltgeschichte | 3 | **steht** | Spuren = `Event` mit Spanne, Inhalt über `partOf` (D57), Kampagne als Spur; `worldHistory` im Modell, Reiter im Element `timeline` (Prototyp) |
 
 ### F-039 Beziehungen & Ruf
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-030 | Reputation hooks: weighted tags on relations, propagation rule slot reserved | 2 | **ersetzt** | Kante `regards` mit Marken (Beziehungen.md) |
-| REQ-061 | Creature relations (creature ↔ creature / faction) with relation type | 2 | **steht** | `owes`, `memberOf`, `livesIn`, `regards` |
-| REQ-081 | Reputation & relationship system: interaction tags propagate NPC → faction → city with renown thresholds and status | 4 | **ersetzt** | siehe REQ-030 |
+| REQ-030 | Ruf als gewichtete Marken | 2 | **ersetzt** | Kante `regards` mit Marken (Beziehungen.md) |
+| REQ-061 | Beziehungen zwischen Figuren | 2 | **steht** | `owes`, `memberOf`, `livesIn`, `regards` |
+| REQ-081 | Ruf, der sich ausbreitet | 4 | **ersetzt** | siehe REQ-030 |
 
 ### F-040 Läden & Wirtschaft
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-185 | Non-coin economies: barter and alternative currency ladders per region | 5 | **offen** |  |
+| REQ-185 | Andere Währungen und Tausch | 5 | **offen** |  |
 | REQ-284 | Läden mit Waren und Preisen | 2 | **steht** | T-129, T-133 |
 | REQ-285 | Fraktionspreise | 3 | **teils** | `discount` nach Rang, `controls` |
 
@@ -440,7 +440,7 @@ Bereich World: Orte, Fraktionen, Gottheiten, Lore, Kalender und Zeitleisten, Bez
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-254 | Namensgenerator: Namen für NSC, Orte usw. erzeugen (z. B. aus den Namenstabellen der Abstammungen/Kulturen), übernehmbar beim Anlegen | 4 | **offen** | später |
+| REQ-254 | Namensgenerator | 4 | **offen** | später |
 
 ## EP-07 Regeln & Nachschlagen
 
@@ -450,56 +450,56 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-089 | RuleElement reference objects: structured text, tags, optional effects/constraints, rawContent | 1 | **steht** | `Rule`, `Feat`, `Skill` |
-| REQ-091 | Rules browser: filtered, grouped, searchable, with layer origin in scope sidebar | 2 | **steht** | Bereich Rules mit Filter |
-| REQ-094 | Entity ↔ rule attachment as layer-scoped relation | 2 | **steht** | `hasProperty`, `composedOf`; die Ebene über `inLayer` |
-| REQ-098 | Sub-5-second rule lookup during play | 2 | **steht** | Verweise im Text, Merkzettel |
-| REQ-099 | Pinnable rules: bookmark object (user + context + rule) | 3 | **steht** | Merkzettel (pinned) |
+| REQ-089 | Regeln als Artikel | 1 | **steht** | `Rule`, `Feat`, `Skill` |
+| REQ-091 | Regeln durchsuchen | 2 | **steht** | Bereich Rules mit Filter |
+| REQ-094 | Regeln an Artikel hängen | 2 | **steht** | `hasProperty`, `composedOf`; die Ebene über `inLayer` |
+| REQ-098 | Regel in Sekunden | 2 | **steht** | Verweise im Text, Merkzettel |
+| REQ-099 | Regeln anheften | 3 | **steht** | Merkzettel (pinned) |
 | REQ-313 | Zustände als Artikel | 2 | **teils** | Wirkung `affects` gespeichert, nicht ausgewertet |
 
 ### F-043 Bücher & Leseansicht
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-247 | Leseansicht für Bücher und Abenteuer: eine Ebene als Buch lesen — Inhaltsverzeichnis, Kapitel in Reihenfolge, eingebettete Artikel (Zauber, Monster, Tabellen) als Verweise bzw. Karten, Lesestand gemerkt | 2 | **steht** | `/read/:layer` mit Inhaltsverzeichnis, Suche, Lesestand (T-091, T-108) |
+| REQ-247 | Bücher lesen | 2 | **steht** | `/read/:layer` mit Inhaltsverzeichnis, Suche, Lesestand (T-091, T-108) |
 
 ### F-044 Klassen
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-231 | Klassenansicht wie 5e.tools: Stufentabelle (Übungsbonus, Merkmale, Spalten der Klasse und gewählter Unterklassen), Merkmale je Stufe ausgeschrieben, optionale Merkmale und Varianten zuschaltbar, Unterklassen nach Name und Quelle filtern und mehrere nebeneinander vergleichen (am Telefon untereinander) | 3 | **steht** | `/classes`: Stufentabelle, Merkmale je Stufe, optionale zuschaltbar, Unterklassen filtern und vergleichen (`classes.ts`, W6, D65) |
+| REQ-231 | Klassen wie im Buch | 3 | **steht** | `/classes`: Stufentabelle, Merkmale je Stufe, optionale zuschaltbar, Unterklassen filtern und vergleichen (`classes.ts`, W6, D65) |
 
 ### F-045 Zauber
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-092 | Spell entities with layer-scoped attached rule sets (5e 2014 / 2024 / homebrew) | 2 | **offen** | keine Art für Zauber — Abgleich A9 |
-| REQ-097 | Spell lists as relations (class ↔ spell) | 3 | **offen** | braucht REQ-092 |
+| REQ-092 | Zauber als Artikel | 2 | **offen** | keine Art für Zauber — Abgleich A9 |
+| REQ-097 | Zauberlisten | 3 | **offen** | braucht REQ-092 |
 
 ### F-046 Regelauswertung
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-017 | Term engine bindings: system-specific semantic evaluation of rule terms | 4 | **offen** |  |
-| REQ-018 | Rule effects format: effects[] with grants/constraints, open type list, consumers ignore unknown types | 1 | **offen** | keine `effects[]`; Regeln sind Text mit `{VAR}` |
-| REQ-093 | Rule engine per system evaluating rules against entity data (constraints, terms) | 5 | **offen** |  |
-| REQ-095 | Effects interpreter for grants (first consumer: creature builder) | 4 | **offen** |  |
-| REQ-096 | Constraint interpreter (first consumer: settlement / building validation) | 5 | **offen** |  |
+| REQ-017 | Begriffe je Regelsystem auswerten | 4 | **offen** |  |
+| REQ-018 | Wirkungen von Regeln beschreiben | 1 | **offen** | keine `effects[]`; Regeln sind Text mit `{VAR}` |
+| REQ-093 | Regeln auswerten | 5 | **offen** |  |
+| REQ-095 | Gewährtes anwenden | 4 | **offen** |  |
+| REQ-096 | Einschränkungen prüfen | 5 | **offen** |  |
 | REQ-290 | Wechselwirkungen von Regeln auswerten | 4 | **offen** | für später |
 
 ### F-047 Handwerk
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-184 | Crafting: recipes with material inputs, skill checks and DC, time, and output; consumption on completion | 4 | **steht** | `Recipe`, `needs`, `yields`, `crafting` |
-| REQ-218 | Blaupausen werden gelernt: alle Rezepte sind sichtbar, ungelernte mit „muss noch gelernt werden“ (ohne festen Fundort); Filter „kann der Charakter“ und „alle“, „machbar“ und „fast“, nach Material und nach Beruf | 3 | **steht** | gelernt über `knownBy`, Werkbank mit Filtern (Prototyp, D55) |
-| REQ-219 | Material wird beim Start an den Vorgang gebunden: es verlässt den Vorrat und kann nicht doppelt oder anderweitig gebraucht werden; was beim Misslingen zurückkommt, sagt `Recipe.onFailure` | 3 | **steht** | beim Start gebunden in `crafting.props.put`, `onFailure` (D55) |
+| REQ-184 | Handwerk mit Rezepten | 4 | **steht** | `Recipe`, `needs`, `yields`, `crafting` |
+| REQ-218 | Blaupausen lernen | 3 | **steht** | gelernt über `knownBy`, Werkbank mit Filtern (Prototyp, D55) |
+| REQ-219 | Material beim Start binden | 3 | **steht** | beim Start gebunden in `crafting.props.put`, `onFailure` (D55) |
 
 ### F-048 Regelsysteme & Module
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-223 | Regelsysteme als Rahmen (Taverne, Alley, Kanalisation): ein Ort, seine Kennzahlen, ein Wochenwurf und ein Protokoll | 4 | **offen** |  |
+| REQ-223 | Rahmen für Regelsysteme wie Taverne | 4 | **offen** |  |
 | REQ-287 | Regelsysteme als Behälter mit Optionen | 2 | **offen** | E-044, T-132 |
 | REQ-289 | Homebrew-Regeln erfassen | 3 | **offen** | wenn das Gerüst steht |
 
@@ -507,7 +507,7 @@ Bereich Rules und Kompendium, Bücher und Leseansicht, Klassen, Zauber, Zuständ
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-227 | Masse im Fliesstext umrechnen: Fuss und Meilen in Regeltexten („within 120 feet“) nach der Einstellung `units` zeigen, beim Lesen gerechnet, gespeichert bleibt der Wortlaut | 3 | **offen** | umgerechnet werden nur Felder mit `unit` und Angriffszeilen (`convertText`, W2) |
+| REQ-227 | Masse im Fliesstext umrechnen | 3 | **offen** | umgerechnet werden nur Felder mit `unit` und Angriffszeilen (`convertText`, W2) |
 
 ## EP-08 Live-Spiel
 
@@ -517,53 +517,53 @@ Bereich Play: Spielleiter-Schirm, Initiative, Sitzungszustand und Live-Kanal, W�
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-187 | Table display mode: a shared read-only presentation view for a screen at the table, distinct from per-player accounts | 3 | **offen** |  |
-| REQ-204 | Spielleiter-Schirm je Kampagne: Fenster (mehrere Bildschirme als Browser-Reiter), darin Plätze, die ein Board oder ein Werkzeug zeigen; zuklappbar, umstellbar, zwischen Fenstern verschiebbar | 3 | **offen** |  |
-| REQ-205 | Ein Board je Geschichtsartikel (Kampagne, Kapitel, Sitzung, nicht Szene) und Regel-Boards; der Schirm schaltet zwischen ihnen, die Artikelansicht filtert nach Artikeln aus den offenen Boards | 3 | **teils** | ein Board je Geschichtsartikel über `partOf`, Liste und Anlegen in der Seite (W4, D63); offen: Umschalten auf dem Schirm, Filter nach Artikeln aus offenen Boards |
+| REQ-187 | Tischanzeige | 3 | **offen** |  |
+| REQ-204 | Spielleiter-Schirm | 3 | **offen** |  |
+| REQ-205 | Ein Board je Geschichtsartikel | 3 | **teils** | ein Board je Geschichtsartikel über `partOf`, Liste und Anlegen in der Seite (W4, D63); offen: Umschalten auf dem Schirm, Filter nach Artikeln aus offenen Boards |
 
 ### F-051 Initiative
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-115 | Widget: initiative tracker — session-aware, conditions with durations, damage attributed to current actor by default | 2 | **steht** | `participates` mit init, hp, conditions (je Eintrag ein Artikel der Art `Condition`, Runden, Quelle) |
-| REQ-128 | Combat player view: own initiative, conditions, health comments | 3 | **teils** | dieselbe Ansicht, gesiebt |
-| REQ-144 | Initiative indicator on battlemap (current / next) | 4 | **steht** |  |
-| REQ-211 | Initiative wie Improved Initiative: je Zeile Initiative, RK, TP und Zustände, aus der Zeile der Statblock | 2 | **steht** | Prototyp: RK und TP-Maximum vom Statblock der Instanz (`participantStats`), Statblock in `quick` neben der Reihe (D53) |
-| REQ-212 | Zustände und Notizen mit Dauer: Anzahl Runden, Anker (wessen Zug) und Zeitpunkt (Anfang oder Ende dieses Zuges); eine Notiz ist ein freier Text mit derselben Dauer | 2 | **steht** | `anchor`/`at` an `participates.props.conditions`, Notiz mit `text`; `tickEntries`, `expiresAt` (D53) |
-| REQ-213 | Initiative der Spielenden: die eigene Reihenfolge und jede Kreatur, die aufgedeckt oder schon beteiligt ist; nicht erkannte Kreaturen mit Decknamen, TP von Gegnern als Wort | 3 | **steht** | `redactParticipants` in `redactEntity` und im Prototyp; `turn` geht nicht an Spielende, `props.current` statt dessen (D53, D58) |
-| REQ-226 | In der ersten Runde erscheinen Gegner in der Initiative der Spielenden erst, wenn sie an der Reihe sind; ab der zweiten Runde stehen die bereits gezeigten fest | 3 | **steht** | Runde 1: Gegner erst in ihrem Zug (`turnHasCome`, `initiativeOrder`), in `redactParticipants`/`redactEntity` und im Prototyp (D58) |
+| REQ-115 | Initiative | 2 | **steht** | `participates` mit init, hp, conditions (je Eintrag ein Artikel der Art `Condition`, Runden, Quelle) |
+| REQ-128 | Kampf aus Sicht der Spielenden | 3 | **teils** | dieselbe Ansicht, gesiebt |
+| REQ-144 | Initiative auf der Karte | 4 | **steht** |  |
+| REQ-211 | Initiative wie Improved Initiative | 2 | **steht** | Prototyp: RK und TP-Maximum vom Statblock der Instanz (`participantStats`), Statblock in `quick` neben der Reihe (D53) |
+| REQ-212 | Zustände und Notizen mit Dauer | 2 | **steht** | `anchor`/`at` an `participates.props.conditions`, Notiz mit `text`; `tickEntries`, `expiresAt` (D53) |
+| REQ-213 | Initiative der Spielenden | 3 | **steht** | `redactParticipants` in `redactEntity` und im Prototyp; `turn` geht nicht an Spielende, `props.current` statt dessen (D53, D58) |
+| REQ-226 | Gegner erscheinen in Runde 1 erst in ihrem Zug | 3 | **steht** | Runde 1: Gegner erst in ihrem Zug (`turnHasCome`, `initiativeOrder`), in `redactParticipants`/`redactEntity` und im Prototyp (D58) |
 
 ### F-052 Sitzungszustand & Live-Kanal
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-116 | Session state objects (initiative, now-playing, active scene, party note) + realtime channel per session | 2 | **steht** | `Session.activeMap/activeEncounter/activeScene`; Raum-Kanal für Augenblicke |
-| REQ-117 | Stewardship: write permission on a state object per user, GM override configurable | 3 | **steht** | `Session.stewardship` gm/table |
-| REQ-120 | Play log: persist state events (actor, target, delta) | 3 | **teils** | Würfe im Protokoll; Zustandsereignisse nicht gespeichert |
-| REQ-121 | Statistics widget: kills, damage per character, monsters faced, records | 4 | **offen** |  |
+| REQ-116 | Was gerade läuft, steht an der Sitzung | 2 | **steht** | `Session.activeMap/activeEncounter/activeScene`; Raum-Kanal für Augenblicke |
+| REQ-117 | Wer am Sitzungszustand schreibt | 3 | **steht** | `Session.stewardship` gm/table |
+| REQ-120 | Spielprotokoll | 3 | **teils** | Würfe im Protokoll; Zustandsereignisse nicht gespeichert |
+| REQ-121 | Statistik | 4 | **offen** |  |
 
 ### F-053 Würfel
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-070 | Local dice roller (selector, modifiers, results) | 2 | **steht** |  |
-| REQ-071 | Shared rolls & roll log per session | 4 | **steht** | Würfe über den Raum-Kanal, Protokoll |
+| REQ-070 | Würfeln | 2 | **steht** |  |
+| REQ-071 | Würfe für alle | 4 | **steht** | Würfe über den Raum-Kanal, Protokoll |
 
 ### F-054 Werkzeuge am Tisch
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| REQ-112 | Widget: reference box holding multiple open articles with inner tabs | 2 | **ersetzt** | Platzierungen auf dem Board |
-| REQ-113 | Widget: notes | 2 | **offen** | Aufgabe #58 |
-| REQ-114 | Widget: quick-create (creates entries in the campaign layer inline) | 2 | **teils** | Anlegen aus dem Board |
-| REQ-118 | Widget: encounter runner — instantiate participants, roll random entries, raw statblocks trackable | 3 | **steht** | Begegnung mit Teilnehmern und Tabellen |
-| REQ-123 | Widget: timers | 3 | **offen** |  |
-| REQ-124 | Widget: quest board | 3 | **steht** | Element `quests` |
-| REQ-125 | Widget: random tables & generators (names, shops, loot, cities) | 3 | **steht** | `Table.kind` loot · encounter · name · shop · event · generic |
-| REQ-126 | Widget: sound — embed/link external tool, native now-playing state only | 4 | **teils** | `Session.nowPlaying` als Feld; kein Einbetten |
-| REQ-127 | Native soundboard / music engine | 5 | **offen** |  |
-| REQ-129 | Chatbot: rules Q&A, facts, quick edit | 5 | **offen** |  |
-| REQ-186 | Nested loot tables: a table entry may reference another table, with cycle protection | 3 | **steht** | `entry` auf eine Tabelle |
+| REQ-112 | Widget mit mehreren offenen Artikeln | 2 | **ersetzt** | Platzierungen auf dem Board |
+| REQ-113 | Notiz-Widget | 2 | **offen** | Aufgabe #58 |
+| REQ-114 | Schnellanlage auf dem Schirm | 2 | **teils** | Anlegen aus dem Board |
+| REQ-118 | Begegnung starten | 3 | **steht** | Begegnung mit Teilnehmern und Tabellen |
+| REQ-123 | Timer | 3 | **offen** |  |
+| REQ-124 | Auftragsbrett als Widget | 3 | **steht** | Element `quests` |
+| REQ-125 | Zufallstabellen | 3 | **steht** | `Table.kind` loot · encounter · name · shop · event · generic |
+| REQ-126 | Musik einbinden | 4 | **teils** | `Session.nowPlaying` als Feld; kein Einbetten |
+| REQ-127 | Eigene Klangtafel | 5 | **offen** |  |
+| REQ-129 | Fragen an einen Assistenten | 5 | **offen** |  |
+| REQ-186 | Verschachtelte Tabellen | 3 | **steht** | `entry` auf eine Tabelle |
 | REQ-292 | Neuen Artikel aus einer Auswahl anlegen | 2 | **teils** |  |
 
 ## EP-09 Karten
@@ -785,22 +785,22 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-006** (1, teils, Inhaltsgerüst) — Stapel: was in der Kampagne gilt — *Prototyp: `inStack`/`resolveArticle`; Server kennt nur die Zugehörigkeit (`campaignsOf`) — Abgleich A2*
 - **REQ-008** (1, teils, Inhaltsgerüst) — Varianten einer Sache — *Kante `variantOf` da; kein Kopierknopf*
 - **REQ-013** (1, teils, Inhaltsgerüst) — Verweise nach Nummer, getippt nach Name — *`[[Verweise]]` nach Name und Alias, Vorschläge beim Tippen, `Rule.autolink`; kein Auto-Link beim Schreiben*
-- **REQ-018** (1, offen, Regeln & Nachschlagen) — Rule effects format: effects[] with grants/constraints, open type list, consumers ignore unknown types — *keine `effects[]`; Regeln sind Text mit `{VAR}`*
-- **REQ-069** (1, teils, Spielererlebnis) — Phone-first responsive layout for all player-facing views — *Prototyp passt sich an; `apps/web` ist noch klein*
+- **REQ-018** (1, offen, Regeln & Nachschlagen) — Wirkungen von Regeln beschreiben — *keine `effects[]`; Regeln sind Text mit `{VAR}`*
+- **REQ-069** (1, teils, Spielererlebnis) — Am Telefon spielen — *Prototyp passt sich an; `apps/web` ist noch klein*
 - **REQ-100** (1, teils, Inhaltsgerüst) — Welt als Ebene — *`Layer.kind: world`; keine Mitglieder je Welt*
 - **REQ-145** (1, teils, Medien & Assets) — Asset service implementation: app-managed storage (icons, portraits, thumbnails) — *Assets als Artikel; Ablage im Artefakt*
 - **REQ-041** (2, teils, Zugang & Betrieb) — Wer was schreiben darf — *Verwaltung oder eigene Figur (+ carries/holds/crafting); die Leitung fehlt in `mayWrite`*
-- **REQ-072** (2, offen, Spielererlebnis) — Player notes as owned documents — *`Notes` an Artikeln; kein eigener Notizartikel je Spieler*
-- **REQ-079** (2, teils, Kampagne & Sitzungen) — DM session quick actions: grant knowledge, reveal block, mark encounter occurred — one tap — *Wissen zuteilen im Seitenpanel; kein Ein-Tipp-Knopf in der Sitzung*
-- **REQ-092** (2, offen, Regeln & Nachschlagen) — Spell entities with layer-scoped attached rule sets (5e 2014 / 2024 / homebrew) — *keine Art für Zauber — Abgleich A9*
+- **REQ-072** (2, offen, Spielererlebnis) — Eigene Notizen — *`Notes` an Artikeln; kein eigener Notizartikel je Spieler*
+- **REQ-079** (2, teils, Kampagne & Sitzungen) — Schnelle Aktionen in der Sitzung — *Wissen zuteilen im Seitenpanel; kein Ein-Tipp-Knopf in der Sitzung*
+- **REQ-092** (2, offen, Regeln & Nachschlagen) — Zauber als Artikel — *keine Art für Zauber — Abgleich A9*
 - **REQ-102** (2, teils, Inhaltsgerüst) — Artikel je Stapel und Wissen zeichnen — *Prototyp ja; Server ohne Stapel — Abgleich A2*
-- **REQ-113** (2, offen, Live-Spiel) — Widget: notes — *Aufgabe #58*
-- **REQ-114** (2, teils, Live-Spiel) — Widget: quick-create (creates entries in the campaign layer inline) — *Anlegen aus dem Board*
+- **REQ-113** (2, offen, Live-Spiel) — Notiz-Widget — *Aufgabe #58*
+- **REQ-114** (2, teils, Live-Spiel) — Schnellanlage auf dem Schirm — *Anlegen aus dem Board*
 - **REQ-146** (2, offen, Medien & Assets) — NAS / Nextcloud backend for large assets (mount vs WebDAV → AD-15)
 - **REQ-147** (2, teils, Medien & Assets) — Image upload, portraits, icons — *Prototyp ja; Server noch nicht*
 - **REQ-166** (2, teils, Oberfläche & Navigation) — Board-first authoring: create entities directly on the canvas (into the campaign layer), choose their facet and place them in one flow — *Anlegen auf dem Board*
-- **REQ-202** (2, offen, Spielererlebnis) — Chats stehen ausserhalb von Abzug, Ausfuhr und Recap: ein Faden zwischen zwei Spielern gehört weder in den Prod-nach-preprod-Abzug noch in eine Kampagnenausfuhr, und die SL liest nicht mit
-- **REQ-236** (2, offen, Kampagne & Sitzungen) — Kampagne anlegen mit Dialog: Name, aufgeschaltete Ebenen (Liste mit Häkchen und Reihenfolge, vorhandene vorausgewählt), eigene Kampagnenebene, Leitung — *Kampagne anlegen ohne Dialog*
+- **REQ-202** (2, offen, Spielererlebnis) — Chats bleiben privat
+- **REQ-236** (2, offen, Kampagne & Sitzungen) — Kampagne mit Dialog anlegen — *Kampagne anlegen ohne Dialog*
 - **REQ-249** (2, teils, Inhaltsgerüst) — Ebenen nach Herausgeber — *`publisherOf` und Herausgeber-Gruppen (T-094, T-109); Kategorien wie die Blocklist von 5e.tools offen*
 - **REQ-258** (2, teils, Inhaltsgerüst) — Verweisfeld nennt, welche Artikel es annimmt — *`PropertySchema.target`, `link_wrong_type`; Vorschläge in den Sichtbarkeitsfeldern für jede Art noch nicht überall*
 - **REQ-264** (2, teils, Inhaltsgerüst) — Vergleichsebenen der Kampagne — *Vergleichsebenen an der Kampagne; Wahl im Kampagnen-Popup und gruppenweise offen*
@@ -817,38 +817,38 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **REQ-313** (2, teils, Regeln & Nachschlagen) — Zustände als Artikel — *Wirkung `affects` gespeichert, nicht ausgewertet*
 - **REQ-007** (3, offen, Inhaltsgerüst) — Stapel für Fortgeschrittene
 - **REQ-022** (3, offen, Medien & Assets) — Derived asset variants: thumbnails, map tiles, PDF page renders, stored app-side
-- **REQ-025** (3, offen, Welt & Lore) — CalendarSystem definition: months, eras, moons, configurable per world/system — *nur die Einstellung `calendar`; keine Kalenderzeile*
+- **REQ-025** (3, offen, Welt & Lore) — Kalender der Welt — *nur die Einstellung `calendar`; keine Kalenderzeile*
 - **REQ-028** (3, teils, Oberfläche & Navigation) — Full-text search across content — *Suche am Server über Name, Alias, Deckname und Nummer, Feldfilter als Facetten (`GET /api/list`, W7); keine Volltextsuche*
 - **REQ-045** (3, offen, Inhaltsgerüst) — Ebenen-Aktionen am Artikel
-- **REQ-055** (3, offen, Kreaturen & Figuren) — Inline trait reuse & variant creation while typing — *Pool steht; Variante beim Tippen nicht*
-- **REQ-060** (3, teils, Kreaturen & Figuren) — Companions / summons as regular creatures via companionOf + overrides — *`Creature.kind` companion/summon; keine `companionOf`-Kante*
-- **REQ-067** (3, offen, Kreaturen & Figuren) — Character sheet: Spellcasting tab (slots/points, concentration, active spells, list) — *es gibt keine Art für Zauber — Abgleich A9*
-- **REQ-074** (3, teils, Spielererlebnis) — Quicklinks: campaign, quests, party, session — *Bereich Play und die Leiste*
-- **REQ-080** (3, offen, Kampagne & Sitzungen) — Readaloud blocks unlocking for players after session (time/event-based grant)
-- **REQ-083** (3, offen, Spielererlebnis) — Player-created quests and personal goals — *Spieler schreiben nur ihre Figur*
-- **REQ-086** (3, teils, Kampagne & Sitzungen) — Party view: passive perception, feats, inventory overview — *Party-Seite mit Inventar und Werkbank; keine Übersicht der passiven Wahrnehmung*
+- **REQ-055** (3, offen, Kreaturen & Figuren) — Merkmale beim Tippen wiederverwenden — *Pool steht; Variante beim Tippen nicht*
+- **REQ-060** (3, teils, Kreaturen & Figuren) — Begleiter und Beschwörungen — *`Creature.kind` companion/summon; keine `companionOf`-Kante*
+- **REQ-067** (3, offen, Kreaturen & Figuren) — Charakterbogen: Zauber — *es gibt keine Art für Zauber — Abgleich A9*
+- **REQ-074** (3, teils, Spielererlebnis) — Schnellzugriffe — *Bereich Play und die Leiste*
+- **REQ-080** (3, offen, Kampagne & Sitzungen) — Vorlesetexte nach der Sitzung freigeben
+- **REQ-083** (3, offen, Spielererlebnis) — Eigene Quests und Ziele — *Spieler schreiben nur ihre Figur*
+- **REQ-086** (3, teils, Kampagne & Sitzungen) — Gruppenübersicht — *Party-Seite mit Inventar und Werkbank; keine Übersicht der passiven Wahrnehmung*
 - **REQ-088** (3, teils, Zugang & Betrieb) — Massenänderungen an Wissen und Rechten — *Massenbearbeitung ohne Wissen*
-- **REQ-097** (3, offen, Regeln & Nachschlagen) — Spell lists as relations (class ↔ spell) — *braucht REQ-092*
-- **REQ-109** (3, teils, Spielererlebnis) — Player-authored ContentBlocks with per-view block-type whitelist — *Felder da (`Article.poem/song`); Schreibrecht offen (REQ-041)*
+- **REQ-097** (3, offen, Regeln & Nachschlagen) — Zauberlisten — *braucht REQ-092*
+- **REQ-109** (3, teils, Spielererlebnis) — Lore-Texte von Spielenden — *Felder da (`Article.poem/song`); Schreibrecht offen (REQ-041)*
 - **REQ-119** (3, offen, Oberfläche & Navigation) — Player boards
-- **REQ-120** (3, teils, Live-Spiel) — Play log: persist state events (actor, target, delta) — *Würfe im Protokoll; Zustandsereignisse nicht gespeichert*
-- **REQ-123** (3, offen, Live-Spiel) — Widget: timers
-- **REQ-128** (3, teils, Live-Spiel) — Combat player view: own initiative, conditions, health comments — *dieselbe Ansicht, gesiebt*
+- **REQ-120** (3, teils, Live-Spiel) — Spielprotokoll — *Würfe im Protokoll; Zustandsereignisse nicht gespeichert*
+- **REQ-123** (3, offen, Live-Spiel) — Timer
+- **REQ-128** (3, teils, Live-Spiel) — Kampf aus Sicht der Spielenden — *dieselbe Ansicht, gesiebt*
 - **REQ-132** (3, offen, Karten) — Level lock: pin current map level while zooming
 - **REQ-135** (3, teils, Karten) — Play tokens: session- or campaign-scoped state objects (combat positions, temporary changes) — *Tokens als Kanten; keine getrennte Lebensdauer je Sitzung*
 - **REQ-160** (3, teils, Oberfläche & Navigation) — Anchor quick navigation: jump between anchors (list, hotkeys) — session notes → map → house rules without leaving the board
 - **REQ-167** (3, offen, Medien & Assets) — Print & export outputs: item cards, creature cards, character sheets (PDF), maps (image/print) rendered from facets — the facet defines *what* appears, the medium (screen/print/pdf/image) *how*; card-sheet assembly (n cards per page) as export config
 - **REQ-176** (3, teils, Inhaltsgerüst) — Ähnliches vor dem Anlegen vorschlagen — *Vorschläge nach Name und Alias; keine Ähnlichkeit*
-- **REQ-180** (3, offen, Kampagne & Sitzungen) — Narrative seeds: planted threads with category (Backstory · Geheimnis · Faden · Idee · Versprechen · Konsequenz) and status (offen · gepflanzt · aufgegangen · verworfen), bound to a character and the session planted in — *keine Art und kein Feld für gepflanzte Fäden*
-- **REQ-187** (3, offen, Live-Spiel) — Table display mode: a shared read-only presentation view for a screen at the table, distinct from per-player accounts
-- **REQ-200** (3, offen, Spielererlebnis) — Chat: Fäden zwischen SL und einzelnen Spielern und zwischen Spielern untereinander, an der Kampagne und nicht an einer Sitzung
-- **REQ-201** (3, offen, Spielererlebnis) — Aus einer Stelle im Chat wird Kampagneninhalt: eine Nachricht (oder ein markierter Abschnitt) wird zur Idee, zum Todo, zum Faden oder zu einem ContentBlock an einem Artikel, mit Rückverweis auf die Stelle
-- **REQ-204** (3, offen, Live-Spiel) — Spielleiter-Schirm je Kampagne: Fenster (mehrere Bildschirme als Browser-Reiter), darin Plätze, die ein Board oder ein Werkzeug zeigen; zuklappbar, umstellbar, zwischen Fenstern verschiebbar
-- **REQ-205** (3, teils, Live-Spiel) — Ein Board je Geschichtsartikel (Kampagne, Kapitel, Sitzung, nicht Szene) und Regel-Boards; der Schirm schaltet zwischen ihnen, die Artikelansicht filtert nach Artikeln aus den offenen Boards — *ein Board je Geschichtsartikel über `partOf`, Liste und Anlegen in der Seite (W4, D63); offen: Umschalten auf dem Schirm, Filter nach Artikeln aus offenen Boards*
+- **REQ-180** (3, offen, Kampagne & Sitzungen) — Gepflanzte Fäden — *keine Art und kein Feld für gepflanzte Fäden*
+- **REQ-187** (3, offen, Live-Spiel) — Tischanzeige
+- **REQ-200** (3, offen, Spielererlebnis) — Chat mit der Leitung und unter Spielenden
+- **REQ-201** (3, offen, Spielererlebnis) — Aus dem Chat wird Inhalt
+- **REQ-204** (3, offen, Live-Spiel) — Spielleiter-Schirm
+- **REQ-205** (3, teils, Live-Spiel) — Ein Board je Geschichtsartikel — *ein Board je Geschichtsartikel über `partOf`, Liste und Anlegen in der Seite (W4, D63); offen: Umschalten auf dem Schirm, Filter nach Artikeln aus offenen Boards*
 - **REQ-208** (3, teils, Karten) — Zonen mit eigenen Regeln: eine Zonenart ist ein Regelartikel; Bewegungskosten, Licht, Sicht und „versteckt bis passive Wahrnehmung n“ rechnet die Karte, Schaden, Rettungswurf, Zustand und freie Regeln zeigt sie und schreibt sie beim Betreten ins Protokoll — *`ZoneKind` (Regelartikel) + Kante `zone`: Kosten, Licht und Verdeckung in Weg und Sicht, versteckt bis PP n; Schaden/Rettungswurf/Zustand gezeigt und beim Betreten in `Session.log`. Offen: Auslöser zu Zugbeginn/-ende, Zonenlicht in der Dunkelheitsmaske (D56)*
 - **REQ-210** (3, teils, Karten) — Karte und Initiative je als Vollbild, je mit SL- und Spieleransicht; Spielende bewegen ihre eigenen Tokens und prüfen die Reichweite selbst — *Prototyp: Vollbild für Karte und Initiative, SL-/Spieleransicht der Karte, Spielende bewegen eigene Tokens; offen: `redactEntity` hält versteckte Marker am Server nicht zurück (D56)*
-- **REQ-221** (3, offen, Kampagne & Sitzungen) — Begegnungsbau: Schwierigkeit aus den XP-Schwellen der Gruppe mit Multiplikator nach Anzahl (2014), Kreaturen aus dem Kompendium, dann auf die Karte setzen und Initiative starten
-- **REQ-227** (3, offen, Regeln & Nachschlagen) — Masse im Fliesstext umrechnen: Fuss und Meilen in Regeltexten („within 120 feet“) nach der Einstellung `units` zeigen, beim Lesen gerechnet, gespeichert bleibt der Wortlaut — *umgerechnet werden nur Felder mit `unit` und Angriffszeilen (`convertText`, W2)*
+- **REQ-221** (3, offen, Kampagne & Sitzungen) — Begegnungen bauen
+- **REQ-227** (3, offen, Regeln & Nachschlagen) — Masse im Fliesstext umrechnen — *umgerechnet werden nur Felder mit `unit` und Angriffszeilen (`convertText`, W2)*
 - **REQ-229** (3, offen, Zugang & Betrieb) — Konten in der Seite verwalten — *nur über `user` auf dem Server; die Kontoliste der Verwaltung steht in der Seite (W3)*
 - **REQ-242** (3, offen, Zugang & Betrieb) — Felder der eigenen Figur sperren — *die eigene Figur verwaltet der Spieler ganz (E-014 d)*
 - **REQ-253** (3, offen, Inhaltsgerüst) — Ebenen und Artikel kopieren — *später; Kopie ohne `overrides`*

@@ -19,7 +19,7 @@ Epic: [[EP-08 Live-Spiel]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-187]] Table display mode: a shared read-only presentation view for a screen at the table, distinct from per-player accounts | – | 3 | offen |
-| [[REQ-204]] Spielleiter-Schirm je Kampagne: Fenster (mehrere Bildschirme als Browser-Reiter), darin Plätze, die ein Board oder ein Werkzeug zeigen; zuklappbar, umstellbar, zwischen Fenstern verschiebbar | – | 3 | offen |
-| [[REQ-205]] Ein Board je Geschichtsartikel (Kampagne, Kapitel, Sitzung, nicht Szene) und Regel-Boards; der Schirm schaltet zwischen ihnen, die Artikelansicht filtert nach Artikeln aus den offenen Boards | – | 3 | teils |
+| [[REQ-187]] Tischanzeige | Spielleitung | 3 | offen |
+| [[REQ-204]] Spielleiter-Schirm | Spielleitung | 3 | offen |
+| [[REQ-205]] Ein Board je Geschichtsartikel | Spielleitung | 3 | teils |
 <!-- stories:ende -->

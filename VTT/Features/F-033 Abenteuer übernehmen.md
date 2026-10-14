@@ -19,6 +19,6 @@ Epic: [[EP-05 Kampagne & Sitzungen]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-240]] Vorgefertigte Abenteuer aus 5e.tools: je Abenteuer eine Ebene mit Kapiteln, Abschnitten, Begegnungen, Karten und NSC als Artikeln; die Leitung übernimmt sie in die eigene Geschichte und passt sie an, ohne das Original zu verlieren | – | 2 | steht |
-| [[REQ-252]] Abenteuer modular: Kapitel als Arcs, Begegnungen und Karten als eigene Szenen; einzelne Vorlesetexte oder ganze Kapitel in die eigene Kampagne übernehmen | – | 2 | steht |
+| [[REQ-240]] Abenteuer als eigene Ebene | Spielleitung | 2 | steht |
+| [[REQ-252]] Abenteuer modular übernehmen | Spielleitung | 2 | steht |
 <!-- stories:ende -->

@@ -19,8 +19,8 @@ Epic: [[EP-03 Kreaturen & Figuren]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-046]] Creature / Statblock split with PC and NPC specializations | – | 1 | steht |
-| [[REQ-050]] Simple creature viewer: social / description / combat sections | – | 2 | steht |
-| [[REQ-060]] Companions / summons as regular creatures via companionOf + overrides | – | 3 | teils |
-| [[REQ-105]] NPC directory as filtered view over creatures with relations | – | 3 | steht |
+| [[REQ-046]] Kreatur und Statblock getrennt | Spielleitung | 1 | steht |
+| [[REQ-050]] Kreatur auf einen Blick | Spielleitung | 2 | steht |
+| [[REQ-060]] Begleiter und Beschwörungen | Spieler | 3 | teils |
+| [[REQ-105]] NSC-Verzeichnis | Spielleitung | 3 | steht |
 <!-- stories:ende -->

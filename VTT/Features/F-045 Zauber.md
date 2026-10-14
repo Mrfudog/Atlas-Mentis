@@ -19,6 +19,6 @@ Epic: [[EP-07 Regeln & Nachschlagen]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-092]] Spell entities with layer-scoped attached rule sets (5e 2014 / 2024 / homebrew) | – | 2 | offen |
-| [[REQ-097]] Spell lists as relations (class ↔ spell) | – | 3 | offen |
+| [[REQ-092]] Zauber als Artikel | Spieler | 2 | offen |
+| [[REQ-097]] Zauberlisten | Spieler | 3 | offen |
 <!-- stories:ende -->

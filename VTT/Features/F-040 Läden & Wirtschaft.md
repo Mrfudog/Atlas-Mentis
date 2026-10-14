@@ -19,7 +19,7 @@ Epic: [[EP-06 Welt & Lore]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-185]] Non-coin economies: barter and alternative currency ladders per region | – | 5 | offen |
+| [[REQ-185]] Andere Währungen und Tausch | Spielleitung | 5 | offen |
 | [[REQ-284]] Läden mit Waren und Preisen | Spielleitung | 2 | steht |
 | [[REQ-285]] Fraktionspreise | Spielleitung | 3 | teils |
 <!-- stories:ende -->

@@ -19,5 +19,5 @@ Epic: [[EP-07 Regeln & Nachschlagen]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-231]] Klassenansicht wie 5e.tools: Stufentabelle (Übungsbonus, Merkmale, Spalten der Klasse und gewählter Unterklassen), Merkmale je Stufe ausgeschrieben, optionale Merkmale und Varianten zuschaltbar, Unterklassen nach Name und Quelle filtern und mehrere nebeneinander vergleichen (am Telefon untereinander) | – | 3 | steht |
+| [[REQ-231]] Klassen wie im Buch | Spieler | 3 | steht |
 <!-- stories:ende -->
