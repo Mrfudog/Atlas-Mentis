@@ -12,7 +12,7 @@ import type { Entity } from '@nw/model';
 import type { Knoten } from '../copy.js';
 import type { Werkbank } from '../werkbank.js';
 import type { Zuordnung } from '../zuordnung.js';
-import { liste, titel } from '../zuordnung.js';
+import { ATTRIBUTE, GROESSE, liste, titel } from '../zuordnung.js';
 
 /**
  * Die Aktionsarten. 5e.tools führt sie nicht als Einträge — sie stehen als
@@ -116,9 +116,12 @@ export const REGELN: Zuordnung[] = [
     fuellen(wb, ent, e) {
       const text = wb.text(e['entries']);
       wb.prosa(ent, text);
-      /* Rettungswurf und SG stehen im Text; der erste genannte gilt. */
+      /* Rettungswurf und SG stehen im Text; der erste genannte gilt — und
+         nur ein **Rettungswurf**: „DC 15 Strength check" bei Spider Eggs
+         ist das Befreien aus dem Kokon, nicht der Wurf gegen die Krankheit
+         (T-089). */
       const roh = JSON.stringify(e['entries'] ?? '');
-      const sg = /\{@dc (\d+)\}\s+(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)/.exec(roh);
+      const sg = /\{@dc (\d+)\}\s+(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) saving throw/.exec(roh);
       if (sg) {
         wb.feld(ent, 'Disease', 'dc', Number(sg[1]));
         wb.feld(ent, 'Disease', 'save', ATTR_WORT[sg[2]!]);
@@ -189,7 +192,9 @@ export const REGELN: Zuordnung[] = [
       wb.feld(ent, 'Rule', 'kind', 'rule');
       const art: Record<string, string> = { C: 'core', O: 'optional', V: 'variant', VO: 'variant optional', VV: 'variant' };
       if (e['ruleType']) wb.marke(ent, art[String(e['ruleType'])] ?? String(e['ruleType']).toLowerCase());
-      if (typeof e['type'] === 'string') wb.marke(ent, e['type']);
+      /* `type` ist hier die Darstellungsart des Eintrags (`section`,
+         `entries`), keine Sorte Regel — als Marke sagte sie nichts (T-089). */
+      if (typeof e['type'] === 'string' && !DARSTELLUNG.has(e['type'])) wb.marke(ent, e['type']);
       wb.prosa(ent, wb.text(e['entries']));
     },
   }),
@@ -227,9 +232,124 @@ export const REGELN: Zuordnung[] = [
       wb.feld(ent, 'Rule', 'kind', 'rule');
       wb.marke(ent, 'monster template');
       wb.prosa(ent, wb.text(e['entries']));
+      /* Keine Schablone in 5e.tools hat `entries` — was sie tut, steht
+         nur in `apply`. Ohne diese Zeilen waren alle 66 leer (T-089). */
+      wb.prosa(ent, schablonenText(wb, e));
     },
   }),
 ];
+
+/** Eintragsarten von 5e.tools, die an `type` stehen und keine Sorte sind. */
+const DARSTELLUNG = new Set(['entries', 'section', 'inset', 'insetReadaloud', 'variant', 'variantInner']);
+
+const GROESSE_NAME: Record<string, string> = { ...GROESSE, F: 'fine', D: 'diminutive', C: 'colossal' };
+
+/** Platzhalter der Schablone: sie gilt für jedes Monster, also „die Kreatur". */
+function ohnePlatzhalter(x: unknown): unknown {
+  if (typeof x === 'string') {
+    return x
+      .replace(/<\$title_short_name\$>/g, 'The creature')
+      .replace(/<\$short_name\$>/g, 'the creature')
+      .replace(/<\$spell_dc__(\w+)\$>/g, (_, a: string) => `8 + PB + ${a.toUpperCase()}`)
+      .replace(/<\$to_hit__(\w+)\$>/g, (_, a: string) => `PB + ${a.toUpperCase()}`)
+      .replace(/<\$damage_mod__(\w+)\$>/g, (_, a: string) => a.toUpperCase())
+      .replace(/<\$[a-z_]+\$>/g, 'the creature');
+  }
+  if (Array.isArray(x)) return x.map(ohnePlatzhalter);
+  if (x && typeof x === 'object') return Object.fromEntries(Object.entries(x).map(([k, v]) => [k, ohnePlatzhalter(v)]));
+  return x;
+}
+
+const MOD_TITEL: Record<string, string> = {
+  languages: 'Languages', resist: 'Damage resistances', immune: 'Damage immunities',
+  vulnerable: 'Damage vulnerabilities', conditionImmune: 'Condition immunities',
+};
+const ABSCHNITT: Record<string, string> = {
+  trait: 'Traits', action: 'Actions', reaction: 'Reactions', bonus: 'Bonus actions', legendary: 'Legendary actions',
+  spellcasting: 'Spellcasting', lairActions: 'Lair actions', variant: 'Variants',
+};
+const WERT_TITEL: Record<string, string> = { hp: 'Hit points', save: 'Saving throws', skill: 'Skills', _: 'XP' };
+
+/**
+ * **Was eine Monsterschablone ändert, als Text** (T-089): Voraussetzung,
+ * Grösse, Art, Bewegung, Sinne, Sprachen, Resistenzen und die Merkmale und
+ * Aktionen, die sie hinzufügt. Eine Änderung, die nur ein Statblock
+ * ausrechnen kann (Treffer −2, halbe Trefferpunkte), steht als Satz da.
+ */
+export function schablonenText(wb: Werkbank, e: Knoten): string {
+  const zeilen: string[] = [];
+  const bloecke: string[] = [];
+  const groesse = (s: unknown) => titel(GROESSE_NAME[String(s)] ?? String(s));
+  if (typeof e['ref'] === 'string') zeilen.push(`**Applies:** ${wb.zeile(e['ref'])}`);
+  const vor = e['prerequisite'] as Knoten | undefined;
+  if (vor) {
+    const teile: string[] = [];
+    const g = vor['size'] as Knoten | undefined;
+    if (g?.['max']) teile.push(`size ${groesse(g['max'])} or smaller`);
+    const t = vor['type'] as Knoten | undefined;
+    if (t?.['oneOf']) teile.push(liste(t['oneOf']).map(String).join(' or '));
+    for (const a of ATTRIBUTE) {
+      const w = vor[a] as Knoten | undefined;
+      if (w?.['max'] !== undefined) teile.push(`${a.toUpperCase()} ${String(w['max'])} or lower`);
+      if (w?.['min'] !== undefined) teile.push(`${a.toUpperCase()} ${String(w['min'])} or higher`);
+    }
+    if (teile.length) zeilen.push(`**Prerequisite:** ${teile.join('; ')}`);
+  }
+  if (e['crMin'] !== undefined) zeilen.push(`**Minimum challenge rating:** ${String(e['crMin'])}`);
+  const apply = (e['apply'] as Knoten | undefined) ?? {};
+  const wurzel = (apply['_root'] as Knoten | undefined) ?? {};
+  if (wurzel['size']) zeilen.push(`**Size:** ${liste(wurzel['size']).map(groesse).join(' or ')}`);
+  const typ = wurzel['type'] as Knoten | string | undefined;
+  if (typ) {
+    const art = typeof typ === 'string' ? typ : String(typ['type'] ?? '');
+    const marken = typeof typ === 'string' ? [] : liste(typ['tags']).map((x) => (typeof x === 'string' ? x : String((x as Knoten)['tag'] ?? '')));
+    zeilen.push(`**Type:** ${art}${marken.length ? ` (${marken.join(', ')})` : ''}`);
+  }
+  const tempo = wurzel['speed'] as Knoten | undefined;
+  if (tempo) {
+    zeilen.push(`**Speed:** ${Object.entries(tempo).map(([k, v]) => `${k === 'walk' ? '' : `${k} `}${typeof v === 'object' ? String((v as Knoten)['number']) : String(v)} ft.`).join(', ')}`);
+  }
+  for (const a of ATTRIBUTE) if (typeof wurzel[a] === 'number') zeilen.push(`**${a.toUpperCase()}:** ${String(wurzel[a])}`);
+  const mods = (apply['_mod'] as Knoten | undefined) ?? {};
+  for (const [schluessel, roh] of Object.entries(mods)) {
+    for (const mod of liste(roh) as Knoten[]) {
+      const modus = String(mod['mode'] ?? '');
+      if (schluessel === '_' && modus === 'addSenses') {
+        zeilen.push(`**Senses:** ${liste(mod['senses']).map((s) => `${String((s as Knoten)['type'])} ${String((s as Knoten)['range'])} ft.`).join(', ')}`);
+      } else if (schluessel === '_' && modus === 'addSkills') {
+        zeilen.push(`**Skills:** ${Object.keys((mod['skills'] as Knoten | undefined) ?? {}).map(fertigkeit).join(', ')} (proficient)`);
+      } else if (schluessel === '_' && modus === 'maxSize') {
+        zeilen.push(`**Size:** at most ${groesse(mod['max'])}`);
+      } else if (MOD_TITEL[schluessel] && modus.startsWith('append')) {
+        /* Zustände als Verweis, wie im Statblock. */
+        const wort = (x: unknown) => wb.zeile(schluessel === 'conditionImmune' ? `{@condition ${String(x)}}` : String(x));
+        zeilen.push(`**${MOD_TITEL[schluessel]}:** ${liste(mod['items']).map(wort).join(', ')}`);
+      } else if (ABSCHNITT[schluessel] && (modus === 'appendArr' || modus === 'prependArr')) {
+        const eintraege = liste(mod['items']).map((x) => ohnePlatzhalter(x) as Knoten);
+        const text = wb.text(
+          eintraege.map((x) => (x['type'] ? x : { type: 'entries', ...x })),
+          4,
+        );
+        if (text) bloecke.push(`### ${ABSCHNITT[schluessel]}\n\n${text}`);
+      } else if (modus === 'removeArr') {
+        zeilen.push(`**Removes:** ${liste(mod['names']).map(String).join(', ')}`);
+      } else if (modus === 'scalarAddHit' || modus === 'scalarAddDc') {
+        const n = Number(mod['scalar']);
+        zeilen.push(`**${modus === 'scalarAddHit' ? 'Attack bonus' : 'Save DC'} (${ABSCHNITT[schluessel] ?? schluessel}):** ${n > 0 ? '+' : ''}${n}`);
+      } else if (modus === 'scalarAddProp') {
+        const n = Number(mod['scalar']);
+        zeilen.push(`**${WERT_TITEL[schluessel] ?? titel(schluessel)}:** ${n > 0 ? '+' : ''}${n} to each`);
+      } else if (modus === 'scalarMultProp' || modus === 'scalarMultXp') {
+        zeilen.push(`**${WERT_TITEL[schluessel] ?? titel(schluessel)}:** × ${String(mod['scalar'])}${mod['floor'] ? ', rounded down' : ''}`);
+      } else if (modus === 'replaceTxt') {
+        zeilen.push(`**Text:** “${String(mod['replace'])}” becomes “${String(mod['with'])}”`);
+      } else if (!(schluessel === 'hp' && modus === 'prefixSuffixStringProp') && schluessel !== 'miscTags') {
+        wb.notiz(`Schablone: ${schluessel}.${modus} nicht als Text`);
+      }
+    }
+  }
+  return [zeilen.map((z) => `- ${z}`).join('\n'), ...bloecke].filter(Boolean).join('\n\n');
+}
 
 /** `Animal Handling` aus `animal handling` — die Namen der Skill-Artikel. */
 export function fertigkeit(wort: string): string {
