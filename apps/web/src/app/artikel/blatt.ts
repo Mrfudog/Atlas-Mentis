@@ -10,6 +10,7 @@ import { Gegenstand } from './gegenstand';
 import { Statblock } from './statblock';
 import { Text } from './text';
 import { Zauber } from './zauber';
+import { Bild, bildDes } from './bild';
 
 /**
  * **Ein Artikel in einer Ansicht, als Blatt** (T-110): der Druck und die
@@ -24,7 +25,7 @@ import { Zauber } from './zauber';
  */
 @Component({
   selector: 'nw-blatt',
-  imports: [RouterLink, Text, Statblock, Zauber, Gegenstand, Abschnitte, Fluss],
+  imports: [RouterLink, Text, Statblock, Zauber, Gegenstand, Abschnitte, Fluss, Bild],
   template: `
     @for (st of stuecke(); track st.id) {
       @switch (st.art) {
@@ -49,6 +50,9 @@ import { Zauber } from './zauber';
         @case ('ueberschrift') {
           <h2>{{ st.text }}</h2>
         }
+        @case ('bild') {
+          <nw-bild [wert]="st.bild!.wert" [groesse]="ansicht() === 'full' ? 'full' : 'thumb'" [caption]="st.bild!.caption" [alt]="st.bild!.alt" [oeffnen]="false" />
+        }
         @case ('absatz') {
           <p class="beschreibung">{{ st.text }}</p>
         }
@@ -67,6 +71,8 @@ import { Zauber } from './zauber';
                         <span>{{ l.text }}</span>
                       }
                     }
+                  } @else if (z.bild) {
+                    <nw-bild [wert]="z.bild" groesse="thumb" [alt]="z.label" [oeffnen]="false" />
                   } @else if (z.lang) {
                     <nw-text [text]="z.wert" [scopes]="scopes()" />
                   } @else {
@@ -209,7 +215,7 @@ export class Blatt {
       layoutFor(r, this.ansicht(), primaryInterface(e)).layout,
       view?.empty === 'show' ? mitLeeren(r, e, zellen) : zellen,
       prosaVon(r, e),
-      { beschreibung: view?.description === false ? null : (d ?? null), rest: !!view?.rest },
+      { beschreibung: view?.description === false ? null : (d ?? null), rest: !!view?.rest, bild: bildDes(e, r) },
     );
   });
 

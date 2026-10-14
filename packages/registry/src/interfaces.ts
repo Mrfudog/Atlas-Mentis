@@ -267,7 +267,7 @@ export const interfaces: Record<string, InterfaceDef> = {
    */
     views: {
       /* Die Spalten im Kompendium (W7, `listColumns`). */
-      overview: [{ id: 'c-ov', el: 'fields', fields: ['Creature.kind', 'Creature.species', 'Creature.role'] }],
+      overview: [{ id: 'c-ov-img', el: 'image' }, { id: 'c-ov', el: 'fields', fields: ['Creature.kind', 'Creature.species', 'Creature.role'] }],
       full: [
         { id: 'c-sheet', el: 'sheet' },
         {
@@ -450,7 +450,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     },
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
-    views: { overview: [{ id: 'cla-ov', el: 'fields', fields: ['Class.hitDie', 'Class.primaryAbility', 'Class.casterProgression'] }] },
+    views: { overview: [{ id: 'cla-ov-img', el: 'image' }, { id: 'cla-ov', el: 'fields', fields: ['Class.hitDie', 'Class.primaryAbility', 'Class.casterProgression'] }] },
   },
 
   Subclass: {
@@ -465,7 +465,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     },
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
-    views: { overview: [{ id: 'sub-ov', el: 'fields', fields: ['Subclass.shortName', 'Subclass.casterProgression'] }] },
+    views: { overview: [{ id: 'sub-ov-img', el: 'image' }, { id: 'sub-ov', el: 'fields', fields: ['Subclass.shortName', 'Subclass.casterProgression'] }] },
   },
 
   Ancestry: {
@@ -480,7 +480,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     },
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
-    views: { overview: [{ id: 'anc-ov', el: 'fields', fields: ['Ancestry.size', 'Ancestry.speed'] }] },
+    views: { overview: [{ id: 'anc-ov-img', el: 'image' }, { id: 'anc-ov', el: 'fields', fields: ['Ancestry.size', 'Ancestry.speed'] }] },
   },
 
   Background: {
@@ -620,7 +620,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     schema: merge(g.HazardInfo),
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
-    views: { overview: [{ id: 'haz-ov', el: 'fields', fields: ['Hazard.kind', 'Hazard.category', 'Hazard.threat'] }] },
+    views: { overview: [{ id: 'haz-ov-img', el: 'image' }, { id: 'haz-ov', el: 'fields', fields: ['Hazard.kind', 'Hazard.category', 'Hazard.threat'] }] },
   },
 
   /**
@@ -644,7 +644,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     schema: merge(g.DeityInfo),
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
-    views: { overview: [{ id: 'dei-ov', el: 'fields', fields: ['Deity.pantheon', 'Deity.alignment', 'Deity.domains'] }] },
+    views: { overview: [{ id: 'dei-ov-img', el: 'image' }, { id: 'dei-ov', el: 'fields', fields: ['Deity.pantheon', 'Deity.alignment', 'Deity.domains'] }] },
   },
 
   /** An entity of its own (D4), referenced by creatures, never embedded. */
@@ -663,7 +663,7 @@ export const interfaces: Record<string, InterfaceDef> = {
        Untertypen erben sie, bis einer etwas Eigenes sagt. */
     views: {
       /* Die Spalten im Kompendium (W7, `listColumns`). */
-      overview: [{ id: 's-ov', el: 'fields', fields: ['Statblock.cr', 'Statblock.size', 'Statblock.creatureType', 'Statblock.alignment'] }],
+      overview: [{ id: 's-ov-img', el: 'image' }, { id: 's-ov', el: 'fields', fields: ['Statblock.cr', 'Statblock.size', 'Statblock.creatureType', 'Statblock.alignment'] }],
       /* Der Statblock neben der Initiative (REQ-211, D53) ist `quick`: die
          Zahlen und was er kann, ohne Beziehungen und Fliesstext. Die
          Grundanordnung von `quick` (Bild, Beschreibung, Passagen) zeigte an
@@ -703,7 +703,7 @@ export const interfaces: Record<string, InterfaceDef> = {
        als Kopfzeilen. Waffe, Rüstung und Material erben die Anordnung;
        das Element zeichnet ihre Karten mit. */
     views: {
-      overview: [{ id: 'ite-ov', el: 'fields', fields: ['Item.itemType', 'Item.rarity', 'Item.attunement'] }],
+      overview: [{ id: 'ite-ov-img', el: 'image' }, { id: 'ite-ov', el: 'fields', fields: ['Item.itemType', 'Item.rarity', 'Item.attunement'] }],
       full: [
         { id: 'it-img', el: 'image' },
         { id: 'it-book', el: 'item' },
@@ -727,7 +727,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     schema: merge(g.WeaponInfo),
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
-    views: { overview: [{ id: 'wea-ov', el: 'fields', fields: ['Weapon.category', 'Weapon.damage', 'Weapon.damageType', 'Item.rarity'] }] },
+    views: { overview: [{ id: 'wea-ov-img', el: 'image' }, { id: 'wea-ov', el: 'fields', fields: ['Weapon.category', 'Weapon.damage', 'Weapon.damageType', 'Item.rarity'] }] },
   },
 
   Armor: {
@@ -738,7 +738,7 @@ export const interfaces: Record<string, InterfaceDef> = {
     schema: merge(g.ArmorInfo),
     /* Die Spalten im Kompendium (W7, `listColumns`): eine Zeile ist ein
        Verweis, also `overview`. */
-    views: { overview: [{ id: 'arm-ov', el: 'fields', fields: ['Armor.armorType', 'Armor.ac', 'Armor.strength', 'Armor.stealthDisadvantage'] }] },
+    views: { overview: [{ id: 'arm-ov-img', el: 'image' }, { id: 'arm-ov', el: 'fields', fields: ['Armor.armorType', 'Armor.ac', 'Armor.strength', 'Armor.stealthDisadvantage'] }] },
   },
 
   Material: {

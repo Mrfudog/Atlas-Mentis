@@ -346,3 +346,36 @@ describe('the export names the image files', () => {
     expect(datei.files).toEqual([{ asset: a.id, ref: info(a).ref, mime: 'image/png', bytes: info(a).bytes }]);
   });
 });
+
+describe('the list shows a preview image (overview, T-114)', () => {
+  it('names the asset of a row, but only if the viewer sees it', async () => {
+    const { hoch, repo, als } = await aufbau();
+    const offen = (await hoch('Mira', { for: 'c_offen' }, { name: 'volo.png', type: 'image/png', data: await png(30, 30) })).json() as Hochgeladen;
+    const geheim = (await hoch('Mira', { for: 'c_geheim' }, { name: 'f.png', type: 'image/png', data: await png(31, 30) })).json() as Hochgeladen;
+    const volo = (await repo.getEntity('c_offen'))!;
+    await repo.putEntity({ ...volo, components: { ...volo.components, Image: { image: offen.id } } });
+    const fremd = (await repo.getEntity('c_geheim'))!;
+    await repo.putEntity({ ...fremd, components: { ...fremd.components, Image: { image: geheim.id } } });
+    const zeilen = async (wer: string) =>
+      ((await als(wer, 'GET', '/api/list?type=Creature&limit=50')).json() as { rows: { id: string; image?: string }[] }).rows;
+    const mira = await zeilen('Mira');
+    expect(mira.find((z) => z.id === 'c_offen')?.image).toBe(offen.id);
+    expect(mira.find((z) => z.id === 'c_geheim')?.image).toBe(geheim.id);
+    const sela = await zeilen('Sela');
+    expect(sela.find((z) => z.id === 'c_offen')?.image).toBe(offen.id);
+    expect(sela.some((z) => z.id === 'c_geheim')).toBe(false);
+    /* Das Asset selbst steht mit sich als Bild in der Liste. */
+    const assets = ((await als('Mira', 'GET', '/api/list?type=Asset&limit=50')).json() as { rows: { id: string; image?: string }[] }).rows;
+    expect(assets.find((z) => z.id === offen.id)?.image).toBe(offen.id);
+  });
+
+  it('gives an open creature no preview when its image is hidden from the viewer', async () => {
+    const { hoch, repo, als } = await aufbau();
+    const geheim = (await hoch('Mira', { for: 'c_geheim' }, { name: 'f.png', type: 'image/png', data: await png(32, 30) })).json() as Hochgeladen;
+    const volo = (await repo.getEntity('c_offen'))!;
+    await repo.putEntity({ ...volo, components: { ...volo.components, Image: { image: geheim.id } } });
+    const sela = ((await als('Sela', 'GET', '/api/list?type=Creature&limit=50')).json() as { rows: { id: string; image?: string }[] }).rows;
+    expect(sela.find((z) => z.id === 'c_offen')).toBeDefined();
+    expect(sela.find((z) => z.id === 'c_offen')?.image).toBeUndefined();
+  });
+});

@@ -336,6 +336,8 @@ export interface ListenZeile {
   /** Wie viele Artikel diesen über eine Abschnittskante nutzen. */
   users?: number;
   cols: Record<string, unknown>;
+  /** Das Vorschaubild — Asset-Id oder Adresse —, wenn `overview` der Art eines zeigt (T-114). */
+  image?: string;
   tags?: string[];
   /** Die Ziele der Kantenarten, nach denen `rel=` fragte. */
   rels?: Record<string, string[]>;
@@ -933,6 +935,31 @@ export class Api {
     }
     const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? 'campaign.json';
     return { blob: await res.blob(), name };
+  }
+
+  // ------------------------------------------------------- Bilder (T-114)
+  /**
+   * Ein Bild hochladen: der Server legt einen `Asset`-Artikel an und gibt
+   * ihn mit `url` und `thumb` zurück. `for` ist der Artikel, aus dem
+   * heraus hochgeladen wird — das Bild übernimmt seine Sichtbarkeit.
+   * Eigenes `fetch` und nicht `call`: der Körper ist multipart, und den
+   * Typ samt Grenze setzt der Browser, nicht `application/json`.
+   */
+  async uploadAsset(datei: Blob, felder: { for?: string; name?: string; filename?: string } = {}): Promise<Entity & { url: string; thumb: string }> {
+    const form = new FormData();
+    if (felder.for) form.append('for', felder.for);
+    if (felder.name) form.append('name', felder.name);
+    form.append('file', datei, felder.filename ?? ((datei as File).name || 'image'));
+    const res = await fetch(`${this.base}/api/assets`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: this.sichtKopf(),
+      body: form,
+    });
+    this.merkeBau(res);
+    const b = (await res.json().catch(() => null)) as (Entity & { url: string; thumb: string; error?: string; issues?: unknown }) | null;
+    if (!res.ok) throw new ApiError(res.status, b?.error ?? `Upload failed (${res.status})`, b?.issues, b);
+    return b!;
   }
 
   campaigns(): Promise<Kampagnen> {

@@ -42,6 +42,7 @@ import {
 import { Mehrfach, type Suchgruppe } from './mehrfach';
 import { Text } from './text';
 import { Wahl } from './wahl';
+import { Bild, BildWahl, bildDes } from './bild';
 import { Statblock } from './statblock';
 import { Zauber } from './zauber';
 import { Gegenstand } from './gegenstand';
@@ -124,6 +125,8 @@ interface Feld {
     AbwMarken,
     KurzLink,
     Herausgeber,
+    Bild,
+    BildWahl,
   ],
   template: `
     @if (artikel(); as e) {
@@ -381,6 +384,9 @@ interface Feld {
                           [label]="f.label"
                         />
                       }
+                      @case ('bild') {
+                        <nw-bildwahl [wert]="f.wert" (wertChange)="f.wert = $event" [fuer]="e.id" [label]="f.label" />
+                      }
                       @case ('verweise') {
                         <nw-mehrfach
                           [werte]="f.liste"
@@ -581,6 +587,9 @@ interface Feld {
                   @case ('ueberschrift') {
                     <h2>{{ st.text }}</h2>
                   }
+                  @case ('bild') {
+                    <nw-bild class="hauptbild" [wert]="st.bild!.wert" [caption]="st.bild!.caption" [alt]="st.bild!.alt || e.name || ''" />
+                  }
                   @case ('absatz') {
                     <p class="beschreibung">{{ st.text }}</p>
                   }
@@ -600,6 +609,8 @@ interface Feld {
                                   <span class="weg">{{ l.text }}</span>
                                 }
                               }
+                            } @else if (z.bild) {
+                              <nw-bild class="feldbild" [wert]="z.bild" groesse="thumb" [alt]="z.label" />
                             } @else if (z.lang) {
                               <nw-text [text]="z.wert" [scopes]="scopes()" />
                             } @else {
@@ -1022,6 +1033,7 @@ export class Artikel {
       beschreibung: this.beschreibung(),
       beschreibungZeigen: !!this.vglBeschreibung(),
       rest: !!v?.rest,
+      bild: bildDes(e, r),
     });
   });
 
