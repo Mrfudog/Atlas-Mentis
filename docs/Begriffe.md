@@ -889,8 +889,16 @@ eine Kante je Buch gewesen, und neben einer Gruppe „Partnered" stünde ein
 Feld, das etwas anderes sagen kann. Also ist ein Herausgeber eine Gruppe wie
 eine Kategorie (E-022 b), sie sagt mit `groupBy: 'publisher'`, in welche
 Ansicht sie gehört, und die Marke an einer Ebene wird aus ihr gerechnet.
-Was in keiner Herausgeber-Gruppe steht, ist **Homebrew**: eigener Inhalt
-braucht keinen Verlag, um als eigener erkannt zu werden.
+Was in keiner Herausgeber-Gruppe steht, ist **Homebrew** — aber nur, wenn
+es hier entstand: eigener Inhalt braucht keinen Verlag, um als eigener
+erkannt zu werden. Was eingelesen wurde und an keinem Verlag hängt, heisst
+**Unassigned** (T-109). Bis dahin hiess auch die alte Sammelebene
+„D&D 5e (2014)" Homebrew, und weil die Marke an keinem Feld stand, sah
+niemand, woher sie kam und wie man sie ändert. Darum steht der Grund jetzt
+an der Ebene, und geändert wird dort die Kante — nicht ein Feld, das der
+Kante widersprechen könnte. Die Sammelebene selbst ist seither eine Gruppe
+der offiziellen 2014-Bücher: so schaltet man „die Regeln von 2014" als
+Ganzes auf.
 
 > **Die dritte Zeile der Tabelle ist die, die heute zählt.** Von
 > fünfundsiebzig Artikeln tragen fünfundsechzig keine Ebenenkante — die

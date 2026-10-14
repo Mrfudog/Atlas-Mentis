@@ -53,6 +53,7 @@ import { Statblock } from './statblock';
 import { Zauber } from './zauber';
 import { Gegenstand } from './gegenstand';
 import { Abschnitte } from './abschnitte';
+import { Herausgeber } from './herausgeber';
 import {
   abweichungen,
   AbwMarken,
@@ -174,6 +175,7 @@ interface Feld {
     FassungsKasten,
     AbwMarken,
     KurzLink,
+    Herausgeber,
   ],
   template: `
     @if (artikel(); as e) {
@@ -285,6 +287,10 @@ interface Feld {
 
             @if (anpassFehler(); as f) {
               <p class="fehler" role="alert">{{ f }}</p>
+            }
+            <!-- Wer die Ebene herausgibt und warum (T-109) — gerechnet, geändert wird die Kante. -->
+            @if (art(e) === 'Layer' && !zeigtAlten()) {
+              <nw-herausgeber [ebene]="e.id" />
             }
             @if (original(); as o) {
               <p class="hinweis" role="status">

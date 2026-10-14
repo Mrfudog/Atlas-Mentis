@@ -159,7 +159,9 @@ wiederkommen, werden sie neu geschrieben.
   Gruppen ordnen nach Kategorie oder, mit `groupBy: 'publisher'`, nach
   Herausgeber (T-094) — für den Stapel gleich. **Der Herausgeber einer
   Ebene wird gerechnet** (`publisherOf`): ihre Herausgeber-Gruppe, sonst
-  Homebrew; ein Feld dafür gibt es nicht.
+  Homebrew, wenn sie hier angelegt wurde, und „Unassigned", wenn sie
+  eingelesen ist (T-109); ein Feld dafür gibt es nicht — die Ebenenseite
+  zeigt den Grund und hängt die `partOf`-Kante um.
 - **Zwei Fragen, und die grobe kommt zuerst.** Die **Sichtbarkeit**
   (`articleVisible`) sagt, ob ein Artikel überhaupt an jemanden geht; das
   **Wissen** (`redactEntity`) sagt, welche Felder darin. Beides zu einer

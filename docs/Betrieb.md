@@ -381,12 +381,20 @@ tut es mit einer Probemigration vor).
 Die Artikel aus 5e.tools stehen **je Buch in einer eigenen Ebene**
 (T-081, E-017): „Player's Handbook", „Monster Manual", „Curse of Strahd" …
 (`kind: book`, Id `e5_book_<kürzel>`, `inLayer` an jedem Artikel). Was kein
-Buch nennt (die Aktionsarten), liegt in der Systemebene „D&D 5e (2014)".
+Buch nennt (die Aktionsarten), liegt in „D&D 5e (2014) — no book given"
+(`e5_unsourced_2014`, unter Official). „D&D 5e (2014)" selbst ist seit
+T-109 eine **Gruppe** aller offiziellen 2014-Bücher: aufgeschaltet bringt
+sie alle, ein einzelnes Buch darin lässt sich abschalten.
 Eine Kampagne schaltet auf der Kampagnenseite die Bücher auf, die sie
 nutzt (Liste mit Häkchen, nach Grundregelwerk, Quellenbuch und Abenteuer
 gruppiert). **Ein Abenteuer** (`kind: adventure`, T-082) bringt dabei
 seine Kapitel, Abschnitte, Begegnungen und Karten mit; die Kapitel stehen
-danach im Kasten „Story" der Kampagnenseite. Die Karten sind Adressen
+danach im Kasten „Story" der Kampagnenseite. **Jedes Buch bringt seinen
+Text** (T-108): je Kapitel ein `Chapter` mit seinen Teilen (Überschriften,
+Absätze, Kästen, Verweise auf Zauber, Monster, Tabellen, die schon
+Artikel sind) — zu lesen unter „Read" an der Ebene. Ein Lauf `only-new`
+legt die Kapitel bestehender Buchebenen dazu an, ohne einen Artikel
+anzufassen (gut 23 000 Teile für die 2014er Bücher). Die Karten sind Adressen
 auf die Bilder bei 5e.tools — die Bilder selbst liegen nicht bei uns. Ein
 einzelnes Abenteuer ergänzt man mit `sources` (z. B. `LMoP`), `only-new`
 wie immer. Eingelesen wird über eine **Pipeline**; die

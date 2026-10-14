@@ -93,7 +93,7 @@ import type { AtlasEnv } from './config.js';
 import { NO_LAYER, buildListIndex, listProjection, parseListQuery, queryList, type ListIndex } from './liste.js';
 import { mayActivate, rechtAn, registerVerwaltung } from './verwaltung.js';
 import { registerLesen } from './lesen.js';
-import { registerEbenenrechte } from './ebenenrechte.js';
+import { eigeneEbenen, registerEbenenrechte } from './ebenenrechte.js';
 import { ausfuhrName, kampagnenAusfuhr } from './ausfuhr.js';
 import { inDieGruppe } from './gruppe.js';
 import {
@@ -1362,6 +1362,7 @@ export function buildApp({
     const out: Record<string, string> = {};
     /* Je Kürzel auch der Herausgeber (T-094) — die Marke in Listen und Vorschau. */
     const verlag: Record<string, string> = {};
+    const eigene = eigeneEbenen(stand.map);
     for (const e of stand.map.values()) {
       if ((e.interfaces ?? [])[0] !== 'Layer') continue;
       const k = (e.components?.['Layer'] as { abbreviation?: unknown } | undefined)?.abbreviation;
@@ -1369,7 +1370,7 @@ export function buildApp({
       if (typeof k !== 'string' || !k.trim() || !name) continue;
       if (out[k.trim()] !== undefined) continue;
       out[k.trim()] = name;
-      verlag[k.trim()] = publisherOf(stand.map, e);
+      verlag[k.trim()] = publisherOf(stand.map, e, eigene);
     }
     return { sources: out, publishers: verlag };
   });

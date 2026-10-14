@@ -4,9 +4,9 @@ import { stageBases, validateEntity } from '@nw/model';
 import { seedRegistry } from '@nw/registry';
 import type { Knoten } from '../src/copy.js';
 import type { Datenstand } from '../src/lesen.js';
-import { ausschnitt, blocklistGruppen, gruppeVon, herausgeberVon, lauf } from '../src/lauf.js';
+import { ausschnitt, blocklistGruppen, gruppeVon, herausgeberVon, lauf, OHNE_BUCH } from '../src/lauf.js';
 import { berichtMarkdown } from '../src/bericht.js';
-import { buchEbeneId, gruppeEbeneId, herausgeberEbeneId } from '../src/werkbank.js';
+import { buchEbeneId, gruppeEbeneId, herausgeberEbeneId, ohneBuchEbeneId } from '../src/werkbank.js';
 
 /** Ein kleiner Datenstand in der Form von 5e.tools — genug, um jede Stufe zu berühren. */
 function datenstand(): Datenstand {
@@ -87,8 +87,9 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
   it('legt jedes Buch in seine eigene Ebene und schreibt das Format der Einfuhr (T-081)', () => {
     expect(datei.format).toBe('nebelwacht/1');
     expect(datei.registry.interfaces['Spell']).toBeDefined();
-    const ebene = finde(es, 'Layer', 'D&D 5e (2014)');
+    const ebene = finde(es, 'Layer', OHNE_BUCH);
     expect(ebene.components['Layer']).toMatchObject({ kind: 'system' });
+    expect(ebene.id).toBe(ohneBuchEbeneId());
     const phb = finde(es, 'Layer', "Player's Handbook");
     expect(phb.id).toBe(buchEbeneId('PHB'));
     expect(phb.components['Layer']).toMatchObject({ kind: 'book', order: 0 });
@@ -119,9 +120,28 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
     const kern = es.find((e) => e.id === gruppeEbeneId('core'))!;
     expect(kern.name).toBe('Core rules');
     expect(kern.components['Layer']).toMatchObject({ kind: 'group' });
-    expect((phb.relations ?? []).filter((r) => r.type === 'partOf').map((r) => r.to)).toEqual([kern.id, herausgeberEbeneId('official')]);
+    expect((phb.relations ?? []).filter((r) => r.type === 'partOf').map((r) => r.to)).toEqual([
+      kern.id,
+      herausgeberEbeneId('official'),
+      finde(es, 'Layer', 'D&D 5e (2014)').id,
+    ]);
     /* Ohne Mitglied keine Gruppe: Settings gibt es in diesem Stand nicht. */
     expect(es.some((e) => e.id === gruppeEbeneId('setting'))).toBe(false);
+  });
+
+  it('macht „D&D 5e (2014)" zur Gruppe der offiziellen 2014-Bücher (T-109)', () => {
+    const gruppe = finde(es, 'Layer', 'D&D 5e (2014)');
+    expect(gruppe.components['Layer']).toMatchObject({ kind: 'group', version: '2014' });
+    expect(gruppe.components['Layer']).not.toHaveProperty('groupBy');
+    const phb = finde(es, 'Layer', "Player's Handbook");
+    expect((phb.relations ?? []).some((r) => r.type === 'partOf' && r.to === gruppe.id)).toBe(true);
+    /* Was kein Buch nennt, ist offiziell und in der Gruppe. */
+    const ohne = finde(es, 'Layer', OHNE_BUCH);
+    expect((ohne.relations ?? []).filter((r) => r.type === 'partOf').map((r) => r.to).sort()).toEqual([gruppe.id, herausgeberEbeneId('official')].sort());
+    /* Kein Partner-Buch darin. */
+    for (const b of es.filter((e) => e.relations?.some((r) => r.type === 'partOf' && r.to === herausgeberEbeneId('partnered')))) {
+      expect(b.relations?.some((r) => r.type === 'partOf' && r.to === gruppe.id), b.name).toBe(false);
+    }
   });
 
   it('hängt jedes Buch auch an seinen Herausgeber (T-094)', () => {

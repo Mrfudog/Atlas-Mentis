@@ -225,7 +225,7 @@ auf die Modelländerungen in Abschnitt 3.
 |---|---:|---|---|---|
 | `book` | 65 | `Layer` | **anpassen** | **M9**: **eine Ebene je Quelle** (`PHB`, `MM`, `DMG`, `XPHB` …), `kind: system`; jeder importierte Artikel `inLayer` seiner Quelle; `Source.publication` trägt das Kürzel, `page` die Seite. Die Kampagne `activates` dann 2014 *oder* 2024 — und `reprintedAs` wird `overrides` |
 | `adventure` | 100 | `Layer kind: pack` | **anpassen** | wie `book`; nur die Metadaten |
-| `data` (Buch- und Abenteuertext) | 1 259 Abschnitte | — | **weglassen** | Der Fliesstext der Bücher und Abenteuer. Die Regeln daraus stehen schon in `variantrule`, die Tabellen in `table`. Abenteuertext als `Article` zu übernehmen wäre Lizenz und Umfang zugleich (E1) |
+| `data` (Buch- und Abenteuertext) | 1 259 Abschnitte | `Chapter` und Teile | **übernommen** (T-082, T-108) | Bis 14.10. weggelassen (E1). Seit E-028/E-029: je Kapitel ein `Chapter`, darin `Heading`, `Paragraph`, `ReadAloudText` und `Embed` auf Artikel, die schon da sind (Regeln aus `variantrule`, Tabellen aus `table`) — nichts verdoppelt |
 
 #### Herausgeber und Blocklist-Kategorien (T-094)
 
@@ -241,7 +241,7 @@ geraten:
 | **Official** | jedes Buch aus `data/books.json` / `data/adventures.json`, das nicht Partnered ist | `SourceUtil.isSiteSource`: was die Seite selbst führt, ist kein Homebrew |
 | **Partnered** | RMBRE, RMR, EGW, ToR, DD, FS, US, CRCotN, HftT, LRDT, TD | `Parser.SOURCES_PARTNERED_WOTC` in `js/parser.js` — seit Dez. 2025 leer und auskommentiert, weil D&D Beyond diese Bücher als „Official" führt; die alte Liste gilt hier, damit Partner-Inhalte erkennbar bleiben |
 | **Third party** | legt der Importer nie an | `5etools-src` enthält kein Buch eines fremden Verlags; Drittanbieter kämen über Homebrew (`partnered`-Kennzeichen an der Quelle in `homebrew/`), das wir nicht einlesen |
-| **Homebrew** | jede Ebene ohne Herausgeber-Gruppe — die Kampagnenebenen, eigene Ebenen | `BrewUtil2.hasSourceJson`: Homebrew liegt nicht in `5etools-src` |
+| **Homebrew** | jede hier angelegte Ebene ohne Herausgeber-Gruppe — die Kampagnenebenen, eigene Ebenen; eine eingelesene ohne Gruppe heisst **Unassigned** (T-109) | `BrewUtil2.hasSourceJson`: Homebrew liegt nicht in `5etools-src` |
 | Non-standard | `SOURCES_NON_STANDARD_WOTC` und Kürzel mit `PS…` (Plane Shift) oder `MCV…` | „UA/Etc. Sources" der Blocklist, `SourceUtil.isNonstandardSourceWotc` ohne UA (UA kommt nicht herein) |
 | Comedy | `SOURCES_COMEDY` | „Comedy Sources" |
 | Outside the Forgotten Realms | `SOURCES_NON_FR` | „Non-*Forgotten Realms*" |

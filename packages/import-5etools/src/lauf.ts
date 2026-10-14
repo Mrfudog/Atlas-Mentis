@@ -14,6 +14,7 @@ import { CHARAKTERBAU } from './arten/charakterbau.js';
 import { LEGENDAER, MONSTER } from './arten/monster.js';
 import { WELT } from './arten/welt.js';
 import { abenteuer } from './arten/abenteuer.js';
+import { buch } from './arten/buch.js';
 import type { Knoten } from './copy.js';
 import { fassungen, herkunft, vereineGleiche } from './doppel.js';
 import { angriffeVereinen } from './arten/angriff.js';
@@ -21,7 +22,7 @@ import { KOPIE_VON, loeseKopien } from './copy.js';
 import type { Auswahl, Datenstand, Quelle } from './lesen.js';
 import { ARTEN_WEG, ausschluss, quelleVon, STICHTAG_2024 } from './lesen.js';
 import type { Bericht } from './werkbank.js';
-import { buchEbeneId, gruppeEbeneId, herausgeberEbeneId, Werkbank, zaehle } from './werkbank.js';
+import { buchEbeneId, gruppeEbeneId, herausgeberEbeneId, ohneBuchEbeneId, Werkbank, zaehle } from './werkbank.js';
 import type { Zuordnung } from './zuordnung.js';
 
 /** Die Reihenfolge aus Abgleich §4.2 — jede spätere Art zeigt auf frühere. */
@@ -35,9 +36,16 @@ export const ZUORDNUNGEN: Zuordnung[] = [
   ...WELT,
 ];
 
-/** Die Systemebene (Arbeitsplan §1, M9). Seit T-081 liegt darin nur, was
- *  kein Buch nennt; alles andere liegt in der Ebene seines Buchs. */
+/** Die Gruppe aller offiziellen 2014-Bücher (T-109, E-022 b). Bis T-109
+ *  die Systemebene (Arbeitsplan §1, M9), in der lag, was kein Buch nennt —
+ *  und ohne Herausgeber hiess sie „Homebrew". Aufgeschaltet bringt sie
+ *  jedes Buch darin; die Id bleibt, damit eine Kampagne, die sie
+ *  aufschaltet, weiter alles hat. */
 export const EBENE = 'D&D 5e (2014)';
+
+/** Die Ebene für das, was kein Buch nennt (die Aktionsarten) — unter
+ *  Official und in der Gruppe `EBENE` (T-109). */
+export const OHNE_BUCH = 'D&D 5e (2014) — no book given';
 
 /** Die drei Grundregelwerke — je eine Ebene wie jedes Buch, gruppiert als `core`. */
 export const KERN = ['PHB', 'MM', 'DMG'];
@@ -185,14 +193,24 @@ function aufraeumen(e: Entity): void {
 export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registry = seedRegistry): Ergebnis {
   const wb = new Werkbank(registry);
 
-  /* 1. Die Ebene. Kein `inLayer` an ihr selbst. */
+  /* 1. Die Ebenen. Kein `inLayer` an ihnen selbst. Die alte Systemebene
+     ist eine Gruppe (T-109); was kein Buch nennt, liegt in einer eigenen
+     Ebene darin. */
   const ebene = wb.anlegen('Layer', EBENE, 'layer|5e-2014');
   delete ebene.components['Source'];
-  wb.feld(ebene, 'Layer', 'kind', 'system');
+  wb.feld(ebene, 'Layer', 'kind', 'group');
   wb.feld(ebene, 'Layer', 'order', 0);
   wb.feld(ebene, 'Layer', 'version', '2014');
-  wb.prosa(ebene, 'The 2014 rules of the fifth edition, taken over from 5e.tools: what no single book brings (the action types). Every book has its own layer; which page an article comes from is in its source.');
-  wb.ebene = ebene;
+  wb.feld(ebene, 'Description', 'description', 'Every official book of the 2014 rules.');
+  wb.prosa(ebene, 'The 2014 rules of the fifth edition, taken over from 5e.tools: a group of every official book built on them. Turning it on for a campaign puts every book in it into play; a single book inside can still be turned off.');
+  const ohneBuch = wb.anlegen('Layer', OHNE_BUCH, 'layer|5e-2014-none');
+  ohneBuch.id = ohneBuchEbeneId();
+  delete ohneBuch.components['Source'];
+  wb.feld(ohneBuch, 'Layer', 'kind', 'system');
+  wb.feld(ohneBuch, 'Layer', 'order', 0);
+  wb.feld(ohneBuch, 'Layer', 'version', '2014');
+  wb.prosa(ohneBuch, 'What the 2014 rules of 5e.tools bring without naming a book (the action types). Every book has its own layer; which page an article comes from is in its source.');
+  wb.ebene = ohneBuch;
 
   /* Je Buch eine Ebene (T-081, E-017), angelegt beim ersten Eintrag
      daraus. Der Name kommt aus `books.json`/`adventures.json`; die Marke
@@ -353,6 +371,22 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
     abenteuer(wb, a);
   }
 
+  /* Die Bücher als Kapitel aus Teilen (T-108, E-028): nach allen Artikeln,
+     damit jeder Verweis und jedes `Embed` sein Ziel findet. Gesiebt wie
+     jeder Eintrag. */
+  for (const b of stand.buecher?.values() ?? []) {
+    const grund = ausschluss({ source: String(b.kopf['source'] ?? b.id) }, stand, auswahl);
+    if (grund) {
+      const ber = wb.artBericht('bookData');
+      ber.gelesen += 1;
+      const m = ber.ausgeschlossen.get(grund) ?? new Map<string, number>();
+      zaehle(m, b.id);
+      ber.ausgeschlossen.set(grund, m);
+      continue;
+    }
+    buch(wb, b);
+  }
+
   /* Eine aufgelöste Kopie zeigt auf ihr Original, wenn es hereinkam und
      sie nicht schon auf einen Grundgegenstand zeigt (`variantOf` ist eine
      Kante). */
@@ -430,6 +464,23 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
     for (const b of blocklistGruppen(q)) gruppeAn(l, gruppeEbeneId(b), kategorie(b));
     const h = herausgeberVon(q);
     gruppeAn(l, herausgeberEbeneId(h), verlag(h));
+    /* Die Gruppe der 2014-Regeln (T-109): jedes offizielle Buch darauf. */
+    if (h === 'official' && (l.components['Layer'] as { version?: string } | undefined)?.version === '2014') {
+      wb.kante(l, 'partOf', ebene.id);
+    }
+  }
+  /* Was kein Buch nennt: Official und in der Gruppe — oder gar nicht, wenn
+     es nichts davon gibt. Eine Gruppe ohne Mitglied bringt nichts. */
+  if (belegt.has(ohneBuch.id)) {
+    gruppeAn(ohneBuch, herausgeberEbeneId('official'), verlag('official'));
+    wb.kante(ohneBuch, 'partOf', ebene.id);
+  } else {
+    wb.entities.splice(wb.entities.indexOf(ohneBuch), 1);
+    zaehle(wb.bericht.typen, 'Layer', -1);
+  }
+  if (!wb.entities.some((e) => e.relations?.some((r) => r.type === 'partOf' && r.to === ebene.id))) {
+    wb.entities.splice(wb.entities.indexOf(ebene), 1);
+    zaehle(wb.bericht.typen, 'Layer', -1);
   }
 
   fassungen(wb.entities, stand, wb.bericht, (e) => wb.nachdrucke.get(e.id) ?? []);

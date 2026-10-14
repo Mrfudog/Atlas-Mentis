@@ -109,7 +109,7 @@ interface Gruppe {
                 <button type="button" class="quick-info" [nwQuick]="l.id" [attr.aria-label]="'Quick view of ' + l.name">i</button>
               </label>
               @if (l.publisher) {
-                <span class="verlag" [title]="'Publisher: ' + l.publisher">{{ l.publisher }}</span>
+                <span class="verlag" [title]="'Publisher: ' + l.publisher + (l.publisherWhy ? ' — ' + l.publisherWhy : '') + ' Change it on the layer.'">{{ l.publisher }}</span>
               }
               @if (l.readable && l.active) {
                 <a class="lesen" [routerLink]="['/read', l.id]">Read</a>
@@ -184,7 +184,7 @@ interface Gruppe {
           @if (lose().length) {
             <details class="gruppe" [open]="offen().has('-')" (toggle)="merke('-', $event)">
               <summary>
-                <span class="gname">{{ ansicht() === 'publisher' ? 'No publisher (Homebrew)' : 'Other books' }}</span>
+                <span class="gname">{{ ansicht() === 'publisher' ? 'No publisher group (Homebrew, Unassigned)' : 'Other books' }}</span>
                 <span class="dim">{{ anZahl(lose()) }} of {{ lose().length }} on</span>
               </summary>
               <ul class="ebenen buecher">
@@ -241,7 +241,7 @@ interface Gruppe {
               <button type="button" class="quick-info" [nwQuick]="l.id" [attr.aria-label]="'Quick view of ' + l.name">i</button>
             </label>
             @if (l.publisher) {
-              <span class="verlag" [title]="'Publisher: ' + l.publisher">{{ l.publisher }}</span>
+              <span class="verlag" [title]="'Publisher: ' + l.publisher + (l.publisherWhy ? ' — ' + l.publisherWhy : '') + ' Change it on the layer.'">{{ l.publisher }}</span>
             }
             @if (l.readable && l.inPlay) {
               <a class="lesen" [routerLink]="['/read', l.id]">Read</a>
