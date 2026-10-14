@@ -740,7 +740,6 @@ export const relations: Record<string, RelationDef> = {
     label: 'inside',
     inverseLabel: 'zoom into',
     means: 'A map lies inside another map, at a rectangle; the outer map lists what you can zoom into.',
-    intended: 'Zoom on the map screen: clicking the rectangle on the outer map should open the inner one.',
     from: ['Map'],
     to: ['Map'],
     cardinality: 'one',
@@ -770,7 +769,6 @@ export const relations: Record<string, RelationDef> = {
     label: 'marker',
     inverseLabel: 'on the map',
     means: 'A map has a marker for an article, at a point; the article lists the maps it is marked on.',
-    intended: 'Draw on the map screen: the marker should stand at its point, with light and stealth used for what players see.',
     from: ['Map'],
     to: ['*'],
     props: {
