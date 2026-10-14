@@ -64,8 +64,15 @@ const GENUTZT_ITEM = [
   'bonusAc', 'bonusSpellAttack', 'bonusSavingThrow', 'value', 'weight', 'weaponCategory', 'dmg1',
   'dmg2', 'dmgType', 'range', 'ammoType', 'ac', 'strength', 'stealth', 'property', 'mastery', 'attachedSpells',
   'baseItem', 'weapon', 'armor', 'packContents', 'hasRefs', 'lootTables', 'valueMult', 'weightMult', 'ammo',
-  'age', 'focus', 'scfType', 'grantsProficiency', 'grantsLanguage', 'light', ...WIRKUNGEN, ...SORTEN,
+  'age', 'focus', 'scfType', 'valueNote', 'grantsProficiency', 'grantsLanguage', 'light', ...WIRKUNGEN, ...SORTEN,
 ];
+
+/** Kupfer als Münzangabe für die Preisherkunft: 10000 → „100 gp". */
+function coinNote(cp: number): string {
+  if (cp % 100 === 0) return `${cp / 100} gp`;
+  if (cp % 10 === 0) return `${cp / 10} sp`;
+  return `${cp} cp`;
+}
 
 /** Die Felder eines Gegenstands, aus einem Eintrag oder dem `inherits` einer Variante. */
 function felder(wb: Werkbank, ent: Entity, e: Knoten): void {
@@ -96,6 +103,7 @@ function felder(wb: Werkbank, ent: Entity, e: Knoten): void {
   wb.feld(ent, I, 'bonusSpellAttack', zahl(e['bonusSpellAttack']));
   wb.feld(ent, I, 'bonusSave', zahl(e['bonusSavingThrow']));
   wb.feld(ent, I, 'copperPrice', zahl(e['value']));
+  if (typeof e['valueNote'] === 'string') wb.feld(ent, I, 'priceNote', e['valueNote']);
   wb.feld(ent, I, 'weight', zahl(e['weight']));
   wb.marke(ent, ...SORTEN.filter((s) => e[s] === true));
   wirkungen(wb, ent, e);
@@ -396,6 +404,17 @@ export function ausgeschrieben(stand: Datenstand): Knoten[] {
       for (const [k, w] of Object.entries(basis)) if (!NICHT_VOM_GRUND.includes(k)) e[k] = w;
       for (const [k, w] of Object.entries(i)) if (!['namePrefix', 'nameSuffix', 'nameRemove', 'entries', 'reprintedAs', 'lootTables', 'classFeatures'].includes(k)) e[k] = w;
       if (i['valueMult'] !== undefined && basis['value'] !== undefined) e['value'] = Number(basis['value']) * Number(i['valueMult']);
+      /* Der Preis als Rechnung am Grundgegenstand (T-139): „Silvered" ist
+         `[[baseItem.value]] + 10000`. Nur diese beiden Formen; was anders
+         aussieht, bleibt ohne Preis, statt falsch gerechnet zu werden. */
+      const ausdruck = /^\[\[baseItem\.value\]\]\s*([+*])\s*(\d+(?:\.\d+)?)$/.exec(String(i['valueExpression'] ?? '').trim());
+      if (ausdruck && basis['value'] !== undefined) {
+        const [, op, z] = ausdruck;
+        e['value'] = op === '+' ? Number(basis['value']) + Number(z) : Number(basis['value']) * Number(z);
+        e['valueNote'] = op === '+' ? `derived: base price + ${coinNote(Number(z))}` : `derived: base price × ${z}`;
+      } else if (i['valueMult'] !== undefined && basis['value'] !== undefined) {
+        e['valueNote'] = `derived: base price × ${String(i['valueMult'])}`;
+      }
       if (i['weightMult'] !== undefined && basis['weight'] !== undefined) e['weight'] = Number(basis['weight']) * Number(i['weightMult']);
       delete e['valueMult'];
       delete e['weightMult'];
