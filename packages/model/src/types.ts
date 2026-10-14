@@ -426,6 +426,13 @@ export type LayoutElementKind =
   | 'statblock'
   | 'spell'
   | 'item'
+  /**
+   * **Die Teile in ihrer Reihenfolge** (T-108, E14): was mit Rang an einem
+   * Kapitel, einer Szene oder einem Arc hängt — Überschriften, Absätze,
+   * Vorlesetexte, Verweise, Szenen —, gezeichnet wie im Buch. Wo nichts
+   * hängt, zeichnet es nichts.
+   */
+  | 'parts'
   | 'tabs';
 
 /**

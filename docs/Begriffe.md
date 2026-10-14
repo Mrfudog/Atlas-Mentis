@@ -791,6 +791,12 @@ darunter, und hundertfünfzigtausend solcher Namen machten jeden
 `[[Verweis]]` mehrdeutig. Teil heisst hier ein Stück Buchtext; ein
 **Bestandteil** ist weiter ein Typ, aus dem ein anderer gemacht ist — der
 abstrakte Obertyp heisst darum `BookPart` und nicht `Part`.
+**Holen oder verwenden** (E-028): einen Teil holt man wie ein Kapitel —
+als Fassung in der Kampagnenebene, die man ändern darf (E-018 a). Wer ihn
+nur zeigen will, wie er ist, *verwendet* ihn: ein `Embed` in der eigenen
+Szene zeigt aufs Original, und eine Korrektur am Original kommt mit.
+Zwei Wege, weil es zwei Absichten sind; einer allein hiesse, entweder
+jeden Vorlesetext zu kopieren oder keinen ändern zu können.
 
 **Wer schreibt, schreibt in eine Ebene** (T-098, E-001). Die Leitung
 konnte bis zum 14.10. ihre eigene Kampagne lesen und nichts daran ändern;

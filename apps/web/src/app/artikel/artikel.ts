@@ -26,6 +26,7 @@ import {
   primaryInterface,
   relationDef,
   resolveView,
+  isBookPart,
 } from '@nw/model';
 import type { Entity, LayoutElement, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
 import { Api, ApiError, type Fassungen, type LeseZiel } from '../kern/api';
@@ -53,6 +54,7 @@ import { Statblock } from './statblock';
 import { Zauber } from './zauber';
 import { Gegenstand } from './gegenstand';
 import { Abschnitte } from './abschnitte';
+import { Fluss } from './fluss';
 import { Herausgeber } from './herausgeber';
 import {
   abweichungen,
@@ -105,7 +107,7 @@ interface Prosa {
 /** Ein Stück der gezeichneten Seite — ein Layout-Element, aufgelöst. */
 interface Stueck {
   id: string;
-  art: 'statblock' | 'spell' | 'item' | 'beschreibung' | 'felder' | 'prosa' | 'teile' | 'ueberschrift' | 'absatz';
+  art: 'statblock' | 'spell' | 'item' | 'beschreibung' | 'felder' | 'prosa' | 'teile' | 'fluss' | 'ueberschrift' | 'absatz';
   text?: string;
   zellen?: Zelle[];
   prosa?: Prosa[];
@@ -172,6 +174,7 @@ interface Feld {
     Zauber,
     Gegenstand,
     Abschnitte,
+    Fluss,
     FassungsKasten,
     AbwMarken,
     KurzLink,
@@ -240,6 +243,14 @@ interface Feld {
                             title="Make this campaign's version of it, with everything below it. The original stays.">
                       {{ passtAn() ? 'Taking…' : 'Take' }}
                     </button>
+                    <!-- Einen Teil eines Buchs verwenden statt kopieren (E-028, T-108):
+                         ein Verweis aufs Original, der Korrekturen am Original mitnimmt. -->
+                    @if (istBuchteil()) {
+                      <button type="button" [disabled]="passtAn()" (click)="uebernehmen(wohin.value, true)"
+                              title="Show the original there, as it is. Take it instead when you want to change it.">
+                        Use as is
+                      </button>
+                    }
                   </span>
                 }
                 @if (original(); as o) {
@@ -614,6 +625,9 @@ interface Feld {
                   }
                   @case ('teile') {
                     <nw-abschnitte [besitzer]="e" />
+                  }
+                  @case ('fluss') {
+                    <nw-fluss [besitzer]="e" />
                   }
                   @case ('ueberschrift') {
                     <h2>{{ st.text }}</h2>
@@ -1170,6 +1184,11 @@ export class Artikel {
         case 'composed':
           out.push({ id: el.id, art: 'teile' });
           break;
+        /* Die Teile eines Kapitels oder einer Szene (T-108): die Komponente
+           fragt selbst und zeichnet nichts, wo nichts hängt. */
+        case 'parts':
+          out.push({ id: el.id, art: 'fluss' });
+          break;
         case 'heading':
           if (el.text) out.push({ id: el.id, art: 'ueberschrift', text: el.text });
           break;
@@ -1556,6 +1575,12 @@ export class Artikel {
     }
   }
 
+  /** Ein Teil eines Buchs (T-108)? Dann lässt er sich auch verwenden statt holen (E-028). */
+  protected readonly istBuchteil = computed(() => {
+    const e = this.artikel();
+    return !!e && isBookPart(e);
+  });
+
   /** Wohin „Take" den Artikel hängen kann (`refs.takeInto`, E-026). */
   protected readonly uebernahmeZiele = computed(() => this.bestand.uebernahmeZiele().get(this.id()) ?? []);
 
@@ -1564,13 +1589,13 @@ export class Artikel {
    * Artikel und alles darunter, gehängt an das gewählte Ziel. Danach die
    * Fassung öffnen — das Original zeigt ab jetzt auf sie.
    */
-  protected async uebernehmen(into: string): Promise<void> {
+  protected async uebernehmen(into: string, verwenden = false): Promise<void> {
     const e = this.artikel();
     if (!e || !into) return;
     this.passtAn.set(true);
     this.anpassFehler.set(null);
     try {
-      const { id } = await this.api.take(e.id, into);
+      const { id } = await this.api.take(e.id, into, verwenden);
       await this.bestand.oeffnen(this.id(), true);
       await this.router.navigate(['/artikel', id]);
     } catch (x) {

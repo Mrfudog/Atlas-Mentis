@@ -200,7 +200,14 @@ export interface LeseBuch {
 export interface LeseStueck {
   layer: string;
   unit: string;
-  sections: { id: string; depth: number; entity: Entity; embeds: Entity[] }[];
+  /** `toc: false` für Absätze, Vorlesetexte, Verweise (T-108); `target` am Verweis-Teil sein Ziel. */
+  sections: { id: string; depth: number; toc?: false; entity: Entity; embeds: Entity[]; target?: Entity }[];
+  refs: Bezuege;
+}
+/** `GET /api/entities/:id/parts` (T-108): die Teile in Reihenfolge, ein Verweis-Teil mit seinem Ziel. */
+export interface Teile {
+  id: string;
+  parts: { id: string; entity: Entity; target?: Entity }[];
   refs: Bezuege;
 }
 export interface LeseTreffer {
@@ -770,6 +777,10 @@ export class Api {
   readBook(layer: string): Promise<LeseBuch> {
     return this.call<LeseBuch>(`/api/read/${encodeURIComponent(layer)}`);
   }
+  /** Die Teile eines Kapitels, einer Szene, eines Arcs in Reihenfolge (T-108, Element `parts`). */
+  parts(id: string): Promise<Teile> {
+    return this.call<Teile>(`/api/entities/${encodeURIComponent(id)}/parts`);
+  }
   readUnit(layer: string, unit: string): Promise<LeseStueck> {
     return this.call<LeseStueck>(`/api/read/${encodeURIComponent(layer)}/unit/${encodeURIComponent(unit)}`);
   }
@@ -794,10 +805,11 @@ export class Api {
    * als Fassung in die Ebene der Kampagne, gehängt an `into` (die Kampagne
    * oder einer ihrer Arcs). Gibt die Fassung des Artikels selbst zurück.
    */
-  take(id: string, into: string): Promise<{ id: string; created: number; taken: number }> {
+  take(id: string, into: string, use = false): Promise<{ id: string; created: number; taken: number; used?: boolean }> {
     return this.call(`/api/entities/${encodeURIComponent(id)}/take`, {
       method: 'POST',
-      body: JSON.stringify({ into }),
+      /* `use` (E-028): statt einer Fassung ein Verweis-Teil aufs Original. */
+      body: JSON.stringify(use ? { into, use: true } : { into }),
     });
   }
 

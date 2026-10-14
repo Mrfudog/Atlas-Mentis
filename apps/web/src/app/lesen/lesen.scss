@@ -240,6 +240,51 @@
   font-size: 0.85rem;
   margin-top: 0.25rem;
 }
+/* Ein Teil eines Kapitels (T-108) steht im Fluss; „open" erscheint am
+   Rand, wenn man darauf zeigt — ein Absatz ist auch ein Artikel. */
+.teil {
+  position: relative;
+  scroll-margin-top: 0.5rem;
+}
+.teil-oeffnen {
+  position: absolute;
+  top: 0.1rem;
+  right: -0.25rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.teil:hover .teil-oeffnen,
+.teil:focus-within .teil-oeffnen {
+  opacity: 1;
+}
+@media (hover: none) {
+  .teil-oeffnen {
+    display: none;
+  }
+}
+.block.rand {
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  font-family: var(--sans);
+  font-size: 0.94rem;
+}
+.block.zitat {
+  padding: 0.2rem 1rem;
+  border-left: 2px solid var(--line);
+  font-style: italic;
+}
+/* Ein Verweis auf einen Artikel, der für sich steht: eine Zeile mit der
+   Art, ein Klick zeigt die Kurzansicht. */
+.verweis {
+  margin: 0.75rem 0;
+  padding: 0.45rem 0.75rem;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+}
 .kampf {
   margin: 0.75rem 0;
   padding: 0.5rem 0.75rem;

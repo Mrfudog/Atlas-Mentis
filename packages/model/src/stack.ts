@@ -469,18 +469,35 @@ export function inStack(
   return addAt > remAt;
 }
 
+/**
+ * Je Artikel, wer ihn über `overrides` überschreibt — einmal über den
+ * Bestand gerechnet. Mit ihr fragt `overriderOf` nur die Kandidaten statt
+ * jedes Artikels (T-108: mit 250 000 Artikeln und hundert Verweisen auf
+ * einer Seite sonst zehn Sekunden).
+ */
+export function overridersIndex(entities: Iterable<Entity>): Map<EntityId, Entity[]> {
+  const out = new Map<EntityId, Entity[]>();
+  for (const o of entities) {
+    for (const r of kanten(o, OVERRIDES_RELATION)) (out.get(r.to) ?? out.set(r.to, []).get(r.to)!).push(o);
+  }
+  return out;
+}
+
 /** Wer diesen Artikel überschreibt: die spezifischste aufgeschaltete Fassung, sonst niemand. */
 export function overriderOf(
   entities: Map<EntityId, Entity>,
   id: EntityId,
   campaign: Entity | null,
   registry?: Pick<Registry, 'interfaces'>,
+  index?: ReadonlyMap<EntityId, readonly Entity[]>,
 ): Entity | null {
   if (!campaign) return null;
+  /* Ohne Kandidaten keine Rechnung: die Sicht liest alle Gruppen. */
+  if (index && !index.get(id)?.length) return null;
   const { zaehlt } = sicht(entities, campaign, registry);
   let best: Entity | null = null;
   let bestRang = -1;
-  for (const o of entities.values()) {
+  for (const o of index ? (index.get(id) ?? []) : entities.values()) {
     if (!kanten(o, OVERRIDES_RELATION).some((r) => r.to === id)) continue;
     const r2 = Math.max(0, ...kanten(o, LAYER_RELATION).map((x) => zaehlt(o, x.to)));
     if (!r2) continue; /* Überschreibung ohne aufgeschaltete Ebene zählt nicht */
@@ -507,11 +524,12 @@ export function resolveArticle(
   entity: Entity,
   campaign: Entity | null,
   registry?: Pick<Registry, 'interfaces'>,
+  index?: ReadonlyMap<EntityId, readonly Entity[]>,
 ): Entity {
   let at = entity;
   const gesehen = new Set<EntityId>([entity.id]);
   for (let i = 0; i < 8; i += 1) {
-    const next = overriderOf(entities, at.id, campaign, registry);
+    const next = overriderOf(entities, at.id, campaign, registry, index);
     if (!next || gesehen.has(next.id)) return at;
     gesehen.add(next.id);
     at = next;
@@ -540,6 +558,12 @@ export interface PlayStack {
   rank(entity: Entity): number;
   /** Wie `unactivatedLayers`. */
   unactivated(entity: Entity): EntityId[];
+  /**
+   * Wie `resolveArticle`, mit den Überschreibern aus `overridersIndex` —
+   * ohne die Sicht je Frage neu zu rechnen (T-108: eine Kapitelseite fragt
+   * für jeden Verweis darin).
+   */
+  resolve(entity: Entity, index: ReadonlyMap<EntityId, readonly Entity[]>): Entity;
 }
 
 /**
@@ -563,7 +587,7 @@ export function playStack(
   registry?: Pick<Registry, 'interfaces'>,
 ): PlayStack {
   if (!campaign) {
-    return { inPlay: () => true, inStack: () => true, inCompare: () => false, rank: () => 0, unactivated: () => [] };
+    return { inPlay: () => true, inStack: () => true, inCompare: () => false, rank: () => 0, unactivated: () => [], resolve: (e) => e };
   }
   const { rang, zaehlt } = sicht(entities, campaign, registry);
   const bereich = bereichVon(registry);
@@ -623,6 +647,27 @@ export function playStack(
       if (!ebenen.length || ebenen.some((r) => rang.has(r.to))) return [];
       const bringen = ebenen.filter((r) => (r.props as { mode?: unknown } | undefined)?.mode !== 'removes');
       return [...new Set(bringen.map((r) => r.to))];
+    },
+    resolve: (entity, index) => {
+      /* Dieselbe Regel wie `overriderOf`: die Fassung aus der höchsten
+         aufgeschalteten Ebene, die Kette entlang, nicht im Kreis. */
+      let at = entity;
+      const gesehen = new Set<EntityId>([entity.id]);
+      for (let i = 0; i < 8; i += 1) {
+        let best: Entity | null = null;
+        let bestRang = 0;
+        for (const o of index.get(at.id) ?? []) {
+          const r2 = Math.max(0, ...kanten(o, LAYER_RELATION).map((x) => zaehlt(o, x.to)));
+          if (r2 > bestRang) {
+            bestRang = r2;
+            best = o;
+          }
+        }
+        if (!best || gesehen.has(best.id)) return at;
+        gesehen.add(best.id);
+        at = best;
+      }
+      return at;
     },
   };
 }
@@ -902,15 +947,18 @@ export function takenWith(
  * (`mapping`: Original → Fassung) — sonst hinge die Szene der Fassung am
  * Kapitel, das diese Kampagne gar nicht mehr sieht. Mit `into` hängt der
  * Artikel selbst danach nur noch dort (`partOf`), am Arc oder an der
- * Kampagne, wohin die Leitung ihn holt.
+ * Kampagne, wohin die Leitung ihn holt — mit `rank` an der Stelle, die
+ * der Aufrufer ihm dort gibt (T-108).
  */
-export function rehang(fassung: Entity, mapping: ReadonlyMap<EntityId, EntityId>, into?: EntityId): Entity {
+export function rehang(fassung: Entity, mapping: ReadonlyMap<EntityId, EntityId>, into?: EntityId, rank?: number): Entity {
   let relations = (fassung.relations ?? []).map((r) =>
     TAKE_EDGES.includes(r.type) && mapping.has(r.to) ? { ...r, to: mapping.get(r.to)! } : r,
   );
   if (into) {
     relations = relations.filter((r) => r.type !== 'partOf');
-    relations.push({ id: `${fassung.id}~partOf-into`, type: 'partOf', to: into, props: {} });
+    /* Ein Teil eines Buchs (T-108) bekommt seinen Platz im Ziel: hinter
+       dem, was dort schon steht (`rank`). */
+    relations.push({ id: `${fassung.id}~partOf-into`, type: 'partOf', to: into, props: rank === undefined ? {} : { rank } });
   }
   return { ...fassung, relations };
 }

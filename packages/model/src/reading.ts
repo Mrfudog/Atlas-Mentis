@@ -21,7 +21,8 @@
  *   Abenteuer selbst), ist sie die Titelseite — ihr eigener Text ein
  *   Stück, jedes Kind ein weiteres. Sonst ist jede Wurzel ein Stück.
  *
- * **Hat die Ebene Kapitel** (`Chapter`, T-108), liest sie sich aus ihnen:
+ * **Hat die Ebene Kapitel** (`Chapter`, T-108, eigene und keine geholte
+ * Fassung), liest sie sich aus ihnen:
  * jedes Kapitel ist eine Wurzel und ein Stück, darunter seine Teile in der
  * Reihenfolge von `partOf.rank` (`partsIndex`) — Überschriften, Absätze,
  * Vorlesetexte, Verweise, Szenen und deren Teile. Der Baum aus Story, Arc
@@ -83,7 +84,13 @@ export function byNumber(a: Entity, b: Entity): number {
  */
 export function readingOrder(all: Iterable<Entity>, layer: string): ReadingNode[] {
   const liste = [...all];
-  if (liste.some((e) => primaryInterface(e) === CHAPTER_TYPE && inLayerOf(e, layer))) return chapterOrder(liste, layer);
+  /* Ein geholtes Kapitel (eine Fassung in der Kampagnenebene, E-026)
+     macht die Kampagne nicht zum Buch: es steht im Baum ihrer Geschichte,
+     an dem Arc, an den es geholt wurde. */
+  const istBuch = liste.some(
+    (e) => primaryInterface(e) === CHAPTER_TYPE && inLayerOf(e, layer) && !(e.relations ?? []).some((r) => r.type === 'overrides'),
+  );
+  if (istBuch) return chapterOrder(liste, layer);
   const nodes = new Map<string, Entity>();
   for (const e of liste) if (isReadingNode(e, layer)) nodes.set(e.id, e);
   const parentOf = (e: Entity): string | undefined =>

@@ -22,7 +22,7 @@
  */
 
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { entityName, isReadingNode, primaryInterface, readingOrder, READING_TYPES, type ReadingNode } from '@nw/model';
+import { entityName, isReadingNode, partsIndex, primaryInterface, readingOrder, READING_TYPES, replacedIds, type ReadingNode } from '@nw/model';
 import type { Entity } from '@nw/model';
 import type { User } from './auth.js';
 import type { Repository } from './repo.js';
@@ -236,19 +236,37 @@ export function registerLesen(
       (haengt.get(k) ?? haengt.set(k, []).get(k)!).push(e);
     }
     const eingebettet = await gesiebt(request, [...haengt.values()].flat(), stand);
+    /* Ein Verweis-Teil (`Embed`, T-108) zeigt auf einen Artikel, der für
+       sich steht — einen Zauber, ein Monster. Er kommt mit, gesiebt wie
+       alles: wer das Ziel nicht sehen darf, sieht an der Stelle nichts. */
+    const zielVon = new Map<string, Entity>();
+    for (const n of glieder) {
+      const e = sichtbar.get(n.id);
+      const ziel = e && primaryInterface(e) === 'Embed' ? (e.components?.['Embed'] as { target?: unknown } | undefined)?.target : undefined;
+      const z = typeof ziel === 'string' ? stand.map.get(ziel) : undefined;
+      if (z) zielVon.set(n.id, z);
+    }
+    const ziele = await gesiebt(request, [...zielVon.values()], stand);
 
     const sections = glieder
       .filter((n) => sichtbar.has(n.id))
-      .map((n) => ({
-        id: n.id,
-        depth: n.depth,
-        entity: sichtbar.get(n.id)!,
-        embeds: (haengt.get(n.id) ?? []).map((e) => eingebettet.get(e.id)).filter((e): e is Entity => !!e),
-      }));
+      .map((n) => {
+        const ziel = zielVon.has(n.id) ? ziele.get(zielVon.get(n.id)!.id) : undefined;
+        return {
+          id: n.id,
+          depth: n.depth,
+          ...(n.toc === false ? { toc: false } : {}),
+          entity: sichtbar.get(n.id)!,
+          embeds: (haengt.get(n.id) ?? []).map((e) => eingebettet.get(e.id)).filter((e): e is Entity => !!e),
+          ...(ziel ? { target: ziel } : {}),
+        };
+      })
+      /* Ein Verweis, dessen Ziel der Betrachter nicht sieht, ist eine leere Stelle. */
+      .filter((x) => primaryInterface(x.entity) !== 'Embed' || x.target);
     /* Namen und Verweisziele für alles auf einmal: ein Artikel aus allen
        Karten und Kanten des Stücks, nur zum Fragen — zwanzig Abschnitte
        sind sonst zwanzigmal das Sieb über die Kandidaten. */
-    const alles = sections.flatMap((s) => [s.entity, ...s.embeds]);
+    const alles = sections.flatMap((s) => [s.entity, ...s.embeds, ...(s.target ? [s.target] : [])]);
     const refs = await bezuegeVon(request, {
       id: `read:${unit}`,
       name: '',
@@ -287,6 +305,57 @@ export function registerLesen(
     return { q, hits };
   });
 
+  /* Die Teile je Ganzem, einmal je Bestand-Stempel (T-108). */
+  let teileJe: { stempel: string; index: ReturnType<typeof partsIndex> } | null = null;
+
+  /**
+   * **Die Teile eines Artikels in ihrer Reihenfolge** (T-108, E14):
+   * `GET /api/entities/:id/parts` — was mit Rang an einem Kapitel, einer
+   * Szene oder einem Arc hängt, für dessen Artikelseite. Eine Fassung (E-018)
+   * hat die Teile ihres Originals dazu: die Teile eines angepassten
+   * Kapitels hängen weiter am Original. Je Teil die Fassung, die gilt,
+   * gesiebt; ein Verweis-Teil bringt sein Ziel mit.
+   */
+  app.get<{ Params: { id: string } }>('/api/entities/:id/parts', async (request, reply) => {
+    const stand = await roh();
+    const gefunden = stand.map.get(request.params.id);
+    const ganzes = gefunden ? await geltend(gefunden, stand.map) : undefined;
+    if (!ganzes || !(await sieve(request, [ganzes], stand.map)).length) return reply.code(404).send({ error: 'Nicht gefunden' });
+    if (teileJe?.stempel !== stand.stempel) teileJe = { stempel: stand.stempel, index: partsIndex(stand.alle) };
+    const auch = [ganzes.id, ...replacedIds(stand.map, ganzes)];
+    const roh2 = auch.flatMap((id) => teileJe!.index.get(id) ?? []).sort((a, b) => a.rank - b.rank);
+    /* Ein Teil, der als Original und als Fassung dasteht, einmal. */
+    const gesehen = new Set<string>();
+    const knoten = roh2.map((t) => t.entity).filter((e) => !gesehen.has(e.id) && gesehen.add(e.id));
+    const sichtbar = await gesiebt(request, knoten, stand);
+    const zielVon = new Map<string, Entity>();
+    for (const e of sichtbar.values()) {
+      const ziel = primaryInterface(e) === 'Embed' ? (e.components?.['Embed'] as { target?: unknown } | undefined)?.target : undefined;
+      const z = typeof ziel === 'string' ? stand.map.get(ziel) : undefined;
+      if (z) zielVon.set(e.id, z);
+    }
+    const ziele = await gesiebt(request, [...zielVon.values()], stand);
+    const parts = knoten
+      .filter((k) => sichtbar.has(k.id))
+      .map((k) => {
+        const e = sichtbar.get(k.id)!;
+        const z = zielVon.get(e.id);
+        const ziel = z ? ziele.get(z.id) : undefined;
+        return { id: k.id, entity: e, ...(ziel ? { target: ziel } : {}) };
+      })
+      .filter((x) => primaryInterface(x.entity) !== 'Embed' || x.target);
+    const alles = parts.flatMap((x) => [x.entity, ...(x.target ? [x.target] : [])]);
+    const refs = await bezuegeVon(request, {
+      id: `parts:${ganzes.id}`,
+      name: '',
+      interfaces: [],
+      components: { Read: { texts: alles.map((e) => e.components ?? {}) } },
+      relations: alles.flatMap((e) => e.relations ?? []),
+    });
+    for (const e of alles) refs.names[e.id] = entityName(e);
+    return { id: ganzes.id, parts, refs };
+  });
+
   app.put<{ Params: { layer: string }; Body: { id?: unknown } | null }>('/api/read/:layer/position', async (request, reply) => {
     const user = await viewerOf(request);
     if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
@@ -318,7 +387,13 @@ export function registerLesen(
     const quelle = (original && stand.map.get(original)) || e;
     for (const r of quelle.relations ?? []) {
       if (r.type !== 'inLayer' || !mitText.has(r.to)) continue;
-      if (isReadingNode(quelle, r.to)) return { layer: r.to, at: quelle.id };
+      if (isReadingNode(quelle, r.to)) {
+        const { order } = await ordnung(r.to);
+        if (order.some((n) => n.id === quelle.id)) return { layer: r.to, at: quelle.id };
+        /* Ein Arc liest sich als sein Kapitel (E-029, `chapterOf`). */
+        const kapitel = stand.alle.find((k) => (k.relations ?? []).some((x) => x.type === 'chapterOf' && x.to === quelle.id));
+        if (kapitel && order.some((n) => n.id === kapitel.id)) return { layer: r.to, at: kapitel.id };
+      }
       const seite = seiteVon(quelle);
       return seite ? { layer: r.to, page: seite } : { layer: r.to };
     }

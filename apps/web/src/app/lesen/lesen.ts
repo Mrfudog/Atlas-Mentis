@@ -2,32 +2,24 @@ import { Component, DestroyRef, ElementRef, computed, effect, inject, input, sig
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Title } from '@angular/platform-browser';
-import { entityName, entriesOf, fieldTitle, nodeAtPage, primaryInterface, proseFields } from '@nw/model';
+import { entityName, nodeAtPage, primaryInterface } from '@nw/model';
 import type { VarScopes } from '@nw/model';
 import { Api, type LeseBuch, type LeseStueck, type LeseTreffer, type LeseZeile } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 import { Text } from '../artikel/text';
 import { KurzLink } from '../kern/kurzansicht';
+import { bloeckeVon, type Block } from '../kern/buchtext';
 
-/** Was ein Abschnitt als Text zeigt, in dieser Reihenfolge; der Rest der Prosafelder danach. */
-const ZUERST = ['ReadAloud.readaloud', 'Description.description', 'Prose.paragraph'];
-/** Was nicht Buchtext ist: die Fundstelle (steht im Kopf), die Aufgaben der Leitung. */
-const NICHT = ['Notes.note', 'Todos.items'];
-/** Als Kasten gesetzt — Vorlesetext und was nur die Leitung liest (wie `artikel.scss`). */
-const KASTEN: Record<string, string> = {
-  'ReadAloud.readaloud': 'vorlesen',
-  'Secrets.secret': 'geheim',
-  'Tactics.tactics': 'geheim',
-};
-
-interface Block {
-  key: string;
-  art: string;
-  label: string;
-  text: string;
-}
 interface Abschnitt {
   id: string;
+  /**
+   * Ein Teil eines Kapitels (T-108) steht ohne eigene Kopfzeile im Fluss:
+   * ein Absatz, ein Vorlesetext, ein Verweis. Kapitel, Szenen und
+   * Überschriften sind Abschnitte mit Kopf (`undefined`).
+   */
+  teil?: 'text' | 'verweis';
+  /** Am Verweis-Teil: worauf er zeigt. */
+  ziel?: { id: string; name: string; art: string };
   /** Die Fassung, die gilt (E-018) — dorthin führt „open". */
   artikel: string;
   name: string;
@@ -139,6 +131,27 @@ interface Abschnitt {
               </p>
             }
             @for (a of abschnitte(); track a.id) {
+              @if (a.teil) {
+                <!-- Ein Teil des Kapitels (T-108): im Fluss, ohne Kopf; „open" am Rand. -->
+                <div class="teil" [id]="'s-' + a.id" [attr.data-id]="a.id">
+                  @if (a.ziel; as z) {
+                    <div class="verweis">
+                      <span class="leg">{{ z.art }}</span>
+                      <a [routerLink]="['/artikel', z.id]" [nwQuick]="z.id">{{ z.name }}</a>
+                    </div>
+                  }
+                  @for (bl of a.bloecke; track bl.key) {
+                    <div [class]="'block ' + bl.art">
+                      @if (bl.art !== 'text') {
+                        <span class="leg">{{ bl.label }}</span>
+                      }
+                      <nw-text [text]="bl.text" [scopes]="scopes" />
+                    </div>
+                  }
+                  <a class="direkt oeffnen teil-oeffnen" [routerLink]="['/artikel', a.artikel]" title="Open as article"
+                     [attr.aria-label]="'Open ' + a.name">open</a>
+                </div>
+              } @else {
               <section class="abschnitt" [id]="'s-' + a.id" [attr.data-id]="a.id" [class]="'stufe' + a.stufe">
                 <div class="ueber" [attr.role]="'heading'" [attr.aria-level]="a.stufe + 1">
                   <span>{{ a.name }}</span>
@@ -178,6 +191,7 @@ interface Abschnitt {
                   </div>
                 }
               </section>
+              }
             }
             @if (stueck() && !abschnitte().length) {
               <p class="leer">Nothing in this chapter you may see.</p>
@@ -262,27 +276,15 @@ export class Lesen {
     const toc = new Map((this.buch()?.toc ?? []).map((z) => [z.id, z]));
     return s.sections.map((x) => {
       const e = x.entity;
-      const typ = primaryInterface(e);
-      const felder = proseFields(r, typ)
-        .map((f) => ({ f, ref: `${f.type}.${f.key}` }))
-        .filter(({ ref }) => !NICHT.includes(ref))
-        .sort((a, b) => rang(a.ref) - rang(b.ref));
-      const bloecke: Block[] = [];
-      for (const { f, ref } of felder) {
-        const karte = (e.components?.[f.type] ?? {}) as Record<string, unknown>;
-        for (const eintrag of entriesOf(karte[f.key])) {
-          if (!eintrag.value.trim()) continue;
-          bloecke.push({
-            key: `${ref}#${eintrag.id}`,
-            art: KASTEN[ref] ?? (ref === 'Prose.paragraph' || ref === 'Description.description' ? 'text' : 'feld'),
-            label: fieldTitle(r, typ, f),
-            text: eintrag.value,
-          });
-        }
-      }
+      const bloecke = bloeckeVon(r, e);
       const name = (id: string) => s.refs.names[id] ?? id;
+      const teil = x.toc === false ? (x.target ? ('verweis' as const) : ('text' as const)) : undefined;
       return {
         id: x.id,
+        ...(teil ? { teil } : {}),
+        ...(x.target
+          ? { ziel: { id: x.target.id, name: entityName(x.target), art: r.interfaces[primaryInterface(x.target)]?.label ?? primaryInterface(x.target) } }
+          : {}),
         artikel: e.id,
         name: entityName(e),
         stufe: Math.min(5, x.depth - kopf + 1),
@@ -351,8 +353,10 @@ export class Lesen {
       this.title.setTitle(`${b.layer.name} · Atlas Mentis`);
       this.gemerkt = b.position;
       const seite = Number(page);
+      /* `?at=` darf auch ein Absatz sein (T-108): er steht in keinem
+         Verzeichnis, aber sein Stück findet der Server. */
       const ziel =
-        (at && b.toc.some((z) => z.id === at) ? at : undefined) ??
+        at ??
         (page && Number.isFinite(seite) ? nodeAtPage(b.toc, seite) : undefined) ??
         b.position ??
         b.toc[0]?.id;
@@ -365,13 +369,17 @@ export class Lesen {
   /** Zu einem Abschnitt: sein Stück laden, wenn es nicht das offene ist, und hinscrollen. */
   protected async gehe(id: string, merken = true): Promise<void> {
     const b = this.buch();
-    const z = b?.toc.find((x) => x.id === id);
-    if (!b || !z) return;
+    if (!b) return;
+    const z = b.toc.find((x) => x.id === id);
+    /* Ein Teil (T-108) steht nicht im Verzeichnis: steht er schon im
+       offenen Stück, genügt das Scrollen, sonst fragt man den Server nach
+       seinem Stück (er nimmt jede Id darin). */
+    const imOffenen = !z && this.stueck()?.sections.some((x) => x.id === id);
     this.tocOffen.set(false);
-    if (this.stueck()?.unit !== z.unit) {
+    if (z ? this.stueck()?.unit !== z.unit : !imOffenen) {
       this.laedt.set(true);
       try {
-        const s = await this.api.readUnit(b.layer.id, z.unit);
+        const s = await this.api.readUnit(b.layer.id, z?.unit ?? id);
         this.bestand.bezuegeAufnehmen(s.refs);
         this.stueck.set(s);
       } catch (x) {
@@ -449,9 +457,4 @@ export class Lesen {
       this.fehler.set(x instanceof Error ? x.message : String(x));
     }
   }
-}
-
-function rang(ref: string): number {
-  const i = ZUERST.indexOf(ref);
-  return i < 0 ? ZUERST.length : i;
 }
