@@ -680,7 +680,15 @@ Leitungsrolle — dann ohne `--admin` anlegen und
 `… user.js role werkbank <kampagnen-id> gm` setzen (in Schritt 2 ohne
 `--write`, wenn sie nur prüft).
 
-**2. Ein Token ausgeben** — es steht genau einmal da, also gleich kopieren:
+**2. Ein Token ausgeben** — es steht genau einmal da, also gleich kopieren.
+
+In der Seite (seit T-112): auf dev **als das Konto, dem das Token gehören
+soll**, in der Werkbank (oder unter Account) → *API tokens* → Name
+(`claude-cloud`), Rechte *read and write*, Ablaufdatum → **Create token**.
+Darunter stehen gleich die Werte für Schritt 3 (Host, Header, Präfix) und
+ein Knopf, der `Bearer atm_…` kopiert. Ein Token gehört immer dem
+angemeldeten Konto — für das Konto `werkbank`, das sich nie über die Maske
+anmeldet, bleibt die Kommandozeile:
 
 ```bash
 docker compose exec app node apps/server/dist/user.js token werkbank new claude-cloud --days 30 --write
@@ -725,7 +733,9 @@ einen anderen Host, oder Header-Name (`Authorization`) oder Präfix
 Läuft das Token ab, ein neues ausgeben (Schritt 2) und das Secret in den
 Einstellungen ersetzen.
 
-**Widerrufen**, wenn ein Token irgendwo liegt, wo es nicht hingehört:
+**Widerrufen**, wenn ein Token irgendwo liegt, wo es nicht hingehört —
+das eigene in der Seite (*API tokens* → Revoke, die Liste nennt die letzte
+Nutzung), das eines anderen Kontos von der Kommandozeile:
 
 ```bash
 docker compose exec app node apps/server/dist/user.js token werkbank list
