@@ -55,7 +55,7 @@
             · {{ karten().length - sichtbar().length }} in collapsed areas
           }
           @if (darfSchreiben()) {
-            · drag the title bar to move, the corner to resize
+            · drag a title bar to move, a corner to resize
           }
         }
       }
@@ -94,16 +94,22 @@
               (pointerdown)="leinwandGreifen($event)"
             >
               @for (a of bereiche(); track a.id) {
+                @let l = lageVon(a);
                 <section
                   class="bereich"
                   [class.zu]="istZu(a.id)"
-                  [style.left.px]="a.x"
-                  [style.top.px]="a.y"
-                  [style.width.px]="a.w"
-                  [style.height.px]="hoeheVon(a)"
+                  [class.zieht]="bzug()?.id === a.id"
+                  [style.left.px]="l.x"
+                  [style.top.px]="l.y"
+                  [style.width.px]="l.w"
+                  [style.height.px]="l.h"
                   [attr.aria-label]="'Area ' + a.name"
                 >
-                  <header class="bkopf">
+                  <header
+                    class="bkopf"
+                    [class.ziehbar]="darfSchreiben() && !zeichnet()"
+                    (pointerdown)="bereichGreifen($event, a, 'schieben')"
+                  >
                     <button
                       type="button"
                       class="klapp"
@@ -151,6 +157,14 @@
                       </button>
                     }
                   </header>
+                  @if (darfSchreiben() && !istZu(a.id) && !zeichnet()) {
+                    <div
+                      class="griff bgriff"
+                      title="Resize area"
+                      aria-hidden="true"
+                      (pointerdown)="bereichGreifen($event, a, 'groesse')"
+                    ></div>
+                  }
                 </section>
               }
               @if (rahmen(); as r) {
@@ -213,7 +227,13 @@
                     }
                   </header>
                   @if (k.kurz) {
-                    <a class="kname" [routerLink]="['/artikel', k.kurz.id]">{{ name(k.kurz) }}</a>
+                    <a
+                      class="kname"
+                      [class.ziehbar]="darfSchreiben() && !k.platz.locked"
+                      [routerLink]="['/artikel', k.kurz.id]"
+                      (pointerdown)="greifen($event, k, 'schieben', true)"
+                      >{{ name(k.kurz) }}</a
+                    >
                   } @else {
                     <p class="kname weg-da">Not here — gone, or not yours to see.</p>
                   }

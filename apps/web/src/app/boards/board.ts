@@ -67,6 +67,28 @@ interface Zug {
   jetzt: BoardPlacement;
 }
 
+/** Ein Rechteck auf der Leinwand. */
+interface Lage {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * Ein Bereich, der gerade gezogen wird (T-146). Verschoben nimmt er seine
+ * Karten mit — welche das sind, sagt die Lage beim Greifen; sonst stünden
+ * sie nach dem Loslassen draussen und gehörten zu keinem Bereich mehr.
+ */
+interface Bzug {
+  id: string;
+  art: 'schieben' | 'groesse';
+  sx: number;
+  sy: number;
+  von: Lage;
+  jetzt: Lage;
+}
+
 /**
  * Ein Board (REQ-157, 158, 165, 166): eine Leinwand, auf der Artikel frei
  * liegen — nach `Board.dc.html`.
@@ -235,7 +257,8 @@ export class Board implements SchnellKontext {
     return this.kanten().map((rel) => {
       const ziel = voll.get(rel.to);
       const kurz = ziel ?? byId.get(rel.to);
-      const platz = z && z.id === rel.id ? z.jetzt : placementOf(rel);
+      const liegt = placementOf(rel);
+      const platz = z && z.id === rel.id ? z.jetzt : this.mitBereich(liegt, anchorAreaOf(anker, liegt));
       const typ = kurz ? primaryInterface(kurz) : '';
       return {
         rel,
@@ -249,7 +272,7 @@ export class Board implements SchnellKontext {
         /* Gezählt wird, wo die Karte lag, als man sie griff: sie soll
            nicht verschwinden, während man sie über einen eingeklappten
            Bereich zieht. */
-        liegtIn: anchorAreaOf(anker, z && z.id === rel.id ? z.von : platz),
+        liegtIn: anchorAreaOf(anker, z && z.id === rel.id ? z.von : liegt),
       };
     });
   });
@@ -293,9 +316,87 @@ export class Board implements SchnellKontext {
     }
   }
 
-  /** Die Höhe, mit der ein Bereich gezeichnet wird. */
-  protected hoeheVon(a: BoardAnchor): number {
-    return this.istZu(a.id) ? BEREICH_KOPF : (a.h ?? BEREICH_KOPF);
+  /** Wo ein Bereich gezeichnet wird: während des Ziehens, wo der Finger ist. */
+  protected lageVon(a: BoardAnchor): Lage {
+    const z = this.bzug();
+    const l = z && z.id === a.id ? z.jetzt : { x: a.x, y: a.y, w: a.w ?? 0, h: a.h ?? 0 };
+    return { ...l, h: this.istZu(a.id) ? BEREICH_KOPF : l.h || BEREICH_KOPF };
+  }
+
+  // ------------------------------------------------- Bereiche ziehen (T-146)
+
+  /** Mit Pointer-Events, damit Maus, Stift und Finger denselben Weg nehmen. */
+  protected readonly bzug = signal<Bzug | null>(null);
+
+  protected bereichGreifen(ev: PointerEvent, a: BoardAnchor, art: Bzug['art']): void {
+    /* Mit „Add area" in der Hand zeichnet man auch über einem Bereich —
+       ein kleinerer darin ist erlaubt. */
+    if (this.zeichnet() || !this.darfSchreiben() || ev.button !== 0 || !isArea(a)) return;
+    const t = ev.target as HTMLElement | null;
+    if (art === 'schieben' && t?.closest('a, button, input, select')) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    this.gewaehlt.set(null);
+    const von = { x: a.x, y: a.y, w: a.w, h: a.h };
+    this.bzug.set({ id: a.id, art, sx: ev.clientX, sy: ev.clientY, von, jetzt: von });
+  }
+
+  private bereichZiehen(ev: PointerEvent, z: Bzug): void {
+    const c = this.karte();
+    if (!c) return;
+    const dx = (ev.clientX - z.sx) / this.zoom();
+    const dy = (ev.clientY - z.sy) / this.zoom();
+    const { von } = z;
+    const jetzt =
+      z.art === 'schieben'
+        ? {
+            ...von,
+            x: Math.max(0, Math.min(snapTo(von.x + dx, c.snap), c.width - von.w)),
+            y: Math.max(0, Math.min(snapTo(von.y + dy, c.snap), c.height - von.h)),
+          }
+        : {
+            ...von,
+            w: Math.max(AREA_MIN.w, Math.min(snapTo(von.w + dx, c.snap), c.width - von.x)),
+            h: Math.max(AREA_MIN.h, Math.min(snapTo(von.h + dy, c.snap), c.height - von.y)),
+          };
+    this.bzug.set({ ...z, jetzt });
+  }
+
+  /** Eine Karte im gezogenen Bereich wandert mit; beim Grössenändern bleibt sie liegen. */
+  private mitBereich(p: BoardPlacement, liegtIn: string | null): BoardPlacement {
+    const z = this.bzug();
+    if (!z || z.art !== 'schieben' || liegtIn !== z.id) return p;
+    const c = this.karte();
+    const dx = z.jetzt.x - z.von.x;
+    const dy = z.jetzt.y - z.von.y;
+    if (!dx && !dy) return p;
+    const breit = c?.width ?? Infinity;
+    const hoch = c?.height ?? Infinity;
+    return {
+      ...p,
+      x: Math.max(0, Math.min(p.x + dx, breit - p.w)),
+      y: Math.max(0, Math.min(p.y + dy, hoch - p.h)),
+    };
+  }
+
+  private bereichFertig(z: Bzug): void {
+    const b = this.stand();
+    const { von, jetzt } = z;
+    if (!b || (von.x === jetzt.x && von.y === jetzt.y && von.w === jetzt.w && von.h === jetzt.h)) {
+      this.bzug.set(null);
+      return;
+    }
+    /* Die Karten aus der Lage vor dem Zug — noch gilt der alte Anker. */
+    const anker = this.anker();
+    const kanten = this.alleKanten().map((r) => {
+      if (r.type !== PLACED_RELATION) return r;
+      const p = placementOf(r);
+      const neu = this.mitBereich(p, anchorAreaOf(anker, p));
+      return neu === p ? r : { ...r, props: { ...(r.props ?? {}), x: neu.x, y: neu.y } };
+    });
+    this.bzug.set(null);
+    const mitAnker = withAnchors(b, anker.map((a) => (a.id === z.id ? { ...a, ...jetzt } : a)));
+    void this.schreiben({ ...mitAnker, relations: kanten });
   }
 
   /** Zum Anker springen: die Leinwand scrollt hin, und mit `zoom` zoomt sie auch. */
@@ -491,12 +592,17 @@ export class Board implements SchnellKontext {
 
   // ----------------------------------------------------------------- Ziehen
 
-  protected greifen(ev: PointerEvent, k: Karte, art: Zug['art']): void {
+  protected greifen(ev: PointerEvent, k: Karte, art: Zug['art'], amNamen = false): void {
     if (!this.darfSchreiben() || k.platz.locked || ev.button !== 0) return;
+    /* Am Namen zieht nur der Finger (T-146): verkleinert ist die Kopfzeile
+       am Telefon kaum 14 px hoch, und der Browser lenkt einen Tipp dorthin
+       auf den nächsten Verweis. Antippen öffnet weiter den Artikel; mit der
+       Maus bleibt der Name ein Verweis wie bisher. */
+    if (amNamen && ev.pointerType === 'mouse') return;
     /* Ein Knopf, eine Auswahl oder der Name in der Kopfzeile tun ihr
        Eigenes; gezogen wird an der freien Fläche. */
     const t = ev.target as HTMLElement | null;
-    if (art === 'schieben' && t?.closest('a, button, select')) return;
+    if (art === 'schieben' && !amNamen && t?.closest('a, button, select')) return;
     ev.preventDefault();
     this.gewaehlt.set(k.rel.id);
     this.zug.set({ id: k.rel.id, art, sx: ev.clientX, sy: ev.clientY, von: k.platz, jetzt: k.platz });
@@ -504,6 +610,8 @@ export class Board implements SchnellKontext {
 
   protected bewegen(ev: PointerEvent): void {
     if (this.rahmen()) return this.rahmenZiehen(ev);
+    const bz = this.bzug();
+    if (bz) return this.bereichZiehen(ev, bz);
     const z = this.zug();
     const c = this.karte();
     if (!z || !c) return;
@@ -526,6 +634,8 @@ export class Board implements SchnellKontext {
 
   protected loslassen(): void {
     if (this.rahmen()) return this.rahmenFertig();
+    const bz = this.bzug();
+    if (bz) return this.bereichFertig(bz);
     const z = this.zug();
     if (!z) return;
     this.zug.set(null);
@@ -539,6 +649,7 @@ export class Board implements SchnellKontext {
 
   protected abbrechen(): void {
     this.zug.set(null);
+    this.bzug.set(null);
     this.rahmen.set(null);
   }
 
