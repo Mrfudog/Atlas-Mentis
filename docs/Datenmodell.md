@@ -106,7 +106,7 @@ Was dabei immer gilt:
 | A5 | **Gerechnetes wird nie gespeichert** (D8): ein Feld mit `derived` hat keine Eingabe und keine Spalte. | Prüfung weist es nicht ab; die Maske gibt keine Eingabe, die Rechnung liest beim Zeichnen |
 | A6 | **Kanten nur vorwärts.** Die Gegenrichtung ist eine Abfrage (`backlinks`); ein gespiegeltes Gegenstück verwaist. `cardinality: 'one'` wird geprüft. | `validateEntity`, Server |
 | A7 | **Schreiben geht durch `validateEntity`** — am Server vor jedem `PUT`, im Prototyp vor jedem `persist`. | Server, Prototyp |
-| A8 | **Die Id ist undurchsichtig** und wird nie wiederverwendet. `Identity.id` ist die ausgegebene Nummer (`npc-0042`): beim Anlegen vergeben, `readOnly`, danach unverändert — auch bei einem Wechsel der Art. | `nextId`, `readOnly` |
+| A8 | **Die Id ist undurchsichtig** und wird nie wiederverwendet. `Identity.id` ist die ausgegebene Nummer (`npc-0042`): beim Anlegen vergeben, `readOnly`, danach unverändert — auch bei einem Wechsel der Art. **Einzige Ausnahme: die Übernahme zwischen zwei Installationen** (T-130, §12.2) — prod vergibt die Nummer, und dev zieht nach, samt Verweisen. Die Id bleibt auf beiden Seiten dieselbe. | `nextId`, `readOnly`, `assignNumbers` |
 | A9 | **`adhoc`** hält Felder, die nur dieser Artikel hat; befördern schreibt sie in den Typ (REQ-181). | Maske |
 | A10 | **Was kein Artikel ist, steht nicht im Artikel:** Konten, Rollen, Sitzungen, Einstellungen. Siehe §12. | — |
 | A11 | **Geschrieben wird gegen die gelesene Revision** (REQ-192). `revision` zählt der Server, je Schreiben eins mehr (Migration 030). Ein `PUT` nennt die Revision, die er gelesen hat; steht eine andere da — oder fehlt sie bei einem Artikel, den es schon gibt —, wird nichts geschrieben: `409` mit dem Stand, der gilt (`current`, gesiebt wie ein `GET`). Die Maske führt dann zusammen (`mergeEntity`, je Feld und je Kante) und fragt nur, wo beide Seiten dasselbe verschieden geändert haben. Ohne Revision wird nur angelegt; Einfuhr und Massenänderung schreiben ungeprüft, weil sie selbst vergleichen. | Server (`putEntity`, gesperrt mit `for update`), `mergeEntity` |
@@ -1180,7 +1180,7 @@ Druck und Registervorschau.
 | Was | Wo | Regel |
 |---|---|---|
 | die Id | `entity.id` | undurchsichtig, nie wiederverwendet; keine Herkunft darin (REQ-163) |
-| die Nummer | `Identity.id` | `art-0042`, beim Anlegen ausgegeben (`nextId`: das Höchste plus eins), `readOnly`; überlebt den Wechsel der Art |
+| die Nummer | `Identity.id` | `art-0042`, beim Anlegen ausgegeben (`nextId`: das Höchste plus eins), `readOnly`; überlebt den Wechsel der Art. Zwischen dev und prod gehört sie prod (§12.2): kommt ein Artikel neu nach prod und ist seine Nummer dort vergeben, gibt prod die nächste freie, und dev nimmt sie samt `[[…]]`-Verweisen an; holt dev von prod, weicht auf dev, was dieselbe Nummer trägt |
 | der Name | `entity.name` und `Identity.name` | die Überschrift; beide gleich |
 | Aliasse | `Identity.aliases` | Vorschläge und Verweise finden sie |
 | Deckname | `Identity.cover` | steht statt des Namens, solange der Name beansprucht und ungewusst ist |
@@ -1206,6 +1206,7 @@ Druck und Registervorschau.
 | Einstellungen | Registerteil `settings` | ja |
 | Dateien | Asset-Ablage (`AssetStore`, 12.1); der Artikel `Asset` trägt `backend`, `ref`, `mime`, Masse | der Artikel ja, die Bytes nein — die Ausfuhr nennt sie (`files`) |
 | Ereignisse | `event_log` | nein |
+| der Stand der letzten Übernahme je Gegenstelle (T-130) | `transfer_base` (Gegenstelle, Peg-Id oder `registry:<teil>:<name>`, JSON) | nein |
 | Augenblicke (Würfe, Zeigen) | der Raum-Kanal, nicht gespeichert | nein |
 
 ### 12.1 Bilder (T-114, REQ-021, E-032)
@@ -1233,6 +1234,42 @@ flowchart LR
 | B11 | **Ersetzen auf zwei Wegen.** *Neue Fassung* (`POST /api/assets` mit `variantOf`): ein eigenes Asset mit `variantOf` auf das alte, mit dessen Klasse, Marken, Quelle, Sichtbarkeit, Stand und Ebene; die Verwender bleiben beim alten, bis man sie umstellt. *Quelle ersetzen* (`PUT /api/assets/:id/file`, gegen `revision`): derselbe Artikel bekommt `ref`, `mime` und Masse der neuen Datei, alle Verwender zeigen sofort das neue Bild (die Adresse trägt die Version); geschrieben wird mit den Regeln von `PUT /api/entities/:id` (`schreiben`), ersetzen darf, wer den Artikel schreibt. **Die alte Datei bleibt liegen** (Ereignis `asset.replaced` nennt sie) und kommt in die nächste Sicherung. | `bilder.ts`, `app.ts` |
 | B12 | **Die Galerie** (`/images`, Kopfleiste „Images"): alle Bilder, die der Betrachter sieht, als Raster — gefiltert nach Klasse (`f=Asset.kind:…`), Marken (`tag=a,b`, jede engt ein; `facets.tags` zählt), Ebene, „Unused" und Suche, über dieselbe Liste wie das Kompendium (`/api/list`). Ein Klick zeigt die Kurzansicht, „Open article" das Bild als Artikel; dort stehen „Used in" (B10), seine Fassungen und „Replace image" mit der Frage *neue Fassung* oder *Quelle* (B11). Mehrfachauswahl setzt und nimmt Marken über die Massenänderung (`/api/bulk`, die Leitung, mit Rückgängig). Die Bildeingabe (`nw-bildwahl`) zeigt beim Wählen Vorschaubilder der angebotenen Klasse (B9), auf Wunsch alle, und gibt einem neuen Bild diese Klasse. Nach „Quelle ersetzen" fragt jedes Bild mit dieser Id auf der Seite nach der neuen Version (`BildStand`, `?v=`). | `bilder/galerie.ts`, `bilder/bildpanel.ts`, `bild.ts` |
 | B7 | **Gezeigt wird mit dem Element `image`**, und der Ort wählt die Grösse: in `overview` ein Daumennagel neben dem Namen in der Listenzeile (die Liste nennt das Asset nur, wenn der Betrachter es sieht — `rows[].image`), in `quick` die Vorschau, in `full` das ganze Bild. An einem Asset ist das Bild es selbst, sonst `Image.image` (`bildDes`). Ein Feld mit `format: 'asset'` steht in der Feldtabelle als Vorschau. Die Eingabe (`nw-bildwahl`) lädt hoch — Datei, Ziehen, Einfügen, Telefonkamera —, wählt ein vorhandenes Asset oder nimmt eine `https`-Adresse; hochgeladen wird sofort, das Feld hält danach die Id. Bestehende Anordnungen bekommen `image` über Migration 053. | `bild.ts`, `liste.ts`, `views.ts` |
+
+### 12.2 Übernahme zwischen Installationen (T-130, REQ-155)
+
+Die Leitung prüft auf dev vor und zieht auf prod nach — nach Artikeln,
+Arten, Ebenen, Marken, Suchauswahl und Registerzeilen. Ausgelöst wird auf
+dev (Werkbank › Transfer); prod ist die Gegenstelle. Ablauf und
+Einrichtung: [Betrieb › Übernahme dev ↔ prod](Betrieb.md#übernahme-dev--prod).
+
+```mermaid
+flowchart LR
+  subgraph dev["dev (löst aus)"]
+    W["Werkbank › Transfer"] --> P["/api/transfer/preview<br/>/api/transfer/run"]
+    B[("transfer_base<br/>Stand der letzten Übernahme")]
+    P --- B
+  end
+  subgraph prod["prod (Gegenstelle)"]
+    R["/api/transfer/peer/read"]
+    A["/api/transfer/peer/apply<br/>nur mit ATLAS_TRANSFER_ACCEPT"]
+    S[("backups/uebernahme<br/>vorher-Fassungen")]
+    A --> S
+  end
+  P -->|"ATLAS_PEER_TOKEN<br/>(nur am Server)"| R
+  P -->|Ergebnis, Bilder| A
+  A -->|"Nummern, geschrieben"| P
+```
+
+| Nr | Regel | Wo |
+|---|---|---|
+| Ü1 | **Wie git, mit einer Basis.** Je Feld (`Karte.feld`), je Kante (nach ihrer Id), für die Arten und `adhoc`: hat seit der letzten Übernahme nur die Quelle geändert, gilt die Quelle; nur das Ziel, bleibt das Ziel; beide verschieden, ist es ein **Konflikt** und wird einzeln gelöst (Quelle nehmen, Ziel behalten, von Hand). Ohne Basis ist jeder Unterschied ein Konflikt — nichts wird still überschrieben. | `compareThree`, `mergeTransfer` |
+| Ü2 | **Die Basis steht beim Auslöser** (`transfer_base`), je Gegenstelle: nach jeder Übernahme der Stand, auf dem beide gleich stehen. Schieben: das Ergebnis auf prod, und dev übernimmt es selbst (prod ist der Master). Holen: der Stand von prod — was dev dabei abweichend behielt, schlägt die nächste Übernahme nach prod vor. | `uebernahme.ts` (Server) |
+| Ü3 | **Die Id ist dieselbe, die Nummer gehört prod.** Ein Artikel ist auf beiden Seiten derselbe, wenn die Peg-Id gleich ist. Neue Artikel behalten auf prod ihre Nummer, wenn sie frei ist, sonst gibt prod die nächste (`assignNumbers`); dev zieht nach und hängt `[[…]]`-Verweise um (`repoint`). Holt dev von prod, bekommt auf dev eine neue Nummer, was die Nummer eines ankommenden Artikels trug (`yieldNumbers`). | `uebernahme.ts` (Modell) |
+| Ü4 | **Vorschau, dann genau sie.** Der Lauf rechnet die Vorschau neu und schreibt nur, wenn jeder gewählte Artikel auf beiden Seiten noch so steht (`transferKey`); prod prüft zudem die Revision. Sonst 409, nichts geschrieben. | `/api/transfer/run`, `/api/transfer/peer/apply` |
+| Ü5 | **Geschrieben wird durch `validateEntity`**, auf prod gegen den Bestand danach; vorher die Sicherung (die alten Fassungen als Ausfuhrdatei in `ATLAS_BACKUP_DIR`) und das Ereignis mit jeder alten Fassung (`transfer`, `transfer.in`). **Rückgängig** je Übernahme nimmt beide Seiten zurück, wenn seither niemand geändert hat. | Server |
+| Ü6 | **Abhängigkeiten auf Wunsch:** was zum Artikel gehört, ganz (Statblock und Instanz über `belongsTo`, Teile über `partOf`, Inventar und Inhalt über `carries`/`holds`, die Vorlage über `instanceOf`), und jedes Kantenziel und jeder Verweis in einem Feld einen Schritt weit — auch Bilder, deren Dateien mitgehen. | `withDependencies` |
+| Ü7 | **Was kein Artikel ist, wandert nicht** (REQ-199, A10): Konten, Rollen (`campaign_member`), Figuren eines Kontos, wer was angelegt hat, wer in welcher Ebene schreibt, Tokens. Auch nicht beim **Überklonen**, das dev ganz aus prod neu bestückt (Register, Artikel, Bilder; mit `confirm` und ganzer Sicherung vorher). | `uebernahme.ts`, `runImport` |
+| Ü8 | **Nur die Verwaltung der Installation**, nie in einer Sicht. Auf `prod` wird nichts ausgelöst; prod nimmt nur mit `ATLAS_TRANSFER_ACCEPT=1` an. Die Verbindung ist eine Server-Einstellung (`ATLAS_PEER_URL`, `ATLAS_PEER_TOKEN`) — das Token geht nie an den Browser. | Server |
 
 ---
 

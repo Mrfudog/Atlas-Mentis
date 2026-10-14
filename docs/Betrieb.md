@@ -364,6 +364,8 @@ dort wird ausprobiert, und was zählt, steht auf prod.
 | **Einlesen mit `--replace-layer`** (Pipeline „5e.tools einlesen", Art `replace-layer`, verlangt `confirm=ersetzen`) | Was die Ebene der Datei bringt und in der Datei fehlt, **und eigene Änderungen an ihren Artikeln**. | ja, wie oben | wie oben |
 | **Massenänderung** (Werkbank › Bulk change, `POST /api/bulk`) | Felder, Marken, Kanten an vielen Artikeln; mit `merge` und `mode: delete` auch Artikel. | die alten Fassungen stehen im Lauf selbst | Werkbank › Undo (`POST /api/bulk/<id>/undo`). Wurde ein Artikel seither geändert, sagt es das (409) — mit `force` gewinnt die alte Fassung. |
 | **Ein Bild löschen** (Asset-Artikel löschen) | Die Datei, wenn kein anderes Asset sie nennt (T-114). | ja, `backups/bilder/` hält jede Datei, die vor dem letzten Ausrollen oder der letzten Nacht da war | die Datei aus `backups/bilder/` zurückkopieren, den Artikel aus der Datenbanksicherung oder der Ausfuhr |
+| **Übernahme** (Werkbank › Transfer, T-130) | Auf dem Ziel: Felder und Kanten der gewählten Artikel und Registerzeilen — nur, was die Vorschau zeigte, Konflikte nur wie gelöst. | ja, `backups/uebernahme/<zeit>-vor-uebernahme-von-….json`, und jede alte Fassung im Protokoll | Werkbank › Transfer › Undo (beide Seiten); sonst die Datei über `import.js` ([Übernahme › Zurück](#zurück-1)) |
+| **Überklonen** (Werkbank › Transfer, nur auf dev) | Der ganze Bestand von dev (Register, Artikel); die Konten bleiben. | ja, `backups/uebernahme/<zeit>-vor-ueberklonen.json` (der ganze Bestand) | `import.js <datei> --replace` |
 | **Wiederherstellen** einer Sicherung, auch [prod nach dev holen](#den-bestand-von-prod-nach-dev-holen) | Alles, was **nach** der Sicherung geschrieben wurde. Beim Holen von prod nach dev: der ganze Bestand von dev (die Konten bleiben). | nein — vorher von Hand sichern (unten) | die Sicherung, die man vorher gemacht hat |
 
 **Vor einem Wiederherstellen selbst sichern**, denn dort sichert kein
@@ -957,6 +959,10 @@ node scripts/regelwerk.mjs ~/kibbles/paket.json             # schreibt nach dev
 
 ## Den Bestand von prod nach dev holen
 
+Seit T-130 geht das auch in der Oberfläche, ohne Shell: Werkbank ›
+Transfer › „Overwrite dev from prod" ([Überklonen](#überklonen-prod--dev-alles)).
+Von Hand geht es weiter so:
+
 **Ohne Konten** (REQ-199): ein `pg_dump` der ganzen Produktion trägt
 `app_user`, Sitzungen und Rollen mit, und die gehören nicht nach dev. Also
 nur die Artikel und das Register:
@@ -982,6 +988,120 @@ dev an jedem Bild der Produktion eine Lücke; mit ihnen (nur dazu, nichts
 ```bash
 cp -R -n /srv/atlas/prod/daten/bilder/. /srv/atlas/dev/daten/bilder/
 ```
+
+## Übernahme dev ↔ prod
+
+Auf dev vorprüfen, auf prod nachziehen (T-130): in der **Werkbank ›
+Transfer** auf dev wählt die Verwaltung Artikel aus — einzeln, nach Art,
+eine Ebene samt Inhalt, nach Marke oder Feldbedingung, dazu Registerzeilen
+— und sieht vor dem Schreiben, was neu ist, was sich ändert (je Feld) und
+wo **beide Seiten** seit der letzten Übernahme etwas geändert haben
+(Konflikt, nebeneinander wie in git). Geschrieben wird erst auf Knopfdruck,
+genau das, was die Vorschau zeigte. Dieselbe Seite holt von prod nach dev
+und **überklont** dev ganz. Die Regeln: [Datenmodell §12.2](Datenmodell.md#122-übernahme-zwischen-installationen-t-130-req-155).
+
+### Einrichten (einmal, die Verwaltung)
+
+Die Verbindung ist eine **Server-Einstellung** in `.env` — nie im Browser,
+nie im Repository.
+
+1. **Auf prod** ein Konto der Verwaltung anmelden, Seite „Account" › API
+   tokens: ein Token **`write`** anlegen, Name z. B. `dev-uebernahme`
+   (mit `read` gehen Vorschau, Holen und Überklonen, aber kein Schieben).
+2. **Auf prod** in `/srv/atlas/prod/.env`:
+
+   ```
+   ATLAS_TRANSFER_ACCEPT=1
+   ```
+
+   Ohne diese Zeile liefert prod nur aus und nimmt nichts an
+   (403 „nimmt keine Übernahmen an"). Wer gerade nicht übernimmt, nimmt sie
+   wieder heraus (E-042).
+3. **Auf dev** in `/srv/atlas/dev/.env`:
+
+   ```
+   ATLAS_PEER_URL=https://atlas.<domain>
+   ATLAS_PEER_TOKEN=atm_…        # das Token aus Schritt 1
+   ```
+
+4. Beide neu starten, damit die Einstellung gilt:
+   `./deploy.sh "$(sed -n 's/^IMAGE=//p' .env)"` (im jeweiligen Verzeichnis).
+   `deploy.sh` legt dabei `backups/uebernahme/` an; dorthin schreibt der
+   Server vor jedem Schreiben seine Sicherung (`ATLAS_BACKUP_DIR`,
+   im Container `/data/backups`).
+
+Ob es steht, zeigt die Werkbank auf dev (Kasten „Transfer": Gegenstelle,
+Umgebung, „accepts transfers"), oder lesend:
+`curl -s -H "Authorization: Bearer $ATLAS_DEV_TOKEN" https://dev…/api/transfer`.
+Auf prod löst niemand aus — dort antwortet die Seite mit „prod ist die
+Gegenstelle".
+
+### Die erste Übernahme, gefahrlos
+
+1. **Holen statt schieben:** auf dev „prod → dev", Auswahl ein einzelner
+   Artikel (seine Nummer). Die Vorschau zeigt „unchanged", wenn dev aus
+   prod geholt wurde — oder einen Konflikt je Feld, weil es noch keine
+   Basis gibt. Nichts ist geschrieben.
+2. **Einen neuen Probeartikel** auf dev anlegen (z. B. eine Regel
+   „Transfer test" in der Kampagnenebene), „dev → prod", Vorschau: „new".
+   „Transfer" schreibt ihn nach prod; die Liste darunter zeigt den Lauf.
+3. **Rückgängig** am Lauf: der Artikel ist auf prod wieder weg, auf dev
+   steht er wie vorher. Damit ist der ganze Weg einmal gegangen.
+
+### Was eine Übernahme tut
+
+| Schritt | Schieben (dev → prod) | Holen (prod → dev) |
+| --- | --- | --- |
+| Auswahl | auf dev | auf prod |
+| Vorschau | neu · geändert · unverändert · Konflikt · nur auf prod geändert — je Feld und Kante, gruppiert nach Ebene, Art und Artikel | dasselbe, Quelle prod |
+| Konflikt lösen | dev nehmen · prod behalten · von Hand | prod nehmen · dev behalten · von Hand |
+| Nummern | prod vergibt; dev zieht nach, Verweise mit | dev weicht, wo prod dieselbe Nummer hat |
+| Sicherung | prod: `backups/uebernahme/<zeit>-vor-uebernahme-von-dev.json` | dev: `…-vor-uebernahme-von-<prod>.json` |
+| Protokoll | dev: `transfer`, prod: `transfer.in` (wer, wann, was, jede alte Fassung) | dev: `transfer` |
+| Rückgängig | am Lauf: erst prod, dann dev | am Lauf |
+
+**Nicht mit:** Konten, Rollen am Tisch, Figuren eines Kontos, wer was
+angelegt hat, wer in welcher Ebene schreibt, Tokens (REQ-199). Gelöschtes
+wird nicht übertragen: was auf dev gelöscht ist, bleibt auf prod stehen
+und umgekehrt.
+
+**Abhängigkeiten** (Häkchen „with dependencies"): Statblock, Instanz,
+Inventar und Inhalt, Kapitelteile und die Vorlage ganz; Kantenziele und
+Verweise (auch Bilder) einen Schritt. Was dabei mitkommt, steht in der
+Vorschau und lässt sich abwählen; fehlt auf prod ein Kantenziel, lehnt die
+Prüfung ab und nennt es.
+
+### Überklonen (prod → dev, alles)
+
+Bestückt dev **ganz** aus prod neu: Register, alle Artikel, die Bilder.
+Was nur auf dev stand, ist danach weg; die Konten von dev bleiben. Vorher
+schreibt dev seinen ganzen Bestand nach
+`backups/uebernahme/<zeit>-vor-ueberklonen.json` — ohne
+Sicherungsverzeichnis wird nicht überklont. In der Oberfläche erst „Dry
+run" (zählt), dann `OVERWRITE` eintippen. Es ersetzt den Weg
+[Den Bestand von prod nach dev holen](#den-bestand-von-prod-nach-dev-holen)
+von Hand, der weiter geht.
+
+### Zurück
+
+- **Eine Übernahme:** Werkbank › Transfer › Lauf › „Undo". Hat seither
+  jemand einen der Artikel geändert, sagt es das (409); „force" lässt die
+  alte Fassung gewinnen.
+- **Von Hand** aus der Sicherung (die Artikel, wie sie vorher standen):
+
+  ```bash
+  cd /srv/atlas/prod     # oder dev
+  docker compose exec app node apps/server/dist/import.js /data/backups/<zeit>-vor-uebernahme-von-dev.json --dry-run
+  docker compose exec app node apps/server/dist/import.js /data/backups/<zeit>-vor-uebernahme-von-dev.json
+  ```
+
+  Neu angelegte Artikel stehen nicht darin (es gab sie vorher nicht); die
+  nimmt „Undo" weg oder die Massenänderung.
+- **Überklonen zurück:** dieselbe Einfuhr mit `--replace` auf die Datei
+  `…-vor-ueberklonen.json` — sie enthält Register und alle Artikel.
+
+`backups/uebernahme/` wird nicht von selbst geleert; die Dateien sind
+klein, ausser denen vom Überklonen.
 
 ## Wie schnell antwortet die Seite?
 
