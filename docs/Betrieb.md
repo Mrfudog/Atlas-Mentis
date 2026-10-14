@@ -504,7 +504,7 @@ Vergleichsebene ein (T-092); wer damit spielen will, schaltet sie auf.
 Neues in einer schon aufgeschalteten 2014-Ebene (die Schiffe aus Ghosts of
 Saltmarsh, das Tarokka-Deck aus Curse of Strahd) ist dagegen gleich da,
 wie jeder neue Artikel eines Buchs. Der Lauf braucht die **Migration
-`050_neue_arten_5etools.sql`**: sie trägt die Listenwerte `card`,
+`051_neue_arten_5etools.sql`**: sie trägt die Listenwerte `card`,
 `facility`, `upgrade` (`RuleKind`) und `deck` (`Table.kind`) an
 bestehenden Registerzeilen nach, die `only-new` sonst stehen liesse. Ohne
 2024: `node packages/import-5etools/dist/cli.js <data> --only-2014`.

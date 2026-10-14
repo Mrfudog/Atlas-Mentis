@@ -3,7 +3,7 @@
 Erzeugt von `packages/import-5etools` (Paket P5, [5etools-Arbeitsplan.md](5etools-Arbeitsplan.md)). **Nicht von Hand ändern** — ein neuer Lauf schreibt die Datei neu.
 
 - Datenstand: 5etools-src 8c026b8 2026-10-08
-- Aufruf: `node packages/import-5etools/dist/cli.js <data> --out <datei> --bericht <datei>`
+- Aufruf: `node packages/import-5etools/dist/cli.js <data> --bericht <datei>`
 - **181’240 Artikel**, alle durch `validateEntity` mit `knownTypes`
 - Gleichlautende Merkmale der Statblöcke (Arbeitsplan §2.5): 1’886 Aktionen und Merkmale stehen an mehr als einem Statblock; 12’318 Doppel wurden dadurch nicht angelegt
 - Gleiche Merkmale an verschiedenen Trägern (`doppel.ts`): 604 Artikel mit einem gleichen vereint (604 Feature)
