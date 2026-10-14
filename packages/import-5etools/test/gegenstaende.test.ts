@@ -15,6 +15,7 @@ function datenstand(): Datenstand {
     { name: 'Ward Band of Frost', source: 'DMG', type: 'RG', resist: ['cold'], detail1: 'blue', entries: ['{#itemEntry Ward Band}', 'It hums.'] },
     { name: 'Ward Band of Ash', source: 'DMG', type: 'RG', resist: ['fire', 'acid'], detail1: 'grey', entries: ['{#itemEntry Ward Band|DMG}'] },
     { name: 'Odd Band', source: 'DMG', type: 'RG', entries: ['{#itemEntry Missing Band}'] },
+    { name: 'Lucky Pin', source: 'DMG', type: 'OTH', wondrous: true, bonusAbilityCheck: '+1', bonusProficiencyBonus: '+1', bonusSavingThrowConcentration: '+2', entries: [] },
     { name: 'Archer Cuffs', source: 'DMG', type: 'OTH', wondrous: true, bonusWeaponDamage: '+2', entries: [] },
   ];
   const itemGroup: Knoten[] = [
@@ -65,6 +66,11 @@ describe('Gegenstände beim Einlesen (T-089)', () => {
       ['spellDamage', 1],
     ]);
     expect(wirkungen(finde('Keen Wood'))[0]!.when).toBe('self');
+    expect(wirkungen(finde('Lucky Pin')).map((w) => [w.target, w.value])).toEqual([
+      ['check', 1],
+      ['prof', 1],
+      ['save.concentration', 2],
+    ]);
     /* An Armschienen gilt der Bonus der Figur, nicht dem Gegenstand. */
     expect(wirkungen(finde('Archer Cuffs'))).toEqual([{ id: 'weapon-damage', target: 'weapon.damage', op: 'add', value: 2 }]);
   });

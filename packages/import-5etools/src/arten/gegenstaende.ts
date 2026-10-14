@@ -54,6 +54,7 @@ export function typVon(e: Knoten): string {
 const WIRKUNGEN = [
   'ability', 'resist', 'immune', 'vulnerable', 'conditionImmune', 'modifySpeed', 'bonusSpellSaveDc',
   'critThreshold', 'containerCapacity', 'carryingCapacity', 'bonusWeaponAttack', 'bonusWeaponDamage', 'bonusSpellDamage',
+  'bonusAbilityCheck', 'bonusProficiencyBonus', 'bonusSavingThrowConcentration',
 ];
 
 const GENUTZT_ITEM = [
@@ -187,13 +188,17 @@ export function wirkungen(wb: Werkbank, ent: Entity, e: Knoten): void {
     }
   }
   /* Boni, für die der Gegenstand kein Feld hat (T-089): nur der Angriff
-     oder nur der Schaden der Waffe, der Schaden der Zauber. An einer Waffe
+     oder nur der Schaden der Waffe, der Schaden der Zauber, Attributsproben,
+     der Übungsbonus, Rettungswürfe für die Konzentration. An einer Waffe
      (oder einer Variante, die auf eine gelegt wird) gehört der Waffenbonus
      ihr selbst; an Armschienen gilt er der Figur, die sie trägt. */
   const selbst = ent.interfaces[0] === 'Weapon' || kurz(e['type']) === 'GV' ? { when: 'self' as const } : {};
   if (zahl(e['bonusWeaponAttack']) !== undefined) neu.push({ target: 'weapon.attack', op: 'add', value: zahl(e['bonusWeaponAttack'])!, ...selbst });
   if (zahl(e['bonusWeaponDamage']) !== undefined) neu.push({ target: 'weapon.damage', op: 'add', value: zahl(e['bonusWeaponDamage'])!, ...selbst });
   if (zahl(e['bonusSpellDamage']) !== undefined) neu.push({ target: 'spellDamage', op: 'add', value: zahl(e['bonusSpellDamage'])! });
+  if (zahl(e['bonusAbilityCheck']) !== undefined) neu.push({ target: 'check', op: 'add', value: zahl(e['bonusAbilityCheck'])! });
+  if (zahl(e['bonusProficiencyBonus']) !== undefined) neu.push({ target: 'prof', op: 'add', value: zahl(e['bonusProficiencyBonus'])! });
+  if (zahl(e['bonusSavingThrowConcentration']) !== undefined) neu.push({ target: 'save.concentration', op: 'add', value: zahl(e['bonusSavingThrowConcentration'])! });
   if (zahl(e['bonusSpellSaveDc']) !== undefined) neu.push({ target: 'spellSaveDc', op: 'add', value: zahl(e['bonusSpellSaveDc'])! });
   if (zahl(e['critThreshold']) !== undefined) neu.push({ target: 'critThreshold', op: 'set', value: zahl(e['critThreshold'])! });
   /* Fassungsvermögen und Tragkraft gehören dem Gegenstand selbst (dem

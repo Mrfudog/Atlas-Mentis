@@ -968,7 +968,8 @@ export const fieldGroups = {
               /* `ability.str`, `ac`, `speed.walk`, `speed.*`, `spellSaveDc`,
                  `spellAttack`, `save`, `save.dex`, `resist`, `immune`,
                  `vulnerable`, `conditionImmune`, `critThreshold`, `carry`,
-                 `capacity`, `weapon`, `weapon.attack`, `weapon.damage`, `spellDamage` — frei, siehe `EFFECT_TARGETS`. */
+                 `capacity`, `weapon`, `weapon.attack`, `weapon.damage`, `spellDamage`,
+                 `check`, `prof`, `save.concentration` — frei, siehe `EFFECT_TARGETS`. */
               target: { type: 'string', title: 'Target' },
               op: { type: 'string', title: 'Operation', enum: ['add', 'set', 'grant'] },
               /* Eine Zahl (19, +1, 10) oder ein Wort (`fire`, `walk`). */
