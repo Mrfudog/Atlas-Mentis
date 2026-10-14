@@ -179,7 +179,7 @@ export async function runImport(
   const bestandIds = new Set(bestand.map((e) => e.id));
   /* **Ein Teil kommt nur mit seinem Ganzen** (T-108): steht ein Kapitel
      oder eine Szene schon, gehört, was darin steht, der Leitung (oder der
-     Migration 044, die den Text schon geladener Abenteuer zu Teilen
+     Migration 046, die den Text schon geladener Abenteuer zu Teilen
      machte) — ein Lauf legte sonst neben ihren Teilen eine zweite Fassung
      desselben Texts an. */
   const ganzesSchonDa = (e: Entity): boolean =>

@@ -910,7 +910,7 @@ try {
 
   /* ------------------------------------ Abenteuerkapitel als Teile (T-108) */
   {
-    /* Migration 044 an einem geladenen Abenteuer im Stand von T-097: ein
+    /* Migration 046 an einem geladenen Abenteuer im Stand von T-097: ein
        Arc mit Text, eine Szene mit Vorlesetext und Raum. Danach gibt es
        das Chapter, der Text steht in Teilen, und die Leseansicht liest das
        Kapitel mit Szene und Raum in Reihenfolge. */
@@ -938,7 +938,7 @@ try {
         const r = await put(admin, e);
         pruefe(`Abenteuer als Teile: ${e.id}`, r.ok, `${r.status} ${await r.text()}`);
       }
-      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '044_abenteuer_kapitel.sql'), 'utf8'));
+      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '046_abenteuer_kapitel.sql'), 'utf8'));
       await migrate(pool, { env: {} }, ordner);
       const kap = await repo.getEntity('e5_probe_t108_arc_chapter');
       pruefe('Abenteuer als Teile: das Chapter steht neben dem Arc',

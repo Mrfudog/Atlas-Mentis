@@ -242,7 +242,7 @@ export function abenteuer(wb: Werkbank, a: Abenteuer): Entity[] {
     wb.kante(arc, 'partOf', ganz.id);
     if (typeof kap['id'] === 'string') nachId.set(kap['id'], arc);
     /* … und ein Chapter (E-029): dasselbe Kapitel zum Lesen. Seine Id ist
-       die des Arcs mit `_chapter` — so bildet die Migration 044 für schon
+       die des Arcs mit `_chapter` — so bildet die Migration 046 für schon
        geladene Kapitel dieselbe, und `--only-new` legt keines zweimal an. */
     const chapter = neu('Chapter', titel, ['chapter', n], kap['page'], `${arc.id}_chapter`);
     wb.feld(chapter, 'Chapter', 'ordinal', ordinal);
