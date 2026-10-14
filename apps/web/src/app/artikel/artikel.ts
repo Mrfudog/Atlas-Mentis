@@ -192,6 +192,24 @@ interface Feld {
                     {{ passtAn() ? 'Adapting…' : 'Adapt for this campaign' }}
                   </button>
                 }
+                <!-- In die Geschichte holen (E-026): ein Kapitel oder eine Szene samt allem
+                     darunter in die eigene Kampagne, an sie oder einen ihrer Arcs. -->
+                @if (uebernahmeZiele().length && !bearbeitet()) {
+                  <span class="fassung-wahl">
+                    <label>
+                      Take into
+                      <select #wohin [disabled]="passtAn()" aria-label="Where to take it">
+                        @for (z of uebernahmeZiele(); track z.id) {
+                          <option [value]="z.id">{{ z.name }}{{ z.type === 'Campaign' ? '' : ' (' + z.type + ')' }}</option>
+                        }
+                      </select>
+                    </label>
+                    <button type="button" [disabled]="passtAn()" (click)="uebernehmen(wohin.value)"
+                            title="Make this campaign's version of it, with everything below it. The original stays.">
+                      {{ passtAn() ? 'Taking…' : 'Take' }}
+                    </button>
+                  </span>
+                }
                 @if (original(); as o) {
                   @if ((session.isAdmin() || darfSchreiben()) && !bearbeitet()) {
                     <button type="button" [disabled]="passtAn()" (click)="zumOriginal(o.id)"
@@ -1379,6 +1397,30 @@ export class Artikel {
       await this.session.load(true);
       await this.bestand.oeffnen(this.id(), true);
       await this.router.navigate(['/artikel', id], { queryParams: { edit: 1 } });
+    } catch (x) {
+      this.anpassFehler.set(x instanceof Error ? x.message : String(x));
+    } finally {
+      this.passtAn.set(false);
+    }
+  }
+
+  /** Wohin „Take" den Artikel hängen kann (`refs.takeInto`, E-026). */
+  protected readonly uebernahmeZiele = computed(() => this.bestand.uebernahmeZiele().get(this.id()) ?? []);
+
+  /**
+   * **In die Geschichte holen** (E-026): Fassungen in der Ebene der Kampagne für den
+   * Artikel und alles darunter, gehängt an das gewählte Ziel. Danach die
+   * Fassung öffnen — das Original zeigt ab jetzt auf sie.
+   */
+  protected async uebernehmen(into: string): Promise<void> {
+    const e = this.artikel();
+    if (!e || !into) return;
+    this.passtAn.set(true);
+    this.anpassFehler.set(null);
+    try {
+      const { id } = await this.api.take(e.id, into);
+      await this.bestand.oeffnen(this.id(), true);
+      await this.router.navigate(['/artikel', id]);
     } catch (x) {
       this.anpassFehler.set(x instanceof Error ? x.message : String(x));
     } finally {

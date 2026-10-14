@@ -632,3 +632,62 @@ export function adaptedVersion(
   ];
   return { id: neu.id, interfaces: [...(original.interfaces ?? [])], name: original.name, components, relations };
 }
+
+/** Die Kanten, über die ein Teil an seinem Ganzen hängt: Szene am Kapitel, Karte an der Szene. */
+export const TAKE_EDGES: readonly string[] = ['partOf', 'mapOf'];
+
+/**
+ * **Was „in die Geschichte holen" mitnimmt** (E-026, REQ-252): der Artikel und alles,
+ * was über `partOf` oder `mapOf` an ihm hängt, in jeder Tiefe — ein
+ * Kapitel mit seinen Szenen, deren Räumen, Begegnungen und Karten. Gezählt
+ * wird nur, was in dieser Kampagne im Stapel steht (`inStack`), nicht
+ * schon in der Zielebene liegt und selbst keine Fassung ist: die Fassung
+ * eines Teils ersetzt ihr Original, und genommen wird das Original. Zuerst
+ * der Artikel selbst, dann die Teile in der Reihenfolge, in der sie
+ * gefunden werden.
+ */
+export function takenWith(
+  entities: Map<EntityId, Entity>,
+  root: Entity,
+  campaign: Entity | null,
+  targetLayer: EntityId,
+): Entity[] {
+  const teile = new Map<EntityId, Entity[]>();
+  for (const e of entities.values()) {
+    for (const r of e.relations ?? []) {
+      if (!TAKE_EDGES.includes(r.type)) continue;
+      (teile.get(r.to) ?? teile.set(r.to, []).get(r.to)!).push(e);
+    }
+  }
+  const mit = (e: Entity) =>
+    inStack(entities, e, campaign) && !kanten(e, LAYER_RELATION).some((r) => r.to === targetLayer) && !kanten(e, OVERRIDES_RELATION).length;
+  const out: Entity[] = [root];
+  const gesehen = new Set<EntityId>([root.id]);
+  for (let i = 0; i < out.length; i += 1) {
+    for (const t of teile.get(out[i]!.id) ?? []) {
+      if (gesehen.has(t.id) || !mit(t)) continue;
+      gesehen.add(t.id);
+      out.push(t);
+    }
+  }
+  return out;
+}
+
+/**
+ * **Eine geholte Fassung umhängen** (E-026): ihre `partOf`/`mapOf`, die
+ * auf ein mitgenommenes Original zeigen, zeigen danach auf dessen Fassung
+ * (`mapping`: Original → Fassung) — sonst hinge die Szene der Fassung am
+ * Kapitel, das diese Kampagne gar nicht mehr sieht. Mit `into` hängt der
+ * Artikel selbst danach nur noch dort (`partOf`), am Arc oder an der
+ * Kampagne, wohin die Leitung ihn holt.
+ */
+export function rehang(fassung: Entity, mapping: ReadonlyMap<EntityId, EntityId>, into?: EntityId): Entity {
+  let relations = (fassung.relations ?? []).map((r) =>
+    TAKE_EDGES.includes(r.type) && mapping.has(r.to) ? { ...r, to: mapping.get(r.to)! } : r,
+  );
+  if (into) {
+    relations = relations.filter((r) => r.type !== 'partOf');
+    relations.push({ id: `${fassung.id}~partOf-into`, type: 'partOf', to: into, props: {} });
+  }
+  return { ...fassung, relations };
+}

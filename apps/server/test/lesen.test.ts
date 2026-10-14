@@ -60,8 +60,8 @@ const BESTAND: Entity[] = [
     ],
   },
   artikel('st_tst', 'Story', 'The Sunken Test', 'story-0001', BUCH, { karten: { Story: { kind: 'adventure' } }, text: 'An adventure for testers.' }),
-  artikel('st_k2', 'Story', 'Chapter 2: Deep', 'story-0003', BUCH, { teil: 'st_tst', karten: { Story: { kind: 'chapter' } }, seite: '20' }),
-  artikel('st_k1', 'Story', 'Chapter 1: Reeds', 'story-0002', BUCH, { teil: 'st_tst', karten: { Story: { kind: 'chapter' } }, seite: '5' }),
+  artikel('st_k2', 'Arc', 'Chapter 2: Deep', 'story-0003', BUCH, { teil: 'st_tst', seite: '20' }),
+  artikel('st_k1', 'Arc', 'Chapter 1: Reeds', 'story-0002', BUCH, { teil: 'st_tst', seite: '5' }),
   artikel('sc_mund', 'Scene', '1. Mouth', 'scene-0001', BUCH, {
     teil: 'st_k1', seite: '6', text: 'Wet reeds. See [[scene-0002|2]].',
     karten: { ReadAloud: { readaloud: [{ id: 'read', value: 'You smell the marsh.' }] } },

@@ -335,7 +335,14 @@ wiederkommen, werden sie neu geschrieben.
   es sagt**, und nur aus sichtbaren Artikeln — es galt einmal für jedes
   freie Textfeld, und der Deckname bot die Decknamen anderer Artikel an. Braucht eine Sorte eigene Felder, wird sie eine Zeile, die von
   `Creature` erbt — bis dahin stehen ihre Sonderregeln am Statblock und an
-  der Regel, auf die er zeigt.
+  der Regel, auf die er zeigt. So ging es dem **Arc**: bis 14.10. ein Wort
+  an `Story.kind` (A5), seit E-026 eine Art mit Stufen, Hook und Ausgang —
+  und ein **Kapitel eines Abenteuers ist ein Arc**. Eine Karte steht immer
+  an einer Szene (liegt sie im Kapiteltext, bekommt sie eine eigene), und
+  ein Kapitel oder eine Szene lässt sich **mit allem darunter in die eigene
+  Geschichte holen** (`take`, E12): Fassungen in der Kampagnenebene, an die
+  Kampagne oder einen ihrer Arcs gehängt. „Übernehmen" (`adopt`, E7) ist
+  etwas anderes.
 - **Eine Aufzählung, die zwei Felder brauchen, ist eine Registerzeile**
   (`REG.enums`), und das Feld nennt sie mit `enumRef`. Die sechs
   Attributkürzel standen wörtlich an `SkillInfo.ability` und an

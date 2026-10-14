@@ -49,6 +49,8 @@ import {
   currentCampaign,
   inStack,
   adaptedVersion,
+  rehang,
+  takenWith,
   replacedIds,
   resolveArticle,
   playStack,
@@ -950,6 +952,8 @@ export function buildApp({
     /* „Edit" an einem fremden Artikel legt eine Fassung an (T-098): die
        Route prüft die Zielebene selbst. */
     if (/^\/api\/entities\/[^/]+\/adapt$/.test(url) && request.method === 'POST') return;
+    /* In die Geschichte holen (E-026): die Route prüft die Ebene der Kampagne selbst (`uebernahmeZiele`). */
+    if (/^\/api\/entities\/[^/]+\/take$/.test(url) && request.method === 'POST') return;
     /* Würfeln für die Attribute (E-016 a): die Route prüft die Rolle in
        der laufenden Kampagne selbst. */
     if (url === '/api/abilities/roll' && request.method === 'POST') return;
@@ -2176,12 +2180,126 @@ export function buildApp({
        nichts anbietet, was der Server ablehnt. Wer den Artikel nicht
        schreibt, aber eine Zielebene hat, bekommt an „Edit" eine Fassung. */
     const ziele = await anpassZiele(request, einer, stand.map);
+    /* „Take into campaign" (E-026): wohin es gehängt werden kann. */
+    const nehmen = await uebernahmeZiele(request, einer, stand.map);
+    const mitNehmen = nehmen.length ? { ...refs, takeInto: nehmen.map((x) => ({ id: x.id, name: entityName(x), type: primaryInterface(x) })) } : refs;
     return {
       ...einer,
       refs: ziele.length
-        ? { ...refs, adaptable: true, adaptTo: ziele.map((l) => ({ id: l.id, name: entityName(l) })) }
-        : refs,
+        ? { ...mitNehmen, adaptable: true, adaptTo: ziele.map((l) => ({ id: l.id, name: entityName(l) })) }
+        : mitNehmen,
     };
+  });
+
+  /** Was sich in die Geschichte holen lässt (E-026): ein Teil der Geschichte, kein Ganzes einer Runde. */
+  const OHNE_UEBERNAHME = new Set([CAMPAIGN_TYPE, 'Session']);
+
+  /**
+   * **Wohin ein Teil eines Abenteuers geholt werden kann** (E-026,
+   * REQ-252, auf E-018 a und E-001): in die Kampagne selbst oder an einen
+   * ihrer Arcs — was in der Ebene der laufenden Kampagne liegt. Holen
+   * darf, wer dort schreibt: die Verwaltung und die Leitung (`gm`, `co-gm`).
+   * Übernommen wird ein Original aus einer anderen Ebene, das eine Sprosse
+   * der Geschichte ist (ein Kapitel, eine Szene); leer heisst: nicht
+   * anbieten.
+   */
+  async function uebernahmeZiele(request: FastifyRequest, e: Entity, map: Map<string, Entity>): Promise<Entity[]> {
+    const user = await viewerOf(request);
+    if (!user || user.disabledAt) return [];
+    const registry = await repo.getRegistry();
+    const kette = typeChain(registry, primaryInterface(e));
+    if (!kette.includes('Story') || OHNE_UEBERNAHME.has(primaryInterface(e))) return [];
+    if ((e.relations ?? []).some((r) => r.type === OVERRIDES_RELATION)) return [];
+    const kampagne = currentCampaign(map, registry.settings ?? null);
+    if (!kampagne || !inStack(map, e, kampagne)) return [];
+    const ebene = await kampagnenEbene(map, kampagne);
+    if (!ebene || layersOf(e).includes(ebene.id)) return [];
+    if (!user.isAdmin && !(await zielEbenen(user, map, kampagne)).some((l) => l.id === ebene.id)) return [];
+    const arcs = [...map.values()]
+      .filter((x) => x.id !== e.id && layersOf(x).includes(ebene.id) && typeChain(registry, primaryInterface(x)).includes('Arc'))
+      .filter((x) => inStack(map, x, kampagne))
+      .sort((a, b) => entityName(a).localeCompare(entityName(b), 'en'));
+    return [kampagne, ...arcs];
+  }
+
+  /**
+   * **In die Geschichte holen** (E-026, REQ-252; nicht zu verwechseln
+   * mit `adopt`, E7): ein Kapitel, eine Szene aus einem
+   * Abenteuer in die eigene Kampagne holen — als Fassung in der Ebene der
+   * laufenden Kampagne (E-018 a, wie `adapt`), **mit allem darunter**
+   * (`takenWith`: Szenen, Räume, Begegnungen, Karten), und gehängt an die
+   * Kampagne oder einen ihrer Arcs (`into`). Die Teile hängen danach an den
+   * Fassungen ihrer Eltern (`rehang`), nicht an den Originalen, die diese
+   * Kampagne nicht mehr sieht. Gibt es eine Fassung schon, wird sie
+   * genommen und nur umgehängt — zweimal holen legt nichts doppelt an.
+   * Das Original bleibt; zurück heisst, die Fassungen zu löschen.
+   */
+  app.post<{ Params: { id: string }; Body: { into?: unknown } | null }>('/api/entities/:id/take', async (request, reply) => {
+    const user = await viewerOf(request);
+    if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
+    const registry = await repo.getRegistry();
+    const stand = await roh();
+    const original = stand.map.get(request.params.id);
+    const gesehen = original ? (await sieve(request, [original], stand.map, undefined, 'versions')).length > 0 : false;
+    if (!original || !gesehen) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const ziele = await uebernahmeZiele(request, original, stand.map);
+    if (!ziele.length) return reply.code(403).send({ error: 'Das lässt sich nicht in deine Kampagne holen.' });
+    const into = ziele.find((z) => z.id === String(request.body?.into ?? ''));
+    if (!into) {
+      return reply.code(409).send({
+        error: 'Wohin?',
+        into: ziele.map((z) => ({ id: z.id, name: entityName(z), type: primaryInterface(z) })),
+      });
+    }
+    const kampagne = currentCampaign(stand.map, registry.settings ?? null);
+    const ebene = (await kampagnenEbene(stand.map, kampagne))!;
+    const teile = takenWith(stand.map, original, kampagne, ebene.id);
+    /* Original → Fassung: die schon da ist, oder eine neue. */
+    const mapping = new Map<string, string>();
+    const fassungen: Entity[] = [];
+    const bestand = [...stand.alle];
+    const neueId = (): string => {
+      let id = `e_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+      while (stand.map.has(id) || mapping.has(id)) id = `e_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+      return id;
+    };
+    let neu = 0;
+    for (const t of teile) {
+      const schon = stand.alle.find(
+        (e) => layersOf(e).includes(ebene.id) && (e.relations ?? []).some((r) => r.type === OVERRIDES_RELATION && r.to === t.id),
+      );
+      if (schon) {
+        mapping.set(t.id, schon.id);
+        fassungen.push(schon);
+        continue;
+      }
+      const id = neueId();
+      const typ = t.interfaces?.[0] ?? '';
+      const f = adaptedVersion(t, { id, number: nextId(bestand, typ), layer: ebene.id });
+      bestand.push(f);
+      mapping.set(t.id, id);
+      fassungen.push(f);
+      neu += 1;
+    }
+    const geschrieben = fassungen.map((f, i) => rehang(f, mapping, i === 0 ? into.id : undefined));
+    const known = new Map(bestand.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
+    for (const f of geschrieben) {
+      const issues = validateEntity(registry, f, { knownTypes: known, stageOf: stageBases(bestand) });
+      if (issues.length) return reply.code(422).send({ error: `Validierung fehlgeschlagen: ${entityName(f)}`, issues });
+    }
+    for (const f of geschrieben) {
+      const vorher = stand.map.get(f.id);
+      if (vorher && JSON.stringify(vorher.relations) === JSON.stringify(f.relations)) continue;
+      await repo.putEntity(f);
+      await repo.appendEvent(vorher ? 'entity.written' : 'entity.created', f.id, {
+        interfaces: f.interfaces,
+        adapts: (f.relations ?? []).find((r) => r.type === OVERRIDES_RELATION)?.to,
+        layer: ebene.id,
+        takenInto: into.id,
+        by: user.id,
+      });
+    }
+    return reply.code(201).send({ id: mapping.get(original.id)!, created: neu, taken: teile.length });
   });
 
   /** Arten, von denen es keine Fassung gibt: eine Ebene ist der Ort, eine

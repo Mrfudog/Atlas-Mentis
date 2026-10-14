@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import type { Entity } from '@nw/model';
 import type { Knoten } from '../src/copy.js';
@@ -28,6 +29,7 @@ function datenstand(): Datenstand {
       type: 'section', name: 'The Reed Caves', id: '002', page: 3,
       entries: [
         'A short chapter.',
+        { type: 'image', href: { type: 'internal', path: 'adventure/TST/Marsh.webp' }, imageType: 'map', title: 'The Marsh', grid: { type: 'hexRowsOdd' } },
         {
           type: 'section', name: 'Reed Cave', id: '003', page: 4,
           entries: [
@@ -87,11 +89,13 @@ describe('Abenteuer als Ebene (T-082)', () => {
     expect(es.find((e) => e.id === buchEbeneId('MM'))!.components['Layer']).toMatchObject({ kind: 'book' });
   });
 
-  it('baut Abenteuer → Kapitel → Abschnitte als Story und Scene mit partOf', () => {
+  it('baut Abenteuer → Kapitel → Abschnitte als Story, Arc und Scene mit partOf', () => {
     const ganz = finde(es, 'Story', 'The Sunken Test');
     expect(ganz.components['Story']).toEqual({ kind: 'adventure' });
-    const kapitel = finde(es, 'Story', 'Chapter 1: The Reed Caves');
-    expect(kapitel.components['Story']).toEqual({ kind: 'chapter' });
+    /* Ein Kapitel ist ein Arc (E-026), ohne `kind` — die Art sagt es. */
+    const kapitel = finde(es, 'Arc', 'Chapter 1: The Reed Caves');
+    expect(kapitel.components['Story']).toBeUndefined();
+    expect(es.some((e) => art(e) === 'Story' && e.name === 'Chapter 1: The Reed Caves')).toBe(false);
     expect(kanten(kapitel, 'partOf').map((r) => r.to)).toEqual([ganz.id]);
     const hoehle = finde(es, 'Scene', 'Reed Cave');
     expect(kanten(hoehle, 'partOf').map((r) => r.to)).toEqual([kapitel.id]);
@@ -145,6 +149,23 @@ describe('Abenteuer als Ebene (T-082)', () => {
     expect(karte.components['Map']).toMatchObject({ gridShape: 'square', gridSize: 70, gridOffsetX: 3, kind: 'battle' });
     expect(kanten(karte, 'mapOf').map((r) => r.to)).toEqual([finde(es, 'Scene', 'Reed Cave').id]);
     expect(es.some((e) => art(e) === 'Map' && e.name === 'Player Version')).toBe(false);
+  });
+
+  it('eine Karte im Text des Kapitels bekommt ihre eigene Szene (E-026)', () => {
+    const kapitel = finde(es, 'Arc', 'Chapter 1: The Reed Caves');
+    const karte = finde(es, 'Map', 'The Marsh');
+    const szene = finde(es, 'Scene', 'The Marsh');
+    expect(szene.id).toBe(`${karte.id}_scene`);
+    expect(szene.components['Scene']).toEqual({ mode: 'exploration' });
+    expect(kanten(szene, 'partOf').map((r) => r.to)).toEqual([kapitel.id]);
+    expect(kanten(karte, 'mapOf').map((r) => r.to)).toEqual([szene.id]);
+    expect(szene.components['Visibility']).toEqual({ audience: 'gm' });
+  });
+
+  it('ein Kapitel behält die Peg-Id, die es als Story hatte (Migration 041)', () => {
+    const kapitel = finde(es, 'Arc', 'Chapter 1: The Reed Caves');
+    const alt = `e5_${createHash('sha1').update('Story|adventure|tst|the reed caves').digest('hex').slice(0, 12)}`;
+    expect(kapitel.id).toBe(alt);
   });
 
   it('die NSC des Abenteuers liegen in seiner Ebene', () => {

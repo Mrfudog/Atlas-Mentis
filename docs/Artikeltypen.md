@@ -3,7 +3,7 @@
 <!-- Erzeugt aus `packages/registry`. Nicht von Hand ändern:
      `pnpm --filter @nw/registry catalogue` schreibt die Datei neu. -->
 
-Stand 2026-10-14. 71 Schnittstellen, 58 Kantenarten.
+Stand 2026-10-14. 72 Schnittstellen, 58 Kantenarten.
 
 Je Art vier Fragen: **welche Felder sie selbst trägt**, **welche sie
 erbt**, **welche Kanten** sie trägt und **wie sie gezeichnet wird**. Geerbtes
@@ -748,7 +748,60 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 ## story
 
-5 Arten.
+6 Arten.
+
+### Arc
+
+`Arc` · erbt von `Story` ← `Identity` ← `Prose` ← `Status` ← `Description` ← `Visibility` ← `Tags` ← `Todos` ← `Time` ← `Lore` ← `Secrets` ← `ReadAloud` ← `Notes`
+
+**Eigene Felder**
+
+- `levelFrom` *1…20*, `levelTo` *1…20*, `hook` *long*, `outcome` *long*
+
+**Geerbte Felder**
+
+- *`Story`* — `kind` *string*, `played` *string*, `summary` *long*
+- *`Identity`* — `name` **Pflicht** *string*, `id` **Pflicht** *string*, `aliases` *array*, `cover` *string*
+- *`Prose`* — `paragraph` *long*
+- *`Status`* — `status` *State: idea | prepared | ready*
+- *`Description`* — `description` *long*
+- *`Visibility`* — `audience` *public | campaign | players | gm*, `revealedTo` *link → Creature | Party | Faction*, `hiddenFrom` *link → Creature | Party | Faction*
+- *`Tags`* — `tags` *tags*
+- *`Todos`* — `items` *array*
+- *`Time`* — `sort` *number*, `display` *date*, `untilSort` *number*, `until` *date*, `duration` *string*
+- *`Lore`* — `lore` *long*
+- *`Secrets`* — `secret` *long*
+- *`ReadAloud`* — `readaloud` *long*
+- *`Notes`* — `note` *long*
+
+**Kanten von hier**
+
+- `partOf` → Place | Story | Event | Layer — „part of"
+- `describedIn` → Article — „described in"
+- `happensAt` → Place — „happens at"
+- `features` → Creature | Statblock | Faction — „features"
+- `knowledge` → Information — „knowledge about it"
+- `onMap` → Map — „fought on"
+- `loot` → Item | Information | Feat | Skill — „loot"
+- `tableFor` → Table — „rolls on"
+- `inLayer` → Layer — „from"
+- `variantOf` → * — „variant of"
+- `overrides` → * — „replaces"
+
+**Kanten hierher**
+
+- Place | Story | Quest | Event | Board | Encounter | Layer — `partOf` → „contains"
+- Quest — `questAbout` → „concerned by"
+- Map — `mapOf` → „maps"
+- Map — `marker` → „on the map"
+- Map — `territory` → „holds ground on"
+- Board — `placed` → „lies on"
+- Event — `involves` → „took part in"
+- Table — `entry` → „rolled on"
+- * — `variantOf` → „has variants"
+- * — `overrides` → „replaced by"
+
+**Gezeichnet** (aus `(Vorgabe)`): `image`, `description`, `fields`, `linked`, `prose`, `composed`, `usedBy`, `standing`, `relations`
 
 ### Campaign
 

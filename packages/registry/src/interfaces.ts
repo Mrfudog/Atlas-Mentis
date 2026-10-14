@@ -796,13 +796,14 @@ export const interfaces: Record<string, InterfaceDef> = {
   },
 
   /**
-   * Die Sprosse der Erzählung. Kampagne, Sitzung und Szene sind eigene
-   * Arten, weil sie eigene Felder und Ansichten tragen; **Arc und Kapitel
-   * sind Wörter** in `Story.kind` (Abgleich A5, Regel T2, 7.10.) — sie
-   * trugen als Zeilen kein eigenes Feld und keine Kante. Darum ist `Story`
-   * nicht mehr abstrakt: ein Arc *ist* eine Story mit `kind: 'arc'`.
-   * Braucht eine Sprosse einmal eigene Felder, wird sie eine Zeile, die von
-   * `Story` erbt — wie `Session`. Die Hierarchie trägt `partOf`.
+   * Die Sprosse der Erzählung. Kampagne, Arc, Sitzung und Szene sind eigene
+   * Arten, weil sie eigene Felder und Ansichten tragen; was darüber hinaus
+   * eine Sprosse ist (das Abenteuer selbst, ein Prolog), ist ein Wort in
+   * `Story.kind` (Abgleich A5, Regel T2). Darum ist `Story` nicht
+   * abstrakt. **Der Arc war bis 14.10. ein Wort** (`kind: 'arc'`) — mit
+   * E-026 bekam er eigene Felder (Stufen, Hook, Ausgang) und ist eine
+   * Zeile, die von `Story` erbt, wie `Session`; ein Kapitel eines
+   * Abenteuers ist ein Arc. Die Hierarchie trägt `partOf`.
    */
   /* Bereich `story` (bis 13.10. `history`): was nur die Kampagne
      betrifft — sie, ihre Sitzungen, Szenen und Aufträge. Die Weltgeschichte
@@ -813,6 +814,22 @@ export const interfaces: Record<string, InterfaceDef> = {
     label: 'Story',
     extends: ['Identity', 'Prose', 'Status', 'Description', 'Visibility', 'Tags', 'Todos', 'Time', 'Lore', 'Secrets', 'ReadAloud', 'Notes'],
     schema: merge(g.StoryInfo),
+  },
+
+  /**
+   * **Ein Arc ist ein Kapitel der Geschichte** (E-026, REQ-252): eine
+   * Kampagne hat Arcs, ein Arc Sitzungen und Szenen. Ein Kapitel eines
+   * importierten Abenteuers ist dieselbe Art — so lässt es sich mit allen
+   * Szenen darunter in die eigene Kampagne holen (`take`, als Fassung
+   * in der Kampagnenebene, E-018 a), und es steht dort, wo ein eigener Arc
+   * stünde.
+   */
+  Arc: {
+    name: 'Arc',
+    area: 'story',
+    label: 'Arc',
+    extends: ['Story'],
+    schema: merge(g.ArcInfo),
   },
 
   /**
@@ -1082,8 +1099,8 @@ export const interfaces: Record<string, InterfaceDef> = {
    * ohne das ist es kein Ereignis, sondern eine Notiz. Sortiert wird nach
    * `Time.sort`, gelesen wird `Time.display`.
    */
-  /* `Story` ist die Geschichte des *Spiels* — Kampagne, Arc, Kapitel,
-     Sitzung, Szene. Was der Welt widerfuhr, bevor jemand sie bespielte,
+  /* `Story` ist die Geschichte des *Spiels* — Kampagne, Arc (auch ein
+     Abenteuerkapitel), Sitzung, Szene. Was der Welt widerfuhr, bevor jemand sie bespielte,
      hängt dagegen an `Event`: eine Ära dauert Jahrhunderte, ein Kataklysmus
      Tage, ein Meilenstein einen Nachmittag. `Era`, `Cataclysm` und
      `Milestone` waren drei Zeilen ohne ein eigenes Feld — jetzt sind sie

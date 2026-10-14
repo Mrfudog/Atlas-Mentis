@@ -21,7 +21,8 @@ import { Api, type KampagnenGeschichte } from '../kern/api';
       <h2>Story</h2>
       <p class="fuss">
         What hangs on this campaign, and the chapters of every adventure it has turned on. Open a chapter
-        to adapt it: the campaign gets its own version, the original stays.
+        or a scene to take it into the campaign or one of its arcs: the campaign gets its own version, with
+        everything below it, and the original stays.
       </p>
       @if (fehler(); as f) {
         <p class="fehler" role="alert">{{ f }}</p>
