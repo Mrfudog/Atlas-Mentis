@@ -604,7 +604,8 @@ gut 29 000 Artikel mehr, je Ebene gezählt in
 [5etools-Bericht.md](5etools-Bericht.md). **Keine neue Ebene ist
 aufgeschaltet**, auch nicht über die Gruppe „D&D 5e (2014)": eine
 Kampagne ändert sich durch den Lauf nicht. Wer 2024 vergleichen will,
-trägt die Ebene (oder die Gruppe „2024 rules") auf der Kampagnenseite als
+trägt die Ebene (oder die Gruppe „2024 rules" als Ganzes, T-143) auf der
+Kampagnenseite oder im Popup unter der Marke als
 Vergleichsebene ein (T-092); wer damit spielen will, schaltet sie auf.
 Neues in einer schon aufgeschalteten 2014-Ebene (die Schiffe aus Ghosts of
 Saltmarsh, das Tarokka-Deck aus Curse of Strahd) ist dagegen gleich da,
