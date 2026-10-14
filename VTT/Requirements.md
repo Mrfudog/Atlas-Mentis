@@ -29,11 +29,11 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | Prio | Stories | Punkte | Stand |
 |---|---|---|---|
 | 1 | 43 | 136 | 31 steht · 7 teils · 1 offen · 2 ersetzt · 2 verworfen |
-| 2 | 95 | 326 | 61 steht · 17 teils · 9 offen · 5 ersetzt · 3 verworfen |
+| 2 | 95 | 326 | 62 steht · 17 teils · 8 offen · 5 ersetzt · 3 verworfen |
 | 3 | 115 | 331 | 61 steht · 22 teils · 31 offen · 1 ersetzt |
 | 4 | 44 | 195 | 13 steht · 2 teils · 26 offen · 2 ersetzt · 1 verworfen |
 | 5 | 19 | 154 | 1 steht · 18 offen |
-| **Zusammen** | **316** | **1142** | 167 steht · 48 teils · 85 offen · 10 ersetzt · 6 verworfen |
+| **Zusammen** | **316** | **1142** | 168 steht · 48 teils · 84 offen · 10 ersetzt · 6 verworfen |
 
 ## Register
 
@@ -343,7 +343,7 @@ Alle Anforderungen als **User Stories** (T-154, E-048 a): je Story eine Notiz `R
 | [[REQ-302]] | Der Filter gehört der Seite | Spielleitung | [[F-069 Filter & Filtergruppen\|Filter & Filtergruppen]] | 3 | 1 | done | steht |
 | [[REQ-303]] | Filtergruppen je Seite | Spielleitung | [[F-069 Filter & Filtergruppen\|Filter & Filtergruppen]] | 2 | 3 | done | steht |
 | [[REQ-304]] | Übergreifende Suche beim Tippen | Spieler | [[F-068 Suche\|Suche]] | 1 | 3 | done | steht |
-| [[REQ-305]] | Kampagne und Ebene immer sichtbar | Spielleitung | [[F-070 Navigation & Kurzansicht\|Navigation & Kurzansicht]] | 2 | 2 | defined | offen |
+| [[REQ-305]] | Kampagne und Ebene immer sichtbar | Spielleitung | [[F-070 Navigation & Kurzansicht\|Navigation & Kurzansicht]] | 2 | 2 | done | steht |
 | [[REQ-306]] | Lesbarkeit im Feinschliff | Spieler | [[F-072 Design & Stilkonzept\|Design & Stilkonzept]] | 3 | 2 | done | steht |
 | [[REQ-307]] | Löschen mit Rückfrage in der Seite | Spielleitung | [[F-071 Bearbeiten in der Ansicht\|Bearbeiten in der Ansicht]] | 3 | 1 | done | steht |
 | [[REQ-308]] | Obsidian-Vault einlesen | Spielleitung | [[F-075 Obsidian-Vault\|Obsidian-Vault]] | 3 | 5 | defined | offen |

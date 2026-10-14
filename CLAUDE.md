@@ -294,6 +294,13 @@ wiederkommen, werden sie neu geschrieben.
   bleibt die Ebene unbeschrieben stehen, bis die Leitung sie übernimmt
   (`POST /api/layers/:layer/takeover`: Inhalt in die Kampagnenebene, leere
   Ebene weg).
+  **Die Schreibebene wählt jedes Konto selbst** (T-161, `schreibebene.ts`):
+  im Popup der Kopfleiste unter seinen Zielebenen, gespeichert am Server je
+  Konto und Kampagne (`writeLayer`, nur über `PUT /api/layers/write`),
+  beim Lesen gegen `zielEbenen` geprüft — fällt sie weg, gilt die Vorgabe
+  (`grundEbene`) mit Hinweis. Anlegen nimmt sie, eine genannte Ebene geht
+  vor; Fassungen und Übernahme nehmen nur eine *gewählte*. Die Verwaltung
+  legt ohne Wahl weiter ausserhalb jeder Ebene an.
 - **Fünf Ansichten, und der Ort wählt sie.** `overview` steht in einem
   Verweis oder einer Listenzeile, `quick` auf einer Karte, `full` auf der
   Artikelseite, `print` auf dem Blatt hinter „Print" (T-110), `search`
