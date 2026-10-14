@@ -1235,7 +1235,7 @@ Arten samt Untertypen (`of`), ohne Arten samt Untertypen (`notype`),
 Marken, Stand (`status`; ohne Status-Karte zählt `ready`), nur diese Ebenen —
 geht als Grenze an `/api/list`; **womit er anfängt** — Suche, abgewählte
 Ebenen — setzt die Seitenleiste einmal beim Betreten, danach gehört der
-Filter der Seite. Gespeichert in `list_filter` (Migration 064), nicht im
+Filter der Seite. Gespeichert in `list_filter` (Migration 065), nicht im
 Artikel: eine Konto-Id wandert nicht mit der Ausfuhr (REQ-199). Routen:
 `GET`/`POST /api/filters`, `PUT`/`DELETE /api/filters/:id`.
 
