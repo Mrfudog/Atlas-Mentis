@@ -4,9 +4,9 @@ import { stageBases, validateEntity } from '@nw/model';
 import { seedRegistry } from '@nw/registry';
 import type { Knoten } from '../src/copy.js';
 import type { Datenstand } from '../src/lesen.js';
-import { ausschnitt, gruppeVon, lauf } from '../src/lauf.js';
+import { ausschnitt, blocklistGruppen, gruppeVon, herausgeberVon, lauf } from '../src/lauf.js';
 import { berichtMarkdown } from '../src/bericht.js';
-import { buchEbeneId, gruppeEbeneId } from '../src/werkbank.js';
+import { buchEbeneId, gruppeEbeneId, herausgeberEbeneId } from '../src/werkbank.js';
 
 /** Ein kleiner Datenstand in der Form von 5e.tools — genug, um jede Stufe zu berühren. */
 function datenstand(): Datenstand {
@@ -119,9 +119,35 @@ describe('Ein Lauf (Abgleich §4.2)', () => {
     const kern = es.find((e) => e.id === gruppeEbeneId('core'))!;
     expect(kern.name).toBe('Core rules');
     expect(kern.components['Layer']).toMatchObject({ kind: 'group' });
-    expect((phb.relations ?? []).filter((r) => r.type === 'partOf').map((r) => r.to)).toEqual([kern.id]);
+    expect((phb.relations ?? []).filter((r) => r.type === 'partOf').map((r) => r.to)).toEqual([kern.id, herausgeberEbeneId('official')]);
     /* Ohne Mitglied keine Gruppe: Settings gibt es in diesem Stand nicht. */
     expect(es.some((e) => e.id === gruppeEbeneId('setting'))).toBe(false);
+  });
+
+  it('hängt jedes Buch auch an seinen Herausgeber (T-094)', () => {
+    const offiziell = es.find((e) => e.id === herausgeberEbeneId('official'))!;
+    expect(offiziell.name).toBe('Official');
+    expect(offiziell.components['Layer']).toMatchObject({ kind: 'group', groupBy: 'publisher' });
+    /* Die Kategorien ordnen ohne Angabe. */
+    expect(es.find((e) => e.id === gruppeEbeneId('core'))!.components['Layer']).not.toHaveProperty('groupBy');
+    /* Jedes Buch steht in genau einer Herausgeber-Gruppe. */
+    const buecher = es.filter((e) => e.interfaces[0] === 'Layer' && ['book', 'adventure'].includes(String((e.components['Layer'] as { kind?: string }).kind)));
+    expect(buecher.length).toBeGreaterThan(0);
+    for (const b of buecher) {
+      expect((b.relations ?? []).filter((r) => r.type === 'partOf' && r.to.startsWith('e5_publisher_')), b.name).toHaveLength(1);
+    }
+  });
+
+  it('ordnet Herausgeber und Blocklist-Kategorien nach den Listen von 5e.tools (T-094)', () => {
+    expect(herausgeberVon('PHB')).toBe('official');
+    expect(herausgeberVon('EGW')).toBe('partnered');
+    expect(herausgeberVon('crcotn')).toBe('partnered');
+    expect(herausgeberVon('XGE')).toBe('official');
+    expect(blocklistGruppen('EGW')).toEqual(['non-fr']);
+    expect(blocklistGruppen('LK')).toEqual(['nonstandard', 'comedy', 'non-fr']);
+    expect(blocklistGruppen('PS-Z')).toEqual(['nonstandard']);
+    expect(blocklistGruppen('MCV1SC')).toEqual(['nonstandard']);
+    expect(blocklistGruppen('PHB')).toEqual([]);
   });
 
   it('ordnet Bücher nach der Gruppe in 5e.tools, dem Erscheinen und dem Kürzel', () => {
