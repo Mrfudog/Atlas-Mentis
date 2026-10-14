@@ -30,6 +30,8 @@ import {
   groupMembers,
   isGroupLayer,
   layersInGroup,
+  groupingOf,
+  publisherOf,
   offLayers,
   resolvedStack,
   withOff,
@@ -164,25 +166,46 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
 
   /** Eine Kampagne anlegen — wenn es noch keine gibt, kann sonst niemand
    *  eingeladen werden. Ein Artikel wie jeder andere, also über
-   *  `validateEntity`. Wer anlegt, leitet sie, wenn er das sagt. */
+   *  `validateEntity`. Wer anlegt, leitet sie, wenn er das sagt.
+   *
+   *  **Sie bekommt gleich ihre Ebene** (T-098, E-001): `ly_<kampagne>`,
+   *  aufgeschaltet und spezifischer als alles andere (100). Darin schreiben
+   *  `gm` und `co-gm`, dorthin legen Spielende an, und dort liegt eine
+   *  Fassung aus einer anderen Ebene. Dieselbe Ebene legt Migration 035
+   *  für jede Kampagne an, die noch keine hatte. */
   app.post<{ Body: { name?: string; lead?: boolean } }>('/api/campaigns', async (request, reply) => {
     const user = await viewerOf(request);
     if (!user?.isAdmin) return nein(reply, 403, 'Eine Kampagne legt die Verwaltung an.');
     const name = String(request.body?.name ?? '').trim();
     if (!name) return nein(reply, 400, 'Wie heisst sie?');
     const alle = await repo.listEntities();
+    const id = randomUUID();
+    const ebeneId = `ly_${id}`;
+    const ebene: Entity = {
+      id: ebeneId,
+      interfaces: [LAYER_COMPONENT],
+      name,
+      components: {
+        Identity: { name, id: nextId(alle, LAYER_COMPONENT), aliases: [] },
+        Status: { status: 'ready' },
+        Layer: { kind: 'campaign', order: 100 },
+      },
+      relations: [],
+    };
     const entity: Entity = {
-      id: randomUUID(),
+      id,
       interfaces: [CAMPAIGN_TYPE],
       name,
       components: { Identity: { name, id: nextId(alle, CAMPAIGN_TYPE), aliases: [] } },
-      relations: [],
+      relations: [{ id: `${id}~activates-${ebeneId}`, type: 'activates', to: ebeneId, props: { order: 100 } }],
     };
     const registry = await repo.getRegistry();
-    const issues = validateEntity(registry, entity, {});
+    const known = new Map([...alle.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const), [ebeneId, LAYER_COMPONENT] as const]);
+    const issues = [...validateEntity(registry, ebene, {}), ...validateEntity(registry, entity, { knownTypes: known })];
     if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+    await repo.putEntity(ebene);
     await repo.putEntity(entity);
-    await repo.appendEvent('entity.written', entity.id, { interfaces: entity.interfaces, cards: ['Identity'] });
+    await repo.appendEvent('entity.written', entity.id, { interfaces: entity.interfaces, cards: ['Identity'], layer: ebeneId });
     if (request.body?.lead === true) {
       const ich = await repo.getUser(user.id);
       if (ich) await repo.putUser({ ...ich, roles: { ...(ich.roles ?? {}), [entity.id]: 'gm' } });
@@ -247,6 +270,9 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
         id: e.id,
         name: entityName(e),
         kind: wort('kind'),
+        /* Wer sie herausgibt, gerechnet (T-094, E10); bei einer Gruppe, wonach sie ordnet. */
+        publisher: publisherOf(alle, e),
+        ...(gruppe ? { groupBy: groupingOf(e) } : {}),
         /* Die Gruppen, an denen sie hängt, und bei einer Gruppe ihre Mitglieder (T-088). */
         groups: (e.relations ?? []).filter((r) => r.type === GROUP_RELATION && isGroupLayer(alle.get(r.to))).map((r) => r.to),
         ...(gruppe ? { members: mitglieder.get(e.id) ?? [] } : {}),
@@ -652,6 +678,13 @@ export function registerVerwaltung(app: FastifyInstance, { repo, viewerOf }: Dep
       disabled: !!u.disabledAt,
       self: u.id === user.id,
       actors: figurenMitNamen(alle, u.actorIds ?? []),
+      /* In welchen Ebenen es schreibt (T-098) — ohne die der Kampagnen,
+         die es leitet: die kommen aus der Rolle. */
+      layers: (u.layerIds ?? []).map((id) => ({
+        id,
+        name: alle.has(id) ? entityName(alle.get(id)) : null,
+        owner: (u.ownedLayerIds ?? []).includes(id),
+      })),
       roles: Object.entries(u.roles ?? {}).map(([id, role]) => ({
         campaign: id,
         name: da.has(id) ? entityName(da.get(id)) : id,

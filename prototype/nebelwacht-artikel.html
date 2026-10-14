@@ -16214,6 +16214,20 @@ function renderHowto(v){
     "Resolved: Core rules \u00b7 PHB 2014-08 \u00b7 MM 2014-09 \u00b7 DMG 2014-12 \u00b7 Supplements \u00b7 VGM \u00b7 TCE \u2026\n"+
     "Article in XGE    not in play (off beats the group)\n"+
     "Article in TCE    in play, rank from Supplements"}));
+  /* ---- Herausgeber (T-094) ---- Gruppen mit Layer.groupBy publisher;
+     gerechnet in packages/model/src/stack.ts (publisherOf). */
+  v.appendChild(el("p",{class:"hint"},
+    "Groups sort by category or by publisher (Layer.groupBy: publisher): "+
+    "Official (Wizards of the Coast), Partnered, Third party, Homebrew. A "+
+    "book sits in one group of each kind, and either turns it on the same "+
+    "way. A layer's publisher is not stored: it is the name of the "+
+    "publisher group it hangs on, and a layer in none is Homebrew \u2014 "+
+    "your own content needs no publisher to be known as yours. The mark "+
+    "shows on the campaign page, in lists and in the preview."));
+  v.appendChild(el("pre",{class:"code",text:
+    "EGW  partOf Settings (category) \u00b7 Partnered (publisher)  \u2192 mark Partnered\n"+
+    "XGE  partOf Supplements \u00b7 Official                     \u2192 mark Official\n"+
+    "Ebene: Nebelwacht  in no publisher group             \u2192 mark Homebrew"}));
 
   v.appendChild(el("div",{class:"rsec",text:"Who gets to see an article"}));
   v.appendChild(el("p",{class:"hint"},

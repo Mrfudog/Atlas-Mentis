@@ -1,6 +1,7 @@
 import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { KurzLink } from '../kern/kurzansicht';
 import { Api, type KampagnenEbene, type KampagnenEbenen } from '../kern/api';
 import { Bestand } from '../kern/bestand';
 
@@ -8,6 +9,9 @@ import { Bestand } from '../kern/bestand';
 const BUCHARTEN = new Set(['book', 'adventure']);
 /** Der Schlüssel am Konto, unter dem die aufgeklappten Gruppen stehen (T-088). */
 const OFFEN_PREF = 'layerGroups';
+/** … und wonach die Bücher gruppiert stehen (T-094). */
+const ANSICHT_PREF = 'layerGroupBy';
+type Ansicht = 'category' | 'publisher';
 
 /** Eine Gruppe mit ihren Mitgliedern (T-088), verschachtelt. */
 interface Gruppe {
@@ -48,10 +52,15 @@ interface Gruppe {
  * je Buch darin. Ist die Gruppe an, nimmt das Häkchen am Buch es aus der
  * Gruppe heraus (`off` — aus schlägt an); ist sie aus, schaltet es das Buch
  * für sich auf. Welche Abschnitte offen sind, merkt sich das Konto.
+ *
+ * **Nach Kategorie oder nach Herausgeber** (T-094, REQ-249): ein
+ * Umschalter zeigt die Gruppen der einen oder der anderen Art
+ * (`groupBy`), gemerkt am Konto. Jede Ebene trägt ihren Herausgeber als
+ * Marke — Official, Partnered, Homebrew … —, gerechnet am Server.
  */
 @Component({
   selector: 'nw-kampagnen-ebenen',
-  imports: [RouterLink, NgTemplateOutlet],
+  imports: [RouterLink, NgTemplateOutlet, KurzLink],
   template: `
     <section class="kasten" aria-label="Layers in play">
       <h2>Layers in play</h2>
@@ -74,7 +83,12 @@ interface Gruppe {
                   (change)="umschalten(l)"
                 />
                 <span class="name">{{ l.name }}</span>
+                <!-- Die Karte der Ebene (T-093) — der Name setzt das Häkchen, der Knopf nicht. -->
+                <button type="button" class="quick-info" [nwQuick]="l.id" [attr.aria-label]="'Quick view of ' + l.name">i</button>
               </label>
+              @if (l.publisher) {
+                <span class="verlag" [title]="'Publisher: ' + l.publisher">{{ l.publisher }}</span>
+              }
               @if (l.readable && l.active) {
                 <a class="lesen" [routerLink]="['/read', l.id]">Read</a>
               }
@@ -136,13 +150,18 @@ interface Gruppe {
             Each book from 5e.tools is a layer of its own, and the books sit in groups. Turn on a whole group, or
             single books; with the group on, unticking a book takes just that one out.
           </p>
+          <div class="ansicht" role="group" aria-label="Group the books by">
+            <span class="dim">Group by</span>
+            <button type="button" [attr.aria-pressed]="ansicht() === 'category'" (click)="ansichtWaehlen('category')">category</button>
+            <button type="button" [attr.aria-pressed]="ansicht() === 'publisher'" (click)="ansichtWaehlen('publisher')">publisher</button>
+          </div>
           @for (g of gruppen(); track g.ebene.id) {
             <ng-container [ngTemplateOutlet]="gruppeTpl" [ngTemplateOutletContext]="{ $implicit: g }" />
           }
           @if (lose().length) {
             <details class="gruppe" [open]="offen().has('-')" (toggle)="merke('-', $event)">
               <summary>
-                <span class="gname">Other books</span>
+                <span class="gname">{{ ansicht() === 'publisher' ? 'No publisher (Homebrew)' : 'Other books' }}</span>
                 <span class="dim">{{ anZahl(lose()) }} of {{ lose().length }} on</span>
               </summary>
               <ul class="ebenen buecher">
@@ -167,6 +186,7 @@ interface Gruppe {
                 (change)="gruppeSchalten(g.ebene)"
               />
               <span class="gname">{{ g.ebene.name }}</span>
+              <button type="button" class="quick-info" [nwQuick]="g.ebene.id" [attr.aria-label]="'Quick view of ' + g.ebene.name">i</button>
               <span class="dim">{{ g.an }} of {{ g.gesamt }} on</span>
               @if (g.ebene.about.description) {
                 <span class="beschreibung">{{ g.ebene.about.description }}</span>
@@ -194,7 +214,11 @@ interface Gruppe {
                 (change)="buchSchalten(l)"
               />
               <span class="name">{{ l.name }}</span>
+              <button type="button" class="quick-info" [nwQuick]="l.id" [attr.aria-label]="'Quick view of ' + l.name">i</button>
             </label>
+            @if (l.publisher) {
+              <span class="verlag" [title]="'Publisher: ' + l.publisher">{{ l.publisher }}</span>
+            }
             @if (l.readable && l.inPlay) {
               <a class="lesen" [routerLink]="['/read', l.id]">Read</a>
             }
@@ -413,6 +437,38 @@ interface Gruppe {
       font-size: 0.85rem;
       overflow-wrap: anywhere;
     }
+    /* Der Herausgeber als Marke (T-094), wie hinter einem Quellenkürzel. */
+    .verlag {
+      padding: 0 0.45em;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      font-size: 0.78rem;
+      line-height: 1.6;
+      color: var(--dim);
+      white-space: nowrap;
+    }
+    .ansicht {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem;
+      margin: 0.25rem 0;
+      font-size: 0.85rem;
+    }
+    .ansicht button {
+      min-height: 36px;
+      padding: 0 0.8rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      color: inherit;
+      cursor: pointer;
+    }
+    .ansicht button[aria-pressed='true'] {
+      border-color: var(--accent);
+      color: var(--accent);
+      font-weight: 700;
+    }
     .fakten abbr {
       text-decoration: underline dotted;
       cursor: help;
@@ -479,16 +535,17 @@ export class KampagnenEbenenListe {
       const alle = [...blaetter.values()];
       return { ebene: g, untergruppen, ebenen, gesamt: alle.length, an: this.anZahl(alle) };
     };
-    const gruppen = (this.daten()?.layers ?? []).filter((x) => x.kind === 'group');
+    const ansicht = this.ansicht();
+    const gruppen = (this.daten()?.layers ?? []).filter((x) => x.kind === 'group' && (x.groupBy ?? 'category') === ansicht);
     return gruppen
       .filter((g) => !g.groups.some((p) => m.get(p)?.kind === 'group'))
       .map((g) => knoten(g, new Set([g.id])));
   });
 
-  /** Bücher ohne Gruppe — etwa bevor die Migration sie einhängte. */
+  /** Bücher ohne Gruppe dieser Ansicht — etwa bevor die Migration sie einhängte (T-094: je Ansicht). */
   protected readonly lose = computed(() =>
     (this.daten()?.layers ?? [])
-      .filter((x) => BUCHARTEN.has(x.kind) && !x.groups.length)
+      .filter((x) => BUCHARTEN.has(x.kind) && !x.groups.some((g) => (this.nachId().get(g)?.groupBy ?? 'category') === this.ansicht()))
       .sort((a, b) => a.name.localeCompare(b.name, 'en')),
   );
 
@@ -521,6 +578,17 @@ export class KampagnenEbenenListe {
   protected readonly offen = signal(new Set<string>());
   private offenGeladen = false;
 
+  /** Nach Kategorie oder nach Herausgeber (T-094) — gemerkt am Konto. */
+  protected readonly ansicht = signal<Ansicht>('category');
+
+  protected ansichtWaehlen(a: Ansicht): void {
+    if (this.ansicht() === a) return;
+    this.ansicht.set(a);
+    void this.api.setPref(ANSICHT_PREF, a).catch(() => {
+      /* Nicht gemerkt ist nicht schlimm: die Ansicht gilt trotzdem. */
+    });
+  }
+
   protected merke(key: string, ev: Event): void {
     const auf = (ev.target as HTMLDetailsElement).open;
     const s = new Set(this.offen());
@@ -537,7 +605,9 @@ export class KampagnenEbenenListe {
     if (this.offenGeladen) return;
     this.offenGeladen = true;
     try {
-      const p = (await this.api.prefs())[OFFEN_PREF];
+      const alle = await this.api.prefs();
+      if (alle[ANSICHT_PREF] === 'publisher' || alle[ANSICHT_PREF] === 'category') this.ansicht.set(alle[ANSICHT_PREF]);
+      const p = alle[OFFEN_PREF];
       if (Array.isArray(p)) {
         this.offen.set(new Set(p.filter((x): x is string => typeof x === 'string')));
         return;

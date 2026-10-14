@@ -536,6 +536,7 @@ try {
     const ordner = mkdtempSync(join(tmpdir(), 'durchstich-buch-'));
     const name = 'zzz_durchstich_ebene_je_buch.sql';
     const name088 = 'zzz_durchstich_ebenen_gruppen.sql';
+    const name094 = 'zzz_durchstich_ebenen_herausgeber.sql';
     const BUECHER = ['e5_book_phb', 'e5_book_xge', 'e5_book_scag'];
     const sicht = async () => {
       const alle = new Map((await repo.listEntities()).map((e) => [e.id, e]));
@@ -629,10 +630,40 @@ try {
       pruefe('Gruppen von Ebenen: aus schlägt an', !ohne.je.get('camp_probe_c')?.has('e5_probe_r1') && ohne.je.get('camp_probe_c')?.has('e5_probe_r2'), '');
       const quellen = await (await get(admin, '/api/sources')).json();
       pruefe('Gruppen von Ebenen: Quellenkürzel erklärt', quellen.sources?.PHB === "Player's Handbook", JSON.stringify(quellen));
+
+      /* Herausgeber (T-094): jedes Buch hängt danach an „Official", keines
+         der drei an einer Blocklist-Kategorie; niemand verliert etwas. */
+      writeFileSync(join(ordner, name094), readFileSync(join(DIST, '..', 'migrations', '037_ebenen_herausgeber.sql'), 'utf8'));
+      const vor094 = await sicht();
+      await migrate(pool, { env: {} }, ordner);
+      const nach094 = await sicht();
+      const teil = (id) => (nach094.alle.get(id)?.relations ?? []).filter((r) => r.type === 'partOf').map((r) => r.to);
+      pruefe(
+        'Herausgeber: jedes Buch hängt an Official, die Kategorie bleibt',
+        BUECHER.every((b) => teil(b).includes('e5_publisher_official')) && teil('e5_book_phb').includes('e5_group_core')
+          && nach094.alle.get('e5_publisher_official')?.components['Layer']?.groupBy === 'publisher'
+          && !nach094.alle.has('e5_publisher_partnered') && !nach094.alle.has('e5_group_comedy'),
+        BUECHER.map((b) => `${b}→${teil(b).join('+')}`).join(', '),
+      );
+      const verloren094 = [...vor094.je].flatMap(([k, ids]) => [...ids].filter((id) => !nach094.je.get(k)?.has(id)).map((id) => `${k}: ${id}`));
+      pruefe('Herausgeber: keine Kampagne verliert einen Artikel', verloren094.length === 0, verloren094.join(', '));
+      const z094 = (await (await get(admin, '/api/campaigns/camp_probe_c/layers')).json()).layers;
+      pruefe(
+        'Herausgeber: die Kampagnenseite nennt ihn, und eigene Ebenen sind Homebrew',
+        z094.some((l) => l.id === 'e5_book_phb' && l.publisher === 'Official') && z094.some((l) => l.id === 'e5_publisher_official' && l.groupBy === 'publisher')
+          && z094.some((l) => l.id === 'ly_probe_a' && l.publisher === 'Homebrew'),
+        JSON.stringify(z094.map((l) => [l.id, l.publisher, l.groupBy])),
+      );
+      const q094 = await (await get(admin, '/api/sources')).json();
+      pruefe('Herausgeber: je Kürzel genannt', q094.publishers?.PHB === 'Official', JSON.stringify(q094.publishers));
+      /* Ein zweiter Lauf hängt nichts doppelt. */
+      await pool.query('delete from schema_migrations where name = $1', [name094]);
+      await migrate(pool, { env: {} }, ordner);
+      pruefe('Herausgeber: ein zweiter Lauf hängt nichts doppelt', (await sicht()).alle.get('e5_book_phb')?.relations?.filter((r) => r.to === 'e5_publisher_official').length === 1, '');
     } finally {
       await pool.query('delete from entity where id = any($1)', [[...probe.map((e) => e.id), ...BUECHER]]);
-      await pool.query("delete from entity where id like 'e5_group_%'");
-      await pool.query('delete from schema_migrations where name = any($1)', [[name, name088]]);
+      await pool.query("delete from entity where id like 'e5_group_%' or id like 'e5_publisher_%'");
+      await pool.query('delete from schema_migrations where name = any($1)', [[name, name088, name094]]);
       await pool.end();
       rmSync(ordner, { recursive: true, force: true });
     }
@@ -714,6 +745,53 @@ try {
       await pool.query('delete from schema_migrations where name = $1', [name]);
       await pool.end();
       rmSync(ordner, { recursive: true, force: true });
+    }
+  }
+
+  /* ------------------------------------ Schreibrechte je Ebene (T-098) */
+  {
+    /* `app_user_layer` gibt es nur in Postgres: eine eigene Ebene anlegen,
+       aufschalten, darin anlegen, jemanden dazunehmen — und die Leitung
+       schreibt die Ebene ihrer Runde, nicht die eigene einer Spielerin. */
+    const spielerin = await anmelden('probe-spiel');
+    const mit = await anmelden('probe-mit');
+    const leit = await anmelden('probe-leitung');
+    const post = (keks, pfad, body) =>
+      fetch(`${BASE}${pfad}`, { method: 'POST', headers: { ...json, cookie: keks }, body: JSON.stringify(body ?? {}) });
+    const umbenannt = (e, n) => ({ ...e, name: n, components: { ...e.components, Identity: { ...e.components.Identity, name: n } } });
+    const rN = await post(spielerin, '/api/layers', { name: 'Probe eigene Ebene' });
+    const eigen = rN.ok ? (await rN.json()).id : '';
+    pruefe('Ebenen: eine eigene anlegen', rN.status === 201 && !!eigen, String(rN.status));
+    let ort = null;
+    try {
+      const mine = await (await get(spielerin, '/api/layers/mine')).json();
+      pruefe('Ebenen: sie besitzt sie, noch nicht im Spiel', mine.layers?.some((l) => l.id === eigen && l.owner && !l.inPlay), JSON.stringify(mine).slice(0, 300));
+      const rA = await post(leit, `/api/campaigns/camp_probe_a/layers/${eigen}`);
+      pruefe('Ebenen: die Leitung schaltet sie auf', rA.ok, String(rA.status));
+      const leitMine = await (await get(leit, '/api/layers/mine')).json();
+      pruefe('Ebenen: die Leitung schreibt die Ebene ihrer Runde, nicht die eigene', JSON.stringify(leitMine.layers?.map((l) => l.id)) === '["ly_probe_a"]', JSON.stringify(leitMine).slice(0, 300));
+      const rO = await post(spielerin, '/api/entities', { type: 'Place', name: 'Probe in eigener Ebene', relations: [{ type: 'inLayer', to: eigen }] });
+      ort = rO.ok ? await rO.json() : null;
+      pruefe('Ebenen: angelegt in der eigenen Ebene', rO.status === 201 && ort?.relations?.some((r) => r.type === 'inLayer' && r.to === eigen), `${rO.status} ${JSON.stringify(ort).slice(0, 200)}`);
+      if (ort) {
+        delete ort.refs;
+        pruefe('Ebenen: ein Mitspieler schreibt darin nicht', (await put(mit, umbenannt(ort, 'Probe X'))).status === 403);
+        const rE = await post(spielerin, `/api/layers/${eigen}/editors`, { name: 'probe-mit' });
+        pruefe('Ebenen: sie nimmt ihn dazu', rE.status === 201, `${rE.status} ${(await rE.text()).slice(0, 200)}`);
+        const rM = await put(mit, umbenannt(ort, 'Probe, von ihm'));
+        pruefe('Ebenen: jetzt schreibt er darin', rM.ok, `${rM.status} ${(await rM.text()).slice(0, 200)}`);
+      }
+    } finally {
+      const stapel = await (await get(admin, '/api/campaigns/camp_probe_a/layers')).json();
+      await fetch(`${BASE}/api/campaigns/camp_probe_a/layers`, {
+        method: 'PUT', headers: { ...json, cookie: admin },
+        body: JSON.stringify({ layers: (stapel.layers ?? []).filter((l) => l.active && l.id !== eigen).map((l) => l.id) }),
+      });
+      if (ort) await fetch(`${BASE}/api/entities/${ort.id}`, { method: 'DELETE', headers: { cookie: admin } });
+      if (eigen) {
+        const rW = await fetch(`${BASE}/api/entities/${eigen}`, { method: 'DELETE', headers: { cookie: admin } });
+        pruefe('Ebenen: die eigene wieder weg', rW.ok, String(rW.status));
+      }
     }
   }
 

@@ -2201,6 +2201,12 @@ export const fieldGroups = {
           enum: ['gm', 'players'],
           default: 'gm',
         },
+        /* **Die Sprachen dieser Kampagne** (REQ-251, T-095): welche
+           Sprachen am Tisch sinnvoll oder möglich sind. Sprachwahlen im
+           Assistenten bieten nur diese an; leer heisst jede. Namen von
+           `Language`-Artikeln, wie eine Übung sie hält — die Art schlägt
+           vor, die Liste hält nicht (M6). */
+        languages: { type: 'array', items: { type: 'string' }, enumRef: ['Language'], title: 'Languages in play' },
       },
     },
   },
@@ -2216,6 +2222,11 @@ export const fieldGroups = {
    * `kind: 'group'` (E-022 b): die Ebene enthält andere Ebenen, die mit
    * `partOf` an ihr hängen; schaltet eine Kampagne sie auf, sind alle
    * Mitglieder im Spiel.
+   *
+   * `groupBy` an einer Gruppe (T-094): `publisher` heisst, sie ordnet nach
+   * Herausgeber (Official, Partnered …), sonst nach Kategorie. Der
+   * Herausgeber einer Ebene ist die Herausgeber-Gruppe, an der sie hängt,
+   * und wird gerechnet (`publisherOf`), nicht gespeichert.
    */
   LayerInfo: {
     schema: {
@@ -2234,6 +2245,7 @@ export const fieldGroups = {
         version: { type: 'string', title: 'Rules version' },
         levels: { type: 'string', title: 'Levels' },
         storyline: { type: 'string', title: 'Storyline', suggest: true },
+        groupBy: { type: 'string', title: 'Groups by', enum: ['category', 'publisher'] },
       },
     },
   },

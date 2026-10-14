@@ -36,6 +36,8 @@ export class Bestand {
   private readonly _namen = signal<ReadonlyMap<string, string>>(new Map());
   private readonly _verweise = signal<ReadonlyMap<string, Bezuege['links'][string]>>(new Map());
   private readonly _anpassbar = signal<ReadonlySet<string>>(new Set());
+  /** In welche Ebenen eine Fassung ginge, je Artikel (`refs.adaptTo`, T-098). */
+  private readonly _anpassZiele = signal<ReadonlyMap<string, { id: string; name: string }[]>>(new Map());
   private readonly _fertig = signal<ReadonlyMap<string, string>>(new Map());
   private readonly _lesen = signal<ReadonlyMap<string, LeseZiel>>(new Map());
   /** Artikel aus einer Vergleichsebene (T-092): nicht im Spiel, auf Wunsch sichtbar. */
@@ -61,6 +63,7 @@ export class Bestand {
   readonly verweise = this._verweise.asReadonly();
   /** Geöffnete Artikel, die sich für die laufende Kampagne anpassen lassen (E-018, T-082). */
   readonly anpassbar = this._anpassbar.asReadonly();
+  readonly anpassZiele = this._anpassZiele.asReadonly();
   /**
    * Id → Datum des fertigen Stands, der für alle anderen noch gilt
    * (REQ-237, E-012). Kommt nur an, wenn der Betrachter den Arbeitsstand
@@ -155,6 +158,12 @@ export class Bestand {
         this._anpassbar.update((m) => {
           const n = new Set(m);
           if (refs?.adaptable) n.add(id);
+          else n.delete(id);
+          return n;
+        });
+        this._anpassZiele.update((m) => {
+          const n = new Map(m);
+          if (refs?.adaptTo?.length) n.set(id, refs.adaptTo);
           else n.delete(id);
           return n;
         });

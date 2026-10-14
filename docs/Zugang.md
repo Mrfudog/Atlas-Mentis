@@ -1,6 +1,6 @@
 # Zugang
 
-Stand 2026-10-13. REQ-031 und REQ-032 aus
+Stand 2026-10-14. REQ-031 und REQ-032 aus
 [`VTT/`](../VTT/) in diesem Repo (überholt durch [Datenmodell.md](Datenmodell.md)).
 
 Das hier betrifft den **Server** (`apps/server`), nicht den Artefakt-Prototyp.
@@ -112,6 +112,18 @@ Die Regel ist kurz, weil eine lange niemand mehr nachliest:
   eine Kante aus `OWNING_RELATIONS` — `carries`, `holds`, `crafting`. Die
   Kante steht in den Daten, also wird sie dort nachgesehen und nicht im
   Server behauptet.
+- **Wer in einer Ebene schreibt, schreibt darin alles** (T-098, E-001):
+  jedes Konto die Ebenen, die es besitzt oder zugeteilt bekam
+  (`app_user_layer`, neben dem Konto), und `gm` wie `co-gm` die **Ebene
+  ihrer Kampagne**. Geschrieben wird ein Artikel nur, wenn er **ganz** in
+  solchen Ebenen liegt — einer, der auch im geteilten Regelwerk liegt, nicht.
+  **Eine eigene Ebene legt jedes Konto an** (Seite „Account" › Layers,
+  `POST /api/layers`); wer sie anlegt, besitzt sie und sagt, wer sonst darin
+  schreibt. Die Verwaltung teilt jedem Konto Ebenen zu (Seite „Campaign" ›
+  Accounts of this installation). Sie wirkt, sobald die Leitung sie aufschaltet. **Was nicht in
+  den eigenen Ebenen liegt — auch was ohne Ebene ist —, ändert man als
+  Fassung:** „Edit" legt sie in eine eigene Ebene im Spiel
+  (`POST /api/entities/:id/adapt`, bei mehreren `{ layer }`).
 - **Spielende legen Artikel an, „ready" setzt die Leitung** (REQ-237, D72).
   Wer in der laufenden Kampagne `player` ist, legt jede Art an, die einen
   Stand trägt; sie landet in der Ebene der Kampagne, auf `idea` oder
@@ -133,10 +145,11 @@ Die Regel ist kurz, weil eine lange niemand mehr nachliest:
 | | legt an | schreibt | setzt `ready` | sieht Unfertiges | ändert er Fertiges |
 |---|---|---|---|---|---|
 | Verwaltung (`is_admin`) | ja | alles | ja | alles | bleibt fertig |
-| `gm` der Kampagne | nein (D69) | was Spielende angelegt haben | ja | ja | bleibt fertig |
-| `co-gm` der Kampagne | nein (D69) | nein | nein | ja, mit Band | — |
+| `gm` der Kampagne | in der Ebene der Kampagne | die Ebene der Kampagne, was Spielende angelegt haben; Fremdes als Fassung | ja | ja | bleibt fertig |
+| `co-gm` der Kampagne | in der Ebene der Kampagne, unfertig | die Ebene der Kampagne; Fremdes als Fassung | nein | ja, mit Band | fällt auf `prepared` |
 | `player` der laufenden Kampagne | jede Art mit Stand | eigene Figur samt Statblock und Anhang, eigene Artikel | nur an der eigenen Figur | nur eigenes; die Figuren der anderen ja | fällt auf `prepared`, für die anderen gilt der fertige Stand — ausser an der eigenen Figur |
 | `spectator`, ohne Rolle | nein | nein | nein | nein; die Figuren der Spielenden ja | — |
+| jedes Konto, in **eigenen** Ebenen (T-098) | darin, sobald sie im Spiel ist, unfertig | alles darin; Fremdes als Fassung darin | nein (das tut `gm`) | was darin liegt | fällt auf `prepared` |
 - **Das Register gehört der Verwaltung und der Leitung der laufenden
   Kampagne** (`gm` in der Kampagne, die `currentCampaign` nennt; seit W5).
   Eine Registerzeile zu ändern heisst, die Regeln zu ändern, und die
@@ -218,8 +231,8 @@ Drei Grenzen, die man leicht übersieht:
   schreiben (`mayWrite`). Vergeben darf eine Kampagne nur Figuren ohne
   Ebenenkante oder solche, deren Ebenen sie aufschaltet (`campaignsOf`);
   eine fremde Figur, die ein Mitglied schon führt, bleibt, auch wenn die
-  Liste sie nicht nennt. Eine Leitung gibt sich selbst keine Figur — ob die
-  Leitung schreibt, ist eine eigene, offene Entscheidung (unten).
+  Liste sie nicht nennt. Eine Leitung gibt sich selbst keine Figur — sie
+  schreibt die Ebene ihrer Kampagne ohnehin (T-098, oben).
 - **Die Kontoliste sieht nur die Verwaltung.** Eine Leitung nimmt ein
   bestehendes Konto beim Namen dazu oder lädt ein.
 
@@ -333,8 +346,8 @@ API tokens. Wie die Leitung einer Claude-Sitzung damit Zugang zu dev gibt:
 **Die Werkbank** (Prüfungen `GET /api/checks`, Massenänderungen
 `POST /api/bulk`) ist für Leitung (`gm`/`co-gm` in irgendeiner Kampagne)
 und Verwaltung. Geschrieben wird trotzdem nur, was `mayWrite` dem Konto
-erlaubt — die Leitung schreibt heute noch nicht (unten, „Was noch fehlt").
-Die Vorschau zeigt ihr darum jeden Artikel als „Das gehört dir nicht."
+erlaubt — die Leitung die Ebene ihrer Kampagne (T-098). Alles andere zeigt
+die Vorschau als „Das gehört dir nicht."
 
 ---
 
@@ -343,7 +356,8 @@ Die Vorschau zeigt ihr darum jeden Artikel als „Das gehört dir nicht."
 **Zugänge sind keine Artikel.** Ein Artikel gehört der Kampagne und wandert
 mit ihr; ein Zugang gehört der Instanz. `app_user`, `app_session`, `app_token` und
 `login_attempt` sind eigene Tabellen (dazu `app_user_actor`,
-`campaign_member` und `app_user_article`, wer was angelegt hat) und dürfen beim Spiegeln von prod nach
+`campaign_member`, `app_user_article`, wer was angelegt hat, und
+`app_user_layer`, wer in welcher Ebene schreibt) und dürfen beim Spiegeln von prod nach
 preprod ausdrücklich **nicht** mitwandern (REQ-199). In der Artikeltabelle
 steht davon nichts — nur beim Nutzer steht die Id der Figur, die er spielt.
 Darum steht auch in der eigenen Ausfuhr (`/api/export`) keins davon: sie
@@ -397,11 +411,9 @@ sieht Mara das nicht?".
 - **Die Bereiche in der Oberfläche.** Anmeldung, Liste, Artikelansicht und
   Bearbeiten stehen; Karten, Bogen, Inventar, Boards und Handwerk sind im
   Prototyp und noch nicht dort.
-- **Schreiben kennt die Leitung noch nicht.** `mayWrite` ist „Verwaltung oder
-  eigene Figur". Eine Leitung, die nicht Verwaltung ist, darf ihre eigene
-  Kampagne lesen und nichts daran ändern. Die Ableitung dafür steht schon
-  (`campaignOf` im Modellpaket) — die Regel fehlt, und sie ändert, wer
-  Daten anfassen darf. Also eine eigene Entscheidung.
+- **Artikel ohne Ebene** schreibt nur die Verwaltung; die Leitung ändert
+  sie als Fassung in der Ebene ihrer Kampagne (T-098). Ob sie mit der
+  Kampagne wandern sollen, hängt an der offenen Frage unten.
 - **Die laufende Kampagne ist eine globale Einstellung.** `currentCampaign()`
   liest `setting('campaign')` — wer umschaltet, schaltet für alle um.
   Solange das so ist, gibt es faktisch eine Kampagne. Sie muss der

@@ -7,6 +7,7 @@ import { Session } from '../kern/session';
 import { BEREICHE, bereichLabel } from '../kern/bereiche';
 import { ListenFilter } from '../kern/filter';
 import { AusgeblendetHinweis } from '../kern/ausgeblendet';
+import { KurzLink } from '../kern/kurzansicht';
 import { Anlegen } from './anlegen';
 import { Vorschau } from './vorschau';
 
@@ -43,7 +44,7 @@ const OFFEN = 8;
  */
 @Component({
   selector: 'nw-kompendium',
-  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis, QuelleText],
+  imports: [RouterLink, Vorschau, Anlegen, AusgeblendetHinweis, QuelleText, KurzLink],
   template: `
     <div class="seite" [class.mitvorschau]="!!filter.vorschau()">
       <aside class="filter" [class.offen]="filterOffen()" aria-label="Filters">
@@ -139,6 +140,8 @@ const OFFEN = 8;
                   (change)="ebeneUmschalten(l.id)"
                 />
                 {{ l.name }} <span class="zahl">{{ l.count }}</span>
+                <!-- Eine Ebene ist ein Artikel: ihre Karte, ohne das Häkchen zu setzen (T-093). -->
+                <button type="button" class="quick-info" [nwQuick]="l.id" [attr.aria-label]="'Quick view of ' + l.name">i</button>
               </label>
             }
           </fieldset>
@@ -231,6 +234,9 @@ const OFFEN = 8;
                   <tr [class.gewaehlt]="filter.vorschau() === z.id" (click)="zeile(z, $event)">
                     <td class="name">
                       <a [routerLink]="zielVon(z)" (click)="link(z, $event)">{{ z.name }}</a>
+                      <!-- Am Telefon führt die Zeile gleich zum Artikel; die Karte
+                           zeigt dieser Knopf (T-093). -->
+                      <button type="button" class="quick-info zeilen-info" [nwQuick]="z.id" [attr.aria-label]="'Quick view of ' + z.name">i</button>
                       @if (z.status && z.status !== 'ready') {
                         <span class="stand">{{ z.status }}</span>
                       }

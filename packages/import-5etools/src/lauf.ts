@@ -21,7 +21,7 @@ import { KOPIE_VON, loeseKopien } from './copy.js';
 import type { Auswahl, Datenstand, Quelle } from './lesen.js';
 import { ARTEN_WEG, ausschluss, quelleVon, STICHTAG_2024 } from './lesen.js';
 import type { Bericht } from './werkbank.js';
-import { buchEbeneId, gruppeEbeneId, Werkbank, zaehle } from './werkbank.js';
+import { buchEbeneId, gruppeEbeneId, herausgeberEbeneId, Werkbank, zaehle } from './werkbank.js';
 import type { Zuordnung } from './zuordnung.js';
 
 /** Die Reihenfolge aus Abgleich §4.2 — jede spätere Art zeigt auf frühere. */
@@ -56,7 +56,60 @@ export const GRUPPEN: [string, string, string][] = [
   ['ua', 'Unearthed Arcana', 'Playtest material, not final rules.'],
   ['2024', '2024 rules', 'The revised fifth edition of 2024 and the books built on it.'],
   ['other', 'Screens & other', 'Screens, recipes and everything else that fits no other group.'],
+  /* Die Kategorien der Content Blocklist in 5e.tools, die oben fehlen
+     (T-094): ein Buch steht zusätzlich darin. „5e ('14)" braucht keine —
+     2024-Bücher kommen nicht herein, also wäre es jedes Buch. */
+  ['nonstandard', 'Non-standard', 'Free web supplements, charity adventures, Plane Shift and crossovers: official, but outside the standard books (5e.tools: UA/Etc.).'],
+  ['comedy', 'Comedy', 'Books meant as a joke or a crossover for fun (5e.tools: Comedy Sources).'],
+  ['non-fr', 'Outside the Forgotten Realms', 'Books set in another world than the Forgotten Realms (5e.tools: Non-Forgotten Realms).'],
 ];
+
+/*
+ * Die Listen aus `5etools-src/js/parser.js` (Stand 10/2026), wörtlich: die
+ * Daten selbst sagen es nicht, die Seite führt sie im Code
+ * (`SOURCES_NON_STANDARD_WOTC` mit den Präfixen `PS`/`MCV`, `SOURCES_COMEDY`,
+ * `SOURCES_NON_FR`). Ein neues Buch fehlt hier, bis jemand nachzieht —
+ * dann steht es nur in seiner Kategorie, und das ist kein Fehler.
+ */
+const NICHT_STANDARD = new Set(['OGA', 'LLK', 'AZfyT', 'LR', 'TLK', 'TTP', 'AWM', 'IMR', 'SADS', 'MFF', 'XMtS', 'RtG', 'AitFR', 'AitFR-ISF', 'AitFR-THP', 'AitFR-AVT', 'AitFR-DN', 'AitFR-FCD', 'DoD', 'MaBJoV', 'NRH', 'NRH-TCMC', 'NRH-AVitW', 'NRH-ASS', 'NRH-CoI', 'NRH-TLT', 'NRH-AWoL', 'NRH-AT', 'MGELFT', 'VD', 'SjA', 'HAT-TG', 'HAT-LMI', 'GotSF', 'MCV3MC', 'MCV4EC', 'MisMV1', 'LK', 'AATM', 'CoA', 'PiP', 'HFStCM', 'UtHftLH', 'ScoEE', 'HBTD', 'BQGT', 'RWG'].map((x) => x.toLowerCase()));
+const KOMIK = new Set(['AI', 'OoW', 'RMR', 'RMBRE', 'HftT', 'AWM', 'MGELFT', 'HAT-TG', 'HAT-LMI', 'MCV3MC', 'MisMV1', 'LK', 'PiP', 'LRDT', 'UtHftLH', 'ScoEE', 'HBTD', 'BQGT', 'WttHC'].map((x) => x.toLowerCase()));
+const NICHT_FR = new Set(['GGR', 'KKW', 'ERLW', 'EFR', 'EGW', 'ToR', 'DD', 'FS', 'US', 'MOT', 'XMtS', 'AZfyT', 'SCC', 'SCC-CK', 'SCC-HfMT', 'SCC-TMM', 'SCC-ARiR', 'CRCotN', 'SjA', 'SAiS', 'AAG', 'BAM', 'LoX', 'DSotDQ', 'PAitM', 'SatO', 'ToFW', 'MPP', 'MCV4EC', 'LK', 'LRDT', 'UtHftLH', 'ScoEE', 'HBTD', 'BQGT', 'WttHC', 'LFL', 'EFA', 'FFotR'].map((x) => x.toLowerCase()));
+
+/** Die Blocklist-Kategorien, in denen ein Buch zusätzlich steht (T-094). */
+export function blocklistGruppen(q: string): string[] {
+  const k = q.toLowerCase();
+  return [
+    NICHT_STANDARD.has(k) || /^(ps|mcv)/.test(k) ? 'nonstandard' : '',
+    KOMIK.has(k) ? 'comedy' : '',
+    NICHT_FR.has(k) ? 'non-fr' : '',
+  ].filter(Boolean);
+}
+
+/**
+ * **Die Herausgeber** (T-094, REQ-249): je Herausgeber eine Gruppe mit
+ * `groupBy: 'publisher'`. Third party und Homebrew legt der Importer nie
+ * an: in `5etools-src` steht kein Buch eines fremden Verlags, und Homebrew
+ * liegt dort gar nicht — was in keiner Herausgeber-Gruppe steht, ist
+ * Homebrew (`publisherOf`).
+ */
+export const HERAUSGEBER: [string, string, string][] = [
+  ['official', 'Official', 'Published by Wizards of the Coast.'],
+  ['partnered', 'Partnered', 'Made with a partner of Wizards of the Coast (Critical Role, Rick and Morty, LEGO …) and sold as official D&D.'],
+];
+
+/*
+ * Die Partner-Quellen: `SOURCES_PARTNERED_WOTC` in `5etools-src/js/parser.js`
+ * ist seit Dez. 2025 leer — D&D Beyond führt diese Bücher jetzt als
+ * „Official" —, die Liste steht dort auskommentiert. Die Leitung will
+ * Partner-Inhalte trotzdem erkennen, also gilt die alte Liste. Unklare
+ * Fälle zählt docs/5etools-Abgleich.md auf.
+ */
+const PARTNER = new Set(['RMBRE', 'RMR', 'EGW', 'ToR', 'DD', 'FS', 'US', 'CRCotN', 'HftT', 'LRDT', 'TD'].map((x) => x.toLowerCase()));
+
+/** Wer ein Buch aus 5e.tools herausgibt (T-094). */
+export function herausgeberVon(q: string): string {
+  return PARTNER.has(q.toLowerCase()) ? 'partnered' : 'official';
+}
 
 /** In welche Gruppe ein Buch gehört — aus der Gruppe in 5e.tools, dem Erscheinen und dem Kürzel. */
 export function gruppeVon(q: string, meta: Quelle | undefined): string {
@@ -339,22 +392,44 @@ export function lauf(stand: Datenstand, auswahl: Auswahl = {}, registry: Registr
      Ebene; das Buch hängt mit `partOf` daran. Eine leere Gruppe bringt
      nichts und wird nicht angelegt. */
   const gruppen = new Map<string, Entity>();
+  /* Je Buch seine Kategorie, die Blocklist-Kategorien (T-094) und sein
+     Herausgeber — alles Gruppen nach E-022 b. Angelegt wird in der
+     Reihenfolge der Listen, damit die Nummern stabil bleiben. */
+  const gruppeAn = (l: Entity, id: string, anlegen: () => Entity) => {
+    let gruppe = gruppen.get(id);
+    if (!gruppe) {
+      gruppe = anlegen();
+      gruppen.set(id, gruppe);
+    }
+    wb.kante(l, 'partOf', gruppe.id);
+  };
+  const neueGruppe = (schluessel: string, id: string, name: string, text: string, herausgeber: boolean) => {
+    const gruppe = wb.anlegen('Layer', name, schluessel);
+    gruppe.id = id;
+    wb.feld(gruppe, 'Layer', 'kind', 'group');
+    wb.feld(gruppe, 'Layer', 'order', 0);
+    if (herausgeber) wb.feld(gruppe, 'Layer', 'groupBy', 'publisher');
+    wb.feld(gruppe, 'Description', 'description', text);
+    wb.prosa(gruppe, `${text} A group of layers from 5e.tools: turning it on for a campaign puts every book in it into play; a single book inside can still be turned off.`);
+    return gruppe;
+  };
+  const kategorie = (g: string) => () => {
+    const [, name, text] = GRUPPEN.find(([x]) => x === g)!;
+    return neueGruppe(`group|${g}`, gruppeEbeneId(g), name, text, false);
+  };
+  const verlag = (h: string) => () => {
+    const [, name, text] = HERAUSGEBER.find(([x]) => x === h)!;
+    return neueGruppe(`publisher|${h}`, herausgeberEbeneId(h), name, text, true);
+  };
   for (const [k, l] of buecher) {
     if (!belegt.has(l.id)) continue;
     const meta = stand.quellen.get(k);
-    const g = gruppeVon(meta?.id ?? k, meta);
-    let gruppe = gruppen.get(g);
-    if (!gruppe) {
-      const [, name, text] = GRUPPEN.find(([x]) => x === g)!;
-      gruppe = wb.anlegen('Layer', name, `group|${g}`);
-      gruppe.id = gruppeEbeneId(g);
-      wb.feld(gruppe, 'Layer', 'kind', 'group');
-      wb.feld(gruppe, 'Layer', 'order', 0);
-      wb.feld(gruppe, 'Description', 'description', text);
-      wb.prosa(gruppe, `${text} A group of layers from 5e.tools: turning it on for a campaign puts every book in it into play; a single book inside can still be turned off.`);
-      gruppen.set(g, gruppe);
-    }
-    wb.kante(l, 'partOf', gruppe.id);
+    const q = meta?.id ?? k;
+    const g = gruppeVon(q, meta);
+    gruppeAn(l, gruppeEbeneId(g), kategorie(g));
+    for (const b of blocklistGruppen(q)) gruppeAn(l, gruppeEbeneId(b), kategorie(b));
+    const h = herausgeberVon(q);
+    gruppeAn(l, herausgeberEbeneId(h), verlag(h));
   }
 
   fassungen(wb.entities, stand, wb.bericht, (e) => wb.nachdrucke.get(e.id) ?? []);

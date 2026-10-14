@@ -3,6 +3,7 @@ import { Api } from './kern/api';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Session } from './kern/session';
 import { BEREICHE } from './kern/bereiche';
+import { KurzPopup } from './artikel/kurzpopup';
 
 /**
  * Das Gerüst: die Kopfleiste wie auf dem Design-Canvas (Kompendium, Artikel
@@ -36,7 +37,7 @@ import { BEREICHE } from './kern/bereiche';
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, KurzPopup],
   template: `
     @if (session.dev()) {
       <p class="umgebung" role="note">
@@ -114,6 +115,8 @@ import { BEREICHE } from './kern/bereiche';
       }
     </div>
     <router-outlet />
+    <!-- Die Kurzansicht eines genannten Artikels, eine für alle Seiten (T-093). -->
+    <nw-kurzpopup />
   `,
   styles: `
     .umgebung {

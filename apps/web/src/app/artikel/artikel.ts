@@ -28,6 +28,7 @@ import {
 import type { Entity, LayoutElement, MergeSide, PropertySchema, Registry, VarScopes, ViewDef } from '@nw/model';
 import { Api, ApiError, type Fassungen, type LeseZiel } from '../kern/api';
 import { Bestand } from '../kern/bestand';
+import { KurzLink } from '../kern/kurzansicht';
 import { Session } from '../kern/session';
 import {
   anzeigeWert,
@@ -36,6 +37,7 @@ import {
   inEingabe,
   inListe,
   kantenAusEntwurf,
+  type KantenEntwurf,
   sindZeilen,
   suchgruppen,
   tabelleAlsText,
@@ -52,8 +54,13 @@ import { Abschnitte } from './abschnitte';
 import { abweichungen, FassungsKasten, FassungsLesart, verglichene, type Abweichung } from './fassungen';
 import { bereichLabel } from '../kern/bereiche';
 import { Quellen } from '../kern/quellen';
+import { antwortenJeEintrag, antwortText, EINTRAG_KANTEN } from './klasseneintrag';
 
 const SCHON_ANDERSWO = ['Identity', 'Visibility', 'Source'];
+/** Die Kante, an der ein Artikel in einem anderen steht — Raum im Kapitel, Kapitel im Abenteuer. */
+const PART_RELATION = 'partOf';
+/** So viele Glieder höchstens im Brotkrumenpfad. */
+const PFAD_TIEFE = 8;
 
 interface Zelle {
   ref: string;
@@ -137,7 +144,7 @@ interface Feld {
  */
 @Component({
   selector: 'nw-artikel',
-  imports: [RouterLink, FormsModule, Text, Wahl, Mehrfach, Statblock, Zauber, Gegenstand, Abschnitte, FassungsKasten],
+  imports: [RouterLink, FormsModule, Text, Wahl, Mehrfach, Statblock, Zauber, Gegenstand, Abschnitte, FassungsKasten, KurzLink],
   template: `
     @if (artikel(); as e) {
       <div class="buch">
@@ -147,8 +154,13 @@ interface Feld {
           <a [routerLink]="'/' + (bereich() || 'compendium')" [queryParams]="{ type: art(e) }">{{
             typLabel(art(e))
           }}</a>
+          <!-- Ebene und übergeordnete Artikel (T-093): wo der Artikel steht. -->
+          @for (p of pfad(); track p.id) {
+            <span aria-hidden="true">›</span>
+            <a [routerLink]="['/artikel', p.id]">{{ p.name }}</a>
+          }
           <span aria-hidden="true">›</span>
-          <span>{{ name(e) }}</span>
+          <span aria-current="page">{{ name(e) }}</span>
         </nav>
 
         <div class="spalten">
@@ -174,14 +186,14 @@ interface Feld {
                 }
                 <!-- Anpassen über der Vorlage (E-018, T-082): eine Fassung in
                      der Ebene der Kampagne, das Original bleibt. -->
-                @if (anpassbar() && !bearbeitet()) {
+                @if (anpassbar() && session.isAdmin() && !bearbeitet()) {
                   <button type="button" [disabled]="passtAn()" (click)="anpassen()"
                           title="Make a version for this campaign. The original stays as it is.">
                     {{ passtAn() ? 'Adapting…' : 'Adapt for this campaign' }}
                   </button>
                 }
                 @if (original(); as o) {
-                  @if (session.isAdmin() && !bearbeitet()) {
+                  @if ((session.isAdmin() || darfSchreiben()) && !bearbeitet()) {
                     <button type="button" [disabled]="passtAn()" (click)="zumOriginal(o.id)"
                             title="Delete this version; the campaign sees the original again.">
                       Back to the original
@@ -192,6 +204,28 @@ interface Feld {
                   <button type="button" (click)="bearbeitet() ? abbrechen() : beginnen()">
                     {{ bearbeitet() ? 'Cancel' : 'Edit' }}
                   </button>
+                } @else if (fassungsZiele().length && !zeigtAlten() && !session.isAdmin()) {
+                  <!-- Fremdes ändert man als Fassung in einer eigenen Ebene (T-098, E-001). -->
+                  @if (fassungsZiele().length === 1) {
+                    <button type="button" [disabled]="passtAn()" (click)="alsFassung(fassungsZiele()[0]!.id)"
+                            [title]="'This article is not in a layer you edit. Edit makes your version in ' + fassungsZiele()[0]!.name + '; the original stays.'">
+                      {{ passtAn() ? 'Making your version…' : 'Edit' }}
+                    </button>
+                  } @else {
+                    <span class="fassung-wahl">
+                      <label>
+                        Edit as a version in
+                        <select #ziel [disabled]="passtAn()" aria-label="Layer for your version">
+                          @for (l of fassungsZiele(); track l.id) {
+                            <option [value]="l.id">{{ l.name }}</option>
+                          }
+                        </select>
+                      </label>
+                      <button type="button" [disabled]="passtAn()" (click)="alsFassung(ziel.value)">
+                        {{ passtAn() ? 'Making…' : 'Edit' }}
+                      </button>
+                    </span>
+                  }
                 }
                 @if (bearbeitet()) {
                   <button type="button" class="pri" [disabled]="speichert()" (click)="speichern()">
@@ -388,7 +422,7 @@ interface Feld {
               </div>
 
               <h3>Relations</h3>
-              @for (k of entwurfKanten(); track k.id) {
+              @for (k of hauptKanten(); track k.id) {
                 <div class="kantenmaske">
                   <div class="bkopf">
                     <span class="rl">{{ kantenLabel(k.type) }}</span>
@@ -449,6 +483,22 @@ interface Feld {
                       }
                     </div>
                   }
+                  <!-- Die Antworten auf die Wahlen dieses Eintrags (T-095):
+                       gespeichert als Kanten chose, gezeigt bei ihrer Klasse. -->
+                  @for (u of unterKanten(k); track u.id) {
+                    <div class="antwortmaske">
+                      <label>
+                        <span>{{ antwortLabel(u) }}</span>
+                        <input
+                          type="text"
+                          [value]="anzeige(u.props['picks'])"
+                          (input)="setzeProp(u, 'picks', $any($event.target).value)"
+                          [name]="u.id + '-picks'"
+                        />
+                      </label>
+                      <button type="button" class="weg" (click)="kanteWeg(u.id)" title="Remove">×</button>
+                    </div>
+                  }
                 </div>
               }
               <div class="werkzeuge">
@@ -503,7 +553,7 @@ interface Feld {
                               @for (l of z.links; track $index) {
                                 @if (!$first) {<ng-container>, </ng-container>}
                                 @if (l.ziel) {
-                                  <a [routerLink]="['/artikel', l.ziel]">{{ l.text }}</a>
+                                  <a [routerLink]="['/artikel', l.ziel]" [nwQuick]="l.ziel">{{ l.text }}</a>
                                 } @else {
                                   <span class="weg">{{ l.text }}</span>
                                 }
@@ -600,9 +650,23 @@ interface Feld {
                     <li>
                       <span class="rl">{{ k.label }}</span>
                       @if (k.ziel) {
-                        <a [routerLink]="['/artikel', k.ziel]">{{ k.text }}</a>
+                        <a [routerLink]="['/artikel', k.ziel]" [nwQuick]="k.ziel">{{ k.text }}</a>
                       } @else {
                         <span class="weg">{{ k.text }}</span>
+                      }
+                      @if (k.stufe) {
+                        <span class="stufe">level {{ k.stufe }}</span>
+                      }
+                      @if (k.unter; as u) {
+                        <a class="unter" [routerLink]="['/artikel', u.id]">{{ u.name }}</a>
+                      }
+                      @if (k.antworten.length) {
+                        <dl class="antworten">
+                          @for (a of k.antworten; track a.id) {
+                            <dt>{{ a.label }}</dt>
+                            <dd>{{ a.text || '—' }}</dd>
+                          }
+                        </dl>
                       }
                     </li>
                   }
@@ -629,7 +693,7 @@ interface Feld {
                   @for (r of rueckbezuege(); track r.id) {
                     <li>
                       <span class="rl">{{ r.label }}</span>
-                      <a [routerLink]="['/artikel', r.ziel]">{{ r.text }}</a>
+                      <a [routerLink]="['/artikel', r.ziel]" [nwQuick]="r.ziel">{{ r.text }}</a>
                     </li>
                   }
                 </ul>
@@ -645,7 +709,7 @@ interface Feld {
                     @for (l of z.links; track $index) {
                       @if (!$first) {<ng-container>, </ng-container>}
                       @if (l.ziel) {
-                        <a [routerLink]="['/artikel', l.ziel]">{{ l.text }}</a>
+                        <a [routerLink]="['/artikel', l.ziel]" [nwQuick]="l.ziel">{{ l.text }}</a>
                       } @else {
                         <span class="weg">{{ l.text }}</span>
                       }
@@ -668,6 +732,9 @@ interface Feld {
                 <!-- Das Kürzel ausgeschrieben (T-088): „XGE" sagt nur, wer das Buch kennt. -->
                 @if (q.titel) {
                   <p class="quelltitel">{{ q.titel }}</p>
+                }
+                @if (q.verlag) {
+                  <p class="quelltitel">Publisher: {{ q.verlag }}</p>
                 }
               </section>
             }
@@ -700,6 +767,11 @@ export class Artikel {
        der nächste geholt. */
     effect(() => {
       void this.bestand.oeffnen(this.id());
+    });
+    /* Die `partOf`-Kette für den Brotkrumenpfad, Glied für Glied (T-093). */
+    effect(() => {
+      const offen = this.kette().offen;
+      if (offen) void untracked(() => this.bestand.holen([offen]));
     });
     /* **Die Fassungen** (T-092) kommen je Artikel, neben ihm: eine
        Anfrage, und der Vergleich rechnet hier. Namen der Kantenziele, die
@@ -794,6 +866,40 @@ export class Artikel {
   });
   protected readonly bereichName = computed(() => bereichLabel(this.bereich()) ?? 'Compendium');
 
+  /**
+   * Der Brotkrumenpfad zwischen Art und Artikel (T-093, REQ-248): die
+   * Ebene, die ihn bringt, dann die `partOf`-Kette von oben nach unten —
+   * Abenteuer › Kapitel › Raum. Was der Betrachter nicht sehen darf, kommt
+   * ohne Namen und beendet die Kette dort; ein Kreis läuft nicht endlos.
+   */
+  private readonly kette = computed<{ glieder: { id: string; name: string }[]; offen: string | null }>(() => {
+    const e = this.artikel();
+    if (!e) return { glieder: [], offen: null };
+    const name = this.bestand.name();
+    const voll = this.bestand.voll();
+    const fehlt = this.bestand.fehlt();
+    const glieder: { id: string; name: string }[] = [];
+    const gesehen = new Set([e.id]);
+    let jetzt: Entity | undefined = e;
+    let offen: string | null = null;
+    while (jetzt && glieder.length < PFAD_TIEFE) {
+      const hoch: string | undefined = jetzt.relations?.find((r) => r.type === PART_RELATION)?.to;
+      if (!hoch || gesehen.has(hoch)) break;
+      gesehen.add(hoch);
+      jetzt = voll.get(hoch);
+      /* Noch nicht geholt: `holen` bringt es samt Namen und `partOf`. */
+      if (!jetzt && !fehlt.has(hoch)) offen = hoch;
+      const n = name(hoch);
+      if (!n) break;
+      glieder.unshift({ id: hoch, name: n });
+    }
+    const ebene = e.relations?.find((r) => r.type === LAYER_RELATION)?.to;
+    const ebenenName = ebene ? name(ebene) : undefined;
+    if (ebene && ebenenName && !gesehen.has(ebene)) glieder.unshift({ id: ebene, name: ebenenName });
+    return { glieder, offen };
+  });
+  protected readonly pfad = computed(() => this.kette().glieder);
+
   /** Art · Nummer · Ebenen — die Zeile über dem Blatt. */
   protected readonly meta = computed(() => {
     const e = this.artikel();
@@ -839,7 +945,9 @@ export class Artikel {
       | undefined;
     if (!q?.publication && !q?.url) return null;
     const text = [q.publication, q.page ? `p. ${q.page}` : ''].filter(Boolean).join(', ');
-    return { text: text || q.url || '', url: q.url, titel: q.publication ? this.quellen.titel(q.publication.trim()) : '' };
+    const k = q.publication?.trim() ?? '';
+    /* Dazu der Herausgeber (T-094): offizielles D&D, Partner oder Homebrew. */
+    return { text: text || q.url || '', url: q.url, titel: k ? this.quellen.titel(k) : '', verlag: k ? this.quellen.herausgeber(k) : '' };
   });
   protected name(e: Entity): string {
     return entityName(e);
@@ -1058,18 +1166,63 @@ export class Artikel {
     const r = this.reg();
     if (!e || !r || !this.view()?.relations) return [];
     const name = this.bestand.name();
+    const voll = this.bestand.voll();
+    /* **Ein Eintrag je Klasse** (T-095): die Antworten stehen bei der
+       Klasse (oder Abstammung, Hintergrund), die fragt, nicht daneben. */
+    const zu = antwortenJeEintrag(e.relations ?? []);
+    const antworten = (id: string) =>
+      (e.relations ?? [])
+        .filter((a) => zu.get(a.id) === id)
+        .map((a) => {
+          const picks = Array.isArray(a.props?.['picks']) ? (a.props['picks'] as unknown[]).map(String) : [];
+          return { id: a.id, ...antwortText(voll.get(a.to), String(a.props?.['choice'] ?? ''), picks, name) };
+        });
     /* Die Ebene steht schon in der Zeile über dem Blatt. */
-    return (e.relations ?? []).filter((rel) => rel.type !== LAYER_RELATION).map((rel) => {
-      const ziel = name(rel.to);
-      return {
-        id: rel.id,
-        label: relationDef(r, rel.type).label,
-        ziel: ziel === undefined ? '' : rel.to,
-        /* Ein Ziel, das es nicht gibt, wird gesagt und nicht verschwiegen —
-           es kann auch heissen, dass der Betrachter es nicht sehen darf. */
-        text: ziel ?? '(not here)',
-      };
-    });
+    return (e.relations ?? [])
+      .filter((rel) => rel.type !== LAYER_RELATION && !zu.has(rel.id))
+      .map((rel) => {
+        const ziel = name(rel.to);
+        const sub = rel.type === 'hasClass' && typeof rel.props?.['subclass'] === 'string' ? rel.props['subclass'] : '';
+        const stufe = rel.type === 'hasClass' ? Number(rel.props?.['level']) || 1 : 0;
+        const antw = EINTRAG_KANTEN.includes(rel.type) ? antworten(rel.id) : [];
+        const subName = sub ? (name(sub) ?? sub) : '';
+        return {
+          id: rel.id,
+          label: relationDef(r, rel.type).label,
+          ziel: ziel === undefined ? '' : rel.to,
+          /* Ein Ziel, das es nicht gibt, wird gesagt und nicht verschwiegen —
+             es kann auch heissen, dass der Betrachter es nicht sehen darf. */
+          text: rel.type === 'chose' ? `${ziel ?? rel.to}: ${String(rel.props?.['choice'] ?? '')}` : (ziel ?? '(not here)'),
+          stufe,
+          /* Die Unterklasse einmal: steht sie schon als Antwort da, nicht noch als Zeile. */
+          unter: sub && !antw.some((a) => a.text === subName) ? { id: sub, name: subName } : null,
+          antworten: antw,
+        };
+      });
+  });
+
+  /**
+   * Die Quellen der Antworten ganz holen — ihre Wahlen sagen, wie eine
+   * Antwort heisst und ob sie Ids hält —, danach die gewählten Artikel für
+   * ihre Namen (T-095).
+   */
+  private readonly antwortQuellen = effect(() => {
+    const e = this.artikel();
+    if (!e?.relations?.some((r) => r.type === 'chose')) return;
+    const voll = this.bestand.voll();
+    const ids = new Set<string>();
+    for (const r of e.relations) {
+      if (r.type === 'chose') ids.add(r.to);
+      if (r.type === 'hasClass' && typeof r.props?.['subclass'] === 'string') ids.add(r.props['subclass']);
+    }
+    for (const r of e.relations) {
+      if (r.type !== 'chose') continue;
+      const c = choicesOf(voll.get(r.to)).find((x) => x.id === r.props?.['choice']);
+      if (c && (['feat', 'spell', 'feature', 'subclass'].includes(String(c.kind)) || c.from?.interfaces?.length)) {
+        for (const p of Array.isArray(r.props?.['picks']) ? (r.props['picks'] as unknown[]) : []) ids.add(String(p));
+      }
+    }
+    untracked(() => void this.bestand.holen([...ids]));
   });
 
   // ------------------------------------------------------------ Fassungen (T-092)
@@ -1180,6 +1333,8 @@ export class Artikel {
 
   /** „Adapt" anbieten — der Server hat es mit dem Artikel gesagt (`refs.adaptable`). */
   protected readonly anpassbar = computed(() => this.bestand.anpassbar().has(this.id()));
+  /** Wohin „Edit" eine Fassung legt, wenn man den Artikel nicht schreibt (`refs.adaptTo`, T-098). */
+  protected readonly fassungsZiele = computed(() => this.bestand.anpassZiele().get(this.id()) ?? []);
   protected readonly passtAn = signal(false);
   protected readonly anpassFehler = signal<string | null>(null);
 
@@ -1200,6 +1355,29 @@ export class Artikel {
       /* Das Original zeigt ab jetzt auf die Fassung; was offen war, gilt nicht mehr. */
       await this.bestand.oeffnen(this.id(), true);
       await this.router.navigate(['/artikel', id]);
+    } catch (x) {
+      this.anpassFehler.set(x instanceof Error ? x.message : String(x));
+    } finally {
+      this.passtAn.set(false);
+    }
+  }
+
+  /**
+   * **„Edit" an einem fremden Artikel** (T-098, E-001): eine Fassung in der
+   * gewählten eigenen Ebene, dann gleich bearbeiten (`?edit=1`). Gibt es sie
+   * schon, öffnet der Server die bestehende.
+   */
+  protected async alsFassung(layer: string): Promise<void> {
+    const e = this.artikel();
+    if (!e || !layer) return;
+    this.passtAn.set(true);
+    this.anpassFehler.set(null);
+    try {
+      const { id } = await this.api.adapt(e.id, layer);
+      /* Die Fassung ist neu: was ich schreibe, sagt der Server erst jetzt (`/api/me`). */
+      await this.session.load(true);
+      await this.bestand.oeffnen(this.id(), true);
+      await this.router.navigate(['/artikel', id], { queryParams: { edit: 1 } });
     } catch (x) {
       this.anpassFehler.set(x instanceof Error ? x.message : String(x));
     } finally {
@@ -1442,6 +1620,22 @@ export class Artikel {
     const wert = ausEingabe(schema, roh);
     if (wert === undefined) delete kante.props[prop];
     else kante.props[prop] = wert;
+  }
+
+  /** Die Kanten der Maske ohne die Antworten, die bei ihrem Eintrag stehen (T-095). */
+  protected hauptKanten(): KantenEntwurf[] {
+    const ks = this.entwurfKanten();
+    const zu = antwortenJeEintrag(ks);
+    return ks.filter((k) => !zu.has(k.id));
+  }
+  protected unterKanten(k: { id: string }): KantenEntwurf[] {
+    if (!this.reg()) return [];
+    const ks = this.entwurfKanten();
+    const zu = antwortenJeEintrag(ks);
+    return ks.filter((a) => zu.get(a.id) === k.id);
+  }
+  protected antwortLabel(a: { to: string; props: Record<string, unknown> }): string {
+    return antwortText(this.bestand.voll().get(a.to), String(a.props['choice'] ?? ''), [], this.bestand.name()).label;
   }
 
   protected kanteDazu(type: string): void {

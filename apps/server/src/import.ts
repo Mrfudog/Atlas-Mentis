@@ -55,6 +55,8 @@ import {
   stageBases,
   thinInstance,
   validateEntity,
+  groupingOf,
+  PUBLISHER_GROUPING,
 } from '@nw/model';
 import type { Entity, Registry } from '@nw/model';
 import type { Repository } from './repo.js';
@@ -291,8 +293,8 @@ export async function runImport(
   return { text: zeilen.join('\n') + liegenText(liegen), geschrieben: zuSchreiben.length, geloescht, ...(optionen.onlyNew ? { uebersprungen } : {}), verwaisteKanten };
 }
 
-/** Die Gruppen, die der Importer anlegt (`gruppeEbeneId`) — nur deren Kanten ersetzt `--layers`. */
-const IMPORTER_GRUPPE = /^e5_group_/;
+/** Die Gruppen, die der Importer anlegt (`gruppeEbeneId`, `herausgeberEbeneId`, T-094) — nur deren Kanten ersetzt `--layers`. */
+const IMPORTER_GRUPPE = /^e5_(group|publisher)_/;
 
 /**
  * **Nur die Ebenen** (`--layers`, T-088): neue anlegen, an bestehenden das
@@ -327,7 +329,11 @@ async function ebenenErgaenzen(repo: Repository, registry: Registry, ausDatei: E
       }
       components[karte] = hier;
     }
-    const soll = (datei.relations ?? []).filter((r) => r.type === 'partOf');
+    /* Hat die Leitung die Ebene an einen eigenen Herausgeber gehängt
+       (T-094), bleibt es dabei: der des Importers kommt nicht dazu. */
+    const verlag = (id: string) => groupingOf(bestand.get(id) ?? ausDatei.find((x) => x.id === id)) === PUBLISHER_GROUPING;
+    const eigenerVerlag = (alt.relations ?? []).some((r) => r.type === 'partOf' && !IMPORTER_GRUPPE.test(r.to) && verlag(r.to));
+    const soll = (datei.relations ?? []).filter((r) => r.type === 'partOf' && !(eigenerVerlag && verlag(r.to)));
     const bleiben = (alt.relations ?? []).filter((r) => r.type !== 'partOf' || !IMPORTER_GRUPPE.test(r.to) || soll.some((x) => x.to === r.to));
     const dazu = soll.filter((r) => !bleiben.some((x) => x.type === 'partOf' && x.to === r.to));
     if (dazu.length || bleiben.length !== (alt.relations ?? []).length) anders = true;

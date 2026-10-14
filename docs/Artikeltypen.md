@@ -756,7 +756,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `compareFor` *gm | players*
+- `compareFor` *gm | players*, `languages` *Language articles*
 
 **Geerbte Felder**
 
@@ -2549,7 +2549,7 @@ und übersieht, dass sie über `Item` die halbe Kampagne trägt.
 
 **Eigene Felder**
 
-- `kind` *system | expansion | book | adventure | world | pack | campaign | overrides | group*, `order` *number*, `abbreviation` *string*, `published` *string*, `author` *string*, `version` *string*, `levels` *string*, `storyline` *string*
+- `kind` *system | expansion | book | adventure | world | pack | campaign | overrides | group*, `order` *number*, `abbreviation` *string*, `published` *string*, `author` *string*, `version` *string*, `levels` *string*, `storyline` *string*, `groupBy` *category | publisher*
 
 **Geerbte Felder**
 

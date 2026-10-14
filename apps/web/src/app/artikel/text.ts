@@ -9,6 +9,7 @@ import {
 } from '@nw/model';
 import type { Block, Segment, VarScopes } from '@nw/model';
 import { Bestand } from '../kern/bestand';
+import { KurzLink } from '../kern/kurzansicht';
 
 /** Ein Segment, wie die Vorlage es braucht: der Verweis schon aufgelöst. */
 type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
@@ -23,12 +24,14 @@ type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
  *
  * Ein Verweis zeigt auf den Artikel, dessen Id er nennt; ein Name, der
  * mehreres trifft, wird nicht geraten (M11) — er steht da und sagt es.
+ * Ein Klick zeigt die Kurzansicht des Ziels (T-093); mit Strg, ⌘ oder der
+ * mittleren Taste geht er wie jeder Link auf die Artikelseite.
  * Ein Würfelausdruck ist ein Knopf, und das Ergebnis steht daneben
  * (REQ-070): wer den Wurf nicht sieht, glaubt ihn nicht.
  */
 @Component({
   selector: 'nw-text',
-  imports: [RouterLink, NgTemplateOutlet],
+  imports: [RouterLink, NgTemplateOutlet, KurzLink],
   template: `
     <ng-template #bloecke let-liste>
       @for (b of liste; track $index) {
@@ -97,11 +100,11 @@ type Stueck = Segment & { ziel?: string; titel?: string; schluessel: string };
     <!-- Eng gesetzt und mit Absicht: jeder Zeilenumbruch hier würde ein
          Leerzeichen vor „leather armor" und in „( 2d6 )" setzen. -->
     <ng-template #zeile let-text>
-      @for (s of stuecke(text); track $index) {<span [class.b]="s.bold" [class.i]="s.italic">@switch (s.kind) {@case ('link') {@if (s.ziel) {<a [routerLink]="['/artikel', s.ziel]" [attr.title]="s.titel">{{ s.text }}</a>} @else {<span class="tot" [attr.title]="s.titel">{{ s.text }}</span>}}@case ('var') {<span class="vr" [class.offen]="!s.resolved">{{ s.text }}</span>}@case ('dice') {<button type="button" class="wurf" [attr.title]="'Roll ' + s.expr" (click)="wirf(s.schluessel, s.expr)">{{ s.text }}</button>@if (wuerfe()[s.schluessel]; as w) {<output class="ergebnis">{{ w }}</output>}}@default {<ng-container>{{ s.text }}</ng-container>}}</span>}
+      @for (s of stuecke(text); track $index) {<span [class.b]="s.bold" [class.i]="s.italic">@switch (s.kind) {@case ('link') {@if (s.ziel) {<a [routerLink]="['/artikel', s.ziel]" [nwQuick]="s.ziel" [attr.title]="s.titel">{{ s.text }}</a>} @else {<span class="tot" [attr.title]="s.titel">{{ s.text }}</span>}}@case ('var') {<span class="vr" [class.offen]="!s.resolved">{{ s.text }}</span>}@case ('dice') {<button type="button" class="wurf" [attr.title]="'Roll ' + s.expr" (click)="wirf(s.schluessel, s.expr)">{{ s.text }}</button>@if (wuerfe()[s.schluessel]; as w) {<output class="ergebnis">{{ w }}</output>}}@default {<ng-container>{{ s.text }}</ng-container>}}</span>}
     </ng-template>
 
     <ng-template #vorspannT>
-      <strong class="vorspann">@if (vorspannZiel()) {<a [routerLink]="['/artikel', vorspannZiel()]">{{ vorspann() }}</a>} @else {<ng-container>{{ vorspann() }}</ng-container>}</strong>
+      <strong class="vorspann">@if (vorspannZiel()) {<a [routerLink]="['/artikel', vorspannZiel()]" [nwQuick]="vorspannZiel()">{{ vorspann() }}</a>} @else {<ng-container>{{ vorspann() }}</ng-container>}</strong>
     </ng-template>
 
     @if (inline()) {

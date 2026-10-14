@@ -331,7 +331,7 @@ Ort und kein Schalter:
 | Ansicht | Wo sie gilt | Was sie zeigt |
 |---|---|---|
 | **Overview** | Ein Verweis im Text, eine Listenzeile | Name und die Beschreibung — eine Handvoll Zeilen, wie ein Hover; die Felder darin sind die Spalten im Kompendium |
-| **Quick** | Eine Karte auf dem Board, die Schnellanlage aus einem anderen Artikel | Das Nötigste, um zu wissen, was man vor sich hat |
+| **Quick** (Kurzansicht) | Eine Karte auf dem Board, die Vorschau neben der Liste, das Popup an einem genannten Artikel, die Schnellanlage aus einem anderen Artikel | Das Nötigste, um zu wissen, was man vor sich hat |
 | **Full** | Die Artikelseite | Alles, was dieser Artikel trägt |
 
 Einen Wähler „welche Ansicht hätten Sie gern" gibt es nicht. Ein Verweis ist
@@ -365,6 +365,19 @@ Seltenheit beim Gegenstand. Eine Spaltenliste im Code wäre eine zweite
 Stelle, die am Tag der nächsten Art falsch ist; so bringt die neue Art ihre
 Spalten mit. Und weil die Vorschau neben der Liste eine Karte ist, zeigt
 sie Quick.
+
+**Die Kurzansicht** ist das deutsche Wort für Quick, kein zehntes Wort
+(T-093, REQ-248, 14.10.2026). Sie steht auch als **Popup**: wo ein Artikel
+genannt wird — ein Verweis im Text, eine Kante, eine Ebene im Filter oder
+in der Kampagnenliste, der Info-Knopf einer Listenzeile am Telefon —,
+öffnet ein Klick oder Antippen seine Karte mit „Open article", am Desktop
+auch das Ruhen des Zeigers. Ein Verweis zeigt im Text weiter seinen Namen
+(Overview); erst wer ihn anklickt, hat nach der Karte gefragt, und eine
+Karte ist Quick. So muss niemand die Seite verlassen, um zu sehen, wer
+Volo ist — und wer doch hin will, nimmt den Link in der Karte oder klickt
+mit Strg/⌘ wie auf jeden Link. Am Telefon ist das Popup ein Blatt von
+unten. Die Leseansicht hatte dafür eine eigene Spalte neben dem Text; sie
+ist im Popup aufgegangen, damit ein Verweis überall dasselbe tut.
 
 **Wie im Buch** (W2, 13.10.2026) ist darum auch eine Anordnung und kein
 Sonderfall: ein Statblock liest sich wie im Monster Manual, weil am Typ
@@ -700,6 +713,21 @@ aufs Original nicht ins Leere führt, liefert der Server die Fassung, die
 gilt (E5) — dieselbe Frage, die der Stapel ohnehin stellt (`resolveArticle`),
 nur jetzt auch beim Öffnen und bei den Namen.
 
+**Wer schreibt, schreibt in eine Ebene** (T-098, E-001). Die Leitung
+konnte bis zum 14.10. ihre eigene Kampagne lesen und nichts daran ändern;
+die naheliegende Regel „die Leitung schreibt, was ihrer Kampagne gehört"
+hätte an jedem Artikel gefragt, wem er gehört — und für einen, der auch im
+Regelwerk liegt, keine gute Antwort gehabt. Jetzt ist die Ebene der Ort
+**und** das Recht: wer in einer Ebene schreibt, schreibt alles darin, und
+was woanders liegt, ändert er, indem er es darüberlegt — derselbe Weg wie
+„Adapt", nur von „Edit" aus. Darum gibt es keine Rechteliste je Artikel:
+die wäre bei jedem neuen Artikel anzufassen, und wer sie vergisst, hat
+einen Artikel, den niemand ändern kann. Wer in welcher Ebene schreibt,
+steht am Konto (`app_user_layer`) und nicht an der Ebene — eine Konto-Id
+in einem Artikel wanderte mit der Ausfuhr (REQ-199). Und eine eigene Ebene
+wird nie zur Ebene der Kampagne, auch wenn nur diese sie aufschaltet:
+sonst entschiede die Reihenfolge im Stapel, wem eine Ebene gehört.
+
 **Fassungen stehen am Feld, nicht hinter einem Umschalter** (T-092,
 E-021 d). Fireball gibt es im PHB von 2014, im PHB von 2024 und mit
 Reichweite 120 in Xanathar's Guide. Ein Umschalter „2014 · 2024" oben am
@@ -750,6 +778,17 @@ trägt die Ebene ihr Kürzel (`Layer.abbreviation`) neben dem vollen Titel,
 und wo ein Kürzel steht, zeigt die Seite den Titel beim Darüberfahren und
 auf dem Telefon beim Antippen. Was eine Ebene enthält, wird gezählt, wenn
 man fragt — gespeichert wäre es nach dem ersten neuen Artikel falsch (D8).
+
+**Der Herausgeber ist eine Gruppe, kein Feld** (T-094, REQ-249). Die
+Leitung will offizielles D&D auf einen Blick von Partner-Inhalten,
+Drittanbietern und Homebrew unterscheiden. Ein Feld `Layer.publisher` hätte
+die Marke getragen — aber „alle offiziellen Bücher an" wäre dann wieder
+eine Kante je Buch gewesen, und neben einer Gruppe „Partnered" stünde ein
+Feld, das etwas anderes sagen kann. Also ist ein Herausgeber eine Gruppe wie
+eine Kategorie (E-022 b), sie sagt mit `groupBy: 'publisher'`, in welche
+Ansicht sie gehört, und die Marke an einer Ebene wird aus ihr gerechnet.
+Was in keiner Herausgeber-Gruppe steht, ist **Homebrew**: eigener Inhalt
+braucht keinen Verlag, um als eigener erkannt zu werden.
 
 > **Die dritte Zeile der Tabelle ist die, die heute zählt.** Von
 > fünfundsiebzig Artikeln tragen fünfundsechzig keine Ebenenkante — die
@@ -869,6 +908,32 @@ gespeicherte Figur mit einer Stufe mehr, und es fehlt, was sie schon
 beantwortet hat. Gespeichert werden die **Grundwerte** am Statblock; Boni
 aus Abstammung und Wahlen kommen beim Lesen dazu (`chosenResult`) — sonst
 erreichte „+2 statt +1" an der Abstammung keine bestehende Figur.
+
+**Was die neue Stufe bringt, steht beim Aufstieg da** (T-095). Ein
+Aufstieg, der nur die Zahl erhöht, lässt die Spielerin suchen, was sie
+jetzt kann. Die Merkmale stehen schon an der Klasse — `grants` mit der
+Stufe an der Kante —, also nennt der Aufstieg sie, und was davon fragt
+(Unterklasse, Kampfstil), ist ohnehin ein Schritt. **Eine Klasse ist ein
+Eintrag:** Klasse, Stufe, Unterklasse und die Antworten auf ihre Wahlen
+stehen am Artikel zusammen, weil sie zusammengehören; gespeichert bleiben
+sie, wie sie sind — die Kante `hasClass` und je Antwort eine Kante
+`chose` —, nur gezeigt wird eins. Eine zweite Stelle für die Stufe gibt
+es nicht.
+
+**Ein Wert der Reihe ist einmal da** (T-095). Die Standardreihe, ein Wurf
+und der Gruppenpool sind sechs Werte zum Verteilen, keine Auswahlliste je
+Attribut. Wer einen schon vergebenen Wert wählt, tauscht: das andere
+Attribut bekommt den bisherigen. So kann keine Verteilung doppelt werden,
+und niemand muss erst einen Wert freiräumen.
+
+**Eine Sprachwahl wählt aus den Sprachen** (T-095, REQ-251). Ältere Wahlen
+sagen nur „two standard languages of your choice"; daraus wurde ein
+Freitext, obwohl es die Sprachen als Artikel gibt. Gelesen wird so ein
+Satz als Wahl aus `Language` — gespeichert wird nichts dazu. Welche
+Sprachen an einem Tisch Sinn ergeben, sagt die Kampagne
+(`Campaign.languages`); leer heisst jede. Ein Feld mit Häkchen und keine
+Kante, weil Übungen Namen halten und die Maske für Namen aus einer Art
+schon Häkchen zeigt.
 
 **Ein Attributsverfahren ist ein Artikel** (E-016 a). Standardreihe,
 Punktekauf und Würfeln sind drei Formen derselben Frage, und die Leitung
