@@ -107,6 +107,7 @@ import {
   newApiToken,
   newInviteCode,
   tokenExpiry,
+  tokenExpiryAt,
   hashPassword,
   hashToken,
   inWritableLayers,
@@ -2863,13 +2864,20 @@ export function buildApp({
     return (await repo.listTokens(user.id)).map(tokenAus);
   });
 
-  app.post<{ Body: { name?: string; scope?: string; days?: number } }>('/api/tokens', async (request, reply) => {
+  app.post<{ Body: { name?: string; scope?: string; days?: number; expiresAt?: string } }>('/api/tokens', async (request, reply) => {
     const user = await nurSitzung(request);
     if (typeof user === 'string') return reply.code(403).send({ error: user });
     const name = String(request.body?.name ?? '').trim();
     if (!name) return reply.code(400).send({ error: 'Ein Token braucht einen Namen — woran erkennst du es sonst?' });
     const scope = (request.body?.scope ?? 'read') as TokenScope;
     if (!TOKEN_SCOPES.includes(scope)) return reply.code(400).send({ error: 'Rechte: read oder write.' });
+    /* Ein Datum (die Maske, T-112) oder Tage (Kommandozeile, Skripte). */
+    let ablauf = tokenExpiry(request.body?.days);
+    if (request.body?.expiresAt !== undefined) {
+      const bis = tokenExpiryAt(request.body.expiresAt);
+      if (!bis) return reply.code(400).send({ error: 'Das Ablaufdatum muss in der Zukunft liegen.' });
+      ablauf = bis;
+    }
     const klartext = newApiToken();
     const token: ApiToken = {
       id: `tok_${newInviteCode().slice(0, 12)}`,
@@ -2877,7 +2885,7 @@ export function buildApp({
       name: name.slice(0, 80),
       tokenHash: hashToken(klartext),
       scope,
-      expiresAt: tokenExpiry(request.body?.days).toISOString(),
+      expiresAt: ablauf.toISOString(),
     };
     await repo.createToken(token);
     await repo.appendEvent('token.created', user.id, { id: token.id, name: token.name, scope, expiresAt: token.expiresAt });

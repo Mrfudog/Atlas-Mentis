@@ -315,7 +315,7 @@ Authorization: Bearer atm_…
 |---|---|
 | wirkt wie | die Sitzung **seines Kontos**: dieselben Rollen, dieselben Figuren, dasselbe Sieb, dieselben Schreibrechte (`mayWrite`) |
 | Rechte | `read` oder `write`. `read` darf alles lesen, was das Konto liest, und die zwei POST, die nichts schreiben: `/api/validate` und `/api/bulk` mit `dryRun: true` |
-| Ablauf | immer — Vorgabe 30 Tage, höchstens 365. Ein Token, das ewig gilt, vergisst man in irgendeiner Umgebung |
+| Ablauf | immer — Vorgabe 30 Tage, höchstens 365. Die Seite fragt nach einem **Datum** (`expiresAt`, gilt bis zum Ende dieses Tages, UTC; ein vergangenes lehnt der Server ab, ein zu fernes kürzt er auf 365 Tage), Kommandozeile und Skripte nach Tagen (`days`). Ein Token, das ewig gilt, vergisst man in irgendeiner Umgebung |
 | gespeichert | nur der Hash (`app_token.token_hash`), wie bei Sitzung und Einladung; der Klartext steht **genau einmal** in der Antwort auf das Anlegen |
 | Präfix | `atm_` — damit man es erkennt, wo es auftaucht (Log, Umgebung, Chat) |
 

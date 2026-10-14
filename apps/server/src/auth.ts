@@ -235,6 +235,22 @@ export function tokenExpiry(days: unknown, from: Date = new Date()): Date {
 }
 
 /**
+ * **Ablauf als Datum** (T-112): die Maske fragt „bis wann", nicht „wie
+ * viele Tage". Ein Tag ohne Uhrzeit gilt bis zu seinem Ende (UTC). Was
+ * schon vorbei ist, wird abgelehnt, nicht still auf die Vorgabe gesetzt —
+ * wer ein Datum nennt, meint es; was weiter als 365 Tage reicht, wird auf
+ * die Grenze gekürzt, wie bei den Tagen.
+ */
+export function tokenExpiryAt(value: unknown, from: Date = new Date()): Date | null {
+  const roh = String(value ?? '').trim();
+  const tag = /^\d{4}-\d{2}-\d{2}$/.test(roh);
+  const d = new Date(tag ? `${roh}T23:59:59.999Z` : roh);
+  if (!roh || Number.isNaN(d.getTime()) || d.getTime() <= from.getTime()) return null;
+  const grenze = from.getTime() + TOKEN_DAYS_MAX * 24 * 60 * 60 * 1000;
+  return new Date(Math.min(d.getTime(), grenze));
+}
+
+/**
  * **Leitung oder Verwaltung** — wer die Werkbank benutzen darf. Leitung
  * heisst `gm` oder `co-gm` in irgendeiner Kampagne; geschrieben wird
  * trotzdem nur, was `mayWrite` erlaubt — für die Leitung die Artikel in
