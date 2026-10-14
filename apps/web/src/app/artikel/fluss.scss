@@ -1,0 +1,75 @@
+/* Die Teile eines Kapitels wie im Buch (T-108) — dieselben Kästen wie in der Leseansicht (`lesen.scss`). */
+.fluss {
+  margin: 1rem 0;
+}
+.fteil {
+  position: relative;
+}
+.fkopf {
+  margin: 1.2rem 0 0.4rem;
+  font-family: var(--caps);
+  color: var(--heading);
+  font-size: 1.2rem;
+}
+.fkopf.szene {
+  font-size: 1.15rem;
+  border-bottom: 1px solid var(--line);
+}
+.block {
+  margin: 0.5rem 0;
+}
+.block.vorlesen {
+  padding: 0.6rem 0.9rem;
+  border-left: 4px solid var(--gold);
+  background: var(--surface);
+  font-style: italic;
+}
+.block.rand {
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  font-family: var(--sans);
+  font-size: 0.94rem;
+}
+.block.zitat {
+  padding: 0.2rem 1rem;
+  border-left: 2px solid var(--line);
+  font-style: italic;
+}
+.verweis {
+  margin: 0.75rem 0;
+  padding: 0.45rem 0.75rem;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  font-family: var(--sans);
+}
+.leg {
+  display: block;
+  font-family: var(--sans);
+  font-style: normal;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.foeffnen {
+  position: absolute;
+  top: 0.1rem;
+  right: 0;
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  opacity: 0;
+}
+.fteil:hover .foeffnen,
+.fteil:focus-within .foeffnen {
+  opacity: 1;
+}
+@media (hover: none) {
+  .foeffnen {
+    display: none;
+  }
+}
+.fehler {
+  color: var(--danger, #8b1a1a);
+}

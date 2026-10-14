@@ -148,6 +148,98 @@ describe('a list over 20 000 articles (REQ-246)', () => {
   }, 60_000);
 });
 
+/**
+ * **Mit Buchtext: eine Viertelmillion Artikel** (T-108, T-086). Seit jeder
+ * Absatz eines Buchs ein Artikel ist (E-028), hat ein frischer Bestand aus
+ * 5e.tools gut 150 000 Artikel; die Leitung rechnete mit bis zu 250 000.
+ * Hier stehen neben den 20 000 Regeln oben 230 000 Teile in 400 Kapiteln
+ * von 40 Büchern. Teile stehen in keiner Liste — die Liste darf durch sie
+ * nicht langsamer werden —, und die Leseansicht liest ein Buch und ein
+ * Kapitel. Die Grenzen sind wie oben grosszügig.
+ */
+const TEILE = 230_000;
+const KAPITEL = 400;
+
+function mitBuchtext(): Entity[] {
+  const out = bestand();
+  for (let k = 0; k < KAPITEL; k += 1) {
+    out.push({
+      id: `ch_${k}`,
+      name: `Chapter ${k}`,
+      interfaces: ['Chapter'],
+      components: { Identity: { name: `Chapter ${k}`, id: `chapter-${k}`, aliases: [] } },
+      relations: [{ id: `ch_${k}~in`, type: 'inLayer', to: `ly_${k % EBENEN}`, props: {} }],
+    });
+  }
+  const arten = ['Paragraph', 'Paragraph', 'Paragraph', 'Heading', 'ReadAloudText'];
+  for (let i = 0; i < TEILE; i += 1) {
+    const k = i % KAPITEL;
+    const typ = arten[i % arten.length]!;
+    const name = `Part ${i}`;
+    out.push({
+      id: `p_${i}`,
+      name,
+      interfaces: [typ],
+      components: {
+        Identity: { name, id: `${typ.toLowerCase()}-${i}`, aliases: [] },
+        ...(typ === 'Paragraph' ? { Prose: { paragraph: [{ id: 'text', value: `Words of part ${i}, about [[rule-${i % N}|a rule]].` }] } } : {}),
+        ...(typ === 'Heading' ? { Heading: { level: 2 } } : {}),
+        ...(typ === 'ReadAloudText' ? { ReadAloud: { readaloud: [{ id: 'read', value: `Hear part ${i}.` }] } } : {}),
+      },
+      relations: [
+        { id: `p_${i}~in`, type: 'inLayer', to: `ly_${k % EBENEN}`, props: {} },
+        { id: `p_${i}~p`, type: 'partOf', to: `ch_${k}`, props: { rank: Math.floor(i / KAPITEL) + 1 } },
+      ],
+    });
+  }
+  return out;
+}
+
+describe('a list and a book over 250 000 articles (T-108, REQ-246)', () => {
+  it('answers well within the limit, though most articles are book parts', async () => {
+    const repo = new InMemoryRepository(seedRegistry, mitBuchtext());
+    await repo.putUser({ id: 'u_admin', name: 'Admin', passwordHash: await hashPassword(PASSWORT), isAdmin: true, actorIds: [], roles: {} });
+    const app = buildApp({ repo });
+    const login = await app.inject({ method: 'POST', url: '/api/login', payload: { name: 'Admin', password: PASSWORT } });
+    const cookie = `nw_session=${login.cookies.find((x) => x.name === 'nw_session')?.value ?? ''}`;
+    const zeit = async (url: string) => {
+      const t0 = performance.now();
+      const r = await app.inject({ method: 'GET', url, headers: { cookie } });
+      return { r, ms: performance.now() - t0 };
+    };
+    const liste = await zeit('/api/list?type=Rule&limit=50');
+    expect(liste.r.statusCode).toBe(200);
+    expect(liste.r.json().total).toBe((N * 3) / 4 - (N * 3) / 4 / 50);
+    /* Kein Teil in der Liste, auch ohne Art. */
+    const alle = await zeit('/api/list?limit=5');
+    expect(alle.r.json().rows.some((z: { type: string }) => ['Paragraph', 'Heading', 'ReadAloudText'].includes(z.type))).toBe(false);
+    const zweite = await zeit('/api/list?type=Rule&limit=50&offset=50');
+    /* Ein Buch (Ebene 0, im Spiel über Gruppe A): zehn Kapitel, je ihre Überschriften im Verzeichnis. */
+    const buch = await zeit('/api/read/ly_0');
+    expect(buch.r.statusCode).toBe(200);
+    expect(buch.r.json().toc.filter((z: { type: string }) => z.type === 'Chapter')).toHaveLength(KAPITEL / EBENEN);
+    const stueck = await zeit('/api/read/ly_0/unit/ch_0');
+    expect(stueck.r.statusCode).toBe(200);
+    expect(stueck.r.json().sections).toHaveLength(TEILE / KAPITEL + 1);
+    const suche = await zeit('/api/read/ly_0/search?q=part%20229');
+    expect(suche.r.statusCode).toBe(200);
+    const teile = await zeit('/api/entities/ch_0/parts');
+    expect(teile.r.json().parts).toHaveLength(TEILE / KAPITEL);
+    const usage = await zeit('/api/registry/usage');
+    expect(usage.r.statusCode).toBe(200);
+    /* Zum Nachlesen im Lauf: was eine Viertelmillion kostet. */
+    console.log(
+      `T-108 · 250k: Liste ${liste.ms.toFixed(0)} ms (danach ${zweite.ms.toFixed(0)}), Buch ${buch.ms.toFixed(0)} ms, ` +
+        `Kapitel ${stueck.ms.toFixed(0)} ms, Suche ${suche.ms.toFixed(0)} ms, Teile ${teile.ms.toFixed(0)} ms, Zählung ${usage.ms.toFixed(0)} ms`,
+    );
+    /* Die erste Liste liest den Bestand in den Speicher (hier: klont ihn
+       das Prüf-Repository) und baut den Index — das ist der Anlauf; alles
+       danach fragt den fertigen Stand. */
+    expect(liste.ms).toBeLessThan(45_000);
+    for (const x of [zweite, buch, stueck, suche, teile, usage]) expect(x.ms).toBeLessThan(10_000);
+  }, 180_000);
+});
+
 describe('the build the server ships (T-086)', () => {
   it('names it on every API answer, so an open page can tell it is outdated', async () => {
     const ort = mkdtempSync(join(tmpdir(), 'atlas-bau-'));

@@ -99,10 +99,11 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     key: 'take',
     label: 'Take into your story',
     area: 'stack',
-    does: 'copies a chapter or scene with everything under it into the campaign layer as versions, and leaves layer, template and replacement edges behind',
+    does: 'copies a chapter, a scene or a single part with everything under it into the campaign layer as versions, and leaves layer, template and replacement edges behind — or uses a part as it is, through a link',
     uses: {
       [M + 'stack.ts']: ['inLayer', 'instanceOf', 'mapOf', 'overrides', 'partOf', 'variantOf'],
       [S + 'verwaltung.ts']: ['overrides', 'partOf'],
+      [S + 'app.ts']: ['partOf'],
     },
   },
   {
@@ -207,9 +208,9 @@ export const EDGE_READERS: readonly EdgeReader[] = [
     area: 'reading',
     does: 'reads a layer as a book — chapters and their parts in rank order, maps and fights in place',
     uses: {
-      [M + 'reading.ts']: ['inLayer', 'partOf'],
+      [M + 'reading.ts']: ['inLayer', 'overrides', 'partOf'],
       [M + 'parts.ts']: ['partOf'],
-      [S + 'lesen.ts']: ['inLayer', 'mapOf', 'overrides', 'partOf'],
+      [S + 'lesen.ts']: ['chapterOf', 'inLayer', 'mapOf', 'overrides', 'partOf'],
       [W + 'lesen/lesen.ts']: ['participates'],
       [W + 'artikel/artikel.ts']: ['partOf'],
     },

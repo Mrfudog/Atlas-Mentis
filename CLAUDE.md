@@ -326,7 +326,10 @@ wiederkommen, werden sie neu geschrieben.
   ein Artikel. Teile stehen in keiner Liste und sind kein Verweisziel nach
   Namen (`isBookPart`). Ein Kapitel eines offiziellen Abenteuers ist
   zweimal da und seine Teile einmal: `Chapter` zum Lesen, `Arc` zum
-  Spielen (`chapterOf`), beide über denselben Szenen.
+  Spielen (`chapterOf`), beide über denselben Szenen. Ein Teil wird
+  **geholt** (Fassung, `take`) oder **verwendet** (`take {use: true}`: ein
+  `Embed` aufs Original); die Artikelseite zeichnet Teile mit dem Element
+  `parts`.
 - **Ein langer Text ist Markdown, und nichts darin wird HTML** (M10).
   `parseMarkdown` liest die Blöcke, `parseInline` jede Zeile darin — ein
   Zerleger für Inline-Text, nicht zwei. Gezeichnet wird mit Elementen und

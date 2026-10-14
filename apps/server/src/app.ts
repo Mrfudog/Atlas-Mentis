@@ -85,6 +85,11 @@ import {
   nextId,
   typeChain,
   publisherOf,
+  BOOK_PART_TYPES,
+  CHAPTER_TYPE,
+  nextRank,
+  partsIndex,
+  overridersIndex,
 } from '@nw/model';
 import type { BulkChange, Entity, Registry } from '@nw/model';
 import { RevisionConflict } from './repo.js';
@@ -1268,6 +1273,8 @@ export function buildApp({
     map: Map<string, Entity>;
     /** Was eine Fassung ersetzt (`overrides`) — nur dafür lohnt `geltend` die Rechnung. */
     ersetzt: Set<string>;
+    /** Je Artikel, wer ihn überschreibt (`overridersIndex`, T-108). */
+    ueberschreiber: Map<string, Entity[]>;
     namen: Map<string, Entity[]>;
   } | null = null;
   async function roh(): Promise<NonNullable<typeof rohStand>> {
@@ -1292,9 +1299,9 @@ export function buildApp({
       const aliases = e.components?.['Identity']?.['aliases'];
       if (Array.isArray(aliases)) for (const a of aliases) merke(String(a), e);
     }
-    const ersetzt = new Set<string>();
-    for (const e of alle) for (const r of e.relations ?? []) if (r.type === 'overrides' && r.to) ersetzt.add(r.to);
-    rohStand = { stempel, alle, map, namen, ersetzt };
+    const ueberschreiber = overridersIndex(alle);
+    const ersetzt = new Set<string>(ueberschreiber.keys());
+    rohStand = { stempel, alle, map, namen, ersetzt, ueberschreiber };
     return rohStand;
   }
 
@@ -1445,9 +1452,15 @@ export function buildApp({
    * Fassung, sonst er selbst. Gesiebt wird danach wie immer.
    */
   async function geltend(e: Entity, map: Map<string, Entity>): Promise<Entity> {
-    if (!(await roh()).ersetzt.has(e.id)) return e;
-    const kampagne = currentCampaign(map, (await repo.getRegistry()).settings ?? null);
-    return kampagne ? resolveArticle(map, e, kampagne) : e;
+    const stand = await roh();
+    if (!stand.ersetzt.has(e.id)) return e;
+    const registry = await repo.getRegistry();
+    const kampagne = currentCampaign(map, registry.settings ?? null);
+    if (!kampagne) return e;
+    /* Aus dem Bestand dieses Stempels: der Stapel ist gerechnet, die
+       Überschreiber sind gezählt (T-108). Ein anderer Bestand fragt wie bisher. */
+    if (map === stand.map) return stapelFuer(map, kampagne, registry).resolve(e, stand.ueberschreiber);
+    return resolveArticle(map, e, kampagne);
   }
 
   async function kandidaten(request: FastifyRequest, ziele: Iterable<string>): Promise<Map<string, Entity[]>> {
@@ -1771,8 +1784,10 @@ export function buildApp({
     /* Gesiebt wird nur, wer überhaupt auf ihn zeigt — nicht der ganze
        Bestand (W7: für einen Spieler eine halbe Sekunde je Artikelseite).
        Das Sieb nimmt Kanten nur weg, nie dazu; die Antwort ist dieselbe. */
+    /* Die Teile eines Kapitels zeigt das Element `parts` (T-108) — in
+       „Linked here" stünden sonst hundert Absätze unter „contains". */
     const zeigen = stand.alle
-      .filter((e) => e.id !== ziel.id && (e.relations ?? []).some((r) => auch.has(r.to)))
+      .filter((e) => e.id !== ziel.id && !isBookPart(e) && (e.relations ?? []).some((r) => auch.has(r.to)))
       .map((e) => (auch.size > 1 ? { ...e, relations: (e.relations ?? []).map((r) => (auch.has(r.to) ? { ...r, to: ziel.id } : r)) } : e));
     const gesiebt = zeigen.length ? await sieve(request, zeigen, stand.map) : [];
     const registry = await repo.getRegistry();
@@ -2228,15 +2243,20 @@ export function buildApp({
     if (!user || user.disabledAt) return [];
     const registry = await repo.getRegistry();
     const kette = typeChain(registry, primaryInterface(e));
-    if (!kette.includes('Story') || OHNE_UEBERNAHME.has(primaryInterface(e))) return [];
+    /* Holen lässt sich eine Sprosse der Geschichte, ein Kapitel eines Buchs
+       und ein einzelner Teil daraus — ein Vorlesetext (T-108, E-028). */
+    const teil = kette.includes('BookPart');
+    if (!(kette.includes('Story') || kette.includes(CHAPTER_TYPE) || teil) || OHNE_UEBERNAHME.has(primaryInterface(e))) return [];
     if ((e.relations ?? []).some((r) => r.type === OVERRIDES_RELATION)) return [];
     const kampagne = currentCampaign(map, registry.settings ?? null);
     if (!kampagne || !inStack(map, e, kampagne, registry)) return [];
     const ebene = await kampagnenEbene(map, kampagne);
     if (!ebene || layersOf(e).includes(ebene.id)) return [];
     if (!user.isAdmin && !(await zielEbenen(user, map, kampagne)).some((l) => l.id === ebene.id)) return [];
+    /* Ein Teil darf auch in eine eigene Szene (E-028: „in eine Szene deiner Wahl"). */
+    const zielArten = teil ? ['Arc', 'Scene'] : ['Arc'];
     const arcs = [...map.values()]
-      .filter((x) => x.id !== e.id && layersOf(x).includes(ebene.id) && typeChain(registry, primaryInterface(x)).includes('Arc'))
+      .filter((x) => x.id !== e.id && layersOf(x).includes(ebene.id) && zielArten.some((a) => typeChain(registry, primaryInterface(x)).includes(a)))
       .filter((x) => inStack(map, x, kampagne, registry))
       .sort((a, b) => entityName(a).localeCompare(entityName(b), 'en'));
     return [kampagne, ...arcs];
@@ -2254,7 +2274,7 @@ export function buildApp({
    * genommen und nur umgehängt — zweimal holen legt nichts doppelt an.
    * Das Original bleibt; zurück heisst, die Fassungen zu löschen.
    */
-  app.post<{ Params: { id: string }; Body: { into?: unknown } | null }>('/api/entities/:id/take', async (request, reply) => {
+  app.post<{ Params: { id: string }; Body: { into?: unknown; use?: unknown } | null }>('/api/entities/:id/take', async (request, reply) => {
     const user = await viewerOf(request);
     if (!user) return reply.code(401).send({ error: 'Nicht angemeldet.' });
     const registry = await repo.getRegistry();
@@ -2273,6 +2293,37 @@ export function buildApp({
     }
     const kampagne = currentCampaign(stand.map, registry.settings ?? null);
     const ebene = (await kampagnenEbene(stand.map, kampagne))!;
+    /* Ein Teil eines Buchs steht im Ziel an der nächsten Stelle (T-108). */
+    const imFluss = [CHAPTER_TYPE, ...BOOK_PART_TYPES].includes(primaryInterface(original));
+    const rang = imFluss ? nextRank(partsIndex(stand.alle), into.id) : undefined;
+    /* **Verwenden statt kopieren** (E-028): ein Verweis-Teil in der Ebene
+       der Kampagne zeigt auf das Original — eine Korrektur am Original
+       erreicht ihn, und geändert wird er erst, wenn die Leitung ihn als
+       Fassung holt. */
+    if (request.body?.use === true) {
+      const id = `e_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+      const name = entityName(original);
+      const verweis: Entity = {
+        id,
+        name,
+        interfaces: ['Embed'],
+        components: {
+          Identity: { name, id: nextId(stand.alle, 'Embed'), aliases: [] },
+          Embed: { target: original.id },
+          ...(original.components?.['Visibility'] ? { Visibility: original.components['Visibility'] } : {}),
+        },
+        relations: [
+          { id: `${id}~${LAYER_RELATION}`, type: LAYER_RELATION, to: ebene.id, props: {} },
+          { id: `${id}~partOf-into`, type: 'partOf', to: into.id, props: { rank: rang ?? nextRank(partsIndex(stand.alle), into.id) } },
+        ],
+      };
+      const known = new Map([...stand.alle, verweis].map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
+      const issues = validateEntity(registry, verweis, { knownTypes: known });
+      if (issues.length) return reply.code(422).send({ error: 'Validierung fehlgeschlagen', issues });
+      await repo.putEntity(verweis);
+      await repo.appendEvent('entity.created', id, { interfaces: verweis.interfaces, uses: original.id, layer: ebene.id, takenInto: into.id, by: user.id });
+      return reply.code(201).send({ id, created: 1, taken: 1, used: true });
+    }
     const teile = takenWith(stand.map, original, kampagne, ebene.id, registry);
     /* Original → Fassung: die schon da ist, oder eine neue. */
     const mapping = new Map<string, string>();
@@ -2301,7 +2352,7 @@ export function buildApp({
       fassungen.push(f);
       neu += 1;
     }
-    const geschrieben = fassungen.map((f, i) => rehang(f, mapping, i === 0 ? into.id : undefined));
+    const geschrieben = fassungen.map((f, i) => rehang(f, mapping, i === 0 ? into.id : undefined, i === 0 ? rang : undefined));
     const known = new Map(bestand.map((e) => [e.id, e.interfaces?.[0] ?? ''] as const));
     for (const f of geschrieben) {
       const issues = validateEntity(registry, f, { knownTypes: known, stageOf: stageBases(bestand) });

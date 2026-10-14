@@ -103,6 +103,8 @@ export const views: Record<string, ViewDef> = {
          Art keine solche Kante, zeichnet das Element nichts. */
       { id: 'l-linked', el: 'linked' },
       { id: 'l-b', el: 'prose', fields: 'all' },
+      /* Die Teile eines Kapitels oder einer Szene, wie im Buch (T-108). */
+      { id: 'l-parts', el: 'parts' },
       { id: 'l-c', el: 'composed' },
       /* Wer diesen Artikel zusammensetzt, nach Kreaturentyp (D51): ein Biss
          zeigt Tiere und Drachen, ein Merkmal seine Völker. Wo niemand ihn

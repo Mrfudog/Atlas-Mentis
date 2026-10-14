@@ -987,6 +987,33 @@ try {
     }
   }
 
+  /* ------------------------------------ Teile auf der Artikelseite (T-108) */
+  {
+    /* Migration 047 setzt das Element `parts` in die Grundanordnung — nur
+       einmal und nur hinter der Prosa. */
+    const { migrate } = await import(join(DIST, 'migrate.js'));
+    const { default: pg } = await import('pg');
+    const { readFileSync } = await import('node:fs');
+    const pool = new pg.Pool({ connectionString: process.env['DATABASE_URL'] });
+    const ordner = mkdtempSync(join(tmpdir(), 'durchstich-teile-seite-'));
+    const name = 'zzz_durchstich_teile_auf_der_artikelseite.sql';
+    try {
+      await pool.query(`update view_def set config = jsonb_set(config, '{layout}', (select coalesce(jsonb_agg(x), '[]'::jsonb) from jsonb_array_elements(config->'layout') x where x->>'el' <> 'parts')) where key = 'full'`);
+      writeFileSync(join(ordner, name), readFileSync(join(DIST, '..', 'migrations', '047_teile_auf_der_artikelseite.sql'), 'utf8'));
+      await migrate(pool, { env: {} }, ordner);
+      await pool.query('delete from schema_migrations where name = $1', [name]);
+      await migrate(pool, { env: {} }, ordner);
+      const { rows } = await pool.query(`select jsonb_path_query_array(config, '$.layout[*].id') as ids from view_def where key = 'full'`);
+      const ids = rows[0]?.ids ?? [];
+      pruefe('Teile auf der Artikelseite: parts steht einmal hinter der Prosa',
+        ids.filter((x) => x === 'l-parts').length === 1 && ids.indexOf('l-parts') === ids.indexOf('l-b') + 1, JSON.stringify(ids));
+    } finally {
+      await pool.query('delete from schema_migrations where name = $1', [name]);
+      await pool.end();
+      rmSync(ordner, { recursive: true, force: true });
+    }
+  }
+
   /* ------------------------------------ Schreibrechte je Ebene (T-098) */
   {
     /* `app_user_layer` gibt es nur in Postgres: eine eigene Ebene anlegen,

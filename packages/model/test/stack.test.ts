@@ -10,6 +10,7 @@ import {
   inStack,
   isOverridden,
   playStack,
+  overridersIndex,
   resolveArticle,
   unactivatedLayers,
   withStack,
@@ -199,6 +200,11 @@ describe('a version over the template (E-018, T-082)', () => {
     expect(resolveArticle(m, szene, nebel).id).toBe('sc_neu');
     expect(inPlay(m, szene, nebel)).toBe(false);
     expect(resolveArticle(m, szene, m.get('camp_salz')!).id).toBe('sc_mund');
+    /* Dieselbe Antwort aus dem gerechneten Stapel und den gezählten Überschreibern (T-108). */
+    const index = overridersIndex(m.values());
+    expect(playStack(m, nebel).resolve(szene, index).id).toBe('sc_neu');
+    expect(playStack(m, m.get('camp_salz')!).resolve(szene, index).id).toBe('sc_mund');
+    expect(resolveArticle(m, szene, nebel, undefined, index).id).toBe('sc_neu');
     expect(replacedIds(m, fassung)).toEqual(['sc_mund']);
     expect(replacedIds(m, szene)).toEqual([]);
   });
