@@ -303,6 +303,10 @@ export class Karte {
   private readonly innen = viewChild<ElementRef<HTMLElement>>('innen');
 
   constructor() {
+    /* Geschrieben wird durch `validateEntity`, und das braucht das
+       Register. Unter Play lud es bis T-117 niemand — jedes Ziehen eines
+       Markers endete dort mit „The registry is not loaded". */
+    void this.bestand.load();
     effect(() => {
       const id = this.id();
       untracked(() => {

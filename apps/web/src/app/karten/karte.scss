@@ -112,9 +112,12 @@ button {
   height: calc(100dvh - 12rem);
   min-height: 320px;
 }
+/* Kein `min-width: 100%`: unter Zoom 1 zöge es den Kasten auf die Breite
+   der Bühne, das Bild würde verzerrt, und Gitter und Marker (in Anteilen
+   des gerechneten Kastens) stünden daneben — docs/Karten.md, „Der Kasten
+   ist das Bild". */
 .innen {
   position: relative;
-  min-width: 100%;
 }
 .blatt {
   position: absolute;
