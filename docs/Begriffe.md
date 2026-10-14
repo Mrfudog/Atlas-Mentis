@@ -420,6 +420,24 @@ Eine Kante mit `section` **setzt ein**, statt zu verweisen: die drei
 gepoolten Regeln eines Statblocks stehen im Artikel und nicht als Links
 daneben.
 
+### Was eine Kante bedeutet, sagt die Zeile; was sie bewirkt, der Code
+
+Eine Kante an einen Artikel zu hängen, kann viel tun — ihn in den Stapel
+bringen (`inLayer`), einer Figur eine Stufe geben (`hasClass`), einer
+Gruppe ein Geheimnis verraten (`knownBy`) — oder gar nichts ausser einer
+Zeile unter „Relations" (`livesIn`). Von aussen sah man den Unterschied
+nicht. Darum trägt jede Kantenart einen Satz, was sie **bedeutet**
+(`means`), und ihre **Wirkung** wird gerechnet: aus dem Verzeichnis der
+Auswerter (`EDGE_READERS`), das ein Test gegen den Quelltext hält, und aus
+der Zeile selbst (`section`, `asField`, Rechnungen wie `sum(hasClass.level)`).
+Eine Wirkung von Hand ins Register zu schreiben hiesse, eine Behauptung zu
+pflegen, die beim nächsten Umbau still falsch wird.
+
+Verspricht eine Kante mehr, als heute jemand liest — `affects` mit `effect`,
+`casts` mit `uses` —, steht das in `intended`, und die Oberfläche sagt „not
+evaluated yet". Sobald ein Auswerter sie liest, muss `intended` weg: der
+Test lässt beides nicht zugleich stehen.
+
 ### Eine Stufe ist ein Zustand, eine Wirkung ist eine Kante
 
 „Exhaustion 3" ist ein Artikel der Art `Condition` mit `stage` 3 und einer
@@ -871,8 +889,16 @@ eine Kante je Buch gewesen, und neben einer Gruppe „Partnered" stünde ein
 Feld, das etwas anderes sagen kann. Also ist ein Herausgeber eine Gruppe wie
 eine Kategorie (E-022 b), sie sagt mit `groupBy: 'publisher'`, in welche
 Ansicht sie gehört, und die Marke an einer Ebene wird aus ihr gerechnet.
-Was in keiner Herausgeber-Gruppe steht, ist **Homebrew**: eigener Inhalt
-braucht keinen Verlag, um als eigener erkannt zu werden.
+Was in keiner Herausgeber-Gruppe steht, ist **Homebrew** — aber nur, wenn
+es hier entstand: eigener Inhalt braucht keinen Verlag, um als eigener
+erkannt zu werden. Was eingelesen wurde und an keinem Verlag hängt, heisst
+**Unassigned** (T-109). Bis dahin hiess auch die alte Sammelebene
+„D&D 5e (2014)" Homebrew, und weil die Marke an keinem Feld stand, sah
+niemand, woher sie kam und wie man sie ändert. Darum steht der Grund jetzt
+an der Ebene, und geändert wird dort die Kante — nicht ein Feld, das der
+Kante widersprechen könnte. Die Sammelebene selbst ist seither eine Gruppe
+der offiziellen 2014-Bücher: so schaltet man „die Regeln von 2014" als
+Ganzes auf.
 
 > **Die dritte Zeile der Tabelle ist die, die heute zählt.** Von
 > fünfundsiebzig Artikeln tragen fünfundsechzig keine Ebenenkante — die

@@ -1,5 +1,5 @@
 import { Component, computed, inject, input } from '@angular/core';
-import { typeList } from '@nw/model';
+import { EDGE_AREAS, edgeEffects, typeList } from '@nw/model';
 import type { RelationDef } from '@nw/model';
 import { Bestand } from '../kern/bestand';
 import { RegisterArbeit } from './arbeit';
@@ -22,6 +22,28 @@ import { RegisterArbeit } from './arbeit';
         <code>{{ name() }}</code>
         <span class="dim">{{ zahlText() }}</span>
       </div>
+      @if (wirkung(); as w) {
+        <section class="kasten wirkung" aria-label="What it does">
+          <h3>What it means</h3>
+          <p>{{ w.means }}</p>
+          <h3>What it does</h3>
+          @if (w.evaluated) {
+            <ul>
+              @for (s of w.shape; track s.text) {
+                <li>It {{ s.text }}.</li>
+              }
+              @for (r of w.readers; track r.key) {
+                <li><b>{{ r.label }}</b>{{ " " }}<span class="dim">({{ bereich(r.area) }})</span>{{ " " }}{{ r.does }}.</li>
+              }
+            </ul>
+          } @else if (w.intended) {
+            <p><span class="pill offen">not evaluated yet</span> Shown under Relations only. Meant to: {{ w.intended }}</p>
+          } @else {
+            <p><span class="pill">display only</span> Shown under Relations on both ends; nothing else reads it.</p>
+          }
+          <p class="hint">Read from the code that uses this edge, not written by hand.</p>
+        </section>
+      }
       <section class="kasten" aria-label="Edge">
         <p class="hint">
           One edge, stored in one direction. The reverse is never stored — it is a query, and the label backwards is how it
@@ -38,6 +60,18 @@ import { RegisterArbeit } from './arbeit';
             (change)="setzen({ inverseLabel: wert($event) || '← ' + d.label })" />
         </label>
         <p class="hint">How the same edge reads from its target: “residents”.</p>
+        <label class="f">
+          <span>Means</span>
+          <input type="text" [value]="d.means ?? ''" [disabled]="!darf()" placeholder="A creature lives in a place; the place lists its residents."
+            (change)="setzen({ means: wert($event) || undefined })" />
+        </label>
+        <p class="hint">One sentence, both directions. What it does is read from the code and shown above.</p>
+        <label class="f">
+          <span>Meant to do</span>
+          <input type="text" [value]="d.intended ?? ''" [disabled]="!darf()"
+            (change)="setzen({ intended: wert($event) || undefined })" />
+        </label>
+        <p class="hint">Only while nothing reads it: the effect it promises, shown as “not evaluated yet”.</p>
         @for (seite of seiten; track seite.k) {
           <label class="f">
             <span>{{ seite.label }}</span>
@@ -66,7 +100,11 @@ import { RegisterArbeit } from './arbeit';
             (change)="setzen({ owned: $any($event.target).checked || undefined })" />
           <span>Owned</span>
         </label>
-        <p class="hint">The target is deleted with the source — a statblock’s parts, an inventory’s holdings.</p>
+        <!-- owned liest heute kein Auswerter (T-111): gesagt wird es, nicht versprochen. -->
+        <p class="hint">
+          Meant to delete the target with the source — a statblock’s parts, an inventory’s holdings.
+          <span class="pill offen">not evaluated yet</span> Deleting the source leaves the target today.
+        </p>
         <label class="f">
           <span>Section heading</span>
           <input type="text" placeholder="Actions" [value]="d.section ?? ''" [disabled]="!darf()"
@@ -116,6 +154,11 @@ export class RegKante {
 
   private readonly reg = computed(() => this.bestand.registry());
   protected readonly def = computed(() => this.reg()?.relations[this.name()]);
+  /** Bedeutung und Wirkung (T-111) — gerechnet aus den Auswertern, nicht behauptet. */
+  protected readonly wirkung = computed(() => (this.reg() && this.def() ? edgeEffects(this.reg()!, this.name()) : null));
+  protected bereich(a: keyof typeof EDGE_AREAS): string {
+    return EDGE_AREAS[a];
+  }
   protected readonly typen = computed(() => (this.reg() ? typeList(this.reg()!) : []));
   protected readonly props = computed(() => Object.keys(this.def()?.props?.properties ?? {}));
   private readonly anzahl = computed(() => this.arbeit.usage()?.relations[this.name()] ?? null);

@@ -256,8 +256,10 @@ export interface KampagnenEbene {
   id: string;
   name: string;
   kind: string;
-  /** Wer sie herausgibt (T-094): der Name ihrer Herausgeber-Gruppe, sonst „Homebrew"; bei einer Gruppe leer. */
+  /** Wer sie herausgibt (T-094): der Name ihrer Herausgeber-Gruppe, sonst „Homebrew" oder „Unassigned" (T-109); bei einer Gruppe leer. */
   publisher: string;
+  /** Warum (T-109): der Satz, der an der Marke steht. */
+  publisherWhy?: string;
   /** Bei einer Gruppe, wonach sie ordnet (T-094). */
   groupBy?: 'category' | 'publisher';
   /** Die Gruppen, an denen die Ebene mit `partOf` hängt (T-088, E-022 b). */
@@ -501,6 +503,15 @@ export interface EbenenSchreiber {
   id: string;
   name: string;
   owner: boolean;
+}
+
+/** Der Herausgeber einer Ebene (T-109, `GET /api/layers/:id/publisher`): gerechnet, mit Begründung und Auswahl. */
+export interface EbenenHerausgeber {
+  name: string;
+  why: string;
+  groups: string[];
+  options?: { id: string; name: string }[];
+  canChange?: boolean;
 }
 
 /** Eine Ebene, in der dieses Konto schreibt (T-098, `GET /api/layers/mine`). */
@@ -803,6 +814,14 @@ export class Api {
   /** Jemanden in einer Ebene schreiben lassen: beim Namen, oder (Verwaltung) bei der Id. */
   addLayerEditor(layer: string, wer: { name: string } | { user: string }): Promise<EbenenSchreiber> {
     return this.call(`/api/layers/${encodeURIComponent(layer)}/editors`, { method: 'POST', body: JSON.stringify(wer) });
+  }
+  /** Der Herausgeber einer Ebene (T-109). */
+  layerPublisher(layer: string): Promise<EbenenHerausgeber> {
+    return this.call(`/api/layers/${encodeURIComponent(layer)}/publisher`);
+  }
+  /** Die Ebene unter diese Herausgeber-Gruppen hängen; leer heisst unter keine. */
+  setLayerPublisher(layer: string, groups: string[]): Promise<EbenenHerausgeber> {
+    return this.call(`/api/layers/${encodeURIComponent(layer)}/publisher`, { method: 'PUT', body: JSON.stringify({ groups }) });
   }
   dropLayerEditor(layer: string, user: string): Promise<{ ok: true }> {
     return this.call(`/api/layers/${encodeURIComponent(layer)}/editors/${encodeURIComponent(user)}`, { method: 'DELETE' });

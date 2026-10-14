@@ -94,7 +94,8 @@ describe('Abenteuer als Ebene (T-082)', () => {
   it('legt je Abenteuer eine Ebene mit kind adventure an', () => {
     expect(ebene.components['Layer']).toMatchObject({ kind: 'adventure', abbreviation: 'TST', levels: '1–3', storyline: 'Reeds' });
     /* In der Gruppe der Abenteuer (T-088) und bei seinem Herausgeber (T-094). */
-    expect(kanten(ebene, 'partOf').map((r) => r.to)).toEqual(['e5_group_adventure', 'e5_publisher_official']);
+    /* Dazu die Gruppe der 2014-Regeln (T-109). */
+    expect(kanten(ebene, 'partOf').map((r) => r.to)).toEqual(['e5_group_adventure', 'e5_publisher_official', 'e5_367c46d7f4ff']);
     expect(es.find((e) => e.id === buchEbeneId('MM'))!.components['Layer']).toMatchObject({ kind: 'book' });
   });
 

@@ -8,6 +8,8 @@ import {
   storedEffects,
   choiceText,
   BOOK_CARDS,
+  edgeEffects,
+  edgeEffectText,
   fieldText,
   layoutFor,
   LAYER_RELATION,
@@ -51,6 +53,7 @@ import { Statblock } from './statblock';
 import { Zauber } from './zauber';
 import { Gegenstand } from './gegenstand';
 import { Abschnitte } from './abschnitte';
+import { Herausgeber } from './herausgeber';
 import {
   abweichungen,
   AbwMarken,
@@ -172,6 +175,7 @@ interface Feld {
     FassungsKasten,
     AbwMarken,
     KurzLink,
+    Herausgeber,
   ],
   template: `
     @if (artikel(); as e) {
@@ -283,6 +287,10 @@ interface Feld {
 
             @if (anpassFehler(); as f) {
               <p class="fehler" role="alert">{{ f }}</p>
+            }
+            <!-- Wer die Ebene herausgibt und warum (T-109) — gerechnet, geändert wird die Kante. -->
+            @if (art(e) === 'Layer' && !zeigtAlten()) {
+              <nw-herausgeber [ebene]="e.id" />
             }
             @if (original(); as o) {
               <p class="hinweis" role="status">
@@ -475,7 +483,7 @@ interface Feld {
               @for (k of hauptKanten(); track k.id) {
                 <div class="kantenmaske">
                   <div class="bkopf">
-                    <span class="rl">{{ kantenLabel(k.type) }}</span>
+                    <span class="rl" [attr.title]="kantenWirkung(k.type)">{{ kantenLabel(k.type) }}</span>
                     <nw-wahl
                       [wert]="k.to"
                       (wertChange)="k.to = $event"
@@ -552,13 +560,19 @@ interface Feld {
                 </div>
               }
               <div class="werkzeuge">
-                <select #neueKante>
+                <select #neueKante aria-label="Kind of relation" (change)="gewaehlteKante.set(neueKante.value)">
                   @for (t of kantenArten(); track t.type) {
-                    <option [value]="t.type">{{ t.label }}</option>
+                    <option [value]="t.type" [selected]="t.type === vorschauKante()">{{ t.label }}</option>
                   }
                 </select>
                 <button type="button" (click)="kanteDazu(neueKante.value)">+ Relation</button>
               </div>
+              <!-- Vor dem Anlegen: was die Kante bedeutet und bewirkt (T-111). -->
+              @if (vorschauKante(); as v) {
+                <p class="kantenvorschau" role="status">
+                  <b>{{ kantenLabel(v) }}:</b> {{ kantenWirkung(v) }}
+                </p>
+              }
             } @else {
               @if (offeneVerweise().length) {
                 <p class="hinweis" role="status">
@@ -693,7 +707,7 @@ interface Feld {
                 <ul class="kanten">
                   @for (k of kanten(); track k.id) {
                     <li>
-                      <span class="rl">{{ k.label }}</span>
+                      <span class="rl" [attr.title]="kantenWirkung(k.typ)">{{ k.label }}</span>
                       @if (k.ziel) {
                         <a [routerLink]="['/artikel', k.ziel]" [nwQuick]="k.ziel">{{ k.text }}</a>
                       } @else {
@@ -737,7 +751,7 @@ interface Feld {
                 <ul class="kanten">
                   @for (r of rueckbezuege(); track r.id) {
                     <li>
-                      <span class="rl">{{ r.label }}</span>
+                      <span class="rl" [attr.title]="kantenWirkung(r.typ)">{{ r.label }}</span>
                       <a [routerLink]="['/artikel', r.ziel]" [nwQuick]="r.ziel">{{ r.text }}</a>
                     </li>
                   }
@@ -1234,6 +1248,7 @@ export class Artikel {
         const subName = sub ? (name(sub) ?? sub) : '';
         return {
           id: rel.id,
+          typ: rel.type,
           label: relationDef(r, rel.type).label,
           ziel: ziel === undefined ? '' : rel.to,
           /* Ein Ziel, das es nicht gibt, wird gesagt und nicht verschwiegen —
@@ -1745,6 +1760,23 @@ export class Artikel {
       .map((d) => ({ type: d.type, label: d.label }))
       .sort((a2, b2) => a2.label.localeCompare(b2.label, 'de'));
   }
+  /** Die Kantenart, die die Auswahl gerade zeigt — sonst die erste. */
+  protected readonly gewaehlteKante = signal('');
+  protected vorschauKante(): string {
+    const arten = this.kantenArten();
+    const g = this.gewaehlteKante();
+    return arten.some((a) => a.type === g) ? g : (arten[0]?.type ?? '');
+  }
+  /**
+   * Was eine Kante bedeutet und bewirkt (T-111, REQ-257) — die Bedeutung
+   * aus dem Register, die Wirkung aus den Auswertern (`edgeEffects`).
+   */
+  protected kantenWirkung(type: string): string {
+    const r = this.reg();
+    if (!r) return '';
+    const w = edgeEffects(r, type);
+    return `${w.means} ${edgeEffectText(w)}`;
+  }
   protected kantenLabel(type: string): string {
     const r = this.reg();
     return r ? relationDef(r, type).label : type;
@@ -2057,6 +2089,7 @@ export class Artikel {
     return (this.bestand.rueckbezuege().get(e.id) ?? []).map((b) => ({
       id: `${b.from.id}:${b.relation.id}`,
       label: relationDef(r, b.relation.type).inverseLabel,
+      typ: b.relation.type,
       ziel: b.from.id,
       text: entityName(b.from),
     }));

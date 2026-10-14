@@ -33,3 +33,4 @@ export * from './reading.js';
 export * from './versions.js';
 export * from './merge.js';
 export * from './parts.js';
+export * from './edges.js';

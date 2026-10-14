@@ -113,6 +113,11 @@ export function gruppeEbeneId(gruppe: string): string {
   return `e5_group_${gruppe}`;
 }
 
+/** Die Id der Ebene für das, was kein 2014-Buch nennt (T-109) — dieselbe in der Migration. */
+export function ohneBuchEbeneId(): string {
+  return 'e5_unsourced_2014';
+}
+
 /** Die Id einer Herausgeber-Gruppe (T-094) — dieselbe in der Migration. */
 export function herausgeberEbeneId(herausgeber: string): string {
   return `e5_publisher_${herausgeber}`;
@@ -134,7 +139,7 @@ export class Werkbank {
   private readonly nachName = new Map<string, Entity[]>();
   /** Peg → Bücher, in die der Eintrag neu gedruckt wurde (`reprintedAs`, `doppel.ts`). */
   readonly nachdrucke = new Map<string, string[]>();
-  /** Die Systemebene: was keine Quelle nennt (die Aktionsarten), liegt hier (Arbeitsplan §1). */
+  /** Die Ebene für das, was keine Quelle nennt (die Aktionsarten, Arbeitsplan §1; seit T-109 nicht mehr die Gruppe der 2014-Regeln). */
   ebene: Entity | undefined;
   /** Die Ebene des Buchs, aus dem ein Eintrag kommt (T-081, E-017); angelegt beim ersten Eintrag. */
   buchEbene: ((quelle: string) => Entity | undefined) | undefined;
