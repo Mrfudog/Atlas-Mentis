@@ -73,6 +73,12 @@ jobs:
       - run: node apps/server/scripts/durchstich.mjs
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      # Keine Registeränderung ohne Migration (T-123): eine Installation auf
+      # dem Stand von register-stand.json muss nach allen Migrationen und
+      # dem Seed den Startzeilen gleichen.
+      - run: node apps/server/scripts/register-abgleich.mjs
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
       # Die Übernahme dev ↔ prod (T-130): zwei Server, zwei Datenbanken.
       - run: node apps/server/scripts/uebernahme-durchstich.mjs
         env:
