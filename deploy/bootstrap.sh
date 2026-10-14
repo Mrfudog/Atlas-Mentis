@@ -90,7 +90,9 @@ install -d -o deploy -g deploy "$BASE/prod/backups/nacht"
 
 echo "== Nächtliche Sicherung (als deploy, 03:17, eine je Wochentag)"
 cron='17 3 * * * cd '"$BASE"'/prod && [ -f compose.yml ] && docker compose exec -T db sh -c '"'"'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"'"'"' > backups/nacht/$(date +\%u).dump'
-( crontab -u deploy -l 2>/dev/null | grep -v 'backups/nacht' ; echo "$cron" ) | crontab -u deploy -
+# Dazu die Bilder (T-114): neue Dateien nach backups/bilder, nie gelöscht.
+bilder='27 3 * * * cd '"$BASE"'/prod && [ -x bilder-sichern.sh ] && ./bilder-sichern.sh >/dev/null'
+( crontab -u deploy -l 2>/dev/null | grep -v 'backups/nacht' | grep -v 'bilder-sichern' ; echo "$cron" ; echo "$bilder" ) | crontab -u deploy -
 
 echo
 echo "== Fertig. Das gehört jetzt nach GitHub (Settings › Secrets and variables › Actions):"

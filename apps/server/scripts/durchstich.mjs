@@ -18,8 +18,9 @@
  * die Konten werden nur angelegt, wenn es sie noch nicht gibt.
  */
 
+/* global Buffer, FormData, Blob */
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -50,8 +51,10 @@ function user(...args) {
   return { ok: r.status === 0, out: `${r.stdout}${r.stderr}`.trim() };
 }
 
+/* Die Bilder (T-114) in ein eigenes Verzeichnis, das danach geht. */
+const BILDER = mkdtempSync(join(tmpdir(), 'durchstich-bilder-'));
 const server = spawn(process.execPath, [join(DIST, 'index.js')], {
-  env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1' },
+  env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', ASSET_DIR: BILDER },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 let log = '';
@@ -353,6 +356,30 @@ try {
     pruefe('ein Artikel bringt die Namen seiner Kantenziele mit', mitNamen.refs?.names?.ly_probe_a === 'Probe A', JSON.stringify(mitNamen.refs));
     const weg = await fetch(`${BASE}/api/entities/${neu.id}`, { method: 'DELETE', headers: { cookie: admin } });
     pruefe('DELETE des neuen Artikels', weg.ok, String(weg.status));
+
+    /* ---------------------------------------------- Bilder (T-114) */
+    /* Ein PNG mit einem Bildpunkt, von Hand — der Durchstich lädt kein sharp. */
+    const PNG = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    );
+    const form = new FormData();
+    form.append('for', 'npc_probe_geheim');
+    form.append('file', new Blob([PNG], { type: 'image/png' }), 'geheim.png');
+    const hoch = await fetch(`${BASE}/api/assets`, { method: 'POST', headers: { cookie: admin }, body: form });
+    const bild = await hoch.json();
+    const ref = bild.components?.Asset?.ref ?? '';
+    pruefe(
+      'POST /api/assets legt ein Asset an und die Datei in ASSET_DIR',
+      hoch.status === 201 && /^[a-f0-9]{64}\.png$/.test(ref) && existsSync(join(BILDER, ref.slice(0, 2), ref)),
+      `${hoch.status} ${JSON.stringify(bild).slice(0, 300)}`,
+    );
+    const ganz = await get(admin, bild.url ?? '/api/assets/-');
+    pruefe('GET /api/assets liefert das Bild', ganz.status === 200 && ganz.headers.get('content-type') === 'image/png', String(ganz.status));
+    const fremd = await get(await anmelden('probe-spiel'), bild.url ?? '/api/assets/-');
+    pruefe('… und nicht an Spielende, wenn der NSC verborgen ist', fremd.status === 404, String(fremd.status));
+    const bildWeg = await fetch(`${BASE}/api/entities/${bild.id}`, { method: 'DELETE', headers: { cookie: admin } });
+    pruefe('ein gelöschtes Asset nimmt seine Datei mit', bildWeg.ok && !existsSync(join(BILDER, ref.slice(0, 2), ref)), String(bildWeg.status));
   }
 
   /* ---------------------------------------------------- Werkbank (W9) */
@@ -1184,6 +1211,7 @@ try {
   if (String(error?.message) !== 'abgebrochen') pruefe('Durchstich', false, String(error));
 } finally {
   server.kill('SIGTERM');
+  rmSync(BILDER, { recursive: true, force: true });
 }
 
 if (fehler) {
