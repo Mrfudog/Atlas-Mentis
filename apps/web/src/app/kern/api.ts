@@ -268,9 +268,27 @@ export interface Ware {
   price?: number;
   steps: Preisschritt[];
 }
+/** Ein Stück, das die Figur diesem Laden verkaufen kann (T-133), mit dem Ankaufspreis. */
+export interface Verkaeuflich {
+  inventory: string;
+  edge: string;
+  item: string;
+  name: string;
+  qty: number;
+  price?: number;
+}
 export interface Ladenwaren {
   table: Ware[];
-  mine: { id: string; name: string; wares: Ware[] }[];
+  /** Je eigener Figur: ihre Preise, ihr Geld und was sie verkaufen kann (T-133) — ohne Inventar fehlt beides. */
+  mine: { id: string; name: string; wares: Ware[]; inventory?: string; purse?: number; sellable?: Verkaeuflich[] }[];
+}
+/** Was ein Handel ergab (T-133): gerechnet am Server. */
+export interface Handel {
+  item: { id: string; name: string };
+  qty: number;
+  unit: number;
+  total: number;
+  copper: number;
 }
 
 /** Die Regeln des Handwerks am Tisch (T-128, `craftRulesOf`). */
@@ -1037,6 +1055,14 @@ export class Api {
   /** Am Auftrag: `roll`, `confirm`, `work`, `abort`, `fail` (T-128). */
   craftingAction(id: string, action: 'roll' | 'confirm' | 'work' | 'abort' | 'fail', body: Record<string, unknown> = {}): Promise<unknown> {
     return this.call(`/api/crafting/${encodeURIComponent(id)}/${action}`, { method: 'POST', body: JSON.stringify(body) });
+  }
+  /** Im Laden kaufen (T-133): Ware und Menge; den Preis rechnet der Server. */
+  buy(shop: string, actor: string, edge: string, qty: number): Promise<Handel> {
+    return this.call(`/api/shops/${encodeURIComponent(shop)}/buy`, { method: 'POST', body: JSON.stringify({ actor, edge, qty }) });
+  }
+  /** Dem Laden verkaufen (T-133): ein Stapel aus dem Inventar der Figur. */
+  sell(shop: string, actor: string, inventory: string, edge: string, qty: number): Promise<Handel> {
+    return this.call(`/api/shops/${encodeURIComponent(shop)}/sell`, { method: 'POST', body: JSON.stringify({ actor, inventory, edge, qty }) });
   }
   /** Die Spieler der laufenden Kampagne mit ihren Figuren (T-100, E-007) — ohne Konto-Id. */
   players(): Promise<{ campaign: { id: string; name: string } | null; players: Spieler[] }> {
