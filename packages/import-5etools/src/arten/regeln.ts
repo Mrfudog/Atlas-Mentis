@@ -12,6 +12,7 @@ import type { Entity } from '@nw/model';
 import type { Knoten } from '../copy.js';
 import type { Werkbank } from '../werkbank.js';
 import type { Zuordnung } from '../zuordnung.js';
+import { beiwort, signaturZauber } from './welt.js';
 import { ATTRIBUTE, GROESSE, liste, titel } from '../zuordnung.js';
 
 /**
@@ -209,11 +210,16 @@ export const REGELN: Zuordnung[] = [
     },
   }),
   regel('boon', 'boon', 'Rule', {
-    genutzt: ['name', 'entries', 'type', 'goal', 'cultists', 'signaturespells', 'ability'],
+    genutzt: ['name', 'entries', 'type', 'abilityEntry', 'signatureSpells'],
     fuellen(wb, ent, e) {
       wb.feld(ent, 'Rule', 'kind', 'boon');
       if (e['type']) wb.marke(ent, String(e['type']));
-      wb.prosa(ent, wb.text(e['entries']));
+      /* Attribute und Signaturzauber des Segens (T-084) — bis dahin unter
+         falschem Schlüssel gesucht und nie gefunden. */
+      const teile = [wb.text(e['entries'])];
+      if (e['abilityEntry']) teile.push(`**Ability Score Adjustment:** ${wb.text(beiwort(e['abilityEntry']))}`);
+      teile.push(signaturZauber(wb, ent, e['signatureSpells']));
+      wb.prosa(ent, teile.filter(Boolean).join('\n\n'));
     },
   }),
   regel('charoption', 'charoption', 'Rule', {

@@ -83,7 +83,7 @@ const WEG_UEBERALL = new Set([
   'source', 'page', 'srd', 'srd52', 'basicRules', 'basicRules2024', 'reprintedAs',
   'otherSources', 'additionalSources', 'referenceSources', 'hasFluff', 'hasFluffImages',
   'hasToken', 'tokenCredit', 'tokenCustom', 'tokenHref', 'soundClip', 'altArt', 'edition', 'legacy',
-  '_copy', '__kopieVon', 'fluff', 'foundryImg', 'isReprinted', 'tokenUrl',
+  '_copy', '__kopieVon', '_versions', '__spielart', 'fluff', 'foundryImg', 'isReprinted', 'tokenUrl',
 ]);
 
 /* Vorgerechnete Filterschlüssel (Abgleich §3: „Keine Filter-Tags") — bei
@@ -171,6 +171,8 @@ export class Werkbank {
    */
   stand: Regelstand = '2014';
   grund = true;
+  /** Ob gerade ein Nachtrag aus T-084 angelegt oder gefüllt wird (`istNachtrag`). */
+  nachtrag = false;
   /**
    * Ob der Grundstand gerade auch den Rest sieht: beim Buch- und
    * Abenteuertext ja (T-087) — dessen Peg-Ids hängen an der Stelle im
@@ -178,7 +180,7 @@ export class Werkbank {
    * eines 2014-Abenteuers findet so sein Ziel.
    */
   grundSiehtAlles = false;
-  readonly standJe = new Map<string, { stand: Regelstand; grund: boolean }>();
+  readonly standJe = new Map<string, { stand: Regelstand; grund: boolean; nachtrag?: boolean }>();
 
   constructor(readonly registry: Registry, vorgabe?: Map<string, string>) {
     if (!vorgabe) return;
@@ -248,7 +250,7 @@ export class Werkbank {
       this.kante(e, 'inLayer', (buch ?? this.ebene).id);
     }
     this.entities.push(e);
-    this.standJe.set(id, { stand: this.stand, grund: this.grund });
+    this.standJe.set(id, { stand: this.stand, grund: this.grund, ...(this.nachtrag ? { nachtrag: true } : {}) });
     zaehle(this.bericht.typen, typ);
     return e;
   }
@@ -261,13 +263,14 @@ export class Werkbank {
    * seine Peg-Ids.
    */
   get teilung(): string {
-    return this.grund ? '' : this.stand;
+    /* Ein Nachtrag teilt nichts mit dem, was vor ihm schon da war (T-084). */
+    return this.grund ? '' : this.nachtrag ? `${this.stand}+` : this.stand;
   }
 
   /** Die Teilung eines angelegten Artikels. */
   teilungVon(id: string): string {
     const s = this.standJe.get(id);
-    return !s || s.grund ? '' : s.stand;
+    return !s || s.grund ? '' : s.nachtrag ? `${s.stand}+` : s.stand;
   }
 
   private readonly statusJe = new Map<string, boolean>();
@@ -356,7 +359,11 @@ export class Werkbank {
     return this.waehle(this.nachSchluessel.get([tag, ...teile].map(klein).join('|')), false);
   }
 
-  private waehle(kandidaten: Entity[] | undefined, eindeutig: boolean): Entity | undefined {
+  private waehle(alle: Entity[] | undefined, eindeutig: boolean): Entity | undefined {
+    /* Was vor den Nachträgen da war, sieht sie nicht (T-084) — wie der
+       Grundstand den Rest nicht sieht: sonst schriebe es seinen Text
+       anders als auf dev. Buch- und Abenteuertext sieht alles. */
+    const kandidaten = this.nachtrag || this.grundSiehtAlles ? alle : alle?.filter((x) => !this.standJe.get(x.id)?.nachtrag);
     if (!kandidaten?.length) return undefined;
     if (this.grund) {
       const grund = kandidaten.filter((x) => !this.teilungVon(x.id));

@@ -116,9 +116,12 @@ describe('a spell is a rule with its own fields (M2)', () => {
 describe('who casts a spell is an edge (M2)', () => {
   const casts = seedRegistry.relations['casts']!;
 
-  it('goes from a statblock, a player character, an item, a subclass, an ancestry or a feat to a spell', () => {
-    expect(casts.from).toEqual(['Statblock', 'PlayerCharacter', 'Item', 'Subclass', 'Ancestry', 'Feat']);
+  it('goes from a statblock, a player character, an item, a subclass, an ancestry, a feat, a cult or a boon to a spell', () => {
+    expect(casts.from).toEqual(['Statblock', 'PlayerCharacter', 'Item', 'Subclass', 'Ancestry', 'Feat', 'Faction', 'Rule']);
     expect(relationAccepts(casts, 'Statblock', 'Spell', seedRegistry)).toBe(true);
+    /* Signaturzauber eines Kults und eines Segens (T-084). */
+    expect(relationAccepts(casts, 'Faction', 'Spell', seedRegistry)).toBe(true);
+    expect(relationAccepts(casts, 'Rule', 'Spell', seedRegistry)).toBe(true);
     expect(relationAccepts(casts, 'Statblock', 'Feature', seedRegistry)).toBe(false);
     expect(Object.keys(casts.props?.properties ?? {})).toEqual(['mode', 'uses', 'level', 'charges', 'fromLevel']);
   });

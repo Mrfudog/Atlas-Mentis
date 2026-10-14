@@ -574,7 +574,6 @@ export const MONSTER: Zuordnung[] = [
       }
       const f = wb.fluff('monsterFluff', String(e['name']), String(e['source']));
       if (f) wb.lore(sb, wb.text(f['entries']));
-      if (e['_versions']) wb.notiz('Spielarten (_versions) nicht ausgeschrieben');
     },
   },
   {

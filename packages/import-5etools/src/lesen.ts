@@ -30,6 +30,27 @@ export type Regelstand = '2014' | '2024' | 'UA';
  */
 export const NEUE_ARTEN = new Set(['vehicle', 'vehicleUpgrade', 'deck', 'card', 'facility', 'itemMastery']);
 
+/**
+ * **Die Nachträge** (T-084): Arten und Einträge, die erst nach T-087
+ * hereinkommen — Lebens- und Schatztabellen, die Spielarten der Monster
+ * und Abstammungen (`SPIELART`), die ausgeschriebenen +N-Gegenstände.
+ * Sie gehören weder zum Grundstand noch zu dem, was T-087 brachte: beide
+ * stehen auf dev schon mit ihren Nummern, und ein Nachtrag davor
+ * verschöbe sie — und mit ihnen die Peg-Ids der geteilten Merkmale, deren
+ * Text Nummern nennt. Darum rechnet `lauf` drei Gänge und die Nachträge
+ * zuletzt; ihre Teilung ist eine eigene (`Werkbank.teilung`).
+ */
+export const NACHTRAG_ARTEN = new Set([
+  'lifeBackground', 'lifeClass', 'lifeTrinket', 'hoard', 'individual', 'dragon', 'dragonMundaneItems', 'specificVariant',
+]);
+
+/** Woran eine ausgeschriebene Spielart (`_versions`) zu erkennen ist (T-084). */
+export const SPIELART = '__spielart';
+
+export function istNachtrag(e: Knoten, art: string): boolean {
+  return NACHTRAG_ARTEN.has(art) || Boolean(e[SPIELART]);
+}
+
 /* Verzeichnisse und Dateien ohne Einträge, die Artikel werden könnten:
    Werkzeugdaten der Seite (Abgleich §2.7). Buch- und Abenteuertext kommen
    herein (T-082, T-108), aber nicht als Liste je Art: `liesAbenteuer` und
@@ -62,17 +83,10 @@ export const ARTEN_WEG: Record<string, string> = {
   statusFluff: 'nur Bilder (E5)',
   objectFluff: 'nur Bilder (E5)',
   charoptionFluff: 'nur Bilder (E5)',
-  lifeTrinket: 'Tabellen aus „This Is Your Life" — noch nicht zugeordnet',
-  lifeBackground: 'Tabellen aus „This Is Your Life" — noch nicht zugeordnet',
-  lifeClass: 'Tabellen aus „This Is Your Life" — noch nicht zugeordnet',
   _meta: 'Dateikopf',
   book: 'Buch-Metadaten: eine Systemebene statt einer je Buch (Arbeitsplan §1)',
   adventure: 'Abenteuer-Metadaten: Name und Erscheinen der Ebene (T-082); der Text kommt aus adventure/',
   languageScript: 'die Schrift steht als Wort an Language.script',
-  hoard: 'Schatztabellen mit verschachtelten Würfen — noch nicht zugeordnet',
-  individual: 'Schatztabellen mit verschachtelten Würfen — noch nicht zugeordnet',
-  dragon: 'Schatztabellen mit verschachtelten Würfen — noch nicht zugeordnet',
-  dragonMundaneItems: 'Schatztabellen mit verschachtelten Würfen — noch nicht zugeordnet',
 };
 
 /**
@@ -269,6 +283,8 @@ export interface Auswahl {
   quellen?: string[];
   /** Nur der Grundstand, wie vor T-087: ohne 2024, UA und die neuen Arten. */
   nurGrundstand?: boolean;
+  /** Ohne die Nachträge aus T-084: der Stand, den T-087 schrieb (`NACHTRAG_ARTEN`). */
+  ohneNachtrag?: boolean;
 }
 
 /** Der Regelstand einer Quelle: UA am Kürzel, 2024 an den Kernbüchern und am Erscheinen (E2). */
@@ -326,7 +342,7 @@ export function ebeneQuelle(e: Knoten, stand: Pick<Datenstand, 'quellen'>): stri
  * nichts anders schreibt als einer ohne.
  */
 export function imGrundstand(e: Knoten, art: string, stand: Pick<Datenstand, 'quellen'>): boolean {
-  return !NEUE_ARTEN.has(art) && regelstandVon(e, stand) === '2014';
+  return !NEUE_ARTEN.has(art) && !istNachtrag(e, art) && regelstandVon(e, stand) === '2014';
 }
 
 /**
@@ -343,6 +359,7 @@ export function ausschluss(e: Knoten, stand: Datenstand, auswahl: Auswahl = {}, 
   const quelle = quelleVon(e);
   const q = quelle.toLowerCase();
   if (QUELLEN_WEG[q]) return QUELLEN_WEG[q];
+  if ((auswahl.nurGrundstand || auswahl.ohneNachtrag) && istNachtrag(e, art)) return 'Nachtrag (T-084)';
   if (auswahl.nurGrundstand) {
     if (NEUE_ARTEN.has(art)) return 'neue Art (T-087)';
     const r = regelstandDerQuelle(quelle, stand);

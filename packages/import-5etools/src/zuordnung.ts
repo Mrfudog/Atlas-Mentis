@@ -5,6 +5,7 @@
 
 import type { Entity } from '@nw/model';
 import type { Knoten } from './copy.js';
+import type { Datenstand } from './lesen.js';
 import type { Werkbank } from './werkbank.js';
 
 export interface Zuordnung {
@@ -22,6 +23,12 @@ export interface Zuordnung {
    * Stufe 4, 6 und 8 —, derselbe Schlüssel hier; dann gibt es einen Artikel.
    */
   vereinen?(e: Knoten): string | undefined;
+  /**
+   * Die Liste vor dem Auflösen der Kopien umbauen (T-084): eine Art, die
+   * 5e.tools ohne Kopf oder in anderer Form hält, oder Einträge, die erst
+   * aus anderen Arten entstehen. Ohne: die Liste, wie sie ist.
+   */
+  vorbereiten?(roh: Knoten[], stand: Datenstand): Knoten[];
   /** Die Schlüssel, die `fuellen` liest. Alle anderen stehen im Bericht. */
   genutzt: string[];
   /** Was ein Eintrag zusätzlich zur Herkunft braucht, um eindeutig zu sein. */
