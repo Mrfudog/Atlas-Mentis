@@ -293,7 +293,13 @@ wiederkommen, werden sie neu geschrieben.
   fremder Artikel kommen nicht hinein** (`anpassZiele`). Geht die Rolle,
   bleibt die Ebene unbeschrieben stehen, bis die Leitung sie übernimmt
   (`POST /api/layers/:layer/takeover`: Inhalt in die Kampagnenebene, leere
-  Ebene weg).
+  Ebene weg). **Gewählt schlägt gerechnet** (T-176): eine Zielebene, die
+  ein Konto je Kampagne als Schreibebene wählt (Einstellung `writeLayer`,
+  `PUT /api/layers/:layer/default`), ist seine Vorgabe — auch für die
+  Verwaltung, die ohne Wahl weiter ohne Ebene anlegt. **Eine Ebene leeren**
+  (`POST /api/layers/:layer/empty`, Besitzer und Verwaltung) ist eine
+  Massenänderung `delete`: Teile gehen mit, Kanten darauf gehen weg, Undo
+  wie jede.
 - **Fünf Ansichten, und der Ort wählt sie.** `overview` steht in einem
   Verweis oder einer Listenzeile, `quick` auf einer Karte, `full` auf der
   Artikelseite, `print` auf dem Blatt hinter „Print" (T-110), `search`

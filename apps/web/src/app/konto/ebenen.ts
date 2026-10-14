@@ -13,6 +13,10 @@ import { Session } from '../kern/session';
  * **Was der Server nicht annähme, bietet die Seite nicht an**: die Liste
  * der Schreibenden steht nur an Ebenen, für die der Server sie mitschickt
  * (`editors`).
+ *
+ * **Make default** wählt die Schreibebene (T-176), **Empty…** leert eine
+ * eigene Ebene als eine Massenänderung: erst die Zahl, dann bestätigen,
+ * danach steht „Undo" da (und in der Werkbank).
  */
 @Component({
   selector: 'nw-meine-ebenen',
@@ -34,7 +38,12 @@ import { Session } from '../kern/session';
         <p class="dim">New articles go to <b>{{ v }}</b> unless you pick another layer.</p>
       }
       @if (bericht(); as b) {
-        <p role="status">{{ b }}</p>
+        <p role="status">
+          {{ b }}
+          @if (zurueck(); as z) {
+            <button type="button" class="klein" [disabled]="laeuft()" (click)="zuruecknehmen(z)">Undo</button>
+          }
+        </p>
       }
 
       <ul class="ebenen">
@@ -57,6 +66,14 @@ import { Session } from '../kern/session';
                 <span class="art vorgabe">default</span>
               }
               <span class="dim">· {{ l.inPlay ? 'in play' : 'not turned on in ' + (kampagne() ?? 'the campaign') }}</span>
+              @if (l.inPlay && !l.default) {
+                <button type="button" class="klein" [disabled]="laeuft()" (click)="vorgabeSetzen(l)"
+                        title="New articles go here unless you pick another layer">Make default</button>
+              }
+              @if (l.owner || session.isAdmin()) {
+                <button type="button" class="klein" [disabled]="laeuft()" (click)="leeren(l)"
+                        title="Delete every article in this layer, with its parts — undoable">Empty…</button>
+              }
               @if (l.player && !l.player.mine) {
                 <button type="button" class="klein" [disabled]="laeuft()" (click)="uebernehmen(l)"
                         title="Move what is in it to the campaign layer and remove the empty layer">Take over</button>
@@ -210,13 +227,15 @@ import { Session } from '../kern/session';
 })
 export class MeineEbenen {
   private readonly api = inject(Api);
-  private readonly session = inject(Session);
+  protected readonly session = inject(Session);
 
   protected readonly ebenen = signal<MeineEbene[]>([]);
   protected readonly kampagne = signal<string | null>(null);
   /** Wohin angelegt wird, wenn niemand eine Ebene nennt (T-164). */
   protected readonly vorgabe = signal<string | null>(null);
   protected readonly bericht = signal<string | null>(null);
+  /** Die Massenänderung des letzten Leerens — für „Undo". */
+  protected readonly zurueck = signal<string | null>(null);
   protected readonly geladen = signal(false);
   protected readonly fehler = signal<string | null>(null);
   protected readonly laeuft = signal(false);
@@ -283,6 +302,49 @@ export class MeineEbenen {
         `${r.moved.length} article(s) moved to ${r.into.name}` +
           (r.kept.length ? `; ${r.kept.length} stayed: ${r.kept.map((k) => k.name).join(', ')}.` : '.'),
       );
+    });
+  }
+
+  protected vorgabeSetzen(l: MeineEbene): Promise<void> {
+    return this.tue(() => this.api.chooseDefaultLayer(l.id));
+  }
+
+  /** Eine Ebene leeren (T-176): die Vorschau nennt Zahl und Namen, bestätigt wird mit der Zahl. */
+  protected async leeren(l: MeineEbene): Promise<void> {
+    this.zurueck.set(null);
+    let vorschau: Awaited<ReturnType<Api['emptyLayer']>> | undefined;
+    await this.tue(async () => {
+      vorschau = await this.api.emptyLayer(l.id, { dryRun: true });
+    });
+    const v = vorschau;
+    if (!v) return;
+    if (!v.deleted) {
+      this.bericht.set(`“${l.name}” is empty.`);
+      return;
+    }
+    if (v.rejectedCount) {
+      this.fehler.set(`${v.rejectedCount} article(s) in “${l.name}” cannot be deleted by you: ${v.rejected.map((r) => r.name).join(', ')}.`);
+      return;
+    }
+    const namen = v.examples.filter((x) => x.change === 'delete').slice(0, 12).map((x) => x.name);
+    const rest = v.deleted - namen.length;
+    const frage =
+      `Delete ${v.deleted} article(s) from “${l.name}”` +
+      (v.changed ? ` and remove links to them from ${v.changed} other(s)` : '') +
+      `?\n\n${namen.join(', ')}${rest > 0 ? ` … and ${rest} more` : ''}\n\nYou can undo this.`;
+    if (!confirm(frage)) return;
+    await this.tue(async () => {
+      const r = await this.api.emptyLayer(l.id, { confirmDelete: v.deleted });
+      this.bericht.set(`${r.deleted} article(s) deleted from “${l.name}”.`);
+      this.zurueck.set(r.id ?? null);
+    });
+  }
+
+  protected zuruecknehmen(id: string): Promise<void> {
+    return this.tue(async () => {
+      const r = await this.api.undo(id);
+      this.bericht.set(`Undone: ${r.restored} article(s) restored.`);
+      this.zurueck.set(null);
     });
   }
 

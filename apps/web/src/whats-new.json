@@ -10,6 +10,14 @@
       "query": { "type": "Spell" }
     },
     {
+      "id": "2026-10-15-empty-layer",
+      "date": "2026-10-15",
+      "title": "Pick your write layer, empty a layer in one go",
+      "text": "Under Account › Layers, \"Make default\" picks the layer new articles go to, for example a test layer of your own. \"Empty…\" on a layer you own shows how many articles are in it, deletes them with their parts and the links pointing at them, and offers Undo right away.",
+      "area": "Navigation",
+      "link": "/account"
+    },
+    {
       "id": "2026-10-15-compare-versions",
       "date": "2026-10-15",
       "title": "See at a glance where versions differ",

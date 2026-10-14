@@ -280,6 +280,12 @@ import { BEDINGUNGEN, OPS, auftragAus, formularFehlt, leeresFormular, type Formu
                     </label>
                     <label>Keep (id, optional) <input name="keep" [(ngModel)]="f.keep" placeholder="oldest" /></label>
                   }
+                  @case ('delete') {
+                    <p class="dim">
+                      Deletes the selection with its parts (own statblock instance, inventory, pieces) and removes
+                      edges pointing at it. Undo brings everything back.
+                    </p>
+                  }
                   @default {
                     <label>
                       Edge
