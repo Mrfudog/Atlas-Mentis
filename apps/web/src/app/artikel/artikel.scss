@@ -492,3 +492,26 @@ p.leer {
 .feldbild {
   max-width: 12rem;
 }
+
+/* Der Fertigungswert am Rezept (T-122): Werkzeug · Attribut · SG, am Tisch
+   und je eigener Figur, mit dem, was nicht aus dem Rezept kommt. */
+.fertigung {
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.15));
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  h3 {
+    margin: 0 0 0.25rem;
+    font-size: 1rem;
+  }
+  p {
+    margin: 0.2rem 0;
+    overflow-wrap: anywhere;
+  }
+  .wer {
+    font-weight: 600;
+    margin-right: 0.35rem;
+  }
+  small {
+    color: var(--dim);
+  }
+}

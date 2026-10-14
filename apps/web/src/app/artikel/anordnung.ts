@@ -74,6 +74,7 @@ export interface Stueck {
     | 'ueberschrift'
     | 'absatz'
     | 'kanten'
+    | 'handwerk'
     | 'bild';
   text?: string;
   /** Das Bild (`Image.image` oder das Asset selbst, T-114) mit Unterschrift und Alternativtext. */
@@ -285,6 +286,12 @@ export function anordnen(
       }
       case 'composed':
         out.push({ id: el.id, art: 'teile' });
+        break;
+      /* Das Handwerk (T-122): heute nur der Fertigungswert am Rezept —
+         die Seite zeichnet es, wo der Server ihn mitschickt (`refs.craft`).
+         Die Werkbank an Figur und Gruppe kommt mit T-027. */
+      case 'crafting':
+        out.push({ id: el.id, art: 'handwerk' });
         break;
       /* Die Teile eines Kapitels oder einer Szene (T-108): die Komponente
          fragt selbst und zeichnet nichts, wo nichts hängt. */

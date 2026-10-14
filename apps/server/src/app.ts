@@ -92,8 +92,10 @@ import {
   partsIndex,
   overridersIndex,
   CAMPAIGN_SETTING,
+  craftCheck,
+  RECIPE_COMPONENT,
 } from '@nw/model';
-import type { BulkChange, Entity, Registry } from '@nw/model';
+import type { BulkChange, CraftCheck, CraftSource, Entity, Registry } from '@nw/model';
 import { RevisionConflict } from './repo.js';
 import type { ReadyStand, Repository } from './repo.js';
 import type { AtlasEnv } from './config.js';
@@ -1554,6 +1556,32 @@ export function buildApp({
    * Texten (`links`). Gerechnet beim Ausliefern, **nie gespeichert** — ein
    * Name von gestern wäre heute falsch.
    */
+  /**
+   * **Womit an diesem Rezept gefertigt wird** (T-122): für die laufende
+   * Kampagne und für jede eigene Figur — `craftCheck` mit der Herkunft
+   * jedes Werts, die Träger beim Namen. Nur an Rezepten.
+   */
+  async function fertigungswert(
+    request: FastifyRequest,
+    e: Entity,
+    map: Map<string, Entity>,
+  ): Promise<{ table: unknown; mine: unknown[] } | null> {
+    const registry = await repo.getRegistry();
+    if (!typeChain(registry, primaryInterface(e)).includes(RECIPE_COMPONENT)) return null;
+    const get = (id: string) => map.get(id);
+    const campaign = currentCampaign(map, registry.settings ?? null);
+    const benannt = (c: CraftCheck) => {
+      const quelle = (q: CraftSource) => (q.holder ? { ...q, name: entityName(map.get(q.holder)) } : q);
+      return { ...c, source: { tool: quelle(c.source.tool), ability: quelle(c.source.ability), dc: quelle(c.source.dc) } };
+    };
+    const user = await viewerOf(request);
+    const figuren = (user?.actorIds ?? []).map((id) => map.get(id)).filter((x): x is Entity => !!x);
+    return {
+      table: benannt(craftCheck(e, { get, campaign })),
+      mine: figuren.map((f) => ({ id: f.id, name: entityName(f), check: benannt(craftCheck(e, { get, campaign, actor: f })) })),
+    };
+  }
+
   async function bezuegeVon(
     request: FastifyRequest,
     e: Entity,
@@ -2265,11 +2293,13 @@ export function buildApp({
        hält keinen Bestand mehr, aus dem er sie nachschlagen könnte. */
     /* „Im Buch lesen" (T-091): wohin die Quellenangabe führt, wenn seine Ebene Text hat. */
     const reading = await leseZiel(einer);
+    const craft = await fertigungswert(request, einer, stand.map);
     const refs = {
       ...(await bezuegeVon(request, einer)),
       ...(ready ? { ready } : {}),
       ...(vergleich ? { compare: true } : {}),
       ...(reading ? { reading } : {}),
+      ...(craft ? { craft } : {}),
     };
     /* Ob „Adapt" angeboten wird (E-018, T-082) und in welche Ebenen
        (`adaptTo`, T-098): dieselbe Frage wie die Route, damit die Seite
