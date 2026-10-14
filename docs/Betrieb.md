@@ -493,6 +493,19 @@ neuen Artikeln nennt die Nummer, die sein Ziel im Bestand trägt; der
 Bestand selbst bleibt. Die Zeile sagt `… davon mit angeglichener Nummer
 oder angeglichenen Verweisen`.
 
+**Nur die Neuzugänge** (`additions`, `--only-new --additions`, T-087):
+die Datei nennt in `additions`, was nicht zum Grundstand gehört (2024,
+UA, Fahrzeuge, Decks, Bastionen, Waffenmeisterschaften, mit ihren Ebenen
+und Gruppen), und nur das wird angelegt — dazu, was ein Neuzugang über
+eine Kante braucht und noch nirgends steht. Für einen Bestand aus einem
+älteren Importer: dort tragen geteilte Aktionen und Merkmale oft eine
+andere Peg-Id als in der Datei, und `only-new` allein legte sie ein
+zweites Mal an (dev am 14.10.: rund 5 000 Aktionen und 3 000 Merkmale);
+ausserdem brächte es Abenteuer und Buchtext des Grundstands mit, die über
+die aufgeschaltete Gruppe „D&D 5e (2014)" sofort im Spiel wären. Ein
+Verweis auf einen Artikel, der nicht mitkommt, wird ein Verweis nach
+Namen. Probelauf: `dry-run` mit `confirm` = `neues`.
+
 **2024, Unearthed Arcana, Fahrzeuge, Decks, Bastionen** (T-087,
 REQ-243): seit T-087 bringt ein Lauf alles, jede Quelle in ihre Ebene —
 gut 29 000 Artikel mehr, je Ebene gezählt in
@@ -607,7 +620,7 @@ nennt sie ausdrücklich.
 | --- | --- |
 | *Use workflow from* | `preprod` für dev, `main` für prod — die Zweigregel der Environments verlangt es, ein Lauf vom falschen Zweig bricht gleich ab |
 | `environment` | `dev` oder `prod` |
-| `mode` | `only-new` (Vorgabe): nur anlegen, was es noch nicht gibt · `dry-run`: nur sagen, was `only-new` täte (mit `confirm` = `ersetzen`: was `replace-layer` täte) · `replace-layer`: Ebene neu laden, nur mit `confirm` = `ersetzen` · `add`: dazulegen und Bestehendes überschreiben · `layers`: nur die Ebenen — Gruppen und Herausgeber anlegen, Beschreibung nachtragen, kein Artikel (T-088, T-094) |
+| `mode` | `only-new` (Vorgabe): nur anlegen, was es noch nicht gibt · `additions`: wie `only-new`, nur die Neuzugänge seit T-087 · `dry-run`: nur sagen, was `only-new` täte (mit `confirm` = `ersetzen`: was `replace-layer` täte, mit `neues`: was `additions` täte) · `replace-layer`: Ebene neu laden, nur mit `confirm` = `ersetzen` · `add`: dazulegen und Bestehendes überschreiben · `layers`: nur die Ebenen — Gruppen und Herausgeber anlegen, Beschreibung nachtragen, kein Artikel (T-088, T-094) |
 | `sources` | nur diese Quellen, z. B. `PHB,MM` oder ein Modulkürzel; leer heisst alles |
 | `confirm` | `ersetzen` für `replace-layer`, sonst leer |
 | `source-ref` | Stand von `5etools-src` (Zweig oder Tag); leer heisst der neueste |
@@ -982,6 +995,42 @@ einchecken): Postgres starten, Konto anlegen, die Datei aus
 Kampagne anlegen und ihre Bücher aufschalten, dann die Routen der Wege
 Register, Kompendium, Artikel und Board je zweimal abrufen (kalt nach
 einem Neustart, dann warm) und `Server-Timing` lesen.
+
+## Der Live-Kanal hinter Caddy
+
+`GET /api/live` (T-116) ist ein Strom aus Server-Sent Events, der offen
+bleibt — Beamer, Laptop und Telefone hören darauf, was sich ändert
+(was der Kanal trägt: [Architektur.md › Der Live-Kanal](Architektur.md#52-der-live-kanal)).
+Damit er durchkommt, sagt `deploy/proxy/Caddyfile` (Schnipsel `atlas`, für
+prod und dev gleich):
+
+- **nicht packen**: `encode` gilt für alles ausser `/api/live` — ein
+  Packer sammelt, bevor er schickt, und dann käme eine Änderung erst mit
+  der nächsten;
+- **sofort durchreichen**: `reverse_proxy … { flush_interval -1 }`;
+- **kein Zeitlimit nötig**: Caddy setzt für Antworten keines. Die
+  Anwendung schickt alle 25 s ein Lebenszeichen (`: ping`), damit kein
+  Mobilfunknetz die stille Verbindung kappt, und schliesst nach 15 min
+  selbst; der Browser kommt nach 3 s wieder und holt mit `Last-Event-ID`
+  nach, was er verpasst hat.
+
+Die Anwendung schickt dazu `Cache-Control: no-cache, no-transform` und
+`X-Accel-Buffering: no` — falls je ein nginx davorsteht, puffert auch der
+nicht. **Auf dem Server ist nichts von Hand zu ändern**: CI legt das
+Caddyfile bei jedem Ausrollen hin und lädt Caddy neu.
+
+Prüfen, ob der Strom durchkommt (angemeldet, Keks aus dem Browser):
+
+```bash
+curl -N -H 'Cookie: nw_session=…' https://dev.atlas.<domain>/api/live
+# → retry: 3000, dann „event: hello", alle 25 s „: ping"
+```
+
+Steht der Punkt rechts in der Kopfleiste hohl, hört dieses Gerät gerade
+nicht mit (es verbindet neu). Heute läuft **ein** Serverprozess je
+Umgebung — die Quelle des Kanals ist sein Speicher. Mehrere Prozesse
+hinter Caddy bräuchten zuerst die Umsetzung über Postgres
+`LISTEN/NOTIFY` (Architektur.md, 5.2).
 
 ## Lokal durchspielen
 
