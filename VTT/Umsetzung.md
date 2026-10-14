@@ -48,22 +48,22 @@ Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell,
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| [[REQ-001]] | Core entity model: entity types, shared property types, typed relations, immutable IDs | 1 | **steht** | Peg, Karten, Kanten, Register — Datenmodell.md §1–5 |
-| [[REQ-002]] | Successor chain: successorId, resolution to head so old links stay valid | 1 | **ersetzt** | keine Nachfolgerkette; Fassungen über `overrides` und `variantOf` in Ebenen |
-| [[REQ-010]] | Dimensions: optional, sparsely stored property bundles (Visibility, TemporalValidity, KnowledgeRequirement, Reputation…) | 1 | **steht** | als Grundtypen: `Visibility`, `Status`, `Time` |
-| [[REQ-011]] | ContentBlock primitive: text + visibility + knowledge requirement + scope + temporal validity + pack membership | 1 | **ersetzt** | ein Textblock ist ein Feld (`many` + `long`) mit Eintrags-Id; gesperrt wird je Eintrag über eine Information |
-| [[REQ-016]] | Term / translation layer: pseudoname key, LocalizedText, fallback chain DE → EN → key | 1 | **verworfen** | keine Übersetzungsschicht; Bezeichner englisch, Inhalte in der Sprache der Kampagne |
-| [[REQ-019]] | RawContent coexistence: every import keeps its raw form (markdown, OCR, JSON) next to structured data | 1 | **verworfen** | die Importer sind weg (2026-09-20), mit ihnen `Imported`; kommt mit neuen Importern zurück |
-| [[REQ-163]] | Opaque IDs: no semantics (pack/type/version) in peg IDs; provenance via source metadata (`source_pack`, `source_version`); copying only as explicit fork with `forkedFrom` | 1 | **steht** | undurchsichtige Id; `Identity.id` als Nummer |
-| [[REQ-181]] | Ad-hoc fields on a single entity, promotable into the interface definition | 2 | **steht** | `adhoc` mit Befördern |
-| [[REQ-182]] | Relation inverse labels in `relation_def`, so one stored edge renders correctly from both ends | 2 | **steht** | `inverseLabel` |
+| [[REQ-001]] | Artikel aus Arten, Feldern und Kanten | 1 | **steht** | Peg, Karten, Kanten, Register — Datenmodell.md §1–5 |
+| [[REQ-002]] | Nachfolgerkette | 1 | **ersetzt** | keine Nachfolgerkette; Fassungen über `overrides` und `variantOf` in Ebenen |
+| [[REQ-010]] | Feldgruppen nur, wo sie gebraucht werden | 1 | **steht** | als Grundtypen: `Visibility`, `Status`, `Time` |
+| [[REQ-011]] | Inhaltsblock als eigenes Grundelement | 1 | **ersetzt** | ein Textblock ist ein Feld (`many` + `long`) mit Eintrags-Id; gesperrt wird je Eintrag über eine Information |
+| [[REQ-016]] | Übersetzungsschicht für Begriffe | 1 | **verworfen** | keine Übersetzungsschicht; Bezeichner englisch, Inhalte in der Sprache der Kampagne |
+| [[REQ-019]] | Rohform jedes Imports aufbewahren | 1 | **verworfen** | die Importer sind weg (2026-09-20), mit ihnen `Imported`; kommt mit neuen Importern zurück |
+| [[REQ-163]] | Bezeichner ohne Bedeutung | 1 | **steht** | undurchsichtige Id; `Identity.id` als Nummer |
+| [[REQ-181]] | Freie Felder an einem einzelnen Artikel | 2 | **steht** | `adhoc` mit Befördern |
+| [[REQ-182]] | Kanten lesen sich von beiden Enden | 2 | **steht** | `inverseLabel` |
 
 ### F-002 Register
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| [[REQ-027]] | Generic template engine & Template Manager UI (generalize hardcoded types) | 4 | **steht** | das Register ist Daten mit Masken (Prototyp, Registerseite in der Web-Oberfläche: REQ-230); keine Codeänderung je Art |
-| [[REQ-230]] | Register in der Seite bearbeiten: die Leitung legt Typen, Felder, Kantenarten und Listen in der Web-Oberfläche an und ändert sie; vorher wird gezählt und gesagt, was eine Änderung im Bestand trifft, und eine Änderung, die gespeicherte Artikel beim nächsten Speichern ungültig machte (Karte ohne Typ, Typ mit Artikeln), lässt die Seite nicht zu | 2 | **steht** | Registerseite `/registry` mit Zählung (`registryUsage`, `GET /api/registry/usage`); schreiben Verwaltung und `gm` der laufenden Kampagne (W5, D64) |
+| [[REQ-027]] | Arten ohne Code anlegen | 4 | **steht** | das Register ist Daten mit Masken (Prototyp, Registerseite in der Web-Oberfläche: REQ-230); keine Codeänderung je Art |
+| [[REQ-230]] | Register in der Seite bearbeiten | 2 | **steht** | Registerseite `/registry` mit Zählung (`registryUsage`, `GET /api/registry/usage`); schreiben Verwaltung und `gm` der laufenden Kampagne (W5, D64) |
 | [[REQ-260]] | Ausgehende Kanten im Register sehen | 3 | **steht** | Gruppe „Edges from here“ im Register |
 | [[REQ-262]] | Flache Typenlisten | 3 | **steht** | `typeList()` |
 | [[REQ-263]] | Was eine Einstellung im Register auslöst | 3 | **steht** | Erklärzeilen im Register |
@@ -73,8 +73,8 @@ Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell,
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| [[REQ-012]] | Block types: paragraph, readaloud, fact, secret, poem/song/review… extensible list | 2 | **steht** | als Prosafelder: paragraph, readaloud, fact, secret, lore, tactics, note, poem, song, appearance, personality |
-| [[REQ-023]] | Status dimension: idea / planned / used / discarded | 2 | **ersetzt** | `State`: idea · prepared · ready; used/discarded waren Ereignisse und sind das Feld der Art (`Quest.progress`, `Encounter.phase`) |
+| [[REQ-012]] | Textfelder für jede Art von Text | 2 | **steht** | als Prosafelder: paragraph, readaloud, fact, secret, lore, tactics, note, poem, song, appearance, personality |
+| [[REQ-023]] | Status idea/planned/used/discarded | 2 | **ersetzt** | `State`: idea · prepared · ready; used/discarded waren Ereignisse und sind das Feld der Art (`Quest.progress`, `Encounter.phase`) |
 | [[REQ-258]] | Verweisfeld nennt, welche Artikel es annimmt | 2 | **teils** | `PropertySchema.target`, `link_wrong_type`; Vorschläge in den Sichtbarkeitsfeldern für jede Art noch nicht überall |
 | [[REQ-259]] | Vorgabewerte für Felder | 3 | **steht** | `default` am Feld |
 | [[REQ-261]] | Sorte einer Art als freies Feld mit Vorschlägen | 2 | **steht** | `Creature.kind`, `Place.kind`, `suggest` |
@@ -83,27 +83,27 @@ Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell,
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| [[REQ-004]] | Layer entity: types system/expansion/world/pack/campaign/override-set, dependsOn, nesting by link with priority | 1 | **steht** | `Layer.kind` system · expansion · world · pack · campaign · overrides, `order`, `version` |
-| [[REQ-005]] | Entry relation: entity→layer with mode adds/overrides/removes, addedAt/addedBy, optional version pin | 1 | **steht** | `inLayer` mit `mode` adds/removes; Überschreiben ist die Kante `overrides`; kein Pin |
-| [[REQ-006]] | Stack resolution: campaign-activated ordered layers, specificity precedence (campaign > pack > world > system) | 1 | **teils** | Prototyp: `inStack`/`resolveArticle`; Server kennt nur die Zugehörigkeit (`campaignsOf`) — Abgleich A2 |
-| [[REQ-007]] | Stack expert settings: layer priority, per-entry pick, disable single override, flatten into independent layer | 3 | **offen** |  |
-| [[REQ-044]] | Scope inspector sidebar, slim: effective source layer per block/property | 2 | **steht** | Herkunft am Artikelkopf, Ansicht `stack` |
-| [[REQ-045]] | Scope inspector sidebar, full: layer actions (override here, create variant, move to pack, pick entry) | 3 | **offen** |  |
-| [[REQ-100]] | World as scope and layer (members, owns content, activated by campaigns) | 1 | **teils** | `Layer.kind: world`; keine Mitglieder je Welt |
-| [[REQ-102]] | Contextual article rendering per stack: knowledge, time, scope resolved at read time | 2 | **teils** | Prototyp ja; Server ohne Stapel — Abgleich A2 |
-| [[REQ-244]] | Ebenen gruppieren (Grundregeln, Ergänzungen, Settings, Abenteuer, Unearthed Arcana, 2024, Eigenes …), gruppenweise auf- und zuklappen und aufschalten | 2 | **steht** | `kind: group`, `partOf`, `resolvedStack` (T-088, E-022 b) |
-| [[REQ-245]] | Ebenen beschreiben sich selbst: voller Titel, erklärte Abkürzung, Erscheinungsdatum, Regelstand (2014/2024), Gruppe, Inhalt je Art; Quellenkürzel an Artikeln zeigen überall den vollen Namen | 2 | **steht** | Titel, Kürzel, Beschreibung an der Ebene (T-088) |
-| [[REQ-249]] | Ebenen nach Herausgeber und Kategorie: offizielles D&D, Partner-Inhalte, Drittanbieter, Homebrew — dazu die Kategorien wie in 5e.tools (Utilities › Content Blocklist), damit die Auswahl leichtfällt | 2 | **teils** | `publisherOf` und Herausgeber-Gruppen (T-094, T-109); Kategorien wie die Blocklist von 5e.tools offen |
-| [[REQ-253]] | Ebenen und Artikel kopieren: eine ganze Ebene oder ausgewählte Artikel daraus in eine andere (eigene) Ebene kopieren, z. B. in der Werkbank | 3 | **offen** | später; Kopie ohne `overrides` |
-| [[REQ-255]] | Ebenen teilweise aufschalten: aus einem Buch oder Abenteuer nur Regeln/Gegenstände nehmen, nicht dessen Orte, NSC und Begegnungen (Auswahl nach Bereich World/Rules/Story bzw. Art) | 2 | **steht** | `activates` mit Auswahl nach Bereich und Art (T-105) |
+| [[REQ-004]] | Ebenen als Pakete von Inhalt | 1 | **steht** | `Layer.kind` system · expansion · world · pack · campaign · overrides, `order`, `version` |
+| [[REQ-005]] | Zugehörigkeit eines Artikels zu einer Ebene | 1 | **steht** | `inLayer` mit `mode` adds/removes; Überschreiben ist die Kante `overrides`; kein Pin |
+| [[REQ-006]] | Stapel: was in der Kampagne gilt | 1 | **teils** | Prototyp: `inStack`/`resolveArticle`; Server kennt nur die Zugehörigkeit (`campaignsOf`) — Abgleich A2 |
+| [[REQ-007]] | Stapel für Fortgeschrittene | 3 | **offen** |  |
+| [[REQ-044]] | Herkunft am Artikel sehen | 2 | **steht** | Herkunft am Artikelkopf, Ansicht `stack` |
+| [[REQ-045]] | Ebenen-Aktionen am Artikel | 3 | **offen** |  |
+| [[REQ-100]] | Welt als Ebene | 1 | **teils** | `Layer.kind: world`; keine Mitglieder je Welt |
+| [[REQ-102]] | Artikel je Stapel und Wissen zeichnen | 2 | **teils** | Prototyp ja; Server ohne Stapel — Abgleich A2 |
+| [[REQ-244]] | Ebenen gruppieren | 2 | **steht** | `kind: group`, `partOf`, `resolvedStack` (T-088, E-022 b) |
+| [[REQ-245]] | Ebenen beschreiben sich selbst | 2 | **steht** | Titel, Kürzel, Beschreibung an der Ebene (T-088) |
+| [[REQ-249]] | Ebenen nach Herausgeber | 2 | **teils** | `publisherOf` und Herausgeber-Gruppen (T-094, T-109); Kategorien wie die Blocklist von 5e.tools offen |
+| [[REQ-253]] | Ebenen und Artikel kopieren | 3 | **offen** | später; Kopie ohne `overrides` |
+| [[REQ-255]] | Ebenen teilweise aufschalten | 2 | **steht** | `activates` mit Auswahl nach Bereich und Art (T-105) |
 
 ### F-005 Fassungen & Varianten
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| [[REQ-008]] | Variant mechanism: copy with variantOf link | 1 | **teils** | Kante `variantOf` da; kein Kopierknopf |
-| [[REQ-009]] | Override mechanism: explicit overrides relation with scope | 2 | **steht** | `overrides` in einer Ebene, Auflösung im Prototyp |
-| [[REQ-108]] | Campaign-specific lore divergence via campaign-scoped blocks and overrides | 3 | **steht** | `overrides` in der Kampagnenebene |
+| [[REQ-008]] | Varianten einer Sache | 1 | **teils** | Kante `variantOf` da; kein Kopierknopf |
+| [[REQ-009]] | Überschreiben in der eigenen Ebene | 2 | **steht** | `overrides` in einer Ebene, Auflösung im Prototyp |
+| [[REQ-108]] | Lore der Kampagne abweichen lassen | 3 | **steht** | `overrides` in der Kampagnenebene |
 | [[REQ-264]] | Vergleichsebenen der Kampagne | 2 | **teils** | Vergleichsebenen an der Kampagne; Wahl im Kampagnen-Popup und gruppenweise offen |
 | [[REQ-310]] | Fassungen am Feld zeigen | 2 | **steht** | T-092, T-103 |
 
@@ -111,34 +111,34 @@ Register, Arten, Felder, Kanten, Ebenen und Fassungen, Ansichten — das Modell,
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| [[REQ-026]] | View config format: mode raw/structured/hybrid, field list, resolution priority per view | 1 | **steht** | drei Ansichten, Anordnung am Typ (`InterfaceDef.views`) |
-| [[REQ-164]] | Facets (Darstellungsstufen): system-wide set short/description/full/image/token/map/link, reusable across boards, sheets, statblocks, notes; `renderer_def` analogous to `projection_def` | 2 | **ersetzt** | drei Ansichten; Bild, Token, Karte sind Elemente |
-| [[REQ-256]] | Ansichten ohne Code definieren: global je Ansicht festlegen, welche Felder (nach Typ bzw. Typ.Feld) erscheinen; ein Artikel zeigt davon, was er hat; je Artikelart überschreib- und anpassbar | 1 | **steht** | Ansichten im Register, Anpassung je Art (T-110, E-030 b) |
+| [[REQ-026]] | Ansichten festlegen | 1 | **steht** | drei Ansichten, Anordnung am Typ (`InterfaceDef.views`) |
+| [[REQ-164]] | Darstellungsstufen als eigenes System | 2 | **ersetzt** | drei Ansichten; Bild, Token, Karte sind Elemente |
+| [[REQ-256]] | Ansichten ohne Code definieren | 1 | **steht** | Ansichten im Register, Anpassung je Art (T-110, E-030 b) |
 
 ### F-007 Verweise & Platzhalter
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| [[REQ-013]] | Reference registry & auto-linking: ID-based links, alias matching, auto-link when unambiguous, suggest when ambiguous | 1 | **teils** | `[[Verweise]]` nach Name und Alias, Vorschläge beim Tippen, `Rule.autolink`; kein Auto-Link beim Schreiben |
-| [[REQ-014]] | Backlinks view | 3 | **steht** | Rückbezüge in der Seitenleiste (`backlinks`) |
-| [[REQ-174]] | Parameterised rule templates: `{VAR}` placeholders in RuleElement text, bound per reference; resolution order reference → entity → campaign register | 2 | **steht** | `{VAR}`: Kante → Artikel → Kampagnenwerte → Register; ein Platzhalter trägt seinen Artikel, Satzanfang gross beim Lesen (D60) |
-| [[REQ-175]] | Inline rule reference panel: text scanned against RuleElement names and aliases, matches shown as an expandable block in the view | 3 | **steht** | `Rule.autolink` |
-| [[REQ-176]] | Similarity suggestions on create: fuzzy name/text matching proposes existing entities before a duplicate is made; promote-to-reference in one action | 3 | **teils** | Vorschläge nach Name und Alias; keine Ähnlichkeit |
+| [[REQ-013]] | Verweise nach Nummer, getippt nach Name | 1 | **teils** | `[[Verweise]]` nach Name und Alias, Vorschläge beim Tippen, `Rule.autolink`; kein Auto-Link beim Schreiben |
+| [[REQ-014]] | Rückbezüge sehen | 3 | **steht** | Rückbezüge in der Seitenleiste (`backlinks`) |
+| [[REQ-174]] | Regeltexte mit Platzhaltern | 2 | **steht** | `{VAR}`: Kante → Artikel → Kampagnenwerte → Register; ein Platzhalter trägt seinen Artikel, Satzanfang gross beim Lesen (D60) |
+| [[REQ-175]] | Regelbegriffe im Text erkennen | 3 | **steht** | `Rule.autolink` |
+| [[REQ-176]] | Ähnliches vor dem Anlegen vorschlagen | 3 | **teils** | Vorschläge nach Name und Alias; keine Ähnlichkeit |
 
 ### F-008 Kanten verstehen
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| [[REQ-015]] | Graph view | 4 | **offen** | Typdiagramm steht (Register › How it works); Artikelgraph nicht — Aufgabe #44 |
-| [[REQ-257]] | Kanten verständlich: zu jeder Kantenart steht, was sie bedeutet und was sie bewirkt (Sichtbarkeit, Stapel, Werte der Figur, nur Anzeige) — in der Auswahl, am Artikel und im Register, mit Vorschau vor dem Anlegen | 2 | **steht** | „How edges work“, Erklärung in Auswahl und Register (T-111) |
+| [[REQ-015]] | Graph der Artikel | 4 | **offen** | Typdiagramm steht (Register › How it works); Artikelgraph nicht — Aufgabe #44 |
+| [[REQ-257]] | Kanten verständlich | 2 | **steht** | „How edges work“, Erklärung in Auswahl und Register (T-111) |
 
 ### F-009 Verlauf & gleichzeitiges Schreiben
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| [[REQ-003]] | Change chain: every change as entry (who/when/what) along the version chain, git-log style | 1 | **teils** | Server schreibt `event_log` (`entity.written`, `entity.deleted`); keine Anzeige, keine Kette |
-| [[REQ-191]] | Fail-closed persistence: a failed load or migration must never be overwritten by a later autosave; the unreadable state is preserved and downloadable | 1 | **steht** | Fail-closed im Prototyp; in der Seite: Schreiben nur gegen gelesene Revision, Entwurf herunterladbar |
-| [[REQ-192]] | Optimistic concurrency for non-realtime edits: per-entity revision check; the second writer is rejected with a merge prompt rather than silently winning | 2 | **steht** | Revision je Artikel am Server (409), Zusammenführen in der Maske (mergeEntity) |
+| [[REQ-003]] | Änderungsverlauf je Artikel | 1 | **teils** | Server schreibt `event_log` (`entity.written`, `entity.deleted`); keine Anzeige, keine Kette |
+| [[REQ-191]] | Nichts still überschreiben | 1 | **steht** | Fail-closed im Prototyp; in der Seite: Schreiben nur gegen gelesene Revision, Entwurf herunterladbar |
+| [[REQ-192]] | Gleichzeitig bearbeiten ohne Verlust | 2 | **steht** | Revision je Artikel am Server (409), Zusammenführen in der Maske (mergeEntity) |
 
 ## EP-02 Zugang & Betrieb
 
@@ -148,72 +148,72 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| [[REQ-031]] | Authentication: password hash check behind an auth interface | 1 | **steht** | Argon2id, Sitzung beim Server (Zugang.md) |
-| [[REQ-032]] | Nextcloud / OIDC SSO behind the auth interface | 4 | **verworfen** | Entscheidung 2 (19.9.): kein SSO |
-| [[REQ-033]] | User accounts & profile | 1 | **steht** | `app_user` |
-| [[REQ-034]] | Simplest onboarding: GM-created accounts or plain invite link, whichever is cheaper | 2 | **steht** | Einladung, Konto selbst anlegen |
-| [[REQ-228]] | Verlorene Einladung neu ausgeben: eine offene Einladung lässt sich in einem Schritt durch eine neue mit denselben Angaben (Kampagne, Rolle, Figur, Nutzungen, Ablauf) ersetzen | 4 | **offen** | heute widerrufen und neu anlegen (W3) |
-| [[REQ-229]] | Konten in der Oberfläche verwalten: sperren und entsperren und die Verwaltung (`is_admin`) vergeben, ohne Kommandozeile | 3 | **offen** | nur über `user` auf dem Server; die Kontoliste der Verwaltung steht in der Seite (W3) |
+| [[REQ-031]] | Anmelden mit Passwort | 1 | **steht** | Argon2id, Sitzung beim Server (Zugang.md) |
+| [[REQ-032]] | Anmeldung über Nextcloud/OIDC | 4 | **verworfen** | Entscheidung 2 (19.9.): kein SSO |
+| [[REQ-033]] | Konten | 1 | **steht** | `app_user` |
+| [[REQ-034]] | Einladen per Link | 2 | **steht** | Einladung, Konto selbst anlegen |
+| [[REQ-228]] | Verlorene Einladung neu ausgeben | 4 | **offen** | heute widerrufen und neu anlegen (W3) |
+| [[REQ-229]] | Konten in der Seite verwalten | 3 | **offen** | nur über `user` auf dem Server; die Kontoliste der Verwaltung steht in der Seite (W3) |
 | [[REQ-266]] | Demo-Zugang | 5 | **offen** |  |
 
 ### F-011 Rollen je Kampagne
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| [[REQ-035]] | Membership triples: user + scope (campaign/world/layer) + role | 1 | **steht** | `campaign_member (campaign, user, role)`; Scope ist die Kampagne |
-| [[REQ-036]] | Roles GM / Player (Admin global) | 1 | **steht** | gm · co-gm · player · spectator; `is_admin` global |
-| [[REQ-037]] | Roles Co-GM / Spectator | 3 | **steht** |  |
+| [[REQ-035]] | Rolle je Kampagne | 1 | **steht** | `campaign_member (campaign, user, role)`; Scope ist die Kampagne |
+| [[REQ-036]] | Leitung, Spieler und Verwaltung | 1 | **steht** | gm · co-gm · player · spectator; `is_admin` global |
+| [[REQ-037]] | Mitleitung und Zuschauer | 3 | **steht** |  |
 
 ### F-012 Sichtbarkeit & Wissen
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| [[REQ-038]] | Visibility evaluation, simple: gm_only vs campaign | 1 | **steht** | `audience`, am Server ausgewertet (`articleVisible`) |
-| [[REQ-039]] | Visibility evaluation, full: scope, allowed/denied roles, knowledgeTags, requiresTags, sharedUsers | 3 | **ersetzt** | drei Felder statt sechs; scope, Rollenlisten, sharedUsers weg (30.9.) |
-| [[REQ-040]] | Knowledge tags & KnowledgeState per campaign (grants, holders, since) | 2 | **steht** | anders: `Information`/`Knowledge` als Artikel, `knownBy` an Träger |
-| [[REQ-059]] | Creature knowledge facts: gated ContentBlocks on type / species / faction | 3 | **steht** | `Facts.fact#id` über eine Information |
-| [[REQ-156]] | Visibility inheritance container → children: `inherit: true` on Visibility, evaluated by Resolution | 2 | **verworfen** | `inherit` bewusst weg — kommt mit einer Tiefe wieder, wenn gebraucht |
-| [[REQ-177]] | Field-level knowledge gating: grant individual components or fields of an entity, not only ContentBlocks | 2 | **steht** | `Information.fields` je Feld und je Eintrag |
-| [[REQ-178]] | Cover names: an entity may carry a player-facing alias shown while its identity is ungranted | 3 | **steht** | `Identity.cover` |
-| [[REQ-179]] | Known-unknowns disclosure: a gated view may reveal the count of withheld facts without revealing them | 4 | **steht** | „…and 3 more things" |
-| [[REQ-203]] | Fraktionen mit Rängen: `Faction.ranks` als Leiter (niedrigster zuerst), der Rang eines Mitglieds an der Kante `memberOf`, und eine Wissenszuteilung an die Fraktion darf einen Mindestrang nennen — was der Zirkel weiss, weiss der Novize noch nicht | 2 | **steht** | `Faction.ranks`, `memberOf.props.rank`, `knownBy.props.rank` als Mindestrang (7.10., A7) |
+| [[REQ-038]] | Wer einen Artikel sieht | 1 | **steht** | `audience`, am Server ausgewertet (`articleVisible`) |
+| [[REQ-039]] | Sichtbarkeit mit Rollenlisten und Freigabemarken | 3 | **ersetzt** | drei Felder statt sechs; scope, Rollenlisten, sharedUsers weg (30.9.) |
+| [[REQ-040]] | Wissen zuteilen | 2 | **steht** | anders: `Information`/`Knowledge` als Artikel, `knownBy` an Träger |
+| [[REQ-059]] | Wissen über Arten von Kreaturen | 3 | **steht** | `Facts.fact#id` über eine Information |
+| [[REQ-156]] | Sichtbarkeit vererben | 2 | **verworfen** | `inherit` bewusst weg — kommt mit einer Tiefe wieder, wenn gebraucht |
+| [[REQ-177]] | Einzelne Felder freigeben | 2 | **steht** | `Information.fields` je Feld und je Eintrag |
+| [[REQ-178]] | Decknamen | 3 | **steht** | `Identity.cover` |
+| [[REQ-179]] | Zeigen, dass es mehr gibt | 4 | **steht** | „…and 3 more things" |
+| [[REQ-203]] | Wissen nach Rang in einer Fraktion | 2 | **steht** | `Faction.ranks`, `memberOf.props.rank`, `knownBy.props.rank` als Mindestrang (7.10., A7) |
 
 ### F-013 Schreibrechte & Freigabe
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| [[REQ-041]] | Per-document edit permissions: owner, GM-default (overridable), co-editors / wardship / open | 2 | **teils** | Verwaltung oder eigene Figur (+ carries/holds/crafting); die Leitung fehlt in `mayWrite` |
-| [[REQ-042]] | Field-group edit granularity (e.g. vitals editable, abilities locked) | 4 | **offen** |  |
-| [[REQ-237]] | Spielende legen Artikel jeder Art an (z. B. Figur, Hintergrund); „ready“ setzt nur die Leitung. Spielende sehen nur fertige Artikel und ihre eigenen; ändert eine Spielerin einen fertigen Artikel, fällt der Status zurück und für alle anderen gilt der letzte fertige Stand weiter | 2 | **steht** | `isReady`, `Viewer.own`, `entity_ready` (T-075, D72, D74) |
-| [[REQ-242]] | Spielercharakter: die Leitung kann einzelne Felder oder Kanten für den Spieler sperren oder ihre Änderung freigabepflichtig machen (z. B. Attributswerte, Klasse), während der Rest frei bleibt | 3 | **offen** | die eigene Figur verwaltet der Spieler ganz (E-014 d) |
+| [[REQ-041]] | Wer was schreiben darf | 2 | **teils** | Verwaltung oder eigene Figur (+ carries/holds/crafting); die Leitung fehlt in `mayWrite` |
+| [[REQ-042]] | Schreibrecht je Feldgruppe | 4 | **offen** |  |
+| [[REQ-237]] | Spielende legen Artikel an, die Leitung gibt frei | 2 | **steht** | `isReady`, `Viewer.own`, `entity_ready` (T-075, D72, D74) |
+| [[REQ-242]] | Felder der eigenen Figur sperren | 3 | **offen** | die eigene Figur verwaltet der Spieler ganz (E-014 d) |
 
 ### F-014 Sicht eines Spielers
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| [[REQ-241]] | Als Spielleitung die Sicht eines Spielers einnehmen: dieselben Artikel, Felder und Entwürfe sehen wie dieses Konto, um Probleme zu erkennen und zu helfen | 1 | **steht** | Sicht eines Kontos am Server gerechnet (E-019 a) |
+| [[REQ-241]] | Die Sicht eines Spielers einnehmen | 1 | **steht** | Sicht eines Kontos am Server gerechnet (E-019 a) |
 
 ### F-015 API-Tokens & Werkzeugzugang
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| [[REQ-234]] | Werkzeugzugang: ein Konto vergibt API-Tokens (`read`/`write`, mit Ablauf, nur als Hash gespeichert); ein Token sieht und darf nie mehr als sein Konto | 3 | **steht** | `app_token`, Bearer `atm_…`, `read`/`write` mit Ablauf; `scripts/atlas.mjs` (W9) |
+| [[REQ-234]] | API-Tokens für Werkzeuge | 3 | **steht** | `app_token`, Bearer `atm_…`, `read`/`write` mit Ablauf; `scripts/atlas.mjs` (W9) |
 | [[REQ-268]] | Dev-Token aus der Werkbank erzeugen | 3 | **teils** | Tokens am Konto in `konto/`; aus der Werkbank für andere Konten nicht |
 
 ### F-016 Werkbank
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| [[REQ-088]] | Bulk actions: knowledge / permission assignment | 3 | **teils** | Massenbearbeitung ohne Wissen |
-| [[REQ-235]] | Werkbank: erweiterbare Prüfungen über den ganzen Bestand und Massenänderungen mit Vorschau, Protokoll und Rückgängig; mehrere Artikel löschen nur mit ausdrücklicher Bestätigung | 3 | **steht** | `/werkbank`: Prüfungen (`CHECKS`), `POST /api/bulk` mit Vorschau, `event_log` und Rückgängig (W9, D68) |
+| [[REQ-088]] | Massenänderungen an Wissen und Rechten | 3 | **teils** | Massenbearbeitung ohne Wissen |
+| [[REQ-235]] | Werkbank: Prüfungen und Massenänderungen | 3 | **steht** | `/werkbank`: Prüfungen (`CHECKS`), `POST /api/bulk` mit Vorschau, `event_log` und Rückgängig (W9, D68) |
 
 ### F-017 Ausrollen & Sicherung
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| [[REQ-154]] | Deployment: container(s) on NAS, reverse proxy, TLS, remote player access | 1 | **steht** | Hetzner, Caddy, GHCR (Betrieb.md) |
-| [[REQ-155]] | Backups of database and app-managed assets | 2 | **steht** | Sicherung vor jedem Ausrollen; nächtliche als Rezept |
-| [[REQ-199]] | Produktionsdaten nach preprod spiegeln: regelmässiger Abzug aus der Prod-Datenbank in die Testinstanz, damit gegen echte Inhalte getestet wird | 3 | **steht** | Rezept in Betrieb.md, ohne Konten; `members` nicht in der Ausfuhr |
+| [[REQ-154]] | Ausrollen nach dev und prod | 1 | **steht** | Hetzner, Caddy, GHCR (Betrieb.md) |
+| [[REQ-155]] | Sicherungen | 2 | **steht** | Sicherung vor jedem Ausrollen; nächtliche als Rezept |
+| [[REQ-199]] | Produktionsdaten nach dev spiegeln | 3 | **steht** | Rezept in Betrieb.md, ohne Konten; `members` nicht in der Ausfuhr |
 | [[REQ-267]] | Eigenes Netz-VPS mit VPN | 5 | **offen** | bewusst später |
 | [[REQ-269]] | Ankündigen, wann produktiv gearbeitet werden kann | 2 | **teils** | Freigabe für verlierende Migrationen steht; Zusage und Ankündigung fehlen |
 
@@ -228,8 +228,8 @@ Konten, Rollen je Kampagne, Sichtbarkeit und Wissen, Schreibrechte, API-Tokens, 
 
 | ID | Story | Prio | Stand | Anmerkung |
 |---|---|---|---|---|
-| [[REQ-232]] | Listen rechnet der Server: Blättern, Suchen, Filtern und Auswahlen über den gesiebten Bestand am Server, die Oberfläche hält keinen Bestand — ein Blatt unter 100 KB, Blättern und Suchen unter 100 ms, ein Artikel ohne Warten auf eine Liste | 2 | **steht** | `GET /api/list` mit Spalten aus `overview` und Facetten, 2 KB je Blatt in 15–40 ms; erster Aufruf eines Spielers nach einer Änderung ≈370 ms (W7, D66) |
-| [[REQ-246]] | Navigation ohne Einfrieren: ein Seitenwechsel antwortet in unter einer Sekunde, auch nach längerer Pause und mit dem ganzen 5e.tools-Bestand; werden Daten geladen, sagt ein Banner das (statt stillzustehen) | 1 | **steht** | Stapel einmal gerechnet, Ladebanner, Startmeldung (T-086) |
+| [[REQ-232]] | Listen rechnet der Server | 2 | **steht** | `GET /api/list` mit Spalten aus `overview` und Facetten, 2 KB je Blatt in 15–40 ms; erster Aufruf eines Spielers nach einer Änderung ≈370 ms (W7, D66) |
+| [[REQ-246]] | Navigation ohne Einfrieren | 1 | **steht** | Stapel einmal gerechnet, Ladebanner, Startmeldung (T-086) |
 
 ## EP-03 Kreaturen & Figuren
 
@@ -792,19 +792,19 @@ Boards, Suche, Filter und Filtergruppen, Navigation und Kurzansicht, Bearbeiten 
 
 Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 
-- **[[REQ-003]]** (1, teils, Inhaltsgerüst) — Change chain: every change as entry (who/when/what) along the version chain, git-log style — *Server schreibt `event_log` (`entity.written`, `entity.deleted`); keine Anzeige, keine Kette*
-- **[[REQ-006]]** (1, teils, Inhaltsgerüst) — Stack resolution: campaign-activated ordered layers, specificity precedence (campaign > pack > world > system) — *Prototyp: `inStack`/`resolveArticle`; Server kennt nur die Zugehörigkeit (`campaignsOf`) — Abgleich A2*
-- **[[REQ-008]]** (1, teils, Inhaltsgerüst) — Variant mechanism: copy with variantOf link — *Kante `variantOf` da; kein Kopierknopf*
-- **[[REQ-013]]** (1, teils, Inhaltsgerüst) — Reference registry & auto-linking: ID-based links, alias matching, auto-link when unambiguous, suggest when ambiguous — *`[[Verweise]]` nach Name und Alias, Vorschläge beim Tippen, `Rule.autolink`; kein Auto-Link beim Schreiben*
+- **[[REQ-003]]** (1, teils, Inhaltsgerüst) — Änderungsverlauf je Artikel — *Server schreibt `event_log` (`entity.written`, `entity.deleted`); keine Anzeige, keine Kette*
+- **[[REQ-006]]** (1, teils, Inhaltsgerüst) — Stapel: was in der Kampagne gilt — *Prototyp: `inStack`/`resolveArticle`; Server kennt nur die Zugehörigkeit (`campaignsOf`) — Abgleich A2*
+- **[[REQ-008]]** (1, teils, Inhaltsgerüst) — Varianten einer Sache — *Kante `variantOf` da; kein Kopierknopf*
+- **[[REQ-013]]** (1, teils, Inhaltsgerüst) — Verweise nach Nummer, getippt nach Name — *`[[Verweise]]` nach Name und Alias, Vorschläge beim Tippen, `Rule.autolink`; kein Auto-Link beim Schreiben*
 - **[[REQ-018]]** (1, offen, Regeln & Nachschlagen) — Rule effects format: effects[] with grants/constraints, open type list, consumers ignore unknown types — *keine `effects[]`; Regeln sind Text mit `{VAR}`*
 - **[[REQ-069]]** (1, teils, Spielererlebnis) — Phone-first responsive layout for all player-facing views — *Prototyp passt sich an; `apps/web` ist noch klein*
-- **[[REQ-100]]** (1, teils, Inhaltsgerüst) — World as scope and layer (members, owns content, activated by campaigns) — *`Layer.kind: world`; keine Mitglieder je Welt*
+- **[[REQ-100]]** (1, teils, Inhaltsgerüst) — Welt als Ebene — *`Layer.kind: world`; keine Mitglieder je Welt*
 - **[[REQ-145]]** (1, teils, Medien & Assets) — Asset service implementation: app-managed storage (icons, portraits, thumbnails) — *Assets als Artikel; Ablage im Artefakt*
-- **[[REQ-041]]** (2, teils, Zugang & Betrieb) — Per-document edit permissions: owner, GM-default (overridable), co-editors / wardship / open — *Verwaltung oder eigene Figur (+ carries/holds/crafting); die Leitung fehlt in `mayWrite`*
+- **[[REQ-041]]** (2, teils, Zugang & Betrieb) — Wer was schreiben darf — *Verwaltung oder eigene Figur (+ carries/holds/crafting); die Leitung fehlt in `mayWrite`*
 - **[[REQ-072]]** (2, offen, Spielererlebnis) — Player notes as owned documents — *`Notes` an Artikeln; kein eigener Notizartikel je Spieler*
 - **[[REQ-079]]** (2, teils, Kampagne & Sitzungen) — DM session quick actions: grant knowledge, reveal block, mark encounter occurred — one tap — *Wissen zuteilen im Seitenpanel; kein Ein-Tipp-Knopf in der Sitzung*
 - **[[REQ-092]]** (2, offen, Regeln & Nachschlagen) — Spell entities with layer-scoped attached rule sets (5e 2014 / 2024 / homebrew) — *keine Art für Zauber — Abgleich A9*
-- **[[REQ-102]]** (2, teils, Inhaltsgerüst) — Contextual article rendering per stack: knowledge, time, scope resolved at read time — *Prototyp ja; Server ohne Stapel — Abgleich A2*
+- **[[REQ-102]]** (2, teils, Inhaltsgerüst) — Artikel je Stapel und Wissen zeichnen — *Prototyp ja; Server ohne Stapel — Abgleich A2*
 - **[[REQ-113]]** (2, offen, Live-Spiel) — Widget: notes — *Aufgabe #58*
 - **[[REQ-114]]** (2, teils, Live-Spiel) — Widget: quick-create (creates entries in the campaign layer inline) — *Anlegen aus dem Board*
 - **[[REQ-146]]** (2, offen, Medien & Assets) — NAS / Nextcloud backend for large assets (mount vs WebDAV → AD-15)
@@ -812,7 +812,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-166]]** (2, teils, Oberfläche & Navigation) — Board-first authoring: create entities directly on the canvas (into the campaign layer), choose their facet and place them in one flow — *Anlegen auf dem Board*
 - **[[REQ-202]]** (2, offen, Spielererlebnis) — Chats stehen ausserhalb von Abzug, Ausfuhr und Recap: ein Faden zwischen zwei Spielern gehört weder in den Prod-nach-preprod-Abzug noch in eine Kampagnenausfuhr, und die SL liest nicht mit
 - **[[REQ-236]]** (2, offen, Kampagne & Sitzungen) — Kampagne anlegen mit Dialog: Name, aufgeschaltete Ebenen (Liste mit Häkchen und Reihenfolge, vorhandene vorausgewählt), eigene Kampagnenebene, Leitung — *Kampagne anlegen ohne Dialog*
-- **[[REQ-249]]** (2, teils, Inhaltsgerüst) — Ebenen nach Herausgeber und Kategorie: offizielles D&D, Partner-Inhalte, Drittanbieter, Homebrew — dazu die Kategorien wie in 5e.tools (Utilities › Content Blocklist), damit die Auswahl leichtfällt — *`publisherOf` und Herausgeber-Gruppen (T-094, T-109); Kategorien wie die Blocklist von 5e.tools offen*
+- **[[REQ-249]]** (2, teils, Inhaltsgerüst) — Ebenen nach Herausgeber — *`publisherOf` und Herausgeber-Gruppen (T-094, T-109); Kategorien wie die Blocklist von 5e.tools offen*
 - **[[REQ-258]]** (2, teils, Inhaltsgerüst) — Verweisfeld nennt, welche Artikel es annimmt — *`PropertySchema.target`, `link_wrong_type`; Vorschläge in den Sichtbarkeitsfeldern für jede Art noch nicht überall*
 - **[[REQ-264]]** (2, teils, Inhaltsgerüst) — Vergleichsebenen der Kampagne — *Vergleichsebenen an der Kampagne; Wahl im Kampagnen-Popup und gruppenweise offen*
 - **[[REQ-269]]** (2, teils, Zugang & Betrieb) — Ankündigen, wann produktiv gearbeitet werden kann — *Freigabe für verlierende Migrationen steht; Zusage und Ankündigung fehlen*
@@ -826,11 +826,11 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-311]]** (2, teils, Spielererlebnis) — Spieleransicht mit der eigenen Figur im Fokus — *Entwurf Player/PlayerPhone*
 - **[[REQ-312]]** (2, teils, Karten) — Eigenes Token bewegen — *Prototyp ja; in der Seite noch nicht für Spielende*
 - **[[REQ-313]]** (2, teils, Regeln & Nachschlagen) — Zustände als Artikel — *Wirkung `affects` gespeichert, nicht ausgewertet*
-- **[[REQ-007]]** (3, offen, Inhaltsgerüst) — Stack expert settings: layer priority, per-entry pick, disable single override, flatten into independent layer
+- **[[REQ-007]]** (3, offen, Inhaltsgerüst) — Stapel für Fortgeschrittene
 - **[[REQ-022]]** (3, offen, Medien & Assets) — Derived asset variants: thumbnails, map tiles, PDF page renders, stored app-side
 - **[[REQ-025]]** (3, offen, Welt & Lore) — CalendarSystem definition: months, eras, moons, configurable per world/system — *nur die Einstellung `calendar`; keine Kalenderzeile*
 - **[[REQ-028]]** (3, teils, Oberfläche & Navigation) — Full-text search across content — *Suche am Server über Name, Alias, Deckname und Nummer, Feldfilter als Facetten (`GET /api/list`, W7); keine Volltextsuche*
-- **[[REQ-045]]** (3, offen, Inhaltsgerüst) — Scope inspector sidebar, full: layer actions (override here, create variant, move to pack, pick entry)
+- **[[REQ-045]]** (3, offen, Inhaltsgerüst) — Ebenen-Aktionen am Artikel
 - **[[REQ-055]]** (3, offen, Kreaturen & Figuren) — Inline trait reuse & variant creation while typing — *Pool steht; Variante beim Tippen nicht*
 - **[[REQ-060]]** (3, teils, Kreaturen & Figuren) — Companions / summons as regular creatures via companionOf + overrides — *`Creature.kind` companion/summon; keine `companionOf`-Kante*
 - **[[REQ-067]]** (3, offen, Kreaturen & Figuren) — Character sheet: Spellcasting tab (slots/points, concentration, active spells, list) — *es gibt keine Art für Zauber — Abgleich A9*
@@ -838,7 +838,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-080]]** (3, offen, Kampagne & Sitzungen) — Readaloud blocks unlocking for players after session (time/event-based grant)
 - **[[REQ-083]]** (3, offen, Spielererlebnis) — Player-created quests and personal goals — *Spieler schreiben nur ihre Figur*
 - **[[REQ-086]]** (3, teils, Kampagne & Sitzungen) — Party view: passive perception, feats, inventory overview — *Party-Seite mit Inventar und Werkbank; keine Übersicht der passiven Wahrnehmung*
-- **[[REQ-088]]** (3, teils, Zugang & Betrieb) — Bulk actions: knowledge / permission assignment — *Massenbearbeitung ohne Wissen*
+- **[[REQ-088]]** (3, teils, Zugang & Betrieb) — Massenänderungen an Wissen und Rechten — *Massenbearbeitung ohne Wissen*
 - **[[REQ-097]]** (3, offen, Regeln & Nachschlagen) — Spell lists as relations (class ↔ spell) — *braucht REQ-092*
 - **[[REQ-109]]** (3, teils, Spielererlebnis) — Player-authored ContentBlocks with per-view block-type whitelist — *Felder da (`Article.poem/song`); Schreibrecht offen (REQ-041)*
 - **[[REQ-119]]** (3, offen, Oberfläche & Navigation) — Player boards
@@ -849,7 +849,7 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-135]]** (3, teils, Karten) — Play tokens: session- or campaign-scoped state objects (combat positions, temporary changes) — *Tokens als Kanten; keine getrennte Lebensdauer je Sitzung*
 - **[[REQ-160]]** (3, teils, Oberfläche & Navigation) — Anchor quick navigation: jump between anchors (list, hotkeys) — session notes → map → house rules without leaving the board
 - **[[REQ-167]]** (3, offen, Medien & Assets) — Print & export outputs: item cards, creature cards, character sheets (PDF), maps (image/print) rendered from facets — the facet defines *what* appears, the medium (screen/print/pdf/image) *how*; card-sheet assembly (n cards per page) as export config
-- **[[REQ-176]]** (3, teils, Inhaltsgerüst) — Similarity suggestions on create: fuzzy name/text matching proposes existing entities before a duplicate is made; promote-to-reference in one action — *Vorschläge nach Name und Alias; keine Ähnlichkeit*
+- **[[REQ-176]]** (3, teils, Inhaltsgerüst) — Ähnliches vor dem Anlegen vorschlagen — *Vorschläge nach Name und Alias; keine Ähnlichkeit*
 - **[[REQ-180]]** (3, offen, Kampagne & Sitzungen) — Narrative seeds: planted threads with category (Backstory · Geheimnis · Faden · Idee · Versprechen · Konsequenz) and status (offen · gepflanzt · aufgegangen · verworfen), bound to a character and the session planted in — *keine Art und kein Feld für gepflanzte Fäden*
 - **[[REQ-187]]** (3, offen, Live-Spiel) — Table display mode: a shared read-only presentation view for a screen at the table, distinct from per-player accounts
 - **[[REQ-200]]** (3, offen, Spielererlebnis) — Chat: Fäden zwischen SL und einzelnen Spielern und zwischen Spielern untereinander, an der Kampagne und nicht an einer Sitzung
@@ -860,9 +860,9 @@ Offene und teilweise Stories mit Priorität 1 bis 3, nach Priorität:
 - **[[REQ-210]]** (3, teils, Karten) — Karte und Initiative je als Vollbild, je mit SL- und Spieleransicht; Spielende bewegen ihre eigenen Tokens und prüfen die Reichweite selbst — *Prototyp: Vollbild für Karte und Initiative, SL-/Spieleransicht der Karte, Spielende bewegen eigene Tokens; offen: `redactEntity` hält versteckte Marker am Server nicht zurück (D56)*
 - **[[REQ-221]]** (3, offen, Kampagne & Sitzungen) — Begegnungsbau: Schwierigkeit aus den XP-Schwellen der Gruppe mit Multiplikator nach Anzahl (2014), Kreaturen aus dem Kompendium, dann auf die Karte setzen und Initiative starten
 - **[[REQ-227]]** (3, offen, Regeln & Nachschlagen) — Masse im Fliesstext umrechnen: Fuss und Meilen in Regeltexten („within 120 feet“) nach der Einstellung `units` zeigen, beim Lesen gerechnet, gespeichert bleibt der Wortlaut — *umgerechnet werden nur Felder mit `unit` und Angriffszeilen (`convertText`, W2)*
-- **[[REQ-229]]** (3, offen, Zugang & Betrieb) — Konten in der Oberfläche verwalten: sperren und entsperren und die Verwaltung (`is_admin`) vergeben, ohne Kommandozeile — *nur über `user` auf dem Server; die Kontoliste der Verwaltung steht in der Seite (W3)*
-- **[[REQ-242]]** (3, offen, Zugang & Betrieb) — Spielercharakter: die Leitung kann einzelne Felder oder Kanten für den Spieler sperren oder ihre Änderung freigabepflichtig machen (z. B. Attributswerte, Klasse), während der Rest frei bleibt — *die eigene Figur verwaltet der Spieler ganz (E-014 d)*
-- **[[REQ-253]]** (3, offen, Inhaltsgerüst) — Ebenen und Artikel kopieren: eine ganze Ebene oder ausgewählte Artikel daraus in eine andere (eigene) Ebene kopieren, z. B. in der Werkbank — *später; Kopie ohne `overrides`*
+- **[[REQ-229]]** (3, offen, Zugang & Betrieb) — Konten in der Seite verwalten — *nur über `user` auf dem Server; die Kontoliste der Verwaltung steht in der Seite (W3)*
+- **[[REQ-242]]** (3, offen, Zugang & Betrieb) — Felder der eigenen Figur sperren — *die eigene Figur verwaltet der Spieler ganz (E-014 d)*
+- **[[REQ-253]]** (3, offen, Inhaltsgerüst) — Ebenen und Artikel kopieren — *später; Kopie ohne `overrides`*
 - **[[REQ-268]]** (3, teils, Zugang & Betrieb) — Dev-Token aus der Werkbank erzeugen — *Tokens am Konto in `konto/`; aus der Werkbank für andere Konten nicht*
 - **[[REQ-271]]** (3, offen, Zugang & Betrieb) — Konflikte bei der Übernahme nebeneinander lösen — *Konflikte werden heute nur gemeldet*
 - **[[REQ-274]]** (3, offen, Kreaturen & Figuren) — Charakter- und Kampagnenmanager jederzeit aufrufen

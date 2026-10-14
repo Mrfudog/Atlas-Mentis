@@ -19,6 +19,6 @@ Epic: [[EP-02 Zugang & Betrieb]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-088]] Bulk actions: knowledge / permission assignment | – | 3 | teils |
-| [[REQ-235]] Werkbank: erweiterbare Prüfungen über den ganzen Bestand und Massenänderungen mit Vorschau, Protokoll und Rückgängig; mehrere Artikel löschen nur mit ausdrücklicher Bestätigung | – | 3 | steht |
+| [[REQ-088]] Massenänderungen an Wissen und Rechten | Spielleitung | 3 | teils |
+| [[REQ-235]] Werkbank: Prüfungen und Massenänderungen | Spielleitung | 3 | steht |
 <!-- stories:ende -->

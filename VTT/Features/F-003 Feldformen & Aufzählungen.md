@@ -19,8 +19,8 @@ Epic: [[EP-01 Inhaltsgerüst]]
 
 | Story | Rolle | Prio | Stand |
 |---|---|---|---|
-| [[REQ-012]] Block types: paragraph, readaloud, fact, secret, poem/song/review… extensible list | – | 2 | steht |
-| [[REQ-023]] Status dimension: idea / planned / used / discarded | – | 2 | ersetzt |
+| [[REQ-012]] Textfelder für jede Art von Text | Spielleitung | 2 | steht |
+| [[REQ-023]] Status idea/planned/used/discarded | – | 2 | ersetzt |
 | [[REQ-258]] Verweisfeld nennt, welche Artikel es annimmt | Spielleitung | 2 | teils |
 | [[REQ-259]] Vorgabewerte für Felder | Spielleitung | 3 | steht |
 | [[REQ-261]] Sorte einer Art als freies Feld mit Vorschlägen | Spielleitung | 2 | steht |
