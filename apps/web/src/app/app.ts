@@ -294,6 +294,30 @@ import { Live } from './kern/live';
       .bereiche a {
         white-space: nowrap;
       }
+      /* Marke, Live-Punkt, Konto und Abmelden bleiben **eine** Zeile
+         (T-126): seit dem Live-Punkt rutschte „Sign out" in eine zweite,
+         und der Kopf war 130 px hoch. Der Name gibt nach (Auslassung),
+         die Rolle steht auf der Kontoseite. Platz bleibt für einen
+         Suchknopf neben dem Punkt (T-138). */
+      .marke {
+        font-size: 1.15rem;
+        white-space: nowrap;
+      }
+      .wer {
+        min-width: 0;
+        flex: 0 1 auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .rolle {
+        display: none;
+      }
+      .leiste > button {
+        flex: none;
+        padding: 0.3rem 0.6rem;
+        font-size: 0.85rem;
+      }
     }
   `,
 })
